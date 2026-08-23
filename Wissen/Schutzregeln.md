@@ -98,10 +98,20 @@ Hier darf ein Agent ohne Rückfrage arbeiten, weil sich alles neu erzeugen läss
   Netzteilschaden — der 2026 schon mehrere Platten gleichzeitig getötet hat —
   hilft das nicht. **Eine Kopie außer Haus ist der wichtigste offene Punkt.**
   Siehe [[Hardware]].
-- **Keine Versionsstände.** Ein Fehler, der länger als bis 20:00 unbemerkt
-  bleibt, ist in allen drei Kopien. Ein Git-Repository über die Textdateien
-  des Vaults (`Wissen/`, `*.md`, `*.ps1`, `ArchivSuche/*.py` — ohne die 42 GB
-  Medien) würde genau diese Lücke schließen; noch nicht eingerichtet.
+- **Versionsstände seit 24.08.2026.** Ein Git-Repository über die Textebene des
+  Vaults schließt die Lücke, die alle drei Kopien teilen: Sie halten nur den
+  jetzigen Stand. Erfasst sind 85 Dateien (`Wissen/`, Steuerdateien der Agenten,
+  `.claude/skills/`, `ArchivSuche/`, `Handel/`, die drei eigenen MCP-Server,
+  die Sicherungsskripte) — **ohne** die 42 GB Medien. Zurückholen einer
+  versehentlich überschriebenen Datei: `git restore <pfad>`, geprüft am
+  24.08.2026 an `Fristen.md` (bit-genau identisch wiederhergestellt).
+  Die `.gitignore` ist eine **Whitelist**: erst alles ignorieren, dann einzeln
+  freigeben. `Zugaenge.md`, `Passwoerter-Quarantaene.md`, alle `.env`, `.pem`,
+  `.pfx`, `.p12`, `.kdbx` stehen als Rückausnahme draußen und waren nie im
+  Verlauf. **Das ist wichtig, denn Git vergisst nichts** — eine einmal
+  eingecheckte Schlüsseldatei bleibt auch nach dem Löschen im Verlauf.
+  Neue Dateien werden also **nicht automatisch** erfasst; was mitversioniert
+  werden soll, braucht eine Freigabezeile in `.gitignore`.
 - **`Zugaenge.md` liegt im Klartext** und wird nach `G:` und `O:` mitkopiert.
   Bewusst so, geprüft von `sichern.ps1`. Wer die Platte hat, hat die Schlüssel.
 
