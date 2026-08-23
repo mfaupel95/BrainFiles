@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Archiv-Suche</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f4;
+    --fg: #1c1c1a;
+    --card: #ffffff;
+    --border: #ddd8d0;
+    --accent: #8a5a2b;
+    --muted: #6b6b66;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1917;
+      --fg: #eae7e1;
+      --card: #24221f;
+      --border: #3a3733;
+      --accent: #d3a06c;
+      --muted: #9b968c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  header {
+    padding: 2rem 1.5rem 1rem;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 0.75rem; }
+  .search-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  input[type=text] {
+    flex: 1 1 300px;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--fg);
+    font-size: 1rem;
+  }
+  select, button {
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--fg);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+  }
+  .result {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.7rem;
+  }
+  .result .path {
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .result .cat {
+    display: inline-block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 5px;
+    padding: 0.1rem 0.4rem;
+    margin-right: 0.5rem;
+  }
+  .result .snippet {
+    margin-top: 0.4rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  .result mark {
+    background: #ffe08a;
+    color: #1c1c1a;
+    padding: 0 0.1rem;
+    border-radius: 3px;
+  }
+  .result .actions {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .result .actions button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+  }
+  .empty, .status {
+    color: var(--muted);
+    padding: 1rem 0;
+  }
+  #sortReport pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Archiv-Suche</h1>
+  <div class="search-row">
+    <input id="q" type="text" placeholder="Suchen … z.B. Rechnung Schrauben" autofocus>
+    <select id="category">
+      <option value="">Alle Kategorien</option>
+      <option value="Bilder">Bilder</option>
+      <option value="Videos">Videos</option>
+      <option value="Musik">Musik</option>
+      <option value="Dokumente">Dokumente</option>
+    </select>
+    <button class="primary" id="searchBtn">Suchen</button>
+  </div>
+  <div class="meta-row">
+    <span id="status"></span>
+    <div style="display:flex; gap:0.5rem;">
+      <button id="sortInboxBtn">Posteingang einsortieren</button>
+      <button id="reindexBtn">Index aktualisieren</button>
+    </div>
+  </div>
+</header>
+<main id="results"></main>
+<main id="sortReport" style="padding-top:0;"></main>
+
+<script>
+const q = document.getElementById('q');
+const category = document.getElementById('category');
+const searchBtn = document.getElementById('searchBtn');
+const reindexBtn = document.getElementById('reindexBtn');
+const sortInboxBtn = document.getElementById('sortInboxBtn');
+const resultsEl = document.getElementById('results');
+const sortReportEl = document.getElementById('sortReport');
+const statusEl = document.getElementById('status');
+
+async function loadCategories() {
+  try {
+    const res = await fetch('/api/categories');
+    const data = await res.json();
+    const current = category.value;
+    category.innerHTML = '<option value="">Alle Kategorien</option>' +
+      data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    category.value = current;
+  } catch (e) { /* Dropdown bleibt bei Fehler wie gehabt */ }
+}
+loadCategories();
+
+async function search() {
+  const query = q.value.trim();
+  if (!query) { resultsEl.innerHTML = ''; statusEl.textContent = ''; return; }
+  statusEl.textContent = 'Suche …';
+  const params = new URLSearchParams({ q: query, limit: '30' });
+  if (category.value) params.set('category', category.value);
+  const res = await fetch('/api/search?' + params.toString());
+  const data = await res.json();
+  if (data.error) {
+    resultsEl.innerHTML = `<div class="empty">${data.error}</div>`;
+    statusEl.textContent = '';
+    return;
+  }
+  statusEl.textContent = `${data.results.length} Treffer`;
+  if (data.results.length === 0) {
+    resultsEl.innerHTML = '<div class="empty">Keine Treffer.</div>';
+    return;
+  }
+  resultsEl.innerHTML = data.results.map(r => `
+    <div class="result">
+      <div><span class="cat">${r.category}</span><span class="path">${escapeHtml(r.path)}</span></div>
+      ${r.snippet ? `<div class="snippet">${escapeHtml(r.snippet)}</div>` : ''}
+      <div class="actions">
+        <button onclick="openFile('${encodeURIComponent(r.path)}')">Öffnen</button>
+        <button onclick="showInFolder('${encodeURIComponent(r.path)}')">Im Ordner zeigen</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML.replaceAll('&lt;mark&gt;', '<mark>').replaceAll('&lt;/mark&gt;', '</mark>');
+}
+
+async function openFile(pathEncoded) {
+  await fetch('/api/open?path=' + pathEncoded);
+}
+async function showInFolder(pathEncoded) {
+  await fetch('/api/open_folder?path=' + pathEncoded);
+}
+
+searchBtn.addEventListener('click', search);
+q.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+category.addEventListener('change', search);
+
+reindexBtn.addEventListener('click', async () => {
+  reindexBtn.disabled = true;
+  statusEl.textContent = 'Indexiere …';
+  const res = await fetch('/api/reindex', { method: 'POST' });
+  const data = await res.json();
+  statusEl.textContent = data.stdout || data.stderr || 'fertig';
+  reindexBtn.disabled = false;
+});
+
+sortInboxBtn.addEventListener('click', async () => {
+  sortInboxBtn.disabled = true;
+  statusEl.textContent = 'Sortiere Posteingang …';
+  sortReportEl.innerHTML = '';
+  const res = await fetch('/api/sort_inbox', { method: 'POST' });
+  const data = await res.json();
+  statusEl.textContent = 'Posteingang sortiert';
+  const text = [data.stdout, data.stderr].filter(Boolean).join('\n\n');
+  sortReportEl.innerHTML = `<pre>${escapeHtml(text || 'Posteingang war leer.')}</pre>`;
+  sortInboxBtn.disabled = false;
+});
+</script>
+</body>
+</html>

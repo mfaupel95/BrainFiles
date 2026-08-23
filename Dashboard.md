@@ -1,0 +1,115 @@
+# Dashboard
+
+Startseite des KI-Betriebssystems. In Obsidian als Standardnotiz setzen:
+*Einstellungen → Allgemein → Beim Start diese Notiz öffnen*.
+
+## Wissen
+
+- [[Fristen]] — laufende Termine mit Konsequenz; **4 offen, davon 1 überfällig**
+  (Nachzahlung 3.259,19 € war am 21.08.2026 fällig, AdV beantragt und noch nicht
+  entschieden; nächster künftiger Termin 10.09.2026)
+- [[Profil]] — wer ich bin, wie ich arbeite
+- [[Projekte]] — was gerade läuft
+- [[Verbindungen]] — welche Dienste angebunden sind
+- [[Zugaenge]] — API-Schlüssel und Tokens, **einzige** Ablage
+- [[Passwoerter-Quarantaene]] — Checkliste: welche Passwörter zu ändern sind
+- [[Routinen]] — was automatisch passiert
+- [[Portabilitaet]] — Umzug auf externe SSD
+- [[PDF-Scans-lesen]] — gescannte Dokumente auswerten statt nur durchsuchen
+- [[Hardware]] — Laufwerke, Plattendiagnose; **offen: Stromausfälle ohne Bluescreen, WD My Book (J:) baut ab**
+- [[Steuerunterlagen]] — Steuernummern, veranlagte Jahre; **Einspruch läuft seit 19.08.2026, AdV beantragt**
+- [[Marktlage-August-2026]] — geprüfter Marktstand, Quellenbewertung STA Solutions
+
+## Archiv
+
+Dateiarchiv liegt in `Claude/` (Bilder, Videos, Musik, Dokumente).
+Neue Dateien einfach nach `Claude/Posteingang/` ziehen — der Skill
+`posteingang` sortiert sie ein.
+
+Suchen: Skill `archiv`, oder direkt
+`Claude/ArchivSuche/Suche_starten.bat` für die Weboberfläche.
+
+**Neu seit 19.08.2026: semantische Suche.** Findet nach Bedeutung statt nach
+Stichwort, läuft vollständig lokal (Ollama + bge-m3), deckt 1.076 Dateien mit
+echtem Text in 11.965 Abschnitten ab.
+
+```
+Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\vektor_suche.py "frage in eigenen worten"
+```
+
+Anleitung und Grenzen: `Claude/ArchivSuche/VEKTORSUCHE.md`.
+
+## Sicherung
+
+`sichern.ps1` in diesem Ordner — prüft erst auf Klartext-Zugangsdaten, kopiert
+dann nach `G:\MaxHirn-Sicherung`. Gemessener Lauf am 23.08.2026: **48 Sekunden**.
+Details in [[Hardware]].
+
+**Läuft seit 23.08.2026 täglich um 20:00 von selbst** (Aufgabe
+`MaxHirn-Sicherung`, Protokoll unter `Routinen/logs/`). Vorher lief sie nur,
+wenn jemand daran dachte — zuletzt fehlten deshalb der ganze `Hermes/`-Ordner
+und `AGENTS.md` in der Sicherung.
+
+Dazu seit 23.08.2026 eine **Zweitkopie um 21:00 nach `O:\MaxHirn-Zweitkopie`**
+(`sichern-zweitkopie.ps1`): der unersetzliche Teil ohne Videos, Musik, Software
+und Posteingang — 7,1 GB, gemessen **8 Sekunden**. Sie liegt bewusst auf O:,
+weil `G:`, `H:` und `I:` dieselbe physische Platte sind. Übersicht: [[Routinen]].
+
+⚠️ **Alle drei Kopien stecken im selben Rechner**, und das Stromproblem aus
+[[Hardware]] ist offen. Gegen einen erneuten Ausfall mehrerer Platten
+gleichzeitig schützt auch die Zweitkopie nicht — **eine Kopie außer Haus fehlt
+weiterhin**.
+
+## Skills
+
+| Skill | Wofür |
+|---|---|
+| `archiv` | Im eigenen Dateiarchiv suchen |
+| `frist` | Post mit Termindruck erfassen, Frist eintragen |
+| `schaden` | Zerstörte Dateien finden und zurückspielen |
+| `dokument` | Ein einzelnes Schreiben verstehen, benennen, ablegen |
+| `belege` | Nachweise für einen Termin sammeln und mitzählen |
+| `geld` | Anstehende Zahlungen und Guthaben nebeneinander |
+| `auftrag` | Aus knapper Eingabe das Ziel lesen und loslegen |
+| `posteingang` | Posteingang einsortieren und neu indexieren |
+| `notiz` | Dauerhaftes Wissen als Vault-Notiz ablegen |
+| `tagesbriefing` | Morgendlicher Überblick |
+| `wochenrueckblick` | Wochenabschluss und Aufräumen |
+
+Aufruf in Claude Code mit `/archiv`, `/posteingang` usw.
+
+Ausführliche Beschreibung aller Skills, der Werkzeuge darunter und der Grenzen:
+[Handbuch.html](Handbuch.html) — im Browser öffnen, mit Strg+P druckfertig (A4, 11 Kapitel).
+
+## Offen (Stand 23.08.2026)
+
+- [ ] **Netzteil / Stromzufuhr klären** — blockiert alles Langlaufende
+      (siehe [[Hardware]]). Zuerst das Billige: Kaltgerätekabel,
+      Steckdosenleiste, Wandsteckdose.
+- [ ] **Passwörter aus dem Firefox-Export von 2020/2023 ändern**, soweit sie
+      noch gelten. **Arbeitsliste steht jetzt in [[Passwoerter-Quarantaene]]** —
+      68 Dienste nach Dringlichkeit sortiert, Postfächer zuerst, ohne
+      Zugangsdaten. Die vier Kopien in `C:\Users\faupe\Zugangsdaten-Quarantaene\`
+      sind **inhaltlich identisch** (ein Export, viermal kopiert) und bleiben
+      liegen, bis die Liste abgearbeitet ist — danach löschen.
+- [ ] **OKX-Schlüssel widerrufen** — `Claude/Worktrees/investment/OKX_API.env`
+      liegt im Klartext, wird aber von keinem Skript gelesen (geprüft
+      23.08.2026). Erst im Portal widerrufen, dann die Datei löschen. Anleitung
+      in [[Zugaenge]].
+- [ ] **Unraid-Reste entscheiden** — SSH-Hostschlüssel, `passwd`, `shadow`,
+      `smbpasswd`, `secrets.tdb`, `unbalanced.env` unter
+      `Claude/Software/Linux/Unraid/`. `sichern.ps1` listet sie bei jedem Lauf
+      unter „noch nicht bewertet" auf.
+- [ ] **Kopie außer Haus anlegen** — Sicherung und Zweitkopie liegen beide im
+      selben Rechner (siehe oben).
+- [ ] **Toten Ordner aus `localAgentModeTrustedFolders` nehmen** — der Eintrag
+      steht auf `Documents\BrainFiles\KI Futter`, und dieser Ordner existiert
+      nicht mehr (geprüft 23.08.2026). Wirkungslos, aber irreführend. Die frühere
+      Formulierung („zeigt auf `Referenz\`") war falsch: `Referenz\` steht dort
+      gar nicht, `MaxHirn` dagegen schon. Ändern nur bei geschlossener App.
+- [x] ~~[[Profil]] ausfüllen~~ — 19.08.2026 aus Vault und Archiv befüllt;
+      offene Punkte dort mit `⬚ offen` markiert
+- [ ] MCP-Verbindungen authentifizieren (siehe [[Verbindungen]])
+- [ ] Routinen einplanen (siehe [[Routinen]])
+- [ ] `Maximilianbackup0924` (48,8 GB) — existiert nur noch auf G:. Wird es noch
+      gebraucht? Wenn ja: zweiter Ort. Wenn nein: weg, Sicherung halbiert sich.

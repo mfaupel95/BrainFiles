@@ -1,0 +1,11 @@
+[project]
+name = "kraken-mcp"
+version = "0.1.0"
+description = "MCP-Server fuer Max' Kraken-Pro-Konto"
+# Wie beim archiv-Server unter 3.14 gehalten: fuer 3.14 fehlen in Teilen der
+# Abhaengigkeitskette noch fertige Wheels, uv muesste sonst selbst uebersetzen.
+requires-python = ">=3.10,<3.14"
+dependencies = ["mcp>=1.2", "httpx>=0.27"]
+
+[tool.uv]
+package = false

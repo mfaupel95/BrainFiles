@@ -1,0 +1,11 @@
+[project]
+name = "archiv-mcp"
+version = "0.1.0"
+description = "MCP-Server fuer Max' Dateiarchiv (nur lesend)"
+# Bewusst unter 3.14: fuer 3.14 gibt es fuer Teile der Abhaengigkeitskette
+# noch keine fertigen Wheels, uv muesste sie sonst selbst uebersetzen.
+requires-python = ">=3.10,<3.14"
+dependencies = ["mcp>=1.2"]
+
+[tool.uv]
+package = false

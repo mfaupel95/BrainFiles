@@ -1,0 +1,106 @@
+# Versionsverwaltung des Vaults - WHITELIST
+#
+# Dieses Repository sichert NICHT den Vault. Das tun sichern.ps1 (G:) und
+# sichern-zweitkopie.ps1 (O:). Es schliesst die eine Luecke, die alle drei
+# Kopien teilen: Sie halten nur den JETZIGEN Stand. Ein Fehler, der laenger als
+# bis 20:00 unbemerkt bleibt, steht danach in allen dreien. Git haelt die
+# Vorgeschichte - deshalb hier nur, was sich von Hand aendert und was weh taete,
+# wenn es still kaputtginge.
+#
+# Bewusst eine Whitelist: erst alles ignorieren, dann einzeln freigeben. Eine
+# Blacklist waere die falsche Richtung - sie nimmt jede neue Datei ungefragt
+# auf, und genau so landen 42 GB Medien oder ein Zugangsschluessel im Verlauf.
+
+# --- 1) Grundsatz: nichts ---------------------------------------------------
+*
+
+# --- 2) Ordner muessen begehbar sein ----------------------------------------
+# Ohne diese Zeile steigt Git an der ersten ignorierten Ebene aus und findet
+# nichts von dem, was unten freigegeben ist.
+!*/
+
+# --- 3) Der Kopf des Systems ------------------------------------------------
+# Die beiden Git-Steuerdateien zuerst: ohne diese Freigabe faengt die Regel in
+# Zeile 15 sie selbst mit ein, und ausgerechnet die Regeln waeren nicht
+# versioniert. .gitattributes haelt die Zeilenenden auf LF (Portabilitaet.md).
+!/.gitignore
+!/.gitattributes
+!/*.md
+!/*.ps1
+!Wissen/**/*.md
+!.claude/skills/**
+!Routinen/*.ps1
+
+# --- 4) Das Archiv-Werkzeug (nicht das Archiv) ------------------------------
+!Claude/*.md
+!Claude/ArchivSuche/*.py
+!Claude/ArchivSuche/*.md
+!Claude/ArchivSuche/requirements.txt
+!Claude/ArchivSuche/*.bat
+!Claude/ArchivSuche/static/**
+
+# --- 5) Eigene Programme ----------------------------------------------------
+!Handel/*.py
+!Handel/*.md
+!Handel/*.ps1
+!MCP-Server/mail/**
+!MCP-Server/kraken/**
+!MCP-Server/archiv/**
+
+# --- 6) Konfiguration, die Verhalten steuert --------------------------------
+!.mcp.json
+!Claude/.mcp.json
+!*.env.template
+!.claude/settings.local.json
+!Claude/.claude/settings.local.json
+
+# --- 7) Rueckausnahmen: was trotz der Freigaben oben draussen bleibt --------
+
+# Zugangsdaten. Zugaenge.md ist laut CLAUDE.md die einzige Ablage fuer
+# Schluessel und Tokens - im Klartext. In Git waere sie fuer immer drin, auch
+# nach einem spaeteren Loeschen, denn Git vergisst nichts. Das ist der Punkt,
+# an dem Versionsverwaltung zum Risiko wird statt zum Schutz.
+Wissen/Zugaenge.md
+Wissen/Passwoerter-Quarantaene.md
+**/.env
+**/*.pem
+**/*.pfx
+**/*.p12
+**/*.kdbx
+**/*_key.txt
+**/acoustid_key.txt
+
+# Laufender Zustand, keine Fassung von Hand. plan.json haelt den Stand des
+# DCA-Agenten; jeder Lauf schreibt hinein. Im Verlauf waere das Rauschen, das
+# die echten Aenderungen zudeckt.
+Handel/plan.json
+Handel/plan.json.v1
+Handel/check.log
+
+# Erzeugtes und Fremdes
+**/__pycache__/**
+**/.venv/**
+**/node_modules/**
+**/*.pyc
+Routinen/logs/**
+Claude/ArchivSuche/*.db
+Claude/ArchivSuche/*.db-shm
+Claude/ArchivSuche/*.db-wal
+Claude/.claude/scheduled_tasks.lock
+
+# Fremd-Repositories. Sie bringen ein eigenes .git mit; Git nimmt sie sonst als
+# Submodul-Verweis auf (gemessen 24.08.2026: neun Stueck). Ein solcher Verweis
+# speichert nur einen fremden Commit-Hash - beim Auschecken faende sich dort ein
+# leerer Ordner. Sie sind ohnehin aus Git reproduzierbar.
+GitHub/**
+Hermes/hermes-agent/**
+Modelle/**
+
+# Fremde MCP-Server. Freigegeben sind oben nur die drei eigenen (mail, kraken,
+# archiv). Die Muster *.env.template und *.mcp.json gelten aber ohne Pfad und
+# haetten sonst drei Vorlagendateien aus dem tooluniverse-Server mitgenommen.
+MCP-Server/ant.dir.*/**
+
+# Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
+# macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
+*.bak-*

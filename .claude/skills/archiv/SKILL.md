@@ -1,0 +1,55 @@
+---
+name: archiv
+description: Durchsucht Max' eigenes Dateiarchiv (Bilder, Videos, Musik, Dokumente) per Volltextsuche mit OCR. Immer VOR einer Internetsuche benutzen, wenn es um eigene Unterlagen gehen könnte — Rechnungen, Verträge, Belege, Anleitungen, Notizen, Rezepte, Fotos, Screenshots, Musik. Auch bei Fragen wie "wo war nochmal", "hab ich das irgendwo", "finde die Rechnung von", "welches Dokument".
+---
+
+# Archiv durchsuchen
+
+## Wann
+
+Bei jeder Frage, deren Antwort in Max' eigenen Unterlagen liegen könnte. Im
+Zweifel: erst hier suchen, das kostet einen Aufruf. Erst wenn nichts kommt oder
+die Frage allgemeines Weltwissen braucht, ins Internet.
+
+## Wie
+
+Vom Vault-Wurzelordner aus:
+
+```powershell
+Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\search_cli.py "suchbegriff"
+```
+
+Läuft die Sitzung bereits in `Claude/`, entfällt das führende `Claude\`.
+
+Optionen:
+
+- `--category Dokumente` — einschränken auf `Bilder` | `Videos` | `Musik` | `Dokumente`
+- `--limit N` — Anzahl Treffer (Standard 5)
+
+## Suchbegriffe wählen
+
+Die Suche ist eine Volltextsuche, kein Sprachmodell. Deshalb:
+
+- **Nicht** die Frage des Nutzers wörtlich übergeben („wo ist meine Rechnung von
+  der Autowerkstatt letztes Jahr").
+- **Sondern** die tragenden Begriffe: `Autowerkstatt Rechnung`, notfalls in zwei
+  Läufen `Werkstatt` und `Inspektion`.
+- Bei null Treffern einmal mit einem allgemeineren Begriff nachfassen, bevor du
+  aufgibst. Danach ehrlich sagen, dass nichts im Archiv liegt.
+
+## Wenn nichts gefunden wird, obwohl etwas da sein müsste
+
+Wahrscheinlich sind seit dem letzten Lauf Dateien dazugekommen. Dann einmal neu
+indexieren:
+
+```powershell
+Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\index.py
+```
+
+Das dauert und schreibt viel Ausgabe — nur die letzten Zeilen lesen
+(`| Select-Object -Last 5`), nicht den ganzen Lauf.
+
+## Nicht im Index
+
+`Claude/Software/` ist bewusst ausgenommen (Installationsdateien, ELSTER-Zertifikate).
+Dort nicht suchen und nichts daraus verschieben.

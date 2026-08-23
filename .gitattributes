@@ -1,0 +1,22 @@
+# Zeilenenden - siehe Wissen/Portabilitaet.md
+#
+# Der Vault verwendet durchgehend LF. Git fuer Windows wuerde beim Auschecken
+# still auf CRLF umstellen und beim Einchecken zurueck; eine Aenderung von drei
+# Zeilen saehe dann in jedem Vergleich aus wie eine komplette Neufassung. Genau
+# das ist am 20.08.2026 an zehn Dateien passiert, damals ueber Python.
+#
+# Deshalb: keine Umwandlung, in keine Richtung. Ergaenzend steht core.autocrlf
+# in diesem Repository lokal auf false - .gitattributes gewinnt ohnehin, aber
+# beides zusammen ueberlebt auch einen Klon auf einen anders eingestellten
+# Rechner.
+* -text
+
+# Binaerformate ausdruecklich, damit Git sie nie zeilenweise zu vergleichen
+# versucht.
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.db   binary
+*.zip  binary
+*.jar  binary
+*.pyc  binary
