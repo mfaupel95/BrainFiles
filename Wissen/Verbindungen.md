@@ -158,6 +158,25 @@ Sicherheitsscan vor dem Kauf und regelmäßiges Widerrufen offener Freigaben.
 Das Auslösen von Geldbewegungen bleibt laut globaler Arbeitsanweisung beim
 Nutzer — Claude bereitet nur vor.
 
+### Doch über MCP: OKX Agent Trade Kit (seit 24.08.2026)
+
+Die Überschrift oben stimmt seit dem 24.08.2026 nicht mehr vollständig. Max hat
+zusätzlich zur CLI einen **HTTP-MCP-Server** eingetragen:
+
+| Punkt | Stand |
+|---|---|
+| Name | `okx-agent-trade-kit` |
+| Adresse | `https://www.okx.com/api/v1/mcp/trading-oauth` |
+| Transport | HTTP |
+| Eingetragen in | `~/.claude.json` (Benutzer-Ebene, **nicht** `claude_desktop_config.json`) |
+| Status | **eingetragen, noch nicht angemeldet** — OAuth steht aus |
+
+Angemeldet wird er wie alle eigenen Server: interaktives Terminal, `claude`
+starten, `/mcp` aufrufen. Erst danach sind seine Werkzeuge nutzbar.
+
+Für alles, was dieser Server an Handelsfunktionen mitbringt, gilt unverändert:
+**das Auslösen bleibt bei Max**, Claude bereitet nur vor.
+
 ## Anmeldung nachholen
 
 Anmeldungen lassen sich **nicht** aus einer laufenden Sitzung heraus erledigen —
