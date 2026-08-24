@@ -78,6 +78,19 @@ Kursverlauf des Testfensters immer mit angeben.
   Nominal statt der berechneten 651 $, vermutlich Rundung auf ganze Kontrakte
   (`ctVal` 0,0001 BTC).
 
+## Nicht verwechseln: zwei Bedeutungen von „DCA“
+
+In `Handel/` liegen beide, sie haben nur den Namen gemeinsam:
+
+| Datei | Was | Datenquelle |
+|---|---|---|
+| `dca.py`, `vergleich.py` | **Sparplan** — feste Summe, festes Intervall, wahlweise gehebelt | yfinance (Aktien) |
+| `dca_auswertung.py` | **Martingale-Bot** — Nachkaufleiter, Take-Profit, Stop-Loss je Runde | OKX (Krypto) |
+
+`vergleich.py` macht für den Sparplan denselben Punkt, den oben der
+Jahreszeitraum macht: Ein Backtest auf einem einzigen günstigen Fall misst
+vor allem diesen Fall.
+
 ## Nachrechnen
 
 ```
