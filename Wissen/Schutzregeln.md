@@ -91,6 +91,49 @@ Hier darf ein Agent ohne Rückfrage arbeiten, weil sich alles neu erzeugen läss
 4. **Nach der Änderung prüfen**, nicht auf den Rückgabewert eines Werkzeugs
    vertrauen. Robocopy wirft keine Ausnahme, es meldet über den Exitcode.
 
+## Mehrere Sitzungen gleichzeitig
+
+Max arbeitet mit mehreren Chats parallel, dazu kommt Hermes. Alle schreiben in
+denselben Vault. Der Schutz durch Git hat dabei eine genau bestimmbare Lücke:
+
+**Git schützt nur, was committet ist.** Zwischen dem Schreiben einer Datei und
+ihrem Commit liegt ein Fenster, in dem die Arbeit nirgends gesichert ist — nicht
+in Git, und in der Sicherung um 20:00 steht danach der überschriebene Stand.
+Eine zweite Sitzung, die in diesem Fenster verwirft, vernichtet die Arbeit der
+ersten endgültig.
+
+Am 24.08.2026 ist das zum ersten Mal aufgefallen, im harmlosen Fall: Eine zweite
+Claude-Sitzung fand zwei geänderte Dateien im Arbeitsbaum vor und committete sie
+samt Nachricht in der Ich-Form — Arbeit, die sie nicht getan hatte. Verloren ging
+nichts. Dasselbe Muster mit `git checkout` statt `git commit` hätte die Arbeit
+gelöscht, und zwar ohne Rückholmöglichkeit.
+
+Vier Regeln, für Claude und Hermes gleichermaßen:
+
+1. **Nichts committen, was man nicht selbst geändert hat.** Vor jedem Commit
+   `git status` lesen. Dateien namentlich hinzufügen: `git add <pfad>`. **Nie**
+   `git add -A`, `git add .` oder `git commit -a` — die nehmen fremde Arbeit
+   ungefragt mit. Liegt Fremdes im Arbeitsbaum: liegen lassen und melden.
+
+2. **Nichts verwerfen.** `git reset --hard`, `git checkout -- <datei>`,
+   `git restore <datei>`, `git stash`, `git clean` löschen genau das, was Git
+   noch nicht schützt. Nur auf ausdrückliche Anweisung in derselben Sitzung —
+   und vorher ansagen, welche Dateien es trifft.
+
+3. **Eigenes zügig committen.** Nach jedem abgeschlossenen Arbeitsschritt, nicht
+   erst am Sitzungsende. Das ist der einzige Hebel, der das ungeschützte Fenster
+   wirklich verkleinert.
+
+4. **Exklusive Läufe nicht doppelt starten.** `index.py`, `sort_inbox.py`,
+   `sichern.ps1` und `zweitkopie.ps1` schreiben eine SQLite-Datenbank oder
+   verschieben Dateien. Zwei gleichzeitige Läufe blockieren sich oder
+   hinterlassen einen halben Stand. Vorher prüfen, ob schon einer läuft.
+
+**Was diese vier Regeln nicht leisten:** Sie verhindern nicht, dass zwei
+Sitzungen dieselbe Datei nacheinander überschreiben. Dagegen hilft nur,
+verschiedenen Sitzungen verschiedene Bereiche zu geben — oder nachzufragen,
+bevor man eine Datei anfasst, an der erkennbar eine andere Sitzung arbeitet.
+
 ## Was diese Regeln nicht leisten
 
 - **Alle drei Kopien stecken im selben Rechner.** Original auf Disk 0,

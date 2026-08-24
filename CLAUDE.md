@@ -29,7 +29,8 @@ zum laufenden Betrieb gehören:
 | `Handel/` | DCA-Agent (`agent.py`), eigenes `.venv`, eigenes README | 171 MB |
 | `Hermes/` | Daten des zweiten Agenten: Konfiguration, Gedächtnis, Sitzungen. Der **Programmcode** liegt außerhalb unter `C:\Hermes` — siehe [[Hermes]] | 61 MB |
 | `GitHub/` | geklonte Fremd-Repos, aus Git reproduzierbar. **Von der Sicherung ausgenommen** | 415 MB |
-| `Codex/`, `Coworking-Space/` | Ablagen einzelner Sitzungen, kein Bestandteil des Betriebs | 71 / 336 MB |
+| `Codex/` | **keine Sitzungsablage** — die fünf Datumsordner sind leer. Die 71 MB sind vier CSV-Protokolle einer Dublettenlöschung `Mary Ann` (O: gegen G:, 06.08.2026) | 71 MB |
+| `Coworking-Space/` | Ablagen einzelner Sitzungen, kein Bestandteil des Betriebs | 336 MB |
 
 Einstieg für Menschen: [Dashboard.md](Dashboard.md)
 
@@ -49,6 +50,24 @@ Neue Erkenntnisse, die dauerhaft gelten, gehören als Markdown-Datei nach `Wisse
 
 Kurzlebiges (Zwischenstände, Ausgaben eines einzelnen Laufs) gehört **nicht**
 in den Vault.
+
+## Mehrere Sitzungen gleichzeitig
+
+Max hat mehrere Chats offen, dazu Hermes — alle schreiben in denselben Vault.
+**Git schützt nur, was committet ist**, alles davor kann eine andere Sitzung
+vernichten. Deshalb:
+
+- **Nur committen, was man selbst geändert hat.** `git add <pfad>` namentlich,
+  nie `git add -A`, `git add .` oder `git commit -a`. Fremdes im Arbeitsbaum
+  liegen lassen und melden.
+- **Nie verwerfen:** `git reset --hard`, `checkout -- <datei>`, `restore`,
+  `stash`, `clean` löschen die uncommittete Arbeit anderer Sitzungen
+  unwiederbringlich. Nur auf ausdrückliche Anweisung, vorher ansagen.
+- **Eigenes zügig committen**, nach jedem Arbeitsschritt.
+- **`index.py`, `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt
+  starten.**
+
+Vollständig: [Wissen/Schutzregeln.md](Wissen/Schutzregeln.md)
 
 ## Portabilität
 

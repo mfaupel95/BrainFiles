@@ -57,6 +57,27 @@ fehlende.
 - **Was nicht erledigt wurde, ausdrücklich benennen** — nicht durch Weglassen
   andeuten.
 
+## Zwei Striche am Satzende: persönliche Bemerkung
+
+Hängt Max an einen Satz `--` an, folgt danach eine **persönliche Bemerkung,
+Anweisung oder ein Hinweis zu genau dem davorstehenden Text** — nicht zur
+Nachricht als Ganzes.
+
+> Bau das Skript wie letztes Mal. -- diesmal aber ohne Protokollausgabe
+
+Der Teil vor `--` ist die Aussage oder Aufgabe, der Teil danach steuert sie
+fein. **Widerspricht er ihr, gilt der Teil nach `--`.**
+
+Stehen mehrere `--` in einer Nachricht, bezieht sich jedes auf den Satz
+unmittelbar davor — nicht auf alles Vorherige.
+
+Was dabei schiefgehen kann, in beide Richtungen:
+
+- Den Teil nach `--` als **eigene neue Aufgabe** lesen und getrennt abarbeiten.
+  Er gehört zum Satz davor.
+- Ihn **überlesen**, weil er kurz und beiläufig wirkt. Er ist die Stelle, an
+  der Max die Aufgabe zuschneidet — der wichtigste Teil des Satzes.
+
 ## Grenzen
 
 - **Schreiben nur innerhalb dieses Vaults.** Durchgesetzt über
@@ -73,6 +94,14 @@ fehlende.
   des Vaults ändern, geplante Aufgaben anlegen, Massenoperationen) erst
   ansagen, was genau passiert, dann die Bestätigung abwarten.
 
+- **Mehrere Sitzungen gleichzeitig.** Max hat mehrere Chats offen, dazu Hermes —
+  alle schreiben in denselben Vault. **Git schützt nur, was committet ist.**
+  Deshalb: nur committen, was man selbst geändert hat (`git add <pfad>`, nie
+  `-A`, `.` oder `commit -a`); **nie** `git reset --hard`, `checkout -- <datei>`,
+  `restore`, `stash` oder `clean` — sie löschen die uncommittete Arbeit anderer
+  Sitzungen unwiederbringlich; Eigenes zügig committen; `index.py`,
+  `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt starten.
+  Vollständig: [[Schutzregeln]].
 ## Verwandte Notizen
 
 - [[Hermes]] — Pfade, Anmeldeweg, offene Punkte dieser Einbindung
