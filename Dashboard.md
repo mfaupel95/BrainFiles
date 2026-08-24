@@ -19,6 +19,7 @@ Startseite des KI-Betriebssystems. In Obsidian als Standardnotiz setzen:
 - [[Hardware]] — Laufwerke, Plattendiagnose; **offen: Stromausfälle ohne Bluescreen, WD My Book (J:) baut ab**
 - [[Steuerunterlagen]] — Steuernummern, veranlagte Jahre; **Einspruch läuft seit 19.08.2026, AdV beantragt**
 - [[Marktlage-August-2026]] — geprüfter Marktstand, Quellenbewertung STA Solutions
+- [[Handelsbots]] — OKX-DCA-Bots: was gemessen wurde, womit nachgerechnet wird
 
 ## Archiv
 

@@ -17,6 +17,12 @@ Video-ID `maNoVM-Jjh0`.
 | Brent | **88,91 USD** (11.08.2026), zeitweise ~90 | US-Rohöl über 83 USD |
 | SpaceX (SPCX) | unter IPO-Preis 135 USD gefallen | IPO 08.06.2026, Hoch 225,64 → −53 % |
 
+> **Nachtrag 24.08.2026:** Die Tabelle ist ein Stand vom 14.08.2026 und wird
+> hier nicht fortgeschrieben. Für Bitcoin ist sie inzwischen deutlich überholt:
+> am 14.08. lag die Tagesspanne bei 62.522–63.645 USD, am 24.08. bei
+> 76.681–80.000 USD — rund **+25 % in zehn Tagen**. Gemessen an OKX-Stundenkerzen,
+> siehe [[Handelsbots]]. Die übrigen Zeilen sind nicht nachgeprüft.
+
 **Geopolitischer Rahmen:** Der US-/Israel-Iran-Konflikt begann am **28.02.2026**.
 Die Straße von Hormus ist gesperrt — statt ~130 Durchfahrten täglich zählte
 MarineTraffic Anfang August nur noch 8 bis 15. Die EIA erwartet eine Rückkehr der
