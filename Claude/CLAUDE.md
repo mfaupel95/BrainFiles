@@ -8,9 +8,15 @@ umbenennen — außer Max ordnet es in derselben Sitzung für genau diese Datei 
 Soll etwas weg, wandert es nach `Posteingang/_zu_loeschen/`, entschieden wird
 von Hand.
 
-Der Vault ist **kein Git-Repository** und die Sicherung läuft ohne `/MIR`: eine
-falsch überschriebene Datei ist um 20:01 auch auf `G:` überschrieben. Es gibt
-kein Zurück.
+Seit 24.08.2026 versioniert Git die **Textebene** des Vaults (85 Dateien:
+Notizen, Skills, Skripte, Konfiguration). **Diese vier Ordner gehören nicht
+dazu** — sie enthalten keine einzige versionierte Datei, die Whitelist in
+`.gitignore` gibt sie bewusst nicht frei. Für sie gilt unverändert: Die
+Sicherung läuft ohne `/MIR`, eine falsch überschriebene Datei ist um 20:01 auch
+auf `G:` überschrieben. Es gibt kein Zurück.
+
+Der frühere Satz „Der Vault ist kein Git-Repository" stimmt seit dem
+24.08.2026 nicht mehr — für die Originale hier ändert das aber nichts.
 
 Vollständig: [Wissen/Schutzregeln.md](../Wissen/Schutzregeln.md)
 
