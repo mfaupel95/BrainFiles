@@ -88,6 +88,62 @@ ausgebaut. Die Folge für das Archiv steht in
 [BESCHAEDIGTE_PDFS.md](../Claude/BESCHAEDIGTE_PDFS.md): Dateinamen blieben
 erhalten, Inhalte sind weg.
 
+### Die alte Laufwerksordnung (Angabe Max, 24.08.2026)
+
+Vor dem Defekt war jede Medienart eine eigene physische Platte mit festem
+Buchstaben:
+
+| Buchstabe | Inhalt |
+|---|---|
+| P: | Bilder |
+| M: | Musik |
+| F: | Filme |
+| D: | Dokumente |
+| I: | iCloud |
+| S: | Software |
+
+Die Liste ist nicht vollständig — Max nennt „und noch weitere".
+
+**Keiner dieser Buchstaben existiert heute noch in seiner alten Bedeutung.**
+`D:` ist inzwischen das optische Laufwerk, `I:` eine Partition der Seagate
+Portable; beide Buchstaben wurden neu vergeben. `P:`, `M:`, `F:` und `S:`
+kommen im System überhaupt nicht mehr vor (geprüft 24.08.2026).
+
+Zwei Dinge folgen daraus:
+
+- **`I:` war die iCloud-Platte** — also genau das Laufwerk, das beim Defekt mit
+  0 Byte Grösse hängen blieb (Ablauf unten). Das heutige `I:` hat damit nichts
+  zu tun. Wer die beiden verwechselt, sucht den Fehler an der falschen Platte.
+- **Ein Pfad auf `P:`, `M:`, `F:` oder `S:` in einer alten Konfiguration zeigt
+  auf verlorene Daten**, nicht auf ein gerade nicht angeschlossenes Laufwerk.
+  Solche Pfade laufen still ins Leere, ohne Fehlermeldung.
+
+**Vermutung, nicht belegt:** Die Archivordner `Bilder/`, `Musik/`, `Videos/`,
+`Dokumente/` und `Software/` entsprechen dieser Aufteilung. Das würde erklären,
+warum der Schaden so ungleich verteilt ist — 494 zerstörte Dateien in `Bilder/`
+gegen 5 in `Videos/`, siehe
+[BESCHAEDIGTE_DATEIEN.md](../Claude/BESCHAEDIGTE_DATEIEN.md). Es wären dann
+getrennte Platten gewesen, die unterschiedlich stark getroffen wurden. Geprüft
+ist das nicht.
+
+### Tote Laufwerkspfade in Konfigurationen (aufgeräumt 24.08.2026)
+
+Eine Suche über Registry, 329 Verknüpfungen, 208 geplante Aufgaben, Autostart,
+den Vault, Hermes, 1.126 AppData-Konfigurationsdateien und `Documents` fand
+genau **zwei** tote Verweise. Beide zeigten auf `P:`, beide waren
+Hintergrundbilder:
+
+| Ort | Wirkung |
+|---|---|
+| Windows Terminal, `profiles.defaults.backgroundImage` | Bild fehlte, dadurch schlug die darunter gesetzte Hintergrundfarbe `#C21A23` durch — alle Profile wurden unlesbar (Kontrast 3,77 : 1) |
+| PowerToys Command Palette, `BackgroundImagePath` | folgenlos, das Bild lädt einfach nicht |
+
+Beide Pfade entfernt, Sicherungen liegen als `settings.json.bak-20260824` neben
+den Originalen. Beim Terminal wurden zugleich die Farbschemata ersetzt
+(„Lesbar Dunkel" für PowerShell, „Lesbar Neutral" für cmd und Git Bash,
+Kontrast 10,5 bzw. 12,9 : 1) und der Fokusmodus abgeschaltet, der Tab- und
+Titelleiste ausblendete und damit den Weg zu den Einstellungen versperrte.
+
 Ablauf des sichtbaren Fehlers: Der Explorer fror im Kopiervorgang ein. Laufwerk
 I: war als feste Platte angemeldet, meldete aber 0 Byte Grösse und fehlte in den
 Datenträger-Leistungsindikatoren. Der `disk`-Treiber protokollierte Event **153**
