@@ -176,6 +176,23 @@ Zugangsschlüssel liegt in `~/.claude/.credentials.json`, **nicht** neben dem
 Servereintrag. Der Eintrag selbst besteht nur aus Name, Typ und öffentlicher
 Adresse — er enthält kein Geheimnis.
 
+**Ein Eintrag auf Benutzer-Ebene kann in der Projekt-Konfiguration
+auftauchen.** Beobachtet am 25.08.2026: Der Server wurde mit
+`--scope user` angelegt, die CLI meldete ausschließlich `~/.claude.json`.
+Rund zwei Minuten später stand derselbe Eintrag zusätzlich in
+`Claude/.mcp.json`, und die `archiv`-Argumente darin waren neu formatiert.
+Kein Sitzungsbefehl hat das geschrieben — zwei parallele Sitzungen haben
+die Urheberschaft auf Nachfrage ausgeschlossen, eine davon sah die
+OKX-Werkzeuge im selben Zeitfenster unaufgefordert in ihrer Werkzeugliste
+erscheinen.
+
+Wahrscheinlichste Erklärung ist eine Spiegelung durch die App nach
+erfolgreicher OAuth-Anmeldung. **Das ist nicht reproduziert und damit
+unbestätigt.** Festgehalten wird hier nur die Beobachtung: Wer nach einer
+`mcp add`-Aktion einen unerklärlichen Eintrag in `.mcp.json` findet, muss
+nicht nach einer fremden Sitzung suchen — er kann von der eigenen Aktion
+stammen, ohne von ihrem Befehl geschrieben worden zu sein.
+
 **Der Server kann handeln, nicht nur lesen.** Neben Kursen, Kerzen, Nachrichten
 und Positionen bringt er Werkzeuge zum Aufgeben, Ändern und Stornieren von
 Orders mit (Spot, Futures, Swap, Optionen, Grid, DCA) sowie
