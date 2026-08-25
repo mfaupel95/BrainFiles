@@ -168,13 +168,25 @@ zusätzlich zur CLI einen **HTTP-MCP-Server** eingetragen:
 | Name | `okx-agent-trade-kit` |
 | Adresse | `https://www.okx.com/api/v1/mcp/trading-oauth` |
 | Transport | HTTP |
-| Eingetragen in | `~/.claude.json` (Benutzer-Ebene, **nicht** `claude_desktop_config.json`) |
-| Status | **aktiv** — `claude mcp list` meldet `✔ Connected`, Werkzeuge geladen |
+| Eingetragen in | `.mcp.json` **und** `Claude/.mcp.json` — beide versioniert (`80e2ec9`, `f0c9699`) |
+| Status | **wartet auf Freigabe** — `claude mcp list` meldet `⏸ Pending approval` |
 
-Die Anmeldung lief über OAuth im Browser und hat auf Anhieb geklappt; der
-Zugangsschlüssel liegt in `~/.claude/.credentials.json`, **nicht** neben dem
-Servereintrag. Der Eintrag selbst besteht nur aus Name, Typ und öffentlicher
-Adresse — er enthält kein Geheimnis.
+Der Weg dorthin in drei Schritten, weil der Zwischenstand in älteren Notizen
+auftaucht: erst mit `--scope user` in `~/.claude.json` angelegt (dort war er
+kurzzeitig `✔ Connected`), dann auf Projekt-Ebene umgezogen, dann aus der
+Benutzer-Ebene entfernt. **Seit dem Umzug ist er nicht mehr angemeldet** —
+die Freigabe muss einmal in einer interaktiven Sitzung erteilt werden
+(`claude` starten). Bis dahin sind seine Werkzeuge nicht verfügbar.
+
+Der Zugangsschlüssel liegt in `~/.claude/.credentials.json`, **nicht** neben
+dem Servereintrag. Die Einträge selbst bestehen nur aus Name, Typ und
+öffentlicher Adresse — sie enthalten kein Geheimnis. Deshalb sind sie
+gefahrlos versionierbar.
+
+**Zwei Dateien, ein Server.** Der Eintrag steht doppelt: `Claude/.mcp.json`
+gilt für Sitzungen, die in `Claude/` wurzeln (dort liegt auch `archiv`),
+`.mcp.json` in der Vault-Wurzel für Sitzungen, die dort starten. Beide
+müssen bei einer Adressänderung von Hand nachgezogen werden.
 
 **Ein Eintrag auf Benutzer-Ebene kann in der Projekt-Konfiguration
 auftauchen.** Beobachtet am 25.08.2026: Der Server wurde mit
