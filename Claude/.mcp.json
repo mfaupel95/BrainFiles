@@ -2,7 +2,13 @@
   "mcpServers": {
     "archiv": {
       "command": "..\\MCP-Server\\archiv\\.venv\\Scripts\\python.exe",
-      "args": ["..\\MCP-Server\\archiv\\archiv_mcp.py"]
+      "args": [
+        "..\\MCP-Server\\archiv\\archiv_mcp.py"
+      ]
+    },
+    "okx-agent-trade-kit": {
+      "type": "http",
+      "url": "https://www.okx.com/api/v1/mcp/trading-oauth"
     }
   }
 }
