@@ -158,24 +158,30 @@ Sicherheitsscan vor dem Kauf und regelmäßiges Widerrufen offener Freigaben.
 Das Auslösen von Geldbewegungen bleibt laut globaler Arbeitsanweisung beim
 Nutzer — Claude bereitet nur vor.
 
-### Doch über MCP: OKX Agent Trade Kit (seit 24.08.2026)
+### Doch über MCP: OKX Agent Trade Kit (seit 25.08.2026)
 
-Die Überschrift oben stimmt seit dem 24.08.2026 nicht mehr vollständig. Max hat
+Die Überschrift oben stimmt seit dem 25.08.2026 nicht mehr vollständig. Max hat
 zusätzlich zur CLI einen **HTTP-MCP-Server** eingetragen:
 
-| Punkt | Stand |
+| Punkt | Stand 25.08.2026 |
 |---|---|
 | Name | `okx-agent-trade-kit` |
 | Adresse | `https://www.okx.com/api/v1/mcp/trading-oauth` |
 | Transport | HTTP |
 | Eingetragen in | `~/.claude.json` (Benutzer-Ebene, **nicht** `claude_desktop_config.json`) |
-| Status | **eingetragen, noch nicht angemeldet** — OAuth steht aus |
+| Status | **aktiv** — `claude mcp list` meldet `✔ Connected`, Werkzeuge geladen |
 
-Angemeldet wird er wie alle eigenen Server: interaktives Terminal, `claude`
-starten, `/mcp` aufrufen. Erst danach sind seine Werkzeuge nutzbar.
+Die Anmeldung lief über OAuth im Browser und hat auf Anhieb geklappt; der
+Zugangsschlüssel liegt in `~/.claude/.credentials.json`, **nicht** neben dem
+Servereintrag. Der Eintrag selbst besteht nur aus Name, Typ und öffentlicher
+Adresse — er enthält kein Geheimnis.
 
-Für alles, was dieser Server an Handelsfunktionen mitbringt, gilt unverändert:
-**das Auslösen bleibt bei Max**, Claude bereitet nur vor.
+**Der Server kann handeln, nicht nur lesen.** Neben Kursen, Kerzen, Nachrichten
+und Positionen bringt er Werkzeuge zum Aufgeben, Ändern und Stornieren von
+Orders mit (Spot, Futures, Swap, Optionen, Grid, DCA) sowie
+`account_transfer`. Damit gilt hier die Regel aus der globalen
+Arbeitsanweisung unverändert und besonders scharf: **das Auslösen bleibt bei
+Max**, Claude bereitet nur vor. Lesen und Vorbereiten dagegen vollständig.
 
 ## Anmeldung nachholen
 
