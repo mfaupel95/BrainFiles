@@ -30,7 +30,7 @@ liegen einsatzbereit im Ordner. (Bis 19.08.2026 stand hier fälschlich „aktiv"
 | Filesystem | Dateizugriff (Anthropic) | **am 19.08.2026 gestrichen** — war defekt, siehe unten |
 | MCP Memory | Langzeitgedächtnis über Werkzeuge hinweg | Schlüssel am 19.08. eingetragen, greift nach Neustart |
 | Kraken | Kurse, Guthaben, Orders, Ledger | **aktiv** — geprüft 20.08.2026, 24 Positionen lesbar |
-| Revolut X | Kurse, Bestände, Backtests (nur lesend) | eingerichtet, **API-Schlüssel fehlt** |
+| Revolut X | Kurse, Bestände, Backtests (nur lesend) | Schlüssel **vorhanden** (25.08.), scheitert an der **IP-Freigabe** — siehe unten |
 | Blender | 3D-Szenen | aktiv, aber nur wenn Blender läuft (19.08. nicht gestartet) |
 | Affinity | Affinity-Dokumente skripten | aktiv, aber nur wenn Affinity läuft (`http://localhost:6767/sse`) |
 | Apify, Metabase, Socket, Stats Compass, Perseus Vault | — | **nicht eingetragen**, inaktiv |
@@ -123,7 +123,7 @@ Noch offen — braucht Max:
 |---|---|---|
 | Dritter Desktop-Commander-Klon | Connector `Desktop_Commander` steht in keiner lokalen Datei, sondern in den claude.ai-Connector-Einstellungen | auf claude.ai unter Einstellungen → Connectors entfernen |
 | pdf-vault meldet `allowedDirectories: []` | **Liegt nicht an der Konfiguration.** Alles daran ist einzeln nachgemessen (19.08.2026): der Eintrag hat den Ordner als drittes Argument; der laufende Prozess ist ein Kind von `claude.exe` und trägt das Argument in seiner Kommandozeile; und derselbe Server, direkt über stdio angesprochen, meldet den Ordner und findet **500 PDFs**. Nur über die App bleibt die Liste leer. Auffällig: die App startet **zwei** identische Instanzen. | Zuerst Claude vollständig neu starten und `list_pdfs` erneut aufrufen. Bleibt es leer, ist es ein Fehler im MCP-Hosting der App, nicht in dieser Einrichtung — dann nichts weiter daran drehen |
-| Revolut X ohne Schlüssel | Schlüsselpaar erzeugen, öffentlichen Teil bei Revolut X hinterlegen, API-Schlüssel eintragen | Portal-Schritt, geht nicht aus der Sitzung |
+| Revolut X: `API key can only be used for authentication from whitelisted IP` | **Nicht mehr der fehlende Schlüssel** — der ist seit spätestens 25.08.2026 eingetragen und wird akzeptiert. Der Server meldet auf `check_auth_status`: „Authentication is configured", die Verbindung scheitert erst an der Herkunftsadresse. Im Revolut-X-Portal die aktuelle öffentliche IP für den API-Schlüssel freigeben | Portal-Schritt, geht nicht aus der Sitzung. Bei wechselnder IP (DSL-Zwangstrennung) nach jedem Wechsel erneut nötig |
 
 Der Mnemoverse-Schlüssel steht seit 19.08.2026 als `env`-Block beim
 vorhandenen Server `mcp-memory` — **nicht** als zweiter Eintrag über
