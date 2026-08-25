@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "okx-agent-trade-kit": {
+      "type": "http",
+      "url": "https://www.okx.com/api/v1/mcp/trading-oauth"
+    }
+  }
+}
