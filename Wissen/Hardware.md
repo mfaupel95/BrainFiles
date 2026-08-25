@@ -469,6 +469,24 @@ Schnittstelle sind langsam — viele kleine Dateien sind es.
 
 ## Windows Search stillgelegt (Stand 2026-08-16)
 
+> **Überholt seit 25.08.2026 — die Stilllegung hält nicht mehr.** Gemessen an
+> diesem Tag: `HKLM\SYSTEM\CurrentControlSet\Services\WSearch` → `Start = 2`
+> (**Automatisch**), nicht 4 (Deaktiviert). Folge: Die Absturzzyklen laufen
+> wieder. Im Systemprotokoll stehen für die letzten 7 Tage **16.111**
+> WSearch-Dienstereignisse — 8.054 × ID 7023 (Dienst mit Fehler beendet),
+> 8.024 × ID 7034 (unerwartet beendet), jüngstes am 25.08.2026 21:32. Das sind
+> rund **1.150 Fehlstarts pro Tag**, etwa alle 75 Sekunden. Das Protokoll füllt
+> sich erneut: 27,1 von 64 MB.
+>
+> Wer den Starttyp zurückgestellt hat, ist **nicht geklärt** — in Frage kommen
+> ein Windows-Update oder die DISM-Reparatur; belegt ist keines von beidem.
+> Nötig, um es wieder abzustellen (als Administrator):
+> `Set-Service WSearch -StartupType Disabled`
+>
+> **Ein `Start-Service WSearch` ist ausdrücklich falsch** — es widerspricht der
+> Entscheidung unten. Der Starttyp gehört auf Deaktiviert, nicht der Dienst
+> gestartet.
+
 `WSearch` steht bewusst auf **Deaktiviert**. Grund: Der Dienst stürzte ab dem
 05.08.2026 alle ~29 Sekunden ab und startete neu — **27.414 Zyklen in 9,2 Tagen**,
 danach nochmals rund 1.260. Das hat das Systemprotokoll (damals 20 MB, umlaufend)
