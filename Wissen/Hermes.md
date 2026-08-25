@@ -63,7 +63,8 @@ In `MaxHirn/Hermes/.env`:
 
 ## Skills
 
-- **82 mitgelieferte** Skills unter `Hermes/skills/`
+- **83 mitgelieferte** Skills unter `Hermes/skills/` (94 `SKILL.md` insgesamt
+  minus die 11 eigenen; die frühere Angabe 82 war um eins zu niedrig)
 - **11 eigene** unter `Hermes/skills/claude-code-imports/`, importiert mit
   `hermes import-agent claude-code --source "…\MaxHirn\.claude"`
 
@@ -130,12 +131,15 @@ wie beim Hermes-Hauptinstall. Deshalb per `CUA_DRIVER_RS_INSTALL_DIR` und
   versionierte Release unter `C:\Hermes\cua-driver\home\packages\releases\`)
 - Version **0.21.0**, im Benutzer-PATH ergänzt und über Registry-Abfrage
   gegengeprüft (nicht nur die Installer-Meldung geglaubt)
-- **Stolperstein während der Installation:** In der Claude-Sitzung zeigen
-  `$env:TEMP`/`$env:TMP` auf `C:\WINDOWS\TEMP`, wo diese Sitzung keinen
-  Schreibzugriff hat — das ließ den `Add-Type`-C#-Compiler des Installers
+- **Stolperstein während der Installation:** `$env:TEMP`/`$env:TMP` zeigen auf
+  `C:\WINDOWS\TEMP` — das ließ den `Add-Type`-C#-Compiler des Installers
   scheitern (Junction-Erstellung nutzt ein P/Invoke-Hilfsmodul). Für den
   Install-Lauf `TEMP`/`TMP` einmalig auf `C:\Hermes\cua-driver\tmp`
   umgebogen, kein Eingriff an der dauerhaften Benutzerkonfiguration.
+  **Korrektur vom 24.08.2026:** Das ist *keine* Eigenheit der Claude-Sitzung,
+  wie hier ursprünglich stand. `TEMP` und `TMP` sind als **Benutzervariablen**
+  in `HKCU\Environment` auf `C:\WINDOWS\TEMP` gesetzt und gelten damit für
+  jeden Prozess des Kontos. Ursache und Behebung: siehe unten.
 - **Autostart-Task `\cua-driver-serve` wurde vom Installer automatisch
   angelegt** (RunLevel=Highest, „Bei der Anmeldung", startet
   `cua-driver.exe serve`). Von Max bestätigt, bleibt aktiv. Abschalten:
@@ -166,6 +170,76 @@ bei vielen kurzen Einzelfragen mit je neuer Sitzung wäre `5m` günstiger.
 Opus 5 wirkungslos — Hermes hebt den Wert für Modelle unter 512K Kontext
 automatisch auf 0.75 an. Es wird also bei 75 % komprimiert, nicht bei 50 %.
 
+## Erstes Update, 24.08.2026
+
+Von `f293e72` (23.08.) auf **`057dcdf`** (24.08.2026, 17:19). `hermes --version`
+meldet seither **„Up to date"** statt 386 Commits Rückstand. Python im
+Arbeitsumfeld dabei von 3.11.9 auf 3.11.16 gehoben, Web-Oberfläche neu gebaut,
+548 npm-Pakete installiert. Die Versionsnummer blieb bei v0.20.5 — sie ist an
+den Release-Stand gebunden, nicht an den Commit.
+
+Befehl: `hermes update --backup --yes`. Sicherungen liegen in
+`Hermes/.sicherung/` (config.yaml, .env, auth.json, package-lock.json,
+Registry-Export) und in `Hermes/backups/pre-update-2026-08-24-183036.zip`
+(26 MB, ganzes `HERMES_HOME`, vom Updater selbst angelegt). Gegengeprüft:
+`config.yaml` unverändert, `.env` per SHA1 unverändert, Modell und
+Anthropic-Token weiterhin erkannt, 94 Skills mit den 11 eigenen Importen samt
+ihrer absoluten Pfade unangetastet.
+
+### Drei Blocker, die vorher weg mussten
+
+1. **Der Klon ist flach** (`git clone --depth 1`, `.git/shallow` vorhanden,
+   ein einziger Commit Historie). Deshalb sind lokale Vergleiche wertlos:
+   `git rev-list --count main...origin/main` meldete „1 voraus, 1 zurück",
+   obwohl 386 Commits fehlten. Der echte Rückstand kommt von Hermes über die
+   GitHub-API. **Nicht auf `git`-Zählungen in diesem Repo verlassen.**
+2. **Geparkt auf `feat/de-locale`** — einem rein lokalen Branch **ohne einen
+   einzigen eigenen Commit**, am 24.08. von `main` abgezweigt und nie benutzt.
+   `hermes update` erkennt so etwas und **überspringt dann das Code-Update**
+   mit der Meldung „CODE UPDATE SKIPPED — checkout is parked on …", sobald
+   der Arbeitsbaum außerdem unsauber ist. Zurück auf `main` gewechselt, es
+   ging nichts verloren.
+3. **`cua-driver/` liegt untracked im Git-Ordner** `C:\Hermes`. Der Updater
+   räumt mit `git stash push --include-untracked` auf — der Treiber wäre
+   mitgestasht worden. Eingetragen in `C:\Hermes\.git\info\exclude`, damit er
+   für Git unsichtbar bleibt. Der Updater hat ihn danach korrekt als
+   „already on the latest release (0.21.0)" erkannt.
+
+### Neu und meldepflichtig: Skill-Curator
+
+Das Update bringt eine **Hintergrundpflege für Skills** mit, standardmäßig an.
+Erster Lauf ~7 Tage nach Installation, nur selbst erzeugte Skills im Zugriff,
+nichts wird endgültig gelöscht (Archiv ist rückholbar). Vorschau ohne Eingriff:
+`hermes curator run --dry-run`, abschalten mit `hermes curator pause`.
+
+## Benutzer-Umgebungsvariablen: PowerToys-Schaden, 24.08.2026
+
+Das PowerToys-Modul „Environment Variables" hat beim Speichern Sicherungskopien
+mit dem Suffix `_PowerToys_Max 2026` angelegt — teils doppelt geschachtelt
+(`ChocolateyInstall_PowerToys_Max 2026_PowerToys_Max 2026`) — und dabei
+System-Variablen in die Benutzerebene kopiert. Gemessen: **59 Benutzervariablen,
+davon 33 Duplikate**, darunter Kopien von `KRAKEN_API_SECRET` und `OKX_API_KEY`.
+
+Zwei Einträge wirken sich aus:
+
+- **`TEMP`/`TMP` → `C:\WINDOWS\TEMP`** statt `%USERPROFILE%\AppData\Local\Temp`.
+  Das ist die wahre Ursache des cua-driver-Stolpersteins oben.
+- **`PATHEXT`** überschreibt die System-Fassung und verliert dabei `.PY;.PYW`
+  — anders als `Path` wird `PATHEXT` nicht zusammengesetzt, sondern ersetzt.
+  Folge: `skript.py` lässt sich nicht mehr direkt aufrufen.
+
+Behebung liegt als Skript bereit:
+`Routinen/umgebungsvariablen-aufraeumen.ps1` (Testlauf ohne Schalter, echter
+Lauf mit `-Ausfuehren`). Es löscht 33 Duplikate und 13 wirkungslose
+System-Kopien, korrigiert `TEMP`/`TMP`, stellt `OneDriveConsumer` wieder her —
+das existierte nur noch als Duplikat — und lässt die 11 echten Variablen in
+Ruhe. Endstand 59 → 14. Sicherung vorher:
+`Hermes/.sicherung/HKCU-Environment.bak-20260824.reg`.
+
+**Aus einer Claude-Sitzung heraus nicht ausführbar:** Der Sicherheitsfilter
+blockiert Registry-Schreibzugriffe (`Remove-ItemProperty` wie `reg delete`).
+Max startet das Skript selbst; danach ist eine Neuanmeldung nötig.
+
 ## Verwandt
 
-[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[../AGENTS.md|AGENTS.md]]
+[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[../AGENTS.md|AGENTS.md]]
