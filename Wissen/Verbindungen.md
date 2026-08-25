@@ -186,12 +186,30 @@ die Urheberschaft auf Nachfrage ausgeschlossen, eine davon sah die
 OKX-Werkzeuge im selben Zeitfenster unaufgefordert in ihrer Werkzeugliste
 erscheinen.
 
-Wahrscheinlichste Erklärung ist eine Spiegelung durch die App nach
-erfolgreicher OAuth-Anmeldung. **Das ist nicht reproduziert und damit
-unbestätigt.** Festgehalten wird hier nur die Beobachtung: Wer nach einer
-`mcp add`-Aktion einen unerklärlichen Eintrag in `.mcp.json` findet, muss
-nicht nach einer fremden Sitzung suchen — er kann von der eigenen Aktion
-stammen, ohne von ihrem Befehl geschrieben worden zu sein.
+Die Messwerte, damit es nachprüfbar bleibt:
+
+| Datei | geschrieben | Eintrag drin |
+|---|---|---|
+| `~/.claude.json.bak-20260824` (vor dem Befehl) | Sitzungsbeginn | nein |
+| `~/.claude.json.bak-20260825` (nach dem Befehl) | 17:33 | **ja** |
+| `Claude/.mcp.json` | 17:32:48 | ja — von keinem Befehl |
+| `MaxHirn/.mcp.json` | 17:34:31 | ja — `--scope project` |
+| `~/.claude.json` | 17:47:10 | nein, weil um 17:35 entfernt |
+
+**Falle beim Nachprüfen:** Wer heute die laufende `~/.claude.json` durchsucht,
+findet nichts und schließt daraus, `--scope user` habe nie dorthin
+geschrieben. Das ist falsch — der Eintrag wurde dort angelegt und später
+bewusst wieder entfernt. Die beiden datierten Sicherungen sind das
+Gegenpaar, das den Unterschied belegt. Eine parallele Sitzung ist genau in
+diese Falle getappt.
+
+Wahrscheinlichste Erklärung für den Eintrag in `Claude/.mcp.json` ist eine
+Spiegelung durch die App nach erfolgreicher OAuth-Anmeldung. **Das ist nicht
+reproduziert und damit unbestätigt** — belegt sind nur die Zahlen oben.
+Festgehalten wird hier vor allem die Beobachtung: Wer nach einer `mcp
+add`-Aktion einen unerklärlichen Eintrag in `.mcp.json` findet, muss nicht
+nach einer fremden Sitzung suchen. Drei parallele Sitzungen haben die
+Urheberschaft nacheinander ausgeschlossen, bevor das klar war.
 
 **Der Server kann handeln, nicht nur lesen.** Neben Kursen, Kerzen, Nachrichten
 und Positionen bringt er Werkzeuge zum Aufgeben, Ändern und Stornieren von
