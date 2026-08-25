@@ -56,10 +56,15 @@ Dazu seit 23.08.2026 eine **Zweitkopie um 21:00 nach `O:\MaxHirn-Zweitkopie`**
 und Posteingang — 7,1 GB, gemessen **8 Sekunden**. Sie liegt bewusst auf O:,
 weil `G:`, `H:` und `I:` dieselbe physische Platte sind. Übersicht: [[Routinen]].
 
-⚠️ **Alle drei Kopien stecken im selben Rechner**, und das Stromproblem aus
-[[Hardware]] ist offen. Gegen einen erneuten Ausfall mehrerer Platten
-gleichzeitig schützt auch die Zweitkopie nicht — **eine Kopie außer Haus fehlt
-weiterhin**.
+**Dritte Kopie außer Haus:** `sichern-ausser-haus.ps1` → `E:\MaxHirn-AusserHaus`
+(externe SSD, 46,2 GB komplett). **Läuft bewusst nicht automatisch** — eine
+Platte, die dauerhaft angesteckt ist, wäre keine Kopie außer Haus. Anstecken,
+Skript aufrufen, sicher entfernen, weglegen. Erstmals angelegt am 25.08.2026.
+
+⚠️ Gegen den Fall, der 2026 eingetreten ist — ein Netzteilschaden tötet mehrere
+Platten **gleichzeitig** —, hilft nur diese dritte Kopie, und nur solange sie
+nicht am Rechner hängt. Sie enthält Klartext-Zugangsdaten; ohne BitLocker To Go
+liest sie jeder, der sie findet.
 
 ## Skills
 
@@ -101,8 +106,16 @@ Ausführliche Beschreibung aller Skills, der Werkzeuge darunter und der Grenzen:
       `smbpasswd`, `secrets.tdb`, `unbalanced.env` unter
       `Claude/Software/Linux/Unraid/`. `sichern.ps1` listet sie bei jedem Lauf
       unter „noch nicht bewertet" auf.
-- [ ] **Kopie außer Haus anlegen** — Sicherung und Zweitkopie liegen beide im
-      selben Rechner (siehe oben).
+- [x] ~~**Kopie außer Haus anlegen**~~ — 25.08.2026 auf `E:` angelegt
+      (46,2 GB). Offen bleibt: **die SSD auch wirklich aus dem Haus bringen**
+      und regelmäßig nachziehen — das Skript läuft von Hand, nicht als Aufgabe.
+- [ ] **`E:` verschlüsseln (BitLocker To Go)** — auf der Kopie außer Haus liegen
+      Klartext-Zugangsdaten. Eine Platte außerhalb kann verloren gehen; im
+      Rechner war das Risiko geringer.
+- [ ] **Zeitsynchronisation läuft nicht** — der Dienst `w32time` ist gestoppt
+      (`w32tm /query /source` meldet 0x80070426, geprüft 25.08.2026). Bei einem
+      Rechner mit unerklärten Abschaltungen driftet die Uhr dadurch ungebremst,
+      und Zeitstempel in Sicherungen und Protokollen werden unzuverlässig.
 - [ ] **Toten Ordner aus `localAgentModeTrustedFolders` nehmen** — der Eintrag
       steht auf `Documents\BrainFiles\KI Futter`, und dieser Ordner existiert
       nicht mehr (geprüft 23.08.2026). Wirkungslos, aber irreführend. Die frühere

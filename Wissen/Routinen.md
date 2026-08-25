@@ -34,6 +34,30 @@ unersetzlichen Teil ohne die Medienlast — 7,1 GB in 13.767 Dateien, gemessen
 **8 Sekunden** (intern über NVMe). Videos, Musik, Software und Posteingang
 (35,8 GB) bleiben draußen; sie stehen weiterhin in der Hauptsicherung auf `G:`.
 
+## Die dritte Kopie: außer Haus, von Hand
+
+`sichern-ausser-haus.ps1` → `E:\MaxHirn-AusserHaus` (Netac MobileDataStar,
+Disk 4, 466 GB). **Sie steht bewusst nicht in der Tabelle oben und ist keine
+geplante Aufgabe.** Eine Kopie, die dauerhaft am Rechner hängt, ist keine Kopie
+außer Haus — genau der Fall, gegen den sie schützt, ist der Netzteilschaden,
+der 2026 mehrere Platten gleichzeitig getötet hat.
+
+Ablauf: SSD anstecken → Skript aufrufen → „Hardware sicher entfernen" →
+außer Haus bringen. Sie nimmt **alles** mit (46,2 GB, 91.400 Dateien), nicht
+nur den Kern; Platz ist genug.
+
+**exFAT braucht `/FFT`.** `E:` ist exFAT formatiert, und exFAT speichert
+Zeitstempel in 2-Sekunden-Schritten, NTFS in 100-Nanosekunden-Schritten. Ohne
+`/FFT` gilt jede Datei bei jedem Lauf als verändert, und es würden jedes Mal
+46 GB neu geschrieben statt nur der Unterschied. Für den laufenden Vault wäre
+exFAT ungeeignet (siehe [[Portabilitaet]]), für eine reine Kopie ist es
+unproblematisch — es läuft keine Datenbank darauf.
+
+⚠️ **Auf der SSD liegen Klartext-Zugangsdaten** (`Wissen/Zugaenge.md`,
+`OKX_API.env`). Eine Platte außer Haus kann verloren gehen oder gestohlen
+werden — anders als eine im Rechner. Ohne BitLocker To Go liest das jeder, der
+sie findet. Siehe [[Zugaenge]] und [[Passwoerter-Quarantaene]].
+
 Die Wrapper gibt es aus drei Gründen:
 
 1. **Eine geplante Aufgabe hat kein Fenster.** Ohne Protokoll bliebe ein

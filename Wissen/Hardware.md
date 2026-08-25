@@ -26,12 +26,17 @@ vollständig auf die GPU passen (7–8B in Q4/Q5 ja, 12–14B knapp, darüber ni
 
 ## Laufwerke
 
-| Buchstabe | Datenträger | Disk-Nr. | Anschluss |
-|---|---|---|---|
-| C: | Samsung MZVPV512 NVMe | 0 | intern |
-| O: | WD WDS100T2B0C NVMe | 1 | intern |
-| G: H: I: | Seagate Portable | **2** | USB |
-| J: | WD My Book 1230 | 3 | USB |
+| Buchstabe | Datenträger | Disk-Nr. | Anschluss | Dateisystem |
+|---|---|---|---|---|
+| C: | Samsung MZVPV512 NVMe | 0 | intern | NTFS |
+| O: | WD WDS100T2B0C NVMe | 1 | intern | NTFS |
+| G: H: I: | Seagate Portable | **2** | USB | NTFS |
+| J: | WD My Book 1230 | 3 | USB | NTFS |
+| E: | Netac MobileDataStar (466 GB) | 4 | USB, nur zeitweise | **exFAT** |
+
+`E:` ist die Kopie außer Haus und hängt nicht dauerhaft am Rechner. Sie ist als
+einzige **exFAT** — beim Sichern dorthin ist `/FFT` Pflicht, sonst schreibt
+robocopy jedes Mal alles neu (Begründung in [[Routinen]]).
 
 **G:, H: und I: sind drei Partitionen derselben physischen Platte** (Disk 2,
 geprüft 23.08.2026 mit `Get-Partition` + `Get-Disk`). Beim Sichern ist das
