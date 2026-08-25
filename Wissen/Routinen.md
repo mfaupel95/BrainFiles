@@ -11,6 +11,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
+| stündlich | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand` |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 
@@ -24,6 +25,7 @@ einen Wrapper aus `Routinen/`:
 | `MaxHirn-Zweitkopie` | `Routinen/zweitkopie.ps1` | `Routinen/logs/zweitkopie-letzter-lauf.log` |
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
+| `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
@@ -99,6 +101,48 @@ und DCA-Prüfung nur ein Skript ausführen und ein Protokoll hinterlassen. Ein
 Tagesbriefing um 8 Uhr produziert eine leere Seite, solange [[Profil]] Lücken
 hat und Verbindungen aus [[Verbindungen]] nicht authentifiziert sind. Erst
 füllen, dann automatisieren.
+
+## Zwischenstand: warum stündlich und auf einem eigenen Branch
+
+Die vier Sicherungen oben halten alle nur den **jetzigen** Stand, und Git hält
+nur, was **committet** ist. Zwischen dem Schreiben einer Datei und ihrem Commit
+liegt ein Fenster, in dem die Arbeit nirgends gesichert ist — bei mehreren
+gleichzeitigen Sitzungen (Claude-Chats, Hermes) ist genau das das Risiko, siehe
+[[Schutzregeln]], Abschnitt „Mehrere Sitzungen gleichzeitig".
+
+`Routinen/zwischenstand.ps1` schließt dieses Fenster, ohne etwas anzufassen,
+woran gerade jemand arbeitet:
+
+- **Eigener Index** über `GIT_INDEX_FILE`. Eine Sitzung, die gerade selektiv
+  `git add` gemacht hat, verliert ihre Vormerkung nicht.
+- **Commit über `git commit-tree`** direkt auf den Branch `zwischenstand`.
+  `HEAD`, `master` und der Arbeitsbaum werden nie angefasst.
+- **Kein `checkout`, `reset`, `stash` oder `clean`.** Es wird ausschließlich
+  geschrieben, nie verworfen.
+- Ändert sich nichts, entsteht auch kein Commit.
+
+Gemessen am ersten echten Lauf (25.08.2026): **4 Sekunden**, `HEAD`, `master`,
+Arbeitsbaum und der normale Index (per SHA-256 verglichen) blieben unverändert.
+Der Lauf sicherte 61 Zeilen an `Wissen/Hermes.md`, die eine andere Sitzung
+uncommittet liegen hatte, sowie ein noch unversioniertes Skript.
+
+**Autor der Commits ist `Routine Zwischenstand`**, nicht Max und kein Agent —
+die Historie soll nicht behaupten, jemand hätte diese Arbeit getan.
+
+Eine Datei zurückholen:
+
+```
+git log --oneline zwischenstand
+git checkout <commit> -- <pfad>
+```
+
+Der Branch wächst mit jedem Lauf. Aufräumen, wenn er stört:
+`git update-ref -d refs/heads/zwischenstand` — die Commits sind danach nicht
+mehr erreichbar und verschwinden bei der nächsten Garbage Collection.
+
+**Zugangsdaten sind nicht betroffen:** Die `.gitignore` ist eine Whitelist,
+`Zugaenge.md`, `.env`, `.pem`, `.pfx`, `.p12`, `.kdbx` und `*_key.txt` bleiben
+auch hier draußen. Geprüft am 25.08.2026 gegen den ersten Zwischenstand-Commit.
 
 ## Grenzen
 
