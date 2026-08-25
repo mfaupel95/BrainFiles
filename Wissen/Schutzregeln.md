@@ -1,31 +1,56 @@
 # Schutzregeln
 
 Welche Dateien in `MaxHirn/` ein Agent **nicht** anfassen darf, und warum.
-Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults.
+Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
+**Hauptregel am 25.08.2026 auf Max' Anweisung gelockert** (siehe unten).
 
-Kurzfassung für den Alltag: **Alles unter `Claude/Dokumente/`, `Claude/Bilder/`,
-`Claude/Videos/`, `Claude/Musik/` und `Wissen/` ist Originalgut ohne Zweitquelle.
-Dort wird gelesen, nicht geschrieben.**
+## Hauptregel
 
-## Warum das hier steht
+**Automatisiert gelöscht und aufgeräumt werden darf überall — ausgenommen sind
+nur persönliche Inhalte.** Das sind:
 
-Drei Dinge machen diesen Vault empfindlicher als ein normales Projektverzeichnis:
+- **Medien:** `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/`, samt
+  Playlisten (`.m3u`, `.m3u8`, `.pls`)
+- **Dokumente:** `Claude/Dokumente/`
+- **Noch nicht Einsortiertes** in `Claude/Posteingang/`
+- **Schlüssel und Zertifikate** (`Zugaenge.md`, `.env`, `.pem`, `.pfx`, `.p12`,
+  `.kdbx`, `.key`, `.ovpn`)
 
-1. **Keine Versionsverwaltung.** `MaxHirn/` ist kein Git-Repository (geprüft
-   24.08.2026). Jede Überschreibung ist endgültig — es gibt kein `git checkout`.
-   Die vorhandenen `.bak-JJJJMMTT`-Dateien sind Handarbeit und decken nur eine
-   Handvoll Dateien ab.
+Alles andere — Caches, Indizes, Protokolle, geklonte Repos, Build-Reste,
+Duplikate, Modelle, Notizen unter `Wissen/` — darf ein Agent ohne Rückfrage
+löschen, verschieben und umbenennen, auch als Massenoperation.
+
+**Was sich am 25.08.2026 geändert hat und warum:** Vorher stand `Wissen/` mit in
+der höchsten Schutzstufe, und Massenoperationen waren im ganzen Vault
+untersagt. Das hat nicht die Originale geschützt, sondern das Arbeiten und
+Aufräumen ausgebremst — jede Notizänderung und jedes Aufräumen von
+reproduzierbarem Ballast brauchte eine Rückfrage. Die Sperre gilt jetzt dort,
+wo ein Verlust endgültig ist, und nur dort. Wer diesen Absatz liest und die
+alte, weitere Fassung „wiederherstellen" will: Das war kein Versehen.
+
+## Warum es die Sperre überhaupt gibt
+
+Zwei Dinge machen die geschützten Ordner empfindlicher als ein normales
+Projektverzeichnis:
+
+1. **Sie sind nicht in Git.** Git versioniert seit dem 24.08.2026 die Textebene
+   des Vaults (Notizen, Skills, Skripte, Konfiguration) — die 42 GB Medien und
+   Dokumente sind durch die Whitelist in `.gitignore` bewusst ausgenommen. Für
+   sie gibt es kein `git restore`; für `Wissen/` gibt es das sehr wohl, und
+   genau deshalb steht `Wissen/` nicht mehr unter der Sperre.
 2. **Die Sicherung ist keine Historie.** `sichern.ps1` läuft ohne `/MIR` und
    kopiert nur Neues und Geändertes. Wer eine Datei um 19:00 kaputtschreibt, hat
    um 20:01 auch auf `G:` nur noch die kaputte Fassung. Die Sicherung schützt
    gegen Plattenausfall, **nicht** gegen einen falschen Schreibvorgang.
-3. **Das Archiv ist bereits einmal beschädigt worden.** 691 Dateien sind durch
-   einen Netzteildefekt zerstört (siehe [[../Claude/BESCHAEDIGTE_DATEIEN|BESCHAEDIGTE_DATEIEN]]).
-   Was noch intakt ist, ist der Rest — nicht der Normalzustand.
 
-## Stufe 0 — unersetzlich, nie schreibend anfassen
+Dazu kommt: **Das Archiv ist bereits einmal beschädigt worden.** 691 Dateien
+sind durch einen Netzteildefekt zerstört (siehe
+[[../Claude/BESCHAEDIGTE_DATEIEN|BESCHAEDIGTE_DATEIEN]]). Was noch intakt ist,
+ist der Rest — nicht der Normalzustand.
 
-Kein Agent ändert, verschiebt, benennt um oder löscht hier etwas **ohne dass Max
+## Stufe 0 — unersetzlich, nie automatisiert löschen
+
+Kein Agent löscht, überschreibt, verschiebt oder benennt hier um **ohne dass Max
 es in derselben Sitzung ausdrücklich für genau diese Datei angeordnet hat.**
 Massenoperationen (Schleife, `--recurse`, Platzhalter) sind hier grundsätzlich
 verboten, auch mit Anordnung — erst eine Liste vorlegen, dann einzeln.
@@ -33,11 +58,10 @@ verboten, auch mit Anordnung — erst eine Liste vorlegen, dann einzeln.
 | Ort | Warum |
 |---|---|
 | `Claude/Dokumente/` | Verträge, Bescheide, Gericht, Gesundheit, Behörden. Originale, oft die einzige Fassung. |
-| `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/` | Rohmedien. 25 GB ohne Zweitquelle; 18,3 % der Bilder sind bereits verloren. |
-| `Wissen/` | Der Kopf des Systems. Profil, Fristen, Projekte, Verbindungen. |
-| `Wissen/Zugaenge.md` | Einzige Ablage für Schlüssel und Tokens. Nie ausgeben, nie in eine Chat-Antwort, nie in ein Protokoll. |
-| `.obsidian/` | Vault-Konfiguration. Kaputt = Obsidian öffnet den Graphen nicht mehr. |
-| `Claude/Software/**/*.pfx` | ELSTER-Zertifikate. Zerstört, aber sie **belegen** den Verlust. |
+| `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/` und Playlisten | Rohmedien. 25 GB ohne Zweitquelle; 18,3 % der Bilder sind bereits verloren. |
+| `Claude/Posteingang/` | Durchgangsordner — was dort liegt, ist noch nirgends einsortiert und damit ein Original. Erst sortieren, dann gilt der Zielordner. |
+| `Wissen/Zugaenge.md` | Einzige Ablage für Schlüssel und Tokens, bewusst außerhalb von Git. Nie ausgeben, nie in eine Chat-Antwort, nie in ein Protokoll — und nie löschen. |
+| `**/*.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`, `.key`, `.ovpn` | Zugangsdaten, an der Endung erkennbar, nicht am Namen. Auch `Claude/Software/**/*.pfx`: die ELSTER-Zertifikate sind zerstört, aber sie **belegen** den Verlust. |
 | Alle 0xFF-Platzhalter | Die 61 verbliebenen Nullbyte-PDFs sind der einzige Hinweis darauf, **welche** Dokumente fehlen. Nicht aufräumen. |
 
 ### Löschen ist hier nie die Lösung
@@ -50,9 +74,10 @@ gleichnamige, inhaltlich verschiedene Dateien abgeräumt.
 
 ## Stufe 1 — Betriebsteile, Änderung nur mit Ansage
 
-Diese Dateien sind ersetzbar, aber wenn sie stillschweigend kaputtgehen, merkt
-es niemand — und genau das ist bereits passiert (`sichern.ps1` meldete am
-23.08.2026 „ENDE ok", während robocopy mit Code 11 gescheitert war).
+Hier geht es **nicht** um die Löschsperre, sondern um stille Beschädigung:
+Diese Dateien sind ersetzbar, aber wenn sie kaputtgehen, merkt es niemand — und
+genau das ist bereits passiert (`sichern.ps1` meldete am 23.08.2026 „ENDE ok",
+während robocopy mit Code 11 gescheitert war).
 
 **Regel: vor der Änderung `.bak-JJJJMMTT` anlegen, nach der Änderung einmal
 ausführen und die Ausgabe zeigen.** Eine Änderung an einem Sicherungsskript
@@ -66,20 +91,28 @@ gilt erst als erledigt, wenn ein echter Lauf sie bestätigt hat.
 | `Claude/ArchivSuche/index.py`, `vektor_index.py` | Index fällt aus; Suche liefert stillschweigend nichts. |
 | `AGENTS.md`, `CLAUDE.md`, `Dashboard.md` | Steuern das Verhalten aller Agenten. |
 | `.claude/skills/` | Dasselbe. |
+| `.obsidian/` | Vault-Konfiguration. Kaputt = Obsidian öffnet den Graphen nicht mehr. |
 | `MCP-Server/`, `Handel/agent.py`, `Handel/plan.json` | Laufender Betrieb, eigene Zugangsdaten. |
 | `Hermes/` | Konfiguration und Gedächtnis des zweiten Agenten. |
 
-## Stufe 2 — reproduzierbar, freie Hand
+## Stufe 2 — freie Hand, auch beim Löschen
 
-Hier darf ein Agent ohne Rückfrage arbeiten, weil sich alles neu erzeugen lässt:
+**Alles, was nicht in Stufe 0 oder 1 steht.** Ein Agent räumt hier ohne
+Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
 
+- `Wissen/` — Notizen, Profil, Fristen, Projekte. Seit 24.08.2026 in Git:
+  `git restore <pfad>` holt einen Fehlgriff zurück, geprüft an `Fristen.md`.
+  **Ausnahme:** `Zugaenge.md` steht in Stufe 0 und ist nicht in Git.
 - `**/.venv/`, `**/__pycache__/`, `**/node_modules/` — aus `requirements.txt` / `package.json`
 - `GitHub/` — geklonte Fremd-Repos, aus Git; ohnehin von der Sicherung ausgenommen
 - `Modelle/` (3,9 GB) — neu herunterladbar
 - `Claude/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
 - `Routinen/logs/` — jeweils nur der letzte Lauf
-- `Claude/Posteingang/` — Durchgangsordner. **Ausnahme:** was dort liegt, ist noch
-  nirgends einsortiert und damit ein Original. Vor dem Sortieren gilt Stufe 0.
+- Build-Reste (`.pyc`, `.pyo`, `.toc`, `build/`, `dist/`), Temporärdateien, Duplikate
+
+Der einzige Vorbehalt: **vor dem Löschen kurz hinsehen.** Name und Größe allein
+sind bei Containerformaten (`.vob`, `.iso`, `.img`) kein Duplikatbeweis — dort
+per Hash gegenprüfen.
 
 ## Vor jedem schreibenden Zugriff
 

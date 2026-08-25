@@ -2,11 +2,18 @@
 
 ## Schutzregeln — vor jedem Schreibzugriff
 
-`Dokumente/`, `Bilder/`, `Videos/`, `Musik/` sind **Originale ohne Zweitquelle**.
-Hier wird gelesen, nicht geschrieben. Nicht löschen, nicht verschieben, nicht
-umbenennen — außer Max ordnet es in derselben Sitzung für genau diese Datei an.
-Soll etwas weg, wandert es nach `Posteingang/_zu_loeschen/`, entschieden wird
-von Hand.
+`Dokumente/`, `Bilder/`, `Videos/`, `Musik/` (samt Playlisten) sind **Originale
+ohne Zweitquelle**. Hier wird gelesen, nicht geschrieben. Nicht löschen, nicht
+verschieben, nicht umbenennen — außer Max ordnet es in derselben Sitzung für
+genau diese Datei an. Soll etwas weg, wandert es nach
+`Posteingang/_zu_loeschen/`, entschieden wird von Hand.
+
+**Weiter reicht die Löschsperre nicht.** Seit 25.08.2026 gilt sie nur noch für
+persönliche Inhalte: diese vier Ordner, den noch unsortierten `Posteingang/`,
+Schlüssel- und Zertifikatsdateien (`.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`,
+`.key`, `.ovpn`) und die 0xFF-Platzhalter. Überall sonst im Vault — `Wissen/`,
+Caches, Indizes, Protokolle, Klone, Build-Reste — räumt ein Agent ohne
+Rückfrage auf, auch in Massenoperationen.
 
 Seit 24.08.2026 versioniert Git die **Textebene** des Vaults (85 Dateien:
 Notizen, Skills, Skripte, Konfiguration). **Diese vier Ordner gehören nicht

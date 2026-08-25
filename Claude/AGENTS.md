@@ -2,11 +2,16 @@
 
 ## Schutzregeln (verbindlich)
 
-`Dokumente/`, `Bilder/`, `Videos/`, `Musik/` sind Originale ohne Zweitquelle —
-lesen ja, schreiben nein. Nicht löschen, nicht verschieben, nicht umbenennen,
-außer Max ordnet es in derselben Sitzung für genau diese Datei an. Soll etwas
-weg: nach `Posteingang/_zu_loeschen/` verschieben, entschieden wird von Hand.
-Kein Git, keine Historie — vollständig in
+`Dokumente/`, `Bilder/`, `Videos/`, `Musik/` (samt Playlisten) sind Originale
+ohne Zweitquelle — lesen ja, schreiben nein. Nicht löschen, nicht verschieben,
+nicht umbenennen, außer Max ordnet es in derselben Sitzung für genau diese
+Datei an. Soll etwas weg: nach `Posteingang/_zu_loeschen/` verschieben,
+entschieden wird von Hand. Diese Ordner sind nicht in Git — keine Historie.
+
+Die Löschsperre gilt seit 25.08.2026 **nur** für persönliche Inhalte: diese vier
+Ordner, den unsortierten `Posteingang/`, Schlüssel- und Zertifikatsdateien und
+die 0xFF-Platzhalter. Sonst überall im Vault darf ohne Rückfrage aufgeräumt
+werden, auch massenhaft. Vollständig in
 [Wissen/Schutzregeln.md](../Wissen/Schutzregeln.md).
 
 ## Überblick
