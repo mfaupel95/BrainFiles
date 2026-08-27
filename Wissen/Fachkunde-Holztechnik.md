@@ -8,6 +8,17 @@ im Archiv:
 
 **1.835 Abbildungen · 60 Lehrfilme · 154 Aufbau-Animationen · 3,27 GB**
 
+**Im Volltextindex seit 27.08.2026.** Der Indexlauf hat 2.051 Dateien in
+119 Sekunden erfasst, 1.616 davon per OCR, ohne einen einzigen Fehler. Der Text
+**in** den Abbildungen ist damit durchsuchbar — auch in Tabellen und
+Diagrammen. Die 435 nicht per OCR gelesenen Dateien sind Filme, Animationen und
+Bilder unter 20 KB (Symbole und Strichzeichnungen, die praktisch nie Text
+enthalten).
+
+Belegte Beispiele: „Splintholz Kernholz" findet `030-3.png` (Kernholz- vs.
+Splintholzbaum) und die Holzarten-Tabelle `038-T1.png`; „Schwindmaß
+Holzfeuchte" findet die Fasersättigungs-Grafik `088-1.png`.
+
 ## Wie man es benutzt
 
 Bei jeder Frage zu Holz, Tischlerei, Möbelbau, Fenster- und Türenbau oder
