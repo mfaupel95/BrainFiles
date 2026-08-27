@@ -169,7 +169,7 @@ zusätzlich zur CLI einen **HTTP-MCP-Server** eingetragen:
 | Adresse | `https://www.okx.com/api/v1/mcp/trading-oauth` |
 | Transport | HTTP |
 | Eingetragen in | **drei** Dateien — `~/.claude.json` (Benutzer, nicht versioniert), `.mcp.json` und `Claude/.mcp.json` (versioniert, `80e2ec9` / `f0c9699`) |
-| Status | **wartet auf Anmeldung** — `claude mcp list` meldet `! Needs authentication` |
+| Status | **aktiv** — `claude mcp list` meldet `✔ Connected` (27.08.2026), 165 Werkzeuge |
 
 **Warum dreifach.** Ein reiner Projekt-Eintrag ist nur sichtbar, wenn die
 Sitzung im Vault wurzelt. Wer `claude` im Heimatverzeichnis startet, findet
@@ -183,11 +183,19 @@ redundant, kein Versehen.
 Vorrang. Bei einer Adressänderung müssen trotzdem alle drei Dateien von
 Hand nachgezogen werden.
 
-**Die Anmeldung steht aus.** Sie muss einmal in einer interaktiven Sitzung
-erfolgen (`claude` starten, dort `/mcp`), aus einer laufenden Sitzung heraus
-geht der OAuth-Ablauf nicht. Bis dahin sind die Werkzeuge nicht verfügbar.
-Der Server war am 25.08. schon einmal `✔ Connected`; der Umzug auf die
-Projekt-Ebene hat die Anmeldung verloren.
+**Die Anmeldung ist erteilt** (27.08.2026). Sie geht nur in einer
+interaktiven Sitzung (`claude` starten, dort `/mcp`), nicht aus einer
+laufenden Sitzung heraus. Ein Umzug zwischen den Ebenen verliert sie: Der
+Server war am 25.08. schon einmal verbunden, nach dem Wechsel auf die
+Projekt-Ebene musste sie neu erteilt werden.
+
+**Der erste Anlauf schlug fehl** — die Oberfläche meldete „Verbindung zu
+konnte nicht hergestellt werden. Bei der Verbindung mit dem KI-Agenten ist
+ein Fehler aufgetreten." (mit der Lücke hinter „zu", der Servername fehlte).
+Der zweite Versuch lief durch. Der Endpunkt selbst war zu diesem Zeitpunkt
+erreichbar und antwortete regulär mit `HTTP 401` auf einen unauthentifizierten
+Aufruf. **Also einfach noch einmal versuchen, bevor man die Konfiguration
+umbaut.**
 
 Der Zugangsschlüssel liegt in `~/.claude/.credentials.json`, **nicht** neben
 dem Servereintrag. Die Einträge selbst bestehen nur aus Name, Typ und
