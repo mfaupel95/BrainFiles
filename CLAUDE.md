@@ -68,10 +68,13 @@ vernichten. Deshalb:
 
 - **Verwerfen ist verboten, Sichern ist Pflicht.** Fremdes im Arbeitsbaum nicht
   liegen lassen, sondern in einem **eigenen, getrennten Commit** sichern, mit
-  `git commit --author="Hermes <hermes@local>"` — nie vermischt mit eigener
-  Arbeit. `git add <pfad>` namentlich, nie `git add -A`, `git add .` oder
-  `git commit -a`. Nur liegen lassen, was gerade erst geschrieben wurde und
-  noch nicht ruht.
+  `git commit --author="Andere Sitzung <fremd@local>"` — nie vermischt mit
+  eigener Arbeit. Den echten Namen nur eintragen, wenn der Urheber wirklich
+  feststeht (etwa `"Hermes <hermes@local>"`); **nicht raten**, das macht die
+  Historie genauso falsch wie die Ich-Form. `git add <pfad>` namentlich, nie
+  `git add -A`, `git add .` oder `git commit -a`. Liegen lassen, was in den
+  letzten **10 Minuten** geschrieben wurde (`(Get-Item <pfad>).LastWriteTime`)
+  — älter gilt als ruhend.
 - **Nie verwerfen:** `git reset --hard`, `checkout -- <datei>`, `restore`,
   `stash`, `clean` löschen die uncommittete Arbeit anderer Sitzungen
   unwiederbringlich. Nur auf ausdrückliche Anweisung, vorher ansagen.

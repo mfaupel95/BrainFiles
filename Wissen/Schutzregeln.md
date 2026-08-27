@@ -169,11 +169,13 @@ Vier Regeln, für Claude und Hermes gleichermaßen:
    Autorenfeld zu schreiben, weil es plausibel klingt, macht die Historie
    genauso falsch wie die Ich-Form.
 
-   **Ausnahme:** Eine Datei, die in den letzten Minuten geschrieben wurde,
-   ruht möglicherweise nicht — dort kann eine andere Sitzung mitten im
-   Arbeitsschritt sein. Solche Dateien liegen lassen und melden. Der Schaden
-   wäre allerdings nur ein unschöner Zwischenstand in der Historie, kein
-   Datenverlust: ein Commit löscht nichts.
+   **Ausnahme:** Eine Datei, deren Änderungszeit weniger als **10 Minuten**
+   zurückliegt, ruht möglicherweise nicht — dort kann eine andere Sitzung
+   mitten im Arbeitsschritt sein. Solche Dateien liegen lassen und melden.
+   Die Schwelle ist bewusst eine Zahl und kein Ermessen, sonst entscheidet
+   jede Sitzung anders; geprüft wird mit `(Get-Item <pfad>).LastWriteTime`.
+   Der Schaden wäre allerdings nur ein unschöner Zwischenstand in der
+   Historie, kein Datenverlust: ein Commit löscht nichts.
 
    **Warum die Regel am 27.08.2026 gedreht wurde** — sie lautete vorher
    „nichts committen, was man nicht selbst geändert hat". Das schützte nichts
