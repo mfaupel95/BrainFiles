@@ -179,10 +179,11 @@ Vier Regeln, für Claude und Hermes gleichermaßen:
 
    **Warum die Regel am 27.08.2026 gedreht wurde** — sie lautete vorher
    „nichts committen, was man nicht selbst geändert hat". Das schützte nichts
-   und schadete: Ein Commit fremder Arbeit ist vollständig zurücknehmbar
-   (`git reset --soft HEAD~1`), der einzige Schaden war eine Nachricht in
-   falscher Ich-Form. Unumkehrbar ist allein das Verwerfen — dafür gibt es
-   Regel 2. Die alte Fassung ließ fremde Arbeit dagegen unbegrenzt in dem
+   und schadete: Ein Commit fremder Arbeit ist zurücknehmbar — solange er die
+   Spitze ist mit `git reset --soft HEAD~1`, sonst mit `git revert` —, der
+   einzige Schaden war eine Nachricht in falscher Ich-Form. Unumkehrbar ist
+   allein das Verwerfen — dafür gibt es Regel 2.
+   Die alte Fassung ließ fremde Arbeit dagegen unbegrenzt in dem
    ungeschützten Fenster liegen, das Regel 3 gerade verkleinern soll. Bei
    Hermes ist das kein Sonderfall: **Hermes committet nie selbst** (geprüft
    27.08.2026, alle 30 Commits der Historie tragen denselben Autor). Seine
