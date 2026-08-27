@@ -243,3 +243,98 @@ Max startet das Skript selbst; danach ist eine Neuanmeldung nötig.
 ## Verwandt
 
 [[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[../AGENTS.md|AGENTS.md]]
+
+## Störung 26.08.2026 — „Problem mit den API-Keys"
+
+**Zwei getrennte Ursachen. Keine davon war ein falscher Schlüssel.**
+
+### 1. Abgelaufene OAuth-Tokens (die eigentliche Ursache)
+
+```
+hermes auth status anthropic   ->  anthropic: logged out
+hermes auth list               ->  nur copilot
+hermes auth reset anthropic    ->  Reset status on 0 anthropic credentials
+```
+
+„0 credentials" heißt: Hermes zählt die zwei Anthropic-Einträge aus `auth.json`
+nicht mehr als Zugangsdaten — sie sind für ihn nicht erschöpft, sondern nicht
+vorhanden.
+
+| Eintrag in `auth.json` | Typ | Zustand |
+|---|---|---|
+| `env:ANTHROPIC_TOKEN`, Priorität 0 | oauth | `failure_reason: rate_limit` — stand schon in der Sicherung vom 24.08. |
+| `claude_code`, Priorität 1 | oauth | `last_status: exhausted`, **abgelaufen 26.08.2026 00:47:45** |
+
+**Der Kernfehler:** `ANTHROPIC_TOKEN` in der `.env` hat das Präfix
+**`sk-ant-oat01-`** (108 Zeichen). Das ist ein **OAuth-Access-Token aus dem
+Claude-Abo**, kein API-Key — ein Console-Key beginnt mit `sk-ant-api03-`.
+
+Einen OAuth-Access-Token statisch in eine `.env` zu kopieren kann nicht dauerhaft
+funktionieren: Er läuft ab, und das zugehörige Refresh-Token liegt dort nicht.
+Der Eintrag war damit von Anfang an ein Verfallsdatum, kein Zugang.
+
+**Behebung:**
+
+| Weg | Befehl | Bewertung |
+|---|---|---|
+| **Abo weiternutzen** (empfohlen) | `hermes auth add anthropic --type oauth` | Browser-Login; Hermes verwaltet Token und Erneuerung danach selbst. Keine Zusatzkosten. |
+| Console-API-Key | `hermes auth add anthropic --type api-key` | `sk-ant-api03-…` von console.anthropic.com. Läuft nicht ab, wird aber nach Verbrauch abgerechnet — zusätzlich zum Abo. |
+
+**Danach `ANTHROPIC_TOKEN` aus der `.env` entfernen.** Er hat Priorität 0 und
+steht damit vor dem frischen Login. *Nicht verifiziert*, ob Hermes bei einem
+toten Eintrag sauber auf den nächsten durchfällt — dafür ist der Pool zwar
+gebaut, aber ein abgelaufener Token an erster Stelle ist in jedem Fall Ballast.
+
+Sicherung vor dem Eingriff: `.sicherung/auth.json.bak-20260826-1805`.
+
+### 2. TLS-Handshake-Timeouts (der sichtbare Fehler)
+
+`errors.log`, 17:42:51 und 17:46:52:
+
+```
+httpcore.ConnectTimeout: _ssl.c:989: The handshake operation timed out
+anthropic.APITimeoutError: Request timed out or interrupted
+```
+
+**Das ist kein Schlüsselproblem.** Ein falscher oder abgelaufener Schlüssel
+liefert HTTP 401 oder 429; hier kam gar keine TLS-Verbindung zustande.
+
+Gegenprobe um 18:00 aus **Hermes' eigenem venv mit demselben `httpx`**: 5 von 5
+Verbindungen zu `api.anthropic.com`, HTTP 401 (erwartet mit Dummy-Key), unter
+1,3 s. Direkter TLS-Test 71 ms, TLS 1.3. Das Netz ist in Ordnung.
+
+**Wahrscheinliche Ursache: NordVPN.** Der Prozess startete um **17:53:53**, also
+nach den Fehlern; `NordLynx` ist Standardroute (`0.0.0.0/0 → 100.64.0.1`).
+Ein Reconnect oder Kill-Switch erklärt genau dieses Muster. **Nicht bewiesen** —
+aber wenn Hermes wieder ohne 401/429 hängenbleibt, zuerst hier nachsehen.
+
+Passend dazu: `Copilot token exchange degraded to RAW token (exchange
+unavailable)` und `Auxiliary title_generation: connection error on auto`. Auch
+das sind Verbindungs-, keine Schlüsselfehler.
+
+### 3. Was im Log wie ein Key-Problem aussieht, aber keins ist
+
+`mcp-stderr.log`:
+
+```
+Some tools will not be loaded due to missing API keys: USPTO_API_KEY,
+OPENAI_API_KEY, HF_TOKEN, BOLTZ_MCP_SERVER_HOST …
+```
+
+Stammt von **ToolUniverse**, nicht von Hermes, und betrifft optionale Werkzeuge
+für Patent- und Biomedizin-Datenbanken. Ohne diese Schlüssel fehlen nur die
+betreffenden Werkzeuge. Keine Handlung nötig.
+
+### Merksatz für die Zukunft
+
+**Erst den Fehlertyp lesen, dann die Ursache suchen.** Timeout ≠ 401 ≠ 429.
+Das Wort „API key" im Log stand hier dreimal — und zeigte dreimal auf etwas
+anderes: einmal auf ein Netzproblem, einmal auf einen abgelaufenen OAuth-Token,
+einmal auf einen fremden MCP-Server, dem optionale Schlüssel fehlen.
+
+### Nebenbefunde, noch offen
+
+- `Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth)`
+  — eigenes Nous-Login fehlt, betrifft nur Hilfsfunktionen.
+- Copilot-Token-Exchange „degraded to RAW token": Enterprise-Modelle können mit
+  `model_not_available_for_integrator` scheitern. Ohne Copilot-Nutzung folgenlos.
