@@ -66,9 +66,12 @@ Max hat mehrere Chats offen, dazu Hermes — alle schreiben in denselben Vault.
 **Git schützt nur, was committet ist**, alles davor kann eine andere Sitzung
 vernichten. Deshalb:
 
-- **Nur committen, was man selbst geändert hat.** `git add <pfad>` namentlich,
-  nie `git add -A`, `git add .` oder `git commit -a`. Fremdes im Arbeitsbaum
-  liegen lassen und melden.
+- **Verwerfen ist verboten, Sichern ist Pflicht.** Fremdes im Arbeitsbaum nicht
+  liegen lassen, sondern in einem **eigenen, getrennten Commit** sichern, mit
+  `git commit --author="Hermes <hermes@local>"` — nie vermischt mit eigener
+  Arbeit. `git add <pfad>` namentlich, nie `git add -A`, `git add .` oder
+  `git commit -a`. Nur liegen lassen, was gerade erst geschrieben wurde und
+  noch nicht ruht.
 - **Nie verwerfen:** `git reset --hard`, `checkout -- <datei>`, `restore`,
   `stash`, `clean` löschen die uncommittete Arbeit anderer Sitzungen
   unwiederbringlich. Nur auf ausdrückliche Anweisung, vorher ansagen.

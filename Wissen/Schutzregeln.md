@@ -141,12 +141,49 @@ samt Nachricht in der Ich-Form — Arbeit, die sie nicht getan hatte. Verloren g
 nichts. Dasselbe Muster mit `git checkout` statt `git commit` hätte die Arbeit
 gelöscht, und zwar ohne Rückholmöglichkeit.
 
+Genau diese Unterscheidung trägt Regel 1 seit dem 27.08.2026: Falsch war an dem
+Vorfall nur die **Ich-Form**, nicht das Sichern. Der Commit selbst war das
+Richtige — er hat fremde Arbeit aus dem ungeschützten Fenster geholt.
+
 Vier Regeln, für Claude und Hermes gleichermaßen:
 
-1. **Nichts committen, was man nicht selbst geändert hat.** Vor jedem Commit
-   `git status` lesen. Dateien namentlich hinzufügen: `git add <pfad>`. **Nie**
-   `git add -A`, `git add .` oder `git commit -a` — die nehmen fremde Arbeit
-   ungefragt mit. Liegt Fremdes im Arbeitsbaum: liegen lassen und melden.
+1. **Verwerfen ist verboten, Sichern ist Pflicht.** Vor jedem Commit
+   `git status` lesen. Fremde Änderungen im Arbeitsbaum werden **nicht liegen
+   gelassen**, sondern in einem **eigenen, getrennten Commit** gesichert — nie
+   vermischt mit eigener Arbeit im selben Commit. Dateien namentlich
+   hinzufügen: `git add <pfad>`. **Nie** `git add -A`, `git add .` oder
+   `git commit -a` — nicht wegen der fremden Arbeit, sondern weil sie beide
+   Sorten zusammenwerfen.
+
+   Die Herkunft steht im Autorenfeld, nicht nur in der Nachricht:
+
+   ```
+   git commit --author="Hermes <hermes@local>" -m "…"
+   ```
+
+   Damit lügt auch `git log --author` nicht, und `git log --author=Hermes`
+   zeigt jederzeit, was nicht aus einer Claude-Sitzung stammt.
+
+   **Ausnahme:** Eine Datei, die in den letzten Minuten geschrieben wurde,
+   ruht möglicherweise nicht — dort kann eine andere Sitzung mitten im
+   Arbeitsschritt sein. Solche Dateien liegen lassen und melden. Der Schaden
+   wäre allerdings nur ein unschöner Zwischenstand in der Historie, kein
+   Datenverlust: ein Commit löscht nichts.
+
+   **Warum die Regel am 27.08.2026 gedreht wurde** — sie lautete vorher
+   „nichts committen, was man nicht selbst geändert hat". Das schützte nichts
+   und schadete: Ein Commit fremder Arbeit ist vollständig zurücknehmbar
+   (`git reset --soft HEAD~1`), der einzige Schaden war eine Nachricht in
+   falscher Ich-Form. Unumkehrbar ist allein das Verwerfen — dafür gibt es
+   Regel 2. Die alte Fassung ließ fremde Arbeit dagegen unbegrenzt in dem
+   ungeschützten Fenster liegen, das Regel 3 gerade verkleinern soll. Bei
+   Hermes ist das kein Sonderfall: **Hermes committet nie selbst** (geprüft
+   27.08.2026, alle 30 Commits der Historie tragen denselben Autor). Seine
+   Arbeit ist nur versioniert, wenn eine Claude-Sitzung sie mitnimmt —
+   die Notiz [[Hermes]] lag deshalb einen ganzen Tag ungeschützt im Arbeitsbaum.
+   Zweiter Blocker: Steht in einer Datei schon Fremdes uncommittet, lässt
+   sich der eigene Anteil gar nicht isoliert committen — Regel 1 und Regel 3
+   waren dann gleichzeitig unerfüllbar.
 
 2. **Nichts verwerfen.** `git reset --hard`, `git checkout -- <datei>`,
    `git restore <datei>`, `git stash`, `git clean` löschen genau das, was Git
