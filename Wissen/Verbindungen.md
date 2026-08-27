@@ -8,9 +8,13 @@ wenn er **authentifiziert** ist — eingerichtet allein reicht nicht.
 Die MCP-Server waren Desktop-Extensions unter `%APPDATA%`. **Seit 13.08.2026
 startet Claude sie aus [MCP-Server/](../MCP-Server/README.md)** — eingetragen
 als `mcpServers` in `claude_desktop_config.json`, die Erweiterungen dazu
-abgeschaltet. Geprüft am 19.08.2026: alle 14 Erweiterungen stehen auf
-`isEnabled: false`, alle Einträge in der Konfiguration zeigen auf vorhandene
-Dateien. Seit dem 19.08.2026 sind es **10 Server** — `filesystem` ist raus.
+abgeschaltet. **Das hält nicht von allein:** Am 27.08.2026 standen
+`windows-mcp` und `desktopcommandermcp` wieder auf `isEnabled: true` und liefen
+dadurch doppelt — einmal als Erweiterung, einmal aus der Konfiguration. Beide am
+27.08.2026 wieder auf `false` gesetzt (Sicherungen `*.json.bak-20260827`), seither
+stehen alle 14 Erweiterungen auf `isEnabled: false`. Prüfbefehl:
+`Get-ChildItem "$env:APPDATA\Claude\Claude Extensions Settings\*.json" | Select-String isEnabled`.
+Alle Einträge in der Konfiguration zeigen auf vorhandene Dateien. Seit dem 19.08.2026 sind es **10 Server** — `filesystem` ist raus.
 Die Werkzeugschicht läuft aus dem Vault heraus.
 
 Fünf Server sind **nicht eingetragen** und damit inaktiv: Apify, Metabase,
@@ -121,7 +125,7 @@ Noch offen — braucht Max:
 
 | Problem | Was fehlt | Weg |
 |---|---|---|
-| Dritter Desktop-Commander-Klon | Connector `Desktop_Commander` steht in keiner lokalen Datei, sondern in den claude.ai-Connector-Einstellungen | auf claude.ai unter Einstellungen → Connectors entfernen |
+| Dritter Desktop-Commander-Klon | `Desktop_Commander` steht in keiner lokalen Datei. Quelle ist am 27.08.2026 gefunden: **nicht** die Connector-Liste, sondern das Plugin „Desktop Commander" auf claude.ai unter **Anpassen → Plugins**. Es bringt einen eigenen MCP-Server **und** sechs Skills mit (`/terminal`, `/obsidian-vault`, `/computer-health-check`, `/knowledge-base`, `/ai-tools-setup`, `/desktop-commander-overview`) | **Entscheidung 27.08.2026: Plugin bleibt** (wegen der Skills), stattdessen den lokalen Eintrag `desktop-commander` aus `claude_desktop_config.json` streichen. Geht nur bei beendeter App — siehe Abschnitt oben |
 | pdf-vault meldet `allowedDirectories: []` | **Liegt nicht an der Konfiguration.** Alles daran ist einzeln nachgemessen (19.08.2026): der Eintrag hat den Ordner als drittes Argument; der laufende Prozess ist ein Kind von `claude.exe` und trägt das Argument in seiner Kommandozeile; und derselbe Server, direkt über stdio angesprochen, meldet den Ordner und findet **500 PDFs**. Nur über die App bleibt die Liste leer. Auffällig: die App startet **zwei** identische Instanzen. | Zuerst Claude vollständig neu starten und `list_pdfs` erneut aufrufen. Bleibt es leer, ist es ein Fehler im MCP-Hosting der App, nicht in dieser Einrichtung — dann nichts weiter daran drehen |
 | Revolut X: `API key can only be used for authentication from whitelisted IP` | **Nicht mehr der fehlende Schlüssel** — der ist seit spätestens 25.08.2026 eingetragen und wird akzeptiert. Der Server meldet auf `check_auth_status`: „Authentication is configured", die Verbindung scheitert erst an der Herkunftsadresse. Im Revolut-X-Portal die aktuelle öffentliche IP für den API-Schlüssel freigeben | Portal-Schritt, geht nicht aus der Sitzung. Bei wechselnder IP (DSL-Zwangstrennung) nach jedem Wechsel erneut nötig |
 
@@ -131,6 +135,33 @@ vorhandenen Server `mcp-memory` — **nicht** als zweiter Eintrag über
 und den Server bei jedem Start aus dem Netz geladen, statt die Fassung in
 `MCP-Server/` zu benutzen. Der Schlüsselwert steht nur in
 `claude_desktop_config.json`, nicht im Vault.
+
+## Plugins auf claude.ai (Stand 27.08.2026)
+
+Plugins werden **nicht lokal** verwaltet, sondern auf claude.ai unter
+**Anpassen → Plugins** (früher „Einstellungen → Connectors", seit August dorthin
+verschoben). Lokal steht in `~/.claude/settings.json` nur `revolut-x` sowie die
+beiden abgeschalteten Inline-Plugins.
+
+Jedes aktive Plugin lädt seine Skills **und** seine MCP-Server in jede Sitzung —
+das ist der größte einzelne Posten im Kontextverbrauch. Am 27.08.2026 wurden
+**16 ungenutzte Plugins entfernt**: Bio Research, Small Business, S&P Global,
+Cockroachdb, Adobe for Creativity, Operations, Brand Voice, Human Resources,
+Design, Sales, Legal, Product Management, Marketing, Enterprise Search, Data,
+Customer Support.
+
+**Behalten:** Desktop Commander, PDF Viewer, Engineering, Slack, Productivity,
+Finance.
+
+Zwei Dinge, die dabei auffielen:
+
+- Der Schalter auf der Plugin-Detailseite **deinstalliert**, er deaktiviert
+  nicht — die Meldung lautet „… wurde entfernt", und das Plugin verschwindet aus
+  der Liste. Rückgängig nur über **Durchsuchen** neu installieren.
+- Die Web-Konnektoren (Gmail, Kalender, Drive, PayPal, Uber, Superhuman Docs,
+  Windsor.ai, UseMyContext, Unstructured, ChangeThisFile, Excalidraw,
+  GitHub-Integration, Economic Index) stehen auf einer **eigenen** Seite
+  (Anpassen → Konnektoren) und wurden nicht angefasst.
 
 ## Nicht über MCP: OKX Onchain OS
 
