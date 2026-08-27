@@ -162,7 +162,12 @@ Vier Regeln, für Claude und Hermes gleichermaßen:
    ```
 
    Damit lügt auch `git log --author` nicht, und `git log --author=Hermes`
-   zeigt jederzeit, was nicht aus einer Claude-Sitzung stammt.
+   zeigt jederzeit, was nicht aus einer Claude-Sitzung stammt. Lässt sich der
+   Urheber nicht feststellen — der Regelfall, denn eine Änderung im
+   Arbeitsbaum trägt keinen Namen —, gilt
+   `--author="Andere Sitzung <fremd@local>"`. Nicht raten: „Hermes" ins
+   Autorenfeld zu schreiben, weil es plausibel klingt, macht die Historie
+   genauso falsch wie die Ich-Form.
 
    **Ausnahme:** Eine Datei, die in den letzten Minuten geschrieben wurde,
    ruht möglicherweise nicht — dort kann eine andere Sitzung mitten im
