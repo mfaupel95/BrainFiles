@@ -46,9 +46,21 @@ Installation: `hermes --version` nennt das echte Verzeichnis.
 
 In `MaxHirn/Hermes/config.yaml`:
 
-- `model.default: claude-opus-5`, `model.provider: anthropic`
-- **`base_url` entfernt** — stand voreingestellt auf OpenRouter und hätte den
-  Claude-Zugang umgangen
+- **Modell seit 26.08.2026 nicht mehr Anthropic** (geprüft 27.08.2026 in
+  `config.yaml`, Datei zuletzt geändert 26.08. 19:41 — also nach der Störung):
+
+  ```yaml
+  model:
+    default: upstage/solar-pro4:free
+    provider: nous
+    base_url: https://inference-api.nousresearch.com/v1
+  ```
+
+  Der frühere Eintrag hier (`claude-opus-5` / `anthropic`, „`base_url` entfernt")
+  stimmt nicht mehr. Hermes läuft jetzt über die **Nous-Cloud-API**, nicht über
+  Anthropic — und **nicht lokal**: `base_url` zeigt ins Netz, es rechnet kein
+  Modell auf Max' Rechner. Das entlastet zwar Max' Claude-Kontingent, ist aber
+  kein Offline-Betrieb.
 - `approvals.mode: manual`, `timeout: 300` (unbeantwortet = abgelehnt),
   dazu eine `deny`-Liste gegen Massenlöschung
 - `checkpoints.enabled: true`
