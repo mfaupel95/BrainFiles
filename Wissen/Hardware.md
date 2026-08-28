@@ -34,17 +34,24 @@ vollständig auf die GPU passen (7–8B in Q4/Q5 ja, 12–14B knapp, darüber ni
 | J: | WD My Book 1230 | 3 | USB | NTFS |
 | E: | Netac MobileDataStar (466 GB) | 4 | USB, nur zeitweise | **exFAT** |
 
-> **Stand 28.08.2026: keine einzige USB-Platte ist angeschlossen.**
-> `Get-PhysicalDisk` meldet nur die beiden NVMe-SSDs (`C:` und `O:`), und in
-> `Get-PnpDevice -Class DiskDrive` stehen Seagate Portable, WD My Book, Netac
-> und alle übrigen auf `Unknown` — also bekannt, aber nicht da. Damit
-> existieren **`G:`, `H:`, `I:` und `J:` derzeit nicht.** Ob abgezogen oder
-> ausgefallen, ist von hier aus nicht unterscheidbar; das weiß nur Max.
+> **Stand 28.08.2026, nach dem CMOS-Reset:** Max hat an diesem Tag das CMOS
+> zurückgesetzt und das Mainboard auf Standardeinstellungen gestellt; die
+> USB-Platten waren dafür abgezogen. **Seagate Portable ist wieder da**
+> (`G:` BackUp 2751,1 GB / 128,8 GB frei, `H:` Music Sync, `I:` Volume, alle
+> `Healthy`), `G:\MaxHirn-Sicherung` ist erreichbar — die 20-Uhr-Sicherung
+> kann wieder laufen.
 >
-> Praktische Folge: Die Sicherung nach `G:\MaxHirn-Sicherung` läuft ins Leere
-> (siehe [[Routinen]] und `Claude/TASKS.md`, T-001). Die Zweitkopie nach
-> `O:\MaxHirn-Zweitkopie` ist davon nicht betroffen und arbeitet weiter —
-> aber sie liegt im selben Rechner.
+> **`J:` fehlt weiterhin.** Die WD My Book steht in `Get-PnpDevice` auf
+> `Unknown`, `Test-Path J:\` ist `False`. Damit zeigt die Junction
+> `C:\Users\faupe\iCloudPhotos` → `J:\iCloudPhotos` ins Leere (geprüft
+> 28.08.2026). Das betrifft rund 30.635 Mediendateien; sie sind nicht verloren,
+> nur nicht angeschlossen. Ob mit Absicht abgezogen, ist offen —
+> `Claude/TASKS.md`, T-005.
+>
+> **Merkposten für die Diagnose:** Waren die Platten abgezogen, fehlt `G:` auch
+> in der Auslagerung — Windows legt `G:\pagefile.sys` erst beim nächsten Start
+> mit angeschlossener Platte wieder an. Ein Protokoll aus so einem Lauf zeigt
+> also nicht den Normalzustand.
 
 `E:` ist die Kopie außer Haus und hängt nicht dauerhaft am Rechner. Sie ist als
 einzige **exFAT** — beim Sichern dorthin ist `/FFT` Pflicht, sonst schreibt

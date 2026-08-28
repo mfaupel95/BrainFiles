@@ -42,26 +42,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [!] **T-001 — Sicherungslaufwerk G: fehlt, Hauptsicherung hat kein Ziel**
-      Kontext: `MaxHirn-Sicherung` kopiert nach `G:\MaxHirn-Sicherung\`.
-      G: ist keine der beiden internen SSDs (nur C: und O: vorhanden) und
-      derzeit nicht angeschlossen. Letzter erfolgreicher Lauf 27.08. 20:00.
-      Der 20-Uhr-Lauf schlägt fehl, solange die Platte fehlt. Die Zweitkopie
-      nach `O:\MaxHirn-Zweitkopie\` läuft unabhängig weiter.
-      Nächster Schritt: Platte anschließen oder klären, ob sie ausgefallen ist.
-      Betrifft: Routinen/sicherung.ps1, Aufgabe MaxHirn-Sicherung
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
-- [?] **T-002 — Auslagerungsdatei auf nicht vorhandenem Laufwerk g:**
+- [?] **T-002 — Auslagerungsdatei liegt auf einer USB-Platte**
       Kontext: In `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\
-      Memory Management\PagingFiles` steht `g:\pagefile.sys 4096 16384`,
-      obwohl G: fehlt. Aktiv sind nur C: (9 GB) und O: (4 GB). Verdacht auf
-      Zusammenhang mit den Abstürzen: liegt eine Auslagerungsdatei auf einem
-      Laufwerk, das im Standby wegfällt, ist ein harter Reset ohne
-      Speicherabbild die typische Folge. Nicht bewiesen.
-      Nächster Schritt: Eintrag für g: entfernen — erfordert Ansage und
-      Neustart, deshalb noch nicht getan.
-      Wartet auf: Entscheidung von Max
+      Memory Management\PagingFiles` stehen drei Einträge:
+      `c:\pagefile.sys 0 0`, `g:\pagefile.sys 4096 16384`,
+      `o:\pagefile.sys 4096 16384`. **`G:` ist die Seagate Portable, also USB.**
+      Im S3-Standby wird die USB-Anbindung stromlos; greift der Kernel nach dem
+      Aufwachen auf ausgelagerte Seiten zu, bevor die Platte zurück ist, folgt
+      ein harter Reset ohne Bluescreen und ohne Speicherabbild — genau das
+      beobachtete Bild (T-004). Begründete Hypothese, kein Beweis; unabhängig
+      davon ist der Eintrag falsch am Platz.
+      Stand 28.08.: Auf `G:` liegt **derzeit keine** `pagefile.sys`, weil die
+      Platte beim Systemstart abgezogen war. Beim nächsten Neustart mit
+      angeschlossener Platte legt Windows sie wieder an — der Eingriff wirkt
+      also nur, wenn er **vor** dem nächsten Neustart erfolgt.
+      Nächster Schritt: Max führt den Befehl mit erhöhten Rechten aus (siehe
+      unten) — Claude hat in dieser Sitzung keine Adminrechte.
+      Sicherung des Schlüssels liegt als
+      `Routinen/sicherungen/MemoryManagement-20260828.reg`.
+      Wartet auf: Ausführung durch Max
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
 - [ ] **T-003 — Windows Search stürzt seit 24.08. in Endlosschleife ab**
@@ -80,10 +79,47 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       harter Reset im Standby-Zusammenhang. Vier davon 3–10 Minuten nach dem
       Aufwachen aus S3. Keine WHEA-Hardwarefehler, keine Speicherfehler,
       beide SSDs `Healthy`. Es liegt kein einziger Dump zum Auswerten vor.
+      **Vorbehalt zum jüngsten Fall:** Am 28.08. hat Max das CMOS zurückgesetzt.
+      Ein Kaltstart dabei erzeugt im Protokoll dasselbe Bild wie ein Absturz
+      (Kernel-Power 41, `BugcheckCode = 0`, EventLog 6008). Ob der Eintrag vom
+      28.08. ein echter Absturz war oder Max' eigener Eingriff, ist ungeklärt.
+      Die Vorfälle vom 20., 21. und 27.08. sind davon unberührt — das Muster
+      steht auch ohne den heutigen Datenpunkt.
       Nächster Schritt: nach T-002 beobachten, ob es aufhört. Wenn nicht:
       S3-Standby probeweise abschalten (Rechner durchlaufen lassen).
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
+- [ ] **T-005 — J: (WD My Book) nicht angeschlossen, iCloud-Junction ins Leere**
+      Kontext: Nach dem CMOS-Reset am 28.08. sind Seagate (`G:`, `H:`, `I:`)
+      wieder da, die WD My Book aber nicht: `Get-PnpDevice` meldet `Unknown`,
+      `Test-Path J:\` ist `False`. Die Junction
+      `C:\Users\faupe\iCloudPhotos` zeigt auf `J:\iCloudPhotos` und läuft
+      damit ins Leere — rund 30.635 Mediendateien. Nichts ist verloren, die
+      Platte hängt nur nicht dran. Dieselbe Platte hat 479 unkorrigierte
+      Lesefehler (Messung 14.08.), sie ist das schwächste Laufwerk im System.
+      Nächster Schritt: Max fragen, ob sie absichtlich ab ist.
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+
+- [?] **T-006 — Echtzeituhr ging 68 Minuten nach**
+      Kontext: Am 28.08. um 15:20:12 hat der Zeitdienst die Systemzeit um
+      **4.108.764 ms (68,5 Minuten)** vorgestellt — von 14:11:43 auf 15:20:12.
+      Bis dahin liefen alle Protokolleinträge seit dem Start mit falscher Zeit.
+      Zwei Erklärungen: harmlos die Uhr, die nach dem CMOS-Reset neu gestellt
+      werden musste; unangenehm eine schwache CMOS-Batterie, die auch
+      BIOS-Einstellungen wieder verlieren würde.
+      Folge für die Diagnose: **Zeitstempel um den 28.08. herum sind bis 15:20
+      um 68 Minuten verschoben.** Zeitabstände innerhalb dieses Fensters
+      stimmen, absolute Uhrzeiten nicht.
+      Nächster Schritt: nach dem nächsten Kaltstart prüfen, ob die BIOS-Zeit
+      erneut wegläuft. Wenn ja: CMOS-Batterie (CR2032) tauschen.
+      Wartet auf: Beobachtung beim nächsten Start
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+
 ## Erledigt
 
-_Noch keine Einträge._
+- [x] **T-001 — Sicherungslaufwerk G: fehlt, Hauptsicherung hat kein Ziel**
+      Erledigt 2026-08-28: Kein Defekt. Max hatte die USB-Platten für einen
+      CMOS-Reset abgezogen. Seagate Portable ist wieder angeschlossen,
+      `G:\MaxHirn-Sicherung` erreichbar (2751,1 GB, 128,8 GB frei, `Healthy`).
+      Der 20-Uhr-Lauf kann wieder arbeiten. Der Fehlstand bestand nur, solange
+      die Platte ab war.
