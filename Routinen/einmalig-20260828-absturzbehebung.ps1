@@ -21,18 +21,27 @@
 .PARAMETER Testlauf
     Zeigt nur an, was geschehen wuerde. Aendert nichts.
 
+.PARAMETER StandbyBehalten
+    Laesst Schritt 3 aus. Empfohlen fuer den ersten Durchgang: Nur wenn der
+    Standby weiter benutzt wird, zeigt sich, ob Schritt 1 die Abstuerze
+    wirklich behoben hat. Schaltet man den Standby gleich mit ab, faellt die
+    Bedingung weg, unter der sie auftreten - dann bleibt ungeklaert, welcher
+    der beiden Eingriffe gewirkt hat.
+
 .EXAMPLE
     Rechtsklick auf die Datei > "Mit PowerShell ausfuehren"
     oder in einer Administrator-PowerShell:
-        .\einmalig-20260828-absturzbehebung.ps1
         .\einmalig-20260828-absturzbehebung.ps1 -Testlauf
+        .\einmalig-20260828-absturzbehebung.ps1 -StandbyBehalten
+        .\einmalig-20260828-absturzbehebung.ps1
         .\einmalig-20260828-absturzbehebung.ps1 -Rueckgaengig
 #>
 
 [CmdletBinding()]
 param(
     [switch]$Rueckgaengig,
-    [switch]$Testlauf
+    [switch]$Testlauf,
+    [switch]$StandbyBehalten
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,8 +57,9 @@ if (-not $istAdmin) {
         '-NoProfile', '-ExecutionPolicy', 'Bypass',
         '-NoExit', '-File', "`"$PSCommandPath`""
     )
-    if ($Rueckgaengig) { $argumente += '-Rueckgaengig' }
-    if ($Testlauf)     { $argumente += '-Testlauf' }
+    if ($Rueckgaengig)     { $argumente += '-Rueckgaengig' }
+    if ($Testlauf)         { $argumente += '-Testlauf' }
+    if ($StandbyBehalten)  { $argumente += '-StandbyBehalten' }
     Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argumente
     return
 }
@@ -130,6 +140,19 @@ if (-not $dienst) {
 
 # --------------------------------------------------------------- 3) Standby
 Schritt 3 'S3-Standby im Netzbetrieb'
+
+if ($StandbyBehalten -and -not $Rueckgaengig) {
+    Write-Host "Uebersprungen (-StandbyBehalten)." -ForegroundColor Yellow
+    Write-Host "Der Standby bleibt aktiv - nur so zeigt sich, ob Schritt 1"
+    Write-Host "die Abstuerze wirklich behoben hat."
+    Write-Host ""
+    Write-Host "=== Fertig ===" -ForegroundColor Cyan
+    Write-Host "Schritt 1 wirkt erst nach einem Neustart."
+    Write-Host "Danach pruefen, ob auf G: noch eine pagefile.sys liegt:"
+    Write-Host "    Get-CimInstance Win32_PageFileUsage | Select-Object Name, AllocatedBaseSize"
+    Write-Host ""
+    return
+}
 
 $schema = ((powercfg /getactivescheme) |
     Select-String -Pattern '([0-9a-fA-F-]{36})').Matches[0].Value
