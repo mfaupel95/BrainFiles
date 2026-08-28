@@ -10,7 +10,7 @@ erledigt** — siehe „Stromausfälle ohne Bluescreen" unten.
 Die Diagnosewege unten führen in Minuten zum Ergebnis. Ausserdem ist die
 Laufwerkszuordnung Voraussetzung für den Umzug in [[Portabilitaet]].
 
-**Stand:** 2026-08-19 (Nachmessung; Ursprungsfassung 2026-08-16)
+**Stand:** 2026-08-28 (Absturzanalyse und Laufwerkslage; Nachmessung 2026-08-19, Ursprungsfassung 2026-08-16)
 
 ## Eckdaten des Rechners
 
@@ -33,6 +33,18 @@ vollständig auf die GPU passen (7–8B in Q4/Q5 ja, 12–14B knapp, darüber ni
 | G: H: I: | Seagate Portable | **2** | USB | NTFS |
 | J: | WD My Book 1230 | 3 | USB | NTFS |
 | E: | Netac MobileDataStar (466 GB) | 4 | USB, nur zeitweise | **exFAT** |
+
+> **Stand 28.08.2026: keine einzige USB-Platte ist angeschlossen.**
+> `Get-PhysicalDisk` meldet nur die beiden NVMe-SSDs (`C:` und `O:`), und in
+> `Get-PnpDevice -Class DiskDrive` stehen Seagate Portable, WD My Book, Netac
+> und alle übrigen auf `Unknown` — also bekannt, aber nicht da. Damit
+> existieren **`G:`, `H:`, `I:` und `J:` derzeit nicht.** Ob abgezogen oder
+> ausgefallen, ist von hier aus nicht unterscheidbar; das weiß nur Max.
+>
+> Praktische Folge: Die Sicherung nach `G:\MaxHirn-Sicherung` läuft ins Leere
+> (siehe [[Routinen]] und `Claude/TASKS.md`, T-001). Die Zweitkopie nach
+> `O:\MaxHirn-Zweitkopie` ist davon nicht betroffen und arbeitet weiter —
+> aber sie liegt im selben Rechner.
 
 `E:` ist die Kopie außer Haus und hängt nicht dauerhaft am Rechner. Sie ist als
 einzige **exFAT** — beim Sichern dorthin ist `/FFT` Pflicht, sonst schreibt
@@ -178,12 +190,22 @@ Zwei Eigenheiten, die beim Diagnostizieren Zeit sparen:
   hängen dagegen mit. Auch der PowerShell-Start hing, während Git Bash sofort
   antwortete — nicht als Shell-Problem fehldeuten.
 
-## Stromausfälle ohne Bluescreen (offen, Stand 2026-08-16)
+## Stromausfälle ohne Bluescreen (offen, Stand 2026-08-28)
 
-Der Rechner geht in unregelmässigen Abständen **schlagartig aus**. Fünf Vorfälle
-in 32 Tagen:
+Der Rechner geht in unregelmässigen Abständen **schlagartig aus**. Neun Vorfälle
+in 20 Tagen:
 
-> **Korrektur 19.08.2026:** Hier stand „und die Abstände werden kürzer". Das
+> **Korrektur 28.08.2026 — zwei Angaben in diesem Abschnitt waren überholt:**
+>
+> 1. Hier stand „Fünf Vorfälle in 32 Tagen" und weiter unten, seit dem 16.08.
+>    seien keine Kernel-Power-41-Ereignisse mehr aufgetreten. Beides gilt nicht
+>    mehr: Am **20.08., 21.08., 27.08. und 28.08.** kamen vier weitere hinzu.
+> 2. Als Erkennungsmerkmal stand `SleepInProgress = 0`. Das trifft nur auf die
+>    frühen Vorfälle zu. **Seit dem 14.08. haben alle sechs Abstürze
+>    `SleepInProgress = 16`** — ein anderer Fingerabdruck, siehe unten.
+
+> **Korrektur 19.08.2026** (historisch — der Schlusssatz zur Ruhephase
+> ist durch die Korrektur darüber überholt): Hier stand „und die Abstände werden kürzer". Das
 > trägt die Datenlage nicht. Die beiden Ereignisse am 08.08. liegen 17 Minuten
 > auseinander (ein Vorfall mit Sofort-Wiederholung), danach folgen Abstände von
 > 3, 3 und 2 Tagen. Seit dem 16.08. sind — Stand 19.08., Prüfung im
@@ -192,18 +214,68 @@ in 32 Tagen:
 > Kein Grund zur Entwarnung, aber „beschleunigt sich" ist als Befund falsch und
 > hätte zu übereilten Maßnahmen verleitet.
 
-| Datum | Uhrzeit |
-|---|---|
-| 08.08.2026 | 12:28 |
-| 08.08.2026 | 12:45 |
-| 11.08.2026 | 10:56 |
-| 14.08.2026 | 14:57 |
-| 16.08.2026 | 11:05 |
+| Datum | Uhrzeit | `SleepInProgress` | Aufwachen aus S3 davor |
+|---|---|---|---|
+| 08.08.2026 | 12:28 | 13 | — |
+| 08.08.2026 | 12:45 | **0** | — |
+| 11.08.2026 | 10:56 | 9 | — |
+| 14.08.2026 | 14:57 | **16** | — |
+| 16.08.2026 | 11:07 | **16** | — |
+| 20.08.2026 | 16:15 | **16** | 16:12:05 → 3 Min |
+| 21.08.2026 | 16:18 | **16** | 16:15:10 → 3 Min |
+| 27.08.2026 | 18:02 | **16** | 17:58:52 → 3 Min |
+| 28.08.2026 | 14:11 | **16** | 14:01:10 → 10 Min |
 
-Erkennungsmerkmal im Systemprotokoll: **Kernel-Power 41 mit `BugcheckCode = 0`**,
-`PowerButtonTimestamp = 0`, `SleepInProgress = 0`, begleitet von EventLog 6008.
-Das heisst ausdrücklich **kein** Betriebssystemabsturz — Windows bekommt vom
-Ausfall nichts mit, weil der Strom vorher weg ist.
+Alle neun haben `BugcheckCode = 0` und `PowerButtonTimestamp = 0`. Gemessen
+28.08.2026 über `(Get-WinEvent -FilterHashtable @{LogName='System'; Id=41}).Properties`.
+
+**Das Muster hat sich verändert.** Die frühen Vorfälle passierten im laufenden
+Betrieb. Die vier jüngsten dagegen **3 bis 10 Minuten nach dem Aufwachen aus
+dem Standby** — Uhrzeiten der `Kernel-Power`-131-Ereignisse in der letzten
+Spalte. Das ist kein Zufallstreffer mehr, sondern ein reproduzierbarer Ablauf.
+
+Erkennungsmerkmal im Systemprotokoll: **Kernel-Power 41 mit `BugcheckCode = 0`**
+und `PowerButtonTimestamp = 0`, begleitet von EventLog 6008. Das heisst
+ausdrücklich **kein** Betriebssystemabsturz — Windows bekommt vom Ausfall
+nichts mit. `SleepInProgress` gehört **nicht** in dieses Erkennungsmerkmal:
+Der Wert unterscheidet die beiden Sorten Vorfall (0 bzw. 13 und 9 früher,
+durchgehend 16 seit dem 14.08.).
+
+### Auslagerungsdatei auf einer USB-Platte (gefunden 28.08.2026)
+
+In `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`
+steht unter `PagingFiles`:
+
+```
+c:\pagefile.sys 0 0
+g:\pagefile.sys 4096 16384
+o:\pagefile.sys 4096 16384
+```
+
+**`G:` ist die Seagate Portable — eine USB-Platte.** Eine Auslagerungsdatei
+gehört dort nicht hin, und zusammen mit S3-Standby ist das ein plausibler
+Auslöser für genau das beobachtete Fehlerbild: Im Standby wird die
+USB-Anbindung stromlos; greift der Kernel nach dem Aufwachen auf ausgelagerte
+Seiten zu, bevor die Platte wieder da ist, folgt ein harter Reset — ohne
+Bluescreen und ohne Speicherabbild, weil der Auslagerungspfad selbst betroffen
+ist.
+
+**Das ist eine begründete Hypothese, kein Beweis.** Dafür spricht der
+zeitliche Zusammenhang mit dem Aufwachen bei allen vier jüngsten Vorfällen,
+das Fehlen jeder Hardwaremeldung (keine WHEA-Ereignisse, keine `disk`- oder
+`Ntfs`-Fehler, beide NVMe `Healthy`) und das Fehlen jedes Dumps. Nicht erklärt
+sind die Vorfälle vom 08. und 11.08. ohne Standby-Bezug — es können zwei
+Ursachen nebeneinander bestehen, die alte Stromfrage bleibt offen.
+
+Unabhängig von der Absturzfrage ist der Eintrag **falsch konfiguriert** und
+gehört entfernt. Aktiv sind ohnehin nur `C:` (9 GB) und `O:` (4 GB); auf `G:`
+legt Windows nur dann etwas an, wenn die Platte angeschlossen ist.
+
+**Zur Dumpfrage:** Auf `C:` liegt eine systemverwaltete Auslagerungsdatei
+(9 GB bei 63,7 GB RAM), `CrashDumpEnabled = 3` (Kernel-Abbild) ist gesetzt.
+Windows *könnte* also bei einem echten Bluescreen ein Abbild schreiben. Dass in
+`C:\Windows\Minidump` trotzdem nichts liegt, bleibt damit ein Befund und ist
+kein Konfigurationsmangel.
 
 Drei Gegenproben, die den Befund härten:
 
@@ -469,8 +541,23 @@ Schnittstelle sind langsam — viele kleine Dateien sind es.
 
 ## Windows Search stillgelegt (Stand 2026-08-16)
 
-> **Überholt seit 25.08.2026 — die Stilllegung hält nicht mehr.** Gemessen an
-> diesem Tag: `HKLM\SYSTEM\CurrentControlSet\Services\WSearch` → `Start = 2`
+> **Überholt seit 25.08.2026 — die Stilllegung hält nicht mehr, und sie ist
+> am 28.08.2026 immer noch aufgehoben.** Nachgemessen an diesem Tag:
+> `Get-Service WSearch` → `StartType = Automatic`, `Status = Stopped`. Im
+> Systemprotokoll stehen allein für den 28.08. **815** Abstürze (ID 7034),
+> davor 1.229 am 27.08., 1.269 am 26.08. und 1.487 am 25.08.; der jüngste
+> Eintrag lag beim Messen 2 Minuten zurück. Der Puffer reicht nur noch bis zum
+> 24.08. zurück — **das Protokoll überschreibt sich alle vier Tage selbst und
+> vernichtet damit die Spuren der Abstürze oben.** Das ist der eigentliche
+> Schaden dieses Fehlers, nicht die fehlende Suche.
+>
+> Ergaenzung 28.08.: Die Fehlermeldung lautet unverändert „Das System kann den
+> angegebenen Pfad nicht finden", `SetupCompletedSuccessfully = 0`, und eine
+> `Windows.edb` existiert nicht. Der Datenordner
+> `C:\ProgramData\Microsoft\Search\Data` ist zwar vorhanden, aber leer.
+>
+> Früherer Stand vom 25.08.2026: `HKLM\SYSTEM\CurrentControlSet\Services\WSearch`
+> → `Start = 2`
 > (**Automatisch**), nicht 4 (Deaktiviert). Folge: Die Absturzzyklen laufen
 > wieder. Im Systemprotokoll stehen für die letzten 7 Tage **16.111**
 > WSearch-Dienstereignisse — 8.054 × ID 7023 (Dienst mit Fehler beendet),
