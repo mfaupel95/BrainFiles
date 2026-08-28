@@ -42,37 +42,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [?] **T-002 — Auslagerungsdatei liegt auf einer USB-Platte**
-      Kontext: In `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\
-      Memory Management\PagingFiles` stehen drei Einträge:
-      `c:\pagefile.sys 0 0`, `g:\pagefile.sys 4096 16384`,
-      `o:\pagefile.sys 4096 16384`. **`G:` ist die Seagate Portable, also USB.**
-      Im S3-Standby wird die USB-Anbindung stromlos; greift der Kernel nach dem
-      Aufwachen auf ausgelagerte Seiten zu, bevor die Platte zurück ist, folgt
-      ein harter Reset ohne Bluescreen und ohne Speicherabbild — genau das
-      beobachtete Bild (T-004). Begründete Hypothese, kein Beweis; unabhängig
-      davon ist der Eintrag falsch am Platz.
-      Stand 28.08.: Auf `G:` liegt **derzeit keine** `pagefile.sys`, weil die
-      Platte beim Systemstart abgezogen war. Beim nächsten Neustart mit
-      angeschlossener Platte legt Windows sie wieder an — der Eingriff wirkt
-      also nur, wenn er **vor** dem nächsten Neustart erfolgt.
-      Nächster Schritt: Max führt den Befehl mit erhöhten Rechten aus (siehe
-      unten) — Claude hat in dieser Sitzung keine Adminrechte.
-      Sicherung des Schlüssels liegt als
-      `Routinen/sicherungen/MemoryManagement-20260828.reg`.
-      Wartet auf: Ausführung durch Max
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
-- [ ] **T-003 — Windows Search stürzt seit 24.08. in Endlosschleife ab**
-      Kontext: Über 5000 Dienstabstürze im Protokoll (815 allein am 28.08.,
-      läuft weiter). Fehler: „Das System kann den angegebenen Pfad nicht
-      finden", `SetupCompletedSuccessfully = 0`, keine `Windows.edb`. Folgen:
-      Dauerlast und ein Systemprotokoll, das so schnell überschrieben wird,
-      dass Absturzspuren älter als vier Tage verloren sind. Betrifft Max'
-      eigene Archivsuche nicht — die ist SQLite-basiert.
-      Nächster Schritt: Suchindex neu aufbauen lassen oder WSearch abschalten.
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
 - [ ] **T-004 — Neun Abstürze ohne Bluescreen seit 08.08., Ursache offen**
       Kontext: Alle Kernel-Power-41-Ereignisse haben `BugcheckCode = 0` und
       `SleepInProgress = 16` — kein Bluescreen, kein Speicherabbild, sondern
@@ -85,35 +54,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       28.08. ein echter Absturz war oder Max' eigener Eingriff, ist ungeklärt.
       Die Vorfälle vom 20., 21. und 27.08. sind davon unberührt — das Muster
       steht auch ohne den heutigen Datenpunkt.
-      Nächster Schritt: nach T-002 beobachten, ob es aufhört. Wenn nicht:
+      **Beobachtung läuft seit dem 28.08.2026, 16:00.** Gegenmassnahmen sind
+      gesetzt (T-002 entfernt, T-003 stillgelegt); Nullstand am 28.08. um 17:15:
+      seit dem Start um 15:19:36 kein Kernel-Power 41 — aber auch **kein
+      einziger Standby-Zyklus**, die Ruhe beweist also nichts. Weiterhin null
+      WHEA-Ereignisse in 30 Tagen und keine Plattenfehler (kein 153, kein 140).
+      Nächster Schritt: Standby-Zyklen zählen, nicht Tage. Aussagekräftig ab
+      etwa fünf Zyklen oder zehn absturzfreien Tagen. Bleibt es dabei:
       S3-Standby probeweise abschalten (Rechner durchlaufen lassen).
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
-- [ ] **T-005 — J: (WD My Book) nicht angeschlossen, iCloud-Junction ins Leere**
-      Kontext: Nach dem CMOS-Reset am 28.08. sind Seagate (`G:`, `H:`, `I:`)
-      wieder da, die WD My Book aber nicht: `Get-PnpDevice` meldet `Unknown`,
-      `Test-Path J:\` ist `False`. Die Junction
-      `C:\Users\faupe\iCloudPhotos` zeigt auf `J:\iCloudPhotos` und läuft
-      damit ins Leere — rund 30.635 Mediendateien. Nichts ist verloren, die
-      Platte hängt nur nicht dran. Dieselbe Platte hat 479 unkorrigierte
-      Lesefehler (Messung 14.08.), sie ist das schwächste Laufwerk im System.
-      Nächster Schritt: Max fragen, ob sie absichtlich ab ist.
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
-- [?] **T-006 — Echtzeituhr ging 68 Minuten nach**
-      Kontext: Am 28.08. um 15:20:12 hat der Zeitdienst die Systemzeit um
-      **4.108.764 ms (68,5 Minuten)** vorgestellt — von 14:11:43 auf 15:20:12.
-      Bis dahin liefen alle Protokolleinträge seit dem Start mit falscher Zeit.
-      Zwei Erklärungen: harmlos die Uhr, die nach dem CMOS-Reset neu gestellt
-      werden musste; unangenehm eine schwache CMOS-Batterie, die auch
-      BIOS-Einstellungen wieder verlieren würde.
-      Folge für die Diagnose: **Zeitstempel um den 28.08. herum sind bis 15:20
-      um 68 Minuten verschoben.** Zeitabstände innerhalb dieses Fensters
-      stimmen, absolute Uhrzeiten nicht.
-      Nächster Schritt: nach dem nächsten Kaltstart prüfen, ob die BIOS-Zeit
-      erneut wegläuft. Wenn ja: CMOS-Batterie (CR2032) tauschen.
-      Wartet auf: Beobachtung beim nächsten Start
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+      Messbefehl: Get-WinEvent -FilterHashtable @{LogName='System';Id=41,6008}
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28 (17:15)
 
 - [ ] **T-007 — 18 claude.ai-Connectors ohne einen einzigen Aufruf**
       Kontext: `claude mcp list` meldet 21 aktive claude.ai-Connectors. In
@@ -152,3 +102,36 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `G:\MaxHirn-Sicherung` erreichbar (2751,1 GB, 128,8 GB frei, `Healthy`).
       Der 20-Uhr-Lauf kann wieder arbeiten. Der Fehlstand bestand nur, solange
       die Platte ab war.
+
+- [x] **T-002 — Auslagerungsdatei liegt auf einer USB-Platte**
+      Erledigt 2026-08-28: Max hat den Eintrag mit erhöhten Rechten entfernt.
+      Nachgemessen um 17:15: `PagingFiles` enthält nur noch
+      `c:\pagefile.sys 0 0` und `o:\pagefile.sys 4096 16384`, auf `G:` liegt
+      keine `pagefile.sys`. Ob damit auch T-004 verschwindet, ist offen —
+      die Hypothese ist nicht bewiesen, nur die Fehlkonfiguration beseitigt.
+      Sicherung des Schlüssels: `Routinen/sicherungen/MemoryManagement-20260828.reg`.
+
+- [x] **T-003 — Windows Search stürzt seit 24.08. in Endlosschleife ab**
+      Erledigt 2026-08-28: Der Starttyp wurde um **16:00:04** auf „Deaktiviert"
+      gesetzt (Ereignis 7040). Letzter Absturz **15:59:41**, seither **null** in
+      77 Minuten. Vorher waren es 16.926 in sieben Tagen, allein 984 zwischen
+      dem Start um 15:19:36 und 15:59:41 — rund 24 pro Minute.
+      Der Suchindex wurde nicht neu gebaut; die Suche im Startmenü bleibt tot.
+      Max' eigene Archivsuche ist davon nicht betroffen (SQLite).
+      Gewinn: Das Systemprotokoll reicht wieder bis zum **05.08.2026** zurück
+      statt vier Tage — die Absturzspuren für T-004 überleben jetzt lange genug.
+
+- [x] **T-005 — J: (WD My Book) nicht angeschlossen, iCloud-Junction ins Leere**
+      Erledigt 2026-08-28: Die Platte ist wieder da. `Extern_BackUp`, 1.953 GB
+      gesamt, 246 GB frei, `Healthy`; NTFS meldete um 15:47:51 „Volume J: ist
+      fehlerfrei". Die Junction `C:\Users\faupe\iCloudPhotos` löst wieder auf.
+      Unverändert gilt: 479 unkorrigierte Lesefehler (Messung 14.08.), die
+      30.635 Mediendateien liegen weiter auf dem schwächsten Laufwerk.
+
+- [x] **T-006 — Echtzeituhr ging 68 Minuten nach**
+      Erledigt 2026-08-28: harmlos. Die Korrektur um 15:20:12 kam 36 Sekunden
+      nach dem Kaltstart um 15:19:36 — der CMOS-Reset hatte die Uhr geleert,
+      der Zeitdienst zog sie einmal gerade. **Seither kein weiterer Sprung**,
+      Abweichung 0,12 s gegen `time.windows.com` (gemessen 17:17).
+      Eine schwache CMOS-Batterie würde erneut driften; ein zweiter Messpunkt
+      in einigen Tagen bestätigt es endgültig. Bis dahin kein Handlungsbedarf.

@@ -199,6 +199,9 @@ Zwei Eigenheiten, die beim Diagnostizieren Zeit sparen:
 
 ## Stromausfälle ohne Bluescreen (offen, Stand 2026-08-28)
 
+> **Weiterhin offen, aber die Gegenmassnahmen laufen seit dem 28.08.2026, 16:00.**
+> Aktueller Messstand am Ende der Datei: „Nachmessung 28.08.2026, 17:15".
+
 Der Rechner geht in unregelmässigen Abständen **schlagartig aus**. Neun Vorfälle
 in 20 Tagen:
 
@@ -248,10 +251,14 @@ nichts mit. `SleepInProgress` gehört **nicht** in dieses Erkennungsmerkmal:
 Der Wert unterscheidet die beiden Sorten Vorfall (0 bzw. 13 und 9 früher,
 durchgehend 16 seit dem 14.08.).
 
-### Auslagerungsdatei auf einer USB-Platte (gefunden 28.08.2026)
+### Auslagerungsdatei auf einer USB-Platte (gefunden 28.08.2026, behoben am selben Tag)
+
+> **Erledigt.** Nachgemessen am 28.08.2026 um 17:15: `PagingFiles` enthält nur
+> noch `c:\pagefile.sys 0 0` und `o:\pagefile.sys 4096 16384`, und
+> `G:\pagefile.sys` existiert nicht. Der Befund unten ist der Ausgangszustand.
 
 In `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`
-steht unter `PagingFiles`:
+stand unter `PagingFiles`:
 
 ```
 c:\pagefile.sys 0 0
@@ -548,8 +555,13 @@ Schnittstelle sind langsam — viele kleine Dateien sind es.
 
 ## Windows Search stillgelegt (Stand 2026-08-16)
 
-> **Überholt seit 25.08.2026 — die Stilllegung hält nicht mehr, und sie ist
-> am 28.08.2026 immer noch aufgehoben.** Nachgemessen an diesem Tag:
+> **Seit dem 28.08.2026, 16:00:04 hält die Stilllegung wieder** — diesmal über
+> den Starttyp: `Get-Service WSearch` → `StartType = Disabled`, `Status =
+> Stopped`. Letzter Absturz um 15:59:41, seither null in 77 Minuten (gemessen
+> 17:16). Zahlen und Folgen in „Nachmessung 28.08.2026, 17:15" am Dateiende.
+>
+> **Überholt seit 25.08.2026 — die Stilllegung hielt nicht, und sie war
+> am 28.08.2026 bis 16:00 aufgehoben.** Nachgemessen an diesem Tag:
 > `Get-Service WSearch` → `StartType = Automatic`, `Status = Stopped`. Im
 > Systemprotokoll stehen allein für den 28.08. **815** Abstürze (ID 7034),
 > davor 1.229 am 27.08., 1.269 am 26.08. und 1.487 am 25.08.; der jüngste
@@ -655,3 +667,58 @@ ist aber kein Platz frei.
 **Das ist seit 2026-08-14 keine theoretische Sorge mehr:** Genau diese Platte
 zeigt 479 unkorrigierte Lesefehler (siehe „Zustand der Laufwerke"). Die
 Mediathek mit 30.635 Dateien liegt damit auf dem schwächsten Laufwerk im System.
+
+## Nachmessung 28.08.2026, 17:15 — Stand nach den drei Eingriffen
+
+Gemessen 17:15–17:17, Rechner lief seit dem Start um **15:19:36** (1 h 56 min).
+Drei der vier offenen Systempunkte sind damit erledigt, einer bleibt offen.
+
+| Punkt | Stand | Messwert |
+|---|---|---|
+| Auslagerungsdatei auf `G:` | **behoben** | `PagingFiles` enthält nur noch `c:\pagefile.sys 0 0` und `o:\pagefile.sys 4096 16384`; `G:\pagefile.sys` existiert nicht |
+| Windows Search | **stillgelegt** | Starttyp am 28.08. um **16:00:04** auf „Deaktiviert" gesetzt (Ereignis 7040), letzter Absturz **15:59:41** |
+| `J:` (WD My Book) | **wieder da** | `Extern_BackUp`, 1.953 GB, davon 246 GB frei, `Healthy`; Junction `C:\Users\faupe\iCloudPhotos` löst wieder auf |
+| Echtzeituhr | **erklärt** | −0,120 s gegen `time.windows.com` (zwei Proben, 17:17:22 und 17:17:24) |
+| Abstürze ohne Bluescreen | **offen** | seit dem Start kein Kernel-Power 41 — aber 1 h 56 min ohne einen einzigen Standby-Zyklus sagen nichts |
+
+### Was das Abschalten von Windows Search gebracht hat
+
+Der Dienst stürzte in sieben Tagen **16.926-mal** ab (dazu 8 Ereignisse unter dem
+Namen `WSearch` und eines der Funktionssuche-Ressourcenveröffentlichung).
+Allein zwischen dem Start um 15:19:36 und 15:59:41 waren es **984** — rund
+**24 Abstürze pro Minute**. Seit 16:00:04 steht der Zähler bei **null**,
+gemessen über 77 Minuten.
+
+Sichtbare Folge: **Das Systemprotokoll reicht wieder bis zum 05.08.2026, 19:39
+zurück** statt nur vier Tage. Genau das war der eigentliche Schaden — die
+Absturzspuren wurden schneller überschrieben, als sie auswertbar waren.
+
+### Die Echtzeituhr geht wieder richtig
+
+Die 68-Minuten-Korrektur fand am 28.08. um **15:20:12** statt, also 36 Sekunden
+nach dem Kaltstart um 15:19:36. Das passt zum CMOS-Reset: Der leert die RTC, der
+Zeitdienst zieht sie beim ersten Start einmal gerade. **Seither kein weiterer
+Sprung**, und die Abweichung liegt bei 0,12 Sekunden. Ein defekter
+Uhrenbaustein oder eine leere CMOS-Batterie würde erneut driften — beides ist
+damit vorerst ausgeschlossen, aber nicht bewiesen: Ein zweiter Messpunkt in
+einigen Tagen entscheidet es.
+
+### Negativbefunde (geprüft, war es nicht)
+
+- **WHEA-Logger: 0 Ereignisse in 30 Tagen.** Keine Fehler auf CPU-, RAM- oder
+  PCIe-Ebene. Diese Ebene ist damit zum wiederholten Mal ausgeschlossen.
+- **Keine Plattenfehler.** Von `disk`, `Microsoft-Windows-Ntfs` und `volmgr`
+  kamen in sieben Tagen nur 40 Ereignisse der ID **98** — allesamt
+  Informationen der Bauart „Volume `J:` ist fehlerfrei". Kein einziges 153
+  (wiederholter E/A-Fehler) und kein 140 (NTFS-Warnung).
+- **Kernel-Power 41 unverändert neun Stück** seit dem 08.08., der letzte am
+  28.08. um 14:11:19 — **vor** den Eingriffen. Ob sie ausbleiben, ist noch
+  nicht messbar.
+
+### Was jetzt gemessen werden muss
+
+Der Nachweis für T-004 hängt an einem einzigen Ereignis: **einem Standby-Zyklus
+ohne anschliessenden Reset.** Vier der neun Abstürze kamen 3–10 Minuten nach dem
+Aufwachen aus S3. Solange der Rechner durchläuft, beweist Ruhe gar nichts.
+Aussagekräftig wird es erst nach etwa fünf Standby-Zyklen oder zehn
+absturzfreien Tagen — je nachdem, was zuerst eintritt.
