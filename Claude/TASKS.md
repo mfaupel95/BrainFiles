@@ -55,15 +55,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Die Vorfälle vom 20., 21. und 27.08. sind davon unberührt — das Muster
       steht auch ohne den heutigen Datenpunkt.
       **Beobachtung läuft seit dem 28.08.2026, 16:00.** Gegenmassnahmen sind
-      gesetzt (T-002 entfernt, T-003 stillgelegt); Nullstand am 28.08. um 17:15:
-      seit dem Start um 15:19:36 kein Kernel-Power 41 — aber auch **kein
-      einziger Standby-Zyklus**, die Ruhe beweist also nichts. Weiterhin null
-      WHEA-Ereignisse in 30 Tagen und keine Plattenfehler (kein 153, kein 140).
+      gesetzt (T-002 entfernt, T-003 stillgelegt). Nachgemessen am 28.08. um
+      23:07, Laufzeit 7,8 h: kein Kernel-Power 41 seit dem Start um 15:19:36,
+      aber **null Standby-Zyklen** (Kernel-Power 42/107) — die Bedingung, unter
+      der vier der neun Abstürze auftraten, ist also nie eingetreten, die Ruhe
+      beweist nichts. Zähler steht bei **0 von 5 Zyklen**. Weiterhin null WHEA
+      in 30 Tagen; von `disk`/`Ntfs`/`volmgr` in 7 Tagen nur 46 × ID 98
+      (Information „Volume ist fehlerfrei"), kein 153, kein 140.
       Nächster Schritt: Standby-Zyklen zählen, nicht Tage. Aussagekräftig ab
       etwa fünf Zyklen oder zehn absturzfreien Tagen. Bleibt es dabei:
       S3-Standby probeweise abschalten (Rechner durchlaufen lassen).
       Messbefehl: Get-WinEvent -FilterHashtable @{LogName='System';Id=41,6008}
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28 (17:15)
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28 (23:07)
 
 - [ ] **T-007 — 18 claude.ai-Connectors ohne einen einzigen Aufruf**
       Kontext: `claude mcp list` meldet 21 aktive claude.ai-Connectors. In

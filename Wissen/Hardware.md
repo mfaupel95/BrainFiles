@@ -722,3 +722,23 @@ ohne anschliessenden Reset.** Vier der neun Abstürze kamen 3–10 Minuten nach 
 Aufwachen aus S3. Solange der Rechner durchläuft, beweist Ruhe gar nichts.
 Aussagekräftig wird es erst nach etwa fünf Standby-Zyklen oder zehn
 absturzfreien Tagen — je nachdem, was zuerst eintritt.
+
+### Zwischenstand 28.08.2026, 23:07 — Beobachtung zählt noch bei null Zyklen
+
+Rechner läuft seit dem Start um 15:19:36 durch, **7,8 Stunden ohne Unterbrechung**.
+
+| Messgrösse | Wert |
+|---|---|
+| Kernel-Power 41 seit dem Start | **0** (unverändert neun seit 08.08., letzter 28.08. um 14:11:19) |
+| Standby-Zyklen seit dem Start (Kernel-Power 42/107) | **0** — der Rechner war kein einziges Mal im Standby |
+| `WSearch`-Abstürze seit dem Start | **0** (vorher 24 pro Minute) |
+| WHEA-Ereignisse, 30 Tage | **0** |
+| `disk`/`Ntfs`/`volmgr`, 7 Tage | 46 × ID **98**, alle „Volume ist fehlerfrei" — kein 153, kein 140 |
+
+**Die Ruhe beweist weiterhin nichts.** Ohne einen einzigen S3-Zyklus ist die
+Bedingung, unter der vier der neun Abstürze auftraten, gar nicht eingetreten.
+Der Zähler, auf den es ankommt, steht bei 0 von 5.
+
+Die 46 Ereignisse der ID 98 sind dieselbe harmlose Sorte wie die 40 vom
+17:15-Stand — Schattenkopie-Volumes, die sich selbst als fehlerfrei melden.
+Der Anstieg ist kein Signal.
