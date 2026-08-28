@@ -82,12 +82,28 @@ liest sie jeder, der sie findet.
 | `tagesbriefing` | Morgendlicher Überblick |
 | `wochenrueckblick` | Wochenabschluss und Aufräumen |
 
+Dazu seit 28.08.2026 sechs Skills für den Betrieb des Systems selbst:
+
+| Skill | Wofür |
+|---|---|
+| `system` | Windows-Probleme gezielt eingrenzen statt rundum scannen |
+| `verbindungen` | MCP-Server und Dienste prüfen, eintragen, reparieren |
+| `vergleich` | Ordner über Laufwerke vergleichen, Duplikate, Zusammenführen |
+| `sichern` | Committen, ohne fremde Arbeit zu vermischen oder zu verlieren |
+| `skill` | Aus einem Anwendungsfall eine wiederholbare Aufgabe machen |
+| `rueckschau` | Sitzungen auswerten, um wiederkehrende Arbeit zu finden |
+
 Aufruf in Claude Code mit `/archiv`, `/posteingang` usw.
 
 Ausführliche Beschreibung aller Skills, der Werkzeuge darunter und der Grenzen:
 [Handbuch.html](Handbuch.html) — im Browser öffnen, mit Strg+P druckfertig (A4, 11 Kapitel).
 
-## Offen (Stand 23.08.2026)
+## Offen
+
+**Die verbindliche Liste ist [Claude/TASKS.md](Claude/TASKS.md)** (seit 28.08.2026).
+Der folgende Abschnitt ist der Stand vom 23.08.2026 und wird nicht mehr gepflegt.
+
+### Stand 23.08.2026 (überholt)
 
 - [ ] **Netzteil / Stromzufuhr klären** — blockiert alles Langlaufende
       (siehe [[Hardware]]). Zuerst das Billige: Kaltgerätekabel,

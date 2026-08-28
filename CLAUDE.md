@@ -42,6 +42,29 @@ Einstieg für Menschen: [Dashboard.md](Dashboard.md)
    Anleitungen? Dann `archiv`-Skill benutzen, nicht das Internet.
 3. **Erst danach Internet** (WebSearch/WebFetch) — für allgemeines Weltwissen.
 
+## Jede Aufgabe wird wiederholbar gemacht
+
+Angeordnet am 28.08.2026: **Aus jedem Anwendungsfall entsteht eine wiederholbare
+Aufgabe.** Ziel ist, langfristig alle Operationen lokal ausführen zu können,
+ohne dass ein Weg zweimal gesucht werden muss.
+
+Am Ende einer Aufgabe, die ein zweites Mal vorkommen wird, wird also abgelegt —
+ungefragt, und die Ablage in einem Satz gemeldet:
+
+| Was dabei herauskam | Wohin |
+|---|---|
+| ein Verfahren mit Fallen | Skill unter `.claude/skills/` (Skill `skill`) |
+| eine Zahl, ein Befund, ein Zustand | Notiz unter `Wissen/` (Skill `notiz`) |
+| etwas, das ohne Nachdenken laufen soll | Skript in `Routinen/` oder `ArchivSuche/` |
+| ein offener Punkt | `Claude/TASKS.md`, sofort |
+
+**Der Skill verweist, er wiederholt nicht.** Zahlen stehen in der Notiz, sonst
+veraltet die Kopie im Skill still. Verlinkt wird mit `[[Notizname]]`.
+
+Nicht jeder Fall verdient einen Skill — die Prüffragen und das Hausformat stehen
+im Skill `skill`. Ob sich etwas wirklich wiederholt, wird gemessen (Skill
+`rueckschau`), nicht geschätzt.
+
 ## Notizen im Vault
 
 Neue Erkenntnisse, die dauerhaft gelten, gehören als Markdown-Datei nach `Wissen/`
