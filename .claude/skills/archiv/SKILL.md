@@ -11,8 +11,20 @@ Bei jeder Frage, deren Antwort in Max' eigenen Unterlagen liegen könnte. Im
 Zweifel: erst hier suchen, das kostet einen Aufruf. Erst wenn nichts kommt oder
 die Frage allgemeines Weltwissen braucht, ins Internet.
 
-## Wie
+## Wie — zuerst der Server
 
+Der MCP-Server `archiv` beantwortet die Suche in **einem** Aufruf, ohne venv und
+ohne Pfadgefummel: `archiv_suchen` (Suche), `archiv_datei_lesen` (Volltext einer
+Fundstelle), `archiv_statistik` (Umfang und Indexdatum), `posteingang_stand`.
+
+Das ist der kürzere Weg und wird trotzdem selten genommen: In 53 Sitzungen
+kam der Server auf **acht** Aufrufe, während 462 Befehle dieselbe Arbeit über
+die Kommandozeile erledigten (gemessen 28.08.2026, siehe [[Werkzeuge]]).
+
+## Wenn der Server nicht da ist
+
+Taucht `mcp__archiv__*` nicht in der Werkzeugliste auf — etwa in einer
+CLI-Sitzung außerhalb der Desktop-Anwendung —, geht es über die Kommandozeile.
 Vom Vault-Wurzelordner aus:
 
 ```powershell

@@ -6,6 +6,10 @@ Liest die JSONL-Transkripte unter ~/.claude/projects/ und beantwortet zwei
 Fragen, die man von Hand nicht beantworten kann:
   1. Was hat Max wiederholt verlangt?      -> Anweisungen, gekuerzt
   2. Welche Befehle liefen dabei wirklich? -> Themen-Cluster mit Anzahl
+  3. Welche Werkzeuge wurden benutzt?      -> je MCP-Server, mit --werkzeuge
+
+Der dritte Punkt ist der Werkzeug-Abgleich: Ein Server, der eingetragen ist
+und nie aufgerufen wird, kostet in jeder Sitzung Kontext und liefert nichts.
 
 Bewusst sparsam: die Standardausgabe ist eine Zusammenfassung. Die
 Volltexte landen in Dateien, nicht im Kontext - 362 Anweisungen ungekuerzt
@@ -16,6 +20,7 @@ Aufruf:
     python sitzungen_auswerten.py --anweisungen   jede Anweisung, 170 Zeichen
     python sitzungen_auswerten.py --seit 2026-08-20
     python sitzungen_auswerten.py --ausgabe ORDNER   Volltexte dorthin
+    python sitzungen_auswerten.py --werkzeuge     Aufrufe je Server und Skill
 """
 
 import argparse
@@ -56,6 +61,7 @@ RAUSCHEN = re.compile(
 
 def sitzungen_lesen(basis, seit):
     anweisungen, befehle, werkzeuge = [], [], collections.Counter()
+    server, skills = collections.Counter(), collections.Counter()
     dateien = glob.glob(os.path.join(basis, "**", "*.jsonl"), recursive=True)
     for pfad in dateien:
         try:
@@ -88,13 +94,19 @@ def sitzungen_lesen(basis, seit):
                     elif rolle == "assistant" and isinstance(inhalt, list):
                         for block in inhalt:
                             if isinstance(block, dict) and block.get("type") == "tool_use":
-                                werkzeuge[block.get("name", "")] += 1
-                                befehl = (block.get("input") or {}).get("command")
+                                name = block.get("name", "")
+                                eingabe = block.get("input") or {}
+                                werkzeuge[name] += 1
+                                if name.startswith("mcp__"):
+                                    server[name.split("__")[1]] += 1
+                                elif name == "Skill":
+                                    skills[eingabe.get("skill", "?")] += 1
+                                befehl = eingabe.get("command")
                                 if isinstance(befehl, str):
                                     befehle.append(befehl)
         except OSError as fehler:
             print(f"uebersprungen: {pfad} ({fehler})")
-    return len(dateien), anweisungen, befehle, werkzeuge
+    return len(dateien), anweisungen, befehle, werkzeuge, server, skills
 
 
 def main():
@@ -102,6 +114,7 @@ def main():
     p.add_argument("--basis", default=os.path.join(os.path.expanduser("~"), ".claude", "projects"))
     p.add_argument("--seit", default=None, help="nur ab diesem Tag, JJJJ-MM-TT")
     p.add_argument("--anweisungen", action="store_true", help="jede Anweisung gekuerzt zeigen")
+    p.add_argument("--werkzeuge", action="store_true", help="Aufrufe je MCP-Server und Skill")
     p.add_argument("--ausgabe", default=None, help="Ordner fuer die Volltexte")
     args = p.parse_args()
 
@@ -109,7 +122,7 @@ def main():
         print(f"Kein Sitzungsordner unter {args.basis}")
         return 1
 
-    anzahl, anweisungen, befehle, werkzeuge = sitzungen_lesen(args.basis, args.seit)
+    anzahl, anweisungen, befehle, werkzeuge, server, skills = sitzungen_lesen(args.basis, args.seit)
     echte = [a for a in anweisungen if not RAUSCHEN.match(a[2])]
 
     print(f"Sitzungen: {anzahl}   Anweisungen: {len(anweisungen)} "
@@ -124,6 +137,18 @@ def main():
         print(f"  {wert:5d}  {name}")
 
     print("\nWerkzeuge:", ", ".join(f"{k}={v}" for k, v in werkzeuge.most_common(10)))
+
+    if args.werkzeuge:
+        gesamt = sum(server.values())
+        print(f"\nMCP-Aufrufe: {gesamt} in {len(server)} Servern")
+        for name, wert in server.most_common():
+            anteil = 100.0 * wert / gesamt if gesamt else 0
+            print(f"  {wert:5d}  ({anteil:4.1f} %)  {name}")
+        print(f"\nSkill-Aufrufe: {sum(skills.values())}")
+        for name, wert in skills.most_common():
+            print(f"  {wert:5d}  {name}")
+        print("\nAbgleichen mit `claude mcp list` und claude_desktop_config.json:")
+        print("Ein eingetragener Server ohne Aufrufe ist Ballast, kein Werkzeug.")
 
     if args.anweisungen:
         print(f"\n--- {len(echte)} Anweisungen ---")

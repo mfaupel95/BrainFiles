@@ -83,7 +83,28 @@ Sitzung geschrieben hat. Mehrere Sitzungen und Hermes greifen auf dieselben
 Dateien zu. Vor dem Schreiben deshalb `LastWriteTime` ansehen — ist die Datei
 jünger als zehn Minuten, arbeitet vermutlich jemand anders daran.
 
-## 5. Danach
+## 5. Benutzt wird, was abgerufen wird
+
+Ein eingetragener Server ist kein Werkzeug, solange ihn niemand aufruft — er
+kostet dann nur Kontext. Wie oft welcher tatsächlich lief:
+
+```
+.venv\Scripts\python.exe .claude\skills\rueckschau\sitzungen_auswerten.py --werkzeuge
+```
+
+Der Stand vom 28.08.2026 steht in [[Werkzeuge]]: 242 Aufrufe in 53 Sitzungen,
+drei Viertel davon Browser, 18 claude.ai-Connectors mit **null** Aufrufen.
+
+Zwei Schlüsse daraus, die bei jeder Prüfung mitlaufen:
+
+- **Vor dem Browser prüfen, ob es einen Server oder eine CLI gibt.** Ein
+  Seitenaufruf kostet mehrere Runden, ein Werkzeugaufruf eine.
+- **Ein Weg, der in einer CLAUDE.md steht, ist damit noch nicht benutzbar.**
+  `mail` war dort als vorgesehener Versandweg beschrieben und meldete
+  „Keine Absenderadresse hinterlegt". Bei einem Werkzeug, das noch nie lief,
+  vor dem ersten Einsatz die Prüffunktion aufrufen, nicht den Ernstfall.
+
+## 6. Danach
 
 Jede Änderung am Serverbestand gehört mit Datum nach [[Verbindungen]] — auch das
 Abschalten. Ein „aktiv", das seit Wochen niemand nachgemessen hat, ist die

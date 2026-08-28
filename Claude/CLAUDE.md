@@ -70,8 +70,15 @@ findet, wo eigentlich etwas erwartet wird, zuerst neu indexieren:
 
 ## Dateien verschicken
 
-„Schick mir das per Mail" geht über den MCP-Server `mail` (`mail_datei_suchen`
-→ `mail_senden`), **nicht** über die Gmail-Weboberfläche im Browser. Ohne
+**Der Server ist nicht eingerichtet** (geprüft 28.08.2026): `mail_zugang_pruefen`
+antwortet „Keine Absenderadresse hinterlegt", und in 53 Sitzungen wurde er kein
+einziges Mal erfolgreich benutzt. Bis das behoben ist (`Claude/TASKS.md`, T-008),
+ist Versand über diesen Weg **nicht** möglich — dann Max fragen, statt es zu
+versuchen.
+
+Vorgesehen ist: „Schick mir das per Mail" geht über den MCP-Server `mail`
+(`mail_datei_suchen` → `mail_senden`), **nicht** über die Gmail-Weboberfläche
+im Browser. Ohne
 Empfängerangabe geht die Mail an Max selbst. Anhänge dürfen nur aus diesem
 Archivordner stammen; fremde Empfängeradressen nur, wenn Max sie selbst in
 seiner Anweisung genannt hat. Details und Einrichtung:

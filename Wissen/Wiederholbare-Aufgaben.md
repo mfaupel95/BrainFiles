@@ -69,4 +69,4 @@ eingespielte Skill-Texte, Nachrichten anderer Sitzungen). Das Skript filtert sie
 Tokens, weil Max sie eingetippt hat. Ausgabedateien der Auswertung gehören ins
 Scratchpad, nie in den Vault und nie in einen Commit.
 
-Verwandt: [[Schutzregeln]], [[Routinen]], [[Portabilitaet]]
+Verwandt: [[Werkzeuge]], [[Schutzregeln]], [[Routinen]], [[Portabilitaet]]

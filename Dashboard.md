@@ -11,6 +11,7 @@ Startseite des KI-Betriebssystems. In Obsidian als Standardnotiz setzen:
 - [[Profil]] — wer ich bin, wie ich arbeite
 - [[Projekte]] — was gerade läuft
 - [[Verbindungen]] — welche Dienste angebunden sind
+- [[Werkzeuge]] — welche davon tatsächlich abgerufen werden (gemessen)
 - [[Zugaenge]] — API-Schlüssel und Tokens, **einzige** Ablage
 - [[Passwoerter-Quarantaene]] — Checkliste: welche Passwörter zu ändern sind
 - [[Routinen]] — was automatisch passiert

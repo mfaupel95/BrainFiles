@@ -115,6 +115,35 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Beobachtung beim nächsten Start
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
+- [ ] **T-007 — 18 claude.ai-Connectors ohne einen einzigen Aufruf**
+      Kontext: `claude mcp list` meldet 21 aktive claude.ai-Connectors. In
+      53 gespeicherten Sitzungen wurden davon **drei** je einmal aufgerufen
+      (Kalender, Gmail, Drive); die übrigen 18 kein einziges Mal — darunter
+      Uber, Uber Eats, PayPal, HubSpot, monday.com, Morningstar, DataHub,
+      Play Sheet Music, tldraw, Excalidraw, Sprouts, Windsor.ai, Superhuman
+      Docs, ChangeThisFile, UseMyContext, Unstructured, Economic Index.
+      Jeder belegt in **jeder** Sitzung Kontext, bevor ein Wort gesagt ist.
+      Max hat das am 27.08. selbst als größten Hebel benannt; der Punkt ging
+      danach verloren, weil er nirgends eingetragen war.
+      Nächster Schritt: Max schaltet sie in den Connector-Einstellungen auf
+      claude.ai ab — das geht nicht lokal und nicht aus einer Sitzung heraus.
+      Messbefehl für den Vorher-Nachher-Vergleich:
+      `sitzungen_auswerten.py --werkzeuge`
+      Betrifft: claude.ai-Konto, nicht den Vault
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+
+- [?] **T-008 — MCP-Server `mail` ist nicht eingerichtet**
+      Kontext: `Claude/CLAUDE.md` beschreibt den Versand über `mail_senden`
+      als den vorgesehenen Weg für „schick mir das per Mail". Der Server
+      antwortet aber mit „Keine Absenderadresse hinterlegt" — in 53 Sitzungen
+      wurde er kein einziges Mal erfolgreich benutzt. Der dokumentierte Weg
+      existiert also nur auf dem Papier. Die CLAUDE.md ist am 28.08.
+      entsprechend korrigiert.
+      Nächster Schritt: `MCP-Server/mail/.venv\Scripts\python.exe einrichten.py`
+      — braucht Absenderadresse und App-Passwort, also Max' Zutun.
+      Wartet auf: Zugangsdaten von Max
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+
 ## Erledigt
 
 - [x] **T-001 — Sicherungslaufwerk G: fehlt, Hauptsicherung hat kein Ziel**
