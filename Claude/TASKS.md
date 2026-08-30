@@ -67,6 +67,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       anderen**, sonst ist unbekannt, welcher gewirkt hat. Bei zuletzt 2,5 bis
       32 Stunden Abstand zeigt sich das binnen zwei bis drei Tagen.
       Wartet auf: Max — Handgriff an Kabel und Steckdose.
+      Messbefehl: Routinen/absturz-nachmessen.ps1 (nur lesend, ohne Adminrechte)
       Betrifft: [[Hardware]], Abschnitt „Nachmessung 30.08.2026, 22:20"
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-30 (22:20)
 
