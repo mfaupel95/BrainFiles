@@ -82,6 +82,7 @@ function Ersetze-InDatei {
     )
     if (-not (Test-Path $Datei)) { return 0 }
     $inhalt = Get-Content -LiteralPath $Datei -Raw -Encoding UTF8
+    if ($null -eq $inhalt) { return 0 }   # leere Datei
     $neu = $inhalt
     $treffer = 0
     foreach ($muster in $Ersetzungen.Keys) {

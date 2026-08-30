@@ -1,0 +1,47 @@
+Wurzel: C:\Users\faupe\Documents\BrainFiles
+
+[Probe] git mv MaxHirn/Claude MaxHirn/Archiv
+
+Verweise in 61 Dateien:
+    7  MaxHirn\.claude\skills\archiv\SKILL.md
+   10  MaxHirn\.claude\skills\posteingang\SKILL.md
+    1  MaxHirn\.claude\skills\schaden\SKILL.md
+    2  MaxHirn\.claude\skills\sichern\SKILL.md
+    2  MaxHirn\.claude\skills\system\SKILL.md
+    1  MaxHirn\.claude\skills\tagesbriefing\SKILL.md
+    3  MaxHirn\.claude\skills\verbindungen\SKILL.md
+    2  MaxHirn\AGENTS.md
+    3  MaxHirn\CLAUDE.md
+   10  MaxHirn\Dashboard.md
+    1  MaxHirn\Wissen\Benutzerprofil.md
+    1  MaxHirn\Wissen\Fachkunde-Holztechnik.md
+   12  MaxHirn\Wissen\Hardware.md
+    1  MaxHirn\Wissen\Hermes.md
+    2  MaxHirn\Wissen\Miniaturansichten.md
+    2  MaxHirn\Wissen\Portabilitaet.md
+    2  MaxHirn\Wissen\Profil.md
+    2  MaxHirn\Wissen\Projekte.md
+   16  MaxHirn\Wissen\Schutzregeln.md
+    2  MaxHirn\Wissen\Steuerunterlagen.md
+    6  MaxHirn\Wissen\Verbindungen.md
+    2  MaxHirn\Wissen\Werkzeuge.md
+  [Probe] Sicherung -> claude_desktop_config.json.bak-20260830
+  pdf-vault: Archivpfad nachgezogen
+  coworkUserFilesPath nachgezogen
+  Worktree-Ort auf Werkstatt\Worktrees gesetzt
+claude_desktop_config.json: 3 Einstellung(en); Berechtigungsvermerke unangetastet.
+
+STUFE 0, von Hand: 3 Verweis(e) in Zugaenge.md -- nicht automatisch geaendert.
+Gegenprobe: 86 Resttreffer -- pruefen:
+  SKILL.md: Claude\ArchivSuche\.v
+  SKILL.md: ts\python.exe Claude\ArchivSuche\se
+  SKILL.md: g bereits in `Claude/`, entfällt da
+  SKILL.md: s führende `Claude\`.
+  SKILL.md: Claude\ArchivSuche\.v
+  SKILL.md: ts\python.exe Claude\ArchivSuche\in
+  SKILL.md: `Claude/Software/` ist
+  SKILL.md: e Dateien aus Claude/Posteingang/ i
+  SKILL.md: einfach nach `Claude/Posteingang/`.
+  SKILL.md: Get-ChildItem Claude\Posteingang -R
+  SKILL.md: Claude\ArchivSuche\.v
+  SKILL.md: ts\python.exe Claude\ArchivSuche\so

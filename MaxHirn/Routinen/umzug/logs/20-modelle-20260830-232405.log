@@ -1,0 +1,23 @@
+Wurzel: C:\Users\faupe\Documents\BrainFiles
+Ollama laeuft (2 Prozesse) und muss weichen.
+
+Verschieben:
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\Modelle  ->  C:\Users\faupe\Documents\BrainFiles\Modelle
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\Daten  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Daten
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\blobs
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\manifests
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\app.ico
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\lib
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\ollama.exe
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\ollama app.exe
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\unins000.dat
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\unins000.exe
+  FEHLT: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\unins000.msg
+  [Probe] anlegen: Modelle\HuggingFace
+  [Probe] anlegen: Modelle\GGUF
+  [Probe] anlegen: Modelle\Checkpoints
+
+
+OLLAMA_MODELS bisher: C:\Users\faupe\Documents\BrainFiles\MaxHirn\Modelle\Ollama\models
+OLLAMA_MODELS kuenftig: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\Store
+

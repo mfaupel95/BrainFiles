@@ -1,0 +1,35 @@
+Wurzel: C:\Users\faupe\Documents\BrainFiles
+Ollama laeuft (2 Prozesse) und muss weichen.
+Ollama beendet.
+
+Verschieben:
+  verschoben: Modelle  ->  C:\Users\faupe\Documents\BrainFiles\Modelle
+  verschoben: Daten  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Daten
+  verschoben: blobs  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\Store\blobs
+  verschoben: manifests  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\Store\manifests
+  verschoben: app.ico  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\app.ico
+  verschoben: lib  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\lib
+  verschoben: ollama.exe  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\ollama.exe
+  verschoben: ollama app.exe  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\ollama app.exe
+  verschoben: unins000.dat  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\unins000.dat
+  verschoben: unins000.exe  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\unins000.exe
+  verschoben: unins000.msg  ->  C:\Users\faupe\Documents\BrainFiles\Modelle\Programme\Ollama\unins000.msg
+
+verwaiste Ablage Modelle\Ollama\models: 1 Blobs, davon 1 auch im Store.
+verwaiste Ablage entfernt (jeder Blob lag hash-gleich im Store).
+leerer Altordner entfernt: Modelle\Manifeste
+
+OLLAMA_MODELS bisher: C:\Users\faupe\Documents\BrainFiles\MaxHirn\Modelle\Ollama\models
+OLLAMA_MODELS kuenftig: C:\Users\faupe\Documents\BrainFiles\Modelle\Ollama\Store
+gesetzt (Benutzervariable).
+
+Kimi-K2.7-Code: 67 von LFS verwaltete Dateien, davon ausgecheckt:
+  09b4d925aa - figures/demo_video.mp4
+  f039216c7c - model-00001-of-000064.safetensors
+  9f29f76850 - model-00002-of-000064.safetensors
+  1e3c59ab16 - model-00003-of-000064.safetensors
+  0863caf2c5 - model-00004-of-000064.safetensors
+Ollama neu gestartet.
+  NAME                    ID              SIZE     MODIFIED     
+  qwen3.8:latest          22130167c4c2    17 GB    47 hours ago    
+  kimi-k2.7-code:cloud    e30d96cd3936    -        2 days ago      

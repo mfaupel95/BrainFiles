@@ -1,0 +1,15 @@
+Wurzel: C:\Users\faupe\Documents\BrainFiles
+
+Repo-Wurzel laut Git: C:/Users/faupe/Documents/BrainFiles
+.git liegt bereits oben - Sauberkeitspruefung entfaellt.
+117 versionierte Dateien im Index (alte Pfade).
+leere .git-Huelle in MaxHirn entfernt
+  uebersprungen (schon dort): C:\Users\faupe\Documents\BrainFiles\.git
+  verschoben: .gitattributes  ->  C:\Users\faupe\Documents\BrainFiles\.gitattributes
+neue .gitignore (Whitelist mit MaxHirn/-Praefix) gesetzt
+  fehlt am neuen Ort: MaxHirn/.gitattributes
+  fehlt am neuen Ort: MaxHirn/.gitignore
+115 Dateien namentlich hinzugefuegt
+
+vorgemerkt: 115 Umbenennungen, 0 Neuzugaenge, 0 Loeschungen
+unversioniert sichtbar (sollte klein sein): 4

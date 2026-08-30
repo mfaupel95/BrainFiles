@@ -1,0 +1,14 @@
+Wurzel: C:\Users\faupe\Documents\BrainFiles
+
+Verschieben:
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\GitHub  ->  C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\Coworking-Space  ->  C:\Users\faupe\Documents\BrainFiles\Werkstatt\Sitzungen
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\Codex  ->  C:\Users\faupe\Documents\BrainFiles\Werkstatt\Protokolle\Codex
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\Claude\Worktrees  ->  C:\Users\faupe\Documents\BrainFiles\Werkstatt\Worktrees
+  [Probe] C:\Users\faupe\Documents\BrainFiles\MaxHirn\phase1-git-stabilization.ps1  ->  C:\Users\faupe\Documents\BrainFiles\Werkstatt\Protokolle\phase1-git-stabilization.ps1
+
+  [Probe] anlegen: Werkstatt\Austausch
+  [Probe] anlegen: Werkstatt\Projekte
+  [Probe] anlegen: Werkstatt\Ausgabe
+  [Probe] Spielregeln -> Werkstatt\AGENTS.md
+  [Probe] Spielregeln -> Werkstatt\CLAUDE.md
