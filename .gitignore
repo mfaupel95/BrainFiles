@@ -30,6 +30,9 @@
 # versioniert. .gitattributes haelt die Zeilenenden auf LF (Portabilitaet.md).
 !/.gitignore
 !/.gitattributes
+# Die Karte der vier Ordner, in beiden Namen (Claude liest CLAUDE.md,
+# Hermes und Codex lesen AGENTS.md).
+!/*.md
 !MaxHirn/*.md
 !MaxHirn/Wissen/**/*.md
 !MaxHirn/.claude/skills/**

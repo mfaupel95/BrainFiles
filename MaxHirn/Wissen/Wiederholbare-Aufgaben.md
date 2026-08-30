@@ -66,6 +66,20 @@ Ein Skript war neu: `Routinen/arbeitsbaum-pruefen.ps1` trennt den Git-Arbeitsbau
 nach der 10-Minuten-Schwelle in ruhend und in Arbeit — die Handarbeit, die vor
 jedem der 103 Git-Befehle nötig war.
 
+## Nachtrag 30.08.2026: `umzug`
+
+Der siebte Skill ist **nicht** aus dieser Messung entstanden, sondern aus einem
+Anlassfall: dem Umbau von `BrainFiles/` in vier Ordner. Er zählt trotzdem als
+wiederkehrend, und zwar mit Beleg — im August sind die MCP-Server schon einmal
+umgezogen, von `%APPDATA%` nach `MCP-Server/` (siehe [[Verbindungen]], Stand
+13.08.2026). Beim zweiten Mal am 30.08. brachen dieselben fünf Dinge wie beim
+ersten. Genau das ist das Kriterium aus dem Skill `skill`: nicht die Häufigkeit
+schätzen, sondern einen zweiten Fall vorweisen.
+
+Was er kostet, wenn er fehlt: still ausfallende MCP-Server und geplante
+Aufgaben, die Erfolg melden, während sie ins Leere laufen. Details in
+[[Ordnerstruktur]].
+
 ## Fallen bei einer erneuten Auswertung
 
 **Über Befehle zählen, nicht über Anweisungen.** Bei einem Fork trägt jede Kopie

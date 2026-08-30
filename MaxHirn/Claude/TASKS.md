@@ -42,6 +42,56 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [?] **T-010 — 32 GB Kimi-K2.7-Code: auschecken, behalten oder weg?**
+      Kontext: `Modelle/Kimi-K2.7-Code` belegt 32,1 GB, davon liegt alles in
+      `.git` (LFS). Im Arbeitsbaum steht keine einzige Gewichtsdatei — nur
+      Python- und Konfigurationsdateien. `git lfs ls-files` meldet 67 verwaltete
+      Dateien, darunter `model-00001-of-000064.safetensors`. Solange nichts
+      ausgecheckt ist, sind die 32 GB totes Gewicht; ein Auschecken bräuchte
+      noch einmal so viel Platz.
+      Nächster Schritt: entscheiden. Auschecken (`git lfs checkout`), so lassen
+      oder löschen. Ein Skript entscheidet das nicht.
+      Betrifft: `Modelle/Kimi-K2.7-Code`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
+- [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
+      Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
+      `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
+      `MaxHirn/Modelle` und ist beim Umbau am 30.08.2026 unverändert an seiner
+      relativen Stelle mitgewandert, weil unbekannt ist, welches Programm ihn
+      schreibt und ob es ihn an fester Stelle sucht.
+      Nächster Schritt: Urheber bestimmen (OKX/OnchainOS-Werkzeuge prüfen),
+      dann entscheiden, ob er nach `Agenten/` gehört.
+      Betrifft: `Modelle/.onchainos`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
+- [ ] **T-012 — Alte Zweige auf `G:` abräumen**
+      Kontext: Die Sicherung läuft ohne `/MIR` und räumt deshalb nichts weg,
+      was in der Quelle verschwindet. Auf `G:\MaxHirn-Sicherung` liegen nach
+      dem Umbau vom 30.08.2026 noch die 51 GB `Modelle\` (ab jetzt aus der
+      Sicherung ausgenommen) und der alte Zweig unter dem früheren Namen „Claude“ (er heißt jetzt
+      `Archiv`, wird also ein zweites Mal kopiert).
+      Nächster Schritt: erst den ersten Lauf der neuen Sicherung abwarten, dann
+      beide Altzweige vorlegen und nach Freigabe entfernen.
+      Betrifft: `G:\MaxHirn-Sicherung`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
+- [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
+      Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
+      Umbau bewusst **nicht** automatisch ersetzt. Sie enthält drei Verweise
+      auf den alten Archivnamen „Claude“, der seit dem 30.08.2026 `Archiv` heißt.
+      Nächster Schritt: die drei Stellen einzeln ansehen und ändern — auf
+      ausdrückliche Anweisung, nicht nebenbei.
+      Betrifft: `Wissen/Zugaenge.md`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
+- [ ] **T-014 — 1,5 GB Ollama-Protokolle in 17 Dateien**
+      Kontext: `%LOCALAPPDATA%\Ollama` enthält 17 Dateien mit zusammen 1,5 GB —
+      im Schnitt 88 MB je Protokolldatei. Sie rotieren offenbar nicht.
+      Gemessen am 30.08.2026, siehe [[KI-Ablagen-im-Benutzerordner]].
+      Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
 - [!] **T-004 — Zwölf Abschaltungen ohne Bluescreen seit 08.08., Ursache offen**
       Kontext: Alle zwölf Kernel-Power-41-Ereignisse haben `BugcheckCode = 0`
       und `PowerButtonTimestamp = 0` — kein Bluescreen, kein Speicherabbild,

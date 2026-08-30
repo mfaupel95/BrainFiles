@@ -3,14 +3,16 @@ id: 20260830-schutzregeln
 title: 'Schutzregeln'
 tags: [sicherheit, betrieb]
 created: 2026-08-27
-updated: 2026-08-28
+updated: 2026-08-30
 related: []
-summary: 'Welche Dateien in MaxHirn ein Agent nicht anfassen darf und warum.'
+summary: 'Welche Dateien unter BrainFiles ein Agent nicht anfassen darf und warum.'
 ---
 
 # Schutzregeln
 
-Welche Dateien in `MaxHirn/` ein Agent **nicht** anfassen darf, und warum.
+Welche Dateien unter `BrainFiles/` ein Agent **nicht** anfassen darf, und warum.
+**Seit dem 30.08.2026 gilt das über vier Ordner** — `MaxHirn/`, `Modelle/`,
+`Agenten/`, `Werkstatt/`; die Aufteilung steht in [[Ordnerstruktur]].
 Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
 **Hauptregel am 25.08.2026 auf Max' Anweisung gelockert** (siehe unten).
 
@@ -95,15 +97,15 @@ gilt erst als erledigt, wenn ein echter Lauf sie bestätigt hat.
 
 | Ort | Risiko bei stiller Beschädigung |
 |---|---|
-| `sichern.ps1`, `sichern-zweitkopie.ps1` | Sicherung fällt aus, ohne Fehlermeldung. |
-| `Routinen/*.ps1` | Geplante Aufgabe läuft ins Leere; die Aufgabenplanung meldet trotzdem Erfolg. |
+| `Agenten/sichern.ps1`, `Agenten/sichern-zweitkopie.ps1` | Sicherung fällt aus, ohne Fehlermeldung. |
+| `Agenten/Routinen/*.ps1` | Geplante Aufgabe läuft ins Leere; die Aufgabenplanung meldet trotzdem Erfolg. |
 | `Claude/ArchivSuche/sort_inbox.py` | Verschiebt und löscht echte Dateien. Höchste Sorgfalt. |
 | `Claude/ArchivSuche/index.py`, `vektor_index.py` | Index fällt aus; Suche liefert stillschweigend nichts. |
-| `AGENTS.md`, `CLAUDE.md`, `Dashboard.md` | Steuern das Verhalten aller Agenten. |
+| `AGENTS.md`, `CLAUDE.md` (in der Wurzel **und** in `MaxHirn/`), `Dashboard.md` | Steuern das Verhalten aller Agenten. |
 | `.claude/skills/` | Dasselbe. |
 | `.obsidian/` | Vault-Konfiguration. Kaputt = Obsidian öffnet den Graphen nicht mehr. |
-| `MCP-Server/`, `Handel/agent.py`, `Handel/plan.json` | Laufender Betrieb, eigene Zugangsdaten. |
-| `Hermes/` | Konfiguration und Gedächtnis des zweiten Agenten. |
+| `Agenten/MCP-Server/`, `Agenten/Handel/agent.py`, `Agenten/Handel/plan.json` | Laufender Betrieb, eigene Zugangsdaten. |
+| `Agenten/Hermes/` | Konfiguration und Gedächtnis des zweiten Agenten. |
 
 ## Stufe 2 — freie Hand, auch beim Löschen
 
@@ -114,10 +116,12 @@ Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
   `git restore <pfad>` holt einen Fehlgriff zurück, geprüft an `Fristen.md`.
   **Ausnahme:** `Zugaenge.md` steht in Stufe 0 und ist nicht in Git.
 - `**/.venv/`, `**/__pycache__/`, `**/node_modules/` — aus `requirements.txt` / `package.json`
-- `GitHub/` — geklonte Fremd-Repos, aus Git; ohnehin von der Sicherung ausgenommen
-- `Modelle/` (3,9 GB) — neu herunterladbar
+- `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`).
+  Durchgangsware, aus der Sicherung ausgenommen, eigene Spielregeln in
+  `Werkstatt/AGENTS.md`
+- `Modelle/` (51 GB, seit 30.08.2026 außerhalb des Vaults) — neu herunterladbar
 - `Claude/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
-- `Routinen/logs/` — jeweils nur der letzte Lauf
+- `Agenten/Routinen/**/logs/` — jeweils nur der letzte Lauf
 - Build-Reste (`.pyc`, `.pyo`, `.toc`, `build/`, `dist/`), Temporärdateien, Duplikate
 
 Der einzige Vorbehalt: **vor dem Löschen kurz hinsehen.** Name und Größe allein
@@ -246,4 +250,4 @@ bevor man eine Datei anfasst, an der erkennbar eine andere Sitzung arbeitet.
 - **`Zugaenge.md` liegt im Klartext** und wird nach `G:` und `O:` mitkopiert.
   Bewusst so, geprüft von `sichern.ps1`. Wer die Platte hat, hat die Schlüssel.
 
-Verwandt: [[Portabilitaet]], [[Hardware]], [[Routinen]]
+Verwandt: [[Ordnerstruktur]], [[Portabilitaet]], [[Hardware]], [[KI-Ablagen-im-Benutzerordner]], [[Routinen]]

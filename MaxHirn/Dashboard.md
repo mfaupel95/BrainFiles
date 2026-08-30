@@ -3,6 +3,21 @@
 Startseite des KI-Betriebssystems. In Obsidian als Standardnotiz setzen:
 *Einstellungen → Allgemein → Beim Start diese Notiz öffnen*.
 
+## Struktur
+
+Seit dem **30.08.2026** liegt die Wurzel eine Ebene höher, in `BrainFiles/`,
+und ist in vier Ordner geteilt. Vorher war `MaxHirn/` alles zugleich.
+
+| Ordner | Aufgabe |
+|---|---|
+| `MaxHirn/` | **dieser Vault** — Wissen und Archiv. Hier liegt nichts, was startet. |
+| `Modelle/` | Modellgewichte und Laufzeiten, 51 GB. Nicht in der Sicherung. |
+| `Agenten/` | MCP-Server, Hermes, Handelsagent, Routinen, Sicherungsskripte. |
+| `Werkstatt/` | gemeinsamer Arbeitsplatz der Modelle. Durchgangsware. |
+
+Was dabei zu beachten ist — und welche fünf Fallen es gibt —, steht in
+[[Ordnerstruktur]]. Der Ordner `Archiv/` hieß bis dahin „Claude“.
+
 ## Wissen
 
 Diese Liste ist eine Auswahl. **Vollständig** — mit einem Satz Zweck je Notiz —
@@ -46,12 +61,16 @@ Anleitung und Grenzen: `Claude/ArchivSuche/VEKTORSUCHE.md`.
 
 ## Sicherung
 
-`sichern.ps1` in diesem Ordner — prüft erst auf Klartext-Zugangsdaten, kopiert
-dann nach `G:\MaxHirn-Sicherung`. Gemessener Lauf am 23.08.2026: **48 Sekunden**.
-Details in [[Hardware]].
+`sichern.ps1` liegt seit dem 30.08.2026 in `../Agenten/` — prüft erst auf
+Klartext-Zugangsdaten, kopiert dann nach `G:\MaxHirn-Sicherung`. Gemessener Lauf
+am 23.08.2026: **48 Sekunden**. Details in [[Hardware]].
+
+Die Quelle ist seit dem Umbau `BrainFiles/` statt `MaxHirn/`, damit auch
+`Agenten/` mitgesichert wird; `Modelle/` steht dafür in der Ausschlussliste.
+Das nimmt 51 GB aus jedem Lauf — sie sind neu herunterladbar.
 
 **Läuft seit 23.08.2026 täglich um 20:00 von selbst** (Aufgabe
-`MaxHirn-Sicherung`, Protokoll unter `Routinen/logs/`). Vorher lief sie nur,
+`MaxHirn-Sicherung`, Protokoll unter `../Agenten/Routinen/logs/`). Vorher lief sie nur,
 wenn jemand daran dachte — zuletzt fehlten deshalb der ganze `Hermes/`-Ordner
 und `AGENTS.md` in der Sicherung.
 
@@ -96,6 +115,7 @@ Dazu seit 28.08.2026 sechs Skills für den Betrieb des Systems selbst:
 | `sichern` | Committen, ohne fremde Arbeit zu vermischen oder zu verlieren |
 | `skill` | Aus einem Anwendungsfall eine wiederholbare Aufgabe machen |
 | `rueckschau` | Sitzungen auswerten, um wiederkehrende Arbeit zu finden |
+| `umzug` | Ordner verschieben oder umbenennen, ohne dass Pfade still brechen |
 
 Aufruf in Claude Code mit `/archiv`, `/posteingang` usw.
 

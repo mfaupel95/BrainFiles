@@ -1,113 +1,137 @@
 # Arbeitsanweisung für Agenten (Hermes u. a.)
 
-Diese Datei gilt für Agenten, die `AGENTS.md` lesen — allen voran **Hermes**.
-Claude liest stattdessen `CLAUDE.md`. Beide arbeiten im selben Vault, auf
-denselben Dateien und über dieselben MCP-Server. Damit sie nicht
-auseinanderlaufen, gelten die Regeln unten für beide.
+Diese Datei gilt für Agenten, die `AGENTS.md` lesen — allen voran **Hermes**
+und **Codex**. Claude liest stattdessen `CLAUDE.md`. Beide arbeiten im selben
+Vault, auf denselben Dateien und über dieselben MCP-Server. Damit sie nicht
+auseinanderlaufen, gelten die Regeln unten für beide — wer eine der beiden
+Dateien ändert, ändert die andere mit.
 
-## Zuerst lesen, was schon da ist
+**Seit dem 30.08.2026 ist `MaxHirn/` nicht mehr die Wurzel.** Sie liegt eine
+Ebene höher in `BrainFiles/` und ist in vier Ordner geteilt — die Karte steht in
+[../CLAUDE.md](../CLAUDE.md). Die tragende Regel dieser Teilung:
 
-Vor dem ersten Werkzeugaufruf prüfen, welches Wissen bereits vorliegt. Diese
-beiden Dateien sind **verbindlich** und vor der Arbeit zu lesen:
+> **In `MaxHirn/` liegt nichts, was startet.** Programme, Server, Routinen und
+> Sicherungsskripte wohnen in `../Agenten/`, Modellgewichte in `../Modelle/`,
+> gemeinsame Arbeit in `../Werkstatt/`.
 
-- [CLAUDE.md](CLAUDE.md) — Aufbau des KI-Betriebssystems, Modulübersicht
-- [Claude/CLAUDE.md](Claude/CLAUDE.md) — Regeln fürs Archiv, Posteingang,
-  beschädigte Dateien, sparsamer Umgang mit Ausgaben
+Eine bewusste Ausnahme: `Archiv/ArchivSuche/` bleibt hier. `index.py` leitet die
+zu indexierende Wurzel aus der eigenen Lage ab, und die Datenbank gehört neben
+die Daten, die sie beschreibt.
 
-Was dort steht, wird **nicht neu erhoben**. Eine Zahl, die schon in einer
-dieser Dateien steht, wird nachgeschlagen und nicht noch einmal gemessen.
+## Aufbau
+
+| Modul | Ort | Inhalt |
+|---|---|---|
+| **Wissen** | `Wissen/` | Wer Max ist, laufende Projekte, Werkzeuge — Einstieg über [Wissen/INDEX.md](Wissen/INDEX.md) |
+| **Archiv** | `Archiv/` | Dateiarchiv mit Volltextsuche (eigene `CLAUDE.md`), 45 GB. **Hieß bis 30.08.2026 „Claude“** |
+| **Skills** | `.claude/skills/` | eigene, wiederverwendbare Fähigkeiten |
+| **Verbindungen** | `Wissen/Verbindungen.md` | MCP-Server und ihr Anmeldestatus |
+| **Zugänge** | `Wissen/Zugaenge.md` | API-Schlüssel und Tokens — **einzige** Ablage |
+| **Schutzregeln** | `Wissen/Schutzregeln.md` | was nicht angefasst werden darf — **vor jedem Schreibzugriff lesen** |
+| **Struktur** | `Wissen/Ordnerstruktur.md` | die vier Ordner und die Fallen beim Umzug |
+| **Referenz** | `Referenz/` | Fremdmaterial: Anleitungen, Beispiele, Installationspakete |
+
+### Was außerhalb liegt
+
+| Ort | Inhalt | Größe |
+|---|---|---|
+| `../Agenten/MCP-Server/` | die Serverprogramme — von Claude **und** Hermes gestartet, siehe [Wissen/Verbindungen.md](Wissen/Verbindungen.md) | 1,8 GB |
+| `../Agenten/Hermes/` | Daten des zweiten Agenten. Der **Programmcode** liegt unter `C:\Hermes` — siehe [[Hermes]] | 2,0 GB |
+| `../Agenten/Handel/` | DCA-Agent (`agent.py`), eigenes `.venv`, eigenes README | 171 MB |
+| `../Agenten/Routinen/` | Wrapper für die geplanten Aufgaben, deren Protokolle in `logs/`, dazu die Umzugsskripte in `umzug/` | klein |
+| `../Modelle/` | Ollama-Store (`Ollama/Store/`, Ziel von `OLLAMA_MODELS`), Programm unter `Programme/`, dazu HuggingFace, GGUF, Checkpoints | 51 GB |
+| `../Werkstatt/` | Übergaben zwischen den Modellen, Projekte, Worktrees, geklonte Fremd-Repos, Sitzungsablagen | 1 GB |
+
+Einstieg für Menschen: [Dashboard.md](Dashboard.md)
 
 ## Reihenfolge bei jeder Anfrage
 
-1. **`Wissen/` zuerst — Einstieg ist [Wissen/INDEX.md](Wissen/INDEX.md).**
-   Der Index führt **alle** Notizen mit einem Satz Zweck; daraus gezielt ein bis
-   drei öffnen, statt den Ordner einzulesen. Persönlicher Kontext: Profil,
-   Projekte, Fristen, Verbindungen. Beantwortet viele Fragen ohne jeden
-   Werkzeugaufruf. Anlegen, Umbenennen oder Löschen einer Notiz wird **im selben
-   Arbeitsschritt** in der Registry von `INDEX.md` nachgezogen.
-2. **Dann das Archiv.** Eigene Rechnungen, Verträge, Notizen, Fotos,
-   Anleitungen? Dann den MCP-Server `archiv` benutzen — nicht das Internet,
-   und nicht das Dateisystem durchsuchen.
-3. **Erst danach Internet.** Für allgemeines Weltwissen.
+1. **`Wissen/` zuerst — und zwar über [Wissen/INDEX.md](Wissen/INDEX.md).**
+   Der Index listet **alle** Notizen mit einem Satz Zweck; daraus gezielt ein
+   bis drei Notizen öffnen, statt den Ordner einzulesen. Dort steht der
+   persönliche Kontext (Profil, Projekte, Vorlieben) — er beantwortet viele
+   Fragen ohne jeden Werkzeugaufruf. Wer eine Notiz anlegt, umbenennt oder
+   löscht, zieht die Registry in `INDEX.md` **im selben Arbeitsschritt** nach.
+2. **Dann das Archiv.** Geht es um eigene Rechnungen, Verträge, Notizen, Fotos,
+   Anleitungen? Dann `archiv`-Skill benutzen, nicht das Internet.
+3. **Erst danach Internet** (WebSearch/WebFetch) — für allgemeines Weltwissen.
 
-## Gedächtnis: `Wissen/` ist die einzige Wahrheit
+**Bei jedem Schritt gezielt lesen, nicht vollständig.** Vor einem Datei-Read
+zuerst gezielt suchen (`rg` für Projektdateien, `archiv`-Skill für persönliche
+Unterlagen) und nur die nötigen Trefferbereiche lesen. Eine ganze Datei nur,
+wenn ihre vollständige Struktur für die Aufgabe gebraucht wird.
 
-Es gibt in diesem System mehrere Gedächtnisse. Damit kein Widerspruch entsteht,
-ist die Zuständigkeit fest verteilt:
+## Jede Aufgabe wird wiederholbar gemacht
 
-| Ablage | Rolle |
+Angeordnet am 28.08.2026: **Aus jedem Anwendungsfall entsteht eine wiederholbare
+Aufgabe.** Ziel ist, langfristig alle Operationen lokal ausführen zu können,
+ohne dass ein Weg zweimal gesucht werden muss.
+
+Am Ende einer Aufgabe, die ein zweites Mal vorkommen wird, wird also abgelegt —
+ungefragt, und die Ablage in einem Satz gemeldet:
+
+| Was dabei herauskam | Wohin |
 |---|---|
-| `Wissen/` (Markdown im Vault) | **einzige Wahrheit.** Was dauerhaft gilt, steht hier. |
-| `Hermes/memories/` | Arbeitsspeicher für laufende Sitzungen. **Nie als Beleg zitieren.** |
-| `mcp-memory`-Server | werkzeugübergreifende Notizen, ebenfalls nachrangig |
+| ein Verfahren mit Fallen | Skill unter `.claude/skills/` (Skill `skill`) |
+| eine Zahl, ein Befund, ein Zustand | Notiz unter `Wissen/` (Skill `notiz`) |
+| etwas, das ohne Nachdenken laufen soll | Skript in `../Agenten/Routinen/` oder `Archiv/ArchivSuche/` |
+| ein offener Punkt | `Archiv/TASKS.md`, sofort |
 
-Erkenntnisse, die über die Sitzung hinaus gelten, gehören als Markdown-Datei
-nach `Wissen/`, verlinkt mit `[[Dateiname]]`. Kurzlebiges — Zwischenstände,
-Ausgaben eines einzelnen Laufs — gehört **nicht** in den Vault.
+**Der Skill verweist, er wiederholt nicht.** Zahlen stehen in der Notiz, sonst
+veraltet die Kopie im Skill still. Verlinkt wird mit `[[Notizname]]`.
 
-Fällt auf, dass eine Datei in `Wissen/` einen überholten Stand behauptet
-(Zahlen, Dateilisten, „noch offen"): sofort korrigieren und die Korrektur
-melden, auch wenn es nicht zur Aufgabe gehört. Diese Dateien werden in jeder
-Sitzung als Wahrheit gelesen — eine falsche Zahl darin ist teurer als eine
-fehlende.
+Nicht jeder Fall verdient einen Skill — die Prüffragen und das Hausformat stehen
+im Skill `skill`. Ob sich etwas wirklich wiederholt, wird gemessen (Skill
+`rueckschau`), nicht geschätzt.
 
-## Antworten
+## Notizen im Vault
 
-- **Auf Deutsch**, außer Max schreibt auf Englisch.
-- **Ergebnis zuerst.** Was ist herausgekommen, was funktioniert, was nicht —
-  in den ersten drei Zeilen. Begründung und Details danach.
-- **Zahlen sind gemessen, nicht geschätzt.** Ist eine Zahl geschätzt, steht das
-  dabei.
-- **Was nicht erledigt wurde, ausdrücklich benennen** — nicht durch Weglassen
-  andeuten.
+Neue Erkenntnisse, die dauerhaft gelten, gehören als Markdown-Datei nach `Wissen/`
+(Skill `notiz`), nicht in eine Chat-Antwort. Verlinkung untereinander mit
+`[[Dateiname]]`, damit Obsidian den Graphen aufbauen kann.
 
-## Zwei Striche am Satzende: persönliche Bemerkung
+**Das geschieht ungefragt, nicht als Angebot.** Wenn am Ende einer Aufgabe ein
+Ergebnis steht, das in einem Monat noch gilt — eine Messung, eine Entscheidung
+mit Begründung, eine Falle, die Zeit gekostet hat —, wird es abgelegt und die
+Ablage in einem Satz gemeldet. Nicht „ich könnte das als Notiz ablegen".
+Gefragt wird nur im Zweifelsfall, ob etwas überhaupt dauerhaft gilt.
+Ausgewertete Zahlen brauchen dabei das Skript, mit dem sie entstanden sind —
+sonst ist die Notiz beim nächsten Mal nicht nachrechenbar (Beispiel:
+[[Handelsbots]] und `../Agenten/Handel/dca_auswertung.py`).
 
-Hängt Max an einen Satz `--` an, folgt danach eine **persönliche Bemerkung,
-Anweisung oder ein Hinweis zu genau dem davorstehenden Text** — nicht zur
-Nachricht als Ganzes.
+Kurzlebiges (Zwischenstände, Ausgaben eines einzelnen Laufs) gehört **nicht**
+in den Vault, sondern nach `../Werkstatt/`.
 
-> Bau das Skript wie letztes Mal. -- diesmal aber ohne Protokollausgabe
+## Mehrere Sitzungen gleichzeitig
 
-Der Teil vor `--` ist die Aussage oder Aufgabe, der Teil danach steuert sie
-fein. **Widerspricht er ihr, gilt der Teil nach `--`.**
+Max hat mehrere Chats offen, dazu Hermes — alle schreiben in denselben Vault.
+**Git schützt nur, was committet ist**, alles davor kann eine andere Sitzung
+vernichten. Deshalb:
 
-Stehen mehrere `--` in einer Nachricht, bezieht sich jedes auf den Satz
-unmittelbar davor — nicht auf alles Vorherige.
+- **Verwerfen ist verboten, Sichern ist Pflicht.** Fremdes im Arbeitsbaum nicht
+  liegen lassen, sondern in einem **eigenen, getrennten Commit** sichern, mit
+  `git commit --author="Andere Sitzung <fremd@local>"` — nie vermischt mit
+  eigener Arbeit. Den echten Namen nur eintragen, wenn der Urheber wirklich
+  feststeht (etwa `"Hermes <hermes@local>"`); **nicht raten**, das macht die
+  Historie genauso falsch wie die Ich-Form. `git add <pfad>` namentlich, nie
+  `git add -A`, `git add .` oder `git commit -a`. Liegen lassen, was in den
+  letzten **10 Minuten** geschrieben wurde (`(Get-Item <pfad>).LastWriteTime`)
+  — älter gilt als ruhend.
+- **Nie verwerfen:** `git reset --hard`, `checkout -- <datei>`, `restore`,
+  `stash`, `clean` löschen die uncommittete Arbeit anderer Sitzungen
+  unwiederbringlich. Nur auf ausdrückliche Anweisung, vorher ansagen.
+- **Eigenes zügig committen**, nach jedem Arbeitsschritt.
+- **`index.py`, `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt
+  starten.**
 
-Was dabei schiefgehen kann, in beide Richtungen:
+Vollständig: [Wissen/Schutzregeln.md](Wissen/Schutzregeln.md)
 
-- Den Teil nach `--` als **eigene neue Aufgabe** lesen und getrennt abarbeiten.
-  Er gehört zum Satz davor.
-- Ihn **überlesen**, weil er kurz und beiläufig wirkt. Er ist die Stelle, an
-  der Max die Aufgabe zuschneidet — der wichtigste Teil des Satzes.
+## Portabilität
 
-## Grenzen
-
-- **Schreiben nur innerhalb dieses Vaults.** Durchgesetzt über
-  `HERMES_WRITE_SAFE_ROOT`. Lesen ist überall möglich.
-- **Keine Geldbewegung auslösen.** Senden, tauschen, kaufen, verkaufen,
-  freigeben (Approval), ein- und auszahlen macht Max selbst. Kurse, Guthaben,
-  Positionen und Sicherheitsprüfungen lesen und einen Vorgang bis zur
-  Bestätigungsseite vorbereiten ist erlaubt.
-- **Sensible Dateien** (Passwort-Exporte, Zertifikate, Schlüssel) nie
-  automatisch verschieben oder archivieren — melden und liegen lassen.
-- **Vor destruktiven Aktionen** Testlauf, danach prüfen. Erfolgsmeldungen von
-  Löschbefehlen nicht ungeprüft glauben.
-- **Vor Eingriffen ins System** (Software installieren, Konfiguration außerhalb
-  des Vaults ändern, geplante Aufgaben anlegen, Massenoperationen) erst
-  ansagen, was genau passiert, dann die Bestätigung abwarten.
-
-- **Mehrere Sitzungen gleichzeitig.** Max hat mehrere Chats offen, dazu Hermes —
-  alle schreiben in denselben Vault. **Git schützt nur, was committet ist.**
-  Deshalb: nur committen, was man selbst geändert hat (`git add <pfad>`, nie
-  `-A`, `.` oder `commit -a`); **nie** `git reset --hard`, `checkout -- <datei>`,
-  `restore`, `stash` oder `clean` — sie löschen die uncommittete Arbeit anderer
-  Sitzungen unwiederbringlich; Eigenes zügig committen; `index.py`,
-  `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt starten.
-  Vollständig: [[Schutzregeln]].
-## Verwandte Notizen
-
-- [[Hermes]] — Pfade, Anmeldeweg, offene Punkte dieser Einbindung
-- [[Verbindungen]] — welche MCP-Server es gibt und ob sie angemeldet sind
-- [[Projekte]] — was gerade läuft
+- Keine absoluten Pfade (`C:\Users\...`) in Skills, Notizen oder Skripten.
+- Das Python-`.venv` unter `Archiv/ArchivSuche/.venv` ist an seinen Pfad gebunden
+  und muss nach einem Umzug einmal neu erzeugt werden — siehe
+  [Wissen/Portabilitaet.md](Wissen/Portabilitaet.md).
+- Beim Verschieben ganzer Ordner gilt das Verfahren aus dem Skill `umzug`:
+  editable installs und `.exe`-Startprogramme in `.venv` tragen absolute Pfade
+  im Inneren und brechen still.

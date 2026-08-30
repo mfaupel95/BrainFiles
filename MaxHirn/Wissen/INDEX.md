@@ -54,6 +54,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-routinen` — **Routinen** — `Wissen/Routinen.md` — Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.
 - `20260830-wiederholbare-aufgaben` — **Wiederholbare Aufgaben** — `Wissen/Wiederholbare-Aufgaben.md` — Welche Arbeit sich wiederholt hat und welche Skills daraus entstanden sind.
 - `20260830-portabilitaet` — **Portabilität** — `Wissen/Portabilitaet.md` — Was beim Umzug des gesamten Systems auf eine externe SSD zu beachten ist.
+- `20260830-ordnerstruktur` — **Ordnerstruktur** — `Wissen/Ordnerstruktur.md` — Die vier Ordner unter `BrainFiles/`, warum sie geteilt sind und welche fünf Fallen beim Verschieben still brechen.
 - `20260830-fristen` — **Fristen** — `Wissen/Fristen.md` — Alle laufenden Termine mit Konsequenz, ISO-datiert, gepflegt vom Skill `frist`.
 
 ### System und Hardware
@@ -61,6 +62,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-hardware` — **Hardware** — `Wissen/Hardware.md` — Laufwerke des Arbeitsrechners, Plattendiagnose und der ungeklärte Stromausfall.
 - `20260830-hardware-checkliste-d5` — **Hardware-Checkliste D5** — `Wissen/Hardware-Checkliste-D5.md` — Schrittfolge zur Eingrenzung des D5-RAM-Fehlers und der Kernel-Power-41-Abschaltungen.
 - `20260830-benutzerprofil` — **Benutzerprofil** — `Wissen/Benutzerprofil.md` — Was im Windows-Benutzerprofil liegt, was davon zum Betrieb gehört und was Altlast ist.
+- `20260830-ki-ablagen-benutzerordner` — **KI-Ablagen im Benutzerordner** — `Wissen/KI-Ablagen-im-Benutzerordner.md` — Welche KI-Daten außerhalb von `BrainFiles/` liegen, warum sie dort bleiben und was bei einem Neuaufsetzen verlorenginge.
 - `20260830-miniaturansichten` — **Miniaturansichten** — `Wissen/Miniaturansichten.md` — Warum der Explorer keine Vorschaubilder mehr zeigte und was dagegen geholfen hat.
 
 ### Sicherheit

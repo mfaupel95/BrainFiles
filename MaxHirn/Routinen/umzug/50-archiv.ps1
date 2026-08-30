@@ -53,7 +53,13 @@ else {
 #   b) relative Pfadstuecke  Claude/  und  Claude\
 # Gruppe b traegt eine Sperre gegen %APPDATA%\Claude und $env:APPDATA\Claude --
 # das ist der Anwendungsordner der Desktop-App und bleibt, wie er heisst.
+# Die Worktrees zuerst, und zwar VOR den allgemeinen Regeln: sie sind in
+# Phase 4 in die Werkstatt gewandert, nicht ins Archiv. Wer nur 'Claude ->
+# Archiv' ersetzt, schreibt hier einen Pfad hin, den es nie gab.
 $regeln = [ordered]@{
+    'MaxHirn\\Claude\\Worktrees'                         = 'Werkstatt\Worktrees'
+    'Claude/Worktrees'                                   = 'Werkstatt/Worktrees'
+    'Claude\\Worktrees'                                  = 'Werkstatt\Worktrees'
     'MaxHirn\\\\Claude'                                  = 'MaxHirn\\Archiv'   # JSON
     'MaxHirn\\Claude'                                    = 'MaxHirn\Archiv'    # YAML, ps1, Text
     '(?<!APPDATA%\\)(?<!APPDATA\\)(?<!APPDATA%\\\\)(?<!APPDATA\\\\)Claude\\' = 'Archiv\'
