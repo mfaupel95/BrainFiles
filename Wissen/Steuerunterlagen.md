@@ -1,3 +1,13 @@
+---
+id: 20260830-steuerunterlagen
+title: 'Steuerunterlagen'
+tags: [steuern]
+created: 2026-08-18
+updated: 2026-08-20
+related: [20260830-fristen, 20260830-belege-einspruch-2024]
+summary: 'Steuernummern, veranlagte Jahre, Bescheide und laufende Verfahren.'
+---
+
 # Steuerunterlagen
 
 Was in Max' Steuerakte steckt: Steuernummern, welche Jahre veranlagt sind, welche

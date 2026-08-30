@@ -8,7 +8,7 @@ damit das System später unverändert auf eine externe SSD umziehen kann.
 
 | Modul | Ort | Inhalt |
 |---|---|---|
-| **Wissen** | `Wissen/` | Wer Max ist, laufende Projekte, Werkzeuge |
+| **Wissen** | `Wissen/` | Wer Max ist, laufende Projekte, Werkzeuge — Einstieg über [Wissen/INDEX.md](Wissen/INDEX.md) |
 | **Archiv** | `Claude/` | Dateiarchiv mit Volltextsuche (eigene `CLAUDE.md`), 42 GB |
 | **Skills** | `.claude/skills/` | eigene, wiederverwendbare Fähigkeiten |
 | **Verbindungen** | `Wissen/Verbindungen.md` | MCP-Server und ihr Anmeldestatus |
@@ -36,8 +36,12 @@ Einstieg für Menschen: [Dashboard.md](Dashboard.md)
 
 ## Reihenfolge bei jeder Anfrage
 
-1. **`Wissen/` zuerst.** Dort steht der persönliche Kontext (Profil, Projekte,
-   Vorlieben). Er beantwortet viele Fragen ohne jeden Werkzeugaufruf.
+1. **`Wissen/` zuerst — und zwar über [Wissen/INDEX.md](Wissen/INDEX.md).**
+   Der Index listet **alle** Notizen mit einem Satz Zweck; daraus gezielt ein
+   bis drei Notizen öffnen, statt den Ordner einzulesen. Dort steht der
+   persönliche Kontext (Profil, Projekte, Vorlieben) — er beantwortet viele
+   Fragen ohne jeden Werkzeugaufruf. Wer eine Notiz anlegt, umbenennt oder
+   löscht, zieht die Registry in `INDEX.md` **im selben Arbeitsschritt** nach.
 2. **Dann das Archiv.** Geht es um eigene Rechnungen, Verträge, Notizen, Fotos,
    Anleitungen? Dann `archiv`-Skill benutzen, nicht das Internet.
 3. **Erst danach Internet** (WebSearch/WebFetch) — für allgemeines Weltwissen.

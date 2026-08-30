@@ -1,3 +1,13 @@
+---
+id: 20260830-routinen
+title: 'Routinen'
+tags: [betrieb]
+created: 2026-08-25
+updated: 2026-08-25
+related: [20260830-wiederholbare-aufgaben]
+summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
+---
+
 # Routinen
 
 Abläufe, die ohne Aufforderung passieren sollen. Eine Routine ist immer ein

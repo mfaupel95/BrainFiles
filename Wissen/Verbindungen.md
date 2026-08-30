@@ -1,3 +1,13 @@
+---
+id: 20260830-verbindungen
+title: 'Verbindungen'
+tags: [mcp, betrieb]
+created: 2026-08-27
+updated: 2026-08-27
+related: [20260830-werkzeuge, 20260830-hermes]
+summary: 'Welche Dienste und MCP-Server erreichbar sind und welche davon authentifiziert.'
+---
+
 # Verbindungen
 
 Welche Dienste das Betriebssystem erreichen kann. Ein Dienst nützt erst etwas,

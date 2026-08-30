@@ -1,3 +1,13 @@
+---
+id: 20260830-handelsbots
+title: 'Handelsbots auf OKX'
+tags: [handel]
+created: 2026-08-24
+updated: 2026-08-24
+related: []
+summary: 'Gemessene Ergebnisse der OKX-DCA-Bots und welche Stellschraube tatsächlich wirkt.'
+---
+
 # Handelsbots auf OKX
 
 Gemessene Erkenntnisse zu den DCA-Bots (Martingale) auf OKX, entstanden aus der

@@ -42,31 +42,33 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-004 — Neun Abstürze ohne Bluescreen seit 08.08., Ursache offen**
-      Kontext: Alle Kernel-Power-41-Ereignisse haben `BugcheckCode = 0` und
-      `SleepInProgress = 16` — kein Bluescreen, kein Speicherabbild, sondern
-      harter Reset im Standby-Zusammenhang. Vier davon 3–10 Minuten nach dem
-      Aufwachen aus S3. Keine WHEA-Hardwarefehler, keine Speicherfehler,
-      beide SSDs `Healthy`. Es liegt kein einziger Dump zum Auswerten vor.
-      **Vorbehalt zum jüngsten Fall:** Am 28.08. hat Max das CMOS zurückgesetzt.
-      Ein Kaltstart dabei erzeugt im Protokoll dasselbe Bild wie ein Absturz
-      (Kernel-Power 41, `BugcheckCode = 0`, EventLog 6008). Ob der Eintrag vom
-      28.08. ein echter Absturz war oder Max' eigener Eingriff, ist ungeklärt.
-      Die Vorfälle vom 20., 21. und 27.08. sind davon unberührt — das Muster
-      steht auch ohne den heutigen Datenpunkt.
-      **Beobachtung läuft seit dem 28.08.2026, 16:00.** Gegenmassnahmen sind
-      gesetzt (T-002 entfernt, T-003 stillgelegt). Nachgemessen am 28.08. um
-      23:07, Laufzeit 7,8 h: kein Kernel-Power 41 seit dem Start um 15:19:36,
-      aber **null Standby-Zyklen** (Kernel-Power 42/107) — die Bedingung, unter
-      der vier der neun Abstürze auftraten, ist also nie eingetreten, die Ruhe
-      beweist nichts. Zähler steht bei **0 von 5 Zyklen**. Weiterhin null WHEA
-      in 30 Tagen; von `disk`/`Ntfs`/`volmgr` in 7 Tagen nur 46 × ID 98
-      (Information „Volume ist fehlerfrei"), kein 153, kein 140.
-      Nächster Schritt: Standby-Zyklen zählen, nicht Tage. Aussagekräftig ab
-      etwa fünf Zyklen oder zehn absturzfreien Tagen. Bleibt es dabei:
-      S3-Standby probeweise abschalten (Rechner durchlaufen lassen).
-      Messbefehl: Get-WinEvent -FilterHashtable @{LogName='System';Id=41,6008}
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28 (23:07)
+- [!] **T-004 — Zwölf Abschaltungen ohne Bluescreen seit 08.08., Ursache offen**
+      Kontext: Alle zwölf Kernel-Power-41-Ereignisse haben `BugcheckCode = 0`
+      und `PowerButtonTimestamp = 0` — kein Bluescreen, kein Speicherabbild,
+      sondern harter Stromverlust. Keine WHEA-Fehler in 30 Tagen, keine
+      Plattenfehler (nur ID 98, Information), kein Dump. In den drei Minuten
+      vor dem letzten Abschalten steht **ein einziger** Protokolleintrag.
+      **Die Beobachtung vom 28.08. ist entschieden — negativ.** Sie musste nicht
+      auslaufen: seit dem Start am 28.08. um 16:00 ist der Rechner dreimal
+      ausgegangen (29.08. 10:45, 29.08. 13:17, 30.08. 20:59, echte Zeitpunkte
+      aus Ereignis 6008). Aus neun Vorfällen sind damit zwölf geworden, und die
+      Abstände sind kürzer geworden: drei in zwei Tagen gegen sieben in den
+      vierzehn Tagen davor.
+      **Standby scheidet als Ursache aus.** Seit dem 28.08. 06:46 gab es keinen
+      einzigen Standby-Zyklus mehr (kein Kernel-Power 42/107) — die drei neuen
+      Abstürze fielen also in eine Phase ganz ohne Standby. Der Ablauf „3–10
+      Minuten nach dem Aufwachen aus S3" war Begleiterscheinung, nicht Ursache.
+      Das frühere Merkmal `SleepInProgress = 16` beruhte auf einer Verwechslung
+      mit dem Feld `Checkpoint`; `SleepInProgress` ist bei allen zwölf `0`.
+      Nächster Schritt: **Stromzufuhr ausserhalb des Netzteils prüfen** —
+      Kaltgerätekabel, Steckdosenleiste, Wandsteckdose. Billig und nie geprüft,
+      deshalb zuerst; danach erst der Gegentest mit einem bekannt guten Netzteil.
+      Beides Handgriffe an der Hardware, also Max' Sache, und **einen nach dem
+      anderen**, sonst ist unbekannt, welcher gewirkt hat. Bei zuletzt 2,5 bis
+      32 Stunden Abstand zeigt sich das binnen zwei bis drei Tagen.
+      Wartet auf: Max — Handgriff an Kabel und Steckdose.
+      Betrifft: [[Hardware]], Abschnitt „Nachmessung 30.08.2026, 22:20"
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-30 (22:20)
 
 - [ ] **T-007 — 18 claude.ai-Connectors ohne einen einzigen Aufruf**
       Kontext: `claude mcp list` meldet 21 aktive claude.ai-Connectors. In
@@ -96,6 +98,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       — braucht Absenderadresse und App-Passwort, also Max' Zutun.
       Wartet auf: Zugangsdaten von Max
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+
+- [?] **T-009 — `Zugaenge.md` als einzige Notiz ohne Frontmatter**
+      Kontext: Am 30.08.2026 haben alle 21 übrigen Notizen in `Wissen/`
+      YAML-Frontmatter mit stabiler `id` bekommen, dazu `Wissen/INDEX.md` als
+      vollständige Registry. `Zugaenge.md` wurde bewusst ausgelassen, weil sie
+      in [[Schutzregeln]] unter den geschützten Schlüsseldateien steht und dort
+      kein Agent ohne ausdrückliche Anordnung schreibt. Sie ist in der Registry
+      geführt, hat aber keine `id`. Fachlich spricht nichts dagegen — das
+      Frontmatter berührt keine Zugangsdaten, sondern steht davor.
+      Nächster Schritt: Max gibt frei (oder nicht); dann acht Zeilen Frontmatter
+      voranstellen, `id: 20260830-zugaenge`, `tags: [sicherheit]`.
+      Vorschlag zum selben Themenkreis, nicht eingetragen als eigener Punkt:
+      Die Dateinamen in `Wissen/` sind gemischt geschrieben statt durchgehend
+      kleingeschrieben. Eine Umbenennung würde alle `[[Wikilinks]]` brechen und
+      ist den Gewinn vermutlich nicht wert.
+      Betrifft: `Wissen/Zugaenge.md`, `Wissen/INDEX.md`
+      Wartet auf: Freigabe von Max
+      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
 

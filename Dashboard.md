@@ -5,6 +5,9 @@ Startseite des KI-Betriebssystems. In Obsidian als Standardnotiz setzen:
 
 ## Wissen
 
+Diese Liste ist eine Auswahl. **Vollständig** — mit einem Satz Zweck je Notiz —
+steht alles in [[INDEX|Wissen/INDEX]]; dort steigen auch die Agenten ein.
+
 - [[Fristen]] — laufende Termine mit Konsequenz; **4 offen, davon 1 überfällig**
   (Nachzahlung 3.259,19 € war am 21.08.2026 fällig, AdV beantragt und noch nicht
   entschieden; nächster künftiger Termin 10.09.2026)

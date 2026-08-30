@@ -1,3 +1,13 @@
+---
+id: 20260830-belege-einspruch-2024
+title: 'Belege zum Einspruch ESt 2024'
+tags: [steuern]
+created: 2026-08-20
+updated: 2026-08-20
+related: [20260830-fristen, 20260830-steuerunterlagen]
+summary: 'Welche Nachweise für den Einspruch zur ESt 2024 gesammelt sind und was bis 30.09.2026 noch fehlt.'
+---
+
 # Belege zum Einspruch ESt 2024
 
 **Wofür:** Einspruch vom 19.08.2026 gegen den geänderten Bescheid für 2024

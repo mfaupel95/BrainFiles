@@ -1,3 +1,13 @@
+---
+id: 20260830-fristen
+title: 'Fristen'
+tags: [betrieb, steuern]
+created: 2026-08-24
+updated: 2026-08-24
+related: [20260830-steuerunterlagen, 20260830-belege-einspruch-2024]
+summary: 'Alle laufenden Termine mit Konsequenz, ISO-datiert, gepflegt vom Skill frist.'
+---
+
 # Fristen
 
 Eine Zeile je Frist, nach Datum sortiert, ISO-Datum vorn. Gepflegt vom Skill

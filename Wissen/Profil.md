@@ -1,3 +1,13 @@
+---
+id: 20260830-profil
+title: 'Profil'
+tags: [profil]
+created: 2026-08-24
+updated: 2026-08-24
+related: [20260830-projekte]
+summary: 'Wer Max ist und wie er arbeitet - Fundament für Antworten ohne Werkzeugaufruf.'
+---
+
 # Profil
 
 > **Diese Datei ist das Fundament.** Sie beantwortet Fragen, ohne dass ein

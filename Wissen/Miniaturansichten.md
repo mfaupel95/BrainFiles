@@ -1,3 +1,13 @@
+---
+id: 20260830-miniaturansichten
+title: 'Miniaturansichten im Explorer (Stand 25.08.2026)'
+tags: [system]
+created: 2026-08-25
+updated: 2026-08-25
+related: []
+summary: 'Warum der Explorer keine Vorschaubilder mehr zeigte und was dagegen geholfen hat.'
+---
+
 # Miniaturansichten im Explorer (Stand 25.08.2026)
 
 Am 25.08.2026 zeigte der Explorer für Bilder und Videos nur noch generische

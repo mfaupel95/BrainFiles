@@ -19,8 +19,12 @@ dieser Dateien steht, wird nachgeschlagen und nicht noch einmal gemessen.
 
 ## Reihenfolge bei jeder Anfrage
 
-1. **`Wissen/` zuerst.** Persönlicher Kontext: Profil, Projekte, Fristen,
-   Verbindungen. Beantwortet viele Fragen ohne jeden Werkzeugaufruf.
+1. **`Wissen/` zuerst — Einstieg ist [Wissen/INDEX.md](Wissen/INDEX.md).**
+   Der Index führt **alle** Notizen mit einem Satz Zweck; daraus gezielt ein bis
+   drei öffnen, statt den Ordner einzulesen. Persönlicher Kontext: Profil,
+   Projekte, Fristen, Verbindungen. Beantwortet viele Fragen ohne jeden
+   Werkzeugaufruf. Anlegen, Umbenennen oder Löschen einer Notiz wird **im selben
+   Arbeitsschritt** in der Registry von `INDEX.md` nachgezogen.
 2. **Dann das Archiv.** Eigene Rechnungen, Verträge, Notizen, Fotos,
    Anleitungen? Dann den MCP-Server `archiv` benutzen — nicht das Internet,
    und nicht das Dateisystem durchsuchen.

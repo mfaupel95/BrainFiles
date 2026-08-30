@@ -1,3 +1,13 @@
+---
+id: 20260830-werkzeuge
+title: 'Werkzeuge'
+tags: [mcp, betrieb]
+created: 2026-08-28
+updated: 2026-08-28
+related: [20260830-verbindungen]
+summary: 'Welche Werkzeuge tatsächlich abgerufen werden - gemessen an den bisherigen Sitzungen.'
+---
+
 # Werkzeuge
 
 Was tatsächlich benutzt wird — gemessen, nicht vermutet. Gegenstück zu

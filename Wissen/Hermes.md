@@ -1,3 +1,13 @@
+---
+id: 20260830-hermes
+title: 'Hermes Agent'
+tags: [ki-agenten, betrieb]
+created: 2026-08-24
+updated: 2026-08-27
+related: [20260830-verbindungen]
+summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
+---
+
 # Hermes Agent
 
 Zweiter Agent neben Claude, von Nous Research. Eingebunden am **23.08.2026**,

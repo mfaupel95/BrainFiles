@@ -1,3 +1,13 @@
+---
+id: 20260830-projekte
+title: 'Projekte'
+tags: [profil, betrieb]
+created: 2026-08-24
+updated: 2026-08-24
+related: [20260830-profil]
+summary: 'Was gerade läuft, ein Abschnitt je Projekt, Erledigtes bleibt unten stehen.'
+---
+
 # Projekte
 
 Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter

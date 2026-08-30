@@ -1,3 +1,13 @@
+---
+id: 20260830-benutzerprofil
+title: 'Benutzerprofil `C:\Users\faupe`'
+tags: [system, betrieb]
+created: 2026-08-26
+updated: 2026-08-27
+related: []
+summary: 'Was im Windows-Benutzerprofil liegt, was davon zum Betrieb gehört und was Altlast ist.'
+---
+
 # Benutzerprofil `C:\Users\faupe`
 
 Aufnahme vom 26.08.2026. Zweck: festhalten, was im Profil liegt, was davon

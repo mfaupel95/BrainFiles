@@ -1,3 +1,13 @@
+---
+id: 20260830-hardware-checkliste-d5
+title: 'Hardware-Checkliste: Behebung D5-Fehler & Startprobleme'
+tags: [hardware]
+created: 2026-08-29
+updated: 2026-08-29
+related: [20260830-hardware]
+summary: 'Schrittfolge zur Eingrenzung des D5-RAM-Fehlers und der Kernel-Power-41-Abschaltungen.'
+---
+
 # Hardware-Checkliste: Behebung D5-Fehler & Startprobleme
 
 **ZIEL:** System stabilisieren und Ursache für D5 (RAM) / Kernel-Power 41 (Strom) finden.

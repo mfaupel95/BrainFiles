@@ -1,3 +1,13 @@
+---
+id: 20260830-portabilitaet
+title: 'Portabilität — Umzug auf externe SSD'
+tags: [betrieb]
+created: 2026-08-23
+updated: 2026-08-23
+related: []
+summary: 'Was beim Umzug des gesamten Systems auf eine externe SSD zu beachten ist.'
+---
+
 # Portabilität — Umzug auf externe SSD
 
 Das System ist so gebaut, dass es als ein Ordner umziehen kann. Diese Notiz hält

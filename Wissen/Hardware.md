@@ -1,3 +1,13 @@
+---
+id: 20260830-hardware
+title: 'Hardware'
+tags: [hardware]
+created: 2026-08-28
+updated: 2026-08-28
+related: [20260830-hardware-checkliste-d5]
+summary: 'Laufwerke des Arbeitsrechners, Plattendiagnose und der ungeklärte Stromausfall.'
+---
+
 # Hardware
 
 Laufwerke des Arbeitsrechners und was bei Plattenproblemen zu prüfen ist.
@@ -10,7 +20,7 @@ erledigt** — siehe „Stromausfälle ohne Bluescreen" unten.
 Die Diagnosewege unten führen in Minuten zum Ergebnis. Ausserdem ist die
 Laufwerkszuordnung Voraussetzung für den Umzug in [[Portabilitaet]].
 
-**Stand:** 2026-08-28 (Absturzanalyse und Laufwerkslage; Nachmessung 2026-08-19, Ursprungsfassung 2026-08-16)
+**Stand:** 2026-08-30 (Absturzanalyse; Laufwerkslage 2026-08-28; Nachmessung 2026-08-19, Ursprungsfassung 2026-08-16)
 
 ## Eckdaten des Rechners
 
@@ -197,13 +207,16 @@ Zwei Eigenheiten, die beim Diagnostizieren Zeit sparen:
   hängen dagegen mit. Auch der PowerShell-Start hing, während Git Bash sofort
   antwortete — nicht als Shell-Problem fehldeuten.
 
-## Stromausfälle ohne Bluescreen (offen, Stand 2026-08-28)
+## Stromausfälle ohne Bluescreen (offen, Stand 2026-08-30)
 
-> **Weiterhin offen, aber die Gegenmassnahmen laufen seit dem 28.08.2026, 16:00.**
-> Aktueller Messstand am Ende der Datei: „Nachmessung 28.08.2026, 17:15".
+> **Weiterhin offen. Die Gegenmassnahmen vom 28.08.2026 haben es nicht
+> behoben** — seither sind drei weitere Vorfälle hinzugekommen, und der
+> Standby-Zusammenhang ist widerlegt. Aktueller Messstand am Ende der Datei:
+> „Nachmessung 30.08.2026, 22:20".
 
-Der Rechner geht in unregelmässigen Abständen **schlagartig aus**. Neun Vorfälle
-in 20 Tagen:
+Der Rechner geht in unregelmässigen Abständen **schlagartig aus**. Zwölf Vorfälle
+in 22 Tagen; die Tabelle hier reicht nur bis zum 28.08., die drei jüngsten
+stehen am Dateiende:
 
 > **Korrektur 28.08.2026 — zwei Angaben in diesem Abschnitt waren überholt:**
 >
@@ -213,6 +226,13 @@ in 20 Tagen:
 > 2. Als Erkennungsmerkmal stand `SleepInProgress = 0`. Das trifft nur auf die
 >    frühen Vorfälle zu. **Seit dem 14.08. haben alle sechs Abstürze
 >    `SleepInProgress = 16`** — ein anderer Fingerabdruck, siehe unten.
+>
+> **Punkt 2 ist am 30.08.2026 widerlegt.** `SleepInProgress` ist bei *allen*
+> Vorfällen `0`; die 16 gehörte zum Feld `Checkpoint` und wurde damit
+> verwechselt. Die Spalte in der Tabelle unten ist entsprechend falsch
+> beschriftet. Richtigstellung, Messbefehl und der Grund, warum der
+> Standby-Zusammenhang insgesamt gefallen ist: Abschnitt „Nachmessung
+> 30.08.2026" am Dateiende.
 
 > **Korrektur 19.08.2026** (historisch — der Schlusssatz zur Ruhephase
 > ist durch die Korrektur darüber überholt): Hier stand „und die Abstände werden kürzer". Das
@@ -224,7 +244,7 @@ in 20 Tagen:
 > Kein Grund zur Entwarnung, aber „beschleunigt sich" ist als Befund falsch und
 > hätte zu übereilten Maßnahmen verleitet.
 
-| Datum | Uhrzeit | `SleepInProgress` | Aufwachen aus S3 davor |
+| Datum | Uhrzeit | ~~`SleepInProgress`~~ tatsächlich `Checkpoint` | Aufwachen aus S3 davor |
 |---|---|---|---|
 | 08.08.2026 | 12:28 | 13 | — |
 | 08.08.2026 | 12:45 | **0** | — |
@@ -247,9 +267,10 @@ Spalte. Das ist kein Zufallstreffer mehr, sondern ein reproduzierbarer Ablauf.
 Erkennungsmerkmal im Systemprotokoll: **Kernel-Power 41 mit `BugcheckCode = 0`**
 und `PowerButtonTimestamp = 0`, begleitet von EventLog 6008. Das heisst
 ausdrücklich **kein** Betriebssystemabsturz — Windows bekommt vom Ausfall
-nichts mit. `SleepInProgress` gehört **nicht** in dieses Erkennungsmerkmal:
-Der Wert unterscheidet die beiden Sorten Vorfall (0 bzw. 13 und 9 früher,
-durchgehend 16 seit dem 14.08.).
+nichts mit. `Checkpoint` gehört **nicht** in dieses Erkennungsmerkmal: Der Wert
+unterschied bis zum 28.08. die beiden Sorten Vorfall (13 und 9 früher,
+durchgehend 16 vom 14.08. bis 28.08.), steht seit dem 29.08. aber wieder auf 0,
+während die Abstürze weitergehen.
 
 ### Auslagerungsdatei auf einer USB-Platte (gefunden 28.08.2026, behoben am selben Tag)
 
@@ -742,3 +763,94 @@ Der Zähler, auf den es ankommt, steht bei 0 von 5.
 Die 46 Ereignisse der ID 98 sind dieselbe harmlose Sorte wie die 40 vom
 17:15-Stand — Schattenkopie-Volumes, die sich selbst als fehlerfrei melden.
 Der Anstieg ist kein Signal.
+
+## Nachmessung 30.08.2026, 22:20 — die Beobachtung ist entschieden, negativ
+
+Die am 28.08. um 16:00 gestartete Beobachtung ist **beendet, ohne dass der
+Zähler je fünf Standby-Zyklen erreicht hat.** Sie musste nicht auslaufen: der
+Rechner ist in der Zwischenzeit dreimal ausgegangen.
+
+| Echter Zeitpunkt (aus 6008) | Kernel-Power 41 protokolliert | Vorlauf |
+|---|---|---|
+| 29.08.2026 10:45:10 | 11:04:47 | nach Beobachtungsstart |
+| 29.08.2026 13:17:14 | 13:18:39 | 2,5 h nach dem vorigen |
+| 30.08.2026 20:59:55 | 21:01:21 | 31,7 h nach dem vorigen |
+
+**Damit sind es zwölf Vorfälle seit dem 08.08., nicht neun.** Die Zählung
+„neun" stammt vom 28.08. und war ab dem 29.08. überholt.
+
+### Standby scheidet als Ursache aus
+
+Seit dem **28.08.2026, 06:46** hat der Rechner **keinen einzigen Standby-Zyklus**
+mehr gehabt (kein Kernel-Power 42/107). Die drei neuen Abstürze fielen also in
+eine Phase völlig ohne Standby — und traten trotzdem auf. Der Ablauf „3–10
+Minuten nach dem Aufwachen aus S3", der die vier Vorfälle vom 20.–28.08.
+verband, ist als **Begleiterscheinung entlarvt, nicht als Ursache**.
+
+Das zeigt sich auch im Fingerabdruck der Ereignisse selbst:
+
+| Datum | `Checkpoint` | `ConnectedStandbyInProgress` | `SystemSleepTransitionsToOn` |
+|---|---|---|---|
+| 14.08.–28.08. (sieben Stück) | **16** | teils true | **1** |
+| 29.08. 11:04 | **0** | false | **0** |
+| 29.08. 13:18 | **0** | false | **0** |
+| 30.08. 21:01 | **0** | false | **0** |
+
+Die Gegenmassnahmen vom 28.08. haben den Standby-Fingerabdruck also tatsächlich
+beseitigt — die Abschaltungen gehen davon unbeeindruckt weiter, jetzt sogar
+**dichter**: drei in zwei Tagen gegen sieben in den vierzehn Tagen davor.
+
+### Korrektur: `SleepInProgress = 16` hat es nie gegeben
+
+Die bisherige Notiz führte `SleepInProgress = 16` als Fingerabdruck der
+jüngeren Vorfälle. **Das war eine Verwechslung.** Im Rohdatensatz eines 41ers
+stehen beide Felder untereinander:
+
+```
+SleepInProgress = 0
+...
+Checkpoint = 16
+```
+
+`SleepInProgress` ist bei **allen zwölf** Vorfällen `0`, von 08.08. bis heute.
+Der Wert 16 gehörte immer zu `Checkpoint`. Wer die Felder über
+`.Properties[n]` per Index ausliest statt über den Namen, greift leicht daneben
+— deshalb hier der Weg, der stimmt:
+
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='System';Id=41;StartTime=(Get-Date).AddDays(-30)} |
+  ForEach-Object { $x=[xml]$_.ToXml(); $d=@{}
+    foreach($e in $x.Event.EventData.Data){$d[$e.Name]=$e.'#text'}
+    "{0} | Chk={1} | Sleep={2}" -f $_.TimeCreated,$d['Checkpoint'],$d['SleepInProgress'] }
+```
+
+### Negativbefunde, erneut bestätigt (30.08.2026)
+
+- **WHEA-Logger: 0 Ereignisse in 30 Tagen.** CPU, RAM, PCIe melden weiterhin nichts.
+- **Keine Plattenfehler.** Von `disk`, `Ntfs`, `volmgr` in sieben Tagen nur
+  73 × ID 98 („Volume ist fehlerfrei"). Kein 153, kein 140.
+- **Kein Speicherabbild.** Weder `MEMORY.DMP` noch etwas in `C:\Windows\Minidump`.
+- **Windows Search hält still.** Dienst `Stopped`/`Disabled`, **null** Abstürze
+  seit dem 28.08. 16:00. Die 15.062 Einträge im 7-Tage-Fenster stammen
+  sämtlich aus der Zeit davor. Als Absturzursache war der Dienst damit
+  ohnehin ausgeschieden — er lief bei den drei neuen Vorfällen gar nicht.
+- **Stille bis zur letzten Sekunde.** In den drei Minuten vor dem Abschalten am
+  30.08. um 20:59:55 steht in System- und Anwendungsprotokoll **ein einziger**
+  Eintrag (Configuration-Change-Monitor, 20:57:56). Kein Dienst, kein Treiber,
+  keine Warnung. Ein Softwareabsturz hinterlässt so etwas nicht.
+
+### Was daraus folgt
+
+Der Standby-Zweig ist abgeschlossen. Von der Verdächtigenliste im Abschnitt
+„Netzteildefekt 2026" bleiben die Punkte, die noch **nie geprüft** wurden:
+
+1. **Stromzufuhr ausserhalb des Netzteils** — Kaltgerätekabel, Steckdosenleiste,
+   Wandsteckdose. Billig, schnell, und noch offen. Deshalb zuerst.
+2. **Das eingebaute alte Netzteil selbst**, gegengetestet mit einem bekannt
+   guten, ausreichend dimensionierten Gerät — nicht mit einem weiteren Altteil.
+
+Beides sind Handgriffe an der Hardware und damit Max' Sache. Nach dem Muster
+aus Abschnitt „Bevor etwas verändert wird" gilt: **einen nach dem anderen**,
+sonst ist hinterher unbekannt, welcher gewirkt hat. Bei einem Abstand von
+zuletzt 2,5 bis 32 Stunden zeigt sich innerhalb von zwei bis drei Tagen, ob ein
+Eingriff etwas gebracht hat.

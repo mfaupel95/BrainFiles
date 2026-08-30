@@ -1,3 +1,13 @@
+---
+id: 20260830-wiederholbare-aufgaben
+title: 'Wiederholbare Aufgaben'
+tags: [betrieb]
+created: 2026-08-28
+updated: 2026-08-28
+related: [20260830-routinen]
+summary: 'Welche Arbeit sich wiederholt hat und welche Skills daraus entstanden sind.'
+---
+
 # Wiederholbare Aufgaben
 
 Welche Arbeit sich in den bisherigen Sitzungen tatsächlich wiederholt hat — und

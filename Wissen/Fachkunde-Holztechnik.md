@@ -1,3 +1,13 @@
+---
+id: 20260830-fachkunde-holztechnik
+title: 'Fachkunde Holztechnik — Max'' Ausbildungswissen'
+tags: [holz]
+created: 2026-08-27
+updated: 2026-08-27
+related: []
+summary: 'Inhalt und Ablage des Lehrwerks Fachkunde Holztechnik im Archiv.'
+---
+
 # Fachkunde Holztechnik — Max' Ausbildungswissen
 
 Das Standardlehrwerk der Tischlerausbildung (Verlag Europa-Lehrmittel,

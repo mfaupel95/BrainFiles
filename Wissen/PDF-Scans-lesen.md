@@ -1,3 +1,13 @@
+---
+id: 20260830-pdf-scans-lesen
+title: 'Gescannte PDFs wirklich lesen'
+tags: [archiv]
+created: 2026-08-20
+updated: 2026-08-20
+related: []
+summary: 'Wie gescannte PDFs ohne Textebene per OCR auswertbar gemacht werden.'
+---
+
 # Gescannte PDFs wirklich lesen
 
 Viele Dokumente im Archiv sind **Scans ohne Textebene**. `pypdf` liefert dort

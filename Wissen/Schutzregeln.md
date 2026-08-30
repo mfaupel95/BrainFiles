@@ -1,3 +1,13 @@
+---
+id: 20260830-schutzregeln
+title: 'Schutzregeln'
+tags: [sicherheit, betrieb]
+created: 2026-08-27
+updated: 2026-08-28
+related: []
+summary: 'Welche Dateien in MaxHirn ein Agent nicht anfassen darf und warum.'
+---
+
 # Schutzregeln
 
 Welche Dateien in `MaxHirn/` ein Agent **nicht** anfassen darf, und warum.

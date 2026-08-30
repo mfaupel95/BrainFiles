@@ -1,3 +1,13 @@
+---
+id: 20260830-marktlage-august-2026
+title: 'Marktlage August 2026 — Faktenstand und Quellenbewertung'
+tags: [finanzen]
+created: 2026-08-14
+updated: 2026-08-24
+related: []
+summary: 'Geprüfter Marktstand vom August 2026 samt Bewertung der zugrunde liegenden Quelle.'
+---
+
 # Marktlage August 2026 — Faktenstand und Quellenbewertung
 
 Angelegt am 14.08.2026 aus der Analyse eines YouTube-Beitrags von *STA Solutions*
