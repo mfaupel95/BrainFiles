@@ -1,0 +1,131 @@
+# Versionsverwaltung von BrainFiles - WHITELIST
+#
+# Dieses Repository sichert NICHT den Vault. Das tun sichern.ps1 (G:) und
+# sichern-zweitkopie.ps1 (O:). Es schliesst die eine Luecke, die alle drei
+# Kopien teilen: Sie halten nur den JETZIGEN Stand. Ein Fehler, der laenger als
+# bis 20:00 unbemerkt bleibt, steht danach in allen dreien. Git haelt die
+# Vorgeschichte - deshalb hier nur, was sich von Hand aendert und was weh taete,
+# wenn es still kaputtginge.
+#
+# Bewusst eine Whitelist: erst alles ignorieren, dann einzeln freigeben. Eine
+# Blacklist waere die falsche Richtung - sie nimmt jede neue Datei ungefragt
+# auf, und genau so landen 45 GB Medien oder ein Zugangsschluessel im Verlauf.
+#
+# Seit dem 30.08.2026 liegt die Wurzel eine Ebene hoeher: nicht mehr in
+# MaxHirn/, sondern in BrainFiles/. Jede Freigabe unten traegt deshalb den
+# Ordner im Pfad. Die vier Ordner haben je eine Aufgabe - MaxHirn/ Wissen,
+# Modelle/ Gewichte, Agenten/ was laeuft, Werkstatt/ gemeinsame Arbeit.
+
+# --- 1) Grundsatz: nichts ---------------------------------------------------
+*
+
+# --- 2) Ordner muessen begehbar sein ----------------------------------------
+# Ohne diese Zeile steigt Git an der ersten ignorierten Ebene aus und findet
+# nichts von dem, was unten freigegeben ist.
+!*/
+
+# --- 3) Der Kopf des Systems ------------------------------------------------
+# Die beiden Git-Steuerdateien zuerst: ohne diese Freigabe faengt die Regel in
+# Zeile 24 sie selbst mit ein, und ausgerechnet die Regeln waeren nicht
+# versioniert. .gitattributes haelt die Zeilenenden auf LF (Portabilitaet.md).
+!/.gitignore
+!/.gitattributes
+!MaxHirn/*.md
+!MaxHirn/Wissen/**/*.md
+!MaxHirn/.claude/skills/**
+
+# --- 4) Das Archiv-Werkzeug (nicht das Archiv) ------------------------------
+# Archiv/ hiess bis zum 30.08.2026 Claude/ - benannt nach einem Modell, obwohl
+# alle Modelle darauf zugreifen. Die 45 GB darin sind weiter draussen.
+!MaxHirn/Archiv/*.md
+!MaxHirn/Archiv/ArchivSuche/*.py
+!MaxHirn/Archiv/ArchivSuche/*.md
+!MaxHirn/Archiv/ArchivSuche/requirements.txt
+!MaxHirn/Archiv/ArchivSuche/*.bat
+!MaxHirn/Archiv/ArchivSuche/static/**
+
+# --- 5) Eigene Programme ----------------------------------------------------
+!Agenten/*.ps1
+!Agenten/Routinen/*.ps1
+!Agenten/Routinen/umzug/*.ps1
+!Agenten/Routinen/umzug/*.psd1
+!Agenten/Routinen/umzug/*.txt
+!Agenten/Handel/*.py
+!Agenten/Handel/*.md
+!Agenten/Handel/*.ps1
+!Agenten/MCP-Server/mail/**
+!Agenten/MCP-Server/kraken/**
+!Agenten/MCP-Server/archiv/**
+
+# --- 6) Konfiguration, die Verhalten steuert --------------------------------
+!MaxHirn/.mcp.json
+!MaxHirn/Archiv/.mcp.json
+!**/*.env.template
+!MaxHirn/.claude/settings.local.json
+!MaxHirn/Archiv/.claude/settings.local.json
+
+# --- 7) Die Spielregeln des gemeinsamen Arbeitsordners ----------------------
+# Aus Werkstatt/ ist nur das versioniert, was Verhalten steuert. Der Rest ist
+# Durchgangsware: Uebergaben, Zwischenstaende, geklonte Fremd-Repos.
+!Werkstatt/*.md
+
+# --- 8) Rueckausnahmen: was trotz der Freigaben oben draussen bleibt --------
+
+# Zugangsdaten. Zugaenge.md ist laut CLAUDE.md die einzige Ablage fuer
+# Schluessel und Tokens - im Klartext. In Git waere sie fuer immer drin, auch
+# nach einem spaeteren Loeschen, denn Git vergisst nichts. Das ist der Punkt,
+# an dem Versionsverwaltung zum Risiko wird statt zum Schutz.
+MaxHirn/Wissen/Zugaenge.md
+MaxHirn/Wissen/Passwoerter-Quarantaene.md
+**/.env
+**/*.pem
+**/*.pfx
+**/*.p12
+**/*.kdbx
+**/*_key.txt
+**/acoustid_key.txt
+
+# Laufender Zustand, keine Fassung von Hand. plan.json haelt den Stand des
+# DCA-Agenten; jeder Lauf schreibt hinein. Im Verlauf waere das Rauschen, das
+# die echten Aenderungen zudeckt.
+Agenten/Handel/plan.json
+Agenten/Handel/plan.json.v1
+Agenten/Handel/check.log
+
+# Erzeugtes und Fremdes
+**/__pycache__/**
+**/.venv/**
+**/node_modules/**
+**/*.pyc
+**/logs/**
+MaxHirn/Archiv/ArchivSuche/*.db
+MaxHirn/Archiv/ArchivSuche/*.db-shm
+MaxHirn/Archiv/ArchivSuche/*.db-wal
+MaxHirn/Archiv/.claude/scheduled_tasks.lock
+
+# Fremd-Repositories. Sie bringen ein eigenes .git mit; Git nimmt sie sonst als
+# Submodul-Verweis auf (gemessen 24.08.2026: neun Stueck). Ein solcher Verweis
+# speichert nur einen fremden Commit-Hash - beim Auschecken faende sich dort ein
+# leerer Ordner. Sie sind ohnehin aus Git reproduzierbar.
+Werkstatt/Repos/**
+Werkstatt/Sitzungen/**
+Werkstatt/Worktrees/**
+Agenten/Hermes/hermes-agent/**
+Modelle/**
+
+# Fremde MCP-Server. Freigegeben sind oben nur die drei eigenen (mail, kraken,
+# archiv). Die Muster *.env.template und *.mcp.json gelten aber ohne Pfad und
+# haetten sonst drei Vorlagendateien aus dem tooluniverse-Server mitgenommen.
+Agenten/MCP-Server/ant.dir.*/**
+
+# Hermes komplett. Aus diesem Ordner ist nichts freigegeben, aber die Regel in
+# Zeile 27 macht Unterordner begehbar - Git meldete deshalb bei jedem Aufruf
+# "?? Hermes/". Rauschen in git status ist gefaehrlich: Wer es gewohnt ist,
+# uebersieht darin die eine Zeile, auf die es ankommt. Der Ordner enthaelt
+# ausserdem auth.json und .env, also Zugangsdaten. Konfiguration und Gedaechtnis
+# des zweiten Agenten sichert sichern-zweitkopie.ps1 nach O:.
+Agenten/Hermes/**
+
+# Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
+# macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
+*.bak-*
