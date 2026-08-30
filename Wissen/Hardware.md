@@ -854,3 +854,18 @@ aus Abschnitt „Bevor etwas verändert wird" gilt: **einen nach dem anderen**,
 sonst ist hinterher unbekannt, welcher gewirkt hat. Bei einem Abstand von
 zuletzt 2,5 bis 32 Stunden zeigt sich innerhalb von zwei bis drei Tagen, ob ein
 Eingriff etwas gebracht hat.
+
+### Nachgemessen wird mit dem Skript, nicht von Hand
+
+`Routinen/absturz-nachmessen.ps1` fasst genau die Abfragen zusammen, die hier
+zum Ergebnis gefuehrt haben — Protokollreichweite, echte Absturzzeitpunkte aus
+6008, den Fingerabdruck der 41er, Standby-Zyklen und die Negativbefunde. Nur
+lesend, keine Adminrechte noetig:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Routinenbsturz-nachmessen.ps1
+```
+
+Es liest die Ereignisfelder ueber ihren **Namen** aus, nicht ueber
+`.Properties[n]` — der Indexzugriff war die Ursache der
+`SleepInProgress`-Verwechslung oben.
