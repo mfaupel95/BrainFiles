@@ -130,7 +130,13 @@ Unabhängig vom Inhalt gilt (in `sort_inbox.py`, `PREFIX_RULES`):
 
 Weitere Masken lassen sich dort einfach ergänzen.
 
-## Duplikate
+## Eingebaute Sicherungen
+
+`sort_inbox.py` trifft mehrere Entscheidungen von sich aus, damit ein Lauf
+nichts Wertvolles überschreibt oder falsch ablegt. Der Kontext in
+`Claude/CLAUDE.md` verweist hierher statt die Zahlen zu kopieren.
+
+### Duplikate – der Inhalt entscheidet, nicht der Name
 
 Landet beim Einsortieren eine Datei auf einen bereits vorhandenen Namen,
 entscheidet der **Inhalt** (Größe + SHA1), nicht das Änderungsdatum: bei
@@ -138,6 +144,32 @@ Byte-Gleichheit wird die Posteingang-Kopie gelöscht, die Archivdatei bleibt.
 Weicht der Inhalt ab, wird **nichts** gelöscht – die neue Datei wird als
 "(2)" abgelegt. Früher entschied das Änderungsdatum; das hätte in einem Lauf
 1001 gleichnamige, aber inhaltlich verschiedene Icon-Dateien blind abgeräumt.
+
+### Icons landen nicht in `Bilder/`
+
+`.ico`, `.icns`, `.cur`, `.ani` immer. PNG und SVG dann, wenn sie quadratisch
+(±2 %), höchstens 512 px groß und unter 64 KB sind → `Software/Windows/Icon`.
+Größe **und** Maße müssen zutreffen, sonst wäre ein kleines echtes Foto
+betroffen. Die 64-KB-Schwelle ist an den echten Daten gemessen: sie erfasst
+1151 von 1152 bekannten Icons, ohne einen einzigen zusätzlichen Fehltreffer
+bei den 2927 echten Bildern im Archiv. Maße werden ohne Bildbibliothek direkt
+aus dem PNG-Header bzw. dem `<svg>`-Tag gelesen (`ICON_*` in `sort_inbox.py`).
+
+### Zertifikate und Schlüssel werden nie automatisch verschoben
+
+Entscheidend ist die **Endung**, nicht der Dateiname – ein ELSTER-Zertifikat
+heißt schlicht `Ann21_elster_….pfx` und enthält kein verräterisches Wort:
+`.pfx`, `.p12`, `.pem`, `.key`, `.jks`, `.keystore`, `.crt`, `.cer`, `.kdbx`,
+`.kdb`, `.asc`, `.gpg`, `.ppk`, `.ovpn` (`SENSITIVE_EXTS`). Zusätzlich Namen
+mit `passw`, `kennwort`, `credential`, `secret`, `private key`
+(`SENSITIVE_NAME_PATTERNS`). Solche Dateien werden gemeldet und bleiben liegen.
+
+### Build-Artefakte werden übersprungen
+
+`.pyc`, `.pyo`, `.pyd`, `.toc`, `.pyz` sowie alles unterhalb von
+`__pycache__/`, `build/`, `dist/`, `.venv/`, `.egg-info`, `node_modules/`,
+`.app/`, `__MACOSX/` (`SKIP_EXTS` / `SKIP_PFAD_MUSTER` in `sort_inbox.py`).
+`.spec` bleibt bewusst drin – die Datei gehört zum Quellcode.
 
 ## Geschwindigkeit
 

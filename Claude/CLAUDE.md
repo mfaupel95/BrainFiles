@@ -111,23 +111,14 @@ verrät (`Studium/` → `Dokumente/Privat/Studium`); die Regeln stehen in
 
 ### Was das Skript von sich aus absichert
 
-- **Über Duplikate entscheidet der Inhalt, nicht der Name.** Liegt am Ziel schon
-  eine Datei gleichen Namens, werden Größe und SHA1 verglichen. Nur bei
-  Byte-Gleichheit wird die Posteingang-Kopie gelöscht; weicht der Inhalt ab,
-  wird **nichts** gelöscht und die Datei als `(2)` abgelegt. Früher entschied das
-  Änderungsdatum – das hätte allein in einem Lauf 1001 gleichnamige, aber
-  inhaltlich verschiedene Icon-Dateien blind abgeräumt.
-- **Icons landen nicht in `Bilder/`.** `.ico`/`.icns` immer; PNG und SVG dann,
-  wenn sie quadratisch, höchstens 512 px groß und unter 64 KB sind → nach
-  `Software/Windows/Icon`. Die Schwelle ist an den echten Daten gemessen: sie
-  fängt 1151 von 1152 bekannten Icons bei genau einem Fehltreffer unter 2927
-  echten Bildern.
-- **Build-Artefakte werden übersprungen:** `.pyc`, `.pyo`, `.pyd`, `.toc`, `.pyz`
-  sowie alles unterhalb von `__pycache__/`, `build/`, `dist/` und `.venv/`.
-- **Zertifikate und Schlüssel werden nie automatisch verschoben.** Entscheidend
-  ist die Endung (`.pfx`, `.p12`, `.pem`, `.key`, `.kdbx`, `.ovpn` …), nicht der
-  Dateiname – ein ELSTER-Zertifikat heißt schlicht `Ann21_elster_….pfx` und
-  enthält kein einziges verräterisches Wort.
+`sort_inbox.py` hat mehrere eingebaute Sicherungen: Duplikat­entscheidung über
+den **Inhalt** (Größe + SHA1), nicht über den Namen — weicht der Inhalt ab, wird
+**nichts** gelöscht; Icon-Filter statt `Bilder/`; Zertifikate und Schlüssel
+werden nie automatisch verschoben (Endung, nicht Dateiname); Build-Artefakte
+werden übersprungen. Schwellen, Messwerte und die vollständige Liste stehen in
+[ArchivSuche/README.md](ArchivSuche/README.md) (Abschnitt „Eingebaute
+Sicherungen") und im Skill `posteingang` — hier bewusst nicht kopiert, damit die
+Zahlen nicht still veralten.
 
 ## Was nicht im Index ist
 

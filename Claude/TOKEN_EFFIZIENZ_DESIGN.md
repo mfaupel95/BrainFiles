@@ -79,3 +79,10 @@ Systemkontext nicht zuverlässig verkleinern.
   `sort_inbox.py`, `move()`) der Inhalt — nichts wird gelöscht, wenn er
   abweicht. Doku korrigiert, damit der Verweis aus `Claude/CLAUDE.md` nicht
   auf eine veraltete Beschreibung zeigt.
+- `Claude/CLAUDE.md`: Abschnitt „Was das Skript von sich aus absichert" von
+  ~19 auf ~9 Zeilen gekürzt. Die Zahlen (1151/1152, 2927, 64 KB, 512 px,
+  Endungslisten) waren wortgleiche Kopien der Code-Kommentare in
+  `sort_inbox.py` — dasselbe Rott-Muster wie beim Duplikat-Nebenfund. Die
+  vollständige Fassung ist nach `ArchivSuche/README.md` (neuer Abschnitt
+  „Eingebaute Sicherungen") gezogen, `CLAUDE.md` verweist nur noch. Das
+  Sicherheitssignal (welche Sicherungen es gibt) bleibt im Kernkontext.
