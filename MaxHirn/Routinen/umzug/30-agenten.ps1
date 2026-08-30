@@ -165,23 +165,37 @@ if (-not $DryRun -and $ist -ne $hh) {
 # --- 6. Geplante Aufgaben --------------------------------------------------
 Schritt ''
 $aufgaben = 0
+$altPfad = 'MaxHirn\\(Routinen|Handel)'
+function Neu-Pfad([string]$s) {
+    $s -replace 'MaxHirn\\Routinen', 'Agenten\Routinen' -replace 'MaxHirn\\Handel', 'Agenten\Handel'
+}
 foreach ($t in (Get-ScheduledTask -ErrorAction SilentlyContinue)) {
-    $neuAktionen = @(); $betroffen = $false
-    foreach ($a in $t.Actions) {
-        $arg = $a.Arguments
-        if ($arg -match 'MaxHirn\\(Routinen|Handel)') {
-            $betroffen = $true
-            $arg = $arg -replace 'MaxHirn\\Routinen', 'Agenten\Routinen' -replace 'MaxHirn\\Handel', 'Agenten\Handel'
-        }
-        $neuAktionen += New-ScheduledTaskAction -Execute $a.Execute -Argument $arg
+    # Nur Aufgaben anfassen, die den alten Pfad in Argumenten oder
+    # Arbeitsverzeichnis tragen. Alle anderen unberuehrt lassen.
+    $betroffen = @($t.Actions | Where-Object {
+        $_.Arguments -match $altPfad -or $_.WorkingDirectory -match $altPfad
+    })
+    if (-not $betroffen) { continue }
+
+    $aufgaben++
+    Schritt "  Aufgabe '$($t.TaskName)' zeigt auf den alten Pfad"
+
+    # COM-Handler-Aktionen (ohne .Execute) unveraendert durchreichen, sonst
+    # Exec-Aktion neu bauen und -Argument/-WorkingDirectory nur setzen, wenn
+    # gefuellt -- New-ScheduledTaskAction lehnt leere Werte ab.
+    $neuAktionen = foreach ($a in $t.Actions) {
+        if ([string]::IsNullOrEmpty($a.Execute)) { $a; continue }
+        $nta = @{ Execute = $a.Execute }
+        $arg = Neu-Pfad $a.Arguments
+        if (-not [string]::IsNullOrEmpty($arg)) { $nta.Argument = $arg }
+        $wd = Neu-Pfad $a.WorkingDirectory
+        if (-not [string]::IsNullOrEmpty($wd)) { $nta.WorkingDirectory = $wd }
+        New-ScheduledTaskAction @nta
     }
-    if ($betroffen) {
-        $aufgaben++
-        Schritt "  Aufgabe '$($t.TaskName)' zeigt auf den alten Pfad"
-        if (-not $DryRun) {
-            Set-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath -Action $neuAktionen | Out-Null
-            Schritt "    umgehaengt" 'ok'
-        }
+
+    if (-not $DryRun) {
+        Set-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath -Action $neuAktionen | Out-Null
+        Schritt "    umgehaengt" 'ok'
     }
 }
 Schritt "geplante Aufgaben betroffen: $aufgaben"
