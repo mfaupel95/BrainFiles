@@ -1,7 +1,10 @@
 # Token-effizienter Claude-Kontext – Design
 
 **Stand:** 2026-08-30
-**Status:** Zur Umsetzung freigegeben durch Max, vor detaillierter Ausführung prüfen.
+**Status:** Umgesetzt am 30.08.2026 (Punkte 1–2 und 4 der Umsetzungsliste).
+Punkt 3 (Empfehlungs-Präferenz) war bereits in `Wissen/Profil.md` vorhanden
+und wird über `Wissen/INDEX.md` erreicht — kein direkter Link in den
+Kernregeln, um die Index-first-Regel nicht zu unterlaufen.
 
 ## Problem
 
@@ -61,3 +64,18 @@ Systemkontext nicht zuverlässig verkleinern.
 - Detailregeln bleiben auffindbar, werden aber nur bei passender Aufgabe
   geladen.
 - Bei Auswahlentscheidungen erhält Max eine klare, begründete Empfehlung.
+
+## Umgesetzte Änderungen (30.08.2026)
+
+- `CLAUDE.md`: Regel „gezielt lesen statt vollständig" ergänzt (rg /
+  `archiv`-Skill vor jedem Datei-Read).
+- `Claude/CLAUDE.md`: Abschnitt „Was nicht im Index ist" von ~59 auf ~16
+  Zeilen gekürzt — die Details standen bereits vollständig in
+  `BESCHAEDIGTE_DATEIEN.md` und `BESCHAEDIGTE_PDFS.md`, nur als Verweis
+  behalten.
+- **Nebenfund beim Kürzen:** `ArchivSuche/README.md` beschrieb beim
+  Duplikat-Umgang noch das alte, änderungsdatum-basierte Löschverhalten.
+  Tatsächlich entscheidet seit der Umstellung auf SHA1-Vergleich (siehe
+  `sort_inbox.py`, `move()`) der Inhalt — nichts wird gelöscht, wenn er
+  abweicht. Doku korrigiert, damit der Verweis aus `Claude/CLAUDE.md` nicht
+  auf eine veraltete Beschreibung zeigt.

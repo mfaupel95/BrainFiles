@@ -46,6 +46,11 @@ Einstieg für Menschen: [Dashboard.md](Dashboard.md)
    Anleitungen? Dann `archiv`-Skill benutzen, nicht das Internet.
 3. **Erst danach Internet** (WebSearch/WebFetch) — für allgemeines Weltwissen.
 
+**Bei jedem Schritt gezielt lesen, nicht vollständig.** Vor einem Datei-Read
+zuerst gezielt suchen (`rg` für Projektdateien, `archiv`-Skill für persönliche
+Unterlagen) und nur die nötigen Trefferbereiche lesen. Eine ganze Datei nur,
+wenn ihre vollständige Struktur für die Aufgabe gebraucht wird.
+
 ## Jede Aufgabe wird wiederholbar gemacht
 
 Angeordnet am 28.08.2026: **Aus jedem Anwendungsfall entsteht eine wiederholbare

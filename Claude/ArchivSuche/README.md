@@ -133,9 +133,11 @@ Weitere Masken lassen sich dort einfach ergänzen.
 ## Duplikate
 
 Landet beim Einsortieren eine Datei auf einen bereits vorhandenen Namen,
-wird keine Kopie "(2)" angelegt. Stattdessen bleibt die **neuere** der beiden
-Dateien erhalten – die ältere wird gelöscht (Posteingang oder Archiv, je nachdem
-welche zuletzt geändert wurde).
+entscheidet der **Inhalt** (Größe + SHA1), nicht das Änderungsdatum: bei
+Byte-Gleichheit wird die Posteingang-Kopie gelöscht, die Archivdatei bleibt.
+Weicht der Inhalt ab, wird **nichts** gelöscht – die neue Datei wird als
+"(2)" abgelegt. Früher entschied das Änderungsdatum; das hätte in einem Lauf
+1001 gleichnamige, aber inhaltlich verschiedene Icon-Dateien blind abgeräumt.
 
 ## Geschwindigkeit
 

@@ -131,60 +131,24 @@ verrät (`Studium/` → `Dokumente/Privat/Studium`); die Regeln stehen in
 
 ## Was nicht im Index ist
 
-Der Ordner `Software/` (Installationsdateien Linux/Windows) ist bewusst vom Index
-ausgenommen. Die verwertbaren Inhalte der dortigen iCloud-Sicherung (Dokumente,
-Bilder, Musik, Videos) wurden bereits ins Archiv übernommen; zurückgeblieben sind
-nur Software-Reste sowie Max' ELSTER-Zertifikate (`.pfx`) – die **allesamt
-zerstört sind** (0xFF-Füllbytes, geprüft 20.08.2026). Sie bleiben trotzdem
-liegen: sie belegen, dass der ELSTER-Zugang mit den Platten verloren ging.
+`Software/` (Installationsdateien, iCloud-Restbestand) ist bewusst vom Index
+ausgenommen — die verwertbaren Inhalte sind längst im Archiv, übrig sind
+Software-Reste und Max' sechs ELSTER-Zertifikate (`.pfx`), allesamt zerstört
+(0xFF-Füllbytes). Sie bleiben liegen: einziger Beleg, dass der ELSTER-Zugang
+mit den Platten verloren ging. Die 639 ebenfalls zerstörten iCloud-PDFs aus
+diesem Ordner wurden bereits gelöscht.
 
-Die beschädigten PDFs aus dieser iCloud-Sicherung (639 Stück, reine 0xFF-Füllbytes
-ohne jeden Inhalt – fehlgeschlagene iCloud-Downloads) wurden gelöscht.
+**Zerstörte Dateien im eigentlichen Archiv haben eine andere Ursache** — ein
+Netzteildefekt, der mehrere Platten gleichzeitig traf (Dateiname blieb,
+Inhalt weg). Stand, Rettungsversuche je Laufwerk, Schadensquote je Ordner und
+offene Punkte: [BESCHAEDIGTE_DATEIEN.md](BESCHAEDIGTE_DATEIEN.md) (alle
+Dateitypen) und [BESCHAEDIGTE_PDFS.md](BESCHAEDIGTE_PDFS.md) (die 61
+verbleibenden PDFs samt Rettungsgeschichte). Geprüft wird mit
+`ArchivSuche/pruefe_signaturen.py` (Skill `schaden`) — „beginnt mit FF" ist
+die falsche Prüfung, siehe dort.
 
-**Im eigentlichen Archiv gab es weitere Nullbyte-PDFs – mit anderer Ursache.**
-Am 08.08.2026 fanden sich dort 123 Stück. Sie stammen **nicht** von iCloud,
-sondern von einem **Netzteildefekt**, der mehrere Festplatten gleichzeitig
-zerstört hat: Die Dateinamen wurden noch geschrieben, die Inhalte gingen mit der
-Hardware verloren.
-
-Aus den 123 wurden in zwei Durchgängen **61**: 44 Dateien wurden aus intakten
-Fassungen zurückgespielt (gefunden auf G:, H: und O:), 18 Platzhalter entfernt,
-für die im Archiv längst ein intakter Zwilling lag. Die verbleibenden 61 –
-darunter zehn Rechnungen und das Einladungsschreiben zur Meisterprüfung – werden
-**bewusst nicht gelöscht**, weil sie der einzige Hinweis darauf sind, welche
-Dokumente fehlen.
-
-Die zurückgespielten Fassungen sind **Scans ohne Textebene** und waren dadurch
-bis zum 10.08.2026 im Volltextindex leer. Seither hat `index.py` einen
-OCR-Rückfall für bildbasierte PDFs; alle 13 wichtigen Dokumente sind jetzt
-durchsuchbar. Ein Sonderfall beim Suchen: die Kündigung heißt
-`20231130_tm_kündigung_mf.pdf` mit **ü** – `*kuendigung*` findet sie nicht.
-
-Wichtig bei weiteren Rettungsversuchen: **Namensgleichheit genügt nicht.** Von
-261 namensgleichen Kandidaten waren 220 selbst mit 0xFF gefüllt. Immer die ersten
-vier Bytes prüfen. Auf C:, G:, H:, I: und J: wurde am 08.08.2026 nichts gefunden. **O: ist eine
-M.2-SSD im Mainboard-Slot M2_1 und dauerhaft eingebunden** — die frühere Angabe
-„nicht eingebunden" war überholt. Der Lauf dorthin am 20.08.2026 brachte 42
-Dateien zurück (40 Bilder, 2 Software), aber kein einziges Dokument.
-
-Stand, Fundorte und vollständige Liste: [BESCHAEDIGTE_PDFS.md](BESCHAEDIGTE_PDFS.md).
-
-**Nicht nur PDFs sind betroffen.** Der erste vollständige Lauf über alle
-Dateitypen (20.08.2026) fand **691 zerstörte Dateien** unter 62.401 geprüften:
-494 in `Bilder/`, 86 in `Software/`, 83 in `Dokumente/`, 31 in `Musik/`,
-5 in `Videos/`. Darunter alle sechs ELSTER-Zertifikate und 31 Musikstücke,
-die vorher nirgends erfasst waren.
-
-Der Schadensanteil in `Bilder/` beträgt **18,3 %** (494 von 2.693 Bilddateien
-dort) — eine frühere Angabe verglich die 494 mit 10.359 Bildern *archivweit*
-und ließ den Schaden dadurch fünfmal kleiner wirken.
-
-Geprüft wird mit `ArchivSuche/pruefe_signaturen.py` (Skill `schaden`), nicht
-von Hand: **„beginnt mit FF" ist die falsche Prüfung**, denn ein intaktes JPEG
-beginnt selbst mit `FF D8 FF`, und HEIC/MP4 tragen ihre Kennung erst ab Byte 4.
-Das Skript prüft stattdessen, ob die ersten 4096 Bytes durchgehend denselben
-Wert haben.
-
-Gesamtbild und offene Punkte: [BESCHAEDIGTE_DATEIEN.md](BESCHAEDIGTE_DATEIEN.md).
+Such-Falle: Die Kündigung heißt `20231130_tm_kündigung_mf.pdf` mit **ü** —
+`*kuendigung*` findet sie nicht. OCR-Rückfall für Scans ohne Textebene:
+[Wissen/PDF-Scans-lesen.md](../Wissen/PDF-Scans-lesen.md).
 
 Details zum Tool (Aufbau, OCR, Web-Oberfläche, Sortierregeln): [ArchivSuche/README.md](ArchivSuche/README.md)
