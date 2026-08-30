@@ -14,6 +14,7 @@ Testen:
 """
 
 import sqlite3
+import os
 import sys
 import time
 from pathlib import Path
@@ -28,8 +29,8 @@ if hasattr(sys.stderr, "reconfigure"):
 
 # Relativ aufgeloest, damit ein Umzug des Vaults (z. B. auf eine externe SSD)
 # nichts kaputt macht: MCP-Server/archiv/ -> MaxHirn/ -> Claude/ArchivSuche/
-VAULT = Path(__file__).resolve().parents[2]
-ARCHIV = VAULT / "Claude"
+VAULT = Path(os.environ.get("MAXHIRN_VAULT") or (Path(__file__).resolve().parents[3] / "MaxHirn"))
+ARCHIV = VAULT / "Archiv"
 DB_PATH = ARCHIV / "ArchivSuche" / "archiv_index.db"
 POSTEINGANG = ARCHIV / "Posteingang"
 
