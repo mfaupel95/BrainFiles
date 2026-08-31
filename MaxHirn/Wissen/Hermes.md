@@ -4,7 +4,7 @@ title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
 updated: 2026-08-31
-related: [20260830-verbindungen]
+related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
 
@@ -264,7 +264,7 @@ Max startet das Skript selbst; danach ist eine Neuanmeldung nötig.
 
 ## Verwandt
 
-[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[../AGENTS.md|AGENTS.md]]
+[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[Python-Versionen]] · [[../AGENTS.md|AGENTS.md]]
 
 ## Störung 26.08.2026 — „Problem mit den API-Keys"
 
@@ -439,3 +439,15 @@ der Release aktuell war; der flache Klon (`--depth 1`) macht jede lokale
 fehlte in `config.yaml`. Am 31.08. um 00:06 wurde die Datei von anderer Seite
 umgebaut (6.891 → 8.945 Bytes). Der Block `default: claude-opus-5 / provider: anthropic`
 wurde aus der Sicherung `.sicherung/config.yaml.bak-20260824-1805` wiederhergestellt.
+
+## Python-Upgrade auf 3.13.15, 31.08.2026
+
+**Durchgeführt auf Anforderung des Betreibers.** Siehe [[Python-Versionen]] für Details.
+
+venv unter `../Agenten/Hermes/hermes-agent/venv/` komplett neu mit Python 3.13.15 gebaut:
+- Alte venvs gesichert (Backups mit Timestamp)
+- 60+ Dependencies neu installiert
+- Alle CLI-Entry-Points funktionieren: `hermes --version`, `hermes.cmd`, `python -m hermes_cli.main`
+- Verifiziert: `hermes --version` meldet **Python: 3.13.15** ✓
+
+**Bekannte Eigenheit:** Der editable install `hermes_agent` ist nicht per direktem Python-Import verfügbar (`import hermes_agent` schlägt fehl). Das ist nicht kritisch — Hermes funktioniert über CLI und wird über Entry-Points (`.exe`/`.cmd`) aufgerufen. Siehe [[Python-Versionen#Bekannte Eigenheit]].
