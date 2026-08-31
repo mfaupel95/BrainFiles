@@ -56,6 +56,10 @@
 !Agenten/Handel/*.py
 !Agenten/Handel/*.md
 !Agenten/Handel/*.ps1
+!Agenten/Handel/scanner/*.py
+!Agenten/Handel/scanner/*.md
+!Agenten/Handel/scanner/*.json
+!Agenten/Handel/scanner/requirements.txt
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
@@ -94,6 +98,12 @@ MaxHirn/Wissen/Passwoerter-Quarantaene.md
 Agenten/Handel/plan.json
 Agenten/Handel/plan.json.v1
 Agenten/Handel/check.log
+
+# Marktscanner: laufender Zustand und Berichte. wachen.json ist oben bewusst
+# freigegeben (Konfiguration von Hand), diese drei nicht (jeder Lauf schreibt).
+Agenten/Handel/scanner/zustand.json
+Agenten/Handel/scanner/handelsjournal.csv
+Agenten/Handel/scanner/berichte/**
 
 # Erzeugtes und Fremdes
 **/__pycache__/**

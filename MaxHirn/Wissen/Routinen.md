@@ -18,6 +18,7 @@ vorhandener Skill plus ein Zeitplan.
 | Wann | Was | Skill | Status |
 |---|---|---|---|
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
+| täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/marktscanner.ps1` steht |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
@@ -35,6 +36,7 @@ einen Wrapper aus `Routinen/`:
 | `MaxHirn-Zweitkopie` | `Routinen/zweitkopie.ps1` | `Routinen/logs/zweitkopie-letzter-lauf.log` |
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
+| (noch offen) Marktscanner | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
@@ -115,6 +117,23 @@ meldet, wird nach einer Woche ignoriert.
 vorlegen und ausführen bleibt ein bewusster Schritt von Hand. Das entspricht der
 Regel in den globalen Arbeitsanweisungen: aus einem Zeitplan heraus wird nie
 gehandelt.
+
+## Marktscanner: warum die Routine nur Papier handelt
+
+Der [[Marktscanner]] darf als einziger Agent im Rahmen fester Grenzen selbst
+handeln (Ausnahme in [[Schutzregeln]]). Die **Routine** nutzt das nicht:
+`marktscanner.ps1` ruft `handeln.py` ohne `--live` auf. Scharfhandel bleibt ein
+bewusster Aufruf von Hand — dieselbe Regel wie bei der DCA-Prüfung, aus einem
+Zeitplan heraus wird nie echtes Geld bewegt. Die Routine liefert also täglich
+die Rangliste und einen Papier-Handelseintrag; mehr nicht.
+
+Einplanen (wenn gewünscht), interaktiv per Aufgabenplanung:
+
+```powershell
+$exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\marktscanner.ps1"
+schtasks /create /tn "MaxHirn-Marktscanner" /sc daily /st 07:30 `
+  /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
+```
 
 ## Einplanen
 

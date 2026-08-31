@@ -1,0 +1,25 @@
+{
+  "_zweck": "Harte Grenzen des Marktscanners. Eine Datei, eine Wahrheit. Wird von scan.py und handeln.py gelesen, nie von ihnen geschrieben.",
+
+  "watchlist": [
+    "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
+    "DOGE-USDT", "ADA-USDT", "TRX-USDT", "AVAX-USDT", "LINK-USDT",
+    "XLM-USDT", "DOT-USDT", "SUI-USDT", "LTC-USDT", "BCH-USDT"
+  ],
+
+  "max_pro_trade_usd": 50,
+  "max_gesamt_usd": 200,
+  "max_offene_positionen": 4,
+
+  "pflicht_stop_prozent_min": 4.0,
+  "pflicht_stop_prozent_max": 12.0,
+  "mindest_chance_risiko": 1.5,
+
+  "mindest_score": 60,
+  "max_volatilitaet_pa": 1.20,
+
+  "abklingzeit_tage": 3,
+
+  "handel_erlaubt": false,
+  "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'."
+}

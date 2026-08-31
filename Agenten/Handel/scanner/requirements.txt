@@ -1,0 +1,4 @@
+# Der Scanner nutzt das vorhandene .venv eine Ebene hoeher (Agenten/Handel/.venv).
+# Er braucht nur die Standardbibliothek - kein Paket ausserhalb davon.
+# Diese Datei steht hier, damit ein neu erzeugtes .venv nach einem Umzug weiss,
+# dass nichts nachzuinstallieren ist.

@@ -40,6 +40,45 @@ reproduzierbarem Ballast brauchte eine Rückfrage. Die Sperre gilt jetzt dort,
 wo ein Verlust endgültig ist, und nur dort. Wer diesen Absatz liest und die
 alte, weitere Fassung „wiederherstellen" will: Das war kein Versehen.
 
+## Marktscanner: die eine Ausnahme vom Handverbot
+
+Die globale Arbeitsanweisung sagt: **das Auslösen von Geldbewegungen bleibt bei
+Max, ein Agent bereitet nur vor.** Am 31.08.2026 hat Max für **genau einen**
+Agenten eine begrenzte Ausnahme angeordnet: den Marktscanner unter
+`../Agenten/Handel/scanner/` (eigenes README). Er darf im Rahmen fester Grenzen
+selbst kaufen und verkaufen. Die Grenzen stehen in `scanner/wachen.json` und
+sind die einzige Wahrheit darüber:
+
+| Grenze | Wert |
+|---|---|
+| je Trade | 50 USD |
+| gesamt gebunden | 200 USD |
+| offene Positionen | höchstens 4 |
+| Pflicht-Stop je Position | 4–12 %, nicht abschaltbar |
+| Abklingzeit nach Stop-Out | 3 Tage je Wert |
+| Instrumente | nur Spot, nur Long, kein Hebel |
+
+**Drei Sperren müssen alle offen sein, sonst läuft nur Papierhandel:**
+
+1. `scanner/wachen.json` → `"handel_erlaubt": true`
+2. `OKX_API_KEY`, `OKX_API_SECRET`, `OKX_API_PASSPHRASE` als
+   Windows-Benutzervariablen (nicht in den Vault, nicht neben den Code)
+3. `handeln.py` ausdrücklich mit `--live` aufgerufen
+
+Stand 31.08.2026 ist Sperre 1 zu (`handel_erlaubt: false`) und Sperre 2 leer —
+der Live-Pfad ist **noch nie scharf gelaufen**. Bis gültige Schlüssel gesetzt
+sind und das Papier-Handelsjournal über Wochen trägt, bleibt es dabei.
+
+**Was diese Ausnahme nicht aufweicht:**
+
+- **Die tägliche Routine handelt nie scharf.** `Routinen/marktscanner.ps1` ruft
+  `handeln.py` ohne `--live`. „Aus einem Zeitplan heraus wird nie gehandelt"
+  gilt unverändert — Scharfhandel ist ein bewusster Aufruf von Hand.
+- **Jeder andere Agent, jede andere Sitzung** bereitet Geldbewegungen weiterhin
+  nur vor. Die Ausnahme gilt für dieses eine Skript, nicht für Claude allgemein.
+- **Kein Auszahlungsrecht.** Die OKX-Schlüssel bekommen Handelsrecht, sonst
+  nichts. `account_transfer` und Auszahlungen bleiben außen vor.
+
 ## Warum es die Sperre überhaupt gibt
 
 Zwei Dinge machen die geschützten Ordner empfindlicher als ein normales
