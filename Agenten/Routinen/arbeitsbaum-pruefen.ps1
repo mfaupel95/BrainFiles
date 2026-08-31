@@ -24,14 +24,15 @@
 param([int]$Minuten = 10)
 
 $ErrorActionPreference = 'Stop'
-$wurzel = (git rev-parse --show-toplevel 2>$null)
-if (-not $wurzel) { Write-Output "Kein Git-Repository."; exit 1 }
+$wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+git -C $wurzel rev-parse --show-toplevel >$null 2>&1
+if ($LASTEXITCODE -ne 0) { Write-Output "Kein Git-Repository in $wurzel"; exit 1 }
 
 $jetzt   = Get-Date
 $ruhend  = @()
 $inArbeit = @()
 
-foreach ($z in (git status --porcelain)) {
+foreach ($z in (git -C $wurzel status --porcelain)) {
     if ([string]::IsNullOrWhiteSpace($z)) { continue }
     $status = $z.Substring(0,2)
     $pfad   = $z.Substring(3).Trim('"')
