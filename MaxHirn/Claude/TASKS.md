@@ -92,6 +92,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
+- [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**
+      Kontext: `G:` ist erneut nicht angeschlossen (`Test-Path G:\` = False; in
+      der Datenträgerliste nur C:, O:, J:). Der geplante 20-Uhr-Lauf scheitert
+      seit mindestens 30.08. 20:12 mit robocopy-Code 16, „Das System kann den
+      angegebenen Pfad nicht finden" — dasselbe Muster wie beim abgezogenen
+      Laufwerk in T-001, aber ein neuer Vorfall. `MaxHirn-Sicherung` ist
+      deaktiviert, bis ein echter Lauf die Phase-8-Änderung an `sichern.ps1`
+      bestätigt (neue Quelle `BrainFiles\`, `/XD Modelle Werkstatt`, Commit
+      `fc483d4`/`7e3e561`). `sichern-ausser-haus.ps1` (Ziel `E:`) hängt am
+      selben Nagel. `sichern-zweitkopie.ps1` (Ziel `O:`) ist am 31.08. 21:00
+      grün durchgelaufen und damit bestätigt.
+      Nächster Schritt: Seagate Portable anstecken, `Agenten\sichern.ps1`
+      einmal von Hand laufen lassen, bei robocopy-Code < 8 `MaxHirn-Sicherung`
+      wieder aktivieren (`Enable-ScheduledTask -TaskName MaxHirn-Sicherung`).
+      Alternativ Ziel auf ein dauerhaft erreichbares Laufwerk umstellen.
+      Betrifft: `Agenten/sichern.ps1`, `Agenten/sichern-ausser-haus.ps1`,
+      Aufgabe `MaxHirn-Sicherung`
+      Wartet auf: angeschlossenes Sicherungslaufwerk `G:`
+      Angelegt: 2026-08-31 · Zuletzt: 2026-08-31
+
 - [!] **T-004 — Zwölf Abschaltungen ohne Bluescreen seit 08.08., Ursache offen**
       Kontext: Alle zwölf Kernel-Power-41-Ereignisse haben `BugcheckCode = 0`
       und `PowerButtonTimestamp = 0` — kein Bluescreen, kein Speicherabbild,
