@@ -22,7 +22,7 @@ $start = Get-Date
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 
 if (-not (Test-Path $py)) {
-  "ENDE FEHLER: kein Python unter $py - '.venv' im scanner-Ordner neu anlegen (py -3.14 -m venv .venv)" |
+  "ENDE FEHLER: kein Python unter $py - '.venv' im scanner-Ordner neu anlegen (py -3.13 -m venv .venv)" |
     Add-Content $log -Encoding UTF8
   exit 1
 }

@@ -4,7 +4,7 @@ title: 'Marktscanner OKX'
 tags: [handel]
 created: 2026-08-31
 updated: 2026-08-31
-related: [20260830-handelsbots, 20260830-schutzregeln, 20260830-routinen, 20260830-verbindungen]
+related: [20260830-handelsbots, 20260830-schutzregeln, 20260830-routinen, 20260830-verbindungen, 20260831-python-versionen]
 summary: 'Täglicher Krypto-Scanner mit begrenztem Selbsthandel auf OKX — Entscheidung, Grenzen, Scharfschalt-Weg und Stand.'
 ---
 
@@ -66,15 +66,18 @@ Fehlt eine, läuft Papierhandel und es wird gesagt, welche Sperre zu war.
   `stop_setzen`). Vor dem ersten scharfen Lauf einen einzelnen Wert mit
   Kleinstbetrag von Hand ausführen und in der OKX-Oberfläche gegenprüfen.
 
-## Nebenbefund: das alte `Handel/.venv` ist tot
+## venvs — Stand nach dem Python-Neustand (31.08.2026)
 
-`../Agenten/Handel/.venv` zeigt auf ein Basis-Python `C:\Python314`, das nicht
-mehr existiert — jeder Aufruf endet mit Exit 103. Betrifft auch die DCA-Routine
-`Handel/agent.py`; deren Protokoll meldete am 30.08. noch „ENDE ok", seither ist
-das Basis-Python weg. Der Scanner hat deshalb ein **eigenes** `.venv` unter
-`scanner/`, erzeugt aus `py -3.14`, nur Standardbibliothek. Das alte venv sollte
-bei Gelegenheit aus `py -3.14` neu erzeugt werden (`pandas`, `numpy`,
-`yfinance` nachinstallieren).
+Beide venvs laufen jetzt auf **Python 3.13.15** (Systemstandard, siehe
+[[Python-Versionen]]):
+
+- `scanner/.venv` — nur Standardbibliothek, am 31.08. neu gebaut.
+- `../Agenten/Handel/.venv` (DCA-Agent) — war tot (Basis-Python `C:\Python314`
+  weg, jeder Aufruf Exit 103; die DCA-Routine meldete am 30.08. noch „ENDE ok"
+  und lief seither ins Leere). Am 31.08. neu gebaut, `pandas`/`numpy`/`yfinance`/
+  `requests` installiert, `agent.py check` verifiziert. Neu: `Handel/requirements.txt`
+  (pip freeze) für den nächsten Wiederaufbau. Der tote Alt-Ordner liegt als
+  `Handel/.venv.kaputt-20260831` daneben und kann weg.
 
 ## Scharfschalten
 

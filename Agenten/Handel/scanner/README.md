@@ -28,7 +28,7 @@ Kleinstbetraege (50 USD je Trade, 200 gesamt) sind Absicht.
 | `bewertung.py` | Das Bewertungsmodell. Jede Kennzahl steht einzeln im Ergebnis. |
 | `scan.py` | Taeglicher Scan -> `berichte/JJJJ-MM-TT.json` und `berichte/neuester.json`. Loest nichts aus. |
 | `handeln.py` | Vorschlaege bauen und ausfuehren (Papier oder Live). Fuehrt `zustand.json` und `handelsjournal.csv`. |
-| `.venv/` | Eigenes venv (nur Standardbibliothek). Das alte `Handel/.venv` ist tot -- sein Basis-Python `C:\Python314` fehlt. |
+| `.venv/` | Eigenes venv (Python 3.13.15, nur Standardbibliothek). Neu gebaut am 31.08.2026, nachdem der Python-Neustand kam -- siehe [[Python-Versionen]]. |
 
 Nicht versioniert (Rauschen, aber gesichert): `zustand.json`, `handelsjournal.csv`, `berichte/`.
 
