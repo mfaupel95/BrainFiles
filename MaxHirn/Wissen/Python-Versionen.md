@@ -71,6 +71,40 @@ requires-python = ">=3.11,<3.14"
 
 Python 3.14 ist **nicht freigegeben** (obere Grenze `<3.14`). Das ist bewusst — Rust-basierte Transitive (z. B. `pydantic-core`) haben keine `cp314` Wheels und würden per Maturin kompiliert. Sobald diese Packages 3.14 unterstützen, wird die Grenze hochgezogen.
 
+## Der Neubau blieb unvollständig — Stromausfall mitten im Lauf
+
+**Nachtrag 31.08.2026, 23:30.** Der Umbau auf 3.13.15 wurde um **22:56:23**
+von einem harten Stromausfall unterbrochen (`Kernel-Power 41`, `BugcheckCode=0`,
+dazu `EventLog 6008` — dasselbe Hardwarebild wie in [[Hardware]]). Das venv war
+zuletzt um 22:52 geschrieben worden, die Installation lief also mitten hinein.
+
+**Ergebnis: 70 statt 146 Pakete.** Es fehlten unter anderem `anthropic` und
+`mcp` — also der Anthropic-SDK und der MCP-Client. Hermes hätte damit weder mit
+`claude-opus-5` sprechen noch einen einzigen der 11 MCP-Server nutzen können.
+
+**Warum das keiner merkt:** `hermes --version` und `hermes status` laufen
+trotzdem sauber durch und melden Modell, Provider und Token als erkannt — sie
+lesen nur die Konfiguration. Der Defekt fällt erst bei der ersten echten
+Aufgabe auf.
+
+> **Prüfung nach jedem venv-Neubau** — Versionsabfrage genügt nicht:
+> ```
+> venv\Scripts\python.exe -c "import anthropic, mcp, aiohttp, numpy; print('ok')"
+> ```
+> und die Paketzahl gegen den Vorstand halten:
+> `ls -d venv/Lib/site-packages/*.dist-info | wc -l`
+
+Behoben am 31.08. um 23:20: die 77 fehlenden Pakete mit `uv pip install -r`
+nachgezogen, alle unter 3.13.15 ohne Konflikt auflösbar. **Jetzt 150 Pakete**,
+`anthropic`, `mcp`, `aiohttp`, `numpy`, `sounddevice`, `playwright` und
+`faster_whisper` sämtlich importierbar, `hermes status` meldet
+`Model: claude-opus-5`. Protokoll:
+`../Agenten/Hermes/.sicherung/nachinstallation-20260831.log`.
+
+Die oben notierte Eigenheit bleibt richtig: `import hermes_agent` schlägt auch
+nach der Reparatur fehl — der Modulname ist `hermes_cli`, `hermes_agent` ist nur
+der Name der Distribution. Das ist kein Defekt.
+
 ## Verwandt
 
 [[Hermes]] · [[Projekte]]

@@ -272,6 +272,36 @@ unterschied bis zum 28.08. die beiden Sorten Vorfall (13 und 9 früher,
 durchgehend 16 vom 14.08. bis 28.08.), steht seit dem 29.08. aber wieder auf 0,
 während die Abstürze weitergehen.
 
+#### Nachtrag 31.08.2026: es geht weiter, und nicht mehr nur nach Standby
+
+Zwei weitere Vorfälle an diesem Tag, beide mit dem oben beschriebenen
+Erkennungsmerkmal (`BugcheckCode = 0`, `PowerButtonTimestamp = 0`, dazu
+`EventLog 6008`):
+
+| Datum | Uhrzeit | Checkpoint | vorheriges Aufwachen |
+|---|---|---|---|
+| 31.08.2026 | 17:02:52 | **0** | keines protokolliert |
+| 31.08.2026 | 22:56:23 | **0** | keines protokolliert |
+
+**Der Standby-Zusammenhang trägt nicht mehr.** In den 24 Stunden vor dem
+Vorfall um 22:56 steht **kein einziges** `Kernel-Power`-131-Ereignis im
+Protokoll — der Rechner lief durch. Die Erklärung „3 bis 10 Minuten nach dem
+Aufwachen" von oben deckt diese beiden Fälle also nicht ab.
+
+**Zählstand:** 14 Vorfälle in 45 Tagen, davon **5 in den letzten drei Tagen**
+(29.08. 11:04 und 13:18, 30.08. 21:01, 31.08. 17:02 und 22:56). Die Frequenz
+steigt. Gemessen 31.08.2026, 23:20:
+
+```
+Get-WinEvent -FilterHashtable @{LogName='System'; ID=41; StartTime=(Get-Date).AddDays(-45)}
+```
+
+**Was der Vorfall um 22:56 gekostet hat:** Er hat einen laufenden
+Paket-Installationslauf mitten durchtrennt und ein unvollständiges Hermes-venv
+hinterlassen, das sich nach außen gesund meldete — siehe
+[[Python-Versionen]]. Das ist der praktische Schaden dieser Abstürze: nicht der
+Neustart selbst, sondern was an halbfertigen Zuständen zurückbleibt.
+
 ### Auslagerungsdatei auf einer USB-Platte (gefunden 28.08.2026, behoben am selben Tag)
 
 > **Erledigt.** Nachgemessen am 28.08.2026 um 17:15: `PagingFiles` enthält nur

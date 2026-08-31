@@ -66,11 +66,18 @@ In `../Agenten/Hermes/config.yaml`:
     base_url: https://inference-api.nousresearch.com/v1
   ```
 
-  Der frühere Eintrag hier (`claude-opus-5` / `anthropic`, „`base_url` entfernt")
-  stimmt nicht mehr. Hermes läuft jetzt über die **Nous-Cloud-API**, nicht über
-  Anthropic — und **nicht lokal**: `base_url` zeigt ins Netz, es rechnet kein
-  Modell auf Max' Rechner. Das entlastet zwar Max' Claude-Kontingent, ist aber
-  kein Offline-Betrieb.
+  **Überholt seit 31.08.2026.** Dieser Nous-Stand galt nur zwischen dem 26. und
+  dem 31.08. Aktuell steht dort wieder (gemessen 31.08., 23:20 über
+  `hermes status`):
+
+  ```yaml
+  model:
+    default: claude-opus-5
+    provider: anthropic
+  ```
+
+  Damit läuft Hermes wieder über Anthropic, nicht über die Nous-Cloud-API. Der
+  Hergang steht unten unter „Modell-Eintrag wiederhergestellt".
 - `approvals.mode: manual`, `timeout: 300` (unbeantwortet = abgelehnt),
   dazu eine `deny`-Liste gegen Massenlöschung
 - `checkpoints.enabled: true`
@@ -451,3 +458,12 @@ venv unter `../Agenten/Hermes/hermes-agent/venv/` komplett neu mit Python 3.13.1
 - Verifiziert: `hermes --version` meldet **Python: 3.13.15** ✓
 
 **Bekannte Eigenheit:** Der editable install `hermes_agent` ist nicht per direktem Python-Import verfügbar (`import hermes_agent` schlägt fehl). Das ist nicht kritisch — Hermes funktioniert über CLI und wird über Entry-Points (`.exe`/`.cmd`) aufgerufen. Siehe [[Python-Versionen#Bekannte Eigenheit]].
+
+**Nachtrag 31.08.2026, 23:30:** Dieser Neubau blieb unvollständig — ein
+Stromausfall um 22:56 (`Kernel-Power 41`, siehe [[Hardware]]) durchtrennte den
+Installationslauf. Es fehlten **77 Pakete**, darunter `anthropic` und `mcp`;
+Hermes hätte weder mit dem Modell noch mit einem MCP-Server sprechen können,
+meldete sich in `hermes status` aber als gesund. Nachinstalliert, jetzt
+150 Pakete, alles gegengeprüft. **Nach einem venv-Neubau reicht
+`hermes --version` als Prüfung nicht** — Importtest und Paketzahl gehören
+dazu.
