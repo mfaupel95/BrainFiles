@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-08-27
+updated: 2026-08-31
 related: [20260830-verbindungen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -11,16 +11,16 @@ summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claud
 # Hermes Agent
 
 Zweiter Agent neben Claude, von Nous Research. Eingebunden am **23.08.2026**,
-Version **v0.20.5** (2026.8.19). Arbeitet auf demselben Vault, demselben Archiv
+Version **v0.21.0** (2026.8.31, Stand 31.08.2026). Arbeitet auf demselben Vault, demselben Archiv
 und denselben MCP-Servern wie Claude — siehe [[Verbindungen]].
 
 ## Wo was liegt
 
 | | Pfad | warum dort |
 |---|---|---|
-| **Daten** | `MaxHirn/Hermes/` | `HERMES_HOME`, als Benutzervariable gesetzt. Konfiguration, Skills, Gedächtnis, Sitzungen, Protokolle. 500 Dateien, 55 MB. |
+| **Daten** | `../Agenten/Hermes/` | `HERMES_HOME`, als Benutzervariable gesetzt. Konfiguration, Skills, Gedächtnis, Sitzungen, Protokolle. 500 Dateien, 55 MB. |
 | **Code** | `C:\Hermes` | 111.754 Dateien, 1,6 GB. Bewusst **nicht** im Vault (Obsidian) und **nicht** unter `%LOCALAPPDATA%` — Begründung unten. |
-| **Sicherungen** | `MaxHirn/Hermes/.sicherung/` | PATH vorher/nachher, Claude-Desktop-Konfiguration, `config.yaml`, `.env`, drei Installationsprotokolle |
+| **Sicherungen** | `../Agenten/Hermes/.sicherung/` | PATH vorher/nachher, Claude-Desktop-Konfiguration, `config.yaml`, `.env`, drei Installationsprotokolle |
 
 Startbefehle: `hermes chat` (CLI), `hermes --tui`, `hermes desktop`,
 `hermes dashboard`. Alle vier teilen Konfiguration, Sitzungen, Skills und
@@ -54,7 +54,7 @@ Installation: `hermes --version` nennt das echte Verzeichnis.
 
 ## Konfiguration
 
-In `MaxHirn/Hermes/config.yaml`:
+In `../Agenten/Hermes/config.yaml`:
 
 - **Modell seit 26.08.2026 nicht mehr Anthropic** (geprüft 27.08.2026 in
   `config.yaml`, Datei zuletzt geändert 26.08. 19:41 — also nach der Störung):
@@ -77,7 +77,7 @@ In `MaxHirn/Hermes/config.yaml`:
 - `mcp_servers:` mit allen **11** Servern, aus `claude_desktop_config.json`
   übersetzt
 
-In `MaxHirn/Hermes/.env`:
+In `../Agenten/Hermes/.env`:
 
 - `HERMES_WRITE_SAFE_ROOT=C:\Users\faupe\Documents\BrainFiles\MaxHirn`
   — **Schreib-Sandbox, geprüft und aktiv.** Hermes kann überall lesen, aber nur
@@ -109,7 +109,7 @@ Hermes anstelle der `CLAUDE.md` liest.
 ## Offene Punkte
 
 1. ~~Anmeldung fehlt~~ — erledigt am 23.08.2026. Anthropic-Token per
-   `hermes config set ANTHROPIC_TOKEN` in `MaxHirn/Hermes/.env` eingetragen,
+   `hermes config set ANTHROPIC_TOKEN` in `../Agenten/Hermes/.env` eingetragen,
    per `hermes status` gegengeprüft (Anthropic: erkannt, Provider Anthropic,
    Modell claude-opus-5). Ob das Abo die Nutzung durch einen fremden Agenten
    deckt, steht weiterhin in Anthropics Nutzungsbedingungen — technisch
@@ -360,3 +360,82 @@ einmal auf einen fremden MCP-Server, dem optionale Schlüssel fehlen.
   — eigenes Nous-Login fehlt, betrifft nur Hilfsfunktionen.
 - Copilot-Token-Exchange „degraded to RAW token": Enterprise-Modelle können mit
   `model_not_available_for_integrator` scheitern. Ohne Copilot-Nutzung folgenlos.
+
+## Umzugsschaden und Reparatur, 31.08.2026
+
+Nach der Ordnerteilung vom 30.08. (`MaxHirn/Hermes/` → `../Agenten/Hermes/`)
+**startete Hermes überhaupt nicht mehr.** `HERMES_HOME` war korrekt nachgezogen,
+die Daten waren vollständig — aber drei absolute Pfade zeigten weiter auf den
+alten Ort. Genau die Falle aus [[Portabilitaet]], hier in voller Länge:
+
+| Was | zeigte auf | Symptom |
+|---|---|---|
+| `bin/hermes.cmd`, `bin/hermes-acp.cmd` | `…\MaxHirn\Hermes\hermes-agent\venv\Scripts\hermes.exe` | „Das System kann den angegebenen Pfad nicht finden" |
+| `hermes-agent/venv/pyvenv.cfg`, Zeile `home =` | alter Pfad **und** ein Python-Ordner, den es nicht mehr gab (`cpython-3.11-…` statt `cpython-3.11.15-…`) | — |
+| `venv/Scripts/*.exe` (uv-Trampoline) | alten venv-Pfad, **einkompiliert in der Binärdatei** | `uv trampoline failed to spawn Python child process` |
+
+**Die dritte Zeile ist der Merksatz:** `pyvenv.cfg` zu korrigieren reicht nicht.
+Ein uv-Trampolin trägt den Zielpfad im Programm selbst; auch mit
+`relocatable = true` überlebt es den Umzug nicht. Der Fehlertext wechselte nach
+der Korrektur nur von „uncategorized error (os error 4551)" zu „entity not
+found (os error 2)" — **ein anderer Fehler ist kein Fortschritt.**
+
+### Was wirklich hilft: venv neu bauen
+
+Die Python-Laufzeit unter `.hermes-runtime/python/generation-…` bleibt heil und
+ist weiterverwendbar; nur das venv muss neu. Gegenprobe vorweg, ob die Laufzeit
+läuft — `python.exe --version` gab hier *keine* Ausgabe, obwohl alles in Ordnung
+war; erst `python.exe -c "print(123)"` bewies es.
+
+```
+uv venv <ziel> --python <runtime-python.exe> --relocatable
+uv pip install --python <ziel>\Scripts\python.exe -e C:\Hermes -r pakete.txt
+```
+
+`pakete.txt` entsteht aus den `*.dist-info`-Ordnern des alten venv — das geht
+**ohne** lauffähiges Python und reproduziert den Stand exakt (145 Pakete plus
+den editable install von `C:\Hermes`):
+
+```
+ls -d *.dist-info | sed 's/\.dist-info$//' | sed 's/-\([0-9][^-]*\)$/==\1/'
+```
+
+Das alte venv wurde nur umbenannt (`venv.alt-20260831`), nicht gelöscht.
+
+### Wrapper jetzt relativ
+
+`bin/hermes.cmd` und `bin/hermes-acp.cmd` zeigen nicht mehr absolut, sondern
+über `%~dp0` relativ zu ihrem eigenen Ort:
+
+```
+@echo off
+"%~dp0..\hermes-agent\venv\Scripts\hermes.exe" %*
+```
+
+Damit überstehen sie den nächsten Umzug. Die `browser*`-Wrapper waren nie
+betroffen.
+
+**Falle beim Schreiben solcher Dateien:** `printf '…\venv\…'` frisst das `\v`
+als Vertikaltabulator — aus `\venv` wird `env`. Heredoc benutzen, nicht
+`printf`.
+
+## Update auf v0.21.0, 31.08.2026
+
+Nach der Reparatur `hermes update --backup --yes`: **v0.20.5 → v0.21.0**
+(2026.8.31), `main @ 7beb0de6`. Gegengeprüft: `config.yaml` und `.env` per SHA1
+unverändert, 96 Skills mit den 11 eigenen Importen unangetastet, cua-driver
+weiter auf 0.21.0. Sicherungen in `.sicherung/*.bak-20260831-2130`.
+
+**Der Rückstandszähler ist mit Vorsicht zu lesen.** Direkt nach dem Update
+meldete `hermes --version` bereits wieder „8 commits behind" — das Repository
+bekommt täglich Dutzende Commits. Maßgeblich ist die Release-Version, nicht der
+Commit-Abstand. Zwischenzeitlich meldete es sogar „1598 commits behind", während
+der Release aktuell war; der flache Klon (`--depth 1`) macht jede lokale
+`git`-Zählung wertlos.
+
+### Modell-Eintrag wiederhergestellt, 31.08.2026
+
+`hermes status` meldete seit dem 31.08. **`Model: (not set)`** — der `model:`-Block
+fehlte in `config.yaml`. Am 31.08. um 00:06 wurde die Datei von anderer Seite
+umgebaut (6.891 → 8.945 Bytes). Der Block `default: claude-opus-5 / provider: anthropic`
+wurde aus der Sicherung `.sicherung/config.yaml.bak-20260824-1805` wiederhergestellt.
