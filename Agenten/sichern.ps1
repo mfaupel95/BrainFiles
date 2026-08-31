@@ -16,7 +16,7 @@
 param([switch]$NurPruefen)
 
 $ErrorActionPreference = 'Stop'
-$quelle = 'C:\Users\faupe\Documents\BrainFiles\MaxHirn'
+$quelle = 'C:\Users\faupe\Documents\BrainFiles'
 $ziel   = 'G:\MaxHirn-Sicherung'
 
 # Praezise Muster. Die frueheren breiten Muster ('passw', 'secret', 'key')
@@ -89,7 +89,7 @@ $start = Get-Date
 # waehrend der Sicherung in sein eigenes Protokoll schreibt. robocopy kann die
 # offene Datei nicht kopieren und beendet mit Code 11 - gemessen 23.08.2026.
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD GitHub .venv __pycache__ node_modules .git logs
+  /XD Modelle Repos Sitzungen Worktrees .venv __pycache__ node_modules .git logs
 $code = $LASTEXITCODE
 $dauer = (Get-Date) - $start
 
