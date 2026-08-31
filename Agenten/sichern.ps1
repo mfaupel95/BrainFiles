@@ -3,7 +3,8 @@
 # Ablauf: Klartext-Zugangsdaten protokollieren, dann kopieren.
 # Kopiert nur Neues und Geaendertes, loescht nichts (kein /MIR).
 #
-# Ausschluesse: GitHub, .venv, __pycache__, node_modules, .git
+# Ausschluesse: Modelle (huggingface-reproduzierbar), Werkstatt (Durchgangsware),
+# .venv, __pycache__, node_modules, .git, logs
 # Gemessen 19.08.2026: Diese Ordner sind 119.095 der 188.214 Dateien (63 %),
 # aber nur 2,2 der 43,9 GB (5 %). Der Durchsatz haengt an der Dateizahl, nicht
 # an der Datenmenge (93 GB in 188.000 Dateien -> 3,3 MB/s; eine einzelne Datei
@@ -32,7 +33,10 @@ $namensmuster = @(
   '(?i)^id_(rsa|dsa|ecdsa|ed25519)$', '(?i)^ssh_host_.*_key$',
   '(?i)^(passwd|shadow|smbpasswd|secrets\.tdb)$'
 )
-$ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|\.venv|__pycache__|node_modules|\.git)\\'
+# Modelle und Werkstatt mit ausgeklammert: seit die Quelle BrainFiles\ ist,
+# liefe die Pruefung sonst durch 51 GB Modellgewichte (huggingface-Caches mit
+# *api_key*, *.env im Namen) - am 31.08.2026 waren das 193 Fehltreffer.
+$ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|Modelle|Werkstatt|\.venv|__pycache__|node_modules|\.git)\\'
 
 # Bereits bewertete Fundstellen. Sie bleiben in der Liste, werden aber getrennt
 # ausgegeben - sonst geht ein NEUER Fund zwischen den immer gleichen unter.
@@ -89,7 +93,7 @@ $start = Get-Date
 # waehrend der Sicherung in sein eigenes Protokoll schreibt. robocopy kann die
 # offene Datei nicht kopieren und beendet mit Code 11 - gemessen 23.08.2026.
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Repos Sitzungen Worktrees .venv __pycache__ node_modules .git logs
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs
 $code = $LASTEXITCODE
 $dauer = (Get-Date) - $start
 

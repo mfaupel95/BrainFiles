@@ -26,7 +26,9 @@
 param([switch]$NurPruefen)
 
 $ErrorActionPreference = 'Stop'
-$quelle = $PSScriptRoot
+# Eine Ebene ueber diesem Skript (Agenten\ -> BrainFiles\). Vorher $PSScriptRoot,
+# das sicherte nach Phase 3 nur noch Agenten\.
+$quelle = Split-Path $PSScriptRoot -Parent
 $ziel   = 'E:\MaxHirn-AusserHaus'
 
 if (-not (Test-Path 'E:\')) {
@@ -41,7 +43,7 @@ $modus = if ($NurPruefen) { '/L' } else { '' }
 $start = Get-Date
 
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Repos Sitzungen Worktrees .venv __pycache__ node_modules .git logs
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs
 $code = $LASTEXITCODE
 $dauer = (Get-Date) - $start
 

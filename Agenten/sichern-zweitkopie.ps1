@@ -23,7 +23,11 @@
 # Aufruf:  powershell -ExecutionPolicy Bypass -File sichern-zweitkopie.ps1
 
 $ErrorActionPreference = 'Stop'
-$quelle = $PSScriptRoot
+# Eine Ebene ueber diesem Skript: seit Phase 3 liegt es in Agenten\, die Quelle
+# ist aber die Wurzel BrainFiles\ (Wissen, Skills, MCP-Server, Handel, Hermes,
+# Routinen). Vorher stand hier $PSScriptRoot - das sicherte nach dem Umzug nur
+# noch Agenten\.
+$quelle = Split-Path $PSScriptRoot -Parent
 $ziel   = 'O:\MaxHirn-Zweitkopie'
 
 if (-not (Test-Path 'O:\')) {
@@ -35,17 +39,18 @@ Write-Host '=== Zweitkopie nach O: ===' -ForegroundColor Cyan
 $start = Get-Date
 
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
-# gleichnamigen Unterordner irgendwo im Baum mit ausschliessen.
+# gleichnamigen Unterordner irgendwo im Baum mit ausschliessen. Der Archivordner
+# heisst bis Phase 5 noch Claude\ - 50-archiv.ps1 zieht diese Zeilen dann auf
+# Archiv\ nach.
 $ausserhalb = @(
-  (Join-Path $quelle 'Claude\Videos'),
-  (Join-Path $quelle 'Claude\Musik'),
-  (Join-Path $quelle 'Claude\Software'),
-  (Join-Path $quelle 'Claude\Posteingang'),
-  (Join-Path $quelle 'GitHub')
+  (Join-Path $quelle 'MaxHirn\Claude\Videos'),
+  (Join-Path $quelle 'MaxHirn\Claude\Musik'),
+  (Join-Path $quelle 'MaxHirn\Claude\Software'),
+  (Join-Path $quelle 'MaxHirn\Claude\Posteingang')
 )
 
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD $ausserhalb .venv __pycache__ node_modules .git logs
+  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .git logs
 $code = $LASTEXITCODE
 $dauer = (Get-Date) - $start
 
