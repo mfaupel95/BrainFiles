@@ -56,8 +56,20 @@ foreach ($z in (git -C $wurzel status --porcelain)) {
     if ($pfad -match ' -> ') { $pfad = ($pfad -split ' -> ')[1] }   # Umbenennung
     $voll   = Join-Path $wurzel $pfad
 
-    git -C $wurzel check-ignore --quiet --no-index -- $pfad 2>$null
-    $ignoriert = $LASTEXITCODE -eq 0
+    # Ausgeschlossen wird nur, was Git noch nicht kennt. Bei einer bereits
+    # versionierten Datei greift keine Ignore-Regel mehr - ihre Aenderung
+    # gehoert gesichert, auch wenn ein Muster auf den Pfad passt. Gemessen
+    # 01.09.2026: 36 getrackte Dateien passen auf ein Muster, darunter das
+    # ganze Archiv-Werkzeug unter MaxHirn/Claude/ArchivSuche/ (die Whitelist
+    # gibt MaxHirn/Archiv/ frei, die Dateien liegen noch unter Claude/). Ohne
+    # diese Unterscheidung faellt ihre Arbeit stillschweigend aus der Sicherung.
+    $unbekannt = $status -eq '??'
+    if ($unbekannt) {
+        git -C $wurzel check-ignore --quiet --no-index -- $pfad 2>$null
+        $ignoriert = $LASTEXITCODE -eq 0
+    } else {
+        $ignoriert = $false
+    }
     if ($ignoriert -or (Test-EingebettetesGitRepo $voll $wurzel)) {
         $ausgeschlossen += $pfad
         continue
