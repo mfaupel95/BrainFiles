@@ -4,7 +4,8 @@ title: 'XPERP-Handel auf OKX'
 tags: [handel]
 created: 2026-09-01
 updated: 2026-09-01
-related: []
+related:
+  - id: 20260901-saisonalitaet-signal
 summary: 'Wo die gehebelten OKX-Perpetuals liegen, welche Werte 5x tragen und warum der Hebel aus dem Stop fällt statt umgekehrt.'
 ---
 
@@ -103,6 +104,14 @@ Abwärtstrend fiel durch das Vola-Tor (GRVT 192 %, NES 135 %), den Hebel-Deckel
 (JTO 3,8×) oder die Liquidität (POL 0,5 Mio). Das ist ein Befund, kein
 fehlendes Werkzeug.
 
+### Saisonalität greift ins Signal — hoch gewichtet, auf Anweisung
+
+Seit 01.09.2026 rechnet `indikatoren.saisonalitaet()` eine Kalenderstatistik
+(Nachbau des Closed-Source-Indikators „xGhozt Prophecies") und darf in
+`lage()` die Richtung setzen oder gegen SuperTrend+EMA kippen. Die Stichprobe
+ist dünn (~7 Kerzen je Wochentag auf 50 Tagen), deshalb nennt jede Ausgabe
+`n`. Eigene Notiz mit Begründung: [[Saisonalitaet-Signal]].
+
 ### Die Kennzahl für Grid-Eignung heißt Efficiency Ratio
 
 Kaufman: **Nettobewegung / zurückgelegter Weg**, über 7 Tage. Nahe 1 =
@@ -160,9 +169,20 @@ T-017 für Spur 2 verlangt hat.
 
 ## Grenze
 
-Gehandelt wird gehebelt **nur auf ausdrückliche Anweisung** mit Kontrakt,
-Richtung, Hebel, Einsatz und Stop ([[Schutzregeln]], Spur 2). Eine Rangliste
-aus `auswahl.py` ist ein Vorschlag, keine Anweisung. Der Bot rechnet und legt
-vor; abgesendet wird von Max.
+**Seit dem Abend des 01.09.2026 ist Hebel nicht mehr an eine Einzelanweisung
+gebunden** — Max hat die Regel in [[Schutzregeln]] auf „automatisch erlaubt,
+solange `wachen.json` eingehalten wird" umgestellt. Zwei Wege führen deshalb
+in eine Position:
+
+- **automatisch:** `bot.py` im Rahmen von `xperp/wachen.json`, ohne Rückfrage
+  je Order. Die vier Zahlen der Prüfpflicht gehören dann ins Handelsjournal,
+  nicht in den Chat.
+- **auf Anweisung:** Max nennt Kontrakt, Richtung, Hebel, Einsatz und Stop
+  ([[Schutzregeln]], Spur 2). Eine Rangliste aus `auswahl.py` bleibt auf diesem
+  Weg ein Vorschlag, keine Anweisung.
+
+Unverändert: `handel_erlaubt` steht auf `false`, es gibt noch keinen Live-Pfad,
+und der Schalter wird von Hand umgelegt, nie aus einer Routine. Der Bot rechnet
+und legt vor; abgesendet wird bis dahin von Max.
 
 Verwandt: [[Handelsbots]], [[Marktscanner]], [[Schutzregeln]], [[Verbindungen]]

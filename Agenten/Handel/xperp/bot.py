@@ -337,6 +337,23 @@ def zeige_lage(w, wert, historie_quelle=None):
     print("  Effizienz      %.2f  (%s)" % (
         z["er"], "Gezappel - Grid-Futter" if z["er"] < 0.3
         else "gemischt" if z["er"] < 0.6 else "Trend - Grid wird zerrieben"))
+
+    s = z["sais"]
+    if s["quote"] is None:
+        print("  Saisonalitaet  %s: zu wenig Historie fuer eine Aussage (n=%d)" % (
+            s["wochentag"] or "?", s["n"]))
+    else:
+        pfeil = {1: "-> LONG", -1: "-> SHORT", 0: "neutral"}[s["richtung"]]
+        print("  Saisonalitaet  %s %02d:00 UTC  %s" % (
+            s["wochentag"], s["phase_h"], pfeil))
+        print("                 Wochentag: Auf-Quote %.0f%% (n=%d), Kerze im Mittel %+.2f%%" % (
+            s["quote"] * 100, s["n"], s["mittel"] * 100))
+        if s["quote_phase"] is not None and s["n_phase"] >= 3:
+            print("                 + Phase:   Auf-Quote %.0f%% (n=%d), Mittel %+.2f%%" % (
+                s["quote_phase"] * 100, s["n_phase"], s["mittel_phase"] * 100))
+        if s["richtung"] != 0:
+            print("                 HOCH gewichtet - kann das SIGNAL setzen/kippen")
+            print("                 (Anweisung 01.09.2026; n=%d ist duenn, kein Backtest)" % s["n"])
     print()
     print("  SIGNAL: %s   (%s)" % (z["signal"].upper(), z["grund"]))
     print()

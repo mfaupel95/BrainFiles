@@ -9,7 +9,21 @@ Indikator sieht am Anfang nach einem Signal aus, wo keines ist.
 ATR ist hier die tragende Groesse, nicht nur ein Indikator unter vielen: Aus
 ihm faellt der Stop-Abstand, und aus dem Stop-Abstand faellt die
 Positionsgroesse. Der Hebel ist dann Ergebnis und nicht Eingabe.
+
+saisonalitaet() ist am 01.09.2026 dazugekommen: der Nachbau des Closed-Source-
+Indikators "xGhozt Prophecies" von TradingView - Kalenderstatistik nach
+Wochentag und Tagesphase (UTC). Der Pine-Code ist nicht einsehbar, also ist
+hier nur das Prinzip nachgerechnet, nicht der Indikator kopiert. Auf Anweisung
+wird sie in lage() HOCH gewichtet und darf die Richtung setzen und gegen
+SuperTrend+EMA kippen - anders als die uebrigen Bausteine, die lage() bewusst
+nicht verrechnet. Die Stichprobe ist duenn (rund sieben Kerzen je Wochentag auf
+300 x 4h); jede Ausgabe nennt n mit, damit sichtbar bleibt, worauf eine
+Drehung steht.
 """
+
+from datetime import datetime, timezone
+
+WOCHENTAGE = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 
 
 def wahre_spanne(k):
@@ -115,12 +129,82 @@ def effizienz(werte, n=42):
     return abs(f[-1] - f[0]) / weg if weg > 0 else 0.0
 
 
+def saisonalitaet(k, min_n=6):
+    """Kalenderstatistik nach dem Prinzip von "xGhozt Prophecies" (TradingView,
+    Closed-Source - hier nachgerechnet, nicht kopiert).
+
+    Nimmt die naechste, noch nicht existierende Kerze, bestimmt ihren Wochentag
+    und ihre Tagesphase (UTC) und misst an allen frueheren Kerzen desselben
+    Rasters, wie oft sie ueber ihrem Eroeffnungskurs schlossen und wie gross
+    die mittlere Kerzenrendite war.
+
+    Zwei Aggregationen, weil die feine (Wochentag + Phase) auf 300 Kerzen nur
+    eine Handvoll Treffer hat:
+      - Wochentag:        alle Kerzen desselben Wochentags     (~len/7)
+      - Wochentag+Phase:  zusaetzlich dieselbe 4h-Phase         (~len/42)
+
+    richtung ist +1/-1/0 und wird nur gesetzt, wenn die groebere Aggregation
+    mindestens min_n Beobachtungen hat UND Auf-Quote und mittlere Rendite
+    dasselbe Vorzeichen zeigen. Sonst 0 - die Statistik sagt dann nichts.
+    Das ist Rueckblick auf einem duennen Fenster, keine Zusage.
+    """
+    leer = {"richtung": 0, "n": 0, "n_phase": 0, "quote": None,
+            "quote_phase": None, "mittel": None, "mittel_phase": None,
+            "wochentag": None, "phase_h": None, "stark": False}
+    if len(k) < min_n + 1:
+        return leer
+
+    bar_h = 4.0
+    if len(k) >= 2:
+        bar_h = max(1.0, round((k[-1][0] - k[-2][0]) / 3_600_000.0))
+    ziel = datetime.fromtimestamp((k[-1][0] + int(bar_h * 3_600_000)) / 1000,
+                                  timezone.utc)
+    ziel_wt = ziel.weekday()
+    ziel_phase = int(ziel.hour // bar_h)
+
+    def sammle(nur_phase):
+        auf = n = 0
+        summe = 0.0
+        for row in k:
+            d = datetime.fromtimestamp(row[0] / 1000, timezone.utc)
+            if d.weekday() != ziel_wt:
+                continue
+            if nur_phase and int(d.hour // bar_h) != ziel_phase:
+                continue
+            o, c = row[1], row[4]
+            if o <= 0:
+                continue
+            n += 1
+            auf += 1 if c > o else 0
+            summe += (c - o) / o
+        return (n, auf / n, summe / n) if n else (0, None, None)
+
+    n, quote, mittel = sammle(False)
+    n_ph, quote_ph, mittel_ph = sammle(True)
+
+    richtung, stark = 0, False
+    if n >= min_n and quote is not None:
+        if quote >= 0.58 and mittel > 0:
+            richtung, stark = 1, (quote >= 0.65 or mittel > 0.004)
+        elif quote <= 0.42 and mittel < 0:
+            richtung, stark = -1, (quote <= 0.35 or mittel < -0.004)
+
+    return {"richtung": richtung, "n": n, "n_phase": n_ph,
+            "quote": quote, "quote_phase": quote_ph,
+            "mittel": mittel, "mittel_phase": mittel_ph,
+            "wochentag": WOCHENTAGE[ziel_wt], "phase_h": int(ziel_phase * bar_h),
+            "stark": stark}
+
+
 def lage(k, st_n=10, st_faktor=3.0):
     """Alle Signalgroessen der letzten Kerze in einem Wortschatz.
 
-    Die drei Bausteine sind bewusst getrennt und werden nicht zu einer Zahl
-    verrechnet: SuperTrend sagt die Richtung, EMA bestaetigt sie, RSI warnt vor
-    dem Nachlaufen. Eine Summe wuerde verdecken, welcher davon widerspricht.
+    SuperTrend sagt die Richtung, EMA bestaetigt sie, RSI warnt vor dem
+    Nachlaufen - diese drei bleiben getrennt, eine Summe wuerde verdecken,
+    welcher widerspricht. Ausnahme seit 01.09.2026 auf Anweisung: die
+    Saisonalitaet (saisonalitaet(), xGhozt-Prinzip) wird HOCH gewichtet und
+    kann das Signal setzen oder gegen SuperTrend+EMA kippen. Der Grund-Text
+    nennt dann die Stichprobe, damit sichtbar bleibt, worauf die Drehung steht.
     """
     c = [r[4] for r in k]
     a = atr(k, 14)
@@ -128,6 +212,7 @@ def lage(k, st_n=10, st_faktor=3.0):
     e20, e50 = ema(c, 20), ema(c, 50)
     r = rsi(c, 14)
     er = effizienz(c, 42)
+    sais = saisonalitaet(k)
 
     kurs = c[-1]
     st_richtung = richtung[-1]
@@ -149,6 +234,25 @@ def lage(k, st_n=10, st_faktor=3.0):
     else:
         signal, grund = "kein", "SuperTrend und EMA widersprechen sich"
 
+    # Saisonalitaet, auf Anweisung vom 01.09.2026 HOCH gewichtet: sie darf die
+    # Richtung setzen und auch gegen SuperTrend+EMA kippen. Das weicht bewusst
+    # von der sonstigen Trennung der Bausteine ab - deshalb traegt der Grund
+    # die Stichprobe (n), und zeige_lage() in bot.py druckt sie mit. Grundlage
+    # aus Wissen/Handelsbots.md: kurze Fenster taeuschen; ~7 Kerzen je
+    # Wochentag sind kein Backtest, sondern ein Hinweis mit Vorzeichen.
+    sr = sais["richtung"]
+    if sr != 0:
+        srichtung = "long" if sr == 1 else "short"
+        marke = "Saisonalitaet %s (Auf-Quote %.0f%%, Mittel %+.2f%%, n=%d)" % (
+            sais["wochentag"], sais["quote"] * 100, sais["mittel"] * 100,
+            sais["n"])
+        if signal == srichtung:
+            grund = "%s + %s bestaetigt" % (grund, marke)
+        elif signal == "kein":
+            signal, grund = srichtung, "%s - SuperTrend/EMA neutral" % marke
+        else:
+            signal, grund = srichtung, "%s ueberstimmt SuperTrend+EMA" % marke
+
     # RSI blockt nur das Nachlaufen, er dreht kein Signal um.
     if signal == "long" and rsi_jetzt is not None and rsi_jetzt > 78:
         signal, grund = "kein", "Long-Signal, aber RSI %.0f - ueberkauft" % rsi_jetzt
@@ -165,6 +269,7 @@ def lage(k, st_n=10, st_faktor=3.0):
         "ema20": e20[-1], "ema50": e50[-1],
         "rsi": rsi_jetzt,
         "er": er,
+        "sais": sais,
         "signal": signal,
         "grund": grund,
     }

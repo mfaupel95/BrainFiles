@@ -238,6 +238,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Freigabe von Max
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
+- [ ] **T-018 — Saisonalität rechnet nur auf 50 Tagen, nicht auf der tiefen Reihe**
+      Kontext: `indikatoren.saisonalitaet()` (neu am 01.09.2026, hoch gewichtet
+      im Signal — siehe [[Saisonalitaet-Signal]]) läuft auf den 300×4h-Kerzen
+      des gehandelten Kontrakts, also ~50 Tagen ≈ 7 Beobachtungen je Wochentag.
+      `bot.hebel_deckel()` und `bot.trefferquote()` können über `--historie
+      auto` schon auf den tieferen `<Basis>-USDT-SWAP` ausweichen; die
+      Saisonalität nicht, weil sie in `lage()` steckt und nur `k` bekommt.
+      Nächster Schritt: prüfen, ob `zeige_lage()` in `bot.py` die Saisonalität
+      auf `k_hist` nachrechnen und `z["sais"]` samt Signal-Merge ersetzen soll,
+      wenn `--historie` gesetzt ist — analog zum bestehenden Muster für
+      Hebel-Deckel und Trefferquote.
+      Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+
 ## Erledigt
 
 - [x] **T-001 — Sicherungslaufwerk G: fehlt, Hauptsicherung hat kein Ziel**

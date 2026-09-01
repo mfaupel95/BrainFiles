@@ -91,7 +91,7 @@ nicht.
 |---|---|
 | `wachen.json` | **Eine Wahrheit für alle Grenzen.** Wird nur gelesen. |
 | `okxf.py` | OKX-Zugang für Futures. Öffentliche Kerzen ohne Schlüssel; signierte Orders nur, wenn ein Mensch sie aufruft. |
-| `indikatoren.py` | ATR, EMA, RSI, SuperTrend, Efficiency Ratio. Reine Rechnung, kein Netz. |
+| `indikatoren.py` | ATR, EMA, RSI, SuperTrend, Efficiency Ratio, Saisonalität. Reine Rechnung, kein Netz. |
 | `auswahl.py` | Rangliste aller Krypto-XPERP für Long, Short und Grid. |
 | `bot.py` | Lage, Trend-Anlauf, Grid. Legt Befehle vor. |
 | `historie.py` | Tiefe Kerzenreihe für zu junge Kontrakte — zieht den `<Basis>-USDT-SWAP`, damit Hebel-Deckel und Trefferquote auf Monaten statt Tagen stehen. |
@@ -152,6 +152,42 @@ dem Stop-Abstand und wird auf den Deckel begrenzt. Eine gültige Anweisung nach
 
 Fest bleibt auch mit Anweisung: der Pflicht-Stop je Position, der Kill-Switch
 beim Grid, und dass die Claude-Sitzung die scharfe Order nicht selbst absendet.
+
+## Saisonalität im Signal — hoch gewichtet, auf Anweisung
+
+Am 01.09.2026 angeordnet: Der TradingView-Indikator [xGhozt Prophecies: A
+Forecast on the Future](https://de.tradingview.com/script/HtBJgdne-xGhozt-Prophecies-A-Forecast-on-the-Future/)
+soll in die Chart-Analyse und **hoch gewichtet** werden.
+
+Der Indikator ist **Closed-Source** — der Pine-Code ist nicht einsehbar, es gibt
+keine API. Nachgebaut ist deshalb nur sein Prinzip: **Kalenderstatistik**. Er
+nimmt die nächste, noch nicht existierende Kerze, liest ihren Wochentag und ihre
+Tagesphase (UTC) und misst an allen früheren Kerzen desselben Rasters, wie oft
+sie über ihrem Eröffnungskurs schlossen und wie groß die mittlere
+Kerzenrendite war. Das rechnet `indikatoren.saisonalitaet()` aus der
+Kerzenreihe, die der Bot ohnehin zieht.
+
+**Wie es ins Signal greift** (`indikatoren.lage()`):
+
+| Lage | Folge |
+|---|---|
+| Saisonalität stimmt mit SuperTrend+EMA überein | Signal bleibt, Grund trägt „+ Saisonalität bestätigt" |
+| SuperTrend und EMA widersprechen sich (Signal `kein`) | **Saisonalität setzt die Richtung** |
+| Saisonalität steht gegen SuperTrend+EMA | **Saisonalität überstimmt** — Signal kippt |
+
+`richtung` wird nur gesetzt, wenn die Wochentags-Aggregation **≥ 6
+Beobachtungen** hat *und* Auf-Quote (≥ 58 % / ≤ 42 %) und mittlere Rendite
+dasselbe Vorzeichen zeigen. Sonst bleibt sie neutral und rührt das Signal
+nicht an. RSI kann ein saisonal gesetztes Signal danach weiter als überkauft
+blocken.
+
+**Die Einschränkung steht in der Ausgabe, nicht nur hier.** Bei 300×4h-Kerzen
+sind das rund **sieben Kerzen je Wochentag** (50 Tage Historie). Das ist
+Rückblick auf einem dünnen Fenster, kein Backtest — genau das Muster, vor dem
+[[Handelsbots]] warnt („Kurze Fenster täuschen zuverlässig"). `bot.py lage`
+druckt `n` bei jeder Zeile mit, und wenn die Saisonalität das Signal dreht,
+nennt der Grund-Text die Stichprobe. Das ist bewusst laut: der Faktor weicht
+von der sonstigen Regel ab, dass `lage()` die Bausteine **nicht** verrechnet.
 
 ## Warum drei Ranglisten und nicht eine
 
