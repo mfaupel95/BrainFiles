@@ -121,11 +121,10 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 # Submodul-Verweis auf (gemessen 24.08.2026: neun Stueck). Ein solcher Verweis
 # speichert nur einen fremden Commit-Hash - beim Auschecken faende sich dort ein
 # leerer Ordner. Sie sind ohnehin aus Git reproduzierbar.
-# Alles unter Werkstatt/ ausser den Spielregeln an ihrer Wurzel. Das Muster
-# trifft nur Inhalte von Unterordnern, damit die Freigabe von Werkstatt/*.md
-# weiter oben nicht wieder ueberschrieben wird - in Git gewinnt die letzte
-# passende Regel.
-Werkstatt/*/**
+# Alles unter Werkstatt/ ausser den Spielregeln an ihrer Wurzel. Auch die
+# Unterordner selbst werden ignoriert: Sonst zeigt Git eingebettete Fremd-Repos
+# als "?? Werkstatt/<repo>/" und das gefaehrliche Status-Rauschen bleibt.
+Werkstatt/*/
 Agenten/Hermes/hermes-agent/**
 Modelle/**
 

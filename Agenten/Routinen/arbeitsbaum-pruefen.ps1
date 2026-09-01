@@ -31,6 +31,23 @@ if ($LASTEXITCODE -ne 0) { Write-Output "Kein Git-Repository in $wurzel"; exit 1
 $jetzt   = Get-Date
 $ruhend  = @()
 $inArbeit = @()
+$ausgeschlossen = @()
+
+function Test-EingebettetesGitRepo([string]$Pfad, [string]$Wurzel) {
+    if (Test-Path -LiteralPath $Pfad -PathType Container) {
+        $ordner = $Pfad
+    } else {
+        $ordner = Split-Path -Parent $Pfad
+    }
+
+    while ($ordner -and -not [string]::Equals($ordner, $Wurzel, [StringComparison]::OrdinalIgnoreCase)) {
+        if (Test-Path -LiteralPath (Join-Path $ordner '.git')) { return $true }
+        $naechster = Split-Path -Parent $ordner
+        if ($naechster -eq $ordner) { break }
+        $ordner = $naechster
+    }
+    return $false
+}
 
 foreach ($z in (git -C $wurzel status --porcelain)) {
     if ([string]::IsNullOrWhiteSpace($z)) { continue }
@@ -38,6 +55,13 @@ foreach ($z in (git -C $wurzel status --porcelain)) {
     $pfad   = $z.Substring(3).Trim('"')
     if ($pfad -match ' -> ') { $pfad = ($pfad -split ' -> ')[1] }   # Umbenennung
     $voll   = Join-Path $wurzel $pfad
+
+    git -C $wurzel check-ignore --quiet --no-index -- $pfad 2>$null
+    $ignoriert = $LASTEXITCODE -eq 0
+    if ($ignoriert -or (Test-EingebettetesGitRepo $voll $wurzel)) {
+        $ausgeschlossen += $pfad
+        continue
+    }
 
     if (Test-Path -LiteralPath $voll) {
         $lw    = (Get-Item -LiteralPath $voll).LastWriteTime
@@ -56,6 +80,12 @@ foreach ($z in (git -C $wurzel status --porcelain)) {
 }
 
 if (-not $ruhend -and -not $inArbeit) { Write-Output "Arbeitsbaum sauber."; exit 0 }
+
+if ($ausgeschlossen) {
+    Write-Output "=== AUSGESCHLOSSEN (ignoriert oder eingebettetes Git-Repo): $($ausgeschlossen.Count) ==="
+    $ausgeschlossen | Sort-Object | ForEach-Object { Write-Output "    $_" }
+    Write-Output ""
+}
 
 Write-Output "=== RUHEND (aelter als $Minuten Min) - darf gesichert werden: $($ruhend.Count) ==="
 if ($ruhend) {
