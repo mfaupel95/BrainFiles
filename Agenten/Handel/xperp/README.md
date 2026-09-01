@@ -7,14 +7,45 @@ Stop und Ziel und **legt die fertigen Befehle vor. Ausgelöst wird von Hand.**
 Stand: 2026-09-01. Entstanden aus der Frage nach einem Bot für „REUSD XPERP
 long 5x Hebel".
 
-## Die Ausnahme gilt hier nicht
+## Was hier erlaubt ist — Spur 2
 
-`Wissen/Schutzregeln.md` erlaubt **einem** Agenten den eigenen Handel: dem
-Marktscanner unter `../scanner/`, und dort ausdrücklich nur für **„nur Spot,
-nur Long, kein Hebel"**. Ein gehebelter Futures-Bot fällt nicht darunter.
-Für diesen Ordner gilt die Hauptregel unverändert: vorbereiten ja, auslösen
-nein. `wachen.json` hat deshalb zwar einen Schalter `handel_erlaubt`, aber
-**er öffnet nichts** — es gibt keinen Live-Pfad im Code.
+Bis zum 01.09.2026 galt pauschal „nur Spot, nur Long, kein Hebel". Seitdem
+kennt `Wissen/Schutzregeln.md` zwei Spuren, und dieser Ordner ist **Spur 2**:
+
+> **Hebel ist nicht mehr grundsätzlich verboten. Verboten bleibt, ihn von
+> selbst zu nehmen.**
+
+Eine gültige Anweisung nennt **alle vier Angaben** — Kontrakt (voller
+`instId`), Richtung, Hebel als Zahl, Einsatz und Stop. Fehlt eine, wird sie
+**nicht sinngemäß ergänzt**, sondern erfragt.
+
+**Eine Rangliste aus `auswahl.py` ist ein Vorschlag, keine Anweisung.** Der Bot
+eröffnet nichts aus einer Rangliste heraus und leitet keine Richtung aus dem
+Trend ab.
+
+### Die Prüfpflicht ersetzt das Verbot
+
+An die Stelle des Verbots treten **vier Zahlen vor jeder gehebelten Order**.
+`bot.py` legt sie ungefragt vor (`pruefpflicht()`):
+
+| # | Zahl | woher |
+|---|---|---|
+| 1 | Liquidationsabstand gegen größten 7-Tage-Rücklauf | `hebel_deckel()` |
+| 2 | Funding über die Haltedauer, mit Vorzeichen | OKX, live |
+| 3 | Gebühren je Runde gegen erwarteten Gewinn | 0,05 % je Ausführung |
+| 4 | **Nötige gegen beobachtete Trefferquote** | `noetige_quote()` gegen `trefferquote()` |
+
+Zahl 4 ist die unbequeme. Sie kommt aus [[Handelsbots]]: Dort lagen nötige und
+erreichte Quote über 12 Monate **immer ein bis zwei Prozentpunkte
+auseinander** — übrig blieben die Gebühren. Hebel vergrößert diesen Abstand
+mit, nicht nur den Gewinn.
+
+**Widerspruchspflicht, kein Vetorecht.** Sagen die Zahlen, dass eine Anweisung
+falsch gedacht ist, steht das einmal in der Ausgabe, mit Gegenvorschlag.
+Bestätigt Max, wird wie angewiesen gerechnet — nicht stillschweigend kleiner.
+
+Das Absenden der scharfen Order tut die Claude-Sitzung selbst nicht; sie
+rechnet, wählt aus und legt bis zur Bestätigung fertig vor.
 
 ## Das Instrument heißt anders, als es aussieht
 
@@ -182,11 +213,27 @@ Sie stehen als Kommentar im Code, weil sie beim nächsten Mal genauso passieren:
   existierende 14-Tage-Rendite als „+0.0 %" erschien und wie perfekte
   Seitwärtsbewegung aussah. Beide waren erst acht Tage alt.
 
+## Die Falle bei Zahl 4: eine hohe Trefferquote misst manchmal nichts
+
+Beim Grid auf SOL meldete die Prüfpflicht **99,6 % beobachtete Trefferquote**
+gegen 86,4 % nötige — sieht nach klarem Vorsprung aus. Die Zahl dahinter:
+**237 Ziele gegen einen einzigen Stop.**
+
+Das Verlustereignis ist damit nicht gemessen, sondern nicht vorgekommen. Eine
+Quote aus einem Gegenbeispiel ist keine Schätzung. Genau dieses Muster —
+enges Ziel, weiter Stop, hohe Quote — beschreibt [[Handelsbots]]: Der eine
+Stop kostet mehr, als die vielen Treffer eingebracht haben. Bei 2,01 % Ziel
+gegen 12,15 % Stop braucht es **sieben Treffer, um einen Stop zu bezahlen.**
+
+`bot.py` warnt deshalb, sobald die seltenere der beiden Seiten unter zehn
+Ereignissen liegt. Beim Trend-Anlauf auf SOL (113 Ziel / 153 Stop) tut es das
+nicht — dort sind beide Seiten besetzt.
+
 ## Grenzen
 
-- **Der Bot löst nichts aus.** Keine Order, keine Signatur. Das ändert sich
-  nicht ohne eine ausdrückliche Erweiterung der Ausnahme in
-  `Wissen/Schutzregeln.md`.
+- **Der Bot löst nichts aus.** Er rechnet, wählt aus und legt bis zur
+  Bestätigung fertig vor; abgesendet wird von Max oder von einem dafür
+  gebauten Skript.
 - **Kein Backtest.** Der Bot rechnet die *jetzige* Lage. Ob die Mechanik über
   ein Jahr trägt, ist damit nicht beantwortet — und bei XPERP auch nicht
   beantwortbar: Die ältesten Kontrakte laufen seit Mai 2026.

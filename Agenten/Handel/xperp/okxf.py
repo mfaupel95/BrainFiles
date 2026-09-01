@@ -22,11 +22,20 @@ Schluessel kommen aus der Prozessumgebung, ersatzweise aus der
 Windows-Registry (HKCU\\Environment) - ein von Claude gestarteter Prozess erbt
 die Benutzervariablen nicht.
 
-WICHTIG: Die Ausnahme vom Handverbot in Wissen/Schutzregeln.md gilt
-ausdruecklich nur fuer "nur Spot, nur Long, kein Hebel" - also fuer
-scanner/handeln.py. Dieses Modul faellt NICHT darunter. Die Order-Funktionen
-existieren, damit ein Mensch sie bewusst aufruft; kein Skript hier loest sie
-von selbst aus.
+WICHTIG: Seit dem 01.09.2026 ist Hebel nicht mehr grundsaetzlich verboten
+(Wissen/Schutzregeln.md, Spur 2) - verboten bleibt, ihn ohne ausdrueckliche
+Anweisung zu nehmen. Eine gueltige Anweisung nennt Kontrakt, Richtung, Hebel,
+Einsatz und Stop; fehlt eine Angabe, wird danach gefragt statt geraten.
+
+Fuer die Order-Funktionen unten heisst das: Sie existieren, damit ein Mensch
+oder ein angewiesenes Skript sie aufruft. Kein Skript in diesem Ordner ruft
+sie von selbst auf, und aus einem Zeitplan heraus wird nie scharf gehandelt.
+Vor einer gehebelten Order gehoeren die vier Zahlen der Pruefpflicht vorgelegt
+- bot.pruefpflicht() rechnet sie.
+
+(Bis zum 01.09.2026 stand hier das pauschale Verbot "nur Spot, nur Long, kein
+Hebel". Es galt fuer scanner/handeln.py und stellte diesen Ordner in einen
+Graubereich; genau das war der Anlass, die Regel zu aendern.)
 """
 
 import base64

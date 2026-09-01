@@ -1,10 +1,21 @@
 """XPERP-Bot: Lage lesen, Positionen rechnen, Orders vorlegen.
 
-Der Bot loest nichts aus. Er holt die Kerzen, rechnet Signal, Groesse, Stop
-und Ziel und legt die fertigen Befehle vor - ausgefuehrt werden sie von Max.
-Die Ausnahme vom Handverbot in Wissen/Schutzregeln.md gilt ausdruecklich nur
-fuer "nur Spot, nur Long, kein Hebel", also fuer scanner/handeln.py. Ein
-gehebelter Futures-Bot faellt nicht darunter.
+Der Bot rechnet und legt vor; abgesendet wird die scharfe Order von Max oder
+von einem dafuer gebauten Skript. Seit dem 01.09.2026 ist Hebel nicht mehr
+grundsaetzlich verboten (Wissen/Schutzregeln.md, Spur 2) - verboten bleibt,
+ihn von selbst zu nehmen. Daraus folgen zwei Dinge fuer dieses Modul:
+
+  - Eine Rangliste aus auswahl.py ist ein VORSCHLAG, keine Anweisung. Der Bot
+    eroeffnet nichts aus einer Rangliste heraus und leitet keine Richtung aus
+    dem Trend ab. Eine gueltige Anweisung nennt Kontrakt, Richtung, Hebel,
+    Einsatz und Stop - fehlt eine Angabe, wird danach gefragt statt geraten.
+  - Vor jeder gehebelten Order legt pruefpflicht() ungefragt vier Zahlen vor:
+    Liquidationsabstand gegen groessten 7-Tage-Ruecklauf, Funding ueber die
+    Haltedauer, Gebuehren je Runde, noetige gegen beobachtete Trefferquote.
+
+Widerspruchspflicht, kein Vetorecht: Sagen die Zahlen, dass eine Anweisung
+falsch gedacht ist, steht das einmal in der Ausgabe - mit Gegenvorschlag.
+Bestaetigt Max, wird wie angewiesen gerechnet, nicht stillschweigend kleiner.
 
 Die tragende Rechnung steht in groesse(): Der Stop-Abstand kommt aus dem ATR,
 die Positionsgroesse aus dem Stop-Abstand, und der Hebel faellt hinten heraus.
@@ -37,6 +48,167 @@ def wachen():
 
 
 # --- Rechnungen -------------------------------------------------------------
+
+def trefferquote(k, stop_atr, ziel_atr, seite, max_kerzen=42):
+    """Wie oft wurde das Ziel vor dem Stop erreicht - auf der eigenen Historie.
+
+    Von jeder Kerze aus wird ein Anlauf simuliert und vorwaerts gelaufen, bis
+    Ziel oder Stop faellt. Zwei bewusste Entscheidungen:
+
+      - Faellt beides in dieselbe Kerze, gilt der STOP. 4h-Kerzen loesen nicht
+        auf, was zuerst kam; das Gegenteil anzunehmen rechnet die Strategie
+        systematisch schoen.
+      - Anlaeufe aus benachbarten Kerzen ueberlappen sich stark. Das sind
+        KEINE unabhaengigen Beobachtungen - dieselbe Einschraenkung, die in
+        Handel/README.md schon fuer die rollierenden Fenster steht.
+    """
+    a = indikatoren.atr(k, 14)
+    vz = 1 if seite == "long" else -1
+    ziel_n = stop_n = offen = 0
+
+    for i in range(len(k) - 1):
+        if a[i] is None:
+            continue
+        ein = k[i][4]
+        ziel = ein + vz * ziel_atr * a[i]
+        stop = ein - vz * stop_atr * a[i]
+        erg = None
+        for j in range(i + 1, min(i + 1 + max_kerzen, len(k))):
+            hoch, tief = k[j][2], k[j][3]
+            if seite == "long":
+                traf_stop, traf_ziel = tief <= stop, hoch >= ziel
+            else:
+                traf_stop, traf_ziel = hoch >= stop, tief <= ziel
+            if traf_stop:                     # Stop hat Vorrang - vorsichtig
+                erg = "stop"
+                break
+            if traf_ziel:
+                erg = "ziel"
+                break
+        if erg == "ziel":
+            ziel_n += 1
+        elif erg == "stop":
+            stop_n += 1
+        else:
+            offen += 1
+
+    n = ziel_n + stop_n
+    return {"ziel": ziel_n, "stop": stop_n, "offen": offen, "n": n,
+            "quote": (ziel_n / n) if n else None}
+
+
+def noetige_quote(gewinn_pct, verlust_pct, kosten_pct):
+    """Trefferquote, ab der die Runde ueberhaupt bei null herauskommt.
+
+    p * Gewinn = (1-p) * Verlust + Kosten
+    """
+    nenner = gewinn_pct + verlust_pct
+    return (verlust_pct + kosten_pct) / nenner if nenner > 0 else None
+
+
+def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
+                 stop_atr_f=None, ziel_atr_f=None, was="Order"):
+    """Die vier Zahlen, die Wissen/Schutzregeln.md vor jeder gehebelten
+    Order verlangt (Spur 2, Pruefpflicht, angeordnet 01.09.2026).
+
+    Sie werden ungefragt vorgelegt, kurz und als Tabelle. Die Grundlinie aus
+    Wissen/Handelsbots.md ist unbequem: noetige und erreichte Trefferquote
+    lagen dort immer ein bis zwei Prozentpunkte auseinander, uebrig blieben
+    die Gebuehren. Hebel vergroessert diesen Abstand mit.
+    """
+    dl, ds = hebel_deckel(k, wartung=w["wartungsmarge"])
+    deckel = dl if seite == "long" else ds
+    liq = liquidationspreis(einstieg, hebel, w["wartungsmarge"], seite)
+    liq_abstand = abs(einstieg - liq) / einstieg
+
+    f = okxf.funding(instr["instId"])
+    perioden = stunden / 8.0                      # OKX rechnet alle 8 Stunden
+    # Long zahlt bei positivem Satz, Short bekommt. Auf die Margin bezogen
+    # wirkt der Satz mit dem Hebel multipliziert.
+    funding_pct = (f * perioden * (1 if seite == "long" else -1)) if f is not None else None
+
+    gewinn = abs(ziel - einstieg) / einstieg
+    verlust = abs(einstieg - stop) / einstieg
+    gebuehren = 2 * w["gebuehr_taker"]
+    kosten = gebuehren + (funding_pct or 0.0)
+    noetig = noetige_quote(gewinn, verlust, kosten)
+
+    # Beim Grid kommt die Geometrie nicht aus wachen.json, sondern aus dem
+    # Raster: Ziel ist eine Stufe hoeher, Stop der gemeinsame Rasterboden.
+    a_jetzt = indikatoren.atr(k, 14)[-1]
+    if stop_atr_f is None:
+        stop_atr_f = (verlust * einstieg / a_jetzt) if a_jetzt else w["stop_atr_faktor"]
+    if ziel_atr_f is None:
+        ziel_atr_f = (gewinn * einstieg / a_jetzt) if a_jetzt else w["ziel_atr_faktor"]
+    tq = trefferquote(k, stop_atr_f, ziel_atr_f, seite)
+
+    print()
+    print("-" * 66)
+    print("PRUEFPFLICHT  (Schutzregeln, Spur 2 - vier Zahlen vor der %s)" % was)
+    print("-" * 66)
+
+    print("  1  Liquidationsabstand gegen groessten 7-Tage-Ruecklauf")
+    print("       Liquidation %.2f%% entfernt, Hebel-Deckel %.1fx, gewaehlt %.1fx" % (
+        liq_abstand * 100, deckel, hebel))
+    print("       %s" % ("passt - der Hebel liegt unter dem Deckel"
+                         if hebel <= deckel else
+                         "ZU HOCH - der groesste Ruecklauf haette liquidiert"))
+
+    print("  2  Funding ueber %.0f Stunden Haltedauer" % stunden)
+    if f is None:
+        print("       nicht abrufbar")
+    else:
+        print("       %+.4f%% je 8h x %.1f Perioden = %+.3f%% auf das Nominal" % (
+            f * 100, perioden, (funding_pct or 0) * 100))
+        print("       = %+.3f%% auf die Margin bei %.1fx   (%s)" % (
+            (funding_pct or 0) * 100 * hebel, hebel,
+            "laufende Miete" if (funding_pct or 0) > 0 else "Zuschuss"))
+
+    print("  3  Gebuehren je Runde gegen erwarteten Gewinn")
+    print("       %.3f%% Gebuehr (2 x Taker) gegen %.2f%% Ziel = %.0f%% des Gewinns" % (
+        gebuehren * 100, gewinn * 100, gebuehren / gewinn * 100 if gewinn else 0))
+
+    print("  4  Noetige gegen beobachtete Trefferquote")
+    if noetig is None:
+        print("       nicht rechenbar")
+    else:
+        print("       noetig     %.1f%%   (Ziel %.2f%%, Stop %.2f%%, Kosten %.3f%%)" % (
+            noetig * 100, gewinn * 100, verlust * 100, kosten * 100))
+        if tq["quote"] is None:
+            print("       beobachtet n/a - kein Anlauf lief in der Historie aus")
+        else:
+            print("       beobachtet %.1f%%   (%d Ziel / %d Stop, %d offen, %.0f Tage)" % (
+                tq["quote"] * 100, tq["ziel"], tq["stop"], tq["offen"], len(k) / 6))
+            abstand = (tq["quote"] - noetig) * 100
+            print("       Abstand    %+.1f Prozentpunkte  -> %s" % (
+                abstand,
+                "traegt" if abstand > 2 else
+                "zu knapp, das ist die Nulllinie aus [[Handelsbots]]"
+                if abstand > -2 else "traegt NICHT"))
+
+            # Die seltenere der beiden Seiten bestimmt, wie genau die Quote
+            # ueberhaupt ist. Bei einem einzigen Stop in 50 Tagen ist das
+            # Verlustereignis nicht gemessen, sondern nicht vorgekommen - und
+            # eine Quote von 99 % aus einem Gegenbeispiel ist keine Schaetzung.
+            selten = min(tq["ziel"], tq["stop"])
+            if selten < 10:
+                grosse = "Stop" if tq["stop"] < tq["ziel"] else "Ziel"
+                print()
+                print("       ACHTUNG: nur %d x %s in der ganzen Historie." % (selten, grosse))
+                print("       Die Quote steht auf einem einzigen Ereignistyp und ist")
+                print("       nicht belastbar. Genau dieses Muster beschreibt")
+                print("       Wissen/Handelsbots.md: enges Ziel, weiter Stop, hohe")
+                print("       Trefferquote - und der eine Stop kostet mehr, als die")
+                print("       vielen Treffer eingebracht haben. Bei %.2f%% Ziel gegen" % (gewinn * 100))
+                print("       %.2f%% Stop braucht es %d Treffer, um einen Stop zu" % (
+                    verlust * 100, int(verlust / gewinn) + 1 if gewinn else 0))
+                print("       bezahlen.")
+    print()
+    print("  Die Anlaeufe ueberlappen sich (jede Kerze ein Einstieg) und stammen")
+    print("  aus %.0f Tagen. Das sind keine unabhaengigen Beobachtungen, und" % (len(k) / 6))
+    print("  Wissen/Handelsbots.md verlangt ein Jahr - das gibt es bei XPERP")
+    print("  nirgends, die aeltesten Kontrakte laufen seit Mai 2026.")
+
 
 def liquidationspreis(einstieg, hebel, wartung, seite="long"):
     """Wo die Boerse zwangsschliesst. Isolierte Margin, ohne Nachschuss.
@@ -215,6 +387,7 @@ def zeige_trend(w, wert):
         print("     schliesst vor dem Stop - der Verlust ist dann die ganze Margin,")
         print("     nicht der gerechnete Risikobetrag. Hebel senken.")
 
+    pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, g["hebel"])
     befehle(instr, seite, g["kontrakte"], einstieg, ziel, stop, g["hebel"])
     return 0
 
@@ -325,6 +498,16 @@ def zeige_grid(w, wert):
     print("  der Seitwaertsbewegung und verliert im Trend - Effizienz steht")
     print("  bei %.2f." % z["er"])
 
+    # Pruefpflicht auf der obersten Stufe: Sie hat den weitesten Weg zum
+    # Boden, traegt also den groessten Einzelverlust des Rasters.
+    if zeilen:
+        i, kauf, zielk, _ = zeilen[0]
+        print()
+        print("  (Die Pruefpflicht wird auf Stufe 1 gerechnet - sie hat den")
+        print("   weitesten Weg zum Boden und damit den groessten Einzelverlust.)")
+        pruefpflicht(w, instr, k, "long", kauf, boden, zielk, hebel,
+                     was="Grid-Stufe")
+
     for i, kauf, ziel, kontrakte in zeilen:
         befehle(instr, "long", kontrakte, kauf, ziel, boden, hebel, nr=i)
     return 0
@@ -369,9 +552,10 @@ def main():
         if a.befehl in ("trend", "grid"):
             print()
             print("=" * 66)
-            print("Der Bot hat nichts ausgeloest. Keine Order, keine Signatur.")
-            print("Die Ausnahme vom Handverbot in Wissen/Schutzregeln.md gilt")
-            print("nur fuer Spot ohne Hebel - dieser Ordner faellt nicht darunter.")
+            print("Vorgelegt, nicht ausgeloest - keine Order, keine Signatur.")
+            print("Gehebelt gehandelt wird nur auf ausdrueckliche Anweisung mit")
+            print("Kontrakt, Richtung, Hebel, Einsatz und Stop (Schutzregeln,")
+            print("Spur 2). Diese Ausgabe ist ein Vorschlag, keine Anweisung.")
             print("=" * 66)
 
 
