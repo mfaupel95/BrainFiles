@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -88,8 +89,23 @@ def _roh(pfad, methode="GET", body=None, signiert=False):
 
     req = urllib.request.Request(
         url, data=daten.encode() if daten else None, headers=kopf, method=methode)
-    with urllib.request.urlopen(req, timeout=20) as antwort:
-        d = json.loads(antwort.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=20) as antwort:
+            d = json.loads(antwort.read().decode())
+    except urllib.error.HTTPError as e:
+        # OKX legt auch bei 4xx eine JSON-Antwort mit code/msg bei. 401/403 auf
+        # eine signierte Abfrage ist ein Schluesselproblem (falsche Passphrase,
+        # falsches Secret, Key inaktiv, IP nicht freigegeben) - das heilt kein
+        # Wiederholen. Als OKXFehler werfen, den _mit_wiederholung durchreicht.
+        if signiert and e.code in (401, 403):
+            try:
+                f = json.loads(e.read().decode())
+                raise OKXFehler("OKX %s: %s (HTTP %d - Schluessel/Passphrase/IP pruefen)"
+                                % (f.get("code"), f.get("msg") or f, e.code)) from None
+            except (ValueError, AttributeError):
+                raise OKXFehler("OKX HTTP %d auf signierte Abfrage - "
+                                "Schluessel/Passphrase/IP pruefen" % e.code) from None
+        raise
     if d.get("code") not in ("0", 0):
         raise OKXFehler("OKX %s: %s" % (d.get("code"), d.get("msg") or d))
     return d.get("data", [])
