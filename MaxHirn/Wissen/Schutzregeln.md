@@ -16,12 +16,15 @@ Welche Dateien unter `BrainFiles/` ein Agent **nicht** anfassen darf, und warum.
 Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
 **Hauptregel am 25.08.2026 auf Max' Anweisung gelockert**, **Handverbot am
 01.09.2026 ersetzt: automatischer Handel ist erlaubt, solange die Grenzen in
-den beiden `wachen.json` eingehalten werden** — beides siehe unten.
+den beiden `wachen.json` eingehalten werden**, **Notizen unter `Wissen/` am
+01.09.2026 wieder geschützt: kein Löschen durch den Agenten, Änderung nur im
+Rahmen des Bestehenden** — alles siehe unten.
 
 ## Hauptregel
 
 **Automatisiert gelöscht und aufgeräumt werden darf überall — ausgenommen sind
-nur persönliche Inhalte.** Das sind:
+nur persönliche Inhalte und die Notizen unter `Wissen/`.** Persönliche Inhalte
+sind:
 
 - **Medien:** `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/`, samt
   Playlisten (`.m3u`, `.m3u8`, `.pls`)
@@ -31,16 +34,47 @@ nur persönliche Inhalte.** Das sind:
   `.kdbx`, `.key`, `.ovpn`)
 
 Alles andere — Caches, Indizes, Protokolle, geklonte Repos, Build-Reste,
-Duplikate, Modelle, Notizen unter `Wissen/` — darf ein Agent ohne Rückfrage
-löschen, verschieben und umbenennen, auch als Massenoperation.
+Duplikate, Modelle — darf ein Agent ohne Rückfrage löschen, verschieben und
+umbenennen, auch als Massenoperation. Für die **Notizen unter `Wissen/`** gilt
+die eigene, mildere Regel im Abschnitt *Notizen unter `Wissen/`* weiter unten.
 
 **Was sich am 25.08.2026 geändert hat und warum:** Vorher stand `Wissen/` mit in
 der höchsten Schutzstufe, und Massenoperationen waren im ganzen Vault
-untersagt. Das hat nicht die Originale geschützt, sondern das Arbeiten und
-Aufräumen ausgebremst — jede Notizänderung und jedes Aufräumen von
-reproduzierbarem Ballast brauchte eine Rückfrage. Die Sperre gilt jetzt dort,
-wo ein Verlust endgültig ist, und nur dort. Wer diesen Absatz liest und die
-alte, weitere Fassung „wiederherstellen" will: Das war kein Versehen.
+untersagt. Das hat nicht die Originale geschützt, sondern das Aufräumen von
+reproduzierbarem Ballast ausgebremst — jeder Cache und jedes alte Protokoll
+brauchte eine Rückfrage. Für Caches, Indizes, Protokolle, geklonte Repos,
+Build-Reste, Duplikate und Modelle bleibt es bei dieser Lockerung: Die Sperre
+gilt dort, wo ein Verlust endgültig ist, und nur dort.
+
+**Was am 01.09.2026 zurückgenommen wurde und warum:** Die Lockerung von 25.08.
+hatte die **Notizen unter `Wissen/`** mitgenommen — ein Agent durfte sie ohne
+Rückfrage löschen, verschieben, umbenennen, auch als Massenoperation. Auf Max'
+Anweisung sind sie wieder geschützt. `git restore` holt einen Fehlgriff nur
+zurück, wenn er auffällt und die Datei zuvor committet war; eine gelöschte oder
+umgeschriebene Notiz im ungeschützten Fenster zwischen zwei Commits (siehe
+*Mehrere Sitzungen gleichzeitig*) ist weg. Und der Wert einer Notiz steckt im
+gewachsenen Text samt seinen Querverweisen — den baut kein `git restore` wieder
+auf, wenn eine Sitzung ihn „aufgeräumt" hat.
+
+### Notizen unter `Wissen/`
+
+Gilt für alle `.md`-Dateien unter `Wissen/`. Ausgenommen bleibt `Zugaenge.md`
+(Stufe 0, siehe unten); `Passwoerter-Quarantaene.md` wird wie eine Zugangsdatei
+behandelt und nicht ohne Anweisung angefasst.
+
+- **Ein Agent löscht keine Notiz.** Nicht von sich aus, nie als
+  Massenoperation. Soll eine wirklich weg, ordnet Max das in derselben Sitzung
+  für genau diese Datei an.
+- **Geändert wird im Rahmen des Bestehenden:** ergänzen, präzisieren, einen
+  Abschnitt überarbeiten, `updated` im Frontmatter hochsetzen. Das braucht
+  keine Rückfrage, solange die neue Erkenntnis zum Kontext der Notiz passt und
+  ihn weiterträgt.
+- **Widerspricht die Änderung dem, was dort steht** — eine Aussage umkehren,
+  einen ganzen Abschnitt streichen, eine belegte Zahl gegen eine andere
+  tauschen, das Thema der Notiz verschieben —, **wird erst zurückgefragt.**
+- **Umbenennen** bleibt erlaubt, wenn die `id` im Frontmatter gleich bleibt und
+  die Registry in [[INDEX]] im selben Arbeitsschritt nachgezogen wird — so
+  ohnehin schon in [[INDEX]] geregelt.
 
 ## Handel: was ein Agent selbst auslösen darf
 
@@ -280,8 +314,11 @@ Projektverzeichnis:
 1. **Sie sind nicht in Git.** Git versioniert seit dem 24.08.2026 die Textebene
    des Vaults (Notizen, Skills, Skripte, Konfiguration) — die 42 GB Medien und
    Dokumente sind durch die Whitelist in `.gitignore` bewusst ausgenommen. Für
-   sie gibt es kein `git restore`; für `Wissen/` gibt es das sehr wohl, und
-   genau deshalb steht `Wissen/` nicht mehr unter der Sperre.
+   sie gibt es kein `git restore`. Für `Wissen/` gibt es das sehr wohl; deshalb
+   ist die Regel für Notizen milder als Stufe 0 — kein Listenzwang, Rückfrage
+   nur beim Widerspruch —, aber seit 01.09.2026 nicht mehr aufgehoben:
+   `git restore` hilft nur bei einer committeten Fassung und nur, wenn der
+   Fehlgriff überhaupt auffällt.
 2. **Die Sicherung ist keine Historie.** `sichern.ps1` läuft ohne `/MIR` und
    kopiert nur Neues und Geändertes. Wer eine Datei um 19:00 kaputtschreibt, hat
    um 20:01 auch auf `G:` nur noch die kaputte Fassung. Die Sicherung schützt
@@ -344,9 +381,12 @@ gilt erst als erledigt, wenn ein echter Lauf sie bestätigt hat.
 **Alles, was nicht in Stufe 0 oder 1 steht.** Ein Agent räumt hier ohne
 Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
 
-- `Wissen/` — Notizen, Profil, Fristen, Projekte. Seit 24.08.2026 in Git:
-  `git restore <pfad>` holt einen Fehlgriff zurück, geprüft an `Fristen.md`.
-  **Ausnahme:** `Zugaenge.md` steht in Stufe 0 und ist nicht in Git.
+- `Wissen/`-Notizen sind seit 01.09.2026 **nicht mehr Stufe 2** — für sie gilt
+  der Abschnitt *Notizen unter `Wissen/`* oben: kein Löschen durch den Agenten,
+  Änderung nur im Rahmen des Bestehenden, bei Widerspruch erst zurückfragen.
+  `git restore <pfad>` holt einen committeten Fehlgriff weiterhin zurück
+  (geprüft an `Fristen.md`). **`Zugaenge.md`** steht in Stufe 0 und ist nicht in
+  Git; `Passwoerter-Quarantaene.md` wird wie eine Zugangsdatei behandelt.
 - `**/.venv/`, `**/__pycache__/`, `**/node_modules/` — aus `requirements.txt` / `package.json`
 - `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`).
   Durchgangsware, aus der Sicherung ausgenommen, eigene Spielregeln in
@@ -364,7 +404,10 @@ per Hash gegenprüfen.
 
 1. **Stufe bestimmen.** Im Zweifel die höhere annehmen.
 2. **Bei Stufe 0 oder 1: erst lesen, dann eine Liste des Geplanten zeigen,
-   dann handeln.** Kein „ich habe schon mal angefangen".
+   dann handeln.** Kein „ich habe schon mal angefangen". **Bei einer Notiz
+   unter `Wissen/`:** ergänzen ohne Rückfrage, aber sobald die Änderung dem
+   Bestehenden widerspricht, erst zurückfragen (Abschnitt *Notizen unter
+   `Wissen/`*).
 3. **Trockenlauf, wo es einen gibt.** `sort_inbox.py --dry-run`,
    `robocopy /L`, `git status` — bevor der echte Lauf startet.
 4. **Nach der Änderung prüfen**, nicht auf den Rückgabewert eines Werkzeugs
