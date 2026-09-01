@@ -18,7 +18,7 @@
 # draussen (zusammen 35,8 GB von 45 GB, gemessen 23.08.2026). Sie liegen
 # weiterhin in der Hauptsicherung auf G:. Hier geht es um das, was sich nicht
 # wiederbeschaffen laesst und schnell kopiert ist: Wissen, Skills, MCP-Server,
-# Handel, Hermes, Routinen und Claude\Dokumente samt Bildern.
+# Handel, Hermes, Routinen und Archiv\Dokumente samt Bildern.
 #
 # Aufruf:  powershell -ExecutionPolicy Bypass -File sichern-zweitkopie.ps1
 
@@ -40,13 +40,12 @@ $start = Get-Date
 
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
 # gleichnamigen Unterordner irgendwo im Baum mit ausschliessen. Der Archivordner
-# heisst bis Phase 5 noch Claude\ - 50-archiv.ps1 zieht diese Zeilen dann auf
-# Archiv\ nach.
+# heisst seit der Ordnertrennung vom 30.08.2026 Archiv\ (vorher Claude\).
 $ausserhalb = @(
-  (Join-Path $quelle 'MaxHirn\Claude\Videos'),
-  (Join-Path $quelle 'MaxHirn\Claude\Musik'),
-  (Join-Path $quelle 'MaxHirn\Claude\Software'),
-  (Join-Path $quelle 'MaxHirn\Claude\Posteingang')
+  (Join-Path $quelle 'MaxHirn\Archiv\Videos'),
+  (Join-Path $quelle 'MaxHirn\Archiv\Musik'),
+  (Join-Path $quelle 'MaxHirn\Archiv\Software'),
+  (Join-Path $quelle 'MaxHirn\Archiv\Posteingang')
 )
 
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `

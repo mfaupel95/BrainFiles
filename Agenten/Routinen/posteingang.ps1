@@ -7,8 +7,11 @@
 # wie viel liegen bleibt.
 
 $ErrorActionPreference = 'Stop'
-$wurzel = Split-Path $PSScriptRoot -Parent
-$suche  = Join-Path $wurzel 'Claude\ArchivSuche'
+# Zwei Ebenen ueber diesem Skript liegt die Wurzel BrainFiles\ (Agenten\Routinen\
+# -> Agenten\ -> BrainFiles\). Das Archiv-Werkzeug liegt seit der Ordnertrennung
+# vom 30.08.2026 unter MaxHirn\Archiv\ArchivSuche\ (hiess vorher Claude\).
+$wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$suche  = Join-Path $wurzel 'MaxHirn\Archiv\ArchivSuche'
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
