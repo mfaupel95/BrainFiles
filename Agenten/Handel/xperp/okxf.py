@@ -93,10 +93,24 @@ def schluessel_vorhanden():
 
 # --- HTTP ------------------------------------------------------------------
 
+def demo_modus():
+    """True, wenn OKX_SIMULATED / OKX_DEMO gesetzt ist (1/true/ja).
+
+    OKX-Demo-Keys existieren auf dem Live-Endpunkt nicht ('50119 API key
+    doesn't exist'). Sie brauchen denselben Host, aber den Header
+    'x-simulated-trading: 1'. Ein Demo-Lauf ist zugleich der Papierlauf, den
+    Wissen/Schutzregeln.md (Spur 2) fuer eine neue Strategie verlangt.
+    """
+    v = (_variable("OKX_SIMULATED") or _variable("OKX_DEMO") or "").strip().lower()
+    return v in ("1", "true", "yes", "ja", "y")
+
+
 def _roh(pfad, methode="GET", body=None, signiert=False):
     url = BASIS + pfad
     daten = json.dumps(body) if body else ""
     kopf = dict(HEADERS)
+    if demo_modus():
+        kopf["x-simulated-trading"] = "1"
 
     if signiert:
         key = _variable("OKX_API_KEY")
