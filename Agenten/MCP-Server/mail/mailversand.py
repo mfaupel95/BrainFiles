@@ -27,9 +27,10 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid, parseaddr
 from pathlib import Path
 
-# MCP-Server/mail/ -> MaxHirn/ -> Claude/
-VAULT = Path(__file__).resolve().parents[2]
-ARCHIV = (VAULT / "Claude").resolve()
+# Agenten/MCP-Server/mail/ -> BrainFiles/ -> MaxHirn/Archiv/ (hiess bis 30.08.2026
+# Claude/). Relativ aufgeloest, damit ein Umzug des Vaults nichts kaputt macht.
+VAULT = Path(os.environ.get("MAXHIRN_VAULT") or (Path(__file__).resolve().parents[3] / "MaxHirn"))
+ARCHIV = (VAULT / "Archiv").resolve()
 
 DIENST = "MaxMailVersand"          # Name im Windows-Anmeldeinformationsspeicher
 SCHLUESSEL_ADRESSE = "__adresse__"  # unter diesem Benutzernamen liegt die Adresse
