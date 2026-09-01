@@ -107,6 +107,22 @@ def kennzahlen(k):
     }
 
 
+def mae_tage(kt, tage=7):
+    """Groesster Ruecklauf gegen Long bzw. Short ueber N Tage, aus Tageskerzen.
+
+    Getrennt von kennzahlen(), weil diese Groesse eine andere Reihe braucht:
+    Sie darf nicht davon abhaengen, wie weit das 4H-Fenster zurueckreicht.
+    """
+    mae_l = mae_s = 0.0
+    for i in range(len(kt) - tage):
+        e = kt[i][4]
+        if e <= 0:
+            continue
+        mae_l = max(mae_l, 1 - min(r[3] for r in kt[i + 1:i + 1 + tage]) / e)
+        mae_s = max(mae_s, max(r[2] for r in kt[i + 1:i + 1 + tage]) / e - 1)
+    return mae_l, mae_s
+
+
 def hebel_deckel(mae):
     """Groesster Hebel, der den beobachteten Ruecklauf ueberlebt haette.
 
@@ -168,6 +184,23 @@ def sammle(werte=None, still=False):
         if len(k) < MIN_KERZEN:
             continue
         z = kennzahlen(k)
+
+        # Der Hebel-Deckel kommt aus TAGESKERZEN, nicht aus den 4H-Kerzen
+        # oben. 300 4H-Kerzen sind nur 50 Tage; 300 Tageskerzen sind 300.
+        # Gemessen am 01.09.2026 an SOL: ueber 50 Tage sieht der groesste
+        # 7-Tage-Ruecklauf nach 9,5 % aus (Deckel 10x), ueber 200 Tage sind
+        # es 27,9 % (Deckel 3,5x) - der Einbruch vom 31.05.2026 lag ausserhalb
+        # des kurzen Fensters. Schutzregeln, Spur 2 machen diesen Wert zur
+        # festen Grenze; er darf nicht vom Fensterrand abhaengen.
+        try:
+            kt = okxf.kerzen(iid, "1D", 300)
+            if len(kt) >= 14:
+                z["mae_long"], z["mae_short"] = mae_tage(kt, 7)
+                z["tage_gemessen"] = len(kt)
+            time.sleep(0.06)
+        except Exception:                       # noqa: BLE001
+            z["tage_gemessen"] = len(k) / PRO_TAG
+
         t = tick.get(iid, {})
         # volCcy24h ist bereits Basiswaehrung (Kontrakte x ctVal). Wer hier
         # nochmal mit ctVal multipliziert, meldet BONK mit 167 Billionen
