@@ -116,7 +116,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Entscheidung von Max, welche Richtung gilt
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
-- [ ] **T-017 — Gehebelter Handel hat noch keine `wachen.json`**
+- [x] **T-017 — Gehebelter Handel hat noch keine `wachen.json`** — erledigt
+      2026-09-01. `Agenten/Handel/xperp/wachen.json` liegt (Höchsteinsatz je
+      Anlauf 50 USD Margin, gesamt 200, Höchsthebel 5, Pflicht-Stop in ATR
+      statt Prozent, Kill-Switch je Anlauf und gesamt). Der Modulkopf von
+      `okxf.py` ist auf Spur 2 umgeschrieben und nennt den alten Wortlaut nur
+      noch als Historie. Zusätzlich legt `bot.pruefpflicht()` die vier
+      geforderten Zahlen vor; neu gerechnet ist Zahl 4 (nötige gegen
+      beobachtete Trefferquote) samt Warnung, wenn die seltenere Seite unter
+      zehn Ereignissen liegt. Siehe [[XPERP-Handel]].
       Kontext: [[Schutzregeln]] erlaubt seit dem 01.09.2026 gehebelte
       Positionen auf ausdrückliche Anweisung (Spur 2). Die Grenzen dieser Spur
       stehen bisher **nur in der Prosa der Notiz**, nicht in einer Datei — im
