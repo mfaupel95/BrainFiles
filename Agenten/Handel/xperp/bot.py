@@ -36,6 +36,13 @@ Kontrakt; nur die Rueckrechnung wechselt die Quelle. Siehe historie.py.
 
     python bot.py trend --wert CHIP --historie auto            # <Basis>-USDT-SWAP
     python bot.py trend --wert CHIP --historie CHIP-USDT-SWAP  # ausdruecklich
+
+--hebel N setzt den Hebel als Zahl (Spur 2: eine gueltige Anweisung nennt ihn).
+Ohne --hebel faellt er wie bisher aus dem Deckel. Mit --hebel gilt die Zahl;
+ueberschreitet sie den Deckel, rechnet der Bot wie angewiesen und meldet es in
+der Pruefpflicht - nicht stillschweigend kleiner.
+
+    python bot.py trend --wert CHIP --historie auto --hebel 2
 """
 
 import argparse
@@ -250,23 +257,28 @@ def hebel_deckel(k, tage=7, wartung=0.005, obergrenze=20.0):
             max(1.0, min(obergrenze, 1.0 / (mae_s + wartung))))
 
 
-def groesse(w, instr, einstieg, stop, seite, deckel):
+def groesse(w, instr, einstieg, stop, seite, deckel, hebel_wunsch=None, einsatz=None):
     """Kontrakte, Hebel und tatsaechliches Risiko einer Position.
 
     Reihenfolge: Risikobetrag geteilt durch Stop-Abstand ergibt den
     Positionswert. Erst danach wird geprueft, ob die Margin in den Rahmen
     passt - und wenn nicht, wird die Position kleiner, nicht der Stop weiter.
+
+    Ohne hebel_wunsch faellt der Hebel aus dem Deckel (Ergebnis, nicht
+    Eingabe). Mit hebel_wunsch - einer Anweisung nach Spur 2 - gilt die Zahl;
+    der Deckel wird dann in pruefpflicht() gemeldet, nicht hier angewandt.
     """
     abstand = abs(einstieg - stop) / einstieg
     if abstand <= 0:
         return None
 
-    hebel = min(w["max_hebel"], deckel)
+    hebel = min(w["max_hebel"], deckel) if hebel_wunsch is None else float(hebel_wunsch)
     if hebel < 1:
         return None
 
+    max_margin = w["max_margin_je_anlauf_usd"] if einsatz is None else float(einsatz)
     nominal_risiko = w["risiko_je_anlauf_usd"] / abstand
-    nominal_margin = w["max_margin_je_anlauf_usd"] * hebel
+    nominal_margin = max_margin * hebel
     nominal = min(nominal_risiko, nominal_margin)
 
     kontrakte, echt = okxf.kontrakte_aus_nominal(instr, nominal, einstieg)
@@ -353,7 +365,7 @@ def zeige_lage(w, wert, historie_quelle=None):
     return instr, k, k_hist, z, (dl, ds)
 
 
-def zeige_trend(w, wert, historie_quelle=None):
+def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
     instr, k, k_hist, z, (dl, ds) = zeige_lage(w, wert, historie_quelle)
     if z["signal"] == "kein":
         print()
@@ -373,7 +385,7 @@ def zeige_trend(w, wert, historie_quelle=None):
     stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
     ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
 
-    g = groesse(w, instr, einstieg, stop, seite, deckel)
+    g = groesse(w, instr, einstieg, stop, seite, deckel, hebel_wunsch, einsatz)
     if not g:
         print("\nPosition waere kleiner als ein Kontrakt - kein Vorschlag.")
         return 1
@@ -395,8 +407,14 @@ def zeige_trend(w, wert, historie_quelle=None):
     print("  Positionswert     %.2f USD" % g["nominal"])
     print("  Hebel             %.1fx   (Deckel %.1fx aus dem Ruecklauf, %g aus wachen.json)" % (
         g["hebel"], deckel, w["max_hebel"]))
-    print("  Margin            %.2f USD  von %g erlaubt" % (
-        g["margin"], w["max_margin_je_anlauf_usd"]))
+    if hebel_wunsch is not None:
+        print("                    per Anweisung gesetzt (--hebel %g)%s" % (
+            hebel_wunsch,
+            " - UEBER dem Deckel, siehe Pruefpflicht" if g["hebel"] > deckel else ""))
+    print("  Margin            %.2f USD  von %g erlaubt%s" % (
+        g["margin"],
+        einsatz if einsatz is not None else w["max_margin_je_anlauf_usd"],
+        "  (--einsatz)" if einsatz is not None else ""))
     print("  Risiko bei Stop   %.2f USD  von %g Budget%s" % (
         g["risiko"], w["risiko_je_anlauf_usd"],
         "  (durch Margin gedeckelt)" if g["gedeckelt"] else ""))
@@ -418,9 +436,10 @@ def zeige_trend(w, wert, historie_quelle=None):
     return 0
 
 
-def zeige_grid(w, wert, historie_quelle=None):
+def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
     instr, k, k_hist, z, (dl, _) = zeige_lage(w, wert, historie_quelle)
     atr, kurs = z["atr"], z["kurs"]
+    gesamt_margin_erlaubt = w["max_margin_gesamt_usd"] if einsatz is None else float(einsatz)
 
     spanne_abs = w["grid_spanne_atr"] * atr
     unten = kurs - spanne_abs
@@ -434,7 +453,8 @@ def zeige_grid(w, wert, historie_quelle=None):
     # bevor die unteren kaufen. Das ist der Befund aus Handel/README.md,
     # Abschnitt "Grid mit Hebel - die Konstruktion traegt nicht".
     hebel_max = 1.0 / (spanne_rel + w["wartungsmarge"] + w["grid_puffer"])
-    hebel = min(w["max_hebel"], hebel_max, dl)
+    hebel = (min(w["max_hebel"], hebel_max, dl) if hebel_wunsch is None
+             else float(hebel_wunsch))
 
     stufen = int(w["grid_stufen"])
     schritt = (kurs / unten) ** (1.0 / stufen)      # geometrisch
@@ -451,7 +471,14 @@ def zeige_grid(w, wert, historie_quelle=None):
     print()
     print("  Hebel aus der Spanne: hoechstens %.1fx" % hebel_max)
     print("  Hebel aus dem Ruecklauf: hoechstens %.1fx" % dl)
-    print("  -> gewaehlt %.1fx" % hebel)
+    print("  -> gewaehlt %.1fx%s" % (
+        hebel, "  (per Anweisung, --hebel %g)" % hebel_wunsch
+        if hebel_wunsch is not None else ""))
+    if hebel_wunsch is not None and hebel > min(hebel_max, dl) + 1e-9:
+        print("     UEBER dem Deckel (%.1fx Spanne / %.1fx Ruecklauf). Wird wie" % (
+            hebel_max, dl))
+        print("     angewiesen gerechnet; die Pruefpflicht unten zeigt, was der")
+        print("     groesste 7-Tage-Ruecklauf mit diesem Hebel gemacht haette.")
     if hebel_max < w["max_hebel"]:
         print("     (unter den %g aus wachen.json - die Spanne ist zu tief fuer mehr;" % w["max_hebel"])
         print("      mehr Hebel wuerde die oberen Stufen liquidieren, bevor die")
@@ -477,7 +504,7 @@ def zeige_grid(w, wert, historie_quelle=None):
         print("  erreicht. Erst wenn der SuperTrend dreht, arbeitet das Raster.")
 
     boden = okxf.auf_tick(instr, unten * (1 - w["grid_puffer"]))
-    margin_je = w["max_margin_gesamt_usd"] / stufen
+    margin_je = gesamt_margin_erlaubt / stufen
     print()
     print("  Stufengewinn %.2f%% gegen Zyklus %.3f%% = %.0ffach gedeckt" % (
         stufe_pct * 100, zyklus * 100, stufe_pct / zyklus))
@@ -502,9 +529,9 @@ def zeige_grid(w, wert, historie_quelle=None):
         zeilen.append((i, kauf, ziel, kontrakte))
 
     print()
-    print("  Gesamte Margin    %.2f USD von %g erlaubt" % (
+    print("  Gesamte Margin    %.2f USD von %g erlaubt%s" % (
         sum(z[3] * float(instr["ctVal"]) * z[1] for z in zeilen) / hebel,
-        w["max_margin_gesamt_usd"]))
+        gesamt_margin_erlaubt, "  (--einsatz)" if einsatz is not None else ""))
     print("  Verlust, wenn alle Stufen kaufen und der Boden faellt:")
     verlust = sum(z[3] * float(instr["ctVal"]) * (z[1] - boden) for z in zeilen)
     print("    rund %.2f USD  (Kill-Switch steht bei %g)" % (
@@ -563,6 +590,14 @@ def main():
                         "Kontrakt zu jung ist: 'auto' (=<Basis>-USDT-SWAP), "
                         "'selbst' oder ein instId wie CHIP-USDT-SWAP. Ohne "
                         "Angabe: der Kontrakt selbst.")
+    p.add_argument("--hebel", type=float, default=None, metavar="N",
+                   help="Hebel als Zahl (Spur 2). Ohne Angabe faellt er aus "
+                        "dem Deckel. Mit Angabe gilt die Zahl; ueberschreitet "
+                        "sie den Deckel, wird das in der Pruefpflicht gemeldet.")
+    p.add_argument("--einsatz", type=float, default=None, metavar="USD",
+                   help="Margin in USD (Spur 2: 'Einsatz'). trend: je Anlauf "
+                        "statt max_margin_je_anlauf_usd. grid: Gesamtmargin "
+                        "statt max_margin_gesamt_usd.")
     a = p.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -574,8 +609,8 @@ def main():
             zeige_lage(w, a.wert, a.historie)
             return 0
         if a.befehl == "trend":
-            return zeige_trend(w, a.wert, a.historie)
-        return zeige_grid(w, a.wert, a.historie)
+            return zeige_trend(w, a.wert, a.historie, a.hebel, a.einsatz)
+        return zeige_grid(w, a.wert, a.historie, a.hebel, a.einsatz)
     except okxf.OKXFehler as e:
         print("OKX: %s" % e, file=sys.stderr)
         return 1

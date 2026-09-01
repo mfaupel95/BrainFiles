@@ -132,6 +132,27 @@ Rechtfertigung: gleicher Index, ATR% deckungsgleich (CHIP: 4,6 % XPERP gegen
 4,4 % SWAP). `--historie selbst` erzwingt den Kontrakt, `--historie <instId>`
 nennt die Reihe ausdrücklich.
 
+### `--hebel` und `--einsatz` — die Anweisung nach Spur 2
+
+Ohne diese Schalter bleibt der Hebel **Ergebnis, nicht Eingabe** — er fällt aus
+dem Stop-Abstand und wird auf den Deckel begrenzt. Eine gültige Anweisung nach
+[[Schutzregeln]] Spur 2 nennt ihn aber als Zahl, samt Einsatz. Dafür:
+
+- `--hebel N` — setzt den Hebel fest. Liegt `N` über dem Deckel, rechnet der
+  Bot **wie angewiesen** und schreibt in die Prüfpflicht `ZU HOCH` mit der
+  Liquidationsrechnung dazu — nicht stillschweigend kleiner (Widerspruchs­pflicht,
+  kein Vetorecht).
+- `--einsatz USD` — Margin. Bei `trend` je Anlauf statt `max_margin_je_anlauf_usd`,
+  bei `grid` die Gesamtmargin statt `max_margin_gesamt_usd`.
+
+```powershell
+..\scanner\.venv\Scripts\python.exe bot.py trend --wert CHIP --historie auto --hebel 2
+..\scanner\.venv\Scripts\python.exe bot.py grid  --wert CHIP --historie auto --hebel 3 --einsatz 80
+```
+
+Fest bleibt auch mit Anweisung: der Pflicht-Stop je Position, der Kill-Switch
+beim Grid, und dass die Claude-Sitzung die scharfe Order nicht selbst absendet.
+
 ## Warum drei Ranglisten und nicht eine
 
 Long, Short und Grid brauchen **gegensätzliche** Eigenschaften. Ein Wert, der

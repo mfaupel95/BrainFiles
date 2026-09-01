@@ -98,3 +98,26 @@ ausgeführt — vorbereitet, nicht ausgelöst.
 Wenn überhaupt: Hebel ≤ 2×, Einsatz klein (Rahmen 50 USD Margin je Anlauf,
 200 USD gesamt — wie [[Marktscanner]]), Stop ≥ 1,5 ATR (≈ 7 %), und eine Woche
 Papierlauf zuerst, weil die Strategie auf diesem Kontrakt neu ist.
+
+## Bestätigt von Max am 01.09.2026 — zwei Anläufe
+
+Widerspruch (oben) ist einmal gesagt, Max hat beide bestätigt. Ausgeführt wird
+wie angewiesen, vorbereitet, nicht ausgelöst. Die Tick-Preise stehen bewusst
+**nicht** hier — sie sind beim nächsten Blick veraltet; der Aufruf erzeugt sie
+neu (Stop und Ziel fallen aus `stop_atr_faktor`/`ziel_atr_faktor` in
+`wachen.json`).
+
+| | Nr. 1 — Trend-Long | Nr. 3 — Grid-Long |
+|---|---|---|
+| Aufruf | `bot.py trend --wert CHIP --historie auto --hebel 2` | `bot.py grid --wert CHIP --historie auto --hebel 3 --einsatz 80` |
+| Richtung | Long | Long, 6 Stufen |
+| Hebel | 2× (unter Deckel 2,2×) | 3× — **über** Deckel 2,2×, Prüfpflicht sagt `ZU HOCH` |
+| Einsatz | ~48 USD Margin (Rahmen 50) | ~76 USD Gesamtmargin (Rahmen 80) |
+| Stop | 1,5 ATR ≈ −7 % | gemeinsamer Rasterboden, ~−31 % |
+| Verlust wenn Stop/Boden | ~7 USD | ~35 USD (Kill-Switch 40) |
+| Prüfpflicht Zahl 4 | 27,7 % gegen 33,7 % → trägt nicht | 89,6 % gegen 82,4 % → trägt |
+
+**Auslösen geht noch nicht:** `OKX_API_KEY/SECRET/PASSPHRASE` sind nicht gesetzt
+(`okxf.schluessel_vorhanden()` → False). Bis dahin druckt der Bot nur die
+`okxf.hebel_setzen(...)` / `okxf.order_limit(...)`-Aufrufe. Absenden tut Max
+oder ein dafür gebautes Skript, nie die Claude-Sitzung ([[Schutzregeln]]).
