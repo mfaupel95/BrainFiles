@@ -20,6 +20,25 @@
 
   "abklingzeit_tage": 3,
 
+  "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
+  "freigabe": {
+    "erfuellt": false,
+    "papierlauf_min_wochen": 6,
+    "papierlauf_min_runden": 50,
+    "netto_positiv_nach_gebuehren_und_funding": false,
+    "groesster_ruecklauf_papierlauf_usd": null,
+    "geprueft_am": null
+  },
+
+  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent unter dem Konto-Hoechststand halbiert handeln.py jede weitere Positionsgroesse; bei Erreichen von max_gesamt_usd Verlust flach stellen und handel_erlaubt auf false schreiben (einzige erlaubte Schreibrichtung).",
+  "drawdown_halbierung_prozent": 15.0,
+
+  "_herzschlag": "Bedingung 3. Meldet der Lauf laenger als herzschlag_max_minuten keinen gesunden Zyklus ins Journal, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck.",
+  "herzschlag_max_minuten": 30,
+
+  "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
+  "journal_zweitziel": null,
+
   "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'."
 }

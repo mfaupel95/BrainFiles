@@ -34,6 +34,25 @@
   "min_umsatz_24h_usd": 3000000,
   "min_historie_tage": 21,
 
+  "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
+  "freigabe": {
+    "erfuellt": false,
+    "papierlauf_min_wochen": 6,
+    "papierlauf_min_runden": 50,
+    "netto_positiv_nach_gebuehren_und_funding": false,
+    "groesster_ruecklauf_papierlauf_usd": null,
+    "geprueft_am": null
+  },
+
+  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent unter dem Konto-Hoechststand halbiert bot.py jede weitere Positionsgroesse; bei kill_switch_gesamt_usd flach stellen und handel_erlaubt auf false schreiben (einzige erlaubte Schreibrichtung).",
+  "drawdown_halbierung_prozent": 15.0,
+
+  "_herzschlag": "Bedingung 3. Meldet bot.py laenger als herzschlag_max_minuten keinen gesunden Zyklus ins Journal, schliesst der naechste Start alle offenen Anlaeufe und faellt auf Papier zurueck.",
+  "herzschlag_max_minuten": 30,
+
+  "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
+  "journal_zweitziel": null,
+
   "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "Dieser Schalter oeffnet NICHTS. Anders als beim Marktscanner gibt es hier keinen Live-Pfad: Die Ausnahme vom Handverbot in Wissen/Schutzregeln.md gilt ausdruecklich nur fuer 'nur Spot, nur Long, kein Hebel'. bot.py legt Befehle vor, ausgefuehrt werden sie von Max. Der Schalter steht hier, damit sichtbar ist, dass er zu ist - und als Platz, falls Max die Ausnahme spaeter erweitert."
 }

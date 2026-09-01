@@ -232,6 +232,35 @@ heimlich eingesetzt.
   aufheben kann. Wo sie im Weg ist, ist der Weg drumherum das Skript — nicht
   die Diskussion.
 
+### Damit der Automat unbeaufsichtigt laufen darf: fünf messbare Bedingungen
+
+Angeordnet von Max am 01.09.2026. Die Erlaubnis aus Spur 1 und 2 ist an Zahlen
+gebunden, nicht an Zuversicht. **Fehlt eine dieser fünf, fällt der betroffene
+Lauf automatisch auf Papierhandel zurück** — das Zurücksetzen ist Teil des
+Skripts, keine Sitzungsentscheidung. Der Grund steht in [[Handelsbots]]: über
+12 Monate lag jede getestete mechanische Einstellung nach Gebühren dicht unter
+null. Ohne gemessenen Vorteil handelt ein Automat einen negativen Erwartungswert
+— nur schneller und unbeobachtet. Diese fünf Bedingungen ersetzen das nicht
+durch einen Vorteil, sie begrenzen den Schaden, bis einer nachgewiesen ist.
+
+| Bedingung | Prüfbarer Wert | Wo geregelt |
+|---|---|---|
+| **1. Freigabe Papier → Live** | mindestens 6 Wochen Papierlauf, ≥ 50 abgeschlossene Runden, netto positiv **nach** Gebühren und Funding, größter Rücklauf im Papierlauf < `kill_switch_gesamt_usd`. Erst wenn alle vier erfüllt sind, darf `handel_erlaubt` von Hand auf `true` — je Spur getrennt. | Block `freigabe` in beiden `wachen.json` |
+| **2. Drawdown-Ratsche** | Fällt das Konto 15 % unter seinen Höchststand, halbiert `bot.py`/`handeln.py` jede weitere Positionsgröße. Bei `kill_switch_gesamt_usd` wird flach gestellt **und** `handel_erlaubt` auf `false` geschrieben — der einzige Fall, in dem ein Skript diese Datei schreibt, und nur in diese Richtung. | `bot.py`, `handeln.py` |
+| **3. Herzschlag** | Meldet der Automat länger als 30 Minuten keinen gesunden Zyklus ins Journal, schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `Routinen/*.ps1` prüft Zeitstempel vor dem Start |
+| **4. Journal außer Haus** | Das Handelsjournal wird nach jedem Zyklus auf ein zweites Ziel gespiegelt. `G:` genügt nicht — dasselbe Gehäuse. Ein Journal nur auf dem Handelsrechner ist kein Nachweis, sondern eine Wette darauf, dass die Platte hält. | Zeile in `Routinen/`, Ziel offen bis „Kopie außer Haus" steht ([[Hardware]]) |
+| **5. Wöchentlicher Soll-Ist-Abgleich** | Einmal pro Woche die vier Pflichtzahlen (Liquidationsabstand, Funding, Gebühren, Trefferquote) gegen das real Erreichte. Liegt der gleitende 30-Runden-Erwartungswert nach Kosten unter null, fällt die Spur automatisch auf Papier zurück, bis ein neuer Papierlauf nach Bedingung 1 trägt. | Skript in `Routinen/`, Befund nach `Werkstatt/`, Entscheidung nach `Wissen/` |
+
+**Änderung an einer `wachen.json` bleibt Stufe 1** — eigener Commit, `.bak`
+vorher, die neu gerechneten vier Zahlen in der Commit-Nachricht, nie mit anderer
+Arbeit gebündelt. Eine Lockerung ohne gerechnete Gegenzahlen ist kein
+Betriebsvorgang, sondern ein Befund.
+
+Stand 01.09.2026: `handel_erlaubt` ist in beiden `wachen.json` `false`, der
+`freigabe`-Block ist angelegt und keine seiner vier Zahlen erreicht. Bedingung 2
+bis 5 sind in den Skripten noch nicht umgesetzt — bis sie es sind, ist Live
+ohnehin gesperrt.
+
 ## Warum es die Sperre überhaupt gibt
 
 Zwei Dinge machen die geschützten Ordner empfindlicher als ein normales
