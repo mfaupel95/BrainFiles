@@ -63,9 +63,9 @@ ist der kürzere Weg — `archiv_suchen`, `archiv_statistik`, `posteingang_stand
 **18 claude.ai-Connectors haben null Aufrufe** (Uber, PayPal, HubSpot,
 monday.com, tldraw, Excalidraw …). Sie belegen in jeder Sitzung Kontext, bevor
 ein Wort gesagt ist. Abschalten geht nur in den Connector-Einstellungen auf
-claude.ai — siehe `Claude/TASKS.md`, T-007.
+claude.ai — siehe `Archiv/TASKS.md`, T-007.
 
-**`mail` ist nicht eingerichtet**, obwohl `Claude/CLAUDE.md` den Versand
+**`mail` ist nicht eingerichtet**, obwohl `Archiv/CLAUDE.md` den Versand
 darüber beschrieb: `mail_zugang_pruefen` meldet „Keine Absenderadresse
 hinterlegt". Der dokumentierte Weg existierte nur auf dem Papier; die CLAUDE.md
 ist korrigiert, die Einrichtung ist T-008.

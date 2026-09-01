@@ -14,7 +14,7 @@ Das Standardlehrwerk der Tischlerausbildung (Verlag Europa-Lehrmittel,
 25. Auflage). Das vollständige Bild- und Filmmaterial liegt seit 26.08.2026
 im Archiv:
 
-`Claude/Dokumente/Ausbildung/Fachkunde-Holztechnik-25/`
+`Archiv/Dokumente/Ausbildung/Fachkunde-Holztechnik-25/`
 
 **1.835 Abbildungen · 60 Lehrfilme · 154 Aufbau-Animationen · 3,27 GB**
 

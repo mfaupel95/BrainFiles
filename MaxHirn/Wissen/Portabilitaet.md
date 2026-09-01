@@ -41,9 +41,9 @@ für diesen Zweck unproblematisch.
 
 ## Das `.venv` muss neu erzeugt werden
 
-`Claude/ArchivSuche/.venv/pyvenv.cfg` enthält den alten absoluten Pfad fest
+`Archiv/ArchivSuche/.venv/pyvenv.cfg` enthält den alten absoluten Pfad fest
 verdrahtet; ein kopiertes venv funktioniert nicht. Auf der SSD im Ordner
-`Claude/ArchivSuche/`:
+`Archiv/ArchivSuche/`:
 
 ```powershell
 Remove-Item .venv -Recurse -Force

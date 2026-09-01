@@ -42,22 +42,22 @@ steht alles in [[INDEX|Wissen/INDEX]]; dort steigen auch die Agenten ein.
 
 ## Archiv
 
-Dateiarchiv liegt in `Claude/` (Bilder, Videos, Musik, Dokumente).
-Neue Dateien einfach nach `Claude/Posteingang/` ziehen — der Skill
+Dateiarchiv liegt in `Archiv/` (Bilder, Videos, Musik, Dokumente).
+Neue Dateien einfach nach `Archiv/Posteingang/` ziehen — der Skill
 `posteingang` sortiert sie ein.
 
 Suchen: Skill `archiv`, oder direkt
-`Claude/ArchivSuche/Suche_starten.bat` für die Weboberfläche.
+`Archiv/ArchivSuche/Suche_starten.bat` für die Weboberfläche.
 
 **Neu seit 19.08.2026: semantische Suche.** Findet nach Bedeutung statt nach
 Stichwort, läuft vollständig lokal (Ollama + bge-m3), deckt 1.076 Dateien mit
 echtem Text in 11.965 Abschnitten ab.
 
 ```
-Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\vektor_suche.py "frage in eigenen worten"
+Archiv\ArchivSuche\.venv\Scripts\python.exe Archiv\ArchivSuche\vektor_suche.py "frage in eigenen worten"
 ```
 
-Anleitung und Grenzen: `Claude/ArchivSuche/VEKTORSUCHE.md`.
+Anleitung und Grenzen: `Archiv/ArchivSuche/VEKTORSUCHE.md`.
 
 ## Sicherung
 
@@ -124,7 +124,7 @@ Ausführliche Beschreibung aller Skills, der Werkzeuge darunter und der Grenzen:
 
 ## Offen
 
-**Die verbindliche Liste ist [Claude/TASKS.md](Claude/TASKS.md)** (seit 28.08.2026).
+**Die verbindliche Liste ist [Archiv/TASKS.md](Archiv/TASKS.md)** (seit 28.08.2026).
 Der folgende Abschnitt ist der Stand vom 23.08.2026 und wird nicht mehr gepflegt.
 
 ### Stand 23.08.2026 (überholt)
@@ -138,13 +138,13 @@ Der folgende Abschnitt ist der Stand vom 23.08.2026 und wird nicht mehr gepflegt
       Zugangsdaten. Die vier Kopien in `C:\Users\faupe\Zugangsdaten-Quarantaene\`
       sind **inhaltlich identisch** (ein Export, viermal kopiert) und bleiben
       liegen, bis die Liste abgearbeitet ist — danach löschen.
-- [ ] **OKX-Schlüssel widerrufen** — `Claude/Worktrees/investment/OKX_API.env`
+- [ ] **OKX-Schlüssel widerrufen** — `Werkstatt/Worktrees/investment/OKX_API.env`
       liegt im Klartext, wird aber von keinem Skript gelesen (geprüft
       23.08.2026). Erst im Portal widerrufen, dann die Datei löschen. Anleitung
       in [[Zugaenge]].
 - [ ] **Unraid-Reste entscheiden** — SSH-Hostschlüssel, `passwd`, `shadow`,
       `smbpasswd`, `secrets.tdb`, `unbalanced.env` unter
-      `Claude/Software/Linux/Unraid/`. `sichern.ps1` listet sie bei jedem Lauf
+      `Archiv/Software/Linux/Unraid/`. `sichern.ps1` listet sie bei jedem Lauf
       unter „noch nicht bewertet" auf.
 - [x] ~~**Kopie außer Haus anlegen**~~ — 25.08.2026 auf `E:` angelegt
       (46,2 GB). Offen bleibt: **die SSD auch wirklich aus dem Haus bringen**

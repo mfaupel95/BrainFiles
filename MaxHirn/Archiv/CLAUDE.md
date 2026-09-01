@@ -72,7 +72,7 @@ findet, wo eigentlich etwas erwartet wird, zuerst neu indexieren:
 
 **Der Server ist nicht eingerichtet** (geprüft 28.08.2026): `mail_zugang_pruefen`
 antwortet „Keine Absenderadresse hinterlegt", und in 53 Sitzungen wurde er kein
-einziges Mal erfolgreich benutzt. Bis das behoben ist (`Claude/TASKS.md`, T-008),
+einziges Mal erfolgreich benutzt. Bis das behoben ist (`Archiv/TASKS.md`, T-008),
 ist Versand über diesen Weg **nicht** möglich — dann Max fragen, statt es zu
 versuchen.
 

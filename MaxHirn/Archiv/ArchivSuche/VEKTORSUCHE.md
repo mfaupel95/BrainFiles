@@ -8,7 +8,7 @@ Läuft vollständig lokal — es verlässt kein Byte den Rechner.
 ## Aufruf
 
 ```powershell
-cd C:\Users\faupe\Documents\BrainFiles\MaxHirn\Claude\ArchivSuche
+cd C:\Users\faupe\Documents\BrainFiles\MaxHirn\Archiv\ArchivSuche
 .\.venv\Scripts\python.exe vektor_index.py          # indexieren, wiederaufnehmbar
 .\.venv\Scripts\python.exe vektor_suche.py "frage"  # suchen
 .\.venv\Scripts\python.exe vektor_suche.py "frage" --hybrid --limit 10

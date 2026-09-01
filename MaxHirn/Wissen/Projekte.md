@@ -43,7 +43,7 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   ein Modell lernt beim Benutzen nichts dazu.
 - **Stand (2026-08-19):** Stufe 1 läuft. Semantische Archivsuche lokal über
   Ollama + `bge-m3`, 1.076 Dateien / 11.965 Abschnitte, eigener Vektorindex
-  neben dem Volltextindex. Beschreibung in `Claude/ArchivSuche/VEKTORSUCHE.md`.
+  neben dem Volltextindex. Beschreibung in `Archiv/ArchivSuche/VEKTORSUCHE.md`.
 - **Seit 24.08.2026:** Ollama läuft aus `MaxHirn/Modelle/Ollama` statt aus
   `%LOCALAPPDATA%` — portabel und bewusst als gemeinsamer Ort für Stufe 1 und
   Stufe 2 angelegt, nicht als Unterordner von [[ArchivSuche]] oder Hermes.
@@ -60,7 +60,7 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
 
 - **Ziel:** Alle eigenen Dateien (Bilder, Videos, Musik, Dokumente) durchsuchbar
   an einem Ort.
-- **Stand:** Läuft. Volltextsuche mit OCR unter `Claude/ArchivSuche/`,
+- **Stand:** Läuft. Volltextsuche mit OCR unter `Archiv/ArchivSuche/`,
   Posteingang-Sortierung automatisiert.
 - **Offen:** Restliche PDFs im Posteingang, die sich nicht sicher zuordnen ließen.
 

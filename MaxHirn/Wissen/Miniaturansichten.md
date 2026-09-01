@@ -82,8 +82,8 @@ funktioniert trotzdem.
 
 ## Nicht mit echtem Datenverlust verwechseln
 
-Rund 18–23 % der Dateien in `Claude/Bilder` sind 0xFF-Füllbytes aus dem
-Netzteildefekt (siehe [[Hardware]] und `Claude/BESCHAEDIGTE_DATEIEN.md`). Dort
+Rund 18–23 % der Dateien in `Archiv/Bilder` sind 0xFF-Füllbytes aus dem
+Netzteildefekt (siehe [[Hardware]] und `Archiv/BESCHAEDIGTE_DATEIEN.md`). Dort
 kann es prinzipiell keine Vorschau geben. Das Skript zählt diese Dateien
 getrennt, damit sie nicht als Anzeigefehler durchgehen.
 

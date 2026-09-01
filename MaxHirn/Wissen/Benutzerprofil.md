@@ -153,7 +153,7 @@ Zeilen) — beide übernommen, `app.db` per SHA-256 gegengeprüft.
 Die 321 MB `venv` wurden **nicht** übernommen: an ihren Pfad gebunden und aus
 `requirements.txt` / `pyproject.toml` reproduzierbar. Wird odysseus wieder
 betrieben, muss das venv am neuen Ort einmal neu erzeugt werden — dieselbe
-Falle wie bei `Claude/ArchivSuche/.venv`, siehe [[Portabilitaet]].
+Falle wie bei `Archiv/ArchivSuche/.venv`, siehe [[Portabilitaet]].
 
 ## Verwandte Notizen
 

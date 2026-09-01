@@ -33,7 +33,7 @@ Systemkontext nicht zuverlässig verkleinern.
    werden höchstens die für die Anfrage relevanten Notizen geöffnet.
 4. **Sitzungen abschließen, nicht mitschleppen.** Nach einer abgeschlossenen
    Arbeit steht nur der dauerhafte Befund in `Wissen/` oder der konkrete offene
-   Punkt in `Claude/TASKS.md`. Roh-Ausgaben und Zwischenergebnisse werden nicht
+   Punkt in `Archiv/TASKS.md`. Roh-Ausgaben und Zwischenergebnisse werden nicht
    als dauerhafter Kontext wiederholt.
 5. **Entscheidungen empfehlen.** Wenn mehrere realistische Wege bestehen,
    nennt Claude zuerst den für Max vorteilhaftesten Weg, begründet ihn knapp
@@ -49,7 +49,7 @@ Systemkontext nicht zuverlässig verkleinern.
 
 1. Die globalen Kontextregeln auf den Index- und Search-first-Ablauf ergänzen,
    ohne gleichzeitig geänderte Fremdabschnitte zu überschreiben.
-2. `Claude/CLAUDE.md` auf Regeln für das Archiv reduzieren und lange
+2. `Archiv/CLAUDE.md` auf Regeln für das Archiv reduzieren und lange
    Hintergrundinformationen in bestehende, bei Bedarf lesbare Dokumente
    verweisen.
 3. Max' Präferenz zur klaren Empfehlung in `Wissen/Profil.md` festhalten und
@@ -69,7 +69,7 @@ Systemkontext nicht zuverlässig verkleinern.
 
 - `CLAUDE.md`: Regel „gezielt lesen statt vollständig" ergänzt (rg /
   `archiv`-Skill vor jedem Datei-Read).
-- `Claude/CLAUDE.md`: Abschnitt „Was nicht im Index ist" von ~59 auf ~16
+- `Archiv/CLAUDE.md`: Abschnitt „Was nicht im Index ist" von ~59 auf ~16
   Zeilen gekürzt — die Details standen bereits vollständig in
   `BESCHAEDIGTE_DATEIEN.md` und `BESCHAEDIGTE_PDFS.md`, nur als Verweis
   behalten.
@@ -77,9 +77,9 @@ Systemkontext nicht zuverlässig verkleinern.
   Duplikat-Umgang noch das alte, änderungsdatum-basierte Löschverhalten.
   Tatsächlich entscheidet seit der Umstellung auf SHA1-Vergleich (siehe
   `sort_inbox.py`, `move()`) der Inhalt — nichts wird gelöscht, wenn er
-  abweicht. Doku korrigiert, damit der Verweis aus `Claude/CLAUDE.md` nicht
+  abweicht. Doku korrigiert, damit der Verweis aus `Archiv/CLAUDE.md` nicht
   auf eine veraltete Beschreibung zeigt.
-- `Claude/CLAUDE.md`: Abschnitt „Was das Skript von sich aus absichert" von
+- `Archiv/CLAUDE.md`: Abschnitt „Was das Skript von sich aus absichert" von
   ~19 auf ~9 Zeilen gekürzt. Die Zahlen (1151/1152, 2927, 64 KB, 512 px,
   Endungslisten) waren wortgleiche Kopien der Code-Kommentare in
   `sort_inbox.py` — dasselbe Rott-Muster wie beim Duplikat-Nebenfund. Die

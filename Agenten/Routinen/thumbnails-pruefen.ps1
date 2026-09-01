@@ -63,7 +63,7 @@ function Get-Miniatur {
     } catch { return $null }
 }
 
-# Zerstoerte Dateien (Netzteildefekt, siehe Claude/BESCHAEDIGTE_DATEIEN.md)
+# Zerstoerte Dateien (Netzteildefekt, siehe Archiv/BESCHAEDIGTE_DATEIEN.md)
 # haben ueber die ersten 4096 Byte durchgehend denselben Wert. Die duerfen
 # nicht als Fehlschlag zaehlen - dort ist wirklich nichts mehr zu sehen.
 function Test-Zerstoert {

@@ -69,7 +69,7 @@ Windows, Linux, Hardware, Netzwerke, Audio, PA-Technik, Hi-Fi, Programmierung.
 | KI | Claude Desktop + Claude Code, Cowork, Codex; MCP-Server aus [[Verbindungen]] |
 | Lokale KI | Ollama (`MaxHirn/Modelle/Ollama`, seit 24.08.2026 aus dem Vault statt `%LOCALAPPDATA%`), Modell `bge-m3` für die semantische Archivsuche |
 | Terminal | PowerShell, Desktop Commander (MCP) |
-| Dateisuche | eigenes Archiv `Claude/ArchivSuche` — **nicht** Windows Search (stillgelegt, siehe [[Hardware]]) |
+| Dateisuche | eigenes Archiv `Archiv/ArchivSuche` — **nicht** Windows Search (stillgelegt, siehe [[Hardware]]) |
 | Finanzen | Kraken- und Revolut-X-MCP, eigene Skripte unter `Handel/` (DCA, Grid) |
 | Grafik / 3D | Affinity, Blender (beide über MCP steuerbar) |
 | Cloud | iCloud Fotos (30.635 Dateien), Google Kalender / Gmail / Drive |
@@ -105,7 +105,7 @@ Windows, Linux, Hardware, Netzwerke, Audio, PA-Technik, Hi-Fi, Programmierung.
 |---|---|
 | Posteingang einsortieren | Skill `posteingang` / `sort_inbox.py` |
 | Archiv neu indexieren | `index.py` nach neuen Dateien |
-| Semantisch suchen | `vektor_suche.py`, siehe `Claude/ArchivSuche/VEKTORSUCHE.md` |
+| Semantisch suchen | `vektor_suche.py`, siehe `Archiv/ArchivSuche/VEKTORSUCHE.md` |
 | Tagesbriefing / Wochenrückblick | Skills `tagesbriefing`, `wochenrueckblick` |
 | Notizen anlegen | Skill `notiz` → `Wissen/` |
 | Vault sichern | `robocopy` nach `G:\MaxHirn-Sicherung`, siehe [[Hardware]] |

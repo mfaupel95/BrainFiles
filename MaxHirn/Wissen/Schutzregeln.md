@@ -26,10 +26,10 @@ Rahmen des Bestehenden** — alles siehe unten.
 nur persönliche Inhalte und die Notizen unter `Wissen/`.** Persönliche Inhalte
 sind:
 
-- **Medien:** `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/`, samt
+- **Medien:** `Archiv/Bilder/`, `Archiv/Videos/`, `Archiv/Musik/`, samt
   Playlisten (`.m3u`, `.m3u8`, `.pls`)
-- **Dokumente:** `Claude/Dokumente/`
-- **Noch nicht Einsortiertes** in `Claude/Posteingang/`
+- **Dokumente:** `Archiv/Dokumente/`
+- **Noch nicht Einsortiertes** in `Archiv/Posteingang/`
 - **Schlüssel und Zertifikate** (`Zugaenge.md`, `.env`, `.pem`, `.pfx`, `.p12`,
   `.kdbx`, `.key`, `.ovpn`)
 
@@ -326,7 +326,7 @@ Projektverzeichnis:
 
 Dazu kommt: **Das Archiv ist bereits einmal beschädigt worden.** 691 Dateien
 sind durch einen Netzteildefekt zerstört (siehe
-[[../Claude/BESCHAEDIGTE_DATEIEN|BESCHAEDIGTE_DATEIEN]]). Was noch intakt ist,
+[[../Archiv/BESCHAEDIGTE_DATEIEN|BESCHAEDIGTE_DATEIEN]]). Was noch intakt ist,
 ist der Rest — nicht der Normalzustand.
 
 ## Stufe 0 — unersetzlich, nie automatisiert löschen
@@ -338,17 +338,17 @@ verboten, auch mit Anordnung — erst eine Liste vorlegen, dann einzeln.
 
 | Ort | Warum |
 |---|---|
-| `Claude/Dokumente/` | Verträge, Bescheide, Gericht, Gesundheit, Behörden. Originale, oft die einzige Fassung. |
-| `Claude/Bilder/`, `Claude/Videos/`, `Claude/Musik/` und Playlisten | Rohmedien. 25 GB ohne Zweitquelle; 18,3 % der Bilder sind bereits verloren. |
-| `Claude/Posteingang/` | Durchgangsordner — was dort liegt, ist noch nirgends einsortiert und damit ein Original. Erst sortieren, dann gilt der Zielordner. |
+| `Archiv/Dokumente/` | Verträge, Bescheide, Gericht, Gesundheit, Behörden. Originale, oft die einzige Fassung. |
+| `Archiv/Bilder/`, `Archiv/Videos/`, `Archiv/Musik/` und Playlisten | Rohmedien. 25 GB ohne Zweitquelle; 18,3 % der Bilder sind bereits verloren. |
+| `Archiv/Posteingang/` | Durchgangsordner — was dort liegt, ist noch nirgends einsortiert und damit ein Original. Erst sortieren, dann gilt der Zielordner. |
 | `Wissen/Zugaenge.md` | Einzige Ablage für Schlüssel und Tokens, bewusst außerhalb von Git. Nie ausgeben, nie in eine Chat-Antwort, nie in ein Protokoll — und nie löschen. |
-| `**/*.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`, `.key`, `.ovpn` | Zugangsdaten, an der Endung erkennbar, nicht am Namen. Auch `Claude/Software/**/*.pfx`: die ELSTER-Zertifikate sind zerstört, aber sie **belegen** den Verlust. |
+| `**/*.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`, `.key`, `.ovpn` | Zugangsdaten, an der Endung erkennbar, nicht am Namen. Auch `Archiv/Software/**/*.pfx`: die ELSTER-Zertifikate sind zerstört, aber sie **belegen** den Verlust. |
 | Alle 0xFF-Platzhalter | Die 61 verbliebenen Nullbyte-PDFs sind der einzige Hinweis darauf, **welche** Dokumente fehlen. Nicht aufräumen. |
 
 ### Löschen ist hier nie die Lösung
 
 Ein Agent löscht in Stufe 0 **gar nicht**. Wenn etwas weg soll, wird es nach
-`Claude/Posteingang/_zu_loeschen/` verschoben und Max entscheidet. Der Grund ist
+`Archiv/Posteingang/_zu_loeschen/` verschoben und Max entscheidet. Der Grund ist
 dieselbe Erfahrung, die schon in `sort_inbox.py` steckt: eine
 Duplikat-Erkennung nach Änderungsdatum hätte in einem einzigen Lauf 1001
 gleichnamige, inhaltlich verschiedene Dateien abgeräumt.
@@ -368,8 +368,8 @@ gilt erst als erledigt, wenn ein echter Lauf sie bestätigt hat.
 |---|---|
 | `Agenten/sichern.ps1`, `Agenten/sichern-zweitkopie.ps1` | Sicherung fällt aus, ohne Fehlermeldung. |
 | `Agenten/Routinen/*.ps1` | Geplante Aufgabe läuft ins Leere; die Aufgabenplanung meldet trotzdem Erfolg. |
-| `Claude/ArchivSuche/sort_inbox.py` | Verschiebt und löscht echte Dateien. Höchste Sorgfalt. |
-| `Claude/ArchivSuche/index.py`, `vektor_index.py` | Index fällt aus; Suche liefert stillschweigend nichts. |
+| `Archiv/ArchivSuche/sort_inbox.py` | Verschiebt und löscht echte Dateien. Höchste Sorgfalt. |
+| `Archiv/ArchivSuche/index.py`, `vektor_index.py` | Index fällt aus; Suche liefert stillschweigend nichts. |
 | `AGENTS.md`, `CLAUDE.md` (in der Wurzel **und** in `MaxHirn/`), `Dashboard.md` | Steuern das Verhalten aller Agenten. |
 | `.claude/skills/` | Dasselbe. |
 | `.obsidian/` | Vault-Konfiguration. Kaputt = Obsidian öffnet den Graphen nicht mehr. |
@@ -392,7 +392,7 @@ Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
   Durchgangsware, aus der Sicherung ausgenommen, eigene Spielregeln in
   `Werkstatt/AGENTS.md`
 - `Modelle/` (51 GB, seit 30.08.2026 außerhalb des Vaults) — neu herunterladbar
-- `Claude/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
+- `Archiv/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
 - `Agenten/Routinen/**/logs/` — jeweils nur der letzte Lauf
 - Build-Reste (`.pyc`, `.pyo`, `.toc`, `build/`, `dist/`), Temporärdateien, Duplikate
 

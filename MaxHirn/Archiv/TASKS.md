@@ -92,28 +92,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
-- [~] **T-016 — Whitelist zeigt auf `MaxHirn/Archiv/`, der Ordner heisst `MaxHirn/Claude/`**
-      Kontext: Die `.gitignore` gibt seit dem 30.08. `MaxHirn/Archiv/*.md`,
-      `MaxHirn/Archiv/ArchivSuche/*.py` usw. frei. Diesen Ordner gibt es im
-      Dateisystem nicht — er heisst weiterhin `MaxHirn/Claude/`. Auch
-      `MaxHirn/CLAUDE.md` und `Claude/CLAUDE.md` beschreiben die Umbenennung
-      bereits als vollzogen. Folge: Jede **neue** Datei unter
-      `MaxHirn/Claude/` faellt unter die Grundregel `*` in Zeile 20 und wird
-      nie versioniert (geprueft 01.09.2026 mit `git check-ignore`). Die 36
-      bereits getrackten Dateien dort ueberleben nur, weil Ignore-Regeln auf
-      versionierte Dateien nicht mehr wirken — darunter das ganze
-      Archiv-Werkzeug unter `ArchivSuche/`.
-      Status nach 01.09. 16:42: Recovery-Versuch nach PC-Absturz startete
-      Umbenennung. Archiv-MCP-Server und weitere Node-Prozesse (33 Stk.)
-      sperren die Datei. Skill `absturz-recovery` angelegt.
-      Naechster Schritt: alle laufenden Services beenden (Claude Code, Obsidian,
-      geplante Tasks sind aus), dann `Rename-Item Claude Archiv` aus frischer
-      PowerShell-Session, dann `.venv` in `Archiv/ArchivSuche/` neu erzeugen
-      (wegen absoluten Pfaden: `python -m venv .venv` + `pip install -r
-      requirements.txt`), abschliessend Git-Status prüfen und commiten.
-      Betrifft: `.gitignore`, `MaxHirn/CLAUDE.md`, `MaxHirn/Claude/CLAUDE.md`, `MaxHirn/Archiv/ArchivSuche/.venv`
-      Wartet auf: Neustart oder manuelles Beenden laufender Services
-      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+- [x] **T-016 — Ordner `MaxHirn/Claude/` → `MaxHirn/Archiv/` samt Verweisen** — erledigt
+      2026-09-02. Der physische Rename lief am 01.09. bei der Absturz-Recovery
+      durch; `MaxHirn/Claude/` existiert nicht mehr. Am 02.09. nachgezogen:
+      `.gitignore`-Whitelist zeigt auf `MaxHirn/Archiv/`, `git check-ignore`
+      bestaetigt, dass neue Dateien unter `Archiv/` **nicht** mehr ignoriert
+      werden. `.venv` in `Archiv/ArchivSuche/` neu erzeugt (Python 3.13) und
+      `requirements.txt` installiert — alle neun Abhaengigkeiten importierbar.
+      Textebene: `Claude/` → `Archiv/` in ~25 versionierten Dateien (Notizen,
+      Dashboard, Archiv-Doku, Skript-Kommentare); `Claude/Worktrees/` →
+      `Werkstatt/Worktrees/`; `%APPDATA%\Claude\` (Claude-Desktop-Config) und
+      historische „hiess Claude/"-Erwaehnungen verschont. Dabei drei kaputte
+      Skriptpfade gefunden und behoben: `sichern-zweitkopie.ps1` (Medien-
+      Ausschluss), `posteingang.ps1` und `mail/mailversand.py` (Wurzel loeste
+      seit der Ordnertrennung auf `Agenten/` statt `BrainFiles/` auf).
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-02
 
 - [x] **T-017 — Gehebelter Handel hat noch keine `wachen.json`** — erledigt
       2026-09-01. `Agenten/Handel/xperp/wachen.json` liegt (Höchsteinsatz je
@@ -229,7 +222,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
 - [?] **T-008 — MCP-Server `mail` ist nicht eingerichtet**
-      Kontext: `Claude/CLAUDE.md` beschreibt den Versand über `mail_senden`
+      Kontext: `Archiv/CLAUDE.md` beschreibt den Versand über `mail_senden`
       als den vorgesehenen Weg für „schick mir das per Mail". Der Server
       antwortet aber mit „Keine Absenderadresse hinterlegt" — in 53 Sitzungen
       wurde er kein einziges Mal erfolgreich benutzt. Der dokumentierte Weg

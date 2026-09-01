@@ -56,7 +56,7 @@ vollständig auf die GPU passen (7–8B in Q4/Q5 ja, 12–14B knapp, darüber ni
 > `C:\Users\faupe\iCloudPhotos` → `J:\iCloudPhotos` ins Leere (geprüft
 > 28.08.2026). Das betrifft rund 30.635 Mediendateien; sie sind nicht verloren,
 > nur nicht angeschlossen. Ob mit Absicht abgezogen, ist offen —
-> `Claude/TASKS.md`, T-005.
+> `Archiv/TASKS.md`, T-005.
 >
 > **Merkposten für die Diagnose:** Waren die Platten abgezogen, fehlt `G:` auch
 > in der Auslagerung — Windows legt `G:\pagefile.sys` erst beim nächsten Start
@@ -119,7 +119,7 @@ Zwei Punkte dazu:
 
 Ein defektes Netzteil hat mehrere Platten gleichzeitig getötet. Sie sind
 ausgebaut. Die Folge für das Archiv steht in
-[BESCHAEDIGTE_PDFS.md](../Claude/BESCHAEDIGTE_PDFS.md): Dateinamen blieben
+[BESCHAEDIGTE_PDFS.md](../Archiv/BESCHAEDIGTE_PDFS.md): Dateinamen blieben
 erhalten, Inhalte sind weg.
 
 ### Die alte Laufwerksordnung (Angabe Max, 24.08.2026)
@@ -156,7 +156,7 @@ Zwei Dinge folgen daraus:
 `Dokumente/` und `Software/` entsprechen dieser Aufteilung. Das würde erklären,
 warum der Schaden so ungleich verteilt ist — 494 zerstörte Dateien in `Bilder/`
 gegen 5 in `Videos/`, siehe
-[BESCHAEDIGTE_DATEIEN.md](../Claude/BESCHAEDIGTE_DATEIEN.md). Es wären dann
+[BESCHAEDIGTE_DATEIEN.md](../Archiv/BESCHAEDIGTE_DATEIEN.md). Es wären dann
 getrennte Platten gewesen, die unterschiedlich stark getroffen wurden. Geprüft
 ist das nicht.
 
@@ -452,7 +452,7 @@ mit unangekündigten Stromausfällen die grösste Einzellücke.
 | Quelle `MaxHirn\` heute | 188.214 | 47.100.417.109 | **43,87** |
 
 Nahezu gleiche Dateizahl, halbe Datenmenge. Die Ursache ist **eine einzige
-Datei**: `Claude\Posteingang\Maximilianbackup0924`, 52.428.800.000 Bytes
+Datei**: `Archiv\Posteingang\Maximilianbackup0924`, 52.428.800.000 Bytes
 (**48,83 GiB**). Sie steckt noch in der Sicherung, ist aber aus der Quelle
 verschwunden. 93,08 − 48,83 = 44,25 GiB, gegen 43,87 GiB heute — der Rest ist
 normale Fluktuation (+112 Dateien). Damit ist auch die „48,83 GB in 8 Minuten"-
@@ -531,13 +531,13 @@ Zwei Lehren aus dem 19.08.2026:
 
 | Datei | Bewertung |
 |---|---|
-| ~~`Claude\Dokumente\Privat\Bitlocker\firefox.csv`~~ | **erledigt 23.08.2026 — in Quarantäne verschoben** |
-| ~~`Claude\Software\icloud 26\firefox.csv`~~ | **erledigt 23.08.2026 — in Quarantäne verschoben** |
-| `Claude\Software\Linux\Unraid\config\ssh\ssh_host_{rsa,ed25519,ecdsa}_key` | **private SSH-Hostschlüssel des Unraid-Servers** |
-| `Claude\Software\Linux\Unraid\config\{passwd,shadow,smbpasswd,secrets.tdb}` | Benutzer- und Samba-Hashes |
-| `Claude\Worktrees\investment\OKX_API.env` | API-Zugangsdaten im Klartext |
-| `Claude\ArchivSuche\acoustid_key.txt` | 0 Byte, leer — kann weg |
-| `Claude\Software\Linux\Unraid\config\plugins\unbalanced\unbalanced.env` | prüfen |
+| ~~`Archiv\Dokumente\Privat\Bitlocker\firefox.csv`~~ | **erledigt 23.08.2026 — in Quarantäne verschoben** |
+| ~~`Archiv\Software\icloud 26\firefox.csv`~~ | **erledigt 23.08.2026 — in Quarantäne verschoben** |
+| `Archiv\Software\Linux\Unraid\config\ssh\ssh_host_{rsa,ed25519,ecdsa}_key` | **private SSH-Hostschlüssel des Unraid-Servers** |
+| `Archiv\Software\Linux\Unraid\config\{passwd,shadow,smbpasswd,secrets.tdb}` | Benutzer- und Samba-Hashes |
+| `Werkstatt\Worktrees\investment\OKX_API.env` | API-Zugangsdaten im Klartext |
+| `Archiv\ArchivSuche\acoustid_key.txt` | 0 Byte, leer — kann weg |
+| `Archiv\Software\Linux\Unraid\config\plugins\unbalanced\unbalanced.env` | prüfen |
 
 Der Eintrag weiter oben, am 19.08.2026 seien „drei Klartextdateien in Quelle und
 Sicherung gelöscht" worden, betraf **Chrome**-Exporte. Die Firefox-Exporte waren
@@ -668,7 +668,7 @@ Offener Lösungsweg: **In-Place-Reparaturinstallation** (Windows-11-ISO,
 oben — erst Netzteil, dann Installation.
 
 Praktisch verschmerzbar, weil die Dateisuche über das eigene Archivwerkzeug
-läuft (`Claude/ArchivSuche`) und nicht über den Windows-Index. Betroffen sind
+läuft (`Archiv/ArchivSuche`) und nicht über den Windows-Index. Betroffen sind
 Startmenü-Dateitreffer und die Outlook-Suche.
 
 ## Onboard-Netzwerkkarte defekt (nicht reparierbar)

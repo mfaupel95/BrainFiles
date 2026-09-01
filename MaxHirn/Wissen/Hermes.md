@@ -103,7 +103,7 @@ Deshalb wurden sie von Hand übertragen.
 
 **Nacharbeit:** In `archiv`, `dokument`, `posteingang` und `schaden` standen
 acht Aufrufe von `.venv\Scripts\python.exe` relativ zum Arbeitsverzeichnis
-`Claude/`. In den Hermes-Kopien sind sie auf absolute Pfade umgestellt. Die
+`Archiv/`. In den Hermes-Kopien sind sie auf absolute Pfade umgestellt. Die
 Originale unter `MaxHirn/.claude/skills/` blieben unverändert — für Claude Code
 stimmen sie so.
 

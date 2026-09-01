@@ -60,9 +60,8 @@ foreach ($z in (git -C $wurzel status --porcelain)) {
     # versionierten Datei greift keine Ignore-Regel mehr - ihre Aenderung
     # gehoert gesichert, auch wenn ein Muster auf den Pfad passt. Gemessen
     # 01.09.2026: 36 getrackte Dateien passen auf ein Muster, darunter das
-    # ganze Archiv-Werkzeug unter MaxHirn/Claude/ArchivSuche/ (die Whitelist
-    # gibt MaxHirn/Archiv/ frei, die Dateien liegen noch unter Claude/). Ohne
-    # diese Unterscheidung faellt ihre Arbeit stillschweigend aus der Sicherung.
+    # ganze Archiv-Werkzeug unter MaxHirn/Archiv/ArchivSuche/. Ohne diese
+    # Unterscheidung faellt ihre Arbeit stillschweigend aus der Sicherung.
     $unbekannt = $status -eq '??'
     if ($unbekannt) {
         git -C $wurzel check-ignore --quiet --no-index -- $pfad 2>$null

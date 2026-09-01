@@ -25,8 +25,8 @@ kann also keine beliebige Datei vom Rechner ausgeben.
 
 ## Betrieb
 
-Der Server liest `../../Claude/ArchivSuche/archiv_index.db`, relativ zu dieser
-Datei aufgelöst. Ein Umzug des Vaults ändert daran nichts; nur die Umgebung
+Der Server liest `../../../MaxHirn/Archiv/ArchivSuche/archiv_index.db`, relativ
+zu dieser Datei aufgelöst (bzw. `%MAXHIRN_VAULT%/Archiv/…`, wenn gesetzt). Ein Umzug des Vaults ändert daran nichts; nur die Umgebung
 muss danach einmal neu gebaut werden:
 
 ```
@@ -47,7 +47,7 @@ npx -y @modelcontextprotocol/inspector .venv\Scripts\python.exe archiv_mcp.py
 
 ## Registrierung
 
-Eingetragen in `Claude/.mcp.json` als `archiv`. Nach dem Eintragen muss Claude
+Eingetragen in `Archiv/.mcp.json` als `archiv`. Nach dem Eintragen muss Claude
 neu gestartet werden; die Verbindung lässt sich dann mit `/mcp` prüfen.
 
 ## Zwei Fallstricke

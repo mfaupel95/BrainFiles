@@ -13,7 +13,7 @@
 
     Jeder Schritt meldet, was er tut, und prueft danach das Ergebnis.
     Hintergrund: Wissen/Hardware.md, Abschnitt "Stromausfaelle ohne Bluescreen".
-    Offene Punkte: Claude/TASKS.md, T-002 bis T-004.
+    Offene Punkte: Archiv/TASKS.md, T-002 bis T-004.
 
 .PARAMETER Rueckgaengig
     Stellt alle drei Aenderungen auf den Stand vom 28.08.2026 zurueck.

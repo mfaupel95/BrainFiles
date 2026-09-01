@@ -2,7 +2,7 @@
 Archiv-MCP: stellt Max' Dateiarchiv als MCP-Server bereit.
 
 Liest ausschliesslich den fertigen Volltextindex aus
-Claude/ArchivSuche/archiv_index.db. Der Server ist bewusst nur lesend - er
+Archiv/ArchivSuche/archiv_index.db. Der Server ist bewusst nur lesend - er
 verschiebt, loescht und indexiert nichts. Das Einsortieren bleibt beim Skill
 `posteingang`, wo Max den Lauf sieht.
 
@@ -28,7 +28,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Relativ aufgeloest, damit ein Umzug des Vaults (z. B. auf eine externe SSD)
-# nichts kaputt macht: MCP-Server/archiv/ -> MaxHirn/ -> Claude/ArchivSuche/
+# nichts kaputt macht: Agenten/MCP-Server/archiv/ -> BrainFiles/ -> MaxHirn/Archiv/ArchivSuche/
 VAULT = Path(os.environ.get("MAXHIRN_VAULT") or (Path(__file__).resolve().parents[3] / "MaxHirn"))
 ARCHIV = VAULT / "Archiv"
 DB_PATH = ARCHIV / "ArchivSuche" / "archiv_index.db"

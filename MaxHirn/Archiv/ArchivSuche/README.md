@@ -134,7 +134,7 @@ Weitere Masken lassen sich dort einfach ergänzen.
 
 `sort_inbox.py` trifft mehrere Entscheidungen von sich aus, damit ein Lauf
 nichts Wertvolles überschreibt oder falsch ablegt. Der Kontext in
-`Claude/CLAUDE.md` verweist hierher statt die Zahlen zu kopieren.
+`Archiv/CLAUDE.md` verweist hierher statt die Zahlen zu kopieren.
 
 ### Duplikate – der Inhalt entscheidet, nicht der Name
 

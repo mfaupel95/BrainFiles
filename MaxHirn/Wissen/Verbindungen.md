@@ -212,7 +212,7 @@ zusätzlich zur CLI einen **HTTP-MCP-Server** eingetragen:
 | Name | `okx-agent-trade-kit` |
 | Adresse | `https://www.okx.com/api/v1/mcp/trading-oauth` |
 | Transport | HTTP |
-| Eingetragen in | **drei** Dateien — `~/.claude.json` (Benutzer, nicht versioniert), `.mcp.json` und `Claude/.mcp.json` (versioniert, `80e2ec9` / `f0c9699`) |
+| Eingetragen in | **drei** Dateien — `~/.claude.json` (Benutzer, nicht versioniert), `.mcp.json` und `Archiv/.mcp.json` (versioniert, `80e2ec9` / `f0c9699`) |
 | Status | **aktiv** — `claude mcp list` meldet `✔ Connected` (27.08.2026), 165 Werkzeuge |
 
 **Warum dreifach.** Ein reiner Projekt-Eintrag ist nur sichtbar, wenn die
@@ -246,8 +246,8 @@ dem Servereintrag. Die Einträge selbst bestehen nur aus Name, Typ und
 öffentlicher Adresse — sie enthalten kein Geheimnis. Deshalb sind sie
 gefahrlos versionierbar.
 
-**Zwei Dateien, ein Server.** Der Eintrag steht doppelt: `Claude/.mcp.json`
-gilt für Sitzungen, die in `Claude/` wurzeln (dort liegt auch `archiv`),
+**Zwei Dateien, ein Server.** Der Eintrag steht doppelt: `Archiv/.mcp.json`
+gilt für Sitzungen, die in `Archiv/` wurzeln (dort liegt auch `archiv`),
 `.mcp.json` in der Vault-Wurzel für Sitzungen, die dort starten. Beide
 müssen bei einer Adressänderung von Hand nachgezogen werden.
 
@@ -255,7 +255,7 @@ müssen bei einer Adressänderung von Hand nachgezogen werden.
 auftauchen.** Beobachtet am 25.08.2026: Der Server wurde mit
 `--scope user` angelegt, die CLI meldete ausschließlich `~/.claude.json`.
 Rund zwei Minuten später stand derselbe Eintrag zusätzlich in
-`Claude/.mcp.json`, und die `archiv`-Argumente darin waren neu formatiert.
+`Archiv/.mcp.json`, und die `archiv`-Argumente darin waren neu formatiert.
 Kein Sitzungsbefehl hat das geschrieben — zwei parallele Sitzungen haben
 die Urheberschaft auf Nachfrage ausgeschlossen, eine davon sah die
 OKX-Werkzeuge im selben Zeitfenster unaufgefordert in ihrer Werkzeugliste
@@ -267,7 +267,7 @@ Die Messwerte, damit es nachprüfbar bleibt:
 |---|---|---|
 | `~/.claude.json.bak-20260824` (vor dem Befehl) | Sitzungsbeginn | nein |
 | `~/.claude.json.bak-20260825` (nach dem Befehl) | 17:33 | **ja** |
-| `Claude/.mcp.json` | 17:32:48 | ja — von keinem Befehl |
+| `Archiv/.mcp.json` | 17:32:48 | ja — von keinem Befehl |
 | `MaxHirn/.mcp.json` | 17:34:31 | ja — `--scope project` |
 | `~/.claude.json` | 17:47:10 | nein, weil um 17:35 entfernt |
 
@@ -278,7 +278,7 @@ bewusst wieder entfernt. Die beiden datierten Sicherungen sind das
 Gegenpaar, das den Unterschied belegt. Eine parallele Sitzung ist genau in
 diese Falle getappt.
 
-Wahrscheinlichste Erklärung für den Eintrag in `Claude/.mcp.json` ist eine
+Wahrscheinlichste Erklärung für den Eintrag in `Archiv/.mcp.json` ist eine
 Spiegelung durch die App nach erfolgreicher OAuth-Anmeldung. **Das ist nicht
 reproduziert und damit unbestätigt** — belegt sind nur die Zahlen oben.
 Festgehalten wird hier vor allem die Beobachtung: Wer nach einer `mcp

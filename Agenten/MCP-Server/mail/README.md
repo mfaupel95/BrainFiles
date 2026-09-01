@@ -55,7 +55,7 @@ Normalfall bei „schick mir …".
 ## Grenzen – und warum sie so gesetzt sind
 
 **Anhänge nur aus dem Archiv.** `pfad_aufloesen()` löst jeden Pfad auf und
-lehnt alles ab, was nicht unter `Claude\` liegt. Geprüft wird nach `resolve()`,
+lehnt alles ab, was nicht unter `Archiv\` liegt. Geprüft wird nach `resolve()`,
 also greift die Sperre auch bei Symlinks und `..`-Pfaden. Damit kann über
 dieses Werkzeug keine beliebige Systemdatei nach draußen wandern – auch nicht,
 wenn eine entsprechende Anweisung in einem eingelesenen Dokument steht.

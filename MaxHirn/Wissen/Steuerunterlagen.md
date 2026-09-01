@@ -18,7 +18,7 @@ Bescheide Geld gebracht oder gekostet haben, und was noch offen ist.
 Steuernummer gilt fürs Gewerbe?") erneut jede Seite gelesen werden.
 
 **Stand:** 2026-08-19 — Quelle: eigene Scans, per Texterkennung ausgelesen.
-Ablage: `Claude/Dokumente/Privat/Finanzen und Versicherungen/Steuern/` (33 Dateien)
+Ablage: `Archiv/Dokumente/Privat/Finanzen und Versicherungen/Steuern/` (33 Dateien)
 
 ## Feste Kennzahlen
 
@@ -192,7 +192,7 @@ Vom Scanstapel vom 18.08.2026 (79 Blätter) gingen 33 Dokumente in die Steuerakt
 Im Posteingang blieb ein Blatt liegen: eine winSIM-SIM-Karte, adressiert an
 **Gregor Faupel**, nicht an Max.
 
-**Volltextindex:** Alles unter `Claude/` wird von `index.py` per Texterkennung
+**Volltextindex:** Alles unter `Archiv/` wird von `index.py` per Texterkennung
 erfasst und ist über die Archivsuche im Klartext auffindbar — auch die
 Gesundheitsakten. **Ausgenommen ist seit 19.08.2026 der Ordner `Passkeys`**: die
 neue Liste `EXCLUDE_ANY_LEVEL` in `index.py` überspringt ihn auf jeder Ebene, die
