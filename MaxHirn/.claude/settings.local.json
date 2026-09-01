@@ -63,7 +63,8 @@
       "Bash(../scanner/.venv/Scripts/python.exe auswahl.py --zweck long --anzahl 16)",
       "PowerShell(Get-Process | Where-Object { $_.Name -match \"Code|Obsidian|git|node|python\" } | Select-Object Name, Id | Sort-Object Name)",
       "PowerShell(cmd /c \"cd C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn && dir Claude /s /b | head -5\" 2>&1)",
-      "PowerShell(head -10)"
+      "PowerShell(head -10)",
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn\\\\.claude\\\\T-016-fertigmachen.ps1\")"
     ]
   },
   "enableAllProjectMcpServers": true,
