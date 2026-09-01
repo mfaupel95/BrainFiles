@@ -21,16 +21,16 @@ steht: die Entscheidung, ihre Grenzen und den Stand.
 
 ## Die Entscheidung
 
-Die globale Regel „das Auslösen von Geldbewegungen bleibt bei Max" gilt
-weiter — **außer für diesen einen Agenten**. Der Sonderfall ist in
-[[Schutzregeln]] eingetragen (Abschnitt „Handel: was ein Agent selbst auslösen
-darf", Spur 1). Er gilt für dieses Skript, nicht für Claude allgemein, und
-nicht für die tägliche Routine.
+Dieser Scanner war der erste Agent, der überhaupt selbst handeln durfte
+(31.08.2026). **Seit dem 01.09.2026 ist er kein Sonderfall mehr:** Max hat die
+globale Regel umgedreht — automatischer Handel ist erlaubt, solange die
+Grenzen in der jeweiligen `wachen.json` eingehalten werden ([[Schutzregeln]],
+Abschnitt „Handel: was ein Agent selbst auslösen darf"). Dieser Scanner ist
+dort **Spur 1**, der XPERP-Bot ist Spur 2.
 
-**Seit 01.09.2026 ist er nicht mehr die einzige Ausnahme.** Gehebelte
-Positionen laufen über Spur 2 derselben Regel und brauchen dort eine Anweisung
-von Max je Vorgang. Für diesen Scanner ändert das nichts: Er bleibt Spot, Long,
-ohne Hebel — was er von selbst darf, steht unverändert in `wachen.json`.
+Für den Scanner selbst ändert das nichts: Er bleibt Spot, Long, ohne Hebel —
+was er von selbst darf, steht unverändert in `wachen.json`, und scharf
+geschaltet wird weiterhin von Hand, nie aus der täglichen Routine.
 
 ## Die Grenzen (in `scanner/wachen.json`, einzige Wahrheit)
 

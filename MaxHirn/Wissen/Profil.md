@@ -117,12 +117,13 @@ lohnen würde?
 ## Was ich nicht möchte
 
 - **Nichts löschen ohne ausdrückliche Freigabe pro Position.**
-- **Geldbewegungen löse ich selbst aus — mit zwei angeordneten Ausnahmen.**
-  Claude bereitet vor und platziert nicht; ausgenommen sind der Marktscanner
-  (Spot, ohne Hebel) und **gehebelte Positionen auf meine ausdrückliche
-  Anweisung** (seit 01.09.2026). Beide Spuren mit festen Grenzen in
-  [[Schutzregeln]], Abschnitt „Handel"; siehe auch [[Verbindungen]],
-  Abschnitte Kraken und OKX.
+- **Handel darf automatisch laufen, solange die Grenzen eingehalten werden**
+  (angeordnet 01.09.2026). Die Grenzen stehen in `scanner/wachen.json` und
+  `xperp/wachen.json`, nicht im Gedächtnis einer Sitzung — Einzelheiten in
+  [[Schutzregeln]], Abschnitt „Handel". **Jede andere Geldbewegung**
+  (Überweisung, Ein- und Auszahlung, Umtausch außerhalb der beiden Spuren)
+  löse ich selbst aus; da bereitet Claude nur vor. Siehe auch
+  [[Verbindungen]], Abschnitte Kraken und OKX.
 - **Bei einer Handelsanweisung will ich die Rechnung, nicht die Bedenken.**
   Widerspruch mit Zahlen, wenn eine Anweisung falsch gedacht oder mit hoher
   Wahrscheinlichkeit unprofitabel ist — **einmal**, mit Gegenvorschlag. Danach

@@ -15,8 +15,8 @@ Welche Dateien unter `BrainFiles/` ein Agent **nicht** anfassen darf, und warum.
 `Agenten/`, `Werkstatt/`; die Aufteilung steht in [[Ordnerstruktur]].
 Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
 **Hauptregel am 25.08.2026 auf Max' Anweisung gelockert**, **Handverbot am
-01.09.2026 für gehebelte Produkte auf Anweisung geöffnet** — beides siehe
-unten.
+01.09.2026 ersetzt: automatischer Handel ist erlaubt, solange die Grenzen in
+den beiden `wachen.json` eingehalten werden** — beides siehe unten.
 
 ## Hauptregel
 
@@ -44,15 +44,32 @@ alte, weitere Fassung „wiederherstellen" will: Das war kein Versehen.
 
 ## Handel: was ein Agent selbst auslösen darf
 
-Die globale Arbeitsanweisung sagte lange ohne Ausnahme: **das Auslösen von
-Geldbewegungen bleibt bei Max, ein Agent bereitet nur vor.** Davon gibt es
-inzwischen zwei Ausnahmen — den Marktscanner (31.08.2026) und **gehebelte
-Produkte auf ausdrückliche Anweisung (01.09.2026)**.
+**Das Auslösen von Geldbewegungen darf automatisch geschehen, solange die
+Regeln zum Schutz des Kapitals eingehalten werden.** Von Max angeordnet am
+01.09.2026. Das kehrt die bis dahin geltende Fassung um („das Auslösen von
+Geldbewegungen bleibt bei Max, ein Agent bereitet nur vor") — **automatischer
+Handel ist seither die Regel, nicht die Ausnahme.**
 
-Beide haben dieselbe Bauform, und die ist der eigentliche Schutz:
-**Die Grenzen stehen in einer Datei, nicht im Gedächtnis einer Sitzung**, jede
-Position trägt einen nicht abschaltbaren Stop, und **aus einem Zeitplan heraus
-wird nie scharf gehandelt.**
+Damit dieser Satz trägt, muss „Regeln zum Schutz des Kapitals" etwas
+Nachprüfbares bezeichnen und keine Haltung. Es sind zwei Dateien, und sie sind
+die **einzige** Wahrheit über die Grenzen:
+
+| Spur | Grenzen in | Was dort handelt |
+|---|---|---|
+| **1 — Spot** | `../Agenten/Handel/scanner/wachen.json` | Marktscanner: Spot, nur Long, kein Hebel |
+| **2 — Hebel** | `../Agenten/Handel/xperp/wachen.json` | XPERP-Bot: Long und Short, Hebel bis 5 |
+
+Drei Eigenschaften machen die Erlaubnis tragfähig. **Fehlt eine, gilt sie
+nicht** — dann ist es kein bewachter Automat, sondern eine Wette mit
+Skriptunterstützung:
+
+1. **Die Grenzen stehen in einer Datei, nicht im Gedächtnis einer Sitzung.**
+   Die Skripte lesen `wachen.json`, sie schreiben sie nie. Eine Sitzung kann
+   eine Regel vergessen, eine Datei nicht.
+2. **Jede Position trägt einen nicht abschaltbaren Stop**, und über allem steht
+   ein Kill-Switch auf den Gesamtverlust (`kill_switch_gesamt_usd`).
+3. **Scharf geschaltet wird von Hand.** Was danach läuft, läuft ohne Rückfrage
+   — aber der Schalter selbst wird nie von einem Zeitplan umgelegt.
 
 ### Spur 1 — Marktscanner: läuft von selbst, ohne Hebel
 
@@ -70,8 +87,8 @@ einzige Wahrheit darüber:
 | Abklingzeit nach Stop-Out | 3 Tage je Wert |
 | Instrumente | nur Spot, nur Long, kein Hebel |
 
-Die letzte Zeile ist die Grenze **dieser Spur**, nicht mehr die des ganzen
-Systems: Hebel läuft über Spur 2 und braucht dort eine Anweisung je Vorgang.
+Die letzte Zeile ist die Grenze **dieser Spur**, nicht die des ganzen Systems:
+Hebel läuft über Spur 2 und hat dort eigene Grenzen.
 
 **Drei Sperren müssen alle offen sein, sonst läuft nur Papierhandel:**
 
@@ -84,10 +101,21 @@ Stand 01.09.2026 ist Sperre 1 zu (`handel_erlaubt: false`) und Sperre 2 leer —
 der Live-Pfad ist **noch nie scharf gelaufen**. Bis gültige Schlüssel gesetzt
 sind und das Papier-Handelsjournal über Wochen trägt, bleibt es dabei.
 
-### Spur 2 — Gehebelte Produkte: nur auf Anweisung, dann aber vollständig
+### Spur 2 — Gehebelte Produkte: automatisch im Rahmen, oder auf Anweisung
 
-Angeordnet von Max am 01.09.2026. **Hebel ist nicht mehr grundsätzlich
-verboten.** Verboten bleibt, ihn von selbst zu nehmen.
+Angeordnet von Max am 01.09.2026. **Hebel ist weder verboten noch an eine
+Einzelanweisung gebunden.** Es gibt zwei Wege hinein, und sie unterscheiden
+sich nur darin, woher die Parameter kommen:
+
+| Weg | Parameter aus | Wer über die einzelne Position entscheidet |
+|---|---|---|
+| **automatisch** | `xperp/wachen.json` | `bot.py`, im Rahmen der Datei — ohne Rückfrage je Order |
+| **auf Anweisung** | Max' Anweisung im Chat | Max, mit den vier Pflichtangaben unten |
+
+In beiden Fällen gilt: Die Werte in `wachen.json` sind eine **Obergrenze, kein
+Ziel**. Eine Anweisung darf sie nicht überschreiten, auch nicht mit
+Bestätigung — wer weiter will, ändert erst die Datei, und das ist ein eigener
+Vorgang mit Ansage (Stufe 1).
 
 **Was sich geändert hat und warum:** Die alte Fassung schrieb „nur Spot, nur
 Long, kein Hebel" als Systemgrenze ohne jeden Ausweg. Das hat kein Geld
@@ -95,11 +123,13 @@ geschützt — es hat nur die Arbeit an `../Agenten/Handel/xperp/` in einen
 Graubereich gestellt (der Kopf von `okxf.py` verweist selbst auf das Verbot)
 und jede gehebelte Aufgabe in eine Diskussion über die Regel verwandelt statt
 in eine Rechnung. Die Sperre wandert deshalb dorthin, wo sie etwas taugt: von
-„nicht erlaubt" zu **„nicht ohne Anweisung, und nicht ohne vorgelegte
-Zahlen"** — siehe Prüfpflicht unten.
+**„nicht erlaubt"** zu **„nicht außerhalb von `wachen.json`, und nicht ohne
+gerechnete Zahlen"** — siehe Prüfpflicht unten. Am selben Tag ist die zweite
+Hälfte gefallen: erst brauchte Hebel eine Anweisung je Vorgang, seit Max'
+Änderung am Abend nicht mehr. Geblieben ist die Datei.
 
-Eine gültige Anweisung nennt **alle vier Angaben**, von Max, in derselben
-Sitzung:
+**Nimmt Max eine Position von Hand, am Bot vorbei**, nennt die Anweisung
+**alle vier Angaben**, in derselben Sitzung:
 
 | Angabe | Beispiel |
 |---|---|
@@ -109,26 +139,30 @@ Sitzung:
 | Einsatz und Stop | Nominal in USD und Stop in Prozent |
 
 Fehlt eine Angabe, wird sie **nicht sinngemäß ergänzt**: kein geratener Hebel,
-kein Wert aus einer Rangliste heraus eröffnet, keine Richtung aus dem Trend
-abgeleitet. **Eine Rangliste aus `xperp/auswahl.py` ist ein Vorschlag, keine
-Anweisung.** Fehlt etwas, wird genau danach gefragt — und alles übrige
-inzwischen schon vorbereitet.
+keine Richtung aus dem Trend abgeleitet. Fehlt etwas, wird genau danach gefragt
+— und alles übrige inzwischen schon vorbereitet.
 
-Fest, auch mit Anweisung:
+Der Unterschied zum automatischen Weg liegt genau hier: **`bot.py` darf aus
+einer Rangliste heraus eröffnen, eine Chat-Antwort nicht.** Was `auswahl.py`
+ausgibt, ist für einen Menschen ein Vorschlag; verbindlich wird es durch die
+Datei oder durch Max, nicht durch die Rangfolge selbst.
+
+Fest, auf beiden Wegen — auch mit Anweisung, auch im Automatikbetrieb:
 
 | Grenze | Warum sie nicht verhandelbar ist |
 |---|---|
 | Pflicht-Stop je Position, nicht abschaltbar | Ohne Stop ist der Hebel die Positionsgröße, nicht das Risiko |
 | Hebel höchstens `hebel_deckel` aus `xperp/auswahl.py` | Liquidation greift bei rund `1/Hebel` minus Wartungsmarge. Ob ein Hebel den größten beobachteten 7-Tage-Rücklauf überlebt hätte, ist keine Meinungsfrage — es wird ausgerechnet und gemeldet |
 | kein Auszahlungsrecht | Die Schlüssel bekommen Handelsrecht, sonst nichts. `account_transfer` und Auszahlungen bleiben außen vor |
-| nie aus einem Zeitplan | Eine gehebelte Position entsteht aus einer Anweisung, nie aus `Routinen/*.ps1` |
+| Rahmen aus `xperp/wachen.json` | Margin je Anlauf, Gesamtmargin, `risiko_je_anlauf_usd` und `kill_switch_gesamt_usd` gelten für den Automaten wie für eine Anweisung |
+| Scharfschalten nur von Hand | `Routinen/*.ps1` startet den Bot, aber legt nie `handel_erlaubt` um. Der Automat entscheidet über Positionen, nicht über sich selbst |
 | Papierlauf zuerst bei einer **neuen Strategie** | Nicht bei einer einzelnen angewiesenen Position — dort ist die Anweisung selbst die Entscheidung |
 
 ### Was an die Stelle des Verbots tritt: die Prüfpflicht
 
 Das Verbot war das billige Sicherungsmittel. Es fällt weg, dafür wird
-gerechnet. **Vor einer gehebelten Order legt der Agent ungefragt vier Zahlen
-vor** — kurz, als Tabelle, nicht als Aufsatz:
+gerechnet. **Vor einer gehebelten Order stehen vier Zahlen** — kurz, als
+Tabelle, nicht als Aufsatz:
 
 1. **Liquidationsabstand gegen größten 7-Tage-Rücklauf** (`hebel_deckel`).
 2. **Funding über die geplante Haltedauer**, mit Vorzeichen — beim Short oft
@@ -136,6 +170,13 @@ vor** — kurz, als Tabelle, nicht als Aufsatz:
 3. **Gebühren je Runde gegen den erwarteten Gewinn** (0,05 % je Ausführung
    Taker).
 4. **Nötige Trefferquote gegen die beobachtete.**
+
+**Wo sie stehen, hängt vom Weg ab, nicht von der Laune:** Auf dem
+Anweisungsweg legt der Agent sie ungefragt im Chat vor, bevor die Order
+vorbereitet ist. Auf dem automatischen Weg kann niemand mitlesen — dort gehören
+sie **in die Prüfung von `bot.py` und ins Handelsjournal**, je Position mit
+abgelegt. Eine Zahl, die der Automat nicht ablegt, ist nicht gerechnet worden;
+eine Position ohne diese vier Werte im Journal ist ein Befund, kein Trade.
 
 Die Grundlinie dafür steht in [[Handelsbots]] und ist unbequem: Über 12 Monate
 lag **jede** getestete mechanische Einstellung dicht an der Nulllinie, leicht
@@ -171,10 +212,13 @@ Dasselbe gilt in die andere Richtung: Fällt bei einer Auswertung eine bessere
 Einstellung auf, wird sie **vorgeschlagen** — mit der Rechnung dazu —, nicht
 heimlich eingesetzt.
 
-### Was auch diese Lockerung nicht aufweicht
+### Was auch diese Erlaubnis nicht aufweicht
 
-- **Die tägliche Routine handelt nie scharf.** `Routinen/marktscanner.ps1` ruft
-  `handeln.py` ohne `--live`. Scharfhandel ist ein bewusster Aufruf von Hand.
+- **Kein Zeitplan legt den Schalter um.** `Routinen/marktscanner.ps1` ruft
+  `handeln.py` ohne `--live`; scharf wird ein Lauf durch einen bewussten Aufruf
+  von Hand. Das ist kein Widerspruch zum automatischen Handel, sondern seine
+  Bedingung: Der Automat entscheidet über **Positionen**, nicht darüber, ob er
+  selbst scharf ist.
 - **Kein Auszahlungsrecht**, in keiner Spur.
 - **Jede andere Geldbewegung** — Überweisungen, Ein- und Auszahlungen, Umtausch
   außerhalb dieser beiden Spuren — bleibt vorbereitend. Der Skill `geld`
