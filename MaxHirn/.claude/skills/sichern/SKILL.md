@@ -12,7 +12,7 @@ Vollständige Begründung in [[Schutzregeln]]; hier steht der Ablauf.
 ## 1. Lage feststellen
 
 ```powershell
-.\Routinen\arbeitsbaum-pruefen.ps1
+..\Agenten\Routinen\arbeitsbaum-pruefen.ps1
 ```
 
 Liest `git status --porcelain`, ergänzt je Datei die Änderungszeit und trennt
