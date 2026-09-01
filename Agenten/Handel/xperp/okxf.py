@@ -153,12 +153,32 @@ def instrumente(kategorie=KRYPTO):
     return sorted(xp, key=lambda x: x["instId"])
 
 
+def swap_instrument(inst_id):
+    """Ein gewoehnlicher Perpetual (instType=SWAP) anhand des vollen instId.
+
+    Der XPERP-Zweig oben findet nur ruleType=xperp unter FUTURES. Der normale
+    Perp - CHIP-USDT-SWAP mit 24x mehr Umsatz als der CHIP-XPERP - liegt unter
+    SWAP und wird hier direkt geholt. ctVal/lotSz/tickSz haben dieselbe Form,
+    kontrakte_aus_nominal() und auf_tick() rechnen unveraendert.
+    """
+    d = _mit_wiederholung(
+        "/api/v5/public/instruments?instType=SWAP&instId=" + inst_id)
+    for x in d:
+        if x.get("state") == "live":
+            return x
+    raise OKXFehler("kein lebender SWAP-Kontrakt %r" % inst_id)
+
+
 def instrument(basis):
     """Ein Kontrakt anhand des Basiswerts ('RE') oder des vollen instId.
 
     'REUSD' wird mit angenommen - so liest sich 'RE-USD' ohne Bindestrich, und
-    genau daran ist die Suche am 01.09.2026 einmal gescheitert.
+    genau daran ist die Suche am 01.09.2026 einmal gescheitert. Endet die
+    Eingabe auf '-SWAP', ist ein gewoehnlicher Perpetual gemeint, kein XPERP.
     """
+    if basis.upper().endswith("-SWAP"):
+        return swap_instrument(basis.upper())
+
     alle = instrumente(kategorie=None)
     b = basis.upper()
     for x in alle:                                    # voller instId
@@ -208,9 +228,13 @@ def letzter_kurs(inst):
     return float(d[0]["last"])
 
 
-def tickers():
-    """Alle Futures-Ticker in einem Aufruf - Umsatz je Wert ohne 460 Anfragen."""
-    d = _mit_wiederholung("/api/v5/market/tickers?instType=FUTURES")
+def tickers(inst_type="FUTURES"):
+    """Alle Ticker eines Typs in einem Aufruf - Umsatz je Wert ohne 460 Anfragen.
+
+    inst_type="SWAP" fuer die gewoehnlichen Perpetuals; Standard bleibt FUTURES
+    (die XPERP).
+    """
+    d = _mit_wiederholung("/api/v5/market/tickers?instType=" + inst_type)
     return {x["instId"]: x for x in d}
 
 

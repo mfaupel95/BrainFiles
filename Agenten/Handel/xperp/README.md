@@ -63,6 +63,13 @@ ergibt „RE-USD" eben „REUSD". Drei Fallen dabei:
 `okxf.instrument()` nimmt alle drei Schreibweisen an — `RE`, `REUSD` und den
 vollen `instId`.
 
+**Auch gewöhnliche Perpetuals.** Endet die Eingabe auf `-SWAP`
+(`bot.py trend --wert CHIP-USDT-SWAP …`), holt `okxf.instrument()` den normalen
+SWAP-Kontrakt statt eines XPERP. Grund: CHIP als XPERP war 14 Tage alt und
+setzte 1 Mio USD/Tag um, `CHIP-USDT-SWAP` 134 Tage und 24 Mio — gleicher Hebel,
+gleiche `ctVal`. `--historie auto` zieht dann die tiefe Reihe desselben
+Kontrakts (mehr als die 300 Signal-Kerzen).
+
 ## Die tragende Regel: Der Hebel ist Ergebnis, nicht Eingabe
 
 Das ist der Unterschied zu einem Bot, dem man „5x" vorgibt:

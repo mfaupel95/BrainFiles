@@ -319,7 +319,8 @@ def zeige_lage(w, wert, historie_quelle=None):
             instr["instId"], historie_quelle)
 
     dl, ds = hebel_deckel(k_hist, wartung=w["wartungsmarge"])
-    tick = okxf.tickers().get(instr["instId"], {})
+    ist_swap = instr["instId"].upper().endswith("-SWAP")
+    tick = okxf.tickers("SWAP" if ist_swap else "FUTURES").get(instr["instId"], {})
     umsatz = float(tick.get("volCcy24h") or 0) * z["kurs"]
     tage = len(k) / 6.0
 
@@ -360,10 +361,14 @@ def zeige_lage(w, wert, historie_quelle=None):
     print("  Hebel-Deckel   long %.1fx   short %.1fx   (groesster Ruecklauf 7 Tage)" % (dl, ds))
     print("  Umsatz 24h     %.1f Mio USD" % (umsatz / 1e6))
     print("  Historie       %.0f Tage" % tage)
+    tage_hist = len(k_hist) / 6.0
     if hist_ersatz:
-        print("  Statistik aus  %s  -  %.0f Tage" % (hist_id, len(k_hist) / 6.0))
+        print("  Statistik aus  %s  -  %.0f Tage" % (hist_id, tage_hist))
         print("                 Hebel-Deckel und Trefferquote stammen aus dieser")
         print("                 Reihe (gleicher Basiswert), das Signal oben nicht.")
+    elif historie_quelle is not None and tage_hist > tage + 1:
+        print("  Statistik aus  %.0f Tage - tiefe Reihe desselben Kontrakts" % tage_hist)
+        print("                 (mehr Kerzen als die 300 fuer das Signal oben).")
     elif historie_quelle is not None:
         print("  Statistik aus  keine laengere Reihe gefunden - es bleibt bei %.0f Tagen" % tage)
 

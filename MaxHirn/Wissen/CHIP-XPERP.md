@@ -107,17 +107,31 @@ wie angewiesen, vorbereitet, nicht ausgelöst. Die Tick-Preise stehen bewusst
 neu (Stop und Ziel fallen aus `stop_atr_faktor`/`ziel_atr_faktor` in
 `wachen.json`).
 
+**Kontrakt gewechselt:** Max will die Orders auf **`CHIP-USDT-SWAP`**, nicht den
+XPERP. Der SWAP ist der normale Perpetual — **~24 Mio USD Umsatz/Tag** gegen
+~1 Mio beim XPERP, 134 Tage Historie, gleiche 20× / ctVal 100. Der Wechsel
+öffnet zwei der drei Tore (Umsatz, Historie); das Kernurteil bleibt, weil
+Hebel-Deckel 2,2× und Trefferquote 28 % schon immer aus dem SWAP kamen.
+
+`okxf.py` kennt seit dem 01.09.2026 auch SWAP-Kontrakte: `instrument()` nimmt
+einen vollen `…-SWAP`-instId direkt, `tickers("SWAP")` holt die passenden
+Umsätze. `--historie auto` auf einem SWAP-instId zieht dessen eigene tiefe
+Reihe (`kerzen_lang`, ~200 Tage) statt der 300 Signal-Kerzen.
+
 | | Nr. 1 — Trend-Long | Nr. 3 — Grid-Long |
 |---|---|---|
-| Aufruf | `bot.py trend --wert CHIP --historie auto --hebel 2` | `bot.py grid --wert CHIP --historie auto --hebel 3 --einsatz 80` |
+| Aufruf | `bot.py trend --wert CHIP-USDT-SWAP --historie auto --hebel 2` | `bot.py grid --wert CHIP-USDT-SWAP --historie auto --hebel 3 --einsatz 80` |
 | Richtung | Long | Long, 6 Stufen |
 | Hebel | 2× (unter Deckel 2,2×) | 3× — **über** Deckel 2,2×, Prüfpflicht sagt `ZU HOCH` |
-| Einsatz | ~48 USD Margin (Rahmen 50) | ~76 USD Gesamtmargin (Rahmen 80) |
-| Stop | 1,5 ATR ≈ −7 % | gemeinsamer Rasterboden, ~−31 % |
-| Verlust wenn Stop/Boden | ~7 USD | ~35 USD (Kill-Switch 40) |
-| Prüfpflicht Zahl 4 | 27,7 % gegen 33,7 % → trägt nicht | 89,6 % gegen 82,4 % → trägt |
+| Einsatz | ~47 USD Margin (Rahmen 50) | ~76 USD Gesamtmargin (Rahmen 80) |
+| Stop | 1,5 ATR ≈ −7,7 % | gemeinsamer Rasterboden, ~−32 % |
+| Verlust wenn Stop/Boden | ~7 USD | ~37 USD (Kill-Switch 40) |
+| Prüfpflicht Zahl 4 | 28,3 % gegen 33,9 % → trägt nicht | 90,8 % gegen 82,3 % → trägt |
+| Funding 48 h | +0,06 % auf die Margin (Long zahlt) | +0,09 % auf die Margin |
 
-**Auslösen geht noch nicht:** `OKX_API_KEY/SECRET/PASSPHRASE` sind nicht gesetzt
-(`okxf.schluessel_vorhanden()` → False). Bis dahin druckt der Bot nur die
-`okxf.hebel_setzen(...)` / `okxf.order_limit(...)`-Aufrufe. Absenden tut Max
-oder ein dafür gebautes Skript, nie die Claude-Sitzung ([[Schutzregeln]]).
+**Auslösen:** `OKX_API_KEY/SECRET/PASSPHRASE` sind gesetzt
+(`okxf.schluessel_vorhanden()` → True). Der Bot druckt trotzdem nur die
+`okxf.hebel_setzen(...)` / `okxf.order_limit(...)`-Aufrufe. Absenden tut Max —
+einzeilig aus PowerShell (`& ..\scanner\.venv\Scripts\python.exe -c "..."`), nie
+die Claude-Sitzung ([[Schutzregeln]]). Preise vorher mit einem frischen
+`bot.py`-Lauf erneuern, sie driften.
