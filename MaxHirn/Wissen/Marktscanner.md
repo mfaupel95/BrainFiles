@@ -23,9 +23,14 @@ steht: die Entscheidung, ihre Grenzen und den Stand.
 
 Die globale Regel „das Auslösen von Geldbewegungen bleibt bei Max" gilt
 weiter — **außer für diesen einen Agenten**. Der Sonderfall ist in
-[[Schutzregeln]] eingetragen (Abschnitt „Marktscanner: die eine Ausnahme vom
-Handverbot"). Er gilt für dieses Skript, nicht für Claude allgemein, und nicht
-für die tägliche Routine.
+[[Schutzregeln]] eingetragen (Abschnitt „Handel: was ein Agent selbst auslösen
+darf", Spur 1). Er gilt für dieses Skript, nicht für Claude allgemein, und
+nicht für die tägliche Routine.
+
+**Seit 01.09.2026 ist er nicht mehr die einzige Ausnahme.** Gehebelte
+Positionen laufen über Spur 2 derselben Regel und brauchen dort eine Anweisung
+von Max je Vorgang. Für diesen Scanner ändert das nichts: Er bleibt Spot, Long,
+ohne Hebel — was er von selbst darf, steht unverändert in `wachen.json`.
 
 ## Die Grenzen (in `scanner/wachen.json`, einzige Wahrheit)
 

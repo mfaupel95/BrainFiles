@@ -3,7 +3,7 @@ id: 20260830-schutzregeln
 title: 'Schutzregeln'
 tags: [sicherheit, betrieb]
 created: 2026-08-27
-updated: 2026-08-30
+updated: 2026-09-01
 related: []
 summary: 'Welche Dateien unter BrainFiles ein Agent nicht anfassen darf und warum.'
 ---
@@ -14,7 +14,9 @@ Welche Dateien unter `BrainFiles/` ein Agent **nicht** anfassen darf, und warum.
 **Seit dem 30.08.2026 gilt das über vier Ordner** — `MaxHirn/`, `Modelle/`,
 `Agenten/`, `Werkstatt/`; die Aufteilung steht in [[Ordnerstruktur]].
 Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
-**Hauptregel am 25.08.2026 auf Max' Anweisung gelockert** (siehe unten).
+**Hauptregel am 25.08.2026 auf Max' Anweisung gelockert**, **Handverbot am
+01.09.2026 für gehebelte Produkte auf Anweisung geöffnet** — beides siehe
+unten.
 
 ## Hauptregel
 
@@ -40,14 +42,24 @@ reproduzierbarem Ballast brauchte eine Rückfrage. Die Sperre gilt jetzt dort,
 wo ein Verlust endgültig ist, und nur dort. Wer diesen Absatz liest und die
 alte, weitere Fassung „wiederherstellen" will: Das war kein Versehen.
 
-## Marktscanner: die eine Ausnahme vom Handverbot
+## Handel: was ein Agent selbst auslösen darf
 
-Die globale Arbeitsanweisung sagt: **das Auslösen von Geldbewegungen bleibt bei
-Max, ein Agent bereitet nur vor.** Am 31.08.2026 hat Max für **genau einen**
-Agenten eine begrenzte Ausnahme angeordnet: den Marktscanner unter
-`../Agenten/Handel/scanner/` (eigenes README). Er darf im Rahmen fester Grenzen
-selbst kaufen und verkaufen. Die Grenzen stehen in `scanner/wachen.json` und
-sind die einzige Wahrheit darüber:
+Die globale Arbeitsanweisung sagte lange ohne Ausnahme: **das Auslösen von
+Geldbewegungen bleibt bei Max, ein Agent bereitet nur vor.** Davon gibt es
+inzwischen zwei Ausnahmen — den Marktscanner (31.08.2026) und **gehebelte
+Produkte auf ausdrückliche Anweisung (01.09.2026)**.
+
+Beide haben dieselbe Bauform, und die ist der eigentliche Schutz:
+**Die Grenzen stehen in einer Datei, nicht im Gedächtnis einer Sitzung**, jede
+Position trägt einen nicht abschaltbaren Stop, und **aus einem Zeitplan heraus
+wird nie scharf gehandelt.**
+
+### Spur 1 — Marktscanner: läuft von selbst, ohne Hebel
+
+Der Marktscanner unter `../Agenten/Handel/scanner/` (eigenes README) darf im
+Rahmen fester Grenzen selbst kaufen und verkaufen, **ohne dass Max jede Order
+einzeln anordnet**. Die Grenzen stehen in `scanner/wachen.json` und sind die
+einzige Wahrheit darüber:
 
 | Grenze | Wert |
 |---|---|
@@ -58,6 +70,9 @@ sind die einzige Wahrheit darüber:
 | Abklingzeit nach Stop-Out | 3 Tage je Wert |
 | Instrumente | nur Spot, nur Long, kein Hebel |
 
+Die letzte Zeile ist die Grenze **dieser Spur**, nicht mehr die des ganzen
+Systems: Hebel läuft über Spur 2 und braucht dort eine Anweisung je Vorgang.
+
 **Drei Sperren müssen alle offen sein, sonst läuft nur Papierhandel:**
 
 1. `scanner/wachen.json` → `"handel_erlaubt": true`
@@ -65,19 +80,113 @@ sind die einzige Wahrheit darüber:
    Windows-Benutzervariablen (nicht in den Vault, nicht neben den Code)
 3. `handeln.py` ausdrücklich mit `--live` aufgerufen
 
-Stand 31.08.2026 ist Sperre 1 zu (`handel_erlaubt: false`) und Sperre 2 leer —
+Stand 01.09.2026 ist Sperre 1 zu (`handel_erlaubt: false`) und Sperre 2 leer —
 der Live-Pfad ist **noch nie scharf gelaufen**. Bis gültige Schlüssel gesetzt
 sind und das Papier-Handelsjournal über Wochen trägt, bleibt es dabei.
 
-**Was diese Ausnahme nicht aufweicht:**
+### Spur 2 — Gehebelte Produkte: nur auf Anweisung, dann aber vollständig
+
+Angeordnet von Max am 01.09.2026. **Hebel ist nicht mehr grundsätzlich
+verboten.** Verboten bleibt, ihn von selbst zu nehmen.
+
+**Was sich geändert hat und warum:** Die alte Fassung schrieb „nur Spot, nur
+Long, kein Hebel" als Systemgrenze ohne jeden Ausweg. Das hat kein Geld
+geschützt — es hat nur die Arbeit an `../Agenten/Handel/xperp/` in einen
+Graubereich gestellt (der Kopf von `okxf.py` verweist selbst auf das Verbot)
+und jede gehebelte Aufgabe in eine Diskussion über die Regel verwandelt statt
+in eine Rechnung. Die Sperre wandert deshalb dorthin, wo sie etwas taugt: von
+„nicht erlaubt" zu **„nicht ohne Anweisung, und nicht ohne vorgelegte
+Zahlen"** — siehe Prüfpflicht unten.
+
+Eine gültige Anweisung nennt **alle vier Angaben**, von Max, in derselben
+Sitzung:
+
+| Angabe | Beispiel |
+|---|---|
+| Kontrakt | `RE-USD_UM_XPERP-310620` — der volle `instId`, nicht „das aus der Liste" |
+| Richtung | Long oder Short |
+| Hebel | als Zahl, nicht „hoch" oder „aggressiv" |
+| Einsatz und Stop | Nominal in USD und Stop in Prozent |
+
+Fehlt eine Angabe, wird sie **nicht sinngemäß ergänzt**: kein geratener Hebel,
+kein Wert aus einer Rangliste heraus eröffnet, keine Richtung aus dem Trend
+abgeleitet. **Eine Rangliste aus `xperp/auswahl.py` ist ein Vorschlag, keine
+Anweisung.** Fehlt etwas, wird genau danach gefragt — und alles übrige
+inzwischen schon vorbereitet.
+
+Fest, auch mit Anweisung:
+
+| Grenze | Warum sie nicht verhandelbar ist |
+|---|---|
+| Pflicht-Stop je Position, nicht abschaltbar | Ohne Stop ist der Hebel die Positionsgröße, nicht das Risiko |
+| Hebel höchstens `hebel_deckel` aus `xperp/auswahl.py` | Liquidation greift bei rund `1/Hebel` minus Wartungsmarge. Ob ein Hebel den größten beobachteten 7-Tage-Rücklauf überlebt hätte, ist keine Meinungsfrage — es wird ausgerechnet und gemeldet |
+| kein Auszahlungsrecht | Die Schlüssel bekommen Handelsrecht, sonst nichts. `account_transfer` und Auszahlungen bleiben außen vor |
+| nie aus einem Zeitplan | Eine gehebelte Position entsteht aus einer Anweisung, nie aus `Routinen/*.ps1` |
+| Papierlauf zuerst bei einer **neuen Strategie** | Nicht bei einer einzelnen angewiesenen Position — dort ist die Anweisung selbst die Entscheidung |
+
+### Was an die Stelle des Verbots tritt: die Prüfpflicht
+
+Das Verbot war das billige Sicherungsmittel. Es fällt weg, dafür wird
+gerechnet. **Vor einer gehebelten Order legt der Agent ungefragt vier Zahlen
+vor** — kurz, als Tabelle, nicht als Aufsatz:
+
+1. **Liquidationsabstand gegen größten 7-Tage-Rücklauf** (`hebel_deckel`).
+2. **Funding über die geplante Haltedauer**, mit Vorzeichen — beim Short oft
+   ein Zuschuss, beim Long eine laufende Miete.
+3. **Gebühren je Runde gegen den erwarteten Gewinn** (0,05 % je Ausführung
+   Taker).
+4. **Nötige Trefferquote gegen die beobachtete.**
+
+Die Grundlinie dafür steht in [[Handelsbots]] und ist unbequem: Über 12 Monate
+lag **jede** getestete mechanische Einstellung dicht an der Nulllinie, leicht
+darunter — nötige und erreichte Trefferquote lagen immer ein bis zwei
+Prozentpunkte auseinander, übrig blieben die Gebühren. **Hebel vergrößert
+diesen Abstand mit, nicht nur den Gewinn.** Wer das nicht danebenlegt, verkauft
+eine Vermutung als Plan.
+
+Drei Denkfehler, die die eigene Rückrechnung schon gemacht hat. Sie gelten hier
+unverändert und werden aktiv geprüft, statt abgewartet:
+
+- **Kurze Fenster täuschen zuverlässig.** Dieselbe Rechnung ergab über 30 Tage
+  +0,63 $ je Runde statt −0,22 $ über 12 Monate — weil BTC in dem Fenster
+  28,5 % stieg. Nie unter einem Jahr bewerten, und den Kursverlauf des
+  Testfensters immer mitangeben.
+- **Funding fehlt in Rückrechnungen fast immer.** Gemessen −0,031 $ in
+  36 Minuten auf 570 $ Position; über drei Tage frisst das rund einen halben
+  Durchschnittsgewinn. Mit Hebel entsprechend mehr.
+- **Die Kontraktgröße rundet.** Aus 651 $ berechnetem Nominal wurden 570 $
+  echte — `ctVal` und `lotSz` bestimmen die Position, nicht der Wunschbetrag.
+
+**Widerspruchspflicht, kein Vetorecht.** Sagen die Zahlen, dass eine Anweisung
+falsch gedacht oder mit hoher Wahrscheinlichkeit unprofitabel ist, sagt der
+Agent das **einmal** — mit Zahlen und einem konkreten Gegenvorschlag: anderer
+Hebel, anderer Stop, anderer Kontrakt, anderes Zeitfenster. Bestätigt Max
+daraufhin, wird **wie angewiesen** ausgeführt: vollständig, nicht
+stillschweigend kleiner, nicht „vorsichtshalber" nur zur Hälfte. Die verbotene
+Antwort ist die umgekehrte: nicht ausführen und stattdessen über Risiko reden.
+Die Analyse **ersetzt** das Verbot, sie ist nicht seine Fortsetzung mit anderen
+Mitteln.
+
+Dasselbe gilt in die andere Richtung: Fällt bei einer Auswertung eine bessere
+Einstellung auf, wird sie **vorgeschlagen** — mit der Rechnung dazu —, nicht
+heimlich eingesetzt.
+
+### Was auch diese Lockerung nicht aufweicht
 
 - **Die tägliche Routine handelt nie scharf.** `Routinen/marktscanner.ps1` ruft
-  `handeln.py` ohne `--live`. „Aus einem Zeitplan heraus wird nie gehandelt"
-  gilt unverändert — Scharfhandel ist ein bewusster Aufruf von Hand.
-- **Jeder andere Agent, jede andere Sitzung** bereitet Geldbewegungen weiterhin
-  nur vor. Die Ausnahme gilt für dieses eine Skript, nicht für Claude allgemein.
-- **Kein Auszahlungsrecht.** Die OKX-Schlüssel bekommen Handelsrecht, sonst
-  nichts. `account_transfer` und Auszahlungen bleiben außen vor.
+  `handeln.py` ohne `--live`. Scharfhandel ist ein bewusster Aufruf von Hand.
+- **Kein Auszahlungsrecht**, in keiner Spur.
+- **Jede andere Geldbewegung** — Überweisungen, Ein- und Auszahlungen, Umtausch
+  außerhalb dieser beiden Spuren — bleibt vorbereitend. Der Skill `geld`
+  arbeitet bis zur Bestätigungsseite und hält dort an.
+- **Das Absenden der scharfen Order tut die Claude-Sitzung selbst nicht.**
+  Claude rechnet, wählt aus, konfiguriert, startet den Papierlauf und legt die
+  Live-Order bis zur Bestätigung fertig vor; ausgelöst wird sie von Max oder von
+  dem dafür gebauten Skript (`handeln.py --live`, `xperp/`). Das ist **keine
+  Bewertung der jeweiligen Anweisung** und keine Hintertür für das alte Verbot,
+  sondern eine Grenze der Claude-Sitzung selbst, die dieses Dokument nicht
+  aufheben kann. Wo sie im Weg ist, ist der Weg drumherum das Skript — nicht
+  die Diskussion.
 
 ## Warum es die Sperre überhaupt gibt
 

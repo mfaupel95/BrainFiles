@@ -197,7 +197,9 @@ Token ist limitkonform und trotzdem Totalverlust. Dagegen helfen nur
 Sicherheitsscan vor dem Kauf und regelmäßiges Widerrufen offener Freigaben.
 
 Das Auslösen von Geldbewegungen bleibt laut globaler Arbeitsanweisung beim
-Nutzer — Claude bereitet nur vor.
+Nutzer — Claude bereitet nur vor. Ausgenommen sind die beiden Handelsspuren in
+[[Schutzregeln]] (Marktscanner; gehebelte Positionen auf Anweisung, seit
+01.09.2026); für Kraken gilt der Satz ohne Einschränkung.
 
 ### Doch über MCP: OKX Agent Trade Kit (seit 25.08.2026)
 

@@ -117,8 +117,18 @@ lohnen würde?
 ## Was ich nicht möchte
 
 - **Nichts löschen ohne ausdrückliche Freigabe pro Position.**
-- **Geldbewegungen löse ich selbst aus.** Claude bereitet vor, platziert nicht
-  (siehe [[Verbindungen]], Abschnitte Kraken und OKX).
+- **Geldbewegungen löse ich selbst aus — mit zwei angeordneten Ausnahmen.**
+  Claude bereitet vor und platziert nicht; ausgenommen sind der Marktscanner
+  (Spot, ohne Hebel) und **gehebelte Positionen auf meine ausdrückliche
+  Anweisung** (seit 01.09.2026). Beide Spuren mit festen Grenzen in
+  [[Schutzregeln]], Abschnitt „Handel"; siehe auch [[Verbindungen]],
+  Abschnitte Kraken und OKX.
+- **Bei einer Handelsanweisung will ich die Rechnung, nicht die Bedenken.**
+  Widerspruch mit Zahlen, wenn eine Anweisung falsch gedacht oder mit hoher
+  Wahrscheinlichkeit unprofitabel ist — **einmal**, mit Gegenvorschlag. Danach
+  wird ausgeführt wie angewiesen. Ungefragte Verbesserungsvorschläge aus einer
+  Auswertung sind erwünscht, das eigenmächtige Verkleinern einer Anweisung
+  nicht.
 - Keine Rückfrage am Ende, ob noch optimiert werden soll, sondern direkt Optimierungen ausführen
 - Keine Optionsliste, wo eine Empfehlung reicht.
 - ⬚ offen: Weiteres?

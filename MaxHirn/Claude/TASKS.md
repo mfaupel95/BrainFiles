@@ -116,6 +116,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Entscheidung von Max, welche Richtung gilt
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
+- [ ] **T-017 — Gehebelter Handel hat noch keine `wachen.json`**
+      Kontext: [[Schutzregeln]] erlaubt seit dem 01.09.2026 gehebelte
+      Positionen auf ausdrückliche Anweisung (Spur 2). Die Grenzen dieser Spur
+      stehen bisher **nur in der Prosa der Notiz**, nicht in einer Datei — im
+      Gegensatz zu Spur 1, wo `scanner/wachen.json` die einzige Wahrheit ist.
+      Genau diese Bauform ist aber der Schutz: eine Sitzung kann eine Regel
+      vergessen, eine Datei nicht.
+      Zweitens trägt `Agenten/Handel/xperp/okxf.py` im Modulkopf noch den
+      alten Wortlaut („gilt ausdruecklich nur fuer nur Spot, nur Long, kein
+      Hebel … Dieses Modul faellt NICHT darunter"). Das stimmt seit heute
+      nicht mehr und widerspricht der Regeldatei.
+      Nächster Schritt: `xperp/wachen.json` anlegen (Höchsteinsatz je Position,
+      Gesamtnominal, Höchsthebel, Pflicht-Stop, erlaubte Kontrakte) und den
+      Modulkopf auf Spur 2 umschreiben.
+      Betrifft: `Agenten/Handel/xperp/` — **dort arbeitete am 01.09. 17:34 eine
+      andere Sitzung**, deshalb hier nur eingetragen und nicht angefasst.
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+
 - [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**
       Kontext: `G:` ist erneut nicht angeschlossen (`Test-Path G:\` = False; in
       der Datenträgerliste nur C:, O:, J:). Der geplante 20-Uhr-Lauf scheitert
