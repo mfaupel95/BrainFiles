@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python --version)",
+      "PowerShell(python -c \"import sys; print\\(sys.executable\\)\")",
+      "PowerShell(sfc /scannow)",
+      "Bash(gh repo *)",
+      "Read(//c/Users/faupe/Documents/BrainFiles/Werkstatt/OmniRoute/**)",
+      "Bash(npm run *)",
+      "PowerShell(claude mcp list)",
+      "PowerShell(Get-Item \"$env:APPDATA\\\\Claude\\\\claude_desktop_config.json\" | Select-Object LastWriteTime)",
+      "PowerShell(Get-Item \"$env:USERPROFILE\\\\.claude\\\\.credentials.json\" -ErrorAction SilentlyContinue | Select-Object LastWriteTime)",
+      "Bash(ls -la ../Agenten/Routinen/ 2>&1 | head -20)",
+      "Bash(find ../Agenten -name \"sichern*\" -o -name \"*backup*\" -o -name \"*zweit*\" 2>/dev/null)",
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\Agenten\\\\sichern.ps1\")",
+      "Bash(ls -la \"C:\\\\Hermes\" | head -20)",
+      "Bash(ls -la \"..\\\\Agenten\\\\Hermes\\\\\" | head -20)",
+      "Bash(ls -la \"..\\\\Werkstatt\\\\OmniRoute\\\\\" 2>/dev/null | head -20)",
+      "PowerShell(Head -20)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\.claude\\\\\" -Force | Select-Object Name, FullName)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\.claude\\\\plugins\\\\\" -Force 2>&1 | Select-Object Name, @{N=\"Type\";E={if\\($_.PSIsContainer\\){\"Dir\"}else{\"File\"}}} | Sort-Object Type -Descending)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\.claude\\\\skills\\\\\" | Select-Object Name)",
+      "PowerShell(Get-Content \"$env:USERPROFILE\\\\.claude\\\\daemon.log\" -Tail 50)",
+      "PowerShell(&\"C:\\\\Hermes\\\\venv\\\\Scripts\\\\python.exe\" --version)",
+      "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\.claude\\\\projects\" -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 15 Name, LastWriteTime)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\\\\.claude\\\\plugins\\\\\" -Recurse | Select-Object FullName, @{N=\"Size\";E={if\\($_.PSIsContainer\\){\"[DIR]\"}else{$_.Length}}} | Format-Table -AutoSize | Out-String -Width 200)",
+      "PowerShell(&\"../Agenten/Hermes/hermes-agent/venv/Scripts/python.exe\" --version 2>&1)",
+      "PowerShell(hermes --version)",
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-faupe-Documents-BrainFiles-MaxHirn\\\\662bb25f-953d-4d99-af52-406a487b0c12\\\\scratchpad\\\\diagnose-python.ps1\")",
+      "PowerShell(&\"../Agenten/Hermes/hermes-agent/venv/Scripts/python.exe\" -c \"import hermes_agent; print\\(f'V Hermes-Agent importierbar'\\)\" 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-faupe-Documents-BrainFiles-MaxHirn\\\\662bb25f-953d-4d99-af52-406a487b0c12\\\\scratchpad\\\\upgrade-to-python-313.ps1\")",
+      "PowerShell(Get-ChildItem \"$env:APPDATA\\\\Claude\\\\\" -Force 2>$null | Select-Object Name, FullName)",
+      "mcp__plugin_desktop-commander_desktop-commander__list_processes",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn\\\\Wissen\\\\\" -Force | Select-Object Name, Mode)",
+      "Bash(claude --version)",
+      "Bash(xargs ls -t)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "okx-agent-trade-kit"
+  ]
+}
