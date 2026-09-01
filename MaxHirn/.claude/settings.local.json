@@ -70,5 +70,6 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "okx-agent-trade-kit"
-  ]
+  ],
+  "prefersReducedMotion": false
 }
