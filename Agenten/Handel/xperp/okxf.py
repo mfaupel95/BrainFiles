@@ -51,6 +51,10 @@ import urllib.request
 from datetime import datetime, timezone
 
 BASIS = "https://www.okx.com"
+# API-Schluessel vom EEA-Portal (my.okx.com / eea.okx.com) sind NICHT auf der
+# globalen Infrastruktur www.okx.com gueltig - dort '50119 API key doesn't
+# exist' bzw. '50111 Invalid OK-ACCESS-KEY'. Deutsche Konten liegen meist im
+# EEA-Bereich. OKX_BASE ueberschreibt den Host, z.B. https://eea.okx.com.
 HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
 MAX_FEHLER = 6
 
@@ -106,7 +110,7 @@ def demo_modus():
 
 
 def _roh(pfad, methode="GET", body=None, signiert=False):
-    url = BASIS + pfad
+    url = (_variable("OKX_BASE") or BASIS).rstrip("/") + pfad
     daten = json.dumps(body) if body else ""
     kopf = dict(HEADERS)
     if demo_modus():
