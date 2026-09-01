@@ -19,6 +19,7 @@ vorhandener Skill plus ein Zeitplan.
 |---|---|---|---|
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
 | täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/marktscanner.ps1` steht |
+| wöchentlich | Wachen-Abgleich Marktscanner (Bedingung 5) | `Handel/scanner/handeln.py --wachen` | **noch nicht eingeplant** — Wrapper `Routinen/handel-wachen.ps1` steht |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
@@ -37,6 +38,7 @@ einen Wrapper aus `Routinen/`:
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
 | (noch offen) Marktscanner | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
+| (noch offen) Wachen-Abgleich | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
@@ -134,6 +136,26 @@ $exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\marktscanner.ps1"
 schtasks /create /tn "MaxHirn-Marktscanner" /sc daily /st 07:30 `
   /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
 ```
+
+### Wachen-Abgleich: die fünf Bedingungen für unbeaufsichtigten Betrieb
+
+[[Schutzregeln]] bindet den automatischen Handel seit dem 01.09.2026 an fünf
+messbare Bedingungen. Vier davon prüft `handeln.py` bei **jedem** Lauf mit
+(Freigabe, Drawdown-Ratsche, Herzschlag-Notausstieg, Journal-Spiegelung); die
+fünfte — der rollierende Erwartungswert über die letzten 30 Runden — braucht
+einen eigenen, selteneren Lauf, damit ein einzelner schlechter Tag die Spur
+nicht sofort abschaltet. Dafür `handel-wachen.ps1`, wöchentlich:
+
+```powershell
+$exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\handel-wachen.ps1"
+schtasks /create /tn "MaxHirn-Handel-Wachen" /sc weekly /d SUN /st 08:00 `
+  /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
+```
+
+Der Lauf legt `handel_erlaubt` **nie** auf `true` — er schließt die Sperre nur,
+wenn der Erwartungswert negativ oder der Kill-Switch erreicht ist. Scharfschalten
+bleibt ein Schritt von Hand. Der `xperp`-Bot hat kein Gegenstück: er führt nichts
+aus und kein Journal, `bot.py wachen` zeigt nur die hinterlegten Grenzen.
 
 ## Einplanen
 

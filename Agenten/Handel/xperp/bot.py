@@ -596,12 +596,44 @@ def befehle(instr, seite, kontrakte, einstieg, ziel, stop, hebel, nr=None):
         kontrakte, einstieg, ziel, stop))
 
 
+def zeige_wachen(w):
+    """bot.py wachen: der Freigabe-Block und die Bedingungen 2-5 aus
+    Wissen/Schutzregeln.md, wie sie fuer Spur 2 stehen.
+
+    Anders als beim Marktscanner gibt es hier NICHTS durchzurechnen: bot.py
+    legt Befehle vor, fuehrt nichts aus, fuehrt kein Handelsjournal und keinen
+    Zustand. Drawdown-Ratsche (2), Herzschlag (3) und Soll-Ist (5) brauchen
+    einen Live-Pfad und ein Journal - beides existiert in diesem Ordner nicht.
+    Diese Ausgabe zeigt deshalb nur die hinterlegten Grenzen und den Haken.
+    """
+    fr = w.get("freigabe") or {}
+    print("=== XPERP Wachen-Status ===")
+    print("  handel_erlaubt          %s" % w.get("handel_erlaubt"))
+    print("  freigabe.erfuellt       %s" % fr.get("erfuellt"))
+    print("    Papierlauf min        %s Wochen / %s Runden"
+          % (fr.get("papierlauf_min_wochen"), fr.get("papierlauf_min_runden")))
+    print("    netto positiv         %s" % fr.get("netto_positiv_nach_gebuehren_und_funding"))
+    print("    groesster Ruecklauf   %s USD" % fr.get("groesster_ruecklauf_papierlauf_usd"))
+    print("    geprueft am           %s" % fr.get("geprueft_am"))
+    print("  2 drawdown_halbierung   %s %%" % w.get("drawdown_halbierung_prozent"))
+    print("    kill_switch_gesamt    %s USD" % w.get("kill_switch_gesamt_usd"))
+    print("  3 herzschlag_max        %s min" % w.get("herzschlag_max_minuten"))
+    print("  4 journal_zweitziel     %s" % (w.get("journal_zweitziel") or "-- nicht gesetzt"))
+    print()
+    print("  bot.py hat keinen Live-Pfad, kein Journal, keinen Zustand.")
+    print("  Bedingungen 2/3/5 greifen erst, wenn einer gebaut wird - bis")
+    print("  dahin bleibt es bei 'vorlegen, nicht ausloesen'. Der scharfe")
+    print("  Weg fuer Hebel steht in Wissen/Schutzregeln.md, Spur 2, und")
+    print("  ist Stand 01.09.2026 nicht geoeffnet.")
+
+
 def main():
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("befehl", choices=("lage", "trend", "grid"))
-    p.add_argument("--wert", required=True, help="Basiswert, z.B. SOL oder RE")
+    p.add_argument("befehl", choices=("lage", "trend", "grid", "wachen"))
+    p.add_argument("--wert", help="Basiswert, z.B. SOL oder RE "
+                                  "(nicht noetig bei 'wachen')")
     p.add_argument("--historie", default=None, metavar="QUELLE",
                    help="Reihe fuer Hebel-Deckel und Trefferquote, wenn der "
                         "Kontrakt zu jung ist: 'auto' (=<Basis>-USDT-SWAP), "
@@ -621,6 +653,13 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     w = wachen()
+
+    if a.befehl == "wachen":
+        zeige_wachen(w)
+        return 0
+    if not a.wert:
+        p.error("--wert ist noetig fuer '%s'" % a.befehl)
+
     try:
         if a.befehl == "lage":
             zeige_lage(w, a.wert, a.historie)

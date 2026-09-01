@@ -6,11 +6,21 @@ Aufruf:
     python scanner\\handeln.py --papier            # Papierhandel, Standard der Routine
     python scanner\\handeln.py --live              # echte Orders (siehe Sperren unten)
 
-Drei Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
+Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     1. wachen.json  handel_erlaubt == true
     2. OKX_API_KEY / OKX_API_SECRET / OKX_API_PASSPHRASE als Benutzervariablen
     3. --live ausdruecklich auf der Kommandozeile
+    4. wachen.json  freigabe.erfuellt == true      (Schutzregeln, Bedingung 1)
+    5. Herzschlag frisch                            (Bedingung 3)
+    6. rollierender Erwartungswert nicht negativ    (Bedingung 5)
 Fehlt eine, wird Papier gehandelt und es wird gesagt, welche Sperre zu war.
+
+Bedingungen 2-5 aus Wissen/Schutzregeln.md rechnet wachen_pruefung.py:
+    2  Drawdown-Ratsche : Positionsgroesse x0.5 ab drawdown_halbierung_prozent,
+       Notausstieg + Sperre ab kill_switch_gesamt_usd
+    3  Herzschlag       : letzter_lauf zu alt -> alles zu, dann Papier
+    4  Journal ausser Haus : nach jedem Zyklus nach journal_zweitziel kopiert
+    5  Soll-Ist         : handeln.py --wachen (Wochenlauf) sperrt bei EV < 0
 
 Jede Aktion landet in handelsjournal.csv. Der offene Bestand steht in
 zustand.json. Beide werden nicht versioniert (Rauschen), aber gesichert.
@@ -29,6 +39,7 @@ from pathlib import Path
 
 import okx
 import scan
+import wachen_pruefung as wp
 
 HIER = Path(__file__).resolve().parent
 ZUSTAND = HIER / "zustand.json"
@@ -136,20 +147,49 @@ def pruefe_ausstiege(z, live):
     z["positionen"] = behalten
 
 
-def pruefe_einstiege(z, vs, w, live):
+def flach_stellen(z, live, grund):
+    """Alle offenen Positionen sofort schliessen - Notausstieg fuer Bedingung 2
+    (Kill-Switch) und Bedingung 3 (Herzschlag alt). Im Papierlauf zum aktuellen
+    Kurs verbucht, live per Market-Verkauf. Ein fehlgeschlagener Live-Verkauf
+    laesst die Position stehen und wird gemeldet."""
+    behalten = []
+    for p in z["positionen"]:
+        kurs = okx.letzter_kurs(p["inst"])
+        erloes = p["usd"] * kurs / p["einstieg"]
+        if live:
+            try:
+                d = okx.order_details(p["inst"], p["kauf_ord_id"])
+                menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
+                okx.markt_verkauf(p["inst"], round(menge, 8))
+            except Exception as e:  # noqa: BLE001
+                print("  Notausstieg %s fehlgeschlagen: %s" % (p["inst"], e),
+                      file=sys.stderr)
+                behalten.append(p)
+                continue
+        print("  NOT-ZU %-10s @ %.6f  G/V %+.2f USD  (%s)"
+              % (p["inst"], kurs, erloes - p["usd"], grund))
+        journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
+                "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
+    z["positionen"] = behalten
+
+
+def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     gehalten = {p["inst"] for p in z["positionen"]}
     eingesetzt = sum(p["usd"] for p in z["positionen"])
+    if faktor != 1.0:
+        print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
     for v in vs:
         if len(z["positionen"]) >= w["max_offene_positionen"]:
             break
-        if eingesetzt + v["usd"] > w["max_gesamt_usd"]:
+        usd = round(v["usd"] * faktor, 2)
+        if eingesetzt + usd > w["max_gesamt_usd"]:
             continue
         if v["inst"] in gehalten or in_abklingzeit(v["inst"], z, w):
             continue
         kauf_id = None
         if live:
             try:
-                kauf_id = okx.markt_kauf(v["inst"], v["usd"])
+                kauf_id = okx.markt_kauf(v["inst"], usd)
                 d = okx.order_details(v["inst"], kauf_id)
                 menge = float(d.get("accFillSz") or 0)
                 if menge > 0:
@@ -159,18 +199,59 @@ def pruefe_einstiege(z, vs, w, live):
                       file=sys.stderr)
                 continue
         z["positionen"].append({
-            "inst": v["inst"], "einstieg": v["einstieg"], "usd": v["usd"],
+            "inst": v["inst"], "einstieg": v["einstieg"], "usd": usd,
             "stop": v["stop"], "ziel": v["ziel"], "eroeffnet": _heute(),
             "kauf_ord_id": kauf_id,
         })
-        eingesetzt += v["usd"]
+        eingesetzt += usd
         gehalten.add(v["inst"])
-        print("  AUF %-10s @ %.6f  Stop %.6f (-%.1f%%)  Ziel %.6f  %d USD"
+        print("  AUF %-10s @ %.6f  Stop %.6f (-%.1f%%)  Ziel %.6f  %.2f USD"
               % (v["inst"], v["einstieg"], v["stop"], v["stop_pct"],
-                 v["ziel"], v["usd"]))
+                 v["ziel"], usd))
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
-                "%.6f" % v["einstieg"], "%.2f" % v["usd"],
+                "%.6f" % v["einstieg"], "%.2f" % usd,
                 "%.6f" % v["stop"], "%.6f" % v["ziel"], "score %.1f" % v["score"])
+
+
+# --- Wachen-Status (Bedingungen 2-5) ----------------------------------------
+
+def _spiegeln(w):
+    ziel = w.get("journal_zweitziel")
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
+
+
+def zeige_wachen(w):
+    """handeln.py --wachen: alle fuenf Bedingungen als Momentaufnahme, dazu die
+    beiden Automatik-Reaktionen des Wochenlaufs - Bedingung 4 (spiegeln) und
+    Bedingung 5 (bei negativem Erwartungswert die Sperre schliessen)."""
+    z = lade_zustand()
+    s = wp.lage(w, JOURNAL, z)
+    print("=== Wachen-Status  %s ===" % _jetzt())
+    print("  1 Freigabe erfuellt      %s   (Runden gesamt %d, davon Papier %d, seit %s)"
+          % (s["freigabe_erfuellt"], s["runden_gesamt"], s["runden_papier"],
+             s["erste_runde"] or "-"))
+    print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f%s"
+          % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"],
+             "   >>> KILL-SWITCH" if s["kill"] else ""))
+    print("  3 Herzschlag frisch     %s   (%s min alt, Grenze %d)"
+          % (s["herzschlag_frisch"],
+             "?" if s["herzschlag_alter_min"] is None
+             else "%.0f" % s["herzschlag_alter_min"],
+             w.get("herzschlag_max_minuten", 30)))
+    print("  4 Journal-Zweitziel     %s" % (w.get("journal_zweitziel") or "-- nicht gesetzt"))
+    print("  5 Rollierender EV       %s%s"
+          % ("n/a (zu wenig Runden)" if s["rollierender_ev"] is None
+             else "%+.3f USD/Runde" % s["rollierender_ev"],
+             "   >>> NEGATIV" if s["ev_negativ"] else ""))
+    print()
+    _spiegeln(w)
+    if s["kill"] and wp.sperre_zu("Bedingung 2 (Wochenlauf): Ruecklauf %.2f USD >= Kill-Switch"
+                                  % s["ruecklauf_usd"]):
+        print("  -> Bedingung 2: handel_erlaubt auf false gesetzt.")
+    if s["ev_negativ"] and wp.sperre_zu("Bedingung 5 (Wochenlauf): rollierender EV %.3f USD < 0"
+                                        % s["rollierender_ev"]):
+        print("  -> Bedingung 5: handel_erlaubt auf false gesetzt.")
 
 
 # --- Hauptlauf ---------------------------------------------------------------
@@ -180,13 +261,21 @@ def lauf(modus):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     w = scan.wachen()
+
+    if modus == "wachen":
+        zeige_wachen(w)
+        return
+
     bpfad = scan.BERICHTE / "neuester.json"
     if not bpfad.exists():
         print("Kein Bericht. Erst scan.py laufen lassen.")
         return
     bericht = json.loads(bpfad.read_text("utf-8"))
 
-    # Live-Sperren pruefen
+    z = lade_zustand()
+    s = wp.lage(w, JOURNAL, z)
+
+    # Live-Sperren pruefen - drei alte, drei neue aus den Bedingungen 1/3/5.
     live = False
     if modus == "live":
         gruende = []
@@ -194,6 +283,13 @@ def lauf(modus):
             gruende.append("wachen.json handel_erlaubt=false")
         if not okx.schluessel_vorhanden():
             gruende.append("OKX-Schluessel nicht gesetzt")
+        if not s["freigabe_erfuellt"]:
+            gruende.append("freigabe.erfuellt=false (Bedingung 1)")
+        if not s["herzschlag_frisch"]:
+            gruende.append("Herzschlag alt (Bedingung 3)")
+        if s["ev_negativ"]:
+            gruende.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
+                           % s["rollierender_ev"])
         if gruende:
             print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
             print("-> es wird Papier gehandelt.")
@@ -204,7 +300,6 @@ def lauf(modus):
     print("=== Handeln (%s) | Bericht %s | %d Vorschlaege ==="
           % ("LIVE" if live else "Papier", bericht["datum"], len(vs)))
 
-    z = lade_zustand()
     z["modus"] = "live" if live else "papier"
 
     if modus == "vorschau":
@@ -217,16 +312,44 @@ def lauf(modus):
               % (len(z["positionen"]), eing))
         return
 
+    # Bedingung 2 - Kill-Switch: alles zu, Sperre zu, Schluss.
+    if s["kill"]:
+        print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
+              % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
+        flach_stellen(z, live, "kill_switch")
+        if wp.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
+            print("  wachen.json handel_erlaubt -> false")
+        schreibe_zustand(z)
+        return
+
+    # Bedingung 3 - Herzschlag alt: alles zu, dieser Lauf handelt nicht mehr.
+    # Der naechste Lauf mit frischem Herzschlag faengt normal wieder an.
+    if not s["herzschlag_frisch"]:
+        print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel dieser Lauf -"
+              % ("?" if s["herzschlag_alter_min"] is None
+                 else "%.0f" % s["herzschlag_alter_min"],
+                 w.get("herzschlag_max_minuten", 30)))
+        flach_stellen(z, live, "herzschlag_alt")
+        z["modus"] = "papier"
+        schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
+        return
+
     print("- Ausstiege -")
     pruefe_ausstiege(z, live)
     print("- Einstiege -")
-    pruefe_einstiege(z, vs, w, live)
+    pruefe_einstiege(z, vs, w, live, s["groessenfaktor"])
 
     eing = sum(p["usd"] for p in z["positionen"])
     print("\nStand: %d/%d Positionen, %d/%d USD gebunden"
           % (len(z["positionen"]), w["max_offene_positionen"],
              eing, w["max_gesamt_usd"]))
     schreibe_zustand(z)
+
+    # Bedingung 4 - Journal nach jedem Zyklus ausser Haus.
+    if w.get("journal_zweitziel"):
+        _spiegeln(w)
 
 
 if __name__ == "__main__":
@@ -238,5 +361,8 @@ if __name__ == "__main__":
                    const="papier", help="Papierhandel (Standard)")
     g.add_argument("--live", action="store_const", dest="modus",
                    const="live", help="echte Orders, wenn alle Sperren offen")
+    g.add_argument("--wachen", action="store_const", dest="modus",
+                   const="wachen", help="Bedingungen 2-5 zeigen und durchsetzen "
+                                        "(Wochenlauf)")
     a = p.parse_args()
     lauf(a.modus or "papier")

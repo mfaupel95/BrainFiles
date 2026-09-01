@@ -247,7 +247,7 @@ durch einen Vorteil, sie begrenzen den Schaden, bis einer nachgewiesen ist.
 |---|---|---|
 | **1. Freigabe Papier → Live** | mindestens 6 Wochen Papierlauf, ≥ 50 abgeschlossene Runden, netto positiv **nach** Gebühren und Funding, größter Rücklauf im Papierlauf < `kill_switch_gesamt_usd`. Erst wenn alle vier erfüllt sind, darf `handel_erlaubt` von Hand auf `true` — je Spur getrennt. | Block `freigabe` in beiden `wachen.json` |
 | **2. Drawdown-Ratsche** | Fällt das Konto 15 % unter seinen Höchststand, halbiert `bot.py`/`handeln.py` jede weitere Positionsgröße. Bei `kill_switch_gesamt_usd` wird flach gestellt **und** `handel_erlaubt` auf `false` geschrieben — der einzige Fall, in dem ein Skript diese Datei schreibt, und nur in diese Richtung. | `bot.py`, `handeln.py` |
-| **3. Herzschlag** | Meldet der Automat länger als 30 Minuten keinen gesunden Zyklus ins Journal, schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `Routinen/*.ps1` prüft Zeitstempel vor dem Start |
+| **3. Herzschlag** | Liegt der letzte gesunde Lauf länger zurück als `herzschlag_max_minuten` (an die Taktung gekoppelt: Tagesroutine 48 h, Schnelllauf-Bot ~30 min), schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `handeln.py` prüft `zustand.json` vor dem Start |
 | **4. Journal außer Haus** | Das Handelsjournal wird nach jedem Zyklus auf ein zweites Ziel gespiegelt. `G:` genügt nicht — dasselbe Gehäuse. Ein Journal nur auf dem Handelsrechner ist kein Nachweis, sondern eine Wette darauf, dass die Platte hält. | Zeile in `Routinen/`, Ziel offen bis „Kopie außer Haus" steht ([[Hardware]]) |
 | **5. Wöchentlicher Soll-Ist-Abgleich** | Einmal pro Woche die vier Pflichtzahlen (Liquidationsabstand, Funding, Gebühren, Trefferquote) gegen das real Erreichte. Liegt der gleitende 30-Runden-Erwartungswert nach Kosten unter null, fällt die Spur automatisch auf Papier zurück, bis ein neuer Papierlauf nach Bedingung 1 trägt. | Skript in `Routinen/`, Befund nach `Werkstatt/`, Entscheidung nach `Wissen/` |
 
@@ -257,9 +257,20 @@ Arbeit gebündelt. Eine Lockerung ohne gerechnete Gegenzahlen ist kein
 Betriebsvorgang, sondern ein Befund.
 
 Stand 01.09.2026: `handel_erlaubt` ist in beiden `wachen.json` `false`, der
-`freigabe`-Block ist angelegt und keine seiner vier Zahlen erreicht. Bedingung 2
-bis 5 sind in den Skripten noch nicht umgesetzt — bis sie es sind, ist Live
-ohnehin gesperrt.
+`freigabe`-Block ist angelegt und keine seiner vier Zahlen erreicht.
+
+**Spur 1 (Marktscanner):** Bedingung 2–5 sind umgesetzt. `scanner/wachen_pruefung.py`
+rechnet sie aus `handelsjournal.csv` und `zustand.json`; `handeln.py` setzt sie
+durch — als zusätzliche Live-Sperren (1, 3, 5), als Notausstieg (2 Kill-Switch,
+3 Herzschlag) und als Größenfaktor (2 Ratsche). Bedingung 4 spiegelt nach
+`journal_zweitziel` (noch `null` → Live bleibt gesperrt). Bedingung 5 läuft
+wöchentlich getrennt über `Routinen/handel-wachen.ps1` (`handeln.py --wachen`),
+damit ein einzelner schlechter Tag die Spur nicht sofort abschaltet. Der Lauf
+schließt `handel_erlaubt` nur, er öffnet es nie.
+
+**Spur 2 (XPERP):** `bot.py` führt nichts aus, kein Journal, kein Zustand —
+Bedingung 2/3/5 haben nichts zu greifen, bis ein Live-Pfad gebaut ist.
+`bot.py wachen` zeigt die hinterlegten Grenzen und den Freigabe-Haken.
 
 ## Warum es die Sperre überhaupt gibt
 

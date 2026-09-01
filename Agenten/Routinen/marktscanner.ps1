@@ -8,6 +8,10 @@
 #
 # Zwei Schritte: erst scan.py (Rangliste -> berichte/), dann handeln.py
 # --papier (Vorschlaege -> zustand.json, handelsjournal.csv).
+#
+# handeln.py setzt dabei die Bedingungen 2-4 aus Wissen/Schutzregeln.md um
+# (Drawdown-Ratsche, Herzschlag-Notausstieg, Journal ausser Haus). Bedingung 5
+# laeuft woechentlich getrennt in handel-wachen.ps1.
 
 $ErrorActionPreference = 'Stop'
 $wurzel  = Split-Path $PSScriptRoot -Parent

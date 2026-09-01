@@ -30,11 +30,12 @@
     "geprueft_am": null
   },
 
-  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent unter dem Konto-Hoechststand halbiert handeln.py jede weitere Positionsgroesse; bei Erreichen von max_gesamt_usd Verlust flach stellen und handel_erlaubt auf false schreiben (einzige erlaubte Schreibrichtung).",
+  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_usd.",
   "drawdown_halbierung_prozent": 15.0,
+  "kill_switch_gesamt_usd": 40,
 
-  "_herzschlag": "Bedingung 3. Meldet der Lauf laenger als herzschlag_max_minuten keinen gesunden Zyklus ins Journal, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck.",
-  "herzschlag_max_minuten": 30,
+  "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. Wert an die Aufruf-Taktung koppeln: die Tagesroutine laeuft 1x/Tag, 2880 = 48 h faengt einen ausgefallenen Lauf ab, ohne bei jedem normalen Lauf auszuloesen. Ein Schnelllauf-Bot steht bei ~30.",
+  "herzschlag_max_minuten": 2880,
 
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": null,
