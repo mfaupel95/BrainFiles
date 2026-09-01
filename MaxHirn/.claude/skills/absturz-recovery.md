@@ -15,7 +15,7 @@ tags: [betrieb, notfall]
    - Beschädigte Dateien (Binary-Junk, 0xFF-Sequenzen) finden
    - `ArchivSuche/.venv` und `index.db` prüfen (`.venv` ist an seinen absoluten Pfad gebunden)
 
-2. **Laufende TASKS prüfen** (`Claude/TASKS.md` bzw. `Archiv/TASKS.md`):
+2. **Laufende TASKS prüfen** (`Archiv/TASKS.md`):
    - `[~]` (in Arbeit) → auf Vollständigkeit prüfen
    - `[?]` und `[!]` (blockiert/wartet) → ob Blockade noch besteht
    - Neue Tasks: Kann es unvollendete Git-Operationen geben? (rename, mv mit `.venv`)

@@ -25,7 +25,7 @@ Drei Ebenen tragen Server, und sie widersprechen sich regelmäßig:
 |---|---|---|
 | Benutzer | `~/.claude.json` | überall, auch außerhalb des Vaults |
 | Projekt | `.mcp.json` (Vault-Wurzel) | Sitzungen, die im Vault wurzeln |
-| Projekt | `Claude/.mcp.json` | Sitzungen, die in `Claude/` wurzeln |
+| Projekt | `Archiv/.mcp.json` | Sitzungen, die in `Archiv/` wurzeln |
 | Desktop | `%APPDATA%\Claude\claude_desktop_config.json` | die Desktop-Anwendung |
 
 Ein Server, der nur auf Projekt-Ebene steht, ist unsichtbar, sobald `claude` im
@@ -78,7 +78,7 @@ inzwischen bereinigt und hätte das Gegenteil nahegelegt.
 
 ## 4. Fremde Schreibzugriffe einkalkulieren
 
-Am 25.08.2026 erschien ein Eintrag in `Claude/.mcp.json`, den kein Befehl dieser
+Am 25.08.2026 erschien ein Eintrag in `Archiv/.mcp.json`, den kein Befehl dieser
 Sitzung geschrieben hat. Mehrere Sitzungen und Hermes greifen auf dieselben
 Dateien zu. Vor dem Schreiben deshalb `LastWriteTime` ansehen — ist die Datei
 jünger als zehn Minuten, arbeitet vermutlich jemand anders daran.

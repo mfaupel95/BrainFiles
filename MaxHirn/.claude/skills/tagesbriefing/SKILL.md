@@ -26,7 +26,7 @@ Select-String -Path "Wissen\*.md","Dashboard.md" -Pattern "^\s*- \[ \]"
 **4. Posteingang** — nur die Zahl, nicht die Dateiliste:
 
 ```powershell
-Get-ChildItem Claude\Posteingang -Recurse -File | Measure-Object | Select-Object Count
+Get-ChildItem Archiv\Posteingang -Recurse -File | Measure-Object | Select-Object Count
 ```
 
 ## Ausgeben

@@ -103,7 +103,7 @@ Namensvergleich.
 
 - **Zertifikate und Schlüssel nie anfassen** (`.pfx`, `.p12`, `.pem`, `.key`,
   `.kdbx`). Auch zerstörte nicht: sie belegen, dass der Zugang verloren ging.
-- Zahlen aus einem Lauf gehören in `Claude/BESCHAEDIGTE_DATEIEN.md`, nicht in die
+- Zahlen aus einem Lauf gehören in `Archiv/BESCHAEDIGTE_DATEIEN.md`, nicht in die
   Chatantwort. Sie veralten sonst still.
 - Keine Reparaturversuche an gefüllten Dateien. Bei 0xFF ist nichts da, was
   sich reparieren ließe — nur Zurückspielen hilft.

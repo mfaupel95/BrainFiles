@@ -31,7 +31,7 @@ Eigene und fremde Arbeit werden **getrennt** committet, nie im selben Commit.
 Dateien namentlich hinzufügen:
 
 ```bash
-git add "Wissen/Hardware.md" "Claude/TASKS.md"
+git add "Wissen/Hardware.md" "Archiv/TASKS.md"
 git commit -m "Hardware: Absturzanalyse vom 28.08."
 ```
 
@@ -63,7 +63,7 @@ immer die richtige Richtung** — verwerfen ist die einzige unumkehrbare Handlun
 ## 4. Was nicht ins Repository gehört
 
 Versioniert ist nur die Textebene des Vaults. Die persönlichen Bestände
-(`Claude/Dokumente/`, `Bilder/`, `Videos/`, `Musik/`) enthalten keine einzige
+(`Archiv/Dokumente/`, `Bilder/`, `Videos/`, `Musik/`) enthalten keine einzige
 versionierte Datei; die Whitelist in `.gitignore` gibt sie bewusst nicht frei.
 
 Nie hinzufügen: Zugangsdaten, `.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`, `.key`,

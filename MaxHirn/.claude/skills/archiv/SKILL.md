@@ -28,10 +28,10 @@ CLI-Sitzung außerhalb der Desktop-Anwendung —, geht es über die Kommandozeil
 Vom Vault-Wurzelordner aus:
 
 ```powershell
-Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\search_cli.py "suchbegriff"
+Archiv\ArchivSuche\.venv\Scripts\python.exe Archiv\ArchivSuche\search_cli.py "suchbegriff"
 ```
 
-Läuft die Sitzung bereits in `Claude/`, entfällt das führende `Claude\`.
+Läuft die Sitzung bereits in `Archiv/`, entfällt das führende `Archiv\`.
 
 Optionen:
 
@@ -55,7 +55,7 @@ Wahrscheinlich sind seit dem letzten Lauf Dateien dazugekommen. Dann einmal neu
 indexieren:
 
 ```powershell
-Claude\ArchivSuche\.venv\Scripts\python.exe Claude\ArchivSuche\index.py
+Archiv\ArchivSuche\.venv\Scripts\python.exe Archiv\ArchivSuche\index.py
 ```
 
 Das dauert und schreibt viel Ausgabe — nur die letzten Zeilen lesen
@@ -63,5 +63,5 @@ Das dauert und schreibt viel Ausgabe — nur die letzten Zeilen lesen
 
 ## Nicht im Index
 
-`Claude/Software/` ist bewusst ausgenommen (Installationsdateien, ELSTER-Zertifikate).
+`Archiv/Software/` ist bewusst ausgenommen (Installationsdateien, ELSTER-Zertifikate).
 Dort nicht suchen und nichts daraus verschieben.

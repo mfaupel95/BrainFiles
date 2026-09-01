@@ -11,7 +11,7 @@ Laufwerken, Netzteil, Absturzmustern und bereits ausgeschlossenen Ursachen fest.
 **nicht** half. Beides zuerst lesen — sonst wird ein bereits ausgeschlossener
 Weg ein zweites Mal gegangen.
 
-Offene Systempunkte stehen in `Claude/TASKS.md` (T-002 bis T-004).
+Offene Systempunkte stehen in `Archiv/TASKS.md` (T-002 bis T-004).
 
 ## 1. Gezielt abfragen, nicht scannen
 
@@ -82,5 +82,5 @@ gemeldet, dass es nicht ging.
 - Neue Erkenntnis mit Datum nach [[Hardware]] (oder die passende Notiz), nicht
   in die Chatantwort. **Auch die Negativbefunde** — „geprüft, war es nicht" ist
   beim nächsten Mal das Wertvollste.
-- Bleibt etwas offen, sofort nach `Claude/TASKS.md`, nicht am Sitzungsende.
+- Bleibt etwas offen, sofort nach `Archiv/TASKS.md`, nicht am Sitzungsende.
 - Zahlen gemessen angeben: „1.200 Abstürze täglich", nicht „sehr oft".
