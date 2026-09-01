@@ -79,6 +79,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-handelsbots` — **Handelsbots auf OKX** — `Wissen/Handelsbots.md` — Gemessene Ergebnisse der DCA-Bots und welche Stellschraube tatsächlich wirkt.
 - `20260831-marktscanner` — **Marktscanner OKX** — `Wissen/Marktscanner.md` — Täglicher Krypto-Scanner mit begrenztem Selbsthandel: Entscheidung, Grenzen, Scharfschalt-Weg, Stand.
 - `20260830-marktlage-august-2026` — **Marktlage August 2026** — `Wissen/Marktlage-August-2026.md` — Geprüfter Marktstand samt Bewertung der zugrunde liegenden Quelle.
+- `20260901-chip-xperp` — **CHIP XPERP auf OKX** — `Wissen/CHIP-XPERP.md` — Analyse für einen gehebelten Anlauf auf CHIP: 14-Tage-Fenster täuscht, reale 133-Tage-Historie negativ, alle drei Tore zu.
 
 ### Person und Fachliches
 
