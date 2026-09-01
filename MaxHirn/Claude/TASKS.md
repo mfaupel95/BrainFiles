@@ -92,6 +92,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
+- [?] **T-016 — Whitelist zeigt auf `MaxHirn/Archiv/`, der Ordner heisst `MaxHirn/Claude/`**
+      Kontext: Die `.gitignore` gibt seit dem 30.08. `MaxHirn/Archiv/*.md`,
+      `MaxHirn/Archiv/ArchivSuche/*.py` usw. frei. Diesen Ordner gibt es im
+      Dateisystem nicht — er heisst weiterhin `MaxHirn/Claude/`. Auch
+      `MaxHirn/CLAUDE.md` und `Claude/CLAUDE.md` beschreiben die Umbenennung
+      bereits als vollzogen. Folge: Jede **neue** Datei unter
+      `MaxHirn/Claude/` faellt unter die Grundregel `*` in Zeile 20 und wird
+      nie versioniert (geprueft 01.09.2026 mit `git check-ignore`). Die 36
+      bereits getrackten Dateien dort ueberleben nur, weil Ignore-Regeln auf
+      versionierte Dateien nicht mehr wirken — darunter das ganze
+      Archiv-Werkzeug unter `ArchivSuche/`.
+      Verschaerfend: `arbeitsbaum-pruefen.ps1` haette diese 36 Dateien ab dem
+      01.09. stumm aus jeder Sicherung genommen; das ist mit Commit `6d0f192`
+      behoben, die Ursache besteht aber fort.
+      Naechster Schritt: entweder den Ordner mit dem Skill `umzug` wirklich
+      nach `MaxHirn/Archiv/` umbenennen (Achtung: `ArchivSuche/.venv` ist an
+      seinen Pfad gebunden, siehe [[Portabilitaet]]) — oder die Whitelist auf
+      `MaxHirn/Claude/` zurueckstellen und die Umbenennung aus den drei
+      CLAUDE.md-Dateien streichen. Beides ist vertretbar, aber es muss eines
+      von beiden sein.
+      Betrifft: `.gitignore`, `MaxHirn/CLAUDE.md`, `MaxHirn/Claude/CLAUDE.md`
+      Wartet auf: Entscheidung von Max, welche Richtung gilt
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+
 - [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**
       Kontext: `G:` ist erneut nicht angeschlossen (`Test-Path G:\` = False; in
       der Datenträgerliste nur C:, O:, J:). Der geplante 20-Uhr-Lauf scheitert
