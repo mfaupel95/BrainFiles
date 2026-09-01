@@ -28,6 +28,14 @@ Aufrufe:
     python bot.py lage   --wert SOL
     python bot.py trend  --wert SOL
     python bot.py grid   --wert SOL
+
+--historie zieht Hebel-Deckel und Trefferquote aus einer tieferen Reihe, wenn
+der Kontrakt zu jung ist (CHIP-XPERP war am 01.09.2026 14 Tage alt). Das
+Signal - SuperTrend, EMA, RSI, ATR jetzt - kommt weiter vom gehandelten
+Kontrakt; nur die Rueckrechnung wechselt die Quelle. Siehe historie.py.
+
+    python bot.py trend --wert CHIP --historie auto            # <Basis>-USDT-SWAP
+    python bot.py trend --wert CHIP --historie CHIP-USDT-SWAP  # ausdruecklich
 """
 
 import argparse
@@ -35,6 +43,7 @@ import json
 import os
 import sys
 
+import historie
 import indikatoren
 import okxf
 
@@ -284,10 +293,20 @@ def hole(wert):
     return instr, k
 
 
-def zeige_lage(w, wert):
+def zeige_lage(w, wert, historie_quelle=None):
     instr, k = hole(wert)
     z = indikatoren.lage(k)
-    dl, ds = hebel_deckel(k, wartung=w["wartungsmarge"])
+
+    # Das Signal steht auf k (dem gehandelten Kontrakt). Die Statistik -
+    # Hebel-Deckel und, in pruefpflicht(), die Trefferquote - darf aus einer
+    # tieferen Reihe kommen, wenn der Kontrakt zu jung ist. Ohne --historie
+    # ist k_hist einfach k.
+    k_hist, hist_id, hist_ersatz = k, instr["instId"], False
+    if historie_quelle is not None:
+        k_hist, hist_id, hist_ersatz = historie.tiefe_reihe(
+            instr["instId"], historie_quelle)
+
+    dl, ds = hebel_deckel(k_hist, wartung=w["wartungsmarge"])
     tick = okxf.tickers().get(instr["instId"], {})
     umsatz = float(tick.get("volCcy24h") or 0) * z["kurs"]
     tage = len(k) / 6.0
@@ -312,6 +331,12 @@ def zeige_lage(w, wert):
     print("  Hebel-Deckel   long %.1fx   short %.1fx   (groesster Ruecklauf 7 Tage)" % (dl, ds))
     print("  Umsatz 24h     %.1f Mio USD" % (umsatz / 1e6))
     print("  Historie       %.0f Tage" % tage)
+    if hist_ersatz:
+        print("  Statistik aus  %s  -  %.0f Tage" % (hist_id, len(k_hist) / 6.0))
+        print("                 Hebel-Deckel und Trefferquote stammen aus dieser")
+        print("                 Reihe (gleicher Basiswert), das Signal oben nicht.")
+    elif historie_quelle is not None:
+        print("  Statistik aus  keine laengere Reihe gefunden - es bleibt bei %.0f Tagen" % tage)
 
     print()
     tore = [
@@ -325,11 +350,11 @@ def zeige_lage(w, wert):
     if not all(ok for _, ok in tore):
         print("\n  -> Mindestens ein Tor ist zu. Vorschlaege werden trotzdem")
         print("     gerechnet, aber mit gesenktem Hebel und mit Warnung.")
-    return instr, k, z, (dl, ds)
+    return instr, k, k_hist, z, (dl, ds)
 
 
-def zeige_trend(w, wert):
-    instr, k, z, (dl, ds) = zeige_lage(w, wert)
+def zeige_trend(w, wert, historie_quelle=None):
+    instr, k, k_hist, z, (dl, ds) = zeige_lage(w, wert, historie_quelle)
     if z["signal"] == "kein":
         print()
         print("Kein Einstieg: %s" % z["grund"])
@@ -387,13 +412,14 @@ def zeige_trend(w, wert):
         print("     schliesst vor dem Stop - der Verlust ist dann die ganze Margin,")
         print("     nicht der gerechnete Risikobetrag. Hebel senken.")
 
-    pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, g["hebel"])
+    pruefpflicht(w, instr, k_hist, seite, einstieg, stop, ziel, g["hebel"],
+                 stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"])
     befehle(instr, seite, g["kontrakte"], einstieg, ziel, stop, g["hebel"])
     return 0
 
 
-def zeige_grid(w, wert):
-    instr, k, z, (dl, _) = zeige_lage(w, wert)
+def zeige_grid(w, wert, historie_quelle=None):
+    instr, k, k_hist, z, (dl, _) = zeige_lage(w, wert, historie_quelle)
     atr, kurs = z["atr"], z["kurs"]
 
     spanne_abs = w["grid_spanne_atr"] * atr
@@ -505,7 +531,7 @@ def zeige_grid(w, wert):
         print()
         print("  (Die Pruefpflicht wird auf Stufe 1 gerechnet - sie hat den")
         print("   weitesten Weg zum Boden und damit den groessten Einzelverlust.)")
-        pruefpflicht(w, instr, k, "long", kauf, boden, zielk, hebel,
+        pruefpflicht(w, instr, k_hist, "long", kauf, boden, zielk, hebel,
                      was="Grid-Stufe")
 
     for i, kauf, ziel, kontrakte in zeilen:
@@ -532,6 +558,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("befehl", choices=("lage", "trend", "grid"))
     p.add_argument("--wert", required=True, help="Basiswert, z.B. SOL oder RE")
+    p.add_argument("--historie", default=None, metavar="QUELLE",
+                   help="Reihe fuer Hebel-Deckel und Trefferquote, wenn der "
+                        "Kontrakt zu jung ist: 'auto' (=<Basis>-USDT-SWAP), "
+                        "'selbst' oder ein instId wie CHIP-USDT-SWAP. Ohne "
+                        "Angabe: der Kontrakt selbst.")
     a = p.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -540,11 +571,11 @@ def main():
     w = wachen()
     try:
         if a.befehl == "lage":
-            zeige_lage(w, a.wert)
+            zeige_lage(w, a.wert, a.historie)
             return 0
         if a.befehl == "trend":
-            return zeige_trend(w, a.wert)
-        return zeige_grid(w, a.wert)
+            return zeige_trend(w, a.wert, a.historie)
+        return zeige_grid(w, a.wert, a.historie)
     except okxf.OKXFehler as e:
         print("OKX: %s" % e, file=sys.stderr)
         return 1

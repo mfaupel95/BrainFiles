@@ -71,11 +71,21 @@ cd Agenten\Handel\xperp
 ..\scanner\.venv\Scripts\python.exe bot.py trend --wert CHIP   # Prüfpflicht-Tabelle
 ```
 
-Die 133-Tage-Zahlen stammen aus `CHIP-USDT-SWAP` (nicht dem XPERP) über
-`okxf.kerzen_lang(..., seiten=12)` und `bot.hebel_deckel`/`bot.trefferquote`.
-Der XPERP selbst hat dafür zu wenig Kerzen (87 Stück à 4h). Ein `--historie`
--Schalter, der die Statistik aus dem SWAP zieht und die Order auf den XPERP
-legt, ist noch nicht gebaut.
+Die 133-Tage-Zahlen stammen aus `CHIP-USDT-SWAP` (nicht dem XPERP), der XPERP
+selbst hat dafür zu wenig Kerzen (87 Stück à 4h). Seit dem 01.09.2026 macht das
+der **`--historie`-Schalter** in `bot.py` selbst:
+
+```powershell
+cd Agenten\Handel\xperp
+..\scanner\.venv\Scripts\python.exe bot.py trend --wert CHIP --historie auto
+..\scanner\.venv\Scripts\python.exe historie.py CHIP        # Vergleich jung <-> tief
+```
+
+`--historie auto` zieht den `<Basis>-USDT-SWAP` und rechnet Hebel-Deckel und
+Trefferquote darauf; das Signal bleibt am XPERP. Mit dem Schalter senkt der Bot
+den Hebel selbständig auf **2,2×** und meldet bei Zahl 4 der Prüfpflicht
+„trägt NICHT" (27,7 % gegen 33,7 %, 693 ausgelaufene Anläufe über 133 Tage).
+Neues Modul `historie.py`, dazu ein eigener Vergleichsaufruf.
 
 ## Bewertung
 

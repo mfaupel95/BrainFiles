@@ -94,6 +94,7 @@ nicht.
 | `indikatoren.py` | ATR, EMA, RSI, SuperTrend, Efficiency Ratio. Reine Rechnung, kein Netz. |
 | `auswahl.py` | Rangliste aller Krypto-XPERP für Long, Short und Grid. |
 | `bot.py` | Lage, Trend-Anlauf, Grid. Legt Befehle vor. |
+| `historie.py` | Tiefe Kerzenreihe für zu junge Kontrakte — zieht den `<Basis>-USDT-SWAP`, damit Hebel-Deckel und Trefferquote auf Monaten statt Tagen stehen. |
 
 Kein eigenes `.venv` — läuft mit dem des Marktscanners (`../scanner/.venv`,
 nur Standardbibliothek).
@@ -108,7 +109,28 @@ cd Agenten\Handel\xperp
 ..\scanner\.venv\Scripts\python.exe bot.py lage  --wert SOL    # Signal und Tore
 ..\scanner\.venv\Scripts\python.exe bot.py trend --wert SOL    # ein Anlauf mit TP/SL
 ..\scanner\.venv\Scripts\python.exe bot.py grid  --wert SOL    # Raster mit TP/SL je Stufe
+
+..\scanner\.venv\Scripts\python.exe bot.py trend --wert CHIP --historie auto
+..\scanner\.venv\Scripts\python.exe historie.py CHIP           # Vergleich jung <-> tief
 ```
+
+### `--historie` — wenn der Kontrakt zu jung ist
+
+Ein frisch gelisteter XPERP trägt die Kennzahlen nicht, die vor einer
+gehebelten Order zählen. `CHIP-USD_UM_XPERP-310822` war am 01.09.2026 **14 Tage
+alt**; auf diesem Fenster meldete der Bot Hebel-Deckel 4,8× und Trefferquote
+67 %. Auf der realen Historie des `CHIP-USDT-SWAP` (**133 Tage**, seit dem
+Listing 21.04.2026) sind es **2,2×** und **28 % gegen 34 % nötig — trägt
+nicht**. Genau die Falle aus [[Handelsbots]]: „Kurze Fenster täuschen
+zuverlässig", hier nach oben, weil der XPERP sein ganzes Leben auf einem
+lokalen Tief begann.
+
+`--historie auto` zieht den `<Basis>-USDT-SWAP` und rechnet Hebel-Deckel und
+Trefferquote darauf. Das **Signal** (SuperTrend, EMA, RSI, ATR jetzt) bleibt
+am gehandelten Kontrakt — es beschreibt den Kurs, den man wirklich kauft.
+Rechtfertigung: gleicher Index, ATR% deckungsgleich (CHIP: 4,6 % XPERP gegen
+4,4 % SWAP). `--historie selbst` erzwingt den Kontrakt, `--historie <instId>`
+nennt die Reihe ausdrücklich.
 
 ## Warum drei Ranglisten und nicht eine
 
