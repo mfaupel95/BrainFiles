@@ -1,0 +1,326 @@
+"""Zugang zu den OKX-XPERP-Kontrakten (instType=FUTURES, ruleType=xperp).
+
+Schwesterdatei zu scanner/okx.py, aber fuer Futures statt Spot. Die
+Unterschiede, die zaehlen:
+
+  - XPERP liegen unter instType=FUTURES, nicht SWAP. Der instId sieht aus wie
+    "RE-USD_UM_XPERP-310620" und traegt ein Ablaufdatum weit in der Zukunft
+    (hier 2031). Wer nach "REUSD" sucht, findet nichts - der Bindestrich in
+    "RE-USD" gehoert zum Namen.
+  - Gehandelt werden Kontrakte, nicht Muenzen. ctVal sagt, wieviel Basiswert in
+    einem Kontrakt steckt (RE: 10). Groessen sind ganzzahlige Vielfache von
+    lotSz. Wer das uebergeht, bekommt eine andere Position als gerechnet -
+    genau die Falle aus Wissen/Handelsbots.md ("570 $ Nominal statt 651 $").
+  - tdMode ist "isolated" oder "cross", nie "cash". Dazu posSide bei
+    Hedge-Modus. Der Hebel wird vor der Order gesetzt, nicht mit ihr.
+
+Die beiden Fallen aus scanner/okx.py gelten unveraendert:
+  - OKX antwortet ohne User-Agent mit HTTP 403.
+  - Fehlversuche zaehlen, sonst haengt eine Schleife bei einem Ausfall endlos.
+
+Schluessel kommen aus der Prozessumgebung, ersatzweise aus der
+Windows-Registry (HKCU\\Environment) - ein von Claude gestarteter Prozess erbt
+die Benutzervariablen nicht.
+
+WICHTIG: Die Ausnahme vom Handverbot in Wissen/Schutzregeln.md gilt
+ausdruecklich nur fuer "nur Spot, nur Long, kein Hebel" - also fuer
+scanner/handeln.py. Dieses Modul faellt NICHT darunter. Die Order-Funktionen
+existieren, damit ein Mensch sie bewusst aufruft; kein Skript hier loest sie
+von selbst aus.
+"""
+
+import base64
+import hashlib
+import hmac
+import json
+import os
+import sys
+import time
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+BASIS = "https://www.okx.com"
+HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
+MAX_FEHLER = 6
+
+# instCategory trennt die XPERP-Familien - geprueft am 01.09.2026:
+#   1 = Krypto (111 Werte), 3 = Aktien (46), 4 = Rohstoffe (4)
+KRYPTO = "1"
+AKTIE = "3"
+ROHSTOFF = "4"
+
+
+class OKXFehler(RuntimeError):
+    """Fachlicher Fehler aus einer gueltigen OKX-Antwort (code != 0).
+    Wird NICHT wiederholt - ein falscher instId existiert auch beim zehnten
+    Versuch nicht."""
+
+
+# --- Schluessel -------------------------------------------------------------
+
+def _aus_registry(name):
+    try:
+        import winreg
+    except ImportError:
+        return None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+            wert, _ = winreg.QueryValueEx(k, name)
+            return wert or None
+    except OSError:
+        return None
+
+
+def _variable(name):
+    return os.environ.get(name) or _aus_registry(name)
+
+
+def schluessel_vorhanden():
+    return all(_variable(n) for n in
+               ("OKX_API_KEY", "OKX_API_SECRET", "OKX_API_PASSPHRASE"))
+
+
+# --- HTTP ------------------------------------------------------------------
+
+def _roh(pfad, methode="GET", body=None, signiert=False):
+    url = BASIS + pfad
+    daten = json.dumps(body) if body else ""
+    kopf = dict(HEADERS)
+
+    if signiert:
+        key = _variable("OKX_API_KEY")
+        secret = _variable("OKX_API_SECRET")
+        pw = _variable("OKX_API_PASSPHRASE")
+        if not (key and secret and pw):
+            raise RuntimeError("OKX-Schluessel fehlen (Key/Secret/Passphrase)")
+        ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        ts = ts.replace("+00:00", "Z")
+        vortext = ts + methode + pfad + daten
+        sig = base64.b64encode(
+            hmac.new(secret.encode(), vortext.encode(), hashlib.sha256).digest()
+        ).decode()
+        kopf.update({
+            "OK-ACCESS-KEY": key,
+            "OK-ACCESS-SIGN": sig,
+            "OK-ACCESS-TIMESTAMP": ts,
+            "OK-ACCESS-PASSPHRASE": pw,
+        })
+
+    req = urllib.request.Request(
+        url, data=daten.encode() if daten else None, headers=kopf, method=methode)
+    with urllib.request.urlopen(req, timeout=20) as antwort:
+        d = json.loads(antwort.read().decode())
+    if d.get("code") not in ("0", 0):
+        raise OKXFehler("OKX %s: %s" % (d.get("code"), d.get("msg") or d))
+    return d.get("data", [])
+
+
+def _mit_wiederholung(*a, **kw):
+    fehler = 0
+    while True:
+        try:
+            return _roh(*a, **kw)
+        except OKXFehler:
+            raise  # fachlich, nicht durch Wiederholen zu heilen
+        except Exception as e:  # noqa: BLE001 - Transportfehler, wird gezaehlt
+            fehler += 1
+            if fehler >= MAX_FEHLER:
+                raise
+            print("  OKX-Transportfehler %d/%d: %s" % (fehler, MAX_FEHLER, e),
+                  file=sys.stderr)
+            time.sleep(1.5 * fehler)
+
+
+# --- oeffentlich: Instrumente ----------------------------------------------
+
+def instrumente(kategorie=KRYPTO):
+    """Alle lebenden XPERP-Kontrakte einer instCategory, nach Basiswert sortiert."""
+    d = _mit_wiederholung("/api/v5/public/instruments?instType=FUTURES")
+    xp = [x for x in d
+          if x.get("ruleType") == "xperp"
+          and x.get("state") == "live"
+          and (kategorie is None or x.get("instCategory") == kategorie)]
+    return sorted(xp, key=lambda x: x["instId"])
+
+
+def instrument(basis):
+    """Ein Kontrakt anhand des Basiswerts ('RE') oder des vollen instId.
+
+    'REUSD' wird mit angenommen - so liest sich 'RE-USD' ohne Bindestrich, und
+    genau daran ist die Suche am 01.09.2026 einmal gescheitert.
+    """
+    alle = instrumente(kategorie=None)
+    b = basis.upper()
+    for x in alle:                                    # voller instId
+        if x["instId"].upper() == b:
+            return x
+    for x in alle:                                    # Basiswert, z.B. 'RE'
+        if x["instId"].split("-")[0].upper() == b:
+            return x
+    for x in alle:                                    # 'REUSD' -> 'RE-USD_...'
+        if x["instId"].upper().replace("-", "").startswith(b):
+            return x
+    raise OKXFehler("kein XPERP-Kontrakt zu %r" % basis)
+
+
+# --- oeffentlich: Kurse -----------------------------------------------------
+
+def kerzen(inst, bar="1H", anzahl=300):
+    """Kerzen aufsteigend als [ts, offen, hoch, tief, schluss, volumen]."""
+    pfad = "/api/v5/market/candles?" + urllib.parse.urlencode(
+        {"instId": inst, "bar": bar, "limit": min(anzahl, 300)})
+    roh = _mit_wiederholung(pfad)
+    reihen = [[int(r[0])] + [float(x) for x in r[1:6]] for r in roh]
+    reihen.sort(key=lambda r: r[0])
+    return reihen
+
+
+def kerzen_lang(inst, bar="1H", seiten=5):
+    """Mehr als 300 Kerzen, rueckwaerts geblaettert ueber history-candles."""
+    alle, after = [], ""
+    for _ in range(seiten):
+        p = "/api/v5/market/history-candles?" + urllib.parse.urlencode(
+            {"instId": inst, "bar": bar, "limit": 100})
+        if after:
+            p += "&after=" + after
+        d = _mit_wiederholung(p)
+        if not d:
+            break
+        r = [[int(x[0])] + [float(v) for v in x[1:6]] for x in d]
+        alle += r
+        after = str(min(x[0] for x in r))
+    alle.sort(key=lambda r: r[0])
+    return alle
+
+
+def letzter_kurs(inst):
+    d = _mit_wiederholung("/api/v5/market/ticker?instId=" + inst)
+    return float(d[0]["last"])
+
+
+def tickers():
+    """Alle Futures-Ticker in einem Aufruf - Umsatz je Wert ohne 460 Anfragen."""
+    d = _mit_wiederholung("/api/v5/market/tickers?instType=FUTURES")
+    return {x["instId"]: x for x in d}
+
+
+def funding(inst):
+    """Aktuelle Funding-Rate. Positiv = Long zahlt an Short."""
+    try:
+        d = _mit_wiederholung("/api/v5/public/funding-rate?instId=" + inst)
+        return float(d[0].get("fundingRate") or 0.0)
+    except (OKXFehler, IndexError, ValueError):
+        return None
+
+
+# --- Kontraktgroessen -------------------------------------------------------
+
+def kontrakte_aus_nominal(instr, nominal_usd, kurs):
+    """Wieviele ganze Kontrakte ergeben rund 'nominal_usd' Positionswert?
+
+    Gibt (kontrakte, echtes_nominal) zurueck. Das echte Nominal weicht ab -
+    das ist keine Ungenauigkeit, sondern die Rundung auf lotSz, und sie gehoert
+    in jede Rechnung uebernommen statt geschaetzt.
+    """
+    ctval = float(instr["ctVal"])
+    lot = float(instr["lotSz"])
+    minsz = float(instr["minSz"])
+    je_kontrakt = ctval * kurs
+    if je_kontrakt <= 0:
+        return 0, 0.0
+    roh = nominal_usd / je_kontrakt
+    k = int(roh / lot) * lot
+    if k < minsz:
+        return 0, 0.0
+    return k, k * je_kontrakt
+
+
+def auf_tick(instr, preis):
+    """Preis auf das Raster des Kontrakts runden."""
+    tick = float(instr["tickSz"])
+    if tick <= 0:
+        return preis
+    stellen = max(0, len(("%.10f" % tick).rstrip("0").split(".")[1]))
+    return round(round(preis / tick) * tick, stellen)
+
+
+# --- signiert: Konto --------------------------------------------------------
+
+def guthaben_usdt():
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDT", signiert=True)
+    if not d or not d[0].get("details"):
+        return 0.0
+    return float(d[0]["details"][0].get("availBal") or 0.0)
+
+
+def positionen(inst=None):
+    p = "/api/v5/account/positions?instType=FUTURES"
+    if inst:
+        p += "&instId=" + inst
+    return _mit_wiederholung(p, signiert=True)
+
+
+# --- signiert: Orders -------------------------------------------------------
+#
+# Diese Funktionen bewegen Geld. Sie werden von keinem Skript in diesem Ordner
+# selbsttaetig aufgerufen - siehe Modulkopf.
+
+def hebel_setzen(inst, hebel, tdmode="isolated", posside=None):
+    body = {"instId": inst, "lever": str(hebel), "mgnMode": tdmode}
+    if posside:
+        body["posSide"] = posside
+    return _roh("/api/v5/account/set-leverage", "POST", body, signiert=True)
+
+
+def order_limit(inst, seite, kontrakte, preis, tdmode="isolated",
+                posside=None, tp=None, sl=None, reduce_only=False):
+    """Limit-Order mit angehaengtem Take-Profit und Stop-Loss.
+
+    tp/sl werden als Ausloesepreise mitgegeben und als Market ausgefuehrt
+    (ordPx -1). Ein Stop, der selbst ein Limit ist, fuellt im Absturz nicht.
+    """
+    body = {"instId": inst, "tdMode": tdmode, "side": seite,
+            "ordType": "limit", "px": str(preis), "sz": str(kontrakte)}
+    if posside:
+        body["posSide"] = posside
+    if reduce_only:
+        body["reduceOnly"] = True
+    anhang = {}
+    if tp is not None:
+        anhang["tpTriggerPx"] = str(tp)
+        anhang["tpOrdPx"] = "-1"
+    if sl is not None:
+        anhang["slTriggerPx"] = str(sl)
+        anhang["slOrdPx"] = "-1"
+    if anhang:
+        body["attachAlgoOrds"] = [anhang]
+    d = _roh("/api/v5/trade/order", "POST", body, signiert=True)
+    return d[0]["ordId"]
+
+
+def order_stornieren(inst, ord_id):
+    body = {"instId": inst, "ordId": ord_id}
+    return _roh("/api/v5/trade/cancel-order", "POST", body, signiert=True)
+
+
+def offene_orders(inst=None):
+    p = "/api/v5/trade/orders-pending?instType=FUTURES"
+    if inst:
+        p += "&instId=" + inst
+    return _mit_wiederholung(p, signiert=True)
+
+
+if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    basis = sys.argv[1] if len(sys.argv) > 1 else "RE"
+    x = instrument(basis)
+    kurs = letzter_kurs(x["instId"])
+    print("%s  (Basiswert %s)" % (x["instId"], x["uly"]))
+    print("  Kurs %.6f   max. Hebel %s   Kontrakt %s %s   Tick %s   minSz %s" % (
+        kurs, x["lever"], x["ctVal"], x["ctValCcy"], x["tickSz"], x["minSz"]))
+    k, nom = kontrakte_aus_nominal(x, 250.0, kurs)
+    print("  250 USD Nominal -> %g Kontrakte = %.2f USD (Rundung auf lotSz)" % (k, nom))
+    print("  Funding %s   Schluessel gesetzt: %s" % (funding(x["instId"]),
+                                                     schluessel_vorhanden()))

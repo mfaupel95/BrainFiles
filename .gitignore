@@ -61,6 +61,9 @@
 !Agenten/Handel/scanner/*.md
 !Agenten/Handel/scanner/*.json
 !Agenten/Handel/scanner/requirements.txt
+!Agenten/Handel/xperp/*.py
+!Agenten/Handel/xperp/*.md
+!Agenten/Handel/xperp/*.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
