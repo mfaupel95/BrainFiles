@@ -92,7 +92,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
-- [?] **T-016 — Whitelist zeigt auf `MaxHirn/Archiv/`, der Ordner heisst `MaxHirn/Claude/`**
+- [~] **T-016 — Whitelist zeigt auf `MaxHirn/Archiv/`, der Ordner heisst `MaxHirn/Claude/`**
       Kontext: Die `.gitignore` gibt seit dem 30.08. `MaxHirn/Archiv/*.md`,
       `MaxHirn/Archiv/ArchivSuche/*.py` usw. frei. Diesen Ordner gibt es im
       Dateisystem nicht — er heisst weiterhin `MaxHirn/Claude/`. Auch
@@ -103,17 +103,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       bereits getrackten Dateien dort ueberleben nur, weil Ignore-Regeln auf
       versionierte Dateien nicht mehr wirken — darunter das ganze
       Archiv-Werkzeug unter `ArchivSuche/`.
-      Verschaerfend: `arbeitsbaum-pruefen.ps1` haette diese 36 Dateien ab dem
-      01.09. stumm aus jeder Sicherung genommen; das ist mit Commit `6d0f192`
-      behoben, die Ursache besteht aber fort.
-      Naechster Schritt: entweder den Ordner mit dem Skill `umzug` wirklich
-      nach `MaxHirn/Archiv/` umbenennen (Achtung: `ArchivSuche/.venv` ist an
-      seinen Pfad gebunden, siehe [[Portabilitaet]]) — oder die Whitelist auf
-      `MaxHirn/Claude/` zurueckstellen und die Umbenennung aus den drei
-      CLAUDE.md-Dateien streichen. Beides ist vertretbar, aber es muss eines
-      von beiden sein.
-      Betrifft: `.gitignore`, `MaxHirn/CLAUDE.md`, `MaxHirn/Claude/CLAUDE.md`
-      Wartet auf: Entscheidung von Max, welche Richtung gilt
+      Status nach 01.09. 16:42: Recovery-Versuch nach PC-Absturz startete
+      Umbenennung. Archiv-MCP-Server und weitere Node-Prozesse (33 Stk.)
+      sperren die Datei. Skill `absturz-recovery` angelegt.
+      Naechster Schritt: alle laufenden Services beenden (Claude Code, Obsidian,
+      geplante Tasks sind aus), dann `Rename-Item Claude Archiv` aus frischer
+      PowerShell-Session, dann `.venv` in `Archiv/ArchivSuche/` neu erzeugen
+      (wegen absoluten Pfaden: `python -m venv .venv` + `pip install -r
+      requirements.txt`), abschliessend Git-Status prüfen und commiten.
+      Betrifft: `.gitignore`, `MaxHirn/CLAUDE.md`, `MaxHirn/Claude/CLAUDE.md`, `MaxHirn/Archiv/ArchivSuche/.venv`
+      Wartet auf: Neustart oder manuelles Beenden laufender Services
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 - [x] **T-017 — Gehebelter Handel hat noch keine `wachen.json`** — erledigt
@@ -140,6 +139,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Modulkopf auf Spur 2 umschreiben.
       Betrifft: `Agenten/Handel/xperp/` — **dort arbeitete am 01.09. 17:34 eine
       andere Sitzung**, deshalb hier nur eingetragen und nicht angefasst.
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+
+- [ ] **T-019 — Die Regel erlaubt jetzt mehr, als der XPERP-Bot kann**
+      Kontext: Max hat am 01.09.2026 um 19:06 in [[Schutzregeln]] das Handverbot
+      durch „automatischer Handel erlaubt, solange `wachen.json` eingehalten
+      wird" ersetzt. Die Notizen sind nachgezogen, der Code noch nicht:
+      1. **`xperp/bot.py` hat keinen Live-Pfad.** Er legt Befehle vor,
+         abgesendet wird von Hand. Automatischer Handel ist damit erlaubt,
+         aber nicht gebaut — die Regel läuft der Umsetzung voraus.
+      2. **`xperp/wachen.json`** trägt in `_handel_erlaubt_hinweis` noch den
+         alten Wortlaut („Die Ausnahme … gilt ausdruecklich nur fuer 'nur
+         Spot, nur Long, kein Hebel'"). Der Schreibzugriff auf diese Datei
+         wurde am 01.09. abgelehnt, deshalb hier eingetragen statt erledigt.
+      3. Dieselbe veraltete Formel steht in den Kopfkommentaren von
+         `okxf.py` (Zeile 26/36), `bot.py` (Zeile 5) und `indikatoren.py`
+         (Zeile 204) sowie in `xperp/README.md`.
+      Nächster Schritt: erst 2. und 3. angleichen (reiner Text), dann
+      entscheiden, ob der Live-Pfad überhaupt gebaut wird — die Prüfpflicht
+      verlangt dafür die vier Zahlen **je Position im Handelsjournal**, nicht
+      im Chat, weil beim Automaten niemand mitliest.
+      Betrifft: `Agenten/Handel/xperp/`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 - [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**

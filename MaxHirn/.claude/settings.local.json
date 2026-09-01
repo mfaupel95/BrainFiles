@@ -58,7 +58,12 @@
       "Bash(powershell -NoProfile -Command '$f=Get-Item '\\\\''Agenten/Handel/xperp/bot.py'\\\\''; '\\\\''{0}  \\({1:N1} Min her\\)'\\\\'' -f $f.LastWriteTime.ToString\\('\\\\''HH:mm:ss'\\\\''\\), \\(\\(Get-Date\\)-$f.LastWriteTime\\).TotalMinutes')",
       "PowerShell($j=Get-Date; @\\('MaxHirn/Wissen/INDEX.md','MaxHirn/Claude/TASKS.md'\\) | ForEach-Object { $f=Get-Item \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\$_\"; \"{0,-28} {1}  \\({2:N1} Min her\\)\" -f $_, $f.LastWriteTime.ToString\\('HH:mm:ss'\\), \\($j-$f.LastWriteTime\\).TotalMinutes })",
       "Bash(../scanner/.venv/Scripts/python.exe bot.py --help)",
-      "Bash(../scanner/.venv/Scripts/python.exe stopwahl.py --wert SOL --richtung long)"
+      "Bash(../scanner/.venv/Scripts/python.exe stopwahl.py --wert SOL --richtung long)",
+      "Bash(../scanner/.venv/Scripts/python.exe auswahl.py --wert SOL)",
+      "Bash(../scanner/.venv/Scripts/python.exe auswahl.py --zweck long --anzahl 16)",
+      "PowerShell(Get-Process | Where-Object { $_.Name -match \"Code|Obsidian|git|node|python\" } | Select-Object Name, Id | Sort-Object Name)",
+      "PowerShell(cmd /c \"cd C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn && dir Claude /s /b | head -5\" 2>&1)",
+      "PowerShell(head -10)"
     ]
   },
   "enableAllProjectMcpServers": true,
