@@ -387,7 +387,8 @@ def zeige_lage(w, wert, historie_quelle=None):
     return instr, k, k_hist, z, (dl, ds)
 
 
-def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
+def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
+                sammle=None):
     instr, k, k_hist, z, (dl, ds) = zeige_lage(w, wert, historie_quelle)
     if z["signal"] == "kein":
         print()
@@ -455,10 +456,15 @@ def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
     pruefpflicht(w, instr, k_hist, seite, einstieg, stop, ziel, g["hebel"],
                  stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"])
     befehle(instr, seite, g["kontrakte"], einstieg, ziel, stop, g["hebel"])
+    if sammle is not None:
+        sammle.append({"instr": instr, "hebel": g["hebel"], "orders": [
+            ("buy" if seite == "long" else "sell",
+             g["kontrakte"], einstieg, ziel, stop)]})
     return 0
 
 
-def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
+def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
+               sammle=None):
     instr, k, k_hist, z, (dl, _) = zeige_lage(w, wert, historie_quelle)
     atr, kurs = z["atr"], z["kurs"]
     gesamt_margin_erlaubt = w["max_margin_gesamt_usd"] if einsatz is None else float(einsatz)
@@ -585,6 +591,10 @@ def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None):
 
     for i, kauf, ziel, kontrakte in zeilen:
         befehle(instr, "long", kontrakte, kauf, ziel, boden, hebel, nr=i)
+    if sammle is not None:
+        sammle.append({"instr": instr, "hebel": hebel, "orders": [
+            ("buy", kontrakte, kauf, ziel, boden)
+            for (_i, kauf, ziel, kontrakte) in zeilen]})
     return 0
 
 
