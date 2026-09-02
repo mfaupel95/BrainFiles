@@ -42,19 +42,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [?] **T-030 — Drei Handels-Routinen in die Aufgabenplanung eintragen**
-      Kontext: Die Wrapper stehen und laufen (`marktscanner.ps1`,
-      `kraken-scanner.ps1`, `handel-wachen.ps1` — letzterer deckt seit
-      02.09.2026 Spur 1 und 3 ab). Eingeplant ist keiner davon; die Zeitpläne
-      stehen als `schtasks`-Befehle in [[Routinen]]. Ohne Zeitplan gibt es
-      keinen täglichen Papierlauf, und ohne täglichen Papierlauf laufen die
-      sechs Wochen aus Bedingung 1 nicht voll.
-      Nächster Schritt: Max entscheidet, ob die drei Aufgaben angelegt werden
-      (07:30, 07:45, sonntags 08:00) — Aufgabenplanung ist Systemkonfiguration,
-      deshalb nicht ungefragt.
-      Betrifft: `Agenten/Routinen/`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
       `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
@@ -302,6 +289,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       seit heute nicht nur fehlerhafte Läufe, sondern auch ausgebliebene — jede
       `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau das
       hatte zwei Tage lang niemand gesehen.
+
+- [x] **T-030 — Drei Handels-Routinen in die Aufgabenplanung eintragen** —
+      erledigt 2026-09-02 auf Max' Anweisung. Angelegt mit
+      `Register-ScheduledTask` (nicht `schtasks` — das setzt kein „Starten,
+      sobald möglich", und ohne das fällt ein Termin nach einer
+      Hardware-Abschaltung ersatzlos aus): `MaxHirn-Marktscanner` täglich
+      07:30, `MaxHirn-Kraken-Spur3` täglich 07:45, `MaxHirn-Handel-Wachen`
+      sonntags 08:00. Alle drei einmal aus der Aufgabenplanung heraus gestartet
+      und geprüft — Ergebniscode 0, Protokolle vollständig, keine
+      Doppelkäufe. Damit sind es neun geplante Aufgaben. Beide Tagesläufe
+      handeln nur auf Papier (`MAXHIRN_ROUTINE=1`, kein `--live`).
 
 - [x] **T-029 — Dritte Spur: Kraken wirklich bauen** — erledigt 2026-09-02
       Auf Max' Anweisung („ich will ihn") das nachgeliefert, was T-027 als Weg

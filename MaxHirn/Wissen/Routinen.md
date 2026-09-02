@@ -18,9 +18,9 @@ vorhandener Skill plus ein Zeitplan.
 | Wann | Was | Skill | Status |
 |---|---|---|---|
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
-| täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/marktscanner.ps1` steht |
-| täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/kraken-scanner.ps1` steht |
-| wöchentlich | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **noch nicht eingeplant** — Wrapper `Routinen/handel-wachen.ps1` steht |
+| täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Marktscanner` |
+| täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Kraken-Spur3` |
+| sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
@@ -29,9 +29,11 @@ vorhandener Skill plus ein Zeitplan.
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 
-Die drei eingeplanten laufen über die **Windows-Aufgabenplanung**, nicht über
+Die eingeplanten laufen über die **Windows-Aufgabenplanung**, nicht über
 `/schedule` — Begründung unten. Sie starten nicht das Skript direkt, sondern
-einen Wrapper aus `Routinen/`:
+einen Wrapper aus `Routinen/`. Seit dem 02.09.2026 sind es **neun**; die drei
+Handels-Routinen kamen an diesem Tag dazu und sind je einmal aus der
+Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 
 | Aufgabe | Wrapper | Protokoll |
 |---|---|---|
@@ -39,9 +41,9 @@ einen Wrapper aus `Routinen/`:
 | `MaxHirn-Zweitkopie` | `Routinen/zweitkopie.ps1` | `Routinen/logs/zweitkopie-letzter-lauf.log` |
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
-| (noch offen) Marktscanner | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
-| (noch offen) Kraken-Spur 3 | `Routinen/kraken-scanner.ps1` | `Routinen/logs/kraken-scanner-letzter-lauf.log` |
-| (noch offen) Wachen-Abgleich | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
+| `MaxHirn-Marktscanner` | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
+| `MaxHirn-Kraken-Spur3` | `Routinen/kraken-scanner.ps1` | `Routinen/logs/kraken-scanner-letzter-lauf.log` |
+| `MaxHirn-Handel-Wachen` | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 | `MaxHirn-Systempruefung` | `Routinen/systempruefung.ps1` (kein Wrapper, protokolliert selbst) | `Routinen/logs/systempruefung-letzter-lauf.md` + `systempruefung-JJJJ-MM-TT.log` |
 
@@ -133,13 +135,19 @@ bewusster Aufruf von Hand — dieselbe Regel wie bei der DCA-Prüfung, aus einem
 Zeitplan heraus wird nie echtes Geld bewegt. Die Routine liefert also täglich
 die Rangliste und einen Papier-Handelseintrag; mehr nicht.
 
-Einplanen (wenn gewünscht), interaktiv per Aufgabenplanung:
+**Eingeplant am 02.09.2026** als `MaxHirn-Marktscanner`, täglich 07:30. Zum
+Wiederanlegen nach einem Umzug:
 
 ```powershell
 $exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\marktscanner.ps1"
 schtasks /create /tn "MaxHirn-Marktscanner" /sc daily /st 07:30 `
   /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
 ```
+
+`schtasks` setzt **kein** „Starten, sobald möglich" — die drei Handels-Aufgaben
+sind deshalb mit `Register-ScheduledTask` und
+`New-ScheduledTaskSettingsSet -StartWhenAvailable` angelegt. Ohne das fällt ein
+verpasster Termin nach einer [[Hardware]]-Abschaltung ersatzlos aus.
 
 ### Wachen-Abgleich: die fünf Bedingungen für unbeaufsichtigten Betrieb
 
@@ -148,7 +156,8 @@ messbare Bedingungen. Vier davon prüft `handeln.py` bei **jedem** Lauf mit
 (Freigabe, Drawdown-Ratsche, Herzschlag-Notausstieg, Journal-Spiegelung); die
 fünfte — der rollierende Erwartungswert über die letzten 30 Runden — braucht
 einen eigenen, selteneren Lauf, damit ein einzelner schlechter Tag die Spur
-nicht sofort abschaltet. Dafür `handel-wachen.ps1`, wöchentlich:
+nicht sofort abschaltet. Dafür `handel-wachen.ps1`, **eingeplant am 02.09.2026**
+als `MaxHirn-Handel-Wachen`, sonntags 08:00:
 
 ```powershell
 $exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\handel-wachen.ps1"
@@ -171,8 +180,9 @@ dafür nicht nötig.
 Seit 02.09.2026 gibt es eine dritte bewachte Spur ([[Handelsregeln]]):
 Kraken, Spot, nur Long, in EUR. Auch sie handelt aus dem Zeitplan heraus **nur
 auf Papier** — `kraken-scanner.ps1` ruft `handeln.py` ohne `--live`, und selbst
-mit `--live` blieben mehrere Sperren zu. Eine Viertelstunde nach dem
-Marktscanner, damit sich die beiden Läufe nicht überschneiden:
+mit `--live` blieben mehrere Sperren zu. **Eingeplant am 02.09.2026** als
+`MaxHirn-Kraken-Spur3`, eine Viertelstunde nach dem Marktscanner, damit sich
+die beiden Läufe nicht überschneiden:
 
 ```powershell
 $exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\kraken-scanner.ps1"
