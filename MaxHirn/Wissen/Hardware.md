@@ -944,8 +944,11 @@ für externe Desktop-Monitore. Kein Fehler.
   (`AppleInc.iCloud`, `Microsoft.Copilot`, …): von PowerToys selbst als
   „can be ignored" markiert. Rauschen, kein Defekt.
 - **FancyZones** `Process path is empty` ×30: kosmetisch.
-- **CmdPal**: Startfehler und fehlende `favorites.json`/`history.json` betreffen
-  **Fremd-Erweiterungen** (Aria2, Colors for Command Palette), nicht den PowerToys-Kern.
+- **CmdPal**: Startfehler und fehlende `favorites.json`/`history.json` betrafen
+  zwei **Fremd-Erweiterungen** (Aria2 Extension, Colors for Command Palette),
+  nicht den PowerToys-Kern. Beide am 02.09.2026 entfernt
+  (`Routinen/einmalig-20260902-cmdpal-erweiterungen-entfernen.ps1`); Neu-
+  installation über den Microsoft Store jederzeit möglich.
 - **AppXDeploymentServer**: ein `winget`-Upgrade von „CurrencyConverter for Command
   Palette" scheiterte am 30.08. mit `0x80073D02`, weil die alte Version noch lief.
   Einmalig, folgenlos.
