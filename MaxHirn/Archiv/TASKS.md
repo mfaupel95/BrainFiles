@@ -9,7 +9,22 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Am Sitzungsanfang lesen**, bevor gefragt wird, woran gearbeitet werden soll.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
-- **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
+- **Erledigtes nach `## Erledigt
+
+- [x] **T-028 — Bestätigungsdialog zum Scharfschalten** — erledigt 2026-09-02
+      `Agenten/Handel/freigabe.py` gebaut und an `scanner/handeln.py --live`
+      angebunden. Beide Spuren, prüft gegen `wachen.json`, führt selbst nichts
+      aus. Die Obergrenze jedes Reglers ist der Wachen-Wert, der Hebeldeckel
+      ist senkbar, nie hebbar. Ausstiege laufen nie durch das Fenster.
+      Beim Bauen gemessen: `sys.stdin.isatty()` meldet in der Git-Bash unter
+      Windows auch bei umgeleitetem stdin ein Terminal — als Sperre gegen den
+      Zeitplan taugt es nicht. Deshalb lehnt das Fenster nach 120 s ohne
+      Bedienung von selbst ab; das ist der tragende Schutz. Zusätzlich setzen
+      `Routinen/marktscanner.ps1` und `handel-wachen.ps1` jetzt
+      `MAXHIRN_ROUTINE=1`.
+      Offen als eigener Punkt: `xperp/bot.py` ist nicht angebunden — er legt
+      Befehle ohnehin nur vor.
+` verschieben**, mit Datum. Nicht löschen —
   die Historie zeigt, was schon einmal versucht wurde.
 - **Nichts erfinden.** Nur eintragen, was Max gesagt hat oder was aus einer
   abgebrochenen Arbeit tatsächlich offen blieb. Vermutete Folgeaufgaben
@@ -41,20 +56,6 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-
-- [~] **T-028 — Bestätigungsdialog zum Scharfschalten**
-      Kontext: `Schutzregeln.md` Punkt 3 verlangt beim Scharfschalten ein
-      Fenster mit anpassbaren Werten und Feldern zum Bestätigen/Ablehnen.
-      Am 02.09.2026 gebaut: `Agenten/Handel/freigabe.py`, beide Spuren, prüft
-      gegen `wachen.json` und gibt frei — führt selbst nichts aus. Die
-      Obergrenze jedes Reglers ist der Wachen-Wert, der Hebeldeckel ist
-      senkbar, nie hebbar. Rechenkern und Fensteraufbau sind geprüft.
-      Offen ist die Anbindung: `handeln.py` und `bot.py` rufen es nicht auf.
-      Nächster Schritt: Aufruf in den `--live`-Pfad von `handeln.py` setzen —
-      **nicht** in die Tagesroutine, dort würde das Fenster die geplante
-      Aufgabe blockieren, bis jemand klickt.
-      Betrifft: `Agenten/Handel/freigabe.py`, `scanner/handeln.py`, `xperp/bot.py`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und

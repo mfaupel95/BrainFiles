@@ -625,9 +625,31 @@ oder `handel_erlaubt` stehen auf `false`, gibt das Fenster den Auftrag als
 **Papier** frei und sagt das auf dem Knopf — Live wird nie stillschweigend zu
 Papier.
 
-### Noch nicht angebunden
+### Angebunden an `handeln.py --live`
 
-`handeln.py` und `bot.py` rufen es noch nicht auf. Vorsicht bei der Anbindung:
-Ein Fenster im Pfad der **Tagesroutine** würde die geplante Aufgabe blockieren,
-bis jemand klickt. Es gehört deshalb nur in den `--live`-Pfad und nur, wenn
-tatsächlich jemand davorsitzt.
+Seit dem 02.09.2026 ruft `scanner/handeln.py` das Fenster vor jedem Einstieg
+auf — aber nur im `--live`-Pfad und erst, wenn alle bisherigen Sperren offen
+sind. Dazu kam eine **siebte Sperre**: ohne Sitzung am Bildschirm kein Live.
+
+Zwei Entscheidungen, die den Ausschlag geben:
+
+**Ausstiege laufen nie durch das Fenster.** Ein Stop muss auch dann greifen,
+wenn niemand davorsitzt. Bestätigt wird nur, was Geld *bindet*.
+
+**Die Uhr ist der eigentliche Schutz, nicht die Sitzungserkennung.** Am
+02.09.2026 gemessen: `sys.stdin.isatty()` meldet in der Git-Bash unter Windows
+auch dann ein Terminal, wenn stdin umgeleitet wurde — als alleinige Sperre
+taugt es nicht. Deshalb lehnt das Fenster nach `FREIGABE_ZEITLIMIT_S` (120 s)
+ohne Bedienung von selbst ab. Geht es je versehentlich in einer geplanten
+Aufgabe auf, blockiert es sie nicht, sondern sagt Nein. Jede Bedienung setzt
+die Uhr zurück — wer davorsitzt, hat alle Zeit.
+
+Als zweite Hürde setzen die Wrapper in `../Routinen/` jetzt
+`MAXHIRN_ROUTINE=1`. Das ist die ausdrückliche Ansage „hier sitzt niemand" und
+schlägt die Erkennung. Die Tagesroutine läuft ohnehin mit `--papier`.
+
+Fällt das Fenster aus — Tk fehlt, Anzeige weg, Abbruch — wird **nicht
+gehandelt**. Ein Fehler beim Bestätigen darf nie zu einem ungefragten Kauf
+werden.
+
+`xperp/bot.py` ist noch nicht angebunden; er legt Befehle ohnehin nur vor.

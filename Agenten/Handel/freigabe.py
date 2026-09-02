@@ -21,6 +21,10 @@ Zwei weitere Regeln, die im Code verankert sind und nicht in einem Kommentar:
     Wachen-Wert. Passt ein Auftrag nicht, ist der Auftrag falsch.
   * Der Hebeldeckel laesst sich senken, nie heben. Der Hebel selbst ist
     Ergebnis der Stopweite, keine Eingabe (Wissen/XPERP-Handel.md).
+  * Mit zeitlimit lehnt das Fenster von selbst ab, wenn niemand es bedient.
+    Das ist der eigentliche Schutz gegen ein Fenster, das versehentlich in
+    einer geplanten Aufgabe aufgeht: es blockiert sie nicht, es sagt Nein.
+    Jede Bedienung setzt die Uhr zurueck - wer davorsitzt, hat alle Zeit.
 
 Aufruf als Bibliothek:
 
@@ -218,13 +222,16 @@ class Freigabefenster:
     """Zeigt einen Auftrag, laesst ihn im Rahmen der Wachen aendern und gibt
     ihn frei oder nicht. Kennt weder Boerse noch Order."""
 
-    def __init__(self, auftraege, spur, w, bestand):
+    def __init__(self, auftraege, spur, w, bestand, zeitlimit=None):
         self.spur, self.w, self.bestand = spur, w, bestand
         self.auftraege = [dict(a) for a in auftraege]
         self.i = 0
         self.ergebnis = []
         self.regler = {}
         self.rechnung, self.pruefungen = None, []
+        self.zeitlimit = zeitlimit
+        self.rest = zeitlimit
+        self.abgelaufen = False
 
         self.root = tk.Tk()
         self.root.title("Scharfschalten - Spur %s"
@@ -258,6 +265,9 @@ class Freigabefenster:
                                  wraplength=560, justify="left")
         self.hinweis.pack(anchor="w", pady=(10, 0))
 
+        self.uhr = ttk.Label(aussen, foreground="#666")
+        self.uhr.pack(anchor="w", pady=(6, 0))
+
         knoepfe = ttk.Frame(aussen)
         knoepfe.pack(fill="x", pady=(12, 0))
         self.ja = ttk.Button(knoepfe, text="Bestaetigen", command=self._bestaetigen)
@@ -268,6 +278,29 @@ class Freigabefenster:
                    command=self._weiter).pack(side="left")
 
         self._zeige()
+        if self.zeitlimit:
+            self._tick()
+
+    # -- Uhr: ohne Bedienung wird abgelehnt --
+
+    def _tick(self):
+        """Einmal je Sekunde. Laeuft die Uhr ab, ist das eine Ablehnung -
+        nie eine Bestaetigung. Ein unbeaufsichtigtes Fenster kauft nichts."""
+        if self.rest is None:
+            return
+        if self.rest <= 0:
+            self.abgelaufen = True
+            self._ablehnen()
+            return
+        self.uhr.config(text="Ohne Bedienung abgelehnt in %d s" % self.rest)
+        self.rest -= 1
+        self._uhr_id = self.root.after(1000, self._tick)
+
+    def _uhr_zurueck(self):
+        """Jede Bedienung schenkt die volle Zeit neu - wer davorsitzt, hat
+        alle Ruhe der Welt."""
+        if self.zeitlimit:
+            self.rest = self.zeitlimit
 
     # -- Aufbau je Auftrag --
 
@@ -356,6 +389,7 @@ class Freigabefenster:
         return a
 
     def _neu(self, *_x):
+        self._uhr_zurueck()
         a = self._aktueller()
         if a is None or a["einstieg"] <= 0:
             self.werte.config(text="Einstieg ist keine Zahl groesser null.")
@@ -436,16 +470,20 @@ class Freigabefenster:
         return self.ergebnis
 
 
-def bestaetige(auftraege, spur, bestand=None):
+def bestaetige(auftraege, spur, bestand=None, zeitlimit=None):
     """Zeigt das Fenster und gibt die bestaetigten Auftraege zurueck.
 
     Leere Liste heisst abgelehnt - und abgelehnt ist auch, wer das Fenster
-    schliesst oder Escape drueckt. Es gibt keinen Weg, der ohne Klick
-    freigibt."""
+    schliesst, Escape drueckt oder die Uhr ablaufen laesst. Es gibt keinen
+    Weg, der ohne Klick freigibt.
+
+    zeitlimit in Sekunden: ohne Bedienung wird abgelehnt. Jede Bedienung
+    setzt die Uhr zurueck. None = ohne Uhr, nur fuer den Aufruf von Hand."""
     if not auftraege:
         return []
     w = lade_wachen(spur)
-    return Freigabefenster(auftraege, spur, w, dict(bestand or {})).lauf()
+    return Freigabefenster(auftraege, spur, w, dict(bestand or {}),
+                           zeitlimit).lauf()
 
 
 # --- Kommandozeile ---------------------------------------------------------
@@ -472,6 +510,8 @@ def main():
                    help="JSON mit gebunden_usd, offene_positionen, verlust_gesamt_usd")
     p.add_argument("--beispiel", action="store_true",
                    help="mit einem Beispielauftrag oeffnen")
+    p.add_argument("--zeitlimit", type=int, default=None,
+                   help="Sekunden ohne Bedienung, nach denen abgelehnt wird")
     a = p.parse_args()
 
     if a.beispiel:
@@ -486,7 +526,7 @@ def main():
         auftraege = [auftraege]
 
     bestand = json.loads(Path(a.bestand).read_text("utf-8")) if a.bestand else {}
-    frei = bestaetige(auftraege, a.spur, bestand)
+    frei = bestaetige(auftraege, a.spur, bestand, a.zeitlimit)
 
     text = json.dumps(frei, indent=2, ensure_ascii=False)
     if a.aus:

@@ -12,6 +12,9 @@
 # Hand. Siehe Wissen/Routinen.md.
 
 $ErrorActionPreference = 'Stop'
+# Sagt handeln.py, dass hier niemand am Bildschirm sitzt: kein
+# Freigabefenster, kein scharfer Handel aus dem Zeitplan.
+$env:MAXHIRN_ROUTINE = '1'
 $wurzel  = Split-Path $PSScriptRoot -Parent
 $scanner = Join-Path $wurzel 'Handel\scanner'
 $py      = Join-Path $scanner '.venv\Scripts\python.exe'

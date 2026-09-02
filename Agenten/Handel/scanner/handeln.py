@@ -13,7 +13,14 @@ Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     4. wachen.json  freigabe.erfuellt == true      (Schutzregeln, Bedingung 1)
     5. Herzschlag frisch                            (Bedingung 3)
     6. rollierender Erwartungswert nicht negativ    (Bedingung 5)
+    7. eine Sitzung am Bildschirm, die das Freigabefenster bedienen kann
 Fehlt eine, wird Papier gehandelt und es wird gesagt, welche Sperre zu war.
+
+Sind alle sieben offen, zeigt freigabe.py vor jedem Einstieg das
+Bestaetigungsfenster (Schutzregeln Punkt 3). Bedient es niemand, lehnt es nach
+FREIGABE_ZEITLIMIT_S von selbst ab - eine geplante Aufgabe bleibt so nie an
+einem Fenster haengen. Ausstiege laufen nie durch das Fenster: ein Stop muss
+auch dann greifen, wenn niemand davorsitzt.
 
 Bedingungen 2-5 aus Wissen/Schutzregeln.md rechnet wachen_pruefung.py:
     2  Drawdown-Ratsche : Positionsgroesse x0.5 ab drawdown_halbierung_prozent,
@@ -33,6 +40,7 @@ scharfen Lauf mit einem einzigen Wert und Kleinstbetrag gegenpruefen.
 import argparse
 import csv
 import json
+import os
 import sys
 from datetime import datetime, timezone, date
 from pathlib import Path
@@ -213,6 +221,60 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 "%.6f" % v["stop"], "%.6f" % v["ziel"], "score %.1f" % v["score"])
 
 
+# --- Freigabe von Hand (Schutzregeln Punkt 3) -------------------------------
+
+# Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
+# Das ist der tragende Schutz - nicht die Erkennung darunter: geht das Fenster
+# je versehentlich in einer geplanten Aufgabe auf, blockiert es sie nicht,
+# sondern sagt Nein und der Lauf handelt nicht.
+FREIGABE_ZEITLIMIT_S = 120
+
+
+def sitzung_da():
+    """Sitzt jemand davor, der das Freigabefenster bedienen kann?
+
+    Nur eine erste Huerde, keine Garantie: isatty() ist unter Windows nicht
+    verlaesslich - in der Git-Bash meldet es auch dann ein Terminal, wenn
+    stdin umgeleitet wurde (gemessen 02.09.2026). Verlassen wird sich
+    deshalb auf FREIGABE_ZEITLIMIT_S, nicht auf diese Funktion.
+
+    MAXHIRN_ROUTINE=1 setzt der Wrapper einer geplanten Aufgabe. Das ist die
+    ausdrueckliche Ansage "hier sitzt niemand" und schlaegt alles andere."""
+    if os.environ.get("MAXHIRN_ROUTINE"):
+        return False
+    try:
+        return bool(sys.stdin and sys.stdin.isatty())
+    except (ValueError, AttributeError):
+        return False
+
+
+def hole_freigabe(vs, z, s):
+    """Jeden Vorschlag im Fenster bestaetigen lassen. Gibt die bestaetigten
+    zurueck - abgelehnt heisst leere Liste, und leer heisst kein Einstieg.
+
+    Faellt das Fenster aus (Tk fehlt, Anzeige weg), wird nicht gehandelt.
+    Ein Fehler beim Bestaetigen darf nie zu einem ungefragten Kauf werden."""
+    sys.path.insert(0, str(HIER.parent))
+    try:
+        import freigabe
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabefenster nicht verfuegbar (%s) - kein Einstieg." % e,
+              file=sys.stderr)
+        return []
+    bestand = {
+        "gebunden_usd": sum(p["usd"] for p in z["positionen"]),
+        "offene_positionen": len(z["positionen"]),
+        "verlust_gesamt_usd": s["ruecklauf_usd"],
+    }
+    try:
+        return freigabe.bestaetige(vs, "spot", bestand,
+                                   zeitlimit=FREIGABE_ZEITLIMIT_S)
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabe abgebrochen (%s) - kein Einstieg." % e,
+              file=sys.stderr)
+        return []
+
+
 # --- Wachen-Status (Bedingungen 2-5) ----------------------------------------
 
 def _spiegeln(w):
@@ -290,6 +352,9 @@ def lauf(modus):
         if s["ev_negativ"]:
             gruende.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
                            % s["rollierender_ev"])
+        if not sitzung_da():
+            gruende.append("keine Sitzung am Bildschirm - Freigabefenster "
+                           "nicht moeglich (Schutzregeln Punkt 3)")
         if gruende:
             print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
             print("-> es wird Papier gehandelt.")
@@ -336,10 +401,23 @@ def lauf(modus):
             _spiegeln(w)
         return
 
+    # Ausstiege laufen nie durch das Fenster: ein Stop muss greifen, auch
+    # wenn niemand davorsitzt.
     print("- Ausstiege -")
     pruefe_ausstiege(z, live)
+
     print("- Einstiege -")
-    pruefe_einstiege(z, vs, w, live, s["groessenfaktor"])
+    faktor = s["groessenfaktor"]
+    if live and vs:
+        # Punkt 3 der Schutzregeln: scharf geschaltet wird von Hand. Der
+        # Faktor der Drawdown-Ratsche wird vorher eingerechnet, damit im
+        # Fenster die Zahl steht, die auch gekauft wird.
+        vs = [dict(v, usd=round(v["usd"] * faktor, 2), cr=2.0) for v in vs]
+        faktor = 1.0
+        vs = hole_freigabe(vs, z, s)
+        if not vs:
+            print("  Freigabe abgelehnt - kein Einstieg in diesem Lauf.")
+    pruefe_einstiege(z, vs, w, live, faktor)
 
     eing = sum(p["usd"] for p in z["positionen"])
     print("\nStand: %d/%d Positionen, %d/%d USD gebunden"
