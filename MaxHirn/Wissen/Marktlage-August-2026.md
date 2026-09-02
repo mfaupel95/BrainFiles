@@ -3,8 +3,9 @@ id: 20260830-marktlage-august-2026
 title: 'Marktlage August 2026 — Faktenstand und Quellenbewertung'
 tags: [finanzen]
 created: 2026-08-14
-updated: 2026-08-24
-related: []
+updated: 2026-09-02
+related:
+  - id: 20260902-xrp-analyse-sta
 summary: 'Geprüfter Marktstand vom August 2026 samt Bewertung der zugrunde liegenden Quelle.'
 ---
 
@@ -102,6 +103,13 @@ Drei kostenlose Indikatoren entscheiden, ob die These trägt — lange bevor ein
 2. Fällt der **Korrelationskoeffizient S&P/Gold** tatsächlich in den negativen Bereich?
 3. Bleibt der **Ölpreis** oben? (hängt an Hormus, nicht an Charttechnik)
 
+## Fortsetzung
+
+Am **02.09.2026** hat derselbe Kanal einen XRP-Einzelbeitrag veröffentlicht —
+Charttechnik, Indikatoren, Positionierungsvorschlag. Ausgewertet in
+[[XRP-Analyse-STA-September-2026]]. Die Quellenbewertung hier gilt dort
+unverändert weiter.
+
 ---
 
-Verwandt: [[Profil]]
+Verwandt: [[Profil]], [[XRP-Analyse-STA-September-2026]]
