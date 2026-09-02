@@ -36,6 +36,7 @@
 !MaxHirn/*.md
 !MaxHirn/Wissen/**/*.md
 !MaxHirn/.claude/skills/**
+!MaxHirn/.claude/agents/**
 
 # --- 4) Das Archiv-Werkzeug (nicht das Archiv) ------------------------------
 # Archiv/ hiess bis zum 30.08.2026 Claude/ - benannt nach einem Modell, obwohl
