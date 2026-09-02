@@ -342,6 +342,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Entscheidung von Max
       Betrifft: `Wissen/Schutzregeln.md`, `Agenten/MCP-Server/kraken/`
       Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
+- [ ] **T-028 — Scharfschalt-Fenster für den Handel gibt es noch nicht**
+      Kontext: `Wissen/Schutzregeln.md`, Punkt 3 der Handelserlaubnis, verlangt
+      beim Scharfschalten ein Fenster, das die Werte aus `wachen.json` anzeigt,
+      sie vor der Bestätigung anpassbar macht (Schieberegler, Auswahl- oder
+      Eingabefeld) und je ein Feld zum Bestätigen und Ablehnen hat. Gebaut ist
+      es nicht; scharf wird bisher über `handeln.py --live` von Hand.
+      Nächster Schritt: entscheiden, wo das Fenster lebt — kleines
+      PowerShell-/WPF-Fenster im Wrapper `Routinen/marktscanner.ps1` oder ein
+      Schritt in `handeln.py` selbst —, dann bauen und die Regel entsprechend
+      von „noch nicht gebaut" auf den echten Weg umstellen.
+      Betrifft: `Agenten/Handel/scanner/handeln.py`, `Agenten/Routinen/marktscanner.ps1`, `Wissen/Schutzregeln.md`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 ## Erledigt
 
 - [x] **T-022 — `MaxHirn-Sicherung` deaktiviert, `MaxHirn-Posteingang` scheiterte**

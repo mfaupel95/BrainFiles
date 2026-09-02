@@ -3,7 +3,7 @@ id: 20260830-schutzregeln
 title: 'Schutzregeln'
 tags: [sicherheit, betrieb]
 created: 2026-08-27
-updated: 2026-09-01
+updated: 2026-09-02
 related: []
 summary: 'Welche Dateien unter BrainFiles ein Agent nicht anfassen darf und warum.'
 ---
@@ -18,7 +18,8 @@ Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
 01.09.2026 ersetzt: automatischer Handel ist erlaubt, solange die Grenzen in
 den beiden `wachen.json` eingehalten werden**, **Notizen unter `Wissen/` am
 01.09.2026 wieder geschützt: kein Löschen durch den Agenten, Änderung nur im
-Rahmen des Bestehenden** — alles siehe unten.
+Rahmen des Bestehenden**, **Kraken am 02.09.2026 ausdrücklich auf Lesen
+begrenzt** — alles siehe unten.
 
 ## Hauptregel
 
@@ -101,8 +102,57 @@ Skriptunterstützung:
    eine Regel vergessen, eine Datei nicht.
 2. **Jede Position trägt einen nicht abschaltbaren Stop**, und über allem steht
    ein Kill-Switch auf den Gesamtverlust (`kill_switch_gesamt_usd`).
-3. **Scharf geschaltet wird von Hand, ein Pop-Up Fennster soll erscheinen und die Werte Anzeigen, dropdown oder Textfeld oder schieberegler enthalten zum eventuellen anpassen und Felder zum bestätigen/ablehnen** Was danach läuft, läuft ohne Rückfrage
-   — aber der Schalter selbst wird nicht von einem Zeitplan umgelegt, es sei denn ein Agent überwacht das ganze und es ist mein ausdrücklicher wunscch
+3. **Scharf geschaltet wird von Hand.** Beim Scharfschalten erscheint ein
+   Fenster, das die geltenden Werte aus `wachen.json` anzeigt und sie vor der
+   Bestätigung anpassbar macht — Schieberegler, Auswahlfeld oder Eingabefeld —,
+   dazu je ein Feld zum Bestätigen und zum Ablehnen. Was danach läuft, läuft
+   ohne Rückfrage je Order. Das Fenster ist noch nicht gebaut (T-028); bis
+   dahin ist der bewusste Aufruf von Hand die einzige Form des Scharfschaltens.
+
+   **Ein Zeitplan legt den Schalter nicht um.** Die eine Ausnahme, von Max am
+   01.09.2026 so gewollt, hat zwei Bedingungen, die **beide** erfüllt sein
+   müssen: Ein Agent überwacht den Lauf, **und** Max hat das Scharfschalten für
+   genau diesen Lauf ausdrücklich angeordnet. „Ein Agent überwacht das" ist
+   dabei keine Behauptung, sondern der Herzschlag aus Bedingung 3 weiter unten:
+   Schlägt er nicht, überwacht niemand, und die Ausnahme greift nicht.
+
+### Kraken ist keine dritte Spur — dort wird nur gelesen
+
+Angelegt 02.09.2026, weil die Lücke bei der Durchsicht des Regelwerks auffiel.
+Die beiden Spuren oben sind abschließend: **auf Kraken löst kein Agent eine
+Order aus, weder automatisch noch auf Anweisung im Chat.**
+
+Die Begründung steht in diesem Abschnitt selbst. Drei Eigenschaften tragen die
+Handelserlaubnis — Grenzen in einer Datei, nicht abschaltbarer Stop mit
+Kill-Switch, Scharfschalten von Hand. Für Kraken gibt es keine davon: keine
+`wachen.json`, kein Handelsjournal, keinen Herzschlag, keine Freigabestufen.
+Nach dem eigenen Maßstab oben — *fehlt eine, gilt sie nicht* — ist damit nichts
+erlaubt.
+
+Das ist keine papierne Lücke. Der MCP-Server `kraken` ist in jeder Sitzung
+geladen, und sein Schlüssel trägt laut `Agenten/MCP-Server/kraken/README.md`
+das Recht *Create & Modify Orders*. Die beiden schreibenden Werkzeuge würden
+also wirklich ausführen.
+
+| Werkzeug | erlaubt |
+|---|---|
+| `kraken_guthaben`, `kraken_kurs`, `kraken_candles`, `kraken_paare_suchen`, `kraken_ledger`, `kraken_trades`, `kraken_offene_orders`, `kraken_geschlossene_orders`, `kraken_status` | ja — lesen, auswerten, vorbereiten |
+| `kraken_order_aufgeben`, `kraken_order_stornieren` | **nein** — auch nicht mit Bestätigung im Chat |
+
+Der Skill `geld` bleibt unberührt: er liest Kraken, stellt fällige Zahlungen
+und verfügbare Mittel nebeneinander und hält vor dem Auslösen an. Neu ist nur,
+dass das nicht mehr allein in einem Skill steht — eine Skill-Regel gilt nicht,
+wenn kein Skill läuft.
+
+**Der Weg zu einer dritten Spur ist offen**, er führt nur nicht am Verfahren
+vorbei: erst `../Agenten/Handel/kraken/wachen.json` mit denselben Feldern wie
+die beiden anderen, dann ein Skript, das sie liest und ein Journal schreibt,
+dann die fünf Bedingungen aus *Damit der Automat unbeaufsichtigt laufen darf*.
+Bis dahin wäre „Kraken-Handel" nicht der bewachte Automat, sondern genau die
+Wette mit Skriptunterstützung, die dieser Abschnitt ausschließt.
+
+**Kein Auszahlungsrecht, auch hier nicht.** Der Schlüssel hat *Withdraw Funds*
+bewusst nicht, und es gibt kein Auszahlungswerkzeug. Das bleibt so.
 
 ### Spur 1 — Marktscanner: läuft von selbst, ohne Hebel
 
@@ -249,10 +299,13 @@ heimlich eingesetzt.
 
 - **Kein Zeitplan legt den Schalter um.** `Routinen/marktscanner.ps1` ruft
   `handeln.py` ohne `--live`; scharf wird ein Lauf durch einen bewussten Aufruf
-  von Hand. Das ist kein Widerspruch zum automatischen Handel, sondern seine
+  von Hand — oder unter den beiden Bedingungen aus Punkt 3 oben (Herzschlag
+  schlägt **und** Max hat es für diesen Lauf angeordnet), sonst nicht. Das ist kein Widerspruch zum automatischen Handel, sondern seine
   Bedingung: Der Automat entscheidet über **Positionen**, nicht darüber, ob er
   selbst scharf ist.
 - **Kein Auszahlungsrecht**, in keiner Spur.
+- **Kraken bleibt lesend.** Keine Order, keine Stornierung — siehe *Kraken ist
+  keine dritte Spur* oben.
 - **Jede andere Geldbewegung** — Überweisungen, Ein- und Auszahlungen, Umtausch
   außerhalb dieser beiden Spuren — bleibt vorbereitend. Der Skill `geld`
   arbeitet bis zur Bestätigungsseite und hält dort an.
