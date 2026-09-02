@@ -97,3 +97,4 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 ### Verfahren
 
 - `20260830-pdf-scans-lesen` — **Gescannte PDFs lesen** — `Wissen/PDF-Scans-lesen.md` — Wie PDFs ohne Textebene per OCR auswertbar gemacht werden.
+- `20260902-skill-bibliothek` — **Skill-Bibliothek** — `Wissen/Skill-Bibliothek.md` — Eigene Skills liegen serverseitig im Konto; der Ordner unter AppData ist nur ein Sync-Cache ohne Git und ohne Sicherung.
