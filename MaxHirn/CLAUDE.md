@@ -84,18 +84,12 @@ im Skill `skill`. Ob sich etwas wirklich wiederholt, wird gemessen (Skill
 
 ## Notizen im Vault
 
-Neue Erkenntnisse, die dauerhaft gelten, gehören als Markdown-Datei nach `Wissen/`
-(Skill `notiz`), nicht in eine Chat-Antwort. Verlinkung untereinander mit
-`[[Dateiname]]`, damit Obsidian den Graphen aufbauen kann.
-
-**Das geschieht ungefragt, nicht als Angebot.** Wenn am Ende einer Aufgabe ein
-Ergebnis steht, das in einem Monat noch gilt — eine Messung, eine Entscheidung
-mit Begründung, eine Falle, die Zeit gekostet hat —, wird es abgelegt und die
-Ablage in einem Satz gemeldet. Nicht „ich könnte das als Notiz ablegen".
-Gefragt wird nur im Zweifelsfall, ob etwas überhaupt dauerhaft gilt.
-Ausgewertete Zahlen brauchen dabei das Skript, mit dem sie entstanden sind —
-sonst ist die Notiz beim nächsten Mal nicht nachrechenbar (Beispiel:
-[[Handelsbots]] und `../Agenten/Handel/dca_auswertung.py`).
+Verlinkung mit `[[Dateiname]]`, damit Obsidian den Graphen aufbauen kann. Nur
+im Zweifelsfall nachfragen, ob ein Befund überhaupt dauerhaft gilt — sonst
+gilt oben Beschriebenes: ablegen, in einem Satz melden. Ausgewertete Zahlen
+brauchen dabei das Skript, mit dem sie entstanden sind, sonst ist die Notiz
+beim nächsten Mal nicht nachrechenbar (Beispiel: [[Handelsbots]] und
+`../Agenten/Handel/dca_auswertung.py`).
 
 Kurzlebiges (Zwischenstände, Ausgaben eines einzelnen Laufs) gehört **nicht**
 in den Vault, sondern nach `../Werkstatt/`.
