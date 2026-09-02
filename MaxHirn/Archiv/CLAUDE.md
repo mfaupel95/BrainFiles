@@ -1,5 +1,14 @@
 # Digitales Archiv
 
+Diese Datei liegt zweimal, als `CLAUDE.md` und als `AGENTS.md`. Gleicher
+Inhalt, zwei Namen, weil Claude die eine und Hermes/Codex die andere liest.
+**Wer eine ändert, ändert beide.** Geprüft wird das maschinell von
+`../../Agenten/Routinen/wissen-index-pruefen.ps1`: Die beiden Fassungen müssen
+Zeichen für Zeichen gleich sein, sonst meldet die Systemprüfung es am nächsten
+Morgen. Am 02.09.2026 waren sie auseinandergelaufen — Hermes kannte die
+Vektorsuche, Claude nicht; Claude kannte die Mail-Sperre, Hermes nicht. Beides
+ist hier zusammengeführt.
+
 ## Schutzregeln — vor jedem Schreibzugriff
 
 `Dokumente/`, `Bilder/`, `Videos/`, `Musik/` (samt Playlisten) sind **Originale
@@ -45,8 +54,27 @@ cd ArchivSuche
 ```
 
 Optional mit Filter: `--category Dokumente` (Bilder | Videos | Musik | Dokumente),
-`--limit N` (Standard 5). Kein Treffer oder Frage erfordert allgemeines Weltwissen?
-Dann normal mit Internetsuche fortfahren.
+`--limit N` (Standard 5).
+
+**Findet die Stichwortsuche nichts, semantisch nachsuchen** (seit 19.08.2026):
+
+```
+.venv\Scripts\python.exe vektor_suche.py "frage in eigenen worten"
+```
+
+Die Volltextsuche braucht das richtige Wort, die semantische die richtige
+Bedeutung. Beispiel: „wie schuetze ich Lautsprecher vor Ueberlastung" findet den
+Peak-Limiter-Abschnitt in einem gescannten Handbuch, in dem weder „schuetzen"
+noch „Ueberlastung" vorkommt. Umgekehrt ist die Volltextsuche bei Aktenzeichen,
+Rechnungsnummern und Eigennamen zuverlässiger — `--hybrid` zeigt beides.
+
+Der Vektorindex deckt nur Dateien mit mindestens 200 Zeichen Text ab
+(1076 von 7631). Sein Stand ist der **19.08.2026**; nach größeren Änderungen am
+Archiv muss er neu gebaut werden, sonst sucht er auf einem alten Bestand.
+Details: [ArchivSuche/VEKTORSUCHE.md](ArchivSuche/VEKTORSUCHE.md).
+
+Erst wenn beide nichts liefern oder die Frage allgemeines Weltwissen verlangt,
+mit Internetsuche fortfahren.
 
 ## Sparsam arbeiten
 
@@ -66,6 +94,7 @@ findet, wo eigentlich etwas erwartet wird, zuerst neu indexieren:
 
 ```
 .venv\Scripts\python.exe index.py
+.venv\Scripts\python.exe vektor_index.py    # danach auch den Vektorindex
 ```
 
 ## Dateien verschicken
@@ -100,7 +129,8 @@ wissen musst, *welche* Dateien betroffen sind: `--details`. Vor größeren Läuf
 lohnt `--dry-run`.
 
 Dateien, die das Skript nicht sicher zuordnen konnte, bleiben im Posteingang
-liegen – lies den Inhalt und verschiebe sie dann selbst gezielt in den passenden
+liegen (die Ausgabe zeigt Grund und Vorschau) – lies den Inhalt und verschiebe
+sie dann selbst gezielt in den passenden
 Unterordner von `Dokumente/` (oder `Bilder/`/`Videos/`/`Musik/`), statt sie zu
 raten. Danach `index.py` laufen lassen, falls `sort_inbox.py` das nicht schon
 automatisch getan hat.
