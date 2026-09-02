@@ -50,9 +50,15 @@ liegt er in Git und in der Sicherung, und ein Fehlgriff kostet einen
 
 Für `local-ai-config-doctor` am 02.09.2026 so eingerichtet. **Nebenwirkung:**
 Claude Code lädt den Skill dadurch zweimal — einmal als Projektskill aus dem
-Vault, einmal als `anthropic-skills:` aus dem Konto. Beide Einträge stehen in
-der Skill-Liste. Wer das nicht will, legt die Arbeitskopie stattdessen unter
-`MaxHirn/Referenz/` ab; dort wird sie nicht geladen, ist aber genauso gesichert.
+Vault, einmal als `anthropic-skills:` aus dem Konto. Das ist hier gewollt: der
+Skill hat sonst keinen bleibenden Ort auf der Platte.
+
+Für Skills, die **global** unter `~/.claude/skills/` installiert sind, gilt das
+nicht — dort wäre die zweite Fassung nur Rauschen. Deren Sicherungskopie liegt
+deshalb in `MaxHirn/.claude/skills-sicherung/`: in Git (eigene Freigabezeile in
+`.gitignore`) und in der Sicherung, aber **nicht** von Claude Code geladen, weil
+nur `skills/` gelesen wird. Gültig bleibt die globale Fassung; die Kopie ist
+Rückfallebene, keine zweite Quelle.
 
 ## Nachweis, welche Fassung wann galt
 
