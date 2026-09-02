@@ -902,24 +902,34 @@ Es liest die Ereignisfelder ueber ihren **Namen** aus, nicht ueber
 
 ## Monitore und PowerToys PowerDisplay (aus PowerToys-Report 02.09.2026)
 
-Zwei Bildschirme am Rechner:
+Zwei Bildschirme, **beide direkt an DisplayPort** (VideoOutputTechnology 10):
 
-| Windows-Name | EDID-Kennung | Anzeige in Windows | DDC/CI |
-|---|---|---|---|
-| DISPLAY1 | `ACR0460` — Acer XB281HK (DP) | echtes Monitorprofil | **funktioniert** |
-| DISPLAY2 | `ACI27A8` — zweiter Acer | „Generic PnP Monitor" | **antwortet nicht** |
+| Windows | EDID-Kennung | echtes Modell (WMI) | Anzeige in Windows | DDC/CI |
+|---|---|---|---|---|
+| DISPLAY1 | `ACR0460` | Acer XB281HK | echtes Monitorprofil | **funktioniert** |
+| DISPLAY2 | `ACI27A8` | **ASUS MG278** | „Generic PnP Monitor" | **antwortet nicht** |
 
 **PowerDisplay steuert nur den XB281HK.** Für ihn liest das Modul die DDC/CI-Fähigkeiten
 sauber aus und merkt sie sich in `PowerDisplay/monitor_state.json` (Helligkeit = VCP-Code
-`0x10`, Kontrast = VCP-Code `0x12`). Der **zweite Monitor** liefert nach drei Versuchen
-eine **leere Capability-Zeichenkette**; PowerDisplay verwirft ihn dann mit
-`monitor ignored — capabilities unavailable`. Folge: Helligkeit und Kontrast des zweiten
-Bildschirms lassen sich über PowerToys **nicht** einstellen.
+`0x10`, Kontrast = VCP-Code `0x12`). Die **ASUS MG278** liefert nach drei Versuchen eine
+leere Capability-Zeichenkette; PowerDisplay verwirft sie mit
+`monitor ignored — capabilities unavailable`.
 
-Mögliche Ursachen für die leere Antwort, noch **nicht** eingegrenzt:
-- DDC/CI im OSD-Menü des zweiten Monitors abgeschaltet (häufigster Fall — dort einschalten)
-- Anschluss über HDMI, Adapter, KVM oder Dock, die DDC/CI nicht durchreichen
-- „Generic PnP Monitor" heißt: Windows hat kein echtes Monitor-INF geladen
+**Unabhängig von PowerToys nachgestellt** (02.09.2026) mit
+`Agenten/Routinen/monitor-ddc-pruefen.ps1` — direkte `dxva2.dll`-Abfrage:
+- XB281HK: Capability-String + Helligkeit (0/70/100) kommen zurück.
+- MG278: schon `GetCapabilitiesStringLength` schlägt fehl, Win32-Fehler
+  **`0xC0262582`** (`ERROR_GRAPHICS_DDCCI_VCP_NOT_SUPPORTED`). Auch ein roher
+  `GetMonitorBrightness` scheitert. Der Monitor führt DDC/CI schlicht nicht aus.
+
+Das ist **kein PowerToys-Fehler** und über Software nicht umgehbar — jedes Werkzeug
+(`ControlMyMonitor`, `Monitorian`, …) bekommt denselben Fehler. Fix liegt am Monitor:
+
+1. MG278-OSD: **Menu → System Setup → DDC/CI → On**. Häufigste Ursache.
+2. Hilft das nicht: MG278 ~30 s komplett vom Strom (nicht Standby), DP-Kabel
+   prüfen/tauschen, anderen DP-Eingang am Monitor probieren.
+3. Danach `monitor-ddc-pruefen.ps1` erneut laufen lassen; antwortet die MG278,
+   in PowerToys → PowerDisplay „Monitore aktualisieren".
 
 `WmiController: WMI DiscoverMonitors failed: WDM specific return code: 4200` bei jedem
 Start ist **erwartbar** — die WMI-Helligkeitsklasse gibt es nur für Notebook-Panels, nicht

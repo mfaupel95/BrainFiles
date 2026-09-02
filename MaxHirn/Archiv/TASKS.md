@@ -143,6 +143,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
+- [ ] **T-020 — ASUS MG278 antwortet nicht auf DDC/CI, PowerDisplay lässt ihn aus**
+      Kontext: Aus dem PowerToys-Report vom 02.09.2026. Von zwei Monitoren
+      (beide direkt an DisplayPort) steuert PowerToys PowerDisplay nur den
+      Acer XB281HK. Die **ASUS MG278** (`DISPLAY2`, EDID `ACI27A8`, in Windows
+      als „Generic PnP Monitor") liefert keine DDC/CI-Daten; unabhängig von
+      PowerToys mit `Agenten/Routinen/monitor-ddc-pruefen.ps1` nachgestellt:
+      schon `GetCapabilitiesStringLength` scheitert mit Win32-Fehler
+      `0xC0262582` (`ERROR_GRAPHICS_DDCCI_VCP_NOT_SUPPORTED`). Kein
+      Software-Fehler — Reparatur nur am Monitor möglich.
+      Nächster Schritt (Max, am Gerät): MG278-OSD → System Setup → DDC/CI → On;
+      hilft das nicht, Monitor ~30 s stromlos, DP-Kabel/-Eingang prüfen. Danach
+      `monitor-ddc-pruefen.ps1` erneut, bei Erfolg PowerDisplay „Monitore
+      aktualisieren". Details: [[Hardware]], Abschnitt „Monitore und PowerToys
+      PowerDisplay".
+      Betrifft: Monitor ASUS MG278 · `Agenten/Routinen/monitor-ddc-pruefen.ps1`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
 - [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**
       Kontext: `G:` ist erneut nicht angeschlossen (`Test-Path G:\` = False; in
       der Datenträgerliste nur C:, O:, J:). Der geplante 20-Uhr-Lauf scheitert
