@@ -270,6 +270,64 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
+
+- [ ] **T-024 — `CLAUDE.md` und `AGENTS.md` sind auseinandergelaufen**
+      Kontext: Beide Paare in `MaxHirn/` und `MaxHirn/Archiv/` behaupten im
+      Kopf „wer eine ändert, ändert die andere mit" — tatsächlich weichen sie
+      ab, in beide Richtungen. `MaxHirn/Archiv/AGENTS.md` kennt die
+      Vektorsuche (`vektor_suche.py`, `--hybrid`), `CLAUDE.md` nicht; dafür
+      fehlt in `AGENTS.md` die Sperre „Mailversand nicht eingerichtet" (T-008),
+      der Netzteil-Kontext der zerstörten Dateien und die Umlaut-Suchfalle.
+      Hermes und Claude arbeiten damit nach verschiedenen Ständen.
+      Nächster Schritt: beide Paare zusammenführen (jeweils die Vereinigung,
+      nicht eine Seite überschreiben) und die Gleichheit in
+      `Routinen/wissen-index-pruefen.ps1` als `diff`-Prüfung verankern.
+      Betrifft: `MaxHirn/CLAUDE.md`, `MaxHirn/AGENTS.md`, `MaxHirn/Archiv/CLAUDE.md`, `MaxHirn/Archiv/AGENTS.md`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
+- [!] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
+      Kontext: `MaxHirn-Sicherung` lief zuletzt am 30.08.2026 20:00 und endete
+      mit Code 1 (robocopy 16, `G:\MaxHirn-Sicherung\` nicht gefunden — G: war
+      zeitweise ab, vgl. T-015). Am 31.08. und 01.09. lief die Aufgabe gar
+      nicht, obwohl sie „Ready" ist und `StartWhenAvailable=True` hat. Die
+      Kopie auf `G:` ist vom 31.08., die Zweitkopie auf `O:` vom 01.09. — der
+      Vault hängt derzeit an einer einzigen aktuellen Kopie, und die liegt im
+      selben Gehäuse. Die Schutzregeln setzen die 20:00-Sicherung als gegeben
+      voraus; keine Regel macht ihren Ausfall zum Stopp-Signal.
+      Nächster Schritt: im Aufgabenplaner-Verlauf klären, warum 31.08./01.09.
+      kein Start erfolgte; danach in `Routinen/systempruefung.ps1` eine harte
+      Meldung ergänzen, wenn der letzte erfolgreiche Sicherungslauf älter als
+      48 h ist.
+      Betrifft: `Agenten/Routinen/sicherung.ps1`, `Wissen/Routinen.md`, `Wissen/Schutzregeln.md`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
+- [ ] **T-026 — `absturz-recovery.md` liegt lose im Skill-Ordner und wird nie geladen**
+      Kontext: `MaxHirn/.claude/skills/absturz-recovery.md` ist eine einzelne
+      Datei statt eines Ordners mit `SKILL.md`. Alle 19 anderen Skills liegen
+      als Ordner vor; der Skill taucht in keiner Skill-Liste einer Sitzung auf.
+      Das Wissen darin ist damit vorhanden, aber unerreichbar.
+      Nächster Schritt: Inhalt prüfen und entweder nach
+      `skills/absturz-recovery/SKILL.md` heben oder in eine Notiz unter
+      `Wissen/` überführen; die `.bak-20260902` daneben mit entfernen.
+      Betrifft: `MaxHirn/.claude/skills/absturz-recovery.md`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
+- [?] **T-027 — Handelsregeln decken Kraken nicht ab**
+      Kontext: `Wissen/Schutzregeln.md` regelt den automatischen Handel über
+      genau zwei Spuren (OKX-Marktscanner, OKX-XPERP) und bindet beide an je
+      eine `wachen.json`. Kraken kommt im gesamten Regelwerk nicht vor —
+      weder in den Schutzregeln noch in den vier `CLAUDE.md`/`AGENTS.md` —,
+      obwohl der MCP-Server `kraken` mit `kraken_order_aufgeben` und
+      `kraken_order_stornieren` in jeder Sitzung geladen ist. Es gibt dort
+      keine Grenzdatei, keinen Pflicht-Stop, keinen Kill-Switch und keine
+      Journalpflicht. Der Skill `geld` hält zwar bei der Bestätigungsseite an,
+      das ist aber eine Skill-Regel, keine Schutzregel.
+      Nächster Schritt: Max entscheidet — entweder Kraken ausdrücklich als
+      „nur lesen, keine Order" in die Schutzregeln schreiben, oder als dritte
+      Spur mit eigener `wachen.json` aufnehmen.
+      Wartet auf: Entscheidung von Max
+      Betrifft: `Wissen/Schutzregeln.md`, `Agenten/MCP-Server/kraken/`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 ## Erledigt
 
 - [x] **T-022 — `MaxHirn-Sicherung` deaktiviert, `MaxHirn-Posteingang` scheiterte**
