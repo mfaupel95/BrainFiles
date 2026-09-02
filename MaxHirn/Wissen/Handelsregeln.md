@@ -48,8 +48,15 @@ Skriptunterstützung:
    Fenster, das die geltenden Werte aus `wachen.json` anzeigt und sie vor der
    Bestätigung anpassbar macht — Schieberegler, Auswahlfeld oder Eingabefeld —,
    dazu je ein Feld zum Bestätigen und zum Ablehnen. Was danach läuft, läuft
-   ohne Rückfrage je Order. Das Fenster ist noch nicht gebaut (T-028); bis
-   dahin ist der bewusste Aufruf von Hand die einzige Form des Scharfschaltens.
+   ohne Rückfrage je Order. **Gebaut ist es seit dem 02.09.2026:**
+   `../Agenten/Handel/freigabe.py`, angebunden an `scanner/handeln.py --live`.
+   Es führt selbst nichts aus, es gibt frei — die Obergrenze jedes Reglers ist
+   der Wert aus `wachen.json`, der Hebeldeckel ist senkbar, nie hebbar, und
+   Ausstiege laufen nie durch das Fenster. Bedient es niemand, lehnt es nach
+   120 Sekunden von selbst ab; das ist der tragende Schutz gegen einen Start
+   aus dem Zeitplan, denn `sys.stdin.isatty()` meldet in der Git-Bash unter
+   Windows auch bei umgeleitetem stdin ein Terminal. `xperp/bot.py` ist nicht
+   angebunden — er legt Befehle ohnehin nur vor.
 
    **Ein Zeitplan legt den Schalter nicht um.** Die eine Ausnahme, von Max am
    01.09.2026 so gewollt, hat zwei Bedingungen, die **beide** erfüllt sein
