@@ -143,7 +143,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
-- [ ] **T-020 — ASUS MG278 antwortet nicht auf DDC/CI, PowerDisplay lässt ihn aus**
+- [ ] **T-023 — ASUS MG278 antwortet nicht auf DDC/CI, PowerDisplay lässt ihn aus**
       Kontext: Aus dem PowerToys-Report vom 02.09.2026. Von zwei Monitoren
       (beide direkt an DisplayPort) steuert PowerToys PowerDisplay nur den
       Acer XB281HK. Die **ASUS MG278** (`DISPLAY2`, EDID `ACI27A8`, in Windows
