@@ -78,8 +78,7 @@ behandelt und nicht ohne Anweisung angefasst.
 
 ## Handel: was ein Agent selbst auslösen darf
 
-**Das Auslösen von Geldbewegungen darf automatisch geschehen, solange die
-Regeln zum Schutz des Kapitals eingehalten werden.** Von Max angeordnet am
+**Das Auslösen von Geldbewegungen darf automatisch geschehen** Von Max angeordnet am
 01.09.2026. Das kehrt die bis dahin geltende Fassung um („das Auslösen von
 Geldbewegungen bleibt bei Max, ein Agent bereitet nur vor") — **automatischer
 Handel ist seither die Regel, nicht die Ausnahme.**
@@ -102,8 +101,8 @@ Skriptunterstützung:
    eine Regel vergessen, eine Datei nicht.
 2. **Jede Position trägt einen nicht abschaltbaren Stop**, und über allem steht
    ein Kill-Switch auf den Gesamtverlust (`kill_switch_gesamt_usd`).
-3. **Scharf geschaltet wird von Hand.** Was danach läuft, läuft ohne Rückfrage
-   — aber der Schalter selbst wird nie von einem Zeitplan umgelegt.
+3. **Scharf geschaltet wird von Hand, ein Pop-Up Fennster soll erscheinen und die Werte Anzeigen, dropdown oder Textfeld oder schieberegler enthalten zum eventuellen anpassen und Felder zum bestätigen/ablehnen** Was danach läuft, läuft ohne Rückfrage
+   — aber der Schalter selbst wird nicht von einem Zeitplan umgelegt, es sei denn ein Agent überwacht das ganze und es ist mein ausdrücklicher wunscch
 
 ### Spur 1 — Marktscanner: läuft von selbst, ohne Hebel
 
