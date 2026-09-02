@@ -247,12 +247,16 @@ try {
 # ---------------------------------------------------------------------------
 try {
   Notiz "`n--- 5) Pfade in Skripten ---"
-  $codeDateien = @($baum.Files | Where-Object { $_ -match '\.(ps1|py|psd1)$' })
+  $codeDateien = @()
+  $codeDateien += $baum.Files
   $codeDateien += (Get-ChildItem -LiteralPath $wurzel -File -EA SilentlyContinue -Filter '*.ps1' | ForEach-Object FullName)
   $ci = Join-Path $wurzel 'MaxHirn\Archiv\ArchivSuche'
-  if (Test-Path $ci) { $codeDateien += (Get-ChildItem -LiteralPath $ci -File -EA SilentlyContinue -Include *.py, *.ps1 | ForEach-Object FullName) }
+  if (Test-Path $ci) { $codeDateien += (Get-ChildItem -LiteralPath $ci -Recurse -File -EA SilentlyContinue | Where-Object { $_.FullName -notmatch '\\\.venv\\' } | ForEach-Object FullName) }
   $claudeDir = Join-Path $wurzel 'MaxHirn\.claude'
-  if (Test-Path $claudeDir) { $codeDateien += (Get-ChildItem -LiteralPath $claudeDir -Recurse -File -EA SilentlyContinue -Include *.ps1 | ForEach-Object FullName) }
+  if (Test-Path $claudeDir) { $codeDateien += (Get-ChildItem -LiteralPath $claudeDir -Recurse -File -EA SilentlyContinue | ForEach-Object FullName) }
+  # EIN strenger Filter statt vielen -Include (die ohne -Recurse still ignoriert
+  # werden und dann Binaerdateien wie .db mitnehmen): nur echte Skripte, nie .bak.
+  $codeDateien = @($codeDateien | Where-Object { $_ -match '\.(ps1|py|psd1)$' -and $_ -notmatch '\.bak' } | Sort-Object -Unique)
 
   # Muster als Variablen, damit sie nicht selbst als Treffer im eigenen Skript
   # auftauchen. Routinen\umzug\ ist ausgenommen - das sind die eingefrorenen
@@ -260,8 +264,8 @@ try {
   $musterAbs = [regex]('C' + ':\\Users\\faupe')
   $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
   $absTreffer = @(); $altTreffer = @()
-  foreach ($d in ($codeDateien | Sort-Object -Unique)) {
-    if ($d -match '\.bak-' -or $d -match '\\umzug\\') { continue }
+  foreach ($d in $codeDateien) {
+    if ($d -match '\\umzug\\') { continue }
     foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAbs -EA SilentlyContinue)) {
       $absTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
     }
@@ -271,7 +275,7 @@ try {
   }
   if ($absTreffer.Count -gt 0) { Entscheiden "Absoluter Benutzerpfad in $($absTreffer.Count) Codezeile(n) (Portabilitaet): $($absTreffer -join '; ')" }
   if ($altTreffer.Count -gt 0) { Entscheiden "Veralteter Pfad (vor dem Umzug) in $($altTreffer.Count) Zeile(n): $($altTreffer -join '; ')" }
-  if ($absTreffer.Count -eq 0 -and $altTreffer.Count -eq 0) { Info "$(@($codeDateien | Sort-Object -Unique).Count) Skripte geprueft, keine absoluten oder veralteten Pfade." }
+  if ($absTreffer.Count -eq 0 -and $altTreffer.Count -eq 0) { Info "$($codeDateien.Count) Skripte geprueft, keine absoluten oder veralteten Pfade." }
 } catch { Notiz "  ! Pfad-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
