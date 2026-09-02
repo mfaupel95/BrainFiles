@@ -42,6 +42,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-028 — Bestätigungsdialog zum Scharfschalten fehlt**
+      Kontext: `Schutzregeln.md` Punkt 3 („Handel: was ein Agent selbst
+      auslösen darf") verlangt beim Scharfschalten ein Fenster, das die Werte
+      anzeigt, sie per Schieberegler/Textfeld anpassbar macht und Felder zum
+      Bestätigen oder Ablehnen hat. Eine Suche über `Agenten/Handel/` (ohne
+      `.venv`) findet dafür am 02.09.2026 keinen Code — geregelt ist es, gebaut
+      nicht. Der neue Subagent `handels-disponent` legt den Auftrag deshalb als
+      Textblock vor, nicht im Dialog.
+      Nächster Schritt: kleines Tk-Fenster bauen, das die Felder aus dem
+      Disponenten-Block (Einstieg, Stop, Positionswert, Hebel, Risikobetrag)
+      anzeigt und gegen `wachen.json` prüft, bevor es freigibt.
+      Betrifft: `Agenten/Handel/`, `MaxHirn/Wissen/Schutzregeln.md`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
       `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
