@@ -24,8 +24,8 @@ Schlüssel- und Zertifikatsdateien (`.env`, `.pem`, `.pfx`, `.p12`, `.kdbx`,
 Caches, Indizes, Protokolle, Klone, Build-Reste — räumt ein Agent ohne
 Rückfrage auf, auch in Massenoperationen.
 
-Seit 24.08.2026 versioniert Git die **Textebene** des Vaults (85 Dateien:
-Notizen, Skills, Skripte, Konfiguration). **Diese vier Ordner gehören nicht
+Seit 24.08.2026 versioniert Git die **Textebene** des Systems (187 Dateien,
+Stand 02.09.2026: Notizen, Skills, Skripte, Konfiguration). **Diese vier Ordner gehören nicht
 dazu** — sie enthalten keine einzige versionierte Datei, die Whitelist in
 `.gitignore` gibt sie bewusst nicht frei. Für sie gilt unverändert: Die
 Sicherung läuft ohne `/MIR`, eine falsch überschriebene Datei ist um 20:01 auch

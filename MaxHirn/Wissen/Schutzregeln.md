@@ -178,7 +178,12 @@ Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
 - `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`).
   Durchgangsware, aus der Sicherung ausgenommen, eigene Spielregeln in
   `Werkstatt/AGENTS.md`
-- `Modelle/` (51 GB, seit 30.08.2026 außerhalb des Vaults) — neu herunterladbar
+- `Modelle/` (51 GB, seit 30.08.2026 außerhalb des Vaults) — neu herunterladbar.
+  **Achtung: `BrainFiles/Modelle` ist kein Ordner, sondern eine Junction auf
+  `O:\Modelle`** — und auf `O:` liegt auch die Zweitkopie. Ein rekursives Löschen
+  „im Ordner `Modelle/`" verlässt damit den Vault, und je nach Werkzeug folgt es
+  der Junction oder entfernt sie. Vor einer Massenoperation dort prüfen, worauf
+  man wirklich steht: `(Get-Item Modelle -Force).Target`.
 - `Archiv/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
 - `Agenten/Routinen/**/logs/` — jeweils nur der letzte Lauf
 - Build-Reste (`.pyc`, `.pyo`, `.toc`, `build/`, `dist/`), Temporärdateien, Duplikate
@@ -188,6 +193,14 @@ sind bei Containerformaten (`.vob`, `.iso`, `.img`) kein Duplikatbeweis — dort
 per Hash gegenprüfen.
 
 ## Vor jedem schreibenden Zugriff
+
+**Die Stufe hängt am Inhalt, nicht am Pfadanfang.** Derselbe Text liegt an
+mehreren Stellen: in einem Worktree unter `Werkstatt/Worktrees/<zweig>/`, in
+einer Sicherung auf `G:` oder `O:`. Nach dem Wortlaut von Stufe 2 wäre eine
+Notiz unter `Werkstatt/Worktrees/PC/MaxHirn/Wissen/` freigegeben — sie ist es
+nicht. Ein Worktree ist derselbe Vault mit einem anderen Zweig davor; es gilt
+die Stufe, die für das Original gälte. Frei ist in `Werkstatt/` nur, was dort
+entstanden ist.
 
 1. **Stufe bestimmen.** Im Zweifel die höhere annehmen.
 2. **Bei Stufe 0 oder 1: erst lesen, dann eine Liste des Geplanten zeigen,
@@ -253,6 +266,13 @@ Vier Regeln, für Claude und Hermes gleichermaßen:
    Der Schaden wäre allerdings nur ein unschöner Zwischenstand in der
    Historie, kein Datenverlust: ein Commit löscht nichts.
 
+   **Was die Schwelle nicht leistet:** Sie misst, wann zuletzt geschrieben
+   wurde — nicht, ob gleich wieder geschrieben wird. Eine Sitzung, die vor
+   einer halben Stunde eine Datei angelegt hat und jetzt darauf zurückkommt,
+   ist damit nicht geschützt. Die zehn Minuten verkleinern das Fenster, sie
+   schließen es nicht; der tragende Schutz bleibt Regel 1 — sichern statt
+   verwerfen.
+
    **Warum die Regel am 27.08.2026 gedreht wurde** — sie lautete vorher
    „nichts committen, was man nicht selbst geändert hat". Das schützte nichts
    und schadete: Ein Commit fremder Arbeit ist zurücknehmbar — solange er die
@@ -297,7 +317,9 @@ bevor man eine Datei anfasst, an der erkennbar eine andere Sitzung arbeitet.
   Siehe [[Hardware]].
 - **Versionsstände seit 24.08.2026.** Ein Git-Repository über die Textebene des
   Vaults schließt die Lücke, die alle drei Kopien teilen: Sie halten nur den
-  jetzigen Stand. Erfasst sind 85 Dateien (`Wissen/`, Steuerdateien der Agenten,
+  jetzigen Stand. Erfasst sind 187 Dateien, Stand 02.09.2026 — 95 unter
+  `MaxHirn/`, 86 unter `Agenten/`, 6 in der Wurzel und in `Werkstatt/` (`Wissen/`,
+  Steuerdateien der Agenten,
   `.claude/skills/`, `ArchivSuche/`, `Handel/`, die drei eigenen MCP-Server,
   die Sicherungsskripte) — **ohne** die 42 GB Medien. Zurückholen einer
   versehentlich überschriebenen Datei: `git restore <pfad>`, geprüft am
