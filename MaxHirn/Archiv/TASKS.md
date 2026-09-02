@@ -265,22 +265,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
-- [?] **T-020 — Fremd-Repo `MaxHirn/OmniRoute` liegt am falschen Ort**
-      Kontext: Klon von `github.com/diegosouzapw/OmniRoute` mit eigenem `.git`.
-      Fremd-Repos gehören nach `Werkstatt/` und liegen dort auch schon
-      (`Werkstatt/OmniRoute`, anderer HEAD, mit `node_modules`/`dist`). Die
-      Kopie unter `MaxHirn/` war am 01.09.2026 dazugekommen, verursachte
-      `?? OmniRoute/` im `git status` und ließ die Zwischenstand-Routine
-      abbrechen (`git add` auf ein eingebettetes Repo). Sofort-Abhilfe:
-      `.gitignore` fängt `MaxHirn/OmniRoute/` jetzt ab (02.09.2026).
-      Nächster Schritt: Max entscheidet, ob `MaxHirn/OmniRoute` gelöscht wird
-      (Werkstatt-Kopie genügt) oder ob dort bewusst etwas gearbeitet wird —
-      dann nach `Werkstatt/` verschieben. Danach die `.gitignore`-Regel wieder
-      entfernen.
-      Betrifft: `.gitignore`, `MaxHirn/OmniRoute/`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
 ## Erledigt
+
+- [x] **T-020 — Fremd-Repo `MaxHirn/OmniRoute` lag am falschen Ort**
+      Erledigt 2026-09-02: Klon von `github.com/diegosouzapw/OmniRoute`,
+      Branch `release/v3.8.51`. Beide Klone geprüft — weder unter `MaxHirn/`
+      noch unter `Werkstatt/` gab es eigene Commits, Stashes oder Branches
+      (Werkstatt-Reflog: nur `clone`; die geänderten `package*.json` dort waren
+      reine `npm install`-Nebenwirkung). Der alte `Werkstatt/OmniRoute`
+      (älterer HEAD, 4,3 GB mit `node_modules`/`dist`) wurde gelöscht, der
+      neuere saubere Klon aus `MaxHirn/` (715 MB, Arbeitsbaum sauber) an seine
+      Stelle verschoben. Die Übergangsregel `MaxHirn/OmniRoute/` in `.gitignore`
+      ist wieder raus — `Werkstatt/*/` deckt den neuen Ort ab. Wer dort
+      arbeiten will: `npm install` neu.
 
 - [x] **T-001 — Sicherungslaufwerk G: fehlt, Hauptsicherung hat kein Ziel**
       Erledigt 2026-08-28: Kein Defekt. Max hatte die USB-Platten für einen
