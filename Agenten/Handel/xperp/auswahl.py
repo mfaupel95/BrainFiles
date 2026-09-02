@@ -190,7 +190,7 @@ def sammle(werte=None, still=False):
         # Gemessen am 01.09.2026 an SOL: ueber 50 Tage sieht der groesste
         # 7-Tage-Ruecklauf nach 9,5 % aus (Deckel 10x), ueber 200 Tage sind
         # es 27,9 % (Deckel 3,5x) - der Einbruch vom 31.05.2026 lag ausserhalb
-        # des kurzen Fensters. Schutzregeln, Spur 2 machen diesen Wert zur
+        # des kurzen Fensters. Handelsregeln, Spur 2 machen diesen Wert zur
         # festen Grenze; er darf nicht vom Fensterrand abhaengen.
         try:
             kt = okxf.kerzen(iid, "1D", 300)

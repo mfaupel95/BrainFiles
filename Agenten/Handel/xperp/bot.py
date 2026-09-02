@@ -2,7 +2,7 @@
 
 Der Bot rechnet und legt vor; abgesendet wird die scharfe Order von Max oder
 von einem dafuer gebauten Skript. Seit dem 01.09.2026 ist Hebel nicht mehr
-grundsaetzlich verboten (Wissen/Schutzregeln.md, Spur 2) - verboten bleibt,
+grundsaetzlich verboten (Wissen/Handelsregeln.md, Spur 2) - verboten bleibt,
 ihn von selbst zu nehmen. Daraus folgen zwei Dinge fuer dieses Modul:
 
   - Eine Rangliste aus auswahl.py ist ein VORSCHLAG, keine Anweisung. Der Bot
@@ -124,7 +124,7 @@ def noetige_quote(gewinn_pct, verlust_pct, kosten_pct):
 
 def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
                  stop_atr_f=None, ziel_atr_f=None, was="Order"):
-    """Die vier Zahlen, die Wissen/Schutzregeln.md vor jeder gehebelten
+    """Die vier Zahlen, die Wissen/Handelsregeln.md vor jeder gehebelten
     Order verlangt (Spur 2, Pruefpflicht, angeordnet 01.09.2026).
 
     Sie werden ungefragt vorgelegt, kurz und als Tabelle. Die Grundlinie aus
@@ -160,7 +160,7 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
 
     print()
     print("-" * 66)
-    print("PRUEFPFLICHT  (Schutzregeln, Spur 2 - vier Zahlen vor der %s)" % was)
+    print("PRUEFPFLICHT  (Handelsregeln, Spur 2 - vier Zahlen vor der %s)" % was)
     print("-" * 66)
 
     print("  1  Liquidationsabstand gegen groessten 7-Tage-Ruecklauf")
@@ -613,7 +613,7 @@ def befehle(instr, seite, kontrakte, einstieg, ziel, stop, hebel, nr=None):
 
 def zeige_wachen(w):
     """bot.py wachen: der Freigabe-Block und die Bedingungen 2-5 aus
-    Wissen/Schutzregeln.md, wie sie fuer Spur 2 stehen.
+    Wissen/Handelsregeln.md, wie sie fuer Spur 2 stehen.
 
     Anders als beim Marktscanner gibt es hier NICHTS durchzurechnen: bot.py
     legt Befehle vor, fuehrt nichts aus, fuehrt kein Handelsjournal und keinen
@@ -638,7 +638,7 @@ def zeige_wachen(w):
     print("  bot.py hat keinen Live-Pfad, kein Journal, keinen Zustand.")
     print("  Bedingungen 2/3/5 greifen erst, wenn einer gebaut wird - bis")
     print("  dahin bleibt es bei 'vorlegen, nicht ausloesen'. Der scharfe")
-    print("  Weg fuer Hebel steht in Wissen/Schutzregeln.md, Spur 2, und")
+    print("  Weg fuer Hebel steht in Wissen/Handelsregeln.md, Spur 2, und")
     print("  ist Stand 01.09.2026 nicht geoeffnet.")
 
 
@@ -691,7 +691,7 @@ def main():
             print("=" * 66)
             print("Vorgelegt, nicht ausgeloest - keine Order, keine Signatur.")
             print("Gehebelt gehandelt wird nur auf ausdrueckliche Anweisung mit")
-            print("Kontrakt, Richtung, Hebel, Einsatz und Stop (Schutzregeln,")
+            print("Kontrakt, Richtung, Hebel, Einsatz und Stop (Handelsregeln,")
             print("Spur 2). Diese Ausgabe ist ein Vorschlag, keine Anweisung.")
             print("=" * 66)
 

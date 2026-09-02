@@ -23,7 +23,7 @@ Windows-Registry (HKCU\\Environment) - ein von Claude gestarteter Prozess erbt
 die Benutzervariablen nicht.
 
 WICHTIG: Seit dem 01.09.2026 ist Hebel nicht mehr grundsaetzlich verboten
-(Wissen/Schutzregeln.md, Spur 2) - verboten bleibt, ihn ohne ausdrueckliche
+(Wissen/Handelsregeln.md, Spur 2) - verboten bleibt, ihn ohne ausdrueckliche
 Anweisung zu nehmen. Eine gueltige Anweisung nennt Kontrakt, Richtung, Hebel,
 Einsatz und Stop; fehlt eine Angabe, wird danach gefragt statt geraten.
 
@@ -103,7 +103,7 @@ def demo_modus():
     OKX-Demo-Keys existieren auf dem Live-Endpunkt nicht ('50119 API key
     doesn't exist'). Sie brauchen denselben Host, aber den Header
     'x-simulated-trading: 1'. Ein Demo-Lauf ist zugleich der Papierlauf, den
-    Wissen/Schutzregeln.md (Spur 2) fuer eine neue Strategie verlangt.
+    Wissen/Handelsregeln.md (Spur 2) fuer eine neue Strategie verlangt.
     """
     v = (_variable("OKX_SIMULATED") or _variable("OKX_DEMO") or "").strip().lower()
     return v in ("1", "true", "yes", "ja", "y")

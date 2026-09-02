@@ -10,7 +10,7 @@ long 5x Hebel".
 ## Was hier erlaubt ist — Spur 2
 
 Bis zum 01.09.2026 galt pauschal „nur Spot, nur Long, kein Hebel". Seitdem
-kennt `Wissen/Schutzregeln.md` zwei Spuren, und dieser Ordner ist **Spur 2**:
+kennt `Wissen/Handelsregeln.md` zwei Spuren, und dieser Ordner ist **Spur 2**:
 
 > **Hebel ist nicht mehr grundsätzlich verboten. Verboten bleibt, ihn von
 > selbst zu nehmen.**
@@ -143,7 +143,7 @@ nennt die Reihe ausdrücklich.
 
 Ohne diese Schalter bleibt der Hebel **Ergebnis, nicht Eingabe** — er fällt aus
 dem Stop-Abstand und wird auf den Deckel begrenzt. Eine gültige Anweisung nach
-[[Schutzregeln]] Spur 2 nennt ihn aber als Zahl, samt Einsatz. Dafür:
+[[Handelsregeln]] Spur 2 nennt ihn aber als Zahl, samt Einsatz. Dafür:
 
 - `--hebel N` — setzt den Hebel fest. Liegt `N` über dem Deckel, rechnet der
   Bot **wie angewiesen** und schreibt in die Prüfpflicht `ZU HOCH` mit der
@@ -332,5 +332,5 @@ nicht — dort sind beide Seiten besetzt.
 - **4h-Kerzen lösen nicht auf**, ob Hoch oder Tief zuerst kam. Ein Stop und
   ein Ziel in derselben Kerze werden als Stop gewertet — vorsichtig gerechnet.
 
-Verwandt: [[Handelsbots]], [[Marktscanner]], [[Schutzregeln]],
+Verwandt: [[Handelsbots]], [[Marktscanner]], [[Handelsregeln]],
 `../README.md` (DCA-Simulator und Grid ohne Hebel).

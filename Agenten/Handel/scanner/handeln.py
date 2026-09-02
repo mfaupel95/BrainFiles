@@ -10,19 +10,19 @@ Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     1. wachen.json  handel_erlaubt == true
     2. OKX_API_KEY / OKX_API_SECRET / OKX_API_PASSPHRASE als Benutzervariablen
     3. --live ausdruecklich auf der Kommandozeile
-    4. wachen.json  freigabe.erfuellt == true      (Schutzregeln, Bedingung 1)
+    4. wachen.json  freigabe.erfuellt == true      (Handelsregeln, Bedingung 1)
     5. Herzschlag frisch                            (Bedingung 3)
     6. rollierender Erwartungswert nicht negativ    (Bedingung 5)
     7. eine Sitzung am Bildschirm, die das Freigabefenster bedienen kann
 Fehlt eine, wird Papier gehandelt und es wird gesagt, welche Sperre zu war.
 
 Sind alle sieben offen, zeigt freigabe.py vor jedem Einstieg das
-Bestaetigungsfenster (Schutzregeln Punkt 3). Bedient es niemand, lehnt es nach
+Bestaetigungsfenster (Handelsregeln Punkt 3). Bedient es niemand, lehnt es nach
 FREIGABE_ZEITLIMIT_S von selbst ab - eine geplante Aufgabe bleibt so nie an
 einem Fenster haengen. Ausstiege laufen nie durch das Fenster: ein Stop muss
 auch dann greifen, wenn niemand davorsitzt.
 
-Bedingungen 2-5 aus Wissen/Schutzregeln.md rechnet wachen_pruefung.py:
+Bedingungen 2-5 aus Wissen/Handelsregeln.md rechnet wachen_pruefung.py:
     2  Drawdown-Ratsche : Positionsgroesse x0.5 ab drawdown_halbierung_prozent,
        Notausstieg + Sperre ab kill_switch_gesamt_usd
     3  Herzschlag       : letzter_lauf zu alt -> alles zu, dann Papier
@@ -221,7 +221,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 "%.6f" % v["stop"], "%.6f" % v["ziel"], "score %.1f" % v["score"])
 
 
-# --- Freigabe von Hand (Schutzregeln Punkt 3) -------------------------------
+# --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
 # Das ist der tragende Schutz - nicht die Erkennung darunter: geht das Fenster
@@ -354,7 +354,7 @@ def lauf(modus):
                            % s["rollierender_ev"])
         if not sitzung_da():
             gruende.append("keine Sitzung am Bildschirm - Freigabefenster "
-                           "nicht moeglich (Schutzregeln Punkt 3)")
+                           "nicht moeglich (Handelsregeln Punkt 3)")
         if gruende:
             print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
             print("-> es wird Papier gehandelt.")
@@ -409,7 +409,7 @@ def lauf(modus):
     print("- Einstiege -")
     faktor = s["groessenfaktor"]
     if live and vs:
-        # Punkt 3 der Schutzregeln: scharf geschaltet wird von Hand. Der
+        # Punkt 3 der Handelsregeln: scharf geschaltet wird von Hand. Der
         # Faktor der Drawdown-Ratsche wird vorher eingerechnet, damit im
         # Fenster die Zahl steht, die auch gekauft wird.
         vs = [dict(v, usd=round(v["usd"] * faktor, 2), cr=2.0) for v in vs]

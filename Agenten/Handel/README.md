@@ -593,7 +593,7 @@ mit allen Werten vor; der letzte Schritt bleibt beim Menschen.
 ## Freigabefenster (`freigabe.py`)
 
 Gebaut am 02.09.2026 für T-028. Es erfüllt Punkt 3 aus
-`Wissen/Schutzregeln.md`: scharf geschaltet wird von Hand, in einem Fenster,
+`Wissen/Handelsregeln.md`: scharf geschaltet wird von Hand, in einem Fenster,
 das die Werte zeigt, sie anpassbar macht und ein Feld zum Bestätigen hat.
 
 **Es führt nichts aus — es gibt frei.** Keine Order, kein OKX, kein Kraken. Es

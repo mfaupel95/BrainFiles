@@ -1,6 +1,6 @@
 """Bestaetigungsfenster zum Scharfschalten eines Handelsauftrags.
 
-Verlangt von Wissen/Schutzregeln.md, Abschnitt "Handel: was ein Agent selbst
+Verlangt von Wissen/Handelsregeln.md, Abschnitt "Handel: was ein Agent selbst
 ausloesen darf", Punkt 3: scharf geschaltet wird von Hand, in einem Fenster,
 das die Werte anzeigt, sie anpassbar macht und Felder zum Bestaetigen oder
 Ablehnen hat. Was danach laeuft, laeuft ohne Rueckfrage.

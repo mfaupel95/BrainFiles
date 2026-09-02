@@ -109,7 +109,7 @@ sonst laeuft es auf Papier weiter und sagt, welche Sperre zu war:
 
 Die tägliche Routine (`Agenten/Routinen/marktscanner.ps1`) ruft `handeln.py`
 **ohne** `--live` auf. Aus einem Zeitplan heraus wird nie echtes Geld bewegt --
-das ist die Regel aus `Wissen/Schutzregeln.md` und gilt weiter.
+das ist die Regel aus `Wissen/Handelsregeln.md` und gilt weiter.
 
 ### Scharfschalten (wenn es soweit ist)
 

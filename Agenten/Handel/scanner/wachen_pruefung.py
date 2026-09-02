@@ -1,4 +1,4 @@
-"""Bedingungen 2-5 aus Wissen/Schutzregeln.md, Abschnitt "Damit der Automat
+"""Bedingungen 2-5 aus Wissen/Handelsregeln.md, Abschnitt "Damit der Automat
 unbeaufsichtigt laufen darf: fuenf messbare Bedingungen" (angeordnet
 01.09.2026). Reine Funktionen, aufgerufen von handeln.py.
 
