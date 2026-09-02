@@ -29,6 +29,16 @@ Select-String -Path "Wissen\*.md","Dashboard.md" -Pattern "^\s*- \[ \]"
 Get-ChildItem Archiv\Posteingang -Recurse -File | Measure-Object | Select-Object Count
 ```
 
+**5. System** — der letzte Bericht der Systemprüfung ([[Systempruefung]]):
+
+```powershell
+Get-Content ..\Agenten\Routinen\logs\systempruefung-letzter-lauf.md
+```
+
+Nur die Abschnitte „Seit gestern neu" und „Zu entscheiden" ins Briefing, und
+auch die nur, wenn sie nicht leer sind. Ist der Bericht nicht von heute, das
+kurz sagen statt raten.
+
 ## Ausgeben
 
 ```
@@ -42,6 +52,9 @@ Get-ChildItem Archiv\Posteingang -Recurse -File | Measure-Object | Select-Object
 
 **Nebenbei**
 - <z. B. 12 Dateien im Posteingang>
+
+**System**
+- <„Seit gestern neu" / „Zu entscheiden" aus der Systemprüfung, oder: nichts>
 ```
 
 ## Regeln

@@ -24,6 +24,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
+| täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 
@@ -40,6 +41,7 @@ einen Wrapper aus `Routinen/`:
 | (noch offen) Marktscanner | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
 | (noch offen) Wachen-Abgleich | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
+| `MaxHirn-Systempruefung` | `Routinen/systempruefung.ps1` (kein Wrapper, protokolliert selbst) | `Routinen/logs/systempruefung-letzter-lauf.md` + `systempruefung-JJJJ-MM-TT.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts

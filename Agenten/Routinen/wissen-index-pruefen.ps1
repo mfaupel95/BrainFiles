@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
-$root   = 'C:\Users\faupe\Documents\BrainFiles\MaxHirn'
+# Agenten\Routinen\ -> Agenten\ -> BrainFiles\, dann MaxHirn\ (portabel, kein
+# absoluter Pfad - seit der Ordnertrennung 30.08.2026).
+$root   = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'MaxHirn'
 $wissen = Join-Path $root 'Wissen'
 $index  = Get-Content (Join-Path $wissen 'INDEX.md') -Raw
 $erlaubt = @('archiv','betrieb','finanzen','handel','hardware','holz','ki-agenten','mcp','profil','sicherheit','steuern','system')

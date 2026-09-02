@@ -71,5 +71,19 @@
   "enabledMcpjsonServers": [
     "okx-agent-trade-kit"
   ],
-  "prefersReducedMotion": false
+  "prefersReducedMotion": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"..\\Agenten\\Routinen\\systempruefung-hook.ps1\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
 }

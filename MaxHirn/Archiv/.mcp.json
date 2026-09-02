@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "archiv": {
-      "command": "..\\MCP-Server\\archiv\\.venv\\Scripts\\python.exe",
+      "command": "..\\..\\Agenten\\MCP-Server\\archiv\\.venv\\Scripts\\python.exe",
       "args": [
-        "..\\MCP-Server\\archiv\\archiv_mcp.py"
+        "..\\..\\Agenten\\MCP-Server\\archiv\\archiv_mcp.py"
       ]
     },
     "okx-agent-trade-kit": {

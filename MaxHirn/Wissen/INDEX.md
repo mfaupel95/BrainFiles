@@ -53,6 +53,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-hermes` — **Hermes Agent** — `Wissen/Hermes.md` — Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.
 - `20260831-python-versionen` — **Python-Versionen** — `Wissen/Python-Versionen.md` — Installierte Python-Versionen und venv-Konfigurationen nach dem Upgrade auf 3.13.
 - `20260830-routinen` — **Routinen** — `Wissen/Routinen.md` — Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.
+- `20260902-systempruefung` — **Systemprüfung** — `Wissen/Systempruefung.md` — Tägliche Morgenroutine, die das System nach still gebrochenen Dingen absucht (tote Junctions, doppelte Ollama-Stores, kaputte Pfade) und Eindeutiges selbst aufräumt.
 - `20260830-wiederholbare-aufgaben` — **Wiederholbare Aufgaben** — `Wissen/Wiederholbare-Aufgaben.md` — Welche Arbeit sich wiederholt hat und welche Skills daraus entstanden sind.
 - `20260830-portabilitaet` — **Portabilität** — `Wissen/Portabilitaet.md` — Was beim Umzug des gesamten Systems auf eine externe SSD zu beachten ist.
 - `20260830-ordnerstruktur` — **Ordnerstruktur** — `Wissen/Ordnerstruktur.md` — Die vier Ordner unter `BrainFiles/`, warum sie geteilt sind und welche fünf Fallen beim Verschieben still brechen.

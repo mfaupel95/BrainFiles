@@ -17,7 +17,9 @@
 param([switch]$NurPruefen)
 
 $ErrorActionPreference = 'Stop'
-$quelle = 'C:\Users\faupe\Documents\BrainFiles'
+# Dieses Skript liegt in Agenten\; eine Ebene hoeher ist die Wurzel BrainFiles\.
+# Relativ statt absolut, damit ein Umzug den Sicherungslauf nicht bricht.
+$quelle = Split-Path $PSScriptRoot -Parent
 $ziel   = 'G:\MaxHirn-Sicherung'
 
 # Praezise Muster. Die frueheren breiten Muster ('passw', 'secret', 'key')

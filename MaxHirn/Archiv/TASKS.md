@@ -265,6 +265,33 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
+- [?] **T-021 — Fremd-MCP-Server nach dem Umzug: apify tot, okx-Klon tot**
+      Kontext: die Systemprüfung ([[Systempruefung]]) vom 02.09.2026 findet
+      zwei Leichen unter `Agenten/MCP-Server/`:
+      (a) `ant.dir.gh.apify.apify-mcp-server/node_modules` besteht komplett aus
+      pnpm-Junctions, die auf den alten Pfad `…\MaxHirn\MCP-Server\…` zeigen —
+      seit der Ordnertrennung tot. Der Server steht in keiner `.mcp.json`.
+      (b) `okx/` hat ein eigenes `.venv` und `okx_mcp.py`, dessen fest
+      verdrahteter Pfad `…\MaxHirn\Claude\Worktrees\investment\OKX_API.env`
+      doppelt kaputt ist (alte Wurzel + alter Ordnername). Der aktive
+      okx-Zugang läuft längst über den HTTP-Server `okx-agent-trade-kit` in
+      `MaxHirn/.mcp.json` — das lokale `okx/` ist Altbestand.
+      Nächster Schritt: Max entscheidet je Ordner — `pnpm install` bzw. neu
+      aufsetzen, oder löschen. Bei (b) spricht alles fürs Löschen.
+      Betrifft: `Agenten/MCP-Server/ant.dir.gh.apify.apify-mcp-server/`,
+      `Agenten/MCP-Server/okx/`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
+- [?] **T-022 — `MaxHirn-Sicherung` ist deaktiviert, `MaxHirn-Posteingang` scheiterte**
+      Kontext: die Systemprüfung meldet die geplante Aufgabe `MaxHirn-Sicherung`
+      als *deaktiviert* und `MaxHirn-Posteingang` mit Exitcode 1 vom
+      01.09.2026 22:00. `G:` ist laut selbem Lauf wieder da (86 GB frei), der
+      Grund für das Deaktivieren ist also offen — vgl. [[Hardware]] und T-015.
+      Nächster Schritt: klären, warum `MaxHirn-Sicherung` aus ist, ggf. wieder
+      aktivieren; `posteingang-letzter-lauf.log` ansehen.
+      Betrifft: Aufgabenplanung, `Agenten/Routinen/logs/posteingang-letzter-lauf.log`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
 ## Erledigt
 
 - [x] **T-020 — Fremd-Repo `MaxHirn/OmniRoute` lag am falschen Ort**
