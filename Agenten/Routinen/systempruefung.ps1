@@ -367,9 +367,118 @@ try {
       $schlecht++
       Entscheiden "Aufgabe $($t.TaskName): letzter Lauf $($i.LastRunTime) endete mit Code $($i.LastTaskResult)."
     }
+    # Eine taegliche Aufgabe, die zwei Tage nicht gestartet ist, meldet keinen
+    # Fehler - sie schweigt. Genau so ist die Hauptsicherung am 31.08. und
+    # 01.09.2026 ausgefallen, ohne dass es jemandem aufgefallen waere: Code 1
+    # vom 30.08. stand still im Bericht, der ausgebliebene Start nicht.
+    if ($i -and -not $nieGelaufen -and $i.LastRunTime -lt (Get-Date).AddHours(-48)) {
+      $schlecht++
+      $herTage = [int]((Get-Date) - $i.LastRunTime).TotalDays
+      Entscheiden "Aufgabe $($t.TaskName) ist seit $herTage Tagen nicht mehr gestartet (zuletzt $($i.LastRunTime)) - Trigger oder Aufgabenplanung pruefen."
+    }
   }
   if ($schlecht -eq 0 -and $tasks.Count -gt 0) { Info "Alle $($tasks.Count) MaxHirn-Aufgaben zuletzt fehlerfrei." }
 } catch { Notiz "  ! Aufgaben-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# 10) Regelwerk: Doppeldateien, Skill-Form, updated-Pflicht
+# ---------------------------------------------------------------------------
+# Am 02.09.2026 fiel bei einer Durchsicht auf, dass Regeln, die niemand
+# nachmisst, still verfallen: die CLAUDE.md/AGENTS.md-Paare waren
+# auseinandergelaufen (Hermes kannte die Vektorsuche, Claude nicht), ein Skill
+# lag in einer Form vor, in der er nie geladen wird, und die updated-Pflicht
+# im Frontmatter wurde fast nirgends eingehalten. Diese drei Pruefungen kosten
+# zusammen unter einer Sekunde.
+try {
+  Notiz "`n--- 10) Regelwerk ---"
+  $regelfehler = 0
+
+  # 10a) Die vier Doppeldateien muessen Zeichen fuer Zeichen gleich sein.
+  $paare = @(
+    @{ a = 'CLAUDE.md';                  b = 'AGENTS.md';                  ort = 'Wurzel'   },
+    @{ a = 'MaxHirn\CLAUDE.md';          b = 'MaxHirn\AGENTS.md';          ort = 'MaxHirn'  },
+    @{ a = 'MaxHirn\Archiv\CLAUDE.md';   b = 'MaxHirn\Archiv\AGENTS.md';   ort = 'Archiv'   },
+    @{ a = 'Werkstatt\CLAUDE.md';        b = 'Werkstatt\AGENTS.md';        ort = 'Werkstatt'}
+  )
+  foreach ($p in $paare) {
+    $pa = Join-Path $wurzel $p.a; $pb = Join-Path $wurzel $p.b
+    if (-not (Test-Path $pa) -or -not (Test-Path $pb)) {
+      $regelfehler++; Entscheiden "Regeldatei fehlt: $($p.a) oder $($p.b)."; continue
+    }
+    $ha = (Get-FileHash $pa -Algorithm SHA256).Hash
+    $hb = (Get-FileHash $pb -Algorithm SHA256).Hash
+    if ($ha -ne $hb) {
+      $regelfehler++
+      Entscheiden "Regelpaar $($p.ort): CLAUDE.md und AGENTS.md sind auseinandergelaufen - Claude und Hermes arbeiten nach verschiedenen Staenden. Vergleich: git diff --no-index `"$($p.a)`" `"$($p.b)`""
+    }
+  }
+
+  # 10b) Skills muessen Ordner mit SKILL.md sein. Eine lose .md im skills-Ordner
+  #      wird nie geladen - das Wissen darin ist vorhanden, aber unerreichbar.
+  $skills = Join-Path $wurzel 'MaxHirn\.claude\skills'
+  if (Test-Path $skills) {
+    Get-ChildItem $skills -File -Filter *.md -EA SilentlyContinue | ForEach-Object {
+      $regelfehler++
+      Entscheiden "Skill $($_.Name) liegt lose in .claude\skills\ statt als Ordner mit SKILL.md - er wird in keiner Sitzung geladen."
+    }
+    Get-ChildItem $skills -Directory -EA SilentlyContinue | ForEach-Object {
+      if (-not (Test-Path (Join-Path $_.FullName 'SKILL.md'))) {
+        $regelfehler++
+        Entscheiden "Skill-Ordner $($_.Name) hat keine SKILL.md - wird nicht geladen."
+      }
+    }
+  }
+
+  # 10c) updated-Pflicht: Wer eine Notiz aendert, setzt updated hoch.
+  #      Als Entscheidung gemeldet wird nur, was gerade uncommittet im
+  #      Arbeitsbaum liegt - da ist der Autor noch am Werk und kann es
+  #      nachziehen. Heute bereits committete Notizen kommen nur als eine
+  #      gebuendelte Info-Zeile: Der erste Lauf dieser Pruefung am 02.09.2026
+  #      meldete 14 Notizen, weil ein einziger Pfad-Commit sie alle beruehrt
+  #      hatte, ohne einen Inhalt zu aendern. Eine Pruefung, die so etwas als
+  #      offenen Punkt fuehrt, wird nach zwei Tagen ueberlesen.
+  Push-Location $wurzel
+  try {
+    $heuteISO = (Get-Date).ToString('yyyy-MM-dd')
+    $ausnahmen = @('Zugaenge.md','Passwoerter-Quarantaene.md')
+
+    function UpdatedWert($pfad) {
+      $z = Select-String -Path $pfad -Pattern '^updated:' -EA SilentlyContinue | Select-Object -First 1
+      if ($z) { ($z.Line -replace '^updated:\s*','').Trim(" '`"") } else { $null }
+    }
+
+    $offen = @(git status --porcelain -- MaxHirn/Wissen 2>$null |
+               ForEach-Object { ($_ -replace '^.{3}','').Trim('"') } |
+               Where-Object { $_ -like '*.md' })
+    foreach ($rel in ($offen | Sort-Object -Unique)) {
+      $f = Join-Path $wurzel $rel   # $rel traegt Vorwaerts-Slashes aus git; Join-Path und Test-Path kommen damit zurecht
+      if (-not (Test-Path $f)) { continue }
+      if ((Split-Path $f -Leaf) -in $ausnahmen) { continue }
+      $wert = UpdatedWert $f
+      if ($wert -and $wert -ne $heuteISO) {
+        $regelfehler++
+        Entscheiden "Notiz $rel ist geaendert und noch nicht committet, updated steht aber auf $wert - im Frontmatter nachziehen."
+      }
+    }
+
+    $heuteCommit = @(git log --since=midnight --name-only --pretty=format: -- MaxHirn/Wissen 2>$null |
+                     Where-Object { $_ -like '*.md' } | Sort-Object -Unique)
+    $veraltet = @()
+    foreach ($rel in $heuteCommit) {
+      $f = Join-Path $wurzel $rel   # $rel traegt Vorwaerts-Slashes aus git; Join-Path und Test-Path kommen damit zurecht
+      if (-not (Test-Path $f)) { continue }
+      if ((Split-Path $f -Leaf) -in $ausnahmen) { continue }
+      $wert = UpdatedWert $f
+      if ($wert -and $wert -ne $heuteISO) { $veraltet += (Split-Path $f -Leaf) }
+    }
+    if ($veraltet.Count -gt 0) {
+      Info "$($veraltet.Count) heute committete Notizen tragen ein aelteres updated: $($veraltet -join ', '). Bei reinen Pfad- oder Formalaenderungen ist das richtig so."
+    }
+  } finally { Pop-Location }
+
+  if ($regelfehler -eq 0) { Info "Regelwerk in Ordnung: 4 Doppeldateien deckungsgleich, Skills vollstaendig, updated-Pflicht eingehalten." }
+} catch { Notiz "  ! Regelwerk-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
 # Bericht schreiben

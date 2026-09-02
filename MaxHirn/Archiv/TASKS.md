@@ -9,22 +9,7 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Am Sitzungsanfang lesen**, bevor gefragt wird, woran gearbeitet werden soll.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
-- **Erledigtes nach `## Erledigt
-
-- [x] **T-028 — Bestätigungsdialog zum Scharfschalten** — erledigt 2026-09-02
-      `Agenten/Handel/freigabe.py` gebaut und an `scanner/handeln.py --live`
-      angebunden. Beide Spuren, prüft gegen `wachen.json`, führt selbst nichts
-      aus. Die Obergrenze jedes Reglers ist der Wachen-Wert, der Hebeldeckel
-      ist senkbar, nie hebbar. Ausstiege laufen nie durch das Fenster.
-      Beim Bauen gemessen: `sys.stdin.isatty()` meldet in der Git-Bash unter
-      Windows auch bei umgeleitetem stdin ein Terminal — als Sperre gegen den
-      Zeitplan taugt es nicht. Deshalb lehnt das Fenster nach 120 s ohne
-      Bedienung von selbst ab; das ist der tragende Schutz. Zusätzlich setzen
-      `Routinen/marktscanner.ps1` und `handel-wachen.ps1` jetzt
-      `MAXHIRN_ROUTINE=1`.
-      Offen als eigener Punkt: `xperp/bot.py` ist nicht angebunden — er legt
-      Befehle ohnehin nur vor.
-` verschieben**, mit Datum. Nicht löschen —
+- **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
   die Historie zeigt, was schon einmal versucht wurde.
 - **Nichts erfinden.** Nur eintragen, was Max gesagt hat oder was aus einer
   abgebrochenen Arbeit tatsächlich offen blieb. Vermutete Folgeaufgaben
@@ -286,77 +271,68 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
-- [ ] **T-024 — `CLAUDE.md` und `AGENTS.md` sind auseinandergelaufen**
-      Kontext: Beide Paare in `MaxHirn/` und `MaxHirn/Archiv/` behaupten im
-      Kopf „wer eine ändert, ändert die andere mit" — tatsächlich weichen sie
-      ab, in beide Richtungen. `MaxHirn/Archiv/AGENTS.md` kennt die
-      Vektorsuche (`vektor_suche.py`, `--hybrid`), `CLAUDE.md` nicht; dafür
-      fehlt in `AGENTS.md` die Sperre „Mailversand nicht eingerichtet" (T-008),
-      der Netzteil-Kontext der zerstörten Dateien und die Umlaut-Suchfalle.
-      Hermes und Claude arbeiten damit nach verschiedenen Ständen.
-      Nächster Schritt: beide Paare zusammenführen (jeweils die Vereinigung,
-      nicht eine Seite überschreiben) und die Gleichheit in
-      `Routinen/wissen-index-pruefen.ps1` als `diff`-Prüfung verankern.
-      Betrifft: `MaxHirn/CLAUDE.md`, `MaxHirn/AGENTS.md`, `MaxHirn/Archiv/CLAUDE.md`, `MaxHirn/Archiv/AGENTS.md`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
-- [!] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
+- [~] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
       Kontext: `MaxHirn-Sicherung` lief zuletzt am 30.08.2026 20:00 und endete
-      mit Code 1 (robocopy 16, `G:\MaxHirn-Sicherung\` nicht gefunden — G: war
-      zeitweise ab, vgl. T-015). Am 31.08. und 01.09. lief die Aufgabe gar
-      nicht, obwohl sie „Ready" ist und `StartWhenAvailable=True` hat. Die
-      Kopie auf `G:` ist vom 31.08., die Zweitkopie auf `O:` vom 01.09. — der
-      Vault hängt derzeit an einer einzigen aktuellen Kopie, und die liegt im
-      selben Gehäuse. Die Schutzregeln setzen die 20:00-Sicherung als gegeben
-      voraus; keine Regel macht ihren Ausfall zum Stopp-Signal.
-      Nächster Schritt: im Aufgabenplaner-Verlauf klären, warum 31.08./01.09.
-      kein Start erfolgte; danach in `Routinen/systempruefung.ps1` eine harte
-      Meldung ergänzen, wenn der letzte erfolgreiche Sicherungslauf älter als
-      48 h ist.
-      Betrifft: `Agenten/Routinen/sicherung.ps1`, `Wissen/Routinen.md`, `Wissen/Schutzregeln.md`
+      mit Code 1 (robocopy 16, `G:\MaxHirn-Sicherung\` nicht gefunden — `G:`
+      war zeitweise ab, vgl. T-015). Am 31.08. und 01.09. lief die Aufgabe gar
+      nicht. **Korrektur 2026-09-02:** Die Ursache steht schon in T-022 — die
+      Aufgabe war deaktiviert und wurde heute wieder aktiviert. Offen ist damit
+      nur noch die Bestätigung, dass der Lauf heute 20:00 durchgeht, und der
+      Stand der Kopien bis dahin: `G:` ist vom 31.08., `O:` vom 01.09. — der
+      Vault hängt an einer einzigen aktuellen Kopie, und die liegt im selben
+      Gehäuse.
+      Die Erkennungslücke ist geschlossen: Abschnitt 9 der Systemprüfung meldet
+      seit heute nicht mehr nur fehlerhafte Läufe, sondern auch ausgebliebene —
+      jede `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau
+      das hat hier zwei Tage lang niemand gesehen.
+      Nächster Schritt: nach 20:00 `Routinen/logs/sicherung-letzter-lauf.log`
+      ansehen und den Eintrag schließen, wenn der Lauf grün ist.
+      Betrifft: `Agenten/Routinen/sicherung.ps1`, `Wissen/Routinen.md`
       Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 
-- [ ] **T-026 — `absturz-recovery.md` liegt lose im Skill-Ordner und wird nie geladen**
-      Kontext: `MaxHirn/.claude/skills/absturz-recovery.md` ist eine einzelne
-      Datei statt eines Ordners mit `SKILL.md`. Alle 19 anderen Skills liegen
-      als Ordner vor; der Skill taucht in keiner Skill-Liste einer Sitzung auf.
-      Das Wissen darin ist damit vorhanden, aber unerreichbar.
-      Nächster Schritt: Inhalt prüfen und entweder nach
-      `skills/absturz-recovery/SKILL.md` heben oder in eine Notiz unter
-      `Wissen/` überführen; die `.bak-20260902` daneben mit entfernen.
-      Betrifft: `MaxHirn/.claude/skills/absturz-recovery.md`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
-- [?] **T-027 — Handelsregeln decken Kraken nicht ab**
-      Kontext: `Wissen/Schutzregeln.md` regelt den automatischen Handel über
-      genau zwei Spuren (OKX-Marktscanner, OKX-XPERP) und bindet beide an je
-      eine `wachen.json`. Kraken kommt im gesamten Regelwerk nicht vor —
-      weder in den Schutzregeln noch in den vier `CLAUDE.md`/`AGENTS.md` —,
-      obwohl der MCP-Server `kraken` mit `kraken_order_aufgeben` und
-      `kraken_order_stornieren` in jeder Sitzung geladen ist. Es gibt dort
-      keine Grenzdatei, keinen Pflicht-Stop, keinen Kill-Switch und keine
-      Journalpflicht. Der Skill `geld` hält zwar bei der Bestätigungsseite an,
-      das ist aber eine Skill-Regel, keine Schutzregel.
-      Nächster Schritt: Max entscheidet — entweder Kraken ausdrücklich als
-      „nur lesen, keine Order" in die Schutzregeln schreiben, oder als dritte
-      Spur mit eigener `wachen.json` aufnehmen.
-      Wartet auf: Entscheidung von Max
-      Betrifft: `Wissen/Schutzregeln.md`, `Agenten/MCP-Server/kraken/`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
-- [ ] **T-028 — Scharfschalt-Fenster für den Handel gibt es noch nicht**
-      Kontext: `Wissen/Schutzregeln.md`, Punkt 3 der Handelserlaubnis, verlangt
-      beim Scharfschalten ein Fenster, das die Werte aus `wachen.json` anzeigt,
-      sie vor der Bestätigung anpassbar macht (Schieberegler, Auswahl- oder
-      Eingabefeld) und je ein Feld zum Bestätigen und Ablehnen hat. Gebaut ist
-      es nicht; scharf wird bisher über `handeln.py --live` von Hand.
-      Nächster Schritt: entscheiden, wo das Fenster lebt — kleines
-      PowerShell-/WPF-Fenster im Wrapper `Routinen/marktscanner.ps1` oder ein
-      Schritt in `handeln.py` selbst —, dann bauen und die Regel entsprechend
-      von „noch nicht gebaut" auf den echten Weg umstellen.
-      Betrifft: `Agenten/Handel/scanner/handeln.py`, `Agenten/Routinen/marktscanner.ps1`, `Wissen/Schutzregeln.md`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 ## Erledigt
+
+- [x] **T-028 — Bestätigungsdialog zum Scharfschalten** — erledigt 2026-09-02
+      `Agenten/Handel/freigabe.py` gebaut und an `scanner/handeln.py --live`
+      angebunden. Beide Spuren, prüft gegen `wachen.json`, führt selbst nichts
+      aus. Die Obergrenze jedes Reglers ist der Wachen-Wert, der Hebeldeckel
+      ist senkbar, nie hebbar. Ausstiege laufen nie durch das Fenster.
+      Beim Bauen gemessen: `sys.stdin.isatty()` meldet in der Git-Bash unter
+      Windows auch bei umgeleitetem stdin ein Terminal — als Sperre gegen den
+      Zeitplan taugt es nicht. Deshalb lehnt das Fenster nach 120 s ohne
+      Bedienung von selbst ab; das ist der tragende Schutz. Zusätzlich setzen
+      `Routinen/marktscanner.ps1` und `handel-wachen.ps1` jetzt
+      `MAXHIRN_ROUTINE=1`.
+      Offen als eigener Punkt: `xperp/bot.py` ist nicht angebunden — er legt
+      Befehle ohnehin nur vor.
+
+- [x] **T-027 — Handelsregeln decken Kraken nicht ab**
+      Erledigt 2026-09-02: Neuer Abschnitt *Kraken ist keine dritte Spur* in
+      `Wissen/Schutzregeln.md`. Kraken bleibt lesend — die neun lesenden
+      Werkzeuge sind ausdrücklich erlaubt, `kraken_order_aufgeben` und
+      `kraken_order_stornieren` ausdrücklich nicht, auch nicht mit Bestätigung
+      im Chat. Begründung ist der eigene Maßstab des Abschnitts: ohne
+      `wachen.json`, Journal und Herzschlag fehlen alle drei Eigenschaften, die
+      die Handelserlaubnis tragen. Der Weg zu einer echten dritten Spur ist
+      beschrieben. Nicht auf eine Entscheidung gewartet, weil die sichere
+      Richtung aus der bestehenden Regel folgt — die Öffnung bleibt möglich.
+
+- [x] **T-026 — `absturz-recovery.md` liegt lose im Skill-Ordner und wird nie geladen**
+      Erledigt 2026-09-02: nach `skills/absturz-recovery/SKILL.md` gehoben
+      (`git mv`, Inhalt unverändert), die `.bak-20260902` daneben entfernt. Der
+      Skill erscheint seither in der Skill-Liste einer Sitzung. Abschnitt 10b
+      der Systemprüfung meldet ab jetzt jede lose `.md` im Skill-Ordner und
+      jeden Skill-Ordner ohne `SKILL.md`.
+
+- [x] **T-024 — `CLAUDE.md` und `AGENTS.md` sind auseinandergelaufen**
+      Erledigt 2026-09-02: Beide Paare zusammengeführt, jedes ist jetzt Zeichen
+      für Zeichen gleich — wie in `Werkstatt/` schon erprobt. Übernommen wurde
+      jeweils die Vereinigung: die Vektorsuche (`vektor_suche.py`, `--hybrid`,
+      Abdeckung, Indexstand 19.08.2026) aus `Archiv/AGENTS.md`, die Mail-Sperre,
+      der Netzteil-Kontext, die Umlaut-Suchfalle und die
+      `sort_inbox.py`-Sicherungen aus `Archiv/CLAUDE.md`, dazu die schärfere
+      Notizen-Regel aus `MaxHirn/AGENTS.md`. Der gemeinsame Kopf nennt jetzt die
+      maschinelle Prüfung, die das hält (Abschnitt 10a in `systempruefung.ps1`).
 
 - [x] **T-022 — `MaxHirn-Sicherung` deaktiviert, `MaxHirn-Posteingang` scheiterte**
       Erledigt 2026-09-02: `MaxHirn-Sicherung` auf Anweisung von Max wieder
