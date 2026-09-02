@@ -1,10 +1,18 @@
-# Stuendlicher Zwischenstand der Textebene. Von der Aufgabenplanung aufgerufen.
+# Taeglicher Zwischenstand der Textebene (20:00). Von der Aufgabenplanung
+# aufgerufen.
 #
 # Zweck: Git schuetzt nur, was committet ist. Zwischen dem Schreiben einer Datei
-# und ihrem Commit ist die Arbeit nirgends gesichert - auch die Sicherung um
-# 20:00 haelt dann nur den ueberschriebenen Stand. Bei mehreren gleichzeitigen
-# Sitzungen (Claude-Chats, Hermes) ist dieses Fenster das eigentliche Risiko.
-# Siehe Wissen/Schutzregeln.md, Abschnitt "Mehrere Sitzungen gleichzeitig".
+# und ihrem Commit ist die Arbeit nirgends gesichert. Bei mehreren gleichzeitigen
+# Sitzungen (Claude-Chats, Hermes) kann eine Sitzung die uncommittete Arbeit
+# einer anderen ueberschreiben - siehe Wissen/Schutzregeln.md, Abschnitt
+# "Mehrere Sitzungen gleichzeitig". Dieser Lauf legt einmal am Tag einen lokalen
+# Wiederherstellungspunkt der gesamten Textebene auf dem Branch "zwischenstand"
+# an.
+#
+# Lief bis 02.09.2026 stuendlich; auf taeglich 20:00 reduziert (im Umfeld des
+# System-Umzugs, weniger Lauefe erwuenscht). Damit ist im schlimmsten Fall ein
+# Tag uncommitteter Arbeit ungesichert - eigenes Committen nach jedem
+# Arbeitsschritt bleibt Pflicht.
 #
 # Das Skript kann per Konstruktion nichts kaputtmachen:
 #   - Eigener Index ueber GIT_INDEX_FILE. Der normale Staging-Bereich bleibt
@@ -30,7 +38,11 @@
 param([switch]$Testlauf)
 
 $ErrorActionPreference = 'Stop'
-$wurzel = Split-Path $PSScriptRoot -Parent
+# Zwei Ebenen ueber diesem Skript liegt die Wurzel BrainFiles\ mit dem einzigen
+# .git (Agenten\Routinen\ -> Agenten\ -> BrainFiles\). Seit der Ordnertrennung
+# vom 30.08.2026 ist Agenten\ kein Git-Repository mehr - eine Ebene reichte bis
+# dahin.
+$wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 $log = Join-Path $logs 'zwischenstand-letzter-lauf.log'
@@ -52,8 +64,16 @@ try {
   if (Test-Path $eigenerIndex) { Remove-Item $eigenerIndex -Force }
   $env:GIT_INDEX_FILE = $eigenerIndex
 
-  git add -A 2>&1 | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exitcode $LASTEXITCODE)" }
+  # git schreibt Warnungen nach stderr (CRLF-Umwandlung, "adding embedded git
+  # repository" bei einem Fremd-Repo im Baum). Unter $ErrorActionPreference=Stop
+  # macht schon eine solche Warnung den Lauf zunichte. Fuer den einen git-Aufruf
+  # daher auf Continue schalten und die Ausgabe in eine Variable fangen; echte
+  # Fehler bleiben ueber den Exitcode sichtbar.
+  $eap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  $addAusgabe = git add -A 2>&1
+  $ErrorActionPreference = $eap
+  if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exitcode $LASTEXITCODE): $addAusgabe" }
 
   $baum = (git write-tree).Trim()
   if (-not $baum) { throw "git write-tree lieferte nichts" }

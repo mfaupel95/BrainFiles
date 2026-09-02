@@ -130,6 +130,12 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 Werkstatt/*/
 Agenten/Hermes/hermes-agent/**
 Modelle/**
+# OmniRoute (github.com/diegosouzapw/OmniRoute) ist ein solches Fremd-Repo. Es
+# gehoert nach Werkstatt/ und liegt dort auch schon - war am 01.09.2026 aber
+# zusaetzlich unter MaxHirn/. Folge: "?? OmniRoute/" im Status und ein Abbruch
+# der Zwischenstand-Routine (git add auf ein eingebettetes Repo). Siehe
+# Archiv/TASKS.md: die Kopie unter MaxHirn/ soll weg.
+MaxHirn/OmniRoute/
 
 # Fremde MCP-Server. Freigegeben sind oben nur die drei eigenen (mail, kraken,
 # archiv). Die Muster *.env.template und *.mcp.json gelten aber ohne Pfad und
