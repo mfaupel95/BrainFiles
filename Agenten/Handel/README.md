@@ -589,3 +589,45 @@ Hebel. Davon hängen Margin-Mechanik, Gebührenmodell und die Frage ab, ob es
 
 **Ausgelöst werden Orders in keinem Fall vom Programm.** Es bereitet vor und legt
 mit allen Werten vor; der letzte Schritt bleibt beim Menschen.
+
+## Freigabefenster (`freigabe.py`)
+
+Gebaut am 02.09.2026 für T-028. Es erfüllt Punkt 3 aus
+`Wissen/Schutzregeln.md`: scharf geschaltet wird von Hand, in einem Fenster,
+das die Werte zeigt, sie anpassbar macht und ein Feld zum Bestätigen hat.
+
+**Es führt nichts aus — es gibt frei.** Keine Order, kein OKX, kein Kraken. Es
+nimmt Aufträge entgegen, lässt sie im Rahmen der Wachen verändern und gibt die
+bestätigten zurück. Ausgeführt werden sie vom Automaten, der `wachen.json`
+liest. So bleibt die Ausführung dort, wo die Grenzen sind.
+
+```
+python freigabe.py --spur hebel --beispiel
+python freigabe.py --spur spot --auftrag auftrag.json --aus frei.json
+```
+
+Exit-Code 0 = bestätigt, 1 = abgelehnt. Fenster schließen und Escape zählen
+als Ablehnung; Ablehnen verwirft auch, was in derselben Runde schon bestätigt
+wurde.
+
+### Was das Fenster nicht zulässt
+
+| Regel | Wie sie im Code steht |
+|---|---|
+| Kein Wert über eine Grenze | Die **Obergrenze jedes Reglers ist der Wachen-Wert** — nicht erst die Prüfung danach |
+| Hebeldeckel senkbar, nie hebbar | Regler geht 1 bis `max_hebel`, der Hebel selbst fällt aus der Stopweite |
+| Kein Prozent-Stop | Spur 2 rechnet die Stopweite in ATR, `stop_atr_faktor` ist die Untergrenze |
+| `wachen.json` bleibt unberührt | Die Datei wird nur gelesen |
+
+Reißt eine Grenze, ist der Bestätigen-Knopf **gesperrt** und die Zeile steht mit
+Ist gegen Soll in der Tabelle. Halten alle Grenzen, aber `freigabe.erfuellt`
+oder `handel_erlaubt` stehen auf `false`, gibt das Fenster den Auftrag als
+**Papier** frei und sagt das auf dem Knopf — Live wird nie stillschweigend zu
+Papier.
+
+### Noch nicht angebunden
+
+`handeln.py` und `bot.py` rufen es noch nicht auf. Vorsicht bei der Anbindung:
+Ein Fenster im Pfad der **Tagesroutine** würde die geplante Aufgabe blockieren,
+bis jemand klickt. Es gehört deshalb nur in den `--live`-Pfad und nur, wenn
+tatsächlich jemand davorsitzt.

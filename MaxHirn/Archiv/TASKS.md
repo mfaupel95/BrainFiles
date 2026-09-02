@@ -42,18 +42,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-028 — Bestätigungsdialog zum Scharfschalten fehlt**
-      Kontext: `Schutzregeln.md` Punkt 3 („Handel: was ein Agent selbst
-      auslösen darf") verlangt beim Scharfschalten ein Fenster, das die Werte
-      anzeigt, sie per Schieberegler/Textfeld anpassbar macht und Felder zum
-      Bestätigen oder Ablehnen hat. Eine Suche über `Agenten/Handel/` (ohne
-      `.venv`) findet dafür am 02.09.2026 keinen Code — geregelt ist es, gebaut
-      nicht. Der neue Subagent `handels-disponent` legt den Auftrag deshalb als
-      Textblock vor, nicht im Dialog.
-      Nächster Schritt: kleines Tk-Fenster bauen, das die Felder aus dem
-      Disponenten-Block (Einstieg, Stop, Positionswert, Hebel, Risikobetrag)
-      anzeigt und gegen `wachen.json` prüft, bevor es freigibt.
-      Betrifft: `Agenten/Handel/`, `MaxHirn/Wissen/Schutzregeln.md`
+- [~] **T-028 — Bestätigungsdialog zum Scharfschalten**
+      Kontext: `Schutzregeln.md` Punkt 3 verlangt beim Scharfschalten ein
+      Fenster mit anpassbaren Werten und Feldern zum Bestätigen/Ablehnen.
+      Am 02.09.2026 gebaut: `Agenten/Handel/freigabe.py`, beide Spuren, prüft
+      gegen `wachen.json` und gibt frei — führt selbst nichts aus. Die
+      Obergrenze jedes Reglers ist der Wachen-Wert, der Hebeldeckel ist
+      senkbar, nie hebbar. Rechenkern und Fensteraufbau sind geprüft.
+      Offen ist die Anbindung: `handeln.py` und `bot.py` rufen es nicht auf.
+      Nächster Schritt: Aufruf in den `--live`-Pfad von `handeln.py` setzen —
+      **nicht** in die Tagesroutine, dort würde das Fenster die geplante
+      Aufgabe blockieren, bis jemand klickt.
+      Betrifft: `Agenten/Handel/freigabe.py`, `scanner/handeln.py`, `xperp/bot.py`
       Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
