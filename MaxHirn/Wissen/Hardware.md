@@ -899,3 +899,43 @@ powershell -ExecutionPolicy Bypass -File Routinenbsturz-nachmessen.ps1
 Es liest die Ereignisfelder ueber ihren **Namen** aus, nicht ueber
 `.Properties[n]` — der Indexzugriff war die Ursache der
 `SleepInProgress`-Verwechslung oben.
+
+## Monitore und PowerToys PowerDisplay (aus PowerToys-Report 02.09.2026)
+
+Zwei Bildschirme am Rechner:
+
+| Windows-Name | EDID-Kennung | Anzeige in Windows | DDC/CI |
+|---|---|---|---|
+| DISPLAY1 | `ACR0460` — Acer XB281HK (DP) | echtes Monitorprofil | **funktioniert** |
+| DISPLAY2 | `ACI27A8` — zweiter Acer | „Generic PnP Monitor" | **antwortet nicht** |
+
+**PowerDisplay steuert nur den XB281HK.** Für ihn liest das Modul die DDC/CI-Fähigkeiten
+sauber aus und merkt sie sich in `PowerDisplay/monitor_state.json` (Helligkeit = VCP-Code
+`0x10`, Kontrast = VCP-Code `0x12`). Der **zweite Monitor** liefert nach drei Versuchen
+eine **leere Capability-Zeichenkette**; PowerDisplay verwirft ihn dann mit
+`monitor ignored — capabilities unavailable`. Folge: Helligkeit und Kontrast des zweiten
+Bildschirms lassen sich über PowerToys **nicht** einstellen.
+
+Mögliche Ursachen für die leere Antwort, noch **nicht** eingegrenzt:
+- DDC/CI im OSD-Menü des zweiten Monitors abgeschaltet (häufigster Fall — dort einschalten)
+- Anschluss über HDMI, Adapter, KVM oder Dock, die DDC/CI nicht durchreichen
+- „Generic PnP Monitor" heißt: Windows hat kein echtes Monitor-INF geladen
+
+`WmiController: WMI DiscoverMonitors failed: WDM specific return code: 4200` bei jedem
+Start ist **erwartbar** — die WMI-Helligkeitsklasse gibt es nur für Notebook-Panels, nicht
+für externe Desktop-Monitore. Kein Fehler.
+
+### Negativbefunde aus demselben Report
+
+- **Kein Absturz.** Alle `EventViewer-PowerToys.*.exe.xml` sind 0 Byte — keine
+  WER-Fehlereinträge für irgendeinen PowerToys-Prozess. Runner startete am 02.09. um
+  00:56 sauber (elevated), Report um 16:12 gezogen.
+- **PowerToys Run**, dutzende `System.IO.FileNotFoundException` für UWP-Logo-Dateien
+  (`AppleInc.iCloud`, `Microsoft.Copilot`, …): von PowerToys selbst als
+  „can be ignored" markiert. Rauschen, kein Defekt.
+- **FancyZones** `Process path is empty` ×30: kosmetisch.
+- **CmdPal**: Startfehler und fehlende `favorites.json`/`history.json` betreffen
+  **Fremd-Erweiterungen** (Aria2, Colors for Command Palette), nicht den PowerToys-Kern.
+- **AppXDeploymentServer**: ein `winget`-Upgrade von „CurrencyConverter for Command
+  Palette" scheiterte am 30.08. mit `0x80073D02`, weil die alte Version noch lief.
+  Einmalig, folgenlos.
