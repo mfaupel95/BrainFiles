@@ -3,7 +3,7 @@ id: 20260830-wiederholbare-aufgaben
 title: 'Wiederholbare Aufgaben'
 tags: [betrieb]
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-02
 related: [20260830-routinen]
 summary: 'Welche Arbeit sich wiederholt hat und welche Skills daraus entstanden sind.'
 ---
@@ -79,6 +79,17 @@ schätzen, sondern einen zweiten Fall vorweisen.
 Was er kostet, wenn er fehlt: still ausfallende MCP-Server und geplante
 Aufgaben, die Erfolg melden, während sie ins Leere laufen. Details in
 [[Ordnerstruktur]].
+
+## Nachtrag 02.09.2026: `videoanalyse`
+
+Achter Skill, wieder aus einem zweiten Fall statt aus der Messung: Am
+11.08.2026 wurde ein YouTube-Beitrag von STA Solutions zur Marktlage
+ausgewertet ([[Marktlage-August-2026]]), am 02.09.2026 einer desselben Kanals
+zu XRP ([[XRP-Analyse-STA-September-2026]]). Beim zweiten Mal kostete allein das
+Transkript-Ziehen drei Sackgassen (veränderte `YouTubeTranscriptApi`-API, leere
+`timedtext`-Antworten, unbrauchbare Fremdseiten). Der Weg steckt jetzt in
+`.claude/skills/videoanalyse/transkript.py`; die Auswertung folgt der Struktur
+der beiden bestehenden Notizen.
 
 ## Fallen bei einer erneuten Auswertung
 
