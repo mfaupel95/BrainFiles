@@ -65,6 +65,9 @@
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
+!Agenten/Handel/kraken/*.py
+!Agenten/Handel/kraken/*.md
+!Agenten/Handel/kraken/*.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
@@ -109,6 +112,12 @@ Agenten/Handel/check.log
 Agenten/Handel/scanner/zustand.json
 Agenten/Handel/scanner/handelsjournal.csv
 Agenten/Handel/scanner/berichte/**
+
+# Spur 3 (Kraken): dieselbe Aufteilung. wachen.json ist Konfiguration von
+# Hand und oben freigegeben, diese drei schreibt jeder Lauf.
+Agenten/Handel/kraken/zustand.json
+Agenten/Handel/kraken/handelsjournal.csv
+Agenten/Handel/kraken/berichte/**
 
 # Erzeugtes und Fremdes
 **/__pycache__/**

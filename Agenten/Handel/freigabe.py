@@ -51,7 +51,20 @@ from tkinter import ttk
 
 HIER = Path(__file__).resolve().parent
 WACHEN = {"spot": HIER / "scanner" / "wachen.json",
-          "hebel": HIER / "xperp" / "wachen.json"}
+          "hebel": HIER / "xperp" / "wachen.json",
+          "kraken": HIER / "kraken" / "wachen.json"}
+
+# Spuren mit Kapitaleinsatz ohne Hebel. Sie rechnen gleich; verschieden sind
+# nur Boerse, Waehrung und der Schluessel des Betragsfeldes.
+SPOTARTIG = ("spot", "kraken")
+
+# Wie das Betragsfeld im Auftrag heisst. Es traegt die Waehrung der Spur -
+# ein Feld "usd" mit EUR-Inhalt waere genau die stille Verwechslung, die
+# kraken/wachen.json ausschliesst.
+BETRAGSFELD = {"spot": "usd", "kraken": "eur", "hebel": "risiko_usd"}
+
+TITEL = {"spot": "1 Spot (OKX)", "hebel": "2 Hebel (XPERP)",
+         "kraken": "3 Kraken (Spot, EUR)"}
 
 
 # --- Wachen ----------------------------------------------------------------
@@ -60,36 +73,59 @@ def lade_wachen(spur):
     """Die Grenzen. Einzige Wahrheit, nur gelesen."""
     p = WACHEN.get(spur)
     if p is None:
-        raise ValueError("Unbekannte Spur %r, erlaubt: spot, hebel" % spur)
+        raise ValueError("Unbekannte Spur %r, erlaubt: %s"
+                         % (spur, ", ".join(WACHEN)))
     if not p.exists():
         raise FileNotFoundError("Wachen fehlen: %s" % p)
     return json.loads(p.read_text("utf-8"))
 
 
+def waehrung(w):
+    """Waehrungskuerzel der Spur. Steht in den Wachen; ohne Angabe USD, weil
+    die beiden aelteren Spuren auf OKX in USD rechnen."""
+    return w.get("waehrung", "USD")
+
+
 def _z(w, name, ersatz=None):
-    """Zahl aus den Wachen, mit Ersatz falls der Schluessel fehlt."""
-    v = w.get(name, ersatz)
+    """Zahl aus den Wachen, mit Ersatz falls der Schluessel fehlt.
+
+    Betragsfelder tragen die Waehrung im Namen (max_gesamt_usd bzw.
+    max_gesamt_eur). Gefragt wird immer nach der USD-Schreibweise; fehlt
+    sie, wird die EUR-Fassung genommen. So kennt der Aufrufer nur einen
+    Namen und die Wachen trotzdem ihre eigene Waehrung."""
+    v = w.get(name)
+    if v is None and name.endswith("_usd"):
+        v = w.get(name[:-4] + "_eur")
     return ersatz if v is None else v
 
 
 # --- Rechnung --------------------------------------------------------------
-# Beide Spuren liefern dasselbe Ergebnis-Schema, damit das Fenster nur eine
-# Tabelle kennen muss.
+# Alle Spuren liefern dasselbe Ergebnis-Schema, damit das Fenster nur eine
+# Tabelle kennen muss. Die Betraege darin sind in der Waehrung der Spur -
+# deshalb heisst das Feld "risiko" und nicht "risiko_usd".
+
+def _betrag(a):
+    """Der Kapitaleinsatz aus dem Auftrag, gleich wie das Feld heisst."""
+    for name in ("usd", "eur", "betrag"):
+        if a.get(name) is not None:
+            return float(a[name])
+    raise KeyError("Auftrag ohne Betragsfeld (usd/eur/betrag)")
+
 
 def rechne_spot(a, w):
     """Spot, nur Long, kein Hebel. Der Einsatz ist der Kapitaleinsatz."""
     einstieg = float(a["einstieg"])
     stop_pct = float(a["stop_pct"])
     cr = float(a.get("cr", 2.0))
-    usd = float(a["usd"])
+    betrag = _betrag(a)
 
     stop = einstieg * (1 - stop_pct / 100.0)
     ziel = einstieg + cr * (einstieg - stop)
-    risiko = usd * stop_pct / 100.0
+    risiko = betrag * stop_pct / 100.0
     return {"einstieg": einstieg, "stop": stop, "ziel": ziel,
             "stop_pct": stop_pct, "cr": cr,
-            "positionswert": usd, "gebunden": usd, "hebel": 1.0,
-            "risiko_usd": risiko}
+            "positionswert": betrag, "gebunden": betrag, "hebel": 1.0,
+            "risiko": risiko}
 
 
 def rechne_hebel(a, w):
@@ -125,11 +161,12 @@ def rechne_hebel(a, w):
             "stop_pct": stop_pct,
             "cr": ziel_faktor / atr_faktor if atr_faktor else 0.0,
             "positionswert": positionswert, "gebunden": margin,
-            "hebel": deckel, "risiko_usd": risiko, "atr_pct": atr_pct,
+            "hebel": deckel, "risiko": risiko, "atr_pct": atr_pct,
             "richtung": "short" if kurz else "long"}
 
 
-RECHNER = {"spot": rechne_spot, "hebel": rechne_hebel}
+RECHNER = {"spot": rechne_spot, "hebel": rechne_hebel,
+           "kraken": rechne_spot}
 
 
 # --- Pruefung gegen die Wachen ---------------------------------------------
@@ -139,19 +176,21 @@ def pruefe(r, w, spur, bestand):
 
     Liste von (Bezeichnung, Ist, Soll, haelt?)."""
     p = []
-    gebunden_vorher = float(bestand.get("gebunden_usd", 0.0))
+    wkz = waehrung(w)
+    gebunden_vorher = float(bestand.get("gebunden", 0.0))
     offen_vorher = int(bestand.get("offene_positionen", 0))
 
-    if spur == "spot":
+    if spur in SPOTARTIG:
         je = _z(w, "max_pro_trade_usd", 50)
         ges = _z(w, "max_gesamt_usd", 200)
         maxoffen = _z(w, "max_offene_positionen", 4)
         smin = _z(w, "pflicht_stop_prozent_min", 4.0)
         smax = _z(w, "pflicht_stop_prozent_max", 12.0)
         mcr = _z(w, "mindest_chance_risiko", 1.5)
-        p.append(("Einsatz je Trade", "%.2f USD" % r["gebunden"],
+        p.append(("Einsatz je Trade", "%.2f %s" % (r["gebunden"], wkz),
                   "hoechstens %.2f" % je, r["gebunden"] <= je + 1e-9))
-        p.append(("Gebunden gesamt", "%.2f USD" % (gebunden_vorher + r["gebunden"]),
+        p.append(("Gebunden gesamt",
+                  "%.2f %s" % (gebunden_vorher + r["gebunden"], wkz),
                   "hoechstens %.2f" % ges,
                   gebunden_vorher + r["gebunden"] <= ges + 1e-9))
         p.append(("Offene Positionen", "%d" % (offen_vorher + 1),
@@ -168,18 +207,19 @@ def pruefe(r, w, spur, bestand):
         maxhebel = _z(w, "max_hebel", 5)
         maxrisiko = _z(w, "risiko_je_anlauf_usd", 7.5)
         minatr = _z(w, "stop_atr_faktor", 1.5)
-        p.append(("Margin je Anlauf", "%.2f USD" % r["gebunden"],
+        p.append(("Margin je Anlauf", "%.2f %s" % (r["gebunden"], wkz),
                   "hoechstens %.2f" % je, r["gebunden"] <= je + 1e-9))
-        p.append(("Margin gesamt", "%.2f USD" % (gebunden_vorher + r["gebunden"]),
+        p.append(("Margin gesamt",
+                  "%.2f %s" % (gebunden_vorher + r["gebunden"], wkz),
                   "hoechstens %.2f" % ges,
                   gebunden_vorher + r["gebunden"] <= ges + 1e-9))
         p.append(("Offene Anlaeufe", "%d" % (offen_vorher + 1),
                   "hoechstens %d" % maxoffen, offen_vorher + 1 <= maxoffen))
         p.append(("Hebel", "%.1fx" % r["hebel"],
                   "hoechstens %.1fx" % maxhebel, r["hebel"] <= maxhebel + 1e-9))
-        p.append(("Risiko je Anlauf", "%.2f USD" % r["risiko_usd"],
+        p.append(("Risiko je Anlauf", "%.2f %s" % (r["risiko"], wkz),
                   "hoechstens %.2f" % maxrisiko,
-                  r["risiko_usd"] <= maxrisiko + 1e-9))
+                  r["risiko"] <= maxrisiko + 1e-9))
         gewaehlt = r["stop_pct"] / r["atr_pct"] if r.get("atr_pct") else 0.0
         p.append(("Stop in ATR", "%.2f ATR" % gewaehlt,
                   "mindestens %.2f" % minatr, gewaehlt >= minatr - 1e-9))
@@ -188,8 +228,8 @@ def pruefe(r, w, spur, bestand):
     # in derselben Tabelle, damit niemand bestaetigt, ohne sie gesehen zu haben.
     ks = _z(w, "kill_switch_gesamt_usd", None)
     if ks is not None:
-        verlust = float(bestand.get("verlust_gesamt_usd", 0.0))
-        p.append(("Kill-Switch Gesamtverlust", "%.2f USD" % verlust,
+        verlust = float(bestand.get("verlust_gesamt", 0.0))
+        p.append(("Kill-Switch Gesamtverlust", "%.2f %s" % (verlust, wkz),
                   "unter %.2f" % ks, verlust < ks))
     frei = bool((w.get("freigabe") or {}).get("erfuellt"))
     p.append(("Freigabe Papier zu Live", "erfuellt" if frei else "nicht erfuellt",
@@ -233,9 +273,9 @@ class Freigabefenster:
         self.rest = zeitlimit
         self.abgelaufen = False
 
+        self.wkz = waehrung(w)
         self.root = tk.Tk()
-        self.root.title("Scharfschalten - Spur %s"
-                        % ("1 Spot" if spur == "spot" else "2 Hebel"))
+        self.root.title("Scharfschalten - Spur %s" % TITEL.get(spur, spur))
         self.root.minsize(600, 0)
         self.root.protocol("WM_DELETE_WINDOW", self._ablehnen)   # Fenster zu = Nein
         self.root.bind("<Escape>", lambda _e: self._ablehnen())
@@ -311,10 +351,10 @@ class Freigabefenster:
         Die Obergrenzen kommen aus den Wachen - deshalb kann kein Regler ueber
         eine Grenze hinaus."""
         w = self.w
-        if self.spur == "spot":
+        if self.spur in SPOTARTIG:
             return [
-                ("usd", "Einsatz", 1.0,
-                 float(_z(w, "max_pro_trade_usd", 50)), 1.0, "USD"),
+                (BETRAGSFELD[self.spur], "Einsatz", 1.0,
+                 float(_z(w, "max_pro_trade_usd", 50)), 1.0, self.wkz),
                 ("stop_pct", "Stopweite",
                  float(_z(w, "pflicht_stop_prozent_min", 4.0)),
                  float(_z(w, "pflicht_stop_prozent_max", 12.0)), 0.1, "%"),
@@ -323,7 +363,7 @@ class Freigabefenster:
             ]
         return [
             ("risiko_usd", "Risiko je Anlauf", 0.5,
-             float(_z(w, "risiko_je_anlauf_usd", 7.5)), 0.25, "USD"),
+             float(_z(w, "risiko_je_anlauf_usd", 7.5)), 0.25, self.wkz),
             ("stop_atr_faktor", "Stopweite",
              float(_z(w, "stop_atr_faktor", 1.5)), 4.0, 0.1, "ATR"),
             # Deckel senkbar, nie hebbar: das Maximum ist der Wachen-Wert.
@@ -406,9 +446,10 @@ class Freigabefenster:
             "Einstieg        %12.6g" % r["einstieg"],
             "Stop            %12.6g   (%.2f %%)" % (r["stop"], r["stop_pct"]),
             "Ziel            %12.6g   (%.2f zu 1)" % (r["ziel"], r["cr"]),
-            "Positionswert   %12.2f USD" % r["positionswert"],
-            "Gebunden        %12.2f USD   bei %.1fx" % (r["gebunden"], r["hebel"]),
-            "Verlust im Stop %12.2f USD" % r["risiko_usd"],
+            "Positionswert   %12.2f %s" % (r["positionswert"], self.wkz),
+            "Gebunden        %12.2f %s   bei %.1fx" % (r["gebunden"], self.wkz,
+                                                       r["hebel"]),
+            "Verlust im Stop %12.2f %s" % (r["risiko"], self.wkz),
         ]))
         self.pruefung.config(text="\n".join(
             "%-26s %-16s %-22s %s" % (n, ist, soll, "haelt" if ok else "REISST")
@@ -442,14 +483,15 @@ class Freigabefenster:
         if a is None or self.rechnung is None:
             return
         a.update({k: self.rechnung[k] for k in ("stop", "ziel", "stop_pct",
-                                                "positionswert", "risiko_usd")})
-        a["gebunden_usd"] = self.rechnung["gebunden"]
+                                                "positionswert", "risiko")})
+        a["gebunden"] = self.rechnung["gebunden"]
+        a["waehrung"] = self.wkz
         a["hebel"] = self.rechnung["hebel"]
         a["modus"] = "live" if haelt_alles(self.pruefungen) else "papier"
         self.ergebnis.append(a)
         # Der bestaetigte Auftrag bindet Kapital - der naechste sieht das.
-        self.bestand["gebunden_usd"] = (float(self.bestand.get("gebunden_usd", 0.0))
-                                        + a["gebunden_usd"])
+        self.bestand["gebunden"] = (float(self.bestand.get("gebunden", 0.0))
+                                    + a["gebunden"])
         self.bestand["offene_positionen"] = int(
             self.bestand.get("offene_positionen", 0)) + 1
         self._weiter()
@@ -494,6 +536,8 @@ BEISPIEL = {
     "hebel": [{"inst": "RE-USD_UM_XPERP-310620", "richtung": "long",
                "einstieg": 1.2345, "atr_pct": 2.9, "risiko_usd": 7.5,
                "hebel": 5}],
+    "kraken": [{"inst": "XXBTZEUR", "einstieg": 66748.2, "stop_pct": 7.0,
+                "cr": 2.0, "eur": 50}],
 }
 
 
@@ -502,12 +546,13 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(
         description="Bestaetigungsfenster zum Scharfschalten. Fuehrt nichts aus.")
-    p.add_argument("--spur", choices=("spot", "hebel"), required=True)
+    p.add_argument("--spur", choices=tuple(WACHEN), required=True)
     p.add_argument("--auftrag",
                    help="JSON-Datei mit einem Auftrag oder einer Liste; - fuer stdin")
     p.add_argument("--aus", help="bestaetigte Auftraege hierhin schreiben (sonst stdout)")
     p.add_argument("--bestand",
-                   help="JSON mit gebunden_usd, offene_positionen, verlust_gesamt_usd")
+                   help="JSON mit gebunden, offene_positionen, verlust_gesamt "
+                        "(Betraege in der Waehrung der Spur)")
     p.add_argument("--beispiel", action="store_true",
                    help="mit einem Beispielauftrag oeffnen")
     p.add_argument("--zeitlimit", type=int, default=None,

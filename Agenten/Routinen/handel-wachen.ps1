@@ -1,6 +1,11 @@
-# Woechentlicher Wachen-Abgleich des Marktscanners. Von der Windows-
-# Aufgabenplanung aufgerufen (Bedingung 5 aus Wissen/Schutzregeln.md,
+# Woechentlicher Wachen-Abgleich der automatischen Spuren. Von der Windows-
+# Aufgabenplanung aufgerufen (Bedingung 5 aus Wissen/Handelsregeln.md,
 # Abschnitt "Damit der Automat unbeaufsichtigt laufen darf").
+#
+# Zwei Spuren, nacheinander, jede mit ihrer eigenen wachen.json:
+#   Spur 1  Handel\scanner  (OKX, USD)
+#   Spur 3  Handel\kraken   (Kraken, EUR)
+# Spur 2 (XPERP) hat keinen Live-Pfad und damit nichts abzugleichen.
 #
 # Ruft handeln.py --wachen: zeigt die Bedingungen 2-5 als Momentaufnahme,
 # spiegelt Journal + Zustand nach journal_zweitziel (Bedingung 4) und
@@ -36,6 +41,14 @@ try {
   Push-Location $scanner
   & $py 'handeln.py' '--wachen' *>&1 | Add-Content $log -Encoding UTF8
   Pop-Location
+
+  $kraken = Join-Path $wurzel 'Handel\kraken'
+  if (Test-Path (Join-Path $kraken 'handeln.py')) {
+    "" | Add-Content $log -Encoding UTF8
+    Push-Location $kraken
+    & $py 'handeln.py' '--wachen' *>&1 | Add-Content $log -Encoding UTF8
+    Pop-Location
+  }
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
 } catch {
   Pop-Location -ErrorAction SilentlyContinue

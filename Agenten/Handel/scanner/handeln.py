@@ -261,10 +261,12 @@ def hole_freigabe(vs, z, s):
         print("  Freigabefenster nicht verfuegbar (%s) - kein Einstieg." % e,
               file=sys.stderr)
         return []
+    # Betraege in der Waehrung der Spur - hier USD, bei Spur 3 EUR. Die
+    # Schluessel sind deshalb waehrungsneutral.
     bestand = {
-        "gebunden_usd": sum(p["usd"] for p in z["positionen"]),
+        "gebunden": sum(p["usd"] for p in z["positionen"]),
         "offene_positionen": len(z["positionen"]),
-        "verlust_gesamt_usd": s["ruecklauf_usd"],
+        "verlust_gesamt": s["ruecklauf_usd"],
     }
     try:
         return freigabe.bestaetige(vs, "spot", bestand,

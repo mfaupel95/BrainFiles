@@ -1,0 +1,59 @@
+{
+  "_zweck": "Harte Grenzen der dritten Spur (Kraken, Spot, EUR). Eine Datei, eine Wahrheit. Wird von scan.py und handeln.py gelesen, nie von ihnen geschrieben - einzige Ausnahme ist wachen_kraken.sperre_zu, das handel_erlaubt nur von true auf false legt.",
+
+  "_waehrung": "Das Kraken-Konto rechnet in EUR, nicht in USD wie die beiden anderen Spuren. Alle Betragsfelder tragen deshalb die Endung _eur, und freigabe.py zeigt EUR an. Wer hier USD liest, liest falsch.",
+  "waehrung": "EUR",
+
+  "_watchlist": "Kraken-Paarnamen, nicht Anzeigenamen: XXBTZEUR statt BTCEUR. Alle 17 am 02.09.2026 gegen die API geprueft, jedes mit 720 Tageskerzen (rund zwei Jahre) - genug fuer die Ein-Jahres-Regel aus Wissen/Handelsbots.md.",
+  "watchlist": [
+    "XXBTZEUR", "XETHZEUR", "SOLEUR", "XXRPZEUR", "ADAEUR",
+    "DOTEUR", "LINKEUR", "XLTCZEUR", "AVAXEUR", "XXLMZEUR",
+    "XDGEUR", "ATOMEUR", "ALGOEUR", "FILEUR", "BCHEUR",
+    "TRXEUR", "SUIEUR"
+  ],
+
+  "max_pro_trade_eur": 50,
+  "max_gesamt_eur": 200,
+  "max_offene_positionen": 4,
+
+  "_gebuehren": "Gemessen an der Kraken-Staffel am 02.09.2026 fuer Volumen unter 10.000 EUR: Taker 0,40 %, Maker 0,25 %. Das ist das Achtfache von OKX (0,05 %). Eine Runde aus Markt-Kauf und Markt-Verkauf kostet 0,80 % - bei 50 EUR Einsatz 0,40 EUR. Diese Zahl traegt drei der Grenzen unten: hoehere Mindest-Stopweite, hoeheres Chance-Risiko-Verhaeltnis, hoeherer Mindest-Score. Wer sie senkt, muss sie neu messen.",
+  "gebuehr_taker": 0.004,
+  "gebuehr_maker": 0.0025,
+
+  "_stop": "Untergrenze bewusst hoeher als bei Spur 1 (dort 4 %). Bei 0,80 % Gebuehr je Runde frisst ein 4-%-Stop ein Fuenftel des Risikobetrags allein an Kosten.",
+  "pflicht_stop_prozent_min": 5.0,
+  "pflicht_stop_prozent_max": 12.0,
+
+  "_tore": "Ebenfalls strenger als Spur 1 (dort 1.5 und 60): die Gebuehr muss erst verdient werden, bevor der Trade etwas verdient.",
+  "mindest_chance_risiko": 2.0,
+  "mindest_score": 65,
+  "max_volatilitaet_pa": 1.20,
+
+  "abklingzeit_tage": 3,
+
+  "_mindest_guthaben": "Zusaetzliche Live-Sperre dieser Spur. Am 02.09.2026 lagen 0,0094 EUR frei auf dem Konto - der Rest steckt in Coins. Ein Kauf-Automat ohne Fiat kauft nichts, er scheitert nur in jedem Lauf. Unter diesem Betrag bleibt Live gesperrt; der Papierlauf laeuft weiter.",
+  "mindest_guthaben_eur": 60,
+
+  "_freigabe": "Bedingung 1 aus Wissen/Handelsregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
+  "freigabe": {
+    "erfuellt": false,
+    "papierlauf_min_wochen": 6,
+    "papierlauf_min_runden": 50,
+    "netto_positiv_nach_gebuehren_und_funding": false,
+    "groesster_ruecklauf_papierlauf_eur": null,
+    "geprueft_am": null
+  },
+
+  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_eur Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_eur.",
+  "drawdown_halbierung_prozent": 15.0,
+  "kill_switch_gesamt_eur": 40,
+
+  "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 2880 = 48 h passt zur Tagesroutine: ein ausgefallener Lauf wird gefangen, ein normaler loest nie aus.",
+  "herzschlag_max_minuten": 2880,
+
+  "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
+  "journal_zweitziel": null,
+
+  "handel_erlaubt": false,
+  "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true erst, wenn (1) der Papierlauf die vier Werte in freigabe erfuellt, (2) mindestens mindest_guthaben_eur frei auf dem Konto liegen, (3) journal_zweitziel gesetzt ist. Der Kraken-MCP-Server bleibt davon unberuehrt: seine Werkzeuge kraken_order_aufgeben und kraken_order_stornieren sind weiterhin verboten - siehe Wissen/Handelsregeln.md."
+}
