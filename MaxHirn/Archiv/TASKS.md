@@ -271,26 +271,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
-- [~] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
-      Kontext: `MaxHirn-Sicherung` lief zuletzt am 30.08.2026 20:00 und endete
-      mit Code 1 (robocopy 16, `G:\MaxHirn-Sicherung\` nicht gefunden — `G:`
-      war zeitweise ab, vgl. T-015). Am 31.08. und 01.09. lief die Aufgabe gar
-      nicht. **Korrektur 2026-09-02:** Die Ursache steht schon in T-022 — die
-      Aufgabe war deaktiviert und wurde heute wieder aktiviert. Offen ist damit
-      nur noch die Bestätigung, dass der Lauf heute 20:00 durchgeht, und der
-      Stand der Kopien bis dahin: `G:` ist vom 31.08., `O:` vom 01.09. — der
-      Vault hängt an einer einzigen aktuellen Kopie, und die liegt im selben
-      Gehäuse.
-      Die Erkennungslücke ist geschlossen: Abschnitt 9 der Systemprüfung meldet
-      seit heute nicht mehr nur fehlerhafte Läufe, sondern auch ausgebliebene —
-      jede `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau
-      das hat hier zwei Tage lang niemand gesehen.
-      Nächster Schritt: nach 20:00 `Routinen/logs/sicherung-letzter-lauf.log`
-      ansehen und den Eintrag schließen, wenn der Lauf grün ist.
-      Betrifft: `Agenten/Routinen/sicherung.ps1`, `Wissen/Routinen.md`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
 ## Erledigt
+
+- [x] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
+      Erledigt 2026-09-02. Die Ursache stand bereits in T-022: Die Aufgabe war
+      deaktiviert und wurde heute wieder aktiviert — der Eintrag hier war
+      insoweit doppelt und ist korrigiert worden. Bestätigt ist der Lauf jetzt
+      auch: `G:` und `O:` tragen um 22:35 den Stand von heute, einschließlich
+      der Regeländerungen dieser Sitzung. Beide Kopien sind damit wieder
+      aktuell.
+      Beobachtung am Rand: Ein zweiter Lauf um 22:40 brach mit `0xC000013A`
+      (abgebrochen) ab — zeitgleich mit `MaxHirn-Posteingang`, was nach einem
+      Sammelstart von Hand aussieht, fünf Minuten nach dem regulären. Die
+      Hausregel „`sichern.ps1` nie doppelt starten" gilt genau dafür; Schaden
+      ist keiner entstanden, die Kopie von 22:35 steht.
+      Die Erkennungslücke ist geschlossen: Abschnitt 9 der Systemprüfung meldet
+      seit heute nicht nur fehlerhafte Läufe, sondern auch ausgebliebene — jede
+      `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau das
+      hatte zwei Tage lang niemand gesehen.
 
 - [x] **T-028 — Bestätigungsdialog zum Scharfschalten** — erledigt 2026-09-02
       `Agenten/Handel/freigabe.py` gebaut und an `scanner/handeln.py --live`
