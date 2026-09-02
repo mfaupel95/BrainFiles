@@ -3,10 +3,9 @@ id: 20260901-saisonalitaet-signal
 title: 'Saisonalität im XPERP-Signal'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-01
-related:
-  - id: 20260901-xperp-handel
-  - id: 20260830-handelsbots
+updated: 2026-09-02
+related: [20260901-xperp-handel, 20260830-handelsbots, 20260902-handelsregeln]
+summary: 'Warum der Closed-Source-Indikator xGhozt Prophecies als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem seine duenne Stichprobe nennt.'
 ---
 
 # Saisonalität im XPERP-Signal

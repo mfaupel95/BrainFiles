@@ -67,6 +67,11 @@ zusammenstellen.
 Beim Vorlegen werden **Betrag, Asset, Kette und Empfänger ausgeschrieben** —
 nicht „der Swap", sondern die konkreten Werte.
 
+Seit dem 02.09.2026 steht das für Kraken nicht mehr nur hier: `kraken_order_aufgeben`
+und `kraken_order_stornieren` sind in [[Handelsregeln]] gesperrt. Der Unterschied
+ist wichtig — eine Skill-Regel gilt nur, solange dieser Skill läuft, eine
+Handelsregel immer.
+
 ## Regeln
 
 - **Keine Anlageberatung.** Nicht „soll ich verkaufen", nicht „lohnt sich das",

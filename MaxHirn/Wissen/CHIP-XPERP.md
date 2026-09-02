@@ -3,10 +3,9 @@ id: 20260901-chip-xperp
 title: 'CHIP XPERP auf OKX'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-01
-related:
-  - id: 20260830-handelsbots
-  - id: 20260831-marktscanner
+updated: 2026-09-02
+related: [20260830-handelsbots, 20260831-marktscanner, 20260902-handelsregeln]
+summary: 'Analyse fuer einen gehebelten Anlauf auf CHIP: das 14-Tage-Fenster taeuscht, die reale 133-Tage-Historie ist negativ, alle drei Tore zu.'
 ---
 
 # CHIP XPERP auf OKX
@@ -89,7 +88,7 @@ Neues Modul `historie.py`, dazu ein eigener Vergleichsaufruf.
 
 ## Bewertung
 
-Die Prüfpflicht aus [[Schutzregeln]] (Spur 2) sagt: nötige > beobachtete
+Die Prüfpflicht aus [[Handelsregeln]] (Spur 2) sagt: nötige > beobachtete
 Trefferquote auf der einzig belastbaren Historie → **wahrscheinlich
 unprofitabel**. Das ist ein Widerspruch mit Zahlen, kein Veto. Auf ausdrückliche
 Anweisung mit Kontrakt, Richtung, Hebel, Einsatz und Stop wird wie angewiesen
@@ -133,5 +132,5 @@ Reihe (`kerzen_lang`, ~200 Tage) statt der 300 Signal-Kerzen.
 (`okxf.schluessel_vorhanden()` → True). Der Bot druckt trotzdem nur die
 `okxf.hebel_setzen(...)` / `okxf.order_limit(...)`-Aufrufe. Absenden tut Max —
 einzeilig aus PowerShell (`& ..\scanner\.venv\Scripts\python.exe -c "..."`), nie
-die Claude-Sitzung ([[Schutzregeln]]). Preise vorher mit einem frischen
+die Claude-Sitzung ([[Handelsregeln]]). Preise vorher mit einem frischen
 `bot.py`-Lauf erneuern, sie driften.

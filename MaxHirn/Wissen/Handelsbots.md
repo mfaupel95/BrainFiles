@@ -3,8 +3,8 @@ id: 20260830-handelsbots
 title: 'Handelsbots auf OKX'
 tags: [handel]
 created: 2026-08-24
-updated: 2026-08-24
-related: []
+updated: 2026-09-02
+related: [20260902-handelsregeln, 20260830-schutzregeln]
 summary: 'Gemessene Ergebnisse der OKX-DCA-Bots und welche Stellschraube tatsächlich wirkt.'
 ---
 
@@ -115,6 +115,9 @@ Kit als MCP-Server), [[Marktlage-August-2026]], [[Projekte]].
 
 ## Grenze
 
-Das Auslösen von Geldbewegungen — starten, stoppen, anpassen, schließen —
-bleibt bei Max. Gelesen, gerechnet und vorbereitet wird vollständig; der letzte
-Klick nicht. Siehe [[Schutzregeln]].
+**Überholt seit 01.09.2026.** Bis dahin galt: Das Auslösen von Geldbewegungen
+— starten, stoppen, anpassen, schließen — bleibt bei Max; gelesen, gerechnet und
+vorbereitet wird vollständig, der letzte Klick nicht. Seither ist automatischer
+Handel im Rahmen der beiden `wachen.json` die Regel. Was heute gilt, steht in
+[[Handelsregeln]]. Unverändert davon: Eine Claude-Sitzung sendet die scharfe
+Order nicht selbst, und auf Kraken wird nur gelesen.

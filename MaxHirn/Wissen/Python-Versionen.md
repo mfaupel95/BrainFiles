@@ -1,7 +1,7 @@
 ---
 id: 20260831-python-versionen
 title: 'Python-Versionen'
-tags: [betrieb, hermes]
+tags: [betrieb, ki-agenten]
 created: 2026-08-31
 updated: 2026-08-31
 related: [20260830-hermes, 20260830-projekte]

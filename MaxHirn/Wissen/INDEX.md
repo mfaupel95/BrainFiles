@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-09-02
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -40,7 +40,7 @@ kuratierte Startseite für Menschen und zeigt bewusst nur einen Teil.
 ## Schlagwörter (kontrolliert)
 
 `archiv`, `betrieb`, `finanzen`, `handel`, `hardware`, `holz`, `ki-agenten`,
-`mcp`, `profil`, `sicherheit`, `steuern`, `system`
+`mcp`, `profil`, `sicherheit`, `steuern`, `struktur`, `system`
 
 ## Registry
 
@@ -48,6 +48,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 ### Betrieb und Agenten
 
+- `20260830-index` — **Wissen — Index** — `Wissen/INDEX.md` — Diese Datei: verbindliches Verzeichnis aller Notizen. Steht mit drin, damit „alle Notizen“ wörtlich stimmt.
 - `20260830-verbindungen` — **Verbindungen** — `Wissen/Verbindungen.md` — Welche Dienste und MCP-Server erreichbar sind und welche davon authentifiziert.
 - `20260830-werkzeuge` — **Werkzeuge** — `Wissen/Werkzeuge.md` — Welche Werkzeuge tatsächlich abgerufen werden, gemessen an den bisherigen Sitzungen.
 - `20260830-hermes` — **Hermes Agent** — `Wissen/Hermes.md` — Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.
@@ -78,6 +79,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 - `20260830-steuerunterlagen` — **Steuerunterlagen** — `Wissen/Steuerunterlagen.md` — Steuernummern, veranlagte Jahre, Bescheide und laufende Verfahren.
 - `20260830-belege-einspruch-2024` — **Belege zum Einspruch ESt 2024** — `Wissen/Belege-Einspruch-2024.md` — Welche Nachweise gesammelt sind und was bis 30.09.2026 noch fehlt.
+- `20260902-handelsregeln` — **Handelsregeln** — `Wissen/Handelsregeln.md` — Was ein Agent im Handel selbst auslösen darf: die beiden bewachten Spuren, Kraken als reine Lesequelle, Prüfpflicht und die fünf Freigabebedingungen. Bis 02.09.2026 Teil der Schutzregeln.
 - `20260830-handelsbots` — **Handelsbots auf OKX** — `Wissen/Handelsbots.md` — Gemessene Ergebnisse der DCA-Bots und welche Stellschraube tatsächlich wirkt.
 - `20260831-marktscanner` — **Marktscanner OKX** — `Wissen/Marktscanner.md` — Täglicher Krypto-Scanner mit begrenztem Selbsthandel: Entscheidung, Grenzen, Scharfschalt-Weg, Stand.
 - `20260830-marktlage-august-2026` — **Marktlage August 2026** — `Wissen/Marktlage-August-2026.md` — Geprüfter Marktstand samt Bewertung der zugrunde liegenden Quelle.

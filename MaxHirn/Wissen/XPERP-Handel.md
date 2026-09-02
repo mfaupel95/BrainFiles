@@ -3,9 +3,8 @@ id: 20260901-xperp-handel
 title: 'XPERP-Handel auf OKX'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-01
-related:
-  - id: 20260901-saisonalitaet-signal
+updated: 2026-09-02
+related: [20260901-saisonalitaet-signal, 20260902-handelsregeln]
 summary: 'Wo die gehebelten OKX-Perpetuals liegen, welche Werte 5x tragen und warum der Hebel aus dem Stop fällt statt umgekehrt.'
 ---
 

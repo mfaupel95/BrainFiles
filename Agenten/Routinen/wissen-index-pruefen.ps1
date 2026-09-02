@@ -4,11 +4,26 @@ $ErrorActionPreference = 'Stop'
 $root   = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'MaxHirn'
 $wissen = Join-Path $root 'Wissen'
 $index  = Get-Content (Join-Path $wissen 'INDEX.md') -Raw
-$erlaubt = @('archiv','betrieb','finanzen','handel','hardware','holz','ki-agenten','mcp','profil','sicherheit','steuern','system')
+# Die kontrollierte Schlagwortliste steht in INDEX.md und wird von dort gelesen,
+# nicht hier kopiert: Am 02.09.2026 hatte diese Datei eine eigene Fassung, und
+# der Abschnitt "Schlagwoerter (kontrolliert)" im Index war ihr voraus - die
+# Pruefung meldete zwei Notizen als falsch, die der Registry entsprachen.
+$erlaubt = @()
+if ($index -match '(?s)##\s*Schlagw.{0,3}rter[^
+]*?
+(.+?)(?
+##|$)') {
+    $erlaubt = @([regex]::Matches($Matches[1], '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
+}
+if ($erlaubt.Count -eq 0) { Write-Output 'SCHLAGWORTLISTE IN INDEX.md NICHT LESBAR'; $erlaubt = @('betrieb') }
 $ids = @{}
 $fehler = 0
 
-Get-ChildItem $wissen -Filter *.md | Where-Object { $_.Name -notlike '*.bak*' } | ForEach-Object {
+# Zugaenge.md hat bewusst kein Frontmatter (Stufe 0, nicht in Git, so auch in
+# INDEX.md vermerkt) - sie hier zu melden hiesse, jeden Lauf mit einem Fehler zu
+# beenden, der keiner ist. Ihre Registrierung prueft Schritt 8 weiter unten.
+$ohneFrontmatter = @('Zugaenge.md')
+Get-ChildItem $wissen -Filter *.md | Where-Object { $_.Name -notlike '*.bak*' -and $ohneFrontmatter -notcontains $_.Name } | ForEach-Object {
     $n = $_.Name
     $t = Get-Content $_.FullName -Raw
     $kopf = ($t -split "`r?`n")

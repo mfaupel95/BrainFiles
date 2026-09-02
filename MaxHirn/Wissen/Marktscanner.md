@@ -3,8 +3,8 @@ id: 20260831-marktscanner
 title: 'Marktscanner OKX'
 tags: [handel]
 created: 2026-08-31
-updated: 2026-08-31
-related: [20260830-handelsbots, 20260830-schutzregeln, 20260830-routinen, 20260830-verbindungen, 20260831-python-versionen]
+updated: 2026-09-02
+related: [20260830-handelsbots, 20260902-handelsregeln, 20260830-schutzregeln, 20260830-routinen, 20260830-verbindungen, 20260831-python-versionen]
 summary: 'Täglicher Krypto-Scanner mit begrenztem Selbsthandel auf OKX — Entscheidung, Grenzen, Scharfschalt-Weg und Stand.'
 ---
 
