@@ -18,8 +18,9 @@ Angelegt 24.08.2026 nach einer Bestandsaufnahme des gesamten Vaults,
 01.09.2026 ersetzt: automatischer Handel ist erlaubt, solange die Grenzen in
 den beiden `wachen.json` eingehalten werden**, **Notizen unter `Wissen/` am
 01.09.2026 wieder geschützt: kein Löschen durch den Agenten, Änderung nur im
-Rahmen des Bestehenden**, **Kraken am 02.09.2026 ausdrücklich auf Lesen
-begrenzt** — alles siehe unten.
+Rahmen des Bestehenden**, **Kraken am 02.09.2026 geteilt: der MCP-Server bleibt
+lesend, gehandelt wird dort nur durch die bewachte dritte Spur** — alles siehe
+unten.
 
 ## Hauptregel
 
@@ -86,10 +87,12 @@ jedem schreibenden Zugriff gelesen; was dabei nicht gebraucht wird, macht es
 unbrauchbar.
 
 Das Nötigste in drei Sätzen: Automatischer Handel ist erlaubt, aber nur in den
-beiden Spuren mit eigener `wachen.json` (Marktscanner und XPERP, beide auf OKX)
-— die Datei ist die einzige Wahrheit über die Grenzen. Auf **Kraken** wird nur
-gelesen; `kraken_order_aufgeben` und `kraken_order_stornieren` sind gesperrt,
-auch mit Bestätigung im Chat. Auszahlungsrechte hat kein Schlüssel, und jede
+drei Spuren mit eigener `wachen.json` (Marktscanner und XPERP auf OKX, seit
+02.09.2026 dazu Kraken in EUR) — die Datei ist die einzige Wahrheit über die
+Grenzen. Der **Kraken-MCP** bleibt davon unberührt und lesend:
+`kraken_order_aufgeben` und `kraken_order_stornieren` sind gesperrt, auch mit
+Bestätigung im Chat, weil eine Sitzung keine Wachen mitbringt — auf Kraken
+handelt nur das Skript der Spur 3. Auszahlungsrechte hat kein Schlüssel, und jede
 Geldbewegung außerhalb dieser Spuren bleibt vorbereitend — der Skill `geld`
 arbeitet bis zur Bestätigungsseite und hält dort an.
 

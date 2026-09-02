@@ -5,7 +5,7 @@ tags: [handel, sicherheit]
 created: 2026-09-02
 updated: 2026-09-02
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
-summary: 'Was ein Agent im Handel selbst auslösen darf: die beiden bewachten Spuren, die Prüfpflicht und die fünf Bedingungen für den unbeaufsichtigten Lauf.'
+summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht und die fünf Bedingungen für den unbeaufsichtigten Lauf.'
 ---
 
 # Handelsregeln
@@ -27,13 +27,14 @@ Geldbewegungen bleibt bei Max, ein Agent bereitet nur vor") — **automatischer
 Handel ist seither die Regel, nicht die Ausnahme.**
 
 Damit dieser Satz trägt, muss „Regeln zum Schutz des Kapitals" etwas
-Nachprüfbares bezeichnen und keine Haltung. Es sind zwei Dateien, und sie sind
+Nachprüfbares bezeichnen und keine Haltung. Es sind drei Dateien, und sie sind
 die **einzige** Wahrheit über die Grenzen:
 
 | Spur | Grenzen in | Was dort handelt |
 |---|---|---|
-| **1 — Spot** | `../Agenten/Handel/scanner/wachen.json` | Marktscanner: Spot, nur Long, kein Hebel |
-| **2 — Hebel** | `../Agenten/Handel/xperp/wachen.json` | XPERP-Bot: Long und Short, Hebel bis 5 |
+| **1 — Spot** | `../Agenten/Handel/scanner/wachen.json` | Marktscanner: OKX, Spot, nur Long, kein Hebel, USD |
+| **2 — Hebel** | `../Agenten/Handel/xperp/wachen.json` | XPERP-Bot: Long und Short, Hebel bis 5, USD |
+| **3 — Kraken** | `../Agenten/Handel/kraken/wachen.json` | Kraken-Skript: Spot, nur Long, kein Hebel, **EUR** — seit 02.09.2026 |
 
 Drei Eigenschaften machen die Erlaubnis tragfähig. **Fehlt eine, gilt sie
 nicht** — dann ist es kein bewachter Automat, sondern eine Wette mit
@@ -55,8 +56,10 @@ Skriptunterstützung:
    Ausstiege laufen nie durch das Fenster. Bedient es niemand, lehnt es nach
    120 Sekunden von selbst ab; das ist der tragende Schutz gegen einen Start
    aus dem Zeitplan, denn `sys.stdin.isatty()` meldet in der Git-Bash unter
-   Windows auch bei umgeleitetem stdin ein Terminal. `xperp/bot.py` ist nicht
-   angebunden — er legt Befehle ohnehin nur vor.
+   Windows auch bei umgeleitetem stdin ein Terminal. Angebunden sind Spur 1
+   (`scanner/handeln.py --live`) und seit 02.09.2026 Spur 3
+   (`kraken/handeln.py --live`, Fenstertitel „Spur 3 Kraken", Beträge in EUR).
+   `xperp/bot.py` ist nicht angebunden — er legt Befehle ohnehin nur vor.
 
    **Ein Zeitplan legt den Schalter nicht um.** Die eine Ausnahme, von Max am
    01.09.2026 so gewollt, hat zwei Bedingungen, die **beide** erfüllt sein
@@ -65,43 +68,77 @@ Skriptunterstützung:
    dabei keine Behauptung, sondern der Herzschlag aus Bedingung 3 weiter unten:
    Schlägt er nicht, überwacht niemand, und die Ausnahme greift nicht.
 
-## Kraken ist keine dritte Spur — dort wird nur gelesen
+## Spur 3 — Kraken: das Skript darf, die Sitzung nicht
 
-Angelegt 02.09.2026, weil die Lücke bei der Durchsicht des Regelwerks auffiel.
-Die beiden Spuren oben sind abschließend: **auf Kraken löst kein Agent eine
-Order aus, weder automatisch noch auf Anweisung im Chat.**
+Angeordnet von Max am 02.09.2026, gebaut am selben Tag. Bis dahin war Kraken
+ausdrücklich **keine** Spur — nicht aus Prinzip, sondern weil ihm alles fehlte,
+was die Erlaubnis trägt: keine `wachen.json`, kein Journal, kein Herzschlag.
+Nach dem Maßstab oben — *fehlt eine, gilt sie nicht* — war damit nichts
+erlaubt. Nachgeliefert wurde nicht die Erlaubnis, sondern das Fehlende:
+`../Agenten/Handel/kraken/` (eigenes README).
 
-Die Begründung steht in diesem Abschnitt selbst. Drei Eigenschaften tragen die
-Handelserlaubnis — Grenzen in einer Datei, nicht abschaltbarer Stop mit
-Kill-Switch, Scharfschalten von Hand. Für Kraken gibt es keine davon: keine
-`wachen.json`, kein Handelsjournal, keinen Herzschlag, keine Freigabestufen.
-Nach dem eigenen Maßstab oben — *fehlt eine, gilt sie nicht* — ist damit nichts
-erlaubt.
+**Die Grenze verläuft seither nicht mehr zwischen Börsen, sondern zwischen
+Wegen.** Derselbe Schlüssel, dieselbe API, zwei Wege — und nur einer bringt
+Wachen mit:
 
-Das ist keine papierne Lücke. Der MCP-Server `kraken` ist in jeder Sitzung
-geladen, und sein Schlüssel trägt laut `Agenten/MCP-Server/kraken/README.md`
-das Recht *Create & Modify Orders*. Die beiden schreibenden Werkzeuge würden
-also wirklich ausführen.
+| | MCP-Server `kraken` | Spur 3 (`Handel/kraken/handeln.py`) |
+|---|---|---|
+| Grenzen in einer Datei | nein | `wachen.json` |
+| Pflicht-Stop, Kill-Switch | nein | ja, nicht abschaltbar |
+| Journal, Herzschlag | nein | `handelsjournal.csv`, `zustand.json` |
+| Scharfschalten von Hand | nein | `freigabe.py`, Spur `kraken` |
+| **Order erlaubt** | **nein** | ja, wenn alle Sperren offen sind |
+
+Deshalb bleibt es bei den Werkzeugen unverändert:
 
 | Werkzeug | erlaubt |
 |---|---|
 | `kraken_guthaben`, `kraken_kurs`, `kraken_candles`, `kraken_paare_suchen`, `kraken_ledger`, `kraken_trades`, `kraken_offene_orders`, `kraken_geschlossene_orders`, `kraken_status` | ja — lesen, auswerten, vorbereiten |
 | `kraken_order_aufgeben`, `kraken_order_stornieren` | **nein** — auch nicht mit Bestätigung im Chat |
 
-Der Skill `geld` bleibt unberührt: er liest Kraken, stellt fällige Zahlungen
-und verfügbare Mittel nebeneinander und hält vor dem Auslösen an. Neu ist nur,
-dass das nicht mehr allein in einem Skill steht — eine Skill-Regel gilt nicht,
-wenn kein Skill läuft.
+Das ist kein Rest des alten Verbots, sondern seine Begründung: Eine
+Chat-Sitzung bringt keine Wachen mit. Wo eine Order fällig ist, ist der Weg das
+Skript — nicht die Diskussion, ob das Werkzeug „diesmal" gehen dürfte.
 
-**Der Weg zu einer dritten Spur ist offen**, er führt nur nicht am Verfahren
-vorbei: erst `../Agenten/Handel/kraken/wachen.json` mit denselben Feldern wie
-die beiden anderen, dann ein Skript, das sie liest und ein Journal schreibt,
-dann die fünf Bedingungen aus *Damit der Automat unbeaufsichtigt laufen darf*.
-Bis dahin wäre „Kraken-Handel" nicht der bewachte Automat, sondern genau die
-Wette mit Skriptunterstützung, die dieser Abschnitt ausschließt.
+**Die Grenzen dieser Spur** stehen in `kraken/wachen.json` und rechnen in
+**EUR**, weil das Kraken-Konto in EUR geführt wird. Ein Feld `_usd` gibt es
+dort nicht; `freigabe.py` zeigt entsprechend EUR an. Drei Grenzen sind strenger
+als bei Spur 1, und zwar aus einem einzigen gemessenen Grund:
+
+> **Kraken nimmt 0,40 % Taker** (Maker 0,25 %) bei Volumen unter 10.000 EUR,
+> gemessen am 02.09.2026. Eine Runde kostet damit 0,80 % — das Achtfache von
+> OKX (0,05 %).
+
+| | Spur 1 (OKX) | Spur 3 (Kraken) |
+|---|---|---|
+| Mindest-Stopweite | 4 % | **5 %** |
+| Mindest-Chance/Risiko | 1,5 | **2,0** |
+| Mindest-Score | 60 | **65** |
+
+Die Gebühr steht auch im Papierlauf in den Beträgen — Kaufzeile mit Gebühr,
+Verkaufszeile nach Gebühr. Ein Papierlauf ohne sie empfiehlt eine Strategie,
+die live verliert; genau daran ist in [[Handelsbots]] schon eine Rückrechnung
+gescheitert.
+
+**Zwei Sperren hat nur diese Spur** — zusätzlich zu den sieben von Spur 1:
+`journal_zweitziel` muss gesetzt sein, und es müssen mindestens
+`mindest_guthaben_eur` frei auf dem Konto liegen. Der zweite Punkt ist keine
+Vorsicht, sondern eine Messung: Am 02.09.2026 lagen **0,0094 EUR** frei, der
+Rest steckt in Coins. Ein Kauf-Automat ohne Fiat kauft nichts, er scheitert nur
+— mit einer Fehlermeldung, die wie ein Schlüsselproblem aussieht.
+
+Der Skill `geld` bleibt unberührt: er liest Kraken, stellt fällige Zahlungen
+und verfügbare Mittel nebeneinander und hält vor dem Auslösen an.
+
+**Stand 02.09.2026:** `handel_erlaubt: false`, `freigabe.erfuellt: false`, der
+Live-Pfad ist nie scharf gelaufen. Der Papierlauf hat an diesem Tag begonnen
+(4 Positionen, 200 EUR gebunden); die sechs Wochen aus Bedingung 1 laufen ab
+hier. Täglich läuft `Routinen/kraken-scanner.ps1`, wöchentlich deckt
+`Routinen/handel-wachen.ps1` die Spur mit ab.
 
 **Kein Auszahlungsrecht, auch hier nicht.** Der Schlüssel hat *Withdraw Funds*
-bewusst nicht, und es gibt kein Auszahlungswerkzeug. Das bleibt so.
+bewusst nicht, und es gibt weder im MCP-Server noch in `kraken.py` eine
+Funktion dafür. Das bleibt so.
 
 ## Spur 1 — Marktscanner: läuft von selbst, ohne Hebel
 
@@ -253,8 +290,9 @@ heimlich eingesetzt.
   Bedingung: Der Automat entscheidet über **Positionen**, nicht darüber, ob er
   selbst scharf ist.
 - **Kein Auszahlungsrecht**, in keiner Spur.
-- **Kraken bleibt lesend.** Keine Order, keine Stornierung — siehe *Kraken ist
-  keine dritte Spur* oben.
+- **Der Kraken-MCP bleibt lesend.** Keine Order, keine Stornierung aus einer
+  Sitzung heraus — gehandelt wird auf Kraken nur durch das Skript der Spur 3,
+  siehe oben.
 - **Jede andere Geldbewegung** — Überweisungen, Ein- und Auszahlungen, Umtausch
   außerhalb dieser beiden Spuren — bleibt vorbereitend. Der Skill `geld`
   arbeitet bis zur Bestätigungsseite und hält dort an.
@@ -306,3 +344,12 @@ schließt `handel_erlaubt` nur, er öffnet es nie.
 **Spur 2 (XPERP):** `bot.py` führt nichts aus, kein Journal, kein Zustand —
 Bedingung 2/3/5 haben nichts zu greifen, bis ein Live-Pfad gebaut ist.
 `bot.py wachen` zeigt die hinterlegten Grenzen und den Freigabe-Haken.
+
+**Spur 3 (Kraken), seit 02.09.2026:** Bedingung 1–5 sind umgesetzt und laufen
+über dieselbe Rechnung wie Spur 1 — `kraken/wachen_kraken.py` importiert
+`scanner/wachen_pruefung.py`, statt sie abzuschreiben; eigen sind dort nur
+Währung, Journalspalten und die Datei, in die `sperre_zu` schreibt. Die vier
+Freigabewerte sind alle noch offen: Der Papierlauf hat am 02.09.2026 begonnen,
+Bedingung 4 (`journal_zweitziel`) ist wie bei Spur 1 `null`, und das freie
+EUR-Guthaben liegt unter der Schwelle. `handeln.py --wachen` zeigt den Stand,
+`--vorschau` nennt jede Sperre, die Live gerade verschließt.

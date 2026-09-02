@@ -3,7 +3,7 @@ id: 20260830-verbindungen
 title: 'Verbindungen'
 tags: [mcp, betrieb]
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-02
 related: [20260830-werkzeuge, 20260830-hermes]
 summary: 'Welche Dienste und MCP-Server erreichbar sind und welche davon authentifiziert.'
 ---
@@ -103,6 +103,12 @@ Selbst gebauter MCP-Server unter [MCP-Server/kraken/](../MCP-Server/kraken/READM
 registriert am 14.08.2026 in `claude_desktop_config.json` (Sicherung daneben als
 `.bak-20260814`).
 
+**Dieser Server ist lesend zu benutzen.** Seine Werkzeuge
+`kraken_order_aufgeben` und `kraken_order_stornieren` sind gesperrt, auch mit
+Bestätigung im Chat ([[Handelsregeln]]). Wer auf Kraken handeln will, nimmt
+seit 02.09.2026 die dritte Spur unter `../Agenten/Handel/kraken/` — dasselbe
+Konto, aber mit `wachen.json`, Journal, Herzschlag und Freigabefenster.
+
 Zugangsdaten liegen **ausschließlich** in den Windows-Benutzervariablen
 `KRAKEN_API_KEY` und `KRAKEN_API_SECRET` — nicht im Vault, nicht in der
 Claude-Konfiguration. Sie sind gesetzt (56 bzw. 88 Zeichen, geprüft 19.08.2026);
@@ -117,8 +123,9 @@ Serverprozess hat noch den alten Code. Ob Kraken die Schlüssel auch akzeptiert,
 zeigt danach `kraken_status`; das ist noch nicht verifiziert.
 
 Der Server hat bewusst **kein Auszahlungs-Werkzeug**. `kraken_order_aufgeben`
-prüft standardmäßig nur (Kraken-`validate`), platziert also nichts; echtes
-Aufgeben verlangt einen ausdrücklichen Schalter und bleibt Max' Schritt.
+prüft standardmäßig nur (Kraken-`validate`), platziert also nichts; der Schalter
+für echtes Aufgeben existiert im Code, wird aber seit 02.09.2026 **nicht mehr
+benutzt** — das Werkzeug ist gesperrt, und zwar auch mit Bestätigung im Chat.
 
 ## Offene Baustellen (Stand 19.08.2026)
 

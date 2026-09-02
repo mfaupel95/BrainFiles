@@ -120,4 +120,6 @@ Kit als MCP-Server), [[Marktlage-August-2026]], [[Projekte]].
 vorbereitet wird vollständig, der letzte Klick nicht. Seither ist automatischer
 Handel im Rahmen der beiden `wachen.json` die Regel. Was heute gilt, steht in
 [[Handelsregeln]]. Unverändert davon: Eine Claude-Sitzung sendet die scharfe
-Order nicht selbst, und auf Kraken wird nur gelesen.
+Order nicht selbst — auch auf Kraken nicht, wo seit 02.09.2026 zwar eine
+bewachte dritte Spur handelt, die schreibenden MCP-Werkzeuge aber gesperrt
+bleiben.

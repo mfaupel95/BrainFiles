@@ -3,7 +3,7 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-08-25
+updated: 2026-09-02
 related: [20260830-wiederholbare-aufgaben]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
@@ -19,7 +19,8 @@ vorhandener Skill plus ein Zeitplan.
 |---|---|---|---|
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
 | täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/marktscanner.ps1` steht |
-| wöchentlich | Wachen-Abgleich Marktscanner (Bedingung 5) | `Handel/scanner/handeln.py --wachen` | **noch nicht eingeplant** — Wrapper `Routinen/handel-wachen.ps1` steht |
+| täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **noch nicht eingeplant** — Wrapper `Routinen/kraken-scanner.ps1` steht |
+| wöchentlich | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **noch nicht eingeplant** — Wrapper `Routinen/handel-wachen.ps1` steht |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
@@ -39,6 +40,7 @@ einen Wrapper aus `Routinen/`:
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
 | (noch offen) Marktscanner | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
+| (noch offen) Kraken-Spur 3 | `Routinen/kraken-scanner.ps1` | `Routinen/logs/kraken-scanner-letzter-lauf.log` |
 | (noch offen) Wachen-Abgleich | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 | `MaxHirn-Systempruefung` | `Routinen/systempruefung.ps1` (kein Wrapper, protokolliert selbst) | `Routinen/logs/systempruefung-letzter-lauf.md` + `systempruefung-JJJJ-MM-TT.log` |
@@ -158,6 +160,25 @@ Der Lauf legt `handel_erlaubt` **nie** auf `true` — er schließt die Sperre nu
 wenn der Erwartungswert negativ oder der Kill-Switch erreicht ist. Scharfschalten
 bleibt ein Schritt von Hand. Der `xperp`-Bot hat kein Gegenstück: er führt nichts
 aus und kein Journal, `bot.py wachen` zeigt nur die hinterlegten Grenzen.
+
+Seit 02.09.2026 deckt derselbe Wrapper **beide** Live-Spuren ab: erst
+`scanner/handeln.py --wachen`, dann `kraken/handeln.py --wachen`, jede mit
+ihrer eigenen `wachen.json` und ihrer eigenen Währung. Ein zweiter Zeitplan ist
+dafür nicht nötig.
+
+### Kraken-Spur 3: derselbe Zuschnitt, andere Börse
+
+Seit 02.09.2026 gibt es eine dritte bewachte Spur ([[Handelsregeln]]):
+Kraken, Spot, nur Long, in EUR. Auch sie handelt aus dem Zeitplan heraus **nur
+auf Papier** — `kraken-scanner.ps1` ruft `handeln.py` ohne `--live`, und selbst
+mit `--live` blieben mehrere Sperren zu. Eine Viertelstunde nach dem
+Marktscanner, damit sich die beiden Läufe nicht überschneiden:
+
+```powershell
+$exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\kraken-scanner.ps1"
+schtasks /create /tn "MaxHirn-Kraken-Spur3" /sc daily /st 07:45 `
+  /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
+```
 
 ## Einplanen
 

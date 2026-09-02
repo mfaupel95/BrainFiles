@@ -79,7 +79,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 - `20260830-steuerunterlagen` — **Steuerunterlagen** — `Wissen/Steuerunterlagen.md` — Steuernummern, veranlagte Jahre, Bescheide und laufende Verfahren.
 - `20260830-belege-einspruch-2024` — **Belege zum Einspruch ESt 2024** — `Wissen/Belege-Einspruch-2024.md` — Welche Nachweise gesammelt sind und was bis 30.09.2026 noch fehlt.
-- `20260902-handelsregeln` — **Handelsregeln** — `Wissen/Handelsregeln.md` — Was ein Agent im Handel selbst auslösen darf: die beiden bewachten Spuren, Kraken als reine Lesequelle, Prüfpflicht und die fünf Freigabebedingungen. Bis 02.09.2026 Teil der Schutzregeln.
+- `20260902-handelsregeln` — **Handelsregeln** — `Wissen/Handelsregeln.md` — Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren (OKX-Spot, XPERP-Hebel, Kraken-EUR), der weiterhin lesende Kraken-MCP, Prüfpflicht und die fünf Freigabebedingungen. Bis 02.09.2026 Teil der Schutzregeln.
 - `20260830-handelsbots` — **Handelsbots auf OKX** — `Wissen/Handelsbots.md` — Gemessene Ergebnisse der DCA-Bots und welche Stellschraube tatsächlich wirkt.
 - `20260831-marktscanner` — **Marktscanner OKX** — `Wissen/Marktscanner.md` — Täglicher Krypto-Scanner mit begrenztem Selbsthandel: Entscheidung, Grenzen, Scharfschalt-Weg, Stand.
 - `20260830-marktlage-august-2026` — **Marktlage August 2026** — `Wissen/Marktlage-August-2026.md` — Geprüfter Marktstand samt Bewertung der zugrunde liegenden Quelle.

@@ -42,6 +42,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [?] **T-030 — Drei Handels-Routinen in die Aufgabenplanung eintragen**
+      Kontext: Die Wrapper stehen und laufen (`marktscanner.ps1`,
+      `kraken-scanner.ps1`, `handel-wachen.ps1` — letzterer deckt seit
+      02.09.2026 Spur 1 und 3 ab). Eingeplant ist keiner davon; die Zeitpläne
+      stehen als `schtasks`-Befehle in [[Routinen]]. Ohne Zeitplan gibt es
+      keinen täglichen Papierlauf, und ohne täglichen Papierlauf laufen die
+      sechs Wochen aus Bedingung 1 nicht voll.
+      Nächster Schritt: Max entscheidet, ob die drei Aufgaben angelegt werden
+      (07:30, 07:45, sonntags 08:00) — Aufgabenplanung ist Systemkonfiguration,
+      deshalb nicht ungefragt.
+      Betrifft: `Agenten/Routinen/`
+      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
+
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
       `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
@@ -289,6 +302,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       seit heute nicht nur fehlerhafte Läufe, sondern auch ausgebliebene — jede
       `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau das
       hatte zwei Tage lang niemand gesehen.
+
+- [x] **T-029 — Dritte Spur: Kraken wirklich bauen** — erledigt 2026-09-02
+      Auf Max' Anweisung („ich will ihn") das nachgeliefert, was T-027 als Weg
+      beschrieben hatte. Neu unter `Agenten/Handel/kraken/`: `wachen.json`
+      (EUR, eigener Rahmen), `kraken.py` (REST, nur Standardbibliothek, kein
+      Auszahlungsweg), `scan.py`, `handeln.py`, `wachen_kraken.py`, README.
+      Die währungsneutrale Rechnung der Bedingungen 2–5 wird aus
+      `scanner/wachen_pruefung.py` **importiert**, nicht abgeschrieben.
+      `freigabe.py` kennt jetzt drei Spuren und zeigt die Währung der Spur an;
+      seine Bestandsschlüssel heißen dafür `gebunden`/`verlust_gesamt` statt
+      `…_usd` (`scanner/handeln.py` nachgezogen, beide Spuren nachgeprüft).
+      Gemessen dabei: Kraken nimmt 0,40 % Taker statt 0,05 % bei OKX — eine
+      Runde kostet 0,80 %. Deshalb Stop mindestens 5 %, C/R mindestens 2,0,
+      Score mindestens 65, und die Gebühr steht auch im Papierlauf in den
+      Beträgen. Zweiter Befund: Auf dem Konto liegen 0,0094 EUR frei, der Rest
+      steckt in Coins — daher die zusätzliche Sperre `mindest_guthaben_eur`.
+      Erster Papierlauf gelaufen: 4 Positionen, 200 EUR gebunden; die sechs
+      Wochen aus Bedingung 1 laufen ab heute. `handel_erlaubt` bleibt `false`.
+      Die schreibenden MCP-Werkzeuge bleiben gesperrt — die Grenze verläuft
+      jetzt nicht mehr zwischen Börsen, sondern zwischen Wegen.
 
 - [x] **T-028 — Bestätigungsdialog zum Scharfschalten** — erledigt 2026-09-02
       `Agenten/Handel/freigabe.py` gebaut und an `scanner/handeln.py --live`
