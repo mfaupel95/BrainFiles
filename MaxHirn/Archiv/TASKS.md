@@ -42,18 +42,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [?] **T-010 — 32 GB Kimi-K2.7-Code: auschecken, behalten oder weg?**
-      Kontext: `Modelle/Kimi-K2.7-Code` belegt 32,1 GB, davon liegt alles in
-      `.git` (LFS). Im Arbeitsbaum steht keine einzige Gewichtsdatei — nur
-      Python- und Konfigurationsdateien. `git lfs ls-files` meldet 67 verwaltete
-      Dateien, darunter `model-00001-of-000064.safetensors`. Solange nichts
-      ausgecheckt ist, sind die 32 GB totes Gewicht; ein Auschecken bräuchte
-      noch einmal so viel Platz.
-      Nächster Schritt: entscheiden. Auschecken (`git lfs checkout`), so lassen
-      oder löschen. Ein Skript entscheidet das nicht.
-      Betrifft: `Modelle/Kimi-K2.7-Code`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
-
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
       `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
@@ -265,34 +253,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
-- [?] **T-021 — Fremd-MCP-Server nach dem Umzug: apify tot, okx-Klon tot**
-      Kontext: die Systemprüfung ([[Systempruefung]]) vom 02.09.2026 findet
-      zwei Leichen unter `Agenten/MCP-Server/`:
-      (a) `ant.dir.gh.apify.apify-mcp-server/node_modules` besteht komplett aus
-      pnpm-Junctions, die auf den alten Pfad `…\MaxHirn\MCP-Server\…` zeigen —
-      seit der Ordnertrennung tot. Der Server steht in keiner `.mcp.json`.
-      (b) `okx/` hat ein eigenes `.venv` und `okx_mcp.py`, dessen fest
-      verdrahteter Pfad `…\MaxHirn\Claude\Worktrees\investment\OKX_API.env`
-      doppelt kaputt ist (alte Wurzel + alter Ordnername). Der aktive
-      okx-Zugang läuft längst über den HTTP-Server `okx-agent-trade-kit` in
-      `MaxHirn/.mcp.json` — das lokale `okx/` ist Altbestand.
-      Nächster Schritt: Max entscheidet je Ordner — `pnpm install` bzw. neu
-      aufsetzen, oder löschen. Bei (b) spricht alles fürs Löschen.
-      Betrifft: `Agenten/MCP-Server/ant.dir.gh.apify.apify-mcp-server/`,
-      `Agenten/MCP-Server/okx/`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
-- [?] **T-022 — `MaxHirn-Sicherung` ist deaktiviert, `MaxHirn-Posteingang` scheiterte**
-      Kontext: die Systemprüfung meldet die geplante Aufgabe `MaxHirn-Sicherung`
-      als *deaktiviert* und `MaxHirn-Posteingang` mit Exitcode 1 vom
-      01.09.2026 22:00. `G:` ist laut selbem Lauf wieder da (86 GB frei), der
-      Grund für das Deaktivieren ist also offen — vgl. [[Hardware]] und T-015.
-      Nächster Schritt: klären, warum `MaxHirn-Sicherung` aus ist, ggf. wieder
-      aktivieren; `posteingang-letzter-lauf.log` ansehen.
-      Betrifft: Aufgabenplanung, `Agenten/Routinen/logs/posteingang-letzter-lauf.log`
-      Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
-
 ## Erledigt
+
+- [x] **T-022 — `MaxHirn-Sicherung` deaktiviert, `MaxHirn-Posteingang` scheiterte**
+      Erledigt 2026-09-02: `MaxHirn-Sicherung` auf Anweisung von Max wieder
+      aktiviert (`Enable-ScheduledTask`), Auslöser unverändert täglich 20:00,
+      „Starten sobald möglich". Warum sie aus war, ist nicht abschließend
+      geklärt — vermutlich im Zuge von T-015 (Seagate `G:` war zeitweise ab).
+      Der `MaxHirn-Posteingang`-Fehler vom 01.09. 22:00 war der Pfad
+      `Agenten\Claude\ArchivSuche` — doppelt veraltet (`Agenten\` statt
+      `MaxHirn\`, `Claude\` statt `Archiv\`). Der Wrapper `posteingang.ps1`
+      zeigt inzwischen korrekt auf `MaxHirn\Archiv\ArchivSuche` (T-016), der
+      nächste Lauf heute 22:00 sollte grün sein.
+
+- [x] **T-021 — Fremd-MCP-Server apify und okx-Lokalklon entfernt**
+      Erledigt 2026-09-02: Auf Anweisung von Max beide gelöscht.
+      `Agenten/MCP-Server/ant.dir.gh.apify.apify-mcp-server/` (node_modules nur
+      noch tote pnpm-Junctions auf den alten `…\MaxHirn\MCP-Server\`-Pfad) und
+      `Agenten/MCP-Server/okx/` (eigenes `.venv`, `okx_mcp.py` mit doppelt
+      kaputtem Pfad `…\MaxHirn\Claude\Worktrees\…`). Beide in keiner `.mcp.json`;
+      der aktive okx-Zugang läuft über den HTTP-Server `okx-agent-trade-kit`.
+
+- [x] **T-010 — Kimi-K2.7-Code entfernt**
+      Erledigt 2026-09-02: Auf Anweisung von Max gelöscht. War ein
+      HuggingFace-Repo-Klon (`.git` mit LFS, ~31 GB, keine Gewichtsdatei je
+      ausgecheckt) unter `O:\Modelle\Kimi-K2.7-Code`. Reproduzierbar per
+      `git clone`, falls je gebraucht.
 
 - [x] **T-020 — Fremd-Repo `MaxHirn/OmniRoute` lag am falschen Ort**
       Erledigt 2026-09-02: Klon von `github.com/diegosouzapw/OmniRoute`,
