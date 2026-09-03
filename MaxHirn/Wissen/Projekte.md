@@ -3,7 +3,7 @@ id: 20260830-projekte
 title: 'Projekte'
 tags: [profil, betrieb]
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-09-03
 related: [20260830-profil]
 summary: 'Was gerade läuft, ein Abschnitt je Projekt, Erledigtes bleibt unten stehen.'
 ---
@@ -46,7 +46,7 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   neben dem Volltextindex. Beschreibung in `Archiv/ArchivSuche/VEKTORSUCHE.md`.
 - **Seit 24.08.2026:** Ollama läuft aus `MaxHirn/Modelle/Ollama` statt aus
   `%LOCALAPPDATA%` — portabel und bewusst als gemeinsamer Ort für Stufe 1 und
-  Stufe 2 angelegt, nicht als Unterordner von [[ArchivSuche]] oder Hermes.
+  Stufe 2 angelegt, nicht als Unterordner von ArchivSuche oder Hermes.
   Modelldaten liegen über `OLLAMA_MODELS` ebenfalls dort
   (`MaxHirn/Modelle/Ollama/models`), nicht mehr unter `%USERPROFILE%\.ollama`.
 - **Wichtig zur Einordnung:** Ein Cloud-Modell mit lokaler Suche schützt die

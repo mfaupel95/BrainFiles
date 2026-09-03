@@ -3,7 +3,7 @@ id: 20260901-chip-xperp
 title: 'CHIP XPERP auf OKX'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-02
+updated: 2026-09-03
 related: [20260830-handelsbots, 20260831-marktscanner, 20260902-handelsregeln]
 summary: 'Analyse fuer einen gehebelten Anlauf auf CHIP: das 14-Tage-Fenster taeuscht, die reale 133-Tage-Historie ist negativ, alle drei Tore zu.'
 ---
@@ -13,7 +13,7 @@ summary: 'Analyse fuer einen gehebelten Anlauf auf CHIP: das 14-Tage-Fenster tae
 Analyse für einen gehebelten Anlauf auf **`CHIP-USD_UM_XPERP-310822`**
 (Basiswert CHIP, USD.AI-Protokoll — „yield-bearing synthetic stablecoin backed
 by compute". AI-Compute-Narrativ, kleiner Wert). Angefragt am 01.09.2026 mit
-großer Erwartung. Der Bot ist [[xperp]] (`../Agenten/Handel/xperp/`), er läuft
+großer Erwartung. Der Bot ist [[XPERP-Handel|xperp]] (`../Agenten/Handel/xperp/`), er läuft
 für CHIP ohne Änderung: `bot.py lage --wert CHIP`.
 
 **Stand:** 2026-09-01. Kurs 0.0435.

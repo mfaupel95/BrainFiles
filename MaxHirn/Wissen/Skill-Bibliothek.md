@@ -1,9 +1,9 @@
 ---
 id: 20260902-skill-bibliothek
 title: 'Skill-Bibliothek'
-tags: [werkzeuge]
+tags: [betrieb]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-03
 related: [20260830-verbindungen, 20260830-ordnerstruktur, 20260830-schutzregeln]
 summary: 'Selbstgeschriebene Skills liegen serverseitig im Anthropic-Konto; der Ordner unter AppData ist nur ein Sync-Cache — nicht in Git, nicht in der Sicherung.'
 ---
