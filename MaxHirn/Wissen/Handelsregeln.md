@@ -3,9 +3,9 @@ id: 20260902-handelsregeln
 title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-03
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
-summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht und die fünf Bedingungen für den unbeaufsichtigten Lauf.'
+summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
 
 # Handelsregeln
@@ -67,6 +67,42 @@ Skriptunterstützung:
    genau diesen Lauf ausdrücklich angeordnet. „Ein Agent überwacht das" ist
    dabei keine Behauptung, sondern der Herzschlag aus Bedingung 3 weiter unten:
    Schlägt er nicht, überwacht niemand, und die Ausnahme greift nicht.
+
+   **Seit 03.09.2026 gibt es eine zweite Bauform: das Zeitfenster.** Angeordnet
+   von Max am selben Tag, zusammen mit dem 24/7-Betrieb und der Steuerung übers
+   Handy. Der Anlass ist ein echter Widerspruch: Ein Bildschirmfenster, das nach
+   120 Sekunden abläuft, setzt voraus, dass jemand am Bildschirm sitzt — bei
+   einem Dauerlauf sitzt niemand. Die Regel wird deshalb **nicht aufgehoben,
+   sondern in eine Form gebracht, die dasselbe leistet:**
+
+   | Bildschirmfenster (`freigabe.py`) | Zeitfenster (`freigabefenster.py`) |
+   |---|---|
+   | zeigt die Werte aus `wachen.json` | dieselben Werte stehen in der Anfrage |
+   | Max bestätigt oder lehnt ab | Max antwortet `/ja` oder `/nein` |
+   | läuft nach 120 s ab → Ablehnung | läuft nach der Freigabedauer ab → zurück auf Papier |
+
+   Drei Sperren halten den Telegram-Kanal eng, und sie sind der Grund, warum
+   ein fremder Dienst hier überhaupt tragbar ist:
+
+   - **Eine Freigabe geht nur auf Anfrage.** Der Anstoß kommt immer vom
+     Dauerlauf, der vorher die Lage geprüft hat — nie aus dem Nichts. Ein `/ja`
+     ohne wartende Anfrage tut nichts.
+   - **Sie öffnet ein Fenster, sie hebt keine Grenze.** Nicht den Einsatz,
+     nicht den Hebel, nicht die Zahl der Positionen. Alle Werte kommen weiter
+     aus `wachen.json`; wer mehr will, ändert die Datei, und das ist Stufe 1.
+   - **Höchstens 24 Stunden**, gleich was ankommt. Eine Freigabe, die man
+     vergessen kann, ist keine Freigabe, sondern ein Dauerzustand mit
+     höflichem Namen.
+
+   Dazu die Freigabeliste: Nur `TELEGRAM_CHAT_ID` darf Befehle geben, fremde
+   Nachrichten werden verworfen und gezählt. Das ist genau der Punkt, an dem
+   das Messaging-Gateway in [[Hermes]] hängen geblieben ist — hier ist er
+   erledigt, nicht umgangen.
+
+   **Der tragende Satz bleibt unberührt:** Ohne offenes Fenster läuft jeder
+   Zyklus des Dauerlaufs als Papierhandel, auch wenn `handel_erlaubt` trüge.
+   Der Automat entscheidet über Positionen, nicht darüber, ob er selbst scharf
+   ist.
 
 ## Spur 3 — Kraken: das Skript darf, die Sitzung nicht
 
@@ -175,6 +211,16 @@ sind und das Papier-Handelsjournal über Wochen trägt, bleibt es dabei.
 Angeordnet von Max am 01.09.2026. **Hebel ist weder verboten noch an eine
 Einzelanweisung gebunden.** Es gibt zwei Wege hinein, und sie unterscheiden
 sich nur darin, woher die Parameter kommen:
+
+**Seit 03.09.2026 handelt diese Spur nicht mehr nur Krypto.** Auf Max'
+Anweisung ist sie der Hauptweg, und OKX führt unter derselben
+`instType=FUTURES` drei `instCategory`-Familien — 115 Krypto, **45 Aktien**
+(AAPL, NVDA, TSLA, MSTR, SPY, QQQ …) und **4 Rohstoffe** (XAU, XAG, CL, BZ).
+Sie lagen die ganze Zeit hinter demselben Schlüssel; sichtbar wurden sie erst,
+als `okxf.instrumente()` nicht mehr fest auf `KRYPTO` stand. Je Familie eigene
+Tore in `xperp/wachen.json`, Begründung dort und in [[XPERP-Handel]]. Die
+Risikogrenzen sind davon unberührt: Margin, Kill-Switch und Hebeldeckel gelten
+für alle drei gleich.
 
 | Weg | Parameter aus | Wer über die einzelne Position entscheidet |
 |---|---|---|

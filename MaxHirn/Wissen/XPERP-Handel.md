@@ -3,9 +3,9 @@ id: 20260901-xperp-handel
 title: 'XPERP-Handel auf OKX'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-02
+updated: 2026-09-03
 related: [20260901-saisonalitaet-signal, 20260902-handelsregeln]
-summary: 'Wo die gehebelten OKX-Perpetuals liegen, welche Werte 5x tragen und warum der Hebel aus dem Stop fällt statt umgekehrt.'
+summary: 'Wo die gehebelten OKX-Perpetuals liegen, welche Werte 5x tragen, warum der Hebel aus dem Stop fällt statt umgekehrt — und seit 03.09.2026 die 45 Aktien und 4 Rohstoffe samt Ruhekerzen-Filter.'
 ---
 
 # XPERP-Handel auf OKX
@@ -33,6 +33,81 @@ gelesen ergibt „RE-USD" eben „REUSD". Drei Fallen auf einmal:
 | `instCategory` trennt die Familien | **1 = Krypto (111), 3 = Aktien (46), 4 = Rohstoffe (4)** |
 
 `okxf.instrument()` nimmt deshalb `RE`, `REUSD` und den vollen `instId`.
+
+## Aktien und Rohstoffe lagen die ganze Zeit hinter demselben Schlüssel
+
+**Ergänzt am 03.09.2026.** Die Zeile über `instCategory` stand seit dem
+01.09.2026 in dieser Notiz — als Randbemerkung. Sie war der ganze Zugang: Am
+03.09.2026 fragte Max nach Aktien und Futures und vermutete sie bei Kraken,
+weil dort die Gebühren höher sind und sich kurze Runden nicht lohnen. Die
+Messung drehte das um:
+
+| | Kraken Spot | OKX-XPERP |
+|---|---|---|
+| Aktien im Angebot | **keine** — 1440 Paare, kein AAPL/TSLA/SPY | **45** |
+| Rohstoffe | keine | 4 (XAU, XAG, CL, BZ) |
+| Gebühr je Runde | 0,80 % | 0,10 % |
+
+Aktien auf Kraken gäbe es nur über Kraken Futures — andere Plattform, anderer
+Schlüssel, andere Signatur. Auf OKX kostete es einen Parameter: `okxf`
+kannte die Familien längst, `auswahl.py` stand nur fest auf `KRYPTO`.
+
+**Ein Tor, das an Krypto gemessen wurde, misst bei einer Aktie das Falsche.**
+Deshalb je Familie eigene Werte in `xperp/wachen.json`:
+
+| | Krypto | Aktie | Rohstoff |
+|---|---|---|---|
+| Vola-Tor p.a. | 120 % | 90 % | 60 % |
+| Umsatz-Bezug | 3 Mio | 1 Mio | 1 Mio |
+
+Der gesenkte Umsatz-Bezug ist keine Aufweichung, sondern eine Korrektur am
+Maßstab: **Der Umsatz war hier nie das Risiko, der Spread ist es.** Gemessen
+am 03.09.2026 — SPY 0,001 %, MSTR 0,036 %, NVDA 0,066 %, also rund ein Zehntel
+des Krypto-Werts bei 0,3–2,8 Mio Umsatz. Eine Position von 250 USD steht damit
+gegen 0,025 % des Tagesumsatzes.
+
+Der Ertrag steht in einer Spalte, die im Krypto-Universum fast leer bleibt —
+dem **Hebel-Deckel**: MSTR 6,8x, CRCL 6,2x, NVDA 8,4x, XAU 9,7x, während fast
+jeder Krypto-Wert unter 5x liegt und den Marker `!hebel<5` trägt. Alle vier
+Rohstoffe bestanden am 03.09.2026 jedes Tor ohne einen einzigen Warnmarker.
+
+### Sie laufen 24/7, ihre Basiswerte nicht
+
+Die Falle dieser Familien, und sie ist nicht offensichtlich. Gemessen über 500
+Stundenkerzen, mittlere Spanne je Stunde:
+
+| Wert | Mo–Fr | Sa–So | Faktor |
+|---|---|---|---|
+| NVDA | 0,45 % | 0,07 % | **0,16** |
+| SPY | 0,09 % | 0,02 % | 0,23 |
+| Gold | 0,39 % | 0,08 % | 0,21 |
+| WTI | 0,62 % | 0,22 % | 0,36 |
+| BTC | 0,70 % | 0,38 % | 0,54 |
+
+**144 von 500 Stunden sind bei Aktien praktisch Stillstand.** Fließen sie in
+die ATR ein, wird der Pflicht-Stop zu eng und greift Montag früh, ohne dass
+der Markt etwas getan hat — derselbe Fehler wie beim Prozent-Stop oben, nur
+eine Ebene tiefer.
+
+`auswahl.py` lässt deshalb Kerzen aus ATR und Vola heraus, deren True Range
+unter einem Viertel der Median-Spanne liegt (`ruhe_anteil`). **Kein
+Feiertagskalender**, und der Filter regelt sich selbst — gemessen an
+4H-Kerzen:
+
+| SOL | BTC | CL | MSTR | SPY | NVDA | XAU |
+|---|---|---|---|---|---|---|
+| 0 % | 4 % | 6 % | 8 % | 13 % | 14 % | 16 % |
+
+SOL mit 0 % ist der Beweis, dass er bei echtem 24/7 nichts tut. Nebenbefund:
+Er markiert auch tote Krypto-Werte — RAVE kam mit 39 % Ruhekerzen und
+0,0 Mio Umsatz.
+
+**Was er nicht löst:** Der XPERP driftet am Wochenende kaum, der Basiswert
+öffnet Montag trotzdem dort, wo die Nachrichten ihn hinstellen. Ein Stop, der
+Sonntag sicher aussieht, liegt Montag hinter dem Gap — bei Hebel ist das der
+Liquidationsfall. Dagegen hilft kein Filter, nur Zurückhaltung: ab
+`freitag_stopp_utc` keine neuen Anläufe dieser Familien, und `wochenend_faktor`
+gegen den Rahmen.
 
 ## Der Hebel ist Ergebnis, nicht Eingabe
 

@@ -3,7 +3,7 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-09-02
+updated: 2026-09-03
 related: [20260830-wiederholbare-aufgaben]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
@@ -26,6 +26,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
+| dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht | `Handel/dauerlauf.py` | **noch nicht eingeplant** — 03.09.2026 gebaut und einmal von Hand gelaufen; wartet auf `TELEGRAM_TOKEN` |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 
@@ -174,6 +175,37 @@ Seit 02.09.2026 deckt derselbe Wrapper **beide** Live-Spuren ab: erst
 `scanner/handeln.py --wachen`, dann `kraken/handeln.py --wachen`, jede mit
 ihrer eigenen `wachen.json` und ihrer eigenen Währung. Ein zweiter Zeitplan ist
 dafür nicht nötig.
+
+### Der Dauerlauf — 24/7, aber nicht scharf
+
+Angelegt am 03.09.2026 auf Max' Anweisung. `handel-dauerlauf.ps1` startet
+`Handel/dauerlauf.py`: Befehle vom Handy sofort, ein Zyklus alle 15 Minuten,
+Tagesbericht einmal täglich ab 08:00. **Er ersetzt die Tagesroutinen nicht**,
+er legt sich darüber — `marktscanner.ps1` und `kraken-scanner.ps1` bleiben
+unverändert.
+
+**Auch dieser Zeitplan legt keinen Schalter um.** Ohne offenes Zeitfenster aus
+[[Handelsregeln]] läuft jeder Zyklus als Papierhandel. Freigegeben wird per
+Telegram, auf Anfrage, höchstens 24 Stunden.
+
+Zwei Auslöser, weil die Kernel-Power-41-Abschaltungen aus [[Hardware]] den
+Rechner ohne Vorwarnung mitnehmen: einer bei der Anmeldung, einer alle
+30 Minuten als Wächter. Der zweite prüft `dauerlauf.pid` und endet sofort,
+wenn schon einer läuft — zwei Dauerläufe auf demselben Telegram-Token nehmen
+sich gegenseitig die Nachrichten weg (Telegram antwortet dem zweiten Abrufer
+mit 409).
+
+**Noch nicht eingeplant.** Erst müssen `TELEGRAM_TOKEN` und
+`TELEGRAM_CHAT_ID` gesetzt sein, sonst läuft er stumm und die Steuerung
+fehlt. Einrichtung im Kopf von `Handel/melder.py`. Danach:
+
+```powershell
+$exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\handel-dauerlauf.ps1"
+schtasks /create /tn "MaxHirn-Handel-Dauerlauf" /sc onlogon `
+  /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
+schtasks /create /tn "MaxHirn-Handel-Dauerlauf-Waechter" /sc minute /mo 30 `
+  /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
+```
 
 ### Kraken-Spur 3: derselbe Zuschnitt, andere Börse
 

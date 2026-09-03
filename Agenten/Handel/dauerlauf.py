@@ -281,7 +281,15 @@ class Lauf:
                 protokoll("Beendet (Strg+C)")
                 self.sende("<b>Dauerlauf beendet.</b> Alle Spuren auf Papier.",
                            stumm=True)
+                # Kein Fenster ueberlebt den Lauf, der es bewacht. Eine
+                # Freigabe, die noch offen stuende, waere unbewacht scharf -
+                # genau der Fall, den Bedingung 3 (Herzschlag) faengt, nur
+                # eben erst beim naechsten Start.
                 freigabefenster.alles_schliessen("Dauerlauf beendet")
+                try:
+                    os.remove(os.path.join(HIER, "dauerlauf.pid"))
+                except OSError:
+                    pass
                 return 0
             except Exception:                            # noqa: BLE001
                 self.fehler += 1
