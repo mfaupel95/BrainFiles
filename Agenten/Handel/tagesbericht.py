@@ -212,7 +212,9 @@ def baue(mit_xperp=True):
             continue
 
         lage = wachenlage(s)
-        t.append("\n<b>%s</b>" % s["name"])
+        still = s["w"].get("stillgelegt")
+        t.append("\n<b>%s</b>%s" % (s["name"],
+                                    "  — STILLGELEGT" if still else ""))
         if s["positionen"]:
             gesamt_offen += len(s["positionen"])
             summe = sum(p["wert"] for p in s["positionen"])
@@ -237,9 +239,16 @@ def baue(mit_xperp=True):
                      % (lage["runden_gesamt"], lage["runden_papier"],
                         rueck if rueck is not None else 0.0, s["waehrung"],
                         lage["groessenfaktor"]))
-        auf = sperren(s, lage)
-        t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
-                                 else "offen"))
+        if still:
+            # Die Positionen stehen noch da - sie sind Papier und wurden
+            # nicht fiktiv verkauft, das haette falsche Zahlen ins Journal
+            # geschrieben. Sie bleiben sichtbar, damit klar ist, womit die
+            # Spur aufgehoert hat.
+            t.append("  Kein Lauf mehr, weder Papier noch Live.")
+        else:
+            auf = sperren(s, lage)
+            t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
+                                     else "offen"))
 
     if mit_xperp:
         try:

@@ -63,11 +63,13 @@ import tagesbericht                                      # noqa: E402
 
 PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
-# Spuren mit Live-Pfad. Spur 2 fehlt hier bewusst - bot.py legt vor, es
-# fuehrt nicht aus (xperp/wachen.json, _handel_erlaubt_hinweis).
+# Spuren, die dieser Lauf fuehrt.
+#
+# Spur 3 (Kraken) ist seit 03.09.2026 stillgelegt und steht deshalb nicht
+# mehr hier - Grund und Zahlen in kraken/wachen.json, Feld
+# _stillgelegt_grund. Der Ordner bleibt, die Spur kann wieder anlaufen.
 SPUREN = {
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
-    "kraken": {"ordner": "kraken", "waehrung": "EUR"},
 }
 
 

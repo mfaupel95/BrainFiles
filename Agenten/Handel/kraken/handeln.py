@@ -389,6 +389,19 @@ def lauf(modus):
 
     w = scan.wachen()
 
+    # Stillgelegt am 03.09.2026. Ein Vermerk in wachen.json haelt nichts auf,
+    # solange das Skript ihn nicht liest - deshalb hier, vor allem anderen.
+    # --wachen und --vorschau bleiben erlaubt: nachsehen duerfen ist der Sinn
+    # einer aufbewahrten Spur. Gehandelt wird nicht, auch nicht auf Papier.
+    if w.get("stillgelegt") and modus in ("papier", "live"):
+        print("Spur 3 (Kraken) ist stillgelegt - kein %s-Lauf." % modus)
+        print()
+        print(w.get("_stillgelegt", "").split(" Zum Wiederanschalten")[0].strip())
+        print()
+        print("Grund und Zahlen: Feld _stillgelegt_grund in wachen.json.")
+        print("Nachsehen geht weiter: --wachen und --vorschau.")
+        return
+
     if modus == "wachen":
         zeige_wachen(w)
         return
