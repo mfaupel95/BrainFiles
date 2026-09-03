@@ -12,10 +12,16 @@ Die Grundlinie steht in Wissen/Handelsbots.md: ueber lange Zeitraeume lag jede
 getestete mechanische Krypto-Strategie nahe null, leicht darunter. Dieser Scan
 sucht deshalb Lagen mit gutem Verhaeltnis, nicht den grossen Wurf.
 
+Seit 03.09.2026 nicht mehr nur Krypto: OKX fuehrt unter derselben
+instType=FUTURES auch 45 Aktien (instCategory 3) und 4 Rohstoffe (4). Sie
+laufen ueber dieselbe Mechanik, brauchen aber eigene Tore - siehe KATEGORIEN
+unten und den Ruhekerzen-Filter in kennzahlen().
+
 Aufruf:
-    python auswahl.py                # alle drei Ranglisten
-    python auswahl.py --zweck grid    # nur eine
-    python auswahl.py --wert RE       # ein Wert im Detail
+    python auswahl.py                     # alle drei Ranglisten, alle Familien
+    python auswahl.py --zweck grid        # nur eine
+    python auswahl.py --kategorie aktie   # nur Aktien
+    python auswahl.py --wert RE           # ein Wert im Detail
 """
 
 import argparse
@@ -50,6 +56,50 @@ JUNG_KERZEN = 42 * PRO_TAG
 # Hebel ueberhaupt ueberlebt (siehe hebel_deckel).
 VOLA_TOR = 1.20
 
+# --- Die drei Familien ------------------------------------------------------
+# Ein Tor, das fuer Krypto gemessen wurde, misst bei einer Aktie das Falsche.
+# Gemessen am 03.09.2026 gegen die OKX-Ticker:
+#
+#   Umsatz 24h   Krypto bis 25 Mio (XRP), Aktien 0,3-2,8 Mio (Spitze SPCX),
+#                Rohstoffe 1,5-10,7 Mio (XAU).
+#   Spread       Krypto breit, Aktien eng: SPY 0,001 %, MSTR 0,036 %,
+#                NVDA 0,066 % - trotz kleinerem Umsatz.
+#
+# Deshalb faellt der Umsatz-Bezug bei Aktien auf 1 Mio. Das ist keine
+# Aufweichung: Bei 50 USD Margin und 5x Hebel steht eine Position von 250 USD
+# gegen 1 Mio Tagesumsatz - 0,025 %. Der Umsatz war nie das Risiko, der Spread
+# ist es, und der ist hier ein Zehntel des Krypto-Werts.
+#
+# vola_tor liegt bei Aktien niedriger, weil eine Aktie mit 120 % Jahresvola
+# nicht ruhig ist wie ein Coin mit 120 %, sondern ein Einzelfall (Uebernahme,
+# Zahlen, Squeeze). Rohstoffe schwanken am wenigsten und bekommen das engste
+# Tor.
+KATEGORIEN = {
+    "krypto":   {"code": okxf.KRYPTO,   "umsatz_bezug": 3_000_000,
+                 "vola_tor": 1.20, "kuerzel": "K"},
+    "aktie":    {"code": okxf.AKTIE,    "umsatz_bezug": 1_000_000,
+                 "vola_tor": 0.90, "kuerzel": "A"},
+    "rohstoff": {"code": okxf.ROHSTOFF, "umsatz_bezug": 1_000_000,
+                 "vola_tor": 0.60, "kuerzel": "R"},
+}
+
+# Kerzen, deren True Range unter diesem Anteil des Medians liegt, gelten als
+# Ruhekerzen und zaehlen weder in die ATR noch in die Vola.
+#
+# Der Grund, gemessen am 03.09.2026 ueber 500 Stundenkerzen: Aktien-XPERP
+# laufen 24/7, ihr Basiswert nicht. NVDA bewegt sich Mo-Fr 0,45 % je Stunde,
+# Sa-So 0,07 % - Faktor 0,16. SPY 0,23, Gold 0,21. 144 von 500 Stunden sind
+# damit Stillstand, der in eine ungefilterte ATR einfliesst und den Stop zu
+# eng macht; Montag frueh greift er dann ohne Marktbewegung. Genau der Fehler,
+# den Wissen/XPERP-Handel.md fuer Prozent-Stops beschreibt, eine Ebene tiefer.
+#
+# Warum kein Kalender: Ein Filter am Median deckt US-Boersenfeiertage mit ab,
+# ohne dass jemand eine Feiertagsliste pflegt - und er regelt sich selbst.
+# Gemessen an 4H-Kerzen: SOL 0 % gefiltert (Faktor 1,00), BTC 4 % (1,04),
+# CL 6 % (1,05), MSTR 8 % (1,08), SPY 13 % (1,15), NVDA 14 % (1,14),
+# XAU 16 % (1,17). Bei echtem 24/7 tut er nichts, genau wie beabsichtigt.
+RUHE_ANTEIL = 0.25
+
 
 def kennzahlen(k):
     """Alle Kennzahlen eines Werts aus seinen Kerzen."""
@@ -58,13 +108,30 @@ def kennzahlen(k):
     kurs = c[-1]
 
     ren = [c[i] / c[i - 1] - 1 for i in range(1, n)]
-    vola = st.stdev(ren) * math.sqrt(PRO_TAG * 365) if len(ren) > 2 else 0.0
 
-    # ATR(14) in Prozent - der Massstab fuer jeden Stop-Abstand
+    # True Range je Kerze - Grundlage fuer ATR und fuer den Ruhefilter.
     tr = [max(k[i][2] - k[i][3],
               abs(k[i][2] - k[i - 1][4]),
               abs(k[i][3] - k[i - 1][4])) for i in range(1, n)]
-    atr = st.mean(tr[-14:]) / kurs if len(tr) >= 14 else 0.0
+
+    # Ruhekerzen raus (siehe RUHE_ANTEIL oben). Die Indizes gelten fuer tr und
+    # ren gleichermassen, beide beginnen bei Kerze 1.
+    schwelle = st.median(tr) * RUHE_ANTEIL if tr else 0.0
+    aktiv = [i for i, t in enumerate(tr) if t >= schwelle]
+    ruhe_anteil = 1 - len(aktiv) / len(tr) if tr else 0.0
+
+    tr_a = [tr[i] for i in aktiv]
+    ren_a = [ren[i] for i in aktiv]
+
+    # Vola aus den aktiven Kerzen, annualisiert mit der Zahl der Kerzen, die
+    # es im Jahr tatsaechlich gibt. Wer ueber alle 6x365 annualisiert, obwohl
+    # ein Fuenftel davon Stillstand ist, meldet eine Aktie zu ruhig.
+    aktive_pro_jahr = PRO_TAG * 365 * (len(aktiv) / len(tr)) if tr else 0
+    vola = (st.stdev(ren_a) * math.sqrt(aktive_pro_jahr)
+            if len(ren_a) > 2 else 0.0)
+
+    # ATR(14) in Prozent - der Massstab fuer jeden Stop-Abstand
+    atr = st.mean(tr_a[-14:]) / kurs if len(tr_a) >= 14 else 0.0
 
     def rendite(tage):
         b = tage * PRO_TAG
@@ -104,6 +171,7 @@ def kennzahlen(k):
         "r7": rendite(7), "r14": rendite(14), "r30": rendite(30),
         "er": er, "weg": weg_pct, "ueber_sma": ueber, "von_sma": von,
         "mae_long": mae_long, "mae_short": mae_short, "spanne": spanne,
+        "ruhe": ruhe_anteil,
     }
 
 
@@ -135,12 +203,14 @@ def hebel_deckel(mae):
     return max(1.0, min(20.0, 1.0 / (mae + WARTUNGSMARGE)))
 
 
-def bewerte(z, umsatz):
+def bewerte(z, umsatz, bezug=3_000_000):
     """Drei Eignungen, je 0..100. Getrennt, weil sie sich widersprechen."""
-    # Bezugsgroesse 3 Mio USD am Tag: gemessen am 01.09.2026 erreicht das im
-    # XPERP-Universum ausser BTC/ETH kaum ein Wert. Das Universum ist duenn -
-    # das ist ein Befund, kein Massstabsfehler.
-    liquide = min(1.0, umsatz / 3_000_000) if umsatz else 0.0
+    # Bezugsgroesse 3 Mio USD am Tag fuer Krypto: gemessen am 01.09.2026
+    # erreicht das im XPERP-Universum ausser BTC/ETH kaum ein Wert. Das
+    # Universum ist duenn - das ist ein Befund, kein Massstabsfehler. Fuer
+    # Aktien und Rohstoffe steht der Bezug bei 1 Mio, begruendet in
+    # KATEGORIEN oben.
+    liquide = min(1.0, umsatz / bezug) if umsatz else 0.0
     ruhig = max(0.0, 1.0 - z["vola"] / 2.0)
 
     # Long: Trend nach oben, SMA-Ausrichtung, nicht zu wild
@@ -164,9 +234,22 @@ def bewerte(z, umsatz):
     return {"long": lo * 100, "short": sh * 100, "grid": gr * 100}
 
 
-def sammle(werte=None, still=False):
-    instr = {x["instId"].split("-")[0]: x
-             for x in okxf.instrumente(okxf.KRYPTO)}
+def sammle(werte=None, still=False, kategorien=None):
+    """Kennzahlen aller Kontrakte der genannten Familien.
+
+    kategorien: Liste von Schluesseln aus KATEGORIEN. None = alle drei.
+    """
+    if kategorien is None:
+        kategorien = list(KATEGORIEN)
+
+    instr, familie = {}, {}
+    for name in kategorien:
+        kat = KATEGORIEN[name]
+        for x in okxf.instrumente(kat["code"]):
+            basis = x["instId"].split("-")[0]
+            instr[basis] = x
+            familie[basis] = name
+
     if werte:
         instr = {k: v for k, v in instr.items() if k in werte}
     tick = okxf.tickers()
@@ -206,9 +289,12 @@ def sammle(werte=None, still=False):
         # nochmal mit ctVal multipliziert, meldet BONK mit 167 Billionen
         # Umsatz - passiert am 01.09.2026 im ersten Wurf.
         umsatz = float(t.get("volCcy24h") or 0) * z["kurs"]
+        kat = KATEGORIEN[familie.get(basis, "krypto")]
         z.update(basis=basis, instId=iid, umsatz=umsatz,
+                 kategorie=familie.get(basis, "krypto"),
+                 vola_tor=kat["vola_tor"],
                  max_lever=float(x["lever"]),
-                 punkte=bewerte(z, umsatz))
+                 punkte=bewerte(z, umsatz, kat["umsatz_bezug"]))
         ergebnis.append(z)
         time.sleep(0.06)                        # OKX: 40 Anfragen je 2 s
     if not still:
@@ -224,16 +310,21 @@ def tabelle(daten, zweck, n=12):
     print("=" * 100)
     print(ueber)
     print("=" * 100)
-    print("%-9s %8s %7s %7s %6s %5s %5s %5s %6s %7s  %s" % (
-        "Wert", "Kurs", "7T", "14T", "Vola", "ATR%", "Weg%", "ER", "Hebel",
+    print("%-9s %1s %8s %7s %7s %6s %5s %5s %5s %6s %7s  %s" % (
+        "Wert", "", "Kurs", "7T", "14T", "Vola", "ATR%", "Weg%", "ER", "Hebel",
         "Umsatz", "Punkte"))
 
     mae = "mae_short" if zweck == "short" else "mae_long"
     for z in sorted(daten, key=lambda d: -d["punkte"][zweck])[:n]:
         deckel = hebel_deckel(z[mae])
         warn = ""
-        if z["vola"] > VOLA_TOR:
+        if z["vola"] > z.get("vola_tor", VOLA_TOR):
             warn += " !vola"
+        # Ueber 30 % Ruhekerzen heisst: der Kontrakt laeuft 24/7, sein
+        # Basiswert nicht. Ein Stop steht dann ueber Nacht und ueber das
+        # Wochenende in einem Buch, das den Gap am Montag nicht auffaengt.
+        if z.get("ruhe", 0) > 0.30:
+            warn += " !ruht(%.0f%%)" % (z["ruhe"] * 100)
         if deckel < 5:
             warn += " !hebel<5"
         if z["kerzen"] < JUNG_KERZEN:
@@ -242,8 +333,10 @@ def tabelle(daten, zweck, n=12):
         # 14-Tage-Rendite sieht als "+0.0%" wie Seitwaertsbewegung aus.
         def pz(v):
             return "%+6.1f%%" % (v * 100) if v is not None else "   n/a"
-        print("%-9s %8.4f %s %s %5.0f%% %5.2f %5.0f %5.2f %5.1fx %6.1fM  %5.1f%s" % (
-            z["basis"], z["kurs"], pz(z["r7"]), pz(z["r14"]),
+        print("%-9s %1s %8.4f %s %s %5.0f%% %5.2f %5.0f %5.2f %5.1fx %6.1fM  %5.1f%s" % (
+            z["basis"],
+            KATEGORIEN[z.get("kategorie", "krypto")]["kuerzel"],
+            z["kurs"], pz(z["r7"]), pz(z["r14"]),
             z["vola"] * 100, z["atr"] * 100, z["weg"] * 100, z["er"],
             deckel, z["umsatz"] / 1e6, z["punkte"][zweck], warn))
 
@@ -258,9 +351,14 @@ def detail(z):
         (z["r7"] or 0) * 100, (z["r14"] or 0) * 100,
         "%+.1f%%" % (z["r30"] * 100) if z["r30"] is not None else "n/a"))
     print("  ueber SMA        %d von %d (3/7/14/30 Tage)" % (z["ueber_sma"], z["von_sma"]))
-    print("  Vola p.a.       %5.0f%%   %s" % (
-        z["vola"] * 100, "UEBER dem Tor von %.0f%%" % (VOLA_TOR * 100)
-        if z["vola"] > VOLA_TOR else "unter dem Tor"))
+    tor = z.get("vola_tor", VOLA_TOR)
+    print("  Familie         %s" % z.get("kategorie", "krypto"))
+    print("  Vola p.a.       %5.0f%%   %s von %.0f%%" % (
+        z["vola"] * 100, "UEBER dem Tor" if z["vola"] > tor else "unter dem Tor",
+        tor * 100))
+    if z.get("ruhe", 0) > 0.02:
+        print("  Ruhekerzen      %5.0f%% - aus ATR und Vola herausgerechnet" % (
+            z["ruhe"] * 100))
     print("  ATR(14)         %5.2f%% vom Kurs" % (z["atr"] * 100))
     print("  7T-Spanne       %5.1f%%" % (z["spanne"] * 100))
     print("  Weg / ER        %5.1f%% Weg bei ER %.2f  (%s)" % (
@@ -297,26 +395,39 @@ def main():
                    default="alle")
     p.add_argument("--wert", help="ein Basiswert im Detail, z.B. RE")
     p.add_argument("--anzahl", type=int, default=12)
+    p.add_argument("--kategorie", choices=tuple(KATEGORIEN) + ("alle",),
+                   default="alle",
+                   help="krypto (115 Werte), aktie (45), rohstoff (4)")
     a = p.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+    kats = None if a.kategorie == "alle" else [a.kategorie]
+
     if a.wert:
-        d = sammle([a.wert.upper()])
+        d = sammle([a.wert.upper()], kategorien=kats)
         if not d:
             print("kein XPERP-Kontrakt zu %r (oder zu wenig Historie)" % a.wert)
             return 1
         detail(d[0])
         return 0
 
-    print("Scanne alle Krypto-XPERP ueber %s-Kerzen ..." % BAR, file=sys.stderr)
-    d = sammle()
+    print("Scanne XPERP (%s) ueber %s-Kerzen ..." % (
+        ", ".join(kats or KATEGORIEN), BAR), file=sys.stderr)
+    d = sammle(kategorien=kats)
     print("%d Werte bewertet, %s" % (len(d), time.strftime("%Y-%m-%d %H:%M")))
     for zweck in (("long", "short", "grid") if a.zweck == "alle" else (a.zweck,)):
         tabelle(d, zweck, a.anzahl)
     print()
-    print("!vola    = ueber dem Tor von %.0f%% aus scanner/wachen.json" % (VOLA_TOR * 100))
+    print("K/A/R    = Krypto / Aktie / Rohstoff. Eigene Tore je Familie:")
+    for name, kat in KATEGORIEN.items():
+        print("           %-9s Vola-Tor %3.0f%%, Umsatz-Bezug %.1f Mio" % (
+            name, kat["vola_tor"] * 100, kat["umsatz_bezug"] / 1e6))
+    print("!vola    = ueber dem Tor seiner Familie")
+    print("!ruht    = ueber 30% Ruhekerzen: laeuft 24/7, der Basiswert nicht.")
+    print("           ATR und Vola sind um diese Kerzen bereinigt; das Gap-Risiko")
+    print("           zum Wochenstart bleibt und gehoert in die Positionsgroesse.")
     print("!hebel<5 = 5x haette den groessten Ruecklauf der letzten 7 Tage nicht ueberlebt")
     print("!jung    = unter %d Tagen Historie; die Kennzahlen tragen noch nicht." % (
         JUNG_KERZEN // PRO_TAG))

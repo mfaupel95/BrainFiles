@@ -63,6 +63,35 @@ def wachen():
         return json.load(f)
 
 
+def familie(w, instr):
+    """Die Tore, die fuer genau dieses Instrument gelten.
+
+    Seit 03.09.2026 handelt die Spur drei instCategory-Familien (Krypto,
+    Aktien, Rohstoffe) mit getrennten Toren - der Block 'familien' in
+    wachen.json. Ein Wert, der an Krypto gemessen wurde, misst bei einer
+    Aktie das Falsche: MSTR faellt mit 1,8 Mio Umsatz durch das 3-Mio-Tor,
+    obwohl sein Spread ein Zehntel des Krypto-Werts betraegt.
+
+    Faellt der Block weg oder kennt er die Kategorie nicht, gelten die alten
+    Werte aus der obersten Ebene - dann verhaelt sich der Bot wie vorher.
+    """
+    grund = {"vola_tor_pa": w.get("vola_tor_pa", 1.20),
+             "umsatz_bezug_usd": w.get("min_umsatz_24h_usd", 3_000_000),
+             "max_anteil_gesamt": 1.0,
+             "name": "krypto"}
+    kat = (instr or {}).get("instCategory")
+    for name, f in (w.get("familien") or {}).items():
+        if f.get("instCategory") == kat:
+            if not f.get("aktiv", True):
+                return dict(grund, name=name, aktiv=False)
+            return {"vola_tor_pa": f.get("vola_tor_pa", grund["vola_tor_pa"]),
+                    "umsatz_bezug_usd": f.get("umsatz_bezug_usd",
+                                              grund["umsatz_bezug_usd"]),
+                    "max_anteil_gesamt": f.get("max_anteil_gesamt", 1.0),
+                    "name": name, "aktiv": True}
+    return dict(grund, aktiv=True)
+
+
 # --- Rechnungen -------------------------------------------------------------
 
 def trefferquote(k, stop_atr, ziel_atr, seite, max_kerzen=42):
@@ -373,12 +402,17 @@ def zeige_lage(w, wert, historie_quelle=None):
         print("  Statistik aus  keine laengere Reihe gefunden - es bleibt bei %.0f Tagen" % tage)
 
     print()
+    fam = familie(w, instr)
+    if fam["name"] != "krypto":
+        print("  Familie        %s  (eigene Tore aus wachen.json)" % fam["name"])
     tore = [
         ("Historie >= %d Tage" % w["min_historie_tage"], tage >= w["min_historie_tage"]),
-        ("Umsatz >= %.0f Mio" % (w["min_umsatz_24h_usd"] / 1e6),
-         umsatz >= w["min_umsatz_24h_usd"]),
+        ("Umsatz >= %.1f Mio (%s)" % (fam["umsatz_bezug_usd"] / 1e6, fam["name"]),
+         umsatz >= fam["umsatz_bezug_usd"]),
         ("Hebel-Deckel >= %g" % w["max_hebel"], max(dl, ds) >= w["max_hebel"]),
     ]
+    if not fam.get("aktiv", True):
+        tore.append(("Familie %s ist aktiv" % fam["name"], False))
     for name, ok in tore:
         print("  [%s] %s" % ("x" if ok else " ", name))
     if not all(ok for _, ok in tore):
