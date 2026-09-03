@@ -1,0 +1,347 @@
+"""Der 24/7-Betrieb: analysieren, rechnen, melden, auf Befehle hoeren.
+
+Angelegt am 03.09.2026 auf Max' Anweisung ("24/7 aktiv und am analysieren,
+kalkulieren, anpassen"). Loest die Tagesroutinen nicht ab - es ergaenzt sie:
+Die geplanten Laeufe unter ../Routinen/ bleiben, wie sie sind, und dieser
+Dauerlauf setzt sich darueber.
+
+DREI TAKTE, ABSICHTLICH VERSCHIEDEN
+-----------------------------------
+  Befehle       alle paar Sekunden   Long-Polling, kostet nichts
+  Zyklus        alle takt_minuten    Positionen pruefen, Stops, Journal
+  Tagesbericht  einmal taeglich      der Ueberblick aufs Handy
+
+Der Zyklus-Takt ist an den Herzschlag gekoppelt und nicht frei waehlbar:
+xperp/wachen.json setzt herzschlag_max_minuten auf 30. Laeuft der Zyklus
+seltener, meldet die eigene Wache den Bot als tot und faellt auf Papier
+zurueck - richtig so, aber dann laeuft er eben nicht.
+
+WAS ER SELBST NICHT TUT
+-----------------------
+Er schaltet sich nicht scharf. Ohne offenes Freigabefenster laeuft jeder
+Zyklus als Papierhandel - auch wenn wachen.json handel_erlaubt truege. Das
+ist die Umsetzung von Punkt 3 der Handelsregeln unter den Bedingungen des
+Dauerbetriebs: Ein Zeitplan legt den Schalter nicht um, und ein Dauerlauf ist
+nichts anderes als ein sehr enger Zeitplan.
+
+Er handelt ausserdem nur Spuren, die einen Live-Pfad haben. Spur 2 (XPERP)
+legt bis heute nur vor - sie wird hier gescannt und gemeldet, nicht
+gehandelt.
+
+BEFEHLE VOM HANDY
+-----------------
+  /lage        Positionen und Sperren, sofort
+  /bericht     der volle Tagesbericht
+  /scan        Rangliste neu rechnen
+  /ja [h]      wartende Freigabe erteilen (Vorgabe: die angefragte Dauer)
+  /nein        wartende Freigabe ablehnen
+  /stop        alle Fenster zu, zurueck auf Papier
+  /pause       Zyklus aussetzen, Meldungen laufen weiter
+  /weiter      Zyklus fortsetzen
+  /hilfe       diese Liste
+
+Aufruf:
+    python dauerlauf.py                 # laeuft, bis Strg+C
+    python dauerlauf.py --takt 15       # anderer Zyklus-Takt
+    python dauerlauf.py --trocken       # nichts senden, nur Konsole
+"""
+
+import argparse
+import datetime as dt
+import os
+import subprocess
+import sys
+import time
+import traceback
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HIER)
+
+import freigabefenster                                   # noqa: E402
+import melder                                            # noqa: E402
+import tagesbericht                                      # noqa: E402
+
+PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
+
+# Spuren mit Live-Pfad. Spur 2 fehlt hier bewusst - bot.py legt vor, es
+# fuehrt nicht aus (xperp/wachen.json, _handel_erlaubt_hinweis).
+SPUREN = {
+    "scanner": {"ordner": "scanner", "waehrung": "USD"},
+    "kraken": {"ordner": "kraken", "waehrung": "EUR"},
+}
+
+
+def jetzt():
+    return dt.datetime.now()
+
+
+def protokoll(text):
+    zeile = "%s  %s" % (jetzt().strftime("%d.%m. %H:%M:%S"), text)
+    print(zeile, flush=True)
+    try:
+        with open(os.path.join(HIER, "dauerlauf.log"), "a",
+                  encoding="utf-8") as f:
+            f.write(zeile + "\n")
+    except OSError:
+        pass
+
+
+class Lauf:
+    def __init__(self, takt, trocken=False):
+        self.takt = takt
+        self.trocken = trocken
+        self.pausiert = False
+        self.zeiger = None
+        self.letzter_zyklus = None
+        self.letzter_bericht = None
+        self.zyklen = 0
+        self.fehler = 0
+
+    # --- senden ---------------------------------------------------------
+
+    def sende(self, text, stumm=False):
+        if self.trocken:
+            print("--- wuerde senden ---\n%s\n---" %
+                  text.replace("<b>", "").replace("</b>", ""))
+            return True
+        return melder.sende(text, stumm=stumm)
+
+    # --- die Spuren -----------------------------------------------------
+
+    def zyklus_spur(self, spur):
+        """Ein Zyklus einer Spur. Papier, ausser das Fenster ist offen."""
+        f = freigabefenster.lade(spur)
+        modus = "--live" if f.offen() else "--papier"
+
+        ordner = os.path.join(HIER, SPUREN[spur]["ordner"])
+        umgebung = dict(os.environ)
+        if modus == "--papier":
+            # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
+            # Freigabefenster aus einem laufenden Dienst heraus. Bei --live
+            # ist die Freigabe bereits erteilt und die Variable faellt weg.
+            umgebung["MAXHIRN_ROUTINE"] = "1"
+
+        p = subprocess.run([PYTHON, "handeln.py", modus], cwd=ordner,
+                           capture_output=True, text=True, timeout=600,
+                           env=umgebung)
+        return modus, p.returncode, (p.stdout or "") + (p.stderr or "")
+
+    def zyklus(self):
+        self.zyklen += 1
+        self.letzter_zyklus = jetzt()
+        auffaellig = []
+
+        for spur in SPUREN:
+            try:
+                modus, code, ausgabe = self.zyklus_spur(spur)
+            except Exception as e:                       # noqa: BLE001
+                self.fehler += 1
+                protokoll("%s FEHLER: %s" % (spur, e))
+                auffaellig.append("%s: %s" % (spur, e))
+                continue
+
+            kurz = modus.lstrip("-")
+            if code != 0:
+                self.fehler += 1
+                protokoll("%s (%s) Rueckgabe %d" % (spur, kurz, code))
+                auffaellig.append("%s endete mit %d" % (spur, code))
+            else:
+                protokoll("%s (%s) ok" % (spur, kurz))
+
+            # Verkauf oder Stop im Lauf: das gehoert sofort gemeldet, nicht
+            # erst im Tagesbericht.
+            for wort in ("verkauf", "stop", "KILL", "gesperrt"):
+                if wort.lower() in ausgabe.lower():
+                    for zeile in ausgabe.splitlines():
+                        if wort.lower() in zeile.lower():
+                            auffaellig.append("%s: %s" % (spur, zeile.strip()))
+                    break
+
+        if auffaellig:
+            self.sende("<b>Zyklus %d</b>\n%s" % (
+                self.zyklen, "\n".join(auffaellig[:12])))
+
+    # --- Befehle --------------------------------------------------------
+
+    def befehl(self, text):
+        wort = text.split()[0].lower().lstrip("/")
+        rest = text.split()[1:]
+
+        if wort in ("lage", "status"):
+            return tagesbericht.baue(mit_xperp=False)
+
+        if wort == "bericht":
+            return tagesbericht.baue(mit_xperp=True)
+
+        if wort == "scan":
+            return self.scan_kurz()
+
+        if wort == "ja":
+            stunden = None
+            if rest:
+                try:
+                    stunden = float(rest[0])
+                except ValueError:
+                    return "Verstehe ich nicht: /ja %s\nGemeint war /ja 6" % rest[0]
+            for spur in SPUREN:
+                if freigabefenster.lade(spur).anfrage_offen():
+                    m = freigabefenster.oeffnen(spur, stunden, "telegram")
+                    if m:
+                        protokoll("FREIGABE %s fuer %d min" % (spur, m))
+                        return ("<b>%s ist scharf</b> fuer %d:%02d h.\n"
+                                "Es gelten die Grenzen aus wachen.json.\n"
+                                "/stop schliesst sofort." % (spur, m // 60, m % 60))
+            return "Keine Anfrage offen. Eine Freigabe geht nur auf Anfrage."
+
+        if wort == "nein":
+            for spur in SPUREN:
+                if freigabefenster.lade(spur).anfrage_offen():
+                    freigabefenster.schliessen(spur, "abgelehnt")
+                    return "Abgelehnt. %s bleibt auf Papier." % spur
+            return "Keine Anfrage offen."
+
+        if wort in ("stop", "notaus"):
+            w = freigabefenster.alles_schliessen("Befehl /stop")
+            protokoll("NOTAUS: %s" % (", ".join(w) or "nichts war offen"))
+            return ("<b>Alles auf Papier.</b>\n%s" %
+                    ("Geschlossen: " + ", ".join(w) if w
+                     else "Es war ohnehin nichts scharf."))
+
+        if wort == "pause":
+            self.pausiert = True
+            return "Zyklus ausgesetzt. /weiter setzt fort."
+
+        if wort == "weiter":
+            self.pausiert = False
+            return "Zyklus laeuft wieder."
+
+        if wort in ("hilfe", "start", "help"):
+            return self.hilfe()
+
+        return "Unbekannt: %s\n\n%s" % (text[:40], self.hilfe())
+
+    def hilfe(self):
+        stand = []
+        for spur in SPUREN:
+            stand.append("  %-9s %s" % (spur, freigabefenster.lade(spur).text()))
+        return ("<b>Befehle</b>\n"
+                "/lage      Positionen und Sperren\n"
+                "/bericht   voller Tagesbericht\n"
+                "/scan      Rangliste neu rechnen\n"
+                "/ja [h]    wartende Freigabe erteilen\n"
+                "/nein      ablehnen\n"
+                "/stop      alles zu, zurueck auf Papier\n"
+                "/pause /weiter\n\n"
+                "<b>Jetzt</b>\n%s\n"
+                "  Zyklen %d, Fehler %d, Takt %d min"
+                % ("\n".join(stand), self.zyklen, self.fehler, self.takt))
+
+    def scan_kurz(self):
+        try:
+            x = tagesbericht.spur_xperp(anzahl=4)
+        except Exception as e:                           # noqa: BLE001
+            return "Scan gescheitert: %s" % e
+        if "fehler" in x["spitzen"]:
+            return "Scan gescheitert: %s" % x["spitzen"]["fehler"][:200]
+        z = ["<b>Rangliste</b>  %s" % jetzt().strftime("%H:%M")]
+        for zweck, titel in (("long", "Long"), ("short", "Short"),
+                             ("grid", "Grid")):
+            teile = []
+            for b in x["spitzen"].get(zweck, []):
+                kz = {"krypto": "K", "aktie": "A", "rohstoff": "R"}[b["kategorie"]]
+                warn = "!" if (b["vola"] > b["tor"] or b["deckel"] < 5) else ""
+                teile.append("%s·%s %.0f%s" % (b["basis"], kz, b["punkte"], warn))
+            z.append("%-6s %s" % (titel, "  ".join(teile)))
+        z.append("\n! = ein Tor ist zu (Vola oder Hebel-Deckel)")
+        return "\n".join(z)
+
+    # --- Schleife -------------------------------------------------------
+
+    def start(self):
+        protokoll("Dauerlauf startet, Takt %d min%s" % (
+            self.takt, ", trocken" if self.trocken else ""))
+
+        if not self.trocken and not melder.bereit():
+            protokoll("Melder nicht eingerichtet (%s) - laeuft stumm weiter"
+                      % melder.fehlt())
+        elif not self.trocken:
+            # Wartende Nachrichten wegwerfen: Ein /ja von gestern Nacht ist
+            # keine Freigabe fuer heute frueh.
+            try:
+                self.zeiger = melder.leeren()
+            except Exception as e:                       # noqa: BLE001
+                protokoll("Telegram beim Start nicht erreichbar: %s" % e)
+            self.sende("<b>Dauerlauf gestartet</b>\n%s" % self.hilfe(),
+                       stumm=True)
+
+        while True:
+            try:
+                self.runde()
+            except KeyboardInterrupt:
+                protokoll("Beendet (Strg+C)")
+                self.sende("<b>Dauerlauf beendet.</b> Alle Spuren auf Papier.",
+                           stumm=True)
+                freigabefenster.alles_schliessen("Dauerlauf beendet")
+                return 0
+            except Exception:                            # noqa: BLE001
+                self.fehler += 1
+                protokoll("Runde gescheitert:\n%s" % traceback.format_exc())
+                time.sleep(30)
+
+    def runde(self):
+        # 1. Befehle
+        if not self.trocken and melder.bereit():
+            try:
+                nachrichten, self.zeiger = melder.hole(self.zeiger, warten=20)
+            except Exception as e:                       # noqa: BLE001
+                protokoll("Telegram: %s" % e)
+                nachrichten = []
+                time.sleep(10)
+            for n in nachrichten:
+                protokoll("Befehl: %s" % n["text"][:60])
+                try:
+                    antwort = self.befehl(n["text"])
+                except Exception as e:                   # noqa: BLE001
+                    antwort = "Der Befehl ist gescheitert: %s" % e
+                    protokoll("Befehl gescheitert:\n%s" % traceback.format_exc())
+                self.sende(antwort)
+        else:
+            time.sleep(min(20, self.takt * 60))
+
+        # 2. Zyklus faellig?
+        if not self.pausiert:
+            faellig = (self.letzter_zyklus is None or
+                       (jetzt() - self.letzter_zyklus).total_seconds()
+                       >= self.takt * 60)
+            if faellig:
+                self.zyklus()
+
+        # 3. Tagesbericht faellig? Einmal am Tag, ab 8 Uhr.
+        heute = jetzt().date()
+        if (self.letzter_bericht != heute and jetzt().hour >= 8):
+            self.letzter_bericht = heute
+            protokoll("Tagesbericht")
+            try:
+                self.sende(tagesbericht.baue(mit_xperp=True))
+            except Exception as e:                       # noqa: BLE001
+                self.sende("<b>Tagesbericht gescheitert</b>\n%s" % e)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--takt", type=int, default=15,
+                   help="Minuten zwischen zwei Zyklen (Vorgabe 15; der "
+                        "Herzschlag von Spur 2 liegt bei 30)")
+    p.add_argument("--trocken", action="store_true",
+                   help="nichts senden, alles auf die Konsole")
+    a = p.parse_args()
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+    return Lauf(a.takt, a.trocken).start()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
