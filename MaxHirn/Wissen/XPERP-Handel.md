@@ -255,8 +255,14 @@ in eine Position:
   ([[Schutzregeln]], Spur 2). Eine Rangliste aus `auswahl.py` bleibt auf diesem
   Weg ein Vorschlag, keine Anweisung.
 
-Unverändert: `handel_erlaubt` steht auf `false`, es gibt noch keinen Live-Pfad,
-und der Schalter wird von Hand umgelegt, nie aus einer Routine. Der Bot rechnet
-und legt vor; abgesendet wird bis dahin von Max.
+`handel_erlaubt` steht auf `false` — **Papierbetrieb**. Den Live-Pfad selbst
+gibt es seit dem 03.09.2026 (`xperp/handeln.py` mit Journal, Zustand, Ein- und
+Ausstiegen; zusätzliche Grenzen in `xperp/wachen_xperp.py`), er schließt T-019:
+bis dahin lief die Regel der Umsetzung voraus. Auf `true` erst, wenn der
+Papierlauf die vier Werte aus `wachen.json` (`_freigabe`) erfüllt,
+`journal_zweitziel` gesetzt ist und die OKX-Schlüssel stehen — und selbst dann
+handelt ein Lauf nur scharf, wenn ein Freigabefenster offen ist. Der Schalter
+wird von Hand auf `true` gelegt, nie aus einer Routine; zurück auf `false` darf
+auch `wachen_xperp.py` (nur diese Richtung).
 
 Verwandt: [[Handelsbots]], [[Marktscanner]], [[Schutzregeln]], [[Verbindungen]]
