@@ -123,6 +123,12 @@ Agenten/Handel/kraken/zustand.json
 Agenten/Handel/kraken/handelsjournal.csv
 Agenten/Handel/kraken/berichte/**
 
+# Spur 2 (XPERP): dieselbe Aufteilung. wachen.json ist Konfiguration von
+# Hand und oben freigegeben, diese drei schreibt jeder Lauf.
+Agenten/Handel/xperp/zustand.json
+Agenten/Handel/xperp/handelsjournal.csv
+Agenten/Handel/xperp/berichte/**
+
 # Erzeugtes und Fremdes
 **/__pycache__/**
 **/.venv/**
