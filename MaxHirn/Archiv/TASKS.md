@@ -455,3 +455,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Abweichung 0,12 s gegen `time.windows.com` (gemessen 17:17).
       Eine schwache CMOS-Batterie würde erneut driften; ein zweiter Messpunkt
       in einigen Tagen bestätigt es endgültig. Bis dahin kein Handlungsbedarf.
+
+- [ ] **T-031 — Telegram-Bot fuer Meldung und Steuerung einrichten**
+      Kontext: Max hat am 03.09.2026 taegliche Meldungen aufs Handy und
+      Steuerung per Smartphone angeordnet. Gebaut und geprueft sind
+      `Handel/melder.py`, `tagesbericht.py`, `freigabefenster.py`,
+      `dauerlauf.py` und `Routinen/handel-dauerlauf.ps1` — alles laeuft, aber
+      **stumm**: `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` fehlen.
+      Das kann nur Max tun (Konto bei @BotFather):
+      1. In Telegram @BotFather anschreiben, `/newbot`, Namen vergeben.
+      2. `setx TELEGRAM_TOKEN "123456:ABC-DEF..."`
+      3. Dem eigenen Bot irgendetwas schreiben, dann
+         `python melder.py --chat-id-suchen` und die ID mit
+         `setx TELEGRAM_CHAT_ID "..."` setzen.
+      4. `python melder.py --probe` — kommt die Nachricht an, ist es fertig.
+      5. Erst danach die beiden Aufgaben aus [[Routinen]] anlegen.
+      Ohne Schritt 2 und 3 ist die Steuerung nicht erreichbar und der
+      Dauerlauf meldet nichts — er handelt dann weiter auf Papier, was
+      unkritisch, aber eben auch nutzlos ist.
