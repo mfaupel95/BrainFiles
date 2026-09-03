@@ -70,15 +70,67 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       | `Modelle` | 21,1 | seit 30.08.2026 aus der Sicherung ausgenommen |
       | `MCP-Server`, `Hermes`, `Handel`, `Wissen`, `Routinen`, `GitHub`, … | ~5 | Struktur **vor** der Ordnertrennung, heute alles unter `Agenten/` |
 
-      Rund 115 GB davon sind Altlast. Der aktuelle Stand steht vollständig
-      unter `MaxHirn\` und `Agenten\`, die Altzweige werden also von nichts
-      mehr beschrieben.
-      Nächster Schritt: Max entscheidet, was weg darf — `Modelle\` (21,1 GB,
-      neu herunterladbar) ist der harmloseste Fall, `Claude\` (93,8 GB) der
-      größte. Vor dem Löschen von `Claude\` gegenprüfen, dass jede Datei
-      daraus auch unter `MaxHirn\Archiv\` liegt.
+      **Abgeräumt am 03.09.2026 auf Max' Freigabe.** Entfernt wurden
+      `Modelle\`, `MCP-Server\`, `Hermes\`, `GitHub\`, `Handel\`, `Routinen\`,
+      `Wissen\`, `Referenz\`, `.obsidian\`, `.claude\`, `.agents\`, `.codex\`,
+      elf lose Altdateien der obersten Ebene und zuletzt `Claude\`.
+
+      Jeder Ordner wurde vorher gegengeprüft, keiner blind gelöscht. Zwei
+      Fälle, in denen die Prüfung etwas gefunden hat:
+
+      - **`Codex\` und `Coworking-Space\` (0,4 GB) stehen bewusst noch da.**
+        Ihr heutiger Ort ist `Werkstatt\`, und Werkstatt ist aus der Sicherung
+        ausgenommen — die Kopie auf `G:` ist die einzige, unter anderem vom
+        eigenen `m3u_cleaner`. Siehe T-032.
+      - **`Claude\` war nur zu 44,5 von 93,8 GB eine Dublette.** Drei
+        Prüfrunden: Pfadvergleich (45 von 64.829 Dateien ohne Entsprechung),
+        Namensvergleich über Archiv und Werkstatt (18 davon lagen umsortiert
+        woanders), Größenvergleich der restlichen 27. Dabei kam heraus, dass
+        die 24 ELSTER-Belege beim Einsortieren **umbenannt** worden waren
+        (`1-Lohnsteuerbescheinigung_2022_…` → `2022_Belegabruf_…_2026-08-19`)
+        und byteweise identisch vorliegen. Echte Unikate blieben drei:
+        `Maximilianbackup0924` (52,4 GB), `EFIbackup0924` (524 MB) und
+        `OKX_API.env` (124 B). Sie liegen jetzt in
+        `G:\Unikate-aus-Altzweig-20260903\` mit einer `LIESMICH.md`, die den
+        Weg dorthin beschreibt.
+
+      **Die Lehre für das nächste Mal:** Ein Pfadvergleich allein hätte 50 GB
+      gelöscht oder 41 GB verschont — beides falsch. Erst Pfad, dann Name,
+      dann Größe.
+      Nächster Schritt: nach dem nächsten Sicherungslauf den freien Platz auf
+      `G:` nachmessen und hier eintragen; dann ist der Punkt zu.
       Betrifft: `G:\MaxHirn-Sicherung`
       Angelegt: 2026-08-30 · Zuletzt: 2026-09-03
+
+- [ ] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird**
+      Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
+      ist aus beiden Sicherungen ausgenommen — richtig für geklonte Fremd-Repos
+      und Sitzungsreste, falsch für das, was tatsächlich dort liegt:
+      `Werkstatt\Sitzungen\m3u_cleaner\` ist eigener Python-Code samt
+      PyInstaller-Builds, `Werkstatt\Protokolle\Codex\` sind Auswertungen. Von
+      beidem existiert nur noch die alte Kopie auf `G:` (Ordner `Codex\` und
+      `Coworking-Space\`, zusammen 0,4 GB), und die stammt von vor dem
+      30.08.2026.
+      Nächster Schritt: entscheiden, ob `m3u_cleaner` in den Vault gehört
+      (dann nach `MaxHirn/Archiv/Software/` oder als eigenes Projekt) oder ob
+      `Werkstatt/` eine Ausnahme in `sichern.ps1` bekommt. Bis dahin die beiden
+      Altordner auf `G:` stehen lassen.
+      Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
+
+- [ ] **T-033 — `OKX_API.env` mit Klartext-Zugangsdaten auf `G:`**
+      Kontext: Beim Abräumen von `G:` am 03.09.2026 im Altzweig gefunden
+      (`Claude\Worktrees\Investment\OKX_API.env`, 124 Bytes, Stand
+      07.08.2026). Im laufenden Vault existiert sie nicht mehr, sie ist also
+      kein Duplikat, sondern der letzte Rest eines alten Arbeitszweigs. Nach
+      Stufe 0 der [[Schutzregeln]] nicht einfach zu löschen, aber Klartext auf
+      einer Platte im Rechner ist auch kein Zustand. Liegt derzeit in
+      `G:\Unikate-aus-Altzweig-20260903\`.
+      Nächster Schritt: Inhalt ansehen, prüfen ob der Schlüssel noch gilt —
+      dann entweder nach `Wissen/Zugaenge.md` übernehmen oder die Datei
+      löschen. Auf ausdrückliche Anweisung, nicht nebenbei.
+      Betrifft: `G:\Unikate-aus-Altzweig-20260903\OKX_API.env`
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
 
 - [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
       Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
