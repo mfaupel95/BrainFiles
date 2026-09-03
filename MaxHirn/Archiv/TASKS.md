@@ -69,19 +69,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
       Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
 
-- [ ] **T-033 — `OKX_API.env` mit Klartext-Zugangsdaten auf `G:`**
+- [?] **T-033 — `OKX_API.env`: Schlüssel im Portal widerrufen**
       Kontext: Beim Abräumen von `G:` am 03.09.2026 im Altzweig gefunden
       (`Claude\Worktrees\Investment\OKX_API.env`, 124 Bytes, Stand
-      07.08.2026). Im laufenden Vault existiert sie nicht mehr, sie ist also
-      kein Duplikat, sondern der letzte Rest eines alten Arbeitszweigs. Nach
-      Stufe 0 der [[Schutzregeln]] nicht einfach zu löschen, aber Klartext auf
-      einer Platte im Rechner ist auch kein Zustand. Liegt derzeit in
-      `G:\Unikate-aus-Altzweig-20260903\`.
-      Nächster Schritt: Inhalt ansehen, prüfen ob der Schlüssel noch gilt —
-      dann entweder nach `Wissen/Zugaenge.md` übernehmen oder die Datei
-      löschen. Auf ausdrückliche Anweisung, nicht nebenbei.
-      Betrifft: `G:\Unikate-aus-Altzweig-20260903\OKX_API.env`
-      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
+      07.08.2026). Kein Duplikat, sondern der letzte Rest eines alten
+      Arbeitszweigs.
+      **Erledigt am 03.09.2026:** Inhalt geprüft, Datei nach SHA256-Verifikation
+      von `G:` nach `Archiv/Posteingang/_zu_loeschen/` verschoben — damit ist der
+      Klartext von der Platte weg, die regelmäßig abgezogen wird (T-015). Befund
+      in [[Zugaenge]] festgehalten: Der Secret ist zu kurz (4 Zeichen gemessen,
+      am 23.08. mit 6 notiert) und damit unbrauchbar; Key und Passphrase sehen
+      echt aus und stehen sonst nirgends in `Zugaenge.md`. Der dortige Pfad-
+      verweis auf `Claude/Worktrees/investment/` ist mitgezogen.
+      **Nicht gelöscht** — Stufe 0, und die Datei ist bis zum Widerruf das
+      Identifikationsmittel im Portal.
+      Nächster Schritt: Max ruft `https://web3.okx.com` → API-Verwaltung auf und
+      löscht den Schlüssel. **Ob er noch aktiv ist, lässt sich von hier nicht
+      feststellen** — ohne gültigen Secret ist keine signierte Anfrage möglich.
+      Bis dahin gilt er als möglicherweise aktiv. Danach darf die Datei weg.
+      Wartet auf: Max — Widerruf im OKX-Portal
+      Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`, [[Zugaenge]]
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:30)
 
 - [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
       Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
