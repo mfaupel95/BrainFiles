@@ -141,25 +141,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       andere Sitzung**, deshalb hier nur eingetragen und nicht angefasst.
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
-- [ ] **T-019 — Die Regel erlaubt jetzt mehr, als der XPERP-Bot kann**
-      Kontext: Max hat am 01.09.2026 um 19:06 in [[Schutzregeln]] das Handverbot
-      durch „automatischer Handel erlaubt, solange `wachen.json` eingehalten
-      wird" ersetzt. Die Notizen sind nachgezogen, der Code noch nicht:
-      1. **`xperp/bot.py` hat keinen Live-Pfad.** Er legt Befehle vor,
-         abgesendet wird von Hand. Automatischer Handel ist damit erlaubt,
-         aber nicht gebaut — die Regel läuft der Umsetzung voraus.
-      2. **`xperp/wachen.json`** trägt in `_handel_erlaubt_hinweis` noch den
-         alten Wortlaut („Die Ausnahme … gilt ausdruecklich nur fuer 'nur
-         Spot, nur Long, kein Hebel'"). Der Schreibzugriff auf diese Datei
-         wurde am 01.09. abgelehnt, deshalb hier eingetragen statt erledigt.
-      3. Dieselbe veraltete Formel steht in den Kopfkommentaren von
-         `okxf.py` (Zeile 26/36), `bot.py` (Zeile 5) und `indikatoren.py`
-         (Zeile 204) sowie in `xperp/README.md`.
-      Nächster Schritt: erst 2. und 3. angleichen (reiner Text), dann
-      entscheiden, ob der Live-Pfad überhaupt gebaut wird — die Prüfpflicht
-      verlangt dafür die vier Zahlen **je Position im Handelsjournal**, nicht
-      im Chat, weil beim Automaten niemand mitliest.
-      Betrifft: `Agenten/Handel/xperp/`
+- [x] **T-019 — Die Regel erlaubt jetzt mehr, als der XPERP-Bot kann**
+      Erledigt 2026-09-03: Der Live-Pfad ist gebaut, nachdem Max XPERP zum
+      Hauptweg gemacht hat. Neu sind `xperp/handeln.py` (Zyklus, Ausstiege,
+      Einstiege, Journal, Zustand) und `xperp/wachen_xperp.py` (Bedingungen
+      1–5, Rechnung importiert aus `scanner/wachen_pruefung.py`).
+      Die vier Pflichtzahlen stehen je Position im Journal, nicht im Chat —
+      Spalten `liq_abstand`, `funding_pct`, `gebuehr_pct`, `quote_noetig`,
+      `quote_beob`. Und sie sind keine Zierde: Der erste Papierlauf hat
+      XAG short (Quote 19,8 % gegen nötige 33,3 %) und XAU short (23,7 gegen
+      35,5) abgewiesen und drei Anläufe eröffnet — MSTR, CL, BZ.
+      Punkt 2 und 3 der alten Liste sind mit angeglichen: der Hinweis in
+      `wachen.json` und die Stellen in `bot.py`, die „es gibt keinen
+      Live-Pfad" sagten.
+      Gegengeprüft: Notausstieg bei altem Herzschlag schließt alle drei
+      Positionen (`herzschlag_alt`), die Rundenrechnung erkennt sie als drei
+      abgeschlossene Runden samt Funding. Die Testdaten wurden danach
+      zurückgenommen, damit die Freigabe-Statistik sauber bleibt.
+      **Offen bleibt daraus:** siehe T-032 (Herzschlag und Dauerbetrieb).
+
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 - [ ] **T-023 — ASUS MG278 antwortet nicht auf DDC/CI, PowerDisplay lässt ihn aus**
@@ -526,3 +526,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Ohne Schritt 2 und 3 ist die Steuerung nicht erreichbar und der
       Dauerlauf meldet nichts — er handelt dann weiter auf Papier, was
       unkritisch, aber eben auch nutzlos ist.
+
+- [ ] **T-032 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
+      Aufgefallen 03.09.2026 beim Bau des XPERP-Live-Pfads (T-019).
+      `xperp/wachen.json` setzt `herzschlag_max_minuten` auf 30. Das ist
+      richtig — eine gehebelte Position, die einen Neustart "überlebt", ist
+      unbewacht, und die Kernel-Power-41-Abschaltungen aus [[Hardware]]
+      nehmen den Rechner ohne Vorwarnung mit.
+      Die Folge ist aber unbequem: Läuft `dauerlauf.py` nicht, ist der
+      Herzschlag nach einer halben Stunde alt, und der nächste Lauf stellt
+      **zuerst alles flach**, bevor er irgendetwas anderes tut. Gemessen am
+      03.09.2026: vier Stunden nach dem Papierlauf meldete der Tagesbericht
+      "Herzschlag alt (Bed. 3)".
+      Damit sammelt ein von Hand gestarteter Papierlauf nie die 50 Runden
+      aus Bedingung 1 — er schließt jedes Mal, was er beim letzten Mal
+      eröffnet hat.
+      Zwei Wege, und die Entscheidung gehört Max:
+      1. Den Dauerlauf tatsächlich durchlaufen lassen (T-031 zuerst, sonst
+         läuft er stumm). Dann passt der 15-Minuten-Takt zu den 30 Minuten.
+      2. Den Herzschlag an eine tatsächliche Taktung anpassen — nicht
+         abschalten. Bei einem Lauf pro Tag wären 1440+ Minuten ehrlich,
+         aber dann ist eine Position bis zu einem Tag unbewacht.
+      Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
