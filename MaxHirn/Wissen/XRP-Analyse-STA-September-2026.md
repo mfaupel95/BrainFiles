@@ -3,7 +3,7 @@ id: 20260902-xrp-analyse-sta
 title: 'XRP-Analyse STA Solutions — September 2026'
 tags: [handel]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-03
 related:
   - id: 20260830-marktlage-august-2026
   - id: 20260901-saisonalitaet-signal
@@ -102,10 +102,20 @@ sich kostenlos selbst am Chart verfolgen.
 
 ## Bezug zum eigenen System
 
-XRP ist **kein** aktuell gehandelter Wert: Der [[Marktscanner]] handelt Spot/Long
-auf SOL, LINK, BTC, ETH, BNB, LTC; der XPERP-Bot ([[XPERP-Handel]]) läuft auf
-Perpetuals. Diese Notiz ist Marktbeobachtung, kein Handelsauftrag. Falls XRP je
-in den Scanner aufgenommen wird, ist die 3,30-Marke der objektive Trigger, nicht
-die Wellenzählung.
+`XRP-USDT` steht **bereits in der Watchlist** des [[Marktscanner]]s
+(`scanner/wachen.json`) und wird täglich mit dessen mechanischem Modell
+bewertet — die Aufnahme war nichts einzutragen, sie bestand schon.
+
+**Scan-Stand 03.09.2026:** Score 66,7 (Tor ≥ 60), Chance/Risiko 4,84 (≥ 1,5),
+Volatilität p. a. 0,68 (≤ 1,2) — XRP passiert derzeit **alle drei Tore** und ist
+damit ein aktiver Kandidat. Gehandelt wird trotzdem nichts: Spur 1 läuft
+komplett auf Papier (`handel_erlaubt: false`, keine OKX-Schlüssel), siehe
+[[Handelsregeln]].
+
+**Die 3,30-Marke kennt der Scanner nicht.** Er wertet nur Score / Volatilität /
+Chance-Risiko aus Tageskerzen, kein Feld für manuelle Preis-Trigger. Wer die
+3,30 überwacht haben will, braucht dafür eine eigene Kursüberwachung (z. B. ein
+Kraken-MCP-Kurscheck in einer Routine) — kein Scanner-Eintrag. Bis dahin bleibt
+sie eine Marke zum Selbst-Verfolgen am Chart.
 
 Verwandt: [[Marktlage-August-2026]], [[Saisonalitaet-Signal]], [[Marktscanner]], [[Handelsbots]]
