@@ -49,27 +49,31 @@ function Test-EingebettetesGitRepo([string]$Pfad, [string]$Wurzel) {
     return $false
 }
 
-foreach ($z in (git -C $wurzel status --porcelain)) {
+# -uall listet neue Dateien einzeln statt den Ordner als eine Zeile. Ohne das
+# stand hier am 02.09.2026 nur "MaxHirn/.claude/skills/local-ai-config-doctor/",
+# und was darin lag, war nicht zu sehen.
+foreach ($z in (git -C $wurzel status --porcelain -uall)) {
     if ([string]::IsNullOrWhiteSpace($z)) { continue }
     $status = $z.Substring(0,2)
     $pfad   = $z.Substring(3).Trim('"')
     if ($pfad -match ' -> ') { $pfad = ($pfad -split ' -> ')[1] }   # Umbenennung
     $voll   = Join-Path $wurzel $pfad
 
-    # Ausgeschlossen wird nur, was Git noch nicht kennt. Bei einer bereits
-    # versionierten Datei greift keine Ignore-Regel mehr - ihre Aenderung
-    # gehoert gesichert, auch wenn ein Muster auf den Pfad passt. Gemessen
-    # 01.09.2026: 36 getrackte Dateien passen auf ein Muster, darunter das
-    # ganze Archiv-Werkzeug unter MaxHirn/Archiv/ArchivSuche/. Ohne diese
-    # Unterscheidung faellt ihre Arbeit stillschweigend aus der Sicherung.
-    $unbekannt = $status -eq '??'
-    if ($unbekannt) {
-        git -C $wurzel check-ignore --quiet --no-index -- $pfad 2>$null
-        $ignoriert = $LASTEXITCODE -eq 0
-    } else {
-        $ignoriert = $false
-    }
-    if ($ignoriert -or (Test-EingebettetesGitRepo $voll $wurzel)) {
+    # Frueher stand hier eine check-ignore-Abfrage. Sie war doppelt falsch und
+    # hat am 02.09.2026 einen neu angelegten Skill als "ausgeschlossen"
+    # abgetan, statt ihn zum Commit vorzuschlagen - so geht neue Arbeit
+    # verloren.
+    #   1. Sie war ueberfluessig: git status --porcelain meldet ignorierte
+    #      Dateien ueberhaupt nicht (dafuer braeuchte es --ignored). Was hier
+    #      als '??' ankommt, ist per Definition nicht ignoriert.
+    #   2. Sie war unbrauchbar: check-ignore --quiet liefert Exit 0, sobald
+    #      IRGENDEIN Muster passt - auch ein Negationsmuster. Diese .gitignore
+    #      ist eine Whitelist ("erst alles ignorieren, dann einzeln
+    #      freigeben"), also passt auf fast jeden Pfad eines. Gerade die
+    #      ausdruecklich freigegebenen Pfade galten damit als ignoriert.
+    # Ausgeschlossen wird deshalb nur noch, was in einem eingebetteten
+    # Git-Repository liegt - dort fuehrt ein anderes Repo die Versionierung.
+    if (Test-EingebettetesGitRepo $voll $wurzel) {
         $ausgeschlossen += $pfad
         continue
     }
@@ -93,7 +97,7 @@ foreach ($z in (git -C $wurzel status --porcelain)) {
 if (-not $ruhend -and -not $inArbeit) { Write-Output "Arbeitsbaum sauber."; exit 0 }
 
 if ($ausgeschlossen) {
-    Write-Output "=== AUSGESCHLOSSEN (ignoriert oder eingebettetes Git-Repo): $($ausgeschlossen.Count) ==="
+    Write-Output "=== AUSGESCHLOSSEN (liegt in einem eingebetteten Git-Repo): $($ausgeschlossen.Count) ==="
     $ausgeschlossen | Sort-Object | ForEach-Object { Write-Output "    $_" }
     Write-Output ""
 }
