@@ -92,7 +92,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       07.08.2026) — der Altzweig, wie er beim letzten Zweitkopie-Lauf aussah.
       Bewusst nicht angefasst: In eine Sicherung greift man nicht nebenbei
       hinein. Nach dem Widerruf müssen **beide** weg, sonst war der Aufwand
-      umsonst.
+      umsonst. Gesucht wurde in `C:\Users\faupe\Documents`, `G:`, `O:` und `J:`
+      — **ganz `C:` ist nicht geprüft**, dort ist eine weitere Kopie nur
+      unwahrscheinlich, nicht ausgeschlossen.
       Wartet auf: Max — Widerruf im OKX-Portal
       Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`,
       `O:\MaxHirn-Zweitkopie\...\OKX_API.env`, [[Zugaenge]]
