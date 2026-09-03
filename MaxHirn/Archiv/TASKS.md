@@ -87,9 +87,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       löscht den Schlüssel. **Ob er noch aktiv ist, lässt sich von hier nicht
       feststellen** — ohne gültigen Secret ist keine signierte Anfrage möglich.
       Bis dahin gilt er als möglicherweise aktiv. Danach darf die Datei weg.
+      **Es gibt eine zweite Kopie:**
+      `O:\MaxHirn-Zweitkopie\Claude\Worktrees\investment\OKX_API.env` (124 Bytes,
+      07.08.2026) — der Altzweig, wie er beim letzten Zweitkopie-Lauf aussah.
+      Bewusst nicht angefasst: In eine Sicherung greift man nicht nebenbei
+      hinein. Nach dem Widerruf müssen **beide** weg, sonst war der Aufwand
+      umsonst.
       Wartet auf: Max — Widerruf im OKX-Portal
-      Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`, [[Zugaenge]]
-      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:30)
+      Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`,
+      `O:\MaxHirn-Zweitkopie\...\OKX_API.env`, [[Zugaenge]]
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:34)
 
 - [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
       Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
