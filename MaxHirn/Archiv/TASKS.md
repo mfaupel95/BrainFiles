@@ -59,10 +59,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       dem Umbau vom 30.08.2026 noch die 51 GB `Modelle\` (ab jetzt aus der
       Sicherung ausgenommen) und der alte Zweig unter dem früheren Namen „Claude“ (er heißt jetzt
       `Archiv`, wird also ein zweites Mal kopiert).
-      Nächster Schritt: erst den ersten Lauf der neuen Sicherung abwarten, dann
-      beide Altzweige vorlegen und nach Freigabe entfernen.
+      **Gemessen 03.09.2026**, nach einem vollständigen Lauf der neuen
+      Sicherung (robocopy-Code 3, 54:38 Dauer, 29,1 GB übertragen): Auf `G:`
+      liegen 190 GB, frei sind 68,5 GB von 2,75 TB.
+
+      | Ordner | GB | Was |
+      |---|---|---|
+      | `Claude` | 93,8 | alter Archivname, heute `MaxHirn\Archiv` — doppelt gehalten. Allein `Claude\Posteingang\Maximilianbackup0924` sind 48,8 GB |
+      | `MaxHirn` | 70,4 | aktuell (Quelle 45 GB; die Differenz sind Altstände, die ohne `/MIR` liegenbleiben) |
+      | `Modelle` | 21,1 | seit 30.08.2026 aus der Sicherung ausgenommen |
+      | `MCP-Server`, `Hermes`, `Handel`, `Wissen`, `Routinen`, `GitHub`, … | ~5 | Struktur **vor** der Ordnertrennung, heute alles unter `Agenten/` |
+
+      Rund 115 GB davon sind Altlast. Der aktuelle Stand steht vollständig
+      unter `MaxHirn\` und `Agenten\`, die Altzweige werden also von nichts
+      mehr beschrieben.
+      Nächster Schritt: Max entscheidet, was weg darf — `Modelle\` (21,1 GB,
+      neu herunterladbar) ist der harmloseste Fall, `Claude\` (93,8 GB) der
+      größte. Vor dem Löschen von `Claude\` gegenprüfen, dass jede Datei
+      daraus auch unter `MaxHirn\Archiv\` liegt.
       Betrifft: `G:\MaxHirn-Sicherung`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-03
 
 - [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
       Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
