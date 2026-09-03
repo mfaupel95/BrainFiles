@@ -152,7 +152,7 @@ def noetige_quote(gewinn_pct, verlust_pct, kosten_pct):
 
 
 def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
-                 stop_atr_f=None, ziel_atr_f=None, was="Order"):
+                 stop_atr_f=None, ziel_atr_f=None, was="Order", still=False):
     """Die vier Zahlen, die Wissen/Handelsregeln.md vor jeder gehebelten
     Order verlangt (Spur 2, Pruefpflicht, angeordnet 01.09.2026).
 
@@ -160,6 +160,13 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
     Wissen/Handelsbots.md ist unbequem: noetige und erreichte Trefferquote
     lagen dort immer ein bis zwei Prozentpunkte auseinander, uebrig blieben
     die Gebuehren. Hebel vergroessert diesen Abstand mit.
+
+    Gibt die vier Werte immer zurueck, auch beim Drucken. Das ist seit dem
+    03.09.2026 noetig, weil handeln.py sie ins Journal schreibt: Auf dem
+    automatischen Weg liest niemand mit, und die Handelsregeln sagen dazu
+    unmissverstaendlich - "eine Zahl, die der Automat nicht ablegt, ist nicht
+    gerechnet worden; eine Position ohne diese vier Werte im Journal ist ein
+    Befund, kein Trade." Mit still=True bleibt die Ausgabe weg.
     """
     dl, ds = hebel_deckel(k, wartung=w["wartungsmarge"])
     deckel = dl if seite == "long" else ds
@@ -186,6 +193,29 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
     if ziel_atr_f is None:
         ziel_atr_f = (gewinn * einstieg / a_jetzt) if a_jetzt else w["ziel_atr_faktor"]
     tq = trefferquote(k, stop_atr_f, ziel_atr_f, seite)
+
+    werte = {
+        "liq_abstand": liq_abstand,
+        "liq_preis": liq,
+        "hebel": hebel,
+        "hebel_deckel": deckel,
+        "hebel_traegt": hebel <= deckel,
+        "funding_pct": funding_pct,
+        "funding_satz": f,
+        "gebuehren_pct": gebuehren,
+        "gewinn_pct": gewinn,
+        "verlust_pct": verlust,
+        "kosten_pct": kosten,
+        "quote_noetig": noetig,
+        "quote_beobachtet": tq["quote"],
+        "quote_ziel": tq["ziel"],
+        "quote_stop": tq["stop"],
+        "quote_selten": min(tq["ziel"], tq["stop"]),
+        "traegt": (noetig is not None and tq["quote"] is not None
+                   and (tq["quote"] - noetig) > 0.02),
+    }
+    if still:
+        return werte
 
     print()
     print("-" * 66)
@@ -253,6 +283,7 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
     print("  aus %.0f Tagen. Das sind keine unabhaengigen Beobachtungen, und" % (len(k) / 6))
     print("  Wissen/Handelsbots.md verlangt ein Jahr - das gibt es bei XPERP")
     print("  nirgends, die aeltesten Kontrakte laufen seit Mai 2026.")
+    return werte
 
 
 def liquidationspreis(einstieg, hebel, wartung, seite="long"):

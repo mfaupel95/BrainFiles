@@ -24,9 +24,18 @@ ist die Umsetzung von Punkt 3 der Handelsregeln unter den Bedingungen des
 Dauerbetriebs: Ein Zeitplan legt den Schalter nicht um, und ein Dauerlauf ist
 nichts anderes als ein sehr enger Zeitplan.
 
-Er handelt ausserdem nur Spuren, die einen Live-Pfad haben. Spur 2 (XPERP)
-legt bis heute nur vor - sie wird hier gescannt und gemeldet, nicht
-gehandelt.
+Er handelt nur Spuren mit Live-Pfad. Seit 03.09.2026 sind das zwei: Spur 2
+(xperp, der Hauptweg - der Pfad entstand an diesem Tag) und Spur 1
+(scanner). Spur 3 (Kraken) ist stillgelegt.
+
+WER FRAGT, WANN
+---------------
+Ein Fenster oeffnet sich nur auf Anfrage, und die stellt pruefe_anfragen()
+nach jedem Zyklus - aber nur, wenn ALLE anderen Sperren einer Spur offen
+sind und wirklich nichts mehr fehlt als die Freigabe. Eine Frage, die auch
+nach einem /ja folgenlos bliebe, wird nicht gestellt: Wer solche Fragen
+schickt, bekommt sie weggewischt, ohne gelesen zu werden - und dann auch
+die eine, auf die es ankam.
 
 BEFEHLE VOM HANDY
 -----------------
@@ -48,6 +57,7 @@ Aufruf:
 
 import argparse
 import datetime as dt
+import json
 import os
 import subprocess
 import sys
@@ -65,12 +75,23 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
 # Spuren, die dieser Lauf fuehrt.
 #
+# Spur 2 (xperp) ist seit 03.09.2026 der Hauptweg und hat seit demselben Tag
+# einen Live-Pfad - vorher legte bot.py nur vor. Sie steht zuerst.
+#
 # Spur 3 (Kraken) ist seit 03.09.2026 stillgelegt und steht deshalb nicht
 # mehr hier - Grund und Zahlen in kraken/wachen.json, Feld
 # _stillgelegt_grund. Der Ordner bleibt, die Spur kann wieder anlaufen.
 SPUREN = {
+    "xperp": {"ordner": "xperp", "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
 }
+
+# Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
+# herzschlag_max_minuten auf 30. Laeuft der Zyklus seltener, stellt der
+# naechste Lauf alle Positionen flach und faellt auf Papier zurueck - richtig
+# so, aber dann handelt die Spur eben nicht. 15 Minuten lassen einen
+# ausgefallenen Zyklus zu, bevor es eng wird.
+TAKT_MAX_MINUTEN = 15
 
 
 def jetzt():
@@ -162,6 +183,66 @@ class Lauf:
         if auffaellig:
             self.sende("<b>Zyklus %d</b>\n%s" % (
                 self.zyklen, "\n".join(auffaellig[:12])))
+
+        self.pruefe_anfragen()
+
+    def pruefe_anfragen(self):
+        """Fragt nach Freigabe, wenn NUR noch das Fenster fehlt.
+
+        Ohne diesen Schritt koennte Max nie /ja sagen: freigabefenster
+        oeffnet nur auf Anfrage, und eine Anfrage stellt sonst niemand.
+
+        Gefragt wird bewusst spaet - erst wenn jede andere Sperre offen ist.
+        Eine Freigabe einzuholen, waehrend handel_erlaubt noch false steht
+        oder die Freigabe aus Bedingung 1 fehlt, waere eine Frage ohne Folge:
+        Der Lauf handelte auch nach einem /ja weiter auf Papier. Wer solche
+        Fragen stellt, bekommt sie irgendwann weggewischt, ohne gelesen zu
+        werden - und dann auch die eine, auf die es ankam.
+        """
+        for spur, d in SPUREN.items():
+            f = freigabefenster.lade(spur)
+            if f.offen() or f.anfrage_offen():
+                continue
+            offen_bis_auf_fenster = self.nur_fenster_fehlt(spur, d)
+            if not offen_bis_auf_fenster:
+                continue
+            w = offen_bis_auf_fenster
+            dauer = freigabefenster.anfrage_stellen(spur, 12 * 60)
+            protokoll("Freigabe-Anfrage %s (%d min)" % (spur, dauer))
+            self.sende(freigabefenster.anfrage_text(
+                spur, w, dauer, d.get("waehrung", "USD")))
+
+    def nur_fenster_fehlt(self, spur, d):
+        """wachen.json der Spur, wenn allein das Freigabefenster noch fehlt.
+
+        Sonst None. Die Spur sagt selbst, was sie sperrt - gefragt wird ihr
+        eigenes handeln.py, nicht eine zweite Liste hier, die auseinander
+        laufen koennte.
+        """
+        ordner = os.path.join(HIER, d["ordner"])
+        try:
+            p = subprocess.run([PYTHON, "handeln.py", "--vorschau"],
+                               cwd=ordner, capture_output=True, text=True,
+                               timeout=600, env=dict(os.environ,
+                                                     MAXHIRN_ROUTINE="1"))
+        except Exception:                                # noqa: BLE001
+            return None
+        zeile = ""
+        for z in (p.stdout or "").splitlines():
+            if "gesperrt durch" in z or "gesperrt:" in z:
+                zeile = z
+                break
+        if not zeile:
+            return None
+        # Genau eine Sperre, und zwar das Fenster.
+        gruende = [g.strip() for g in zeile.split(":", 1)[-1].split(";")]
+        if len(gruende) != 1 or "Freigabefenster" not in gruende[0]:
+            return None
+        try:
+            with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
 
     # --- Befehle --------------------------------------------------------
 
@@ -340,15 +421,24 @@ class Lauf:
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--takt", type=int, default=15,
-                   help="Minuten zwischen zwei Zyklen (Vorgabe 15; der "
-                        "Herzschlag von Spur 2 liegt bei 30)")
+    p.add_argument("--takt", type=int, default=TAKT_MAX_MINUTEN,
+                   help="Minuten zwischen zwei Zyklen (Vorgabe %d; der "
+                        "Herzschlag von Spur 2 liegt bei 30 und begrenzt "
+                        "das nach oben)" % TAKT_MAX_MINUTEN)
     p.add_argument("--trocken", action="store_true",
                    help="nichts senden, alles auf die Konsole")
     a = p.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+    if a.takt > TAKT_MAX_MINUTEN:
+        # Nicht stillschweigend korrigieren: Wer einen groesseren Takt
+        # setzt, soll erfahren, warum er ihn nicht bekommt.
+        print("Takt %d min liegt ueber dem Herzschlag von Spur 2 (30 min) - "
+              "jeder Zyklus wuerde flach stellen. Es gilt %d min."
+              % (a.takt, TAKT_MAX_MINUTEN))
+        a.takt = TAKT_MAX_MINUTEN
 
     return Lauf(a.takt, a.trocken).start()
 

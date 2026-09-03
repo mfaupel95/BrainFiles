@@ -117,8 +117,56 @@ def spur_kraken():
     }
 
 
+def spur_xperp_positionen():
+    """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
+
+    Seit 03.09.2026 hat diese Spur einen Live-Pfad und damit Positionen. Sie
+    rechnet in Margin, nicht in Einsatz: Der Prozentwert bezieht sich auf den
+    Positionswert, der Betrag auf den Einschuss - bei 5x Hebel wirkt eine
+    Kursbewegung von 1 % also mit 5 % auf die Margin.
+    """
+    ordner = os.path.join(HIER, "xperp")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", [])
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, ordner)
+            import okxf                                   # noqa: PLC0415
+            for p in pos:
+                try:
+                    kurse[p["inst"]] = float(okxf.letzter_kurs(p["inst"]))
+                except Exception:                        # noqa: BLE001
+                    pass
+        except Exception:                                # noqa: BLE001
+            pass
+
+    zeilen = []
+    for p in pos:
+        k = kurse.get(p["inst"])
+        vz = 1 if p["seite"] == "long" else -1
+        bewegung = (vz * (k / p["einstieg"] - 1) * 100) if k else None
+        zeilen.append({
+            "name": "%s %s" % (p["basis"], p["seite"]),
+            "einstieg": p["einstieg"], "kurs": k,
+            "wert": p.get("margin", 0),
+            # Auf die Margin gerechnet - das ist die Zahl, die zaehlt.
+            "vh": bewegung * p.get("hebel", 1) if bewegung is not None else None,
+            "stop": p.get("stop"), "seit": p.get("eroeffnet"),
+            "hebel": p.get("hebel"), "familie": p.get("familie"),
+        })
+    return {
+        "name": "Spur 2  XPERP", "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": "wachen_xperp",
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
+
 def spur_xperp(anzahl=3):
-    """Spur 2 - XPERP auf OKX. Kein Live-Pfad, deshalb nur die Rangliste."""
+    """Spur 2 - die Rangliste dazu."""
     ordner = os.path.join(HIER, "xperp")
     w = _lies(os.path.join(ordner, "wachen.json"), {})
     spitzen = {}
@@ -188,13 +236,20 @@ def sperren(spur, lage):
 
 def zeile_position(p, waehrung):
     if p["kurs"] is None:
-        return "  %-10s %s  (kein Kurs)" % (p["name"], p["einstieg"])
+        return "  %-12s %s  (kein Kurs)" % (p["name"], p["einstieg"])
     pfeil = "+" if p["vh"] >= 0 else ""
     abstand = ((p["kurs"] / p["stop"] - 1) * 100) if p.get("stop") else None
-    text = "  %-10s %s%.1f%%  %.0f %s" % (
+    if abstand is not None and p.get("hebel"):
+        # Bei Hebel ist der Stop-Abstand am Kurs gemessen, der Gewinn an der
+        # Margin. Ohne den Hebel danebenzuschreiben liest sich "+1,3 % bei
+        # 4,1 % Stop" wie viel Luft - tatsaechlich sind es 0,8 % Kurs.
+        abstand = abs(abstand)
+    text = "  %-12s %s%.1f%%  %.0f %s" % (
         p["name"], pfeil, p["vh"], p["wert"], waehrung)
+    if p.get("hebel"):
+        text += " Margin @%.0fx" % p["hebel"]
     if abstand is not None:
-        text += "  Stop %.1f%%" % abstand
+        text += "  Stop %.1f%% (Kurs)" % abstand
     return text
 
 
@@ -204,7 +259,7 @@ def baue(mit_xperp=True):
     t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
 
     gesamt_offen = 0
-    for hole in (spur_scanner, spur_kraken):
+    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001

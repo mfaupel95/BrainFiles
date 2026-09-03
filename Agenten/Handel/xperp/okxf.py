@@ -368,6 +368,26 @@ def order_limit(inst, seite, kontrakte, preis, tdmode="isolated",
     return d[0]["ordId"]
 
 
+def markt_schliessen(inst, kontrakte, seite, tdmode="isolated", posside=None):
+    """Eine offene Position sofort glattstellen - Market, reduceOnly.
+
+    Gegenrichtung der Position: Ein Long wird verkauft, ein Short gekauft.
+    reduceOnly verhindert, dass aus einem Tippfehler in der Richtung eine
+    neue Position in die Gegenrichtung wird statt einer Schliessung.
+
+    Market und nicht Limit, weil das hier der Notausstieg ist: Ein Limit, das
+    im Absturz nicht fuellt, ist kein Ausstieg. Denselben Grund nennt schon
+    order_limit() fuer seine Stop-Anhaenge.
+    """
+    gegen = "sell" if seite == "long" else "buy"
+    body = {"instId": inst, "tdMode": tdmode, "side": gegen,
+            "ordType": "market", "sz": str(kontrakte), "reduceOnly": True}
+    if posside:
+        body["posSide"] = posside
+    d = _roh("/api/v5/trade/order", "POST", body, signiert=True)
+    return d[0]["ordId"]
+
+
 def order_stornieren(inst, ord_id):
     body = {"instId": inst, "ordId": ord_id}
     return _roh("/api/v5/trade/cancel-order", "POST", body, signiert=True)
