@@ -680,11 +680,11 @@ def zeige_wachen(w):
     """bot.py wachen: der Freigabe-Block und die Bedingungen 2-5 aus
     Wissen/Handelsregeln.md, wie sie fuer Spur 2 stehen.
 
-    Anders als beim Marktscanner gibt es hier NICHTS durchzurechnen: bot.py
-    legt Befehle vor, fuehrt nichts aus, fuehrt kein Handelsjournal und keinen
-    Zustand. Drawdown-Ratsche (2), Herzschlag (3) und Soll-Ist (5) brauchen
-    einen Live-Pfad und ein Journal - beides existiert in diesem Ordner nicht.
-    Diese Ausgabe zeigt deshalb nur die hinterlegten Grenzen und den Haken.
+    Zeigt die hinterlegten GRENZEN. Was davon gerade greift - Ruecklauf,
+    Herzschlag-Alter, rollierender Erwartungswert -, rechnet seit dem
+    03.09.2026 handeln.py --wachen aus dem Journal. Bis dahin gab es hier
+    nichts durchzurechnen, weil bot.py nur vorlegte; diese Ausgabe hat den
+    Satz "es gibt keinen Live-Pfad" entsprechend lange getragen.
     """
     fr = w.get("freigabe") or {}
     print("=== XPERP Wachen-Status ===")
@@ -700,11 +700,11 @@ def zeige_wachen(w):
     print("  3 herzschlag_max        %s min" % w.get("herzschlag_max_minuten"))
     print("  4 journal_zweitziel     %s" % (w.get("journal_zweitziel") or "-- nicht gesetzt"))
     print()
-    print("  bot.py hat keinen Live-Pfad, kein Journal, keinen Zustand.")
-    print("  Bedingungen 2/3/5 greifen erst, wenn einer gebaut wird - bis")
-    print("  dahin bleibt es bei 'vorlegen, nicht ausloesen'. Der scharfe")
-    print("  Weg fuer Hebel steht in Wissen/Handelsregeln.md, Spur 2, und")
-    print("  ist Stand 01.09.2026 nicht geoeffnet.")
+    print("  Das sind die Grenzen, nicht der Stand. Was davon gerade greift,")
+    print("  rechnet handeln.py --wachen aus dem Journal - seit 03.09.2026")
+    print("  hat diese Spur einen Live-Pfad. bot.py selbst legt weiterhin nur")
+    print("  vor: es ist der Weg fuer eine Anweisung von Max, handeln.py der")
+    print("  fuer den Automaten.")
 
 
 def main():
