@@ -212,10 +212,30 @@ Angeordnet von Max am 01.09.2026. **Hebel ist weder verboten noch an eine
 Einzelanweisung gebunden.** Es gibt zwei Wege hinein, und sie unterscheiden
 sich nur darin, woher die Parameter kommen:
 
-**Seit 03.09.2026 handelt diese Spur nicht mehr nur Krypto.** Auf Max'
-Anweisung ist sie der Hauptweg, und OKX führt unter derselben
-`instType=FUTURES` drei `instCategory`-Familien — 115 Krypto, **45 Aktien**
-(AAPL, NVDA, TSLA, MSTR, SPY, QQQ …) und **4 Rohstoffe** (XAU, XAG, CL, BZ).
+**Seit 03.09.2026 hat diese Spur einen Live-Pfad** — `xperp/handeln.py`,
+gebaut an dem Tag, an dem Max sie zum Hauptweg gemacht hat. Bis dahin legte
+`bot.py` nur vor: kein Journal, kein Zustand, kein Herzschlag, und damit
+hatten die Bedingungen 2/3/5 nichts, woran sie greifen konnten. Die Regel
+lief der Umsetzung anderthalb Tage voraus (T-019).
+
+Die beiden Wege bleiben getrennt und sind es auch dem Zweck nach:
+`bot.py` ist der Weg für **eine Anweisung von Max** (Kontrakt, Richtung,
+Hebel, Einsatz, Stop — die vier Pflichtangaben oben), `handeln.py` der für
+den **Automaten**. Nur der zweite darf aus einer Rangliste heraus eröffnen.
+
+Die vier Pflichtzahlen stehen dort **je Position im Journal**, nicht im
+Chat — Spalten `liq_abstand`, `funding_pct`, `gebuehr_pct`, `quote_noetig`,
+`quote_beob`. Sie sind kein Zierrat: Im ersten Papierlauf wurden XAG short
+(beobachtete Quote 19,8 % gegen nötige 33,3 %) und XAU short (23,7 gegen
+35,5) deshalb **nicht** eröffnet.
+
+**Seit 03.09.2026 handelt diese Spur nicht mehr nur Krypto.** OKX führt
+unter derselben `instType=FUTURES` drei `instCategory`-Familien — 115
+Krypto, **45 Aktien** (AAPL, NVDA, TSLA, MSTR, SPY, QQQ …) und **4
+Rohstoffe** (XAU, XAG, CL, BZ). Das ist für diese Spur mehr als eine
+Erweiterung: Vom ersten Kandidatenlauf über 119 bewertete Werte kam **kein
+einziger aus Krypto** durch das Tor `Hebel-Deckel ≥ 5` — alle neun
+Kandidaten waren Aktien und Rohstoffe.
 Sie lagen die ganze Zeit hinter demselben Schlüssel; sichtbar wurden sie erst,
 als `okxf.instrumente()` nicht mehr fest auf `KRYPTO` stand. Je Familie eigene
 Tore in `xperp/wachen.json`, Begründung dort und in [[XPERP-Handel]]. Die
@@ -387,9 +407,30 @@ wöchentlich getrennt über `Routinen/handel-wachen.ps1` (`handeln.py --wachen`)
 damit ein einzelner schlechter Tag die Spur nicht sofort abschaltet. Der Lauf
 schließt `handel_erlaubt` nur, er öffnet es nie.
 
-**Spur 2 (XPERP):** `bot.py` führt nichts aus, kein Journal, kein Zustand —
-Bedingung 2/3/5 haben nichts zu greifen, bis ein Live-Pfad gebaut ist.
-`bot.py wachen` zeigt die hinterlegten Grenzen und den Freigabe-Haken.
+**Spur 2 (XPERP), seit 03.09.2026:** Bedingung 1–5 sind umgesetzt und laufen
+über dieselbe Rechnung wie Spur 1 — `xperp/wachen_xperp.py` importiert
+`scanner/wachen_pruefung.py`, statt sie abzuschreiben. Eigen sind hier drei
+Dinge, die aus dem Hebel folgen: Gerechnet wird auf **Margin** statt auf den
+Einsatz, **Funding** ist eine eigene Journalzeile und geht in jede Runde ein,
+und **Liquidation** ist ein dritter Ausstiegsgrund — der einzige, den nicht
+wir setzen. Der Pflicht-Stop liegt immer davor; greift trotzdem zuerst die
+Liquidation, wird das als Befund ins Journal geschrieben, nicht als normaler
+Ausstieg. Bis 03.09.2026 stand hier, `bot.py` führe nichts aus und die
+Bedingungen hätten nichts zu greifen — das galt, solange es keinen Live-Pfad
+gab.
+
+Der **Stop geht mit der Order an die Börse** (`attachAlgoOrds`), nicht nur in
+`zustand.json`. Das ist der „nicht abschaltbare Stop" wörtlich genommen: Ein
+Stop, der nur auf diesem Rechner steht, ist weg, sobald der Rechner weg ist —
+und die Kernel-Power-41-Abschaltungen aus [[Hardware]] nehmen ihn ohne
+Vorwarnung mit. Eine gehebelte Position ohne börsenseitigen Stop liefe dann
+bis zur Liquidation.
+
+**Der Herzschlag von 30 Minuten hat eine Folge, die man kennen muss:** Läuft
+`dauerlauf.py` nicht, stellt der nächste Lauf zuerst alles flach. Das ist so
+gewollt, heißt aber, dass diese Spur nur im Dauerbetrieb sinnvoll ist — ein
+von Hand gestarteter Papierlauf sammelt nie die 50 Runden aus Bedingung 1.
+Offen als T-032.
 
 **Spur 3 (Kraken), seit 02.09.2026:** Bedingung 1–5 sind umgesetzt und laufen
 über dieselbe Rechnung wie Spur 1 — `kraken/wachen_kraken.py` importiert
