@@ -53,55 +53,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Modelle/.onchainos`
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
-- [ ] **T-012 — Alte Zweige auf `G:` abräumen**
-      Kontext: Die Sicherung läuft ohne `/MIR` und räumt deshalb nichts weg,
-      was in der Quelle verschwindet. Auf `G:\MaxHirn-Sicherung` liegen nach
-      dem Umbau vom 30.08.2026 noch die 51 GB `Modelle\` (ab jetzt aus der
-      Sicherung ausgenommen) und der alte Zweig unter dem früheren Namen „Claude“ (er heißt jetzt
-      `Archiv`, wird also ein zweites Mal kopiert).
-      **Gemessen 03.09.2026**, nach einem vollständigen Lauf der neuen
-      Sicherung (robocopy-Code 3, 54:38 Dauer, 29,1 GB übertragen): Auf `G:`
-      liegen 190 GB, frei sind 68,5 GB von 2,75 TB.
-
-      | Ordner | GB | Was |
-      |---|---|---|
-      | `Claude` | 93,8 | alter Archivname, heute `MaxHirn\Archiv` — doppelt gehalten. Allein `Claude\Posteingang\Maximilianbackup0924` sind 48,8 GB |
-      | `MaxHirn` | 70,4 | aktuell (Quelle 45 GB; die Differenz sind Altstände, die ohne `/MIR` liegenbleiben) |
-      | `Modelle` | 21,1 | seit 30.08.2026 aus der Sicherung ausgenommen |
-      | `MCP-Server`, `Hermes`, `Handel`, `Wissen`, `Routinen`, `GitHub`, … | ~5 | Struktur **vor** der Ordnertrennung, heute alles unter `Agenten/` |
-
-      **Abgeräumt am 03.09.2026 auf Max' Freigabe.** Entfernt wurden
-      `Modelle\`, `MCP-Server\`, `Hermes\`, `GitHub\`, `Handel\`, `Routinen\`,
-      `Wissen\`, `Referenz\`, `.obsidian\`, `.claude\`, `.agents\`, `.codex\`,
-      elf lose Altdateien der obersten Ebene und zuletzt `Claude\`.
-
-      Jeder Ordner wurde vorher gegengeprüft, keiner blind gelöscht. Zwei
-      Fälle, in denen die Prüfung etwas gefunden hat:
-
-      - **`Codex\` und `Coworking-Space\` (0,4 GB) stehen bewusst noch da.**
-        Ihr heutiger Ort ist `Werkstatt\`, und Werkstatt ist aus der Sicherung
-        ausgenommen — die Kopie auf `G:` ist die einzige, unter anderem vom
-        eigenen `m3u_cleaner`. Siehe T-032.
-      - **`Claude\` war nur zu 44,5 von 93,8 GB eine Dublette.** Drei
-        Prüfrunden: Pfadvergleich (45 von 64.829 Dateien ohne Entsprechung),
-        Namensvergleich über Archiv und Werkstatt (18 davon lagen umsortiert
-        woanders), Größenvergleich der restlichen 27. Dabei kam heraus, dass
-        die 24 ELSTER-Belege beim Einsortieren **umbenannt** worden waren
-        (`1-Lohnsteuerbescheinigung_2022_…` → `2022_Belegabruf_…_2026-08-19`)
-        und byteweise identisch vorliegen. Echte Unikate blieben drei:
-        `Maximilianbackup0924` (52,4 GB), `EFIbackup0924` (524 MB) und
-        `OKX_API.env` (124 B). Sie liegen jetzt in
-        `G:\Unikate-aus-Altzweig-20260903\` mit einer `LIESMICH.md`, die den
-        Weg dorthin beschreibt.
-
-      **Die Lehre für das nächste Mal:** Ein Pfadvergleich allein hätte 50 GB
-      gelöscht oder 41 GB verschont — beides falsch. Erst Pfad, dann Name,
-      dann Größe.
-      Nächster Schritt: nach dem nächsten Sicherungslauf den freien Platz auf
-      `G:` nachmessen und hier eintragen; dann ist der Punkt zu.
-      Betrifft: `G:\MaxHirn-Sicherung`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-09-03
-
 - [ ] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird**
       Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
       ist aus beiden Sicherungen ausgenommen — richtig für geklonte Fremd-Repos
@@ -357,6 +308,56 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       seit heute nicht nur fehlerhafte Läufe, sondern auch ausgebliebene — jede
       `MaxHirn-*`-Aufgabe, die länger als 48 h nicht gestartet ist. Genau das
       hatte zwei Tage lang niemand gesehen.
+
+- [x] **T-012 — Alte Zweige auf `G:` abräumen**
+      Kontext: Die Sicherung läuft ohne `/MIR` und räumt deshalb nichts weg,
+      was in der Quelle verschwindet. Auf `G:\MaxHirn-Sicherung` liegen nach
+      dem Umbau vom 30.08.2026 noch die 51 GB `Modelle\` (ab jetzt aus der
+      Sicherung ausgenommen) und der alte Zweig unter dem früheren Namen „Claude“ (er heißt jetzt
+      `Archiv`, wird also ein zweites Mal kopiert).
+      **Gemessen 03.09.2026**, nach einem vollständigen Lauf der neuen
+      Sicherung (robocopy-Code 3, 54:38 Dauer, 29,1 GB übertragen): Auf `G:`
+      liegen 190 GB, frei sind 68,5 GB von 2,75 TB.
+
+      | Ordner | GB | Was |
+      |---|---|---|
+      | `Claude` | 93,8 | alter Archivname, heute `MaxHirn\Archiv` — doppelt gehalten. Allein `Claude\Posteingang\Maximilianbackup0924` sind 48,8 GB |
+      | `MaxHirn` | 70,4 | aktuell (Quelle 45 GB; die Differenz sind Altstände, die ohne `/MIR` liegenbleiben) |
+      | `Modelle` | 21,1 | seit 30.08.2026 aus der Sicherung ausgenommen |
+      | `MCP-Server`, `Hermes`, `Handel`, `Wissen`, `Routinen`, `GitHub`, … | ~5 | Struktur **vor** der Ordnertrennung, heute alles unter `Agenten/` |
+
+      **Abgeräumt am 03.09.2026 auf Max' Freigabe.** Entfernt wurden
+      `Modelle\`, `MCP-Server\`, `Hermes\`, `GitHub\`, `Handel\`, `Routinen\`,
+      `Wissen\`, `Referenz\`, `.obsidian\`, `.claude\`, `.agents\`, `.codex\`,
+      elf lose Altdateien der obersten Ebene und zuletzt `Claude\`.
+
+      Jeder Ordner wurde vorher gegengeprüft, keiner blind gelöscht. Zwei
+      Fälle, in denen die Prüfung etwas gefunden hat:
+
+      - **`Codex\` und `Coworking-Space\` (0,4 GB) stehen bewusst noch da.**
+        Ihr heutiger Ort ist `Werkstatt\`, und Werkstatt ist aus der Sicherung
+        ausgenommen — die Kopie auf `G:` ist die einzige, unter anderem vom
+        eigenen `m3u_cleaner`. Siehe T-032.
+      - **`Claude\` war nur zu 44,5 von 93,8 GB eine Dublette.** Drei
+        Prüfrunden: Pfadvergleich (45 von 64.829 Dateien ohne Entsprechung),
+        Namensvergleich über Archiv und Werkstatt (18 davon lagen umsortiert
+        woanders), Größenvergleich der restlichen 27. Dabei kam heraus, dass
+        die 24 ELSTER-Belege beim Einsortieren **umbenannt** worden waren
+        (`1-Lohnsteuerbescheinigung_2022_…` → `2022_Belegabruf_…_2026-08-19`)
+        und byteweise identisch vorliegen. Echte Unikate blieben drei:
+        `Maximilianbackup0924` (52,4 GB), `EFIbackup0924` (524 MB) und
+        `OKX_API.env` (124 B). Sie liegen jetzt in
+        `G:\Unikate-aus-Altzweig-20260903\` mit einer `LIESMICH.md`, die den
+        Weg dorthin beschreibt.
+
+      **Die Lehre für das nächste Mal:** Ein Pfadvergleich allein hätte 50 GB
+      gelöscht oder 41 GB verschont — beides falsch. Erst Pfad, dann Name,
+      dann Größe.
+
+      **Ergebnis:** frei auf `G:` von 68,5 GB (vor dem Lauf) auf **109,5 GB**.
+      Im Sicherungsordner stehen nur noch `MaxHirn\`, `Agenten\`, die aktuellen
+      Wurzeldateien und die beiden zurückgestellten Ordner aus T-032.
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-03
 
 - [x] **T-030 — Drei Handels-Routinen in die Aufgabenplanung eintragen** —
       erledigt 2026-09-02 auf Max' Anweisung. Angelegt mit
