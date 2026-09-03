@@ -29,10 +29,45 @@
   "gebuehr_taker": 0.0005,
   "min_stufe_gebuehr": 3.0,
 
-  "_tore": "Ein Wert wird nur vorgeschlagen, wenn er alle drei besteht. vola_tor_pa stammt aus scanner/wachen.json; min_historie_tage ist bewusst niedrig, weil die aeltesten XPERP erst seit Mai 2026 laufen - ein Jahr, wie Wissen/Handelsbots.md es verlangt, gibt es hier nirgends.",
+  "_tore": "Ein Wert wird nur vorgeschlagen, wenn er alle drei besteht. vola_tor_pa stammt aus scanner/wachen.json; min_historie_tage ist bewusst niedrig, weil die aeltesten XPERP erst seit Mai 2026 laufen - ein Jahr, wie Wissen/Handelsbots.md es verlangt, gibt es hier nirgends. Die Werte hier gelten fuer Krypto; Aktien und Rohstoffe haben eigene, siehe _familien.",
   "vola_tor_pa": 1.20,
   "min_umsatz_24h_usd": 3000000,
   "min_historie_tage": 21,
+
+  "_familien": "Seit 03.09.2026 handelt die Spur nicht mehr nur Krypto. OKX fuehrt unter instType=FUTURES drei instCategory-Familien: 1 Krypto (115 Kontrakte), 3 Aktien (45), 4 Rohstoffe (4). Ein Tor, das an Krypto gemessen wurde, misst bei einer Aktie das Falsche - deshalb je Familie eigene Werte. Gemessen am 03.09.2026 gegen die OKX-Ticker.",
+  "familien": {
+    "krypto": {
+      "aktiv": true,
+      "instCategory": "1",
+      "vola_tor_pa": 1.20,
+      "umsatz_bezug_usd": 3000000,
+      "max_anteil_gesamt": 1.0,
+      "_grund": "Unveraendert der bisherige Stand."
+    },
+    "aktie": {
+      "aktiv": true,
+      "instCategory": "3",
+      "vola_tor_pa": 0.90,
+      "umsatz_bezug_usd": 1000000,
+      "max_anteil_gesamt": 0.5,
+      "_grund": "Umsatz-Bezug faellt auf 1 Mio, weil der Umsatz hier nie das Risiko war: Aktien-XPERP haben ein Zehntel des Krypto-Spreads (SPY 0,001 %, MSTR 0,036 %, NVDA 0,066 %) bei 0,3-2,8 Mio Umsatz. Eine Position von 250 USD steht damit gegen 0,025 % des Tagesumsatzes. Vola-Tor auf 90 %, weil eine Aktie mit 120 % Jahresvola ein Einzelfall ist (Zahlen, Uebernahme, Squeeze) und kein normal schwankender Coin. max_anteil_gesamt 0,5: hoechstens die Haelfte des Gesamtrahmens in einer Familie, deren Basiswert nachts und am Wochenende nicht handelt."
+    },
+    "rohstoff": {
+      "aktiv": true,
+      "instCategory": "4",
+      "vola_tor_pa": 0.60,
+      "umsatz_bezug_usd": 1000000,
+      "max_anteil_gesamt": 0.5,
+      "_grund": "Nur vier Kontrakte (XAU, XAG, CL, BZ), alle am 03.09.2026 ohne Warnmarker: Vola 21-51 %, Hebel-Deckel 5,3-11,2x, XAU mit 10,7 Mio der liquideste Wert im ganzen Universum. Engstes Vola-Tor, weil sie am wenigsten schwanken - ein Rohstoff mit 60 % Jahresvola ist bereits ein Ausreisser."
+    }
+  },
+
+  "_ruhekerzen": "Aktien- und Rohstoff-XPERP laufen 24/7, ihre Basiswerte nicht. Gemessen am 03.09.2026 ueber 500 Stundenkerzen: NVDA bewegt sich Mo-Fr 0,45 % je Stunde, Sa-So 0,07 % (Faktor 0,16); SPY 0,23; Gold 0,21; BTC dagegen 0,54. 144 von 500 Stunden sind Stillstand. Fliesst der in die ATR ein, wird der Pflicht-Stop zu eng und greift Montag frueh ohne Marktbewegung. auswahl.py laesst deshalb Kerzen aus ATR und Vola heraus, deren True Range unter ruhe_anteil des Medians liegt. Der Filter braucht keinen Feiertagskalender und regelt sich selbst: gemessen an 4H-Kerzen filtert er SOL 0 % (Faktor 1,00), BTC 4 %, CL 6 %, MSTR 8 %, SPY 13 %, NVDA 14 %, XAU 16 %.",
+  "ruhe_anteil": 0.25,
+
+  "_wochenende": "Was der Ruhefilter NICHT loest: Der XPERP driftet am Wochenende kaum, der Basiswert oeffnet Montag trotzdem dort, wo die Nachrichten ihn hinstellen. Ein Stop, der Sonntag sicher aussieht, liegt Montag hinter dem Gap - bei Hebel ist das der Liquidationsfall. Deshalb ab freitag_stopp_utc keine neuen Aktien- oder Rohstoff-Anlaeufe, und ueber das Wochenende gehaltene Positionen zaehlen mit wochenend_faktor gegen den Rahmen.",
+  "freitag_stopp_utc": "19:00",
+  "wochenend_faktor": 0.5,
 
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
   "freigabe": {
