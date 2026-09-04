@@ -64,26 +64,34 @@
       "PowerShell(Get-Process | Where-Object { $_.Name -match \"Code|Obsidian|git|node|python\" } | Select-Object Name, Id | Sort-Object Name)",
       "PowerShell(cmd /c \"cd C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn && dir Claude /s /b | head -5\" 2>&1)",
       "PowerShell(head -10)",
-      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn\\\\.claude\\\\T-016-fertigmachen.ps1\")"
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn\\\\.claude\\\\T-016-fertigmachen.ps1\")",
+      "PowerShell($appdata = \"$env:LOCALAPPDATA\\\\Claude\"; if \\(Test-Path $appdata\\) { Get-ChildItem -Path $appdata -Recurse -File -ErrorAction SilentlyContinue | Where-Object {$_.LastWriteTime -gt \\(Get-Date\\).AddHours\\(-24\\)} | Select-Object FullName, LastWriteTime | Sort-Object LastWriteTime -Descending | Select-Object -First 10 })",
+      "PowerShell(Get-WinEvent *)",
+      "PowerShell($logpath = \"$env:LOCALAPPDATA\\\\Claude\\\\Logs\\\\main.log\"; if \\(Test-Path $logpath\\) { Get-Content -Path $logpath -Tail 30 | Select-Object -Last 25 })",
+      "PowerShell(@\\(Get-Content \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\MaxHirn\\\\Wissen\\\\Hardware.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\Agenten\\\\Routinen\\\\arbeitsbaum-pruefen.ps1\")",
+      "PowerShell(Get-Process *)",
+      "PowerShell($log = \"$env:LOCALAPPDATA\\\\Claude\\\\Logs\\\\main.log\"; if \\(Test-Path $log\\) { Get-Content $log -Tail 50 | Select-String -Pattern \"error|Error|ERROR|failed|Failed|FAILED|exception|Exception\" })",
+      "PowerShell(Get-ChildItem *)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "okx-agent-trade-kit"
   ],
-  "prefersReducedMotion": false,
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "shell": "powershell",
             "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"..\\Agenten\\Routinen\\systempruefung-hook.ps1\"",
+            "shell": "powershell",
             "timeout": 15
           }
         ]
       }
     ]
-  }
+  },
+  "prefersReducedMotion": false
 }
