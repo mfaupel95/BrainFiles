@@ -93,5 +93,13 @@
       }
     ]
   },
-  "prefersReducedMotion": false
+  "prefersReducedMotion": false,
+  "skillOverrides": {
+    "okx-dapp-discovery": "name-only",
+    "okx-defi": "on",
+    "okx-dex-market": "user-invocable-only",
+    "okx-growth-competition": "name-only",
+    "okx-guide": "on",
+    "sprache": "user-invocable-only"
+  }
 }
