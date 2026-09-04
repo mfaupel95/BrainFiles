@@ -309,6 +309,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Erledigt
 
+- [x] **T-034 — Hauptsicherung fehlschlug am 04.09. weil Hermes live läuft** — erledigt
+      2026-09-04. Um 20:00 meldete `sichern.ps1` robocopy-Code 11 (FEHLER), obwohl
+      47,5 GB kopiert worden waren. Ursache: **Hermes läuft seit dem Umbau
+      innerhalb der Sicherungsquelle** (`BrainFiles/Agenten/Hermes`) und hält
+      beim 20-Uhr-Lauf seine drei lebenden Laufzeitordner offen:
+      `pending_messages/`, `cache/terminal-output/`, `telemetry/shared_metrics/`.
+      robocopy scheiterte daran mit Zugriff verweigert, verbrauchte die
+      Wiederholungen und brach als Fehler ab (dieselbe Klasse wie der
+      `logs`-Ausschluss vom 23.08.).
+      **Fix:** diese drei Namen in `/XD` aller drei Sicherungsskripte
+      (`sichern.ps1`, `sichern-zweitkopie.ps1`, `sichern-ausser-haus.ps1`)
+      aufgenommen — gleiche Behandlung wie `logs` und Claude. Stufe 1:
+      `.bak-20260904` angelegt, echter Lauf bestätigte **robocopy-Code 3,
+      0 Fehler** (Hermes lief dabei). Commit `8a23529` (Autor Hermes).
+      Die drei Ordner sind reine Durchlauf-Caches, damit kein Verlust.
+      `MaxHirn-Sicherung` (Aufgabe) war Ready und lief fehlerfrei.
+      Angelegt: 2026-09-04 · Zuletzt: 2026-09-04
+      Betrifft: `Agenten/sichern*.ps1`, `Agenten/Hermes/{pending_messages,cache/terminal-output,telemetry/shared_metrics}`
+
 - [x] **T-025 — Hauptsicherung nach `G:` hat zwei Tage übersprungen**
       Erledigt 2026-09-02. Die Ursache stand bereits in T-022: Die Aufgabe war
       deaktiviert und wurde heute wieder aktiviert — der Eintrag hier war
