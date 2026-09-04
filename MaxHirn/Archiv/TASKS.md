@@ -175,7 +175,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Positionen (`herzschlag_alt`), die Rundenrechnung erkennt sie als drei
       abgeschlossene Runden samt Funding. Die Testdaten wurden danach
       zurückgenommen, damit die Freigabe-Statistik sauber bleibt.
-      **Offen bleibt daraus:** siehe T-032 (Herzschlag und Dauerbetrieb).
+      **Offen bleibt daraus:** siehe T-035 (Herzschlag und Dauerbetrieb, vormals fälschlich T-032).
 
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
@@ -563,7 +563,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Dauerlauf meldet nichts — er handelt dann weiter auf Papier, was
       unkritisch, aber eben auch nutzlos ist.
 
-- [ ] **T-032 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
+- [ ] **T-035 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
       Aufgefallen 03.09.2026 beim Bau des XPERP-Live-Pfads (T-019).
       `xperp/wachen.json` setzt `herzschlag_max_minuten` auf 30. Das ist
       richtig — eine gehebelte Position, die einen Neustart "überlebt", ist
