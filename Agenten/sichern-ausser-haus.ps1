@@ -43,7 +43,7 @@ $modus = if ($NurPruefen) { '/L' } else { '' }
 $start = Get-Date
 
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
 $dauer = (Get-Date) - $start
 
