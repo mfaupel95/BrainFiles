@@ -20,7 +20,7 @@ erledigt** — siehe „Stromausfälle ohne Bluescreen" unten.
 Die Diagnosewege unten führen in Minuten zum Ergebnis. Ausserdem ist die
 Laufwerkszuordnung Voraussetzung für den Umzug in [[Portabilitaet]].
 
-**Stand:** 2026-08-30 (Absturzanalyse; Laufwerkslage 2026-08-28; Nachmessung 2026-08-19, Ursprungsfassung 2026-08-16)
+**Stand:** 2026-09-04 (Claude-Lock-Fehler behoben; vorher 2026-08-30, Absturzanalyse; Laufwerkslage 2026-08-28; Nachmessung 2026-08-19, Ursprungsfassung 2026-08-16)
 
 ## Eckdaten des Rechners
 
@@ -952,3 +952,27 @@ für externe Desktop-Monitore. Kein Fehler.
 - **AppXDeploymentServer**: ein `winget`-Upgrade von „CurrencyConverter for Command
   Palette" scheiterte am 30.08. mit `0x80073D02`, weil die alte Version noch lief.
   Einmalig, folgenlos.
+
+## Claude Desktop Lock-Fehler (2026-09-02 22:40)
+
+**Problem:** Sicherung schlug mit Code `3221225786` fehl.
+
+**Ursache:** `0xC0000006` = `STATUS_CONFLICT_WITH_LOCK`. Die Sicherungsroutine
+(`sichern.ps1`) versuchte, Vault-Dateien zu sperren und zu kopieren, während
+Claude Desktop selbst noch offen war und eigene Locks auf den Dateien hielt.
+Beide Prozesse blockierten sich gegenseitig.
+
+**Fehlerursache:** Das Sicherungsskript hatte keine Schutzmaßnahme gegen parallel
+laufende Claude-Instanzen — eine Folge der Mehrfachsitzungen-Regel aus
+[[Schutzregeln]].
+
+**Reparatur am 04.09.2026:**
+- `sichern.ps1` um Abschnitt „2) Claude Desktop beenden" erweitert
+- Vor der robocopy-Sicherung wird Claude (falls offen) beendet und
+  mindestens 30 Sekunden gewartet
+- Bei Timeout wird mit Warnung weitergecopy trotzdem versucht
+- Hinweismeldung im Fehlerfall aufgenommen, die auf dieses Problem hinweist
+
+**Messung:** Fehlercode 3221225786 sollte damit nicht mehr vorkommen. 
+
+**Verwandt:** [[Schutzregeln]] (Mehrfach-Sitzungen), `Agenten/sichern.ps1` (Implementierung)

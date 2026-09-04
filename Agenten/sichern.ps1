@@ -89,7 +89,27 @@ if ($offen) {
 if ($NurPruefen) { return }
 
 Write-Host ''
-Write-Host '=== 2) Sicherung ===' -ForegroundColor Cyan
+Write-Host '=== 2) Claude Desktop beenden ===' -ForegroundColor Cyan
+$claude_proc = Get-Process claude -ErrorAction SilentlyContinue
+if ($claude_proc) {
+  Write-Host "Claude läuft (PID $($claude_proc.Id)), beende vor Sicherung..."
+  $claude_proc | Stop-Process -Force -ErrorAction SilentlyContinue
+  $timeout = 30
+  $start_wait = Get-Date
+  while ((Get-Process claude -ErrorAction SilentlyContinue) -and ((Get-Date) - $start_wait).TotalSeconds -lt $timeout) {
+    Start-Sleep -Milliseconds 500
+  }
+  if (Get-Process claude -ErrorAction SilentlyContinue) {
+    Write-Host "WARNUNG: Claude beendet sich nicht (Timeout $timeout s). Sicherung trotzdem versucht." -ForegroundColor Yellow
+  } else {
+    Write-Host "Claude Desktop beendet. Fahre mit Sicherung fort." -ForegroundColor Green
+  }
+} else {
+  Write-Host "Claude nicht aktiv - Sicherung kann starten." -ForegroundColor Green
+}
+
+Write-Host ''
+Write-Host '=== 3) Sicherung ===' -ForegroundColor Cyan
 $start = Get-Date
 # 'logs' ist ausgeschlossen, weil der geplante Lauf (Routinen\sicherung.ps1)
 # waehrend der Sicherung in sein eigenes Protokoll schreibt. robocopy kann die
@@ -108,6 +128,9 @@ if ($code -lt 8) {
   Write-Host 'Hinweis: Quelle und Ziel weichen planmaessig ab. Ohne /MIR behaelt die'
   Write-Host 'Sicherung Dateien, die in der Quelle geloescht wurden - z. B.'
   Write-Host 'Claude\Posteingang\Maximilianbackup0924 (48,8 GB).'
+  Write-Host ''
+  Write-Host 'Fehlercode 3221225786 (STATUS_CONFLICT_WITH_LOCK) = Claude Desktop war noch offen'
+  Write-Host 'und blockierte Dateien. Sicherungsskript beendet Claude jetzt automatisch.'
   # Fehler muss nach aussen sichtbar sein: ohne eigenen Exitcode meldet die
   # Aufgabenplanung einen misslungenen Lauf als Erfolg.
   exit 1
