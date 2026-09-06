@@ -226,3 +226,140 @@ def im_rahmen(kandidat, grenzen, basis):
             return False
 
     return True
+
+
+# --- Koordinatenabstieg und Overfitting-Sperre (TP3 Teil 2) -------------
+
+# Kandidat-Gate -> Name in wachen.json. Nur diese Felder wandern als Diff in
+# ``aenderungen``; Deckel und Gewichte stehen nicht in wachen.json.
+_GATE_NACH_WACHEN = {
+    "mindest_score": "mindest_score",
+    "max_volatilitaet_pa": "max_volatilitaet_pa",
+    "mindest_chance_risiko": "mindest_chance_risiko",
+    "stop_min": "pflicht_stop_prozent_min",
+    "stop_max": "pflicht_stop_prozent_max",
+    "abklingzeit_tage": "abklingzeit_tage",
+}
+
+
+def _je_runde(wf):
+    """netto_gv_je_runde im Aggregat eines walk_forward-Ergebnisses."""
+    return wf["gesamt"]["netto_gv_je_runde"]
+
+
+def besser(kandidat_wf, basis_wf):
+    """(schlaegt_aggregat, anzahl_fenster_besser).
+
+    ``schlaegt_aggregat``: Kandidat hat im Aggregat ein hoeheres
+    ``netto_gv_je_runde`` als die Basis. ``anzahl_fenster_besser``: Zahl der
+    Einzelfenster (paarweise nach Index, bis ``min`` der Laengen), in denen der
+    Kandidat strikt hoeher liegt.
+    """
+    schlaegt_aggregat = _je_runde(kandidat_wf) > _je_runde(basis_wf)
+
+    k_fenster = kandidat_wf["fenster"]
+    b_fenster = basis_wf["fenster"]
+    anzahl = 0
+    for i in range(min(len(k_fenster), len(b_fenster))):
+        if (k_fenster[i]["kennzahlen"]["netto_gv_je_runde"]
+                > b_fenster[i]["kennzahlen"]["netto_gv_je_runde"]):
+            anzahl += 1
+    return schlaegt_aggregat, anzahl
+
+
+def _aenderungen(kandidat, basis):
+    """Flacher Diff Kandidat gegen Basis, Schluessel in wachen.json-Namen.
+
+    Nur Gates aus ``_GATE_NACH_WACHEN`` und die watchlist. Gewichte bleiben
+    aussen vor - sie landen spaeter in einem Patch fuer bewertung.py, nicht in
+    wachen.json.
+    """
+    aus = {}
+    for gate, wachen_name in _GATE_NACH_WACHEN.items():
+        if kandidat["gates"][gate] != basis["gates"][gate]:
+            aus[wachen_name] = kandidat["gates"][gate]
+    if kandidat["watchlist"] != basis["watchlist"]:
+        aus["watchlist"] = list(kandidat["watchlist"])
+    return aus
+
+
+def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
+    """Koordinatenabstieg von ``basis`` aus mit Overfitting-Sperre.
+
+    Von ``basis`` aus wird wiederholt die Nachbarschaft (``nachbarn``)
+    ausgewertet und der Nachbar mit dem hoechsten Aggregat-``netto_gv_je_runde``
+    genommen; schlaegt er das aktuelle Beste, wird er uebernommen und es geht
+    weiter, sonst Abbruch. ``konfig["such_budget"]`` deckelt die Zahl der
+    ``walk_forward``-Aufrufe (die Basis-Auswertung zaehlt mit); ist das Budget
+    erreicht, werden keine neuen Auswertungen mehr angeboten.
+
+    Nach dem Abstieg prueft die Overfitting-Sperre gegen ``basis_wf``: der
+    Kandidat gilt nur, wenn er das Aggregat schlaegt UND in
+    ``overfit_min_fenster`` Einzelfenstern besser ist UND das Aggregat
+    ``>= overfit_min_runden`` OOS-Runden hat. Sonst ``kandidat=None`` mit
+    ``grund``.
+
+    Rueckgabe: ``{"kandidat", "basis_wf", "kandidat_wf", "auswertungen",
+    "grund", "aenderungen"}``. ``bewerte`` ersetzt ``ruecktest.walk_forward``
+    (fuer Tests); ohne wird es traege importiert.
+    """
+    if bewerte is None:
+        import ruecktest
+        bewerte = ruecktest.walk_forward
+
+    budget = konfig["such_budget"]
+
+    basis_wf = bewerte(kerzen_je_inst, basis, konfig)
+    auswertungen = 1
+    bestes = basis
+    bestes_wf = basis_wf
+
+    while auswertungen < budget:
+        bester_nb = None
+        bester_nb_wf = None
+        for kand in nachbarn(bestes, grenzen):
+            if auswertungen >= budget:
+                break
+            kand_wf = bewerte(kerzen_je_inst, kand, konfig)
+            auswertungen += 1
+            if bester_nb_wf is None or _je_runde(kand_wf) > _je_runde(bester_nb_wf):
+                bester_nb = kand
+                bester_nb_wf = kand_wf
+        if bester_nb_wf is None:
+            break
+        if _je_runde(bester_nb_wf) > _je_runde(bestes_wf):
+            bestes = bester_nb
+            bestes_wf = bester_nb_wf
+        else:
+            break
+
+    agg, k_fenster = besser(bestes_wf, basis_wf)
+    n_runden = bestes_wf["gesamt"]["n"]
+
+    if bestes is basis:
+        kandidat = None
+        grund = "kein besserer Kandidat gefunden"
+    elif not agg:
+        kandidat = None
+        grund = "Aggregat nicht besser"
+    elif k_fenster < konfig["overfit_min_fenster"]:
+        kandidat = None
+        grund = (f"nur {k_fenster} Fenster besser "
+                 f"(>= {konfig['overfit_min_fenster']} noetig)")
+    elif n_runden < konfig["overfit_min_runden"]:
+        kandidat = None
+        grund = (f"nur {n_runden} OOS-Runden "
+                 f"(>= {konfig['overfit_min_runden']} noetig)")
+    else:
+        kandidat = bestes
+        grund = (f"Vorschlag: schlaegt Basis im Aggregat und in {k_fenster} "
+                 f"Fenstern ({n_runden} OOS-Runden)")
+
+    return {
+        "kandidat": kandidat,
+        "basis_wf": basis_wf,
+        "kandidat_wf": bestes_wf if kandidat is not None else None,
+        "auswertungen": auswertungen,
+        "grund": grund,
+        "aenderungen": _aenderungen(kandidat, basis) if kandidat is not None else {},
+    }
