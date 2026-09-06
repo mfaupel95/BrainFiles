@@ -164,3 +164,101 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
             eingesetzt += einsatz
 
     return runden
+
+
+# --- Kennzahlen und Walk-Forward-Aggregation (TP2 Teil 3) ---------------
+
+def kennzahlen(runden):
+    """Kennzahlen einer Menge geschlossener Runden.
+
+    n == 0 -> jede Zahl 0, jede Quote/None-Feld None, kein ZeroDivision.
+    max_drawdown auf der kumulierten gv-Kurve, sortiert nach einstieg_tag:
+    groesster Abstand vom bisherigen Hoch zum aktuellen Stand.
+    noetige_trefferquote = mittlerer Verlustbetrag / (mittlerer Gewinn +
+    mittlerer Verlustbetrag) - der Break-even bei diesem Chance/Risiko.
+    Fehlt eine Seite (nur Gewinne oder nur Verluste), ist sie None.
+    Spur 1 ist Spot: liquidationsabstand und funding_pct sind None.
+    """
+    n = len(runden)
+    gebuehr_runde_pct = 2 * GEBUEHR_PCT
+    if n == 0:
+        return {
+            "n": 0,
+            "netto_gv_je_runde": 0,
+            "trefferquote": None,
+            "summe_gv": 0,
+            "max_drawdown": 0.0,
+            "gebuehr_runde_pct": gebuehr_runde_pct,
+            "noetige_trefferquote": None,
+            "beobachtete_trefferquote": None,
+            "liquidationsabstand": None,
+            "funding_pct": None,
+        }
+
+    gvs = [r["gv"] for r in runden]
+    summe_gv = sum(gvs)
+    treffer = sum(1 for x in gvs if x > 0)
+    trefferquote = treffer / n
+
+    gewinne = [x for x in gvs if x > 0]
+    verluste = [abs(x) for x in gvs if x < 0]
+    if gewinne and verluste:
+        mittl_gewinn = sum(gewinne) / len(gewinne)
+        mittl_verlust = sum(verluste) / len(verluste)
+        noetige_trefferquote = mittl_verlust / (mittl_gewinn + mittl_verlust)
+    else:
+        noetige_trefferquote = None
+
+    # Kumulierte gv-Kurve in zeitlicher Reihenfolge - groesster Ruecksetzer.
+    stand = 0.0
+    hoch = 0.0
+    max_drawdown = 0.0
+    for r in sorted(runden, key=lambda x: x["einstieg_tag"]):
+        stand += r["gv"]
+        hoch = max(hoch, stand)
+        max_drawdown = max(max_drawdown, hoch - stand)
+
+    return {
+        "n": n,
+        "netto_gv_je_runde": summe_gv / n,
+        "trefferquote": trefferquote,
+        "summe_gv": summe_gv,
+        "max_drawdown": max_drawdown,
+        "gebuehr_runde_pct": gebuehr_runde_pct,
+        "noetige_trefferquote": noetige_trefferquote,
+        "beobachtete_trefferquote": trefferquote,
+        "liquidationsabstand": None,
+        "funding_pct": None,
+    }
+
+
+def walk_forward(kerzen_je_inst, kandidat, konfig):
+    """Rollende OOS-Fenster: je Fenster nur den Testabschnitt simulieren,
+    danach alle OOS-Runden zusammen auswerten.
+
+    Fenster: Start bei oos_training_tage, Testlaenge oos_test_tage, Vorruecken
+    um oos_schritt_tage, solange das Testfenster noch in die Historie passt.
+    Die Merkmals-Matrix wird einmal berechnet und in jedem Fenster genutzt.
+    """
+    laenge = min(len(k) for k in kerzen_je_inst.values())
+    matrix = merkmals_matrix(kerzen_je_inst)
+
+    fenster = []
+    alle_runden = []
+    start = konfig["oos_training_tage"]
+    while start + konfig["oos_test_tage"] <= laenge:
+        bis = start + konfig["oos_test_tage"]
+        runden = simuliere(matrix, kerzen_je_inst, kandidat, start, bis)
+        fenster.append({
+            "von_tag": start,
+            "bis_tag": bis,
+            "kennzahlen": kennzahlen(runden),
+        })
+        alle_runden.extend(runden)
+        start += konfig["oos_schritt_tage"]
+
+    return {
+        "fenster": fenster,
+        "gesamt": kennzahlen(alle_runden),
+        "fenster_anzahl": len(fenster),
+    }
