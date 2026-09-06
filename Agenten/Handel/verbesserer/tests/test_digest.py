@@ -26,6 +26,18 @@ class TestDigest(unittest.TestCase):
                            ruf=kaputt)
         self.assertIn("keine Verbindung", r["uebersprungen"])
 
+    def test_ruf_liefert_nichtstring_wird_uebersprungen(self):
+        r = digest.erzeuge(BEFUND, BASIS, KAND, {}, {"modus": "ollama"},
+                           ruf=lambda p, k: {"response": "x"})
+        self.assertIsNotNone(r["uebersprungen"])
+        self.assertEqual(r["empfehlungen"], "")
+        self.assertEqual(r["lehren"], "")
+
+    def test_llm_konf_none_wird_uebersprungen(self):
+        r = digest.erzeuge(BEFUND, BASIS, KAND, {}, None)
+        self.assertIsNotNone(r["uebersprungen"])
+        self.assertEqual(r["empfehlungen"], "")
+
     def test_erfolg_liefert_texte(self):
         def ruf(prompt, konf):
             return "1. Stops zu eng\n2. DOGE raus\n\nLEHREN: Enge Stops kosten."

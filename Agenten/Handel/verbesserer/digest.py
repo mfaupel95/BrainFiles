@@ -21,7 +21,6 @@ Nur Standardbibliothek (``urllib`` fuer HTTP).
 import json
 import os
 import re
-import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -126,6 +125,9 @@ def erzeuge(befund, basis_wf, kandidat_wf, aenderungen, llm_konf, ruf=None):
     ``modus == "aus"`` oder jeder Fehler im Aufruf -> ``uebersprungen``
     gesetzt, beide Textfelder leer.
     """
+    if not isinstance(llm_konf, dict):
+        return {"empfehlungen": "", "lehren": "",
+                "uebersprungen": "LLM-Modus aus"}
     modus = llm_konf.get("modus", "aus")
     if modus == "aus":
         return {"empfehlungen": "", "lehren": "",
@@ -134,10 +136,15 @@ def erzeuge(befund, basis_wf, kandidat_wf, aenderungen, llm_konf, ruf=None):
     try:
         text = ruf(_prompt(befund, basis_wf, kandidat_wf, aenderungen),
                    llm_konf)
+        # Eine fehlgeformte ``ruf``-Rueckgabe (z. B. ein roher JSON-Rumpf
+        # statt des extrahierten Textes) gilt als Fehlschlag: der leere Fall
+        # bleibt leer, alles andere Nicht-String loest die except-Zweig aus.
+        if text and not isinstance(text, str):
+            raise TypeError("ruf lieferte keinen Text: " + type(text).__name__)
+        empfehlungen, lehren = _trenne(str(text or ""))
     except Exception as e:  # noqa: BLE001 - jeder Fehler laesst den Vorschlag gueltig
         return {"empfehlungen": "", "lehren": "",
                 "uebersprungen": "LLM nicht erreichbar: " + str(e)}
-    empfehlungen, lehren = _trenne(text or "")
     return {"empfehlungen": empfehlungen, "lehren": lehren,
             "uebersprungen": None}
 
