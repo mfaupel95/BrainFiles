@@ -114,11 +114,16 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
         offen = behalten
 
         # 2) Einstiege nach den Ausstiegen - wie handeln.pruefe_einstiege.
+        # Erst alle Anwaerter sammeln, die durch alle Tore kommen, dann nach
+        # Score absteigend abarbeiten - wie der Livepfad: scan.py sortiert den
+        # Bericht key=score, reverse=True, vorschlaege() haelt die Reihenfolge,
+        # pruefe_einstiege() fuellt in dieser Reihenfolge. So oeffnet auch der
+        # Backtest die hoechstbewerteten Kandidaten zuerst, wenn ein Deckel
+        # bindet - nicht nach Watchlist-Reihenfolge.
         gehalten = {p["inst"] for p in offen}
         eingesetzt = sum(p["einsatz"] for p in offen)
+        anwaerter = []
         for inst in watchlist:
-            if len(offen) >= g["max_offene_positionen"]:
-                break
             reihe = matrix.get(inst)
             if not reihe or t not in reihe:
                 continue
@@ -131,6 +136,13 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
                     and vola <= g["max_volatilitaet_pa"]
                     and verh >= g["mindest_chance_risiko"]):
                 continue
+            anwaerter.append((score, verh, vola, inst))
+        # Stabiler Sort: gleiche Scores behalten die Watchlist-Reihenfolge -
+        # deckt sich mit CPythons stabilem Sort in scan.py.
+        anwaerter.sort(key=lambda a: a[0], reverse=True)
+        for score, verh, vola, inst in anwaerter:
+            if len(offen) >= g["max_offene_positionen"]:
+                break
             einsatz = _sizing(sizing, score, vola, g["max_pro_trade_usd"])
             if eingesetzt + einsatz > g["max_gesamt_usd"]:
                 continue
@@ -150,6 +162,5 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
                 "verhaeltnis": verh,
             })
             eingesetzt += einsatz
-            gehalten.add(inst)
 
     return runden
