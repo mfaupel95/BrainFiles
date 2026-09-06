@@ -180,3 +180,15 @@ Agenten/Hermes/**
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
 *.bak-*
+
+# Fremd-Repos, die direkt im Vault-Baum liegen (geklonte Arbeitskopien). Sie
+# bringen ein eigenes .git mit; Git nimmt sie sonst als Submodul-Verweis auf
+# (gemessen 06.09.2026: MaxHirn/skills/, MaxHirn/CLIProxyAPI/,
+# Agenten/Handel/OpenAlice/). Ein solcher Verweis speichert nur einen fremden
+# Commit-Hash - beim Auschecken faende sich dort ein leerer Ordner. Sie sind
+# ohnehin aus Git reproduzierbar (Klon der Quellen unter Documents/GitHub/).
+# Der Unterordner-Freigabe-Mechanismus (!*/) macht sie sonst begehbar und
+# git status meldet sie als "??" - das Rauschen verdeckt die echten Zeilen.
+MaxHirn/skills/
+MaxHirn/CLIProxyAPI/
+Agenten/Handel/OpenAlice/
