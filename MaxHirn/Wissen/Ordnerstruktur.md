@@ -3,7 +3,7 @@ id: 20260830-ordnerstruktur
 title: 'Ordnerstruktur'
 tags: [betrieb, struktur]
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-09-06
 related: [20260830-schutzregeln, 20260830-verbindungen]
 summary: 'Die vier Ordner unter BrainFiles, warum sie geteilt sind und welche fünf Fallen beim Verschieben brechen.'
 ---
@@ -33,6 +33,25 @@ leitet die zu indexierende Wurzel aus der eigenen Lage ab
 (`Path(__file__).parent.parent`), und die Datenbank gehört neben die Daten, die
 sie beschreibt. Sie herauszureißen brächte Konfigurationspfade, wo heute keine
 nötig sind.
+
+## Archiv-Unterordner liegen physisch auf O: (seit 06.09.2026)
+
+`C:` war auf 23,5 GB frei. Deshalb sind `Archiv/{Bilder,Dokumente,Musik,Videos,
+Software,Posteingang}` — zusammen 44 GB — nach `O:\Archiv\` kopiert; an alter
+Stelle steht je eine **Junction**, genau wie `Modelle/` → `O:\Modelle`. Der Vault
+sieht die Pfade unverändert, `index.py` (relative Pfade, 9712 Einträge
+unverändert) und der `archiv`-MCP laufen ohne Anpassung weiter. `ArchivSuche/`
+und die Steuerdateien im Archiv bleiben real auf `C:`.
+
+**Warum Junction und nicht echter Umzug:** die Junction ist in Minuten gesetzt
+und reversibel. Der saubere Weg — Archiv ganz aus dem Vault, `MAXHIRN_VAULT` +
+Wurzelerkennung + Sicherungsskripte + `archiv_mcp.py` konfigbasiert — ist als
+eigener Auftrag offen (Skill `umzug`).
+
+**Sicherung bleibt vollständig:** `sichern.ps1` (`/XJ` überspringt Junctions)
+zieht `O:\Archiv` in einem zweiten Lauf nach `G:`, `sichern-zweitkopie.ps1`
+Dokumente + Bilder nach `J:`. Drei-Platten-Netz unverändert: Original `O:`,
+Sicherung `G:`, Zweitkopie `J:`.
 
 ## Was die Teilung bringt
 

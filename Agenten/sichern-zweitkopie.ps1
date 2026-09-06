@@ -41,6 +41,9 @@ $start = Get-Date
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
 # gleichnamigen Unterordner irgendwo im Baum mit ausschliessen. Der Archivordner
 # heisst seit der Ordnertrennung vom 30.08.2026 Archiv\ (vorher Claude\).
+# Seit 06.09.2026 sind Archiv\{Bilder,Dokumente,Musik,Videos,Software,Posteingang}
+# Junctions auf O:\Archiv - /XJ ueberspringt sie im Hauptlauf ohnehin. Diese
+# Liste bleibt als Doku; der Archivteil kommt jetzt ueber den zweiten Lauf.
 $ausserhalb = @(
   (Join-Path $quelle 'MaxHirn\Archiv\Videos'),
   (Join-Path $quelle 'MaxHirn\Archiv\Musik'),
@@ -51,6 +54,24 @@ $ausserhalb = @(
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
   /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
+
+# Zweiter Lauf: der unersetzliche Archivteil liegt seit 06.09.2026 physisch auf
+# O:\Archiv (Junctions im Vault). /XJ hat ihn oben uebersprungen. Nach J: kommt
+# wie bisher nur Dokumente + Bilder - Videos, Musik, Software, Posteingang
+# bleiben draussen (Medienlast, weiterhin nur in der Hauptsicherung auf G:).
+$archivQuelle = 'O:\Archiv'
+$archivZiel   = Join-Path $ziel 'MaxHirn\Archiv'
+if (Test-Path $archivQuelle) {
+  foreach ($ordner in 'Dokumente','Bilder') {
+    robocopy (Join-Path $archivQuelle $ordner) (Join-Path $archivZiel $ordner) `
+      /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL
+    if ($LASTEXITCODE -gt $code) { $code = $LASTEXITCODE }
+  }
+} else {
+  Write-Host 'O:\Archiv nicht erreichbar - Archivteil der Zweitkopie uebersprungen.' -ForegroundColor Red
+  if ($code -lt 4) { $code = 4 }
+}
+
 $dauer = (Get-Date) - $start
 
 Write-Host ("Dauer: {0:hh\:mm\:ss}" -f $dauer)

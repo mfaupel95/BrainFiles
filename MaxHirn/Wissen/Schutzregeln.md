@@ -3,7 +3,7 @@ id: 20260830-schutzregeln
 title: 'Schutzregeln'
 tags: [sicherheit, betrieb]
 created: 2026-08-27
-updated: 2026-09-02
+updated: 2026-09-06
 related: [20260902-handelsregeln]
 summary: 'Welche Dateien unter BrainFiles ein Agent nicht anfassen darf und warum.'
 ---
@@ -187,6 +187,12 @@ Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
   „im Ordner `Modelle/`" verlässt damit den Vault, und je nach Werkzeug folgt es
   der Junction oder entfernt sie. Vor einer Massenoperation dort prüfen, worauf
   man wirklich steht: `(Get-Item Modelle -Force).Target`.
+- **Ebenso seit 06.09.2026: `Archiv/{Bilder,Dokumente,Musik,Videos,Software,
+  Posteingang}` sind Junctions auf `O:\Archiv\…`** (C:-Entlastung, siehe
+  [[Ordnerstruktur]]). Der Inhalt bleibt Stufe 0 — die Junction ändert nur den
+  physischen Ort, nicht die Schutzstufe. Dieselbe Falle wie bei `Modelle`: ein
+  rekursives Löschen folgt der Junction nach `O:` hinaus. `ArchivSuche/` und die
+  Steuerdateien im Archiv liegen weiter real auf `C:`.
 - `Archiv/ArchivSuche/archiv_index.db`, `vektor_index.db` — `index.py` erzeugt sie neu
 - `Agenten/Routinen/**/logs/` — jeweils nur der letzte Lauf
 - Build-Reste (`.pyc`, `.pyo`, `.toc`, `build/`, `dist/`), Temporärdateien, Duplikate

@@ -117,6 +117,20 @@ $start = Get-Date
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
   /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
+
+# Zweiter Lauf: Archiv\{Bilder,Dokumente,Musik,Videos,Software,Posteingang} sind
+# seit 06.09.2026 Junctions auf O:\Archiv (C:-Entlastung). /XJ hat sie oben
+# uebersprungen - hier kommt der volle Archivteil von O: nach G:, damit die
+# Hauptsicherung inhaltlich unveraendert bleibt (Drei-Platten-Netz).
+$archivQuelle = 'O:\Archiv'
+$archivZiel   = Join-Path $ziel 'MaxHirn\Archiv'
+if (Test-Path $archivQuelle) {
+  robocopy $archivQuelle $archivZiel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL
+  if ($LASTEXITCODE -gt $code) { $code = $LASTEXITCODE }
+} else {
+  Write-Host 'O:\Archiv nicht erreichbar - Archivteil der Sicherung uebersprungen.' -ForegroundColor Red
+  if ($code -lt 4) { $code = 4 }
+}
 $dauer = (Get-Date) - $start
 
 Write-Host ("Dauer: {0:hh\:mm\:ss}" -f $dauer)
