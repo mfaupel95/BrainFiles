@@ -62,3 +62,22 @@ class TestKerzen(unittest.TestCase):
         k, alter = kerzen.laden("BTC-USDT", cache_dir=self.dir)
         self.assertEqual(len(k), 4)
         self.assertLess(alter, 1.0)
+
+    def test_hole_leere_antwort_behaelt_cache(self):
+        # Erfolgreicher OKX-Abruf mit leerem data-Feld darf einen vorhandenen
+        # Cache nicht mit {"kerzen": []} ueberschreiben.
+        vorhanden = [[1699900000000 + i * 100000, 1.0, 1.0, 1.0, 1.0, 9.0]
+                     for i in range(5)]
+        (self.dir / "BTC-USDT.json").write_text(json.dumps(
+            {"geholt": "2020-01-01T00:00:00+00:00", "kerzen": vorhanden}),
+            "utf-8")
+        orig = kerzen._seite
+        kerzen._seite = lambda *a, **k: []
+        try:
+            k = kerzen.hole("BTC-USDT", tage=10, cache_dir=self.dir)
+        finally:
+            kerzen._seite = orig
+        d = json.loads((self.dir / "BTC-USDT.json").read_text("utf-8"))
+        self.assertEqual(len(d["kerzen"]), 5)
+        self.assertEqual(len(k), 5)
+        self.assertEqual(k, vorhanden)

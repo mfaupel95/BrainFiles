@@ -6,9 +6,12 @@ Commit erzeugt. Die Reihenfolge steht fest:
 
 1. Arbeitsbaum pruefen - sauber fuer die zwei Zieldateien **und** nichts im
    Index.
-2. Geaenderte oberste JSON-Schluessel gegen eine **fest verdrahtete** Denylist
-   pruefen. Diese Liste gewinnt immer - egal, was ``spuren.json`` als
-   ``aenderbar`` deklariert.
+2. Geaenderte oberste JSON-Schluessel pruefen - erst gegen die **fest
+   verdrahtete** Denylist (gewinnt immer, egal was ``spuren.json`` als
+   ``aenderbar`` deklariert), dann gegen die Whitelist mit Wertebereich aus
+   ``spur["aenderbar"]["wachen.json"]``: jeder geaenderte Schluessel muss dort
+   stehen und - wo ein ``[min, max]`` deklariert ist - hineinpassen. Fehlt die
+   Whitelist, wird nur die Denylist geprueft.
 3. Zeitgestempeltes ``.bak`` beider Zieldateien nach
    ``verbesserer/bak/<zeit>/``.
 4. ``wachen.neu.json`` **byteweise** nach ``spur["wachen"]`` schreiben - kein
@@ -21,15 +24,24 @@ Commit erzeugt. Die Reihenfolge steht fest:
    Denylist vorbei.
 6. ``git add`` **genau** der zwei Zieldateien, dann ``git commit -F
    commit.txt``.
-7. Vorschlagsordner nach ``verbesserer/berichte/erledigt/``.
+7. Vorschlagsordner nach ``verbesserer/berichte/erledigt/`` (bei Namens-
+   kollision mit Zeitstempel-Suffix, nie loeschend).
 8. Kurzen Commit-Hash zurueckgeben.
 
-Ab dem ersten Schreibzugriff (Schritt 4) laeuft alles in einem
-try/except: schlaegt ``git apply``/``add``/``commit`` fehl oder fasst der
-Patch eine fremde Datei an, werden beide Zieldateien aus ``.bak``
-wiederhergestellt, der Index geleert und ein ``{"ok": False}``-Dict
-zurueckgegeben - ``anwenden`` wirft nie. Der Vorschlagsordner bleibt
-liegen, ``.bak`` bleibt als Audit-Spur.
+``anwenden`` wirft nie - jeder Abschnitt ist abgesichert:
+
+* Schritte 2 und 3 (lesen, JSON parsen, ``.bak`` anlegen) sind noch ohne
+  Mutation; ein Fehler dort endet als ``{"ok": False, "grund":
+  "Vorbereitung fehlgeschlagen: ..."}``.
+* Ab dem ersten Schreibzugriff (Schritt 4) laeuft alles in einem
+  try/except: schlaegt ``git apply``/``add``/``commit`` fehl oder fasst der
+  Patch eine fremde Datei an, werden beide Zieldateien aus ``.bak``
+  wiederhergestellt, der Index geleert und ein ``{"ok": False}``-Dict
+  zurueckgegeben. Der Vorschlagsordner bleibt liegen, ``.bak`` bleibt als
+  Audit-Spur.
+* Schritte 7-8 laufen **nach** dem echten Commit: misslingt die Ablage oder
+  der Hash-Abruf, bleibt es bei ``{"ok": True}`` (der Commit ist real), und
+  ``grund`` vermerkt die misslungene Ablage.
 
 Nur Standardbibliothek; Git wird als Kommando aufgerufen.
 """
@@ -186,11 +198,15 @@ def _wiederherstellen(bak, wachen_pfad, bewertung_pfad, repo):
 
 def _ablegen(ordner, unterordner):
     """``ordner`` nach ``WURZEL / "berichte" / unterordner / ordner.name``
-    verschieben; ein bereits vorhandenes Ziel wird ersetzt."""
+    verschieben.
+
+    Kollidiert der Name mit einem bereits abgelegten Ordner (zwei Vorschlaege
+    fuer dieselbe Spur am selben Tag), wird an den Zielnamen ein Zeitstempel
+    angehaengt - ein vorhandener Audit-Ordner wird nie geloescht."""
     ziel = WURZEL / "berichte" / unterordner / ordner.name
     ziel.parent.mkdir(parents=True, exist_ok=True)
     if ziel.exists():
-        shutil.rmtree(ziel)
+        ziel = ziel.with_name(ziel.name + "-" + _zeitstempel())
     shutil.move(str(ordner), str(ziel))
     return ziel
 
@@ -211,18 +227,64 @@ def anwenden(ordner, spur, repo):
         return {"ok": False, "grund": "Arbeitsbaum nicht sauber: " + grund,
                 "commit": None}
 
-    # 2. Denylist - nur wenn es ueberhaupt einen wachen.json-Diff gibt.
+    # 2. Denylist + Bereichs-/Whitelist-Pruefung - nur wenn es ueberhaupt
+    #    einen wachen.json-Diff gibt. Alles hier ist noch lesend; ein Fehler
+    #    (kaputtes JSON, verschwundene Datei) endet als "Vorbereitung
+    #    fehlgeschlagen" ohne jede Aenderung am Arbeitsbaum.
     wachen_neu_datei = ordner / "wachen.neu.json"
     hat_wachen_neu = wachen_neu_datei.exists()
     if hat_wachen_neu:
-        alt = wachen_pfad.read_text(encoding="utf-8")
-        neu = wachen_neu_datei.read_text(encoding="utf-8")
-        schluessel = geaenderte_schluessel(alt, neu)
+        try:
+            alt = wachen_pfad.read_text(encoding="utf-8")
+            neu = wachen_neu_datei.read_text(encoding="utf-8")
+            schluessel = geaenderte_schluessel(alt, neu)
+        except Exception as fehler:  # noqa: BLE001
+            return {"ok": False,
+                    "grund": "Vorbereitung fehlgeschlagen: %s" % fehler,
+                    "commit": None}
+
+        # 2a. Fest verdrahtete Denylist - gewinnt immer.
         frei, name = denylist_ok(schluessel)
         if not frei:
             return {"ok": False, "grund": "Denylist: " + name, "commit": None}
 
-    # 2b. commit.txt frueh pruefen - vor jeder Aenderung am Arbeitsbaum.
+        # 2b. Bereichs-/Whitelist-Pruefung (Spec TP4, Schritt 2): jeder
+        #     geaenderte Schluessel muss in spuren.json unter
+        #     spur["aenderbar"]["wachen.json"] stehen und - wo dort ein
+        #     [min, max] deklariert ist - innerhalb dieser Grenzen liegen.
+        #     Fehlt die Whitelist ganz, wird der Check uebersprungen
+        #     (Rueckwaertskompatibilitaet); "liste" (watchlist) hat keinen
+        #     Bereich.
+        wl = spur.get("aenderbar", {}).get("wachen.json")
+        if wl is not None:
+            try:
+                neu_obj = json.loads(neu)
+            except Exception as fehler:  # noqa: BLE001
+                return {"ok": False,
+                        "grund": "Vorbereitung fehlgeschlagen: %s" % fehler,
+                        "commit": None}
+            for key in sorted(schluessel):
+                if key not in wl:
+                    return {"ok": False,
+                            "grund": "nicht auf der Whitelist: %s" % key,
+                            "commit": None}
+                bereich = wl[key]
+                if (isinstance(bereich, list) and len(bereich) == 2
+                        and all(isinstance(g, (int, float))
+                                and not isinstance(g, bool) for g in bereich)):
+                    lo, hi = bereich
+                    try:
+                        wert = float(neu_obj[key])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if wert < lo or wert > hi:
+                        return {"ok": False,
+                                "grund": ("ausserhalb des erlaubten Bereichs: "
+                                          "%s=%s nicht in [%s, %s]"
+                                          % (key, neu_obj[key], lo, hi)),
+                                "commit": None}
+
+    # 2c. commit.txt frueh pruefen - vor jeder Aenderung am Arbeitsbaum.
     commit_datei = ordner / "commit.txt"
     if (not commit_datei.exists()
             or not commit_datei.read_text(encoding="utf-8").strip()):
@@ -230,11 +292,18 @@ def anwenden(ordner, spur, repo):
                 "commit": None}
 
     # 3. .bak beider Zieldateien - ab hier bleibt die Sicherung als
-    # Audit-Spur stehen, auch wenn spaeter zurueckgerollt wird.
-    bak = WURZEL / "bak" / _zeitstempel()
-    bak.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(wachen_pfad, bak / wachen_pfad.name)
-    shutil.copy2(bewertung_pfad, bak / bewertung_pfad.name)
+    # Audit-Spur stehen, auch wenn spaeter zurueckgerollt wird. Noch keine
+    # Mutation - ein Fehler beim Sichern endet als "Vorbereitung
+    # fehlgeschlagen" ohne Rollback-Bedarf.
+    try:
+        bak = WURZEL / "bak" / _zeitstempel()
+        bak.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(wachen_pfad, bak / wachen_pfad.name)
+        shutil.copy2(bewertung_pfad, bak / bewertung_pfad.name)
+    except Exception as fehler:  # noqa: BLE001
+        return {"ok": False,
+                "grund": "Vorbereitung fehlgeschlagen: %s" % fehler,
+                "commit": None}
 
     # 4.-7. Ab hier ist der Arbeitsbaum veraendert. Jeder Fehler - auch die
     # Pfad-Allowlist in Schritt 5 - stellt beide Zieldateien aus .bak wieder
@@ -278,13 +347,26 @@ def anwenden(ordner, spur, repo):
                          "%s" % fehler,
                 "commit": None}
 
-    # 7. Ordner nach berichte/erledigt/
-    _ablegen(ordner, "erledigt")
-
-    # 8. kurzer Commit-Hash
-    kurz = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
-                          cwd=repo, capture_output=True, text=True, check=True)
-    return {"ok": True, "grund": "angewandt", "commit": kurz.stdout.strip()}
+    # 7.-8. Der Commit steht. Ablage nach erledigt/ und Hash-Abruf duerfen den
+    # Erfolg nicht mehr kippen: schlaegt eines fehl, bleibt es bei
+    # ``{"ok": True}`` mit dem echten Hash (soweit ermittelbar) - nur der
+    # Grund vermerkt die misslungene Ablage.
+    try:
+        _ablegen(ordner, "erledigt")
+        kurz = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=repo, capture_output=True, text=True, check=True)
+        return {"ok": True, "grund": "angewandt",
+                "commit": kurz.stdout.strip()}
+    except Exception as fehler:  # noqa: BLE001
+        kurz = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=repo, capture_output=True, text=True, check=False)
+        hash_kurz = kurz.stdout.strip() if kurz.returncode == 0 else None
+        return {"ok": True,
+                "grund": "angewandt (Ablage nach erledigt/ misslang: %s)"
+                         % fehler,
+                "commit": hash_kurz or None}
 
 
 def ablehnen(ordner, grund):

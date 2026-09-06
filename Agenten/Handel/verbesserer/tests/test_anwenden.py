@@ -128,7 +128,15 @@ class TestAnwenden(unittest.TestCase):
         return ordner
 
     def _spur(self, wachen, bew):
-        return {"wachen": str(wachen), "bewertung_datei": str(bew)}
+        return {"wachen": str(wachen), "bewertung_datei": str(bew),
+                "aenderbar": {"wachen.json": {
+                    "mindest_score": [55, 75],
+                    "max_volatilitaet_pa": [0.9, 1.4],
+                    "mindest_chance_risiko": [1.3, 2.2],
+                    "pflicht_stop_prozent_min": [4, 8],
+                    "pflicht_stop_prozent_max": [8, 15],
+                    "abklingzeit_tage": [2, 5],
+                    "watchlist": "liste"}}}
 
     # --- baum_sauber ---------------------------------------------------
     def test_baum_sauber_direkt(self):
@@ -171,6 +179,81 @@ class TestAnwenden(unittest.TestCase):
         self.assertEqual(
             len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
         self.assertFalse((self.heim / "bak").exists())
+
+    # --- Bereichs-/Whitelist-Pruefung (F2) -------------------------
+    def test_wert_ausserhalb_bereich_bricht_ab(self):
+        repo, wachen, bew = self._basis_repo()
+        # mindest_score 95 liegt ausserhalb [55, 75] aus spuren.json.
+        ordner = self._vorschlag(repo, score_neu="95", patch_text="")
+        wachen_vorher = wachen.read_bytes()
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("Bereich", r["grund"])
+        self.assertIsNone(r["commit"])
+        # kein Byte an wachen.json, kein .bak, kein Commit
+        self.assertEqual(wachen.read_bytes(), wachen_vorher)
+        self.assertFalse((self.heim / "bak").exists())
+        self.assertEqual(
+            len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
+
+    def test_schluessel_nicht_auf_whitelist_bricht_ab(self):
+        repo, wachen, bew = self._basis_repo()
+        ordner = repo / "v"
+        ordner.mkdir()
+        neu = ('{\r\n  "mindest_score": 60,\r\n  "handel_erlaubt": false,\r\n'
+               '  "irgendein_gate": 5\r\n}\r\n')
+        (ordner / "wachen.neu.json").write_text(neu, "utf-8", newline="")
+        (ordner / "bewertung.patch").write_text("", "utf-8")
+        (ordner / "commit.txt").write_text(
+            "verbesserer: Test\n\n" + CO_TRAILER + "\n", "utf-8")
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("Whitelist", r["grund"])
+        self.assertIsNone(r["commit"])
+        self.assertEqual(wachen.read_bytes(), WACHEN_ALT.encode("utf-8"))
+        self.assertFalse((self.heim / "bak").exists())
+
+    # --- "wirft nie" auch bei Ablage-Fehler (F8) -------------------
+    def test_ablage_fehler_meldet_trotzdem_erfolg(self):
+        repo, wachen, bew = self._basis_repo()
+        ordner = self._vorschlag(repo, patch_text="")
+        orig = anwenden._ablegen
+
+        def boom(*a, **k):
+            raise OSError("Platte voll")
+
+        anwenden._ablegen = boom
+        try:
+            r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        finally:
+            anwenden._ablegen = orig
+        # Commit ist echt -> Erfolg, nur der Grund vermerkt die Ablage.
+        self.assertTrue(r["ok"], r["grund"])
+        self.assertTrue(r["commit"])
+        self.assertIn("Ablage", r["grund"])
+        log = _git(repo, "log", "--oneline").stdout.strip().splitlines()
+        self.assertEqual(len(log), 2)
+        self.assertEqual(
+            r["commit"],
+            _git(repo, "rev-parse", "--short", "HEAD").stdout.strip())
+
+    # --- _ablegen loescht keinen Archivordner (F9) ----------------
+    def test_ablegen_kollision_behaelt_beide(self):
+        basis = Path(mkdtemp())
+        (self.heim / "berichte" / "erledigt").mkdir(parents=True)
+        erste = basis / "2026-01-01-spur1"
+        erste.mkdir()
+        (erste / "bericht.md").write_text("eins", "utf-8")
+        z1 = anwenden._ablegen(erste, "erledigt")
+        zweite = basis / "2026-01-01-spur1"
+        zweite.mkdir()
+        (zweite / "bericht.md").write_text("zwei", "utf-8")
+        z2 = anwenden._ablegen(zweite, "erledigt")
+        self.assertNotEqual(z1, z2)
+        self.assertTrue(z1.is_dir())
+        self.assertTrue(z2.is_dir())
+        self.assertEqual((z1 / "bericht.md").read_text("utf-8"), "eins")
+        self.assertEqual((z2 / "bericht.md").read_text("utf-8"), "zwei")
 
     # --- Patch-Pfad-Allowlist + Roll-back ---------------------------
     def test_patch_fremde_datei_wird_abgelehnt(self):

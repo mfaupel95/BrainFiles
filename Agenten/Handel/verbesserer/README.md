@@ -20,10 +20,12 @@ und siebt den Rest aus:
 
 - **Segmente** werden nur zum Befund, wenn sie mindestens `segment_mindest_n`
   Runden umfassen **und** der Permutationstest gegen den Rest p < 0.05 liefert.
-- **Overfitting-Sperre** (`suche.py`): ein Kandidat wird nur vorgeschlagen, wenn
-  er die Basis im Aggregat **und** in mindestens `overfit_min_fenster`
-  Einzelfenstern schlaegt und dabei `>= overfit_min_runden` OOS-Runden hat.
-  Sonst: kein Vorschlag mit Begruendung.
+- **Overfitting-Sperre** (`suche.py`): ein schwaches Sieb -- Auswahl und
+  Pruefung nutzen dieselben Fenster, ein echter Train/Test-Split ist Folgearbeit
+  (siehe Spec). Ein Kandidat wird nur vorgeschlagen, wenn er die Basis im
+  Aggregat **und** in einer Mehrheit der Einzelfenster schlaegt (mehr als die
+  Haelfte, mindestens `overfit_min_fenster`) und dabei `>= overfit_min_runden`
+  OOS-Runden hat. Sonst: kein Vorschlag mit Begruendung.
 
 Die Zahlen stehen in `konfig.json`; der Walk-Forward zieht Training/Test/Schritt
 aus `oos_*`.
@@ -75,9 +77,11 @@ Woechentlich uebernimmt das die Routine `Agenten/Routinen/verbesserer.ps1`
   `max_gesamt_usd`, `max_offene_positionen`, `handel_erlaubt` und die
   `freigabe/drawdown/herzschlag/kill_switch`-Bloecke stehen auf einer **fest
   verdrahteten Denylist** in `anwenden.py`, die immer gewinnt -- egal, was
-  `spuren.json` deklariert. Der Pflicht-Stop laesst sich nur innerhalb des
-  in `anwenden.py` fest gesetzten Fensters von 4--15 % verschieben, nie
-  abschalten.
+  `spuren.json` deklariert. Der Pflicht-Stop laesst sich nur innerhalb des in
+  `spuren.json` deklarierten Bereichs (`pflicht_stop_prozent_min`/`_max`)
+  verschieben, nie abschalten. `anwenden.py` prueft beim Anwenden jeden
+  geaenderten Wert erneut gegen diese Whitelist -- zusaetzlich zur fest
+  verdrahteten Denylist fuer Deckel und Schalter.
 - **`auto_anwenden` ist `false`** (`konfig.json`) und es gibt keinen Code, der
   `true` auswertet. Automatisches Anwenden braeuchte erst eine Aenderung an
   `Wissen/Handelsregeln.md`.

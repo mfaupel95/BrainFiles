@@ -145,7 +145,11 @@ def nachbarn(kandidat, grenzen):
         schritt = GATE_SCHRITT[schluessel]
         alt = gates[schluessel]
         for richtung in (schritt, -schritt):
-            neu = _klemme(alt + richtung, lo, hi)
+            # Gleitkomma-Rauschen aus der Schrittaddition (1.2 + 0.1 ->
+            # 1.3000000000000003) gaebe sonst ein vorschlag._als_json per repr
+            # so in die handgepflegte wachen.json weiter. Auf vier Stellen
+            # runden - feiner ist keine Schrittweite hier.
+            neu = round(_klemme(alt + richtung, lo, hi), 4)
             if neu == alt:
                 continue
             nb = copy.deepcopy(kandidat)
@@ -294,9 +298,12 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
     erreicht, werden keine neuen Auswertungen mehr angeboten.
 
     Nach dem Abstieg prueft die Overfitting-Sperre gegen ``basis_wf``: der
-    Kandidat gilt nur, wenn er das Aggregat schlaegt UND in
-    ``overfit_min_fenster`` Einzelfenstern besser ist UND das Aggregat
-    ``>= overfit_min_runden`` OOS-Runden hat. Sonst ``kandidat=None`` mit
+    Kandidat gilt nur, wenn er das Aggregat schlaegt UND in einer **Mehrheit**
+    der Einzelfenster besser ist (mehr als ``fenster_anzahl // 2`` und
+    mindestens ``overfit_min_fenster`` als Boden) UND das Aggregat
+    ``>= overfit_min_runden`` OOS-Runden hat. Auswahl und Pruefung teilen sich
+    dieselbe Kennzahl ueber dieselben Fenster - ein echter Train/Test-Split
+    fehlt, die Sperre ist entsprechend schwach. Sonst ``kandidat=None`` mit
     ``grund``.
 
     Rueckgabe: ``{"kandidat", "basis_wf", "kandidat_wf", "auswertungen",
@@ -335,6 +342,8 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
 
     agg, k_fenster = besser(bestes_wf, basis_wf)
     n_runden = bestes_wf["gesamt"]["n"]
+    fenster_anz = bestes_wf.get("fenster_anzahl", len(bestes_wf["fenster"]))
+    mehrheit = fenster_anz // 2
 
     if bestes is basis:
         kandidat = None
@@ -342,10 +351,12 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
     elif not agg:
         kandidat = None
         grund = "Aggregat nicht besser"
-    elif k_fenster < konfig["overfit_min_fenster"]:
+    elif not (k_fenster > mehrheit
+              and k_fenster >= konfig["overfit_min_fenster"]):
         kandidat = None
-        grund = (f"nur {k_fenster} Fenster besser "
-                 f"(>= {konfig['overfit_min_fenster']} noetig)")
+        grund = (f"nur {k_fenster} von {fenster_anz} Fenstern besser "
+                 f"(Mehrheit noetig: > {mehrheit}, mindestens "
+                 f"{konfig['overfit_min_fenster']})")
     elif n_runden < konfig["overfit_min_runden"]:
         kandidat = None
         grund = (f"nur {n_runden} OOS-Runden "

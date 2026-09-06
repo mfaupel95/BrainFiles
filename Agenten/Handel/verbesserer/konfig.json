@@ -9,6 +9,8 @@
   "segment_mindest_n": 8,
   "overfit_min_runden": 20,
   "overfit_min_fenster": 3,
+  "oos_fenster_ziel": 12,
+  "_oos_fenster_ziel": "Zielzahl an OOS-Testfenstern. Steuert, wieviel Historie lauf.py ueber die Aufwaermphase hinaus zieht (~480 Tageskerzen); die Overfitting-Sperre verlangt eine Mehrheit dieser Fenster.",
   "gebuehr_umstellung_datum": "2026-09-06",
   "llm": {
     "modus": "aus",

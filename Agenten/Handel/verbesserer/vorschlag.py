@@ -330,8 +330,12 @@ def _abschnitt_warnungen(ergebnis):
         "wenige echte Regimewechsel im Fenster.",
         "- Kein Survivorship-Schutz: es sind nur heute noch gelistete "
         "Instrumente auf der Watchlist, ausgefallene fehlen.",
-        "- Overfitting-Sperre bestanden: %s (%d Fenster besser, n = %s "
-        "OOS-Runden)." % (ergebnis.get("grund", ""), kbes, kg.get("n", "?")),
+        "- Overfitting-Sperre (schwach): Auswahl und Pruefung teilen dieselbe "
+        "Kennzahl ueber dieselben Testfenster; die Sperre verlangt nur, dass "
+        "der Kandidat die Basis im Aggregat und in einer Mehrheit der Fenster "
+        "schlaegt (%d Fenster, n = %s OOS-Runden). Ein echter Train/Test-Split "
+        "fehlt noch. Grund: %s"
+        % (kbes, kg.get("n", "?"), ergebnis.get("grund", "")),
     ]
 
 

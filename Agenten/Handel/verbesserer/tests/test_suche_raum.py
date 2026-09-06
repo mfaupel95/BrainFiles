@@ -54,6 +54,16 @@ class TestRaum(unittest.TestCase):
                 self.assertAlmostEqual(
                     sum(nb["gewichte"][gruppe].values()), 1.0, 9)
 
+    def test_gate_nachbarn_ohne_gleitkomma_rauschen(self):
+        # 1.2 + 0.1 darf nicht als 1.3000000000000003 in einen Nachbarn (und
+        # damit spaeter per repr in wachen.json) wandern.
+        for nb in suche.nachbarn(self.basis, GRENZEN):
+            for gate in ("max_volatilitaet_pa", "mindest_chance_risiko",
+                         "mindest_score"):
+                wert = nb["gates"][gate]
+                self.assertEqual(wert, round(wert, 4),
+                                 msg="%s: %r" % (gate, wert))
+
     def test_deckel_nie_veraendert(self):
         for nb in suche.nachbarn(self.basis, GRENZEN):
             for feld in ("max_pro_trade_usd", "max_gesamt_usd",

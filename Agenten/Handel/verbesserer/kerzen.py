@@ -61,6 +61,12 @@ def hole(inst, tage, cache_dir=CACHE):
     reihen = [[int(r[0])] + [float(x) for x in r[1:6]] for r in roh]
     reihen.sort(key=lambda r: r[0])
     reihen = reihen[-tage:]
+    if not reihen:
+        # Abruf lieferte nichts (leere, aber erfolgreiche Antwort) - einen
+        # vorhandenen Cache nie mit einem leeren Ergebnis ueberschreiben.
+        # Spec: Abruf faellt aus -> Cache behalten. Rueckgabe: was der Cache
+        # schon hat (moeglicherweise []).
+        return laden(inst, cache_dir)[0]
     (cache_dir / (inst + ".json")).write_text(json.dumps(
         {"geholt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
          "kerzen": reihen}, ensure_ascii=False), "utf-8")

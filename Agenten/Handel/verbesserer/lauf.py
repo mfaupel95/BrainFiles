@@ -19,6 +19,7 @@ Nur Standardbibliothek.
 
 import argparse
 import json
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,7 +64,8 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
                        for k in _pfad_schluessel if k in spur}}
     wachen = json.loads(Path(spur["wachen"]).read_text("utf-8"))
     watchlist = wachen["watchlist"]
-    tage = konfig["oos_training_tage"] + 6 * konfig["oos_test_tage"]
+    tage = (konfig["oos_training_tage"]
+            + konfig.get("oos_fenster_ziel", 12) * konfig["oos_test_tage"])
 
     kerzen_je_inst = {}
     for inst in watchlist:
@@ -82,7 +84,14 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
 
     datum = (jetzt or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
     ordner = BERICHTE / ("%s-%s" % (datum, spur_name))
-    ordner.mkdir(parents=True, exist_ok=True)
+    # Ein zweiter Lauf am selben Tag greift auf denselben Ordner. Liegt er
+    # schon da, muessen die Artefakte des ersten Laufs (wachen.neu.json,
+    # bewertung.patch, commit.txt, ANGEFRAGT ...) weg - sonst wendet ein
+    # spaeteres /ja einen Mischstand unter falscher Commit-Botschaft an.
+    # berichte/erledigt/ und berichte/abgelehnt/ liegen daneben, nicht darin.
+    if ordner.exists():
+        shutil.rmtree(ordner, ignore_errors=True)
+    ordner.mkdir(parents=True)
 
     befund = auswerter.befund(spur, konfig, ordner)
     basis = suche.basis_kandidat(wachen, bewertung.CHANCE_GEWICHTE,

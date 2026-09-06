@@ -13,6 +13,7 @@ digest.erzeuge) durch Fakes.
 
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -85,6 +86,32 @@ class TestLaufKeinVorschlag(unittest.TestCase):
         self.assertIsNotNone(p)
         self.assertTrue((p / "bericht.md").exists())
         self.assertFalse((p / "commit.txt").exists())
+
+    def test_zweiter_lauf_raeumt_alte_artefakte(self):
+        # Ein zweiter Lauf am selben Tag nutzt denselben Ordner. Reste des
+        # ersten Laufs (wachen.neu.json, commit.txt, ANGEFRAGT ...) muessen
+        # verschwinden - sonst wendet ein spaeteres /ja einen Mischstand an.
+        jetzt = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        ordner = Path(self._tmp.name) / "2026-01-01-spur1"
+        ordner.mkdir(parents=True)
+        (ordner / "wachen.neu.json").write_text("{}", encoding="utf-8")
+        (ordner / "commit.txt").write_text("alt", encoding="utf-8")
+        (ordner / "bewertung.patch").write_text("alt", encoding="utf-8")
+        (ordner / "ANGEFRAGT").write_text("x", encoding="utf-8")
+
+        # Nachbar-Ablagen duerfen nicht angefasst werden.
+        erledigt = Path(self._tmp.name) / "erledigt" / "alt-spur1"
+        erledigt.mkdir(parents=True)
+        (erledigt / "bericht.md").write_text("archiv", encoding="utf-8")
+
+        p = lauf.einmal("spur1", kerzen_holen=False, jetzt=jetzt)
+        self.assertEqual(p, ordner)
+        self.assertFalse((ordner / "wachen.neu.json").exists())
+        self.assertFalse((ordner / "commit.txt").exists())
+        self.assertFalse((ordner / "bewertung.patch").exists())
+        self.assertFalse((ordner / "ANGEFRAGT").exists())
+        self.assertTrue((ordner / "bericht.md").exists())
+        self.assertTrue((erledigt / "bericht.md").exists())
 
 
 class TestLaufPfadAufloesung(unittest.TestCase):
