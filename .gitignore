@@ -77,6 +77,8 @@
 !Agenten/Handel/verbesserer/*.json
 !Agenten/Handel/verbesserer/requirements.txt
 !Agenten/Handel/verbesserer/tests/*.py
+!Agenten/Handel/verbesserer/tests/fixtures/*.csv
+!Agenten/Handel/verbesserer/tests/fixtures/*.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
