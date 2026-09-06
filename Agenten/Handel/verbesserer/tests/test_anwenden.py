@@ -59,6 +59,14 @@ class TestReineFunktionen(unittest.TestCase):
         with self.assertRaises(ValueError):
             anwenden.geaenderte_schluessel("kein json", "{}")
 
+    def test_geaenderte_schluessel_hinzugefuegt(self):
+        # ``neu`` fuegt einen Top-Level-Schluessel hinzu, den ``alt`` nicht
+        # kennt -> er muss im Ergebnis auftauchen.
+        neu = ('{\r\n  "mindest_score": 60,\r\n  "handel_erlaubt": false,\r\n'
+               '  "neuer_gate": 5\r\n}\r\n')
+        self.assertEqual(anwenden.geaenderte_schluessel(WACHEN_ALT, neu),
+                         {"neuer_gate"})
+
     def test_denylist_faengt_handel_erlaubt(self):
         ok, name = anwenden.denylist_ok({"mindest_score", "handel_erlaubt"})
         self.assertFalse(ok)
@@ -163,6 +171,83 @@ class TestAnwenden(unittest.TestCase):
         self.assertEqual(
             len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
         self.assertFalse((self.heim / "bak").exists())
+
+    # --- Patch-Pfad-Allowlist + Roll-back ---------------------------
+    def test_patch_fremde_datei_wird_abgelehnt(self):
+        repo, wachen, bew = self._basis_repo()
+        fremd_patch = (
+            "--- a/scanner/wachen.json\n"
+            "+++ b/scanner/wachen.json\n"
+            "@@ -1 +1 @@\n"
+            "-{\"handel_erlaubt\": false}\n"
+            "+{\"handel_erlaubt\": true}\n"
+        )
+        ordner = self._vorschlag(repo, patch_text=fremd_patch)
+        wachen_vorher = wachen.read_bytes()
+        bew_vorher = bew.read_bytes()
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("fremde Datei", r["grund"])
+        self.assertIsNone(r["commit"])
+        # Zieldateien byte-unveraendert (Schritt 4 wurde zurueckgerollt)
+        self.assertEqual(wachen.read_bytes(), wachen_vorher)
+        self.assertEqual(bew.read_bytes(), bew_vorher)
+        # nichts committet, nichts gestaged, Arbeitsbaum sauber
+        self.assertEqual(
+            len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
+        self.assertEqual(
+            _git(repo, "diff", "--cached", "--name-only").stdout, "")
+        self.assertEqual(
+            _git(repo, "status", "--porcelain", "--", str(wachen),
+                 str(bew)).stdout, "")
+        # .bak bleibt als Audit-Spur
+        self.assertTrue((self.heim / "bak").exists())
+        # Vorschlagsordner liegt noch da
+        self.assertTrue(ordner.exists())
+
+    def test_git_apply_fehler_stellt_wieder_her(self):
+        repo, wachen, bew = self._basis_repo()
+        # Header zielt korrekt auf b.py -> Pfad-Check passt; der Kontext
+        # passt aber nicht -> ``git apply`` schlaegt fehl.
+        schlecht = (
+            "--- a/b.py\n"
+            "+++ b/b.py\n"
+            "@@ -1 +1 @@\n"
+            "-VOELLIG ANDERE ZEILE\n"
+            "+neu\n"
+        )
+        ordner = self._vorschlag(repo, patch_text=schlecht)  # legit wachen.neu
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("wiederhergestellt", r["grund"])
+        # wachen.json exakt auf die Ausgangsbytes zurueck (CRLF inklusive)
+        self.assertEqual(wachen.read_bytes(), WACHEN_ALT.encode("utf-8"))
+        self.assertEqual(wachen.read_bytes().count(b"\r\n"),
+                         WACHEN_ALT.count("\r\n"))
+        self.assertEqual(
+            _git(repo, "diff", "--cached", "--name-only").stdout, "")
+        self.assertEqual(
+            len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
+        self.assertTrue(ordner.exists())
+
+    def test_commit_txt_fehlt(self):
+        repo, wachen, bew = self._basis_repo()
+        ordner = repo / "v"
+        ordner.mkdir()
+        (ordner / "wachen.neu.json").write_text(
+            WACHEN_ALT.replace('"mindest_score": 60', '"mindest_score": 65'),
+            "utf-8", newline="")
+        (ordner / "bewertung.patch").write_text("", "utf-8")
+        # kein commit.txt
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("commit.txt", r["grund"])
+        self.assertIsNone(r["commit"])
+        self.assertEqual(wachen.read_bytes(), WACHEN_ALT.encode("utf-8"))
+        # Abbruch vor Schritt 3 -> kein .bak
+        self.assertFalse((self.heim / "bak").exists())
+        self.assertEqual(
+            len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
 
     # --- Erfolgspfad -------------------------------------------------
     def test_erfolg_crlf_bleibt_und_ein_commit(self):
