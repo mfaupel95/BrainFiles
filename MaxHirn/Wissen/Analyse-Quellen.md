@@ -3,10 +3,11 @@ id: 20260902-analyse-quellen
 title: 'Analyse-Quellen'
 tags: [handel]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-05
 related:
   - id: 20260830-marktlage-august-2026
   - id: 20260902-xrp-analyse-sta
+  - id: 20260905-btc-analyse-sta
   - id: 20260901-saisonalitaet-signal
 summary: 'Wiederkehrende externe Analyse-Quellen (YouTube-Kanäle, Indikatoren) mit fester Einstufung — damit die Quellenbewertung nicht in jeder Einzelnotiz neu geschrieben wird.'
 ---
@@ -36,7 +37,8 @@ verweisen per `[[…]]` hierher, statt die Bewertung zu wiederholen.
 - **Auto-Transkript:** schreibt den Namen oft falsch (»SCR Solutions«, »Alexer
   Schulz«).
 - **Ausgewertet in:** [[Marktlage-August-2026]] (Makro, 11.08.2026),
-  [[XRP-Analyse-STA-September-2026]] (XRP, 02.09.2026).
+  [[XRP-Analyse-STA-September-2026]] (XRP, 02.09.2026),
+  [[BTC-Analyse-STA-September-2026]] (BTC, 05.09.2026).
 
 ## xGhozt Prophecies: A Forecast on the Future
 

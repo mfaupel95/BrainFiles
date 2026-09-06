@@ -88,6 +88,12 @@
             "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"..\\Agenten\\Routinen\\systempruefung-hook.ps1\"",
             "shell": "powershell",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"..\\Agenten\\Routinen\\datensortierung-hook.ps1\"",
+            "shell": "powershell",
+            "timeout": 15
           }
         ]
       }

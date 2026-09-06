@@ -1,12 +1,12 @@
-# Zweitkopie des unersetzlichen Teils nach O:\MaxHirn-Zweitkopie
+# Zweitkopie des unersetzlichen Teils nach J:\MaxHirn-Zweitkopie
 #
 # WARUM ES DIESE ZWEITE SICHERUNG GIBT
 # G:, H: und I: sind dieselbe physische Platte (Disk 2, Seagate Portable,
 # gemessen 23.08.2026 ueber Get-Partition/Get-Disk). Die Hauptsicherung auf G:
 # haette durch eine zweite Kopie auf H: also nichts gewonnen - faellt Disk 2
-# aus, waeren beide gleichzeitig weg. O: ist Disk 1 (WD NVMe, intern).
-# Damit liegen Original (Disk 0), Sicherung (Disk 2) und Zweitkopie (Disk 1)
-# auf drei verschiedenen Datentraegern.
+# aus, waeren beide gleichzeitig weg. J: ist die externe Sicherungsplatte.
+# Damit liegen Original, Sicherung (Disk 2) und Zweitkopie auf getrennten
+# Datentraegern.
 #
 # WAS SIE NICHT LEISTET
 # Alle drei stecken im selben Rechner. Gegen einen erneuten Netzteilschaden,
@@ -28,14 +28,14 @@ $ErrorActionPreference = 'Stop'
 # Routinen). Vorher stand hier $PSScriptRoot - das sicherte nach dem Umzug nur
 # noch Agenten\.
 $quelle = Split-Path $PSScriptRoot -Parent
-$ziel   = 'O:\MaxHirn-Zweitkopie'
+$ziel   = 'J:\MaxHirn-Zweitkopie'
 
-if (-not (Test-Path 'O:\')) {
-  Write-Host 'O: ist nicht erreichbar - Zweitkopie uebersprungen.' -ForegroundColor Red
+if (-not (Test-Path 'J:\')) {
+  Write-Host 'J: ist nicht erreichbar - Zweitkopie uebersprungen.' -ForegroundColor Red
   exit 2
 }
 
-Write-Host '=== Zweitkopie nach O: ===' -ForegroundColor Cyan
+Write-Host '=== Zweitkopie nach J: ===' -ForegroundColor Cyan
 $start = Get-Date
 
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
