@@ -63,6 +63,7 @@ import subprocess
 import sys
 import time
 import traceback
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
@@ -70,6 +71,22 @@ sys.path.insert(0, HIER)
 import freigabefenster                                   # noqa: E402
 import melder                                            # noqa: E402
 import tagesbericht                                      # noqa: E402
+
+# Der woechentliche Selbstverbesserungs-Lauf (verbesserer/) haengt hier nur
+# lose dran: anfrage.py haelt die reine Ordner-/Textlogik, anwenden.py den
+# einzigen schreibenden Pfad. Faellt der Import aus - Modul kaputt, Ordner
+# fehlt -, bleibt verbesserer_anfrage None und der Dauerlauf laeuft ohne den
+# Anfrage-Typ weiter.
+VERB_DIR = os.path.join(HIER, "verbesserer")
+VERB_BERICHTE = os.path.join(VERB_DIR, "berichte")
+REPO_WURZEL = os.path.dirname(os.path.dirname(HIER))
+sys.path.insert(0, VERB_DIR)
+try:
+    import anfrage as verbesserer_anfrage                # noqa: E402
+    import anwenden as verbesserer_anwenden              # noqa: E402
+except Exception:                                        # noqa: BLE001
+    verbesserer_anfrage = None
+    verbesserer_anwenden = None
 
 PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
@@ -212,6 +229,45 @@ class Lauf:
             self.sende(freigabefenster.anfrage_text(
                 spur, w, dauer, d.get("waehrung", "USD")))
 
+        self.pruefe_verbesserer()
+
+    def pruefe_verbesserer(self):
+        """Schickt einen offenen Verbesserungsvorschlag per Telegram und
+        markiert ihn ANGEFRAGT - aber nur, wenn nirgends eine Freigabe-Anfrage
+        offen ist. Die Freigabe hat immer Vorrang: eine unbeantwortete
+        Freigabe-Anfrage darf nicht neben einer Verbesserer-Anfrage stehen,
+        sonst weiss ein /ja nicht, was es meint.
+
+        Faellt der verbesserer/-Import aus oder wirft die Ordner-/Textlogik,
+        bleibt es bei einer Protokollzeile - der Zyklus laeuft weiter.
+        """
+        if verbesserer_anfrage is None:
+            return
+        if any(freigabefenster.lade(s).anfrage_offen() for s in SPUREN):
+            return
+        try:
+            offen = verbesserer_anfrage.offener_vorschlag(VERB_BERICHTE)
+            if not offen:
+                return
+            self.sende(verbesserer_anfrage.text(offen))
+            verbesserer_anfrage.markiere_angefragt(offen)
+            protokoll("Verbesserer-Anfrage %s" % offen.name)
+        except Exception as e:                            # noqa: BLE001
+            protokoll("Verbesserer-Anfrage gescheitert: %s" % e)
+
+    def _spur_konf(self, schluessel):
+        """Eintrag aus verbesserer/spuren.json zu ``schluessel`` (z. B.
+        ``spur1``), mit ``wachen``/``bewertung_datei`` (und den weiteren
+        Pfadfeldern, falls vorhanden) absolut gegen den verbesserer/-Ordner
+        aufgeloest - so, wie anwenden.anwenden sie erwartet."""
+        with open(os.path.join(VERB_DIR, "spuren.json"), encoding="utf-8") as f:
+            eintrag = dict(json.load(f)[schluessel])
+        for k in ("wachen", "bewertung_datei", "journal", "zustand",
+                  "berichte"):
+            if k in eintrag:
+                eintrag[k] = str((Path(VERB_DIR) / eintrag[k]).resolve())
+        return eintrag
+
     def nur_fenster_fehlt(self, spur, d):
         """wachen.json der Spur, wenn allein das Freigabefenster noch fehlt.
 
@@ -244,6 +300,41 @@ class Lauf:
         except (OSError, ValueError):
             return None
 
+    def _verbesserer_befehl(self, ja):
+        """/ja bzw. /nein fuer einen wartenden Verbesserungsvorschlag.
+
+        Rueckgabe: Antworttext, wenn der Fall behandelt wurde - sonst None,
+        dann laeuft die Freigabe-Logik im Aufrufer unveraendert weiter.
+
+        Nur aktiv, wenn der verbesserer/-Import steht UND nirgends eine
+        Freigabe-Anfrage offen ist: ein wartendes Freigabefenster scharf zu
+        schalten geht immer vor. anwenden.anwenden wirft nie; anfrage.wartet
+        und die Ordnerlogik schon - beides faengt der try/except hier ab,
+        damit der Befehl den Lauf nicht mitreisst.
+        """
+        if verbesserer_anfrage is None or verbesserer_anwenden is None:
+            return None
+        if any(freigabefenster.lade(s).anfrage_offen() for s in SPUREN):
+            return None
+        try:
+            wartet = verbesserer_anfrage.wartet(VERB_BERICHTE)
+            if not wartet:
+                return None
+            if not ja:
+                verbesserer_anwenden.ablehnen(wartet, "per /nein abgelehnt")
+                protokoll("Verbesserungsvorschlag abgelehnt: %s" % wartet.name)
+                return "Vorschlag archiviert (%s)." % wartet.name
+            schluessel = wartet.name.split("-", 3)[-1]
+            r = verbesserer_anwenden.anwenden(
+                wartet, self._spur_konf(schluessel), REPO_WURZEL)
+        except Exception as e:                            # noqa: BLE001
+            protokoll("Verbesserer-Befehl gescheitert: %s" % e)
+            return "Vorschlag NICHT verarbeitet: %s" % e
+        if r["ok"]:
+            protokoll("Verbesserungsvorschlag angewandt: %s" % r["commit"])
+            return "Vorschlag angewandt: %s" % r["commit"]
+        return "Vorschlag NICHT angewandt: %s" % r["grund"]
+
     # --- Befehle --------------------------------------------------------
 
     def befehl(self, text):
@@ -266,6 +357,11 @@ class Lauf:
                     stunden = float(rest[0])
                 except ValueError:
                     return "Verstehe ich nicht: /ja %s\nGemeint war /ja 6" % rest[0]
+            # Ein wartender Verbesserungsvorschlag wird hier abgefangen -
+            # aber nur, wenn keine Freigabe-Anfrage offen ist (die gewinnt).
+            v = self._verbesserer_befehl(ja=True)
+            if v is not None:
+                return v
             for spur in SPUREN:
                 if freigabefenster.lade(spur).anfrage_offen():
                     m = freigabefenster.oeffnen(spur, stunden, "telegram")
@@ -277,6 +373,9 @@ class Lauf:
             return "Keine Anfrage offen. Eine Freigabe geht nur auf Anfrage."
 
         if wort == "nein":
+            v = self._verbesserer_befehl(ja=False)
+            if v is not None:
+                return v
             for spur in SPUREN:
                 if freigabefenster.lade(spur).anfrage_offen():
                     freigabefenster.schliessen(spur, "abgelehnt")

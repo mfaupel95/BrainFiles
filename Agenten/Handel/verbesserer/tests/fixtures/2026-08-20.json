@@ -1,0 +1,11 @@
+{
+  "datum": "2026-08-20",
+  "erzeugt": "2026-08-20T18:00:00+00:00",
+  "werte": [
+    {"inst": "SOL-USDT", "score": 75.0, "verhaeltnis": 2.3, "kennzahlen": {"volatilitaet_pa": 0.70}},
+    {"inst": "BTC-USDT", "score": 72.0, "verhaeltnis": 2.1, "kennzahlen": {"volatilitaet_pa": 0.55}},
+    {"inst": "ETH-USDT", "score": 68.0, "verhaeltnis": 1.8, "kennzahlen": {"volatilitaet_pa": 0.62}},
+    {"inst": "XRP-USDT", "score": 63.0, "verhaeltnis": 1.6, "kennzahlen": {"volatilitaet_pa": 0.85}},
+    {"inst": "DOGE-USDT", "score": 61.0, "verhaeltnis": 1.4, "kennzahlen": {"volatilitaet_pa": 0.95}}
+  ]
+}

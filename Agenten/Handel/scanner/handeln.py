@@ -53,6 +53,12 @@ HIER = Path(__file__).resolve().parent
 ZUSTAND = HIER / "zustand.json"
 JOURNAL = HIER / "handelsjournal.csv"
 
+# 0,05 % OKX Taker (Volumen < 10.000), gemessen 02.09.2026 - Handelsregeln.md
+# nennt einen Papierlauf ohne Gebuehr einen Fehler. Identisch mit
+# verbesserer/kosten.py (dort test_kosten_gleich.py). Bewusst nicht importiert:
+# handeln.py bleibt ohne den Verbesserer lauffaehig.
+GEBUEHR_PCT = 0.0005
+
 
 def _jetzt():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -134,7 +140,9 @@ def pruefe_ausstiege(z, live):
         if not grund:
             behalten.append(p)
             continue
-        erloes = p["usd"] * kurs / p["einstieg"]
+        # Nur die journalisierte Zeile traegt die Gebuehr; p["usd"] bleibt
+        # nominal fuer Deckel- und G/V-Rechnung.
+        erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
         gv = erloes - p["usd"]
         if live:
             try:
@@ -163,7 +171,8 @@ def flach_stellen(z, live, grund):
     behalten = []
     for p in z["positionen"]:
         kurs = okx.letzter_kurs(p["inst"])
-        erloes = p["usd"] * kurs / p["einstieg"]
+        # Wie in pruefe_ausstiege: Gebuehr nur in der journalisierten Zeile.
+        erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
         if live:
             try:
                 d = okx.order_details(p["inst"], p["kauf_ord_id"])
@@ -217,7 +226,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
               % (v["inst"], v["einstieg"], v["stop"], v["stop_pct"],
                  v["ziel"], usd))
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
-                "%.6f" % v["einstieg"], "%.2f" % usd,
+                "%.6f" % v["einstieg"], "%.2f" % (usd * (1 + GEBUEHR_PCT)),
                 "%.6f" % v["stop"], "%.6f" % v["ziel"], "score %.1f" % v["score"])
 
 

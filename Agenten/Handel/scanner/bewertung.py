@@ -14,6 +14,14 @@ und den Rohkennzahlen.
 
 import math
 
+# Gewichte der Bausteine. Frueher standen die Zahlen fest in bewerten();
+# als Modulkonstanten kann der Backtest andere Gewichtungen durchprobieren,
+# ohne den Rechenweg anzufassen. Beide Summen ergeben 1,0.
+CHANCE_GEWICHTE = {"trend": 0.30, "momentum": 0.28, "ruecksetzer": 0.16,
+                   "nicht_ueberkauft": 0.14, "volumen": 0.12}
+RISIKO_GEWICHTE = {"vola": 0.42, "drawdown": 0.28, "extrem_rsi": 0.16,
+                   "absturz_momentum": 0.14}
+
 
 def _sma(werte, n):
     if len(werte) < n:
@@ -68,7 +76,15 @@ def _skalieren(x, lo, hi):
     return max(0.0, min(1.0, (x - lo) / (hi - lo)))
 
 
-def bewerten(kerzen):
+def roh_komponenten(kerzen):
+    """Der bestehende Rechenweg bis zu den neun ungewichteten Bausteinen.
+
+    Gibt die Rohwerte ungerundet zurueck statt sie zu gewichten - so kann der
+    Backtest daraus eine Merkmals-Matrix bauen und bewerten() ist nur noch die
+    Huelle, die sie mit CHANCE_GEWICHTE/RISIKO_GEWICHTE verrechnet. Die mit
+    Unterstrich vorangestellten Werte sind Zwischengroessen, die bewerten() fuer
+    den kennzahlen-Block braucht.
+    """
     schluss = [k[4] for k in kerzen]
     hoch = [k[2] for k in kerzen]
     tief = [k[3] for k in kerzen]
@@ -96,48 +112,63 @@ def bewerten(kerzen):
     if vol_schnitt:
         vol_bestaetigung = _skalieren(sum(vol[-5:]) / 5.0 / vol_schnitt, 0.7, 1.6)
 
-    # --- Chance (0..100) --------------------------------------------------
+    # --- Chance-Bausteine (je 0..1) ------------------------------------
     c_trend = trend                                        # 0..1
     c_momentum = _skalieren(rendite_30, -0.10, 0.40)       # bis +40 % in 30 T
     c_ruecksetzer = _skalieren(abstand_hoch, -0.20, -0.02) # Pullback, nicht am Hoch
     c_nicht_ueberkauft = 1.0 - _skalieren(rsi, 62, 82)     # RSI > 82 killt die Chance
     c_volumen = vol_bestaetigung
-    chance = 100.0 * (
-        0.30 * c_trend
-        + 0.28 * c_momentum
-        + 0.16 * c_ruecksetzer
-        + 0.14 * c_nicht_ueberkauft
-        + 0.12 * c_volumen
-    )
 
-    # --- Risiko (0..100) ------------------------------------------------
+    # --- Risiko-Bausteine (je 0..1) ----------------------------------
     r_vola = _skalieren(vola_pa, 0.30, 1.50)               # 30 % p.a. ruhig, 150 % wild
     r_drawdown = _skalieren(drawdown_90, 0.10, 0.55)
     r_extrem_rsi = max(_skalieren(rsi, 80, 92), _skalieren(38 - rsi, 0, 20))
     r_absturz_momentum = _skalieren(-rendite_30, 0.10, 0.45)
-    risiko = 100.0 * (
-        0.42 * r_vola
-        + 0.28 * r_drawdown
-        + 0.16 * r_extrem_rsi
-        + 0.14 * r_absturz_momentum
-    )
+
+    return {
+        "c_trend": c_trend, "c_momentum": c_momentum,
+        "c_ruecksetzer": c_ruecksetzer,
+        "c_nicht_ueberkauft": c_nicht_ueberkauft, "c_volumen": c_volumen,
+        "r_vola": r_vola, "r_drawdown": r_drawdown,
+        "r_extrem_rsi": r_extrem_rsi, "r_absturz_momentum": r_absturz_momentum,
+        "vola_pa": vola_pa, "preis": preis,
+        # Zwischengroessen nur fuer den kennzahlen-Block:
+        "_rendite_30": rendite_30, "_rsi": rsi,
+        "_abstand_hoch": abstand_hoch, "_drawdown_90": drawdown_90,
+    }
+
+
+def bewerten(kerzen, gewichte=None):
+    r = roh_komponenten(kerzen)
+    cg = (gewichte or {}).get("chance") or CHANCE_GEWICHTE
+    rg = (gewichte or {}).get("risiko") or RISIKO_GEWICHTE
+
+    chance = 100.0 * (cg["trend"] * r["c_trend"]
+                      + cg["momentum"] * r["c_momentum"]
+                      + cg["ruecksetzer"] * r["c_ruecksetzer"]
+                      + cg["nicht_ueberkauft"] * r["c_nicht_ueberkauft"]
+                      + cg["volumen"] * r["c_volumen"])
+    risiko = 100.0 * (rg["vola"] * r["r_vola"]
+                      + rg["drawdown"] * r["r_drawdown"]
+                      + rg["extrem_rsi"] * r["r_extrem_rsi"]
+                      + rg["absturz_momentum"] * r["r_absturz_momentum"])
 
     score = max(0.0, min(100.0, chance * (1.0 - 0.7 * risiko / 100.0)))
     verhaeltnis = chance / max(risiko, 1.0)
 
     return {
-        "preis": round(preis, 6),
+        "preis": round(r["preis"], 6),
         "chance": round(chance, 1),
         "risiko": round(risiko, 1),
         "score": round(score, 1),
         "verhaeltnis": round(verhaeltnis, 2),
         "kennzahlen": {
-            "trend_ueber_sma": round(trend, 2),
-            "rendite_30t_pct": round(rendite_30 * 100, 1),
-            "rsi14": round(rsi, 1),
-            "abstand_60t_hoch_pct": round(abstand_hoch * 100, 1),
-            "volatilitaet_pa": round(vola_pa, 2),
-            "max_drawdown_90t_pct": round(drawdown_90 * 100, 1),
-            "volumen_bestaetigung": round(vol_bestaetigung, 2),
+            "trend_ueber_sma": round(r["c_trend"], 2),
+            "rendite_30t_pct": round(r["_rendite_30"] * 100, 1),
+            "rsi14": round(r["_rsi"], 1),
+            "abstand_60t_hoch_pct": round(r["_abstand_hoch"] * 100, 1),
+            "volatilitaet_pa": round(r["vola_pa"], 2),
+            "max_drawdown_90t_pct": round(r["_drawdown_90"] * 100, 1),
+            "volumen_bestaetigung": round(r["c_volumen"], 2),
         },
     }

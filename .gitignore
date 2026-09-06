@@ -72,6 +72,13 @@
 !Agenten/Handel/kraken/*.py
 !Agenten/Handel/kraken/*.md
 !Agenten/Handel/kraken/*.json
+!Agenten/Handel/verbesserer/*.py
+!Agenten/Handel/verbesserer/*.md
+!Agenten/Handel/verbesserer/*.json
+!Agenten/Handel/verbesserer/requirements.txt
+!Agenten/Handel/verbesserer/tests/*.py
+!Agenten/Handel/verbesserer/tests/fixtures/*.csv
+!Agenten/Handel/verbesserer/tests/fixtures/*.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
@@ -128,6 +135,12 @@ Agenten/Handel/kraken/berichte/**
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
+
+# Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
+# freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.
+Agenten/Handel/verbesserer/kerzen/**
+Agenten/Handel/verbesserer/berichte/**
+Agenten/Handel/verbesserer/bak/**
 
 # Erzeugtes und Fremdes
 **/__pycache__/**

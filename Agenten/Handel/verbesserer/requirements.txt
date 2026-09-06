@@ -1,0 +1,2 @@
+# Nur Standardbibliothek. Eigenes venv, damit die Python-Version an ihren
+# Pfad gebunden ist - wie scanner/.venv. Siehe Wissen/Python-Versionen.md.
