@@ -20,6 +20,8 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
 | täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Marktscanner` |
 | täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Kraken-Spur3` |
+| täglich 07:50 | XPERP-Spur 2 (nur Papier) | `Handel/xperp/handeln.py --papier` | **eingeplant** 07.09.2026 — `MaxHirn-XPERP-Spur2` |
+| alle 30 Min | Dauerlauf-Wächter (Neustart nach Abschaltung) | `handel-dauerlauf.ps1` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf-Waechter` |
 | sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
@@ -218,9 +220,8 @@ wenn schon einer läuft — zwei Dauerläufe auf demselben Telegram-Token nehmen
 sich gegenseitig die Nachrichten weg (Telegram antwortet dem zweiten Abrufer
 mit 409).
 
-**Noch nicht eingeplant.** Erst müssen `TELEGRAM_TOKEN` und
-`TELEGRAM_CHAT_ID` gesetzt sein, sonst läuft er stumm und die Steuerung
-fehlt. Einrichtung im Kopf von `Handel/melder.py`. Danach:
+**Eingeplant am 07.09.2026** als `MaxHirn-Handel-Dauerlauf` (bei Anmeldung)
+und `MaxHirn-Handel-Dauerlauf-Waechter` (alle 30 Minuten):
 
 ```powershell
 $exe = "$env:USERPROFILE\Documents\BrainFiles\Agenten\Routinen\handel-dauerlauf.ps1"
@@ -229,6 +230,11 @@ schtasks /create /tn "MaxHirn-Handel-Dauerlauf" /sc onlogon `
 schtasks /create /tn "MaxHirn-Handel-Dauerlauf-Waechter" /sc minute /mo 30 `
   /tr "powershell -NoProfile -ExecutionPolicy Bypass -File `"$exe`""
 ```
+
+Der Wächter prüft `dauerlauf.pid` und endet sofort, wenn schon einer läuft;
+nach einem Kernel-Power-41-Neustart ([[Hardware]]) startet er den Dauerlauf
+wieder. Der Dauerlauf selbst läuft seit 06.09.2026 17:37 (PID 55000, Takt
+15 min) und protokolliert in `Routinen/logs/handel-dauerlauf-letzter-lauf.log`.
 
 ### Kraken-Spur 3: derselbe Zuschnitt, andere Börse
 
