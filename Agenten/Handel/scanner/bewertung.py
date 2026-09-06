@@ -19,8 +19,8 @@ import math
 # ohne den Rechenweg anzufassen. Beide Summen ergeben 1,0.
 CHANCE_GEWICHTE = {"trend": 0.30, "momentum": 0.28, "ruecksetzer": 0.16,
                    "nicht_ueberkauft": 0.14, "volumen": 0.12}
-RISIKO_GEWICHTE = {"vola": 0.42, "drawdown": 0.28, "extrem_rsi": 0.16,
-                   "absturz_momentum": 0.14}
+RISIKO_GEWICHTE = {"vola": 0.44210526315789467, "drawdown": 0.24210526315789477, "extrem_rsi": 0.16842105263157894,
+                   "absturz_momentum": 0.1473684210526316}
 
 
 def _sma(werte, n):
