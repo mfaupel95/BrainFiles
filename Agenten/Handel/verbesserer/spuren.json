@@ -1,7 +1,8 @@
 {
   "_zweck": "Je Spur: Pfade zu ihren Dateien und die Whitelist der Schluessel, die ein Vorschlag anfassen darf - mit erlaubtem Wertebereich. Deckel stehen NICHT hier, sie sind in anwenden.py fest gesperrt.",
   "spur1": {
-    "name": "Scanner/OKX",
+    "name": "spur1",
+    "_name": "Scanner/OKX Spot",
     "journal": "../scanner/handelsjournal.csv",
     "zustand": "../scanner/zustand.json",
     "wachen": "../scanner/wachen.json",
