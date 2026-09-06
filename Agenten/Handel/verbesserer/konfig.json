@@ -1,0 +1,20 @@
+{
+  "_zweck": "Modulweite Parameter des Verbesserers. Von Hand geaendert.",
+  "auto_anwenden": false,
+  "_auto_anwenden": "false = jeder Vorschlag geht per Telegram an Max. true braucht eine Aenderung an Handelsregeln.md und ist nicht gebaut.",
+  "such_budget": 300,
+  "oos_training_tage": 120,
+  "oos_test_tage": 30,
+  "oos_schritt_tage": 30,
+  "segment_mindest_n": 8,
+  "overfit_min_runden": 20,
+  "overfit_min_fenster": 3,
+  "gebuehr_umstellung_datum": "2026-09-06",
+  "llm": {
+    "modus": "aus",
+    "_modus": "aus | ollama | cliproxy",
+    "timeout_s": 60,
+    "ollama": { "url": "http://localhost:11434", "modell": "llama3.1:8b" },
+    "cliproxy": { "base_url_env": "CLIPROXY_BASE_URL", "schluessel_env": "CLIPROXY_API_KEY", "modell": "claude-sonnet-5" }
+  }
+}

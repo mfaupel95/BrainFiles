@@ -1,0 +1,27 @@
+{
+  "_zweck": "Je Spur: Pfade zu ihren Dateien und die Whitelist der Schluessel, die ein Vorschlag anfassen darf - mit erlaubtem Wertebereich. Deckel stehen NICHT hier, sie sind in anwenden.py fest gesperrt.",
+  "spur1": {
+    "name": "Scanner/OKX",
+    "journal": "../scanner/handelsjournal.csv",
+    "zustand": "../scanner/zustand.json",
+    "wachen": "../scanner/wachen.json",
+    "berichte": "../scanner/berichte",
+    "bewertung_datei": "../scanner/bewertung.py",
+    "waehrung": "USD",
+    "aenderbar": {
+      "wachen.json": {
+        "mindest_score": [55, 75],
+        "max_volatilitaet_pa": [0.9, 1.4],
+        "mindest_chance_risiko": [1.3, 2.2],
+        "pflicht_stop_prozent_min": [4, 8],
+        "pflicht_stop_prozent_max": [8, 15],
+        "abklingzeit_tage": [2, 5],
+        "watchlist": "liste"
+      },
+      "bewertung.py": {
+        "CHANCE_GEWICHTE": [0.0, 0.5],
+        "RISIKO_GEWICHTE": [0.0, 0.5]
+      }
+    }
+  }
+}
