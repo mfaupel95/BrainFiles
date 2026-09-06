@@ -190,10 +190,11 @@ def anreichern(runden, berichte_dir, journal_pfad=None):
         verkaufzeit = r.get("zeit", "")
         kaufzeit = paare[i][0] if mit_paaren else None
 
-        # `runden_aus_journal` fuellt `zeit` mit der Verkaufszeile - der Bericht
-        # wird ueber genau diesen Tag gesucht, damit die Zuordnung dieselbe ist,
-        # ob mit oder ohne Journal-Zweitlauf aufgerufen.
-        tag = verkaufzeit[:10]
+        # Merkmale sollen die Lage beim Einstieg beschreiben. Liegt das Journal
+        # vor, ist die Kaufzeit aus dem zweiten FIFO-Lauf bekannt und der
+        # Einstiegstag-Bericht wird gesucht. Nur ohne Journal faellt die Suche
+        # auf den Verkaufstag zurueck, den `runden_aus_journal` in `zeit` legt.
+        tag = (kaufzeit or verkaufzeit)[:10]
         b = bericht(tag)
         score = verhaeltnis = vola = None
         if b:

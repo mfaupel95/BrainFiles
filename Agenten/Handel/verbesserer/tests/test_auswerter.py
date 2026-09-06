@@ -49,6 +49,16 @@ class TestAuswerter(unittest.TestCase):
         self.assertEqual(len(raus), 1)
         self.assertIn("segmente", json.loads(raus[0].read_text("utf-8")))
 
+    def test_anreichern_nimmt_einstiegstag(self):
+        # Kauf 2026-08-10 (score 71.0), Verkauf 2026-08-14 (score 55.0).
+        # Mit journal_pfad muss der Einstiegstag-Bericht gezogen werden.
+        import wachen_pruefung as wp
+        j = FIX / "journal_zweitage.csv"
+        runden = auswerter.anreichern(
+            wp.runden_aus_journal(j), FIX, journal_pfad=j)
+        self.assertEqual(len(runden), 1)
+        self.assertEqual(runden[0]["score"], 71.0)
+
 
 if __name__ == "__main__":
     unittest.main()
