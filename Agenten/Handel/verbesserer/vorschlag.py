@@ -28,8 +28,10 @@ Stil von ``kein_vorschlag`` - keine wachen.neu.json, kein commit.txt.
 Nur Standardbibliothek.
 """
 
+import ast
 import difflib
 import json
+import math
 import re
 from datetime import date
 from pathlib import Path
@@ -115,31 +117,130 @@ def _dict_literal(d):
                            for k, v in d.items()) + "}"
 
 
-def _ersetze_konstante(text, name, gruppe):
-    """``<name> = {...}`` im Quelltext auf ``gruppe`` setzen. Leere ``gruppe``
-    oder kein Treffer -> Text unveraendert."""
-    if not gruppe:
-        return text
-    muster = re.compile(re.escape(name) + r"\s*=\s*\{[^}]*\}")
-    if not muster.search(text):
-        return text
-    ersatz = name + " = " + _dict_literal(gruppe)
-    return muster.sub(lambda _m, e=ersatz: e, text, count=1)
+def _dicts_numerisch_gleich(a, b):
+    """True, wenn beide Dicts dieselben Schluessel und je Wert nahezu gleiche
+    Zahlen haben - ``0.30`` und ``0.3`` zaehlen als gleich."""
+    if set(a) != set(b):
+        return False
+    return all(math.isclose(float(a[k]), float(b[k]),
+                            rel_tol=1e-9, abs_tol=1e-12) for k in a)
 
 
-def bewertung_patch(alt_datei, chance_g, risiko_g):
-    """Unified-Diff, der ``CHANCE_GEWICHTE`` und ``RISIKO_GEWICHTE`` im
-    Quelltext auf die neuen Dicts setzt. Leerer String, wenn nichts sich
-    aendert (auch bei leeren Gewicht-Dicts)."""
+def _konstante_lesen(quelltext, name):
+    """``(alt_dict, start, ende)`` fuer das ``{...}``-Wertliteral von
+    ``name = {...}`` im Quelltext, per AST (deckt ein- wie mehrzeilige
+    Literale ab). ``(None, 0, 0)``, wenn nicht gefunden oder kein Dict."""
+    try:
+        baum = ast.parse(quelltext)
+    except SyntaxError:
+        return None, 0, 0
+    zeilen_start = [0]
+    for zeile in quelltext.splitlines(keepends=True):
+        zeilen_start.append(zeilen_start[-1] + len(zeile))
+
+    def pos(lineno, col):
+        return zeilen_start[lineno - 1] + col
+
+    for knoten in ast.walk(baum):
+        if not isinstance(knoten, ast.Assign):
+            continue
+        if not any(isinstance(z, ast.Name) and z.id == name
+                   for z in knoten.targets):
+            continue
+        wert = knoten.value
+        if not isinstance(wert, ast.Dict):
+            return None, 0, 0
+        start = pos(wert.lineno, wert.col_offset)
+        ende = pos(wert.end_lineno, wert.end_col_offset)
+        try:
+            alt = ast.literal_eval(quelltext[start:ende])
+        except (ValueError, SyntaxError):
+            return None, 0, 0
+        if not isinstance(alt, dict):
+            return None, 0, 0
+        return alt, start, ende
+    return None, 0, 0
+
+
+def _wert_im_segment_ersetzen(segment, key, neuer_wert):
+    """Im Literal-Text ``segment`` genau die eine Zahl hinter ``key`` neu
+    setzen - Zeilenumbrueche und Einrueckung bleiben unberuehrt."""
+    muster = re.compile(
+        r'(["\']' + re.escape(key) + r'["\']\s*:\s*)'
+        r'[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?')
+    return muster.sub(lambda m, e=_als_json(float(neuer_wert)): m.group(1) + e,
+                      segment, count=1)
+
+
+def _konstante_aktualisieren(quelltext, name, neu_dict):
+    """``(neuer_quelltext, geaendert)``. Nur eine echte numerische Aenderung
+    fuehrt zu einer Textaenderung; unveraenderte Werte behalten ihre
+    Schreibweise (``0.30`` bleibt ``0.30``, wird nicht zu ``0.3``)."""
+    if not neu_dict:
+        return quelltext, False
+    alt_dict, start, ende = _konstante_lesen(quelltext, name)
+    if alt_dict is None:
+        return quelltext, False
+    if _dicts_numerisch_gleich(alt_dict, neu_dict):
+        return quelltext, False
+    segment = quelltext[start:ende]
+    if set(alt_dict) == set(neu_dict):
+        neu_segment = segment
+        for key in alt_dict:
+            if not math.isclose(float(alt_dict[key]), float(neu_dict[key]),
+                                rel_tol=1e-9, abs_tol=1e-12):
+                neu_segment = _wert_im_segment_ersetzen(
+                    neu_segment, key, neu_dict[key])
+    else:
+        neu_segment = _dict_literal(neu_dict)
+    return quelltext[:start] + neu_segment + quelltext[ende:], True
+
+
+def _repo_wurzel(pfad):
+    """Erster Vorfahre von ``pfad``, der ``.git`` enthaelt (Datei im
+    Worktree oder Verzeichnis). ``None``, wenn keiner."""
+    for anker in [pfad, *pfad.parents]:
+        if (anker / ".git").exists():
+            return anker
+    return None
+
+
+def _diff_pfade(pfad, repo_wurzel):
+    """``(a/<rel>, b/<rel>)`` - Pfad relativ zur Repo-Wurzel, damit Task 11
+    den Patch mit ``git apply`` aus der Wurzel heraus findet."""
+    wurzel = Path(repo_wurzel) if repo_wurzel else _repo_wurzel(pfad)
+    rel = None
+    if wurzel:
+        try:
+            rel = pfad.resolve().relative_to(Path(wurzel).resolve())
+        except ValueError:
+            rel = None
+    if rel is None:
+        rel = Path(pfad.name)
+    p = rel.as_posix()
+    return "a/" + p, "b/" + p
+
+
+def bewertung_patch(alt_datei, chance_g, risiko_g, repo_wurzel=None):
+    """Unified-Diff, der ``CHANCE_GEWICHTE``/``RISIKO_GEWICHTE`` im Quelltext
+    auf die neuen Dicts setzt.
+
+    Leerer String, wenn die neuen Gewichte *numerisch* gleich den Konstanten
+    in der Quelldatei sind (``0.30`` == ``0.3``) - so verschickt ein Gate-
+    oder Sizing-only-Vorschlag keinen rein kosmetischen Patch. Nur die
+    tatsaechlich geaenderten Werte werden auf ihrer Zeile ersetzt, der Rest
+    der Datei bleibt Byte fuer Byte gleich. Die Diff-Kopfzeilen sind
+    repo-wurzel-relativ."""
     pfad = Path(alt_datei)
     alt = pfad.read_text(encoding="utf-8")
-    neu = _ersetze_konstante(alt, "CHANCE_GEWICHTE", chance_g or {})
-    neu = _ersetze_konstante(neu, "RISIKO_GEWICHTE", risiko_g or {})
-    if neu == alt:
+    neu, c1 = _konstante_aktualisieren(alt, "CHANCE_GEWICHTE", chance_g or {})
+    neu, c2 = _konstante_aktualisieren(neu, "RISIKO_GEWICHTE", risiko_g or {})
+    if not (c1 or c2) or neu == alt:
         return ""
+    von, nach = _diff_pfade(pfad, repo_wurzel)
     diff = difflib.unified_diff(
         alt.splitlines(keepends=True), neu.splitlines(keepends=True),
-        fromfile="a/" + pfad.name, tofile="b/" + pfad.name)
+        fromfile=von, tofile=nach)
     return "".join(diff)
 
 
@@ -343,7 +444,7 @@ def baue(ordner, ergebnis, spur, konfig):
         neu_sizing = kandidat.get("sizing", "flach")
         grund = ("bester Kandidat aendert nur die Sizing-Kurve "
                  "(flach -> %s); dafuer gibt es in Spur 1 noch keinen "
-                 "Anwendungspfad - nur als Hinweis vermerkt." % neu_sizing)
+                 "Anwendungspfad — nur als Hinweis vermerkt." % neu_sizing)
         _bericht_baseline(ordner, ergebnis, spur_name, grund, mit_delta=True)
         return
 
