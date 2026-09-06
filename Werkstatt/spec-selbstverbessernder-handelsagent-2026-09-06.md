@@ -134,17 +134,26 @@ Danach Tag für Tag: Stop getroffen, wenn Tagestief ≤ Stop; Ziel, wenn Tagesho
 Liquidationsprüfung in `dca.py`). `abklingzeit_tage`,
 `max_offene_positionen`, `max_gesamt_usd` gelten wie live.
 
-### Kosten
+### Kosten — und Angleichung von `handeln.py`
 
-0,05 % je Seite (OKX Taker) werden abgezogen. `handeln.py` tut das im
-Papierpfad **nicht**, und `Handelsregeln.md` nennt genau das einen Fehler. Der
-Backtest rechnet ehrlicher als der aktuelle Papierlauf; das steht als Warnung
-im Bericht.
+Konstante `GEBUEHR_PCT = 0.0005` (0,05 % OKX Taker, gemessen 02.09.2026),
+je Seite abgezogen. `ruecktest.py` spiegelt genau diese Konstante.
+
+`scanner/handeln.py` rechnet im Papierpfad heute **ohne** Gebühr — das nennt
+`Handelsregeln.md` einen Fehler. Deshalb ist Teil dieser Ausbaustufe eine
+**kleine Angleichung von `handeln.py`**: der Papierpfad zieht dieselbe
+`GEBUEHR_PCT` je Seite ab, eingerechnet in die journalisierten Beträge
+(Kauf-Zeile mit Gebühr, Verkauf-Zeile nach Gebühr — wie Spur 3). Damit rechnen
+Backtest und laufender Papierlauf gleich.
+`wachen_pruefung.runden_aus_journal()` bleibt unberührt (`erloes − einsatz`,
+jetzt inklusive Gebühr). Der Auswerter vermerkt das Umstellungsdatum: Runden
+davor tragen keine Gebühr und sind nicht direkt vergleichbar.
 
 ### Fenster
 
-Training 180 Tage → Test 60 Tage out-of-sample → Schritt 60. OOS-Runden aller
-Testfenster werden aggregiert. Werte in `konfig.json`.
+Training 120 Tage → Test 30 Tage out-of-sample → Schritt 30. Bei ~1–2 Jahren
+OKX-Historie ergibt das rund 14–20 Testfenster. OOS-Runden aller Fenster werden
+aggregiert. Werte in `konfig.json`.
 
 ### Kennzahlen je Fenster und gesamt
 
@@ -179,8 +188,8 @@ aktuellen und bei Rundenzahl unter der Schwelle.
 
 Ein Kandidat wird nur zum Vorschlag, wenn er die aktuelle Konfig
 - im OOS-Aggregat schlägt **und**
-- in ≥ 2 einzelnen Testfenstern schlägt **und**
-- ≥ 20 OOS-Runden hat.
+- in ≥ `overfit_min_fenster` (Vorgabe 3) einzelnen Testfenstern schlägt **und**
+- ≥ `overfit_min_runden` (Vorgabe 20) OOS-Runden hat.
 
 Sonst: `berichte/JJJJ-MM-TT-kein-vorschlag-spur1.md` mit den Zahlen, warum
 nichts trägt. Der Digest läuft trotzdem (Lehren).
@@ -270,8 +279,8 @@ dokumentiert, in dieser Ausbaustufe nicht aktiv und nicht getestet.
 - `spuren.json` — je Spur: Pfade + Whitelist änderbarer Schlüssel +
   Suchraum-Grenzen.
 - `konfig.json` — `auto_anwenden: false`, `llm`-Block, `such_budget: 300`,
-  `oos_training_tage: 180`, `oos_test_tage: 60`, `oos_schritt_tage: 60`,
-  `segment_mindest_n: 8`, `overfit_min_runden: 20`, `overfit_min_fenster: 2`.
+  `oos_training_tage: 120`, `oos_test_tage: 30`, `oos_schritt_tage: 30`,
+  `segment_mindest_n: 8`, `overfit_min_runden: 20`, `overfit_min_fenster: 3`.
 - Eigenes stdlib-only venv.
 
 ## Wiring
@@ -288,8 +297,9 @@ dokumentiert, in dieser Ausbaustufe nicht aktiv und nicht getestet.
 
 | Modul | Prüft |
 |---|---|
-| `auswerter` | Fixture-Journale → erwartete Segmenttabellen; Permutationstest mit festem Seed reproduzierbar; Segment unter `segment_mindest_n` wird nicht zum Befund |
-| `ruecktest` | Golden-Test (synthetische Kerzen + feste Konfig → exakte Kennzahlen); Merkmals-Matrix == direktes `bewerten()` innerhalb Rundung; Stop-vor-Ziel am selben Tag; `bewerten(k) == bewerten(k, gewichte=None)`; Kosten wirken je Seite |
+| `auswerter` | Fixture-Journale → erwartete Segmenttabellen; Permutationstest mit festem Seed reproduzierbar; Segment unter `segment_mindest_n` wird nicht zum Befund; Runden vor dem Gebühren-Umstellungsdatum getrennt ausgewiesen |
+| `ruecktest` | Golden-Test (synthetische Kerzen + feste Konfig → exakte Kennzahlen); Merkmals-Matrix == direktes `bewerten()` innerhalb Rundung; Stop-vor-Ziel am selben Tag; `bewerten(k) == bewerten(k, gewichte=None)`; `GEBUEHR_PCT` wirkt je Seite und stimmt mit der Konstante in `handeln.py` überein |
+| `handeln.py` (Angleichung) | Papier-Runde: journalisierte Kauf-Zeile enthält Gebühr, Verkauf-Zeile ist nach Gebühr; G/V einer Runde = 2× `GEBUEHR_PCT` kleiner als ohne Angleichung; Live-Pfad unverändert |
 | `suche` | nie ein Wert außerhalb Whitelist / über Deckel (Property-Test über zufällige Suchzustände); Overfitting-Sperre lehnt Ein-Fenster-Treffer ab; Gewichtssumme je Gruppe == 1 |
 | `vorschlag` | angewandter Diff ergibt exakt `wachen.neu.json`; `commit.txt` enthält die vier Zahlen; schreibt nichts nach `scanner/` |
 | `anwenden` | Abbruch bei schmutzigem Baum; Abbruch bei Denylist-Schlüssel; `.bak` geschrieben; CRLF bleibt CRLF (Fixture mit `\r\n`); nur betroffene Dateien gestaged; Commit-Nachricht trägt die Co-Authored-By-Zeile |
