@@ -51,7 +51,17 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     konfig, spuren = _konf()
     spur = spuren[spur_name]
     spur.setdefault("name", spur_name)
-    wachen = json.loads((WURZEL / spur["wachen"]).resolve().read_text("utf-8"))
+    # Die Pfade in spuren.json sind relativ zum verbesserer/-Ordner
+    # ("../scanner/..."). auswerter.befund loest spur["journal"] und
+    # spur["berichte"] gegen das aktuelle Arbeitsverzeichnis auf - aus der
+    # Repo-Wurzel gestartet zeigen sie ins Leere, und der Befund kaeme still
+    # mit runden_gesamt: 0 zurueck. Einmal hier absolut gegen WURZEL aufloesen,
+    # damit die ganze Kette dieselben Pfade sieht.
+    _pfad_schluessel = ("journal", "zustand", "berichte", "wachen",
+                        "bewertung_datei")
+    spur = {**spur, **{k: str((WURZEL / spur[k]).resolve())
+                       for k in _pfad_schluessel if k in spur}}
+    wachen = json.loads(Path(spur["wachen"]).read_text("utf-8"))
     watchlist = wachen["watchlist"]
     tage = konfig["oos_training_tage"] + 6 * konfig["oos_test_tage"]
 
