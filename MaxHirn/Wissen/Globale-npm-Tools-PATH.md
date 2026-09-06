@@ -3,7 +3,7 @@ id: 20260901-globale-npm-tools-path
 title: 'Globale npm-Tools und PATH'
 tags: [system]
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-06
 related:
   - id: 20260831-python-versionen
   - id: 20260830-benutzerprofil
@@ -53,3 +53,7 @@ Für die aktuelle Sitzung ohne Neustart:
 ```powershell
 $env:Path += ";$env:APPDATA\npm"
 ```
+
+## Verwandt
+
+[[Python-Versionen]] — dieselbe Klasse Problem für die Python-Laufzeiten.

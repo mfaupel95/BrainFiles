@@ -3,7 +3,7 @@ id: 20260830-hardware
 title: 'Hardware'
 tags: [hardware]
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-06
 related: [20260830-hardware-checkliste-d5]
 summary: 'Laufwerke des Arbeitsrechners, Plattendiagnose und der ungeklärte Stromausfall.'
 ---
@@ -975,4 +975,4 @@ laufende Claude-Instanzen — eine Folge der Mehrfachsitzungen-Regel aus
 
 **Messung:** Fehlercode 3221225786 sollte damit nicht mehr vorkommen. 
 
-**Verwandt:** [[Schutzregeln]] (Mehrfach-Sitzungen), `Agenten/sichern.ps1` (Implementierung)
+**Verwandt:** [[Schutzregeln]] (Mehrfach-Sitzungen), [[Hardware-Checkliste-D5]] (Schrittfolge D5/Kernel-Power 41), `Agenten/sichern.ps1` (Implementierung)

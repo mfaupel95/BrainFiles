@@ -3,8 +3,8 @@ id: 20260902-skill-bibliothek
 title: 'Skill-Bibliothek'
 tags: [betrieb]
 created: 2026-09-02
-updated: 2026-09-03
-related: [20260830-verbindungen, 20260830-ordnerstruktur, 20260830-schutzregeln]
+updated: 2026-09-06
+related: [20260830-verbindungen, 20260830-ordnerstruktur, 20260830-schutzregeln, 20260830-wiederholbare-aufgaben]
 summary: 'Selbstgeschriebene Skills liegen serverseitig im Anthropic-Konto; der Ordner unter AppData ist nur ein Sync-Cache — nicht in Git, nicht in der Sicherung.'
 ---
 
@@ -66,3 +66,7 @@ Die Frontmatter-`description` jedes Skills steht in **jedem** Claude-Code-Transk
 unter `.claude/projects/<projekt>/*.jsonl` (Abschnitt der verfügbaren Skills). Ein
 Vergleich über die Zeitstempel der Transkripte zeigt, ob und wann sie sich geändert
 hat — im Fall oben war sie zeichengleich, der Verlust betraf also nur den Rumpf.
+
+## Verwandt
+
+[[Wiederholbare-Aufgaben]] — woraus die Skills entstehen.

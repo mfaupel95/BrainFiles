@@ -3,8 +3,8 @@ id: 20260831-python-versionen
 title: 'Python-Versionen'
 tags: [betrieb, ki-agenten]
 created: 2026-08-31
-updated: 2026-08-31
-related: [20260830-hermes, 20260830-projekte]
+updated: 2026-09-06
+related: [20260830-hermes, 20260830-projekte, 20260901-globale-npm-tools-path]
 summary: 'Installierte Python-Versionen und venv-Konfigurationen nach dem Upgrade auf 3.13.'
 ---
 
@@ -107,4 +107,4 @@ der Name der Distribution. Das ist kein Defekt.
 
 ## Verwandt
 
-[[Hermes]] · [[Projekte]]
+[[Hermes]] · [[Projekte]] · [[Globale-npm-Tools-PATH]]

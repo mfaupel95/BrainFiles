@@ -3,8 +3,8 @@ id: 20260830-wiederholbare-aufgaben
 title: 'Wiederholbare Aufgaben'
 tags: [betrieb]
 created: 2026-08-28
-updated: 2026-09-02
-related: [20260830-routinen]
+updated: 2026-09-06
+related: [20260830-routinen, 20260902-skill-bibliothek]
 summary: 'Welche Arbeit sich wiederholt hat und welche Skills daraus entstanden sind.'
 ---
 
@@ -104,4 +104,4 @@ eingespielte Skill-Texte, Nachrichten anderer Sitzungen). Das Skript filtert sie
 Tokens, weil Max sie eingetippt hat. Ausgabedateien der Auswertung gehören ins
 Scratchpad, nie in den Vault und nie in einen Commit.
 
-Verwandt: [[Werkzeuge]], [[Schutzregeln]], [[Routinen]], [[Portabilitaet]]
+Verwandt: [[Werkzeuge]], [[Schutzregeln]], [[Routinen]], [[Portabilitaet]], [[Skill-Bibliothek]]

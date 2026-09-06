@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-08-31
+updated: 2026-09-06
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -110,7 +110,7 @@ stimmen sie so.
 ## Gedächtnis-Zuständigkeit
 
 `Wissen/` ist die einzige Wahrheit. `Hermes/memories/` ist Arbeitsspeicher und
-wird nie als Beleg zitiert. Festgehalten in [[../AGENTS.md|AGENTS.md]], die
+wird nie als Beleg zitiert. Festgehalten in [[AGENTS.md]], die
 Hermes anstelle der `CLAUDE.md` liest.
 
 ## Offene Punkte
@@ -271,7 +271,7 @@ Max startet das Skript selbst; danach ist eine Neuanmeldung nötig.
 
 ## Verwandt
 
-[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[Python-Versionen]] · [[../AGENTS.md|AGENTS.md]]
+[[Verbindungen]] · [[Projekte]] · [[Portabilitaet]] · [[Hardware]] · [[Python-Versionen]] · [[AGENTS.md]]
 
 ## Störung 26.08.2026 — „Problem mit den API-Keys"
 
