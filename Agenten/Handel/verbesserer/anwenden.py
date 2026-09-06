@@ -276,7 +276,10 @@ def anwenden(ordner, spur, repo):
                     try:
                         wert = float(neu_obj[key])
                     except (KeyError, TypeError, ValueError):
-                        continue
+                        return {"ok": False,
+                                "grund": ("kein numerischer Wert fuer "
+                                          "Bereichsschluessel: %s" % key),
+                                "commit": None}
                     if wert < lo or wert > hi:
                         return {"ok": False,
                                 "grund": ("ausserhalb des erlaubten Bereichs: "

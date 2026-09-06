@@ -47,7 +47,7 @@ aus `oos_*`.
 | `digest.py` | TP5: woechentlicher LLM-Aufruf, der nur *annotiert* (Empfehlungen priorisieren, Lehren nach `Werkstatt/`). Bei `modus: aus` bleibt alles leer. |
 | `lauf.py` | Orchestrator: `kerzen -> auswerter -> suche -> vorschlag -> digest`. Harter Abbruch nur ohne Kerzen-Cache. |
 | `requirements.txt` | Leer bis auf Kommentar -- nur Standardbibliothek, eigenes venv wie `scanner/.venv`. |
-| `tests/` | 90 Tests (`python -m unittest discover -s tests`), Fixtures unter `tests/fixtures/`. |
+| `tests/` | rund 100 Tests (`python -m unittest discover -s tests`), Fixtures unter `tests/fixtures/`. |
 | `.venv/` | Eigenes venv (Python 3.13, nur Standardbibliothek). Die Routine zeigt auf `.venv/Scripts/python.exe`. |
 
 Nicht versioniert (in `.gitignore`, Rauschen): `kerzen/` (Kerzen-Cache),

@@ -91,7 +91,12 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     # berichte/erledigt/ und berichte/abgelehnt/ liegen daneben, nicht darin.
     if ordner.exists():
         shutil.rmtree(ordner, ignore_errors=True)
-    ordner.mkdir(parents=True)
+        # Falls rmtree unter Windows an einer offenen Datei haengen bleibt:
+        # den Rest ueberschreiben statt am FileExistsError den Lauf abbrechen.
+        for rest in ordner.glob("*") if ordner.exists() else []:
+            if rest.is_file():
+                rest.unlink(missing_ok=True)
+    ordner.mkdir(parents=True, exist_ok=True)
 
     befund = auswerter.befund(spur, konfig, ordner)
     basis = suche.basis_kandidat(wachen, bewertung.CHANCE_GEWICHTE,

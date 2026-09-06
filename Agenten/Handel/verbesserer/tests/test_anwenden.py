@@ -213,6 +213,27 @@ class TestAnwenden(unittest.TestCase):
         self.assertEqual(wachen.read_bytes(), WACHEN_ALT.encode("utf-8"))
         self.assertFalse((self.heim / "bak").exists())
 
+    def test_nichtnumerischer_bereichswert_bricht_ab(self):
+        # Ein Bereichsschluessel ([min,max]) mit null/String statt Zahl -
+        # oder ganz entfernt - muss fail-closed abbrechen, nicht durchrutschen.
+        repo, wachen, bew = self._basis_repo()
+        ordner = repo / "v"
+        ordner.mkdir()
+        neu = WACHEN_ALT.replace('"mindest_score": 60',
+                                 '"mindest_score": null')
+        (ordner / "wachen.neu.json").write_text(neu, "utf-8", newline="")
+        (ordner / "bewertung.patch").write_text("", "utf-8")
+        (ordner / "commit.txt").write_text(
+            "verbesserer: Test\n\n" + CO_TRAILER + "\n", "utf-8")
+        r = anwenden.anwenden(ordner, self._spur(wachen, bew), repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("numerischer Wert", r["grund"])
+        self.assertIsNone(r["commit"])
+        self.assertEqual(wachen.read_bytes(), WACHEN_ALT.encode("utf-8"))
+        self.assertFalse((self.heim / "bak").exists())
+        self.assertEqual(
+            len(_git(repo, "log", "--oneline").stdout.strip().splitlines()), 1)
+
     # --- "wirft nie" auch bei Ablage-Fehler (F8) -------------------
     def test_ablage_fehler_meldet_trotzdem_erfolg(self):
         repo, wachen, bew = self._basis_repo()
