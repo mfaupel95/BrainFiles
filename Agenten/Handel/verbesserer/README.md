@@ -72,9 +72,12 @@ Woechentlich uebernimmt das die Routine `Agenten/Routinen/verbesserer.ps1`
   erst nach einem `/ja` von Max im Dauerlauf.
 - **Fasst keine Deckel an.** `spuren.json` erlaubt nur Tore, Gewichte und die
   Watchlist in einem festen Wertebereich. `max_pro_trade_usd`,
-  `max_gesamt_usd`, `max_offene_positionen`, der Pflicht-Stop und
-  `handel_erlaubt` stehen auf einer **fest verdrahteten Denylist** in
-  `anwenden.py`, die immer gewinnt -- egal, was `spuren.json` deklariert.
+  `max_gesamt_usd`, `max_offene_positionen`, `handel_erlaubt` und die
+  `freigabe/drawdown/herzschlag/kill_switch`-Bloecke stehen auf einer **fest
+  verdrahteten Denylist** in `anwenden.py`, die immer gewinnt -- egal, was
+  `spuren.json` deklariert. Der Pflicht-Stop laesst sich nur innerhalb des
+  in `anwenden.py` fest gesetzten Fensters von 4--15 % verschieben, nie
+  abschalten.
 - **`auto_anwenden` ist `false`** (`konfig.json`) und es gibt keinen Code, der
   `true` auswertet. Automatisches Anwenden braeuchte erst eine Aenderung an
   `Wissen/Handelsregeln.md`.
