@@ -22,7 +22,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Kraken-Spur3` |
 | sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
-| täglich 21:00 | Zweitkopie nach `O:` | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
+| täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
@@ -54,6 +54,29 @@ gewonnen. Die Zweitkopie liegt deshalb auf `O:` (Disk 1) und enthält den
 unersetzlichen Teil ohne die Medienlast — 7,1 GB in 13.767 Dateien, gemessen
 **8 Sekunden** (intern über NVMe). Videos, Musik, Software und Posteingang
 (35,8 GB) bleiben draußen; sie stehen weiterhin in der Hauptsicherung auf `G:`.
+
+## Die Zweitkopie: Ziel ist J:, nicht O:
+
+**Korrektur des Ziels am 07.09.2026.** Der Kopf des Skripts
+`sichern-zweitkopie.ps1` sagt „nach O:“, die Tabelle oben auch — **das
+tatsächliche Ziel ist `J:\\MaxHirn-Zweitkopie`** (Zeile `$ziel = 'J:\\MaxHirn-Zweitkopie'`),
+und das ist gewollt: J: ist die externe WD-My-Book-Sicherungsplatte, auf der
+die Zweitkopie physisch getrennt von G: liegt. Die Notizen in
+[[Dashboard]]/[[Routinen]], die „O:“ nennten, bezogen sich auf den früheren
+Zustand. **O: ist seit dem 06.09.2026 durch die Archiv-Junctions belegt** und
+steht für die Zweitkopie nicht mehr zur Verfügung.
+
+Der Lauf vom 06.09.2026 21:07 (robocopy-Code 3, 635 „Extras“) war daher kein
+Fehler: Das Skript lief zum ersten Mal gegen das J:-Ziel und räumte dort
+(155 MB) Altbestand weg. Der Zielpfad in Code und Kommentar bleibt J:.
+
+**Was das für die Routine bedeutet:**
+
+| | |
+|---|---|
+| Ziel | `J:\\MaxHirn-Zweitkopie` (gewollt, bestätigt 07.09.2026) |
+| Warum nicht O: | O: ist seit 06.09.2026 durch Archiv-Junctions belegt |
+| Achtung | J: (WD My Book) hat 479 unkorrigierte Lesefehler — siehe [[Hardware]]. Die Zweitkopie liegt damit auf einer angeschlagenen Platte. |
 
 ## Die dritte Kopie: außer Haus, von Hand
 
