@@ -3,7 +3,7 @@ id: 20260830-verbindungen
 title: 'Verbindungen'
 tags: [mcp, betrieb]
 created: 2026-08-27
-updated: 2026-09-02
+updated: 2026-09-07
 related: [20260830-werkzeuge, 20260830-hermes]
 summary: 'Welche Dienste und MCP-Server erreichbar sind und welche davon authentifiziert.'
 ---
@@ -324,7 +324,26 @@ jedes Servers aufrufen (`archiv_statistik`, `kraken_status`, `list_calendars`,
 dass der Prozess startet — nicht, dass er funktioniert.** Filesystem und MCP
 Memory standen beide in der Liste und scheitern bei jedem Aufruf.
 
-## Kandidaten für später
+## Claude Code uber OmniRoute (seit 07.09.2026)
+
+`setup-claude`-Profile liegen in `~/.claude/profiles/<modell>/settings.json` und
+zeigen auf `http://127.0.0.1:20128` (der lokale Router`. Aktiv fuer
+`auto/best-coding` (und `-fast`). Aufruf:
+
+```
+CLAUDE_CONFIG_DIR="C:/Users/faupe/.claude/profiles/auto-best-coding" \
+ANTHROPIC_API_KEY="$OMNIROUTE_API_KEY" claude -p "…"
+```
+
+Zwei Fallen:
+- `ANTHROPIC_API_KEY` muss gesetzt sein (der Router verlangt Auth, 401
+  ohne Key**. Der Schlussel steht **nicht** in den settings.json und gehoert
+  auch nicht hinein (einzige Ablage [[Zugaenge]]). Beim Delegieren also die
+  Umgebungsvariable mitgeben, nicht die Datei andern.
+- `unrecognized_model: auto/best-coding` in der Warnung betrifft nur die
+  Session-Titel-Generierung — die eigentliche Antwort kommt korrekt. Harmlos.
+
+## Kandidaten fur spater
 
 - **GitHub** — sobald das System versioniert werden soll
 - **Google Workspace CLI** — Alternative zu den Connectors, läuft lokal
