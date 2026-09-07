@@ -30,6 +30,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
 | dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht | `Handel/dauerlauf.py` | **noch nicht eingeplant** — 03.09.2026 gebaut und einmal von Hand gelaufen; wartet auf `TELEGRAM_TOKEN` |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
+| werktags 07:15 | Marktüberblick (nur lesen) | `/marktbriefing` über `marktbriefing.ps1` | **Registrierbefehl bereit, Aufgabe noch nicht angelegt** — 07.09.2026, siehe Abschnitt „Marktbriefing" unten |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 
 Die eingeplanten laufen über die **Windows-Aufgabenplanung**, nicht über

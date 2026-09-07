@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-09-06
+updated: 2026-09-07
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -83,7 +83,9 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-handelsbots` — **Handelsbots auf OKX** — `Wissen/Handelsbots.md` — Gemessene Ergebnisse der DCA-Bots und welche Stellschraube tatsächlich wirkt.
 - `20260831-marktscanner` — **Marktscanner OKX** — `Wissen/Marktscanner.md` — Täglicher Krypto-Scanner mit begrenztem Selbsthandel: Entscheidung, Grenzen, Scharfschalt-Weg, Stand.
 - `20260906-verbesserer` — **Verbesserer — Spur 1** — `Wissen/Verbesserer.md` — Wöchentliche Schleife mit OOS-geprüften Vorschlägen für bessere Scanner-Parameter: Entscheidung, Whitelist/Denylist, schwache Overfitting-Sperre, Anwende-Weg, Stand.
+- `20260907-marktbriefing` — **Marktbriefing — Routine und Verfahren** — `Wissen/Marktbriefing.md` — Lesende Routine, die aus den fertigen traderhub-Boards (Makro, Sektorrotation, Einzelwerte) einen geprüften Marktüberblick zusammenträgt und als Monatsnotiz fortschreibt. Kein Handel.
 - `20260830-marktlage-august-2026` — **Marktlage August 2026** — `Wissen/Marktlage-August-2026.md` — Geprüfter Marktstand samt Bewertung der zugrunde liegenden Quelle.
+- `20260907-marktlage-september-2026` — **Marktlage September 2026** — `Wissen/Marktlage-September-2026.md` — Laufende Monatsnotiz mit den Tagesständen aus dem Marktbriefing (traderhub-Boards, geprüft, als Einordnung).
 - `20260902-xrp-analyse-sta` — **XRP-Analyse STA Solutions — September 2026** — `Wissen/XRP-Analyse-STA-September-2026.md` — Charttechnik- und Indikatoren-Analyse zu XRP aus einem YouTube-Beitrag desselben Kanals: Preismarken (v. a. 3,30 USD), ITW-Methodik, Positionierungsvorschlag, kritische Einordnung.
 - `20260905-btc-analyse-sta` — **BTC-Analyse STA Solutions — September 2026** — `Wissen/BTC-Analyse-STA-September-2026.md` — Charttechnik- und Volumen-Analyse zu Bitcoin (OBV/CVD-Squeeze-Diagnostik, RSI/MACD-Divergenzen, strukturelle Marken, Primärszenario) aus einem YouTube-Beitrag desselben Kanals.
 - `20260902-analyse-quellen` — **Analyse-Quellen** — `Wissen/Analyse-Quellen.md` — Wiederkehrende externe Analyse-Quellen (STA Solutions, xGhozt Prophecies) mit fester Einstufung, damit die Quellenbewertung nicht je Einzelnotiz neu geschrieben wird.
