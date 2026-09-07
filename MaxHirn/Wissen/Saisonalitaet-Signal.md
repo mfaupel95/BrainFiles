@@ -3,8 +3,8 @@ id: 20260901-saisonalitaet-signal
 title: 'Saisonalität im XPERP-Signal'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-02
-related: [20260901-xperp-handel, 20260830-handelsbots, 20260902-handelsregeln]
+updated: 2026-09-08
+related: [20260901-xperp-handel, 20260830-handelsbots, 20260902-handelsregeln, 20260908-volumen-drift-signal]
 summary: 'Warum der Closed-Source-Indikator xGhozt Prophecies als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem seine duenne Stichprobe nennt.'
 ---
 
@@ -64,4 +64,8 @@ Die Zeile „Saisonalität <Wochentag> <hh>:00 UTC" zeigt Richtung, Auf-Quote,
 `n` und mittlere Kerzenrendite; eine zweite Zeile die feinere Aggregation
 Wochentag+Phase, sobald sie ≥ 3 Treffer hat.
 
-Verwandt: [[XPERP-Handel]], [[Handelsbots]], [[Schutzregeln]]
+Seit 08.09.2026 gibt es einen zweiten hoch gewichteten Baustein,
+[[Volumen-Drift-Signal]] — dort steht auch die Vorrangregel für den Fall,
+dass beide sich widersprechen.
+
+Verwandt: [[XPERP-Handel]], [[Handelsbots]], [[Volumen-Drift-Signal]], [[Schutzregeln]]

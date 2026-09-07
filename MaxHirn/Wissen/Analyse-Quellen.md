@@ -3,12 +3,13 @@ id: 20260902-analyse-quellen
 title: 'Analyse-Quellen'
 tags: [handel]
 created: 2026-09-02
-updated: 2026-09-05
+updated: 2026-09-08
 related:
   - id: 20260830-marktlage-august-2026
   - id: 20260902-xrp-analyse-sta
   - id: 20260905-btc-analyse-sta
   - id: 20260901-saisonalitaet-signal
+  - id: 20260908-volumen-drift-signal
 summary: 'Wiederkehrende externe Analyse-Quellen (YouTube-Kanäle, Indikatoren) mit fester Einstufung — damit die Quellenbewertung nicht in jeder Einzelnotiz neu geschrieben wird.'
 ---
 
@@ -52,6 +53,23 @@ verweisen per `[[…]]` hierher, statt die Bewertung zu wiederholen.
   auf schmalem Fenster, kein Backtest. Vor dem Vertrauen in eine gekippte
   Richtung immer `n` lesen.
 - **Ausgewertet in:** [[Saisonalitaet-Signal]].
+
+## Swift Algo X
+
+- **Was:** TradingView-Indikator, Invite-Only/Closed-Source (Autor
+  swiftalgo). Kombiniert laut Eigenbeschreibung eine Volumen-Drift-Momentum-
+  Engine, einen 144er-Parameter-Optimizer und ein 8-Timeframe-Trend-
+  Dashboard.
+- **Nutzung im eigenen System:** Zwei der drei Bausteine im Prinzip
+  nachgebaut (Volumen-Drift-Momentum + vereinfachte Mehrfach-Zeitebenen-
+  Bestätigung) in `Agenten/Handel/xperp/indikatoren.py`
+  (`volumen_drift()`), hoch gewichtet ins XPERP-Signal mit Vorrang vor der
+  Saisonalität. Zusätzlich eigenständige TradingView-Fassung unter
+  `Werkstatt/Ausgabe/2026-09-08_Volumen-Drift-Momentum.pine`. Der Parameter-
+  Optimizer (Meta-Werkzeug, kein Signal) wurde bewusst weggelassen.
+- **Einstufung:** kein Pine-Code einsehbar, nur die auf der Seite
+  beschriebene Methodik nachgebaut, nichts kopiert.
+- **Ausgewertet in:** [[Volumen-Drift-Signal]].
 
 ## Aufnahmekriterium
 

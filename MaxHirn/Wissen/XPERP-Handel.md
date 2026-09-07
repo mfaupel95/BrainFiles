@@ -3,8 +3,8 @@ id: 20260901-xperp-handel
 title: 'XPERP-Handel auf OKX'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-03
-related: [20260901-saisonalitaet-signal, 20260902-handelsregeln]
+updated: 2026-09-08
+related: [20260901-saisonalitaet-signal, 20260902-handelsregeln, 20260908-volumen-drift-signal]
 summary: 'Wo die gehebelten OKX-Perpetuals liegen, welche Werte 5x tragen, warum der Hebel aus dem Stop fällt statt umgekehrt — und seit 03.09.2026 die 45 Aktien und 4 Rohstoffe samt Ruhekerzen-Filter.'
 ---
 
@@ -185,6 +185,16 @@ Seit 01.09.2026 rechnet `indikatoren.saisonalitaet()` eine Kalenderstatistik
 `lage()` die Richtung setzen oder gegen SuperTrend+EMA kippen. Die Stichprobe
 ist dünn (~7 Kerzen je Wochentag auf 50 Tagen), deshalb nennt jede Ausgabe
 `n`. Eigene Notiz mit Begründung: [[Saisonalitaet-Signal]].
+
+### Volumen-Drift-Momentum greift ins Signal — hoch gewichtet, mit Vorrang
+
+Seit 08.09.2026 rechnet `indikatoren.volumen_drift()` eine volumengewichtete,
+ATR-normierte Preisdrift mit Mehrfach-Zeitebenen-Bestätigung (Nachbau des
+Prinzips von „Swift Algo X", TradingView, Invite-Only) und darf in `lage()`
+ebenfalls die Richtung setzen oder kippen — geprüft nach der Saisonalität und
+bei Widerspruch zu ihr vorrangig. Eigenständige TradingView-Fassung unter
+`Werkstatt/Ausgabe/2026-09-08_Volumen-Drift-Momentum.pine`. Eigene Notiz mit
+Begründung und Vorrangregel: [[Volumen-Drift-Signal]].
 
 ### Die Kennzahl für Grid-Eignung heißt Efficiency Ratio
 

@@ -93,6 +93,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260901-chip-xperp` — **CHIP XPERP auf OKX** — `Wissen/CHIP-XPERP.md` — Analyse für einen gehebelten Anlauf auf CHIP: 14-Tage-Fenster täuscht, reale 133-Tage-Historie negativ, alle drei Tore zu.
 - `20260901-xperp-handel` — **XPERP-Handel auf OKX** — `Wissen/XPERP-Handel.md` — Wo die gehebelten Perpetuals liegen, welche Werte 5x tragen und warum der Hebel aus dem Stop fällt statt umgekehrt.
 - `20260901-saisonalitaet-signal` — **Saisonalität im XPERP-Signal** — `Wissen/Saisonalitaet-Signal.md` — Warum der Closed-Source-Indikator „xGhozt Prophecies" als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem laut seine dünne Stichprobe nennt.
+- `20260908-volumen-drift-signal` — **Volumen-Drift-Momentum im XPERP-Signal** — `Wissen/Volumen-Drift-Signal.md` — Eigener Nachbau des Prinzips von Swift Algo X (TradingView, Invite-Only) — volumengewichtete Preisdrift mit Mehrfach-Zeitebenen-Bestätigung, hoch gewichtet ins Signal, mit Vorrang vor der Saisonalität.
 
 ### Person und Fachliches
 
