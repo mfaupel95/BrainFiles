@@ -3,7 +3,7 @@ id: 20260831-marktscanner
 title: 'Marktscanner OKX'
 tags: [handel]
 created: 2026-08-31
-updated: 2026-09-02
+updated: 2026-09-07
 related: [20260830-handelsbots, 20260902-handelsregeln, 20260830-schutzregeln, 20260830-routinen, 20260830-verbindungen, 20260831-python-versionen]
 summary: 'Täglicher Krypto-Scanner mit begrenztem Selbsthandel auf OKX — Entscheidung, Grenzen, Scharfschalt-Weg und Stand.'
 ---
@@ -70,6 +70,39 @@ Fehlt eine, läuft Papierhandel und es wird gesagt, welche Sperre zu war.
 - **Der Live-Order-Pfad ist ungetestet** (`okx.markt_kauf` / `markt_verkauf` /
   `stop_setzen`). Vor dem ersten scharfen Lauf einen einzelnen Wert mit
   Kleinstbetrag von Hand ausführen und in der OKX-Oberfläche gegenprüfen.
+
+## Stand 2026-09-07 — zwei Sperren offen, eine Verkürzung als Befund
+
+Am 06./07.09.2026 hat sich der Freigabestand verschoben. **Live bleibt
+gesperrt**, aber aus weniger Gründen als vorher:
+
+| | vorher | jetzt |
+|---|---|---|
+| Sperre 2 (OKX-Schlüssel) | leer | **gesetzt** — von Max selbst als Benutzervariablen, kein Agent hat sie gesehen |
+| Bedingung 4 (Journal außer Haus) | `null` | `Q:\Handel_Journal` |
+| Bedingung 1, Wochen | 6 | **3** — von Max angeordnet |
+| Bedingung 1, Runden | 0 von 50 | 1 von 50 |
+| Sperre 1 (`handel_erlaubt`) | `false` | `false` |
+
+**Die Verkürzung von 6 auf 3 Wochen ist ein Befund, kein Betriebsvorgang.**
+[[Handelsregeln]] verlangt für jede Lockerung gerechnete Gegenzahlen; die gibt
+es hier nicht. Für diesen Scanner existiert **kein Backtest-Skript** — die
+Rückrechnungen in `Handel/README.md` (DCA, Grid) betreffen andere Mechaniken,
+nicht die Score-Tore des Scanners. Die Begründung „Krypto ist schnelllebig"
+ist plausibel, aber sie ist eine Erwartung, keine Messung. Ein erster Commit
+zu dieser Änderung behauptete eine Validierung durch ein Skript, das es nicht
+gibt; das ist mit `7d4210e` zurückgenommen.
+
+**Was die Verkürzung tatsächlich ändert, ist wenig.** Die Wochen sind nicht
+die bindende Grenze — die **50 Runden** sind es. Nach einer Woche Papierlauf
+steht Runde 1; bei diesem Tempo werden die 50 Runden vor Ende des Jahres nicht
+erreicht, egal ob 3 oder 6 Wochen verlangt sind. Wer die Freigabe wirklich
+beschleunigen will, ändert nicht die Wochenzahl, sondern muss erklären, warum
+50 Runden aus so wenigen Kalendertagen aussagekräftig wären.
+
+**Realisiert sind +7,20 USD** aus einer geschlossenen Runde (LINK 50,00 →
+57,20). Der Kassensaldo ist negativ, weil Kapital in offenen Positionen
+gebunden ist — das ist kein Verlust und darf nicht als einer gelesen werden.
 
 ## venvs — Stand nach dem Python-Neustand (31.08.2026)
 

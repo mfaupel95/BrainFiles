@@ -3,8 +3,8 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-09-03
-related: [20260830-wiederholbare-aufgaben]
+updated: 2026-09-07
+related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
 
@@ -28,7 +28,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
-| dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht | `Handel/dauerlauf.py` | **noch nicht eingeplant** — 03.09.2026 gebaut und einmal von Hand gelaufen; wartet auf `TELEGRAM_TOKEN` |
+| dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht ab 08:00 | `Handel/dauerlauf.py` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf` (Anmeldung) + Wächter. `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` seit 07.09.2026 gesetzt, siehe Abschnitt „Der Telegram-Melder" |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | werktags 07:15 | Marktüberblick (nur lesen) | `/marktbriefing` über `marktbriefing.ps1` | **Registrierbefehl bereit, Aufgabe noch nicht angelegt** — 07.09.2026, siehe Abschnitt „Marktbriefing" unten |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
@@ -236,6 +236,38 @@ Der Wächter prüft `dauerlauf.pid` und endet sofort, wenn schon einer läuft;
 nach einem Kernel-Power-41-Neustart ([[Hardware]]) startet er den Dauerlauf
 wieder. Der Dauerlauf selbst läuft seit 06.09.2026 17:37 (PID 55000, Takt
 15 min) und protokolliert in `Routinen/logs/handel-dauerlauf-letzter-lauf.log`.
+
+### Der Telegram-Melder — eine Quelle, nicht zwei
+
+Seit 07.09.2026 sind `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` als
+Benutzervariablen gesetzt; ein Testversand an den Gruppenchat ist angekommen.
+Damit sendet der Dauerlauf, was er ohnehin konnte.
+
+**Der Tagesbericht braucht keine eigene Aufgabe.** `dauerlauf.py` prüft in
+jedem Durchlauf, ob heute schon ein Bericht raus ist, und sendet ihn beim
+ersten Durchlauf ab 8 Uhr selbst (`dauerlauf.py`, Abschnitt „Tagesbericht
+faellig?"). Am 07.09.2026 wurde daneben eine zweite Aufgabe
+`Tagesbericht-Telegram` angelegt, die dasselbe um 08:00 getan hätte — sie ist
+noch am selben Tag wieder entfernt worden. **Zwei Quellen für denselben Bericht
+sind kein doppelter Schutz, sondern zwei Stellen, an denen er falsch werden
+kann.** Wer den Bericht ändern will, ändert `tagesbericht.py`.
+
+**Eine gesetzte Umgebungsvariable erreicht keinen laufenden Prozess.** Der
+Dauerlauf liest sie beim Start; steht er seit gestern, kennt er den Token
+nicht. Nach dem Setzen also einmal beenden — der Wächter startet ihn innerhalb
+von 30 Minuten neu, dann mit Token. Prüfen lässt sich das am einfachsten daran,
+ob am nächsten Morgen ein Bericht ankommt.
+
+⚠️ **Der Bot-Token ist verbrannt und gehört rotiert.** Beim Einrichten am
+07.09.2026 wurde er mehrfach im Klartext in Shell-Befehle geschrieben, statt
+einmal gesetzt und danach nur noch als `$env:TELEGRAM_TOKEN` referenziert zu
+werden. Er steht damit in der PowerShell-History und im Sitzungsprotokoll —
+beides Orte, an denen ein Schlüssel nach [[Schutzregeln]] nie stehen darf. Ein
+Telegram-Token lässt sich bei BotFather mit `/revoke` folgenlos tauschen; bis
+dahin gilt: Wer die History hat, kann in den Gruppenchat schreiben. Lesen kann
+er nichts, was er nicht ohnehin sieht, und Handelsbefehle nimmt der Dauerlauf
+nur von `TELEGRAM_CHAT_ID` an — der Schaden ist begrenzt, aber er ist nicht
+null.
 
 ### Kraken-Spur 3: derselbe Zuschnitt, andere Börse
 
