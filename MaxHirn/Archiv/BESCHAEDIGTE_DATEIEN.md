@@ -106,6 +106,30 @@ das Einladungsschreiben zur Meisterprüfung — haben auch auf O: keine intakte
 Fassung. Von 686 Zielen fanden sich 639 nur in bereits zerstörter Form wieder,
 was die alte Erfahrung bestätigt: Namensgleichheit sagt fast nichts.
 
+## Nachprüfung 08.09.2026: nach dem Umzug auf `O:\Archiv`
+
+Das Archiv liegt seit dem 07.09.2026 physisch auf `O:\Archiv`. Erster
+`pruefe_signaturen.py`-Lauf gegen den neuen Ort — 64.456 Dateien:
+
+| | Anzahl |
+|---|---|
+| zerstört (0xFF) | **644** |
+| leer (0 Byte) | 42 |
+| fremde Signatur (kein Schaden) | 17 |
+
+**Unverändert gegenüber dem Stand nach der O:-Rettung vom 20.08.2026.** Der
+Umzug (robocopy) hat keinen neuen Schaden gebracht und keinen alten geheilt.
+HEIC 104 · PNG 196 · JPG 147 · APK 70 · PDF 61 · FLAC 21 · PFX 6 — die
+PDF-Lage ist unberührt.
+
+`pruefe_signaturen.py` und `rette_dateien.py` lösten den Archivpfad bis hierher
+relativ zum Skript auf und hätten nach dem Umzug die fast leere alte Vault-Lage
+geprüft — ein Fehlbefund „0 Schäden". Beide lesen jetzt `ARCHIV_ROOT` mit
+Rückfall auf die alte Lage (Commit `0905541`). Aufruf unverändert.
+
+Offen bleibt die Zwillingssuche auf **C:, G:, H:, I:, J:** — dort wurde zuletzt
+am 08.08.2026 geprüft, mit dem alten Verfahren ohne Hash-Vergleich.
+
 ## Getrennt davon: der Index kann HEIC nicht lesen
 
 Der Indexlauf nach der Rettung meldete 19 Fehler. Die Dateien sind **in
@@ -138,5 +162,6 @@ Die 61 verbleibenden PDFs sind einzeln aufgeführt in
 [BESCHAEDIGTE_PDFS.md](BESCHAEDIGTE_PDFS.md) — mit Rettungsgeschichte,
 Fundorten und der Liste dessen, was endgültig fehlt.
 
-**Stand:** 2026-08-20 · Werkzeug: `ArchivSuche/pruefe_signaturen.py` ·
+**Stand:** 2026-09-08 (Nachprüfung nach O:-Umzug; Schadenszahlen seit
+2026-08-20 unverändert) · Werkzeug: `ArchivSuche/pruefe_signaturen.py` ·
 Skill: `schaden`
