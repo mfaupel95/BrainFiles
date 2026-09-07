@@ -67,7 +67,8 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-benutzerprofil` — **Benutzerprofil** — `Wissen/Benutzerprofil.md` — Was im Windows-Benutzerprofil liegt, was davon zum Betrieb gehört und was Altlast ist.
 - `20260830-ki-ablagen-benutzerordner` — **KI-Ablagen im Benutzerordner** — `Wissen/KI-Ablagen-im-Benutzerordner.md` — Welche KI-Daten außerhalb von `BrainFiles/` liegen, warum sie dort bleiben und was bei einem Neuaufsetzen verlorenginge.
 - `20260830-miniaturansichten` — **Miniaturansichten** — `Wissen/Miniaturansichten.md` — Warum der Explorer keine Vorschaubilder mehr zeigte und was dagegen geholfen hat.
-- `20260901-globale-npm-tools-path` — **Globale npm-Tools und PATH** — `Wissen/Globale-npm-Tools-PATH.md` — Warum global installierte npm-CLIs (omniroute, opencode) nicht erkannt wurden (Volta + fehlender `Roaming\npm`-Eintrag) und der gesetzte PATH-Fix.
+- `20260901-globale-npm-tools-path` — **Globale npm-Tools und PATH** — `Wissen/Globale-npm-Tools-PATH.md` — Warum global installierte npm-CLIs (omniroute, opencode) nicht erkannt wurden (Volta + fehlender `Roaming\\npm`-Eintrag) und der gesetzte PATH-Fix.
+- `20260907-omniroute-produktion` — **OmniRoute-Produktion** — `Wissen/OmniRoute-Produktion.md` — OmniRoute-Quell-Klon als Produktions-Router installiert und verifiziert; Umstieg gegen die globale Instanz vorbereitet (Entscheidung offen).
 
 ### Sicherheit
 
