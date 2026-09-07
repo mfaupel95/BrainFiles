@@ -196,6 +196,124 @@ def saisonalitaet(k, min_n=6):
             "stark": stark}
 
 
+def _serie_verschmelzen(k, faktor):
+    """Fasst je `faktor` aufeinanderfolgende Kerzen zu einer zusammen - eine
+    naeherungsweise hoehere Zeitebene aus derselben Reihe, ohne Zusatzabruf.
+    Ueberzaehlige aelteste Kerzen (die keine volle Gruppe mehr fuellen) fallen
+    vorn weg, damit die juengste Kerze immer eine volle Gruppe abschliesst.
+    """
+    if faktor <= 1:
+        return k
+    rest = len(k) % faktor
+    out = []
+    for i in range(rest, len(k), faktor):
+        gruppe = k[i:i + faktor]
+        out.append([
+            gruppe[-1][0],
+            gruppe[0][1],
+            max(r[2] for r in gruppe),
+            min(r[3] for r in gruppe),
+            gruppe[-1][4],
+            sum(r[5] for r in gruppe),
+        ])
+    return out
+
+
+def _drift_score(k, n):
+    """Volumengewichtete Preisdrift der letzten n Kerzen, ATR-normiert, plus
+    Volumen-Verhaeltnis (Fenster gegen das gleich lange Fenster davor).
+    (None, None) bei zu wenig Historie oder wenn ATR/Volumen nicht tragen.
+    """
+    if len(k) < 2 * n + 1:
+        return None, None
+    a = atr(k, 14)
+    if a[-1] is None or a[-1] == 0:
+        return None, None
+    zaehler = sum((k[i][4] - k[i - 1][4]) * k[i][5] for i in range(len(k) - n, len(k)))
+    vol_fenster = sum(k[i][5] for i in range(len(k) - n, len(k)))
+    if vol_fenster == 0:
+        return None, None
+    vol_vorher = sum(r[5] for r in k[len(k) - 2 * n:len(k) - n])
+    if vol_vorher == 0:
+        return None, None
+    score = (zaehler / vol_fenster) / a[-1]
+    verhaeltnis = (vol_fenster / n) / (vol_vorher / n)
+    return score, verhaeltnis
+
+
+def volumen_drift(k, n=20, min_score=0.15, min_verhaeltnis=1.15):
+    """Volumen-Drift-Momentum mit Mehrfach-Zeitebenen-Bestaetigung.
+
+    volumen_drift() ist am 08.09.2026 dazugekommen: eigener Nachbau des
+    Funktionsprinzips von "Swift Algo X" (TradingView, Invite-Only/Closed-
+    Source, Autor swiftalgo) - eine Volumen-Drift-Momentum-Engine kombiniert
+    mit einer Mehrfach-Zeitebenen-Bestaetigung. Der Pine-Code ist nirgends
+    einsehbar (kein oeffentlicher Quellcode), hier ist nur die auf der
+    TradingView-Seite beschriebene Methodik nachgebaut, nicht der Indikator
+    kopiert - dasselbe Vorgehen wie bei saisonalitaet().
+
+    Kern: Ueber n Kerzen wird Summe(Schlusskursaenderung * Volumen) durch
+    Summe(Volumen) geteilt - eine volumengewichtete mittlere Kursaenderung
+    (Grundprinzip wie OBV/Klinger: eine Bewegung zaehlt mehr, wenn viel
+    Volumen dahintersteht) - und durch ATR(14) geteilt, damit die Kennzahl
+    unabhaengig von Instrument/Volatilitaet vergleichbar bleibt, wie ueberall
+    sonst in diesem Modul. Eine Richtung zaehlt nur, wenn zusaetzlich das
+    Fenster-Volumen um min_verhaeltnis ueber dem Volumen davor liegt - reine
+    Drift ohne Volumen wird herausgefiltert.
+
+    Dieselbe Rechnung laeuft zusaetzlich auf zwei synthetisch verschmolzenen
+    Reihen (_serie_verschmelzen, Faktor 2 und 4 = angenaeherte hoehere
+    Zeitebenen aus derselben Reihe, ohne weiteren Datenabruf). Stimmen beide
+    hoeheren Ebenen nicht im Vorzeichen mit der Basisebene ueberein, bleibt
+    richtung 0 - Widerspruch zwischen den Zeitebenen zaehlt als kein Signal,
+    nicht als schwaches. stark markiert zusaetzlich einen ungewoehnlich
+    kraeftigen Basis-Score (>= 2x min_score).
+
+    Auf Anweisung vom 08.09.2026 wird sie in lage() wie saisonalitaet() HOCH
+    gewichtet und darf die Richtung setzen/ueberstimmen - bei Widerspruch der
+    beiden hat volumen_drift() Vorrang, weil sie zuletzt geprueft wird.
+    """
+    leer = {"richtung": 0, "stark": False, "n": len(k),
+            "score": None, "score_2x": None, "score_4x": None,
+            "volumen_verhaeltnis": None}
+
+    basis_score, basis_verh = _drift_score(k, n)
+    if basis_score is None or basis_verh is None:
+        return leer
+
+    richtung = 0
+    if basis_verh >= min_verhaeltnis:
+        if basis_score >= min_score:
+            richtung = 1
+        elif basis_score <= -min_score:
+            richtung = -1
+
+    score_2x = score_4x = None
+    if richtung != 0:
+        einig = True
+        for faktor, feld in ((2, "score_2x"), (4, "score_4x")):
+            reihe = _serie_verschmelzen(k, faktor)
+            s, _ = _drift_score(reihe, n)
+            if faktor == 2:
+                score_2x = s
+            else:
+                score_4x = s
+            if s is None or (s > 0) != (richtung == 1):
+                einig = False
+        if not einig:
+            richtung = 0
+
+    return {
+        "richtung": richtung,
+        "stark": richtung != 0 and abs(basis_score) >= 2 * min_score,
+        "n": len(k),
+        "score": basis_score,
+        "score_2x": score_2x,
+        "score_4x": score_4x,
+        "volumen_verhaeltnis": basis_verh,
+    }
+
+
 def lage(k, st_n=10, st_faktor=3.0):
     """Alle Signalgroessen der letzten Kerze in einem Wortschatz.
 
@@ -205,6 +323,13 @@ def lage(k, st_n=10, st_faktor=3.0):
     Saisonalitaet (saisonalitaet(), xGhozt-Prinzip) wird HOCH gewichtet und
     kann das Signal setzen oder gegen SuperTrend+EMA kippen. Der Grund-Text
     nennt dann die Stichprobe, damit sichtbar bleibt, worauf die Drehung steht.
+
+    Zweite Ausnahme seit 08.09.2026 auf Anweisung: volumen_drift() (Swift-
+    Algo-X-Prinzip) ist ebenfalls HOCH gewichtet und wird NACH der
+    Saisonalitaet geprueft - bei Widerspruch zwischen beiden gewinnt
+    volumen_drift(), einfach weil sie als letzte laeuft. Das ist bewusst so
+    einfach gehalten statt mit einer Prioritaets-Fallunterscheidung: die
+    Pruefreihenfolge IST die Rangfolge.
     """
     c = [r[4] for r in k]
     a = atr(k, 14)
@@ -213,6 +338,7 @@ def lage(k, st_n=10, st_faktor=3.0):
     r = rsi(c, 14)
     er = effizienz(c, 42)
     sais = saisonalitaet(k)
+    vol_drift = volumen_drift(k)
 
     kurs = c[-1]
     st_richtung = richtung[-1]
@@ -253,6 +379,23 @@ def lage(k, st_n=10, st_faktor=3.0):
         else:
             signal, grund = srichtung, "%s ueberstimmt SuperTrend+EMA" % marke
 
+    # Volumen-Drift-Momentum, auf Anweisung vom 08.09.2026 HOCH gewichtet und
+    # zuletzt geprueft: bei Widerspruch zum bisherigen Signal (egal ob Basis
+    # oder schon durch Saisonalitaet gesetzt) gewinnt sie. stark markiert
+    # einen Score deutlich ueber der Mindestschwelle, siehe volumen_drift().
+    vr = vol_drift["richtung"]
+    if vr != 0:
+        vrichtung = "long" if vr == 1 else "short"
+        vmarke = "Volumen-Drift %s (Verhaeltnis %.2fx, Score %+.2f, n=%d)" % (
+            "long" if vr == 1 else "short", vol_drift["volumen_verhaeltnis"],
+            vol_drift["score"], vol_drift["n"])
+        if signal == vrichtung:
+            grund = "%s + %s bestaetigt" % (grund, vmarke)
+        elif signal == "kein":
+            signal, grund = vrichtung, "%s - bisher neutral" % vmarke
+        else:
+            signal, grund = vrichtung, "%s ueberstimmt (%s)" % (vmarke, grund)
+
     # RSI blockt nur das Nachlaufen, er dreht kein Signal um.
     if signal == "long" and rsi_jetzt is not None and rsi_jetzt > 78:
         signal, grund = "kein", "Long-Signal, aber RSI %.0f - ueberkauft" % rsi_jetzt
@@ -270,6 +413,7 @@ def lage(k, st_n=10, st_faktor=3.0):
         "rsi": rsi_jetzt,
         "er": er,
         "sais": sais,
+        "vol_drift": vol_drift,
         "signal": signal,
         "grund": grund,
     }

@@ -415,6 +415,19 @@ def zeige_lage(w, wert, historie_quelle=None):
         if s["richtung"] != 0:
             print("                 HOCH gewichtet - kann das SIGNAL setzen/kippen")
             print("                 (Anweisung 01.09.2026; n=%d ist duenn, kein Backtest)" % s["n"])
+
+    vd = z["vol_drift"]
+    if vd["score"] is None:
+        print("  Volumen-Drift  zu wenig Historie fuer eine Aussage (n=%d)" % vd["n"])
+    else:
+        pfeil = {1: "-> LONG", -1: "-> SHORT", 0: "neutral"}[vd["richtung"]]
+        print("  Volumen-Drift  Score %+.2f, Volumen %.2fx vs. davor  %s" % (
+            vd["score"], vd["volumen_verhaeltnis"], pfeil))
+        if vd["richtung"] != 0:
+            print("                 Zeitebenen bestaetigt (2x %+.2f / 4x %+.2f)%s" % (
+                vd["score_2x"], vd["score_4x"], " - STARK" if vd["stark"] else ""))
+            print("                 HOCH gewichtet - kann das SIGNAL setzen/kippen,")
+            print("                 hat bei Widerspruch Vorrang vor Saisonalitaet (Anweisung 08.09.2026)")
     print()
     print("  SIGNAL: %s   (%s)" % (z["signal"].upper(), z["grund"]))
     print()
