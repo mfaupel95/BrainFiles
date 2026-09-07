@@ -252,11 +252,20 @@ noch am selben Tag wieder entfernt worden. **Zwei Quellen für denselben Bericht
 sind kein doppelter Schutz, sondern zwei Stellen, an denen er falsch werden
 kann.** Wer den Bericht ändern will, ändert `tagesbericht.py`.
 
-**Eine gesetzte Umgebungsvariable erreicht keinen laufenden Prozess.** Der
-Dauerlauf liest sie beim Start; steht er seit gestern, kennt er den Token
-nicht. Nach dem Setzen also einmal beenden — der Wächter startet ihn innerhalb
-von 30 Minuten neu, dann mit Token. Prüfen lässt sich das am einfachsten daran,
-ob am nächsten Morgen ein Bericht ankommt.
+**Ein Neustart nach dem Setzen ist nicht nötig — `melder.py` löst das selbst.**
+Eine per `setx` oder `SetEnvironmentVariable(…, "User")` gesetzte Variable
+erreicht laufende Prozesse nicht; `melder.py` liest deshalb bei **jedem**
+Aufruf zuerst `os.environ` und fällt dann auf `HKCU:\Environment` zurück
+(`_aus_registry`, denselben Umweg gehen `okxf.py`, `okx.py` und `kraken.py`).
+Der laufende Prozess greift die neuen Werte also innerhalb eines Taktes von
+selbst ab.
+
+Das ist am 07.09.2026 im Protokoll zu sehen: Der Dauerlauf startete 23:24:11
+mit „Melder nicht eingerichtet" — zu dem Zeitpunkt stimmte das —, und ab
+23:29:54 nahm derselbe Prozess Befehle aus dem Chat entgegen, ohne dass er
+neu gestartet worden wäre. **Die Startzeile ist eine Momentaufnahme, kein
+Dauerzustand;** wer sie als „der Melder läuft nicht" liest, startet einen
+Handelsprozess ohne Grund neu.
 
 ⚠️ **Der Bot-Token ist verbrannt und gehört rotiert.** Beim Einrichten am
 07.09.2026 wurde er mehrfach im Klartext in Shell-Befehle geschrieben, statt
