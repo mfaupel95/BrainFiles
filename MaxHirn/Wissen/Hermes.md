@@ -552,3 +552,57 @@ sauber. omniroute routet `auto/best-chat` real (z. B. auf `big-pickle`).
 
 **Merksatz:** Wird das Hauptmodell auf einen custom-Endpunkt umgestellt,
 gehört der Key ebenfalls als `${…}`-Referenz in `config.yaml` und die `.env`-Variable ist vorher zu setzen — sonst löst der Endpunkt mit AUTH-Fehler ab.
+
+### OmnIRoute als verwalteter Daemon, opencode-Provider, Autostart, 07.09.2026
+
+**Problem:** omniroute lief als verwaister Kindprozess der Sitzung, der den Port
+20128 hielt (`omniroute serve` ausbash-Background). Ein loses `node`-Prozess
+(PID-Wechsel je Lauf) bediente den Endpunkt; `supervisor/.pid` zeigte einen
+veralteten, toten PID. Der Server war so an keinen Prozess gebunden und
+überlebte zwar das Terminal, aber unverwaltet.
+
+**Lösung — als Daemon überführen:**
+1. Loses Kind beenden, Port freigeben:
+   `powershell Stop-Process -Id <PID> -Force`
+2. Sauber starten:
+   `omniroute serve --daemon`
+   → startet detached, überlebt das Terminal, mit Auto-Restart über den
+   `--daemon`-Supervisor. Verifiziert: `omniroute health` → **Status:
+   healthy**, API HTTP 200.
+3. **Beachte:** Ein zweiter `omniroute serve`-Versuch, während der Port schon
+   von einem anderen omniroute-Prozess gehalten wird, crasht mit
+   `EADDRINUSE … address already in use 127.0.0.1:20128` und gibt nach 2
+   Restarts auf. Das ist normal (Port zu), kein Server-Fehler. Erst den
+   Fremden beenden, dann neu starten.
+4. `taskkill //PID … //F` funktioniert in der MSYS/git-bash-Shell NICHT
+   (MSYS schluckt die `//`-Slashs) — stattdessen
+   `powershell Stop-Process -Id <PID> -Force`.
+
+**Autostart:** ist aktiv (geprüft 07.09.):
+`omniroute autostart status` → `enabled: true / vbs-startup`. Belegt durch
+`OmniRoute.vbs` und `OmniRoute Server.lnk` im Startup-Ordner
+(`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`). omniroute
+startet damit beim Windows-Login automatisch; der Hermes-Gateway-Task
+`Hermes_Gateway` holt den Endpunkt bei Bedarf nach.
+
+**opencode-Provider in omniroute angelegt** (Schema aus OpenAPI
+`POST /api/providers`):
+- `name: opencode`, `url: https://opencode.ai/zen/v1`, Bearer-API-Key
+  (Client-Key `sk-afb…`, abgelegt in omniroutes verschlüsseltem
+  Provider-Store `storage.sqlite`, nicht in der Hermes-`.env`).
+- Damit sind `oc/…`-Modelle (z. B. `oc/big-pickle`) routbar; vorher scheiterte
+  jeder `oc/…`-Call mit „This model requires an opencode API key — add one in
+  Settings → Providers."
+- Verifiziert: `POST /v1/chat/completions` mit `oc/big-pickle` → Router
+  meldete `big-pickle`.
+
+**Wichtig für Hermes:** Der `providers.omniroute`-Eintrag in der
+Hermes-`config.yaml` (name/base_url/key_env/api_mode) ist nötig, damit MoA- und
+Auxiliary-Slots den Endpunkt als benannten Provider auflösen. Ein bloßes
+`provider: custom` ohne Namen löst im MoA- und Aux-Kanal NICHT auf
+(base_url bleibt `moa://local` → „Connection error").
+
+**Merksatz (Keys):** omniroute verwaltet Provider-Keys selbst in seinem
+verschlüsselten Store; Hermes braucht nur einen *Client*-Key. Zwei getrennte
+Keystores: der Hermes-Client-Key (in Hermes-`.env` als `OMNIROUTE_API_KEY`) und
+der opencode-Provider-Key (nur in omniroute).
