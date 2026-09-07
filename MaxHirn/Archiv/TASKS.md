@@ -42,6 +42,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
+      Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
+      `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
+      einzelne Posten auf der Systemplatte (`AppData\Local\hermes` gesamt
+      22,7 GB). Das widerspricht der Regel aus der Wurzel-`CLAUDE.md`:
+      Modellgewichte gehören nach `Modelle/` (Junction auf `O:\Modelle`), sind
+      neu herunterladbar und bleiben deshalb aus der Sicherung draußen. Auf
+      `C:` werden sie weder gesichert noch aus der Sicherung ausgenommen — sie
+      belegen einfach die Platte, die am knappsten ist.
+      Zum Vergleich auf derselben Platte: Claude 25,6 GB
+      (`Packages\Claude_pzs8sxrjxfjjc` 13,8 + `Roaming\Claude` 11,8),
+      `Cleanup_2026` 13,0, `Roaming\Pioneer` 11,7.
+      Nächster Schritt: prüfen, ob Hermes den Ort über eine Variable lesen
+      kann (wie Ollama über `OLLAMA_MODELS`); wenn ja, Store nach
+      `O:\Modelle\hermes` verschieben und die Variable setzen. Wenn nein,
+      entscheiden, welche Modelle dort überhaupt gebraucht werden.
+      Betrifft: `%LOCALAPPDATA%\hermes\models`, [[Ordnerstruktur]]
+      Angelegt: 2026-09-08 · Zuletzt: 2026-09-08
+
 - [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
       Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
       `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
