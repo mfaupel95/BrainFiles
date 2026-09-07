@@ -34,10 +34,13 @@ $SystemKopien = @(
 )
 
 # --- was bleiben muss -------------------------------------------------------
+# ARCHIV_ROOT (seit 07.09.2026): Wurzel der Archivdaten auf O:\Archiv, von den
+# Archivwerkzeugen gelesen. Gehoert zur Struktur wie OLLAMA_MODELS/HERMES_HOME.
 $Behalten = @(
     'Path','OneDrive','ChocolateyLastPathUpdate','GIT_INSTALL_ROOT',
     'KRAKEN_API_KEY','KRAKEN_API_SECRET','OKX_API_KEY',
-    'HERMES_GIT_BASH_PATH','HERMES_HOME','MNEMOVERSE_API_KEY','OLLAMA_MODELS'
+    'HERMES_GIT_BASH_PATH','HERMES_HOME','MNEMOVERSE_API_KEY','OLLAMA_MODELS',
+    'ARCHIV_ROOT'
 )
 
 $u = Get-ItemProperty $Pfad
