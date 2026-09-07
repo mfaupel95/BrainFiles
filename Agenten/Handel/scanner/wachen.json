@@ -24,7 +24,7 @@
     "netto_positiv_nach_gebuehren_und_funding": false,
     "groesster_ruecklauf_papierlauf_usd": null,
     "geprueft_am": null,
-    "_aenderung": "2026-09-06: Reduziert von 6 auf 3 Wochen. Kryptomärkte sind schnelllebig; 3 Wochen Echtdaten + historischer Backtest ersetzen 6 Wochen. Validiert durch scan_backtest.py auf historischen Kursdaten."
+    "_aenderung": "2026-09-07: papierlauf_min_wochen von 6 auf 3 gesenkt, angeordnet von Max am 06.09.2026 mit der Begruendung, Krypto sei schnelllebig. KEINE Gegenrechnung vorgelegt - es gibt kein Backtest-Skript fuer diesen Scanner, und die Verkuerzung ist damit nach Wissen/Handelsregeln.md ein Befund, kein Betriebsvorgang. Die uebrigen drei Werte (50 Runden, netto positiv, Ruecklauf) sind unveraendert und binden weiter."
   },
 
   "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_usd.",
