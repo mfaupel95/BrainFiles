@@ -114,14 +114,17 @@ $start = Get-Date
 # 'logs' ist ausgeschlossen, weil der geplante Lauf (Routinen\sicherung.ps1)
 # waehrend der Sicherung in sein eigenes Protokoll schreibt. robocopy kann die
 # offene Datei nicht kopieren und beendet mit Code 11 - gemessen 23.08.2026.
+# /XJ ueberspringt Junctions: BrainFiles\Modelle zeigt auf O:\Modelle, und der
+# Vault selbst kann in einem Worktree gespiegelt sein. Das Archiv ist hier keine
+# Junction mehr (echter Umzug 07.09.2026) - unter $quelle liegt davon nichts.
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
   /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
 
-# Zweiter Lauf: Archiv\{Bilder,Dokumente,Musik,Videos,Software,Posteingang} sind
-# seit 06.09.2026 Junctions auf O:\Archiv (C:-Entlastung). /XJ hat sie oben
-# uebersprungen - hier kommt der volle Archivteil von O: nach G:, damit die
-# Hauptsicherung inhaltlich unveraendert bleibt (Drei-Platten-Netz).
+# Zweiter Lauf: die Archivdaten (Bilder/Dokumente/Musik/Videos/Software/
+# Posteingang) liegen seit dem echten Umzug (07.09.2026) physisch auf O:\Archiv
+# und damit ausserhalb von $quelle. Dieser Lauf zieht sie nach G:, damit die
+# Hauptsicherung inhaltlich vollstaendig bleibt (Drei-Platten-Netz).
 $archivQuelle = 'O:\Archiv'
 $archivZiel   = Join-Path $ziel 'MaxHirn\Archiv'
 if (Test-Path $archivQuelle) {

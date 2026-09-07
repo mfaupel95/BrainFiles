@@ -39,11 +39,10 @@ Write-Host '=== Zweitkopie nach J: ===' -ForegroundColor Cyan
 $start = Get-Date
 
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
-# gleichnamigen Unterordner irgendwo im Baum mit ausschliessen. Der Archivordner
-# heisst seit der Ordnertrennung vom 30.08.2026 Archiv\ (vorher Claude\).
-# Seit 06.09.2026 sind Archiv\{Bilder,Dokumente,Musik,Videos,Software,Posteingang}
-# Junctions auf O:\Archiv - /XJ ueberspringt sie im Hauptlauf ohnehin. Diese
-# Liste bleibt als Doku; der Archivteil kommt jetzt ueber den zweiten Lauf.
+# gleichnamigen Unterordner irgendwo im Baum mit ausschliessen. Seit dem echten
+# Umzug (07.09.2026) liegen diese Ordner ohnehin auf O:\Archiv und nicht mehr
+# unter $quelle; die Liste bleibt als Absicherung stehen. Der unersetzliche
+# Archivteil (Dokumente + Bilder) kommt ueber den zweiten Lauf.
 $ausserhalb = @(
   (Join-Path $quelle 'MaxHirn\Archiv\Videos'),
   (Join-Path $quelle 'MaxHirn\Archiv\Musik'),
@@ -55,8 +54,8 @@ robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
   /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
 
-# Zweiter Lauf: der unersetzliche Archivteil liegt seit 06.09.2026 physisch auf
-# O:\Archiv (Junctions im Vault). /XJ hat ihn oben uebersprungen. Nach J: kommt
+# Zweiter Lauf: der unersetzliche Archivteil liegt seit dem echten Umzug
+# (07.09.2026) physisch auf O:\Archiv, ausserhalb von $quelle. Nach J: kommt
 # wie bisher nur Dokumente + Bilder - Videos, Musik, Software, Posteingang
 # bleiben draussen (Medienlast, weiterhin nur in der Hauptsicherung auf G:).
 $archivQuelle = 'O:\Archiv'
