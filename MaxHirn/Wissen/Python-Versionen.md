@@ -3,7 +3,7 @@ id: 20260831-python-versionen
 title: 'Python-Versionen'
 tags: [betrieb, ki-agenten]
 created: 2026-08-31
-updated: 2026-09-06
+updated: 2026-09-07
 related: [20260830-hermes, 20260830-projekte, 20260901-globale-npm-tools-path]
 summary: 'Installierte Python-Versionen und venv-Konfigurationen nach dem Upgrade auf 3.13.'
 ---
@@ -50,7 +50,24 @@ Der editable install `hermes_agent` ist per direktem Python-Import nicht verfüg
 
 ## OmniRoute (Node.js)
 
-Python ist nicht relevant. **1.481 npm-Module installiert**, dist/ mit 4.097 Dateien gebaut. Keine Aktion erforderlich.
+Python ist nicht relevant. Quell-Klon in `Werkstatt/OmniRoute/` (Branch
+`release/v3.8.51`). **From-Source-Installation am 07.09.2026 abgeschlossen:**
+`npm install` (2518 Pakete, ~5 min), `.env` automatisch aus `.env.example`
+erzeugt (47 Keys, 0 Secrets), native Module verifiziert (`libxmljs2`,
+`onnxruntime-node` laden; node-gyp/MSVC war als Voraussetzung installiert).
+Smoke-Test: `npm run dev` lief auf übersteuerten Ports (PORT=20138) und
+beantwortete `/v1/models` mit 200 inkl. `auto/best-coding`.
+
+**Betriebshinweise:**
+- Der laufende Produktions-Router ist die globale npm-Installation
+  (`omniroute serve`, Port 20128). Quell-Instanz und globale teilen sich
+  `~/.omniroute/storage.sqlite` — nie zwei Instanzen gleichzeitig auf derselben
+  DB starten.
+- `npm run dev` braucht Schreibplatz für `.build/` (Turbopack-Cache); bei
+  Datenträger voll bricht er mit os error 112 ab.
+- 5 Install-Skripte sind durch `allow-scripts` noch nicht freigegeben
+  (playwright, bun, libxmljs2, onnxruntime-node, opencode-ai) — die beiden
+  nativen laden auch ohne; die übrigen sind optionale Pakete.
 
 ## Backups
 
