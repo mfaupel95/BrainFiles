@@ -27,11 +27,17 @@ from mcp.server.mcpserver import MCPServer
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# Relativ aufgeloest, damit ein Umzug des Vaults (z. B. auf eine externe SSD)
-# nichts kaputt macht: Agenten/MCP-Server/archiv/ -> BrainFiles/ -> MaxHirn/Archiv/ArchivSuche/
+# Zwei getrennte Wurzeln seit dem echten Umzug (07.09.2026):
+#   - Der Index und das Werkzeug bleiben beim Vault auf C: (git-versioniert,
+#     DB neu baubar). Ueber MAXHIRN_VAULT bzw. den relativen Rueckfall
+#     Agenten/MCP-Server/archiv/ -> BrainFiles/ -> MaxHirn/.
+#   - Die Archivdaten (Bilder/Dokumente/Musik/Videos/Posteingang) liegen auf
+#     O:\Archiv, angebunden ueber ARCHIV_ROOT (User-Umgebungsvariable, wie
+#     OLLAMA_MODELS). Rueckfall auf die alte Vault-Lage.
 VAULT = Path(os.environ.get("MAXHIRN_VAULT") or (Path(__file__).resolve().parents[3] / "MaxHirn"))
-ARCHIV = VAULT / "Archiv"
-DB_PATH = ARCHIV / "ArchivSuche" / "archiv_index.db"
+INDEX_DIR = VAULT / "Archiv" / "ArchivSuche"
+ARCHIV = Path(os.environ.get("ARCHIV_ROOT") or (VAULT / "Archiv"))
+DB_PATH = INDEX_DIR / "archiv_index.db"
 POSTEINGANG = ARCHIV / "Posteingang"
 
 KATEGORIEN = ("Bilder", "Videos", "Musik", "Dokumente")

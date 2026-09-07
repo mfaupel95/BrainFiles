@@ -21,7 +21,11 @@ HOST = "127.0.0.1"
 PORT = 8756
 
 SELF_DIR = Path(__file__).resolve().parent
-ROOT = SELF_DIR.parent
+# Wurzel der Archivdaten: seit dem echten Umzug (07.09.2026) auf O:\Archiv, per
+# ARCHIV_ROOT angebunden. Fallback auf die alte Vault-Lage. Der Webserver
+# liefert echte Dateien aus (safe_resolve), deshalb muss ROOT auf die Daten
+# zeigen, nicht auf das Werkzeugverzeichnis.
+ROOT = Path(os.environ.get("ARCHIV_ROOT") or SELF_DIR.parent)
 DB_PATH = SELF_DIR / "archiv_index.db"
 STATIC_DIR = SELF_DIR / "static"
 

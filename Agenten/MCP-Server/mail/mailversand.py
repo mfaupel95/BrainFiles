@@ -27,10 +27,15 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid, parseaddr
 from pathlib import Path
 
-# Agenten/MCP-Server/mail/ -> BrainFiles/ -> MaxHirn/Archiv/ (hiess bis 30.08.2026
-# Claude/). Relativ aufgeloest, damit ein Umzug des Vaults nichts kaputt macht.
+# Zwei getrennte Wurzeln seit dem echten Umzug (07.09.2026):
+#   - VAULT/INDEX_DIR: Werkzeug und Volltextindex bleiben auf C: beim Vault
+#     (Agenten/MCP-Server/mail/ -> BrainFiles/ -> MaxHirn/), git-versioniert.
+#   - ARCHIV: die Archivdaten liegen auf O:\Archiv, angebunden ueber ARCHIV_ROOT
+#     (User-Umgebungsvariable). Die Anhang-Sandbox prueft gegen diese Wurzel.
+# Beide mit Rueckfall auf die alte Vault-Lage, damit nichts still bricht.
 VAULT = Path(os.environ.get("MAXHIRN_VAULT") or (Path(__file__).resolve().parents[3] / "MaxHirn"))
-ARCHIV = (VAULT / "Archiv").resolve()
+INDEX_DIR = (VAULT / "Archiv" / "ArchivSuche").resolve()
+ARCHIV = Path(os.environ.get("ARCHIV_ROOT") or (VAULT / "Archiv")).resolve()
 
 DIENST = "MaxMailVersand"          # Name im Windows-Anmeldeinformationsspeicher
 SCHLUESSEL_ADRESSE = "__adresse__"  # unter diesem Benutzernamen liegt die Adresse
@@ -256,7 +261,7 @@ def _in_gesendet_ablegen(adresse: str, passwort: str, roh: bytes) -> bool:
 
 # ------------------------------------------------------- Suche im Archivindex
 
-DB_PATH = ARCHIV / "ArchivSuche" / "archiv_index.db"
+DB_PATH = INDEX_DIR / "archiv_index.db"
 
 
 def archiv_finden(query: str, limit: int = 5) -> list[dict]:

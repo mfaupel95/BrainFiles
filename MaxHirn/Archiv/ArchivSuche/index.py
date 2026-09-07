@@ -22,7 +22,14 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(__file__).resolve().parent.parent
+# Die zu durchsuchenden Archivordner (Bilder/Dokumente/Musik/Videos/...) liegen
+# seit dem echten Umzug (07.09.2026) physisch auf O:\Archiv und sind NICHT mehr
+# als Junction im Vault erreichbar. ARCHIV_ROOT zeigt darauf (User-Umgebungs-
+# variable, wie OLLAMA_MODELS). Fallback auf die alte Vault-Lage, damit das Tool
+# nach einem SSD-Umzug ohne gesetzte Variable weiterlaeuft, solange die Daten
+# wieder daneben liegen.
+ROOT = Path(os.environ.get("ARCHIV_ROOT") or Path(__file__).resolve().parent.parent)
+# Der Index bleibt beim Werkzeug auf C: (git-versionierter Code, neu baubare DB).
 DB_PATH = Path(__file__).resolve().parent / "archiv_index.db"
 
 # Ordner, die NICHT zum durchsuchbaren Archiv gehoeren (Tool selbst, Posteingang,
