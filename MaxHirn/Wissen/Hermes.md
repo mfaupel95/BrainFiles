@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-09-06
+updated: 2026-09-07
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -467,3 +467,66 @@ meldete sich in `hermes status` aber als gesund. Nachinstalliert, jetzt
 150 Pakete, alles gegengeprüft. **Nach einem venv-Neubau reicht
 `hermes --version` als Prüfung nicht** — Importtest und Paketzahl gehören
 dazu.
+
+## Telegram-Gateway aktiviert und Auxiliary auf omniroute, 07.09.2026
+
+### Messaging-Gateway (Telegram) eingerichtet
+
+Der frühere Punkt „Messaging-Gateway bewusst aus" ist damit erledigt. Bot
+**@HermesAgentMaksPCbot** (Anzeigename „HermesPCMax"), Token und erlaubte
+User-ID in `%LOCALAPPDATA%\hermes\.env`:
+
+- `TELEGRAM_BOT_TOKEN=…`
+- `TELEGRAM_ALLOWED_USERS=7648512088` (nur diese ID darf den Bot nutzen)
+
+Gateway läuft als geplanter Windows-Task `Hermes_Gateway` (Autostart) und im
+Hintergrundprozess; Start/Stopp mit `hermes gateway start|stop`, Status mit
+`hermes gateway status`. Verbindung geprüft: „Connected to Telegram (polling
+mode)".
+
+### Auxiliary-Modelle (Side-Tasks) auf omniroute umgestellt
+
+**Auslöser:** `agent.auxiliary_client` meldete wiederholt „nous unhealthy
+(payment / credit error)" — das Auxiliary-Modell lief über den Nous-Provider,
+dessen Guthaben fehlt. Betroffen waren nur Side-Tasks (Compression, Vision,
+Session-Search), nicht das Hauptgespräch.
+
+**Lösung:** Side-Tasks auf den lokalen omniroute-Endpunkt gelegt. omniroute
+ist ein lokaler Model-Router (Dashboard auf `http://127.0.0.1:20128`, siehe
+[[Globale-npm-Tools-PATH]]), der per `auto/best-*`-Alias auf passende Modelle
+routet. In `config.yaml` unter `auxiliary:`:
+
+```yaml
+auxiliary:
+  vision:
+    model: auto/best-vision
+    base_url: http://127.0.0.1:20128/v1
+    api_key: ${OMNIROUTE_API_KEY}
+  compression:
+    model: auto/best-fast
+    base_url: http://127.0.0.1:20128/v1
+    api_key: ${OMNIROUTE_API_KEY}
+  session_search:
+    model: auto/best-fast
+    base_url: http://127.0.0.1:20128/v1
+    api_key: ${OMNIROUTE_API_KEY}
+```
+
+Der Key steht in `%LOCALAPPDATA%\hermes\.env` als `OMNIROUTE_API_KEY` — in
+`config.yaml` nur die `${…}`-Referenz, kein Klartext. Der Key ist ein
+omniroute-Client-Key (nicht der Anthropic-Workspace-Key aus [[Zugaenge]]).
+
+**Wichtig:** Die drei Task-Namen sind `vision`, `compression`,
+`session_search`. Beim Setzen von `session_search` warnt das CLI „not a
+recognized config key" — das ist kosmetisch, `_get_auxiliary_task_config`
+liest das dict trotzdem (siehe `agent/auxiliary_client.py`). `base_url` +
+`api_key` pro Task wird als `custom`-Endpoint aufgelöst.
+
+**Nach api_key-Änderung ist ein Gateway-Neustart nötig** (`hermes gateway
+restart`) — nur `compression.*`- und Kontext-Keys hot-reloaden. Nach dem
+Reload: keine „nous unhealthy"-Warnung mehr in den Logs.
+
+**Hinweis:** Das Hauptmodell in `config.yaml` stand zum Zeitpunkt der
+Umstellung auf `claude-sonnet-5` / `anthropic` (nicht mehr
+`deepseek-v4-flash` / `openrouter`) — von anderer Seite gesetzt, hier nicht
+angefasst. Bei Bedarf gegenprüfen.
