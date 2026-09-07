@@ -3,9 +3,9 @@
 
   "watchlist": ["BTC-USDT", "BNB-USDT", "XRP-USDT", "DOGE-USDT", "ADA-USDT", "TRX-USDT", "AVAX-USDT", "LINK-USDT", "DOT-USDT", "SUI-USDT", "LTC-USDT"],
 
-  "max_pro_trade_usd": 50,
-  "max_gesamt_usd": 200,
-  "max_offene_positionen": 4,
+  "max_pro_trade_usd": 100,
+  "max_gesamt_usd": 600,
+  "max_offene_positionen": 6,
 
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,
@@ -29,7 +29,7 @@
 
   "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_usd.",
   "drawdown_halbierung_prozent": 15.0,
-  "kill_switch_gesamt_usd": 40,
+  "kill_switch_gesamt_usd": 120,
 
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. Wert an die Aufruf-Taktung koppeln: die Tagesroutine laeuft 1x/Tag, 2880 = 48 h faengt einen ausgefallenen Lauf ab, ohne bei jedem normalen Lauf auszuloesen. Ein Schnelllauf-Bot steht bei ~30.",
   "herzschlag_max_minuten": 2880,
