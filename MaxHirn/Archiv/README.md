@@ -40,6 +40,13 @@ Posteingang-Sortierung erkennen sie automatisch (siehe unten).
 - **Dokumente/Privat**: persönliche Unterlagen, thematisch sortiert.
 - Neue Unterkategorien nach Bedarf ergänzen, statt Dateien in "Sonstige Dokumente" zu sammeln.
 
+## Ort der Daten
+
+Seit dem 07.09.2026 liegen `Bilder/`, `Videos/`, `Musik/`, `Dokumente/`,
+`Software/` und `Posteingang/` physisch auf `O:\Archiv\` (keine Junction mehr).
+`ArchivSuche/` und die Steuerdateien bleiben auf `C:`. Die Werkzeuge finden die
+Daten über die Umgebungsvariable `ARCHIV_ROOT`.
+
 ## Such-Tool
 
 `ArchivSuche/` indexiert diese Ordner (Volltext + OCR) und macht sie durchsuchbar –

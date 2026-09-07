@@ -3,7 +3,7 @@ id: 20260830-ordnerstruktur
 title: 'Ordnerstruktur'
 tags: [betrieb, struktur]
 created: 2026-08-30
-updated: 2026-09-06
+updated: 2026-09-07
 related: [20260830-schutzregeln, 20260830-verbindungen]
 summary: 'Die vier Ordner unter BrainFiles, warum sie geteilt sind und welche fünf Fallen beim Verschieben brechen.'
 ---
@@ -28,29 +28,35 @@ Agenten und Sitzungsreste — gewachsen, nicht entworfen.
 Grund, warum auch `Routinen/` und die Sicherungsskripte nach `Agenten/`
 gewandert sind, obwohl sie den Vault pflegen.
 
-**Die eine Ausnahme:** `Archiv/ArchivSuche/` bleibt im Archiv. `index.py`
-leitet die zu indexierende Wurzel aus der eigenen Lage ab
-(`Path(__file__).parent.parent`), und die Datenbank gehört neben die Daten, die
-sie beschreibt. Sie herauszureißen brächte Konfigurationspfade, wo heute keine
+**Die eine Ausnahme:** `Archiv/ArchivSuche/` — Werkzeugcode (git-versioniert)
+und der neu baubare Index bleiben auf `C:` beim Vault. Nur die Archivdaten
+liegen auf `O:` (siehe nächster Abschnitt); `index.py` findet sie über die
+Umgebungsvariable `ARCHIV_ROOT`, mit Rückfall auf die eigene Lage. Sie herauszureißen brächte Konfigurationspfade, wo heute keine
 nötig sind.
 
-## Archiv-Unterordner liegen physisch auf O: (seit 06.09.2026)
+## Archivdaten liegen auf O: — konfigbasiert (echter Umzug 07.09.2026)
 
-`C:` war auf 23,5 GB frei. Deshalb sind `Archiv/{Bilder,Dokumente,Musik,Videos,
-Software,Posteingang}` — zusammen 44 GB — nach `O:\Archiv\` kopiert; an alter
-Stelle steht je eine **Junction**, genau wie `Modelle/` → `O:\Modelle`. Der Vault
-sieht die Pfade unverändert, `index.py` (relative Pfade, 9712 Einträge
-unverändert) und der `archiv`-MCP laufen ohne Anpassung weiter. `ArchivSuche/`
-und die Steuerdateien im Archiv bleiben real auf `C:`.
+`C:` war auf 4,8 GB frei. Die Archivdaten `Archiv/{Bilder,Dokumente,Musik,
+Videos,Software,Posteingang}` — zusammen 44 GB, 64.745 Dateien — liegen physisch
+auf `O:\Archiv\`. Bis zum 06.09.2026 waren das Junctions im Vault; seit dem
+07.09.2026 sind die Junctions weg und alle Werkzeuge finden die Daten über die
+**Umgebungsvariable `ARCHIV_ROOT`** (`O:\Archiv`, wie `OLLAMA_MODELS` gesetzt).
 
-**Warum Junction und nicht echter Umzug:** die Junction ist in Minuten gesetzt
-und reversibel. Der saubere Weg — Archiv ganz aus dem Vault, `MAXHIRN_VAULT` +
-Wurzelerkennung + Sicherungsskripte + `archiv_mcp.py` konfigbasiert — ist als
-eigener Auftrag offen (Skill `umzug`).
+Was auf `C:` beim Vault bleibt: `ArchivSuche/` (Werkzeugcode, git-versioniert),
+der Volltextindex `archiv_index.db` (neu baubar) und die Steuerdateien im Archiv
+(`CLAUDE.md`, `README.md`, `TASKS.md`, `BESCHAEDIGTE_*.md` …).
 
-**Sicherung bleibt vollständig:** `sichern.ps1` (`/XJ` überspringt Junctions)
-zieht `O:\Archiv` in einem zweiten Lauf nach `G:`, `sichern-zweitkopie.ps1`
-Dokumente + Bilder nach `J:`. Drei-Platten-Netz unverändert: Original `O:`,
+**Was der echte Umzug geändert hat:**
+- `index.py`, `server.py`: `ROOT` aus `ARCHIV_ROOT`, Rückfall auf die eigene
+  Lage. `sort_inbox.py` erbt über `index.ROOT`. Kein Reindex — `index.py`
+  gegengeprüft: 9712 Einträge, 0 verändert, 0 entfernt (relative Pfade).
+- `archiv_mcp.py`, `mailversand.py`: Datenwurzel (`ARCHIV` ← `ARCHIV_ROOT`) von
+  der Indexwurzel (`INDEX_DIR`/`DB_PATH`, weiter auf `C:`) getrennt.
+- `vektor_index.py`, `vektor_suche.py`, `search_cli.py`: unverändert (nur DB).
+- `sichern.ps1` / `sichern-zweitkopie.ps1`: kein Junction-Sonderfall mehr, der
+  zweite robocopy-Lauf `O:\Archiv` → `G:` bzw. Dokumente+Bilder → `J:` bleibt.
+
+**Sicherung bleibt vollständig:** Drei-Platten-Netz unverändert — Original `O:`,
 Sicherung `G:`, Zweitkopie `J:`.
 
 ## Was die Teilung bringt
@@ -127,7 +133,8 @@ das Gefährliche daran.
 |---|---|---|
 | `OLLAMA_MODELS` | `Modelle\Ollama\Store` | Ollama erwartet den Ordner, der `blobs` **und** `manifests` nebeneinander enthält. Zeigte bis 30.08.2026 auf `Modelle\Ollama\models` mit einem einzigen Blob, während der echte Store mit 16,9 GB danebenlag. |
 | `HERMES_HOME` | `Agenten\Hermes` | trennt die Daten des Agenten vom Programmcode unter `C:\Hermes` |
-| `MAXHIRN_VAULT` | optional | überschreibt die Vault-Erkennung von `archiv_mcp.py` |
+| `MAXHIRN_VAULT` | optional | überschreibt die Vault-Erkennung von `archiv_mcp.py` / `mailversand.py` (Werkzeug + Index) |
+| `ARCHIV_ROOT` | `O:\Archiv` | wo die Archivdaten liegen. Unset → Rückfall auf `…\MaxHirn\Archiv` (nur sinnvoll, wenn die Daten dort wieder danebenliegen). Von `index.py`, `server.py`, `sort_inbox.py`, `archiv_mcp.py`, `mailversand.py` gelesen. Nach dem Setzen sehen laufende Prozesse (Claude Desktop, Hermes) sie erst nach Neustart. |
 
 ## Wie der Umbau gemacht wurde
 

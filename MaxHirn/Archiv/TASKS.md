@@ -63,8 +63,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `Coworking-Space\`, zusammen 0,4 GB), und die stammt von vor dem
       30.08.2026.
       Nächster Schritt: entscheiden, ob `m3u_cleaner` in den Vault gehört
-      (dann nach `MaxHirn/Archiv/Software/` oder als eigenes Projekt) oder ob
-      `Werkstatt/` eine Ausnahme in `sichern.ps1` bekommt. Bis dahin die beiden
+      (dann nach `Archiv/Software/` — liegt seit 07.09.2026 auf `O:\Archiv`,
+      T-037 — oder als eigenes Projekt) oder ob `Werkstatt/` eine Ausnahme in
+      `sichern.ps1` bekommt. Bis dahin die beiden
       Altordner auf `G:` stehen lassen.
       Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
       Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
@@ -335,6 +336,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+
+- [x] **T-037 — Echter Umzug: Archiv ganz aus dem Vault, konfigbasiert** — erledigt
+      2026-09-07. Folgeauftrag zum Junction-Umzug vom 06.09. (Commit ad469fb).
+      Die sechs NTFS-Junctions unter `MaxHirn/Archiv/` sind entfernt; die
+      Archivdaten (44 GB, 64.745 Dateien) liegen nur noch auf `O:\Archiv`. Alle
+      Werkzeuge finden sie über die neue User-Umgebungsvariable
+      `ARCHIV_ROOT = O:\Archiv` (Rückfall im Code auf die Vault-Lage).
+      `ArchivSuche/` (git-versionierter Code) und der Index `archiv_index.db`
+      (neu baubar) bleiben auf `C:`.
+      Geändert: `index.py`, `server.py` (`ROOT` aus `ARCHIV_ROOT`);
+      `archiv_mcp.py`, `mailversand.py` (Datenwurzel von Indexwurzel getrennt);
+      `sichern.ps1` / `sichern-zweitkopie.ps1` (Junction-Sonderfall raus, zweiter
+      robocopy-Lauf `O:\Archiv` → `G:`/`J:` bleibt). `vektor_index.py`,
+      `vektor_suche.py`, `search_cli.py` unverändert (nur DB).
+      Gegenprobe: `index.py` inkrementell → 9712 Einträge, 0 verändert, 0
+      entfernt; `search_cli.py`-Testsuche unverändert; `archiv`- und `mail`-MCP
+      funktional gegen `O:` geprüft; `90-pruefen.ps1` — MCP-Pfade und Suchindex
+      grün. Doku: `Ordnerstruktur.md`, `Schutzregeln.md`, `MaxHirn/CLAUDE.md` +
+      `AGENTS.md`, `Archiv/CLAUDE.md` + `AGENTS.md`, `Archiv/README.md`.
+      Offen: laufende Prozesse (Claude Desktop, Hermes) sehen `ARCHIV_ROOT` erst
+      nach Neustart.
+      Betrifft: `MaxHirn/Archiv/ArchivSuche/`, `Agenten/MCP-Server/{archiv,mail}/`,
+      `Agenten/sichern*.ps1`
+      Angelegt: 2026-09-07 · Zuletzt: 2026-09-07
 
 - [x] **T-034 — Hauptsicherung fehlschlug am 04.09. weil Hermes live läuft** — erledigt
       2026-09-04. Um 20:00 meldete `sichern.ps1` robocopy-Code 11 (FEHLER), obwohl

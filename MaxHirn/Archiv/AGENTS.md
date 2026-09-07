@@ -42,6 +42,12 @@ Dieser Ordner ist Max' zentrales digitales Archiv (Bilder, Videos, Musik, Dokume
 mit einem lokalen Such-Tool in `ArchivSuche/`. Siehe [README.md](README.md) für die
 Ordnerstruktur.
 
+**Die Daten liegen seit dem 07.09.2026 auf `O:\Archiv`, nicht mehr hier.** Unter
+`MaxHirn\Archiv\` stehen nur noch `ArchivSuche/` und die Steuerdateien. Die
+Werkzeuge finden die Daten über die Umgebungsvariable `ARCHIV_ROOT` (`O:\Archiv`);
+zum Stöbern von Hand also nach `O:\Archiv\…` gehen. Details:
+[Wissen/Ordnerstruktur.md](../Wissen/Ordnerstruktur.md).
+
 ## Wichtig: Archiv-Suche zuerst nutzen
 
 Bevor du für eine Anfrage von Max eine Internetsuche (WebSearch/WebFetch) startest,

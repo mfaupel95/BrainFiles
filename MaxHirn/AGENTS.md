@@ -20,9 +20,10 @@ Ebene höher in `BrainFiles/` und ist in vier Ordner geteilt — die Karte steht
 > Sicherungsskripte wohnen in `../Agenten/`, Modellgewichte in `../Modelle/`,
 > gemeinsame Arbeit in `../Werkstatt/`.
 
-Eine bewusste Ausnahme: `Archiv/ArchivSuche/` bleibt hier. `index.py` leitet die
-zu indexierende Wurzel aus der eigenen Lage ab, und die Datenbank gehört neben
-die Daten, die sie beschreibt.
+Eine bewusste Ausnahme: `Archiv/ArchivSuche/` bleibt hier — der Werkzeugcode ist
+git-versioniert, der Index neu baubar. Die Archivdaten selbst liegen seit dem
+07.09.2026 ganz auf `O:\Archiv`; die Werkzeuge finden sie über die
+Umgebungsvariable `ARCHIV_ROOT` (siehe [Wissen/Ordnerstruktur.md](Wissen/Ordnerstruktur.md)).
 
 ## Aufbau
 
