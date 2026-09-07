@@ -4,7 +4,7 @@ title: 'OmniRoute-Produktion'
 tags: [betrieb, werkzeuge, omniroute]
 created: 2026-09-07
 updated: 2026-09-08
-related: [20260831-python-versionen, 20260830-verbindungen]
+related: [20260831-python-versionen, 20260830-verbindungen, 20260907-omniroute-produktion]
 summary: 'Der OmniRoute-Quell-Klon (Werkstatt/OmniRoute) ist als Produktions-Router installiert und verifiziert; der Umstieg gegen die globale npm-Instanz ist vorbereitet, aber noch nicht vollzogen.'
 ---
 
@@ -47,11 +47,16 @@ Doppelstart; startet sonst Quell-`npm run start`, wartet auf Port, laesst
 `omniroute:verify` laufen). **Wichtig: Nur ausfuehren, wenn keine
 Hermes-Agenten am Router arbeiten.**
 
-**Produktions-Build (Stand 08.09.2026):** `npm run build` erfolgreich, BUILD_ID
-vorhanden, Standalone-Bundle in `.build/next/standalone` komplett
-(node_modules, sqlite-vec, Compression-Worker, LLMLingua co-located). Der
-Umstieg ist damit buildseitig fertig — es fehlt nur noch der Start des
-Quell-Routers, sobald der Router frei ist (Hermes durch).
+**Umstieg vollzogen (08.09.2026):** Der Quell-Klon ist jetzt die Produktion.
+`npm run build` war erfolgreich (BUILD_ID, Standalone-Bundle komplett), und der
+Wechsel wurde durchgefuehrt: globale npm-Instanz samt Auto-Restart-Launcher
+(`serve --max-restarts 10`) gestoppt, Quell-Router via
+`omniroute-quell-produktion.ps1` gestartet. Verifiziert: PID 49024 =
+`node scripts/dev/run-next.mjs start` (Quell-Klon), `/v1/models` -> 200,
+Katalog 1943 Modelle inkl. `auto/best-coding`. **Achtung** die globale
+Installation startete sich selbst neu (`--max-restarts 10`); beim Wechsel
+musste die gesamte Prozesskette (cmd-wrapper 36972, Launcher 37240/37332,
+Worker) gestoppt werden, nicht nur der Server.
 
 ## Betriebsregeln
 
