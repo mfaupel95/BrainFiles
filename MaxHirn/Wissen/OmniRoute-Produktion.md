@@ -3,7 +3,7 @@ id: 20260907-omniroute-produktion
 title: 'OmniRoute-Produktion'
 tags: [betrieb, werkzeuge, omniroute]
 created: 2026-09-07
-updated: 2026-09-07
+updated: 2026-09-08
 related: [20260831-python-versionen, 20260830-verbindungen]
 summary: 'Der OmniRoute-Quell-Klon (Werkstatt/OmniRoute) ist als Produktions-Router installiert und verifiziert; der Umstieg gegen die globale npm-Instanz ist vorbereitet, aber noch nicht vollzogen.'
 ---
@@ -46,6 +46,12 @@ Wechsel-Skript: `Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1`
 Doppelstart; startet sonst Quell-`npm run start`, wartet auf Port, laesst
 `omniroute:verify` laufen). **Wichtig: Nur ausfuehren, wenn keine
 Hermes-Agenten am Router arbeiten.**
+
+**Produktions-Build (Stand 08.09.2026):** `npm run build` erfolgreich, BUILD_ID
+vorhanden, Standalone-Bundle in `.build/next/standalone` komplett
+(node_modules, sqlite-vec, Compression-Worker, LLMLingua co-located). Der
+Umstieg ist damit buildseitig fertig — es fehlt nur noch der Start des
+Quell-Routers, sobald der Router frei ist (Hermes durch).
 
 ## Betriebsregeln
 
