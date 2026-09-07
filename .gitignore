@@ -72,6 +72,9 @@
 !Agenten/Handel/kraken/*.py
 !Agenten/Handel/kraken/*.md
 !Agenten/Handel/kraken/*.json
+!Agenten/Handel/orb/*.py
+!Agenten/Handel/orb/*.md
+!Agenten/Handel/orb/*.json
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -135,6 +138,13 @@ Agenten/Handel/kraken/berichte/**
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
+
+# Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von
+# Hand und oben freigegeben; Zustand, Journal und der Kerzen-Cache schreibt
+# jeder Lauf.
+Agenten/Handel/orb/zustand.json
+Agenten/Handel/orb/handelsjournal.csv
+Agenten/Handel/orb/daten/**
 
 # Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
 # freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.
