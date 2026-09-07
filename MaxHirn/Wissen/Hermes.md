@@ -530,3 +530,25 @@ Reload: keine „nous unhealthy"-Warnung mehr in den Logs.
 Umstellung auf `claude-sonnet-5` / `anthropic` (nicht mehr
 `deepseek-v4-flash` / `openrouter`) — von anderer Seite gesetzt, hier nicht
 angefasst. Bei Bedarf gegenprüfen.
+
+### Hauptmodell ebenfalls auf omniroute umgestellt, 07.09.2026
+
+Das Hauptgespräch (Telegram + CLI) läuft jetzt ebenfalls über omniroute, nicht
+mehr über einen externen Provider. `model:`-Block in `config.yaml`:
+
+```yaml
+model:
+  default: auto/best-chat
+  provider: custom
+  base_url: http://127.0.0.1:20128/v1
+  api_key: ${OMNIROUTE_API_KEY}
+```
+
+Das Hauptmodell nutzt für einen custom-Endpunkt inline `model.api_key`
+(`hermes_cli/auth.py`); Built-in-Provider lesen den Key dagegen aus
+env/auth. Verifiziert: `hermes status` meldet `Model: auto/best-chat /
+Provider: Custom endpoint`, und ein Test-Turn (`hermes chat -q`) antwortete
+sauber. omniroute routet `auto/best-chat` real (z. B. auf `big-pickle`).
+
+**Merksatz:** Wird das Hauptmodell auf einen custom-Endpunkt umgestellt,
+gehört der Key ebenfalls als `${…}`-Referenz in `config.yaml` und die `.env`-Variable ist vorher zu setzen — sonst löst der Endpunkt mit AUTH-Fehler ab.
