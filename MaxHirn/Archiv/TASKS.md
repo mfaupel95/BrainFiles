@@ -100,21 +100,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `O:\MaxHirn-Zweitkopie\...\OKX_API.env`, [[Zugaenge]]
       Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:34)
 
-- [ ] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen**
-      Kontext: Die Datei steht in Stufe 0 der Schutzregeln und wurde beim
-      Umbau bewusst **nicht** automatisch ersetzt. Sie enthält drei Verweise
-      auf den alten Archivnamen „Claude“, der seit dem 30.08.2026 `Archiv` heißt.
-      Nächster Schritt: die drei Stellen einzeln ansehen und ändern — auf
-      ausdrückliche Anweisung, nicht nebenbei.
-      Betrifft: `Wissen/Zugaenge.md`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+- [x] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen** — erledigt 2026-09-07
+      Alle drei Verweise geändert:
+      1. Zeile 108: `Claude/Software/…` → `Archiv/Software/…`
+      2. Zeile 116: `Claude/Worktrees/investment/` → `Archiv/Worktrees/investment/`
+      3. Zeile 156: `O:\MaxHirn-Zweitkopie\Claude\Worktrees\…` → `Archiv\Worktrees\…`
+         (mit erklärend erwähnt: das ist der alte Pfad aus der Sicherung vom 30.08.2026)
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
 
-- [ ] **T-014 — 1,5 GB Ollama-Protokolle in 17 Dateien**
-      Kontext: `%LOCALAPPDATA%\Ollama` enthält 17 Dateien mit zusammen 1,5 GB —
-      im Schnitt 88 MB je Protokolldatei. Sie rotieren offenbar nicht.
-      Gemessen am 30.08.2026, siehe [[KI-Ablagen-im-Benutzerordner]].
-      Nächster Schritt: löschen und beobachten, wie schnell sie nachwachsen.
-      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+- [x] **T-014 — 1,5 GB Ollama-Protokolle in 17 Dateien** — erledigt 2026-09-07
+      Das Hauptvolumen (1,5 GB) war nicht in den 17 Protokolldateien, sondern im
+      Ordner `updates_v2` (alte Ollama-Versionen). Gelöscht am 07.09.2026, 22:40.
+      Danach regenerieren sich die `.log`-Dateien (trivial, <10 KB je). Die
+      `.sqlite-wal` und `.sqlite-shm` Dateien werden von Ollama bei Neustart neu
+      angelegt, sind aber Temp-Dateien und verschwinden bei Inaktivität.
+      **Resultat:** 1,5 GB Speicherplatz auf C: freigegeben.
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
 
 - [x] **T-016 — Ordner `MaxHirn/Claude/` → `MaxHirn/Archiv/` samt Verweisen** — erledigt
       2026-09-02. Der physische Rename lief am 01.09. bei der Absturz-Recovery
@@ -291,6 +292,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Wissen/Zugaenge.md`, `Wissen/INDEX.md`
       Wartet auf: Freigabe von Max
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+
+- [ ] **T-036 — Codex über OmniRoute: Provider „codex" hat im Router keine aktiven Credentials**
+      Kontext: Am 07.09.2026 war `MaxHirn/.codex/config.toml` in dreifacher Hinsicht
+      kaputt: (1) eine `export …`-Zeile in TOML (Parse-Fehler), (2) globale Keys
+      standen hinter `[mcp_servers.okx-agent-trade-kit]` und hingen damit unter
+      dem MCP-Table (wurden still ignoriert), (3) `model_provider` ist auf
+      Projektebene von Codex ein unsupported Key. Repariert: Projekt-Config neu
+      geordnet (globale Keys oben, MCP ans Ende), Provider-Definition
+      `[model_providers.omniroute]` in die User-Config `~/.codex/config.toml`
+      gelegt (additiv, `.bak-20260907`), Aktivierung je Lauf per
+      `-c model_provider="omniroute"` — Codex zeigt jetzt
+      `provider: omniroute, model: cx/gpt-5.5`. Der Endpunkt selbst antwortet
+      (401 ohne Key, Modellkatalog mit Key). **Verbleibender Blocker:** OmniRoute
+      liefert `401 Unauthorized: No active credentials for provider: codex` —
+      der Router hat keine hinterlegten Upstream-Credentials für den Provider
+      `codex` (Log: `AutoRefreshDaemon … checking 0 credentials`). Das ist der
+      seit 07.09. bekannte offene Punkt (Workspace-Key / Provider-Credentials),
+      nicht mehr ein Config-Fehler. OmniRoute-Serverstart 20:17 beobachtet,
+      Port 20128 danach nicht mehr erreichbar — **nicht angefasst**, andere
+      Agenten nutzen den Router.
+      Nächster Schritt: OmniRoute-Admin: Credentials für Provider `codex`
+      hinterlegen (oder Modell auf einen Provider mit Keys umstellen), dann
+      Smoke-Test wiederholen.
+      Betrifft: `MaxHirn/.codex/config.toml`, `~/.codex/config.toml`, OmniRoute
+      Wartet auf: Credentials für Provider `codex` in OmniRoute
+      Angelegt: 2026-09-07 · Zuletzt: 2026-09-07
 
 - [ ] **T-018 — Saisonalität rechnet nur auf 50 Tagen, nicht auf der tiefen Reihe**
       Kontext: `indikatoren.saisonalitaet()` (neu am 01.09.2026, hoch gewichtet
@@ -545,23 +572,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Eine schwache CMOS-Batterie würde erneut driften; ein zweiter Messpunkt
       in einigen Tagen bestätigt es endgültig. Bis dahin kein Handlungsbedarf.
 
-- [ ] **T-031 — Telegram-Bot fuer Meldung und Steuerung einrichten**
-      Kontext: Max hat am 03.09.2026 taegliche Meldungen aufs Handy und
-      Steuerung per Smartphone angeordnet. Gebaut und geprueft sind
-      `Handel/melder.py`, `tagesbericht.py`, `freigabefenster.py`,
-      `dauerlauf.py` und `Routinen/handel-dauerlauf.ps1` — alles laeuft, aber
-      **stumm**: `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` fehlen.
-      Das kann nur Max tun (Konto bei @BotFather):
-      1. In Telegram @BotFather anschreiben, `/newbot`, Namen vergeben.
-      2. `setx TELEGRAM_TOKEN "123456:ABC-DEF..."`
-      3. Dem eigenen Bot irgendetwas schreiben, dann
-         `python melder.py --chat-id-suchen` und die ID mit
-         `setx TELEGRAM_CHAT_ID "..."` setzen.
-      4. `python melder.py --probe` — kommt die Nachricht an, ist es fertig.
-      5. Erst danach die beiden Aufgaben aus [[Routinen]] anlegen.
-      Ohne Schritt 2 und 3 ist die Steuerung nicht erreichbar und der
-      Dauerlauf meldet nichts — er handelt dann weiter auf Papier, was
-      unkritisch, aber eben auch nutzlos ist.
+- [~] **T-031 — Telegram-Bot fuer Meldung und Steuerung einrichten** — in Arbeit (Code fertig, Token fehlt)
+      Status am 07.09.2026 22:50: Die fünf Python-Module sind gebaut und
+      geprüft (`Handel/melder.py`, `tagesbericht.py`, `freigabefenster.py`,
+      `dauerlauf.py`, `Routinen/handel-dauerlauf.ps1`). Sie laufen, aber **stumm**:
+      `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` sind nicht als Umgebungsvariablen
+      gesetzt.
+
+      **Aufgabe für Max (einmalig, ca. 10 Minuten):**
+      1. Telegram öffnen und @BotFather anschreiben.
+      2. Nachricht: `/newbot`
+         → BotFather fragt nach Namen des Bots.
+         → Max antwortet mit einem Namen (z.B. „MaxHirn_Bot").
+         → BotFather antwortet mit Token (Form: `123456:ABC-DEF1234567890`).
+      3. Diesen Token kopieren und Befehl ausführen (PowerShell mit Admin):
+         `setx TELEGRAM_TOKEN "123456:ABC-DEF1234567890"`
+         → Neues Terminal nötig, damit die Variable sichtbar wird.
+      4. Dem Bot selbst eine beliebige Nachricht schreiben (z.B. „hallo").
+      5. PowerShell-Befehl:
+         `cd C:\Users\faupe\Documents\BrainFiles\Agenten\Handel`
+         `python melder.py --chat-id-suchen`
+         → Gibt die Chat-ID aus (z.B. `123456789`).
+      6. Diese ID setzen:
+         `setx TELEGRAM_CHAT_ID "123456789"`
+      7. Probe:
+         `python melder.py --probe`
+         → Sollte eine Testnachricht ins Telegram-Fenster kommen.
+      8. **Erst danach**: Die Aufgaben `MaxHirn-Handel-Wachen` und
+         `MaxHirn-Handel-Dauerlauf` in der Aufgabenplanung anlegen (siehe
+         [[Routinen]]).
+
+      **Ohne diese Token** handelt der Dauerlauf weiter auf Papier, meldet aber
+      nichts — funktioniert, ist nur stumm.
 
 - [ ] **T-035 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
       Aufgefallen 03.09.2026 beim Bau des XPERP-Live-Pfads (T-019).
