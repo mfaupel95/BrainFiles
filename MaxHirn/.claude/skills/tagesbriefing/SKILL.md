@@ -26,7 +26,8 @@ Select-String -Path "Wissen\*.md","Dashboard.md" -Pattern "^\s*- \[ \]"
 **4. Posteingang** — nur die Zahl, nicht die Dateiliste:
 
 ```powershell
-Get-ChildItem Archiv\Posteingang -Recurse -File | Measure-Object | Select-Object Count
+$pe = if ($env:ARCHIV_ROOT) { $env:ARCHIV_ROOT } else { 'Archiv' }
+Get-ChildItem (Join-Path $pe 'Posteingang') -Recurse -File | Measure-Object | Select-Object Count
 ```
 
 **5. System** — der letzte Bericht der Systemprüfung ([[Systempruefung]]):

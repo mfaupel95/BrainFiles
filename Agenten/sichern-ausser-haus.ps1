@@ -45,6 +45,18 @@ $start = Get-Date
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
   /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
 $code = $LASTEXITCODE
+
+# Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter
+# $quelle. Ohne diesen zweiten Lauf fehlt der Ausser-Haus-Kopie das komplette
+# 45-GB-Archiv - genau das, wofuer diese Sicherung gedacht ist.
+if (Test-Path 'O:\Archiv') {
+  robocopy 'O:\Archiv' (Join-Path $ziel 'MaxHirn\Archiv') /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus
+  if ($LASTEXITCODE -gt $code) { $code = $LASTEXITCODE }
+} else {
+  Write-Host 'O:\Archiv nicht erreichbar - der Archivteil FEHLT in dieser Kopie.' -ForegroundColor Red
+  if ($code -lt 4) { $code = 4 }
+}
+
 $dauer = (Get-Date) - $start
 
 Write-Host ("Dauer: {0:hh\:mm\:ss}" -f $dauer)

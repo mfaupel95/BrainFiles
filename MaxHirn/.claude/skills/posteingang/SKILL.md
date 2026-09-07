@@ -13,10 +13,13 @@ sie an ihren Platz.
 **1. Schauen, was da ist** — nicht blind sortieren:
 
 ```powershell
-Get-ChildItem Archiv\Posteingang -Recurse -File | Measure-Object | Select-Object Count
+$pe = if ($env:ARCHIV_ROOT) { $env:ARCHIV_ROOT } else { 'Archiv' }
+Get-ChildItem (Join-Path $pe 'Posteingang') -Recurse -File | Measure-Object | Select-Object Count
 ```
 
-Ist der Ordner leer, hier aufhören und das sagen.
+Der Datenzweig liegt seit dem 07.09.2026 auf `O:\Archiv` (`ARCHIV_ROOT`); der
+Werkzeugordner `Archiv\ArchivSuche\` bleibt auf `C:`. Ist der Ordner leer, hier
+aufhören und das sagen.
 
 **2. Bei mehr als ein paar Dutzend Dateien erst ein Testlauf:**
 
@@ -35,8 +38,9 @@ wenn wirklich geklärt werden muss, *welche* Datei wohin ging.
 
 **4. Rest von Hand.** Was liegen bleibt, konnte das Skript nicht sicher zuordnen —
 das ist kein Fehler. Diese Dateien einzeln ansehen (Inhalt lesen, nicht nur den
-Namen) und gezielt in den passenden Unterordner von `Archiv/Dokumente/` bzw.
-`Bilder/`, `Videos/`, `Musik/` verschieben. **Nicht raten.**
+Namen) und gezielt in den passenden Unterordner von `%ARCHIV_ROOT%\Dokumente\`
+bzw. `\Bilder\`, `\Videos\`, `\Musik\` verschieben (also unter `O:\Archiv\`).
+**Nicht raten.**
 
 **5. Index aktualisieren**, falls `sort_inbox.py` das nicht schon selbst getan hat:
 

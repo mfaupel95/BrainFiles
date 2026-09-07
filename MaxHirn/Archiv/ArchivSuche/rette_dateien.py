@@ -25,7 +25,8 @@ from collections import defaultdict
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 HIER = os.path.dirname(os.path.abspath(__file__))
-ARCHIV = os.path.dirname(HIER)
+# Archivdaten seit 07.09.2026 auf O:\Archiv (ARCHIV_ROOT), Fallback alte Lage.
+ARCHIV = os.environ.get("ARCHIV_ROOT") or os.path.dirname(HIER)
 sys.path.insert(0, HIER)
 
 from pruefe_signaturen import bewerte, UEBERSPRINGEN  # noqa: E402

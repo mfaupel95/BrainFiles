@@ -19,8 +19,10 @@ from collections import Counter
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-ARCHIV = os.path.dirname(os.path.abspath(__file__))
-ARCHIV = os.path.dirname(ARCHIV)
+# Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv; ARCHIV_ROOT zeigt
+# darauf (User-Umgebungsvariable, wie in index.py). Fallback auf die alte
+# Vault-Lage, damit das Tool nach einem SSD-Umzug ohne gesetzte Variable laeuft.
+ARCHIV = os.environ.get("ARCHIV_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Ordner, die nicht zum eigentlichen Archiv gehoeren
 UEBERSPRINGEN = {"ArchivSuche", "Posteingang", ".git", "__pycache__", ".venv"}
