@@ -254,3 +254,42 @@ def kerzen(oanda_inst, *, von, bis, granularity="M15", cache_dir=None, live=Fals
                              [vorhanden[t] for t in sorted(vorhanden)])
 
     return [vorhanden[t] for t in sorted(vorhanden) if von <= t < bis]
+
+
+# --- Preise, Instrumentdetails, Konto -------------------------------------
+
+def preis(oanda_inst, live=False):
+    url = "%s/v3/accounts/%s/pricing?instruments=%s" % (host(live), konto_id(), oanda_inst)
+    d = _mit_wiederholung(_roh_json, url)
+    p = d["prices"][0]
+    bid = float(p["bids"][0]["price"])
+    ask = float(p["asks"][0]["price"])
+    return {"bid": bid, "ask": ask, "spread_punkte": round(ask - bid, 2)}
+
+
+def instrument_details(oanda_inst, live=False):
+    url = "%s/v3/accounts/%s/instruments?instruments=%s" % (host(live), konto_id(), oanda_inst)
+    d = _mit_wiederholung(_roh_json, url)
+    i = d["instruments"][0]
+    return {"minimumTradeSize": float(i.get("minimumTradeSize", 1)),
+            "displayPrecision": int(i.get("displayPrecision", 1)),
+            "pipLocation": int(i.get("pipLocation", 0)),
+            "marginRate": float(i.get("marginRate", 0) or 0)}
+
+
+def konto_marge_frei(live=False):
+    url = "%s/v3/accounts/%s/summary" % (host(live), konto_id())
+    d = _mit_wiederholung(_roh_json, url)
+    a = d.get("account") or d
+    return float(a["marginAvailable"])
+
+
+def instrument_handelbar(oanda_inst, live=False):
+    """Fuer den DE30-Check: antwortet OANDA Practice ueberhaupt fuer diesen
+    Index? Fehlt DE30_EUR aus Deutschland, faellt die Spur auf US30/NAS100
+    zurueck (SPEC.md, Fallen) - kein Blocker fuer den Rest."""
+    try:
+        instrument_details(oanda_inst, live)
+        return True
+    except OandaFehler:
+        return False
