@@ -267,6 +267,26 @@ def preis(oanda_inst, live=False):
     return {"bid": bid, "ask": ask, "spread_punkte": round(ask - bid, 2)}
 
 
+def markt_order(oanda_inst, units, *, echt=False, live=False):
+    """Eine Markt-Order. units ganzzahlig, Vorzeichen = Richtung (long > 0).
+    echt=False -> nur validieren (OANDA rechnet sie durch, sie landet nicht
+    im Buch). Gibt (order_id, fuellpreis) zurueck; fuellpreis ist der echte
+    fillTransaction-Preis (Slippage), None bei echt=False."""
+    ganz = int(units)  # immer abrunden Richtung 0
+    body = {"order": {"type": "MARKET", "instrument": oanda_inst,
+                      "units": str(ganz),
+                      "timeInForce": "FOK", "positionFill": "DEFAULT"}}
+    pfad = "/v3/accounts/%s/orders" % konto_id()
+    if not echt:
+        pfad = "/v3/accounts/%s/pricing" % konto_id()  # Trockenlauf: nur Preis ziehen
+        d = _mit_wiederholung(_roh_json, host(live) + pfad + "?instruments=" + oanda_inst)
+        return None, None
+    d = _mit_wiederholung(_roh_json, host(live) + pfad, method="POST", body=body)
+    tx = d.get("orderFillTransaction") or {}
+    fp = tx.get("price")
+    return tx.get("id"), (float(fp) if fp else None)
+
+
 def instrument_details(oanda_inst, live=False):
     url = "%s/v3/accounts/%s/instruments?instruments=%s" % (host(live), konto_id(), oanda_inst)
     d = _mit_wiederholung(_roh_json, url)
