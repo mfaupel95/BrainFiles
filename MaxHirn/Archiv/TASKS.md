@@ -616,38 +616,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Eine schwache CMOS-Batterie würde erneut driften; ein zweiter Messpunkt
       in einigen Tagen bestätigt es endgültig. Bis dahin kein Handlungsbedarf.
 
-- [~] **T-031 — Telegram-Bot fuer Meldung und Steuerung einrichten** — in Arbeit (Code fertig, Token fehlt)
-      Status am 07.09.2026 22:50: Die fünf Python-Module sind gebaut und
-      geprüft (`Handel/melder.py`, `tagesbericht.py`, `freigabefenster.py`,
-      `dauerlauf.py`, `Routinen/handel-dauerlauf.ps1`). Sie laufen, aber **stumm**:
-      `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` sind nicht als Umgebungsvariablen
-      gesetzt.
+- [x] **T-031 — Telegram-Bot fuer Meldung und Steuerung einrichten** — erledigt 08.09.2026
+      Die fünf Module (`Handel/melder.py`, `tagesbericht.py`, `freigabefenster.py`,
+      `dauerlauf.py`, `Routinen/handel-dauerlauf.ps1`) waren seit 07.09. fertig,
+      aber stumm — es fehlten nur die Token.
 
-      **Aufgabe für Max (einmalig, ca. 10 Minuten):**
-      1. Telegram öffnen und @BotFather anschreiben.
-      2. Nachricht: `/newbot`
-         → BotFather fragt nach Namen des Bots.
-         → Max antwortet mit einem Namen (z.B. „MaxHirn_Bot").
-         → BotFather antwortet mit Token (Form: `123456:ABC-DEF1234567890`).
-      3. Diesen Token kopieren und Befehl ausführen (PowerShell mit Admin):
-         `setx TELEGRAM_TOKEN "123456:ABC-DEF1234567890"`
-         → Neues Terminal nötig, damit die Variable sichtbar wird.
-      4. Dem Bot selbst eine beliebige Nachricht schreiben (z.B. „hallo").
-      5. PowerShell-Befehl:
-         `cd C:\Users\faupe\Documents\BrainFiles\Agenten\Handel`
-         `python melder.py --chat-id-suchen`
-         → Gibt die Chat-ID aus (z.B. `123456789`).
-      6. Diese ID setzen:
-         `setx TELEGRAM_CHAT_ID "123456789"`
-      7. Probe:
-         `python melder.py --probe`
-         → Sollte eine Testnachricht ins Telegram-Fenster kommen.
-      8. **Erst danach**: Die Aufgaben `MaxHirn-Handel-Wachen` und
-         `MaxHirn-Handel-Dauerlauf` in der Aufgabenplanung anlegen (siehe
-         [[Routinen]]).
+      Eingerichtet 08.09.2026: Bot **@CodeClaudebitbitbot**. `TELEGRAM_TOKEN`
+      und `TELEGRAM_CHAT_ID` (`7648512088`) stehen als **Benutzervariablen** in
+      `HKCU\Environment`. `melder.py` liest sie live aus der Registry
+      (`_aus_registry`), ein laufender Dauerlauf braucht dafür **keinen
+      Neustart**. Probe bestätigt, der Bot beantwortet Befehle.
 
-      **Ohne diese Token** handelt der Dauerlauf weiter auf Papier, meldet aber
-      nichts — funktioniert, ist nur stumm.
+      Fallen fürs nächste Mal:
+      - Der Bot muss zuerst **vom Nutzer angeschrieben** werden, sonst gibt
+        `sendMessage` HTTP 400 ("chat not found").
+      - `melder.py --chat-id-suchen` liefert nichts, solange der Dauerlauf
+        läuft: Telegram gibt jede Nachricht per `getUpdates` nur einmal aus,
+        der Dauerlauf holt sie zuerst. Chat-ID dann aus `dauerlauf.log`
+        (Zeilen „Befehl: …") lesen oder den Dauerlauf kurz stoppen.
+      - Gültige Befehle: `/ja [h]`, `/nein`, `/hilfe`.
+
+      Geplante Aufgaben stehen alle (State Ready): `MaxHirn-Handel-Dauerlauf`
+      (+ `-Waechter`), `MaxHirn-Handel-Wachen`, `MaxHirn-Verbesserer`.
 
 - [ ] **T-035 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
       Aufgefallen 03.09.2026 beim Bau des XPERP-Live-Pfads (T-019).
