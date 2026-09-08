@@ -267,16 +267,33 @@ neu gestartet worden wäre. **Die Startzeile ist eine Momentaufnahme, kein
 Dauerzustand;** wer sie als „der Melder läuft nicht" liest, startet einen
 Handelsprozess ohne Grund neu.
 
-⚠️ **Der Bot-Token ist verbrannt und gehört rotiert.** Beim Einrichten am
-07.09.2026 wurde er mehrfach im Klartext in Shell-Befehle geschrieben, statt
-einmal gesetzt und danach nur noch als `$env:TELEGRAM_TOKEN` referenziert zu
-werden. Er steht damit in der PowerShell-History und im Sitzungsprotokoll —
-beides Orte, an denen ein Schlüssel nach [[Schutzregeln]] nie stehen darf. Ein
-Telegram-Token lässt sich bei BotFather mit `/revoke` folgenlos tauschen; bis
-dahin gilt: Wer die History hat, kann in den Gruppenchat schreiben. Lesen kann
-er nichts, was er nicht ohnehin sieht, und Handelsbefehle nimmt der Dauerlauf
-nur von `TELEGRAM_CHAT_ID` an — der Schaden ist begrenzt, aber er ist nicht
-null.
+⚠️ **Der Bot-Token stand beim Einrichten im Klartext in Shell-Befehlen.** Am
+07.09.2026 wurde er mehrfach direkt in Aufrufe geschrieben, statt einmal
+gesetzt und danach nur noch als `$env:TELEGRAM_TOKEN` referenziert zu werden.
+Nachgemessen am selben Tag, wo er tatsächlich gelandet ist:
+
+| Ort | Vorkommen |
+|---|---|
+| PowerShell-History (`ConsoleHost_history.txt`) | **0** — PSReadLine schreibt nur interaktiv Getipptes, keine Tool-Aufrufe |
+| `BrainFiles/` und damit die Sicherungen auf `G:` und `J:` | **0** |
+| Sitzungsprotokoll unter `~/.claude/projects/*.jsonl` | 11, in einer Datei |
+
+**Die Sicherungen sind sauber, und das ist der Punkt, auf den es ankommt.**
+Ein Schlüssel, der in den Vault gerät, wandert mit jedem Lauf auf zwei weitere
+Platten und ist dort praktisch nicht mehr einzufangen; ein Schlüssel im
+Sitzungsprotokoll liegt in einer einzigen Datei im Benutzerprofil, die nicht
+gesichert wird ([[KI-Ablagen-im-Benutzerordner]]).
+
+Rotieren bleibt trotzdem der saubere Abschluss — `/revoke` bei BotFather,
+danach `setx TELEGRAM_TOKEN`, kein Neustart nötig. Es kostet zehn Sekunden und
+macht jede verbliebene Kopie wertlos. Der Schaden wäre ohnehin begrenzt: Mit
+dem Token kann man in den Gruppenchat schreiben und mitlesen, aber
+Handelsbefehle nimmt der Dauerlauf nur von `TELEGRAM_CHAT_ID` an, und Geld
+bewegt keiner damit.
+
+**Die Lehre ist nicht „Token nie anfassen", sondern: einmal setzen, danach nur
+noch referenzieren.** `melder.py` liest ihn ohnehin selbst aus der Registry —
+er hätte nie in einen Aufruf gehört.
 
 ### Kraken-Spur 3: derselbe Zuschnitt, andere Börse
 
