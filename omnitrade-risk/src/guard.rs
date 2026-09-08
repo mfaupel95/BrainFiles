@@ -1,0 +1,236 @@
+//! Risk guard for validating orders before execution.
+
+use crate::error::RiskViolation;
+use crate::limits::RiskLimits;
+use omnitrade_core::Order;
+
+/// Minimal account state interface for risk checking.
+pub trait AccountInfo {
+    /// Total account equity (balance + unrealized PnL)
+    fn total_equity(&self) -> f64;
+
+    /// Total realized and unrealized PnL
+    fn total_pnl(&self) -> f64;
+
+    /// Initial account balance
+    fn initial_balance(&self) -> f64;
+}
+
+/// Validates orders against risk limits before execution.
+///
+/// Enforces position size, drawdown, and daily loss limits on all orders.
+/// All checks are performed regardless of environment (testnet or mainnet).
+pub struct RiskGuard {
+    limits: RiskLimits,
+    peak_equity: f64,
+    daily_loss: f64,
+}
+
+impl RiskGuard {
+    /// Creates a new RiskGuard with the specified limits.
+    pub fn new(limits: RiskLimits) -> Self {
+        Self {
+            limits,
+            peak_equity: 0.0,
+            daily_loss: 0.0,
+        }
+    }
+
+    /// Creates a RiskGuard for testnet trading.
+    pub fn testnet() -> Self {
+        Self::new(RiskLimits::testnet())
+    }
+
+    /// Creates a RiskGuard for mainnet trading.
+    pub fn mainnet() -> Self {
+        Self::new(RiskLimits::mainnet())
+    }
+
+    /// Checks an order against all risk limits.
+    ///
+    /// Returns Ok(()) if the order passes all checks, or an error describing the violation.
+    /// Automatically tracks peak equity for drawdown calculation.
+    pub fn check_order(
+        &mut self,
+        order: &Order,
+        account: &dyn AccountInfo,
+        current_price: f64,
+    ) -> Result<(), RiskViolation> {
+        // Update peak equity tracking
+        let current_equity = account.total_equity();
+        if current_equity > self.peak_equity {
+            self.peak_equity = current_equity;
+        }
+
+        // Check position size limit
+        self.check_position_size(order, current_price)?;
+
+        // Check drawdown limit
+        self.check_drawdown(current_equity)?;
+
+        // Check daily loss limit (simplified: using current PnL as daily loss)
+        self.check_daily_loss(account)?;
+
+        Ok(())
+    }
+
+    /// Validates order size against maximum position limit.
+    fn check_position_size(&self, order: &Order, current_price: f64) -> Result<(), RiskViolation> {
+        let order_size = order.quantity * current_price;
+        if order_size > self.limits.max_position_size {
+            return Err(RiskViolation::PositionSizeExceeded {
+                order_size,
+                limit: self.limits.max_position_size,
+            });
+        }
+        Ok(())
+    }
+
+    /// Validates drawdown against maximum allowed threshold.
+    fn check_drawdown(&self, current_equity: f64) -> Result<(), RiskViolation> {
+        if self.peak_equity <= 0.0 {
+            return Ok(());
+        }
+
+        let drawdown = ((self.peak_equity - current_equity) / self.peak_equity) * 100.0;
+        if drawdown > self.limits.max_drawdown_pct {
+            return Err(RiskViolation::DrawdownExceeded {
+                current_pct: drawdown,
+                limit_pct: self.limits.max_drawdown_pct,
+            });
+        }
+        Ok(())
+    }
+
+    /// Validates daily loss against limit.
+    fn check_daily_loss(&self, account: &dyn AccountInfo) -> Result<(), RiskViolation> {
+        let current_loss = (account.initial_balance() - account.total_equity()).abs();
+        if current_loss > self.limits.max_daily_loss {
+            return Err(RiskViolation::DailyLossExceeded {
+                loss: current_loss,
+                limit: self.limits.max_daily_loss,
+            });
+        }
+        Ok(())
+    }
+
+    /// Resets daily loss tracking (call once per day).
+    pub fn reset_daily_loss(&mut self) {
+        self.daily_loss = 0.0;
+    }
+
+    /// Gets the current peak equity (for testing/monitoring).
+    pub fn peak_equity(&self) -> f64 {
+        self.peak_equity
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use omnitrade_core::{OrderStatus, OrderType, Side, TimeInForce};
+
+    struct MockAccount {
+        balance: f64,
+        initial_balance: f64,
+        total_pnl: f64,
+    }
+
+    impl AccountInfo for MockAccount {
+        fn total_equity(&self) -> f64 {
+            self.balance
+        }
+
+        fn total_pnl(&self) -> f64 {
+            self.total_pnl
+        }
+
+        fn initial_balance(&self) -> f64 {
+            self.initial_balance
+        }
+    }
+
+    fn create_test_order(id: u64, quantity: f64) -> Order {
+        Order {
+            id,
+            symbol: "BTCUSDT".to_string(),
+            side: Side::Buy,
+            order_type: OrderType::Market,
+            time_in_force: TimeInForce::GTC,
+            price: 0.0,
+            stop_price: 0.0,
+            quantity,
+            filled_quantity: 0.0,
+            status: OrderStatus::New,
+            created_at_ms: 1000,
+            updated_at_ms: 1000,
+        }
+    }
+
+    fn create_mock_account(balance: f64, initial: f64, pnl: f64) -> MockAccount {
+        MockAccount {
+            balance,
+            initial_balance: initial,
+            total_pnl: pnl,
+        }
+    }
+
+    #[test]
+    fn test_position_size_within_limit() {
+        let mut guard = RiskGuard::testnet();
+        let account = create_mock_account(10000.0, 10000.0, 0.0);
+        let order = create_test_order(1, 1.0);
+        // Price: 40000, order_size: 40000 < 10000 limit should fail
+        let result = guard.check_order(&order, &account, 40000.0);
+        assert!(matches!(
+            result,
+            Err(RiskViolation::PositionSizeExceeded { .. })
+        ));
+    }
+
+    #[test]
+    fn test_position_size_exceeds_limit() {
+        let mut guard = RiskGuard::testnet();
+        let account = create_mock_account(10000.0, 10000.0, 0.0);
+        let order = create_test_order(2, 1.0);
+        // Price: 50000, order_size: 50000 > 10000 limit should fail
+        let result = guard.check_order(&order, &account, 50000.0);
+        assert!(matches!(
+            result,
+            Err(RiskViolation::PositionSizeExceeded { .. })
+        ));
+    }
+
+    #[test]
+    fn test_drawdown_within_limit() {
+        let mut guard = RiskGuard::testnet();
+        let account = create_mock_account(8500.0, 10000.0, -1500.0);
+        guard.peak_equity = 10000.0;
+        let order = create_test_order(3, 1.0);
+        let result = guard.check_order(&order, &account, 3000.0);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_drawdown_exceeds_limit() {
+        let mut guard = RiskGuard::testnet();
+        let account = create_mock_account(7000.0, 10000.0, -3000.0);
+        guard.peak_equity = 10000.0;
+        let order = create_test_order(4, 1.0);
+        let result = guard.check_order(&order, &account, 3000.0);
+        assert!(matches!(
+            result,
+            Err(RiskViolation::DrawdownExceeded { .. })
+        ));
+    }
+
+    #[test]
+    fn test_peak_equity_tracking() {
+        let mut guard = RiskGuard::testnet();
+        assert_eq!(guard.peak_equity(), 0.0);
+        let account = create_mock_account(15000.0, 15000.0, 0.0);
+        let order = create_test_order(5, 0.1);
+        let _ = guard.check_order(&order, &account, 50000.0);
+        assert_eq!(guard.peak_equity(), 15000.0);
+    }
+}

@@ -47,6 +47,12 @@ pub enum Commands {
         #[arg(long, value_name = "PATH")]
         script: PathBuf,
     },
+    /// Emergency kill switch to halt all trading operations.
+    ///
+    /// Stops a running live trading process and closes all open positions.
+    /// This is a safety mechanism and should be used when risk limits are breached
+    /// or market conditions require immediate halt.
+    Kill,
 }
 
 #[cfg(test)]
@@ -145,6 +151,21 @@ mod tests {
         } else {
             unreachable!("Expected Commands::Validate variant");
         }
+    }
+
+    #[test]
+    fn test_parse_kill_command() {
+        // Arrange
+        let args = vec!["omnitrade-cli", "kill"];
+
+        // Act
+        let parsed = CliArgs::try_parse_from(args).expect("Should successfully parse kill command");
+
+        // Assert
+        assert!(
+            matches!(parsed.command, Commands::Kill),
+            "Expected Commands::Kill variant"
+        );
     }
 
     #[test]

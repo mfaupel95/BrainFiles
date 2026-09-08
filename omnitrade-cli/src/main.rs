@@ -5,10 +5,12 @@
 
 mod args;
 mod backtest;
+mod commands;
 
 use args::{CliArgs, Commands};
 use backtest::{run_backtest, BacktestConfig};
 use clap::Parser;
+use commands::handle_kill;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
@@ -36,6 +38,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let tokens = omnitrade_script::tokenize(&script_content)?;
             let _stmts = omnitrade_script::parse(&tokens)?;
             println!("Script validation successful: {:?}", script);
+        }
+        Commands::Kill => {
+            handle_kill()?;
         }
     }
 

@@ -17,9 +17,15 @@
 //! **Phase 2 (Done)**: `EXCH-001` through `EXCH-005` completed.
 
 pub mod binance;
+pub mod credentials;
 pub mod error;
+pub mod keystore;
+pub mod trading;
 pub mod traits;
 
-pub use binance::BinanceClient;
+pub use binance::{BinanceClient, BinanceRestClient};
+pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;
+pub use keystore::Keystore;
+pub use trading::{Account, AccountBalance, ExchangeTrading, OrderRequest};
 pub use traits::{DepthUpdate, ExchangeInfo, ExchangeStream};

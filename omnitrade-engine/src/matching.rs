@@ -1,4 +1,8 @@
 //! Paper trading matching engine for simulated order execution.
+//!
+//! For live trading, wrap order submission with `omnitrade_risk::RiskGuard::check_order()`
+//! to enforce position limits, drawdown, and daily loss thresholds BEFORE submission.
+//! This ensures backtest and live trading behave identically.
 
 use omnitrade_core::{Order, OrderStatus, OrderType, Side, Tick};
 
