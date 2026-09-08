@@ -5,7 +5,7 @@ tags: [handel, sicherheit]
 created: 2026-09-08
 updated: 2026-09-08
 related: [20260902-handelsregeln, 20260831-marktscanner, 20260830-schutzregeln]
-summary: 'Von Max am 08.09.2026 angeordnete, zeitlich begrenzte Ausnahme: bis zu 100 USDG dürfen in Spur 1 (OKX Spot) real verwendet werden, bevor die reguläre Freigabe (50 Paper-Runden, netto positiv) erfüllt ist. Voraussetzungen und Sperren.'
+summary: 'Von Max am 08.09.2026 angeordnete, zeitlich begrenzte Ausnahme: bis zu 100 USDG dürfen in Spur 1 (OKX Spot) real verwendet werden, bevor die reguläre Freigabe (50 Paper-Runden, netto positiv) erfüllt ist. Stand 08.09.2026: umgesetzt, 2 Positionen live (BNB/LINK, USDC), Dauerlauf gestoppt, Telegram-Meldung aktiv.'
 ---
 
 # Ausnahme — 100 USDG als Live-Start (Spur 1)
@@ -16,6 +16,21 @@ riskieren, auch wenn die reguläre Freigabebedingung von Spur 1 ([[Marktscanner]
 
 **Diese Notiz ist die Ausnahme und ihre Abgrenzung.** Sie ist kein neuer
 Dauerzustand, sondern ein **zeitlich begrenzter, strikt gedeckelter Start**.
+
+Stand 08.09.2026 (live umgesetzt):
+
+- Live-Key mit `read_only,trade` (KEIN Auszahlungsrecht): verifiziert.
+- USDC-Spot-Positionen real eröffnet (Fill belegt):
+  - BNB-USDC: 0,0398 BNB @ 753,4 (30 USDC)
+  - LINK-USDC: 5,503 LINK @ 12,538 (69 USDC)
+  - Deckel 99/100 USDC eingehalten, Kill-Switch 60 aktiv.
+- Stops (börsenseitig) gesetzt: BNB 712,33 / LINK 11,66.
+- Doppelte Dauerlauf-Instanzen (53616/53684) gestoppt — kein autonomer
+  Live-Handel mehr über `dauerlauf.py`, bis Max es wieder anordnet.
+- Telegram-Benachrichtigung aktiv (melder.py): Beobachtungsmeldungen laufen
+  über den bestehenden Kanal (OBS-CONFIRM verifiziert).
+- Watchlist von USDT auf USDC umgestellt (Sonderweg, da 0 USDT, aber 132 USDC
+  verfügbar); alle 13 USDC-Spot-Paare existieren.
 
 ## Gültigkeitsgrenzen (nicht verhandelbar)
 
