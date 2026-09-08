@@ -36,6 +36,8 @@ Stand 08.09.2026 (live umgesetzt):
 
 - **Deckung:** höchstens **100 USDG** real im Einsatz (Spur 1 = OKX Spot, USD).
   Kein Hebel. Die übrigen 50 USDG bleiben ungenutzt in der Wallet.
+- **Stand 08.09.2026 (nach Max):** Deckel auf **400 USDC** erhöht (Spur 1, Spot),
+  Kill-Switch auf **200 USDC** (50 % des Gesamtdeckels), `max_pro_trade_usd` bleibt 100.
 - **Nur Spur 1 (Marktscanner, Spot, Long).** Kein XPERP-Hebel, kein Kraken.
   Spur 4/ORB bleibt in Papier.
 - **Instrumente:** nur die Scanner-Watchlist, kein neues Instrument.

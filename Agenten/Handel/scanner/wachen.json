@@ -1,10 +1,10 @@
 {
   "_zweck": "Harte Grenzen des Marktscanners. Eine Datei, eine Wahrheit. Wird von scan.py und handeln.py gelesen, nie von ihnen geschrieben.",
 
-  "watchlist": ["BTC-USDT", "BNB-USDT", "XRP-USDT", "DOGE-USDT", "ADA-USDT", "TRX-USDT", "AVAX-USDT", "LINK-USDT", "DOT-USDT", "SUI-USDT", "LTC-USDT"],
+  "watchlist": ["BTC-USDC", "BNB-USDC", "XRP-USDC", "DOGE-USDC", "ADA-USDC", "TRX-USDC", "AVAX-USDC", "LINK-USDC", "DOT-USDC", "SUI-USDC", "LTC-USDC"],
 
   "max_pro_trade_usd": 100,
-  "max_gesamt_usd": 600,
+  "max_gesamt_usd": 400,
   "max_offene_positionen": 6,
 
   "pflicht_stop_prozent_min": 5.0,
@@ -18,7 +18,7 @@
 
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "papierlauf_min_wochen": 3,
     "papierlauf_min_runden": 50,
     "netto_positiv_nach_gebuehren_und_funding": false,
@@ -29,7 +29,7 @@
 
   "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_usd.",
   "drawdown_halbierung_prozent": 15.0,
-  "kill_switch_gesamt_usd": 120,
+  "kill_switch_gesamt_usd": 200,
 
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. Wert an die Aufruf-Taktung koppeln: die Tagesroutine laeuft 1x/Tag, 2880 = 48 h faengt einen ausgefallenen Lauf ab, ohne bei jedem normalen Lauf auszuloesen. Ein Schnelllauf-Bot steht bei ~30.",
   "herzschlag_max_minuten": 2880,
@@ -37,6 +37,6 @@
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal",
 
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
   "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'."
 }
