@@ -115,3 +115,154 @@ def simuliere_session(session_kerzen, inst_konf, tag, w, einstiegsmodell):
             "stop": stop, "ziel": ziel, "ausgang": ausgang, "ausstieg": ausstieg,
             "range_punkte": range_hoehe, "mehrdeutig": mehrdeutig,
             "gv_punkte": gv}
+
+
+# --- Kosten + Bericht -----------------------------------------------------
+
+from collections import defaultdict
+
+
+def mit_kosten(ergebnis, spread_punkte, slippage_punkte=0.5):
+    """gv_punkte nach Spread. Modell SPEC.md: ein voller Spread + Slippage je
+    Runde (OANDA-Index-CFD = Spread, keine Kommission auf Standard)."""
+    return ergebnis["gv_punkte"] - spread_punkte - slippage_punkte
+
+
+def _quartal(d):
+    return "%d-Q%d" % (d.year, (d.month - 1) // 3 + 1)
+
+
+def _noetige_trefferquote(oe_gewinn, oe_verlust):
+    spanne = oe_gewinn + abs(oe_verlust)
+    return abs(oe_verlust) / spanne if spanne > 0 else 1.0
+
+
+def bericht(ergebnisse, inst_konf, spread_punkte, kursreihe, slippage_punkte=0.5):
+    netto = [mit_kosten(e, spread_punkte, slippage_punkte) for e in ergebnisse]
+    n = len(netto) or 1
+    gewinner = [x for x in netto if x > 0]
+    verlierer = [x for x in netto if x <= 0]
+    oe_gewinn = sum(gewinner) / len(gewinner) if gewinner else 0.0
+    oe_verlust = sum(verlierer) / len(verlierer) if verlierer else 0.0
+    ev = sum(netto) / n
+
+    q = defaultdict(list)
+    for e, x in zip(ergebnisse, netto):
+        q[_quartal(e["tag"])].append(x)
+    quartale = [{"quartal": k, "ev": sum(v) / len(v), "n": len(v)}
+                for k, v in sorted(q.items())]
+    schlechtestes_q_ev = min((qq["ev"] for qq in quartale), default=0.0)
+
+    kum = hoch = 0.0
+    max_rueck = 0.0
+    for x in netto:
+        kum += x
+        hoch = max(hoch, kum)
+        max_rueck = max(max_rueck, hoch - kum)
+
+    sens = {}
+    for faktor in (1.0, 1.5, 2.0):
+        sn = [e["gv_punkte"] - spread_punkte * faktor - slippage_punkte for e in ergebnisse]
+        sens["%.1f" % faktor] = sum(sn) / (len(sn) or 1)
+
+    trefferquote = len(gewinner) / n
+    noetig = _noetige_trefferquote(oe_gewinn, oe_verlust)
+    genug_verlierer = len(verlierer) >= 10
+    haelt_81 = (ev > 0 and schlechtestes_q_ev > 0 and genug_verlierer
+                and trefferquote >= 0.75)
+    if haelt_81:
+        urteil = ("Ja - die 81-%%-Behauptung haelt: Trefferquote %.0f%%, EV %+.2f "
+                  "Pkt/Runde, schlechtestes Quartal %+.2f, %d Verlierer."
+                  % (trefferquote * 100, ev, schlechtestes_q_ev, len(verlierer)))
+    else:
+        grund = ("EV im Fenster <= 0" if ev <= 0 else
+                 "schlechtestes Quartal <= 0" if schlechtestes_q_ev <= 0 else
+                 "unter 10 Verlierer" if not genug_verlierer else
+                 "Trefferquote unter 75%")
+        urteil = ("Nein - die 81-%%-Behauptung faellt (%s): Trefferquote %.0f%%, "
+                  "EV %+.2f, schlechtestes Quartal %+.2f, %d Verlierer."
+                  % (grund, trefferquote * 100, ev, schlechtestes_q_ev, len(verlierer)))
+    return {
+        "trefferquote": trefferquote, "oe_gewinn": oe_gewinn, "oe_verlust": oe_verlust,
+        "noetige_trefferquote": noetig, "ev_je_runde": ev,
+        "verlierer": len(verlierer), "verlierer_warnung": not genug_verlierer,
+        "quartale": quartale, "spread_sensitivitaet": sens,
+        "max_rueckschlag": max_rueck,
+        "mehrdeutige": sum(1 for e in ergebnisse if e["mehrdeutig"]),
+        "kursreihe_start_ende": (kursreihe[0], kursreihe[-1]) if kursreihe else (None, None),
+        "haelt_81": haelt_81, "urteil": urteil,
+    }
+
+
+def _lauf_instrument(w, key, jahre, modell, cache_dir, live=False):
+    import oanda
+    from datetime import datetime, timezone, timedelta
+    konf = w["instrumente"][key]
+    bis = datetime.now(timezone.utc)
+    von = bis - timedelta(days=365 * jahre)
+    kerzen = oanda.kerzen(konf["oanda"], von=von, bis=bis, cache_dir=cache_dir, live=live)
+    ergebnisse = []
+    for tag, sk in sessions_gruppieren(kerzen, konf):
+        r = simuliere_session(sk, konf, tag, w, modell)
+        if r:
+            ergebnisse.append(r)
+    kursreihe = [k["c"] for k in kerzen]
+    return bericht(ergebnisse, konf, konf["spread_punkte"], kursreihe), len(ergebnisse)
+
+
+def _drucke_bericht(key, modell, b, n):
+    print("=== %s | Einstiegsmodell: %s | %d Sessions ===" % (key, modell, n))
+    print("  Trefferquote beobachtet %.1f%%   noetig (Break-even) %.1f%%"
+          % (b["trefferquote"] * 100, b["noetige_trefferquote"] * 100))
+    print("  Ø Gewinn %+.2f Pkt   Ø Verlust %+.2f Pkt   EV %+.3f Pkt/Runde"
+          % (b["oe_gewinn"], b["oe_verlust"], b["ev_je_runde"]))
+    print("  Verlierer %d%s   mehrdeutige Kerzen %d   max. Rueckschlag %.1f Pkt"
+          % (b["verlierer"], "  << WARNUNG < 10" if b["verlierer_warnung"] else "",
+             b["mehrdeutige"], b["max_rueckschlag"]))
+    print("  Quartale:")
+    for q in b["quartale"]:
+        print("    %-8s EV %+.3f  (n=%d)" % (q["quartal"], q["ev"], q["n"]))
+    print("  Spread-Sensitivitaet  1.0x %+.3f  1.5x %+.3f  2.0x %+.3f"
+          % (b["spread_sensitivitaet"]["1.0"], b["spread_sensitivitaet"]["1.5"],
+             b["spread_sensitivitaet"]["2.0"]))
+    print("  URTEIL: %s" % b["urteil"])
+    print()
+
+
+def main(argv=None):
+    import argparse
+    import json as _json
+    from pathlib import Path as _P
+    import sys as _sys
+    if hasattr(_sys.stdout, "reconfigure"):
+        _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    p = argparse.ArgumentParser()
+    p.add_argument("--instrument", default="alle")
+    p.add_argument("--jahre", type=int, default=2)
+    p.add_argument("--modell", default="beide",
+                   choices=("schluss", "naechste_eroeffnung", "beide"))
+    p.add_argument("--raster", action="store_true")
+    p.add_argument("--cache", default=str(_P(__file__).resolve().parent / "daten"))
+    a = p.parse_args(argv)
+
+    w = _json.loads((_P(__file__).resolve().parent / "wachen.json").read_text("utf-8"))
+    cache_dir = _P(a.cache)
+    keys = list(w["instrumente"]) if a.instrument == "alle" else [a.instrument]
+    modelle = (["schluss", "naechste_eroeffnung"] if a.modell == "beide" else [a.modell])
+
+    raster_ziel_k = [1.0, 1.5, 2.0, 2.5, 3.0]
+    for key in keys:
+        for modell in modelle:
+            if a.raster:
+                for k in raster_ziel_k:
+                    w2 = dict(w, ziel_modus="r_vielfaches", ziel_k=k)
+                    b, n = _lauf_instrument(w2, key, a.jahre, modell, cache_dir)
+                    print("[Raster k=%.1f] " % k, end="")
+                    _drucke_bericht(key, modell, b, n)
+            else:
+                b, n = _lauf_instrument(w, key, a.jahre, modell, cache_dir)
+                _drucke_bericht(key, modell, b, n)
+
+
+if __name__ == "__main__":
+    main()
