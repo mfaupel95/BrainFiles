@@ -66,13 +66,20 @@ def simuliere_session(session_kerzen, inst_konf, tag, w, einstiegsmodell):
     if einstieg_kerze is None:
         return None
 
+    # Nur Kerzen pruefen, durch die die Position tatsaechlich gehalten wurde:
+    #   schluss            -> Einstieg = Schluss der Ausbruchskerze, gehalten ab
+    #                         der NAECHSTEN Kerze (H/L der Ausbruchskerze lagen
+    #                         vor dem Einstieg) -> pruef_kerzen = rest
+    #   naechste_eroeffnung -> Einstieg = Open der Fuellkerze (rest[0]), diese
+    #                         Kerze wird voll gehalten -> pruef_kerzen ab rest[0]
     if einstiegsmodell == "schluss":
         einstieg = einstieg_kerze["c"]
+        pruef_kerzen = list(rest)
     else:  # naechste_eroeffnung
         if not rest:
             return None
         einstieg = rest[0]["o"]
-        rest = rest[1:]
+        pruef_kerzen = list(rest)
 
     if richtung == "long":
         stop = tief
@@ -84,7 +91,6 @@ def simuliere_session(session_kerzen, inst_konf, tag, w, einstiegsmodell):
                            else w["ziel_punkte"][key])
 
     ausgang, ausstieg, mehrdeutig = "zwangsschluss", None, False
-    pruef_kerzen = [einstieg_kerze] + list(rest) if einstiegsmodell == "schluss" else list(rest)
     for k in pruef_kerzen:
         if richtung == "long":
             stop_beruehrt = k["l"] <= stop
