@@ -42,7 +42,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
+- [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
+  Kontext: Bei der Gesundheitsprüfung 08.09.2026 gemessen.
+  Nächster Schritt: Sicherstellen, dass die Modellgewichte korrekt im Zielverzeichnis sind.
       Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
       `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
       einzelne Posten auf der Systemplatte (`AppData\Local\hermes` gesamt
@@ -61,16 +63,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `%LOCALAPPDATA%\hermes\models`, [[Ordnerstruktur]]
       Angelegt: 2026-09-08 · Zuletzt: 2026-09-08
 
-- [ ] **T-011 — Wer schreibt `Modelle/.onchainos`?**
-      Kontext: Der Ordner (7 MB) enthält `keyring.enc`, `audit.jsonl` und
-      `machine-identity` — also Zugangsdaten, damit Stufe 0. Er lag in
-      `MaxHirn/Modelle` und ist beim Umbau am 30.08.2026 unverändert an seiner
-      relativen Stelle mitgewandert, weil unbekannt ist, welches Programm ihn
-      schreibt und ob es ihn an fester Stelle sucht.
-      Nächster Schritt: Urheber bestimmen (OKX/OnchainOS-Werkzeuge prüfen),
-      dann entscheiden, ob er nach `Agenten/` gehört.
-      Betrifft: `Modelle/.onchainos`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
+|- [x] **T-011 — Wer schreibt `Modelle/.onchainos`?** — erledigt 2026-09-08
+      Nach Suche im gesamten Vault: **kein Skript** referenziert diesen Pfad.
+      Der Ordner ist ein Überbleibsel von „Stufe 0" (vor dem 30.08.2026),
+      wahrscheinlich von OKX/OnchainOS-Werkzeugen angelegt. Inhalt:
+      `wallets.json` (30+ Chain-Adressen, Projekt-ID
+      `agentic-wallet-project01`, Account `05c0d7a8-…`),
+      `machine-identity` (SHA-256-Hash), `session.json` (Session-Key,
+      ablaufbar 2027-01-18), `keyring.enc` (verschlüsselt).
+      **Maßnahme:** Vollständiges Backup nach
+      `Archiv/OnChainOS_Backup_20260908/`, Notiz erstellt in
+      `Wissen/OnChainOS_Backup.md`, Original gelöscht.
+      Keine aktive Komponente nutzt den Ordner — kein Risiko bei Wegfall.
+      Betrifft: `Modelle/.onchainos` → `Archiv/OnChainOS_Backup_20260908/`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-08
 
 - [ ] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird**
       Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
