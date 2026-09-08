@@ -95,6 +95,10 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260901-saisonalitaet-signal` — **Saisonalität im XPERP-Signal** — `Wissen/Saisonalitaet-Signal.md` — Warum der Closed-Source-Indikator „xGhozt Prophecies" als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem laut seine dünne Stichprobe nennt.
 - `20260908-volumen-drift-signal` — **Volumen-Drift-Momentum im XPERP-Signal** — `Wissen/Volumen-Drift-Signal.md` — Eigener Nachbau des Prinzips von Swift Algo X (TradingView, Invite-Only) — volumengewichtete Preisdrift mit Mehrfach-Zeitebenen-Bestätigung, hoch gewichtet ins Signal, mit Vorrang vor der Saisonalität.
 
+### Handel — Sonderregeln
+
+- `20260908-ausnahme-usdg-live` — **Ausnahme — 100 USDG als Live-Start (Spur 1)** — `Wissen/Ausnahme-USDG-Live.md` — Von Max angeordnete, gedeckelte Ausnahme: bis 100 USDG real in Spur 1 (OKX Spot), bevor die Rundensperre erfüllt ist. Voraussetzungen (Live-Key mit Trade-Recht, USDG→Börsenkonto) und zeitliche Begrenzung.
+
 ### Person und Fachliches
 
 - `20260830-profil` — **Profil** — `Wissen/Profil.md` — Wer Max ist und wie er arbeitet; Fundament für Antworten ohne Werkzeugaufruf.
