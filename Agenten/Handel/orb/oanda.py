@@ -157,28 +157,55 @@ def _cache_datei(cache_dir, oanda_inst, granularity):
     return cache_dir / ("%s_%s.json" % (oanda_inst, granularity))
 
 
-def _cache_laden(pfad):
-    """Gibt {"von": dt, "bis": dt, "kerzen": [kerze, ...]} oder None zurueck.
+def _bereiche_mischen(bereiche):
+    """Sortiert Intervalle [von, bis) und verschmilzt ueberlappende oder
+    unmittelbar aneinanderstossende - so bleibt jedes gespeicherte Intervall
+    ein wirklich lueckenlos abgefragter Abschnitt."""
+    s = sorted(bereiche)
+    if not s:
+        return []
+    out = [list(s[0])]
+    for a, b in s[1:]:
+        if a <= out[-1][1]:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    return [(a, b) for a, b in out]
 
-    Der abgedeckte Bereich wird mitgespeichert: nur so weiss ein zweiter Lauf,
-    dass er einen Abschnitt schon vollstaendig abgefragt hat - auch wenn der
-    Markt darin gar keine (oder nur schon fertige) Kerzen hatte."""
+
+def _ist_gedeckt(bereiche, von, bis):
+    """True nur, wenn [von, bis) ganz in EIN zusammenhaengendes, bereits
+    abgefragtes Intervall faellt. Zwei disjunkte Abrufe decken die Luecke
+    zwischen ihnen NICHT ab."""
+    return any(a <= von and bis <= b for a, b in bereiche)
+
+
+def _cache_laden(pfad):
+    """Gibt {"bereiche": [(von, bis), ...], "kerzen": [kerze, ...]} oder None.
+
+    `bereiche` sind die bisher lueckenlos abgefragten Zeitabschnitte (sortiert,
+    verschmolzen). Nur so weiss ein zweiter Lauf, dass er einen Abschnitt schon
+    vollstaendig geholt hat - auch wenn der Markt darin keine (oder nur schon
+    fertige) Kerzen hatte."""
     from datetime import datetime, timezone
+
+    def _dt(s):
+        return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+
     if not pfad.exists():
         return None
     roh = json.loads(pfad.read_text(encoding="utf-8"))
     for c in roh["kerzen"]:
-        c["zeit"] = datetime.fromisoformat(c["zeit"]).replace(tzinfo=timezone.utc)
-    roh["von"] = datetime.fromisoformat(roh["von"]).replace(tzinfo=timezone.utc)
-    roh["bis"] = datetime.fromisoformat(roh["bis"]).replace(tzinfo=timezone.utc)
+        c["zeit"] = _dt(c["zeit"])
+    roh["bereiche"] = [(_dt(a), _dt(b)) for a, b in roh.get("bereiche", [])]
     return roh
 
 
-def _cache_speichern(pfad, von, bis, kerzen_liste):
+def _cache_speichern(pfad, bereiche, kerzen_liste):
     pfad.parent.mkdir(parents=True, exist_ok=True)
     roh = {
-        "von": von.strftime("%Y-%m-%dT%H:%M:%S"),
-        "bis": bis.strftime("%Y-%m-%dT%H:%M:%S"),
+        "bereiche": [[a.strftime("%Y-%m-%dT%H:%M:%S"), b.strftime("%Y-%m-%dT%H:%M:%S")]
+                     for a, b in bereiche],
         # Sicherheitsnetz: eine laufende Kerze landet nie im Cache.
         "kerzen": [dict(c, zeit=c["zeit"].strftime("%Y-%m-%dT%H:%M:%S"))
                    for c in kerzen_liste if c["complete"]],
@@ -189,25 +216,25 @@ def _cache_speichern(pfad, von, bis, kerzen_liste):
 def kerzen(oanda_inst, *, von, bis, granularity="M15", cache_dir=None, live=False):
     """M15-Kerzen [von, bis), aufsteigend, ohne Duplikate, ohne complete:false.
 
-    Paginiert in MAX_JE_ABRUF-Bloecken ueber from/to. Mit cache_dir wird der
-    Bestand lueckenlos zwischengespeichert; ein zweiter Lauf ueber denselben
-    (oder einen engeren) Bereich geht nicht mehr ins Netz."""
+    Paginiert in MAX_JE_ABRUF-Bloecken ueber from/to. Mit cache_dir wird jeder
+    abgefragte Abschnitt vermerkt; ein zweiter Lauf ueber einen Bereich, der
+    ganz in einen schon geholten Abschnitt faellt, geht nicht mehr ins Netz.
+    Ein Bereich in einer Luecke zwischen zwei getrennten Abrufen wird
+    nachgeholt."""
     from datetime import timedelta
     gran_s = GRAN_SEKUNDEN[granularity]
 
     vorhanden = {}
-    abgedeckt_von = abgedeckt_bis = None
+    bereiche = []
     cache_pfad = _cache_datei(cache_dir, oanda_inst, granularity) if cache_dir else None
     if cache_pfad:
         cache = _cache_laden(cache_pfad)
         if cache:
             for c in cache["kerzen"]:
                 vorhanden[c["zeit"]] = c
-            abgedeckt_von, abgedeckt_bis = cache["von"], cache["bis"]
+            bereiche = cache["bereiche"]
 
-    gedeckt = (abgedeckt_von is not None
-               and abgedeckt_von <= von and abgedeckt_bis >= bis)
-    if not gedeckt:
+    if not _ist_gedeckt(bereiche, von, bis):
         cursor = von
         while cursor < bis:
             seite = _kerzen_seite(oanda_inst, granularity, cursor, bis, live)
@@ -222,9 +249,8 @@ def kerzen(oanda_inst, *, von, bis, granularity="M15", cache_dir=None, live=Fals
             cursor = naechster
 
         if cache_pfad:
-            neu_von = min(von, abgedeckt_von) if abgedeckt_von else von
-            neu_bis = max(bis, abgedeckt_bis) if abgedeckt_bis else bis
-            _cache_speichern(cache_pfad, neu_von, neu_bis,
+            bereiche = _bereiche_mischen(bereiche + [(von, bis)])
+            _cache_speichern(cache_pfad, bereiche,
                              [vorhanden[t] for t in sorted(vorhanden)])
 
     return [vorhanden[t] for t in sorted(vorhanden) if von <= t < bis]
