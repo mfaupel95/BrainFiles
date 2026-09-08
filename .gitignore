@@ -75,6 +75,8 @@
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
+!Agenten/Handel/orb/tests/*.py
+!Agenten/Handel/orb/tests/fixtures/*.json
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
