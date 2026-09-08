@@ -79,6 +79,15 @@
   "enabledMcpjsonServers": [
     "okx-agent-trade-kit"
   ],
+  "skillOverrides": {
+    "okx-dapp-discovery": "name-only",
+    "okx-defi": "on",
+    "okx-dex-market": "on",
+    "okx-growth-competition": "name-only",
+    "okx-guide": "on",
+    "sprache": "user-invocable-only",
+    "okx-ai": "on"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -99,13 +108,5 @@
       }
     ]
   },
-  "prefersReducedMotion": false,
-  "skillOverrides": {
-    "okx-dapp-discovery": "name-only",
-    "okx-defi": "on",
-    "okx-dex-market": "user-invocable-only",
-    "okx-growth-competition": "name-only",
-    "okx-guide": "on",
-    "sprache": "user-invocable-only"
-  }
+  "prefersReducedMotion": false
 }
