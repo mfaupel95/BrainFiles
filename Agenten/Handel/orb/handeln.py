@@ -11,10 +11,12 @@ Neun Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier
 (Liste in live_sperren, Task 11). Ausstiege laufen NIE durch das
 Freigabefenster - ein Stop muss auch greifen, wenn niemand davorsitzt.
 
-Dieser Stand deckt nur die Ausstiegshaelfte des Zyklus: Zustand, Journal,
-pruefe_ausstiege, flach_stellen (Notausstieg), --wachen. Der Einstieg
-(pruefe_einstiege, Freigabefenster, live_sperren, --vorschau) kommt in
-Task 10/11 und ersetzt dort den Platzhalter in lauf().
+Ausstiegshaelfte (Task 9): Zustand, Journal, pruefe_ausstiege, flach_stellen
+(Notausstieg), --wachen. Einstiegshaelfte (Task 10): live_range, breakout_signal,
+positionsgroesse (Hebel faellt aus der Rechnung, wird nur gedeckelt),
+pruefe_einstieg, vollstaendiger Zyklus in lauf(), --vorschau. Offen fuer Task 11:
+das Live-Gate (live_sperren + Freigabefenster) - bis dahin handelt jeder Lauf
+Papier, auch --live, und pruefe_einstieg wird direkt gerufen.
 """
 
 import argparse
@@ -157,6 +159,187 @@ def flach_stellen(z, w, live, grund):
     z["positionen"] = behalten
 
 
+def positionsgroesse(einstieg, stop, w, faktor=1.0):
+    """(units, hebel). units aus Risiko/Stopabstand, abgerundet auf ein
+    Vielfaches von minimumTradeSize. Hebel ist ERGEBNIS der Rechnung, nie
+    Eingabe: er wird nur gegen hebel_deckel geprueft und, wenn noetig, die
+    Position so weit geschrumpft, dass der Deckel haelt (units bleibt ein
+    Vielfaches von mts). Passt nicht einmal eine mts-Einheit in den Deckel,
+    ist 0 das richtige Ergebnis (SPEC.md 34)."""
+    konf = _inst_konf(w)
+    stop_abstand = abs(einstieg - stop)
+    if stop_abstand <= 0:
+        return 0.0, 0.0
+    pw = konf["punkt_wert_eur"]
+    risiko = w["risiko_pro_trade_eur"] * faktor
+    roh_units = risiko / (stop_abstand * pw)
+    mts = oanda.instrument_details(konf["oanda"])["minimumTradeSize"]
+    units = (int(roh_units / mts) * mts) if mts else roh_units
+    positionswert = units * einstieg * pw
+    marge = max(oanda.konto_marge_frei(), 1e-6)
+    hebel = positionswert / marge
+    if hebel > w["hebel_deckel"]:
+        max_wert = w["hebel_deckel"] * marge
+        units = ((int((max_wert / (einstieg * pw)) / mts) * mts) if mts
+                 else max_wert / (einstieg * pw))
+        positionswert = units * einstieg * pw
+        hebel = positionswert / marge
+    return units, hebel
+
+
+def live_range(w, tag):
+    """Opening Range = Hoch/Tief der ersten zwei ABGESCHLOSSENEN M15 im
+    Session-Fenster von tag. Weniger als zwei -> None (keine Range, kein
+    Einstieg)."""
+    konf = _inst_konf(w)
+    start, ende = sess.opening_range_fenster(konf, tag)
+    ks = [k for k in oanda.kerzen(konf["oanda"], von=start, bis=ende) if k["complete"]]
+    if len(ks) < 2:
+        return None
+    zwei = ks[:2]
+    return max(k["h"] for k in zwei), min(k["l"] for k in zwei)
+
+
+def breakout_signal(w, hoch, tief):
+    """Erste abgeschlossene M15 seit Range-Ende, deren Schluss die Range
+    verlaesst: > hoch -> ("long", schluss), < tief -> ("short", schluss).
+    None, wenn keine solche Kerze - oder keine mehr vor letzter_einstieg."""
+    konf = _inst_konf(w)
+    heute = sess.handelstag(datetime.now(timezone.utc), konf["zone"])
+    _, range_ende = sess.opening_range_fenster(konf, heute)
+    letzt = sess.letzter_einstieg(konf, heute, w["letzter_einstieg_min_vor_schluss"])
+    ks = [k for k in oanda.kerzen(konf["oanda"], von=range_ende,
+                                  bis=datetime.now(timezone.utc))
+          if k["complete"] and k["zeit"] <= letzt]
+    for k in ks:
+        if k["c"] > hoch:
+            return "long", k["c"]
+        if k["c"] < tief:
+            return "short", k["c"]
+    return None
+
+
+def _schon_gehandelt_heute(z, w):
+    """Eine Session je Handelstag: True, wenn schon eine Position von heute
+    offen ist ODER heute ein einstieg fuer dieses Instrument im Journal steht."""
+    konf = _inst_konf(w)
+    heute = sess.handelstag(datetime.now(timezone.utc), konf["zone"]).isoformat()
+    if any(p.get("eroeffnet") == heute for p in z["positionen"]):
+        return True
+    if not JOURNAL.exists():
+        return False
+    with JOURNAL.open("r", newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if (r["aktion"] == "einstieg" and r["inst"] == w["instrument_aktiv"]
+                    and r["zeit"][:10] == heute):
+                return True
+    return False
+
+
+def pruefe_einstieg(z, w, live, faktor=1.0):
+    """Hoechstens EINE offene Position. Kein Einstieg wenn: schon eine offen /
+    heute schon gehandelt / keine vollstaendige Range / Range ausserhalb Filter
+    / kein Breakout / nach letzter_einstieg / Positionsgroesse 0.
+
+    Einstiegspreis (Papier): Bruch-Schlusskurs (Mid) + halber Spread auf der
+    Kaufseite (long teurer, short billiger). So kostet der Einstieg genau einen
+    halben Spread, der Ausstieg (_erloes_eur) genau einen halben - zusammen ein
+    voller Spread je Runde, kein doppelter Abzug. Der Aufschlag steht auch in
+    der eur-Spalte des einstieg-Journals. Live ersetzt der echte fillpreis die
+    Schaetzung."""
+    if z["positionen"] or _schon_gehandelt_heute(z, w):
+        return
+    konf = _inst_konf(w)
+    heute = sess.handelstag(datetime.now(timezone.utc), konf["zone"])
+    hr = live_range(w, heute)
+    if hr is None:
+        print("  keine vollstaendige Opening Range - kein Einstieg.")
+        return
+    hoch, tief = hr
+    key = w["instrument_aktiv"]
+    if not wp.range_ok(hoch - tief, key, w):
+        print("  Range %.1f Pkt ausserhalb [%s, %s] - Session ausgesetzt."
+              % (hoch - tief, w["mindest_range_punkte"][key], w["max_range_punkte"][key]))
+        return
+    sig = breakout_signal(w, hoch, tief)
+    if sig is None:
+        print("  kein Breakout (oder nach letztem Einstieg) - kein Einstieg.")
+        return
+    richtung, bruch = sig
+    stop = tief if richtung == "long" else hoch
+    halb_spread_pkt = 0.5 * konf["spread_punkte"]
+    einstieg = (bruch + halb_spread_pkt) if richtung == "long" else (bruch - halb_spread_pkt)
+    if w["ziel_modus"] == "r_vielfaches":
+        spanne = w["ziel_k"] * (hoch - tief)
+    else:
+        spanne = w["ziel_punkte"][key]
+    ziel = einstieg + spanne if richtung == "long" else einstieg - spanne
+
+    units, hebel = positionsgroesse(einstieg, stop, w, faktor)
+    if units <= 0:
+        print("  Positionsgroesse 0 - kein Einstieg.")
+        return
+
+    order_id = fuellpreis = None
+    if live:
+        signiert = units if richtung == "long" else -units
+        try:
+            order_id, fuellpreis = oanda.markt_order(konf["oanda"], signiert,
+                                                     echt=True, live=True)
+        except Exception as e:  # noqa: BLE001
+            print("  Einstieg %s fehlgeschlagen: %s" % (key, e), file=sys.stderr)
+            return
+        if fuellpreis:
+            einstieg = fuellpreis           # echter Fill-Preis ersetzt die Schaetzung
+
+    spread_auf = _halber_spread_eur(w, units)
+    z["positionen"].append({
+        "inst": key, "richtung": richtung, "einstieg": einstieg, "stop": stop,
+        "ziel": ziel, "units": units, "risiko_eur": w["risiko_pro_trade_eur"] * faktor,
+        "eroeffnet": heute.isoformat(), "order_id": order_id})
+    print("  AUF %-10s %s @ %-10.5g  Stop %-10.5g  Ziel %-10.5g  %.4f units  Hebel %.1f"
+          % (key, richtung, einstieg, stop, ziel, units, hebel))
+    journal(_jetzt(), "live" if live else "papier", "einstieg", key, richtung,
+            "%.5f" % einstieg, "%.2f" % (w["risiko_pro_trade_eur"] * faktor + spread_auf),
+            "%.4f" % units, "%.5f" % stop, "%.5f" % ziel, "hebel %.1f" % hebel)
+
+
+def _spiegeln(w):
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], w.get("journal_zweitziel"))
+    print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
+    return ok
+
+
+def _zeige_vorschau(z, w, s):
+    konf = _inst_konf(w)
+    key = w["instrument_aktiv"]
+    heute = sess.handelstag(datetime.now(timezone.utc), konf["zone"])
+    hr = live_range(w, heute)
+    if hr is None:
+        print("  Opening Range noch nicht vollstaendig (zwei abgeschlossene M15).")
+    else:
+        hoch, tief = hr
+        print("  Opening Range %.6g - %.6g  (%.1f Pkt, Filter [%s, %s])"
+              % (tief, hoch, hoch - tief,
+                 w["mindest_range_punkte"][key], w["max_range_punkte"][key]))
+        if not wp.range_ok(hoch - tief, key, w):
+            print("  -> Range ausserhalb Filter - Session ausgesetzt.")
+        else:
+            sig = breakout_signal(w, hoch, tief)
+            if sig is None:
+                print("  kein Breakout seit Range-Ende (oder nach letztem Einstieg).")
+            else:
+                richtung, bruch = sig
+                stop = tief if richtung == "long" else hoch
+                halb = 0.5 * konf["spread_punkte"]
+                einstieg = (bruch + halb) if richtung == "long" else (bruch - halb)
+                units, hebel = positionsgroesse(einstieg, stop, w, s["groessenfaktor"])
+                print("  Signal %s  Einstieg %.6g  Stop %.6g  ->  %.4f units  Hebel %.1f"
+                      % (richtung, einstieg, stop, units, hebel))
+    print("\nOffener Bestand: %d Position(en)" % len(z["positionen"]))
+    print("Live-Gate (Sperren + Freigabefenster): kommt in Task 11.")
+
+
 def sitzung_da():
     if os.environ.get("MAXHIRN_ROUTINE"):
         return False
@@ -199,7 +382,68 @@ def lauf(modus):
     if not w.get("instrument_aktiv"):
         print("instrument_aktiv ist null - Backtest (Task 7) hat noch kein Urteil. Kein Lauf.")
         return
-    print("Zyklus kommt in Task 10/11.")  # Platzhalter NUR bis Task 10; dort ersetzt.
+
+    z = lade_zustand()
+    s = wp.lage(w, JOURNAL, z)
+
+    # --- Live-Gate: Task 11 ------------------------------------------------
+    # Hier haengt Task 11 live_sperren + das Freigabefenster ein. Bis dahin
+    # laeuft jeder Lauf auf Papier - auch --live - und pruefe_einstieg wird
+    # direkt gerufen.
+    live = False
+    if modus == "live":
+        print("--live: Sperrenpruefung und Freigabefenster kommen in Task 11 -")
+        print("        dieser Lauf handelt Papier.")
+
+    z["modus"] = "live" if live else "papier"
+    faktor = s["groessenfaktor"]
+    print("=== ORB handeln (%s) | Instrument %s | %s ==="
+          % ("LIVE" if live else "Papier", w["instrument_aktiv"], _jetzt()))
+
+    if modus == "vorschau":
+        _zeige_vorschau(z, w, s)
+        return
+
+    # Kill-Switch (Ruecklauf >= Grenze): alles zu, Sperre zu, Schluss.
+    if s["kill"]:
+        print("- KILL-SWITCH: Ruecklauf %.2f EUR >= %g -> Notausstieg + Sperre -"
+              % (s["ruecklauf_eur"], w["kill_switch_gesamt_eur"]))
+        flach_stellen(z, w, live, "kill_switch")
+        if wp.sperre_zu("kill_switch: Ruecklauf %.2f EUR" % s["ruecklauf_eur"]):
+            print("  wachen.json handel_erlaubt -> false")
+        schreibe_zustand(z)
+        return
+
+    # Herzschlag alt: alles zu, dieser Lauf handelt nicht mehr.
+    if not s["herzschlag_frisch"]:
+        print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel dieser Lauf -"
+              % ("?" if s["herzschlag_alter_min"] is None
+                 else "%.0f" % s["herzschlag_alter_min"],
+                 w.get("herzschlag_max_minuten", 45)))
+        flach_stellen(z, w, live, "herzschlag_alt")
+        z["modus"] = "papier"
+        schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
+        return
+
+    # Ausstiege zuerst - sie laufen NIE durch das Freigabefenster: ein Stop
+    # muss auch greifen, wenn niemand davorsitzt.
+    print("- Ausstiege -")
+    pruefe_ausstiege(z, w, live)
+
+    # Einstieg. Task 11 haengt das Freigabefenster davor (nur live).
+    print("- Einstieg -")
+    if faktor != 1.0:
+        print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
+    pruefe_einstieg(z, w, live, faktor)
+
+    print("\nStand: %d offene Position(en)" % len(z["positionen"]))
+    schreibe_zustand(z)
+
+    # Journal nach jedem Zyklus ausser Haus.
+    if w.get("journal_zweitziel"):
+        _spiegeln(w)
 
 
 if __name__ == "__main__":
