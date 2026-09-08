@@ -17,6 +17,12 @@ positionsgroesse (Hebel faellt aus der Rechnung, wird nur gedeckelt),
 pruefe_einstieg, vollstaendiger Zyklus in lauf(), --vorschau. Offen fuer Task 11:
 das Live-Gate (live_sperren + Freigabefenster) - bis dahin handelt jeder Lauf
 Papier, auch --live, und pruefe_einstieg wird direkt gerufen.
+
+Kostenmodell (Fix-Runde 1): genau EIN Spread je Runde, deckungsgleich mit
+backtest.mit_kosten. Einstieg zum Mid-Schluss der Bruchkerze (kein
+Preisaufschlag); der halbe Einstiegs-Spread steht nur in der eur-Spalte des
+einstieg-Journals, der halbe Ausstiegs-Spread nur in _erloes_eur. Ausstiege
+werden zu Mid ((bid+ask)/2) bepreist, nicht zu bid/ask.
 """
 
 import argparse
@@ -96,6 +102,14 @@ def _signierte_units(p):
     return p["units"] if p["richtung"] == "long" else -p["units"]
 
 
+def _mid(preis):
+    """Ausstiegskurs = Mid, wie im Backtest (backtest.mit_kosten rechnet
+    Mid-zu-Mid). Der einzige Spread je Runde steht als Aufschlag in der
+    einstieg-eur-Spalte plus dem _halber_spread_eur-Abzug in _erloes_eur -
+    kein zusaetzlicher bid/ask-Abzug beim Ausstieg."""
+    return (preis["bid"] + preis["ask"]) / 2.0
+
+
 def _schliesse(p, kurs, w, live, grund, z):
     """Eine Position schliessen. Gibt True zurueck, wenn sie weg ist."""
     if live:
@@ -127,7 +141,7 @@ def pruefe_ausstiege(z, w, live):
     ik = _inst_konf(w)
     for p in z["positionen"]:
         preis = oanda.preis(ik["oanda"], live)
-        kurs = preis["bid"] if p["richtung"] == "long" else preis["ask"]
+        kurs = _mid(preis)                       # Touch-Vergleich gegen Mid, wie im Backtest
         grund = None
         if p["richtung"] == "long":
             if kurs <= p["stop"]:
@@ -153,7 +167,7 @@ def flach_stellen(z, w, live, grund):
     ik = _inst_konf(w)
     for p in z["positionen"]:
         preis = oanda.preis(ik["oanda"], live)
-        kurs = preis["bid"] if p["richtung"] == "long" else preis["ask"]
+        kurs = _mid(preis)
         if not _schliesse(p, kurs, w, live, grund, z):
             behalten.append(p)
     z["positionen"] = behalten
@@ -236,17 +250,34 @@ def _schon_gehandelt_heute(z, w):
     return False
 
 
+def _einstieg_stop_ziel(bruch, richtung, hoch, tief, w, key):
+    """Aus dem Breakout die drei Preise. Einstieg = bruch, der Mid-Schluss der
+    Bruchkerze - KEIN Preisaufschlag. Der Einstiegs-Spread (SPEC.md 165
+    "Einstieg mit Aufschlag") lebt allein in der eur-Spalte des Journals
+    (+ spread_auf); der Ausstiegs-Spread allein in _erloes_eur. Zusammen genau
+    ein Spread je Runde, gleiches Kostenmodell wie backtest.mit_kosten.
+    Stop = die verlassene Range-Seite. Ziel je ziel_modus. Von pruefe_einstieg
+    und _zeige_vorschau geteilt, damit Vorschau und Handel nie auseinanderlaufen."""
+    einstieg = bruch
+    stop = tief if richtung == "long" else hoch
+    if w["ziel_modus"] == "r_vielfaches":
+        spanne = w["ziel_k"] * (hoch - tief)
+    else:
+        spanne = w["ziel_punkte"][key]
+    ziel = einstieg + spanne if richtung == "long" else einstieg - spanne
+    return einstieg, stop, ziel
+
+
 def pruefe_einstieg(z, w, live, faktor=1.0):
     """Hoechstens EINE offene Position. Kein Einstieg wenn: schon eine offen /
     heute schon gehandelt / keine vollstaendige Range / Range ausserhalb Filter
     / kein Breakout / nach letzter_einstieg / Positionsgroesse 0.
 
-    Einstiegspreis (Papier): Bruch-Schlusskurs (Mid) + halber Spread auf der
-    Kaufseite (long teurer, short billiger). So kostet der Einstieg genau einen
-    halben Spread, der Ausstieg (_erloes_eur) genau einen halben - zusammen ein
-    voller Spread je Runde, kein doppelter Abzug. Der Aufschlag steht auch in
-    der eur-Spalte des einstieg-Journals. Live ersetzt der echte fillpreis die
-    Schaetzung."""
+    Einstiegskurs (Papier) = Mid-Schluss der Bruchkerze, ohne Aufschlag auf den
+    Preis. Der halbe Einstiegs-Spread steht nur in der eur-Spalte des
+    einstieg-Journals (+ spread_auf), der halbe Ausstiegs-Spread nur in
+    _erloes_eur - zusammen genau ein Spread je Runde, deckungsgleich mit
+    backtest.mit_kosten. Live ersetzt der echte fillpreis die Schaetzung."""
     if z["positionen"] or _schon_gehandelt_heute(z, w):
         return
     konf = _inst_konf(w)
@@ -266,14 +297,7 @@ def pruefe_einstieg(z, w, live, faktor=1.0):
         print("  kein Breakout (oder nach letztem Einstieg) - kein Einstieg.")
         return
     richtung, bruch = sig
-    stop = tief if richtung == "long" else hoch
-    halb_spread_pkt = 0.5 * konf["spread_punkte"]
-    einstieg = (bruch + halb_spread_pkt) if richtung == "long" else (bruch - halb_spread_pkt)
-    if w["ziel_modus"] == "r_vielfaches":
-        spanne = w["ziel_k"] * (hoch - tief)
-    else:
-        spanne = w["ziel_punkte"][key]
-    ziel = einstieg + spanne if richtung == "long" else einstieg - spanne
+    einstieg, stop, ziel = _einstieg_stop_ziel(bruch, richtung, hoch, tief, w, key)
 
     units, hebel = positionsgroesse(einstieg, stop, w, faktor)
     if units <= 0:
@@ -330,12 +354,10 @@ def _zeige_vorschau(z, w, s):
                 print("  kein Breakout seit Range-Ende (oder nach letztem Einstieg).")
             else:
                 richtung, bruch = sig
-                stop = tief if richtung == "long" else hoch
-                halb = 0.5 * konf["spread_punkte"]
-                einstieg = (bruch + halb) if richtung == "long" else (bruch - halb)
+                einstieg, stop, ziel = _einstieg_stop_ziel(bruch, richtung, hoch, tief, w, key)
                 units, hebel = positionsgroesse(einstieg, stop, w, s["groessenfaktor"])
-                print("  Signal %s  Einstieg %.6g  Stop %.6g  ->  %.4f units  Hebel %.1f"
-                      % (richtung, einstieg, stop, units, hebel))
+                print("  Signal %s  Einstieg %.6g  Stop %.6g  Ziel %.6g  ->  %.4f units  Hebel %.1f"
+                      % (richtung, einstieg, stop, ziel, units, hebel))
     print("\nOffener Bestand: %d Position(en)" % len(z["positionen"]))
     print("Live-Gate (Sperren + Freigabefenster): kommt in Task 11.")
 
@@ -412,6 +434,8 @@ def lauf(modus):
         if wp.sperre_zu("kill_switch: Ruecklauf %.2f EUR" % s["ruecklauf_eur"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
+        if w.get("journal_zweitziel"):     # Notausstieg + Sperre: gerade jetzt zaehlt die Kopie ausser Haus
+            _spiegeln(w)
         return
 
     # Herzschlag alt: alles zu, dieser Lauf handelt nicht mehr.

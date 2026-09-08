@@ -86,25 +86,26 @@ class TestAusstieg(unittest.TestCase):
         self.assertEqual(self._journal[-1][10], "zwangsschluss")
 
     def test_journal_eur_betrag_long_und_short_ziel(self):
-        # half-spread = 0.5 * spread_punkte(2) * punkt_wert(1) * units(2) = 2.0
-        # eur-Feld = risiko_eur(20) + (wert_eur - half-spread)
+        # Fix-Runde 1: Ausstieg wird zu Mid ((bid+ask)/2) bepreist, nicht zu
+        # bid/ask. half-spread = 0.5 * spread_punkte(2) * punkt_wert(1) * units(2)
+        # = 2.0. eur-Feld = risiko_eur(20) + (wert_eur - half-spread).
         fern = datetime(2999, 1, 1, tzinfo=timezone.utc)
         handeln.sess.zwangsschluss = lambda ik, tag: fern
 
-        # long liest bid. bid = 40100 = Ziel, wert_eur = (40100-40000)*1*2 = 200
-        # -> eur = 20 + (200 - 2) = 218.00
+        # long: Mid = bid + 1. bid = 40099 -> Mid = 40100 = Ziel.
+        # wert_eur = (40100-40000)*1*2 = 200 -> eur = 20 + (200 - 2) = 218.00
         z = {"positionen": [self._pos("long", 40000, 39950, 40100)],
              "letzte_stops": {}, "letzter_lauf": None, "modus": "papier"}
-        self._preise[self.key] = 40100
+        self._preise[self.key] = 40099
         handeln.pruefe_ausstiege(z, self.w, live=False)
         self.assertEqual(self._journal[-1][10], "ziel")
         self.assertAlmostEqual(float(self._journal[-1][6]), 218.00, places=2)
 
-        # short ziel: liest ask = bid + 2. bid = 39898 -> ask = 39900 = Ziel
+        # short: Mid = bid + 1. bid = 39899 -> Mid = 39900 = Ziel.
         # wert_eur = (40000-39900)*1*2 = 200 -> eur = 20 + (200 - 2) = 218.00
         z = {"positionen": [self._pos("short", 40000, 40050, 39900)],
              "letzte_stops": {}, "letzter_lauf": None, "modus": "papier"}
-        self._preise[self.key] = 39898
+        self._preise[self.key] = 39899
         handeln.pruefe_ausstiege(z, self.w, live=False)
         self.assertEqual(self._journal[-1][10], "ziel")
         self.assertAlmostEqual(float(self._journal[-1][6]), 218.00, places=2)

@@ -107,5 +107,71 @@ class TestBreakout(unittest.TestCase):
         self.assertIsNone(handeln.breakout_signal(self.w, hoch=40100.0, tief=40000.0))
 
 
+class TestRundlauf(unittest.TestCase):
+    """Ein voller Ein- und Ausstieg OHNE Kursbewegung kostet genau EINEN Spread
+    je Runde - nicht 1,5 oder 2,0. Halber Spread als Aufschlag in der eur-Spalte
+    des einstieg-Journals, halber Spread im _erloes_eur-Abzug beim Ausstieg,
+    Ausstieg zu Mid. Deckungsgleich mit backtest.mit_kosten (Mid-zu-Mid, ein
+    Spread). Der Suite fehlte bisher ein echter Einstieg->Ausstieg-Durchlauf."""
+
+    def setUp(self):
+        for attr in ("instrument_details", "konto_marge_frei", "kerzen", "preis"):
+            self.addCleanup(setattr, handeln.oanda, attr, getattr(handeln.oanda, attr))
+        self.addCleanup(setattr, handeln, "journal", handeln.journal)
+        self.addCleanup(setattr, handeln.sess, "zwangsschluss", handeln.sess.zwangsschluss)
+        self.S = 4.0
+        self.pw = 1.0
+        self.w = _basis_wachen()
+        self.w["instrumente"]["US30_USD"]["spread_punkte"] = self.S
+        self.w["instrumente"]["US30_USD"]["punkt_wert_eur"] = self.pw
+        self.w["risiko_pro_trade_eur"] = 600
+        self.w["hebel_deckel"] = 50
+        handeln.oanda.instrument_details = lambda inst, live=False: {
+            "minimumTradeSize": 1.0, "displayPrecision": 1, "pipLocation": 0,
+            "marginRate": 0.05}
+        handeln.oanda.konto_marge_frei = lambda live=False: 1e9
+        self._rows = []
+        handeln.journal = lambda *f: self._rows.append(tuple(f))
+
+    def _feed(self, bruch_close):
+        konf = self.w["instrumente"]["US30_USD"]
+        heute = handeln.sess.handelstag(datetime.now(timezone.utc), konf["zone"])
+        start, ende = handeln.sess.opening_range_fenster(konf, heute)
+        r = {"zeit": start, "o": 40050, "h": 40100, "l": 40000, "c": 40050, "complete": True}
+        brk = {"zeit": ende, "o": 40050, "h": max(bruch_close, 40100.0),
+               "l": min(bruch_close, 40000.0), "c": bruch_close, "complete": True}
+        handeln.oanda.kerzen = lambda inst, **kw: [dict(r), dict(r), brk]
+        # Mid unveraendert = Bruch-Schlusskurs: keine Kursbewegung.
+        handeln.oanda.preis = lambda inst, live=False: {
+            "bid": bruch_close - self.S / 2, "ask": bruch_close + self.S / 2,
+            "spread_punkte": self.S}
+
+    def _runde_gv(self, bruch_close):
+        self._feed(bruch_close)
+        z = {"positionen": [], "letzte_stops": {}, "letzter_lauf": None, "modus": "papier"}
+        handeln.pruefe_einstieg(z, self.w, live=False)
+        self.assertEqual(len(z["positionen"]), 1, "Einstieg hat nicht gefeuert")
+        # ERST jetzt Zwangsschluss in die Vergangenheit ziehen - so feuert der
+        # Ausstieg ohne Kursbewegung, ohne dabei sess.letzter_einstieg (das
+        # zwangsschluss aufruft) waehrend des Einstiegs zu verbiegen.
+        handeln.sess.zwangsschluss = lambda ik, tag: datetime(2000, 1, 1, tzinfo=timezone.utc)
+        handeln.pruefe_ausstiege(z, self.w, live=False)
+        self.assertEqual(z["positionen"], [], "Ausstieg hat nicht gefeuert")
+        ein = next(r for r in self._rows if r[2] == "einstieg")
+        aus = next(r for r in self._rows if r[2] == "ausstieg")
+        einsatz, erloes, units = float(ein[6]), float(aus[6]), float(ein[7])
+        return erloes - einsatz, units      # gv der Runde wie wachen_orb.runden_aus_journal
+
+    def test_long_runde_kostet_genau_einen_spread(self):
+        gv, units = self._runde_gv(40120.0)
+        self.assertGreater(units, 0.0)
+        self.assertAlmostEqual(gv, -self.S * self.pw * units, places=6)
+
+    def test_short_runde_kostet_genau_einen_spread(self):
+        gv, units = self._runde_gv(39880.0)
+        self.assertGreater(units, 0.0)
+        self.assertAlmostEqual(gv, -self.S * self.pw * units, places=6)
+
+
 if __name__ == "__main__":
     unittest.main()
