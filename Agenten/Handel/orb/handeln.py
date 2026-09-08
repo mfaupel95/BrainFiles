@@ -83,10 +83,10 @@ def _wert_eur(p, kurs, w):
     return diff * _punkt_wert(w) * p["units"]
 
 
-# Alias auf den Namen aus dem Detailplan (_erloes_eur). Beide zeigen auf
-# dieselbe Rechnung - Wert VOR Spread; der halbe Spread wird in _schliesse
-# abgezogen.
 def _erloes_eur(p, kurs, w):
+    """Realisierter G/V der Position bei kurs, in EUR, NACH Abzug des halben
+    Spreads auf der Ausstiegsseite. Einzige Quelle fuer die Ausstiegsrechnung -
+    _schliesse ruft nur hier."""
     return _wert_eur(p, kurs, w) - _halber_spread_eur(w, p["units"])
 
 
@@ -103,7 +103,7 @@ def _schliesse(p, kurs, w, live, grund, z):
         except Exception as e:  # noqa: BLE001
             print("  Ausstieg %s fehlgeschlagen: %s" % (p["inst"], e), file=sys.stderr)
             return False
-    gv = _wert_eur(p, kurs, w) - _halber_spread_eur(w, p["units"])
+    gv = _erloes_eur(p, kurs, w)
     print("  ZU  %-10s %s @ %-10.5g (%s)  G/V %+.2f EUR"
           % (p["inst"], p["richtung"], kurs, grund, gv))
     journal(_jetzt(), "live" if live else "papier", "ausstieg", p["inst"],
@@ -116,13 +116,13 @@ def _schliesse(p, kurs, w, live, grund, z):
 
 def pruefe_ausstiege(z, w, live):
     """Je offene Position: Stop / Ziel / Zwangsschluss. Ausstiege laufen nie
-    durch das Freigabefenster. Zwangsschluss greift, sobald der Handelstag des
-    Basiswerts vorbei ist (Cash-Close) - kein Halten ueber Nacht."""
+    durch das Freigabefenster. Zwangsschluss haengt an DER Position: sie schliesst
+    spaetestens zum Cash-Close IHRES Eroeffnungstags - eine stehengebliebene
+    Position (verpasster Lauf) geht damit im naechsten Lauf sofort zu, nie ueber
+    Nacht (SPEC: kein Halten ueber Nacht)."""
     behalten = []
     jetzt = datetime.now(timezone.utc)
     ik = _inst_konf(w)
-    tag = sess.handelstag(jetzt, ik["zone"])
-    nach_schluss = jetzt >= sess.zwangsschluss(ik, tag)
     for p in z["positionen"]:
         preis = oanda.preis(ik["oanda"], live)
         kurs = preis["bid"] if p["richtung"] == "long" else preis["ask"]
@@ -137,7 +137,7 @@ def pruefe_ausstiege(z, w, live):
                 grund = "stop"
             elif kurs <= p["ziel"]:
                 grund = "ziel"
-        if grund is None and nach_schluss:
+        if grund is None and jetzt >= sess.zwangsschluss(ik, date.fromisoformat(p["eroeffnet"])):
             grund = "zwangsschluss"
         if not grund or not _schliesse(p, kurs, w, live, grund, z):
             behalten.append(p)
@@ -193,11 +193,11 @@ def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     w = _wachen()
+    if modus == "wachen":            # reines Nachsehen - laeuft auch ohne aktives Instrument
+        zeige_wachen(w)
+        return
     if not w.get("instrument_aktiv"):
         print("instrument_aktiv ist null - Backtest (Task 7) hat noch kein Urteil. Kein Lauf.")
-        return
-    if modus == "wachen":
-        zeige_wachen(w)
         return
     print("Zyklus kommt in Task 10/11.")  # Platzhalter NUR bis Task 10; dort ersetzt.
 
