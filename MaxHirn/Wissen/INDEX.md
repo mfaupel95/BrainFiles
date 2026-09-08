@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-09-07
+updated: 2026-09-08
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -100,6 +100,8 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-profil` — **Profil** — `Wissen/Profil.md` — Wer Max ist und wie er arbeitet; Fundament für Antworten ohne Werkzeugaufruf.
 - `20260830-projekte` — **Projekte** — `Wissen/Projekte.md` — Was gerade läuft, ein Abschnitt je Projekt.
 - `20260830-fachkunde-holztechnik` — **Fachkunde Holztechnik** — `Wissen/Fachkunde-Holztechnik.md` — Inhalt und Ablage des Lehrwerks im Archiv.
+- `20260908-studium` — **Studium — Unterlagen im Archiv** — `Wissen/Studium.md` — Studienunterlagen (TH Bingen, Uni KL: Botanik, Physik, Wirtschaftslehre u. a.) im Archiv, für Archivsuche erschlossen.
+- `20260908-sound-studio` — **Maks Sound — Ton-/Licht-/Lasertechnik** — `Wissen/Maks-Sound.md` — Gewerblicher Sound-/Technikbestand (DJ-Handbücher, Laserworld, Verleih-Rechnungen) im Archiv, durchsuchbar.
 
 ### Verfahren
 
