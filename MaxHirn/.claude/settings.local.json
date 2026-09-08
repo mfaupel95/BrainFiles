@@ -108,5 +108,6 @@
       }
     ]
   },
-  "prefersReducedMotion": false
+  "prefersReducedMotion": false,
+  "outputStyle": "Explanatory"
 }
