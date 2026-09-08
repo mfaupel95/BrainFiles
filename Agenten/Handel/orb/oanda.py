@@ -117,3 +117,114 @@ def _mit_wiederholung(fn, *a, **kw):
             print("  OANDA-Transportfehler %d/%d: %s" % (fehler, MAX_FEHLER, e),
                   file=sys.stderr)
             time.sleep(1.5 * fehler)
+
+
+# --- Kerzen -----------------------------------------------------------------
+# M15-Kerzen fuer den ORB-Bereich. OANDA liefert je Abruf hoechstens
+# MAX_JE_ABRUF Kerzen; ueber einen laengeren Zeitraum wird paginiert, indem der
+# Cursor jeweils hinter die zuletzt gelieferte Kerze gesetzt wird (from ist bei
+# OANDA inklusive). Eine noch laufende Kerze (complete:false) ist kein Signal
+# und wird verworfen - weder in die Rueckgabe noch in den Cache.
+
+MAX_JE_ABRUF = 5000
+GRAN_SEKUNDEN = {"M15": 900, "M1": 60, "M5": 300, "H1": 3600, "D": 86400}
+
+
+def _parse_kerze(c):
+    from datetime import datetime, timezone
+    t = c["time"][:19]  # "2025-07-15T07:00:00" ohne Nanosekunden + Z
+    m = c["mid"]
+    return {"zeit": datetime.fromisoformat(t).replace(tzinfo=timezone.utc),
+            "o": float(m["o"]), "h": float(m["h"]),
+            "l": float(m["l"]), "c": float(m["c"]),
+            "complete": bool(c["complete"])}
+
+
+def _kerzen_seite(oanda_inst, granularity, von, bis, live=False):
+    import urllib.parse
+    p = urllib.parse.urlencode({
+        "granularity": granularity, "price": "M",
+        "from": von.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "to": bis.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "count": MAX_JE_ABRUF,
+    })
+    url = "%s/v3/instruments/%s/candles?%s" % (host(live), oanda_inst, p)
+    d = _mit_wiederholung(_roh_json, url)
+    return [_parse_kerze(c) for c in d.get("candles", [])]
+
+
+def _cache_datei(cache_dir, oanda_inst, granularity):
+    return cache_dir / ("%s_%s.json" % (oanda_inst, granularity))
+
+
+def _cache_laden(pfad):
+    """Gibt {"von": dt, "bis": dt, "kerzen": [kerze, ...]} oder None zurueck.
+
+    Der abgedeckte Bereich wird mitgespeichert: nur so weiss ein zweiter Lauf,
+    dass er einen Abschnitt schon vollstaendig abgefragt hat - auch wenn der
+    Markt darin gar keine (oder nur schon fertige) Kerzen hatte."""
+    from datetime import datetime, timezone
+    if not pfad.exists():
+        return None
+    roh = json.loads(pfad.read_text(encoding="utf-8"))
+    for c in roh["kerzen"]:
+        c["zeit"] = datetime.fromisoformat(c["zeit"]).replace(tzinfo=timezone.utc)
+    roh["von"] = datetime.fromisoformat(roh["von"]).replace(tzinfo=timezone.utc)
+    roh["bis"] = datetime.fromisoformat(roh["bis"]).replace(tzinfo=timezone.utc)
+    return roh
+
+
+def _cache_speichern(pfad, von, bis, kerzen_liste):
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    roh = {
+        "von": von.strftime("%Y-%m-%dT%H:%M:%S"),
+        "bis": bis.strftime("%Y-%m-%dT%H:%M:%S"),
+        # Sicherheitsnetz: eine laufende Kerze landet nie im Cache.
+        "kerzen": [dict(c, zeit=c["zeit"].strftime("%Y-%m-%dT%H:%M:%S"))
+                   for c in kerzen_liste if c["complete"]],
+    }
+    pfad.write_text(json.dumps(roh, ensure_ascii=False), encoding="utf-8")
+
+
+def kerzen(oanda_inst, *, von, bis, granularity="M15", cache_dir=None, live=False):
+    """M15-Kerzen [von, bis), aufsteigend, ohne Duplikate, ohne complete:false.
+
+    Paginiert in MAX_JE_ABRUF-Bloecken ueber from/to. Mit cache_dir wird der
+    Bestand lueckenlos zwischengespeichert; ein zweiter Lauf ueber denselben
+    (oder einen engeren) Bereich geht nicht mehr ins Netz."""
+    from datetime import timedelta
+    gran_s = GRAN_SEKUNDEN[granularity]
+
+    vorhanden = {}
+    abgedeckt_von = abgedeckt_bis = None
+    cache_pfad = _cache_datei(cache_dir, oanda_inst, granularity) if cache_dir else None
+    if cache_pfad:
+        cache = _cache_laden(cache_pfad)
+        if cache:
+            for c in cache["kerzen"]:
+                vorhanden[c["zeit"]] = c
+            abgedeckt_von, abgedeckt_bis = cache["von"], cache["bis"]
+
+    gedeckt = (abgedeckt_von is not None
+               and abgedeckt_von <= von and abgedeckt_bis >= bis)
+    if not gedeckt:
+        cursor = von
+        while cursor < bis:
+            seite = _kerzen_seite(oanda_inst, granularity, cursor, bis, live)
+            if not seite:
+                break
+            for c in seite:
+                if c["complete"]:
+                    vorhanden[c["zeit"]] = c
+            naechster = seite[-1]["zeit"] + timedelta(seconds=gran_s)
+            if naechster <= cursor:  # kein Fortschritt -> Abbruch
+                break
+            cursor = naechster
+
+        if cache_pfad:
+            neu_von = min(von, abgedeckt_von) if abgedeckt_von else von
+            neu_bis = max(bis, abgedeckt_bis) if abgedeckt_bis else bis
+            _cache_speichern(cache_pfad, neu_von, neu_bis,
+                             [vorhanden[t] for t in sorted(vorhanden)])
+
+    return [vorhanden[t] for t in sorted(vorhanden) if von <= t < bis]
