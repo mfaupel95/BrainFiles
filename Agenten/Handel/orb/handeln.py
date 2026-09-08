@@ -8,15 +8,16 @@ Aufruf (aus diesem Ordner):
     ..\\scanner\\.venv\\Scripts\\python.exe handeln.py --wachen
 
 Neun Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier
-(Liste in live_sperren, Task 11). Ausstiege laufen NIE durch das
-Freigabefenster - ein Stop muss auch greifen, wenn niemand davorsitzt.
+(Liste in live_sperren). Ausstiege laufen NIE durch das Freigabefenster - ein
+Stop muss auch greifen, wenn niemand davorsitzt.
 
 Ausstiegshaelfte (Task 9): Zustand, Journal, pruefe_ausstiege, flach_stellen
 (Notausstieg), --wachen. Einstiegshaelfte (Task 10): live_range, breakout_signal,
 positionsgroesse (Hebel faellt aus der Rechnung, wird nur gedeckelt),
-pruefe_einstieg, vollstaendiger Zyklus in lauf(), --vorschau. Offen fuer Task 11:
-das Live-Gate (live_sperren + Freigabefenster) - bis dahin handelt jeder Lauf
-Papier, auch --live, und pruefe_einstieg wird direkt gerufen.
+pruefe_einstieg, vollstaendiger Zyklus in lauf(), --vorschau. Live-Gate (Task
+11): live_sperren (die neun Sperren), plane_einstieg + hole_freigabe (das
+Freigabefenster ../freigabe.py vor genau einem Live-Einstieg). Die Spur 'orb'
+in freigabe.py kommt in Task 12 - bis dahin liefert hole_freigabe False.
 
 Kostenmodell (Fix-Runde 1): genau EIN Spread je Runde, deckungsgleich mit
 backtest.mit_kosten. Einstieg zum Mid-Schluss der Bruchkerze (kein
@@ -111,14 +112,20 @@ def _mid(preis):
 
 
 def _schliesse(p, kurs, w, live, grund, z):
-    """Eine Position schliessen. Gibt True zurueck, wenn sie weg ist."""
+    """Eine Position schliessen. Gibt True zurueck, wenn sie weg ist.
+
+    Live ersetzt der echte orderFillTransaction.price die Mid-Schaetzung
+    (SPEC.md Zeile 164 "Slippage"), symmetrisch zum Einstieg in
+    pruefe_einstieg. Papier bleibt Mid."""
     if live:
         try:
-            oanda.markt_order(_inst_konf(w)["oanda"],
-                              -_signierte_units(p), echt=True, live=True)
+            _, fuellpreis = oanda.markt_order(_inst_konf(w)["oanda"],
+                                              -_signierte_units(p), echt=True, live=True)
         except Exception as e:  # noqa: BLE001
             print("  Ausstieg %s fehlgeschlagen: %s" % (p["inst"], e), file=sys.stderr)
             return False
+        if fuellpreis is not None:
+            kurs = fuellpreis
     gv = _erloes_eur(p, kurs, w)
     print("  ZU  %-10s %s @ %-10.5g (%s)  G/V %+.2f EUR"
           % (p["inst"], p["richtung"], kurs, grund, gv))
@@ -328,6 +335,89 @@ def pruefe_einstieg(z, w, live, faktor=1.0):
             "%.4f" % units, "%.5f" % stop, "%.5f" % ziel, "hebel %.1f" % hebel)
 
 
+def plane_einstieg(z, w, faktor=1.0):
+    """Der Einstieg, der dieser Lauf feuern wuerde - als Dict, ohne Order, ohne
+    Journal, ohne Ausgabe. Fuers Freigabefenster (hole_freigabe) und die
+    Vorschau. None, wenn ohnehin kein Einstieg (Bestand offen, heute schon
+    gehandelt, keine vollstaendige Range, Range ausserhalb Filter, kein
+    Breakout, Positionsgroesse 0) - dieselbe Kette wie pruefe_einstieg."""
+    if z["positionen"] or _schon_gehandelt_heute(z, w):
+        return None
+    konf = _inst_konf(w)
+    heute = sess.handelstag(datetime.now(timezone.utc), konf["zone"])
+    hr = live_range(w, heute)
+    if hr is None:
+        return None
+    hoch, tief = hr
+    key = w["instrument_aktiv"]
+    if not wp.range_ok(hoch - tief, key, w):
+        return None
+    sig = breakout_signal(w, hoch, tief)
+    if sig is None:
+        return None
+    richtung, bruch = sig
+    einstieg, stop, ziel = _einstieg_stop_ziel(bruch, richtung, hoch, tief, w, key)
+    units, hebel = positionsgroesse(einstieg, stop, w, faktor)
+    if units <= 0:
+        return None
+    return {"inst": key, "richtung": richtung, "einstieg": einstieg, "stop": stop,
+            "stop_pct": abs(einstieg - stop) / einstieg if einstieg else 0.0,
+            "ziel": ziel, "units": units, "hebel": hebel,
+            "risiko_eur": w["risiko_pro_trade_eur"] * faktor}
+
+
+def live_sperren(w, s):
+    """Die neun Sperren aus SPEC.md vor der ersten echten Order (Sperre 3 -
+    ausdrueckliches --live - prueft der Aufrufer). Je zu-e Sperre ein
+    Grundtext; leere Liste = scharf, --live handelt wirklich live."""
+    g = []
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false (Sperre 1)")
+    if not oanda.zugang_vorhanden():
+        g.append("OANDA_TOKEN/OANDA_KONTO_ID nicht gesetzt (Sperre 2)")
+    if not s["freigabe_voll"]:
+        g.append("Freigabe nicht voll: Backtest + 6 Wochen Papier + >=50 Sessions + netto positiv (Sperre 4)")
+    if not s["herzschlag_frisch"]:
+        g.append("Herzschlag alt (Sperre 5)")
+    if s["ev_negativ"]:
+        g.append("rollierender EV %.3f EUR < 0 (Sperre 6)" % s["rollierender_ev"])
+    if not w.get("journal_zweitziel"):
+        g.append("journal_zweitziel nicht gesetzt (Sperre 7)")
+    noetig = w.get("mindest_marge_frei_eur", 0)
+    if noetig and oanda.zugang_vorhanden():
+        try:
+            frei = oanda.konto_marge_frei()
+            if frei < noetig:
+                g.append("nur %.2f EUR Marge frei, noetig %.2f (Sperre 8)" % (frei, noetig))
+        except Exception as e:  # noqa: BLE001
+            g.append("Marge nicht abrufbar (%s) (Sperre 8)" % e)
+    if not sitzung_da():
+        g.append("keine Sitzung am Bildschirm / kein Telegram-Zeitfenster (Sperre 9)")
+    return g
+
+
+def hole_freigabe(vorschlag, z, s):
+    """Das Freigabefenster (../freigabe.py, Spur 'orb' ab Task 12) vor genau
+    EINEM Live-Einstieg. Jede Ausnahme - Fenster fehlt, Spur fehlt, Zeitlimit,
+    Abbruch - heisst False: kein Einstieg. Ausstiege rufen das nie."""
+    sys.path.insert(0, str(HIER.parent))
+    try:
+        import freigabe
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabefenster nicht verfuegbar (%s) - kein Einstieg." % e, file=sys.stderr)
+        return False
+    bestand = {"gebunden": sum(p["risiko_eur"] for p in z["positionen"]),
+               "offene_positionen": len(z["positionen"]),
+               "verlust_gesamt": s["ruecklauf_eur"]}
+    try:
+        bestaetigt = freigabe.bestaetige([vorschlag], "orb", bestand,
+                                         zeitlimit=FREIGABE_ZEITLIMIT_S)
+        return bool(bestaetigt)
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabe abgebrochen (%s) - kein Einstieg." % e, file=sys.stderr)
+        return False
+
+
 def _spiegeln(w):
     ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], w.get("journal_zweitziel"))
     print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
@@ -359,7 +449,13 @@ def _zeige_vorschau(z, w, s):
                 print("  Signal %s  Einstieg %.6g  Stop %.6g  Ziel %.6g  ->  %.4f units  Hebel %.1f"
                       % (richtung, einstieg, stop, ziel, units, hebel))
     print("\nOffener Bestand: %d Position(en)" % len(z["positionen"]))
-    print("Live-Gate (Sperren + Freigabefenster): kommt in Task 11.")
+    gruende = live_sperren(w, s)
+    if gruende:
+        print("Live waere gesperrt durch:")
+        for grund in gruende:
+            print("  - " + grund)
+    else:
+        print("Live-Sperren: alle offen - --live wuerde scharf schalten (Einstieg via Freigabefenster).")
 
 
 def sitzung_da():
@@ -408,14 +504,20 @@ def lauf(modus):
     z = lade_zustand()
     s = wp.lage(w, JOURNAL, z)
 
-    # --- Live-Gate: Task 11 ------------------------------------------------
-    # Hier haengt Task 11 live_sperren + das Freigabefenster ein. Bis dahin
-    # laeuft jeder Lauf auf Papier - auch --live - und pruefe_einstieg wird
-    # direkt gerufen.
+    # --- Live-Gate -------------------------------------------------------
+    # --live schaltet nur scharf, wenn ALLE neun Sperren offen sind; sonst
+    # nennt der Lauf die zu-e Sperre und handelt Papier. Der Einstieg geht
+    # zusaetzlich durch das Freigabefenster (weiter unten) - Ausstiege nie.
     live = False
     if modus == "live":
-        print("--live: Sperrenpruefung und Freigabefenster kommen in Task 11 -")
-        print("        dieser Lauf handelt Papier.")
+        gruende = live_sperren(w, s)
+        if gruende:
+            print("--live gesperrt - dieser Lauf handelt Papier:")
+            for grund in gruende:
+                print("  - " + grund)
+        else:
+            live = True
+            print("--live: alle neun Sperren offen - Einstieg braucht das Freigabefenster.")
 
     z["modus"] = "live" if live else "papier"
     faktor = s["groessenfaktor"]
@@ -456,11 +558,19 @@ def lauf(modus):
     print("- Ausstiege -")
     pruefe_ausstiege(z, w, live)
 
-    # Einstieg. Task 11 haengt das Freigabefenster davor (nur live).
+    # Einstieg. Im Live-Fall zuerst das Freigabefenster - nur was Kapital
+    # bindet wird bestaetigt, und nur genau dieser eine geplante Einstieg.
     print("- Einstieg -")
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
-    pruefe_einstieg(z, w, live, faktor)
+    if live:
+        vorschlag = plane_einstieg(z, w, faktor)
+        if vorschlag and not hole_freigabe(vorschlag, z, s):
+            print("  Freigabefenster: kein Ja - kein Einstieg diesen Lauf.")
+        else:
+            pruefe_einstieg(z, w, live, faktor)
+    else:
+        pruefe_einstieg(z, w, live, faktor)
 
     print("\nStand: %d offene Position(en)" % len(z["positionen"]))
     schreibe_zustand(z)
