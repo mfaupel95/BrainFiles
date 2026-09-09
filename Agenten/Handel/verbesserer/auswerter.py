@@ -33,6 +33,10 @@ HIER = Path(__file__).resolve().parent
 _SCANNER = HIER.parent / "scanner"
 if str(_SCANNER) not in sys.path:
     sys.path.insert(0, str(_SCANNER))
+_BUS = HIER.parent.parent / "Bus"
+if str(_BUS) not in sys.path:
+    sys.path.insert(0, str(_BUS))
+import ereignis                                            # noqa: E402
 
 # Merkmale in fester Reihenfolge - so heissen auch die Schluessel im Befund.
 MERKMALE = ("score_band", "verhaeltnis_band", "vola_band", "haltedauer_band",
@@ -294,7 +298,15 @@ def befund(spur_konf, konfig, ausgabe_dir):
       erzeugt                Zeitstempel
 
     `name` kommt aus `spur_konf["name"]`, Vorgabe 'spur1'.
+
+    Meldet Start/Ende an den Bus (Aufgabe 7) - der Bus haengt sich nur
+    aussen an, die Rechnung selbst bleibt unveraendert.
     """
+    with ereignis.lauf("handel/verbesserer"):
+        return _befund(spur_konf, konfig, ausgabe_dir)
+
+
+def _befund(spur_konf, konfig, ausgabe_dir):
     import wachen_pruefung as wp
 
     journal = spur_konf["journal"]

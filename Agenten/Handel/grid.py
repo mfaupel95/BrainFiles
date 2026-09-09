@@ -27,7 +27,12 @@ Aufruf:
 """
 
 import argparse
+import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "Bus"))
+import ereignis                                            # noqa: E402
 
 import dca
 import kursdaten
@@ -321,6 +326,11 @@ def zeige(e, kette):
 
 
 def main():
+    with ereignis.lauf("handel/grid"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser(description="Grid-Simulator (rechnet nur, handelt nicht)")
     p.add_argument("--ticker", default="BTC-USD")
     p.add_argument("--unten", type=float, default=None)

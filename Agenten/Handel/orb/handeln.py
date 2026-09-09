@@ -34,6 +34,10 @@ import sys
 from datetime import datetime, timezone, date
 from pathlib import Path
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, os.pardir, "Bus"))
+import ereignis                                            # noqa: E402
+
 import oanda
 import session as sess
 import wachen_orb as wp
@@ -580,10 +584,19 @@ def lauf(modus):
         _spiegeln(w)
 
 
-if __name__ == "__main__":
+def main():
+    with ereignis.lauf("handel/orb"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser()
     g = p.add_mutually_exclusive_group()
     for name in ("vorschau", "papier", "live", "wachen"):
         g.add_argument("--" + name, action="store_const", dest="modus", const=name)
     a = p.parse_args()
     lauf(a.modus or "papier")
+
+
+if __name__ == "__main__":
+    main()

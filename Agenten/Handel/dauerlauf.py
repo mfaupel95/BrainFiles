@@ -67,7 +67,12 @@ from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
+# Bus-Anbindung (Aufgabe 7): meldet nur Start/Ende, ersetzt melder.sende()
+# nirgends - ein toter Bus darf den Dauerlauf nie aufhalten (ereignis.melden
+# faengt selbst alles ab).
+sys.path.insert(0, os.path.join(HIER, os.pardir, "Bus"))
 
+import ereignis                                           # noqa: E402
 import freigabefenster                                   # noqa: E402
 import melder                                            # noqa: E402
 import tagesbericht                                      # noqa: E402
@@ -539,7 +544,8 @@ def main():
               % (a.takt, TAKT_MAX_MINUTEN))
         a.takt = TAKT_MAX_MINUTEN
 
-    return Lauf(a.takt, a.trocken).start()
+    with ereignis.lauf("handel/dauerlauf"):
+        return Lauf(a.takt, a.trocken).start()
 
 
 if __name__ == "__main__":

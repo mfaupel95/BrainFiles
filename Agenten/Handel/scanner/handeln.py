@@ -45,6 +45,10 @@ import sys
 from datetime import datetime, timezone, date
 from pathlib import Path
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, os.pardir, "Bus"))
+import ereignis                                            # noqa: E402
+
 import okx
 import scan
 import wachen_pruefung as wp
@@ -441,7 +445,12 @@ def lauf(modus):
         _spiegeln(w)
 
 
-if __name__ == "__main__":
+def main():
+    with ereignis.lauf("handel/scanner"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser()
     g = p.add_mutually_exclusive_group()
     g.add_argument("--vorschau", action="store_const", dest="modus",
@@ -455,3 +464,7 @@ if __name__ == "__main__":
                                         "(Wochenlauf)")
     a = p.parse_args()
     lauf(a.modus or "papier")
+
+
+if __name__ == "__main__":
+    main()

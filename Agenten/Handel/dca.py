@@ -17,7 +17,12 @@ Das Skript handelt nicht und verbindet sich mit keinem Broker. Es rechnet.
 """
 
 import argparse
+import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "Bus"))
+import ereignis                                            # noqa: E402
 
 import kursdaten
 
@@ -263,6 +268,11 @@ def zeige(e, details=False):
 
 
 def main():
+    with ereignis.lauf("handel/dca"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser(description="DCA-Simulator (rechnet nur, handelt nicht)")
     p.add_argument("--ticker", default="PLTR")
     p.add_argument("--betrag", type=float, default=200, help="je Tranche (Standard 200)")
