@@ -55,6 +55,8 @@ from datetime import datetime, timezone
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
 sys.path.insert(0, os.path.join(HIER, os.pardir))
+sys.path.insert(0, os.path.join(HIER, os.pardir, os.pardir, "Bus"))
+import ereignis                                            # noqa: E402
 
 import auswahl
 import bot
@@ -644,6 +646,18 @@ def lauf(modus):
 
 
 def main():
+    # xperp/handeln.py ist der automatische Einstieg (dauerlauf.py ruft
+    # dieses Skript per subprocess auf, siehe zyklus_spur/nur_fenster_fehlt)
+    # - genau wie orb/handeln.py und scanner/handeln.py meldet es sich damit
+    # am Bus. bot.py importiert dieses Modul nie und ruft main() hier nie
+    # auf; umgekehrt importiert handeln.py bot nur als Rechenmodul und ruft
+    # bot.main() nie auf (siehe Kopfkommentar) - beide Meldewege laufen
+    # deshalb nie im selben Prozess zusammen, keine Doppelmeldung moeglich.
+    with ereignis.lauf("handel/xperp"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     g = p.add_mutually_exclusive_group()
