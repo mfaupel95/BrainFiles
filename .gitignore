@@ -84,6 +84,12 @@
 !Agenten/Handel/verbesserer/tests/*.py
 !Agenten/Handel/verbesserer/tests/fixtures/*.csv
 !Agenten/Handel/verbesserer/tests/fixtures/*.json
+# Telegram-Bus: Dienst fuer Ereignisverteilung
+!Agenten/Bus/*.py
+!Agenten/Bus/*.json
+!Agenten/Bus/*.ps1
+!Agenten/Bus/*.md
+!Agenten/Bus/tests/*.py
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**

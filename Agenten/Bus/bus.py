@@ -31,8 +31,11 @@ def port_aus_datei():
 def _laeuft(pid):
     try:
         a = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid],
-                           capture_output=True, text=True, timeout=10)
-        return str(pid) in a.stdout
+                           capture_output=True, timeout=10)
+        # In Bytes vergleichen: tasklist gibt Umlaute aus, die mit der
+        # Konsolen-Codepage nicht immer dekodierbar sind. text=True wuerde
+        # einen UnicodeDecodeError werfen, den except Exception verschluckt.
+        return str(pid).encode("ascii") in a.stdout
     except Exception:                                       # noqa: BLE001
         return False
 
