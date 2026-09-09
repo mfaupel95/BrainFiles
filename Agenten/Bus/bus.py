@@ -14,6 +14,7 @@ import os
 import queue
 import subprocess
 import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import journal
@@ -139,9 +140,15 @@ def main():
 
 
 def _sprecher_starten(q):
-    """Wird in Aufgabe 6 gefuellt. Bis dahin absichtlich leer, damit der
-    Dienst schon vorher von Hand pruefbar ist."""
-    del q
+    """Der Sprecher laeuft als Faden im selben Prozess wie der Bus. Ein
+    eigener Prozess braechte einen zweiten Telegram-Sprecher in Reichweite -
+    und zwei am selben Token nehmen sich gegenseitig die Nachrichten weg."""
+    import auffaellig
+    import sprecher
+    sys.path.insert(0, os.path.join(HIER, os.pardir, "Handel"))
+    import melder                                           # noqa: E402
+    s = sprecher.Sprecher(melder, auffaellig.regeln())
+    threading.Thread(target=s.lauf, args=(q,), daemon=True).start()
 
 
 if __name__ == "__main__":
