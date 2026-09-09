@@ -26,7 +26,22 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-BASIS = "https://www.okx.com"
+
+def _env(name):
+    return os.environ.get(name) or None
+
+
+def _live_basis():
+    """Host fuer echte Orders: OKX_BASE (EEA/global), sonst www.okx.com."""
+    return _env("OKX_BASE") or "https://www.okx.com"
+
+
+# Echte Orders nutzen den LIVE-Key (OKX_LIVE_API_*), nie den DEMO-Key.
+# Der Scanner hat keinen Demo-/Live-Schalter je Aufruf: paper rechnet einfach
+# nur lokal, live signiert. Deshalb liest diese Datei fuer signierte Calls
+# IMMER den Live-Key und den Basis-Host aus OKX_BASE.
+LI = ("OKX_LIVE_API_KEY", "OKX_LIVE_API_SECRET", "OKX_LIVE_API_PASSPHRASE")
+
 HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
 MAX_FEHLER = 6
 
@@ -57,23 +72,23 @@ def _variable(name):
 
 
 def schluessel_vorhanden():
-    return all(_variable(n) for n in
-               ("OKX_API_KEY", "OKX_API_SECRET", "OKX_API_PASSPHRASE"))
+    # Fuer echte Orders massgeblich: der LIVE-Key. Der DEMO-Key genuegt nicht.
+    return all(_variable(n) for n in LI)
 
 
 # --- HTTP ------------------------------------------------------------------
 
 def _roh(pfad, methode="GET", body=None, signiert=False):
-    url = BASIS + pfad
+    url = _live_basis() + pfad
     daten = json.dumps(body) if body else ""
     kopf = dict(HEADERS)
 
     if signiert:
-        key = _variable("OKX_API_KEY")
-        secret = _variable("OKX_API_SECRET")
-        pw = _variable("OKX_API_PASSPHRASE")
+        key = _variable(LI[0])
+        secret = _variable(LI[1])
+        pw = _variable(LI[2])
         if not (key and secret and pw):
-            raise RuntimeError("OKX-Schluessel fehlen (Key/Secret/Passphrase)")
+            raise RuntimeError("OKX-LIVE-Schluessel fehlen (Key/Secret/Passphrase)")
         ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         ts = ts.replace("+00:00", "Z")
         vortext = ts + methode + pfad + daten

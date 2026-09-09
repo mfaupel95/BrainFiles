@@ -10,6 +10,16 @@ summary: 'Der OmniRoute-Quell-Klon (Werkstatt/OmniRoute) ist als Produktions-Rou
 
 # OmniRoute-Produktion
 
+## Gratis-Routing: Diagnose vom 08.09.2026
+
+- `best/free` ist in der laufenden globalen Version 3.8.50 keine Gratis-Route: Der Chat-Test scheitert mit `No active credentials for provider: best.`. Ein Modellname allein belegt keine Kostenfreiheit.
+- Gueltige Katalogeintraege sind `auto/best-free` und `auto/coding:free`. Beide Kandidatenvorschauen lieferten hier nur Felo-Modelle, die der installierte Free-Tier-Katalog mit `tos: avoid` markiert. Deshalb nicht als Standard eingerichtet.
+- `openrouter/openrouter/free` ist vorhanden, scheitert aber an der als abgelaufen markierten OpenRouter-Verbindung. Anmeldung im Dashboard erneuern und danach Chat- sowie Responses-API testen. Keine Schluessel in Chat oder Protokolle kopieren.
+- `freeAccessPolicy: strict` ist strenger als `hidePaidModels`: Nur das Ausblenden bezahlter Modelle prueft keine erschoepften Freikontingente oder Anschlusskosten. Globale Aenderungen betreffen andere Clients und benoetigen eine eigene Freigabe. Kein kostenpflichtiger Fallback aktiviert.
+- Sicherungen: `~/.codex/config.toml.bak-20260908-220817`, `~/.omniroute/.env.bak-20260908-220817`, `~/.omniroute/storage.sqlite.bak-20260908-220917`. Dateikopien per SHA-256 verglichen; laufende WAL-Datenbank ueber die SQLite-Online-Backup-API gesichert und mit `PRAGMA quick_check` geprueft. Konfiguration und `.env` unveraendert. Eine Datenbank-Wiederherstellung erfordert gestopptes OmniRoute.
+
+Siehe auch [[Verbindungen]].
+
 Stand 07.09.2026. Der OmniRoute-Router laeuft als **globale npm-Installation**
 (`omniroute serve`, Port 20128) und wird von allen Agenten benutzt (Hermes,
 Claude Code, Codex). Zusaetzlich ist der **Quell-Klon**
