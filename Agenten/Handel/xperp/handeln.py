@@ -488,7 +488,10 @@ def _spiegeln(w):
     ziel = w.get("journal_zweitziel")
     if not ziel:
         return "-- (journal_zweitziel nicht gesetzt)"
-    return wx.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    # spiegele_journal liefert (ok, Grund-oder-Pfad) - hier auf eine Zeile
+    # bringen, damit die Aufrufer sie direkt ausgeben koennen.
+    ok, info = wx.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    return info if ok else "fehlgeschlagen: %s" % info
 
 
 def zeige_wachen(w):

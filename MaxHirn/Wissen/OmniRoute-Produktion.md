@@ -18,6 +18,28 @@ summary: 'Der OmniRoute-Quell-Klon (Werkstatt/OmniRoute) ist als Produktions-Rou
 - `freeAccessPolicy: strict` ist strenger als `hidePaidModels`: Nur das Ausblenden bezahlter Modelle prueft keine erschoepften Freikontingente oder Anschlusskosten. Globale Aenderungen betreffen andere Clients und benoetigen eine eigene Freigabe. Kein kostenpflichtiger Fallback aktiviert.
 - Sicherungen: `~/.codex/config.toml.bak-20260908-220817`, `~/.omniroute/.env.bak-20260908-220817`, `~/.omniroute/storage.sqlite.bak-20260908-220917`. Dateikopien per SHA-256 verglichen; laufende WAL-Datenbank ueber die SQLite-Online-Backup-API gesichert und mit `PRAGMA quick_check` geprueft. Konfiguration und `.env` unveraendert. Eine Datenbank-Wiederherstellung erfordert gestopptes OmniRoute.
 
+## Autostart-Falle (Fund 09.09.2026)
+
+Ein Windows-Neustart (Docker-Reparatur) hat die globale Installation wieder
+hochgefahren, obwohl seit 08.09.2026 der Quell-Klon Produktion ist: der
+**Autostart-Ordner** (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`)
+enthielt `OmniRoute.vbs` und `OmniRoute Server.lnk`, beide starten
+`omniroute serve` aus der globalen npm-Installation. Der Umstieg vom
+08.09.2026 hatte nur den laufenden Prozess gestoppt, nicht diese Einträge.
+
+Folge: globale Instanz blockierte Port 20128, ihre Provider-Credentials
+(github/claude) waren nicht mehr entschlüsselbar (`STORAGE_ENCRYPTION_KEY`
+passte nicht mehr) → Hermes bekam `HTTP 401: User not found`.
+
+**Fix:** Beide Autostart-Dateien umbenannt (`.disabled-20260909`-Suffix,
+nicht gelöscht), globale Prozesse gestoppt, Quell-Klon über
+`omniroute-quell-produktion.ps1` neu gestartet. Verifiziert: `/v1/models`
+200, `auto/best-coding` liefert eine echte Antwort.
+
+**Wenn der Quell-Klon je wieder als Autostart gewünscht wird:** einen neuen
+Eintrag anlegen, der `npm run start` in `Werkstatt/OmniRoute` aufruft — nicht
+die alten Dateien reaktivieren, die zeigen auf die globale Installation.
+
 Siehe auch [[Verbindungen]].
 
 Stand 07.09.2026. Der OmniRoute-Router laeuft als **globale npm-Installation**
