@@ -47,6 +47,35 @@ def test_nimmt_an_und_schreibt_vor_dem_verteilen():
             srv.shutdown()
 
 
+class PlatzendeSchlange:
+    """Warteschlange, die beim Verteilen scheitert. Steht die Zeile danach
+    trotzdem im Journal, war zuerst geschrieben worden - genau das ist die
+    Zusicherung, an der der ganze Dienst haengt."""
+
+    def put(self, _):
+        raise RuntimeError("Verteilen gescheitert")
+
+
+def test_journal_steht_auch_wenn_das_verteilen_scheitert():
+    with tempfile.TemporaryDirectory() as w:
+        srv, port = _dienst(w, PlatzendeSchlange())
+        try:
+            e = journal.neu("handel/xperp", "ende", code=0, dauer_s=3)
+            try:
+                _post(port, e)
+            except (urllib.error.HTTPError, ConnectionError):
+                # warteschlange.put() wirft hier unbehandelt - der
+                # Handler-Thread bricht ab, die Verbindung faellt weg.
+                # Ob der Client einen 500er oder nur den Verbindungsabbruch
+                # sieht, ist fuer diesen Test gleichgueltig: entscheidend
+                # ist allein, was schon vorher auf Platte stand.
+                pass
+            zeilen = journal.lesen(wurzel=w)
+            assert len(zeilen) == 1 and zeilen[0]["id"] == e["id"]
+        finally:
+            srv.shutdown()
+
+
 def test_kein_get_und_kein_fremder_pfad():
     with tempfile.TemporaryDirectory() as w:
         srv, port = _dienst(w, queue.Queue())
@@ -107,6 +136,28 @@ def test_pid_sperre_laesst_keinen_zweiten_bus_zu():
             assert bus.pid_sperren() is True        # Leiche blockiert nicht
         finally:
             bus.PID_DATEI = echt
+
+
+def test_gestoertes_laeuft_verhindert_start():
+    # Entscheidung "im Zweifel geschlossen": kann _laeuft nicht feststellen,
+    # ob der Prozess lebt (tasklist fehlt, PermissionError, Timeout), darf
+    # dieser Bus nicht starten. Sonst laufen zwei Busse gleichzeitig und
+    # nehmen sich am selben Telegram-Token die Nachrichten weg.
+    with tempfile.TemporaryDirectory() as w:
+        echt_pid_datei, bus.PID_DATEI = bus.PID_DATEI, os.path.join(w, "bus.pid")
+        echt_laeuft = bus._laeuft
+        with open(bus.PID_DATEI, "w", encoding="utf-8") as f:
+            f.write("999999")     # PID-Datei vorhanden, egal welcher Wert
+
+        def _wirft(_pid):
+            raise OSError("tasklist nicht im PATH")
+
+        bus._laeuft = _wirft
+        try:
+            assert bus.pid_sperren() is False
+        finally:
+            bus._laeuft = echt_laeuft
+            bus.PID_DATEI = echt_pid_datei
 
 
 if __name__ == "__main__":

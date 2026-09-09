@@ -32,12 +32,22 @@ def _laeuft(pid):
     try:
         a = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid],
                            capture_output=True, timeout=10)
-        # In Bytes vergleichen: tasklist gibt Umlaute aus, die mit der
-        # Konsolen-Codepage nicht immer dekodierbar sind. text=True wuerde
-        # einen UnicodeDecodeError werfen, den except Exception verschluckt.
-        return str(pid).encode("ascii") in a.stdout
-    except Exception:                                       # noqa: BLE001
-        return False
+    except Exception as exc:                                  # noqa: BLE001
+        # Im Zweifel geschlossen: koennen wir nicht feststellen, ob der
+        # Prozess noch lebt (tasklist fehlt im PATH, PermissionError,
+        # Timeout), nehmen wir an, dass er es tut, und lassen diesen Bus
+        # nicht starten. Ein nicht gestarteter Bus kostet nichts - die
+        # Erzeuger schreiben ihre Zeilen ohnehin selbst ins Journal -,
+        # waehrend zwei laufende Busse sich am selben Telegram-Token
+        # gegenseitig die Nachrichten wegnehmen. Genau die verkehrte
+        # Auslegung war die Ursache des urspruenglichen Fehlers.
+        print("bus: _laeuft konnte PID %d nicht pruefen (%s) - "
+              "kein Start zur Sicherheit" % (pid, exc), file=sys.stderr)
+        return True
+    # In Bytes vergleichen: tasklist gibt Umlaute aus, die mit der
+    # Konsolen-Codepage nicht immer dekodierbar sind. text=True wuerde
+    # einen UnicodeDecodeError werfen.
+    return str(pid).encode("ascii") in a.stdout
 
 
 def pid_sperren():
@@ -49,8 +59,19 @@ def pid_sperren():
                 alt = int(f.read().strip())
         except (OSError, ValueError):
             alt = None
-        if alt and _laeuft(alt):
-            return False
+        if alt:
+            try:
+                laeuft = _laeuft(alt)
+            except Exception as exc:                          # noqa: BLE001
+                # Im Zweifel geschlossen, auch wenn _laeuft selbst (etwa
+                # weil ausgetauscht oder veraendert) unerwartet durchreicht
+                # statt intern abzufangen: kein Start ist die verkraftbare
+                # Seite, zwei laufende Busse sind es nicht.
+                print("bus: _laeuft warf unerwartet (%s) - kein Start "
+                      "zur Sicherheit" % exc, file=sys.stderr)
+                return False
+            if laeuft:
+                return False
     with open(PID_DATEI, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
     return True
