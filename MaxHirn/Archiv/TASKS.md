@@ -666,3 +666,50 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
          abschalten. Bei einem Lauf pro Tag wären 1440+ Minuten ehrlich,
          aber dann ist eine Position bis zu einem Tag unbewacht.
       Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
+
+- [ ] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt**
+      Aufgefallen 09.09.2026. Die Tabelle in `Wissen/XPERP-Handel.md`
+      (Abschnitt „Hebel-Deckel ≥ 5", Zeilen 165–171) stammt aus einer
+      **fehlerhaften Messung**: `auswahl.py` leitete den Deckel aus 300
+      4H-Kerzen ab, das sind nur 50 Tage. SOLs Rücklauf vom 31.05.2026 lag
+      außerhalb dieses Fensters.
+      Behoben ist der Code — `mae_tage()` rechnet jetzt auf 300 **Tages**kerzen,
+      committet. Die Notiz nicht.
+
+      | Wert | steht dort | gemessen (200 Tage) |
+      |---|---|---|
+      | SOL | 10,0× | **3,6×** |
+      | HYPE | 6,4× | **4,1×** |
+      | ZEC | 5,8× | **1,7×** |
+
+      Damit trägt die Überschrift „Hebel-Deckel ≥ 5" für keinen der drei
+      Werte mehr. Zu tun: Tabelle ersetzen, den Messfehler als Falle
+      danebenschreiben (sonst wiederholt ihn die nächste Sitzung), und die
+      Aussage „alle Tore bestanden" für die drei zurücknehmen.
+      Betrifft: `MaxHirn/Wissen/XPERP-Handel.md`
+
+- [?] **T-040 — SOL long, 106 USD: Hebel 5× liegt über dem Deckel**
+      Anweisung von Max am 09.09.2026: „SOL long 5x hebel 106 usd und stop
+      schlage vor oder setz automatisch klug". Der Stop ist **gemessen**
+      (`xperp/stopwahl.py`), der Hebel ist der Konflikt.
+
+      Gemessene Geometrie: **Stop 3,00 ATR / Ziel 4,00 ATR**, E = +0,321 %
+      je Runde über alles, +0,894 % in der jüngeren Hälfte, 469 Ziel- gegen
+      557 Stop-Ereignisse, 24 von 42 Kombinationen in beiden Hälften positiv.
+      Bei 1,92 % ATR sind das **5,75 % Stop / 7,66 % Ziel**.
+
+      Der Deckel für SOL long ist **3,5–3,6×** (größter 7-Tage-Rücklauf
+      27,9 %). Gerechnet bei Kurs 100,68:
+
+      | | Nominal | Kontrakte | Verlust am Stop | Liq entfernt |
+      |---|---|---|---|---|
+      | 5× | 529,58 USD | 526 | 30,46 USD (28,8 % der Margin) | 19,5 % |
+      | 3× | 317,14 USD | 315 | 18,24 USD (17,3 % der Margin) | 32,8 % |
+
+      3× passt außerdem zu „lieber mehrere Anläufe": rund 6 statt 3 aus
+      106 USD. `Wissen/Schutzregeln.md` führt „Hebel höchstens `hebel_deckel`"
+      als auch mit Anweisung feste Grenze.
+      **Wartet auf Max.** Bestätigt er 5×, wird 5× ausgeführt — vollständig,
+      nicht stillschweigend kleiner.
+      Vor dem Auftrag `bot.py` **frisch** laufen lassen, die Zahlen oben sind
+      vom 09.09.2026.
