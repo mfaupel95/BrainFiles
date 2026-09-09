@@ -1,0 +1,124 @@
+"""Der Dienst. Nimmt Ereignisse entgegen, schreibt sie fort, gibt sie weiter.
+
+Er fuehrt nichts aus. Ein Ereignis annehmen ist Schreiben, kein Ausloesen -
+deshalb braucht er auch keinen Schluessel: das Schlimmste, was ein fremder
+lokaler Prozess anrichten kann, ist eine erfundene Journalzeile.
+
+Die Reihenfolge in do_POST ist bindend und der Grund, warum dieser Dienst
+ueberhaupt vertretbar ist: erst anhaengen und flushen, dann verteilen. Faellt
+er dazwischen aus, steht die Zeile trotzdem auf Platte.
+"""
+
+import json
+import os
+import queue
+import subprocess
+import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import journal
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+PID_DATEI = os.path.join(HIER, "bus.pid")
+GRENZE = 64 * 1024      # eine Ereigniszeile ist nie groesser
+
+
+def port_aus_datei():
+    with open(os.path.join(HIER, "bus.json"), encoding="utf-8") as f:
+        return int(json.load(f)["port"])
+
+
+def _laeuft(pid):
+    try:
+        a = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid],
+                           capture_output=True, text=True, timeout=10)
+        return str(pid) in a.stdout
+    except Exception:                                       # noqa: BLE001
+        return False
+
+
+def pid_sperren():
+    """True, wenn wir der einzige Bus sind. Zwei Sprecher am selben Telegram-
+    Token naehmen sich gegenseitig die Nachrichten weg."""
+    if os.path.exists(PID_DATEI):
+        try:
+            with open(PID_DATEI, encoding="utf-8") as f:
+                alt = int(f.read().strip())
+        except (OSError, ValueError):
+            alt = None
+        if alt and _laeuft(alt):
+            return False
+    with open(PID_DATEI, "w", encoding="utf-8") as f:
+        f.write(str(os.getpid()))
+    return True
+
+
+def _bauen(wurzel, warteschlange):
+    class Griff(BaseHTTPRequestHandler):
+        def do_POST(self):                                  # noqa: N802
+            if self.path != "/ereignis":
+                return self._kurz(404)
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                if n <= 0 or n > GRENZE:
+                    return self._kurz(400)
+                e = json.loads(self.rfile.read(n).decode("utf-8"))
+                if not isinstance(e, dict) or "id" not in e or "wer" not in e:
+                    return self._kurz(400)
+            except (ValueError, UnicodeDecodeError):
+                return self._kurz(400)
+            try:
+                journal.anhaengen(e, wurzel=wurzel)          # 1. auf Platte
+            except OSError:
+                return self._kurz(500)
+            warteschlange.put(e)                             # 2. erst dann
+            self._kurz(200)
+
+        def do_GET(self):                                   # noqa: N802
+            self._kurz(405)
+
+        def _kurz(self, code):
+            self.send_response(code)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *_):
+            pass    # kein Zugriffsprotokoll - das Journal ist das Protokoll
+
+    return Griff
+
+
+def starte(port=None, wurzel=None, warteschlange=None):
+    """Bindet an 127.0.0.1. Serviert erst, wenn der Aufrufer serve_forever()
+    ruft - so kann der Test den Port abfragen, bevor etwas laeuft."""
+    q = warteschlange if warteschlange is not None else queue.Queue()
+    p = port if port is not None else port_aus_datei()
+    return ThreadingHTTPServer(("127.0.0.1", p), _bauen(wurzel, q))
+
+
+def main():
+    if not pid_sperren():
+        print("Ein Bus laeuft bereits - dieser beendet sich.")
+        return 1
+    try:
+        q = queue.Queue()
+        srv = starte(warteschlange=q)
+        _sprecher_starten(q)
+        print("Bus lauscht auf 127.0.0.1:%d" % srv.server_address[1])
+        srv.serve_forever()
+    finally:
+        try:
+            os.remove(PID_DATEI)
+        except OSError:
+            pass
+    return 0
+
+
+def _sprecher_starten(q):
+    """Wird in Aufgabe 6 gefuellt. Bis dahin absichtlich leer, damit der
+    Dienst schon vorher von Hand pruefbar ist."""
+    del q
+
+
+if __name__ == "__main__":
+    sys.exit(main())
