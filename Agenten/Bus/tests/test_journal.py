@@ -4,6 +4,7 @@ Direkt ausfuehrbar: python tests/test_journal.py
 import os
 import sys
 import tempfile
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import journal  # noqa: E402
@@ -16,8 +17,10 @@ def test_neu_hat_alle_felder():
     assert set(e) == FELDER, e
     assert e["code"] is None and e["dauer_s"] is None
     assert len(e["id"]) == 32
-    # Zeitzone muss dranstehen, sonst ist die Zeile spaeter nicht sortierbar.
-    assert "+" in e["zeit"] or e["zeit"].endswith("Z")
+    # Die Zeitangabe muss eine Zeitzone tragen, sonst ist sie spaeter nicht
+    # sortierbar. Auf das Pluszeichen zu pruefen traegt nicht: bei negativem
+    # Versatz steht dort ein Minus.
+    assert datetime.fromisoformat(e["zeit"]).tzinfo is not None
 
 
 def test_ids_sind_verschieden():
