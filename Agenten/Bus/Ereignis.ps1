@@ -37,18 +37,26 @@ function Send-BusEreignis {
     $port = Get-BusPort
     if ($port -gt 0) {
       try {
+        # -ErrorAction Stop: macht den Cmdlet-Fehler terminierend, sonst
+        # greift dieses catch gar nicht (siehe Kommentar unten).
         Invoke-RestMethod -Uri "http://127.0.0.1:$port/ereignis" -Method Post `
-          -Body $roh -ContentType 'application/json' -TimeoutSec 1 | Out-Null
+          -Body $roh -ContentType 'application/json' -TimeoutSec 1 -ErrorAction Stop | Out-Null
         return
       } catch { }
     }
     try {
+      # Auch hier -ErrorAction Stop noetig: $ErrorActionPreference = 'Continue'
+      # (oben) schuetzt nur den *Aufrufer* vor einem 'Stop', der aus diesem
+      # Skript herausreisst. Ohne -ErrorAction Stop an den Cmdlets selbst
+      # waeren ihre Fehler nicht-terminierend - sie wuerden nur ausgegeben
+      # (stderr) statt das catch auszuloesen, und genau das soll hier
+      # verhindert werden.
       $ordner = Get-BusJournal
       if (-not (Test-Path $ordner)) {
-        New-Item -ItemType Directory -Path $ordner -Force | Out-Null
+        New-Item -ItemType Directory -Path $ordner -Force -ErrorAction Stop | Out-Null
       }
       $datei = Join-Path $ordner ((Get-Date).ToString('yyyy-MM-dd') + '.jsonl')
-      Add-Content -Path $datei -Value $roh -Encoding UTF8
+      Add-Content -Path $datei -Value $roh -Encoding UTF8 -ErrorAction Stop
     } catch { }
   } catch { } finally { $ErrorActionPreference = $alt }
 }
@@ -68,7 +76,10 @@ function New-BusEreignis {
 }
 
 function Melde-Start {
-  param([Parameter(Mandatory)][string]$Wer, [string]$Log)
+  # $Log bewusst ohne [string]-Typangabe: sonst macht PowerShell ein
+  # fehlendes -Log zu "" statt $null, und journal.py-seitige Leser
+  # (Teilprojekt 2) muessten "" und null als denselben Fall behandeln.
+  param([Parameter(Mandatory)][string]$Wer, $Log = $null)
   Send-BusEreignis (New-BusEreignis -Wer $Wer -Was 'start' -Code $null `
                     -Dauer $null -Text '' -Log $Log)
   return [pscustomobject]@{ Wer = $Wer; Start = Get-Date; Log = $Log }
