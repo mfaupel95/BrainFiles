@@ -52,7 +52,7 @@ def lesen(tag=None, wurzel=None):
     if not os.path.exists(p):
         return []
     zeilen = []
-    with open(p, encoding="utf-8") as f:
+    with open(p, encoding="utf-8-sig") as f:
         for z in f:
             z = z.strip()
             if not z:
