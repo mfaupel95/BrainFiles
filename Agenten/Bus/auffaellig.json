@@ -1,0 +1,10 @@
+{
+  "deckel_je_stunde": 20,
+  "dauer_faktor": 2.0,
+  "dauer_mindestlaeufe": 5,
+  "erwartet": {
+    "routine/sicherung": 30,
+    "routine/zweitkopie": 30,
+    "routine/systempruefung": 30
+  }
+}
