@@ -28,7 +28,11 @@ class Sprecher:
         self.regeln = regeln
         self.wurzel = wurzel
         self.stand = stand or STAND
-        self.gesehen = set(self._stand().get("ids", []))
+        anfang = self._stand()
+        self.gesehen = set(anfang.get("ids", []))
+        # Tag der letzten Tagesmeldung - aus stand.json, damit ein Neustart
+        # nach 20 Uhr sie nicht ein zweites Mal verschickt (Befund 2).
+        self.letzter_tag = anfang.get("letzter_tag")
         self.gesendet_seit = []          # Zeitstempel der letzten Meldungen
         self.deckel_gemeldet = False
 
@@ -48,7 +52,8 @@ class Sprecher:
         try:
             with open(self.stand, "w", encoding="utf-8") as f:
                 json.dump({"tag": datetime.now().strftime("%Y-%m-%d"),
-                           "ids": sorted(self.gesehen)}, f)
+                           "ids": sorted(self.gesehen),
+                           "letzter_tag": self.letzter_tag}, f)
         except OSError:
             pass
 
@@ -56,6 +61,10 @@ class Sprecher:
     def _darf_senden(self):
         grenze = time.monotonic() - 3600
         self.gesendet_seit = [t for t in self.gesendet_seit if t > grenze]
+        if not self.gesendet_seit:
+            # Alle Zeitstempel sind aus der Stunde gerollt - neues Fenster,
+            # also darf die naechste Deckelung wieder eine eigene Notiz geben.
+            self.deckel_gemeldet = False
         return len(self.gesendet_seit) < int(self.regeln["deckel_je_stunde"])
 
     def _sende(self, text):
@@ -112,6 +121,11 @@ class Sprecher:
             text.append("%s: %dx, zusammen %d s" % (wer, anzahl[wer], dauer[wer]))
         return "\n".join(text)
 
+    def _tagesmeldung_faellig(self, jetzt):
+        """True, wenn es nach 20 Uhr ist und fuer den Tag noch keine
+        Tagesmeldung raus ist - Marke kommt aus stand.json (Befund 2)."""
+        return jetzt.hour >= 20 and self.letzter_tag != jetzt.strftime("%Y-%m-%d")
+
     def _letzte_laeufe(self):
         letzte = {}
         for e in journal.lesen(wurzel=self.wurzel):
@@ -131,7 +145,6 @@ class Sprecher:
         """Laeuft im Bus-Prozess. Holt aus der Warteschlange, holt einmal am
         Anfang das Journal nach, schickt abends die Sammelmeldung."""
         self.nachholen()
-        letzter_tag = None
         while True:
             try:
                 self.verarbeite(warteschlange.get(timeout=5))
@@ -140,8 +153,9 @@ class Sprecher:
             except Exception:                               # noqa: BLE001
                 pass        # der Sprecher darf den Bus nie mitreissen
             jetzt = datetime.now()
-            if jetzt.hour >= 20 and letzter_tag != jetzt.date():
-                letzter_tag = jetzt.date()
+            if self._tagesmeldung_faellig(jetzt):
+                self.letzter_tag = jetzt.strftime("%Y-%m-%d")
+                self._stand_schreiben()
                 offen = auffaellig.ausbleibend(self._letzte_laeufe(),
                                                self.regeln, jetzt)
                 text = self.tagesmeldung()

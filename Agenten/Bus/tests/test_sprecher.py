@@ -84,6 +84,57 @@ def test_tagesmeldung_listet_alle_laeufe():
         assert "routine/sicherung" in t and "handel/xperp" in t
 
 
+def test_deckelnotiz_pro_stunde_neu():
+    # Befund 1: die Deckelnotiz-Marke darf nicht fuer immer stehen bleiben -
+    # jedes neue Stundenfenster braucht wieder genau eine eigene Notiz.
+    # time.monotonic wird durch eine steuerbare Uhr ersetzt, damit das
+    # Verstreichen einer Stunde nicht wirklich abgewartet werden muss.
+    uhr = {"t": 1000.0}
+    orig = sprecher.time.monotonic
+    sprecher.time.monotonic = lambda: uhr["t"]
+    try:
+        with tempfile.TemporaryDirectory() as w:
+            d = Doppelgaenger()
+            s = _sprecher(d, w)
+            # Erstes Stundenfenster: drei Meldungen raus, die vierte gedeckelt.
+            for i in range(4):
+                uhr["t"] = 1000.0 + i
+                s.verarbeite(journal.neu("a", "ende", code=7, dauer_s=1))
+            assert len(d.gesendet) == 4, d.gesendet
+            assert "gedeckelt" in d.gesendet[-1].lower()
+            # Eine Stunde und mehr weiter: neues Fenster, alle alten
+            # Zeitstempel fallen aus der Rolle - genau wie in _darf_senden.
+            uhr["t"] = 1000.0 + 3 + 3601
+            for i in range(4):
+                uhr["t"] += i
+                s.verarbeite(journal.neu("a", "ende", code=7, dauer_s=1))
+            # Erwartet: zweite Deckelnotiz, nicht kommentarloses Verwerfen.
+            assert len(d.gesendet) == 8, d.gesendet
+            deckelnotizen = [t for t in d.gesendet if "gedeckelt" in t.lower()]
+            assert len(deckelnotizen) == 2, deckelnotizen
+    finally:
+        sprecher.time.monotonic = orig
+
+
+def test_tagesmeldung_nicht_doppelt_nach_neustart():
+    # Befund 2: letzter_tag muss in stand.json ueberleben - sonst meldet ein
+    # nach 20 Uhr neu gestarteter Sprecher den Tag ein zweites Mal.
+    import datetime as dt_modul
+    with tempfile.TemporaryDirectory() as w:
+        stand = os.path.join(w, "stand.json")
+        jetzt = dt_modul.datetime.now().replace(hour=21, minute=0, second=0,
+                                                 microsecond=0)
+        d1 = Doppelgaenger()
+        s1 = _sprecher(d1, w)
+        assert s1._tagesmeldung_faellig(jetzt) is True
+        s1.letzter_tag = jetzt.strftime("%Y-%m-%d")
+        s1._stand_schreiben()
+        # Neustart: zweite Instanz auf demselben stand.json, wieder nach 20 Uhr.
+        d2 = Doppelgaenger()
+        s2 = _sprecher(d2, w)
+        assert s2._tagesmeldung_faellig(jetzt) is False
+
+
 def test_totes_telegram_bricht_nichts_ab():
     class Stumm(Doppelgaenger):
         def sende(self, text, stumm=False):
