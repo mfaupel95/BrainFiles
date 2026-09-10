@@ -13,14 +13,28 @@ Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     4. wachen.json  freigabe.erfuellt == true      (Handelsregeln, Bedingung 1)
     5. Herzschlag frisch                            (Bedingung 3)
     6. rollierender Erwartungswert nicht negativ    (Bedingung 5)
-    7. eine Sitzung am Bildschirm, die das Freigabefenster bedienen kann
+    7. eine Freigabe von Hand - am Bildschirm das Fenster (freigabe.py)
+       oder im Dauerbetrieb das Zeitfenster (freigabefenster.py, /ja am
+       Handy). Eine von beiden muss offen sein.
 Fehlt eine, wird Papier gehandelt und es wird gesagt, welche Sperre zu war.
 
-Sind alle sieben offen, zeigt freigabe.py vor jedem Einstieg das
-Bestaetigungsfenster (Handelsregeln Punkt 3). Bedient es niemand, lehnt es nach
-FREIGABE_ZEITLIMIT_S von selbst ab - eine geplante Aufgabe bleibt so nie an
-einem Fenster haengen. Ausstiege laufen nie durch das Fenster: ein Stop muss
-auch dann greifen, wenn niemand davorsitzt.
+Punkt 3 der Handelsregeln laesst sich auf zwei Wegen erfuellen, und welcher
+gilt, sagt die Lage:
+
+  * **Sitzung am Bildschirm** - vor jedem Einstieg zeigt freigabe.py das
+    Bestaetigungsfenster. Bedient es niemand, lehnt es nach
+    FREIGABE_ZEITLIMIT_S von selbst ab; eine geplante Aufgabe bleibt so nie
+    an einem Fenster haengen.
+  * **Kein Bildschirm, aber offenes Zeitfenster** - freigabefenster.py
+    traegt die Freigabe: Max hat sie am Handy mit /ja erteilt, sie laeuft
+    nach spaetestens 24 h ab und /stop schliesst sie sofort. Dann tritt
+    das Zeitfenster an die Stelle des Fensters - sonst bliebe der
+    Dauerbetrieb dauerhaft auf Papier (Befund 10.09.2026).
+
+Kein Weg fuehrt am Bildschirm vorbei, ohne dass jemand geantwortet hat:
+das Zeitfenster oeffnet sich nur auf eine Anfrage des Dauerlaufs hin, und
+der fragt nur, wenn sonst nichts mehr fehlt. Ausstiege laufen nie durch
+eine Freigabe: ein Stop muss auch dann greifen, wenn niemand davorsitzt.
 
 Bedingungen 2-5 aus Wissen/Handelsregeln.md rechnet wachen_pruefung.py:
     2  Drawdown-Ratsche : Positionsgroesse x0.5 ab drawdown_halbierung_prozent,
@@ -261,6 +275,73 @@ def sitzung_da():
         return False
 
 
+# Spur, unter der diese Datei im Dauerlauf und in freigabefenster.py steht.
+SPUR = "scanner"
+
+
+def zeitfenster_offen():
+    """Hat Max am Handy freigegeben (freigabefenster.py)?
+
+    Best effort: fehlt das Modul oder wirft es, gilt *nicht* freigegeben.
+    Im Zweifel Papier - ein Fehler beim Lesen darf nie zu einer Order
+    fuehren."""
+    try:
+        import freigabefenster
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception:                                   # noqa: BLE001
+        return False
+
+
+def sperren_live(w, s):
+    """Alles, was --live gerade verschliesst. Leere Liste = frei."""
+    g = []
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false")
+    if not okx.schluessel_vorhanden():
+        g.append("OKX-Schluessel nicht gesetzt")
+    if not s["freigabe_erfuellt"]:
+        g.append("freigabe.erfuellt=false (Bedingung 1)")
+    if not s["herzschlag_frisch"]:
+        g.append("Herzschlag alt (Bedingung 3)")
+    if s["ev_negativ"]:
+        g.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
+                 % s["rollierender_ev"])
+    # Punkt 3 der Handelsregeln, in zwei Fassungen: am Bildschirm das
+    # Freigabefenster, im Dauerbetrieb das Zeitfenster. Eine muss offen
+    # sein. Die Begruendung nennt immer das Freigabefenster, weil
+    # dauerlauf.nur_fenster_fehlt genau darauf prueft, ob allein die
+    # Freigabe noch fehlt - und nur dann fragt er am Handy nach.
+    if not sitzung_da() and not zeitfenster_offen():
+        g.append("Freigabefenster nicht offen - keine Sitzung am "
+                 "Bildschirm und kein Zeitfenster (Handelsregeln Punkt 3)")
+    return g
+
+
+def freigabe_protokoll(vs, z, s):
+    """Haelt fest, dass das Zeitfenster die Freigabe war.
+
+    Der Bildschirmweg hat sein Protokoll in freigabe.py. Ohne diese Zeilen
+    waere im Journal nicht zu sehen, welche Einstiege ohne Fenster
+    freigegeben wurden. Best effort wie dort: ein Schreibfehler darf den
+    Einstieg nicht verhindern."""
+    try:
+        sys.path.insert(0, str(HIER.parent))
+        import freigabe
+        for v in vs:
+            freigabe.audit({
+                "spur": SPUR, "ergebnis": "bestaetigt",
+                "quelle": "zeitfenster", "modus": "live",
+                "waehrung": "USD", "inst": v.get("inst"),
+                "einstieg": v.get("einstieg"), "stop": v.get("stop"),
+                "ziel": v.get("ziel"), "stop_pct": v.get("stop_pct"),
+                "gebunden": v.get("usd"),
+                "gebunden_gesamt": sum(p["usd"] for p in z["positionen"]),
+                "offene_positionen": len(z["positionen"]),
+                "ruecklauf_usd": s.get("ruecklauf_usd")})
+    except Exception:                                   # noqa: BLE001
+        pass
+
+
 def hole_freigabe(vs, z, s):
     """Jeden Vorschlag im Fenster bestaetigen lassen. Gibt die bestaetigten
     zurueck - abgelehnt heisst leere Liste, und leer heisst kein Einstieg.
@@ -352,24 +433,11 @@ def lauf(modus):
     z = lade_zustand()
     s = wp.lage(w, JOURNAL, z)
 
-    # Live-Sperren pruefen - drei alte, drei neue aus den Bedingungen 1/3/5.
+    # Live-Sperren pruefen - die sechs alten plus die Freigabe von Hand
+    # (Punkt 3): am Bildschirm oder als Zeitfenster.
     live = False
     if modus == "live":
-        gruende = []
-        if not w.get("handel_erlaubt"):
-            gruende.append("wachen.json handel_erlaubt=false")
-        if not okx.schluessel_vorhanden():
-            gruende.append("OKX-Schluessel nicht gesetzt")
-        if not s["freigabe_erfuellt"]:
-            gruende.append("freigabe.erfuellt=false (Bedingung 1)")
-        if not s["herzschlag_frisch"]:
-            gruende.append("Herzschlag alt (Bedingung 3)")
-        if s["ev_negativ"]:
-            gruende.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
-                           % s["rollierender_ev"])
-        if not sitzung_da():
-            gruende.append("keine Sitzung am Bildschirm - Freigabefenster "
-                           "nicht moeglich (Handelsregeln Punkt 3)")
+        gruende = sperren_live(w, s)
         if gruende:
             print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
             print("-> es wird Papier gehandelt.")
@@ -390,6 +458,13 @@ def lauf(modus):
         eing = sum(p["usd"] for p in z["positionen"])
         print("\nOffener Bestand: %d Positionen, %d USD gebunden"
               % (len(z["positionen"]), eing))
+        # Auch hier die Sperren nennen, nicht nur unter --live:
+        # dauerlauf.nur_fenster_fehlt liest genau diese Zeile, um zu
+        # entscheiden, ob sich eine Freigabe-Anfrage ueberhaupt lohnt.
+        # Ohne sie wurde nie gefragt - und ein /ja blieb folgenlos.
+        g = sperren_live(w, s)
+        if g:
+            print("Live waere gesperrt durch: " + "; ".join(g))
         return
 
     # Bedingung 2 - Kill-Switch: alles zu, Sperre zu, Schluss.
@@ -429,9 +504,27 @@ def lauf(modus):
         # Fenster die Zahl steht, die auch gekauft wird.
         vs = [dict(v, usd=round(v["usd"] * faktor, 2), cr=2.0) for v in vs]
         faktor = 1.0
-        vs = hole_freigabe(vs, z, s)
-        if not vs:
-            print("  Freigabe abgelehnt - kein Einstieg in diesem Lauf.")
+        if sitzung_da():
+            # Am Bildschirm: das Fenster fragt je Einstieg einzeln.
+            vs = hole_freigabe(vs, z, s)
+            if not vs:
+                print("  Freigabe abgelehnt - kein Einstieg in diesem Lauf.")
+        else:
+            # Kein Bildschirm, aber ein offenes Zeitfenster. Es wurde beim
+            # Sperrenpruefen geprueft; hier noch einmal, weil dazwischen
+            # Netzabfragen liegen und /stop in der Zeit greifen kann.
+            if zeitfenster_offen():
+                try:
+                    import freigabefenster
+                    stand = freigabefenster.lade(SPUR).text()
+                except Exception:                       # noqa: BLE001
+                    stand = "offen"
+                print("  Freigabe ueber das Zeitfenster (%s) - %d Einstieg(e) "
+                      "ohne Fenster am Bildschirm." % (stand, len(vs)))
+                freigabe_protokoll(vs, z, s)
+            else:
+                print("  Zeitfenster ist inzwischen zu - kein Einstieg.")
+                vs = []
     pruefe_einstiege(z, vs, w, live, faktor)
 
     eing = sum(p["usd"] for p in z["positionen"])

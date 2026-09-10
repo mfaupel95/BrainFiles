@@ -604,11 +604,40 @@ liest. So bleibt die Ausführung dort, wo die Grenzen sind.
 ```
 python freigabe.py --spur hebel --beispiel
 python freigabe.py --spur spot --auftrag auftrag.json --aus frei.json
+python freigabe.py --spur kraken --beispiel --nur-pruefen   # rechnet nur, kein Fenster
 ```
 
 Exit-Code 0 = bestätigt, 1 = abgelehnt. Fenster schließen und Escape zählen
 als Ablehnung; Ablehnen verwirft auch, was in derselben Runde schon bestätigt
 wurde.
+
+Bedienung per Tastatur: **Enter** bestätigt, **Entf** und **Escape** lehnen
+ab. Invoke auf einen gesperrten Knopf tut nichts — ein Auftrag, der eine
+Grenze reißt, lässt sich also auch per Enter nicht durchdrücken.
+
+### Prüflauf ohne Fenster (`--nur-pruefen`)
+
+Rechnet den Auftrag und gibt jede Wachen-Zeile aus (Ist, Soll, hält/REISST)
+— **ohne Fenster und ohne Bestätigung**. Der Lauf bestätigt nichts und gibt
+nichts frei; er ist zum Nachprüfen aus einer Routine gedacht und für den Test
+dieses Moduls. Exit-Code 0 = alles hält, 1 = eine Grenze reißt oder der
+Zustand (Freigabe, `handel_erlaubt`) steht noch offen.
+
+### Protokoll (`freigabe_journal.jsonl`)
+
+Jede Entscheidung wird angehängt: Bestätigung **und** Ablehnung, mit Grund
+(`Zeitlimit` / `abgebrochen`), Spur, Instrument, Modus (live/papier) und den
+Werten. Vorher hinterließ ein abgelehntes Fenster keine Spur. Die Datei ist
+reines Protokoll: sie wird nur geschrieben, nie gelesen und entscheidet
+nichts. Ein Schreibfehler wird verschluckt — er darf ein Freigeben nie
+verhindern.
+
+### Bestand und Zeitfenster in der Anzeige
+
+Der Ergebnisblock zeigt zusätzlich den **Bestand vor dem Auftrag** (gebunden,
+offene Positionen) und den Stand des **Handy-Fensters**
+(`freigabefenster.py`) für diese Spur. Best effort: fehlt das Modul, steht
+dort `n/a` — das Fenster scheitert nie daran.
 
 ### Was das Fenster nicht zulässt
 
@@ -629,12 +658,59 @@ Papier.
 
 Seit dem 02.09.2026 ruft `scanner/handeln.py` das Fenster vor jedem Einstieg
 auf — aber nur im `--live`-Pfad und erst, wenn alle bisherigen Sperren offen
-sind. Dazu kam eine **siebte Sperre**: ohne Sitzung am Bildschirm kein Live.
+sind. Dazu kam eine **siebte Sperre**: eine Freigabe von Hand muss vorliegen.
+
+Seit dem 11.09.2026 hat diese siebte Sperre zwei Fassungen — dieselbe Aufteilung
+wie in `xperp/handeln.py`:
+
+* **Sitzung am Bildschirm** (`sys.stdin.isatty()`, und `MAXHIRN_ROUTINE` nicht
+  gesetzt): vor jedem Einstieg geht das Bestätigungsfenster aus `freigabe.py`
+  auf, je Vorschlag einzeln.
+* **Kein Bildschirm, aber offenes Zeitfenster** (`freigabefenster.py`): die
+  Freigabe am Handy per `/ja` tritt an die Stelle des Fensters. Ohne sie bliebe
+  der Dauerbetrieb dauerhaft auf Papier — siehe den Befund unten.
+
+Beide Wege werden **unmittelbar vor dem Einstieg noch einmal** geprüft: zwischen
+der Sperrenprüfung und dem Kauf liegen Netzabfragen, und `/stop` kann in dieser
+Zeit greifen. Ist das Fenster dann zu, unterbleibt der Einstieg.
+
+Die Begründung der Sperre nennt immer das Wort *Freigabefenster*. Daran hängt
+`dauerlauf.nur_fenster_fehlt`: nur wenn **allein** die Freigabe noch fehlt,
+fragt der Dauerlauf überhaupt am Handy nach. Eine Zeile, die anders heißt,
+führt dazu, dass nie gefragt wird — und ein `/ja` folgenlos bleibt.
 
 Zwei Entscheidungen, die den Ausschlag geben:
 
 **Ausstiege laufen nie durch das Fenster.** Ein Stop muss auch dann greifen,
 wenn niemand davorsitzt. Bestätigt wird nur, was Geld *bindet*.
+
+### Befund 10.09.2026, behoben am 11.09.2026 — das Handy-Fenster erreichte
+den Live-Pfad nicht
+
+`freigabefenster.py` (das Zeitfenster für `/ja` und `/nein`) war nur in
+`dauerlauf.py` verdrahtet, nicht in `scanner/handeln.py`. Zwei Fehler wirkten
+zusammen, beide auf der **sicheren** Seite — es wurde nie etwas live gehandelt:
+
+1. **Es wurde nie gefragt.** `dauerlauf.nur_fenster_fehlt` liest die
+   Sperren-Zeile aus `handeln.py --vorschau`. Der alte Rumpf druckte diese
+   Zeile aber nur im `--live`-Zweig, den die Vorschau nie betritt. Ohne Zeile
+   keine Anfrage, ohne Anfrage kein `/ja`, ohne `/ja` nie ein Fenster.
+2. **Ein `/ja` wäre folgenlos geblieben.** Die siebte Sperre verlangte eine
+   Sitzung am Bildschirm; aus einer geplanten Aufgabe heraus ist `sys.stdin`
+   keine Konsole. Der Dauerlauf startete die Spur bei offenem Fenster korrekt
+   mit `--live`, `handeln.py` fiel aber sofort auf Papier zurück.
+
+Behoben in `scanner/handeln.py`: die Sperrenprüfung ist jetzt die Funktion
+`sperren_live()` (wie in `xperp/handeln.py`), sie nennt ihre Gründe auch unter
+`--vorschau`, und `zeitfenster_offen()` tritt neben `sitzung_da()`. Nachgeprüft
+am 11.09.2026 mit `scanner/tests/test_handeln_sperren.py` (8 Tests) und einem
+Lauf `--live` mit stillgelegtem Order-Pfad: ohne Fenster eine Sperre, mit
+Fenster `[]`, Einstiegszweig mit `live=True` erreicht, acht Zeilen im
+Freigabeprotokoll, `wachen.json` und `zustand.json` unverändert.
+
+Was das **nicht** ändert: `xperp` (Spur 2) hatte den Weg schon; geblieben sind
+die 24-Stunden-Obergrenze eines Fensters, `/stop`, die Sperre bei `EV < 0` und
+das Verwerfen eines offenen Fensters, wenn der Dauerlauf endet.
 
 **Die Uhr ist der eigentliche Schutz, nicht die Sitzungserkennung.** Am
 02.09.2026 gemessen: `sys.stdin.isatty()` meldet in der Git-Bash unter Windows

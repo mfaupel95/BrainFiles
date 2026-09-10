@@ -44,8 +44,10 @@ Exit-Code 0 = mindestens ein Auftrag bestaetigt, 1 = alles abgelehnt.
 
 import argparse
 import json
+import os
 import sys
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import ttk
 
@@ -65,6 +67,40 @@ BETRAGSFELD = {"spot": "usd", "kraken": "eur", "hebel": "risiko_usd"}
 
 TITEL = {"spot": "1 Spot (OKX)", "hebel": "2 Hebel (XPERP)",
          "kraken": "3 Kraken (Spot, EUR)"}
+
+# Jede Freigabe und jede Ablehnung wird hier fortgeschrieben. Die Datei ist
+# Protokoll, keine Grenze: sie wird nur angehaengt, nie gelesen, und sie
+# entscheidet nichts. wachen.json bleibt unberuehrt.
+AUDIT = HIER / "freigabe_journal.jsonl"
+
+
+def _audit(eintrag):
+    """Eine Zeile Protokoll je Entscheidung.
+
+    Ohne sie hinterlaesst ein abgelehntes Fenster (Escape, Zeitlimit) keine
+    Spur, und ein freigegebener Auftrag ist nur beim Aufrufer zu sehen.
+    Best effort: ein Schreibfehler darf das Freigeben nie verhindern.
+    """
+    try:
+        zeile = dict(eintrag)
+        zeile["zeit"] = datetime.now().astimezone().isoformat(
+            timespec="seconds")
+        with open(AUDIT, "a", encoding="utf-8") as f:
+            f.write(json.dumps(zeile, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception:                                       # noqa: BLE001
+        pass
+
+
+def audit(eintrag):
+    """Oeffentliche Fassung von _audit.
+
+    handeln.py schreibt damit die Freigabe ueber das Zeitfenster ins Protokoll:
+    dort gibt es kein Fenster zu bedienen, aber es soll nachvollziehbar bleiben,
+    welche Einstiege ohne Bildschirm freigegeben wurden.
+    """
+    _audit(eintrag)
 
 
 # --- Wachen ----------------------------------------------------------------
@@ -272,6 +308,7 @@ class Freigabefenster:
         self.zeitlimit = zeitlimit
         self.rest = zeitlimit
         self.abgelaufen = False
+        self._fertig = False    # schon entschieden - kein zweiter Abschluss
 
         self.wkz = waehrung(w)
         self.root = tk.Tk()
@@ -279,6 +316,12 @@ class Freigabefenster:
         self.root.minsize(600, 0)
         self.root.protocol("WM_DELETE_WINDOW", self._ablehnen)   # Fenster zu = Nein
         self.root.bind("<Escape>", lambda _e: self._ablehnen())
+        # Tastatur statt Maus: Enter bestaetigt, Entf und Escape lehnen ab.
+        # Invoke auf einen gesperrten Knopf tut nichts - ein gesperrter
+        # Auftrag laesst sich also auch per Enter nicht durchdruecken.
+        self.root.bind("<Return>", lambda _e: self.ja.invoke())
+        self.root.bind("<KP_Enter>", lambda _e: self.ja.invoke())
+        self.root.bind("<Delete>", lambda _e: self._ablehnen())
 
         aussen = ttk.Frame(self.root, padding=14)
         aussen.pack(fill="both", expand=True)
@@ -326,7 +369,7 @@ class Freigabefenster:
     def _tick(self):
         """Einmal je Sekunde. Laeuft die Uhr ab, ist das eine Ablehnung -
         nie eine Bestaetigung. Ein unbeaufsichtigtes Fenster kauft nichts."""
-        if self.rest is None:
+        if self._fertig or self.rest is None:
             return
         if self.rest <= 0:
             self.abgelaufen = True
@@ -364,7 +407,7 @@ class Freigabefenster:
         return [
             ("risiko_usd", "Risiko je Anlauf", 0.5,
              float(_z(w, "risiko_je_anlauf_usd", 7.5)), 0.25, self.wkz),
-            ("stop_atr_faktor", "Stopweite",
+            ("stop_atr_faktor", "Stopweite (ATR)",
              float(_z(w, "stop_atr_faktor", 1.5)), 4.0, 0.1, "ATR"),
             # Deckel senkbar, nie hebbar: das Maximum ist der Wachen-Wert.
             ("hebel", "Hebeldeckel", 1.0,
@@ -408,6 +451,14 @@ class Freigabefenster:
         self.einstieg.trace_add("write", lambda *_x: self._neu())
         self._neu()
 
+    def _zeitfenster(self):
+        """Was das Handy-Fenster gerade sagt (freigabefenster.py) - best effort."""
+        try:
+            import freigabefenster
+            return freigabefenster.lade(self.spur).text()
+        except Exception:                                   # noqa: BLE001
+            return "n/a"
+
     def _raste(self, schluessel, schritt):
         """Regler auf den Schritt runden, damit keine krummen Werte entstehen."""
         var = self.regler[schluessel]
@@ -450,6 +501,10 @@ class Freigabefenster:
             "Gebunden        %12.2f %s   bei %.1fx" % (r["gebunden"], self.wkz,
                                                        r["hebel"]),
             "Verlust im Stop %12.2f %s" % (r["risiko"], self.wkz),
+            "Bestand vorher  %12.2f %s   %d offen"
+            % (float(self.bestand.get("gebunden", 0.0)), self.wkz,
+               int(self.bestand.get("offene_positionen", 0))),
+            "Zeitfenster     %12s" % self._zeitfenster(),
         ]))
         self.pruefung.config(text="\n".join(
             "%-26s %-16s %-22s %s" % (n, ist, soll, "haelt" if ok else "REISST")
@@ -489,6 +544,11 @@ class Freigabefenster:
         a["hebel"] = self.rechnung["hebel"]
         a["modus"] = "live" if haelt_alles(self.pruefungen) else "papier"
         self.ergebnis.append(a)
+        _audit({"spur": self.spur, "ergebnis": "bestaetigt",
+                "inst": a.get("inst"), "richtung": a.get("richtung", "long"),
+                "modus": a["modus"], "waehrung": a["waehrung"],
+                "einstieg": a["einstieg"], "stop": a["stop"], "ziel": a["ziel"],
+                "gebunden": a["gebunden"], "risiko": a["risiko"]})
         # Der bestaetigte Auftrag bindet Kapital - der naechste sieht das.
         self.bestand["gebunden"] = (float(self.bestand.get("gebunden", 0.0))
                                     + a["gebunden"])
@@ -499,12 +559,20 @@ class Freigabefenster:
     def _weiter(self):
         self.i += 1
         if self.i >= len(self.auftraege):
+            self._fertig = True
             self.root.destroy()
         else:
             self._zeige()
 
     def _ablehnen(self):
+        if self._fertig:
+            return
+        self._fertig = True
         self.ergebnis = []          # Ablehnen verwirft auch schon Bestaetigtes
+        _audit({"spur": self.spur, "ergebnis": "abgelehnt",
+                "grund": "Zeitlimit" if self.abgelaufen else "abgebrochen",
+                "inst": (self.auftraege[self.i].get("inst")
+                         if self.i < len(self.auftraege) else None)})
         self.root.destroy()
 
     def lauf(self):
@@ -557,6 +625,8 @@ def main():
                    help="mit einem Beispielauftrag oeffnen")
     p.add_argument("--zeitlimit", type=int, default=None,
                    help="Sekunden ohne Bedienung, nach denen abgelehnt wird")
+    p.add_argument("--nur-pruefen", action="store_true",
+                   help="nur rechnen und die Wachen ausgeben, kein Fenster")
     a = p.parse_args()
 
     if a.beispiel:
@@ -571,6 +641,43 @@ def main():
         auftraege = [auftraege]
 
     bestand = json.loads(Path(a.bestand).read_text("utf-8")) if a.bestand else {}
+
+    if a.nur_pruefen:
+        # Ohne Fenster, ohne Bestaetigung: nur Rechnung und Wachen. Gedacht
+        # zum Nachpruefen aus einer Routine und fuer den Test dieses Moduls.
+        w = lade_wachen(a.spur)
+        raus = []
+        for auftrag in auftraege:
+            r = RECHNER[a.spur](auftrag, w)
+            pruefungen = pruefe(r, w, a.spur, bestand)
+            print("=== %s %s ===" % (auftrag.get("inst", "?"),
+                                     str(auftrag.get("richtung",
+                                                     "long")).upper()))
+            for k in ("einstieg", "stop", "ziel", "stop_pct", "cr",
+                      "positionswert", "gebunden", "hebel", "risiko"):
+                if k in r:
+                    print("  %-14s %s" % (k, r[k]))
+            for n, ist, soll, ok in pruefungen:
+                print("  %-26s %-20s %-26s %s"
+                      % (n, ist, soll, "haelt" if ok else "REISST"))
+            harte = gerissene_grenzen(pruefungen)
+            print("  -> %s" % ("gesperrt: " + ", ".join(harte) if harte
+                               else ("live" if haelt_alles(pruefungen)
+                                     else "papier (Freigabe/Zustand offen)")))
+            bestand["gebunden"] = (float(bestand.get("gebunden", 0.0))
+                                   + r["gebunden"])
+            bestand["offene_positionen"] = int(
+                bestand.get("offene_positionen", 0)) + 1
+            raus.append({"inst": auftrag.get("inst"), "rechnung": r,
+                         "haelt": haelt_alles(pruefungen),
+                         "gerissen": harte})
+        if a.aus:
+            Path(a.aus).write_text(
+                json.dumps(raus, indent=2, ensure_ascii=False),
+                encoding="utf-8")
+            print("%d Auftraege geprueft -> %s" % (len(raus), a.aus))
+        return 0 if all(x["haelt"] for x in raus) else 1
+
     frei = bestaetige(auftraege, a.spur, bestand, a.zeitlimit)
 
     text = json.dumps(frei, indent=2, ensure_ascii=False)
