@@ -154,6 +154,34 @@ def kerzen(inst, bar="1D", anzahl=300):
     return reihen
 
 
+def alle_paare(quote=None, min_volumen_usd=0.0):
+    """Alle handelbaren Spot-Paare mit 24-h-Umsatz, absteigend nach Umsatz.
+
+    Eine Abfrage fuer den ganzen Markt statt einer je Paar: die Prognose
+    laeuft ueber hunderte Werte, und market/tickers liefert sie auf einmal.
+    quote: Liste erlaubter Quote-Waehrungen (z. B. ["USDT"]), None = alle.
+    Rueckgabe: [(instId, umsatz)], absteigend. Bei SPOT ist volCcy24h der
+    Umsatz in der Quote-Waehrung - also bereits die Zahl, die zaehlt.
+    """
+    roh = _mit_wiederholung("/api/v5/market/tickers?instType=SPOT")
+    aus = []
+    for t in roh:
+        inst = t.get("instId") or ""
+        if "-" not in inst:
+            continue
+        q = inst.rsplit("-", 1)[1]
+        if quote and q not in quote:
+            continue
+        try:
+            umsatz = float(t.get("volCcy24h") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if umsatz >= min_volumen_usd:
+            aus.append((inst, umsatz))
+    aus.sort(key=lambda x: x[1], reverse=True)
+    return aus
+
+
 def letzter_kurs(inst):
     pfad = "/api/v5/market/ticker?instId=" + inst
     d = _mit_wiederholung(pfad)

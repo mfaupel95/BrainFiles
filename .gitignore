@@ -62,6 +62,10 @@
 !Agenten/Handel/*.md
 !Agenten/Handel/*.ps1
 !Agenten/Handel/requirements.txt
+!Agenten/Handel/prognose.py
+!Agenten/Handel/prognose.json
+# Die Tests am Fuss von Handel/ (prognose) wie die der Spuren.
+!Agenten/Handel/tests/*.py
 !Agenten/Handel/scanner/*.py
 !Agenten/Handel/scanner/*.md
 !Agenten/Handel/scanner/*.json

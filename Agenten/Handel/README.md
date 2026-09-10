@@ -729,3 +729,68 @@ gehandelt**. Ein Fehler beim Bestätigen darf nie zu einem ungefragten Kauf
 werden.
 
 `xperp/bot.py` ist noch nicht angebunden; er legt Befehle ohnehin nur vor.
+## Prognose (`prognose.py`)
+
+Angelegt am 11.09.2026 auf Max' Anweisung: bei sehr günstigen
+Einstiegsgelegenheiten über **alle** Märkte hinweg scannen und melden.
+
+Der Unterschied zum Marktscanner ist der Blickwinkel. `scanner/scan.py` sieht
+elf Werte an und liefert die Rangliste, aus der gekauft wird. `prognose.py`
+sieht den ganzen Markt — alle Spot-Paare in USDT und USDC über einem
+Mindestumsatz — und sucht nur das eine: einen **Rücksetzer in einem intakten
+Aufwärtstrend**. Was die Tore nicht passiert, wird nicht gemeldet; ein Tag ohne
+Meldung ist ein Ergebnis, kein Ausfall.
+
+**Es handelt nicht.** Kein Orderaufruf, keine Position, kein Zustand. Die
+Grenzen aus `wachen.json` gelten für Prognose nicht, weil sie keine Order
+stellt. Sie ist ein Beobachter.
+
+```
+python prognose.py                  # ganzer Markt, Bericht + Meldung
+python prognose.py --kurz           # nur die Tabellen
+python prognose.py --alle           # auch zeigen, was durchgefallen ist
+python prognose.py --ohne-meldung   # Bericht schreiben, nichts senden
+python prognose.py --werte 60       # nur die 60 umsatzstärksten Märkte
+```
+
+Exit-Code 0 = mindestens ein Treffer, 1 = keiner. Berichte nach
+`prognose_berichte/JJJJ-MM-TT.json` und `neuester.json`.
+
+### Die Tore (`prognose.json`) — kalibriert, nicht geschätzt
+
+Alle Tore müssen gleichzeitig halten. Wo es die Grenze schon gibt, steht
+derselbe Wert wie in `scanner/wachen.json` — eine zweite Wahrheit wäre eine
+zweite Meinung zum selben Geld.
+
+| Tor | Wert | Warum |
+|---|---|---|
+| Score | mindestens 60 | wie `mindest_score` in wachen.json, dieselbe Bewertung |
+| RSI(14) | höchstens 55 | nicht überhitzt; unter 30 wäre es ein Absturz, kein Einstieg |
+| Abstand zum 60-Tage-Hoch | −25 % bis −4 % | darüber kein Rücksetzer, darunter ist der Trend gebrochen |
+| Volatilität p.a. | höchstens 1,2 | wie `max_volatilitaet_pa` in wachen.json |
+| Trend | Preis über SMA100 | ohne das kauft man in einen Abschwung |
+| Volumen (5 Tage zu 30 Tagen) | mindestens 0,5 | sonst ist der Markt eingeschlafen |
+| Chance/Risiko | mindestens 1,5 | gegen das Hoch der 60 Tage, nicht gegen ein Wunschziel |
+| Stop | 5 % bis 12 % | wie `pflicht_stop_prozent_min/max` |
+
+**Die erste Fassung fand nichts — über 41 Märkte an einem normalen Tag.** Zwei
+Fehler, beide im Aufbau:
+
+1. Das Ziel war auf `mindest_cr` *hochgezogen* worden. Damit war das
+   Chance/Risiko-Tor immer erfüllt und filterte nichts. Jetzt ist das Ziel das
+   beobachtete 60-Tage-Hoch; ob es sich lohnt, sagt der C/R-Wert.
+2. Das Volumentor stand auf `volumen_bestaetigung` aus `bewertung.py` — eine
+   Kennzahl, die *Volumenausweitung* verlangt, also eine Breakout-Eigenschaft.
+   Ein Rücksetzer hat aber fallendes Volumen. Jetzt zählt das Verhältnis der
+   letzten 5 Tage zum 30-Tage-Schnitt direkt, und geprüft wird nur, dass der
+   Markt nicht eingeschlafen ist.
+
+Nach der Kalibrierung blieben am 11.09.2026 zwei Werte übrig: LINK-USDT
+(Score 63,1 · RSI 50,7 · −15,0 % vom Hoch · C/R 2,86) und BNB-USDT
+(75,1 · 53,9 · −8,4 % · C/R 1,61). Nachweis: `tests/test_prognose.py`.
+
+### Was Prognose nicht ist
+
+Keine Empfehlung. Der Name ist Max', die Sache ist eine Auswahl. Sie ersetzt
+keinen Einstieg über die Freigabe: Wer kaufen will, schaltet die Spur über das
+Freigabefenster scharf, und dort gelten die Grenzen aus `wachen.json`.

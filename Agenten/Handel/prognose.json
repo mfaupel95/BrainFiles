@@ -1,0 +1,34 @@
+{
+  "_zweck": "Tore der Prognose. Dieselbe Trennung wie bei wachen.json: die Zahlen stehen hier, nicht im Code. prognose.py liest die Datei und schreibt sie nie.",
+  "_stufe": "Stufe 1 nach Wissen/Schutzregeln.md: aendern heisst sichern, echter Lauf, Commit. prognose.py stellt selbst keine Order, aber mit denselben Schwellen waehlt der Marktscanner seine Kaeufe aus - ein gelockertes Tor ist deshalb eine Entscheidung ueber Geld.",
+  "_maerkte": "Quote-Waehrungen, die abgesucht werden. USDT ist der breiteste Markt, USDC der, in dem die Spur scanner handelt. Der Umsatzfilter haelt die toten Paare draussen, die den Lauf nur langsam machen.",
+  "maerkte": ["USDT", "USDC"],
+  "min_volumen_24h_usd": 3000000,
+  "pause_s": 0.12,
+
+  "_tore": "Was ein 'sehr guenstiger Einstieg' ist. Alle Tore gleichzeitig - ein Treffer ist die Ausnahme, nicht die Regel. Was hier nicht steht, wird nicht gemeldet. Am 11.09.2026 an den echten Zahlen des ganzen Marktes kalibriert (41 Maerkte): mit den ersten, aus dem Bauch gesetzten Werten fand sich nie etwas. Wo es die Grenze schon gibt, steht hier derselbe Wert wie in scanner/wachen.json - eine zweite Wahrheit waere eine zweite Meinung zum selben Geld.",
+  "tore": {
+    "_mindest_score": "Wie wachen.json mindest_score. Die Bewertung ist dieselbe, also auch die Schwelle.",
+    "mindest_score": 60,
+    "_hoechst_rsi": "Nicht ueberhitzt, aber nicht 'ueberverkauft': ein Ruecksetzer in einem Aufwaertstrend hat RSI 40-55. Ein Wert unter 30 waere ein Absturz, kein Einstieg.",
+    "hoechst_rsi": 55,
+    "_ruecksetzer": "Abstand zum Hoch der letzten 60 Tage. Ueber -4 % ist es kein Ruecksetzer, unter -25 % ist der Trend gebrochen - beides faellt raus.",
+    "ruecksetzer_von_pct": -25.0,
+    "ruecksetzer_bis_pct": -4.0,
+    "_max_volatilitaet_pa": "Wie wachen.json max_volatilitaet_pa.",
+    "max_volatilitaet_pa": 1.2,
+    "_trend_ueber_sma": "Der laengere Trend muss stehen: Preis ueber dem 100-Tage-Schnitt. Ohne das kauft man in einen Abschwung.",
+    "trend_ueber_sma": 100,
+    "_mindest_volumen_verhaeltnis": "Volumen der letzten 5 Tage gegen den 30-Tage-Schnitt. Unter 0,5 ist der Markt eingeschlafen - dann fehlt die Gegenwehr, die einen Ruecksetzer von einem Abschwung unterscheidet.",
+    "mindest_volumen_verhaeltnis": 0.5,
+    "_mindest_cr": "Chance/Risiko gegen das Hoch der 60 Tage, nicht gegen ein hochgezogenes Wunschziel.",
+    "mindest_cr": 1.5,
+    "_stop": "Wie pflicht_stop_prozent_min/max in wachen.json.",
+    "stop_min_pct": 5.0,
+    "stop_max_pct": 12.0
+  },
+
+  "melden": {
+    "hoechstens": 5
+  }
+}
