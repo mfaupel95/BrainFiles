@@ -28,6 +28,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
+| bei Systemstart | BrainFiles-Bus | `Agenten/Bus/bus.py` | **eingeplant** 10.09.2026 — `BrainFiles-Bus`, registriert über `Agenten/Routinen/bus.ps1`. Meldet Start und Ende aller geplanten Aufgaben, wertet deren Erfolg aus und sichert Fehler auf dem Handy. Ein toter Bus darf niemals einen Lauf abbrechen — alle Erzeuger schreiben lokal ins Journal zurück. |
 | dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht ab 08:00 | `Handel/dauerlauf.py` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf` (Anmeldung) + Wächter. `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` seit 07.09.2026 gesetzt, siehe Abschnitt „Der Telegram-Melder" |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | werktags 07:15 | Marktüberblick (nur lesen) | `/marktbriefing` über `marktbriefing.ps1` | **Registrierbefehl bereit, Aufgabe noch nicht angelegt** — 07.09.2026, siehe Abschnitt „Marktbriefing" unten |
@@ -50,6 +51,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-Handel-Wachen` | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 | `MaxHirn-Systempruefung` | `Routinen/systempruefung.ps1` (kein Wrapper, protokolliert selbst) | `Routinen/logs/systempruefung-letzter-lauf.md` + `systempruefung-JJJJ-MM-TT.log` |
+| `BrainFiles-Bus` | `Agenten/Bus/bus.py` | `Agenten/Bus/journal/JJJJ-MM-TT.jsonl` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts

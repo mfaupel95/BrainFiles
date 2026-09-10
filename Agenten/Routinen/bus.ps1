@@ -10,7 +10,7 @@
 
 $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path $PSScriptRoot -Parent
-$busPy  = Join-Path $wurzel 'Bus\\bus.py'
+$busPy  = Join-Path $wurzel 'Bus\bus.py'
 $python = (Get-Command python).Source
 
 $aktion  = New-ScheduledTaskAction -Execute $python -Argument "`"$busPy`"" `
