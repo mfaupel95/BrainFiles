@@ -13,6 +13,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/thumbnails-pruefen'                  # neu
+try {                                                                    # neu
 Add-Type -AssemblyName System.Drawing
 
 Add-Type -TypeDefinition @'
@@ -83,6 +86,7 @@ function Test-Zerstoert {
 
 if (-not (Test-Path -LiteralPath $Ordner)) {
     Write-Output "Ordner nicht gefunden: $Ordner"
+    Melde-Ende -Marke $marke -Code 1 -Text "Ordner nicht gefunden: $Ordner" # neu
     exit 1
 }
 
@@ -91,6 +95,7 @@ $dateien = Get-ChildItem -LiteralPath $Ordner -Recurse -File -ErrorAction Silent
 
 if ($dateien.Count -eq 0) {
     Write-Output "Keine Bild- oder Videodateien in: $Ordner"
+    Melde-Ende -Marke $marke -Code 0 -Text "keine Bild-/Videodateien in $Ordner" # neu
     exit 0
 }
 
@@ -126,3 +131,9 @@ if ($ohneMiniatur -eq 0 -and $mitMiniatur -gt 0) {
 } else {
     Write-Output "BEFUND: gemischt - einzelne Dateien scheitern, andere nicht."
 }
+
+Melde-Ende -Marke $marke -Code 0                                        # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

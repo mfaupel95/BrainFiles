@@ -22,8 +22,15 @@ $py     = Join-Path $handel 'scanner\.venv\Scripts\python.exe'
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+. (Join-Path $wurzel 'Bus\Ereignis.ps1')                                # neu
+
 $log = Join-Path $logs 'handel-dauerlauf-letzter-lauf.log'
 $sperre = Join-Path $handel 'dauerlauf.pid'
+# Meldet nur den Start-Vorgang selbst (dieses Skript startet und beendet sich
+# sofort); der Dauerlauf laeuft danach als eigener Hintergrundprozess weiter
+# und ist nicht Teil dieser Bus-Meldung.
+$marke = Melde-Start -Wer 'routine/handel-dauerlauf' `
+           -Log 'Agenten/Routinen/logs/handel-dauerlauf-letzter-lauf.log' # neu
 
 function Schreib($text) {
   "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  $text" | Add-Content $log -Encoding UTF8
@@ -37,6 +44,7 @@ if (Test-Path $sperre) {
   $lebt = Get-Process -Id $pid_alt -ErrorAction SilentlyContinue
   if ($lebt -and $lebt.ProcessName -like 'python*') {
     Schreib "laeuft bereits (PID $pid_alt) - nichts zu tun"
+    Melde-Ende -Marke $marke -Code 0 -Text 'laeuft bereits'                # neu
     exit 0
   }
   Schreib "verwaiste Sperre (PID $pid_alt lebt nicht mehr) - wird ersetzt"
@@ -45,6 +53,7 @@ if (Test-Path $sperre) {
 
 if (-not (Test-Path $py)) {
   Schreib "ENDE FEHLER: kein Python unter $py - '.venv' im scanner-Ordner neu anlegen (py -3.13 -m venv .venv)"
+  Melde-Ende -Marke $marke -Code 1 -Text "kein Python unter $py"           # neu
   exit 1
 }
 
@@ -55,4 +64,5 @@ $p = Start-Process -FilePath $py `
                    -WindowStyle Hidden -PassThru
 $p.Id | Set-Content $sperre -Encoding ASCII
 Schreib "gestartet als PID $($p.Id), Takt 15 min"
+Melde-Ende -Marke $marke -Code 0 -Text "gestartet als PID $($p.Id)"        # neu
 exit 0

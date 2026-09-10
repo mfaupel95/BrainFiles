@@ -36,6 +36,11 @@ $sshDir  = Join-Path $env:USERPROFILE '.ssh'
 $logs    = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+. (Join-Path $agenten 'Bus\Ereignis.ps1')                                # neu
+$marke = Melde-Start -Wer 'routine/datensortierung' `
+           -Log 'Agenten/Routinen/logs/datensortierung-letzter-lauf.md' # neu
+try {                                                                    # neu
+
 $start    = Get-Date
 $heute    = $start.ToString('yyyy-MM-dd')
 $roh      = Join-Path $logs "datensortierung-$heute.log"
@@ -192,4 +197,10 @@ Get-ChildItem $logs -Filter 'datensortierung-*.*' -EA SilentlyContinue |
   Remove-Item -Force -EA SilentlyContinue
 
 Notiz "`nENDE ok - $($getan.Count) erledigt, $($entscheiden.Count) zu entscheiden, $($neuZeilen.Count) davon neu seit gestern (Dauer $sek s)"
+Melde-Ende -Marke $marke -Code 0                                        # neu
 exit 0
+
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

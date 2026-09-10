@@ -15,6 +15,9 @@
 param([int]$Tage = 30)
 
 $ErrorActionPreference = 'Continue'
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/absturz-nachmessen'                  # neu
+try {                                                                    # neu
 
 # Reichweite zuerst: ein abstuerzender Dienst kann das Protokoll so schnell
 # ueberschreiben, dass eine Luecke faelschlich als Ruhe gelesen wird.
@@ -62,3 +65,9 @@ $mini = @(Get-ChildItem C:\Windows\Minidump -EA SilentlyContinue).Count
 "  Minidumps                 : $mini"
 $ws = Get-Service WSearch -EA SilentlyContinue
 "  Windows Search            : $($ws.Status) / $($ws.StartType)"
+
+Melde-Ende -Marke $marke -Code 0                                        # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

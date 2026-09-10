@@ -14,8 +14,12 @@ $wurzel = Split-Path $PSScriptRoot -Parent
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+. (Join-Path $wurzel 'Bus\Ereignis.ps1')                              # neu
+
 $log = Join-Path $logs 'sicherung-letzter-lauf.log'
 $start = Get-Date
+$marke = Melde-Start -Wer 'routine/sicherung' `
+           -Log 'Agenten/Routinen/logs/sicherung-letzter-lauf.log'    # neu
 
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 try {
@@ -28,10 +32,13 @@ try {
     # Exitcode. Ohne diese Pruefung stand im Protokoll "ENDE ok", waehrend die
     # Sicherung tatsaechlich fehlgeschlagen war (erlebt 23.08.2026, Code 11).
     "ENDE FEHLER - Exitcode $code nach $s s" | Add-Content $log -Encoding UTF8
+    Melde-Ende -Marke $marke -Code $code -Text "Exitcode $code"       # neu
     exit $code
   }
   "ENDE ok nach $s s" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 0                                    # neu
 } catch {
   "ENDE FEHLER: $_" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                         # neu
   exit 1
 }

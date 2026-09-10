@@ -31,6 +31,10 @@
 [CmdletBinding()]
 param()
 
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/monitor-ddc-pruefen'                 # neu
+try {                                                                    # neu
+
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
@@ -120,3 +124,9 @@ if ($fail -gt 0) {
   Write-Host "Ein nicht antwortender Monitor laesst sich mit PowerToys PowerDisplay"
   Write-Host "nicht regeln. Schritte siehe Kopf dieses Skripts."
 }
+
+Melde-Ende -Marke $marke -Code 0 -Text "$ok ok, $fail ohne Antwort"     # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

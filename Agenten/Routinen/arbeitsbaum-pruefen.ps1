@@ -25,9 +25,16 @@ param([int]$Minuten = 10)
 
 $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/arbeitsbaum-pruefen'                 # neu
 git -C $wurzel rev-parse --show-toplevel >$null 2>&1
-if ($LASTEXITCODE -ne 0) { Write-Output "Kein Git-Repository in $wurzel"; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+  Write-Output "Kein Git-Repository in $wurzel"
+  Melde-Ende -Marke $marke -Code 1 -Text "kein Git-Repository in $wurzel" # neu
+  exit 1
+}
 
+try {                                                                    # neu
 $jetzt   = Get-Date
 $ruhend  = @()
 $inArbeit = @()
@@ -94,7 +101,11 @@ foreach ($z in (git -C $wurzel status --porcelain -uall)) {
     if ($alter -ge $Minuten) { $ruhend += $e } else { $inArbeit += $e }
 }
 
-if (-not $ruhend -and -not $inArbeit) { Write-Output "Arbeitsbaum sauber."; exit 0 }
+if (-not $ruhend -and -not $inArbeit) {
+  Write-Output "Arbeitsbaum sauber."
+  Melde-Ende -Marke $marke -Code 0 -Text 'Arbeitsbaum sauber'            # neu
+  exit 0
+}
 
 if ($ausgeschlossen) {
     Write-Output "=== AUSGESCHLOSSEN (liegt in einem eingebetteten Git-Repo): $($ausgeschlossen.Count) ==="
@@ -120,3 +131,9 @@ if ($inArbeit) {
 Write-Output ""
 Write-Output "Eigene Arbeit und fremde Arbeit in GETRENNTE Commits."
 Write-Output "Fremd: git commit --author=`"Andere Sitzung <fremd@local>`" -m `"...`""
+
+Melde-Ende -Marke $marke -Code 0                                        # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

@@ -21,10 +21,14 @@ $vault      = Join-Path $brainfiles 'MaxHirn'
 $logs       = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+. (Join-Path $brainfiles 'Agenten\Bus\Ereignis.ps1')                     # neu
+
 $log    = Join-Path $logs 'marktbriefing-letzter-lauf.log'
 $heute  = Get-Date -Format 'yyyy-MM-dd'
 $daten  = Join-Path $logs "marktbriefing-daten-$heute.json"
 $start  = Get-Date
+$marke  = Melde-Start -Wer 'routine/marktbriefing' `
+            -Log 'Agenten/Routinen/logs/marktbriefing-letzter-lauf.log' # neu
 
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 
@@ -33,6 +37,7 @@ $traderhub = (Get-Command traderhub -ErrorAction SilentlyContinue).Source
 if (-not $traderhub) {
   "ENDE FEHLER: 'traderhub' nicht auf PATH - siehe .claude/skills/traderhub" |
     Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 1 -Text "traderhub nicht auf PATH"      # neu
   exit 1
 }
 
@@ -50,6 +55,7 @@ try {
   "Stufe 1 ok: Rohabzug -> $daten" | Add-Content $log -Encoding UTF8
 } catch {
   "ENDE FEHLER (Stufe 1): $_" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 1 -Text "Stufe 1: $_"                   # neu
   exit 1
 }
 
@@ -59,6 +65,7 @@ if (-not $claude) {
   "Stufe 2 uebersprungen: 'claude' nicht auf PATH. Notiz manuell nachziehen: /marktbriefing" |
     Add-Content $log -Encoding UTF8
   "ENDE ok (nur Stufe 1) nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 0 -Text 'nur Stufe 1: kein claude auf PATH' # neu
   exit 0
 }
 
@@ -77,13 +84,16 @@ try {
     "Stufe 2 FEHLER: claude Exitcode $code. Rohabzug liegt, Notiz manuell nachziehen: /marktbriefing" |
       Add-Content $log -Encoding UTF8
     "ENDE ok (nur Stufe 1) nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
+    Melde-Ende -Marke $marke -Code 0 -Text "nur Stufe 1: claude Exitcode $code" # neu
     exit 0
   }
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 0                                      # neu
 } catch {
   Pop-Location -ErrorAction SilentlyContinue
   "Stufe 2 FEHLER: $_. Rohabzug liegt, Notiz manuell nachziehen: /marktbriefing" |
     Add-Content $log -Encoding UTF8
   "ENDE ok (nur Stufe 1) nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 0 -Text "nur Stufe 1: $_"               # neu
   exit 0
 }

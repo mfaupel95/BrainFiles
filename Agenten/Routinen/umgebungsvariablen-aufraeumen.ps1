@@ -19,6 +19,10 @@
 #>
 param([switch]$Ausfuehren)
 
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/umgebungsvariablen-aufraeumen'       # neu
+try {                                                                    # neu
+
 $Pfad = 'HKCU:\Environment'
 
 # --- wirkungslose Kopien der System-Umgebung: weg ---------------------------
@@ -66,6 +70,7 @@ if (-not $Ausfuehren) {
     ($duplikate + $kopien) | Sort-Object | ForEach-Object { "    $_" }
     Write-Host ""
     Write-Host "Echter Lauf: .\umgebungsvariablen-aufraeumen.ps1 -Ausfuehren"
+    Melde-Ende -Marke $marke -Code 0 -Text 'Testlauf'                   # neu
     return
 }
 
@@ -105,3 +110,9 @@ Write-Host "Geloescht: $geloescht" -ForegroundColor Green
 Write-Host "Verbleibend: $($nachher.Count)" -ForegroundColor Green
 $nachher | Select-Object Name, Value | Format-Table -AutoSize -Wrap
 Write-Host "Laufende Programme sehen die neuen Werte erst nach einer Neuanmeldung." -ForegroundColor Yellow
+
+Melde-Ende -Marke $marke -Code 0                                        # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu

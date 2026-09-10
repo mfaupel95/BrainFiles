@@ -45,8 +45,12 @@ $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
+. (Join-Path $wurzel 'Agenten\Bus\Ereignis.ps1')                         # neu
+
 $log = Join-Path $logs 'zwischenstand-letzter-lauf.log'
 $start = Get-Date
+$marke = Melde-Start -Wer 'routine/zwischenstand' `
+           -Log 'Agenten/Routinen/logs/zwischenstand-letzter-lauf.log'  # neu
 
 function Schreib($text) {
   $text | Add-Content $log -Encoding UTF8
@@ -89,6 +93,7 @@ try {
   if ($baum -eq $elternBaum) {
     Schreib "ENDE unveraendert - kein Zwischenstand noetig"
     Remove-Item $eigenerIndex -Force -ErrorAction SilentlyContinue
+    Melde-Ende -Marke $marke -Code 0 -Text 'unveraendert'                # neu
     exit 0
   }
 
@@ -103,6 +108,7 @@ try {
     Schreib "  Betroffen :"
     git status --porcelain | ForEach-Object { Schreib "    $_" }
     Remove-Item $eigenerIndex -Force -ErrorAction SilentlyContinue
+    Melde-Ende -Marke $marke -Code 0 -Text 'Testlauf'                    # neu
     exit 0
   }
 
@@ -121,9 +127,11 @@ try {
 
   $s = [int]((Get-Date) - $start).TotalSeconds
   Schreib "ENDE ok - $($neu.Substring(0,7)) mit $abweichend abweichenden Datei(en) nach $s s"
+  Melde-Ende -Marke $marke -Code 0                                       # neu
 } catch {
   "ENDE FEHLER: $_" | Add-Content $log -Encoding UTF8
   Write-Output "ENDE FEHLER: $_"
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                            # neu
   exit 1
 } finally {
   Remove-Item Env:\GIT_INDEX_FILE -ErrorAction SilentlyContinue

@@ -13,8 +13,12 @@ $handel = Join-Path $wurzel 'Handel'
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+. (Join-Path $wurzel 'Bus\Ereignis.ps1')                               # neu
+
 $log = Join-Path $logs 'dca-letzter-lauf.log'
 $start = Get-Date
+$marke = Melde-Start -Wer 'routine/dca-pruefung' `
+           -Log 'Agenten/Routinen/logs/dca-letzter-lauf.log'           # neu
 
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 try {
@@ -23,8 +27,10 @@ try {
     Add-Content $log -Encoding UTF8
   Pop-Location
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 0                                     # neu
 } catch {
   Pop-Location -ErrorAction SilentlyContinue
   "ENDE FEHLER: $_" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                          # neu
   exit 1
 }

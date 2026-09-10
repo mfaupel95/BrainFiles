@@ -1,4 +1,7 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')      # neu
+$marke = Melde-Start -Wer 'routine/wissen-index-pruefen'                # neu
+try {                                                                    # neu
 # Agenten\Routinen\ -> Agenten\ -> BrainFiles\, dann MaxHirn\ (portabel, kein
 # absoluter Pfad - seit der Ordnertrennung 30.08.2026).
 $root   = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'MaxHirn'
@@ -69,3 +72,9 @@ foreach ($z in ($index -split "`r?`n")) {
 if ($index -notmatch '20260830-zugaenge') { Write-Output 'ZUGAENGE NICHT REGISTRIERT'; $fehler++ }
 
 Write-Output ('--- Notizen geprüft: ' + $ids.Count + ' | Fehler: ' + $fehler)
+
+Melde-Ende -Marke $marke -Code 0 -Text "$fehler Fehler"                 # neu
+} catch {                                                                # neu
+  Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
+  throw                                                                 # neu
+}                                                                        # neu
