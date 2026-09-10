@@ -66,6 +66,10 @@
 !Agenten/Handel/scanner/*.md
 !Agenten/Handel/scanner/*.json
 !Agenten/Handel/scanner/requirements.txt
+# Die Tests der Spur stehen unter scanner/tests/ wie bei orb und verbesserer.
+# Ohne diese Zeile faengt die Regel in Zeile 20 sie mit ein, und eine
+# Aenderung an der Live-Verdrahtung waere ohne ihren Nachweis im Verlauf.
+!Agenten/Handel/scanner/tests/*.py
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
