@@ -92,21 +92,41 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-- **83 mitgelieferte** Skills unter `Hermes/skills/` (94 `SKILL.md` insgesamt
-  minus die 11 eigenen; die frühere Angabe 82 war um eins zu niedrig)
-- **11 eigene** unter `Hermes/skills/claude-code-imports/`, importiert mit
-  `hermes import-agent claude-code --source "…\MaxHirn\.claude"`
+- **23 eigene** unter `Hermes/skills/claude-code-imports/` — Abgleich mit dem Vault
+  vom 10.09.2026. Dazu `data-guard-audit` unter `skills/productivity/`.
+  Gegengeprüft mit `hermes skills list` (HERMES_HOME gesetzt): 113 Skills geladen,
+  alle neuen `local` und `enabled`.
+- **Der erste Import** lief am 23.08.2026 mit
+  `hermes import-agent claude-code --source "…\MaxHirn\.claude"` und holte 11 Skills.
+  Am 10.09.2026 fehlten 11 weitere, die inzwischen im Vault entstanden waren
+  (`absturz-recovery`, `local-ai-config-doctor`, `marktbriefing`, `rueckschau`,
+  `sichern`, `skill`, `system`, `umzug`, `verbindungen`, `vergleich`,
+  `videoanalyse`), dazu `sprache` aus `.claude/skills-sicherung/`. Nachgezogen als
+  Kopie der Skill-Ordner — nicht über den Importer, damit nichts anderes angefasst wird.
+- **Sechs Bestandsskills waren älter als der Vault** (`archiv`, `dokument`, `geld`,
+  `posteingang`, `schaden`, `tagesbriefing`): sie zeigten auf
+  `MaxHirn\Claude\ArchivSuche` — den Ordnernamen von vor dem 30.08.2026, den es nicht
+  mehr gibt. Auf Vault-Stand gezogen; die ersetzten Fassungen liegen in
+  `Hermes/.sicherung/skills-import-20260910/`. Alle 11 Bestandsskills sind damit
+  zeichengleich mit `MaxHirn/.claude/skills/`. Die frühere Nacharbeit (absolute Pfade
+  in vier Skills) ist damit überholt.
+- **Nacharbeit in den Hermes-Kopien** (Originale unverändert — für Claude stimmen sie so):
+  `AskUserQuestion` → `clarify` (`sprache`), `WebFetch` → `web_extract` (`videoanalyse`).
 
 Der Import fand **keine** MCP-Server — die stehen in
 `claude_desktop_config.json`, nicht in `~/.claude.json`, wo Hermes sucht.
 Deshalb wurden sie von Hand übertragen.
 
-**Nacharbeit:** In `archiv`, `dokument`, `posteingang` und `schaden` standen
-acht Aufrufe von `.venv\Scripts\python.exe` relativ zum Arbeitsverzeichnis
-`Archiv/`. In den Hermes-Kopien sind sie auf absolute Pfade umgestellt. Die
-Originale unter `MaxHirn/.claude/skills/` blieben unverändert — für Claude Code
-stimmen sie so.
-
+**Offen: die Kommandozeilenwege der Skills passen nicht zur Terminal-Konfiguration.**
+12 der 23 Skills rufen Vault-Pfade auf, und zwar vault-relativ
+(`Archiv\ArchivSuche\.venv\Scripts\python.exe`, `..\Agenten\Routinen\…`) — so, wie
+Claude Code sie mit dem Vault als Arbeitsverzeichnis benutzt. Hermes hat aber
+`terminal.backend: docker`, `cwd: Agenten\Hermes` und
+`docker_mount_cwd_to_workspace: false`; der Container sieht außer dem Skill-Ordner
+nichts vom Vault (nur `tools/environments/docker.py` mountet Skills read-only).
+Am 10.09.2026 startete zusätzlich überhaupt kein Terminal mehr: `proxy.enabled: true`,
+aber `iron-proxy` nicht eingerichtet — Abhilfe laut Fehlermeldung `hermes egress setup`.
+Bis das Terminal läuft und im Vault steht, sind diese Skills in Hermes nur Text.
 ## Gedächtnis-Zuständigkeit
 
 `Wissen/` ist die einzige Wahrheit. `Hermes/memories/` ist Arbeitsspeicher und
