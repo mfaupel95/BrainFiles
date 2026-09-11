@@ -9,6 +9,7 @@ liest er das Journal ab dieser Marke weiter, damit nichts doppelt gemeldet
 und nichts uebersprungen wird.
 """
 
+import html
 import json
 import os
 import queue
@@ -69,9 +70,15 @@ class Sprecher:
 
     def _sende(self, text):
         """True, wenn die Nachricht wirklich raus ist. Ein totes Telegram ist
-        kein Fehler des Busses - das Journal steht."""
+        kein Fehler des Busses - das Journal steht.
+
+        Der Melder sendet mit parse_mode=HTML. Ein Fehlertext wie
+        "URLError: <urlopen error timed out>" enthaelt spitze Klammern und
+        wuerde von Telegram mit 400 abgelehnt - die Meldung kaeme nie an.
+        Deshalb wird hier escaped: an der einzigen Stelle, durch die jede
+        Nachricht des Busses geht."""
         try:
-            self.melder.sende(text)
+            self.melder.sende(html.escape(text))
         except Exception:                                   # noqa: BLE001
             return False
         self.gesendet_seit.append(time.monotonic())

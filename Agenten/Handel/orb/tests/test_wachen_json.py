@@ -4,7 +4,6 @@ from pathlib import Path
 
 WACHEN = Path(__file__).resolve().parent.parent / "wachen.json"
 
-
 class TestWachenJson(unittest.TestCase):
     def setUp(self):
         self.w = json.loads(WACHEN.read_text(encoding="utf-8"))

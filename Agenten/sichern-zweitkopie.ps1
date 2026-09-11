@@ -23,6 +23,11 @@
 # Aufruf:  powershell -ExecutionPolicy Bypass -File sichern-zweitkopie.ps1
 
 $ErrorActionPreference = 'Stop'
+# Pflichtquelle vor jedem Schreibzugriff pruefen.
+if (-not (Test-Path -LiteralPath 'O:\Archiv' -PathType Container)) {
+  Write-Host 'ARCHIV_SOURCE_MISSING: O:\Archiv fehlt; keine Sicherung gestartet.' -ForegroundColor Red
+  exit 2
+}
 # Eine Ebene ueber diesem Skript: seit Phase 3 liegt es in Agenten\, die Quelle
 # ist aber die Wurzel BrainFiles\ (Wissen, Skills, MCP-Server, Handel, Hermes,
 # Routinen). Vorher stand hier $PSScriptRoot - das sicherte nach dem Umzug nur
@@ -68,7 +73,7 @@ if (Test-Path $archivQuelle) {
   }
 } else {
   Write-Host 'O:\Archiv nicht erreichbar - Archivteil der Zweitkopie uebersprungen.' -ForegroundColor Red
-  if ($code -lt 4) { $code = 4 }
+  if ($code -lt 8) { $code = 8 }
 }
 
 $dauer = (Get-Date) - $start

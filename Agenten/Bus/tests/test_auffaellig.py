@@ -57,6 +57,23 @@ def test_ausbleibender_lauf():
     assert auffaellig.ausbleibend({}, R, jetzt) == ["routine/sicherung"]
 
 
+def test_fehlertext_steht_in_der_meldung():
+    # Befund 10.09.2026: "Ergebniscode 1" ohne Ursache war nicht zu deuten.
+    ereignis = e("ende", code=1, dauer=263,
+                 text="URLError: <urlopen error timed out>")
+    grund = auffaellig.bewerte(ereignis, hist(3, 3, 3, 3, 3), R)
+    assert "1" in grund, grund
+    assert "URLError" in grund, grund
+    assert "urlopen error timed out" in grund, grund
+
+
+def test_protokollpfad_steht_in_der_meldung():
+    ereignis = e("ende", code=1, dauer=1, text="")
+    ereignis["log"] = "Agenten/Routinen/logs/sicherung-letzter-lauf.log"
+    grund = auffaellig.bewerte(ereignis, hist(3, 3, 3, 3, 3), R)
+    assert "sicherung-letzter-lauf.log" in grund, grund
+
+
 def test_regeln_datei_ist_lesbar():
     r = auffaellig.regeln()
     for schluessel in ("deckel_je_stunde", "dauer_faktor",

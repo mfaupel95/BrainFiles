@@ -72,7 +72,8 @@
       "PowerShell(& \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\Agenten\\\\Routinen\\\\arbeitsbaum-pruefen.ps1\")",
       "PowerShell(Get-Process *)",
       "PowerShell($log = \"$env:LOCALAPPDATA\\\\Claude\\\\Logs\\\\main.log\"; if \\(Test-Path $log\\) { Get-Content $log -Tail 50 | Select-String -Pattern \"error|Error|ERROR|failed|Failed|FAILED|exception|Exception\" })",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "Bash(git commit -q -m 'TASKS: T-039 \\(ueberholte Hebel-Tabelle\\) und T-040 \\(SOL-Anlauf, Hebelkonflikt\\) eingetragen *)"
     ]
   },
   "enableAllProjectMcpServers": true,
@@ -108,6 +109,6 @@
       }
     ]
   },
-  "prefersReducedMotion": false,
-  "outputStyle": "Explanatory"
+  "outputStyle": "Explanatory",
+  "prefersReducedMotion": false
 }

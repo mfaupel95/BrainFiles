@@ -26,6 +26,11 @@
 param([switch]$NurPruefen)
 
 $ErrorActionPreference = 'Stop'
+# Pflichtquelle vor jedem Schreibzugriff pruefen.
+if (-not (Test-Path -LiteralPath 'O:\Archiv' -PathType Container)) {
+  Write-Host 'ARCHIV_SOURCE_MISSING: O:\Archiv fehlt; keine Sicherung gestartet.' -ForegroundColor Red
+  exit 2
+}
 # Eine Ebene ueber diesem Skript (Agenten\ -> BrainFiles\). Vorher $PSScriptRoot,
 # das sicherte nach Phase 3 nur noch Agenten\.
 $quelle = Split-Path $PSScriptRoot -Parent
@@ -54,7 +59,7 @@ if (Test-Path 'O:\Archiv') {
   if ($LASTEXITCODE -gt $code) { $code = $LASTEXITCODE }
 } else {
   Write-Host 'O:\Archiv nicht erreichbar - der Archivteil FEHLT in dieser Kopie.' -ForegroundColor Red
-  if ($code -lt 4) { $code = 4 }
+  if ($code -lt 8) { $code = 8 }
 }
 
 $dauer = (Get-Date) - $start

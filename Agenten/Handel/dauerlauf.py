@@ -350,6 +350,39 @@ class Lauf:
         wort = text.split()[0].lower().lstrip("/")
         rest = text.split()[1:]
 
+        if wort in ("ja_xperp", "nein_xperp", "stop_xperp", "freigabe_xperp"):
+            f = freigabefenster.lade("xperp")
+            if wort == "freigabe_xperp":
+                with open(os.path.join(HIER, "xperp", "wachen.json"), encoding="utf-8") as datei:
+                    w = json.load(datei)
+                if not f.anfrage_offen():
+                    return ("XPERP: %s. Keine wartende Anfrage.\n"
+                            "handel_erlaubt=%s, freigabe.erfuellt=%s.\n"
+                            "Nur der Dauerlauf stellt nach Sperrenpruefung eine Anfrage. SWAP bleibt gesperrt."
+                            % (f.text(), w.get("handel_erlaubt"), w.get("freigabe", {}).get("erfuellt")))
+                return freigabefenster.anfrage_text("xperp", w, f.d.get("anfrage_dauer_minuten", 60)).replace("/ja", "/ja_xperp").replace("/nein", "/nein_xperp")
+            if wort in ("nein_xperp", "stop_xperp"):
+                freigabefenster.schliessen("xperp", "Telegram " + wort)
+                return "XPERP-Fenster geschlossen. Keine neuen Live-Einstiege; keine Position glattgestellt. Spot unveraendert."
+            import math
+            try:
+                h = float(rest[0]) if len(rest) == 1 else None
+                if h is None or not math.isfinite(h) or not 0 < h <= freigabefenster.MAX_STUNDEN:
+                    raise ValueError
+            except ValueError:
+                return "Syntax: /ja_xperp STUNDEN (groesser 0, hoechstens 24). Erst /freigabe_xperp lesen."
+            m = freigabefenster.oeffnen("xperp", h, "telegram/xperp")
+            if m is None:
+                return "Keine aktuelle XPERP-Anfrage. Nichts freigegeben; Spot unveraendert."
+            protokoll("FREIGABE xperp fuer %s min" % m)
+            return "XPERP-Fenster fuer %g h offen; alle Wachen gelten weiter. Spot unveraendert. /stop_xperp schliesst das Fenster." % h
+
+        if wort == "prognose":
+            return "Bitte im SkillsBot: /prognose [N]. Die Marktanalyse darf hier weder Stop-Befehle noch den Handelszyklus blockieren."
+        if wort == "papierstatus":
+            import handel_befehle
+            return handel_befehle.status(papier=True)
+
         if wort in ("lage", "status"):
             return tagesbericht.baue(mit_xperp=False)
 
@@ -419,6 +452,11 @@ class Lauf:
                 "/lage      Positionen und Sperren\n"
                 "/bericht   voller Tagesbericht\n"
                 "/scan      Rangliste neu rechnen\n"
+                "/freigabe_xperp - XPERP-Anfrage und Grenzen lesen\n"
+                "/ja_xperp STUNDEN - nur XPERP freigeben (max. 24 h)\n"
+                "/nein_xperp /stop_xperp - nur XPERP-Fenster schliessen\n"
+                "/papierstatus - gespeicherter Papierstand\n"
+                "Prognose im SkillsBot: /prognose [N]\n"
                 "/ja [h]    wartende Freigabe erteilen\n"
                 "/nein      ablehnen\n"
                 "/stop      alles zu, zurueck auf Papier\n"

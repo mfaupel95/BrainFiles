@@ -146,6 +146,19 @@ def test_totes_telegram_bricht_nichts_ab():
         assert s.verarbeite(journal.neu("a", "ende", code=7, dauer_s=1)) is False
 
 
+def test_spitze_klammern_werden_escaped():
+    # Befund 10.09.2026: melder.sende nutzt parse_mode=HTML. Ein Fehlertext
+    # mit "<urlopen error timed out>" haette Telegram mit 400 abgelehnt.
+    with tempfile.TemporaryDirectory() as w:
+        d = Doppelgaenger()
+        s = _sprecher(d, w)
+        s.verarbeite(journal.neu("a", "ende", code=1, dauer_s=1,
+                                 text="URLError: <urlopen error timed out>"))
+        assert d.gesendet, "nichts gesendet"
+        assert "<urlopen" not in d.gesendet[0], d.gesendet[0]
+        assert "&lt;urlopen" in d.gesendet[0], d.gesendet[0]
+
+
 if __name__ == "__main__":
     for name, f in sorted(list(globals().items())):
         if name.startswith("test_"):

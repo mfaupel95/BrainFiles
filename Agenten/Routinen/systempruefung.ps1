@@ -3,7 +3,8 @@
 # Zweck: nach dem Umzug des KI-Systems (Ordnertrennung 30.08.2026, Modelle als
 # Junction auf O:) still gebrochene Dinge frueh sichtbar machen - tote Junctions,
 # doppelte Ollama-Stores, absolute Pfade in Skripten, unaufloesbare MCP-Pfade,
-# knapper Plattenplatz, fehlgeschlagene geplante Aufgaben.
+# MCP-Konfigurations-Drift (Claude/Hermes), knapper Plattenplatz, fehlgeschlagene
+# geplante Aufgaben.
 #
 # Zwei Ausgaben:
 #   logs\systempruefung-JJJJ-MM-TT.log   - vollstaendiges Protokoll des Laufs
@@ -88,6 +89,16 @@ if ($NurPruefen) { Notiz "Modus: nur pruefen (keine Aufraeum-Schritte)" }
 
 $baum = Gehe $agenten
 Notiz "(Agenten-Baum: $($baum.Dirs.Count) Ordner, $($baum.Files.Count) Dateien gescannt)"
+
+# ---------------------------------------------------------------------------
+# 0) MCP-Konfiguration: Claude und Hermes in Sync?
+# ---------------------------------------------------------------------------
+try {
+  Notiz "`n--- 0) MCP-Sync (Claude + Hermes) ---"
+  & powershell -ExecutionPolicy Bypass -File (Join-Path $agenten 'mcp-sync-check.ps1') -Streng 2>$null
+  if ($LASTEXITCODE -eq 0) { Info "MCP-Server sind in Sync." }
+  else { Entscheiden "MCP-Konfiguration-Drift erkannt - mcp-sync-check.ps1 laufen lassen." }
+} catch { Notiz "  ! MCP-Pruefung: $_" }
 
 # ---------------------------------------------------------------------------
 # 1) Git-Drift: uncommittete Arbeit im Vault, Alter des Zwischenstand-Zweigs
