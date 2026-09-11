@@ -97,3 +97,11 @@ die Korrektur gemeldet** — auch wenn es nicht zur laufenden Aufgabe gehört.
 
 Beim Kürzen zuerst streichen, was allgemeines Weltwissen ist. Was bleibt, ist
 das Projektspezifische: Pfade, Messwerte, Fallen, Grenzen.
+
+Ein Umbau auf das Hausformat ist kein Ersatz für gewachsenen Inhalt. Beim
+Anpassen von `archiv` am 11.09.2026 fielen 53 Zeilen weg — die gemessene Zahl,
+die Optionen, eine Ausnahme; aufgefallen ist das nur, weil die Bytezahl
+dastand. Deshalb vor und nach jedem Umbau vergleichen
+(`(Get-Item <pfad>).Length`) und jede Differenz einzeln begründen. Geändert
+wird in `.claude/skills/`, nie im Spiegel `.agents/skills/`: ein Umbau dort
+erzeugt Drift gegen die Quelle und wird beim nächsten Abgleich überschrieben.
