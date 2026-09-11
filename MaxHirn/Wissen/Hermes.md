@@ -626,3 +626,82 @@ Auxiliary-Slots den Endpunkt als benannten Provider auflösen. Ein bloßes
 verschlüsselten Store; Hermes braucht nur einen *Client*-Key. Zwei getrennte
 Keystores: der Hermes-Client-Key (in Hermes-`.env` als `OMNIROUTE_API_KEY`) und
 der opencode-Provider-Key (nur in omniroute).
+
+## MCP-Konfigurationsprüfung repariert, 10.09.2026
+
+`Agenten/mcp-sync-check.ps1` war seit dem Anlegen kaputt und hat trotzdem jeden Tag
+einen Fehlalarm erzeugt. Ursache war nicht nur die Kodierung: in Zeile 104 standen in
+einem doppelt gequoteten PowerShell-String `\"`-Escapes, die PowerShell nicht kennt.
+Allein dadurch 11 Parserfehler — auch unter PowerShell 7. Dazu UTF-8 ohne BOM unter
+Windows PowerShell 5.1 (Umlaute wurden zu `Ã¼`) und `<script>` in Kommentaren. Ergebnis:
+`systempruefung.ps1` meldete bei jedem Lauf „MCP-Konfiguration-Drift erkannt", ohne
+dass irgendetwas geprüft wurde.
+
+Was jetzt anders ist:
+
+- Das Skript ist reines ASCII ohne BOM (läuft unter 5.1 und 7 identisch) und liest alle
+  Eingabedateien explizit als UTF-8.
+- Es vergleicht echte Mengen: Manifest ↔ Claude-Konfiguration ↔ Hermes-Konfigurationen.
+  Fehlt ein erwarteter Server oder ist einer eingetragen, den das Manifest nicht kennt,
+  gibt es Exit 1 mit Namensliste.
+- Server mit dem Manifest-Feld `agenten` gelten bewusst nur für einen Agenten und werden
+  als „bewusste Abweichung" ausgegeben, nicht als Fehler.
+- Neu: Begleitprogramme (`braucht_port`) werden geprüft, und Verbindungsfehler aus
+  `Hermes/logs/errors.log` werden eingeordnet — erklärt (Begleitprogramm aus) oder
+  unerklärt (Warnung). Ohne das sah ein geparkter Server wie ein Ausfall aus.
+- Die Claude-Konfiguration wird auch im MSIX-Container gefunden
+  (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json`).
+  Der alte Pfad `%APPDATA%\Claude\…` existiert auf diesem Rechner nicht.
+- Ebenso werden die Profil-Configs gelesen: `Agenten/Hermes/config.yaml` **und**
+  `Agenten/Hermes/profiles/<name>/config.yaml`. Ohne das meldete die Prüfung
+  `mcp-memory` als fehlend, obwohl das Server im Profil `max` steht.
+
+`MCP-Manifest.json` auf Version 1.1 nachgezogen: `mail` fehlte komplett, `filesystem`
+stand als aktiv drin, obwohl es in keiner Laufzeitkonfiguration steht, `pdf-vault` stand
+fälschlich auf `enabled: false`, und die `command`/`args` von desktop-commander,
+windows-mcp, tooluniverse, mcp-memory und revolut-x zeigten auf Programme, die es so
+nicht gibt (z. B. `npx @cloudflare/workers-ai build`).
+
+**Merksatz:** Ein Wächter, der immer Alarm schlägt, ist kein Wächter. Nach jeder
+Änderung an einem MCP-Server den Prüflauf zeigen — Exit 0 ist die Abnahme:
+`powershell -ExecutionPolicy Bypass -File Agenten/mcp-sync-check.ps1 -Streng`.
+
+**Offen (Stand 10.09.2026, 00:15):**
+
+- `blender` ist bei Hermes geparkt (181 Fehlversuche in den letzten 3000 Log-Zeilen).
+  Das ist erwartet, solange Blender mit dem Add-on nicht läuft (Port 28015) — kein Ausfall.
+  `affinity` (Port 6767) aus demselben Grund.
+- `mcp-memory` fehlt in der Claude-Konfiguration (am 10.09.2026, 23:32, während die App
+  lief, aus der Datei verschwunden) und wurde am 11.09.2026 um 00:07 aus der
+  Haupt-Config entfernt (Sicherung: `Agenten/Hermes/config.yaml.bak-20260910-mnemoverse`);
+  es steht jetzt nur noch im Profil `max`. Die laufende Sitzung hatte den Server noch.
+  Bis das geklärt ist, meldet die Prüfung genau diesen einen Fehler. Die Claude-Konfiguration
+  darf nur bei geschlossener App geändert werden, sonst überschreibt sie den Speicher der App.
+- Das Hermes-Terminal startet weiterhin nicht: `proxy.enabled: true`, aber `iron-proxy`
+  nicht eingerichtet (`hermes egress setup`). Ausweichweg für Arbeiten am Vault: die
+  MCP-Anbindung `windows-mcp` (PowerShell, Dateisystem, Registrierung).
+
+### Klartext-Token aus `config.yaml` entfernt, 11.09.2026
+
+`a2a_agents.omniroute.auth.token` stand im Klartext in `Agenten/Hermes/config.yaml`
+(Zeile 2000). Der Wert war zeichengleich mit der Variablen
+`HERMES_CUSTOM_127_0_0_1_20128_API_KEY` in `Agenten/Hermes/.env` — die legt Hermes
+beim Einrichten des Custom-Providers selbst an. Die Zeile verweist jetzt darauf:
+`token: ${HERMES_CUSTOM_127_0_0_1_20128_API_KEY}`.
+
+- Eine Zeile geändert, sonst nichts: 2219 Zeilen wie vorher, CRLF, kein BOM.
+- **Nachgeprüft über den echten Ladeweg** (`hermes_cli.env_loader.load_hermes_dotenv`
+  + `hermes_cli.config.load_config`): der Wert löst sich zu denselben 35 Zeichen auf
+  wie vorher (SHA-256-Anfang `32757f7e`). Die A2A-Anbindung an omniroute bleibt also
+  unverändert funktionsfähig.
+- Es war die **einzige** Klartextstelle der Datei; geprüft über alle Zeilen mit
+  `api_key`, `token`, `secret`, `password`.
+- Sicherung: `Hermes/.sicherung/config.yaml.bak-20260911`.
+- In der `.env` liegen **drei** ähnlich benannte Variablen
+  (`HERMES_CUSTOM_127_0_0_1_20128_API_KEY`, `HERMES_CUSTOM_LOCALHOST_20128_API_KEY`,
+  `HERMES_CUSTOM_OMNIROUTE_API_KEY`); nur die erste trägt diesen Wert. Wer sie
+  aufräumt, muss die Referenz in `config.yaml` mitziehen.
+- **Falle:** `hermes config get a2a_agents.omniroute.auth.token` meldet
+  „Config key not set". Der `a2a_agents`-Block steht nicht in `DEFAULT_CONFIG`, der
+  Inspektionsbefehl findet ihn deshalb nicht — gelesen wird er trotzdem. Der Befehl
+  taugt nicht als Kontrolle; dafür `load_config()` direkt benutzen.
