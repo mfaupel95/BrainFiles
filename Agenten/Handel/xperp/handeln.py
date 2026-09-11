@@ -458,15 +458,21 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
               "%.2f Margin (%.2f nominal)" % (
                   a["inst"], a["seite"], a["einstieg"], kontrakte,
                   g["hebel"], g["margin"], g["nominal"]))
-        print("      Stop %.6f (%.2f%%)  Ziel %.6f  Liq %.6f (%.1f%% weg)"
-              % (a["stop"], g["abstand"] * 100, a["ziel"], g["liq"],
-                 p["liq_abstand"] * 100))
-        print("      Pflicht: Funding %s, Gebuehr %.3f%%, Quote noetig %.1f%% "
-              "/ beobachtet %.1f%%" % (
-                  "n/a" if p["funding_pct"] is None
-                  else "%+.3f%%" % (p["funding_pct"] * 100),
-                  p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
-                  p["quote_beobachtet"] * 100))
+        # Instrument und Seite stehen auch hier. Der Dauerlauf meldet jede
+        # Zeile mit dem Wort Stop einzeln nach Telegram - eine
+        # Fortsetzungszeile ohne Subjekt ist dort nicht zuzuordnen. Die
+        # anderen Spuren nennen den Wert in derselben Zeile.
+        print("      %-22s %-5s  Stop %.6f (%.2f%%)  Ziel %.6f  Liq %.6f "
+              "(%.1f%% weg)"
+              % (a["inst"], a["seite"], a["stop"], g["abstand"] * 100,
+                 a["ziel"], g["liq"], p["liq_abstand"] * 100))
+        print("      %-22s %-5s  Pflicht: Funding %s, Gebuehr %.3f%%, "
+              "Quote noetig %.1f%% / beobachtet %.1f%%"
+              % (a["inst"], a["seite"],
+                 "n/a" if p["funding_pct"] is None
+                 else "%+.3f%%" % (p["funding_pct"] * 100),
+                 p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
+                 p["quote_beobachtet"] * 100))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"], seite=a["seite"],

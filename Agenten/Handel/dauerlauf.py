@@ -194,7 +194,11 @@ class Lauf:
                 protokoll("%s (%s) ok" % (spur, kurz))
 
             # Verkauf oder Stop im Lauf: das gehoert sofort gemeldet, nicht
-            # erst im Tagesbericht.
+            # erst im Tagesbericht. Gemeldet wird nur die Zeile, die das
+            # Wort traegt - deshalb muss jede gemeldete Zeile ihr
+            # Instrument selbst nennen. Eine Fortsetzungszeile ohne Subjekt
+            # ist im Chat nicht zuzuordnen (Befund 11.09.2026: die
+            # Stop-Zeile von xperp kam ohne Wertnamen an).
             for wort in ("verkauf", "stop", "KILL", "gesperrt"):
                 if wort.lower() in ausgabe.lower():
                     for zeile in ausgabe.splitlines():
