@@ -56,7 +56,7 @@ $ausserhalb = @(
 )
 
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
+  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: der unersetzliche Archivteil liegt seit dem echten Umzug

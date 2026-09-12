@@ -139,7 +139,7 @@ $start = Get-Date
 # Vault selbst kann in einem Worktree gespiegelt sein. Das Archiv ist hier keine
 # Junction mehr (echter Umzug 07.09.2026) - unter $quelle liegt davon nichts.
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: die Archivdaten (Bilder/Dokumente/Musik/Videos/Software/
