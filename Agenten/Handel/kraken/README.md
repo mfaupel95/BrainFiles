@@ -100,6 +100,52 @@ genau der Fehler aus `Wissen/Handelsbots.md`.
 - `journal_zweitziel` ist `null` — offen bis „Kopie außer Haus" steht
   (`Wissen/Hardware.md`).
 
+## Stillgelegt seit 03.09.2026
+
+Am 03.09.2026 auf Max' Anweisung abgeschaltet: `stillgelegt: true` in
+`wachen.json`. `handeln.py` verweigert seitdem **jeden** Lauf, auch Papier —
+die sechs Wochen aus Bedingung 1 laufen damit nicht weiter.
+
+Die Tagesroutine `MaxHirn-Kraken-Spur3` ist **weiterhin aktiv** und läuft jeden
+Tag (nachgemessen am 12.09.2026, Aufgabe im Zustand *Ready*, letzter Logeintrag
+13:51): erst `scan.py` mit der Rangliste nach `berichte/`, dann
+`handeln.py --papier`, das den Lauf verweigert und den Grund ausgibt. So bleibt
+die Rangliste als Nachweis erhalten, ohne dass gehandelt wird. Der Dauerlauf
+führt die Spur nicht mehr. — Das Feld `_stillgelegt` in `wachen.json` behauptete,
+die Aufgabe sei **abgeschaltet**; das war falsch und ist am 12.09.2026
+richtiggestellt worden. Gelöscht ist nichts.
+
+Der Grund steht als `_stillgelegt_grund` in `wachen.json` und ist gerechnet,
+nicht behauptet: eine Rückrechnung über 720 Tageskerzen und 8 Paare
+(03.09.2026), Gebühr 0,80 % je Runde eingerechnet, ergab in **jeder** geprüften
+Kombination einen negativen Erwartungswert je Runde — 30 Tage / Stop 8 % =
+−1,37 %, 90 Tage / Stop 8 % = −1,97 %, 180 Tage / Stop 15 % = −2,99 %. Der
+Hauptposten ist die Kraken-Gebühr, nicht das Signal.
+
+### Was das Abschalten technisch heißt
+
+- `wachen.json` → `stillgelegt: true`. `handeln.py` bricht damit **vor** allem
+  anderen ab, in jedem Modus.
+- `freigabe.py` liest dasselbe Feld und **sperrt** das Fenster für diese Spur
+  (Knopf „Stillgelegt", Hinweis „hier wird nichts freigegeben — weder live noch
+  als Papier"), seit 12.09.2026. Ohne dieses Feld wäre die Spur nur zufällig
+  Papier, nämlich solange `handel_erlaubt` und `freigabe.erfuellt` false sind.
+- Routine deaktiviert, Dauerlauf-Eintrag entfernt. Gelöscht ist nichts.
+
+### Wiederanschalten — zwei Handgriffe, eine Bedingung
+
+1. **`stillgelegt` auf `false`** (Stufe 1: `.bak-JJJJMMTT`, eine Zeile, Diff
+   ansehen). Danach ist das Freigabefenster wieder normal bedienbar.
+2. **`handeln.py --wachen` ansehen.** Die sechs Wochen und ≥ 50 Runden aus
+   Bedingung 1 sind seit dem 03.09.2026 **nicht** gelaufen — sie müssten neu
+   aufgebaut werden, und die Rückrechnung sagt vorher, mit welchem Vorzeichen.
+3. Erst wenn `freigabe.erfuellt` **und** `handel_erlaubt` von Hand auf true
+   stehen (Stufe 1) und die Routine wieder greift, ist die Spur zurück.
+
+Was **nicht** reicht: `handel_erlaubt: true` allein. Das Skript bleibt Papier,
+solange Bedingung 1 offen ist, und das Fenster gibt dann Papier frei — es nennt
+den Grund.
+
 ## Fallen
 
 - **Kraken antwortet unter dem kanonischen Paarnamen**, nicht unter dem
