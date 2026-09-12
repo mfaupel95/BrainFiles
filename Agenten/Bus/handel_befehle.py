@@ -7,7 +7,7 @@ HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 # SWAP wird gelesen wie jede andere Spur; dass sie nicht live geht, steht in
 # ihrer eigenen wachen.json und nicht als fester Satz hier - ein Satz, der den
 # Stand von gestern behauptet, faellt niemandem auf, wenn die Spur sich bewegt.
-SPUREN = ('xperp', 'scanner', 'swap')
+SPUREN = ('xperp', 'scanner', 'swap', 'spiegel')
 
 
 def status(papier=False):
@@ -24,35 +24,50 @@ def status(papier=False):
             positions = d.get('positionen', [])
             lines.append(f'{len(positions)} gespeicherte Positionen')
             for p in positions:
-                lines.append(f"  {p.get('inst', '?')} {p.get('seite', 'long')}: Stop {p.get('stop', '?')}, Ziel {p.get('ziel', '?')}")
+                # Die Spuren benennen ihre Positionen verschieden: die
+                # Kontraktspuren fuehren inst, die Spiegel-Spur ein Token je
+                # Kette. Ohne diesen Griff stuende dort nur ein Fragezeichen.
+                instrument = p.get('inst') or '%s %s' % (
+                    p.get('symbol', '?'), p.get('kette', ''))
+                stop = p.get('stop', p.get('stop_preis', '?'))
+                ziel = p.get('ziel', p.get('ziel_preis', '?'))
+                lines.append(f"  {instrument} {p.get('seite', 'long')}: Stop {stop}, Ziel {ziel}")
         except (OSError, ValueError, TypeError):
             lines.append(f'{spur}: Zustand nicht lesbar, nicht als leer behandeln.')
-    lines.append(swap_lage())
+    lines.append(papier_lage('swap', 'SWAP'))
+    lines.append(papier_lage('spiegel', 'SPIEGEL'))
     return '\n'.join(lines)
 
 
-def swap_lage():
-    """Was die SWAP-Spur ist und was sie sperrt - aus ihrer wachen.json.
+def papier_lage(spur, anzeige):
+    """Was eine Papierspur ist und was sie sperrt - aus ihrer wachen.json.
 
-    Kein fester Satz im Code: Beim Bau dieser Datei gab es die Spur noch nicht,
-    und die damalige Zeile ("bewachte Anbindung unvollstaendig") waere nach dem
-    Bau des Papierpfads stehen geblieben - sie haette gestimmt, als sie
-    geschrieben wurde, und danach nichts mehr bedeutet. Gelesen werden die zwei
-    Werte, die die Spur selbst fuehrt.
+    Kein fester Satz im Code: Beim Bau dieser Datei gab es die Spuren noch
+    nicht, und die damalige Zeile ("bewachte Anbindung unvollstaendig") waere
+    nach dem Bau der Papierpfade stehen geblieben - sie haette gestimmt, als
+    sie geschrieben wurde, und danach nichts mehr bedeutet. Gelesen werden die
+    zwei Werte, die die Spur selbst fuehrt.
 
     Der fehlende Live-Zweig steht als Tatsache daneben, nicht als Wert in der
-    Datei: swap/handeln.py verweigert --live mit genau einem Grund. Nachweisbar
-    mit `python handeln.py --live` im Ordner der Spur.
+    Datei: das jeweilige --live verweigert mit genau einem Grund.
+    Nachweisbar mit `python <skript>.py --live` im Ordner der Spur.
     """
     try:
-        w = json.loads((HANDEL / 'swap' / 'wachen.json').read_text(encoding='utf-8'))
+        w = json.loads((HANDEL / spur / 'wachen.json').read_text(encoding='utf-8'))
     except (OSError, ValueError, TypeError):
-        return ('SWAP: wachen.json nicht lesbar - Lage unbekannt, nicht als '
-                '"gesperrt" ausgeben.')
+        return ('%s: wachen.json nicht lesbar - Lage unbekannt, nicht als '
+                '"gesperrt" ausgeben.' % anzeige)
     freigabe = w.get('freigabe') or {}
-    return ('SWAP: Papierpfad, kein Live-Zweig. handel_erlaubt=%s, '
-            'Freigabe erfuellt=%s.' % (w.get('handel_erlaubt'),
-                                       freigabe.get('erfuellt')))
+    erfuellt = freigabe.get('erfuellt')
+    if erfuellt is None:
+        # Eine Spur ohne Freigabeblock (die Spiegel-Spur kennt keine
+        # Bedingung 1, sie hat keinen Live-Zweig): "None" waere hier eine
+        # Auskunft, die wie ein fehlender Wert aussieht.
+        return ('%s: Papierpfad, kein Live-Zweig. handel_erlaubt=%s, '
+                'kein Freigabeblock.' % (anzeige, w.get('handel_erlaubt')))
+    return ('%s: Papierpfad, kein Live-Zweig. handel_erlaubt=%s, '
+            'Freigabe erfuellt=%s.' % (anzeige, w.get('handel_erlaubt'),
+                                       erfuellt))
 
 
 def prognose(text):

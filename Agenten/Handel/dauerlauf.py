@@ -114,10 +114,16 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # ausschliesslich das Fenster fehlt. Ein Zyklus kostet trotzdem Zeit: die
 # Rangliste bewertet bis zu 60 SWAP-Reihen und ist zwei Stunden gueltig
 # (SCAN_ALTER_MINUTEN).
+# SPIEGEL (Papierbuch fuer Copy-Trading, angelegt 12.09.2026): liest den
+# OnchainOS-Feed und bucht nach, was Nachahmen gekostet haette. Kein Live-Zweig,
+# keine Orderfunktion - ihr --live verweigert wie bei swap mit einem Grund, den
+# nur_fenster_fehlt() nicht als Fenster-Bitte liest. Sie braucht kein eigenes
+# venv (nur Standardbibliothek plus das onchainos-CLI auf dem PATH).
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
     "swap":    {"ordner": "swap",    "waehrung": "USD"},
+    "spiegel": {"ordner": "spiegel", "waehrung": "USD"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
@@ -171,6 +177,10 @@ class Lauf:
         modus = "--live" if f.offen() else "--papier"
 
         ordner = os.path.join(HIER, SPUREN[spur]["ordner"])
+        # Nicht jede Spur heisst handeln.py: die Spiegel-Spur liest einen
+        # fremden Feed und bucht nach (spiegel.py). Der Eintrag in SPUREN
+        # entscheidet, welche Datei gestartet wird.
+        skript = SPUREN[spur].get("skript", "handeln.py")
         umgebung = dict(os.environ)
         if modus == "--papier":
             # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
@@ -178,7 +188,7 @@ class Lauf:
             # ist die Freigabe bereits erteilt und die Variable faellt weg.
             umgebung["MAXHIRN_ROUTINE"] = "1"
 
-        p = subprocess.run([PYTHON, "handeln.py", modus], cwd=ordner,
+        p = subprocess.run([PYTHON, skript, modus], cwd=ordner,
                            capture_output=True, text=True, timeout=600,
                            env=umgebung)
         return modus, p.returncode, (p.stdout or "") + (p.stderr or "")
@@ -307,8 +317,9 @@ class Lauf:
         laufen koennte.
         """
         ordner = os.path.join(HIER, d["ordner"])
+        skript = d.get("skript", "handeln.py")
         try:
-            p = subprocess.run([PYTHON, "handeln.py", "--vorschau"],
+            p = subprocess.run([PYTHON, skript, "--vorschau"],
                                cwd=ordner, capture_output=True, text=True,
                                timeout=600, env=dict(os.environ,
                                                      MAXHIRN_ROUTINE="1"))

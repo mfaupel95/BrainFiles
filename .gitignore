@@ -94,6 +94,14 @@
 !Agenten/Handel/swap/*.json
 !Agenten/Handel/swap/tests/*.py
 !Agenten/Handel/swap/tests/fixtures/*.json
+# Spiegel-Spur (Copy-Trading als Papierbuch): Code, Wachen und Tests gehoeren
+# in den Verlauf - die Verfolgungsliste und das Buch nicht. verfolgte.json
+# schreibt '--waehlen' bei jedem Lauf neu (305 Wallets, reines Rauschen im
+# Vergleich), zustand.json und das Journal schreibt jeder Zyklus.
+!Agenten/Handel/spiegel/*.py
+!Agenten/Handel/spiegel/*.md
+!Agenten/Handel/spiegel/wachen.json
+!Agenten/Handel/spiegel/tests/*.py
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -177,6 +185,13 @@ Agenten/Handel/swap/berichte/**
 # Der einmalige Korrekturlauf an handeln.py (vier Ersetzungen, jede einzeln
 # gezaehlt). Er hat seine Aufgabe erfuellt und gehoert nicht in den Verlauf.
 Agenten/Handel/swap/_fix.py
+
+# Spiegel-Spur: das Buch selbst. wachen.json ist oben bewusst freigegeben
+# (Grenzen von Hand), diese vier schreibt der Lauf.
+Agenten/Handel/spiegel/zustand.json
+Agenten/Handel/spiegel/handelsjournal.csv
+Agenten/Handel/spiegel/verfolgte.json
+Agenten/Handel/spiegel/daten/**
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von
 # Hand und oben freigegeben; Zustand, Journal und der Kerzen-Cache schreibt

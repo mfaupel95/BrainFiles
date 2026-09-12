@@ -175,6 +175,60 @@ def spur_swap():
     }
 
 
+def spur_spiegel():
+    """Spiegel-Spur - Papierbuch fuer Copy-Trading, USD je Kopie.
+
+    Sie hat kein Pruefmodul und keine fuenf Bedingungen: ihr Ergebnis ist eine
+    Bilanz, keine Wache. Der Betrag je Kopie ist der Einsatz (was gebunden
+    waere), der Prozentwert das Ergebnis nach Slippage und Gebuehr - gerechnet
+    mit derselben Formel wie das Buch selbst, damit der Bericht nicht
+    schoenrechnet, was die Spur richtig rechnet.
+    """
+    ordner = os.path.join(HIER, "spiegel")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", [])
+
+    kurse, buch = {}, None
+    if pos:
+        try:
+            sys.path.insert(0, ordner)
+            import spiegel as buch                        # noqa: PLC0415
+            kurse = buch.lesen.preise([(p["kette"], p["token"]) for p in pos])
+        except Exception:                                # noqa: BLE001
+            kurse, buch = {}, None
+
+    zeilen = []
+    for p in pos:
+        kurs = kurse.get((p["kette"], p["token"]))
+        wert = None
+        if kurs and buch:
+            try:
+                wert = buch._verkaeuflich(p["menge"], kurs, w)
+            except Exception:                            # noqa: BLE001
+                wert = None
+        zeilen.append({
+            "name": "%s %s" % (p.get("symbol", "?"), p.get("kette", "")),
+            "einstieg": p.get("preis_vorbild"), "kurs": kurs,
+            "wert": p.get("einsatz_usd", 0),
+            "vh": ((wert / p["einsatz_usd"] - 1) * 100
+                   if wert and p.get("einsatz_usd") else None),
+            "stop": p.get("stop_preis"), "seit": p.get("eroeffnet"),
+            "familie": p.get("risiko"),
+        })
+    return {
+        "name": "Spiegel (Papier, Copy)", "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        # Kein Pruefmodul: die anderen Spuren wachen ueber fuenf Bedingungen,
+        # diese fuehrt ein Buch. Ohne diesen Eintrag wuerde der Bericht eine
+        # fremde Wachenrechnung auf sie anwenden und "Wachen nicht lesbar"
+        # schreiben.
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
+
 def spur_xperp_positionen():
     """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
 
@@ -302,17 +356,22 @@ def zeile_position(p, waehrung):
         return "  %-12s %s  (kein Kurs)" % (p["name"], p["einstieg"])
     pfeil = "+" if p["vh"] >= 0 else ""
     abstand = ((p["kurs"] / p["stop"] - 1) * 100) if p.get("stop") else None
-    if abstand is not None and p.get("hebel"):
-        # Bei Hebel ist der Stop-Abstand am Kurs gemessen, der Gewinn an der
-        # Margin. Ohne den Hebel danebenzuschreiben liest sich "+1,3 % bei
-        # 4,1 % Stop" wie viel Luft - tatsaechlich sind es 0,8 % Kurs.
-        abstand = abs(abstand)
     text = "  %-12s %s%.1f%%  %.0f %s" % (
         p["name"], pfeil, p["vh"], p["wert"], waehrung)
     if p.get("hebel"):
         text += " Margin @%.0fx" % p["hebel"]
     if abstand is not None:
-        text += "  Stop %.1f%% (Kurs)" % abstand
+        if abstand < 0:
+            # Der Kurs steht jenseits des Stops. Bei den Kontraktspuren
+            # schliesst der naechste Lauf, aber solange gilt: nicht als
+            # negativen Prozentsatz zeigen - das liest sich wie ein Fehler.
+            text += "  Stop gerissen (%.1f%%)" % abs(abstand)
+        else:
+            # Bei Hebel ist der Stop-Abstand am Kurs gemessen, der Gewinn an
+            # der Margin. Ohne den Hebel danebenzuschreiben liest sich
+            # "+1,3 % bei 4,1 % Stop" wie viel Luft - tatsaechlich sind es
+            # 0,8 % Kurs.
+            text += "  Stop %.1f%% (Kurs)" % abs(abstand)
     return text
 
 
@@ -322,14 +381,18 @@ def baue(mit_xperp=True):
     t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
 
     gesamt_offen = 0
-    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap):
+    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
+                 spur_spiegel):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001
             t.append("\n<b>%s</b>\n  AUSFALL: %s" % (hole.__name__, e))
             continue
 
-        lage = wachenlage(s)
+        # Eine Spur ohne Pruefmodul (die Spiegel-Spur fuehrt ein Buch statt
+        # fuenf Bedingungen) wird ohne Wachenblock gezeigt - statt eine fremde
+        # Rechnung auf sie anzuwenden und "Wachen nicht lesbar" zu schreiben.
+        lage = wachenlage(s) if s.get("pruefmodul", "wachen_pruefung") else None
         still = s["w"].get("stillgelegt")
         t.append("\n<b>%s</b>%s" % (s["name"],
                                     "  — STILLGELEGT" if still else ""))

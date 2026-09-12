@@ -1,0 +1,35 @@
+{
+  "_zweck": "Harte Grenzen der Spiegel-Spur. Sie kopiert Kaeufe der Wallets aus verfolgte.json - als Papierbuch, ohne Orderpfad. Die Werte sind NICHT gemessen wie bei den anderen Spuren, sondern bewusst konservativ gesetzt: ein Nachahmer kauft spaeter und in duennere Buecher als der, dem er folgt. Jeder Wert hier ist eine Annahme und vor jedem Live-Gedanken zu belegen.",
+  "handel_erlaubt": false,
+  "_nichts_live": "false = nur Papier. Es gibt in spiegel.py keinen Zweig, der etwas kauft: der OnchainOS-Schreibbefehl (swap) wird beim Import stillgelegt, per Test belegt.",
+  "waehrung": "USD",
+  "_ketten": "Was der Feed hergibt (Stand 12.09.2026 geprueft): Solana, Base, Ethereum, BNB, X Layer. Robinhood antwortet auf die Rangliste mit einem Fehler und bleibt draussen.",
+  "ketten": ["solana", "base", "ethereum", "bnb", "xlayer"],
+
+  "_einsatz": "Zwei Deckel, absichtlich klein: je Kopie und insgesamt offen. Die Spur soll die Frage beantworten, ob Nachahmen traegt - nicht Kapital bewegen.",
+  "max_einsatz_je_kopie_usd": 50,
+  "max_offen": 20,
+  "max_neu_je_zyklus": 10,
+  "max_kopien_je_token": 2,
+  "kill_switch_gesamt_usd": 100,
+
+  "_kosten": "Der ehrlichste Teil des Papierbuchs. 3 % Slippage ist die Annahme fuer ein Memecoin-Buch mittlerer Tiefe, 1 % Gebuehr deckt DEX-Gebuehr plus Vorlauf eines Nachahmers. Wer diese zwei Zahlen zu klein setzt, baut eine Wunschrechnung: dieselbe Falle wie Gebuehren und Funding bei den anderen Spuren.",
+  "slippage_pct": 3.0,
+  "gebuehr_pct": 1.0,
+
+  "_ausstieg": "Eigene Mathematik, keine fremde. Kein Auto-Exit nach dem Vorbild: wer einem Hochfrequenz-Wallet folgt, kann dessen Timing nicht kopieren - er kann nur eigene Grenzen setzen.",
+  "stop_pct": 25.0,
+  "ziel_pct": 60.0,
+  "haltedauer_stunden": 24,
+
+  "_alter": "Hinterherlaufen ist kein Nachahmen. Ein Signal aelter als diese Grenze wird verworfen; der Zeitstempel kommt vom Feed (tradeTime), nicht von der Abfrage.",
+  "max_alter_signal_sekunden": 300,
+
+  "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (kein Kleinstbetrug, kein ausgewachsener Wert), und der Risiko-Scan muss unauffaellig sein. Das Tor nach unten ist das wichtigere - Rug Pulls sitzen unten.",
+  "marketcap_band_usd": [50000, 20000000],
+  "risiko_pflicht": true,
+  "max_risiko_stufen": ["safe", "LOW"],
+
+  "_ruhe": "Ein Herzschlag, der aelter ist als das hier, bedeutet: die Spur lief nicht. Beim naechsten Start wird das Papierbuch flachgestellt - eine Kopie, die einen Ausfall ueberlebt, ist unbewacht.",
+  "herzschlag_max_minuten": 90
+}
