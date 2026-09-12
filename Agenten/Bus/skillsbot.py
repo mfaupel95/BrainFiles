@@ -167,11 +167,17 @@ def _ruf(methode, daten=None, zeit=30):
 
 
 def sende(chat, text):
-    import html
-    text = html.escape(text)
-    for i in range(0, len(text), MAX_ZEICHEN):
-        _ruf("sendMessage", {"chat_id": chat, "text": text[i:i + MAX_ZEICHEN],
-                             "parse_mode": "HTML"})
+    # Klartext verhindert zerschnittene HTML-Entities; Emojis zaehlen doppelt.
+    teil, laenge = [], 0
+    for zeichen in text:
+        breite = 2 if ord(zeichen) > 0xFFFF else 1
+        if laenge + breite > MAX_ZEICHEN:
+            _ruf("sendMessage", {"chat_id": chat, "text": "".join(teil)})
+            teil, laenge = [], 0
+        teil.append(zeichen)
+        laenge += breite
+    if teil:
+        _ruf("sendMessage", {"chat_id": chat, "text": "".join(teil)})
 
 
 def _nachrichten(offset):
@@ -267,28 +273,29 @@ def _log(chat, kommando, dauer_s, status, zeichen):
 
 
 class Sperre:
-    """Einfache PID-Sperre gegen zwei gleichzeitige Bot-Prozesse."""
+    """OS-Dateisperre; bei Prozessende automatisch frei, ohne PID-Signale."""
 
     def __enter__(self):
-        if os.path.exists(PID_PFAD):
-            try:
-                with open(PID_PFAD, "r") as f:
-                    pid = int(f.read().strip())
-                os.kill(pid, 0)
-                raise SkillsBotFehler(
-                    "Laueft bereits (PID " + str(pid) + "). skillsbot.pid "
-                    "loeschen, falls sicher gestoppt.")
-            except (OSError, ValueError):
-                pass  # verwaiste PID-Datei
-        with open(PID_PFAD, "w") as f:
-            f.write(str(os.getpid()))
+        self.datei = open(PID_PFAD, "a+b")
+        try:
+            if os.fstat(self.datei.fileno()).st_size == 0:
+                self.datei.write(b"0")
+                self.datei.flush()
+            self.datei.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(self.datei.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.datei.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            self.datei.close()
+            raise SkillsBotFehler("SkillsBot-Sperre belegt oder nicht zugreifbar.") from e
+        # Die Datei bleibt bestehen: Loeschen wuerde einen zweiten Lock erlauben.
         return self
 
     def __exit__(self, *a):
-        try:
-            os.remove(PID_PFAD)
-        except OSError:
-            pass
+        self.datei.close()
 
 
 # --- Befehle ----------------------------------------------------------------
@@ -332,6 +339,9 @@ def bearbeite(text, chat):
 # --- Schleife ---------------------------------------------------------------
 
 def schleife():
+    if (_variable("SKILLSBOT_TOKEN") and
+            _variable("SKILLSBOT_TOKEN") == _variable("TELEGRAM_TOKEN")):
+        raise SkillsBotFehler("SkillsBot und Handelsbot duerfen nicht denselben Token nutzen.")
     if not eigener_bot_gesetzt():
         raise SkillsBotFehler(
             "Dauerbetrieb verweigert: SKILLSBOT_TOKEN nicht gesetzt. "
@@ -396,6 +406,7 @@ def probe():
     fehlt = bereit()
     if fehlt:
         print("Es fehlt: %s" % ", ".join(fehlt))
+        return 2
     if token():
         try:
             info = _ruf("getMe")
@@ -403,6 +414,7 @@ def probe():
             print("Telegram-Bot: @%s (%s)" % (info.get("username", "?"), quelle))
         except Exception as e:  # noqa: BLE001
             print("Telegram nicht erreichbar: %s" % e)
+            return 2
     if chat_id():
         print("Freigabeliste: Chat-ID %s" % chat_id())
     try:

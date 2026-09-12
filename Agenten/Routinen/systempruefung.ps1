@@ -387,10 +387,30 @@ try {
     # Fehler - sie schweigt. Genau so ist die Hauptsicherung am 31.08. und
     # 01.09.2026 ausgefallen, ohne dass es jemandem aufgefallen waere: Code 1
     # vom 30.08. stand still im Bericht, der ausgebliebene Start nicht.
-    if ($i -and -not $nieGelaufen -and $i.LastRunTime -lt (Get-Date).AddHours(-48)) {
+    # Erwarteten Abstand aus dem EIGENEN Trigger ableiten. Eine pauschale
+    # 48-Stunden-Grenze meldete die beiden Wochenaufgaben (Handel-Wachen,
+    # Verbesserer) jeden Tag als "seit 6 Tagen nicht mehr gestartet", obwohl
+    # sie planmaessig sonntags laufen. Ein Dauerfehlalarm deckt die echten
+    # Funde zu - das ist schlimmer als keine Pruefung.
+    $abstandStd = 48
+    foreach ($tr in $t.Triggers) {
+      switch ($tr.CimClass.CimClassName) {
+        'MSFT_TaskWeeklyTrigger' {
+          $wochen = if ($tr.WeeksInterval) { [int]$tr.WeeksInterval } else { 1 }
+          # eine Woche Luft: verpasste Startfenster holt StartWhenAvailable nach
+          $abstandStd = 7 * 24 * $wochen + 24
+        }
+        'MSFT_TaskMonthlyTrigger'      { $abstandStd = 31 * 24 + 24 }
+        'MSFT_TaskMonthlyDOWTrigger'   { $abstandStd = 31 * 24 + 24 }
+        # Start bei Hochfahren/Anmeldung hat kein Zeitraster zum Messen.
+        'MSFT_TaskBootTrigger'         { $abstandStd = 0 }
+        'MSFT_TaskLogonTrigger'        { $abstandStd = 0 }
+      }
+    }
+    if ($i -and -not $nieGelaufen -and $abstandStd -gt 0 -and $i.LastRunTime -lt (Get-Date).AddHours(-$abstandStd)) {
       $schlecht++
       $herTage = [int]((Get-Date) - $i.LastRunTime).TotalDays
-      Entscheiden "Aufgabe $($t.TaskName) ist seit $herTage Tagen nicht mehr gestartet (zuletzt $($i.LastRunTime)) - Trigger oder Aufgabenplanung pruefen."
+      Entscheiden "Aufgabe $($t.TaskName) ist seit $herTage Tagen nicht mehr gestartet (zuletzt $($i.LastRunTime), erwarteter Abstand $abstandStd h) - Trigger oder Aufgabenplanung pruefen."
     }
   }
   if ($schlecht -eq 0 -and $tasks.Count -gt 0) { Info "Alle $($tasks.Count) MaxHirn-Aufgaben zuletzt fehlerfrei." }
@@ -534,9 +554,15 @@ $md.Add("")
 $md | Set-Content $bericht -Encoding UTF8
 $md | Set-Content $md_heute -Encoding UTF8
 
-Get-ChildItem $logs -Filter 'systempruefung-*.*' -EA SilentlyContinue |
-  Where-Object { $_.Name -ne 'systempruefung-letzter-lauf.md' -and $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
-  Remove-Item -Force -EA SilentlyContinue
+# Alte Protokolle erst nach 30 Tagen weg. Bei -NurPruefen passiert hier
+# nichts: der Schalter verspricht oben "keine Aufraeum-Schritte", und ein
+# Aufraeumschritt, der trotzdem loescht, ist genau die Falle, die man einem
+# Prueflauf nicht ansieht.
+if (-not $NurPruefen) {
+  Get-ChildItem $logs -Filter 'systempruefung-*.*' -EA SilentlyContinue |
+    Where-Object { $_.Name -ne 'systempruefung-letzter-lauf.md' -and $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    Remove-Item -Force -EA SilentlyContinue
+}
 
 Notiz "`nENDE ok - $($getan.Count) erledigt, $($entscheiden.Count) zu entscheiden, $($neuZeilen.Count) davon neu seit gestern (Dauer $sek s)"
 Melde-Ende -Marke $marke -Code 0                                        # neu

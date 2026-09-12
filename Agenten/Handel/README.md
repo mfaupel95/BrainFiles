@@ -794,3 +794,30 @@ Nach der Kalibrierung blieben am 11.09.2026 zwei Werte übrig: LINK-USDT
 Keine Empfehlung. Der Name ist Max', die Sache ist eine Auswahl. Sie ersetzt
 keinen Einstieg über die Freigabe: Wer kaufen will, schaltet die Spur über das
 Freigabefenster scharf, und dort gelten die Grenzen aus `wachen.json`.
+
+## NautilusTrader-Node (`nautilus/`, Paper)
+
+Ein OKX-Demo-Node auf NautilusTrader 1.231.0 — die fünfte Spur, aber eine ohne
+Orderpfad: ein **Quoten-Feed**. `wachen.json` darin führt `handel_erlaubt: false`.
+
+**Stand 12.09.2026: vom flüchtigen Ort in den versionierten geholt.** Der Node
+lag unter `Werkstatt/nautilus-trader/`. Dort räumt `datensortierung.ps1` auf, und
+der Ordner war in keiner Sicherung — ein Aufräumlauf hätte die Arbeit gelöscht.
+Jetzt liegt er unter `Agenten/Handel/nautilus/`, mit eigenem Git-Verlauf,
+eigenem `.venv` und in `sichern.ps1`/`zweitkopie.ps1` mit drin.
+
+**Das Quotenproblem ist geklärt** (ausführlich in `nautilus/README-live-node.md`):
+Der Data-Client meldet sich mit Schlüssel zusätzlich am privaten
+business-Websocket an; scheitert das, verbindet der ganze Data-Client nicht.
+Zweitens hält ein scheiternder Order-Client den Node 60 Sekunden beim Start auf,
+sodass keine Strategie startet. Auslöser war die IP-Whitelist des OKX-Schlüssels:
+Der Rechner geht über NordVPN ins Netz, die Ausgangs-IP wechselt.
+
+Reparatur: **Der Data-Client bekommt keine Zugangsdaten mehr** (Quoten sind
+öffentlich), und der **Order-Client ist opt-in** — im GUI ein Häkchen. Nachweis:
+`test_gui_quote_pfad.py` holt 41 Quote-Ticks in 22 Sekunden über den echten
+GUI-Pfad; der Test ist die Regressionssicherung.
+
+Offen bleibt der **Orderpfad**: Dafür muss die aktuelle IP im OKX-Portal
+freigegeben sein, und der DEMO-Schlüssel braucht die Trade-Berechtigung (er ist
+laut `demo_order_test.py` nur `read_only`).

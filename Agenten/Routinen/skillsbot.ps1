@@ -11,7 +11,7 @@
 $ErrorActionPreference = 'Stop'
 $hier = Split-Path $PSScriptRoot -Parent   # Agenten
 $bus = Join-Path $hier 'Bus'
-$python = 'C:\Users\faupe\AppData\Local\Programs\Python\Python313\python.exe'
+$python = (Get-Command pythonw.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $skript = Join-Path $bus 'skillsbot.py'
 $aufgabe = 'BrainFiles-SkillsBot'
 
@@ -19,15 +19,20 @@ if (-not (Test-Path $skript)) {
   throw "SkillsBot fehlt: $skript"
 }
 if (-not (Test-Path $python)) {
-  Write-Warning "Python nicht unter $python - 'python' aus PATH verwenden."
-  $python = 'python'
+  throw "Fensterloses Python fehlt: $python"
 }
 
 $aktion = New-ScheduledTaskAction -Execute $python -Argument "`"$skript`"" `
                                   -WorkingDirectory $bus
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+$trigger = @(
+  (New-ScheduledTaskTrigger -AtLogOn),
+  (New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) `
+    -RepetitionInterval (New-TimeSpan -Minutes 2))
+)
 $einstellungen = New-ScheduledTaskSettingsSet -RestartCount 99 `
-  -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+  -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) `
+  -MultipleInstances IgnoreNew -StartWhenAvailable `
+  -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
   -LogonType Interactive -RunLevel Limited
 

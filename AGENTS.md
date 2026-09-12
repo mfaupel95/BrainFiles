@@ -38,6 +38,13 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Zugriff:** Alle Modelle lesen `MaxHirn/`, schreiben aber in `Werkstatt/`.
   Ein Original liegt nie in der Werkstatt.
 
+## Arbeit im Repo
+
+- **Fremd-Repos (Forks):** `Werkstatt/Repos/` haelt einen Klon je Repo - `origin` = `mfaupel95/<name>`, `upstream` = Original (shallow; `git fetch --unshallow` fuer volle Historie).
+- **Bots je Repo:** Hermes-Profile unter `Agenten/Hermes/profiles/<bot>/`, Start-Verzeichnis `Werkstatt/Repos/<repo>`; chat `hermes -p <bot> chat` (oder Bots-Tab im Desktop).
+- **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
+- **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
+
 ## Portabilität
 
 Keine absoluten Pfade in Skills, Notizen oder Skripten. Was der Umzug auf eine
@@ -45,3 +52,9 @@ externe SSD trotzdem kostet, steht in
 [MaxHirn/Wissen/Portabilitaet.md](MaxHirn/Wissen/Portabilitaet.md); die
 Ordnerstruktur selbst mit ihren Fallen in
 [MaxHirn/Wissen/Ordnerstruktur.md](MaxHirn/Wissen/Ordnerstruktur.md).
+
+## Fallen
+
+- **`hermes.exe` und windows-mcp:** Aus einer Session, die durch den MCP-Supervisor laeuft, startet `hermes.exe` nur mit entferntem `PYTHONHOME`/`PYTHONPATH` (Symptom: `Fatal Python error: init_import_site ... _thread ... start_joinable_thread`; das venv ist gesund). Vor jedem Aufruf: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH`.
+- **PowerShell-Skripte:** `ErrorActionPreference='Stop'` + `git ... 2>&1` bricht ab, weil stderr als Fehler zaehlt (NativeCommandError). `Continue` setzen, `git clone --quiet` verwenden, Erfolg am Exit-Code messen.
+- **Versionierte Textdateien** nie per Rewrite neu schreiben (LF/CRLF); wo moeglich gezielter Ersatz und Diff ansehen. AGENTS.md ist LF.

@@ -11,8 +11,13 @@ ROUTINEN = os.path.join(os.path.dirname(BUS), "Routinen")
 def geplante():
     for p in sorted(glob.glob(os.path.join(ROUTINEN, "*.ps1"))):
         name = os.path.basename(p)
-        if (name.startswith("einmalig-") or name.endswith("-hook.ps1")
-                or name == "bus.ps1"):
+        if name.startswith("einmalig-") or name.endswith("-hook.ps1"):
+            continue
+        with open(p, encoding="utf-8-sig") as f:
+            code = "\n".join(z for z in f if not z.lstrip().startswith("#"))
+        # Registrierer sind keine periodischen Arbeitslaeufe. Bereits
+        # angebundene Mischskripte bleiben in der Pruefung.
+        if "Register-ScheduledTask" in code and "Melde-Start" not in code:
             continue
         yield p, name[:-4]
 
