@@ -40,18 +40,19 @@ class KrakenIstPapier(unittest.TestCase):
     def test_stillgelegt_steht_als_eigene_zeile_in_den_wachen(self):
         self.assertTrue(freigabe.stillgelegt(freigabe.lade_wachen("kraken")))
 
-    def test_kraken_wird_als_papier_ausgewiesen_nicht_als_live(self):
+    def test_kraken_wird_gesperrt_nicht_als_live_ausgewiesen(self):
         w, p = rechnung_und_pruefung("kraken")
         zeilen = {n: ok for n, _i, _s, ok in p}
         self.assertIn("Stillgelegt", zeilen)
         self.assertFalse(zeilen["Stillgelegt"])
         self.assertFalse(freigabe.haelt_alles(p), "Kraken darf nie live sein")
-        # Der Knopf bleibt bedienbar: eine Zustandszeile sperrt nicht, sie
-        # zwingt Papier. Sonst waere das Fenster fuer eine stillgelegte Spur
-        # gar nicht mehr zu bedienen.
-        self.assertNotIn("Stillgelegt", freigabe.gerissene_grenzen(p))
+        # Der Knopf sperrt: "Stillgelegt" ist keine Zustandszeile mehr, es
+        # zaehlt als harte Zeile - und genau die sperrt den Knopf in _neu().
+        self.assertIn("Stillgelegt", freigabe.gerissene_grenzen(p))
+        self.assertNotIn("Stillgelegt", freigabe.ZUSTANDSZEILEN,
+                         "sonst waere es wieder Papier statt gesperrt")
 
-    def test_auch_mit_umgelegten_schaltern_bleibt_es_papier(self):
+    def test_auch_mit_umgelegten_schaltern_bleibt_kraken_gesperrt(self):
         """Der eigentliche Test: wer handel_erlaubt und die Freigabe umlegt,
         darf die stillgelegte Spur trotzdem nicht scharf schalten."""
         w = copy.deepcopy(freigabe.lade_wachen("kraken"))
@@ -62,6 +63,7 @@ class KrakenIstPapier(unittest.TestCase):
         self.assertFalse(freigabe.haelt_alles(p),
                          "stillgelegt schlaegt jeden Schalter")
         self.assertFalse({n: ok for n, _i, _s, ok in p}["Stillgelegt"])
+        self.assertIn("Stillgelegt", freigabe.gerissene_grenzen(p))
 
     def test_ohne_stillgelegt_entscheidet_wie_bisher(self):
         """Gegenprobe: Die Sperre trifft nur stillgelegte Spuren. Eine Spur
@@ -76,6 +78,7 @@ class KrakenIstPapier(unittest.TestCase):
         self.assertNotIn("Stillgelegt", {n for n, _i, _s, _o in p})
         self.assertTrue(freigabe.haelt_alles(p),
                         "ohne stillgelegt muss live moeglich bleiben")
+        self.assertEqual(freigabe.gerissene_grenzen(p), [])
 
 
 if __name__ == "__main__":

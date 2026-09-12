@@ -284,7 +284,12 @@ def pruefe(r, w, spur, bestand):
 
 # Diese beiden Zeilen sind Zustand, keine Auftragswerte: reissen nur sie, ist
 # der Auftrag nicht falsch, sondern der Live-Pfad zu. Dann Papier.
-ZUSTANDSZEILEN = ("Freigabe Papier zu Live", "handel_erlaubt", "Stillgelegt")
+#
+# "Stillgelegt" steht hier bewusst NICHT: eine stillgelegte Spur ist keine
+# Papierspur, sie ist gar keine. Sie sperrt den Knopf (siehe _neu), statt
+# Papier freizugeben - ein bestaetigter Papierauftrag waere eine Zusage, die
+# handeln.py nicht einloest.
+ZUSTANDSZEILEN = ("Freigabe Papier zu Live", "handel_erlaubt")
 
 
 def stillgelegt(w):
@@ -527,7 +532,19 @@ class Freigabefenster:
             for n, ist, soll, ok in p))
 
         harte = gerissene_grenzen(p)
-        if harte:
+        if stillgelegt(self.w):
+            # Zuerst und mit eigenem Text: "Werte anpassen" waere hier eine
+            # falsche Auskunft (es gibt nichts anzupassen), und "Als Papier
+            # bestaetigen" waere eine Zusage, die niemand einloest - handeln.py
+            # verweigert stillgelegte Spuren ganz. Also gesperrt.
+            self.hinweis.config(
+                text="Spur %s ist stillgelegt. Hier wird nichts freigegeben - "
+                     "weder live noch als Papier. Zum Wiederanschalten: "
+                     "stillgelegt in wachen.json zuruecksetzen."
+                     % TITEL.get(self.spur, self.spur), foreground="#a00")
+            self.ja.state(["disabled"])
+            self.ja.config(text="Stillgelegt")
+        elif harte:
             self.hinweis.config(text="Gesperrt: " + ", ".join(harte)
                                      + ". Werte anpassen oder ablehnen.",
                                 foreground="#a00")
@@ -538,19 +555,6 @@ class Freigabefenster:
                                      "ohne Rueckfrage.", foreground="#070")
             self.ja.state(["!disabled"])
             self.ja.config(text="Scharf schalten")
-        elif stillgelegt(self.w):
-            # Der ehrliche Fall: das Fenster gibt Papier, und die Spur fuehrt
-            # auch Papier nicht aus (kraken/handeln.py verweigert stillgelegte
-            # Spuren). Das steht hier, damit niemand denkt, er haette etwas
-            # scharf gemacht.
-            self.hinweis.config(
-                text="Spur %s ist stillgelegt. Bestaetigen gibt nur PAPIER frei "
-                     "- und ausgefuehrt wird auch das nicht: handeln.py "
-                     "verweigert stillgelegte Spuren. Zum Wiederanschalten: "
-                     "stillgelegt in wachen.json zuruecksetzen."
-                     % TITEL.get(self.spur, self.spur), foreground="#a60")
-            self.ja.state(["!disabled"])
-            self.ja.config(text="Als Papier bestaetigen")
         else:
             self.hinweis.config(text="Die Grenzen halten, aber die Freigabe steht "
                                      "noch aus (freigabe.erfuellt / "
@@ -690,10 +694,15 @@ def main():
                 print("  %-26s %-20s %-26s %s"
                       % (n, ist, soll, "haelt" if ok else "REISST"))
             harte = gerissene_grenzen(pruefungen)
-            print("  -> %s" % ("gesperrt: " + ", ".join(harte) if harte
-                               else ("live" if haelt_alles(pruefungen)
-                                     else ("papier (stillgelegt)" if stillgelegt(w)
-                                           else "papier (Freigabe/Zustand offen)"))))
+            if stillgelegt(w):
+                # Eigene Zeile: "gesperrt" waere hier zu wenig gesagt - es gibt
+                # nichts anzupassen, die Spur ist abgeschaltet.
+                print("  -> stillgelegt: hier wird nichts freigegeben "
+                      "(weder live noch Papier)")
+            else:
+                print("  -> %s" % ("gesperrt: " + ", ".join(harte) if harte
+                                   else ("live" if haelt_alles(pruefungen)
+                                         else "papier (Freigabe/Zustand offen)")))
             bestand["gebunden"] = (float(bestand.get("gebunden", 0.0))
                                    + r["gebunden"])
             bestand["offene_positionen"] = int(
