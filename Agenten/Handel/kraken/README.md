@@ -146,6 +146,35 @@ Was **nicht** reicht: `handel_erlaubt: true` allein. Das Skript bleibt Papier,
 solange Bedingung 1 offen ist, und das Fenster gibt dann Papier frei — es nennt
 den Grund.
 
+## Wieder angeschaltet am 12.09.2026
+
+Max' Anweisung „Kraken anschalten". Geändert wurde **eine Zeile** in
+`wachen.json`: `stillgelegt` von `true` auf `false` (Sicherung
+`wachen.json.bak-20260912-vor-anschalten`, Diff angesehen). Das Freigabefenster
+ist damit wieder normal bedienbar, `handeln.py` läuft wieder — als Papier.
+
+Der erste Lauf hat getan, was das Modell vorsieht: der Herzschlag war 13.265
+Minuten alt (seit dem 03.09.), also hat der Notausstieg die vier offenen
+Papierpositionen vom 02.09.2026 zu aktuellen Kursen geschlossen —
+XETHZEUR +2,56, LINKEUR +1,69, SOLEUR +0,74, XXBTZEUR −0,24 EUR, zusammen
+**+4,75 EUR** (G/V nach Gebühr). Danach war der Bestand flach.
+
+**Stand unmittelbar danach** (`handeln.py --wachen`):
+
+| Bedingung | Stand |
+|---|---|
+| 1 Freigabe erfüllt | **false** — 4 Runden, alle Papier, seit 2026-09-12 |
+| 2 Rücklauf | 0,44 EUR von Höchststand 4,39 → Faktor 1,00 |
+| 3 Herzschlag | frisch (0 min) |
+| 4 Journal-Zweitziel | **nicht gesetzt** |
+| 5 Rollierender EV | n/a (zu wenig Runden) |
+| Guthaben | **0,00 EUR frei, nötig 60,00** |
+
+`handel_erlaubt` und `freigabe.erfuellt` stehen weiter auf **false** — sie
+umzulegen wäre eine Behauptung, die die Zahlen nicht hergeben: von den sechs
+Wochen und 50 Runden aus Bedingung 1 sind 4 Runden gelaufen, und die sechs
+Wochen zählen ab heute. Das ist Max' Entscheidung, sobald die Zahlen stehen.
+
 ## Fallen
 
 - **Kraken antwortet unter dem kanonischen Paarnamen**, nicht unter dem
