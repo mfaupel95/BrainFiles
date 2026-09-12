@@ -684,6 +684,16 @@ Zwei Entscheidungen, die den Ausschlag geben:
 **Ausstiege laufen nie durch das Fenster.** Ein Stop muss auch dann greifen,
 wenn niemand davorsitzt. Bestätigt wird nur, was Geld *bindet*.
 
+**Der Ausstiegsgrund wird nach Schwere benannt, nicht nach Nähe.** Seit
+12.09.2026 prüft `pruefe_ausstiege` erst die Liquidationsschwelle, dann den
+Stop, dann das Ziel — in `xperp/handeln.py` und in `swap/handeln.py` gleich.
+Die Schwelle liegt immer hinter dem Stop; stünde der Stop zuerst, stünde bei
+einem Totalverlust „stop" im Journal und die Liquidationszeile wäre toter
+Code. Am Geld ändert die Reihenfolge nichts: gerechnet wird mit dem echten
+Kurs, geschlossen wird unabhängig vom Grund. Nachweis: `xperp/test_ausstieg.py`
+(9 Tests, Long und Short, inklusive Kurs genau auf der Schwelle; der Order-Pfad
+ist im Test durch einen Werfer ersetzt und wird nie erreicht).
+
 ### Wie oft gefragt wird (seit 12.09.2026)
 
 Die Frage ans Handy ist eine Bitte, kein Dauerzustand. `neue_anfrage_erlaubt()`

@@ -244,15 +244,19 @@ def pruefe_ausstiege(z, live, w):
 
         vz = 1 if p["seite"] == "long" else -1
         grund = None
-        if vz * (kurs - p["stop"]) <= 0:
+        # Reihenfolge nach Schwere. Die Liquidation ist kein "darf nicht
+        # vorkommen"-Fall: Liegt der Kurs hinter der Liquidationsschwelle, hat
+        # er den Stop auf dem Weg dorthin schon durchlaufen - die Schwelle liegt
+        # immer hinter dem Stop. Stuende der Stop zuerst, stuende bei einem
+        # Totalverlust "stop" im Journal, und die Liquidationszeile waere
+        # unerreichbar. Die Rechnung bleibt davon unberuehrt: gerechnet wird mit
+        # dem echten Kurs, geschlossen wird unabhaengig vom Grund.
+        if p.get("liq") and vz * (kurs - p["liq"]) <= 0:
+            grund = "LIQUIDATION"
+        elif vz * (kurs - p["stop"]) <= 0:
             grund = "stop"
         elif vz * (kurs - p["ziel"]) >= 0:
             grund = "ziel"
-        elif p.get("liq") and vz * (kurs - p["liq"]) <= 0:
-            # Darf nicht vorkommen: Der Pflicht-Stop liegt immer vor der
-            # Liquidation. Wenn doch, ist der Stop uebersprungen worden -
-            # ein Befund, kein normaler Ausstieg.
-            grund = "LIQUIDATION"
 
         if not grund:
             behalten.append(p)
