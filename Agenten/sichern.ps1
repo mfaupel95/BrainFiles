@@ -43,7 +43,15 @@ $namensmuster = @(
 # Modelle und Werkstatt mit ausgeklammert: seit die Quelle BrainFiles\ ist,
 # liefe die Pruefung sonst durch 51 GB Modellgewichte (huggingface-Caches mit
 # *api_key*, *.env im Namen) - am 31.08.2026 waren das 193 Fehltreffer.
-$ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|Modelle|Werkstatt|\.venv|__pycache__|node_modules|\.git)\\'
+# Geklonte Fremdbaeume pfadgenau, nicht ueber den blanken Namen: ein Muster
+# 'skills' oder 'codex' ohne Pfad traefe auch .claude\skills\ - also genau das
+# von Hand geschriebene Textmaterial, das die Pruefung sehen SOLL.
+# Gemessen 12.09.2026: Von 246 Treffern kamen 170 aus MaxHirn\skills, 46 aus
+# Agenten\Hermes\hermes-agent, 19 aus CLIProxyAPI und 4 aus codex - alles
+# Quellcode, dessen DATEINAME 'credentials' oder 'api_key' enthaelt. Uebrig
+# blieben 18, und darunter standen die echten: 14 Hermes-Profil-.env,
+# eine alte Kopie der Schluesselablage und ein llama.cpp-Schluessel.
+$ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|Modelle|Werkstatt|\.venv|__pycache__|node_modules|\.git)\\|\\(MaxHirn\\skills|MaxHirn\\CLIProxyAPI|MaxHirn\\codex|Agenten\\Hermes\\hermes-agent)\\'
 
 # Bereits bewertete Fundstellen. Sie bleiben in der Liste, werden aber getrennt
 # ausgegeben - sonst geht ein NEUER Fund zwischen den immer gleichen unter.
