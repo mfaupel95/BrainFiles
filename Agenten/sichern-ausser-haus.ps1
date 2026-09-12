@@ -1,4 +1,4 @@
-# Vollstaendige Kopie fuer ausserhalb des Hauses, Ziel E:\MaxHirn-AusserHaus
+# Vollstaendige Kopie fuer ausserhalb des Hauses, Ziel Q:\MaxHirn-AusserHaus
 #
 # WOZU
 # Hauptsicherung (G:, Disk 2) und Zweitkopie (O:, Disk 1) stecken beide im
@@ -15,7 +15,8 @@
 #    Kern - Platz ist genug.
 #
 # EXFAT
-# E: ist exFAT. Deshalb /FFT: exFAT speichert Zeitstempel in 2-Sekunden-
+# Q: ist exFAT (SanDisk Portable SSD, Disk 3 - eine eigene physische Platte,
+# nicht G:, J: oder O:). Deshalb /FFT: exFAT speichert Zeitstempel in 2-Sekunden-
 # Schritten, NTFS in 100-Nanosekunden-Schritten. Ohne /FFT gilt jede Datei bei
 # jedem Lauf als geaendert und es werden jedes Mal 45 GB neu geschrieben.
 # /DCOPY:DAT entfaellt bewusst - exFAT kann Ordner-Zeitstempel nur begrenzt.
@@ -34,14 +35,14 @@ if (-not (Test-Path -LiteralPath 'O:\Archiv' -PathType Container)) {
 # Eine Ebene ueber diesem Skript (Agenten\ -> BrainFiles\). Vorher $PSScriptRoot,
 # das sicherte nach Phase 3 nur noch Agenten\.
 $quelle = Split-Path $PSScriptRoot -Parent
-$ziel   = 'E:\MaxHirn-AusserHaus'
+$ziel   = 'Q:\MaxHirn-AusserHaus'
 
-if (-not (Test-Path 'E:\')) {
-  Write-Host 'E: ist nicht angesteckt - nichts zu tun.' -ForegroundColor Yellow
+if (-not (Test-Path 'Q:\')) {
+  Write-Host 'Q: ist nicht angesteckt - nichts zu tun.' -ForegroundColor Yellow
   exit 2
 }
 
-$vol = Get-Volume -DriveLetter E
+$vol = Get-Volume -DriveLetter Q
 Write-Host "Ziel: $ziel  ($($vol.FileSystemLabel), $($vol.FileSystem), frei $([math]::Round($vol.SizeRemaining/1GB,1)) GB)" -ForegroundColor Cyan
 
 $modus = if ($NurPruefen) { '/L' } else { '' }
@@ -79,4 +80,4 @@ Write-Host 'DANACH:' -ForegroundColor Yellow
 Write-Host '  1. "Hardware sicher entfernen", bevor die SSD abgezogen wird.'
 Write-Host '  2. Die SSD gehoert ausser Haus - nicht im selben Raum wie der Rechner.'
 Write-Host '  3. Sie enthaelt Klartext-Zugangsdaten (Wissen\Zugaenge.md,'
-Write-Host '     OKX_API.env). Ohne BitLocker To Go liest die jeder, der sie findet.'
+Write-Host '     Wissen\OKX_API.env). Ohne BitLocker To Go liest die jeder, der sie findet.'
