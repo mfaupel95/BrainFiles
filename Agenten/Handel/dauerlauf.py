@@ -123,7 +123,8 @@ SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
     "swap":    {"ordner": "swap",    "waehrung": "USD"},
-    "spiegel": {"ordner": "spiegel", "waehrung": "USD"},
+    "spiegel": {"ordner": "spiegel", "waehrung": "USD",
+                "skript": "spiegel.py"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
