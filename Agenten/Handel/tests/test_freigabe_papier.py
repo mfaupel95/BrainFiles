@@ -1,14 +1,17 @@
-"""Tests fuer das Freigabefenster - Spur 3 (Kraken) darf nie live werden.
+"""Tests fuer das Freigabefenster: eine stillgelegte Spur darf nie live werden.
 
-Anlass: Max' Anweisung "In Freigabe.py Spur 3 Kraken Papier schalten". Der
-Kern ist nicht der heutige Zustand (handel_erlaubt und freigabe.erfuellt stehen
-ohnehin auf false), sondern die Frage, was passiert, wenn jemand eines davon von
-Hand umlegt: Eine stillgelegte Spur darf **nie** live freigegeben werden, und
-das Fenster soll das aus der wachen.json der Spur lesen - nicht aus einer Liste
-im Code, die beim Wiederanschalten vergessen wird.
+Anlass: Max' Anweisung "In Freigabe.py Spur 3 Kraken Papier schalten" und der
+Nachtrag, sie lieber zu **sperren** als Papier freizugeben.
 
-Ohne Fenster: pruefe() rechnet, haelt_alles() entscheidet. Das ist genau der
-Pfad, den auch der Knopf nimmt.
+Der Test prueft die **Mechanik**, nicht den heutigen Zustand der Dateien.
+Das ist Absicht: `stillgelegt` in `kraken/wachen.json` ist ein Schalter, den
+Max von Hand umlegt (am 12.09.2026 genau das getan). Ein Test, der den
+aktuellen Wert der echten Datei behauptet, bricht bei jeder solchen Entscheidung
+- und dann wird er abgeschwaecht statt ernst genommen. Die Vorlage kommt aus
+der echten Datei, die Behauptung aus der Ueberschreibung.
+
+Ohne Fenster: pruefe() rechnet, haelt_alles() und gerissene_grenzen() sind
+genau das, was der Knopf auswertet.
 """
 
 import copy
@@ -23,62 +26,82 @@ if HANDEL not in sys.path:
 
 import freigabe                                                # noqa: E402
 
-AUFTRAG = {"inst": "XXBTZEUR", "einstieg": 66748.2, "stop_pct": 7.0,
-           "cr": 2.0, "eur": 50}
 BESTAND = {"gebunden": 0.0, "offene_positionen": 0, "verlust_gesamt": 0.0}
 
 
-def rechnung_und_pruefung(spur, auftrag=None, wachen=None):
-    w = copy.deepcopy(wachen if wachen is not None else freigabe.lade_wachen(spur))
-    a = dict(auftrag or AUFTRAG)
-    r = freigabe.RECHNER[spur](a, w)
-    return w, freigabe.pruefe(r, w, spur, BESTAND)
+def vorlage():
+    """Die Kraken-Wachen als Vorlage - nur als Form, nicht als Behauptung."""
+    return copy.deepcopy(freigabe.lade_wachen("kraken"))
 
 
-class KrakenIstPapier(unittest.TestCase):
+def wachen(**ueber):
+    w = vorlage()
+    for schluessel, wert in ueber.items():
+        if wert is None:
+            w.pop(schluessel, None)
+        else:
+            w[schluessel] = wert
+    return w
 
-    def test_stillgelegt_steht_als_eigene_zeile_in_den_wachen(self):
-        self.assertTrue(freigabe.stillgelegt(freigabe.lade_wachen("kraken")))
 
-    def test_kraken_wird_gesperrt_nicht_als_live_ausgewiesen(self):
-        w, p = rechnung_und_pruefung("kraken")
-        zeilen = {n: ok for n, _i, _s, ok in p}
-        self.assertIn("Stillgelegt", zeilen)
-        self.assertFalse(zeilen["Stillgelegt"])
-        self.assertFalse(freigabe.haelt_alles(p), "Kraken darf nie live sein")
-        # Der Knopf sperrt: "Stillgelegt" ist keine Zustandszeile mehr, es
-        # zaehlt als harte Zeile - und genau die sperrt den Knopf in _neu().
+def pruefung(w, auftrag=None):
+    a = dict(auftrag or freigabe.BEISPIEL["kraken"][0])
+    r = freigabe.RECHNER["kraken"](a, w)
+    return freigabe.pruefe(r, w, "kraken", BESTAND)
+
+
+def zeilenstand(p):
+    return {n: ok for n, _i, _s, ok in p}
+
+
+class StillgelegtSperrt(unittest.TestCase):
+
+    def test_stillgelegt_erzeugt_eine_harte_zeile(self):
+        p = pruefung(wachen(stillgelegt=True, handel_erlaubt=True,
+                            freigabe={"erfuellt": True}))
+        self.assertIn("Stillgelegt", zeilenstand(p))
+        self.assertFalse(zeilenstand(p)["Stillgelegt"])
+        # Harte Zeile = Knopf gesperrt. Nicht Zustandszeile, sonst waere es
+        # wieder Papier statt gesperrt.
         self.assertIn("Stillgelegt", freigabe.gerissene_grenzen(p))
-        self.assertNotIn("Stillgelegt", freigabe.ZUSTANDSZEILEN,
-                         "sonst waere es wieder Papier statt gesperrt")
+        self.assertNotIn("Stillgelegt", freigabe.ZUSTANDSZEILEN)
 
-    def test_auch_mit_umgelegten_schaltern_bleibt_kraken_gesperrt(self):
-        """Der eigentliche Test: wer handel_erlaubt und die Freigabe umlegt,
-        darf die stillgelegte Spur trotzdem nicht scharf schalten."""
-        w = copy.deepcopy(freigabe.lade_wachen("kraken"))
-        w["handel_erlaubt"] = True
-        w["freigabe"] = dict(w.get("freigabe") or {}, erfuellt=True)
-        w["journal_zweitziel"] = "Q:\\irgendwo"
-        _w, p = rechnung_und_pruefung("kraken", wachen=w)
-        self.assertFalse(freigabe.haelt_alles(p),
-                         "stillgelegt schlaegt jeden Schalter")
-        self.assertFalse({n: ok for n, _i, _s, ok in p}["Stillgelegt"])
+    def test_auch_mit_umgelegten_schaltern_bleibt_es_gesperrt(self):
+        """Wer handel_erlaubt und die Freigabe umlegt, darf eine stillgelegte
+        Spur trotzdem nicht scharf schalten."""
+        p = pruefung(wachen(stillgelegt=True, handel_erlaubt=True,
+                            freigabe={"erfuellt": True},
+                            journal_zweitziel="Q:\\irgendwo"))
+        self.assertFalse(freigabe.haelt_alles(p), "stillgelegt schlaegt jeden Schalter")
         self.assertIn("Stillgelegt", freigabe.gerissene_grenzen(p))
 
-    def test_ohne_stillgelegt_entscheidet_wie_bisher(self):
-        """Gegenprobe: Die Sperre trifft nur stillgelegte Spuren. Eine Spur
-        ohne das Feld bleibt live-faehig, wenn alles haelt."""
-        w = copy.deepcopy(freigabe.lade_wachen("spot"))
-        w["handel_erlaubt"] = True
-        w["freigabe"] = dict(w.get("freigabe") or {}, erfuellt=True)
-        w.pop("stillgelegt", None)
-        auftrag = {"inst": "SOL-USDT", "einstieg": 168.42, "stop_pct": 6.0,
-                   "cr": 2.0, "usd": 50}
-        _w, p = rechnung_und_pruefung("spot", auftrag=auftrag, wachen=w)
-        self.assertNotIn("Stillgelegt", {n for n, _i, _s, _o in p})
-        self.assertTrue(freigabe.haelt_alles(p),
-                        "ohne stillgelegt muss live moeglich bleiben")
-        self.assertEqual(freigabe.gerissene_grenzen(p), [])
+    def test_ohne_feld_bleibt_die_spur_live_faehig(self):
+        """Gegenprobe: die Sperre trifft nur, wo das Feld gesetzt ist."""
+        p = pruefung(wachen(stillgelegt=None, handel_erlaubt=True,
+                            freigabe={"erfuellt": True},
+                            journal_zweitziel="Q:\\irgendwo"))
+        self.assertNotIn("Stillgelegt", zeilenstand(p))
+        self.assertTrue(freigabe.haelt_alles(p))
+
+    def test_false_ist_kein_stillgelegt(self):
+        p = pruefung(wachen(stillgelegt=False, handel_erlaubt=True,
+                            freigabe={"erfuellt": True}))
+        self.assertNotIn("Stillgelegt", zeilenstand(p))
+        self.assertNotIn("Stillgelegt", freigabe.gerissene_grenzen(p))
+
+    def test_nur_die_stillgelegte_spur_ist_gesperrt(self):
+        """Die Mechanik kennt keine Spur und keine Liste - sie liest das Feld."""
+        self.assertTrue(freigabe.stillgelegt({"stillgelegt": True}))
+        self.assertFalse(freigabe.stillgelegt({"stillgelegt": False}))
+        self.assertFalse(freigabe.stillgelegt({}))
+
+    def test_echte_kraken_wachen_sind_lesbar(self):
+        """Nur die Form: die Datei muss existieren und das Feld ein Schalter
+        sein. Welchen Wert er hat, entscheidet Max - nicht dieser Test."""
+        w = freigabe.lade_wachen("kraken")
+        self.assertIn("stillgelegt", w)
+        self.assertIsInstance(w["stillgelegt"], bool)
+        self.assertIn("waehrung", w)
 
 
 if __name__ == "__main__":
