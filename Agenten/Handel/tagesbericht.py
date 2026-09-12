@@ -123,12 +123,13 @@ def spur_kraken():
 
 
 def spur_swap():
-    """SWAP-Spur - Papierpfad, USD.
+    """SWAP-Spur - USD.
 
-    Sie steht im Bericht wie jede andere Spur, obwohl sie nicht live gehen
-    kann: Ein Melder, der eine Spur verschweigt, weil sie Papier ist, meldet
-    genau die Positionen nicht, die es tatsaechlich gibt. Dass sie papierfest
-    ist, steht als Feld daneben ("papierfest") und wird unten ausgeschrieben.
+    Sie steht im Bericht wie jede andere Spur. Ob live etwas moeglich ist,
+    entscheidet der Bericht nicht selbst: Er zeigt die Sperren, die die Spur
+    fuehrt (handel_erlaubt, Freigabe, Journal-Zweitziel). Seit dem 12.09.2026
+    hat diese Spur einen Live-Pfad nach xperp-Muster - ein festes "ist Papier"
+    waere hier also die zweite Wahrheit, die als erste alt wird.
 
     Sonst dieselbe Rechnung wie bei Spur 2: Prozent auf die Margin, Betrag in
     USD, Hebel neben der Zahl. Eine zweite Formel waere der Anfang zweier
@@ -167,10 +168,11 @@ def spur_swap():
             "hebel": p.get("hebel"), "familie": p.get("familie"),
         })
     return {
-        "name": "SWAP (Papier)", "waehrung": "USD", "w": w, "z": z,
+        "name": "SWAP (%s)" % ("Papier" if (z.get("modus") or "papier") == "papier"
+                               else z["modus"]),
+        "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_xperp",
-        "papierfest": True,
         "journal": os.path.join(ordner, "handelsjournal.csv"),
     }
 

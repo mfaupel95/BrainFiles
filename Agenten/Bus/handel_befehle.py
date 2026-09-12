@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 
-# Reihenfolge der Ausgabe. xperp zuerst (Hauptweg), dann Spot, dann SWAP.
-# SWAP wird gelesen wie jede andere Spur; dass sie nicht live geht, steht in
-# ihrer eigenen wachen.json und nicht als fester Satz hier - ein Satz, der den
-# Stand von gestern behauptet, faellt niemandem auf, wenn die Spur sich bewegt.
+# Reihenfolge der Ausgabe. xperp zuerst (Hauptweg), dann Spot, dann die beiden
+# Papierspuren. Wie eine Spur gerade steht, steht in ihrer eigenen wachen.json
+# und ihrem Zustand - nicht als fester Satz hier: SWAP hat seit dem 12.09.2026
+# einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
+# alt wird.
 SPUREN = ('xperp', 'scanner', 'swap', 'spiegel')
 
 
@@ -63,11 +64,14 @@ def papier_lage(spur, anzeige):
         # Eine Spur ohne Freigabeblock (die Spiegel-Spur kennt keine
         # Bedingung 1, sie hat keinen Live-Zweig): "None" waere hier eine
         # Auskunft, die wie ein fehlender Wert aussieht.
-        return ('%s: Papierpfad, kein Live-Zweig. handel_erlaubt=%s, '
-                'kein Freigabeblock.' % (anzeige, w.get('handel_erlaubt')))
-    return ('%s: Papierpfad, kein Live-Zweig. handel_erlaubt=%s, '
-            'Freigabe erfuellt=%s.' % (anzeige, w.get('handel_erlaubt'),
-                                       erfuellt))
+        return ('%s: handel_erlaubt=%s, kein Freigabeblock.'
+                % (anzeige, w.get('handel_erlaubt')))
+    # Kein Satz ueber den Live-Zweig: SWAP hat seit dem 12.09.2026 einen
+    # (nach xperp-Muster, mit eigener Freigabekette). Ob einer da ist, steht
+    # nicht in dieser Datei - was hier steht, sind die zwei Werte, die die
+    # Spur fuehrt.
+    return ('%s: handel_erlaubt=%s, Freigabe erfuellt=%s.'
+            % (anzeige, w.get('handel_erlaubt'), erfuellt))
 
 
 def prognose(text):

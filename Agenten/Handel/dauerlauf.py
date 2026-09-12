@@ -116,9 +116,11 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # (SCAN_ALTER_MINUTEN).
 # SPIEGEL (Papierbuch fuer Copy-Trading, angelegt 12.09.2026): liest den
 # OnchainOS-Feed und bucht nach, was Nachahmen gekostet haette. Kein Live-Zweig,
-# keine Orderfunktion - ihr --live verweigert wie bei swap mit einem Grund, den
-# nur_fenster_fehlt() nicht als Fenster-Bitte liest. Sie braucht kein eigenes
-# venv (nur Standardbibliothek plus das onchainos-CLI auf dem PATH).
+# keine Orderfunktion - ihr --live verweigert mit einem Grund, den
+# nur_fenster_fehlt() nicht als Fenster-Bitte liest (anders als bei swap: die
+# Spur hat seit 12.09.2026 einen Live-Pfad, ihre Sperrgruende nennen deshalb das
+# Freigabefenster und der Lauf darf fragen). Sie braucht kein eigenes venv (nur
+# Standardbibliothek plus das onchainos-CLI auf dem PATH).
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},

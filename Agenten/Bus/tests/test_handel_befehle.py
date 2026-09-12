@@ -66,7 +66,7 @@ class ReadOnlyTest(unittest.TestCase):
         self.assertIn('swap', text)
         self.assertIn('CHIP-USDT-SWAP-MARKER', text)
         self.assertIn('handel_erlaubt=False', text)
-        self.assertIn('Papier', text)
+        self.assertIn('Freigabe erfuellt=False', text)
 
     def test_swap_ohne_wachen_sagt_unbekannt_statt_gesperrt(self):
         # Fehlt die Datei, ist die Lage unbekannt - nicht "gesperrt". Wer
