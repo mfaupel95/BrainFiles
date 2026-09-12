@@ -96,3 +96,58 @@ Order-Pfad bleibt im Test stillgelegt.
 - **Offen:** `swap/handeln.py` (Kandidaten -> anlauf -> Papierposition ->
   Ausstiege/Funding/Journal), Tests dafuer, danach erst `dauerlauf.py` (Stufe 1,
   `.bak-JJJJMMTT` vorher).
+
+## Stand 12.09.2026 (weitergebaut, Spur laeuft) 
+
+- **Schritt 3 gebaut:** `swap/handeln.py`, papierfest: okxf-Order-Funktionen
+  beim Import stillgelegt (`Papierfehler`), kein `live=True` im Modul,
+  `--live` verweigert mit genau einem Grund ohne das Wort Freigabefenster.
+  16 Tests dazu, gesamt 23/23 gruen gegen den aktuellen Stand (0,7 s).
+- **Hermes hat parallel weitergebaut** (Commit 9828f29): dauerlauf.py
+  kennt die Spur als Papierspur (SPUREN, Zeile 121), Tagesbericht und /status
+  verdrahtet, Whitelist korrigiert. Sein Zusatz im Code: pruefe_ausstiege
+  prueft LIQUIDATION vor dem Stop (im xperp-Original ist der Liq-Zweig tot,
+  weil der Stop ihn schluckt - siehe Skill-Notiz). Geprueft: auch ein
+  `--live`-Aufruf durch den Dauerlauf bleibt Papier (Modul verweigert).
+- **Echte Papierlaeufe beobachtet:** TRX-USDT-SWAP long eroeffnet mit voller
+  Journalzeile (19:18/19:22), geschlossen per Herzschlag-Notausstieg (19:53) -
+  der Sicherheitspfad hat mit echten Daten funktioniert.
+- **Offen:** (1) uncommittet: test_handeln_papier.py (LF-Normalisierung);
+  (2) xperp-LiQ-Fix ist eine Stufe-1-Aenderung am Live-Pfad - nur mit Max'
+  Einverstaendnis; (3) kontrakte_aus_nominal() gegen SWAP-ctVal pruefen;
+  (4) Konto-Abgleich bleibt eigene Aufgabe; (5) Live nur von Hand am
+  Bildschirmfenster.
+
+### Erledigt am 12.09.2026 (Max' Einverstaendnis lag vor)
+
+- **(2) umgesetzt:** `xperp/handeln.py` prueft LIQUIDATION vor Stop und Ziel,
+  dieselbe Reihenfolge wie swap. Nachweis `xperp/test_ausstieg.py`: 9 Tests,
+  Long und Short, inkl. Kurs genau auf der Schwelle; `okxf.markt_schliessen`
+  im Test durch einen Werfer ersetzt (der Order-Pfad wird nie erreicht), das
+  Journal der Spur ist vor und nach dem Lauf byte-gleich.
+- **(3) fuer TRX geprueft:** ctVal 1000 TRX, lotSz 0,01 -> 0,73 Kontrakte sind
+  gueltig, `kontrakte_aus_nominal(247,55 USD)` rechnet 0,72. Kein 100-facher
+  Fehler. CHIP (ctVal 100) bleibt offen, weil kein Kandidat anstand.
+- **Neue Beobachtung, ungeklaert:** im `dauerlauf.log` fehlen zwischen 21:23
+  und 21:54 alle Zykluszeilen (Takt 15 min), und das Journal hat zwei
+  Eroeffnungen derselben Reihe (19:18:14 / 19:22:56), obwohl
+  `pruefe_einstiege` die zweite ueberspringt. Nicht geraten - beobachten.
+
+## Stand 12.09.2026 (Live-Pfad angebunden, Weg A vorbereitet)
+
+- **swap/handeln.py:** Live-Zweig nach xperp-Muster, sieben Sperren (letzte:
+  `kein offenes Freigabefenster (Handelsregeln Punkt 3)`), boersenseitiger
+  Stop (tp/sl an der Order). Tests: 30/30 gruen. Sicherung:
+  `handeln.py.bak-20260912-221103`.
+- **kontrakte_aus_nominal() gegen SWAP-ctVal belegt:** CHIP 100 -> 20 Kontrakte
+  = 100 USD, BTC 0.01 -> 0.11 = 99 USD, XAU 0.001 -> 29 = 98.6 USD. Kein
+  Positionsfehler; die Falle war nur der Instrumenten-Lookup ueber den Basiswert.
+- **dauerlauf.py:** Befehle /freigabe_swap, /ja_swap, /nein_swap, /stop_swap
+  (Block generalisiert, xperp-Texte unveraendert bis auf entferntes
+  `SWAP bleibt gesperrt.`), Kommentare korrigiert. Sicherung:
+  `dauerlauf.py.bak-20260912-*`. Handel/tests 24 OK, Bus test_handel_befehle
+  8 OK. KEIN Neustart - wirkt beim naechsten regularen Start.
+- **Echter --live-Lauf:** `gesperrt durch: wachen.json handel_erlaubt=false;`n  `freigabe.erfuellt=false (Bedingung 1); kein offenes Freigabefenster` -> Papier.
+- **Scharf schalten bleibt Max:** wachen.json `handel_erlaubt=true` UND
+  Freigabefenster (nach Dauerlauf-Neustart per /ja_swap, sonst per Hand am PC).
+- **Uncommittet:** dauerlauf.py, swap/handeln.py, test_handeln_papier.py.

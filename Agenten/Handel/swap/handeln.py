@@ -1,51 +1,46 @@
-"""Papierpfad der SWAP-Spur: Einstiege, Ausstiege, Funding, Journal, Zustand.
+"""Live-Pfad der SWAP-Spur: Einstiege, Ausstiege, Funding, Journal, Zustand.
 
-Dritte Spur neben scanner (Spot) und xperp (XPERP). Diese Fassung ist
-PAPIERFEST: es gibt keinen Live-Zweig. Die Order-Funktionen von okxf werden
-beim Import durch Stummel ersetzt, die eine Ausnahme werfen - aus diesem
-Prozess heraus ist eine Order nicht moeglich, auch nicht durch einen Fehler in
-der Steuerung. Der Test test_handeln_papier.py belegt das.
+Dritte Spur neben scanner (Spot) und xperp (XPERP). Seit 12.09.2026 ist die
+Spur live-faehig - nach xperp-Muster, mit derselben Freigabekette. Scharf
+wird sie nur, wenn ein Mensch ein Freigabefenster oeffnet (Bildschirmfenster
+freigabe.py oder Zeitfenster freigabefenster.py via /ja_swap im Dauerlauf) UND
+alle sieben Sperren offen sind. Ohne Fenster bleibt jeder Lauf Papier.
 
 WAS SIE UEBERNIMMT (importiert, nicht kopiert)
 ---------------------------------------------
 Rechnungen:  bot.groesse(), bot.pruefpflicht(), bot.BAR
 Kennzahlen:  indikatoren.lage()
-Zugang:      okxf - nur lesende Funktionen (Kerzen, Kurs, Ticker, Funding,
-             kontrakte_aus_nominal, auf_tick)
+Zugang:      okxf - Kerzen, Kurse, Ticker, Funding, kontrakte_aus_nominal,
+             auf_tick und, im Live-Zweig, hebel_setzen/order_limit/markt_schliessen
 Wachen:      wachen_xperp.lage() - Drawdown, Familienbelegung, Wochenende,
              Kill-Switch, rollierender Erwartungswert
-Vorrat:      swap/kandidaten.py liefert dieselbe Kandidatenform wie
-             xperp/auswahl.py, nur ueber instType=SWAP
-
-WAS SIE BEWUSST NICHT UEBERNIMMT
---------------------------------
-xperp/handeln.py. Dort steht der Live-Order-Pfad (hebel_setzen, order_limit).
-Eine Papierspur, die dieses Modul importiert - und sei es nur, um seine
-Pfadkonstanten umzubiegen -, haengt an derselben Leitung: ein Fehler in der
-Steuerung waere dann eine echte Order. Der Live-Zweig entsteht spaeter
-bewusst nach xperp-Muster, mit Max am Bildschirmfenster.
+Freigabe:    freigabefenster.py - das Zeitfenster, Handelsregeln Punkt 3
+Vorrat:      swap/kandidaten.py - dieselbe Kandidatenform wie xperp/auswahl.py,
+             nur ueber instType=SWAP
 
 DREI DINGE, DIE ANDERS SIND ALS BEI XPERP
 -----------------------------------------
 1. Das Instrument wird ueber den VOLLEN instId aufgeloest. okxf.instrument()
-   nimmt einen Basiswert und findet dann den XPERP-Kontrakt; ohne die Endung
-   -SWAP wuerde diese Spur still den falschen Kontrakt handeln.
+   findet fuer einen Basiswert den XPERP-Kontrakt; ohne die Endung -SWAP
+   handelte diese Spur still den falschen Kontrakt.
 2. Die Wachen kommen aus swap/wachen.json. bot.wachen() liest die Datei aus
    dem xperp-Ordner - wer sie hier benutzt, handelt nach fremden Grenzen.
-3. --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster
-   NICHT vorkommt. So fragt der Dauerlauf keine Freigabe an, die nichts
-   oeffnen koennte (dauerlauf.nur_fenster_fehlt liest diese Zeile).
+3. Der Sperrgrund fuer das Fenster lautet wie in xperp: "kein offenes
+   Freigabefenster (Handelsregeln Punkt 3)". Daran haengt
+   dauerlauf.nur_fenster_fehlt: genau ein Grund, der dieses Wort traegt,
+   und der Dauerlauf stellt die Anfrage. Stehen mehrere Gruende, wird nicht
+   gefragt.
 
-PAPIER HEISST: Die Position steht im eigenen Zustand, nicht an der Boerse. Der
-Ausstieg schliesst sie hier; an OKX existiert nichts zu schliessen. Deshalb
-zahlt der Papierlauf auch keine echten Gebuehren - sie werden gerechnet und ins
-Journal geschrieben, damit die Zahlen vergleichbar bleiben.
+BOERSENSEITIGER STOP: Im Live-Zweig gehen Stop und Ziel MIT der Order an die
+Boerse (order_limit mit tp/sl). Ein Stop, der nur in zustand.json steht, ist
+weg, sobald dieser Rechner weg ist - und die Kernel-Power-41-Abschaltungen aus
+Wissen/Hardware.md nehmen ihn ohne Vorwarnung mit.
 
 Aufruf:
-    python handeln.py --vorschau   # was waere dran, ohne etwas zu schreiben
+    python handeln.py --vorschau   # was waere dran, ohne zu schreiben
     python handeln.py --papier     # Papierlauf mit Journal
+    python handeln.py --live       # scharf, wenn alle sieben Sperren offen
     python handeln.py --wachen     # Bedingungen als Momentaufnahme
-    python handeln.py --live       # verweigert, nennt den Grund, laeuft Papier
 """
 
 import argparse
@@ -58,12 +53,13 @@ from datetime import datetime, timezone
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
 XPERP = os.path.join(HANDEL, "xperp")
-for p in (HIER, XPERP):
+for p in (HIER, XPERP, HANDEL):
     if p not in sys.path:
         sys.path.insert(0, p)
 
 import auswahl                                                 # noqa: E402
 import bot                                                     # noqa: E402
+import freigabefenster                                         # noqa: E402
 import indikatoren                                              # noqa: E402
 import kandidaten                                              # noqa: E402
 import okxf                                                    # noqa: E402
@@ -82,25 +78,6 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
 # Wie bei xperp: die Rangliste wird zwischengelagert, weil ein voller Scan
 # Minuten kostet. Sie steht auf 4H-Kerzen und aendert sich nicht im Takt.
 SCAN_ALTER_MINUTEN = 120
-
-
-# --- Sicherheitsnetz --------------------------------------------------------
-
-class Papierfehler(RuntimeError):
-    """Eine Order wurde aus der Papierspur heraus versucht. Das ist ein Fehler."""
-
-
-def _keine_order(*a, **kw):
-    raise Papierfehler(
-        "Diese Spur ist papierfest: Order-Funktionen sind stillgelegt.")
-
-
-# Genau die vier Funktionen, die Geld bewegen. Nach diesem Block kann kein Code
-# in diesem Prozess eine Order ausloesen - auch kein importiertes Modul.
-for _name in ("order_limit", "markt_schliessen", "hebel_setzen",
-              "order_stornieren"):
-    if hasattr(okxf, _name):
-        setattr(okxf, _name, _keine_order)
 
 
 # --- Zeit, Zustand, Journal -------------------------------------------------
@@ -252,6 +229,40 @@ def anlauf(w, kandidat):
             "grund": lage["grund"]}
 
 
+# --- Sperren ----------------------------------------------------------------
+
+def sperren_live(w, s):
+    """Alles, was --live gerade verschliesst. Leere Liste = frei.
+
+    Dieselben sieben Gruende wie xperp. Der letzte traegt das Wort
+    Freigabefenster - daran haengt dauerlauf.nur_fenster_fehlt.
+    """
+    g = []
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false")
+    if not okxf.schluessel_vorhanden():
+        g.append("OKX-Schluessel nicht gesetzt")
+    if not s["freigabe_erfuellt"]:
+        g.append("freigabe.erfuellt=false (Bedingung 1)")
+    if not s["herzschlag_frisch"]:
+        g.append("Herzschlag alt (Bedingung 3)")
+    if s["ev_negativ"]:
+        g.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
+                 % s["rollierender_ev"])
+    if w.get("journal_zweitziel") is None:
+        g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+
+    # Punkt 3 der Handelsregeln, in der Fassung fuer den Dauerbetrieb: Ohne
+    # offenes Zeitfenster ist nichts scharf. Ein Zeitplan legt den Schalter
+    # nicht um, und ein Dauerlauf ist nur ein sehr enger Zeitplan.
+    try:
+        if not freigabefenster.lade("swap").offen():
+            g.append("kein offenes Freigabefenster (Handelsregeln Punkt 3)")
+    except ImportError:
+        g.append("freigabefenster.py nicht erreichbar")
+    return g
+
+
 # --- Ausstieg ---------------------------------------------------------------
 
 def _kurs(inst):
@@ -267,12 +278,12 @@ def _ergebnis(p, kurs):
     return p["margin"] + gewinn - gebuehr
 
 
-def pruefe_ausstiege(z, w):
+def pruefe_ausstiege(z, live, w):
     """Stop, Ziel, Liquidation - gerechnet aus dem eigenen Zustand.
 
     Ausstiege laufen nie durch eine Freigabe: Ein Stop muss auch dann greifen,
-    wenn niemand davorsitzt. Hier wird nichts an der Boerse geschlossen, weil
-    dort nichts offen ist.
+    wenn niemand davorsitzt. Live wird boersenseitig glattgestellt, Papier nur
+    im Zustand geschlossen.
     """
     behalten = []
     for p in z["positionen"]:
@@ -302,11 +313,20 @@ def pruefe_ausstiege(z, w):
             behalten.append(p)
             continue
 
+        if live:
+            try:
+                okxf.markt_schliessen(p["inst"], p["kontrakte"], p["seite"])
+            except Exception as e:                       # noqa: BLE001
+                print("  Schliessen %s fehlgeschlagen: %s" % (p["inst"], e),
+                      file=sys.stderr)
+                behalten.append(p)
+                continue
+
         erloes = _ergebnis(p, kurs)
         gv = erloes - p["margin"]
         print("  ZU  %-22s %-5s @ %.6f  (%s)  G/V %+.2f USD auf %.2f Margin"
               % (p["inst"], p["seite"], kurs, grund, gv, p["margin"]))
-        journal(zeit=_jetzt(), modus="papier",
+        journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
@@ -316,12 +336,11 @@ def pruefe_ausstiege(z, w):
     z["positionen"] = behalten
 
 
-def buche_funding(z, w):
+def buche_funding(z, live, w):
     """Faelliges Funding je offener Position ins Journal.
 
-    OKX rechnet alle 8 Stunden ab. Der Papierlauf rechnet es, damit die
-    Empfehlung nicht besser aussieht als die Wirklichkeit - dieselbe Falle wie
-    die Gebuehren.
+    OKX rechnet alle 8 Stunden ab. Im Papierlauf wird gerechnet, live spaeter
+    aus dem Ledger nachgetragen. Positiv heisst gezahlt.
     """
     jetzt = datetime.now(timezone.utc)
     for p in z["positionen"]:
@@ -343,8 +362,8 @@ def buche_funding(z, w):
         betrag = p["nominal"] * satz * perioden * vz
         p["funding_zuletzt"] = _jetzt()
         p["funding_summe"] = p.get("funding_summe", 0.0) + betrag
-        journal(zeit=_jetzt(), modus="papier", aktion="funding",
-                inst=p["inst"], seite=p["seite"],
+        journal(zeit=_jetzt(), modus="live" if live else "papier",
+                aktion="funding", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""),
                 nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.4f" % betrag,
@@ -354,8 +373,8 @@ def buche_funding(z, w):
               % (p["inst"], betrag, perioden, satz * 100))
 
 
-def flach_stellen(z, grund):
-    """Alle Papierpositionen schliessen - Bedingung 2 und 3."""
+def flach_stellen(z, live, grund):
+    """Alle Positionen schliessen - Bedingung 2 und 3."""
     behalten = []
     for p in z["positionen"]:
         try:
@@ -365,10 +384,18 @@ def flach_stellen(z, grund):
                   file=sys.stderr)
             behalten.append(p)
             continue
+        if live:
+            try:
+                okxf.markt_schliessen(p["inst"], p["kontrakte"], p["seite"])
+            except Exception as e:                       # noqa: BLE001
+                print("  Notausstieg %s fehlgeschlagen: %s" % (p["inst"], e),
+                      file=sys.stderr)
+                behalten.append(p)
+                continue
         erloes = _ergebnis(p, kurs)
         print("  NOT-ZU %-22s %-5s @ %.6f  G/V %+.2f USD  (%s)"
               % (p["inst"], p["seite"], kurs, erloes - p["margin"], grund))
-        journal(zeit=_jetzt(), modus="papier",
+        journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
@@ -388,8 +415,8 @@ def in_abklingzeit(basis, z, w):
     return d < w.get("abklingzeit_tage", 3)
 
 
-def pruefe_einstiege(z, kand, w, s, faktor=1.0):
-    """Papier-Einstiege. Kein Order-Zweig - es kann keinen geben."""
+def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
+    """Einstiege. Live geht der Auftrag an die Boerse, Papier nur ins Journal."""
     offen = {p["basis"] for p in z["positionen"]}
     margin_gebunden = sum(p["margin"] for p in z["positionen"])
     fam_stand = wx.familien_belegung(z["positionen"], w)
@@ -432,8 +459,9 @@ def pruefe_einstiege(z, kand, w, s, faktor=1.0):
 
         p = a["pflicht"]
         # Die Pruefpflicht ist keine Zierde: Traegt die Trefferquote die Kosten
-        # nicht, wird auch im Papierlauf nicht eroeffnet - sonst empfiehlt die
-        # Spur eine Strategie, die sie selbst nicht spielen wuerde.
+        # nicht, wird nicht eroeffnet. Die Grundlinie aus Wissen/Handelsbots.md
+        # im Automaten - dort lagen noetige und erreichte Quote immer ein bis
+        # zwei Punkte auseinander.
         if not p.get("traegt"):
             print("  -- %-22s %-5s: Trefferquote traegt die Kosten nicht "
                   "(noetig %s, beobachtet %s) - kein Anlauf" % (
@@ -447,6 +475,22 @@ def pruefe_einstiege(z, kand, w, s, faktor=1.0):
             print("  -- %-22s %-5s: Hebel %.1fx ueber Deckel %.1fx - kein Anlauf"
                   % (a["inst"], a["seite"], p["hebel"], p["hebel_deckel"]))
             continue
+
+        if live:
+            # Stop und Ziel gehen MIT der Order an die Boerse, nicht nur in
+            # zustand.json. Das ist der "nicht abschaltbare Stop" aus den
+            # Handelsregeln, woertlich genommen: Ein Stop, der nur hier steht,
+            # ist weg, sobald dieser Rechner weg ist - und die
+            # Kernel-Power-41-Abschaltungen nehmen ihn ohne Vorwarnung mit.
+            try:
+                okxf.hebel_setzen(a["inst"], g["hebel"])
+                okxf.order_limit(a["inst"], "buy" if a["seite"] == "long"
+                                 else "sell", kontrakte, a["einstieg"],
+                                 tp=a["ziel"], sl=a["stop"])
+            except Exception as e:                       # noqa: BLE001
+                print("  Eroeffnen %s fehlgeschlagen: %s" % (a["inst"], e),
+                      file=sys.stderr)
+                continue
 
         pos = {
             "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
@@ -482,7 +526,7 @@ def pruefe_einstiege(z, kand, w, s, faktor=1.0):
                  p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
                  p["quote_beobachtet"] * 100))
 
-        journal(zeit=_jetzt(), modus="papier",
+        journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"], seite=a["seite"],
                 familie=a["kategorie"], preis="%.6f" % a["einstieg"],
                 kontrakte=kontrakte, nominal_usd="%.2f" % g["nominal"],
@@ -540,24 +584,24 @@ def lauf(modus):
     z.setdefault("letzte_stops", {})
     s = wx.lage(w, JOURNAL, z)
 
+    live = False
     if modus == "live":
-        # Genau ein Grund, und das Wort Freigabefenster kommt darin nicht vor:
-        # dauerlauf.nur_fenster_fehlt stellt nur dann eine Anfrage, wenn der
-        # Grund dieses Wort traegt. Eine Anfrage waere hier eine Freigabe, die
-        # nichts oeffnen kann - eine Sperre, die nur so aussieht.
-        print("--live angefordert, aber gesperrt: "
-              "kein Live-Pfad in dieser Spur (Papier)")
-        print("-> es wird Papier gehandelt.")
+        g = sperren_live(w, s)
+        if g:
+            print("--live angefordert, aber gesperrt: " + "; ".join(g))
+            print("-> es wird Papier gehandelt.")
+        else:
+            live = True
 
     # Ausstiege und Notausstiege zuerst. Ein Stop muss auch dann greifen, wenn
     # niemand davorsitzt.
-    pruefe_ausstiege(z, w)
-    buche_funding(z, w)
+    pruefe_ausstiege(z, live, w)
+    buche_funding(z, live, w)
 
     if s["kill"]:
         print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf) -> alles flach -"
               % s["ruecklauf_usd"])
-        flach_stellen(z, "kill_switch")
+        flach_stellen(z, live, "kill_switch")
         schreibe_zustand(z)
         return
     if not s["herzschlag_frisch"]:
@@ -565,31 +609,33 @@ def lauf(modus):
               "Lauf -" % ("?" if s["herzschlag_alter_min"] is None
                           else "%.0f" % s["herzschlag_alter_min"],
                           w.get("herzschlag_max_minuten", 30)))
-        flach_stellen(z, "herzschlag_alt")
+        flach_stellen(z, live, "herzschlag_alt")
         schreibe_zustand(z)
         return
 
     werte, alter = rangliste(z)
     kand = kandidaten_aus(werte, w)
     gebunden = sum(p["margin"] for p in z["positionen"])
-    print("=== SWAP handeln (PAPIER%s) | %d Werte, %d Kandidaten | "
-          "Rangliste %.0f min alt | %.2f von %g USD Margin gebunden ==="
-          % ("" if modus != "vorschau" else ", Vorschau", len(werte), len(kand),
-             alter, gebunden, w["max_margin_gesamt_usd"]))
+    print("=== SWAP handeln (%s) | %d Werte, %d Kandidaten | Rangliste %.0f "
+          "min alt | %.2f von %g USD Margin gebunden ==="
+          % ("LIVE" if live else "Papier", len(werte), len(kand), alter,
+             gebunden, w["max_margin_gesamt_usd"]))
 
     if modus == "vorschau":
         for k in kand[:10]:
             print("  %-22s %-5s Punkte %.1f  Deckel %.1fx  (%s)"
                   % (k["instId"], k["seite"], k["punkte"], k["deckel"],
                      k["kategorie"]))
-        print("\nOffener Bestand: %d Papierpositionen, %.2f USD Margin"
+        print("\nOffener Bestand: %d Positionen, %.2f USD Margin"
               % (len(z["positionen"]), gebunden))
-        print("Live waere gesperrt durch: kein Live-Pfad in dieser Spur (Papier)")
+        g = sperren_live(w, s)
+        if g:
+            print("Live waere gesperrt durch: " + "; ".join(g))
         schreibe_zustand(z)
         return
 
-    pruefe_einstiege(z, kand, w, s, s["groessenfaktor"])
-    print("Offener Bestand danach: %d Papierpositionen, %.2f USD Margin"
+    pruefe_einstiege(z, kand, w, live, s, s["groessenfaktor"])
+    print("Offener Bestand danach: %d Positionen, %.2f USD Margin"
           % (len(z["positionen"]),
              sum(p["margin"] for p in z["positionen"])))
     schreibe_zustand(z)

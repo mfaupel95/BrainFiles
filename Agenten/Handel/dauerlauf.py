@@ -28,11 +28,10 @@ Er handelt nur Spuren mit Live-Pfad. Seit 03.09.2026 sind das zwei: Spur 2
 (xperp, der Hauptweg - der Pfad entstand an diesem Tag) und Spur 1
 (scanner). Spur 3 (Kraken) ist stillgelegt.
 
-Die SWAP-Spur laeuft daneben mit, aber nur als Papier: Ihr handeln.py hat
-keinen Live-Zweig, und sein --live verweigert mit einem Grund, den
-nur_fenster_fehlt() nicht als Fenster-Bitte liest. Sie wird trotzdem in jedem
-Zyklus gefahren - ihr Zustand und ihr Journal sind das, was der Tagesbericht
-und /status von ihr zeigen.
+Die SWAP-Spur laeuft daneben mit, seit 12.09.2026 mit demselben Live-Pfad
+wie xperp: handeln.py hat die sieben Sperren und wird nur bei offenem
+Freigabefenster scharf. Ihr Zustand und ihr Journal sind das, was der
+Tagesbericht und /status von ihr zeigen.
 
 WER FRAGT, WANN
 ---------------
@@ -109,12 +108,12 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # Spur 3 (Kraken) ist seit 03.09.2026 stillgelegt und steht deshalb nicht
 # mehr hier - Grund und Zahlen in kraken/wachen.json, Feld
 # _stillgelegt_grund. Der Ordner bleibt, die Spur kann wieder anlaufen.
-# SWAP laeuft daneben als Papierspur mit: handeln.py hat keinen Live-Zweig,
-# und sein --live verweigert mit genau einem Grund, in dem das Wort
-# Freigabefenster nicht vorkommt (swap/tests/test_handeln_papier.py prueft
-# das). Deshalb fragt pruefe_anfragen() hier nie eine Freigabe an, die nichts
-# oeffnen koennte. Ein Zyklus kostet trotzdem Zeit: die Rangliste bewertet bis
-# zu 60 SWAP-Reihen und ist zwei Stunden gueltig (SCAN_ALTER_MINUTEN).
+# SWAP laeuft mit demselben Live-Pfad wie xperp: handeln.py hat die sieben
+# Sperren, der letzte Grund traegt das Wort Freigabefenster (geprueft in
+# swap/tests/test_handeln_papier.py). pruefe_anfragen() fragt nur, wenn
+# ausschliesslich das Fenster fehlt. Ein Zyklus kostet trotzdem Zeit: die
+# Rangliste bewertet bis zu 60 SWAP-Reihen und ist zwei Stunden gueltig
+# (SCAN_ALTER_MINUTEN).
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
@@ -373,32 +372,39 @@ class Lauf:
         wort = text.split()[0].lower().lstrip("/")
         rest = text.split()[1:]
 
-        if wort in ("ja_xperp", "nein_xperp", "stop_xperp", "freigabe_xperp"):
-            f = freigabefenster.lade("xperp")
-            if wort == "freigabe_xperp":
-                with open(os.path.join(HIER, "xperp", "wachen.json"), encoding="utf-8") as datei:
+        if wort in ("ja_xperp", "nein_xperp", "stop_xperp", "freigabe_xperp",
+                    "ja_swap", "nein_swap", "stop_swap", "freigabe_swap"):
+            spur = "swap" if wort.endswith("_swap") else "xperp"
+            kurz = spur.upper()
+            endung = "_" + spur
+            f = freigabefenster.lade(spur)
+            if wort == "freigabe" + endung:
+                with open(os.path.join(HIER, spur, "wachen.json"), encoding="utf-8") as datei:
                     w = json.load(datei)
                 if not f.anfrage_offen():
-                    return ("XPERP: %s. Keine wartende Anfrage.\n"
+                    return ("%s: %s. Keine wartende Anfrage.\n"
                             "handel_erlaubt=%s, freigabe.erfuellt=%s.\n"
-                            "Nur der Dauerlauf stellt nach Sperrenpruefung eine Anfrage. SWAP bleibt gesperrt."
-                            % (f.text(), w.get("handel_erlaubt"), w.get("freigabe", {}).get("erfuellt")))
-                return freigabefenster.anfrage_text("xperp", w, f.d.get("anfrage_dauer_minuten", 60)).replace("/ja", "/ja_xperp").replace("/nein", "/nein_xperp")
-            if wort in ("nein_xperp", "stop_xperp"):
-                freigabefenster.schliessen("xperp", "Telegram " + wort)
-                return "XPERP-Fenster geschlossen. Keine neuen Live-Einstiege; keine Position glattgestellt. Spot unveraendert."
+                            "Nur der Dauerlauf stellt nach Sperrenpruefung eine Anfrage."
+                            % (kurz, f.text(), w.get("handel_erlaubt"), w.get("freigabe", {}).get("erfuellt")))
+                return freigabefenster.anfrage_text(spur, w, f.d.get("anfrage_dauer_minuten", 60)).replace("/ja", "/ja" + endung).replace("/nein", "/nein" + endung)
+            if wort in ("nein" + endung, "stop" + endung):
+                freigabefenster.schliessen(spur, "Telegram " + wort)
+                return ("%s-Fenster geschlossen. Keine neuen Live-Einstiege; "
+                        "keine Position glattgestellt. Spot unveraendert." % kurz)
             import math
             try:
                 h = float(rest[0]) if len(rest) == 1 else None
                 if h is None or not math.isfinite(h) or not 0 < h <= freigabefenster.MAX_STUNDEN:
                     raise ValueError
             except ValueError:
-                return "Syntax: /ja_xperp STUNDEN (groesser 0, hoechstens 24). Erst /freigabe_xperp lesen."
-            m = freigabefenster.oeffnen("xperp", h, "telegram/xperp")
+                return ("Syntax: /ja%s STUNDEN (groesser 0, hoechstens 24). "
+                        "Erst /freigabe%s lesen." % (endung, endung))
+            m = freigabefenster.oeffnen(spur, h, "telegram/" + spur)
             if m is None:
-                return "Keine aktuelle XPERP-Anfrage. Nichts freigegeben; Spot unveraendert."
-            protokoll("FREIGABE xperp fuer %s min" % m)
-            return "XPERP-Fenster fuer %g h offen; alle Wachen gelten weiter. Spot unveraendert. /stop_xperp schliesst das Fenster." % h
+                return "Keine aktuelle %s-Anfrage. Nichts freigegeben; Spot unveraendert." % kurz
+            protokoll("FREIGABE %s fuer %s min" % (spur, m))
+            return ("%s-Fenster fuer %g h offen; alle Wachen gelten weiter. "
+                    "Spot unveraendert. /stop%s schliesst das Fenster." % (kurz, h, endung))
 
         if wort == "prognose":
             return "Bitte im SkillsBot: /prognose [N]. Die Marktanalyse darf hier weder Stop-Befehle noch den Handelszyklus blockieren."

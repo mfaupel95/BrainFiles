@@ -1,11 +1,11 @@
-"""Tests fuer swap/handeln.py - Papierpfad, ohne Netz, ohne Order.
+"""Tests fuer swap/handeln.py - Papier- und Live-Pfad, ohne Netz.
 
-Der Order-Pfad wird nicht benutzt, sondern geprueft: Die vier Funktionen, die
-Geld bewegen, sind im Modul stillgelegt, und die Papierspur kennt keinen
-Live-Zweig. Ein Test, der eine Order erreichen koennte, waere der Fehler.
+Der Live-Pfad wird nicht ausgefuehrt, sondern abgehoert: Die Order-Funktionen
+werden im Test durch Aufzeichner ersetzt. Im Papierlauf muessen sie stumm
+bleiben, im Live-Zweig duerfen sie nur mit den erwarteten Werten aufgerufen
+werden - inklusive des boersenseitigen Stops (tp/sl an der Order).
 """
 
-import ast
 import os
 import sys
 import tempfile
@@ -17,8 +17,9 @@ SWAP = os.path.dirname(HIER)
 if SWAP not in sys.path:
     sys.path.insert(0, SWAP)
 
-import handeln as h                                          # noqa: E402
-import okxf                                                  # noqa: E402
+import handeln as h                                            # noqa: E402
+import freigabefenster                                         # noqa: E402
+import okxf                                                    # noqa: E402
 
 WACHEN = {
     "max_offene_anlaeufe": 2, "max_margin_gesamt_usd": 100.0,
@@ -69,83 +70,101 @@ def position(**over):
     return p
 
 
-def gedruckte_zeilen(pfad):
-    """Alle Zeichenketten, die das Modul druckt - aus dem Quelltext geholt.
+class Fenster:
+    def __init__(self, offen):
+        self._offen = offen
 
-    Nicht die Datei als Ganzes durchsuchen: Der Modulkopf erklaert die Regel
-    und nennt dabei genau die Woerter, um die es geht. Ein Test ueber den
-    ganzen Quelltext schlaegt deshalb fehl, ohne dass etwas kaputt ist - und
-    ein Test, der dann abgeschwaecht wird, prueft nichts mehr. Gedruckt wird
-    nur, was in einem print()-Aufruf steht; das ist genau das, was der
-    Dauerlauf liest.
-    """
-    with open(pfad, encoding="utf-8") as f:
-        baum = ast.parse(f.read())
-    aus = []
-    for knoten in ast.walk(baum):
-        if isinstance(knoten, ast.Call) and getattr(knoten.func, "id", "") == "print":
-            for arg in knoten.args:
-                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
-                    aus.append(arg.value)
-    return aus
+    def offen(self):
+        return self._offen
 
 
-class Sicherheitsnetz(unittest.TestCase):
+def w_zu(handel_erlaubt=True, zweitziel=1.0):
+    w = dict(WACHEN, handel_erlaubt=handel_erlaubt)
+    if zweitziel is not None:
+        w["journal_zweitziel"] = zweitziel
+    return w
 
-    def test_die_vier_order_funktionen_sind_stillgelegt(self):
-        for name in ("order_limit", "markt_schliessen", "hebel_setzen",
-                     "order_stornieren"):
-            with self.assertRaises(h.Papierfehler, msg=name):
-                getattr(okxf, name)("XAU-USDT-SWAP", 1, "long")
 
-    def test_papierspur_kennt_keinen_live_zweig(self):
+def lage_zu(freigabe=True, herzschlag=True, ev=1.0, wochenende=False):
+    return {"freigabe_erfuellt": freigabe, "herzschlag_frisch": herzschlag,
+            "ev_negativ": ev is not None and ev < 0, "rollierender_ev": ev,
+            "wochenende": wochenende}
+
+
+class Sperren(unittest.TestCase):
+    """Die sieben Gruende von sperren_live() - Schnittstelle zum Dauerlauf."""
+
+    def setUp(self):
+        self.alt = (okxf.schluessel_vorhanden, freigabefenster.lade)
+        okxf.schluessel_vorhanden = lambda: True
+
+    def tearDown(self):
+        okxf.schluessel_vorhanden, freigabefenster.lade = self.alt
+
+    def test_alles_zu_ergibt_sieben_gruende(self):
+        okxf.schluessel_vorhanden = lambda: False
+        freigabefenster.lade = lambda spur: Fenster(False)
+        g = h.sperren_live(w_zu(False, None),
+                           lage_zu(False, False, -1.0))
+        self.assertEqual(len(g), 7)
+        self.assertEqual(
+            g[-1], "kein offenes Freigabefenster (Handelsregeln Punkt 3)")
+        for grund in g[:-1]:
+            self.assertNotIn("Freigabefenster", grund)
+
+    def test_nur_das_fenster_fehlt_ergibt_genau_einen_grund(self):
+        """Was dauerlauf.nur_fenster_fehlt als Bitte liest: ein Grund, das
+        Wort Freigabefenster, kein Semikolon und kein Doppelpunkt darin."""
+        freigabefenster.lade = lambda spur: Fenster(False)
+        g = h.sperren_live(w_zu(True, 1.0), lage_zu(True, True, 1.0))
+        self.assertEqual(
+            g, ["kein offenes Freigabefenster (Handelsregeln Punkt 3)"])
+        self.assertNotIn(";", g[0])
+        self.assertNotIn(":", g[0])
+
+    def test_fenster_offen_und_bedingungen_frei_ergibt_keine_sperre(self):
+        freigabefenster.lade = lambda spur: Fenster(True)
+        self.assertEqual(h.sperren_live(w_zu(True, 1.0),
+                                        lage_zu(True, True, 1.0)), [])
+
+    def test_vorschau_druckt_die_sperrliste_als_schnittstelle(self):
         with open(os.path.join(SWAP, "handeln.py"), encoding="utf-8") as f:
             quelle = f.read()
-        for verbot in ("live = True", "live=True", "if live:"):
-            self.assertNotIn(verbot, quelle)
-
-    def test_live_verweigert_mit_einem_grund_ohne_das_wort_freigabefenster(self):
-        """Sonst fragt der Dauerlauf eine Freigabe an, die nichts oeffnen kann.
-
-        Geprueft wird die Ausgabe, nicht die Datei: dauerlauf.nur_fenster_fehlt
-        liest stdout und stellt nur dann eine Anfrage, wenn dort genau EIN
-        Grund steht und dieser das Wort Freigabefenster traegt. Beide gedruckten
-        Zeilen, die der Dauerlauf zu sehen bekommt, muessen das einhalten - die
-        aus --vorschau (die er liest) und die aus --live (die er ausloest).
-        """
-        zeilen = gedruckte_zeilen(os.path.join(SWAP, "handeln.py"))
-        vorschau = [z for z in zeilen if "gesperrt durch" in z]
-        self.assertEqual(len(vorschau), 1, vorschau)
-        gruende = [g.strip() for g in vorschau[0].split(":", 1)[-1].split(";")]
-        self.assertEqual(len(gruende), 1, gruende)
-        self.assertIn("kein Live-Pfad in dieser Spur (Papier)", gruende[0])
-        for z in zeilen:
-            if "kein Live-Pfad" in z:
-                self.assertNotIn("Freigabefenster", z)
+        self.assertIn("Live waere gesperrt durch: ", quelle)
 
 
 class Papierlauf(unittest.TestCase):
+    """Der Papierpfad: Positionen entstehen und schliessen, Orders nie."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.alt = (h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs)
+        self.alt = (h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs,
+                    okxf.hebel_setzen, okxf.order_limit,
+                    okxf.markt_schliessen)
         h.ZUSTAND = os.path.join(self.tmp.name, "zustand.json")
         h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
         h.anlauf = anlauf_stummel
 
+        def _verboten(*a, **kw):
+            raise AssertionError("Papierlauf darf keine Order rufen")
+        okxf.hebel_setzen = _verboten
+        okxf.order_limit = _verboten
+        okxf.markt_schliessen = _verboten
+
     def tearDown(self):
-        h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs = self.alt
+        (h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs,
+         okxf.hebel_setzen, okxf.order_limit,
+         okxf.markt_schliessen) = self.alt
         self.tmp.cleanup()
 
     def journal_zeilen(self):
         with open(h.JOURNAL, encoding="utf-8") as f:
             return f.read().splitlines()
 
-    # --- Einstieg ---
-
     def test_papier_einstieg_legt_position_und_journalzeile_an(self):
         z = {"positionen": [], "letzte_stops": {}}
-        h.pruefe_einstiege(z, [KAND], WACHEN, {"wochenende": False}, 1.0)
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
         self.assertEqual(len(z["positionen"]), 1)
         p = z["positionen"][0]
         for feld in ("inst", "basis", "seite", "familie", "einstieg", "stop",
@@ -154,20 +173,22 @@ class Papierlauf(unittest.TestCase):
             self.assertIn(feld, p)
         zeilen = self.journal_zeilen()
         self.assertEqual(len(zeilen), 2)          # Kopfzeile + Eroeffnung
-        self.assertIn("eroeffnen", zeilen[1])
+        self.assertIn(",papier,eroeffnen,", zeilen[1])
         self.assertIn("XAU-USDT-SWAP", zeilen[1])
 
     def test_wochenende_sperrt_aktie_und_rohstoff_nicht_krypto(self):
         z = {"positionen": [], "letzte_stops": {}}
         h.pruefe_einstiege(z, [dict(KAND, kategorie="rohstoff")], WACHEN,
-                           {"wochenende": True}, 1.0)
+                           False, {"wochenende": True}, 1.0)
         self.assertEqual(z["positionen"], [])
-        h.pruefe_einstiege(z, [KAND], WACHEN, {"wochenende": True}, 1.0)
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": True}, 1.0)
         self.assertEqual(len(z["positionen"]), 1)
 
     def test_kein_zweiter_anlauf_in_dieselbe_reihe(self):
         z = {"positionen": [], "letzte_stops": {}}
-        h.pruefe_einstiege(z, [KAND, KAND], WACHEN, {"wochenende": False}, 1.0)
+        h.pruefe_einstiege(z, [KAND, KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
         self.assertEqual(len(z["positionen"]), 1)
 
     def test_ohne_tragende_quote_kein_anlauf(self):
@@ -175,21 +196,21 @@ class Papierlauf(unittest.TestCase):
         alt = anlauf_stummel(WACHEN, KAND)
         alt["pflicht"] = dict(alt["pflicht"], traegt=False)
         h.anlauf = lambda w, k: alt
-        h.pruefe_einstiege(z, [KAND], WACHEN, {"wochenende": False}, 1.0)
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
         self.assertEqual(z["positionen"], [])
 
     def test_rahmen_ist_bei_zwei_anlaeufen_zu(self):
         z = {"positionen": [position(), position(inst="BTC-USDT-SWAP", basis="BTC")],
              "letzte_stops": {}}
-        h.pruefe_einstiege(z, [KAND], WACHEN, {"wochenende": False}, 1.0)
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
         self.assertEqual(len(z["positionen"]), 2)
-
-    # --- Ausstieg ---
 
     def test_stop_schliesst_die_papierposition_und_setzt_die_abklingzeit(self):
         h._kurs = lambda inst: 96.0
         z = {"positionen": [position()], "letzte_stops": {}}
-        h.pruefe_ausstiege(z, WACHEN)
+        h.pruefe_ausstiege(z, False, WACHEN)
         self.assertEqual(z["positionen"], [])
         self.assertEqual(z["letzte_stops"]["XAU"],
                          datetime.now(timezone.utc).date().isoformat())
@@ -198,7 +219,7 @@ class Papierlauf(unittest.TestCase):
     def test_ziel_schliesst_ohne_abklingzeit(self):
         h._kurs = lambda inst: 107.0
         z = {"positionen": [position()], "letzte_stops": {}}
-        h.pruefe_ausstiege(z, WACHEN)
+        h.pruefe_ausstiege(z, False, WACHEN)
         self.assertEqual(z["positionen"], [])
         self.assertEqual(z["letzte_stops"], {})
         self.assertIn("ziel", self.journal_zeilen()[1])
@@ -206,7 +227,7 @@ class Papierlauf(unittest.TestCase):
     def test_liquidation_ist_ein_eigener_grund(self):
         h._kurs = lambda inst: 80.0
         z = {"positionen": [position()], "letzte_stops": {}}
-        h.pruefe_ausstiege(z, WACHEN)
+        h.pruefe_ausstiege(z, False, WACHEN)
         self.assertIn("LIQUIDATION", self.journal_zeilen()[1])
 
     def test_position_bleibt_wenn_kein_kurs_kommt(self):
@@ -214,11 +235,10 @@ class Papierlauf(unittest.TestCase):
             raise RuntimeError("kein Netz")
         h._kurs = platzt
         z = {"positionen": [position()], "letzte_stops": {}}
-        h.pruefe_ausstiege(z, WACHEN)
+        h.pruefe_ausstiege(z, False, WACHEN)
         self.assertEqual(len(z["positionen"]), 1)
 
     def test_ergebnis_rechnet_gebuehr_beim_schliessen_ab(self):
-        # 10 % im Plus auf 100 USD Nominal = 10 USD, minus 0,05 USD Taker
         erloes = h._ergebnis(position(), 110.0)
         self.assertAlmostEqual(erloes, 20.0 + 10.0 - 0.05, places=6)
 
@@ -230,11 +250,9 @@ class Papierlauf(unittest.TestCase):
         h._kurs = lambda inst: 100.5
         z = {"positionen": [position(), position(inst="BTC-USDT-SWAP", basis="BTC")],
              "letzte_stops": {}}
-        h.flach_stellen(z, "kill_switch")
+        h.flach_stellen(z, False, "kill_switch")
         self.assertEqual(z["positionen"], [])
         self.assertEqual(len(self.journal_zeilen()), 3)   # Kopf + zwei Zeilen
-
-    # --- Sperren ---
 
     def test_abklingzeit_gilt_fuer_den_stoptag(self):
         heute = datetime.now(timezone.utc).date().isoformat()
@@ -243,6 +261,88 @@ class Papierlauf(unittest.TestCase):
         self.assertTrue(h.in_abklingzeit("XAU", z, WACHEN))
         self.assertFalse(h.in_abklingzeit("BTC", z, WACHEN))
         self.assertFalse(h.in_abklingzeit("ETH", z, WACHEN))
+
+
+class Livezweig(unittest.TestCase):
+    """Der Live-Zweig: Orders nur hier, und nur mit dem boersenseitigen Stop."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.aufrufe = []
+        self.alt = (h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs,
+                    okxf.hebel_setzen, okxf.order_limit,
+                    okxf.markt_schliessen)
+        h.ZUSTAND = os.path.join(self.tmp.name, "zustand.json")
+        h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
+        h.anlauf = anlauf_stummel
+        okxf.hebel_setzen = lambda inst, hebel, *a, **kw: self.aufrufe.append(
+            ("hebel_setzen", inst, hebel))
+        okxf.order_limit = lambda *a, **kw: self.aufrufe.append(
+            ("order_limit", a, kw))
+        okxf.markt_schliessen = lambda *a, **kw: self.aufrufe.append(
+            ("markt_schliessen", a, kw))
+
+    def tearDown(self):
+        (h.ZUSTAND, h.JOURNAL, h.anlauf, h._kurs,
+         okxf.hebel_setzen, okxf.order_limit,
+         okxf.markt_schliessen) = self.alt
+        self.tmp.cleanup()
+
+    def journal_zeilen(self):
+        with open(h.JOURNAL, encoding="utf-8") as f:
+            return f.read().splitlines()
+
+    def test_live_einstieg_setzt_hebel_und_order_mit_tp_und_sl(self):
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [KAND], WACHEN, True,
+                           {"wochenende": False}, 1.0)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.aufrufe[0][0], "hebel_setzen")
+        self.assertEqual(self.aufrufe[0][1:], ("XAU-USDT-SWAP", 5.0))
+        name, args, kw = self.aufrufe[1]
+        self.assertEqual(name, "order_limit")
+        self.assertEqual(args, ("XAU-USDT-SWAP", "buy", 10, 100.0))
+        self.assertEqual(kw, {"tp": 106.0, "sl": 97.0})
+        self.assertIn(",live,eroeffnen,", self.journal_zeilen()[1])
+
+    def test_papier_einstieg_ruft_keine_order(self):
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
+        self.assertEqual(self.aufrufe, [])
+        self.assertIn(",papier,eroeffnen,", self.journal_zeilen()[1])
+
+    def test_live_stop_ruft_markt_schliessen(self):
+        h._kurs = lambda inst: 96.0
+        z = {"positionen": [position()], "letzte_stops": {}}
+        h.pruefe_ausstiege(z, True, WACHEN)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.aufrufe[0][0], "markt_schliessen")
+        self.assertEqual(self.aufrufe[0][1], ("XAU-USDT-SWAP", 10, "long"))
+        self.assertIn(",live,schliessen,", self.journal_zeilen()[1])
+
+    def test_papier_stop_ruft_keine_order(self):
+        h._kurs = lambda inst: 96.0
+        z = {"positionen": [position()], "letzte_stops": {}}
+        h.pruefe_ausstiege(z, False, WACHEN)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.aufrufe, [])
+
+    def test_live_notausstieg_ruft_markt_schliessen(self):
+        h._kurs = lambda inst: 100.5
+        z = {"positionen": [position()], "letzte_stops": {}}
+        h.flach_stellen(z, True, "kill_switch")
+        self.assertEqual(len(self.aufrufe), 1)
+        self.assertEqual(self.aufrufe[0][0], "markt_schliessen")
+
+    def test_eroeffnen_fehler_hinterlaesst_keine_position(self):
+        def kaputt(*a, **kw):
+            raise RuntimeError("OKX nicht erreichbar")
+        okxf.hebel_setzen = kaputt
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [KAND], WACHEN, True,
+                           {"wochenende": False}, 1.0)
+        self.assertEqual(z["positionen"], [])
 
 
 if __name__ == "__main__":
