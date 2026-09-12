@@ -37,6 +37,10 @@
 !MaxHirn/Wissen/**/*.md
 !MaxHirn/.claude/skills/**
 !MaxHirn/.claude/agents/**
+# Skills im Hermes-Format. Sie steuern Verhalten und haben keinen zweiten Ort:
+# sichern.ps1 und sichern-zweitkopie.ps1 halten nur den JETZIGEN Stand. Ein
+# falsch kalibrierter Waechter faellt nur auf, wenn die Vorgeschichte da ist.
+!MaxHirn/optional-skills/**
 # Sicherungskopien global installierter eigener Skills. Bewusst neben
 # skills/ statt darin: Claude Code laedt nur skills/, damit steht ein
 # Skill nicht doppelt in der Liste.

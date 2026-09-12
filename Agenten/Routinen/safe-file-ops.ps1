@@ -34,7 +34,18 @@ param(
   [string]$Aktion,
 
   # Ohne diesen Schalter wird nichts veraendert. Vorgabe ist der Trockenlauf.
-  [switch]$Ausfuehren
+  [switch]$Ausfuehren,
+
+  # Tor statt Urteil: Der Aufrufer sagt, welches Urteil er voraussetzt. Weicht
+  # das tatsaechliche ab, endet der Lauf mit 4 und es wird nichts getan. Damit
+  # prueft eine Routine, dass der Schutz noch scharf ist, statt darauf zu
+  # vertrauen - eine spaetere Regeländerung faellt dann auf, statt still zu wirken.
+  [ValidateSet('ERLAUBT','ABBRUCH','SICHERUNG_PFLICHT','QUARANTAENE')]
+  [string]$Erwartet,
+
+  # Keine Ausgabe im Normalfall, nur bei verletzter Erwartung. Fuer Aufrufe aus
+  # Routinen, deren Protokoll sonst zugemuellt wird.
+  [switch]$Stille
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,36 +71,39 @@ $script:Stufe0GeheimMuster = @(
 # Stufe 0: die Archivdaten. Seit dem 07.09.2026 liegen sie auf O:\Archiv,
 # der Altbestand kann noch unter MaxHirn\Claude liegen.
 $script:Stufe0Muster = @(
-  '^o:/archiv/(dokumente|bilder|videos|musik|software|posteingang)(/|$)'
+  # Die ganze Archivwurzel, nicht nur die bekannten Unterordner: das Archiv ist
+  # am 07.09.2026 nach O:\Archiv gezogen. Ein neuer Unterordner waere sonst
+  # ungeschuetzt, bis jemand diese Liste nachzieht (Fund 12.09.2026).
+  '^o:/archiv(/|$)'
   '/maxhirn/claude/(dokumente|bilder|videos|musik|posteingang)(/|$)'
 )
 
 # Stufe 2 trotz allgemeiner Stufe-1-Regel: reproduzierbar oder ausdruecklich
 # freigegeben (Protokolle, Umgebungen, Fremdbaeume, Indexdatenbanken).
 $script:Stufe2ImmerMuster = @(
-  '/agenten/routinen/logs/'
-  '/\.venv/'
-  '/__pycache__/'
-  '/node_modules/'
-  '/\.git/'
+  '/agenten/routinen/logs(/|$)'
+  '/\.venv(/|$)'
+  '/__pycache__(/|$)'
+  '/node_modules(/|$)'
+  '/\.git(/|$)'
 )
 
 # Stufe 1: betrieblich. Ersetzbar, aber sie brechen still - der Schaden zeigt
 # sich Wochen spaeter als Sicherung, die aufgehoert hat zu laufen.
 $script:Stufe1Muster = @(
   '/maxhirn/(agents|claude|dashboard)\.md$'
-  '/maxhirn/\.claude/skills/'
-  '/maxhirn/\.agents/skills/'
-  '/maxhirn/optional-skills/'
-  '/maxhirn/\.obsidian/'
-  '/maxhirn/archiv/archivsuche/'
+  '/maxhirn/\.claude/skills(/|$)'
+  '/maxhirn/\.agents/skills(/|$)'
+  '/maxhirn/optional-skills(/|$)'
+  '/maxhirn/\.obsidian(/|$)'
+  '/maxhirn/archiv/archivsuche(/|$)'
   '/maxhirn/(sichern|install)[^/]*\.ps1$'
-  '/agenten/routinen/'
-  '/agenten/mcp-server/'
-  '/agenten/handel/'
-  '/agenten/hermes/'
-  '/agenten/bus/'
-  '/agenten/\.claude/'
+  '/agenten/routinen(/|$)'
+  '/agenten/mcp-server(/|$)'
+  '/agenten/handel(/|$)'
+  '/agenten/hermes(/|$)'
+  '/agenten/bus(/|$)'
+  '/agenten/\.claude(/|$)'
   '/agenten/(sichern|mcp-sync-check)[^/]*\.(ps1|json)$'
 )
 
@@ -180,12 +194,24 @@ function Move-InQuarantaene {
     Set-Content -LiteralPath (Join-Path $ordner 'README.txt') -Value $hinweis -Encoding UTF8
   }
 
-  $name = Split-Path -LiteralPath $Quelle -Leaf
+  # GetFileName statt Split-Path -Leaf: Split-Path -LiteralPath liefert in
+  # PowerShell 7 einen leeren Wert. Aus dem leeren Namen entstuende ein Ziel
+  # ohne Dateinamen, und der Move scheitert dann in 5.1 mit einer Meldung, die
+  # auf den Parametersatz zeigt statt auf die Ursache (erlebt 11.09.2026).
+  $name = [System.IO.Path]::GetFileName($Quelle)
+  if ([string]::IsNullOrWhiteSpace($name)) {
+    throw "Aus '$Quelle' laesst sich kein Dateiname gewinnen - Abbruch statt Blindverschieben."
+  }
   $ziel = Join-Path $ordner $name
   if (Test-Path -LiteralPath $ziel) {
     $ziel = Join-Path $ordner ('{0}.{1}' -f $name, (Get-Date -Format 'yyyyMMdd-HHmmss'))
   }
-  Move-Item -LiteralPath $Quelle -Destination $ziel
+  # .NET statt Move-Item: verhaelt sich in 5.1 und 7 gleich.
+  if ([System.IO.Directory]::Exists($Quelle)) {
+    [System.IO.Directory]::Move($Quelle, $ziel)
+  } else {
+    [System.IO.File]::Move($Quelle, $ziel)
+  }
   return $ziel
 }
 
@@ -281,15 +307,32 @@ function Invoke-Schutzpruefung {
   param(
     [Parameter(Mandatory)][string]$Pfad,
     [Parameter(Mandatory)][string]$Aktion,
-    [switch]$Ausfuehren
+    [switch]$Ausfuehren,
+    [string]$Erwartet,
+    [switch]$Stille
   )
 
   $urteil = Get-Schutzurteil -Pfad $Pfad -Aktion $Aktion
 
-  'STUFE: {0}'         -f $urteil.Stufe        | Write-Output
-  'ENTSCHEIDUNG: {0}'  -f $urteil.Entscheidung | Write-Output
-  'GRUND: {0}'         -f $urteil.Grund        | Write-Output
-  'PFAD: {0}'          -f $urteil.Pfad         | Write-Output
+  if (-not $Stille) {
+    'STUFE: {0}'         -f $urteil.Stufe        | Write-Output
+    'ENTSCHEIDUNG: {0}'  -f $urteil.Entscheidung | Write-Output
+    'GRUND: {0}'         -f $urteil.Grund        | Write-Output
+    'PFAD: {0}'          -f $urteil.Pfad         | Write-Output
+  }
+
+  # Tor: nur pruefen, nicht handeln. Steht vor der Urteilslogik, weil ein
+  # Aufrufer mit -Erwartet eine Zusicherung will, keine Nebenwirkung.
+  if ($Erwartet) {
+    if ($urteil.Entscheidung -ne $Erwartet) {
+      Write-Output ('ERWARTUNG VERLETZT: erwartet {0}, tatsaechlich {1}' -f $Erwartet, $urteil.Entscheidung)
+      Write-Output ('GRUND: {0}' -f $urteil.Grund)
+      Write-Waechterprotokoll -Zeile ('TOR VERLETZT | {0} | {1} statt {2} | {3}' -f $Aktion, $urteil.Entscheidung, $Erwartet, $urteil.Pfad)
+      exit 4
+    }
+    if (-not $Stille) { Write-Output ('TOR GEHALTEN: {0}' -f $Erwartet) }
+    exit 0
+  }
 
   $tat = $false
 
@@ -351,7 +394,10 @@ if ($MyInvocation.InvocationName -ne '.') {
     Write-Output 'Ohne -Ausfuehren nur Urteil, ohne jede Aenderung.'
     Write-Output ''
     Write-Output 'Exitcodes: 0 ERLAUBT | 1 ABBRUCH | 2 SICHERUNG_PFLICHT | 3 QUARANTAENE'
+    Write-Output '          4 Erwartung verletzt (nur mit -Erwartet, es wird nichts getan)'
+    Write-Output ''
+    Write-Output 'Tor statt Urteil: -Erwartet <Urteil> prueft nur und handelt nicht.'
     exit 0
   }
-  Invoke-Schutzpruefung -Pfad $Pfad -Aktion $Aktion -Ausfuehren:$Ausfuehren
+  Invoke-Schutzpruefung -Pfad $Pfad -Aktion $Aktion -Ausfuehren:$Ausfuehren -Erwartet $Erwartet -Stille:$Stille
 }

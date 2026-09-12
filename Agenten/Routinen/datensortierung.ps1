@@ -33,7 +33,8 @@ $wurzel  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $agenten = Join-Path $wurzel 'Agenten'
 $maxhirn = Join-Path $wurzel 'MaxHirn'
 $sshDir  = Join-Path $env:USERPROFILE '.ssh'
-$logs    = Join-Path $PSScriptRoot 'logs'
+$logs     = Join-Path $PSScriptRoot 'logs'
+$waechter = Join-Path $PSScriptRoot 'safe-file-ops.ps1'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
 . (Join-Path $agenten 'Bus\Ereignis.ps1')                                # neu
@@ -89,6 +90,27 @@ $bereiche = @(
   @{ Name = 'MaxHirn'; Root = $maxhirn }
 )
 
+# --- Vorschaltung: zwei getrennte Zusicherungen ----------------------------
+# 1) Das Archiv selbst (O:\Archiv, Stufe 0) darf nie in eine Massenoperation
+#    geraten. Der Waechter bestaetigt das vor jedem Lauf.
+# 2) MaxHirn\Archiv ist laut Schutzregeln Stufe 2 - dieser Zweig wird hier
+#    allein durch die Ausschlussliste ferngehalten (Wunsch 05.09.2026). Faellt
+#    'Archiv' aus der Liste, laeuft das Skript durch den ganzen Zweig, ohne
+#    dass eine Stufe es aufhaelt. Deshalb wird die Liste geprueft.
+$null = & powershell -ExecutionPolicy Bypass -NoProfile -File $waechter `
+          -Pfad 'O:\Archiv' -Aktion massenhaft_loeschen -Erwartet ABBRUCH -Stille
+if ($LASTEXITCODE -ne 0) {
+  Notiz "  ! Vorschaltung: 'O:\Archiv' ist nicht mehr gesperrt (Exitcode $LASTEXITCODE) - Lauf abgebrochen."
+  Melde-Ende -Marke $marke -Code 1 -Text 'Waechtertor offen'
+  exit 1
+}
+if ('Archiv' -notin $ueberspringen) {
+  Notiz "  ! Vorschaltung: 'Archiv' fehlt in der Ausschlussliste - Lauf abgebrochen."
+  Melde-Ende -Marke $marke -Code 1 -Text 'Archiv nicht mehr ausgeschlossen'
+  exit 1
+}
+Notiz 'Vorschaltung ok: O:\Archiv gesperrt, Archiv-Zweig ausgeschlossen.'
+
 # ---------------------------------------------------------------------------
 # 1) .bak-Dateien konsolidieren
 # ---------------------------------------------------------------------------
@@ -111,7 +133,13 @@ try {
         $ext = [System.IO.Path]::GetExtension($flatName)
         do { $destPath = Join-Path $backupsDir "$base`_$i$ext"; $i++ } while (Test-Path $destPath)
       }
-      if ($NurPruefen) {
+      # Waechter: Stufe 0 und Schluesseldateien werden nicht angefasst, auch
+      # wenn der Name nach .bak aussieht. Der Fund steht dann im Bericht.
+      $null = & powershell -ExecutionPolicy Bypass -NoProfile -File $waechter `
+                -Pfad $f -Aktion verschieben -Stille
+      if ($LASTEXITCODE -eq 1) {
+        Entscheiden "$($b.Name): .bak-Datei $rel liegt in Stufe 0 - nicht verschoben."
+      } elseif ($NurPruefen) {
         Entscheiden "$($b.Name): .bak-Datei $rel wuerde nach _Backups verschoben."
       } else {
         try { Move-Item -LiteralPath $f -Destination $destPath; Getan "$($b.Name): $rel -> _Backups\$(Split-Path $destPath -Leaf)"; $verschobenGesamt++ }
@@ -192,9 +220,17 @@ $md.Add("")
 $md | Set-Content $bericht -Encoding UTF8
 $md | Set-Content $md_heute -Encoding UTF8
 
-Get-ChildItem $logs -Filter 'datensortierung-*.*' -EA SilentlyContinue |
-  Where-Object { $_.Name -ne 'datensortierung-letzter-lauf.md' -and $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
-  Remove-Item -Force -EA SilentlyContinue
+# Loeschen nur auf freien Pfaden: erst fragen, dann raeumen. Ist der
+# Protokollordner nicht als Stufe 2 bestaetigt, bleiben die alten Dateien liegen.
+$null = & powershell -ExecutionPolicy Bypass -NoProfile -File $waechter `
+          -Pfad $logs -Aktion loeschen -Erwartet ERLAUBT -Stille
+if ($LASTEXITCODE -eq 0) {
+  Get-ChildItem $logs -Filter 'datensortierung-*.*' -EA SilentlyContinue |
+    Where-Object { $_.Name -ne 'datensortierung-letzter-lauf.md' -and $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    Remove-Item -Force -EA SilentlyContinue
+} else {
+  Notiz "  ! Protokollaufraeumen uebersprungen: '$logs' ist nicht als frei bestaetigt (Exitcode $LASTEXITCODE)."
+}
 
 Notiz "`nENDE ok - $($getan.Count) erledigt, $($entscheiden.Count) zu entscheiden, $($neuZeilen.Count) davon neu seit gestern (Dauer $sek s)"
 Melde-Ende -Marke $marke -Code 0                                        # neu

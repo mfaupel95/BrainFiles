@@ -109,3 +109,36 @@ Zwei Schlüsse daraus, die bei jeder Prüfung mitlaufen:
 Jede Änderung am Serverbestand gehört mit Datum nach [[Verbindungen]] — auch das
 Abschalten. Ein „aktiv", das seit Wochen niemand nachgemessen hat, ist die
 teuerste Zeile in der Tabelle.
+
+## 7. Der automatische Abgleich der zwei Agenten
+
+Für den Bestand in diesem Rechner gibt es eine Prüfung, die Manifest,
+Claude-Konfiguration und alle Hermes-Konfigurationen gegeneinander hält und den
+Exit-Code als Abnahme liefert. Sie läuft in `MaxHirn-Systempruefung` mit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Agenten/mcp-sync-check.ps1 -Streng
+```
+
+Exit 0 = kein Widerspruch, Exit 1 = Namensliste der Widersprüche. Der Prüflauf
+wird nach jeder Änderung an einem Server gezeigt, nicht behauptet. Der Soll-Bestand
+steht in `Agenten/MCP-Manifest.json` (Feld `agenten` = bewusst nur bei einem
+Agenten, `braucht_port` = Begleitprogramm muss laufen).
+
+Drei Fallen, die dort Zeit gekostet haben:
+
+- **Die Claude-Konfiguration liegt im MSIX-Container.**
+  `%APPDATA%\Claude\claude_desktop_config.json` existiert hier nicht; richtig ist
+  `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json`.
+  Pfade immer erst suchen, dann lesen.
+- **Hermes hat Profil-Configs.** Server können in `Agenten/Hermes/profiles/<name>/config.yaml`
+  stehen statt in der Haupt-Config. Wer nur die Haupt-Config liest, meldet vorhandene
+  Server als fehlend.
+- **Windows PowerShell 5.1 ist nicht PowerShell 7.** Skripte für die Aufgabenplanung
+  rein ASCII ohne BOM halten und `\"` als Escape nie verwenden — 5.1 bricht daran
+  schon beim Parsen ab und meldet dann jahrelang falschen Alarm. Beide Versionen
+  laufen lassen, bevor ein Prüfskript als fertig gilt.
+- **Ein geparkter Server ist kein Ausfall.** Server mit Begleitprogramm
+  (Blender 28015, Affinity 6767) scheitern im Log im Minutentakt, solange das
+  Programm zu ist. Vor dem Melden den Port prüfen, sonst wird Erwartetes als Störung
+  gemeldet.
