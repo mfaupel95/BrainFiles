@@ -75,8 +75,32 @@ $bekannt = @(
   # OKX_API.env lag bis 12.09.2026 im Archiv-Posteingang und wurde dort von
   # Lauf 2 mitkopiert, ohne dass diese Pruefung sie sehen konnte - sie laeuft nur
   # ueber $quelle. Seit dem 12.09.2026 liegt die Datei neben der Schluesselablage,
-  # damit hier sichtbar und bewertet, und alle Streukkopien sind entfernt.
-  '\Wissen\OKX_API.env'
+  # damit hier sichtbar und bewertet, und alle Streukopien sind entfernt.
+  '\Wissen\OKX_API.env',
+  # Schluessel der lokalen llama.cpp-Laufzeit, nur auf diesem Rechner gueltig.
+  '\runtimes\llamacpp\.api_key',
+  # Schutzkopie der Notizen vom 30.08.2026. Passwoerter-Quarantaene.md ist laut
+  # eigener Beschreibung eine Checkliste mit Dienstnamen und ohne eine einzige
+  # Zugangsangabe; sie faellt nur ins Muster, weil "Passwoerter" darin vorkommt.
+  '\Archiv\.sicherung-wissen-20260830\Passwoerter-Quarantaene.md',
+  # Kostenloser AcoustID-Schluessel fuer die Musik-Erkennung. Das Werkzeug liest
+  # ihn nicht aus dieser Datei, sondern aus --acoustid-key oder der
+  # Umgebungsvariable ACOUSTID_KEY; die Datei ist die Ablage des Werts.
+  '\Archiv\ArchivSuche\acoustid_key.txt'
+)
+
+# Bewertete KLASSEN als Muster statt als Endung, getrennt von $bekannt: eine
+# Klasse soll nicht jeden einzelnen neuen Fund verschlucken. Ein .env irgendwo
+# sonst im Baum faellt weiterhin auf.
+# Hermes legt je Profil eine eigene Zugangsdatei an (12 Stueck, je 27 KB) und
+# sichert bei einem Update den alten Stand mit. Beides sind laufende
+# Zugangsdaten des Agenten, keine vergessenen Reste. Bewusst so entschieden am
+# 12.09.2026: sie bleiben in der Sicherung, damit ein Wiederaufbau die Profile
+# nicht ohne Schluessel dastehen laesst. Hingenommen wird dafuer, dass sie auf
+# den Sicherungsdatentraegern im Klartext liegen.
+$bekanntMuster = @(
+  '\\Agenten\\Hermes\\profiles\\[^\\]+\\.env$',
+  '\\Agenten\\Hermes\\state-snapshots\\[^\\]+\\.env$'
 )
 
 Write-Host '=== 1) Pruefung auf Klartext-Zugangsdaten ===' -ForegroundColor Cyan
@@ -88,6 +112,7 @@ $treffer = Get-ChildItem $quelle -Recurse -File -Force -ErrorAction SilentlyCont
 
 function Ist-Bekannt($pfad) {
   foreach ($b in $bekannt) { if ($pfad.EndsWith($b, 'OrdinalIgnoreCase')) { return $true } }
+  foreach ($m in $bekanntMuster) { if ($pfad -match $m) { return $true } }
   return $false
 }
 $altbekannt = @($treffer | Where-Object { Ist-Bekannt $_.FullName })

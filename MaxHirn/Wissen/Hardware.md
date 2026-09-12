@@ -536,7 +536,7 @@ Zwei Lehren aus dem 19.08.2026:
 | `Archiv\Software\Linux\Unraid\config\ssh\ssh_host_{rsa,ed25519,ecdsa}_key` | **private SSH-Hostschlüssel des Unraid-Servers** |
 | `Archiv\Software\Linux\Unraid\config\{passwd,shadow,smbpasswd,secrets.tdb}` | Benutzer- und Samba-Hashes |
 | ~~`Werkstatt\Worktrees\investment\OKX_API.env`~~ | **erledigt 12.09.2026 — Datei liegt in `Wissen\OKX_API.env` neben der Schlüsselablage; die Streukkopien im Archiv-Posteingang und auf `J:` sind entfernt** |
-| `Archiv\ArchivSuche\acoustid_key.txt` | 0 Byte, leer — kann weg |
+| ~~`Archiv\ArchivSuche\acoustid_key.txt`~~ | **erledigt 12.09.2026 — enthält einen 11 Byte langen AcoustID-Schlüssel, keinen Leerrest. Das Werkzeug liest ihn über `--acoustid-key` oder `ACOUSTID_KEY`; die Datei ist die Ablage des Werts und steht deshalb in der Zugangsdaten-Prüfung als bewusst.** |
 | `Archiv\Software\Linux\Unraid\config\plugins\unbalanced\unbalanced.env` | prüfen |
 
 Der Eintrag weiter oben, am 19.08.2026 seien „drei Klartextdateien in Quelle und
