@@ -63,7 +63,12 @@ $ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|Modelle|Werkstatt|\.
 $bekannt = @(
   '\Wissen\Zugaenge.md',
   '\Wissen\Passwoerter-Quarantaene.md',
-  '\Hermes\.env'
+  '\Hermes\.env',
+  # OKX_API.env lag bis 12.09.2026 im Archiv-Posteingang und wurde dort von
+  # Lauf 2 mitkopiert, ohne dass diese Pruefung sie sehen konnte - sie laeuft nur
+  # ueber $quelle. Seit dem 12.09.2026 liegt die Datei neben der Schluesselablage,
+  # damit hier sichtbar und bewertet, und alle Streukkopien sind entfernt.
+  '\Wissen\OKX_API.env'
 )
 
 Write-Host '=== 1) Pruefung auf Klartext-Zugangsdaten ===' -ForegroundColor Cyan

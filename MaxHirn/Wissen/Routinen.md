@@ -107,9 +107,11 @@ werden — anders als eine im Rechner. Ohne BitLocker To Go liest das jeder, der
 sie findet. Siehe [[Zugaenge]] und [[Passwoerter-Quarantaene]].
 
 `OKX_API.env` steht seit dem 12.09.2026 nicht mehr in dieser Aufzählung: die
-Datei lag im Archiv-Posteingang und wurde bei jedem Lauf mitkopiert. Sie liegt
-jetzt unter `%USERPROFILE%\.zugangsdaten\` und damit außerhalb von Vault und
-Sicherungsdatenträgern.
+Datei lag im Archiv-Posteingang und wurde bei jedem Lauf mitkopiert, dazu lag
+eine zweite Fassung auf `J:`. Beide Streukkopien sind weg; die Datei liegt jetzt
+in `Wissen/OKX_API.env` neben der Schlüsselablage. Dass sie damit auf derselben
+Platte außer Haus steht, ist hingenommen: dieselben Schlüssel stehen in
+`Zugaenge.md` ohnehin im Klartext.
 
 Die Wrapper gibt es aus drei Gründen:
 

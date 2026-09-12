@@ -66,9 +66,9 @@ Fehlt eine, läuft Papierhandel und es wird gesagt, welche Sperre zu war.
 - **Live-Handel noch nie scharf gelaufen.** Sperre 1 ist zu, Sperre 2 leer.
   Die OKX-Schlüssel sind unbrauchbar (Secret 6 statt 32 Zeichen, siehe
   [[Zugaenge]]) — es braucht ein neues Paar mit Handelsrecht. Die Klartextdatei
-  lag im Archiv-Posteingang und wanderte dadurch in jede Sicherung; seit dem
-  12.09.2026 liegt sie unter `%USERPROFILE%\.zugangsdaten\`, außerhalb von Vault
-  und Sicherungsdatenträgern.
+  lag im Archiv-Posteingang und wanderte dadurch bei jedem Lauf nach G:, J: und
+  E:; eine weitere Fassung lag auf J:. Alle Streukkopien sind seit dem 12.09.2026
+  entfernt. Massgeblich ist `Wissen/OKX_API.env` neben der Schlüsselablage.
 - **Der Live-Order-Pfad ist ungetestet** (`okx.markt_kauf` / `markt_verkauf` /
   `stop_setzen`). Vor dem ersten scharfen Lauf einen einzelnen Wert mit
   Kleinstbetrag von Hand ausführen und in der OKX-Oberfläche gegenprüfen.
