@@ -41,6 +41,10 @@ ABLAUF
     # Max antwortet /nein   -> abgelehnt
     # keine Antwort         -> nach antwort_frist_minuten verfallen
 
+    neue_anfrage_erlaubt(spur)            # darf ueberhaupt neu gefragt werden?
+    # nach einer Ablehnung 12 h lang nicht, nach einer unbeantworteten Anfrage
+    # 2 h lang nicht - sonst fragt der Dauerlauf dieselbe Sache im Halbstundentakt
+
 Die Freigabe steht in freigabe_fenster.json, nicht in wachen.json. Grund:
 wachen.json wird von den Skripten gelesen und nie geschrieben (einzige
 Ausnahme: sperre_zu von true auf false). Ein Zeitfenster ist Betriebszustand,
@@ -63,6 +67,20 @@ MAX_STUNDEN = 24
 # Gegenstueck zu den 120 Sekunden des Bildschirmfensters: Wer nicht antwortet,
 # hat nicht freigegeben.
 ANTWORT_FRIST_MINUTEN = 30
+
+# Wiedervorlage - zwei Fristen, absichtlich ungleich. Eine *unbeantwortete*
+# Anfrage darf der Dauerlauf wiederholen: Vielleicht war Max nicht am Handy.
+# Eine *abgelehnte* nicht. Wer um 19:06 /nein sagt, bekommt um 19:20 nicht
+# dieselbe Frage wortgleich erneut; solche Fragen werden weggewischt, und mit
+# ihnen die naechste, auf die es ankommt - derselbe Grund, aus dem der
+# Dauerlauf ueberhaupt erst fragt, wenn nur noch das Fenster fehlt.
+WIEDERVORLAGE_MINUTEN = 120
+WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN = 12
+
+# Was als Ablehnung zaehlt. schliessen() schreibt den Grund ins Feld
+# schliess_grund; /nein und /stop sind beide eine Entscheidung gegen den
+# Handel, "Dauerlauf beendet" ist keine.
+ABLEHNUNGSGRUENDE = ("abgelehnt", "stop")
 
 
 def _jetzt():
@@ -128,6 +146,46 @@ def lade(spur):
 
 def alle():
     return {s: Fenster(s, d) for s, d in _lies().items()}
+
+
+def _zeit(wert):
+    """ISO-Zeit aus der Datei - oder None. Ein kaputter Wert darf nicht werfen."""
+    if not wert:
+        return None
+    try:
+        return dt.datetime.fromisoformat(wert)
+    except (TypeError, ValueError):
+        return None
+
+
+def neue_anfrage_erlaubt(spur):
+    """Darf der Dauerlauf diese Spur jetzt erneut fragen?
+
+    Es gilt die spaeteste der beiden Fristen: WIEDERVORLAGE_MINUTEN nach der
+    letzten Anfrage, WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN nach einer Ablehnung.
+    Grundlage ist der eigene Zustand - anfrage_gestellt und
+    zuletzt_geschlossen stehen ohnehin hier, eine zweite Merkdatei waere eine
+    zweite Wahrheit.
+
+    Was das nicht ist: eine Sperre. Kein Pfad wird geschlossen, kein Wert
+    angehoben, keine Freigabe verweigert - es wird nur nicht mehr gefragt.
+    Wer es sich anders ueberlegt, schaltet am Bildschirm scharf
+    (freigabe.py) oder antwortet auf die naechste Anfrage.
+    """
+    d = _lies().get(spur) or {}
+    fristen = []
+
+    zu = _zeit(d.get("zuletzt_geschlossen"))
+    grund = (d.get("schliess_grund") or "").lower()
+    if zu and any(w in grund for w in ABLEHNUNGSGRUENDE):
+        fristen.append(zu + dt.timedelta(
+            hours=WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN))
+
+    gestellt = _zeit(d.get("anfrage_gestellt"))
+    if gestellt:
+        fristen.append(gestellt + dt.timedelta(minutes=WIEDERVORLAGE_MINUTEN))
+
+    return not fristen or _jetzt() >= max(fristen)
 
 
 def anfrage_stellen(spur, dauer_minuten):

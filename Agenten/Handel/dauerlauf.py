@@ -237,10 +237,20 @@ class Lauf:
         Der Lauf handelte auch nach einem /ja weiter auf Papier. Wer solche
         Fragen stellt, bekommt sie irgendwann weggewischt, ohne gelesen zu
         werden - und dann auch die eine, auf die es ankam.
+
+        Und gefragt wird nicht oefter als noetig: neue_anfrage_erlaubt() haelt
+        die Wiedervorlage-Fristen. Ohne sie stand hier alle 30 Minuten
+        dieselbe Frage (die Frist einer unbeantworteten Anfrage), auch direkt
+        nach einem /nein - am 12.09.2026 um 19:06 abgelehnt, um 19:20 erneut
+        gefragt.
         """
         for spur, d in SPUREN.items():
             f = freigabefenster.lade(spur)
             if f.offen() or f.anfrage_offen():
+                continue
+            if not freigabefenster.neue_anfrage_erlaubt(spur):
+                # Gerade gefragt oder gerade abgelehnt: nicht wiederholen.
+                # Die Fristen stehen in freigabefenster.py samt Begruendung.
                 continue
             offen_bis_auf_fenster = self.nur_fenster_fehlt(spur, d)
             if not offen_bis_auf_fenster:

@@ -684,6 +684,31 @@ Zwei Entscheidungen, die den Ausschlag geben:
 **Ausstiege laufen nie durch das Fenster.** Ein Stop muss auch dann greifen,
 wenn niemand davorsitzt. Bestätigt wird nur, was Geld *bindet*.
 
+### Wie oft gefragt wird (seit 12.09.2026)
+
+Die Frage ans Handy ist eine Bitte, kein Dauerzustand. `neue_anfrage_erlaubt()`
+in `freigabefenster.py` hält zwei Wiedervorlage-Fristen ein:
+
+* **2 Stunden** nach einer unbeantworteten Anfrage. Die Antwortfrist selbst
+  bleibt bei 30 Minuten, gefragt wird aber frühestens nach zwei Stunden erneut —
+  vorher stand hier den ganzen Abend im Halbstundentakt dieselbe Frage.
+* **12 Stunden** nach einer Ablehnung. Ein `/nein` um 21:06 wurde am 12.09.2026
+  um 21:18 wortgleich erneut gestellt; eine gerade abgelehnte Frage wird
+  weggewischt, und mit ihr die nächste, auf die es ankommt. Ein `/stop` wirkt
+  genauso, ein beendeter Lauf (`Dauerlauf beendet`) nicht — nach einem Neustart
+  darf wieder gefragt werden.
+
+Grundlage ist der eigene Zustand in `freigabe_fenster.json`
+(`anfrage_gestellt`, `zuletzt_geschlossen`, `schliess_grund`), keine zweite
+Merkdatei. **Das ist keine Sperre:** kein Pfad wird geschlossen, keine Grenze
+angehoben, keine Freigabe verweigert — es wird nur nicht gefragt. Wer es sich
+anders überlegt, schaltet am Bildschirm scharf (`freigabe.py`) oder antwortet
+auf die nächste Anfrage.
+
+Nachweis: `tests/test_telegram_freigabe.py`, Klassen `WiedervorlageTest` und
+`WiedervorlageImLaufTest` (die zweite prüft, dass die Frist im Dauerlauf
+ankommt, nicht nur in der Hilfsfunktion).
+
 ### Befund 10.09.2026, behoben am 11.09.2026 — das Handy-Fenster erreichte
 den Live-Pfad nicht
 
