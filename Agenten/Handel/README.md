@@ -801,10 +801,16 @@ Ein OKX-Demo-Node auf NautilusTrader 1.231.0 — die fünfte Spur, aber eine ohn
 Orderpfad: ein **Quoten-Feed**. `wachen.json` darin führt `handel_erlaubt: false`.
 
 **Stand 12.09.2026: vom flüchtigen Ort in den versionierten geholt.** Der Node
-lag unter `Werkstatt/nautilus-trader/`. Dort räumt `datensortierung.ps1` auf, und
-der Ordner war in keiner Sicherung — ein Aufräumlauf hätte die Arbeit gelöscht.
-Jetzt liegt er unter `Agenten/Handel/nautilus/`, mit eigenem Git-Verlauf,
-eigenem `.venv` und in `sichern.ps1`/`zweitkopie.ps1` mit drin.
+lag unter `Werkstatt/nautilus-trader/`. Die Werkstatt ist ein Junction auf
+`O:\Werkstatt`, dort räumt `datensortierung.ps1` auf, und der Ordner war in
+keiner Sicherung — ein Aufräumlauf hätte die Arbeit gelöscht. Jetzt liegt er
+unter `Agenten/Handel/nautilus/` und damit in `sichern.ps1`/`zweitkopie.ps1`.
+
+Ehrlich dazugesagt: Die Sicherungen nehmen `.git`- und `.venv`-Ordner generell
+aus (`/XD .venv … .git` in `sichern.ps1`). Gesichert ist also der Quelltext,
+nicht die sechs Commits im eigenen `.git` und nicht die Umgebung. Das `.venv`
+ist aus `requirements`/`pip freeze` nachbaubar; die Vorgeschichte steht
+zusätzlich in dieser Datei und in `README-live-node.md`.
 
 **Das Quotenproblem ist geklärt** (ausführlich in `nautilus/README-live-node.md`):
 Der Data-Client meldet sich mit Schlüssel zusätzlich am privaten
