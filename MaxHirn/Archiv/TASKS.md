@@ -43,8 +43,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 - [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
-  Kontext: Bei der Gesundheitsprüfung 08.09.2026 gemessen.
-  Nächster Schritt: Sicherstellen, dass die Modellgewichte korrekt im Zielverzeichnis sind.
+      **Erledigt 2026-09-13.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
+      3,2 GB → 66,1 GB). Die 21,1 GB `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` liegen
+      unter `O:\Modelle\GGUF\`; das 0,84 GB große mmproj wurde nach
+      `O:\Modelle\hermes\assets\` verschoben, und
+      `%LOCALAPPDATA%\hermes\models` ist jetzt eine Junction auf
+      `O:\Modelle\hermes`.
+      **Antwort auf die Frage nach der Variable:** Es gibt **keine** eigene
+      Variable für den Modellort — `bootstrap.models_dir()` liest
+      `get_default_hermes_root() / "models"`, also `%LOCALAPPDATA%\hermes\models`
+      (wenn `HERMES_HOME` ungesetzt) bzw. `HERMES_HOME\models`. Mit dem
+      gesetzten `HERMES_HOME = ...\BrainFiles\Agenten\Hermes` wäre das
+      `Agenten\Hermes\models` — dort ist bewusst **keine** Junction: `Agenten\`
+      ist Sicherungsquelle, robocopy würde den Modellen in die Nachtsicherung
+      folgen.
+      **Offen bleibt:** `local_runtime.enabled` steht auf `false`, deshalb
+      liest derzeit niemand diesen Ordner. Vor dem Einschalten muss entschieden
+      werden, wohin die Gewichte gehören — sonst landen 20 GB wieder auf `C:`
+      oder in der Sicherung.
+      Zuletzt: 2026-09-13
+      --- ursprünglicher Befund vom 08.09.2026 ---
       Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
       `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
       einzelne Posten auf der Systemplatte (`AppData\Local\hermes` gesamt
@@ -63,7 +81,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `%LOCALAPPDATA%\hermes\models`, [[Ordnerstruktur]]
       Angelegt: 2026-09-08 · Zuletzt: 2026-09-08
 
-|- [x] **T-011 — Wer schreibt `Modelle/.onchainos`?** — erledigt 2026-09-08
+- [x] **T-011 — Wer schreibt `Modelle/.onchainos`?** — erledigt 2026-09-08
       Nach Suche im gesamten Vault: **kein Skript** referenziert diesen Pfad.
       Der Ordner ist ein Überbleibsel von „Stufe 0" (vor dem 30.08.2026),
       wahrscheinlich von OKX/OnchainOS-Werkzeugen angelegt. Inhalt:
@@ -667,7 +685,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
          aber dann ist eine Position bis zu einem Tag unbewacht.
       Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
 
-- [ ] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt**
+- [x] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt** — erledigt 2026-09-13
+      **Erledigt 2026-09-13.** Tabelle auf 3,6× (SOL), 4,1× (HYPE), 1,7×
+      (ZEC) ersetzt, die Aussage „alle Tore bestanden" für die drei
+      zurückgenommen, und der Messfehler als Falle danebengeschrieben
+      (Deckel auf **Tageskerzen** rechnen — das 300-Kerzen-Fenster des
+      gehandelten Kontrakts sind nur 50 Tage).
       Aufgefallen 09.09.2026. Die Tabelle in `Wissen/XPERP-Handel.md`
       (Abschnitt „Hebel-Deckel ≥ 5", Zeilen 165–171) stammt aus einer
       **fehlerhaften Messung**: `auswahl.py` leitete den Deckel aus 300

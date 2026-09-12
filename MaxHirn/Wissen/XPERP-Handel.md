@@ -159,14 +159,26 @@ davon 77 mit ≥ 21 Tagen Historie bewertbar).
 **Das Universum ist dünn.** Außer BTC (170 Mio) erreicht kaum ein XPERP
 nennenswerten Tagesumsatz — RE liegt bei **0,9 Mio USD**.
 
-Werte, die **alle** Tore bestanden (Vola < 120 %, Umsatz ≥ 3 Mio,
-Hebel-Deckel ≥ 5):
+Werte, die nach der **korrigierten** Messung (200 Tageskerzen) durch die
+Tore kommen (Vola < 120 %, Umsatz ≥ 3 Mio, Hebel-Deckel ≥ 5):
 
 | Wert | Vola p.a. | ER | Hebel-Deckel | Umsatz 24h |
 |---|---|---|---|---|
-| **SOL** | 48 % | 0,10 | **10,0×** | 21,8 Mio |
-| **HYPE** | 77 % | 0,04 | 6,4× | 13,7 Mio |
-| **ZEC** | 95 % | 0,15 | 5,8× | 12,1 Mio |
+| **SOL** | 48 % | 0,10 | 3,6× | 21,8 Mio |
+| **HYPE** | 77 % | 0,04 | 4,1× | 13,7 Mio |
+| **ZEC** | 95 % | 0,15 | 1,7× | 12,1 Mio |
+
+**Damit besteht keiner der drei das Hebel-Tor (≥ 5) mehr.** Die frühere Fassung
+dieser Tabelle nannte SOL 10,0×, HYPE 6,4× und ZEC 5,8× und leitete daraus ab,
+alle drei hätten „alle Tore bestanden" — beides ist zurückgenommen.
+
+**Falle für die nächste Sitzung — der Messfehler, der das verursacht hat:**
+`auswahl.py` leitete den Deckel aus **300 4H-Kerzen** ab. Das sind nur
+**50 Tage**, und SOLs Rücklauf vom 31.05.2026 lag außerhalb dieses Fensters.
+Der Code ist behoben — `mae_tage()` rechnet jetzt auf **300 Tageskerzen**
+(committet), die Notiz war es nicht. Wer den Deckel nachrechnet, muss auf
+**Tageskerzen** rechnen, nicht auf dem 300-Kerzen-Fenster des gehandelten
+Kontrakts; sonst kommt wieder eine zu kleine Zahl heraus.
 
 **RE selbst fällt durch zwei Tore:** Vola 173 %, Umsatz 0,9 Mio, Hebel-Deckel
 **2,5×** long und 1,2× short. Die Grid-Eignung stimmt allerdings — ER 0,22 bei
