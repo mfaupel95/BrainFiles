@@ -210,6 +210,43 @@ class Buch(Grundlage):
                          ["herzschlag_alt", "herzschlag_alt"])
 
 
+class Messung(Grundlage):
+
+    def test_messen_rechnet_tiefe_und_nachlauf(self):
+        """Die zwei Kostenposten getrennt: Pool-Tiefe und Nachlauf.
+
+        Tiefe bei 50 USD Einsatz und 10.000 USD Liquiditaet: 2*50/10000 = 1 %.
+        Nachlauf: Kurs jetzt 1,10 gegen Signal 1,00 = +10 %.
+        """
+        sig = [dict(SIGNAL, preis=1.0, alter_s=10.0)]
+        with patch.object(sp, "signale_sammeln", return_value=sig), \
+                patch.object(sp, "HIER", self.tmp.name), \
+                patch.object(sp.lesen, "preise",
+                             return_value={("solana", "T1"): 1.10}), \
+                patch.object(sp.lesen, "preise_info",
+                             return_value={"liquidity": "10000",
+                                           "marketCap": "50000",
+                                           "holders": "12"}):
+            puffer = io.StringIO()
+            with patch("sys.stdout", puffer):
+                rc = sp.messen(WACHEN, {"positionen": []})
+        self.assertEqual(rc, 0)
+        ausgabe = puffer.getvalue()
+        self.assertIn("1.000%", ausgabe)
+        self.assertIn("+10.00%", ausgabe)
+        with io.open(os.path.join(self.tmp.name, "daten", "messung.json"),
+                     encoding="utf-8") as f:
+            daten = json.load(f)
+        self.assertEqual(daten["annahme_slippage_pct"], WACHEN["slippage_pct"])
+        self.assertAlmostEqual(daten["werte"][0]["tiefe_pct"], 1.0)
+        self.assertAlmostEqual(daten["werte"][0]["nachlauf_pct"], 10.0)
+
+    def test_messen_ohne_frische_signale_ist_kein_lauf(self):
+        with patch.object(sp, "signale_sammeln", return_value=[]):
+            with patch("sys.stdout", io.StringIO()):
+                self.assertEqual(sp.messen(WACHEN, {"positionen": []}), 1)
+
+
 class Sicherheitsnetze(Grundlage):
 
     def test_modul_ruft_das_cli_nicht_selbst(self):

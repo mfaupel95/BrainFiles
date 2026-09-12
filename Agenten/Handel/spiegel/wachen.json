@@ -13,7 +13,7 @@
   "max_kopien_je_token": 2,
   "kill_switch_gesamt_usd": 100,
 
-  "_kosten": "Der ehrlichste Teil des Papierbuchs. 3 % Slippage ist die Annahme fuer ein Memecoin-Buch mittlerer Tiefe, 1 % Gebuehr deckt DEX-Gebuehr plus Vorlauf eines Nachahmers. Wer diese zwei Zahlen zu klein setzt, baut eine Wunschrechnung: dieselbe Falle wie Gebuehren und Funding bei den anderen Spuren.",
+  "_kosten": "Der ehrlichste Teil des Papierbuchs. 3 % Slippage ist die Annahme fuer ein Memecoin-Buch mittlerer Tiefe, 1 % Gebuehr deckt DEX-Gebuehr plus Vorlauf eines Nachahmers. Wer diese zwei Zahlen zu klein setzt, baut eine Wunschrechnung: dieselbe Falle wie Gebuehren und Funding bei den anderen Spuren. Am 12.09.2026 mit 'spiegel.py --messen' gegen echte Daten gehalten (15 frische Signale, 50 USD): Tiefe im Schnitt 0,73 %, Median 0,20 %, groesster 3,59 %; Nachlauf im Schnitt +2,77 %, groesster +34,59 %. Der Nachlauf ist der groessere Posten, nicht die Tiefe - die Annahme passt gemessen, nicht nur behauptet.",
   "slippage_pct": 3.0,
   "gebuehr_pct": 1.0,
 

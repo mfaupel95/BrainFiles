@@ -83,6 +83,14 @@ def _heute():
     return datetime.now(timezone.utc).date().isoformat()
 
 
+def _zahl(wert):
+    """Zahl aus einer Zeichenkette mit vielen Stellen - oder None."""
+    try:
+        return float(str(wert).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
 def lade(pfad, vorgabe):
     try:
         with open(pfad, encoding="utf-8") as f:
@@ -482,6 +490,8 @@ def lauf(modus):
     if modus == "bilanz":
         bilanz(w)
         return 0
+    if modus == "messen":
+        return messen(w, lade_zustand())
 
     z = lade_zustand()
 
@@ -548,6 +558,107 @@ def lauf(modus):
     return 0
 
 
+def messen(w, z):
+    """Die Kosten-Annahmen gegen echte Bucheindruecke halten.
+
+    Zwei Messungen, weil zwei verschiedene Kosten zusammenkommen:
+
+      1. **Tiefe.** Wie stark bewegt ein Einsatz von X USD den Preis im Pool?
+         Naeherung fuer ein Constant-Product-Buch: 2 x Einsatz / Liquiditaet
+         (in Prozent). Das ist eine *untere* Grenze - konzentrierte
+         Liquiditaet, Spread und Prioritaetsgebuehren stecken nicht darin.
+      2. **Nachlauf.** Wie weit ist der Kurs schon weg von dem Kurs, den das
+         Vorbild bekommen hat? Das ist die eigentliche Strafe beim Nachahmen,
+         und sie steht in keiner Pool-Tiefe. Gemessen an den frischesten
+         Signalen: Kurs jetzt gegen Kurs im Signal.
+
+    Gibt beide Verteilungen aus und schreibt sie nach daten/messung.json.
+    Geschrieben wird nichts anderes - die Messung aendert kein Buch.
+    """
+    sig = signale_sammeln(w)
+    frisch = [s for s in sig if s["alter_s"] is not None
+              and s["alter_s"] <= w["max_alter_signal_sekunden"]]
+    auswahl = []
+    for s in frisch:
+        if s["token"] not in [x["token"] for x in auswahl]:
+            auswahl.append(s)
+        if len(auswahl) >= 15:
+            break
+    lesen_je_kette = auswahl
+    print("Tiefe und Nachlauf, %d frische Signale" % len(frisch))
+    if not auswahl:
+        print("  Keine frischen Signale - nichts zu messen.")
+        return 1
+
+    zeilen = []
+    try:
+        # Jede Kette fuer sich: die Stapelabfrage nimmt Kettenindex und Adresse.
+        kurse = {}
+        for kette in sorted({s["kette"] for s in auswahl}):
+            kurse.update(lesen.preise([(kette, s["token"]) for s in auswahl
+                                       if s["kette"] == kette]))
+    except lesen.Lesefehler as e:
+        print("  Kurse nicht abrufbar: %s" % e)
+        kurse = {}
+
+    for s in lesen_je_kette:
+        t = s["token"]
+        try:
+            i = lesen.preise_info(t, s["kette"])
+        except (lesen.Lesefehler, KeyError, TypeError) as e:
+            print("  %s: keine Tiefe (%s)" % (t[:12], e))
+            continue
+        liq = _zahl(i.get("liquidity"))
+        einsatz = w["max_einsatz_je_kopie_usd"]
+        tiefe = (2 * einsatz / liq * 100) if liq else None
+        kurs_jetzt = kurse.get((s["kette"], t))
+        nachlauf = None
+        if kurs_jetzt:
+            nachlauf = (kurs_jetzt / s["preis"] - 1) * 100
+        zeilen.append({"kette": s["kette"], "token": t, "symbol": s["symbol"],
+                       "liquiditaet_usd": liq, "einsatz_usd": einsatz,
+                       "tiefe_pct": tiefe, "nachlauf_pct": nachlauf,
+                       "alter_s": s["alter_s"],
+                       "marktkap_usd": _zahl(i.get("marketCap")),
+                       "halter": i.get("holders")})
+        print("  %-10s %-9s Liq %10s  Tiefe %7s  Nachlauf %8s  (Alter %ss, %s Halter)"
+              % (s["symbol"][:10], s["kette"],
+                 "?" if liq is None else "%.0f" % liq,
+                 "?" if tiefe is None else "%.3f%%" % tiefe,
+                 "?" if nachlauf is None else "%+.2f%%" % nachlauf,
+                 "?" if s["alter_s"] is None else "%.0f" % s["alter_s"],
+                 zeilen[-1]["halter"]))
+
+    def schnitt(feld):
+        werte = [z[feld] for z in zeilen if z[feld] is not None]
+        if not werte:
+            return None
+        werte.sort()
+        return (sum(werte) / len(werte), werte[len(werte) // 2], werte[-1])
+
+    print()
+    for name, feld in (("Tiefe (untere Grenze)", "tiefe_pct"),
+                       ("Nachlauf", "nachlauf_pct")):
+        m = schnitt(feld)
+        print("  %-22s Schnitt %s, Median %s, groesster %s"
+              % (name, "?" if not m else "%.2f%%" % m[0],
+                 "?" if not m else "%.2f%%" % m[1],
+                 "?" if not m else "%.2f%%" % m[2]))
+    print("  Annahme in wachen.json: %.1f%% Slippage + %.1f%% Gebuehr"
+          % (w["slippage_pct"], w["gebuehr_pct"]))
+
+    ordner = os.path.join(HIER, "daten")
+    if not os.path.isdir(ordner):
+        os.makedirs(ordner, exist_ok=True)
+    with open(os.path.join(ordner, "messung.json"), "w", encoding="utf-8") as f:
+        json.dump({"zeit": _jetzt(), "einsatz_usd": w["max_einsatz_je_kopie_usd"],
+                   "annahme_slippage_pct": w["slippage_pct"],
+                   "annahme_gebuehr_pct": w["gebuehr_pct"],
+                   "werte": zeilen}, f, indent=2, ensure_ascii=False)
+    print("  -> daten/messung.json geschrieben (nicht versioniert)")
+    return 0
+
+
 def _frisch(z, w):
     letzte = _bis_zeit(z.get("letzter_lauf"))
     if not letzte:
@@ -566,6 +677,8 @@ def main():
                    dest="modus")
     p.add_argument("--papier", action="store_const", const="papier", dest="modus")
     p.add_argument("--bilanz", action="store_const", const="bilanz", dest="modus")
+    p.add_argument("--messen", action="store_const", const="messen", dest="modus",
+                   help="Tiefe und Nachlauf gegen die Kostenannahmen messen")
     p.add_argument("--live", action="store_const", const="live", dest="modus")
     p.set_defaults(modus="vorschau")
     a = p.parse_args()

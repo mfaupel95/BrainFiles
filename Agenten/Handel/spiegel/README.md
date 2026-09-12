@@ -100,12 +100,36 @@ entscheidet, ob überhaupt gefragt wird.
   frischen Käufe im Feed sind fast alle Kleinstwerte, also genau die Zone, in
   der Rug Pulls sitzen.
 
+## Kosten gemessen, nicht geschätzt (12.09.2026)
+
+`spiegel.py --messen` hält die zwei Kostenposten gegen echte Marktdaten — 15
+frische Signale, 50 USD Einsatz:
+
+| Posten | Schnitt | Median | größter |
+|---|---|---|---|
+| **Tiefe** (Pool-Effekt bei 50 USD) | 0,73 % | 0,20 % | 3,59 % (2.789 USD Liquidität) |
+| **Nachlauf** (Kurs jetzt gegen den Kurs des Vorbilds, 6–61 s später) | +2,77 % | 0,00 % | +34,59 % |
+
+**Befund:** Der Nachlauf ist der größere Posten, nicht die Tiefe. Bei normaler
+Tiefe zahlt man für 50 USD praktisch nichts (0,2 %), aber bis der eigene Kauf
+draußen ist, ist der Kurs im Schnitt fast 3 % weg — bei einem laufenden Pump
+auch 35 %. Zusammen mit 1 % Gebühr ergibt das rund **4 % Startnachteil**, also
+genau die **3 % + 1 %** aus `wachen.json`. Die Annahme trägt damit nicht, weil
+sie streng ist, sondern weil sie gemessen passt.
+
+Zwei Einschränkungen, ehrlich: Die Tiefe ist eine **untere** Grenze
+(Constant-Product-Näherung; konzentrierte Liquidität, Spread und
+Prioritätsgebühren stecken nicht darin), und der Nachlauf ist eine
+**Momentaufnahme**; er schwankt mit dem Markt und muss gelegentlich neu
+gemessen werden.
+
 ## Offen
 
 1. Kein Konto-Abgleich: Das Buch glaubt sich selbst (bekannt aus der
    SWAP-Arbeit).
-2. Die Slippage-Annahme (3 %) ist gesetzt, nicht gemessen. Vor jedem
-   Live-Gedanken gegen echte Bucheindrücke prüfen.
+2. Die Slippage-Annahme ist am 12.09.2026 gemessen worden und trug (siehe
+   oben). Sie ist eine Annahme auf einer Stichprobe von 15 — vor jedem
+   Live-Gedanken neu messen.
 3. Der Live-Pfad fehlt bewusst. Es gibt keinen Schalter, nur Papier.
 4. Echtzeit: Der Feed wird im Takt abgefragt (`dauerlauf.py`), nicht über
    `onchainos ws`. Für Millisekunden-Nachahmen wäre ein WebSocket nötig — und

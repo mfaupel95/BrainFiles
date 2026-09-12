@@ -159,6 +159,15 @@ def preise(punkte, kette_vorgabe=None):
     return aus
 
 
+def preise_info(token, kette):
+    """Tiefe und Kennzahlen eines Tokens - Liquiditaet, Marktkapitalisierung,
+    Halter, Volumen. Grundlage der Kostenmessung."""
+    d = ruf(["token", "price-info", "--address", token, "--chain", kette])
+    if isinstance(d, list):
+        return d[0] if d else {}
+    return d or {}
+
+
 def risiko(token, kette):
     """Betrugsmerkmale eines Tokens vor dem Kauf.
 
