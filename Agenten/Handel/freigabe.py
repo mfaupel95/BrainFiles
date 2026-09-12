@@ -273,12 +273,28 @@ def pruefe(r, w, spur, bestand):
     erlaubt = bool(w.get("handel_erlaubt"))
     p.append(("handel_erlaubt", "true" if erlaubt else "false",
               "true fuer Live", erlaubt))
+    if stillgelegt(w):
+        # Eine stillgelegte Spur darf nie live freigegeben werden - auch dann
+        # nicht, wenn jemand handel_erlaubt und freigabe.erfuellt von Hand
+        # umlegt. Als Zustandszeile sperrt sie den Knopf nicht (Papier bleibt
+        # bedienbar), sie zwingt aber Papier: haelt_alles() wird falsch.
+        p.append(("Stillgelegt", "true", "kein Live", False))
     return p
 
 
 # Diese beiden Zeilen sind Zustand, keine Auftragswerte: reissen nur sie, ist
 # der Auftrag nicht falsch, sondern der Live-Pfad zu. Dann Papier.
-ZUSTANDSZEILEN = ("Freigabe Papier zu Live", "handel_erlaubt")
+ZUSTANDSZEILEN = ("Freigabe Papier zu Live", "handel_erlaubt", "Stillgelegt")
+
+
+def stillgelegt(w):
+    """Ist diese Spur stillgelegt? Gelesen aus ihrer eigenen wachen.json.
+
+    Nicht als Liste im Code: Wer eine Spur wieder anschaltet, setzt dort das
+    Feld zurueck - und das Fenster folgt, ohne dass hier etwas nachzuziehen
+    waere. Genau das war am 03.09.2026 der Fall (Spur 3 Kraken).
+    """
+    return bool(w.get("stillgelegt"))
 
 
 def haelt_alles(pruefungen):
@@ -522,6 +538,19 @@ class Freigabefenster:
                                      "ohne Rueckfrage.", foreground="#070")
             self.ja.state(["!disabled"])
             self.ja.config(text="Scharf schalten")
+        elif stillgelegt(self.w):
+            # Der ehrliche Fall: das Fenster gibt Papier, und die Spur fuehrt
+            # auch Papier nicht aus (kraken/handeln.py verweigert stillgelegte
+            # Spuren). Das steht hier, damit niemand denkt, er haette etwas
+            # scharf gemacht.
+            self.hinweis.config(
+                text="Spur %s ist stillgelegt. Bestaetigen gibt nur PAPIER frei "
+                     "- und ausgefuehrt wird auch das nicht: handeln.py "
+                     "verweigert stillgelegte Spuren. Zum Wiederanschalten: "
+                     "stillgelegt in wachen.json zuruecksetzen."
+                     % TITEL.get(self.spur, self.spur), foreground="#a60")
+            self.ja.state(["!disabled"])
+            self.ja.config(text="Als Papier bestaetigen")
         else:
             self.hinweis.config(text="Die Grenzen halten, aber die Freigabe steht "
                                      "noch aus (freigabe.erfuellt / "
@@ -663,7 +692,8 @@ def main():
             harte = gerissene_grenzen(pruefungen)
             print("  -> %s" % ("gesperrt: " + ", ".join(harte) if harte
                                else ("live" if haelt_alles(pruefungen)
-                                     else "papier (Freigabe/Zustand offen)")))
+                                     else ("papier (stillgelegt)" if stillgelegt(w)
+                                           else "papier (Freigabe/Zustand offen)"))))
             bestand["gebunden"] = (float(bestand.get("gebunden", 0.0))
                                    + r["gebunden"])
             bestand["offene_positionen"] = int(

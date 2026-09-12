@@ -684,6 +684,19 @@ Zwei Entscheidungen, die den Ausschlag geben:
 **Ausstiege laufen nie durch das Fenster.** Ein Stop muss auch dann greifen,
 wenn niemand davorsitzt. Bestätigt wird nur, was Geld *bindet*.
 
+**Eine stillgelegte Spur gibt das Fenster nur als Papier frei.** Seit
+12.09.2026 liest `freigabe.py` das Feld `stillgelegt` aus der `wachen.json` der
+Spur (`freigabe.stillgelegt()`) und führt es als eigene Zustandszeile. Sie
+sperrt den Knopf nicht — Papier bleibt bedienbar —, sie zwingt aber Papier,
+**auch wenn jemand `handel_erlaubt` und `freigabe.erfuellt` von Hand umlegt**.
+Betrifft heute Spur 3 (Kraken). Der Hinweis sagt dazu, dass die Spur auch Papier
+nicht ausführt, weil `kraken/handeln.py` stillgelegte Spuren verweigert; ohne
+diesen Satz hielte sich jemand für scharf. Gelesen wird das Feld, nicht eine
+Liste im Code: Beim Wiederanschalten wird dort zurückgesetzt, im Fenster ist
+nichts nachzuziehen. Nachweis: `tests/test_freigabe_papier.py` und
+`freigabe.py --spur kraken --beispiel --nur-pruefen` → `papier (stillgelegt)`;
+eine aktive Spur mit erfüllten Wachen gibt weiter `live`.
+
 **Der Ausstiegsgrund wird nach Schwere benannt, nicht nach Nähe.** Seit
 12.09.2026 prüft `pruefe_ausstiege` erst die Liquidationsschwelle, dann den
 Stop, dann das Ziel — in `xperp/handeln.py` und in `swap/handeln.py` gleich.
