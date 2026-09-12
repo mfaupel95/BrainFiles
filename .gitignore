@@ -225,6 +225,61 @@ Agenten/MCP-Server/ant.dir.*/**
 # ausserdem auth.json und .env, also Zugangsdaten. Konfiguration und Gedaechtnis
 # des zweiten Agenten sichert sichern-zweitkopie.ps1 nach O:.
 Agenten/Hermes/**
+#
+# HERMES, freigelegt am 12.09.2026. Freigegeben ist das von Hand Gemachte:
+# die Konfiguration, das Profilwesen, Notizen und Aufgaben. NICHT dabei:
+#   - Zugangsdaten: .env (26 KB), auth.json, je Profil dieselben
+#   - Zustandsdatenbanken: state.db, projects.db, kanban.db, executions.db,
+#     jeweils auch mit -wal und -shm
+#   - Laufzeitkram: Zwischenspeicher, Sitzungen, Protokolle, Anhaenge,
+#     Kopplung, home, workspace, Sperr- und Herzschlagdateien
+#   - hermes-setup.exe und der geklonte Quellbaum hermes-agent/ (oben gesperrt)
+#   - die Skill-Kopien der Profile. Sie sind Abschriften von
+#     MaxHirn/.claude/skills/ (die Quelle liegt dort im Verlauf) und tragen
+#     hier sonst skills.tar.gz und .curator_backups mit - gemessen am
+#     12.09.2026 waeren das 8267 Dateien je Durchlauf statt rund 60.
+#
+# ZUERST die Verzeichnisse. git gibt eine Datei nicht frei, solange ein
+# darueber liegendes Verzeichnis gesperrt ist - es sieht dann nicht hinein und
+# eine spaetere Datei-Freigabe bleibt wirkungslos.
+!Agenten/Hermes/profiles/
+!Agenten/Hermes/profiles/*/
+# dann die Dateien
+!Agenten/Hermes/profiles/*/config.yaml
+!Agenten/Hermes/profiles/*/profile.yaml
+!Agenten/Hermes/profiles/*/SOUL.md
+!Agenten/Hermes/profiles/*/memories/*.md
+!Agenten/Hermes/profiles/*/cron/*.json
+!Agenten/Hermes/profiles/*/cron/*.yaml
+!Agenten/Hermes/profiles/*/plans/**
+!Agenten/Hermes/profiles/*/hooks/**
+!Agenten/Hermes/profiles/*/skins/**
+# und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
+# wuerde die frueheren Sperren aufheben.
+Agenten/Hermes/.env
+Agenten/Hermes/auth.json
+Agenten/Hermes/context_length_cache.yaml
+Agenten/Hermes/profiles/*/.env
+Agenten/Hermes/profiles/*/auth.json
+Agenten/Hermes/profiles/*/*.db
+Agenten/Hermes/profiles/*/*.db-shm
+Agenten/Hermes/profiles/*/*.db-wal
+Agenten/Hermes/profiles/*/cron/*.db
+Agenten/Hermes/profiles/*/cache/**
+Agenten/Hermes/profiles/*/logs/**
+Agenten/Hermes/profiles/*/sessions/**
+Agenten/Hermes/profiles/*/state/**
+Agenten/Hermes/profiles/*/audio_cache/**
+Agenten/Hermes/profiles/*/image_cache/**
+Agenten/Hermes/profiles/*/assets/**
+Agenten/Hermes/profiles/*/pairing/**
+Agenten/Hermes/profiles/*/home/**
+Agenten/Hermes/profiles/*/workspace/**
+Agenten/Hermes/profiles/*/skills/**
+Agenten/Hermes/state-snapshots/**
+Agenten/Hermes/cache/**
+Agenten/Hermes/logs/**
+Agenten/Hermes/state/**
 
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body style="margin:0">
+<style>
+  body { font: 13px/1.5 -apple-system, "Segoe UI", sans-serif; color: var(--foreground); padding: 2px 0; }
+  h3 { margin: 0 0 10px; font-size: 14px; font-weight: 650; }
+  table { border-collapse: collapse; width: auto; }
+  th, td { text-align: left; padding: 5px 16px 5px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted-foreground); font-weight: 600; font-size: 12px; }
+  .ok { color: var(--accent); font-weight: 600; }
+  .warn { color: #e0a000; font-weight: 600; }
+  .m { color: var(--muted-foreground); font-size: 12px; margin-top: 10px; }
+  .k { font-variant-numeric: tabular-nums; }
+</style>
+<h3>Gemma-4-E4B Q8_0 auf der RTX 3060 Ti (8 GiB) &mdash; gemessen</h3>
+<table>
+  <tr><th>Kontext</th><th>Platzierung</th><th>Tempo</th><th>VRAM-Delta</th><th>Urteil</th></tr>
+  <tr><td class="k">8.192</td><td>100&nbsp;% GPU</td><td class="k">43,2 T/s</td><td class="k">5,02 GiB</td><td class="ok">passt</td></tr>
+  <tr><td class="k">16.384</td><td>100&nbsp;% GPU</td><td class="k">42,0 T/s</td><td class="k">~5 GiB</td><td class="ok">passt</td></tr>
+  <tr><td class="k">32.768</td><td>100&nbsp;% GPU</td><td class="k">38,6 T/s</td><td class="k">4,93 GiB</td><td class="ok">passt</td></tr>
+  <tr><td class="k">65.536</td><td>100&nbsp;% GPU</td><td class="k">38,4 T/s</td><td class="k">4,49 GiB</td><td class="ok">passt</td></tr>
+  <tr><td class="k">131.072</td><td>51/49 CPU/GPU</td><td class="k">22,5 T/s</td><td class="k">4,90 GiB</td><td class="warn">spaltet sich</td></tr>
+</table>
+<div class="m">Server-Log: Gewichte 4.788 MiB &middot; KV-Cache bei 65.536 nur 1.024 MiB &middot; Compute 166 MiB.<br>
+Die Datei (8,03 GB) enthält ~3 GB Tensoren, die der Motor nicht lädt &mdash; &bdquo;E4B&ldquo; heißt effektiv ~4,5 Mrd Parameter.<br>
+Meine Formel aus dem Dateikopf lag damit für dieses Modell daneben; die Messung zählt.</div>
+</body>
+</html>
