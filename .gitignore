@@ -84,6 +84,16 @@
 !Agenten/Handel/kraken/*.py
 !Agenten/Handel/kraken/*.md
 !Agenten/Handel/kraken/*.json
+
+# SWAP-Spur (Handel/swap/): eigener Papierpfad mit eigenen Wachen und Tests.
+# Ohne diese Zeilen waeren handeln.py und seine Tests nur lokal vorhanden -
+# genau die Luecke, die diese Datei schliessen soll. Die Datei war am
+# 12.09.2026 schon einmal eingetragen, aber ohne "!" und damit als Sperre.
+!Agenten/Handel/swap/*.py
+!Agenten/Handel/swap/*.md
+!Agenten/Handel/swap/*.json
+!Agenten/Handel/swap/tests/*.py
+!Agenten/Handel/swap/tests/fixtures/*.json
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -158,6 +168,15 @@ Agenten/Handel/kraken/berichte/**
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
+
+# SWAP-Spur: dieselbe Aufteilung wie bei den Spuren 1-3. wachen.json ist
+# Konfiguration von Hand und oben freigegeben, diese drei schreibt jeder Lauf.
+Agenten/Handel/swap/zustand.json
+Agenten/Handel/swap/handelsjournal.csv
+Agenten/Handel/swap/berichte/**
+# Der einmalige Korrekturlauf an handeln.py (vier Ersetzungen, jede einzeln
+# gezaehlt). Er hat seine Aufgabe erfuellt und gehoert nicht in den Verlauf.
+Agenten/Handel/swap/_fix.py
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von
 # Hand und oben freigegeben; Zustand, Journal und der Kerzen-Cache schreibt

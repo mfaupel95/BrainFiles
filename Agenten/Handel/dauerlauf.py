@@ -28,6 +28,12 @@ Er handelt nur Spuren mit Live-Pfad. Seit 03.09.2026 sind das zwei: Spur 2
 (xperp, der Hauptweg - der Pfad entstand an diesem Tag) und Spur 1
 (scanner). Spur 3 (Kraken) ist stillgelegt.
 
+Die SWAP-Spur laeuft daneben mit, aber nur als Papier: Ihr handeln.py hat
+keinen Live-Zweig, und sein --live verweigert mit einem Grund, den
+nur_fenster_fehlt() nicht als Fenster-Bitte liest. Sie wird trotzdem in jedem
+Zyklus gefahren - ihr Zustand und ihr Journal sind das, was der Tagesbericht
+und /status von ihr zeigen.
+
 WER FRAGT, WANN
 ---------------
 Ein Fenster oeffnet sich nur auf Anfrage, und die stellt pruefe_anfragen()
@@ -103,9 +109,16 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # Spur 3 (Kraken) ist seit 03.09.2026 stillgelegt und steht deshalb nicht
 # mehr hier - Grund und Zahlen in kraken/wachen.json, Feld
 # _stillgelegt_grund. Der Ordner bleibt, die Spur kann wieder anlaufen.
+# SWAP laeuft daneben als Papierspur mit: handeln.py hat keinen Live-Zweig,
+# und sein --live verweigert mit genau einem Grund, in dem das Wort
+# Freigabefenster nicht vorkommt (swap/tests/test_handeln_papier.py prueft
+# das). Deshalb fragt pruefe_anfragen() hier nie eine Freigabe an, die nichts
+# oeffnen koennte. Ein Zyklus kostet trotzdem Zeit: die Rangliste bewertet bis
+# zu 60 SWAP-Reihen und ist zwei Stunden gueltig (SCAN_ALTER_MINUTEN).
 SPUREN = {
-    "xperp": {"ordner": "xperp", "waehrung": "USD"},
+    "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
+    "swap":    {"ordner": "swap",    "waehrung": "USD"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt

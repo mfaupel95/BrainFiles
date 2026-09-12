@@ -1,4 +1,4 @@
-"""Ein Bild aller drei Spuren - fuer das Handy, einmal am Tag.
+"""Ein Bild aller Spuren - fuer das Handy, einmal am Tag.
 
 Angelegt am 03.09.2026 auf Max' Anweisung ("taegliche Meldung mit Updates auf
 mein Handy"). Liest nur; loest nichts aus, aendert keine Datei.
@@ -29,6 +29,11 @@ import traceback
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HIER, "scanner"))
+# Die Module der Spur 2 (okxf, wachen_xperp). Sie werden hier auch fuer die
+# SWAP-Spur gebraucht, deren eigener Ordner weder das eine noch das andere
+# enthaelt. Ueber __file__ bestimmt und nicht ueber HIER: HIER zeigen die Tests
+# auf einen Datenordner, die Module liegen trotzdem hier.
+XPERP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xperp")
 
 import melder                                            # noqa: E402
 
@@ -113,6 +118,59 @@ def spur_kraken():
         "name": "Spur 3  Kraken", "waehrung": "EUR", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_kraken",
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
+
+def spur_swap():
+    """SWAP-Spur - Papierpfad, USD.
+
+    Sie steht im Bericht wie jede andere Spur, obwohl sie nicht live gehen
+    kann: Ein Melder, der eine Spur verschweigt, weil sie Papier ist, meldet
+    genau die Positionen nicht, die es tatsaechlich gibt. Dass sie papierfest
+    ist, steht als Feld daneben ("papierfest") und wird unten ausgeschrieben.
+
+    Sonst dieselbe Rechnung wie bei Spur 2: Prozent auf die Margin, Betrag in
+    USD, Hebel neben der Zahl. Eine zweite Formel waere der Anfang zweier
+    Zahlenreihen, die sich nicht mehr vergleichen lassen.
+    """
+    ordner = os.path.join(HIER, "swap")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", [])
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, XPERP)
+            sys.path.insert(0, ordner)
+            import okxf                                   # noqa: PLC0415
+            for p in pos:
+                try:
+                    kurse[p["inst"]] = float(okxf.letzter_kurs(p["inst"]))
+                except Exception:                        # noqa: BLE001
+                    pass
+        except Exception:                                # noqa: BLE001
+            pass
+
+    zeilen = []
+    for p in pos:
+        k = kurse.get(p["inst"])
+        vz = 1 if p["seite"] == "long" else -1
+        bewegung = (vz * (k / p["einstieg"] - 1) * 100) if k else None
+        zeilen.append({
+            "name": "%s %s" % (p["basis"], p["seite"]),
+            "einstieg": p["einstieg"], "kurs": k,
+            "wert": p.get("margin", 0),
+            "vh": bewegung * p.get("hebel", 1) if bewegung is not None else None,
+            "stop": p.get("stop"), "seit": p.get("eroeffnet"),
+            "hebel": p.get("hebel"), "familie": p.get("familie"),
+        })
+    return {
+        "name": "SWAP (Papier)", "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": "wachen_xperp",
+        "papierfest": True,
         "journal": os.path.join(ordner, "handelsjournal.csv"),
     }
 
@@ -206,6 +264,11 @@ def wachenlage(spur):
     modul = spur.get("pruefmodul", "wachen_pruefung")
     try:
         sys.path.insert(0, os.path.join(HIER, "scanner"))
+        # wachen_xperp liegt in xperp/ - die SWAP-Spur liest dieselbe Rechnung
+        # ueber ihre eigene wachen.json, hat aber einen eigenen Ordner. Ohne
+        # diese Zeile faellt der Import aus und der Bericht schreibt "Wachen
+        # nicht lesbar", obwohl nur der Pfad fehlte.
+        sys.path.insert(0, XPERP)
         sys.path.insert(0, spur["ordner"])
         p = __import__(modul)
         return p.lage(spur["w"], spur["journal"], spur["z"])
@@ -259,7 +322,7 @@ def baue(mit_xperp=True):
     t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
 
     gesamt_offen = 0
-    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken):
+    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001
@@ -302,6 +365,11 @@ def baue(mit_xperp=True):
             t.append("  Kein Lauf mehr, weder Papier noch Live.")
         else:
             auf = sperren(s, lage)
+            if s.get("papierfest"):
+                # Der starkste Grund zuerst: Es fehlt nicht eine Freigabe, es
+                # fehlt der Zweig. Ohne diesen Zusatz liest sich "GESPERRT -
+                # handel_erlaubt=false" wie eine Spur, die auf ein /ja wartet.
+                auf.insert(0, "kein Live-Zweig (Papierpfad)")
             t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
                                      else "offen"))
 

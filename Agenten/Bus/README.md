@@ -88,7 +88,8 @@ Teilprojekt 3. Hier geht das nicht.
 ## Feste Handelsbefehle (xperp zuerst)
 
 SkillsBot (eigener Token, kein Handels-Poller):
-- `/status`: lokale Zustandsdateien, xperp vor Spot; Zeitstempel und Modus.
+- `/status`: lokale Zustandsdateien, xperp vor Spot und SWAP (Papierspur mit
+  eigenem Zustand); Zeitstempel und Modus.
 - `/papierstatus`: Live-Daten werden nicht als Papierpositionen ausgegeben.
 - `/prognose [N]`: vorhandene Spot-Marktbeobachtung mit `--kurz`, keine
   Order, kein Berichtschreiben. Ohne N ganzer Markt; N zwischen 1 und 200.
@@ -104,8 +105,10 @@ Handelsbot (dauerlauf.py, einziger Schreiber der Freigabefenster):
 
 Freigabe ist ein Zeitfenster, keine Einzelorder. Sie hebt keine Wache auf.
 Stop schliesst das Fenster fuer neue Einstiege, stellt keine Position glatt
-und stoppt nicht den Prozess. Normale SWAPs sind noch nicht vollstaendig
-bewacht angebunden; die neuen Befehle aktivieren sie nicht.
+und stoppt nicht den Prozess. Die SWAP-Spur (`Agenten/Handel/swap/`) hat
+einen eigenen Papierpfad und eigene Wachen in `wachen.json`, aber keinen
+Live-Zweig: ihr `handeln.py` verweigert `--live`. Kein Befehl hier schaltet
+sie scharf, und `/status` zeigt von ihr nur den Papierstand.
 
 Tests: `python -m unittest discover -s Agenten/Bus/tests -p test_handel_befehle.py`
 und `python -m unittest discover -s Agenten/Handel/tests` aus der Repo-Wurzel.

@@ -48,3 +48,37 @@ class ReadOnlyTest(unittest.TestCase):
         with patch('subprocess.run', side_effect=AssertionError('spawn verboten')):
             for text in ('/prognose 0', '/prognose -1', '/prognose 201', '/prognose 2 --live'):
                 self.assertIn('Syntax', h.prognose(text))
+
+    def test_swap_stand_wird_gelesen_nicht_behauptet(self):
+        # /status meldete SWAP bis zum 12.09.2026 aus einer festen Zeile im
+        # Code ("bewachte Anbindung unvollstaendig"). Eine feste Zeile altert
+        # still. Hier muss der Stand aus der Datei der Spur kommen.
+        import handel_befehle as h
+        with tempfile.TemporaryDirectory() as t, patch.object(h, 'HANDEL', Path(t)):
+            swap = Path(t) / 'swap'
+            swap.mkdir()
+            (swap / 'zustand.json').write_text(json.dumps(
+                {'modus': 'papier', 'letzter_lauf': '2026-09-12T17:00:00+00:00',
+                 'positionen': [{'inst': 'CHIP-USDT-SWAP-MARKER'}]}))
+            (swap / 'wachen.json').write_text(json.dumps(
+                {'handel_erlaubt': False, 'freigabe': {'erfuellt': False}}))
+            text = h.status()
+        self.assertIn('swap', text)
+        self.assertIn('CHIP-USDT-SWAP-MARKER', text)
+        self.assertIn('handel_erlaubt=False', text)
+        self.assertIn('Papier', text)
+
+    def test_swap_ohne_wachen_sagt_unbekannt_statt_gesperrt(self):
+        # Fehlt die Datei, ist die Lage unbekannt - nicht "gesperrt". Wer
+        # "gesperrt" liest, hoert auf zu pruefen.
+        import handel_befehle as h
+        with tempfile.TemporaryDirectory() as t, patch.object(h, 'HANDEL', Path(t)):
+            text = h.status()
+        self.assertIn('SWAP: wachen.json nicht lesbar', text)
+        self.assertNotIn('Live gesperrt', text)
+
+    def test_status_startet_nichts(self):
+        # Status ist ein Leser: kein Unterprozess, kein Broker, keine Order.
+        import handel_befehle as h
+        with patch('subprocess.run', side_effect=AssertionError('spawn verboten')):
+            self.assertIn('Dateistand', h.status())
