@@ -806,11 +806,12 @@ lag unter `Werkstatt/nautilus-trader/`. Die Werkstatt ist ein Junction auf
 keiner Sicherung — ein Aufräumlauf hätte die Arbeit gelöscht. Jetzt liegt er
 unter `Agenten/Handel/nautilus/` und damit in `sichern.ps1`/`zweitkopie.ps1`.
 
-Ehrlich dazugesagt: Die Sicherungen nehmen `.git`- und `.venv`-Ordner generell
-aus (`/XD .venv … .git` in `sichern.ps1`). Gesichert ist also der Quelltext,
-nicht die sechs Commits im eigenen `.git` und nicht die Umgebung. Das `.venv`
-ist aus `requirements`/`pip freeze` nachbaubar; die Vorgeschichte steht
-zusätzlich in dieser Datei und in `README-live-node.md`.
+Die Sicherungen nehmen `.git`- und `.venv`-Ordner generell aus
+(`/XD .venv … .git` in `sichern.ps1`); die Umgebung ist aus
+`requirements`/`pip freeze` nachbaubar. Die sechs Commits des eigenen `.git`
+liegen seit 12.09.2026 ausser Haus im privaten GitHub-Repo `mfaupel95/nautilus`
+(Remote `origin`, Zweig `master`); diese Datei und `README-live-node.md`
+tragen die Vorgeschichte trotzdem weiter.
 
 **Das Quotenproblem ist geklärt** (ausführlich in `nautilus/README-live-node.md`):
 Der Data-Client meldet sich mit Schlüssel zusätzlich am privaten
