@@ -191,7 +191,7 @@ function Move-InQuarantaene {
       '',
       "Angelegt: $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
     ) -join "`n"
-    Set-Content -LiteralPath (Join-Path $ordner 'README.txt') -Value $hinweis -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $ordner 'LIESMICH.txt') -Value $hinweis -Encoding UTF8
   }
 
   # GetFileName statt Split-Path -Leaf: Split-Path -LiteralPath liefert in
