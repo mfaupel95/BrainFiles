@@ -535,7 +535,7 @@ Zwei Lehren aus dem 19.08.2026:
 | ~~`Archiv\Software\icloud 26\firefox.csv`~~ | **erledigt 23.08.2026 — in Quarantäne verschoben** |
 | `Archiv\Software\Linux\Unraid\config\ssh\ssh_host_{rsa,ed25519,ecdsa}_key` | **private SSH-Hostschlüssel des Unraid-Servers** |
 | `Archiv\Software\Linux\Unraid\config\{passwd,shadow,smbpasswd,secrets.tdb}` | Benutzer- und Samba-Hashes |
-| `Werkstatt\Worktrees\investment\OKX_API.env` | API-Zugangsdaten im Klartext |
+| ~~`Werkstatt\Worktrees\investment\OKX_API.env`~~ | **erledigt 12.09.2026 — Datei liegt jetzt unter `%USERPROFILE%\.zugangsdaten\`, außerhalb aller Sicherungen** |
 | `Archiv\ArchivSuche\acoustid_key.txt` | 0 Byte, leer — kann weg |
 | `Archiv\Software\Linux\Unraid\config\plugins\unbalanced\unbalanced.env` | prüfen |
 

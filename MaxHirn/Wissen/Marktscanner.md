@@ -64,9 +64,11 @@ Fehlt eine, läuft Papierhandel und es wird gesagt, welche Sperre zu war.
 - **Papierhandel läuft.** Scan und Vorschläge getestet, 6 von 15 Werten
   passierten am 31.08. die Tore (SOL, LINK, BTC, ETH, BNB, LTC).
 - **Live-Handel noch nie scharf gelaufen.** Sperre 1 ist zu, Sperre 2 leer.
-  Die OKX-Schlüssel in `Werkstatt/Worktrees/investment/OKX_API.env` sind unbrauchbar
-  (Secret 6 statt 32 Zeichen, siehe [[Zugaenge]]) — es braucht ein neues Paar
-  mit Handelsrecht.
+  Die OKX-Schlüssel sind unbrauchbar (Secret 6 statt 32 Zeichen, siehe
+  [[Zugaenge]]) — es braucht ein neues Paar mit Handelsrecht. Die Klartextdatei
+  lag im Archiv-Posteingang und wanderte dadurch in jede Sicherung; seit dem
+  12.09.2026 liegt sie unter `%USERPROFILE%\.zugangsdaten\`, außerhalb von Vault
+  und Sicherungsdatenträgern.
 - **Der Live-Order-Pfad ist ungetestet** (`okx.markt_kauf` / `markt_verkauf` /
   `stop_setzen`). Vor dem ersten scharfen Lauf einen einzelnen Wert mit
   Kleinstbetrag von Hand ausführen und in der OKX-Oberfläche gegenprüfen.

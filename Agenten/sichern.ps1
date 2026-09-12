@@ -52,7 +52,10 @@ $ausnahmen = '(?i)\.(env\.template|env\.example)$|\\(GitHub|Modelle|Werkstatt|\.
 # (geprueft 23.08.2026). Passwoerter-Quarantaene.md ist eine Checkliste mit
 # Dienstnamen, ohne eine einzige Zugangsangabe - sie faellt nur ins Muster,
 # weil "Passwoerter" darin vorkommt.
-# OKX_API.env steht bewusst NICHT hier - offener Punkt.
+# OKX_API.env stand hier als offener Punkt: die Datei lag im Archiv-Posteingang
+# und wurde von Lauf 2 (O:\Archiv) mitkopiert, ohne dass die Zugangsdaten-Pruefung
+# sie sehen konnte - die laeuft nur ueber $quelle. Seit 12.09.2026 liegt sie
+# unter %USERPROFILE%\.zugangsdaten\ und damit ausserhalb beider Quellen.
 #
 # Bewusst Pfadenden statt Regex: ein Backslash im Muster muesste doppelt
 # geschrieben werden, und genau daran ist die erste Fassung gescheitert

@@ -102,10 +102,14 @@ Zeitstempel in 2-Sekunden-Schritten, NTFS in 100-Nanosekunden-Schritten. Ohne
 exFAT ungeeignet (siehe [[Portabilitaet]]), für eine reine Kopie ist es
 unproblematisch — es läuft keine Datenbank darauf.
 
-⚠️ **Auf der SSD liegen Klartext-Zugangsdaten** (`Wissen/Zugaenge.md`,
-`OKX_API.env`). Eine Platte außer Haus kann verloren gehen oder gestohlen
+⚠️ **Auf der SSD liegen Klartext-Zugangsdaten** (`Wissen/Zugaenge.md`). Eine Platte außer Haus kann verloren gehen oder gestohlen
 werden — anders als eine im Rechner. Ohne BitLocker To Go liest das jeder, der
 sie findet. Siehe [[Zugaenge]] und [[Passwoerter-Quarantaene]].
+
+`OKX_API.env` steht seit dem 12.09.2026 nicht mehr in dieser Aufzählung: die
+Datei lag im Archiv-Posteingang und wurde bei jedem Lauf mitkopiert. Sie liegt
+jetzt unter `%USERPROFILE%\.zugangsdaten\` und damit außerhalb von Vault und
+Sicherungsdatenträgern.
 
 Die Wrapper gibt es aus drei Gründen:
 
