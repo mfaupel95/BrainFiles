@@ -2002,7 +2002,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 42
+_config_version: 44
 a2a_agents:
   omniroute:
     auth:

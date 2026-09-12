@@ -38,7 +38,8 @@ moa:
   enabled: true
 plugins:
   enabled: []
-_config_version: 42
+_config_version: 44
+agent: {}
 
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,
