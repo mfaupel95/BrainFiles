@@ -30,6 +30,7 @@ Aufruf:
 
 import argparse
 import csv
+import importlib.util
 import json
 import os
 import sys
@@ -43,6 +44,21 @@ for p in (HIER, BUS):
 
 import ereignis                                               # noqa: E402
 import lesen                                                  # noqa: E402
+
+
+def _spiegelquelle():
+    """scanner/wachen_pruefung.py per Dateipfad laden.
+
+    Nicht ueber sys.path: scanner/ enthaelt okx.py, scan.py und handeln.py,
+    die in dieser Spur fremde Namen verdecken koennen. Die Datei braucht nur
+    die Standardbibliothek.
+    """
+    pfad = os.path.join(HIER, os.pardir, "scanner", "wachen_pruefung.py")
+    spec = importlib.util.spec_from_file_location("wachen_pruefung_quelle",
+                                                 pfad)
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
 
 WACHEN = os.path.join(HIER, "wachen.json")
 VERFOLGTE = os.path.join(HIER, "verfolgte.json")
@@ -463,6 +479,11 @@ def zeige_wachen(w):
                  "max_risiko_stufen", "herzschlag_max_minuten"):
         print("  %-30s %s" % (name, w.get(name)))
     print("  %-30s %s" % ("handel_erlaubt", w.get("handel_erlaubt")))
+    z = lade_zustand()
+    print("  %-30s %s" % ("journal_zweitziel",
+                          w.get("journal_zweitziel") or "-- nicht gesetzt"))
+    print("  %-30s %s (%s)" % ("letzte Kopie", z.get("journal_zweitziel_ok"),
+                               z.get("journal_zweitziel_info")))
 
 
 def signale_sammeln(w):
@@ -574,6 +595,19 @@ def lauf(modus):
     # Gelesen wird sie nur von dauerlauf.nur_fenster_fehlt(), und das fragt
     # seine Spuren mit --vorschau ab.
     schreibe_zustand(z)
+    # Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
+    # Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
+    # Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
+    # Ziel ist kein Fehler des Laufs; der Stand steht im Zustand.
+    basis = _spiegelquelle()
+    ziel = w.get("journal_zweitziel")
+    ok, info = basis.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if basis.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
+        # aelter, in dem sich der Spiegelstand aendert.
+        basis.spiegele_journal([ZUSTAND], ziel)
+    print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
     return 0
 
 

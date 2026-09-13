@@ -108,6 +108,20 @@ gesetzt:
 5. `.gitignore`-Whitelist: Code/Wachen/Tests freigegeben, `zustand.json` und
    `handelsjournal.csv` gesperrt (schreibt jeder Zyklus).
 
+## Journal außer Haus (Bedingung 4, seit 13.09.2026)
+
+Nach jedem Zyklus gehen `handelsjournal.csv` und `zustand.json` zusätzlich nach
+`journal_zweitziel` aus `wachen.json` (`Q:\Handel_Journal\omniquant`), wie bei
+den anderen Spuren. Die Kopie liegt **nach** dem Schreiben von Herzschlag und
+Journal: ein hängendes Zweitlaufwerk darf den Zyklus verzögern, nicht den
+Herzschlag verschlucken. Ein fehlendes Ziel ist kein Fehler des Laufs.
+
+Sichtbar wird eine ausgefallene Kopie im eigenen Zustand:
+`journal_zweitziel_ok` (true/false) und `journal_zweitziel_info` (Pfad oder
+Grund), geschrieben nur beim Wechsel. `handeln.py --wachen` zeigt beide an.
+Kopiert wird mit `scanner/wachen_pruefung.spiegele_journal` — eine
+Implementierung für alle Spuren.
+
 ## Grenzen (wachen.json)
 
 Alle Werte sind bewusst konservativ gesetzt, keine gemessen — und vor jedem

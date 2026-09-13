@@ -25,6 +25,7 @@ drawdown = basis.drawdown
 herzschlag_frisch = basis.herzschlag_frisch
 rollierender_ev = basis.rollierender_ev
 spiegele_journal = basis.spiegele_journal
+vermerke_spiegelung = basis.vermerke_spiegelung
 
 
 def runden_aus_journal(journal_pfad):

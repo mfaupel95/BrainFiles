@@ -475,6 +475,10 @@ def lauf(modus):
         if wp.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
+        # Bedingung 4 gilt auch hier: gerade der Notausstieg gehoert ausser
+        # Haus (Muster: der Herzschlag-Zweig direkt darunter).
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
         return
 
     # Bedingung 3 - Herzschlag alt: alles zu, dieser Lauf handelt nicht mehr.

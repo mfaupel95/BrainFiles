@@ -113,6 +113,24 @@ def schreibe_zustand(z):
         f.write("\n")
 
 
+def spiegeln(z, w):
+    """Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
+
+    Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
+    Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
+    Ziel ist kein Fehler des Laufs (Rueckgabe bleibt 0); der Stand steht im
+    Zustand (journal_zweitziel_ok/_info) und in zeige_wachen.
+    """
+    ziel = w.get("journal_zweitziel")
+    ok, info = wx.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if wx.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
+        # aelter, in dem sich der Spiegelstand aendert.
+        wx.spiegele_journal([ZUSTAND], ziel)
+    print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
+
+
 def journal(**felder):
     neu = not os.path.exists(JOURNAL)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
@@ -568,6 +586,11 @@ def zeige_wachen(s, w):
     for name, f in sorted(s["familien"].items()):
         print("     Familie %-9s %.2f von %.2f gebunden%s"
               % (name, f["margin"], f["grenze"], " - VOLL" if f["voll"] else ""))
+    z = lade_zustand()
+    print("  Journal-Zweitziel         %s"
+          % (w.get("journal_zweitziel") or "-- nicht gesetzt"))
+    print("  Letzte Kopie ausser Haus  %s (%s)"
+          % (z.get("journal_zweitziel_ok"), z.get("journal_zweitziel_info")))
 
 
 def lauf(modus):
@@ -605,6 +628,7 @@ def lauf(modus):
               % s["ruecklauf_usd"])
         flach_stellen(z, live, "kill_switch")
         schreibe_zustand(z)
+        spiegeln(z, w)
         return
     if not s["herzschlag_frisch"]:
         print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel dieser "
@@ -613,6 +637,7 @@ def lauf(modus):
                           w.get("herzschlag_max_minuten", 30)))
         flach_stellen(z, live, "herzschlag_alt")
         schreibe_zustand(z)
+        spiegeln(z, w)
         return
 
     werte, alter = rangliste(z)
@@ -633,7 +658,11 @@ def lauf(modus):
         g = sperren_live(w, s)
         if g:
             print("Live waere gesperrt durch: " + "; ".join(g))
-        schreibe_zustand(z)
+        # Bewusst KEIN schreibe_zustand: eine Vorschau schreibt nicht (so
+        # halten es omniquant, spiegel und nautilus). Vorher setzte jeder
+        # Vorschau-Lauf einen frischen Herzschlag - und weil der Dauerlauf
+        # jede Spur zusaetzlich mit --vorschau abfragt, war die Kopie auf Q:
+        # danach scheinbar aelter als der eigene Zustand.
         return
 
     pruefe_einstiege(z, kand, w, live, s, s["groessenfaktor"])
@@ -641,6 +670,7 @@ def lauf(modus):
           % (len(z["positionen"]),
              sum(p["margin"] for p in z["positionen"])))
     schreibe_zustand(z)
+    spiegeln(z, w)
 
 
 def main():

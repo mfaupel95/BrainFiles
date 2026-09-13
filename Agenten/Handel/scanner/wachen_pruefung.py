@@ -141,6 +141,28 @@ def spiegele_journal(dateien, ziel):
     return True, str(zpfad)
 
 
+def vermerke_spiegelung(z, ziel, ok, info, schreiben):
+    """Ergebnis der Spiegelung in den Zustand schreiben - nur bei Aenderung.
+
+    `schreiben(z)` ist die Schreibfunktion der jeweiligen Spur; jede Spur
+    schreibt ihren eigenen Zustand. Rueckgabe: True, wenn geschrieben wurde.
+
+    Warum ueberhaupt: der Dauerlauf protokolliert bei Rueckgabe 0 nur "ok"
+    und zeigt die Spurausgabe nicht. Eine ausgefallene Kopie nach Q: waere
+    damit unsichtbar - sichtbar ist sie nur, wenn sie im Zustand steht
+    (`journal_zweitziel_ok`, `journal_zweitziel_info`). Geschrieben wird nur
+    beim Wechsel, sonst waere jeder Zyklus ein zweiter Schreibvorgang ohne
+    neue Aussage.
+    """
+    felder = {"journal_zweitziel": ziel, "journal_zweitziel_ok": ok,
+              "journal_zweitziel_info": info}
+    if all(z.get(k) == v for k, v in felder.items()):
+        return False
+    z.update(felder)
+    schreiben(z)
+    return True
+
+
 # --- Sperre schliessen (einziger Schreibzugriff auf wachen.json) ----------
 
 def sperre_zu(grund):

@@ -275,10 +275,15 @@ def _letzter_kurs(w, key):
 
 def zeige_wachen(w):
     key, konf = _inst_konf(w)
+    z = lade_zustand()
+    kopie = ("   |   Journal-Zweitziel %s%s"
+             % (w.get("journal_zweitziel") or "-- nicht gesetzt",
+                "" if "journal_zweitziel_ok" not in z
+                else " (letzte Kopie %s)" % z["journal_zweitziel_ok"]))
     if not konf:
         return "kein instrument_aktiv - Spur gesperrt (Backtest fehlt)"
-    return ("%s (%s): handel_erlaubt=%s, aktiv=%s" %
-            (key, konf["kraken"], w["handel_erlaubt"], key))
+    return ("%s (%s): handel_erlaubt=%s, aktiv=%s%s" %
+            (key, konf["kraken"], w["handel_erlaubt"], key, kopie))
 
 
 def main(argv=None):
@@ -327,6 +332,19 @@ def _main(argv=None):
     meldungen = lauf()
     for m in meldungen:
         print(m)
+    # Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
+    # Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
+    # Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
+    # Ziel ist kein Fehler des Laufs; der Stand steht im Zustand.
+    z = lade_zustand()
+    ziel = w.get("journal_zweitziel")
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
+        # aelter, in dem sich der Spiegelstand aendert.
+        wp.spiegele_journal([ZUSTAND], ziel)
+    print("Journal ausser Haus: %s (%s)" % ("ok" if ok else "--", info))
     return 0
 
 

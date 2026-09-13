@@ -13,7 +13,16 @@ class TestWachenJson(unittest.TestCase):
         # den laufenden ETH-Papiertest gesetzt - der Backtest ist weiter offen.
         self.assertIs(self.w["handel_erlaubt"], False)
         self.assertIs(self.w["freigabe"]["erfuellt"], False)
-        self.assertIsNone(self.w["journal_zweitziel"])
+
+    def test_journal_zweitziel_gesetzt(self):
+        # Bedingung 4. Bis 13.09.2026 stand hier assertIsNone - das Ziel ist
+        # seit dem 13.09.2026 gesetzt (Q:), und handeln.py spiegelt nach jedem
+        # Zyklus dorthin. Ein Ziel ist nicht der Nachweis: die Kopie zaehlt
+        # (siehe zustand.json journal_zweitziel_ok).
+        ziel = self.w["journal_zweitziel"]
+        self.assertIsInstance(ziel, str)
+        self.assertTrue(ziel.strip())
+        self.assertNotIn("G:", ziel, "G: ist dasselbe Gehaeuse wie die Platte")
 
     def test_pflichtfelder_da(self):
         for schluessel in ("risiko_pro_trade_usd", "ziel_modus", "hebel_deckel",

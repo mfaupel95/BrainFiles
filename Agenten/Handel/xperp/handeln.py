@@ -611,7 +611,11 @@ def lauf(modus):
         g = sperren_live(w, s)
         if g:
             print("Live waere gesperrt durch: " + "; ".join(g))
-        schreibe_zustand(z)
+        # Bewusst KEIN schreibe_zustand: eine Vorschau schreibt nicht (so
+        # halten es omniquant, spiegel und nautilus). Vorher setzte jeder
+        # Vorschau-Lauf einen frischen Herzschlag - und weil der Dauerlauf
+        # jede Spur zusaetzlich mit --vorschau abfragt, war die Kopie auf Q:
+        # danach scheinbar aelter als der eigene Zustand.
         return
 
     z["modus"] = "live" if live else "papier"
@@ -624,6 +628,8 @@ def lauf(modus):
         if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
         return
 
     # Bedingung 3 - Herzschlag alt. Deckt die Kernel-Power-41-Abschaltungen
@@ -636,6 +642,8 @@ def lauf(modus):
         flach_stellen(z, live, "herzschlag_alt")
         z["modus"] = "papier"
         schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
         return
 
     buche_funding(z, live, w)

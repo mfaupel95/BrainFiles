@@ -160,6 +160,21 @@ Beides ist nötig; die Mechanik teilen sie über `Handel/buchauswertung.py`, dam
 es keine zweite Formel für dieselbe Frage gibt. Die Bilanz steht auch als Zeile
 im Tagesbericht (`Auswertung: …`) — sie kommt aus derselben Quelle.
 
+## Journal außer Haus (Bedingung 4, seit 13.09.2026)
+
+Nach jedem Zyklus gehen `handelsjournal.csv` und `zustand.json` zusätzlich nach
+`journal_zweitziel` aus `wachen.json` (`Q:\Handel_Journal\spiegel`), wie bei
+den anderen Spuren. Die Kopie liegt **nach** dem Schreiben von Herzschlag und
+Journal: ein hängendes Zweitlaufwerk darf den Zyklus verzögern, nicht den
+Herzschlag verschlucken. Ein fehlendes Ziel ist kein Fehler des Laufs.
+
+Sichtbar wird eine ausgefallene Kopie im eigenen Zustand:
+`journal_zweitziel_ok` (true/false) und `journal_zweitziel_info` (Pfad oder
+Grund), geschrieben nur beim Wechsel; `spiegel.py --wachen` zeigt beide.
+Kopiert wird mit `scanner/wachen_pruefung.spiegele_journal` — geladen über den
+Dateipfad, nicht über `sys.path`: `scanner/` enthält `okx.py`, `scan.py` und
+`handeln.py`, die hier fremde Namen verdecken könnten.
+
 ## Offen
 
 1. Kein Konto-Abgleich: Das Buch glaubt sich selbst (bekannt aus der

@@ -56,6 +56,7 @@ for p in (HIER, HANDEL, os.path.join(HANDEL, "scanner"),
 
 import ereignis                                            # noqa: E402
 import okx                                                 # noqa: E402
+import wachen_pruefung as wp                               # noqa: E402
 
 WACHEN = os.path.join(HIER, "wachen.json")
 ZUSTAND = os.path.join(HIER, "zustand.json")
@@ -448,6 +449,11 @@ def zeige_wachen(w):
               "max_bericht_alter_stunden", "max_je_basiswert"):
         print("  %-28s %s" % (k, w.get(k)))
     print("  Signalquelle: %s" % w.get("signal_quelle", "prognose_berichte/neuester.json"))
+    z = lade_zustand()
+    print("  %-28s %s" % ("journal_zweitziel",
+                          w.get("journal_zweitziel") or "-- nicht gesetzt"))
+    print("  %-28s %s (%s)" % ("  letzte Kopie", z.get("journal_zweitziel_ok"),
+                               z.get("journal_zweitziel_info")))
 
 
 # --- Lauf -------------------------------------------------------------------
@@ -539,6 +545,19 @@ def lauf(modus):
              w.get("max_gesamt_risiko_usd", 500),
              z.get("verluste_usd", 0.0)))
     schreibe_zustand(z)
+
+    # Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
+    # Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
+    # Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
+    # Ziel ist kein Fehler des Laufs; der Stand steht im Zustand.
+    ziel = w.get("journal_zweitziel")
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
+        # aelter, in dem sich der Spiegelstand aendert.
+        wp.spiegele_journal([ZUSTAND], ziel)
+    print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
 
 
 def main():
