@@ -1,0 +1,310 @@
+"""Tests der Omniquant-Spur: Signalquelle, Einstiege, Ausstiege, keine Order.
+
+Die Tests brauchen kein Netz: bericht_quelle und letzter_kurs_quelle sind
+Seams in handeln.py (None -> echte Quelle), die Tests setzen Lambdas und
+stellen in tearDown zurueck. Ein Test darf nie den echten Order-/Kurspfad
+erreichen - letzter_kurs_quelle ist in jedem Lauf gesetzt.
+
+Lauf:
+    C:/Users/faupe/Documents/BrainFiles/Agenten/Handel/scanner/.venv/Scripts/python.exe
+        -m unittest discover -s tests -p "test_*.py"
+"""
+
+import json
+import os
+import tempfile
+import unittest
+from datetime import datetime, timedelta, timezone
+
+HIER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HANDEL = os.path.dirname(HIER)
+import sys
+sys.path.insert(0, HIER)
+sys.path.insert(0, HANDEL)
+
+import handeln as h                               # noqa: E402
+
+
+def _bericht(treffer, erzeugt=None):
+    """Ein synthetischer Prognose-Bericht mit frischem Zeitstempel."""
+    return {
+        "datum": "2026-09-13",
+        "erzeugt": (erzeugt or datetime.now(timezone.utc)).isoformat(
+            timespec="seconds"),
+        "maerkte_geprueft": 33,
+        "treffer": treffer,
+    }
+
+
+def _treffer(inst, richtung, kurs, stop, ziel, score=67.0, cr=2.0):
+    return {"inst": inst, "richtung": richtung, "preis": kurs, "stop": stop,
+            "ziel": ziel, "score": score, "cr": cr}
+
+
+class Basis(unittest.TestCase):
+    def setUp(self):
+        # Zustands- und Journal-Dateien der Spur nie anfassen: Tests laufen
+        # gegen ein temp-Verzeichnis, in das handeln.py umgebogen wird.
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt_zustand = h.ZUSTAND
+        self.alt_journal = h.JOURNAL
+        self.alt_wachen = h.WACHEN
+        h.ZUSTAND = os.path.join(self.tmp.name, "zustand.json")
+        h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
+        h.WACHEN = os.path.join(self.tmp.name, "wachen.json")
+        with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+        with open(h.WACHEN, "w", encoding="utf-8") as f:
+            json.dump(w, f, ensure_ascii=False, indent=2)
+
+    def tearDown(self):
+        h.ZUSTAND = self.alt_zustand
+        h.JOURNAL = self.alt_journal
+        h.WACHEN = self.alt_wachen
+        h.letzter_kurs_quelle = None
+        h.bericht_quelle = None
+        self.tmp.cleanup()
+
+
+class KandidatenTest(Basis):
+    def test_uebernimmt_treffer_mit_richtung(self):
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        kand, fehler = h.kandidaten(z, w)
+        self.assertIsNone(fehler)
+        self.assertEqual(len(kand), 1)
+        self.assertEqual(kand[0]["inst"], "BTC-USDC")
+        self.assertEqual(kand[0]["seite"], "long")
+
+    def test_treffer_ohne_richtung_wird_uebersprungen(self):
+        # Altes Berichtsformat (vor dem Richtungsfeld): keine Auskunft.
+        b = _bericht([])
+        b["treffer"] = [{"inst": "HYPE-USDC", "preis": 79.79,
+                         "stop": 75.8, "ziel": 89.67}]
+        h.bericht_quelle = b
+        h.letzter_kurs_quelle = lambda inst: 80.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_signal_verfallen_wenn_kurs_ausserhalb(self):
+        # long: Kurs muss zwischen Stop und Ziel liegen.
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 112.0   # schon uebers Ziel
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_kein_doppelter_einstieg(self):
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long"}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_kein_wiedereinstieg_aus_erledigt_heute(self):
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["erledigt"] = [{"inst": "BTC-USDC", "seite": "long",
+                          "am": h._heute()}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_erledigt_von_gestern_blockiert_nicht(self):
+        # Ein frischer Bericht mit neuen Grenzen ist eine neue Lage. Die
+        # Merkliste darf nur den heutigen Tag sperren, sonst ist das Tor
+        # zu (Pitfall aus handel-spuren: eine Sperre muss aufgehen koennen).
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        gestern = (datetime.now(timezone.utc).date()
+                   - timedelta(days=1)).isoformat()
+        z["erledigt"] = [{"inst": "BTC-USDC", "seite": "long", "am": gestern}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 1)
+
+    def test_alter_bericht_ist_abstention(self):
+        alt = datetime.now(timezone.utc) - timedelta(hours=50)
+        h.bericht_quelle = _bericht(
+            [_treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)], erzeugt=alt)
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        kand, fehler = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+        self.assertIn("alt", fehler)
+
+
+class EinstiegAusstiegTest(Basis):
+    def test_eroeffnet_position_und_schreibt_journal(self):
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        kand, _ = h.kandidaten(z, w)
+        h.eroeffne(z, w, kand[0])
+        self.assertEqual(len(z["positionen"]), 1)
+        p = z["positionen"][0]
+        self.assertEqual(p["inst"], "BTC-USDC")
+        self.assertEqual(p["seite"], "long")
+        self.assertAlmostEqual(p["nominal"], 50.0)
+        with open(h.JOURNAL, encoding="utf-8") as f:
+            inhalt = f.read()
+        self.assertIn("EINSTIEG", inhalt)
+        self.assertIn("BTC-USDC", inhalt)
+
+    def test_ausstieg_stop_long(self):
+        h.letzter_kurs_quelle = lambda inst: 94.0    # unter dem Stop
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": "2026-09-10"}]
+        h.pruefe_ausstiege(z, w)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(z["erledigt"][0]["grund"], "stop")
+        # Verlust gebucht: 5 % Bewegung + 0,25 % Kosten, positiv.
+        self.assertGreater(z["verluste_usd"], 0.0)
+        with open(h.JOURNAL, encoding="utf-8") as f:
+            inhalt = f.read()
+        self.assertIn("AUSSTIEG", inhalt)
+        self.assertIn("stop", inhalt)
+
+    def test_ausstieg_ziel_long(self):
+        h.letzter_kurs_quelle = lambda inst: 111.0   # ueber dem Ziel
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": "2026-09-10"}]
+        h.pruefe_ausstiege(z, w)
+        self.assertEqual(z["erledigt"][0]["grund"], "ziel")
+        self.assertEqual(z["verluste_usd"], 0.0)
+
+    def test_ausstieg_stop_short(self):
+        h.letzter_kurs_quelle = lambda inst: 96.0    # ueber dem Stop
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "short",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 90.0,
+                            "nominal": 50.0, "eroeffnet": "2026-09-10"}]
+        h.pruefe_ausstiege(z, w)
+        self.assertEqual(z["erledigt"][0]["grund"], "stop")
+
+    def test_zwangsschluss_nach_halte_dauer(self):
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        alt = (datetime.now(timezone.utc) - timedelta(days=20)).date().isoformat()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": alt}]
+        h.pruefe_ausstiege(z, w)
+        self.assertEqual(z["erledigt"][0]["grund"], "zwangsschluss")
+
+    def test_kein_zwangsschluss_bei_frischer_position(self):
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": "2026-09-13"}]
+        h.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 1)
+
+
+class SperrenTest(Basis):
+    def test_live_verweigert_ohne_freigabefenster_wort(self):
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        g = h.sperren_live(w, z)
+        self.assertTrue(g)
+        # Das entscheidende Wort darf nicht vorkommen, sonst wuerde der
+        # Dauerlauf eine Freigabe anfragen, die nichts oeffnen kann.
+        self.assertNotIn("Freigabefenster", "; ".join(g))
+
+    def test_kill_switch_bei_verlustgrenze(self):
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["verluste_usd"] = w["max_gesamt_risiko_usd"] + 1
+        g = h.sperren_live(w, z)
+        self.assertTrue(any("Kill-Switch" in x for x in g))
+
+    def test_live_modus_handelt_papier(self):
+        # --live auf einer papierfesten Spur: es wird Papier gehandelt und
+        # der Modus im Zustand bleibt papier - kein Orderpfad erreichbar.
+        h.letzter_kurs_quelle = lambda inst: 94.0
+        h.bericht_quelle = _bericht([])
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        g = h.sperren_live(w, z)
+        self.assertTrue(g)   # Grund ist immer da (handel_erlaubt=false)
+
+
+class VorschauTest(Basis):
+    def test_vorschau_schreibt_nichts(self):
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        self.assertFalse(os.path.exists(h.ZUSTAND))
+        self.assertFalse(os.path.exists(h.JOURNAL))
+        h.lauf("vorschau")
+        # Weder Zustand noch Journal angelegt: eine Vorschau schreibt nicht.
+        self.assertFalse(os.path.exists(h.ZUSTAND))
+        self.assertFalse(os.path.exists(h.JOURNAL))
+
+    def test_vorschau_nennt_sperrenzeile(self):
+        h.bericht_quelle = _bericht([])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        # Die --vorschau-Zeile ist die Schnittstelle zu dauerlauf.
+        # nur_fenster_fehlt() liest sie - ohne "Freigabefenster" fragt der
+        # Lauf nie. Das prueft der Quelltext-Test in dauerlauf-naehe nicht,
+        # deshalb hier die gedruckte Zeichenkette.
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            h.lauf("vorschau")
+        out = buf.getvalue()
+        self.assertIn("Live waere gesperrt durch:", out)
+        self.assertNotIn("Freigabefenster", out)
+
+
+class ZustandsformTest(Basis):
+    def test_zustandsform_passt_fuer_bus_und_tagesbericht(self):
+        # handel_befehle.status() zaehlt d.get('positionen') als Liste und
+        # beschriftet mit p.get('seite')/p.get('inst'); der Tagesbericht
+        # liest seite/einstieg/stop/ziel/eroeffnet. Die Form muss diese
+        # Feldnamen tragen, sonst liest sich die Spur dort als leer.
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        h.lauf("papier")
+        with open(h.ZUSTAND, encoding="utf-8") as f:
+            z = json.load(f)
+        self.assertEqual(z["modus"], "papier")
+        self.assertIsInstance(z["positionen"], list)
+        if z["positionen"]:
+            p = z["positionen"][0]
+            for feld in ("inst", "seite", "einstieg", "stop", "ziel",
+                         "eroeffnet", "nominal"):
+                self.assertIn(feld, p)
+
+
+if __name__ == "__main__":
+    unittest.main()

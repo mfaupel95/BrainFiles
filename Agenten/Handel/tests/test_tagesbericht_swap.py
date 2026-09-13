@@ -139,6 +139,54 @@ class SwapImBericht(unittest.TestCase):
         self.assertIn("(kein Kurs)", text)
 
 
+class StopAbstandRichtung(unittest.TestCase):
+    """zeile_position rechnet den Stop-Abstand richtungsbewusst.
+
+    Befund 13.09.2026: Die erste omniquant-short-Position (WLFI-USDT) wurde
+    im Tagesbericht als "Stop gerissen (8.0%)" gezeigt, obwohl der Stop 8,7 %
+    UEBER dem Einstieg lag und nichts gerissen war - die Formel rechnete
+    kurs/stop - 1 ohne Richtung, und bei short liegt der Stop immer ueber dem
+    Kurs. Der Abstand ist Luft, kein Fehler.
+    """
+
+    def test_short_mit_luft_zum_stop_ist_nicht_gerissen(self):
+        # short: Stop ueber dem Einstieg, Kurs noch beim Einstieg -> Luft.
+        p = {"name": "WLFI short", "einstieg": 0.057, "kurs": 0.057,
+             "stop": 0.062, "wert": 50.0, "vh": 0.0, "seite": "short"}
+        text = tagesbericht.zeile_position(p, "USD")
+        self.assertIn("Stop 8.1% (Kurs)", text)
+        self.assertNotIn("gerissen", text)
+
+    def test_short_mit_kurs_hinter_dem_stop_ist_gerissen(self):
+        # Kurs ist UEBER den Stop gelaufen (nach oben) -> gerissen.
+        p = {"name": "WLFI short", "einstieg": 0.057, "kurs": 0.065,
+             "stop": 0.062, "wert": 50.0, "vh": -14.0, "seite": "short"}
+        text = tagesbericht.zeile_position(p, "USD")
+        self.assertIn("Stop gerissen", text)
+
+    def test_long_mit_luft_zum_stop_ist_nicht_gerissen(self):
+        p = {"name": "SOL long", "einstieg": 99.5, "kurs": 100.0,
+             "stop": 94.5, "wert": 50.0, "vh": 0.5, "seite": "long"}
+        text = tagesbericht.zeile_position(p, "USD")
+        self.assertIn("Stop 5.8% (Kurs)", text)
+        self.assertNotIn("gerissen", text)
+
+    def test_long_mit_kurs_hinter_dem_stop_ist_gerissen(self):
+        p = {"name": "SOL long", "einstieg": 99.5, "kurs": 94.0,
+             "stop": 94.5, "wert": 50.0, "vh": -5.5, "seite": "long"}
+        text = tagesbericht.zeile_position(p, "USD")
+        self.assertIn("Stop gerissen", text)
+
+    def test_ohne_seite_gilt_long(self):
+        # Positionen ohne seite-Feld (aelleres Format) bleiben long - der
+        # bisherige Default, unveraendert.
+        p = {"name": "X long", "einstieg": 100.0, "kurs": 101.0,
+             "stop": 95.0, "wert": 50.0, "vh": 1.0}
+        text = tagesbericht.zeile_position(p, "USD")
+        self.assertIn("Stop 6.3% (Kurs)", text)
+        self.assertNotIn("gerissen", text)
+
+
 def zeige():
     """Rendert den Bericht mit Beispieldaten - die Ausgabe ist der Nachweis."""
     _, text = bericht([BEISPIEL, dict(BEISPIEL, inst="XAU-USD-SWAP",

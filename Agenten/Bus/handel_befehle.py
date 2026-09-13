@@ -8,7 +8,7 @@ HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 # und ihrem Zustand - nicht als fester Satz hier: SWAP hat seit dem 12.09.2026
 # einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
 # alt wird.
-SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk')
+SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant')
 
 
 def status(papier=False):

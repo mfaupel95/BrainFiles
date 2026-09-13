@@ -284,6 +284,57 @@ def spur_spiegel():
     }
 
 
+def spur_omniquant():
+    """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
+
+    Sie hat kein Pruefmodul und keine fuenf Bedingungen (wie die
+    Spiegel-Spur): ihr Ergebnis ist ein Buch, keine Wache. Der Betrag je
+    Position ist der Einsatz (nominal), der Prozentwert die Bewegung am
+    Kurs - ohne Hebel, Spot-Paare aus dem Prognose-Bericht. papierfest=True,
+    damit der Bericht "kein Live-Zweig" sagt statt "GESPERRT - wartet auf
+    /ja".
+    """
+    ordner = os.path.join(HIER, "omniquant")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", [])
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, os.path.join(HIER, "scanner"))
+            import okx                                      # noqa: PLC0415
+            for p in pos:
+                try:
+                    kurse[p["inst"]] = float(okx.letzter_kurs(p["inst"]))
+                except Exception:                           # noqa: BLE001
+                    pass
+        except Exception:                                   # noqa: BLE001
+            pass
+
+    zeilen = []
+    for p in pos:
+        k = kurse.get(p["inst"])
+        vz = 1 if p["seite"] == "long" else -1
+        bewegung = (vz * (k / p["einstieg"] - 1) * 100) if k else None
+        zeilen.append({
+            "name": "%s %s" % (p["inst"], p["seite"]),
+            "einstieg": p["einstieg"], "kurs": k,
+            "wert": p.get("nominal", 0),
+            "vh": bewegung,
+            "stop": p.get("stop"), "seit": p.get("eroeffnet"),
+            "seite": p.get("seite"),
+        })
+    return {
+        "name": "Omniquant (%s)" % (z.get("modus") or "papier"),
+        "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
+
 def spur_xperp_positionen():
     """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
 
@@ -410,7 +461,13 @@ def zeile_position(p, waehrung):
     if p["kurs"] is None:
         return "  %-12s %s  (kein Kurs)" % (p["name"], p["einstieg"])
     pfeil = "+" if p["vh"] >= 0 else ""
-    abstand = ((p["kurs"] / p["stop"] - 1) * 100) if p.get("stop") else None
+    # Stop-Abstand richtungsbewusst: bei long liegt der Stop unter dem Kurs
+    # (kurs/stop - 1 positiv = Luft), bei short ueber dem Kurs (kurs/stop - 1
+    # negativ, obwohl der Stop NICHT gerissen ist). Ohne den Richtungsfaktor
+    # zeigt der Bericht jede gesunde short-Position als "Stop gerissen" -
+    # Befund 13.09.2026 an der ersten omniquant-short-Position.
+    vz = 1 if (p.get("seite") or p.get("richtung") or "long") == "long" else -1
+    abstand = (vz * (p["kurs"] / p["stop"] - 1) * 100) if p.get("stop") else None
     text = "  %-12s %s%.1f%%  %.0f %s" % (
         p["name"], pfeil, p["vh"], p["wert"], waehrung)
     if p.get("hebel"):
@@ -437,7 +494,7 @@ def baue(mit_xperp=True):
 
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-                 spur_spiegel, spur_orbk):
+                 spur_spiegel, spur_orbk, spur_omniquant):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001

@@ -118,6 +118,13 @@
 # Wachen-Datei des omnitrade-Projekts (Rust-Terminal/Bot). Nur die
 # Grenzen, kein Laufzeitstand - gleiche Rolle wie scanner/wachen.json.
 !Agenten/Handel/omnitrade_wachen.json
+# Omniquant-Spur (Papierbuch auf dem Prognose-Bericht): Code, Wachen und
+# Tests gehoeren in den Verlauf - zustand.json und das Journal nicht
+# (schreibt jeder Zyklus).
+!Agenten/Handel/omniquant/*.py
+!Agenten/Handel/omniquant/*.md
+!Agenten/Handel/omniquant/*.json
+!Agenten/Handel/omniquant/tests/*.py
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -213,6 +220,11 @@ Agenten/Handel/orb/daten/**
 Agenten/Handel/orbk/zustand.json
 Agenten/Handel/orbk/handelsjournal.csv
 Agenten/Handel/orbk/daten/**
+
+# Omniquant-Spur: dieselbe Aufteilung. wachen.json ist oben freigegeben
+# (Grenzen von Hand); Zustand und Journal schreibt jeder Zyklus.
+Agenten/Handel/omniquant/zustand.json
+Agenten/Handel/omniquant/handelsjournal.csv
 
 # Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
 # freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.

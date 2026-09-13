@@ -121,6 +121,11 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # Spur hat seit 12.09.2026 einen Live-Pfad, ihre Sperrgruende nennen deshalb das
 # Freigabefenster und der Lauf darf fragen). Sie braucht kein eigenes venv (nur
 # Standardbibliothek plus das onchainos-CLI auf dem PATH).
+# OMNIQUANT (Papierbuch auf dem Prognose-Bericht, angelegt 13.09.2026): handelt
+# die Treffer aus prognose_berichte/neuester.json als Papierpositionen (gleiche
+# Idee wie omniquant.trade, aber eigene Daten und eigene Kontrolle). Kein
+# Live-Zweig wie spiegel: --live verweigert, das Wort Freigabefenster kommt in
+# keinem Sperrgrund vor, der Lauf fragt nie. Liest nur den Bericht und OKX-Kurse.
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
@@ -129,6 +134,8 @@ SPUREN = {
                 "skript": "spiegel.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
+    "omniquant": {"ordner": "omniquant", "waehrung": "USD",
+                  "skript": "handeln.py"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
