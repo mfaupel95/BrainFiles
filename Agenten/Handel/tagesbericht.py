@@ -281,23 +281,41 @@ def spur_spiegel():
         "pruefmodul": None,
         "papierfest": True,
         "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "bilanz": _bilanz("spiegel"),
     }
 
 
-def _bilanz_omniquant(ordner):
-    """Die Bilanzzeile der Omniquant-Spur - rein lesend, aus EINER Quelle.
+def _bilanz(spur):
+    """Die Bilanzzeile einer Buch-Spur - rein lesend, aus EINER Quelle.
 
-    Sie kommt aus omniquant/auswertung.py: derselbe Aufruf, den die GUI
-    zeigt. Eine zweite Formel fuer dieselbe Frage waere eine zweite
-    Wahrheit. Faellt das Modul aus, steht der Grund da und nicht gar nichts.
+    Sie kommt aus <spur>/auswertung.py: derselbe Aufruf, den eine GUI zeigt.
+    Eine zweite Formel fuer dieselbe Frage waere eine zweite Wahrheit.
+    Faellt das Modul aus, steht der Grund da und nicht gar nichts.
+
+    Geladen wird ueber den DATEIPFAD, nicht ueber den Modulnamen: mehrere
+    Spuren haben ein auswertung.py, und sys.modules gaebe beim zweiten
+    Import das erste zurueck - die Spiegel-Zeile traege dann die Zahlen von
+    Omniquant.
     """
+    ordner = os.path.join(HIER, spur)
+    # Ein Bericht LIEST. Python legt beim Laden eines Moduls aus einer Datei
+    # einen Bytecode-Cache an - im Spurordner, also neben dem Journal. Das
+    # schaltet der Import fuer die Dauer des Ladens ab (der Test
+    # "bericht_schreibt_nichts" hat genau das aufgedeckt).
+    alt = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
     try:
-        if ordner not in sys.path:
-            sys.path.insert(0, ordner)
-        import auswertung                                   # noqa: PLC0415
-        return auswertung.kernzeile(os.path.join(ordner, "handelsjournal.csv"))
-    except Exception as e:                                  # noqa: BLE001
+        import importlib.util                              # noqa: PLC0415
+        pfad = os.path.join(ordner, "auswertung.py")
+        spec = importlib.util.spec_from_file_location(
+            "auswertung_%s" % spur, pfad)
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul.kernzeile(os.path.join(ordner, "handelsjournal.csv"))
+    except Exception as e:                                 # noqa: BLE001
         return "Auswertung nicht lesbar: %s" % str(e)[:80]
+    finally:
+        sys.dont_write_bytecode = alt
 
 
 def spur_omniquant():
@@ -348,7 +366,7 @@ def spur_omniquant():
         "pruefmodul": None,
         "papierfest": True,
         "journal": os.path.join(ordner, "handelsjournal.csv"),
-        "bilanz": _bilanz_omniquant(ordner),
+        "bilanz": _bilanz("omniquant"),
     }
 
 

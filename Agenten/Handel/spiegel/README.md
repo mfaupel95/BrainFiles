@@ -36,6 +36,9 @@ cd Agenten\Handel\spiegel
 # Welche Wallets haben getragen, welche gemessenen Zahlen lügen
 ..\scanner\.venv\Scripts\python.exe spiegel.py --bilanz
 
+# Was das BUCH getragen hat: Bilanz vor/nach Kosten, nach Kette, Grund und Tiefe
+..\scanner\.venv\Scripts\python.exe auswertung.py
+
 # verweigert mit einem Grund, bucht Papier
 ..\scanner\.venv\Scripts\python.exe spiegel.py --live
 
@@ -122,6 +125,40 @@ Zwei Einschränkungen, ehrlich: Die Tiefe ist eine **untere** Grenze
 Prioritätsgebühren stecken nicht darin), und der Nachlauf ist eine
 **Momentaufnahme**; er schwankt mit dem Markt und muss gelegentlich neu
 gemessen werden.
+
+## Was das Buch getragen hat (13.09.2026, 45 Ausstiege)
+
+`auswertung.py` liest das Journal und rechnet die Bilanz **vor** und **nach**
+Kosten (die Netto-Rendite ist über die Kostensätze zurückrechenbar, nichts
+geschätzt). Momentaufnahme, weil der Lauf weiterschreibt:
+
+| | Wert |
+|---|---|
+| Ausstiege | 45 (18 über Ziel, 27 über Stop) |
+| Ergebnis | +518 USD auf 2.250 USD Einsatz (+23,0 % je Position) |
+| davon Kosten | 224 USD |
+| **Median je Position** | **−30,8 %** |
+| Treffer (Wert > Einsatz) | 19 von 45 (42 %) |
+| bester / schlechtester | +505 % / −58 % |
+
+**Der Befund ist der Widerspruch zwischen Mittelwert und Median.** Der
+Durchschnitt ist positiv, aber die *typische* Kopie verliert 30 %. Das Buch
+trägt an wenigen Ausreißern (+505 %, +110 % über Ziel) und verliert breit über
+den Stop. Wer nur den Mittelwert liest, hält das für eine tragfähige Strategie;
+bei 45 Kopien ist das noch keine Antwort, aber die Verteilung ist schief, und
+das gehört neben die Zahl.
+
+Der zweite Befund: **Die Kosten fressen fast die Hälfte des Bruttogewinns**
+(224 von 714 USD). 3 % + 1 % je Seite sind bei einem Buch, das im Schnitt
++33 % vor Kosten macht, kein Rauschen.
+
+### Abgrenzung zu `--bilanz`
+
+`spiegel.py --bilanz` zerlegt nach **Herkunft** (welche Wallet hat getragen),
+`auswertung.py` nach **Ergebnis** (trägt das Nachahmen, und in welcher Tiefe).
+Beides ist nötig; die Mechanik teilen sie über `Handel/buchauswertung.py`, damit
+es keine zweite Formel für dieselbe Frage gibt. Die Bilanz steht auch als Zeile
+im Tagesbericht (`Auswertung: …`) — sie kommt aus derselben Quelle.
 
 ## Offen
 

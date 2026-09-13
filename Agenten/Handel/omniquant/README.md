@@ -40,7 +40,10 @@ Einstieg, an den Zykluspunkten gemessen — eine Untergrenze). Beim Ausstieg
 gehen Score, C/R, Haltedauer und die Extreme ins Journal. `auswertung.py`
 liest daraus die Bilanz und trennt **vor** von **nach** Kosten (die
 Netto-Rendite ist über die bekannten Kostensätze zurückrechenbar, nichts
-geschätzt):
+geschätzt). Die Mechanik teilt sie mit der Spiegel-Spur über
+`Handel/buchauswertung.py` — was hier steht, ist nur die Konfiguration dieser
+Spur (Aktionen, Spalten, Score- und C/R-Bänder). Eine zweite Formel für
+dieselbe Frage wäre eine zweite Wahrheit.
 
 ```powershell
 scanner\.venv\Scripts\python.exe auswertung.py           # Bilanz und Datenlage

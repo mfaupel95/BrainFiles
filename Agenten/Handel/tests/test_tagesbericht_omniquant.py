@@ -17,6 +17,7 @@ import csv
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -73,6 +74,12 @@ def datenordner(ausstiege=()):
         w.writeheader()
         for a in ausstiege:
             w.writerow(a)
+    # Der Bericht laedt <spur>/auswertung.py ueber den Dateipfad (die Spuren
+    # haben gleichnamige Module). Ohne die Datei im temp-Ordner stuende dort
+    # "Auswertung nicht lesbar" - der Test wuerde die Verdrahtung also nicht
+    # mehr pruefen.
+    shutil.copy(os.path.join(OMNI, "auswertung.py"),
+                os.path.join(t, "omniquant", "auswertung.py"))
     return t
 
 
