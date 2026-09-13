@@ -72,3 +72,29 @@ bevorzugen** — authentische Kerzen, kein Datenanbieter-Risiko, Intervalle frei
 wählbar. `CryptoDataDownload` als CSV-Ergänzung für lange Historien, wo die
 Börsen-API paginieren müsste. Kaggle-Datensätze nur für einmalige Analysen,
 nicht als laufende Datenquelle (veralten und sind oft unvollständig).
+
+## Kraken Pro: Gebührenfreivolumen (Stand 13.09.2026)
+
+Max führt das Kraken-Pro-Abo. Danach ist das Handelsvolumen **bis 10.000 EUR im
+Monat gebührenfrei**; darüber gilt die gemessene Staffel vom 02.09.2026 (Taker
+0,40 %, Maker 0,25 %). Der **Spread bleibt immer** — er ist die Kostenposition,
+die auch das Abo nicht aufhebt.
+
+Was das für die Spuren bedeutet:
+
+- **kraken (Spur 3, stillgelegt):** Die Stilllegung vom 03.09.2026 beruht nicht
+  auf der Gebühr allein — ohne sie gerechnet blieb der beste Wert bei **−0,57 %
+  je Runde** (720 Tageskerzen, 8 Paare). Das Abo macht die Spur also **nicht**
+  tragfähig; sie bleibt zu, bis ein Signal auch ohne Gebühr über null kommt.
+- **orbk (Papier):** Sein Buch rechnet im OANDA-Modell (SPEC.md) **ohne
+  Kommission** — nur Spread + Slippage. Für Kraken-Spot wäre das ein
+  Modellfehler; innerhalb der 10.000 EUR ist es durch das Abo gedeckt. Darüber
+  ist die Rechnung zu optimistisch.
+- **Frequenzdeckel:** 10.000 EUR sind bei 50 EUR Einsatz rund **100 Runden im
+  Monat** (etwa 3 am Tag), bei 10 EUR rund 500. Minuten- oder Sekundenhandel
+  sprengt dieses Budget in Tagen. Wer das Freivolumen als Vorteil nutzt, nutzt
+  es für **mehr Runden aus demselben Signal**, nicht für höhere Frequenz.
+- **Vor dem ersten Live-Gedanken in der Kraken-App bestätigen** (nicht
+  annehmen): ob das Freivolumen auf das Handelsvolumen (Kauf + Verkauf) oder je
+  Order zählt, für welche Paare es gilt und ob es an das Abo-Modell gebunden
+  bleibt.
