@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-09-07
+updated: 2026-09-13
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -705,3 +705,47 @@ beim Einrichten des Custom-Providers selbst an. Die Zeile verweist jetzt darauf:
   „Config key not set". Der `a2a_agents`-Block steht nicht in `DEFAULT_CONFIG`, der
   Inspektionsbefehl findet ihn deshalb nicht — gelesen wird er trotzdem. Der Befehl
   taugt nicht als Kontrolle; dafür `load_config()` direkt benutzen.
+
+### Router- und Config-Optimierung, 13.09.2026
+
+Ziel: beste Leistung für geringste Kosten. Befund aus `~/.omniroute/storage.sqlite`
+(77 MB, Dashboard-verwaltet; kein YAML) und den `call_logs` der letzten 7 Tage:
+
+- **github-Verbindung deaktiviert** (Auth abgelaufen, `no_refresh_token`): 7.950
+  Versuche, 6.980 Fehlschläge (88 %) — jeder auto/*-Pool war mit gh/*-Premium-Modellen
+  (claude-opus-4.6, sonnet-4.6, gpt-5.3-codex …) verstopft, die alle an der Auth
+  scheiterten. Reauth nötig, falls die GitHub-Models genutzt werden sollen.
+- **mlx-qwen deaktiviert** (Server läuft nicht, ECONNREFUSED).
+- **ollama-local default_model korrigiert**: stand auf `gemma4:26b` (existiert nicht;
+  166/173 Fehler), jetzt `gemma-e4b-8k:latest` (7,5B Q8_0, lokal vorhanden).
+- huggingface war bereits inaktiv (Credits leer, 402), ebenso anthropic/claude und
+  nous-research. **felo-web** (268/268 Fehler) und **opencode-zen** (401) sind
+  Katalog-Provider ohne Verbindungszeile — nicht über `provider_connections`
+  abschaltbar, werden vom Circuit-Breaker/LKGP gemieden.
+- **Hermes AppData-Config** (`%LOCALAPPDATA%\hermes\config.yaml`) hatte den
+  Default `Qwen3.6-35B-A3B-UD-Q4_K_M` — eine 403/402-Sackgasse (OpenRouter-Key-Limit,
+  HF-Credits leer). Auf den bewährten Stand gezogen: `model.default =
+  deepseek/deepseek-v4-flash-0731`, `model.provider = nous`, plus dieselbe
+  Fallback-Kette wie die Projekt-Config (lokal `gemma-e4b-8k:latest`). Beide
+  Configs sind damit identisch (vorher drifteten sie).
+
+Nachweis:
+- Router lebt: `Test-NetConnection 127.0.0.1 -Port 20128`; Live-Request
+  `model=auto/best-fast` → 200, geroutet auf `opencode/big-pickle` (kostenlos).
+- `hermes fallback list` (mit und ohne `HERMES_HOME`): Primary
+  deepseek/deepseek-v4-flash-0731 via nous, Fallback 1: gemma-e4b-8k:latest via
+  custom (http://127.0.0.1:11434/v1).
+- Sicherung vor den DB-Schrieben:
+  `~/.omniroute/db_backups/db_2026-09-13T03-57-08_pre-optimize.sqlite` (77 MB).
+
+Fallen:
+- `Qwen3.6-35B-A3B-UD-Q4_K_M` ist kein lösbares Modell — nicht wieder als Default
+  verwenden. Der Router kennt `qwen3.6-35b-a3b` = openrouter/qwen/qwen3.6-35b-a3b
+  (bezahlt).
+- Lokale Ollama-Modelle heißen `gemma-e4b-8k:latest` und `qwen35-8k:latest` —
+  Modellnamen in Verbindungen/Kombos immer am Dienst prüfen
+  (`curl http://127.0.0.1:11434/api/tags`), nicht aus der Config abschreiben.
+- Offen: OpenRouter-Key-Limit (monatlich, 403), veraltete Kombos
+  `hermes-free-local`/`CostOptimized-70-30*` (verweisen auf nicht existierende
+  Modelle; `activeComboId` ist ohnehin null), Gateway-Neustart nach `hermes update`
+  steht aus („pre-update modules"-Warnung beim `config get`).
