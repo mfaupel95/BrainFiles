@@ -96,5 +96,9 @@ Was das für die Spuren bedeutet:
   (etwa 3 am Tag), bei 10 EUR rund 500. Minuten- oder Sekundenhandel sprengt
   dieses Budget in Tagen. Wer das Freivolumen als Vorteil nutzt, nutzt es für
   **mehr Runden aus demselben Signal**, nicht für höhere Frequenz.
-- **Offen** (vor einem Live-Gedanken in der App prüfen): für welche Paare das
-  Freivolumen gilt und ob es an das Abo-Modell gebunden bleibt.
+- **Bestätigt 13.09.2026 (Max):** Das Freivolumen gilt für **alle Paare** und ist
+  an das Abo gebunden. Daraus folgt eine neue, **nicht-marktliche**
+  Abhängigkeit: Fällt das Abo weg, kehrt die 0,80-%-Runde zurück — jede Spur,
+  deren Rechnung auf 0 % Gebühr gebaut wurde (`orbk`), muss dann neu bewertet
+  werden. Das ist ein Kostenschalter außerhalb des Marktes und gehört in jede
+  Live-Betrachtung als eigenes Risiko, nicht nur als Fußnote.
