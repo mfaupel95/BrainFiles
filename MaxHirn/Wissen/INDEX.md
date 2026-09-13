@@ -52,6 +52,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-verbindungen` — **Verbindungen** — `Wissen/Verbindungen.md` — Welche Dienste und MCP-Server erreichbar sind und welche davon authentifiziert.
 - `20260830-werkzeuge` — **Werkzeuge** — `Wissen/Werkzeuge.md` — Welche Werkzeuge tatsächlich abgerufen werden, gemessen an den bisherigen Sitzungen.
 - `20260830-hermes` — **Hermes Agent** — `Wissen/Hermes.md` — Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.
+- `20260913-projektatlas` — **ProjectAtlas** — `Wissen/Projektatlas.md` — Rust-Werkzeug, das je Repo eine SQLite-Karte der Struktur anlegt, damit Agenten die richtige Datei finden statt breit zu lesen: Fork, Laufzeit, MCP-Eintrag, Rezept je Repo und die vier gemessenen Grenzen.
 - `20260831-python-versionen` — **Python-Versionen** — `Wissen/Python-Versionen.md` — Installierte Python-Versionen und venv-Konfigurationen nach dem Upgrade auf 3.13.
 - `20260830-routinen` — **Routinen** — `Wissen/Routinen.md` — Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.
 - `20260902-systempruefung` — **Systemprüfung** — `Wissen/Systempruefung.md` — Tägliche Morgenroutine, die das System nach still gebrochenen Dingen absucht (tote Junctions, doppelte Ollama-Stores, kaputte Pfade) und Eindeutiges selbst aufräumt.

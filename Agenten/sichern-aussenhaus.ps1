@@ -97,7 +97,7 @@ if (Test-Path $zielTmp) {
 # Trockenlauf: quelle, archiv-daten
 Melde "Quelle..."
 robocopy $wurzel $zielTmp /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL /L `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics
 $codeQuelle = $LASTEXITCODE
 
 $archivQuelle = 'O:\Archiv'
@@ -131,7 +131,7 @@ if (Test-Path $zielTmp) {
 $start = Get-Date
 Melde "Quelle..."
 robocopy $wurzel $zielTmp /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics
 $codeQuelle = $LASTEXITCODE
 
 if (Test-Path $archivQuelle) {

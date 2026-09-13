@@ -47,6 +47,7 @@ liegen einsatzbereit im Ordner. (Bis 19.08.2026 stand hier fälschlich „aktiv"
 | Revolut X | Kurse, Bestände, Backtests (nur lesend) | Schlüssel **vorhanden** (25.08.), scheitert an der **IP-Freigabe** — siehe unten |
 | Blender | 3D-Szenen | aktiv, aber nur wenn Blender läuft (19.08. nicht gestartet) |
 | Affinity | Affinity-Dokumente skripten | aktiv, aber nur wenn Affinity läuft (`http://localhost:6767/sse`) |
+| ProjectAtlas | Repository-Karte je Repo: findet die richtige Datei, statt breit zu lesen | **aktiv, nur bei Hermes** (13.09.2026) — 43 `atlas_*`-Werkzeuge, Karte unter `<repo>/.projectatlas/`; Einbau und Grenzen: [[Projektatlas]] |
 | Apify, Metabase, Socket, Stats Compass, Perseus Vault | — | **nicht eingetragen**, inaktiv |
 
 ## Zwei Agenten, dieselben Server (Stand 23.08.2026)

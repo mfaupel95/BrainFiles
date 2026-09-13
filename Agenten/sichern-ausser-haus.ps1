@@ -49,7 +49,7 @@ $modus = if ($NurPruefen) { '/L' } else { '' }
 $start = Get-Date
 
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .git logs pending_messages terminal-output shared_metrics /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
 $code = $LASTEXITCODE
 
 # Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter
