@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone, timedelta
 
 import backtest
 
-INST = {"eroeffnung": "09:00", "zone": "Europe/Berlin", "cash_close": "17:30"}
+INST = {"eroeffnung": "00:00", "zone": "UTC", "session_ende": "24:00"}
 W = {"letzter_einstieg_min_vor_schluss": 90,
      "mindest_range_punkte": {"X": 5}, "max_range_punkte": {"X": 500},
      "ziel_modus": "r_vielfaches", "ziel_k": 2.0,
@@ -17,25 +17,24 @@ def _k(hh, mm, o, h, l, c, tag=date(2025, 7, 15)):
 
 
 def _session_long_ziel():
-    # Range 07:00-07:30 UTC (= 09:00 Berlin Sommer): hoch 18010, tief 17990
+    # Range 00:00-00:30 UTC (UTC-Tagesgrenze): hoch 18010, tief 17990
     return [
-        _k(7, 0, 18000, 18008, 17992, 18004),
-        _k(7, 15, 18004, 18010, 17990, 18006),
-        _k(7, 30, 18006, 18012, 18004, 18011),   # schliesst > hoch 18010 -> Long-Einstieg
-        _k(7, 45, 18011, 18040, 18009, 18035),   # laeuft Richtung Ziel
-        _k(8, 0, 18035, 18055, 18033, 18052),    # Ziel 18011 + 2*(18011-17990)=18051 getroffen
+        _k(0, 0, 18000, 18008, 17992, 18004),
+        _k(0, 15, 18004, 18010, 17990, 18006),
+        _k(0, 30, 18006, 18012, 18004, 18011),   # schliesst > hoch 18010 -> Long-Einstieg
+        _k(0, 45, 18011, 18040, 18009, 18035),   # laeuft Richtung Ziel
+        _k(1, 0, 18035, 18055, 18033, 18052),    # Ziel 18011 + 2*(18011-17990)=18051 getroffen
     ]
 
 
 def _session_short_ziel():
-    # Spiegelbild von _session_long_ziel: Range hoch 110, tief 90;
-    # Ausbruchskerze schliesst unter tief -> Short; laeuft ins Ziel.
+    # Spiegelbild: Range hoch 110, tief 90; Ausbruchskerze schliesst unter tief -> Short.
     return [
-        _k(7, 0, 100, 105, 95, 100),
-        _k(7, 15, 100, 110, 90, 100),            # Range hoch 110, tief 90
-        _k(7, 30, 100, 101, 88, 89),             # schliesst < tief 90 -> Short-Einstieg bei 89
-        _k(7, 45, 89, 90, 60, 65),               # laeuft Richtung Ziel
-        _k(8, 0, 65, 66, 40, 45),                # Ziel 89 - 2*20 = 49 getroffen (Tief 45)
+        _k(0, 0, 100, 105, 95, 100),
+        _k(0, 15, 100, 110, 90, 100),            # Range hoch 110, tief 90
+        _k(0, 30, 100, 101, 88, 89),             # schliesst < tief 90 -> Short-Einstieg bei 89
+        _k(0, 45, 89, 90, 60, 65),               # laeuft Richtung Ziel
+        _k(1, 0, 65, 66, 40, 45),                # Ziel 89 - 2*20 = 49 getroffen (Tief 45)
     ]
 
 
@@ -46,7 +45,7 @@ class TestOpeningRange(unittest.TestCase):
         self.assertEqual(hr, (18010.0, 17990.0))
 
     def test_none_bei_einer_kerze(self):
-        self.assertIsNone(backtest.opening_range([_k(7, 0, 1, 2, 0, 1)], INST, date(2025, 7, 15)))
+        self.assertIsNone(backtest.opening_range([_k(0, 0, 1, 2, 0, 1)], INST, date(2025, 7, 15)))
 
 
 class TestSimuliere(unittest.TestCase):
@@ -61,10 +60,10 @@ class TestSimuliere(unittest.TestCase):
 
     def test_stop_vor_ziel_gleiche_kerze_ist_stop(self):
         s = [
-            _k(7, 0, 100, 105, 95, 100),
-            _k(7, 15, 100, 110, 90, 101),            # Range hoch 110, tief 90
-            _k(7, 30, 101, 112, 99, 111),            # Long-Einstieg bei 111, Stop 90
-            _k(7, 45, 111, 155, 85, 120),            # beruehrt Ziel 151 UND Stop 90 -> Stop
+            _k(0, 0, 100, 105, 95, 100),
+            _k(0, 15, 100, 110, 90, 101),            # Range hoch 110, tief 90
+            _k(0, 30, 101, 112, 99, 111),            # Long-Einstieg bei 111, Stop 90
+            _k(0, 45, 111, 155, 85, 120),            # beruehrt Ziel 151 UND Stop 90 -> Stop
         ]
         r = backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "schluss")
         self.assertEqual(r["ausgang"], "stop")
@@ -72,10 +71,8 @@ class TestSimuliere(unittest.TestCase):
         self.assertLess(r["gv_punkte"], 0)
 
     def test_kein_breakout_gibt_none(self):
-        # Range 90..110 (Hoehe 20, im erlaubten Fenster) -> Range-Filter greift NICHT.
-        # Keine Kerze nach dem Fenster schliesst ausserhalb -> echter "kein Einstieg"-Pfad.
-        s = [_k(7, 0, 100, 110, 90, 100), _k(7, 15, 100, 108, 92, 100),
-             _k(7, 30, 100, 112, 88, 105), _k(7, 45, 105, 113, 87, 104)]
+        s = [_k(0, 0, 100, 110, 90, 100), _k(0, 15, 100, 108, 92, 100),
+             _k(0, 30, 100, 112, 88, 105), _k(0, 45, 105, 113, 87, 104)]
         self.assertIsNone(backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "schluss"))
 
     def test_range_zu_klein_gibt_none(self):
@@ -84,9 +81,9 @@ class TestSimuliere(unittest.TestCase):
         self.assertIsNone(r)
 
     def test_breakout_nach_letztem_einstieg_gibt_none(self):
-        # Zwangsschluss 15:30 UTC, letzter Einstieg 14:00 UTC
-        s = [_k(7, 0, 100, 110, 90, 100), _k(7, 15, 100, 110, 90, 100),
-             _k(14, 15, 100, 130, 99, 121)]   # Breakout erst 14:15 -> zu spaet
+        # Zwangsschluss 24:00 UTC, letzter Einstieg 22:30 UTC (90 min vorher)
+        s = [_k(0, 0, 100, 110, 90, 100), _k(0, 15, 100, 110, 90, 100),
+             _k(23, 0, 100, 130, 99, 121)]   # Breakout erst 23:00 -> zu spaet
         self.assertIsNone(backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "schluss"))
 
     def test_short_bis_ziel(self):
@@ -100,10 +97,10 @@ class TestSimuliere(unittest.TestCase):
 
     def test_short_stop(self):
         s = [
-            _k(7, 0, 100, 105, 95, 100),
-            _k(7, 15, 100, 110, 90, 100),            # Range hoch 110, tief 90
-            _k(7, 30, 100, 101, 88, 89),             # Short-Einstieg bei 89, Stop 110
-            _k(7, 45, 89, 130, 88, 125),             # laeuft hoch durch den Stop 110
+            _k(0, 0, 100, 105, 95, 100),
+            _k(0, 15, 100, 110, 90, 100),            # Range hoch 110, tief 90
+            _k(0, 30, 100, 101, 88, 89),             # Short-Einstieg bei 89, Stop 110
+            _k(0, 45, 89, 130, 88, 125),             # laeuft hoch durch den Stop 110
         ]
         r = backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "schluss")
         self.assertEqual(r["richtung"], "short")
@@ -117,13 +114,11 @@ class TestPruefKerzenGrenze(unittest.TestCase):
     naechste_eroeffnung ab der Fuellkerze selbst."""
 
     def test_schluss_ignoriert_docht_der_ausbruchskerze(self):
-        # Ausbruchskerze hat selbst einen Stop-Docht (l 85 <= Stop 90), der VOR
-        # dem Einstieg (Schluss 111) lag -> darf nicht zaehlen. Danach ins Ziel.
         s = [
-            _k(7, 0, 100, 105, 95, 100),
-            _k(7, 15, 100, 110, 90, 100),           # Range hoch 110, tief 90
-            _k(7, 30, 100, 112, 85, 111),           # Long-Einstieg 111; eigenes Tief 85
-            _k(7, 45, 111, 160, 111, 155),          # Hoch 160 >= Ziel 151
+            _k(0, 0, 100, 105, 95, 100),
+            _k(0, 15, 100, 110, 90, 100),           # Range hoch 110, tief 90
+            _k(0, 30, 100, 112, 85, 111),           # Long-Einstieg 111; eigenes Tief 85
+            _k(0, 45, 111, 160, 111, 155),          # Hoch 160 >= Ziel 151
         ]
         r = backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "schluss")
         self.assertEqual(r["einstieg"], 111.0)
@@ -132,13 +127,11 @@ class TestPruefKerzenGrenze(unittest.TestCase):
         self.assertGreater(r["gv_punkte"], 0)
 
     def test_naechste_eroeffnung_prueft_die_fuellkerze(self):
-        # Fuellkerze (Kerze nach dem Ausbruch): Open 111 = Einstieg, Tief 80
-        # <= Stop 90 -> muss als Stop derselben Kerze erkannt werden.
         s = [
-            _k(7, 0, 100, 105, 95, 100),
-            _k(7, 15, 100, 110, 90, 100),           # Range hoch 110, tief 90
-            _k(7, 30, 100, 112, 99, 111),           # Long-Ausbruch (Schluss 111)
-            _k(7, 45, 111, 112, 80, 95),            # Fuellkerze: Open 111, Tief 80 <= Stop 90
+            _k(0, 0, 100, 105, 95, 100),
+            _k(0, 15, 100, 110, 90, 100),           # Range hoch 110, tief 90
+            _k(0, 30, 100, 112, 99, 111),           # Long-Ausbruch (Schluss 111)
+            _k(0, 45, 111, 112, 80, 95),            # Fuellkerze: Open 111, Tief 80 <= Stop 90
         ]
         r = backtest.simuliere_session(s, INST, date(2025, 7, 15), W, "naechste_eroeffnung")
         self.assertEqual(r["einstieg"], 111.0)       # Open der Fuellkerze

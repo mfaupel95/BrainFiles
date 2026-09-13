@@ -194,13 +194,60 @@ def bericht(ergebnisse, inst_konf, spread_punkte, kursreihe, slippage_punkte=0.5
     }
 
 
+def _okx_kerzen(inst, tage, cache_dir=None):
+    """M15-Kerzen von OKX als [{zeit,o,h,l,c}], aufsteigend. Paginiert ueber
+    history-candles (100 je Seite) und cached das Ergebnis als JSON, damit ein
+    zweiter Lauf nicht wieder hunderte Seiten zieht. Die freie API reicht
+    ~14 Monate zurueck (gemessen 2026-09-13, 400 Seiten = 40000 Kerzen)."""
+    import json as _json
+    import time as _time
+    import sys as _sys
+    from datetime import datetime, timezone
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "xperp"))
+    import okxf
+
+    if cache_dir is not None:
+        cache_pfad = _P(cache_dir) / (inst + "_M15.json")
+        if cache_pfad.exists():
+            roh = _json.loads(cache_pfad.read_text("utf-8"))
+            return [{"zeit": datetime.fromtimestamp(r[0] / 1000, timezone.utc),
+                     "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
+                    for r in roh]
+
+    alle, nach = [], ""
+    from urllib.parse import urlencode
+    while True:
+        p = "/api/v5/market/history-candles?" + urlencode(
+            {"instId": inst, "bar": "15m", "limit": 100})
+        if nach:
+            p += "&after=" + nach
+        d = okxf._mit_wiederholung(p)
+        if not d:
+            break
+        r = [[int(x[0])] + [float(v) for v in x[1:6]] for x in d]
+        alle += r
+        nach = str(min(x[0] for x in r))
+        if (alle[0][0] - alle[-1][0]) / 86400000.0 >= tage:
+            break
+        _time.sleep(0.1)
+
+    if cache_dir is not None:
+        _P(cache_dir).mkdir(parents=True, exist_ok=True)
+        cache_pfad = _P(cache_dir) / (inst + "_M15.json")
+        cache_pfad.write_text(_json.dumps(alle), "utf-8")
+
+    return [{"zeit": datetime.fromtimestamp(r[0] / 1000, timezone.utc),
+             "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
+            for r in alle]
+
+
 def _lauf_instrument(w, key, jahre, modell, cache_dir, live=False):
-    import oanda
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timezone
     konf = w["instrumente"][key]
     bis = datetime.now(timezone.utc)
-    von = bis - timedelta(days=365 * jahre)
-    kerzen = oanda.kerzen(konf["oanda"], von=von, bis=bis, cache_dir=cache_dir, live=live)
+    tage = min(365 * jahre, 420)   # freie OKX-Historie ~14 Monate
+    kerzen = _okx_kerzen(konf["okx"], tage, cache_dir)
     ergebnisse = []
     for tag, sk in sessions_gruppieren(kerzen, konf):
         r = simuliere_session(sk, konf, tag, w, modell)

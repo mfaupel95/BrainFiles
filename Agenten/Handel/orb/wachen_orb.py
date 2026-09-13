@@ -1,4 +1,4 @@
-"""Bedingungen der vierten Spur (ORB Index-CFD, OANDA, EUR).
+"""Bedingungen der vierten Spur (ORB auf OKX-Perpetuals, USDT).
 
 Die waehrungsneutrale Rechnung steht nur einmal im Haus: sie kommt aus
 scanner/wachen_pruefung.py und wird hier importiert, nicht abgeschrieben.
