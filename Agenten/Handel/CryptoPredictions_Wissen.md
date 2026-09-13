@@ -90,11 +90,11 @@ Was das für die Spuren bedeutet:
   Kommission** — nur Spread + Slippage. Für Kraken-Spot wäre das ein
   Modellfehler; innerhalb der 10.000 EUR ist es durch das Abo gedeckt. Darüber
   ist die Rechnung zu optimistisch.
-- **Frequenzdeckel:** 10.000 EUR sind bei 50 EUR Einsatz rund **100 Runden im
-  Monat** (etwa 3 am Tag), bei 10 EUR rund 500. Minuten- oder Sekundenhandel
-  sprengt dieses Budget in Tagen. Wer das Freivolumen als Vorteil nutzt, nutzt
-  es für **mehr Runden aus demselben Signal**, nicht für höhere Frequenz.
-- **Vor dem ersten Live-Gedanken in der Kraken-App bestätigen** (nicht
-  annehmen): ob das Freivolumen auf das Handelsvolumen (Kauf + Verkauf) oder je
-  Order zählt, für welche Paare es gilt und ob es an das Abo-Modell gebunden
-  bleibt.
+- **Frequenzdeckel (bestätigt 13.09.2026):** Das Freivolumen zählt auf das
+  **Handelsvolumen** — Kauf und Verkauf zusammen. Eine Runde zählt damit
+  doppelt: 10.000 EUR sind bei 50 EUR Einsatz rund **100 Runden im Monat**
+  (etwa 3 am Tag), bei 10 EUR rund 500. Minuten- oder Sekundenhandel sprengt
+  dieses Budget in Tagen. Wer das Freivolumen als Vorteil nutzt, nutzt es für
+  **mehr Runden aus demselben Signal**, nicht für höhere Frequenz.
+- **Offen** (vor einem Live-Gedanken in der App prüfen): für welche Paare das
+  Freivolumen gilt und ob es an das Abo-Modell gebunden bleibt.

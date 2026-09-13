@@ -12,7 +12,7 @@
     "HYPE_EUR": {"kraken": "HYPE/EUR", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.3, "punkt_wert_usd": 1.0}
   },
   "_instrumente": "spread_punkte Startannahme in Preispunkten. HYPE notiert ~79 USD / ~69 EUR (2026-09-13); die Range-Grenzen sind Startwerte aus der beobachteten Volatilitaet und werden vom Backtest gedeckt.",
-  "_kosten_kraken": "Das Buch rechnet im OANDA-Modell (SPEC.md): ein voller Spread + Slippage je Runde, KEINE Kommission. Fuer Kraken-Spot waere das ein Modellfehler (Taker 0,40 % je Seite, siehe kraken/wachen.json) - seit 13.09.2026 ist es durch Max' Kraken-Pro-Abo gedeckt: bis 10.000 EUR Handelsvolumen im Monat gebuehrenfrei. Darueber gilt Taker 0,40 % je Seite und diese Rechnung wird zu optimistisch. Das Freivolumen ist der Deckel: 10.000 EUR sind bei 10 USD Risiko je Trade rund 500 Runden im Monat, bei 50 USD rund 100.",
+  "_kosten_kraken": "Das Buch rechnet im OANDA-Modell (SPEC.md): ein voller Spread + Slippage je Runde, KEINE Kommission. Fuer Kraken-Spot waere das ein Modellfehler (Taker 0,40 % je Seite, siehe kraken/wachen.json) - seit 13.09.2026 ist es durch Max' Kraken-Pro-Abo gedeckt: bis 10.000 EUR Handelsvolumen im Monat gebuehrenfrei. Das Freivolumen zaehlt auf das Handelsvolumen (Kauf + Verkauf, bestaetigt 13.09.2026) und damit doppelt je Runde: 10.000 EUR sind bei 20 EUR Nominal rund 250 Runden im Monat, bei 100 EUR rund 50. Darueber gilt Taker 0,40 % je Seite und diese Rechnung wird zu optimistisch.",
   "risiko_pro_trade_usd": 10,
   "_risiko_pro_trade_usd": "Risikobetrag je Trade. Klein begonnen (10 USD), weil die Papierphase erst ueberzeugen muss.",
   "ziel_modus": "r_vielfaches",
