@@ -6,9 +6,19 @@ Einstiegsgelegenheiten ueber alle Maerkte hinweg scannen und melden").
 WAS ER IST
 Der Marktscanner (scanner/scan.py) sieht eine Watchlist von elf Werten an und
 liefert die Rangliste, aus der handeln.py kauft. Prognose sieht den *ganzen*
-Markt an und sucht nur das eine: Lagen, in denen ein Wert deutlich unter seinem
-letzten Hoch liegt, der laengere Trend aber steht - ein Ruecksetzer in einem
-Aufwaertstrend, kein Absturz. Was die Tore nicht passiert, wird nicht gemeldet.
+Markt an und sucht Lagen mit einem klaren Verhaeltnis von Chance zu Risiko -
+und nennt die Richtung dazu:
+
+  LONG   - Ruecksetzer in einem Aufwaertstrend (Preis ueber dem SMA, RSI nicht
+           ueberhitzt, Abstand zum 60-Tage-Hoch). Das Ziel ist das Hoch.
+  SHORT  - das Spiegelbild: Erholung in einem Abwaertstrend (Preis unter dem
+           SMA, RSI nicht ueberverkauft, Abstand zum 60-Tage-Tief). Das Ziel
+           ist das Tief.
+
+Jede Zeile traegt ihre Richtung als Spalte, die Meldung nennt sie im Text.
+Beide Richtungen kommen aus derselben Bewertung (bewertung.bewerten mit
+richtung=) und denselben Toren - die Short-Seite ist die gespiegelte Frage,
+keine zweite Formel. Was die Tore nicht passiert, wird nicht gemeldet.
 
 WAS ER NICHT IST
 Er handelt nicht. Kein Orderaufruf, keine Position, kein Zustand. prognose.py
@@ -65,14 +75,17 @@ def _sma(werte, n):
     return sum(werte[-n:]) / n
 
 
-def stopp_und_ziel(kerzen, tore):
+def stopp_und_ziel(kerzen, tore, richtung="long"):
     """Stop, Ziel und Chance-Risiko-Verhaeltnis einer Lage.
 
-    Der Stop liegt unter dem Tief der letzten 20 Tage, aber nie weiter als
-    stop_max_pct unter dem Preis - ein Stop, der 40 % weg liegt, ist kein Stop,
-    sondern eine Hoffnung. Das Ziel ist das Hoch der letzten 60 Tage; liegt es
-    naeher als das geforderte Verhaeltnis hergibt, wird es auf das Verhaeltnis
-    hochgezogen. Beide Zahlen sind gerechnet, nicht geschaetzt.
+    Long: Der Stop liegt unter dem Tief der letzten 20 Tage, aber nie weiter
+    als stop_max_pct unter dem Preis - ein Stop, der 40 % weg liegt, ist kein
+    Stop, sondern eine Hoffnung. Das Ziel ist das Hoch der letzten 60 Tage.
+    Short ist das Spiegelbild: Stop ueber dem Hoch der letzten 20 Tage, Ziel
+    das Tief der letzten 60 Tage. Beide Zahlen sind gerechnet, nicht
+    geschaetzt; wird das Ziel nicht erreicht, sagt das der C/R-Wert, statt
+    dass das Ziel hochgezogen wird - ein Ziel, das immer das geforderte
+    Verhaeltnis herstellt, macht das Verhaeltnis als Tor wertlos.
     """
     schluss = [k[4] for k in kerzen]
     hoch = [k[2] for k in kerzen]
@@ -80,33 +93,48 @@ def stopp_und_ziel(kerzen, tore):
     preis = schluss[-1]
 
     tief20 = min(tief[-20:]) if len(tief) >= 20 else min(tief)
-    stop = min(tief20, preis * (1.0 - tore["stop_min_pct"] / 100.0))
-    stop = max(stop, preis * (1.0 - tore["stop_max_pct"] / 100.0))
-    if stop >= preis:                      # entartet, wenn das Tief am Preis klebt
-        stop = preis * (1.0 - tore["stop_min_pct"] / 100.0)
-
-    # Das Ziel ist das Hoch der letzten 60 Tage - ein beobachteter Kurs, keine
-    # Wunschzahl. Wird es nicht erreicht, sagt das der C/R-Wert, statt dass das
-    # Ziel hochgezogen wird: ein Ziel, das immer das geforderte Verhaeltnis
-    # herstellt, macht das Verhaeltnis als Tor wertlos.
+    hoch20 = max(hoch[-20:]) if len(hoch) >= 20 else max(hoch)
     hoch60 = max(hoch[-60:]) if len(hoch) >= 60 else max(hoch)
-    abstand = preis - stop
-    ziel = hoch60
+    tief60 = min(tief[-60:]) if len(tief) >= 60 else min(tief)
 
-    risiko_pct = (preis - stop) / preis * 100.0
-    cr = (ziel - preis) / abstand if abstand > 0 else 0.0
+    if richtung == "short":
+        stop = max(hoch20, preis * (1.0 + tore["stop_min_pct"] / 100.0))
+        stop = min(stop, preis * (1.0 + tore["stop_max_pct"] / 100.0))
+        if stop <= preis:                  # entartet, wenn das Hoch am Preis klebt
+            stop = preis * (1.0 + tore["stop_min_pct"] / 100.0)
+        ziel = tief60
+        risiko_pct = (stop - preis) / preis * 100.0
+        abstand = stop - preis
+        cr = (preis - ziel) / abstand if abstand > 0 else 0.0
+    else:
+        stop = min(tief20, preis * (1.0 - tore["stop_min_pct"] / 100.0))
+        stop = max(stop, preis * (1.0 - tore["stop_max_pct"] / 100.0))
+        if stop >= preis:                  # entartet, wenn das Tief am Preis klebt
+            stop = preis * (1.0 - tore["stop_min_pct"] / 100.0)
+        ziel = hoch60
+        risiko_pct = (preis - stop) / preis * 100.0
+        abstand = preis - stop
+        cr = (ziel - preis) / abstand if abstand > 0 else 0.0
+
     return {"stop": stop, "ziel": ziel, "risiko_pct": risiko_pct,
-            "cr": cr, "tief20": tief20, "hoch60": hoch60}
+            "cr": cr, "tief20": tief20, "hoch20": hoch20,
+            "hoch60": hoch60, "tief60": tief60}
 
 
-def lage(inst, kerzen, tore):
-    """Eine Zeile des Berichts: Bewertung, gerechnete Grenzen, offene Tore."""
-    b = bewertung.bewerten(kerzen)
+def lage(inst, kerzen, tore, richtung="long"):
+    """Eine Zeile des Berichts: Bewertung, gerechnete Grenzen, offene Tore.
+
+    Die Richtung entscheidet, welche Tore gelten. Long prueft den Ruecksetzer
+    im Aufwaertstrend (Abstand zum 60-Tage-Hoch), Short die Erholung im
+    Abwaertstrend (Abstand zum 60-Tage-Tief); RSI- und Trend-Tor sind
+    spiegelbildlich.
+    """
+    b = bewertung.bewerten(kerzen, richtung=richtung)
     k = b["kennzahlen"]
     schluss = [x[4] for x in kerzen]
     preis = schluss[-1]
 
-    s = stopp_und_ziel(kerzen, tore)
+    s = stopp_und_ziel(kerzen, tore, richtung)
     sma_n = tore.get("trend_ueber_sma", 100)
     sma = _sma(schluss, sma_n)
 
@@ -120,6 +148,7 @@ def lage(inst, kerzen, tore):
 
     z = {
         "inst": inst,
+        "richtung": richtung,
         "preis": preis,
         "score": b["score"],
         "chance": b["chance"],
@@ -139,21 +168,35 @@ def lage(inst, kerzen, tore):
 
     # --- die Tore -------------------------------------------------------
     offen = []
-    if z["score"] < tore["mindest_score"]:
-        offen.append("Score %.1f < %g" % (z["score"], tore["mindest_score"]))
-    if k["rsi14"] > tore["hoechst_rsi"]:
-        offen.append("RSI %.1f > %g" % (k["rsi14"], tore["hoechst_rsi"]))
-    a = k["abstand_60t_hoch_pct"]
-    if not (tore["ruecksetzer_von_pct"] <= a <= tore["ruecksetzer_bis_pct"]):
-        offen.append("Abstand zum Hoch %.1f %% nicht zwischen %g und %g"
-                     % (a, tore["ruecksetzer_von_pct"],
-                        tore["ruecksetzer_bis_pct"]))
+    # Short hat eine eigene Score-Schwelle: die Skala ist long-kalibriert
+    # (siehe _mindest_score_short in prognose.json).
+    mindest_score = (tore.get("mindest_score_short", tore["mindest_score"])
+                     if richtung == "short" else tore["mindest_score"])
+    if z["score"] < mindest_score:
+        offen.append("Score %.1f < %g" % (z["score"], mindest_score))
+    if richtung == "short":
+        if k["rsi14"] < tore["mindest_rsi"]:
+            offen.append("RSI %.1f < %g" % (k["rsi14"], tore["mindest_rsi"]))
+        a = k["abstand_60t_tief_pct"]
+        if not (tore["erholung_von_pct"] <= a <= tore["erholung_bis_pct"]):
+            offen.append("Abstand zum Tief %.1f %% nicht zwischen %g und %g"
+                         % (a, tore["erholung_von_pct"], tore["erholung_bis_pct"]))
+    else:
+        if k["rsi14"] > tore["hoechst_rsi"]:
+            offen.append("RSI %.1f > %g" % (k["rsi14"], tore["hoechst_rsi"]))
+        a = k["abstand_60t_hoch_pct"]
+        if not (tore["ruecksetzer_von_pct"] <= a <= tore["ruecksetzer_bis_pct"]):
+            offen.append("Abstand zum Hoch %.1f %% nicht zwischen %g und %g"
+                         % (a, tore["ruecksetzer_von_pct"],
+                            tore["ruecksetzer_bis_pct"]))
     if k["volatilitaet_pa"] > tore["max_volatilitaet_pa"]:
         offen.append("Vola %.2f > %g" % (k["volatilitaet_pa"],
                                          tore["max_volatilitaet_pa"]))
     if sma is None:
         offen.append("zu wenig Historie fuer SMA%d" % sma_n)
-    elif preis <= sma:
+    elif richtung == "short" and preis >= sma:
+        offen.append("Trend: Preis >= SMA%d" % sma_n)
+    elif richtung == "long" and preis <= sma:
         offen.append("Trend: Preis <= SMA%d" % sma_n)
     if volumen_verhaeltnis is None:
         offen.append("zu wenig Historie fuers Volumen")
@@ -173,14 +216,16 @@ def lage(inst, kerzen, tore):
 def zeige(titel, zeilen, grenze=None):
     print()
     print(titel)
-    print("%-12s | %5s | %4s | %6s | %5s | %4s | %5s | %5s | %s"
-          % ("Markt", "Score", "RSI", "Hoch%", "Vola", "Vol", "Stop%", "C/R",
+    print("%-5s %-12s | %5s | %4s | %6s | %5s | %4s | %5s | %5s | %s"
+          % ("Richt", "Markt", "Score", "RSI", "Hoch%", "Vola", "Vol", "Stop%", "C/R",
              "offene Tore"))
-    print("-" * 104)
+    print("-" * 112)
     for z in (zeilen if grenze is None else zeilen[:grenze]):
         k = z["kennzahlen"]
-        print("%-12s | %5.1f | %4.1f | %6.1f | %5.2f | %4.2f | %4.1f%% | %5.2f | %s"
-              % (z["inst"], z["score"], k["rsi14"], k["abstand_60t_hoch_pct"],
+        abstand = (k["abstand_60t_tief_pct"] if z["richtung"] == "short"
+                   else k["abstand_60t_hoch_pct"])
+        print("%-5s %-12s | %5.1f | %4.1f | %6.1f | %5.2f | %4.2f | %4.1f%% | %5.2f | %s"
+              % (z["richtung"].upper(), z["inst"], z["score"], k["rsi14"], abstand,
                  k["volatilitaet_pa"], z["volumen_verhaeltnis"] or 0.0,
                  z["risiko_prozent"], z["cr"],
                  "keine" if z["guenstig"] else "; ".join(z["offene_tore"])))
@@ -192,16 +237,22 @@ def meldung(treffer, geprueft, grenze):
         return ("<b>Prognose</b>: %d Maerkte geprueft, kein guenstiger Einstieg.\n"
                 "Die Tore hat heute nichts passiert - dann wird auch nichts "
                 "gemeldet." % geprueft)
-    z = ["<b>Prognose: %d guenstige Einstiege</b> (von %d Maerkten)"
-         % (len(treffer), geprueft), ""]
+    n_long = sum(1 for t in treffer if t["richtung"] == "long")
+    z = ["<b>Prognose: %d guenstige Einstiege</b> (von %d Maerkten: %d LONG, %d SHORT)"
+         % (len(treffer), geprueft, n_long, len(treffer) - n_long), ""]
     for t in treffer[:grenze]:
-        z.append("<b>%s</b>  Score %.1f  C/R %.2f"
-                 % (html.escape(t["inst"]), t["score"], t["cr"]))
-        z.append("  Einstieg %.6g  Stop %.6g (-%.1f%%)  Ziel %.6g"
-                 % (t["preis"], t["stop"], t["risiko_prozent"], t["ziel"]))
-        z.append("  RSI %.1f  Ruecksetzer %.1f%%  Vola %.2f"
+        lang = t["richtung"] == "long"
+        z.append("<b>%s</b>  %s  Score %.1f  C/R %.2f"
+                 % (html.escape(t["inst"]), t["richtung"].upper(),
+                    t["score"], t["cr"]))
+        z.append("  Einstieg %.6g  Stop %.6g (%s%.1f%%)  Ziel %.6g"
+                 % (t["preis"], t["stop"], "-" if lang else "+",
+                    t["risiko_prozent"], t["ziel"]))
+        z.append("  RSI %.1f  %s %.1f%%  Vola %.2f"
                  % (t["kennzahlen"]["rsi14"],
-                    t["kennzahlen"]["abstand_60t_hoch_pct"],
+                    "Ruecksetzer" if lang else "Erholung",
+                    t["kennzahlen"]["abstand_60t_hoch_pct"] if lang
+                    else t["kennzahlen"]["abstand_60t_tief_pct"],
                     t["kennzahlen"]["volatilitaet_pa"]))
     if len(treffer) > grenze:
         z.append("")
@@ -232,14 +283,17 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
              k["min_volumen_24h_usd"]))
 
     zeilen = []
+    geprueft = 0
     for i, (inst, umsatz) in enumerate(paare, 1):
         try:
             kerzen = okx.kerzen(inst, "1D", 300)
             if len(kerzen) < 120:
                 continue
-            z = lage(inst, kerzen, tore)
-            z["umsatz_24h_usd"] = round(umsatz)
-            zeilen.append(z)
+            geprueft += 1
+            for richtung in ("long", "short"):
+                z = lage(inst, kerzen, tore, richtung)
+                z["umsatz_24h_usd"] = round(umsatz)
+                zeilen.append(z)
         except Exception as e:                            # noqa: BLE001
             print("  %-12s Fehler: %s" % (inst, e), file=sys.stderr)
         if i % 25 == 0:
@@ -255,8 +309,9 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
     rest = [z for z in zeilen if not z["guenstig"]]
     rest.sort(key=lambda z: z["score"], reverse=True)
 
-    print("\n%d Maerkte mit genug Historie, %d guenstig."
-          % (len(zeilen), len(treffer)))
+    n_long = sum(1 for z in treffer if z["richtung"] == "long")
+    print("\n%d Maerkte mit genug Historie, %d guenstig (%d LONG, %d SHORT)."
+          % (geprueft, len(treffer), n_long, len(treffer) - n_long))
     zeige("--- Guenstige Einstiege (alle Tore offen) ---", treffer)
     if alle:
         zeige("--- Alle geprueften Maerkte ---", rest)
@@ -265,7 +320,7 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
         "datum": heute,
         "erzeugt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tore": tore,
-        "maerkte_geprueft": len(zeilen),
+        "maerkte_geprueft": geprueft,
         "treffer": treffer,
         "werte": rest if alle else treffer,
     }
@@ -278,7 +333,7 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
         print("\nBericht: prognose_berichte/%s.json" % heute)
 
     if melden and not kurz:
-        text = meldung(treffer, len(zeilen), k["melden"]["hoechstens"])
+        text = meldung(treffer, geprueft, k["melden"]["hoechstens"])
         try:
             import melder
             ok = melder.sende(text)

@@ -789,9 +789,17 @@ Einstiegsgelegenheiten über **alle** Märkte hinweg scannen und melden.
 Der Unterschied zum Marktscanner ist der Blickwinkel. `scanner/scan.py` sieht
 elf Werte an und liefert die Rangliste, aus der gekauft wird. `prognose.py`
 sieht den ganzen Markt — alle Spot-Paare in USDT und USDC über einem
-Mindestumsatz — und sucht nur das eine: einen **Rücksetzer in einem intakten
-Aufwärtstrend**. Was die Tore nicht passiert, wird nicht gemeldet; ein Tag ohne
-Meldung ist ein Ergebnis, kein Ausfall.
+Mindestumsatz — und sucht Lagen mit klarem Verhältnis von Chance zu Risiko, in
+**beiden Richtungen**:
+
+- **LONG** — Rücksetzer in einem intakten Aufwärtstrend, Ziel ist das
+  60-Tage-Hoch.
+- **SHORT** — das Spiegelbild: Erholung in einem Abwärtstrend, Ziel ist das
+  60-Tage-Tief.
+
+Die Richtung steht als erste Spalte in jeder Tabelle und im Klartext in der
+Meldung (`LONG`/`SHORT`). Was die Tore nicht passiert, wird nicht gemeldet; ein
+Tag ohne Meldung ist ein Ergebnis, kein Ausfall.
 
 **Es handelt nicht.** Kein Orderaufruf, keine Position, kein Zustand. Die
 Grenzen aus `wachen.json` gelten für Prognose nicht, weil sie keine Order
@@ -814,16 +822,43 @@ Alle Tore müssen gleichzeitig halten. Wo es die Grenze schon gibt, steht
 derselbe Wert wie in `scanner/wachen.json` — eine zweite Wahrheit wäre eine
 zweite Meinung zum selben Geld.
 
-| Tor | Wert | Warum |
-|---|---|---|
-| Score | mindestens 60 | wie `mindest_score` in wachen.json, dieselbe Bewertung |
-| RSI(14) | höchstens 55 | nicht überhitzt; unter 30 wäre es ein Absturz, kein Einstieg |
-| Abstand zum 60-Tage-Hoch | −25 % bis −4 % | darüber kein Rücksetzer, darunter ist der Trend gebrochen |
-| Volatilität p.a. | höchstens 1,2 | wie `max_volatilitaet_pa` in wachen.json |
-| Trend | Preis über SMA100 | ohne das kauft man in einen Abschwung |
-| Volumen (5 Tage zu 30 Tagen) | mindestens 0,5 | sonst ist der Markt eingeschlafen |
-| Chance/Risiko | mindestens 1,5 | gegen das Hoch der 60 Tage, nicht gegen ein Wunschziel |
-| Stop | 5 % bis 12 % | wie `pflicht_stop_prozent_min/max` |
+| Tor | LONG | SHORT | Warum |
+|---|---|---|---|
+| Score | ≥ 60 | ≥ 45 | long-kalibrierte Skala — siehe unten |
+| RSI(14) | ≤ 55 | ≥ 45 | nicht überhitzt / nicht überverkauft |
+| Abstand | zum Hoch −25 % bis −4 % | zum Tief +4 % bis +25 % | Rücksetzer / Erholung, kein gebrochener Trend |
+| Volatilität p.a. | ≤ 1,2 | ≤ 1,2 | wie `max_volatilitaet_pa` in wachen.json |
+| Trend | Preis über SMA100 | Preis unter SMA100 | in die Richtung des längeren Trends |
+| Volumen (5 Tage zu 30 Tagen) | ≥ 0,5 | ≥ 0,5 | sonst ist der Markt eingeschlafen |
+| Chance/Risiko | ≥ 1,5 | ≥ 1,5 | gegen das Hoch bzw. das Tief der 60 Tage |
+| Stop | 5 % bis 12 % | 5 % bis 12 % | wie `pflicht_stop_prozent_min/max` |
+
+**Die Short-Seite hat eine eigene Score-Schwelle, und das ist der Punkt.** Die
+Bewertung in `bewertung.py` ist auf die Long-Frage kalibriert; gemessen am
+13.09.2026 über 31 Märkte (1D) liegt sie auf der Short-Seite strukturell
+tiefer:
+
+| Richtung | Median | q75 | Maximum |
+|---|---|---|---|
+| LONG | 57,5 | 64,7 | 71,4 |
+| SHORT | 34,9 | 39,1 | 53,3 |
+
+Mit derselben Zahl 60 wäre das Short-Tor über dem Tagesmaximum gelegen — es
+wäre nie aufgegangen, und die Short-Seite hätte nichts gemeldet, ohne dass es
+auffällt. 45 ist auf der Short-Verteilung das obere Quartil (q75 39,1), also
+derselbe Rang statt derselben Zahl. Wer `mindest_score: 60` ändert, muss neu
+messen.
+
+`bewertung.bewerten(kerzen, richtung=)` spiegelt die Chance-Bausteine (Preis
+unter den SMAs, Abwärtsrendite, Erholung vom Tief); Gewichte und Rechenweg
+bleiben dieselben — es entsteht keine zweite Formel. Der Aufruf ohne Richtung
+bleibt `long`, der Marktscanner ist damit unberührt.
+
+**Die Short-Seite kam am 13.09.2026 dazu, weil eine Prognose ohne Richtung die
+halbe Antwort schuldig bleibt.** Erster Lauf mit identischer Score-Schwelle:
+31 Märkte, 6 LONG, **0 SHORT** — obwohl WLFI-USDT alle übrigen Tore offen hatte
+und nur am Score scheiterte. Messung siehe oben, eigene Schwelle, danach:
+7 günstig, 6 LONG / 1 SHORT (WLFI-USDT, Erholung 18,6 %, C/R 1,79).
 
 **Die erste Fassung fand nichts — über 41 Märkte an einem normalen Tag.** Zwei
 Fehler, beide im Aufbau:

@@ -10,6 +10,12 @@ Aufwaertspotenzial zu Schwankung - und siebt alles Zappelige hart aus.
 Eingabe: Tageskerzen [ts, o, h, l, c, vol], aufsteigend, mind. ~120 Stueck.
 Ausgabe: dict mit chance (0-100), risiko (0-100), score (0-100), verhaeltnis
 und den Rohkennzahlen.
+
+richtung="long" (Standard) bewertet einen Ruecksetzer in einem Aufwaertstrend -
+der Scanner ruft ohne Angabe und bleibt damit unveraendert. richtung="short"
+spiegelt die Chance-Bausteine auf ihr Gegenstueck (Preis unter den SMAs,
+Abwaertsrendite, Erholung vom Tief statt Ruecksetzer vom Hoch); Gewichte und
+Rechenweg bleiben dieselben, es entsteht keine zweite Formel.
 """
 
 import math
@@ -101,6 +107,8 @@ def roh_komponenten(kerzen):
     fenster = schluss[-60:] if len(schluss) >= 60 else schluss
     hoch_60 = max(hoch[-60:]) if len(hoch) >= 60 else max(hoch)
     abstand_hoch = preis / hoch_60 - 1.0            # <= 0, je naeher 0 desto teurer
+    tief_60 = min(tief[-60:]) if len(tief) >= 60 else min(tief)
+    abstand_tief = preis / tief_60 - 1.0            # >= 0, je naeher 0 desto billiger
 
     renditen = _log_renditen(schluss[-90:])
     vola_pa = _stdabw(renditen) * math.sqrt(365.0)
@@ -135,23 +143,48 @@ def roh_komponenten(kerzen):
         # Zwischengroessen nur fuer den kennzahlen-Block:
         "_rendite_30": rendite_30, "_rsi": rsi,
         "_abstand_hoch": abstand_hoch, "_drawdown_90": drawdown_90,
+        "_abstand_tief": abstand_tief,
     }
 
 
-def bewerten(kerzen, gewichte=None):
+def bewerten(kerzen, richtung="long", gewichte=None):
     r = roh_komponenten(kerzen)
     cg = (gewichte or {}).get("chance") or CHANCE_GEWICHTE
     rg = (gewichte or {}).get("risiko") or RISIKO_GEWICHTE
 
-    chance = 100.0 * (cg["trend"] * r["c_trend"]
-                      + cg["momentum"] * r["c_momentum"]
-                      + cg["ruecksetzer"] * r["c_ruecksetzer"]
-                      + cg["nicht_ueberkauft"] * r["c_nicht_ueberkauft"]
-                      + cg["volumen"] * r["c_volumen"])
-    risiko = 100.0 * (rg["vola"] * r["r_vola"]
-                      + rg["drawdown"] * r["r_drawdown"]
-                      + rg["extrem_rsi"] * r["r_extrem_rsi"]
-                      + rg["absturz_momentum"] * r["r_absturz_momentum"])
+    if richtung == "short":
+        # Spiegelung: jede Chance-Komponente bekommt ihr Gegenstueck, jede
+        # Risiko-Komponente ihre Gegenrichtung. Die Skalen bleiben dieselben.
+        ch = {
+            "trend": 1.0 - r["c_trend"],
+            "momentum": _skalieren(-r["_rendite_30"], -0.10, 0.40),
+            "ruecksetzer": _skalieren(r["_abstand_tief"], 0.02, 0.20),
+            "nicht_ueberkauft": 1.0 - _skalieren(38.0 - r["_rsi"], 0.0, 20.0),
+            "volumen": r["c_volumen"],
+        }
+        ri = {
+            "vola": r["r_vola"],
+            "drawdown": r["r_drawdown"],
+            "extrem_rsi": _skalieren(20.0 - r["_rsi"], 0.0, 15.0),
+            "absturz_momentum": _skalieren(r["_rendite_30"], 0.10, 0.45),
+        }
+    else:
+        ch = {
+            "trend": r["c_trend"],
+            "momentum": r["c_momentum"],
+            "ruecksetzer": r["c_ruecksetzer"],
+            "nicht_ueberkauft": r["c_nicht_ueberkauft"],
+            "volumen": r["c_volumen"],
+        }
+        ri = {
+            "vola": r["r_vola"],
+            "drawdown": r["r_drawdown"],
+            "extrem_rsi": r["r_extrem_rsi"],
+            "absturz_momentum": r["r_absturz_momentum"],
+        }
+
+    chance = 100.0 * sum(cg[n] * ch[n] for n in cg)
+    risiko = 100.0 * sum(rg[n] * ri[n] for n in rg)
 
     score = max(0.0, min(100.0, chance * (1.0 - 0.7 * risiko / 100.0)))
     verhaeltnis = chance / max(risiko, 1.0)
@@ -169,6 +202,7 @@ def bewerten(kerzen, gewichte=None):
             "abstand_60t_hoch_pct": round(r["_abstand_hoch"] * 100, 1),
             "volatilitaet_pa": round(r["vola_pa"], 2),
             "max_drawdown_90t_pct": round(r["_drawdown_90"] * 100, 1),
+            "abstand_60t_tief_pct": round(r["_abstand_tief"] * 100, 1),
             "volumen_bestaetigung": round(r["c_volumen"], 2),
         },
     }

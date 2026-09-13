@@ -91,9 +91,10 @@ SkillsBot (eigener Token, kein Handels-Poller):
 - `/status`: lokale Zustandsdateien, xperp vor Spot und SWAP (Papierspur mit
   eigenem Zustand); Zeitstempel und Modus.
 - `/papierstatus`: Live-Daten werden nicht als Papierpositionen ausgegeben.
-- `/prognose [N]`: vorhandene Spot-Marktbeobachtung mit `--kurz`, keine
-  Order, kein Berichtschreiben. Ohne N ganzer Markt; N zwischen 1 und 200.
-  Zeitlimit 240 Sekunden, danach kleinere Stichprobe anfordern.
+- `/prognose [N]`: Marktbeobachtung ueber alle Spot-Paare mit `--kurz`, beide
+  Richtungen (LONG/SHORT je Zeile), keine Order, kein Berichtschreiben. Ohne N
+  ganzer Markt; N zwischen 1 und 200. Zeitlimit 240 Sekunden, danach kleinere
+  Stichprobe anfordern.
 - Unbekannte Slashbefehle gehen nicht an A2A; Freitext weiterhin schon.
 
 Handelsbot (dauerlauf.py, einziger Schreiber der Freigabefenster):

@@ -100,6 +100,7 @@ def prognose(text):
         return 'Prognose nach 240 s abgebrochen. Mit /prognose 20 kleiner pruefen.'
     if p.returncode not in (0, 1):
         return 'Prognose gescheitert (Code %s). Lokal pruefen.' % p.returncode
-    return ('Prognose: bestehende Spot-Marktbeobachtung, kein SWAP-Signal, keine Order.\n'
+    return ('Prognose: Marktbeobachtung ueber alle Spot-Paare, long und short '
+            '(Richtung steht in der Tabelle), keine Order.\n'
             + (p.stdout or 'Keine Ausgabe.')
             + ('\nTeilabfragen fehlgeschlagen; Ergebnis unvollstaendig.' if p.stderr else ''))
