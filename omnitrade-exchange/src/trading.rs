@@ -2,15 +2,15 @@
 //! Exchange implementations (Binance, Kraken, OKX) conform to this interface.
 
 use crate::error::ExchangeError;
-use omnitrade_core::{Order, OrderSide, OrderType};
+use omnitrade_core::{Order, OrderType, Side};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Request for placing a new order.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct OrderRequest {
     pub symbol: String,
-    pub side: OrderSide,
+    pub side: Side,
     pub order_type: OrderType,
     pub quantity: f64,
     pub price: Option<f64>,
@@ -18,7 +18,7 @@ pub struct OrderRequest {
 
 impl OrderRequest {
     /// Create a new market order request.
-    pub fn market(symbol: String, side: OrderSide, quantity: f64) -> Self {
+    pub fn market(symbol: String, side: Side, quantity: f64) -> Self {
         Self {
             symbol,
             side,
@@ -29,7 +29,7 @@ impl OrderRequest {
     }
 
     /// Create a new limit order request.
-    pub fn limit(symbol: String, side: OrderSide, quantity: f64, price: f64) -> Self {
+    pub fn limit(symbol: String, side: Side, quantity: f64, price: f64) -> Self {
         Self {
             symbol,
             side,
@@ -64,7 +64,7 @@ impl fmt::Display for OrderRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {}",
+            "{:?} {:?} {} {}",
             self.side, self.order_type, self.quantity, self.symbol
         )
     }
@@ -106,7 +106,10 @@ pub trait ExchangeTrading: Send + Sync {
     ) -> Result<Option<Order>, ExchangeError> {
         // Default: not all exchanges support single-order fetching
         let orders = self.get_open_orders().await?;
-        Ok(orders.into_iter().find(|o| o.id == order_id))
+        let order_id_num: u64 = order_id
+            .parse()
+            .map_err(|_| ExchangeError::InvalidRequest("Invalid order ID format".to_string()))?;
+        Ok(orders.into_iter().find(|o| o.id == order_id_num))
     }
 }
 
@@ -116,28 +119,28 @@ mod tests {
 
     #[test]
     fn test_order_request_market() {
-        let req = OrderRequest::market("BTCUSDT".to_string(), OrderSide::Buy, 1.0);
+        let req = OrderRequest::market("BTCUSDT".to_string(), Side::Buy, 1.0);
         assert_eq!(req.symbol, "BTCUSDT");
-        assert_eq!(req.side, OrderSide::Buy);
+        assert_eq!(req.side, Side::Buy);
         assert_eq!(req.order_type, OrderType::Market);
         assert_eq!(req.price, None);
     }
 
     #[test]
     fn test_order_request_limit() {
-        let req = OrderRequest::limit("ETHUSDT".to_string(), OrderSide::Sell, 2.5, 2500.0);
+        let req = OrderRequest::limit("ETHUSDT".to_string(), Side::Sell, 2.5, 2500.0);
         assert_eq!(req.symbol, "ETHUSDT");
-        assert_eq!(req.side, OrderSide::Sell);
+        assert_eq!(req.side, Side::Sell);
         assert_eq!(req.order_type, OrderType::Limit);
         assert_eq!(req.price, Some(2500.0));
     }
 
     #[test]
     fn test_order_request_display() {
-        let req = OrderRequest::limit("BTCUSDT".to_string(), OrderSide::Buy, 0.5, 45000.0);
+        let req = OrderRequest::limit("BTCUSDT".to_string(), Side::Buy, 0.5, 45000.0);
         let display = format!("{}", req);
-        assert!(display.contains("BUY"));
-        assert!(display.contains("LIMIT"));
+        assert!(display.contains("Buy"));
+        assert!(display.contains("Limit"));
         assert!(display.contains("0.5"));
         assert!(display.contains("BTCUSDT"));
     }

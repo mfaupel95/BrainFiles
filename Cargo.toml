@@ -19,6 +19,7 @@ repository = "https://github.com/jackby03/omnitrade"
 omnitrade-core = { path = "omnitrade-core" }
 omnitrade-engine = { path = "omnitrade-engine" }
 omnitrade-exchange = { path = "omnitrade-exchange" }
+omnitrade-risk = { path = "omnitrade-risk" }
 omnitrade-script = { path = "omnitrade-script" }
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "rt", "macros"] }

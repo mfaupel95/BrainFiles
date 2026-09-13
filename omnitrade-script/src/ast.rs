@@ -82,6 +82,12 @@ pub enum Stmt {
     SignalBuy,
     /// Emit sell signal statement.
     SignalSell,
+    /// Set stop-loss price level.
+    StopLoss(Expr),
+    /// Set take-profit price level.
+    TakeProfit(Expr),
+    /// Set trailing-stop percentage (e.g., 0.05 for 5%).
+    TrailingStop(Expr),
     /// Standalone expression statement.
     ExprStmt(Expr),
 }
@@ -224,5 +230,23 @@ mod tests {
                 value: Expr::Negate(Box::new(Expr::Identifier("price".to_string()))),
             }
         );
+    }
+
+    #[test]
+    fn test_stop_loss_statement() {
+        let stmt = Stmt::StopLoss(Expr::Number(100.0));
+        assert_eq!(stmt, Stmt::StopLoss(Expr::Number(100.0)));
+    }
+
+    #[test]
+    fn test_take_profit_statement() {
+        let stmt = Stmt::TakeProfit(Expr::Number(120.0));
+        assert_eq!(stmt, Stmt::TakeProfit(Expr::Number(120.0)));
+    }
+
+    #[test]
+    fn test_trailing_stop_statement() {
+        let stmt = Stmt::TrailingStop(Expr::Number(0.05));
+        assert_eq!(stmt, Stmt::TrailingStop(Expr::Number(0.05)));
     }
 }

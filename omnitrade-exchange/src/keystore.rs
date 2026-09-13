@@ -133,7 +133,7 @@ mod tests {
         );
 
         // Save to keyring
-        if let Ok(_) = Keystore::save_credentials("binance", &creds) {
+        if Keystore::save_credentials("binance", &creds).is_ok() {
             // Load from keyring
             match Keystore::load_credentials("binance", Network::Testnet) {
                 Ok(loaded) => {

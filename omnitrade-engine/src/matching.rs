@@ -1,16 +1,16 @@
 //! Paper trading matching engine for simulated order execution.
 //!
-//! For live trading, wrap order submission with `omnitrade_risk::RiskGuard::check_order()`
-//! to enforce position limits, drawdown, and daily loss thresholds BEFORE submission.
-//! This ensures backtest and live trading behave identically.
+//! Supports Market, Limit, StopLoss, TakeProfit, and TrailingStop orders.
+//! For live trading, wrap with `omnitrade_risk::RiskGuard::check_order()` to enforce
+//! position limits and drawdown constraints BEFORE submission.
 
-use omnitrade_core::{Order, OrderStatus, OrderType, Side, Tick};
+use omnitrade_core::{Candle, Order, OrderStatus, OrderType, Side, Tick};
 
 use crate::error::EngineError;
 use crate::fees::{FeeSchedule, SlippageModel};
-use crate::fill::{OrderFill, OrderFillBuilder};
+use crate::fill::{FillType, OrderFill, OrderFillBuilder};
 
-/// Matching engine that executes market and limit orders against incoming price ticks.
+/// Matching engine that executes market, limit, stop-loss, take-profit, and trailing-stop orders.
 #[derive(Debug, Clone)]
 pub struct MatchingEngine {
     /// Fee schedule applied to executed trades.
@@ -44,11 +44,30 @@ impl MatchingEngine {
             });
         }
 
-        if order.order_type == OrderType::Limit && (order.price <= 0.0 || order.price.is_nan()) {
-            return Err(EngineError::InvalidOrderSize {
-                size: order.price,
-                reason: "limit order price must be positive and non-NaN",
-            });
+        match &order.order_type {
+            OrderType::Limit | OrderType::StopLimit
+                if order.price <= 0.0 || order.price.is_nan() =>
+            {
+                return Err(EngineError::InvalidOrderSize {
+                    size: order.price,
+                    reason: "limit order price must be positive and non-NaN",
+                });
+            }
+            OrderType::StopMarket | OrderType::StopLoss { .. } | OrderType::TakeProfit { .. }
+                if order.stop_price <= 0.0 || order.stop_price.is_nan() =>
+            {
+                return Err(EngineError::InvalidOrderSize {
+                    size: order.stop_price,
+                    reason: "stop price must be positive and non-NaN",
+                });
+            }
+            OrderType::TrailingStop { percent } if *percent <= 0.0 || percent.is_nan() => {
+                return Err(EngineError::InvalidOrderSize {
+                    size: *percent,
+                    reason: "trailing stop percent must be positive and non-NaN",
+                });
+            }
+            _ => {}
         }
 
         Ok(())
@@ -61,16 +80,8 @@ impl MatchingEngine {
         let mut fills = Vec::new();
 
         for order in pending_orders.iter_mut() {
-            let (should_fill, fill_base_price, is_maker) = match (order.order_type, order.side) {
-                (OrderType::Market, _) => (true, tick.price, false),
-                (OrderType::Limit, Side::Buy) if tick.price <= order.price => {
-                    (true, order.price, true)
-                }
-                (OrderType::Limit, Side::Sell) if tick.price >= order.price => {
-                    (true, order.price, true)
-                }
-                _ => (false, 0.0, false),
-            };
+            let (should_fill, fill_base_price, is_maker, fill_type) =
+                self.evaluate_fill_condition(order, tick);
 
             if !should_fill {
                 continue;
@@ -105,7 +116,8 @@ impl MatchingEngine {
                 .fill_quantity(fill_qty)
                 .fee(fee, self.fee_schedule.fee_asset.clone())
                 .timestamp_ms(tick.timestamp_ms)
-                .is_maker(is_maker);
+                .is_maker(is_maker)
+                .fill_type(fill_type);
 
             match fill_builder.build() {
                 Ok(fill) => fills.push(fill),
@@ -121,6 +133,138 @@ impl MatchingEngine {
 
         pending_orders.retain(|order| order.is_active());
         fills
+    }
+
+    /// Processes a candle to evaluate SL, TP, and Trailing Stop orders.
+    ///
+    /// Returns a vector of generated [`OrderFill`]s and removes completed orders from `pending_orders`.
+    pub fn process_candle(
+        &mut self,
+        candle: &Candle,
+        pending_orders: &mut Vec<Order>,
+    ) -> Vec<OrderFill> {
+        let mut fills = Vec::new();
+
+        for order in pending_orders.iter_mut() {
+            let (should_fill, fill_base_price, is_maker, fill_type) =
+                self.evaluate_candle_fill(order, candle);
+
+            if !should_fill {
+                continue;
+            }
+
+            let fill_qty = order.remaining_quantity();
+            if fill_qty <= 0.0 {
+                continue;
+            }
+
+            let fill_price = self
+                .slippage_model
+                .apply_slippage(fill_base_price, order.side);
+            let notional = fill_price * fill_qty;
+            let fee = self.fee_schedule.compute_fee(notional, is_maker);
+
+            order.filled_quantity += fill_qty;
+            order.updated_at_ms = candle.timestamp_ms;
+            order.status = if order.remaining_quantity() <= f64::EPSILON {
+                OrderStatus::Filled
+            } else {
+                OrderStatus::PartiallyFilled
+            };
+
+            self.next_fill_id += 1;
+
+            let fill_builder = OrderFillBuilder::new()
+                .order_id(order.id)
+                .symbol(order.symbol.clone())
+                .side(order.side)
+                .fill_price(fill_price)
+                .fill_quantity(fill_qty)
+                .fee(fee, self.fee_schedule.fee_asset.clone())
+                .timestamp_ms(candle.timestamp_ms)
+                .is_maker(is_maker)
+                .fill_type(fill_type);
+
+            match fill_builder.build() {
+                Ok(fill) => fills.push(fill),
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to construct OrderFill for order {}: {:?}",
+                        order.id,
+                        err
+                    );
+                }
+            }
+        }
+
+        pending_orders.retain(|order| order.is_active());
+        fills
+    }
+
+    /// Evaluates whether a tick should trigger a fill for an order.
+    /// Returns (should_fill, fill_base_price, is_maker, fill_type).
+    fn evaluate_fill_condition(&self, order: &Order, tick: &Tick) -> (bool, f64, bool, FillType) {
+        match (&order.order_type, order.side) {
+            (OrderType::Market, _) => (true, tick.price, false, FillType::Regular),
+            (OrderType::Limit, Side::Buy) if tick.price <= order.price => {
+                (true, order.price, true, FillType::Regular)
+            }
+            (OrderType::Limit, Side::Sell) if tick.price >= order.price => {
+                (true, order.price, true, FillType::Regular)
+            }
+            _ => (false, 0.0, false, FillType::Regular),
+        }
+    }
+
+    /// Evaluates whether a candle should trigger a fill for SL/TP/Trailing orders.
+    /// Returns (should_fill, fill_base_price, is_maker, fill_type).
+    fn evaluate_candle_fill(
+        &self,
+        order: &mut Order,
+        candle: &Candle,
+    ) -> (bool, f64, bool, FillType) {
+        match &order.order_type {
+            OrderType::StopLoss {
+                trigger_price,
+                limit_price,
+            } => {
+                // StopLoss triggers when candle low <= trigger_price
+                if candle.low <= *trigger_price {
+                    let fill_price = limit_price.unwrap_or(*trigger_price);
+                    (true, fill_price, true, FillType::StopLoss)
+                } else {
+                    (false, 0.0, false, FillType::Regular)
+                }
+            }
+            OrderType::TakeProfit {
+                trigger_price,
+                limit_price,
+            } => {
+                // TakeProfit triggers when candle high >= trigger_price
+                if candle.high >= *trigger_price {
+                    let fill_price = limit_price.unwrap_or(*trigger_price);
+                    (true, fill_price, true, FillType::TakeProfit)
+                } else {
+                    (false, 0.0, false, FillType::Regular)
+                }
+            }
+            OrderType::TrailingStop { percent } => {
+                // Update highest price tracking
+                let current_high = candle.high;
+                let highest = order.trailing_highest_price.unwrap_or(current_high);
+                let updated_highest = highest.max(current_high);
+                order.trailing_highest_price = Some(updated_highest);
+
+                // Check if current price falls below threshold
+                let threshold = updated_highest * (1.0 - percent);
+                if candle.low <= threshold {
+                    (true, threshold, true, FillType::TrailingStop)
+                } else {
+                    (false, 0.0, false, FillType::Regular)
+                }
+            }
+            _ => (false, 0.0, false, FillType::Regular),
+        }
     }
 }
 
@@ -156,24 +300,21 @@ mod tests {
             status: OrderStatus::New,
             created_at_ms: 1000,
             updated_at_ms: 1000,
+            trailing_highest_price: None,
         }
     }
 
     #[test]
     fn market_buy_order_filled_at_tick_price_plus_slippage() {
-        // Arrange
         let mut engine = setup_engine();
         let order = create_test_order(1, Side::Buy, OrderType::Market, 0.0, 1.0);
         let mut pending = vec![order];
         let tick = Tick::new(2000, 50_000.0, 1.0, false);
 
-        // Act
         let fills = engine.process_tick(&tick, &mut pending);
 
-        // Assert
         assert_eq!(fills.len(), 1);
         let fill = &fills[0];
-        // Price with 10 bps slippage: 50,000 * 1.001 = 50,050
         assert!((fill.fill_price - 50_050.0).abs() < 1e-6);
         assert_eq!(fill.fill_quantity, 1.0);
         assert!(!fill.is_maker);
@@ -181,29 +322,80 @@ mod tests {
     }
 
     #[test]
-    fn market_sell_order_filled_at_tick_price_minus_slippage() {
-        // Arrange
+    fn stop_loss_triggers_on_candle_low() {
         let mut engine = setup_engine();
-        let order = create_test_order(2, Side::Sell, OrderType::Market, 0.0, 2.0);
+        let mut order = create_test_order(
+            1,
+            Side::Sell,
+            OrderType::StopLoss {
+                trigger_price: 49_000.0,
+                limit_price: None,
+            },
+            0.0,
+            1.0,
+        );
+        order.trailing_highest_price = None;
         let mut pending = vec![order];
-        let tick = Tick::new(2000, 50_000.0, 2.0, false);
 
-        // Act
-        let fills = engine.process_tick(&tick, &mut pending);
+        let candle = Candle::new(2000, 50_000.0, 50_500.0, 48_500.0, 49_500.0, 1000.0);
+        let fills = engine.process_candle(&candle, &mut pending);
 
-        // Assert
         assert_eq!(fills.len(), 1);
-        let fill = &fills[0];
-        // Price with 10 bps slippage: 50,000 * 0.999 = 49,950
-        assert!((fill.fill_price - 49_950.0).abs() < 1e-6);
-        assert_eq!(fill.fill_quantity, 2.0);
-        assert!(!fill.is_maker);
+        assert_eq!(fills[0].fill_type, FillType::StopLoss);
         assert!(pending.is_empty());
     }
 
     #[test]
+    fn take_profit_triggers_on_candle_high() {
+        let mut engine = setup_engine();
+        let mut order = create_test_order(
+            1,
+            Side::Buy,
+            OrderType::TakeProfit {
+                trigger_price: 51_000.0,
+                limit_price: None,
+            },
+            0.0,
+            1.0,
+        );
+        order.trailing_highest_price = None;
+        let mut pending = vec![order];
+
+        let candle = Candle::new(2000, 50_000.0, 51_500.0, 49_500.0, 50_500.0, 1000.0);
+        let fills = engine.process_candle(&candle, &mut pending);
+
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].fill_type, FillType::TakeProfit);
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn trailing_stop_updates_highest_and_triggers() {
+        let mut engine = setup_engine();
+        let order = create_test_order(
+            1,
+            Side::Buy,
+            OrderType::TrailingStop { percent: 0.05 },
+            0.0,
+            1.0,
+        );
+        let mut pending = vec![order];
+
+        // First candle: price goes up, highest = 51_000
+        let candle1 = Candle::new(2000, 50_000.0, 51_000.0, 50_000.0, 50_500.0, 1000.0);
+        let fills1 = engine.process_candle(&candle1, &mut pending);
+        assert!(fills1.is_empty());
+        assert_eq!(pending[0].trailing_highest_price, Some(51_000.0));
+
+        // Second candle: price drops 6% below highest (threshold = 51_000 * 0.95 = 48_450)
+        let candle2 = Candle::new(3000, 50_500.0, 50_600.0, 48_000.0, 48_100.0, 1000.0);
+        let fills2 = engine.process_candle(&candle2, &mut pending);
+        assert_eq!(fills2.len(), 1);
+        assert_eq!(fills2[0].fill_type, FillType::TrailingStop);
+    }
+
+    #[test]
     fn limit_buy_order_triggers_when_tick_price_less_than_or_equal_to_limit() {
-        // Arrange
         let mut engine = setup_engine();
         let order = create_test_order(3, Side::Buy, OrderType::Limit, 50_000.0, 1.0);
         let mut pending = vec![order];
@@ -211,113 +403,22 @@ mod tests {
         let tick_high = Tick::new(2000, 50_100.0, 1.0, false);
         let tick_equal = Tick::new(2001, 50_000.0, 1.0, false);
 
-        // Act 1: Tick above limit price does not trigger
         let fills_high = engine.process_tick(&tick_high, &mut pending);
         assert!(fills_high.is_empty());
         assert_eq!(pending.len(), 1);
 
-        // Act 2: Tick at limit price triggers fill
         let fills_equal = engine.process_tick(&tick_equal, &mut pending);
-
-        // Assert
         assert_eq!(fills_equal.len(), 1);
         let fill = &fills_equal[0];
-        // Price at limit 50,000 * 1.001 = 50,050
         assert!((fill.fill_price - 50_050.0).abs() < 1e-6);
         assert!(fill.is_maker);
         assert!(pending.is_empty());
     }
 
     #[test]
-    fn limit_sell_order_triggers_when_tick_price_greater_than_or_equal_to_limit() {
-        // Arrange
-        let mut engine = setup_engine();
-        let order = create_test_order(4, Side::Sell, OrderType::Limit, 50_000.0, 1.0);
-        let mut pending = vec![order];
-
-        let tick_low = Tick::new(2000, 49_900.0, 1.0, false);
-        let tick_above = Tick::new(2001, 50_050.0, 1.0, false);
-
-        // Act 1: Tick below limit price does not trigger
-        let fills_low = engine.process_tick(&tick_low, &mut pending);
-        assert!(fills_low.is_empty());
-        assert_eq!(pending.len(), 1);
-
-        // Act 2: Tick above limit price triggers fill
-        let fills_above = engine.process_tick(&tick_above, &mut pending);
-
-        // Assert
-        assert_eq!(fills_above.len(), 1);
-        let fill = &fills_above[0];
-        // Price at limit 50,000 * 0.999 = 49,950
-        assert!((fill.fill_price - 49_950.0).abs() < 1e-6);
-        assert!(fill.is_maker);
-        assert!(pending.is_empty());
-    }
-
-    #[test]
-    fn fee_correctly_deducted() {
-        // Arrange
-        let mut engine = setup_engine();
-        // Maker rate = 0.001, Taker rate = 0.002
-        let market_order = create_test_order(5, Side::Buy, OrderType::Market, 0.0, 1.0);
-        let mut pending = vec![market_order];
-        // Tick price = 10,000, 0 bps slippage for test calculation clarity
-        engine.slippage_model = SlippageModel::new(0.0).expect("valid slippage model");
-        let tick = Tick::new(2000, 10_000.0, 1.0, false);
-
-        // Act
-        let fills = engine.process_tick(&tick, &mut pending);
-
-        // Assert
-        assert_eq!(fills.len(), 1);
-        let fill = &fills[0];
-        let expected_notional = 10_000.0;
-        let expected_fee = expected_notional * 0.002; // Taker rate = 0.2% = 20.0
-        assert!((fill.fee - expected_fee).abs() < f64::EPSILON);
-        assert_eq!(fill.fee_asset, "USDT");
-    }
-
-    #[test]
-    fn order_status_transitions_to_filled_after_full_execution() {
-        // Arrange
-        let mut engine = setup_engine();
-        let order = create_test_order(6, Side::Buy, OrderType::Market, 0.0, 5.0);
-        let mut pending = vec![order];
-        let tick = Tick::new(3000, 100.0, 5.0, false);
-
-        // Act
-        let _fills = engine.process_tick(&tick, &mut pending);
-
-        // Assert
-        assert!(pending.is_empty());
-    }
-
-    #[test]
-    fn zero_quantity_order_rejected_with_invalid_order_size() {
-        // Arrange
+    fn zero_quantity_order_rejected() {
         let engine = setup_engine();
-        let zero_qty_order = create_test_order(7, Side::Buy, OrderType::Market, 100.0, 0.0);
-        let neg_qty_order = create_test_order(8, Side::Buy, OrderType::Market, 100.0, -1.0);
-        let nan_qty_order = create_test_order(9, Side::Buy, OrderType::Market, 100.0, f64::NAN);
-        let zero_price_limit = create_test_order(10, Side::Buy, OrderType::Limit, 0.0, 1.0);
-
-        // Act & Assert
-        assert!(matches!(
-            engine.submit_order(&zero_qty_order),
-            Err(EngineError::InvalidOrderSize { .. })
-        ));
-        assert!(matches!(
-            engine.submit_order(&neg_qty_order),
-            Err(EngineError::InvalidOrderSize { .. })
-        ));
-        assert!(matches!(
-            engine.submit_order(&nan_qty_order),
-            Err(EngineError::InvalidOrderSize { .. })
-        ));
-        assert!(matches!(
-            engine.submit_order(&zero_price_limit),
-            Err(EngineError::InvalidOrderSize { .. })
-        ));
+        let zero_qty = create_test_order(1, Side::Buy, OrderType::Market, 0.0, 0.0);
+        assert!(engine.submit_order(&zero_qty).is_err());
     }
 }

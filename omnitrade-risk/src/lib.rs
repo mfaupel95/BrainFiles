@@ -6,9 +6,11 @@
 pub mod error;
 pub mod guard;
 pub mod kill_switch;
+pub mod leverage_guard;
 pub mod limits;
 
 pub use error::{RiskError, RiskViolation};
 pub use guard::RiskGuard;
 pub use kill_switch::KillSwitch;
+pub use leverage_guard::LeverageGuard;
 pub use limits::RiskLimits;

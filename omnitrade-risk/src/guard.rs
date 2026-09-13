@@ -164,6 +164,7 @@ mod tests {
             status: OrderStatus::New,
             created_at_ms: 1000,
             updated_at_ms: 1000,
+            trailing_highest_price: None,
         }
     }
 

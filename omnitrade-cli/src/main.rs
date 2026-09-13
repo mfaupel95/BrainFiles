@@ -6,13 +6,24 @@
 mod args;
 mod backtest;
 mod commands;
+mod live_loop;
 
 use args::{CliArgs, Commands};
 use backtest::{run_backtest, BacktestConfig};
 use clap::Parser;
-use commands::handle_kill;
+use commands::{handle_kill, handle_live};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// Initialize structured logging with environment-based filtering.
+fn init_tracing() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_tracing();
+
     let args = CliArgs::parse();
 
     match args.command {
@@ -38,6 +49,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let tokens = omnitrade_script::tokenize(&script_content)?;
             let _stmts = omnitrade_script::parse(&tokens)?;
             println!("Script validation successful: {:?}", script);
+        }
+        Commands::Live {
+            script,
+            grid_config,
+            symbol,
+            network,
+            initial_capital,
+        } => {
+            let capital = initial_capital.unwrap_or(1000.0);
+            handle_live(
+                script.as_deref(),
+                grid_config.as_deref(),
+                &symbol,
+                &network,
+                capital,
+            )
+            .await?;
         }
         Commands::Kill => {
             handle_kill()?;

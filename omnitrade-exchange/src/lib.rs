@@ -23,7 +23,7 @@ pub mod keystore;
 pub mod trading;
 pub mod traits;
 
-pub use binance::{BinanceClient, BinanceRestClient};
+pub use binance::{BinanceClient, BinanceMarginClient, BinanceRestClient};
 pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;
 pub use keystore::Keystore;

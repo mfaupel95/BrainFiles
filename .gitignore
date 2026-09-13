@@ -27,3 +27,6 @@ Thumbs.db
 *.p12
 *.pfx
 secrets/
+
+# Claude-Code-Worktrees gehoeren nicht in den Verlauf.
+.claude/

@@ -5,7 +5,7 @@ use super::signing::BinanceSigner;
 use crate::credentials::ApiCredentials;
 use crate::error::ExchangeError;
 use crate::trading::{Account, AccountBalance, ExchangeTrading, OrderRequest};
-use omnitrade_core::{Order, OrderSide, OrderStatus, OrderType};
+use omnitrade_core::{Order, OrderStatus, OrderType, Side, TimeInForce};
 use reqwest::{Client, Method};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -84,43 +84,34 @@ impl BinanceRestClient {
     /// Parse Binance order response into our Order domain type.
     fn parse_order_response(&self, resp: &BinanceOrderResponse) -> Order {
         Order {
-            id: resp.order_id.to_string(),
+            id: resp.order_id as u64,
             symbol: resp.symbol.clone(),
             side: if resp.side == "BUY" {
-                OrderSide::Buy
+                Side::Buy
             } else {
-                OrderSide::Sell
+                Side::Sell
             },
             order_type: match resp.order_type.as_str() {
                 "LIMIT" => OrderType::Limit,
                 "MARKET" => OrderType::Market,
                 _ => OrderType::Market,
             },
+            time_in_force: TimeInForce::GTC,
+            price: resp.price,
+            stop_price: 0.0,
             status: match resp.status.as_str() {
                 "NEW" => OrderStatus::New,
                 "PARTIALLY_FILLED" => OrderStatus::PartiallyFilled,
                 "FILLED" => OrderStatus::Filled,
-                "CANCELED" => OrderStatus::Canceled,
-                "PENDING_CANCEL" => OrderStatus::PendingCancel,
+                "CANCELED" => OrderStatus::Cancelled,
                 "REJECTED" => OrderStatus::Rejected,
-                "EXPIRED" => OrderStatus::Expired,
                 _ => OrderStatus::New,
             },
             quantity: resp.orig_qty,
-            price: if resp.price > 0.0 {
-                Some(resp.price)
-            } else {
-                None
-            },
             filled_quantity: resp.executed_qty,
-            filled_price: if resp.cum_quote_asset_transacted_qty > 0.0 {
-                Some(resp.cum_quote_asset_transacted_qty / resp.executed_qty.max(1.0))
-            } else {
-                None
-            },
-            created_at: resp.time,
-            updated_at: Some(resp.update_time),
-            commission: None,
+            created_at_ms: resp.time as u64,
+            updated_at_ms: resp.update_time as u64,
+            trailing_highest_price: None,
         }
     }
 }
@@ -142,8 +133,19 @@ impl ExchangeTrading for BinanceRestClient {
 
         let mut params = HashMap::new();
         params.insert("symbol".to_string(), req.symbol.clone());
-        params.insert("side".to_string(), req.side.to_string());
-        params.insert("type".to_string(), req.order_type.to_string());
+        params.insert(
+            "side".to_string(),
+            if req.side == Side::Buy { "BUY" } else { "SELL" }.to_string(),
+        );
+        params.insert(
+            "type".to_string(),
+            match req.order_type {
+                OrderType::Market => "MARKET",
+                OrderType::Limit => "LIMIT",
+                _ => "MARKET",
+            }
+            .to_string(),
+        );
         params.insert("quantity".to_string(), req.quantity.to_string());
 
         if let Some(price) = req.price {

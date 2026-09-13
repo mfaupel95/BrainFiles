@@ -26,7 +26,7 @@ impl Side {
 }
 
 /// Type of order to be placed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OrderType {
     /// Execute immediately at best available price.
     Market,
@@ -36,6 +36,21 @@ pub enum OrderType {
     StopMarket,
     /// Trigger a limit order when stop price is reached.
     StopLimit,
+    /// Stop-Loss: trigger when candle low <= trigger_price.
+    /// Executes at trigger_price or limit_price (if specified).
+    StopLoss {
+        trigger_price: f64,
+        limit_price: Option<f64>,
+    },
+    /// Take-Profit: trigger when candle high >= trigger_price.
+    /// Executes at trigger_price or limit_price (if specified).
+    TakeProfit {
+        trigger_price: f64,
+        limit_price: Option<f64>,
+    },
+    /// Trailing-Stop: maintains highest price, triggers when
+    /// current price falls below (highest * (1 - percent)).
+    TrailingStop { percent: f64 },
 }
 
 /// Time-in-force policy for an order.
@@ -173,6 +188,9 @@ pub struct Order {
     pub created_at_ms: u64,
     /// Timestamp when the order was last updated (ms since epoch).
     pub updated_at_ms: u64,
+    /// For TrailingStop: highest price observed since order creation.
+    /// Persists across candles for accurate trailing calculations.
+    pub trailing_highest_price: Option<f64>,
 }
 
 impl Order {
@@ -292,6 +310,7 @@ mod tests {
             status: OrderStatus::PartiallyFilled,
             created_at_ms: 1_000_000,
             updated_at_ms: 1_000_001,
+            trailing_highest_price: None,
         };
         assert!((order.remaining_quantity() - 0.7).abs() < f64::EPSILON);
         assert!(order.is_active());
@@ -318,6 +337,7 @@ mod tests {
                 status,
                 created_at_ms: 0,
                 updated_at_ms: 0,
+                trailing_highest_price: None,
             };
             assert!(order.is_terminal());
             assert!(!order.is_active());

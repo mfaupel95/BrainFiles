@@ -66,7 +66,7 @@ mod tests {
         assert!(result.is_ok());
         // Signature should be a non-empty hex string
         let sig = result.unwrap();
-        assert!(sig.len() > 0);
+        assert!(!sig.is_empty());
         assert!(sig.chars().all(|c| c.is_ascii_hexdigit()));
     }
 

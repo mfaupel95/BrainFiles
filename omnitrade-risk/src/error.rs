@@ -39,6 +39,14 @@ pub enum RiskViolation {
     #[error("trading halted: kill switch activated")]
     KillSwitchActive,
 
+    /// Leverage exceeds maximum allowed limit
+    #[error("leverage violation: requested leverage exceeds maximum")]
+    LeverageTooHigh,
+
+    /// Liquidation price is too close to entry price
+    #[error("liquidation distance violation: distance to liquidation is below minimum required")]
+    LiquidationTooClose,
+
     /// Generic risk violation
     #[error("risk violation: {0}")]
     Other(String),
@@ -71,5 +79,19 @@ mod tests {
     fn test_kill_switch_violation() {
         let violation = RiskViolation::KillSwitchActive;
         assert!(violation.to_string().contains("kill switch"));
+    }
+
+    #[test]
+    fn test_leverage_too_high_display() {
+        let violation = RiskViolation::LeverageTooHigh;
+        assert!(violation.to_string().contains("leverage"));
+        assert!(violation.to_string().contains("exceeds"));
+    }
+
+    #[test]
+    fn test_liquidation_too_close_display() {
+        let violation = RiskViolation::LiquidationTooClose;
+        assert!(violation.to_string().contains("liquidation"));
+        assert!(violation.to_string().contains("distance"));
     }
 }

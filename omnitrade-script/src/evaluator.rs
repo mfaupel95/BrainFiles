@@ -9,14 +9,23 @@ use omnitrade_core::{Candle, Ema, Rsi, Sma};
 
 use crate::ast::{BinaryOp, Expr, Signal, Stmt};
 use crate::error::ScriptError;
+use crate::order_intent::{EvaluatorState, OrderIntent};
 
 /// Evaluator for strategy scripts.
 ///
 /// Maintains variable state across statement evaluations.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Evaluator {
     /// Environment map storing variable bindings.
     pub variables: HashMap<String, f64>,
+    /// Current order intent tracking TP/SL/Trailing.
+    current_intent: OrderIntent,
+}
+
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Evaluator {
@@ -24,7 +33,13 @@ impl Evaluator {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
+            current_intent: OrderIntent::default(),
         }
+    }
+
+    /// Returns the current order intent.
+    pub fn current_intent(&self) -> &OrderIntent {
+        &self.current_intent
     }
 
     /// Evaluates a sequence of strategy statements against market candle data.
@@ -45,6 +60,41 @@ impl Evaluator {
         }
 
         Ok(Signal::Hold)
+    }
+
+    /// Evaluates statements and returns complete OrderIntent with risk parameters.
+    ///
+    /// Processes all statements (including risk parameters) before returning.
+    /// Trailing stop triggers are evaluated after all statements execute.
+    ///
+    /// # Errors
+    /// Returns [`ScriptError::EvalError`] if `candles` is empty or runtime evaluation fails.
+    pub fn evaluate_extended(
+        &mut self,
+        stmts: &[Stmt],
+        candles: &[Candle],
+        state: &mut EvaluatorState,
+    ) -> Result<OrderIntent, ScriptError> {
+        if candles.is_empty() {
+            return Err(ScriptError::EvalError {
+                message: "candles dataset cannot be empty".to_string(),
+            });
+        }
+
+        // Process all statements without breaking on first signal
+        for stmt in stmts {
+            self.eval_stmt(stmt, candles)?;
+        }
+
+        // Check trailing stop if configured (after all statements processed)
+        if let Some(trailing_pct) = self.current_intent.trailing_pct {
+            let current_price = candles.last().map(|c| c.close).unwrap_or(0.0);
+            if state.update_and_check_trailing(current_price, trailing_pct) {
+                self.current_intent.signal = Signal::Sell;
+            }
+        }
+
+        Ok(self.current_intent.clone())
     }
 
     fn eval_stmt(
@@ -79,8 +129,29 @@ impl Evaluator {
                 }
                 Ok(None)
             }
-            Stmt::SignalBuy => Ok(Some(Signal::Buy)),
-            Stmt::SignalSell => Ok(Some(Signal::Sell)),
+            Stmt::SignalBuy => {
+                self.current_intent.signal = Signal::Buy;
+                Ok(Some(Signal::Buy))
+            }
+            Stmt::SignalSell => {
+                self.current_intent.signal = Signal::Sell;
+                Ok(Some(Signal::Sell))
+            }
+            Stmt::StopLoss(expr) => {
+                let price = self.eval_expr(expr, candles)?;
+                self.current_intent.stop_loss = Some(price);
+                Ok(None)
+            }
+            Stmt::TakeProfit(expr) => {
+                let price = self.eval_expr(expr, candles)?;
+                self.current_intent.take_profit = Some(price);
+                Ok(None)
+            }
+            Stmt::TrailingStop(expr) => {
+                let pct = self.eval_expr(expr, candles)?;
+                self.current_intent.trailing_pct = Some(pct);
+                Ok(None)
+            }
             Stmt::ExprStmt(expr) => {
                 self.eval_expr(expr, candles)?;
                 Ok(None)
@@ -405,5 +476,47 @@ mod tests {
             .evaluate(&stmts2, &candles)
             .expect("short circuit OR");
         assert_eq!(sig2, Signal::Buy);
+    }
+
+    #[test]
+    fn test_evaluate_extended_with_stop_loss() {
+        // Arrange
+        let code = "buy(); stop_loss(90.0); take_profit(110.0)";
+        let tokens = tokenize(code).expect("tokenization should succeed");
+        let stmts = parse(&tokens).expect("parsing should succeed");
+        let candles = helper_candles(&[100.0]);
+        let mut evaluator = Evaluator::new();
+        let mut state = EvaluatorState::new(100.0);
+
+        // Act
+        let intent = evaluator
+            .evaluate_extended(&stmts, &candles, &mut state)
+            .expect("extended evaluation should succeed");
+
+        // Assert
+        assert_eq!(intent.signal, Signal::Buy);
+        assert_eq!(intent.stop_loss, Some(90.0));
+        assert_eq!(intent.take_profit, Some(110.0));
+    }
+
+    #[test]
+    fn test_evaluate_extended_with_trailing_stop() {
+        // Arrange
+        let code = "buy(); trailing_stop(0.05)";
+        let tokens = tokenize(code).expect("tokenization should succeed");
+        let stmts = parse(&tokens).expect("parsing should succeed");
+        let prices = vec![100.0, 105.0, 110.0, 109.0];
+        let candles = helper_candles(&prices);
+        let mut evaluator = Evaluator::new();
+        let mut state = EvaluatorState::new(100.0);
+
+        // Act
+        let intent = evaluator
+            .evaluate_extended(&stmts, &candles, &mut state)
+            .expect("extended evaluation should succeed");
+
+        // Assert: current price 109 < highest 110 * (1 - 0.05) = 104.5, so no trigger
+        assert_eq!(intent.signal, Signal::Buy);
+        assert_eq!(intent.trailing_pct, Some(0.05));
     }
 }

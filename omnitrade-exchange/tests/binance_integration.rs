@@ -17,7 +17,7 @@
 //! Keystore::save_credentials("binance", &creds).expect("Failed to save");
 //! ```
 
-use omnitrade_core::{OrderSide, OrderType};
+use omnitrade_core::{OrderType, Side};
 use omnitrade_exchange::{
     ApiCredentials, BinanceRestClient, ExchangeTrading, Keystore, Network, OrderRequest,
 };
@@ -93,13 +93,13 @@ async fn test_place_market_order() {
         }
     };
 
-    let req = OrderRequest::market("BTCUSDT".to_string(), OrderSide::Buy, 0.001);
+    let req = OrderRequest::market("BTCUSDT".to_string(), Side::Buy, 0.001);
 
     match client.place_order(&req).await {
         Ok(order) => {
             println!("Order placed: {:?}", order.id);
             assert_eq!(order.symbol, "BTCUSDT");
-            assert_eq!(order.side, OrderSide::Buy);
+            assert_eq!(order.side, Side::Buy);
             assert!(order.quantity > 0.0);
         }
         Err(e) => {
@@ -156,9 +156,10 @@ async fn test_get_open_orders() {
 
     match client.get_open_orders().await {
         Ok(orders) => {
+            // A successful call is the assertion: the list may be empty (no
+            // open orders) or not. A len() comparison would be tautological -
+            // len() is usize and can never be negative.
             println!("Open orders retrieved: {}", orders.len());
-            // OK if empty (no open orders) or has orders
-            assert!(orders.len() >= 0, "Orders list should be valid");
         }
         Err(e) => {
             println!(
@@ -171,15 +172,15 @@ async fn test_get_open_orders() {
 
 #[test]
 fn test_order_request_creation() {
-    let market_req = OrderRequest::market("ETHUSDT".to_string(), OrderSide::Sell, 0.5);
+    let market_req = OrderRequest::market("ETHUSDT".to_string(), Side::Sell, 0.5);
     assert_eq!(market_req.symbol, "ETHUSDT");
-    assert_eq!(market_req.side, OrderSide::Sell);
+    assert_eq!(market_req.side, Side::Sell);
     assert_eq!(market_req.order_type, OrderType::Market);
     assert_eq!(market_req.price, None);
 
-    let limit_req = OrderRequest::limit("BTCUSDT".to_string(), OrderSide::Buy, 1.0, 45000.0);
+    let limit_req = OrderRequest::limit("BTCUSDT".to_string(), Side::Buy, 1.0, 45000.0);
     assert_eq!(limit_req.symbol, "BTCUSDT");
-    assert_eq!(limit_req.side, OrderSide::Buy);
+    assert_eq!(limit_req.side, Side::Buy);
     assert_eq!(limit_req.order_type, OrderType::Limit);
     assert_eq!(limit_req.price, Some(45000.0));
 }

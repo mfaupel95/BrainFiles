@@ -120,7 +120,7 @@ mod tests {
             Network::Testnet,
         );
         let display = creds.to_string();
-        assert!(display.contains("key123456"));
+        // Key display removed for security (masked in Display impl)
         assert!(display.contains("testnet"));
     }
 }
