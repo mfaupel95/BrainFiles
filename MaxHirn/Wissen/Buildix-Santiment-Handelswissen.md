@@ -152,13 +152,19 @@ TRX STRONG BUY. Funding fast überall leicht positiv (+0,001 %-Bereich) = leicht
 - **Santiment-Metriken — geprüft am 13.09.2026, ohne eigene API-Integration
   nutzbar.** Der offizielle MCP-Connector (`https://api.santiment.net/mcp`,
   Streamable HTTP, Server-Kennung `sanbase-metrics` 1.0.0) spricht OAuth 2.0
-  mit PKCE; in der Werkzeugliste stehen `mvrv_usd` und
+  mit PKCE. Die Werkzeugliste ist **live** geprüft und nennt acht Werkzeuge:
+  `metrics_and_assets_discovery_tool`, `fetch_metric_data_tool`,
+  `assets_by_metric_tool`, `insight_discovery_tool`, `fetch_insights_tool`,
+  `trending_stories_tool`, `combined_trends_tool`, `show_chart`. `initialize`
+  und `tools/list` antworten **ohne** Anmeldung, der erste `tools/call` kommt
+  als **HTTP 401** mit
+  `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"` —
+  Werkzeugliste offen, Daten hinter der Anmeldung. Laut Connector-Doku liefert
+  `fetch_metric_data_tool` unter anderem `mvrv_usd` und
   `daily_active_addresses` (dazu `exchange_inflow_usd`/`outflow`, Supply,
-  Network Growth, Social). Nachgemessen: `initialize` und `tools/list`
-  antworten **ohne** Anmeldung, der erste `tools/call` kommt als **HTTP 401**
-  mit `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"` —
-  die Werkzeugliste ist offen, die Daten brauchen die Anmeldung. Hermes kann
-  OAuth-MCP: `hermes mcp add santiment --url https://api.santiment.net/mcp
+  Network Growth, Social); die Metriknamen selbst sind nur über den
+  angemeldeten Aufruf `metrics_and_assets_discovery_tool` nachprüfbar. Hermes
+  kann OAuth-MCP: `hermes mcp add santiment --url https://api.santiment.net/mcp
   --auth oauth`, danach `hermes mcp login santiment`. Der Anmeldeschritt läuft
   im Browser gegen ein (kostenloses) Santiment-Konto — das ist Max' Teil, nicht
   automatisierbar; bezahlte Stufen schalten die volle On-Chain-Tiefe frei.
