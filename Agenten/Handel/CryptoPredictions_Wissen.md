@@ -102,3 +102,37 @@ Was das für die Spuren bedeutet:
   deren Rechnung auf 0 % Gebühr gebaut wurde (`orbk`), muss dann neu bewertet
   werden. Das ist ein Kostenschalter außerhalb des Marktes und gehört in jede
   Live-Betrachtung als eigenes Risiko, nicht nur als Fußnote.
+
+## Eigene Kursdaten: Qualitaet und Grid-Messungen (13.09.2026)
+
+**Unmoegliche Kerze in `daten/BTC-USD.csv`.** Die letzte Zeile (2026-08-10) hat
+ein Close UNTER dem Tagestief (`o=64848.91 h=65278.34 l=63992.34 c=63854.66`).
+Jede Auswertung dieser Reihe muss die Zeile verwerfen und die Zahl der
+tatsaechlich gerechneten Kerzen ausweisen; der Nautilus-`BarDataWrangler`
+bricht daran ab. 4345 von 4346 Zeilen sind brauchbar.
+
+**Zwei lokale Kursreihen fuer Backtests:**
+- `kerzen_BTC-USDT_1H_8760.json` - 8800 Stundenkerzen (2025-08-23..2026-08-24),
+  Liste `[ts_ms, open, high, low, close]`, KEIN Volumen (Platzhalter setzen).
+  Kurs fiel im Zeitraum von 116.447 auf 79.240 (-32 %).
+- `daten/<SYMBOL>.csv` - Tageskerzen ab 2014 (BTC-USD 4346 Zeilen),
+  Spalten `Datum,Open,High,Low,Close`, kein Volumen.
+
+**Was ein Grid in diesen Reihen wirklich tut** (Nautilus-Backtest,
+`nautilus/backtest_grid.py`, Aufruf und Zahlen im README dort):
+
+| Marktlage | Grid | Schlichtes Halten |
+|---|---|---|
+| BTC 1H, -32 % Absturz (12 Stufen) | -17,70 % | -31,95 % |
+| BTC Tages, 12 Jahre (10 Stufen) | +19,9 % | +14.079 % |
+| 3 Seitwaerts-Fenster (je 10 Stufen) | +3,2 / +5,5 / +14,3 % | +0,02 / +0,11 / +0,29 % |
+
+Daraus die belastbaren Saetze: Ein Grid verliert weniger als Halten, wenn der
+Markt faellt, und gewinnt, wenn er seitwaerts laeuft - in einem Trend nach oben
+ist es ein Bremsklotz mit Gebuehren. Und: **doppelt so viele Stufen verdienten
+in allen drei Seitwaerts-Fenstern die HAELFTE** (Gebuehren wachsen mit der
+Frequenz: 131 Fills = 147 USDT = 1,5 % des Einsatzes). Der Stufenabstand muss
+ueber den Gebuehren beider Seiten liegen, sonst verliert das Grid unabhaengig
+vom Kurs.
+Die Zyklen allein sind keine Aussage: im Absturz verdienten die 12 Zyklen
++1.022 USDT, der liegengebliebene Bestand kostete -2.762 USDT.
