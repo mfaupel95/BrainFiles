@@ -9,6 +9,7 @@ Schreibfunktion im Modul und der Verweigerungstext, den der Dauerlauf liest.
 Aufruf:  python -m unittest discover -s tests   (im Ordner spiegel/)
 """
 
+import contextlib
 import csv
 import io
 import json
@@ -156,6 +157,36 @@ class Buch(Grundlage):
         self.assertEqual(zeilen[0]["aktion"], "eroeffnen")
         self.assertEqual(zeilen[0]["wallet"], "W1")
         self.assertEqual(zeilen[0]["slippage_pct"], "3.0")
+
+    def test_die_eroeffnungszeile_nennt_die_frist_mit_datum_und_zone(self):
+        """Die Zeile mit "Stop" geht nach Telegram - und sie trug die Frist
+        als UTC-Stunde ohne Datum ("Frist 13:22"), obwohl die Frist 24 h in
+        der Zukunft lag. Fuer Max in UTC+2 sah das wie eine abgelaufene
+        Frist aus (Befund 13.09.2026, Kopie PFCHAN)."""
+        with patch.object(sp.lesen, "risiko",
+                          return_value={"stufe": "safe", "merkmale": []}):
+            z = {"positionen": [], "letzter_lauf": None}
+            aus = io.StringIO()
+            with contextlib.redirect_stdout(aus):
+                sp.eroeffne(z, SIGNAL, WACHEN)
+        zeilen = [x for x in aus.getvalue().splitlines() if "Stop" in x]
+        self.assertEqual(len(zeilen), 1)
+        frist = zeilen[0].split("Frist", 1)[1].strip()
+        # Datum, lokale Uhrzeit und die Kennzeichnung "lokal" - nicht die
+        # nackte UTC-Stunde.
+        self.assertRegex(frist, r"^\d{2}\.\d{2}\. \d{2}:\d{2} lokal$")
+
+    def test_lokal_rechnet_utc_in_die_eigene_zone_um(self):
+        import datetime as dt
+        utc = "2026-09-14T13:22:22+00:00"
+        erwartet = (dt.datetime.fromisoformat(utc).astimezone()
+                    .strftime("%d.%m. %H:%M"))
+        self.assertEqual(sp._lokal(utc), erwartet)
+        self.assertNotIn("T13:22", sp._lokal(utc))
+
+    def test_lokal_kippt_bei_unlesbarer_zeit_nicht(self):
+        self.assertEqual(sp._lokal(""), "")
+        self.assertEqual(sp._lokal("keine-zeit"), "keine-zeit")
 
     def test_stop_ziel_und_frist_schliessen_die_kopie(self):
         faelle = ((0.70, "stop"), (2.0, "ziel"))

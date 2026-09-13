@@ -287,6 +287,18 @@ def _plus_stunden(stunden):
             + timedelta(hours=stunden)).isoformat(timespec="seconds")
 
 
+def _lokal(wert):
+    """Eine UTC-Zeit als lokale Zeit MIT Datum (Format 14.09. 15:22).
+
+    Eine Uhrzeit ohne Datum und ohne Zone liest sich als Frist in der
+    Vergangenheit: die Kopie PFCHAN wurde am 13.09.2026 13:22 UTC eroeffnet,
+    ihre Frist lag 24 h spaeter - angezeigt wurde ``Frist 13:22`` (die
+    UTC-Stunde), fuer Max in UTC+2 also zwei Stunden VOR der Meldung.
+    """
+    t = _bis_zeit(wert)
+    return t.astimezone().strftime("%d.%m. %H:%M") if t else str(wert)
+
+
 def _bis_zeit(wert):
     try:
         return datetime.fromisoformat(wert) if wert else None
@@ -304,9 +316,9 @@ def eroeffne(z, sig, w):
           % (p["symbol"], p["token"], p["preis_einstieg"], p["preis_vorbild"],
              w["slippage_pct"], p["einsatz_usd"], p["risiko"]))
     print("      %-10s %-28s  Stop %.10g (%.0f%%)  Ziel %.10g (%.0f%%)  "
-          "Frist %s"
+          "Frist %s lokal"
           % (p["symbol"], p["token"], p["stop_preis"], w["stop_pct"],
-             p["ziel_preis"], w["ziel_pct"], p["frist"][11:16]))
+             p["ziel_preis"], w["ziel_pct"], _lokal(p["frist"])))
     journal(zeit=_jetzt(), modus="papier", aktion="eroeffnen", kette=p["kette"],
             wallet=p["wallet"], token=p["token"], symbol=p["symbol"],
             preis="%.10g" % p["preis_einstieg"], menge="%.6f" % p["menge"],
