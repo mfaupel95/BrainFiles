@@ -90,7 +90,12 @@ def main():
     kosten = 2 * w["gebuehr_taker"] + funding
 
     ind = indikatoren.lage(k_selbst, inst=instr["instId"])
-    dl, ds = bot.hebel_deckel(k, wartung=w["wartungsmarge"])
+    # hebel_deckel() zieht seine Tageskerzen selbst und will den instId, nicht
+    # die Reihe: hier gehoert der Name der TIEFEN Reihe hin (name, ersatzweise
+    # der Kontrakt), sonst wandert eine Kerzenliste in die URL (HTTP 414).
+    # Seit der Umstellung auf Tageskerzen (fc5d2d0) stand hier k und der
+    # Aufruf brach ab.
+    dl, ds = bot.hebel_deckel(name or instr["instId"], wartung=w["wartungsmarge"])
     deckel = dl if a.richtung == "long" else ds
 
     print()
