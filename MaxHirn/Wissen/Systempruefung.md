@@ -3,7 +3,7 @@ id: 20260902-systempruefung
 title: 'Systemprüfung'
 tags: [betrieb]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-13
 related: [20260830-routinen, 20260830-ordnerstruktur, 20260830-portabilitaet]
 summary: 'Tägliche Morgenroutine, die das KI-System nach still gebrochenen Dingen absucht — tote Junctions, doppelte Ollama-Stores, absolute Pfade, kaputte MCP-Pfade, knapper Plattenplatz, fehlgeschlagene Aufgaben.'
 ---
@@ -32,7 +32,22 @@ Müll räumt sie selbst weg (siehe unten).
 | 6 | `command`-Pfade in allen `.mcp.json` lösen auf | melden |
 | 7 | Freier Platz auf `C:` (< 20 GB), `O:` (< 40 GB), `G:` (fehlt / < 15 GB) | melden |
 | 8 | `.bak-*`-Handkopien, leere Gerüst-Ordner in `Modelle`, `Kimi-K2.7-Code`-Größe | melden |
-| 9 | `MaxHirn-*`-Aufgaben: deaktiviert oder letzter Lauf ≠ Code 0 | melden |
+| 9 | `MaxHirn-*`-Aufgaben: deaktiviert, letzter Lauf ≠ Code 0, oder seit dem erwarteten Abstand nicht mehr gestartet | melden |
+| 10 | Regelwerk: die vier `CLAUDE.md`/`AGENTS.md`-Paare deckungsgleich (SHA256), Skills als Ordner mit `SKILL.md`, `updated:` in geänderten Notizen | melden |
+| 11 | Bedingung 4: Journal und Zustand jeder Handelsspur **byte-genau** gegen `Q:\Handel_Journal\…` | melden |
+| 12 | Handels-Dauerlauf: Prozess vorhanden, letzter Zyklus im Bus-Journal nicht älter als 45 min | melden |
+
+Block 5 nimmt zwei Orte aus: `Routinen/umzug/` (eingefrorene Migrationsskripte)
+und `Agenten/Hermes/cache/` (Wegwerf- und Probenskripte, nicht versioniert).
+Beide tragen absolute Pfade mit Absicht; ohne die Ausnahme meldete der Block
+jeden Tag dieselben 14 Cache-Dateien und wäre damit ein Dauerfehlalarm.
+
+Die Blöcke 11 und 12 rufen
+`Agenten/Hermes/skills/journal-spiegelung/scripts/spiegelstand-pruefen.py` auf
+(Skill `journal-spiegelung`) — nur lesend, Rückgabecode 0 = jede Spur im
+Dauerlauf ist byte-gleich. Spuren außerhalb des Dauerlaufs (`kraken` mit eigenem
+Zeitfenster, `orb` als Altbestand) werden mitgeprüft, aber gekennzeichnet und
+nicht als Fehler gezählt.
 
 Neue Prüfungen kommen als eigener nummerierter Block ins Skript — Reihenfolge
 und Nummern sind der Vertrag mit dem „Seit gestern neu"-Vergleich.

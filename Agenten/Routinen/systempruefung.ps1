@@ -53,6 +53,15 @@ function Notiz($text)    { $rohzeilen.Add([string]$text); $rohzeilen | Set-Conte
 # .Target ist mal string, mal string[] - je nach PowerShell-Fassung. Ohne diese
 # Normalisierung indiziert $x.Target[0] bei einem string das erste Zeichen ("O").
 function ZielVon($fi) { $t = $fi.Target; if ($t -is [System.Array]) { [string]$t[0] } else { [string]$t } }
+# Get-FileHash fehlt in dieser PowerShell (5.1.26100.9444: Get-Command
+# Get-FileHash liefert nichts). Ein Pruefblock, der daran abbricht, sieht im
+# Bericht wie ein Lauf aus, der nichts gefunden hat - der Regelwerk-Block 10
+# lief so seit seiner Einfuehrung nie. Deshalb ueber .NET rechnen.
+function DateiHash($pfad) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try { [BitConverter]::ToString($sha.ComputeHash([System.IO.File]::ReadAllBytes($pfad))) }
+  finally { $sha.Dispose() }
+}
 function Getan($t)       { $getan.Add($t);       Notiz "  [erledigt]  $t" }
 function Entscheiden($t) { $entscheiden.Add($t); Notiz "  [Entscheid] $t" }
 function Info($t)        { $info.Add($t);        Notiz "  [Info]      $t" }
@@ -275,13 +284,19 @@ try {
   $codeDateien = @($codeDateien | Where-Object { $_ -match '\.(ps1|py|psd1)$' -and $_ -notmatch '\.bak' } | Sort-Object -Unique)
 
   # Muster als Variablen, damit sie nicht selbst als Treffer im eigenen Skript
-  # auftauchen. Routinen\umzug\ ist ausgenommen - das sind die eingefrorenen
-  # Migrationsskripte, alte Pfade darin sind dort Absicht.
+  # auftauchen. Zwei Orte sind ausgenommen, beide aus Absicht:
+  #   Routinen\umzug\   - eingefrorene Migrationsskripte
+  #   Hermes\cache\     - Wegwerf- und Probenskripte (nicht versioniert, dort
+  #                      ist ein fester Pfad erlaubt). Ohne diese Ausnahme
+  #                      meldete der Block jeden Tag dieselben 14 Cache-Dateien
+  #                      als Portabilitaetsproblem - ein Dauerfehlalarm deckt
+  #                      die echten Funde zu.
+  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\')
   $musterAbs = [regex]('C' + ':\\Users\\faupe')
   $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
   $absTreffer = @(); $altTreffer = @()
   foreach ($d in $codeDateien) {
-    if ($d -match '\\umzug\\') { continue }
+    if (@($ausgenommen | Where-Object { $d -match $_ }).Count -gt 0) { continue }
     foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAbs -EA SilentlyContinue)) {
       $absTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
     }
@@ -442,8 +457,8 @@ try {
     if (-not (Test-Path $pa) -or -not (Test-Path $pb)) {
       $regelfehler++; Entscheiden "Regeldatei fehlt: $($p.a) oder $($p.b)."; continue
     }
-    $ha = (Get-FileHash $pa -Algorithm SHA256).Hash
-    $hb = (Get-FileHash $pb -Algorithm SHA256).Hash
+    $ha = DateiHash $pa
+    $hb = DateiHash $pb
     if ($ha -ne $hb) {
       $regelfehler++
       Entscheiden "Regelpaar $($p.ort): CLAUDE.md und AGENTS.md sind auseinandergelaufen - Claude und Hermes arbeiten nach verschiedenen Staenden. Vergleich: git diff --no-index `"$($p.a)`" `"$($p.b)`""
@@ -515,6 +530,91 @@ try {
 
   if ($regelfehler -eq 0) { Info "Regelwerk in Ordnung: 4 Doppeldateien deckungsgleich, Skills vollstaendig, updated-Pflicht eingehalten." }
 } catch { Notiz "  ! Regelwerk-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
+# 11) Handelsspuren: Kopie ausser Haus (Bedingung 4)
+# ---------------------------------------------------------------------------
+# Ein `journal_zweitziel` in wachen.json ist eine Absicht - kopiert wird erst im
+# Zyklus. Am 13.09.2026 hatte nur ein Teil der Spuren wirklich eine Kopie
+# ausser Haus, und eine ueberschriebene Kopie (USB-Aussetzer, oder ein Testlauf,
+# der seinen Temp-Zustand mitspiegelt) sieht in keinem Bericht wie ein Fehler
+# aus. Verglichen wird deshalb BYTE-GENAU gegen die Originale.
+# Das Skript gehoert zum Skill journal-spiegelung (dort stehen Rueckgabecode und
+# Spalten erklaert: 0 = jede Spur im Dauerlauf ist byte-gleich).
+try {
+  Notiz "`n--- 11) Journal ausser Haus (Bedingung 4) ---"
+  $spiegelSkript = Join-Path $agenten 'Hermes\skills\journal-spiegelung\scripts\spiegelstand-pruefen.py'
+  $handelPy = Join-Path $agenten 'Handel\scanner\.venv\Scripts\python.exe'
+  if (-not (Test-Path $handelPy)) { $handelPy = (Get-Command python -EA SilentlyContinue).Source }
+  if (-not (Test-Path $spiegelSkript)) {
+    Entscheiden "Pruefskript fuer Bedingung 4 fehlt: Agenten\Hermes\skills\journal-spiegelung\scripts\spiegelstand-pruefen.py"
+  } elseif (-not $handelPy -or -not (Test-Path $handelPy)) {
+    Info "Journal-Spiegelung nicht geprueft - kein Python gefunden."
+  } else {
+    $aus = @(& $handelPy $spiegelSkript --stunden 2 2>&1)
+    $code = $LASTEXITCODE
+    foreach ($z in $aus) { Notiz "  $z" }
+    # Nur echte Zeilen der Tabelle: nicht eingerueckt und nicht als "ausserhalb
+    # des Dauerlaufs" gekennzeichnet (orb/kraken sind kein Fehler).
+    $abweichend = @($aus | Where-Object {
+        $_ -match 'ABWEICHUNG|Ziel fehlt|kein Ziel' -and $_ -notmatch '^\s' -and $_ -notmatch 'nicht in dauerlauf'
+      } | ForEach-Object { ($_ -split '\s+')[0] } | Sort-Object -Unique)
+    $alt = @($aus | Where-Object { $_ -match 'Hinweis: Herzschlag' })
+    if ($code -eq 0) { Info "Bedingung 4: jede Spur im Dauerlauf byte-gleich mit Q:." }
+    elseif ($abweichend.Count -gt 0) {
+      Entscheiden "Bedingung 4: Kopie ausser Haus nicht in Ordnung bei $($abweichend -join ', ') - Befehl: python $spiegelSkript"
+    } else {
+      Entscheiden "Bedingung 4: Pruefung meldete Code $code ohne benennbare Spur - Vollprotokoll ansehen."
+    }
+    if ($alt.Count -gt 0) { Entscheiden "Herzschlag ueber 2 h alt: $(($alt | ForEach-Object { $_.Trim() }) -join ' | ')" }
+  }
+} catch { Notiz "  ! Spiegelungs-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
+# 12) Handelsspuren: laeuft der Dauerlauf, und dreht er sich noch?
+# ---------------------------------------------------------------------------
+# Der Dauerlauf ist der einzige Schreiber der Handelsdateien. Faellt er aus,
+# stehen alle Spuren still - und es meldet sich nichts, weil sein Zweck ist,
+# sich zu melden, wenn er laeuft. Zwei Fragen: laeuft der Prozess, und wie alt
+# ist der letzte Zyklus? Die Bus-Zeitstempel sind UTC ("zeit"), die Grenze
+# richtet sich nach dem Takt (15 min, hier 45 min Luft).
+try {
+  Notiz "`n--- 12) Handel: Dauerlauf ---"
+  $dl = @(Get-CimInstance Win32_Process -EA SilentlyContinue |
+          Where-Object { $_.CommandLine -match 'dauerlauf\.py' })
+  $journal = Join-Path $agenten ("Bus\journal\{0}.jsonl" -f (Get-Date).ToString('yyyy-MM-dd'))
+  $letzte = $null
+  if (Test-Path $journal) {
+    $zeilen = @(Get-Content -LiteralPath $journal -Tail 500 -EA SilentlyContinue |
+                Where-Object { $_ -match '"wer":\s*"handel/' })
+    foreach ($z in $zeilen) {
+      if ($z -match '"zeit":\s*"([^"]+)"') {
+        $t = [datetime]::Parse($matches[1]).ToUniversalTime()
+        if (-not $letzte -or $t -gt $letzte) { $letzte = $t }
+      }
+    }
+  }
+  $alterMin = if ($letzte) { [int](([datetime]::UtcNow) - $letzte).TotalMinutes } else { $null }
+  # Alter des laufenden Prozesses: nach einem Neustart ist der erste Zyklus
+  # noch nicht im Journal, und "kein Ereignis heute" waere dann ein Fehlalarm.
+  $seitMin = $null
+  if ($dl.Count -gt 0) {
+    $frueh = ($dl | Sort-Object CreationDate | Select-Object -First 1).CreationDate
+    if ($frueh) { $seitMin = [int]((Get-Date) - $frueh).TotalMinutes }
+  }
+  if ($dl.Count -eq 0) {
+    $zusatz = if ($null -ne $alterMin) { " seit $alterMin min kein Zyklus" } else { "" }
+    Entscheiden "Handels-Dauerlauf laeuft nicht (kein dauerlauf.py-Prozess)$zusatz - starten: Agenten\Routinen\handel-dauerlauf.ps1"
+  } elseif ($null -ne $seitMin -and $seitMin -le 15) {
+    Info "Handels-Dauerlauf laeuft seit $seitMin min - der erste Zyklus steht noch aus."
+  } elseif ($null -eq $alterMin) {
+    Entscheiden "Dauerlauf laeuft, aber im Bus-Journal von heute steht kein Handels-Ereignis - laeuft er, aber ohne Bus-Anbindung?"
+  } elseif ($alterMin -gt 45) {
+    Entscheiden "Handels-Dauerlauf laeuft, letzter Zyklus aber vor $alterMin min (Takt 15 min, Grenze 45) - haengt ein Lauf, oder laeuft ein zweiter daneben?"
+  } else {
+    Info "Handels-Dauerlauf laeuft, letzter Zyklus vor $alterMin min ($($dl.Count) Prozesse der venv-Kette)."
+  }
+} catch { Notiz "  ! Dauerlauf-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
 # Bericht schreiben
