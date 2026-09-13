@@ -378,6 +378,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
+- [?] **T-042 — orbk und kraken sind per Telegram nicht freizugeben**
+      Kontext: Beim Pruefen von Max' Frage „Orbk ist noch nicht in freigabe.py
+      angebunden?“ am 13.09.2026 aufgenommen. Es gibt zwei Freigabe-Wege mit
+      zwei Spurenlisten:
+      - Bildschirm (`freigabe.py`): spot (scanner), hebel (xperp), kraken;
+        eine unbekannte Spur lehnt es mit klarer Meldung ab.
+      - Telegram (`dauerlauf.befehl`): nur xperp und swap (`/ja_xperp`,
+        `/ja_swap` samt nein/stop/freigabe) plus die generischen `/ja`,
+        `/nein`, `/stop` fuer Spot.
+      `kraken` hat einen Live-Pfad (`--live` vorhanden) und ist am Bildschirm
+      angebunden, per Handy aber nicht - sie laesst sich nur am Rechner scharf
+      schalten. `orbk` hat gar keinen Live-Pfad (kein Orderaufruf,
+      handel_erlaubt=false, Sperre 4 offen: backtest_bestanden=false); dort ist
+      nichts anzubinden, solange die Spur nicht live gehen soll. Beide stehen
+      auf handel_erlaubt=false, die Luecke ist damit derzeit folgenlos.
+      Naechster Schritt (erst bei Bedarf): vier Stellen nach dem Muster von
+      swap - Live-Zweig und `freigabefenster.lade("<spur>")` in den
+      Sperrgruenden der jeweiligen handeln.py, `WACHEN`/`BETRAGSFELD`/`TITEL`
+      in freigabe.py, die `/ja_<spur>`-Familie in dauerlauf.befehl, und
+      handel_erlaubt erst nach der jeweiligen Sperre.
+      Betrifft: `Agenten/Handel/{orbk,kraken}`, `freigabe.py`, `dauerlauf.py`
+      Angelegt: 2026-09-13
+
 ## Erledigt
 
 - [x] **T-041 — Drei Spuren startet der Dauerlauf, ohne dass sie den Bus melden**
