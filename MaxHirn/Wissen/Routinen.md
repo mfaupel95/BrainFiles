@@ -33,6 +33,7 @@ vorhandener Skill plus ein Zeitplan.
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
 | werktags 07:15 | Marktüberblick (nur lesen) | `/marktbriefing` über `marktbriefing.ps1` | **Registrierbefehl bereit, Aufgabe noch nicht angelegt** — 07.09.2026, siehe Abschnitt „Marktbriefing" unten |
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
+| bei Anmeldung (+2 Min) | OmniRoute-Router starten, falls er nicht läuft | `Routinen/omniroute-start.ps1` | **eingeplant** 13.09.2026 — `MaxHirn-OmniRoute`. Ohne den Router fällt der Hermes-Provider omniroute aus; jede Agenten-Delegation scheitert dann mit `Connection error`/HTTP 401 — das war nach jedem Neustart der Zustand. Startet nur, wenn Port 20128 frei ist (zwei Instanzen teilen sich `~/.omniroute/storage.sqlite`). Die alten Autostart-Einträge bleiben deaktiviert. |
 
 Die eingeplanten laufen über die **Windows-Aufgabenplanung**, nicht über
 `/schedule` — Begründung unten. Sie starten nicht das Skript direkt, sondern
@@ -52,6 +53,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-Zwischenstand` | `Routinen/zwischenstand.ps1` | `Routinen/logs/zwischenstand-letzter-lauf.log` |
 | `MaxHirn-Systempruefung` | `Routinen/systempruefung.ps1` (kein Wrapper, protokolliert selbst) | `Routinen/logs/systempruefung-letzter-lauf.md` + `systempruefung-JJJJ-MM-TT.log` |
 | `BrainFiles-Bus` | `Agenten/Bus/bus.py` | `Agenten/Bus/journal/JJJJ-MM-TT.jsonl` |
+| `MaxHirn-OmniRoute` | `Routinen/omniroute-start.ps1` | `Routinen/logs/omniroute-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
