@@ -67,27 +67,60 @@ def _spuren_ordner(baum):
 
 
 def _subprocess_skriptnamen(baum):
-    """Liest die Dateinamen, die dauerlauf.py per subprocess.run startet.
+    """Liest die Dateinamen, die dauerlauf.py je Spur per subprocess startet.
 
-    Erfasst wird jedes Listenelement einer subprocess.run-Aufrufliste, das
-    auf .py endet (z. B. "handeln.py"), unabhaengig von den uebrigen
-    Argumenten (modus, --vorschau, ...) - so bricht die Pruefung nicht,
-    wenn die Aufrufliste sich sonst aendert."""
+    Drei Quellen, weil der Aufruf sich am 12.09.2026 geaendert hat: in der
+    subprocess.run-Aufrufliste steht seit dem SWAP-Umbau die Variable
+    `skript` (`SPUREN[spur].get("skript", "handeln.py")`), kein Literal mehr.
+    Die alten Literale gab es zuletzt nur noch als get-Default - eine
+    Pruefung, die nur Listenelemente ansieht, fand damit NICHTS und brach mit
+    "keine per subprocess gestarteten .py-Dateien gefunden" ab, statt zu
+    pruefen (aufgefallen am 13.09.2026). Gelesen wird jetzt:
+
+      1. der "skript"-Schluessel jeder Spur in SPUREN (die Wahrheit),
+      2. der Default von `... .get("skript", "<name>.py")`,
+      3. zusaetzlich Listenelemente, die auf .py enden (falls wieder welche
+         dorthin zurueckkehren).
+    """
     namen = set()
     for knoten in ast.walk(baum):
-        ist_subprocess_run = (isinstance(knoten, ast.Call)
-                              and isinstance(knoten.func, ast.Attribute)
-                              and knoten.func.attr == "run"
-                              and isinstance(knoten.func.value, ast.Name)
-                              and knoten.func.value.id == "subprocess")
-        if not ist_subprocess_run or not knoten.args:
-            continue
-        if not isinstance(knoten.args[0], ast.List):
-            continue
-        for el in knoten.args[0].elts:
-            if (isinstance(el, ast.Constant) and isinstance(el.value, str)
-                    and el.value.endswith(".py")):
-                namen.add(el.value)
+        if isinstance(knoten, ast.Call):
+            # (1) SPUREN["spur"]["skript"] im Dict selbst: erfasst der
+            #     SPUREN-Walk unten, hier nur die beiden Aufrufformen.
+            # (2) Default eines get("skript", ...)-Aufrufs
+            if (isinstance(knoten.func, ast.Attribute)
+                    and knoten.func.attr == "get"
+                    and len(knoten.args) == 2
+                    and isinstance(knoten.args[0], ast.Constant)
+                    and knoten.args[0].value == "skript"
+                    and isinstance(knoten.args[1], ast.Constant)
+                    and isinstance(knoten.args[1].value, str)
+                    and knoten.args[1].value.endswith(".py")):
+                namen.add(knoten.args[1].value)
+            # (3) subprocess.run([..., "<name>.py", ...])
+            if (isinstance(knoten.func, ast.Attribute)
+                    and knoten.func.attr == "run"
+                    and isinstance(knoten.func.value, ast.Name)
+                    and knoten.func.value.id == "subprocess"
+                    and knoten.args
+                    and isinstance(knoten.args[0], ast.List)):
+                for el in knoten.args[0].elts:
+                    if (isinstance(el, ast.Constant) and isinstance(el.value, str)
+                            and el.value.endswith(".py")):
+                        namen.add(el.value)
+        # (1) der "skript"-Schluessel in SPUREN selbst
+        if (isinstance(knoten, ast.Assign)
+                and any(isinstance(z, ast.Name) and z.id == "SPUREN"
+                        for z in knoten.targets)
+                and isinstance(knoten.value, ast.Dict)):
+            for wert in knoten.value.values:
+                if not isinstance(wert, ast.Dict):
+                    continue
+                for k2, v2 in zip(wert.keys, wert.values):
+                    if (isinstance(k2, ast.Constant) and k2.value == "skript"
+                            and isinstance(v2, ast.Constant)
+                            and isinstance(v2.value, str)):
+                        namen.add(v2.value)
     return namen
 
 

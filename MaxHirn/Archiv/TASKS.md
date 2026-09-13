@@ -378,6 +378,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
+- [ ] **T-041 — Drei Spuren startet der Dauerlauf, ohne dass sie den Bus melden**
+      Kontext: Beim Reparieren von `Bus/tests/test_anbindung_handel.py` am
+      13.09.2026 aufgefallen. Die Pruefung war seit dem SWAP-Umbau (12.09.2026)
+      **tot**: sie suchte die per `subprocess.run` gestarteten Dateinamen als
+      Literale in der Aufrufliste, dort steht seitdem die Variable `skript`
+      (`SPUREN[spur].get("skript", "handeln.py")`). Sie fand nichts, brach mit
+      „keine per subprocess gestarteten .py-Dateien gefunden“ ab - und es fiel
+      nicht auf, weil `test_ende_zu_ende.py` genau daran scheiterte.
+      Nach der Reparatur (drei Quellen: `SPUREN["skript"]`, der get-Default,
+      Listenelemente) prueft sie wieder - und findet sofort drei Luecken:
+      `swap/handeln.py`, `spiegel/spiegel.py` und `orbk/handeln.py` tragen kein
+      `ereignis.lauf("handel/<spur>")` (0 Treffer fuer "ereignis" in der ganzen
+      Datei). `xperp/handeln.py` und `scanner/handeln.py` haben es.
+      Folge: Start und Ende dieser drei Spuren erreichen den Bus nicht; sichtbar
+      ist nur, was der Dauerlauf aus ihrer Ausgabe herausfiltert. Ob eine Spur
+      ueberhaupt lief, steht damit nirgends.
+      Naechster Schritt: in den drei Dateien den Hauptlauf in
+      `with ereignis.lauf("handel/<spur>"):` legen (Muster: `xperp/handeln.py`),
+      dann `Bus/tests/test_anbindung_handel.py` und die Suite
+      (`python tests/test_ende_zu_ende.py`) gruen laufen lassen.
+      Nicht selbst angefasst: laufender Handel (der Dauerlauf startet diese
+      Spuren als Unterprozesse), und es ist ein eigener Auftrag.
+      Betrifft: `Agenten/Handel/{swap,spiegel,orbk}`, `Agenten/Bus/tests/`
+      Angelegt: 2026-09-13
+
 ## Erledigt
 
 - [x] **T-037 — Echter Umzug: Archiv ganz aus dem Vault, konfigbasiert** — erledigt
