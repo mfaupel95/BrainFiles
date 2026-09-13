@@ -7,20 +7,28 @@ import os
 BUS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HANDEL = os.path.join(os.path.dirname(BUS), "Handel")
 
-# orb und scanner in Schritt 1 nachgetragen: gefunden per
-# `grep -rl "__main__" Agenten/Handel/orb Agenten/Handel/scanner`, unter
+# orbk und scanner in Schritt 1 nachgetragen: gefunden per
+# `grep -rl "__main__" Agenten/Handel/orbk Agenten/Handel/scanner`, unter
 # Ausschluss von backtest.py/scan.py (Analysewerkzeuge, kein Live-/Papier-
 # Einstieg) und scanner/.venv (Fremdcode). handeln.py ist in beiden Ordnern
 # das Skript mit --vorschau/--papier/--live/--wachen, das dauerlauf.py fuer
-# die Spur 'scanner' per subprocess aufruft und das orb/SPEC.md als die
+# die Spur 'scanner' per subprocess aufruft und das orbk/SPEC.md als die
 # vierte Spur beschreibt.
+#
+# Nachgezogen am 13.09.2026: hier stand `orb/handeln.py`. Die Datei gibt es
+# nicht mehr - `orb/` traegt nur noch backtest.py, session.py, wachen*.py,
+# tests/ und daten/, das handeln.py liegt in orb/.backup-okx-20260913/. Die
+# Spur laeuft als `orbk` (Kraken), so steht sie auch in dauerlauf.SPUREN. Auf-
+# gefallen ist es erst, als die Pruefung darunter wieder griff (sie war seit
+# dem SWAP-Umbau am 12.09.2026 stumm) - dieser Test war danach der naechste,
+# der zum ersten Mal wieder lief.
 SPUREN = {
     "dauerlauf.py": "handel/dauerlauf",
     "dca.py": "handel/dca",
     "grid.py": "handel/grid",
     os.path.join("xperp", "bot.py"): "handel/xperp",
     os.path.join("verbesserer", "auswerter.py"): "handel/verbesserer",
-    os.path.join("orb", "handeln.py"): "handel/orb",
+    os.path.join("orbk", "handeln.py"): "handel/orbk",
     os.path.join("scanner", "handeln.py"): "handel/scanner",
 }
 

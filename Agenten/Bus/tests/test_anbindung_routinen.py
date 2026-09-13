@@ -14,10 +14,22 @@ def geplante():
         if name.startswith("einmalig-") or name.endswith("-hook.ps1"):
             continue
         with open(p, encoding="utf-8-sig") as f:
-            code = "\n".join(z for z in f if not z.lstrip().startswith("#"))
+            roh = f.read()
+        code = "\n".join(z for z in roh.splitlines()
+                         if not z.lstrip().startswith("#"))
         # Registrierer sind keine periodischen Arbeitslaeufe. Bereits
         # angebundene Mischskripte bleiben in der Pruefung.
         if "Register-ScheduledTask" in code and "Melde-Start" not in code:
+            continue
+        # Bibliotheken laufen nicht selbst: sie werden von einer geplanten
+        # Routine dot-sourced (safe-file-ops.ps1 in posteingang.ps1 und
+        # datensortierung.ps1, beide haben einen eigenen Einsprung dafuer).
+        # Eine eigene Start/Ende-Meldung von dort erzeugte bei JEDEM Aufruf des
+        # Einbinders einen zweiten Zyklus im Journal - dieselbe Ueberlegung wie
+        # bei *-hook.ps1. Solche Dateien kennzeichnen sich im Kopf mit der
+        # Zeile 'BUS: Bibliothek'; die Kennzeichnung steht in der Datei selbst
+        # und ist damit sichtbar, nicht hier versteckt.
+        if "BUS: Bibliothek" in roh:
             continue
         yield p, name[:-4]
 

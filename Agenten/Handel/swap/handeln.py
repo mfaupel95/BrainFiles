@@ -53,10 +53,12 @@ from datetime import datetime, timezone
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
 XPERP = os.path.join(HANDEL, "xperp")
-for p in (HIER, XPERP, HANDEL):
+BUS = os.path.join(HIER, os.pardir, os.pardir, "Bus")
+for p in (HIER, XPERP, HANDEL, BUS):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import ereignis                                                # noqa: E402
 import auswahl                                                 # noqa: E402
 import bot                                                     # noqa: E402
 import freigabefenster                                         # noqa: E402
@@ -642,6 +644,15 @@ def lauf(modus):
 
 
 def main():
+    # Der Dauerlauf startet dieses Skript als eigenen Prozess (dauerlauf.py,
+    # zyklus_spur) - Start und Ende melden sich deshalb hier am Bus. Muster:
+    # xperp/handeln.py, scanner/handeln.py, dauerlauf.py. Ein toter Bus
+    # bricht den Lauf nicht ab: ereignis.lauf faengt das selbst ab.
+    with ereignis.lauf("handel/swap"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--vorschau", action="store_const", const="vorschau",

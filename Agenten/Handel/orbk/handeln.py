@@ -20,9 +20,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
+BUS = HIER.parent.parent / "Bus"
 sys.path.insert(0, str(HIER))
 sys.path.insert(0, str(HIER.parent / "kraken"))
+sys.path.insert(0, str(BUS))
 
+import ereignis
 import kraken
 import session as sess
 import wachen_orb as wp
@@ -241,6 +244,15 @@ def zeige_wachen(w):
 
 
 def main(argv=None):
+    # Der Dauerlauf startet dieses Skript als eigenen Prozess (SPUREN
+    # ["orbk"], skript=handeln.py) - Start und Ende melden sich deshalb hier
+    # am Bus.
+    # Muster: xperp/handeln.py. Ein toter Bus bricht den Lauf nicht ab.
+    with ereignis.lauf("handel/orbk"):
+        return _main(argv)
+
+
+def _main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("modus", nargs="?", default="papier",
                    choices=("papier", "--papier", "status", "vorschau",

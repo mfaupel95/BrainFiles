@@ -36,9 +36,12 @@ import sys
 from datetime import datetime, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
-if HIER not in sys.path:
-    sys.path.insert(0, HIER)
+BUS = os.path.join(HIER, os.pardir, os.pardir, "Bus")
+for p in (HIER, BUS):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
+import ereignis                                               # noqa: E402
 import lesen                                                  # noqa: E402
 
 WACHEN = os.path.join(HIER, "wachen.json")
@@ -668,6 +671,15 @@ def _frisch(z, w):
 
 
 def main():
+    # Der Dauerlauf startet dieses Skript als eigenen Prozess (SPUREN
+    # ["spiegel"], skript=spiegel.py) - Start und Ende melden sich deshalb
+    # hier am Bus.
+    # Muster: xperp/handeln.py. Ein toter Bus bricht den Lauf nicht ab.
+    with ereignis.lauf("handel/spiegel"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--waehlen", action="store_const", const="waehlen",

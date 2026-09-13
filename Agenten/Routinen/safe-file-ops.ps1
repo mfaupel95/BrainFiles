@@ -1,6 +1,11 @@
 # Sicherheitswaechter fuer Dateioperationen. Als Skript aufrufbar oder als
 # Bibliothek (dot-sourced).
 #
+# BUS: Bibliothek - kein eigener Lauf. Sie wird von posteingang.ps1 und
+# datensortierung.ps1 dot-sourced; die Start/Ende-Meldung gehoert zum Einbinder
+# (routine/posteingang bzw. routine/datensortierung), nicht hierher. Sonst
+# entstuende bei jedem Aufruf des Einbinders ein zweiter Zyklus im Journal.
+#
 # Warum es dieses Skript gibt: Die Schutzstufen in Wissen/Schutzregeln.md sind
 # Prosa. Wer "aufraeumt", ueberschreitet sie stillschweigend - und Stufe 0
 # heisst: die Datei ist danach weg, ohne Zweitquelle. Dieses Skript macht die
