@@ -20,6 +20,10 @@ Kategorie Werkzeug, das prognose.py schon ist, nur mit einem Buch dahinter.
 - **Einstieg:** aktueller Kurs, aber nur wenn er noch zwischen Stop und Ziel
   liegt (long: `stop < kurs < ziel`, short: `ziel < kurs < stop`). Liegt er
   dahinter, ist das Signal verfallen.
+- **Streuung:** `max_je_basiswert` (1) verhindert Klumpen — SOL-USDC und
+  SOL-USDT sind zwei Treffer, aber ein Vermögenswert. Je Basiswert geht nur
+  der Stärkste (C/R × Score) durch; ein offener Basiswert bekommt keine
+  zweite Position, ein heute geschlossener kommt heute nicht wieder.
 - **Kosten:** Slippage + Gebühr wirken auf beiden Seiten (Kauf teurer,
   Verkauf billiger).
 - **Ausstiege:** Stop, Ziel, Zwangsschluss nach `max_halte_dauer_tage`,

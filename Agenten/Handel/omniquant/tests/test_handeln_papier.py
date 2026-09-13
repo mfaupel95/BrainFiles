@@ -111,6 +111,111 @@ class KandidatenTest(Basis):
         kand, _ = h.kandidaten(z, w)
         self.assertEqual(kand, [])
 
+    # --- Streuungs-Filter: gleicher Basiswert zaehlt nur begrenzt --------
+    # Mechanik mit ausdruecklich gesetzten Werten pruefen (max_je_basiswert
+    # wird in jedem Test explizit gesetzt, nie der Stand der echten Datei).
+
+    def test_gleicher_basiswert_im_zyklus_nur_staerkster(self):
+        # SOL-USDC und SOL-USDT sind zwei Treffer, aber ein Vermoegenswert.
+        # Der Bericht ist nach C/R x Score sortiert - der Staerkste geht
+        # zuerst durch und blockt das schwaechere Duplikat.
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDC", "long", 100.0, 95.0, 110.0,
+                     score=71.8, cr=2.25),
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0,
+                     score=61.9, cr=2.24)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 1)
+        self.assertEqual(kand[0]["inst"], "SOL-USDC")
+
+    def test_staerkster_verfallen_schwaecherer_geht_durch(self):
+        # Verfallene Treffer zaehlen nicht als Kandidat: der Filter waehlt
+        # unter den GUELTIGEN, nicht unter der Berichtsliste. Der staerkere
+        # SOL-USDC ist uebers Ziel gelaufen (105 > 103), SOL-USDT gueltig.
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDC", "long", 100.0, 95.0, 103.0,
+                     score=71.8, cr=2.25),
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0,
+                     score=61.9, cr=2.24)])
+        h.letzter_kurs_quelle = lambda inst: 105.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 1)
+        self.assertEqual(kand[0]["inst"], "SOL-USDT")
+
+    def test_max_je_basiswert_zwei_laesst_zwei_durch(self):
+        # Die Mechanik, nicht der Wert: mit Grenze 2 gehen beide SOL-Paare
+        # durch - der Filter ist konfigurierbar, kein fester Wert.
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDC", "long", 100.0, 95.0, 110.0,
+                     score=71.8, cr=2.25),
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0,
+                     score=61.9, cr=2.24)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 2
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 2)
+
+    def test_basiswert_schon_offen_blockt_andere_quote(self):
+        # SOL-USDC long ist offen - SOL-USDT bekommt keine zweite Position
+        # im selben Vermoegenswert (Klumpen, keine Diversifikation).
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        z["positionen"] = [{"inst": "SOL-USDC", "seite": "long"}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_basiswert_erledigt_heute_blockt_andere_quote(self):
+        # SOL-USDC heute geschlossen: SOL-USDT kommt heute nicht mehr
+        # (die Merkliste, erweitert um die Quote-Ebene).
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        z["erledigt"] = [{"inst": "SOL-USDC", "seite": "long",
+                          "am": h._heute()}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(kand, [])
+
+    def test_basiswert_erledigt_gestern_blockt_nicht_mehr(self):
+        # Das Tor geht auf: gestern geschlossen ist eine neue Lage heute.
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDT", "long", 101.0, 96.0, 111.0)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        gestern = (datetime.now(timezone.utc).date()
+                   - timedelta(days=1)).isoformat()
+        z["erledigt"] = [{"inst": "SOL-USDC", "seite": "long", "am": gestern}]
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 1)
+
+    def test_verschiedene_basiswerte_kommen_alle_durch(self):
+        h.bericht_quelle = _bericht([
+            _treffer("SOL-USDC", "long", 100.0, 95.0, 110.0),
+            _treffer("ETH-USDC", "long", 100.0, 95.0, 110.0)])
+        h.letzter_kurs_quelle = lambda inst: 102.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        w["max_je_basiswert"] = 1
+        kand, _ = h.kandidaten(z, w)
+        self.assertEqual(len(kand), 2)
+
     def test_kein_wiedereinstieg_aus_erledigt_heute(self):
         h.bericht_quelle = _bericht([
             _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])

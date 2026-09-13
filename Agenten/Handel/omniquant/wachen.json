@@ -14,6 +14,9 @@
   "max_neu_je_zyklus": 5,
   "max_gesamt_risiko_usd": 500,
 
+  "_redundanz": "Streuungs-Filter: max_je_basiswert begrenzt, wie viele Positionen auf DENSELBEN Basiswert gleichzeitig laufen duerfen. Der Prognose-Bericht meldet Paare (SOL-USDC und SOL-USDT sind zwei Treffer, aber ein Asset) - zwei Positionen im selben Basiswert sind keine Diversifikation und verzerren die Messung, ob die Prognose traegt. 1 = nur die staerkste Position je Basiswert. Zaehlt NUR neue Kandidaten gegen den Bestand: einmal offene Doppel (vor dem Filter eroeffnet) bleiben liegen, der Filter wirkt ab dem naechsten Einstieg.",
+  "max_je_basiswert": 1,
+
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker), Slippage 0,15 % als konservative Annahme fuer ein Paar mit ueber 3 Mio USD Tagesumsatz. Wer diese Zahlen kleiner setzt, baut eine Wunschrechnung.",
   "gebuehr_pct": 0.1,
   "slippage_pct": 0.15,

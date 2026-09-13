@@ -83,6 +83,15 @@ def _heute():
     return datetime.now(timezone.utc).date().isoformat()
 
 
+def _basiswert(inst):
+    """Der Vermoegenswert hinter einem Spot-Paar (SOL-USDC -> SOL).
+
+    Die Quote-Waehrung steht hinten und hat keinen Bindestrich - rsplit
+    vom rechten Ende trennt auch Basiswerte mit Bindestrich sauber.
+    """
+    return inst.rsplit("-", 1)[0] if inst and "-" in inst else inst
+
+
 def lade_wachen():
     with open(WACHEN, encoding="utf-8") as f:
         return json.load(f)
@@ -147,10 +156,32 @@ def kandidaten(z, w):
     aber nur, wenn er noch zwischen Stop und Ziel liegt - sonst ist das
     Signal verfallen. Bereits offene oder schon einmal eroeffnete Paare
     kommen nicht doppelt (Merkliste je inst+Richtung im Zustand).
+
+    Streuungs-Filter (max_je_basiswert aus wachen.json): SOL-USDC und
+    SOL-USDT sind zwei Treffer, aber ein Vermoegenswert. Drei Regeln
+    verhindern den Klumpen - (a) ein Basiswert, der heute schon geschlossen
+    wurde, kommt heute nicht wieder (die Merkliste, erweitert um die
+    Quote-Ebene), (b) ein Basiswert, der schon max_je_basiswert-mal offen
+    ist, bekommt keine weitere Position, (c) innerhalb EINES Zyklus geht je
+    Basiswert nur der Staerkste durch - der Bericht ist nach C/R x Score
+    sortiert, also kommt der beste Kandidat zuerst und blockt die
+    schwaecheren Duplikate.
     """
     b, fehler = lade_bericht()
     if b is None:
         return [], fehler
+
+    max_je = w.get("max_je_basiswert", 1)
+    heute = _heute()
+    offen_je_basis = {}
+    for p in z.get("positionen", []):
+        bw = _basiswert(p.get("inst"))
+        if bw:
+            offen_je_basis[bw] = offen_je_basis.get(bw, 0) + 1
+    erledigt_heute_basis = {_basiswert(m.get("inst"))
+                            for m in z.get("erledigt", [])
+                            if m.get("am") == heute}
+    zyklus_je_basis = {}
 
     aus = []
     for t in b.get("treffer", []):
@@ -183,11 +214,20 @@ def kandidaten(z, w):
         # Wiedereinstieg. Ein frischer Bericht morgen mit neuen Kerzen und
         # neuen Grenzen ist eine neue Lage - ein Eintrag von gestern darf
         # sie nicht fuer immer blockieren (Tor, das nie aufgeht).
-        heute = _heute()
         if any(m.get("inst") == inst and m.get("seite") == richtung
                and m.get("am") == heute
                for m in z.get("erledigt", [])):
             continue
+        # Streuung: gleicher Basiswert zaehlt nur begrenzt (a-c, s. Docstring).
+        bw = _basiswert(inst)
+        if bw:
+            if bw in erledigt_heute_basis:
+                continue
+            if offen_je_basis.get(bw, 0) >= max_je:
+                continue
+            if zyklus_je_basis.get(bw, 0) >= max_je:
+                continue
+            zyklus_je_basis[bw] = zyklus_je_basis.get(bw, 0) + 1
         aus.append({"inst": inst, "seite": richtung, "kurs": kurs,
                     "stop": stop, "ziel": ziel, "score": t.get("score"),
                     "cr": t.get("cr")})
@@ -394,8 +434,9 @@ def lauf(modus):
     kill = z.get("verluste_usd", 0.0) >= w.get("max_gesamt_risiko_usd", 500)
 
     kand, fehler = kandidaten(z, w)
-    print("=== OMNIQUANT handeln (%s) | %d Kandidaten | %s ==="
-          % ("LIVE" if live else "Papier", len(kand),
+    basiswerte = len({_basiswert(k["inst"]) for k in kand})
+    print("=== OMNIQUANT handeln (%s) | %d Kandidaten, %d Basiswerte | %s ==="
+          % ("LIVE" if live else "Papier", len(kand), basiswerte,
              fehler or "Bericht frisch"))
     if kill:
         print("- KILL-SWITCH: Verluste %.2f USD >= %g, keine neuen Einstiege -"
