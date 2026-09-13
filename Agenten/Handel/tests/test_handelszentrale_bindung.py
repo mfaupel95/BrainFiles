@@ -424,6 +424,23 @@ class FensterAufbauTest(unittest.TestCase):
         finally:
             root.destroy()
 
+    def test_nach_vorn_hebt_ein_verstecktes_fenster(self):
+        # Ein von einem Skript gestartetes Fenster hat kein Vordergrundrecht
+        # und steht hinter allem - sichtbar, aber unauffindbar. nach_vorn()
+        # setzt den Topmost-Impuls; der Rueckfall nach 700 ms haengt an der
+        # Ereignisschleife und wird hier nicht abgewartet.
+        try:
+            root = gui.tk.Tk()
+        except Exception as e:                               # noqa: BLE001
+            self.skipTest("kein Bildschirm: %s" % e)
+        root.withdraw()
+        try:
+            gui.nach_vorn(root)
+            root.update()
+            self.assertTrue(bool(int(root.attributes("-topmost"))))
+        finally:
+            root.destroy()
+
 
 class PrueflaufTest(unittest.TestCase):
     """Der Kopf-Aufruf '--pruefen' muss gegen die echten Dateien laufen."""

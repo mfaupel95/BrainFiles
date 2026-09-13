@@ -993,6 +993,26 @@ def pruefe(jetzt=None):
     return aus
 
 
+def nach_vorn(root):
+    """Das Fenster einmal nach vorn holen.
+
+    Wird die Ansicht nicht von Hand gestartet, sondern von einem Skript oder
+    der Anmelde-Routine, entsteht ein Fenster ohne Vordergrundrecht: es ist
+    offen (`IsWindowVisible` true), steht aber hinter allem anderen - und sieht
+    damit aus, als waere es gar nicht da. Ein kurzer Topmost-Impuls plus
+    `focus_force` holt es sichtbar heraus; danach faellt topmost wieder weg,
+    sonst waere es ein Fenster, das sich nicht wegklicken laesst.
+    """
+    try:
+        root.deiconify()
+        root.lift()
+        root.attributes("-topmost", True)
+        root.after(700, lambda: root.attributes("-topmost", False))
+        root.focus_force()
+    except Exception:                                        # noqa: BLE001
+        pass          # kein Fenstermanager-Recht: unschaedlich
+
+
 def main():
     ap = argparse.ArgumentParser(description="Handelszentrale (nur lesend)")
     ap.add_argument("--pruefen", action="store_true",
@@ -1008,6 +1028,7 @@ def main():
     except Exception:                                        # noqa: BLE001
         pass
     Handelszentrale(root)
+    nach_vorn(root)
     root.mainloop()
 
 

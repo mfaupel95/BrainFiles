@@ -31,6 +31,19 @@ function Schreib($text) {
     Add-Content $log -Encoding UTF8
 }
 
+# Startspur VOR jeder Pruefung: ein erhoeht gestartetes Skript, das gleich
+# wieder zuklappt, ist sonst nicht mehr zu befragen - ein Klick auf "Ja" ohne
+# Wirkung sieht dann wie ein Klick auf "Nein" aus.
+$binAdmin = ([Security.Principal.WindowsPrincipal] `
+  [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Schreib ("gestartet als {0}, erhoeht: {1}" -f $env:USERNAME, $binAdmin)
+if (-not $binAdmin) {
+  Schreib "ABBRUCH: nicht erhoeht - Register-ScheduledTask wird abgelehnt."
+  "ABBRUCH: bitte in einer erhoehten PowerShell starten."
+  exit 1
+}
+
 try {
   if (-not (Test-Path $wrapper)) { throw "Wrapper fehlt: $wrapper" }
 

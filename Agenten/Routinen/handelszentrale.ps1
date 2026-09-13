@@ -62,6 +62,7 @@ try {
   $schon = Get-FensterPID
   if ($schon) {
     Schreib "Fenster laeuft schon (PID $schon) - kein Start."
+    "ENDE ok (nichts zu tun)" | Add-Content $log -Encoding UTF8
     Melde-Ende -Marke $marke -Code 0 -Text "laeuft bereits (PID $schon)"
     exit 0
   }
