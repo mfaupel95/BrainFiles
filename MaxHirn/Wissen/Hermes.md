@@ -749,3 +749,41 @@ Fallen:
   `hermes-free-local`/`CostOptimized-70-30*` (verweisen auf nicht existierende
   Modelle; `activeComboId` ist ohnehin null), Gateway-Neustart nach `hermes update`
   steht aus („pre-update modules"-Warnung beim `config get`).
+
+## Ausgabestil „i-have-adhd" uebernommen, 13.09.2026
+
+Max hat den Claude-Skill **i-have-adhd** (github.com/ayghri/i-have-adhd, MIT)
+uebernehmen lassen. Er regelt nicht die Laenge, sondern die Form der Antwort:
+erste Zeile = naechste Handlung, nummerierte Schritte, Zwischenstand in jedem
+Turn, konkrete Zeitschaetzung statt „etwas Arbeit", hoechstens fuenf sichtbare
+Listeneintraege je Gruppe, keine Vorrede / kein Recap / keine Schlussfloskel,
+Fehler sachlich als Ursache + Fix. Abschalten mit „stop adhd mode" bzw.
+„normaler Modus", ein Satz Bestaetigung, dann zurueck zum Normalstil.
+
+Drei Orte, drei Wirkungen:
+
+1. **Immer an (Hermes):** `Agenten/Hermes/SOUL.md` — Hermes laedt sie als
+   Identitaet in Slot 1 des Systemprompts. Dieselbe Fassung als Kopie in
+   `%LOCALAPPDATA%\hermes\SOUL.md` und in allen 14 `profiles/<bot>/SOUL.md`.
+   Je Datei eine Sicherung `.bak-20260913` (Original = Hermes-Standardidentitaet,
+   667 B). SOUL.md wird ausschliesslich aus `HERMES_HOME` geladen, nie aus dem
+   Arbeitsverzeichnis [[Ordnerstruktur]].
+2. **Nachladbar (Hermes):** `hermes skills install <raw-url>/SKILL.md --category
+   productivity` → `Agenten/Hermes/skills/productivity/i-have-adhd/` (Quelle
+   `url`, Herkunft `community`, Scan-Verdikt SAFE). Aufruf als `/i-have-adhd`.
+3. **Fuer Claude:** `MaxHirn/.claude/skills/i-have-adhd/SKILL.md`, neu angelegt —
+   es wurde nichts ueberschrieben. In der Claude-Desktop-App muss der Skill
+   zusaetzlich unter Einstellungen → Faehigkeiten hochgeladen werden; der
+   Ordnerpfad allein wirkt dort nicht.
+
+Nachweis: eine frische Sitzung (`hermes chat -q … -Q -t memory`) nennt die Regeln
+woertlich aus der eigenen Identitaet; ein Stiltest fuehrte mit der Handlung,
+nummerierte, gab Zeitschaetzungen in Minuten und endete mit genau einer naechsten
+Aktion unter zwei Minuten.
+
+Fallen:
+- Eine **laufende** Sitzung behaelt ihren alten Systemprompt (Prompt-Cache);
+  der Stil greift erst in einer neuen Sitzung (`/reset` bzw. `/new`).
+- Der Skill ist reine Nachladelast: die Dauerwirkung haengt an `SOUL.md`, nicht
+  am Skill. Ein Zuruecknehmen heisst also `.bak-20260913` zurueckkopieren, nicht
+  den Skill entfernen.
