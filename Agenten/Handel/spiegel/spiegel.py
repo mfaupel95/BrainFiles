@@ -556,7 +556,11 @@ def lauf(modus):
     if modus == "vorschau":
         print("Live waere gesperrt durch: kein Live-Pfad in dieser Spur (Papier)")
         return 0
-    print("Live waere gesperrt durch: kein Live-Pfad in dieser Spur (Papier)")
+    # Im Papierlauf steht die Zeile NICHT. Der Dauerlauf schickt jede
+    # Ausgabezeile mit dem Wort "gesperrt" nach Telegram (dauerlauf.zyklus) -
+    # bei einem Lauf alle 15 Minuten war das Spam (aufgefallen 13.09.2026).
+    # Gelesen wird sie nur von dauerlauf.nur_fenster_fehlt(), und das fragt
+    # seine Spuren mit --vorschau ab.
     schreibe_zustand(z)
     return 0
 

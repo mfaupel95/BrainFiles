@@ -4,6 +4,12 @@ Reine Simulation: Kerzen von der oeffentlichen Kraken-API, Buch in
 zustand.json, kein einziger Order-Call. handel_erlaubt bleibt false -
  diese Datei kann gar nicht echt handeln.
 
+--live ist trotzdem ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur
+scharf, wenn ihr Zeitfenster offen ist (freigabefenster.py). Ohne Live-Pfad
+gibt es nichts freizugeben - der Aufruf nennt genau einen Grund (ohne das Wort
+"Freigabefenster", damit der Dauerlauf keine Anfrage stellt) und laeuft als
+Papier weiter, statt mit einem argparse-Fehler abzubrechen. Muster: spiegel.py.
+
 Zyklus (alle 15 min):
   1. Ausstiege zuerst: offene Papier-Position gegen Stop/Ziel/Zwangsschluss
   2. Einstieg: wenn Session-Fenster offen und noch nicht gehandelt ->
@@ -33,6 +39,16 @@ import wachen_orb as wp
 
 ZUSTAND = HIER / "zustand.json"
 JOURNAL = HIER / "handelsjournal.csv"
+
+# Genau ein Grund, ohne das Wort "Freigabefenster": der Dauerlauf liest diese
+# Zeile im Vorschau-Modus (nur_fenster_fehlt) und fragt nur dann nach einer
+# Freigabe, wenn genau dieser Grund dort steht. Diese Spur hat keinen
+# Live-Pfad - es gibt nichts freizugeben, also wird auch nicht gefragt.
+# Gedruckt wird sie NUR in --vorschau und --live, nicht im Papierlauf: der
+# Dauerlauf schickt jede Ausgabezeile mit dem Wort "gesperrt" nach Telegram
+# (dauerlauf.zyklus) - ein Lauf alle 15 Minuten waere Spam.
+GRUND_KEIN_LIVE = ("Live waere gesperrt durch: kein Live-Pfad in dieser "
+                   "Spur (Papier)")
 
 
 def _jetzt():
@@ -114,9 +130,15 @@ def pruefe_ausstiege(z, w, jetzt=None):
 
 
 def _schliesse(p, kurs, grund):
+    # zustand.json serialisiert alles zu Strings: "tag" kommt beim Lesen als
+    # ISO-String zurueck, nicht als date. Ohne das Umparsen scheiterte jeder
+    # echte Ausstieg mit AttributeError, die Position liess sich nicht
+    # schliessen (aufgefallen 13.09.2026: Ziel erreicht, jeder Papierlauf
+    # endete mit Rueckgabe 1).
+    tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
     gv = (kurs - p["einstieg"]) if p["richtung"] == "long" else (p["einstieg"] - kurs)
     gv_usd = _punkte_zu_usd(gv, {})
-    journal(p["tag"].isoformat(), p["inst"], p["richtung"], p["einstieg"],
+    journal(tag.isoformat(), p["inst"], p["richtung"], p["einstieg"],
             p["stop"], p["ziel"], grund, kurs, round(gv, 4), round(gv_usd, 2))
     p["ausgang"] = grund
     p["ausstieg"] = kurs
@@ -256,10 +278,11 @@ def _main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("modus", nargs="?", default="papier",
                    choices=("papier", "--papier", "status", "vorschau",
-                            "--status", "--vorschau"))
+                            "--status", "--vorschau", "live", "--live"))
     p.add_argument("--papier", dest="flag_papier", action="store_true")
     p.add_argument("--status", dest="flag_status", action="store_true")
     p.add_argument("--vorschau", dest="flag_vorschau", action="store_true")
+    p.add_argument("--live", dest="flag_live", action="store_true")
     a = p.parse_args(argv)
     modus = a.modus
     if a.flag_papier:
@@ -268,10 +291,23 @@ def _main(argv=None):
         modus = "status"
     if a.flag_vorschau:
         modus = "vorschau"
+    if a.flag_live:
+        modus = "live"
     w = _wachen()
-    if modus in ("status", "vorschau"):
+    if modus == "status":
         print(zeige_wachen(w))
         return 0
+    if modus == "vorschau":
+        # Der Dauerlauf liest die Sperrgruende aus genau diesem Modus.
+        print(zeige_wachen(w))
+        print(GRUND_KEIN_LIVE)
+        return 0
+    if modus == "live":
+        # Der Dauerlauf ruft --live nur, wenn ein Fenster offen ist. Diese
+        # Spur hat keinen Live-Pfad - statt mit einem argparse-Fehler
+        # (Rueckgabe 2, sieht wie ein Absturz aus) abzubrechen, nennt sie den
+        # Grund und laeuft als Papier weiter. Muster: spiegel.py.
+        print(GRUND_KEIN_LIVE)
     meldungen = lauf()
     for m in meldungen:
         print(m)

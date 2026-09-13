@@ -277,6 +277,23 @@ class Sicherheitsnetze(Grundlage):
         self.assertEqual(len(gruende), 1, gruende)
         self.assertNotIn("Freigabefenster", zeilen[0])
 
+    def test_papierlauf_druckt_den_verweigerungstext_nicht(self):
+        """Im Papierlauf darf die Sperrzeile nicht stehen.
+
+        Der Dauerlauf schickt jede Ausgabezeile mit dem Wort "gesperrt" nach
+        Telegram (dauerlauf.zyklus) - bei einem Lauf alle 15 Minuten war das
+        Spam (aufgefallen 13.09.2026). Gelesen wird die Zeile nur mit
+        --vorschau.
+        """
+        z = {"positionen": [], "letzter_lauf": sp._jetzt()}
+        with patch.object(sp, "lade_zustand", return_value=z), \
+                patch.object(sp, "signale_sammeln", return_value=[]), \
+                patch.object(sp, "_gefolgt", return_value={("solana", "W1"): {}}):
+            puffer = io.StringIO()
+            with patch("sys.stdout", puffer):
+                sp.lauf("papier")
+        self.assertNotIn("gesperrt", puffer.getvalue(), puffer.getvalue())
+
     def test_vorschau_schreibt_nichts(self):
         """Die Vorschau darf das Buch nicht anfassen.
 
