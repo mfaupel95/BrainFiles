@@ -370,6 +370,37 @@ def spur_omniquant():
     }
 
 
+def spur_nautilus():
+    """Nautilus-Spur - OKX-DEMO-Node als Papierzyklus, USD.
+
+    Sie hat kein Pruefmodul und keine fuenf Bedingungen (wie die
+    Spiegel-Spur): ihr Ergebnis ist ein Herzschlag, keine Wache. papierfest,
+    damit der Bericht "kein Live-Zweig" sagt statt "GESPERRT - wartet auf
+    /ja". Gezeigt wird die letzte gesammelte Quote statt einer Bilanz.
+    """
+    ordner = os.path.join(HIER, "nautilus")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+
+    q = z.get("letzte_quote") or {}
+    if q:
+        zeile = "letzte Quote bid=%s ask=%s" % (q.get("bid"), q.get("ask"))
+    else:
+        zeile = "noch kein Papierzyklus gelaufen"
+    if z.get("letzter_lauf"):
+        zeile += "  (Herzschlag %s)" % z["letzter_lauf"]
+
+    return {
+        "name": "Nautilus (%s)" % (z.get("modus") or "papier"),
+        "waehrung": "USD", "w": w, "z": z,
+        "positionen": [], "ordner": ordner,
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "bilanz": zeile,
+    }
+
+
 def spur_xperp_positionen():
     """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
 
@@ -529,7 +560,7 @@ def baue(mit_xperp=True):
 
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-                 spur_spiegel, spur_orbk, spur_omniquant):
+                 spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001

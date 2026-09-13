@@ -126,6 +126,12 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # Idee wie omniquant.trade, aber eigene Daten und eigene Kontrolle). Kein
 # Live-Zweig wie spiegel: --live verweigert, das Wort Freigabefenster kommt in
 # keinem Sperrgrund vor, der Lauf fragt nie. Liest nur den Bericht und OKX-Kurse.
+# NAUTILUS (OKX-DEMO-Node, angelegt 13.09.2026): startet je Zyklus eine
+# begrenzte Node-Session (~30 s), sammelt BTC-USDT-SWAP-Quotes vom oeffentlichen
+# Websocket und schreibt damit Herzschlag und Journal. Papierfest wie spiegel/
+# omniquant - der Node hat keinen Live-Zweig (Schluessel read_only, keine
+# IP-Whitelist fuer Orders). Braucht sein EIGENES venv (nautilus/.venv), dort
+# liegt nautilus_trader; das Feld "python" traegt den Interpreter.
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
@@ -136,6 +142,10 @@ SPUREN = {
                 "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",
                   "skript": "handeln.py"},
+    "nautilus": {"ordner": "nautilus", "waehrung": "USD",
+                 "skript": "handeln.py",
+                 "python": os.path.join(HIER, "nautilus", ".venv",
+                                        "Scripts", "python.exe")},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
@@ -193,6 +203,11 @@ class Lauf:
         # fremden Feed und bucht nach (spiegel.py). Der Eintrag in SPUREN
         # entscheidet, welche Datei gestartet wird.
         skript = SPUREN[spur].get("skript", "handeln.py")
+        # Nicht jede Spur laeuft unter dem scanner-venv: die Nautilus-Spur
+        # braucht ihr eigenes venv (nautilus_trader liegt nur dort). Das
+        # Feld "python" in SPUREN traegt den Interpreter, Vorgabe bleibt
+        # der gemeinsame.
+        python = SPUREN[spur].get("python", PYTHON)
         umgebung = dict(os.environ)
         if modus == "--papier":
             # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
@@ -200,7 +215,7 @@ class Lauf:
             # ist die Freigabe bereits erteilt und die Variable faellt weg.
             umgebung["MAXHIRN_ROUTINE"] = "1"
 
-        p = subprocess.run([PYTHON, skript, modus], cwd=ordner,
+        p = subprocess.run([python, skript, modus], cwd=ordner,
                            capture_output=True, text=True, timeout=600,
                            env=umgebung)
         return modus, p.returncode, (p.stdout or "") + (p.stderr or "")
@@ -330,8 +345,9 @@ class Lauf:
         """
         ordner = os.path.join(HIER, d["ordner"])
         skript = d.get("skript", "handeln.py")
+        python = d.get("python", PYTHON)
         try:
-            p = subprocess.run([PYTHON, skript, "--vorschau"],
+            p = subprocess.run([python, skript, "--vorschau"],
                                cwd=ordner, capture_output=True, text=True,
                                timeout=600, env=dict(os.environ,
                                                      MAXHIRN_ROUTINE="1"))

@@ -8,7 +8,8 @@ HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 # und ihrem Zustand - nicht als fester Satz hier: SWAP hat seit dem 12.09.2026
 # einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
 # alt wird.
-SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant')
+SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant',
+          'nautilus')
 
 
 def status(papier=False):
@@ -43,6 +44,7 @@ def status(papier=False):
             lines.append(f'{spur}: Zustand nicht lesbar, nicht als leer behandeln.')
     lines.append(papier_lage('swap', 'SWAP'))
     lines.append(papier_lage('spiegel', 'SPIEGEL'))
+    lines.append(papier_lage('nautilus', 'NAUTILUS'))
     return '\n'.join(lines)
 
 
