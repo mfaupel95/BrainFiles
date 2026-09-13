@@ -213,13 +213,29 @@ def pruefe_einstieg(z, w, jetzt=None):
     z["position"] = {"inst": key, "richtung": richtung, "einstieg": kurs,
                      "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
                      "letzter_kurs": kurs}
+    # Merkzeichen fuer "heute schon gehandelt": muss den Ausstieg
+    # ueberleben, sonst steigt derselbe Breakout im selben Zyklus wieder
+    # ein (Endloskreis, siehe _schon_gehandelt_heute).
+    z["zuletzt_gehandelt_tag"] = tag.isoformat()
     return "papier", "%s %s @ %.4f (Stop %.4f, Ziel %.4f)" % (
         richtung, key, kurs, stop, ziel)
 
 
 def _schon_gehandelt_heute(z, tag):
+    """Ein Trade je UTC-Tag (ORB-Regel).
+
+    Die offene Position traegt den Tag, aber das reicht nicht: nach dem
+    Ausstieg wird sie entfernt, und ohne Merkzeichen wuerde derselbe
+    Breakout im selben Zyklus sofort wieder eingestiegen - Ausstieg und
+    Wiedereinstieg im Endloskreis, Journal voller identischer Zeilen,
+    jede Viertelstunde eine AUSSTIEG-Meldung (Befund 13.09.2026). Das
+    Merkzeichen wird beim EINstieg gesetzt (zuletzt_gehandelt_tag) und
+    ueberlebt den Ausstieg.
+    """
     p = z.get("position")
-    return bool(p and p.get("tag") == tag.isoformat())
+    if p and p.get("tag") == tag.isoformat():
+        return True
+    return z.get("zuletzt_gehandelt_tag") == tag.isoformat()
 
 
 def lauf(modus="papier"):

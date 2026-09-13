@@ -1,5 +1,9 @@
+import json
+import tempfile
 import unittest
 from datetime import date, datetime, timezone, timedelta
+from pathlib import Path
+from unittest.mock import patch
 
 import handeln
 import wachen_orb as wp
@@ -121,6 +125,66 @@ class TestAusstiege(unittest.TestCase):
         veraendert, grund = handeln.pruefe_ausstiege(z, W)
         self.assertFalse(veraendert)
         self.assertIsNone(grund)
+
+
+class TestWiedereinstiegHemmt(unittest.TestCase):
+    """Regression 13.09.2026: Ausstieg + Wiedereinstieg im Endloskreis.
+
+    Der Ausstieg entfernt die Position; ohne Merkzeichen war "heute schon
+    gehandelt" direkt wieder falsch und derselbe Breakout stieg im selben
+    Zyklus erneut ein. Folge am echten Lauf: Journal voller identischer
+    Ausstiegszeilen (51 an einem Tag), die Position "haengte" in
+    zustand.json, und jede Viertelstunde ging eine AUSSTIEG-Meldung an
+    Telegram.
+    """
+
+    def tearDown(self):
+        handeln.kerzen_quelle = None
+
+    def _lauf(self, merkzeichen):
+        with tempfile.TemporaryDirectory() as w:
+            zpfad = Path(w) / "zustand.json"
+            jpfad = Path(w) / "handelsjournal.csv"
+            zustand = {"position": {"inst": "ETH_USD", "richtung": "long",
+                                    "einstieg": 100.4, "stop": 98.0,
+                                    "ziel": 103.4, "tag": "2026-09-13",
+                                    "letzter_kurs": 103.5},
+                       "zuletzt_gehandelt_tag": merkzeichen}
+            zpfad.write_text(json.dumps(zustand, ensure_ascii=False),
+                             encoding="utf-8")
+            handeln.kerzen_quelle = (
+                lambda w_, key: _range_kerzen()
+                + [_k(0, 30, 100.2, 100.5, 100.1, 100.4)])
+            try:
+                with patch.object(handeln, "_wachen", lambda: W), \
+                        patch.object(handeln, "ZUSTAND", zpfad), \
+                        patch.object(handeln, "JOURNAL", jpfad), \
+                        patch.object(handeln, "_letzter_kurs",
+                                     lambda w_, key: 101.0), \
+                        patch.object(handeln, "_jetzt", lambda: datetime(
+                            2026, 9, 13, 1, 0, tzinfo=timezone.utc)):
+                    meldungen = handeln.lauf()
+            finally:
+                handeln.kerzen_quelle = None
+            nachher = json.loads(zpfad.read_text(encoding="utf-8"))
+            zeilen = jpfad.read_text(encoding="utf-8").splitlines()
+            return meldungen, nachher, zeilen
+
+    def test_merkzeichen_verhindert_wiedereinstieg(self):
+        meldungen, nachher, zeilen = self._lauf("2026-09-13")
+        # Kopf + genau eine Ausstiegszeile, keine Einstiegszeile.
+        self.assertEqual(len(zeilen), 2, zeilen)
+        self.assertIsNone(nachher.get("position"))
+        einstiege = [m for m in meldungen if "EINSTIEG" in m]
+        self.assertEqual(einstiege, [], meldungen)
+
+    def test_gegenprobe_ohne_merkzeichen_stiegt_wieder_ein(self):
+        """Ohne Merkzeichen reproduziert sich der Fehler - der Test kann
+        also den Fix beweisen und nicht nur mitschwimmen."""
+        meldungen, nachher, _ = self._lauf(None)
+        self.assertIsNotNone(nachher.get("position"))
+        einstiege = [m for m in meldungen if "EINSTIEG" in m]
+        self.assertEqual(len(einstiege), 1, meldungen)
 
 
 if __name__ == "__main__":
