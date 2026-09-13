@@ -8,7 +8,7 @@ HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 # und ihrem Zustand - nicht als fester Satz hier: SWAP hat seit dem 12.09.2026
 # einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
 # alt wird.
-SPUREN = ('xperp', 'scanner', 'swap', 'spiegel')
+SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk')
 
 
 def status(papier=False):
@@ -22,7 +22,12 @@ def status(papier=False):
             if papier and mode != 'papier':
                 lines.append('Kein separater Papierstand; Live-Daten nicht als Papier ausgeben.')
                 continue
-            positions = d.get('positionen', [])
+            # Die ORB-Spur fuehrt hoechstens eine Position unter 'position'
+            # (Einzelwert), alle anderen unter 'positionen' (Liste).
+            positions = d.get('positionen')
+            if positions is None:
+                einzel = d.get('position')
+                positions = [einzel] if einzel else []
             lines.append(f'{len(positions)} gespeicherte Positionen')
             for p in positions:
                 # Die Spuren benennen ihre Positionen verschieden: die
@@ -32,7 +37,8 @@ def status(papier=False):
                     p.get('symbol', '?'), p.get('kette', ''))
                 stop = p.get('stop', p.get('stop_preis', '?'))
                 ziel = p.get('ziel', p.get('ziel_preis', '?'))
-                lines.append(f"  {instrument} {p.get('seite', 'long')}: Stop {stop}, Ziel {ziel}")
+                seite = p.get('seite') or p.get('richtung') or 'long'
+                lines.append(f"  {instrument} {seite}: Stop {stop}, Ziel {ziel}")
         except (OSError, ValueError, TypeError):
             lines.append(f'{spur}: Zustand nicht lesbar, nicht als leer behandeln.')
     lines.append(papier_lage('swap', 'SWAP'))

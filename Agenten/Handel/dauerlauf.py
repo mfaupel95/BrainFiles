@@ -127,6 +127,8 @@ SPUREN = {
     "swap":    {"ordner": "swap",    "waehrung": "USD"},
     "spiegel": {"ordner": "spiegel", "waehrung": "USD",
                 "skript": "spiegel.py"},
+    "orbk":    {"ordner": "orbk",    "waehrung": "USD",
+                "skript": "handeln.py"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
@@ -224,7 +226,7 @@ class Lauf:
             # Instrument selbst nennen. Eine Fortsetzungszeile ohne Subjekt
             # ist im Chat nicht zuzuordnen (Befund 11.09.2026: die
             # Stop-Zeile von xperp kam ohne Wertnamen an).
-            for wort in ("verkauf", "stop", "KILL", "gesperrt"):
+            for wort in ("verkauf", "stop", "KILL", "gesperrt", "ausstieg"):
                 if wort.lower() in ausgabe.lower():
                     for zeile in ausgabe.splitlines():
                         if wort.lower() in zeile.lower():

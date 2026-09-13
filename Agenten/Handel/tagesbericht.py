@@ -177,6 +177,59 @@ def spur_swap():
     }
 
 
+def spur_orbk():
+    """ORB auf Kraken - Papierspur, USD.
+
+    Kraken-Duplikation der ORB-Spur. Sie fuehrt hoechstens EINE Position:
+    zustand.json hat 'position' (Einzelwert oder null), nicht 'positionen'
+    wie die Kontraktspuren. Die Spur ist Papier - handel_erlaubt=false,
+    kein Live-Zweig. Ein Backtest-Urteil steht noch aus, weil die
+    oeffentliche Kraken-API nur rund 720 Kerzen je Intervall liefert.
+    """
+    ordner = os.path.join(HIER, "orbk")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    p = z.get("position")
+    pos = [p] if p else []
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, os.path.join(HIER, "kraken"))
+            import kraken                                    # noqa: PLC0415
+            for x in pos:
+                konf = (w.get("instrumente") or {}).get(x.get("inst"), {})
+                paar = konf.get("kraken")
+                if paar:
+                    try:
+                        kurse[x["inst"]] = float(kraken.letzter_kurs(paar))
+                    except Exception:                    # noqa: BLE001
+                        pass
+        except Exception:                                # noqa: BLE001
+            pass
+
+    zeilen = []
+    for x in pos:
+        k = kurse.get(x.get("inst"))
+        vz = 1 if x.get("richtung") == "long" else -1
+        if k and x.get("einstieg"):
+            bewegung = vz * (k / x["einstieg"] - 1) * 100
+        else:
+            bewegung = None
+        zeilen.append({
+            "name": "%s %s" % (x.get("inst", "?"), x.get("richtung", "?")),
+            "einstieg": x.get("einstieg"), "kurs": k,
+            "wert": 0, "vh": bewegung,
+            "stop": x.get("stop"), "seit": x.get("tag"),
+        })
+    return {
+        "name": "ORB-Kraken (Papier)",
+        "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": "wachen_orb",
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
 def spur_spiegel():
     """Spiegel-Spur - Papierbuch fuer Copy-Trading, USD je Kopie.
 
@@ -384,7 +437,7 @@ def baue(mit_xperp=True):
 
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-                 spur_spiegel):
+                 spur_spiegel, spur_orbk):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001

@@ -1,0 +1,43 @@
+{
+  "_zweck": "Harte Grenzen der fuenften Spur (ORB auf Kraken-Spot, USD/EUR). Eine Datei, eine Wahrheit. Gelesen von backtest.py, nie von ihm geschrieben. Duplikat der OKX-ORB-Spur (orbk), angelegt 2026-09-13 fuer den HYPE-Papiertest.",
+  "_waehrung": "Kraken rechnet je Paar in der Quotierungswaehrung. HYPE_USD in USD, HYPE_EUR in EUR. Positionsrechnung wie Spur 3 (Kraken): EUR als Hauswaehrung, jedes Paar traegt ein _usd-Aequivalent.",
+  "waehrung": "EUR",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_hinweis": "false = nur Papierhandel. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_eur frei ist und journal_zweitziel gesetzt ist.",
+  "instrument_aktiv": "ETH_USD",
+  "_instrument_aktiv": "Welches Instrument die Papierphase faehrt. null bis der Backtest ein Urteil hat. Danach 'HYPE_USD' oder 'HYPE_EUR'.",
+  "instrumente": {
+    "ETH_USD": {"kraken": "ETHUSD", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usd": 1.0},
+    "HYPE_USD": {"kraken": "HYPEUSD", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.3, "punkt_wert_usd": 1.0},
+    "HYPE_EUR": {"kraken": "HYPE/EUR", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.3, "punkt_wert_usd": 1.0}
+  },
+  "_instrumente": "spread_punkte Startannahme in Preispunkten. HYPE notiert ~79 USD / ~69 EUR (2026-09-13); die Range-Grenzen sind Startwerte aus der beobachteten Volatilitaet und werden vom Backtest gedeckt.",
+  "risiko_pro_trade_usd": 10,
+  "_risiko_pro_trade_usd": "Risikobetrag je Trade. Klein begonnen (10 USD), weil die Papierphase erst ueberzeugen muss.",
+  "ziel_modus": "r_vielfaches",
+  "ziel_k": 1.5,
+  "ziel_punkte": {"ETH_USD": 30, "HYPE_USD": 12, "HYPE_EUR": 10},
+  "_ziel": "ziel_modus=r_vielfaches -> TP = ziel_k * Range-Hoehe. ziel_modus=punkte -> TP = ziel_punkte[instrument] Preispunkte. Startwerte aus dem Backtest.",
+  "hebel_deckel": 3,
+  "_hebel_deckel": "Obergrenze fuer Spot (kein echter Hebel bei Kraken-Spot, aber die Rechnung deckelt trotzdem).",
+  "letzter_einstieg_min_vor_schluss": 60,
+  "mindest_range_punkte": {"ETH_USD": 1.0, "HYPE_USD": 0.6, "HYPE_EUR": 0.5},
+  "max_range_punkte":     {"ETH_USD": 40.0, "HYPE_USD": 6.0, "HYPE_EUR": 5.0},
+  "_range_filter": "Range unter mindest -> Session aussetzen (Rauschen). Range ueber max -> aussetzen (Stop zu weit). HYPE bewegt sich in 30 min oft 0.5-5 Punkte.",
+  "mindest_marge_frei_usd": 50,
+  "kill_switch_gesamt_usd": 150,
+  "drawdown_halbierung_prozent": 15.0,
+  "herzschlag_max_minuten": 45,
+  "journal_zweitziel": null,
+  "freigabe": {
+    "erfuellt": false,
+    "backtest_bestanden": false,
+    "papierlauf_min_wochen": 6,
+    "papierlauf_min_sessions": 50,
+    "netto_positiv": false,
+    "groesster_ruecklauf_papierlauf_usd": null,
+    "geprueft_am": null
+  },
+  "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
+  "kraken_host": "https://api.kraken.com"
+}

@@ -107,6 +107,14 @@
 !Agenten/Handel/orb/*.json
 !Agenten/Handel/orb/tests/*.py
 !Agenten/Handel/orb/tests/fixtures/*.json
+# ORB-Kraken-Spur (Handel/orbk/): Duplikation der ORB-Spur auf Kraken.
+# Gleiches Muster wie orb - aber HYPE/ETH statt OKX-Perps. Laufzeitdaten
+# (zustand.json, Journal, Kerzen-Cache) stehen unten in der Sperrliste.
+!Agenten/Handel/orbk/*.py
+!Agenten/Handel/orbk/*.md
+!Agenten/Handel/orbk/*.json
+!Agenten/Handel/orbk/tests/*.py
+!Agenten/Handel/orbk/tests/fixtures/*.json
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -199,6 +207,9 @@ Agenten/Handel/spiegel/daten/**
 Agenten/Handel/orb/zustand.json
 Agenten/Handel/orb/handelsjournal.csv
 Agenten/Handel/orb/daten/**
+Agenten/Handel/orbk/zustand.json
+Agenten/Handel/orbk/handelsjournal.csv
+Agenten/Handel/orbk/daten/**
 
 # Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
 # freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.
