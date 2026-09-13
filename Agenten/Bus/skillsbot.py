@@ -223,7 +223,8 @@ def _aufgabe_abholen(aufgabe):
             return ("(Aufgabe " + zustand.replace("TASK_STATE_", "") + ")"), kontext
         time.sleep(A2A_POLL_S)
         aufgabe = _a2a_ruf("GetTask", {"id": tid}).get("task", {})
-    return "(Zeitueberschreitung nach " + str(A2A_TIMEOUT_S) + " s)", kontext
+    warnung = ("Das Ergebnis des lokalen Agenten kam nicht rechtzeitig an " + "und wurde abgebrochen. Tipp: Lange Auftraege gehen besser an die Desktop-App - die Telegram-Schnittstelle bricht nach " + str(A2A_TIMEOUT_S) + " Sekunden ab und setzt nicht fort. Teile den Auftrag lieber in Teilstuecke.")
+    return warnung, kontext
 
 
 def frage(text, kontext_id=None):
