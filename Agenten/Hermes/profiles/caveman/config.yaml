@@ -2161,6 +2161,17 @@ mcp_servers:
       WINDOWS_MCP_DEBUG: 'false'
       WINDOWS_MCP_PROFILE_SNAPSHOT: 'true'
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
+  projectatlas:
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
+    args:
+      - --require-version
+      - 0.4.5
+      - --db
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\caveman\.projectatlas\projectatlas.db
+      - --config
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\caveman\.projectatlas\config.toml
+      - mcp
+    enabled: true
 platform_toolsets:
   cli:
     - a2a
