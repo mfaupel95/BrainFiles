@@ -1,15 +1,21 @@
 """
 Omniquant-GUI — Live-Ansicht der Papierspur auf dem Prognose-Bericht.
 
-Rein lesend: liest zustand.json, neuester.json und holt Kurse ueber
-scanner/okx.letzter_kurs. Schreibt NICHTS — kein zustand, kein Journal,
+Rein lesend: liest zustand.json, neuester.json, handelsjournal.csv und holt
+Kurse/Kerzen ueber scanner/okx. Schreibt NICHTS — kein zustand, kein Journal,
 keine Order. Der Dauerlauf (dauerlauf.py) bleibt der einzige Schreiber.
 
 Start:  python gui.py            (im omniquant-Ordner, venv-Python)
-Refresh: alle 15 Sekunden, Kurse aus einem Hintergrund-Thread (Netz darf
+Refresh: alle 15 Sekunden; Kurse/Kerzen aus Hintergrund-Threads (Netz darf
          die Oberflaeche nicht blockieren).
+```
+
+Layout: Kopf (Modus/Bericht/Lauf) · Positionstabelle · Zeile "letzte
+Schließungen" · Kerzenchart (Klick auf eine Zeile waehlt das Instrument) ·
+Fuss (Einsatz/Verluste/Kill-Switch).
 """
 
+import csv
 import json
 import os
 import queue
@@ -19,7 +25,7 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime, timezone
 
-# Scanner-Paket fuer Kurse (gleicher Weg wie handeln.py): HIER/../scanner
+# Scanner-Paket fuer Kurse/Kerzen (gleicher Weg wie handeln.py): HIER/../scanner
 HIER = os.path.dirname(os.path.abspath(__file__))
 for p in (os.path.join(HIER, "..", "scanner"), os.path.join(HIER, "..", "Bus")):
     if p not in sys.path:
@@ -27,12 +33,15 @@ for p in (os.path.join(HIER, "..", "scanner"), os.path.join(HIER, "..", "Bus")):
 
 UTC = timezone.utc
 REFRESH_MS = 15_000
+BERICHTS_GRENZE_H = 26.0
+CHART_KERZEN = 90
 
 # Farben — dunkles Terminal, lesbar auch bei schlechtem Licht
 FARBEN = {
     "bg": "#1e1e2e", "blatt": "#181825", "gitter": "#313244",
     "text": "#cdd6f4", "matt": "#a6adc8", "gruen": "#a6e3a1",
     "rot": "#f38ba8", "gelb": "#f9e2af", "akzent": "#89b4fa",
+    "blau": "#89b4fa", "zellgruen": "#1b4d3e", "zellrot": "#5c1f2b",
 }
 
 
@@ -44,11 +53,27 @@ def g_uhrzeit(z):
         return "?"
 
 
-def zu_kurs(z):
+def g_zeit_kurz(z):
     try:
-        return float(z)
+        t = datetime.fromisoformat(z.replace("Z", "+00:00"))
+        return t.astimezone().strftime("%d.%m. %H:%M")
     except Exception:
-        return None
+        return "?"
+
+
+def kurs_fmt(wert):
+    """Genauigkeit passend zur Preisgroesse: 0.05697 -> 5, 2471 -> 1."""
+    try:
+        w = float(wert)
+    except Exception:
+        return "-"
+    if w >= 1000:
+        return "%.1f" % w
+    if w >= 10:
+        return "%.2f" % w
+    if w >= 1:
+        return "%.3f" % w
+    return "%.5f" % w
 
 
 class OmniquantGui:
@@ -57,14 +82,18 @@ class OmniquantGui:
     def __init__(self, root):
         self.root = root
         self.q_kurse = queue.Queue()
+        self.q_chart = queue.Queue()
         self.kurse = {}          # inst -> kurs (Stand des letzten Worker-Laufs)
-        self.bericht = {}        # neuester.json
+        self.bericht = {}
         self.bericht_alter = None
         self.zustand = {}
+        self.journal = []        # letzte Schliessungen (AUSSTIEG/ZWANGSSCHLUSS)
+        self.aktiv_inst = None   # fuer den Chart gewaehltes Instrument
+        self.chart_wunsch = None
         root.title("Omniquant (Papier) — Prognose-Treffer als Papierbuch")
         root.configure(bg=FARBEN["bg"])
-        root.geometry("980x560")
-        root.minsize(820, 420)
+        root.geometry("1020x760")
+        root.minsize(840, 560)
         self._baue()
         self.refresh_daten()
         root.after(REFRESH_MS, self._planer)
@@ -85,53 +114,75 @@ class OmniquantGui:
                      foreground=FARBEN["akzent"], font=("Consolas", 10, "bold"))
         st.map("Treeview", background=[("selected", "#45475a")])
 
-        # Kopf: drei Infozeilen
+        # Kopf: Modus + Bericht
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
-        kopf.pack(fill="x", padx=10, pady=(8, 4))
-        self.l_modus = tk.Label(kopf, bg=FARBEN["bg"], font=("Consolas", 12, "bold"))
+        kopf.pack(fill="x", padx=10, pady=(8, 2))
+        self.l_modus = tk.Label(kopf, bg=FARBEN["bg"],
+                                font=("Consolas", 12, "bold"))
         self.l_modus.pack(side="left")
-        self.l_bericht = tk.Label(kopf, bg=FARBEN["bg"], font=("Consolas", 10))
+        self.l_bericht = tk.Label(kopf, bg=FARBEN["bg"],
+                                  font=("Consolas", 10))
         self.l_bericht.pack(side="right")
         z2 = tk.Frame(self.root, bg=FARBEN["bg"])
-        z2.pack(fill="x", padx=10, pady=(0, 6))
+        z2.pack(fill="x", padx=10, pady=(0, 4))
         self.l_lauf = tk.Label(z2, bg=FARBEN["bg"], font=("Consolas", 10))
         self.l_lauf.pack(side="left")
         self.l_takt = tk.Label(z2, bg=FARBEN["bg"], font=("Consolas", 10),
                                fg=FARBEN["matt"])
         self.l_takt.pack(side="right")
 
-        # Tabelle der Positionen
+        # Positionstabelle
         rahmen = tk.Frame(self.root, bg=FARBEN["blatt"])
-        rahmen.pack(fill="both", expand=True, padx=10)
+        rahmen.pack(fill="x", padx=10)
         spalten = ("inst", "seite", "einstieg", "kurs", "stop", "ziel",
                    "abstand", "wert", "gv")
         self.tree = ttk.Treeview(rahmen, columns=spalten, show="headings",
-                                 selectmode="browse")
+                                 selectmode="browse", height=6)
         kopf_t = {"inst": "Instrument", "seite": "Seite", "einstieg": "Einstieg",
                   "kurs": "Kurs", "stop": "Stop", "ziel": "Ziel",
                   "abstand": "Abstand", "wert": "Wert USD", "gv": "G/V %"}
-        breite = {"inst": 130, "seite": 60, "einstieg": 90, "kurs": 90,
+        breite = {"inst": 150, "seite": 60, "einstieg": 90, "kurs": 90,
                   "stop": 90, "ziel": 90, "abstand": 80, "wert": 90, "gv": 80}
         for s in spalten:
             self.tree.heading(s, text=kopf_t[s])
-            self.tree.column(s, width=breite[s], anchor="e" if s not in
-                             ("inst", "seite") else "w", stretch=s == "inst")
+            self.tree.column(s, width=breite[s],
+                             anchor="e" if s not in ("inst", "seite") else "w",
+                             stretch=s == "inst")
         sb = ttk.Scrollbar(rahmen, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         self.tree.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
+        self.tree.bind("<<TreeviewSelect>>", self._gewaehlt)
 
-        # Fuss: Kapital/Grenzen
+        # Zeile: letzte Schliessungen
+        self.l_schluesse = tk.Label(self.root, bg=FARBEN["bg"],
+                                    font=("Consolas", 9), fg=FARBEN["matt"],
+                                    anchor="w", justify="left", wraplength=980)
+        self.l_schluesse.pack(fill="x", padx=10, pady=(4, 2))
+
+        # Chart
+        self.l_chart_titel = tk.Label(self.root, bg=FARBEN["bg"],
+                                      font=("Consolas", 10, "bold"),
+                                      fg=FARBEN["akzent"], anchor="w")
+        self.l_chart_titel.pack(fill="x", padx=10, pady=(0, 0))
+        self.canvas = tk.Canvas(self.root, bg=FARBEN["blatt"], height=200,
+                                highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True, padx=10)
+
+        # Fuss
         fuss = tk.Frame(self.root, bg=FARBEN["bg"])
-        fuss.pack(fill="x", padx=10, pady=(6, 8))
-        self.l_einsatz = tk.Label(fuss, bg=FARBEN["bg"], font=("Consolas", 10, "bold"))
+        fuss.pack(fill="x", padx=10, pady=(4, 6))
+        self.l_einsatz = tk.Label(fuss, bg=FARBEN["bg"],
+                                  font=("Consolas", 10, "bold"))
         self.l_einsatz.pack(side="left")
-        self.l_verluste = tk.Label(fuss, bg=FARBEN["bg"], font=("Consolas", 10, "bold"))
+        self.l_verluste = tk.Label(fuss, bg=FARBEN["bg"],
+                                   font=("Consolas", 10, "bold"))
         self.l_verluste.pack(side="left", padx=(18, 0))
-        self.l_kill = tk.Label(fuss, bg=FARBEN["bg"], font=("Consolas", 10, "bold"))
+        self.l_kill = tk.Label(fuss, bg=FARBEN["bg"],
+                               font=("Consolas", 10, "bold"))
         self.l_kill.pack(side="left", padx=(18, 0))
-        self.l_status = tk.Label(fuss, bg=FARBEN["bg"], font=("Consolas", 10),
-                                 fg=FARBEN["matt"])
+        self.l_status = tk.Label(fuss, bg=FARBEN["bg"],
+                                 font=("Consolas", 10), fg=FARBEN["matt"])
         self.l_status.pack(side="right")
 
     # ---------- Daten ----------
@@ -139,8 +190,10 @@ class OmniquantGui:
         """Liest Spur + Bericht und startet den Kurs-Worker (Netz)."""
         self._lies_zustand()
         self._lies_bericht()
+        self._lies_journal()
         self._starte_kurs_worker()
         self._zeige()
+        self._chart_impuls()
 
     def _lies_zustand(self):
         try:
@@ -164,6 +217,19 @@ class OmniquantGui:
         except Exception:
             self.bericht_alter = None
 
+    def _lies_journal(self):
+        """Letzte 6 Schliess-Eintraege (AUSSTIEG/ZWANGSSCHLUSS), zeitlich neu."""
+        try:
+            pfad = os.path.join(HIER, "handelsjournal.csv")
+            with open(pfad, encoding="utf-8", newline="") as f:
+                zeilen = list(csv.DictReader(f))
+            zu = [z for z in zeilen
+                  if z.get("aktion") in ("AUSSTIEG", "ZWANGSSCHLUSS")]
+            zu.sort(key=lambda z: z.get("zeit", ""), reverse=True)
+            self.journal = zu[:6]
+        except Exception:
+            self.journal = []
+
     def _starte_kurs_worker(self):
         insts = sorted({p.get("inst") for p in
                         self.zustand.get("positionen", []) if p.get("inst")})
@@ -184,15 +250,163 @@ class OmniquantGui:
         self.q_kurse.put(neu)
 
     def _planer(self):
-        """Naechster Refresh; wertet daneben abgelieferte Kurse aus."""
+        """Naechster Refresh; wertet abgelieferte Kurse/Charts aus."""
         try:
             while True:
                 neu = self.q_kurse.get_nowait()
                 self.kurse.update(neu)
         except queue.Empty:
             pass
+        self._chart_ergebnis()
         self.refresh_daten()
         self.root.after(REFRESH_MS, self._planer)
+
+    # ---------- Chart ----------
+    def _gewaehlt(self, _event=None):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        werte = self.tree.item(sel[0], "values")
+        if not werte:
+            return
+        inst = werte[0]
+        self.chart_wunsch = inst
+        self._chart_impuls()
+
+    def _chart_impuls(self):
+        """Laedt Kerzen fuer das gewuenschte Instrument im Hintergrund."""
+        inst = self.chart_wunsch
+        if not inst:
+            # Ohne Auswahl: erstes Instrument der Tabelle vorbelegen
+            pos = self.zustand.get("positionen", [])
+            if pos:
+                inst = pos[0].get("inst")
+                self.chart_wunsch = inst
+        if not inst:
+            self._zeichne_chart(None, None, None)
+            return
+        if self.aktiv_inst == inst and self.q_chart.empty():
+            return  # schon geladen
+        self.l_chart_titel.config(text="%s  —  lade Tageskerzen …" % inst)
+        t = threading.Thread(target=self._chart_worker, args=(inst,),
+                             daemon=True)
+        t.start()
+
+    def _chart_worker(self, inst):
+        import okx
+        try:
+            k = okx.kerzen(inst, bar="1D", anzahl=CHART_KERZEN)
+            self.q_chart.put((inst, [list(map(float, kz)) for kz in k]))
+        except Exception as e:
+            self.q_chart.put((inst, None, str(e)))
+
+    def _chart_ergebnis(self):
+        try:
+            while True:
+                daten = self.q_chart.get_nowait()
+                inst = daten[0]
+                self.aktiv_inst = inst
+                k = daten[1]
+                fehler = daten[2] if len(daten) > 2 else None
+                self._zeichne_chart(inst, k, fehler)
+        except queue.Empty:
+            pass
+
+    def _zeichne_chart(self, inst, kerzen, fehler):
+        c = self.canvas
+        c.delete("all")
+        breite = max(c.winfo_width(), 400)
+        hoehe = max(c.winfo_height(), 180)
+        rand_l, rand_r, rand_o, rand_u = 52, 12, 8, 18
+        if fehler or not kerzen:
+            c.create_text(breite // 2, hoehe // 2,
+                          text="Keine Kerzen verfuegbar%s"
+                          % (": " + fehler if fehler else ""),
+                          fill=FARBEN["matt"], font=("Consolas", 10))
+            return
+
+        pos = {p.get("inst"): p for p in self.zustand.get("positionen", [])}
+        p = pos.get(inst)
+        if not p:
+            # Instrument aus Tabelle, aber nicht mehr offen -> Position weg
+            c.create_text(breite // 2, hoehe // 2,
+                          text="%s: Position nicht mehr offen" % inst,
+                          fill=FARBEN["matt"], font=("Consolas", 10))
+            return
+
+        einstieg = float(p.get("einstieg") or 0)
+        stop = float(p.get("stop") or 0)
+        ziel = float(p.get("ziel") or 0)
+        seite = p.get("seite") or "long"
+
+        # Wertebereich: Kerzen + Linien, mit Puffer
+        tief, hoch = min(k[3] for k in kerzen), max(k[2] for k in kerzen)
+        tief = min(tief, einstieg, stop if stop else tief, ziel if ziel else tief)
+        hoch = max(hoch, einstieg, stop if stop else hoch, ziel if ziel else hoch)
+        spanne = (hoch - tief) or 1
+        tief -= spanne * 0.06
+        hoch += spanne * 0.06
+
+        def x(i):
+            n = len(kerzen)
+            abstand = (breite - rand_l - rand_r) / n
+            return rand_l + abstand * (i + 0.5)
+
+        def y(w):
+            return rand_o + (hoehe - rand_o - rand_u) * (1 - (w - tief) / (hoch - tief))
+
+        # Gitter + Preisachse
+        for s in range(5):
+            ys = rand_o + (hoehe - rand_o - rand_u) * s / 4
+            c.create_line(rand_l, ys, breite - rand_r, ys,
+                          fill=FARBEN["gitter"], width=1)
+            preis = hoch - (hoch - tief) * s / 4
+            c.create_text(rand_l - 4, ys, text=kurs_fmt(preis),
+                          anchor="e", fill=FARBEN["matt"], font=("Consolas", 8))
+
+        # Kerzen
+        n = len(kerzen)
+        kbreite = max(2.0, (breite - rand_l - rand_r) / n * 0.62)
+        for i, k in enumerate(kerzen):
+            o, h, l, cl = k[1], k[2], k[3], k[4]
+            farbe = FARBEN["zellgruen"] if cl >= o else FARBEN["zellrot"]
+            c.create_line(x(i), y(l), x(i), y(h), fill=farbe, width=1)
+            yo, yc = y(o), y(cl)
+            if abs(yo - yc) < 1:
+                yo = yc - 1
+            c.create_rectangle(x(i) - kbreite, yo, x(i) + kbreite, yc,
+                               fill=farbe, outline=farbe)
+
+        # Linien: Einstieg/Stop/Ziel mit Beschriftung am rechten Rand
+        linien = []
+        if einstieg:
+            linien.append(("Einstieg", einstieg, FARBEN["blau"]))
+        if stop:
+            linien.append(("Stop", stop, FARBEN["rot"]))
+        if ziel:
+            linien.append(("Ziel", ziel, FARBEN["gruen"]))
+        for name, wert, farbe in linien:
+            if wert <= 0 or not (tief <= wert <= hoch):
+                continue
+            ys = y(wert)
+            c.create_line(rand_l, ys, breite - rand_r, ys, fill=farbe,
+                          width=1, dash=(4, 3))
+            c.create_text(breite - rand_r + 1, ys,
+                          text=name, anchor="w", fill=farbe,
+                          font=("Consolas", 8, "bold"))
+
+        # Datumsachse (Anfang/Ende)
+        if n:
+            c.create_text(rand_l, hoehe - 4, text="%s" % kerzen[0][0],
+                          anchor="w", fill=FARBEN["matt"], font=("Consolas", 8))
+            c.create_text(breite - rand_r, hoehe - 4, text="%s" % kerzen[-1][0],
+                          anchor="e", fill=FARBEN["matt"], font=("Consolas", 8))
+
+        self.l_chart_titel.config(
+            text="%s  %s   —  %d Tageskerzen, Einstieg %s (Stop %s, Ziel %s)"
+            % (inst, seite, n, kurs_fmt(einstieg),
+               kurs_fmt(stop) if stop else "-",
+               kurs_fmt(ziel) if ziel else "-"))
 
     # ---------- Anzeige ----------
     def _zeige(self):
@@ -201,22 +415,23 @@ class OmniquantGui:
         self.l_modus.config(text="MODUS: %s" % modus.upper(),
                             fg=(FARBEN["gruen"] if modus == "papier"
                                 else FARBEN["gelb"]))
-        self.l_bericht.config(text=self._bericht_text(),
-                              fg=(FARBEN["gruen"]
-                                  if (self.bericht_alter is not None
-                                      and self.bericht_alter <= 26)
-                                  else FARBEN["rot"]))
-        self.l_lauf.config(text="letzter Lauf: %s   |   %d Position(en), Takt 15 min"
-                            % (g_uhrzeit(z.get("letzter_lauf")) if z else "?-??-??",
-                               len(z.get("positionen", []))))
+        bericht_text = self._bericht_text()
+        alter_ok = (self.bericht_alter is not None
+                    and self.bericht_alter <= BERICHTS_GRENZE_H)
+        self.l_bericht.config(text=bericht_text,
+                              fg=(FARBEN["gruen"] if alter_ok else FARBEN["rot"]))
+        self.l_lauf.config(
+            text="letzter Lauf: %s   |   %d Position(en), Takt 15 min"
+            % (g_uhrzeit(z.get("letzter_lauf")) if z else "?-??-??",
+               len(z.get("positionen", []))))
         self.l_takt.config(text="Refresh alle %ds" % (REFRESH_MS // 1000))
 
-        # Tabelle füllen
+        # Tabelle indizieren: inst -> Zeilen-ID zum Anklicken merken
         for i in self.tree.get_children():
             self.tree.delete(i)
-        pos = z.get("positionen", [])
-        for p in sorted(pos, key=lambda x: (x.get("inst", ""),
-                                            x.get("seite", ""))):
+        self._zeilen_id = {}
+        for p in sorted(self.zustand.get("positionen", []),
+                        key=lambda x: (x.get("inst", ""), x.get("seite", ""))):
             inst = p.get("inst", "")
             seite = p.get("seite", "")
             einstieg = p.get("einstieg")
@@ -232,15 +447,35 @@ class OmniquantGui:
             if kurs and einstieg:
                 vz = 1 if seite == "long" else -1
                 gv = "%+.1f%%" % (vz * (kurs / einstieg - 1) * 100)
-            self.tree.insert("", "end", values=(
-                inst, seite,
-                "%.4f" % einstieg if einstieg else "-",
-                "%.4f" % kurs if kurs else "-",
-                "%.4f" % stop if stop else "-",
-                "%.4f" % ziel if ziel else "-",
-                abstand, p.get("nominal", "-"),
-                gv,
+            iid = self.tree.insert("", "end", values=(
+                inst, seite, kurs_fmt(einstieg), kurs_fmt(kurs),
+                kurs_fmt(stop), kurs_fmt(ziel), abstand,
+                p.get("nominal", "-"), gv,
             ))
+            self._zeilen_id[inst] = iid
+
+        # Schliessungen
+        if self.journal:
+            teile = []
+            for zr in self.journal:
+                gv = ""
+                try:
+                    e = float(zr.get("einsatz_usd") or 0)
+                    w = float(zr.get("wert_usd") or 0)
+                    if e:
+                        gv = "%+.1f %%" % ((w / e - 1) * 100)
+                except Exception:
+                    pass
+                teile.append("%s %-9s %s %s → %s%s%s" % (
+                    g_zeit_kurz(zr.get("zeit")), zr.get("inst", ""),
+                    zr.get("seite", ""), zr.get("grund", ""),
+                    kurs_fmt(zr.get("preis")),
+                    "  " + gv if gv else "",
+                    ""))
+            self.l_schluesse.config(
+                text="letzte Schließungen:   " + "   |   ".join(teile))
+        else:
+            self.l_schluesse.config(text="letzte Schließungen:  (noch keine)")
 
         # Fuss
         einsatz = z.get("einsatz_pro_position")
@@ -257,8 +492,8 @@ class OmniquantGui:
                                fg=FARBEN["rot"])
         else:
             self.l_kill.config(text="Kill-Switch: frei", fg=FARBEN["gruen"])
-        self.l_status.config(text=g_uhrzeit(
-            datetime.now(UTC).isoformat()) + " Uhr — nur lesend, schreibt nichts")
+        self.l_status.config(text=g_uhrzeit(datetime.now(UTC).isoformat())
+                             + " Uhr — nur lesend, schreibt nichts")
 
     def _bericht_text(self):
         b = self.bericht
@@ -267,7 +502,7 @@ class OmniquantGui:
         if self.bericht_alter is None:
             return "Bericht: -"
         alt = self.bericht_alter
-        grenze = 26
+        grenze = BERICHTS_GRENZE_H
         marke = "frisch" if alt <= grenze else "ZU ALT — Spur pausiert"
         return "Bericht: %.1f h alt (%s), %s Treffer" % (alt, marke, n)
 
