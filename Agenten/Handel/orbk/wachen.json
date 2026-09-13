@@ -29,7 +29,7 @@
   "kill_switch_gesamt_usd": 150,
   "drawdown_halbierung_prozent": 15.0,
   "herzschlag_max_minuten": 45,
-  "journal_zweitziel": null,
+  "journal_zweitziel": "Q:\\Handel_Journal\\orbk",
   "freigabe": {
     "erfuellt": false,
     "backtest_bestanden": false,

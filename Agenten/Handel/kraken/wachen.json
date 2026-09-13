@@ -58,7 +58,7 @@
   "herzschlag_max_minuten": 2880,
 
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
-  "journal_zweitziel": null,
+  "journal_zweitziel": "Q:\\Handel_Journal\\kraken",
 
   "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true erst, wenn (1) der Papierlauf die vier Werte in freigabe erfuellt, (2) mindestens mindest_guthaben_eur frei auf dem Konto liegen, (3) journal_zweitziel gesetzt ist. Der Kraken-MCP-Server bleibt davon unberuehrt: seine Werkzeuge kraken_order_aufgeben und kraken_order_stornieren sind weiterhin verboten - siehe Wissen/Handelsregeln.md."
