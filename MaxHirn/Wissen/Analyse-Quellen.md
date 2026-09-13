@@ -10,6 +10,7 @@ related:
   - id: 20260905-btc-analyse-sta
   - id: 20260901-saisonalitaet-signal
   - id: 20260908-volumen-drift-signal
+  - id: 20260913-buildix-santiment
 summary: 'Wiederkehrende externe Analyse-Quellen (YouTube-Kanäle, Indikatoren) mit fester Einstufung — damit die Quellenbewertung nicht in jeder Einzelnotiz neu geschrieben wird.'
 ---
 
