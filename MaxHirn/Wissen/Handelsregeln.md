@@ -438,7 +438,8 @@ Offen als T-032.
 `scanner/wachen_pruefung.py`, statt sie abzuschreiben; eigen sind dort nur
 Währung, Journalspalten und die Datei, in die `sperre_zu` schreibt. Die vier
 Freigabewerte sind alle noch offen: Der Papierlauf hat am 02.09.2026 begonnen,
-Bedingung 4 (`journal_zweitziel`) ist wie bei Spur 1 `null`, und das freie
+Bedingung 4 (`journal_zweitziel`) ist seit dem 13.09.2026 gesetzt
+(`Q:\Handel_Journal\kraken`, Kopie läuft nach jedem Zyklus), und das freie
 EUR-Guthaben liegt unter der Schwelle. `handeln.py --wachen` zeigt den Stand,
 `--vorschau` nennt jede Sperre, die Live gerade verschließt.
 
@@ -459,3 +460,27 @@ netto positiv) sind mit diesem Code nicht erreichbar; Papier bleibt bis eine
 Strategie mit Einstiegen steht. Die Rechnung liegt wie bei den anderen Spuren
 nur einmal im Haus (`scanner/wachen_pruefung.spiegele_journal`, in diesem
 eigenen venv über den Dateipfad geladen).
+
+**Journal außer Haus, Stand 13.09.2026 — alle Spuren spiegeln.** Bis zu diesem
+Tag hatten nur Marktscanner und XPERP ein Ziel gesetzt, und nur diese zwei
+kopierten wirklich; Kraken hatte den Aufruf, aber `journal_zweitziel: null`,
+und Swap, ORB-Kraken, Omniquant und Spiegel riefen die Spiegelung überhaupt
+nicht auf. Jetzt hat **jede** Spur im Dauerlauf ein eigenes Ziel unter
+`Q:\Handel_Journal\<spur>` (Marktscanner direkt in `Q:\Handel_Journal`) und
+kopiert Journal und Zustand nach jedem Zyklus — auch in den Notausstiegs-Zweigen
+(Kill-Switch, alter Herzschlag), denn gerade die gehören außer Haus. Zwei
+Eigenschaften sind dabei keine Kosmetik:
+
+- Die Kopie entsteht **nach** dem Schreiben von Herzschlag und Journal. Ein
+  hängender USB-Wandler darf den Zyklus verzögern, aber nicht den Herzschlag
+  verschlucken. Ein fehlendes Ziel ist deshalb kein Fehler des Laufs.
+- Der Ausfall ist **sichtbar**: `zustand.json` trägt `journal_zweitziel_ok` und
+  `journal_zweitziel_info`, `handeln.py --wachen`/`--status` zeigt beide. Ohne
+  diesen Vermerk protokolliert der Dauerlauf bei Rückgabe 0 nur „ok" und die
+  Spurausgabe sieht niemand. Geändert wird der Vermerk nur beim Wechsel; wechselt
+  er, wird der Zustand einmal nachgezogen, damit auf Q: derselbe Stand liegt.
+
+Eine Vorschau schreibt **nichts** — auch keinen Zustand. Swap und XPERP taten das
+bis zum 13.09.2026 doch, und weil der Dauerlauf jede Spur zusätzlich mit
+`--vorschau` abfragt, sah die Kopie auf Q: danach älter aus als der eigene
+Zustand. Geprüft wird die Kopie mit `cmp` (byte-gleich) je Datei.
