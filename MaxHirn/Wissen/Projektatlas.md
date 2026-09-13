@@ -5,7 +5,7 @@ tags: [mcp, betrieb, ki-agenten]
 created: 2026-09-13
 updated: 2026-09-13
 related: [20260830-verbindungen, 20260830-hermes, 20260830-werkzeuge]
-summary: 'ProjectAtlas: Rust-Werkzeug, das je Repo eine SQLite-Karte der Struktur anlegt, damit Agenten die richtige Datei finden statt breit zu lesen. Fork, Laufzeit, MCP-Eintrag, Rezept je Repo und die vier gemessenen Grenzen.'
+summary: 'ProjectAtlas: Rust-Werkzeug, das je Repo eine SQLite-Karte der Struktur anlegt, damit Agenten die richtige Datei finden statt breit zu lesen. Fork, Laufzeit, MCP-Eintrag, Rezept je Repo und die gemessenen Grenzen.'
 ---
 
 # ProjectAtlas
@@ -78,16 +78,22 @@ steht der Ordner in `.git/info/exclude` (nicht in der `.gitignore` des Originals
 
 Jeder Repo-Bot hat ein eigenes Profil mit eigenem Arbeitsverzeichnis; damit er
 seinen eigenen Atlas hat, bekommt sein Profil denselben Eintrag mit `--db` auf
-**sein** Repo. Der Eintrag ist idempotent zu setzen:
+**sein** Repo. Fertiges Werkzeug dafür:
 
 ```
-hermes.exe -p <bot> mcp add projectatlas --command "<exe>" ^
-  --args --require-version 0.4.5 --db "<pfad>/.projectatlas/projectatlas.db" --config "<pfad>/.projectatlas/config.toml" mcp
+bash Agenten/Werkzeuge/projectatlas/bot-verdrahten.sh <bot>      # liest terminal.cwd des Bots
 ```
 
-Rückfrage „Enable all 43 tools?": `hermes mcp add` **hängt ohne Terminal** —
-aus einer Werkzeugsitzung mit `printf 'Y\n' | …` aufrufen, sonst bricht es mit
-`Cancelled` ab, ohne etwas zu schreiben.
+Von Hand ist derselbe Aufruf:
+
+```
+hermes.exe -p <bot> mcp add projectatlas --command "<exe>" --args --require-version 0.4.5 \
+  --db "<pfad>/.projectatlas/projectatlas.db" --config "<pfad>/.projectatlas/config.toml" mcp
+```
+
+Die Rückfrage „Enable all 43 tools?" braucht **stdin**: Ohne Terminal hängt `hermes mcp add`
+und endet mit `Cancelled`, **ohne** zu schreiben — aus einer Werkzeugsitzung deshalb
+`printf 'Y\n' | …` davor setzen (das Skript tut das).
 
 ## Grenzen und Fallen (gemessen 13.09.2026)
 
@@ -128,20 +134,33 @@ python -c "import json;print(len(json.load(open('Agenten/MCP-Manifest.json'))['s
 
 ## Stand 2026-09-13
 
-Eingebaut: Fork, Arbeitsklon, Laufzeit (geprüft), MCP-Eintrag bei Hermes
-(`✓ Connected, 43 Tools`), Manifest-Eintrag (`agent: hermes`),
-`mcp-sync-check.ps1` ohne Fehler, Bot `projectatlas`, Karten für die
-Arbeits-Repos.
+Eingebaut: Fork (`mfaupel95/ProjectAtlas`, voller Klon, pushfähig), Laufzeit v0.4.5
+(SHA-256 gegen `SHA256SUMS` geprüft), MCP-Eintrag bei Hermes (`hermes mcp test`:
+`✓ Connected`, 43 Werkzeuge), Manifest-Eintrag (`agent: hermes`),
+`mcp-sync-check.ps1` ohne Fehler, Bot `projectatlas` (29 Skills wie die übrige
+Flotte) und **Karten für 29 der Arbeits-Repos** — 33 Atlanten, 4,7 GB, größte
+`codex` 1,9 GB und `odysseus` 0,5 GB.
+
+Nicht kartiert (Gründe gemessen):
+
+- `caveman` und `gbrain` — Steuerzeichen im Graph (`identity text contains control characters`)
+- `deepseek-harness` — `document unresolved reason batch exceeds the graph row limit`
+- `OmniRoute` — Scan nach 18 Minuten abgebrochen (2,7 GB WAL bei ~150.000 Dateien in
+  `node_modules`, das die Ausschlussliste eigentlich führt); `.next` und `.turbo`
+  stehen jetzt zusätzlich in der Ausschlussliste, der nächste Versuch läuft über
+  `indexieren.sh` oder einzeln.
 
 Noch offen:
 
-- **Claude Desktop** hat den Server nicht (Manifest `agent: hermes`) — der
-  Eintrag ist eine Zeile Arbeit, sinnvoll erst mit einem eigenen Standard-Atlas
-  für Claudes Arbeitsweise. **Claude Code** bekommt ihn projektweise über
-  `.projectatlas/projectatlas.claude.mcp.json`.
+- **Claude Desktop** hat den Server nicht (Manifest `agent: hermes`) — eine Zeile
+  Arbeit, sinnvoll erst mit einem eigenen Standard-Atlas für Claudes Arbeitsweise.
+  **Claude Code** bekommt ihn projektweise über `.projectatlas/projectatlas.claude.mcp.json`.
 - **Zwecke** (`purpose`) sind noch nicht kuratiert: ProjectAtlas führt die
   Ordnerzwecke als Vorschlagsliste (`projectatlas purpose queue`), erst gepflegte
   Zwecke machen die Rangliste scharf.
+- **Weitere Bots** hängen mit einem Aufruf an ihrem Repo:
+  `bash Agenten/Werkzeuge/projectatlas/bot-verdrahten.sh <bot>` (setzt den Eintrag
+  ins Profil, indexiert bei Bedarf vorher, prüft die Verbindung).
 - Beim Einbau gepflegt: `Werkstatt/omnitrade` (verwaister Worktree entfernt).
 
 Siehe auch: [[Verbindungen]] (Serverübersicht), [[Hermes]] (Profilpflege).
