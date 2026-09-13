@@ -115,6 +115,9 @@
 !Agenten/Handel/orbk/*.json
 !Agenten/Handel/orbk/tests/*.py
 !Agenten/Handel/orbk/tests/fixtures/*.json
+# Wachen-Datei des omnitrade-Projekts (Rust-Terminal/Bot). Nur die
+# Grenzen, kein Laufzeitstand - gleiche Rolle wie scanner/wachen.json.
+!Agenten/Handel/omnitrade_wachen.json
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
