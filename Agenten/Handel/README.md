@@ -915,3 +915,91 @@ GUI-Pfad; der Test ist die Regressionssicherung.
 Offen bleibt der **Orderpfad**: Dafür muss die aktuelle IP im OKX-Portal
 freigegeben sein, und der DEMO-Schlüssel braucht die Trade-Berechtigung (er ist
 laut `demo_order_test.py` nur `read_only`).
+## Handelszentrale (`handelszentrale.py`) — alle sieben Spuren in einem Fenster
+
+Seit 13.09.2026 gibt es die gemeinsame Ansicht ueber den ganzen Handel-Ordner:
+dieselben vier Dinge, die die omnitrade-Oberflaeche (`omnitrade-ui`: Chart,
+Orderbuch, Positionen, Konsole) fuer EINE Engine zeigt — hier Spuren, offene
+Positionen, Kurschart und Konsole ueber ALLE Spuren (`xperp`, `scanner`,
+`swap`, `spiegel`, `orbk`, `omniquant`, `nautilus`).
+
+Aufruf aus diesem Ordner, mit dem Vorgabe-Interpreter der Spuren:
+
+    scanner/.venv/Scripts/python.exe handelszentrale.py
+    scanner/.venv/Scripts/python.exe handelszentrale.py --pruefen
+
+`--pruefen` gibt ohne Fenster genau das aus, was das Fenster zeigen wuerde:
+Spurzeilen, offene Positionen samt Kursweg und die letzten Buchungen. Das ist
+der Nachweis, wenn kein Bildschirm da ist.
+
+**Rein lesend.** Gelesen werden je Spur `zustand.json`, `wachen.json` und
+`handelsjournal.csv`, dazu `dauerlauf.log`, `dauerlauf.pid` und
+`freigabe_fenster.json`. Kurse und Kerzen holt die GUI in Hintergrund-Threads
+(OKX ueber `scanner/okx`, Kraken ueber `kraken/kraken.py`, Token-Kurse ueber
+`spiegel/lesen.py`) — das Netz blockiert die Oberflaeche nie, Refresh alle 15
+Sekunden. Geschrieben wird NICHTS; der Dauerlauf bleibt der einzige Schreiber.
+`tests/test_handelszentrale_rein_lesend.py` verbietet Schreibzugriffe per
+AST-Pruefung und vergleicht Groesse/mtime aller Spurdateien vor und nach einem
+vollen Leselauf.
+
+**Welche Spuren erscheinen, entscheidet `dauerlauf.SPUREN`** — die Liste wird
+importiert, nicht abgeschrieben. Eine zweite Spurliste in der GUI waere eine
+zweite Wahrheit, die beim naechsten neuen Spurordner still auseinanderlaeuft.
+Aus demselben Grund liefert `--pruefen` die Spurliste mit aus.
+
+**Die Zustandsformen der Spuren sind verschieden**, und die Tabelle muss alle
+kennen (sie werden gelesen, nicht erfunden):
+
+| Feld | Varianten |
+|---|---|
+| Positionen | `positionen` (Liste) oder `position` (Einzelwert, ORB) |
+| Richtung | `seite` oder `richtung` (ORB); fehlt sie ganz, gilt long |
+| Einstieg | `einstieg` oder `preis_einstieg` (Spiegel) |
+| Grenzen | `stop`/`ziel` oder `stop_preis`/`ziel_preis` (Spiegel) |
+| Einsatz | `nominal`, `usd`, `einsatz_usd`, `eur` oder `menge × einstieg` |
+| Name | `inst` oder `paar` oder `symbol (kette)` |
+
+`tests/test_handelszentrale_bindung.py` haelt das fest: je Spur ein Fall in
+ihrer echten Schreibweise, dazu eine Formpruefung gegen die echten Dateien —
+die GUI darf keine Position verlieren, die in `zustand.json` steht. Genau
+dieser Fehler waere sonst unsichtbar: der ORB-Zustand fuehrt seine eine
+Position unter `position` und nennt die Richtung `richtung`; ohne diesen Griff
+haette die zentrale Tabelle fuer diese Spur dauerhaft „0 Positionen“ gezeigt.
+
+**Zwei Rechnungen sind richtungsbewusst** (wie `tagesbericht.zeile_position`):
+G/V aus Kurs/Einstieg und der Abstand zum Stop. Bei short liegt der Stop
+ueber dem Kurs — ohne Richtungsfaktor saehe jede gesunde short-Position aus wie
+ein gerissener Stop. Negativ heisst: der Kurs hat den Stop durchlaufen.
+
+**Der Kursweg haengt an der SPUR, nicht am Instrument:** `orbk` handelt auf
+Kraken und fuehrt als `inst` nur den Schluessel `ETH_USD` — den Kraken-Paarnamen
+traegt der Instrumentenblock in `wachen.json`. Die Spiegel-Spur hat keine
+Boersenkerzen; dort steht der Grund in der Chartflaeche statt eines leeren
+Bildes.
+
+**Drei Befunde vom 13.09.2026**, die im Code als Kommentar stehen:
+
+1. **Das Dauerlauf-Log traegt lokale Zeit ohne Jahr** (`13.09. 18:25:44`).
+   Gegen UTC gerechnet stand in der Kopfzeile „letzter Zyklus vor -120 min“,
+   waehrend der Dienst lief. Der Vergleich laeuft jetzt in derselben Zone; ein
+   Eintrag, der mehr als einen Tag in der Zukunft liegt, gehoert zum Vorjahr.
+   Ohne `strptime('%d.%m. ...')` — das Format ohne Jahr warnt seit Python 3.13.
+2. **Nicht jedes Journal hat eine Uhrzeit.** Die ORB-Spur schreibt
+   `2026-09-13`. Ein starres `zeit[11:16]` las dort eine leere Spalte; die
+   Konsole zeigt fuer diese Form `13.09.`.
+3. **Der eigene Modulname darf keinem Spurmodul gleichen.** Diese Datei hiess
+   zuerst `gui.py` — genau wie `omniquant/gui.py`. Mit `Handel/` auf `sys.path`
+   fing sie deren `import gui` ab, und fuenf Omniquant-Tests brachen mit
+   `module 'gui' has no attribute 'fuss_texte'`. Sie waren nicht kaputt, sie
+   liefen gegen das falsche Fenster. `NamensfalleTest` haelt den Handel-Kopf
+   jetzt frei von doppelten Modulnamen.
+
+**Tests des Fensters** (43 der 111 Tests in `Handel/tests`):
+
+    scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"
+
+Darunter ein echter Fensteraufbau (`FensterAufbauTest`): ein tk-Mock verdeckt
+genau die zwei Fehler, die nur beim echten Start auftreten (fehlendes
+`from tkinter import ttk`, ein `root` in einer Builder-Methode, die nur
+`self.root` kennt). Deshalb wird das Fenster wirklich gebaut, einmal gezeichnet
+und wieder geschlossen.
