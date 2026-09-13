@@ -97,8 +97,10 @@ genau der Fehler aus `Wissen/Handelsbots.md`.
 - Erster Papierlauf am 02.09.2026: 4 Positionen (XETHZEUR, LINKEUR, SOLEUR,
   XXBTZEUR), 200 EUR gebunden, Rahmen voll.
 - Die sechs Wochen aus Bedingung 1 laufen ab diesem Tag.
-- `journal_zweitziel` ist `null` — offen bis „Kopie außer Haus" steht
-  (`Wissen/Hardware.md`).
+- `journal_zweitziel` ist seit dem 13.09.2026 gesetzt
+  (`Q:\Handel_Journal\kraken`): Journal und Zustand gehen nach jedem Zyklus
+  zusätzlich außer Haus (Bedingung 4). Der eigene Zustand trägt
+  `journal_zweitziel_ok` / `_info`, `handeln.py --wachen` zeigt beide.
 
 ## Stillgelegt seit 03.09.2026
 
