@@ -1887,7 +1887,7 @@ memory:
   nudge_interval: 10
   provider: ''
 delegation:
-  model: Ollama/gemma4
+  model: auto/best-coding
   provider: omniroute
   max_iterations: 250
   reasoning_effort: ''
