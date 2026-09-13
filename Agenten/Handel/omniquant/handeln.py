@@ -63,7 +63,8 @@ JOURNAL = os.path.join(HIER, "handelsjournal.csv")
 DEFAULT_BERICHT = os.path.join(HANDEL, "prognose_berichte", "neuester.json")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "wert_usd", "stop", "ziel", "grund"]
+           "einsatz_usd", "wert_usd", "stop", "ziel", "grund",
+           "score", "cr", "mfe_pct", "mae_pct", "haltetage"]
 
 # Ob geschrieben wird. Die Vorschau stellt das ab (siehe journal()).
 SCHREIBEN = True
@@ -137,9 +138,15 @@ def lade_bericht():
         except (OSError, ValueError):
             return None, "kein Bericht (prognose_berichte/neuester.json fehlt)"
     try:
-        erzeugt = datetime.fromisoformat(b.get("erzeugt", ""))
-    except ValueError:
+        erzeugt = datetime.fromisoformat(str(b.get("erzeugt", "")))
+    except (TypeError, ValueError):
         return None, "Bericht ohne Zeitstempel (erzeugt fehlt)"
+    if erzeugt.tzinfo is None:
+        # Ein Zeitstempel ohne Zone darf die Spur nicht kippen: die
+        # Subtraktion naiv/aware wirft TypeError, kein ValueError - die
+        # Ausnahme oben faenge ihn nicht, der Zyklus braeche ab. So
+        # geschriebene Berichte werden als UTC gelesen (wie prognose.py).
+        erzeugt = erzeugt.replace(tzinfo=timezone.utc)
     alter_h = (datetime.now(timezone.utc) - erzeugt).total_seconds() / 3600
     w = lade_wachen()
     max_alter = w.get("max_bericht_alter_stunden", 26)
@@ -148,7 +155,7 @@ def lade_bericht():
     return b, None
 
 
-def kandidaten(z, w):
+def kandidaten(z, w, statistik=None):
     """Treffer aus dem Bericht als Kandidaten, frisch und noch gueltig.
 
     Ein Treffer ohne Richtung ist keine Auskunft (Befund aus prognose.py):
@@ -171,6 +178,14 @@ def kandidaten(z, w):
     if b is None:
         return [], fehler
 
+    # Warum ein Treffer kein Kandidat wurde - als Zahlen, nicht als Gefuehl.
+    # Ohne diese Aufschluesselung sieht "0 Kandidaten" aus wie "kein Signal",
+    # obwohl der Bericht vielleicht Treffer hatte, die alle verfallen sind.
+    st = statistik if statistik is not None else {}
+    st["treffer"] = len(b.get("treffer", []))
+    for k in ("ohne_richtung", "verfallen", "kurs_fehler", "gefiltert"):
+        st[k] = 0
+
     max_je = w.get("max_je_basiswert", 1)
     heute = _heute()
     offen_je_basis = {}
@@ -187,6 +202,7 @@ def kandidaten(z, w):
     for t in b.get("treffer", []):
         richtung = t.get("richtung")
         if richtung not in ("long", "short"):
+            st["ohne_richtung"] += 1
             continue                       # altes Format oder kaputt: ueberspringen
         inst = t.get("inst")
         if not inst:
@@ -199,16 +215,20 @@ def kandidaten(z, w):
             kurs = (letzter_kurs_quelle or okx.letzter_kurs)(inst)
             kurs = float(kurs)
         except Exception as e:             # noqa: BLE001
+            st["kurs_fehler"] += 1
             print("  %-14s Kurs nicht abrufbar (%s) - Kandidat uebersprungen"
                   % (inst, e))
             continue
         if richtung == "long" and not (stop < kurs < ziel):
+            st["verfallen"] += 1
             continue
         if richtung == "short" and not (ziel < kurs < stop):
+            st["verfallen"] += 1
             continue
         offen = any(p.get("inst") == inst and p.get("seite") == richtung
                     for p in z.get("positionen", []))
         if offen:
+            st["gefiltert"] += 1
             continue
         # Merkliste: nur Eintraege vom HEUTIGEN Tag sperren den
         # Wiedereinstieg. Ein frischer Bericht morgen mit neuen Kerzen und
@@ -217,15 +237,19 @@ def kandidaten(z, w):
         if any(m.get("inst") == inst and m.get("seite") == richtung
                and m.get("am") == heute
                for m in z.get("erledigt", [])):
+            st["gefiltert"] += 1
             continue
         # Streuung: gleicher Basiswert zaehlt nur begrenzt (a-c, s. Docstring).
         bw = _basiswert(inst)
         if bw:
             if bw in erledigt_heute_basis:
+                st["gefiltert"] += 1
                 continue
             if offen_je_basis.get(bw, 0) >= max_je:
+                st["gefiltert"] += 1
                 continue
             if zyklus_je_basis.get(bw, 0) >= max_je:
+                st["gefiltert"] += 1
                 continue
             zyklus_je_basis[bw] = zyklus_je_basis.get(bw, 0) + 1
         aus.append({"inst": inst, "seite": richtung, "kurs": kurs,
@@ -236,26 +260,23 @@ def kandidaten(z, w):
 
 # --- Einstieg ---------------------------------------------------------------
 
-def _nominal(inst, kurs):
+def _nominal(w):
     """Positionsgroesse: fester Einsatz je Position (Spot, ohne Hebel)."""
-    w = lade_wachen()
     return w.get("max_einsatz_je_position_usd", 50)
 
 
-def _kostenfaktor(w, seite):
-    """Kosten auf einer Seite: Slippage + Gebuehr, in Prozent des Einsatzes.
+def _kosten(w):
+    """Slippage + Gebuehr EINER Seite als Anteil (0.0025 = 0,25 %).
 
-    Long kauft zum Kurs * (1 + kosten), short zum Kurs * (1 - kosten) -
-    der unguenstigere Preis je Richtung. Beim Ausstieg wirkt derselbe
-    Faktor noch einmal (siehe _ergebnis).
+    Der Ausfuehrungspreis je Seite liegt um diesen Anteil unguenstig: wer
+    kauft, zahlt kurs * (1 + k), wer verkauft, bekommt kurs * (1 - k).
+    Beide Seiten rechnet _ergebnis - eine allein waere eine Wunschrechnung.
     """
-    kosten = (w.get("slippage_pct", 0.15) + w.get("gebuehr_pct", 0.1)) / 100.0
-    return 1.0 + kosten if seite == "long" else 1.0 - kosten
+    return (w.get("slippage_pct", 0.15) + w.get("gebuehr_pct", 0.1)) / 100.0
 
 
 def eroeffne(z, w, kand):
-    vz = 1 if kand["seite"] == "long" else -1
-    nominal = _nominal(kand["inst"], kand["kurs"])
+    nominal = _nominal(w)
     p = {
         "inst": kand["inst"], "seite": kand["seite"],
         "einstieg": kand["kurs"],
@@ -263,12 +284,16 @@ def eroeffne(z, w, kand):
         "nominal": nominal,
         "eroeffnet": _heute(),
         "score": kand.get("score"), "cr": kand.get("cr"),
+        # Buchgewinn/-verlust ab Eroeffnung fortschreiben: die Auswertung
+        # braucht die Extreme, um einen zu engen Stop von einem falschen
+        # Signal zu trennen (siehe _merke_extrem).
+        "mfe_pct": 0.0, "mae_pct": 0.0,
     }
     z.setdefault("positionen", []).append(p)
     journal(zeit=_jetzt(), modus="papier", aktion="EINSTIEG",
             inst=p["inst"], seite=p["seite"], preis=p["einstieg"],
             einsatz_usd=nominal, stop=p["stop"], ziel=p["ziel"],
-            grund="prognose-treffer")
+            grund="prognose-treffer", score=p["score"], cr=p["cr"])
     print("OMNIQUANT EINSTIEG: %s %s @ %.6g, Stop %.6g, Ziel %.6g, "
           "Einsatz %.2f USD"
           % (p["inst"], p["seite"], p["einstieg"], p["stop"], p["ziel"],
@@ -278,21 +303,54 @@ def eroeffne(z, w, kand):
 # --- Ausstieg ---------------------------------------------------------------
 
 def _ergebnis(p, kurs, w):
-    """Was vom Einsatz zurueckkommt. Kosten auf beiden Seiten.
+    """Was vom Einsatz zurueckkommt - Kosten auf beiden Seiten.
 
-    Long: erloes = nominal * (1 + bewegung) * (1 - kosten)
-    Short: erloes = nominal * (1 - bewegung) * (1 - kosten)
-    Die Kosten sind beim Einstieg bereits eingepreist (siehe _kostenfaktor),
-    hier wirkt der zweite Faktor - zusammen sind es zwei Seiten wie im
-    echten Handel.
+    Long kauft zum Kurs * (1 + k) und verkauft zum Kurs * (1 - k); short
+    verkauft zum Kurs * (1 - k) und kauft zum Kurs * (1 + k) zurueck. Beide
+    Seiten zusammen ergeben
+
+        erloes = nominal * (1 + bewegung) * (1 - k) / (1 + k)
+
+    Ohne Kursbewegung bleibt also ein Minus von rund 2k (0,5 % bei
+    k = 0,25 %) - der wichtigste Test eines Papierbuchs. Eine Rechnung mit
+    nur einer Kostenseite waere um genau diese Haelfte zu optimistisch und
+    wuerde die Frage, ob die Prognose nach Kosten traegt, verzerren.
     """
     vz = 1 if p["seite"] == "long" else -1
     bewegung = vz * (kurs - p["einstieg"]) / p["einstieg"]
-    kosten = (w.get("slippage_pct", 0.15) + w.get("gebuehr_pct", 0.1)) / 100.0
-    return p["nominal"] * (1.0 + bewegung) * (1.0 - kosten)
+    k = _kosten(w)
+    roh = p["nominal"] * (1.0 + bewegung) * (1.0 - k) / (1.0 + k)
+    # Ein Short kann nicht mehr verlieren als den Einsatz (Liquidation):
+    # ohne Deckel ergaebe ein Anstieg ueber 100 % einen negativen Erloes -
+    # mehr Verlust, als Kapital eingesetzt wurde.
+    return max(0.0, roh)
 
 
-def schliesse(z, p, grund, kurs, w, live):
+def _haltetage(p):
+    """Kalendertage seit dem Einstieg (UTC-Datum, wie _heute())."""
+    try:
+        eroeffnet = datetime.fromisoformat(p.get("eroeffnet", "")).date()
+    except (TypeError, ValueError):
+        return ""
+    return (datetime.now(timezone.utc).date() - eroeffnet).days
+
+
+def _merke_extrem(p, kurs):
+    """Buchgewinn/-verlust fortschreiben (MFE/MAE in Prozent des Einstiegs).
+
+    Gemessen wird an den Zykluspunkten - die echten Extreme zwischen zwei
+    Laeufen liegen weiter aussen, die Zahl ist also eine Untergrenze. Sie
+    ist trotzdem das einzige Mittel, um spaeter zu trennen, ob ein Stop zu
+    eng war (die Position lief erst ins Plus) oder ob das Signal falsch war
+    (sie lief sofort gegen den Einstieg).
+    """
+    vz = 1 if p["seite"] == "long" else -1
+    bewegung = vz * (kurs - p["einstieg"]) / p["einstieg"] * 100.0
+    p["mfe_pct"] = max(p.get("mfe_pct", 0.0), bewegung)
+    p["mae_pct"] = min(p.get("mae_pct", 0.0), bewegung)
+
+
+def schliesse(z, p, grund, kurs, w):
     ergebnis = _ergebnis(p, kurs, w)
     verlust = p["nominal"] - ergebnis
     if verlust > 0:
@@ -304,7 +362,11 @@ def schliesse(z, p, grund, kurs, w, live):
     journal(zeit=_jetzt(), modus="papier", aktion="AUSSTIEG",
             inst=p["inst"], seite=p["seite"], preis=kurs,
             einsatz_usd=p["nominal"], wert_usd=round(ergebnis, 2),
-            stop=p["stop"], ziel=p["ziel"], grund=grund)
+            stop=p["stop"], ziel=p["ziel"], grund=grund,
+            score=p.get("score"), cr=p.get("cr"),
+            mfe_pct=round(p.get("mfe_pct", 0.0), 4),
+            mae_pct=round(p.get("mae_pct", 0.0), 4),
+            haltetage=_haltetage(p))
     print("AUSSTIEG (%s): %s %s @ %.6g, wert %.2f USD"
           % (grund, p["inst"], p["seite"], kurs, ergebnis))
 
@@ -320,6 +382,7 @@ def pruefe_ausstiege(z, w):
             behalten.append(p)
             continue
         vz = 1 if p["seite"] == "long" else -1
+        _merke_extrem(p, kurs)
         grund = None
         if vz * (kurs - p["stop"]) <= 0:
             grund = "stop"
@@ -328,16 +391,11 @@ def pruefe_ausstiege(z, w):
         else:
             # Zwangsschluss: ein Signal, das sich in max_halte_dauer_tagen
             # nicht bewegt hat, ist verfallen.
-            try:
-                eroeffnet = datetime.fromisoformat(p["eroeffnet"]).date()
-            except (TypeError, ValueError):
-                eroeffnet = None
-            if eroeffnet is not None:
-                dauer = (datetime.now(timezone.utc).date() - eroeffnet).days
-                if dauer >= w.get("max_halte_dauer_tage", 14):
-                    grund = "zwangsschluss"
+            dauer = _haltetage(p)
+            if dauer != "" and dauer >= w.get("max_halte_dauer_tage", 14):
+                grund = "zwangsschluss"
         if grund:
-            schliesse(z, p, grund, kurs, w, live=False)
+            schliesse(z, p, grund, kurs, w)
         else:
             behalten.append(p)
     z["positionen"] = behalten
@@ -387,7 +445,7 @@ def zeige_wachen(w):
     for k in ("handel_erlaubt", "max_einsatz_je_position_usd", "max_offen",
               "max_neu_je_zyklus", "max_gesamt_risiko_usd", "gebuehr_pct",
               "slippage_pct", "max_halte_dauer_tage", "herzschlag_max_minuten",
-              "max_bericht_alter_stunden"):
+              "max_bericht_alter_stunden", "max_je_basiswert"):
         print("  %-28s %s" % (k, w.get(k)))
     print("  Signalquelle: %s" % w.get("signal_quelle", "prognose_berichte/neuester.json"))
 
@@ -406,6 +464,7 @@ def lauf(modus):
 
     z = lade_zustand()
 
+    st = {}
     live = False
     if modus == "live":
         g = sperren_live(w, z)
@@ -424,7 +483,7 @@ def lauf(modus):
                 kurs = p["einstieg"]
                 print("  Kurs %s nicht abrufbar (%s) - zum Einstiegskurs "
                       "geschlossen" % (p["inst"], e))
-            schliesse(z, p, "herzschlag", kurs, w, live=False)
+            schliesse(z, p, "herzschlag", kurs, w)
         z["modus"] = "papier"
         schreibe_zustand(z)
         return
@@ -433,11 +492,19 @@ def lauf(modus):
     # Grenze erreicht haben. Offene Positionen laufen weiter aus.
     kill = z.get("verluste_usd", 0.0) >= w.get("max_gesamt_risiko_usd", 500)
 
-    kand, fehler = kandidaten(z, w)
+    kand, fehler = kandidaten(z, w, st)
     basiswerte = len({_basiswert(k["inst"]) for k in kand})
     print("=== OMNIQUANT handeln (%s) | %d Kandidaten, %d Basiswerte | %s ==="
           % ("LIVE" if live else "Papier", len(kand), basiswerte,
              fehler or "Bericht frisch"))
+    if st.get("treffer"):
+        # Jede Zeile nennt ihr Subjekt, keine traegt ein Meldewort
+        # (verkauf/stop/KILL/gesperrt/ausstieg) - der Dauerlauf soll den
+        # regelmaessigen Zyklus nicht in den Chat schicken.
+        print("  Bericht: %d Treffer; %d verfallen, %d ohne Richtung, "
+              "%d gefiltert, %d ohne Kurs"
+              % (st["treffer"], st["verfallen"], st["ohne_richtung"],
+                 st["gefiltert"], st["kurs_fehler"]))
     if kill:
         print("- KILL-SWITCH: Verluste %.2f USD >= %g, keine neuen Einstiege -"
               % (z.get("verluste_usd", 0.0), w.get("max_gesamt_risiko_usd", 500)))

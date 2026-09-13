@@ -24,12 +24,33 @@ Kategorie Werkzeug, das prognose.py schon ist, nur mit einem Buch dahinter.
   SOL-USDT sind zwei Treffer, aber ein Vermögenswert. Je Basiswert geht nur
   der Stärkste (C/R × Score) durch; ein offener Basiswert bekommt keine
   zweite Position, ein heute geschlossener kommt heute nicht wieder.
-- **Kosten:** Slippage + Gebühr wirken auf beiden Seiten (Kauf teurer,
-  Verkauf billiger).
+- **Kosten:** Slippage + Gebühr wirken auf **beiden** Seiten des Wegs (Kauf
+  teurer, Verkauf billiger). Eine Position ohne Kursbewegung ergibt daher ein
+  Minus von rund 0,5 % — der Test, der ein Papierbuch ehrlich macht. Eine
+  Rechnung mit nur einer Kostenseite wäre um die Hälfte zu optimistisch.
 - **Ausstiege:** Stop, Ziel, Zwangsschluss nach `max_halte_dauer_tage`,
   Herzschlag-Flachstellung nach Ausfall.
 - **Kill-Switch:** kumulierte Verluste gegen `max_gesamt_risiko_usd` — danach
   keine neuen Einstiege.
+
+## Buchgewinn/-verlust und Auswertung
+
+Jede Position führt `mfe_pct`/`mae_pct` (größter Buchgewinn/-verlust seit dem
+Einstieg, an den Zykluspunkten gemessen — eine Untergrenze). Beim Ausstieg
+gehen Score, C/R, Haltedauer und die Extreme ins Journal. `auswertung.py`
+liest daraus die Bilanz und trennt **vor** von **nach** Kosten (die
+Netto-Rendite ist über die bekannten Kostensätze zurückrechenbar, nichts
+geschätzt):
+
+```powershell
+scanner\.venv\Scripts\python.exe auswertung.py           # Bilanz und Datenlage
+scanner\.venv\Scripts\python.exe auswertung.py --min 20  # strengere Schwelle
+```
+
+Sie behauptet nichts aus zu wenig Daten: unter 8 Ausstiegen gibt es Rohzahlen
+und den Satz, dass es für eine Schwelle nicht reicht, je Gruppe erst ab 5
+Beobachtungen einen Hinweis (Muster: `_mindest_score_short` in
+`prognose.json`). Ein Tor aus drei Trades zu drehen ist Rauschen, kein Lernen.
 
 ## Was sie nicht ist
 
@@ -45,7 +66,14 @@ scanner\.venv\Scripts\python.exe handeln.py --vorschau   # was wäre dran, ohne 
 scanner\.venv\Scripts\python.exe handeln.py --papier     # ein Papierzyklus mit Journal
 scanner\.venv\Scripts\python.exe handeln.py --wachen     # Grenzen als Momentaufnahme
 scanner\.venv\Scripts\python.exe handeln.py --live       # verweigert, nennt den Grund
+scanner\.venv\Scripts\python.exe auswertung.py           # Bilanz aus dem Journal
 ```
+
+Die Kopfzeile jedes Laufs schlüsselt auf, warum ein Treffer kein Kandidat
+wurde (`6 Treffer; 2 verfallen, 1 gefiltert …`) — ohne diese Zahlen sieht
+„0 Kandidaten" aus wie „kein Signal". Keine dieser Zeilen trägt ein Wort aus
+der Dauerlauf-Meldeliste (`verkauf`, `stop`, `KILL`, `gesperrt`, `ausstieg`),
+der Regelzyklus bleibt also still.
 
 ## Tests
 

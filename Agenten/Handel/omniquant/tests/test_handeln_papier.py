@@ -10,6 +10,7 @@ Lauf:
         -m unittest discover -s tests -p "test_*.py"
 """
 
+import csv
 import json
 import os
 import tempfile
@@ -283,7 +284,7 @@ class EinstiegAusstiegTest(Basis):
         h.pruefe_ausstiege(z, w)
         self.assertEqual(z["positionen"], [])
         self.assertEqual(z["erledigt"][0]["grund"], "stop")
-        # Verlust gebucht: 5 % Bewegung + 0,25 % Kosten, positiv.
+        # Verlust gebucht: 5 % Bewegung + Kosten auf beiden Seiten (0,5 %).
         self.assertGreater(z["verluste_usd"], 0.0)
         with open(h.JOURNAL, encoding="utf-8") as f:
             inhalt = f.read()
@@ -331,6 +332,121 @@ class EinstiegAusstiegTest(Basis):
                             "nominal": 50.0, "eroeffnet": "2026-09-13"}]
         h.pruefe_ausstiege(z, w)
         self.assertEqual(len(z["positionen"]), 1)
+
+    # --- Kosten: beide Seiten, kein Wunschdenken -------------------------
+
+    def test_kosten_ohne_kursbewegung_ergeben_minus(self):
+        # Der wichtigste Test eines Papierbuchs: eine Kopie ohne Bewegung
+        # darf kein Plus ergeben. Und beide Ausfuehrungsseiten muessen
+        # drin sein - mit nur einer Kostenseite waere das Minus halb so
+        # gross, und die Kernfrage ("traegt die Prognose nach Kosten?")
+        # waere systematisch zu optimistisch beantwortet.
+        w = h.lade_wachen()
+        k = h._kosten(w)
+        for seite in ("long", "short"):
+            p = {"inst": "BTC-USDC", "seite": seite, "einstieg": 100.0,
+                 "stop": 95.0, "ziel": 110.0, "nominal": 50.0}
+            wert = h._ergebnis(p, 100.0, w)
+            self.assertLess(wert, 50.0)
+            self.assertAlmostEqual(50.0 - wert,
+                                   50.0 * 2 * k / (1.0 + k), places=6)
+
+    def test_short_verliert_nicht_mehr_als_den_einsatz(self):
+        # Ein Anstieg ueber 100 % (hier das Dreifache) darf keinen negativen
+        # Erloes ergeben: real waere bei 0 Schluss gewesen (Liquidation).
+        w = h.lade_wachen()
+        p = {"inst": "BTC-USDC", "seite": "short", "einstieg": 100.0,
+             "stop": 95.0, "ziel": 90.0, "nominal": 50.0}
+        self.assertEqual(h._ergebnis(p, 300.0, w), 0.0)
+
+    # --- Buchgewinn/-verlust und Journal-Spalten -------------------------
+
+    def test_mfe_mae_werden_fortgeschrieben(self):
+        # Ohne die Extreme kann die Auswertung nicht trennen, ob ein Stop zu
+        # eng war (die Position lief erst ins Plus) oder das Signal falsch.
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": h._heute(),
+                            "mfe_pct": 0.0, "mae_pct": 0.0}]
+        p = z["positionen"][0]
+        h._merke_extrem(p, 104.0)
+        h._merke_extrem(p, 97.0)
+        h._merke_extrem(p, 102.0)
+        self.assertAlmostEqual(p["mfe_pct"], 4.0)
+        self.assertAlmostEqual(p["mae_pct"], -3.0)
+
+    def test_ausstieg_traegt_score_cr_und_extreme_ins_journal(self):
+        # Die Auswertung liest das Journal, nicht den Zustand: was dort
+        # fehlt, ist fuer die Kalibrierung verloren.
+        h.letzter_kurs_quelle = lambda inst: 94.0
+        z = h.lade_zustand()
+        w = h.lade_wachen()
+        z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
+                            "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
+                            "nominal": 50.0, "eroeffnet": "2026-09-10",
+                            "score": 67.5, "cr": 2.1,
+                            "mfe_pct": 1.5, "mae_pct": -6.0}]
+        h.pruefe_ausstiege(z, w)
+        with open(h.JOURNAL, encoding="utf-8") as f:
+            zeilen = list(csv.DictReader(f))
+        a = [x for x in zeilen if x["aktion"] == "AUSSTIEG"][0]
+        self.assertEqual(a["score"], "67.5")
+        self.assertEqual(a["cr"], "2.1")
+        self.assertEqual(a["mfe_pct"], "1.5")
+        self.assertEqual(a["mae_pct"], "-6.0")
+        self.assertNotEqual(a["haltetage"], "")
+
+
+class BerichtRobustheitTest(Basis):
+    def test_naiver_berichtszeitstempel_kippt_die_spur_nicht(self):
+        # Ein Zeitstempel ohne Zone loeste bisher TypeError aus (nicht
+        # ValueError) - die Spur braeche ab, statt zu handeln oder sich zu
+        # enthalten. Er wird jetzt als UTC gelesen.
+        b = _bericht([])
+        naiv = datetime.now(timezone.utc).replace(tzinfo=None)
+        b["erzeugt"] = naiv.isoformat(timespec="seconds")
+        h.bericht_quelle = b
+        h.letzter_kurs_quelle = lambda inst: 100.0
+        kand, fehler = h.kandidaten(h.lade_zustand(), h.lade_wachen())
+        self.assertIsNone(fehler)
+        self.assertEqual(kand, [])
+
+    def test_bericht_ohne_lesbaren_zeitstempel_ist_abstention(self):
+        b = _bericht([])
+        b["erzeugt"] = "keine-zeit"
+        h.bericht_quelle = b
+        h.letzter_kurs_quelle = lambda inst: 100.0
+        kand, fehler = h.kandidaten(h.lade_zustand(), h.lade_wachen())
+        self.assertEqual(kand, [])
+        self.assertIsNotNone(fehler)
+
+    def test_zu_alte_bericht_ist_abstention_mit_grund(self):
+        alt = datetime.now(timezone.utc) - timedelta(hours=40)
+        h.bericht_quelle = _bericht(
+            [_treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)], erzeugt=alt)
+        h.letzter_kurs_quelle = lambda inst: 101.0
+        kand, fehler = h.kandidaten(h.lade_zustand(), h.lade_wachen())
+        self.assertEqual(kand, [])
+        self.assertIn("alt", fehler)
+
+
+class StatistikTest(Basis):
+    def test_statistik_erklaert_warum_treffer_wegfallen(self):
+        # "0 Kandidaten" darf nicht wie "kein Signal" aussehen: die Zahlen
+        # trennen verfallene Signale von gefilterten und Kursfehlern.
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0),      # gueltig
+            _treffer("ETH-USDC", "long", 100.0, 95.0, 103.0),      # verfallen
+            {"inst": "X-USDC", "preis": 1.0, "stop": 0.9, "ziel": 1.1}])
+        h.letzter_kurs_quelle = lambda inst: 105.0
+        st = {}
+        h.kandidaten(h.lade_zustand(), h.lade_wachen(), st)
+        self.assertEqual(st["treffer"], 3)
+        self.assertEqual(st["verfallen"], 1)
+        self.assertEqual(st["ohne_richtung"], 1)
 
 
 class SperrenTest(Basis):
