@@ -284,6 +284,22 @@ def spur_spiegel():
     }
 
 
+def _bilanz_omniquant(ordner):
+    """Die Bilanzzeile der Omniquant-Spur - rein lesend, aus EINER Quelle.
+
+    Sie kommt aus omniquant/auswertung.py: derselbe Aufruf, den die GUI
+    zeigt. Eine zweite Formel fuer dieselbe Frage waere eine zweite
+    Wahrheit. Faellt das Modul aus, steht der Grund da und nicht gar nichts.
+    """
+    try:
+        if ordner not in sys.path:
+            sys.path.insert(0, ordner)
+        import auswertung                                   # noqa: PLC0415
+        return auswertung.kernzeile(os.path.join(ordner, "handelsjournal.csv"))
+    except Exception as e:                                  # noqa: BLE001
+        return "Auswertung nicht lesbar: %s" % str(e)[:80]
+
+
 def spur_omniquant():
     """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
 
@@ -332,6 +348,7 @@ def spur_omniquant():
         "pruefmodul": None,
         "papierfest": True,
         "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "bilanz": _bilanz_omniquant(ordner),
     }
 
 
@@ -520,6 +537,11 @@ def baue(mit_xperp=True):
                          % (len(s["positionen"]), summe, s["waehrung"], schnitt))
         else:
             t.append("  keine offene Position")
+
+        # Ein Buch ohne Bilanz ist eine halbe Auskunft. Spuren ohne
+        # Auswertung tragen das Feld nicht - sie bleiben unveraendert.
+        if s.get("bilanz"):
+            t.append("  " + s["bilanz"])
 
         if lage and "fehler" in lage:
             t.append("  Wachen nicht lesbar: %s" % lage["fehler"][:100])

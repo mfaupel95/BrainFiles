@@ -166,6 +166,44 @@ class HinweisTest(unittest.TestCase):
         self.assertTrue(any("Buchgewinn" in x for x in a.hinweise(mit_mfe, K)))
 
 
+class KernzeilenTest(unittest.TestCase):
+    """kernzeile()/kernzeilen() sind die gemeinsame Quelle von GUI und
+    Tagesbericht - zwei Formeln fuer dieselbe Frage waeren zwei Wahrheiten."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.pfad = os.path.join(self.tmp.name, "handelsjournal.csv")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_kernzeile_ohne_ausstiege_nennt_die_datenlage(self):
+        z = a.kernzeile(self.pfad)
+        self.assertIn("kein Ausstieg", z)
+        self.assertIn(str(a.MIN_AUSSTIEGE), z)
+
+    def test_kernzeile_mit_daten_zeigt_beide_kostenseiten(self):
+        _journal(self.pfad, [_roh(einsatz="50", wert="55"),
+                             _roh(einsatz="50", wert="45")])
+        z = a.kernzeile(self.pfad, kosten=K)
+        self.assertIn("2 Ausstiege", z)
+        self.assertIn("nach Kosten", z)
+        self.assertIn("davor", z)
+        self.assertIn("Treffer 1/2", z)
+
+    def test_kernzeilen_stimmen_mit_den_kennzahlen_ueberein(self):
+        _journal(self.pfad, [_roh(einsatz="50", wert="55")])
+        zeilen = a.kernzeilen(self.pfad, kosten=K)
+        kz = a.kennzahlen(a.lade_ausstiege(self.pfad), K)
+        self.assertIn("%+.2f" % kz["netto_pct"], zeilen[1])
+        self.assertIn("%+.2f" % kz["brutto_pct"], zeilen[1])
+
+    def test_kernzeilen_ohne_daten_bleiben_eine_lesbare_zeile(self):
+        zeilen = a.kernzeilen(self.pfad)
+        self.assertEqual(len(zeilen), 1)
+        self.assertIn("kein Ausstieg", zeilen[0])
+
+
 class BerichtTest(unittest.TestCase):
     def test_bericht_zeigt_vor_und_nach_kosten(self):
         aus = [_zeile(50, 55), _zeile(50, 45, grund="stop", mfe=1.0, mae=-6.0)]

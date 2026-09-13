@@ -217,6 +217,52 @@ def hinweise(aus, k, min_ausstiege=MIN_AUSSTIEGE, min_je_gruppe=MIN_JE_GRUPPE):
     return raus or ["Keine Auffaelligkeit, die eine Schwelle rechtfertigt."]
 
 
+def kernzeile(pfad=JOURNAL, kosten=None):
+    """Die Auswertung in EINER Zeile - fuer den Tagesbericht.
+
+    Gleiche Quelle wie bericht(): eine zweite Formel fuer dieselbe Frage
+    waere eine zweite Wahrheit. Ohne Ausstiege steht die Datenlage da, nicht
+    eine Null-Bilanz - die liest sich sonst wie ein Ergebnis.
+    """
+    aus = lade_ausstiege(pfad)
+    if not aus:
+        return ("Auswertung: noch kein Ausstieg (Schwellen ab %d Ausstiegen)"
+                % MIN_AUSSTIEGE)
+    k = _kosten() if kosten is None else kosten
+    kz = kennzahlen(aus, k)
+    return ("Auswertung: %d Ausstiege, %+.2f USD (%+.2f %% je Position "
+            "nach Kosten, %+.2f %% davor), Treffer %d/%d"
+            % (kz["n"], kz["gv_usd"], kz["netto_pct"], kz["brutto_pct"],
+               kz["treffer"], kz["n"]))
+
+
+def kernzeilen(pfad=JOURNAL, kosten=None, max_hinweise=2):
+    """Die Auswertung als wenige Zeilen - fuer die GUI (mehr Platz).
+
+    Bilanz, der Schnitt vor und nach Kosten und die wichtigsten Hinweise.
+    """
+    aus = lade_ausstiege(pfad)
+    k = _kosten() if kosten is None else kosten
+    if not aus:
+        return ["noch kein Ausstieg — Schwellen ab %d Ausstiegen"
+                % MIN_AUSSTIEGE]
+    kz = kennzahlen(aus, k)
+    zeilen = [
+        "%d Ausstiege · Bilanz %+.2f USD · %+.2f %% je Position "
+        "(Median %+.2f %%)"
+        % (kz["n"], kz["gv_usd"], kz["netto_pct"], kz["median_pct"]),
+        "vor Kosten %+.2f %% · nach Kosten %+.2f %% · Treffer %d/%d (%.0f %%)"
+        % (kz["brutto_pct"], kz["netto_pct"], kz["treffer"], kz["n"],
+           kz["quote"]),
+    ]
+    if kz["mfe"] is not None:
+        zeilen.append("Buchgewinn/-verlust (Median) %+.2f %% / %+.2f %%"
+                      % (kz["mfe"], kz["mae"]))
+    for h in hinweise(aus, k)[:max_hinweise]:
+        zeilen.append(h)
+    return zeilen
+
+
 def bericht(aus, k, min_ausstiege=MIN_AUSSTIEGE):
     """Der ganze Ausdruck als Liste von Zeilen (testbar, ohne Druck)."""
     z = ["=== OMNIQUANT Auswertung ==="]

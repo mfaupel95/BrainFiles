@@ -52,6 +52,14 @@ und den Satz, dass es für eine Schwelle nicht reicht, je Gruppe erst ab 5
 Beobachtungen einen Hinweis (Muster: `_mindest_score_short` in
 `prognose.json`). Ein Tor aus drei Trades zu drehen ist Rauschen, kein Lernen.
 
+**Sichtbar an zwei Orten**, beide aus derselben Quelle (`kernzeile()` /
+`kernzeilen()`) — eine zweite Formel wäre eine zweite Wahrheit:
+
+- **Tagesbericht:** eine Zeile `Auswertung: …` unter dem Omniquant-Block
+  (kommt über `spur_omniquant()["bilanz"]`, gedruckt von `baue()`).
+- **GUI:** der Block `Auswertung (Journal)` mit Bilanz, vor/nach Kosten,
+  Trefferquote, Buchgewinn/-verlust und den Hinweisen.
+
 ## Was sie nicht ist
 
 **Kein Orderpfad.** Es gibt keinen Zweig, der etwas kauft: `--live`

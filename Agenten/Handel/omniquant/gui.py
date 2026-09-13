@@ -25,11 +25,16 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime, timezone
 
-# Scanner-Paket fuer Kurse/Kerzen (gleicher Weg wie handeln.py): HIER/../scanner
+# Scanner-Paket fuer Kurse/Kerzen (gleicher Weg wie handeln.py): HIER/../scanner.
+# HIER selbst steht mit drin: auswertung.py liegt neben dieser Datei, und der
+# Import soll auch dann greifen, wenn die GUI aus einem anderen Ordner startet.
 HIER = os.path.dirname(os.path.abspath(__file__))
-for p in (os.path.join(HIER, "..", "scanner"), os.path.join(HIER, "..", "Bus")):
+for p in (HIER, os.path.join(HIER, "..", "scanner"),
+          os.path.join(HIER, "..", "Bus")):
     if p not in sys.path:
         sys.path.insert(0, p)
+
+import auswertung                                            # noqa: E402
 
 UTC = timezone.utc
 REFRESH_MS = 15_000
@@ -61,6 +66,33 @@ def g_zeit_kurz(z):
         return "?"
 
 
+def fuss_texte(z, w):
+    """Die Fusszeilen-Texte aus Zustand und Wachen. Reine Funktion.
+
+    Damit ist die Bindung pruefbar, ohne ein Fenster zu oeffnen - und genau
+    die war falsch: Die Fusszeile las einsatz_pro_position,
+    kumulierte_verluste und kill_switch, drei Felder, die es im Zustand
+    nicht gibt. Sie zeigte "?" und "0 USD" unabhaengig vom echten Zustand,
+    und der Kill-Switch stand auch bei gerissenem Deckel auf "frei".
+    Gelesen werden die Namen, die handeln.py schreibt (verluste_usd) und die
+    Grenzen aus wachen.json; der Kill-Switch ist die Rechnung, kein Feld.
+
+    Rueckgabe: (einsatz, verluste, kill, kill_aktiv)
+    """
+    einsatz = w.get("max_einsatz_je_position_usd")
+    verluste = float(z.get("verluste_usd") or 0.0)
+    deckel = float(w.get("max_gesamt_risiko_usd") or 0.0)
+    kill_aktiv = bool(deckel) and verluste >= deckel
+    return (
+        "Einsatz: %s USD/Position" % ("%.0f" % einsatz if einsatz else "?"),
+        "kum. Verluste: %.2f USD" % verluste,
+        ("KILL-SWITCH AKTIV (keine neuen Einstiege)" if kill_aktiv
+         else "Kill-Switch: frei%s"
+              % (" (Deckel %.0f USD)" % deckel if deckel else "")),
+        kill_aktiv,
+    )
+
+
 def kurs_fmt(wert):
     """Genauigkeit passend zur Preisgroesse: 0.05697 -> 5, 2471 -> 1."""
     try:
@@ -87,6 +119,8 @@ class OmniquantGui:
         self.bericht = {}
         self.bericht_alter = None
         self.zustand = {}
+        self.wachen = {}         # Grenzen (Einsatz, Risikodeckel) aus wachen.json
+        self.auswertung = []     # Bilanzzeilen aus auswertung.kernzeilen()
         self.journal = []        # letzte Schliessungen (AUSSTIEG/ZWANGSSCHLUSS)
         self.aktiv_inst = None   # fuer den Chart gewaehltes Instrument
         self.chart_wunsch = None
@@ -160,6 +194,18 @@ class OmniquantGui:
                                     anchor="w", justify="left", wraplength=980)
         self.l_schluesse.pack(fill="x", padx=10, pady=(4, 2))
 
+        # Auswertung: die Bilanz aus dem Journal, aus derselben Quelle wie
+        # der Tagesbericht (auswertung.kernzeilen). Rein lesend.
+        self.l_ausw_titel = tk.Label(self.root, bg=FARBEN["bg"],
+                                     font=("Consolas", 10, "bold"),
+                                     fg=FARBEN["akzent"], anchor="w",
+                                     text="Auswertung (Journal)")
+        self.l_ausw_titel.pack(fill="x", padx=10, pady=(2, 0))
+        self.l_auswertung = tk.Label(self.root, bg=FARBEN["bg"],
+                                     font=("Consolas", 9), fg=FARBEN["matt"],
+                                     anchor="w", justify="left", wraplength=980)
+        self.l_auswertung.pack(fill="x", padx=10, pady=(0, 2))
+
         # Chart
         self.l_chart_titel = tk.Label(self.root, bg=FARBEN["bg"],
                                       font=("Consolas", 10, "bold"),
@@ -188,12 +234,29 @@ class OmniquantGui:
     # ---------- Daten ----------
     def refresh_daten(self):
         """Liest Spur + Bericht und startet den Kurs-Worker (Netz)."""
+        self._lies_wachen()
         self._lies_zustand()
         self._lies_bericht()
         self._lies_journal()
+        self._lies_auswertung()
         self._starte_kurs_worker()
         self._zeige()
         self._chart_impuls()
+
+    def _lies_wachen(self):
+        try:
+            with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
+                self.wachen = json.load(f)
+        except Exception:
+            self.wachen = {}
+
+    def _lies_auswertung(self):
+        """Die Bilanz aus dem Journal - dieselbe Quelle wie der Tagesbericht."""
+        try:
+            self.auswertung = auswertung.kernzeilen(
+                os.path.join(HIER, "handelsjournal.csv"))
+        except Exception as e:                               # noqa: BLE001
+            self.auswertung = ["Auswertung nicht lesbar: %s" % str(e)[:80]]
 
     def _lies_zustand(self):
         try:
@@ -477,21 +540,22 @@ class OmniquantGui:
         else:
             self.l_schluesse.config(text="letzte Schließungen:  (noch keine)")
 
-        # Fuss
-        einsatz = z.get("einsatz_pro_position")
-        self.l_einsatz.config(text="Einsatz: %s USD/Position"
-                              % ("%.0f" % einsatz if einsatz else "?"))
-        verluste = z.get("kumulierte_verluste", 0)
-        farbe = FARBEN["text"]
-        if verluste:
-            farbe = FARBEN["rot"] if verluste > 0 else FARBEN["gruen"]
-        self.l_verluste.config(text="kum. Verluste: %.0f USD" % -verluste,
-                               fg=farbe)
-        if z.get("kill_switch", False):
-            self.l_kill.config(text="KILL-SWITCH AKTIV (keine neuen Einstiege)",
-                               fg=FARBEN["rot"])
-        else:
-            self.l_kill.config(text="Kill-Switch: frei", fg=FARBEN["gruen"])
+        # Auswertung
+        self.l_auswertung.config(
+            text="\n".join(self.auswertung) if self.auswertung
+            else "keine Daten")
+
+        # Fuss - Feldnamen so, wie handeln.py sie schreibt (verluste_usd),
+        # und die Grenzen aus wachen.json (siehe fuss_texte).
+        t_einsatz, t_verluste, t_kill, kill_aktiv = fuss_texte(z, self.wachen)
+        self.l_einsatz.config(text=t_einsatz)
+        self.l_verluste.config(text=t_verluste,
+                               fg=(FARBEN["rot"]
+                                   if float(z.get("verluste_usd") or 0.0) > 0
+                                   else FARBEN["gruen"]))
+        self.l_kill.config(text=t_kill,
+                           fg=(FARBEN["rot"] if kill_aktiv
+                               else FARBEN["gruen"]))
         self.l_status.config(text=g_uhrzeit(datetime.now(UTC).isoformat())
                              + " Uhr — nur lesend, schreibt nichts")
 
