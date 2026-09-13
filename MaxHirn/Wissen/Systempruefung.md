@@ -43,11 +43,11 @@ Beide tragen absolute Pfade mit Absicht; ohne die Ausnahme meldete der Block
 jeden Tag dieselben 14 Cache-Dateien und wäre damit ein Dauerfehlalarm.
 
 Die Blöcke 11 und 12 rufen
-`Agenten/Hermes/skills/journal-spiegelung/scripts/spiegelstand-pruefen.py` auf
-(Skill `journal-spiegelung`) — nur lesend, Rückgabecode 0 = jede Spur im
+`Agenten/Handel/spiegelstand.py` auf — nur lesend, Rückgabecode 0 = jede Spur im
 Dauerlauf ist byte-gleich. Spuren außerhalb des Dauerlaufs (`kraken` mit eigenem
 Zeitfenster, `orb` als Altbestand) werden mitgeprüft, aber gekennzeichnet und
-nicht als Fehler gezählt.
+nicht als Fehler gezählt. Dieselbe Rechnung liefert die Zeile „Journal außer
+Haus" im Tagesbericht (`tagesbericht.spiegelzeile()`).
 
 Neue Prüfungen kommen als eigener nummerierter Block ins Skript — Reihenfolge
 und Nummern sind der Vertrag mit dem „Seit gestern neu"-Vergleich.

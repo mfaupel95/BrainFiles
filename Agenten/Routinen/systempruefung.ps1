@@ -539,15 +539,16 @@ try {
 # ausser Haus, und eine ueberschriebene Kopie (USB-Aussetzer, oder ein Testlauf,
 # der seinen Temp-Zustand mitspiegelt) sieht in keinem Bericht wie ein Fehler
 # aus. Verglichen wird deshalb BYTE-GENAU gegen die Originale.
-# Das Skript gehoert zum Skill journal-spiegelung (dort stehen Rueckgabecode und
-# Spalten erklaert: 0 = jede Spur im Dauerlauf ist byte-gleich).
+# Die Rechnung steht in Agenten\Handel\spiegelstand.py (Rueckgabecode und
+# Spalten stehen im Modul: 0 = jede Spur im Dauerlauf byte-gleich). Dieselbe
+# Funktion liefert die Zeile im Tagesbericht.
 try {
   Notiz "`n--- 11) Journal ausser Haus (Bedingung 4) ---"
-  $spiegelSkript = Join-Path $agenten 'Hermes\skills\journal-spiegelung\scripts\spiegelstand-pruefen.py'
+  $spiegelSkript = Join-Path $agenten 'Handel\spiegelstand.py'
   $handelPy = Join-Path $agenten 'Handel\scanner\.venv\Scripts\python.exe'
   if (-not (Test-Path $handelPy)) { $handelPy = (Get-Command python -EA SilentlyContinue).Source }
   if (-not (Test-Path $spiegelSkript)) {
-    Entscheiden "Pruefskript fuer Bedingung 4 fehlt: Agenten\Hermes\skills\journal-spiegelung\scripts\spiegelstand-pruefen.py"
+    Entscheiden "Pruefskript fuer Bedingung 4 fehlt: Agenten\Handel\spiegelstand.py"
   } elseif (-not $handelPy -or -not (Test-Path $handelPy)) {
     Info "Journal-Spiegelung nicht geprueft - kein Python gefunden."
   } else {

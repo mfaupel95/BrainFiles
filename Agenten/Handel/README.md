@@ -579,6 +579,35 @@ Kapital nach oben.
   insgesamt 161 USD *verlor*. Häufige Zyklen bedeuten häufige Umsätze, nicht
   Gewinn.
 
+## Journal außer Haus (`spiegelstand.py`) — Bedingung 4
+
+Jede Spur im Dauerlauf kopiert `handelsjournal.csv` und `zustand.json` nach
+jedem Zyklus zusätzlich nach `journal_zweitziel` aus ihrer `wachen.json`
+(`Q:\Handel_Journal\<spur>`; der Marktscanner direkt in `Q:\Handel_Journal`).
+Die Kopie entsteht **nach** dem Schreiben von Herzschlag und Journal: ein
+hängendes Zweitlaufwerk darf den Zyklus verzögern, nicht den Herzschlag
+verschlucken. Ein fehlendes Ziel ist kein Fehler des Laufs (Rückgabecode bleibt
+0) — sichtbar wird es stattdessen im Zustand der Spur
+(`journal_zweitziel_ok` / `_info`, geschrieben nur beim Wechsel) und in
+`handeln.py --wachen`.
+
+`spiegelstand.py` ist die eine Rechnung dafür, lesend und ohne Netz:
+
+    scanner/.venv/Scripts/python.exe spiegelstand.py
+
+Es vergleicht je Spur **byte-genau** (wie `cmp`) und zeigt Ziel, Journalzeilen,
+Alter des Herzschlags und den Vermerk. Rückgabecode 0 = jede Spur im Dauerlauf
+ist byte-gleich, 1 = mindestens eine Abweichung. Spuren mit `wachen.json`, die
+nicht in `dauerlauf.SPUREN` stehen (kraken mit eigenem Zeitfenster, `orb` als
+Altbestand), werden mitgeprüft und gekennzeichnet, aber nicht als Fehler
+gezählt.
+
+Zwei Verbraucher hängen daran: der **Tagesbericht** zeigt den Stand als eigene
+Zeile (`spiegelstand.kurz()`, im Fehlerfall hervorgehoben), und die
+**Systemprüfung** ruft dasselbe Modul morgens als Block 11 auf. Eine
+überschriebene oder fehlende Kopie fällt damit spätestens am nächsten Morgen
+auf, statt still zu bleiben.
+
 ## Was noch fehlt
 
 Der Simulator ist bewusst instrumentenneutral gebaut. Für den nächsten Ausbau
@@ -994,7 +1023,7 @@ Bildes.
    liefen gegen das falsche Fenster. `NamensfalleTest` haelt den Handel-Kopf
    jetzt frei von doppelten Modulnamen.
 
-**Tests des Fensters** (43 der 111 Tests in `Handel/tests`):
+**Tests des Fensters** (43 der 122 Tests in `Handel/tests`):
 
     scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"
 

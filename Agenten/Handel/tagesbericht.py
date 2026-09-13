@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(HIER, "scanner"))
 XPERP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xperp")
 
 import melder                                            # noqa: E402
+import spiegelstand                                     # noqa: E402
 
 
 def _lies(pfad, vorgabe=None):
@@ -553,6 +554,23 @@ def zeile_position(p, waehrung):
     return text
 
 
+def spiegelzeile():
+    """Eine Zeile zum Stand der Kopie ausser Haus (Bedingung 4).
+
+    Gelesen wird die Kopie selbst (byte-genau) und der Vermerk im Zustand der
+    Spur - beides lokal, kein Netz. Ein Fehler darf den Bericht nicht kippen:
+    dann steht der Grund in der Zeile statt eines Tracebacks.
+    """
+    try:
+        e = spiegelstand.stand(HIER)
+    except Exception as fehler:                          # noqa: BLE001
+        return "Journal ausser Haus: nicht geprueft (%s)" % str(fehler)[:80]
+    text = spiegelstand.kurz(e)
+    if e.get("fehler") or e["abweichend"]:
+        return "<b>Journal ausser Haus: %s</b>" % text
+    return "Journal ausser Haus: %s" % text
+
+
 def baue(mit_xperp=True):
     """Der ganze Bericht als Text. Kein Netz noetig fuer den Rahmen."""
     heute = dt.datetime.now()
@@ -645,6 +663,8 @@ def baue(mit_xperp=True):
         except Exception as e:                           # noqa: BLE001
             t.append("\n<b>Spur 2</b>\n  AUSFALL: %s" % e)
 
+    t.append("")
+    t.append(spiegelzeile())
     t.append("\n%d offene Position(en) insgesamt." % gesamt_offen)
     if not melder.bereit():
         t.append("Melder nicht eingerichtet: %s fehlt." % melder.fehlt())

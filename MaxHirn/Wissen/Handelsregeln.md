@@ -484,3 +484,9 @@ Eine Vorschau schreibt **nichts** — auch keinen Zustand. Swap und XPERP taten 
 bis zum 13.09.2026 doch, und weil der Dauerlauf jede Spur zusätzlich mit
 `--vorschau` abfragt, sah die Kopie auf Q: danach älter aus als der eigene
 Zustand. Geprüft wird die Kopie mit `cmp` (byte-gleich) je Datei.
+
+Sichtbar ist der Stand an drei Stellen, ohne dass jemand nachsieht:
+`Agenten/Handel/spiegelstand.py` (Tabelle + Rückgabecode, eine Rechnung für
+alles), die Zeile „Journal außer Haus" im **Tagesbericht** (`spiegelstand.kurz()`,
+im Fehlerfall hervorgehoben) und morgens **Block 11 der Systemprüfung**; Block 12
+meldet dort, wenn der Dauerlauf steht.
