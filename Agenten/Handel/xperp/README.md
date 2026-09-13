@@ -125,15 +125,16 @@ cd Agenten\Handel\xperp
 
 Ein frisch gelisteter XPERP trägt die Kennzahlen nicht, die vor einer
 gehebelten Order zählen. `CHIP-USD_UM_XPERP-310822` war am 01.09.2026 **14 Tage
-alt**; auf diesem Fenster meldete der Bot Hebel-Deckel 4,8× und Trefferquote
-67 %. Auf der realen Historie des `CHIP-USDT-SWAP` (**133 Tage**, seit dem
-Listing 21.04.2026) sind es **2,2×** und **28 % gegen 34 % nötig — trägt
+alt**; auf diesem Fenster meldete der Bot einen viel zu hohen Hebel-Deckel.
+Nachgemessen am 13.09.2026 auf Tageskerzen (`historie.py CHIP`): der junge
+Kontrakt (26 Tage) meldet **4,3×** und 48 % Trefferquote (Long), die tiefe
+Reihe `CHIP-USDT-SWAP` (145 Tage) **2,2×** und **29 % gegen 34 % nötig — trägt
 nicht**. Genau die Falle aus [[Handelsbots]]: „Kurze Fenster täuschen
 zuverlässig", hier nach oben, weil der XPERP sein ganzes Leben auf einem
 lokalen Tief begann.
 
-`--historie auto` zieht den `<Basis>-USDT-SWAP` und rechnet Hebel-Deckel und
-Trefferquote darauf. Das **Signal** (SuperTrend, EMA, RSI, ATR jetzt) bleibt
+`--historie auto` zieht den `<Basis>-USDT-SWAP` und rechnet Hebel-Deckel (auf
+den **Tageskerzen** des SWAP) und Trefferquote darauf. Das **Signal** (SuperTrend, EMA, RSI, ATR jetzt) bleibt
 am gehandelten Kontrakt — es beschreibt den Kurs, den man wirklich kauft.
 Rechtfertigung: gleicher Index, ATR% deckungsgleich (CHIP: 4,6 % XPERP gegen
 4,4 % SWAP). `--historie selbst` erzwingt den Kontrakt, `--historie <instId>`
@@ -212,7 +213,8 @@ Das ist messbar; „sieht seitwärts aus" ist es nicht.
 
 ## Der Hebel-Deckel
 
-Zu jedem Wert wird der größte Rücklauf der letzten sieben Tage gemessen und
+Zu jedem Wert wird der größte Rücklauf der letzten sieben Tage gemessen —
+auf **Tageskerzen** (`auswahl.mae_tage`), nicht auf dem 4H-Fenster — und
 daraus der Hebel gerechnet, der ihn überlebt hätte:
 
 ```
@@ -269,13 +271,26 @@ Mio. Bei 50 USD je Anlauf ist das tragbar, aber es ist der Grund, warum
 **Von 103 Krypto-XPERP sind nur 77 bewertbar** (21 Tage Mindesthistorie), und
 von diesen überlebt die Mehrheit keine 5×.
 
-Die Werte, die am 01.09.2026 **alle** Tore bestanden:
+Die Bewertungen am 01.09.2026 (korrigierte Messung — Hebel-Deckel auf
+**Tageskerzen**, über 200 Tage statt 300×4h = 50 Tage):
 
 | Wert | Vola p.a. | ER | Hebel-Deckel | Umsatz 24h | Grid | Long |
 |---|---|---|---|---|---|---|
-| **SOL** | 48 % | 0,10 | **10,0×** | 21,8 Mio | 82 | 83 |
-| **HYPE** | 77 % | 0,04 | 6,4× | 13,7 Mio | 85 | **92** |
-| **ZEC** | 95 % | 0,15 | 5,8× | 12,1 Mio | 86 | 91 |
+| **SOL** | 48 % | 0,10 | 3,6× | 21,8 Mio | 82 | 83 |
+| **HYPE** | 77 % | 0,04 | 4,1× | 13,7 Mio | 85 | **92** |
+| **ZEC** | 95 % | 0,15 | 1,7× | 12,1 Mio | 86 | 91 |
+
+**Damit besteht keiner der drei das Hebel-Tor (≥ 5) mehr.** Die frühere Fassung
+dieser Tabelle nannte SOL 10,0×, HYPE 6,4× und ZEC 5,8× und leitete daraus ab,
+alle drei hätten „alle Tore bestanden“ — beides ist zurückgenommen.
+
+**Falle — der Messfehler dahinter:** Der Deckel wurde aus **300 4H-Kerzen**
+abgeleitet, das sind nur **50 Tage**; SOLs Rücklauf vom 31.05.2026 lag
+außerhalb dieses Fensters (9,5 % statt 27,9 %, Deckel 10× statt 3,5×). Seit
+dem 13.09.2026 rechnet `bot.hebel_deckel()` auf **Tageskerzen**
+(`auswahl.mae_tage`). Wer den Deckel nachrechnet, muss auf Tageskerzen
+rechnen — nicht auf dem 300-Kerzen-Fenster des gehandelten Kontrakts, sonst
+kommt wieder eine zu optimistische Zahl heraus.
 
 **RE selbst besteht zwei Tore nicht:** Vola 173 %, Umsatz 0,9 Mio,
 Hebel-Deckel **2,5×** long und 1,2× short. Die Grid-These stimmt allerdings —

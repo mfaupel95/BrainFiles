@@ -85,11 +85,11 @@ def _vola_pa(c):
     return st.pstdev(ren) * math.sqrt(PRO_TAG * 365) if len(ren) > 2 else 0.0
 
 
-def _zeile(name, k, bot, ind):
+def _zeile(name, k, inst_id, bot, ind):
     c = [r[4] for r in k]
     a = ind.atr(k, 14)
     atr_pct = a[-1] / c[-1] * 100 if a[-1] else 0.0
-    dl, ds = bot.hebel_deckel(k, tage=7, wartung=0.005)
+    dl, ds = bot.hebel_deckel(inst_id, tage=7, wartung=0.005)
     tq_l = bot.trefferquote(k, 1.5, 3.0, "long")
     tq_s = bot.trefferquote(k, 1.5, 3.0, "short")
     noetig = bot.noetige_quote(3 * a[-1] / c[-1], 1.5 * a[-1] / c[-1],
@@ -143,9 +143,9 @@ def _main():
     print("  %-16s %6s %9s %8s %9s %8s %9s %9s %9s" % (
         "Reihe", "Tage", "Vola pa", "ATR%", "Deckel L", "Deckel S",
         "Treff L", "Treff S", "noetig"))
-    _zeile("Kontrakt jung", jung, bot, indikatoren)
+    _zeile("Kontrakt jung", jung, iid, bot, indikatoren)
     if ersatz:
-        _zeile("tief (" + quelle.split("-")[0] + " SWAP)", tief, bot, indikatoren)
+        _zeile("tief (" + quelle.split("-")[0] + " SWAP)", tief, quelle, bot, indikatoren)
         print()
         print("  Die tiefe Reihe ist die belastbare. Weicht 'Treff' unter 'noetig'")
         print("  oder 'Deckel' unter den max_hebel aus wachen.json, ist der Anlauf")

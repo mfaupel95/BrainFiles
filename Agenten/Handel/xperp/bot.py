@@ -34,6 +34,11 @@ der Kontrakt zu jung ist (CHIP-XPERP war am 01.09.2026 14 Tage alt). Das
 Signal - SuperTrend, EMA, RSI, ATR jetzt - kommt weiter vom gehandelten
 Kontrakt; nur die Rueckrechnung wechselt die Quelle. Siehe historie.py.
 
+Seit dem 13.09.2026 rechnet der Hebel-Deckel auf TAGESKERZEN
+(auswahl.mae_tage): 300 4H-Kerzen sind nur 50 Tage, und der groesste
+Ruecklauf darf nicht vom Fensterrand abhaengen (SOL, Einbruch vom
+31.05.2026 lag ausserhalb des 4H-Fensters).
+
     python bot.py trend --wert CHIP --historie auto            # <Basis>-USDT-SWAP
     python bot.py trend --wert CHIP --historie CHIP-USDT-SWAP  # ausdruecklich
 
@@ -54,6 +59,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, os.pardir, "Bus"))
 import ereignis                                            # noqa: E402
 
+import auswahl
 import historie
 import indikatoren
 import okxf
@@ -156,7 +162,8 @@ def noetige_quote(gewinn_pct, verlust_pct, kosten_pct):
 
 
 def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
-                 stop_atr_f=None, ziel_atr_f=None, was="Order", still=False):
+                 stop_atr_f=None, ziel_atr_f=None, was="Order", still=False,
+                 stat_id=None):
     """Die vier Zahlen, die Wissen/Handelsregeln.md vor jeder gehebelten
     Order verlangt (Spur 2, Pruefpflicht, angeordnet 01.09.2026).
 
@@ -171,8 +178,13 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
     unmissverstaendlich - "eine Zahl, die der Automat nicht ablegt, ist nicht
     gerechnet worden; eine Position ohne diese vier Werte im Journal ist ein
     Befund, kein Trade." Mit still=True bleibt die Ausgabe weg.
+
+    stat_id: instId der Reihe, aus der der Hebel-Deckel kommt (Tageskerzen).
+    None -> der Kontrakt selbst (instr["instId"]). zeige_trend/zeige_grid
+    reichen hier die Statistik-Reihe durch (--historie).
     """
-    dl, ds = hebel_deckel(k, wartung=w["wartungsmarge"])
+    dl, ds = hebel_deckel(stat_id or instr["instId"],
+                         wartung=w["wartungsmarge"])
     deckel = dl if seite == "long" else ds
     liq = liquidationspreis(einstieg, hebel, w["wartungsmarge"], seite)
     liq_abstand = abs(einstieg - liq) / einstieg
@@ -226,7 +238,7 @@ def pruefpflicht(w, instr, k, seite, einstieg, stop, ziel, hebel, stunden=48,
     print("PRUEFPFLICHT  (Handelsregeln, Spur 2 - vier Zahlen vor der %s)" % was)
     print("-" * 66)
 
-    print("  1  Liquidationsabstand gegen groessten 7-Tage-Ruecklauf")
+    print("  1  Liquidationsabstand gegen groessten 7-Tage-Ruecklauf (Tageskerzen)")
     print("       Liquidation %.2f%% entfernt, Hebel-Deckel %.1fx, gewaehlt %.1fx" % (
         liq_abstand * 100, deckel, hebel))
     print("       %s" % ("passt - der Hebel liegt unter dem Deckel"
@@ -303,20 +315,34 @@ def liquidationspreis(einstieg, hebel, wartung, seite="long"):
     return einstieg * (1 - strecke) if seite == "long" else einstieg * (1 + strecke)
 
 
-def hebel_deckel(k, tage=7, wartung=0.005, obergrenze=20.0):
+# Test-Seam: None -> echte OKX-Tageskerzen (okxf.kerzen(inst_id, "1D", n)).
+# Tests setzen eine Lambda mit synthetischen Kerzen, tearDown setzt None.
+tages_kerzen_quelle = None
+
+
+def _tages_kerzen(inst_id, n=300):
+    if tages_kerzen_quelle is not None:
+        return tages_kerzen_quelle(inst_id, n)
+    return okxf.kerzen(inst_id, "1D", n)
+
+
+def hebel_deckel(inst_id, tage=7, wartung=0.005, obergrenze=20.0):
     """Groesster Hebel, der den groessten Ruecklauf der letzten Tage ueberlebt.
 
     Rueckblick, keine Zusage. Aber ein Hebel, der schon die letzte Woche nicht
     ueberstanden haette, braucht ueber die naechste nicht diskutiert zu werden.
+
+    Seit dem 13.09.2026 auf TAGESKERZEN (auswahl.mae_tage): das 4H-Fenster
+    des gehandelten Kontrakts (300 Kerzen = 50 Tage) unterschlaegt aeltere
+    Ruecklaeufe. Gemessen an SOL: ueber 50 Tage 9,5 % (Deckel 10x), ueber
+    200 Tage 27,9 % (Deckel 3,5x) - der Einbruch vom 31.05.2026 lag
+    ausserhalb des kurzen Fensters. Der Deckel ist eine feste Grenze nach
+    Handelsregeln, Spur 2 und darf nicht vom Fensterrand abhaengen.
     """
-    hd = min(tage * 6, len(k) - 1)
-    if hd < 2:
-        return 1.0
-    mae_l = mae_s = 0.0
-    for i in range(len(k) - hd):
-        e = k[i][4]
-        mae_l = max(mae_l, 1 - min(r[3] for r in k[i + 1:i + 1 + hd]) / e)
-        mae_s = max(mae_s, max(r[2] for r in k[i + 1:i + 1 + hd]) / e - 1)
+    kt = _tages_kerzen(inst_id)
+    if len(kt) < tage + 1:
+        return 1.0, 1.0
+    mae_l, mae_s = auswahl.mae_tage(kt, tage)
     return (max(1.0, min(obergrenze, 1.0 / (mae_l + wartung))),
             max(1.0, min(obergrenze, 1.0 / (mae_s + wartung))))
 
@@ -382,7 +408,7 @@ def zeige_lage(w, wert, historie_quelle=None):
         k_hist, hist_id, hist_ersatz = historie.tiefe_reihe(
             instr["instId"], historie_quelle)
 
-    dl, ds = hebel_deckel(k_hist, wartung=w["wartungsmarge"])
+    dl, ds = hebel_deckel(hist_id, wartung=w["wartungsmarge"])
     ist_swap = instr["instId"].upper().endswith("-SWAP")
     tick = okxf.tickers("SWAP" if ist_swap else "FUTURES").get(instr["instId"], {})
     umsatz = float(tick.get("volCcy24h") or 0) * z["kurs"]
@@ -435,7 +461,7 @@ def zeige_lage(w, wert, historie_quelle=None):
     print()
     print("  SIGNAL: %s   (%s)" % (z["signal"].upper(), z["grund"]))
     print()
-    print("  Hebel-Deckel   long %.1fx   short %.1fx   (groesster Ruecklauf 7 Tage)" % (dl, ds))
+    print("  Hebel-Deckel   long %.1fx   short %.1fx   (groesster 7-Tage-Ruecklauf, Tageskerzen)" % (dl, ds))
     print("  Umsatz 24h     %.1f Mio USD" % (umsatz / 1e6))
     print("  Historie       %.0f Tage" % tage)
     tage_hist = len(k_hist) / 6.0
@@ -466,12 +492,12 @@ def zeige_lage(w, wert, historie_quelle=None):
     if not all(ok for _, ok in tore):
         print("\n  -> Mindestens ein Tor ist zu. Vorschlaege werden trotzdem")
         print("     gerechnet, aber mit gesenktem Hebel und mit Warnung.")
-    return instr, k, k_hist, z, (dl, ds)
+    return instr, k, k_hist, z, (dl, ds), hist_id
 
 
 def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
                 sammle=None):
-    instr, k, k_hist, z, (dl, ds) = zeige_lage(w, wert, historie_quelle)
+    instr, k, k_hist, z, (dl, ds), hist_id = zeige_lage(w, wert, historie_quelle)
     if z["signal"] == "kein":
         print()
         print("Kein Einstieg: %s" % z["grund"])
@@ -536,7 +562,8 @@ def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
         print("     nicht der gerechnete Risikobetrag. Hebel senken.")
 
     pruefpflicht(w, instr, k_hist, seite, einstieg, stop, ziel, g["hebel"],
-                 stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"])
+                 stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"],
+                 stat_id=hist_id)
     befehle(instr, seite, g["kontrakte"], einstieg, ziel, stop, g["hebel"])
     if sammle is not None:
         sammle.append({"instr": instr, "hebel": g["hebel"], "orders": [
@@ -547,7 +574,7 @@ def zeige_trend(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
 
 def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
                sammle=None):
-    instr, k, k_hist, z, (dl, _) = zeige_lage(w, wert, historie_quelle)
+    instr, k, k_hist, z, (dl, _), hist_id = zeige_lage(w, wert, historie_quelle)
     atr, kurs = z["atr"], z["kurs"]
     gesamt_margin_erlaubt = w["max_margin_gesamt_usd"] if einsatz is None else float(einsatz)
 
@@ -669,7 +696,7 @@ def zeige_grid(w, wert, historie_quelle=None, hebel_wunsch=None, einsatz=None,
         print("  (Die Pruefpflicht wird auf Stufe 1 gerechnet - sie hat den")
         print("   weitesten Weg zum Boden und damit den groessten Einzelverlust.)")
         pruefpflicht(w, instr, k_hist, "long", kauf, boden, zielk, hebel,
-                     was="Grid-Stufe")
+                     was="Grid-Stufe", stat_id=hist_id)
 
     for i, kauf, ziel, kontrakte in zeilen:
         befehle(instr, "long", kontrakte, kauf, ziel, boden, hebel, nr=i)

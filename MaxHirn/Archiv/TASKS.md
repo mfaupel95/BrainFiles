@@ -710,6 +710,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       danebenschreiben (sonst wiederholt ihn die nächste Sitzung), und die
       Aussage „alle Tore bestanden" für die drei zurücknehmen.
       Betrifft: `MaxHirn/Wissen/XPERP-Handel.md`
+      **Nachtrag 13.09.2026 (Max' Auftrag „README-Tabelle richtigstellen“):**
+      Die Tabelle in `xperp/README.md` (Abschnitt „Gemessen am 01.09.2026“)
+      trug noch die alten Deckel 10,0×/6,4×/5,8× — ersetzt auf 3,6×/4,1×/1,7×,
+      „alle Tore bestanden“ zurückgenommen, Messfehler als Falle daneben
+      (konsistent zu dieser Notiz). Dazu `bot.hebel_deckel()` auf Tageskerzen
+      gezogen (`auswahl.mae_tage`): die Aufrufe in `pruefpflicht()` (neuer
+      Parameter `stat_id`) und `zeige_lage()` holen jetzt die 1D-Reihe der
+      Statistik-Quelle (bei `--historie` die des SWAP), ebenso der
+      `historie.py`-Vergleich; Test `xperp/test_deckel.py` (3 Tests, Seam
+      `bot.tages_kerzen_quelle`), alle 12 xperp-Tests grün. Frische
+      CHIP-Messung auf Tagesbasis: jung 4,3× / 48 % vs. SWAP 2,2× / 29 %
+      gegen 34 % nötig.
 
 - [?] **T-040 — SOL long, 106 USD: Hebel 5× liegt über dem Deckel**
       Anweisung von Max am 09.09.2026: „SOL long 5x hebel 106 usd und stop
