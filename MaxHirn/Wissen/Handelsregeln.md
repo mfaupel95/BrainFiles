@@ -3,7 +3,7 @@ id: 20260902-handelsregeln
 title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
-updated: 2026-09-03
+updated: 2026-09-13
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
 summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
@@ -402,7 +402,8 @@ Stand 01.09.2026: `handel_erlaubt` ist in beiden `wachen.json` `false`, der
 rechnet sie aus `handelsjournal.csv` und `zustand.json`; `handeln.py` setzt sie
 durch — als zusätzliche Live-Sperren (1, 3, 5), als Notausstieg (2 Kill-Switch,
 3 Herzschlag) und als Größenfaktor (2 Ratsche). Bedingung 4 spiegelt nach
-`journal_zweitziel` (noch `null` → Live bleibt gesperrt). Bedingung 5 läuft
+`journal_zweitziel`; das Ziel ist seit dem 13.09.2026 gesetzt (`Q:\Handel_Journal`)
+und die Kopie läuft nach jedem Zyklus. Bedingung 5 läuft
 wöchentlich getrennt über `Routinen/handel-wachen.ps1` (`handeln.py --wachen`),
 damit ein einzelner schlechter Tag die Spur nicht sofort abschaltet. Der Lauf
 schließt `handel_erlaubt` nur, er öffnet es nie.
@@ -440,3 +441,21 @@ Freigabewerte sind alle noch offen: Der Papierlauf hat am 02.09.2026 begonnen,
 Bedingung 4 (`journal_zweitziel`) ist wie bei Spur 1 `null`, und das freie
 EUR-Guthaben liegt unter der Schwelle. `handeln.py --wachen` zeigt den Stand,
 `--vorschau` nennt jede Sperre, die Live gerade verschließt.
+
+**Nautilus-Spur (Papier, seit 13.09.2026):** `Handel/nautilus` fährt die
+NautilusTrader-Engine gegen OKX **DEMO** als Spur im Dauerlauf. Je Zyklus
+(~15 min) startet sie eine **begrenzte** Node-Session (~30 s), sammelt
+BTC-USDT-SWAP-Quotes vom öffentlichen Websocket und schreibt Herzschlag
+(`zustand.json`) und Journal (`handelsjournal.csv`). Sie sammelt also nur
+Preise — es gibt **keinen Einstiegspfad**: `--live` verweigert mit einem Grund
+ohne das Wort Freigabefenster (der Dauerlauf fragt deshalb keine Freigabe an),
+die OKX-Schlüssel sind read-only und die IP fehlt in der Order-Whitelist.
+Von den fünf Bedingungen laufen **3 (Herzschlag) und 4 (Spiegelung)**:
+Journal und Zustand gehen nach jedem Zyklus nach
+`Q:\Handel_Journal\nautilus`; `zustand.json` trägt `journal_zweitziel_ok` und
+`_info`, `handeln.py --wachen` zeigt beide. Bedingung 1, 2 und 5 haben nichts
+zu greifen, solange keine Runde entsteht — die vier Freigabewerte (50 Runden,
+netto positiv) sind mit diesem Code nicht erreichbar; Papier bleibt bis eine
+Strategie mit Einstiegen steht. Die Rechnung liegt wie bei den anderen Spuren
+nur einmal im Haus (`scanner/wachen_pruefung.spiegele_journal`, in diesem
+eigenen venv über den Dateipfad geladen).
