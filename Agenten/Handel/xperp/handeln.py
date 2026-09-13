@@ -189,7 +189,7 @@ def anlauf(w, kandidat):
     if len(k) < 60:
         return None
 
-    lage = indikatoren.lage(k)
+    lage = indikatoren.lage(k, inst=instr["instId"])
     if lage["signal"] != kandidat["seite"]:
         return None
 

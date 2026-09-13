@@ -19,9 +19,21 @@ SuperTrend+EMA kippen - anders als die uebrigen Bausteine, die lage() bewusst
 nicht verrechnet. Die Stichprobe ist duenn (rund sieben Kerzen je Wochentag auf
 300 x 4h); jede Ausgabe nennt n mit, damit sichtbar bleibt, worauf eine
 Drehung steht.
+
+Dritte Ausnahme seit 13.09.2026: cvd_4h() aus cvd.py (CVD-4h-Divergenz,
+Nachbau des Buildix-Signals) ist ebenfalls HOCH gewichtet und laeuft als
+letzte Komponente - bei Widerspruch gewinnt sie. Sie braucht das gehandelte
+Instrument (inst); ohne inst wird sie uebersprungen, damit aeltere Aufrufer
+unveraendert weiterlaufen.
 """
 
 from datetime import datetime, timezone
+
+import cvd
+
+# Seam fuer Tests: hier eine Funktion setzen, und lage() nimmt deren Ergebnis
+# statt cvd.cvd_4h() (das echt ueber OKX geht). None = echter Abruf.
+cvd_quelle = None
 
 WOCHENTAGE = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 
@@ -314,7 +326,27 @@ def volumen_drift(k, n=20, min_score=0.15, min_verhaeltnis=1.15):
     }
 
 
-def lage(k, st_n=10, st_faktor=3.0):
+def _cvd_lage(inst, fertig=None):
+    """Die CVD-4h-Lage zu diesem Instrument.
+
+    fertig ist der Testweg (ein fertiges Ergebnis wird durchgereicht), inst der
+    Produktivweg. Ohne beides wird die Komponente uebersprungen - sie steht
+    dann als "kein Instrument im Aufruf" in der Ausgabe, nicht als Richtung.
+    """
+    if fertig is not None:
+        return fertig
+    if inst is None:
+        return cvd.leer("kein Instrument im Aufruf")
+    quelle = cvd_quelle or cvd.cvd_4h
+    try:
+        return quelle(inst)
+    except Exception as e:                                    # noqa: BLE001
+        # Ein Ausfall der Quelle darf das Signal nicht umbringen - die
+        # Komponente faellt aus, der Rest von lage() bleibt gueltig.
+        return cvd.leer("CVD-Lage nicht lesbar: %s" % e)
+
+
+def lage(k, st_n=10, st_faktor=3.0, inst=None, cvd_lage=None):
     """Alle Signalgroessen der letzten Kerze in einem Wortschatz.
 
     SuperTrend sagt die Richtung, EMA bestaetigt sie, RSI warnt vor dem
@@ -330,6 +362,12 @@ def lage(k, st_n=10, st_faktor=3.0):
     volumen_drift(), einfach weil sie als letzte laeuft. Das ist bewusst so
     einfach gehalten statt mit einer Prioritaets-Fallunterscheidung: die
     Pruefreihenfolge IST die Rangfolge.
+
+    Dritte Ausnahme seit 13.09.2026: die CVD-4h-Divergenz (cvd.cvd_4h(),
+    Buildix-Prinzip) laeuft als letzte der drei und hat damit den letzten
+    Widerspruch. Sie braucht den gehandelten Kontrakt: inst ist der volle
+    instId, cvd_lage ein fertiges Ergebnis (Testweg). Fehlt beides, faellt nur
+    diese Komponente aus.
     """
     c = [r[4] for r in k]
     a = atr(k, 14)
@@ -339,6 +377,7 @@ def lage(k, st_n=10, st_faktor=3.0):
     er = effizienz(c, 42)
     sais = saisonalitaet(k)
     vol_drift = volumen_drift(k)
+    cv = _cvd_lage(inst, cvd_lage)
 
     kurs = c[-1]
     st_richtung = richtung[-1]
@@ -396,6 +435,24 @@ def lage(k, st_n=10, st_faktor=3.0):
         else:
             signal, grund = vrichtung, "%s ueberstimmt (%s)" % (vmarke, grund)
 
+    # CVD-4h-Divergenz, auf Anweisung vom 13.09.2026 HOCH gewichtet und als
+    # letzte Komponente geprueft - bei Widerspruch gewinnt sie. Buildix fuehrt
+    # genau diese Groesse als Signal-Label (STRONG BUY = Akkumulation am Tief,
+    # STRONG SELL = Verteilung am Hoch). Der Grund nennt Richtung, Preis- und
+    # CVD-Bewegung und die Zahl der Eimer, damit die Drehung nachpruefbar ist.
+    cr = cv["richtung"]
+    if cr != 0:
+        crichtung = "long" if cr == 1 else "short"
+        cmarke = cvd.marke(cv)
+        if cv["stark"]:
+            cmarke = "STARK " + cmarke
+        if signal == crichtung:
+            grund = "%s + %s bestaetigt" % (grund, cmarke)
+        elif signal == "kein":
+            signal, grund = crichtung, "%s - bisher neutral" % cmarke
+        else:
+            signal, grund = crichtung, "%s ueberstimmt (%s)" % (cmarke, grund)
+
     # RSI blockt nur das Nachlaufen, er dreht kein Signal um.
     if signal == "long" and rsi_jetzt is not None and rsi_jetzt > 78:
         signal, grund = "kein", "Long-Signal, aber RSI %.0f - ueberkauft" % rsi_jetzt
@@ -414,6 +471,7 @@ def lage(k, st_n=10, st_faktor=3.0):
         "er": er,
         "sais": sais,
         "vol_drift": vol_drift,
+        "cvd": cv,
         "signal": signal,
         "grund": grund,
     }

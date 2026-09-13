@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-09-08
+updated: 2026-09-13
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -95,6 +95,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260901-saisonalitaet-signal` — **Saisonalität im XPERP-Signal** — `Wissen/Saisonalitaet-Signal.md` — Warum der Closed-Source-Indikator „xGhozt Prophecies" als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem laut seine dünne Stichprobe nennt.
 - `20260908-volumen-drift-signal` — **Volumen-Drift-Momentum im XPERP-Signal** — `Wissen/Volumen-Drift-Signal.md` — Eigener Nachbau des Prinzips von Swift Algo X (TradingView, Invite-Only) — volumengewichtete Preisdrift mit Mehrfach-Zeitebenen-Bestätigung, hoch gewichtet ins Signal, mit Vorrang vor der Saisonalität.
 - `20260913-buildix-santiment` — **Orderflow- und Verhaltensdaten: Buildix & Santiment** — `Wissen/Buildix-Santiment-Handelswissen.md` — Zwei neue externe Handelswissen-Quellen: Buildix (Hyperliquid-Orderflow, CVD/VPIN/OBI/OFI-Logik, Learn-Academy) und Santiment (1100+ On-Chain-/Social-/Dev-Metriken, MVRV/DAA/Age-Consumed-Methodik); Ernte mit Scrapling am 13.09.2026.
+- `20260913-cvd-divergenz-signal` — **CVD-4h-Divergenz im XPERP/SWAP-Signal** — `Wissen/CVD-4h-Divergenz-Signal.md` — Dritter hoch gewichteter Baustein im Signal: CVD (kumulierte Differenz aggressiver Käufe und Verkäufe) aus dem OKX-Taker-Volumen je Kontrakt in 4h-Eimern, als Divergenz gegen den Preis (Buildix-Prinzip) — mit Herkunft der Zahlen, Rangfolge der drei hoch gewichteten Bausteine, Schwellen-Kalibrierung an 1287 Fenstern und der Host-Falle unter `/rubik/`.
 
 ### Handel — Sonderregeln
 

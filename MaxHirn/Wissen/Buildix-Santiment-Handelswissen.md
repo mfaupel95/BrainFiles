@@ -7,6 +7,7 @@ updated: 2026-09-13
 related:
   - id: 20260902-analyse-quellen
   - id: 20260908-volumen-drift-signal
+  - id: 20260913-cvd-divergenz-signal
   - id: 20260905-btc-analyse-sta
   - id: 20260901-saisonalitaet-signal
   - id: 20260907-marktlage-september-2026
@@ -138,16 +139,29 @@ TRX STRONG BUY. Funding fast überall leicht positiv (+0,001 %-Bereich) = leicht
 
 ## Umsetzbarkeit im eigenen Stack
 
-- **CVD, Funding, OI, Liquidations:** aus OKX-Marktdaten (Trades, Ticker,
-  Funding, Liquidation-Channel) nachbaubar — passt in den Rahmen der XPERP-/
-  SWAP-Spuren; das Volumen-Drift-Signal ist bereits ein verwandter Nachbau
-  ([[Volumen-Drift-Signal]]).
+- **CVD — gebaut am 13.09.2026.** Als 4h-Divergenz-Komponente im XPERP-/SWAP-
+  Signal, aus dem OKX-Taker-Volumen je Kontrakt. Herkunft der Zahlen, Rangfolge
+  und Schwellen-Kalibrierung: [[CVD-4h-Divergenz-Signal]].
+- **Funding, OI, Liquidations:** aus OKX-Marktdaten (Ticker, Funding,
+  Liquidation-Channel) nachbaubar, noch nicht gebaut; das Volumen-Drift-Signal
+  ist ein verwandter Nachbau ([[Volumen-Drift-Signal]]).
 - **VPIN:** aus dem Trade-Tape (fixe Volumen-Buckets) nachbaubar.
 - **OBI/OFI:** brauchen Orderbuch-Snapshots (OKX-Websocket) inkl. Speicherung.
 - **Hyperliquid-On-Chain** (Whale-Wallets, echte Liquidations-Level): nur über
   HL-API oder Buildix-Paywall.
-- **Santiment-Metriken** (MVRV, DAA, Age Consumed, Supply on Exchanges): via
-  SanAPI, kostenpflichtig; MCP-Connector + Agent-Skills prüfen, ob eine
-  Hermes-Anbindung ohne manuellen API-Bau möglich ist.
+- **Santiment-Metriken — geprüft am 13.09.2026, ohne eigene API-Integration
+  nutzbar.** Der offizielle MCP-Connector (`https://api.santiment.net/mcp`,
+  Streamable HTTP, Server-Kennung `sanbase-metrics` 1.0.0) spricht OAuth 2.0
+  mit PKCE; in der Werkzeugliste stehen `mvrv_usd` und
+  `daily_active_addresses` (dazu `exchange_inflow_usd`/`outflow`, Supply,
+  Network Growth, Social). Nachgemessen: `initialize` und `tools/list`
+  antworten **ohne** Anmeldung, der erste `tools/call` kommt als **HTTP 401**
+  mit `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"` —
+  die Werkzeugliste ist offen, die Daten brauchen die Anmeldung. Hermes kann
+  OAuth-MCP: `hermes mcp add santiment --url https://api.santiment.net/mcp
+  --auth oauth`, danach `hermes mcp login santiment`. Der Anmeldeschritt läuft
+  im Browser gegen ein (kostenloses) Santiment-Konto — das ist Max' Teil, nicht
+  automatisierbar; bezahlte Stufen schalten die volle On-Chain-Tiefe frei.
+  Kein eigener SanAPI-Bau, kein Schlüssel im Klartext.
 
 Verwandt: [[Analyse-Quellen]], [[Volumen-Drift-Signal]], [[Marktlage-September-2026]], [[XRP-Analyse-STA-September-2026]], [[BTC-Analyse-STA-September-2026]]

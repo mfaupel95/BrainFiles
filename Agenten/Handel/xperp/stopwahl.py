@@ -89,7 +89,7 @@ def main():
     funding = f * 6 * (1 if a.richtung == "long" else -1)
     kosten = 2 * w["gebuehr_taker"] + funding
 
-    ind = indikatoren.lage(k_selbst)
+    ind = indikatoren.lage(k_selbst, inst=instr["instId"])
     dl, ds = bot.hebel_deckel(k, wartung=w["wartungsmarge"])
     deckel = dl if a.richtung == "long" else ds
 

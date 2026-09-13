@@ -98,7 +98,8 @@ nicht.
 |---|---|
 | `wachen.json` | **Eine Wahrheit für alle Grenzen.** Wird nur gelesen. |
 | `okxf.py` | OKX-Zugang für Futures. Öffentliche Kerzen ohne Schlüssel; signierte Orders nur, wenn ein Mensch sie aufruft. |
-| `indikatoren.py` | ATR, EMA, RSI, SuperTrend, Efficiency Ratio, Saisonalität. Reine Rechnung, kein Netz. |
+| `indikatoren.py` | ATR, EMA, RSI, SuperTrend, Efficiency Ratio, Saisonalität, Volumen-Drift. Reine Rechnung, kein Netz. |
+| `cvd.py` | CVD-4h-Divergenz je Kontrakt: Taker-Volumen von OKX in 4h-Eimern, Divergenz gegen den Preis. Ein Abruf, kein Orderpfad. |
 | `auswahl.py` | Rangliste aller Krypto-XPERP für Long, Short und Grid. |
 | `bot.py` | Lage, Trend-Anlauf, Grid. Legt Befehle vor. |
 | `historie.py` | Tiefe Kerzenreihe für zu junge Kontrakte — zieht den `<Basis>-USDT-SWAP`, damit Hebel-Deckel und Trefferquote auf Monaten statt Tagen stehen. |
@@ -196,6 +197,39 @@ Rückblick auf einem dünnen Fenster, kein Backtest — genau das Muster, vor de
 druckt `n` bei jeder Zeile mit, und wenn die Saisonalität das Signal dreht,
 nennt der Grund-Text die Stichprobe. Das ist bewusst laut: der Faktor weicht
 von der sonstigen Regel ab, dass `lage()` die Bausteine **nicht** verrechnet.
+
+## CVD-4h-Divergenz im Signal — hoch gewichtet, auf Anweisung
+
+Am 13.09.2026 als **dritte** hoch gewichtete Komponente gebaut. Anlass:
+buildix.trade führt die **CVD-4h-Divergenz** als Signal-Label (STRONG BUY
+„Akkumulation am Tief" / STRONG SELL „Verteilung am Hoch"). Nachgebaut in
+`cvd.py` aus dem OKX-Taker-Volumen je Kontrakt (`okxf.taker_volumen`, 4h-Eimer,
+100 Eimer Tiefe).
+
+| Lage | Folge im SIGNAL |
+|---|---|
+| CVD-Richtung = aktuelles Signal | Signal bleibt, Grund „+ CVD-4h-Divergenz … bestätigt" |
+| Aktuelles Signal neutral | CVD **setzt** die Richtung |
+| CVD widerspricht | CVD **überstimmt** — sie läuft als letzte Komponente |
+
+Zwölf 4h-Eimer (48 h) werden halbiert. Bärisch: jüngere Hälfte teurer, CVD-
+Steigung negativ, Kurs im oberen Fensterbereich. Bullisch: gespiegelt. Zwei
+Tore: die Preisbewegung muss ≥ 15 % der Fensterspanne ausmachen, die
+CVD-Steigung ≥ 10 % der mittleren Eimer-Bewegung (`MIN_CVD_ANTEIL`, an 1287
+Fenstern kalibriert — danach werden 8,9 % davon zum Signal). Danach bleibt die
+RSI-Wache scharf.
+
+**Warum nicht das rohe Tape:** `/market/history-trades` liefert 100 Trades je
+Anfrage, das sind bei BTC-USDT-SWAP 28 Sekunden (13.09.2026 gemessen); 4 h
+wären rund 4000 Anfragen je Wert. Der Taker-Volumen-Endpunkt ist derselbe
+Inhalt, von der Börse aggregiert — und er liegt **nur auf `www.okx.com`**: auf
+`my.okx.com` (dem Wert von `OKX_BASE` hier) und auf `eea.okx.com` kommt eine
+leere Liste ohne Fehler. Dafür gibt es `okxf.rubik_basis()` mit dem Override
+`OKX_BASE_RUBIK`.
+
+`bot.py lage` zeigt die Zeile `CVD-4h …`; dreht sie das Signal, nennt der
+Grund-Text Richtung, Preisbewegung, CVD-Anteil und Eimerzahl. Rangfolge aller
+Bausteine, Herkunft der Zahlen und die Messungen: [[CVD-4h-Divergenz-Signal]].
 
 ## Warum drei Ranglisten und nicht eine
 

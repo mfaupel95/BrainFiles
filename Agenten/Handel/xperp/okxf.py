@@ -55,6 +55,15 @@ BASIS = "https://www.okx.com"
 # globalen Infrastruktur www.okx.com gueltig - dort '50119 API key doesn't
 # exist' bzw. '50111 Invalid OK-ACCESS-KEY'. Deutsche Konten liegen meist im
 # EEA-Bereich. OKX_BASE ueberschreibt den Host, z.B. https://eea.okx.com.
+#
+# RUBIK_BASIS ist davon getrennt: die Statistik-Endpunkte unter /rubik/ mit
+# instId liefern nur auf dem globalen Host Daten. my.okx.com und eea.okx.com
+# antworten dort mit code 0 und LEERER Liste - kein Fehler, nur nichts
+# (13.09.2026 geprueft, /rubik/stat/taker-volume-contract). Ein stiller
+# Leerlauf ist schlimmer als ein Fehler, darum hat dieser oeffentliche,
+# nicht kontogebundene Abruf seinen eigenen Host. OKX_BASE_RUBIK ueberschreibt
+# ihn, ohne den Handelspfad anzufassen.
+RUBIK_BASIS = "https://www.okx.com"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
 MAX_FEHLER = 6
 
@@ -109,8 +118,8 @@ def demo_modus():
     return v in ("1", "true", "yes", "ja", "y")
 
 
-def _roh(pfad, methode="GET", body=None, signiert=False):
-    url = (_variable("OKX_BASE") or BASIS).rstrip("/") + pfad
+def _roh(pfad, methode="GET", body=None, signiert=False, basis=None):
+    url = (basis or _variable("OKX_BASE") or BASIS).rstrip("/") + pfad
     daten = json.dumps(body) if body else ""
     kopf = dict(HEADERS)
     if demo_modus():
@@ -281,6 +290,49 @@ def funding(inst):
         return float(d[0].get("fundingRate") or 0.0)
     except (OKXFehler, IndexError, ValueError):
         return None
+
+
+def rubik_basis():
+    """Der Host fuer die Rubik-Statistikabrufe - siehe RUBIK_BASIS oben.
+
+    Eigene Funktion, damit Aufrufer den Grund einer leeren Antwort nennen
+    koennen (cvd.py tut das): 'leer' ohne Hostangabe laesst sich nicht deuten.
+    """
+    return (_variable("OKX_BASE_RUBIK") or RUBIK_BASIS).rstrip("/")
+
+
+def taker_volumen(inst, period="4H"):
+    """Aggressives Verkaufs- und Kaufvolumen je Zeit-Eimer, aufsteigend.
+
+    Rueckgabe: [[ts, Verkaufsvolumen, Kaufvolumen], ...] - genau die Groesse,
+    aus der eine CVD-Rechnung entsteht (kumulierte Differenz). period ist 5m,
+    15m, 30m, 1H, 4H oder 1D; OKX liefert 100 Eimer je Anfrage, bei 4H also
+    rund 16 Tage Tiefe. Einheit ist das Kontraktvolumen, so wie es auch in den
+    Kerzen steht (die Summe beider Seiten eines Eimers deckt sich mit dem
+    Volumen der entsprechenden Kerze - am 13.09.2026 nachgerechnet).
+
+    Warum nicht das rohe Tape: /api/v5/market/history-trades liefert 100
+    Trades je Anfrage, und 100 Trades sind bei BTC-USDT-SWAP 28 Sekunden
+    (13.09.2026 gemessen, bei CHIP und WLFI dasselbe). Vier Stunden waeren
+    rund 4000 Anfragen fuer einen einzigen Wert. Dieser Endpunkt ist derselbe
+    Inhalt, von der Boerse bereits aggregiert.
+
+    Zwei Fallen, beide echt erlebt:
+      - Der Host: der Abruf geht ueber rubik_basis(), NICHT ueber OKX_BASE.
+        Auf my.okx.com und eea.okx.com kommt code 0 mit leerer Liste zurueck.
+      - Rubik drosselt strenger als der Marktdatenpfad. Ein 429 kommt als
+        OKXFehler('50011 Too Many Requests'), und OKXFehler wird NICHT
+        wiederholt. Aufrufer im Signalpfad fangen ihn und fallen auf "kein
+        Signal" zurueck (Vorbild xperp/cvd.py).
+    """
+    d = _mit_wiederholung(
+        "/api/v5/rubik/stat/taker-volume-contract?" +
+        urllib.parse.urlencode({"instId": inst, "period": period}),
+        basis=rubik_basis())
+    reihen = [[int(r[0]), float(r[1]), float(r[2])] for r in d
+              if len(r) >= 3]
+    reihen.sort(key=lambda r: r[0])
+    return reihen
 
 
 # --- Kontraktgroessen -------------------------------------------------------

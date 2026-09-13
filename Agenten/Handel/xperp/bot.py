@@ -397,7 +397,7 @@ def hole(wert):
 
 def zeige_lage(w, wert, historie_quelle=None):
     instr, k = hole(wert)
-    z = indikatoren.lage(k)
+    z = indikatoren.lage(k, inst=instr["instId"])
 
     # Das Signal steht auf k (dem gehandelten Kontrakt). Die Statistik -
     # Hebel-Deckel und, in pruefpflicht(), die Trefferquote - darf aus einer
@@ -458,6 +458,21 @@ def zeige_lage(w, wert, historie_quelle=None):
                 vd["score_2x"], vd["score_4x"], " - STARK" if vd["stark"] else ""))
             print("                 HOCH gewichtet - kann das SIGNAL setzen/kippen,")
             print("                 hat bei Widerspruch Vorrang vor Saisonalitaet (Anweisung 08.09.2026)")
+
+    cv = z["cvd"]
+    if cv["n"] == 0:
+        print("  CVD-4h         keine Aussage: %s" % cv["grund"])
+    else:
+        pfeil = {1: "-> LONG", -1: "-> SHORT", 0: "neutral"}[cv["richtung"]]
+        print("  CVD-4h         %d Eimer: Preis %+.2f%%, CVD %+.0f%% der Bewegung  %s" % (
+            cv["eimer"], (cv["preis_pct"] or 0.0) * 100,
+            (cv["cvd_anteil"] or 0.0) * 100, pfeil))
+        if cv["richtung"] != 0:
+            print("                 Divergenz am %s%s" % (
+                "Hoch (Verteilung)" if cv["richtung"] == -1
+                else "Tief (Akkumulation)", " - STARK" if cv["stark"] else ""))
+            print("                 HOCH gewichtet - laeuft als letzte Komponente und")
+            print("                 hat bei Widerspruch Vorrang (Anweisung 13.09.2026)")
     print()
     print("  SIGNAL: %s   (%s)" % (z["signal"].upper(), z["grund"]))
     print()
