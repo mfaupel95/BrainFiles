@@ -361,7 +361,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Smoke-Test wiederholen.
       Betrifft: `MaxHirn/.codex/config.toml`, `~/.codex/config.toml`, OmniRoute
       Wartet auf: Credentials für Provider `codex` in OmniRoute
-      Angelegt: 2026-09-07 · Zuletzt: 2026-09-07
+      **Key-Verweis (13.09.2026):** Der Admin-Schlüssel für die OmniRoute-Config steckt
+      nicht im Router-Prozess. Lesbar sind die Benutzervariablen
+      `OMNIROUTE_ADMIN_API_KEY` (Admin-/Config-API `/api/*`) und `OMNIROUTE_API_KEY`
+      (Modell-API `/v1/*`) direkt aus `HKCU\Environment` - der Prozess erbt frisch
+      gesetzte Variablen nicht, also aus der Registry lesen statt env. Der Klartext
+      selbst liegt nur in [[Zugaenge]] (Stufe 0): dorthin sehen, nie in Notizen
+      kopieren.
+      Angelegt: 2026-09-07 · Zuletzt: 2026-09-13 (Key-Verweis ergänzt)
 
 - [ ] **T-018 — Saisonalität rechnet nur auf 50 Tagen, nicht auf der tiefen Reihe**
       Kontext: `indikatoren.saisonalitaet()` (neu am 01.09.2026, hoch gewichtet
