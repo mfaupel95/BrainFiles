@@ -155,9 +155,10 @@ Noch offen:
 - **Claude Desktop** hat den Server nicht (Manifest `agent: hermes`) — eine Zeile
   Arbeit, sinnvoll erst mit einem eigenen Standard-Atlas für Claudes Arbeitsweise.
   **Claude Code** bekommt ihn projektweise über `.projectatlas/projectatlas.claude.mcp.json`.
-- **Zwecke** (`purpose`) sind noch nicht kuratiert: ProjectAtlas führt die
-  Ordnerzwecke als Vorschlagsliste (`projectatlas purpose queue`), erst gepflegte
-  Zwecke machen die Rangliste scharf.
+- **Zwecke** sind für die beiden Arbeits-Repos kuratiert (13.09.2026): `omnitrade`
+  (21 Ordner, `purpose_source: agent`, schlagwortscharf), `openterminal`
+  (13 Ordner). Weitere Repos nach Bedarf mit `projectatlas purpose queue` /
+  `purpose set <pfad> <einzeiler>`.
 - **Weitere Bots** hängen mit einem Aufruf an ihrem Repo:
   `bash Agenten/Werkzeuge/projectatlas/bot-verdrahten.sh <bot>` (setzt den Eintrag
   ins Profil, indexiert bei Bedarf vorher, prüft die Verbindung).
