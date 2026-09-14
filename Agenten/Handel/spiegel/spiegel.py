@@ -534,7 +534,13 @@ def _kopie(sig, w, z):
         "einsatz_usd": einsatz, "menge": menge, "preis_vorbild": sig["preis"],
         "preis_einstieg": kauf, "marktkap_usd": mk, "risiko": r["stufe"],
         "stop_preis": kauf * (1 - w["stop_pct"] / 100.0),
-        "ziel_preis": kauf * (1 + w["ziel_pct"] / 100.0),
+        # Seit 15.09.2026 kein festes Ziel mehr: Trailing-Stop, damit
+        # theoretische 10x/100x laufen koennen. Die beiden Saetze sind ein
+        # Schnappschuss beim Buchen; trail_aktiv_ab_pct misst gegen den
+        # Einstieg (was WIR gezahlt haben, nicht der Vorbildkurs).
+        "trail_aktiv_ab_pct": w["trail_aktiv_ab_pct"],
+        "trail_abstand_pct": w["trail_abstand_pct"],
+        "hoechster_kurs": kauf,
         "frist": _plus_stunden(w["haltedauer_stunden"]),
         "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
     }, None
@@ -574,10 +580,11 @@ def eroeffne(z, sig, w):
           "%.0f USD, %s"
           % (p["symbol"], p["token"], p["preis_einstieg"], p["preis_vorbild"],
              w["slippage_pct"], p["einsatz_usd"], p["risiko"]))
-    print("      %-10s %-28s  Stop %.10g (%.0f%%)  Ziel %.10g (%.0f%%)  "
-          "Frist %s lokal"
+    print("      %-10s %-28s  Stop %.10g (max -%.0f%% nach Kosten)  "
+          "Trail ab +%.0f%% (Abstand %.0f%%)  Frist %s lokal"
           % (p["symbol"], p["token"], p["stop_preis"], w["stop_pct"],
-             p["ziel_preis"], w["ziel_pct"], _lokal(p["frist"])))
+             w["trail_aktiv_ab_pct"], w["trail_abstand_pct"],
+             _lokal(p["frist"])))
     journal(zeit=_jetzt(), modus="papier", aktion="eroeffnen", kette=p["kette"],
             wallet=p["wallet"], token=p["token"], symbol=p["symbol"],
             preis="%.10g" % p["preis_einstieg"], menge="%.6f" % p["menge"],
@@ -588,8 +595,40 @@ def eroeffne(z, sig, w):
     return None
 
 
+def _ausstiegsgrund(p, kurs, jetzt, w):
+    """Der Ausstiegsgrund einer Kopie - EINE Stelle fuer alt und neu.
+
+    Reihenfolge: zuerst der harte Stop (der Schaden ist begrenzt, der Gewinn
+    nicht), dann Ziel oder Trailing, dann die Frist.
+
+    Neue Kopien (ab 15.09.2026) tragen die Trailing-Felder: sobald der Kurs
+    trail_aktiv_ab_pct ueber dem Einstieg lag, haengt der Ausstieg
+    trail_abstand_pct unter dem hoechsten seither beobachteten Kurs - kein
+    festes Ziel, ein 10x/100x laeuft weiter. Der hoechste Kurs wird hier
+    fortgeschrieben; der geschlossene Altbestand (ohne die Felder) laeuft
+    unter stop/ziel/frist aus und bleibt so mit dem Vorher vergleichbar.
+    Ein gerissener Stop schliesst zum BEOBACHTETEN Kurs (erster Print unter
+    dem Stop), nicht zum Stop-Preis - sofort, wie eine Stop-Market-Order.
+    """
+    if kurs <= p["stop_preis"]:
+        return "stop"
+    if p.get("trail_abstand_pct"):
+        p["hoechster_kurs"] = max(p.get("hoechster_kurs") or kurs, kurs)
+        peak = p["hoechster_kurs"] / p["preis_einstieg"] - 1
+        if peak >= p["trail_aktiv_ab_pct"] / 100.0:
+            trail_stop = p["hoechster_kurs"] * (
+                1 - p["trail_abstand_pct"] / 100.0)
+            if kurs <= trail_stop:
+                return "trail"
+    elif kurs >= p.get("ziel_preis", float("inf")):
+        return "ziel"
+    if jetzt >= (_bis_zeit(p["frist"]) or jetzt):
+        return "frist"
+    return None
+
+
 def pruefe_ausstiege(z, w):
-    """Stop, Ziel, Frist - und der Kill-Switch ueber das ganze Buch."""
+    """Stop, Trailing, Frist - und der Kill-Switch ueber das ganze Buch."""
     offen = z["positionen"]
     if not offen:
         return
@@ -609,12 +648,7 @@ def pruefe_ausstiege(z, w):
                                                              p["token"]))
             behalten.append(p)
             continue
-        if kurs <= p["stop_preis"]:
-            grund = "stop"
-        elif kurs >= p["ziel_preis"]:
-            grund = "ziel"
-        elif jetzt >= (_bis_zeit(p["frist"]) or jetzt):
-            grund = "frist"
+        grund = _ausstiegsgrund(p, kurs, jetzt, w)
         if not grund:
             behalten.append(p)
             continue
@@ -814,10 +848,11 @@ def zeige_wachen(w):
     for name in ("ketten", "max_einsatz_je_kopie_usd", "max_offen",
                  "max_neu_je_zyklus", "max_kopien_je_token",
                  "kill_switch_gesamt_usd", "slippage_pct", "gebuehr_pct",
-                 "stop_pct", "ziel_pct", "haltedauer_stunden",
-                 "max_alter_signal_sekunden", "marketcap_band_usd",
-                 "max_risiko_stufen", "herzschlag_max_minuten",
-                 "max_offen_papier", "kill_switch_gesamt_usd_papier"):
+                 "stop_pct", "trail_aktiv_ab_pct", "trail_abstand_pct",
+                 "haltedauer_stunden", "max_alter_signal_sekunden",
+                 "marketcap_band_usd", "max_risiko_stufen",
+                 "herzschlag_max_minuten", "max_offen_papier",
+                 "kill_switch_gesamt_usd_papier"):
         print("  %-30s %s" % (name, w.get(name)))
     print("  %-30s %s" % ("handel_erlaubt", w.get("handel_erlaubt")))
     print("  %-30s %s" % ("Umfang gilt jetzt",

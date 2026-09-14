@@ -82,7 +82,7 @@ bezahlen und die in jeder Anleitung fehlt.
 | offen / je Token | 20 / 2 · Papier: 60 / 2 | ein einzelner Token darf das Buch nicht prägen; der Papier-Umfang sammelt schneller Daten — was sich ändert und was nicht, steht unten |
 | Kill-Switch | 100 USD · Papier: 300 USD | Rücklauf, dann alles flach; im Papier derselbe Anteil wie im Muster (10 % des Nominalwerts) |
 | Slippage / Gebühr | 3 % / 1 % | Annahme für dünne Bücher plus Vorlauf |
-| Stop / Ziel / Frist | −25 % / +60 % / 24 h | eigene Mathematik, kein Auto-Exit nach Vorbild |
+| Stop / Trail / Frist | −17 % (realisiert max −20 % inkl. Kosten) / Trail ab +30 %, Abstand 25 % / 168 h Sicherheitsnetz | seit 15.09.2026 kein festes Ziel mehr — die Form steht unten |
 | Signalalter | 300 s | Hinterherlaufen ist kein Nachahmen |
 | Marktkapitalisierung | 50.000 – 1 Mio USD | keine Kleinstbetrugs-Bücher, keine ausgewachsenen Werte (Obergrenze am 14.09.2026 von 20 Mio auf 1 Mio gezogen, Begründung in `wachen.json`) |
 | Risikostufen | safe, LOW | Honeypot und Mint-Rechte fliegen raus |
@@ -163,6 +163,28 @@ Der zweite Befund: **Die Kosten fressen fast die Hälfte des Bruttogewinns**
 Beides ist nötig; die Mechanik teilen sie über `Handel/buchauswertung.py`, damit
 es keine zweite Formel für dieselbe Frage gibt. Die Bilanz steht auch als Zeile
 im Tagesbericht (`Auswertung: …`) — sie kommt aus derselben Quelle.
+
+## Ausstiegsform (15.09.2026, Max)
+
+Kein festes Ziel mehr — ein +60-%-Deckel hätte theoretische 10x/100x
+abgeschnitten. Stattdessen:
+
+- **Harter Stop** bei −17 % vom Einstandspreis: so bemessen, dass der
+  **realisierte** Verlust am Stop inklusive Slippage und Gebühr maximal
+  **−20 %** des Einsatzes beträgt ((1−0,17)·0,97·0,99 = 0,80). Ein gerissener
+  Stop schließt **sofort zum beobachteten Kurs** — wie eine Stop-Market-Order,
+  kein Stop-Limit.
+- **Trailing-Stop**: Sobald eine Kopie +30 % über ihrem Einstieg lag, hängt
+  der Ausstieg 25 % unter dem höchsten seither beobachteten Kurs
+  (`hoechster_kurs` je Kopie im Zustand). Gewinne laufen, bis der Markt 25 %
+  vom Peak zurückkommt.
+- **Frist** nur noch als Sicherheitsnetz gegen tote Positionen (7 Tage).
+
+Die Parameter sind je Kopie als Schnappschuss gebucht (Trailing-Felder +
+`hoechster_kurs`); **Altbestand** (vor dem 15.09.2026 gebucht) trägt die
+Felder nicht und läuft unter seinen gebuchten stop/ziel/frist aus — das Buch
+bleibt gegenüber dem Vorher vergleichbar. OKX-Vorbereitung: Stop-Market bzw.
+OKX-Trailing-Stop (Trigger `trail_aktiv_ab_pct`, Callback `trail_abstand_pct`).
 
 ## Ablehnungsprotokoll (seit 14.09.2026)
 

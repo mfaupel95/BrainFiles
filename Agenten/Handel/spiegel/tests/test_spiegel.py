@@ -38,6 +38,20 @@ def kopie(**over):
     p = {"kette": "solana", "wallet": "W1", "token": "T1", "symbol": "AAA",
          "einsatz_usd": 50.0, "menge": 48.54368932038835,
          "preis_vorbild": 1.0, "preis_einstieg": 1.03, "marktkap_usd": 500000.0,
+         "risiko": "safe", "stop_preis": 1.03 * 0.83,
+         "trail_aktiv_ab_pct": 30.0, "trail_abstand_pct": 25.0,
+         "hoechster_kurs": 1.03,
+         "frist": "2999-01-01T00:00:00+00:00", "eroeffnet": "2026-09-12",
+         "eroeffnet_zeit": "2026-09-12T20:00:00+00:00"}
+    p.update(over)
+    return p
+
+
+def kopie_alt(**over):
+    """Altbestand (vor dem 15.09.2026): noch ohne Trailing-Felder."""
+    p = {"kette": "solana", "wallet": "W1", "token": "T1", "symbol": "AAA",
+         "einsatz_usd": 50.0, "menge": 48.54368932038835,
+         "preis_vorbild": 1.0, "preis_einstieg": 1.03, "marktkap_usd": 500000.0,
          "risiko": "safe", "stop_preis": 0.7725, "ziel_preis": 1.648,
          "frist": "2999-01-01T00:00:00+00:00", "eroeffnet": "2026-09-12",
          "eroeffnet_zeit": "2026-09-12T20:00:00+00:00"}
@@ -162,14 +176,18 @@ class Tore(Grundlage):
         self.assertIsNone(p)
         self.assertIn("schon 2 Kopien", grund)
 
-    def test_eine_kopie_setzt_stop_ziel_frist_und_menge(self):
+    def test_eine_kopie_setzt_stop_trailing_frist_und_menge(self):
         with patch.object(sp.lesen, "risiko",
                           return_value={"stufe": "safe", "merkmale": []}):
             p, grund = sp._kopie(SIGNAL, WACHEN, {"positionen": []})
         self.assertIsNone(grund)
         self.assertAlmostEqual(p["preis_einstieg"], 1.03)
-        self.assertAlmostEqual(p["stop_preis"], 1.03 * 0.75)
-        self.assertAlmostEqual(p["ziel_preis"], 1.03 * 1.60)
+        # stop_pct 17: am Stop realisiert das Buch inklusive Kosten -20 %.
+        self.assertAlmostEqual(p["stop_preis"], 1.03 * 0.83)
+        self.assertEqual(p["trail_aktiv_ab_pct"], 30.0)
+        self.assertEqual(p["trail_abstand_pct"], 25.0)
+        self.assertEqual(p["hoechster_kurs"], p["preis_einstieg"])
+        self.assertNotIn("ziel_preis", p)
         self.assertAlmostEqual(p["menge"], (50.0 - 0.5) / 1.03)
         self.assertEqual(p["risiko"], "safe")
         self.assertTrue(p["frist"].startswith("2"))
@@ -219,16 +237,44 @@ class Buch(Grundlage):
         self.assertEqual(sp._lokal(""), "")
         self.assertEqual(sp._lokal("keine-zeit"), "keine-zeit")
 
-    def test_stop_ziel_und_frist_schliessen_die_kopie(self):
-        faelle = ((0.70, "stop"), (2.0, "ziel"))
-        for kurs, grund in faelle:
-            with self.subTest(kurs=kurs):
-                z = {"positionen": [kopie()]}
-                with patch.object(sp.lesen, "preise",
-                                  return_value={("solana", "T1"): kurs}):
-                    sp.pruefe_ausstiege(z, WACHEN)
-                self.assertEqual(z["positionen"], [])
-                self.assertEqual(self.journal()[-1]["grund"], grund)
+    def test_stop_trailing_frist_schliessen_die_kopie(self):
+        # Kein fester Deckel: +100 % laeuft weiter (kein Ziel-Exit).
+        # Zuerst geprueft, solange das Journal noch leer ist.
+        z = {"positionen": [kopie(hoechster_kurs=2.06)]}
+        with patch.object(sp.lesen, "preise",
+                          return_value={("solana", "T1"): 2.06}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.journal(), [])
+        # Harter Stop: erster Print unter stop_preis schliesst sofort.
+        z = {"positionen": [kopie()]}
+        with patch.object(sp.lesen, "preise",
+                          return_value={("solana", "T1"): 0.70}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.journal()[-1]["grund"], "stop")
+        # Trailing: war +30 % ueber dem Einstieg (Peak 1.4), faellt unter
+        # Peak*(1-25 %) = 1.05 -> Ausstieg, auch bei +25 % ueber Einstieg.
+        z = {"positionen": [kopie(hoechster_kurs=1.4)]}
+        with patch.object(sp.lesen, "preise",
+                          return_value={("solana", "T1"): 1.0}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.journal()[-1]["grund"], "trail")
+        # Trailing noch nicht aktiv: eher unter dem Einstieg -> kein Ausstieg.
+        z = {"positionen": [kopie(hoechster_kurs=1.1)]}
+        with patch.object(sp.lesen, "preise",
+                          return_value={("solana", "T1"): 1.0}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(len(z["positionen"]), 1)
+        # Altbestand ohne Trailing-Felder laeuft unter Ziel aus.
+        z = {"positionen": [kopie_alt()]}
+        with patch.object(sp.lesen, "preise",
+                          return_value={("solana", "T1"): 2.0}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.journal()[-1]["grund"], "ziel")
+        # Frist als Sicherheitsnetz.
         z = {"positionen": [kopie(frist="2000-01-01T00:00:00+00:00")]}
         with patch.object(sp.lesen, "preise",
                           return_value={("solana", "T1"): 1.05}):
@@ -417,10 +463,10 @@ class Umfang(Grundlage):
         self.assertEqual(p["max_offen"], 60)
         self.assertEqual(p["kill_switch_gesamt_usd"], 300)
         for name in ("max_einsatz_je_kopie_usd", "max_neu_je_zyklus",
-                     "max_kopien_je_token", "slippage_pct", "gebuehr_pct",
-                     "stop_pct", "ziel_pct", "haltedauer_stunden",
-                     "max_alter_signal_sekunden", "marketcap_band_usd",
-                     "max_risiko_stufen"):
+                            "max_kopien_je_token", "slippage_pct", "gebuehr_pct",
+                            "stop_pct", "trail_aktiv_ab_pct", "trail_abstand_pct",
+                            "haltedauer_stunden", "max_alter_signal_sekunden",
+                            "marketcap_band_usd", "max_risiko_stufen"):
             self.assertEqual(p[name], w[name],
                              "Strategiewert %s darf sich nicht verschieben" % name)
 

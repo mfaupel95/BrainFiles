@@ -41,7 +41,9 @@ def position(**over):
          "einsatz_usd": 50.0, "menge": 46.643688217324156,
          "preis_vorbild": 1.0, "preis_einstieg": 1.05,
          "marktkap_usd": 500000.0, "risiko": "ok",
-         "stop_preis": 0.7875, "ziel_preis": 1.68,
+         "stop_preis": 1.05 * 0.85,
+         "trail_aktiv_ab_pct": 30.0, "trail_abstand_pct": 25.0,
+         "hoechster_kurs": 1.05,
          "frist": "2999-01-01T00:00:00+00:00",
          "letzter_kurs": 1.0, "eroeffnet": "2026-09-14",
          "eroeffnet_zeit": "2026-09-14T20:00:00+00:00"}
@@ -264,7 +266,8 @@ class TeurePruefung(Grundlage):
         w = {"max_alter_signal_sekunden": 1800, "slippage_pct": 5.0,
              "gebuehr_pct": 1.0, "risiko_pflicht": False,
              "max_einsatz_je_kopie_usd": 50,
-             "stop_pct": 25.0, "ziel_pct": 60.0, "haltedauer_stunden": 24}
+             "stop_pct": 15.0, "trail_aktiv_ab_pct": 30.0,
+             "trail_abstand_pct": 25.0, "haltedauer_stunden": 168}
         with patch.object(kp.lesen, "letzter_kauf",
                           return_value={"W1": frischer_kauf(preis=0.9)}):
             p, grund = kp._kopie(self._kandidat(), w, {"positionen": []})
@@ -272,8 +275,12 @@ class TeurePruefung(Grundlage):
         self.assertEqual(p["preis_einstieg"], 1.05)      # 5 % Slippage
         self.assertEqual(p["preis_vorbild"], 0.9)
         self.assertAlmostEqual(p["menge"], 47.142857, places=4)
-        self.assertAlmostEqual(p["stop_preis"], 0.7875, places=10)
-        self.assertAlmostEqual(p["ziel_preis"], 1.68, places=10)
+        # stop_pct 15: am Stop realisiert das Buch inklusive Kosten -20 %.
+        self.assertAlmostEqual(p["stop_preis"], 1.05 * 0.85, places=10)
+        self.assertEqual(p["trail_aktiv_ab_pct"], 30.0)
+        self.assertEqual(p["trail_abstand_pct"], 25.0)
+        self.assertEqual(p["hoechster_kurs"], 1.05)
+        self.assertNotIn("ziel_preis", p)
         self.assertEqual(p["letzter_kurs"], 1.0)
 
     def test_risiko_sperrt(self):
@@ -293,7 +300,8 @@ class TeurePruefung(Grundlage):
         w = {"max_alter_signal_sekunden": 1800, "slippage_pct": 5.0,
              "gebuehr_pct": 1.0, "risiko_pflicht": False,
              "max_einsatz_je_kopie_usd": 50,
-             "stop_pct": 25.0, "ziel_pct": 60.0, "haltedauer_stunden": 24}
+             "stop_pct": 15.0, "trail_aktiv_ab_pct": 30.0,
+             "trail_abstand_pct": 25.0, "haltedauer_stunden": 168}
         z = {"positionen": []}
         with patch.object(kp.lesen, "letzter_kauf",
                           return_value={"W1": frischer_kauf()}):
@@ -334,26 +342,41 @@ class Ausstiege(Grundlage):
         kp.pruefe_vorbild_ausstiege(z, {"W1": {}}, w)
         self.assertEqual(len(z["positionen"]), 1)
 
-    def test_stop_ziel_frist(self):
+    def test_stop_trailing_frist(self):
         w = self.wachen()
         frist_alt = "2000-01-01T00:00:00+00:00"
-        faelle = [
-            (0.5, "stop"),                                # stop bei 0.7875
-            (10.0, "ziel"),                               # ziel bei 1.68
-            (1.0, "frist"),
-        ]
-        for kurs, erwartet in faelle:
-            z = {"positionen": [position(token="T1", letzter_kurs=kurs,
-                                         frist=frist_alt)]}
-            with contextlib.redirect_stdout(io.StringIO()):
-                kp.pruefe_ausstiege(z, w)
-            reste = z["positionen"]
-            if erwartet == "frist":
-                self.assertEqual(len(reste), 0)
-            else:
-                self.assertEqual(len(reste), 0)
-            zeilen = self.lese_journal()
-            self.assertEqual(zeilen[-1]["grund"], erwartet)
+        # Kein fester Deckel: +100 % laeuft weiter (kein Ziel-Exit).
+        # Zuerst geprueft, solange das Journal noch leer ist.
+        z = {"positionen": [position(token="T1", hoechster_kurs=2.1,
+                                     letzter_kurs=2.1)]}
+        kp.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.lese_journal(), [])
+        # Harter Stop: erster beobachteter Kurs unter stop_preis schliesst.
+        z = {"positionen": [position(token="T1", letzter_kurs=0.5)]}
+        with contextlib.redirect_stdout(io.StringIO()):
+            kp.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 0)
+        self.assertEqual(self.lese_journal()[-1]["grund"], "stop")
+        # Trailing: war +30 % ueber dem Einstieg (Peak 1.4), faellt unter
+        # Peak*(1-25 %) = 1.05 -> Ausstieg, auch bei +25 % ueber Einstieg.
+        z = {"positionen": [position(token="T1", hoechster_kurs=1.4,
+                                     letzter_kurs=1.0)]}
+        with contextlib.redirect_stdout(io.StringIO()):
+            kp.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 0)
+        self.assertEqual(self.lese_journal()[-1]["grund"], "trail")
+        # Trailing noch nicht aktiv: eher unter dem Einstieg -> kein Ausstieg.
+        z = {"positionen": [position(token="T1", hoechster_kurs=1.1,
+                                     letzter_kurs=1.0)]}
+        kp.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 1)
+        # Frist als Sicherheitsnetz gegen tote Positionen.
+        z = {"positionen": [position(token="T1", letzter_kurs=1.0,
+                                     frist=frist_alt)]}
+        kp.pruefe_ausstiege(z, w)
+        self.assertEqual(len(z["positionen"]), 0)
+        self.assertEqual(self.lese_journal()[-1]["grund"], "frist")
 
     def test_kein_kurs_bleibt_offen(self):
         w = self.wachen()

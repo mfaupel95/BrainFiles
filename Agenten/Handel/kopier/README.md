@@ -41,12 +41,17 @@ Preise fuer offene Kopien kommen aus den Portfolio-Snapshots
 
 ## Ausstiege
 
-Stop (25 %), Ziel (60 %) und Frist (24 h) sind eigene Mathematik — wie bei
-spiegel kein Auto-Exit nach dem Vorbild-Timing. Zusaetzlich schliesst die
-Spur eine Kopie, wenn die Position des Vorbilds aus dessen Portfolio
-verschwindet (`follow_ausstieg` in wachen.json): das ist die beobachtbare
-Ausstiegs-Entscheidung des Modells, geschlossen zum letzten beobachteten
-Kurs.
+Stop (−15 % vom Einstand, realisiert max −20 % inklusive Kosten),
+**Trailing-Stop** (ab +30 % hängt der Ausstieg 25 % unter dem höchsten
+beobachteten Kurs) und Frist (168 h als Sicherheitsnetz) sind eigene
+Mathematik — kein Auto-Exit nach dem Vorbild-Timing. Bis zum 15.09.2026 galt
+ein festes Ziel (+60 %); die Umstellung auf Trailing soll theoretische
+10x/100x laufen lassen. Zusätzlich schließt die Spur eine Kopie, wenn die
+Position des Vorbilds aus dessen Portfolio verschwindet (`follow_ausstieg` in
+wachen.json): das ist die beobachtbare Ausstiegs-Entscheidung des Modells,
+geschlossen zum letzten beobachteten Kurs. Altbestand läuft unter den vor dem
+15.09.2026 gebuchten Regeln aus. OKX-Vorbereitung: Stop = Stop-Market,
+Trailing = OKX-Trailing-Stop (Trigger/Callback siehe wachen.json).
 
 ## Kosten
 

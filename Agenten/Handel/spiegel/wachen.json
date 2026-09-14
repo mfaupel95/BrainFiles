@@ -21,10 +21,11 @@
   "slippage_pct": 3.0,
   "gebuehr_pct": 1.0,
 
-  "_ausstieg": "Eigene Mathematik, keine fremde. Kein Auto-Exit nach dem Vorbild: wer einem Hochfrequenz-Wallet folgt, kann dessen Timing nicht kopieren - er kann nur eigene Grenzen setzen.",
-  "stop_pct": 25.0,
-  "ziel_pct": 60.0,
-  "haltedauer_stunden": 24,
+  "_ausstieg": "Eigene Mathematik, keine fremde. Kein Auto-Exit nach dem Vorbild-Timing - aber seit dem 15.09.2026 die Ausstiegsform, die Max bestellt hat: KEIN festes Ziel mehr (ein +60-%-Deckel schneidet 10x/100x ab), stattdessen ein Trailing-Stop. Sobald eine Kopie trail_aktiv_ab_pct ueber ihrem Einstieg lag, haengt der Ausstieg trail_abstand_pct unter dem hoechsten seither beobachteten Kurs (hoechster_kurs je Kopie, im Zustand fortgeschrieben). Der harte Stop begrenzt den SCHADEN: stop_pct sitzt so, dass der realisierte Verlust am Stop inklusive Slippage und Gebuehr maximal 20 % des Einsatzes betraegt (Bei 3 % Slippage + 1 % Gebuehr: (1-0,17)*0,97*0,99 = 0,80). Ein gerissener Stop (erster Print unter stop_preis) schliesst SOFORT zum beobachteten Kurs - nicht zum Stop-Preis. Die Frist ist nur noch ein Sicherheitsnetz gegen tote Positionen (7 Tage), kein aktives Ziel. OKX-Vorbereitung: Stop = Stop-Market-Order (kein Stop-Limit - das liesse bei einer Luecke stehen), Trailing = OKX-Trailing-Stop mit Trigger trail_aktiv_ab_pct und Callback-Ratio trail_abstand_pct; die genaue Orderspezifikation beim Anbinden gegen die OKX-API pruefen. Offener Altbestand (vor dem 15.09.2026 gebucht) traegt die Felder nicht und laeuft unter seinen gebuchten stop/ziel/frist aus - das Buch bleibt vergleichbar.",
+  "stop_pct": 17.0,
+  "trail_aktiv_ab_pct": 30.0,
+  "trail_abstand_pct": 25.0,
+  "haltedauer_stunden": 168,
 
   "_alter": "Hinterherlaufen ist kein Nachahmen. Ein Signal aelter als diese Grenze wird verworfen; der Zeitstempel kommt vom Feed (tradeTime), nicht von der Abfrage.",
   "max_alter_signal_sekunden": 300,
