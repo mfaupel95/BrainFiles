@@ -554,3 +554,94 @@ Sichtbar ist der Stand an drei Stellen, ohne dass jemand nachsieht:
 alles), die Zeile „Journal außer Haus" im **Tagesbericht** (`spiegelstand.kurz()`,
 im Fehlerfall hervorgehoben) und morgens **Block 11 der Systemprüfung**; Block 12
 meldet dort, wenn der Dauerlauf steht.
+
+## Was die Bücher am 14.09.2026 hergeben — und was daraus geändert wurde
+
+Erstmals liegen die Zahlen **aller** Spuren nebeneinander. Das Werkzeug dafür ist
+`Agenten/Handel/auswertung_alle.py` (aus dem Handel-Ordner:
+`scanner/.venv/Scripts/python.exe auswertung_alle.py`). Es liest die Journale der
+Spuren, die keine eigene Auswertung haben (xperp, swap, scanner, kraken, orbk,
+gitter, nautilus), paart Einstieg und Ausstieg je Instrument und rechnet mit der
+Kostenrechnung, die **in der Zeile steht** — nicht mit einer Schätzung. spiegel,
+omniquant und gitter behalten ihre eigene `auswertung.py`.
+
+Geschlossene Runden, Stand 14.09.2026:
+
+| Spur | Runden | Treffer | Ergebnis | Ausstiegsgründe |
+|---|---|---|---|---|
+| xperp | 20 | 55 % | +45,53 USD (+5,05 %) | herzschlag_alt 12, ziel 4, stop 4 |
+| swap | 3 | 33 % | −6,59 USD | stop 2, herzschlag_alt 1 |
+| scanner | 14 | 64 % | +111,81 USD (+8,95 %) | ziel 9, stop 5 |
+| kraken | 9 | 56 % | +4,00 USD | **5 davon sind Testläufe** (12./14.09.) |
+| orbk | 15 | 53 % | +7,20 USD | ziel 8, stop 7 |
+| spiegel | 107 | 39 % | +10,98 % | ziel 36, stop 58, frist 13 |
+
+Ohne geschlossene Runden: **omniquant** (erste Ausstiege erst nach der
+Haltegrenze von 14 Tagen), **gitter** (frisch aufgelegt), **nautilus** —
+bauartbedingt: die Spur fährt den OKX-DEMO-Node ohne Live-Strategiezweig und
+sammelt Quotes, sie kann keine Runden liefern.
+
+### Die Geometrie jeder Spur trägt
+
+Vor jeder Parameteränderung die Gegenprobe: welche Trefferquote braucht die
+Geometrie, um die Kosten zu tragen — und was ist gemessen?
+
+- xperp/swap: Stop 1,5 ATR, Ziel 3,0 ATR → **Break-even 33 %**, gemessen 55 %.
+- scanner: Stop 5–12 %, Ziel ≥ 1,5 R → **Break-even ≤ 40 %**, gemessen 64 %.
+- orbk: Ziel 1,5 R → **Break-even 40 %**, gemessen 53 %.
+- spiegel: Stop 25 %, Ziel 60 % → **Break-even 29 %**, gemessen 39 %.
+
+Keine Spur hat nach ihren eigenen Zahlen eine negativ erwartete Geometrie. Der
+Grund, warum xperp trotzdem mager aussieht (Median +0,10 % gegen Mittel +5,05 %),
+sind die **12 Herzschlag-Ausstiege von 20** — der Wert war mit 30 Minuten enger
+als die Selbstheilung (Bedingung 3). Das ist seit dem 14.09.2026 behoben; die
+Zahlen davor messen die Störung, nicht die Strategie.
+
+### Geändert
+
+**spiegel: Marktkapitalisierung nur noch bis 1 Mio USD.** Das Band stand auf
+`[50000, 20000000]` und ist ein echtes Tor (`spiegel.py`). 107 Runden, gepaart
+mit dem Einstiegspreis: unter 1 Mio **88 Runden, 63 Token, Ø +16,5 %** (unter
+250k Ø +14,72 %, 250k–1M Ø +20,41 %); 1M–5M **15 Runden, 11 Token, Ø −12,32 %**;
+ab 5M 4 Runden, 2 Token, Ø −22,29 %. Es liegt nicht an den Kosten — Slippage und
+Gebühr sind feste Sätze und treffen jedes Band gleich —, sondern am Ziel: über
+1 Mio wurde das Ziel von +60 % in 17 Runden **zweimal** erreicht, unter 1 Mio in
+88 Runden 34 mal; dort läuft stattdessen der Stop. Offene Positionen über 1 Mio
+bleiben stehen und laufen in Stop, Ziel oder Frist aus. Herleitung als
+`_marktkap_band` im Wachen-File.
+
+**scanner und kraken: der Börsen-Stop wird aufgeräumt.** Beide setzten den
+Notausstieg schon mit der Order an den Handelsplatz — aber scanner warf die
+`algoId` weg (kein Storno möglich, der Stop blieb nach jedem Ausstieg im Buch),
+kein Ausstieg stornierte ihn, und loeste er zwischen zwei Zyklen aus, blieb die
+Position als Karteileiche im Buch, weil der eigene Verkauf scheiterte. Kraken
+hatte Stornieren und Verkaufen in einem `try`: ein nicht stornierbarer Stop
+brach den Verkauf ab. Jetzt in beiden Spuren: Stop stornieren → verkaufen → bei
+Fehlschlag nachsehen, ob der Börsen-Stop gefüllt hat (dann Ausstieg
+„stop (boerse)"). Ein Kauf ohne Stop wird zurückverkauft; geht auch das schief,
+steht die Position als `boersen_stop_fehlt` im Buch — eine Position am Markt, die
+im Buch fehlt, ist der schlimmere Zustand. Tests:
+`scanner/tests/test_handeln_boersenstop.py`, `kraken/tests/test_handeln_boersenstop.py`.
+
+**omniquant: alte Zustandsdateien.** `lade_zustand()` ergänzt fehlende Felder
+(`verluste_usd`, `positionen`, `modus`, `letzter_lauf`) wie `gitter/handeln.py`.
+Dazu eine Testfalle geschlossen: `gui.py` legt beim Import den scanner-Ordner auf
+den Suchpfad, deshalb lud `tests/test_gui_bindung.py` einzeln aufgerufen
+**scanner/handeln.py** und prüfte still die falsche Spur. Der Test prüft jetzt
+die Herkunft des Moduls.
+
+### Bewusst nicht geändert
+
+- **Keine Parametersuche auf dünnen Stichproben.** swap (3), kraken (9, davon 5
+  Testläufe), scanner (14), orbk (15) — unter der Hausregel von 8 Runden ist das
+  kein Maß, und darüber ist die Streuung größer als der Effekt. Die wöchentliche
+  Suche des Verbesserers (`Agenten/Handel/verbesserer`, derzeit nur Spur 1) ist
+  der Ort dafür, nicht die Hand.
+- **`mindest_score` 60 im scanner bleibt.** Das Tor hat nie gegriffen: der
+  niedrigste eingegangene Score im Journal ist 68,4.
+- **Wallet-Auswahl im spiegel bleibt.** Der Schnitt über 107 Runden zeigt zwei
+  starke Wallets (+15,06 % / +28,20 %) und mehrere schwache mit 2–5 Runden — bei
+  19 Gruppen wäre das Aussortieren nach Sicht ein Kurvenfit, kein Befund.
+- **Die Slippage-Annahme (3 %) bleibt.** Sie ist ein fester Satz je Runde und
+  kann die Bandrangfolge nicht drehen; sie niedriger zu setzen, um Zahlen zu
+  verbessern, wäre das Gegenteil von Messen.

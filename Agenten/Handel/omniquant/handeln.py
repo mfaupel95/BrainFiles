@@ -100,12 +100,24 @@ def lade_wachen():
 
 
 def lade_zustand():
+    """Zustand lesen - und fehlende Felder ergaenzen.
+
+    `verluste_usd` kam spaeter dazu. Eine Zustandsdatei von vorher kennt es
+    nicht; ohne die Zeile fehlt der GUI das Feld (gui.fuss_texte liest es) und
+    die Ruecklauf-Sperre rechnet mit einem Wert, den das Buch nicht kennt.
+    gitter/handeln.py haelt es an derselben Stelle genauso - zwei Spuren mit
+    alter Zustandsdatei sollen dasselbe Verhalten zeigen.
+    """
     try:
         with open(ZUSTAND, encoding="utf-8") as f:
-            return json.load(f)
+            z = json.load(f)
     except (OSError, ValueError):
-        return {"positionen": [], "modus": "papier", "letzter_lauf": None,
-                "verluste_usd": 0.0}
+        z = {}
+    z.setdefault("positionen", [])
+    z.setdefault("modus", "papier")
+    z.setdefault("letzter_lauf", None)
+    z.setdefault("verluste_usd", 0.0)
+    return z
 
 
 def schreibe_zustand(z):

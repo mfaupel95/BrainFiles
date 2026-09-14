@@ -28,6 +28,21 @@ for p in (HIER, os.path.join(HIER, "..")):
 import gui                                                 # noqa: E402
 import handeln as h                                        # noqa: E402
 
+# Falle: gui.py legt beim Import den scanner-Ordner auf den Suchpfad (dort
+# liegen okx und wachen_pruefung). Wird diese Datei einzeln aufgerufen
+# (python tests/test_gui_bindung.py), liegt tests/ auf Position 0 und
+# `import handeln` zieht scanner/handeln.py statt omniquant/handeln.py -
+# der Test prueft dann die falsche Spur, und zwar still. Unter
+# `-m unittest discover` faellt es nicht auf, weil das Modul schon geladen ist.
+# Deshalb hier die Herkunft pruefen und notfalls die richtige Datei laden.
+if os.path.dirname(os.path.abspath(getattr(h, "__file__", ""))) != HIER:
+    import importlib.util
+    _spec = importlib.util.spec_from_file_location(
+        "handeln", os.path.join(HIER, "handeln.py"))
+    h = importlib.util.module_from_spec(_spec)
+    sys.modules["handeln"] = h
+    _spec.loader.exec_module(h)
+
 WACHEN = {"max_einsatz_je_position_usd": 50, "max_gesamt_risiko_usd": 500}
 
 

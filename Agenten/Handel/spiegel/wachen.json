@@ -26,7 +26,8 @@
   "max_alter_signal_sekunden": 300,
 
   "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (kein Kleinstbetrug, kein ausgewachsener Wert), und der Risiko-Scan muss unauffaellig sein. Das Tor nach unten ist das wichtigere - Rug Pulls sitzen unten.",
-  "marketcap_band_usd": [50000, 20000000],
+  "marketcap_band_usd": [50000, 1000000],
+  "_marktkap_band": "Obergrenze am 14.09.2026 von 20 Mio auf 1 Mio USD gezogen. Grund: 107 geschlossene Runden im Journal, gepaart mit dem Einstiegspreis. Ueber 1 Mio Marktkapitalisierung rechnet sich das Nachahmen nicht - 1M-5M: 15 Runden, 11 Token, Ø -12,32 %; ab 5M: 4 Runden, 2 Token, Ø -22,29 %. Unter 1M: 88 Runden, 63 Token, Ø +16,5 % (unter 250k Ø +14,72 %, 250k-1M Ø +20,41 %). Der Unterschied liegt nicht an den Kosten (die sind ein fester Satz und treffen alle Baender gleich), sondern am Ziel: ueber 1M wurde das Ziel von +60 % in 17 Runden nur zweimal erreicht, unter 1M in 88 Runden 34 mal - dort laeuft stattdessen der Stop auf. Die Annahme Slippage 3 % gilt fuer alle Baender gleich und kann das Ergebnis deshalb nicht drehen. Offene Positionen ueber 1M bleiben unangetastet und laufen in Stop, Ziel oder Frist aus.",
   "risiko_pflicht": true,
   "max_risiko_stufen": ["safe", "LOW"],
 
