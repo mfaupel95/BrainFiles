@@ -227,6 +227,28 @@ def stop_setzen(inst, basismenge, stop_preis):
     return d[0]["algoId"]
 
 
+def stop_stornieren(algo_id):
+    """Den Notausstieg beim Handelsplatz abbestellen.
+
+    Muss zu JEDEM Ausstieg gehoeren: eine Algo-Order, die keiner mehr kennt,
+    bleibt im Buch und kann eine spaetere Position desselben Instruments zum
+    alten Stoppreis verkaufen.
+    """
+    d = _roh("/api/v5/trade/cancel-algos", "POST", [{"algoId": algo_id}],
+             signiert=True)
+    return (d[0].get("algoId") if d else None)
+
+
+def stop_details(algo_id):
+    """Zustand einer Algo-Order (state, accFillSz).
+
+    Der Pfad traegt die Abfrage im Query-String - OKX signiert genau diesen
+    Pfad, deshalb geht die Abfrage durch dieselbe Signatur wie die Order.
+    """
+    d = _roh("/api/v5/trade/order-algo?algoId=%s" % algo_id, "GET", signiert=True)
+    return (d[0] if d else {})
+
+
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")

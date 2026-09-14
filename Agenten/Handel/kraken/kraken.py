@@ -223,6 +223,18 @@ def stop_setzen(paar, menge, stop_preis, echt=False):
                       echt=echt)
 
 
+def stop_gefuellt(txid):
+    """Hat der Boersen-Stop schon verkauft?
+
+    Kraken meldet eine ausgeloeste Stop-Loss-Order als status "closed" mit
+    vol_exec > 0. Genau daran erkennt handeln.py eine Position, die am Markt
+    weg ist, im eigenen Buch aber noch steht.
+    """
+    if not txid:
+        return False
+    return float(order_details(txid).get("vol_exec") or 0) > 0
+
+
 def order_stornieren(txid):
     return _roh_privat("CancelOrder", txid=txid)
 

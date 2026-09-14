@@ -146,7 +146,82 @@ def in_abklingzeit(inst, z, w):
     return tage < w["abklingzeit_tage"]
 
 
+def _boersenstop_gefuellt(p):
+    """Hat der Notausstieg beim Handelsplatz schon verkauft?
+
+    Dann ist die Position am Markt weg, auch wenn sie hier noch im Buch steht.
+    Der Stoppreis ist der Ausloeser, nicht die Fuellung - gerechnet wird
+    trotzdem damit, weil es der einzige bekannte Preis ist.
+    """
+    if not p.get("stop_ord_id"):
+        return False
+    try:
+        d = okx.stop_details(p["stop_ord_id"])
+    except Exception as e:  # noqa: BLE001
+        print("  Stop-Zustand %s nicht lesbar: %s" % (p["stop_ord_id"], e),
+              file=sys.stderr)
+        return False
+    return float(d.get("accFillSz") or 0) > 0
+
+
+def _live_verkauf(p, z):
+    """Live verkaufen: erst den Notausstieg abbestellen, dann Market verkaufen.
+
+    Gibt "ok", "boerse" (der Boersen-Stop war schneller) oder "fehler".
+    Ein nicht stornierbarer Stop ist KEIN Grund, den Verkauf zu unterlassen -
+    genau das liess Positionen im Buch stehen, die am Markt laengst verkauft
+    waren. Bleibt er offen, wird er in zustand.json gemerkt und beim naechsten
+    Live-Lauf erneut storniert.
+    """
+    if p.get("stop_ord_id"):
+        try:
+            okx.stop_stornieren(p["stop_ord_id"])
+        except Exception as e:  # noqa: BLE001
+            print("  Stop %s nicht stornierbar: %s" % (p["stop_ord_id"], e),
+                  file=sys.stderr)
+            if _boersenstop_gefuellt(p):
+                print("  der Boersen-Stop hat ausgeloest - Position ist weg")
+                return "boerse"
+            z.setdefault("offene_stops", []).append(
+                {"inst": p["inst"], "stop_ord_id": p["stop_ord_id"],
+                 "seit": _heute()})
+    try:
+        d = okx.order_details(p["inst"], p["kauf_ord_id"])
+        menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
+        okx.markt_verkauf(p["inst"], round(menge, 8))
+    except Exception as e:  # noqa: BLE001
+        print("  Verkauf %s fehlgeschlagen: %s" % (p["inst"], e),
+              file=sys.stderr)
+        return "fehler"
+    return "ok"
+
+
+def raeume_offene_stops(z):
+    """Stops abarbeiten, die beim Ausstieg nicht stornierbar waren.
+
+    Sie stehen weiter beim Handelsplatz im Buch. Beim naechsten Live-Lauf wird
+    es erneut versucht; erst wenn einer wirklich weg ist, faellt der Eintrag.
+    Ohne das koennte ein alter Stop eine spaetere Position desselben
+    Instruments zum alten Stoppreis verkaufen.
+    """
+    offen = z.get("offene_stops") or []
+    rest = []
+    for e in offen:
+        try:
+            okx.stop_stornieren(e["stop_ord_id"])
+            print("  offener Stop %s storniert" % e["stop_ord_id"])
+        except Exception as ex:  # noqa: BLE001
+            if not _boersenstop_gefuellt(e):
+                rest.append(e)
+                print("  offener Stop %s bleibt liegen: %s"
+                      % (e["stop_ord_id"], ex), file=sys.stderr)
+    if len(rest) != len(offen):
+        z["offene_stops"] = rest
+
+
 def pruefe_ausstiege(z, live):
+    if live:
+        raeume_offene_stops(z)
     behalten = []
     for p in z["positionen"]:
         kurs = okx.letzter_kurs(p["inst"])
@@ -163,20 +238,21 @@ def pruefe_ausstiege(z, live):
         erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
         gv = erloes - p["usd"]
         if live:
-            try:
-                d = okx.order_details(p["inst"], p["kauf_ord_id"])
-                menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
-                okx.markt_verkauf(p["inst"], round(menge, 8))
-            except Exception as e:  # noqa: BLE001
-                print("  Verkauf %s fehlgeschlagen: %s" % (p["inst"], e),
-                      file=sys.stderr)
+            ergebnis = _live_verkauf(p, z)
+            if ergebnis == "fehler":
                 behalten.append(p)
                 continue
+            if ergebnis == "boerse":
+                # Verkauft hat der Stop am Handelsplatz, nicht wir.
+                grund = "stop (boerse)"
+                kurs = p["stop"]
+                erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
+                gv = erloes - p["usd"]
         print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
-        if grund == "stop":
+        if grund.startswith("stop"):
             z["letzte_stops"][p["inst"]] = _heute()
     z["positionen"] = behalten
 
@@ -192,13 +268,8 @@ def flach_stellen(z, live, grund):
         # Wie in pruefe_ausstiege: Gebuehr nur in der journalisierten Zeile.
         erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
         if live:
-            try:
-                d = okx.order_details(p["inst"], p["kauf_ord_id"])
-                menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
-                okx.markt_verkauf(p["inst"], round(menge, 8))
-            except Exception as e:  # noqa: BLE001
-                print("  Notausstieg %s fehlgeschlagen: %s" % (p["inst"], e),
-                      file=sys.stderr)
+            ergebnis = _live_verkauf(p, z)
+            if ergebnis == "fehler":
                 behalten.append(p)
                 continue
         print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
@@ -221,22 +292,44 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
             continue
         if v["inst"] in gehalten or in_abklingzeit(v["inst"], z, w):
             continue
-        kauf_id = None
+        kauf_id = stop_id = None
+        stop_fehlt = False
         if live:
             try:
                 kauf_id = okx.markt_kauf(v["inst"], usd)
                 d = okx.order_details(v["inst"], kauf_id)
                 menge = float(d.get("accFillSz") or 0)
-                if menge > 0:
-                    okx.stop_setzen(v["inst"], round(menge, 8), v["stop"])
             except Exception as e:  # noqa: BLE001
                 print("  Kauf %s fehlgeschlagen: %s" % (v["inst"], e),
                       file=sys.stderr)
                 continue
+            if menge <= 0:
+                print("  Kauf %s ohne Fuellung - kein Eintrag" % v["inst"],
+                      file=sys.stderr)
+                continue
+            try:
+                stop_id = okx.stop_setzen(v["inst"], round(menge, 8), v["stop"])
+            except Exception as e:  # noqa: BLE001
+                # Der Kauf steht, der Notausstieg nicht. Dann lieber gar nicht
+                # halten als unbewacht: zurueckverkaufen. Klappt auch das
+                # nicht, wird die Position wenigstens gebucht und als
+                # unbewacht gekennzeichnet - eine Position, die am Markt liegt
+                # und im Buch fehlt, ist der schlimmere Zustand.
+                print("  Stop fuer %s fehlgeschlagen: %s" % (v["inst"], e),
+                      file=sys.stderr)
+                try:
+                    okx.markt_verkauf(v["inst"], round(menge, 8))
+                    print("  zurueckverkauft - kein Eintrag")
+                    continue
+                except Exception as e2:  # noqa: BLE001
+                    print("  Rueckverkauf ebenfalls fehlgeschlagen: %s" % e2,
+                          file=sys.stderr)
+                    stop_fehlt = True
         z["positionen"].append({
             "inst": v["inst"], "einstieg": v["einstieg"], "usd": usd,
             "stop": v["stop"], "ziel": v["ziel"], "eroeffnet": _heute(),
-            "kauf_ord_id": kauf_id,
+            "kauf_ord_id": kauf_id, "stop_ord_id": stop_id,
+            "boersen_stop_fehlt": stop_fehlt,
         })
         eingesetzt += usd
         gehalten.add(v["inst"])

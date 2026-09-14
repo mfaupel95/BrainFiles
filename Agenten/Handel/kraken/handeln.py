@@ -190,12 +190,55 @@ def _erloes(p, kurs, w):
     return p["menge"] * kurs * (1.0 - w["gebuehr_taker"])
 
 
+def raeume_offene_stops(z):
+    """Stops abarbeiten, die beim Ausstieg nicht stornierbar waren.
+
+    Sie stehen weiter beim Handelsplatz im Buch. Beim naechsten Live-Lauf wird
+    es erneut versucht; erst wenn einer wirklich weg ist, faellt der Eintrag.
+    """
+    offen = z.get("offene_stops") or []
+    rest = []
+    for e in offen:
+        try:
+            kraken.order_stornieren(e["stop_txid"])
+            print("  offener Stop %s storniert" % e["stop_txid"])
+        except Exception as ex:  # noqa: BLE001
+            if not kraken.stop_gefuellt(e.get("stop_txid")):
+                rest.append(e)
+                print("  offener Stop %s bleibt liegen: %s"
+                      % (e["stop_txid"], ex), file=sys.stderr)
+    if len(rest) != len(offen):
+        z["offene_stops"] = rest
+
+
 def _schliesse(p, kurs, w, live, grund, z):
     """Eine Position schliessen. Gibt True zurueck, wenn sie weg ist."""
     if live:
-        try:
-            if p.get("stop_txid"):
+        if p.get("stop_txid"):
+            try:
                 kraken.order_stornieren(p["stop_txid"])   # Stop zuerst weg
+            except Exception as e:  # noqa: BLE001
+                # Schon ausgeloest oder schon storniert - trotzdem verkaufen.
+                # Genau hier blieben Positionen im Buch stehen, die am Markt
+                # laengst verkauft waren.
+                print("  Stop %s nicht stornierbar: %s" % (p["stop_txid"], e),
+                      file=sys.stderr)
+                if kraken.stop_gefuellt(p["stop_txid"]):
+                    print("  der Boersen-Stop hat ausgeloest - Position ist weg")
+                    kurs = p["stop"]
+                    grund = "stop (boerse)"
+                    erloes = _erloes(p, kurs, w)
+                    print("  AUSSTIEG (%s): %s @ %-12.6g  G/V %+.2f EUR"
+                          % (grund, p["paar"], kurs, erloes - p["eur"]))
+                    journal(_jetzt(), "live", "verkauf", p["paar"],
+                            "%.8g" % kurs, "%.2f" % erloes,
+                            "%.8f" % p["menge"], "", "", grund)
+                    z["letzte_stops"][p["paar"]] = _heute()
+                    return True
+                z.setdefault("offene_stops", []).append(
+                    {"paar": p["paar"], "stop_txid": p["stop_txid"],
+                     "seit": _heute()})
+        try:
             kraken.markt_verkauf(p["paar"], p["menge"], echt=True)
         except Exception as e:  # noqa: BLE001
             print("  Verkauf %s fehlgeschlagen: %s" % (p["paar"], e),
@@ -212,6 +255,8 @@ def _schliesse(p, kurs, w, live, grund, z):
 
 
 def pruefe_ausstiege(z, w, live):
+    if live:
+        raeume_offene_stops(z)
     behalten = []
     for p in z["positionen"]:
         kurs = kraken.letzter_kurs(p["paar"])
@@ -256,25 +301,45 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
             continue
 
         kauf_txid = stop_txid = None
+        stop_fehlt = False
         if live:
             try:
                 kauf_txid = kraken.markt_kauf(v["inst"], menge, echt=True)
                 gefuellt = kraken.gefuellte_menge(kauf_txid) if kauf_txid else 0.0
-                if gefuellt > 0:
-                    menge = gefuellt
-                    stop_txid = kraken.stop_setzen(v["inst"], menge, v["stop"],
-                                                   echt=True)
             except Exception as e:  # noqa: BLE001
                 print("  Kauf %s fehlgeschlagen: %s" % (v["inst"], e),
                       file=sys.stderr)
                 continue
+            if gefuellt <= 0:
+                print("  Kauf %s ohne Fuellung - kein Eintrag" % v["inst"],
+                      file=sys.stderr)
+                continue
+            menge = gefuellt
+            try:
+                stop_txid = kraken.stop_setzen(v["inst"], menge, v["stop"],
+                                               echt=True)
+            except Exception as e:  # noqa: BLE001
+                # Der Kauf steht, der Notausstieg nicht: zurueckverkaufen.
+                # Klappt auch das nicht, wird die Position gebucht und als
+                # unbewacht gekennzeichnet - besser als eine Position, die am
+                # Markt liegt und im Buch fehlt.
+                print("  Stop fuer %s fehlgeschlagen: %s" % (v["inst"], e),
+                      file=sys.stderr)
+                try:
+                    kraken.markt_verkauf(v["inst"], menge, echt=True)
+                    print("  zurueckverkauft - kein Eintrag")
+                    continue
+                except Exception as e2:  # noqa: BLE001
+                    print("  Rueckverkauf ebenfalls fehlgeschlagen: %s" % e2,
+                          file=sys.stderr)
+                    stop_fehlt = True
 
         kosten = eur * w["gebuehr_taker"]
         z["positionen"].append({
             "paar": v["inst"], "einstieg": v["einstieg"], "eur": eur,
             "menge": menge, "stop": v["stop"], "ziel": v["ziel"],
             "eroeffnet": _heute(), "kauf_txid": kauf_txid,
-            "stop_txid": stop_txid,
+            "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
         })
         eingesetzt += eur
         gehalten.add(v["inst"])
