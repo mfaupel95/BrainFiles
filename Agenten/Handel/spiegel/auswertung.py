@@ -44,8 +44,10 @@ EXTRA = ("kette", "symbol", "token", "marktkap_usd", "wallet")
 GRUPPEN = [("kette", "Nach Kette"), ("grund", "Nach Ausstiegsgrund")]
 
 # Das Tor des Feeds ist die Marktkapitalisierung (marketcap_band_usd in den
-# Wachen: 50k bis 20M). Diese Baender fragen, ob die Tiefe traegt - klein
-# heisst duennes Buch, und duenn heisst, dass ein Nachahmer den Preis macht.
+# Wachen - den Wert DORT lesen, nicht hier wiederholen: die Obergrenze wurde am
+# 14.09.2026 von 20 Mio auf 1 Mio gezogen, und dieser Kommentar trug die alte
+# Zahl weiter). Diese Baender fragen, ob die Tiefe traegt - klein heisst
+# duennes Buch, und duenn heisst, dass ein Nachahmer den Preis macht.
 BAND_MK = (250_000, 1_000_000, 5_000_000)
 BAENDER = [
     ("marktkap_usd", BAND_MK, "Nach Marktkapitalisierung",

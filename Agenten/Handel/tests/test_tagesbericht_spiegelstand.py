@@ -143,6 +143,43 @@ class SpiegelstandTest(Basis):
         spiegelstand.stand(self.handel)
         self.assertEqual(vorher, self.zustand_aller_dateien())
 
+    def test_zusatzdatei_der_spiegel_spur_wird_mitgeprueft(self):
+        """Das Ablehnungsprotokoll gehoert ausser Haus wie das Journal.
+
+        Eine Zusatzdatei nur EINER Spur darf die anderen nicht abweichend
+        machen - und fuer ihre eigene Spur muss sie mitgeprueft werden, sonst
+        ist die Kopie ein ungeprueftes Versprechen.
+        """
+        ordner = self.spur("spiegel")
+        ordner_anders = self.spur("swap")
+        self.dauerlauf("spiegel", "swap")
+        protokoll = ("zeit,art,grund,anzahl\n"
+                     "2026-09-14T17:00:00Z,zyklus,Signale gesehen,695\n")
+        for p in (os.path.join(ordner, "ablehnungen.csv"),
+                  os.path.join(ordner_anders, "ablehnungen.csv")):
+            # Nur spiegel fuehrt das Protokoll; swap hat keine Zusatzdatei.
+            if "spiegel" in p:
+                with open(p, "w", encoding="utf-8", newline="") as f:
+                    f.write(protokoll)
+        e = spiegelstand.stand(self.handel)
+        self.assertEqual(e["abweichend"], ["spiegel"], e["spuren"])
+        grund = [x for x in e["spuren"] if x["spur"] == "spiegel"][0]["grund"]
+        self.assertIn("ablehnungen.csv", grund)
+
+    def test_zusatzdatei_gleich_ist_keine_abweichung(self):
+        ordner = self.spur("spiegel")
+        ziel = os.path.join(self.ziel, "spiegel")
+        self.dauerlauf("spiegel")
+        protokoll = ("zeit,art,grund,anzahl\n"
+                     "2026-09-14T17:00:00Z,zyklus,Signale gesehen,695\n")
+        for p in (os.path.join(ordner, "ablehnungen.csv"),
+                  os.path.join(ziel, "ablehnungen.csv")):
+            with open(p, "w", encoding="utf-8", newline="") as f:
+                f.write(protokoll)
+        e = spiegelstand.stand(self.handel)
+        self.assertEqual(e["abweichend"], [], e["spuren"])
+        self.assertEqual(e["spuren"][0]["stand"], "gleich")
+
     def test_ohne_lesbare_spurenliste_ist_die_zeile_vorsichtig(self):
         # Ohne dauerlauf.py ist nicht entscheidbar, welche Spur im Dienst ist.
         # Dann darf die Zeile keine Zahl behaupten, die sie nicht decken kann.

@@ -19,22 +19,37 @@ Slippage und Gebuehr stehen in wachen.json und wirken zweimal: beim Kauf
 teurer, beim Verkauf billiger. Ein Papierbuch mit glatten Kursen ist eine
 Wunschrechnung, und genau daran scheitern Nachahmer in der Wirklichkeit.
 
+Ablehnungen werden protokolliert
+-------------------------------
+Das Journal haelt nur, was gebucht wurde: 107 geschlossene Runden im
+September 2026, und aus ihnen war nur noch abzuleiten, in welchem Band das
+Buch getragen hat. WIE VIELE Kandidaten an welchem Tor haengen blieben, stand
+nirgends - ein volles Buch und ein zu strenges Tor sahen im Journal gleich
+aus. `ablehnungen.csv` schreibt je Zyklus, was die billigen Tore verworfen
+haben (Alter, Marktkapitalisierung, doppelte Kopie), was das Buch mit den
+bewerteten Kandidaten getan hat und fuer jeden Kandidaten, der bis zum
+Risiko-Scan kam, eine Zeile mit Kennung und Grund. Die Datei ist
+Laufzeitdaten wie das Journal, wird nur im echten Lauf geschrieben und wie
+das Journal nach `journal_zweitziel` gespiegelt.
+
 Aufruf:
     python spiegel.py --waehlen     # verfolgte.json aus dem Feed neu bauen
     python spiegel.py --wachen      # Grenzen als Momentaufnahme
     python spiegel.py --vorschau    # was waere dran, ohne zu schreiben
     python spiegel.py --papier      # ein Papierzyklus mit Journal
     python spiegel.py --bilanz      # welche Wallets haben getragen
+    python spiegel.py --ablehnungen # warum Kandidaten NICHT gekauft wurden
     python spiegel.py --live        # verweigert, nennt den Grund
 """
 
 import argparse
+import collections
 import csv
 import importlib.util
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 BUS = os.path.join(HIER, os.pardir, os.pardir, "Bus")
@@ -64,10 +79,26 @@ WACHEN = os.path.join(HIER, "wachen.json")
 VERFOLGTE = os.path.join(HIER, "verfolgte.json")
 ZUSTAND = os.path.join(HIER, "zustand.json")
 JOURNAL = os.path.join(HIER, "handelsjournal.csv")
+ABLEHNUNGEN = os.path.join(HIER, "ablehnungen.csv")
 
 SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "token", "symbol",
            "preis", "menge", "einsatz_usd", "wert_usd", "marktkap_usd",
            "slippage_pct", "gebuehr_pct", "grund"]
+
+# Das Ablehnungsprotokoll ist eine EIGENE Datei, nicht das Journal. Die Leser
+# des Journals zaehlen Zeilen als Buchungen (bilanz() rechnet jede
+# Nicht-eroeffnen-Zeile als Runde, buchauswertung zaehlt je Aktion) - eine
+# Ablehnung waere dort eine erfundene Runde und wuerde die Bilanz faelschen.
+# Schema:
+#   art="zyklus"  eine Zeile je Grund und Zyklus; `anzahl` ist die Zahl.
+#   art="signal"  EIN Kandidat mit Kennung (Token, Wallet, tx) und Grund.
+SPALTEN_ABLEHNUNG = ["zeit", "art", "grund", "anzahl", "kette", "wallet",
+                     "token", "symbol", "marktkap_usd", "alter_s", "preis", "tx"]
+
+# Wie weit zurueck das Protokoll vor dem Schreiben gelesen wird (siehe
+# _gesehen): der Feed reicht Stunden zurueck, das deckt ihn ab.
+ABLEHNUNG_TAIL = 2000
+GESEHEN = None
 
 # Ob geschrieben wird. Die Vorschau stellt das ab (siehe journal()).
 SCHREIBEN = True
@@ -138,6 +169,94 @@ def journal(**felder):
         s.writerow({k: felder.get(k, "") for k in SPALTEN})
 
 
+# --- Ablehnungsprotokoll ----------------------------------------------------
+
+def journal_ablehnung(**felder):
+    """Eine Zeile ins Ablehnungsprotokoll.
+
+    Derselbe Schalter wie im Journal: eine Vorschau, die schreibt, ist keine
+    Vorschau.
+    """
+    if not SCHREIBEN:
+        return
+    neu = not os.path.exists(ABLEHNUNGEN)
+    with open(ABLEHNUNGEN, "a", newline="", encoding="utf-8") as f:
+        s = csv.DictWriter(f, fieldnames=SPALTEN_ABLEHNUNG,
+                           extrasaction="ignore")
+        if neu:
+            s.writeheader()
+        s.writerow({k: felder.get(k, "") for k in SPALTEN_ABLEHNUNG})
+
+
+def protokolliere(grund, anzahl=1):
+    """Was EIN Zyklus abgelehnt hat - als Zahl, ohne Kennung.
+
+    Der Ort fuer die Massenfaelle (Alter, Band): 700 Signale je Zyklus
+    einzeln mit Kennung zu protokollieren waere ein Protokoll, das niemand
+    liest, und es waechst mit jedem Zyklus weiter.
+    """
+    journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=grund, anzahl=anzahl)
+
+
+def _schluessel(felder, grund):
+    """Kennung eines Kandidaten: seine Transaktion, sonst sein Token."""
+    return (felder.get("tx") or felder.get("token") or "", grund or "")
+
+
+def _gesehen():
+    """Die (tx, grund)-Paare der letzten Protokollzeilen - einmal je Lauf.
+
+    Ein Signal steht mehrere Zyklen im Feed; ohne diese Sperre traegt das
+    Protokoll denselben Kandidaten alle 15 Minuten erneut ein, und die
+    Zaehlung "wie viele Kandidaten hat das Tor verworfen" waere ein
+    Vielfaches der Wahrheit.
+
+    Gelesen wird nur der SCHLUSS der Datei (ABLEHNUNG_TAIL Zeilen): der Feed
+    reicht Stunden zurueck, das deckt ihn ab, und die Datei waechst nicht in
+    die Lesezeit hinein. Die erste gelesene Zeile faellt weg - sie ist
+    entweder die Kopfzeile oder ein angeschnittenes Stueck.
+    """
+    global GESEHEN
+    if GESEHEN is not None:
+        return GESEHEN
+    GESEHEN = set()
+    try:
+        with open(ABLEHNUNGEN, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - ABLEHNUNG_TAIL * 200))
+            roh = f.read().decode("utf-8", "replace").splitlines()[1:]
+    except OSError:
+        return GESEHEN
+    for zeile in csv.DictReader(roh, fieldnames=SPALTEN_ABLEHNUNG):
+        if (zeile.get("art") or "").strip() == "signal":
+            GESEHEN.add(_schluessel(zeile, zeile.get("grund")))
+    return GESEHEN
+
+
+def protokolliere_signal(sig, grund):
+    """EIN Kandidat mit Kennung und Grund. True, wenn die Zeile neu ist.
+
+    Nur fuer Kandidaten, die bis zum Risiko-Scan gekommen sind: das sind die
+    wenigen je Zyklus, und es sind die, deren Grund man spaeter einzeln
+    nachsehen will (Risikostufe, doppelt belegt).
+    """
+    schluessel = _schluessel(sig, grund)
+    if schluessel in _gesehen():
+        return False
+    _gesehen().add(schluessel)
+    journal_ablehnung(
+        zeit=_jetzt(), art="signal", grund=grund, anzahl=1,
+        kette=sig.get("kette"), wallet=sig.get("wallet"),
+        token=sig.get("token"), symbol=sig.get("symbol"),
+        marktkap_usd=("" if sig.get("marktkap_usd") is None
+                      else "%.0f" % sig["marktkap_usd"]),
+        alter_s=("" if sig.get("alter_s") is None
+                 else "%.0f" % sig["alter_s"]),
+        preis=("" if not sig.get("preis") else "%.10g" % sig["preis"]),
+        tx=sig.get("tx"))
+    return True
+
+
 def lade_zustand():
     z = lade(ZUSTAND, None)
     if not z:
@@ -153,6 +272,33 @@ def schreibe_zustand(z):
         return
     z["letzter_lauf"] = _jetzt()
     schreibe(ZUSTAND, z)
+
+
+def spiegeln(z, w):
+    """Bedingung 4: Journal, Zustand und Ablehnungen nach journal_zweitziel.
+
+    EINE Stelle fuer alle Pfade - auch den Notausstieg (Herzschlag alt,
+    Kill-Switch): der aendert den Zustand, und eine Kopie ausser Haus, die
+    dem Stand hinterherlaeuft, liest sich beim naechsten Vergleich als
+    Abweichung. Bis zum 14.09.2026 spiegelte nur der normale Weg; das Muster
+    steht in xperp/handeln.py und swap/handeln.py.
+
+    Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
+    Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
+    Ziel ist kein Fehler des Laufs - der Stand steht im Zustand. In der
+    Vorschau wird nichts kopiert. Rueckgabe (ok, info) wie spiegele_journal.
+    """
+    if not SCHREIBEN:
+        return False, "Vorschau schreibt nichts"
+    basis = _spiegelquelle()
+    ziel = w.get("journal_zweitziel")
+    ok, info = basis.spiegele_journal([JOURNAL, ZUSTAND, ABLEHNUNGEN], ziel)
+    if basis.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
+        # aelter, in dem sich der Spiegelstand aendert.
+        basis.spiegele_journal([ZUSTAND], ziel)
+    return ok, info
 
 
 # --- Auswahl (verfolgte.json) ----------------------------------------------
@@ -253,22 +399,65 @@ def _verkaeuflich(menge, kurs, w):
         1 - w["gebuehr_pct"] / 100.0)
 
 
-def _kopie(sig, w, z):
-    """Ein Kauf wird zur Buchzeile - oder es gibt einen Grund, warum nicht."""
+def _vorpruefung(sig, w, z):
+    """Die billigen Tore: Alter, Marktkapitalisierung, doppelte Kopie.
+
+    Ruft NICHTS ab - kein Kurs, kein Risiko-Scan. Rueckgabe (Schluessel,
+    Text): der Schluessel ist der gleichbleibende Name fuer die Zaehlung im
+    Ablehnungsprotokoll, der Text das, was ein Mensch liest. Beides kommt aus
+    DIESER Stelle, damit die Zaehlung nicht eine zweite Fassung derselben
+    Grenze wird.
+    """
     if sig["alter_s"] is not None and sig["alter_s"] > w["max_alter_signal_sekunden"]:
-        return None, "Signal zu alt (%.0f s)" % sig["alter_s"]
+        return "zu alt", "Signal zu alt (%.0f s)" % sig["alter_s"]
     mk = sig["marktkap_usd"]
     unten, oben = w["marketcap_band_usd"]
     if mk is None:
-        return None, "Marktkapitalisierung unbekannt"
+        return "marktkap unbekannt", "Marktkapitalisierung unbekannt"
     if not unten <= mk <= oben:
-        return None, "Marktkapitalisierung %.0f ausserhalb %d-%d" % (mk, unten, oben)
+        return ("marktkap ausserhalb",
+                "Marktkapitalisierung %.0f ausserhalb %d-%d" % (mk, unten, oben))
     offen = [p for p in z["positionen"] if p["token"] == sig["token"]]
     if len(offen) >= w["max_kopien_je_token"]:
-        return None, "schon %d Kopien auf diesem Token" % len(offen)
+        return "token belegt", "schon %d Kopien auf diesem Token" % len(offen)
     if any(p["kette"] == sig["kette"] and p["token"] == sig["token"]
            and p["wallet"] == sig["wallet"] for p in z["positionen"]):
-        return None, "diese Wallet steht hier schon auf diesem Token"
+        return "wallet belegt", "diese Wallet steht hier schon auf diesem Token"
+    return None, None
+
+
+def _nein(sig, grund):
+    """Die Zeile fuer einen abgelehnten Kandidaten - eine Fassung fuer beide
+    Wege: die Vorschau druckt sie, der Papierlauf druckt sie beim ersten Mal.
+
+    Kein Filterwort des Dauerlaufs darin (verkauf, stop, KILL, gesperrt,
+    ausstieg): eine Zeile mit einem dieser Woerter geht nach Telegram, und
+    eine Ablehnung ist keine Meldung wert. Ein Test haelt das fest.
+    """
+    return "  NEIN %-10s %-28s %s" % ((sig.get("symbol") or "?")[:10],
+                                      sig.get("token"), grund)
+
+
+def _zaehle_unerreicht(lage, rest):
+    """Die Kandidaten hinter einem Abbruch: kaufbar, aber nicht mehr erreicht.
+
+    Gezaehlt wird aus der Vorpruefung vom ZYKLUSBEGINN - die Duplikatstriche
+    koennen sich inzwischen geaendert haben, weil im selben Zyklus schon
+    gekauft wurde. Deshalb heisst der Zaehler "davon ... bei Zyklusbeginn":
+    eine Zahl mit ihrem Vorbehalt statt einer stillen Behauptung. Das "davon"
+    ist Absicht - es ist eine TEILMENGE der kaufbaren Signale, keine zweite
+    Zahl zum Addieren.
+    """
+    kaufbar = sum(1 for schluessel, _ in rest if schluessel is None)
+    if kaufbar:
+        lage["davon kaufbar, aber nicht mehr erreicht"] += kaufbar
+
+
+def _kopie(sig, w, z):
+    """Ein Kauf wird zur Buchzeile - oder es gibt einen Grund, warum nicht."""
+    _, grund = _vorpruefung(sig, w, z)
+    if grund:
+        return None, grund
 
     if w["risiko_pflicht"]:
         try:
@@ -281,6 +470,7 @@ def _kopie(sig, w, z):
     else:
         r = {"stufe": "ungeprueft", "merkmale": []}
 
+    mk = sig["marktkap_usd"]
     einsatz = w["max_einsatz_je_kopie_usd"]
     kauf = _kaufpreis(sig["preis"], w)
     gebuehr = einsatz * w["gebuehr_pct"] / 100.0
@@ -468,6 +658,102 @@ def bilanz(w):
               % (kette, wallet, e["runden"], e["gv"] / 100.0, zahlen))
 
 
+# --- Ablehnungs-Bilanz -----------------------------------------------------
+
+def ablehnungsbilanz(stunden=24.0):
+    """Was das Ablehnungsprotokoll hergibt - lesend, ohne Netz.
+
+    Zwei Aussagen, die getrennt bleiben muessen: die LAGE (was die Zyklen an
+    Signalen mitbrachten und woran sie haengen blieben - reine Rechnung) und
+    die ENTSCHEIDUNG (was das Buch mit den bewerteten Kandidaten getan hat,
+    inklusive Platzmangel). Wer beides zusammenwirft, haelt ein volles Buch
+    fuer ein zu strenges Tor - und dreht dann an der falschen Grenze.
+
+    Die Kontrollzeile am Ende haelt die beiden Seiten zusammen: kaufbar ist
+    die Summe aus dem, was das Buch bewertet hat, und dem, was es nicht mehr
+    erreicht hat.
+    """
+    if not os.path.exists(ABLEHNUNGEN):
+        print("Noch kein Ablehnungsprotokoll: %s" % ABLEHNUNGEN)
+        print("Es entsteht im ersten Papierzyklus - die Vorschau schreibt nichts.")
+        return 1
+
+    grenze = (datetime.now(timezone.utc) - timedelta(hours=stunden)
+              if stunden and stunden > 0 else None)
+    zeilen = []
+    with open(ABLEHNUNGEN, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            t = _bis_zeit(r.get("zeit"))
+            if grenze and t and t < grenze:
+                continue
+            zeilen.append(r)
+    if not zeilen:
+        print("Keine Zeile im Zeitraum (%s)." %
+              ("gesamt" if grenze is None else "letzte %g h" % stunden))
+        return 0
+
+    lage, entscheidung, kandidaten = (collections.Counter(),
+                                      collections.Counter(),
+                                      collections.Counter())
+    zyklen = fehlend = 0
+    for r in zeilen:
+        art = (r.get("art") or "").strip()
+        grund = (r.get("grund") or "").strip()
+        anzahl = int(_zahl(r.get("anzahl")) or 0)
+        if art == "signal":
+            kandidaten[grund] += 1
+        elif art != "zyklus":
+            fehlend += 1
+        elif grund == "Signale gesehen":
+            zyklen += 1
+        elif grund.startswith("Lage: "):
+            lage[grund[len("Lage: "):]] += anzahl
+        elif grund.startswith("Entscheidung: "):
+            entscheidung[grund[len("Entscheidung: "):]] += anzahl
+
+    print("=== Spiegel: Ablehnungsprotokoll ===")
+    print("Zeitraum: %s, %d Zyklen, %d Zeilen"
+          % ("gesamt" if grenze is None else "letzte %g h" % stunden,
+             zyklen, len(zeilen)))
+    print()
+    print("Lage - was die Zyklen mitbrachten (billige Tore, kein Abruf):")
+    for name, anzahl in lage.most_common():
+        print("  %-46s %8d" % (name, anzahl))
+    print()
+    print("Entscheidung - was das Buch mit den bewerteten Kandidaten tat:")
+    if not entscheidung:
+        print("  (keine - kein Kandidat wurde in diesem Zeitraum bewertet)")
+    for name, anzahl in entscheidung.most_common():
+        zusatz = ("  (%d von %d Zyklen)" % (anzahl, zyklen)
+                  if zyklen and name.endswith("nicht bewertet") else "")
+        print("  %-46s %8d%s" % (name, anzahl, zusatz))
+    print()
+    if kandidaten:
+        print("Einzelne Kandidaten: %d Zeilen" % sum(kandidaten.values()))
+        for name, anzahl in kandidaten.most_common(10):
+            print("  %-46s %8d" % (name, anzahl))
+    else:
+        print("Einzelne Kandidaten: keine - kein Signal kam bis zum "
+              "Risiko-Scan.")
+    print()
+    kaufbar = lage.get("kaufbar", 0)
+    nicht_erreicht = lage.get("davon kaufbar, aber nicht mehr erreicht", 0)
+    # Die Kapazitaets-Zaehler zaehlen EREIGNISSE (ein Abbruch je Zyklus), nicht
+    # Kandidaten - sie gehoeren deshalb nicht in die Bilanz der Kandidaten.
+    kapazitaet = {k for k in entscheidung if k.endswith("nicht bewertet")}
+    bewertet = sum(n for k, n in entscheidung.items() if k not in kapazitaet)
+    print("Kontrolle: kaufbar %d = bewertet %d + nicht mehr erreicht %d"
+          % (kaufbar, bewertet, nicht_erreicht))
+    if kaufbar != bewertet + nicht_erreicht:
+        print("  Achtung: die beiden Seiten gehen nicht auf (%+d). Ein neuer "
+              "Zweig im Zyklus, der keinen Zaehler setzt?"
+              % (kaufbar - bewertet - nicht_erreicht))
+    if fehlend:
+        print("  %d Zeilen ohne bekannte Form (art weder zyklus noch signal)"
+              % fehlend)
+    return 0
+
+
 # --- Lauf ------------------------------------------------------------------
 
 def zeige_wachen(w):
@@ -504,14 +790,17 @@ def signale_sammeln(w):
     return aus
 
 
-def lauf(modus):
-    global SCHREIBEN
+def lauf(modus, stunden=24.0):
+    global SCHREIBEN, GESEHEN
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     # Die Vorschau liest und rechnet, schreibt aber nichts - kein Journal,
     # kein Zustand. Alles andere schreibt (Papier ist ein Lauf, kein Entwurf).
     SCHREIBEN = modus != "vorschau"
+    # Die Sperre gegen doppelte Protokollzeilen wird je Lauf neu aus der
+    # Datei gelesen: die Datei ist die Wahrheit, nicht der Prozess.
+    GESEHEN = None
 
     w = lade(WACHEN, None)
     if not w:
@@ -527,6 +816,8 @@ def lauf(modus):
     if modus == "bilanz":
         bilanz(w)
         return 0
+    if modus == "ablehnungen":
+        return ablehnungsbilanz(stunden)
     if modus == "messen":
         return messen(w, lade_zustand())
 
@@ -546,12 +837,17 @@ def lauf(modus):
               "Lauf -" % z.get("letzter_lauf"))
         flach_stellen(z, w, "herzschlag_alt")
         schreibe_zustand(z)
+        # Bedingung 4 gilt auch hier: der Notausstieg aendert den Zustand, und
+        # eine Kopie ausser Haus, die dem Stand hinterherlaeuft, liest sich
+        # beim naechsten Vergleich als Abweichung (Muster: xperp/handeln.py).
+        spiegeln(z, w)
         return 0
 
     pruefe_ausstiege(z, w)
     if kill_switch(z, w):
         flach_stellen(z, w, "kill_switch")
         schreibe_zustand(z)
+        spiegeln(z, w)
         return 0
 
     gefolgt = _gefolgt(w)
@@ -559,22 +855,35 @@ def lauf(modus):
         print("verfolgte.json ist leer - erst '--waehlen' laufen lassen.")
         return 1
     sig = signale_sammeln(w)
+    # Die billige Vorpruefung laeuft EINMAL ueber alle Signale (reine Rechnung,
+    # kein Abruf): sie sagt, wie viele Kandidaten der Zyklus mitgebracht hat
+    # und woran sie haengen bleiben. Der Entscheidungszaehler daneben sagt,
+    # was das Buch mit den bewerteten Kandidaten getan hat. Zwei verschiedene
+    # Aussagen - beide gehoeren ins Protokoll, keine ersetzt die andere.
+    vorpruefung = [_vorpruefung(s, w, z) for s in sig]
+    lage = collections.Counter(g or "kaufbar" for g, _ in vorpruefung)
+    entscheidung = collections.Counter()
     neu = 0
-    for s in sig:
+    for i, s in enumerate(sig):
         if len(z["positionen"]) >= w["max_offen"]:
             print("  Buch voll (%d Kopien) - Rest faellt aus"
                   % w["max_offen"])
+            entscheidung["Buch voll - Kandidat nicht bewertet"] += 1
+            _zaehle_unerreicht(lage, vorpruefung[i:])
             break
         if neu >= w["max_neu_je_zyklus"]:
             print("  Zyklusdeckel erreicht (%d neue Kopien)" % w["max_neu_je_zyklus"])
+            entscheidung["Zyklusdeckel - Kandidat nicht bewertet"] += 1
+            _zaehle_unerreicht(lage, vorpruefung[i:])
             break
         if (s["kette"], s["wallet"]) not in gefolgt:
+            entscheidung["Wallet nicht verfolgt"] += 1
             continue
         if modus == "vorschau":
             p, grund = _kopie(s, w, z)
-            print("  %s %-10s %-28s %s"
-                  % ("WAERE" if p else "NEIN ", s["symbol"][:10], s["token"],
-                     "%d USD" % w["max_einsatz_je_kopie_usd"] if p else grund))
+            print("  WAERE %-10s %-28s %d USD"
+                  % (s["symbol"][:10], s["token"],
+                     w["max_einsatz_je_kopie_usd"]) if p else _nein(s, grund))
             if p:
                 neu += 1
                 z["positionen"].append(p)      # nur im Speicher, kein Schreiben
@@ -582,6 +891,31 @@ def lauf(modus):
         grund = eroeffne(z, s, w)
         if grund is None:
             neu += 1
+            entscheidung["kopiert"] += 1
+            continue
+        if vorpruefung[i][0] is not None:
+            # Schon am billigen Tor gescheitert: das steht als Zahl in der Lage
+            # (700 Signale je Zyklus wuerden als Einzelzeilen das Protokoll
+            # fluten und die Ausgabe unlesbar machen).
+            continue
+        entscheidung[grund] += 1
+        # Die Zeile steht im Papierlauf sonst nirgends (der Dauerlauf
+        # protokolliert nur "ok"), und genau sie fehlte: WELCHER Kandidat
+        # woran scheitert. Gedruckt wird nur das erste Mal - dasselbe Signal
+        # steht Stunden im Feed.
+        if protokolliere_signal(s, grund):
+            print(_nein(s, grund))
+
+    if SCHREIBEN:
+        # Was der Zyklus gesehen hat und woran es hing. Geschrieben wird in
+        # jedem Zyklus (auch bei 0 Signalen): die Null ist die Aussage "Feed
+        # hatte nichts" und die Grundlage fuer den Anteil der Zyklen mit
+        # vollem Buch.
+        protokolliere("Signale gesehen", len(sig))
+        for name, anzahl in sorted(lage.items()):
+            protokolliere("Lage: %s" % name, anzahl)
+        for name, anzahl in sorted(entscheidung.items()):
+            protokolliere("Entscheidung: %s" % name, anzahl)
 
     print("=== Spiegel (PAPIER%s) | %d Signale, %d verfolgte Wallets | "
           "%d Kopien offen, %d neu ==="
@@ -596,18 +930,9 @@ def lauf(modus):
     # Gelesen wird sie nur von dauerlauf.nur_fenster_fehlt(), und das fragt
     # seine Spuren mit --vorschau ab.
     schreibe_zustand(z)
-    # Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
-    # Erst schreiben, dann kopieren: ein haengendes Zweitlaufwerk darf den
-    # Zyklus verzoegern, aber nicht den Herzschlag verschlucken. Ein fehlendes
-    # Ziel ist kein Fehler des Laufs; der Stand steht im Zustand.
-    basis = _spiegelquelle()
-    ziel = w.get("journal_zweitziel")
-    ok, info = basis.spiegele_journal([JOURNAL, ZUSTAND], ziel)
-    if basis.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
-        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
-        # Q: derselbe Stand liegt. Sonst waere die Kopie in genau dem Zyklus
-        # aelter, in dem sich der Spiegelstand aendert.
-        basis.spiegele_journal([ZUSTAND], ziel)
+    # Bedingung 4: Journal, Zustand und Ablehnungen ausser Haus - nach dem
+    # Herzschlag.
+    ok, info = spiegeln(z, w)
     print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
     return 0
 
@@ -740,12 +1065,17 @@ def _main():
                    dest="modus")
     p.add_argument("--papier", action="store_const", const="papier", dest="modus")
     p.add_argument("--bilanz", action="store_const", const="bilanz", dest="modus")
+    p.add_argument("--ablehnungen", action="store_const", const="ablehnungen",
+                   dest="modus",
+                   help="warum Kandidaten nicht gekauft wurden (Protokoll)")
+    p.add_argument("--stunden", type=float, default=24.0,
+                   help="Zeitraum der Ablehnungsbilanz in Stunden")
     p.add_argument("--messen", action="store_const", const="messen", dest="modus",
                    help="Tiefe und Nachlauf gegen die Kostenannahmen messen")
     p.add_argument("--live", action="store_const", const="live", dest="modus")
     p.set_defaults(modus="vorschau")
     a = p.parse_args()
-    return lauf(a.modus)
+    return lauf(a.modus, a.stunden)
 
 
 if __name__ == "__main__":

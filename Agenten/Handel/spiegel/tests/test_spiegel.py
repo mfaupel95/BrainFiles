@@ -50,10 +50,21 @@ class Grundlage(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.alt = (sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN)
+        self.alt = (sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN,
+                    sp.ABLEHNUNGEN)
+        # SCHREIBEN ist modulweit und bleibt nach lauf("vorschau") auf False
+        # stehen. Ohne diese Zeile haengt das Ergebnis eines Tests davon ab,
+        # welche Testdatei vorher lief (der Fehler war da: eroeffnen schrieb
+        # nichts mehr, sobald eine Vorschau-Probe vorher gelaufen war).
+        self.alt_schreiben = sp.SCHREIBEN
+        sp.SCHREIBEN = True
         sp.ZUSTAND = os.path.join(self.tmp.name, "zustand.json")
         sp.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
         sp.VERFOLGTE = os.path.join(self.tmp.name, "verfolgte.json")
+        # Auch das Ablehnungsprotokoll: es entsteht sonst im ECHTEN Ordner,
+        # weil die Tests den Pfad nicht umbiegen (aufgefallen 14.09.2026 -
+        # die Suite hinterliess dort Zeilen "Signale gesehen 0").
+        sp.ABLEHNUNGEN = os.path.join(self.tmp.name, "ablehnungen.csv")
         # Auch die wachen.json umbiegen - und darin das Ziel der Kopie ausser
         # Haus. Bis zum 14.09.2026 las lauf() die echte wachen.json, und jeder
         # Test mit lauf("papier") ueberschrieb damit
@@ -73,7 +84,8 @@ class Grundlage(unittest.TestCase):
                                     "gemessen": False}]}, f)
 
     def tearDown(self):
-        sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN = self.alt
+        sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN, sp.ABLEHNUNGEN = self.alt
+        sp.SCHREIBEN = self.alt_schreiben
         self.tmp.cleanup()
 
     def journal(self):
@@ -361,6 +373,8 @@ class Sicherheitsnetze(Grundlage):
         self.assertEqual(self.journal(), [], "kein Journal in der Vorschau")
         self.assertFalse(os.path.exists(sp.ZUSTAND),
                          "kein Zustand in der Vorschau")
+        self.assertFalse(os.path.exists(sp.ABLEHNUNGEN),
+                         "kein Ablehnungsprotokoll in der Vorschau")
         text = puffer.getvalue()
         # Die Vorschau muss ihren Ausstieg als Ausstieg zeigen UND als Vorschau
         # erkennbar bleiben (vorher: "WAERE ZU"). Nur die Marke hat sich

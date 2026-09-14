@@ -136,3 +136,42 @@ ueber den Gebuehren beider Seiten liegen, sonst verliert das Grid unabhaengig
 vom Kurs.
 Die Zyklen allein sind keine Aussage: im Absturz verdienten die 12 Zyklen
 +1.022 USDT, der liegengebliebene Bestand kostete -2.762 USDT.
+
+## Ablehnungen protokollieren, nicht nur Buchungen (14.09.2026)
+
+**Der Befund.** Aus 107 geschlossenen Runden des Spiegel-Buchs war nur noch
+abzuleiten, in welchem Band das Nachahmen getragen hat (daraus kam die
+Obergrenze der Marktkapitalisierung: unter 1 Mio Ø +16,5 %, darueber Ø -12 bis
+-22 %). Was NICHT ableitbar war: wie viele Kandidaten an welchem Tor haengen
+blieben. Ein volles Buch und ein zu strenges Tor sahen im Journal gleich aus -
+beide erzeugen nur "keine neue Kopie". Genau diese Verwechslung haette den
+naechsten Schluss falsch gemacht (an der Marktkapitalisierung drehen, waehrend
+das Buch seit Stunden voll war).
+
+**Die Regel.** Ein Papierbuch schreibt neben das Journal ein
+Ablehnungsprotokoll: je Zyklus die Lage (wie viele Signale kamen mit, woran
+scheiterten sie - reine Rechnung ueber alle Signale) UND die Entscheidung (was
+das Buch mit den bewerteten Kandidaten tat, inklusive Platzmangel). Ein
+Einzelkandidat wird nur dann mit Kennung protokolliert, wenn er bis zur
+teuersten Pruefung gekommen ist (Risiko-Scan) - der Rest steht als Zahl je
+Grund, sonst waere das Protokoll bei 700 Signalen je Zyklus unlesbar.
+
+**Warum eine eigene Datei.** Die Leser des Journals zaehlen Zeilen als
+Buchungen (`bilanz()` rechnet jede Nicht-`eroeffnen`-Zeile als Runde,
+`buchauswertung` je Aktion). Eine Ablehnung waere dort eine erfundene Runde und
+wuerde die Bilanz faelschen. Das Protokoll liegt daneben, geht wie das Journal
+mit nach `journal_zweitziel` und wird von `spiegelstand.py` byte-genau
+mitgeprueft (`ZUSATZ`).
+
+**Zwei Fallen, beide teuer.** (1) Dasselbe Signal steht Stunden im Feed - ohne
+Sperre je (Transaktion, Grund) traegt das Protokoll denselben Kandidaten alle
+15 Minuten erneut ein und die Zaehlung ist ein Vielfaches der Wahrheit. (2) Die
+Zaehlung darf keine ZWEITE Fassung derselben Grenze sein: die billigen Tore
+(Alter, Marktkapitalisierung, doppelte Kopie) stehen in `spiegel._vorpruefung`
+einmal und werden von Buch und Zaehlung gemeinsam benutzt; ein Test haelt fest,
+dass ein billiges Tor keinen Abruf kostet.
+
+**Lesen.** `spiegel.py --ablehnungen [--stunden N]` zeigt Lage, Entscheidung und
+Einzelfaelle und stellt am Ende beide Seiten gegen: `kaufbar = bewertet + nicht
+mehr erreicht`. Geht die Zeile nicht auf, ist ein Zweig im Zyklus nicht
+gezaehlt - "Achtung" ist dann die ehrliche Ausgabe, nicht eine gerundete Zahl.

@@ -33,6 +33,12 @@ from datetime import datetime, timezone
 
 HANDEL = os.path.dirname(os.path.abspath(__file__))
 DATEIEN = ("handelsjournal.csv", "zustand.json")
+# Zusatzdateien je Spur. Der Vergleich ist derselbe (byte-genau), aber eine
+# Datei, die nur EINE Spur mitbringt, darf die anderen nicht abweichend
+# machen. spiegel fuehrt das Ablehnungsprotokoll - warum Kandidaten NICHT
+# gekauft wurden. Es gehoert wie das Journal ausser Haus: faellt die Platte
+# aus, fehlt sonst genau die Begruendung, die man spaeter braucht.
+ZUSATZ = {"spiegel": ("ablehnungen.csv",)}
 
 
 def lade(pfad):
@@ -99,7 +105,13 @@ def spuren_im_lauf(handel=HANDEL):
 
 
 def spur_zeile(handel, spur):
-    """Ein Pruefergebnis je Spur: Ziel, Kopiestand, Herzschlag, Journalzeilen."""
+    """Ein Pruefergebnis je Spur: Ziel, Kopiestand, Herzschlag, Journalzeilen.
+
+    Verglichen werden die zwei Pflichtdateien plus die Zusatzdateien DIESER
+    Spur (ZUSATZ). Eine fehlende Zusatzdatei liest sich wie ein Unterschied -
+    das ist gewollt: sie wird im selben Zyklus mitgespiegelt, in dem sie
+    entsteht, also muss sie auf beiden Seiten liegen.
+    """
     ordner = os.path.join(handel, spur)
     w = lade(os.path.join(ordner, "wachen.json")) or {}
     z = lade(os.path.join(ordner, "zustand.json")) or {}
@@ -115,7 +127,8 @@ def spur_zeile(handel, spur):
         return {"spur": spur, "stand": "Ziel fehlt", "grund": "Ordner nicht erreichbar",
                 "ziel": ziel, "alter": alter, "zeilen": anzahl}
 
-    abweichungen = [n for n in DATEIEN
+    dateien = DATEIEN + ZUSATZ.get(spur, ())
+    abweichungen = [n for n in dateien
                     if not gleich(os.path.join(ordner, n), os.path.join(ziel, n))]
     return {"spur": spur,
             "stand": "gleich" if not abweichungen else "ABWEICHUNG",

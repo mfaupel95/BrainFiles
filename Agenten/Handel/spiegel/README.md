@@ -36,6 +36,10 @@ cd Agenten\Handel\spiegel
 # Welche Wallets haben getragen, welche gemessenen Zahlen lügen
 ..\scanner\.venv\Scripts\python.exe spiegel.py --bilanz
 
+# Warum Kandidaten NICHT gekauft wurden (Lage, Entscheidung, Einzelfälle)
+..\scanner\.venv\Scripts\python.exe spiegel.py --ablehnungen
+..\scanner\.venv\Scripts\python.exe spiegel.py --ablehnungen --stunden 168
+
 # Was das BUCH getragen hat: Bilanz vor/nach Kosten, nach Kette, Grund und Tiefe
 ..\scanner\.venv\Scripts\python.exe auswertung.py
 
@@ -80,7 +84,7 @@ bezahlen und die in jeder Anleitung fehlt.
 | Slippage / Gebühr | 3 % / 1 % | Annahme für dünne Bücher plus Vorlauf |
 | Stop / Ziel / Frist | −25 % / +60 % / 24 h | eigene Mathematik, kein Auto-Exit nach Vorbild |
 | Signalalter | 300 s | Hinterherlaufen ist kein Nachahmen |
-| Marktkapitalisierung | 50.000 – 20 Mio USD | keine Kleinstbetrugs-Bücher, keine ausgewachsenen Werte |
+| Marktkapitalisierung | 50.000 – 1 Mio USD | keine Kleinstbetrugs-Bücher, keine ausgewachsenen Werte (Obergrenze am 14.09.2026 von 20 Mio auf 1 Mio gezogen, Begründung in `wachen.json`) |
 | Risikostufen | safe, LOW | Honeypot und Mint-Rechte fliegen raus |
 
 ## Kein Orderpfad
@@ -160,13 +164,55 @@ Beides ist nötig; die Mechanik teilen sie über `Handel/buchauswertung.py`, dam
 es keine zweite Formel für dieselbe Frage gibt. Die Bilanz steht auch als Zeile
 im Tagesbericht (`Auswertung: …`) — sie kommt aus derselben Quelle.
 
+## Ablehnungsprotokoll (seit 14.09.2026)
+
+**Das Journal hält nur, was gebucht wurde.** Aus den 107 geschlossenen Runden
+vom September 2026 war noch abzuleiten, in welchem Band das Buch getragen hat
+(→ Obergrenze der Marktkapitalisierung) — aber nicht, wie viele Kandidaten an
+welchem Tor hängen blieben. Ein **volles Buch** und ein **zu strenges Tor**
+sahen im Journal gleich aus. `ablehnungen.csv` schreibt seither mit, warum
+nicht gekauft wurde.
+
+Je Zyklus, zwei Arten von Zeilen (Spalten: `zeit, art, grund, anzahl, kette,
+wallet, token, symbol, marktkap_usd, alter_s, preis, tx`):
+
+- `art=zyklus` — **die Lage**: wie viele Signale der Zyklus mitbrachte und
+  woran sie hängen blieben (`zu alt`, `marktkap ausserhalb`,
+  `marktkap unbekannt`, `token belegt`, `wallet belegt`, `kaufbar`) — eine
+  reine Rechnung über alle Signale, ohne Abruf. Dazu **die Entscheidung**: was
+  das Buch mit den Kandidaten getan hat, die es wirklich bewertet hat
+  (`kopiert`, Risikostufe, `Buch voll - Kandidat nicht bewertet`,
+  `Zyklusdeckel …`). Ein volles Buch zählt zusätzlich, wie viele kaufbare
+  Kandidaten es nicht mehr erreicht hat.
+- `art=signal` — **der Einzelfall**: jeder Kandidat, der bis zum Risiko-Scan
+  gekommen ist und dort scheitert, mit Token, Wallet und Transaktion. Er steht
+  **einmal** drin, nicht in jedem Zyklus erneut (der Feed reicht Stunden
+  zurück); ändert sich der Grund, entsteht eine neue Zeile.
+
+**Warum eine eigene Datei und nicht das Journal:** dessen Leser zählen Zeilen
+als Buchungen (`bilanz()` rechnet jede Nicht-`eroeffnen`-Zeile als Runde,
+`buchauswertung` je Aktion) — eine Ablehnung wäre dort eine erfundene Runde und
+würde die Bilanz fälschen.
+
+Lesen: `spiegel.py --ablehnungen [--stunden N]` (Vorgabe 24 h). Die
+**Kontrollzeile** am Ende hält beide Seiten zusammen (`kaufbar = bewertet +
+nicht mehr erreicht`); geht sie nicht auf, ist ein Zweig im Zyklus nicht
+gezählt — dann steht „Achtung" da statt einer gerundeten Zahl.
+
+Geschrieben wird **nur im echten Lauf** (die Vorschau schreibt nichts), die
+Datei ist Laufzeitdaten wie das Journal und geht **mit nach Q:**.
+
 ## Journal außer Haus (Bedingung 4, seit 13.09.2026)
 
-Nach jedem Zyklus gehen `handelsjournal.csv` und `zustand.json` zusätzlich nach
-`journal_zweitziel` aus `wachen.json` (`Q:\Handel_Journal\spiegel`), wie bei
-den anderen Spuren. Die Kopie liegt **nach** dem Schreiben von Herzschlag und
-Journal: ein hängendes Zweitlaufwerk darf den Zyklus verzögern, nicht den
-Herzschlag verschlucken. Ein fehlendes Ziel ist kein Fehler des Laufs.
+Nach jedem Zyklus gehen `handelsjournal.csv`, `zustand.json` und
+`ablehnungen.csv` zusätzlich nach `journal_zweitziel` aus `wachen.json`
+(`Q:\Handel_Journal\spiegel`), wie bei den anderen Spuren. Die Kopie liegt
+**nach** dem Schreiben von Herzschlag und Journal: ein hängendes Zweitlaufwerk
+darf den Zyklus verzögern, nicht den Herzschlag verschlucken. Ein fehlendes
+Ziel ist kein Fehler des Laufs. Gespiegelt wird in **allen** Pfaden — auch im
+Notausstieg (Herzschlag alt, Kill-Switch), sonst liest sich der geänderte
+Zustand beim nächsten Vergleich als Abweichung (`spiegelstand.py` prüft die
+Zusatzdatei über `ZUSATZ = {"spiegel": ("ablehnungen.csv",)}`).
 
 Sichtbar wird eine ausgefallene Kopie im eigenen Zustand:
 `journal_zweitziel_ok` (true/false) und `journal_zweitziel_info` (Pfad oder
