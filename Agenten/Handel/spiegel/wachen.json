@@ -28,8 +28,8 @@
 
   "_alter": "Hinterherlaufen ist kein Nachahmen. Ein Signal aelter als diese Grenze wird verworfen; der Zeitstempel kommt vom Feed (tradeTime), nicht von der Abfrage.",
   "max_alter_signal_sekunden": 300,
-  "_verfolgte_alter": "Die Verfolgungsliste ist ein Fenster auf den Feed, kein Stammbuch: wer heute im Feed handelt, stand vor zwei Tagen oft nicht darin und umgekehrt. Am 14.09.2026 gemessen: Liste vom 12.09. mit 305 Wallets, im Feed handelten 206 Wallets, davon 154 nicht in der Liste - 472 von 706 Signalen je Zyklus fielen als 'Wallet nicht verfolgt' aus, zwei Drittel des Feeds. Deshalb baut der Zyklus die Liste selbst neu, sobald sie aelter ist als diese Grenze (ein Feed-Umlauf, rund zehn Abrufe) - im schreibenden Lauf, nie in der Vorschau. Nach dem Neubau sammelt der Zyklus mit der frischen Liste weiter; offene Kopien sind davon nicht betroffen, sie tragen Stop, Ziel und Frist selbst.",
-  "verfolgte_max_alter_stunden": 12,
+  "_verfolgte_alter": "Die Verfolgungsliste ist ein Fenster auf den Feed, kein Stammbuch: wer heute im Feed handelt, stand vor zwei Tagen oft nicht darin und umgekehrt. Am 14.09.2026 gemessen: Liste vom 12.09. mit 305 Wallets, im Feed handelten 206 Wallets, davon 154 nicht in der Liste - 472 von 706 Signalen je Zyklus fielen als 'Wallet nicht verfolgt' aus, zwei Drittel des Feeds. Deshalb baut der Zyklus die Liste selbst neu, sobald sie aelter ist als diese Grenze - seit dem 14.09.2026 stuendlich (1 h; ein Feed-Umlauf, rund zehn Abrufe je Neubau, ~240 Abrufe je Tag) - im schreibenden Lauf, nie in der Vorschau. Nach dem Neubau sammelt der Zyklus mit der frischen Liste weiter; offene Kopien sind davon nicht betroffen, sie tragen Stop, Ziel und Frist selbst.",
+  "verfolgte_max_alter_stunden": 1,
 
   "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (kein Kleinstbetrug, kein ausgewachsener Wert), und der Risiko-Scan muss unauffaellig sein. Das Tor nach unten ist das wichtigere - Rug Pulls sitzen unten.",
   "marketcap_band_usd": [50000, 1000000],

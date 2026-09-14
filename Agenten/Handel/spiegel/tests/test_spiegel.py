@@ -500,7 +500,10 @@ class VerfolgteAlter(Grundlage):
             with patch("sys.stdout", puffer):
                 sp.lauf("papier")
         self.assertEqual(len(rufe), 1, puffer.getvalue())
-        self.assertIn("Verfolgungsliste aelter als 12 h", puffer.getvalue())
+        with io.open(sp.WACHEN, encoding="utf-8") as f:
+            grenze = json.load(f).get("verfolgte_max_alter_stunden", 12)
+        self.assertIn("Verfolgungsliste aelter als %s h" % grenze,
+                      puffer.getvalue())
 
     def test_frische_liste_wird_nicht_gebaut(self):
         rufe = []

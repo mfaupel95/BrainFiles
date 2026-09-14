@@ -633,10 +633,10 @@ in `wachen.json` (Schlüssel `max_offen_papier`,
 Wallets, im Feed handelten am 14.09.2026 206 Wallets, davon 154 nicht in der
 Liste — **472 von 706 Signalen je Zyklus** fielen als „Wallet nicht verfolgt"
 aus, zwei Drittel des Feeds. Der Zyklus baut die Liste jetzt neu, sobald sie
-älter ist als `verfolgte_max_alter_stunden` (12 h, rund zehn Abrufe); die
-Vorschau baut nichts. Offene Kopien bleiben unberührt — sie tragen Stop, Ziel
-und Frist selbst. **Rücknahme:** die Grenze sehr groß setzen lässt die Liste
-stehen, bis jemand `--waehlen` ruft.
+älter ist als `verfolgte_max_alter_stunden` (1 h, rund zehn Abrufe je Neubau,
+~240 Abrufe je Tag); die Vorschau baut nichts. Offene Kopien bleiben unberührt
+— sie tragen Stop, Ziel und Frist selbst. **Rücknahme:** die Grenze sehr groß
+setzen lässt die Liste stehen, bis jemand `--waehlen` ruft.
 
 **scanner und kraken: der Börsen-Stop wird aufgeräumt.** Beide setzten den
 Notausstieg schon mit der Order an den Handelsplatz — aber scanner warf die

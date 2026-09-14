@@ -230,9 +230,9 @@ Feed, kein Stammbuch: am 14.09.2026 standen 154 der 206 im Feed handelnden
 Wallets nicht in der Liste vom 12.09., und **472 von 706 Signalen je Zyklus**
 fielen als „Wallet nicht verfolgt" aus — zwei Drittel des Feeds. Neu gebaut wird
 die Liste jetzt **vom Zyklus selbst**, sobald sie älter ist als
-`verfolgte_max_alter_stunden` (12 h, ein Feed-Umlauf von rund zehn Abrufen); die
-Vorschau baut nichts. Offene Kopien sind davon nicht betroffen — sie tragen
-Stop, Ziel und Frist selbst.
+`verfolgte_max_alter_stunden` (1 h seit 14.09.2026, ein Feed-Umlauf von rund
+zehn Abrufen, ~240 Abrufe je Tag); die Vorschau baut nichts. Offene Kopien sind
+davon nicht betroffen — sie tragen Stop, Ziel und Frist selbst.
 
 ## Journal außer Haus (Bedingung 4, seit 13.09.2026)
 
