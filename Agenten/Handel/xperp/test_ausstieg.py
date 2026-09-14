@@ -38,15 +38,20 @@ class Ausstieg(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.alt = (h.JOURNAL, h._kurs, okxf.markt_schliessen)
+        self.kurs_original = h._kurs_aktuell    # die echte Funktion, fuer Rollover-Tests
+        self.alt = (h.JOURNAL, h._kurs_aktuell, okxf.markt_schliessen)
         h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
 
         def kein_order(*a, **kw):
             raise AssertionError("Der Order-Pfad darf aus dem Test nie erreicht werden")
         okxf.markt_schliessen = kein_order
 
+        def kein_kurs(p):
+            raise AssertionError("kein Kurs gesetzt")
+        h._kurs_aktuell = kein_kurs
+
     def tearDown(self):
-        h.JOURNAL, h._kurs, okxf.markt_schliessen = self.alt
+        h.JOURNAL, h._kurs_aktuell, okxf.markt_schliessen = self.alt
         self.tmp.cleanup()
 
     def journal(self):
@@ -57,7 +62,7 @@ class Ausstieg(unittest.TestCase):
 
     def schliesse(self, position, kurs):
         """Ein Ausstiegslauf mit festem Kurs. Rueckgabe: (Grund, Zustand)."""
-        h._kurs = lambda inst: kurs
+        h._kurs_aktuell = lambda p: kurs
         z = {"positionen": [dict(position)], "letzte_stops": {}}
         h.pruefe_ausstiege(z, False, {})
         zeilen = self.journal()
@@ -102,7 +107,7 @@ class Ausstieg(unittest.TestCase):
         - er stand im Journal und war im Chat unsichtbar. Geprueft wird die
         gedruckte Zeile, nicht das Journal.
         """
-        h._kurs = lambda inst: 107.0
+        h._kurs_aktuell = lambda p: 107.0
         z = {"positionen": [dict(LONG)], "letzte_stops": {}}
         puffer = io.StringIO()
         with patch("sys.stdout", puffer):
@@ -129,6 +134,80 @@ class Ausstieg(unittest.TestCase):
     def test_short_ziel(self):
         grund, _ = self.schliesse(SHORT, 93.0)
         self.assertEqual(grund, "ziel")
+
+    def test_rollover_stellt_inst_um_ohne_ausstieg(self):
+        """Alter Kontrakt (51001): pruefe_ausstiege migriert die Position auf
+        den lebenden Kontrakt des Basiswerts und bucht eine rollover-Zeile.
+
+        Ohne die Umstellung bliebe die Position ewig ohne Kurs - Stop und
+        Ziel wuerden nie geprueft (Befund 14.09.2026: XAU/BZ zeigten im
+        Bericht 'kein Kurs')."""
+        p = dict(LONG, inst="XAU-USD_UM_XPERP-310516")   # toter Kontrakt
+        z = {"positionen": [p], "letzte_stops": {}}
+        h._kurs_aktuell = self.kurs_original
+        with patch.object(okxf, "letzter_kurs_mit_fallback",
+                          return_value=("XAU-USD_UM_XPERP-310502",
+                                        100.5)) as m:
+            h.pruefe_ausstiege(z, False, {})
+        m.assert_called_once_with("XAU-USD_UM_XPERP-310516", "XAU")
+        self.assertEqual(z["positionen"][0]["inst"],
+                         "XAU-USD_UM_XPERP-310502")
+        zeilen = self.journal()
+        rollover = [l for l in zeilen if "rollover" in l]
+        self.assertEqual(len(rollover), 1)
+        self.assertIn("XAU-USD_UM_XPERP-310516", rollover[0])
+
+    def test_rollover_verhaelt_sich_wie_kurs_sonst(self):
+        """Eine migrierte Position wird normal ausgestoppt: der Kurs des
+        neuen Kontrakts entscheidet, der Grund bleibt 'stop'."""
+        p = dict(LONG, inst="XAU-USD_UM_XPERP-310516",
+                 stop=97.0)
+        z = {"positionen": [p], "letzte_stops": {}}
+        h._kurs_aktuell = self.kurs_original
+        with patch.object(okxf, "letzter_kurs_mit_fallback",
+                          return_value=("XAU-USD_UM_XPERP-310502", 96.5)):
+            h.pruefe_ausstiege(z, False, {})
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(z["letzte_stops"]["XAU"], h._heute())
+        zeilen = self.journal()
+        self.assertTrue(any("rollover" in l for l in zeilen))
+        letzte = zeilen[-1]
+        self.assertTrue(letzte.endswith("stop") or ",stop" in letzte)
+
+
+class Fallback(unittest.TestCase):
+    """okxf.letzter_kurs_mit_fallback gegen OKX-Antworten - ohne Netz."""
+
+    def test_fallback_wechselt_auf_lebenden_kontrakt(self):
+        fehler = okxf.OKXFehler(
+            "OKX 51001: Instrument ID, Instrument ID code, or Spread ID "
+            "doesn't exist.")
+        with patch.object(okxf, "_mit_wiederholung",
+                          side_effect=[fehler, [{"last": "4335.5"}]]) as m, \
+             patch.object(okxf, "instrument",
+                          return_value={"instId": "XAU-USD_UM_XPERP-310502"}):
+            inst, kurs = okxf.letzter_kurs_mit_fallback(
+                "XAU-USD_UM_XPERP-310516", "XAU")
+        self.assertEqual(inst, "XAU-USD_UM_XPERP-310502")
+        self.assertEqual(kurs, 4335.5)
+
+    def test_ohne_basis_kein_fallback(self):
+        fehler = okxf.OKXFehler(
+            "OKX 51001: Instrument ID, Instrument ID code, or Spread ID "
+            "doesn't exist.")
+        with patch.object(okxf, "_mit_wiederholung",
+                          side_effect=fehler) as m:
+            self.assertRaises(okxf.OKXFehler, okxf.letzter_kurs_mit_fallback,
+                              "XAU-USD_UM_XPERP-310516")
+        m.assert_called_once()
+
+    def test_transportfehler_kein_fallback(self):
+        # 429/Timeout ist kein Rollover: darf nicht still auf einen anderen
+        # Kontrakt wechseln.
+        with patch.object(okxf, "_mit_wiederholung",
+                          side_effect=RuntimeError("kaputt")):
+            self.assertRaises(RuntimeError, okxf.letzter_kurs_mit_fallback,
+                              "XAU-USD_UM_XPERP-310516", "XAU")
 
 
 if __name__ == "__main__":

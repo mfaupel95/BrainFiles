@@ -167,6 +167,10 @@ def spur_swap():
             "vh": bewegung * p.get("hebel", 1) if bewegung is not None else None,
             "stop": p.get("stop"), "seit": p.get("eroeffnet"),
             "hebel": p.get("hebel"), "familie": p.get("familie"),
+            # seite traegt zeile_position - ohne sie rechnet der
+            # Stop-Abstand jede Short wie einen Long (Fehlalarm "Stop
+            # gerissen" an der Swap-XAU-Short, Befund 14.09.2026).
+            "seite": p["seite"],
         })
     return {
         "name": "SWAP (%s)" % ("Papier" if (z.get("modus") or "papier") == "papier"
@@ -475,7 +479,13 @@ def spur_xperp_positionen():
             import okxf                                   # noqa: PLC0415
             for p in pos:
                 try:
-                    kurse[p["inst"]] = float(okxf.letzter_kurs(p["inst"]))
+                    # Rollover-fest: wechselt OKX den XPERP-Kontrakt
+                    # (14.09.2026: 51001 bei XAU/BZ), liefert der alte
+                    # instId keinen Kurs. Der Fallback loest den lebenden
+                    # Kontrakt des Basiswerts auf und nimmt dessen Kurs.
+                    _, k = okxf.letzter_kurs_mit_fallback(
+                        p["inst"], p.get("basis"))
+                    kurse[p["inst"]] = k
                 except Exception:                        # noqa: BLE001
                     pass
         except Exception:                                # noqa: BLE001
@@ -494,6 +504,10 @@ def spur_xperp_positionen():
             "vh": bewegung * p.get("hebel", 1) if bewegung is not None else None,
             "stop": p.get("stop"), "seit": p.get("eroeffnet"),
             "hebel": p.get("hebel"), "familie": p.get("familie"),
+            # seite traegt zeile_position: ohne sie rechnet der
+            # Stop-Abstand jede Short wie eine Long ("Stop gerissen"-
+            # Fehlalarm, Befund 14.09.2026 an der Swap-XAU-Short).
+            "seite": p["seite"],
         })
     return {
         "name": "Spur 2  XPERP", "waehrung": "USD", "w": w, "z": z,
@@ -525,7 +539,7 @@ def spur_xperp(anzahl=3):
             } for b in beste]
     except Exception as e:                               # noqa: BLE001
         spitzen["fehler"] = str(e)
-    return {"name": "Spur 2  XPERP", "w": w, "spitzen": spitzen,
+    return {"name": "Rangliste  XPERP", "w": w, "spitzen": spitzen,
             "ordner": ordner}
 
 
@@ -726,7 +740,7 @@ def baue(mit_xperp=True):
                     t.append("  %-6s %s" % (titel, "  ".join(teile)))
                 t.append("  K/A/R = Krypto/Aktie/Rohstoff, ! = Tor zu")
         except Exception as e:                           # noqa: BLE001
-            t.append("\n<b>Spur 2</b>\n  AUSFALL: %s" % e)
+            t.append("\n<b>Rangliste XPERP</b>\n  AUSFALL: %s" % e)
 
     t.append("")
     t.append(spiegelzeile())

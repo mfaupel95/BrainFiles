@@ -26,38 +26,51 @@ herzschlag_frisch = basis.herzschlag_frisch
 rollierender_ev = basis.rollierender_ev
 spiegele_journal = basis.spiegele_journal
 vermerke_spiegelung = basis.vermerke_spiegelung
+freigabe_erfuellt = basis.freigabe_erfuellt
 
 
 def runden_aus_journal(journal_pfad):
+    """Jede abgeschlossene Runde aus dem orbk-Journal.
+
+    orbk/handeln.py schreibt je abgeschlossener Runde EINE Zeile im Schema
+    zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd
+    - anders als das alte orb-Journal (aktion einstieg/ausstieg, Spalte
+    eur), fuer das dieser Leser urspruenglich gebaut war. Der Mis-Match
+    schlug als KeyError: 'eur' im Bericht auf (Befund 14.09.2026).
+
+    Die Spur ist papierfest: jede Zeile ist eine Papierrunde. gv_usd ist
+    das Ergebnis der Runde (punkt_wert_usd=1.0, USD). Die
+    ausgange sind ziel/stop/zwangsschluss.
+    """
     p = Path(journal_pfad)
     if not p.exists():
         return []
-    offen, runden = {}, []
+    runden = []
     with p.open("r", newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            inst = r["inst"]
+            if not r.get("ausgang"):
+                continue                        # keine abgeschlossene Runde
             try:
-                eur = float(r["eur"])
-            except (TypeError, ValueError):
+                gv_usd = float(r["gv_usd"])
+            except (TypeError, ValueError, KeyError):
                 continue
-            if r["aktion"] == "einstieg":
-                offen.setdefault(inst, []).append(eur)
-            elif r["aktion"] == "ausstieg" and offen.get(inst):
-                einsatz = offen[inst].pop(0)
-                runden.append({"zeit": r["zeit"], "inst": inst, "modus": r["modus"],
-                               "einsatz": einsatz, "erloes": eur, "gv": eur - einsatz,
-                               "grund": r.get("grund", "")})
+            runden.append({
+                "zeit": r.get("zeit", ""), "inst": r.get("inst", ""),
+                "modus": "papier",              # papierfest, keine modus-Spalte
+                "einsatz": 0.0, "erloes": gv_usd, "gv": gv_usd,
+                "grund": r.get("ausgang", ""),
+            })
     return runden
 
 
-def groessenfaktor(ruecklauf_eur, w):
-    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["kill_switch_gesamt_eur"]
-    return 0.5 if ruecklauf_eur >= grenze > 0 else 1.0
+def groessenfaktor(ruecklauf_usd, w):
+    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["kill_switch_gesamt_usd"]
+    return 0.5 if ruecklauf_usd >= grenze > 0 else 1.0
 
 
-def kill_ausgeloest(ruecklauf_eur, w):
-    ks = w.get("kill_switch_gesamt_eur")
-    return ks is not None and ruecklauf_eur >= ks
+def kill_ausgeloest(ruecklauf_usd, w):
+    ks = w.get("kill_switch_gesamt_usd")
+    return ks is not None and ruecklauf_usd >= ks
 
 
 def range_ok(range_punkte, inst_key, w):
@@ -101,8 +114,9 @@ def lage(w, journal_pfad, zustand):
     ev = rollierender_ev(runden)
     wochen, sessions = _wochen_und_sessions(runden)
     return {
+        "freigabe_erfuellt": freigabe_erfuellt(w),   # Bed. 1 - Haken aus wachen.json
         "runden_gesamt": len(runden), "runden_papier": len(papier),
-        "hoechststand_eur": hoch, "ruecklauf_eur": rueck,
+        "hoechststand_usd": hoch, "ruecklauf_usd": rueck,
         "groessenfaktor": groessenfaktor(rueck, w), "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch, "herzschlag_alter_min": alter,
         "rollierender_ev": ev, "ev_negativ": ev is not None and ev < 0,

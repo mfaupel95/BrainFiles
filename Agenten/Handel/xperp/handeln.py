@@ -223,6 +223,29 @@ def _kurs(inst):
     return float(okxf.letzter_kurs(inst))
 
 
+def _kurs_aktuell(p):
+    """Kurs der Position, mit Rollover-Umstellung des Kontrakts.
+
+    XPERP-Kontrakte wechseln ihren instId (OKX legt den Kontrakt neu auf,
+    der alte antwortet mit 51001). Ohne die Umstellung bliebe eine offene
+    Position auf dem alten Kontrakt ewig ohne Kurs: Stop und Ziel wuerden
+    nie geprueft. Ein Wechsel wird gedruckt und als eigene Journalzeile
+    (aktion=rollover) gebucht - er ist kein Trade, zaehlt also in keiner
+    Runden-Rechnung.
+    """
+    inst, kurs = okxf.letzter_kurs_mit_fallback(p["inst"], p.get("basis"))
+    if inst != p["inst"]:
+        alt = p["inst"]
+        p["inst"] = inst
+        print("  ROLLOVER: %s -> %s (%s), Kontrakt des Basiswerts gewechselt"
+              % (alt, inst, p.get("basis")))
+        journal(zeit=_jetzt(), modus="papier", aktion="rollover",
+                inst=inst, seite=p.get("seite", ""),
+                familie=p.get("familie", ""),
+                grund="Kontrakt gewechselt: " + alt)
+    return float(kurs)
+
+
 def _ergebnis(p, kurs):
     """Was von der Margin zurueckkommt. Gebuehr beim Schliessen abgezogen."""
     vz = 1 if p["seite"] == "long" else -1
@@ -236,7 +259,7 @@ def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
         try:
-            kurs = _kurs(p["inst"])
+            kurs = _kurs_aktuell(p)
         except Exception as e:                           # noqa: BLE001
             print("  Kurs %s nicht abrufbar (%s) - Position bleibt" % (p["inst"], e))
             behalten.append(p)
@@ -329,7 +352,7 @@ def flach_stellen(z, live, grund):
     behalten = []
     for p in z["positionen"]:
         try:
-            kurs = _kurs(p["inst"])
+            kurs = _kurs_aktuell(p)
         except Exception as e:                           # noqa: BLE001
             print("  Notausstieg %s: Kurs nicht abrufbar (%s)" % (p["inst"], e),
                   file=sys.stderr)

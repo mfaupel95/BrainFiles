@@ -32,9 +32,22 @@ def lauf(kurz=False):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     w = wachen()
-    liste = w["watchlist"]
+    uni = w.get("universum") or {}
+    if uni.get("modus") == "alle":
+        # Der ganze OKX-Spotmarkt: Paare der konfigurierten Quote-
+        # Waehrungen ueber dem Mindestumsatz, absteigend nach Umsatz
+        # (eine tickers-Abfrage statt einer je Paar). Die Watchlist bleibt
+        # als enge Liste und Rueckfall erhalten.
+        liste = [inst for inst, _ in okx.alle_paare(
+            quote=uni.get("quotes", ["USDT", "USDC"]),
+            min_volumen_usd=uni.get("min_volumen_24h_usd", 3000000))]
+    else:
+        liste = w["watchlist"]
     heute = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    print("=== Marktscanner %s | %d Werte ===" % (heute, len(liste)))
+    print("=== Marktscanner %s | %d Werte (%s) ===" % (
+        heute, len(liste),
+        "ganzer Markt" if uni.get("modus") == "alle" else "Watchlist"))
+    pause = 0.25 if len(liste) > 30 else 0.15
 
     zeilen = []
     for inst in liste:
@@ -48,7 +61,7 @@ def lauf(kurz=False):
             zeilen.append(b)
         except Exception as e:  # noqa: BLE001
             print("  %-10s Fehler: %s" % (inst, e), file=sys.stderr)
-        time.sleep(0.15)
+        time.sleep(pause)
 
     zeilen.sort(key=lambda z: z["score"], reverse=True)
 

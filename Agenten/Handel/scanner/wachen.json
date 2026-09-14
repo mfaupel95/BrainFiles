@@ -3,6 +3,9 @@
 
   "watchlist": ["BTC-USDC", "BNB-USDC", "XRP-USDC", "DOGE-USDC", "ADA-USDC", "TRX-USDC", "AVAX-USDC", "LINK-USDC", "DOT-USDC", "SUI-USDC", "LTC-USDC"],
 
+  "_universum": "Seit 14.09.2026 sieht der Scan auf Wunsch den ganzen OKX-Spotmarkt statt der Watchlist: modus 'alle' holt die Paare ueber okx.alle_paare (Quote-Waehrungen laut quotes, Mindestumsatz laut min_volumen_24h_usd). Die Watchlist bleibt als enge Liste und als Rueckfall erhalten (modus zurueck auf 'watchlist'). Die Kauf-Tore (mindest_score, max_volatilitaet_pa, mindest_chance_risiko) sind unveraendert - ein weiteres Universum laesst mehr Kandidaten durch, aber nicht mehr schlechte. Angeordnet von Max am 14.09.2026.",
+  "universum": {"modus": "alle", "quotes": ["USDT", "USDC"], "min_volumen_24h_usd": 3000000},
+
   "max_pro_trade_usd": 100,
   "max_gesamt_usd": 400,
   "max_offene_positionen": 6,

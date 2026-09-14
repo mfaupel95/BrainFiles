@@ -273,6 +273,34 @@ def letzter_kurs(inst):
     return float(d[0]["last"])
 
 
+def letzter_kurs_mit_fallback(inst, basis=None):
+    """Kurs eines Kontrakts, der einen Rollover ueberlebt.
+
+    XPERP-Kontrakte wechseln ihren instId: OKX legt den Kontrakt neu auf,
+    der alte antwortet mit 51001 'Instrument ID doesn't exist' (am
+    14.09.2026 bei XAU und BZ gesehen). Eine offene Position auf dem alten
+    Kontrakt bliebe ohne diese Funktion ewig ohne Kurs - Stop und Ziel
+    wuerden nie geprueft, der Papierbestand friert. Fallback: den lebenden
+    Kontrakt desselben Basiswerts aufloesen und DESSEN Kurs nehmen. ctVal
+    bleibt beim Rollover gleich (geprueft: XAU 0.001, BZ 0.01), die
+    Positionsgroesse bleibt also gueltig.
+
+    Rueckgabe: (inst_effektiv, kurs). inst_effektiv == inst, solange der
+    Kontrakt nicht gewechselt hat. Jeder andere Fehler wird durchgereicht.
+    """
+    try:
+        return inst, float(_mit_wiederholung(
+            "/api/v5/market/ticker?instId=" + inst)[0]["last"])
+    except OKXFehler as e:
+        if not basis or "51001" not in str(e):
+            raise
+        neu = instrument(basis)
+        if neu["instId"] == inst:
+            raise
+        d = _mit_wiederholung("/api/v5/market/ticker?instId=" + neu["instId"])
+        return neu["instId"], float(d[0]["last"])
+
+
 def tickers(inst_type="FUTURES"):
     """Alle Ticker eines Typs in einem Aufruf - Umsatz je Wert ohne 460 Anfragen.
 

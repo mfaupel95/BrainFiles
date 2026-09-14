@@ -92,11 +92,31 @@ class TestEinstieg(unittest.TestCase):
 
 
 class TestAusstiege(unittest.TestCase):
+    # Feste Uhrzeit am Handelstag der Testposition: ohne jetzt-Parameter
+    # greift seit dem 14.09.2026 00:00 UTC der Zwangsschluss des Vortags
+    # und jeder Ausstiegs-Test faellt als 'zwangsschluss' statt des
+    # geprüften Grundes.
+    JETZT = datetime(2026, 9, 13, 12, 0, tzinfo=timezone.utc)
+
+    def setUp(self):
+        # pruefe_ausstiege schreibt ueber _schliesse -> journal(). Ohne
+        # Umleitung fuellte JEDER Suite-Lauf die echte handelsjournal.csv
+        # mit synthetischen Testrunden (Befund 14.09.2026: 24 Zeilen mit
+        # Einstieg 100.4 im echten Journal, gleiches Muster wie die
+        # TEST-Q-Falle). Das Journal gehoert in den Temp-Ordner.
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt_journal = handeln.JOURNAL
+        handeln.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
+
+    def tearDown(self):
+        handeln.JOURNAL = self.alt_journal
+        self.tmp.cleanup()
+
     def test_stop_long(self):
         z = {"position": {"inst": "ETH_USD", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 97.5}}
-        veraendert, grund = handeln.pruefe_ausstiege(z, W)
+        veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
         self.assertTrue(veraendert)
         self.assertEqual(grund, "stop")
         self.assertEqual(z["position"]["ausgang"], "stop")
@@ -105,14 +125,14 @@ class TestAusstiege(unittest.TestCase):
         z = {"position": {"inst": "ETH_USD", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 103.5}}
-        veraendert, grund = handeln.pruefe_ausstiege(z, W)
+        veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
         self.assertEqual(grund, "ziel")
 
     def test_offen_bleibt(self):
         z = {"position": {"inst": "ETH_USD", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 101.0}}
-        veraendert, grund = handeln.pruefe_ausstiege(z, W)
+        veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
         self.assertFalse(veraendert)
         self.assertIsNone(grund)
 
@@ -122,7 +142,7 @@ class TestAusstiege(unittest.TestCase):
         z = {"position": {"inst": "ETH_USD", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": "2026-09-13", "letzter_kurs": 101.0}}
-        veraendert, grund = handeln.pruefe_ausstiege(z, W)
+        veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
         self.assertFalse(veraendert)
         self.assertIsNone(grund)
 
