@@ -50,12 +50,19 @@ def lade(pfad):
 
 
 def gleich(a, b):
-    """Byte-Vergleich - ein Zeilenende- oder Reihenfolgeunterschied zaehlt."""
+    """Byte-Vergleich - ein Zeilenende- oder Reihenfolgeunterschied zaehlt.
+
+    Eine Datei, die auf BEIDEN Seiten fehlt, ist gleich: eine Spur erzeugt
+    ihr Journal erst mit der ersten Buchung (kopier: bis zum ersten Kauf),
+    ein Ablehnungsprotokoll erst mit dem ersten Zyklus. Fehlt sie nur auf
+    EINER Seite, ist das eine Abweichung - die Kopie haengt hinterher.
+    """
     try:
         with open(a, "rb") as fa, open(b, "rb") as fb:
             return fa.read() == fb.read()
     except OSError:
-        return False
+        va, vb = os.path.exists(a), os.path.exists(b)
+        return va == vb and not va
 
 
 def zeilen(pfad):

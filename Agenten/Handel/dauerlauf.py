@@ -143,6 +143,13 @@ SPUREN = {
     "swap":    {"ordner": "swap",    "waehrung": "USD"},
     "spiegel": {"ordner": "spiegel", "waehrung": "USD",
                 "skript": "spiegel.py"},
+    # KOPIER (Papierbuch auf der Pump.fun-Rangliste, angelegt 14.09.2026):
+    # kopiert die Top-Trader der taeglichen PnL-Rangliste (user-portfolio als
+    # Positions-Spiegel, trades/batch als Signal-Bestätigung). Kein Live-Zweig
+    # wie spiegel - lesen.py kennt keine Schreibpfade. Reine
+    # Standardbibliothek (urllib), laeuft unter dem scanner-venv.
+    "kopier":  {"ordner": "kopier", "waehrung": "USD",
+                "skript": "kopier.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",

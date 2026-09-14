@@ -219,5 +219,45 @@ class BerichtszeileTest(Basis):
         self.assertIn("ABWEICHEND", zeile)
 
 
+class GleichTest(unittest.TestCase):
+    """Der Byte-Vergleich selbst - die beidseitig fehlende Datei zaehlt.
+
+    Eine neue Spur hat bis zur ersten Buchung kein Journal; fehlt die Datei
+    auf BEIDEN Seiten, ist der Stand gleich (kein Fehlalarm). Fehlt sie nur
+    auf einer Seite, haengt die Kopie hinterher.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="spiegel-gleich-")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_beidseitig_fehlend_ist_gleich(self):
+        a = os.path.join(self.tmp, "a.csv")
+        b = os.path.join(self.tmp, "b.csv")
+        self.assertTrue(spiegelstand.gleich(a, b))
+
+    def test_einseitig_fehlend_ist_abweichung(self):
+        a = os.path.join(self.tmp, "a.csv")
+        b = os.path.join(self.tmp, "b.csv")
+        with open(a, "w", encoding="utf-8") as f:
+            f.write("x")
+        self.assertFalse(spiegelstand.gleich(a, b))
+
+    def test_inhalt_unterschied_zaehlt(self):
+        a = os.path.join(self.tmp, "a.csv")
+        b = os.path.join(self.tmp, "b.csv")
+        with open(a, "w", encoding="utf-8") as f:
+            f.write("x")
+        with open(b, "w", encoding="utf-8") as f:
+            f.write("y")
+        self.assertFalse(spiegelstand.gleich(a, b))
+        with open(b, "w", encoding="utf-8") as f:
+            f.write("x")
+        self.assertTrue(spiegelstand.gleich(a, b))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

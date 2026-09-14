@@ -105,6 +105,13 @@
 !Agenten/Handel/spiegel/*.md
 !Agenten/Handel/spiegel/wachen.json
 !Agenten/Handel/spiegel/tests/*.py
+# Kopier-Spur (Copy-Trading der Pump.fun-Rangliste als Papierbuch): Code,
+# Wachen und Tests in den Verlauf - das Buch nicht (zustand.json, Journal,
+# verfolgte.json und das Ablehnungsprotokoll schreibt jeder Zyklus).
+!Agenten/Handel/kopier/*.py
+!Agenten/Handel/kopier/*.md
+!Agenten/Handel/kopier/wachen.json
+!Agenten/Handel/kopier/tests/*.py
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -220,6 +227,15 @@ Agenten/Handel/spiegel/zustand.json
 Agenten/Handel/spiegel/handelsjournal.csv
 Agenten/Handel/spiegel/verfolgte.json
 Agenten/Handel/spiegel/daten/**
+
+# Kopier-Spur: das Buch selbst. wachen.json ist oben freigegeben (Grenzen von
+# Hand), diese vier schreibt der Zyklus (Journal, Zustand, verfolgte.json,
+# Ablehnungsprotokoll) plus die Messung.
+Agenten/Handel/kopier/zustand.json
+Agenten/Handel/kopier/handelsjournal.csv
+Agenten/Handel/kopier/verfolgte.json
+Agenten/Handel/kopier/ablehnungen.csv
+Agenten/Handel/kopier/daten/**
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von
 # Hand und oben freigegeben; Zustand, Journal und der Kerzen-Cache schreibt

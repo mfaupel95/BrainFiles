@@ -290,6 +290,56 @@ def spur_spiegel():
     }
 
 
+def spur_kopier():
+    """Kopier-Spur - Papierbuch fuer Copy-Trading der Pump.fun-Rangliste,
+    USD je Kopie.
+
+    Wie die Spiegel-Spur: ein Buch statt fuenf Bedingungen, papierfest.
+    Der Betrag je Kopie ist der Einsatz, der Prozentwert das Ergebnis nach
+    Slippage und Gebuehr - gerechnet mit derselben Formel wie das Buch.
+    """
+    ordner = os.path.join(HIER, "kopier")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", [])
+
+    kurse, buch = {}, None
+    if pos:
+        try:
+            sys.path.insert(0, ordner)
+            import kopier as buch                        # noqa: PLC0415
+            kurse = buch.lesen.preise([(p["kette"], p["token"]) for p in pos])
+        except Exception:                                # noqa: BLE001
+            kurse, buch = {}, None
+
+    zeilen = []
+    for p in pos:
+        kurs = kurse.get((p["kette"], p["token"]))
+        wert = None
+        if kurs and buch:
+            try:
+                wert = buch._verkaeuflich(p["menge"], kurs, w)
+            except Exception:                            # noqa: BLE001
+                wert = None
+        zeilen.append({
+            "name": "%s %s" % (p.get("symbol", "?"), p.get("kette", "")),
+            "einstieg": p.get("preis_vorbild"), "kurs": kurs,
+            "wert": p.get("einsatz_usd", 0),
+            "vh": ((wert / p["einsatz_usd"] - 1) * 100
+                   if wert and p.get("einsatz_usd") else None),
+            "stop": p.get("stop_preis"), "seit": p.get("eroeffnet"),
+            "familie": p.get("risiko"),
+        })
+    return {
+        "name": "Kopier (Papier, Pump.fun)", "waehrung": "USD", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "bilanz": _bilanz("kopier"),
+    }
+
+
 def _bilanz(spur):
     """Die Bilanzzeile einer Buch-Spur - rein lesend, aus EINER Quelle.
 
@@ -657,7 +707,7 @@ def baue(mit_xperp=True):
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
                  spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
-                 spur_gitter):
+                 spur_gitter, spur_kopier):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001
