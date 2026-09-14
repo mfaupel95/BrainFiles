@@ -98,3 +98,38 @@ Worker) gestoppt werden, nicht nur der Server.
   separates build noetig; bundelt selbst, `bundler=production`).
 - `npm run dev` braucht Schreibplatz fuer `.build/` (Turbopack-Cache); bei
   vollem Datentraeger bricht es mit os error 112 ab.
+
+## Anthropic-Verbindung (14.09.2026)
+
+- Die Verbindung `anthropic` (id `e5573eb3-97dd-456c-9830-9721cf54caa5`) war seit
+  dem 01.09.2026 **inaktiv** und trug in `provider_specific_data`
+  `baseUrl: http://localhost:20128/v1` — also den Router selbst als Ziel.
+  Korrigiert auf `https://api.anthropic.com/v1`, den Wert, den der Code selbst
+  als `ANTHROPIC_COMPATIBLE_DEFAULTS.baseUrl` fuehrt.
+- **Weg ohne Dashboard:** `PUT /api/providers/<id>` mit
+  `Authorization: Bearer <OMNIROUTE_ADMIN_API_KEY>` und Rumpf
+  `{"apiKey": …, "name": …, "providerSpecificData": {…}}`, danach
+  `POST /api/providers/<id>/test`. Der Key wird serverseitig mit
+  `STORAGE_ENCRYPTION_KEY` verschluesselt abgelegt. Fertiges Skript:
+  Hermes-Skill `omniroute-betrieb` →
+  `scripts/anthropic-verbindung-setzen.py` (liest die Werte aus
+  `HKCU\Environment`, gibt nie Schluessel aus).
+- Ein **leerer** `baseUrl` wird abgelehnt („providerSpecificData.baseUrl must be a
+  valid http(s) URL"), und die Felder werden gemerged — einen falschen Wert also
+  gezielt ueberschreiben, nicht weglassen.
+- **Zustand:** Anmeldung in Ordnung (Verbindungstest `valid: true`), aber die
+  Route traegt nicht: der Console-Key hat kein Guthaben, ein Chat-Aufruf
+  antwortet `400 [anthropic] Your credit balance is too low…`. Die
+  Credential-Health hat die Verbindung daraufhin selbst wieder auf
+  `is_active=0`, `test_status=credits_exhausted` gesetzt — das ist gewollt, sie
+  soll `auto/*` nicht mit Fehlversuchen fluten. Nach dem Aufladen: im Dashboard
+  testen (oder das Skript erneut laufen lassen), dann kommt sie von selbst in die
+  Pools. `auto/claude-opus` antwortet bis dahin `503 Maximum combo retry limit
+  reached` (Pool 817, 30 Versuche).
+- Daneben liegen zwei weitere Eintraege: `main-2` (ohne Key, inaktiv) und
+  `claude` (OAuth aus dem Claude-Abo, `test_status: expired`,
+  `no_refresh_token`). **Letzterer ist der kostenlose Weg fuer den Router** — er
+  braucht nur Max' Browser-Anmeldung im Dashboard.
+- Nicht angefasst: `domain_budgets`, die beiden Alt-Eintraege und der laufende
+  Router. Sicherung vor dem Eingriff:
+  `~/.omniroute/db_backups/db_20260914-200033_anthropic-schluessel.sqlite`.

@@ -787,3 +787,70 @@ Fallen:
 - Der Skill ist reine Nachladelast: die Dauerwirkung haengt an `SOUL.md`, nicht
   am Skill. Ein Zuruecknehmen heisst also `.bak-20260913` zurueckkopieren, nicht
   den Skill entfernen.
+
+## Anthropic als Provider und Coding auf Opus 5 (14.09.2026)
+
+**Auftrag:** Anthropic in OmniRoute und in Hermes als Provider, Schluessel in
+Umgebungsvariablen, Hermes-Coding auf Opus 5.
+
+**Was jetzt gilt**
+
+- `ANTHROPIC_API_KEY` liegt als Windows-Benutzervariable in `HKCU\Environment`
+  (108 Zeichen, sha8 `fe77df9d0a`), angelegt aus dem bisherigen
+  `ANTHROPIC_API_KEY_BILLING`. Der Name ist der kanonische: Hermes' eingebautes
+  Provider-Profil `anthropic`
+  (`plugins/model-providers/anthropic/__init__.py`) liest genau ihn, ebenso
+  curl, Skripte und OmniRoute. Kein Eintrag in `config.yaml` noetig — das
+  Profil bringt `base_url https://api.anthropic.com`, `api_mode
+  anthropic_messages` und `env_vars = (ANTHROPIC_API_KEY, ANTHROPIC_TOKEN,
+  CLAUDE_CODE_OAUTH_TOKEN)` mit.
+- Hermes: `delegation.model: claude-opus-5`, `delegation.provider: anthropic`,
+  dazu `delegation.fallback_providers: [{omniroute, auto/best-coding}]` als Netz
+  bei 429/529/503 (das Abo hat Nutzungsgrenzen). Gesetzt in **beiden** Ablagen:
+  `Agenten/Hermes/config.yaml` und `%LOCALAPPDATA%\hermes\config.yaml`.
+- OmniRoute: Verbindung `anthropic` repariert und mit dem Schluessel versehen
+  (siehe [[OmniRoute-Produktion]]); sie traegt derzeit nicht, weil der
+  Console-Key kein Guthaben hat.
+
+**Nachweis (beides gefahren, nicht behauptet)**
+
+- `hermes chat -q "Antworte mit genau: OK" -Q --provider anthropic
+  -m claude-opus-5 -t memory` → „OK", Logzeile
+  `API call #1: model=claude-opus-5 provider=anthropic … id=msg_011Cf3n5oA7jA5DgxvfyCVZp`
+  (echte Anthropic-Message-ID, 1,7 s).
+- Subagent: ein `delegate_task`-Testlauf protokollierte
+  `platform=subagent … model=claude-opus-5 provider=anthropic …
+  id=msg_011Cf3nSHvJx2CQRFjF3kXSW`, 2,5 s, `status=completed`. **Coding laeuft
+  also auf Opus 5, auch im laufenden Gateway** (kein Neustart notwendig — die
+  Anmeldedaten kommen aus dem Credential-Pool, nicht aus der Prozessumgebung).
+- `hermes config get delegation` nennt die drei Werte.
+
+**Fallen**
+
+- Der Console-Key hat **kein Guthaben**: `api.anthropic.com/v1/messages`
+  antwortet `400 Your credit balance is too low to access the Anthropic API`.
+  Die Modellliste `/v1/models` antwortet trotzdem `200` — die Anmeldung ist also
+  in Ordnung, es fehlt nur das Guthaben. Deshalb traegt den Coding-Betrieb
+  derzeit der **Abo-Weg** (OAuth-Eintraege im Credential-Pool, Prioritaet 0/1 aus
+  `ANTHROPIC_TOKEN` und `claude_code`); der API-Key steht auf Prioritaet 2 und
+  ist nur der letzte Ausweg.
+- `hermes config set` schreibt die ganze Datei neu und **schneidet den
+  Kommentar-Schluss ab** (hier 38 Zeilen Dokumentation am Dateiende). Nach jedem
+  `config set` gegen `.sicherung/config.yaml.bak-20260914` diffen und den Block
+  zurueckholen: `Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`.
+- `patch` und jeder Agenten-Schreibzugriff auf `config.yaml` bzw. die
+  AppData-Config sind gesperrt („security-sensitive configuration"). Nur
+  `hermes config set`, danach diffen — sonst faellt eine Massenaenderung nicht auf.
+- Der alte `#ANTHROPIC_API_KEY` (Rautenzeichen im Namen!) ist ein **anderer**,
+  workspace-gebundener Key und antwortet mit `400 This API key is not scoped to a
+  workspace`. Er wird von nichts gelesen und blieb liegen; ebenso
+  `ANTHROPIC_API_KEY_BILLING` und `CLAUDE_CODE_API_KEY` (401).
+- Ein `ANTHROPIC_API_KEY` ohne Guthaben an Prioritaet 2 ist Ballast, aber
+  gefaehrlich wird er erst, wenn die OAuth-Eintraege ausfallen: dann faellt der
+  Pool auf ihn durch und liefert statt eines klaren Fehlers die
+  Guthaben-Meldung.
+
+Sicherungen: `.sicherung/config.yaml.bak-20260914`,
+`.sicherung/appdata-config.yaml.bak-20260914`.
+
+Verwandt: [[OmniRoute-Produktion]] · [[Verbindungen]]
