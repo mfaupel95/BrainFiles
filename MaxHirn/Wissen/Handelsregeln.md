@@ -443,6 +443,21 @@ Bedingung 4 (`journal_zweitziel`) ist seit dem 13.09.2026 gesetzt
 EUR-Guthaben liegt unter der Schwelle. `handeln.py --wachen` zeigt den Stand,
 `--vorschau` nennt jede Sperre, die Live gerade verschließt.
 
+**Seit dem 14.09.2026 läuft sie wieder als Papier — im Dauerlauf.** Sie war
+vom 03.09.2026 bis dahin stillgelegt: `stillgelegt: true` verweigerte jeden
+Papier- und Live-Lauf (Grund und Rückrechnung in `kraken/wachen.json`,
+`_stillgelegt_grund` — ohne Gebühr gerechnet stand der beste Wert bei
+−0,57 % je Runde). Drei Dinge sind mit dem Wiederanlauf neu und gehören zur
+Spur: sie steht wieder in `dauerlauf.SPUREN` und wird alle 15 Minuten geprüft
+(Stop und Ziel greifen damit durchgehend statt einmal am Tag), ihr Herzschlag
+steht auf **180 Minuten** statt auf 30 wie bei Spur 1 (ein Rechnerneustart soll
+die Papierpositionen nicht flachstellen — bei Spur 1 ist genau das am
+11./12.09.2026 passiert), und den Einstandskurs nimmt sie vom **lebenden
+Kurs**, nicht mehr aus der Tagesrangliste; die wählt nur noch aus (Score,
+Volatilität, Chance/Risiko) und darf höchstens drei Tage alt sein. Gehandelt
+wird ausschließlich auf Papier (`handel_erlaubt: false`,
+`freigabe.erfuellt: false`).
+
 **Nautilus-Spur (Papier, seit 13.09.2026):** `Handel/nautilus` fährt die
 NautilusTrader-Engine gegen OKX **DEMO** als Spur im Dauerlauf. Je Zyklus
 (~15 min) startet sie eine **begrenzte** Node-Session (~30 s), sammelt

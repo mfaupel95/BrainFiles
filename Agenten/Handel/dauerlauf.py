@@ -105,9 +105,14 @@ PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 # Spur 2 (xperp) ist seit 03.09.2026 der Hauptweg und hat seit demselben Tag
 # einen Live-Pfad - vorher legte bot.py nur vor. Sie steht zuerst.
 #
-# Spur 3 (Kraken) ist seit 03.09.2026 stillgelegt und steht deshalb nicht
-# mehr hier - Grund und Zahlen in kraken/wachen.json, Feld
-# _stillgelegt_grund. Der Ordner bleibt, die Spur kann wieder anlaufen.
+# Spur 3 (Kraken) wurde am 03.09.2026 stillgelegt und laeuft seit dem
+# 14.09.2026 wieder als Papier - deshalb steht sie wieder hier, im selben Takt
+# wie die uebrigen. Ihre Rangliste bleibt ein Tagesstand: scan.py laeuft weiter
+# einmal taeglich (Aufgabe MaxHirn-Kraken-Spur3), gehandelt wird nur hier -
+# zwei Schreiber auf denselben Zustand waren der Fehler bei xperp (Aufgabe
+# MaxHirn-XPERP-Spur2, am 14.09.2026 abgeschaltet). Den Einstand nimmt ihre
+# Einstiegsrechnung vom lebenden Kurs; der Bericht waehlt aus.
+# Grund und Zahlen der Stilllegung: kraken/wachen.json, _stillgelegt_grund.
 # SWAP laeuft mit demselben Live-Pfad wie xperp: handeln.py hat die sieben
 # Sperren, der letzte Grund traegt das Wort Freigabefenster (geprueft in
 # swap/tests/test_handeln_papier.py). pruefe_anfragen() fragt nur, wenn
@@ -151,6 +156,11 @@ SPUREN = {
     # gemeinsamen venv.
     "gitter":  {"ordner": "gitter",  "waehrung": "USDT",
                 "skript": "handeln.py"},
+    # Kraken (EUR, Spot, kein Hebel) braucht kein eigenes venv - scan.py und
+    # handeln.py laufen unter dem scanner-venv. Ihr Herzschlag steht auf 180
+    # Minuten statt auf 30 wie bei xperp: ein Rechnerneustart soll die
+    # Papierpositionen nicht flachstellen (kraken/wachen.json, _herzschlag).
+    "kraken":  {"ordner": "kraken",  "waehrung": "EUR"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt

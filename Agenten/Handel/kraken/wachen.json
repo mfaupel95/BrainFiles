@@ -1,5 +1,5 @@
 {
-  "_stillgelegt": "STILLGELEGT am 03.09.2026 auf Max' Anweisung. Die Spur laeuft nicht mehr - weder Papier noch Live. Die Tagesroutine MaxHirn-Kraken-Spur3 laeuft weiter (Aufgabe aktiv, nachgemessen am 12.09.2026): sie rechnet den Scan und ruft handeln.py --papier, das den Lauf verweigert - so bleibt die Rangliste als Nachweis. dauerlauf.py fuehrt die Spur nicht mehr. Nichts hier ist geloescht: Ordner, Journal, Zustand und diese Datei bleiben, damit die Spur wieder anlaufen kann, wenn sich die Rechnung aendert. Zum Wiederanschalten: stillgelegt auf false, Aufgabe mit Enable-ScheduledTask aktivieren, Eintrag in dauerlauf.SPUREN zuruecknehmen.",
+  "_stillgelegt": "Wieder offen. Diese Spur war vom 03.09.2026 bis zum 14.09.2026 stillgelegt; seit dem 14.09.2026 steht stillgelegt auf false und sie laeuft wieder als Papier, gefuehrt vom Dauerlauf (dauerlauf.SPUREN, alle 15 Minuten) - Stop und Ziel greifen damit durchgehend statt einmal am Tag. Die Aufgabe MaxHirn-Kraken-Spur3 rechnet weiterhin einmal taeglich NUR den Scan (Rangliste -> berichte/); gehandelt wird dort nicht mehr (am 14.09.2026 aus dem Wrapper entfernt), weil zwei Schreiber auf denselben Zustand der Fehler bei xperp waren. Zum Abschalten: stillgelegt auf true - dann verweigert handeln.py Papier- und Live-Laeufe und nennt diesen Text, --wachen und --vorschau bleiben erlaubt. Grund der Stilllegung: _stillgelegt_grund.",
   "stillgelegt": false,
 
   "_stillgelegt_grund": "Nicht die Gebuehr allein, sondern eine Rueckrechnung ueber 720 Tageskerzen und 8 Paare vom 03.09.2026, Gebuehr 0,80 % je Runde eingerechnet. Erwartungswert je Runde: 30 Tage / Stop 8 % -1,37 %, Stop 15 % -0,80 %, Stop 25 % -1,33 %; 90 Tage -1,97 / -3,70 / -5,52 %; 180 Tage -1,65 / -2,99 / -4,99 %. Die zunaechst geplante Umstellung auf lange Haltedauer macht es also SCHLECHTER, nicht besser: Der Gebuehrenvorteil weniger Runden wird davon ueberkompensiert, dass ein weiter Stop je Treffer mehr kostet. Und die Gebuehr ist nicht die alleinige Ursache - ohne sie stuende der beste Wert bei -0,57 %, also immer noch unter null. Die 360-Tage-Zeile ist positiv (+2,61 %), zaehlt aber nicht: Das ist Buy-and-Hold in einem Aufwaertsmarkt bei faktisch zwei unabhaengigen Beobachtungen, genau die Falle aus Wissen/Handelsbots.md. Grenze der Messung: Sie testet die Stopweite, nicht die Auswahl - der Scanner kauft erst ab Score 65. Nachrechnen laesst sich alles mit kraken.kerzen(paar, 1440, 720).",
@@ -37,6 +37,9 @@
 
   "abklingzeit_tage": 3,
 
+  "_bericht_max_alter_tage": "Hoechstalter der Rangliste, aus der eingestiegen wird. Der Scan laeuft einmal taeglich; ist sein Bericht aelter als diese Grenze (oder sein Datum unlesbar), steigt die Spur nicht ein - Ausstiege laufen weiter. Ohne diese Grenze wuerde ein ausgefallener Scan unbemerkt an einer Rangliste von vorvorgestern handeln, seit die Spur im Viertelstundentakt laeuft.",
+  "bericht_max_alter_tage": 3,
+
   "_mindest_guthaben": "Zusaetzliche Live-Sperre dieser Spur. Am 02.09.2026 lagen 0,0094 EUR frei auf dem Konto - der Rest steckt in Coins. Ein Kauf-Automat ohne Fiat kauft nichts, er scheitert nur in jedem Lauf. Unter diesem Betrag bleibt Live gesperrt; der Papierlauf laeuft weiter.",
   "mindest_guthaben_eur": 60,
 
@@ -54,8 +57,8 @@
   "drawdown_halbierung_prozent": 15.0,
   "kill_switch_gesamt_eur": 40,
 
-  "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 2880 = 48 h passt zur Tagesroutine: ein ausgefallener Lauf wird gefangen, ein normaler loest nie aus.",
-  "herzschlag_max_minuten": 2880,
+  "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 180 Minuten = drei Stunden: die Spur laeuft seit dem 14.09.2026 alle 15 Minuten, zwoelf ausgefallene Zyklen werden also gefangen. Bewusst nicht 30 wie bei xperp - dort ist ein Rechnerneustart mit anschliessendem Dauerlauf-Start ein Notausstieg, der Papierrunden zerreisst. Bewusst auch nicht mehr 2880 (48 h): das passte zur Tagesroutine, deckt im Viertelstundentakt aber nichts ab.",
+  "herzschlag_max_minuten": 180,
 
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\kraken",

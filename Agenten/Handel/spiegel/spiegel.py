@@ -376,9 +376,10 @@ def pruefe_ausstiege(z, w):
             behalten.append(p)
             continue
         erloes = _verkaeuflich(p["menge"], kurs, w)
-        print("  %s %-10s %-28s @ %.10g  (%s)  G/V %+.2f USD auf %.0f USD"
-              % ("ZU " if SCHREIBEN else "WAERE ZU", p["symbol"], p["token"],
-                 kurs, grund, erloes - p["einsatz_usd"], p["einsatz_usd"]))
+        print("  AUSSTIEG (%s)%s: %s %s @ %.10g  G/V %+.2f USD auf %.0f USD"
+              % (grund, "" if SCHREIBEN else " [nur Vorschau]", p["symbol"],
+                 p["token"], kurs, erloes - p["einsatz_usd"],
+                 p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
                 symbol=p["symbol"], preis="%.10g" % kurs,
@@ -418,8 +419,8 @@ def flach_stellen(z, w, grund):
         except lesen.Lesefehler:
             kurs = None
         erloes = _verkaeuflich(p["menge"], kurs, w) if kurs else 0.0
-        print("  NOT-ZU %-10s %-28s  G/V %+.2f USD  (%s)"
-              % (p["symbol"], p["token"], erloes - p["einsatz_usd"], grund))
+        print("  AUSSTIEG (%s): %s %s  G/V %+.2f USD"
+              % (grund, p["symbol"], p["token"], erloes - p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
                 symbol=p["symbol"], preis="" if not kurs else "%.10g" % kurs,

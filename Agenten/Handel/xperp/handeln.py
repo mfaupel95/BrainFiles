@@ -274,8 +274,8 @@ def pruefe_ausstiege(z, live, w):
                 behalten.append(p)
                 continue
 
-        print("  ZU  %-22s %-5s @ %.6f  (%s)  G/V %+.2f USD auf %.2f Margin"
-              % (p["inst"], p["seite"], kurs, grund, gv, p["margin"]))
+        print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD auf %.2f Margin"
+              % (grund, p["inst"], p["seite"], kurs, gv, p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -344,8 +344,8 @@ def flach_stellen(z, live, grund):
                 behalten.append(p)
                 continue
         erloes = _ergebnis(p, kurs)
-        print("  NOT-ZU %-22s %-5s @ %.6f  G/V %+.2f USD  (%s)"
-              % (p["inst"], p["seite"], kurs, erloes - p["margin"], grund))
+        print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
+              % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -496,13 +496,26 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
 
 # --- Wachen -----------------------------------------------------------------
 
-def _spiegeln(w):
+def _spiegeln(w, z=None):
+    """Bedingung 4: Journal und Zustand ausser Haus.
+
+    Mit uebergebenem Zustand wird das Ergebnis auch dort vermerkt
+    (journal_zweitziel_ok/_info) - nur beim Wechsel, und die Kopie wird
+    danach einmal nachgezogen. Ohne diesen Vermerk ist eine ausgefallene
+    Kopie unsichtbar: der Dauerlauf protokolliert bei Rueckgabe 0 nur "ok",
+    und die Spurausgabe zeigt er nicht. Dieselbe Rechnung wie in
+    swap/handeln.py - nicht eine zweite Fassung derselben Sache.
+    """
     ziel = w.get("journal_zweitziel")
     if not ziel:
         return "-- (journal_zweitziel nicht gesetzt)"
     # spiegele_journal liefert (ok, Grund-oder-Pfad) - hier auf eine Zeile
     # bringen, damit die Aufrufer sie direkt ausgeben koennen.
     ok, info = wx.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if z is not None and wx.vermerke_spiegelung(z, ziel, ok, info,
+                                                schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen.
+        wx.spiegele_journal([ZUSTAND], ziel)
     return info if ok else "fehlgeschlagen: %s" % info
 
 
@@ -532,7 +545,7 @@ def zeige_wachen(w):
         print("    %-9s %6.2f von %6.2f USD Margin%s"
               % (name, f["margin"], f["grenze"], "  VOLL" if f["voll"] else ""))
     print()
-    print("  Journal ausser Haus:  %s" % _spiegeln(w))
+    print("  Journal ausser Haus:  %s" % _spiegeln(w, z))
 
     if s["kill"]:
         print()
@@ -629,7 +642,7 @@ def lauf(modus):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
         if w.get("journal_zweitziel"):
-            _spiegeln(w)
+            _spiegeln(w, z)
         return
 
     # Bedingung 3 - Herzschlag alt. Deckt die Kernel-Power-41-Abschaltungen
@@ -643,7 +656,7 @@ def lauf(modus):
         z["modus"] = "papier"
         schreibe_zustand(z)
         if w.get("journal_zweitziel"):
-            _spiegeln(w)
+            _spiegeln(w, z)
         return
 
     buche_funding(z, live, w)
@@ -660,7 +673,7 @@ def lauf(modus):
           % (len(z["positionen"]), gebunden, w["max_margin_gesamt_usd"]))
     schreibe_zustand(z)
     if w.get("journal_zweitziel"):
-        print("Journal ausser Haus: %s" % _spiegeln(w))
+        print("Journal ausser Haus: %s" % _spiegeln(w, z))
 
 
 def main():

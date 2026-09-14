@@ -344,8 +344,8 @@ def pruefe_ausstiege(z, live, w):
 
         erloes = _ergebnis(p, kurs)
         gv = erloes - p["margin"]
-        print("  ZU  %-22s %-5s @ %.6f  (%s)  G/V %+.2f USD auf %.2f Margin"
-              % (p["inst"], p["seite"], kurs, grund, gv, p["margin"]))
+        print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD auf %.2f Margin"
+              % (grund, p["inst"], p["seite"], kurs, gv, p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -413,8 +413,8 @@ def flach_stellen(z, live, grund):
                 behalten.append(p)
                 continue
         erloes = _ergebnis(p, kurs)
-        print("  NOT-ZU %-22s %-5s @ %.6f  G/V %+.2f USD  (%s)"
-              % (p["inst"], p["seite"], kurs, erloes - p["margin"], grund))
+        print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
+              % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,

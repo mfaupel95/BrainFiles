@@ -13,10 +13,12 @@ Order-Pfad erreichen koennte, waere der Fehler, nicht der Nachweis.
 Direkt ausfuehrbar:  python test_ausstieg.py
 """
 
+import io
 import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 if HIER not in sys.path:
@@ -92,6 +94,27 @@ class Ausstieg(unittest.TestCase):
         self.assertIsNone(grund)
         self.assertEqual(len(z["positionen"]), 1)
         self.assertEqual(self.journal(), [])
+
+    def test_ausstieg_zeile_traegt_filterwort_und_inst(self):
+        """Der Dauerlauf schickt nur Zeilen mit Filterwort nach Telegram.
+
+        Ein Ziel-Ausstieg trug bis zum 14.09.2026 keines davon (`ZU ... (ziel)`)
+        - er stand im Journal und war im Chat unsichtbar. Geprueft wird die
+        gedruckte Zeile, nicht das Journal.
+        """
+        h._kurs = lambda inst: 107.0
+        z = {"positionen": [dict(LONG)], "letzte_stops": {}}
+        puffer = io.StringIO()
+        with patch("sys.stdout", puffer):
+            h.pruefe_ausstiege(z, False, {})
+        text = puffer.getvalue()
+        self.assertIn("AUSSTIEG (ziel)", text)
+        self.assertTrue(any(w in text.lower()
+                            for w in ("verkauf", "stop", "kill", "gesperrt",
+                                      "ausstieg")),
+                        "kein Filterwort in der Zeile: %r" % text)
+        self.assertIn(LONG["inst"], text,
+                      "das Instrument muss in der Zeile stehen")
 
     # --- Short: die Schwelle liegt ueber dem Stop ---
 

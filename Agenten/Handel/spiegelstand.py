@@ -16,8 +16,10 @@ Aufruf (Systempruefung, von Hand):
 
 Rueckgabecode 0 = jede Spur, die der Dauerlauf faehrt, hat ein Ziel und ist
 byte-gleich; 1 = mindestens eine Abweichung. Spuren mit `wachen.json`, die
-nicht in `dauerlauf.SPUREN` stehen (kraken: eigenes Zeitfenster, orb:
-Altbestand), werden mitgeprueft, aber gekennzeichnet und nicht gezaehlt.
+nicht in `dauerlauf.SPUREN` stehen (orb: Altbestand), werden mitgeprueft,
+aber gekennzeichnet und nicht gezaehlt. kraken stand bis zum 14.09.2026 in
+dieser Liste - seit es der Dauerlauf fuehrt, wird es wie jede andere Spur
+gezaehlt.
 Das Modul schreibt nichts.
 """
 

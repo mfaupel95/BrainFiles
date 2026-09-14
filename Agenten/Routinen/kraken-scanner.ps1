@@ -7,8 +7,11 @@
 # ein bewusster Schritt von Hand - aus einem Zeitplan heraus wird nie echtes
 # Geld bewegt. Siehe Wissen/Handelsregeln.md und Wissen/Routinen.md.
 #
-# Zwei Schritte: erst scan.py (Rangliste -> berichte/), dann handeln.py
-# --papier (Vorschlaege -> zustand.json, handelsjournal.csv).
+# EIN Schritt: scan.py rechnet die Rangliste nach berichte/. Gehandelt wird
+# hier NICHT mehr (14.09.2026): handeln.py laeuft im Dauerlauf, alle 15
+# Minuten - dort greifen Stop und Ziel durchgehend statt einmal am Tag. Zwei
+# Schreiber auf denselben Zustand waren der Fehler bei xperp (dessen Aufgabe
+# MaxHirn-XPERP-Spur2 wurde am selben Tag abgeschaltet).
 #
 # Python kommt aus scanner\.venv - die dritte Spur braucht kein eigenes,
 # weil kraken.py nur die Standardbibliothek benutzt.
@@ -42,7 +45,6 @@ if (-not (Test-Path $py)) {
 try {
   Push-Location $spur
   & $py 'scan.py'               *>&1 | Add-Content $log -Encoding UTF8
-  & $py 'handeln.py' '--papier' *>&1 | Add-Content $log -Encoding UTF8
   Pop-Location
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
   Melde-Ende -Marke $marke -Code 0                                      # neu

@@ -6,6 +6,13 @@ Aufruf (aus diesem Ordner):
     ..\\scanner\\.venv\\Scripts\\python.exe handeln.py --live      # echte Orders
     ..\\scanner\\.venv\\Scripts\\python.exe handeln.py --wachen    # Wochenlauf
 
+Seit dem 14.09.2026 fuehrt der Dauerlauf (dauerlauf.py) diese Spur: sie steht
+wieder in dauerlauf.SPUREN und wird alle 15 Minuten geprueft - Stop und Ziel
+greifen damit durchgehend statt einmal am Tag. Den Scan (die Rangliste)
+rechnet weiterhin einmal taeglich die Aufgabe MaxHirn-Kraken-Spur3; gehandelt
+wird dort nicht mehr. Den Einstandskurs nimmt der Lauf vom lebenden Kurs,
+nicht aus dem Bericht (der Bericht waehlt aus, er nennt keinen Preis mehr).
+
 Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     1. wachen.json  handel_erlaubt == true
     2. KRAKEN_API_KEY / KRAKEN_API_SECRET gesetzt
@@ -45,13 +52,19 @@ import sys
 from datetime import datetime, timezone, date
 from pathlib import Path
 
-import kraken
-import scan
-import wachen_kraken as wp
-
 HIER = Path(__file__).resolve().parent
 ZUSTAND = HIER / "zustand.json"
 JOURNAL = HIER / "handelsjournal.csv"
+
+# Der Bus liegt zwei Ebenen hoeher (Agenten/Bus). Ohne diesen Eintrag meldet
+# sich der Lauf nicht am Journal - und ein Zyklus ohne Bus-Eintrag ist von
+# einem ausgefallenen nicht zu unterscheiden. Dieselbe Zeile wie in
+# xperp/handeln.py und swap/handeln.py.
+sys.path.insert(0, str(HIER.parent.parent / "Bus"))
+import ereignis                                          # noqa: E402
+import kraken                                            # noqa: E402
+import scan                                              # noqa: E402
+import wachen_kraken as wp                               # noqa: E402
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
 FREIGABE_ZEITLIMIT_S = 120
@@ -99,6 +112,26 @@ def stop_prozent(z, w):
                min(w["pflicht_stop_prozent_max"], round(roh, 1)))
 
 
+def _kurs_jetzt(inst, rueckfall):
+    """Einstandskurs fuer einen Vorschlag: der lebende Kurs, nicht der Preis
+    aus dem Bericht.
+
+    Bis zum 14.09.2026 lief diese Spur einmal am Tag, der Scan unmittelbar
+    davor - der Berichtspreis war Sekunden alt und damit richtig. Im
+    Viertelstundentakt waere er bis zu einen Tag alt: Einstand, Stop und Ziel
+    haengen dann an einem Kurs von gestern, und die Runde misst eine
+    Gelegenheit, die es so nicht gab. Der Bericht waehlt weiter aus (Score,
+    Volatilitaet, Chance/Risiko); den Preis holt der Lauf selbst. Faellt der
+    Kurs aus, gilt der Berichtspreis - ein Kursausfall darf den Zyklus nicht
+    anhalten.
+    """
+    try:
+        kurs = float(kraken.letzter_kurs(inst))
+        return kurs if kurs > 0 else rueckfall
+    except Exception:                                    # noqa: BLE001
+        return rueckfall
+
+
 def vorschlaege(bericht, w):
     aus = []
     for z in bericht["werte"]:
@@ -107,7 +140,7 @@ def vorschlaege(bericht, w):
                 and vola <= w["max_volatilitaet_pa"]
                 and z["verhaeltnis"] >= w["mindest_chance_risiko"]):
             continue
-        einstieg = z["preis"]
+        einstieg = _kurs_jetzt(z["inst"], z["preis"])
         sp = stop_prozent(z, w)
         stop = round(einstieg * (1 - sp / 100.0), 8)
         ziel = round(einstieg + 2.0 * (einstieg - stop), 8)   # Chance/Risiko 2:1
@@ -169,8 +202,8 @@ def _schliesse(p, kurs, w, live, grund, z):
                   file=sys.stderr)
             return False
     erloes = _erloes(p, kurs, w)
-    print("  ZU  %-10s @ %-12.6g (%s)  G/V %+.2f EUR"
-          % (p["paar"], kurs, grund, erloes - p["eur"]))
+    print("  AUSSTIEG (%s): %s @ %-12.6g  G/V %+.2f EUR"
+          % (grund, p["paar"], kurs, erloes - p["eur"]))
     journal(_jetzt(), "live" if live else "papier", "verkauf", p["paar"],
             "%.8g" % kurs, "%.2f" % erloes, "%.8f" % p["menge"], "", "", grund)
     if grund == "stop":
@@ -297,9 +330,22 @@ def hole_freigabe(vs, z, s):
 
 # --- Wachen-Status (Bedingungen 2-5) ----------------------------------------
 
-def _spiegeln(w):
+def _spiegeln(w, z=None):
+    """Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
+
+    Mit uebergebenem Zustand wird das Ergebnis dort vermerkt
+    (journal_zweitziel_ok/_info) - nur beim Wechsel, und die Kopie wird danach
+    einmal nachgezogen. Ohne den Vermerk ist eine ausgefallene Kopie
+    unsichtbar: der Dauerlauf protokolliert bei Rueckgabe 0 nur "ok", und die
+    Spurausgabe zeigt er nicht. Dieselbe Rechnung wie in swap/handeln.py.
+    """
     ziel = w.get("journal_zweitziel")
     ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if z is not None and wp.vermerke_spiegelung(z, ziel, ok, info,
+                                                schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen, damit auf
+        # Q: derselbe Stand liegt.
+        wp.spiegele_journal([ZUSTAND], ziel)
     print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
     return ok
 
@@ -331,7 +377,7 @@ def zeige_wachen(w):
     print("  + Guthaben               %s"
           % _guthaben_text(w))
     print()
-    _spiegeln(w)
+    _spiegeln(w, z)
     if s["kill"] and wp.sperre_zu("Bedingung 2 (Wochenlauf): Ruecklauf %.2f EUR >= Kill-Switch"
                                   % s["ruecklauf_eur"]):
         print("  -> Bedingung 2: handel_erlaubt auf false gesetzt.")
@@ -383,16 +429,32 @@ def live_sperren(w, s):
     return gruende
 
 
+def _bericht_alter(bericht):
+    """Alter der Rangliste in Tagen. 999 = Datum fehlt oder unlesbar.
+
+    Ein unlesbares Datum gilt als zu alt: dann wird nicht eingestiegen. Die
+    Alternative - weiter einsteigen, weil man das Alter nicht kennt - hiesse,
+    auf eine Rangliste zu bauen, deren Alter niemand kennt. Stop und Ziel
+    werden von dieser Sperre nicht beruehrt, sie laufen immer.
+    """
+    try:
+        return (date.fromisoformat(_heute())
+                - date.fromisoformat(bericht["datum"])).days
+    except (KeyError, TypeError, ValueError):
+        return 999
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     w = scan.wachen()
 
-    # Stillgelegt am 03.09.2026. Ein Vermerk in wachen.json haelt nichts auf,
-    # solange das Skript ihn nicht liest - deshalb hier, vor allem anderen.
-    # --wachen und --vorschau bleiben erlaubt: nachsehen duerfen ist der Sinn
-    # einer aufbewahrten Spur. Gehandelt wird nicht, auch nicht auf Papier.
+    # Der Schalter kommt aus wachen.json (stillgelegt, seit 14.09.2026
+    # false). Er steht hier, vor allem anderen: ein Vermerk in der Datei haelt
+    # nichts auf, solange das Skript ihn nicht liest. --wachen und --vorschau
+    # bleiben auch bei true erlaubt - nachsehen duerfen ist der Sinn einer
+    # aufbewahrten Spur; gehandelt wird dann nicht, auch nicht auf Papier.
     if w.get("stillgelegt") and modus in ("papier", "live"):
         print("Spur 3 (Kraken) ist stillgelegt - kein %s-Lauf." % modus)
         print()
@@ -424,9 +486,17 @@ def lauf(modus):
         else:
             live = True
 
-    vs = vorschlaege(bericht, w)
+    tage = _bericht_alter(bericht)
+    grenze = w.get("bericht_max_alter_tage", 3)
+    if tage > grenze:
+        print("- Bericht vom %s ist %s Tage alt (Grenze %d) -> keine Einstiege, "
+              "Ausstiege laufen weiter -"
+              % (bericht.get("datum"), tage if tage < 999 else "?", grenze))
+        vs = []
+    else:
+        vs = vorschlaege(bericht, w)
     print("=== Kraken handeln (%s) | Bericht %s | %d Vorschlaege ==="
-          % ("LIVE" if live else "Papier", bericht["datum"], len(vs)))
+          % ("LIVE" if live else "Papier", bericht.get("datum"), len(vs)))
 
     z["modus"] = "live" if live else "papier"
 
@@ -462,7 +532,7 @@ def lauf(modus):
         z["modus"] = "papier"
         schreibe_zustand(z)
         if w.get("journal_zweitziel"):
-            _spiegeln(w)
+            _spiegeln(w, z)
         return
 
     # Ausstiege laufen nie durch das Fenster: ein Stop muss greifen, auch
@@ -488,10 +558,20 @@ def lauf(modus):
 
     # Bedingung 4 - Journal nach jedem Zyklus ausser Haus.
     if w.get("journal_zweitziel"):
-        _spiegeln(w)
+        _spiegeln(w, z)
 
 
-if __name__ == "__main__":
+def main():
+    # Meldet den Zyklus am Bus - wie xperp/orbk/gitter/spiegel. Ohne diese
+    # Zeile ist ein Dauerlauf-Zyklus dieser Spur im Journal nicht zu sehen;
+    # der Wrapper der Tagesroutine meldet nur routine/kraken-scanner (den
+    # Scan). Ein bot.py wie in xperp gibt es hier nicht, eine Doppelmeldung
+    # aus demselben Prozess ist also nicht moeglich.
+    with ereignis.lauf("handel/kraken"):
+        return _main()
+
+
+def _main():
     p = argparse.ArgumentParser()
     g = p.add_mutually_exclusive_group()
     g.add_argument("--vorschau", action="store_const", dest="modus",
@@ -505,3 +585,7 @@ if __name__ == "__main__":
                                         "(Wochenlauf)")
     a = p.parse_args()
     lauf(a.modus or "papier")
+
+
+if __name__ == "__main__":
+    main()

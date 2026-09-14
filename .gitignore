@@ -84,6 +84,9 @@
 !Agenten/Handel/kraken/*.py
 !Agenten/Handel/kraken/*.md
 !Agenten/Handel/kraken/*.json
+# Die Kraken-Tests liegen seit dem 14.09.2026 unter kraken/tests/ - dieselbe
+# Falle wie bei scanner/tests: die Regel in Zeile 20 faengt sie sonst mit ein.
+!Agenten/Handel/kraken/tests/*.py
 
 # SWAP-Spur (Handel/swap/): eigener Papierpfad mit eigenen Wachen und Tests.
 # Ohne diese Zeilen waeren handeln.py und seine Tests nur lokal vorhanden -

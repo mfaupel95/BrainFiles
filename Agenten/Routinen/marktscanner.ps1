@@ -6,12 +6,13 @@
 # Hand - aus einem Zeitplan heraus wird nie echtes Geld bewegt. Siehe
 # Wissen/Schutzregeln.md, Abschnitt "Marktscanner", und Wissen/Routinen.md.
 #
-# Zwei Schritte: erst scan.py (Rangliste -> berichte/), dann handeln.py
-# --papier (Vorschlaege -> zustand.json, handelsjournal.csv).
-#
-# handeln.py setzt dabei die Bedingungen 2-4 aus Wissen/Schutzregeln.md um
-# (Drawdown-Ratsche, Herzschlag-Notausstieg, Journal ausser Haus). Bedingung 5
-# laeuft woechentlich getrennt in handel-wachen.ps1.
+# EIN Schritt: scan.py rechnet die Rangliste nach berichte/. Gehandelt wird
+# hier NICHT mehr (14.09.2026): handeln.py laeuft im Dauerlauf, alle 15 Minuten
+# - mit denselben Bedingungen 2-4 aus Wissen/Schutzregeln.md (Drawdown-Ratsche,
+# Herzschlag-Notausstieg, Journal ausser Haus). Bedingung 5 laeuft woechentlich
+# getrennt in handel-wachen.ps1. Zwei Schreiber auf denselben Zustand waren der
+# Fehler bei xperp (Aufgabe MaxHirn-XPERP-Spur2, am 14.09.2026 geloescht); die
+# Sperre unten haelt diesen Aufruf still, solange der Dauerlauf laeuft.
 
 $ErrorActionPreference = 'Stop'
 # Sagt handeln.py, dass hier niemand am Bildschirm sitzt: kein
@@ -39,10 +40,22 @@ if (-not (Test-Path $py)) {
   exit 1
 }
 
+# Sperre gegen den Doppellauf: laeuft der Dauerlauf, schreibt dieser Aufruf
+# auf denselben Zustand wie jener. Dann nur melden und aussteigen.
+$pidDatei = Join-Path $wurzel 'Handel\dauerlauf.pid'
+if (Test-Path $pidDatei) {
+  $dl = (Get-Content $pidDatei -Raw).Trim()
+  if ($dl -match '^[0-9]+$' -and (Get-Process -Id ([int]$dl) -ErrorAction SilentlyContinue)) {
+    "ENDE uebersprungen: der Dauerlauf fuehrt die Spur (PID $dl) - ein zweiter Schreiber auf denselben Zustand ist nicht noetig." |
+      Add-Content $log -Encoding UTF8
+    Melde-Ende -Marke $marke -Code 0 -Text "uebersprungen, Dauerlauf laeuft"
+    exit 0
+  }
+}
+
 try {
   Push-Location $scanner
   & $py 'scan.py'              *>&1 | Add-Content $log -Encoding UTF8
-  & $py 'handeln.py' '--papier' *>&1 | Add-Content $log -Encoding UTF8
   Pop-Location
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
   Melde-Ende -Marke $marke -Code 0                                      # neu

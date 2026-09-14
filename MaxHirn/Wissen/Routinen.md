@@ -18,9 +18,9 @@ vorhandener Skill plus ein Zeitplan.
 | Wann | Was | Skill | Status |
 |---|---|---|---|
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
-| täglich 07:30 | Marktscanner (nur Papier) | `Handel/scanner/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Marktscanner` |
-| täglich 07:45 | Kraken-Spur 3 (nur Papier) | `Handel/kraken/scan.py` + `handeln.py --papier` | **eingeplant** 02.09.2026 — `MaxHirn-Kraken-Spur3` |
-| täglich 07:50 | XPERP-Spur 2 (nur Papier) | `Handel/xperp/handeln.py --papier` | **eingeplant** 07.09.2026 — `MaxHirn-XPERP-Spur2` |
+| täglich 07:30 | Marktscanner: **nur die Rangliste** | `Handel/scanner/scan.py` | **geändert** 14.09.2026 — `MaxHirn-Marktscanner`. `handeln.py --papier` ist aus dem Wrapper entfernt; die Spur handelt im Dauerlauf (alle 15 Min). |
+| täglich 07:45 | Kraken-Spur 3: **nur die Rangliste** | `Handel/kraken/scan.py` | **geändert** 14.09.2026 — `MaxHirn-Kraken-Spur3`. Wie oben; gehandelt wird im Dauerlauf, seit derselbe Tag die Spur wieder führt. |
+| — | XPERP-Spur 2 (läuft im Dauerlauf) | `Handel/xperp/handeln.py` | **Aufgabe gelöscht** 14.09.2026 — `MaxHirn-XPERP-Spur2` fuhr um 07:50 einen zweiten Zyklus (Ziel-Ausstieg FIL, drei Einstiege am 14.09.2026), den der Dauerlauf nicht kannte. `Routinen/xperp-handeln.ps1` bleibt als Notbetrieb von Hand. |
 | alle 30 Min | Dauerlauf-Wächter (Neustart nach Abschaltung) | `handel-dauerlauf.ps1` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf-Waechter` |
 | sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
@@ -219,8 +219,20 @@ dafür nicht nötig.
 Angelegt am 03.09.2026 auf Max' Anweisung. `handel-dauerlauf.ps1` startet
 `Handel/dauerlauf.py`: Befehle vom Handy sofort, ein Zyklus alle 15 Minuten,
 Tagesbericht einmal täglich ab 08:00. **Er ersetzt die Tagesroutinen nicht**,
-er legt sich darüber — `marktscanner.ps1` und `kraken-scanner.ps1` bleiben
-unverändert.
+er legt sich darüber — `marktscanner.ps1` und `kraken-scanner.ps1` rechnen
+deshalb weiterhin die Ranglisten der beiden Scanner-Spuren.
+
+**Je Spur ein Schreiber (14.09.2026).** Der Dauerlauf führt seit dem
+14.09.2026 auch die Kraken-Spur (sie war vom 03.09.2026 bis dahin stillgelegt);
+ihre Rangliste kommt weiter aus der Tagesroutine, gehandelt wird nur im Takt.
+Dieselbe Regel wurde für die zwei übrigen Alt-Aufrufe durchgesetzt:
+`marktscanner.ps1` und `kraken-scanner.ps1` rufen `handeln.py` **nicht mehr**
+auf (beide Wrapper haben stattdessen eine Sperre — solange der Dauerlauf lebt,
+steigen sie mit einer Logzeile aus), und `MaxHirn-XPERP-Spur2` ist gelöscht.
+Anlass war ein Befund vom 14.09.2026: der 07:50-Aufruf dieser Aufgabe hatte
+einen vollständigen Zyklus gefahren — im Journal sichtbar, im Dauerlauf-Log
+nicht, weil er zu keinem Zyklus gehörte. Zwei Schreiber auf denselben Zustand
+machen jede Zustandsaussage mehrdeutig.
 
 **Auch dieser Zeitplan legt keinen Schalter um.** Ohne offenes Zeitfenster aus
 [[Handelsregeln]] läuft jeder Zyklus als Papierhandel. Freigegeben wird per

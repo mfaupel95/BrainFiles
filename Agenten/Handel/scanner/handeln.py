@@ -172,8 +172,8 @@ def pruefe_ausstiege(z, live):
                       file=sys.stderr)
                 behalten.append(p)
                 continue
-        print("  ZU  %-10s @ %.6f  (%s)  G/V %+.2f USD"
-              % (p["inst"], kurs, grund, gv))
+        print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
+              % (grund, p["inst"], kurs, gv))
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
         if grund == "stop":
@@ -201,8 +201,8 @@ def flach_stellen(z, live, grund):
                       file=sys.stderr)
                 behalten.append(p)
                 continue
-        print("  NOT-ZU %-10s @ %.6f  G/V %+.2f USD  (%s)"
-              % (p["inst"], kurs, erloes - p["usd"], grund))
+        print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
+              % (grund, p["inst"], kurs, erloes - p["usd"]))
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
     z["positionen"] = behalten

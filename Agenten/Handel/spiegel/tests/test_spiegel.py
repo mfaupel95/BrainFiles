@@ -349,7 +349,12 @@ class Sicherheitsnetze(Grundlage):
         self.assertEqual(self.journal(), [], "kein Journal in der Vorschau")
         self.assertFalse(os.path.exists(sp.ZUSTAND),
                          "kein Zustand in der Vorschau")
-        self.assertIn("WAERE ZU", puffer.getvalue())
+        text = puffer.getvalue()
+        # Die Vorschau muss ihren Ausstieg als Ausstieg zeigen UND als Vorschau
+        # erkennbar bleiben (vorher: "WAERE ZU"). Nur die Marke hat sich
+        # geaendert - der Dauerlauf braucht das neutrale Wort "AUSSTIEG".
+        self.assertIn("AUSSTIEG (", text)
+        self.assertIn("[nur Vorschau]", text)
 
     def test_leere_verfolgungsliste_verhindert_den_lauf(self):
         with io.open(sp.VERFOLGTE, "w", encoding="utf-8") as f:

@@ -10,6 +10,14 @@
 # XPERP hat kein eigenes scan.py - handeln.py rechnet die Rangliste ueber
 # auswahl.py/bot.py selbst (SCAN_ALTER_MINUTEN=120). Deshalb nur ein Aufruf.
 #
+# DEAKTIVIERT am 14.09.2026: die Aufgabe MaxHirn-XPERP-Spur2 ist abgeschaltet,
+# weil die Spur laengst im Dauerlauf laeuft und dieser Aufruf ein zweiter
+# Schreiber auf denselben Zustand war - am 14.09.2026 um 07:50 hat er einen
+# Zyklus mit einem Ausstieg und drei Einstiegen gefahren, den der Dauerlauf
+# nicht kannte. Die Datei bleibt liegen: faellt der Dauerlauf aus, ist sie der
+# Notbetrieb (ein Aufruf, ein Zyklus). Die Sperre unten haelt sie ausserdem
+# still, solange der Dauerlauf laeuft.
+#
 # Python kommt aus scanner\.venv - die zweite Spur braucht kein eigenes,
 # weil okxf.py nur die Standardbibliothek benutzt.
 
@@ -37,6 +45,19 @@ if (-not (Test-Path $py)) {
     Add-Content $log -Encoding UTF8
   Melde-Ende -Marke $marke -Code 1 -Text "kein Python unter $py"        # neu
   exit 1
+}
+
+# Sperre gegen den Doppellauf: laeuft der Dauerlauf, schreibt dieser Aufruf
+# auf denselben Zustand wie jener. Dann nur melden und aussteigen.
+$pidDatei = Join-Path $wurzel 'Handel\dauerlauf.pid'
+if (Test-Path $pidDatei) {
+  $dl = (Get-Content $pidDatei -Raw).Trim()
+  if ($dl -match '^[0-9]+$' -and (Get-Process -Id ([int]$dl) -ErrorAction SilentlyContinue)) {
+    "ENDE uebersprungen: der Dauerlauf fuehrt die Spur (PID $dl) - ein zweiter Schreiber auf denselben Zustand ist nicht noetig." |
+      Add-Content $log -Encoding UTF8
+    Melde-Ende -Marke $marke -Code 0 -Text "uebersprungen, Dauerlauf laeuft"
+    exit 0
+  }
 }
 
 try {
