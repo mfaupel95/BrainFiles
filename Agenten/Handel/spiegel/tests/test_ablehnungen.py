@@ -171,6 +171,36 @@ class Protokoll(Grundlage):
         self.assertIn("Buch voll", aus)
         self.assertEqual([z for z in self.zeilen() if z["art"] == "signal"], [])
 
+    def test_ein_nicht_verfolgtes_wallet_zaehlt_zur_lage_nicht_zur_entscheidung(self):
+        """Jedes Signal landet in GENAU EINEM Lage-Zaehler.
+
+        Sonst zaehlt es doppelt: am ersten echten Zyklus standen 11 Signale
+        nicht verfolgter Wallets zugleich unter "kaufbar" und unter einer
+        Entscheidung - und die Kontrollzeile ging nicht auf.
+        """
+        signale = [dict(SIGNAL, wallet="W9", token="T9", tx="T-9")]
+        code, aus, _ = self.papierlauf(signale, gefolgt={("solana", "W1"): {}})
+        self.assertEqual(code, 0)
+        lage = self.je_grund("zyklus")
+        self.assertEqual(lage["Lage: wallet nicht verfolgt"], 1)
+        self.assertNotIn("Lage: kaufbar", lage)
+        self.assertNotIn("Entscheidung: Wallet nicht verfolgt", lage)
+
+    def test_die_zaehler_gehen_auf(self):
+        """Die Kontrollzeile von --ablehnungen muss aus dem Zyklus heraus
+        stimmen: kaufbar = bewertet + nicht mehr erreicht."""
+        signale = [dict(SIGNAL, token="A", tx="T-a"),
+                   dict(SIGNAL, token="B", wallet="W9", tx="T-b"),
+                   dict(SIGNAL, token="C", tx="T-c", alter_s=999.0)]
+        with patch.object(sp.lesen, "risiko",
+                          return_value={"stufe": "safe", "merkmale": []}):
+            self.papierlauf(signale)
+        lage = self.je_grund("zyklus")
+        kaufbar = lage["Lage: kaufbar"]
+        bewertet = lage["Entscheidung: kopiert"]
+        nicht = lage.get("Lage: davon kaufbar, aber nicht mehr erreicht", 0)
+        self.assertEqual(kaufbar, bewertet + nicht, lage)
+
     def test_dasselbe_signal_wird_nicht_in_jedem_zyklus_erneut_protokolliert(self):
         """Der Feed reicht Stunden zurueck - ohne die Sperre stuende derselbe
         Kandidat alle 15 Minuten erneut im Protokoll, und die Zaehlung waere

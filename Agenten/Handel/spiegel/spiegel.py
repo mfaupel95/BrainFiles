@@ -860,7 +860,18 @@ def lauf(modus, stunden=24.0):
     # und woran sie haengen bleiben. Der Entscheidungszaehler daneben sagt,
     # was das Buch mit den bewerteten Kandidaten getan hat. Zwei verschiedene
     # Aussagen - beide gehoeren ins Protokoll, keine ersetzt die andere.
-    vorpruefung = [_vorpruefung(s, w, z) for s in sig]
+    # JEDES Signal landet in GENAU EINEM Lage-Zaehler: erst die Zugehoerigkeit
+    # (wallet nicht verfolgt), dann die billigen Tore. Ohne diese Reihenfolge
+    # zaehlt ein Signal doppelt (Befund am ersten echten Zyklus: kaufbar 58,
+    # bewertet 12, nicht erreicht 54 - die drei zu viel waren nicht verfolgte
+    # Wallets, die auch unter "kaufbar" standen).
+    vorpruefung = []
+    for s in sig:
+        if (s["kette"], s["wallet"]) not in gefolgt:
+            vorpruefung.append(("wallet nicht verfolgt",
+                                "Wallet steht nicht in verfolgte.json"))
+        else:
+            vorpruefung.append(_vorpruefung(s, w, z))
     lage = collections.Counter(g or "kaufbar" for g, _ in vorpruefung)
     entscheidung = collections.Counter()
     neu = 0
@@ -877,7 +888,7 @@ def lauf(modus, stunden=24.0):
             _zaehle_unerreicht(lage, vorpruefung[i:])
             break
         if (s["kette"], s["wallet"]) not in gefolgt:
-            entscheidung["Wallet nicht verfolgt"] += 1
+            # Steht als Lage-Zaehler im Protokoll - hier keine zweite Zeile.
             continue
         if modus == "vorschau":
             p, grund = _kopie(s, w, z)

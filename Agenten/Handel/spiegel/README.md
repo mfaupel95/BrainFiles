@@ -177,13 +177,14 @@ Je Zyklus, zwei Arten von Zeilen (Spalten: `zeit, art, grund, anzahl, kette,
 wallet, token, symbol, marktkap_usd, alter_s, preis, tx`):
 
 - `art=zyklus` — **die Lage**: wie viele Signale der Zyklus mitbrachte und
-  woran sie hängen blieben (`zu alt`, `marktkap ausserhalb`,
-  `marktkap unbekannt`, `token belegt`, `wallet belegt`, `kaufbar`) — eine
-  reine Rechnung über alle Signale, ohne Abruf. Dazu **die Entscheidung**: was
-  das Buch mit den Kandidaten getan hat, die es wirklich bewertet hat
-  (`kopiert`, Risikostufe, `Buch voll - Kandidat nicht bewertet`,
-  `Zyklusdeckel …`). Ein volles Buch zählt zusätzlich, wie viele kaufbare
-  Kandidaten es nicht mehr erreicht hat.
+  woran sie hängen blieben (`wallet nicht verfolgt`, `zu alt`,
+  `marktkap ausserhalb`, `marktkap unbekannt`, `token belegt`,
+  `wallet belegt`, `kaufbar`) — eine reine Rechnung über alle Signale, ohne
+  Abruf. Jedes Signal steht dabei in **genau einem** dieser Zähler. Dazu
+  **die Entscheidung**: was das Buch mit den Kandidaten getan hat, die es
+  wirklich bewertet hat (`kopiert`, Risikostufe, `Buch voll - Kandidat nicht
+  bewertet`, `Zyklusdeckel …`). Ein volles Buch zählt zusätzlich, wie viele
+  kaufbare Kandidaten es nicht mehr erreicht hat.
 - `art=signal` — **der Einzelfall**: jeder Kandidat, der bis zum Risiko-Scan
   gekommen ist und dort scheitert, mit Token, Wallet und Transaktion. Er steht
   **einmal** drin, nicht in jedem Zyklus erneut (der Feed reicht Stunden
