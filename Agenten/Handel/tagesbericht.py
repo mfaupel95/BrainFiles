@@ -371,6 +371,59 @@ def spur_omniquant():
     }
 
 
+def spur_gitter():
+    """Gitter-Spur - Papierbuch auf einem statischen Preisgitter, USDT.
+
+    Sie hat kein Pruefmodul und keine fuenf Bedingungen (wie spiegel und
+    omniquant): ihr Ergebnis ist ein Buch. Gezeigt werden die belegten Stufen
+    mit dem Abstand zu ihrem Verkauf - ein Gitter hat keinen Stop, sondern
+    eine Stufe hoeher als Ziel. papierfest=True, damit der Bericht "kein
+    Live-Zweig" sagt statt "GESPERRT - wartet auf /ja".
+    """
+    ordner = os.path.join(HIER, "gitter")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    pos = z.get("positionen", []) or []
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, os.path.join(HIER, "scanner"))
+            import okx                                      # noqa: PLC0415
+            for p in pos:
+                try:
+                    kurse[p["inst"]] = float(okx.letzter_kurs(p["inst"]))
+                except Exception:                           # noqa: BLE001
+                    pass
+        except Exception:                                   # noqa: BLE001
+            pass
+
+    zeilen = []
+    for p in pos:
+        k = kurse.get(p["inst"])
+        einstieg = p.get("einstieg")
+        vz = 1 if (p.get("seite") or "long") == "long" else -1
+        bewegung = (vz * (k / einstieg - 1) * 100) if (k and einstieg) else None
+        zeilen.append({
+            "name": "%s St%d" % (p["inst"], p.get("stufe", "?")),
+            "einstieg": einstieg, "kurs": k,
+            "wert": p.get("nominal", 0),
+            "vh": bewegung,
+            "stop": None, "ziel": p.get("ziel"),
+            "seit": p.get("eroeffnet"), "seite": p.get("seite"),
+        })
+
+    return {
+        "name": "Gitter (%s)" % (z.get("modus") or "papier"),
+        "waehrung": w.get("waehrung", "USDT"), "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "bilanz": _bilanz("gitter"),
+    }
+
+
 def spur_nautilus():
     """Nautilus-Spur - OKX-DEMO-Node als Papierzyklus, USD.
 
@@ -535,10 +588,21 @@ def zeile_position(p, waehrung):
     # Befund 13.09.2026 an der ersten omniquant-short-Position.
     vz = 1 if (p.get("seite") or p.get("richtung") or "long") == "long" else -1
     abstand = (vz * (p["kurs"] / p["stop"] - 1) * 100) if p.get("stop") else None
+    entfernung = None
+    if not p.get("stop") and p.get("ziel"):
+        # Eine Buch-Spur ohne Stop (Gitter: verkauft wird eine Stufe hoeher)
+        # braucht trotzdem eine Marke am Kurs: ohne sie steht in der Zeile
+        # nur die Bewegung und niemand sieht, wie weit der Verkauf entfernt
+        # ist. Richtungsbewusst wie der Stop-Abstand.
+        ziel = p["ziel"]
+        if ziel and p["kurs"]:
+            entfernung = vz * (ziel / p["kurs"] - 1) * 100
     text = "  %-12s %s%.1f%%  %.0f %s" % (
         p["name"], pfeil, p["vh"], p["wert"], waehrung)
-    if p.get("hebel"):
+    if p.get("hebel") and p["hebel"] > 1:
         text += " Margin @%.0fx" % p["hebel"]
+    if entfernung is not None:
+        text += "  Verkauf in %.1f %%" % abs(entfernung)
     if abstand is not None:
         if abstand < 0:
             # Der Kurs steht jenseits des Stops. Bei den Kontraktspuren
@@ -578,7 +642,8 @@ def baue(mit_xperp=True):
 
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-                 spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus):
+                 spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
+                 spur_gitter):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001

@@ -461,6 +461,37 @@ Strategie mit Einstiegen steht. Die Rechnung liegt wie bei den anderen Spuren
 nur einmal im Haus (`scanner/wachen_pruefung.spiegele_journal`, in diesem
 eigenen venv über den Dateipfad geladen).
 
+**Gitter-Spur (Papier, seit 14.09.2026):** `Handel/gitter` fährt ein
+statisches Preisgitter auf OKX-Spot (`BTC-USDT`) als Spur im Dauerlauf. Die
+Grenzen entstehen **einmal** aus dem ersten gesehenen Kurs (±20 %, 12 Stufen,
+Schritt 3,755 %) und werden nie verschoben; auf jeder Stufe unter dem Kurs
+liegt eine Kauforder, eine Stufe höher der Verkauf. Je Zyklus werden die
+OKX-Stundenkerzen seit der letzten nachgezogen (nicht nur die neueste): ein
+ausgefallener Zyklus verliert nichts, solange die Lücke ins Fenster passt
+(300 Kerzen = 12,5 Tage). Die Stufenformel ist dieselbe wie in
+`Handel/grid.py` (`stufen_bauen`) — eine Rechnung, zwei Aufrufer; Preise und
+Mengen werden auf das Raster der Börse gerundet (tickSz/lotSz aus dem
+Instrument), damit das Papierbuch dieselben Zahlen benutzt wie eine echte
+Order. Es gibt **keinen Orderpfad**: `--live` verweigert mit einem Grund ohne
+das Wort Freigabefenster, `handel_erlaubt` ist `false`. Von den fünf
+Bedingungen läuft **4 (Spiegelung)**: Journal und Zustand gehen nach jedem
+Zyklus nach `Q:\Handel_Journal\gitter`. **Bedingung 3 (Herzschlag) greift
+hier bewusst nicht** — anders als bei den Kontraktspuren muss nichts
+flachgestellt werden: ein Gitter hat keine Order am Markt, die unbewacht wäre.
+Kosten sind auf beiden Seiten gerechnet (0,1 % Gebühr + 0,05 % Slippage je
+Seite = 0,3 % je Runde gegen einen Stufenabstand von 3,755 %). Der Kill-Switch
+liegt bei 200 USD (20 % des Einsatzes): ab dort werden keine neuen Stufen mehr
+armiert, belegte Stufen verkaufen weiter.
+
+Der Hintergrund steht im Backtest desselben Gitters
+(`nautilus/backtest_grid.py`): auf BTC-Stundenkerzen 2025/26 (−32 % Kurs) lag
+das Gitter mit −17,7 % vor dem Halten (−32,0 %); in drei nach Regel gesuchten
+Seitwärtsfenstern verdiente es +3,2 / +5,5 / +14,3 % gegen ~0 % beim Halten —
+und in allen drei Fenstern verdiente die **halbe Stufenzahl das Doppelte**,
+weil die Gebühren mit der Frequenz wachsen. Ein Gitter im Trendmarkt ist ein
+Bremsklotz mit Gebühren; das ist der Grund, warum diese Spur ein Papierbuch
+und keine Strategie-Empfehlung ist.
+
 **Journal außer Haus, Stand 13.09.2026 — alle Spuren spiegeln.** Bis zu diesem
 Tag hatten nur Marktscanner und XPERP ein Ziel gesetzt, und nur diese zwei
 kopierten wirklich; Kraken hatte den Aufruf, aber `journal_zweitziel: null`,

@@ -944,13 +944,63 @@ GUI-Pfad; der Test ist die Regressionssicherung.
 Offen bleibt der **Orderpfad**: Dafür muss die aktuelle IP im OKX-Portal
 freigegeben sein, und der DEMO-Schlüssel braucht die Trade-Berechtigung (er ist
 laut `demo_order_test.py` nur `read_only`).
-## Handelszentrale (`handelszentrale.py`) — alle sieben Spuren in einem Fenster
+## Gitter-Spur (`gitter/`) — dasselbe Grid, im laufenden Betrieb
+
+Seit 14.09.2026 liegt das Grid auch als Spur im Dauerlauf: `gitter/handeln.py`
+fuehrt ein Papierbuch auf OKX-Spot (`BTC-USDT`), Stufen aus
+`Handel/grid.py:stufen_bauen` — eine Rechnung, zwei Aufrufer. Der Backtest
+desselben Gitters steht in `nautilus/backtest_grid.py` (siehe
+`nautilus/README-live-node.md`), die Messung an der Vergangenheit; hier laeuft
+es auf laufenden Kursen.
+
+```powershell
+scanner/.venv/Scripts/python.exe gitter/handeln.py --wachen    # Grenzen
+scanner/.venv/Scripts/python.exe gitter/handeln.py --vorschau  # schreibt nichts
+scanner/.venv/Scripts/python.exe gitter/handeln.py --papier    # ein Zyklus
+scanner/.venv/Scripts/python.exe gitter/auswertung.py          # Bilanz
+cd gitter; ../scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_*.py"
+```
+
+**Die Grenzen entstehen EINMAL** aus dem ersten gesehenen Kurs (+/-20 %, 12
+Stufen, Schritt 3,755 %) und werden danach nie verschoben — ein Gitter, das
+seiner Spanne nachzieht, waere eine andere Strategie. Preise und Mengen werden
+auf das Raster der Boerse gerundet (`tickSz`/`lotSz` aus dem Instrument), damit
+das Papierbuch dieselben Zahlen benutzt, die eine echte Order haette.
+
+**Die Kerzen-Regel** (jede Zahl dieser Spur haengt daran): je abgeschlossener
+Stunde zuerst die Kaeufe (Tief beruehrt die Stufe), dann die Verkaeufe (Hoch
+beruehrt die Stufe hoeher) — aber nur fuer Lose, die schon VOR dieser Kerze
+lagen; am Ende der Kerze wird neu armiert (freie Stufen unter dem Schlusskurs).
+Die laufende Stunde wird verworfen. Damit erfindet der Durchlauf keinen Zyklus,
+der in derselben Stunde begonnen und beendet worden waere; der Backtest rechnet
+genauso (Order aus Kerze N wirkt ab Kerze N+1).
+
+**Nachgezogen wird seit der letzten Kerze**, nicht nur die neueste: ein
+ausgefallener Zyklus (oder ein Neustart) verliert nichts, solange die Luecke ins
+Fenster passt (300 Kerzen = 12,5 Tage). Deshalb greift hier **Bedingung 3 nicht**
+— ein Gitter hat keine Order am Markt, die unbewacht waere; es muss nichts
+flachgestellt werden. Bedingung 4 laeuft: Journal und Zustand gehen nach jedem
+Zyklus nach `Q:\Handel_Journal\gitter`, byte-genau geprueft von
+`spiegelstand.py`.
+
+Kosten auf beiden Seiten (0,1 % Gebuehr + 0,05 % Slippage je Seite = 0,3 % je
+Runde) gegen 3,755 % Stufenabstand. Kill-Switch bei 200 USD (20 % des
+Einsatzes): ab dort keine neuen Stufen, belegte Stufen verkaufen weiter.
+`--live` verweigert mit einem Grund ohne das Wort Freigabefenster
+(`handel_erlaubt=false`) — der Dauerlauf fragt deshalb keine Freigabe an.
+
+Die belegten Stufen stehen als Positionen im Zustand (`inst`, `seite`,
+`einstieg`, `menge`, `nominal`, `ziel`) — abgeleitet aus den Losen, nie von Hand
+gefuellt; `ziel` ist die naechste Stufe, einen Stop gibt es nicht. Der
+Tagesbericht zeigt darum "Verkauf in x %" statt eines Stop-Abstands.
+
+## Handelszentrale (`handelszentrale.py`) — alle acht Spuren in einem Fenster
 
 Seit 13.09.2026 gibt es die gemeinsame Ansicht ueber den ganzen Handel-Ordner:
 dieselben vier Dinge, die die omnitrade-Oberflaeche (`omnitrade-ui`: Chart,
 Orderbuch, Positionen, Konsole) fuer EINE Engine zeigt — hier Spuren, offene
 Positionen, Kurschart und Konsole ueber ALLE Spuren (`xperp`, `scanner`,
-`swap`, `spiegel`, `orbk`, `omniquant`, `nautilus`).
+`swap`, `spiegel`, `orbk`, `omniquant`, `nautilus`, `gitter`).
 
 Aufruf aus diesem Ordner, mit dem Vorgabe-Interpreter der Spuren:
 

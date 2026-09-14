@@ -48,8 +48,25 @@ class PositionsformTest(unittest.TestCase):
       scanner               positionen[] ohne seite, Einsatz als usd
       spiegel               symbol/kette/token, preis_einstieg, stop_preis
       orbk                  EINE Position unter 'position' + richtung
+      gitter                positionen[] je Gitterstufe (abgeleitet aus 'lose')
       nautilus              leer
     """
+
+    def test_gitterstufe_mit_ziel_statt_stop(self):
+        # Die Gitter-Spur schreibt je belegter Stufe eine Position; einen Stop
+        # gibt es nicht (verkauft wird eine Stufe hoeher), dafuer ein Ziel.
+        # Ohne Ziel-Leser stuende in der Anzeige ein Strich fuer den Verkauf.
+        z = {"positionen": [{"inst": "BTC-USDT", "seite": "long", "stufe": 3,
+                             "einstieg": 74321.5, "menge": 0.0134,
+                             "nominal": 996.21, "ziel": 80681.0,
+                             "eroeffnet": "2026-09-13"}]}
+        p = gui.positionen_aus(z)
+        self.assertEqual(len(p), 1)
+        self.assertEqual(p[0]["seite"], "long")
+        self.assertEqual(p[0]["schluessel"], "BTC-USDT")
+        self.assertAlmostEqual(p[0]["wert_usd"], 996.21)
+        self.assertAlmostEqual(p[0]["ziel"], 80681.0)
+        self.assertIsNone(p[0]["stop"])
 
     def test_okx_kontraktspur(self):
         z = {"positionen": [{"inst": "FIL-USD_UM_XPERP-310808", "seite": "long",

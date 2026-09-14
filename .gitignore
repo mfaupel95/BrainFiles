@@ -125,6 +125,13 @@
 !Agenten/Handel/omniquant/*.md
 !Agenten/Handel/omniquant/*.json
 !Agenten/Handel/omniquant/tests/*.py
+# Gitter-Spur (Papierbuch auf einem statischen Preisgitter, OKX-Stundenkerzen):
+# Code, Wachen, Auswertung und Tests in den Verlauf - zustand.json und das
+# Journal nicht (schreibt jeder Zyklus, stehen unten in der Sperrliste).
+!Agenten/Handel/gitter/*.py
+!Agenten/Handel/gitter/*.md
+!Agenten/Handel/gitter/*.json
+!Agenten/Handel/gitter/tests/*.py
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -225,6 +232,10 @@ Agenten/Handel/orbk/daten/**
 # (Grenzen von Hand); Zustand und Journal schreibt jeder Zyklus.
 Agenten/Handel/omniquant/zustand.json
 Agenten/Handel/omniquant/handelsjournal.csv
+# Gitter-Spur: Laufzeitstand gesperrt (schreibt jeder Zyklus), Code und
+# wachen.json sind oben freigegeben.
+Agenten/Handel/gitter/zustand.json
+Agenten/Handel/gitter/handelsjournal.csv
 
 # Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
 # freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.

@@ -146,6 +146,11 @@ SPUREN = {
                  "skript": "handeln.py",
                  "python": os.path.join(HIER, "nautilus", ".venv",
                                         "Scripts", "python.exe")},
+    # Die Gitter-Spur braucht kein eigenes venv: sie liest OKX-Kerzen ueber
+    # scanner/okx und rechnet die Stufen mit Handel/grid.py - beides liegt im
+    # gemeinsamen venv.
+    "gitter":  {"ordner": "gitter",  "waehrung": "USDT",
+                "skript": "handeln.py"},
 }
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
