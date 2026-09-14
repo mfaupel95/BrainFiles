@@ -222,5 +222,47 @@ class Einstandskurs(unittest.TestCase):
                                2.0 * (v["einstieg"] - v["stop"]), places=6)
 
 
+class Gebuehr(unittest.TestCase):
+    """Was der Freibetrag des Abos an der Kaufzeile aendert.
+
+    Der Test behauptet die RECHNUNG, nicht den Wert in wachen.json:
+    `gebuehr_taker` ist seit dem 14.09.2026 null, darf aber jederzeit wieder
+    steigen (faellt das Abo weg). Deshalb wird beides geprueft - mit 0 und mit
+    0,40 %.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt = h.JOURNAL
+        h.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
+
+    def tearDown(self):
+        h.JOURNAL = self.alt
+        self.tmp.cleanup()
+
+    def _kaufzeile(self, satz):
+        w = dict(W)
+        w["gebuehr_taker"] = satz
+        v = {"inst": "XETHZEUR", "eur": 50.0, "einstieg": 3000.0,
+             "stop": 2790.0, "ziel": 3420.0, "stop_pct": 7.0, "score": 80.0}
+        z = {"positionen": [], "letzte_stops": {}}
+        with patch.object(h, "menge_fuer", return_value=(0.0166, None)), \
+             patch("sys.stdout", io.StringIO()):
+            h.pruefe_einstiege(z, [v], w, False)
+        zeilen = [x for x in h.JOURNAL.read_text("utf-8").splitlines()
+                  if ",kauf," in x]
+        self.assertEqual(len(zeilen), 1, "genau eine Kaufzeile erwartet")
+        return zeilen[0].split(",")[5], z["positionen"][0]
+
+    def test_ohne_gebuehr_steht_der_nominale_einsatz_in_der_kaufzeile(self):
+        betrag, pos = self._kaufzeile(0.0)
+        self.assertEqual(betrag, "50.00")
+        self.assertEqual(pos["eur"], 50.0)
+
+    def test_mit_gebuehr_steht_sie_in_der_kaufzeile(self):
+        betrag, _ = self._kaufzeile(0.004)
+        self.assertEqual(betrag, "50.20")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

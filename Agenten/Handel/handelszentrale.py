@@ -66,7 +66,7 @@ KERZEN_KRAKEN = 200
 
 # Woher eine Spur ihre Kurse holt. Die Zuordnung haengt an der SPUR, nicht am
 # Instrument: derselbe Basiswert notiert an zwei Boersen verschieden.
-QUELLE = {"orbk": "kraken", "spiegel": "feed"}
+QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed"}
 QUELLE_VORGABE = "okx"
 
 # Farben - dasselbe dunkle Blatt wie omniquant/gui.py, damit die Fenster
@@ -191,11 +191,15 @@ def positionen_der_spur(spur, zustand, wachen):
         p["quelle"] = q
         if q == "kraken":
             block = (wachen.get("instrumente") or {}).get(p["roh"].get("inst"))
-            p["kurs_schluessel"] = (block or {}).get("kraken") or p["roh"].get("inst")
+            p["kurs_schluessel"] = (block or {}).get("kraken") or p["schluessel"]
         elif q == "feed":
             p["kurs_schluessel"] = p.get("token")
         else:
-            p["kurs_schluessel"] = p["roh"].get("inst")
+            # `schluessel` ist die generische Lesart aus positionen_aus()
+            # (inst ODER paar ODER token). Vorher stand hier roh["inst"] - die
+            # Kraken-Spur fuehrt ihr Instrument als `paar`, der Kursweg blieb
+            # deshalb None und ihr Chart lief ins Leere.
+            p["kurs_schluessel"] = p["schluessel"]
     return aus
 
 
