@@ -150,6 +150,14 @@ SPUREN = {
     # Standardbibliothek (urllib), laeuft unter dem scanner-venv.
     "kopier":  {"ordner": "kopier", "waehrung": "USD",
                 "skript": "kopier.py"},
+    # KOPIER1ZU1 (Papierbuch, angelegt 15.09.2026): zweite Copy-Trade-Spur,
+    # die auf TRADE-Ereignissen arbeitet (trades/batch) statt auf einem
+    # Portfolio-Diff. Jeder Kauf des Vorbilds oeffnet eine Papier-Position,
+    # jeder Verkauf schliesst sie sofort. Kein Live-Zweig - teilt lesen.py
+    # mit kopier/ und liest verfolgte.json aus kopier/ (kein zweiter
+    # Rangliste-Abruf).
+    "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",

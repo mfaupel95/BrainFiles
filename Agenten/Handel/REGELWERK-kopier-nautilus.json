@@ -1,0 +1,72 @@
+{
+  "kopier": {
+    "name": "Kopier-Spur (Pump.fun Copy Trade)",
+    "handel_erlaubt": false,
+    "zweck": "Pump.fun-Rangliste 1:1 nachmachen (Papierbuch ohne Orderpfad)",
+    "einheiten": {
+      "einsatz_je_kopie_usd": "max_einsatz_je_kopie_usd",
+      "max_offen": "max_offen",
+      "max_offen_papier": "max_offen_papier",
+      "max_neu_je_zyklus": "max_neu_je_zyklus",
+      "max_kopien_je_token": "max_kopien_je_token"
+    },
+    "geld": {
+      "max_einsatz_je_kopie_usd": 50,
+      "max_offen": 20,
+      "max_offen_papier": 60,
+      "max_neu_je_zyklus": 10,
+      "max_kopien_je_token": 2
+    },
+    "ausstieg": {
+      "stop_pct": 15.0,
+      "trail_aktiv_ab_pct": 30.0,
+      "trail_abstand_pct": 25.0,
+      "haltedauer_stunden": 168,
+      "follow_ausstieg": true
+    },
+    "kosten": {
+      "slippage_pct": 5.0,
+      "gebuehr_pct": 1.0
+    },
+    "signal": {
+      "max_alter_signal_sekunden": 1800,
+      "marketcap_band_usd": [
+        50000,
+        1000000
+      ],
+      "max_signale_je_zyklus": 30,
+      "anzahl_trader": 10,
+      "rangliste_periode": "daily"
+    }
+  },
+  "nautilus": {
+    "name": "Nautilus-Spur (OKX-DEMO, Proxy fuer Ausstiegsform)",
+    "handel_erlaubt": false,
+    "zweck": "OKX-DEMO-Node: BTC-SWAP-Quotes + Kopier-Signale als Papierpositionen",
+    "einheiten": {
+      "max_risiko_pro_trade_usd": 50,
+      "max_risiko_gesamt_usd": 200,
+      "max_offene_positionen": 4,
+      "max_hebel": 5
+    },
+    "geld": {
+      "max_risiko_pro_trade_usd": 50,
+      "max_risiko_gesamt_usd": 200,
+      "max_offene_positionen": 4,
+      "max_hebel": 5
+    },
+    "ausstieg": {
+      "stop_pct": 19.8,
+      "trail_aktiv_ab_pct": 30.0,
+      "trail_abstand_pct": 25.0,
+      "haltedauer_stunden": 168
+    },
+    "kosten": {
+      "slippage_pct": 0.1,
+      "gebuehr_pct": 0.05
+    },
+    "signal": {
+      "signalquelle": "kopier"
+    }
+  }
+}

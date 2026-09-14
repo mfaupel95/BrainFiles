@@ -65,6 +65,7 @@
 !Agenten/Handel/*.py
 !Agenten/Handel/*.md
 !Agenten/Handel/*.ps1
+!Agenten/Handel/REGELWERK-*.json
 !Agenten/Handel/requirements.txt
 !Agenten/Handel/prognose.py
 !Agenten/Handel/prognose.json
@@ -112,6 +113,10 @@
 !Agenten/Handel/kopier/*.md
 !Agenten/Handel/kopier/wachen.json
 !Agenten/Handel/kopier/tests/*.py
+!Agenten/Handel/kopier1zu1/*.py
+!Agenten/Handel/kopier1zu1/*.md
+!Agenten/Handel/kopier1zu1/wachen.json
+!Agenten/Handel/kopier1zu1/tests/*.py
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -235,6 +240,9 @@ Agenten/Handel/kopier/zustand.json
 Agenten/Handel/kopier/handelsjournal.csv
 Agenten/Handel/kopier/verfolgte.json
 Agenten/Handel/kopier/ablehnungen.csv
+Agenten/Handel/kopier1zu1/zustand.json
+Agenten/Handel/kopier1zu1/handelsjournal.csv
+Agenten/Handel/kopier1zu1/ablehnungen.csv
 Agenten/Handel/kopier/daten/**
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von

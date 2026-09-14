@@ -26,6 +26,8 @@
   "gebuehr_pct": 1.0,
 
   "_ausstieg": "Eigene Mathematik, KEIN Auto-Exit nach dem Vorbild-Timing - aber seit dem 15.09.2026 die Ausstiegsform, die Max bestellt hat: KEIN festes Ziel mehr (ein +60-%-Deckel schneidet 10x/100x ab), stattdessen ein Trailing-Stop. Sobald eine Kopie trail_aktiv_ab_pct ueber ihrem Einstieg lag, haengt der Ausstieg trail_abstand_pct unter dem hoechsten seither beobachteten Kurs. ZUSAETZLICH schliesst die Spur eine Kopie, wenn die Position des Vorbilds aus dessen Portfolio verschwindet (follow_ausstieg) - die beobachtbare Ausstiegs-Entscheidung des Modells, geschlossen zum letzten beobachteten Kurs. Der harte Stop begrenzt den SCHADEN: stop_pct sitzt so, dass der realisierte Verlust am Stop inklusive Slippage und Gebuehr maximal 20 % des Einsatzes betraegt (bei 5 % Slippage + 1 % Gebuehr: (1-0,15)*0,95*0,99 = 0,80). Ein gerissener Stop schliesst SOFORT zum beobachteten Kurs. Die Frist ist nur noch ein Sicherheitsnetz gegen tote Positionen (7 Tage). OKX-Vorbereitung: Stop = Stop-Market, Trailing = OKX-Trailing-Stop (Trigger trail_aktiv_ab_pct, Callback trail_abstand_pct); Orderspezifikation beim Anbinden gegen die OKX-API pruefen. Altbestand (vor dem 15.09.2026) laeuft unter seinen gebuchten stop/ziel/frist aus.",
+    "_stop_usd": "Seit 15.09.2026 (Max): Stop als Verlust in USD, keine Prozent. Bei Pump.fun-Volatilitaet fliegen Kopien mit -15 % zu frueh raus. stop_pct bleibt als Rueckfall fuer Altbestand.",
+    "stop_usd": 15.0,
     "stop_pct": 15.0,
     "trail_aktiv_ab_pct": 30.0,
     "trail_abstand_pct": 25.0,

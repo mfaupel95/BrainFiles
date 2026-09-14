@@ -470,6 +470,7 @@ def _kopie(sig, w, z):
         "quelle": sig["quelle"], "einsatz_usd": einsatz, "menge": menge,
         "preis_vorbild": sig["vorbild_kurs"], "preis_einstieg": kaufpreis,
         "marktkap_usd": sig["marktkap_usd"], "risiko": r["stufe"],
+        "stop_usd": w.get("stop_usd"),
         "stop_preis": kaufpreis * (1 - w["stop_pct"] / 100.0),
         # Seit 15.09.2026 kein festes Ziel mehr: Trailing-Stop, damit
         # theoretische 10x/100x laufen koennen (siehe wachen.json, _ausstieg).
@@ -571,7 +572,13 @@ def _ausstiegsgrund(p, kurs, jetzt, w):
     Altbestand (ohne die Felder) laeuft unter stop/ziel/frist aus. Ein
     gerissener Stop schliesst zum BEOBACHTETEN Kurs, nicht zum Stop-Preis.
     """
-    if kurs <= p["stop_preis"]:
+    if p.get("stop_usd") is not None:
+        # Ausstiegsform 15.09.2026 (Max): Stop als Verlust in USD, keine
+        # Prozent. Bei Pump.fun-Volatilitaet fliegen Prozent-Stops zu frueh.
+        erloes = _verkaeuflich(p["menge"], kurs, w)
+        if p["einsatz_usd"] - erloes >= p["stop_usd"]:
+            return "stop"
+    elif kurs <= p["stop_preis"]:
         return "stop"
     if p.get("trail_abstand_pct"):
         p["hoechster_kurs"] = max(p.get("hoechster_kurs") or kurs, kurs)
