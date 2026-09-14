@@ -572,6 +572,37 @@ try {
 } catch { Notiz "  ! Spiegelungs-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
+# 11b) Handelsspuren: passt die Herzschlag-Grenze zur Handelserlaubnis?
+# ---------------------------------------------------------------------------
+# Bedingung 3 schliesst alle offenen Positionen, wenn der letzte gesunde Lauf
+# aelter ist als herzschlag_max_minuten. Der Waechter startet einen toten
+# Dauerlauf alle 30 Minuten neu, ein Zyklus dauert 1-2 Minuten - eine Stoerung
+# heilt also nach hoechstens rund 32 Minuten von selbst. Jede Grenze darunter
+# stellt bei JEDER solchen Stoerung flach und verbucht eine Runde, die keine
+# Handelsentscheidung war (am 11./12.09.2026 mit 30 Minuten in xperp und swap
+# geschehen). Regel vom 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 fuer
+# Spuren mit Handelserlaubnis. Diese Pruefung haelt sie fest - ohne sie
+# verfaellt die Regel wie die gewachsenen Zahlen davor (30/45/90/180/2880).
+try {
+  Notiz "`n--- 11b) Handel: Herzschlag-Regel ---"
+  $handelsSpuren = @(Get-ChildItem (Join-Path $wurzel 'Agenten\Handel') -Directory |
+    Where-Object { Test-Path (Join-Path $_.FullName 'wachen.json') })
+  $regelkonform = 0
+  foreach ($hs in $handelsSpuren) {
+    $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
+    $hm = [int]$wj.herzschlag_max_minuten
+    $erlaubt = ($wj.handel_erlaubt -eq $true)
+    $soll = if ($erlaubt) { 45 } else { 180 }
+    if ($hm -ne $soll) {
+      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - handel_erlaubt ist $erlaubt, also gilt die $(if ($erlaubt) { 'Live' } else { 'Papier' })-Grenze. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
+    } else {
+      $regelkonform++
+    }
+  }
+  Info "$regelkonform von $($handelsSpuren.Count) Handels-Spuren folgen der Herzschlag-Regel (180 Papier / 45 mit Handelserlaubnis)."
+} catch { Notiz "  ! Herzschlag-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
 # 12) Handelsspuren: laeuft der Dauerlauf, und dreht er sich noch?
 # ---------------------------------------------------------------------------
 # Der Dauerlauf ist der einzige Schreiber der Handelsdateien. Faellt er aus,
