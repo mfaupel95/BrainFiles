@@ -28,7 +28,8 @@
   "mindest_marge_frei_usd": 50,
   "kill_switch_gesamt_usd": 150,
   "drawdown_halbierung_prozent": 15.0,
-  "herzschlag_max_minuten": 45,
+  "herzschlag_max_minuten": 180,
+  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Papier-Spur; vorher 45 aus der Anlaufzeit.",
   "journal_zweitziel": "Q:\\Handel_Journal\\orbk",
   "freigabe": {
     "erfuellt": false,

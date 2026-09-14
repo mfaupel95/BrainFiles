@@ -3,7 +3,7 @@ id: 20260902-handelsregeln
 title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
-updated: 2026-09-13
+updated: 2026-09-14
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
 summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
@@ -400,7 +400,7 @@ durch einen Vorteil, sie begrenzen den Schaden, bis einer nachgewiesen ist.
 |---|---|---|
 | **1. Freigabe Papier → Live** | mindestens 6 Wochen Papierlauf, ≥ 50 abgeschlossene Runden, netto positiv **nach** Gebühren und Funding, größter Rücklauf im Papierlauf < `kill_switch_gesamt_usd`. Erst wenn alle vier erfüllt sind, darf `handel_erlaubt` von Hand auf `true` — je Spur getrennt. | Block `freigabe` in beiden `wachen.json` |
 | **2. Drawdown-Ratsche** | Fällt das Konto 15 % unter seinen Höchststand, halbiert `bot.py`/`handeln.py` jede weitere Positionsgröße. Bei `kill_switch_gesamt_usd` wird flach gestellt **und** `handel_erlaubt` auf `false` geschrieben — der einzige Fall, in dem ein Skript diese Datei schreibt, und nur in diese Richtung. | `bot.py`, `handeln.py` |
-| **3. Herzschlag** | Liegt der letzte gesunde Lauf länger zurück als `herzschlag_max_minuten` (an die Taktung gekoppelt: Tagesroutine 48 h, Schnelllauf-Bot ~30 min), schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `handeln.py` prüft `zustand.json` vor dem Start |
+| **3. Herzschlag** | Liegt der letzte gesunde Lauf länger zurück als `herzschlag_max_minuten` (**seit 14.09.2026: 180 min für Papier-Spuren, 45 min für Spuren mit Handelserlaubnis**), schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Der Wächter startet einen toten Dauerlauf alle 30 min neu, ein Zyklus dauert 1–2 min — eine Störung heilt nach höchstens ~32 min von selbst; wer darunter geht, stellt bei *jeder* Störung flach und bucht eine Runde, die keine Handelsentscheidung war. Die Regel steht im Feld `_herzschlag_regel` jeder `wachen.json`. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `handeln.py` prüft `zustand.json` vor dem Start |
 | **4. Journal außer Haus** | Das Handelsjournal wird nach jedem Zyklus auf ein zweites Ziel gespiegelt. `G:` genügt nicht — dasselbe Gehäuse. Ein Journal nur auf dem Handelsrechner ist kein Nachweis, sondern eine Wette darauf, dass die Platte hält. | Zeile in `Routinen/`, Ziel offen bis „Kopie außer Haus" steht ([[Hardware]]) |
 | **5. Wöchentlicher Soll-Ist-Abgleich** | Einmal pro Woche die vier Pflichtzahlen (Liquidationsabstand, Funding, Gebühren, Trefferquote) gegen das real Erreichte. Liegt der gleitende 30-Runden-Erwartungswert nach Kosten unter null, fällt die Spur automatisch auf Papier zurück, bis ein neuer Papierlauf nach Bedingung 1 trägt. | Skript in `Routinen/`, Befund nach `Werkstatt/`, Entscheidung nach `Wissen/` |
 
@@ -441,11 +441,15 @@ und die Kernel-Power-41-Abschaltungen aus [[Hardware]] nehmen ihn ohne
 Vorwarnung mit. Eine gehebelte Position ohne börsenseitigen Stop liefe dann
 bis zur Liquidation.
 
-**Der Herzschlag von 30 Minuten hat eine Folge, die man kennen muss:** Läuft
-`dauerlauf.py` nicht, stellt der nächste Lauf zuerst alles flach. Das ist so
-gewollt, heißt aber, dass diese Spur nur im Dauerbetrieb sinnvoll ist — ein
-von Hand gestarteter Papierlauf sammelt nie die 50 Runden aus Bedingung 1.
-Offen als T-032.
+**Der Herzschlag hat eine Folge, die man kennen muss:** Läuft `dauerlauf.py`
+nicht, stellt der nächste Lauf zuerst alles flach. Bis zum 14.09.2026 standen
+hier 30 Minuten — bei einem Wächter, der einen toten Dauerlauf alle 30 Minuten
+neu startet, und einem Zyklus von 1–2 Minuten war das enger als die
+Selbstheilung. Am 11./12.09.2026 hat die Spur genau deshalb Papierrunden ohne
+Anlass geschlossen und die 50 Runden aus Bedingung 1 verdorben, statt sie zu
+sammeln. Seit dem 14.09.2026 gelten **180 Minuten in Papier** (Bedingung 3
+oben): ein von Hand gestarteter Lauf sammelt jetzt Runden, statt sie
+wegzuwerfen. Auf live gehört diese Spur auf 45. Damit ist T-032 erledigt.
 
 **Spur 3 (Kraken), seit 02.09.2026:** Bedingung 1–5 sind umgesetzt und laufen
 über dieselbe Rechnung wie Spur 1 — `kraken/wachen_kraken.py` importiert
@@ -464,9 +468,9 @@ Papier- und Live-Lauf (Grund und Rückrechnung in `kraken/wachen.json`,
 −0,57 % je Runde). Drei Dinge sind mit dem Wiederanlauf neu und gehören zur
 Spur: sie steht wieder in `dauerlauf.SPUREN` und wird alle 15 Minuten geprüft
 (Stop und Ziel greifen damit durchgehend statt einmal am Tag), ihr Herzschlag
-steht auf **180 Minuten** statt auf 30 wie bei Spur 1 (ein Rechnerneustart soll
-die Papierpositionen nicht flachstellen — bei Spur 1 ist genau das am
-11./12.09.2026 passiert), und den Einstandskurs nimmt sie vom **lebenden
+steht auf **180 Minuten** — seit dem 14.09.2026 der Wert für alle Papier-Spuren,
+weil der Wächter einen toten Dauerlauf nach höchstens rund 32 Minuten selbst neu
+startet (Bedingung 3 oben), und den Einstandskurs nimmt sie vom **lebenden
 Kurs**, nicht mehr aus der Tagesrangliste; die wählt nur noch aus (Score,
 Volatilität, Chance/Risiko) und darf höchstens drei Tage alt sein. Gehandelt
 wird ausschließlich auf Papier (`handel_erlaubt: false`,

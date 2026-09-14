@@ -3,7 +3,7 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-09-13
+updated: 2026-09-14
 related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---

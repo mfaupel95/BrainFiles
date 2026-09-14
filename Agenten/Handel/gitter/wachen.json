@@ -24,7 +24,8 @@
   "max_verlust_usd": 200.0,
 
   "_herzschlag": "Nur eine Anzeige, keine Wache: anders als die Kontraktspuren muss hier nichts flachgestellt werden. Ein Gitter hat keine Order am Markt, die unbewacht waere - es holt beim naechsten Zyklus alle Kerzen seit dem letzten nach. Die Zahl steht trotzdem im Zustand, damit ein Ausfall auffaellt.",
-  "herzschlag_max_minuten": 90,
+  "herzschlag_max_minuten": 180,
+  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Hier sind die Minuten reine Anzeige - ein Gitter hat keine Order am Markt (siehe _herzschlag), es wird nichts flachgestellt.",
 
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\gitter"
