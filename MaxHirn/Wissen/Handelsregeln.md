@@ -610,6 +610,34 @@ Gebühr sind feste Sätze und treffen jedes Band gleich —, sondern am Ziel: ü
 bleiben stehen und laufen in Stop, Ziel oder Frist aus. Herleitung als
 `_marktkap_band` im Wachen-File.
 
+**spiegel: Papier sammelt mit mehr Plätzen, live behält das Muster.** Das
+Ablehnungsprotokoll der ersten echten Zyklen zeigte den Engpass an einer Stelle,
+die im Journal unsichtbar war: von 706 Signalen je Zyklus waren 5 bis 58
+„kaufbar", das Buch stand dauerhaft auf 20/20, und der Zyklus brach beim ersten
+Platzmangel ab — alles danach fiel als „kaufbar, aber nicht mehr erreicht" aus.
+Der Durchsatz hängt an den Plätzen (Runden/Tag = Plätze × Umschläge je Platz,
+beobachtet rund 2), nicht am Tor. Das Papierbuch sammelt deshalb mit **60
+Plätzen** (rund dreifacher Ertrag: 30–55 → 90–165 geschlossene Runden je Tag);
+die Notbremse zieht im selben Anteil mit (300 USD bei 3.000 USD Nominal) — sonst
+hätte sie die Messung nach acht Stops selbst beendet. **Geändert wird nur die
+Kapazität**: Tore, Stop, Ziel, Frist, Kosten und Einsatz bleiben unverändert,
+sonst wäre die Messung eine andere Strategie und nicht mehr übertragbar. **Das
+Muster (20 Plätze, 100 USD) gilt automatisch wieder, sobald `handel_erlaubt:
+true` wird oder `--live` läuft** — die Rücknahme ist also der Schalter, der die
+Spur auf Geld stellt, kein zweiter Wert zum Nachziehen. Herleitung als `_umfang`
+in `wachen.json` (Schlüssel `max_offen_papier`,
+`kill_switch_gesamt_usd_papier`).
+
+**spiegel: die Verfolgungsliste wird im Zyklus selbst erneuert.** Sie ist ein
+*Fenster* auf den Feed, kein Stammbuch: die Fassung vom 12.09.2026 hatte 305
+Wallets, im Feed handelten am 14.09.2026 206 Wallets, davon 154 nicht in der
+Liste — **472 von 706 Signalen je Zyklus** fielen als „Wallet nicht verfolgt"
+aus, zwei Drittel des Feeds. Der Zyklus baut die Liste jetzt neu, sobald sie
+älter ist als `verfolgte_max_alter_stunden` (12 h, rund zehn Abrufe); die
+Vorschau baut nichts. Offene Kopien bleiben unberührt — sie tragen Stop, Ziel
+und Frist selbst. **Rücknahme:** die Grenze sehr groß setzen lässt die Liste
+stehen, bis jemand `--waehlen` ruft.
+
 **scanner und kraken: der Börsen-Stop wird aufgeräumt.** Beide setzten den
 Notausstieg schon mit der Order an den Handelsplatz — aber scanner warf die
 `algoId` weg (kein Storno möglich, der Stop blieb nach jedem Ausstieg im Buch),

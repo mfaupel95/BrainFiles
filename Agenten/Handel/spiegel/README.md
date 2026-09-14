@@ -79,8 +79,8 @@ bezahlen und die in jeder Anleitung fehlt.
 | Grenze | Wert | Warum |
 |---|---|---|
 | je Kopie | 50 USD | die Spur soll eine Frage beantworten, kein Kapital bewegen |
-| offen / je Token | 20 / 2 | ein einzelner Token darf das Buch nicht prägen |
-| Kill-Switch | 100 USD | Rücklauf, dann alles flach |
+| offen / je Token | 20 / 2 · Papier: 60 / 2 | ein einzelner Token darf das Buch nicht prägen; der Papier-Umfang sammelt schneller Daten — was sich ändert und was nicht, steht unten |
+| Kill-Switch | 100 USD · Papier: 300 USD | Rücklauf, dann alles flach; im Papier derselbe Anteil wie im Muster (10 % des Nominalwerts) |
 | Slippage / Gebühr | 3 % / 1 % | Annahme für dünne Bücher plus Vorlauf |
 | Stop / Ziel / Frist | −25 % / +60 % / 24 h | eigene Mathematik, kein Auto-Exit nach Vorbild |
 | Signalalter | 300 s | Hinterherlaufen ist kein Nachahmen |
@@ -202,6 +202,37 @@ gezählt — dann steht „Achtung" da statt einer gerundeten Zahl.
 
 Geschrieben wird **nur im echten Lauf** (die Vorschau schreibt nichts), die
 Datei ist Laufzeitdaten wie das Journal und geht **mit nach Q:**.
+
+## Papier-Umfang und frische Verfolgungsliste (14.09.2026)
+
+Zwei Befunde aus dem Ablehnungsprotokoll der ersten echten Zyklen. Beide
+betrafen **nicht die Tore, sondern den Durchsatz** — und beide waren im Journal
+unsichtbar, solange es nur Buchungen protokollierte.
+
+**1. Der Platz war der Engpass, nicht das Tor.** Von 706 Signalen je Zyklus
+waren 5 bis 58 „kaufbar" — das Buch stand dauerhaft auf 20/20, der Zyklus brach
+beim ersten Platzmangel ab, und alles danach fiel als „kaufbar, aber nicht mehr
+erreicht" aus. Geschlossene Runden je Tag = Plätze × Umschläge je Platz
+(beobachtet: 1,3) — das Papierbuch sammelt deshalb mit **60 Plätzen** (rund 78
+Runden/Tag statt 26). Geändert wird **nur die Kapazität**: Tore, Stop, Ziel,
+Frist, Kosten und Einsatz bleiben gleich, sonst wäre es eine andere Strategie
+und die Messung nicht mehr übertragbar. Die Notbremse zieht im gleichen Anteil
+mit (10 % des Nominalwerts: 300 USD bei 3.000 USD Nominal) — ohne das hätte sie
+das Papierbuch nach acht Stops selbst flachgestellt.
+
+**Das Muster (20 Plätze, 100 USD) gilt automatisch wieder, sobald
+`handel_erlaubt: true` wird oder `--live` läuft** (`spiegel._umfang`, per Test
+belegt). Live fährt damit die geprüfte Form, ohne dass jemand einen zweiten
+Wert nachziehen muss.
+
+**2. Die Verfolgungsliste war zwei Tage alt.** Sie ist ein *Fenster* auf den
+Feed, kein Stammbuch: am 14.09.2026 standen 154 der 206 im Feed handelnden
+Wallets nicht in der Liste vom 12.09., und **472 von 706 Signalen je Zyklus**
+fielen als „Wallet nicht verfolgt" aus — zwei Drittel des Feeds. Neu gebaut wird
+die Liste jetzt **vom Zyklus selbst**, sobald sie älter ist als
+`verfolgte_max_alter_stunden` (12 h, ein Feed-Umlauf von rund zehn Abrufen); die
+Vorschau baut nichts. Offene Kopien sind davon nicht betroffen — sie tragen
+Stop, Ziel und Frist selbst.
 
 ## Journal außer Haus (Bedingung 4, seit 13.09.2026)
 

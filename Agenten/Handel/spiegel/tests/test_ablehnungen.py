@@ -65,10 +65,16 @@ class Grundlage(unittest.TestCase):
         self.w = json.loads(json.dumps(WACHEN_VORLAGE))
         self.w["journal_zweitziel"] = os.path.join(self.tmp.name, "zweitziel")
         self.schreibe_wachen()
+        # Der Lauf baut eine zu alte Verfolgungsliste selbst aus dem Feed neu
+        # (verfolgte_zu_alt): hier liegt gar keine, also griffe er zu. Im Test
+        # waeren das echte Abrufe - deshalb stillgelegt.
+        self.alt_waehlen = sp.waehlen
+        sp.waehlen = lambda w: None
 
     def tearDown(self):
         sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN, sp.ABLEHNUNGEN = self.alt
         sp.SCHREIBEN = self.alt_schreiben
+        sp.waehlen = self.alt_waehlen
         self.tmp.cleanup()
 
     def schreibe_wachen(self, **werte):
@@ -149,7 +155,13 @@ class Protokoll(Grundlage):
         Genau das war aus dem Journal nicht zu sehen: 20 offene Kopien, und
         jedes Signal des Zyklus fiel aus - ohne einen einzigen Grund in der
         Ablage.
+
+        Gefuellt wird bis zu dem Wert, den der LAUF benutzt - nicht bis zu dem,
+        der in der Datei steht: seit dem 14.09.2026 sammelt das Papierbuch mit
+        mehr Plaetzen (spiegel._umfang). Ein Test, der die Rohzahl nimmt, misst
+        an der falschen Grenze und wird gruen, ohne die Stelle zu treffen.
         """
+        grenze = sp._umfang(self.w, "papier")["max_offen"]
         voll = [{"kette": "solana", "wallet": "W%d" % i, "token": "T%d" % i,
                  "symbol": "AAA", "einsatz_usd": 50.0, "menge": 1.0,
                  "preis_vorbild": 1.0, "preis_einstieg": 1.0,
@@ -157,7 +169,7 @@ class Protokoll(Grundlage):
                  "stop_preis": 0.75, "ziel_preis": 1.6,
                  "frist": "2999-01-01T00:00:00+00:00", "eroeffnet": "2026-09-14",
                  "eroeffnet_zeit": "2026-09-14T00:00:00+00:00"}
-                for i in range(self.w["max_offen"])]
+                for i in range(grenze)]
         signale = [dict(SIGNAL, token="KAUFBAR", tx="T-1"),
                    dict(SIGNAL, token="ZUALT", tx="T-2", alter_s=9999.0)]
         code, aus, _ = self.papierlauf(signale, positionen=voll)

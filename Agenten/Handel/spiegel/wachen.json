@@ -12,6 +12,10 @@
   "max_neu_je_zyklus": 10,
   "max_kopien_je_token": 2,
   "kill_switch_gesamt_usd": 100,
+  "_umfang": "Zwei Umfaenge, EINE Strategie. Das Papierbuch sammelt mit mehr Plaetzen, weil der PLATZ den Durchsatz begrenzt, nicht das Tor: am 14.09.2026 war das Buch mit 20 Kopien durchgehend voll, je Zyklus fiel alles nach dem ersten Platzmangel aus ('kaufbar, aber nicht mehr erreicht'), und geschlossene Runden je Tag = Plaetze x Umschlaege je Platz (beobachtet 1,3) -> 20 Plaetze = 26 Runden/Tag, 60 Plaetze = rund 78. Geaendert wird NUR die Kapazitaet: Tore, Stop, Ziel, Frist, Kosten und Einsatz bleiben gleich, sonst waere es eine andere Strategie. Das Muster (die Werte ohne Suffix) gilt automatisch, sobald handel_erlaubt true wird oder --live laeuft, und wird von systempruefung.ps1 Block 11b nicht geprueft (dort geht es um Herzschlag-Grenzen).",
+  "max_offen_papier": 60,
+  "_kill_switch_papier": "Derselbe Anteil wie im Muster: 10 % des Nominalwerts. 20 x 50 USD = 1000 USD -> 100 USD; 60 x 50 USD = 3000 USD -> 300 USD. Ohne das Mitziehen wuerde die Notbremse das Papierbuch nach acht Stops flachstellen und die Messung selbst beenden.",
+  "kill_switch_gesamt_usd_papier": 300,
 
   "_kosten": "Der ehrlichste Teil des Papierbuchs. 3 % Slippage ist die Annahme fuer ein Memecoin-Buch mittlerer Tiefe, 1 % Gebuehr deckt DEX-Gebuehr plus Vorlauf eines Nachahmers. Wer diese zwei Zahlen zu klein setzt, baut eine Wunschrechnung: dieselbe Falle wie Gebuehren und Funding bei den anderen Spuren. Am 12.09.2026 mit 'spiegel.py --messen' gegen echte Daten gehalten (15 frische Signale, 50 USD): Tiefe im Schnitt 0,73 %, Median 0,20 %, groesster 3,59 %; Nachlauf im Schnitt +2,77 %, groesster +34,59 %. Der Nachlauf ist der groessere Posten, nicht die Tiefe - die Annahme passt gemessen, nicht nur behauptet.",
   "slippage_pct": 3.0,
@@ -24,6 +28,8 @@
 
   "_alter": "Hinterherlaufen ist kein Nachahmen. Ein Signal aelter als diese Grenze wird verworfen; der Zeitstempel kommt vom Feed (tradeTime), nicht von der Abfrage.",
   "max_alter_signal_sekunden": 300,
+  "_verfolgte_alter": "Die Verfolgungsliste ist ein Fenster auf den Feed, kein Stammbuch: wer heute im Feed handelt, stand vor zwei Tagen oft nicht darin und umgekehrt. Am 14.09.2026 gemessen: Liste vom 12.09. mit 305 Wallets, im Feed handelten 206 Wallets, davon 154 nicht in der Liste - 472 von 706 Signalen je Zyklus fielen als 'Wallet nicht verfolgt' aus, zwei Drittel des Feeds. Deshalb baut der Zyklus die Liste selbst neu, sobald sie aelter ist als diese Grenze (ein Feed-Umlauf, rund zehn Abrufe) - im schreibenden Lauf, nie in der Vorschau. Nach dem Neubau sammelt der Zyklus mit der frischen Liste weiter; offene Kopien sind davon nicht betroffen, sie tragen Stop, Ziel und Frist selbst.",
+  "verfolgte_max_alter_stunden": 12,
 
   "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (kein Kleinstbetrug, kein ausgewachsener Wert), und der Risiko-Scan muss unauffaellig sein. Das Tor nach unten ist das wichtigere - Rug Pulls sitzen unten.",
   "marketcap_band_usd": [50000, 1000000],

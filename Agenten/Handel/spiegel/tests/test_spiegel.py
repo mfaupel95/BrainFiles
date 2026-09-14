@@ -78,14 +78,21 @@ class Grundlage(unittest.TestCase):
         with open(sp.WACHEN, "w", encoding="utf-8") as f:
             json.dump(w, f, ensure_ascii=False, indent=2)
         with io.open(sp.VERFOLGTE, "w", encoding="utf-8") as f:
-            json.dump({"stand": "2026-09-12", "regel": "Test",
+            json.dump({"stand": sp._jetzt(), "regel": "Test",
                        "ketten": ["solana"],
                        "wallets": [{"kette": "solana", "wallet": "W1",
                                     "gemessen": False}]}, f)
+        # Der Lauf baut eine zu alte Verfolgungsliste selbst aus dem Feed neu
+        # (verfolgte_zu_alt). Im Test darf das NIE passieren - das waeren echte
+        # Abrufe und die Suite haengt am Netz. Die Tests, die den Neubau
+        # pruefen, setzen ihren eigenen Mitschreiber an diese Stelle.
+        self.alt_waehlen = sp.waehlen
+        sp.waehlen = lambda w: None
 
     def tearDown(self):
         sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN, sp.ABLEHNUNGEN = self.alt
         sp.SCHREIBEN = self.alt_schreiben
+        sp.waehlen = self.alt_waehlen
         self.tmp.cleanup()
 
     def journal(self):
@@ -388,6 +395,137 @@ class Sicherheitsnetze(Grundlage):
         z = {"positionen": [], "letzter_lauf": None}
         with patch.object(sp, "lade_zustand", return_value=z):
             self.assertEqual(sp.lauf("papier"), 1)
+
+
+class Umfang(Grundlage):
+    """Papier sammelt mit mehr Plaetzen, fuer live bleibt das Muster stehen.
+
+    Der Umfang ist eine Frage der Datengeschwindigkeit, nicht der Strategie:
+    der Zyklus bricht beim ersten Platzmangel ab, also bestimmt die Zahl der
+    Plaetze den Durchsatz (Plaetze x Umschlaege je Platz und Tag). Waeren die
+    Tore mitgewandert, waere die Messung eine andere Frage.
+    """
+
+    def _wachen(self):
+        with io.open(sp.WACHEN, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_papier_hebt_nur_die_kapazitaet(self):
+        w = self._wachen()
+        p = sp._umfang(w, "papier")
+        self.assertIsNot(p, w, "Papier muss eine eigene Fassung bekommen")
+        self.assertEqual(p["max_offen"], 60)
+        self.assertEqual(p["kill_switch_gesamt_usd"], 300)
+        for name in ("max_einsatz_je_kopie_usd", "max_neu_je_zyklus",
+                     "max_kopien_je_token", "slippage_pct", "gebuehr_pct",
+                     "stop_pct", "ziel_pct", "haltedauer_stunden",
+                     "max_alter_signal_sekunden", "marketcap_band_usd",
+                     "max_risiko_stufen"):
+            self.assertEqual(p[name], w[name],
+                             "Strategiewert %s darf sich nicht verschieben" % name)
+
+    def test_handelserlaubnis_bekommt_das_muster(self):
+        """Wer die Spur auf Geld stellt, bekommt wieder 20 Plaetze - ohne
+        zweiten Schalter, den jemand nachziehen muesste."""
+        w = self._wachen()
+        w["handel_erlaubt"] = True
+        p = sp._umfang(w, "papier")
+        self.assertIs(p, w)
+        self.assertEqual(p["max_offen"], 20)
+        self.assertEqual(p["kill_switch_gesamt_usd"], 100)
+
+    def test_live_bekommt_immer_das_muster(self):
+        w = self._wachen()
+        self.assertFalse(w["handel_erlaubt"])
+        self.assertIs(sp._umfang(w, "live"), w)
+
+    def test_ohne_papier_schluessel_bleibt_das_muster(self):
+        w = self._wachen()
+        w.pop("max_offen_papier")
+        w.pop("kill_switch_gesamt_usd_papier")
+        self.assertIs(sp._umfang(w, "papier"), w)
+
+    def test_die_umfangszeile_traegt_kein_filterwort(self):
+        """Die Zeile faellt in jedem Zyklus - ein Filterwort darin waere Spam.
+
+        Gerendert, nicht gelesen: der Lauf wird wirklich ausgefuehrt und die
+        gedruckte Zeile geprueft.
+        """
+        z = {"positionen": [], "letzter_lauf": sp._jetzt()}
+        with patch.object(sp, "lade_zustand", return_value=z), \
+                patch.object(sp, "signale_sammeln", return_value=[]), \
+                patch.object(sp, "_gefolgt",
+                             return_value={("solana", "W1"): {}}):
+            puffer = io.StringIO()
+            with patch("sys.stdout", puffer):
+                sp.lauf("papier")
+        text = puffer.getvalue()
+        self.assertIn("Umfang: Papier - 60 Plaetze", text)
+        self.assertIn("Muster fuer live: 20 Plaetze", text)
+        for wort in ("verkauf", "stop", "kill", "gesperrt", "ausstieg"):
+            self.assertNotIn(wort, text.lower(), text)
+
+
+class VerfolgteAlter(Grundlage):
+    """Eine einmal gebaute Wallet-Liste laeuft dem Feed weg.
+
+    Der Feed ist ein Fenster auf die Wallets, die JETZT handeln: am 14.09.2026
+    standen 472 von 706 Signalen je Zyklus auf Wallets, die nicht in der zwei
+    Tage alten Liste standen. Deshalb baut der Zyklus sie selbst neu - im
+    schreibenden Lauf, nie in der Vorschau.
+    """
+
+    def _stand(self, wert):
+        with io.open(sp.VERFOLGTE, "w", encoding="utf-8") as f:
+            json.dump({"stand": wert, "ketten": ["solana"],
+                       "wallets": [{"kette": "solana", "wallet": "W1",
+                                    "gemessen": False}]}, f)
+
+    def test_fehlender_stand_gilt_als_alt(self):
+        """Nicht lesbar heisst neu bauen, nicht weiterlaufen."""
+        self._stand(None)
+        self.assertTrue(sp.verfolgte_zu_alt({"verfolgte_max_alter_stunden": 12}))
+        self._stand(sp._jetzt())
+        self.assertFalse(sp.verfolgte_zu_alt({"verfolgte_max_alter_stunden": 12}))
+        self.assertTrue(sp.verfolgte_zu_alt({"verfolgte_max_alter_stunden": 0}))
+
+    def test_alte_liste_wird_im_schreibenden_lauf_neu_gebaut(self):
+        self._stand("2026-09-12T00:00:00+00:00")
+        rufe = []
+        z = {"positionen": [], "letzter_lauf": sp._jetzt()}
+        with patch.object(sp, "waehlen", side_effect=lambda w: rufe.append(1)), \
+                patch.object(sp, "lade_zustand", return_value=z), \
+                patch.object(sp, "signale_sammeln", return_value=[]):
+            puffer = io.StringIO()
+            with patch("sys.stdout", puffer):
+                sp.lauf("papier")
+        self.assertEqual(len(rufe), 1, puffer.getvalue())
+        self.assertIn("Verfolgungsliste aelter als 12 h", puffer.getvalue())
+
+    def test_frische_liste_wird_nicht_gebaut(self):
+        rufe = []
+        z = {"positionen": [], "letzter_lauf": sp._jetzt()}
+        with patch.object(sp, "waehlen", side_effect=lambda w: rufe.append(1)), \
+                patch.object(sp, "lade_zustand", return_value=z), \
+                patch.object(sp, "signale_sammeln", return_value=[]):
+            puffer = io.StringIO()
+            with patch("sys.stdout", puffer):
+                sp.lauf("papier")
+        self.assertEqual(rufe, [], puffer.getvalue())
+
+    def test_die_vorschau_baut_die_liste_nicht_neu(self):
+        """`waehlen` schreibt die Datei direkt und kennt den Schreibschalter
+        nicht - in der Vorschau darf trotzdem nichts passieren."""
+        self._stand("2026-09-12T00:00:00+00:00")
+        vorher = io.open(sp.VERFOLGTE, encoding="utf-8").read()
+        rufe = []
+        z = {"positionen": [], "letzter_lauf": sp._jetzt()}
+        with patch.object(sp, "waehlen", side_effect=lambda w: rufe.append(1)), \
+                patch.object(sp, "lade_zustand", return_value=z), \
+                patch.object(sp, "signale_sammeln", return_value=[]):
+            sp.lauf("vorschau")
+        self.assertEqual(rufe, [])
+        self.assertEqual(io.open(sp.VERFOLGTE, encoding="utf-8").read(), vorher)
 
 
 if __name__ == "__main__":

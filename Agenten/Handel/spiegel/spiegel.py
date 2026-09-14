@@ -381,11 +381,64 @@ def lesefehler_arten():
     return (lesen.Lesefehler, OSError, ValueError)
 
 
+# --- Umfang: Papier sammelt, live gilt das Muster ---------------------------
+
+# Was den Durchsatz begrenzt, ist der PLATZ, nicht das Tor: am 14.09.2026 war
+# das Buch mit 20 Kopien dauerhaft voll, der Zyklus brach beim ersten
+# Platzmangel ab, und alles danach fiel als "kaufbar, aber nicht mehr erreicht"
+# aus. Durchsatz = Plaetze x Umschlaege je Platz und Tag (beobachtet 1,3).
+# Deshalb sammelt das Papierbuch mit mehr Plaetzen - ohne eine einzige
+# Bedingung zu veraendern: Tore, Stop, Ziel, Frist und Kosten bleiben gleich,
+# sonst waere die Messung eine andere Strategie und nicht mehr uebertragbar.
+PAPIER_UMFANG = (("max_offen", "max_offen_papier"),
+                 ("kill_switch_gesamt_usd", "kill_switch_gesamt_usd_papier"))
+
+
+def _umfang(w, modus):
+    """Papier-Umfang anwenden - solange die Spur Papier ist.
+
+    Das Muster (die Werte ohne Suffix) gilt, sobald die Spur live ist
+    (`handel_erlaubt: true`) oder `--live` angefordert wird. Der Schalter ist
+    damit derselbe, der die Spur von Papier auf Geld stellt: wer ihn umlegt,
+    bekommt das Muster, ohne dass jemand einen zweiten Wert nachziehen muss.
+    Rueckgabe ist dasselbe Dict, wenn nichts zu tauschen war.
+    """
+    if modus == "live" or w.get("handel_erlaubt"):
+        return w
+    aus = dict(w)
+    getauscht = False
+    for muster, papier in PAPIER_UMFANG:
+        if aus.get(papier) is not None:
+            aus[muster] = aus[papier]
+            getauscht = True
+    return aus if getauscht else w
+
+
 # --- Buch ------------------------------------------------------------------
 
 def _gefolgt(w):
     d = lade(VERFOLGTE, {})
     return {(x["kette"], x["wallet"]): x for x in d.get("wallets", [])}
+
+
+def verfolgte_zu_alt(w):
+    """Ist die Verfolgungsliste aelter als erlaubt - oder nicht lesbar?
+
+    Der Feed ist ein FENSTER auf die Wallets, die JETZT handeln, keine
+    Stammkundschaft: eine einmal gebaute Liste laeuft dem Feed innerhalb von
+    Stunden weg. Am 14.09.2026 gemessen: Liste vom 12.09. mit 305 Wallets, im
+    Feed handelten 206 Wallets, davon 154 nicht in der Liste - 472 von 706
+    Signalen je Zyklus fielen als "Wallet nicht verfolgt" aus. Ein fehlender
+    oder unlesbarer Stand gilt als zu alt (dann wird neu gebaut), nicht als
+    frisch.
+    """
+    grenze = w.get("verfolgte_max_alter_stunden", 12)
+    stand = _bis_zeit((lade(VERFOLGTE, {}) or {}).get("stand"))
+    if not stand:
+        return True
+    if stand.tzinfo is None:
+        stand = stand.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - stand).total_seconds() > grenze * 3600
 
 
 def _kaufpreis(preis, w):
@@ -763,9 +816,13 @@ def zeige_wachen(w):
                  "kill_switch_gesamt_usd", "slippage_pct", "gebuehr_pct",
                  "stop_pct", "ziel_pct", "haltedauer_stunden",
                  "max_alter_signal_sekunden", "marketcap_band_usd",
-                 "max_risiko_stufen", "herzschlag_max_minuten"):
+                 "max_risiko_stufen", "herzschlag_max_minuten",
+                 "max_offen_papier", "kill_switch_gesamt_usd_papier"):
         print("  %-30s %s" % (name, w.get(name)))
     print("  %-30s %s" % ("handel_erlaubt", w.get("handel_erlaubt")))
+    print("  %-30s %s" % ("Umfang gilt jetzt",
+                          "Papier" if _umfang(w, "papier") is not w
+                          else "Muster (live)"))
     z = lade_zustand()
     print("  %-30s %s" % ("journal_zweitziel",
                           w.get("journal_zweitziel") or "-- nicht gesetzt"))
@@ -821,6 +878,18 @@ def lauf(modus, stunden=24.0):
     if modus == "messen":
         return messen(w, lade_zustand())
 
+    # Papier sammelt mit groesserem Umfang, live gilt das Muster (siehe
+    # _umfang). Die Zeile nennt den geltenden Umfang in jedem Zyklus - ohne das
+    # Wort "kill" (der Dauerlauf schickt jede Zeile mit diesem Wort nach
+    # Telegram) und in jedem Modus, den ein Aufrufer parst.
+    roh = w
+    w = _umfang(w, modus)
+    if w is not roh:
+        print("  Umfang: Papier - %d Plaetze, Notbremse %.0f USD "
+              "(Muster fuer live: %d Plaetze, %.0f USD)"
+              % (w["max_offen"], w["kill_switch_gesamt_usd"],
+                 roh["max_offen"], roh["kill_switch_gesamt_usd"]))
+
     z = lade_zustand()
 
     if modus == "live":
@@ -850,6 +919,15 @@ def lauf(modus, stunden=24.0):
         spiegeln(z, w)
         return 0
 
+    # Die Verfolgungsliste ist ein Fenster auf den Feed, kein Stammbuch (siehe
+    # verfolgte_zu_alt): ist sie zu alt, wird sie hier neu gebaut - im
+    # SCHREIBENDEN Lauf. Die Vorschau baut nichts: `waehlen` schreibt die Datei
+    # direkt und kennt den Schreibschalter nicht.
+    if SCHREIBEN and verfolgte_zu_alt(w):
+        print("  Verfolgungsliste aelter als %s h - wird aus dem Feed neu gebaut"
+              % w.get("verfolgte_max_alter_stunden", 12))
+        waehlen(w)
+        print("  Rueckkehr zum Zyklus")
     gefolgt = _gefolgt(w)
     if not gefolgt:
         print("verfolgte.json ist leer - erst '--waehlen' laufen lassen.")
