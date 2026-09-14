@@ -50,10 +50,22 @@ class Grundlage(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.alt = (sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE)
+        self.alt = (sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN)
         sp.ZUSTAND = os.path.join(self.tmp.name, "zustand.json")
         sp.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
         sp.VERFOLGTE = os.path.join(self.tmp.name, "verfolgte.json")
+        # Auch die wachen.json umbiegen - und darin das Ziel der Kopie ausser
+        # Haus. Bis zum 14.09.2026 las lauf() die echte wachen.json, und jeder
+        # Test mit lauf("papier") ueberschrieb damit
+        # Q:\\Handel_Journal\\spiegel mit seinem Temp-Zustand. Der Spiegelpfad
+        # bleibt getestet, indem das Ziel in den Temp-Ordner zeigt.
+        self.alt_wachen = sp.WACHEN
+        sp.WACHEN = os.path.join(self.tmp.name, "wachen.json")
+        with open(os.path.join(SPIEGEL, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+        w["journal_zweitziel"] = os.path.join(self.tmp.name, "zweitziel")
+        with open(sp.WACHEN, "w", encoding="utf-8") as f:
+            json.dump(w, f, ensure_ascii=False, indent=2)
         with io.open(sp.VERFOLGTE, "w", encoding="utf-8") as f:
             json.dump({"stand": "2026-09-12", "regel": "Test",
                        "ketten": ["solana"],
@@ -61,7 +73,7 @@ class Grundlage(unittest.TestCase):
                                     "gemessen": False}]}, f)
 
     def tearDown(self):
-        sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE = self.alt
+        sp.ZUSTAND, sp.JOURNAL, sp.VERFOLGTE, sp.WACHEN = self.alt
         self.tmp.cleanup()
 
     def journal(self):

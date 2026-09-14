@@ -623,6 +623,19 @@ steht die Position als `boersen_stop_fehlt` im Buch — eine Position am Markt, 
 im Buch fehlt, ist der schlimmere Zustand. Tests:
 `scanner/tests/test_handeln_boersenstop.py`, `kraken/tests/test_handeln_boersenstop.py`.
 
+**Testläufe dürfen die Kopie außer Haus nicht anfassen.** Beim Auswerten
+aufgefallen: die Testsuiten von **spiegel und omniquant** riefen `lauf("papier")`
+mit einer Wachen-Kopie, die das **echte** `journal_zweitziel`
+(`Q:\Handel_Journal\<spur>`) behielt. Jeder `discover`-Lauf überschrieb damit die
+Außer-Haus-Kopie mit Tempdaten — bei omniquant Zustand **und** Journal, bei
+spiegel der Zustand (gemessen: 13.816 → 222 Byte). Das trifft direkt Bedingung 4,
+und es fällt nicht auf: die Tests waren grün, die Spur im Dauerlauf auch. Die
+echten Dateien sind zurückgespielt (byte-gleich), die Test-Wachen zeigt jetzt auf
+einen Temp-Ordner — der Spiegelpfad bleibt damit getestet. Nachweis: alle Suiten
+laufen lassen und danach `spiegelstand.py` aufrufen; es muss byte-gleich melden.
+Nachgestellt am 14.09.2026: ohne den Fix schreibt der spiegel-Testlauf Q: wieder
+kaputt, mit Fix nicht.
+
 **omniquant: alte Zustandsdateien.** `lade_zustand()` ergänzt fehlende Felder
 (`verluste_usd`, `positionen`, `modus`, `letzter_lauf`) wie `gitter/handeln.py`.
 Dazu eine Testfalle geschlossen: `gui.py` legt beim Import den scanner-Ordner auf

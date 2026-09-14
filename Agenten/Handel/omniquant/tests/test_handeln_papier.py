@@ -55,6 +55,13 @@ class Basis(unittest.TestCase):
         h.WACHEN = os.path.join(self.tmp.name, "wachen.json")
         with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
             w = json.load(f)
+        # Das Ziel der Kopie ausser Haus MUSS umgebogen werden. Bis zum
+        # 14.09.2026 behielt die Kopie den echten Wert aus der wachen.json
+        # ("Q:\\Handel_Journal\\omniquant"), und jeder Test, der lauf() aufrief,
+        # ueberschrieb damit die echte Kopie auf Q: mit Testdaten. Jetzt zeigt
+        # das Ziel in den Temp-Ordner: der Spiegelpfad bleibt getestet, trifft
+        # aber nichts Echtes.
+        w["journal_zweitziel"] = os.path.join(self.tmp.name, "zweitziel")
         with open(h.WACHEN, "w", encoding="utf-8") as f:
             json.dump(w, f, ensure_ascii=False, indent=2)
 
