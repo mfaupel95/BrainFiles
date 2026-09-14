@@ -156,6 +156,20 @@ Verkaufszeile nach Gebühr. Ein Papierlauf ohne sie empfiehlt eine Strategie,
 die live verliert; genau daran ist in [[Handelsbots]] schon eine Rückrechnung
 gescheitert.
 
+**Ausnahme seit dem 14.09.2026 auf Max' Anweisung: Spur 3 rechnet mit 0 %.**
+`gebuehr_taker` in `kraken/wachen.json` steht auf `0`, weil das Kraken-Pro-Abo
+das Handelsvolumen bis 10.000 EUR im Monat gebührenfrei stellt (Freivolumen
+zählt auf Kauf **und** Verkauf, also 100 EUR je Runde bei 50 EUR Einsatz —
+rund 100 Runden im Monat). Die Spur misst damit das Rohsignal, nicht die
+handelbare Wahrheit. Drei Bedingungen hängen daran: (1) fällt das Abo weg, ist
+`0.004` zurückzunehmen, **bevor** Runden für Bedingung 1 gezählt werden, sonst
+zählt die Spur zu freundlich; (2) das Monatsvolumen gehört in den
+wöchentlichen Soll-Ist-Abgleich — oberhalb des Freivolumens gilt wieder
+0,40 % je Seite; (3) die drei strengeren Grenzen oben bleiben gültig, ebenso
+die Rückrechnung in `kraken/wachen.json` (`_stillgelegt_grund`: −0,57 % je
+Runde **ohne** Gebühr) — selbst gebührenfrei gerechnet war der beste gefundene
+Wert negativ, die Freigabe bleibt deshalb zu.
+
 **Zwei Sperren hat nur diese Spur** — zusätzlich zu den sieben von Spur 1:
 `journal_zweitziel` muss gesetzt sein, und es müssen mindestens
 `mindest_guthaben_eur` frei auf dem Konto liegen. Der zweite Punkt ist keine
