@@ -1,11 +1,21 @@
-"""Erreichbarkeit der Drawdown-Ratsche je Spur.
+"""Erreichbarkeit und Herkunft der Drawdown-Ratsche je Spur.
 
-Der scanner hatte eine Ratsche, deren Schwelle (150 USD) ueber dem hoechsten
-je erreichten Gewinnstand (140.24 USD) lag - sie konnte nie ausloesen. Diese
-Pruefung stellt dieselbe Frage an JEDE Spur, und zwar mit der jeweiligen
-eigenen Rechnung: jede Spur wird ueber ihr eigenes lage() befragt, nicht ueber
-eine nachgebaute Formel. Eine nachgebaute Formel prueft die Formel, nicht die
-Spur.
+Zwei Fragen an jede Spur:
+
+1. Greift die Halbierung noch, SOLANGE die Spur im Gewinn ist? Eine Schwelle
+   ueber dem Gewinnhoechststand ist nicht unerreichbar - drawdown() rechnet
+   hoch minus kum, und die kumulierte Kurve darf ins Minus laufen - sie greift
+   nur erst nach mehr Verlust als dem gesamten Hoechstgewinn und schuetzt dann
+   keinen Gewinn mehr, sondern faengt einen Nettoverlust. Dafuer ist der
+   Kill-Switch da.
+
+2. Entspricht der Betrag noch der Regel 1.0 x Buchrisiko? Der Betrag steht
+   ausdruecklich in der wachen.json und verschiebt sich damit nicht von selbst -
+   aber dann muss jemand nachsehen, dass er nicht davongelaufen ist.
+
+Die Schwellen kommen aus ratschen.py, NICHT aus einer hier nachgebauten Formel:
+eine nachgebaute Formel prueft die Formel, nicht die Spur. Den Hoechststand
+liefert weiterhin das lage() der Spur selbst.
 
 Kein Schreiber: liest nur wachen.json und handelsjournal.csv.
 """
@@ -13,91 +23,126 @@ Kein Schreiber: liest nur wachen.json und handelsjournal.csv.
 import json
 import os
 import sys
+from importlib.util import module_from_spec, spec_from_file_location
 
 HIER = os.path.dirname(os.path.abspath(__file__))
-HANDEL = HIER                       # dieses Skript liegt in Handel/
 
-# spur -> (ordner, modul, wachen-datei). swap erbt die Wachen von xperp
-# (swap/handeln.py: import wachen_xperp as wx) - deshalb dasselbe Modul,
-# aber die eigene wachen.json.
+
+def _ratschen():
+    _s = spec_from_file_location("ratschen", os.path.join(HIER, "ratschen.py"))
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
+
+# spur -> (ordner, modulordner, modulname). swap erbt die Wachen von xperp
+# (swap/handeln.py: import wachen_xperp as wx) - dasselbe Modul, aber die
+# eigene wachen.json.
 SPUREN = [
-    ("xperp",  "xperp",  "xperp",  "wachen_xperp",  "wachen.json"),
-    ("swap",   "swap",   "xperp",  "wachen_xperp",  "wachen.json"),
-    ("orbk",   "orbk",   "orbk",   "wachen_orb",    "wachen.json"),
-    ("kraken", "kraken", "kraken", "wachen_kraken", "wachen.json"),
+    ("scanner", "scanner", "scanner", "wachen_pruefung"),
+    ("xperp",   "xperp",   "xperp",   "wachen_xperp"),
+    ("swap",    "swap",    "xperp",   "wachen_xperp"),
+    ("orbk",    "orbk",    "orbk",    "wachen_orb"),
+    ("kraken",  "kraken",  "kraken",  "wachen_kraken"),
 ]
 
-# Was jede Spur als Nenner benutzt (aus dem jeweiligen Modul gelesen, nicht
-# geraten) - nur zur Anzeige der Schwelle in USD/EUR.
-NENNER = {
-    "xperp":  "max_margin_gesamt_usd",
-    "swap":   "max_margin_gesamt_usd",
-    "orbk":   "kill_switch_gesamt_usd",
-    "kraken": "max_gesamt_eur",
-}
+# Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.
+RUHT = ("orb", "nautilus")
+
+# Toleranz beim Vergleich Betrag gegen 1.0 x Buchrisiko (Rundung in der Datei).
+TOLERANZ = 0.005
 
 
-def befrage(spur, ordner, modulordner, modulname, wachendatei):
-    md = os.path.join(HANDEL, modulordner)
+def befrage(w, ordner, modulordner, modulname):
+    """Hoechststand und Ruecklauf aus dem lage() der Spur selbst.
+
+    w MUSS uebergeben werden: lage() liest die Wachen (kill_switch, Rahmen) und
+    wirft mit einem leeren Dict KeyError - eine leere Konfiguration ist keine
+    gueltige Konfiguration.
+    """
+    md = os.path.join(HIER, modulordner)
     if md not in sys.path:
         sys.path.insert(0, md)
-    for m in [k for k in list(sys.modules) if k in (modulname, "basis")]:
-        del sys.modules[m]
+    for k in [k for k in list(sys.modules) if k in (modulname, "basis")]:
+        del sys.modules[k]
     mod = __import__(modulname)
 
-    wpath = os.path.join(HANDEL, ordner, wachendatei)
-    with open(wpath, "r", encoding="utf-8") as f:
-        w = json.load(f)
-    journal = os.path.join(HANDEL, ordner, "handelsjournal.csv")
-
-    s = mod.lage(w, journal, {})
-
-    prozent = w.get("drawdown_halbierung_prozent", 15.0)
-    nenner = w.get(NENNER[spur])
-    schwelle = prozent / 100.0 * nenner
-    hoch = s.get("hoechststand_usd", 0.0)
-
-    return {
-        "spur": spur,
-        "prozent": prozent,
-        "nenner": NENNER[spur],
-        "nenner_wert": nenner,
-        "schwelle": schwelle,
-        "hoechststand": hoch,
-        "ruecklauf": s.get("ruecklauf_usd", 0.0),
-        "faktor": s.get("groessenfaktor"),
-        "im_gewinn": hoch == 0 or schwelle <= hoch,
-    }
+    journal = os.path.join(HIER, ordner, "handelsjournal.csv")
+    if not os.path.exists(journal):
+        return mod, None
+    return mod, mod.lage(w, journal, {})
 
 
 def main():
-    print("%-8s %7s %-22s %9s %10s %11s %7s %s"
-          % ("Spur", "Prozent", "Nenner", "Schwelle", "Hoechstst.", "Ruecklauf",
-             "Faktor", "im_gewinn"))
-    print("-" * 96)
-    spaet = []
-    fehler = []
-    for spur, ordner, modulordner, modulname, wachendatei in SPUREN:
-        try:
-            r = befrage(spur, ordner, modulordner, modulname, wachendatei)
-        except Exception as e:                                    # noqa: BLE001
-            print("%-8s FEHLER %s: %s" % (spur, type(e).__name__, e))
-            fehler.append(spur)
+    kopf = ("Spur", "Herkunft", "Schwelle", "Buchrisiko", "1.0x?", "Hoch", "greift")
+    print("%-9s %-14s %9s %11s %7s %9s %s" % kopf)
+    print("-" * 78)
+
+    probleme = []
+    for spur, ordner, modulordner, modulname in SPUREN:
+        wpath = os.path.join(HIER, ordner, "wachen.json")
+        if not os.path.exists(wpath):
+            print("%-9s keine wachen.json" % spur)
             continue
-        print("%-8s %6.1f%% %-22s %9.2f %10.2f %11.2f %7s %s"
-              % (r["spur"], r["prozent"], "%s=%s" % (r["nenner"], r["nenner_wert"]),
-                 r["schwelle"], r["hoechststand"], r["ruecklauf"],
-                 r["faktor"], "ja" if r["im_gewinn"] else "erst im Minus"))
-        if not r["im_gewinn"]:
-            spaet.append(r["spur"])
+        with open(wpath, "r", encoding="utf-8") as f:
+            w = json.load(f)
+
+        schwelle = RATSCHEN.halbierungsschwelle(w)
+        risiko = RATSCHEN.buch_risiko(w)
+        ausdruecklich = w.get("drawdown_halbierung_usd") is not None
+        herkunft = ("ausdruecklich" if ausdruecklich
+                    else "hergeleitet" if schwelle is not None else "KEINE")
+
+        stimmt = "-"
+        if schwelle is not None and risiko is not None:
+            stimmt = "ja" if abs(schwelle - risiko) <= TOLERANZ else "NEIN"
+            if stimmt == "NEIN":
+                probleme.append("%s: Betrag %.2f weicht von 1.0 x Buchrisiko "
+                                "%.2f ab" % (spur, schwelle, risiko))
+        if schwelle is not None and risiko is None and ausdruecklich:
+            stimmt = "n/a"          # nicht herleitbar, bewusst ausdruecklich
+
+        hoch = None
+        greift = "-"
+        try:
+            mod, s = befrage(w, ordner, modulordner, modulname)
+            hoch = s.get("hoechststand_usd") if s is not None else None
+            if schwelle is not None:
+                greift = ("im Gewinn"
+                          if RATSCHEN.im_gewinn(hoch, w, schwelle)
+                          else "erst im Minus")
+                if greift == "erst im Minus":
+                    probleme.append("%s: Schwelle %.2f liegt ueber dem "
+                                    "Gewinnhoechststand %.2f - greift erst nach "
+                                    "Verlust ueber den Nullpunkt"
+                                    % (spur, schwelle, hoch))
+        except Exception as e:                                     # noqa: BLE001
+            greift = "FEHLER %s" % type(e).__name__
+            probleme.append("%s: lage() nicht befragbar (%s: %s) - NICHT "
+                            "geprueft" % (spur, type(e).__name__, e))
+
+        print("%-9s %-14s %9s %11s %7s %9s %s"
+              % (spur, herkunft,
+                 "%.2f" % schwelle if schwelle is not None else "-",
+                 "%.2f" % risiko if risiko is not None else "-",
+                 stimmt,
+                 "%.2f" % hoch if hoch is not None else "-",
+                 greift))
 
     print()
-    if fehler:
-        print("NICHT GEPRUEFT (Fehler): %s" % ", ".join(fehler))
-    if spaet:
-        print("GREIFT ERST IM MINUS: %s" % ", ".join(spaet))
-    if not fehler and not spaet:
-        print("Alle Ratschen greifen noch im Gewinn (oder die Spur ist noch ohne Runden).")
+    if probleme:
+        for p in probleme:
+            print("  ! %s" % p)
+    else:
+        print("  Alle Ratschen stimmen mit der Regel 1.0 x Buchrisiko ueberein")
+        print("  und greifen noch innerhalb des Gewinns (oder die Spur ist neu).")
+    print()
+    print("  Ruhend, nicht geprueft: %s" % ", ".join(RUHT))
+    print("  orbk und kraken fuehren ihren Betrag ausdruecklich, weil ihr "
+          "Buchrisiko")
+    print("  aus eigenen Zahlen nicht herleitbar ist - das ist der offene Punkt.")
 
 
 if __name__ == "__main__":

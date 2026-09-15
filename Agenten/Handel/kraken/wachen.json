@@ -53,8 +53,8 @@
     "geprueft_am": null
   },
 
-  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_eur Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_eur.",
-  "drawdown_halbierung_prozent": 15.0,
+  "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. AUSDRUECKLICH, nicht hergeleitet: die Spur nennt max_offene_positionen 4, aber kein Risiko je Position - ihr Buchrisiko ist aus eigenen Zahlen nicht herleitbar. 30.00 ist der Betriebswert (alte Quote 15% x max_gesamt_eur 200) und bleibt unveraendert. OFFEN: mit einem Schluessel risiko_je_position_eur waere der Wert herleitbar.",
+  "drawdown_halbierung_usd": 30.0,
   "kill_switch_gesamt_eur": 40,
 
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 180 Minuten = drei Stunden: die Spur laeuft seit dem 14.09.2026 alle 15 Minuten, zwoelf ausgefallene Zyklen werden also gefangen. Bewusst nicht 45 - das ist der Wert fuer eine Spur mit Handelserlaubnis (siehe _herzschlag_regel). Bewusst auch nicht mehr 2880 (48 h): das passte zur Tagesroutine, deckt im Viertelstundentakt aber nichts ab.",

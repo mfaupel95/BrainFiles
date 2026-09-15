@@ -74,11 +74,43 @@ def runden_aus_journal(journal_pfad):
 
 # --- Grenzen dieser Spur ---------------------------------------------------
 
+def _ratschen():
+    """Laedt Handel/ratschen.py ueber den PFAD statt ueber sys.path.
+
+    Die Spur wird mit ihrem eigenen Ordner als sys.path[0] gestartet. Handel/
+    waere nur ueber einen sys.path-Eintrag erreichbar, und der koennte
+    gleichnamige Spurenmodule verdecken (gitter/ importiert ein eigenes grid.py,
+    daneben liegt Handel/grid.py).
+    """
+    import os
+    from importlib.util import spec_from_file_location, module_from_spec
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "ratschen.py")
+    _s = spec_from_file_location("ratschen", _p)
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
+
+
 def groessenfaktor(ruecklauf_eur, w):
-    """Bedingung 2, erste Stufe: ab drawdown_halbierung_prozent des Rahmens
-    unter dem Hoechststand wird jede neue Position halbiert."""
-    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["max_gesamt_eur"]
-    return 0.5 if ruecklauf_eur >= grenze > 0 else 1.0
+    """Bedingung 2, erste Stufe: ab der Halbierungsschwelle wird halbiert.
+
+    Die Schwelle kommt aus ratschen.py - EINE Umsetzung fuer alle Spuren.
+
+    AUSDRUECKLICH 30.00 EUR, nicht hergeleitet: diese Spur nennt
+    max_offene_positionen 4, aber kein Risiko je Position, ihr Buchrisiko ist
+    aus eigenen Zahlen also nicht herleitbar (ratschen.buch_risiko gibt None
+    zurueck). Der Betrag war vorher 15 Prozent x max_gesamt_eur 200 = 30.00 und
+    bleibt unveraendert - jetzt aber entkoppelt: wer den Kapitalrahmen
+    verstellt, verschiebt die Ratsche nicht mehr mit.
+
+    ratschen.py rechnet in der Waehrung der Spur, hier EUR - die Funktion
+    vergleicht nur Betraege und mischt keine Waehrungen.
+    """
+    return RATSCHEN.groessenfaktor(ruecklauf_eur, w)
 
 
 def kill_ausgeloest(ruecklauf_eur, w):

@@ -63,9 +63,40 @@ def runden_aus_journal(journal_pfad):
     return runden
 
 
+def _ratschen():
+    """Laedt Handel/ratschen.py ueber den PFAD statt ueber sys.path.
+
+    Die Spur wird mit ihrem eigenen Ordner als sys.path[0] gestartet. Handel/
+    waere nur ueber einen sys.path-Eintrag erreichbar, und der koennte
+    gleichnamige Spurenmodule verdecken (gitter/ importiert ein eigenes grid.py,
+    daneben liegt Handel/grid.py).
+    """
+    import os
+    from importlib.util import spec_from_file_location, module_from_spec
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "ratschen.py")
+    _s = spec_from_file_location("ratschen", _p)
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
+
+
 def groessenfaktor(ruecklauf_usd, w):
-    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["kill_switch_gesamt_usd"]
-    return 0.5 if ruecklauf_usd >= grenze > 0 else 1.0
+    """Bedingung 2, erste Stufe: ab der Halbierungsschwelle wird halbiert.
+
+    Die Schwelle kommt aus ratschen.py - EINE Umsetzung fuer alle Spuren.
+
+    AUSDRUECKLICH 22.50, nicht hergeleitet: diese Spur nennt
+    risiko_pro_trade_usd 10, aber keine Hoechstzahl Positionen, ihr Buchrisiko
+    ist aus eigenen Zahlen also nicht herleitbar (ratschen.buch_risiko gibt None
+    zurueck). Der Betrag war vorher 15 Prozent x kill_switch_gesamt_usd 150 =
+    22.50 und bleibt unveraendert - jetzt aber entkoppelt: wer den Kill-Switch
+    verstellt, verschiebt die Ratsche nicht mehr mit.
+    """
+    return RATSCHEN.groessenfaktor(ruecklauf_usd, w)
 
 
 def kill_ausgeloest(ruecklauf_usd, w):

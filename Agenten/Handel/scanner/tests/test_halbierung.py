@@ -29,23 +29,46 @@ WACHEN = json.loads((HIER.parent / "wachen.json").read_text("utf-8"))
 
 class SchwelleTest(unittest.TestCase):
     def test_absoluter_wert_hat_vorrang(self):
-        w = {"drawdown_halbierung_usd": 60.0,
+        w = {"drawdown_halbierung_usd": 36.0,
              "drawdown_halbierung_prozent": 15.0,
              "max_gesamt_usd": 1000}
-        self.assertEqual(wp.halbierungsschwelle(w), 60.0)
+        self.assertEqual(wp.halbierungsschwelle(w), 36.0)
 
-    def test_ohne_absoluten_wert_gilt_der_prozentsatz(self):
-        """Andere Spuren kennen den neuen Schluessel nicht und duerfen sich
-        nicht aendern."""
+    def test_ohne_betrag_wird_aus_dem_buchrisiko_hergeleitet(self):
+        """Ohne ausdruecklichen Betrag zaehlt das BUCHRISIKO, nicht der
+        Kapitaldeckel: risiko_je_position_usd x max_offene_positionen."""
+        w = {"risiko_je_position_usd": 6.0, "max_offene_positionen": 6,
+             "max_gesamt_usd": 1000}
+        self.assertEqual(wp.halbierungsschwelle(w), 36.0)
+
+    def test_der_kapitaldeckel_verschiebt_die_schwelle_nicht(self):
+        """GENAU der Fehler, der diese Umsetzung ausgeloest hat: dieselbe Spur
+        mit demselben Buchrisiko, aber dem 25-fachen Kapitaldeckel, muss
+        dieselbe Schwelle ergeben. Vorher hob max_gesamt_usd 400 -> 10000 die
+        Schwelle von 60 auf 1500 mit."""
+        eng = {"risiko_je_position_usd": 6.0, "max_offene_positionen": 6,
+               "max_gesamt_usd": 400}
+        weit = {"risiko_je_position_usd": 6.0, "max_offene_positionen": 6,
+                "max_gesamt_usd": 10000}
+        self.assertEqual(wp.halbierungsschwelle(eng),
+                         wp.halbierungsschwelle(weit))
+
+    def test_prozentsatz_wird_nicht_mehr_gelesen(self):
+        """Die alte Quote darf keine Schwelle mehr erzeugen. Sie war der Fehler,
+        nicht der Rueckfall - dieselbe Zahl 15.0 bedeutete je Spur einen anderen
+        Betrag."""
         w = {"drawdown_halbierung_prozent": 15.0, "max_gesamt_usd": 400}
-        self.assertEqual(wp.halbierungsschwelle(w), 60.0)
+        self.assertIsNone(wp.halbierungsschwelle(w))
 
-    def test_prozentsatz_auf_eur_als_rueckfall(self):
-        w = {"drawdown_halbierung_prozent": 15.0, "max_gesamt_eur": 200}
-        self.assertEqual(wp.halbierungsschwelle(w), 30.0)
+    def test_ohne_buchrisiko_keine_erfundene_schwelle(self):
+        """orbk und kraken nennen nur eine der beiden Zahlen - dann ist das
+        Buchrisiko nicht herleitbar und es gibt keine Schwelle."""
+        self.assertIsNone(wp.halbierungsschwelle({"risiko_pro_trade_usd": 10.0}))
 
-    def test_ohne_jede_angabe_greift_die_altlast(self):
-        self.assertEqual(wp.halbierungsschwelle({}), 0.0)
+    def test_ohne_jede_angabe_keine_erfundene_schwelle(self):
+        """Keine Angabe heisst KEINE Ratsche, nicht eine geratene Schwelle: eine
+        stillschweigende Ersatzschwelle sieht aus wie Schutz und ist keiner."""
+        self.assertIsNone(wp.halbierungsschwelle({}))
 
 
 class GroessenfaktorTest(unittest.TestCase):
@@ -58,8 +81,13 @@ class GroessenfaktorTest(unittest.TestCase):
         self.assertEqual(wp.groessenfaktor(60.0, w), 0.5)
         self.assertEqual(wp.groessenfaktor(90.0, w), 0.5)
 
+    def test_ohne_schwelle_wird_nicht_halbiert(self):
+        """Fehlende Konfiguration darf den Handel nicht drosseln."""
+        self.assertEqual(wp.groessenfaktor(9999.0, {}), 1.0)
+
     def test_schwelle_null_halbiert_nicht_dauerhaft(self):
-        """Ohne Rahmen (0) darf der Faktor nicht auf 0.5 einrasten."""
+        """Eine Schwelle von 0 ist keine Linie, die man ueberschreiten kann -
+        sie wird wie keine Schwelle behandelt und rastet nicht auf 0.5 ein."""
         self.assertEqual(wp.groessenfaktor(10.0, {"drawdown_halbierung_usd": 0}), 1.0)
 
 

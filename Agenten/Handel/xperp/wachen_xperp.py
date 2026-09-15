@@ -105,15 +105,41 @@ def runden_aus_journal(journal_pfad):
 
 # --- Grenzen dieser Spur ---------------------------------------------------
 
-def groessenfaktor(ruecklauf_usd, w):
-    """Bedingung 2, erste Stufe: ab drawdown_halbierung_prozent des Rahmens
-    unter dem Hoechststand wird jede neue Position halbiert.
+def _ratschen():
+    """Laedt Handel/ratschen.py ueber den PFAD statt ueber sys.path.
 
-    Bezug ist max_margin_gesamt_usd - der Einschuss, nicht der Positionswert.
+    Die Spur wird mit ihrem eigenen Ordner als sys.path[0] gestartet. Handel/
+    waere nur ueber einen sys.path-Eintrag erreichbar, und der koennte
+    gleichnamige Spurenmodule verdecken (gitter/ importiert ein eigenes grid.py,
+    daneben liegt Handel/grid.py).
     """
-    grenze = (w.get("drawdown_halbierung_prozent", 15.0) / 100.0
-              * w["max_margin_gesamt_usd"])
-    return 0.5 if ruecklauf_usd >= grenze > 0 else 1.0
+    import os
+    from importlib.util import spec_from_file_location, module_from_spec
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "ratschen.py")
+    _s = spec_from_file_location("ratschen", _p)
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
+
+
+def groessenfaktor(ruecklauf_usd, w):
+    """Bedingung 2, erste Stufe: ab der Halbierungsschwelle unter dem
+    Hoechststand wird jede neue Position halbiert.
+
+    Die Schwelle kommt aus ratschen.py - EINE Umsetzung fuer alle Spuren. Sie
+    ist ein absoluter Betrag (drawdown_halbierung_usd), hergeleitet als 1.0 x
+    Buchrisiko = risiko_je_anlauf_usd x max_offene_anlaeufe = 30.0 USD.
+
+    Vorher stand hier drawdown_halbierung_prozent x max_margin_gesamt_usd. Das
+    war derselbe Fehler wie beim scanner: eine Quote von einer fremden Groesse
+    verschiebt eine Schutzschwelle lautlos, sobald jemand den Einschuss aendert.
+    Hier ergab sie zufaellig denselben Betrag - das macht sie nicht richtig.
+    """
+    return RATSCHEN.groessenfaktor(ruecklauf_usd, w)
 
 
 def kill_ausgeloest(ruecklauf_usd, w):

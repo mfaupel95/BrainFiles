@@ -70,39 +70,59 @@ def drawdown(runden):
     return hoch, max(0.0, hoch - kum)
 
 
-def halbierungsschwelle(w):
-    """Absoluter Ruecklauf in USD, ab dem neue Positionen halbiert werden.
+def _ratschen():
+    """Laedt Handel/ratschen.py ueber den PFAD statt ueber sys.path.
 
-    Vorrang hat der absolute Wert drawdown_halbierung_usd. Die Ratsche misst den
-    Ruecklauf der realisierten GEWINNKURVE (siehe drawdown()), der Kapitaldeckel
-    ist eine davon unabhaengige Groesse. Ein Prozentsatz davon koppelt beide und
-    verschiebt den Ausloeser lautlos, sobald jemand max_gesamt_usd aendert: am
-    15.09.2026 hob die Erhoehung von 400 auf 1000 die Schwelle von 60 auf 150
-    USD. Das war NICHT unerreichbar - drawdown() rechnet hoch minus kum, und die
-    kumulierte Kurve darf ins Minus laufen, also waechst der Ruecklauf ueber den
-    Hoechststand hinaus. Die 150 haetten aber erst gegriffen, wenn die Spur bei
-    -9.76 USD gestanden haette, also nach mehr Verlust als ihr gesamter
-    Hoechstgewinn von 140.24 USD: die Sicherung haette keinen GEWINN mehr
-    geschuetzt, sondern nur noch einen Nettoverlust gefangen. Genau dafuer ist
-    der Kill-Switch da. Deshalb ist der Ausloeser jetzt ein Betrag und keine
-    Quote, und lage() meldet mit halbierung_im_gewinn, ob die Halbierung
-    ueberhaupt noch innerhalb des Gewinns greifen kann.
-
-    Ohne absoluten Wert gilt weiter der Prozentsatz - rueckwaertsvertraeglich
-    fuer Spuren, die den neuen Schluessel nicht kennen.
+    Die Spur wird mit ihrem eigenen Ordner als sys.path[0] gestartet. Handel/
+    waere nur ueber einen sys.path-Eintrag erreichbar, und der koennte
+    gleichnamige Spurenmodule verdecken (gitter/ importiert ein eigenes grid.py,
+    daneben liegt Handel/grid.py).
     """
-    usd = w.get("drawdown_halbierung_usd")
-    if usd is not None:
-        return float(usd)
-    rahmen = w.get("max_gesamt_usd", w.get("max_gesamt_eur", 0.0))
-    return w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * rahmen
+    import os
+    from importlib.util import spec_from_file_location, module_from_spec
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "ratschen.py")
+    _s = spec_from_file_location("ratschen", _p)
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
+
+
+def halbierungsschwelle(w):
+    """Absoluter Ruecklauf, ab dem neue Positionen halbiert werden.
+
+    Delegiert an ratschen.py - EINE Umsetzung fuer alle Spuren. Der Wert ist
+    ein Betrag (drawdown_halbierung_usd), hergeleitet als 1.0 x Buchrisiko =
+    risiko_je_position_usd 6.0 x max_offene_positionen 6 = 36.00 USD.
+
+    Warum das vorher falsch war: hier stand drawdown_halbierung_prozent/100 *
+    max_gesamt_usd. Die Ratsche misst den Ruecklauf der realisierten
+    GEWINNKURVE (siehe drawdown()), der Kapitaldeckel ist davon unabhaengig -
+    ein Prozentsatz davon koppelt beide und verschiebt den Ausloeser lautlos,
+    sobald jemand max_gesamt_usd aendert. Am 15.09.2026 hob die Erhoehung von
+    400 auf 1000 die Schwelle von 60 auf 150 USD. Die 150 waren NICHT
+    unerreichbar - drawdown() rechnet hoch minus kum, die kumulierte Kurve darf
+    ins Minus laufen, der Ruecklauf waechst also ueber den Hoechststand hinaus -
+    aber sie haetten erst bei einem Stand von -9.76 USD gegriffen, also nach
+    mehr Verlust als dem gesamten Gewinnhoechststand von 140.24 USD: kein
+    Gewinnschutz mehr, sondern ein zweiter Kill-Switch.
+
+    Kann None sein, wenn eine Spur weder den Betrag noch ein herleitbares
+    Buchrisiko nennt - dann gibt es KEINE Ratsche, und lage() meldet das
+    sichtbar (halbierung_im_gewinn bleibt True, groessenfaktor 1.0). Eine
+    stillschweigende Ersatzschwelle waere schlimmer als keine: sie saehe aus
+    wie Schutz.
+    """
+    return RATSCHEN.halbierungsschwelle(w)
 
 
 def groessenfaktor(ruecklauf_usd, w):
     """Bedingung 2, erste Stufe: ab der Halbierungsschwelle unter dem
-    Hoechststand wird jede neue Position halbiert."""
-    grenze = halbierungsschwelle(w)
-    return 0.5 if ruecklauf_usd >= grenze > 0 else 1.0
+    Hoechststand wird jede neue Position halbiert. Ohne Schwelle 1.0."""
+    return RATSCHEN.groessenfaktor(ruecklauf_usd, w, halbierungsschwelle(w))
 
 
 def kill_ausgeloest(ruecklauf_usd, w):
