@@ -18,6 +18,8 @@
   ],
 
   "max_pro_trade_eur": 50,
+  "risiko_je_position_eur": 6.0,
+  "_risiko_je_position_eur": "HOECHSTRISIKO je Position, hergeleitet - nicht geschaetzt: die Spur ist NICHT risikonormiert wie scanner, sondern kauft fix max_pro_trade_eur 50 (handeln.py:149) und deckelt den Stop auf pflicht_stop_prozent_max 12 % (handeln.py:111-112). Ihr Verlust im schlechtesten Fall ist also 50 x 0.12 = 6.00 EUR; der tatsaechliche Wert liegt je nach Stop zwischen 2.50 (Stop 5 %) und 6.00 EUR. Fuer ein Buchrisiko, das eine Schutzschwelle tragen soll, ist der HOECHSTE Fall der richtige - ein Mittelwert wuerde die Ratsche zu spaet ausloesen lassen. Gelesen wird der Schluessel nur von ratschen.buch_risiko() (4 x 6.00 = 24.00 EUR); die Handelslogik rechnet weiter mit max_pro_trade_eur und dem Stop.",
   "max_gesamt_eur": 200,
   "max_offene_positionen": 4,
 
@@ -53,8 +55,8 @@
     "geprueft_am": null
   },
 
-  "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. AUSDRUECKLICH, nicht hergeleitet: die Spur nennt max_offene_positionen 4, aber kein Risiko je Position - ihr Buchrisiko ist aus eigenen Zahlen nicht herleitbar. 30.00 ist der Betriebswert (alte Quote 15% x max_gesamt_eur 200) und bleibt unveraendert. OFFEN: mit einem Schluessel risiko_je_position_eur waere der Wert herleitbar.",
-  "drawdown_halbierung_usd": 30.0,
+  "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. HERGELEITET, seit 15.09.2026: 24.00 EUR = 1.0 x Buchrisiko = risiko_je_position_eur 6.00 x max_offene_positionen 4. Vorher 30.00 als Betriebswert (alte Quote 15% x max_gesamt_eur 200) - nicht falsch, aber an den Kapitalrahmen gekoppelt, eine Groesse, mit der ein Gewinnruecklauf nichts zu tun hat: wer max_gesamt_eur verstellt, haette die Ratsche mitverschoben. Die 24.00 sind strenger. OFFEN und bewusst so: das Buchrisiko ist der HOECHSTE Fall (alle vier Positionen mit dem weitesten erlaubten Stop); der mittlere Fall liegt bei rund 17 EUR, die Ratsche loest also spaeter aus als bei einem Mittelwert. Fuer eine Schutzschwelle ist der hoechste Fall der richtige.",
+  "drawdown_halbierung_usd": 24.0,
   "kill_switch_gesamt_eur": 40,
 
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 180 Minuten = drei Stunden: die Spur laeuft seit dem 14.09.2026 alle 15 Minuten, zwoelf ausgefallene Zyklen werden also gefangen. Bewusst nicht 45 - das ist der Wert fuer eine Spur mit Handelserlaubnis (siehe _herzschlag_regel). Bewusst auch nicht mehr 2880 (48 h): das passte zur Tagesroutine, deckt im Viertelstundentakt aber nichts ab.",

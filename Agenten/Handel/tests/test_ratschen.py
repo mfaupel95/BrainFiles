@@ -139,8 +139,8 @@ class ZusammenarbeitTest(unittest.TestCase):
         "scanner": 36.0,
         "xperp": 30.0,
         "swap": 30.0,
-        "orbk": 22.5,
-        "kraken": 30.0,
+        "orbk": 10.0,
+        "kraken": 24.0,
     }
 
     def test_jede_spur_ergibt_ihren_betriebswert(self):
@@ -153,6 +153,19 @@ class ZusammenarbeitTest(unittest.TestCase):
                 w = json.load(f)
             self.assertEqual(R.halbierungsschwelle(w), erwartet,
                              "%s: Schwelle hat sich verschoben" % spur)
+
+    def test_jede_spur_ist_herleitbar(self):
+        """Keine Spur steht mehr ohne Buchrisiko da: orbk hat eine
+        Positionszahl, kraken ein Risiko je Position bekommen. Waere das
+        wieder weg, muesste die Schwelle ausdruecklich hingeschrieben werden
+        und die Ratsche haenge an einer fremden Groesse."""
+        import json
+        for spur in self.ERWARTET:
+            with open(os.path.join(HANDEL, spur, "wachen.json"),
+                      "r", encoding="utf-8") as f:
+                w = json.load(f)
+            self.assertIsNotNone(R.buch_risiko(w),
+                                 "%s: Buchrisiko nicht herleitbar" % spur)
 
     def test_keine_spur_liest_noch_den_prozentsatz(self):
         """Der Schluessel ist ueberall entfallen - ausser bei orb, das ruht."""

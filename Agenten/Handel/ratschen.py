@@ -46,6 +46,7 @@ BUCHRISIKO_PAARE = (
     ("risiko_pro_trade_usd",    "max_offene_positionen"),
     ("risiko_pro_trade_usdt",   "max_offene_positionen"),
     ("risiko_pro_trade_eur",    "max_offene_positionen"),
+    ("risiko_je_position_eur",  "max_offene_positionen"),
 )
 
 # Spuren, die ihr Gesamtrisiko schon ausdruecklich nennen, brauchen kein Paar.

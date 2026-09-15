@@ -92,8 +92,10 @@ def main():
         schwelle = RATSCHEN.halbierungsschwelle(w)
         risiko = RATSCHEN.buch_risiko(w)
         ausdruecklich = w.get("drawdown_halbierung_usd") is not None
-        herkunft = ("ausdruecklich" if ausdruecklich
-                    else "hergeleitet" if schwelle is not None else "KEINE")
+        herkunft = ("ausdr.+herl." if ausdruecklich and risiko is not None
+                    else "ausdruecklich" if ausdruecklich
+                    else "hergeleitet" if schwelle is not None
+                    else "KEINE")
 
         stimmt = "-"
         if schwelle is not None and risiko is not None:
@@ -140,9 +142,10 @@ def main():
         print("  und greifen noch innerhalb des Gewinns (oder die Spur ist neu).")
     print()
     print("  Ruhend, nicht geprueft: %s" % ", ".join(RUHT))
-    print("  orbk und kraken fuehren ihren Betrag ausdruecklich, weil ihr "
-          "Buchrisiko")
-    print("  aus eigenen Zahlen nicht herleitbar ist - das ist der offene Punkt.")
+    print("  Alle fuenf Spuren sind jetzt herleitbar UND fuehren den Betrag")
+    print("  ausdruecklich. Der ausdrueckliche Wert hat Vorrang, damit er sich")
+    print("  nicht von selbst verschiebt - die Spalte 1.0x? prueft, dass er")
+    print("  nicht von der Regel davongelaufen ist.")
 
 
 if __name__ == "__main__":
