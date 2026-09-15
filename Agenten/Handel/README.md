@@ -602,6 +602,15 @@ nicht in `dauerlauf.SPUREN` stehen (kraken mit eigenem Zeitfenster, `orb` als
 Altbestand), werden mitgeprüft und gekennzeichnet, aber nicht als Fehler
 gezählt.
 
+**Zwei Fälle, die wie ein Fehler aussehen und keiner sind** (16.09.2026):
+Ein Testlauf der Spuren schreibt in die echten Spurenordner; die Kopie auf `Q:`
+folgt erst im nächsten Zyklus, also meldet der Vergleich bis dahin
+`ABWEICHUNG`. Und `macd_mtf` stand wochenlang auf „abweichend", weil sein
+Journal beim Umbau der Skalierung umbenannt wurde (`handelsjournal.falsch-
+skaliert-20260915.csv`) und die alte Kopie auf `Q:` liegen blieb; sie wurde
+gegen den lokalen Altstand byte-geprüft und entfernt — seitdem sind beide
+Seiten ohne Journal, und das zählt als gleich.
+
 Zwei Verbraucher hängen daran: der **Tagesbericht** zeigt den Stand als eigene
 Zeile (`spiegelstand.kurz()`, im Fehlerfall hervorgehoben), und die
 **Systemprüfung** ruft dasselbe Modul morgens als Block 11 auf. Eine

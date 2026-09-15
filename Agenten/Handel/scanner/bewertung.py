@@ -148,6 +148,14 @@ def roh_komponenten(kerzen):
 
 
 def bewerten(kerzen, richtung="long", gewichte=None):
+    if richtung not in ("long", "short"):
+        # Ein dict als ZWEITES Argument ist die RICHTUNG, nicht die Gewichte -
+        # genau das passierte einem Test und rutschte still in den long-Zweig:
+        # `bewerten(k, {"chance": {...}})` lieferte unveraendert den
+        # Standard-Score, der Test blieb gruen und die Gewichte kamen nie an.
+        # Lieber laut scheitern als still etwas anderes rechnen.
+        raise ValueError("richtung muss 'long' oder 'short' sein, nicht %r"
+                         % (richtung,))
     r = roh_komponenten(kerzen)
     cg = (gewichte or {}).get("chance") or CHANCE_GEWICHTE
     rg = (gewichte or {}).get("risiko") or RISIKO_GEWICHTE

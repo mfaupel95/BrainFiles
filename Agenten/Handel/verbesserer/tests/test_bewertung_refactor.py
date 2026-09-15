@@ -46,8 +46,22 @@ class TestRefactor(unittest.TestCase):
         self.assertAlmostEqual(score, bewertung.bewerten(self.k)["score"], 1)
 
     def test_andere_gewichte_aendern_score(self):
+        # `gewichte` ist das DRITTE Argument. Positionell uebergeben landete
+        # das dict in `richtung` und die Gewichte kamen nie an - der Test war
+        # deshalb gruen, obwohl er nichts geprueft hat.
         g = {"chance": {"trend": 1.0, "momentum": 0.0, "ruecksetzer": 0.0,
                         "nicht_ueberkauft": 0.0, "volumen": 0.0},
              "risiko": dict(bewertung.RISIKO_GEWICHTE)}
-        self.assertNotEqual(bewertung.bewerten(self.k, g)["score"],
-                            bewertung.bewerten(self.k)["score"])
+        nur_trend = bewertung.bewerten(self.k, gewichte=g)["score"]
+        standard = bewertung.bewerten(self.k)["score"]
+        self.assertNotEqual(nur_trend, standard)
+        # Richtung pruefen, damit der Score sich messbar bewegt: die
+        # Chance-Komponenten dieser Reihe stehen bei 0,30 bis 1,00, das
+        # Gewicht 1,0 auf `trend` muss den Chance-Wert also heben.
+        self.assertGreater(nur_trend, standard)
+
+    def test_dict_als_richtung_wird_abgelehnt(self):
+        # Der stille Fehler, der diesen Test rot machte: ein dict als zweites
+        # Argument ist die Richtung. Er darf nicht als "long" durchgehen.
+        with self.assertRaises(ValueError):
+            bewertung.bewerten(self.k, {"chance": {}})
