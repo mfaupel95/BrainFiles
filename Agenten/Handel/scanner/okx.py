@@ -145,13 +145,37 @@ def _mit_wiederholung(*a, **kw):
 # --- oeffentlich ---------------------------------------------------------------
 
 def kerzen(inst, bar="1D", anzahl=300):
-    """Tageskerzen, aufsteigend sortiert als [ts, open, high, low, close, vol]."""
-    pfad = "/api/v5/market/candles?" + urllib.parse.urlencode(
-        {"instId": inst, "bar": bar, "limit": min(anzahl, 300)})
-    roh = _mit_wiederholung(pfad)
-    reihen = [[int(r[0])] + [float(x) for x in r[1:6]] for r in roh]
-    reihen.sort(key=lambda r: r[0])
-    return reihen
+    """Kerzen, aufsteigend sortiert als [ts, open, high, low, close, vol].
+
+    OKX gibt hoechstens 300 je Abruf heraus. Wer mehr braucht, bekommt sie
+    hier trotzdem: ueber `anzahl` groesser 300 blaettert die Funktion mit
+    `after` rueckwaerts nach (aelter als der aelteste Stempel der Vorseite).
+
+    Warum das noetig war: der MACD ueber mehrere Zeitrahmen braucht fuer den
+    16er-Rahmen 34 Balken, also rund 544 Basiskerzen - mit 300 war dessen
+    Ausrichtung IMMER None, die Bedingung "alle einig" also nie erfuellt und
+    die Spur konnte nie handeln. Die Grenze lag nicht am Indikator, sondern
+    am Abruf.
+    """
+    anzahl = max(1, int(anzahl))
+    reihen, grenze = [], None
+    while len(reihen) < anzahl:
+        werte = {"instId": inst, "bar": bar, "limit": str(min(300, anzahl))}
+        if grenze:
+            werte["after"] = str(grenze)
+        roh = _mit_wiederholung("/api/v5/market/candles?"
+                                + urllib.parse.urlencode(werte))
+        if not roh:
+            break
+        seite = [[int(r[0])] + [float(x) for x in r[1:6]] for r in roh]
+        reihen += seite
+        neu = min(int(r[0]) for r in seite)
+        if grenze is not None and neu >= grenze:
+            break                       # keine neuen Kerzen mehr
+        grenze = neu
+    # Doppelte Stempel weg (die Seitengrenze kann eine Kerze zweimal liefern)
+    reihen = sorted({r[0]: r for r in reihen}.values(), key=lambda r: r[0])
+    return reihen[-anzahl:]
 
 
 def alle_paare(quote=None, min_volumen_usd=0.0):

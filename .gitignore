@@ -147,6 +147,27 @@
 !Agenten/Handel/gitter/*.md
 !Agenten/Handel/gitter/*.json
 !Agenten/Handel/gitter/tests/*.py
+# Prognose-Spuren auf je EINEM Indikator (15.09.2026): squeeze, wavetrend,
+# macd_mtf, supertrend. Jede rechnet genau einen Indikator, damit der Edge
+# einzeln messbar bleibt - ein Ensemble liefert eine Zahl ohne Zuordnung.
+# Code, Wachen und Tests in den Verlauf; zustand.json und das Journal nicht
+# (schreibt jeder Zyklus, stehen unten in der Sperrliste).
+!Agenten/Handel/squeeze/*.py
+!Agenten/Handel/squeeze/*.md
+!Agenten/Handel/squeeze/*.json
+!Agenten/Handel/squeeze/tests/*.py
+!Agenten/Handel/wavetrend/*.py
+!Agenten/Handel/wavetrend/*.md
+!Agenten/Handel/wavetrend/*.json
+!Agenten/Handel/wavetrend/tests/*.py
+!Agenten/Handel/macd_mtf/*.py
+!Agenten/Handel/macd_mtf/*.md
+!Agenten/Handel/macd_mtf/*.json
+!Agenten/Handel/macd_mtf/tests/*.py
+!Agenten/Handel/supertrend/*.py
+!Agenten/Handel/supertrend/*.md
+!Agenten/Handel/supertrend/*.json
+!Agenten/Handel/supertrend/tests/*.py
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
