@@ -244,5 +244,51 @@ Beim ersten Start nach Stillstand holt `sprecher.nachholen()` das Journal des
 Tages nach - bis zum Deckel (`deckel_je_stunde`, 20). Ein Schwall alter
 Meldungen direkt nach dem Start ist also kein neuer Fehler.
 
+## Einen Befehl im SkillsBot ergaenzen
+
+Der SkillsBot (`Agenten/Bus/skillsbot.py`) ist die Telegram-Seite: Freitext geht
+per A2A an den lokalen Agenten, daneben hat er eigene Befehle. Fuer einen neuen
+Befehl gilt:
+
+1. **Datenquelle waehlen, die die Wahrheit traegt - nicht den bequemsten Proxy.**
+   `/skills` las die A2A-Agent-Card (`/.well-known/agent-card.json`); deren Feld
+   `skills` listet die WERKZEUGSAETZE (rund 42 Eintraege `toolset.*`, Beschreibung
+   „Hermes 'x' capabilities", tags = Werkzeugnamen). Ausgegeben sieht das wie eine
+   Zufallsliste aus und beantwortet „welche Skills gibt es" nicht. Richtig ist die
+   Bibliothek auf der Platte (`Agenten/Hermes/skills/**/SKILL.md`, Frontmatter
+   `name`/`description`/`category`), Umsetzung `Agenten/Bus/skillkatalog.py`.
+2. **Nachschlagen statt laden.** Der Katalog laeuft nur im Bot-Prozess und kostet
+   den Agentenkontext nichts; stillgelegte Skills (`.archive`, `*rollback*`)
+   bleiben draussen - sonst sieht Ungeladenes wie geladen aus.
+3. **Befehl an `wort` haengen, nicht an den ganzen Text.** `t = text.strip()` bleibt
+   in Originalschreibweise, `wort` ist die klein geschriebene erste Silbe; das
+   Argument aus `t[len(wort):]` schneiden. Ein Vergleich gegen `t` scheitert,
+   sobald gross geschrieben wird.
+4. **Laengenlimit beachten:** Telegram fasst 4096 Zeichen (Emojis zaehlen doppelt).
+   `sende()` teilt selbst; ein eigener Schnitt trennt nur ZWISCHEN Zeilen, damit
+   keine Zeile ohne Kopf in der zweiten Nachricht steht.
+5. **Neuen Befehl in die Hilfe aufnehmen und den Bot neu starten**
+   (`Stop-ScheduledTask`/`Start-ScheduledTask -TaskName 'BrainFiles-SkillsBot'`) -
+   ein neuer Befehl gilt erst nach dem Neustart, und `/hilfe` ist die einzige
+   Uebersicht. Der Befehlspfad wird aus dem Bot-Ordner importiert (`import
+   skillkatalog`), weil die Spuren-/Bot-Module dort liegen.
+6. **Test gegen die echte Quelle, nicht gegen eine Attrappe:** der Test prueft die
+   Antwort des Befehlspfads und belegt, dass kein Proxy-Inhalt mehr darin steht
+   (Beispiel: die Antwort darf kein `toolset.` enthalten). Beispiel:
+   `Agenten/Bus/tests/test_skillkatalog.py`.
+7. **Was Hermes nicht laedt, darf nicht als Faehigkeit erscheinen.** Hermes liest
+   `platforms:` im Frontmatter und laesst Skills fremder Systeme weg (9 der
+   Bibliothek sind `[macos]`/`[linux, macos]`; auf Windows sind es deshalb 58 von
+   67 Eintraegen). Der Katalog wendet dieselbe Regel an (`skillkatalog.ladbar`)
+   und nennt die ausgelassenen in EINER Schlusszeile - sie zu zeigen waere
+   gelogen, sie zu verschweigen auch. Gegenprobe: die Kopfzahl muss
+   `hermes skills list` entsprechen (58 enabled).
+8. **Der SkillsBot sendet KLARTEXT** (kein `parse_mode`): HTML-Marken aus einer
+   Antwort stehen woertlich in der Telegram-Nachricht - so war die alte
+   `<b>`-Kopfzeile bei Max zu sehen. Also ohne Marken bauen und kurz halten:
+   `/skills` zeigt NUR die Namen (58 Zeilen = eine Nachricht), die Beschreibung
+   erst beim Filtern (`/skills handel`). Ein Befehl, der ohne Suchbegriff
+   Beschreibungen ausgibt, sprengt die 4096 Zeichen und wird zerschnitten.
+
 ## When to Use
 Use this skill whenever you need to add a new automated routine to the BrainFiles Telegram Bus, or when you are setting up the bus for the first time on a new machine. Auch beim Auftrag "Autostart Routine einrichten" fuer einen Dienst oder ein Fenster (Abschnitt Dienst-Start-Routinen).

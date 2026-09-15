@@ -12,10 +12,15 @@ Deshalb pruefen die Tests vier Dinge, die alle schon einmal schiefgingen:
 2. Stillgelegte Skills (.archive) erscheinen NICHT.
 3. Der Text passt in Telegram-Nachrichten (4096 Zeichen).
 4. Der Bot-Befehl /skills haengt wirklich am Katalog.
+5. Skills fremder Systeme (`platforms: [macos]`) erscheinen NICHT als geladen -
+   sonst behauptet der Katalog Faehigkeiten, die es auf diesem Rechner nicht
+   gibt (15.09.2026: 67 auf der Platte, 58 geladen).
 """
 
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -41,6 +46,63 @@ class KatalogTest(unittest.TestCase):
         self.assertTrue(pfade, "Katalog ist leer")
         for p in pfade:
             self.assertNotIn(".archive", p.replace("\\", "/"))
+
+    def test_fremdes_system_wird_nicht_als_geladen_gezeigt(self):
+        # apple/* und vllm tragen platforms: [macos] bzw. [linux, macos] -
+        # auf Windows laedt Hermes sie nicht. Der Katalog darf sie deshalb
+        # nicht als Faehigkeit ausgeben.
+        namen = [e["name"] for e in skillkatalog.eintraege() if e["ladbar"]]
+        for fremd in ("apple-notes", "findmy", "imessage", "serving-llms-vllm"):
+            self.assertNotIn(fremd, namen)
+        # Verschweigen waere die andere Haelfte des Fehlers: die Liste nennt
+        # sie in der Schlusszeile.
+        text = skillkatalog.katalog()
+        self.assertIn("Hier nicht geladen", text)
+        self.assertIn("apple-notes", text)
+
+    def test_katalog_ist_klartext(self):
+        # Der SkillsBot sendet ohne parse_mode - HTML-Marken staenden
+        # woertlich in der Telegram-Nachricht (so am 15.09.2026 gesehen).
+        text = skillkatalog.katalog()
+        self.assertNotIn("<b>", text)
+        self.assertNotIn("</b>", text)
+
+    def test_katalog_ohne_suchbegriff_passt_in_eine_nachricht(self):
+        # Namen statt Saetze: 58 Skills in EINER Nachricht.
+        text = skillkatalog.katalog()
+        self.assertLessEqual(len(text), 4000)
+        self.assertEqual(len(skillkatalog.katalog_bloecke()), 1)
+
+    def test_suche_zeigt_die_beschreibung(self):
+        text = skillkatalog.katalog("handel")
+        self.assertIn("handel-spuren", text)
+        self.assertIn("—", text)
+        # Fremdes System bleibt auch bei der Suche draussen.
+        self.assertNotIn("apple-notes", text)
+
+    def test_plattformfilter_am_eigenen_baum(self):
+        # Gegenprobe ohne die echte Bibliothek: ein Skill fuer ein fremdes
+        # System und einer ohne platforms:-Eintrag.
+        ordner = tempfile.mkdtemp(prefix="skillkatalog-")
+        try:
+            for name, kopf in (("nur-mac", "platforms: [macos]\n"),
+                               ("ueberall", "")):
+                pfad = os.path.join(ordner, name)
+                os.makedirs(pfad)
+                with open(os.path.join(pfad, "SKILL.md"), "w",
+                          encoding="utf-8", newline="") as f:
+                    f.write("---\nname: %s\ndescription: Test.\n%s---\n\nText\n"
+                            % (name, kopf))
+            lage = {e["name"]: e["ladbar"]
+                    for e in skillkatalog.eintraege(ordner)}
+            self.assertFalse(lage["nur-mac"])
+            self.assertTrue(lage["ueberall"])
+            text = skillkatalog.katalog(None, ordner)
+            self.assertNotIn("  nur-mac", text)
+            self.assertIn("  ueberall", text)
+            self.assertIn("nur-mac", text)
+        finally:
+            shutil.rmtree(ordner, ignore_errors=True)
 
     def test_jeder_eintrag_hat_gruppe_und_beschreibung(self):
         for e in skillkatalog.eintraege():
@@ -115,6 +177,14 @@ class BotAnbindungTest(unittest.TestCase):
         import skillsbot
         antwort, _ = skillsbot.bearbeite("/skills projectatlas", "test")
         self.assertIn("projectatlas", antwort)
+
+    def test_skills_antwort_passt_als_klartext_nach_telegram(self):
+        # Der SkillsBot sendet ohne parse_mode: HTML-Marken waeren sichtbar,
+        # und ueber MAX_ZEICHEN wuerde sende() die Antwort zerschneiden.
+        import skillsbot
+        antwort, _ = skillsbot.bearbeite("/skills", "test")
+        self.assertNotIn("<b>", antwort)
+        self.assertLessEqual(len(antwort), skillsbot.MAX_ZEICHEN)
 
     def test_skill_befehl_gibt_volltext(self):
         import skillsbot

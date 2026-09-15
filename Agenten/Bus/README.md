@@ -71,7 +71,7 @@ Führt alle 8 Modultests aus und nimmt die vier Abnahmepunkte ab:
 
 `skillsbot.py` nimmt Nachrichten von Max per Telegram entgegen und reicht sie
 per A2A an den lokalen Hermes-Agenten weiter (Port 9900, Agent
-hermes-maks-pc, 43 Skills). Einrichtung: Kopf von skillsbot.py
+hermes-maks-pc). Einrichtung: Kopf von skillsbot.py
 (BotFather -> SKILLSBOT_TOKEN -> TELEGRAM_CHAT_ID -> --probe).
 Dauerbetrieb ueber Agenten/Routinen/skillsbot.ps1 (Task
 BrainFiles-SkillsBot).

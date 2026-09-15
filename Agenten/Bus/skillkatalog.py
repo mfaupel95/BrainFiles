@@ -20,6 +20,21 @@ WERKZEUGSAETZE auf (42 Zeilen "toolset.x", "Hermes 'x' capabilities"), nicht
 die gelernten Skills. Genau daran ist "übersichtlich auf alle Skills
 zugreifen" gescheitert.
 
+WAS ER VERSCHWEIGT
+------------------
+Ein Skill mit `platforms: [macos]` laedt Hermes auf Windows nicht. Solche
+Skills zeigt der Katalog NICHT als geladen, sondern zaehlt sie in einer
+Schlusszeile auf. Gemessen am 15.09.2026: 67 Skills auf der Platte, 58
+geladen - die 9 fehlenden tragen alle einen fremden `platforms:`-Eintrag.
+Eine Liste, die Faehigkeiten behauptet, die es hier nicht gibt, waere
+schlimmer als keine Liste.
+
+NAMEN STATT SAETZE
+------------------
+`/skills` zeigt nur die Namen: 58 Zeilen statt eines Wand aus 58 Saetzen - und
+damit eine Telegram-Nachricht statt zwei. Die Beschreibung erscheint erst beim
+Filtern (`/skills handel`): wer sucht, will wissen, ob der Treffer passt.
+
 DIE ZWEI GRENZEN VON TELEGRAM
 -----------------------------
 1. Eine Nachricht fasst 4096 Zeichen. Der volle Katalog sprengt das, also wird
@@ -32,6 +47,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 
 # Hermes liegt in Agenten/Hermes, dieser Katalog in Agenten/Bus.
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -45,6 +61,11 @@ NICHT_ZEIGEN = (".archive", "rollback", ".curator_backups")
 # Telegram: 4096 Zeichen je Nachricht, mit Reserve fuer Kopf und Fuss.
 BLOECKGROESSE = 3500
 TEXTGROESSE = 3200
+
+# Auf welchem System laeuft der Katalog? Hermes liest `platforms:` aus dem
+# Frontmatter und laedt fremde Systeme nicht (siehe Kopf).
+SYSTEM = ("windows" if os.name == "nt"
+          else "macos" if sys.platform == "darwin" else "linux")
 
 
 def _frontmatter(text):
@@ -64,7 +85,7 @@ def _frontmatter(text):
             continue
         schluessel, _, wert = zeile.partition(":")
         schluessel = schluessel.strip().lower()
-        if schluessel not in ("name", "description", "category"):
+        if schluessel not in ("name", "description", "category", "platforms"):
             continue
         wert = wert.strip()
         if len(wert) > 1 and wert[0] == wert[-1] and wert[0] in "\"'":
@@ -84,11 +105,36 @@ def _einzeiler(text, breite=72):
     return zeile
 
 
+def plattformen(felder):
+    """`platforms:` aus dem Frontmatter als Liste; leer = ueberall ladbar.
+
+    Geschrieben wird `[linux, macos, windows]` - der Parser bleibt absichtlich
+    primitiv (Klammern ab, Kommas trennen), damit keine yaml-Abhaengigkeit
+    noetig ist.
+    """
+    roh = (felder.get("platforms") or "").strip()
+    if roh.startswith("[") and roh.endswith("]"):
+        roh = roh[1:-1]
+    return [t.strip().lower() for t in roh.split(",") if t.strip()]
+
+
+def ladbar(felder, system=None):
+    """Wird dieser Skill auf DIESEM Rechner ueberhaupt geladen?
+
+    Ein Skill ohne `platforms:` gilt ueberall. Steht dort ein fremdes System,
+    laedt Hermes ihn nicht - der Katalog darf ihn dann nicht als Faehigkeit
+    ausgeben.
+    """
+    p = plattformen(felder)
+    return not p or (system or SYSTEM) in p
+
+
 def eintraege(wurzel=None):
-    """Alle sichtbaren Skills: [{name, beschreibung, gruppe, pfad}].
+    """Alle Skills der Bibliothek: [{name, beschreibung, gruppe, pfad, ladbar}].
 
     Sortiert nach Gruppe, dann Name. Der Dateiname entscheidet, nicht die
     Behauptung im Kopf: ein Skill ohne Frontmatter-Namen heisst wie sein Ordner.
+    `ladbar=False` heisst: liegt hier, wird aber nicht geladen (fremdes System).
     """
     wurzel = wurzel or BIBLIOTHEK
     treffer = []
@@ -114,34 +160,50 @@ def eintraege(wurzel=None):
             "beschreibung": _einzeiler(felder.get("description", "")),
             "gruppe": gruppe,
             "pfad": datei,
+            "ladbar": ladbar(felder),
         })
     treffer.sort(key=lambda e: (e["gruppe"].lower(), e["name"].lower()))
     return treffer
 
 
 def katalog(suchbegriff=None, wurzel=None):
-    """Der Katalog als Text, nach Gruppen. Ohne Suchbegriff alles."""
+    """Der Katalog als Text, nach Gruppen.
+
+    Ohne Suchbegriff nur die Namen - das passt in EINE Telegram-Nachricht.
+    Mit Suchbegriff Name und Beschreibung (wer sucht, will wissen, ob es passt).
+    Skills fremder Systeme fehlen in der Liste und werden in der Schlusszeile
+    genannt, nicht verschwiegen.
+    """
     alle = eintraege(wurzel)
+    hier = [e for e in alle if e["ladbar"]]
+    anders = [e for e in alle if not e["ladbar"]]
     if suchbegriff:
         s = suchbegriff.strip().lower()
-        alle = [e for e in alle
+        hier = [e for e in hier
                 if s in e["name"].lower() or s in e["beschreibung"].lower()
                 or s in e["gruppe"].lower()]
-    if not alle:
-        return "Kein Skill passt auf %r." % suchbegriff
+    if not hier:
+        return ("Kein Skill passt auf %r. %d sind hier geladen, /skills zeigt "
+                "sie." % (suchbegriff, len([e for e in alle if e["ladbar"]])))
 
-    zeilen = ["<b>%d Skills</b>" % len(alle)]
+    kopf = "%d Skills" % len(hier)
     if suchbegriff:
-        zeilen[0] += " zu %r" % suchbegriff
-    zeilen.append("")
+        kopf += " zu %r" % suchbegriff
+    zeilen = [kopf + " - Text: /skill NAME, filtern: /skills SUCHWORT", ""]
     gruppe = None
-    for e in alle:
+    for e in hier:
         if e["gruppe"] != gruppe:
             gruppe = e["gruppe"]
-            zeilen.append("<b>%s</b>" % gruppe)
-        zeilen.append("  %s — %s" % (e["name"], e["beschreibung"]))
-    zeilen.append("")
-    zeilen.append("Volltext: /skill NAME")
+            anzahl = sum(1 for x in hier if x["gruppe"] == gruppe)
+            zeilen.append("%s (%d)" % (gruppe, anzahl))
+        if suchbegriff:
+            zeilen.append("  %s — %s" % (e["name"], e["beschreibung"]))
+        else:
+            zeilen.append("  %s" % e["name"])
+    if anders and not suchbegriff:
+        zeilen.append("")
+        zeilen.append("Hier nicht geladen (%d, anderes System): %s"
+                      % (len(anders), ", ".join(e["name"] for e in anders)))
     return "\n".join(zeilen)
 
 
@@ -203,12 +265,18 @@ def volltext(name, wurzel=None):
 
 
 def zahlen(wurzel=None):
-    """Kurzbild fuer die Systempruefung: Skills je Gruppe."""
+    """Kurzbild fuer die Systempruefung: Skills je Gruppe.
+
+    `gesamt` ist die Zahl, die der Agent WIRKLICH hat; `ausgelassen` liegt auf
+    der Platte und gehoert einem anderen System.
+    """
     alle = eintraege(wurzel)
+    hier = [e for e in alle if e["ladbar"]]
     nach = {}
-    for e in alle:
+    for e in hier:
         nach[e["gruppe"]] = nach.get(e["gruppe"], 0) + 1
-    return {"gesamt": len(alle), "gruppen": nach}
+    return {"gesamt": len(hier), "ausgelassen": len(alle) - len(hier),
+            "gruppen": nach}
 
 
 if __name__ == "__main__":

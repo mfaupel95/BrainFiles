@@ -134,6 +134,13 @@ ueber die Kommandozeile.
   Risiko rechnen (z.B. Runden/Tag = Plaetze x Umschlag je Platz; Notbremse im selben
   Anteil mitziehen) und die EINE gesetzte Zahl mit Ruecknahme-Bedingung nennen
   (live-Schalter = Ruecknahme).
+- **`patch` schreibt die GANZE Datei neu und kann Zeilenenden umstellen.** Eine
+  versionierte Datei mit gemischten Endungen (Beispiel: `Agenten/Bus/README.md`,
+  86 CRLF + 52 LF) kam danach komplett als CRLF zurueck - 86 geaenderte Zeilen
+  fuer eine gewollte. Erkennen: `git diff --numstat` zeigt ploetzlich die ganze
+  Datei. Reparatur: die HEAD-Bytes holen (`git show HEAD:<pfad>`), den Zieltext
+  BYTE-GENAU ersetzen und mit `newline=''`/`wb` schreiben; danach muss
+  `git diff --ignore-cr-at-eol --stat` die eine Zeile zeigen.
 
 ## Verification
 
