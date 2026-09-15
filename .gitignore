@@ -387,6 +387,11 @@ Agenten/Hermes/skills/.curator_backups/
 Agenten/Hermes/skills/okx-*/
 Agenten/Hermes/skills/**/*.pyc
 Agenten/Hermes/skills/**/__pycache__/
+# Nachtrag 15.09.2026: zwei Laufzeitdateien waren mit der Freigabe oben
+# hereingekommen. Der Kurator-Ledger (1,4 MB) und die Nutzungsstatistik
+# schreibt jeder Lauf; sie erzeugten bei jedem git status Rauschen.
+Agenten/Hermes/skills/.curator_ledger.jsonl
+Agenten/Hermes/skills/.usage.json
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env

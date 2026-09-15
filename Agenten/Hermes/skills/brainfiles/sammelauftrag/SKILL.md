@@ -126,13 +126,21 @@ Fehlt eins der drei mittleren Felder: Punkt verwerfen und im Bericht unter
 
 ### 4. Eine Übergabedatei schreiben
 
-`write_file` nach `Werkstatt/Austausch/<JJJJ-MM-TT>/<thema>.md`, mit dem
-Vault-Frontmatter (`id`, `title`, `tags`, `created`, `updated`, `related`,
-`summary`) und den Regeln aus `Werkstatt/AGENTS.md` Regel 3: **der Auftrag trägt
-sich selbst** — was damit geschehen soll, woher die Zahlen stammen, woran man
-Erledigung sieht. Ein Agent, der die Datei in einer Woche findet, hat keinen
-Gesprächsverlauf mehr. Keine Zugangsdaten hinein (dafür gibt es genau eine
-Ablage: `MaxHirn/Wissen/Zugaenge.md`).
+**Achtung Schreibweg:** `Werkstatt` ist eine **Junction** (auf `O:\Werkstatt`).
+Das `write_file`-Werkzeug prüft den **aufgelösten** Pfad gegen
+`HERMES_WRITE_SAFE_ROOT` und lehnt ab („is outside HERMES_WRITE_SAFE_ROOT /
+C:\Users\faupe\Documents\BrainFiles"), obwohl der Pfad im Baum liegt. Kein
+Rechteproblem — die Junction wird aufgelöst. Über das `terminal`-Werkzeug
+schreiben (Verzeichnis vorher anlegen) oder das Ziel in einen Ordner legen, der
+keine Junction ist.
+
+`write_file` bzw. `terminal` nach `Werkstatt/Austausch/<JJJJ-MM-TT>/<thema>.md`,
+mit dem Vault-Frontmatter (`id`, `title`, `tags`, `created`, `updated`,
+`related`, `summary`) und den Regeln aus `Werkstatt/AGENTS.md` Regel 3: **der
+Auftrag trägt sich selbst** — was damit geschehen soll, woher die Zahlen
+stammen, woran man Erledigung sieht. Ein Agent, der die Datei in einer Woche
+findet, hat keinen Gesprächsverlauf mehr. Keine Zugangsdaten hinein (dafür gibt
+es genau eine Ablage: `MaxHirn/Wissen/Zugaenge.md`).
 
 ### 5. Routine oder Auftrag entscheiden
 
@@ -229,6 +237,14 @@ häufigste Fehler.
   Sitzung überleben soll.
 - **Cron-Aufträge können nicht fragen.** Fehlt im `prompt` der Pfad oder das
   Ziel, tut der Lauf etwas Plausibles statt des Richtigen.
+- **Ein Wächter darf nicht über den Weg melden, den er überwacht.** Ein
+  Bus-Wächter, der seine Warnung per `Melde-Ende` in den Bus-Journal schreibt,
+  schweigt genau dann, wenn der Bus tot ist — der Ausfall vom 11.–15.09.2026
+  (vier Tage stumme Meldekette, niemand hat es gesehen) lief so ab. Entweder der
+  Wächter sendet über `melder.sende` direkt an Telegram, oder er ist ein
+  Hermes-`cronjob` mit `script` + `no_agent` und `deliver`. Prüfen, ob für den
+  überwachten Dienst überhaupt ein Wächter existiert: für den Handels-Dauerlauf
+  gab es einen, für den Bus nicht.
 - **Nichts löschen, was nach Stufe 0 aussieht** (Schlüssel, Dokumente, Bilder,
   unsortierter Posteingang). Löschkandidaten nach
   `Claude/Posteingang/_zu_loeschen/`, dort entscheidet Max.
