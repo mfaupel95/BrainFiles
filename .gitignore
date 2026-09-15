@@ -177,6 +177,15 @@
 !Agenten/Handel/mosaic/*.md
 !Agenten/Handel/mosaic/*.json
 !Agenten/Handel/mosaic/tests/*.py
+# IV-Wand-Spur (Deribit, 16.09.2026): erwartete Tagesspanne aus IV und
+# historischer Volatilitaet, Waende aus dem offenen Interesse der Optionskette.
+# Papier, kein Live-Zweig. Code, Wachen, Gueteproben und Tests in den Verlauf;
+# der Datenspiegel (daten/) und das Backtest-Ergebnis sind regenerierbar und
+# stehen unten in der Sperrliste - ein neuer Ordner ist sonst unsichtbar.
+!Agenten/Handel/iv_waelle/*.py
+!Agenten/Handel/iv_waelle/*.md
+!Agenten/Handel/iv_waelle/wachen.json
+!Agenten/Handel/iv_waelle/tests/*.py
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -305,6 +314,12 @@ Agenten/Handel/omniquant/handelsjournal.csv
 # wachen.json sind oben freigegeben.
 Agenten/Handel/gitter/zustand.json
 Agenten/Handel/gitter/handelsjournal.csv
+# IV-Wand-Spur: der Datenspiegel (Deribit-Antworten) und das Backtest-Ergebnis
+# sind aus dem Netz jederzeit neu zu holen und wuerden den Verlauf aufblaehen
+# (rund 1,1 MB). Code und Wachen bleiben oben freigegeben.
+Agenten/Handel/iv_waelle/daten/
+Agenten/Handel/iv_waelle/backtest_ergebnis.json
+Agenten/Handel/iv_waelle/__pycache__/
 
 # Verbesserer: laufender Zustand. konfig.json und spuren.json sind oben
 # freigegeben (Konfiguration von Hand), diese drei schreibt jeder Lauf.
