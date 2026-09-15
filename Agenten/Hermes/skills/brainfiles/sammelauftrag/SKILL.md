@@ -237,6 +237,15 @@ häufigste Fehler.
   Sitzung überleben soll.
 - **Cron-Aufträge können nicht fragen.** Fehlt im `prompt` der Pfad oder das
   Ziel, tut der Lauf etwas Plausibles statt des Richtigen.
+- **Die Feldnamen eines Cron-Auftrags sind `last_run_at`, `next_run_at`,
+  `state`, `last_status` — nicht `last_run`.** Ein `job.get("last_run")`
+  liefert immer `None` und liest sich wie „nie gelaufen". Genau dieser
+  Fehlalarm ist passiert: ein erledigter Auftrag wurde als offen gemeldet,
+  obwohl sein Ergebnis seit zwei Tagen in
+  `Agenten/Hermes/cron/output/<job_id>_<ts>.txt` lag. Vor einer solchen Meldung
+  den Schlüssel im `jobs.json` **nachsehen** (nie aus dem Gedächtnis) und
+  `cron/output/` lesen. `scripts/sammeln.py` gibt die Felder seit dem
+  15.09.2026 mit aus.
 - **Ein Wächter darf nicht über den Weg melden, den er überwacht.** Ein
   Bus-Wächter, der seine Warnung per `Melde-Ende` in den Bus-Journal schreibt,
   schweigt genau dann, wenn der Bus tot ist — der Ausfall vom 11.–15.09.2026

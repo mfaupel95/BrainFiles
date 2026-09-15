@@ -96,8 +96,8 @@ def spuren_im_lauf(handel=HANDEL):
     jede Spur mit wachen.json als relevant (kein stiller Freibrief).
     """
     try:
-        baum = ast.parse(open(os.path.join(handel, "dauerlauf.py"),
-                              encoding="utf-8").read())
+        with open(os.path.join(handel, "dauerlauf.py"), encoding="utf-8") as f:
+            baum = ast.parse(f.read())
     except (OSError, SyntaxError):
         return None
     for knoten in ast.walk(baum):

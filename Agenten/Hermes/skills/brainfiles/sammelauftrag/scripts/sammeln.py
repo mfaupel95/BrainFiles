@@ -98,9 +98,16 @@ def cron_auftraege(w):
     if not auftraege:
         print("(keine Auftraege)")
     for a in auftraege:
+        # FELDNAMEN: last_run_at / next_run_at / state / last_status. Ein
+        # a.get("last_run") gibt es nicht - es liefert immer None und liest
+        # sich wie "nie gelaufen". Genau dieser Fehlalarm ist am 15.09.2026
+        # passiert (der Auftrag war gelaufen, Ergebnis im cron/output/).
         print("- %-34s %-16s %s" % (str(a.get("name") or a.get("job_id"))[:34],
                                     str(a.get("schedule"))[:16],
                                     "pausiert" if a.get("paused") else "aktiv"))
+        print("    state=%s  letzter Lauf=%s  Status=%s  naechster=%s"
+              % (a.get("state"), a.get("last_run_at") or "(nie gelaufen)",
+                 a.get("last_status"), a.get("next_run_at") or "-"))
     aus = w / "Agenten" / "Hermes" / "cron" / "output"
     if aus.is_dir():
         jung = sorted(aus.glob("*.txt"), key=lambda f: f.stat().st_mtime, reverse=True)[:5]
