@@ -792,3 +792,43 @@ die Herkunft des Moduls.
 - **Die Slippage-Annahme (3 %) bleibt.** Sie ist ein fester Satz je Runde und
   kann die Bandrangfolge nicht drehen; sie niedriger zu setzen, um Zahlen zu
   verbessern, wäre das Gegenteil von Messen.
+## Risikostufen: derselbe Handel, andere Buchgroesse (15.09.2026)
+
+**Auftrag Max:** denselben Dauerlauf mehrfach fahren, mit unterschiedlicher
+Risikobewertung und groesseren Positionen je Spur - **ausser Spiegel** - um
+schneller Daten zu sammeln.
+
+**Der Gedanke:** nicht mehr Gewinn, sondern mehr Beobachtungen je Zeiteinheit.
+Bei 20-EUR-Einsaetzen dauert jede Statistik Monate; bei 80 EUR sieht man
+denselben Fehler viermal schneller. Die Strategien bleiben unangetastet -
+dieselben Wachen, dieselben Regeln, nur ein Faktor auf die Betraege.
+
+**Wie:** `Agenten/Handel/risikostufe.py`. Der Dauerlauf setzt je Stufe
+`HANDEL_RISIKO=niedrig|mittel|hoch` (Faktor 1 / 2 / 4); jede Spur skaliert beim
+Laden ihre Wachen und schreibt Zustand und Journal mit Suffix
+(`zustand.mittel.json`, `handelsjournal.mittel.csv`). Ohne die Variable aendert
+sich **nichts** - der laufende Betrieb wird von der Umstellung nicht angefasst.
+Der Dateiname muss getrennt sein: zwei Laeufe auf derselben `zustand.json`
+wuerden sich die Positionen gegenseitig ueberschreiben.
+
+**Was NICHT skaliert wird** (an den echten Wachen nachgemessen, nicht geraten):
+`marketcap_band_usd` (Marktgroesse des Tokens, kein Einsatz),
+`groesster_ruecklauf_papierlauf_*` (eine Messung, kein Limit - skaliert waere
+sie eine Behauptung ueber die Vergangenheit), `mindest_guthaben_*` /
+`mindest_marge_frei_*` (Kontoschwellen der Boerse), `umsatz_bezug_usd`,
+`punkt_wert_usd`. Felder mit fuehrendem Unterstrich (`_risiko_je_position_usd`)
+sind der dokumentierte Vorwert und bleiben ebenfalls.
+
+**Was MIT muss:** `drawdown_halbierung_usd` und `kill_switch_gesamt_usd`. Sie
+sind in Buchrisiko ausgedrueckt (1,0x, siehe `Handel/ratschen.py`). Blieben sie
+stehen, wuerde die doppelte Position die Halbierung sofort ausloesen - die
+Stufe waere nach dem ersten Verlust gesperrt und lieferte keine Daten mehr.
+
+**Stand:** Kern und Test stehen (`risikostufe.py`, 15 Tests gruen, darunter der
+Durchlauf ueber JEDE vorhandene `wachen.json`). **Offen:** die Anwendung in den
+Spuren (Wachen laden, Dateinamen) und die `--risiko`-Option des Dauerlaufs.
+Solange das nicht steht, laeuft nur die Basis - es gibt noch keine zweite Stufe.
+
+**Spiegel:** bleibt bei Faktor 1,0 (Max' Vorgabe). Laeuft er in allen Stufen
+mit, entstehen drei identische Buecher - dieselbe Beobachtung dreimal, ohne
+neue Information. Vorschlag: Spiegel nur im Basis-Lauf fuehren.
