@@ -123,6 +123,41 @@ und endet mit `Cancelled`, **ohne** zu schreiben — aus einer Werkzeugsitzung d
 7. **Ein Shallow-Klon lässt sich nicht pushen.** Der Arbeitsklon hat deshalb
    volle Historie (`git fetch --unshallow`), wie bei der übrigen Flotte.
 
+## Watcher (15.09.2026)
+
+`projectatlas watch` ist ein **Dauerprozess**: er beobachtet EIN Repository und
+zieht dessen Atlas nach, wenn sich Dateien aendern. Gemessen: eine neu angelegte
+Datei stand nach 40 s im Index.
+
+| Was | Wo |
+|---|---|
+| Starter (idempotent) | `Agenten/Werkzeuge/projectatlas/watch-start.ps1` + `watch-<repo>.cmd` |
+| Wache | Hermes-Cron `atlas-watcher` alle 15 Min, `Agenten/Hermes/scripts/atlas-watcher.py` |
+| Zustand | PID in `logs/watch-<repo>.pid`, Log `logs/watch-<repo>.log` |
+| Angebunden | `Werkstatt/omnitrade` (der Standard-Atlas) |
+
+Fallen (gemessen 15.09.2026):
+
+1. **`watch-status` beschreibt den Prozess nicht.** Es meldet auch bei laufendem
+   Watcher `active: false` — die Angabe meint einen Refresh-Durchgang. Wer damit
+   prüft, startet einen zweiten Watcher. Maßgeblich ist die PID-Datei.
+2. **`Start-Process -RedirectStandardOutput` blockiert bei einem Dauerprozess**:
+   der Aufrufer wartet auf das Ende des Kindes, also nie. Der Start hing zweimal
+   im Timeout. Umleitung macht jetzt die `.cmd`, `Start-Process cmd.exe /c`
+   kehrt sofort zurück.
+3. **`Get-CimInstance Win32_Process` mit CommandLine-Filter** braucht in diesem
+   Prozessbaum Minuten — Prozesse über `Get-Process` und die PID-Datei prüfen.
+4. **Die Aufgabenplanung verlangt Administrator.** `Register-ScheduledTask`
+   endet mit „Zugriff verweigert". Der Dauerbetrieb hängt deshalb am
+   Hermes-Cron; der heilt zusätzlich einen toten Prozess, was ein
+   Autostart-Eintrag nicht kann.
+5. **Ein Watcher je Repo.** `watch` nimmt einen Pfad — 33 Repos wären 33
+   Prozesse. Deshalb ist nur der Standard-Atlas angebunden; ein zweites Repo
+   braucht eine eigene `.cmd` und einen eigenen PID-Eintrag.
+6. **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/
+   `powershell` (Konsole schreibt cp1252, nicht UTF-8): `encoding="cp1252",
+   errors="replace"` setzen.
+
 ## Nachweis
 
 ```

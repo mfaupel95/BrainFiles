@@ -400,6 +400,15 @@ Agenten/Hermes/skills/.usage.json
 # einem Verlust tot. Nur .py, kein Zwischenspeicher, kein Log.
 !Agenten/Hermes/scripts/
 !Agenten/Hermes/scripts/**/*.py
+#
+# PROJECTATLAS-WERKZEUGE, freigelegt am 15.09.2026. Die Skripte, die
+# den Watcher starten und die Repos kartieren - Prozedurwissen, auf das
+# Wissen/Projektatlas.md und Wissen/Routinen.md verweisen. NICHT
+# freigegeben: bin/ und v0.4.5/ (Laufzeit, 100+ MB) und logs/.
+!Agenten/Werkzeuge/projectatlas/*.ps1
+!Agenten/Werkzeuge/projectatlas/*.cmd
+!Agenten/Werkzeuge/projectatlas/*.sh
+!Agenten/Werkzeuge/projectatlas/*.py
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# ProjectAtlas: alle Arbeits-Repos indexieren (idempotent, mehrfach ausfuehrbar).
+# Laeuft ueber die Host-Shell (git-bash); Logs unter Agenten/Werkzeuge/projectatlas/logs/.
+set -u
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PA="$HERE/bin/projectatlas.exe"
+ROOT="/c/Users/faupe/Documents/BrainFiles"
+LOG="$HERE/logs"
+mkdir -p "$LOG"
+
+repos=()
+for d in "$ROOT"/Werkstatt/Repos/*/; do [ -d "$d/.git" ] && repos+=("${d%/}"); done
+for n in CryptoPredictions CryptoTrade FinRL freqtrade intelligent-trading-bot OmniRoute omnitrade RLTrader security-skills-claude-code skillspector trailofbits-skills; do
+  [ -d "$ROOT/Werkstatt/$n/.git" ] && repos+=("$ROOT/Werkstatt/$n")
+done
+[ -d "$ROOT/Agenten/Handel/nautilus/.git" ] && repos+=("$ROOT/Agenten/Handel/nautilus")
+[ -d "$ROOT/Agenten/Hermes/hermes-agent/.git" ] && repos+=("$ROOT/Agenten/Hermes/hermes-agent")
+
+echo "Kandidaten: ${#repos[@]}"
+for r in "${repos[@]}"; do
+  name="$(basename "$r")"
+  # Projektatlas-Zustand gehoert nicht in den Fremd-Klon (nur lokal, ohne die .gitignore des Originals anzufassen)
+  mkdir -p "$r/.git/info" 2>/dev/null
+  if [ -f "$r/.git/info/exclude" ]; then
+    grep -qxF '.projectatlas/' "$r/.git/info/exclude" || printf '.projectatlas/\n' >> "$r/.git/info/exclude"
+  else
+    printf '.projectatlas/\n' > "$r/.git/info/exclude"
+  fi
+  t0=$(date +%s)
+  ( cd "$r" && "$PA" --format json init > "$LOG/$name.json" 2> "$LOG/$name.err" )
+  rc=$?
+  t1=$(date +%s)
+  db="$r/.projectatlas/projectatlas.db"
+  if [ -f "$db" ]; then size=$(( $(stat -c %s "$db") / 1048576 )); else size=-1; fi
+  printf '%-34s rc=%s %4ss db=%sMB\n' "$name" "$rc" "$((t1-t0))" "$size"
+done
+echo "=== Fehlerdateien mit Inhalt ==="
+for f in "$LOG"/*.err; do [ -s "$f" ] && { echo "--- $(basename "$f")"; head -3 "$f"; }; done
+echo "=== Gesamtgroesse ==="
+find "$ROOT/Werkstatt" "$ROOT/Agenten" -maxdepth 4 -name projectatlas.db -type f -printf '%s\n' 2>/dev/null | awk '{s+=$1} END {printf "%d Atlanten, %.1f MB\n", NR, s/1048576}'
+echo FERTIG
