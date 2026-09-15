@@ -241,10 +241,18 @@ def pruefe_einstieg(inst, k, z, w, faktor):
             stop_pct="%.2f" % stop_pct_eff, grund="squeeze")
 
 
-def pruefe_ausstiege(z, k, w):
-    """Bestehende Positionen auf Stop/Ziel pruefen."""
+def pruefe_ausstiege(z, k, w, nur=None):
+    """Bestehende Positionen auf Stop/Ziel pruefen.
+
+    `k` sind die Kerzen EINES Instruments; `nur` grenzt die Pruefung darauf
+    ein. Ohne die Einschraenkung wurde jede offene Position gegen diesen
+    einen Kurs geprueft (15.09.2026).
+    """
     behalten = []
     for p in z.get("positionen", []):
+        if nur is not None and p.get("inst") != nur:
+            behalten.append(p)
+            continue
         kurs = k[-1][4] if k else None
         if not kurs:
             behalten.append(p)
@@ -267,7 +275,11 @@ def pruefe_ausstiege(z, k, w):
             behalten.append(p)
             continue
 
-        gv = (kurs - p["einstieg"]) * vz
+        # G/V auf den NOMINALWERT: eine Kursbewegung von x Prozent bewegt
+        # x Prozent des Nominalwerts. Bis zum 15.09.2026 stand hier die rohe
+        # Kursdifferenz - bei BTC ein Faktor von rund 70.000, der Erloes
+        # landete in Kurshoehe im Journal.
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
         erloes = p["nominal"] + gv
         print("AUSSTIEG (%s) %.6f G/V %+.2f USD" % (grund, kurs, gv))
         journal(zeit=_jetzt(), modus="papier", aktion="verkauf", inst=p["inst"],
@@ -325,7 +337,7 @@ def lauf(modus):
         if bestehend:
             z["positionen"] = [p for p in z["positionen"] if p["inst"] != inst]
             z["positionen"].extend(bestehend)
-            pruefe_ausstiege(z, k, w)
+            pruefe_ausstiege(z, k, w, nur=inst)
 
         # Neue Einstiege
         pruefe_einstieg(inst, k, z, w, faktor)

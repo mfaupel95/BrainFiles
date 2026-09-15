@@ -43,6 +43,13 @@ MIN_RUNDEN = 8
 
 SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus")
 
+# Die vier Indikator-Spuren journalisieren kauf/verkauf mit `einsatz_usd`
+# (beim Kauf der Einsatz, beim Verkauf der Erloes). Sie stehen getrennt,
+# weil IHR JOURNAL anders heisst, nicht weil anders gerechnet wird - der
+# Rechenweg steht in runden_indikator() an einer Stelle.
+INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend")
+SPUREN = SPUREN + INDIKATOR_SPUREN
+
 
 def kennzahlen_fuer(spur):
     """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
@@ -74,6 +81,8 @@ def kennzahlen_fuer(spur):
         runden = runden_spot(z, gebuehr, einsatz_feld="eur")
     elif spur == "orbk":
         runden = runden_orbk(z)
+    elif spur in INDIKATOR_SPUREN:
+        runden = runden_indikator(z)
     elif spur == "gitter":
         runden = gitter_zyklen(z)
     else:
@@ -251,6 +260,29 @@ def runden_spot(zeilen_, kosten_pct=0.0, einsatz_feld="usd"):
 
     return _paare(zeilen_, {"kauf"}, {"verkauf"}, einsatz_feld, ergebnis,
                   "USD")
+
+
+def runden_indikator(zeilen_):
+    """Indikatorspuren: kauf/verkauf, Betrag in `einsatz_usd`.
+
+    Derselbe Feldname traegt beim Kauf den Einsatz und beim Verkauf den Erloes.
+    Eine Gebuehr fuehren diese Spuren nicht (kein `gebuehr_taker` in ihrer
+    wachen.json), also wird auch keine behauptet - kosten = 0. Sobald eine
+    Gebuehr im Journal steht, gehoert sie hier gelesen, nicht geschaetzt.
+
+    ACHTUNG: Bis zum 15.09.2026 schrieb die Spur den Erloes als
+    `nominal + (kurs - einstieg)` - die rohe Kursdifferenz, bei BTC ein Faktor
+    von rund 70.000. Zeilen aus jener Zeit liegen als
+    `handelsjournal.falsch-skaliert-20260915.csv` daneben und zaehlen nicht.
+    """
+    def ergebnis(ein, aus):
+        einsatz = zahl(ein.get("einsatz_usd"))
+        erloes = zahl(aus.get("einsatz_usd"))
+        if not einsatz or erloes is None:
+            return None, None
+        return erloes - einsatz, 0.0
+
+    return _paare(zeilen_, {"kauf"}, {"verkauf"}, "einsatz_usd", ergebnis, "USD")
 
 
 def runden_orbk(zeilen_):
