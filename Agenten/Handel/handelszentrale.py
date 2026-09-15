@@ -66,7 +66,12 @@ KERZEN_KRAKEN = 200
 
 # Woher eine Spur ihre Kurse holt. Die Zuordnung haengt an der SPUR, nicht am
 # Instrument: derselbe Basiswert notiert an zwei Boersen verschieden.
-QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed"}
+QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed",
+          # Die beiden Kopier-Spuren lesen denselben Onchain-Feed wie
+          # spiegel: ihr Instrument ist ein Token (kette+token), kein
+          # OKX-Paar. Ohne den Eintrag stand dort "Quelle okx" mit der
+          # Token-Adresse als Instrument - der Chart lief ins Leere.
+          "kopier": "feed", "kopier1zu1": "feed"}
 QUELLE_VORGABE = "okx"
 
 # Farben - dasselbe dunkle Blatt wie omniquant/gui.py, damit die Fenster
