@@ -85,33 +85,54 @@ Dauerbetrieb ohne SKILLSBOT_TOKEN.
 
 Teilprojekt 3. Hier geht das nicht.
 
-## Feste Handelsbefehle (xperp zuerst)
+## Feste Handelsbefehle
 
-SkillsBot (eigener Token, kein Handels-Poller):
-- `/status`: lokale Zustandsdateien, xperp vor Spot und SWAP (Papierspur mit
-  eigenem Zustand); Zeitstempel und Modus.
-- `/papierstatus`: Live-Daten werden nicht als Papierpositionen ausgegeben.
-- `/prognose [N]`: Marktbeobachtung ueber alle Spot-Paare mit `--kurz`, beide
-  Richtungen (LONG/SHORT je Zeile), keine Order, kein Berichtschreiben. Ohne N
-  ganzer Markt; N zwischen 1 und 200. Zeitlimit 240 Sekunden, danach kleinere
-  Stichprobe anfordern.
+Der Text aller LESENDEN Handelsbefehle steht seit 15.09.2026 in
+`Agenten/Handel/befehle.py` - EINE Quelle fuer beide Bots. Der Handelsbot
+sendet sie als HTML (`melder`, parse_mode=HTML), der SkillsBot als Klartext
+(`handel_befehle.klartext`). Eine zweite Fassung waere eine zweite Wahrheit:
+der Handelsbot zeigte dann etwas anderes als der SkillsBot.
+
+In beiden Bots:
+- `/lage`: JETZT - offene Positionen je Spur, Live-Tore, offene Freigaben,
+  Kopie ausser Haus. Bis 15.09.2026 war `/lage` derselbe Bericht wie
+  `/bericht`, nur ohne Rangliste - zwei Befehle, eine Auskunft.
+- `/bericht`: der volle Tagesbericht (Spuren, Wachen, Bilanzen, Rangliste).
+- `/spuren`: alle Spur-Namen. `/spur NAME`: eine Spur in der Tiefe -
+  Positionen mit Kurs und Stop-Abstand, Wachen und Ratsche, Journal,
+  letzte Ablehnung.
+- `/strategien`: die Bilanz aller Spuren nebeneinander, gruppiert nach
+  Strategie (Kontrakt, Spot, Feed, Grid, Indikator), je Spur aus ihrer
+  zustaendigen Auswertung. Unter 8 Runden steht ein `*` (Befund, keine
+  Messung).
+- `/indikatoren`: die vier Indikator-Spuren (macd_mtf, squeeze, supertrend,
+  wavetrend) - Einstiege, Ausstiege, Ausstiegsgruende, offene Positionen.
+- `/markt`: BTC/ETH/SOL - Kurs, 24 h, ATR(1 h), Abstand zum SMA50.
+  Beobachtung, keine Order und keine Prognose.
+- `/status` (SkillsBot): gespeicherter Dateistand aller Spuren.
+  `/papierstatus`: Live-Daten werden nie als Papierpositionen ausgegeben.
+- `/prognose [N]` (SkillsBot, bis 240 s): Marktbeobachtung ueber alle
+  Spot-Paare, beide Richtungen, keine Order, kein Berichtschreiben. Im
+  Handelsbot verweist der Befehl hierher, damit die Analyse den Handelszyklus
+  nicht blockiert. Ohne N ganzer Markt; N zwischen 1 und 200.
 - Unbekannte Slashbefehle gehen nicht an A2A; Freitext weiterhin schon.
 
-Handelsbot (dauerlauf.py, einziger Schreiber der Freigabefenster):
+Nur Handelsbot (dauerlauf.py, einziger Schreiber der Freigabefenster):
 - `/freigabe_xperp`: wartende Anfrage samt Grenzen lesen, nichts oeffnen.
 - `/ja_xperp STUNDEN`: nur die aktuelle XPERP-Anfrage, 0 < Stunden <= 24.
 - `/nein_xperp` und `/stop_xperp`: nur XPERP-Fenster schliessen; Spot bleibt.
-- `/papierstatus`: derselbe lokale Papierstatus wie im SkillsBot.
-- `/prognose` verweist zum SkillsBot, damit Analyse den Handelszyklus nicht blockiert.
+- `/scan`, `/hilfe`, `/pause`, `/weiter`.
 
 Freigabe ist ein Zeitfenster, keine Einzelorder. Sie hebt keine Wache auf.
 Stop schliesst das Fenster fuer neue Einstiege, stellt keine Position glatt
-und stoppt nicht den Prozess. Die SWAP-Spur (`Agenten/Handel/swap/`) hat
-einen eigenen Papierpfad und eigene Wachen in `wachen.json`, aber keinen
-Live-Zweig: ihr `handeln.py` verweigert `--live`. Kein Befehl hier schaltet
-sie scharf, und `/status` zeigt von ihr nur den Papierstand.
+und stoppt nicht den Prozess. Die SWAP-Spur ist seit dem 12.09.2026
+live-faehig (nach XPERP-Muster, eigene Freigabekette); sie ist derzeit ueber
+`handel_erlaubt=false` und die offene Freigabe GESPERRT, nicht stillgelegt.
+Ob eine Spur live kann, wird aus ihrer `wachen.json` gelesen und nicht im
+Code behauptet - `/lage` und `/status` zeigen den Stand.
 
 Tests: `python -m unittest discover -s Agenten/Bus/tests -p test_handel_befehle.py`
-und `python -m unittest discover -s Agenten/Handel/tests` aus der Repo-Wurzel.
-Nach Codeaenderungen muessen die jeweiligen Bot-Prozesse neu laden. Einen
-Handelsprozess mit offenem Live-Fenster nicht unangekuendigt neu starten.
+und `python -m unittest discover -s Agenten/Handel/tests -t Agenten/Handel/tests`
+aus der Repo-Wurzel. Nach Codeaenderungen muessen die jeweiligen Bot-Prozesse
+neu laden. Einen Handelsprozess mit offenem Live-Fenster nicht unangekuendigt
+neu starten.

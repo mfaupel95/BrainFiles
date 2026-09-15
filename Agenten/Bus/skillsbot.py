@@ -301,25 +301,85 @@ class Sperre:
 
 # --- Befehle ----------------------------------------------------------------
 
+def _handelsantwort(wort):
+    """Eine lesende Handelsauskunft holen - Text aus `Handel/befehle.py`.
+
+    Keine zweite Fassung hier: /lage im SkillsBot ist derselbe Text wie /lage
+    im Handelsbot (eine Quelle, zwei Bots). Der Handelsbot sendet HTML, der
+    SkillsBot nicht - deshalb laeuft das Ergebnis durch `handel_befehle.
+    klartext()`.
+    """
+    import handel_befehle                                     # noqa: PLC0415
+    if wort == "/lage":
+        return handel_befehle.lage()
+    if wort == "/bericht":
+        return handel_befehle.bericht()
+    if wort == "/spuren":
+        namen = handel_befehle.spuren()
+        return ("Spuren: %s" % ", ".join(namen)) if namen \
+            else "Spurliste nicht lesbar (SPUREN in dauerlauf.py)."
+    if wort == "/strategien":
+        return handel_befehle.strategien()
+    if wort == "/indikatoren":
+        return handel_befehle.indikatoren()
+    if wort == "/markt":
+        return handel_befehle.markt()
+    raise SkillsBotFehler("kein Handelsbefehl: %s" % wort)
+
+
+def hilfe_text():
+    # Kein HTML: der SkillsBot sendet ohne parse_mode - Marken staenden
+    # woertlich in der Nachricht (der Handelsbot nutzt dafuer befehle.hilfe()).
+    return ("Ich reiche deine Nachrichten per A2A an den lokalen Hermes-"
+            "Agenten (hermes-maks-pc) weiter - der hat alle Skills.\n"
+            "\nHandel (lesend, aus dem Handel-Ordner)\n"
+            "/lage - offene Positionen je Spur, Live-Tore, Freigaben\n"
+            "/bericht - voller Tagesbericht (dauert, mit Rangliste)\n"
+            "/spuren - alle Spur-Namen\n"
+            "/spur NAME - eine Spur in der Tiefe\n"
+            "/strategien - Bilanz aller Strategien nebeneinander\n"
+            "/indikatoren - die vier Indikator-Spuren: Signale und Treffer\n"
+            "/markt - Kurs, 24 h, Trend, Volatilitaet\n"
+            "/status - gespeicherter Dateistand (alle Spuren)\n"
+            "/papierstatus - nur Papierspuren\n"
+            "/prognose [N] - Marktbeobachtung long/short (bis 240 s)\n"
+            "/skills - Skills des Agenten\n"
+            "/hilfe - diese Liste\n"
+            "\nFreigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
+            "/nein_xperp, /stop_xperp.\n"
+            "SWAP-Live bleibt gesperrt. Freitext geht weiterhin an Hermes.")
+
+
 def bearbeite(text, chat):
     """Antwort auf eine Nachricht; (text, neuer_kontext) oder None."""
     kontexte = _lade_json(KONTEXT_PFAD, {})
     kontext = kontexte.get(str(chat))
     t = text.strip()
-    if t.split() and t.split()[0] == "/prognose":
+    teile = t.split()
+    wort = teile[0].lower() if teile else ""
+    if wort == "/prognose":
         import handel_befehle
         return handel_befehle.prognose(t), kontext
     if t in ("/status", "/papierstatus"):
         import handel_befehle
         return handel_befehle.status(papier=t == "/papierstatus"), kontext
+    if wort == "/spur":
+        import handel_befehle
+        try:
+            return handel_befehle.klartext(
+                handel_befehle.spur(" ".join(teile[1:]))), kontext
+        except Exception as e:                                # noqa: BLE001
+            return "Spur nicht lesbar: %s" % str(e)[:120], kontext
+    if wort in ("/lage", "/bericht", "/spuren", "/strategien",
+                "/indikatoren", "/markt"):
+        try:
+            import handel_befehle
+            return handel_befehle.klartext(_handelsantwort(wort)), kontext
+        except Exception as e:                                # noqa: BLE001
+            return ("Auskunft nicht lesbar: %s\nIm Handelsbot geht %s weiter."
+                    % (str(e)[:120], wort)), kontext
     if t in ("/hilfe", "/start"):
-        return ("Ich reiche deine Nachrichten per A2A an den lokalen Hermes-"
-                "Agenten (hermes-maks-pc) weiter - der hat alle Skills."
-                "\n\n/status - lokaler Zustand, xperp zuerst\n/papierstatus - nur Papierstand"
-                "\n/prognose [N] - Marktanalyse ohne Order (bis 240 s)"
-                "\n/skills - Skills\n/hilfe - Hilfe"
-                "\nFreigaben im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, /nein_xperp, /stop_xperp."
-                "\nSWAP-Live bleibt gesperrt. Freitext geht weiterhin an Hermes."), kontext
+        return hilfe_text(), kontext
     if t == "/skills":
         try:
             namen = karten_skills()
@@ -327,8 +387,9 @@ def bearbeite(text, chat):
         except Exception as e:  # noqa: BLE001
             return "Skills-Abruf fehlgeschlagen: %s" % e, kontext
     if t.startswith("/"):
-        return ("Kein SkillsBot-Befehl. /status /papierstatus /prognose [N] /skills /hilfe.\n"
-                "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, /nein_xperp, /stop_xperp.\n"
+        return ("Kein SkillsBot-Befehl. /hilfe zeigt die Liste.\n"
+                "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
+                "/nein_xperp, /stop_xperp.\n"
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
     antwort, neuer_kontext = frage(t, kontext)
     if neuer_kontext:

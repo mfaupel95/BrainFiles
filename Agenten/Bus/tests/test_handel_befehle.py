@@ -31,6 +31,99 @@ class PrognoseTest(unittest.TestCase):
             text, _ = skillsbot.bearbeite('/ja_xperp 1', 1)
         self.assertIn('Handelsbot', text)
 
+class SkillsBotHandelsbefehleTest(unittest.TestCase):
+    """Verdrahtung der neuen Handelsbefehle im SkillsBot.
+
+    Geprueft wird das ROUTING (kein A2A, kein HTML, kein Traceback) - der
+    Inhalt der Auskuenfte steht in Handel/tests/test_befehle.py, wo die echten
+    Spuren liegen. Hier haengt ein Stub an der Stelle von befehle.py, damit
+    dieser Test schnell bleibt und ohne Netz laeuft.
+    """
+
+    class _Stub:
+        @staticmethod
+        def lage():
+            return "<b>LAGE-STUB</b>"
+
+        @staticmethod
+        def bericht():
+            return "<b>BERICHT-STUB</b>"
+
+        @staticmethod
+        def spur(name):
+            return "<b>SPUR %s</b>" % name
+
+        @staticmethod
+        def spuren():
+            return ["xperp", "scanner"]
+
+        @staticmethod
+        def strategien():
+            return "<b>STRATEGIEN-STUB</b>"
+
+        @staticmethod
+        def indikatoren():
+            return "<b>INDIKATOREN-STUB</b>"
+
+        @staticmethod
+        def markt():
+            return "<b>MARKT-STUB</b>"
+
+        @staticmethod
+        def klartext(text):
+            return text.replace("<b>", "").replace("</b>", "")
+
+    def setUp(self):
+        import handel_befehle
+        self.stub = patch.object(handel_befehle, "_handel",
+                                 return_value=self._Stub())
+        self.stub.start()
+        self.addCleanup(self.stub.stop)
+
+    def test_kein_handelsbefehl_geht_an_a2a_und_kein_html(self):
+        with patch.object(skillsbot, "frage",
+                          side_effect=AssertionError("A2A verboten")):
+            for befehl in ("/lage", "/bericht", "/spuren", "/strategien",
+                           "/indikatoren", "/markt", "/spur scanner"):
+                text, _ = skillsbot.bearbeite(befehl, 1)
+                self.assertNotIn("<b>", text, befehl)
+                self.assertNotIn("</b>", text, befehl)
+                self.assertTrue(text.strip(), befehl)
+
+    def test_spur_reicht_den_namen_durch(self):
+        text, _ = skillsbot.bearbeite("/spur macd_mtf", 1)
+        self.assertIn("SPUR macd_mtf", text)
+
+    def test_hilfe_kennt_die_neuen_befehle_ohne_html(self):
+        text, _ = skillsbot.bearbeite("/hilfe", 1)
+        for wort in ("/lage", "/spur NAME", "/strategien", "/indikatoren",
+                     "/markt", "/bericht"):
+            self.assertIn(wort, text)
+        self.assertNotIn("<b>", text)
+
+    def test_ausfall_der_handelsseite_ist_kein_traceback(self):
+        # Die Handelsseite faellt aus (Import kaputt, Modul fehlt) - dann steht
+        # ein Hinweis da und der Verweis auf den Handelsbot, kein Traceback.
+        import handel_befehle
+        with patch.object(handel_befehle, "_handel",
+                          side_effect=RuntimeError("Handelsseite kaputt")):
+            text, _ = skillsbot.bearbeite("/lage", 1)
+        self.assertIn("nicht lesbar", text)
+        self.assertIn("Handelsbot", text)
+
+
+class HandelsbefehleDurchreicherTest(unittest.TestCase):
+    def test_spurliste_nimmt_dauerlauf_spuren(self):
+        # handel_befehle holt die Liste ueber befehle.py aus dauerlauf.SPUREN;
+        # nur wenn das faellt, gilt die eigene Rueckfall-Liste.
+        import handel_befehle as h
+        with patch.object(h, "_handel") as m:
+            m.return_value.spuren.return_value = ["eins", "zwei"]
+            self.assertEqual(h._spurliste(), ["eins", "zwei"])
+        with patch.object(h, "_handel", side_effect=RuntimeError("kaputt")):
+            self.assertEqual(h._spurliste(), list(h.SPUREN))
+
+
 class ReadOnlyTest(unittest.TestCase):
     def test_paper_does_not_claim_live_positions(self):
         import handel_befehle as h

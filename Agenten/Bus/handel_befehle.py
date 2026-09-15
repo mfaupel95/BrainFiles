@@ -1,7 +1,76 @@
-"""Feste lesende Telegram-Befehle, ohne Agent oder Order-Import."""
+"""Feste lesende Telegram-Befehle, ohne Agent oder Order-Import.
+
+Der Text der Handelsbefehle steht in `Handel/befehle.py` - EINE Quelle fuer
+den Handelsbot (dauerlauf.py) und den SkillsBot. Hier stehen nur die zwei
+Befehle, die es NUR hier gibt (`status`, `papierstatus`) und die duennen
+Durchreicher auf `befehle.py`. Eine zweite Fassung von /lage waere eine
+zweite Wahrheit: der Handelsbot zeigte dann etwas anderes als der SkillsBot.
+
+Geladen wird `befehle.py` erst beim Aufruf (nicht beim Import dieses Moduls):
+so bleibt der Bus-Prozess schlank, und ein Fehler in der Handelsseite reisst
+nicht den ganzen Bus mit.
+"""
 import json
+import sys
 from pathlib import Path
 HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
+
+
+def _handel():
+    """`Handel/befehle.py` laden - der Handel-Ordner muss im Suchpfad stehen."""
+    if str(HANDEL) not in sys.path:
+        sys.path.append(str(HANDEL))
+    import befehle as handelsbefehle
+    return handelsbefehle
+
+
+def lage():
+    return _handel().lage()
+
+
+def spur(name):
+    return _handel().spur(name)
+
+
+def strategien():
+    return _handel().strategien()
+
+
+def indikatoren():
+    return _handel().indikatoren()
+
+
+def markt():
+    return _handel().markt()
+
+
+def spuren():
+    return _handel().spuren()
+
+
+def klartext(text):
+    """HTML-Marken fuer den SkillsBot entfernen (der sendet ohne parse_mode)."""
+    return _handel().klartext(text)
+
+
+def bericht():
+    """Der volle Tagesbericht - derselbe Aufruf wie im Handelsbot."""
+    return _handel().bericht()
+
+
+def _spurliste():
+    """Die Spurliste aus `dauerlauf.SPUREN` (ueber `befehle.py`).
+
+    Die eigene Liste darunter bleibt als RUECKFALL: faellt die Handelsseite
+    aus, soll /status weiter antworten statt zu verstummen. Eine Liste, die
+    nur hier steht, altert beim naechsten neuen Spurordner still.
+    """
+    try:
+        namen = _handel().spuren()
+    except Exception:                                         # noqa: BLE001
+        namen = []
+    return namen or list(SPUREN)
+
 
 # Reihenfolge der Ausgabe. xperp zuerst (Hauptweg), dann Spot, dann die beiden
 # Papierspuren. Wie eine Spur gerade steht, steht in ihrer eigenen wachen.json
@@ -15,7 +84,9 @@ SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant',
 
 def status(papier=False):
     lines = ['Lokaler Dateistand (kein Broker-Abgleich).']
-    for spur in SPUREN:
+    # Die Liste kommt aus dauerlauf.SPUREN (siehe _spurliste): eine neue Spur
+    # erscheint hier damit von selbst - bis 15.09.2026 stand sie still.
+    for spur in _spurliste():
         path = HANDEL / spur / 'zustand.json'
         try:
             d = json.loads(path.read_text(encoding='utf-8'))
