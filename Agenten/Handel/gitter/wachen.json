@@ -11,7 +11,8 @@
 
   "_spanne": "Grenzen des Gitters als ANTEIL des ersten gesehenen Kurses, nicht in USDT: eine feste Zahl waere nach einer Verdopplung des Kurses sinnlos. Sie werden EINMAL festgeschrieben (zustand.json) und danach nie verschoben - ein Gitter, das seiner Spanne nachzieht, waere eine andere Strategie.",
   "spanne_prozent": 20.0,
-  "stufen": 12,
+  "stufen": 6,
+  "_stufen": "6 seit 15.09.2026, vorher 12. Hergeleitet, nicht gewaehlt - und die Begruendung ist der wichtigere Teil: 30 Kombinationen aus Spanne und Stufenzahl wurden auf einem Fenster gesucht (26.05.-21.07.2026, Markt -12.9 %) und auf einem FENSTER DANACH geprueft, das beim Suchen nicht zu sehen war (21.07.-15.09.2026, Markt +14.9 %). Nur was auf beiden haelt, ist eine Verbesserung. 20 %/6 war die einzige Kombination, die auf BEIDEN oben stand: Suche +1.79 %% statt -1.19 %%, ungesehen +3.25 %% statt +1.81 %% (gitter/optimieren_gitter.py). Gegenprobe im Walk-Forward ueber 52 Wochen, 12 Fenster: Mittel -2.53 %% statt -2.67 %%, 6 von 12 Fenstern positiv statt 5 (gitter/regime_gitter.py). Die Verbesserung ist REAL, ABER KLEIN - rund 1.4 Prozentpunkte auf acht Wochen. Warum weniger Stufen helfen: der Abstand je Stufe waechst von 3.75 %% auf rund 7.3 %%, die Rundlaufkosten von 0.3 %% fressen also nur noch 4 %% statt 8 %% einer Stufe. WIRKUNG: die Leiter entsteht nur beim Erstlauf (handeln.py:538 'neu = not z.get(\"leiter\")') und wird danach nie verschoben - dieser Wert wirkt deshalb NICHT auf das laufende Gitter, sondern erst auf eine frische Leiter.",
   "geometrisch": true,
   "einsatz_usd": 1000.0,
   "_einsatz": "Der Einsatz wird gleichmaessig auf die Kaufstufen verteilt (Einsatz / (Stufen-1)). Mehr als dieser Betrag kommt nie ins Buch; die Stufen werden deshalb auch mit dem Raster der Boerse ABgerundet, nicht aufgerundet.",

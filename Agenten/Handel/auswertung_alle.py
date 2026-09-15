@@ -32,6 +32,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import stoerungen  # gleicher Ordner: trennt Zwangsschluesse von Handelsrunden
+
 HIER = Path(__file__).resolve().parent
 
 # Ab wie vielen geschlossenen Runden eine Spur ueberhaupt etwas aussagt.
@@ -82,9 +84,21 @@ def tage(von, bis):
 
 
 def kennzahlen(runden, einheit):
-    """Die gemeinsame Ausgabe. runden = Liste von dicts mit ergebnis/einsatz."""
-    if not runden:
+    """Die gemeinsame Ausgabe. runden = Liste von dicts mit ergebnis/einsatz.
+
+    ZWANGSSCHLUESSE ZAEHLEN NICHT MIT. Ein Ausstieg mit herzschlag im Grund
+    ist keine Handelsentscheidung, sondern die Folge eines Ausfalls (der
+    Waechter stellt die Spur flach, wenn der Dauerlauf zu lange stand). Er
+    steht trotzdem im Journal und wuerde sonst als Runde mitgezaehlt: die
+    Rundenzahl waere zu hoch, die Trefferquote zu niedrig, weil die
+    Zwangsschluesse meist im Verlust sitzen. Beides wird deshalb getrennt
+    ausgewiesen - nicht versteckt, nur nicht vermischt.
+    """
+    echt = [r for r in runden if not stoerungen.ist_stoerung(r.get("grund"))]
+    stoer = [r for r in runden if stoerungen.ist_stoerung(r.get("grund"))]
+    if not echt:
         return None
+    runden = echt
     ergebnisse = [r["ergebnis"] for r in runden]
     einsatz = sum(r["einsatz"] for r in runden)
     erloes = sum(r["ergebnis"] + r["einsatz"] for r in runden)
@@ -104,6 +118,10 @@ def kennzahlen(runden, einheit):
         "halten_tage": statistics.median(halten) if halten else None,
         "gruende": _zaehle(r["grund"] for r in runden),
         "kosten_anteil": _kosten_anteil(runden),
+        # Separat, nicht eingerechnet: die Fehleranalyse.
+        "n_stoerung": len(stoer),
+        "stoerung_ergebnis": sum(r["ergebnis"] for r in stoer) if stoer else 0.0,
+        "runden_gesamt": len(echt) + len(stoer),
     }
 
 
@@ -245,6 +263,11 @@ def zeige(spur, k):
     p = prozent
     print("\n=== %s ===" % spur.upper())
     print("  %-28s %d" % ("geschlossene Runden", k["n"]))
+    if k.get("n_stoerung"):
+        print("  %-28s %d   (nicht mitgezaehlt: Ergebnis %+.2f %s)"
+              % ("davon Zwangsschluesse", k["n_stoerung"],
+                 k["stoerung_ergebnis"], k["einheit"]))
+        print("  %-28s %d" % ("Runden mit Stoerungen", k["runden_gesamt"]))
     print("  %-28s %s" % ("Ergebnis", "%+.2f %s (%+.2f %%)"
                           % (k["ergebnis"], k["einheit"], k["pct"])))
     print("  %-28s %.0f %%  (%d von %d)"
