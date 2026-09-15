@@ -104,7 +104,8 @@ def journal(*felder):
         s = csv.writer(f)
         if neu:
             s.writerow(["zeit", "modus", "aktion", "inst", "preis", "usd",
-                        "stop", "ziel", "grund"])
+                        "stop", "ziel", "grund", "mfe_pct", "mae_pct",
+                        "haltetage"])
         s.writerow(felder)
 
 
@@ -219,12 +220,44 @@ def raeume_offene_stops(z):
         z["offene_stops"] = rest
 
 
+def _haltetage(p):
+    """Kalendertage seit dem Einstieg (UTC-Datum, wie _heute()).
+
+    Leerer String, wenn das Feld fehlt - Altbestand aus der Zeit vor dieser
+    Spalte wird nicht geraten.
+    """
+    try:
+        return (date.fromisoformat(_heute())
+                - date.fromisoformat(p["eroeffnet"])).days
+    except (KeyError, TypeError, ValueError):
+        return ""
+
+
+def _merke_extrem(p, kurs):
+    """Buchgewinn/-verlust fortschreiben (MFE/MAE in Prozent des Einstiegs).
+
+    Gemessen wird an den Zykluspunkten - die echten Extreme zwischen zwei
+    Laeufen liegen weiter aussen, die Zahl ist also eine UNTERGRENZE. Sie ist
+    trotzdem das einzige Mittel, um spaeter zu trennen, ob ein Stop zu eng war
+    (die Position lief erst ins Plus und drehte dann) oder ob das Signal falsch
+    war (sie lief sofort gegen den Einstieg).
+
+    Die Spur ist long-only, deshalb kein Richtungsfaktor. Altbestand ohne die
+    Felder faellt ueber .get() auf 0.0 zurueck und wird ab dem naechsten
+    Zyklus mitgemessen - rueckwirkend rekonstruiert wird nichts.
+    """
+    bewegung = (kurs - p["einstieg"]) / p["einstieg"] * 100.0
+    p["mfe_pct"] = max(p.get("mfe_pct", 0.0), bewegung)
+    p["mae_pct"] = min(p.get("mae_pct", 0.0), bewegung)
+
+
 def pruefe_ausstiege(z, live):
     if live:
         raeume_offene_stops(z)
     behalten = []
     for p in z["positionen"]:
         kurs = okx.letzter_kurs(p["inst"])
+        _merke_extrem(p, kurs)
         grund = None
         if kurs <= p["stop"]:
             grund = "stop"
@@ -251,7 +284,9 @@ def pruefe_ausstiege(z, live):
         print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
-                "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
+                "%.6f" % kurs, "%.2f" % erloes, "", "", grund,
+                "%.4f" % p.get("mfe_pct", 0.0),
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
         if grund.startswith("stop"):
             z["letzte_stops"][p["inst"]] = _heute()
     z["positionen"] = behalten
@@ -265,6 +300,7 @@ def flach_stellen(z, live, grund):
     behalten = []
     for p in z["positionen"]:
         kurs = okx.letzter_kurs(p["inst"])
+        _merke_extrem(p, kurs)
         # Wie in pruefe_ausstiege: Gebuehr nur in der journalisierten Zeile.
         erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
         if live:
@@ -275,7 +311,9 @@ def flach_stellen(z, live, grund):
         print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], kurs, erloes - p["usd"]))
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
-                "%.6f" % kurs, "%.2f" % erloes, "", "", grund)
+                "%.6f" % kurs, "%.2f" % erloes, "", "", grund,
+                "%.4f" % p.get("mfe_pct", 0.0),
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
     z["positionen"] = behalten
 
 
@@ -330,6 +368,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
             "stop": v["stop"], "ziel": v["ziel"], "eroeffnet": _heute(),
             "kauf_ord_id": kauf_id, "stop_ord_id": stop_id,
             "boersen_stop_fehlt": stop_fehlt,
+            "mfe_pct": 0.0, "mae_pct": 0.0,
         })
         eingesetzt += usd
         gehalten.add(v["inst"])
@@ -338,7 +377,8 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                  v["ziel"], usd))
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
                 "%.6f" % v["einstieg"], "%.2f" % (usd * (1 + GEBUEHR_PCT)),
-                "%.6f" % v["stop"], "%.6f" % v["ziel"], "score %.1f" % v["score"])
+                "%.6f" % v["stop"], "%.6f" % v["ziel"],
+                "score %.1f" % v["score"], "", "", "")
 
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
