@@ -49,6 +49,18 @@ Einzelfall ist austauschbar.
 4. **Parameter ohne Wirkung.** `_nominal(inst, kurs)` ignorierte beide
    Argumente; `schliesse(..., live)` nutzte `live` nie. Sieht wie Logik aus,
    ist Attrappe - und suggeriert beim naechsten Lesen eine Rechnung.
+   Dieselbe Familie: **ein Argument, das im FALSCHEN Parameter landet**, weil es
+   positionell uebergeben wurde. Signatur `bewerten(kerzen, richtung="long",
+   gewichte=None)`, Aufruf `bewerten(k, g)` -> `g` wird zur RICHTUNG, die
+   Gewichte kommen nie an. Gefaehrlich wird das erst mit einem stillen Zweig:
+   `if richtung == "short": ... else: <long>` schluckt jeden fremden Wert, die
+   Funktion rechnet unveraendert weiter, und ein Test, der genau diesen Aufruf
+   macht, bleibt gruen, ohne etwas zu pruefen (Score 66.7 == 66.7).
+   Zwei Gegenmittel, beide noetig: Konfiguration IMMER als Keyword uebergeben
+   (`gewichte=g`), und die Funktion bei unbekanntem Wert SCHEITERN lassen
+   (`raise ValueError`) statt still den Standardzweig zu nehmen. Pruefung:
+   jede Aufrufstelle der Funktion ansehen - positionelle Argumente ab Stelle 2
+   sind der Verdacht, und ein `else` ohne Bedingung ist der Verstecker.
 5. **Fehlender Deckel.** Ein Short-Erloes konnte negativ werden (mehr Verlust
    als Einsatz) -> `max(0.0, ...)` gegen die Liquidation. Pruefung: welcher
    Wert kann ueber den Einsatz hinauslaufen?

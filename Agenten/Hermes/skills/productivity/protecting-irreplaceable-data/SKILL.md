@@ -171,6 +171,24 @@ their own coverage are worse than none.
   becomes a full-file churn (and a self-inflicted multi-hundred-line diff).
   Preserve LF when writing, or fix after with a CRLF→LF pass and confirm
   `git diff --stat` shows only the intended line.
+- **Detect line endings by reading BYTES, not text.** A text-mode read
+  (`open(p, encoding="utf-8")`) silently folds CRLF to LF, so the natural guard
+  `"\r\n" in text` is FALSE on a CRLF file — you then write the whole file back
+  as LF and turn a five-line insertion into a 113-line diff. Read
+  `open(p, "rb").read()`, decide the ending from the bytes, and write with `wb`.
+  In a MIXED file (real example: 86 CRLF + 52 LF in one README) there is no
+  single right answer — insert line by line (`splitlines(keepends=True)`) and give
+  each new line the ending of its NEIGHBOUR. Same routine when the `patch` tool
+  reports "Could not find a match" on text you can see: don't guess anchor
+  variants, switch to the byte-level write. Check with `git diff --stat` (the
+  intended `+n/-0`, not whole-file) and `git diff --ignore-cr-at-eol --stat`
+  (must find nothing extra).
+- **Your own test run can make the backup look broken.** A suite that writes into
+  real state files (a trail's journal, a status JSON inside the watched tree)
+  leaves the live copy differing from the mirrored one until the next scheduled
+  run or daemon cycle. Wait for that cycle before declaring "the base file is
+  untouched" — otherwise you report your own side effect as a defect and start
+  hunting a bug that does not exist.
 - **A robocopy line ending in a backtick continues on the next line.** The
   backtick joins the *following* line; a line appended *after* the backtick line
   with no backtick runs as a separate command (`pending_messages` is not a

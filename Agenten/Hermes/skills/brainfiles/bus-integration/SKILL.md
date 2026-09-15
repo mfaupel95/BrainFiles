@@ -64,6 +64,16 @@ category: brainfiles
   das die Datei neu schreibt (`write`, Patch-Werkzeug, `sed`, `edit`, Python),
   normalisiert sie und dreht genau diese Zeilen um. Richtig: Sicherung anlegen,
   bytes-genau einfuegen, Gegenprobe (Datei ohne die neue Zeile == Sicherung).
+  Erkennen VOR dem Schreiben: Zeilenenden BINAER lesen (`open(p,'rb').read()`).
+  Ein Textmodus-`read()` wandelt `\r\n` schon beim Lesen zu `\n`; eine Pruefung
+  `'\r\n' in text` meldet dann falsch „reine LF-Datei", und der Write stellt die
+  ganze Datei um. Auf CRLF-Zielen findet der Fuzzy-Abgleich des Patch-Werkzeugs
+  den Anker ausserdem oft nicht („Could not find a match", obwohl die Zeile
+  sichtbar dasteht) - dann nicht weiter probieren, sondern die Ersetzung per
+  Skript mit binaer gelesenem Text und `newline=''` fahren und den Erfolg an der
+  Trefferzahl festmachen (`assert text.count(alt) == 1`, sonst NICHTS schreiben).
+  Nach jeder Massenaenderung `git diff --stat` ansehen: eine gewollte Zeile darf
+  nicht als ganzes Dateidiff erscheinen.
 - **Zugriff verweigert heisst hier: erhoehte PowerShell.** `Register-ScheduledTask`
   legt ohne Admin GAR keine Aufgabe an (`HRESULT 0x80070005`), auch keine harmlose
   ohne `-RunLevel Highest` - unabhaengig davon, ob der Benutzer lokal
@@ -289,6 +299,32 @@ Befehl gilt:
    `/skills` zeigt NUR die Namen (58 Zeilen = eine Nachricht), die Beschreibung
    erst beim Filtern (`/skills handel`). Ein Befehl, der ohne Suchbegriff
    Beschreibungen ausgibt, sprengt die 4096 Zeichen und wird zerschnitten.
+9. **Ein Befehl, der etwas AUSFUEHRT, wird anders abgesichert als einer, der
+   liest.** `/run NAME [Auftrag]` reicht per A2A "Fuehre den Skill NAME aus" +
+   Auftrag weiter und gibt die Antwort zurueck. Regeln dafuer:
+   - Nur ausfuehren, was `skillkatalog.finde()` kennt UND `ladbar` ist, und nur
+     bei EINDEUTIGEM Teiltreffer. Unbekannter Name, Tippfehler und Skills fremder
+     Systeme enden OHNE A2A-Aufruf mit Begruendung - sonst laeuft irgendein
+     Skill, und niemand erfaehrt welcher. Genau das ist der Test wert: bei
+     abgelehntem Namen darf `frage()` NICHT gerufen worden sein.
+   - Vorher eine Zwischenmeldung ("Fuehre X aus - das kann bis 5 min dauern"):
+     eine Ausfuehrung dauert, der A2A-Timeout liegt bei 300 s, und ohne die
+     Zeile wirkt der Bot haengend.
+   - `/skill NAME` bleibt LESEN, `/run` ist AUSFUEHREN - zwei Namen fuer zwei
+     Aufgaben, kein Schalter.
+10. **Denkblock abschneiden, bevor die Antwort rausgeht.** Der A2A-Agent stellt
+   seiner Antwort seinen Planungsblock voran (`\U0001f4ad **Reasoning:**` in einem
+   ```-Zaun). Ungeschnitten ist auf dem Handy der halbe Text interne Notiz und
+   liest sich wie das Ergebnis (im Test 3826 -> 1368 Zeichen).
+   `skillsbot.ohne_denken()` entfernt NUR diesen Block, laesst Text davor/danach
+   stehen und gibt bei fehlendem Block den Text unveraendert zurueck - ein
+   anderer Aufbau darf keine Antwort kosten. Gilt fuer Ausfuehrungs- UND
+   Freitext-Antworten.
+11. **Ohne Telegram nachstellen** (sonst schickt jeder Testlauf Nachrichten an
+   Max): `import skillsbot as s`, `s.sende = lambda chat, text:
+   gesammelt.append(text)`, dann `s.bearbeite('/run <name> [auftrag]', 1)`. Die
+   Antwort in eine Datei schreiben und dort lesen, nicht durch `tail` schicken -
+   so sind Zwischenmeldung, Katalogpruefung und A2A-Weg in EINEM Durchlauf belegt.
 
 ## When to Use
 Use this skill whenever you need to add a new automated routine to the BrainFiles Telegram Bus, or when you are setting up the bus for the first time on a new machine. Auch beim Auftrag "Autostart Routine einrichten" fuer einen Dienst oder ein Fenster (Abschnitt Dienst-Start-Routinen).

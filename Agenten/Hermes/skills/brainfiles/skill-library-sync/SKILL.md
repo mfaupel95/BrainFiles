@@ -134,6 +134,16 @@ Fallen:
 
 ## Fallen
 
+- **Eine `references/`-Datei ohne Eintrag in der SKILL.md ist toter Text.** Der Loader
+  zeigt beim `skill_view` nur, was die SKILL.md selbst nennt; eine Referenz, die dort
+  nicht auftaucht, wird nur durch Zufall gefunden (Ordner durchsuchen, Stichwort greppen)
+  — im Zweifel arbeitet die nächste Sitzung die Aufgabe noch einmal von vorn. Beim
+  Anlegen oder Umschreiben einer Referenz gehört der Pfad im selben Zug in die
+  Auslöserliste („Wann") der SKILL.md, formuliert in den Worten, nach denen man
+  später sucht („Änderung, die alle Spuren trifft → `references/x.md`"), nicht nur als
+  Dateiname am Ende. Gegenprobe: den Referenznamen in der SKILL.md suchen — genau ein
+  Treffer, sonst ist sie verwaist.
+
 - **`HERMES_HOME` in derselben Shell setzen.** Kindprozesse erben Windows-Benutzervariablen
   nicht: ohne `$env:HERMES_HOME='…\Agenten\Hermes'` liest `hermes skills list` das
   Standardprofil und meldet eine plausibel aussehende, aber falsche Menge (64 statt 113).

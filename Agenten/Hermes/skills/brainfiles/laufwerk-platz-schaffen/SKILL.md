@@ -69,7 +69,14 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
 ## Pitfalls
 - **Junctions verfälschen jede Größenmessung** in beide Richtungen: der
   Quellpfad zeigt auf das Ziel, und ein rekursives Aufsummieren zählt die
-  Daten doppelt, wenn beide Wege erfasst werden.
+  Daten doppelt, wenn beide Wege erfasst werden. Umgekehrt liefern Werkzeuge,
+  die der Verknüpfung **nicht** folgen (`find`, `rg`), über den Junction-Pfad
+  **still nichts**: eine Zählung über `Werkstatt/...` meldete „2 Atlanten,
+  1,0 MB" statt 33 Atlanten und 5,1 GB. Eine Null über einem Junction-Pfad ist
+  deshalb kein Beweis, dass nichts da ist — über die **Liste der Zieleinträge**
+  summieren (je Eintrag den erzeugten Pfad messen) oder den echten Pfad
+  (`O:/Werkstatt/...`) nennen. Vor einer Zahl kurz prüfen, ob der gemessene Pfad
+  selbst eine Verknüpfung ist.
 - **Rekursive Größenmessung großer Bäume reißt die Zeitgrenze des
   Host-PowerShell-Werkzeugs (~300 s).** Das gilt auch fuer einen **einzelnen**
   Ordner: `AppData\Local\Temp`, `AppData\Local\Packages` und `C:\$Recycle.Bin`

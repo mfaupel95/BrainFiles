@@ -33,7 +33,9 @@ Symptom: every `hermes` CLI call dies with `Fatal Python error: init_import_site
 
 Diagnosis in one line (run via the windows-mcp PowerShell tool, which has the poisoned env): `Write-Output $env:PYTHONHOME` — if set, that's it. Confirm the venv is healthy with `Remove-Item Env:PYTHONHOME; venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"` (must print the venv's own base, e.g. `.hermes-runtime\python\cpython-3.11...`).
 
-Fix: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` (and set `$env:HERMES_HOME`) at the top of every PowerShell one-liner that invokes `hermes.exe` through the windows-mcp/desktop-commander tools. Do NOT reinstall uv Python or touch the venv for this. Also note the venv has no `hermes_agent` module — the importable package is `hermes_cli` (`import hermes_agent` fails by design; editable-install finder is `__editable___hermes_agent_0_21_1_finder`).
+Fix: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` (and set `$env:HERMES_HOME`) at the top of every PowerShell one-liner that invokes `hermes.exe` through the windows-mcp/desktop-commander tools. Do NOT reinstall uv Python or touch the venv for this: a `hermes.exe` that fails only because of PYTHONHOME is not a
+repair case — clear the variable, then `hermes --version` and `hermes doctor`
+are the whole test. Also note the venv has no `hermes_agent` module — the importable package is `hermes_cli` (`import hermes_agent` fails by design; editable-install finder is `__editable___hermes_agent_0_21_1_finder`).
 
 - `hermes update` pulls git, reinstalls deps into `venv`, migrates config
   format, pauses/restarts the gateway profile(s). It can require approval
@@ -41,6 +43,16 @@ Fix: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` (and set `$env:HERMES_HOME`) a
 - Config format migrations bump silently, e.g. `v39 → v40`.
 - `hermes doctor` is the post-update verification. Not all warnings are
   fatal; the SQLite WAL one is the one that matters.
+
+## Update only on a clean checkout
+
+`hermes update` ends in a `git pull`. Uncommitted changes in the checkout
+(someone editing `gateway/*.py`, or a `*.bak-*` sitting next to it) make the
+pull fail or fight the other session's work — and the update restarts every
+gateway profile, which severs any session currently talking through that
+gateway. Check `git -C <checkout> status --porcelain` first; if it is not
+empty, secure that work first (see the `sichern` skill) and run the update when
+nobody is mid-edit.
 
 ## SQLite WAL-reset bug — the real blocker
 

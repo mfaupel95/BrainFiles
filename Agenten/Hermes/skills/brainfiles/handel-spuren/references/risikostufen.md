@@ -76,6 +76,13 @@ sind es drei Eingriffe, alle nach demselben Muster:
    befragen, die der Betrieb benutzt.
 3. `ZUSTAND`/`JOURNAL`/`ABLEHNUNGEN` (und `nautilus`: `KOPIER_*`) ueber `datei(...)`
    benennen.
+4. Werkzeuge (`auswertung.py` je Spur) laden `risikostufe` **ausfallsicher**:
+   `try: ... except Exception: risikostufe = None`, danach ein `_stufe(pfad)` als
+   Rueckfall auf den Basisnamen. Grund: der Tagesbericht laedt
+   `<spur>/auswertung.py` ueber den PFAD, und seine Tests kopieren die Datei in
+   einen temp-Ordner - dort liegt `risikostufe.py` eine Ebene hoeher nicht, und
+   ein harter Import schreibt „Auswertung nicht lesbar" in JEDEN Bericht. Ein
+   Werkzeug darf nie daran scheitern, dass eine Stufe fehlt.
 
 | Spur | Wachen aus | Dateien in |
 |---|---|---|
@@ -96,9 +103,61 @@ Betrieb:
 - `dauerlauf.py --risiko mittel`: eigene Logdatei (`dauerlauf.mittel.log`) und
   eigene PID-Datei (`dauerlauf.mittel.pid`), sonst haetten sich zwei Laeufe
   gegenseitig „laeuft schon" gemeldet.
-- `Routinen/handel-dauerlauf.ps1 -Risiko mittel`: Waechter-Aufruf der Stufe.
-  Eine zweite geplante Aufgabe muss Max anlegen - der Wrapper startet nichts von
-  selbst.
+- `Routinen/handel-dauerlauf.ps1 -Risiko mittel`: Waechter-Aufruf der Stufe; er
+  prueft `dauerlauf.mittel.pid` und steigt mit „laeuft bereits" aus. Dauerhaft
+  gehoert dorthin eine EIGENE geplante Aufgabe (Anmeldung + alle 30 Minuten,
+  Aktion mit `-Risiko mittel`) - der Basis-Waechter ruft den Wrapper OHNE den
+  Schalter und startet eine Stufe nach einem Neustart deshalb nicht.
+- **Neue Dateinamen sind erst aus dem Verlauf heraus, wenn eine Sperrzeile sie
+  nennt.** `zustand.mittel.json` fiel unter die `*.json`-Freigabe (die Journale
+  deckte `*.csv` schon ab) und waere sonst die einzige Zustandsdatei im
+  Verlauf. Pruefen mit `git check-ignore -v <pfad>`; liegt die Spur in einem
+  EIGENEN Repo (`nautilus/`), dort separat sperren - die BrainFiles-Sperre
+  erreicht sie nicht.
+
+## Zwei Schreiber machen die Messreihe wertlos
+
+Eine Stufe ist nur so viel wert wie ihre Buchfuehrung: laufen zwei Prozesse auf
+denselben `zustand.mittel.json`, sind die Positionen doppelt und jede Zahl
+unbrauchbar. Beim Starten eines zweiten Laufs von Hand deshalb:
+
+- **Erst pruefen, dass kein Test-/Trockenlauf mehr lebt.** Ein venv-Python ist
+  ein PROZESS-PAAR (Launcher-Shim + echtes Python); wird nur "die" PID beendet,
+  laeuft der Lauf weiter und schreibt still mit. Nachsehen ueber die
+  Kommandozeile, nicht ueber den Namen:
+
+      Get-CimInstance Win32_Process -Filter "Name like 'python%'" |
+        Where-Object { $_.CommandLine -like '*dauerlauf.py*' } |
+        Select-Object ProcessId, CommandLine
+
+- **Nach einem Lauf ohne Freigabe die PID-Datei mitnehmen** (`rm dauerlauf.mittel.pid`),
+  sonst meldet der naechste Waechter-Aufruf faelschlich „laeuft bereits".
+- **Waren zwei Schreiber dran, die Buecher verwerfen und neu anfangen:** lokale
+  `*.mittel.*` UND die Q:-Kopien loeschen (`Q:\Handel_Journal\<spur>\*.mittel.*`),
+  Stufe neu starten. Nur die Basisdateien sind unantastbar - die Stufe ist eine
+  Messreihe, kein Buch, das jemand liest.
+
+## Leser gehoeren zum Auftrag, nicht zum Nachtrag
+
+Eine zweite Buchfuehrung ist erst angeschlossen, wenn die WERKZEUGE sie zeigen
+koennen - sonst sammelt die Variante Daten, die niemand sieht:
+
+- Die GUI (`handelszentrale.py`) bekommt Umschalter und Startwert und bildet ALLE
+  Pfade (Zustand, Journal, PID- und Logdatei, Konsole) ueber EINE Stelle
+  (`stufenname()`). Nachweis ist der Aufruf MIT Variante
+  (`handelszentrale.py --pruefen --risiko mittel` nennt PID und
+  `zustand.mittel.json`), nicht nur der Basisaufruf.
+- Der Tagesbericht bekommt eine Zeile je laufender Variante (Spuren mit Buch,
+  Alter des juengsten Zyklus, Runden mit Summe; deutlich ueber dem Takt = „laeuft
+  sie noch?") und laesst sie ohne Variante WEG. Die Buchliste aus dem Ordner
+  lesen, NICHT `dauerlauf.SPUREN` importieren: `dauerlauf` importiert den
+  Bericht, ein Rueckimport ist ein halb geladener Zyklus.
+- **Zahlen in solchen Zeilen aus DERSELBEN Funktion holen, die die Auswertung
+  benutzt** (`auswertung_alle.kennzahlen_fuer`, mit dem `HIER` des Berichts), nie
+  aus einer zweiten Formel - eine zweite Formel laeuft beim naechsten Umbau still
+  auseinander, und der Bericht behauptet dann etwas anderes als das Werkzeug.
+- Gegenprobe in beide Richtungen: ohne Variante muss jede Ausgabe unveraendert
+  sein (Basisnamen, keine Zusatzzeile, kein leerer Absatz).
 
 ## Pruefen
 

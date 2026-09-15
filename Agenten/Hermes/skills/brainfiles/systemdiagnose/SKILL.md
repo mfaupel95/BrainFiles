@@ -72,10 +72,17 @@ Unsauberer Abschuss — kein Bugcheck heisst Stromausfall/Reset:
 ```
 powershell -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='System';Id=41} -MaxEvents 10 | ForEach-Object { \$_.TimeCreated.ToString('dd.MM HH:mm') + ' Bugcheck=' + \$_.Properties[15].Value + ' PowerButton=' + \$_.Properties[11].Value }"
 ```
-Geplante Aufgaben mit Ergebnis (`LastTaskResult` 0 = fehlerfrei):
+Geplante Aufgaben mit Ergebnis:
 ```
 powershell -NoProfile -Command "Get-ScheduledTask | Where-Object { \$_.TaskName -match '<Muster>' } | Select-Object TaskName,State,@{n='Result';e={(Get-ScheduledTaskInfo \$_.TaskName).LastTaskResult}}"
 ```
+`LastTaskResult` lesen, **nicht nur `0` zaehlen**: `0` = sauber, `267009`
+(0x41301) = laeuft gerade, `267014` (0x41306) und `1073807364` (0x40010004) =
+Prozess von aussen beendet (bei Dauerlaeufen der Normalfall beim Herunterfahren),
+`2147946720` (0x800710E0) = Aufgabe laeuft schon (`IgnoreNew`), `3221225786`
+(0xC000013A) = abgebrochen. Jeden Nicht-`0`-Wert als Fehler zu melden, erzeugt
+Fehlalarme; ein Befund ist er erst zusammen mit `ENDE FEHLER` im eigenen
+Protokoll oder wenn der Dienst nachweislich nicht antwortet.
 Dauerlaeufe und ihre Kinder:
 ```
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | ForEach-Object { \$_.ProcessId.ToString() + ' | Parent ' + \$_.ParentProcessId + ' | ' + \$_.CreationDate + ' | ' + \$_.CommandLine }"
@@ -111,6 +118,21 @@ fehlgedeutet.
   dass er tot ist.** `401` ist eine gueltige Antwort. Vor dem Urteil den
   Lauscher-PID und einen Statuscode holen — *laeuft* und *erreichbar* sind zwei
   Aussagen.
+- **Ein Dienst, der laut eigener Startmeldung nicht hochkam, kann laufen.** Die
+  Verifikationsstufe eines Starters bricht gern zu frueh ab und schreibt
+  „kam nicht hoch“, waehrend der Dienst seit Stunden Anfragen beantwortet. Vor
+  jedem Urteil und erst recht vor einem Neustart das **Dienstprotokoll** auf
+  erfolgreiche Arbeit pruefen (Erfolgs-Statuszeilen, `status=200`, „succeeded“)
+  **und** den Port proben. Beides fehlt = wirklich nicht hochgekommen; eines von
+  beiden traegt = die Startmeldung ist der Befund.
+- **Jeder Dienst braucht einen Waechter — und der Waechter darf nicht ueber den
+  Weg melden, den er ueberwacht.** Ein Dienst ohne eigene Ueberwachung faellt
+  tagelang nicht auf (belegt: eine Meldekette war vier Tage stumm und niemand
+  sah es, weil ihre Meldungen ueber genau den toten Dienst liefen). Wer eine
+  Ueberwachung prueft, prueft fuenf Dinge: existiert eine Aufgabe dafuer, laeuft
+  sie, meldet sie auf einem Weg, der den Ausfall ueberlebt (direkter Versand oder
+  ein fremder Scheduler), meldet sie **nur** im Fehlerfall (sonst wird sie
+  ignoriert) und steht die Ausfallhaeufigkeit irgendwo sichtbar.
 - **Nicht jeder Fehler im Log ist ein aktueller Fehler.** Start- und
   Haushaltslogs wachsen ueber Stunden; die **letzten** Zeilen lesen. Viele
   Systeme heilen sich selbst (Verbindungs-Wiederaufbau, „error cleared“) —

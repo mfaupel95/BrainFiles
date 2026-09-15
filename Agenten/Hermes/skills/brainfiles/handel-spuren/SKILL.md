@@ -1097,6 +1097,38 @@ Ausloeser → Referenz:
   `git check-ignore -v Agenten/Handel/<spur>/zustand.json` muss die Sperrzeile
   nennen (nicht die Freigabezeile).
 
+## Welche Daten eine Sperre liest
+
+Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdr\u00fccklich fest,
+auf welcher Datenmenge sie rechnet — das ist eine Entscheidung, keine
+Nebenbedingung. Geltende Regel: eine **Betriebsstoerung** (Herzschlag-
+Zwangsschluss, Notaus) ist keine Handelsentscheidung und darf eine
+Erwartungswert-Sperre nicht ausl\u00f6sen. Die **Kapitalkurve** (Drawdown, Ratsche,
+Halbierung, Kill-Switch) rechnet weiter auf ALLEN Buchungen — eine Stoerung ist
+eingetragen und hat Geld bewegt.
+
+- **Genau EIN Feld tr\u00e4gt die Zahl, auf der die Sperre beruht.** Hei\u00dft es
+  `rollierender_ev`, dann ist das die Zahl der Bedingung; die Zahl \u00fcber alle
+  Buchungen bekommt einen eigenen Namen (`rollierender_ev_alle`). Ein Feld mit
+  zwei Bedeutungen ist der Fehler: Anzeige und Sperrtext lesen dasselbe Feld,
+  und hinterher kann niemand sagen, worauf gesperrt wurde.
+- **Die Umstellung geh\u00f6rt in ALLE Wachenfassungen** (scanner, xperp, kraken,
+  orbk) — jede hat ihre eigene `lage()`. Eine vergessene Fassung sieht nicht
+  wie ein Fehler aus, sondern wie eine Spur mit anderen Zahlen.
+- **Ein Test ohne Gegenprobe bleibt stillschweigend gr\u00fcn.** Der Test muss so
+  gebaut sein, dass er mit der ALTEN Rechnung fehlschl\u00e4gt: mehrere echte
+  Runden mit Gewinn gegen eine Handvoll Zwangsschl\u00fcsse mit Verlust, so dass
+  die alte Zahl negativ und die neue positiv ist — plus eine Zusicherung auf
+  den alten Wert (`assertLess(s["rollierender_ev_alle"], 0)`).
+- **Am lebenden System nachweisen, nicht nur im Test:** je Spur
+  `handeln.py --wachen` fahren und die Zeile der Bedingung aus dem echten
+  Journal zeigen (Spur, Zahl, ob gesperrt). Erst das belegt, dass die
+  Umstellung wirkt — und deckt auf, wo eine Spur unter der Messgrenze liegt
+  (`n/a`, zu wenig Handelsrunden).
+
+Rezept mit Testger\u00fcst, Journal-Formen je Spur und Pr\u00fcfkommandos:
+`references/sperren-datenbasis.md`
+
 ## Einzelne Spuren im Detail
 
 Die datierten Kapitel je Spur (SWAP anbinden, Omniquant, Kraken wieder im

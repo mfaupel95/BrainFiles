@@ -63,6 +63,16 @@ Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
    (`no_refresh_token`), unerreichbare Server (ECONNREFUSED), erschoepfte
    Credits (402). Sie verstopfen die auto/*-Pools und erzeugen tausende
    Fehlversuche pro Woche (belegt: github 7.950 Versuche, 6.980 Fehler).
+   Der klassische Fall in `call_logs` sind hunderte Aufrufe und fast keine
+   Erfolge, deren Fehler **alle** aus einer Guthaben-/Limit-Klasse stammen
+   (402 `requires more credits`, 403 `Key limit exceeded (monthly limit)`,
+   401 `No cookie auth credentials`) — die ist ohne Geld nicht zu reparieren und
+   kostet bei jedem Dispatch Zeit. Ablauf: erst Backup (Schritt 1), dann
+   `UPDATE provider_connections SET is_active=0 WHERE provider='<name>'` plus
+   `commit`; der laufende Server liest die Pools frisch aus der DB, ein Neustart
+   ist weder noetig noch erwünscht. Danach den Pool erneut zeigen — die Modelle
+   der stillgelegten Verbindung muessen aus
+   `GET /v1/auto-combo/<channel>/candidates` verschwunden sein.
    Eine Verbindung mit echten Erfolgen in den letzten Tagen NICHT
    deaktivieren, auch wenn der Health-Test 401 meldet (belegt: gemini 40 OK-
    Calls bei „Missing API key“ im Test-Endpunkt) — `call_logs` ist die
@@ -100,6 +110,17 @@ Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
 - **Logs**: `~/.omniroute/logs/quell-produktion/start-<ts>.log` und `.log.err`
   daneben. Bei Start- und Betriebsproblemen zuerst diese beiden, nicht das
   Dashboard.
+- **Ein gemeldeter Startfehler ist kein Beleg fuer einen toten Router.** Der
+  Starter hat eine eigene Verifikationsstufe; bricht sie ab (`Verification: FAIL
+  (This operation was aborted)`), schreibt der Wrapper
+  „ENDE FEHLER: Router kam auf Port 20128 nicht hoch“, **waehrend der Router
+  traegt**. Das Dienstprotokoll zeigt dann laufende Anfragen (`status=200`,
+  `Model ... succeeded`, Combo-Zeilen). Vor jedem Neustart deshalb: nach
+  solchen Erfolgen im *Dienst*-Protokoll suchen **und**
+  `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:20128/v1/models`
+  proben (401 = laeuft). Erst wenn beides fehlt, ist er wirklich nicht
+  hochgekommen; die ungeduldige Verifikationsstufe ist dann ein eigener Befund,
+  kein Router-Ausfall.
 - **Lebendnachweis ohne Secret-Ausgabe**:
   `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:20128/v1/models`
   -> **401 ohne Key** (laeuft, verlangt Auth), **200 mit gueltigem Key**. Ein

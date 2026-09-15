@@ -5,6 +5,11 @@ mehrere Spuren betrifft, oder ein neuer Kosten-/Ausstiegsgrund, der nicht in
 einer Spur stehen bleiben darf. Erprobt am 13.09.2026 (Journal außer Haus für
 acht Spuren, von denen nur zwei kopierten).
 
+Zweites erprobtes Beispiel, diesmal mit **einem zentralen Schalter** (Faktor auf
+alle Beträge, zweite Dateinamen, eigener zweiter Dauerlauf):
+`references/risikostufen.md` — dort steht auch, was dabei ausdrücklich NICHT
+mitwandern darf (Marktdaten, Messwerte, der Spiegel).
+
 Der Ablauf ist immer derselbe: **Inventar → Ziel(e) → Code-Anker → Tests →
 echter Lauf → Automatik-Nachweis → Doku → Commits**. Kein Schritt darf
 übersprungen werden, weil der vorige grün aussah — genau die Reihenfolge
@@ -84,6 +89,16 @@ Dabei gilt:
   (`importlib.util.spec_from_file_location`), wenn das Zielmodul in einem
   fremden venv liegt oder gleichnamige Module existieren — nie einen zweiten
   Ordner auf `sys.path` legen, in dem `okx.py`/`handeln.py` liegen.
+- **Den Haken dorthin setzen, wo der Betrieb liest.** Ein Faktor, Filter oder
+  Schalter gehört in die Funktion, die Betrieb UND Werkzeug gemeinsam benutzen
+  (`lade_wachen()` / `wachen()`), nicht in `lauf()` oder `main()`. Sonst muss
+  der Test nachbauen, was der Lauf tut, und prüft danach die Nachbildung statt
+  der Spur. Gegenprobe: die Spurendatei per `importlib` laden und IHRE Funktion
+  befragen — eine im Test wiederholte Formel beweist nur die Formel.
+- **Pfadtyp erhalten.** Beim Umbiegen von Dateinamen (`datei()`) muss aus `str`
+  wieder `str` und aus `Path` wieder `Path` werden: die Spuren benutzen beide
+  Formen, und `.read_text()`/`.exists()` auf einem zurückgegebenen `str` fällt
+  erst im Zyklus auf, nicht beim Start.
 
 ## 5. Tests richtig aufrufen (und die Zahl nennen)
 
@@ -176,6 +191,15 @@ Das zeitliche Fenster gehört in den Bericht („letzter automatischer Zyklus
   Kopie ab, zuerst die **Zeitstempel** beider Seiten ansehen und im Bus-Journal
   nach Aufrufen suchen, die nicht aus dem eigenen Lauf stammen — statt den
   eigenen Code zu verdächtigen. Erst danach ändern.
+- **Der häufigste fremde Schreiber ist der eigene Testlauf.** Ein von Hand
+  gestarteter Dauerlauf lebt als **Prozesspaar** weiter (venv-Shim + echtes
+  Python), auch wenn er beendet aussieht — vor dem nächsten Start über die
+  Kommandozeile nachsehen, nicht über den Prozessnamen:
+  `Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like '*dauerlauf.py*' }`.
+  Danach die PID-Datei mitnehmen (`dauerlauf.<stufe>.pid`), sonst meldet der
+  Wächter fälschlich „läuft bereits". Waren zwei Schreiber auf denselben
+  Büchern, sind deren Zahlen wertlos: verwerfen (lokal UND am Zweitziel) und neu
+  beginnen — die Basisdateien bleiben unangetastet.
 - **Modulnamen-Kollisionen** (zwei `handeln.py`, zwei `auswertung.py`, `gui.py`):
   über den Dateipfad laden und die Fixtures der Tests mitziehen.
 - **Keine Behauptung über fremde Spuren im Code** — Zustand lesen, nicht

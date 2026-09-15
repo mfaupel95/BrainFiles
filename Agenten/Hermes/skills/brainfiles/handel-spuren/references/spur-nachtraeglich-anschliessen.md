@@ -24,7 +24,7 @@ hier fehlt nur die Verdrahtung, der Code steht schon.
 4. **Zustandsform merken:** Feldnamen aus `<spur>/handeln.py` ablesen
    (`z["positionen"].append({...})`), nicht raten - der Tagesbericht braucht sie.
 
-## Die fuenf Stellen (bei einer BESTEHENDEN Spur)
+## Die sechs Stellen (bei einer BESTEHENDEN Spur)
 
 1. `dauerlauf.py` -> `SPUREN`: `"<spur>": {"ordner": "<spur>", "waehrung": "USD"}`.
    `"skript"` nur, wenn die Einstiegsdatei nicht `handeln.py` heisst; `"python"`
@@ -49,6 +49,18 @@ hier fehlt nur die Verdrahtung, der Code steht schon.
    Der Vermerk ist juenger als die Kopie: ohne den zweiten Aufruf meldet
    `spiegelstand.py` in JEDEM Zyklus "ABWEICHUNG", in dem sich der Spiegelstand
    aendert (die vier Indikator-Spuren hatten die kurze Fassung).
+6. `Handel/befehle.py` -> `FAMILIE`: `"<spur>": "<Familie>"`. Die Familie ist die
+   Gruppierung im Bericht (`/strategien`, `/lage`), nicht die Strategie-Klasse -
+   eine neue Gattung (Beispiel: Preisaktion) bekommt eine eigene, keine
+   Notzuordnung zu "Indikator".
+
+**Die Testsuite ist die Pruefliste.**
+`Agenten/Handel/tests/test_befehle.py::SpurenTest.test_jede_spur_hat_familie_und_leser`
+faehrt `dauerlauf.SPUREN` ab und verlangt fuer JEDE Spur eine Familie und eine
+Lesefunktion. Eine Spur, die in `dauerlauf.SPUREN` und im Tagesbericht steht,
+aber in `FAMILIE` fehlt, macht die Suite rot - auch dann, wenn der Bericht sie
+schon zeigt. Nach dem Anschliessen also `python -m unittest test_befehle`
+mitfahren, nicht nur die Spurtests.
 
 ## Der Vertrag des Tagesberichts
 
