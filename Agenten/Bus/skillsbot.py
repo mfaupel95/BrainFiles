@@ -343,7 +343,8 @@ def hilfe_text():
             "/status - gespeicherter Dateistand (alle Spuren)\n"
             "/papierstatus - nur Papierspuren\n"
             "/prognose [N] - Marktbeobachtung long/short (bis 240 s)\n"
-            "/skills - Skills des Agenten\n"
+            "/skills [SUCHE] - die gelernten Skills, nach Gruppen\n"
+            "/skill NAME - ein Skill im Volltext\n"
             "/hilfe - diese Liste\n"
             "\nFreigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
             "/nein_xperp, /stop_xperp.\n"
@@ -380,12 +381,22 @@ def bearbeite(text, chat):
                     % (str(e)[:120], wort)), kontext
     if t in ("/hilfe", "/start"):
         return hilfe_text(), kontext
-    if t == "/skills":
+    if wort == "/skills":
+        # Der Katalog liest die SKILL.md-Dateien. Die frueher benutzte
+        # Agent-Card zaehlt WERKZEUGSAETZE auf (42 Zeilen "toolset.x"),
+        # nicht die gelernten Skills - daher wirkte /skills wie eine
+        # Zufallsliste. Mit Suchbegriff filtert der Katalog.
         try:
-            namen = karten_skills()
-            return "Skills (%d):\n%s" % (len(namen), ", ".join(namen)), kontext
+            import skillkatalog
+            return skillkatalog.katalog(t[7:].strip() or None), kontext
         except Exception as e:  # noqa: BLE001
-            return "Skills-Abruf fehlgeschlagen: %s" % e, kontext
+            return "Skill-Katalog nicht lesbar: %s" % str(e)[:120], kontext
+    if wort == "/skill":
+        try:
+            import skillkatalog
+            return skillkatalog.volltext(t[6:].strip()), kontext
+        except Exception as e:  # noqa: BLE001
+            return "Skill nicht lesbar: %s" % str(e)[:120], kontext
     if t.startswith("/"):
         return ("Kein SkillsBot-Befehl. /hilfe zeigt die Liste.\n"
                 "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
@@ -518,3 +529,4 @@ if __name__ == "__main__":
         except SkillsBotFehler as e:
             print(str(e))
             sys.exit(1)
+

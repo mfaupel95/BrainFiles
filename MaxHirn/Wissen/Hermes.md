@@ -127,6 +127,22 @@ nichts vom Vault (nur `tools/environments/docker.py` mountet Skills read-only).
 Am 10.09.2026 startete zusätzlich überhaupt kein Terminal mehr: `proxy.enabled: true`,
 aber `iron-proxy` nicht eingerichtet — Abhilfe laut Fehlermeldung `hermes egress setup`.
 Bis das Terminal läuft und im Vault steht, sind diese Skills in Hermes nur Text.
+### Nachschlagen aus Telegram, 15.09.2026
+
+`/skills` im SkillsBot zeigt die **gelernten** Skills nach Gruppen, `/skill NAME`
+den Volltext — nachschlagen statt laden; der Katalog kostet den Agenten nichts,
+weil er nur im Bot-Prozess laeuft. Quelle ist die Bibliothek auf der Platte
+(`Agenten/Hermes/skills/**/SKILL.md`, Frontmatter `name`/`description`/`category`),
+**nicht** die A2A-Agent-Card: die zaehlt Werkzeugsets auf (42 Zeilen `toolset.x`,
+„Hermes 'x' capabilities" cards) und liess `/skills` wie eine Zufallsliste aussehen.
+Gemessen am 15.09.2026: 67 sichtbare Skills in 14 Gruppen, 5.675 Zeichen — der
+Bot teilt selbst in Telegram-grosse Stuecke (Grenze 4096). `.archive` bleibt
+draussen: was nicht geladen wird, darf nicht wie geladen aussehen. Umsetzung:
+`Agenten/Bus/skillkatalog.py`, Tests `Agenten/Bus/tests/test_skillkatalog.py`
+(14), Einbau in `skillsbot.py`. Der Fundus (`MaxHirn/skills/`, 238 Fremd-Skills)
+ist **nicht** enthalten — er wird bewusst nicht geladen und bleibt ueber den
+Skill `fundus-zugriff` erreichbar.
+
 ## Gedächtnis-Zuständigkeit
 
 `Wissen/` ist die einzige Wahrheit. `Hermes/memories/` ist Arbeitsspeicher und
