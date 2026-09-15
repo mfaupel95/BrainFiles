@@ -79,6 +79,10 @@ FAMILIE = {
     # 30M-Pullback, 5M-Structure-Shift). Eigene Familie statt "?" - die
     # Gruppierung im Bericht und der Test haengen daran.
     "mosaic": "Preisaktion",
+    # Bot-Signale: die Papierbuecher auf geklonten Fremd-Bots
+    # (moondev_funding). Eigene Familie, weil hier keine Haus-Strategie
+    # rechnet, sondern ein fremder Bot die Quelle ist.
+    "moondev_funding": "Bot-Signal",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

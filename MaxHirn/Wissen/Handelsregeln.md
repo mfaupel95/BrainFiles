@@ -875,3 +875,44 @@ Basislauf bleibt unveraendert daneben. Zu beachten:
   Alter des juengsten Zyklus, geschlossene Runden mit Summe); ohne Stufe bleibt
   sie weg. Die Zahlen kommen aus `auswertung_alle.kennzahlen_fuer`, nicht aus
   einer zweiten Formel.
+
+## Bot-Spuren: geklonte Fremd-Agenten als Papierbuch (16.09.2026)
+
+Max hat die Moon-Dev-Repos installiert und wollte die Bots in den Handelsspuren
+sehen. Die Fremd-Agenten sind Sprachmodell-Agenten mit echtem Orderpfad
+(Hyperliquid/Solana, echte Schluessel) - beides gehoert nicht in den
+Hausbetrieb. Der Weg ist deshalb ein anderer: **die Funktion des Bots rufen,
+die Regel im Haus entscheiden lassen, ein Haus-Buch fuehren.**
+
+**Erste Spur: `moondev_funding`** (`Agenten/Handel/moondev_funding/`) - ein
+Papierbuch auf den Funding-Extremen von Hyperliquid. Die Zahlen liefert
+`src/nice_funcs_hl.get_funding_rates()` aus `Werkstatt/Repos/moon-dev-ai-agents`,
+gerufen in DESSEN venv (dort liegen pandas und requests); die Regel stammt aus
+`fundingarb_agent.py` (ab +-100 %/Jahr) und ist hier deterministisch. Kein
+Sprachmodell, kein Orderpfad, ein `--live` verweigert. Sie laeuft als
+`moondev_funding` in `dauerlauf.SPUREN` und spiegelt nach
+`Q:\Handel_Journal\moondev_funding`.
+
+**Die vier Repos** liegen als Klone unter `Werkstatt/Repos/` (origin = Fork
+unter `mfaupel95`, upstream = Original):
+
+| Repo | Inhalt | venv / Zustand |
+|---|---|---|
+| `moon-dev-ai-agents` | 46 Agenten (Quelle der Bots) | `.venv` mit requirements (numpy, pandas, ta-lib, torch/whisper, anthropic, openai ...) |
+| `Trading-View-MCP-for-AI-by-Moon-Dev` | MCP-Server fuer TradingView | `.venv` mit requirements (mcp, websocket-client, pydantic) |
+| `Harvard-Algorithmic-Trading-with-AI` | Research-/Backtest-Material | keine requirements.txt - nichts zu installieren |
+| `Moon-Dev-Code` | Sammlung (PDFs/Strategien), kein Code | keine requirements.txt - nichts zu installieren |
+
+`moon-dev-ai-agents` ist unter seinem alten Namen nicht mehr oeffentlich; die
+Quelle ist der Nachbau `yolojewjitsu/moon-dev-ai-agents` (zuletzt 20.10.2025).
+Die Datei `.env_example` nennt die Schluessel, die der Bot kennt
+(`MOONDEV_API_KEY`, `SOLANA_PRIVATE_KEY`, LLM-Keys) - **keiner davon ist
+eingetragen**; Zugaenge stehen ausschliesslich in `Wissen/Zugaenge.md`.
+
+**Grenzen:** Ohne `MOONDEV_API_KEY` fehlen die Daten der
+MoonDevAPI-Agenten (liquidation, whale, funding, rbi), ohne LLM-Schluessel das
+Urteil der uebrigen. Das ist kein Grund, fremde Schluessel einzutragen: Die
+Spur zeigt die Bauform - Bot-Funktion, Haus-Regel, Haus-Buch -, und jede
+weitere Spur folgt derselben Vorlage. Moegliche naechste Kandidaten ohne
+Fremdschluessel: `coingecko_agent`, `new_or_top_agent` (CoinGecko),
+`listingarb_agent` (Binance + CoinGecko).

@@ -466,6 +466,17 @@ Agenten/Handel/*/ablehnungen.hoch.csv
 Agenten/Handel/dauerlauf.*.log
 Agenten/Handel/dauerlauf.*.pid
 
+# MONODEV-FUNDING-SPUR (16.09.2026): eigener Spur-Ordner, also Code, Wachen,
+# README und Tests freigeben - Zustand und Journal bleiben gesperrt. Ohne die
+# Freigabe waere der neue Ordner unsichtbar (erst alles ignorieren, dann
+# einzeln freigeben).
+!Agenten/Handel/moondev_funding/*.py
+!Agenten/Handel/moondev_funding/*.md
+!Agenten/Handel/moondev_funding/*.json
+!Agenten/Handel/moondev_funding/tests/*.py
+Agenten/Handel/moondev_funding/zustand.json
+Agenten/Handel/moondev_funding/handelsjournal.csv
+
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
 *.bak-*

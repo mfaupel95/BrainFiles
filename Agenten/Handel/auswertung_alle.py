@@ -52,7 +52,13 @@ SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus")
 # weil IHR JOURNAL anders heisst, nicht weil anders gerechnet wird - der
 # Rechenweg steht in runden_indikator() an einer Stelle.
 INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
-SPUREN = SPUREN + INDIKATOR_SPUREN
+
+# Bot-Spuren (16.09.2026): Papierbuecher auf den Signalen geklonter Fremd-Bots
+# (Werkstatt/Repos/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
+# der Indikator-Spuren (kauf/verkauf mit einsatz_usd), deshalb derselbe
+# Rechenweg - nur der NAME der Gruppe ist ein anderer.
+BOT_SPUREN = ("moondev_funding",)
+SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 
 def kennzahlen_fuer(spur):
@@ -85,7 +91,7 @@ def kennzahlen_fuer(spur):
         runden = runden_spot(z, gebuehr, einsatz_feld="eur")
     elif spur == "orbk":
         runden = runden_orbk(z)
-    elif spur in INDIKATOR_SPUREN:
+    elif spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
         runden = runden_indikator(z)
     elif spur == "gitter":
         runden = gitter_zyklen(z)

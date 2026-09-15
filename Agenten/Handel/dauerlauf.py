@@ -231,6 +231,14 @@ SPUREN = {
     # Minuten statt auf 30 wie bei xperp: ein Rechnerneustart soll die
     # Papierpositionen nicht flachstellen (kraken/wachen.json, _herzschlag).
     "kraken": {"ordner": "kraken", "waehrung": "EUR"},
+    # MOONDEV_FUNDING (16.09.2026): Papierbuch auf den Funding-Extremen von
+    # Hyperliquid. Die Zahlen liefert der geklonte Bot
+    # (Werkstatt/Repos/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
+    # gerufen in DESSEN venv - kein Sprachmodell, kein Orderpfad, kein Live.
+    # Die Spur laeuft unter dem gemeinsamen venv, weil sie selbst nur stdlib
+    # braucht; fremde Pakete bleiben im Bot. Siehe moondev_funding/README.md.
+    "moondev_funding": {"ordner": "moondev_funding", "waehrung": "USD",
+                        "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

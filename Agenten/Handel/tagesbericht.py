@@ -544,6 +544,15 @@ def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
 
+def spur_moondev_funding():
+    """Die Bot-Spur: Papierbuch auf den Funding-Extremen von Hyperliquid.
+
+    Dieselbe Journalform wie die Indikator-Spuren (kauf/verkauf mit
+    einsatz_usd, Positionsliste im Zustand) - deshalb derselbe Leser.
+    """
+    return _spur_indikator("moondev_funding", "Moon-Dev Funding")
+
+
 def spur_mosaic():
     """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
 
@@ -979,7 +988,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier, spur_kopier1zu1,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
-    spur_mosaic)
+    spur_mosaic, spur_moondev_funding)
 
 
 def baue(mit_xperp=True):

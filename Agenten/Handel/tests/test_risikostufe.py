@@ -247,6 +247,7 @@ SPUR_DATEIEN = {
     "wavetrend": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "macd_mtf": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "mosaic": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "moondev_funding": ("handeln.py", ("ZUSTAND", "JOURNAL")),
 }
 
 SPUR_WACHEN = {
@@ -265,6 +266,7 @@ SPUR_WACHEN = {
     "wavetrend": ("handeln.py", "lade_wachen"),
     "macd_mtf": ("handeln.py", "lade_wachen"),
     "mosaic": ("handeln.py", "lade_wachen"),
+    "moondev_funding": ("handeln.py", "lade_wachen"),
 }
 
 # Spuren, die unter DIESEM Interpreter nicht ladbar sind. nautilus braucht
