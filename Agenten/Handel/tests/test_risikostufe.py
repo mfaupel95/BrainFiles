@@ -248,7 +248,8 @@ SPUR_DATEIEN = {
     "macd_mtf": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "mosaic": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "moondev_funding": ("handeln.py", ("ZUSTAND", "JOURNAL")),
-}
+}  # die drei weiteren Bot-Spuren nutzen den gemeinsamen Kern (moondev_buch)
+# und fuehren ihre Dateinamen dort - separat geprueft in BuchSpurenTest.
 
 SPUR_WACHEN = {
     "xperp": ("bot.py", "wachen"),

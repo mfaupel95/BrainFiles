@@ -83,6 +83,9 @@ FAMILIE = {
     # (moondev_funding). Eigene Familie, weil hier keine Haus-Strategie
     # rechnet, sondern ein fremder Bot die Quelle ist.
     "moondev_funding": "Bot-Signal",
+    "moondev_listingarb": "Bot-Signal",
+    "moondev_topmovers": "Bot-Signal",
+    "moondev_marktlage": "Bot-Signal",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

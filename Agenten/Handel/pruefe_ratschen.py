@@ -48,6 +48,9 @@ SPUREN = [
     ("kraken", "kraken", "kraken", "wachen_kraken"),
     ("mosaic", "mosaic", "scanner", "wachen_pruefung"),
     ("moondev_funding", "moondev_funding", "scanner", "wachen_pruefung"),
+    ("moondev_listingarb", "moondev_listingarb", "scanner", "wachen_pruefung"),
+    ("moondev_topmovers", "moondev_topmovers", "scanner", "wachen_pruefung"),
+    ("moondev_marktlage", "moondev_marktlage", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

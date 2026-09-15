@@ -239,6 +239,19 @@ SPUREN = {
     # braucht; fremde Pakete bleiben im Bot. Siehe moondev_funding/README.md.
     "moondev_funding": {"ordner": "moondev_funding", "waehrung": "USD",
                         "skript": "handeln.py"},
+    # WEITERE BOT-SPUREN (16.09.2026): dieselbe Bauform, andere Quelle. Die
+    # Daten kommen ueber die oeffentliche CoinGecko-/Binance-API
+    # (Handel/moondev_daten.py), die Regel steht im Haus, das Buch fuehrt
+    # Handel/moondev_buch.py. Kein Sprachmodell, kein Live.
+    #   listingarb  - grosse Coins, die bei Binance (noch) fehlen
+    #   topmovers   - Momentum der letzten 24 h, ohne Ueberhitzung
+    #   marktlage   - BTC-Regime aus Kurs und Marktbreite
+    "moondev_listingarb": {"ordner": "moondev_listingarb", "waehrung": "USD",
+                           "skript": "handeln.py"},
+    "moondev_topmovers": {"ordner": "moondev_topmovers", "waehrung": "USD",
+                          "skript": "handeln.py"},
+    "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
+                          "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

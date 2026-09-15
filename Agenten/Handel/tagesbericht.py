@@ -553,6 +553,18 @@ def spur_moondev_funding():
     return _spur_indikator("moondev_funding", "Moon-Dev Funding")
 
 
+def spur_moondev_listingarb():
+    return _spur_indikator("moondev_listingarb", "Moon-Dev Listingarb")
+
+
+def spur_moondev_topmovers():
+    return _spur_indikator("moondev_topmovers", "Moon-Dev Top-Mover")
+
+
+def spur_moondev_marktlage():
+    return _spur_indikator("moondev_marktlage", "Moon-Dev Marktlage")
+
+
 def spur_mosaic():
     """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
 
@@ -988,7 +1000,8 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier, spur_kopier1zu1,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
-    spur_mosaic, spur_moondev_funding)
+    spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
+    spur_moondev_topmovers, spur_moondev_marktlage)
 
 
 def baue(mit_xperp=True):

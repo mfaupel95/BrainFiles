@@ -916,3 +916,24 @@ Spur zeigt die Bauform - Bot-Funktion, Haus-Regel, Haus-Buch -, und jede
 weitere Spur folgt derselben Vorlage. Moegliche naechste Kandidaten ohne
 Fremdschluessel: `coingecko_agent`, `new_or_top_agent` (CoinGecko),
 `listingarb_agent` (Binance + CoinGecko).
+
+### Die vier Bot-Spuren (Stand 16.09.2026, nachts)
+
+| Spur | Quelle | Regel |
+|---|---|---|
+| `moondev_funding` | **echte Bot-Funktion** (`nice_funcs_hl.get_funding_rates`), gerufen im Bot-venv | ab +-100 % Funding im Jahr; positive Rate -> short |
+| `moondev_listingarb` | CoinGecko + Binance (oeffentlich) | gross (>= 1 Mrd USD Marktkapital, >= 30 Mio Volumen) und bei Binance nicht handelbar -> long |
+| `moondev_topmovers` | CoinGecko (oeffentlich) | +8 % bis +40 % in 24 h bei >= 20 Mio Volumen -> long |
+| `moondev_marktlage` | CoinGecko (oeffentlich) | BTC +2 % und Marktbreite >= 60 % -> long; spiegelbildlich short |
+
+Alle vier: Papier, kein Sprachmodell, kein Orderpfad, `--live` verweigert,
+eigene Buecher mit Spiegelung nach `Q:\Handel_Journal\<spur>`. Die drei
+CoinGecko-Spuren teilen sich `Handel/moondev_daten.py` (Abruf, nur
+Standardbibliothek) und `Handel/moondev_buch.py` (Buch, Ratsche, Stop/Ziel) -
+eine Buchhaltung fuer alle.
+
+**Vorgemerkt, nicht gebaut:** die uebrigen 42 Agenten des Repos. Sie sind in
+`Wissen/Moon-Dev-Agenten.md` nach dem gruppiert, was fehlt (Moon-Dev-API-Schluessel,
+LLM-Schluessel, Solana-RPC/Wallet, kein Handelsbezug) - samt dem, was ein
+Weiterbau je Gruppe braeuchte. Kein Sprachmodell-Buch und kein Wallet ohne
+ausdrueckliche Entscheidung.

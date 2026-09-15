@@ -491,6 +491,27 @@ Agenten/Handel/dauerlauf.*.pid
 !Agenten/Handel/moondev_funding/tests/*.py
 Agenten/Handel/moondev_funding/zustand.json
 Agenten/Handel/moondev_funding/handelsjournal.csv
+# Die drei weiteren Bot-Spuren (16.09.2026): derselbe Aufbau.
+!Agenten/Handel/moondev_daten.py
+!Agenten/Handel/moondev_buch.py
+!Agenten/Handel/moondev_listingarb/*.py
+!Agenten/Handel/moondev_listingarb/*.md
+!Agenten/Handel/moondev_listingarb/*.json
+!Agenten/Handel/moondev_listingarb/tests/*.py
+Agenten/Handel/moondev_listingarb/zustand.json
+Agenten/Handel/moondev_listingarb/handelsjournal.csv
+!Agenten/Handel/moondev_topmovers/*.py
+!Agenten/Handel/moondev_topmovers/*.md
+!Agenten/Handel/moondev_topmovers/*.json
+!Agenten/Handel/moondev_topmovers/tests/*.py
+Agenten/Handel/moondev_topmovers/zustand.json
+Agenten/Handel/moondev_topmovers/handelsjournal.csv
+!Agenten/Handel/moondev_marktlage/*.py
+!Agenten/Handel/moondev_marktlage/*.md
+!Agenten/Handel/moondev_marktlage/*.json
+!Agenten/Handel/moondev_marktlage/tests/*.py
+Agenten/Handel/moondev_marktlage/zustand.json
+Agenten/Handel/moondev_marktlage/handelsjournal.csv
 
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
