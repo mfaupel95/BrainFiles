@@ -50,10 +50,15 @@ class Basis(unittest.TestCase):
         self.okx_vorher = h.okx
         h.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
         h.ZUSTAND = Path(self.tmp.name) / "zustand.json"
+        # Auch das Ablehnungsprotokoll: pruefe_einstiege schreibt es mit,
+        # und ein Test darf in keinen echten Zielpfad schreiben.
+        self.abl_vorher = h.ABLEHNUNGEN
+        h.ABLEHNUNGEN = Path(self.tmp.name) / "ablehnungen.csv"
 
     def tearDown(self):
         h.JOURNAL = self.journal_vorher
         h.ZUSTAND = self.zustand_vorher
+        h.ABLEHNUNGEN = self.abl_vorher
         h.okx = self.okx_vorher
         self.tmp.cleanup()
 

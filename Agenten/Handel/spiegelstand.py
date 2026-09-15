@@ -38,7 +38,8 @@ DATEIEN = ("handelsjournal.csv", "zustand.json")
 # machen. spiegel fuehrt das Ablehnungsprotokoll - warum Kandidaten NICHT
 # gekauft wurden. Es gehoert wie das Journal ausser Haus: faellt die Platte
 # aus, fehlt sonst genau die Begruendung, die man spaeter braucht.
-ZUSATZ = {"spiegel": ("ablehnungen.csv",)}
+ZUSATZ = {"spiegel": ("ablehnungen.csv",),
+        "scanner": ("ablehnungen.csv",)}
 
 
 def lade(pfad):

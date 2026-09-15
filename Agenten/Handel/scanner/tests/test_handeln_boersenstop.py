@@ -98,6 +98,10 @@ class Basis(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.alt = h.JOURNAL
         h.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
+        # dito: pruefe_einstiege protokolliert Ablehnungen daneben
+        self.alt_abl = h.ABLEHNUNGEN
+        h.ABLEHNUNGEN = Path(self.tmp.name) / "ablehnungen.csv"
+        self.addCleanup(lambda: setattr(h, "ABLEHNUNGEN", self.alt_abl))
         self.addCleanup(setattr, h, "JOURNAL", self.alt)
 
     def _lauf(self, fake, fn):

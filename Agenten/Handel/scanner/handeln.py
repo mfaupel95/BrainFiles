@@ -119,13 +119,173 @@ def stop_prozent(z, w):
                min(w["pflicht_stop_prozent_max"], round(roh, 1)))
 
 
+ABLEHNUNGEN = HIER / "ablehnungen.csv"
+
+# Diese Gruende zaehlen ZYKLEN, nicht Kandidaten - sie gehoeren nicht in die
+# Kandidatensumme, sonst geht die Kontrollzeile nicht auf.
+KAPAZITAET = ("Buch voll", "Gesamtdeckel erreicht", "nicht mehr erreicht",
+              "bewertet", "kaufbar", "bewertete Maerkte")
+
+# Eigene Datei, NIE ins Journal: dessen Leser (auswertung_alle.py,
+# buchauswertung.py) zaehlen jede Zeile als Runde. Eine Ablehnung dort waere
+# eine erfundene Runde und wuerde die Bilanz der einzigen Geld-Spur faelschen.
+SPALTEN_ABLEHNUNG = ["zeit", "art", "grund", "anzahl", "inst", "score",
+                     "vola", "cr"]
+
+# Wird in der Vorschau abgeschaltet - eine Vorschau, die schreibt, ist keine
+# Vorschau. Ein Schalter an EINER Stelle statt eines if je Aufrufer.
+SCHREIBEN = True
+
+
+def journal_ablehnung(**felder):
+    """Eine Zeile ins Ablehnungsprotokoll."""
+    if not SCHREIBEN:
+        return
+    neu = not ABLEHNUNGEN.exists()
+    with ABLEHNUNGEN.open("a", newline="", encoding="utf-8") as f:
+        s = csv.DictWriter(f, fieldnames=SPALTEN_ABLEHNUNG,
+                           extrasaction="ignore")
+        if neu:
+            s.writeheader()
+        s.writerow({k: felder.get(k, "") for k in SPALTEN_ABLEHNUNG})
+
+
+def protokolliere(grund, anzahl=1):
+    """Die Lage EINES Zyklus als Zahl, ohne Kennung.
+
+    Der Ort fuer die Massenfaelle: seit dem 14.09.2026 sieht der Scan den
+    ganzen Spotmarkt, mehrere hundert Kandidaten je Lauf. Die einzeln mit
+    Kennung zu protokollieren waere ein Protokoll, das niemand liest.
+    """
+    if anzahl:
+        journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=grund,
+                          anzahl=anzahl)
+
+
+def _schon_protokolliert(inst, grund):
+    """Sperre gegen Doppelzaehlung, je (Instrument, Grund) und TAG.
+
+    Derselbe Markt steht Tag fuer Tag im Bericht und wird alle 15 Minuten
+    erneut abgelehnt - ohne Sperre zaehlte ein einziger gehaltener Wert 96
+    Ablehnungen am Tag und das Protokoll saehe aus wie ein Tor, das nie
+    aufgeht. Der Tag ist die richtige Koernung, weil die Rangliste taeglich
+    neu entsteht: eine Ablehnung am selben Tag ist dieselbe Lage, eine am
+    naechsten eine neue.
+    """
+    if not ABLEHNUNGEN.exists():
+        return False
+    heute = _heute()
+    with ABLEHNUNGEN.open(newline="", encoding="utf-8") as f:
+        for zeile in csv.DictReader(f):
+            if (zeile.get("art") == "kandidat"
+                    and zeile.get("inst") == inst
+                    and zeile.get("grund") == grund
+                    and (zeile.get("zeit") or "")[:10] == heute):
+                return True
+    return False
+
+
+def protokolliere_kandidat(inst, grund, **felder):
+    """Ein einzelner Kandidat, der bis zur teuren Pruefung kam."""
+    if not SCHREIBEN or _schon_protokolliert(inst, grund):
+        return
+    journal_ablehnung(zeit=_jetzt(), art="kandidat", grund=grund, anzahl=1,
+                      inst=inst, **felder)
+
+
+def lies_ablehnungen(pfad=None):
+    """Der Leser: was hat die Tore nicht passiert, und warum.
+
+    Die Kontrollzeile ist der Kern. kaufbar (= was die Bewertungstore
+    passiert hat) muss sich vollstaendig aufteilen in "bewertet" (im
+    Einstiegspfad angesehen) und "nicht mehr erreicht" (der Zyklus brach
+    vorher ab, weil das Buch voll war). Geht sie nicht auf, ist die
+    Zaehlung falsch - nicht die Kontrollzeile.
+
+    Kapazitaets-Ereignisse stehen bewusst DARUNTER und nicht in der Summe:
+    sie zaehlen Zyklen, nicht Kandidaten. Genau ihre Trennung ist der
+    Zweck des Protokolls - "Tor zu" und "Buch voll" sehen im Journal
+    identisch aus.
+    """
+    p = pfad or ABLEHNUNGEN
+    zeilen = []
+    if not os.path.exists(p):
+        return ["Noch kein Ablehnungsprotokoll: %s" % p]
+    with open(p, newline="", encoding="utf-8") as f:
+        daten = list(csv.DictReader(f))
+    if not daten:
+        return ["Ablehnungsprotokoll ist leer."]
+
+    def summe(art, grund=None):
+        n = 0
+        for d in daten:
+            if d.get("art") != art:
+                continue
+            if grund is not None and d.get("grund") != grund:
+                continue
+            try:
+                n += int(d.get("anzahl") or 0)
+            except ValueError:
+                pass
+        return n
+
+    gruende = {}
+    for d in daten:
+        if d.get("art") in ("zyklus", "kandidat"):
+            g = d.get("grund") or "?"
+            if g in KAPAZITAET:
+                continue
+            try:
+                gruende[g] = gruende.get(g, 0) + int(d.get("anzahl") or 0)
+            except ValueError:
+                pass
+
+    zeilen.append("=== Ablehnungen scanner ===")
+    zeilen.append("%-34s %7s" % ("Grund", "Anzahl"))
+    for g, n in sorted(gruende.items(), key=lambda x: -x[1]):
+        zeilen.append("%-34s %7d" % (g, n))
+
+    kaufbar = summe("zyklus", "kaufbar")
+    bewertet = summe("zyklus", "bewertet")
+    nicht_erreicht = summe("zyklus", "nicht mehr erreicht")
+    zeilen.append("")
+    zeilen.append("Kontrolle: kaufbar %d = bewertet %d + nicht mehr erreicht %d"
+                  % (kaufbar, bewertet, nicht_erreicht))
+    if kaufbar != bewertet + nicht_erreicht:
+        zeilen.append("ACHTUNG: die Zaehlung geht nicht auf (Differenz %d). "
+                      "Ein Kandidat steht in zwei Zaehlern oder in keinem."
+                      % (kaufbar - bewertet - nicht_erreicht))
+
+    zeilen.append("")
+    zeilen.append("Kapazitaet (ZYKLEN, nicht Kandidaten - nicht in der Summe):")
+    for g in KAPAZITAET:
+        n = summe("zyklus", g)
+        if n:
+            zeilen.append("  %-32s %5d" % (g, n))
+    return zeilen
+
+
 def vorschlaege(bericht, w):
+    """Die Kandidaten, die alle Bewertungstore passiert haben.
+
+    Die Zaehlung haengt an DIESER Pruefung, nicht an einer zweiten Fassung
+    derselben Bedingung: zwei Fassungen einer Grenze waeren zwei Wahrheiten.
+    Jeder Kandidat faellt in GENAU EINEN Zaehler - geprueft wird in fester
+    Reihenfolge, der erste greifende Grund gewinnt.
+    """
     aus = []
+    lage = {}
     for z in bericht["werte"]:
         vola = z["kennzahlen"]["volatilitaet_pa"]
-        if not (z["score"] >= w["mindest_score"]
-                and vola <= w["max_volatilitaet_pa"]
-                and z["verhaeltnis"] >= w["mindest_chance_risiko"]):
+        grund = None
+        if z["score"] < w["mindest_score"]:
+            grund = "Score unter %g" % w["mindest_score"]
+        elif vola > w["max_volatilitaet_pa"]:
+            grund = "Vola ueber %g" % w["max_volatilitaet_pa"]
+        elif z["verhaeltnis"] < w["mindest_chance_risiko"]:
+            grund = "Chance/Risiko unter %g" % w["mindest_chance_risiko"]
+        if grund:
+            lage[grund] = lage.get(grund, 0) + 1
             continue
         einstieg = z["preis"]
         sp = stop_prozent(z, w)
@@ -134,6 +294,10 @@ def vorschlaege(bericht, w):
         aus.append({"inst": z["inst"], "score": z["score"], "einstieg": einstieg,
                     "stop": stop, "stop_pct": sp, "ziel": ziel,
                     "usd": w["max_pro_trade_usd"]})
+    protokolliere("bewertete Maerkte", len(bericht["werte"]))
+    for grund, n in sorted(lage.items()):
+        protokolliere(grund, n)
+    protokolliere("kaufbar", len(aus))
     return aus
 
 
@@ -322,13 +486,34 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     eingesetzt = sum(p["usd"] for p in z["positionen"])
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
-    for v in vs:
+    bewertet = 0
+    deckel_gemeldet = False
+    for i, v in enumerate(vs):
         if len(z["positionen"]) >= w["max_offene_positionen"]:
+            # KEIN Tor, sondern Kapazitaet: der Rest der Liste war kaufbar
+            # und wurde nur nicht mehr angesehen. Beides getrennt zaehlen -
+            # sonst liest sich ein volles Buch wie ein zu strenges Tor.
+            protokolliere("Buch voll")
+            protokolliere("nicht mehr erreicht", len(vs) - i)
             break
+        bewertet += 1
         usd = round(v["usd"] * faktor, 2)
         if eingesetzt + usd > w["max_gesamt_usd"]:
+            # Kapazitaet, kein Tor - und EIN Ereignis je Zyklus, nicht eines
+            # je Kandidat: bei vollem Deckel faellt jeder der 18 Vorschlaege
+            # hier durch, und 18 Zeilen laesen sich wie 18 verschiedene
+            # Ablehnungen statt wie ein einziger voller Einsatz.
+            if not deckel_gemeldet:
+                protokolliere("Gesamtdeckel erreicht")
+                deckel_gemeldet = True
             continue
-        if v["inst"] in gehalten or in_abklingzeit(v["inst"], z, w):
+        if v["inst"] in gehalten:
+            protokolliere_kandidat(v["inst"], "schon im Buch",
+                                   score=v.get("score"))
+            continue
+        if in_abklingzeit(v["inst"], z, w):
+            protokolliere_kandidat(v["inst"], "Abklingzeit nach Stop",
+                                   score=v.get("score"))
             continue
         kauf_id = stop_id = None
         stop_fehlt = False
@@ -379,6 +564,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 "%.6f" % v["einstieg"], "%.2f" % (usd * (1 + GEBUEHR_PCT)),
                 "%.6f" % v["stop"], "%.6f" % v["ziel"],
                 "score %.1f" % v["score"], "", "", "")
+    protokolliere("bewertet", bewertet)
 
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
@@ -508,7 +694,7 @@ def hole_freigabe(vs, z, s):
 
 def _spiegeln(w):
     ziel = w.get("journal_zweitziel")
-    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND, ABLEHNUNGEN], ziel)
     print("  Journal ausser Haus:  %s (%s)" % ("ok" if ok else "--", info))
 
 
@@ -550,6 +736,12 @@ def zeige_wachen(w):
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+    # Eine Vorschau, die schreibt, ist keine Vorschau. Der Schalter steht an
+    # EINER Stelle statt als if je Aufrufer - vorschlaege() laeuft auch in
+    # der Vorschau und wuerde sonst jeden Zyklus mitzaehlen.
+    global SCHREIBEN
+    SCHREIBEN = modus != "vorschau"
 
     w = scan.wachen()
 
@@ -692,7 +884,13 @@ def _main():
     g.add_argument("--wachen", action="store_const", dest="modus",
                    const="wachen", help="Bedingungen 2-5 zeigen und durchsetzen "
                                         "(Wochenlauf)")
+    p.add_argument("--ablehnungen", action="store_true",
+                   help="das Ablehnungsprotokoll auswerten, nichts handeln")
     a = p.parse_args()
+    if a.ablehnungen:
+        for zeile in lies_ablehnungen():
+            print(zeile)
+        return
     lauf(a.modus or "papier")
 
 
