@@ -7,6 +7,10 @@
   "universum": {"modus": "alle", "quotes": ["USDT", "USDC"], "min_volumen_24h_usd": 3000000},
 
   "max_pro_trade_usd": 100,
+
+  "_risiko_je_position_usd": "Risiko-normiertes Sizing, eingefuehrt am 15.09.2026. Das Nominal einer Position faellt aus diesem Betrag und dem Stop-Abstand (nominal = risiko / stop_pct), gedeckelt auf max_pro_trade_usd. Vorher band jede Position feste 100 USD bei einem Stop zwischen 5 und 12 Prozent - gemessen riskierten die 18 Vorschlaege eines Zyklus 5,20 bis 8,70 USD, Faktor 1,7 bei gleichem Kapital. 6.0 ist bewusst der bisherige DURCHSCHNITT (100 USD bei rund 6 Prozent Stop): die Risikosumme bleibt, nur ihre Verteilung aendert sich. Auf null setzen stellt das alte feste Nominal wieder her - handeln.py faellt dann ueber nominal_fuer() auf max_pro_trade_usd zurueck.",
+  "risiko_je_position_usd": 6.0,
+
   "max_gesamt_usd": 400,
   "max_offene_positionen": 6,
 

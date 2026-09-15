@@ -265,6 +265,37 @@ def lies_ablehnungen(pfad=None):
     return zeilen
 
 
+def nominal_fuer(stop_pct, w):
+    """Der Einsatz einer Position - aus dem RISIKO, nicht aus einer festen Zahl.
+
+    Vorher band jede Position denselben Betrag (max_pro_trade_usd), waehrend
+    ihr Stop zwischen 5 und 12 Prozent schwankte: gemessen am 15.09.2026
+    riskierten die 18 Vorschlaege eines Zyklus zwischen 5,20 und 8,70 USD -
+    Faktor 1,7 bei gleichem gebundenem Kapital. Wer mehr riskiert, sollte
+    nicht denselben Platz belegen wie der, der weniger riskiert.
+
+    Neu faellt das Nominal aus dem Stop-Abstand:
+        nominal = risiko_je_position_usd / (stop_pct / 100)
+    Bei 6 USD Risiko sind das 115 USD bei 5,2 Prozent Stop und 69 USD bei
+    8,7 Prozent. Das Verlustpotenzial je Position ist damit gleich, das
+    Kapital wandert dorthin, wo es weniger riskiert - und weil weite Stops
+    weniger binden, passen mehr Positionen unter denselben Gesamtdeckel.
+
+    max_pro_trade_usd bleibt die Obergrenze: das Sizing darf eine Position
+    nicht groesser machen als die Hausregel erlaubt, auch wenn der Stop sehr
+    eng ist. Ein Stop nahe null gaebe sonst eine unbegrenzte Position.
+
+    ALTBESTAND-RUECKFALL: fehlt risiko_je_position_usd in wachen.json (oder
+    steht auf null), bleibt es beim alten festen Nominal. So aendert sich fuer
+    eine Spur, die den Wert nicht kennt, gar nichts.
+    """
+    deckel = w["max_pro_trade_usd"]
+    risiko = w.get("risiko_je_position_usd")
+    if not risiko or stop_pct <= 0:
+        return deckel
+    return round(min(deckel, risiko / (stop_pct / 100.0)), 2)
+
+
 def vorschlaege(bericht, w):
     """Die Kandidaten, die alle Bewertungstore passiert haben.
 
@@ -293,7 +324,7 @@ def vorschlaege(bericht, w):
         ziel = round(einstieg + 2.0 * (einstieg - stop), 6)   # Chance/Risiko 2:1
         aus.append({"inst": z["inst"], "score": z["score"], "einstieg": einstieg,
                     "stop": stop, "stop_pct": sp, "ziel": ziel,
-                    "usd": w["max_pro_trade_usd"]})
+                    "usd": nominal_fuer(sp, w)})
     protokolliere("bewertete Maerkte", len(bericht["werte"]))
     for grund, n in sorted(lage.items()):
         protokolliere(grund, n)
