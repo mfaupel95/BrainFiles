@@ -496,19 +496,25 @@ Agenten/Handel/moondev_funding/handelsjournal.csv
 !Agenten/Handel/spur_buch.py
 !Agenten/Handel/moondev_listingarb/*.py
 !Agenten/Handel/moondev_listingarb/*.md
-!Agenten/Handel/moondev_listingarb/*.json
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_listingarb/wachen.json
 !Agenten/Handel/moondev_listingarb/tests/*.py
 Agenten/Handel/moondev_listingarb/zustand.json
 Agenten/Handel/moondev_listingarb/handelsjournal.csv
 !Agenten/Handel/moondev_topmovers/*.py
 !Agenten/Handel/moondev_topmovers/*.md
-!Agenten/Handel/moondev_topmovers/*.json
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_topmovers/wachen.json
 !Agenten/Handel/moondev_topmovers/tests/*.py
 Agenten/Handel/moondev_topmovers/zustand.json
 Agenten/Handel/moondev_topmovers/handelsjournal.csv
 !Agenten/Handel/moondev_marktlage/*.py
 !Agenten/Handel/moondev_marktlage/*.md
-!Agenten/Handel/moondev_marktlage/*.json
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_marktlage/wachen.json
 !Agenten/Handel/moondev_marktlage/tests/*.py
 Agenten/Handel/moondev_marktlage/zustand.json
 Agenten/Handel/moondev_marktlage/handelsjournal.csv
@@ -516,7 +522,9 @@ Agenten/Handel/moondev_marktlage/handelsjournal.csv
 # Zustand und Journal gesperrt.
 !Agenten/Handel/iv_wand/*.py
 !Agenten/Handel/iv_wand/*.md
-!Agenten/Handel/iv_wand/*.json
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/iv_wand/wachen.json
 !Agenten/Handel/iv_wand/tests/*.py
 Agenten/Handel/iv_wand/zustand.json
 Agenten/Handel/iv_wand/handelsjournal.csv
