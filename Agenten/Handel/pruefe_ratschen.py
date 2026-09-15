@@ -42,10 +42,11 @@ RATSCHEN = _ratschen()
 # eigene wachen.json.
 SPUREN = [
     ("scanner", "scanner", "scanner", "wachen_pruefung"),
-    ("xperp",   "xperp",   "xperp",   "wachen_xperp"),
-    ("swap",    "swap",    "xperp",   "wachen_xperp"),
-    ("orbk",    "orbk",    "orbk",    "wachen_orb"),
-    ("kraken",  "kraken",  "kraken",  "wachen_kraken"),
+    ("xperp", "xperp", "xperp", "wachen_xperp"),
+    ("swap", "swap", "xperp", "wachen_xperp"),
+    ("orbk", "orbk", "orbk", "wachen_orb"),
+    ("kraken", "kraken", "kraken", "wachen_kraken"),
+    ("mosaic", "mosaic", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.
@@ -55,7 +56,7 @@ RUHT = ("orb", "nautilus")
 TOLERANZ = 0.005
 
 
-def befrage(w, ordner, modulordner, modulname):
+def befrage(w, ordner, modulordner, modulname, spur=None):
     """Hoechststand und Ruecklauf aus dem lage() der Spur selbst.
 
     w MUSS uebergeben werden: lage() liest die Wachen (kill_switch, Rahmen) und
@@ -109,7 +110,7 @@ def main():
         hoch = None
         greift = "-"
         try:
-            mod, s = befrage(w, ordner, modulordner, modulname)
+            mod, s = befrage(w, ordner, modulordner, modulname, spur)
             hoch = s.get("hoechststand_usd") if s is not None else None
             if schwelle is not None:
                 greift = ("im Gewinn"

@@ -168,6 +168,15 @@
 !Agenten/Handel/supertrend/*.md
 !Agenten/Handel/supertrend/*.json
 !Agenten/Handel/supertrend/tests/*.py
+# Mosaic-Spur (Mehr-Zeitrahmen-Preisaktion, 4H/30M/5M, 15.09.2026):
+# Top-Down-Long-Setup: 4H-Bias (gruene Kerze), 30M-Pullback zur
+# Nachfragezone (Swing-Tiefs), 5M-Structure-Shift (Schluss ueber letztem
+# Swing-High). Reines Papierbuch ohne Live-Zweig, kein eigenes venv.
+# Code, Wachen und Tests in den Verlauf; zustand.json und Journal nicht.
+!Agenten/Handel/mosaic/*.py
+!Agenten/Handel/mosaic/*.md
+!Agenten/Handel/mosaic/*.json
+!Agenten/Handel/mosaic/tests/*.py
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
@@ -274,6 +283,8 @@ Agenten/Handel/macd_mtf/zustand.json
 Agenten/Handel/squeeze/zustand.json
 Agenten/Handel/supertrend/zustand.json
 Agenten/Handel/wavetrend/zustand.json
+Agenten/Handel/mosaic/zustand.json
+Agenten/Handel/mosaic/handelsjournal.csv
 Agenten/Handel/kopier/daten/**
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von

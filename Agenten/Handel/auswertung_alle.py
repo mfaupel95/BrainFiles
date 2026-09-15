@@ -47,7 +47,7 @@ SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus")
 # (beim Kauf der Einsatz, beim Verkauf der Erloes). Sie stehen getrennt,
 # weil IHR JOURNAL anders heisst, nicht weil anders gerechnet wird - der
 # Rechenweg steht in runden_indikator() an einer Stelle.
-INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend")
+INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
 SPUREN = SPUREN + INDIKATOR_SPUREN
 
 

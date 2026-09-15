@@ -542,6 +542,16 @@ def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
 
+def spur_mosaic():
+    """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
+
+    Gleicher Buch-Aufbau wie die Indikator-Spuren: liest zustand.json,
+    bewertet Bestand gegen den aktuellen Kurs, kein Wachenblock (keine
+    fuenf Bedingungen, reines Papierbuch).
+    """
+    return _spur_indikator("mosaic", "Mosaic (4H/30M/5M)")
+
+
 def spur_omniquant():
     """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
 
@@ -872,9 +882,10 @@ def spiegelzeile():
 # Aufrufer: `baue()` (Tagesbericht) und `befehle.py` (/lage) lesen dieselbe -
 # eine zweite Aufzaehlung waere beim naechsten neuen Spurordner still veraltet.
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-         spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
-         spur_gitter, spur_kopier, spur_kopier1zu1,
-         spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend)
+    spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
+    spur_gitter, spur_kopier, spur_kopier1zu1,
+    spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
+    spur_mosaic)
 
 
 def baue(mit_xperp=True):
