@@ -608,6 +608,32 @@ Zeile (`spiegelstand.kurz()`, im Fehlerfall hervorgehoben), und die
 überschriebene oder fehlende Kopie fällt damit spätestens am nächsten Morgen
 auf, statt still zu bleiben.
 
+## Risikostufen (`risikostufe.py`) — derselbe Handel, größere Beträge
+
+Ein Messwerkzeug, kein Gewinnhebel: dieselben Wachen, dieselben Regeln, nur ein
+Faktor auf die Beträge (1 / 2 / 4 für `niedrig` / `mittel` / `hoch`). Zweck ist
+**mehr Beobachtungen je Zeiteinheit** — bei 20-EUR-Einsätzen dauert jede
+Statistik Monate.
+
+    scanner/.venv/Scripts/python.exe dauerlauf.py --risiko mittel   # zweiter Lauf
+    Routinen\handel-dauerlauf.ps1 -Risiko mittel                    # als Wächter
+
+Jede Spur liest `HANDEL_RISIKO` aus ihrer Umgebung, skaliert beim Laden ihre
+Wachen (`skaliere`) und schreibt Zustand und Journal mit Suffix
+(`zustand.mittel.json`, `handelsjournal.mittel.csv`). Der Basislauf bleibt
+unberührt, und **ohne die Variable ändert sich nichts**.
+
+Drei Regeln machen eine Stufe ungefährlich: sie geht **nie live** (die Spuren
+verweigern `--live`, der Dauerlauf übergibt nur `--papier`), sie sendet und
+empfängt **kein Telegram** (zwei Läufe an einem Bot nehmen sich die Nachrichten
+weg), und der **Spiegel** läuft nur in der Basis (gleicher Einsatz in jeder
+Stufe, sonst zwei Schreiber auf denselben Dateien).
+
+Was skaliert wird — und was nie (Marktdaten, Messwerte, Kontoschwellen) —, steht
+in `MaxHirn/Wissen/Handelsregeln.md`; geprüft wird über jede Spur in
+`tests/test_risikostufe.py`, die Stufe selbst mit `spiegelstand.py --risiko
+mittel` (Bedingung 4) und `auswertung_alle.py --risiko mittel`.
+
 ## Was noch fehlt
 
 Der Simulator ist bewusst instrumentenneutral gebaut. Für den nächsten Ausbau
