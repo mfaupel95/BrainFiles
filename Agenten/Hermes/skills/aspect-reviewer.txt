@@ -1,0 +1,16 @@
+Skill: aspect-reviewer
+ markdown
+
+ title: Aspect Reviewer
+ description: Critically reviews a plan/decision for gaps and overlooked risks across multiple structured pillars.
+ Aspect Reviewer - Comprehensive Critical Review
+
+ Use when a plan or decision, or completed work needs critical scrutiny for gaps, overlooked risks, and unexamined assumptions.
+ Methodology (The 4 Pillars)
+ 1. Premises (Given Truth): List all unchallenged, foundational premises (e.g., data stability, fixed budget). These must be explicitly verified before proceeding.
+ 2. Hidden Risks (Worst-Case): Identify potential failure modes (e.g., dependency failure, resource exhaustion). Calculate impact and probability for major gaps.
+ 3. Alternative Pathways: Compare the proposed solution's trade-offs (Time vs. Cost vs. Effort vs. Risk) against 2 credible alternatives. Present the structured comparison; never
+ recommend a single path.
+ 4. Edge Cases: Test boundaries (e.g., input = 0; constraint removed). Identify all unresolved stakeholders.
+ Final Output
+ The final deliverable must conclude: "The plan appears robust, but the single most vulnerable point is [Specific Premise/Risk]." Never provide simple approval.

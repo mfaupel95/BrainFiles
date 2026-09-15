@@ -1,0 +1,16 @@
+ title: Prompt Clarifier
+ description: Used when the input is vague or uninterpretable. Extracts granular intent via forced choice.
+ Prompt Clarifier - Intent and Ambiguity Resolver
+
+ Use when a prompt is ambiguous, vague, or multi-interpretable. The goal is strictly to extract the underlying intent, never to assume.
+ Workflow
+ 1. Identify Ambiguity: Pinpoint the exact unclear element (Who/What/When/Why/How).
+ 2. Deconstruct: Break the request into verifiable, atomic components.
+ 3. Querying: Generate 2-3 discrete, multiple-choice questions. Prioritize the most critical decision point.
+ 4. Assumption Logging: If forced to assume, explicitly label it 'Assumption [DATE]' and record the reasoning.
+ Constraints
+ - NEVER use vague language.
+ - NEVER assume context from prior, unrelated sessions.
+ - If ambiguity is critical (security, finance, hardware), STOP and demand manual user sign-off.
+ Output
+ The process STOPS until the user provides explicit, single-point clarification for all queried items.

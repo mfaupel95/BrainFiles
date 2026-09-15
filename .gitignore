@@ -364,6 +364,29 @@ Agenten/Hermes/**
 !Agenten/Hermes/profiles/*/plans/**
 !Agenten/Hermes/profiles/*/hooks/**
 !Agenten/Hermes/profiles/*/skins/**
+#
+# SKILLS, freigelegt am 15.09.2026. Die Hauptbibliothek ist Prozedurwissen in
+# Textform (591 Dateien, 7,7 MB ohne die drei Brocken unten) und steuert das
+# Verhalten jedes Laufs - sie gehoert in den Verlauf, nicht nur in die Sicherung.
+# Mit drin ist .archive/ (70 ausgemusterte Skills, 3,4 MB): der Hinweis
+# "hermes curator restore <name>" ist nur so lange etwas wert, wie der Ordner
+# existiert.
+# ZUERST die Verzeichnisse - eine Datei wird nicht frei, solange ein darueber
+# liegendes Verzeichnis gesperrt ist.
+!Agenten/Hermes/skills/
+!Agenten/Hermes/skills/**
+# dann die Sperren (es gilt der letzte Treffer):
+#   - .hub/ ist der Index-Zwischenspeicher des Skill-Hubs (47 MB, eine Datei)
+#   - .curator_backups/ sind fuenf tar.gz-Sicherungen (12 MB) + Protokoll
+#   - okx-* sind JUNCTIONS auf C:/Users/faupe/.agents/skills/... - ein fremder
+#     Baum. Git folgt ihnen und zoege Fremdinhalt samt .rollback-broken herein.
+#     Wer eine weitere Junction anlegt, sperrt ihren Ordner hier.
+#   - die Skill-Kopien der Profile bleiben gesperrt (1767 Abschriften oben).
+Agenten/Hermes/skills/.hub/
+Agenten/Hermes/skills/.curator_backups/
+Agenten/Hermes/skills/okx-*/
+Agenten/Hermes/skills/**/*.pyc
+Agenten/Hermes/skills/**/__pycache__/
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env
