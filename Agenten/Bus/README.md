@@ -115,6 +115,15 @@ In beiden Bots:
   Spot-Paare, beide Richtungen, keine Order, kein Berichtschreiben. Im
   Handelsbot verweist der Befehl hierher, damit die Analyse den Handelszyklus
   nicht blockiert. Ohne N ganzer Markt; N zwischen 1 und 200.
+- `/skills [SUCHE]` (SkillsBot): die geladenen Skills, nach Gruppen gefiltert.
+- `/skill NAME` (SkillsBot): ein Skill im Volltext - lesen.
+- `/run NAME [Auftrag]` (SkillsBot, bis 5 min): einen Skill **ausfuehren** -
+  der Bot schickt per A2A den Auftrag "Fuehre den Skill NAME aus" an Hermes und
+  gibt dessen Antwort zurueck. Ausgefuehrt wird nur, was im Katalog steht UND
+  ladbar ist; ein Teiltreffer muss eindeutig sein. Unbekannter Name, Tippfehler
+  oder ein Skill eines fremden Systems enden OHNE A2A-Aufruf mit Begruendung -
+  sonst liefe irgendein Skill, und niemand erfuehre welcher. Vorher kommt eine
+  Zwischenmeldung ("Fuehre X aus ..."), weil eine Ausfuehrung dauern darf.
 - Unbekannte Slashbefehle gehen nicht an A2A; Freitext weiterhin schon.
 
 Nur Handelsbot (dauerlauf.py, einziger Schreiber der Freigabefenster):

@@ -345,10 +345,83 @@ def hilfe_text():
             "/prognose [N] - Marktbeobachtung long/short (bis 240 s)\n"
             "/skills [SUCHE] - die gelernten Skills, nach Gruppen\n"
             "/skill NAME - ein Skill im Volltext\n"
+            "/run NAME [Auftrag] - einen Skill AUSFUEHREN (bis 5 min)\n"
             "/hilfe - diese Liste\n"
             "\nFreigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
             "/nein_xperp, /stop_xperp.\n"
             "SWAP-Live bleibt gesperrt. Freitext geht weiterhin an Hermes.")
+
+
+DENKEN = "\U0001f4ad **Reasoning:**"
+
+
+def ohne_denken(text):
+    """Den Reasoning-Block des Agenten entfernen - Arbeitsnotiz, keine Antwort.
+
+    Der A2A-Agent stellt seiner Antwort seinen Denkblock voran (in ``` gefasst).
+    Auf dem Handy ist das der halbe Text, und es liest sich wie das Ergebnis.
+    Entfernt wird nur der Block; fehlt er, bleibt der Text unveraendert - ein
+    anderer Aufbau darf keine Antwort kosten.
+    """
+    if not text or DENKEN not in text:
+        return text
+    kopf, _, rest = text.partition(DENKEN)
+    auf = rest.find("```")
+    if auf < 0:
+        return kopf.strip() or text
+    zu = rest.find("```", auf + 3)
+    if zu < 0:
+        return kopf.strip() or text
+    return (kopf + rest[zu + 3:]).strip() or text
+
+
+def _run(rest, chat, kontext):
+    """Einen Skill AUSFUEHREN statt ihn nur zu zeigen.
+
+    Der Weg ist derselbe wie bei Freitext (A2A an hermes-maks-pc) - nur mit
+    einer Anweisung davor, damit der Agent den Skill zieht und nicht frei
+    antwortet. Ausgefuehrt wird ausschliesslich, was im Katalog steht UND
+    ladbar ist; ein Teiltreffer muss eindeutig sein. Sonst raet der Bot einen
+    Skill - und der Nutzer erfaehrt nie, dass ein anderer lief.
+
+    Rueckgabe wie `bearbeite`: (Text, neuer A2A-Kontext).
+    """
+    if not rest:
+        return ("Syntax: /run NAME [Auftrag]\n"
+                "Beispiel: /run systemdiagnose\n"
+                "Die Namen stehen in /skills (Teiltreffer sind erlaubt, wenn "
+                "eindeutig)."), kontext
+    name = rest[0].lstrip("/")
+    auftrag = " ".join(rest[1:]).strip()
+    try:
+        import skillkatalog
+        e = skillkatalog.finde(name)
+    except Exception as fehler:                               # noqa: BLE001
+        return "Skill-Katalog nicht lesbar: %s" % str(fehler)[:120], kontext
+    if e is None:
+        return ("Kein eindeutiger Skill %r. /skills [SUCHE] zeigt die Liste - "
+                "Teiltreffer sind erlaubt, muessen aber eindeutig sein."
+                % name), kontext
+    if not e.get("ladbar", True):
+        return ("Skill %s gehoert einem anderen System (%s) - hier nicht "
+                "ausfuehrbar." % (e["name"], e.get("gruppe"))), kontext
+
+    # Erst sagen, dann tun: eine Skill-Ausfuehrung dauert (Systemcheck ~1 min,
+    # Marktanalyse bis 4 min). Ohne diese Zeile sieht es aus, als haenge der Bot.
+    sende(chat, "Fuehre den Skill %s aus - das kann bis 5 min dauern."
+         % e["name"])
+    text = ("Fuehre den Skill '%s' aus.%s\n\n"
+            "Antworte knapp in dieser Reihenfolge: was getan wurde, was jetzt "
+            "nachweisbar funktioniert, was noch eine Entscheidung braucht. "
+            "Wenn der Skill ohne weitere Angaben nicht ausfuehrbar ist, sage "
+            "genau, was fehlt - statt zu raten."
+            % (e["name"], (" Auftrag dazu: " + auftrag) if auftrag else ""))
+    try:
+        antwort, neuer_kontext = frage(text, kontext)
+    except Exception as fehler:                               # noqa: BLE001
+        return ("Skill %s gescheitert: %s"
+                % (e["name"], str(fehler)[:150])), kontext
+    return (ohne_denken(antwort) or "Keine Antwort vom Agenten."), neuer_kontext
 
 
 def bearbeite(text, chat):
@@ -358,6 +431,15 @@ def bearbeite(text, chat):
     t = text.strip()
     teile = t.split()
     wort = teile[0].lower() if teile else ""
+    if wort in ("/run", "/mach"):
+        # Ein Skill wird AUSGEFUEHRT, nicht angezeigt (Auftrag Max, 16.09.2026).
+        # Der A2A-Kontext laeuft wie bei Freitext weiter und wird hier
+        # gespeichert - /run und Freitext teilen denselben Verlauf.
+        antwort, neuer_kontext = _run(teile[1:], chat, kontext)
+        if neuer_kontext:
+            kontexte[str(chat)] = neuer_kontext
+            _speichere_json(KONTEXT_PFAD, kontexte)
+        return antwort, neuer_kontext
     if wort == "/prognose":
         import handel_befehle
         return handel_befehle.prognose(t), kontext
@@ -406,7 +488,7 @@ def bearbeite(text, chat):
     if neuer_kontext:
         kontexte[str(chat)] = neuer_kontext
         _speichere_json(KONTEXT_PFAD, kontexte)
-    return antwort, neuer_kontext
+    return ohne_denken(antwort), neuer_kontext
 
 
 # --- Schleife ---------------------------------------------------------------
