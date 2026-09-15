@@ -36,8 +36,9 @@
     "_aenderung": "2026-09-07: papierlauf_min_wochen von 6 auf 3 gesenkt, angeordnet von Max am 06.09.2026 mit der Begruendung, Krypto sei schnelllebig. KEINE Gegenrechnung vorgelegt - es gibt kein Backtest-Skript fuer diesen Scanner, und die Verkuerzung ist damit nach Wissen/Handelsregeln.md ein Befund, kein Betriebsvorgang. Die uebrigen drei Werte (50 Runden, netto positiv, Ruecklauf) sind unveraendert und binden weiter."
   },
 
-  "_drawdown": "Bedingung 2. Ab drawdown_halbierung_prozent Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Prozent bezogen auf max_gesamt_usd.",
-  "drawdown_halbierung_prozent": 15.0,
+  "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert handeln.py jede weitere Positionsgroesse; ab kill_switch_gesamt_usd Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ABSOLUT in USD (drawdown_halbierung_usd) und keine Quote vom Kapitaldeckel: die Ratsche misst den Gewinnruecklauf der realisierten Kurve, max_gesamt_usd ist eine unabhaengige Groesse. Am 15.09.2026 hob die Erhoehung 400 -> 1000 die alte Quote von 15 Prozent auf 150 USD, waehrend der hoechste Gewinnstand 140.24 USD betrug - die Ratsche konnte damit NIE MEHR ausloesen. drawdown_halbierung_prozent bleibt nur als Rueckfallwert, wenn der absolute Wert fehlt, und ist auf 6.0 gesetzt, damit auch dieser Weg 60 USD ergibt.",
+  "drawdown_halbierung_usd": 60.0,
+  "drawdown_halbierung_prozent": 6.0,
   "kill_switch_gesamt_usd": 200,
 
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. Wert an die Aufruf-Taktung koppeln: die Tagesroutine laeuft 1x/Tag, 2880 = 48 h faengt einen ausgefallenen Lauf ab, ohne bei jedem normalen Lauf auszuloesen. Ein Schnelllauf-Bot steht bei ~30.",

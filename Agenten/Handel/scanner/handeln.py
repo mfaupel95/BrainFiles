@@ -742,6 +742,11 @@ def zeige_wachen(w):
     print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f%s"
           % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"],
              "   >>> KILL-SWITCH" if s["kill"] else ""))
+    _schwelle = s.get("halbierungsschwelle_usd")
+    print("    Halbierung ab          %s%s"
+          % ("%.2f USD" % _schwelle if _schwelle is not None else "?",
+             "" if s.get("halbierung_erreichbar", True)
+             else "   >>> NICHT AUSLOESBAR: Schwelle ueber dem Hoechststand"))
     print("  3 Herzschlag frisch     %s   (%s min alt, Grenze %d)"
           % (s["herzschlag_frisch"],
              "?" if s["herzschlag_alter_min"] is None

@@ -70,10 +70,32 @@ def drawdown(runden):
     return hoch, max(0.0, hoch - kum)
 
 
+def halbierungsschwelle(w):
+    """Absoluter Ruecklauf in USD, ab dem neue Positionen halbiert werden.
+
+    Vorrang hat der absolute Wert drawdown_halbierung_usd. Die Ratsche misst den
+    Ruecklauf der realisierten GEWINNKURVE (siehe drawdown()), der Kapitaldeckel
+    ist eine davon unabhaengige Groesse. Ein Prozentsatz davon koppelt beide und
+    verschiebt den Ausloeser lautlos, sobald jemand max_gesamt_usd aendert: am
+    15.09.2026 hob die Erhoehung von 400 auf 1000 die Schwelle von 60 auf 150
+    USD, waehrend der hoechste je erreichte Gewinnstand 140.24 USD war - die
+    Ratsche konnte damit NIE MEHR ausloesen. Deshalb ist der Ausloeser jetzt ein
+    Betrag und keine Quote.
+
+    Ohne absoluten Wert gilt weiter der Prozentsatz - rueckwaertsvertraeglich
+    fuer Spuren, die den neuen Schluessel nicht kennen.
+    """
+    usd = w.get("drawdown_halbierung_usd")
+    if usd is not None:
+        return float(usd)
+    rahmen = w.get("max_gesamt_usd", w.get("max_gesamt_eur", 0.0))
+    return w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * rahmen
+
+
 def groessenfaktor(ruecklauf_usd, w):
-    """Bedingung 2, erste Stufe: ab drawdown_halbierung_prozent des Rahmens
-    unter dem Hoechststand wird jede neue Position halbiert."""
-    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["max_gesamt_usd"]
+    """Bedingung 2, erste Stufe: ab der Halbierungsschwelle unter dem
+    Hoechststand wird jede neue Position halbiert."""
+    grenze = halbierungsschwelle(w)
     return 0.5 if ruecklauf_usd >= grenze > 0 else 1.0
 
 
@@ -198,6 +220,8 @@ def lage(w, journal_pfad, zustand):
         "erste_runde": erste,
         "hoechststand_usd": hoch,
         "ruecklauf_usd": rueck,
+        "halbierungsschwelle_usd": halbierungsschwelle(w),
+        "halbierung_erreichbar": hoch == 0 or halbierungsschwelle(w) <= hoch,
         "groessenfaktor": groessenfaktor(rueck, w),
         "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch,
