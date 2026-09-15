@@ -59,7 +59,10 @@ def runden_aus_journal(journal_pfad):
     """Jede abgeschlossene Runde (Kauf gefolgt von Verkauf desselben Werts) mit
     ihrem Gewinn/Verlust in USD. FIFO je Instrument.
 
-    handelsjournal.csv: Kauf-Zeile usd = Einsatz, Verkauf-Zeile usd = Erloes.
+    handelsjournal.csv: Kauf-Zeile = Einsatz, Verkauf-Zeile = Erloes. Die
+    Spalte heisst je Spur anders: `usd` (scanner, xperp, swap, kraken) oder
+    `einsatz_usd` (die Indikator-Spuren, spiegel, omniquant). Beide lesen -
+    eine zweite Fassung dieser Rechnung waere eine zweite Wahrheit.
     """
     p = Path(journal_pfad)
     if not p.exists():
@@ -68,9 +71,14 @@ def runden_aus_journal(journal_pfad):
     runden = []
     with p.open("r", newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            inst = r["inst"]
+            inst = r.get("inst") or r.get("paar") or ""
+            if not inst:
+                continue
+            roh = r.get("usd")
+            if roh in (None, ""):
+                roh = r.get("einsatz_usd")
             try:
-                usd = float(r["usd"])
+                usd = float(roh)
             except (TypeError, ValueError):
                 continue
             if r["aktion"] == "kauf":

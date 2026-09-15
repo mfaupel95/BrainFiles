@@ -33,6 +33,7 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
         sys.path.insert(0, p)
 
 import wachen_pruefung as wp  # noqa: E402
+import ereignis  # noqa: E402
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt
 # eine Ebene hoeher und heisst wie kein Paket. Ein Import ueber sys.path
@@ -102,10 +103,17 @@ def journal(**felder):
 
 
 def spiegeln(z, w):
-    """Bedingung 4: Journal und Zustand ausser Haus."""
+    """Bedingung 4: Journal und Zustand ausser Haus.
+
+    Erst schreiben, dann kopieren. Der Vermerk ist juenger als die Kopie:
+    wechselt er, wird der Zustand einmal nachgezogen, damit auf Q: derselbe
+    Stand liegt. Ohne den Nachzug meldet `spiegelstand.py` in JEDEM Zyklus eine
+    Abweichung, in dem sich der Spiegelstand aendert (Muster: swap/handeln.py).
+    """
     ziel = w.get("journal_zweitziel")
     ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
-    wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand)
+    if wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        wp.spiegele_journal([ZUSTAND], ziel)
 
 
 # --- Kerzen ----------------------------------------------------------------
@@ -305,6 +313,13 @@ def groessenfaktor(ruecklauf, w):
 # --- Main -------------------------------------------------------------------
 
 def main():
+    # Meldet sich am Bus wie jede andere Spur im Dauerlauf (Muster
+    # kraken/handeln.py). Ein toter Bus bricht den Lauf nicht ab.
+    with ereignis.lauf("handel/wavetrend"):
+        return _main()
+
+
+def _main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--vorschau", action="store_const", const="vorschau",

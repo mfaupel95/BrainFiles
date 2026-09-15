@@ -171,6 +171,17 @@ SPUREN = {
     # gemeinsamen venv.
     "gitter":  {"ordner": "gitter",  "waehrung": "USDT",
                 "skript": "handeln.py"},
+    # VIER INDIKATOR-SPUREN (angelegt am 15.09.2026, am selben Tag
+    # angeschlossen): je ein Signal auf einem Indikator, ATR-Stop, Ziel = R x
+    # Stop, Papier ohne Live-Zweig wie spiegel. Kein eigenes venv.
+    "macd_mtf":   {"ordner": "macd_mtf",   "waehrung": "USD",
+                   "skript": "handeln.py"},
+    "squeeze":    {"ordner": "squeeze",    "waehrung": "USD",
+                   "skript": "handeln.py"},
+    "supertrend": {"ordner": "supertrend", "waehrung": "USD",
+                   "skript": "handeln.py"},
+    "wavetrend":  {"ordner": "wavetrend",  "waehrung": "USD",
+                   "skript": "handeln.py"},
     # Kraken (EUR, Spot, kein Hebel) braucht kein eigenes venv - scan.py und
     # handeln.py laufen unter dem scanner-venv. Ihr Herzschlag steht auf 180
     # Minuten statt auf 30 wie bei xperp: ein Rechnerneustart soll die

@@ -468,6 +468,74 @@ def _bilanz(spur):
         sys.dont_write_bytecode = alt
 
 
+# --- Indikator-Spuren (15.09.2026 angeschlossen) ---------------------------
+# Vier Spuren mit demselben Aufbau: ein Signal je Indikator, ATR-Stop,
+# Ziel = R x Stop, Papier ohne Live-Zweig. Sie teilen sich EINE Funktion -
+# vier Abschriften waeren vier Wahrheiten fuer dieselbe Frage.
+
+def _spur_indikator(ordner, name):
+    """Eine der vier Indikator-Spuren: Bestand gegen den aktuellen Kurs.
+
+    Derselbe Rechenweg wie bei der Gitter-Spur (kein eigener). Kein
+    Wachenblock: ihre `wachen.json` fuehrt weder `freigabe` noch die fuenf
+    Bedingungen, und `wachenlage()` wuerde die fremde Rechnung auf sie
+    anwenden.
+    """
+    pfad = os.path.join(HIER, ordner)
+    w = _lies(os.path.join(pfad, "wachen.json"), {})
+    z = _lies(os.path.join(pfad, "zustand.json"), {}) or {}
+    pos = z.get("positionen", []) or []
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, os.path.join(HIER, "scanner"))
+            import okx                                          # noqa: PLC0415
+            for p in pos:
+                try:
+                    kurse[p["inst"]] = float(okx.letzter_kurs(p["inst"]))
+                except Exception:                               # noqa: BLE001
+                    pass
+        except Exception:                                       # noqa: BLE001
+            pass
+
+    zeilen = []
+    for p in pos:
+        k = kurse.get(p.get("inst"))
+        einstieg = p.get("einstieg")
+        vz = 1 if (p.get("seite") or "long") == "long" else -1
+        bewegt = (vz * (k / einstieg - 1) * 100) if (k and einstieg) else None
+        zeilen.append({
+            "name": "%s %s" % (p.get("inst", "?"), p.get("seite", "")),
+            "einstieg": einstieg, "kurs": k, "wert": p.get("nominal", 0),
+            "vh": bewegt, "stop": p.get("stop"), "ziel": p.get("ziel"),
+            "seit": (p.get("eroeffnet_zeit") or "")[:10],
+            "seite": p.get("seite"),
+        })
+    return {
+        "name": name, "waehrung": w.get("waehrung", "USD"), "w": w, "z": z,
+        "positionen": zeilen, "ordner": pfad, "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(pfad, "handelsjournal.csv"),
+    }
+
+
+def spur_macd_mtf():
+    return _spur_indikator("macd_mtf", "MACD-MTF (Indikator)")
+
+
+def spur_squeeze():
+    return _spur_indikator("squeeze", "Squeeze (Indikator)")
+
+
+def spur_supertrend():
+    return _spur_indikator("supertrend", "SuperTrend (Indikator)")
+
+
+def spur_wavetrend():
+    return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
+
+
 def spur_omniquant():
     """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
 
@@ -802,7 +870,8 @@ def baue(mit_xperp=True):
     gesamt_offen = 0
     for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
                  spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
-                 spur_gitter, spur_kopier, spur_kopier1zu1):
+                 spur_gitter, spur_kopier, spur_kopier1zu1,
+                 spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend):
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001
