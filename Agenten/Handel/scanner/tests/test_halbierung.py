@@ -82,9 +82,17 @@ class EchteWachenTest(unittest.TestCase):
         self.assertEqual(wp.halbierungsschwelle(WACHEN),
                          float(WACHEN["drawdown_halbierung_usd"]))
 
-    def test_schwelle_ist_erreichbar(self):
-        """Der Test, der die tote Ratsche gefunden haette: eine Schwelle ueber
-        dem Hoechststand ist bei diesem Gewinnstand nicht ausloesbar."""
+    def test_halbierung_greift_noch_im_gewinn(self):
+        """Die Schwelle darf den Hoechststand nicht uebersteigen.
+
+        Warum das die richtige Grenze ist: drawdown() rechnet hoch minus kum,
+        und die kumulierte Kurve darf ins Minus laufen - eine Schwelle ueber dem
+        Hoechststand ist also NICHT unerreichbar, sie greift nur erst, wenn die
+        Spur mehr verloren hat als sie je gewonnen hatte. Dann schuetzt sie
+        keinen Gewinn mehr, sondern faengt einen Nettoverlust - dafuer ist der
+        Kill-Switch da. Dieser Test haelt fest, dass die Halbierung noch
+        innerhalb des Gewinns greifen kann.
+        """
         journal = HIER.parent / "handelsjournal.csv"
         runden = wp.runden_aus_journal(str(journal))
         hoch, _ = wp.drawdown(runden)
@@ -93,14 +101,16 @@ class EchteWachenTest(unittest.TestCase):
         grenze = wp.halbierungsschwelle(WACHEN)
         self.assertLessEqual(
             grenze, hoch,
-            "Schwelle %.2f USD liegt ueber dem Hoechststand %.2f USD - "
-            "die Ratsche kann nie ausloesen" % (grenze, hoch))
+            "Schwelle %.2f USD liegt ueber dem Gewinnhoechststand %.2f USD - "
+            "die Halbierung greift erst nach Verlust ueber den Nullpunkt"
+            % (grenze, hoch))
 
 
-class ErreichbarkeitTest(unittest.TestCase):
-    """Die Erreichbarkeit haengt NUR am Hoechststand, nicht am aktuellen
-    Ruecklauf. Sonst meldet die Anzeige 'NICHT AUSLOESBAR', waehrend der
-    Faktor daneben schon 0.50 zeigt."""
+class GewinnschutzTest(unittest.TestCase):
+    """Die Grenze markiert, ob die Halbierung noch innerhalb des GEWINNS
+    greifen kann. Sie haengt nur am Hoechststand, nicht am aktuellen Ruecklauf -
+    sonst meldete die Anzeige die Warnung, waehrend der Faktor daneben schon
+    0.50 zeigt."""
 
     def _journal(self, tmp, zeilen):
         p = Path(tmp) / "j.csv"
@@ -112,7 +122,7 @@ class ErreichbarkeitTest(unittest.TestCase):
         w = {"drawdown_halbierung_usd": schwelle, "max_gesamt_usd": 1000}
         return wp.lage(w, self._journal(tmp, zeilen), {})
 
-    def test_schwelle_ueber_dem_hoechststand_ist_nicht_erreichbar(self):
+    def test_schwelle_ueber_dem_hoechststand_greift_erst_im_minus(self):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             s = self._lage(tmp, 150.0, [
@@ -123,9 +133,9 @@ class ErreichbarkeitTest(unittest.TestCase):
             ])
             self.assertEqual(s["hoechststand_usd"], 40.0)
             self.assertEqual(s["ruecklauf_usd"], 40.0)
-            self.assertFalse(s["halbierung_erreichbar"])
+            self.assertFalse(s["halbierung_im_gewinn"], "Schwelle 150 ueber dem Gewinn von 40 USD")
 
-    def test_schwelle_unter_dem_hoechststand_ist_erreichbar(self):
+    def test_schwelle_unter_dem_hoechststand_greift_im_gewinn(self):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             s = self._lage(tmp, 30.0, [
@@ -137,14 +147,14 @@ class ErreichbarkeitTest(unittest.TestCase):
             # schon ausgeloest: Faktor halbiert UND trotzdem erreichbar -
             # die beiden Aussagen duerfen sich nicht widersprechen.
             self.assertEqual(s["groessenfaktor"], 0.5)
-            self.assertTrue(s["halbierung_erreichbar"])
+            self.assertTrue(s["halbierung_im_gewinn"])
 
     def test_ohne_runden_kein_falscher_alarm(self):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             s = self._lage(tmp, 60.0, [])
             self.assertEqual(s["hoechststand_usd"], 0.0)
-            self.assertTrue(s["halbierung_erreichbar"],
+            self.assertTrue(s["halbierung_im_gewinn"],
                             "eine frische Spur darf nicht als tote Ratsche gelten")
 
 

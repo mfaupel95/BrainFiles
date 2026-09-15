@@ -745,8 +745,8 @@ def zeige_wachen(w):
     _schwelle = s.get("halbierungsschwelle_usd")
     print("    Halbierung ab          %s%s"
           % ("%.2f USD" % _schwelle if _schwelle is not None else "?",
-             "" if s.get("halbierung_erreichbar", True)
-             else "   >>> NICHT AUSLOESBAR: Schwelle ueber dem Hoechststand"))
+             "" if s.get("halbierung_im_gewinn", True)
+             else "   >>> greift erst nach Verlust ueber den Nullpunkt"))
     print("  3 Herzschlag frisch     %s   (%s min alt, Grenze %d)"
           % (s["herzschlag_frisch"],
              "?" if s["herzschlag_alter_min"] is None

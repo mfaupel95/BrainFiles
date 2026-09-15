@@ -78,9 +78,15 @@ def halbierungsschwelle(w):
     ist eine davon unabhaengige Groesse. Ein Prozentsatz davon koppelt beide und
     verschiebt den Ausloeser lautlos, sobald jemand max_gesamt_usd aendert: am
     15.09.2026 hob die Erhoehung von 400 auf 1000 die Schwelle von 60 auf 150
-    USD, waehrend der hoechste je erreichte Gewinnstand 140.24 USD war - die
-    Ratsche konnte damit NIE MEHR ausloesen. Deshalb ist der Ausloeser jetzt ein
-    Betrag und keine Quote.
+    USD. Das war NICHT unerreichbar - drawdown() rechnet hoch minus kum, und die
+    kumulierte Kurve darf ins Minus laufen, also waechst der Ruecklauf ueber den
+    Hoechststand hinaus. Die 150 haetten aber erst gegriffen, wenn die Spur bei
+    -9.76 USD gestanden haette, also nach mehr Verlust als ihr gesamter
+    Hoechstgewinn von 140.24 USD: die Sicherung haette keinen GEWINN mehr
+    geschuetzt, sondern nur noch einen Nettoverlust gefangen. Genau dafuer ist
+    der Kill-Switch da. Deshalb ist der Ausloeser jetzt ein Betrag und keine
+    Quote, und lage() meldet mit halbierung_im_gewinn, ob die Halbierung
+    ueberhaupt noch innerhalb des Gewinns greifen kann.
 
     Ohne absoluten Wert gilt weiter der Prozentsatz - rueckwaertsvertraeglich
     fuer Spuren, die den neuen Schluessel nicht kennen.
@@ -221,7 +227,7 @@ def lage(w, journal_pfad, zustand):
         "hoechststand_usd": hoch,
         "ruecklauf_usd": rueck,
         "halbierungsschwelle_usd": halbierungsschwelle(w),
-        "halbierung_erreichbar": hoch == 0 or halbierungsschwelle(w) <= hoch,
+        "halbierung_im_gewinn": hoch == 0 or halbierungsschwelle(w) <= hoch,
         "groessenfaktor": groessenfaktor(rueck, w),
         "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch,
