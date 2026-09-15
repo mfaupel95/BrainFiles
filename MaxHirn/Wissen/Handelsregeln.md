@@ -402,7 +402,7 @@ durch einen Vorteil, sie begrenzen den Schaden, bis einer nachgewiesen ist.
 | **2. Drawdown-Ratsche** | Fällt das Konto 15 % unter seinen Höchststand, halbiert `bot.py`/`handeln.py` jede weitere Positionsgröße. Bei `kill_switch_gesamt_usd` wird flach gestellt **und** `handel_erlaubt` auf `false` geschrieben — der einzige Fall, in dem ein Skript diese Datei schreibt, und nur in diese Richtung. | `bot.py`, `handeln.py` |
 | **3. Herzschlag** | Liegt der letzte gesunde Lauf länger zurück als `herzschlag_max_minuten` (**seit 14.09.2026: 180 min für Papier-Spuren, 45 min für Spuren mit Handelserlaubnis**), schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Der Wächter startet einen toten Dauerlauf alle 30 min neu, ein Zyklus dauert 1–2 min — eine Störung heilt nach höchstens ~32 min von selbst; wer darunter geht, stellt bei *jeder* Störung flach und bucht eine Runde, die keine Handelsentscheidung war. Die Regel steht im Feld `_herzschlag_regel` jeder `wachen.json`. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `handeln.py` prüft `zustand.json` vor dem Start |
 | **4. Journal außer Haus** | Das Handelsjournal wird nach jedem Zyklus auf ein zweites Ziel gespiegelt. `G:` genügt nicht — dasselbe Gehäuse. Ein Journal nur auf dem Handelsrechner ist kein Nachweis, sondern eine Wette darauf, dass die Platte hält. | Zeile in `Routinen/`, Ziel offen bis „Kopie außer Haus" steht ([[Hardware]]) |
-| **5. Wöchentlicher Soll-Ist-Abgleich** | Einmal pro Woche die vier Pflichtzahlen (Liquidationsabstand, Funding, Gebühren, Trefferquote) gegen das real Erreichte. Liegt der gleitende 30-Runden-Erwartungswert nach Kosten unter null, fällt die Spur automatisch auf Papier zurück, bis ein neuer Papierlauf nach Bedingung 1 trägt. | Skript in `Routinen/`, Befund nach `Werkstatt/`, Entscheidung nach `Wissen/` |
+| **5. Wöchentlicher Soll-Ist-Abgleich** | Einmal pro Woche die vier Pflichtzahlen (Liquidationsabstand, Funding, Gebühren, Trefferquote) gegen das real Erreichte. Liegt der gleitende 30-Runden-Erwartungswert **der Handelsrunden** (seit 15.09.2026 ohne Herzschlag-Zwangsschlüsse) nach Kosten unter null, fällt die Spur automatisch auf Papier zurück, bis ein neuer Papierlauf nach Bedingung 1 trägt. | Skript in `Routinen/`, Befund nach `Werkstatt/`, Entscheidung nach `Wissen/` |
 
 **Änderung an einer `wachen.json` bleibt Stufe 1** — eigener Commit, `.bak`
 vorher, die neu gerechneten vier Zahlen in der Commit-Nachricht, nie mit anderer
@@ -679,13 +679,13 @@ Die drei Orte, an denen die Trennung wirkt:
 **Was ausdrücklich NICHT gefiltert wird: die Kapitalkurve.** Drawdown-Ratsche,
 Höchststand und Kill-Switch rechnen weiter auf **allen** Buchungen — eine
 Störung ist gebucht und hat Geld bewegt; wer sie aus der Kurve nimmt, schönt
-genau das Risiko, gegen das die Sicherung gebaut ist. Auch Bedingung 5
-(rollierender Erwartungswert < 0 → Sperre zu) lief am 15.09.2026 unverändert
-auf allen Runden; der Erwartungswert der echten Runden steht daneben
-(`rollierender_ev_echt`, „n/a" unter fünf Runden). Ob die Automatik auf die
-Handelsrunden umgestellt wird, ist eine Entscheidung von Max — sie kann in
-beide Richtungen wirken (bei kraken würde sie die Sperre **schließen**, bei
-xperp öffnen).
+genau das Risiko, gegen das die Sicherung gebaut ist. **Bedingung 5** dagegen
+(rollierender Erwartungswert < 0 → Sperre zu) rechnet seit dem 15.09.2026 auf
+den **Handelsrunden**: ein Herzschlag-Zwangsschluss ist keine
+Handelsentscheidung und darf die Sperre nicht auslösen (Entscheidung von Max am
+15.09.2026, umgesetzt in allen vier Wachenfassungen — scanner, xperp, kraken,
+orbk). Die Zahl über alle Buchungen steht daneben als `rollierender_ev_alle`;
+die Sperrzahl heißt weiter `rollierender_ev` („n/a" unter fünf Handelsrunden).
 
 ### Die Geometrie jeder Spur trägt
 

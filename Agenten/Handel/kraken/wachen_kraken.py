@@ -148,7 +148,10 @@ def lage(w, journal_pfad, zustand):
     echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 2880))
-    ev = rollierender_ev(runden)
+    # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
+    # ist keine Handelsentscheidung und darf den Erwartungswert nicht ins
+    # Negative ziehen (Entscheidung Max, 15.09.2026).
+    ev = rollierender_ev(echt)
     erste = runden[0]["zeit"][:10] if runden else None
     return {
         "freigabe_erfuellt": freigabe_erfuellt(w),
@@ -159,7 +162,7 @@ def lage(w, journal_pfad, zustand):
         "runden_echt": len(echt),
         "runden_stoerung": len(stoer),
         "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
-        "rollierender_ev_echt": rollierender_ev(echt),
+        "rollierender_ev_alle": rollierender_ev(runden),
         "erste_runde": erste,
         "hoechststand_eur": hoch,
         "ruecklauf_eur": rueck,

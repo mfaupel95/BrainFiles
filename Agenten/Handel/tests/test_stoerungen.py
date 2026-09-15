@@ -223,7 +223,7 @@ class TrennungImLagebildTest(unittest.TestCase):
                 self.assertEqual(s["runden_echt"] + s["runden_stoerung"],
                                  s["runden_gesamt"])
                 self.assertLessEqual(s["runden_papier_echt"], s["runden_papier"])
-                self.assertIn("rollierender_ev_echt", s)
+                self.assertIn("rollierender_ev_alle", s)
 
     def test_ohne_stoerung_ist_beides_gleich(self):
         for spur, pfad in self.FAELLE:
@@ -256,7 +256,43 @@ class TrennungImLagebildTest(unittest.TestCase):
     def test_erwartungswert_der_echten_runden_existiert_erst_ab_fuenf(self):
         _m, _j, s = self._lage("xperp", HANDEL / "xperp" / "wachen_xperp.py",
                                ["ziel", "herzschlag_alt"])
-        self.assertIsNone(s["rollierender_ev_echt"])
+        self.assertIsNone(s["rollierender_ev"])
+        self.assertIsNone(s["rollierender_ev_alle"])
+
+    def test_bedingung_5_rechnet_nur_auf_handelsrunden(self):
+        """Die Sperrzahl kommt aus den HANDELSRUNDEN.
+
+        Ein Herzschlag-Zwangsschluss ist keine Handelsentscheidung. Rechnete
+        Bedingung 5 weiter auf allen Buchungen, sperrte die Spur wegen eines
+        Betriebsvorfalls - hier: fuenf echte Runden mit +10 USD gegen drei
+        Zwangsschluesse mit -50 USD. Die alte Rechnung war negativ (-12,50),
+        die Handelsrunden sind es nicht (+10,00).
+        """
+        z = []
+        for i in range(5):
+            z.append("%s,papier,kauf,ECH-%d,1,100,,,,,," % (ZEIT, i))
+            z.append("%s,papier,verkauf,ECH-%d,1,110,,,ziel,,," % (ZEIT, i))
+        for i in range(3):
+            z.append("%s,papier,kauf,STO-%d,1,100,,,,,," % (ZEIT, i))
+            z.append("%s,papier,verkauf,STO-%d,1,50,,,herzschlag_alt,,," % (ZEIT, i))
+        journal = os.path.join(self.tmp.name, "handelsjournal.csv")
+        with io.open(journal, "w", encoding="utf-8", newline="") as f:
+            f.write(KOEPFE["scanner"] + "\n" + "\n".join(z) + "\n")
+
+        modul = lade("w_b5", HANDEL / "scanner" / "wachen_pruefung.py")
+        s = modul.lage(wachen_kopie("scanner", self.tmp.name), journal,
+                       self.dict_zustand())
+
+        self.assertEqual(s["runden_gesamt"], 8)
+        self.assertEqual(s["runden_echt"], 5)
+        self.assertEqual(s["runden_stoerung"], 3)
+        self.assertEqual(s["rollierender_ev"], 10.0)          # Handelsrunden
+        self.assertEqual(s["rollierender_ev_alle"], -12.5)    # alle Buchungen
+        self.assertFalse(s["ev_negativ"],
+                         "Bedingung 5 darf nicht auf Zwangsschluesse sperren")
+        # Gegenprobe: die ALTE Rechnung war negativ - der Test wuerde ohne die
+        # Umstellung fehlschlagen, nicht stillschweigend gruen bleiben.
+        self.assertLess(s["rollierender_ev_alle"], 0)
 
 
 class AnzeigeTest(unittest.TestCase):

@@ -144,7 +144,10 @@ def lage(w, journal_pfad, zustand):
     echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 45))
-    ev = rollierender_ev(runden)
+    # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
+    # ist keine Handelsentscheidung und darf den Erwartungswert nicht ins
+    # Negative ziehen (Entscheidung Max, 15.09.2026).
+    ev = rollierender_ev(echt)
     wochen, sessions = _wochen_und_sessions(runden)
     return {
         "freigabe_erfuellt": freigabe_erfuellt(w),   # Bed. 1 - Haken aus wachen.json
@@ -153,7 +156,7 @@ def lage(w, journal_pfad, zustand):
         # drawdown(runden) oben bleibt absichtlich ungefiltert.
         "runden_echt": len(echt), "runden_stoerung": len(stoer),
         "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
-        "rollierender_ev_echt": rollierender_ev(echt),
+        "rollierender_ev_alle": rollierender_ev(runden),
         "hoechststand_usd": hoch, "ruecklauf_usd": rueck,
         "groessenfaktor": groessenfaktor(rueck, w), "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch, "herzschlag_alter_min": alter,
