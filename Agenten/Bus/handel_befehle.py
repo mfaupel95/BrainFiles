@@ -9,7 +9,7 @@ HANDEL = Path(__file__).resolve().parents[1] / 'Handel'
 # einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
 # alt wird.
 SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant',
-          'nautilus', 'gitter', 'kopier')
+          'nautilus', 'gitter', 'kopier', 'kopier1zu1')
 
 
 def status(papier=False):
