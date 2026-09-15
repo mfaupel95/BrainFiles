@@ -853,8 +853,22 @@ Basislauf** (`dauerlauf.NUR_BASIS`). Liefe er in allen Stufen mit, entstuenden
 drei identische Buecher — dieselbe Beobachtung dreimal, dazu zwei Schreiber
 auf denselben Dateien. `spiegel.py` bricht in einer Stufe mit Klartext ab.
 
-**Noch offen (Entscheidung Max):** ein zweiter Dauerlauf ist gebaut, aber
-nicht gestartet — er kostet Rechenzeit und Netz auf derselben Maschine
-(Kernel-Power-41-Risiko, siehe `Wissen/Hardware.md`). Start von Hand:
-`Routinen\handel-dauerlauf.ps1 -Risiko mittel`; dauerhaft braucht er eine
-zweite geplante Aufgabe. Die Handelszentrale zeigt weiter nur die Basis.
+**Betrieb (Stand 15.09.2026, 23:59):** Der zweite Lauf ist **gestartet** und
+hat eine eigene Waechter-Aufgabe, `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`
+(Anmeldung + alle 30 Minuten, ruft `Routinen\handel-dauerlauf.ps1 -Risiko
+mittel`; erkennt am `dauerlauf.mittel.pid`, wenn schon einer laeuft). Der
+Basislauf bleibt unveraendert daneben. Zu beachten:
+
+- Er kostet Rechenzeit und Netz auf derselben Maschine (Kernel-Power-41-Risiko,
+  siehe `Wissen/Hardware.md`) - er ist kein Ersatz fuer den Basislauf.
+- Wird er nicht gebraucht: Aufgabe deaktivieren (`Disable-ScheduledTask
+  -TaskName MaxHirn-Handel-Dauerlauf-Mittel-Waechter`) und den Prozess aus
+  `Handel/dauerlauf.mittel.pid` beenden. Die Basis laeuft weiter.
+- Seine Buecher stehen NEBEN den Basisbuechern: `zustand.mittel.json`,
+  `handelsjournal.mittel.csv`, gespiegelt nach `Q:\Handel_Journal\<spur>`.
+- Die Stufenbuecher der ersten Minuten (bis 23:58) wurden verworfen: dort
+  schrieb parallel noch ein Trocken-Testlauf in dieselben Dateien. Eine
+  Messreihe, die zwei Schreiber hatte, ist keine.
+- Die Handelszentrale und der Tagesbericht zeigen weiter die Basis; fuer die
+  Stufe sind es `spiegelstand.py --risiko mittel` und
+  `auswertung_alle.py --risiko mittel`.
