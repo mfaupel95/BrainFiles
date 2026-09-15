@@ -75,6 +75,10 @@ FAMILIE = {
     "squeeze": "Indikator",
     "supertrend": "Indikator",
     "wavetrend": "Indikator",
+    # Mosaic ist keine Indikator-Spur: sie handelt Preisaktion (4H-Bias,
+    # 30M-Pullback, 5M-Structure-Shift). Eigene Familie statt "?" - die
+    # Gruppierung im Bericht und der Test haengen daran.
+    "mosaic": "Preisaktion",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

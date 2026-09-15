@@ -869,6 +869,9 @@ Basislauf bleibt unveraendert daneben. Zu beachten:
 - Die Stufenbuecher der ersten Minuten (bis 23:58) wurden verworfen: dort
   schrieb parallel noch ein Trocken-Testlauf in dieselben Dateien. Eine
   Messreihe, die zwei Schreiber hatte, ist keine.
-- Die Handelszentrale und der Tagesbericht zeigen weiter die Basis; fuer die
-  Stufe sind es `spiegelstand.py --risiko mittel` und
-  `auswertung_alle.py --risiko mittel`.
+- Die **Handelszentrale** zeigt beide Buecher: ein Umschalter in der Kopfzeile
+  (Basis/mittel/hoch) wechselt die Ansicht, `--risiko mittel` ist der Startwert.
+  Der **Tagesbericht** traegt eine eigene Zeile je Stufe (Spuren mit Buch,
+  Alter des juengsten Zyklus, geschlossene Runden mit Summe); ohne Stufe bleibt
+  sie weg. Die Zahlen kommen aus `auswertung_alle.kennzahlen_fuer`, nicht aus
+  einer zweiten Formel.

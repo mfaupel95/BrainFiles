@@ -634,6 +634,11 @@ in `MaxHirn/Wissen/Handelsregeln.md`; geprüft wird über jede Spur in
 `tests/test_risikostufe.py`, die Stufe selbst mit `spiegelstand.py --risiko
 mittel` (Bedingung 4) und `auswertung_alle.py --risiko mittel`.
 
+Sichtbar wird die Stufe an drei Stellen: die **Handelszentrale** hat einen
+Umschalter Basis/mittel/hoch in der Kopfzeile (Startwert `--risiko mittel`), der
+**Tagesbericht** traegt eine Zeile je laufender Stufe, und `handeln.py --wachen`
+zeigt die skalierten Grenzen. Ohne Stufe aendert sich an allen dreien nichts.
+
 ## Was noch fehlt
 
 Der Simulator ist bewusst instrumentenneutral gebaut. Für den nächsten Ausbau

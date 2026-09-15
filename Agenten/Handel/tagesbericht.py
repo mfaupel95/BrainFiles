@@ -26,6 +26,7 @@ import json
 import os
 import sys
 import traceback
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HIER, "scanner"))
@@ -36,6 +37,7 @@ sys.path.insert(0, os.path.join(HIER, "scanner"))
 XPERP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xperp")
 
 import melder                                            # noqa: E402
+import risikostufe                                       # noqa: E402
 import spiegelstand                                     # noqa: E402
 
 
@@ -881,6 +883,98 @@ def spiegelzeile():
 # Die Spuren dieses Berichts in Anzeige-Reihenfolge. EINE Liste fuer alle
 # Aufrufer: `baue()` (Tagesbericht) und `befehle.py` (/lage) lesen dieselbe -
 # eine zweite Aufzaehlung waere beim naechsten neuen Spurordner still veraltet.
+# Die Risikostufen ueber der Basis (Handel/risikostufe.py). Der Bericht oben
+# zeigt die Basis; hier geht es um die zweiten Laeufe, die mit groesseren
+# Betraegen Daten sammeln - ohne diese Zeile waeren sie unsichtbar.
+STUFEN = ("mittel", "hoch")
+
+
+def _stufenbuecher(stufe):
+    """Spuren mit einem Buch dieser Stufe, aus dem Ordnernamen gelesen.
+
+    Kein Import von `dauerlauf.SPUREN`: dauerlauf importiert dieses Modul
+    (Zyklus), und ein Rueckimport waere ein halb geladener Zyklus. Ein Buch
+    heisst zustand.<stufe>.json - wer eines hat, laeuft in dieser Stufe.
+    """
+    aus = []
+    try:
+        namen = sorted(os.listdir(HIER))
+    except OSError:
+        return aus
+    for name in namen:
+        ordner = os.path.join(HIER, name)
+        if not os.path.isdir(ordner):
+            continue
+        z = _lies(os.path.join(ordner, risikostufe.datei_fuer("zustand.json",
+                                                             stufe)))
+        if isinstance(z, dict):
+            aus.append((name, z))
+    return aus
+
+
+def stufenzeile():
+    """Eine Zeile je Risikostufe: laeuft sie, und was hat sie gemessen.
+
+    Gelesen wird nur. Die Zahlen kommen aus DERSELBEN Rechnung wie die
+    Auswertung (`auswertung_alle.kennzahlen_fuer`) - eine zweite Formel hier
+    wuerde beim naechsten Umbau still auseinanderlaufen. `HIER` wird dabei
+    mitgegeben, damit der Bericht auch in einem Testordner dieselbe Wahrheit
+    liest wie seine uebrigen Zeilen.
+    """
+    zeilen = []
+    for stufe in STUFEN:
+        buecher = _stufenbuecher(stufe)
+        if not buecher:
+            continue
+        alter = [spiegelstand.alter_minuten(z.get("letzter_lauf"))
+                 for _, z in buecher]
+        alter = [a for a in alter if a is not None]
+        frisch = min(alter) if alter else None
+        stueck = "Risikostufe %s: %d Spuren mit Buch" % (stufe, len(buecher))
+        if frisch is not None:
+            stueck += ", juengster Zyklus vor %.0f min" % frisch
+        runden, ergebnis = _stufenzahlen(stufe)
+        if runden:
+            stueck += ", %d Runden, Summe %+.2f" % (runden, ergebnis)
+        elif frisch is not None:
+            stueck += ", noch keine geschlossene Runde"
+        if frisch is None or frisch > 90:
+            # Ein Buch, das nicht mehr waechst, ist kein laufender Lauf.
+            zeilen.append("<b>%s - laeuft sie noch? "
+                          "(dauerlauf.%s.log)</b>" % (stueck, stufe))
+        else:
+            zeilen.append(stueck)
+    if not zeilen:
+        return ""
+    return "\n".join(zeilen) + ("\n  Details: auswertung_alle.py --risiko %s"
+                                % STUFEN[0])
+
+
+def _stufenzahlen(stufe):
+    """(geschlossene Runden, Ergebnis) ueber alle auswertbaren Spuren."""
+    runden, ergebnis = 0, 0.0
+    try:
+        import auswertung_alle                                # noqa: PLC0415
+    except Exception:                                         # noqa: BLE001
+        return 0, 0.0
+    alt = auswertung_alle.HIER
+    alt_stufe = auswertung_alle.STUFE
+    auswertung_alle.HIER = Path(HIER)
+    auswertung_alle.STUFE = stufe
+    try:
+        for spur in auswertung_alle.SPUREN:
+            k = auswertung_alle.kennzahlen_fuer(spur)
+            if k and k.get("n"):
+                runden += k["n"]
+                ergebnis += k["ergebnis"]
+    except Exception:                                         # noqa: BLE001
+        return runden, ergebnis
+    finally:
+        auswertung_alle.HIER = alt
+        auswertung_alle.STUFE = alt_stufe
+    return runden, ergebnis
+
+
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier, spur_kopier1zu1,
@@ -987,6 +1081,9 @@ def baue(mit_xperp=True):
 
     t.append("")
     t.append(spiegelzeile())
+    stufe = stufenzeile()
+    if stufe:
+        t.append(stufe)
     t.append("\n%d offene Position(en) insgesamt." % gesamt_offen)
     if not melder.bereit():
         t.append("Melder nicht eingerichtet: %s fehlt." % melder.fehlt())

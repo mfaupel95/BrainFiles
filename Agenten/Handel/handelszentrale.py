@@ -55,9 +55,32 @@ for _p in (HIER, os.path.join(HIER, "scanner"), os.path.join(HIER, "kraken"),
 
 import dauerlauf                                            # noqa: E402
 import freigabefenster                                      # noqa: E402
+import risikostufe                                          # noqa: E402
 
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
+
+# Risikostufe dieser Ansicht: None = Basis (Vorgabe). Ein zweiter Dauerlauf
+# fuehrt dieselben Spuren mit groesseren Betraegen in EIGENEN Dateien
+# (zustand.mittel.json, handelsjournal.mittel.csv, dauerlauf.mittel.log) - siehe
+# Handel/risikostufe.py. Die Zentrale zeigt beide Buecher, umschaltbar in der
+# Kopfzeile; sie schreibt in keiner Stufe etwas.
+RISIKO = None
+BASIS_NAME = "Basis"
+STUFEN_AUSWAHL = (BASIS_NAME, "mittel", "hoch")
+
+
+def stufenname(name):
+    """Dateiname in der Stufe dieser Ansicht (Basis: unveraendert)."""
+    if not RISIKO:
+        return name
+    return risikostufe.datei_fuer(name, RISIKO)
+
+
+def dauerlauf_dateien():
+    """(PID-Datei, Logdatei) der Ansicht - je Stufe eigene Namen."""
+    return (os.path.join(HIER, stufenname("dauerlauf.pid")),
+            os.path.join(HIER, stufenname("dauerlauf.log")))
 
 UTC = timezone.utc
 REFRESH_MS = 15_000
@@ -517,6 +540,13 @@ class Handelszentrale:
         self.refresh()
         root.after(REFRESH_MS, self._planer)
 
+    def _stufe_gewaehlt(self, _event=None):
+        """Umschalter: RISIKO umsetzen und die Ansicht neu lesen."""
+        global RISIKO
+        wahl = self.w_stufe.get()
+        RISIKO = None if wahl == BASIS_NAME else wahl
+        self.refresh()
+
     # ---------- Aufbau ----------
     def _baue(self):
         st = ttk.Style()
@@ -542,6 +572,13 @@ class Handelszentrale:
         self.l_takt = tk.Label(kopf, bg=FARBEN["bg"], font=("Consolas", 10),
                                fg=FARBEN["matt"])
         self.l_takt.pack(side="right")
+        # Umschalter Basis/mittel/hoch: eine Ansicht, zwei Buecher. Ohne ihn
+        # waere der zweite Lauf in dieser GUI unsichtbar, obwohl er laeuft.
+        self.w_stufe = ttk.Combobox(kopf, values=STUFEN_AUSWAHL, width=8,
+                                    state="readonly")
+        self.w_stufe.set(RISIKO or BASIS_NAME)
+        self.w_stufe.pack(side="left", padx=(16, 0))
+        self.w_stufe.bind("<<ComboboxSelected>>", self._stufe_gewaehlt)
 
         # --- Spurtabelle
         tk.Label(self.root, text="Spuren", bg=FARBEN["bg"], fg=FARBEN["akzent"],
@@ -656,7 +693,8 @@ class Handelszentrale:
         self._starte_kurs_worker()
 
     def _pfad(self, spur, name):
-        return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur), name)
+        return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur),
+                            stufenname(name))
 
     def _starte_kurs_worker(self):
         """Nur EIN Kurslauf gleichzeitig.
@@ -902,17 +940,20 @@ class Handelszentrale:
         self.l_summe.config(text="%d offene Positionen   |   Nominal %.0f USD"
                                  % (len(self.positionen), summe))
 
-        # Kopf: Dauerlauf
+        # Kopf: Dauerlauf DIESER Stufe
+        pid_pfad, log_pfad = dauerlauf_dateien()
         pid = None
         try:
-            with open(os.path.join(HIER, "dauerlauf.pid"), encoding="ascii") as f:
+            with open(pid_pfad, encoding="ascii") as f:
                 pid = int((f.read() or "0").strip() or 0)
         except Exception:                                    # noqa: BLE001
             pid = None
         lebt = prozess_lebt(pid)
-        text, alt = dauerlauf_stand(os.path.join(HIER, "dauerlauf.log"), jetzt)
-        lage = ("PID %s %s" % (pid, "laeuft" if lebt else "lebt nicht")
-                if pid else "keine PID-Datei")
+        text, alt = dauerlauf_stand(log_pfad, jetzt)
+        stufe = ("Stufe %s" % RISIKO) if RISIKO else BASIS_NAME
+        lage = "%s   |   " % stufe
+        lage += ("PID %s %s" % (pid, "laeuft" if lebt else "lebt nicht")
+                 if pid else "keine PID-Datei")
         if alt is not None:
             lage += "   |   letzter Zyklus vor %.0f min" % alt
         elif text:
@@ -946,8 +987,9 @@ class Handelszentrale:
             marke = "matt" if gv is None else ("gut" if gv >= 0 else "schlecht")
             k.insert("end", "  " + ereignis_zeile(e) + "\n", marke)
 
-        k.insert("end", "\ndauerlauf.log\n", "kopf")
-        log = os.path.join(HIER, "dauerlauf.log")
+        k.insert("end", "\n%s\n" % os.path.basename(dauerlauf_dateien()[1]),
+                 "kopf")
+        log = dauerlauf_dateien()[1]
         try:
             with open(log, encoding="utf-8", errors="replace") as f:
                 zeilen = f.readlines()[-12:]
@@ -971,18 +1013,20 @@ def pruefe(jetzt=None):
     """Gibt zurueck, was das Fenster zeigen wuerde - zum Nachlesen im Log."""
     jetzt = jetzt or datetime.now(UTC)
     aus = ["Spuren aus dauerlauf.SPUREN: %s" % ", ".join(SPUREN)]
-    text, alt = dauerlauf_stand(os.path.join(HIER, "dauerlauf.log"), jetzt)
+    text, alt = dauerlauf_stand(dauerlauf_dateien()[1], jetzt)
     pid = None
     try:
-        with open(os.path.join(HIER, "dauerlauf.pid"), encoding="ascii") as f:
+        with open(dauerlauf_dateien()[0], encoding="ascii") as f:
             pid = int((f.read() or "0").strip() or 0)
     except Exception:                                        # noqa: BLE001
         pid = None
+    aus.append("Ansicht: %s (Dateien %s)"
+               % (RISIKO or BASIS_NAME, stufenname("zustand.json")))
     aus.append("Dauerlauf: PID %s, lebt %s, letzter Log-Eintrag %s (%.0f min)"
                % (pid, prozess_lebt(pid), text, alt if alt is not None else -1))
     for spur in SPUREN:
         ordner = os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur))
-        z = lade_json(os.path.join(ordner, "zustand.json"))
+        z = lade_json(os.path.join(ordner, stufenname("zustand.json")))
         w = lade_json(os.path.join(ordner, "wachen.json"))
         try:
             f = freigabefenster.lade(spur)
@@ -997,7 +1041,7 @@ def pruefe(jetzt=None):
                           kurs_fmt(p["stop"]), kurs_fmt(p["ziel"]),
                           p["quelle"], p["kurs_schluessel"]))
         for e in journal_ereignisse(spur, os.path.join(
-                ordner, "handelsjournal.csv"), 2):
+                ordner, stufenname("handelsjournal.csv")), 2):
             aus.append("      Journal: %s" % ereignis_zeile(e))
     return aus
 
@@ -1026,7 +1070,16 @@ def main():
     ap = argparse.ArgumentParser(description="Handelszentrale (nur lesend)")
     ap.add_argument("--pruefen", action="store_true",
                     help="nur ausgeben, was das Fenster zeigen wuerde")
+    ap.add_argument("--risiko", choices=sorted(risikostufe.FAKTOREN),
+                    default=risikostufe.STANDARD,
+                    help="Buecher dieser Risikostufe zeigen (Vorgabe %s = "
+                         "Basis). Die Stufe laeuft als eigener Dauerlauf mit "
+                         "eigenen Dateien - siehe risikostufe.py."
+                         % risikostufe.STANDARD)
     args = ap.parse_args()
+    global RISIKO
+    RISIKO = (None if args.risiko == risikostufe.STANDARD
+              else args.risiko)
     if args.pruefen:
         for zeile in pruefe():
             print(zeile)
