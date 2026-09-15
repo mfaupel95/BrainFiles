@@ -44,6 +44,44 @@ MIN_RUNDEN = 8
 SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus")
 
 
+def kennzahlen_fuer(spur):
+    """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
+
+    Der Weg stand bis zum 15.09.2026 nur in `main()`. Ein zweiter Aufrufer
+    (die Telegram-Befehle in `befehle.py`) haette die Zuordnung abschreiben
+    muessen - und beim naechsten neuen Feld nur an einer Stelle mitgezogen.
+    `main()` und `befehle.py` rufen jetzt beide diese Funktion.
+
+    Rueckgabe: das dict aus `kennzahlen()`, oder None wenn die Spur keine
+    geschlossenen Runden hat (bzw. gar kein Journal).
+    """
+    z = zeilen(spur)
+    if not z:
+        return None
+    gebuehr = 0.0
+    wp = HIER / spur / "wachen.json"
+    if wp.exists():
+        try:
+            gebuehr = (json.loads(wp.read_text("utf-8")).get("gebuehr_taker")
+                       or 0.0)
+        except (OSError, ValueError):
+            gebuehr = 0.0
+    if spur in ("xperp", "swap"):
+        runden = runden_xperp(z)
+    elif spur == "scanner":
+        runden = runden_spot(z, 0.0005)
+    elif spur == "kraken":
+        runden = runden_spot(z, gebuehr, einsatz_feld="eur")
+    elif spur == "orbk":
+        runden = runden_orbk(z)
+    elif spur == "gitter":
+        runden = gitter_zyklen(z)
+    else:
+        runden = []
+    return kennzahlen(runden, "USD")
+
+
+
 def prozent(x, stellen=2):
     """Eine Zahl mit Vorzeichen, oder n/a. Kein Lambda: die Verkettung
     'Pattern bauen' + 'formatieren' hat hier still den Rohling ausgegeben."""
@@ -309,28 +347,9 @@ def main():
     spuren = a.spur or list(SPUREN)
     zahlen = {}
     for spur in spuren:
-        z = zeilen(spur)
-        if not z:
-            zeige(spur, None)
-            continue
-        gebuehr = 0.0
-        wp = HIER / spur / "wachen.json"
-        if wp.exists():
-            gebuehr = (json.loads(wp.read_text("utf-8")).get("gebuehr_taker")
-                       or 0.0)
-        if spur in ("xperp", "swap"):
-            runden = runden_xperp(z)
-        elif spur == "scanner":
-            runden = runden_spot(z, 0.0005)
-        elif spur == "kraken":
-            runden = runden_spot(z, gebuehr, einsatz_feld="eur")
-        elif spur == "orbk":
-            runden = runden_orbk(z)
-        elif spur == "gitter":
-            runden = gitter_zyklen(z)
-        else:
-            runden = []
-        k = kennzahlen(runden, "USD")
+        # Ein Weg fuer beide Aufrufer: hier stand die Zuordnung Spur ->
+        # Rechenweg bis 15.09.2026 ein zweites Mal (siehe kennzahlen_fuer).
+        k = kennzahlen_fuer(spur)
         zahlen[spur] = k
         zeige(spur, k)
 

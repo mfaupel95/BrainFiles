@@ -44,8 +44,13 @@ die eine, auf die es ankam.
 
 BEFEHLE VOM HANDY
 -----------------
-  /lage        Positionen und Sperren, sofort
-  /bericht     der volle Tagesbericht
+  /lage        JETZT: offene Positionen je Spur, Live-Tore, Freigaben
+  /bericht     der volle Tagesbericht (mit Rangliste)
+  /spuren      alle Spur-Namen
+  /spur NAME   eine Spur in der Tiefe (Positionen, Wachen, Journal)
+  /strategien  Bilanz aller Strategien nebeneinander
+  /indikatoren die vier Indikator-Spuren: Signale und Treffer
+  /markt       Kurs, 24 h, Trend, Volatilitaet (Beobachtung)
   /scan        Rangliste neu rechnen
   /ja [h]      wartende Freigabe erteilen (Vorgabe: die angefragte Dauer)
   /nein        wartende Freigabe ablehnen
@@ -53,6 +58,10 @@ BEFEHLE VOM HANDY
   /pause       Zyklus aussetzen, Meldungen laufen weiter
   /weiter      Zyklus fortsetzen
   /hilfe       diese Liste
+
+Der Text der Befehle steht in befehle.py - dort, wo ihn auch der SkillsBot
+liest (eine Quelle, zwei Bots). /lage und /bericht sind seit 15.09.2026
+verschiedene Auskuenfte: /lage zeigt den Zustand, /bericht die Geschichte.
 
 Aufruf:
     python dauerlauf.py                 # laeuft, bis Strg+C
@@ -77,6 +86,7 @@ sys.path.insert(0, HIER)
 # faengt selbst alles ab).
 sys.path.insert(0, os.path.join(HIER, os.pardir, "Bus"))
 
+import befehle                                             # noqa: E402
 import ereignis                                           # noqa: E402
 import freigabefenster                                   # noqa: E402
 import melder                                            # noqa: E402
@@ -487,16 +497,39 @@ class Lauf:
                     "Spot unveraendert. /stop%s schliesst das Fenster." % (kurz, h, endung))
 
         if wort == "prognose":
-            return "Bitte im SkillsBot: /prognose [N]. Die Marktanalyse darf hier weder Stop-Befehle noch den Handelszyklus blockieren."
+            return ("Bitte im SkillsBot: /prognose [N]. Die Marktanalyse darf hier "
+                    "weder Stop-Befehle noch den Handelszyklus blockieren. "
+                    "Kurz und ohne Order: /markt")
         if wort == "papierstatus":
             import handel_befehle
             return handel_befehle.status(papier=True)
 
+        # /lage ist die JETZT-Sicht: Positionen, Live-Tore, offene Freigaben.
+        # Bis 15.09.2026 war sie derselbe Bericht wie /bericht, nur ohne
+        # Rangliste - zwei Befehle, eine Auskunft. Wer alles sehen will, nimmt
+        # /bericht; wer eine Spur in der Tiefe will, /spur NAME.
         if wort in ("lage", "status"):
-            return tagesbericht.baue(mit_xperp=False)
+            return befehle.lage()
 
         if wort == "bericht":
             return tagesbericht.baue(mit_xperp=True)
+
+        if wort == "spuren":
+            namen = befehle.spuren()
+            return ("Spuren: %s" % ", ".join(namen) if namen
+                    else "Spurliste nicht lesbar (SPUREN in dauerlauf.py).")
+
+        if wort == "spur":
+            return befehle.spur(" ".join(rest))
+
+        if wort == "strategien":
+            return befehle.strategien()
+
+        if wort == "indikatoren":
+            return befehle.indikatoren()
+
+        if wort == "markt":
+            return befehle.markt()
 
         if wort == "scan":
             return self.scan_kurz()
@@ -557,20 +590,8 @@ class Lauf:
         stand = []
         for spur in SPUREN:
             stand.append("  %-9s %s" % (spur, freigabefenster.lade(spur).text()))
-        return ("<b>Befehle</b>\n"
-                "/lage      Positionen und Sperren\n"
-                "/bericht   voller Tagesbericht\n"
-                "/scan      Rangliste neu rechnen\n"
-                "/freigabe_xperp - XPERP-Anfrage und Grenzen lesen\n"
-                "/ja_xperp STUNDEN - nur XPERP freigeben (max. 24 h)\n"
-                "/nein_xperp /stop_xperp - nur XPERP-Fenster schliessen\n"
-                "/papierstatus - gespeicherter Papierstand\n"
-                "Prognose im SkillsBot: /prognose [N]\n"
-                "/ja [h]    wartende Freigabe erteilen\n"
-                "/nein      ablehnen\n"
-                "/stop      alles zu, zurueck auf Papier\n"
-                "/pause /weiter\n\n"
-                "<b>Jetzt</b>\n%s\n"
+        return (befehle.hilfe()
+                + "\n\n<b>Jetzt</b>\n%s\n"
                 "  Zyklen %d, Fehler %d, Takt %d min"
                 % ("\n".join(stand), self.zyklen, self.fehler, self.takt))
 

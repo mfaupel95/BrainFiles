@@ -468,6 +468,12 @@ def _bilanz(spur):
         sys.dont_write_bytecode = alt
 
 
+# Oeffentlicher Name fuer dieselbe Funktion: `befehle.py` (/spur, /strategien)
+# zitiert die Bilanzzeile einer Buch-Spur. Ein zweiter NAME, kein zweiter
+# Aufruf - die Rechnung bleibt EINE.
+bilanz = _bilanz
+
+
 # --- Indikator-Spuren (15.09.2026 angeschlossen) ---------------------------
 # Vier Spuren mit demselben Aufbau: ein Signal je Indikator, ATR-Stop,
 # Ziel = R x Stop, Papier ohne Live-Zweig. Sie teilen sich EINE Funktion -
@@ -862,16 +868,22 @@ def spiegelzeile():
     return "Journal ausser Haus: %s" % text
 
 
+# Die Spuren dieses Berichts in Anzeige-Reihenfolge. EINE Liste fuer alle
+# Aufrufer: `baue()` (Tagesbericht) und `befehle.py` (/lage) lesen dieselbe -
+# eine zweite Aufzaehlung waere beim naechsten neuen Spurordner still veraltet.
+HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
+         spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
+         spur_gitter, spur_kopier, spur_kopier1zu1,
+         spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend)
+
+
 def baue(mit_xperp=True):
     """Der ganze Bericht als Text. Kein Netz noetig fuer den Rahmen."""
     heute = dt.datetime.now()
     t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
 
     gesamt_offen = 0
-    for hole in (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-                 spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
-                 spur_gitter, spur_kopier, spur_kopier1zu1,
-                 spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend):
+    for hole in HOLER:
         try:
             s = hole()
         except Exception as e:                           # noqa: BLE001
