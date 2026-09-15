@@ -10,7 +10,7 @@ hier nicht sauber nachbilden, deshalb:
   * **Daten** ueber die oeffentliche CoinGecko-/Binance-API (`Handel/moondev_daten.py`)
     - dieselben Endpunkte, ohne Schluessel,
   * **Regel** deterministisch im Haus (siehe `signal()`), nachrechenbar,
-  * **Buch** ein Haus-Buch (`Handel/moondev_buch.py`): Zustand, Journal, Kopie
+  * **Buch** ein Haus-Buch (`Handel/spur_buch.py`): Zustand, Journal, Kopie
     nach `Q:\\Handel_Journal\\moondev_topmovers` (Bedingung 4), Ratsche, Stop/Ziel.
 
 Kein Live-Zweig: die Fremd-Agenten handeln mit echten Schluesseln, diese Spur
@@ -30,7 +30,7 @@ for p in (HANDEL, os.path.join(HANDEL, "scanner"), HIER):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import moondev_buch as buch  # noqa: E402
+import spur_buch as buch  # noqa: E402
 import moondev_daten as daten  # noqa: E402
 
 # Test-Seam: None -> echter Abruf. Tests setzen ein Lambda.

@@ -58,7 +58,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
 # der Indikator-Spuren (kauf/verkauf mit einsatz_usd), deshalb derselbe
 # Rechenweg - nur der NAME der Gruppe ist ein anderer.
 BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
-              "moondev_marktlage")
+              "moondev_marktlage", "iv_wand")
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 

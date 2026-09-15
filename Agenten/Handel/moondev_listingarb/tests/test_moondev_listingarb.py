@@ -20,7 +20,7 @@ for p in (os.path.join(HANDEL, "scanner"), HANDEL, SPUR):
         sys.path.insert(0, p)
 
 import handeln as h  # noqa: E402
-import moondev_buch as buch  # noqa: E402
+import spur_buch as buch  # noqa: E402
 
 assert h.__file__.startswith(SPUR), "falsches handeln.py: %s" % h.__file__
 

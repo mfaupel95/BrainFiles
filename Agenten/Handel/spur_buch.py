@@ -119,8 +119,15 @@ def groessenfaktor(ruecklauf, w):
     return ratschen.groessenfaktor(ruecklauf, w)
 
 
-def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None):
-    """Eine Position eroeffnen - Stop und Ziel aus Prozent, Groesse risiko-normiert."""
+def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
+            ziel_preis=None):
+    """Eine Position eroeffnen - Stop in Prozent, Ziel als Preis oder Vielfaches.
+
+    `ziel_preis` gibt es fuer Signale, deren Ziel ein MARKTPUNKT ist (die
+    IV-Wand: der Strike mit dem groessten Open Interest). Ohne ihn gilt das
+    R-Vielfache aus den Wachen. Beide Wege setzen denselben Stop - daran haengt
+    die Groesse, und die muss zur Ausstiegslinie passen.
+    """
     if not z.get("positionen"):
         z["positionen"] = []
     if len(z["positionen"]) >= w.get("max_offene_positionen", 3):
@@ -137,7 +144,16 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None):
     abstand = kurs * pct / 100.0
     r = float(w.get("ziel_r_vielfaches", 1.5))
     stop = kurs - vz * abstand
-    ziel = kurs + vz * r * abstand
+    if ziel_preis:
+        # Ein Marktziel muss auf der richtigen Seite liegen: ein Ziel hinter
+        # dem Einstieg waere sofort erreicht (oder nie) - beides ist kein
+        # Handel, sondern ein Rechenfehler.
+        if (seite == "long" and float(ziel_preis) <= kurs) or \
+                (seite == "short" and float(ziel_preis) >= kurs):
+            return None
+        ziel = float(ziel_preis)
+    else:
+        ziel = kurs + vz * r * abstand
 
     nominel = w["risiko_je_position_usd"] / (pct / 100.0)
     nominel = min(nominel, w["max_pro_trade_usd"]) * faktor
@@ -196,8 +212,12 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None):
 
 # --- Das Lauf-Geruest ------------------------------------------------------
 
-def zyklus(ordner, quelle, signal, modus, ereignis_name):
-    """Ein Zyklus einer Bot-Spur. `quelle(w)` und `signal(daten, w)` kommen von ihr.
+def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
+    """Ein Zyklus einer Spur. `quelle(w)`, `signal(daten, w)` kommen von ihr.
+
+    `ziel(daten, w)` ist optional und liefert ein ZIEL ALS MARKTPUNKT (die
+    IV-Wand) - dann steht im Buch nicht das R-Vielfache, sondern diese Linie.
+    Ohne `ziel` bleibt es beim Vielfachen aus den Wachen.
 
     Reihenfolge: erst die Ratsche (Buch-Ruecklauf), dann Ausstiege, dann
     Einstiege. Bei `--vorschau` wird gerechnet und nichts geschrieben; ein
@@ -244,7 +264,10 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name):
             for inst in sorted(daten):
                 seite = signal(daten[inst], w)
                 if seite:
-                    print("Vorschau: Einstieg waere %s %s" % (seite.upper(), inst))
+                    linie = ziel(daten[inst], w) if ziel else None
+                    print("Vorschau: Einstieg waere %s %s%s"
+                          % (seite.upper(), inst,
+                             ("  Ziel %.2f" % linie) if linie else ""))
             print("Vorschau: keine Dateien geschrieben.")
             return 0
 
@@ -253,7 +276,8 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name):
             if not seite:
                 continue
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
-                         w.get("_grund", "moondev_bot"))
+                         w.get("grund", "moondev_bot"),
+                         ziel_preis=(ziel(daten[inst], w) if ziel else None))
             if p:
                 print("EINSTIEG %s %s @ %.6f  Stop %.2f%%  Ziel %.6f  "
                       "Nominal %.2f USD"

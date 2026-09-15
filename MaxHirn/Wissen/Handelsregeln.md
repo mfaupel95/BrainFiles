@@ -937,3 +937,42 @@ eine Buchhaltung fuer alle.
 LLM-Schluessel, Solana-RPC/Wallet, kein Handelsbezug) - samt dem, was ein
 Weiterbau je Gruppe braeuchte. Kein Sprachmodell-Buch und kein Wallet ohne
 ausdrueckliche Entscheidung.
+
+## IV-Wand: der Strike mit dem groessten Open Interest (17.09.2026)
+
+**Auftrag Max:** "IV-Wand anschliessen."
+
+**Was sie ist.** Im Optionsmarkt liegt bei einzelnen Strikes sehr viel offenes
+Interesse (Open Interest). Dort sitzen die Absicherungen der Marktmacher, und
+der Kurs wird von diesen Zonen angezogen oder abgestossen - die "Wand". Die
+implizite Volatilitaet (IV) gehoert dazu: Wo viel OI liegt UND die IV hoch ist,
+ist die Erwartung des Marktes konzentriert.
+
+**Wie sie gerechnet wird** (`Agenten/Handel/iv_wand/handeln.py`, oeffentliche
+OKX-Daten, kein Schluessel):
+
+1. `/public/open-interest?instType=OPTION&uly=BTC-USD` - Open Interest je
+   Option (`oiUsd`).
+2. `/public/opt-summary?uly=BTC-USD` - implizite Volatilitaet je Option
+   (`markVol`).
+3. Nur Verfaelle in **7 bis 45 Tagen** (nahe Verfaelle, wo gehandelt wird).
+4. Open Interest je **Strike** summieren (Call + Put gehoeren zusammen) - der
+   groesste Strike ist die Wand, seine mittlere IV steht als Notiz im Zustand.
+
+**Regel:** Spot unter der Wand mit Abstand <= 5 % -> long, Ziel ist die Wand.
+Spot ueber der Wand im selben Abstand -> short, Ziel ist die Wand. Weiter weg
+oder genau darauf: kein Geschaeft. Stop 4 % (fester Satz), eine Position.
+
+**Zwei Besonderheiten:** Das Ziel ist ein **Marktpunkt**, kein Vielfaches des
+Stops - dafuer hat das gemeinsame Buch (`Handel/spur_buch.py`) den Parameter
+`ziel_preis`; ein Ziel hinter dem Einstieg wird abgelehnt statt gebucht. Und
+die Spur gehoert zur Familie **Options-Zone**, nicht zu den Bot-Signalen: hier
+rechnet kein fremder Bot, sondern der Optionsmarkt.
+
+**Nachweis (16.09.2026 nachts):** Spot 75.678 USD, **Wand 70.000 USD**
+(OI 136,5 Mio USD, IV 41,2 %, faellig in 9,3 Tagen, 78 Strikes im Fenster);
+Abstand -7,5 % -> korrekt kein Signal. 14 Tests, Bedingung 4: 21 von 21 Spuren
+byte-gleich, `pruefe_ratschen` fuehrt sie (5,00 = 1,0x Buchrisiko).
+
+**Grenze:** gehandelt wird der Spot-Papierpreis, nicht die Option. Kein
+Live-Zweig.

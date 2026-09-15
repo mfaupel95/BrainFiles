@@ -248,7 +248,8 @@ SPUR_DATEIEN = {
     "macd_mtf": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "mosaic": ("handeln.py", ("ZUSTAND", "JOURNAL")),
     "moondev_funding": ("handeln.py", ("ZUSTAND", "JOURNAL")),
-}  # die drei weiteren Bot-Spuren nutzen den gemeinsamen Kern (moondev_buch)
+}  # die Kern-Spuren (listingarb/topmovers/marktlage/iv_wand) fuehren ihre
+# Dateinamen in spur_buch.pfade() - dafuer steht BuchSpurenTest unten.  # die drei weiteren Bot-Spuren nutzen den gemeinsamen Kern (spur_buch)
 # und fuehren ihre Dateinamen dort - separat geprueft in BuchSpurenTest.
 
 SPUR_WACHEN = {
@@ -268,7 +269,7 @@ SPUR_WACHEN = {
     "macd_mtf": ("handeln.py", "lade_wachen"),
     "mosaic": ("handeln.py", "lade_wachen"),
     "moondev_funding": ("handeln.py", "lade_wachen"),
-}
+}  # iv_wand nutzt den gemeinsamen Kern (spur_buch), geprueft in BuchSpurenTest
 
 # Spuren, die unter DIESEM Interpreter nicht ladbar sind. nautilus braucht
 # sein eigenes venv (nautilus_trader). Eine Spur hier einzutragen heisst:
@@ -391,6 +392,51 @@ class VerdrahtungTest(unittest.TestCase):
                         if s in ueberraschung))
         self.assertGreaterEqual(len(SPUR_DATEIEN) - len(nicht_geprueft), 14,
                                 "zu wenige Spuren wirklich geprueft")
+
+
+class BuchSpurenTest(unittest.TestCase):
+    """Die Spuren am gemeinsamen Buch tragen die Risikostufe ebenfalls.
+
+    Sie haben keine eigenen ZUSTAND/JOURNAL-Konstanten - ihre Dateinamen
+    entstehen in `spur_buch.pfade(ordner)`. Genau das wird hier gefragt: der
+    echte Weg, nicht eine nachgebaute Formel.
+    """
+
+    SPUREN = ("moondev_listingarb", "moondev_topmovers", "moondev_marktlage",
+              "iv_wand")
+
+    def setUp(self):
+        self.alt = os.environ.get("HANDEL_RISIKO")
+        os.environ.pop("HANDEL_RISIKO", None)
+
+    def tearDown(self):
+        if self.alt is None:
+            os.environ.pop("HANDEL_RISIKO", None)
+        else:
+            os.environ["HANDEL_RISIKO"] = self.alt
+
+    def _buch(self):
+        from importlib.util import module_from_spec, spec_from_file_location
+        pfad = os.path.join(HANDEL, "spur_buch.py")
+        spec = spec_from_file_location("spur_buch_test", pfad)
+        modul = module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul
+
+    def test_basis_hat_die_basisnamen(self):
+        buch = self._buch()
+        for spur in self.SPUREN:
+            _, zustand, journal = buch.pfade(os.path.join(HANDEL, spur))
+            self.assertTrue(zustand.endswith("zustand.json"), zustand)
+            self.assertTrue(journal.endswith("handelsjournal.csv"), journal)
+
+    def test_stufe_trennt_die_dateien(self):
+        os.environ["HANDEL_RISIKO"] = "mittel"
+        buch = self._buch()
+        for spur in self.SPUREN:
+            _, zustand, journal = buch.pfade(os.path.join(HANDEL, spur))
+            self.assertTrue(zustand.endswith("zustand.mittel.json"), zustand)
+            self.assertTrue(journal.endswith("handelsjournal.mittel.csv"), journal)
 
 
 if __name__ == "__main__":

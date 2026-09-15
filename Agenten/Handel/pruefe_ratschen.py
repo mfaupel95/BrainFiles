@@ -51,6 +51,7 @@ SPUREN = [
     ("moondev_listingarb", "moondev_listingarb", "scanner", "wachen_pruefung"),
     ("moondev_topmovers", "moondev_topmovers", "scanner", "wachen_pruefung"),
     ("moondev_marktlage", "moondev_marktlage", "scanner", "wachen_pruefung"),
+    ("iv_wand", "iv_wand", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

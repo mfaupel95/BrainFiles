@@ -86,6 +86,10 @@ FAMILIE = {
     "moondev_listingarb": "Bot-Signal",
     "moondev_topmovers": "Bot-Signal",
     "moondev_marktlage": "Bot-Signal",
+    # Die IV-Wand ist keine Bot-Spur: sie rechnet eine Zone aus dem
+    # Optionsmarkt. Eigene Familie, damit der Bericht sie nicht unter
+    # "Bot-Signal" mischt.
+    "iv_wand": "Options-Zone",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

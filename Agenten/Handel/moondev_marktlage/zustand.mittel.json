@@ -1,0 +1,20 @@
+{
+  "positionen": [
+    {
+      "inst": "BTC",
+      "seite": "short",
+      "einstieg": 75568.0,
+      "stop": 80102.08,
+      "ziel": 68766.88,
+      "stop_pct": 6.0,
+      "nominal": 166.66666666666669,
+      "eroeffnet_zeit": "2026-09-15T23:43:37+00:00"
+    }
+  ],
+  "modus": "papier",
+  "letzter_lauf": "2026-09-15T23:43:37+00:00",
+  "verlust_usd": 0.0,
+  "journal_zweitziel": "Q:\\Handel_Journal\\moondev_marktlage",
+  "journal_zweitziel_ok": true,
+  "journal_zweitziel_info": "Q:\\Handel_Journal\\moondev_marktlage"
+}

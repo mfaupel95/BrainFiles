@@ -242,7 +242,7 @@ SPUREN = {
     # WEITERE BOT-SPUREN (16.09.2026): dieselbe Bauform, andere Quelle. Die
     # Daten kommen ueber die oeffentliche CoinGecko-/Binance-API
     # (Handel/moondev_daten.py), die Regel steht im Haus, das Buch fuehrt
-    # Handel/moondev_buch.py. Kein Sprachmodell, kein Live.
+    # Handel/spur_buch.py. Kein Sprachmodell, kein Live.
     #   listingarb  - grosse Coins, die bei Binance (noch) fehlen
     #   topmovers   - Momentum der letzten 24 h, ohne Ueberhitzung
     #   marktlage   - BTC-Regime aus Kurs und Marktbreite
@@ -252,6 +252,11 @@ SPUREN = {
                           "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
+    # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
+    # Optionsmarkt ist die "Wand" - der Kurs wandert dorthin. Daten von den
+    # oeffentlichen OKX-Optionsendpunkten, Ziel ist die Wand selbst, das Buch
+    # fuehrt Handel/spur_buch.py. Papier, kein Live.
+    "iv_wand": {"ordner": "iv_wand", "waehrung": "USD", "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

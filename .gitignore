@@ -493,7 +493,7 @@ Agenten/Handel/moondev_funding/zustand.json
 Agenten/Handel/moondev_funding/handelsjournal.csv
 # Die drei weiteren Bot-Spuren (16.09.2026): derselbe Aufbau.
 !Agenten/Handel/moondev_daten.py
-!Agenten/Handel/moondev_buch.py
+!Agenten/Handel/spur_buch.py
 !Agenten/Handel/moondev_listingarb/*.py
 !Agenten/Handel/moondev_listingarb/*.md
 !Agenten/Handel/moondev_listingarb/*.json
@@ -512,6 +512,14 @@ Agenten/Handel/moondev_topmovers/handelsjournal.csv
 !Agenten/Handel/moondev_marktlage/tests/*.py
 Agenten/Handel/moondev_marktlage/zustand.json
 Agenten/Handel/moondev_marktlage/handelsjournal.csv
+# IV-WAND-SPUR (17.09.2026): eigener Ordner, Code/Wachen/README/Tests frei,
+# Zustand und Journal gesperrt.
+!Agenten/Handel/iv_wand/*.py
+!Agenten/Handel/iv_wand/*.md
+!Agenten/Handel/iv_wand/*.json
+!Agenten/Handel/iv_wand/tests/*.py
+Agenten/Handel/iv_wand/zustand.json
+Agenten/Handel/iv_wand/handelsjournal.csv
 
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.

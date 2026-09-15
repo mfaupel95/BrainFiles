@@ -1,0 +1,40 @@
+{
+  "positionen": [
+    {
+      "inst": "ARB",
+      "seite": "long",
+      "einstieg": 0.150612,
+      "stop": 0.13856304,
+      "ziel": 0.16868544,
+      "stop_pct": 8.0,
+      "nominal": 125.0,
+      "eroeffnet_zeit": "2026-09-15T23:43:36+00:00"
+    },
+    {
+      "inst": "BTW",
+      "seite": "long",
+      "einstieg": 0.690645,
+      "stop": 0.6353934,
+      "ziel": 0.7735223999999999,
+      "stop_pct": 8.0,
+      "nominal": 125.0,
+      "eroeffnet_zeit": "2026-09-15T23:43:36+00:00"
+    },
+    {
+      "inst": "FF",
+      "seite": "long",
+      "einstieg": 0.138995,
+      "stop": 0.1278754,
+      "ziel": 0.15567440000000002,
+      "stop_pct": 8.0,
+      "nominal": 125.0,
+      "eroeffnet_zeit": "2026-09-15T23:43:36+00:00"
+    }
+  ],
+  "modus": "papier",
+  "letzter_lauf": "2026-09-15T23:43:36+00:00",
+  "verlust_usd": 0.0,
+  "journal_zweitziel": "Q:\\Handel_Journal\\moondev_topmovers",
+  "journal_zweitziel_ok": true,
+  "journal_zweitziel_info": "Q:\\Handel_Journal\\moondev_topmovers"
+}

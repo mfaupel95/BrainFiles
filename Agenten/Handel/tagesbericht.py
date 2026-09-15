@@ -565,6 +565,12 @@ def spur_moondev_marktlage():
     return _spur_indikator("moondev_marktlage", "Moon-Dev Marktlage")
 
 
+def spur_iv_wand():
+    """Die IV-Wand: Optionszone als Kursmagnet. Journalform wie die
+    Indikator-Spuren (kauf/verkauf mit einsatz_usd)."""
+    return _spur_indikator("iv_wand", "IV-Wand (Optionszone)")
+
+
 def spur_mosaic():
     """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
 
@@ -1001,7 +1007,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier, spur_kopier1zu1,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
-    spur_moondev_topmovers, spur_moondev_marktlage)
+    spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand)
 
 
 def baue(mit_xperp=True):
