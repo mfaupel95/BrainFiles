@@ -264,6 +264,16 @@ Agenten/Handel/kopier/ablehnungen.csv
 Agenten/Handel/kopier1zu1/zustand.json
 Agenten/Handel/kopier1zu1/handelsjournal.csv
 Agenten/Handel/kopier1zu1/ablehnungen.csv
+
+# Die vier Indikator-Spuren (15.09.2026 angeschlossen): dieselbe Aufteilung
+# wie bei allen anderen - wachen.json ist oben freigegeben, zustand.json
+# schreibt jeder Lauf. Ohne diese Zeilen waren ihre Zustaende die EINZIGEN,
+# die der Verlauf mitgenommen haette: die Dateizeilen oben geben `*.json`
+# frei, und die Sperrliste nannte die neuen Ordner noch nicht.
+Agenten/Handel/macd_mtf/zustand.json
+Agenten/Handel/squeeze/zustand.json
+Agenten/Handel/supertrend/zustand.json
+Agenten/Handel/wavetrend/zustand.json
 Agenten/Handel/kopier/daten/**
 
 # Spur 4 (ORB Index): dieselbe Aufteilung. wachen.json ist Konfiguration von
