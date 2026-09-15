@@ -18,6 +18,19 @@ Auswertung: eine Trefferquote, in der Zwangsschluesse mitzaehlen, ist zu
 niedrig (die Zwangsschluesse sitzen meist im Verlust) - und die Rundenzahl ist
 zu hoch.
 
+DIE RICHTUNG DER VERZERRUNG IST NICHT VORHERSAGBAR, deshalb wird BEIDES gezeigt
+und nichts still weggelassen: bei kraken waren die Zwangsschluesse +4,59 EUR
+POSITIV und die zwei echten Runden -4,50 EUR negativ (das Buch sah geschminkt
+aus), bei xperp umgekehrt, aber schwaecher: 11 Handelsrunden +39,50 USD
+gegen 12 Stoerungen +4,73 USD, je Runde +3,59 gegen +1,92. Eine Bilanz, die
+nur eine der beiden Zahlen nennt, haengt von der Vorfallshistorie ab.
+
+WO DIE TRENNUNG GILT - und wo ausdruecklich nicht:
+  Kennzahlen - Rundenzahl, Trefferquote, Erwartungswert: nur Handelsrunden
+  (`teile_runden`, unten).
+  Kapitalkurve - Drawdown-Ratsche, Kill-Switch: ALLE Buchungen. Ein
+  Zwangsschluss ist gebucht und hat Geld bewegt.
+
 Aufruf:
   python stoerungen.py              Uebersicht je Spur + Liste
   python stoerungen.py --liste      nur die Stoerungen, chronologisch
@@ -47,6 +60,26 @@ STOERUNG_MERKMAL = ("herzschlag", "zwangsschluss", "notaus")
 def ist_stoerung(grund):
     g = (grund or "").strip().lower()
     return any(m in g for m in STOERUNG_MERKMAL)
+
+
+def teile_runden(runden):
+    """(echt, stoerungen) - fertige Runden nach ihrem Grund trennen.
+
+    Die EINE Fassung des Merkmals steht oben in `ist_stoerung`; Auswertungen und
+    Wachen holen sie ueber diese Funktion, statt das Wort noch einmal zu
+    schreiben. `runden` sind Dicts mit dem Feld `grund` - so liefert sie
+    `scanner/wachen_pruefung.runden_aus_journal` und so baut sie
+    `auswertung_alle._paare`.
+
+    Die Trennung gilt fuer KENNZAHLEN (Rundenzahl, Trefferquote, Erwartungswert)
+    - ausdruecklich NICHT fuer die Kapitalkurve. Ein Zwangsschluss ist gebucht
+    und hat Geld bewegt; wer ihn aus Drawdown und Kill-Switch nimmt, schoenet
+    genau das Risiko, gegen das die Sicherung gebaut ist.
+    """
+    echt, stoer = [], []
+    for r in runden or []:
+        (stoer if ist_stoerung((r or {}).get("grund")) else echt).append(r)
+    return echt, stoer
 
 
 def zeilen(spur):

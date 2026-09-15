@@ -35,6 +35,7 @@ rollierender_ev = basis.rollierender_ev
 spiegele_journal = basis.spiegele_journal
 vermerke_spiegelung = basis.vermerke_spiegelung
 freigabe_erfuellt = basis.freigabe_erfuellt
+teile_runden = basis.teile_runden
 
 
 # --- Runden aus dem Journal ------------------------------------------------
@@ -144,6 +145,7 @@ def lage(w, journal_pfad, zustand):
     Wochenlauf."""
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
+    echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 2880))
     ev = rollierender_ev(runden)
@@ -152,6 +154,12 @@ def lage(w, journal_pfad, zustand):
         "freigabe_erfuellt": freigabe_erfuellt(w),
         "runden_gesamt": len(runden),
         "runden_papier": len(papier),
+        # Kennzahl auf den Handelsrunden, Kapitalkurve auf allen Buchungen:
+        # drawdown(runden) oben bleibt absichtlich ungefiltert.
+        "runden_echt": len(echt),
+        "runden_stoerung": len(stoer),
+        "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
+        "rollierender_ev_echt": rollierender_ev(echt),
         "erste_runde": erste,
         "hoechststand_eur": hoch,
         "ruecklauf_eur": rueck,

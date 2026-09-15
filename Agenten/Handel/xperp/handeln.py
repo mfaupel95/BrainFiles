@@ -546,9 +546,13 @@ def zeige_wachen(w):
     z = lade_zustand()
     s = wx.lage(w, JOURNAL, z)
     print("=== Wachen-Status XPERP  %s ===" % _jetzt())
-    print("  1 Freigabe erfuellt      %s   (Runden gesamt %d, davon Papier %d, seit %s)"
-          % (s["freigabe_erfuellt"], s["runden_gesamt"], s["runden_papier"],
-             s["erste_runde"] or "-"))
+    # Die Rundenzahl fuer Bedingung 1 zaehlt Handelsrunden, nicht Buchungen:
+    # ein Herzschlag-Zwangsschluss ist keine Handelsentscheidung. Die Kurve
+    # (Ruecklauf unten) bleibt ungefiltert - sie ist gebucht.
+    print("  1 Freigabe erfuellt      %s   (Handelsrunden %d, davon Papier %d, "
+          "dazu %d Betriebsstoerung(en), seit %s)"
+          % (s["freigabe_erfuellt"], s["runden_echt"], s["runden_papier_echt"],
+             s["runden_stoerung"], s["erste_runde"] or "-"))
     print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f"
           % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"]))
     print("  3 Herzschlag frisch      %s   (%s min alt, Grenze %d)"

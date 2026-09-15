@@ -569,8 +569,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
 def zeige_wachen(s, w):
     print("Bedingungen (Momentaufnahme, aus dem eigenen Zustand):")
     for i, (name, wert) in enumerate((
-            ("Runden gesamt", s["runden_gesamt"]),
-            ("davon Papier", s["runden_papier"]),
+            ("Handelsrunden", s["runden_echt"]),
+            ("davon Papier", s["runden_papier_echt"]),
+            ("Betriebsstoerungen", s["runden_stoerung"]),
+            ("Buchungen gesamt", s["runden_gesamt"]),
             ("Hoechststand", "%.2f USD" % s["hoechststand_usd"]),
             ("Ruecklauf", "%.2f USD" % s["ruecklauf_usd"]),
             ("Groessenfaktor", "%.2f" % s["groessenfaktor"]),

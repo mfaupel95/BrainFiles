@@ -3,7 +3,7 @@ id: 20260902-handelsregeln
 title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
-updated: 2026-09-14
+updated: 2026-09-15
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
 summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
@@ -398,7 +398,7 @@ durch einen Vorteil, sie begrenzen den Schaden, bis einer nachgewiesen ist.
 
 | Bedingung | Prüfbarer Wert | Wo geregelt |
 |---|---|---|
-| **1. Freigabe Papier → Live** | mindestens 6 Wochen Papierlauf, ≥ 50 abgeschlossene Runden, netto positiv **nach** Gebühren und Funding, größter Rücklauf im Papierlauf < `kill_switch_gesamt_usd`. Erst wenn alle vier erfüllt sind, darf `handel_erlaubt` von Hand auf `true` — je Spur getrennt. | Block `freigabe` in beiden `wachen.json` |
+| **1. Freigabe Papier → Live** | mindestens 6 Wochen Papierlauf, ≥ 50 abgeschlossene **Handelsrunden** (seit 15.09.2026: ein Herzschlag-Zwangsschluss ist keine Handelsentscheidung, wird nicht mitgezählt und daneben ausgewiesen — `stoerungen.py`, `teile_runden` in jeder Wachenfassung), netto positiv **nach** Gebühren und Funding, größter Rücklauf im Papierlauf < `kill_switch_gesamt_usd`. Erst wenn alle vier erfüllt sind, darf `handel_erlaubt` von Hand auf `true` — je Spur getrennt. | Block `freigabe` in beiden `wachen.json` |
 | **2. Drawdown-Ratsche** | Fällt das Konto 15 % unter seinen Höchststand, halbiert `bot.py`/`handeln.py` jede weitere Positionsgröße. Bei `kill_switch_gesamt_usd` wird flach gestellt **und** `handel_erlaubt` auf `false` geschrieben — der einzige Fall, in dem ein Skript diese Datei schreibt, und nur in diese Richtung. | `bot.py`, `handeln.py` |
 | **3. Herzschlag** | Liegt der letzte gesunde Lauf länger zurück als `herzschlag_max_minuten` (**seit 14.09.2026: 180 min für Papier-Spuren, 45 min für Spuren mit Handelserlaubnis**), schließt der nächste Start alle offenen Positionen und schaltet auf Papier. Der Wächter startet einen toten Dauerlauf alle 30 min neu, ein Zyklus dauert 1–2 min — eine Störung heilt nach höchstens ~32 min von selbst; wer darunter geht, stellt bei *jeder* Störung flach und bucht eine Runde, die keine Handelsentscheidung war. Die Regel steht im Feld `_herzschlag_regel` jeder `wachen.json`. Deckt die Kernel-Power-41-Abschaltungen ([[Hardware]]) ab: eine Position, die einen Neustart „überlebt", ist unbewacht. | `handeln.py` prüft `zustand.json` vor dem Start |
 | **4. Journal außer Haus** | Das Handelsjournal wird nach jedem Zyklus auf ein zweites Ziel gespiegelt. `G:` genügt nicht — dasselbe Gehäuse. Ein Journal nur auf dem Handelsrechner ist kein Nachweis, sondern eine Wette darauf, dass die Platte hält. | Zeile in `Routinen/`, Ziel offen bis „Kopie außer Haus" steht ([[Hardware]]) |
@@ -580,6 +580,61 @@ Ohne geschlossene Runden: **omniquant** (erste Ausstiege erst nach der
 Haltegrenze von 14 Tagen), **gitter** (frisch aufgelegt), **nautilus** —
 bauartbedingt: die Spur fährt den OKX-DEMO-Node ohne Live-Strategiezweig und
 sammelt Quotes, sie kann keine Runden liefern.
+
+### Störungen stehen daneben, nicht darin
+
+Zählte man die Journalzeilen, käme man auf mehr Runden als gehandelt wurden:
+**ein Herzschlag-Zwangsschluss ist keine Handelsentscheidung**, er entsteht,
+weil der Dauerlauf stand, und landet trotzdem als Runde im Journal. Stand
+15.09.2026 (`python stoerungen.py` aus `Agenten/Handel`):
+
+| Spur | Buchungen | Handelsrunden | Störungen |
+|---|---|---|---|
+| xperp | 23 | 11 | 12 (alle `herzschlag_alt`) |
+| kraken | 10 | 2 | 8 (vier am 12.09., vier am 14.09.) |
+| swap | 5 | 4 | 1 |
+| scanner | 14 | 14 | 0 |
+| orbk | 3 | 3 | 0 |
+| alle Spuren zusammen (mit spiegel 257, kopier 3, kopier1zu1 2) | 317 | 296 | 21 |
+
+Die Richtung der Verzerrung ist **nicht vorhersagbar**, deshalb wird beides
+gezeigt. Gemessen am 15.09.2026 über die Runden selbst
+(`sum(r["gv"])` je Gruppe):
+
+* **kraken**: die 8 Zwangsschlüsse trugen **+4,59 EUR**, die zwei echten Runden
+  **−4,50 EUR** — das Buch sah geschminkt aus, und die Störungen waren die
+  einzige gute Zahl darin.
+* **xperp**: umgekehrt, aber schwächer. Die 11 Handelsrunden trugen
+  **+39,50 USD**, die 12 Störungen **+4,73 USD** — je Runde sank der Wert von
+  **+3,59** auf **+1,92 USD**. Die Störungen waren nicht das Vorzeichen,
+  aber die Höhe.
+
+Eine Bilanz, die nur eine der beiden Zahlen nennt, hängt damit von der
+Vorfallshistorie ab.
+
+Die drei Orte, an denen die Trennung wirkt:
+
+1. `Agenten/Handel/stoerungen.py` — die **eine** Fassung des Merkmals
+   (`ist_stoerung`, `teile_runden`) plus die Übersicht mit der Häufung nach
+   Tag. Die Häufung **ist** die Fehlersuche: alle 21 Störungen liegen in einem
+   Vorfallsfenster, keine außerhalb.
+2. Die Wachenfassungen (`scanner/wachen_pruefung.py`, `xperp/wachen_xperp.py`,
+   `kraken/wachen_kraken.py`, `orbk/wachen_orb.py`) liefern `runden_echt`,
+   `runden_stoerung`, `runden_papier_echt` und `rollierender_ev_echt`;
+   `handeln.py --wachen` und der Tagesbericht zeigen Handelsrunden **und** die
+   Störungen dazu.
+3. `auswertung_alle.py` zählt die Störungen unter der Rundenzahl aus.
+
+**Was ausdrücklich NICHT gefiltert wird: die Kapitalkurve.** Drawdown-Ratsche,
+Höchststand und Kill-Switch rechnen weiter auf **allen** Buchungen — eine
+Störung ist gebucht und hat Geld bewegt; wer sie aus der Kurve nimmt, schönt
+genau das Risiko, gegen das die Sicherung gebaut ist. Auch Bedingung 5
+(rollierender Erwartungswert < 0 → Sperre zu) lief am 15.09.2026 unverändert
+auf allen Runden; der Erwartungswert der echten Runden steht daneben
+(`rollierender_ev_echt`, „n/a" unter fünf Runden). Ob die Automatik auf die
+Handelsrunden umgestellt wird, ist eine Entscheidung von Max — sie kann in
+beide Richtungen wirken (bei kraken würde sie die Sperre **schließen**, bei
+xperp öffnen).
 
 ### Die Geometrie jeder Spur trägt
 

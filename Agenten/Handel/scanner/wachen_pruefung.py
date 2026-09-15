@@ -25,6 +25,34 @@ HIER = Path(__file__).resolve().parent
 WACHEN = HIER / "wachen.json"
 
 
+# --- Betriebsstoerung oder Handelsrunde ------------------------------------
+#
+# Die eine Definition steht in Handel/stoerungen.py und wird ueber den PFAD
+# geladen, nicht ueber sys.path: eine Spur startet mit ihrem eigenen Ordner als
+# sys.path[0], und Handel/ waere nur ueber einen Eintrag erreichbar, der
+# gleichnamige Spurenmodule verdecken koennte - derselbe Grund wie bei
+# Handel/ratschen.py.
+_STOERUNGEN = None
+
+
+def stoerungen_modul():
+    """Handel/stoerungen.py - einmal geladen, dann gemerkt."""
+    global _STOERUNGEN
+    if _STOERUNGEN is None:
+        import importlib.util
+        p = HIER.parent / "stoerungen.py"
+        spec = importlib.util.spec_from_file_location("handel_stoerungen", p)
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        _STOERUNGEN = modul
+    return _STOERUNGEN
+
+
+def teile_runden(runden):
+    """(echt, stoerungen) - siehe stoerungen.teile_runden (gleiche Fassung)."""
+    return stoerungen_modul().teile_runden(runden)
+
+
 # --- Runden aus dem Journal ------------------------------------------------
 
 def runden_aus_journal(journal_pfad):
@@ -235,6 +263,7 @@ def lage(w, journal_pfad, zustand):
     Wochenlauf."""
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
+    echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 30))
     ev = rollierender_ev(runden)
@@ -243,6 +272,12 @@ def lage(w, journal_pfad, zustand):
         "freigabe_erfuellt": freigabe_erfuellt(w),
         "runden_gesamt": len(runden),
         "runden_papier": len(papier),
+        # Kennzahl auf den Handelsrunden, Kapitalkurve auf allen Buchungen:
+        # drawdown(runden) oben bleibt absichtlich ungefiltert.
+        "runden_echt": len(echt),
+        "runden_stoerung": len(stoer),
+        "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
+        "rollierender_ev_echt": rollierender_ev(echt),
         "erste_runde": erste,
         "hoechststand_usd": hoch,
         "ruecklauf_usd": rueck,

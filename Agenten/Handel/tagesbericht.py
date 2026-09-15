@@ -841,8 +841,14 @@ def baue(mit_xperp=True):
             # _eur bei Spur 3. Das ist Absicht (kraken/wachen.json: "Wer hier
             # USD liest, liest falsch") und darf hier nicht geraten werden.
             rueck = lage.get("ruecklauf_%s" % s["waehrung"].lower())
-            t.append("  Runden %d (Papier %d), Ruecklauf %.2f %s, Faktor %.2f"
-                     % (lage["runden_gesamt"], lage["runden_papier"],
+            # Handelsrunden statt Buchungen: Zwangsschluesse sind keine
+            # Handelsentscheidung. get() mit Rueckfall, weil ein Wachenmodul
+            # ohne die Trennung dieselbe Zeile weiter bedienen soll.
+            t.append("  Handelsrunden %d (Papier %d, %d Betriebsstoerung), "
+                     "Ruecklauf %.2f %s, Faktor %.2f"
+                     % (lage.get("runden_echt", lage["runden_gesamt"]),
+                        lage.get("runden_papier_echt", lage["runden_papier"]),
+                        lage.get("runden_stoerung", 0),
                         rueck if rueck is not None else 0.0, s["waehrung"],
                         lage["groessenfaktor"]))
         if still:

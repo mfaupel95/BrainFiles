@@ -27,6 +27,7 @@ rollierender_ev = basis.rollierender_ev
 spiegele_journal = basis.spiegele_journal
 vermerke_spiegelung = basis.vermerke_spiegelung
 freigabe_erfuellt = basis.freigabe_erfuellt
+teile_runden = basis.teile_runden
 
 
 def runden_aus_journal(journal_pfad):
@@ -140,6 +141,7 @@ def _wochen_und_sessions(runden):
 def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
+    echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 45))
     ev = rollierender_ev(runden)
@@ -147,6 +149,11 @@ def lage(w, journal_pfad, zustand):
     return {
         "freigabe_erfuellt": freigabe_erfuellt(w),   # Bed. 1 - Haken aus wachen.json
         "runden_gesamt": len(runden), "runden_papier": len(papier),
+        # Kennzahl auf Handelsrunden, Kurve auf allen Buchungen:
+        # drawdown(runden) oben bleibt absichtlich ungefiltert.
+        "runden_echt": len(echt), "runden_stoerung": len(stoer),
+        "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
+        "rollierender_ev_echt": rollierender_ev(echt),
         "hoechststand_usd": hoch, "ruecklauf_usd": rueck,
         "groessenfaktor": groessenfaktor(rueck, w), "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch, "herzschlag_alter_min": alter,
