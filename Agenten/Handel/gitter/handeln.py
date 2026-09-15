@@ -443,6 +443,10 @@ def zeige_wachen(w):
               "slippage_pct", "max_verlust_usd", "kerzen_takt",
               "kerzen_anzahl", "herzschlag_max_minuten"):
         print("  %-26s %s" % (k, w.get(k)))
+    f = w.get("freigabe") or {}
+    print("  %-26s %s" % ("freigabe.erfuellt", f.get("erfuellt")))
+    print("  %-26s %s (%s)" % ("  backtest_bestanden", f.get("backtest_bestanden"),
+                               f.get("backtest_geprueft_am") or "-- keine Pruefung"))
     fk, fv = kostenfaktoren(w)
     print("  %-26s %.4f / %.4f (%.3f %% je Runde)"
           % ("Kostenfaktoren", fk, fv, (1 - fv / fk) * 100))

@@ -54,6 +54,15 @@ try {
     & $py 'handeln.py' '--wachen' *>&1 | Add-Content $log -Encoding UTF8
     Pop-Location
   }
+  # Backtest-Urteile der Spuren mit eigenem Motor (gitter, orbk, nautilus):
+  # faehrt die drei Motoren mit den Werten der jeweiligen Spur und schreibt in
+  # deren wachen.json NUR die drei Felder backtest_bestanden / backtest_urteil /
+  # backtest_geprueft_am. handel_erlaubt und freigabe.erfuellt bleiben unberuehrt;
+  # scharf schaltet weiterhin nur ein Schritt von Hand.
+  "" | Add-Content $log -Encoding UTF8
+  Push-Location (Join-Path $wurzel 'Handel')
+  & $py 'backtest_urteile.py' *>&1 | Add-Content $log -Encoding UTF8
+  Pop-Location
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
   Melde-Ende -Marke $marke -Code 0                                      # neu
 } catch {

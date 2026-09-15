@@ -555,6 +555,57 @@ alles), die Zeile „Journal außer Haus" im **Tagesbericht** (`spiegelstand.kur
 im Fehlerfall hervorgehoben) und morgens **Block 11 der Systemprüfung**; Block 12
 meldet dort, wenn der Dauerlauf steht.
 
+## Backtest-Urteile und die Freigabefelder (15.09.2026)
+
+Drei Spuren haben einen eigenen Backtest-Motor: **gitter**
+(`backtest_gitter.py`), **orbk** (`backtest.py`), **nautilus**
+(`backtest_grid.py`). Ihre Urteile landeten bisher nirgends — auf der Konsole
+(gitter, orbk) oder in einer Datei im eigenen Repo (nautilus) —, und
+`freigabe.backtest_bestanden` stand in allen `wachen.json` auf `false`: **es gab
+keinen Schreiber.** `orbk/wachen_orb.freigabe_voll_erfuellt()` liest das Feld seit
+jeher; ohne Schreiber konnte die Bedingung nie wahr werden.
+
+Neu: `Agenten/Handel/backtest_urteile.py`, wöchentlich aufgerufen aus
+`Routinen/handel-wachen.ps1` (die Ausgabe steht danach im Log).
+
+- Es fährt jeden Motor mit den **Werten der Spur**, nicht mit den Vorgaben des
+  Skripts. Beim Gitter nimmt es die im Zustand gesetzte Leiter — die ist die
+  laufende Strategie (so kam der Widerspruch unten heraus).
+- Maßstab je Motor: **Gitter** = besser als Buy-and-Hold (so steht es im Motor
+  selbst: „Ein Grid, das schlechter ist als schlicht halten, hat seinen Zweck
+  verfehlt"), **ORB** = mindestens ein Instrument mit dem eigenen `URTEIL: Ja`.
+- Geschrieben werden in die `wachen.json` der Spur **nur** `backtest_bestanden`,
+  `backtest_urteil` und `backtest_geprueft_am` — byte-genau, mit Sicherung und
+  JSON-Gegenprobe vor dem Schreiben. `handel_erlaubt` und `freigabe.erfuellt`
+  bleiben unberührt; scharf schaltet weiterhin nur ein Schritt von Hand.
+- Kann ein Motor nicht laufen, bleibt der **alte Wert stehen** — ein Netzfehler
+  darf ein bestandenes Urteil nicht stillschweigend zurücknehmen.
+
+Erster echter Lauf, 15.09.2026:
+
+| Spur | Urteil | Zahl |
+|---|---|---|
+| gitter | nicht bestanden | +2,19 % gegen Halten +15,79 % (7 Zyklen, 12 Stufen) |
+| nautilus | **bestanden** | +1.425 USDT gegenüber Halten (Halten −31,95 %) |
+| orbk | nicht bestanden | kein Instrument bestanden (6 geprüft, überwiegend zu wenig Daten) |
+
+Zwei Befunde aus dem Lauf:
+
+- **`gitter/wachen.json` sagt `stufen: 6`, die laufende Leiter hat 12.** Der
+  Motor fährt `gitter/handeln.py` selbst, also gilt die Leiter aus
+  `zustand.json`; das Urteil rechnet damit und nennt den Widerspruch im Text.
+  Ein Zurücksetzen der Leiter würde die Strategie still ändern — die Zahl in der
+  `wachen.json` gehört auf den laufenden Stand (Entscheidung von Max).
+- **orbk braucht Material, kein neues Signal:** ETH_USD 7 Sessions, Trefferquote
+  42,9 %, Break-even nötig 24,1 %, EV +6,05 Punkte je Runde. Das „Nein" heißt
+  „unter 10 Verlierer", nicht „Strategie trägt nicht".
+
+Spuren ohne Motor (kein Urteil möglich): xperp, swap, kraken, spiegel,
+omniquant, kopier, kopier1zu1, orb sowie die vier am 15.09.2026 angelegten
+Indikator-Spuren macd_mtf, squeeze, supertrend, wavetrend (gebaut, getestet,
+noch nicht im Dauerlauf). Für **scanner** gibt es den Verbesserer — sein Weg ist
+ein Vorschlag per Telegram, kein Urteil in der `wachen.json`.
+
 ## Was die Bücher am 14.09.2026 hergeben — und was daraus geändert wurde
 
 Erstmals liegen die Zahlen **aller** Spuren nebeneinander. Das Werkzeug dafür ist

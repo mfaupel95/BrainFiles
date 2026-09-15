@@ -282,8 +282,10 @@ def zeige_wachen(w):
                 else " (letzte Kopie %s)" % z["journal_zweitziel_ok"]))
     if not konf:
         return "kein instrument_aktiv - Spur gesperrt (Backtest fehlt)"
-    return ("%s (%s): handel_erlaubt=%s, aktiv=%s%s" %
-            (key, konf["kraken"], w["handel_erlaubt"], key, kopie))
+    f = w.get("freigabe") or {}
+    return ("%s (%s): handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
+            % (key, konf["kraken"], w["handel_erlaubt"], key,
+               f.get("erfuellt"), f.get("backtest_bestanden"), kopie))
 
 
 def main(argv=None):
