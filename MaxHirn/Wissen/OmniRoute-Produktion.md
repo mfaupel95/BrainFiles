@@ -3,7 +3,7 @@ id: 20260907-omniroute-produktion
 title: 'OmniRoute-Produktion'
 tags: [betrieb, werkzeuge, omniroute]
 created: 2026-09-07
-updated: 2026-09-08
+updated: 2026-09-15
 related: [20260831-python-versionen, 20260830-verbindungen, 20260907-omniroute-produktion]
 summary: 'Der OmniRoute-Quell-Klon (Werkstatt/OmniRoute) ist als Produktions-Router installiert und verifiziert; der Umstieg gegen die globale npm-Instanz ist vorbereitet, aber noch nicht vollzogen.'
 ---
@@ -133,3 +133,36 @@ Worker) gestoppt werden, nicht nur der Server.
 - Nicht angefasst: `domain_budgets`, die beiden Alt-Eintraege und der laufende
   Router. Sicherung vor dem Eingriff:
   `~/.omniroute/db_backups/db_20260914-200033_anthropic-schluessel.sqlite`.
+
+## Verbindungen und Combos (15.09.2026)
+
+- **Der Router lief — die Startmeldung war falsch.** Das Protokoll
+  `~/.omniroute/logs/quell-produktion/start-20260915-161749.log` zeigt zwischen
+  16:17 und 18:56 laufende Anfragen mit `status=200` (Combo `auto/best-free`
+  über `oc/big-pickle`); die Verifikation des Starters meldete trotzdem
+  `Verification: FAIL (This operation was aborted)` und der Wrapper schrieb
+  „ENDE FEHLER: Router kam auf Port 20128 nicht hoch". Um 21:26 neu gestartet
+  (Aufgabe `MaxHirn-OmniRoute`): Port offen, PID 57492, `/v1/models` = 401.
+  **Offen:** die Verifikationsstufe im Starter bricht zu früh ab und erzeugt
+  einen Fehlalarm, während der Router trägt.
+- **`openrouter` deaktiviert** (`is_active=0`, id `1c6046da-…`): in 7 Tagen 530
+  Chat-Aufrufe, davon **2 erfolgreich**. Alle Fehler aus Guthaben-/Limit-Klassen
+  (`402 requires more credits`, `403 Key limit exceeded (monthly limit)`,
+  `401 No cookie auth credentials`, `504 Model test deadline exceeded`). Nach
+  der Regel „tote Verbindungen deaktivieren" fallen seine Modelle damit aus den
+  `auto/*`-Pools; vorher kosteten sie bei jedem Dispatch Fehlversuche und
+  Latenz. Aktiv bleiben: `claude`, `gemini`, `ollama-local`, `opencode`.
+- **Pool `auto/best-coding` danach:** 10 Kandidaten — neun `claude/*` (Abo) und
+  `oc/big-pickle`. Keiner ausgeschlossen (`freeAccessExclusion: null`).
+- **Live-Nachweis:** `auto/best-coding` → HTTP 200 in 3,5 s, Zielmodell
+  **`claude-opus-5`**; `auto/best-free` → HTTP 200 in 1,6 s über `big-pickle`.
+  Damit trägt auch die Hermes-Delegation wieder, die beide Configs auf
+  `delegation.provider: omniroute` / `model: auto/best-coding` stehen haben.
+- **Die Claude-Abo-Verbindung ist nicht mehr abgelaufen:** `claude` ist
+  `is_active=1`, `test_status=active` (am 14.09.2026 noch `expired` /
+  `no_refresh_token`) und jetzt der Träger von `auto/best-coding`.
+- Sicherung vor dem Eingriff:
+  `~/.omniroute/db_backups/db_20260915-212415_gegen-probefunde.sqlite` (77,5 MB,
+  SQLite-Online-Backup). Nicht angefasst: `domain_budgets`, die übrigen
+  inaktiven Verbindungen (`anthropic` 2×, `github`, `huggingface`, `mlx-qwen`,
+  `nous-research`), der laufende Router.
