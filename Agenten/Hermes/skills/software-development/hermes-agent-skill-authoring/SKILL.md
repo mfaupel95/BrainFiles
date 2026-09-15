@@ -132,7 +132,23 @@ When the skill needs a capability, name the proper Hermes tool in backticks: `te
 
 ### Never use machine-local paths
 
-Write repo-relative paths (`skills/...`, `tools/skill_manager_tool.py`). A `/home/<you>/...` path baked into a committed skill breaks for every other user and is an instant review flag.
+Write repo-relative paths (`skills/...`, `tools/skill_manager_tool.py`). A `/home/<you>/...` path baked into a committed skill breaks for every other user and is an instant review flag. This includes path-heavy **command examples**: `powershell -File "C:\Users\<you>\...\fundus-suche.ps1"` is the same defect, just in a fenced block where it is easy to miss. Name the starting point instead (`Agenten/Werkzeuge/fundus-suche.ps1` — from the repo root).
+
+### Editing an existing SKILL.md: keep the line endings
+
+Most SKILL.md files in this repo are **CRLF**. Reading one with Python's `open(path, encoding="utf-8")` silently converts CRLF to LF, so a later `"\r\n" in text` check is always False, you rewrite the file as LF, and a one-line edit lands as a whole-file diff — the real change drowns in the noise and nobody can review it.
+
+Patch binary-safe:
+
+```python
+roh = open(pfad, "rb").read()
+text = roh.decode("utf-8")
+nl = "\r\n" if "\r\n" in text else "\n"
+# ... text.replace(alt.replace("\n", nl), neu.replace("\n", nl), 1) ...
+open(pfad, "wb").write(text.encode("utf-8"))
+```
+
+Then check `git diff --stat`: an intended one-line change must read `1 insertion(+), 1 deletion(-)`. Shows the whole file? Restore with `git checkout HEAD -- <datei>`, redo, and never commit the noise. If it is already committed, fix the endings in a follow-up commit (a force-push on a shared branch is worse than one honest commit).
 
 ## Writing Quality Principles
 
