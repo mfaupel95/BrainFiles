@@ -58,9 +58,23 @@ import ereignis                                            # noqa: E402
 import okx                                                 # noqa: E402
 import wachen_pruefung as wp                               # noqa: E402
 
+# Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
+# und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
+# Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
+# Handelscode darf. Ueber den PFAD geladen wie ratschen.py: die Spur hat ihren
+# eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an der
+# Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
 WACHEN = os.path.join(HIER, "wachen.json")
-ZUSTAND = os.path.join(HIER, "zustand.json")
-JOURNAL = os.path.join(HIER, "handelsjournal.csv")
+ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
+JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 DEFAULT_BERICHT = os.path.join(HANDEL, "prognose_berichte", "neuester.json")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
@@ -96,7 +110,7 @@ def _basiswert(inst):
 
 def lade_wachen():
     with open(WACHEN, encoding="utf-8") as f:
-        return json.load(f)
+        return risikostufe.skaliere(json.load(f))
 
 
 def lade_zustand():

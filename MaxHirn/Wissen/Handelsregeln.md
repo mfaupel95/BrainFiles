@@ -824,11 +824,37 @@ sind in Buchrisiko ausgedrueckt (1,0x, siehe `Handel/ratschen.py`). Blieben sie
 stehen, wuerde die doppelte Position die Halbierung sofort ausloesen - die
 Stufe waere nach dem ersten Verlust gesperrt und lieferte keine Daten mehr.
 
-**Stand:** Kern und Test stehen (`risikostufe.py`, 15 Tests gruen, darunter der
-Durchlauf ueber JEDE vorhandene `wachen.json`). **Offen:** die Anwendung in den
-Spuren (Wachen laden, Dateinamen) und die `--risiko`-Option des Dauerlaufs.
-Solange das nicht steht, laeuft nur die Basis - es gibt noch keine zweite Stufe.
+**Stand:** Angeschlossen (15.09.2026). `risikostufe.py` ist die eine Umsetzung,
+`Agenten/Handel/tests/test_risikostufe.py` faehrt ueber JEDE Spur (23 Tests:
+Dateinamen und Wachen-Funktion, in beiden Richtungen). Jede Spur laedt
+`risikostufe` ueber den PFAD (wie `ratschen.py`), schickt ihre Wachen durch
+`skaliere(...)` und bildet ihre Dateinamen ueber `datei(...)`:
 
-**Spiegel:** bleibt bei Faktor 1,0 (Max' Vorgabe). Laeuft er in allen Stufen
-mit, entstehen drei identische Buecher - dieselbe Beobachtung dreimal, ohne
-neue Information. Vorschlag: Spiegel nur im Basis-Lauf fuehren.
+| wer | was |
+|---|---|
+| `dauerlauf.py --risiko mittel` | setzt `HANDEL_RISIKO` fuer sich und die Kindprozesse; eigene PID-, Log- und Zustandsdateien |
+| `Routinen/handel-dauerlauf.ps1 -Risiko mittel` | eigener Waechter-Aufruf, Sperre `dauerlauf.mittel.pid` |
+| `spiegelstand.py --risiko mittel` | prueft die Q:-Kopien der Stufe (Bedingung 4) |
+| `auswertung_alle.py --risiko mittel` | rechnet die Stufenjournale, gleiche Rechnung |
+| `auswertung.py` in kopier/kopier1zu1/omniquant/gitter | dito, ueber die Umgebungsvariable |
+
+**Eine Stufe geht NIE live** (`risikostufe.live_erlaubt()`): der Dauerlauf
+uebergibt auch bei offenem Freigabefenster `--papier`. Der Grund ist nicht
+Vorsicht allein — das Buch der Stufe ist getrennt, live gehandeltes Geld
+stuende in keiner Auswertung.
+
+**Kein Telegram in der Stufe:** kein Senden, kein Abholen von Befehlen, keine
+Freigabe-Anfrage, und beim Beenden werden die Freigabefenster NICHT
+geschlossen (sie gehoeren dem Basislauf). Zwei Laeufe an einem Bot nehmen sich
+sonst die Nachrichten weg (Telegram antwortet dem zweiten Abrufer mit 409).
+
+**Spiegel:** bleibt bei Faktor 1,0 (Max' Vorgabe) und laeuft **nur im
+Basislauf** (`dauerlauf.NUR_BASIS`). Liefe er in allen Stufen mit, entstuenden
+drei identische Buecher — dieselbe Beobachtung dreimal, dazu zwei Schreiber
+auf denselben Dateien. `spiegel.py` bricht in einer Stufe mit Klartext ab.
+
+**Noch offen (Entscheidung Max):** ein zweiter Dauerlauf ist gebaut, aber
+nicht gestartet — er kostet Rechenzeit und Netz auf derselben Maschine
+(Kernel-Power-41-Risiko, siehe `Wissen/Hardware.md`). Start von Hand:
+`Routinen\handel-dauerlauf.ps1 -Risiko mittel`; dauerhaft braucht er eine
+zweite geplante Aufgabe. Die Handelszentrale zeigt weiter nur die Basis.

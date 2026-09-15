@@ -33,6 +33,10 @@ from datetime import datetime
 from pathlib import Path
 
 import stoerungen  # gleicher Ordner: trennt Zwangsschluesse von Handelsrunden
+import risikostufe  # gleicher Ordner: Dateinamen der Risikostufen
+
+# Risikostufe dieser Auswertung: None = Basis. Setzt main() aus --risiko.
+STUFE = None
 
 HIER = Path(__file__).resolve().parent
 
@@ -113,6 +117,11 @@ def zahl(x):
 
 
 def zeilen(spur, datei="handelsjournal.csv"):
+    if STUFE:
+        # Risikostufe: dieselbe Auswertung auf den Dateien der Stufe
+        # (handelsjournal.mittel.csv). Der Rechenweg bleibt derselbe - die
+        # Betraege sind groesser, die Regeln nicht anders.
+        datei = risikostufe.datei_fuer(datei, STUFE)
     p = HIER / spur / datei
     if not p.exists():
         return []
@@ -364,7 +373,7 @@ def zeige(spur, k):
 
 
 def main():
-    global MIN_RUNDEN
+    global MIN_RUNDEN, STUFE
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(
@@ -373,8 +382,18 @@ def main():
                    help="nur diese Spur(en)")
     p.add_argument("--min", type=int, default=MIN_RUNDEN,
                    help="Schwelle fuer 'belastbar' (Standard %d)" % MIN_RUNDEN)
+    p.add_argument("--risiko", choices=sorted(risikostufe.FAKTOREN),
+                   default=risikostufe.STANDARD,
+                   help="Risikostufe auswerten (Vorgabe %s = Basis). Liest "
+                        "dieselben Spalten aus handelsjournal.mittel.csv - "
+                        "die Runden sind andere, die Rechnung nicht."
+                        % risikostufe.STANDARD)
     a = p.parse_args()
     MIN_RUNDEN = a.min
+    STUFE = None if a.risiko == risikostufe.STANDARD else a.risiko
+    if STUFE:
+        print("Risikostufe %s: eigene Journale je Spur "
+              "(handelsjournal.%s.csv)\n" % (STUFE, STUFE))
 
     spuren = a.spur or list(SPUREN)
     zahlen = {}
@@ -396,6 +415,9 @@ def main():
               % (spur, k["n"], k["treffer"], k["ergebnis"], k["treffer_pct"]))
     print("\n  spiegel, omniquant und gitter haben eigene Auswertungen "
           "(auswertung.py im jeweiligen Ordner).")
+    if STUFE:
+        print("  Gezaehlt wurde die Risikostufe %s - der Basislauf laeuft "
+              "daneben unveraendert weiter." % STUFE)
 
 
 if __name__ == "__main__":

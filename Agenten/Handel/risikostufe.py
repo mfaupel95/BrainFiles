@@ -48,6 +48,7 @@ Codebasis der dokumentierte Vorwert und werden nie angefasst.
 from __future__ import annotations
 
 import os
+from pathlib import PurePath
 
 # Faktor je Stufe. 1/2/4 ist bewusst grob: feiner waere bei dieser Datenmenge
 # ohnehin nicht unterscheidbar, und die Stufen sollen sich DEUTLICH
@@ -105,22 +106,67 @@ def ist_basis():
     return faktor() == 1.0
 
 
+def live_erlaubt():
+    """Nur die Basis darf live gehen. Eine Stufe NIE.
+
+    Zwei Gruende, jeder allein reicht:
+
+    1. Eine Stufe ist ein MESSWERKZEUG. Groessere Betraege sind erlaubt, weil
+       es Papiergeld ist - sobald echtes Geld daran haengt, wird aus dem
+       Datenlauf eine gehebelte Wette auf dieselbe Strategie. Der Gewinn waere
+       derselbe wie in der Basis, das Risiko das Doppelte oder Vierfache.
+    2. Die Buchfuehrung ist getrennt (eigene zustand.mittel.json). Die
+       Buchhaltung, die Max liest, sieht diese Positionen nicht - live
+       gehandeltes Geld ohne sichtbares Buch ist genau der Fehler, den diese
+       Datei sonst verhindert.
+
+    Deshalb verweigern die Spuren mit Live-Pfad (xperp, swap, scanner,
+    kraken) ein `--live` in jeder Stufe ueber der Basis mit einem Grund, der
+    das Wort Freigabefenster NICHT traegt - der Lauf fragt dann auch nicht
+    nach einer Freigabe, denn es gibt nichts freizugeben.
+    """
+    return ist_basis()
+
+
 def suffix():
     """Dateinamen-Zusatz: "" in der Basis, sonst ".mittel"/".hoch"."""
-    return "" if ist_basis() else "." + stufe()
+    return suffix_fuer(stufe())
+
+
+def suffix_fuer(stufe_):
+    """Dateinamen-Zusatz einer BELIEBIGEN Stufe: "" in der Basis, sonst ".mittel"."""
+    return "" if FAKTOREN.get(stufe_, 1.0) == 1.0 else "." + stufe_
+
+
+def datei_fuer(pfad, stufe_):
+    """`.../zustand.json` -> `.../zustand.mittel.json` fuer eine benannte Stufe.
+
+    Fuer Werkzeuge, die eine FREMDE Stufe pruefen sollen (spiegelstand.py,
+    auswertung_alle.py): sie laufen im Basisprozess und duerfen die Umgebung
+    nicht verbiegen, nur um einen Dateinamen zu bilden.
+
+    Der Typ bleibt: aus einem `str` kommt ein `str`, aus einem `Path` ein
+    `Path`. Die Spuren benutzen beide Formen, und `scanner/handeln.py` ruft
+    auf dem Ergebnis `.read_text()` auf - ein zurueckgegebener str waere dort
+    ein Attributfehler, und zwar erst im Zyklus, nicht beim Start.
+    """
+    s = suffix_fuer(stufe_)
+    if not s:
+        return pfad
+    war_path = isinstance(pfad, PurePath)
+    basis, endung = os.path.splitext(os.fspath(pfad))
+    neu = basis + s + endung
+    return type(pfad)(neu) if war_path else neu
 
 
 def datei(pfad):
     """`.../zustand.json` -> `.../zustand.mittel.json` (Basis: unveraendert).
 
     Der Zustand MUSS getrennt liegen: zwei Laeufe auf derselben Datei wuerden
-    sich die Positionen gegenseitig ueberschreiben.
+    sich die Positionen gegenseitig ueberschreiben. Diese Fassung nimmt die
+    Stufe dieses Prozesses.
     """
-    s = suffix()
-    if not s:
-        return pfad
-    basis, endung = os.path.splitext(pfad)
-    return basis + s + endung
+    return datei_fuer(pfad, stufe())
 
 
 def skaliere(wachen):

@@ -75,6 +75,19 @@ def _spiegelquelle():
     spec.loader.exec_module(modul)
     return modul
 
+# Risikostufe (HANDEL_RISIKO): Der Spiegel laeuft NUR in der Basis (Vorgabe
+# Max, 15.09.2026: "alle mit groesseren Positionen je Spur ausser Spiegel").
+# Er wird hier deswegen NICHT skaliert und seine Dateien bleiben die
+# Basisdateien - ein zweites Buch mit demselben Inhalt waere dieselbe
+# Beobachtung noch einmal. Ueber den PFAD geladen wie ratschen.py.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
 WACHEN = os.path.join(HIER, "wachen.json")
 VERFOLGTE = os.path.join(HIER, "verfolgte.json")
 ZUSTAND = os.path.join(HIER, "zustand.json")
@@ -901,6 +914,16 @@ def lauf(modus, stunden=24.0):
     # Die Sperre gegen doppelte Protokollzeilen wird je Lauf neu aus der
     # Datei gelesen: die Datei ist die Wahrheit, nicht der Prozess.
     GESEHEN = None
+
+    # Risikostufen: Der Spiegel kennt nur die Basis. Liefe er in einer Stufe
+    # mit, schriebe er in dieselben Dateien wie der Basislauf (sie werden
+    # hier absichtlich nicht gesuffixt) und die zwei Laeufe ueberschrieben
+    # sich die Positionen. Frueher abbrechen als still ein Buch zerstoeren.
+    if not risikostufe.ist_basis():
+        print("HANDEL_RISIKO=%s: Der Spiegel laeuft nur in der Basis "
+              "(gleicher Einsatz in jeder Stufe). Kein Lauf."
+              % risikostufe.stufe())
+        return 1
 
     w = lade(WACHEN, None)
     if not w:

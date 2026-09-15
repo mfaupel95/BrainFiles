@@ -67,6 +67,33 @@ Aufruf:
     python dauerlauf.py                 # laeuft, bis Strg+C
     python dauerlauf.py --takt 15       # anderer Zyklus-Takt
     python dauerlauf.py --trocken       # nichts senden, nur Konsole
+    python dauerlauf.py --risiko mittel # zweiter Lauf, doppelte Betraege
+
+RISIKOSTUFEN (--risiko, seit 15.09.2026)
+---------------------------------------
+Derselbe Lauf, derselbe Code, nur ein Faktor auf die Betraege: `niedrig`
+(1.0, die Vorgabe), `mittel` (2.0), `hoch` (4.0). Der Zweck ist nicht mehr
+Gewinn, sondern mehr Beobachtungen je Zeiteinheit - bei 20-EUR-Einsaetzen
+dauert jede Statistik Monate. Siehe Handel/risikostufe.py.
+
+Der Schalter wird als `HANDEL_RISIKO` gesetzt, BEVOR der erste Zyklus laeuft:
+daraus leitet jede Spur ihren Faktor und den Dateinamen-Zusatz ab
+(zustand.mittel.json, handelsjournal.mittel.csv). Der Basislauf bleibt
+unberuehrt - ohne die Stufe aendert sich nichts.
+
+Eine Stufe laeuft ausdruecklich als DATENSAMMLER:
+
+  * immer `--papier`, nie `--live`, auch bei offenem Freigabefenster. Der
+    Faktor wuerde sonst echtes Geld vervielfachen, und das Buch dieser Stufe
+    ist getrennt - niemand saehe die Positionen in der Auswertung.
+  * kein Telegram: kein Senden, kein Abholen von Befehlen, keine
+    Freigabe-Anfrage. Zwei Laeufe an einem Bot wuerden sich die Nachrichten
+    gegenseitig wegschnappen, und ein `/ja` waere nicht mehr zuzuordnen.
+  * kein Schliessen der Freigabefenster beim Beenden: die Fenster gehoeren
+    dem Basislauf.
+  * der Spiegel laeuft nur in der Basis (Vorgabe Max): er hat in jeder Stufe
+    denselben Einsatz, ein zweites Buch waere dieselbe Beobachtung noch
+    einmal - und beide Laeufe schrieben in dieselben Dateien.
 """
 
 import argparse
@@ -90,6 +117,7 @@ import befehle                                             # noqa: E402
 import ereignis                                           # noqa: E402
 import freigabefenster                                   # noqa: E402
 import melder                                            # noqa: E402
+import risikostufe                                       # noqa: E402
 import tagesbericht                                      # noqa: E402
 
 # Der woechentliche Selbstverbesserungs-Lauf (verbesserer/) haengt hier nur
@@ -205,6 +233,12 @@ SPUREN = {
     "kraken": {"ordner": "kraken", "waehrung": "EUR"},
 }
 
+# Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe
+# denselben Einsatz (Vorgabe Max). Er liefe dort mit identischem Inhalt und
+# schriebe in dieselben Dateien wie der Basislauf - zwei Schreiber auf einem
+# Buch. Deshalb ueberspringt ihn jede Stufe.
+NUR_BASIS = ("spiegel",)
+
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
 # herzschlag_max_minuten auf 30. Laeuft der Zyklus seltener, stellt der
 # naechste Lauf alle Positionen flach und faellt auf Papier zurueck - richtig
@@ -221,7 +255,10 @@ def protokoll(text):
     zeile = "%s  %s" % (jetzt().strftime("%d.%m. %H:%M:%S"), text)
     print(zeile, flush=True)
     try:
-        with open(os.path.join(HIER, "dauerlauf.log"), "a",
+        # Eigene Logdatei je Stufe (dauerlauf.mittel.log): zwei Laeufe in
+        # einer Datei liessen sich nicht mehr auseinanderhalten, und die
+        # Systempruefung liest genau diese Datei auf "ENDE FEHLER".
+        with open(risikostufe.datei(os.path.join(HIER, "dauerlauf.log")), "a",
                   encoding="utf-8") as f:
             f.write(zeile + "\n")
     except OSError:
@@ -232,6 +269,13 @@ class Lauf:
     def __init__(self, takt, trocken=False):
         self.takt = takt
         self.trocken = trocken
+        # Die Stufe steht schon in der Umgebung, bevor der erste Zyklus
+        # laeuft (main setzt sie) - hier nur die Kurzform.
+        self.risiko = risikostufe.stufe()
+        # Eine Stufe ueber der Basis ist ein DATENSAMMLER: kein Telegram,
+        # keine Befehle, keine Freigabe-Anfrage, immer Papier. Die Begruendung
+        # steht im Modulkopf.
+        self.stumm = not risikostufe.ist_basis()
         self.pausiert = False
         self.zeiger = None
         self.letzter_zyklus = None
@@ -242,9 +286,11 @@ class Lauf:
     # --- senden ---------------------------------------------------------
 
     def sende(self, text, stumm=False):
-        if self.trocken:
-            print("--- wuerde senden ---\n%s\n---" %
-                  text.replace("<b>", "").replace("</b>", ""))
+        if self.trocken or self.stumm:
+            grund = ("trocken" if self.trocken
+                     else "Stufe %s, kein Telegram" % self.risiko)
+            print("--- nicht gesendet (%s) ---\n%s\n---" %
+                  (grund, text.replace("<b>", "").replace("</b>", "")))
             return True
         return melder.sende(text, stumm=stumm)
 
@@ -253,7 +299,12 @@ class Lauf:
     def zyklus_spur(self, spur):
         """Ein Zyklus einer Spur. Papier, ausser das Fenster ist offen."""
         f = freigabefenster.lade(spur)
-        modus = "--live" if f.offen() else "--papier"
+        # Eine Risikostufe geht NIE live, auch bei offenem Fenster: ihre
+        # groesseren Betraege sind zum MESSEN da, nicht zum Handeln, und ihr
+        # Buch ist getrennt - wer sie scharf schaltet, haette echtes Geld im
+        # Einsatz, ohne es in der Auswertung zu sehen. Das Fenster gehoert
+        # dem Basislauf; hier wird es nur gelesen.
+        modus = "--live" if (f.offen() and not self.stumm) else "--papier"
 
         ordner = os.path.join(HIER, SPUREN[spur]["ordner"])
         # Nicht jede Spur heisst handeln.py: die Spiegel-Spur liest einen
@@ -266,6 +317,9 @@ class Lauf:
         # der gemeinsame.
         python = SPUREN[spur].get("python", PYTHON)
         umgebung = dict(os.environ)
+        # Die Stufe ausdruecklich in die Umgebung des Kindes: jede Spur liest
+        # sie beim Laden der Wachen und bildet daraus Faktor und Dateinamen.
+        umgebung["HANDEL_RISIKO"] = self.risiko
         if modus == "--papier":
             # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
             # Freigabefenster aus einem laufenden Dienst heraus. Bei --live
@@ -283,6 +337,10 @@ class Lauf:
         auffaellig = []
 
         for spur in SPUREN:
+            if self.stumm and spur in NUR_BASIS:
+                # Der Spiegel laeuft nur in der Basis (siehe NUR_BASIS).
+                # Ohne Meldung: eine Zeile je Zyklus waere Rauschen.
+                continue
             try:
                 modus, code, ausgabe = self.zyklus_spur(spur)
             except Exception as e:                       # noqa: BLE001
@@ -337,6 +395,12 @@ class Lauf:
         nach einem /nein - am 12.09.2026 um 19:06 abgelehnt, um 19:20 erneut
         gefragt.
         """
+        if self.stumm:
+            # Eine Stufe fragt NICHT nach Freigabe - sie darf sie nicht
+            # bekommen (siehe Modulkopf). Ohne diesen Schritt haenge hier
+            # alle 30 Minuten eine Frage, die nur mit /nein zu beantworten
+            # waere.
+            return
         for spur, d in SPUREN.items():
             f = freigabefenster.lade(spur)
             if f.offen() or f.anfrage_offen():
@@ -626,7 +690,10 @@ class Lauf:
         protokoll("Dauerlauf startet, Takt %d min%s" % (
             self.takt, ", trocken" if self.trocken else ""))
 
-        if not self.trocken and not melder.bereit():
+        if self.stumm:
+            protokoll("Risikostufe %s: ohne Telegram, ohne Befehle, nur Papier"
+                      % self.risiko)
+        elif not self.trocken and not melder.bereit():
             protokoll("Melder nicht eingerichtet (%s) - laeuft stumm weiter"
                       % melder.fehlt())
         elif not self.trocken:
@@ -650,9 +717,14 @@ class Lauf:
                 # Freigabe, die noch offen stuende, waere unbewacht scharf -
                 # genau der Fall, den Bedingung 3 (Herzschlag) faengt, nur
                 # eben erst beim naechsten Start.
-                freigabefenster.alles_schliessen("Dauerlauf beendet")
+                #
+                # Nur der Basislauf: die Fenster sind gemeinsame Dateien, und
+                # ein Stufenlauf, der sie beim Beenden schliesst, nimmt dem
+                # Basislauf mitten im Handel die Freigabe weg.
+                if not self.stumm:
+                    freigabefenster.alles_schliessen("Dauerlauf beendet")
                 try:
-                    os.remove(os.path.join(HIER, "dauerlauf.pid"))
+                    os.remove(risikostufe.datei(os.path.join(HIER, "dauerlauf.pid")))
                 except OSError:
                     pass
                 return 0
@@ -663,7 +735,7 @@ class Lauf:
 
     def runde(self):
         # 1. Befehle
-        if not self.trocken and melder.bereit():
+        if not self.trocken and not self.stumm and melder.bereit():
             try:
                 nachrichten, self.zeiger = melder.hole(self.zeiger, warten=20)
             except Exception as e:                       # noqa: BLE001
@@ -690,8 +762,13 @@ class Lauf:
                 self.zyklus()
 
         # 3. Tagesbericht faellig? Einmal am Tag, ab 8 Uhr.
+        #    Nicht in einer Risikostufe: der Bericht liest die Basisdateien
+        #    (feste Pfade je Spur) und zeigt damit ein anderes Buch als das,
+        #    das dieser Lauf fuehrt - doppelte Rechenzeit fuer eine Auskunft,
+        #    die der Basislauf ohnehin schickt.
         heute = jetzt().date()
-        if (self.letzter_bericht != heute and jetzt().hour >= 8):
+        if (not self.stumm and self.letzter_bericht != heute
+                and jetzt().hour >= 8):
             self.letzter_bericht = heute
             protokoll("Tagesbericht")
             try:
@@ -709,7 +786,18 @@ def main():
                         "das nach oben)" % TAKT_MAX_MINUTEN)
     p.add_argument("--trocken", action="store_true",
                    help="nichts senden, alles auf die Konsole")
+    p.add_argument("--risiko", choices=sorted(risikostufe.FAKTOREN),
+                   default=risikostufe.STANDARD,
+                   help="Risikostufe dieses Laufs (Vorgabe %s). Alles ueber "
+                        "der Basis ist ein zweiter, reiner Papierlauf mit "
+                        "eigenen Dateien - siehe Modulkopf."
+                        % risikostufe.STANDARD)
     a = p.parse_args()
+
+    # ZUERST die Stufe in die Umgebung: daraus leitet risikostufe.py jeden
+    # weiteren Namen ab (dauerlauf.mittel.log, dauerlauf.mittel.pid) und die
+    # Kindprozesse erben sie ueber env=dict(os.environ).
+    os.environ["HANDEL_RISIKO"] = a.risiko
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -721,6 +809,12 @@ def main():
               "jeder Zyklus wuerde flach stellen. Es gilt %d min."
               % (a.takt, TAKT_MAX_MINUTEN))
         a.takt = TAKT_MAX_MINUTEN
+
+    if not risikostufe.ist_basis():
+        print("Risikostufe %s: Faktor %.1f, eigene Dateien (*%s.*), immer "
+              "Papier, kein Telegram. Der Basislauf laeuft daneben "
+              "unveraendert weiter." % (a.risiko, risikostufe.faktor(),
+                                        risikostufe.suffix()))
 
     with ereignis.lauf("handel/dauerlauf"):
         return Lauf(a.takt, a.trocken).start()

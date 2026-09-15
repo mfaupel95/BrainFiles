@@ -78,11 +78,25 @@ def _spiegelquelle():
     return modul
 
 
+# Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
+# und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
+# Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
+# Handelscode darf. Ueber den PFAD geladen wie ratschen.py: die Spur hat ihren
+# eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an der
+# Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
 WACHEN = os.path.join(HIER, "wachen.json")
 VERFOLGTE = os.path.join(HIER, "verfolgte.json")
-ZUSTAND = os.path.join(HIER, "zustand.json")
-JOURNAL = os.path.join(HIER, "handelsjournal.csv")
-ABLEHNUNGEN = os.path.join(HIER, "ablehnungen.csv")
+ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
+JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
+ABLEHNUNGEN = risikostufe.datei(os.path.join(HIER, "ablehnungen.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "token", "symbol",
            "preis", "menge", "einsatz_usd", "wert_usd", "marktkap_usd",
@@ -892,6 +906,16 @@ def registriere_sicht(z, sicht, ausgenommen):
     z["gesehen_portfolios"] = gesehen
 
 
+def lade_wachen():
+    """Wachen dieser Spur samt Risikostufe.
+
+    Der Faktor gehoert an EINE Stelle, nicht in `lauf()`: so kann ein Test
+    dieselbe Funktion befragen, die der Betrieb benutzt (sonst prueft der
+    Test eine Nachbildung).
+    """
+    return risikostufe.skaliere(lade(WACHEN, None))
+
+
 def lauf(modus, stunden=24.0):
     global SCHREIBEN, GESEHEN
     if hasattr(sys.stdout, "reconfigure"):
@@ -900,7 +924,7 @@ def lauf(modus, stunden=24.0):
     SCHREIBEN = modus != "vorschau"
     GESEHEN = None
 
-    w = lade(WACHEN, None)
+    w = lade_wachen()
     if not w:
         print("wachen.json fehlt oder ist unlesbar - kein Lauf.")
         return 1

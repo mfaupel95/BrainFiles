@@ -15,6 +15,7 @@ handeln.py in einem getrennten Schritt.
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -29,8 +30,23 @@ sys.path.insert(0, str(HIER.parent / "scanner"))
 import bewertung  # noqa: E402
 
 
+# Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
+# und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
+# Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
+# Handelscode darf. Ueber den PFAD geladen wie ratschen.py: die Spur hat ihren
+# eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an der
+# Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
 def wachen():
-    return json.loads((HIER / "wachen.json").read_text("utf-8"))
+    return risikostufe.skaliere(
+        json.loads((HIER / "wachen.json").read_text("utf-8")))
 
 
 def lauf(kurz=False):

@@ -26,7 +26,34 @@ for p in (HANDEL, HIER):
 
 import buchauswertung as b                                 # noqa: E402
 
-JOURNAL = os.path.join(HIER, "handelsjournal.csv")
+# Risikostufe (HANDEL_RISIKO): liest die Dateien dieser Stufe
+# (handelsjournal.mittel.csv). OHNE die Variable aendert sich nichts.
+#
+# Der Import ist AUSFALLSICHER: dieses Modul wird auch aus einem temp-Ordner
+# geladen (Tagesbericht-Tests kopieren <spur>/auswertung.py dorthin), und dort
+# liegt risikostufe.py eine Ebene hoeher nicht. Ein harter Import machte den
+# Bericht dort unlesbar. Faellt er aus, bleibt es bei den Basisnamen - eine
+# Auswertung darf nie daran scheitern, dass eine Stufe fehlt.
+risikostufe = None
+try:
+    from importlib.util import (module_from_spec as _rs_mod,
+                                spec_from_file_location as _rs_spec)
+    _rs_datei = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "risikostufe.py")
+    _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+    risikostufe = _rs_mod(_rs_spec_obj)
+    _rs_spec_obj.loader.exec_module(risikostufe)
+except Exception:                                            # noqa: BLE001
+    risikostufe = None
+
+
+def _stufe(pfad):
+    """Dateiname dieser Risikostufe - ohne risikostufe.py der Basisname."""
+    return risikostufe.datei(pfad) if risikostufe is not None else pfad
+
+
+JOURNAL = _stufe(os.path.join(HIER, "handelsjournal.csv"))
 WACHEN = os.path.join(HIER, "wachen.json")
 
 MIN_AUSSTIEGE = b.MIN_AUSSTIEGE

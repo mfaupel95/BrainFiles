@@ -14,6 +14,30 @@
 # ohnehin schon alles andere startet - und sie ist sichtbar, wenn etwas
 # klemmt. Der 30-Minuten-Ausloeser prueft nur, ob schon einer laeuft, und
 # startet sonst neu; laeuft einer, endet das Skript sofort.
+#
+# RISIKOSTUFEN (-Risiko niedrig|mittel|hoch, seit 16.09.2026)
+#   Der zweite Lauf derselben Spuren mit groesseren Betraegen - gedacht zum
+#   DATENSAMMELN, nicht zum Handeln. Seine eigene Sperre heisst
+#   dauerlauf.mittel.pid, sein Log dauerlauf.mittel.log; die Spuren schreiben
+#   zustand.mittel.json und handelsjournal.mittel.csv und spiegeln die nach
+#   Q:. Der Basislauf bleibt unberuehrt.
+#
+#   Warum eine EIGENE Sperre je Stufe: zwei Laeufe auf einer Sperrdatei
+#   haetten sich gegenseitig "laeuft schon" gemeldet, und der zweite waere nie
+#   gestartet.
+#
+#   Der Stufenlauf geht nie live und sendet nie nach Telegram (Begruendung in
+#   Handel/dauerlauf.py). Ein zweiter Lauf kostet Rechenzeit und Netz: er ist
+#   kein Ersatz fuer den Basislauf, sondern eine zweite Messreihe daneben.
+#
+# Aufruf:
+#   .\handel-dauerlauf.ps1                 # Basis (Faktor 1.0)
+#   .\handel-dauerlauf.ps1 -Risiko mittel  # zweiter Lauf, doppelte Betraege
+
+param(
+  [ValidateSet('niedrig', 'mittel', 'hoch')]
+  [string]$Risiko = 'niedrig'
+)
 
 $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path $PSScriptRoot -Parent
@@ -24,13 +48,17 @@ if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Nul
 
 . (Join-Path $wurzel 'Bus\Ereignis.ps1')                                # neu
 
-$log = Join-Path $logs 'handel-dauerlauf-letzter-lauf.log'
-$sperre = Join-Path $handel 'dauerlauf.pid'
+# Dateinamen-Zusatz der Stufe. Der Basislauf behaelt seine Namen (''), sonst
+# wuerde jede geplante Aufgabe und jede Auswertung ploetzlich woanders suchen.
+$suffix = if ($Risiko -eq 'niedrig') { '' } else { '.' + $Risiko }
+$name   = 'handel-dauerlauf-letzter-lauf' + $suffix + '.log'
+$log    = Join-Path $logs $name
+$sperre = Join-Path $handel ('dauerlauf' + $suffix + '.pid')
 # Meldet nur den Start-Vorgang selbst (dieses Skript startet und beendet sich
 # sofort); der Dauerlauf laeuft danach als eigener Hintergrundprozess weiter
 # und ist nicht Teil dieser Bus-Meldung.
-$marke = Melde-Start -Wer 'routine/handel-dauerlauf' `
-           -Log 'Agenten/Routinen/logs/handel-dauerlauf-letzter-lauf.log' # neu
+$marke = Melde-Start -Wer ('routine/handel-dauerlauf' + $suffix) `
+           -Log ('Agenten/Routinen/logs/' + $name)                     # neu
 
 function Schreib($text) {
   "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  $text" | Add-Content $log -Encoding UTF8
@@ -38,12 +66,14 @@ function Schreib($text) {
 
 # Laeuft schon einer? Zwei Dauerlaeufe auf demselben Telegram-Token nehmen
 # sich gegenseitig die Nachrichten weg - Telegram antwortet dem zweiten
-# Abrufer mit 409. Deshalb hier abfangen und nicht erst dort.
+# Abrufer mit 409. Deshalb hier abfangen und nicht erst dort. Geprueft wird
+# die Sperre DIESER Stufe: der Basislauf und der Stufenlauf duerfen und sollen
+# gleichzeitig laufen, sie schreiben in verschiedene Dateien.
 if (Test-Path $sperre) {
   $pid_alt = Get-Content $sperre -ErrorAction SilentlyContinue
   $lebt = Get-Process -Id $pid_alt -ErrorAction SilentlyContinue
   if ($lebt -and $lebt.ProcessName -like 'python*') {
-    Schreib "laeuft bereits (PID $pid_alt) - nichts zu tun"
+    Schreib "laeuft bereits (PID $pid_alt, Stufe $Risiko) - nichts zu tun"
     Melde-Ende -Marke $marke -Code 0 -Text 'laeuft bereits'                # neu
     exit 0
   }
@@ -57,12 +87,12 @@ if (-not (Test-Path $py)) {
   exit 1
 }
 
-Schreib "Start"
+Schreib "Start (Stufe $Risiko)"
 $p = Start-Process -FilePath $py `
-                   -ArgumentList 'dauerlauf.py','--takt','15' `
+                   -ArgumentList 'dauerlauf.py','--takt','15','--risiko',$Risiko `
                    -WorkingDirectory $handel `
                    -WindowStyle Hidden -PassThru
 $p.Id | Set-Content $sperre -Encoding ASCII
-Schreib "gestartet als PID $($p.Id), Takt 15 min"
+Schreib "gestartet als PID $($p.Id), Takt 15 min, Stufe $Risiko"
 Melde-Ende -Marke $marke -Code 0 -Text "gestartet als PID $($p.Id)"        # neu
 exit 0

@@ -53,8 +53,22 @@ from datetime import datetime, timezone, date
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
-ZUSTAND = HIER / "zustand.json"
-JOURNAL = HIER / "handelsjournal.csv"
+# Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
+# und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
+# Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
+# Handelscode darf. Ueber den PFAD geladen wie ratschen.py: die Spur hat ihren
+# eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an der
+# Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
+ZUSTAND = risikostufe.datei(HIER / "zustand.json")
+JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
 # Der Bus liegt zwei Ebenen hoeher (Agenten/Bus). Ohne diesen Eintrag meldet
 # sich der Lauf nicht am Journal - und ein Zyklus ohne Bus-Eintrag ist von
@@ -471,6 +485,15 @@ def live_sperren(w, s):
     """Alle Gruende, die diesen Lauf auf Papier zurueckwerfen. Leere Liste
     heisst: scharf, aber weiterhin nur mit Freigabefenster je Einstieg."""
     gruende = []
+    if not risikostufe.live_erlaubt():
+        # Eine Risikostufe geht NIE live (siehe risikostufe.live_erlaubt): ihre
+        # groesseren Betraege sind zum Messen da, und ihr Buch ist getrennt -
+        # live gehandeltes Geld stuende in keiner Auswertung. Der Grund traegt
+        # bewusst NICHT das Wort Freigabefenster: sonst haelt der Dauerlauf ihn
+        # fuer eine Fenster-Bitte und fragt nach einer Freigabe, die es in
+        # einer Stufe gar nicht geben darf.
+        gruende.append("Risikostufe %s: kein Live-Pfad in einer Stufe"
+                   % risikostufe.stufe())
     if not w.get("handel_erlaubt"):
         gruende.append("wachen.json handel_erlaubt=false")
     if not kraken.schluessel_vorhanden():

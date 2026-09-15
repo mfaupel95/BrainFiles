@@ -31,6 +31,8 @@ import os
 import time
 from datetime import datetime, timezone
 
+import risikostufe  # gleicher Ordner: Faktor und Dateinamen der Stufen
+
 HANDEL = os.path.dirname(os.path.abspath(__file__))
 DATEIEN = ("handelsjournal.csv", "zustand.json")
 # Zusatzdateien je Spur. Der Vergleich ist derselbe (byte-genau), aber eine
@@ -112,21 +114,29 @@ def spuren_im_lauf(handel=HANDEL):
     return None
 
 
-def spur_zeile(handel, spur):
+def spur_zeile(handel, spur, risiko=None):
     """Ein Pruefergebnis je Spur: Ziel, Kopiestand, Herzschlag, Journalzeilen.
 
     Verglichen werden die zwei Pflichtdateien plus die Zusatzdateien DIESER
     Spur (ZUSATZ). Eine fehlende Zusatzdatei liest sich wie ein Unterschied -
     das ist gewollt: sie wird im selben Zyklus mitgespiegelt, in dem sie
     entsteht, also muss sie auf beiden Seiten liegen.
+
+    `risiko` prueft eine ANDERE Stufe als die dieses Prozesses: dann heissen
+    die Dateien zustand.mittel.json und handelsjournal.mittel.csv (siehe
+    risikostufe.datei_fuer). Ohne Angabe gilt die Stufe der Umgebung, also im
+    Regelfall die Basis.
     """
+    def benenne(n):
+        return n if risiko is None else risikostufe.datei_fuer(n, risiko)
+
     ordner = os.path.join(handel, spur)
     w = lade(os.path.join(ordner, "wachen.json")) or {}
-    z = lade(os.path.join(ordner, "zustand.json")) or {}
+    z = lade(os.path.join(ordner, benenne("zustand.json"))) or {}
     ziel = w.get("journal_zweitziel")
     ziel = ziel.replace("\\", os.sep) if isinstance(ziel, str) else None
     alter = alter_minuten(z.get("letzter_lauf"))
-    anzahl = zeilen(os.path.join(ordner, "handelsjournal.csv"))
+    anzahl = zeilen(os.path.join(ordner, benenne("handelsjournal.csv")))
 
     if not ziel:
         return {"spur": spur, "stand": "kein Ziel", "grund": "journal_zweitziel leer",
@@ -135,7 +145,7 @@ def spur_zeile(handel, spur):
         return {"spur": spur, "stand": "Ziel fehlt", "grund": "Ordner nicht erreichbar",
                 "ziel": ziel, "alter": alter, "zeilen": anzahl}
 
-    dateien = DATEIEN + ZUSATZ.get(spur, ())
+    dateien = [benenne(n) for n in DATEIEN + ZUSATZ.get(spur, ())]
     abweichungen = [n for n in dateien
                     if not gleich(os.path.join(ordner, n), os.path.join(ziel, n))]
     return {"spur": spur,
@@ -146,9 +156,13 @@ def spur_zeile(handel, spur):
             "vermerk": z.get("journal_zweitziel_ok")}
 
 
-def stand(handel=HANDEL, stunden=30.0):
+def stand(handel=HANDEL, stunden=30.0, risiko=None):
     """Alle Spuren pruefen. Schluessel: spuren, geprueft, abweichend, ausserhalb,
-    alt (Herzschlag ueber der Grenze), spurenliste."""
+    alt (Herzschlag ueber der Grenze), spurenliste.
+
+    `risiko` prueft die Dateien einer Stufe (siehe spur_zeile); ohne Angabe
+    die der Umgebung.
+    """
     alle = []
     if not os.path.isdir(handel):
         return {"spuren": [], "geprueft": 0, "abweichend": [], "ausserhalb": [],
@@ -158,9 +172,10 @@ def stand(handel=HANDEL, stunden=30.0):
                   if os.path.isfile(os.path.join(handel, d, "wachen.json")))
     im_lauf = spuren_im_lauf(handel)
     ergebnis = {"spuren": [], "geprueft": 0, "abweichend": [], "ausserhalb": [],
-                "alt": [], "handel": handel, "im_lauf_lesbar": im_lauf is not None}
+                "alt": [], "handel": handel, "risiko": risiko,
+                "im_lauf_lesbar": im_lauf is not None}
     for spur in alle:
-        e = spur_zeile(handel, spur)
+        e = spur_zeile(handel, spur, risiko)
         im_dienst = im_lauf is None or spur in im_lauf
         if not im_dienst:
             ergebnis["ausserhalb"].append(spur)
@@ -200,9 +215,17 @@ def main():
                    help="Handel-Verzeichnis (Vorgabe: dieses Verzeichnis)")
     p.add_argument("--stunden", type=float, default=30.0,
                    help="ab wann der Herzschlag als alt gemeldet wird")
+    p.add_argument("--risiko", choices=sorted(risikostufe.FAKTOREN),
+                   default=risikostufe.STANDARD,
+                   help="Risikostufe pruefen (Vorgabe %s = Basis). Eine Stufe "
+                        "schreibt zustand.mittel.json und "
+                        "handelsjournal.mittel.csv - dieselbe Rechnung, "
+                        "andere Dateinamen."
+                        % risikostufe.STANDARD)
     a = p.parse_args()
 
-    e = stand(a.handel, a.stunden)
+    e = stand(a.handel, a.stunden,
+              None if a.risiko == risikostufe.STANDARD else a.risiko)
     if e.get("fehler"):
         print("Spiegelstand nicht pruefbar: %s (%s)" % (e["fehler"], a.handel))
         return 1
@@ -215,6 +238,7 @@ def main():
               "wachen.json werden geprueft.")
     print("Spiegelstand Bedingung 4 - %s" % time.strftime("%Y-%m-%d %H:%M:%S"))
     print("Handel: %s" % a.handel)
+    print("Risikostufe: %s" % a.risiko)
     print()
     print("%-10s %-12s %7s %7s  %s" % ("Spur", "Stand", "Zeilen", "Alter",
                                        "Ziel / Grund"))

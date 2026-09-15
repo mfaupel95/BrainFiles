@@ -64,8 +64,22 @@ import indikatoren
 import okxf
 import wachen_xperp as wx
 
-ZUSTAND = os.path.join(HIER, "zustand.json")
-JOURNAL = os.path.join(HIER, "handelsjournal.csv")
+# Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
+# und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
+# Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
+# Handelscode darf. Ueber den PFAD geladen wie ratschen.py: die Spur hat ihren
+# eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an der
+# Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
+ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
+JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
            "kontrakte", "nominal_usd", "margin_usd", "hebel", "stop", "ziel",
@@ -587,6 +601,15 @@ def zeige_wachen(w):
 def sperren_live(w, s):
     """Alles, was --live gerade verschliesst. Leere Liste = frei."""
     g = []
+    if not risikostufe.live_erlaubt():
+        # Eine Risikostufe geht NIE live (siehe risikostufe.live_erlaubt): ihre
+        # groesseren Betraege sind zum Messen da, und ihr Buch ist getrennt -
+        # live gehandeltes Geld stuende in keiner Auswertung. Der Grund traegt
+        # bewusst NICHT das Wort Freigabefenster: sonst haelt der Dauerlauf ihn
+        # fuer eine Fenster-Bitte und fragt nach einer Freigabe, die es in
+        # einer Stufe gar nicht geben darf.
+        g.append("Risikostufe %s: kein Live-Pfad in einer Stufe"
+                   % risikostufe.stufe())
     if not w.get("handel_erlaubt"):
         g.append("wachen.json handel_erlaubt=false")
     if not okxf.schluessel_vorhanden():

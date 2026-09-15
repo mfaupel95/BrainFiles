@@ -447,6 +447,20 @@ Agenten/Hermes/cache/**
 Agenten/Hermes/logs/**
 Agenten/Hermes/state/**
 
+# Risikostufen (15.09.2026): eine Stufe fuehrt ein ZWEITES Buch derselben Spur
+# (zustand.mittel.json, handelsjournal.mittel.csv) plus eigene Dauerlauf-Dateien
+# (dauerlauf.mittel.log, dauerlauf.mittel.pid). Laufender Zustand wie die
+# Basisdateien - der Code, der ihn erzeugt, ist oben laengst freigegeben. Die
+# Journale der Stufe deckt die CSV-Sperre der Spuren schon mit ab, den Zustand
+# nicht: bis hierher waere zustand.mittel.json die EINZIGE Zustandsdatei im
+# Verlauf gewesen (dieselbe Luecke wie bei den Indikator-Spuren am 15.09.).
+Agenten/Handel/*/zustand.mittel.json
+Agenten/Handel/*/zustand.hoch.json
+Agenten/Handel/*/ablehnungen.mittel.csv
+Agenten/Handel/*/ablehnungen.hoch.csv
+Agenten/Handel/dauerlauf.*.log
+Agenten/Handel/dauerlauf.*.pid
+
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
 *.bak-*

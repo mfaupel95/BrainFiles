@@ -55,6 +55,11 @@ Ausloeser → Referenz:
   mitnehmen", eine geaenderte Datei, die man selbst nicht angefasst hat) —
   Fertig-Erkennung, Waechter-Cron, getrennter Commit und die Frage, was eine
   Entscheidung von Max braucht: `references/fremdarbeit-mitnehmen.md`
+- **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
+  Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
+  `risikostufe.py`): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
+  was skaliert wird und was nie, warum eine Stufe nie live geht, kein Telegram
+  bekommt und warum der Spiegel aussen vor bleibt: `references/risikostufen.md`
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 

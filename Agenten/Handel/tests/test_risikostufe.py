@@ -182,5 +182,213 @@ class EchteWachenTest(unittest.TestCase):
             self.assertEqual(set(risikostufe.skaliere(w).keys()), set(w.keys()), pfad)
 
 
+class DateiTypTest(unittest.TestCase):
+    """datei()/datei_fuer(): Typ bleibt, Basis bleibt, Stufe wirkt."""
+
+    def setUp(self):
+        self.alt = os.environ.get("HANDEL_RISIKO")
+        os.environ.pop("HANDEL_RISIKO", None)
+
+    def tearDown(self):
+        if self.alt is None:
+            os.environ.pop("HANDEL_RISIKO", None)
+        else:
+            os.environ["HANDEL_RISIKO"] = self.alt
+
+    def test_path_bleibt_path(self):
+        # scanner/handeln.py ruft .read_text() auf dem Ergebnis auf - ein
+        # zurueckgegebener str waere dort ein Attributfehler.
+        from pathlib import Path
+        os.environ["HANDEL_RISIKO"] = "mittel"
+        aus = risikostufe.datei(Path("C:/x/zustand.json"))
+        self.assertIsInstance(aus, Path)
+        self.assertEqual(aus.name, "zustand.mittel.json")
+
+    def test_str_bleibt_str(self):
+        os.environ["HANDEL_RISIKO"] = "hoch"
+        aus = risikostufe.datei("C:/x/handelsjournal.csv")
+        self.assertIsInstance(aus, str)
+        self.assertTrue(aus.endswith("handelsjournal.hoch.csv"))
+
+    def test_datei_fuer_kennt_jede_stufe(self):
+        # Werkzeuge (spiegelstand, auswertung_alle) pruefen eine FREMDE Stufe,
+        # ohne die Umgebung zu verbiegen.
+        self.assertTrue(risikostufe.datei_fuer("zustand.json", "mittel")
+                        .endswith("zustand.mittel.json"))
+        self.assertEqual(risikostufe.datei_fuer("zustand.json", "niedrig"),
+                         "zustand.json")
+        self.assertEqual(risikostufe.datei_fuer("zustand.json", "tippfehler"),
+                         "zustand.json")
+
+    def test_live_nur_in_der_basis(self):
+        # Eine Stufe ist ein Messwerkzeug: nie echtes Geld.
+        self.assertTrue(risikostufe.live_erlaubt())
+        for stufe in ("mittel", "hoch"):
+            os.environ["HANDEL_RISIKO"] = stufe
+            self.assertFalse(risikostufe.live_erlaubt(), stufe)
+
+
+# Welche Datei je Spur die Dateinamen traegt, und welche Funktion die Wachen
+# liefert. Beides wird am Modul der Spur geprueft, nicht nachgebaut.
+SPUR_DATEIEN = {
+    "xperp": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "scanner": ("handeln.py", ("ZUSTAND", "JOURNAL", "ABLEHNUNGEN")),
+    "swap": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "kraken": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "kopier": ("kopier.py", ("ZUSTAND", "JOURNAL", "ABLEHNUNGEN")),
+    "kopier1zu1": ("handeln.py", ("ZUSTAND", "JOURNAL", "ABLEHNUNGEN")),
+    "orbk": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "omniquant": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "nautilus": ("handeln.py", ("ZUSTAND", "JOURNAL", "KOPIER_JOURNAL",
+                                "KOPIER_ZUSTAND")),
+    "gitter": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "squeeze": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "supertrend": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "wavetrend": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "macd_mtf": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+    "mosaic": ("handeln.py", ("ZUSTAND", "JOURNAL")),
+}
+
+SPUR_WACHEN = {
+    "xperp": ("bot.py", "wachen"),
+    "scanner": ("scan.py", "wachen"),
+    "swap": ("handeln.py", "wachen"),
+    "kraken": ("scan.py", "wachen"),
+    "kopier": ("kopier.py", "lade_wachen"),
+    "kopier1zu1": ("handeln.py", "lade_wachen"),
+    "orbk": ("handeln.py", "_wachen"),
+    "omniquant": ("handeln.py", "lade_wachen"),
+    "nautilus": ("handeln.py", "lade_wachen"),
+    "gitter": ("handeln.py", "lade_wachen"),
+    "squeeze": ("handeln.py", "lade_wachen"),
+    "supertrend": ("handeln.py", "lade_wachen"),
+    "wavetrend": ("handeln.py", "lade_wachen"),
+    "macd_mtf": ("handeln.py", "lade_wachen"),
+    "mosaic": ("handeln.py", "lade_wachen"),
+}
+
+# Spuren, die unter DIESEM Interpreter nicht ladbar sind. nautilus braucht
+# sein eigenes venv (nautilus_trader). Eine Spur hier einzutragen heisst:
+# "nicht geprueft" - das muss sichtbar bleiben und darf nicht still passieren.
+AUSNAHMEN = {"nautilus": "braucht nautilus_trader (eigenes venv)"}
+
+# spiegel wird NICHT gesuffixt: er laeuft nur in der Basis (Vorgabe Max).
+NUR_BASIS = ("spiegel",)
+
+
+def _lade(spur, datei):
+    """Modul einer Spur laden - wie der Betrieb: eigener Ordner als sys.path[0]."""
+    from importlib.util import module_from_spec, spec_from_file_location
+    ordner = os.path.join(HANDEL, spur)
+    spec = spec_from_file_location(
+        "risiko_%s_%s" % (spur, datei.replace(".", "_")),
+        os.path.join(ordner, datei))
+    modul = module_from_spec(spec)
+    sys.path.insert(0, ordner)
+    try:
+        spec.loader.exec_module(modul)
+    finally:
+        if sys.path and sys.path[0] == ordner:
+            sys.path.pop(0)
+    return modul
+
+
+class VerdrahtungTest(unittest.TestCase):
+    """DIE Spur traegt die Stufe - nicht eine Formel im Test.
+
+    Ein Test, der die Skalierung hier nachbaut, prueft die Formel und nicht
+    die Spur. Deshalb wird jede Spurendatei geladen und gefragt: heissen
+    deine Dateien in dieser Stufe anders, und liefert deine Wachen-Funktion
+    die groesseren Betraege?
+    """
+
+    def setUp(self):
+        self.alt = os.environ.get("HANDEL_RISIKO")
+        os.environ.pop("HANDEL_RISIKO", None)
+
+    def tearDown(self):
+        if self.alt is None:
+            os.environ.pop("HANDEL_RISIKO", None)
+        else:
+            os.environ["HANDEL_RISIKO"] = self.alt
+
+    def test_basis_hat_ueberall_die_alten_namen(self):
+        nicht_geprueft = []
+        for spur, (datei, namen) in SPUR_DATEIEN.items():
+            try:
+                m = _lade(spur, datei)
+            except ImportError as e:
+                nicht_geprueft.append((spur, e))
+                continue
+            for name in namen:
+                wert = str(getattr(m, name))
+                self.assertNotIn(".mittel", wert, "%s.%s" % (spur, name))
+                self.assertNotIn(".hoch", wert, "%s.%s" % (spur, name))
+                self.assertNotIn(".niedrig", wert, "%s.%s" % (spur, name))
+        self._erwartete_ausnahmen(nicht_geprueft)
+
+    def test_stufe_trennt_die_dateien(self):
+        os.environ["HANDEL_RISIKO"] = "mittel"
+        nicht_geprueft = []
+        for spur, (datei, namen) in SPUR_DATEIEN.items():
+            try:
+                m = _lade(spur, datei)
+            except ImportError as e:
+                nicht_geprueft.append((spur, e))
+                continue
+            for name in namen:
+                wert = str(getattr(m, name))
+                self.assertTrue(wert.endswith(".mittel.json")
+                                or wert.endswith(".mittel.csv"),
+                                "%s.%s = %s" % (spur, name, wert))
+        self._erwartete_ausnahmen(nicht_geprueft)
+
+    def test_spiegel_bleibt_bei_den_basisnamen(self):
+        # Gegenprobe: der Spiegel haelt sich absichtlich heraus. Waere er hier
+        # gesuffixt, laege sein Buch doppelt und der Basislauf bekaeme einen
+        # zweiten Schreiber auf dieselbe Datei.
+        os.environ["HANDEL_RISIKO"] = "mittel"
+        m = _lade("spiegel", "spiegel.py")
+        self.assertTrue(m.ZUSTAND.endswith("zustand.json"), m.ZUSTAND)
+        self.assertTrue(m.JOURNAL.endswith("handelsjournal.csv"), m.JOURNAL)
+        self.assertFalse(m.risikostufe.ist_basis())
+
+    def test_wachenfunktion_skaliert(self):
+        nicht_geprueft = []
+        for spur, (datei, fn) in SPUR_WACHEN.items():
+            try:
+                m = _lade(spur, datei)
+            except ImportError as e:
+                nicht_geprueft.append((spur, e))
+                continue
+            os.environ.pop("HANDEL_RISIKO", None)
+            basis = getattr(m, fn)()
+            os.environ["HANDEL_RISIKO"] = "mittel"
+            mittel = getattr(m, fn)()
+            gefunden = 0
+            for feld, wert in basis.items():
+                if feld in risikostufe.NIE_SKALIEREN:
+                    self.assertEqual(mittel[feld], wert, "%s: %s" % (spur, feld))
+                if feld in risikostufe.SKALIEREN and isinstance(wert, (int, float)) \
+                        and not isinstance(wert, bool):
+                    gefunden += 1
+                    self.assertAlmostEqual(mittel[feld], wert * 2, places=4,
+                                           msg="%s: %s" % (spur, feld))
+            self.assertGreater(gefunden, 0,
+                               "%s: keine skalierbaren Felder in den Wachen" % spur)
+        self._erwartete_ausnahmen(nicht_geprueft)
+
+    def _erwartete_ausnahmen(self, nicht_geprueft):
+        """Nicht ladbare Spuren sind erlaubt - aber nur die bekannten."""
+        ueberraschung = [s for s, _ in nicht_geprueft if s not in AUSNAHMEN]
+        self.assertFalse(
+            ueberraschung,
+            "unerwartet nicht ladbar (Verdrahtung kaputt?): %s"
+            % ", ".join("%s: %s" % (s, e) for s, e in nicht_geprueft
+                        if s in ueberraschung))
+        self.assertGreaterEqual(len(SPUR_DATEIEN) - len(nicht_geprueft), 14,
+                                "zu wenige Spuren wirklich geprueft")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
