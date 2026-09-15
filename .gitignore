@@ -420,6 +420,11 @@ Agenten/Hermes/skills/.usage.json
 !Agenten/Werkzeuge/projectatlas/*.cmd
 !Agenten/Werkzeuge/projectatlas/*.sh
 !Agenten/Werkzeuge/projectatlas/*.py
+# FUNDUS-SUCHE, freigelegt am 16.09.2026. Ein Werkzeug, kein Laufzeitstand:
+# der Skill fundus-zugriff nennt es als EINEN Zugang zum Fundus, und
+# Wissen/Fundus-Index.md wird damit erzeugt. Ohne die Zeile lag es nur auf der
+# Platte - eine Wiederherstellung aus dem Verlauf haette den Zugang verloren.
+!Agenten/Werkzeuge/fundus-suche.ps1
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env

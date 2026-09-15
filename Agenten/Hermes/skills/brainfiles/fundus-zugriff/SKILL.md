@@ -25,7 +25,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File `
-     "C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\fundus-suche.ps1" -Begriff "<suchwort>"
+     "Agenten\Werkzeuge\fundus-suche.ps1" -Begriff "<suchwort>"  # aus der Repo-Wurzel
    ```
 
    Die Ausgabe nennt je Treffer Repo, Namen, Pfad und die erste
