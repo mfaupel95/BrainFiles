@@ -37,5 +37,15 @@ done
 echo "=== Fehlerdateien mit Inhalt ==="
 for f in "$LOG"/*.err; do [ -s "$f" ] && { echo "--- $(basename "$f")"; head -3 "$f"; }; done
 echo "=== Gesamtgroesse ==="
-find "$ROOT/Werkstatt" "$ROOT/Agenten" -maxdepth 4 -name projectatlas.db -type f -printf '%s\n' 2>/dev/null | awk '{s+=$1} END {printf "%d Atlanten, %.1f MB\n", NR, s/1048576}'
+# Ueber die REPO-LISTE, nicht per `find`: find folgt der Junction
+# Werkstatt -> O:\Werkstatt nicht (gemessen 15.09.2026) und meldete
+# "2 Atlanten, 1.0 MB" statt der echten 33 Atlanten und 5,1 GB.
+gesamt=0; zahl=0
+for r in "${repos[@]}"; do
+  db="$r/.projectatlas/projectatlas.db"
+  [ -f "$db" ] || continue
+  s=$(stat -c %s "$db" 2>/dev/null || echo 0)
+  gesamt=$((gesamt + s)); zahl=$((zahl + 1))
+done
+awk -v n="$zahl" -v b="$gesamt" 'BEGIN {printf "%d Atlanten, %.1f MB\n", n, b/1048576}'
 echo FERTIG
