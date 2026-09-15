@@ -117,5 +117,12 @@ Der zweite Aufruf ist der eigentliche Nachweis: eine Stufe darf die Q:-Kopien de
 Basis NICHT anfassen. Faellt dort eine Abweichung an, die es im Basislauf nicht
 gibt, schreibt eine Stufe in Basispfade.
 
+FALLE beim Nachweis: Nach einem Lauf der Spurentestsuiten meldet `spiegelstand.py`
+kurzzeitig Abweichungen (beobachtet: scanner/ablehnungen.csv, orbk/zustand.json) -
+die Tests schreiben in die ECHTEN Spurenordner, und Q: wird erst im naechsten Zyklus
+nachgezogen. Das heilt von selbst; bleibt eine Abweichung ueber zwei Zyklen, ist es
+ein echter Befund. Immer erst den naechsten Basislauf-Zyklus abwarten, bevor man
+"Basis unberuehrt" behauptet.
+
 Abgrenzung: `journal-spiegelung` (Kopie nach Q:), `dauerprozess-bewachen` (eine
 Stufe ist ein eigener Dauerprozess mit eigener PID-Datei und eigener Wache).
