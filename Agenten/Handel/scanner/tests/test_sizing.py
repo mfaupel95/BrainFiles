@@ -85,6 +85,35 @@ class VorschlaegeTest(unittest.TestCase):
                                places=2)
 
 
+class DeckelHerleitungTest(unittest.TestCase):
+    """Der Deckel ist kein freier Wert - er folgt aus Risiko und Mindest-Stop.
+
+    Solange max_pro_trade_usd kleiner ist als risiko / pflicht_stop_prozent_min,
+    kappt er genau die engen Stops: sie behalten ihr altes, ZU KLEINES Risiko,
+    waehrend weite Stops normiert werden. Die Normierung wirkt dann nur nach
+    unten und ist halb. Dieser Test faellt, wenn jemand risiko_je_position_usd
+    aendert, ohne den Deckel mitzurechnen.
+    """
+
+    def setUp(self):
+        self.w = json.loads((HIER.parent / "wachen.json").read_text("utf-8"))
+
+    def test_deckel_kappt_den_engsten_erlaubten_stop_nicht(self):
+        r = self.w["risiko_je_position_usd"]
+        smin = self.w["pflicht_stop_prozent_min"]
+        noetig = r / (smin / 100.0)
+        self.assertGreaterEqual(
+            self.w["max_pro_trade_usd"], noetig - 0.01,
+            "Deckel %.2f kappt den %.1f%%-Stop; noetig waeren %.2f"
+            % (self.w["max_pro_trade_usd"], smin, noetig))
+
+    def test_engster_stop_erreicht_das_volle_risiko(self):
+        smin = self.w["pflicht_stop_prozent_min"]
+        nominal = h.nominal_fuer(smin, self.w)
+        self.assertAlmostEqual(nominal * smin / 100.0,
+                               self.w["risiko_je_position_usd"], places=2)
+
+
 class WachenTest(unittest.TestCase):
     def test_wert_steht_in_der_echten_datei(self):
         w = json.loads((HIER.parent / "wachen.json").read_text("utf-8"))
