@@ -392,6 +392,14 @@ Agenten/Hermes/skills/**/__pycache__/
 # schreibt jeder Lauf; sie erzeugten bei jedem git status Rauschen.
 Agenten/Hermes/skills/.curator_ledger.jsonl
 Agenten/Hermes/skills/.usage.json
+#
+# CRON-SKRIPTE, freigelegt am 15.09.2026. Die Skripte, die der
+# Hermes-Scheduler ohne Modell fahrt (no_agent) - sie sind Prozedurwissen
+# wie die Skills und werden sonst nur nach G: gesichert. Die Zeile in
+# Wissen/Routinen.md verweist auf sie; ohne sie waere der Verweis nach
+# einem Verlust tot. Nur .py, kein Zwischenspeicher, kein Log.
+!Agenten/Hermes/scripts/
+!Agenten/Hermes/scripts/**/*.py
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env
