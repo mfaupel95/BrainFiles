@@ -3,7 +3,7 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-09-14
+updated: 2026-09-16
 related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
@@ -24,6 +24,8 @@ vorhandener Skill plus ein Zeitplan.
 | alle 30 Min | Dauerlauf-Wächter (Neustart nach Abschaltung) | `handel-dauerlauf.ps1` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf-Waechter` |
 | alle 15 Min | Bus-Wächter (Neustart nach Ausfall, Meldung nur bei Befund) | `Agenten/Hermes/scripts/bus-waechter.py` | **eingeplant** 15.09.2026 — Hermes-Cron `bus-waechter`, **kein Windows-Task**: läuft absichtlich am Bus vorbei (`no_agent`, Ausgabe = Meldung), weil eine Wache, die über den Bus meldet, bei totem Bus schweigt. Anlass: der Bus war vom 11.09. 21:13 bis 15.09. 21:02 aus, vier Tage ohne Meldung. |
 | alle 15 Min | Atlas-Wächter (startet den ProjectAtlas-Watcher neu, still bei Befundfreiheit) | `Agenten/Hermes/scripts/atlas-watcher.py` | **eingeplant** 15.09.2026 — Hermes-Cron `atlas-watcher`, ebenfalls **kein Windows-Task** (`no_agent`, leere Ausgabe = nichts senden). Prüft die PID aus `Agenten/Werkzeuge/projectatlas/logs/watch-omnitrade.pid`; der Watcher ist ein Dauerprozess auf `Werkstatt/omnitrade` und zieht den Atlas nach, wenn sich Dateien ändern. Anlass: ohne ihn veraltet die Karte still. |
+| montags 09:15 | Repo-Klone unter `Werkstatt/Repos/` gegen upstream prüfen (Skill-Quellen aktuell halten) | `Agenten/Hermes/scripts/repo-updates-check.py` | **eingeplant** 16.09.2026 — Hermes-Cron `repo-updates-check`, **kein Windows-Task** (`no_agent`, Meldung nur bei Rückstand). Anlass: superpowers-Klon war zwei Monate hinter upstream; ohne Prüfung altern die Skill-Quellen still.
+| montags 09:30 | Skill-Nutzung auswerten (Bibliothek schlank halten) | `Agenten/Hermes/scripts/skill-usage-report.py` | **eingeplant** 16.09.2026 — Hermes-Cron `skill-usage-report`, **kein Windows-Task** (`no_agent`, Top-10 nach Aufrufen + ungenutzte Skills). Anlass: jede geladene SKILL.md kostet bei jeder Anfrage Tokens; das Ausmisten am 11.09.2026 sparte ~3.000 Tokens je Anfrage.
 | sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |

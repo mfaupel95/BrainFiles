@@ -2,9 +2,9 @@
 
 Erzeugt von `Agenten/Werkzeuge/fundus-suche.ps1 -Index`. Nicht von Hand pflegen.
 
-Geklonte Fremd-Repos unter `MaxHirn/skills/`: **182 eindeutige Skills** in 10 Repos (238 Dateien, 56 byte-identische Kopien zusammengefasst).
+Geklonte Fremd-Repos: **182 eindeutige Skills** in 10 Repos (238 Dateien, 56 byte-identische Kopien zusammengefasst).
 
-Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skript.
+Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-suche.ps1 -Begriff "<wort>"`.
 
 ## claude-code (10)
 
@@ -33,18 +33,18 @@ Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skr
 
 - **access** - Manage Discord channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Discord channel.
   `MaxHirn\skills\claude-plugins-official\external_plugins\discord\skills\access\SKILL.md`
-- **access** - Manage iMessage channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the iMessage channel...
-  `MaxHirn\skills\claude-plugins-official\external_plugins\imessage\skills\access\SKILL.md`
 - **access** - Manage Telegram channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Telegram channel...
   `MaxHirn\skills\claude-plugins-official\external_plugins\telegram\skills\access\SKILL.md`
+- **access** - Manage iMessage channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the iMessage channel...
+  `MaxHirn\skills\claude-plugins-official\external_plugins\imessage\skills\access\SKILL.md`
 - **agent-development** - This skill should be used when the user asks to
   `MaxHirn\skills\claude-plugins-official\plugins\plugin-dev\skills\agent-development\SKILL.md`
 - **build-mcp-app** - This skill should be used when the user wants to build an
   `MaxHirn\skills\claude-plugins-official\plugins\mcp-server-dev\skills\build-mcp-app\SKILL.md`
-- **build-mcp-server** - This skill should be used when the user asks to
-  `MaxHirn\skills\claude-plugins-official\plugins\mcp-server-dev\skills\build-mcp-server\SKILL.md`
 - **build-mcpb** - This skill should be used when the user wants to
   `MaxHirn\skills\claude-plugins-official\plugins\mcp-server-dev\skills\build-mcpb\SKILL.md`
+- **build-mcp-server** - This skill should be used when the user asks to
+  `MaxHirn\skills\claude-plugins-official\plugins\mcp-server-dev\skills\build-mcp-server\SKILL.md`
 - **cardputer-buddy** - Iterate on the Cardputer-Adv MicroPython app bundle (Claude Buddy, Snake, Hello) after the device is already provisioned via m5-onboard. Use when the user wants to add a new app, push a single changed...
   `MaxHirn\skills\claude-plugins-official\plugins\cwc-makers\skills\cardputer-buddy\SKILL.md`
 - **claude-automation-recommender** - Analyze a codebase and recommend Claude Code automations (hooks, subagents, skills, plugins, MCP servers). Use when user asks for automation recommendations, wants to optimize their Claude Code setup,...
@@ -55,10 +55,10 @@ Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skr
   `MaxHirn\skills\claude-plugins-official\plugins\claude-security\skills\claude-security\SKILL.md`
 - **command-development** - This skill should be used when the user asks to
   `MaxHirn\skills\claude-plugins-official\plugins\plugin-dev\skills\command-development\SKILL.md`
-- **configure** - Set up the Telegram channel — save the bot token and review access policy. Use when the user pastes a Telegram bot token, asks to configure Telegram, asks
-  `MaxHirn\skills\claude-plugins-official\external_plugins\telegram\skills\configure\SKILL.md`
 - **configure** - Set up the Discord channel — save the bot token and review access policy. Use when the user pastes a Discord bot token, asks to configure Discord, asks
   `MaxHirn\skills\claude-plugins-official\external_plugins\discord\skills\configure\SKILL.md`
+- **configure** - Set up the Telegram channel — save the bot token and review access policy. Use when the user pastes a Telegram bot token, asks to configure Telegram, asks
+  `MaxHirn\skills\claude-plugins-official\external_plugins\telegram\skills\configure\SKILL.md`
 - **configure** - Check iMessage channel setup and review access policy. Use when the user asks to configure iMessage, asks
   `MaxHirn\skills\claude-plugins-official\external_plugins\imessage\skills\configure\SKILL.md`
 - **example-command** - An example user-invoked skill that demonstrates frontmatter options and the skills/<name>/SKILL.md layout
@@ -149,7 +149,7 @@ Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skr
 - **bond-relative-value** - Perform relative value analysis on bonds by combining pricing, yield curve context, credit spreads, and scenario stress testing. Use when analyzing bond richness/cheapness, computing spread decomposit...
   `MaxHirn\skills\financial-services\plugins\partner-built\lseg\skills\bond-relative-value\SKILL.md`
 - **break-trace** - Root-cause a reconciliation break to its source transaction or posting — follow the audit trail from the break row back to the originating entry on each side and state what differs and why. Use after ...
-  `MaxHirn\skills\financial-services\plugins\agent-plugins\gl-reconciler\skills\break-trace\SKILL.md`
+  `MaxHirn\skills\financial-services\plugins\vertical-plugins\fund-admin\skills\break-trace\SKILL.md`
 - **buyer-list** - Build and organize a universe of potential acquirers for sell-side M&A processes. Identifies strategic and financial buyers, assesses fit, and prioritizes outreach. Use when preparing for a sell-side ...
   `MaxHirn\skills\financial-services\plugins\vertical-plugins\investment-banking\skills\buyer-list\SKILL.md`
 - **catalyst-calendar** - Build and maintain a calendar of upcoming catalysts across a coverage universe — earnings dates, conferences, product launches, regulatory decisions, and macro events. Helps prioritize attention and p...
@@ -201,7 +201,7 @@ Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skr
 - **fx-carry-trade** - Evaluate FX carry trade opportunities by combining spot rates, forward points, interest rate differentials, volatility surface analysis, and historical price trends. Use when analyzing carry trades, c...
   `MaxHirn\skills\financial-services\plugins\partner-built\lseg\skills\fx-carry-trade\SKILL.md`
 - **gl-recon** - Reconcile general ledger to subledger for a trade date or period — match at the position or transaction level, surface breaks, and classify each break by likely cause. Use for daily or month-end recon...
-  `MaxHirn\skills\financial-services\plugins\agent-plugins\gl-reconciler\skills\gl-recon\SKILL.md`
+  `MaxHirn\skills\financial-services\plugins\vertical-plugins\fund-admin\skills\gl-recon\SKILL.md`
 - **ib-check-deck** - Investment banking presentation quality checker. Reviews a pitch deck or client-ready presentation for (1) number consistency across slides, (2) data-narrative alignment, (3) language polish against I...
   `MaxHirn\skills\financial-services\plugins\agent-plugins\pitch-agent\skills\ib-check-deck\SKILL.md`
 - **ic-memo** - Draft a structured investment committee memo for PE deal approval. Synthesizes due diligence findings, financial analysis, and deal terms into a professional IC-ready document. Use when preparing for ...
@@ -375,10 +375,10 @@ Der Fundus ist **nicht** in der Hermes-Bibliothek geladen; Zugriff ueber das Skr
 
 ## onchainos-skills (7)
 
-- **okx-agent-payments-protocol** - For agent payments and paid endpoints via x402, MPP, payment links, a2a-pay, and HTTP-payment recurring or metered billing. Use it for HTTP 402/payment-required; paid Agent or A2MCP endpoints; x402/Pe...
-  `MaxHirn\skills\onchainos-skills\skills\okx-agent-payments-protocol\SKILL.md`
 - **okx-agentic-wallet** - Use this skill whenever the user wants to use OKX Onchain OS / onchainos CLI / agentic wallet for wallet state or on-chain actions. Triggers: onchainos, Onchain OS wallet, agentic wallet; wallet login...
   `MaxHirn\skills\onchainos-skills\skills\okx-agentic-wallet\SKILL.md`
+- **okx-agent-payments-protocol** - For agent payments and paid endpoints via x402, MPP, payment links, a2a-pay, and HTTP-payment recurring or metered billing. Use it for HTTP 402/payment-required; paid Agent or A2MCP endpoints; x402/Pe...
+  `MaxHirn\skills\onchainos-skills\skills\okx-agent-payments-protocol\SKILL.md`
 - **okx-ai** - Use OKX.AI to find and use tasks/services, manage tasks and subscriptions, or register as an Agent Service Provider (ASP) to offer services. Includes Agent identity/profile and service management; ser...
   `MaxHirn\skills\onchainos-skills\skills\okx-ai\SKILL.md`
 - **okx-dapp-discovery** - For discovering DApps and routing protocol requests to OKX plugins; it never signs or broadcasts. Use it for DApp discovery; supported DApp + action; multi-DApp comparison; Polymarket UpDown/predictio...
