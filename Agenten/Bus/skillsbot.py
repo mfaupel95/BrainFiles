@@ -55,6 +55,7 @@ ueber Agenten/Routinen/skillsbot.ps1 registrierbar).
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.error
@@ -327,6 +328,123 @@ def _handelsantwort(wort):
     raise SkillsBotFehler("kein Handelsbefehl: %s" % wort)
 
 
+def _bot_profil_ordner():
+    """Agenten/Hermes/profiles/ - die Wahrheit fuer Bot-Namen (kein Raten)."""
+    return os.path.join(WURZEL, "Agenten", "Hermes", "profiles")
+
+
+def bot_namen():
+    """Namen aller Hermes-Profile (Unterordner mit config.yaml)."""
+    wurzel = _bot_profil_ordner()
+    ergebnis = []
+    try:
+        for name in os.listdir(wurzel):
+            if os.path.isfile(os.path.join(wurzel, name, "config.yaml")):
+                ergebnis.append(name)
+    except OSError:
+        return []
+    return sorted(ergebnis)
+
+
+def _bot_beschreibung(name):
+    """`description:` aus profile.yaml - die Rolle, nicht der Name."""
+    try:
+        with open(os.path.join(_bot_profil_ordner(), name,
+                               "profile.yaml"), "r",
+                  encoding="utf-8") as f:
+            for zeile in f:
+                if zeile.startswith("description:"):
+                    return zeile.split(":", 1)[1].strip()[:120]
+    except OSError:
+        return ""
+    return ""
+
+
+def _hermes_umgebung():
+    """Saubere Umgebung fuer hermes.exe: PYTHONHOME/PYTHONPATH raus.
+
+    Aus einer Session, die durch den MCP-Supervisor laeuft, startet hermes.exe
+    sonst mit 'Fatal Python error: init_import_site' (das venv ist gesund,
+    die Umgebung ist es nicht). HERMES_HOME zeigen lassen, wo die Profile
+    liegen, damit der Aufruf nicht vom cwd des SkillsBot abhaengt.
+    """
+    env = dict(os.environ)
+    env.pop("PYTHONHOME", None)
+    env.pop("PYTHONPATH", None)
+    env["HERMES_HOME"] = os.path.join(WURZEL, "Agenten", "Hermes")
+    return env
+
+
+def _bot_fragen(name, text, zeit=A2A_TIMEOUT_S + 30):
+    """Eine Frage an das Profil <name> - der Bot antwortet selbst.
+
+    Der Weg ist ein frischer Einzelauftrag (chat -q): keine Sitzung, kein
+    Kontext, kein Gateway. Was der Bot kann, kann er hier; der SkillsBot
+    fuehrt nichts aus, er stellt nur die Verbindung her.
+    """
+    exe = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
+    if not os.path.isfile(exe):
+        raise SkillsBotFehler("hermes.exe nicht gefunden: %s" % exe)
+    try:
+        lauf = subprocess.run(
+            [exe, "-p", name, "chat", "-q", text, "-Q"],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=zeit, env=_hermes_umgebung())
+    except subprocess.TimeoutExpired:
+        raise SkillsBotFehler(
+            "Bot %s hat nicht innerhalb von %s s geantwortet."
+            % (name, A2A_TIMEOUT_S))
+    except OSError as e:
+        raise SkillsBotFehler("Bot %s nicht startbar: %s" % (name, e))
+    if lauf.returncode != 0:
+        stderr = (lauf.stderr or "").strip().splitlines()
+        grund = stderr[-1][:200] if stderr else "Exit-Code %s" % lauf.returncode
+        raise SkillsBotFehler("Bot %s ist gescheitert: %s" % (name, grund))
+    antwort = (lauf.stdout or "").strip()
+    # hermes -q druckt die reine Antwort; eine session_id-Zeile ist Status.
+    zeilen = [z for z in antwort.splitlines()
+              if not z.startswith("session_id:")]
+    return "\n".join(zeilen).strip() or "(leere Antwort)"
+
+
+def _bot_befehl(rest, chat):
+    """/bot NAME NACHRICHT - eine Frage an das genannte Profil.
+
+    Rueckgabe wie `bearbeite`: (Text, neuer A2A-Kontext). Der A2A-Kontext
+    bleibt unveraendert - der Bot spricht mit seinem eigenen Verlauf.
+    """
+    if not rest:
+        return ("Syntax: /bot NAME NACHRICHT\n"
+                "Beispiel: /bot openterminal Was ist in der README?\n"
+                "Die Namen stehen in /bots."), None
+    name = rest[0].lstrip("/")
+    texte = " ".join(rest[1:]).strip()
+    if name not in bot_namen():
+        return ("Kein Profil %r. /bots zeigt die Namen." % name), None
+    if not texte:
+        return ("Was soll ich Bot %s fragen? Syntax: /bot %s NACHRICHT"
+                % (name, name)), None
+    # Erst sagen, dann tun: ein frischer Agent braucht 30-60 s Kaltstart.
+    sende(chat, "Spreche mit Bot %s - das kann bis 5 min dauern." % name)
+    try:
+        antwort = _bot_fragen(name, texte)
+    except Exception as fehler:                           # noqa: BLE001
+        return ("Bot %s gescheitert: %s" % (name, str(fehler)[:150])), None
+    return ohne_denken(antwort), None
+
+
+def _bot_liste():
+    """/bots - alle Profile mit Rolle (Name + description)."""
+    namen = bot_namen()
+    if not namen:
+        return "Keine Profile gefunden (%s)." % _bot_profil_ordner()
+    zeilen = []
+    for n in namen:
+        beschreibung = _bot_beschreibung(n)
+        zeilen.append(n + ((" - " + beschreibung) if beschreibung else ""))
+    return "Bots (%d):\n%s" % (len(namen), "\n".join(zeilen))
+
+
 def hilfe_text():
     # Kein HTML: der SkillsBot sendet ohne parse_mode - Marken staenden
     # woertlich in der Nachricht (der Handelsbot nutzt dafuer befehle.hilfe()).
@@ -346,6 +464,8 @@ def hilfe_text():
             "/skills [SUCHE] - die gelernten Skills, nach Gruppen\n"
             "/skill NAME - ein Skill im Volltext\n"
             "/run NAME [Auftrag] - einen Skill AUSFUEHREN (bis 5 min)\n"
+            "/bots - alle Hermes-Profile (Repo-Bots)\n"
+            "/bot NAME NACHRICHT - Frage an einen Repo-Bot (bis 5 min)\n"
             "/hilfe - diese Liste\n"
             "\nFreigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
             "/nein_xperp, /stop_xperp.\n"
@@ -431,7 +551,7 @@ def bearbeite(text, chat):
     t = text.strip()
     teile = t.split()
     wort = teile[0].lower() if teile else ""
-    if wort in ("/run", "/mach"):
+    if wort == "/run" or wort == "/mach":
         # Ein Skill wird AUSGEFUEHRT, nicht angezeigt (Auftrag Max, 16.09.2026).
         # Der A2A-Kontext laeuft wie bei Freitext weiter und wird hier
         # gespeichert - /run und Freitext teilen denselben Verlauf.
@@ -440,6 +560,17 @@ def bearbeite(text, chat):
             kontexte[str(chat)] = neuer_kontext
             _speichere_json(KONTEXT_PFAD, kontexte)
         return antwort, neuer_kontext
+    if wort == "/bots":
+        # Alle Hermes-Profile: eine Liste, kein A2A-Aufruf. Der Bot-Name ist
+        # danach das Argument von /bot - die Wahrheit liegt auf der Platte,
+        # nicht in einer gepflegten Liste (die wuerde altern).
+        return _bot_liste(), kontext
+    if wort == "/bot":
+        # Eine Frage an EIN Profil: der SkillsBot ist nur die Bruecke, der
+        # andere Agent antwortet mit seinem eigenen Verlauf. Der A2A-Kontext
+        # von hermes-maks-pc bleibt deshalb unveraendert.
+        antwort, _ = _bot_befehl(teile[1:], chat)
+        return antwort, kontext
     if wort == "/prognose":
         import handel_befehle
         return handel_befehle.prognose(t), kontext

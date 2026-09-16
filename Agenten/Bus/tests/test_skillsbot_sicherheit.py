@@ -1,5 +1,6 @@
 import contextlib
 import io
+import os
 import sys
 import tempfile
 import unittest
@@ -111,6 +112,140 @@ class SkillAusfuehren(unittest.TestCase):
 
     def test_hilfe_nennt_run(self):
         self.assertIn("/run NAME", s.hilfe_text())
+
+class BotBefehle(unittest.TestCase):
+    """/bots und /bot NAME - die Repo-Bots sind per Telegram erreichbar.
+
+    Ein Test darf nie einen echten hermes.exe starten: der Kaltstart dauert
+    30-60 s und schreibt in echte Sitzungsdateien. Der Aufruf wird gemockt,
+    geprueft wird das Routing (Name gehoert zur Profilliste, sonst kein Ruf).
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.kontext = patch.object(s, "KONTEXT_PFAD",
+                                    str(Path(self.tmp.name) / "kontext.json"))
+        self.kontext.start()
+        self.profile = patch.object(s, "_bot_profil_ordner",
+                                    return_value=str(self.tmp.name))
+        self.profile.start()
+        # Zwei Profile auf der Platte, wie sie Hermes anlegen wuerde.
+        for n in ("openterminal", "scrapling"):
+            (Path(self.tmp.name) / n).mkdir()
+            (Path(self.tmp.name) / n / "config.yaml").write_text("x")
+        self.gesendet = []
+        self.sende = patch.object(s, "sende",
+                                  side_effect=lambda chat, text: self.gesendet.append(text))
+        self.sende.start()
+
+    def tearDown(self):
+        self.sende.stop()
+        self.profile.stop()
+        self.kontext.stop()
+        self.tmp.cleanup()
+
+    def test_bots_listet_profile_mit_anzahl(self):
+        text, _ = s.bearbeite("/bots", 1)
+        self.assertIn("openterminal", text)
+        self.assertIn("scrapling", text)
+        self.assertIn("(2)", text)          # die Anzahl ist die Kontrolle
+
+    def test_bots_ohne_profile_meldet_leere_liste(self):
+        with patch.object(s, "_bot_profil_ordner",
+                          return_value=str(Path(self.tmp.name) / "leer")):
+            text, _ = s.bearbeite("/bots", 1)
+        self.assertIn("Keine Profile", text)
+
+    def test_bot_ohne_name_gibt_syntax(self):
+        with patch.object(s, "_bot_fragen") as frage:
+            text, _ = s.bearbeite("/bot", 1)
+            frage.assert_not_called()
+        self.assertIn("Syntax: /bot NAME", text)
+
+    def test_bot_unbekannter_name_startet_nichts(self):
+        with patch.object(s, "_bot_fragen") as frage:
+            text, _ = s.bearbeite("/bot gibt-es-nicht hallo", 1)
+            frage.assert_not_called()
+        self.assertIn("Kein Profil", text)
+
+    def test_bot_ohne_nachricht_startet_nichts(self):
+        with patch.object(s, "_bot_fragen") as frage:
+            text, _ = s.bearbeite("/bot openterminal", 1)
+            frage.assert_not_called()
+        self.assertIn("NACHRICHT", text)
+
+    def test_bot_gueltig_ruft_das_profil(self):
+        with patch.object(s, "_bot_fragen", return_value="die Antwort") as frage:
+            text, kontext = s.bearbeite("/bot scrapling was ist neu?", 1)
+        frage.assert_called_once_with("scrapling", "was ist neu?")
+        self.assertEqual(text, "die Antwort")
+        self.assertIsNone(kontext)          # A2A-Kontext bleibt unberuehrt
+
+    def test_bot_antwortet_nur_dem_eigenen_profil(self):
+        # Der Name ist das ERSTE Wort; der Rest ist die Nachricht. Ein zweiter
+        # Name in der Nachricht darf nicht als Ziel gelten.
+        with patch.object(s, "_bot_fragen", return_value="ok") as frage:
+            s.bearbeite("/bot openterminal und scrapling?", 1)
+        frage.assert_called_once_with("openterminal", "und scrapling?")
+
+    def test_bot_fehler_kommt_als_meldung(self):
+        with patch.object(s, "_bot_fragen",
+                          side_effect=s.SkillsBotFehler("weg")) as frage:
+            text, _ = s.bearbeite("/bot scrapling hallo", 1)
+        frage.assert_called_once()
+        self.assertIn("gescheitert", text)
+        self.assertIn("weg", text)
+
+    def test_bot_kuendigt_vorher_an(self):
+        # Kaltstart dauert 30-60 s: ohne Zwischenmeldung wirkt der Bot tot.
+        with patch.object(s, "_bot_fragen", return_value="x"):
+            s.bearbeite("/bot scrapling hallo", 1)
+        self.assertTrue(any("dauern" in g for g in self.gesendet),
+                        self.gesendet)
+
+    def test_hilfe_nennt_bots(self):
+        self.assertIn("/bots", s.hilfe_text())
+        self.assertIn("/bot NAME", s.hilfe_text())
+
+class BotFragenProzess(unittest.TestCase):
+    """_bot_fragen: der echte hermes.exe-Aufruf wird NIE ausgefuehrt, aber der
+    Aufruf muss die richtige Form haben (Name als -p, Text als -q, saubere
+    Umgebung ohne PYTHONHOME/PYTHONPATH)."""
+    def test_hermes_umgebung_raeumt_auf(self):
+        with patch.dict(s.os.environ, {"PYTHONHOME": "x", "PYTHONPATH": "y"}):
+            env = s._hermes_umgebung()
+        self.assertNotIn("PYTHONHOME", env)
+        self.assertNotIn("PYTHONPATH", env)
+        self.assertTrue(env["HERMES_HOME"].endswith(
+            os.path.join("Agenten", "Hermes")))
+
+    def test_subprozessform(self):
+        with patch.object(s.subprocess, "run",
+                          return_value=type("R", (), {"returncode": 0,
+                                                      "stdout": "PONG\n",
+                                                      "stderr": ""})()) as run:
+            antwort = s._bot_fragen("openterminal", "frage")
+        args = run.call_args.args[0]
+        self.assertIn("-p", args)
+        self.assertEqual(args[args.index("-p") + 1], "openterminal")
+        self.assertEqual(args[args.index("-q") + 1], "frage")
+        self.assertEqual(antwort, "PONG")
+
+    def test_session_id_zeile_wird_entfernt(self):
+        with patch.object(s.subprocess, "run",
+                          return_value=type("R", (), {"returncode": 0,
+                                                      "stdout": "session_id: 123\nPONG\n",
+                                                      "stderr": ""})()):
+            self.assertEqual(s._bot_fragen("openterminal", "x"), "PONG")
+
+    def test_fehlercode_nennt_grund(self):
+        with patch.object(s.subprocess, "run",
+                          return_value=type("R", (), {"returncode": 1,
+                                                      "stdout": "",
+                                                      "stderr": "kaputt"})()):
+            with self.assertRaises(s.SkillsBotFehler) as k:
+                s._bot_fragen("openterminal", "x")
+        self.assertIn("kaputt", str(k.exception))
 
 class OhneDenken(unittest.TestCase):
     """Die Telegram-Antwort darf nicht halb aus Denkblock bestehen."""
