@@ -263,6 +263,30 @@ class Papierlauf(unittest.TestCase):
         self.assertFalse(h.in_abklingzeit("ETH", z, WACHEN))
 
 
+    def test_vorschau_schreibt_weder_journal_noch_zustand(self):
+        """Der Dauerlauf fragt jede Spur zusaetzlich mit --vorschau ab.
+
+        Eine Vorschau darf nichts buchen. Vorher liefen Ausstiege, Funding,
+        Kill und Herzschlag VOR dem Vorschau-Zweig: jeder Probe-Lauf schrieb
+        dann Phantom-Funding und Phantom-Ausstiege ins Journal - und darauf
+        stehen Trefferquote, rollierender EV und Drawdown, also die Tore fuer
+        den Live-Pfad.
+        """
+        z = {"positionen": [position()], "letzte_stops": {}}
+        h.schreibe_zustand(z)
+        alt_scan = h.rangliste
+        h.rangliste = lambda z, still=True: ([], 0.0)
+        try:
+            h.lauf("vorschau")
+        finally:
+            h.rangliste = alt_scan
+        self.assertFalse(os.path.exists(h.JOURNAL),
+                         "Vorschau hat ins Journal geschrieben")
+        nach = h.lade_zustand()
+        self.assertEqual(len(nach["positionen"]), 1,
+                         "Vorschau hat den Zustand veraendert")
+
+
 class Livezweig(unittest.TestCase):
     """Der Live-Zweig: Orders nur hier, und nur mit dem boersenseitigen Stop."""
 

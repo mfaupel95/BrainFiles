@@ -618,6 +618,13 @@ def zeige_wachen(s, w):
     print("  Letzte Kopie ausser Haus  %s (%s)"
           % (z.get("journal_zweitziel_ok"), z.get("journal_zweitziel_info")))
 
+    if s["kill"]:
+        print()
+        print("  KILL-SWITCH erreicht - der naechste Lauf stellt flach.")
+    if s["ev_negativ"] and w.get("handel_erlaubt"):
+        if wx.sperre_zu("rollierender EV %.3f USD < 0" % s["rollierender_ev"]):
+            print("  EV negativ -> handel_erlaubt auf false gesetzt.")
+
 
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
@@ -644,28 +651,6 @@ def lauf(modus):
         else:
             live = True
 
-    # Ausstiege und Notausstiege zuerst. Ein Stop muss auch dann greifen, wenn
-    # niemand davorsitzt.
-    pruefe_ausstiege(z, live, w)
-    buche_funding(z, live, w)
-
-    if s["kill"]:
-        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf) -> alles flach -"
-              % s["ruecklauf_usd"])
-        flach_stellen(z, live, "kill_switch")
-        schreibe_zustand(z)
-        spiegeln(z, w)
-        return
-    if not s["herzschlag_frisch"]:
-        print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel dieser "
-              "Lauf -" % ("?" if s["herzschlag_alter_min"] is None
-                          else "%.0f" % s["herzschlag_alter_min"],
-                          w.get("herzschlag_max_minuten", 30)))
-        flach_stellen(z, live, "herzschlag_alt")
-        schreibe_zustand(z)
-        spiegeln(z, w)
-        return
-
     werte, alter = rangliste(z)
     kand = kandidaten_aus(werte, w)
     gebunden = sum(p["margin"] for p in z["positionen"])
@@ -690,6 +675,36 @@ def lauf(modus):
         # jede Spur zusaetzlich mit --vorschau abfragt, war die Kopie auf Q:
         # danach scheinbar aelter als der eigene Zustand.
         return
+
+    z["modus"] = "live" if live else "papier"
+
+    # Bedingung 2 - Kill-Switch. Er schliesst auch das Wachen-Tor: ein
+    # Ruecklauf in dieser Hoehe ist kein Grund weiterzuhandeln.
+    if s["kill"]:
+        print("- KILL-SWITCH: Ruecklauf %.2f USD -> Notausstieg + Sperre -"
+              % s["ruecklauf_usd"])
+        flach_stellen(z, live, "kill_switch")
+        if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
+            print("  wachen.json handel_erlaubt -> false")
+        schreibe_zustand(z)
+        spiegeln(z, w)
+        return
+
+    # Bedingung 3 - Herzschlag alt. Deckt die Kernel-Power-41-Abschaltungen
+    # ab: eine Position, die einen Neustart ueberlebt, ist unbewacht.
+    if not s["herzschlag_frisch"]:
+        print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel dieser "
+              "Lauf -" % ("?" if s["herzschlag_alter_min"] is None
+                          else "%.0f" % s["herzschlag_alter_min"],
+                          w.get("herzschlag_max_minuten", 30)))
+        flach_stellen(z, live, "herzschlag_alt")
+        z["modus"] = "papier"
+        schreibe_zustand(z)
+        spiegeln(z, w)
+        return
+
+    buche_funding(z, live, w)
+    pruefe_ausstiege(z, live, w)
 
     pruefe_einstiege(z, kand, w, live, s, s["groessenfaktor"])
     print("Offener Bestand danach: %d Positionen, %.2f USD Margin"
