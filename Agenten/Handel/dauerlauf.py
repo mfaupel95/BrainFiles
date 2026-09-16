@@ -257,6 +257,23 @@ SPUREN = {
     # oeffentlichen OKX-Optionsendpunkten, Ziel ist die Wand selbst, das Buch
     # fuehrt Handel/spur_buch.py. Papier, kein Live.
     "iv_wand": {"ordner": "iv_wand", "waehrung": "USD", "skript": "handeln.py"},
+    # DREI SPRACHMODELL-SPUREN (17.09.2026): dieselbe Bauform wie die Bot-Spuren
+    # oben, aber die RICHTUNG kommt nicht aus einer Haus-Regel, sondern aus dem
+    # LOKALEN Modell (Handel/llm_lokal.py, Ollama auf 127.0.0.1:11434 - kein
+    # Schluessel, keine Kosten). Vorbilder sind die Sprachmodell-Agenten des
+    # geklonten Bot-Repos: whale_agent, liquidation_agent, sentiment_agent.
+    # Das GATE vor dem Urteil ist deterministisch (OI-Anomalie,
+    # Liquidationsdruck, Mindestmenge Schlagzeilen) - ohne Gate faellt kein
+    # Aufruf. Kein Live-Zweig, kein Orderpfad.
+    #   moondev_whale       - Open-Interest-Anomalie, Urteil vom Modell
+    #   moondev_liquidation - Zwangsschluesse, Urteil vom Modell
+    #   moondev_sentiment   - Schlagzeilen (RSS), Urteil vom Modell
+    "moondev_whale": {"ordner": "moondev_whale", "waehrung": "USD",
+                      "skript": "handeln.py"},
+    "moondev_liquidation": {"ordner": "moondev_liquidation", "waehrung": "USD",
+                            "skript": "handeln.py"},
+    "moondev_sentiment": {"ordner": "moondev_sentiment", "waehrung": "USD",
+                          "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

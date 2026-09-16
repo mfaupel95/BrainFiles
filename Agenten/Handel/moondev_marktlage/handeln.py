@@ -107,8 +107,12 @@ def main():
               "(Papier). Der Fremd-Agent handelt mit echten Schluesseln - "
               "dieser Haus-Lauf bucht nur Papier.")
         return 0
+    # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
+    # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
+    # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
+    # ist es nur so lange richtig, wie Ordner und Spurname gleich heissen.
     return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/%s" % os.path.basename(HIER))
+                       "handel/moondev_marktlage")
 
 
 if __name__ == "__main__":

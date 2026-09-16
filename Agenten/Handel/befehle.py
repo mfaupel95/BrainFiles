@@ -90,6 +90,12 @@ FAMILIE = {
     # Optionsmarkt. Eigene Familie, damit der Bericht sie nicht unter
     # "Bot-Signal" mischt.
     "iv_wand": "Options-Zone",
+    # Die drei Sprachmodell-Spuren (17.09.2026): Quelle und Gate sind Haus-Bau,
+    # die RICHTUNG kommt aus dem lokalen Modell. Eigene Familie, damit im
+    # Bericht sichtbar bleibt, wo ein Sprachmodell geurteilt hat.
+    "moondev_whale": "Bot-Signal (LLM)",
+    "moondev_liquidation": "Bot-Signal (LLM)",
+    "moondev_sentiment": "Bot-Signal (LLM)",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

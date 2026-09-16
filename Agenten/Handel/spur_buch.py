@@ -289,7 +289,14 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
                         einsatz_usd="%.2f" % p["nominal"],
                         stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
                         stop_pct="%.2f" % p["stop_pct"],
-                        grund=w.get("_grund", "moondev_bot"))
+                        # Der Grund stand hier fest auf "moondev_bot", obwohl
+                        # jede Spur in ihrer wachen.json einen eigenen Namen
+                        # fuehrt. Ein Feld, das immer dasselbe sagt, ist keine
+                        # Auskunft. `_grund` setzt eine Spur, die etwas
+                        # Genaueres weiss (die LLM-Spuren schreiben Aktion und
+                        # Confidence hinein).
+                        grund=(w.get("_grund") or w.get("grund")
+                               or "moondev_bot"))
 
         schreibe_zustand(zustand_pfad, z)
         spiegeln(zustand_pfad, journal_pfad, z, w)

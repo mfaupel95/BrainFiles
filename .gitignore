@@ -487,7 +487,11 @@ Agenten/Handel/dauerlauf.*.pid
 # einzeln freigeben).
 !Agenten/Handel/moondev_funding/*.py
 !Agenten/Handel/moondev_funding/*.md
-!Agenten/Handel/moondev_funding/*.json
+# NUR die Wachen sind Konfiguration von Hand. Hier stand `*.json` - und weil
+# diese Zeile NACH der allgemeinen Sperre `Agenten/Handel/*/zustand.mittel.json`
+# steht, hob sie sie auf: das Laufzeit-File zustand.mittel.json der Spur war
+# damit sichtbar (17.09.2026 aufgefallen; es lag als "??" im Arbeitsbaum).
+!Agenten/Handel/moondev_funding/wachen.json
 !Agenten/Handel/moondev_funding/tests/*.py
 Agenten/Handel/moondev_funding/zustand.json
 Agenten/Handel/moondev_funding/handelsjournal.csv
@@ -528,6 +532,36 @@ Agenten/Handel/moondev_marktlage/handelsjournal.csv
 !Agenten/Handel/iv_wand/tests/*.py
 Agenten/Handel/iv_wand/zustand.json
 Agenten/Handel/iv_wand/handelsjournal.csv
+# SPRACHMODELL-SPUREN (17.09.2026): eigener Ordner je Spur, Code/Wachen/README/
+# Tests frei, Zustand und Journal gesperrt. Die drei teilen sich eine Datei
+# (Handel/llm_lokal.py, Handel/llm_probe.py) - beide sind freigegeben, sonst
+# fehlte im Klon die halbe Spur.
+!Agenten/Handel/llm_lokal.py
+!Agenten/Handel/llm_probe.py
+!Agenten/Handel/moondev_whale/*.py
+!Agenten/Handel/moondev_whale/*.md
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_whale/wachen.json
+!Agenten/Handel/moondev_whale/tests/*.py
+Agenten/Handel/moondev_whale/zustand.json
+Agenten/Handel/moondev_whale/handelsjournal.csv
+!Agenten/Handel/moondev_liquidation/*.py
+!Agenten/Handel/moondev_liquidation/*.md
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_liquidation/wachen.json
+!Agenten/Handel/moondev_liquidation/tests/*.py
+Agenten/Handel/moondev_liquidation/zustand.json
+Agenten/Handel/moondev_liquidation/handelsjournal.csv
+!Agenten/Handel/moondev_sentiment/*.py
+!Agenten/Handel/moondev_sentiment/*.md
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_sentiment/wachen.json
+!Agenten/Handel/moondev_sentiment/tests/*.py
+Agenten/Handel/moondev_sentiment/zustand.json
+Agenten/Handel/moondev_sentiment/handelsjournal.csv
 
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.

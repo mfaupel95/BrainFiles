@@ -144,16 +144,30 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
     Diese Pruefung liest die Wahrheit direkt aus dauerlauf.py: fuer jede
     Spur in SPUREN wird ihr Ordner genommen, und fuer jeden per subprocess
     gestarteten Dateinamen (z. B. handeln.py) wird geprueft, ob GENAU DIESE
-    Datei ereignis.lauf("handel/<spur>") traegt. Kommentiert man die
-    Anbindung in xperp/handeln.py wieder aus, wird dieser Test rot - im
-    Unterschied zur alten Pruefung, die jede Datei mit dem passenden String
-    irgendwo im Ordner akzeptiert haette."""
+    Datei die Bus-Anbindung traegt. Kommentiert man die Anbindung in
+    xperp/handeln.py wieder aus, wird dieser Test rot - im Unterschied zur
+    alten Pruefung, die jede Datei mit dem passenden String irgendwo im Ordner
+    akzeptiert haette.
+
+    NACHTRAG 17.09.2026: acht Spuren (moondev_listingarb/-topmovers/-marktlage,
+    iv_wand und die drei Sprachmodell-Spuren) fuehren ihr Buch ueber den
+    gemeinsamen Kern `Handel/spur_buch.py` - die Meldung entsteht DORT
+    (`ereignis.lauf(ereignis_name)` in `zyklus`), nicht in der Spurendatei.
+    Deshalb standen sie hier als "ohne Bus-Anbindung", obwohl sie im
+    Bus-Journal stehen. Eine Bindung ueber den Kern zaehlt aber nur, wenn die
+    gestartete Datei IHREN EIGENEN Namen wortwoertlich uebergibt ("handel/<spur>")
+    UND der Kern `ereignis.lauf` traegt - sonst waere "irgendwo im Ordner steht
+    der Bus" wieder da, nur eine Ebene tiefer."""
     quelle, pfad = _dauerlauf_quelle()
     baum = ast.parse(quelle, filename=pfad)
     spuren_ordner = _spuren_ordner(baum)
     assert spuren_ordner, "SPUREN-Dict in dauerlauf.py nicht gefunden/leer"
     skriptnamen = _subprocess_skriptnamen(baum)
     assert skriptnamen, "keine per subprocess gestarteten .py-Dateien gefunden"
+
+    kern = os.path.join(HANDEL, "spur_buch.py")
+    kern_gebunden = os.path.exists(kern) and "ereignis.lauf" in open(
+        kern, encoding="utf-8").read()
 
     fehlt = []
     for spur, ordner in spuren_ordner.items():
@@ -164,7 +178,10 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
             with open(datei, encoding="utf-8") as f:
                 inhalt = f.read()
             wer = "handel/%s" % spur
-            if "ereignis.lauf" not in inhalt or wer not in inhalt:
+            direkt = "ereignis.lauf" in inhalt and wer in inhalt
+            ueber_kern = (kern_gebunden and wer in inhalt
+                          and "buch.zyklus" in inhalt)
+            if not (direkt or ueber_kern):
                 fehlt.append(os.path.join(ordner, skript))
     assert not fehlt, "automatisch gestartet, aber ohne Bus-Anbindung: %s" % fehlt
 

@@ -571,6 +571,21 @@ def spur_iv_wand():
     return _spur_indikator("iv_wand", "IV-Wand (Optionszone)")
 
 
+def spur_moondev_whale():
+    """Sprachmodell-Spur: Open-Interest-Anomalie. Journalform wie die
+    Bot-Spuren (kauf/verkauf mit einsatz_usd) - derselbe Leser."""
+    return _spur_indikator("moondev_whale", "Wale (OI, LLM-Urteil)")
+
+
+def spur_moondev_liquidation():
+    return _spur_indikator("moondev_liquidation",
+                           "Liquidationen (LLM-Urteil)")
+
+
+def spur_moondev_sentiment():
+    return _spur_indikator("moondev_sentiment", "Schlagzeilen (LLM-Urteil)")
+
+
 def spur_mosaic():
     """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
 
@@ -1007,7 +1022,8 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier, spur_kopier1zu1,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
-    spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand)
+    spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
+    spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment)
 
 
 def baue(mit_xperp=True):
