@@ -80,6 +80,14 @@ _ris_spec_obj = _ris_spec("risikostufe", _ris_datei)
 risikostufe = _ris_mod(_ris_spec_obj)
 _ris_spec_obj.loader.exec_module(risikostufe)
 
+# Risiko-Vorfilter (Regeln des Moon-Dev risk_agent): dasselbe Modul wie in
+# spur_buch.py, ueber den PFAD geladen - eine Umsetzung fuer alle Feed-Spuren.
+_vf_datei = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "risikovorfilter.py")
+_vf_spec_obj = _ris_spec("risikovorfilter", _vf_datei)
+risikovorfilter = _ris_mod(_vf_spec_obj)
+_vf_spec_obj.loader.exec_module(risikovorfilter)
+
 WACHEN = os.path.join(HIER, "wachen.json")
 ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
@@ -266,6 +274,14 @@ def pruefe_einstieg(inst, daten, z, w, faktor):
     nominel *= faktor
     if nominel <= 0:
         return
+
+    # Vorfilter VOR dem Buchen (nur wenn die Wache ihn einschaltet).
+    if w.get("risikovorfilter"):
+        ok, warum = risikovorfilter.pruefe(w, JOURNAL, z,
+                                           nominel * stop_pct / 100.0)
+        if not ok:
+            print("VORFILTER: %s" % warum)
+            return
 
     z["positionen"].append({
         "inst": inst, "seite": seite, "einstieg": einstieg,

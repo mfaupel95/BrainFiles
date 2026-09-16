@@ -46,6 +46,7 @@ def _lade_modul(name):
 
 
 ratschen = _lade_modul("ratschen")
+risikovorfilter = _lade_modul("risikovorfilter")
 risikostufe = _lade_modul("risikostufe")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
@@ -120,7 +121,7 @@ def groessenfaktor(ruecklauf, w):
 
 
 def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
-            ziel_preis=None):
+            ziel_preis=None, journal_pfad=None):
     """Eine Position eroeffnen - Stop in Prozent, Ziel als Preis oder Vielfaches.
 
     `ziel_preis` gibt es fuer Signale, deren Ziel ein MARKTPUNKT ist (die
@@ -159,6 +160,17 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
     nominel = min(nominel, w["max_pro_trade_usd"]) * faktor
     if nominel <= 0:
         return None
+
+    # Risiko-VORFILTER (Regeln des Moon-Dev risk_agent, ohne Sprachmodell):
+    # greift VOR dem Buchen und nur, wenn die Wache ihn einschaltet
+    # (`risikovorfilter: true`). Geprueft wird das Risiko dieses Einstiegs -
+    # das ist der Betrag, der bei einem Stop verloren ginge.
+    if journal_pfad and w.get("risikovorfilter"):
+        risiko = nominel * pct / 100.0
+        ok, warum = risikovorfilter.pruefe(w, journal_pfad, z, risiko)
+        if not ok:
+            print("VORFILTER: %s" % warum)
+            return None
 
     p = {"inst": inst, "seite": seite, "einstieg": kurs, "stop": stop,
          "ziel": ziel, "stop_pct": pct, "nominal": nominel,
@@ -277,7 +289,8 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
                 continue
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          w.get("grund", "moondev_bot"),
-                         ziel_preis=(ziel(daten[inst], w) if ziel else None))
+                         ziel_preis=(ziel(daten[inst], w) if ziel else None),
+                         journal_pfad=journal_pfad)
             if p:
                 print("EINSTIEG %s %s @ %.6f  Stop %.2f%%  Ziel %.6f  "
                       "Nominal %.2f USD"

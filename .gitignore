@@ -440,6 +440,15 @@ Agenten/Hermes/skills/.usage.json
 # Wissen/Fundus-Index.md wird damit erzeugt. Ohne die Zeile lag es nur auf der
 # Platte - eine Wiederherstellung aus dem Verlauf haette den Zugang verloren.
 !Agenten/Werkzeuge/fundus-suche.ps1
+
+# AUTOSTART-SKRIPTE von Hermes (17.09.2026): Die .vbs starten Gateway und
+# Dashboard bei der Anmeldung. Sie sind Konfiguration von Hand (keine
+# Laufzeitdaten, keine Geheimnisse) - ohne sie fehlt nach einer
+# Wiederherstellung der Autostart. Die .cmd-Geschwister bleiben draussen.
+# Das Verzeichnis selbst muss mit freigegeben werden: ein ! auf eine Datei
+# greift nicht, solange der Elternordner ignoriert ist.
+!Agenten/Hermes/gateway-service/
+!Agenten/Hermes/gateway-service/*.vbs
 # und ZULETZT die Sperren: es gilt der letzte Treffer, eine spaetere Freigabe
 # wuerde die frueheren Sperren aufheben.
 Agenten/Hermes/.env

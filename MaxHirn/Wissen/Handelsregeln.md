@@ -976,3 +976,45 @@ byte-gleich, `pruefe_ratschen` fuehrt sie (5,00 = 1,0x Buchrisiko).
 
 **Grenze:** gehandelt wird der Spot-Papierpreis, nicht die Option. Kein
 Live-Zweig.
+
+## Risiko-Vorfilter: die Regeln des Moon-Dev `risk_agent` (17.09.2026)
+
+**Auftrag Max:** "Risk_agent als Vorfilter einbauen."
+
+**Was der Fremd-Agent tut.** `Werkstatt/Repos/moon-dev-ai-agents/src/agents/
+risk_agent.py` ueberwacht dort jede offene Position und stoppt den Handel, wenn
+ueber die letzten **12 Stunden** ein Limit gerissen wird: `MAX_LOSS_USD = 25`,
+`MAX_GAIN_USD = 25`, `MAX_LOSS_PERCENT = 5`, `MAX_GAIN_PERCENT = 5`. Ob das
+Limit ueberstimmen werden darf, fragt er alle 15 Minuten ein Sprachmodell
+(`OVERRIDE` oder `RESPECT_LIMIT`).
+
+**Was hier daraus wurde** (`Agenten/Handel/risikovorfilter.py`): dieselben
+Zahlen, dieselbe Frist - **ohne Sprachmodell**. Das Limit gilt; wer es anders
+will, setzt einen anderen Betrag in seine `wachen.json`. Geraten wird nichts.
+
+**Warum Vorfilter und nicht Notaus.** Die Spuren begrenzten bisher die
+Buchgroesse (Risiko je Position, Plaetze, Gesamtdeckel, Ratsche) - die **Zeit**
+fehlte: ein Tag, an dem schon dreimal der Stop traf, handelte munter weiter.
+Der Vorfilter greift **vor** dem Einstieg:
+
+1. **Verlustgrenze** im Fenster erreicht -> kein neuer Einstieg.
+2. **Gewinnziel** im Fenster erreicht -> kein neuer Einstieg (Gewinn sichern;
+   der Bot stoppt hier ebenfalls).
+3. **Buchrisiko**: offenes Risiko + neues Risiko > Deckel -> kein Einstieg.
+
+Er schliesst **keine** Position und aendert **keine** Wache. Das ist die Grenze
+zwischen Vorfilter und Notaus: Positionen schliessen gehoert dem Kill-Schalter
+und der Ratsche.
+
+**Eingeschaltet ist er bei den fuenf Feed-Spuren** (`moondev_funding`,
+`moondev_listingarb`, `moondev_topmovers`, `moondev_marktlage`, `iv_wand`) -
+jeweils `risikovorfilter: true`, 12-h-Fenster, +/-25 USD und +/-5 %.
+**Bei den uebrigen Spuren ist er aus**, und zwar absichtlich: ein Filter, der
+stillschweigend drosselt, waere schlimmer als keiner. Einschalten ist ein Feld
+(`risikovorfilter`, `risiko_verlust_max_usd`, `risiko_gewinn_ziel_usd`,
+`risiko_fenster_stunden`) - danach greift er im naechsten Zyklus.
+
+**Nachweis:** 12 Tests fuer den Vorfilter allein (`tests/test_risikovorfilter.py`
+- Paarung Kauf/Verkauf, Zeitfenster, alle vier Grenzen, Buchdeckel, Schalter
+aus) plus der Einbau im Buch; die fuenf Spuren 48 Tests, Handel-Suite 83 Tests,
+alle gruen.
