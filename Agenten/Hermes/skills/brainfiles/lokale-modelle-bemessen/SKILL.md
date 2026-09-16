@@ -81,3 +81,7 @@ Modellnamen führen, ohne dass es auffällt.
   Werte dieses Rechners und die Grenzwerte für 8 GB VRAM.
 - `scripts/gguf-kopf.py` — liest den GGUF-Kopf und rechnet Gewichte je Stufe
   und KV je Kontext. Aufruf: `python scripts/gguf-kopf.py <datei> [--kontext N]`.
+- `references/fremdrepo-auf-ollama.md` — ein fremdes Agenten-Repo (Werkstatt-Klon)
+  ohne Schluessel auf das lokale Ollama ziehen: Modellpfad im Code finden,
+  Standardmodell und Basis-URL aus der Umgebung, Rueckfall statt `None`, Nachweis
+  mit einem echten Aufruf.

@@ -932,3 +932,18 @@ Kurzfassung ersetzt die Begruendung nicht.
   nennen (nicht die Freigabezeile).
 
 - **Eine Statistik darf auf einer tieferen Reihe rechnen, ein Kurssignal nicht - und nur, wenn beide gleichzeitig enden.** Die Saisonalitaet ist Wochentagsstatistik wie Hebel-Deckel und Trefferquote: auf ~50 Tagen Kontrakthistorie hat ein Wochentag nur rund sieben Beobachtungen (`n=16` gemessen), auf der tiefen Reihe desselben Basiswerts (`<Basis>-USDT-SWAP`, 1200 Kerzen) `n=172`. Uebernommen wird so eine Reihe nur, wenn sie LAENGER ist UND auf derselben Kerze endet: `saisonalitaet()` liest Wochentag und Tagesphase der NAECHSTEN Kerze aus dem Ende der uebergebenen Reihe - eine verschobene oder alte Reihe verschiebt das Raster still, ohne dass eine Zahl auffaellig wird. Der Signal-Merge gehoert dafuer in eine eigene Funktion (`indikatoren.signal_bauen`), sonst steht die Rangfolge zweimal im Quelltext und laeuft auseinander.
+
+- **Eine neue Spur kopiert die Sperrschreibungen des Vorbilds - die sieben
+  Sperren sind nur die Anzeige.** Zwei Stellen machen die Notbremsen wirklich
+  wirksam und fehlen bei einer nachgebauten Spur schnell: (1) `z["modus"] =
+  "live" if live else "papier"` nach der Fensterpruefung in `lauf()` (und
+  `"papier"` im Herzschlag-Zweig) - ohne sie melden Tagesbericht und `/status`
+  bei Live-Trades weiterhin "papier"; (2) `wx.sperre_zu(...)` im Kill-Switch-
+  Zweig (`wachen.json handel_erlaubt -> false`) und bei negativem EV in
+  `zeige_wachen` (`if s["ev_negativ"] and w.get("handel_erlaubt")`) - ohne sie
+  kann der Kill-Switch das Wachen-Tor nie schliessen und Live bleibt ein
+  Ewigkeitsschalter, den nur ein Mensch umlegt. Pruefung beim Bau einer neuen
+  Spur: `Select-String -Pattern 'sperre_zu|modus'` ueber die neue Spur gegen
+  dieselbe Suche in `xperp/handeln.py` halten (xperp ist die Referenz). Ein
+  Regressionstest setzt `z["modus"]` nach einem `lauf("papier")`-Durchlauf
+  voraus.

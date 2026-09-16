@@ -2179,16 +2179,6 @@ mcp_servers:
       WINDOWS_MCP_DEBUG: 'false'
       WINDOWS_MCP_PROFILE_SNAPSHOT: 'true'
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
-  robinhood:
-    url: https://agent.robinhood.com/mcp/trading
-    auth: oauth
-    enabled: false
-    tools:
-      exclude:
-        - get_option_level_upgrade_info
-        - get_popular_watchlists
-        - follow_watchlist
-        - unfollow_watchlist
   projectatlas:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
     args:

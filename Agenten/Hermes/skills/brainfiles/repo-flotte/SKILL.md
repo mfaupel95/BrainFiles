@@ -66,6 +66,24 @@ dort angemeldet.
 - **Namen aus einem Screenshot sind oft falsch geschrieben - Konto und Repo GETRENNT pruefen.** Ein 404 von `gh api repos/<owner>/<repo>` heisst nur, dass DIESES Repo so nicht heisst; `gh api users/<owner>` klaert, ob das Konto existiert (Schreibweise!). Oft existiert das Konto und nur das Repo fehlt - umgekehrt wird sonst die ganze Flotte verworfen.
 - **Ein 404 auf das erwartete Repo heisst nicht „geloescht".** Kanal-, Playlist- und Spiegel-Beschreibungen nennen den aktuellen Namen; ein Fork traegt das Original in `.parent.full_name` und `.source.full_name`. Bleibt das Original verschwunden ODER ist es privat (beides ergibt denselben 404), ist ein Nachbau die Quelle - dann im Klon und in der Doku ausdruecklich als Nachbau kennzeichnen, nie als Original ausgeben.
 - **Fremd-Repo mit eigenem CLI: dessen eigenen Zustandsbefehl nutzen.** `<tool> doctor` (bzw. `install`) sagt, welche Kanaele/Abhaengigkeiten fehlen - das ist die Lage, die man sonst raten muesste. `skill --install` o.ae. NICHT aufrufen: das schreibt eine fremde SKILL.md in Agenten-Skill-Verzeichnisse und verstoesst gegen `skill-library-sync`. Statt dessen eine eigene, kurze Hausfassung schreiben (was es ist, wo es liegt, wie man es aufruft, was noch fehlt).
+- **Ein Kanal ist erst fertig, wenn sein Backend auf dem PATH liegt — nicht in
+  der Repo-venv.** Ein `pip install` in die venv laesst den `doctor` weiter
+  „nicht installiert“ melden: er sucht den Befehl (`shutil.which`). Richtig ist
+  die Installation in ein Verzeichnis, das schon im Benutzer-PATH steht
+  (`uv tool install <paket>` → `~/.local/bin`) — den PATH umzuschreiben ist der
+  schlechtere Weg. Nachmessen mit `Get-Command <befehl>`.
+- **Zusatzkonfiguration gehoert zum Kanal, und das Tool nennt sie selbst.**
+  Fehlt sie, meldet der Kanal nicht „nein“, sondern „installiert, aber nicht
+  einsatzbereit“ (Beispiele: eine Config-Datei, die die JS-Laufzeit freischaltet;
+  ein laufender Daemon PLUS verbundene Browser-Extension fuer Seiten mit
+  Anmeldung). Die Meldung wortwoertlich lesen und den genannten Befehl
+  ausfuehren — nichts selbst erfinden, und einen Kanal, der eine Extension im
+  persoenlichen Browser braucht, als offenen Handgriff des Nutzers melden, nicht
+  stillschweigend installieren.
+- **Ein Repo ohne Software ist trotzdem integriert.** „Contains no software“, nur
+  Dokumentation und Schemata: Fork, Klon und Bot laufen wie sonst, es gibt nur
+  nichts zu bauen. Der Nutzen ist das Referenzmaterial — z. B. ein mitgeliefertes
+  GraphQL-Schema, aus dem die Feldnamen kommen.
 - **Fremd-Repo unter `Werkstatt/` liegt per Junction auf einem anderen Laufwerk.** Seine `.venv` belegt daher keinen Platz auf `C:` - die Meldung „Actual location" der venv lesen, bevor man Plattenplatz zurechnet. Und die venv heisst `.venv` (Hausstandard), auch wenn die Anleitung des Repos `venv` sagt.
 - **`hermes.exe` aus einer MCP-Brueckensitzung** braucht davor
   `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` und ein gesetztes

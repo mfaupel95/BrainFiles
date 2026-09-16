@@ -132,6 +132,41 @@ Werkzeuge im Ordner (eigene Rueckgabe-Dateien, keine Netzverbindung):
   jeweils mit HALBIERTER Stufenzahl besser, weil die Gebuehren mit der
   Frequenz wachsen.
 
+## Strategie-Sweep (`sweep_strategien.py`, seit 16.09.2026)
+
+Drei Strategien (EMA-Cross, Grid, Trailing-Ausstiegsform) ueber alle
+`daten/*.csv` auf EINER Grundlage: Konto = Einsatz, 1x, Taker 0,05 %, kein
+Funding. Ergebnis als Tabelle + `sweep_ergebnis.json`; jede Strategie einzeln
+in try/except gefangen, Fehler dokumentiert statt abgebrochen. EMA und Grid
+laufen in der Engine (Wiederverwendung von `backtest.py`/`backtest_grid.py`),
+Trailing als reine Simulation der Ausstiegsform (die Spur bezieht ihre
+Einstiege aus der kopier-Spur; im Sweep dient der EMA-Cross als synthetisches
+Signal - gemessen wird die FORM, nicht ein Markt-Urteil).
+
+- **Nautilus-1.231-Importpfade:** `AccountType`/`OmsType` aus
+  `nautilus_trader.model.enums` (nicht `common.enums` - der Name existiert dort
+  nicht), `Money`/`TraderId`/`BarType`/`Venue` aus `nautilus_trader.model`,
+  `USDT` aus `model.currencies`. Die bestehenden Backtests sind die
+  Import-Referenz - von dort abschreiben, nicht aus dem Gedaechtnis.
+- **`bars[i].ts_event` ist int-Nanosekunden.** `ts_event + timedelta` wirft
+  TypeError; erst `datetime.fromtimestamp(te/1e9, tz=timezone.utc)`. Und eine
+  Funktion, die ein datetime erwartet (z. B. `ausstiegsgrund`), darf nicht mit
+  einem ISO-String gefuettert werden - `str >= datetime` ist der naechste
+  TypeError.
+- **Trailing-Simulation: feste Einsatzgroesse je Trade (kein Zinseszins) und
+  Frist ab der Einstiegs-Bar, nie ab "jetzt".** Sonst kompoundieren lange
+  Trends ins Absurde (NVDA 182.000 %) und die Frist greift nie. Damit wird die
+  Spalte erst mit EMA/Grid vergleichbar.
+- **`backtest_grid.lauf(quelle, stufen, unten, oben, spanne, einsatz,
+  ohne_gebuehr, von, bis)`** liefert `rendite_prozent`/`buy_and_hold_prozent`.
+  Auf Penny-Assets (LUNC, DOGE) wirft die Spannenrechnung
+  `ValueError: verlangt 0 < unten < oben` - pro Instrument abfangen und im
+  JSON dokumentieren. Eine 12-Stufen-Leiter um den ERSTEN Kurs handelt einen
+  Range-Laeufer nicht (`fills=0` ist ein Befund, kein Fehler).
+- **`backtest_grid_ergebnis.json` wird von JEDEM Grid-Lauf ueberschrieben**
+  (auch vom Sweep): nach einem Sweep ist der Arbeitsbaum nicht sauber - die
+  Ergebnisdatei gehoert in denselben Commit.
+
 ## Ablage (Kostenfalle)
 - Lauffähiger Node-Code gehört nach `Agenten/Handel/` (versioniert, in der
   Sicherung nach G:), **nicht** in die Werkstatt — die wird geleert und ist von

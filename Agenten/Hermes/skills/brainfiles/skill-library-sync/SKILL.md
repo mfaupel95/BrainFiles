@@ -134,6 +134,15 @@ Fallen:
 
 ## Fallen
 
+- **Die SKILL.md hat eine harte Groessengrenze: ab ~100.000 Zeichen verweigert
+  `skill_manage` JEDE Aenderung an diesem Skill** — auch eine einzelne Zeile, auch eine
+  neue Referenzdatei im selben Aufruf (der ganze Stapel wird zurueckgerollt). Ein
+  uebergrosser Text ist damit nicht nur teuer (er wird bei jedem Ausloesen mitgeladen),
+  sondern macht den Skill unwartbar. Reparatur in einem Zug: den groessten Abschnitt
+  VOLLSTAENDIG nach `references/<thema>.md` verschieben und in der SKILL.md eine
+  nummerierte Landkarte behalten (ein Satz je Punkt, gleiche Nummer wie im Volltext)
+  plus References-Eintrag. Danach mit einer kleinen Testaenderung belegen, dass
+  Schreiben wieder geht, und die Testaenderung zuruecknehmen.
 - **Eine `references/`-Datei ohne Eintrag in der SKILL.md ist toter Text.** Der Loader
   zeigt beim `skill_view` nur, was die SKILL.md selbst nennt; eine Referenz, die dort
   nicht auftaucht, wird nur durch Zufall gefunden (Ordner durchsuchen, Stichwort greppen)
@@ -166,6 +175,14 @@ Fallen:
   Abschlusszeichen"). Den Block als eigene Datei schreiben, mit Regex an der
   Überschriftengrenze einsetzen (`(?s)## Name\r?\n.*?(?=\r?\n## )`, Ersetzungen=1),
   Vorlage wieder löschen.
+- **Windows-Pfade im Python-Heredoc als RAW-String schreiben.** Die Werkzeugschicht
+  kollabiert `\\` zu `\`: im Quelltext steht dann `C:\Users\…`, und Python bricht
+  schon beim Parsen ab (`SyntaxError: truncated \UXXXXXXXX escape`) — die Datei ist
+  dabei unangetastet, der Fehler kommt also vor dem Schreiben. Also `r"…\pfad…"`
+  fuer Muster und Ersetzungen oder den Backslash ueber `chr(92)` bauen; ganze
+  Textbloecke als eigene Datei schreiben und mit `read_text` einsetzen. Nach jeder
+  Textersetzung `git diff --numstat` lesen: wenige Zeilen = gewollt, ganze Datei =
+  Zeilenenden oder Kodierung verstellt (dann `git checkout HEAD -- <datei>` und neu).
 - **Ein kopierter Skill ist noch keine Funktion.** Kopien, die auf Vault-Pfade per
   Kommandozeile zugreifen, arbeiten nur, wenn das Terminal-Arbeitsverzeichnis im Vault
   liegt; ein Docker-Backend sieht außer den Skills nichts vom Vault. Nach dem Kopieren

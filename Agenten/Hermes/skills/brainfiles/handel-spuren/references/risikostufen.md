@@ -115,6 +115,27 @@ Betrieb:
   EIGENEN Repo (`nautilus/`), dort separat sperren - die BrainFiles-Sperre
   erreicht sie nicht.
 
+## Die PID-Datei ist eine Pruefen-dann-Handeln-Sperre
+
+Die je-Stufe-PID-Datei (`dauerlauf.pid`, `dauerlauf.mittel.pid`) verhindert
+zwei Laeufe bei ruhigem Betrieb — aber sie ist keine Sperre: lesen, starten,
+PID schreiben hat ein Zeitfenster. Feuern zwei Trigger gleichzeitig
+(Anmeldung + Zeittrigger-Waechter), lesen beide „frei" und beide starten;
+Mehrfachinstanzen DERSELBEN Stufe sind die Folge (dreimal Basis beobachtet),
+auf gemeinsamem Zustand und einem Telegram-Token — die Befehle erreichen nur
+eine, die anderen schreiben still mit.
+
+- Instanzen zaehlen wie Prozesse zaehlt: Launcher+Kind-Paare nach
+  `CreationDate` gruppieren (`Get-CimInstance Win32_Process`, Kommandozeile
+  `*dauerlauf.py*`), nicht nach Prozessname und nicht nach PID-Zahl.
+- Eine stale PID ist keine Sperre: der Waechter ersetzt die Datei, wenn die
+  PID nicht lebt — und laesst die ORIGINAL-Instanz unerkannt weiterlaufen.
+- Die robuste Form haelt eine OS-Dateisperre ueber die Lebensdauer des
+  Prozesses (Muster `skillsbot.py`: `msvcrt.locking`/`fcntl.flock`). Wer die
+  PID-Datei nicht ersetzen kann, haelt wenigstens die Schreib-Reihenfolge
+ein: erst pruefen, dann starten, dann PID schreiben — und die Datei beim
+Ende IMMER mitnehmen.
+
 ## Zwei Schreiber machen die Messreihe wertlos
 
 Eine Stufe ist nur so viel wert wie ihre Buchfuehrung: laufen zwei Prozesse auf

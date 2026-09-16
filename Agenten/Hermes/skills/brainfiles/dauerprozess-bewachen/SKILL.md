@@ -43,7 +43,11 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
 5. **Gegenproben in beide Richtungen, vor dem Bericht:**
    (a) Prozess laeuft -> Wache gibt 0 Zeichen aus, Exit 0;
    (b) `Stop-Process -Id <pid> -Force` -> Wache meldet „PID ... laeuft nicht“,
-   startet neu, schreibt die neue PID, Exit 0.
+   startet neu, schreibt die neue PID, Exit 0;
+   (c) **Alarmrichtung ohne Eingriff:** die Wache nimmt einen abweichenden Port
+   bzw. ein `--nicht-starten` an, damit sich Meldung und Befund zeigen lassen,
+   ohne den echten Dienst zu stoppen — sonst kostet jede Probe einen echten
+   Ausfall, und die Probe wird deshalb nicht gemacht.
 6. **Wirksamkeit der Komponente selbst belegen** (nicht nur den Prozess): eine
    Eingabe erzeugen und nachsehen, dass die Ausgabe nachzieht.
 
@@ -115,6 +119,27 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   der Aufrufer wartet auf das Ende des Kindes, also nie. Symptom: der Startbefehl
   laeuft in den Timeout, obwohl der Prozess danach laeuft. Die Umleitung gehoert in
   die `.cmd`, der Starter kehrt sofort zurueck.
+- **Den Dauerprozess nie ueber eine Pipe des Aufrufers starten**
+  (`& powershell -File <starter> *>&1 | Add-Content $protokoll`). Das Kind haelt die
+  Pipe offen, der Starter kehrt also nie zurueck — mit drei Folgen, die zusammen wie
+  ein Fehler der Komponente aussehen: (1) die geplante Aufgabe bleibt auf „Running“,
+  (2) das eigene Protokoll ist von aussen gesperrt (`Get-Content` meldet „Device or
+  resource busy“, die `ENDE`-Zeile als Beleg fehlt), und (3) wer die Aufgabe beendet
+  (`^C` im Protokoll des Kindes, Aufgabencode 267014 = „von aussen beendet“), reisst
+  den laufenden Dienst mit — der Ausfall beginnt Minuten nach dem Start, und der
+  Aufgabencode liest sich dabei harmlos. Richtig: das Startskript losgeloest in
+  eigener Konsole starten
+  (`Start-Process -FilePath 'powershell.exe' -ArgumentList @('-ExecutionPolicy','Bypass','-NoProfile','-File', ('"' + $starter + '"')) -WindowStyle Hidden`)
+  — eigener Prozessbaum, ueberlebt die Sitzung — und danach **selbst** auf den Port
+  warten (`while (-not (Test-PortOffen $port)) { … Start-Sleep -Seconds 3 }`, Frist
+  grosszuegig, der erste Lauf baut notfalls erst). Die Rueckkehr des Starters ist der
+  Befund, nicht die Ausgabe des Kindes.
+- **Vor jedem Ausfallurteil fragen, ob die Komponente ueberhaupt eine Wache hat.**
+  Eine fehlende Wache ist der eigentliche Befund — ohne sie ist die Ausfallzeit die
+  Zeit bis zum Zufall (gefunden wird der Ausfall dann von einer Sitzung, die den Port
+  zufaellig antippt). Deshalb zuerst die Wachenliste ansehen (Hermes-Cron-Liste und
+  `Get-ScheduledTask -TaskName 'MaxHirn-*'`, Zustand `Ready` heisst nur „registriert“),
+  dann nach dem Muster aus Schritt 4 nachruesten.
 - **Ein aus der Agentensitzung gestarteter Hintergrundprozess stirbt mit ihr.**
   Symptom: Stunden spaeter endet er mit Exit 127, waehrend der per `.cmd`
   gestartete weiterlaeuft — das ist kein Fehler der Komponente und kein Grund zur

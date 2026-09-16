@@ -175,3 +175,29 @@ Fallen:
 - Eine neue Komponente lage() bekommt das Instrument, nicht die Reihe:
   lage(k, ..., inst=<voller instId>, <name>_lage=<fertiges Ergebnis>), inst
   fuer den Abruf, das fertige Ergebnis fuer die Anzeige.
+
+## Eine neue Fremd-API anbinden: erst messen, dann bauen
+
+Gilt fuer jede Datenquelle, die neu in eine Spur kommt (durchgerechnetes
+Beispiel: `references/santiment.md`). Die Reihenfolge verhindert den
+Fehlschluss, „die API liefert nichts“ mit „meine Abfrage ist falsch“ zu
+verwechseln.
+
+1. **Die freie Stufe wird GEMESSEN, nicht aus der Doku geschlossen.** Ein Aufruf
+   ohne Schluessel beantwortet „was geht heute“; die Doku nennt oft die bezahlte
+   Stufe. Ergebnis mit Datum notieren.
+2. **Schranken stehen in der Fehlermeldung der API, nicht im Handbuch** — und
+   sie sind oft PRO KENNZAHL verschieden: dieselbe API erlaubt einer Metrik die
+   Gegenwart und einer anderen nur Daten bis vor einem Monat. Die Grenze einmal
+   aus der Antwort herauslesen und im Werkzeug abfragen, statt sie zu raten.
+3. **Eine leere Reihe ist kein Fehler und kein Marktereignis.** Ausserhalb des
+   erlaubten Fensters kommt HTTP 200 mit leerem Ergebnis. Wer das als „null
+   Aktive Adressen“ liest, erfindet einen Absturz im Markt; leer heisst nur:
+   falsche Frage fuer diese Stufe.
+4. **Feldnamen aus dem mitgelieferten Schema, nie aus dem Gedaechtnis.** Gute
+   Doku-Repos bringen das komplette Schema mit; geratene Feldnamen liefern leere
+   Ergebnisse, die wie ein Datenproblem aussehen.
+5. **Das Werkzeug hat eine Probe (`--probe`).** Sie ruft jeden noetigen Pfad
+   einmal und meldet, wie viele geantwortet haben — damit ist „die Quelle traegt“
+   ein Befehl statt einer Behauptung, und die naechste Sitzung sieht sofort, ob
+   eine Stufe weggefallen ist.

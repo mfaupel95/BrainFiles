@@ -87,6 +87,47 @@ everything to a log file, then start it with
 The invoking tool call gets interrupted; the log file is the evidence, and the
 next session reads it (`Log-Ende`, exit code, version before/after).
 
+## Gateway-Ausfall: Diagnose und Waechter (Windows)
+
+Erste Weiche bei „Gateway ist ausgefallen": Kernel-Power 41 in den letzten 24 h
+zaehlen. Keiner = Prozessabsturz/Neustart, kein Hardware-Ausfall.
+
+**Das Exit-Tagebuch lesen:** `<HERMES_HOME>/logs/gateway-exit-diag.log`
+(JSON-Zeilen; Tags `gateway.start`, `asyncio.run.SystemExit`,
+`gateway.exit_nonzero`, `gateway.previous_unclean_exit`). Ein
+`SystemExit` mit Code 75 ist `GATEWAY_SERVICE_RESTART_EXIT_CODE` — ein
+Neustart-Verbleib, kein Crash; ein echter Crash hinterlaesst ein
+`previous_unclean_exit` beim naechsten Start (kein sauberer
+`exit_clean`-Eintrag). `gateway.log` liefert die Begruendung der Stelle
+(„Stopping gateway for restart...", „Another gateway instance started").
+
+**„Another gateway instance (PID …) started during our startup. Exiting to
+avoid double-running." = Doppelstart, nicht Absturz.** Ursache sind duplizierte
+Gateway-Aufgaben: `Get-ScheduledTask | ? { $_.TaskName -like 'Hermes_Gateway*' }`.
+Ein Legacy-Task einer frueheren Installation (Logon-Trigger) feuert weiter,
+auch wenn sein VBS schon entschaerft ist — der Task selbst muss deaktiviert
+oder entfernt werden (Admin), nicht nur das Skript. Der Eintrag
+„Refreshed Windows gateway launcher scripts" im Update-Log ist kein Hinweis,
+dass ein alter Task entsorgt wurde.
+
+**Beim Verdacht „MCP-Server X war die Ursache":** zwei `starting MCP server …`-
+Eintraege fuer denselben Server im Abstand von Sekunden sind ein zweiter
+Gateway-Prozess (der Doppelstart), kein Serverfehler. Der Server ist Zeuge,
+nicht Taeter.
+
+**Vorsorge: ein Gateway-Waechter.** Kleines Skript (Ablage `Agenten/Routinen/`),
+das alle 2 Minuten prueft, ob ein Prozess mit `hermes_cli.main gateway` in der
+Kommandozeile lebt, und wenn keiner lebt, den offiziellen Launcher-VBS aus
+`gateway-service/` via `wscript.exe //B //Nologo` startet; jede Aktion in eine
+Logdatei unter `Routinen/logs/`. Selbsttest: bei laufendem Gateway muss es
+still mit Exit 0 enden. Registrieren mit `Register-ScheduledTask`
+(siehe „Windows scheduling" unten): Trigger `-AtLogOn` PLUS `-Once -At (jetzt+1
+min) -RepetitionInterval 2 min -RepetitionDuration 3650 Tage`, Settings
+`-StartWhenAvailable -ExecutionTimeLimit 2 min -MultipleInstances IgnoreNew`.
+Die Registrierung verweigert eine nicht erhoehte Sitzung („Zugriff
+verweigert") — den einen Admin-Befehl bekommt Max, danach lesend belegen
+(`Get-ScheduledTaskInfo`).
+
 ## SQLite WAL-reset bug — the real blocker
 
 Signs in `hermes doctor`:

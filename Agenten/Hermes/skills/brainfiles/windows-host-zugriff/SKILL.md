@@ -195,6 +195,13 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   Sollsumme schlägt dann fehl, obwohl die Summe stimmt. Vor dem Vergleich
   entfernen (`tr -d '\\'`) — sonst wird eine korrekte Datei als Abweichung
   gemeldet und die Arbeit unnötig wiederholt.
+- **Ein Prüfer sucht Kommandos auf dem PATH, nicht im Projekt-venv.** „Werkzeug
+  fehlt“, obwohl die Datei im venv liegt: viele Prüfer rufen `shutil.which("<name>")`
+  oder starten `<name> --version`. Dann muss ein Shim im PATH liegen — sauber ohne
+  PATH-Bearbeitung: `uv tool install <paket>` legt ihn nach `~\.local\bin`, das im
+  Benutzer-PATH steht. Danach mit `which <name>` **und** dem Prüfer erneut belegen.
+  Und beim Prüfer nachsehen, WAS er verlangt (Datei, Dienst, Browser-Erweiterung,
+  Anmeldung) — die Meldung nennt oft den genauen Befehl, das Raten kostet mehr.
 - **Ein zu großer oder gemischter Inline-Befehl wird von der Werkzeugschicht
   abgewiesen**, nicht von der Shell: die Antwort ist ein Block, der auf den
   gespeicherten Skriptpfad verweist, mit dem Auftrag, **nicht inline zu
@@ -202,8 +209,8 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   mehrzeiligen Text in einem Aufruf mischen. Statt zu wiederholen: in mehrere
   kleine Aufrufe teilen, oder die Logik in eine Datei schreiben und diese
   starten — ein Werkzeugaufruf gehört nicht in einen Satz Text.
-  parsen: `[Parser]::ParseFile($p,[ref]$null,[ref]$err)` und bei Treffern Zeile
-  und Meldung ausgeben. Häufigste Ursache: `\"` ist in einem doppelt-quotierten
+- **Skript unter 5.1 auf Syntax prüfen:** `[Parser]::ParseFile($p,[ref]$null,[ref]$err)`
+  und bei Treffern Zeile und Meldung ausgeben. Häufigste Ursache: `\"` ist in einem doppelt-quotierten
   PowerShell-String **kein** Escape — die Zeichenkette endet zu früh und der Rest
   wird als Code gelesen („Der Operator "<" ist für zukünftige Versionen
   reserviert"). Backtick-Quoting benutzen oder auf einfach-quotierte Strings
@@ -215,6 +222,44 @@ Aufgabenplanung startet `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell
 (5.1). Was unter 7 parst und läuft, kann unter 5.1 scheitern — vor „fertig" das
 Skript oder wenigstens einen Trockenlauf unter der 5.1-Bahn laufen lassen.
 
+## Prozess-Befunde: erst die eigene Kette, dann Urteile
+
+- **Vor jedem Beenden von Prozessen die EIGENE Kette lesen.** Von `$PID`
+  aufwaerts die Elternkette wandern (`Win32_Process` je `ParentProcessId`);
+  die Kette endet im Hermes-Gateway (`-m hermes_cli.main gateway run`) und
+traegt die windows-mcp-Prozesse, die die eigenen Tool-Aufrufe bedienen. Eine
+Beendeliste muss diese PIDs ausschliessen — erst pruefen, dann beenden.
+- **Zwei MCP-Server-Generationen sehen aus wie Waisen, sind aber eine zweite
+  Installation.** Verwaiste MCP-Server haben oft einen LEBENDEN Ahnherrn: ein
+dashboard/`serve` einer frueheren Hermes-Installation (anderer Checkout-Pfad
+in der Kommandozeile, z. B. `C:\Hermes\…` gegen `BrainFiles\Agenten\Hermes\…`)
+haelt seinen eigenen Server-Satz. Der Ahnherr entscheidet, nicht der
+Prozessname: fuer jeden Kandidaten die Kette bis zur Wurzel aufloesen und die
+Kommandozeile der Ahnherren zeigen. Solche Server kommen nach dem Beenden
+wieder, solange ihr Ahnherr laeuft.
+- **Prozesse nach der KOMMANDOZEILE gruppieren, nicht nach dem Namen:** ein
+venv-Python ist ein Launcher-Shim + echtes Python mit identischer
+Kommandozeile; mehrere „gleiche" Prozesse sind oft 2N einer Handvoll
+Instanzen. Instanzen zaehlen = Paare nach `CreationDate` gruppieren.
+
+## Subagenten an den Host anschliessen
+
+Delegierte Subagenten bekommen ein eigenes Terminal — auf diesem Rechner ist
+das die Sandbox, `C:\` ist fuer sie unsichtbar. Wer ihnen Arbeit am Host gibt
+(Code lesen, greppen, git), muss in den TASK-KONTEXT schreiben:
+
+1. Das Host-Werkzeug-Rezept (`tool_describe` + `tool_call` auf
+   `mcp__windows_mcp__PowerShell`/`FileSystem`, ein lokales MCP-Werkzeug je
+   Aufruf, schmal filtern, grosse Ausgaben werden abgeschnitten).
+2. Absoluter Pfad der zu pruefenden Datei ODER eines vorbereiteten
+   Patch-Files (grosse Diffs nicht in den Prompt kopieren — der Pfad reicht).
+3. Den Hinweis, dass Ausgaben verlustig ankommen koennen: sich kritische
+   Stellen selbst per base64 holen
+   (`[Convert]::ToBase64String([IO.File]::ReadAllBytes($f))`).
+
+Ohne dieses Rezept koennen Review-Subagenten nur raten — ein Befund ohne
+Host-Beleg ist dann ein Hinweis, keine Tatsache.
+
 ## Aufgabenplanung beurteilen
 
 `Get-ScheduledTaskInfo` je Aufgabe liefert `LastRunTime`, `NextRunTime` und
@@ -224,7 +269,15 @@ Skript oder wenigstens einen Trockenlauf unter der 5.1-Bahn laufen lassen.
 |---|---|
 | `0` | sauber beendet |
 | `267009` (0x41301) | läuft gerade |
+| `267014` (0x41306) | Aufgabe wurde beendet (nicht durchgelaufen) |
 | `3221225786` (0xC000013A) | von außen beendet (Kill, Herunterfahren, Absturz) |
+
+**Ein harmlos aussehender Code kann einen Dienstausfall verdecken.** `267014` sagt
+nur, dass die Aufgabe beendet wurde — hat der Starter einen DAUERprozess gestartet,
+kann der Dienst mit der Aufgabe gestorben sein (Prozessbaum der Aufgabe). Bevor so
+ein Code als „von außen beendet, egal“ abgetan wird: prüfen, ob die Komponente
+ueberhaupt noch lauscht (Port/`Get-Process`) und ob die zugehoerige Wache sie
+vermisst haette. Ein Code ohne Wache ist kein Beweis, dass alles laeuft.
 
 Ein Ledger-Skript kann nach einem Kill keine Schlusszeile mehr schreiben: Eine
 angefangene Meldung ohne Ende ist dann kein Skriptfehler, sondern die Folge des

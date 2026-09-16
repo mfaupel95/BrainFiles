@@ -63,6 +63,11 @@ Ausloeser → Referenz:
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
+- **Externe Kennzahlen, die unsere Kerzen nicht hergeben** („Santiment“, aktive
+  Adressen, MVRV, Exchange-Zu-/Abfluesse, Social Volume, Dev-Aktivitaet):
+  `references/santiment.md` — SanAPI ohne Schluessel, jede Metrik mit eigenem
+  Zeitfenster.
+
 ## Landkarte (nur was zum Arbeiten nötig ist)
 - `Agenten/Handel/<spur>/` — je Spur `handeln.py`, `wachen.json` (die Grenzen;
   nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
@@ -260,6 +265,8 @@ ersetzt die Begruendung nicht.
 81. **Ein neuer Spurordner ist in `.gitignore` nur freigegeben, nicht entsorgt.**
 
 82. **Eine Statistik darf auf einer tieferen Reihe rechnen, ein Kurssignal nicht - und nur, wenn beide gleichzeitig enden.**
+
+83. **Eine neue Spur kopiert die Sperrschreibungen des Vorbilds** — `z["modus"]` setzen und `wx.sperre_zu()` in Kill- und EV-Zweig, sonst schliessen die Notbremsen das Wachen-Tor nie.
 
 ## Welche Daten eine Sperre liest
 
