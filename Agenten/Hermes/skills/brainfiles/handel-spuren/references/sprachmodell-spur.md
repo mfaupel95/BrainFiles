@@ -1,0 +1,101 @@
+# Eine Spur, deren Richtung ein Sprachmodell gibt
+
+Beweis: die drei Papierspuren `moondev_whale`, `moondev_liquidation`,
+`moondev_sentiment` vom 17.09.2026 (Vorbilder: `whale_agent`,
+`liquidation_agent`, `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents`).
+
+Achtung: `SKILL.md` steht am Groessenlimit (100.000 Zeichen) - diese Datei ist
+deshalb noch nicht in der Ausloeser-Liste oben eingetragen. Wer SKILL.md
+kuerzt, traegt sie dort nach.
+
+## Wann
+Max sagt „die restlichen Moon-Dev-Agenten mit LLM auch einbinden" o.ae.: die
+Fremd-Agenten lassen ihr URTEIL in einem Modell fallen (Anthropic/DeepSeek/OpenAI,
+Schluessel noetig). Der Haus-Weg ist dann NICHT der Fremd-Code, sondern seine
+Arbeitsteilung:
+
+    Daten oeffentlich  ->  GATE deterministisch  ->  Urteil lokal  ->  Buch
+
+## 1. Ein Zugang fuer alle: `Handel/llm_lokal.py`
+- Ollama auf `127.0.0.1:11434`, nur `urllib` (das gemeinsame venv hat kein
+  ollama-Paket). Kein Schluessel, keine Kosten, keine fremde Rechnung.
+- **`think: false` ist Pflicht.** Mit Denken verbraucht das Modell das
+  Token-Kontingent im Denken: `content` kam LEER zurueck (num_predict 80).
+  Symptom: die Spur handelt nie, ohne Fehlermeldung.
+- `temperature: 0` + fester `seed`: dasselbe Marktbild -> dasselbe Urteil.
+- **Vertrag wortgleich zum Bot** (`llm_lokal.VERTRAG`): genau 3 Zeilen,
+  Zeile 1 `BUY`/`SELL`/`NOTHING`, Zeile 3 `Confidence: X%`. Streng lesen
+  (`urteil()`): unbekannte erste Zeile = KEIN Signal, nie eine Richtung raten.
+- **Nachfassen statt raten**: unlesbare Antwort einmal mit `NACHFASSEN`
+  wiederholen (`llm_nachfassen: false` schaltet es ab). Danach: kein Handel.
+- **Confidence ist ein GATE** (`llm_mindest_confidence`, Vorgabe 60 %).
+- Zwischenspeicher (300 s) je Prompt: Vorschau-Frage und Papierlauf eines
+  Zyklus sehen DASSELBE Urteil, der zweite Aufruf kostet nichts.
+- Rueckgabe immer `(seite|None, info)`. Fehler = `None`. Kein Urteil ist kein
+  Handel.
+
+## 2. Modellwahl messen, nicht annehmen: `Handel/llm_probe.py`
+`--wiederholungen 2` fragt jedes Ollama-Modell mit denselben drei Marktbildern
+und zaehlt Vertragstreue erste Antwort / nach Nachfassen, Richtung, Dauer.
+Gemessen 17.09.2026 (je 6 Aufrufe):
+
+- qwen35-8k: 6/6 im Vertrag, kalt 7,4 s, warm 1,5 s
+- qwen36-35b-a3b: 6/6, kalt 38,6 s, warm 7,5 s
+- gemma-e4b-8k: 2/6 (nach Nachfassen 4/6 - antwortete "BS" statt SELL)
+
+Die Zeit steckt im LADEN, nicht im Urteilen. Vorgabe ist das schnellste Modell,
+das den Vertrag vollstaendig haelt. `llm_modell` steht je Spur in der
+`wachen.json` - wer ein zweites Urteil will, wechselt dort, nicht im Code.
+
+## 3. GATE und Urteil trennen
+Das Gate ist Haus-Code und nachrechenbar, nur die RICHTUNG kommt vom Modell.
+Ausserdem spart es den Aufruf, und im Journal ist nachvollziehbar, wann
+ueberhaupt geurteilt wurde:
+- Wale: `|OI-Aenderung| >= max(mindest_aenderung_pct, 1.31 x mittlere absolute
+  OI-Aenderung)` (1.31 = `WHALE_THRESHOLD_MULTIPLIER` des Bots).
+- Liquidationen: die Spanne des Abrufs messen und die Summe darauf beziehen
+  (USD/h) - OKX gibt nur die neuesten 100 Saetze heraus, ein festes Fenster
+  waere leer oder unvollstaendig. Gate: Spanne frisch + Rate hoch +
+  Ungleichgewicht deutlich.
+- Schlagzeilen: Mindestmenge Text (Uebertragung der Bot-Schwelle 0.4).
+
+## 4. Datenwege (oeffentlich, ohne Schluessel) - `Handel/moondev_daten.py`
+- `okx_offenes_interesse`, `okx_oi_historie` (5-Min-Punkte, 48 h, neuester
+  zuerst), `okx_kerzen` (liefert RUECKWAERTS - wird aufsteigend gedreht),
+  `okx_liquidationen`.
+- **`sz` bei Liquidationen ist in KONTRAKTEN**, nicht in Coins: USD erst ueber
+  `ctVal` (BTC-USDT-SWAP = 0.01 BTC). Ohne diese Zahl sind alle Summen um
+  Faktor 100 falsch.
+- RSS: ueber `item` lesen. `//title` liefert den Kanalnamen als erste
+  "Schlagzeile".
+
+## 5. Tests (ohne Netz, ohne Modell)
+- Seams: `quelle_override` (Daten), `urteil_override` (Urteil),
+  `llm_lokal.ANFRAGE` (Rohtext), `llm.leere_cache()` in setUp/tearDown.
+- Buchlauf gegen Temp-Ordner (`journal_zweitziel` in den Temp-Ordner!) +
+  `setUpModule/tearDownModule`-Waechter ueber die Dateiliste des echten
+  Spurenordners.
+- Aufruf NUR aus `<spur>/tests`: `python -m unittest test_<spur>`.
+
+## 6. Verdrahten - dieselben Stellen wie jede Spur
+`dauerlauf.SPUREN`, `auswertung_alle.BOT_SPUREN`, `pruefe_ratschen.SPUREN`,
+`tagesbericht` (Leser + HOLER), `befehle.FAMILIE` (eigene Familie
+"Bot-Signal (LLM)", damit im Bericht sichtbar bleibt, wo ein Modell urteilte),
+`.gitignore` (je Spur NUR `wachen.json` frei).
+
+## Fallen (alle einmal getreten)
+- **`.gitignore`: `!Agenten/Handel/<spur>/*.json` hebt die allgemeine Sperre
+  `Agenten/Handel/*/zustand.mittel.json` auf** (letzter Treffer gewinnt) -
+  die Laufzeitdatei liegt als `??` im Baum und waere beim naechsten
+  `git add -A` im Commit. Immer nur `wachen.json` freigeben und mit
+  `git check-ignore -v <spur>/zustand.mittel.json` gegenpruefen.
+- **Bus-Test verlangt den Spurnamen WORTWOERTLICH in der gestarteten Datei.**
+  Spuren ueber `spur_buch` banden den Bus korrekt, standen aber als "ohne
+  Bus-Anbindung" (4 bestehende + 3 neue). Fix: `"handel/<spur>"` literal
+  uebergeben statt `"handel/%s" % basename`, und die Pruefung zaehlt eine
+  Kern-Bindung, wenn der Kern `ereignis.lauf` traegt.
+- **Journal-Grund**: `spur_buch` schrieb fest "moondev_bot". Jetzt
+  `w.get("_grund") or w.get("grund")`; eine LLM-Spur setzt `w["_grund"]` in
+  `signal()` auf "<spur> llm BUY 72 %".
+- **Textdateien byte-genau aendern** (LF): `git diff --stat` muss kleine
+  Zahlen zeigen, sonst ist die ganze Datei neu geschrieben.
