@@ -11,7 +11,11 @@
 $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path $PSScriptRoot -Parent
 $busPy  = Join-Path $wurzel 'Bus\bus.py'
+# pythonw statt python: der Bus braucht kein Konsolenfenster (die Prints
+# sind Status, das Journal geht auf die Platte). Unter python.exe wuerde
+# bei jedem Start ein Fenster aufploppen (gemessen 16.09.2026).
 $python = (Get-Command python).Source
+$python = if (Test-Path ($python -replace 'python\.exe$','pythonw.exe')) { $python -replace 'python\.exe$','pythonw.exe' } else { $python }
 
 $aktion  = New-ScheduledTaskAction -Execute $python -Argument "`"$busPy`"" `
              -WorkingDirectory (Split-Path $busPy -Parent)

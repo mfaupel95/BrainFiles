@@ -27,4 +27,15 @@ Register-ScheduledTask -TaskName 'MaxHirn-Gateway-Waechter' -Action $aktion `
     -Trigger $t1,$t2 -Settings $einst `
     -Description 'Startet das Hermes-Gateway neu, wenn es nicht laeuft (alle 2 min).' | Out-Null
 '2) Waechter MaxHirn-Gateway-Waechter: ' + (Get-ScheduledTask -TaskName 'MaxHirn-Gateway-Waechter').State
+
+# 3) Bus-Task auf pythonw umstellen: der Bus laeuft als python.exe und zeigt
+#    bei jedem Start ein Konsolenfenster (gemessen 16.09.2026). Das Journal
+#    geht auf die Platte, die Prints sind Status - pythonw reicht, genau wie
+#    beim SkillsBot. bus.ps1 (Registrierung) ist bereits umgestellt.
+$py = (Get-Command python).Source -replace 'python\.exe$', 'pythonw.exe'
+$busPy = Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\bus.py'
+$akt = New-ScheduledTaskAction -Execute $py -Argument ('"' + $busPy + '"') `
+    -WorkingDirectory (Split-Path $busPy -Parent)
+Set-ScheduledTask -TaskName 'BrainFiles-Bus' -Action $akt | Out-Null
+'3) Bus-Task laeuft jetzt unter: ' + (Get-ScheduledTask -TaskName 'BrainFiles-Bus').Actions[0].Execute
 'fertig.'
