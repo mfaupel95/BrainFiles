@@ -412,16 +412,21 @@ def hole(wert):
 
 def zeige_lage(w, wert, historie_quelle=None):
     instr, k = hole(wert)
-    z = indikatoren.lage(k, inst=instr["instId"])
 
-    # Das Signal steht auf k (dem gehandelten Kontrakt). Die Statistik -
-    # Hebel-Deckel und, in pruefpflicht(), die Trefferquote - darf aus einer
-    # tieferen Reihe kommen, wenn der Kontrakt zu jung ist. Ohne --historie
-    # ist k_hist einfach k.
+    # Das KURS-Signal steht auf k (dem gehandelten Kontrakt). Die Statistik -
+    # Hebel-Deckel, in pruefpflicht() die Trefferquote und seit 16.09.2026 auch
+    # die Saisonalitaet (T-018) - darf aus einer tieferen Reihe kommen, wenn der
+    # Kontrakt zu jung ist. Ohne --historie ist k_hist einfach k.
     k_hist, hist_id, hist_ersatz = k, instr["instId"], False
     if historie_quelle is not None:
         k_hist, hist_id, hist_ersatz = historie.tiefe_reihe(
             instr["instId"], historie_quelle)
+
+    # k_stat: die Saisonalitaet rechnet auf der tiefen Reihe, wenn sie laenger
+    # ist und gleichzeitig endet (indikatoren._gleichzeitig) - Wochentagsquoten
+    # auf ~7 Beobachtungen je Wochentag sind keine Statistik. signal_bauen()
+    # laeuft danach mit dieser Saisonalitaet.
+    z = indikatoren.lage(k, inst=instr["instId"], k_stat=k_hist)
 
     dl, ds = hebel_deckel(hist_id, wartung=w["wartungsmarge"])
     ist_swap = instr["instId"].upper().endswith("-SWAP")
@@ -461,6 +466,10 @@ def zeige_lage(w, wert, historie_quelle=None):
             print("                 HOCH gewichtet - kann das SIGNAL setzen/kippen")
             print("                 (Anweisung 01.09.2026; n=%d ist duenn, kein Backtest)" % s["n"])
 
+    if z.get("sais_tief"):
+        print("                 Basis: tiefe Reihe, %d Kerzen - Statistik, nicht "
+              "der Kontrakt" % z["sais_kerzen"])
+
     vd = z["vol_drift"]
     if vd["score"] is None:
         print("  Volumen-Drift  zu wenig Historie fuer eine Aussage (n=%d)" % vd["n"])
@@ -497,8 +506,8 @@ def zeige_lage(w, wert, historie_quelle=None):
     tage_hist = len(k_hist) / 6.0
     if hist_ersatz:
         print("  Statistik aus  %s  -  %.0f Tage" % (hist_id, tage_hist))
-        print("                 Hebel-Deckel und Trefferquote stammen aus dieser")
-        print("                 Reihe (gleicher Basiswert), das Signal oben nicht.")
+        print("                 Hebel-Deckel, Trefferquote und Saisonalitaet stammen")
+        print("                 aus dieser Reihe (gleicher Basiswert), das Kurs-Signal oben nicht.")
     elif historie_quelle is not None and tage_hist > tage + 1:
         print("  Statistik aus  %.0f Tage - tiefe Reihe desselben Kontrakts" % tage_hist)
         print("                 (mehr Kerzen als die 300 fuer das Signal oben).")

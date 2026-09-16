@@ -3,7 +3,7 @@ id: 20260901-saisonalitaet-signal
 title: 'Saisonalität im XPERP-Signal'
 tags: [handel]
 created: 2026-09-01
-updated: 2026-09-08
+updated: 2026-09-16
 related: [20260901-xperp-handel, 20260830-handelsbots, 20260902-handelsregeln, 20260908-volumen-drift-signal]
 summary: 'Warum der Closed-Source-Indikator xGhozt Prophecies als Kalenderstatistik nachgebaut ist, hoch gewichtet ins Signal greift und trotzdem seine duenne Stichprobe nennt.'
 ---
@@ -52,6 +52,33 @@ Muster, vor dem [[Handelsbots]] warnt („Kurze Fenster täuschen zuverlässig")
 Deshalb druckt `bot.py lage` bei jeder Saisonalitäts-Zeile `n` mit, und wenn
 der Faktor das Signal dreht, nennt der Grund-Text die Stichprobe. **Vor dem
 Vertrauen in eine gekippte Richtung: `n` lesen.**
+
+## Seit 16.09.2026: die Statistik kommt aus der tiefen Reihe (T-018)
+
+Die Saisonalität ist **Statistik**, nicht Kursstruktur - wie Hebel-Deckel und
+Trefferquote. Auf ~50 Tagen Kontrakthistorie (300 4h-Kerzen) trägt der
+Wochentag nur rund sieben Beobachtungen. Deshalb rechnet `bot.py` sie seit dem
+16.09.2026 auf der tiefen Reihe, wenn `--historie` gesetzt ist.
+
+Nachgemessen an `LINK-USD_UM_XPERP-310829` (20 Tage alt) am 16.09.2026:
+
+| Reihe | Kerzen | Beobachtungen für den Wochentag |
+|---|---|---|
+| Kontrakt | 300 | n = 16 |
+| `LINK-USDT-SWAP` | 1200 | n = 172 |
+
+Die Ausgabe nennt die Basis jetzt ausdrücklich (`Basis: tiefe Reihe, 1200
+Kerzen - Statistik, nicht der Kontrakt`); die Warnung „n=... ist dünn" entfällt
+genau dann. Übernommen wird die Reihe nur, wenn sie **gleichzeitig endet**
+(`indikatoren._gleichzeitig`): `saisonalitaet()` liest Wochentag und Tagesphase
+der *nächsten* Kerze aus dem Ende der Reihe, eine verschobene oder alte Reihe
+würde das Raster still verschieben. Dafür steht der Signal-Merge in
+`indikatoren.signal_bauen()` an einer Stelle statt zweimal im Quelltext.
+
+Das **Kurs-Signal** (SuperTrend, EMA, RSI, ATR jetzt) bleibt weiter am
+gehandelten Kontrakt - getauscht wird nur die Statistik, wie bei
+[[XPERP-Handel]] unter `--historie` beschrieben. Sechs Tests halten es:
+`xperp/test_saisonalitaet_tief.py` (ohne Netz).
 
 ## Nachrechnen
 

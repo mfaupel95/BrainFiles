@@ -102,7 +102,7 @@ nicht.
 | `cvd.py` | CVD-4h-Divergenz je Kontrakt: Taker-Volumen von OKX in 4h-Eimern, Divergenz gegen den Preis. Ein Abruf, kein Orderpfad. |
 | `auswahl.py` | Rangliste aller Krypto-XPERP für Long, Short und Grid. |
 | `bot.py` | Lage, Trend-Anlauf, Grid. Legt Befehle vor. |
-| `historie.py` | Tiefe Kerzenreihe für zu junge Kontrakte — zieht den `<Basis>-USDT-SWAP`, damit Hebel-Deckel und Trefferquote auf Monaten statt Tagen stehen. |
+| `historie.py` | Tiefe Kerzenreihe für zu junge Kontrakte — zieht den `<Basis>-USDT-SWAP`, damit Hebel-Deckel, Trefferquote und Saisonalität auf Monaten statt Tagen stehen. |
 
 Kein eigenes `.venv` — läuft mit dem des Marktscanners (`../scanner/.venv`,
 nur Standardbibliothek).
@@ -197,6 +197,19 @@ Rückblick auf einem dünnen Fenster, kein Backtest — genau das Muster, vor de
 druckt `n` bei jeder Zeile mit, und wenn die Saisonalität das Signal dreht,
 nennt der Grund-Text die Stichprobe. Das ist bewusst laut: der Faktor weicht
 von der sonstigen Regel ab, dass `lage()` die Bausteine **nicht** verrechnet.
+
+**Seit 16.09.2026 rechnet sie auf der tiefen Reihe, wenn `--historie` gesetzt ist**
+(T-018). Die Saisonalität ist *Statistik* wie Hebel-Deckel und Trefferquote, nicht
+Kursstruktur — und auf ~50 Tagen Kontrakthistorie hat sie zu wenige Beobachtungen.
+Nachgemessen an `LINK-USD_UM_XPERP-310829` (20 Tage alt) am 16.09.2026: **n = 16**
+aus dem Kontrakt gegen **n = 172** aus `LINK-USDT-SWAP` (1200 Kerzen, 200 Tage). Die
+Ausgabe nennt die Basis jetzt ausdrücklich (`Basis: tiefe Reihe, 1200 Kerzen -
+Statistik, nicht der Kontrakt`); die Warnung „n=… ist dünn" entfällt genau dann.
+Übernommen wird sie nur, wenn die tiefe Reihe **gleichzeitig endet**
+(`indikatoren._gleichzeitig`): `saisonalitaet()` liest Wochentag und Tagesphase der
+*nächsten* Kerze aus dem Ende der Reihe — eine verschobene Reihe würde das Raster
+still verschieben. Dafür steht der Signal-Merge in `indikatoren.signal_bauen()` an
+einer Stelle. Sechs Tests halten es: `test_saisonalitaet_tief.py` (ohne Netz).
 
 ## CVD-4h-Divergenz im Signal — hoch gewichtet, auf Anweisung
 

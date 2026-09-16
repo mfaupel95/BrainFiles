@@ -141,6 +141,21 @@ def effizienz(werte, n=42):
     return abs(f[-1] - f[0]) / weg if weg > 0 else 0.0
 
 
+def _gleichzeitig(k, k_stat, kerzen=2):
+    """Enden beide Reihen (fast) auf derselben Kerze?
+
+    saisonalitaet() bestimmt Wochentag und Tagesphase der naechsten Kerze aus
+    dem Ende der uebergebenen Reihe. Eine verschobene oder alte Reihe wuerde das
+    Raster still verschieben - dann bleibt es bei der eigenen Reihe.
+    """
+    if not k or not k_stat:
+        return False
+    schritt = (k[-1][0] - k[-2][0]) if len(k) >= 2 else 0
+    if schritt <= 0 and len(k_stat) >= 2:
+        schritt = k_stat[-1][0] - k_stat[-2][0]
+    return abs(k[-1][0] - k_stat[-1][0]) <= kerzen * max(schritt, 1)
+
+
 def saisonalitaet(k, min_n=6):
     """Kalenderstatistik nach dem Prinzip von "xGhozt Prophecies" (TradingView,
     Closed-Source - hier nachgerechnet, nicht kopiert).
@@ -346,52 +361,16 @@ def _cvd_lage(inst, fertig=None):
         return cvd.leer("CVD-Lage nicht lesbar: %s" % e)
 
 
-def lage(k, st_n=10, st_faktor=3.0, inst=None, cvd_lage=None):
-    """Alle Signalgroessen der letzten Kerze in einem Wortschatz.
+def signal_bauen(st_richtung, e_auf, e_ab, rsi_jetzt, sais, vol_drift, cv):
+    """Das SIGNAL aus den Komponenten - die Rangfolge als eigene Funktion.
 
-    SuperTrend sagt die Richtung, EMA bestaetigt sie, RSI warnt vor dem
-    Nachlaufen - diese drei bleiben getrennt, eine Summe wuerde verdecken,
-    welcher widerspricht. Ausnahme seit 01.09.2026 auf Anweisung: die
-    Saisonalitaet (saisonalitaet(), xGhozt-Prinzip) wird HOCH gewichtet und
-    kann das Signal setzen oder gegen SuperTrend+EMA kippen. Der Grund-Text
-    nennt dann die Stichprobe, damit sichtbar bleibt, worauf die Drehung steht.
-
-    Zweite Ausnahme seit 08.09.2026 auf Anweisung: volumen_drift() (Swift-
-    Algo-X-Prinzip) ist ebenfalls HOCH gewichtet und wird NACH der
-    Saisonalitaet geprueft - bei Widerspruch zwischen beiden gewinnt
-    volumen_drift(), einfach weil sie als letzte laeuft. Das ist bewusst so
-    einfach gehalten statt mit einer Prioritaets-Fallunterscheidung: die
-    Pruefreihenfolge IST die Rangfolge.
-
-    Dritte Ausnahme seit 13.09.2026: die CVD-4h-Divergenz (cvd.cvd_4h(),
-    Buildix-Prinzip) laeuft als letzte der drei und hat damit den letzten
-    Widerspruch. Sie braucht den gehandelten Kontrakt: inst ist der volle
-    instId, cvd_lage ein fertiges Ergebnis (Testweg). Fehlt beides, faellt nur
-    diese Komponente aus.
+    Herausgezogen am 16.09.2026 (T-018), damit derselbe Merge ein zweites Mal
+    laufen kann, wenn sich die DATENBASIS einer Komponente aendert: die
+    Saisonalitaet darf auf der tiefen Reihe gerechnet werden (lage(k_stat=...)),
+    ohne dass die Rangfolge der uebrigen Komponenten im Quelltext doppelt steht.
+    Die PruefREIHENFOLGE ist die Rangfolge: Saisonalitaet -> Volumen-Drift ->
+    CVD-4h; RSI blockt am Ende nur das Nachlaufen und dreht nichts um.
     """
-    c = [r[4] for r in k]
-    a = atr(k, 14)
-    linie, richtung = supertrend(k, st_n, st_faktor)
-    e20, e50 = ema(c, 20), ema(c, 50)
-    r = rsi(c, 14)
-    er = effizienz(c, 42)
-    sais = saisonalitaet(k)
-    vol_drift = volumen_drift(k)
-    cv = _cvd_lage(inst, cvd_lage)
-
-    kurs = c[-1]
-    st_richtung = richtung[-1]
-    e_auf = (e20[-1] is not None and e50[-1] is not None and e20[-1] > e50[-1])
-    e_ab = (e20[-1] is not None and e50[-1] is not None and e20[-1] < e50[-1])
-    rsi_jetzt = r[-1]
-
-    # Wieviele Kerzen laeuft die aktuelle Richtung schon?
-    dauer = 0
-    for i in range(len(richtung) - 1, 0, -1):
-        if richtung[i] is None or richtung[i] != st_richtung:
-            break
-        dauer += 1
-
     if st_richtung == 1 and e_auf:
         signal, grund = "long", "SuperTrend auf, EMA20 ueber EMA50"
     elif st_richtung == -1 and e_ab:
@@ -459,6 +438,68 @@ def lage(k, st_n=10, st_faktor=3.0, inst=None, cvd_lage=None):
     if signal == "short" and rsi_jetzt is not None and rsi_jetzt < 22:
         signal, grund = "kein", "Short-Signal, aber RSI %.0f - ueberverkauft" % rsi_jetzt
 
+    return signal, grund
+
+
+def lage(k, st_n=10, st_faktor=3.0, inst=None, cvd_lage=None,
+         k_stat=None):
+    """Alle Signalgroessen der letzten Kerze in einem Wortschatz.
+
+    SuperTrend sagt die Richtung, EMA bestaetigt sie, RSI warnt vor dem
+    Nachlaufen - diese drei bleiben getrennt, eine Summe wuerde verdecken,
+    welcher widerspricht. Ausnahme seit 01.09.2026 auf Anweisung: die
+    Saisonalitaet (saisonalitaet(), xGhozt-Prinzip) wird HOCH gewichtet und
+    kann das Signal setzen oder gegen SuperTrend+EMA kippen. Der Grund-Text
+    nennt dann die Stichprobe, damit sichtbar bleibt, worauf die Drehung steht.
+
+    Zweite Ausnahme seit 08.09.2026 auf Anweisung: volumen_drift() (Swift-
+    Algo-X-Prinzip) ist ebenfalls HOCH gewichtet und wird NACH der
+    Saisonalitaet geprueft - bei Widerspruch zwischen beiden gewinnt
+    volumen_drift(), einfach weil sie als letzte laeuft. Das ist bewusst so
+    einfach gehalten statt mit einer Prioritaets-Fallunterscheidung: die
+    Pruefreihenfolge IST die Rangfolge.
+
+    Dritte Ausnahme seit 13.09.2026: die CVD-4h-Divergenz (cvd.cvd_4h(),
+    Buildix-Prinzip) laeuft als letzte der drei und hat damit den letzten
+    Widerspruch. Sie braucht den gehandelten Kontrakt: inst ist der volle
+    instId, cvd_lage ein fertiges Ergebnis (Testweg). Fehlt beides, faellt nur
+    diese Komponente aus.
+    """
+    c = [r[4] for r in k]
+    a = atr(k, 14)
+    linie, richtung = supertrend(k, st_n, st_faktor)
+    e20, e50 = ema(c, 20), ema(c, 50)
+    r = rsi(c, 14)
+    er = effizienz(c, 42)
+    # T-018: Die Saisonalitaet ist STATISTIK, nicht Kursstruktur - sie darf auf
+    # der tiefen Reihe desselben Basiswerts gerechnet werden (wie Hebel-Deckel
+    # und Trefferquote, siehe historie.py). Sonst stehen auf den 300 4h-Kerzen
+    # des Kontrakts (~50 Tage) nur ~7 Beobachtungen je Wochentag. Uebernommen
+    # wird sie nur, wenn beide Reihen gleichzeitig enden - saisonalitaet() liest
+    # Wochentag und Tagesphase der NAECHSTEN Kerze aus dem Ende der Reihe.
+    sais_basis = k
+    if k_stat is not None and len(k_stat) > len(k) and _gleichzeitig(k, k_stat):
+        sais_basis = k_stat
+    sais = saisonalitaet(sais_basis)
+    vol_drift = volumen_drift(k)
+    cv = _cvd_lage(inst, cvd_lage)
+
+    kurs = c[-1]
+    st_richtung = richtung[-1]
+    e_auf = (e20[-1] is not None and e50[-1] is not None and e20[-1] > e50[-1])
+    e_ab = (e20[-1] is not None and e50[-1] is not None and e20[-1] < e50[-1])
+    rsi_jetzt = r[-1]
+
+    # Wieviele Kerzen laeuft die aktuelle Richtung schon?
+    dauer = 0
+    for i in range(len(richtung) - 1, 0, -1):
+        if richtung[i] is None or richtung[i] != st_richtung:
+            break
+        dauer += 1
+
+    signal, grund = signal_bauen(st_richtung, e_auf, e_ab, rsi_jetzt, sais,
+                                  vol_drift, cv)
+
     return {
         "kurs": kurs,
         "atr": a[-1],
@@ -470,6 +511,8 @@ def lage(k, st_n=10, st_faktor=3.0, inst=None, cvd_lage=None):
         "rsi": rsi_jetzt,
         "er": er,
         "sais": sais,
+        "sais_tief": sais_basis is not k,
+        "sais_kerzen": len(sais_basis),
         "vol_drift": vol_drift,
         "cvd": cv,
         "signal": signal,
