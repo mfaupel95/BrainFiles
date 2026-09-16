@@ -482,6 +482,11 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   JEDE Metrik ihr eigenes Zeitfenster hat und `erlaubtes_fenster()` die Grenze
   aus der Fehlermeldung liest, warum eine leere Reihe kein Fehler ist und wie
   der MCP-Weg (OAuth) daneben aussieht.
+- `references/browser-edge-sperre.md` — Hermes-Edge / browser-profile: eine
+  laufende Headless-Edge-Instanz hält Cookies/Sessions gesperrt und bricht
+  die Sicherungsläufe mit FEHLER 32 / Exit 20/21. `/XD browser-profile` in
+  sichern.ps1 und sichern-zweitkopie.ps1; `0xC000013A` = Rechner-Neustart
+  (Event 1074), kein Skript-Fix.
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,
