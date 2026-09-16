@@ -199,6 +199,9 @@
 !Agenten/Bus/*.ps1
 !Agenten/Bus/*.md
 !Agenten/Bus/tests/*.py
+# Laufzeitstaende: jede Bus-Nachricht aendert sie - nie versionieren (spaetere Regel gewinnt)
+Agenten/Bus/stand.json
+Agenten/Bus/skillsbot.kontext.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
