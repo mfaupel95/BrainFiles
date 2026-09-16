@@ -53,14 +53,31 @@ try {
   "Port $port ist frei - starte den Router ueber das Quell-Produktion-Skript." |
     Add-Content $log -Encoding UTF8
 
-  # In einem eigenen Prozess: das Startskript beendet sich an einigen Stellen
-  # mit 'exit', das darf diese Routine nicht mitreissen.
-  & powershell.exe -ExecutionPolicy Bypass -NoProfile -File $starter *>&1 |
-    Add-Content $log -Encoding UTF8
-  $code = $LASTEXITCODE
+  # Losgeloest starten, NICHT mit Pipe: das Startskript startet einen
+  # DAUERprozess. Haengt der Aufrufer an dessen Ausgabestrom, kehrt er nie
+  # zurueck - die Aufgabe bleibt "Running", dieses Protokoll ist in der
+  # Zwischenzeit gesperrt ("Device or resource busy"), und wer die Aufgabe
+  # beendet, reisst den Router mit. Genau das war am 16.09.2026: Start 10:35,
+  # ^C um 10:39, danach 5,5 Stunden kein Router - unbemerkt.
+  # Eigene Konsole (kein -NoNewWindow) = eigener Prozessbaum.
+  $argumente = @('-ExecutionPolicy','Bypass','-NoProfile','-File', ('"' + $starter + '"'))
+  Start-Process -FilePath 'powershell.exe' -ArgumentList $argumente -WindowStyle Hidden | Out-Null
 
-  if ($code -ne 0) { throw "Startskript endete mit Code $code" }
-  if (-not (Test-PortOffen $port)) { throw "Router kam auf Port $port nicht hoch" }
+  # Selbst auf den Port warten - der erste Start baut notfalls erst (next build).
+  $frist = 600
+  $warte = Get-Date
+  while (-not (Test-PortOffen $port)) {
+    if (((Get-Date) - $warte).TotalSeconds -gt $frist) {
+      "Router kam binnen $frist s nicht hoch. Letzte Zeilen der Startprotokolle:" |
+        Add-Content $log -Encoding UTF8
+      $proto = Join-Path $env:USERPROFILE '.omniroute\logs\quell-produktion'
+      Get-ChildItem $proto -Filter 'start-*.log*' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime | Select-Object -Last 2 |
+        ForEach-Object { Get-Content $_.FullName -Tail 12 | Add-Content $log -Encoding UTF8 }
+      throw "Router kam auf Port $port nicht hoch"
+    }
+    Start-Sleep -Seconds 3
+  }
 
   "Router laeuft auf Port $port." | Add-Content $log -Encoding UTF8
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
