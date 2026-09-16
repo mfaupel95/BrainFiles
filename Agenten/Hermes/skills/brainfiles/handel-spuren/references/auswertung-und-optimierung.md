@@ -172,6 +172,39 @@ Ablage:
   („0 zu entscheiden") - eine Aenderung ist erst fertig, wenn diese zwei Zeilen
   sie bestaetigen.
 
+## Backtest einer NEUEN Strategie auf Fremddaten
+
+Wenn keine eigenen Runden existieren, sondern eine Behauptung von aussen geprueft
+werden soll, sind diese Regeln die Mindestausstattung - ohne sie ist die Zahl
+wertlos, egal wie gross sie aussieht:
+1. **Kein Blick nach vorn.** Jede Eingangsgroesse fuer Tag D stammt aus Daten BIS
+   D-1 (Vortagesschluss der Volatilitaet, Tageroeffnungskurs), nie aus dem
+   Tagesverlauf. Sonst wird die Zukunft mitgemessen.
+2. **Konservative Balkenreihenfolge.** Liegen Stop und Ziel im SELBEN Balken,
+   zaehlt der Stop. Immer. Die optimistische Reihenfolge macht aus jeder
+   Strategie einen Gewinner; nur die konservative ist zu verteidigen.
+3. **Gebuehr je Seite abziehen und die Boerse nennen.** Ein 0-%-Satz aus einem
+   Abo gilt nur fuer die Boerse, fuer die das Abo gilt - auf eine andere Boerse
+   uebertragen ist er geschenkte Rendite.
+4. **Nie aus EINEM Feld lesen.** Raster ueber die Nachbarwerte (z. B. Grenzweite,
+   Stopabstand, Zielanteil), Stichprobe halbieren, nach Seite trennen (long /
+   short). Erst ein glattes Muster ueber Nachbarn, das in beiden Haelften UND auf
+   beiden Seiten dasselbe Vorzeichen traegt, ist ein Befund. Ein einzelnes
+   positives Feld ist Zufall - genau dafuer ist die Gegenprobe da. Die Gegenprobe
+   gehoert mit in den Bericht (z. B. "+0,32 % erste und +0,24 % zweite Haelfte"),
+   sonst ist der Bestwert nicht von einem Kurvenfit zu unterscheiden.
+5. **Ziel auf den GEMESSENEN Anteil setzen, nicht auf den erzaehlten.** Eine
+   Umkehrstrategie zahlt oft nur auf dem halben Rueckweg; der volle Rueckweg zur
+   Tagesmitte kann in ALLEN Feldern negativ sein. Wer den erzaehlten Wert
+   einbaut, baut eine Strategie, die der Autor nicht gemessen hat.
+
+Was der Backtest baulich NICHT messen kann (Groessen ohne Historie, z. B. offenes
+Interesse je Strike), wird als Luecke AUSGEWIESEN und nicht durch eine
+Ersatzkonstruktion geheilt - dieser Teil ist nur vorwaerts pruefbar. Und das
+Ergebnis darf der Quelle WIDERSPRECHEN: der Widerspruch gehoert in den Bericht,
+nie weggeglaettet. Traegt eine Haelfte der Fremdstrategie und die andere nicht,
+wird die tragende uebernommen und die andere als unbestaetigt benannt.
+
 ## Was eine duenne Stichprobe NICHT hergibt
 - Parameter auf < 8 Runden (swap 3, kraken 5 echte Runden).
 - Kostensaetze senken.

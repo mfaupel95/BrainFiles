@@ -418,6 +418,10 @@ Agenten/Hermes/skills/**/__pycache__/
 # schreibt jeder Lauf; sie erzeugten bei jedem git status Rauschen.
 Agenten/Hermes/skills/.curator_ledger.jsonl
 Agenten/Hermes/skills/.usage.json
+# Nachtrag 16.09.2026: .locks/ sind Sperrdateien des laufenden Kurators -
+# sie gehoeren keinem Commit. Ohne diese Zeile kamen sie ueber die
+# Freigabe oben herein.
+Agenten/Hermes/skills/.locks/
 #
 # CRON-SKRIPTE, freigelegt am 15.09.2026. Die Skripte, die der
 # Hermes-Scheduler ohne Modell fahrt (no_agent) - sie sind Prozedurwissen

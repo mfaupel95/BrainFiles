@@ -4,6 +4,10 @@ Beweis der Schrittfolge: Omniquant-Papierspur, 13.09.2026 (abgebrochene
 Aufgabe vom selben Tag verifiziert und in einer Sitzung komplett fertig -
 Code, Verdrahtung, Tests, echter Lauf, Commit, Dauerlauf, GUI).
 
+> Soll die Spur aus einer FREMDQUELLE entstehen (Video, Reel, Post oder Bild als
+> Vorlage statt einer abgebrochenen Aufgabe), ist der Weg ein anderer und die
+> Pruefregeln sind strenger: `references/strategie-aus-fremdquelle.md`.
+
 ## 0. Abgebrochene Aufgabe verifizieren — nichts annehmen
 - `search_files("*<suchwort>*", BrainFiles-Wurzel)` → `total_count: 0`
   heisst: es existiert nichts; eine abgebrochene Sitzung hat oft nur

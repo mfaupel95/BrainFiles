@@ -129,6 +129,33 @@ Danach existierende Registry-Eintraege NUR als Namen + `[bool]$reg.$_` belegen
    der zweite Zyklus als Ausstiegspfad-Test.
 
 
+## Deribit — Optionsdaten und Volatilitaetsindex, oeffentlich, kein Schluessel
+
+Basis `https://www.deribit.com/api/v2`. Der frei zugaengliche Ort fuer
+Optionsdaten (Strike, offenes Interesse, Markt-IV) UND einen gehandelten
+Volatilitaetsindex; OKX und Kraken liefern beides nicht. Alles ohne Token lesbar.
+
+- `public/get_index_price?index_name=btc_usd` — Indexpreis.
+- `public/get_volatility_index_data?currency=BTC&start_timestamp=&end_timestamp=&resolution=1D`
+  — DVOL-Tagesreihe, Zeile `[ts, open, high, low, close]`, rund 400 Tage Tiefe.
+- `public/get_tradingview_chart_data?instrument_name=BTC-PERPETUAL&resolution=60`
+  — Kerzen als getrennte Felder `ticks/open/high/low/close/volume`.
+  **Hoechstens 5000 Punkte je Anfrage** (ein Jahr Stundenkerzen = zwei Anfragen)
+  — in Bloecken blaettern und ueber den Zeitstempel entdoppeln.
+- `public/get_book_summary_by_currency?currency=BTC&kind=option` — je Instrument
+  `open_interest`, `mark_iv`, `underlying_price`, `volume`. Kontraktname
+  `BTC-<Verfall>-<Strike>-C|P`.
+
+Fallen:
+- **Offenes Interesse gibt es nur als Momentaufnahme, keine Historie.** Jede
+  Rechnung, die Strikes nach OI auswaehlt, ist rueckwirkend NICHT pruefbar, nur
+  vorwaerts. Das vor dem Bauen sagen, nicht nach dem Backtest entdecken.
+- Strikes ueber ALLE Verfallstage summieren (ein Verfallstag allein ist zu duenn
+  besetzt) und Strikes direkt am Kurs ausschliessen - das ist Hedge-Bestand, keine
+  Wand.
+- Deribit-Gebuehr ist NICHT 0: 0,05 % je Seite beim Taker. Anders als bei den
+  uebrigen Spuren, wo ein Abo die Gebuehr traegt, gilt der 0-%-Satz hier nicht.
+
 ## Orderflow aus OKX (CVD, Taker-Volumen, Tape-Tiefe)
 
 - Ein 4h-CVD kommt NICHT aus dem rohen Tape. /api/v5/market/history-trades liefert 100 Trades pro Anfrage; bei BTC-USDT-SWAP 28 s für

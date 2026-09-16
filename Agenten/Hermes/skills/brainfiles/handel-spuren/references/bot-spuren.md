@@ -1,0 +1,126 @@
+# Bot-Spuren: eine geklonte Fremdquelle als Papierbuch
+
+Ausloeser: „nimm Bot X in die Handelsspuren", „installiere die Repos und bau
+Spuren daraus", „bau IHNEN eine Spur". Die Quelle liegt in einem Fremd-Repo
+unter `Werkstatt/Repos/` (Repo einrichten: `repo-flotte`).
+
+## Die Grundentscheidung zuerst
+
+Fremd-Agenten sind **Sprachmodell-Agenten mit echtem Orderpfad** (echte
+Schluessel, echte Boerse). Beides gehoert nicht in den Hausbetrieb. Eine
+Bot-Spur hat deshalb genau drei Bausteine:
+
+1. **Daten** - entweder eine ECHTE Funktion des Bots rufen, oder dieselben
+   oeffentlichen Endpunkte selbst abrufen.
+2. **Regel** - deterministisch im Haus, nachrechenbar. Kein LLM-Urteil.
+3. **Buch** - Hausformat (Zustand, Journal, Q:-Spiegel, Ratsche, Stop/Ziel),
+   **kein Live-Zweig**, `--live` verweigert mit Begruendung.
+
+*Fertig, wenn* die Spur ohne Fremdschluessel laeuft und jede Zahl im Journal
+nachrechenbar ist.
+
+## Weg 1: die Funktion des Bots rufen (besser)
+
+Gibt es im Repo eine wiederverwendbare Datenfunktion (nicht nur `main()`),
+wird SIE gerufen - im **venv des Bots** als kurzer Unterprozess. Damit bleiben
+die Fremd-Abhaengigkeiten (pandas, requests, ta-lib) dort, wo sie hingehoeren,
+und das Haus-venv wird nicht angefasst. Dieselbe Bauform nutzt der Dauerlauf mit
+`SPUREN[...]["python"]` fuer die nautilus-Spur.
+
+```python
+BOT = os.path.join(HANDEL, os.pardir, os.pardir, "Werkstatt", "Repos", "<repo>")
+BOT_PYTHON = os.path.join(BOT, ".venv", "Scripts", "python.exe")
+BOT_AUFRUF = (
+    "import json, contextlib, io, sys\n"
+    "sys.path.insert(0, r'{src}')\n"
+    "import <modul> as n\n"
+    "_puffer = io.StringIO()\n"
+    "with contextlib.redirect_stdout(_puffer):\n"
+    "    d = n.<funktion>(sys.argv[1])\n"
+    "print(json.dumps(d))\n")
+```
+
+- **Statusausgaben des Bots unterdruecken.** Die Fremdfunktionen drucken bei
+  jedem Aufruf („Fetching ..."). Der Dauerlauf liest die Ausgabe seiner Spuren
+  auf Signalwoerter - fremde Zeilen darin sind nicht zuzuordnen. Das Skript
+  druckt deshalb NUR JSON, der Aufrufer nimmt die letzte Zeile.
+- **Fehlt das Repo oder sein venv, sagt die Spur das und bucht nichts.** Nie
+  Ersatzwerte erfinden; die Meldung ist die Auskunft.
+
+## Weg 2: dieselben Daten oeffentlich holen
+
+Monolithen mit `main()` (und oft Pro-API) lassen sich nicht als Funktion rufen.
+Dann dieselben Endpunkte ueber die oeffentliche API holen (`urllib`, nur
+Standardbibliothek - kein `requests` im Haus-venv) und in der README
+**ausdruecklich sagen**, dass es nicht der Bot selbst ist.
+
+## Der gemeinsame Kern
+
+`Agenten/Handel/spur_buch.py` traegt das Buch fuer alle Feed-Spuren: `pfade()`
+(auch die Risikostufen-Dateinamen), `zyklus()`, `einstieg()`, `pruefe_ausstiege()`,
+Ratsche, Spiegelung. Was eine Spur liefert, sind nur:
+
+```python
+quelle(w)        -> (daten, kurse, fehler)      # Abruf, Fehler werden gemeldet
+signal(daten, w) -> "long" | "short" | None     # die Regel
+ziel(daten, w)   -> Preis | None                # optional: Ziel als MARKTPUNKT
+```
+
+- **Ziel als Marktpunkt** (`ziel_preis`): fuer Signale, deren Ziel eine Linie
+  ist (Optionszone, Widerstand). Ein Ziel hinter dem Einstieg wird abgelehnt -
+  es waere sofort erreicht.
+- **Ein Kern, nicht drei Kopien.** Drei Spuren mit drei Kopien derselben
+  Buchhaltung sind drei Stellen, an denen derselbe Fehler einzeln auftreten kann
+  (G/V auf den Kurswert statt auf den Nominalwert).
+
+## Anschluss-Checkliste (sonst bleibt die Spur unsichtbar oder rot)
+
+1. `dauerlauf.SPUREN` - sonst faehrt sie niemand.
+2. `auswertung_alle.BOT_SPUREN` (Journalform kauf/verkauf + `einsatz_usd` ->
+   derselben Rechenweg wie die Indikator-Spuren).
+3. `pruefe_ratschen.SPUREN` - die Ratsche wird je Spur ueber ihr eigenes Modul
+   befragt.
+4. `befehle.FAMILIE` - ohne Eintrag ist der Test „jede Spur hat Familie und
+   Leser" rot.
+5. `tagesbericht` - Holer `spur_<name>()` ueber `_spur_indikator(...)`.
+6. `.gitignore` -s.u.; **nur** `wachen.json` freigeben.
+7. `tests/test_risikostufe.py` - Kern-Spuren ueber einen eigenen Test (sie
+   tragen ihre Dateinamen in `spur_buch.pfade`, nicht als Modulkonstanten).
+8. README der Spur + ein Absatz in `Wissen/Handelsregeln.md` (Quelle, Regel,
+   Grenzen, Nachweis).
+
+## Fallen
+
+- **gitignore: die spaetere Regel gewinnt.** Eine Freigabe
+  `!Agenten/Handel/<spur>/*.json`, die NACH der Sperre
+  `Agenten/Handel/*/zustand.mittel.json` steht, hebt sie wieder auf - prompt
+  landen laufende Zustaende im Commit. Je Spur **nur** `wachen.json` freigeben
+  (Code, README, Tests als eigene Zeilen), Zustand und Journal gesperrt lassen.
+  Kontrolle: `git ls-files 'Agenten/Handel/*/zustand*.json'` muss LEER sein.
+- **Ein `!` auf eine Datei greift nicht, solange ihr Ordner ignoriert ist.**
+  Bei ignoriertem Elternordner muss der Ordner selbst mit freigegeben werden
+  (`!dir/` **und** `!dir/*.<endung>`).
+- **Ein Test schreibt ins echte Buch.** Tests, die eine journalende Funktion
+  direkt pruefen (Einstieg/Ausstieg), buchen in die ECHTEN Dateien - sechzehn
+  Testbuchungen stehen danach als Handelsrunden im Journal. Zweifach sichern:
+  in diesen Testklassen `SCHREIBEN = False` setzen UND einen Modulwaechter
+  bauen: `setUpModule()` merkt Dateiliste + Groessen des echten Spurordners,
+  `tearDownModule()` vergleicht - jeder Test, der nach draussen schreibt, faellt
+  sofort auf. Wachen/Zustand/Journal zusaetzlich auf einen Temp-Ordner patchen.
+- **Die `sys.path`-Reihenfolge entscheidet, welches `handeln.py` geladen wird.**
+  Die Spuren haben gleichnamige Module (`scanner/handeln.py`). Ein
+  `for p in (SPUR, HANDEL, scanner): insert(0, p)` stellt `scanner` **vorne** -
+  der Test prueft dann das falsche Modul. Die eigene Spur ZULETZT einfuegen und
+  mit `assert h.__file__.startswith(SPUR)` absichern.
+- **Kein Sprachmodell-Buch ohne Ansage.** Wer einen LLM-Agenten doch anschliesst
+  (Ollama, Router), schreibt diese Grenze ausdruecklich in die README: das Buch
+  haengt dann am Modell und ist nicht mehr nachrechenbar.
+
+## Was nach dem Anschliessen zu tun bleibt
+
+Nicht alle Agenten eines Repos werden Spuren (fehlender Daten- oder
+LLM-Schluessel, Wallet, kein Handelsbezug). Den **Rest vormerken**: eine Notiz
+`Wissen/<Thema>.md`, die die uebrigen Agenten **nach der fehlenden Zutat**
+gruppiert (Daten-Schluessel, LLM-Schluessel, RPC/Wallet, kein Handelsbezug) -
+und je Gruppe den Weg nennt, wenn es weitergehen soll. Nicht nach Namen
+auflisten: die Gruppe sagt, was zu tun waere.

@@ -63,6 +63,10 @@ dort angemeldet.
 
 ## Fallen
 
+- **Namen aus einem Screenshot sind oft falsch geschrieben - Konto und Repo GETRENNT pruefen.** Ein 404 von `gh api repos/<owner>/<repo>` heisst nur, dass DIESES Repo so nicht heisst; `gh api users/<owner>` klaert, ob das Konto existiert (Schreibweise!). Oft existiert das Konto und nur das Repo fehlt - umgekehrt wird sonst die ganze Flotte verworfen.
+- **Ein 404 auf das erwartete Repo heisst nicht „geloescht".** Kanal-, Playlist- und Spiegel-Beschreibungen nennen den aktuellen Namen; ein Fork traegt das Original in `.parent.full_name` und `.source.full_name`. Bleibt das Original verschwunden ODER ist es privat (beides ergibt denselben 404), ist ein Nachbau die Quelle - dann im Klon und in der Doku ausdruecklich als Nachbau kennzeichnen, nie als Original ausgeben.
+- **Fremd-Repo mit eigenem CLI: dessen eigenen Zustandsbefehl nutzen.** `<tool> doctor` (bzw. `install`) sagt, welche Kanaele/Abhaengigkeiten fehlen - das ist die Lage, die man sonst raten muesste. `skill --install` o.ae. NICHT aufrufen: das schreibt eine fremde SKILL.md in Agenten-Skill-Verzeichnisse und verstoesst gegen `skill-library-sync`. Statt dessen eine eigene, kurze Hausfassung schreiben (was es ist, wo es liegt, wie man es aufruft, was noch fehlt).
+- **Fremd-Repo unter `Werkstatt/` liegt per Junction auf einem anderen Laufwerk.** Seine `.venv` belegt daher keinen Platz auf `C:` - die Meldung „Actual location" der venv lesen, bevor man Plattenplatz zurechnet. Und die venv heisst `.venv` (Hausstandard), auch wenn die Anleitung des Repos `venv` sagt.
 - **`hermes.exe` aus einer MCP-Brueckensitzung** braucht davor
   `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` und ein gesetztes
   `$env:HERMES_HOME`, sonst bricht es mit einem falschen „corrupt

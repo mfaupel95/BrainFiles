@@ -72,6 +72,43 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
    sich die Positionen. Sind die Namen abgeleitet (`datei()`), ist das EINE Zeile
    in der gemeinsamen Bibliothek statt eines Sonderwegs je Aufrufer.
 
+## Doppelbetrieb erkennen und beenden
+
+- **Eine PID-Datei als Sperre hat ein Zeitfenster.** `Test-Path` → PID lesen →
+  Prozess pruefen → starten ist Pruefen-dann-Handeln: feuern zwei Ausloeser
+  gleichzeitig (Anmelde-Trigger und Zeit-Trigger derselben Komponente), sehen
+  beide „frei" und starten doppelt. Auch eine neu vergebene PID laesst eine tote
+  Sperre lebendig aussehen, und `IgnoreNew` in der Aufgabe hilft nicht,
+  wenn der Starter den Prozess abgekoppelt startet und selbst schon fertig ist.
+  Wer genau eine Instanz will, laesst den **Prozess selbst** eine exklusive
+  OS-Dateisperre (`msvcrt.locking`/`fcntl.flock`) ueber seine Laufzeit halten und
+  sich mit klarer Meldung beenden, wenn er sie nicht bekommt — eine stale PID
+  ist keine Sperre.
+- **Variante heisst nicht automatisch getrennte Zustandsdateien.** Der Starter
+  kann die Sperre je Variante bilden („Basis und Stufenlauf duerfen gleichzeitig
+  laufen"), waehrend beide Varianten in **dieselben** Zustands- und
+  Journaldateien schreiben. Vor dem Einrichten einer zweiten Variante die
+  Zustandspfade im Code lesen, nicht dem Kommentar im Starter glauben: ohne
+  getrennte Pfade ist die zweite Variante kein eigener Dauerprozess, sondern
+  Doppelbetrieb auf gemeinsamem Zustand (doppelte Ueberwachung, doppelte
+  Einstiege, konkurrierende Schreibvorgaenge).
+- **Ueberzaehlige Instanzen beenden: erst sichern, dann pruefen, dann PID-genau
+  beenden.** Reihenfolge: (1) die Zustandsdateien in einen eigenen Ordner
+  kopieren — ein Abbruch mitten im Schreiben hinterlaesst eine halb geschriebene
+  JSON, die der Ueberlebende als „keine Positionen" liest und dann nicht mehr
+  ueberwacht; (2) aus dem Journal den `modus` der letzten Zeilen lesen, um zu
+  wissen, ob echte (Live-)Positionen offen sind und wer sie weiter ueberwachen
+  muss; (3) beenden per PID fuer **Launcher UND Kind**, nie per Prozessname;
+  (4) danach nachlesen, dass jede Zustandsdatei wieder parst und die
+  Positionszahl unveraendert ist, und dass genau EIN Prozess der Komponente
+  laeuft.
+- **Ein langsamer Rechner ist ein Symptom, keine Ursache.** Vor jedem
+  Neustart oder Update die Doppelbetriebe zaehlen: Python-Prozesse nach
+  Kommandozeile gruppieren und je Gruppe die Eltern-Kind-Paare trennen. Vier
+  Instanzen desselben Dauerlaufs heissen vierfache Scan-/Netzlast je Takt —
+  und bei gemeinsamen Zustandsdateien zusaetzlich vierfache
+  Positionsueberwachung.
+
 ## Pitfalls
 
 - **`Start-Process -RedirectStandardOutput` blockiert bei einem Dauerprozess** —

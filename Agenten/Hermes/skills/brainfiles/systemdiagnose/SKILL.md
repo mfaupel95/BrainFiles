@@ -87,6 +87,13 @@ Dauerlaeufe und ihre Kinder:
 ```
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | ForEach-Object { \$_.ProcessId.ToString() + ' | Parent ' + \$_.ParentProcessId + ' | ' + \$_.CreationDate + ' | ' + \$_.CommandLine }"
 ```
+Vielfachheit statt Einzelprozess — der schnellste Weg bei „der Rechner ist
+unendlich langsam“: Prozesse **nach Kommandozeile gruppieren** und je Gruppe
+zaehlen, dann Eltern-Kind-Paare trennen. Eine Gruppe mit vier Eintraegen ist
+vierfacher Dauerbetrieb;
+```
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe' OR Name='pythonw.exe'\" | ForEach-Object { \$c=\$_.CommandLine; if(-not \$c){\$c='(ohne)'}; (\$c -replace '.*BrainFiles\\\\','') } | Group-Object | Sort-Object Count -Descending | Select-Object -First 12 | ForEach-Object { '{0,3} x  {1}' -f \$_.Count, \$_.Name }"
+```
 Hermes selbst: `hermes doctor` (vorher `unset PYTHONHOME PYTHONPATH`, sonst
 bricht der Aufruf aus einer MCP-Session heraus ab).
 Ports: echter TCP-Connect oder `Get-NetTCPConnection` — `netstat` nicht parsen,
@@ -133,6 +140,22 @@ fehlgedeutet.
   sie, meldet sie auf einem Weg, der den Ausfall ueberlebt (direkter Versand oder
   ein fremder Scheduler), meldet sie **nur** im Fehlerfall (sonst wird sie
   ignoriert) und steht die Ausfallhaeufigkeit irgendwo sichtbar.
+- **`Get-Process ... | Sort-Object CPU` zeigt Lebenszeit, nicht Last.** `CPU` ist
+  die aufsummierte Prozessorzeit seit Prozessstart — oben stehen damit
+  langlebige Anwendungen (Terminal, Browser, Afterburner), nicht die aktuelle
+  Ursache. Fuer Jetzt-Werte `Win32_PerfFormattedData_PerfProc_Process`
+  (`PercentProcessorTime`) nehmen oder zweimal messen und die Differenz bilden.
+- **Ein leerer `Get-Counter`-Wert ist keine Null-Last.** Counter-Pfade sind
+  lokalisiert; `Get-Counter '\PhysicalDisk(_Total)\...'` liefert auf einem
+  deutschen Windows stillschweigend nichts. Dann nicht „keine Last“
+  hinschreiben, sondern die Kennzahl ueber `Win32_PerfFormattedData_*` holen
+  oder ausdruecklich als „nicht messbar“ melden.
+- **Ein traeger Rechner hat selten einen CPU-Fresser.** Gemessene 18 % CPU,
+  25 GB freier RAM und leere Disk-Queue passen zu einer Kiste, die sich
+  trotzdem kriechend anfuehlt — dann zuerst nach **Vielfachheit** (Duplikate
+  desselben Dauerlaufs) und nach verwaisten Kindprozessen suchen, nicht nach
+  einem einzelnen Schuldigen.
+- **Fuer Hashes `DateiHash()` aus `System.Security.Cryptography` nutzen, nicht `Get-FileHash`.** In der `powershell.exe` (5.1) dieses Rechners existiert das Cmdlet nicht (`CommandNotFoundException`) — und der stille Fall ist schlimmer als der laute: bleibt der Hash leer, wirft jedes `Group-Object` alle Elemente in EINE Gruppe, und das Werkzeug meldet danach eine **falsche Zahl** statt eines Fehlers (Fundus-Suche: „0 von 0 Dateien" bei vorhandenem Bestand, systempruefung Block 10 vorher dasselbe). Regel: den Rueckfall einbauen (kein Hash -> den PFAD als Schluessel nehmen, damit nichts verschwindet) und beide Interpreter gegeneinander proben — `powershell.exe` und `pwsh` muessen dieselben Zahlen liefern.
 - **Nicht jeder Fehler im Log ist ein aktueller Fehler.** Start- und
   Haushaltslogs wachsen ueber Stunden; die **letzten** Zeilen lesen. Viele
   Systeme heilen sich selbst (Verbindungs-Wiederaufbau, „error cleared“) —

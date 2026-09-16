@@ -44,15 +44,48 @@ are the whole test. Also note the venv has no `hermes_agent` module — the impo
 - `hermes doctor` is the post-update verification. Not all warnings are
   fatal; the SQLite WAL one is the one that matters.
 
-## Update only on a clean checkout
+## Running an update: clean, plan, detach, verify
 
-`hermes update` ends in a `git pull`. Uncommitted changes in the checkout
-(someone editing `gateway/*.py`, or a `*.bak-*` sitting next to it) make the
-pull fail or fight the other session's work — and the update restarts every
-gateway profile, which severs any session currently talking through that
-gateway. Check `git -C <checkout> status --porcelain` first; if it is not
-empty, secure that work first (see the `sichern` skill) and run the update when
-nobody is mid-edit.
+**1. Clean checkout first.** `hermes update` ends in a `git pull`. Uncommitted
+changes in the checkout (someone editing `gateway/*.py`, or a `*.bak-*` sitting
+next to it) make the pull fail or fight the other session's work. Check
+`git -C <checkout> status --porcelain` first; if it is not empty, secure that
+work first (see the `sichern` skill) and run the update when nobody is mid-edit.
+
+**2. `hermes update --plan` before touching anything.** Read-only and explicitly
+safe on a live fleet: it prints the install kind, every profile, and each running
+Hermes service that will be restarted, with the restart command. Show that list to
+the user before the real run — it is the difference between “an update” and “your
+session and 15 profiles go down for a minute”. `--check` only asks whether an
+update is available; `--yes` runs without prompts (config migration and
+stash-restore); `--keep-stash` parks local changes instead of restoring them.
+
+**3. The dependency half can be skipped while the code half succeeds — exit code 2.**
+Any process mapping the venv's own executable blocks the rebuild (typically the
+desktop app's backend: `venv\Scripts\python.exe -m hermes_cli.main --profile …`).
+The update then still pulls the code, refreshes the Windows gateway launcher
+scripts and restarts the gateway, but skips venv/dependencies to avoid leaving a
+broken install, printing
+
+> Other Hermes processes are running from this install's venv: PID … ← Hermes backend (if the Desktop app is open, close it)
+> dependency update would fail partway and leave a broken install.
+> (or use `hermes update --force-venv` to proceed anyway at your own risk)
+
+So never read "update ran" as "update done". After every update: read the log
+tail, check the exit code, and read `hermes --version`, which prints
+`upstream <sha> · local <sha> (+N carried commits)` — that line tells code-pulled-but-deps-
+skipped apart from a clean run. Do not use `--force-venv` to push past a holder;
+close the holder (the user does that, not you) and run the update again.
+
+**4. Detach the run and log it.** The update restarts the gateway, which kills
+the very session that requested it — and an update process started from inside
+that session dies with it, mid-dependency-install. Write a small `.ps1` that
+clears `PYTHONHOME`/`PYTHONPATH`, sets `HERMES_HOME`, runs
+`<runtime-python> -m hermes_cli.main update --yes` from the checkout and pipes
+everything to a log file, then start it with
+`Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',<pfad> -WindowStyle Hidden -PassThru`.
+The invoking tool call gets interrupted; the log file is the evidence, and the
+next session reads it (`Log-Ende`, exit code, version before/after).
 
 ## SQLite WAL-reset bug — the real blocker
 
