@@ -930,3 +930,5 @@ Kurzfassung ersetzt die Begruendung nicht.
   naechste `git add -A` nimmt Live-Stand mit. Gegenprobe nach jedem Anschliessen:
   `git check-ignore -v Agenten/Handel/<spur>/zustand.json` muss die Sperrzeile
   nennen (nicht die Freigabezeile).
+
+- **Eine Statistik darf auf einer tieferen Reihe rechnen, ein Kurssignal nicht - und nur, wenn beide gleichzeitig enden.** Die Saisonalitaet ist Wochentagsstatistik wie Hebel-Deckel und Trefferquote: auf ~50 Tagen Kontrakthistorie hat ein Wochentag nur rund sieben Beobachtungen (`n=16` gemessen), auf der tiefen Reihe desselben Basiswerts (`<Basis>-USDT-SWAP`, 1200 Kerzen) `n=172`. Uebernommen wird so eine Reihe nur, wenn sie LAENGER ist UND auf derselben Kerze endet: `saisonalitaet()` liest Wochentag und Tagesphase der NAECHSTEN Kerze aus dem Ende der uebergebenen Reihe - eine verschobene oder alte Reihe verschiebt das Raster still, ohne dass eine Zahl auffaellig wird. Der Signal-Merge gehoert dafuer in eine eigene Funktion (`indikatoren.signal_bauen`), sonst steht die Rangfolge zweimal im Quelltext und laeuft auseinander.

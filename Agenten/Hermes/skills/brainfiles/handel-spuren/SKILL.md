@@ -172,7 +172,7 @@ Ausloeser → Referenz:
    Parameter-Aenderung nachsehen, WANN der Wert gelesen wird, und die Wirkung im
    Bericht auf diesen Zeitpunkt datieren.
 ## Pitfalls
-Die **vollstaendigen** Lektionen stehen in `references/pitfalls.md` (81 Punkte,
+Die **vollstaendigen** Lektionen stehen in `references/pitfalls.md` (82 Punkte,
 mit Begruendung und Messwerten). Hier nur die Landkarte, ein Satz je Punkt.
 Vor jeder Aenderung an einer Spur den Punkt lesen, der greift - die Kurzfassung
 ersetzt die Begruendung nicht.
@@ -258,6 +258,8 @@ ersetzt die Begruendung nicht.
 79. **Eine Vorschau, die schreibt, ist keine Vorschau.**
 80. Die Befehls-Ebene ist eine eigene Naht - und `/lage` darf nicht `/bericht`
 81. **Ein neuer Spurordner ist in `.gitignore` nur freigegeben, nicht entsorgt.**
+
+82. **Eine Statistik darf auf einer tieferen Reihe rechnen, ein Kurssignal nicht - und nur, wenn beide gleichzeitig enden.**
 
 ## Welche Daten eine Sperre liest
 
@@ -468,7 +470,7 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   (LF/CRLF) und beim Schreiben erhalten.
 
 ## References
-- `references/pitfalls.md` — ALLE Pitfalls im Volltext (81 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
+- `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,
   Auswertung und Backtest. **Vor jeder Spuraenderung lesen.**
