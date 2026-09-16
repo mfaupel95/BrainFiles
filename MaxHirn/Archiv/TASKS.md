@@ -373,6 +373,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/{orbk,kraken}`, `freigabe.py`, `dauerlauf.py`
       Angelegt: 2026-09-13
 
+- [!] **T-044 — Gateway-Waechter ist nicht registriert, `Hermes_Gateway`-Task laeuft noch**
+      Kontext: Nach dem Gateway-Ausfall am 16.09.2026 (das Altsystem startete um
+      10:34 einen zweiten Gateway aus `C:\Hermes`, 13 Minuten Ausfall) liegen zwei
+      Vorsorge-Schritte fertig bereit, beide brauchen erhoehte Rechte:
+      (1) den Task `Hermes_Gateway` deaktivieren - er steht auf `Ready` und laeuft
+      bei jeder Anmeldung an; der zugehoerige VBS ist entschaerft, der Task selbst
+      aber nicht aus dem Verkehr; (2) den Waechter `MaxHirn-Gateway-Waechter`
+      registrieren (alle 2 Minuten: lebt ein Gateway? sonst ueber den offiziellen
+      Launcher neu starten).
+      Nachweis des Hindernisses: `Register-ScheduledTask` aus einer normalen
+      Sitzung endet mit „Zugriff verweigert“ (gemessen 16.09.2026); der Task
+      `MaxHirn-Gateway-Waechter` existiert entsprechend nicht.
+      Naechster Schritt: Max fuehrt in einer ADMIN-PowerShell das fertige Skript
+      `Agenten\Routinenorsorge-gateway-admin.ps1` aus - beide Schritte stehen
+      dort hintereinander, das Skript ist reproduzierbar.
+      Wartet auf: Admin-Sitzung von Max
+      Betrifft: `Agenten/Routinen/vorsorge-gateway-admin.ps1`,
+      `Agenten/Routinen/gateway-waechter.ps1`, Aufgabe `Hermes_Gateway`
+      Angelegt: 2026-09-16
 ## Erledigt
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
       **Erledigt 2026-09-16.** Der Router war von 10:39 bis 16:04 nicht
