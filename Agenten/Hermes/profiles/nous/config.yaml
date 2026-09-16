@@ -38,7 +38,7 @@ moa:
   enabled: true
 plugins:
   enabled: []
-_config_version: 44
+_config_version: 45
 agent: {}
 
 # ── Security ──────────────────────────────────────────────────────────

@@ -2002,7 +2002,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 44
+_config_version: 45
 a2a_agents:
   omniroute:
     auth:
@@ -2073,6 +2073,7 @@ known_builtin_toolsets:
     - clarify
     - code_execution
     - computer_use
+    - connections
     - context_engine
     - cronjob
     - delegation
@@ -2227,6 +2228,7 @@ platform_toolsets:
     - clarify
     - code_execution
     - computer_use
+    - connections
     - context_engine
     - cronjob
     - delegation
