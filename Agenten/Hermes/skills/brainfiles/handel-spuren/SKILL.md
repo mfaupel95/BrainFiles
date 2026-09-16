@@ -470,6 +470,11 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   (LF/CRLF) und beim Schreiben erhalten.
 
 ## References
+- `references/santiment.md` — Santiment SanAPI (GraphQL, anonym in der freien
+  Stufe nutzbar): wo das Repo liegt, welche Metriken live geprueft sind, dass
+  JEDE Metrik ihr eigenes Zeitfenster hat und `erlaubtes_fenster()` die Grenze
+  aus der Fehlermeldung liest, warum eine leere Reihe kein Fehler ist und wie
+  der MCP-Weg (OAuth) daneben aussieht.
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,

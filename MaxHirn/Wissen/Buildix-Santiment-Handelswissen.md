@@ -3,7 +3,7 @@ id: 20260913-buildix-santiment
 title: 'Orderflow- und Verhaltensdaten: Buildix & Santiment'
 tags: [handel]
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-16
 related:
   - id: 20260902-analyse-quellen
   - id: 20260908-volumen-drift-signal
@@ -169,5 +169,40 @@ TRX STRONG BUY. Funding fast überall leicht positiv (+0,001 %-Bereich) = leicht
   im Browser gegen ein (kostenloses) Santiment-Konto — das ist Max' Teil, nicht
   automatisierbar; bezahlte Stufen schalten die volle On-Chain-Tiefe frei.
   Kein eigener SanAPI-Bau, kein Schlüssel im Klartext.
+
+## SanAPI direkt: am 16.09.2026 gemessen und gebaut
+
+Auf Max' Auftrag („Gh repo integrieren und für santiment api einsetzen") wurde
+zuerst das **Wissen** geholt und dann die API selbst angefasst. Ergebnis: der
+MCP-Weg ist **nicht** der einzige.
+
+| | |
+|---|---|
+| Repo | `Werkstatt/Repos/santiment` — Fork `mfaupel95/santiment` von `api-evangelist/santiment`; **keine Software**, nur Dokumentation + das vollständige GraphQL-Schema (83 KB, 179 Query-Felder) |
+| Zugang | `https://api.santiment.net/graphql`, POST, **anonym nutzbar** (Stufe `SANAPI FREE`) |
+| Werkzeug | `Agenten/Handel/santiment_daten.py` (nur Standardbibliothek, nur lesend) |
+| Tests | `Agenten/Handel/tests/test_santiment_daten.py` (10, ohne Netz) |
+
+**Was ohne Schlüssel wirklich geht** (`santiment_daten.py --probe`, 5 von 5):
+Schema/Introspektion, Projekt-Discovery (`allProjects`: slug, name, ticker,
+marketcapUsd), `getTrendingWords`, und `getMetric` — z. B.
+`daily_active_addresses/bitcoin` mit echten Tageswerten.
+
+**Die Schranke ist pro Metrik und wird von der API selbst genannt.**
+`social_volume_total` z. B. erlaubt anonym nur `from` 2025-09-16 bis `to`
+**2026-08-17** — rund einen Monat Rückstand; andere Metriken reichen bis in die
+Gegenwart. `erlaubtes_fenster()` liest diese Grenze aus der Fehlermeldung,
+statt sie zu raten: `python santiment_daten.py --fenster social_volume_total`.
+
+**Ein Schlüssel ist optional.** Fehlt `SANTIMENT_API_KEY` (Benutzervariable,
+gelesen aus `HKCU\Environment` wie in `melder.py`), läuft alles anonym
+mit kleineren Fenstern. Ein kostenloses Konto hebt sie; der Schlüssel gehört
+nach [[Zugaenge]] und **nicht** in eine `.env` im Fremd-Repo.
+
+Der MCP-Connector bleibt der zweite, breitere Weg: acht Werkzeuge, aber
+`tools/call` hinter OAuth — dafür braucht es Max' Browser-Anmeldung
+(`hermes mcp add santiment --url https://api.santiment.net/mcp --auth oauth`,
+dann `hermes mcp login santiment`). Die Datentiefe ist dort dieselbe
+Kontostufe.
 
 Verwandt: [[Analyse-Quellen]], [[Volumen-Drift-Signal]], [[Marktlage-September-2026]], [[XRP-Analyse-STA-September-2026]], [[BTC-Analyse-STA-September-2026]]
