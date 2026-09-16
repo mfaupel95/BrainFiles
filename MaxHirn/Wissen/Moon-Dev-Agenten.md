@@ -25,6 +25,9 @@ unter `...-for-trading`).
 (`MOONDEV_API_KEY`, `SOLANA_PRIVATE_KEY`, `ANTHROPIC_KEY`, `OPENAI_KEY`,
 `DEEPSEEK_KEY`, `BIRDEYE_API_KEY`, `RPC_ENDPOINT`, `HYPER_LIQUID_...`).
 Zugaenge stehen ausschliesslich in `Wissen/Zugaenge.md`.
+Seit dem 16.09.2026 liegt zusaetzlich eine `.env` **ohne einen einzigen
+Schluessel**: nur `OLLAMA_MODEL` und `OLLAMA_BASE_URL` (lokal, siehe unten).
+Sie ist gitignoriert und bleibt auf diesem Rechner.
 
 ## Was laeuft (vier Spuren, alle Papier)
 
@@ -57,11 +60,11 @@ waere eine andere Spur mit anderer Aussage.
 `trading_agent`, `strategy_agent`, `sentiment_agent`, `copybot_agent`,
 `chartanalysis_agent`, `focus_agent`, `research_agent`, `code_runner_agent`,
 `million_agent`, `rbi_batch_backtester`, `compliance_agent`.
-Zwei Wege, beide bewusst **nicht** gegangen: (1) Ollama lokal
-(`src/models/ollama_model.py` ist vorhanden; Modelle wie `qwen36-35b-a3b:8k`
-liegen bereit), (2) der OmniRoute-Router. Beides macht das Buch von einem
-Sprachmodell abhaengig - genau das, was die Haus-Regeln bei den Messreihen
-vermeiden.
+Der Weg ueber **lokales Ollama** ist seit dem 16.09.2026 verdrahtet (Max'
+Auftrag, Abschnitt unten) - die Agenten laufen damit ohne bezahlten
+Schluessel. Der Weg ueber den OmniRoute-Router bleibt ungenutzt. Die
+Warnung steht weiter: eine Spur, die auf einem Modellurteil steht, haengt am
+Modell - genau das vermeiden die Haus-Regeln bei den Messreihen.
 
 **C - brauchen Solana-RPC oder ein Wallet**
 `sniper_agent` (neue Token-Launches), `copybot_agent`, `phone_agent`.
@@ -73,6 +76,31 @@ Ein oeffentlicher RPC reicht zum Lesen; ein Wallet kommt nicht in Frage
 `chat_agent*`, `youtube-*`, `demo_countdown`, `clean_ideas`,
 `chat_question_generator`, `stream_agent`.
 Diese Agenten machen Inhalte, keine Signale.
+
+## Lokales Ollama als LLM (16.09.2026)
+
+Auftrag von Max: „Moondev local ollama als llm". Drei Aenderungen im Repo
+`Werkstatt/Repos/moon-dev-ai-agents` (Commit `9541cb8`, auf den Fork gepusht):
+
+| Datei | Aenderung |
+|---|---|
+| `src/models/ollama_model.py` | Standardmodell ist jetzt `OLLAMA_MODEL` aus der Umgebung, sonst `qwen35-8k:latest` — vorher stand dort fest `llama3.2`, das hier **nie installiert war**; `OLLAMA_BASE_URL` umstellbar; Modellliste auf die drei lokalen Modelle gezogen |
+| `src/models/model_factory.py` | `DEFAULT_MODELS['ollama']` aus der Umgebung; fehlt einem angefragten bezahlten Anbieter der Schluessel, laeuft der Aufruf **lokal weiter** statt `None` zu liefern (`MOONDEV_LOKAL_STATT_FEHLT=false` schaltet es ab) |
+| `.env` | nur `OLLAMA_MODEL=qwen35-8k:latest` und `OLLAMA_BASE_URL=http://127.0.0.1:11434/api`, gitignoriert |
+
+**Modellwahl:** `qwen35-8k:latest` (3,0 GB, passt in die 8 GB VRAM) ist der
+Standard. `qwen36-35b-a3b:8k` (22,7 GB) laeuft nur auf CPU/RAM und ist ein
+Vielfaches langsamer — als Ausnahme brauchbar, nicht als Voreinstellung.
+`gemma-e4b-8k` ist schnell, war im Vertragstest aber unzuverlaessig.
+
+**Nachweis** (`src/models/test_ollama_lokal.py`, aus dem Repo-venv): Factory
+meldet `Available models: [ollama]`, Standardmodell `qwen35-8k:latest`, ein
+echter Aufruf antwortet `PONG` — und `get_model("claude", ...)` liefert ohne
+Schluessel das Ollama-Modell statt `None`.
+
+**Nicht angefasst:** die `MODEL_TYPE`-Konstanten der 46 Agenten. Wer einen
+Agenten fahren will, setzt sie einzeln (Muster `clips_agent`: `"ollama"` +
+Modellname); der Rueckfall in der Factory deckt die uebrigen ab.
 
 ## Wenn es weitergehen soll
 

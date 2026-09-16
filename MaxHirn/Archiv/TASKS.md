@@ -392,6 +392,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Routinen/vorsorge-gateway-admin.ps1`,
       `Agenten/Routinen/gateway-waechter.ps1`, Aufgabe `Hermes_Gateway`
       Angelegt: 2026-09-16
+- [?] **T-045 — Facebook und Instagram: es fehlt nur die Browser-Extension**
+      Kontext: Auf Max' Auftrag wurden am 16.09.2026 die Kanaele `facebook` und
+      `instagram` in Agent Reach installiert. Beide laufen ueber OpenCLI
+      (`@jackwener/opencli` 1.8.7, npm global) und benutzen den eigenen
+      Chrome-Login - kein Cookie-Export, keine Zugangsdaten in Dateien. Der
+      Daemon laeuft (Port 19825), der Kanalstatus ist `warn`: „opencli
+      installiert, aber keine verbundene Browser-Extension“.
+      Naechster Schritt (nur am Rechner, nicht aus der Sitzung):
+      1. Extension installieren und aktiv lassen:
+         https://chromewebstore.google.com/detail/opencli/ildkmabpimmkaediidaifkhjpohdnifk
+      2. Im selben Browser bei facebook.com und instagram.com angemeldet sein,
+         danach einen `opencli`-Befehl laufen lassen - der Doctor schaltet den
+         Kanal erst danach auf verfuegbar.
+      Zu bedenken: die Extension handelt im Namen des angemeldeten Kontos; die
+      Doku von Agent Reach raet dafuer zu einem Zweitkonto. Gepostet wird nichts,
+      die Kanaele lesen (Suche, Profil, Feed, Gruppen).
+      Wartet auf: Max - Extension und Anmeldung
+      Betrifft: [[Agent-Reach]], `Werkstatt/Repos/Agent-Reach`
+      Angelegt: 2026-09-16
+
+- [?] **T-046 — Benutzer-PATH enthaelt einen abgeschnittenen Eintrag `C:\Users\fa`**
+      Kontext: Beim Nachsehen, wohin `yt-dlp` installiert werden muss
+      (16.09.2026), fiel im Benutzer-PATH der Eintrag `C:\Users\fa` auf - ein
+      abgeschnittener Pfad, der auf nichts zeigt. Er ist harmlos, kann aber
+      Fehlermeldungen verwirren, und er zeigt, dass beim Bearbeiten des PATH
+      einmal eine Zeile zu kurz geraten ist.
+      Naechster Schritt: Den Eintrag in den Benutzervariablen entfernen - vorher
+      die PATH-Zeile sichern, wie am 23.08.2026 praktiziert. Die uebrigen 18
+      Eintraege bleiben unangetastet.
+      Wartet auf: Freigabe von Max (Systemeinstellung)
+      Betrifft: `HKCU\Environment` PATH
+      Angelegt: 2026-09-16
 ## Erledigt
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
       **Erledigt 2026-09-16.** Der Router war von 10:39 bis 16:04 nicht
