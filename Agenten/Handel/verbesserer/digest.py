@@ -81,9 +81,11 @@ def _ruf_http(prompt, konf):
     timeout = konf.get("timeout_s", 60)
     if modus == "ollama":
         o = konf["ollama"]
-        rumpf = json.dumps(
-            {"model": o["modell"], "prompt": prompt, "stream": False}
-        ).encode("utf-8")
+        rumpf_daten = {"model": o["modell"], "prompt": prompt, "stream": False}
+        # think:false ist Pflicht: Reasoning-Modelle liefern sonst leeren content.
+        if "think" in o:
+            rumpf_daten["think"] = o["think"]
+        rumpf = json.dumps(rumpf_daten).encode("utf-8")
         anfrage = urllib.request.Request(
             o["url"].rstrip("/") + "/api/generate", data=rumpf,
             headers={"Content-Type": "application/json"})
