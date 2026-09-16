@@ -183,6 +183,17 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   `LogonType=ServiceAccount`-Aufgaben erhoeht). Wrapper-Kinder muessen auch
   versteckt starten (`Start-Process -WindowStyle Hidden` oder pythonw), sonst
   bleibt deren Konsole sichtbar, wenn nur der Wrapper versteckt ist.
+- **Ein Dienst-Task mit `python.exe` bei Interactive-Logon zeigt ein DAUER-
+  Konsolenfenster** — auch wenn der Wrapper versteckt ist: `-WindowStyle Hidden`
+  versteckt die PowerShell, nicht das Konsolen-Subsystem eines python.exe.
+  Diagnose bei „aufploppender Konsole“: alle Task-Aktionen listen
+  (`Get-ScheduledTask … | % Actions[0]`) und nach `python.exe` (sichtbar) vs.
+  `pythonw.exe` (versteckt) filtern — Dienste, die ihr Journal auf die Platte
+  schreiben (Prints nur Status), auf pythonw umstellen. **Die Live-Aktion einer
+  `-RunLevel Highest`-Aufgabe zu aendern verweigert die normale Sitzung
+  (0x80070005, `Set-ScheduledTask` wie `Register-ScheduledTask`)** — solche
+  Fixes als weiteren Schritt in das vorhandene Admin-Skript legen
+  (`vorsorge-*-admin.ps1`), damit EINE Admin-Sitzung alles erledigt.
 - **Ein Prozess je Ziel.** `watch` und Verwandte nehmen EIN Ziel; „alle 33 Repos“
   sind 33 Prozesse. Bewusst nur das Standardziel anbinden und das im Bericht sagen.
 - **Ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.** Eine Wache,

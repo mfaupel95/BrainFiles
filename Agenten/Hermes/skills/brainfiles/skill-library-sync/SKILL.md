@@ -117,6 +117,18 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
 
 Fallen:
 
+- **Mehrere Skills aus einem Klon: parallele Delegation mit Adoptionsauftrag.**
+  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
+  Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
+  Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
+  selbsttragend (erste ~57 Zeichen = Ausloeser), Provenienz-Zeile. Das ist
+  Einzelarbeit mit klarem Auftrag — 2-3 Skills je Subagent parallel delegieren
+  (delegate_task), jeder Kontext enthaelt: Quelldatei-Pfad(e), die
+  Adoptionsregeln, das Verbot von Duplikaten (VORHER pruefen, welche Skills aus
+  derselben Quelle schon adaptiert in der Bibliothek liegen!), und den Zielweg
+  ueber skill_manage create. Danach NACHPRUEFEN — Subagent-Berichte sind
+  Selbstauskuenfte: jede SKILL.md existiert, Frontmatter valide, Beschreibung
+  kurz, keine Duplikate entstanden.
 - **Hub-Installiertes ist danach nicht mehr unsere Datei.**
   `hermes skills check` / `update` frischt `skills/<kategorie>/<name>/` gegen die
   Quelle auf — eigene Ergänzungen in der installierten `SKILL.md` gehen dabei

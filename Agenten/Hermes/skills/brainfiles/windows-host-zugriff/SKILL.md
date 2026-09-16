@@ -92,7 +92,12 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    Zustand über eine zweite, lesende Abfrage belegen (Status, Zähler, ID). Für
    Schreibvorgänge gilt das doppelt — ein Schreibwerkzeug kann `verified: true`
    melden und trotzdem woanders geschrieben haben. Vor jeder Meldung „angelegt"
-   die Datei über `windows-mcp` nachlesen: Größe, Zeilenzahl, Hash.
+   die Datei über `windows-mcp` nachlesen: Größe, Zeilenzahl, Hash. **Gilt auch
+   fürs Löschen:** `rm -rf` auf einen nicht existierenden (relativen) Pfad
+   meldet still Erfolg — nach jedem Löschvorgang mit `ls` gegenprüfen, dass das
+   Ziel wirklich fehlt, und den Pfad vorher auf den richtigen Elternordner
+   prüfen (ein Ziel, das unter `Werkstatt/` liegt, ist ohne Präfix nicht
+   erreichbar).
 6. **Einen langen Lauf nicht synchron abwarten.** Die Brücke bricht nach 300 s
    ab, und eine Routine, deren echter Durchlauf Minuten bis eine halbe Stunde
    braucht (vollständige Archiv-Scans), ist so nicht nachweisbar. Die geänderte
@@ -216,6 +221,21 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   reserviert"). Backtick-Quoting benutzen oder auf einfach-quotierte Strings
   ausweichen. Ein Parse-Fehler führt das ganze Skript nicht aus: es gibt keine
   Teilausgabe, an der man den Fehler festmachen könnte.
+- **`.Count` auf einem Einzelobjekt aus der Pipeline ist in 5.1 LEER** — nur
+  Arrays zählen. `$x | Where-Object … | Sort-Object …` liefert bei genau einem
+  Treffer ein Skalar, und `$ergebnis.Count` wird `$null`: Gruppenköpfe zeigen
+  `(0)`/`()` und Trefferzeilen verlieren ihre Zahl. Vor jeder Zählung
+  `@(...)` um die Pipeline legen — `@($x | Where-Object …).Count` zählt auch
+  Einzelobjekte (und leere Mengen) korrekt.
+- **In `@("# " + $var, '…')` gewinnt das Komma gegen das Plus** — PowerShell
+  bindet den Komma-Operator stärker, die ganze Liste wird EIN String und der
+  Kopf einer generierten Datei steht in einer Zeile. Den ersten Ausdruck vorher
+  in eine Variable legen und diese in das Array schreiben.
+- **`Get-Content` ohne `-Encoding UTF8` liest UTF-8-Dateien als ANSI** —
+  Umlaute und alle Nicht-ASCII-Zeichen (auch chinesische Beschreibungen)
+  werden zu Mojibake, das beim Weiterschreiben in die Datei gelangt. Beim
+  Lesen von Skript- und Skill-Dateien immer `-Encoding UTF8` angeben; beim
+  Schreiben `[IO.File]::WriteAllText` mit explizitem UTF8Encoding.
 
 **Die Werkzeugschicht ist nicht der Interpreter der Aufgabe.** Sie ist 7.x, die
 Aufgabenplanung startet `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`
