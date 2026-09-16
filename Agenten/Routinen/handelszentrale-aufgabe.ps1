@@ -48,7 +48,7 @@ try {
   if (-not (Test-Path $wrapper)) { throw "Wrapper fehlt: $wrapper" }
 
   $aktion = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument ('-ExecutionPolicy Bypass -NoProfile -File "{0}"' -f $wrapper)
+    -Argument ('-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File "{0}"' -f $wrapper)
 
   $trigger = New-ScheduledTaskTrigger -AtLogOn
   $trigger.Delay = 'PT2M'
