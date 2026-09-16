@@ -174,6 +174,15 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   Hermes-Cron laeuft ohne Erhoehung und heilt zusaetzlich einen toten Prozess, was
   ein Autostart-Eintrag nicht kann. Nur wenn Max eine sichtbare Aufgabe will,
   braucht es einen erhoehten Aufruf von ihm.
+- **Geplante Routine-Aufgaben versteckt registrieren** (`-WindowStyle Hidden` in
+  der Task-Action): eine sichtbare Aufgabe zeigt bei JEDEM Lauf ein
+  PowerShell-Fenster. Drei Dauerlauf-Aufgaben feuern je 30 Minuten (Dauerlauf
+  selbst + Waechter + Mittel-Waechter) — das ist das „andauernd flackernde
+  Fenster". Beim Anlegen Hidden von Anfang an mit aufnehmen; Bestandsaufgaben per
+  `Set-ScheduledTask -Action` nachziehen (interaktive Aufgaben ohne Erhoehung,
+  `LogonType=ServiceAccount`-Aufgaben erhoeht). Wrapper-Kinder muessen auch
+  versteckt starten (`Start-Process -WindowStyle Hidden` oder pythonw), sonst
+  bleibt deren Konsole sichtbar, wenn nur der Wrapper versteckt ist.
 - **Ein Prozess je Ziel.** `watch` und Verwandte nehmen EIN Ziel; „alle 33 Repos“
   sind 33 Prozesse. Bewusst nur das Standardziel anbinden und das im Bericht sagen.
 - **Ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.** Eine Wache,
