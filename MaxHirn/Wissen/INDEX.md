@@ -60,6 +60,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-portabilitaet` — **Portabilität** — `Wissen/Portabilitaet.md` — Was beim Umzug des gesamten Systems auf eine externe SSD zu beachten ist.
 - `20260830-ordnerstruktur` — **Ordnerstruktur** — `Wissen/Ordnerstruktur.md` — Die vier Ordner unter `BrainFiles/`, warum sie geteilt sind und welche fünf Fallen beim Verschieben still brechen.
 - `20260830-fristen` — **Fristen** — `Wissen/Fristen.md` — Alle laufenden Termine mit Konsequenz, ISO-datiert, gepflegt vom Skill `frist`.
+- `20260916-optimierungen-finden` — **Optimierungen finden** — `Wissen/Optimierungen-2026-09-16.md` — Wöchentliche Prüfung der Routinen selbst (montags 09:45, `MaxHirn-Optimierungen-Finden`): Läufe ohne Ende-Zeile, Leichen in der Aufgabenplanung, Prozess-Drift. Warum ein abgebrochener Lauf niemandem auffällt und wie er belegt wird.
 
 ### System und Hardware
 

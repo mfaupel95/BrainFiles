@@ -4,7 +4,7 @@ title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
 updated: 2026-09-16
-related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln]
+related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln, 20260916-optimierungen-finden]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
 
@@ -39,6 +39,7 @@ vorhandener Skill plus ein Zeitplan.
 | freitags 17:00 | Wochenrückblick | `wochenrueckblick` | noch nicht eingeplant |
 | bei Anmeldung (+2 Min) | OmniRoute-Router starten, falls er nicht läuft | `Routinen/omniroute-start.ps1` | **eingeplant** 13.09.2026 — `MaxHirn-OmniRoute`. Ohne den Router fällt der Hermes-Provider omniroute aus; jede Agenten-Delegation scheitert dann mit `Connection error`/HTTP 401 — das war nach jedem Neustart der Zustand. Startet nur, wenn Port 20128 frei ist (zwei Instanzen teilen sich `~/.omniroute/storage.sqlite`). Die alten Autostart-Einträge bleiben deaktiviert. |
 | bei Anmeldung (+2 Min) | Handelszentrale öffnen (lesende Ansicht über alle Spuren) | `Handel/handelszentrale.py` | **eingeplant** 13.09.2026 — `MaxHirn-Handelszentrale`, angelegt über `Routinen/handelszentrale-aufgabe.ps1`. Zeigt Spuren, offene Positionen aller Spuren, Kerzenchart und die Konsole; **rein lesend** — der Dauerlauf bleibt der einzige Schreiber. Startet nur, wenn nicht schon ein Fenster offen ist (Fenstertitel statt PID-Datei, damit auch ein von Hand gestartetes Fenster zählt). |
+| montags 09:45 | Optimierungen finden: Läufe ohne Ende, Leichen, Prozess-Drift | `Agenten/Hermes/scripts/optimierungen-finden.py` | **eingeplant** 16.09.2026 — `MaxHirn-Optimierungen-Finden`, angelegt über `Routinen/optimierungen-finden-aufgabe.ps1`. Liest die Protokolle der anderen Routinen nach: wer angefangen und keine Ende-Zeile geschrieben hat, welche Aufgabe deaktiviert ist oder auf eine fehlende Datei zeigt, wie viel Speicher die Python-Familien belegen (nur die Veränderung gegenüber dem letzten Lauf). Anlass: die Sicherung um 20:00 war am 16.09.2026 von außen beendet worden (0xC000013A) — im Protokoll stand nur die Kopfzeile, und der Bus konnte nichts melden, weil das Ende-Ereignis nie geschrieben wurde. Der Befund geht als `hinweis` über den Bus, **nicht** als Fehlercode. |
 
 Die eingeplanten laufen über die **Windows-Aufgabenplanung**, nicht über
 `/schedule` — Begründung unten. Sie starten nicht das Skript direkt, sondern
@@ -60,6 +61,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `BrainFiles-Bus` | `Agenten/Bus/bus.py` | `Agenten/Bus/journal/JJJJ-MM-TT.jsonl` |
 | `MaxHirn-OmniRoute` | `Routinen/omniroute-start.ps1` | `Routinen/logs/omniroute-letzter-lauf.log` |
 | `MaxHirn-Handelszentrale` | `Routinen/handelszentrale.ps1` (angelegt über `Routinen/handelszentrale-aufgabe.ps1`) | `Routinen/logs/handelszentrale-letzter-lauf.log` |
+| `MaxHirn-Optimierungen-Finden` | `Routinen/optimierungen-finden.ps1` (angelegt über `Routinen/optimierungen-finden-aufgabe.ps1`) | `Routinen/logs/optimierungen-finden-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
