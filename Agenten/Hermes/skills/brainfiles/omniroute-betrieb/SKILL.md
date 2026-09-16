@@ -101,6 +101,23 @@ Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
   ist** — das ist der gewollte Schutz der laufenden Instanz, kein Fehler.
   Niemals umgehen, auch nicht auf Ansage „starte das Skript“: erst pruefen, ob
   schon einer laeuft, und den Abbruch selbst als Befund melden.
+- **Den Router nie ueber eine Pipe starten.** `Agenten/Routinen/omniroute-start.ps1`
+  darf das Startskript nicht mit `& ... | Add-Content` aufrufen: das Startskript
+  startet einen Dauerprozess, der diese Pipe offen haelt - der Aufrufer kehrt nie
+  zurueck. Folgen (Fall 16.09.2026): die Aufgabe blieb „Running“, das eigene
+  Protokoll war von aussen gesperrt (`Get-Content`: „Device or resource busy“),
+  und als die Aufgabe beendet wurde (das Startprotokoll endet mit `^C`), starb der
+  Router mit - 5,5 Stunden Ausfall, den niemand bemerkte. Richtig:
+  `Start-Process -WindowStyle Hidden` (eigene Konsole, eigener Prozessbaum) und
+  **selbst** auf den Port warten; die Rueckkehr des Wrappers ist der Befund
+  (Nachweis: Router gestoppt, Wrapper von Hand - Exit 0 nach 18 s).
+- **Wache: Hermes-Cron `omniroute-waechter`** (alle 15 Minuten, `no_agent`,
+  Skript `Agenten/Hermes/scripts/omniroute-waechter.py`). Leere Ausgabe heisst
+  „Router laeuft“; faellt er aus, kommt eine Telegram-Nachricht mit
+  Aufgaben-Zustand, Startversuch und Nachmessung. Sie meldet ueber den
+  Scheduler, nicht ueber den Router - eine Wache darf nicht den Weg benutzen,
+  den sie ueberwacht. Alarmrichtung ohne Eingriff pruefen:
+  `--port 9999 --nicht-starten`.
 - **Welche Variante laeuft?** Nicht raten, den Lauscher fragen:
   `Get-NetTCPConnection -LocalPort 20128 -State Listen`, dann die `CommandLine`
   des PID. `node scripts/dev/run-next.mjs start` aus `Werkstatt/OmniRoute` =
