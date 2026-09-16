@@ -35,7 +35,9 @@ weiterlaeuft) -- die stehen in den Skills `handel-spuren`, `hermes-config-ops`,
   sonst stirbt der Interpreter mit `init_import_site`-Fehlern.
 - Schluessel liegen als Windows-Benutzervariablen in `HKCU\Environment`; Werte werden nie
   wiedergegeben, nur Laenge + SHA-256-Anfang.
-- Git-Repo BrainFiles, aktiver Zweig `telegram-bus`; mehrere Sitzungen arbeiten gleichzeitig am Baum.
+- Git-Repo BrainFiles, aktiver Zweig `master` (seit 16.09.2026; `telegram-bus`
+  wurde hinein gefuehrt und geloescht); mehrere Sitzungen arbeiten gleichzeitig
+  am Baum.
 
 ## How to Run
 
