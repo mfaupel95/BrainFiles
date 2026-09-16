@@ -121,7 +121,9 @@ def routinen_geplant(w):
         print("(nicht gefunden)")
         return
     for zeile in p.read_text(encoding="utf-8", errors="replace").splitlines():
-        if "vorbereitet" in zeile or "**geaendert**" in zeile or "geloescht" in zeile:
+        if any(m in zeile for m in ("vorbereitet", "**geändert**", "**geaendert**",
+                                    "gelöscht", "geloescht", "noch nicht eingeplant",
+                                    "nicht angelegt")):
             print("  %s" % zeile.strip()[:170])
     print("  (Zeilen mit 'eingeplant' gelten als erledigt; hier stehen nur die unfertigen)")
 
