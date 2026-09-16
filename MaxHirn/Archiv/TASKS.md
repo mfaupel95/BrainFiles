@@ -424,6 +424,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Freigabe von Max (Systemeinstellung)
       Betrifft: `HKCU\Environment` PATH
       Angelegt: 2026-09-16
+- [?] **T-047 — Santiment-MCP braucht Max' Browser-Anmeldung (OAuth)**
+      Kontext: Der offizielle Santiment-MCP-Connector
+      (`https://api.santiment.net/mcp`, Streamable HTTP, acht Werkzeuge) nennt
+      seine Werkzeugliste anonym, verlangt fuer jeden `tools/call` aber OAuth 2.0
+      mit PKCE (HTTP 401). Der Anmeldeschritt laeuft im Browser gegen ein
+      kostenloses Santiment-Konto - nicht automatisierbar.
+      **Kein Blocker mehr fuer Daten:** der GraphQL-Weg laeuft seit dem
+      16.09.2026 ohne Schluessel (`Agenten/Handel/santiment_daten.py`, Probe
+      5/5), mit den kleineren Fenstern der freien Stufe. Der MCP ist der
+      breitere Weg auf dieselbe Kontostufe.
+      Naechster Schritt (Max): `hermes mcp add santiment --url
+      https://api.santiment.net/mcp --auth oauth`, danach
+      `hermes mcp login santiment`. Danach im MCP-Manifest aus `disabled` in
+      die Serverliste (Feld `agent: hermes`) und `mcp-sync-check.ps1` laufen
+      lassen.
+      Wartet auf: Max - Browser-Anmeldung bei Santiment
+      Betrifft: `Agenten/MCP-Manifest.json` (Eintrag `disabled`),
+      [[Buildix-Santiment-Handelswissen]]
+      Angelegt: 2026-09-16
 ## Erledigt
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
       **Erledigt 2026-09-16.** Der Router war von 10:39 bis 16:04 nicht
