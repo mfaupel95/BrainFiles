@@ -121,7 +121,11 @@ Fallen:
   Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
   Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
   Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
-  selbsttragend (erste ~57 Zeichen = Ausloeser), Provenienz-Zeile. Das ist
+  selbsttragend. Harte Grenze fuer die Beschreibung: **60 Zeichen gesamt**, ein
+  Satz, endet mit Punkt; enthaelt sie einen Doppelpunkt, muss der Wert in
+  Anfuehrungszeichen stehen (sonst parst YAML eine Abbildung). Der Index im
+  Systemprompt schneidet bei 60 Zeichen ab — was darueber steht, route nie.
+  Ausserdem: Provenienz-Zeile. Das ist
   Einzelarbeit mit klarem Auftrag — 2-3 Skills je Subagent parallel delegieren
   (delegate_task), jeder Kontext enthaelt: Quelldatei-Pfad(e), die
   Adoptionsregeln, das Verbot von Duplikaten (VORHER pruefen, welche Skills aus
