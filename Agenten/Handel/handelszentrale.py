@@ -10,7 +10,9 @@ Gelesen werden je Spur `zustand.json`, `wachen.json` und
 `handelsjournal.csv`, dazu `dauerlauf.log`, `dauerlauf.pid` und
 `freigabe_fenster.json`. Kurse und Kerzen kommen aus `scanner/okx` (OKX),
 `kraken/kraken.py` (Kraken) bzw. `spiegel/lesen.py` (Onchain-Feed) - alles in
-Hintergrund-Threads, damit das Netz die Oberflaeche nie blockiert.
+Hintergrund-Threads, damit das Netz die Oberflaeche nie blockiert. Dazu liest
+die Kopfzeile den echten Kraken-Kontostand (ZEUR, 60-s-Cache, rein lesend)
+und warnt rot, sobald er unter das Mindestguthaben der Spur faellt.
 Geschrieben wird NICHTS: der Dauerlauf bleibt der einzige Schreiber.
 `tests/test_handelszentrale_rein_lesend.py` verbietet Schreibzugriffe per
 AST-Pruefung.
@@ -514,6 +516,44 @@ def chart_bereich(kerzen, linien):
 # Die Oberflaeche
 # --------------------------------------------------------------------------
 
+_konto_cache = {"text": "Kraken-Konto: …", "warnung": False, "alter": None,
+                "laufend": False}
+
+
+def _konto_im_thread():
+    """Echter Kraken-Kontostand, rein lesend. Schluessel kommen aus Umgebung
+    oder HKCU\\Environment (kraken._variable); fehlt der Zugang oder der Abruf
+    laeuft in eine Wand, bleibt die letzte Zeile stehen - die GUI darf am
+    Konto nie scheitern und wartet nie darauf."""
+    try:
+        import kraken                                            # noqa: PLC0415
+        frei = kraken.guthaben("ZEUR")
+        _konto_cache["text"] = "Kraken-Konto: %.2f ZEUR frei" % frei
+        # mindest_guthaben_eur der Kraken-Spur: alles darunter blockiert Live
+        _konto_cache["warnung"] = frei < 60.0
+        if frei < 60.0:
+            _konto_cache["text"] += "   (unter 60 EUR Mindestguthaben)"
+    except Exception:                                            # noqa: BLE001
+        _konto_cache["text"] = "Kraken-Konto: nicht erreichbar"
+        _konto_cache["warnung"] = True
+    finally:
+        _konto_cache["laufend"] = False
+
+
+def kraken_konto_lage():
+    """(Text, Warnung) mit 60-s-Cache; der erste Aufruf startet den Abruf im
+    Hintergrund, damit kein Netzwart auf dem GUI-Thread lastet."""
+    jetzt = datetime.now()
+    alt = _konto_cache["alter"]
+    if alt and (jetzt - alt).total_seconds() < 60 and not _konto_cache["laufend"]:
+        return _konto_cache["text"], _konto_cache["warnung"]
+    if not _konto_cache["laufend"]:
+        _konto_cache["alter"] = jetzt
+        _konto_cache["laufend"] = True
+        threading.Thread(target=_konto_im_thread, daemon=True).start()
+    return _konto_cache["text"], _konto_cache["warnung"]
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -579,6 +619,10 @@ class Handelszentrale:
         self.w_stufe.set(RISIKO or BASIS_NAME)
         self.w_stufe.pack(side="left", padx=(16, 0))
         self.w_stufe.bind("<<ComboboxSelected>>", self._stufe_gewaehlt)
+        self.l_konto = tk.Label(kopf, bg=FARBEN["bg"], fg=FARBEN["matt"],
+                                font=("Consolas", 10),
+                                text="Kraken-Konto: …")
+        self.l_konto.pack(side="left", padx=(16, 0))
 
         # --- Spurtabelle
         tk.Label(self.root, text="Spuren", bg=FARBEN["bg"], fg=FARBEN["akzent"],
@@ -964,6 +1008,9 @@ class Handelszentrale:
         self.l_takt.config(text="Refresh alle %ds   |   %s"
                                 % (REFRESH_MS // 1000,
                                    jetzt.astimezone().strftime("%d.%m. %H:%M:%S")))
+        konto_text, konto_warn = kraken_konto_lage()
+        self.l_konto.config(text=konto_text,
+                            fg=FARBEN["rot"] if konto_warn else FARBEN["matt"])
 
         # Konsole
         self._schreibe_konsole(jetzt)
