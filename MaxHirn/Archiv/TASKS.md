@@ -241,26 +241,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Monitor ASUS MG278 · `Agenten/Routinen/monitor-ddc-pruefen.ps1`
       Angelegt: 2026-09-02 · Zuletzt: 2026-09-02
 
-- [!] **T-015 — Seagate Portable (`G:`) wieder ab, Hauptsicherung ohne Ziel**
-      Kontext: `G:` ist erneut nicht angeschlossen (`Test-Path G:\` = False; in
-      der Datenträgerliste nur C:, O:, J:). Der geplante 20-Uhr-Lauf scheitert
-      seit mindestens 30.08. 20:12 mit robocopy-Code 16, „Das System kann den
-      angegebenen Pfad nicht finden" — dasselbe Muster wie beim abgezogenen
-      Laufwerk in T-001, aber ein neuer Vorfall. `MaxHirn-Sicherung` ist
-      deaktiviert, bis ein echter Lauf die Phase-8-Änderung an `sichern.ps1`
-      bestätigt (neue Quelle `BrainFiles\`, `/XD Modelle Werkstatt`, Commit
-      `fc483d4`/`7e3e561`). `sichern-ausser-haus.ps1` (Ziel `E:`) hängt am
-      selben Nagel. `sichern-zweitkopie.ps1` (Ziel `O:`) ist am 31.08. 21:00
-      grün durchgelaufen und damit bestätigt.
-      Nächster Schritt: Seagate Portable anstecken, `Agenten\sichern.ps1`
-      einmal von Hand laufen lassen, bei robocopy-Code < 8 `MaxHirn-Sicherung`
-      wieder aktivieren (`Enable-ScheduledTask -TaskName MaxHirn-Sicherung`).
-      Alternativ Ziel auf ein dauerhaft erreichbares Laufwerk umstellen.
-      Betrifft: `Agenten/sichern.ps1`, `Agenten/sichern-ausser-haus.ps1`,
-      Aufgabe `MaxHirn-Sicherung`
-      Wartet auf: angeschlossenes Sicherungslaufwerk `G:`
-      Angelegt: 2026-08-31 · Zuletzt: 2026-08-31
-
 - [!] **T-004 — Zwölf Abschaltungen ohne Bluescreen seit 08.08., Ursache offen**
       Kontext: Alle zwölf Kernel-Power-41-Ereignisse haben `BugcheckCode = 0`
       und `PowerButtonTimestamp = 0` — kein Bluescreen, kein Speicherabbild,
@@ -370,21 +350,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       kopieren.
       Angelegt: 2026-09-07 · Zuletzt: 2026-09-13 (Key-Verweis ergänzt)
 
-- [ ] **T-018 — Saisonalität rechnet nur auf 50 Tagen, nicht auf der tiefen Reihe**
-      Kontext: `indikatoren.saisonalitaet()` (neu am 01.09.2026, hoch gewichtet
-      im Signal — siehe [[Saisonalitaet-Signal]]) läuft auf den 300×4h-Kerzen
-      des gehandelten Kontrakts, also ~50 Tagen ≈ 7 Beobachtungen je Wochentag.
-      `bot.hebel_deckel()` und `bot.trefferquote()` können über `--historie
-      auto` schon auf den tieferen `<Basis>-USDT-SWAP` ausweichen; die
-      Saisonalität nicht, weil sie in `lage()` steckt und nur `k` bekommt.
-      Nächster Schritt: prüfen, ob `zeige_lage()` in `bot.py` die Saisonalität
-      auf `k_hist` nachrechnen und `z["sais"]` samt Signal-Merge ersetzen soll,
-      wenn `--historie` gesetzt ist — analog zum bestehenden Muster für
-      Hebel-Deckel und Trefferquote.
-      Betrifft: `Agenten/Handel/xperp/indikatoren.py`, `Agenten/Handel/xperp/bot.py`
-      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
-
-
 - [?] **T-042 — orbk und kraken sind per Telegram nicht freizugeben**
       Kontext: Beim Pruefen von Max' Frage „Orbk ist noch nicht in freigabe.py
       angebunden?“ am 13.09.2026 aufgenommen. Es gibt zwei Freigabe-Wege mit
@@ -409,6 +374,71 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-13
 
 ## Erledigt
+- [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
+      **Erledigt 2026-09-16.** Der Router war von 10:39 bis 16:04 nicht
+      erreichbar. Ursache war der eigene Startweg: `omniroute-start.ps1` rief
+      das Startskript mit einer Pipe auf, das Startskript startet aber einen
+      Dauerprozess, der diese Pipe offen haelt. Der Aufrufer kehrte nie
+      zurueck - die Aufgabe blieb „Running“, das eigene Protokoll war von
+      aussen gesperrt (`Get-Content`: „Device or resource busy“), und als die
+      Aufgabe beendet wurde (`^C` im Startprotokoll), starb der Router mit.
+      Genau das ist am 16.09. um 10:35/10:39 passiert; der Teilcode 267014 sah
+      wie „von aussen beendet“ aus, die Systempruefung meldete ihn nur als
+      „zu entscheiden“.
+      **Behoben:** der Wrapper startet das Startskript jetzt losgeloest
+      (`Start-Process -WindowStyle Hidden`, eigener Prozessbaum) und wartet
+      selbst auf den Port (bis 600 s). Nachweis: Router gestoppt, Wrapper von
+      Hand - Exit 0 nach 18 s, Protokoll lesbar („ENDE ok nach 18 s“),
+      `/v1/models` antwortet 401.
+      **Neue Wache:** Hermes-Cron `omniroute-waechter` (alle 15 Minuten,
+      `no_agent`, `Agenten/Hermes/scripts/omniroute-waechter.py`) - leere
+      Ausgabe heisst „Router laeuft“, sonst Telegram mit Zustand, Startversuch
+      und Nachmessung. Der Scheduler laeuft am Router vorbei; eine Wache darf
+      nicht den Weg benutzen, den sie ueberwacht. Nachweis: Port freigegeben,
+      Wache laufen lassen - „Nachgemessen: Port 20128 ist offen - geheilt“
+      nach 25 s.
+      Betrifft: `Agenten/Routinen/omniroute-start.ps1`,
+      `Agenten/Hermes/scripts/omniroute-waechter.py`
+      Angelegt: 2026-09-16
+
+- [x] **T-018 — Saisonalitaet rechnete nur auf 50 Tagen, nicht auf der tiefen Reihe**
+      **Erledigt 2026-09-16.** `indikatoren.lage(k_stat=...)` rechnet die
+      Saisonalitaet jetzt auf der tiefen Reihe, wenn `bot.py` mit `--historie`
+      laeuft; der Signal-Merge steht dafuer in `indikatoren.signal_bauen()` an
+      einer Stelle. Uebernommen wird die Reihe nur, wenn sie laenger ist UND
+      gleichzeitig endet (`_gleichzeitig`) - `saisonalitaet()` liest Wochentag
+      und Tagesphase der naechsten Kerze aus dem Ende der Reihe.
+      Gemessen an `LINK-USD_UM_XPERP-310829` (20 Tage alt): n=16 aus dem
+      Kontrakt gegen n=172 aus `LINK-USDT-SWAP` (1200 Kerzen). Die Ausgabe
+      nennt die Basis („Basis: tiefe Reihe, 1200 Kerzen“), die Warnung „n ist
+      duenn“ entfaellt dann. Das Kurs-Signal bleibt am Kontrakt.
+      Nachweis: 6 neue Tests (`xperp/test_saisonalitaet_tief.py`) und 18
+      bestehende gruen, echter Lauf `bot.py trend --wert LINK --historie auto`,
+      Gegenprobe ohne `--historie` (n=16), `handeln.py --vorschau` Exit 0.
+      Betrifft: `Agenten/Handel/xperp/{indikatoren,bot}.py`, [[Saisonalitaet-Signal]]
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-16
+
+- [x] **T-035 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
+      **Erledigt 2026-09-16 — die 30 Minuten sind ueberholt.** Seit dem
+      14.09.2026 gilt die Herzschlag-Regel: 180 Minuten fuer Papier-Spuren,
+      45 Minuten fuer Spuren mit Handelserlaubnis (`_herzschlag_regel` in jeder
+      `wachen.json`); der Dauerlauf-Waechter startet eine tote Spur alle 30
+      Minuten neu. `xperp/wachen.json` steht auf 180 (Papier). Die
+      Systempruefung misst es in Block 11b nach: 26 von 26 Handels-Spuren
+      folgen der Regel. Der zweite Weg ist damit der eine Weg - der Dauerlauf
+      laeuft.
+      Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
+
+- [x] **T-015 — Seagate Portable (`G:`) war ab, Hauptsicherung ohne Ziel**
+      **Erledigt 2026-09-16.** `G:` ist angeschlossen (`G:\MaxHirn-Sicherung`
+      vorhanden, 119 GB frei) und die Laeufe sind gruen: `MaxHirn-Sicherung`
+      15.09. 20:00 Code 0, `MaxHirn-Zweitkopie` 21:00 Code 0,
+      `MaxHirn-Posteingang` 22:00 Code 0 (gemessen 16.09.2026). Der Befund vom
+      31.08. war das abgezogene Laufwerk, kein Defekt. Die Ausser-Haus-Kopie
+      zielt inzwischen auf `Q:` statt `E:` (siehe [[Routinen]]).
+      Betrifft: `Agenten/sichern.ps1`, `Agenten/sichern-ausser-haus.ps1`,
+      Aufgabe `MaxHirn-Sicherung`
+
 
 - [x] **T-041 — Drei Spuren startet der Dauerlauf, ohne dass sie den Bus melden**
       **Erledigt 2026-09-13.** `swap/handeln.py`, `spiegel/spiegel.py` und
@@ -715,28 +745,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
       Geplante Aufgaben stehen alle (State Ready): `MaxHirn-Handel-Dauerlauf`
       (+ `-Waechter`), `MaxHirn-Handel-Wachen`, `MaxHirn-Verbesserer`.
-
-- [ ] **T-035 — Spur 2 ist nur im Dauerbetrieb nutzbar (Herzschlag 30 min)**
-      Aufgefallen 03.09.2026 beim Bau des XPERP-Live-Pfads (T-019).
-      `xperp/wachen.json` setzt `herzschlag_max_minuten` auf 30. Das ist
-      richtig — eine gehebelte Position, die einen Neustart "überlebt", ist
-      unbewacht, und die Kernel-Power-41-Abschaltungen aus [[Hardware]]
-      nehmen den Rechner ohne Vorwarnung mit.
-      Die Folge ist aber unbequem: Läuft `dauerlauf.py` nicht, ist der
-      Herzschlag nach einer halben Stunde alt, und der nächste Lauf stellt
-      **zuerst alles flach**, bevor er irgendetwas anderes tut. Gemessen am
-      03.09.2026: vier Stunden nach dem Papierlauf meldete der Tagesbericht
-      "Herzschlag alt (Bed. 3)".
-      Damit sammelt ein von Hand gestarteter Papierlauf nie die 50 Runden
-      aus Bedingung 1 — er schließt jedes Mal, was er beim letzten Mal
-      eröffnet hat.
-      Zwei Wege, und die Entscheidung gehört Max:
-      1. Den Dauerlauf tatsächlich durchlaufen lassen (T-031 zuerst, sonst
-         läuft er stumm). Dann passt der 15-Minuten-Takt zu den 30 Minuten.
-      2. Den Herzschlag an eine tatsächliche Taktung anpassen — nicht
-         abschalten. Bei einem Lauf pro Tag wären 1440+ Minuten ehrlich,
-         aber dann ist eine Position bis zu einem Tag unbewacht.
-      Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
 
 - [x] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt** — erledigt 2026-09-13
       **Erledigt 2026-09-13.** Tabelle auf 3,6× (SOL), 4,1× (HYPE), 1,7×
