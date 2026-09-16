@@ -2168,6 +2168,7 @@ mcp_servers:
       PYTHONIOENCODING: utf-8
       PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
   windows-mcp:
     args:
       - -c

@@ -209,7 +209,15 @@ Agenten/Bus/skillsbot.kontext.json
 # --- 6) Konfiguration, die Verhalten steuert --------------------------------
 !MaxHirn/.mcp.json
 !MaxHirn/Archiv/.mcp.json
-!**/*.env.template
+# Zurueckgenommen am 16.09.2026: hier stand "!**/*.env.template". Gemeint war
+# eine Vorlage fuer Zugangsdaten - was die Regel tatsaechlich aufnahm, war der
+# ToolUniverse-MCP-Server: er schreibt bei jedem Start ohne Schluessel eine
+# eigene .env.template in sein ARBEITSVERZEICHNIS, und das war die Sitzungs-
+# wurzel. So landeten Kopien in der Repo-Wurzel, in MaxHirn/, MaxHirn/Archiv/,
+# Agenten/Hermes/ und Agenten/Bus/ - teils sogar committet. Eine .env.template
+# ist damit nie ein Dokument, sondern immer ein Nebenprodukt. Sie bleibt ab
+# jetzt ignoriert (Grundsatzregel "*" in Zeile 20); verhindert wird sie an der
+# Quelle: cwd-Eintrag des Servers in Agenten/Hermes/config.yaml.
 !MaxHirn/.claude/settings.local.json
 !MaxHirn/Archiv/.claude/settings.local.json
 
@@ -353,8 +361,8 @@ Agenten/Hermes/hermes-agent/**
 Modelle/**
 
 # Fremde MCP-Server. Freigegeben sind oben nur die drei eigenen (mail, kraken,
-# archiv). Die Muster *.env.template und *.mcp.json gelten aber ohne Pfad und
-# haetten sonst drei Vorlagendateien aus dem tooluniverse-Server mitgenommen.
+# archiv). Diese Muster nehmen keine Vorlage mehr mit - die eine Freigabe fuer
+# *.env.template ist oben am 16.09.2026 zurueckgenommen (siehe Zeile 212).
 Agenten/MCP-Server/ant.dir.*/**
 
 # Hermes komplett. Aus diesem Ordner ist nichts freigegeben, aber die Regel in
