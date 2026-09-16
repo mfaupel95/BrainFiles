@@ -10,6 +10,24 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
 - **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
+- [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
+      **Erledigt 2026-09-16.** Max hat den UAC-Dialog bestaetigt; das Skript
+      `Agenten\Routinen\vorsorge-gateway-admin.ps1` ist in einer Admin-PowerShell
+      durchgelaufen. Von einer normalen Sitzung nachgemessen: `Hermes_Gateway` =
+      **Disabled** (startet die Altanlage nicht mehr bei der Anmeldung),
+      `MaxHirn-Gateway-Waechter` = **Ready** (registriert, alle 2 Minuten),
+      `BrainFiles-Bus` = laeuft unter **pythonw.exe** (PID 59316, Port 8787 offen).
+      **Zur dritten Zeile:** der Bus-Task lief bis heute als `python.exe` bei
+      Interactive-Logon - bei jedem Start ploppte ein Konsolenfenster auf. Die
+      Ursache war nicht die Aufgabenplanung (alle 18 MaxHirn-Tasks tragen
+      `-WindowStyle Hidden`), sondern der Bus selbst. `bus.ps1` (die Registrierung)
+      ist auf `pythonw` umgestellt, die Live-Aenderung steht als Schritt 3 im
+      Admin-Skript; der Neustart aus der Aufgabenplanung brachte sofort pythonw
+      (Commit 4fca63d).
+      Betrifft: `Agenten/Routinen/vorsorge-gateway-admin.ps1`, `bus.ps1`,
+      `Agenten/Routinen/gateway-waechter.ps1`, Aufgaben `Hermes_Gateway`,
+      `MaxHirn-Gateway-Waechter`, `BrainFiles-Bus`
+      Angelegt: 2026-09-16
   die Historie zeigt, was schon einmal versucht wurde.
 - **Nichts erfinden.** Nur eintragen, was Max gesagt hat oder was aus einer
   abgebrochenen Arbeit tatsächlich offen blieb. Vermutete Folgeaufgaben
@@ -373,25 +391,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Handel/{orbk,kraken}`, `freigabe.py`, `dauerlauf.py`
       Angelegt: 2026-09-13
 
-- [!] **T-044 — Gateway-Waechter ist nicht registriert, `Hermes_Gateway`-Task laeuft noch**
-      Kontext: Nach dem Gateway-Ausfall am 16.09.2026 (das Altsystem startete um
-      10:34 einen zweiten Gateway aus `C:\Hermes`, 13 Minuten Ausfall) liegen zwei
-      Vorsorge-Schritte fertig bereit, beide brauchen erhoehte Rechte:
-      (1) den Task `Hermes_Gateway` deaktivieren - er steht auf `Ready` und laeuft
-      bei jeder Anmeldung an; der zugehoerige VBS ist entschaerft, der Task selbst
-      aber nicht aus dem Verkehr; (2) den Waechter `MaxHirn-Gateway-Waechter`
-      registrieren (alle 2 Minuten: lebt ein Gateway? sonst ueber den offiziellen
-      Launcher neu starten).
-      Nachweis des Hindernisses: `Register-ScheduledTask` aus einer normalen
-      Sitzung endet mit „Zugriff verweigert“ (gemessen 16.09.2026); der Task
-      `MaxHirn-Gateway-Waechter` existiert entsprechend nicht.
-      Naechster Schritt: Max fuehrt in einer ADMIN-PowerShell das fertige Skript
-      `Agenten\Routinenorsorge-gateway-admin.ps1` aus - beide Schritte stehen
-      dort hintereinander, das Skript ist reproduzierbar.
-      Wartet auf: Admin-Sitzung von Max
-      Betrifft: `Agenten/Routinen/vorsorge-gateway-admin.ps1`,
-      `Agenten/Routinen/gateway-waechter.ps1`, Aufgabe `Hermes_Gateway`
-      Angelegt: 2026-09-16
 - [?] **T-045 — Facebook und Instagram: es fehlt nur die Browser-Extension**
       Kontext: Auf Max' Auftrag wurden am 16.09.2026 die Kanaele `facebook` und
       `instagram` in Agent Reach installiert. Beide laufen ueber OpenCLI
