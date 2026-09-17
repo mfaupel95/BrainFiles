@@ -82,5 +82,44 @@ class TestMinRundenJeFenster(unittest.TestCase):
         self.assertFalse(aa.belastbar(None))
 
 
+class TestLage(unittest.TestCase):
+    """Drei Kategorien statt zwei - und ein Strich heisst nicht mehr
+    zweierlei."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.wurzel = Path(self.tmp.name)
+        # Eine Spur mit Buch, eine ohne - beide mit Zustand, wie im Baum.
+        for spur in ("squeeze", "supertrend"):
+            (self.wurzel / spur).mkdir()
+            (self.wurzel / spur / "zustand.json").write_text(
+                "{}", encoding="utf-8")
+        (self.wurzel / "squeeze" / "handelsjournal.csv").write_text(
+            JOURNAL, encoding="utf-8")
+        self._alt = aa.HIER
+        aa.HIER = self.wurzel
+
+    def tearDown(self):
+        aa.HIER = self._alt
+        self.tmp.cleanup()
+
+    def test_ohne_journal_heisst_kein_buch(self):
+        self.assertEqual(aa.lage_der_spur("supertrend", None), "kein Buch")
+
+    def test_mit_journal_aber_wenig_runden(self):
+        k = aa.kennzahlen_fuer("squeeze")
+        self.assertEqual(aa.lage_der_spur("squeeze", k), "zu wenige Runden")
+
+    def test_mit_genug_runden_belastbar(self):
+        k = aa.kennzahlen([{"ergebnis": 1.0, "einsatz": 100.0, "grund": "ziel"}] * aa.MIN_RUNDEN,
+                          "USD")
+        self.assertEqual(aa.lage_der_spur("squeeze", k), "belastbar")
+
+    def test_buch_seit_nennt_den_zustand(self):
+        # Ohne Journal ist der Zustand die einzige Spur davon, dass die
+        # Spur ueberhaupt laeuft.
+        self.assertIsNotNone(aa.buch_seit("supertrend"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -119,6 +119,41 @@ def belastbar(k, min_runden=None):
     return k.get("n", 0) >= (MIN_RUNDEN if min_runden is None else min_runden)
 
 
+def hat_buch(spur, datei="handelsjournal.csv"):
+    """Fuehrt die Spur ueberhaupt ein Journal?
+
+    Getrennt von "hat Runden": eine Spur ohne Datei und eine Spur mit leerer
+    Datei sind verschiedene Befunde, und nur der erste ist ein
+    Betriebsfehler.
+    """
+    if STUFE:
+        datei = risikostufe.datei_fuer(datei, STUFE)
+    return (HIER / spur / datei).exists()
+
+
+def buch_seit(spur):
+    """Seit wann die Spur laeuft, soweit der Baum es hergibt.
+
+    Quelle ist die Aenderungszeit von `zustand.json` - ohne Journal gibt es
+    keine andere. Das ist ein Anhaltspunkt, keine Anmeldung: die Datei wird
+    bei jedem Lauf angefasst. Sie beantwortet trotzdem die Frage, auf die es
+    ankommt - laeuft die Spur, obwohl sie nichts schreibt?
+    """
+    p = HIER / spur / "zustand.json"
+    if not p.exists():
+        return None
+    return datetime.fromtimestamp(p.stat().st_mtime).date()
+
+
+def lage_der_spur(spur, k):
+    """Eine von drei Kategorien - nie ein blosser Strich."""
+    if not hat_buch(spur):
+        return "kein Buch"
+    if not belastbar(k):
+        return "zu wenige Runden"
+    return "belastbar"
+
+
 def prozent(x, stellen=2):
     """Eine Zahl mit Vorzeichen, oder n/a. Kein Lambda: die Verkettung
     'Pattern bauen' + 'formatieren' hat hier still den Rohling ausgegeben."""
@@ -396,7 +431,7 @@ def zeige(spur, k):
         print("  %-28s %.1f Tage" % ("Haltedauer (Median)", k["halten_tage"]))
     print("  Ausstiegsgruende: %s"
           % ", ".join("%s %d" % (g, n) for g, n in k["gruende"].items()))
-    if k["n"] < MIN_RUNDEN:
+    if not belastbar(k):
         print("  -> nur %d Runden: das ist ein Befund, keine Messung. "
               "Belastbar wird es ab %d." % (k["n"], MIN_RUNDEN))
 
@@ -446,14 +481,33 @@ def main():
         zeige(spur, k)
 
     print("\n=== Uebersicht ===")
-    print("  %-10s %6s %8s %10s %8s" % ("Spur", "Runden", "Treffer",
-                                        "Ergebnis", "Treffer %"))
+    print("  %-10s %6s %8s %10s %8s  %s"
+          % ("Spur", "Runden", "Treffer", "Ergebnis", "Treffer %", "Lage"))
+    ohne_buch = []
     for spur, k in zahlen.items():
-        if k is None:
-            print("  %-10s %6s" % (spur, "-"))
+        lage = lage_der_spur(spur, k)
+        if lage == "kein Buch":
+            ohne_buch.append(spur)
+            print("  %-10s %6s %8s %10s %8s  kein Buch"
+                  % (spur, "-", "-", "-", "-"))
             continue
-        print("  %-10s %6d %8d %10.2f %7.0f %%"
-              % (spur, k["n"], k["treffer"], k["ergebnis"], k["treffer_pct"]))
+        if k is None:
+            # Buch vorhanden, aber keine geschlossene Runde darin. Das ist
+            # ein dritter Zustand und darf nicht wie "kein Buch" aussehen.
+            print("  %-10s %6d %8s %10s %8s  keine geschlossene Runde"
+                  % (spur, 0, "-", "-", "-"))
+            continue
+        print("  %-10s %6d %8d %10.2f %7.0f %%  %s"
+              % (spur, k["n"], k["treffer"], k["ergebnis"],
+                 k["treffer_pct"], lage))
+    if ohne_buch:
+        print("\n  KEIN BUCH - diese Spuren schreiben kein Journal:")
+        for spur in ohne_buch:
+            seit = buch_seit(spur)
+            print("    %-10s Zustand zuletzt %s"
+                  % (spur, seit.isoformat() if seit else "nie"))
+        print("  Eine laufende Spur ohne Journal ist ein Betriebsfehler, "
+              "keine Formatfrage.")
     print("\n  spiegel, omniquant und gitter haben eigene Auswertungen "
           "(auswertung.py im jeweiligen Ordner).")
     if STUFE:
