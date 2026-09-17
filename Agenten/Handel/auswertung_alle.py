@@ -34,6 +34,7 @@ from pathlib import Path
 
 import stoerungen  # gleicher Ordner: trennt Zwangsschluesse von Handelsrunden
 import risikostufe  # gleicher Ordner: Dateinamen der Risikostufen
+import zeitfenster  # gleicher Ordner: Fenstergrenzen und Zeilenfilter
 
 # Risikostufe dieser Auswertung: None = Basis. Setzt main() aus --risiko.
 STUFE = None
@@ -65,7 +66,7 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 
-def kennzahlen_fuer(spur):
+def kennzahlen_fuer(spur, von=None, bis=None):
     """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
 
     Der Weg stand bis zum 15.09.2026 nur in `main()`. Ein zweiter Aufrufer
@@ -73,10 +74,12 @@ def kennzahlen_fuer(spur):
     muessen - und beim naechsten neuen Feld nur an einer Stelle mitgezogen.
     `main()` und `befehle.py` rufen jetzt beide diese Funktion.
 
+    von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
+
     Rueckgabe: das dict aus `kennzahlen()`, oder None wenn die Spur keine
     geschlossenen Runden hat (bzw. gar kein Journal).
     """
-    z = zeilen(spur)
+    z = zeilen(spur, von=von, bis=bis)
     if not z:
         return None
     gebuehr = 0.0
@@ -104,6 +107,17 @@ def kennzahlen_fuer(spur):
     return kennzahlen(runden, "USD")
 
 
+def belastbar(k, min_runden=None):
+    """Sagt die Spur im gewaehlten Fenster ueberhaupt etwas?
+
+    Die Schwelle gilt JE FENSTER. Ein Monat mit drei Runden ist keine
+    Aussage, auch wenn die Spur insgesamt fuenfzig hat - sonst erzeugt die
+    Zeitachse genau die Scheingenauigkeit, die MIN_RUNDEN verhindern soll.
+    """
+    if not k:
+        return False
+    return k.get("n", 0) >= (MIN_RUNDEN if min_runden is None else min_runden)
+
 
 def prozent(x, stellen=2):
     """Eine Zahl mit Vorzeichen, oder n/a. Kein Lambda: die Verkettung
@@ -126,7 +140,11 @@ def zahl(x):
         return None
 
 
-def zeilen(spur, datei="handelsjournal.csv"):
+def zeilen(spur, datei="handelsjournal.csv", von=None, bis=None):
+    """Die Journalzeilen einer Spur, wahlweise auf ein Fenster beschraenkt.
+
+    von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
+    """
     if STUFE:
         # Risikostufe: dieselbe Auswertung auf den Dateien der Stufe
         # (handelsjournal.mittel.csv). Der Rechenweg bleibt derselbe - die
@@ -136,7 +154,8 @@ def zeilen(spur, datei="handelsjournal.csv"):
     if not p.exists():
         return []
     with p.open(encoding="utf-8", newline="") as f:
-        return [r for r in csv.DictReader(f)]
+        return [r for r in csv.DictReader(f)
+                if zeitfenster.im_fenster(r, von, bis)]
 
 
 def tage(von, bis):
@@ -398,7 +417,19 @@ def main():
                         "dieselben Spalten aus handelsjournal.mittel.csv - "
                         "die Runden sind andere, die Rechnung nicht."
                         % risikostufe.STANDARD)
+    p.add_argument("--tage", type=int,
+                   help="nur die letzten N Tage auswerten")
+    p.add_argument("--seit", help="Fensteranfang, JJJJ-MM-TT")
+    p.add_argument("--bis", help="Fensterende, JJJJ-MM-TT (einschliesslich)")
     a = p.parse_args()
+    try:
+        von, bis = zeitfenster.fenster(tage=a.tage, seit=a.seit, bis=a.bis)
+    except ValueError as e:
+        p.error(str(e))
+    if von or bis:
+        print("Fenster: %s bis %s\n"
+              % (von.date() if von else "Anfang",
+                 bis.date() if bis else "heute"))
     MIN_RUNDEN = a.min
     STUFE = None if a.risiko == risikostufe.STANDARD else a.risiko
     if STUFE:
@@ -410,7 +441,7 @@ def main():
     for spur in spuren:
         # Ein Weg fuer beide Aufrufer: hier stand die Zuordnung Spur ->
         # Rechenweg bis 15.09.2026 ein zweites Mal (siehe kennzahlen_fuer).
-        k = kennzahlen_fuer(spur)
+        k = kennzahlen_fuer(spur, von=von, bis=bis)
         zahlen[spur] = k
         zeige(spur, k)
 
