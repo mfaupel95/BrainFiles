@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
@@ -121,9 +122,10 @@ def _marktkap_je_token(pfad=JOURNAL):
     return karte
 
 
-def lade_ausstiege(pfad=JOURNAL):
+def lade_ausstiege(pfad=JOURNAL, von=None, bis=None):
     """Geschlossene Kopien - mit Kostensaetzen und der Tiefe beim Kauf."""
-    aus = b.lade_zeilen(pfad, ACTIONEN, extra=EXTRA, mit_kosten=True)
+    aus = b.lade_zeilen(pfad, ACTIONEN, extra=EXTRA, mit_kosten=True,
+                        von=von, bis=bis)
     karte = _marktkap_je_token(pfad)
     for a in aus:
         if a.get("marktkap_usd") is None and a.get("token"):
@@ -162,6 +164,38 @@ def kernzeilen(pfad=JOURNAL, kosten=None, max_hinweise=2):
     k = _kosten() if kosten is None else kosten
     return b.kernzeilen(lade_ausstiege(pfad), k, min_ausstiege=MIN_AUSSTIEGE,
                         baender=BAENDER, max_hinweise=max_hinweise)
+
+
+def kennzahlen_kurz(von=None, bis=None):
+    """Die Mindestform fuer die Gesamtbilanz - vier Zahlen und ein Merker.
+
+    Angelegt, damit gesamtbilanz.py die fuenf Spuren mit eigener Auswertung
+    addieren kann, ohne fuenf Sonderfaelle zu kennen. Die RECHNUNG ist
+    unveraendert die dieses Moduls - hier steht nur die Uebergabe.
+    `gv_usd` heisst hier `ergebnis`, weil auswertung_alle.kennzahlen() das
+    Feld so nennt und die Bilanz nur EINEN Namen kennen soll.
+
+    None heisst: diese Spur hat nichts auszusagen (kein Buch, keine
+    geschlossenen Ausstiege).
+    """
+    import json
+
+    k = kennzahlen(lade_ausstiege(von=von, bis=bis), _kosten())
+    if not k.get("n"):
+        return None
+    live = False
+    try:
+        live = bool(json.loads(
+            Path(WACHEN).read_text("utf-8")).get("handel_erlaubt"))
+    except (OSError, ValueError, TypeError):
+        # Keine wachen.json, kaputtes JSON: dann gilt Papier. Eine Spur
+        # faelschlich als Live zu zaehlen waere der teurere Irrtum.
+        live = False
+    return {"n": k["n"],
+            "ergebnis": k["gv_usd"],
+            "treffer": k["treffer"],
+            "waehrung": "USD",
+            "live": live}
 
 
 def main():

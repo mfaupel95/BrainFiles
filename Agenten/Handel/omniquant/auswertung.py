@@ -17,6 +17,7 @@ Aufruf:
 import argparse
 import os
 import sys
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
@@ -101,8 +102,9 @@ def _kosten(pfad=WACHEN):
     return (w.get("slippage_pct", 0.15) + w.get("gebuehr_pct", 0.1)) / 100.0
 
 
-def lade_ausstiege(pfad=JOURNAL):
-    return b.lade_zeilen(pfad, ACTIONEN, extra=EXTRA, name="inst")
+def lade_ausstiege(pfad=JOURNAL, von=None, bis=None):
+    return b.lade_zeilen(pfad, ACTIONEN, extra=EXTRA, name="inst",
+                        von=von, bis=bis)
 
 
 def kennzahlen(aus, k):
@@ -136,6 +138,38 @@ def kernzeilen(pfad=JOURNAL, kosten=None, max_hinweise=2):
     k = _kosten() if kosten is None else kosten
     return b.kernzeilen(lade_ausstiege(pfad), k, min_ausstiege=MIN_AUSSTIEGE,
                         baender=BAENDER, max_hinweise=max_hinweise)
+
+
+def kennzahlen_kurz(von=None, bis=None):
+    """Die Mindestform fuer die Gesamtbilanz - vier Zahlen und ein Merker.
+
+    Angelegt, damit gesamtbilanz.py die fuenf Spuren mit eigener Auswertung
+    addieren kann, ohne fuenf Sonderfaelle zu kennen. Die RECHNUNG ist
+    unveraendert die dieses Moduls - hier steht nur die Uebergabe.
+    `gv_usd` heisst hier `ergebnis`, weil auswertung_alle.kennzahlen() das
+    Feld so nennt und die Bilanz nur EINEN Namen kennen soll.
+
+    None heisst: diese Spur hat nichts auszusagen (kein Buch, keine
+    geschlossenen Ausstiege).
+    """
+    import json
+
+    k = kennzahlen(lade_ausstiege(von=von, bis=bis), _kosten())
+    if not k.get("n"):
+        return None
+    live = False
+    try:
+        live = bool(json.loads(
+            Path(WACHEN).read_text("utf-8")).get("handel_erlaubt"))
+    except (OSError, ValueError, TypeError):
+        # Keine wachen.json, kaputtes JSON: dann gilt Papier. Eine Spur
+        # faelschlich als Live zu zaehlen waere der teurere Irrtum.
+        live = False
+    return {"n": k["n"],
+            "ergebnis": k["gv_usd"],
+            "treffer": k["treffer"],
+            "waehrung": "USD",
+            "live": live}
 
 
 def main():
