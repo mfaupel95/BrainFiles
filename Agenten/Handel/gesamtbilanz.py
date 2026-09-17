@@ -66,7 +66,14 @@ def _live(spur):
 
 
 def posten(von=None, bis=None):
-    """Alle Buecher als flache Liste gleichgeformter Posten."""
+    """Alle Buecher als flache Liste gleichgeformter Posten.
+
+    Jeder Posten traegt zusaetzlich "belastbar" - das Urteil aus
+    auswertung_alle.belastbar(), an EINER Stelle gefaellt (dieselbe
+    Schwelle wie ueberall sonst, MIN_RUNDEN). Ein Posten mit zu wenigen
+    Runden bleibt in der Liste - er wird nur nicht mitsummiert (siehe
+    summe()) und im Bericht gesondert ausgewiesen, statt zu verschwinden.
+    """
     aus = []
     for spur in auswertung_alle.SPUREN:
         if spur in EIGENE:
@@ -77,7 +84,8 @@ def posten(von=None, bis=None):
         aus.append({"spur": spur, "n": k["n"], "ergebnis": k["ergebnis"],
                     "treffer": k["treffer"],
                     "waehrung": "EUR" if spur == "kraken" else "USD",
-                    "live": _live(spur)})
+                    "live": _live(spur),
+                    "belastbar": auswertung_alle.belastbar(k)})
     for spur in EIGENE:
         try:
             m = _lade_eigene(spur)
@@ -88,7 +96,7 @@ def posten(von=None, bis=None):
             print("  %s: Auswertung ausgefallen (%s)" % (spur, e))
             continue
         if k:
-            k = dict(k, spur=spur)
+            k = dict(k, spur=spur, belastbar=auswertung_alle.belastbar(k))
             aus.append(k)
     return aus
 
@@ -99,9 +107,15 @@ def summe(posten_):
     Der Schluessel ist bewusst ein Paar. Es gibt keinen Schluessel, der
     alles zusammenwirft - eine solche Zahl waere ohne Einheit und ohne
     Bedeutung.
+
+    Nur belastbare Posten zaehlen mit (Feld "belastbar" je Posten). Eine
+    Spur mit zu wenigen Runden ist keine Aussage und wuerde sonst die
+    stille Falschzahl erzeugen, gegen die belastbar() geschrieben ist.
     """
     s = {}
     for p in posten_:
+        if not p.get("belastbar"):
+            continue
         schluessel = (p["waehrung"], bool(p["live"]))
         t = s.setdefault(schluessel, {"n": 0, "ergebnis": 0.0, "treffer": 0})
         t["n"] += p["n"]
@@ -126,12 +140,19 @@ def zeilen_text(s):
 
 def bericht(von=None, bis=None):
     p = posten(von, bis)
+    unbelastbar = [x for x in p if not x.get("belastbar")]
     t = ["=== Gesamtbilanz ==="]
     if von or bis:
         t.append("Fenster: %s bis %s"
                  % (von.date() if von else "Anfang",
                     bis.date() if bis else "heute"))
     t.append(zeilen_text(summe(p)))
+    if unbelastbar:
+        t.append("")
+        t.append("  Nicht belastbar (zu wenige Runden, zaehlen nicht in "
+                 "der Summe):")
+        for x in unbelastbar:
+            t.append("    %-16s %4d Runden" % (x["spur"], x["n"]))
     t.append("")
     t.append("  Papier und Live werden nicht verrechnet, Waehrungen nicht "
              "gemischt.")

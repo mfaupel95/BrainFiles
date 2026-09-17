@@ -8,6 +8,7 @@ verrechnet. Beides steht hier als Test.
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 HIER = Path(__file__).resolve().parent
 sys.path.insert(0, str(HIER.parent))
@@ -16,12 +17,26 @@ import gesamtbilanz as gb                                      # noqa: E402
 
 POSTEN = [
     {"spur": "scanner", "n": 10, "ergebnis": 100.0, "treffer": 6,
-     "waehrung": "USD", "live": True},
+     "waehrung": "USD", "live": True, "belastbar": True},
     {"spur": "swap", "n": 8, "ergebnis": -20.0, "treffer": 3,
-     "waehrung": "USD", "live": False},
+     "waehrung": "USD", "live": False, "belastbar": True},
     {"spur": "kraken", "n": 12, "ergebnis": 50.0, "treffer": 7,
-     "waehrung": "EUR", "live": False},
+     "waehrung": "EUR", "live": False, "belastbar": True},
 ]
+
+
+def _kennzahlen_fuer_stub(spur, von=None, bis=None):
+    """Ersetzt auswertung_alle.kennzahlen_fuer() fuer die posten()-Tests.
+
+    Bildet genau die drei Faelle ab, um die es geht: kein Buch mit
+    geschlossener Runde (None), zu wenige Runden (unter MIN_RUNDEN=8), und
+    eine belastbare Spur.
+    """
+    return {
+        "keinrunde": None,
+        "wenig": {"n": 3, "ergebnis": -5.0, "treffer": 1},
+        "reichlich": {"n": 10, "ergebnis": 25.0, "treffer": 6},
+    }.get(spur)
 
 
 class TestSumme(unittest.TestCase):
@@ -68,6 +83,57 @@ class TestBerichtstext(unittest.TestCase):
         # 100 - 20 + 50 = 130 waere die verbotene Zahl.
         t = gb.zeilen_text(gb.summe(POSTEN))
         self.assertNotIn("130", t)
+
+
+class TestSummeSchwelle(unittest.TestCase):
+    """Ein Posten mit zu wenigen Runden darf die Summe nicht erreichen -
+    genau die stille Falschzahl, gegen die belastbar() geschrieben ist."""
+
+    def test_nicht_belastbarer_posten_zaehlt_nicht_mit(self):
+        posten_ = POSTEN + [
+            {"spur": "wenig", "n": 2, "ergebnis": 999.0, "treffer": 2,
+             "waehrung": "USD", "live": False, "belastbar": False},
+        ]
+        s = gb.summe(posten_)
+        self.assertNotIn(999.0, [t["ergebnis"] for t in s.values()])
+        self.assertEqual(s[("USD", False)]["ergebnis"], -20.0)
+
+
+class TestPosten(unittest.TestCase):
+    """posten() selbst treffen, nicht nur eine von Hand gebaute Liste
+    fuettern - siehe Modul-Docstring: das ist die gefaehrlichste
+    Fehlerquelle dieses Umbaus."""
+
+    def _mit_stub(self, spuren):
+        return patch.multiple(
+            gb,
+            EIGENE=(),  # die fuenf eigenen Module bleiben hier aussen vor
+        ), patch.object(gb.auswertung_alle, "SPUREN", spuren), \
+            patch.object(gb.auswertung_alle, "kennzahlen_fuer",
+                         side_effect=_kennzahlen_fuer_stub)
+
+    def test_spur_ohne_geschlossene_runde_fehlt_ganz(self):
+        m1, m2, m3 = self._mit_stub(("keinrunde",))
+        with m1, m2, m3:
+            p = gb.posten()
+        self.assertEqual(p, [])
+
+    def test_spur_unter_der_schwelle_bleibt_drin_aber_nicht_belastbar(self):
+        m1, m2, m3 = self._mit_stub(("wenig",))
+        with m1, m2, m3:
+            p = gb.posten()
+        self.assertEqual(len(p), 1)
+        self.assertEqual(p[0]["spur"], "wenig")
+        self.assertEqual(p[0]["n"], 3)
+        self.assertFalse(p[0]["belastbar"])
+
+    def test_belastbare_spur_kommt_mit_belastbar_true(self):
+        m1, m2, m3 = self._mit_stub(("reichlich",))
+        with m1, m2, m3:
+            p = gb.posten()
+        self.assertEqual(len(p), 1)
+        self.assertEqual(p[0]["spur"], "reichlich")
+        self.assertTrue(p[0]["belastbar"])
 
 
 if __name__ == "__main__":
