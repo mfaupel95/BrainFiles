@@ -154,6 +154,22 @@ def lage_der_spur(spur, k):
     return "belastbar"
 
 
+def anzeige_fuer(spur, k):
+    """Der Text der Lage-Spalte in der Uebersicht - eine von vier
+    Kategorien, an genau dieser Stelle entschieden.
+
+    lage_der_spur() kennt nur drei: sie geht von einem Journal aus. Die
+    vierte - ein vorhandenes Buch ganz ohne geschlossene Runde (`k is
+    None`) - liegt zwischen "kein Buch" und "zu wenige Runden" und braucht
+    einen eigenen Text, sonst sieht sie wie "kein Buch" aus.
+    """
+    if not hat_buch(spur):
+        return "kein Buch"
+    if k is None:
+        return "keine geschlossene Runde"
+    return lage_der_spur(spur, k)
+
+
 def prozent(x, stellen=2):
     """Eine Zahl mit Vorzeichen, oder n/a. Kein Lambda: die Verkettung
     'Pattern bauen' + 'formatieren' hat hier still den Rohling ausgegeben."""
@@ -485,21 +501,19 @@ def main():
           % ("Spur", "Runden", "Treffer", "Ergebnis", "Treffer %", "Lage"))
     ohne_buch = []
     for spur, k in zahlen.items():
-        lage = lage_der_spur(spur, k)
-        if lage == "kein Buch":
+        anzeige = anzeige_fuer(spur, k)
+        if anzeige == "kein Buch":
             ohne_buch.append(spur)
             print("  %-10s %6s %8s %10s %8s  kein Buch"
                   % (spur, "-", "-", "-", "-"))
             continue
-        if k is None:
-            # Buch vorhanden, aber keine geschlossene Runde darin. Das ist
-            # ein dritter Zustand und darf nicht wie "kein Buch" aussehen.
+        if anzeige == "keine geschlossene Runde":
             print("  %-10s %6d %8s %10s %8s  keine geschlossene Runde"
                   % (spur, 0, "-", "-", "-"))
             continue
         print("  %-10s %6d %8d %10.2f %7.0f %%  %s"
               % (spur, k["n"], k["treffer"], k["ergebnis"],
-                 k["treffer_pct"], lage))
+                 k["treffer_pct"], anzeige))
     if ohne_buch:
         print("\n  KEIN BUCH - diese Spuren schreiben kein Journal:")
         for spur in ohne_buch:

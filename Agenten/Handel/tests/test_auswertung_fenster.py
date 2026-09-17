@@ -121,5 +121,49 @@ class TestLage(unittest.TestCase):
         self.assertIsNotNone(aa.buch_seit("supertrend"))
 
 
+class TestAnzeigeFuer(unittest.TestCase):
+    """Vier Zustaende, eine Entscheidung - anzeige_fuer() ist die einzige
+    Heimat des Anzeigetexts, den die Uebersicht heute noch im Druckblock
+    selbst entschied."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.wurzel = Path(self.tmp.name)
+        # kein Buch: kein Ordner noetig, hat_buch() prueft nur die Datei.
+        # keine geschlossene Runde: ein Journal mit nur dem Kopf.
+        (self.wurzel / "leer").mkdir()
+        (self.wurzel / "leer" / "handelsjournal.csv").write_text(
+            KOPF, encoding="utf-8")
+        # zu wenige Runden / belastbar: dieselbe Spur, unterschiedliches k.
+        (self.wurzel / "squeeze").mkdir()
+        (self.wurzel / "squeeze" / "handelsjournal.csv").write_text(
+            JOURNAL, encoding="utf-8")
+        self._alt = aa.HIER
+        aa.HIER = self.wurzel
+
+    def tearDown(self):
+        aa.HIER = self._alt
+        self.tmp.cleanup()
+
+    def test_kein_buch(self):
+        self.assertEqual(aa.anzeige_fuer("supertrend", None), "kein Buch")
+
+    def test_keine_geschlossene_runde(self):
+        k = aa.kennzahlen_fuer("leer")
+        self.assertIsNone(k)
+        self.assertEqual(aa.anzeige_fuer("leer", k),
+                          "keine geschlossene Runde")
+
+    def test_zu_wenige_runden(self):
+        k = aa.kennzahlen_fuer("squeeze")
+        self.assertEqual(aa.anzeige_fuer("squeeze", k), "zu wenige Runden")
+
+    def test_belastbar(self):
+        k = aa.kennzahlen(
+            [{"ergebnis": 1.0, "einsatz": 100.0, "grund": "ziel"}]
+            * aa.MIN_RUNDEN, "USD")
+        self.assertEqual(aa.anzeige_fuer("squeeze", k), "belastbar")
+
+
 if __name__ == "__main__":
     unittest.main()
