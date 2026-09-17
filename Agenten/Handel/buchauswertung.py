@@ -33,6 +33,8 @@ import csv
 import os
 import statistics
 
+import zeitfenster
+
 MIN_AUSSTIEGE = 8
 MIN_JE_GRUPPE = 5
 
@@ -85,7 +87,8 @@ def brutto_pct(netto_pct, kauf, verkauf=None):
     return ((1.0 + netto_pct / 100.0) * kauf / verkauf - 1.0) * 100.0
 
 
-def lade_zeilen(pfad, aktionen, extra=(), mit_kosten=False, name=None):
+def lade_zeilen(pfad, aktionen, extra=(), mit_kosten=False, name=None,
+                 von=None, bis=None):
     """Journal-Zeilen einer Aktion laden, Zahlen geparst.
 
     aktionen: Menge zulaessiger Aktionsnamen (Kleinschreibung wird
@@ -97,6 +100,9 @@ def lade_zeilen(pfad, aktionen, extra=(), mit_kosten=False, name=None):
     stehen (spiegel schreibt sie mit; sonst gilt der Satz der Spur).
 
     name: Spalten, aus denen der Instrumentname kommt (erste gefundene).
+
+    von/bis: Zeitfenster ueber die Spalte `zeit`. Vorgabe None/None heisst
+    alles - ein Aufruf ohne Fenster liest dasselbe wie vorher.
     """
     if not os.path.exists(pfad):
         return []
@@ -104,6 +110,8 @@ def lade_zeilen(pfad, aktionen, extra=(), mit_kosten=False, name=None):
     aus = []
     with open(pfad, newline="", encoding="utf-8") as f:
         for zeile in csv.DictReader(f):
+            if not zeitfenster.im_fenster(zeile, von, bis):
+                continue
             if (zeile.get("aktion") or "").strip().lower() not in akt:
                 continue
             einsatz = zahl(zeile.get("einsatz_usd"))

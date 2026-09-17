@@ -15,10 +15,12 @@ Lauf:
 """
 
 import csv
+import datetime as dt
 import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
@@ -178,6 +180,34 @@ class KernzeilenTest(unittest.TestCase):
         self.assertIn("1 Ausstiege", z)
         self.assertIn("nach Kosten", z)
         self.assertIn("davor", z)
+
+
+class TestLadeZeilenFenster(unittest.TestCase):
+    """Das Fenster in der gemeinsamen Mechanik der Papierbuecher."""
+
+    KOPF = "zeit,aktion,einsatz_usd,wert_usd\n"
+    ZEILEN = (
+        "2026-08-01T10:00:00+00:00,verkauf,100,110\n"
+        "2026-09-10T10:00:00+00:00,verkauf,100,90\n"
+    )
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.pfad = Path(self.tmp.name) / "handelsjournal.csv"
+        self.pfad.write_text(self.KOPF + self.ZEILEN, encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_ohne_fenster_alle(self):
+        aus = b.lade_zeilen(str(self.pfad), ("verkauf",))
+        self.assertEqual(len(aus), 2)
+
+    def test_mit_fenster_geschnitten(self):
+        von = dt.datetime(2026, 9, 1, tzinfo=dt.timezone.utc)
+        aus = b.lade_zeilen(str(self.pfad), ("verkauf",), von=von)
+        self.assertEqual(len(aus), 1)
+        self.assertEqual(aus[0]["wert"], 90.0)
 
 
 if __name__ == "__main__":
