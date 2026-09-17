@@ -156,6 +156,25 @@ def kernzeilen(pfad=JOURNAL, kosten=None, max_hinweise=2):
                         baender=BAENDER, max_hinweise=max_hinweise)
 
 
+def _live():
+    """Steht `handel_erlaubt` in der wachen.json auf true? Wirft nie.
+
+    Eigene Funktion, damit der Merker pruefbar ist, ohne ein Journal
+    aufzubauen: kennzahlen_kurz() kommt hier nur mit geschlossenen Runden
+    ueberhaupt vorbei. Jeder Fehlschlag gilt als Papier - eine Spur
+    faelschlich als Live zu zaehlen waere der teurere Irrtum. Deshalb auch
+    `isinstance`: gueltiges JSON, das kein Objekt ist (`[]`, `42`, `null`),
+    hat kein .get().
+    """
+    try:
+        inhalt = json.loads(Path(WACHEN).read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(inhalt, dict):
+        return False
+    return bool(inhalt.get("handel_erlaubt"))
+
+
 def kennzahlen_kurz(von=None, bis=None):
     """Die Mindestform fuer die Gesamtbilanz - vier Zahlen und ein Merker.
 
@@ -168,19 +187,10 @@ def kennzahlen_kurz(von=None, bis=None):
     None heisst: diese Spur hat nichts auszusagen (kein Buch, keine
     geschlossenen Ausstiege).
     """
-    import json
-
     k = kennzahlen(lade_ausstiege(von=von, bis=bis), _kosten())
     if not k.get("n"):
         return None
-    live = False
-    try:
-        live = bool(json.loads(
-            Path(WACHEN).read_text("utf-8")).get("handel_erlaubt"))
-    except (OSError, ValueError, TypeError):
-        # Keine wachen.json, kaputtes JSON: dann gilt Papier. Eine Spur
-        # faelschlich als Live zu zaehlen waere der teurere Irrtum.
-        live = False
+    live = _live()
     return {"n": k["n"],
             "ergebnis": k["gv_usd"],
             "treffer": k["treffer"],

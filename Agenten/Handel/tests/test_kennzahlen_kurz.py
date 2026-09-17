@@ -6,7 +6,10 @@ kann, ohne fuenf Sonderfaelle zu kennen.
 """
 
 import importlib.util
+import os
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -65,6 +68,50 @@ class TestMindestform(unittest.TestCase):
         for spur in SPUREN:
             with self.subTest(spur=spur):
                 self.assertIsNone(lade(spur).kennzahlen_kurz(von=kuenftig))
+
+
+class TestLiveMerker(unittest.TestCase):
+    """_live() darf nie werfen - der Merker entscheidet mit, ob eine Zahl
+    als echtes Geld gilt. Ein Wurf hier nimmt die ganze Spur aus der
+    Gesamtbilanz, wegen einer Datei, die nur informativ ist."""
+
+    def setUp(self):
+        self.ordner = tempfile.mkdtemp()
+        self.datei = os.path.join(self.ordner, "wachen.json")
+        self.alt = {}
+
+    def tearDown(self):
+        for spur, wert in self.alt.items():
+            lade(spur).WACHEN = wert
+        shutil.rmtree(self.ordner, ignore_errors=True)
+
+    def _merker(self, spur, inhalt):
+        """Setzt WACHEN der Spur auf eine eigene Datei und liest _live()."""
+        m = lade(spur)
+        if spur not in self.alt:
+            self.alt[spur] = m.WACHEN
+        if inhalt is None:
+            if os.path.exists(self.datei):
+                os.remove(self.datei)
+        else:
+            with open(self.datei, "w", encoding="utf-8") as f:
+                f.write(inhalt)
+        m.WACHEN = self.datei
+        return m._live()
+
+    def test_papier_bei_jedem_fehlschlag(self):
+        # None heisst: Datei fehlt ganz.
+        for inhalt in (None, "kein JSON {", "[]", "42", "null", '"x"', "{}",
+                       '{"handel_erlaubt": false}'):
+            for spur in SPUREN:
+                with self.subTest(spur=spur, inhalt=inhalt):
+                    self.assertFalse(self._merker(spur, inhalt))
+
+    def test_true_wird_erkannt(self):
+        for spur in SPUREN:
+            with self.subTest(spur=spur):
+                self.assertTrue(
+                    self._merker(spur, '{"handel_erlaubt": true}'))
 
 
 if __name__ == "__main__":
