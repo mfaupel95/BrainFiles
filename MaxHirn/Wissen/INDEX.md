@@ -115,3 +115,6 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 - `20260830-pdf-scans-lesen` — **Gescannte PDFs lesen** — `Wissen/PDF-Scans-lesen.md` — Wie PDFs ohne Textebene per OCR auswertbar gemacht werden.
 - `20260902-skill-bibliothek` — **Skill-Bibliothek** — `Wissen/Skill-Bibliothek.md` — Eigene Skills liegen serverseitig im Konto; der Ordner unter AppData ist nur ein Sync-Cache ohne Git und ohne Sicherung.
+- `20260917-task-observer-metaskill` — **Task-Observer — Meta-Skill zur Skill-Selbstverbesserung** — `Wissen/Task-Observer-Metaskill.md` — Bewertung des fremden Claude-Meta-Skills „One Skill to Rule Them All" (rebelytics, CC BY 4.0): Funktionsweise, Claude-spezifische Abhängigkeiten, Token-Kosten gegen die Skill-Ausmist-Linie, Entscheidung offen.
+- `20260917-externe-api-referenz` — **Externe API-Referenz (public-apis-Liste)** — `Wissen/Externe-API-Referenz-2026-09-17.md` — Angehängte public-apis-README als Nachschlagewerk erfasst; Standouts mit Bezug zu laufenden Handelsspuren (DefiLlama, Hyperliquid Market Data, PumpFunData, Messari, FRED).
+- `20260917-beobachtungslog` — **Beobachtungslog** — `Wissen/Beobachtungen/README.md` — Verzeichnis mit einer Markdown-Datei je beobachtetem Skill-Verbesserungsbedarf, gepflegt vom Skill `beobachtungslog` (schlanker Eigenbau statt des fremden Task-Observer-Meta-Skills).
