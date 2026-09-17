@@ -501,15 +501,19 @@ def main():
           % ("Spur", "Runden", "Treffer", "Ergebnis", "Treffer %", "Lage"))
     ohne_buch = []
     for spur, k in zahlen.items():
+        # Der Text kommt immer aus anzeige_fuer(); hier wird nur die
+        # Zeilenform gewaehlt. Ein Vergleich auf den Text waere eine
+        # zweite Heimat der Entscheidung - ein Umbenennen wuerde still
+        # den Ablauf verbiegen.
         anzeige = anzeige_fuer(spur, k)
-        if anzeige == "kein Buch":
+        if not hat_buch(spur):
             ohne_buch.append(spur)
-            print("  %-10s %6s %8s %10s %8s  kein Buch"
-                  % (spur, "-", "-", "-", "-"))
+            print("  %-10s %6s %8s %10s %8s  %s"
+                  % (spur, "-", "-", "-", "-", anzeige))
             continue
-        if anzeige == "keine geschlossene Runde":
-            print("  %-10s %6d %8s %10s %8s  keine geschlossene Runde"
-                  % (spur, 0, "-", "-", "-"))
+        if k is None:
+            print("  %-10s %6d %8s %10s %8s  %s"
+                  % (spur, 0, "-", "-", "-", anzeige))
             continue
         print("  %-10s %6d %8d %10.2f %7.0f %%  %s"
               % (spur, k["n"], k["treffer"], k["ergebnis"],
