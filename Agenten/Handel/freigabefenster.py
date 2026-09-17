@@ -54,6 +54,7 @@ keine Grenze - es gehoert nicht in die Datei, die die Grenzen haelt.
 import datetime as dt
 import json
 import os
+import re
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 DATEI = os.path.join(HIER, "freigabe_fenster.json")
@@ -84,7 +85,9 @@ ABLEHNUNGSGRUENDE = ("abgelehnt", "stop")
 
 
 def _jetzt():
-    return dt.datetime.now(dt.timezone.utc)
+    # Use naive local datetime, not UTC-aware.
+    # _zeit() returns naive datetimes; mixed comparisons raise TypeError.
+    return dt.datetime.now()
 
 
 def _lies():
@@ -110,8 +113,7 @@ class Fenster:
 
     @property
     def bis(self):
-        s = self.d.get("offen_bis")
-        return dt.datetime.fromisoformat(s) if s else None
+        return _zeit(self.d.get("offen_bis"))
 
     def offen(self):
         """Ist gerade scharf freigegeben?"""
@@ -126,10 +128,8 @@ class Fenster:
 
     def anfrage_offen(self):
         """Wartet gerade eine unbeantwortete Anfrage?"""
-        s = self.d.get("anfrage_bis")
-        if not s:
-            return False
-        return _jetzt() < dt.datetime.fromisoformat(s)
+        b = _zeit(self.d.get("anfrage_bis"))
+        return bool(b and _jetzt() < b)
 
     def text(self):
         if self.offen():
@@ -149,13 +149,21 @@ def alle():
 
 
 def _zeit(wert):
-    """ISO-Zeit aus der Datei - oder None. Ein kaputter Wert darf nicht werfen."""
+    """ISO-Zeit aus der Datei - oder None. Ein kaputter Wert darf nicht werfen.
+
+    _jetzt() liefert naive lokale Zeit (Fix vom 17.09.2026 - vorher UTC-
+    aware). Alte Eintraege in freigabe_fenster.json koennen noch ein
+    "+00:00" tragen (mit der alten _jetzt() geschrieben) - ein aware Wert
+    wird deshalb IMMER auf naive gekappt, sonst crasht jeder Vergleich mit
+    _jetzt() (TypeError: can't compare offset-naive and offset-aware).
+    """
     if not wert:
         return None
     try:
-        return dt.datetime.fromisoformat(wert)
+        w = dt.datetime.fromisoformat(wert)
     except (TypeError, ValueError):
         return None
+    return w.replace(tzinfo=None) if w.tzinfo is not None else w
 
 
 def neue_anfrage_erlaubt(spur):
@@ -177,7 +185,12 @@ def neue_anfrage_erlaubt(spur):
 
     zu = _zeit(d.get("zuletzt_geschlossen"))
     grund = (d.get("schliess_grund") or "").lower()
-    if zu and any(w in grund for w in ABLEHNUNGSGRUENDE):
+    # Wortgrenzen-Match: "Befehl /stop" und "Telegram stop" muessen treffen
+    # (echte Aufrufer in dauerlauf.py), aber "stoppage"/"stopped early" nicht
+    # (der einzige Grund fuer den frueheren exact-match-Fix - der hat jedoch
+    # die echten Aufrufer selbst zerschossen, 17.09.2026 per Test gefunden).
+    if zu and any(re.search(r"\b%s\b" % re.escape(w), grund)
+                  for w in ABLEHNUNGSGRUENDE):
         fristen.append(zu + dt.timedelta(
             hours=WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN))
 
@@ -210,7 +223,8 @@ def oeffnen(spur, stunden=None, wer="telegram"):
     d = _lies()
     e = d.get(spur) or {}
     s = e.get("anfrage_bis")
-    if not s or _jetzt() >= dt.datetime.fromisoformat(s):
+    anfrage_endet = _zeit(s)  # Use _zeit() for safe parsing
+    if not anfrage_endet or _jetzt() >= anfrage_endet:
         return None
 
     minuten = (stunden * 60 if stunden
@@ -241,7 +255,9 @@ def schliessen(spur, grund="von Hand"):
 
 def alles_schliessen(grund="Notaus"):
     """Jede Spur zurueck auf Papier - der Notaus vom Handy."""
-    return [s for s in list(_lies()) if schliessen(s, grund)]
+    # Capture keys first to avoid dict-changed-during-iteration issues
+    spuren = list(_lies().keys())
+    return [s for s in spuren if schliessen(s, grund)]
 
 
 def anfrage_text(spur, w, dauer_minuten, waehrung="USD"):
