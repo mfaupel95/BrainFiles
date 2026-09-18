@@ -56,5 +56,44 @@ class BuchlageTest(unittest.TestCase):
         self.assertIn("Journal unlesbar", ergebnis[0]["fehler"])
 
 
+class MitXperpSchalterTest(unittest.TestCase):
+    """Befund 18.09.2026: mit_xperp=False sollte den teuren Xperp-Holer
+    (Netzabfrage bei OKX) auslassen, wurde im Rumpf aber nie ausgewertet."""
+
+    def test_ohne_xperp_wird_der_xperp_holer_nicht_aufgerufen(self):
+        rufe = []
+
+        def fake_xperp():
+            rufe.append("xperp")
+            return {"name": "Spur 2  XPERP", "waehrung": "USD", "w": {},
+                    "positionen": [], "ordner": "irrelevant"}
+        fake_xperp.__name__ = "spur_xperp_positionen"
+
+        def fake_andere():
+            rufe.append("andere")
+            return {"name": "Andere", "waehrung": "USD", "w": {},
+                    "positionen": [], "ordner": "irrelevant"}
+        fake_andere.__name__ = "spur_andere"
+
+        ergebnis = lage.erhebe(mit_xperp=False,
+                               holer=(fake_xperp, fake_andere))
+        self.assertNotIn("xperp", rufe)
+        self.assertEqual(len(ergebnis), 1)
+        self.assertEqual(ergebnis[0]["name"], "Andere")
+
+    def test_mit_xperp_wird_der_xperp_holer_aufgerufen(self):
+        rufe = []
+
+        def fake_xperp():
+            rufe.append("xperp")
+            return {"name": "Spur 2  XPERP", "waehrung": "USD", "w": {},
+                    "positionen": [], "ordner": "irrelevant"}
+        fake_xperp.__name__ = "spur_xperp_positionen"
+
+        ergebnis = lage.erhebe(mit_xperp=True, holer=(fake_xperp,))
+        self.assertIn("xperp", rufe)
+        self.assertEqual(len(ergebnis), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

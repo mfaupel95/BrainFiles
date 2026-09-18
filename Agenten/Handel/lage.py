@@ -904,9 +904,19 @@ def _schluessel_von(roh):
 
 
 def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
-    """Alle Spuren in fester Form. Ein Ausfall kostet eine Spur, nicht den Lauf."""
+    """Alle Spuren in fester Form. Ein Ausfall kostet eine Spur, nicht den Lauf.
+
+    mit_xperp=False laesst den Xperp-Holer aus - der ruft fuer jede offene
+    Position einen Live-Kurs bei OKX ab (Netzabfrage), was Aufrufer wie
+    dauerlauf.py und wochenbericht.py sich ausdruecklich sparen wollen.
+    """
     aus = []
-    for hole in (holer if holer is not None else HOLER):
+    quellen = holer if holer is not None else HOLER
+    if not mit_xperp:
+        quellen = tuple(h for h in quellen
+                        if getattr(h, "__name__", None)
+                        != "spur_xperp_positionen")
+    for hole in quellen:
         try:
             roh = hole()
         except Exception as e:                           # noqa: BLE001
