@@ -2069,6 +2069,12 @@ kanban:
 code_execution:
   max_tool_calls: 50
   timeout: 300
+gateway:
+  platforms:
+    telegram:
+      enabled: false
+    photon:
+      enabled: false
 streaming:
   enabled: false
 sessions:

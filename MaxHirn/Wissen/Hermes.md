@@ -869,4 +869,42 @@ Umgebungsvariablen, Hermes-Coding auf Opus 5.
 Sicherungen: `.sicherung/config.yaml.bak-20260914`,
 `.sicherung/appdata-config.yaml.bak-20260914`.
 
+## Telegram: ein Eigentuemer statt drei (18.09.2026)
+
+Drei Gateways wollten dasselbe Telegram-Token: der Standard-Gateway (VBS,
+Port 9900), das Profil `projectatlas` und das Profil
+`awesome-systematic-trading`. Jedes Profil erbt die geteilte Telegram-/
+Photon-Credential aus seiner `.env`, und ohne ausdrueckliche `enabled`-Zeile
+gibt Hermes die Plattform automatisch frei. Wer zuerst startet, gewinnt; die
+anderen loggen `token already in use` und laufen ohne Telegram.
+
+Festgelegt: **Telegram gehoert dem Standard-Gateway.** In beiden Profil-Configs
+steht jetzt ausdruecklich:
+
+    gateway:
+      platforms:
+        telegram:
+          enabled: false
+        photon:
+          enabled: false
+
+Beleg: projectatlas `02:01:17 Platform telegram is explicitly disabled by
+platforms.telegram.enabled: false in config.yaml` und `Gateway running with 1
+platform(s)`; awesome-systematic-trading `02:16:57 No messaging platforms
+enabled.` - der Standard-Gateway haelt den Token: `02:10:42 telegram
+connected`, `Gateway running with 4 platform(s)` (a2a, webhook, telegram,
+photon).
+
+Nebenbefund: Das Web-Dashboard (Port 9119) schreibt Plattform-Aenderungen und
+loest damit Gateway-Neustarts aus (`hermes_cli.web_server: Messaging platform
+updated: platform=telegram profile=current enabled=False/True`, 18.09.
+01:49:12/13). Ein offener Tab auf der Messaging-Seite ist eine Neustart-Quelle.
+
+Der Gateway-Waechter prueft jetzt ausdruecklich auf ein Gateway OHNE
+`--profile` (sonst haelt ein Profil-Gateway ihn faelschlich fuer den Standard).
+
+Sicherungen: `.sicherung/projectatlas-config.yaml.bak-20260918`,
+`.sicherung/awesome-systematic-trading-config.yaml.bak-20260918`,
+`Routinen/gateway-waechter.ps1.bak-20260918`.
+
 Verwandt: [[OmniRoute-Produktion]] · [[Verbindungen]]

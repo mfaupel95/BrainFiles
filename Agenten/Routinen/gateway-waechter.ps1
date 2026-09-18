@@ -24,7 +24,7 @@ $vbs = Join-Path (Split-Path $PSScriptRoot -Parent) 'Hermes\gateway-service\Herm
 $zeit = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
 
 $lebt = Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway' }
+        Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway' -and $_.CommandLine -notmatch '--profile' }
 if ($lebt) {
     Melde-Ende -Marke $marke -Code 0 -Text 'Gateway laeuft schon, kein Start'
     exit 0
