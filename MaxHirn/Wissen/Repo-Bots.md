@@ -3,7 +3,7 @@ id: 20260916-repo-bots
 title: 'Repo-Bots: Flottenstand und Telegram-Zugang'
 tags: [bots, telegram, repos]
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-18
 summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
 ---
 
@@ -79,11 +79,23 @@ Worktree-Sammlung zu den Schwester-Repos.
 - **Abgleich gegen die Platte, nicht gegen diese Liste.** Die Liste altert wie
   jede Doku; die Wahrheit ist `ls Agenten/Hermes/profiles/` (ein Bot je
   `config.yaml`). `/bots` im SkillsBot liest die Platte, nicht diese Notiz.
-- **Geteilte Credentials.** Alle Bots erben (wie die Altbestaende) die
-  Telegram-/Photon-Credential des Hauptprofils — `hermes profile list` warnt
-  davor. Solange die Bots ueber `/bot` angesprochen werden, ist das folgenlos;
-  fuer ein Multplex-Gateway muesste jeder Bot eine eigene Credential bekommen
-  oder die geteilte entfernt werden. Bewusst nicht angefasst.
+- **Kanal-Zugangsdaten liegen NUR im Profil `default`** (seit 18.09.2026).
+  Vorher trugen 17 Bot-Profile dieselbe Telegram- und Photon-Kennung wie das
+  Hauptprofil; `hermes profile list` warnte je Profil, und ein Bot-Gateway, das
+  auf demselben Token pollte, nahm dem Hauptgateway die Nachrichten weg (belegt:
+  `projectatlas` hatte am 18.09. um 01:18 Telegram-Sitzungen, obwohl das
+  Hauptgateway nur `default` bedient). Aufgeraeumt mit
+  `Agenten/Hermes/scripts/profil-kanaele-bereinigen.py`: ohne Argument nur
+  zeigen, mit `--anwenden` schreiben (je Profil erst `.env.bak-JJJJMMTT`).
+  Danach: `hermes profile list` ohne Warnung, Multiplex-Migration frei.
+  Gestrichen wurden **nur** `telegram` und `photon` — die geteilten
+  `A2A_*`- und `SMS_*`-Zeilen der Profile sind eine eigene Entscheidung.
+- **Ein Bot braucht eine EIGENE Modellkennung.** Profile sind Inseln: sie lesen
+  nur ihr eigenes `auth.json`/`.env`. Gemessen am 18.09.2026: `superpowers`
+  (Nous-Portal-Anmeldung im `auth.json`) antwortet ueber `/bot`, `basic-memory`
+  und `skills` antworten „not logged into Nous Portal“, 19 Profile haben gar
+  kein `auth.json`. Kanalzugangsdaten fehlen ihnen jetzt bewusst — der `/bot`-Weg
+  braucht keine.
 - **Neuer Bot = drei Ankerpunkte.** Profil anlegen (`--clone`), `terminal.cwd`
   setzen, `profile.yaml`-Beschreibung pflegen (der Kanban-Orchestrator sortiert
   danach). `/bots` zeigt beides von selbst.
