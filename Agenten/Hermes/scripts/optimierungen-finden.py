@@ -77,7 +77,10 @@ LOG_ALIAS = {"dca-pruefung": "dca"}
 # sich nur mit Admin-Rechten entfernen (siehe gateway-service\Hermes_Gateway.vbs,
 # Wissen\Routinen.md). Jede Woche dieselbe Zeile waere Rauschen - deshalb steht
 # er hier, statt gemeldet zu werden.
-KNOWN_LEICHEN = {"Hermes_Gateway"}
+# `MaxHirn-MoonDev-Agent` ebenso: die alte Einzelaufgabe wurde am 17.09.2026
+# ABSICHTLICH stillgelegt, ihr Nachfolger ist `MaxHirn-MoonDev-Dauerlauf`
+# (Treiber moondev_dauerlauf.py). Sie liegt nur noch als leiser Beleg herum.
+KNOWN_LEICHEN = {"Hermes_Gateway", "MaxHirn-MoonDev-Agent"}
 
 PS = r"""
 $t = @(Get-ScheduledTask -ErrorAction SilentlyContinue |
@@ -241,6 +244,26 @@ def main():
               if "MCP-Server" in (p.get("Cmd") or "") and p.get("Pp") not in lebende_ids]
     gesamt_mb = sum(int(p.get("Mb") or 0) for p in proz)
 
+    # --- E: die Cron-Automatik selbst (zweiter Zutritt) ------------------
+    # Ein Waechter darf nicht am selben Mechanismus haengen wie das, was er
+    # bewacht. Der Hermes-Cron `automatik-waechter` prueft genau diese Frage,
+    # laeuft aber IM Scheduler, den er prueft - faellt der Scheduler aus,
+    # schweigt er mit. Diese Windows-Aufgabe ruft dieselbe Pruefung auf, also
+    # meldet der Ausfall ueber den anderen Weg. Dieselbe Funktion, kein
+    # zweiter Nachbau (der wuerde nur seine eigene Formel pruefen).
+    cron_zahl = {}
+    try:
+        import importlib.util
+        _pfad = HIER.parent / "automatik-waechter.py"
+        _spec = importlib.util.spec_from_file_location("automatik_waechter", _pfad)
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        cron_befunde, cron_zahl = _mod.befunde_holen()
+        befunde.extend(cron_befunde)
+    except Exception as e:      # ein Befund darf nie die ganze Runde kosten
+        befunde.append("Cron-Automatik nicht pruefbar: %s: %s"
+                       % (type(e).__name__, e))
+
     zahlen = {
         "datum": datetime.now().strftime("%Y-%m-%d"),
         "gesamt_mb": gesamt_mb,
@@ -280,8 +303,10 @@ def main():
     if not befunde:
         if args.alles:
             print("Optimierungen finden: kein Befund. %d Aufgaben mit Protokoll "
-                  "nachgesehen, %d Python-Prozesse, %d MB, MCP-Waisen %d."
-                  % (nachgesehen, len(proz), gesamt_mb, len(waisen)))
+                  "nachgesehen, %d Python-Prozesse, %d MB, MCP-Waisen %d, "
+                  "Cron-Auftraege %d aktiv / %d geprueft."
+                  % (nachgesehen, len(proz), gesamt_mb, len(waisen),
+                     cron_zahl.get("aktiv", 0), cron_zahl.get("geprueft", 0)))
         return 0
 
     print("Optimierungen finden - Befund %s" % datetime.now().strftime("%d.%m.%Y"))
