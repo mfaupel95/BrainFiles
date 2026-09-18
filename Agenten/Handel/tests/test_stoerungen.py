@@ -337,7 +337,7 @@ class AnzeigeTest(unittest.TestCase):
 
     def test_tagesbericht_zeigt_beides(self):
         ns = {"t": [], "s": {"waehrung": "USD"}, "rueck": 12.5,
-              "lage": {"runden_gesamt": 23, "runden_papier": 23,
+              "lage_": {"runden_gesamt": 23, "runden_papier": 23,
                        "runden_echt": 11, "runden_papier_echt": 11,
                        "runden_stoerung": 12, "ruecklauf_usd": 12.5,
                        "groessenfaktor": 1.0}}
@@ -352,7 +352,7 @@ class AnzeigeTest(unittest.TestCase):
         get() mit Rueckfall, sonst waere der Bericht fuer die Spuren stumm,
         die noch nicht mitgezogen sind."""
         ns = {"t": [], "s": {"waehrung": "USD"}, "rueck": 1.0,
-              "lage": {"runden_gesamt": 9, "runden_papier": 9,
+              "lage_": {"runden_gesamt": 9, "runden_papier": 9,
                        "ruecklauf_eur": 1.0, "groessenfaktor": 1.0}}
         self.rendere("tagesbericht.py", "Handelsrunden %d (Papier", ns)
         self.assertIn("Handelsrunden 9", ns["t"][0])

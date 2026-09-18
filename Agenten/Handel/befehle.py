@@ -52,6 +52,7 @@ if HIER not in sys.path:
 
 import freigabefenster                                        # noqa: E402
 import tagesbericht as tb                                    # noqa: E402
+import lage as lg   # "lage" ist hier der Befehlsname            # noqa: E402
 
 DAUERLAUF = os.path.join(HIER, "dauerlauf.py")
 DAUERLAUF_LOG = os.path.join(HIER, "dauerlauf.log")
@@ -275,7 +276,7 @@ def lage():
 # --- Eine Spur in der Tiefe -------------------------------------------------
 
 def _holer_fuer(name):
-    """Die Lesefunktion EINER Spur aus `tagesbericht` - dieselbe wie im Bericht.
+    """Die Lesefunktion EINER Spur aus `lage.py` - dieselbe wie im Bericht.
 
     Nicht nachgebaut: eine zweite Lesefunktion wuerde die Zustandsformen
     (position/positionen, richtung/seite, EUR/USD) ein zweites Mal kennen
@@ -284,8 +285,8 @@ def _holer_fuer(name):
     if name == "xperp":
         # Die XPERP-Spur heisst im Bericht anders (sie zeigt die Rangliste,
         # ihre Positionen haengen an derselben Funktion).
-        return tb.spur_xperp_positionen
-    return getattr(tb, "spur_%s" % name, None)
+        return lg.spur_xperp_positionen
+    return getattr(lg, "spur_%s" % name, None)
 
 
 def _journal(spur):
