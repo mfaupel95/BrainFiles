@@ -316,6 +316,5 @@ class TestBeideWegeZaehlenGleich(unittest.TestCase):
         self.assertEqual(eins["n"], 2)
 
 
-
 if __name__ == "__main__":
     unittest.main()
