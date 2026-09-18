@@ -45,6 +45,21 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
 
+## Zweige (Stand 16.09.2026)
+
+- `master` ist der EINZIGE Arbeitszweig: hier wird committet, gepusht und
+  gemergt. Ein Zweig, der getrennt laeuft, kostet Ueberblick, ohne etwas zu
+  sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
+  geloescht (lokal und auf GitHub, Standardzweig ist wieder `master`).
+- `zwischenstand` ist keine Arbeit, sondern die automatische Nachtsicherung
+  der Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig). Nie dort
+  committen, nie anfassen; Aufraeumen, wenn er stoert:
+  `git update-ref -d refs/heads/zwischenstand` (Regeln in
+  MaxHirn/Wissen/Routinen.md).
+- Keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
+  zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
+  ist, sonst `git merge`) und loeschen.
+
 ## Portabilität
 
 Keine absoluten Pfade in Skills, Notizen oder Skripten. Was der Umzug auf eine
