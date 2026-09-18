@@ -50,3 +50,11 @@ Verdichten ist Teil der laufenden Arbeit, keine eigene Aufgabe und keine Rueckfr
   ist die Datei dann NICHT, sonst stuende sie nicht als `??` in `git status`.
 - `skills/brainfiles/handel-spuren/SKILL.md` ist am Groessenlimit (100.663/100.000 Zeichen):
   dort laesst sich nichts mehr ergaenzen, Belege gehoeren nach `references/` oder hierher.
+- 18.09.2026 Repo-Bots: die 27 Fremd-Repo-Bots teilen EINE hoeher liegende Regeldatei
+  (`Agenten\Hermes\profiles\rule_repo-bots.md`), jede `SOUL.md` ist repo-individuell.
+  Muster fuer eigene Dateien: Stil und Gemeinregeln EINMAL an einer Stelle, Einzelwissen
+  in der jeweiligen Datei - 27 wortgleiche Kopien sind reine Tokenlast.
+- 18.09.2026 Werkzeugfalle: das MCP-PowerShell-Werkzeug verschluckt bei mehreren
+  Here-Strings in EINEM Befehl still den Inhalt (0-Byte-Dateien, kein Fehler), und
+  `Get-FileHash` fehlt in dieser PowerShell - Pruefungen darauf sind wertlos. Eine Datei
+  je Aufruf schreiben, danach Groesse und Identitaetszeile pruefen.

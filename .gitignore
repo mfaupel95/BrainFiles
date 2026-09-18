@@ -402,6 +402,7 @@ Agenten/Hermes/**
 # eine spaetere Datei-Freigabe bleibt wirkungslos.
 !Agenten/Hermes/profiles/
 !Agenten/Hermes/profiles/*/
+!Agenten/Hermes/profiles/*.md
 # dann die Dateien
 !Agenten/Hermes/profiles/*/config.yaml
 !Agenten/Hermes/profiles/*/profile.yaml

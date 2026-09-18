@@ -120,4 +120,11 @@ Worktree-Sammlung zu den Schwester-Repos.
   setzen, `profile.yaml`-Beschreibung pflegen (der Kanban-Orchestrator sortiert
   danach). `/bots` zeigt beides von selbst.
 
+## Regeldatei und SOUL.md (18.09.2026)
+
+- **Eine Regeldatei fuer alle 27:** `Agenten\Hermes\profiles\rule_repo-bots.md`, eine Ebene hoeher als die Profilordner (Budget 6000 Zeichen). Sie traegt Stil und gemeinsame Betriebsregeln EINMAL; jede Sitzung liest sie zuerst und traegt Gelerntes dort ein.
+- **SOUL.md je Bot individuell:** Repo, Aufbau, Aufgaben und Grenzen des jeweiligen Fremd-Repos, dazu der Verweis auf die Regeldatei - statt 27 wortgleicher Stiltexte (3030 Zeichen, MD5 D5EC74ACD025B18710647B2651F4A085).
+- Alte Fassung gesichert: `profiles\.sicherung\SOUL-generisch-20260918.md`; Historie in Git.
+- Git-Freigabe der Regeldatei: `!Agenten/Hermes/profiles/*.md` - ohne diese Zeile greift die Sperre `Agenten/Hermes/**`. Pruefen: `git check-ignore -v`. 
+
 Verwandt: [[Agent-Reach]], [[Moon-Dev-Agenten]], [[Projektatlas]], [[Routinen]].
