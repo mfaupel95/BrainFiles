@@ -57,4 +57,6 @@ Verdichten ist Teil der laufenden Arbeit, keine eigene Aufgabe und keine Rueckfr
 - 18.09.2026 Werkzeugfalle: das MCP-PowerShell-Werkzeug verschluckt bei mehreren
   Here-Strings in EINEM Befehl still den Inhalt (0-Byte-Dateien, kein Fehler), und
   `Get-FileHash` fehlt in dieser PowerShell - Pruefungen darauf sind wertlos. Eine Datei
-  je Aufruf schreiben, danach Groesse und Identitaetszeile pruefen.
+  je Aufruf schreiben, danach Groesse und Identitaetszeile pruefen.- ProjectAtlas, Steuerzeichen (18.09.2026): Steuerzeichen in QUELLDATEIEN (NUL, ESC, Backspace in .md/.ts/.mjs) landen in der Graph-Identitaet (Signatur, Ueberschrift) und lassen die Projektion mit "identity text contains control characters" scheitern - der Atlas bleibt leer. Abhilfe je Datei: `projectatlas ignore add --kind path-prefix <pfad>` (nur dir-name und path-prefix, kein Datei-Kind). Finder: Agenten/Werkzeuge/projectatlas/steuerzeichen-finden.py. Behoben: caveman (5 Dateien), gbrain (7).
+- Grosse Repos: `init` laeuft aus dem Ruder (OmniRoute 12 min, 3,2 GB RAM, WAL stand still, kein Ergebnis) - nur per PID beenden, nie per Prozessname. Danach `reset-index --apply` (2,6 GB WAL weg) und die zurueckbleibende `repository-graph-stage.lock` von Hand loeschen.
+- MCP-Aufrufe brechen nach 300 s ab, das Kind laeuft weiter: lange Inits abgesetzt starten und den Stand im LOG lesen, nicht im Rueckgabewert. Vor dem ersten init die Ausschlussliste erweitern (.build fehlte bei OmniRoute).
