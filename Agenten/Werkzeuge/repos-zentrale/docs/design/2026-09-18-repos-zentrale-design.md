@@ -204,7 +204,7 @@ danach steht er im Manifest und das Repo wandert in die Gruppe STARTBAR.
   | Agent-Reach | `.venv\Scripts\agent-reach.exe doctor` | Code 0, Kanalbericht (5 von 16 Kanaelen nutzbar) |
   | moon-dev-ai-agents | `.venv\Scripts\pythonw.exe moongui.py` | MoonDev-GUI laeuft (Fenster „MoonDev-GUI") |
   | openmontage | `.venv\Scripts\python.exe -c … registry.provider_menu()` | Code 0, Werkzeugregister |
-  | ProjectAtlas | `target\release\projectatlas.exe --help` | Code 0, „ProjectAtlas 3 repository intelligence engine" (Bau: `cargo build --release`, 2 Min) |
+  | ProjectAtlas | `target\release\projectatlas.exe --help` | Code 0, „ProjectAtlas 3 repository intelligence engine" (Bau: `cargo build --release`, 2:46 Min) |
 - Gegenprobe „kein geratener Befehl": `tests/test_manifest_gegenprobe.py` prueft
   jeden Startbefehl gegen `logs/` — gruen.
 - **56 Tests** gruen in `Agenten/Werkzeuge/repos-zentrale/tests/`, darunter ein
