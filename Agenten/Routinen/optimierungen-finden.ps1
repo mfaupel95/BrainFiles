@@ -51,13 +51,15 @@ try {
   if ($text) { $text | Add-Content $log -Encoding UTF8 }
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
 
-  Melde-Ende -Marke $marke -Code $code                                # neu
   # Ein Befund ist kein Fehler: die Pruefung hat gearbeitet und etwas
   # gefunden. Deshalb als Hinweis (wird immer gemeldet) und nicht als
   # Fehlercode - der wuerde jede Woche wie ein kaputter Lauf aussehen.
   if ($text -and $code -eq 0) {
     Melde-Hinweis -Wer 'routine/optimierungen-finden' -Text $text
   }
+  # Melde-Ende zuletzt: der Zyklus im Journal soll alles umfassen, und der
+  # Anbindungstest verlangt die Meldung unmittelbar vor dem Ausstieg.
+  Melde-Ende -Marke $marke -Code $code                                # neu
   exit $code
 } catch {
   "ENDE FEHLER: $_" | Add-Content $log -Encoding UTF8
