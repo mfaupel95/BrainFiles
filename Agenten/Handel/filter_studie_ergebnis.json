@@ -1,0 +1,1316 @@
+{
+  "spiegel": {
+    "spur": "spiegel",
+    "n": 864,
+    "ganz": {
+      "n": 864,
+      "quote": 25.23,
+      "netto": -9.08,
+      "brutto": -1.506,
+      "median": -30.1,
+      "gv_usd": -3922.57
+    },
+    "regeln": [
+      {
+        "regel": "untergrenze 100k",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 514,
+          "quote": 28.21,
+          "netto": -6.109,
+          "brutto": 1.713,
+          "median": -18.91,
+          "gv_usd": -1570.06
+        },
+        "alt": {
+          "n": 300,
+          "quote": 26.33,
+          "netto": -7.343,
+          "brutto": 0.376,
+          "median": -26.88,
+          "gv_usd": -1101.4
+        },
+        "jung": {
+          "n": 214,
+          "quote": 30.84,
+          "netto": -4.38,
+          "brutto": 3.586,
+          "median": -10.72,
+          "gv_usd": -468.66
+        },
+        "rest_alt": {
+          "n": 218,
+          "quote": 18.35,
+          "netto": -20.025,
+          "brutto": -13.362,
+          "median": -32.57,
+          "gv_usd": -2182.69
+        },
+        "rest_jung": {
+          "n": 132,
+          "quote": 25.0,
+          "netto": -2.573,
+          "brutto": 5.543,
+          "median": -34.44,
+          "gv_usd": -169.82
+        },
+        "rest_ganz": {
+          "n": 350,
+          "quote": 20.86,
+          "netto": -13.443,
+          "brutto": -6.232,
+          "median": -32.87,
+          "gv_usd": -2352.51
+        }
+      },
+      {
+        "regel": "untergrenze 150k",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 358,
+          "quote": 29.89,
+          "netto": -0.263,
+          "brutto": 8.046,
+          "median": -14.46,
+          "gv_usd": -47.0
+        },
+        "alt": {
+          "n": 222,
+          "quote": 26.58,
+          "netto": -3.497,
+          "brutto": 4.543,
+          "median": -20.64,
+          "gv_usd": -388.12
+        },
+        "jung": {
+          "n": 136,
+          "quote": 35.29,
+          "netto": 5.016,
+          "brutto": 13.765,
+          "median": -7.87,
+          "gv_usd": 341.12
+        },
+        "rest_alt": {
+          "n": 296,
+          "quote": 20.27,
+          "netto": -19.567,
+          "brutto": -12.867,
+          "median": -31.64,
+          "gv_usd": -2895.97
+        },
+        "rest_jung": {
+          "n": 210,
+          "quote": 24.29,
+          "netto": -9.33,
+          "brutto": -1.776,
+          "median": -32.58,
+          "gv_usd": -979.6
+        },
+        "rest_ganz": {
+          "n": 506,
+          "quote": 21.94,
+          "netto": -15.318,
+          "brutto": -8.264,
+          "median": -31.87,
+          "gv_usd": -3875.57
+        }
+      },
+      {
+        "regel": "untergrenze 250k",
+        "verdikt": "traegt",
+        "grund": "in beiden Haelften positiv und besser als der Rest",
+        "ganz": {
+          "n": 240,
+          "quote": 30.0,
+          "netto": 4.522,
+          "brutto": 13.229,
+          "median": -13.94,
+          "gv_usd": 542.63
+        },
+        "alt": {
+          "n": 143,
+          "quote": 27.97,
+          "netto": 4.878,
+          "brutto": 13.615,
+          "median": -15.72,
+          "gv_usd": 348.78
+        },
+        "jung": {
+          "n": 97,
+          "quote": 32.99,
+          "netto": 3.997,
+          "brutto": 12.661,
+          "median": -8.72,
+          "gv_usd": 193.85
+        },
+        "rest_alt": {
+          "n": 375,
+          "quote": 21.07,
+          "netto": -19.375,
+          "brutto": -12.659,
+          "median": -31.36,
+          "gv_usd": -3632.87
+        },
+        "rest_jung": {
+          "n": 249,
+          "quote": 26.91,
+          "netto": -6.685,
+          "brutto": 1.088,
+          "median": -31.16,
+          "gv_usd": -832.33
+        },
+        "rest_ganz": {
+          "n": 624,
+          "quote": 23.4,
+          "netto": -14.312,
+          "brutto": -7.173,
+          "median": -31.27,
+          "gv_usd": -4465.2
+        }
+      },
+      {
+        "regel": "untergrenze 500k",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 119,
+          "quote": 27.73,
+          "netto": 10.506,
+          "brutto": 19.712,
+          "median": -12.78,
+          "gv_usd": 625.12
+        },
+        "alt": {
+          "n": 77,
+          "quote": 28.57,
+          "netto": 18.309,
+          "brutto": 28.165,
+          "median": -14.22,
+          "gv_usd": 704.89
+        },
+        "jung": {
+          "n": 42,
+          "quote": 26.19,
+          "netto": -3.799,
+          "brutto": 4.216,
+          "median": -8.95,
+          "gv_usd": -79.77
+        },
+        "rest_alt": {
+          "n": 441,
+          "quote": 22.0,
+          "netto": -18.091,
+          "brutto": -11.267,
+          "median": -30.74,
+          "gv_usd": -3988.98
+        },
+        "rest_jung": {
+          "n": 304,
+          "quote": 28.95,
+          "netto": -3.676,
+          "brutto": 4.349,
+          "median": -28.92,
+          "gv_usd": -558.71
+        },
+        "rest_ganz": {
+          "n": 745,
+          "quote": 24.83,
+          "netto": -12.209,
+          "brutto": -4.895,
+          "median": -30.56,
+          "gv_usd": -4547.69
+        }
+      },
+      {
+        "regel": "obergrenze 2M",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 848,
+          "quote": 25.35,
+          "netto": -9.116,
+          "brutto": -1.545,
+          "median": -30.16,
+          "gv_usd": -3865.15
+        },
+        "alt": {
+          "n": 502,
+          "quote": 23.11,
+          "netto": -12.855,
+          "brutto": -5.595,
+          "median": -30.41,
+          "gv_usd": -3226.67
+        },
+        "jung": {
+          "n": 346,
+          "quote": 28.61,
+          "netto": -3.691,
+          "brutto": 4.333,
+          "median": -21.36,
+          "gv_usd": -638.48
+        },
+        "rest_alt": {
+          "n": 16,
+          "quote": 18.75,
+          "netto": -7.177,
+          "brutto": 0.555,
+          "median": -14.45,
+          "gv_usd": -57.42
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 16,
+          "quote": 18.75,
+          "netto": -7.177,
+          "brutto": 0.555,
+          "median": -14.45,
+          "gv_usd": -57.42
+        }
+      },
+      {
+        "regel": "obergrenze 5M",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 858,
+          "quote": 25.41,
+          "netto": -9.037,
+          "brutto": -1.459,
+          "median": -30.1,
+          "gv_usd": -3876.95
+        },
+        "alt": {
+          "n": 512,
+          "quote": 23.24,
+          "netto": -12.65,
+          "brutto": -5.373,
+          "median": -30.36,
+          "gv_usd": -3238.47
+        },
+        "jung": {
+          "n": 346,
+          "quote": 28.61,
+          "netto": -3.691,
+          "brutto": 4.333,
+          "median": -21.36,
+          "gv_usd": -638.48
+        },
+        "rest_alt": {
+          "n": 6,
+          "quote": 0.0,
+          "netto": -15.207,
+          "brutto": -8.143,
+          "median": -14.18,
+          "gv_usd": -45.62
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 6,
+          "quote": 0.0,
+          "netto": -15.207,
+          "brutto": -8.143,
+          "median": -14.18,
+          "gv_usd": -45.62
+        }
+      },
+      {
+        "regel": "nur solana",
+        "verdikt": "verworfen",
+        "grund": "in einer Haelfte nicht positiv",
+        "ganz": {
+          "n": 793,
+          "quote": 25.35,
+          "netto": -8.802,
+          "brutto": -1.205,
+          "median": -30.18,
+          "gv_usd": -3490.0
+        },
+        "alt": {
+          "n": 477,
+          "quote": 23.27,
+          "netto": -12.241,
+          "brutto": -4.93,
+          "median": -30.32,
+          "gv_usd": -2919.56
+        },
+        "jung": {
+          "n": 316,
+          "quote": 28.48,
+          "netto": -3.61,
+          "brutto": 4.42,
+          "median": -27.64,
+          "gv_usd": -570.44
+        },
+        "rest_alt": {
+          "n": 41,
+          "quote": 19.51,
+          "netto": -17.782,
+          "brutto": -10.933,
+          "median": -30.68,
+          "gv_usd": -364.53
+        },
+        "rest_jung": {
+          "n": 30,
+          "quote": 30.0,
+          "netto": -4.536,
+          "brutto": 3.417,
+          "median": -6.86,
+          "gv_usd": -68.04
+        },
+        "rest_ganz": {
+          "n": 71,
+          "quote": 23.94,
+          "netto": -12.185,
+          "brutto": -4.869,
+          "median": -10.7,
+          "gv_usd": -432.57
+        }
+      },
+      {
+        "regel": "untergrenze 250k ohne solana",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (13/11, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 24,
+          "quote": 20.83,
+          "netto": -0.039,
+          "brutto": 8.288,
+          "median": -11.09,
+          "gv_usd": -0.47
+        },
+        "alt": {
+          "n": 13,
+          "quote": 15.38,
+          "netto": 1.191,
+          "brutto": 9.621,
+          "median": -30.68,
+          "gv_usd": 7.74
+        },
+        "jung": {
+          "n": 11,
+          "quote": 27.27,
+          "netto": -1.493,
+          "brutto": 6.714,
+          "median": -7.44,
+          "gv_usd": -8.21
+        },
+        "rest_alt": {
+          "n": 505,
+          "quote": 23.17,
+          "netto": -13.037,
+          "brutto": -5.792,
+          "median": -30.32,
+          "gv_usd": -3291.83
+        },
+        "rest_jung": {
+          "n": 335,
+          "quote": 28.66,
+          "netto": -3.763,
+          "brutto": 4.254,
+          "median": -23.28,
+          "gv_usd": -630.27
+        },
+        "rest_ganz": {
+          "n": 840,
+          "quote": 25.36,
+          "netto": -9.338,
+          "brutto": -1.786,
+          "median": -30.16,
+          "gv_usd": -3922.1
+        }
+      }
+    ]
+  },
+  "kopier": {
+    "spur": "kopier",
+    "n": 48,
+    "ganz": {
+      "n": 48,
+      "quote": 18.75,
+      "netto": -11.627,
+      "brutto": -0.351,
+      "median": -11.32,
+      "gv_usd": -279.04
+    },
+    "regeln": [
+      {
+        "regel": "untergrenze 100k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (23/14, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 37,
+          "quote": 10.81,
+          "netto": -17.754,
+          "brutto": -7.26,
+          "median": -11.32,
+          "gv_usd": -328.45
+        },
+        "alt": {
+          "n": 23,
+          "quote": 13.04,
+          "netto": -14.814,
+          "brutto": -3.945,
+          "median": -11.32,
+          "gv_usd": -170.36
+        },
+        "jung": {
+          "n": 14,
+          "quote": 7.14,
+          "netto": -22.584,
+          "brutto": -12.707,
+          "median": -34.92,
+          "gv_usd": -158.09
+        },
+        "rest_alt": {
+          "n": 6,
+          "quote": 50.0,
+          "netto": 18.037,
+          "brutto": 33.097,
+          "median": -2.37,
+          "gv_usd": 54.11
+        },
+        "rest_jung": {
+          "n": 5,
+          "quote": 40.0,
+          "netto": -1.88,
+          "brutto": 10.639,
+          "median": -11.32,
+          "gv_usd": -4.7
+        },
+        "rest_ganz": {
+          "n": 11,
+          "quote": 45.45,
+          "netto": 8.984,
+          "brutto": 22.889,
+          "median": -11.32,
+          "gv_usd": 49.41
+        }
+      },
+      {
+        "regel": "untergrenze 150k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (15/10, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 25,
+          "quote": 8.0,
+          "netto": -21.505,
+          "brutto": -11.489,
+          "median": -15.48,
+          "gv_usd": -268.81
+        },
+        "alt": {
+          "n": 15,
+          "quote": 6.67,
+          "netto": -22.407,
+          "brutto": -12.506,
+          "median": -11.32,
+          "gv_usd": -168.05
+        },
+        "jung": {
+          "n": 10,
+          "quote": 10.0,
+          "netto": -20.152,
+          "brutto": -9.964,
+          "median": -34.92,
+          "gv_usd": -100.76
+        },
+        "rest_alt": {
+          "n": 14,
+          "quote": 35.71,
+          "netto": 7.4,
+          "brutto": 21.103,
+          "median": -6.45,
+          "gv_usd": 51.8
+        },
+        "rest_jung": {
+          "n": 9,
+          "quote": 22.22,
+          "netto": -13.784,
+          "brutto": -2.784,
+          "median": -11.32,
+          "gv_usd": -62.03
+        },
+        "rest_ganz": {
+          "n": 23,
+          "quote": 30.43,
+          "netto": -0.89,
+          "brutto": 11.756,
+          "median": -11.32,
+          "gv_usd": -10.23
+        }
+      },
+      {
+        "regel": "untergrenze 250k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (6/6, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 12,
+          "quote": 8.33,
+          "netto": -16.072,
+          "brutto": -5.363,
+          "median": -11.32,
+          "gv_usd": -96.43
+        },
+        "alt": {
+          "n": 6,
+          "quote": 0.0,
+          "netto": -23.527,
+          "brutto": -13.769,
+          "median": -11.32,
+          "gv_usd": -70.58
+        },
+        "jung": {
+          "n": 6,
+          "quote": 16.67,
+          "netto": -8.617,
+          "brutto": 3.043,
+          "median": -11.32,
+          "gv_usd": -25.85
+        },
+        "rest_alt": {
+          "n": 23,
+          "quote": 26.09,
+          "netto": -3.971,
+          "brutto": 8.281,
+          "median": -11.32,
+          "gv_usd": -45.67
+        },
+        "rest_jung": {
+          "n": 13,
+          "quote": 15.38,
+          "netto": -21.068,
+          "brutto": -10.997,
+          "median": -34.48,
+          "gv_usd": -136.94
+        },
+        "rest_ganz": {
+          "n": 36,
+          "quote": 22.22,
+          "netto": -10.145,
+          "brutto": 1.32,
+          "median": -11.32,
+          "gv_usd": -182.61
+        }
+      },
+      {
+        "regel": "untergrenze 500k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (3/4, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 7,
+          "quote": 0.0,
+          "netto": -27.434,
+          "brutto": -18.176,
+          "median": -11.32,
+          "gv_usd": -96.02
+        },
+        "alt": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -36.027,
+          "brutto": -27.864,
+          "median": -24.3,
+          "gv_usd": -54.04
+        },
+        "jung": {
+          "n": 4,
+          "quote": 0.0,
+          "netto": -20.99,
+          "brutto": -10.909,
+          "median": -11.32,
+          "gv_usd": -41.98
+        },
+        "rest_alt": {
+          "n": 26,
+          "quote": 23.08,
+          "netto": -4.785,
+          "brutto": 7.363,
+          "median": -11.32,
+          "gv_usd": -62.21
+        },
+        "rest_jung": {
+          "n": 15,
+          "quote": 20.0,
+          "netto": -16.108,
+          "brutto": -5.404,
+          "median": -34.48,
+          "gv_usd": -120.81
+        },
+        "rest_ganz": {
+          "n": 41,
+          "quote": 21.95,
+          "netto": -8.928,
+          "brutto": 2.692,
+          "median": -11.32,
+          "gv_usd": -183.02
+        }
+      },
+      {
+        "regel": "obergrenze 2M",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (29/19, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 48,
+          "quote": 18.75,
+          "netto": -11.627,
+          "brutto": -0.351,
+          "median": -11.32,
+          "gv_usd": -279.04
+        },
+        "alt": {
+          "n": 29,
+          "quote": 20.69,
+          "netto": -8.017,
+          "brutto": 3.719,
+          "median": -11.32,
+          "gv_usd": -116.25
+        },
+        "jung": {
+          "n": 19,
+          "quote": 15.79,
+          "netto": -17.136,
+          "brutto": -6.563,
+          "median": -11.32,
+          "gv_usd": -162.79
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "obergrenze 5M",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (29/19, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 48,
+          "quote": 18.75,
+          "netto": -11.627,
+          "brutto": -0.351,
+          "median": -11.32,
+          "gv_usd": -279.04
+        },
+        "alt": {
+          "n": 29,
+          "quote": 20.69,
+          "netto": -8.017,
+          "brutto": 3.719,
+          "median": -11.32,
+          "gv_usd": -116.25
+        },
+        "jung": {
+          "n": 19,
+          "quote": 15.79,
+          "netto": -17.136,
+          "brutto": -6.563,
+          "median": -11.32,
+          "gv_usd": -162.79
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "nur solana",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (29/19, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 48,
+          "quote": 18.75,
+          "netto": -11.627,
+          "brutto": -0.351,
+          "median": -11.32,
+          "gv_usd": -279.04
+        },
+        "alt": {
+          "n": 29,
+          "quote": 20.69,
+          "netto": -8.017,
+          "brutto": 3.719,
+          "median": -11.32,
+          "gv_usd": -116.25
+        },
+        "jung": {
+          "n": 19,
+          "quote": 15.79,
+          "netto": -17.136,
+          "brutto": -6.563,
+          "median": -11.32,
+          "gv_usd": -162.79
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "untergrenze 250k ohne solana",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (0/0, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_alt": {
+          "n": 29,
+          "quote": 20.69,
+          "netto": -8.017,
+          "brutto": 3.719,
+          "median": -11.32,
+          "gv_usd": -116.25
+        },
+        "rest_jung": {
+          "n": 19,
+          "quote": 15.79,
+          "netto": -17.136,
+          "brutto": -6.563,
+          "median": -11.32,
+          "gv_usd": -162.79
+        },
+        "rest_ganz": {
+          "n": 48,
+          "quote": 18.75,
+          "netto": -11.627,
+          "brutto": -0.351,
+          "median": -11.32,
+          "gv_usd": -279.04
+        }
+      }
+    ]
+  },
+  "kopier1zu1": {
+    "spur": "kopier1zu1",
+    "n": 12,
+    "ganz": {
+      "n": 12,
+      "quote": 16.67,
+      "netto": -13.758,
+      "brutto": -2.755,
+      "median": -11.083,
+      "gv_usd": -49.53
+    },
+    "regeln": [
+      {
+        "regel": "untergrenze 100k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (7/5, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 12,
+          "quote": 16.67,
+          "netto": -13.758,
+          "brutto": -2.755,
+          "median": -11.083,
+          "gv_usd": -49.53
+        },
+        "alt": {
+          "n": 7,
+          "quote": 14.29,
+          "netto": -15.1,
+          "brutto": -4.267,
+          "median": -10.833,
+          "gv_usd": -31.71
+        },
+        "jung": {
+          "n": 5,
+          "quote": 20.0,
+          "netto": -11.88,
+          "brutto": -0.637,
+          "median": -16.433,
+          "gv_usd": -17.82
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "untergrenze 150k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (4/2, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 6,
+          "quote": 33.33,
+          "netto": -13.928,
+          "brutto": -2.946,
+          "median": -9.817,
+          "gv_usd": -25.07
+        },
+        "alt": {
+          "n": 4,
+          "quote": 25.0,
+          "netto": -18.367,
+          "brutto": -7.951,
+          "median": -28.483,
+          "gv_usd": -22.04
+        },
+        "jung": {
+          "n": 2,
+          "quote": 50.0,
+          "netto": -5.05,
+          "brutto": 7.065,
+          "median": -5.05,
+          "gv_usd": -3.03
+        },
+        "rest_alt": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -10.744,
+          "brutto": 0.644,
+          "median": -10.833,
+          "gv_usd": -9.67
+        },
+        "rest_jung": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -16.433,
+          "brutto": -5.771,
+          "median": -16.433,
+          "gv_usd": -14.79
+        },
+        "rest_ganz": {
+          "n": 6,
+          "quote": 0.0,
+          "netto": -13.589,
+          "brutto": -2.564,
+          "median": -13.633,
+          "gv_usd": -24.46
+        }
+      },
+      {
+        "regel": "untergrenze 250k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (4/2, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 6,
+          "quote": 33.33,
+          "netto": -13.928,
+          "brutto": -2.946,
+          "median": -9.817,
+          "gv_usd": -25.07
+        },
+        "alt": {
+          "n": 4,
+          "quote": 25.0,
+          "netto": -18.367,
+          "brutto": -7.951,
+          "median": -28.483,
+          "gv_usd": -22.04
+        },
+        "jung": {
+          "n": 2,
+          "quote": 50.0,
+          "netto": -5.05,
+          "brutto": 7.065,
+          "median": -5.05,
+          "gv_usd": -3.03
+        },
+        "rest_alt": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -10.744,
+          "brutto": 0.644,
+          "median": -10.833,
+          "gv_usd": -9.67
+        },
+        "rest_jung": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -16.433,
+          "brutto": -5.771,
+          "median": -16.433,
+          "gv_usd": -14.79
+        },
+        "rest_ganz": {
+          "n": 6,
+          "quote": 0.0,
+          "netto": -13.589,
+          "brutto": -2.564,
+          "median": -13.633,
+          "gv_usd": -24.46
+        }
+      },
+      {
+        "regel": "untergrenze 500k",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (4/1, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 5,
+          "quote": 40.0,
+          "netto": -14.447,
+          "brutto": -3.531,
+          "median": -8.3,
+          "gv_usd": -21.67
+        },
+        "alt": {
+          "n": 4,
+          "quote": 25.0,
+          "netto": -18.367,
+          "brutto": -7.951,
+          "median": -28.483,
+          "gv_usd": -22.04
+        },
+        "jung": {
+          "n": 1,
+          "quote": 100.0,
+          "netto": 1.233,
+          "brutto": 14.15,
+          "median": 1.233,
+          "gv_usd": 0.37
+        },
+        "rest_alt": {
+          "n": 3,
+          "quote": 0.0,
+          "netto": -10.744,
+          "brutto": 0.644,
+          "median": -10.833,
+          "gv_usd": -9.67
+        },
+        "rest_jung": {
+          "n": 4,
+          "quote": 0.0,
+          "netto": -15.158,
+          "brutto": -4.333,
+          "median": -16.433,
+          "gv_usd": -18.19
+        },
+        "rest_ganz": {
+          "n": 7,
+          "quote": 0.0,
+          "netto": -13.267,
+          "brutto": -2.2,
+          "median": -11.333,
+          "gv_usd": -27.86
+        }
+      },
+      {
+        "regel": "obergrenze 2M",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (7/5, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 12,
+          "quote": 16.67,
+          "netto": -13.758,
+          "brutto": -2.755,
+          "median": -11.083,
+          "gv_usd": -49.53
+        },
+        "alt": {
+          "n": 7,
+          "quote": 14.29,
+          "netto": -15.1,
+          "brutto": -4.267,
+          "median": -10.833,
+          "gv_usd": -31.71
+        },
+        "jung": {
+          "n": 5,
+          "quote": 20.0,
+          "netto": -11.88,
+          "brutto": -0.637,
+          "median": -16.433,
+          "gv_usd": -17.82
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "obergrenze 5M",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (7/5, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 12,
+          "quote": 16.67,
+          "netto": -13.758,
+          "brutto": -2.755,
+          "median": -11.083,
+          "gv_usd": -49.53
+        },
+        "alt": {
+          "n": 7,
+          "quote": 14.29,
+          "netto": -15.1,
+          "brutto": -4.267,
+          "median": -10.833,
+          "gv_usd": -31.71
+        },
+        "jung": {
+          "n": 5,
+          "quote": 20.0,
+          "netto": -11.88,
+          "brutto": -0.637,
+          "median": -16.433,
+          "gv_usd": -17.82
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "nur solana",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (7/5, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 12,
+          "quote": 16.67,
+          "netto": -13.758,
+          "brutto": -2.755,
+          "median": -11.083,
+          "gv_usd": -49.53
+        },
+        "alt": {
+          "n": 7,
+          "quote": 14.29,
+          "netto": -15.1,
+          "brutto": -4.267,
+          "median": -10.833,
+          "gv_usd": -31.71
+        },
+        "jung": {
+          "n": 5,
+          "quote": 20.0,
+          "netto": -11.88,
+          "brutto": -0.637,
+          "median": -16.433,
+          "gv_usd": -17.82
+        },
+        "rest_alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        }
+      },
+      {
+        "regel": "untergrenze 250k ohne solana",
+        "verdikt": "nicht entschieden",
+        "grund": "Gruppe zu klein (0/0, mind. 30 je Haelfte)",
+        "ganz": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "alt": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "jung": {
+          "n": 0,
+          "quote": 0.0,
+          "netto": 0.0,
+          "brutto": 0.0,
+          "median": 0.0,
+          "gv_usd": 0.0
+        },
+        "rest_alt": {
+          "n": 7,
+          "quote": 14.29,
+          "netto": -15.1,
+          "brutto": -4.267,
+          "median": -10.833,
+          "gv_usd": -31.71
+        },
+        "rest_jung": {
+          "n": 5,
+          "quote": 20.0,
+          "netto": -11.88,
+          "brutto": -0.637,
+          "median": -16.433,
+          "gv_usd": -17.82
+        },
+        "rest_ganz": {
+          "n": 12,
+          "quote": 16.67,
+          "netto": -13.758,
+          "brutto": -2.755,
+          "median": -11.083,
+          "gv_usd": -49.53
+        }
+      }
+    ]
+  }
+}

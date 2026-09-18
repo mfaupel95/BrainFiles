@@ -613,3 +613,5 @@ Agenten/Handel/nautilus/
 !Agenten/Handel/docs/design/
 !Agenten/Handel/docs/design/*.md
 !Agenten/Handel/filter_studie_ergebnis.json
+!Agenten/Handel/docs/plans/
+!Agenten/Handel/docs/plans/*.md
