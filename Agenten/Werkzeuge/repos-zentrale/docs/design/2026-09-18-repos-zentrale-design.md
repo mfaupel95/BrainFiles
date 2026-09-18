@@ -194,16 +194,49 @@ danach steht er im Manifest und das Repo wandert in die Gruppe STARTBAR.
 
 ## 10. Nachweis
 
-- Start der Zentrale ohne Fehlermeldung; Liste zeigt 28 Repos + Sonderfall.
-- Drei echte Staerke aus dem Fenster: MoonDev-GUI, ProjectAtlas, Agent-Reach
-  doctor — je mit Logdatei und Exit-Code als Beleg.
-- Gegenprobe „kein geratener Befehl": `repos-zentrale.json` enthaelt fuer jedes
-  Repo nur Befehle, zu denen eine Logdatei im `logs/` existiert.
-- Gegenprobe `git check-ignore -v` je freigegebener Datei (kein `!!` im
-  Arbeitsbaum), danach `git status --porcelain` ohne Rauschen.
-- Bot-Knopf einmal echt: `hermes -p moon-dev-agents chat` startet im Repo-Ordner.
+**Gemessen am 18.09.2026** (alles unten mit echtem Lauf, nicht beschrieben):
+
+- `repos_zentrale.py --pruefen`: **28 Repos auf der Platte, 28 Manifest-Eintraege,
+  29 Bot-Profile** — 4 in STARTBAR, 12 in EINRICHTEN, 12 in NUR DOKU.
+- Vier Starts aus der Zentrale heraus, jeder mit Logdatei in `logs/`:
+  | Repo | Befehl | Ergebnis |
+  |---|---|---|
+  | Agent-Reach | `.venv\Scripts\agent-reach.exe doctor` | Code 0, Kanalbericht (5 von 16 Kanaelen nutzbar) |
+  | moon-dev-ai-agents | `.venv\Scripts\pythonw.exe moongui.py` | MoonDev-GUI laeuft (Fenster „MoonDev-GUI") |
+  | openmontage | `.venv\Scripts\python.exe -c … registry.provider_menu()` | Code 0, Werkzeugregister |
+  | ProjectAtlas | `target\release\projectatlas.exe --help` | Code 0, „ProjectAtlas 3 repository intelligence engine" (Bau: `cargo build --release`, 2 Min) |
+- Gegenprobe „kein geratener Befehl": `tests/test_manifest_gegenprobe.py` prueft
+  jeden Startbefehl gegen `logs/` — gruen.
+- **56 Tests** gruen in `Agenten/Werkzeuge/repos-zentrale/tests/`, darunter ein
+  echter Fensteraufbau (unsichtbar) und der Nachweis, dass ein relatives
+  Programm gegen den Repo-Ordner aufgeloest wird.
+- `git check-ignore -v` je freigegebener Datei: kein `!!` im Arbeitsbaum;
+  `git add --dry-run` nimmt genau die gewollten Dateien.
+- Zwei Reparaturen mit Beleg:
+  - Verknuepfung „Hermes" zeigt jetzt auf
+    `Agenten\Hermes\hermes-agent\apps\desktop\release\win-unpacked\Hermes.exe`,
+    `Test-Path` auf das Ziel: **True** (vorher: toter Pfad `MaxHirn\Hermes\…`).
+    Auch die Verknuepfung „moongui.py" startet jetzt ueber
+    `.venv\Scripts\pythonw.exe` statt die `.py`-Datei zu oeffnen.
+  - `repos-launcher.ps1` unter PowerShell 5.1: `-Mode Tui` meldet
+    „lazygit.exe fehlt - 'Tui' wird uebersprungen" und endet mit **0** statt
+    mit einem Abbruch; `-Mode Gui` funktioniert (VSCode ist installiert).
+- Nebenbefund und mitbehoben: die **Bus-Suite** war rot
+  (`test_anbindung_routinen` meldete `auslagerung-c-festlegen` und
+  `moondev-gui` ohne Anbindung; danach kam ein maskierter dritter Fehler in
+  `optimierungen-finden` zum Vorschein). Alle drei behoben,
+  `Agenten/Bus/tests/test_ende_zu_ende.py` endet wieder mit
+  „Ende-zu-Ende bestanden".
+- Ein Fehlbefund wurde richtiggestellt: VSCode **ist** installiert. Der erste
+  Befund „code.exe fehlt" kam aus einer Pruefung ueber die bash-PATH, die den
+  Windows-PATH nicht sieht (§2, Korrektur).
+
 - Der Test der Zentrale startet **nichts** echt: die Prozessaufrufe werden
   ersetzt, geprueft wird die Kommandozeile (argv), nicht das Fenster.
+- **Bot-Weg gemessen** (18.09.2026): aus `Werkstatt/Repos/moon-dev-ai-agents`
+  heraus gibt `hermes -p moon-dev-agents chat -q "Antworte mit genau einem
+  Wort: PONG" -Q` die Antwort **PONG**. Genau diese Kommandozeile (mit `wt.exe
+  -d <repo>` davor) baut der Bot-Knopf.
 
 ## 11. Absichtlich nicht
 
