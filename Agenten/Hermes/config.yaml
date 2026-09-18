@@ -1994,6 +1994,12 @@ gateway:
       extra:
         port: 9900
   multiplex_profiles: true
+  profile_routes:
+    - name: telegram-max
+      platform: telegram
+      chat_id: '7648512088'
+      profile: awesome-systematic-trading
+      enabled: true
 streaming:
   enabled: false
 sessions:

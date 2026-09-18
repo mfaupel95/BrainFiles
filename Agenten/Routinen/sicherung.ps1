@@ -9,7 +9,7 @@
 # kann. Nur die Registrierung in der Aufgabenplanung enthaelt absolute Pfade und
 # muss nach einem Umzug neu angelegt werden - siehe Wissen/Routinen.md.
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $wurzel = Split-Path $PSScriptRoot -Parent
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
@@ -23,8 +23,9 @@ $marke = Melde-Start -Wer 'routine/sicherung' `
 
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 try {
-  & powershell -ExecutionPolicy Bypass -File (Join-Path $wurzel 'sichern.ps1') *>&1 |
-    Add-Content $log -Encoding UTF8
+  $tmp = Join-Path $logs 'sicherung-lauf.tmp'
+  & powershell -ExecutionPolicy Bypass -File (Join-Path $wurzel 'sichern.ps1') *> $tmp
+  if (Test-Path $tmp) { Get-Content $tmp -Encoding UTF8 | Add-Content $log -Encoding UTF8; Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
   $code = $LASTEXITCODE
   $s = [int]((Get-Date) - $start).TotalSeconds
   if ($code -ne 0) {

@@ -2072,7 +2072,7 @@ code_execution:
 gateway:
   platforms:
     telegram:
-      enabled: false
+      enabled: true
     photon:
       enabled: false
 streaming:

@@ -907,6 +907,56 @@ Sicherungen: `.sicherung/projectatlas-config.yaml.bak-20260918`,
 `.sicherung/awesome-systematic-trading-config.yaml.bak-20260918`,
 `Routinen/gateway-waechter.ps1.bak-20260918`.
 
+## Sicherung und Telegram-Route (18.09.2026, abends)
+
+**Die geplante Sicherung lief nicht durch.** Die Laeufe starben mitten im Lauf
+(Protokoll ohne Schlusszeile; Task-Code 3221225786 am 17.09. um 00:40, Code 1
+am 18.09. um 20:00). Ursache war der Wrapper `Routinen/sicherung.ps1`:
+`$ErrorActionPreference = 'Stop'` zusammen mit der Pipeline
+`... *>&1 | Add-Content $log`. PowerShell 5.1 macht aus stderr eines
+Kindprozesses einen terminierenden Fehler und reisst die Pipeline mitten im
+Schreiben ab - daher die abgeschnittene letzte Zeile.
+
+Behoben: `Continue` statt `Stop`, und die Ausgabe geht in eine Datei
+(`*> $logs\sicherung-lauf.tmp`, danach anhaengen und loeschen). Eine
+Dateiumleitung kann nicht abreissen, und bei einem Abbruch bleibt die
+Teilausgabe erhalten.
+
+Nachweis 18.09. 22:40:38: alle drei Schritte im Protokoll, robocopy-Code 3,
+`ENDE ok nach 434 s`, Task-rc 0, Ziel `G:\MaxHirn-Sicherung` auf dem Stand der
+Quelle (config.yaml 22:37, zustand.json 22:41).
+
+Zusaetzlich: zweiter taeglicher Trigger 22:30 (MultipleInstances IgnoreNew und
+ExecutionTimeLimit PT1H unveraendert) - ein Lauf, der um 20:00 stirbt, hat am
+selben Abend noch eine Chance.
+
+**Telegram laeuft jetzt auf dem Profil `awesome-systematic-trading`**
+(deepseek/deepseek-v4.1-flash). Mit `gateway.multiplex_profiles: true` ist der
+Standard-Gateway der EINZIGE Inbound-Prozess; Hermes verweigert ein zweites
+Gateway ausdruecklich ("would double-bind its platforms - two pollers on one bot
+token"). Der Weg ist deshalb eine Route, keine zweite Instanz:
+
+    gateway:
+      profile_routes:
+        - name: telegram-max
+          platform: telegram
+          chat_id: "7648512088"
+          profile: awesome-systematic-trading
+          enabled: true
+
+`chat_id` MUSS in Anfuehrungszeichen stehen - als Zahl geparst trifft sie nie
+(Warnung im Quelltext `gateway/profile_routing.py`). Beleg: Hermes' eigene
+Funktion liefert den Treffer fuer 7648512088 und keinen fuer einen fremden Chat;
+der Standard-Gateway verbindet Telegram um 22:54:07.
+
+Falle: `hermes gateway restart` trifft das als "current" erkannte Profil, nicht
+den Standard - fuer den Standard `hermes --profile default gateway restart`.
+
+Sicherungen: `.sicherung/config.yaml.bak-20260918-routen`,
+`.sicherung/awesome-systematic-trading-config.yaml.bak2-20260918`,
+`Routinen/sicherung.ps1.bak-20260918`.
+`MaxHirn/Wissen/Hermes.md.bak2-20260918` (diese Notiz).
+
 Verwandt: [[OmniRoute-Produktion]] · [[Verbindungen]]
 
 ## Desktop-App: alle Profile sichtbar (18.09.2026)
