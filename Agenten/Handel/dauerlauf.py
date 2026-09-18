@@ -304,8 +304,17 @@ def protokoll(text):
         # Eigene Logdatei je Stufe (dauerlauf.mittel.log): zwei Laeufe in
         # einer Datei liessen sich nicht mehr auseinanderhalten, und die
         # Systempruefung liest genau diese Datei auf "ENDE FEHLER".
-        with open(risikostufe.datei(os.path.join(HIER, "dauerlauf.log")), "a",
-                  encoding="utf-8") as f:
+        pfad = risikostufe.datei(os.path.join(HIER, "dauerlauf.log"))
+        # Groessen-Rotation: ueber 1 MB wird die Datei zu <name>.1 umbenannt
+        # (Befund 17.09.2026: dauerlauf.log wuchs unbegrenzt, 508 KB). Die
+        # Systempruefung liest nur die aktive Datei, die alte bleibt als .1
+        # liegen, bis der naechste Umlauf sie ueberschreibt.
+        try:
+            if os.path.getsize(pfad) > 1_000_000:
+                os.replace(pfad, pfad + ".1")
+        except OSError:
+            pass
+        with open(pfad, "a", encoding="utf-8") as f:
             f.write(zeile + "\n")
     except OSError:
         pass
