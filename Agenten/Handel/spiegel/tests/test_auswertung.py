@@ -168,7 +168,12 @@ class TagesberichtTest(unittest.TestCase):
             json.dump({"modus": "papier", "positionen": []}, f)
         shutil.copy(os.path.join(HIER, "auswertung.py"),
                     os.path.join(t, "spiegel", "auswertung.py"))
-        with patch.object(tagesbericht, "HIER", t):
+        import lage
+        # spur_spiegel/_bilanz leben seit dem Umzug nach lage.py - HIER dort
+        # mitpatchen, sonst liest der Test das ECHTE Journal (datenabhaengig,
+        # Befund 18.09.2026: 875 statt 1 Ausstiege).
+        with patch.object(tagesbericht, "HIER", t), \
+                patch.object(lage, "HIER", t):
             s = tagesbericht.spur_spiegel()
         self.assertIn("bilanz", s)
         self.assertIn("1 Ausstiege", s["bilanz"])
