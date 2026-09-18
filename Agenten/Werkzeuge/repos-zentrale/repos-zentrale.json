@@ -1,0 +1,185 @@
+{
+  "stand": "2026-09-18",
+  "repos": [
+    {
+      "ordner": "Agent-Reach",
+      "art": "python",
+      "bot": "agent-reach",
+      "notiz": "Internet lesen ohne Gebuehren (Twitter, Reddit, RSS, Webseiten)"
+    },
+    {
+      "ordner": "awesome-systematic-trading",
+      "art": "doku",
+      "bot": "awesome-systematic-trading",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "basic-memory",
+      "art": "python",
+      "bot": "basic-memory",
+      "notiz": "Markdown-Wissensspeicher mit MCP-Server (Python, venv fehlt)"
+    },
+    {
+      "ordner": "caveman",
+      "art": "node",
+      "bot": "caveman",
+      "notiz": "Installer-Skript bin/caveman-install"
+    },
+    {
+      "ordner": "claude-code",
+      "art": "doku",
+      "bot": "claude-code",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "claude-plugins-official",
+      "art": "doku",
+      "bot": "claude-plugins-official",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "claudian",
+      "art": "node",
+      "bot": "claudian",
+      "notiz": "Obsidian-Erweiterung (npm run dev)"
+    },
+    {
+      "ordner": "codex",
+      "art": "node",
+      "bot": "codex",
+      "notiz": "Monorepo Bau (npm run build), kein Start"
+    },
+    {
+      "ordner": "deepseek-harness",
+      "art": "node",
+      "bot": "deepseek-harness",
+      "notiz": "Monorepo, nur Bau (npm run build), kein Start"
+    },
+    {
+      "ordner": "EasyCLIProxyAPI",
+      "art": "node",
+      "bot": "easycliproxyapi",
+      "notiz": "Tauri-Desktop-App fuer Proxy-Verwaltung"
+    },
+    {
+      "ordner": "everything-claude-code",
+      "art": "doku",
+      "bot": "everything-claude-code",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "gbrain",
+      "art": "node",
+      "bot": "gbrain",
+      "notiz": "Wissens-Index (npm run dev, CLI gbrain)"
+    },
+    {
+      "ordner": "graphify",
+      "art": "python",
+      "bot": "graphify",
+      "notiz": "Code-Graph mit CLI und MCP (Python, venv fehlt)"
+    },
+    {
+      "ordner": "Harvard-Algorithmic-Trading-with-AI",
+      "art": "doku",
+      "bot": "harvard-trading",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "moon-dev-ai-agents",
+      "art": "python",
+      "bot": "moon-dev-agents",
+      "notiz": "47 Agenten, MoonDev-GUI, RBI-Swarm, Boersen-Adapter - das Herzstueck"
+    },
+    {
+      "ordner": "Moon-Dev-Code",
+      "art": "doku",
+      "bot": "moon-dev-code",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "obsidian-skills",
+      "art": "doku",
+      "bot": "obsidian-skills",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "odysseus",
+      "art": "python+node",
+      "bot": "odysseus",
+      "notiz": "Python+Node, kein erklaerter Einstieg in der README"
+    },
+    {
+      "ordner": "one-skill-to-rule-them-all",
+      "art": "doku",
+      "bot": "one-skill-to-rule-them-all",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "openmontage",
+      "art": "python",
+      "bot": "openmontage",
+      "notiz": "agentisches Videosystem, Makefile mit venv/install/demo"
+    },
+    {
+      "ordner": "OpenTerminal",
+      "art": "node",
+      "bot": "openterminal",
+      "notiz": "Terminal im Browser (npm install, dann npm start)"
+    },
+    {
+      "ordner": "ProjectAtlas",
+      "art": "rust",
+      "bot": "projectatlas",
+      "notiz": "Repo-Kartierung (Rust); fertige Binary unter Agenten/Werkzeuge/projectatlas/bin"
+    },
+    {
+      "ordner": "santiment",
+      "art": "doku",
+      "bot": "santiment",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "Scrapling",
+      "art": "python",
+      "bot": "scrapling",
+      "notiz": "Web-Scraping-Bibliothek mit CLI (Python, venv fehlt)"
+    },
+    {
+      "ordner": "skills",
+      "art": "doku",
+      "bot": "skills",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "superpowers",
+      "art": "node",
+      "bot": "superpowers",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "Trading-View-MCP-for-AI-by-Moon-Dev",
+      "art": "python",
+      "bot": "tradingview-mcp",
+      "notiz": "MCP-Server fuer TradingView-Daten"
+    },
+    {
+      "ordner": "winget-cli",
+      "art": "doku",
+      "bot": "winget-cli",
+      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    }
+  ]
+}
