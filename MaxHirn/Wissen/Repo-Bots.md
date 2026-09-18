@@ -90,12 +90,25 @@ Worktree-Sammlung zu den Schwester-Repos.
   Danach: `hermes profile list` ohne Warnung, Multiplex-Migration frei.
   Gestrichen wurden **nur** `telegram` und `photon` — die geteilten
   `A2A_*`- und `SMS_*`-Zeilen der Profile sind eine eigene Entscheidung.
-- **Ein Bot braucht eine EIGENE Modellkennung.** Profile sind Inseln: sie lesen
-  nur ihr eigenes `auth.json`/`.env`. Gemessen am 18.09.2026: `superpowers`
-  (Nous-Portal-Anmeldung im `auth.json`) antwortet ueber `/bot`, `basic-memory`
-  und `skills` antworten „not logged into Nous Portal“, 19 Profile haben gar
-  kein `auth.json`. Kanalzugangsdaten fehlen ihnen jetzt bewusst — der `/bot`-Weg
-  braucht keine.
+- **Bots laufen ueber den lokalen Router, nicht ueber ein eigenes Portal-Login**
+  (18.09.2026). Profile sind Inseln: sie lesen nur ihr eigenes `auth.json`/`.env`.
+  24 Bots standen auf `provider: nous` ohne Portal-Anmeldung — jeder `/bot`-Aufruf
+  endete mit „not logged into Nous Portal“, danach griff die geerbte
+  `fallback_providers`-Kette auf ein lokales 8k-Modell, das Hermes ablehnt
+  (gemessen an `projectatlas`). Kanalzugangsdaten braucht der `/bot`-Weg nicht,
+  eine Modellanmeldung schon. Jetzt fahren die Bots
+  `model.provider=omniroute`, `model.default=auto/best-coding`: der Router-
+  Schluessel steht schon in jeder Profil-`.env`, der `providers.omniroute`-Block
+  in jeder `config.yaml`, und die Unteragenten des Hauptprofils fahren denselben
+  Weg. Werkzeug:
+  `Agenten/Hermes/scripts/bot-modell-auf-router.py` (Trockenlauf ohne Argument,
+  `--anwenden` mit `config.yaml.bak-JJJJMMTT`, `--zuruecknehmen`); es holt
+  ausserdem den von `hermes config set` abgeschnittenen Kommentar-Schluss der
+  `config.yaml` zurueck (in 6 Profilen fehlten 38 Zeilen Doku). Unberuehrt:
+  `superpowers` und `awesome-systematic-trading` (eigene Portal-Anmeldung) sowie
+  `openmontage` (`llamacpp`, lokales Modell). Nachweis: 25 Profile umgestellt,
+  0 Fehler, je Profil 2 Einfuegungen/3 Loeschungen gegen HEAD; live geantwortet:
+  `basic-memory`, `projectatlas`, `skills`, `caveman`, `tradingview-mcp`.
 - **Neuer Bot = drei Ankerpunkte.** Profil anlegen (`--clone`), `terminal.cwd`
   setzen, `profile.yaml`-Beschreibung pflegen (der Kanban-Orchestrator sortiert
   danach). `/bots` zeigt beides von selbst.
