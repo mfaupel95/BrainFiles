@@ -116,9 +116,12 @@ sys.path.insert(0, os.path.join(HIER, os.pardir, "Bus"))
 import befehle                                             # noqa: E402
 import ereignis                                           # noqa: E402
 import freigabefenster                                   # noqa: E402
+import lage                                              # noqa: E402
 import melder                                            # noqa: E402
 import risikostufe                                       # noqa: E402
+import schnappschuss                                      # noqa: E402
 import tagesbericht                                      # noqa: E402
+import wochenbericht                                      # noqa: E402
 
 # Der woechentliche Selbstverbesserungs-Lauf (verbesserer/) haengt hier nur
 # lose dran: anfrage.py haelt die reine Ordner-/Textlogik, anwenden.py den
@@ -818,6 +821,18 @@ class Lauf:
                 self.sende(tagesbericht.baue(mit_xperp=True))
             except Exception as e:                       # noqa: BLE001
                 self.sende("<b>Tagesbericht gescheitert</b>\n%s" % e)
+            # Erst danach den Stand von heute ablegen - siehe oben.
+            try:
+                schnappschuss.schreibe(
+                    schnappschuss.baue(lage.erhebe(mit_xperp=False)))
+            except Exception as e:                       # noqa: BLE001
+                protokoll("Schnappschuss gescheitert: %s" % e)
+            if heute.weekday() == 0:
+                protokoll("Wochenbericht")
+                try:
+                    self.sende(wochenbericht.baue())
+                except Exception as e:                   # noqa: BLE001
+                    self.sende("<b>Wochenbericht gescheitert</b>\n%s" % e)
 
 
 def main():
