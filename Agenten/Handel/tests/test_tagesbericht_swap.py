@@ -9,8 +9,12 @@ einzige Anfrage.
 Was hier belegt wird:
   1. Eine Papierposition der SWAP-Spur steht im Bericht, mit Hebel auf die
      Margin gerechnet - dieselbe Formel wie bei Spur 2.
-  2. Sie wird als "SWAP (Papier)" und mit "kein Live-Zweig" ausgewiesen; der
-     Bericht behauptet nirgends, hier sei Live nur "offen".
+  2. Sie wird als "SWAP (Papier)" ausgewiesen und "Live: GESPERRT" mit
+     Klartext-Gruenden; der Bericht behauptet nirgends, hier sei Live nur
+     "offen". SWAP setzt "papierfest" bewusst nicht (siehe lage.spur_swap:
+     seit 12.09.2026 hat die Spur einen echten Live-Pfad) - die Sperre
+     kommt hier aus den echten Bedingungen (handel_erlaubt, Freigabe,
+     Herzschlag), nicht aus einem festen "kein Live-Zweig (Papierpfad)".
   3. Der Bericht schreibt nichts. Vorher/nachher werden Dateiliste und
      Aenderungszeiten des Datenordners verglichen.
 
@@ -105,15 +109,20 @@ class SwapImBericht(unittest.TestCase):
         # 10 % Kursbewegung bei 3x Hebel = 30 % auf die Margin.
         self.assertIn("+30.0%", text)
         self.assertIn("50 USD", text)
-        self.assertIn("kein Live-Zweig", text)
+        # SWAP ist nicht "papierfest" (echter Live-Pfad seit 12.09.2026) -
+        # die Sperre wird mit den echten Gruenden ausgewiesen, nicht mit
+        # einem festen "kein Live-Zweig".
+        self.assertIn("Live: GESPERRT -", text)
 
     def test_leere_spur_ist_kein_offenes_live(self):
         _, text = bericht([])
         self.assertIn("SWAP (Papier)", text)
         self.assertIn("keine offene Position", text)
         # Die Sperre wird ausgeschrieben, nicht weggelassen: Ohne Grund liest
-        # sich "GESPERRT" wie eine Spur, die nur auf ein /ja wartet.
-        self.assertIn("kein Live-Zweig (Papierpfad)", text)
+        # sich "GESPERRT" wie eine Spur, die nur auf ein /ja wartet. SWAP ist
+        # nicht "papierfest" (echter Live-Pfad seit 12.09.2026), deshalb die
+        # echten Gruende statt eines festen "kein Live-Zweig".
+        self.assertIn("Live: GESPERRT -", text)
         self.assertNotIn("Live: offen", text)
 
     def test_bericht_schreibt_nichts(self):

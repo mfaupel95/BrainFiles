@@ -90,6 +90,27 @@ def bericht(ausstiege=()):
     return t, text
 
 
+def omniquant_block(ausstiege=()):
+    """Der Omniquant-Block, unabhaengig vom Rang gebaut.
+
+    Seit der Vorrangregel (Aufgabe 4) landet eine Spur ohne offene Position
+    und ohne Unterschied zu gestern in der Sammelzeile, nicht mehr als
+    voller Block im Bericht - das ist hier so gewollt (Omniquant faehrt
+    papier, keine Position offen). Die Bilanzzeile selbst kommt weiterhin
+    aus _block(), das die Vorrangregel absichtlich als eigene, unabhaengig
+    testbare Funktion ausweist. Der Weg zur Erhebung spiegelt baue()s
+    eigene HIER-Bindung (tagesbericht.HIER -> lage.HIER).
+    """
+    t = datenordner(ausstiege)
+    with patch.object(tagesbericht, "HIER", t), \
+            patch.object(tagesbericht.lage, "HIER", t):
+        erhebung = tagesbericht.lage.erhebe(mit_xperp=False)
+        for e in erhebung:
+            if e["name"].startswith("Omniquant"):
+                return tagesbericht._block(e, {})
+    raise AssertionError("omniquant nicht in der Erhebung gefunden")
+
+
 def bestand(ordner):
     aus = {}
     for wurzel, _, dateien in os.walk(ordner):
@@ -103,17 +124,17 @@ def bestand(ordner):
 class BilanzImBericht(unittest.TestCase):
 
     def test_ohne_ausstiege_steht_die_datenlage_da(self):
-        _, text = bericht([])
-        self.assertIn("Auswertung: noch kein Ausstieg", text)
+        block = omniquant_block([])
+        self.assertIn("Auswertung: noch kein Ausstieg", block)
         # Nicht als Ergebnis verkleiden: keine Bilanz in USD.
-        self.assertNotIn("Auswertung: 0 Ausstiege", text)
+        self.assertNotIn("Auswertung: 0 Ausstiege", block)
 
     def test_mit_ausstiegen_steht_die_bilanz_da(self):
-        _, text = bericht([_ausstieg("BTC-USDC", 50, 55),
-                           _ausstieg("ETH-USDC", 50, 45, grund="stop")])
-        self.assertIn("2 Ausstiege", text)
-        self.assertIn("nach Kosten", text)
-        self.assertIn("Treffer 1/2", text)
+        block = omniquant_block([_ausstieg("BTC-USDC", 50, 55),
+                                 _ausstieg("ETH-USDC", 50, 45, grund="stop")])
+        self.assertIn("2 Ausstiege", block)
+        self.assertIn("nach Kosten", block)
+        self.assertIn("Treffer 1/2", block)
 
     def test_bericht_schreibt_nichts(self):
         t = datenordner([_ausstieg("BTC-USDC", 50, 55)])
@@ -126,10 +147,13 @@ class BilanzImBericht(unittest.TestCase):
     def test_fehlendes_journal_kippt_den_block_nicht(self):
         t = datenordner([])
         os.remove(os.path.join(t, "omniquant", "handelsjournal.csv"))
-        with patch.object(tagesbericht, "HIER", t):
-            text = tagesbericht.baue(mit_xperp=False)
-        self.assertIn("Omniquant", text)
-        self.assertIn("Auswertung", text)
+        with patch.object(tagesbericht, "HIER", t), \
+                patch.object(tagesbericht.lage, "HIER", t):
+            erhebung = tagesbericht.lage.erhebe(mit_xperp=False)
+        e = next(e for e in erhebung if e["name"].startswith("Omniquant"))
+        block = tagesbericht._block(e, {})
+        self.assertIn("Omniquant", block)
+        self.assertIn("Auswertung", block)
 
 
 def zeige():

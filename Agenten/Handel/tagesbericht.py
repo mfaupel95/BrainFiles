@@ -35,6 +35,7 @@ import melder                                            # noqa: E402
 import risikostufe                                       # noqa: E402
 import spiegelstand                                     # noqa: E402
 import lage                                              # noqa: E402
+import schnappschuss                                     # noqa: E402
 from lage import (                                       # noqa: E402
     HOLER, sperren, wachenlage,
     # Zusaetzlich re-exportiert: befehle.py, dauerlauf.py und die Tests
@@ -201,6 +202,123 @@ def _stufenzahlen(stufe):
     return runden, ergebnis
 
 
+def rang(e, diff):
+    """Welchen Platz eine Spur im Bericht bekommt: 1, 2 oder 3.
+
+    Die Rangfolge ordnet nach Dringlichkeit, nicht nach Interesse. Ein
+    Bericht mit 24 gleichlangen Bloecken hat keinen Vorrang - man liest ihn
+    einmal ganz und danach nie wieder.
+    """
+    w = e.get("wachen") or {}
+    if (e.get("fehler") or e.get("stillgelegt")
+            or diff.get("sperre_neu")
+            or ("fehler" not in w
+                and (w.get("herzschlag_frisch") is False or w.get("kill")))):
+        return 1
+    if (e.get("positionen") or diff.get("runden_mehr")
+            or diff.get("position_neu") or diff.get("position_weg")):
+        return 2
+    return 3
+
+
+def sammelzeile(stille):
+    """Der stille Rest als eine Zeile: gezaehlt und benannt."""
+    if not stille:
+        return ""
+    namen = [e["schluessel"] or e["name"] for e in stille]
+    return "%d Spuren still: %s" % (len(namen), ", ".join(sorted(namen)))
+
+
+def _block(s, d):
+    """Ein voller Block einer Spur. Text, sonst nichts.
+
+    Parametername `s` (Spur-Lagebild aus lage.zu_lage()) und die lokale
+    `lage_` (die Wachenlage darin) bleiben absichtlich wie im Vorgaenger:
+    tests/test_stoerungen.py liest die Handelsrunden-Zeile per AST direkt aus
+    dieser Datei und fuehrt sie mit genau diesen Namen aus.
+    """
+    if s["fehler"]:
+        return "\n<b>%s</b>\n  AUSFALL: %s" % (s["name"], s["fehler"])
+
+    t = ["\n<b>%s</b>%s" % (s["name"],
+                            "  — STILLGELEGT" if s["stillgelegt"] else "")]
+    if s["positionen"]:
+        summe = sum(p["wert"] for p in s["positionen"])
+        mit = [p for p in s["positionen"] if p["vh"] is not None]
+        schnitt = sum(p["vh"] for p in mit) / len(mit) if mit else None
+        for p in s["positionen"]:
+            t.append(zeile_position(p, s["waehrung"]))
+        if schnitt is not None:
+            t.append("  = %d Positionen, %.0f %s gebunden, im Schnitt %+.1f%%"
+                     % (len(s["positionen"]), summe, s["waehrung"], schnitt))
+    else:
+        t.append("  keine offene Position")
+
+    # Ein Buch ohne Bilanz ist eine halbe Auskunft. Spuren ohne
+    # Auswertung tragen das Feld nicht - sie bleiben unveraendert.
+    if s["bilanz"]:
+        t.append("  " + s["bilanz"])
+
+    lage_ = s["wachen"]
+    if lage_ and "fehler" in lage_:
+        t.append("  Wachen nicht lesbar: %s" % lage_["fehler"][:100])
+    elif lage_:
+        # Der Ruecklauf traegt die Waehrung im Namen - _usd bei Spur 1,
+        # _eur bei Spur 3. Das ist Absicht (kraken/wachen.json: "Wer hier
+        # USD liest, liest falsch") und darf hier nicht geraten werden.
+        rueck = lage_.get("ruecklauf_%s" % s["waehrung"].lower())
+        # Handelsrunden statt Buchungen: Zwangsschluesse sind keine
+        # Handelsentscheidung. get() mit Rueckfall, weil ein Wachenmodul
+        # ohne die Trennung dieselbe Zeile weiter bedienen soll.
+        t.append("  Handelsrunden %d (Papier %d, %d Betriebsstoerung), "
+                 "Ruecklauf %.2f %s, Faktor %.2f"
+                 % (lage_.get("runden_echt", lage_["runden_gesamt"]),
+                    lage_.get("runden_papier_echt", lage_["runden_papier"]),
+                    lage_.get("runden_stoerung", 0),
+                    rueck if rueck is not None else 0.0, s["waehrung"],
+                    lage_["groessenfaktor"]))
+
+    if s["stillgelegt"]:
+        # Die Positionen stehen noch da - sie sind Papier und wurden nicht
+        # fiktiv verkauft, das haette falsche Zahlen ins Journal geschrieben.
+        # Sie bleiben sichtbar, damit klar ist, womit die Spur aufgehoert hat.
+        t.append("  Kein Lauf mehr, weder Papier noch Live.")
+    else:
+        # sperren() lief schon in lage.erhebe() - inklusive des Papierpfad-
+        # Zusatzes ganz vorn. Eine zweite Berechnung hier waere eine zweite
+        # Wahrheit fuer dieselbe Frage.
+        auf = s["sperren"]
+        t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
+                                 else "offen"))
+
+    if s["buchlage"] == "belastbar":
+        k = s["kennzahlen"]
+        t.append("  7 Tage: %d Runden, %+.2f %s, Treffer %d%%"
+                 % (k["n"], k["ergebnis"], s["waehrung"],
+                    round(100.0 * k["treffer"] / k["n"])))
+    elif s["buchlage"] == "zu_wenige_runden":
+        t.append("  7 Tage: zu wenige Runden (%d)"
+                 % (s["kennzahlen"] or {}).get("n", 0))
+    elif s["schluessel"]:
+        seit = s["buch_seit"]
+        t.append("  kein Buch%s" % (" (seit %s)" % seit if seit else ""))
+
+    teile = []
+    if d.get("position_neu"):
+        teile.append("neu: " + ", ".join(d["position_neu"]))
+    if d.get("position_weg"):
+        teile.append("geschlossen: " + ", ".join(d["position_weg"]))
+    if d.get("sperre_neu"):
+        teile.append("Sperre zu: " + "; ".join(d["sperre_neu"]))
+    if d.get("sperre_weg"):
+        teile.append("Sperre auf: " + "; ".join(d["sperre_weg"]))
+    if d.get("runden_mehr"):
+        teile.append("%+d Runden" % d["runden_mehr"])
+    if teile:
+        t.append("  seit gestern: " + " | ".join(teile))
+    return "\n".join(t)
+
+
 def baue(mit_xperp=True):
     """Der ganze Bericht als Text. Kein Netz noetig fuer den Rahmen.
 
@@ -221,71 +339,30 @@ def _baue(mit_xperp=True):
     heute = dt.datetime.now()
     t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
 
+    # Der Schnappschuss entsteht hier nur im Speicher, fuer den Vergleich mit
+    # gestern - geschrieben wird er an genau einer Stelle, im Dauerlauf nach
+    # dem Bericht (Aufgabe 6). Ein zweiter Schreibort waere ein zweiter Ort
+    # zum Scheitern.
+    erhebung = lage.erhebe(mit_xperp=mit_xperp)
+    stand = schnappschuss.baue(erhebung, heute=heute.date())
+    gestern = schnappschuss.lade(heute.date() - dt.timedelta(days=1))
+    diffs = schnappschuss.unterschiede(stand, gestern)
+    if gestern is None:
+        t.append("Kein Stand von gestern - der Vergleich faellt heute aus.")
+
+    stille = []
     gesamt_offen = 0
-    for hole in HOLER:
-        try:
-            s = hole()
-        except Exception as e:                           # noqa: BLE001
-            t.append("\n<b>%s</b>\n  AUSFALL: %s" % (hole.__name__, e))
+    for e in erhebung:
+        gesamt_offen += len(e["positionen"])
+        d = diffs.get(e["schluessel"] or e["name"], {})
+        if rang(e, d) == 3:
+            stille.append(e)
             continue
+        t.append(_block(e, d))
 
-        # Eine Spur ohne Pruefmodul (die Spiegel-Spur fuehrt ein Buch statt
-        # fuenf Bedingungen) wird ohne Wachenblock gezeigt - statt eine fremde
-        # Rechnung auf sie anzuwenden und "Wachen nicht lesbar" zu schreiben.
-        lage_ = wachenlage(s) if s.get("pruefmodul", "wachen_pruefung") else None
-        still = s["w"].get("stillgelegt")
-        t.append("\n<b>%s</b>%s" % (s["name"],
-                                    "  — STILLGELEGT" if still else ""))
-        if s["positionen"]:
-            gesamt_offen += len(s["positionen"])
-            summe = sum(p["wert"] for p in s["positionen"])
-            mit = [p for p in s["positionen"] if p["vh"] is not None]
-            schnitt = sum(p["vh"] for p in mit) / len(mit) if mit else None
-            for p in s["positionen"]:
-                t.append(zeile_position(p, s["waehrung"]))
-            if schnitt is not None:
-                t.append("  = %d Positionen, %.0f %s gebunden, im Schnitt %+.1f%%"
-                         % (len(s["positionen"]), summe, s["waehrung"], schnitt))
-        else:
-            t.append("  keine offene Position")
-
-        # Ein Buch ohne Bilanz ist eine halbe Auskunft. Spuren ohne
-        # Auswertung tragen das Feld nicht - sie bleiben unveraendert.
-        if s.get("bilanz"):
-            t.append("  " + s["bilanz"])
-
-        if lage_ and "fehler" in lage_:
-            t.append("  Wachen nicht lesbar: %s" % lage_["fehler"][:100])
-        elif lage_:
-            # Der Ruecklauf traegt die Waehrung im Namen - _usd bei Spur 1,
-            # _eur bei Spur 3. Das ist Absicht (kraken/wachen.json: "Wer hier
-            # USD liest, liest falsch") und darf hier nicht geraten werden.
-            rueck = lage_.get("ruecklauf_%s" % s["waehrung"].lower())
-            # Handelsrunden statt Buchungen: Zwangsschluesse sind keine
-            # Handelsentscheidung. get() mit Rueckfall, weil ein Wachenmodul
-            # ohne die Trennung dieselbe Zeile weiter bedienen soll.
-            t.append("  Handelsrunden %d (Papier %d, %d Betriebsstoerung), "
-                     "Ruecklauf %.2f %s, Faktor %.2f"
-                     % (lage_.get("runden_echt", lage_["runden_gesamt"]),
-                        lage_.get("runden_papier_echt", lage_["runden_papier"]),
-                        lage_.get("runden_stoerung", 0),
-                        rueck if rueck is not None else 0.0, s["waehrung"],
-                        lage_["groessenfaktor"]))
-        if still:
-            # Die Positionen stehen noch da - sie sind Papier und wurden
-            # nicht fiktiv verkauft, das haette falsche Zahlen ins Journal
-            # geschrieben. Sie bleiben sichtbar, damit klar ist, womit die
-            # Spur aufgehoert hat.
-            t.append("  Kein Lauf mehr, weder Papier noch Live.")
-        else:
-            auf = sperren(s, lage_)
-            if s.get("papierfest"):
-                # Der starkste Grund zuerst: Es fehlt nicht eine Freigabe, es
-                # fehlt der Zweig. Ohne diesen Zusatz liest sich "GESPERRT -
-                # handel_erlaubt=false" wie eine Spur, die auf ein /ja wartet.
-                auf.insert(0, "kein Live-Zweig (Papierpfad)")
-            t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
-                                     else "offen"))
+    zeile = sammelzeile(stille)
+    if zeile:
+        t.append("\n" + zeile)
 
     if mit_xperp:
         try:
