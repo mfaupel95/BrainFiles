@@ -73,6 +73,8 @@
 !Agenten/Routinen/moondev-gui-autostart.vbs
 !Agenten/Handel/*.py
 !Agenten/Handel/*.md
+# Laufzeitdaten: der Tagesschnappschuss. Abgeleitet, kein Buch.
+Agenten/Handel/stand/
 !Agenten/Handel/*.ps1
 !Agenten/Handel/REGELWERK-*.json
 !Agenten/Handel/requirements.txt
@@ -438,6 +440,9 @@ Agenten/Hermes/skills/**/__pycache__/
 # schreibt jeder Lauf; sie erzeugten bei jedem git status Rauschen.
 Agenten/Hermes/skills/.curator_ledger.jsonl
 Agenten/Hermes/skills/.usage.json
+# Nachtrag 18.09.2026: .curator_state ist derselbe Fall - der Kurator schreibt
+# nach jedem Lauf Zeitstempel und Zaehler hinein (Rauschen in jedem git status).
+Agenten/Hermes/skills/.curator_state
 # Nachtrag 16.09.2026: .locks/ sind Sperrdateien des laufenden Kurators -
 # sie gehoeren keinem Commit. Ohne diese Zeile kamen sie ueber die
 # Freigabe oben herein.
