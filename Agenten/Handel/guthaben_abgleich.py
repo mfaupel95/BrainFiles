@@ -53,8 +53,17 @@ def _gebunden(spur):
 
 def abgleich(spur, konto=None, bilanz=None, gebunden=None):
     """Ein Abgleich. Alle drei Groessen sind uebergebbar - fuer Tests, und
-    damit der Abruf an genau einer Stelle scheitern kann."""
+    damit der Abruf an genau einer Stelle scheitern kann.
+
+    Fehlende Daten werden NIE stillschweigend zu 0.0: eine leere
+    Boersenantwort (konto bleibt None, ohne Ausnahme) und fehlende
+    Kennzahlen (kennzahlen_fuer() liefert None) setzen stattdessen
+    konto_unbekannt bzw. bilanz_unbekannt - dieselbe Kennzeichnungs-Idee
+    wie lage.py mit "buchlage": "kein_buch". Ein echter Nullstand bleibt
+    dadurch von einer fehlenden Antwort unterscheidbar."""
     fehler = None
+    konto_unbekannt = False
+    bilanz_unbekannt = False
     if callable(konto):
         try:
             konto = konto()
@@ -66,16 +75,24 @@ def abgleich(spur, konto=None, bilanz=None, gebunden=None):
             konto = _konto_fn(spur)()
         except Exception as e:                           # noqa: BLE001
             fehler = "%s: %s" % (type(e).__name__, e)
+    if konto is None and not fehler:
+        konto_unbekannt = True
     if bilanz is None:
         von, bis = zeitfenster.fenster()
         k = auswertung_alle.kennzahlen_fuer(spur, von=von, bis=bis)
-        bilanz = (k or {}).get("ergebnis", 0.0)
+        if k is None:
+            bilanz_unbekannt = True
+        else:
+            bilanz = k.get("ergebnis", 0.0)
     if gebunden is None:
         gebunden = _gebunden(spur)
-    rest = None if fehler else konto - bilanz - gebunden
+    unbekannt = konto_unbekannt or bilanz_unbekannt
+    rest = None if (fehler or unbekannt) else konto - bilanz - gebunden
     return {"spur": spur, "konto": konto, "bilanz": bilanz,
             "gebunden": gebunden, "rest": rest,
-            "waehrung": WAEHRUNG[spur], "fehler": fehler}
+            "waehrung": WAEHRUNG[spur], "fehler": fehler,
+            "konto_unbekannt": konto_unbekannt,
+            "bilanz_unbekannt": bilanz_unbekannt}
 
 
 def text(abgleiche=None):
@@ -87,6 +104,14 @@ def text(abgleiche=None):
         if a["fehler"]:
             t.append("  %-8s Abruf ausgefallen: %s"
                      % (a["spur"], a["fehler"][:80]))
+            continue
+        if a.get("konto_unbekannt") or a.get("bilanz_unbekannt"):
+            teile = []
+            if a.get("konto_unbekannt"):
+                teile.append("Konto unbekannt (leere Boersenantwort)")
+            if a.get("bilanz_unbekannt"):
+                teile.append("Bilanz unbekannt (keine Kennzahlen)")
+            t.append("  %-8s %s" % (a["spur"], ", ".join(teile)))
             continue
         t.append("  %-8s Konto %.2f %s = Bilanz %+.2f + gebunden %.2f "
                  "+ Rest %+.2f"
