@@ -6,6 +6,7 @@ verrechnet. Beides steht hier als Test.
 """
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -134,6 +135,45 @@ class TestPosten(unittest.TestCase):
         self.assertEqual(len(p), 1)
         self.assertEqual(p[0]["spur"], "reichlich")
         self.assertTrue(p[0]["belastbar"])
+
+
+class TestLiveMerker(unittest.TestCase):
+    """_live() darf nie werfen - genau wie die fuenf Eigen-Module.
+
+    Der Aufruf steht in posten() ausserhalb jedes try: eine kaputte
+    wachen.json EINER Spur wuerde sonst die ganze Gesamtbilanz mitreissen.
+    Gueltiges JSON, das kein Objekt ist ([], 42, null, "x"), hat kein .get().
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.wurzel = Path(self.tmp.name)
+        (self.wurzel / "spur").mkdir()
+        self.datei = self.wurzel / "spur" / "wachen.json"
+        self._alt = gb.HIER
+        gb.HIER = self.wurzel
+
+    def tearDown(self):
+        gb.HIER = self._alt
+        self.tmp.cleanup()
+
+    def _merker(self, inhalt):
+        if inhalt is None:
+            if self.datei.exists():
+                self.datei.unlink()
+        else:
+            self.datei.write_text(inhalt, encoding="utf-8")
+        return gb._live("spur")
+
+    def test_papier_bei_jedem_fehlschlag(self):
+        # None heisst: Datei fehlt ganz.
+        for inhalt in (None, "kein JSON {", "[]", "42", "null", '"x"', "{}",
+                       '{"handel_erlaubt": false}'):
+            with self.subTest(inhalt=inhalt):
+                self.assertFalse(self._merker(inhalt))
+
+    def test_true_wird_erkannt(self):
+        self.assertTrue(self._merker('{"handel_erlaubt": true}'))
 
 
 if __name__ == "__main__":

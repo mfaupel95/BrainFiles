@@ -55,14 +55,25 @@ def _lade_eigene(spur):
 
 
 def _live(spur):
-    """Handelt die Spur echt? Quelle ist handel_erlaubt in wachen.json."""
+    """Handelt die Spur echt? Quelle ist handel_erlaubt in wachen.json.
+
+    Wirft nie. Jeder Fehlschlag gilt als Papier - eine Spur faelschlich als
+    Live zu zaehlen waere der teurere Irrtum. Deshalb auch `isinstance`:
+    gueltiges JSON, das kein Objekt ist (`[]`, `42`, `null`), hat kein .get(),
+    und der Aufruf steht in posten() ausserhalb jedes try - ein Wurf hier
+    reisst die ganze Gesamtbilanz mit. Wortgleich mit den fuenf
+    Eigen-Modulen (seit 7d80750).
+    """
     p = HIER / spur / "wachen.json"
     if not p.exists():
         return False
     try:
-        return bool(json.loads(p.read_text("utf-8")).get("handel_erlaubt"))
+        inhalt = json.loads(p.read_text("utf-8"))
     except (OSError, ValueError):
         return False
+    if not isinstance(inhalt, dict):
+        return False
+    return bool(inhalt.get("handel_erlaubt"))
 
 
 def posten(von=None, bis=None):
