@@ -456,6 +456,20 @@ Agenten/Hermes/skills/.locks/
 # Platte - eine Wiederherstellung aus dem Verlauf haette den Zugang verloren.
 !Agenten/Werkzeuge/fundus-suche.ps1
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
+# REPOS-ZENTRALE, freigelegt am 18.09.2026. Das Startfenster fuer die Repos
+# unter Werkstatt/ (die selbst komplett gesperrt sind): ohne diese Zeilen waere
+# die Zentrale ein Werkzeug, das nur auf dieser Platte existiert. Freigegeben
+# sind Programm, Manifest, Wrapper und Doku - NICHT die venv, die logs/ und die
+# .bak-Dateien.
+!Agenten/Werkzeuge/repos-zentrale/*.py
+!Agenten/Werkzeuge/repos-zentrale/*.ps1
+!Agenten/Werkzeuge/repos-zentrale/*.json
+!Agenten/Werkzeuge/repos-zentrale/*.md
+!Agenten/Werkzeuge/repos-zentrale/docs/
+!Agenten/Werkzeuge/repos-zentrale/docs/design/
+!Agenten/Werkzeuge/repos-zentrale/docs/design/*.md
+!Agenten/Werkzeuge/repos-zentrale/docs/plans/
+!Agenten/Werkzeuge/repos-zentrale/docs/plans/*.md
 
 # AUTOSTART-SKRIPTE von Hermes (17.09.2026): Die .vbs starten Gateway und
 # Dashboard bei der Anmeldung. Sie sind Konfiguration von Hand (keine
