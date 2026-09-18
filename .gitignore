@@ -62,6 +62,15 @@
 !Agenten/Routinen/umzug/*.ps1
 !Agenten/Routinen/umzug/*.psd1
 !Agenten/Routinen/umzug/*.txt
+# MOONDEV-GUI-AUTOSTART, freigelegt am 18.09.2026. Diese Verknuepfung ist der
+# Weg, der die MoonDev-GUI wirklich beim Anmelden startet (der Wrapper
+# moondev-gui.ps1 haengt daran, die geplante Aufgabe MaxHirn-MoonDev-GUI gibt
+# es nicht). Die Kopie im Startup-Ordner ist maschinengebunden - ohne diese
+# Zeile gaebe es von der Startverknuepfung keine Sicherung, und der Wrapper
+# verwiese auf eine Datei, die nur auf dieser Platte liegt. ACHTUNG: die
+# Verknuepfung traegt einen absoluten Pfad und muss nach einem Umzug neu
+# geschrieben werden - genau deshalb ist sie hier sichtbar und nicht versteckt.
+!Agenten/Routinen/moondev-gui-autostart.vbs
 !Agenten/Handel/*.py
 !Agenten/Handel/*.md
 !Agenten/Handel/*.ps1
