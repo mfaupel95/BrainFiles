@@ -910,13 +910,17 @@ def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
         try:
             roh = hole()
         except Exception as e:                           # noqa: BLE001
-            aus.append({"schluessel": None, "name": hole.__name__,
-                        "waehrung": "", "positionen": [], "wachen": None,
-                        "sperren": [], "stillgelegt": False,
-                        "kennzahlen": None, "buchlage": "kein_buch",
-                        "buch_seit": None, "bilanz": None,
-                        "fehler": "%s: %s" % (type(e).__name__, e),
-                        "roh": {}})
+            # Die Form kommt aus zu_lage() - EINE Quelle fuer die Felder.
+            # Der Fehlerfall setzt nur, was er anders weiss: keine Kennzahlen
+            # (deshalb kein_buch statt der sonst berechneten Kategorie), den
+            # Fehlertext und ein leeres roh statt der echten Rueckgabe.
+            fehl = zu_lage({"name": hole.__name__, "waehrung": "",
+                            "positionen": [], "w": {}},
+                           schluessel=None, tage=tage, kennzahlen=None)
+            fehl["buchlage"] = "kein_buch"
+            fehl["fehler"] = "%s: %s" % (type(e).__name__, e)
+            fehl["roh"] = {}
+            aus.append(fehl)
             continue
         e = zu_lage(roh, _schluessel_von(roh), tage=tage)
         e["wachen"] = (wachenlage(roh)

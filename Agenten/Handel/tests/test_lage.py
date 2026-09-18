@@ -33,7 +33,7 @@ class BuchlageTest(unittest.TestCase):
         self.assertEqual(e["buchlage"], "kein_buch")
         self.assertIsNone(e["kennzahlen"])
 
-    def test_zu_wenige_runden_zeigt_keine_zahl(self):
+    def test_kategorie_zu_wenige_runden_unter_der_schwelle(self):
         roh = {"name": "Testspur", "waehrung": "USD", "w": {}, "z": {},
                "positionen": []}
         e = lage.zu_lage(roh, schluessel=None, tage=7,
