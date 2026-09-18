@@ -114,6 +114,11 @@ class StartTest(unittest.TestCase):
         self.assertIsNone(ergebnis.pid)
         self.assertIn("FileNotFoundError", ergebnis.fehler)
 
+    def test_prozesshandle_wird_zurueckgegeben(self):
+        ergebnis = aktionen.start_ausfuehren(zeile(start=["x.exe"]), self.logs, popen=FakePopen)
+        self.assertIsNotNone(ergebnis.prozess)
+        self.assertEqual(ergebnis.prozess.pid, 4242)
+
     def test_das_log_traegt_die_startzeile(self):
         ergebnis = aktionen.start_ausfuehren(zeile(start=["x.exe"]), self.logs,
                                              popen=FakePopen,
