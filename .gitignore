@@ -609,3 +609,7 @@ Agenten/Handel/OpenAlice/
 # Er liegt seit 12.09.2026 hier statt in Werkstatt/, weil er dort bei jedem
 # Aufraeumen verschwindet und in keiner Sicherung war.
 Agenten/Handel/nautilus/
+!Agenten/Handel/docs/
+!Agenten/Handel/docs/design/
+!Agenten/Handel/docs/design/*.md
+!Agenten/Handel/filter_studie_ergebnis.json
