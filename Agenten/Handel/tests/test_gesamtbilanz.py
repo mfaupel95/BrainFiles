@@ -176,5 +176,43 @@ class TestLiveMerker(unittest.TestCase):
         self.assertTrue(self._merker('{"handel_erlaubt": true}'))
 
 
+class TestGezaehlteBuecher(unittest.TestCase):
+    """Die Schlusszeile muss die Buecher nennen, die in der Summe stehen.
+
+    Bis zum 18.09.2026 stand dort `len(p)` - alle Posten. summe() laesst
+    aber jeden unbelastbaren Posten weg. Die Zeile behauptete damit eine
+    Grundlage, die breiter war als die Rechnung: "5 Buecher gezaehlt" unter
+    einer Summe aus drei. Genau die Sorte Zahl, die stimmt aussieht.
+    """
+
+    GEMISCHT = [
+        {"spur": "a", "n": 10, "ergebnis": 10.0, "treffer": 5,
+         "waehrung": "USD", "live": False, "belastbar": True},
+        {"spur": "b", "n": 9, "ergebnis": -5.0, "treffer": 4,
+         "waehrung": "USD", "live": False, "belastbar": True},
+        {"spur": "c", "n": 2, "ergebnis": 99.0, "treffer": 2,
+         "waehrung": "USD", "live": False, "belastbar": False},
+    ]
+
+    def test_nur_die_summierten_werden_gezaehlt(self):
+        with patch.object(gb, "posten", return_value=self.GEMISCHT):
+            letzte = gb.bericht().splitlines()[-1]
+        self.assertIn("2 Buecher", letzte)
+        self.assertNotIn("3 Buecher", letzte)
+
+    def test_die_zeile_sagt_worauf_sie_sich_bezieht(self):
+        # "gezaehlt" liess offen, was gezaehlt wurde. Die Zeile steht
+        # direkt unter der Summe und muss sich auf sie beziehen.
+        with patch.object(gb, "posten", return_value=self.GEMISCHT):
+            letzte = gb.bericht().splitlines()[-1]
+        self.assertIn("in der Summe", letzte)
+
+    def test_ohne_belastbaren_posten_steht_null(self):
+        nur_schwach = [dict(self.GEMISCHT[2])]
+        with patch.object(gb, "posten", return_value=nur_schwach):
+            letzte = gb.bericht().splitlines()[-1]
+        self.assertIn("0 Buecher", letzte)
+
+
 if __name__ == "__main__":
     unittest.main()

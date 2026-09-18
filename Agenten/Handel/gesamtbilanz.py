@@ -167,7 +167,10 @@ def bericht(von=None, bis=None):
     t.append("")
     t.append("  Papier und Live werden nicht verrechnet, Waehrungen nicht "
              "gemischt.")
-    t.append("  %d Buecher gezaehlt." % len(p))
+    # Nicht len(p): summe() laesst jeden unbelastbaren Posten weg. Die
+    # Zeile steht unter der Summe und muss deren Grundlage nennen, sonst
+    # behauptet sie eine breitere Basis als die Rechnung hat.
+    t.append("  %d Buecher in der Summe." % (len(p) - len(unbelastbar)))
     return "\n".join(t)
 
 
