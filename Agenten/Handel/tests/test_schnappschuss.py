@@ -60,6 +60,17 @@ class SchreibenTest(unittest.TestCase):
         schnappschuss.aufraeumen(ordner=self.ordner, tage=0)
         self.assertIn("notizen.txt", os.listdir(self.ordner))
 
+    def test_abbruch_beim_schreiben_hinterlaesst_keine_datei(self):
+        # Scheitert das Serialisieren (hier: ein Set, das json nicht kennt),
+        # darf keine Datei unter dem Datumsnamen entstehen - weder leer noch
+        # mit abgeschnittenem Inhalt. Die Nebendatei muss ebenfalls weg sein.
+        heute = dt.date.today()
+        stand = {"datum": heute.isoformat(), "gebaut": "x",
+                 "spuren": {"kaputt": {1, 2}}}
+        with self.assertRaises(TypeError):
+            schnappschuss.schreibe(stand, ordner=self.ordner)
+        self.assertEqual(os.listdir(self.ordner), [])
+
 
 class VergleichTest(unittest.TestCase):
     def test_fehlender_vorgaenger_ist_kein_fehler(self):

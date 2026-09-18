@@ -52,11 +52,29 @@ def baue(erhebung, heute=None):
 
 
 def schreibe(stand, ordner=ORDNER):
-    """Den Stand ablegen und danach aufraeumen. Gibt den Pfad zurueck."""
+    """Den Stand ablegen und danach aufraeumen. Gibt den Pfad zurueck.
+
+    Geschrieben wird in eine Nebendatei, erst danach kommt der Datumsname
+    per os.replace() dran - unter Windows wie unter POSIX ein atomarer
+    Schritt. Bricht das Serialisieren ab, existiert die Zieldatei entweder
+    gar nicht oder noch mit dem alten, vollstaendigen Inhalt - nie mit
+    einer halb geschriebenen JSON. Der Name der Nebendatei beginnt mit
+    einem Punkt und traegt die PID: weder aufraeumen() noch lade() lesen
+    ihn als Schnappschuss, das Datumsmuster passt nicht.
+    """
     os.makedirs(ordner, exist_ok=True)
     pfad = os.path.join(ordner, "%s.json" % stand["datum"])
-    with open(pfad, "w", encoding="utf-8") as f:
-        json.dump(stand, f, ensure_ascii=False, indent=1)
+    neben = os.path.join(ordner, ".%s.json.tmp-%d" % (stand["datum"], os.getpid()))
+    try:
+        with open(neben, "w", encoding="utf-8") as f:
+            json.dump(stand, f, ensure_ascii=False, indent=1)
+        os.replace(neben, pfad)
+    except BaseException:
+        try:
+            os.remove(neben)
+        except OSError:
+            pass
+        raise
     aufraeumen(ordner=ordner)
     return pfad
 
@@ -85,13 +103,16 @@ def aufraeumen(ordner=ORDNER, tage=AUFBEWAHRUNG_TAGE):
         treffer = _DATEINAME.match(name)
         if not treffer:
             continue
+        pfad = os.path.join(ordner, name)
+        if not os.path.isfile(pfad):
+            continue
         try:
             wann = dt.date.fromisoformat(treffer.group(1))
         except ValueError:
             continue
         if wann < grenze:
             try:
-                os.remove(os.path.join(ordner, name))
+                os.remove(pfad)
                 weg += 1
             except OSError:
                 pass
