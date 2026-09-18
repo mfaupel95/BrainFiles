@@ -6,6 +6,7 @@ beiden liefen auseinander.
 """
 import argparse
 import datetime as dt
+import os
 import sys
 
 import auswertung_alle
@@ -13,6 +14,8 @@ import gesamtbilanz
 import lage
 import melder
 import zeitfenster
+
+HIER = os.path.dirname(os.path.abspath(__file__))
 
 # Vier Wochen nebeneinander. Darstellungsgroesse, keine Handelsgroesse.
 FENSTER_ANZAHL = 4
@@ -59,7 +62,23 @@ def bilanzteil(posten):
 
 
 def baue():
-    """Der Wochenbericht als Text."""
+    """Der Wochenbericht als Text. Mantel um _baue(): siehe dort.
+
+    Die Erhebung wohnt in lage.py und liest ihre Ordner ueber `lage.HIER`.
+    Wer `wochenbericht.HIER` auf einen Datenordner umbiegt - Tests tun genau
+    das -, meint auch die Erhebung. Dasselbe Muster wie
+    `tagesbericht.baue()`/`tagesbericht._baue()`.
+    """
+    alt = lage.HIER
+    lage.HIER = HIER
+    try:
+        return _baue()
+    finally:
+        lage.HIER = alt
+
+
+def _baue():
+    """Der eigentliche Bericht - siehe baue() fuer die HIER-Bindung."""
     heute = dt.datetime.now()
     t = ["<b>Handel - Woche  %s</b>" % heute.strftime("%d.%m.%Y")]
 

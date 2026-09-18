@@ -1,7 +1,12 @@
 """Tests fuer den Wochenbericht."""
+import io
+import json
 import os
+import shutil
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 HIER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HIER)
@@ -31,6 +36,67 @@ class VerlaufTest(unittest.TestCase):
         wochenbericht.verlauf("scanner", kennzahlen_fn=fake)
         for juenger, aelter in zip(gerufen, gerufen[1:]):
             self.assertLessEqual(aelter[1], juenger[0])
+
+
+class VerlaufszeileTest(unittest.TestCase):
+    def test_belastbares_fenster_zeigt_das_ergebnis(self):
+        werte = [{"n": 20, "ergebnis": 12.5, "treffer": 11}]
+        zeile = wochenbericht.verlaufszeile("scanner", werte)
+        self.assertIn("scanner", zeile)
+        self.assertIn("+12.50", zeile)
+
+    def test_zu_wenige_runden_zeigt_n_statt_ergebnis(self):
+        # auswertung_alle.MIN_RUNDEN = 8 - drei Runden sind zu wenige fuer
+        # eine Aussage, die Zeile darf trotzdem nicht die Ergebniszahl zeigen.
+        werte = [{"n": 3, "ergebnis": 99.0, "treffer": 1}]
+        zeile = wochenbericht.verlaufszeile("kraken", werte)
+        self.assertIn("n=3", zeile)
+        self.assertNotIn("99.00", zeile)
+
+    def test_leeres_fenster_zeigt_einen_strich(self):
+        zeile = wochenbericht.verlaufszeile("swap", [None])
+        self.assertIn("-", zeile)
+
+
+class BaueTest(unittest.TestCase):
+    """Belegt den Mantel: baue() bindet lage.HIER an sein eigenes HIER waehrend
+    des Aufrufs und stellt es danach zurueck - dasselbe Muster wie
+    tagesbericht.baue()/tagesbericht._baue()."""
+
+    def test_baue_erhebt_aus_dem_eigenen_hier_ordner(self):
+        """Ein Fake-Holer liest eine Datei, die nur im Temp-Ordner liegt.
+        Taucht der daraus gelesene Spurname im Volltext auf, kam die
+        Erhebung aus DIESEM Ordner - nicht aus dem echten Handel-Baum, wo
+        diese Datei nicht existiert und der Holer scheitern wuerde."""
+        tmp = tempfile.mkdtemp(prefix="wochenbericht-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        with io.open(os.path.join(tmp, "merkmal.json"), "w",
+                    encoding="utf-8") as f:
+            json.dump({"spur": "kraken"}, f)
+
+        def fake_holer():
+            pfad = os.path.join(wochenbericht.lage.HIER, "merkmal.json")
+            with io.open(pfad, encoding="utf-8") as f:
+                spur = json.load(f)["spur"]
+            return {"name": spur, "waehrung": "USD", "positionen": [],
+                    "w": {}, "ordner": os.path.join(wochenbericht.lage.HIER,
+                                                    spur)}
+
+        vorher = wochenbericht.lage.HIER
+        with patch.object(wochenbericht, "HIER", tmp), \
+                patch.object(wochenbericht.lage, "HOLER", (fake_holer,)):
+            text = wochenbericht.baue()
+        self.assertIn("kraken", text)
+        # Der Mantel stellt lage.HIER zurueck - kein Zustand bleibt haengen.
+        self.assertEqual(wochenbericht.lage.HIER, vorher)
+
+    def test_ohne_guthaben_abgleich_zeigt_eine_fehlzeile(self):
+        """Erzwingt den ImportError unabhaengig davon, ob guthaben_abgleich.py
+        (Aufgabe 7) inzwischen existiert: None in sys.modules laesst
+        `import guthaben_abgleich` immer scheitern."""
+        with patch.dict(sys.modules, {"guthaben_abgleich": None}):
+            text = wochenbericht.baue()
+        self.assertIn("Guthabenabgleich nicht verfuegbar", text)
 
 
 class SummenTest(unittest.TestCase):
