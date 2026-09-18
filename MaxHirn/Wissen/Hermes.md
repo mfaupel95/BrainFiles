@@ -908,3 +908,32 @@ Sicherungen: `.sicherung/projectatlas-config.yaml.bak-20260918`,
 `Routinen/gateway-waechter.ps1.bak-20260918`.
 
 Verwandt: [[OmniRoute-Produktion]] · [[Verbindungen]]
+
+## Desktop-App: alle Profile sichtbar (18.09.2026)
+
+Die Desktop-App zeigte nur das default-Profil, weil `gateway.multiplex_profiles`
+nie explizit gesetzt war (nur der Code-Default) - der Gateway servierte nur
+`default`, die App keinen Bots-Tab/Profil-Umschalter, und Profil-Backends
+starteten und wurden nach Idle beendet (desktop.log: `exited (1)`).
+Gesetzt: `gateway.multiplex_profiles: true` in `Agenten/Hermes/config.yaml`
+(Zeile 2095), dann `hermes gateway restart` (dokumentierter Weg aus
+`hermes gateway status`). Beleg: `gateway status` ohne
+'multiplex_profiles unset'-Warnung, `gateway list` zeigt alle 29 Profile,
+desktop.log `Hermes backend is ready`, Bots-Tab zeigt alle Profile.
+
+Falle dabei: `hermes config set` schneidet den Kommentar-Schluss der Datei
+ab (Security-Doku-Block, 38 Zeilen) - aus
+`backups/config/config.yaml.good.20260918-131140` byte-genau
+zurueckgeholt; der Diff gegen die .good-Sicherung zeigt exakt 1 Zeile.
+Der Commit enthaelt NUR die multiplex-Zeile (deterministischer Index:
+`git hash-object -w --stdin` + `git update-index --cacheinfo` gegen die
+HEAD-Fassung), der Arbeitsbaum mit den fremden Aenderungen anderer
+Sitzungen bleibt unberuehrt.
+
+Zweitablage `%LOCALAPPDATA%\hermes\` (config.yaml v42, eigene .env mit
+Klartext-Zugangsdaten, eigene auth.json): komplette Alt-Installation von vor
+dem Umzug, wird von der Desktop-App nicht mehr gelesen (HERMES_HOME ist
+Benutzervariable, `resolveHermesHome2` liest Registry-HERMES_HOME vor
+LOCALAPPDATA). Altlast, nicht angefasst - Entscheidung offen.
+
+Sicherungen: `config.yaml.bak-20260918`, `backups/config/config.yaml.good.20260918-133615`.
