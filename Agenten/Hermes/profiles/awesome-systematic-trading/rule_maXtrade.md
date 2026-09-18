@@ -42,3 +42,11 @@ Verdichten ist Teil der laufenden Arbeit, keine eigene Aufgabe und keine Rueckfr
 - Angelegt am 18.09.2026 auf Wunsch von Max. Liegt im Profilordner, damit jede Sitzung
   dieses Profils sie ueber `SOUL.md` findet; in BrainFiles versioniert (Freigabe in
   `.gitignore` ueber `!Agenten/Hermes/profiles/*/rule_maXtrade.md`).
+- Nachweis, dass diese Datei geladen wird: frische Sitzung
+  `hermes.exe -p awesome-systematic-trading chat -q "Welche Regeldatei zuerst?" -Q -t memory`
+  (vorher PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME auf Agenten\Hermes) - die Antwort
+  stammt allein aus `SOUL.md`, also aus dem Verweis hierher.
+- Freigabe in Git pruefen: `git check-ignore -v <pfad>` zeigt die `!`-Zeile selbst; ignoriert
+  ist die Datei dann NICHT, sonst stuende sie nicht als `??` in `git status`.
+- `skills/brainfiles/handel-spuren/SKILL.md` ist am Groessenlimit (100.663/100.000 Zeichen):
+  dort laesst sich nichts mehr ergaenzen, Belege gehoeren nach `references/` oder hierher.
