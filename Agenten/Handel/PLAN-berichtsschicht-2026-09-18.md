@@ -1410,19 +1410,28 @@ git commit -m "feat(guthaben): Buchbilanz gegen Konto, der Rest ist der Fund"
 
 ## Abschlussprüfung
 
-- [ ] **Volle Suite:** `python -m unittest discover -s tests -p "test_*.py"`
+- [x] **Volle Suite:** `python -m unittest discover -s tests -p "test_*.py"`
   Erwartet: keine neuen Fehler gegenüber dem Stand vor diesem Plan. Der bekannte
   vorbestehende Fehler `test_risikovorfilter` bleibt und gehört zu Thema 4.
-- [ ] **Bedingung 4:** `python spiegelstand.py`
+  **Beleg 19.09.2026:** 398 Tests, 1 Fehler — ausschließlich
+  `test_risikovorfilter.EinbauTest.test_bei_gerissener_grenze_entsteht_keine_position`
+  (seit `f9734a2` vom 16.09. vorhanden, Plan berührt `risikovorfilter.py` nicht).
+- [x] **Bedingung 4:** `python spiegelstand.py`
   Der Umbau fasst keinen Journal- oder Zustandsschreibpfad an — der Lauf ist der
   Nachweis, nicht die Behauptung. Erwartet: derselbe Befund wie vor dem Plan.
-- [ ] **Bericht von Hand:** `python tagesbericht.py --ohne-xperp`, dann
+  **Beleg 19.09.2026:** 24/24 byte-gleich (scanner zeigte einmal kurz ABWEICHUNG
+  direkt nach der Volle-Suite — bekannter Testeffekt, heilte im nächsten Zyklus).
+- [x] **Bericht von Hand:** `python tagesbericht.py --ohne-xperp`, dann
   `python -c "import lage, schnappschuss; schnappschuss.schreibe(schnappschuss.baue(lage.erhebe(mit_xperp=False)))"`,
   dann die Datei in `stand/` auf das gestrige Datum umbenennen und den Bericht
   erneut bauen. Der zweite Lauf muss die Zeile „Kein Stand von gestern"
   verlieren und mindestens eine Differenzzeile zeigen.
-- [ ] **Keine Laufzeitdaten im Index:** `git status --short` nennt keine Datei
+  **Beleg 19.09.2026:** zweiter Lauf ohne „Kein Stand von gestern", Differenzzeile
+  „seit gestern: neu: HYPE-USDC" vorhanden; echter Vortag danach wiederhergestellt.
+- [x] **Keine Laufzeitdaten im Index:** `git status --short` nennt keine Datei
   unter `stand/`.
+  **Beleg 19.09.2026:** `git status --short | grep stand/` leer; `stand/` ist
+  über `.gitignore:77` gesperrt.
 
 ## Was dieser Plan ausdrücklich nicht anfasst
 
