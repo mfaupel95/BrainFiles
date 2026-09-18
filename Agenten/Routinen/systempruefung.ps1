@@ -649,6 +649,46 @@ try {
 } catch { Notiz "  ! Dauerlauf-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
+# 13) Arbeitszweig: eine Linie (master), und ist sie veroeffentlicht?
+# ---------------------------------------------------------------------------
+# AGENTS.md, Abschnitt "Zweige": master ist der EINZIGE Arbeitszweig. Zweimal
+# ist daneben einer entstanden (telegram-bus 16.09., berichtsschicht
+# 17./18.09.) - beide Male lagen Commits herum, die master nicht hatte und die
+# GitHub nicht kannte. Nicht der Zweig ist der Fehler, sondern dass es
+# niemandem auffiel: Block 1 ueberspringt den Zweig, Block 8 die .bak-Dateien.
+try {
+  Notiz "`n--- 13) Git: Arbeitszweig und Veroeffentlichung ---"
+  $zweig = (git -C $wurzel rev-parse --abbrev-ref HEAD 2>$null)
+  if (-not $zweig) {
+    Entscheiden "Arbeitszweig nicht lesbar (git rev-parse lieferte nichts) - ist $wurzel noch ein Repo?"
+  } elseif ($zweig -ne 'master') {
+    Entscheiden "Arbeitszweig ist '$zweig', nicht master - zusammenfuehren: 'git branch -f master $zweig' (wenn master ein Vorfahre ist), sonst 'git merge $zweig'."
+  } else {
+    Info "Arbeitszweig ist master."
+  }
+  # origin/master muss lokal bekannt sein, sonst ist "ist alles veroeffentlicht?"
+  # nicht messbar - und ein stiller Fehlalarm waere die Folge.
+  $fern = git -C $wurzel rev-parse --verify --quiet refs/remotes/origin/master 2>$null
+  if (-not $fern) {
+    Entscheiden "origin/master ist lokal nicht bekannt - 'git fetch origin' laufen lassen, sonst ist die Frage 'alles veroeffentlicht?' nicht messbar."
+  } else {
+    $vor = @(git -C $wurzel rev-list origin/master..HEAD 2>$null)
+    if ($vor.Count -gt 0) {
+      $aeltester = (git -C $wurzel rev-list --max-count=1 --reverse origin/master..HEAD 2>$null)
+      Entscheiden "$($vor.Count) Commit(s) sind nicht auf origin/master (aeltester $aeltester) - 'git push origin $zweig' faellig."
+    } else {
+      Info "Keine unveroeffentlichten Commits gegenueber origin/master."
+    }
+    if ($zweig -and $zweig -ne 'master') {
+      $hinter = @(git -C $wurzel rev-list HEAD..master 2>$null)
+      if ($hinter.Count -gt 0) {
+        Entscheiden "master hat $($hinter.Count) Commit(s), die im Arbeitszweig '$zweig' fehlen - der Baum zeigt nicht die integrierte Linie."
+      }
+    }
+  }
+} catch { Notiz "  ! Zweig-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
 # Bericht schreiben
 # ---------------------------------------------------------------------------
 $vortag = Get-ChildItem $logs -Filter 'systempruefung-*.md' -EA SilentlyContinue |
