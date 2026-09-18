@@ -1758,13 +1758,6 @@ providers:
       ollama-local/bge-m3: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
-fallback_providers:
-  - provider: omniroute
-    model: auto/coding:free
-    base_url: http://localhost:20128/v1
-  - provider: custom
-    model: gemma-e4b-8k:latest
-    base_url: http://127.0.0.1:11434/v1
 toolsets:
   - hermes-cli
 database:

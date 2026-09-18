@@ -104,11 +104,18 @@ Worktree-Sammlung zu den Schwester-Repos.
   `Agenten/Hermes/scripts/bot-modell-auf-router.py` (Trockenlauf ohne Argument,
   `--anwenden` mit `config.yaml.bak-JJJJMMTT`, `--zuruecknehmen`); es holt
   ausserdem den von `hermes config set` abgeschnittenen Kommentar-Schluss der
-  `config.yaml` zurueck (in 6 Profilen fehlten 38 Zeilen Doku). Unberuehrt:
+  `config.yaml` zurueck (in 6 Profilen fehlten 38 Zeilen Doku).
+  Die geerbte `fallback_providers`-Kette hat
+  `Agenten/Hermes/scripts/bot-rueckfallkette-bereinigen.py` in 14 Profilen
+  entfernt (sie zeigte zuletzt auf dasselbe Router-Ziel und dann auf
+  `gemma-e4b-8k:latest`, 8.192 Token — Hermes verlangt 64.000; faellt der Router
+  aus, kommt jetzt die ehrliche Router-Meldung statt eines Kontextfenster-
+  Fehlers). Unberuehrt:
   `superpowers` und `awesome-systematic-trading` (eigene Portal-Anmeldung) sowie
   `openmontage` (`llamacpp`, lokales Modell). Nachweis: 25 Profile umgestellt,
   0 Fehler, je Profil 2 Einfuegungen/3 Loeschungen gegen HEAD; live geantwortet:
-  `basic-memory`, `projectatlas`, `skills`, `caveman`, `tradingview-mcp`.
+  `basic-memory`, `projectatlas`, `skills`, `caveman`, `tradingview-mcp`,
+  `gbrain`, `agent-reach`, `santiment`.
 - **Neuer Bot = drei Ankerpunkte.** Profil anlegen (`--clone`), `terminal.cwd`
   setzen, `profile.yaml`-Beschreibung pflegen (der Kanban-Orchestrator sortiert
   danach). `/bots` zeigt beides von selbst.
