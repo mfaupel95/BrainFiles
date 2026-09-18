@@ -406,6 +406,7 @@ Agenten/Hermes/**
 !Agenten/Hermes/profiles/*/config.yaml
 !Agenten/Hermes/profiles/*/profile.yaml
 !Agenten/Hermes/profiles/*/SOUL.md
+!Agenten/Hermes/profiles/*/rule_maXtrade.md
 !Agenten/Hermes/profiles/*/memories/*.md
 !Agenten/Hermes/profiles/*/cron/*.json
 !Agenten/Hermes/profiles/*/cron/*.yaml
