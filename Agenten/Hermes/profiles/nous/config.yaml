@@ -1,7 +1,6 @@
 model:
-  default: deepseek-v4-flash-free
-  provider: gemini
-  base_url: ''
+  default: auto/best-coding
+  provider: omniroute
 moa:
   presets:
     default:

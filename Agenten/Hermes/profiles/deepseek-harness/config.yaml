@@ -1,7 +1,6 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
-  provider: nous
-  base_url: https://inference-api.nousresearch.com/v1
+  default: auto/best-coding
+  provider: omniroute
 providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
