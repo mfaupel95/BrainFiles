@@ -56,12 +56,21 @@ def fenster(tage=None, seit=None, bis=None):
 
     tage und seit schliessen sich aus - zwei Angaben fuer denselben Anfang
     waeren eine stille Vorrangregel.
+
+    tage und bis ebenso: `tage` zaehlt von JETZT rueckwaerts, nicht von
+    `bis`. Mit einem `bis` in der Vergangenheit liegt der Anfang hinter dem
+    Ende, und das Fenster ist leer - ohne Fehler, ohne Meldung, nur ohne
+    Zahlen. "--tage 30 --bis 2026-01-01" sieht aus wie 30 Tage im Januar
+    und ist nichts. Genauso unbestimmt wie tage+seit, also genauso ein
+    Fehler. Wer 30 Tage vor einem Datum will, nennt seit und bis.
     """
     if tage is not None and seit is not None:
         raise ValueError("tage und seit zusammen sind nicht eindeutig")
+    if tage is not None and bis is not None:
+        raise ValueError("tage zaehlt von jetzt rueckwaerts - mit bis "
+                         "zusammen nicht eindeutig; nimm seit und bis")
     if tage is not None:
-        return (jetzt() - dt.timedelta(days=int(tage)),
-                _rand(bis, ende=True) if bis else None)
+        return (jetzt() - dt.timedelta(days=int(tage)), None)
     return (_rand(seit) if seit else None,
             _rand(bis, ende=True) if bis else None)
 

@@ -56,12 +56,39 @@ class TestFenster(unittest.TestCase):
 
     def test_seit_und_bis_als_datum(self):
         von, bis = zf.fenster(seit="2026-09-01", bis="2026-09-30")
-        self.assertEqual(von.date(), dt.date(2026, 9, 1))
-        self.assertEqual(bis.date(), dt.date(2026, 9, 30))
+        self.assertEqual(von, dt.datetime(2026, 9, 1,
+                                          tzinfo=dt.timezone.utc))
+        # Ein blosses Datum als `bis` meint den GANZEN Tag. Die Pruefung
+        # auf .date() allein liess offen, ob die Uhrzeit dabei 00:00 ist -
+        # dann faellt der ganze 30. September aus dem Fenster, und das
+        # merkt niemand. Deshalb die Uhrzeit mit.
+        self.assertEqual(bis, dt.datetime(2026, 9, 30, 23, 59, 59, 999999,
+                                          tzinfo=dt.timezone.utc))
+
+    def test_bis_mit_uhrzeit_bleibt_die_uhrzeit(self):
+        # Tagesende NUR beim reinen Datum. Wer eine Uhrzeit angibt, meint
+        # sie.
+        von, bis = zf.fenster(bis="2026-09-30T08:00:00+00:00")
+        self.assertIsNone(von)
+        self.assertEqual(bis, dt.datetime(2026, 9, 30, 8,
+                                          tzinfo=dt.timezone.utc))
 
     def test_tage_und_seit_zusammen_ist_ein_fehler(self):
         with self.assertRaises(ValueError):
             zf.fenster(tage=30, seit="2026-09-01")
+
+    def test_tage_und_bis_zusammen_ist_ein_fehler(self):
+        # `tage` zaehlt von JETZT rueckwaerts. Mit einem `bis` in der
+        # Vergangenheit liegt der Anfang hinter dem Ende, und das Fenster
+        # ist still leer - kein Fehler, keine Meldung, nur keine Zahlen.
+        # Genauso unbestimmt wie tage+seit, also genauso ein Fehler.
+        with self.assertRaises(ValueError):
+            zf.fenster(tage=30, bis="2026-01-01")
+
+    def test_tage_allein_bleibt_erlaubt(self):
+        von, bis = zf.fenster(tage=30)
+        self.assertIsNotNone(von)
+        self.assertIsNone(bis)
 
 
 class TestImFenster(unittest.TestCase):
