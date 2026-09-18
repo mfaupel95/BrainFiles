@@ -32,6 +32,12 @@ Prozess, Skript, Bau, Doku) und deshalb nicht verlaesslich.
   im Modus `Tui` ab (`lazygit.exe` fehlt) und im Modus `Gui` (`code.exe` fehlt,
   VSCode ist auf dem Rechner nicht installiert). Modus `Terminal` laeuft, oeffnet
   aber nur leere PowerShell-Tabs je Repo — es startet nichts.
+  **Korrektur vom selben Tag:** VSCode IST installiert
+  (`AppData\Local\Programs\Microsoft VS Code\bin\code.cmd`) — der erste Befund
+  kam aus einer Pruefung ueber die bash-PATH, die den Windows-PATH nicht sieht.
+  Falsch war also nur der `lazygit`-Teil; `code.cmd` findet PowerShell sehr wohl.
+  Das Skript wurde zusaetzlich nie versioniert (es lag nur auf der Platte) und
+  liegt jetzt als Werkzeug unter `Agenten\Werkzeuge\`.
 - Bestand: **28 Git-Repos** in `Werkstatt/Repos/`, dazu `copilot-worktrees` (kein
   `.git`) und `.vscode`. **28 Hermes-Bots**, einer je Repo.
 - Nur **4 Repos haben eine venv**: `Agent-Reach`, `moon-dev-ai-agents`,
@@ -178,10 +184,13 @@ danach steht er im Manifest und das Repo wandert in die Gruppe STARTBAR.
 1. **Desktop-Verknuepfung „Hermes"** auf
    `Agenten\Hermes\hermes-agent\apps\desktop\release\win-unpacked\Hermes.exe`
    umbiegen, Arbeitsverzeichnis auf dessen Ordner. Heute zeigt sie ins Leere.
-2. **`repos-launcher.ps1` verliert die harten Abhaengigkeiten.** Fehlt ein
-   Werkzeug (`code`, `lazygit`), wird es **nicht benutzt und im Klartext genannt**
-   statt zu werfen. Das Skript bleibt als Massenweg erhalten und wird nicht
-   geloescht. Die Zentrale macht daneben dasselbe fuer eine einzelne Zeile.
+2. **`repos-launcher.ps1` verliert die harten Abhaengigkeiten und zieht um.**
+   Fehlt ein Werkzeug (`lazygit`), wird es **nicht benutzt und im Klartext
+   genannt** statt zu werfen; nur `wt.exe` ist Pflicht. Das Skript bleibt als
+   Massenweg erhalten und wird nicht geloescht. Es liegt jetzt unter
+   `Agenten\Werkzeuge\` (in `Routinen` gilt jede `.ps1` als Bus-Routine) und ist
+   erstmals in der `.gitignore` freigegeben — vorher existierte es nur auf dieser
+   Platte. `-Mode Gui` funktioniert: VSCode ist installiert.
 
 ## 10. Nachweis
 
@@ -210,7 +219,8 @@ danach steht er im Manifest und das Repo wandert in die Gruppe STARTBAR.
 1. **Bots in der Telegram-Bruecke:** die Zentrale startet Bot-Chats lokal. Fuer
    unterwegs (`/bot NAME …` per Telegram) ist nichts zu bauen, weil es steht —
    nur wissen: die Zentrale ist der Heimatweg, Telegram der Fernweg.
-2. **VSCode:** fehlt auf dem Rechner. Ohne Installation bleibt der „Gui"-Weg
-   entweder Explorer oder ein spaeterer Editor. Kein Zwang, `code` nachzuinstallieren.
+2. **VSCode ist installiert** (nur nicht ueber die bash-PATH sichtbar), der
+   „Gui"-Weg des Launchers funktioniert also. Der Explorer-Weg bleibt trotzdem
+   drin, weil er ohne Zusatzprogramm geht.
 3. **Node-Repos einrichten** (17 × `npm install`, je 1–5 Minuten und 200–800 MB
    `node_modules`) — erst auf Zuruf, Repo fuer Repo aus dem Fenster.
