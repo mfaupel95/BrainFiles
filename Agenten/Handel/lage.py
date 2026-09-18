@@ -10,6 +10,9 @@ import json
 import os
 import sys
 
+import auswertung_alle
+import zeitfenster
+
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HIER, "scanner"))
 # Die Module der Spur 2 (okxf, wachen_xperp). Sie werden hier auch fuer die
@@ -17,6 +20,14 @@ sys.path.insert(0, os.path.join(HIER, "scanner"))
 # enthaelt. Ueber __file__ bestimmt und nicht ueber HIER: HIER zeigen die Tests
 # auf einen Datenordner, die Module liegen trotzdem hier.
 XPERP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xperp")
+
+_UNGESETZT = object()
+
+# Das Fenster der Berichtszahlen. Sieben Tage, weil "seit Anfang" jede
+# Aenderung der letzten Woche unter dem Gewicht der Historie verschwinden
+# laesst. Darstellungsgroesse, keine Handelsgroesse - deshalb hier und
+# nicht in einer wachen.json.
+FENSTER_TAGE = 7
 
 
 def _lies(pfad, vorgabe=None):
@@ -839,6 +850,82 @@ def sperren(spur, lage):
         aus.append("Journal-Zweitziel fehlt (Bed. 4)")
     return aus
 
+
+
+def zu_lage(roh, schluessel, tage=FENSTER_TAGE, kennzahlen=_UNGESETZT):
+    """Eine spur_*()-Rueckgabe in die feste Form bringen.
+
+    kennzahlen wird nur von Tests gesetzt; im Betrieb holt die Funktion sie
+    selbst. Der Wachtposten _UNGESETZT unterscheidet "nicht uebergeben" von
+    "ausdruecklich keine" - None ist eine gueltige Antwort.
+    """
+    if kennzahlen is _UNGESETZT:
+        kennzahlen = None
+        if schluessel and auswertung_alle.hat_buch(schluessel):
+            von, bis = zeitfenster.fenster(tage=tage)
+            kennzahlen = auswertung_alle.kennzahlen_fuer(schluessel,
+                                                         von=von, bis=bis)
+
+    if schluessel and not auswertung_alle.hat_buch(schluessel):
+        buchlage = "kein_buch"
+        kennzahlen = None
+    elif not kennzahlen or not kennzahlen.get("n"):
+        buchlage = "zu_wenige_runden"
+    elif auswertung_alle.belastbar(kennzahlen):
+        buchlage = "belastbar"
+    else:
+        buchlage = "zu_wenige_runden"
+
+    return {
+        "schluessel": schluessel,
+        "name": roh["name"],
+        "waehrung": roh["waehrung"],
+        "positionen": roh.get("positionen", []),
+        "wachen": None,
+        "sperren": [],
+        "stillgelegt": bool(roh.get("w", {}).get("stillgelegt")),
+        "kennzahlen": kennzahlen,
+        "buchlage": buchlage,
+        "buch_seit": auswertung_alle.buch_seit(schluessel) if schluessel else None,
+        "bilanz": roh.get("bilanz"),
+        "fehler": None,
+        "roh": roh,
+    }
+
+
+def _schluessel_von(roh):
+    """Der Ordnername der Spur, oder None. auswertung_alle kennt Spuren
+    unter diesem Namen; ohne ihn gibt es keine Kennzahlen."""
+    ordner = roh.get("ordner")
+    if not ordner:
+        return None
+    name = os.path.basename(ordner.rstrip(os.sep))
+    return name if name in auswertung_alle.SPUREN else None
+
+
+def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
+    """Alle Spuren in fester Form. Ein Ausfall kostet eine Spur, nicht den Lauf."""
+    aus = []
+    for hole in (holer if holer is not None else HOLER):
+        try:
+            roh = hole()
+        except Exception as e:                           # noqa: BLE001
+            aus.append({"schluessel": None, "name": hole.__name__,
+                        "waehrung": "", "positionen": [], "wachen": None,
+                        "sperren": [], "stillgelegt": False,
+                        "kennzahlen": None, "buchlage": "kein_buch",
+                        "buch_seit": None, "bilanz": None,
+                        "fehler": "%s: %s" % (type(e).__name__, e),
+                        "roh": {}})
+            continue
+        e = zu_lage(roh, _schluessel_von(roh), tage=tage)
+        e["wachen"] = (wachenlage(roh)
+                       if roh.get("pruefmodul", "wachen_pruefung") else None)
+        e["sperren"] = sperren(roh, e["wachen"])
+        if roh.get("papierfest"):
+            e["sperren"].insert(0, "kein Live-Zweig (Papierpfad)")
+        aus.append(e)
+    return aus
 
 
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,

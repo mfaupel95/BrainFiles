@@ -25,5 +25,36 @@ class FormTest(unittest.TestCase):
         self.assertEqual(len(lage.HOLER), 24)
 
 
+class BuchlageTest(unittest.TestCase):
+    def test_kategorie_kein_buch_wenn_journal_fehlt(self):
+        roh = {"name": "Testspur", "waehrung": "USD", "w": {}, "z": {},
+               "positionen": []}
+        e = lage.zu_lage(roh, schluessel="gibtesnicht", tage=7)
+        self.assertEqual(e["buchlage"], "kein_buch")
+        self.assertIsNone(e["kennzahlen"])
+
+    def test_zu_wenige_runden_zeigt_keine_zahl(self):
+        roh = {"name": "Testspur", "waehrung": "USD", "w": {}, "z": {},
+               "positionen": []}
+        e = lage.zu_lage(roh, schluessel=None, tage=7,
+                         kennzahlen={"n": 2, "ergebnis": 5.0, "treffer": 1})
+        self.assertEqual(e["buchlage"], "zu_wenige_runden")
+
+    def test_belastbar_ab_min_runden(self):
+        roh = {"name": "Testspur", "waehrung": "USD", "w": {}, "z": {},
+               "positionen": []}
+        e = lage.zu_lage(roh, schluessel=None, tage=7,
+                         kennzahlen={"n": 12, "ergebnis": 5.0, "treffer": 7})
+        self.assertEqual(e["buchlage"], "belastbar")
+
+    def test_ausfall_einer_spur_bleibt_eine_zeile(self):
+        def kaputt():
+            raise RuntimeError("Journal unlesbar")
+        kaputt.__name__ = "spur_kaputt"
+        ergebnis = lage.erhebe(holer=(kaputt,), mit_xperp=False)
+        self.assertEqual(len(ergebnis), 1)
+        self.assertIn("Journal unlesbar", ergebnis[0]["fehler"])
+
+
 if __name__ == "__main__":
     unittest.main()
