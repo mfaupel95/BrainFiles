@@ -5,7 +5,12 @@
       "ordner": "Agent-Reach",
       "art": "python",
       "bot": "agent-reach",
-      "notiz": "Internet lesen ohne Gebuehren (Twitter, Reddit, RSS, Webseiten)"
+      "notiz": "Internet lesen ohne Gebuehren - doctor prueft die Kanaele (Start = Kanalbericht)",
+      "start": [
+        ".venv\\Scripts\\agent-reach.exe",
+        "doctor"
+      ],
+      "venv_pflicht": true
     },
     {
       "ordner": "awesome-systematic-trading",
@@ -94,7 +99,12 @@
       "ordner": "moon-dev-ai-agents",
       "art": "python",
       "bot": "moon-dev-agents",
-      "notiz": "47 Agenten, MoonDev-GUI, RBI-Swarm, Boersen-Adapter - das Herzstueck"
+      "notiz": "Schaltzentrale: Boersen, Orderflaeche, 47 Agenten, RBI-Swarm, LLM, READMEs",
+      "start": [
+        ".venv\\Scripts\\pythonw.exe",
+        "moongui.py"
+      ],
+      "venv_pflicht": true
     },
     {
       "ordner": "Moon-Dev-Code",
@@ -127,7 +137,13 @@
       "ordner": "openmontage",
       "art": "python",
       "bot": "openmontage",
-      "notiz": "agentisches Videosystem, Makefile mit venv/install/demo"
+      "notiz": "Start = Werkzeugregister des Repos (sein eigener Statusbefehl, kein make noetig)",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "-c",
+        "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.provider_menu(), indent=2))"
+      ],
+      "venv_pflicht": true
     },
     {
       "ordner": "OpenTerminal",
@@ -139,7 +155,12 @@
       "ordner": "ProjectAtlas",
       "art": "rust",
       "bot": "projectatlas",
-      "notiz": "Repo-Kartierung (Rust); fertige Binary unter Agenten/Werkzeuge/projectatlas/bin"
+      "notiz": "Rust; Gebrauchsanweisung der Binary (Bau: cargo build --release, 2 Min)",
+      "start": [
+        "target\\release\\projectatlas.exe",
+        "--help"
+      ],
+      "pfad_pflicht": "target\\release\\projectatlas.exe"
     },
     {
       "ordner": "santiment",

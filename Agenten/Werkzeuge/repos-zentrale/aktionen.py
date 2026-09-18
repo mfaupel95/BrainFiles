@@ -27,6 +27,7 @@ class StartErgebnis:
     log: Path
     argv: list[str] = field(default_factory=list)
     fehler: str | None = None
+    prozess: object | None = None   # Prozesshandle (Popen), fuer Warten/Beenden
 
 
 def argv_ordner(pfad: Path) -> list[str]:
@@ -76,6 +77,15 @@ def start_ausfuehren(
 
     repo = getattr(zeile, "repo", None)
     cwd = Path(repo.pfad) if repo is not None else Path(".")
+    # Windows loest ein RELATIVES Programm gegen das Arbeitsverzeichnis des
+    # AUFRUFERS auf, nicht gegen `cwd` des Kindes. Ein Manifest-Eintrag wie
+    # ".venv\\Scripts\\pythonw.exe" scheitert deshalb mit FileNotFoundError,
+    # obwohl die Datei im Repo liegt - also hier gegen das Repo aufloesen.
+    programm = Path(argv[0])
+    if not programm.is_absolute():
+        im_repo = cwd / programm
+        if im_repo.exists():
+            argv = [str(im_repo)] + argv[1:]
     Path(log_ordner).mkdir(parents=True, exist_ok=True)
     try:
         with open(log, "ab") as f:
@@ -92,7 +102,7 @@ def start_ausfuehren(
             )
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError) as e:
         return StartErgebnis(None, log, argv, f"{type(e).__name__}: {e}")
-    return StartErgebnis(getattr(prozess, "pid", None), log, argv)
+    return StartErgebnis(getattr(prozess, "pid", None), log, argv, None, prozess)
 
 
 def doku_oeffnen(datei: Path, *, starter=None) -> str | None:

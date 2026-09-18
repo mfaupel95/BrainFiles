@@ -132,6 +132,13 @@ class ZeilenBauenTest(unittest.TestCase):
         self.assertEqual(z["demo"].gruppe, "einrichten")
         self.assertIn("node_modules fehlt (npm install)", z["demo"].gruende)
 
+    def test_pfad_pflicht_meldet_fehlende_datei(self):
+        e = manifest.Eintrag(ordner="demo", start=["target\\release\\x.exe"],
+                            pfad_pflicht="target\\release\\x.exe")
+        z = self.zeilen([repo("demo", art="rust", venv=None)], [e])
+        self.assertEqual(z["demo"].gruppe, "einrichten")
+        self.assertIn("target\\release\\x.exe fehlt (bauen)", z["demo"].gruende)
+
     def test_manifest_fehler_landet_als_grund(self):
         e = manifest.Eintrag(ordner="demo", start=None, fehler=["start ist keine Liste"])
         z = self.zeilen([repo("demo")], [e])

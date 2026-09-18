@@ -114,6 +114,25 @@ class StartTest(unittest.TestCase):
         self.assertIsNone(ergebnis.pid)
         self.assertIn("FileNotFoundError", ergebnis.fehler)
 
+    def test_relatives_programm_wird_gegen_das_repo_aufgeloest(self):
+        # Windows loest argv[0] gegen das Arbeitsverzeichnis des Aufrufers auf,
+        # nicht gegen cwd des Kindes - deshalb muss der Pfad absolut werden.
+        with tempfile.TemporaryDirectory() as t:
+            repo_pfad = Path(t) / "demo"
+            (repo_pfad / ".venv" / "Scripts").mkdir(parents=True)
+            (repo_pfad / ".venv" / "Scripts" / "pythonw.exe").write_bytes(b"")
+            z = zeile(start=[".venv\\Scripts\\pythonw.exe", "gui.py"], pfad=repo_pfad)
+            aktionen.start_ausfuehren(z, self.logs, popen=FakePopen)
+            argv, kwargs = FakePopen.rufe[0]
+            self.assertTrue(Path(argv[0]).is_absolute(), argv)
+            self.assertEqual(Path(argv[0]).name, "pythonw.exe")
+            self.assertEqual(argv[1], "gui.py")
+
+    def test_programm_auf_dem_path_bleibt_unveraendert(self):
+        aktionen.start_ausfuehren(zeile(start=["npm", "start"]), self.logs, popen=FakePopen)
+        argv, _ = FakePopen.rufe[0]
+        self.assertEqual(argv, ["npm", "start"])
+
     def test_prozesshandle_wird_zurueckgegeben(self):
         ergebnis = aktionen.start_ausfuehren(zeile(start=["x.exe"]), self.logs, popen=FakePopen)
         self.assertIsNotNone(ergebnis.prozess)

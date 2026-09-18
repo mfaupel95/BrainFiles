@@ -16,13 +16,6 @@ import scan
 
 # Feste Reihenfolge, damit das Fenster bei jedem Lauf gleich aussieht.
 GRUPPEN_REIHENFOLGE = ("startbar", "einrichten", "neu", "doku", "fehlt")
-GRUPPEN_TITEL = {
-    "startbar": "STARTBAR",
-    "einrichten": "EINRICHTEN (Abhaengigkeit fehlt)",
-    "neu": "NEU (kein Manifest-Eintrag)",
-    "doku": "NUR DOKU",
-    "fehlt": "FEHLT (Eintrag ohne Ordner)",
-}
 
 
 @dataclass
@@ -39,6 +32,7 @@ class Eintrag:
     notiz: str = ""
     venv_pflicht: bool = False
     node_modules_pflicht: bool = False
+    pfad_pflicht: str | None = None   # Datei/Ordner im Repo, ohne den der Start nicht geht
     port: int | None = None
     fehler: list[str] = field(default_factory=list)
     erlaubt: bool = True
@@ -114,6 +108,11 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             notiz=str(roh.get("notiz") or ""),
             venv_pflicht=bool(roh.get("venv_pflicht")),
             node_modules_pflicht=bool(roh.get("node_modules_pflicht")),
+            pfad_pflicht=(
+                str(roh["pfad_pflicht"])
+                if roh.get("pfad_pflicht") and ".." not in str(roh["pfad_pflicht"])
+                else None
+            ),
             port=roh.get("port") if isinstance(roh.get("port"), int) else None,
             fehler=fehler,
         )
@@ -137,6 +136,8 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         startgruende.append("venv fehlt")
     if e.node_modules_pflicht and not repo.node_modules:
         startgruende.append("node_modules fehlt (npm install)")
+    if e.pfad_pflicht and not (repo.pfad / e.pfad_pflicht).exists():
+        startgruende.append(f"{e.pfad_pflicht} fehlt (bauen)")
 
     gruppe = "einrichten" if startgruende else "startbar"
     if e.gruppe == "doku":
@@ -204,11 +205,9 @@ def zeilen_bauen(
     return zeilen
 
 
-def nach_gruppen(zeilen: list[Zeile]) -> dict[str, list[Zeile]]:
-    """Zeilen in die feste Gruppenreihenfolge legen; leere Gruppen fallen weg."""
-    gruppen: dict[str, list[Zeile]] = {}
-    for name in GRUPPEN_REIHENFOLGE:
-        passende = [z for z in zeilen if z.gruppe == name]
-        if passende:
-            gruppen[name] = sorted(passende, key=lambda z: z.ordner.lower())
-    return gruppen
+def reihenfolge_index(gruppe: str) -> int:
+    """Sortierhilfe: die feste Gruppenreihenfolge, Unbekanntes nach hinten."""
+    try:
+        return GRUPPEN_REIHENFOLGE.index(gruppe)
+    except ValueError:
+        return len(GRUPPEN_REIHENFOLGE)
