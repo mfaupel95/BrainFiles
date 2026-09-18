@@ -32,10 +32,12 @@ lebt eigenstaendig.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import time
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -75,6 +77,92 @@ def _repo_env() -> dict[str, str]:
     except OSError:
         pass
     return werte
+
+# ---------------------------------------------------------------------------
+# Modellweg je Agent (Max, 18.09.2026: "auf nous/deepseek wechseln, sonst lokal")
+# ---------------------------------------------------------------------------
+# new_or_top_agent.py kennt drei Wege (am Code nachgelesen, 18.09.2026):
+#   if OLLAMA_MODEL:                     -> lokales Ollama, OpenAI-kompatibel
+#   elif "deepseek" in AI_MODEL.lower(): -> openai.OpenAI(base_url=DEEPSEEK_BASE_URL,
+#                                            api_key=DEEPSEEK_KEY)
+#   else:                                -> anthropic.Anthropic(ANTHROPIC_KEY)
+# Der Anthropic-Weg scheidet aus (kein Guthaben), und der lokale fuehrte heute
+# ins Leere: die Repo-.env nannte glm4:9b-chat:latest, das im Ollama-Store
+# NICHT liegt - der Agent lief, aber jeder Aufruf endete mit "HTTP Error 404"
+# und er speicherte den Fehlertext als Analyse. Der Nous-Weg traegt: die
+# Nous-Inferenz-API ist OpenAI-kompatibel und liefert deepseek/deepseek-v4-flash-0731
+# (18.09.2026 mit einer echten Anfrage geprueft: HTTP 200, Antwort "OK").
+NOUS_BASIS = "https://inference-api.nousresearch.com/v1"
+NOUS_MODELL = "deepseek/deepseek-v4-flash-0731"
+OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
+LOKAL_STANDARD = "qwen35-8k:latest"          # im Store vorhanden (Hausstandard)
+LOKAL_BASIS = "http://127.0.0.1:11434/v1"
+
+def _nous_schluessel() -> str:
+    """NOUS_API_KEY aus der Prozessumgebung, sonst aus HKCU\\Environment.
+
+    Der Dauerlauf startet aus der Aufgabenplanung und erbt die Benutzerumgebung;
+    ein Start von Hand aus einer Shell sieht den Wert dagegen nicht (gemessen
+    18.09.2026). Die Registry ist die Quelle, die beide Wege kennen. Der Wert
+    wird nur an das Kind weitergereicht - nie geschrieben, nie protokolliert.
+    """
+    wert = (os.environ.get("NOUS_API_KEY") or "").strip()
+    if wert:
+        return wert
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as schluessel:
+            return (winreg.QueryValueEx(schluessel, "NOUS_API_KEY")[0] or "").strip()
+    except OSError:
+        return ""
+
+def _vorhandene_ollama_modelle() -> set:
+    """Namen, die Ollama wirklich hat. Leer, wenn Ollama nicht antwortet."""
+    try:
+        with urllib.request.urlopen(OLLAMA_TAGS, timeout=5) as antwort:
+            return {m.get("name", "") for m in json.load(antwort).get("models", [])}
+    except Exception:                                              # noqa: BLE001
+        return set()
+
+def _lokal_modell(gewuenscht: str) -> str:
+    """Nennt ein Modell, das Ollama WIRKLICH hat.
+
+    Ein Name in einer .env ist keine Zusage: glm4:9b-chat:latest stand dort und
+    war nicht installiert. Der Agent sterbt daran nicht - er liefert still
+    Fehlertexte statt Urteile. Genau das soll hier auffallen.
+    """
+    vorhanden = _vorhandene_ollama_modelle()
+    if not vorhanden:
+        return gewuenscht                      # Ollama nicht erreichbar: nicht raten
+    for kandidat in (gewuenscht, LOKAL_STANDARD, "gemma-e4b-8k:latest"):
+        if kandidat and kandidat in vorhanden:
+            return kandidat
+    return gewuenscht
+
+def _weg_fuer(name: str, umgebung: dict, wege: dict) -> str:
+    """Setzt den Modellweg des Agenten und gibt ihn fuer das Log zurueck."""
+    schluessel = _nous_schluessel()
+    if name == "new_or_top" and schluessel:
+        # OLLAMA_MODEL muss WEG: es entscheidet im Agenten den Zweig, und der
+        # schlaegt DEEPSEEK_* sonst still aus.
+        umgebung.pop("OLLAMA_MODEL", None)
+        umgebung.pop("OLLAMA_BASE_URL", None)
+        umgebung["AI_MODEL"] = NOUS_MODELL
+        umgebung["DEEPSEEK_KEY"] = schluessel
+        umgebung["DEEPSEEK_BASE_URL"] = NOUS_BASIS
+        return "nous/deepseek (%s)" % NOUS_MODELL
+    # kraken_agent.py spricht Ollama-native (/api/chat) - kein OpenAI-Weg,
+    # also lokal. Die Handelsseite dieses Paares ist die Haus-Spur kraken.
+    gewuenscht = (wege.get("OLLAMA_MODEL") or "").strip() or LOKAL_STANDARD
+    modell = _lokal_modell(gewuenscht)
+    umgebung["OLLAMA_MODEL"] = modell
+    umgebung["OLLAMA_BASE_URL"] = (wege.get("OLLAMA_BASE_URL") or "").strip() or LOKAL_BASIS
+    zusatz = ""
+    if name == "new_or_top" and not schluessel:
+        zusatz = " - kein NOUS_API_KEY gefunden, deshalb lokal"
+    if modell != gewuenscht:
+        zusatz += " - %s liegt nicht im Store" % gewuenscht
+    return "lokal (%s)%s" % (modell, zusatz)
 
 # ---------------------------------------------------------------------------
 # Welche Agenten laufen
@@ -143,7 +231,11 @@ class MoonDevDauerlauf:
         # ersten Emoji mit UnicodeEncodeError - dieselbe Falle wie beim
         # PowerShell-Wrapper (moondev-agent.ps1), hier am Treiber selbst.
         umgebung["PYTHONIOENCODING"] = "utf-8"
-        umgebung.update(_repo_env())
+        wege = _repo_env()
+        umgebung.update(wege)
+        # Welcher Modellweg? Steht danach im Log neben der PID - ohne diese
+        # Zeile sieht ein 404 (Modell fehlt) wie ein gesunder Lauf aus.
+        weg = _weg_fuer(name, umgebung, wege)
         try:
             kind = subprocess.Popen(
                 eintrag["cmd"], cwd=eintrag["cwd"],
@@ -156,7 +248,7 @@ class MoonDevDauerlauf:
             return
         self.kinder[name] = kind
         self.letzter_neustart[name] = time.monotonic()
-        self.protokolliere(f"{name}: gestartet (PID {kind.pid}) - {beschreibung}")
+        self.protokolliere(f"{name}: gestartet (PID {kind.pid}) - {weg}")
 
     def _stoppe(self, name: str) -> None:
         kind = self.kinder.pop(name, None)
