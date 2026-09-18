@@ -76,10 +76,20 @@ def kennzahlen_fuer(spur, von=None, bis=None):
 
     von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
 
+    DAS FENSTER SCHNEIDET RUNDEN, NICHT ZEILEN. Eine Runde gehoert in das
+    Fenster ihres AUSSTIEGS - dort faellt ihr Ergebnis an. Der Schnitt
+    passiert deshalb NACH der Paarung. Ein Schnitt davor (bis 18.09.2026)
+    verwarf jede Runde, die vor dem Fenster einstieg und darin ausstieg:
+    _paare() sah einen Ausstieg ohne Einstieg und liess ihn fallen. Die
+    Zahl war zu klein, und niemand erfuhr davon. Dieselbe Lesart hat
+    buchauswertung.lade_zeilen(), das ohnehin nur Ausstiegszeilen liest -
+    erst damit beantworten beide Wege in gesamtbilanz.summe() dieselbe
+    Frage.
+
     Rueckgabe: das dict aus `kennzahlen()`, oder None wenn die Spur keine
     geschlossenen Runden hat (bzw. gar kein Journal).
     """
-    z = zeilen(spur, von=von, bis=bis)
+    z = zeilen(spur)
     if not z:
         return None
     gebuehr = 0.0
@@ -104,6 +114,7 @@ def kennzahlen_fuer(spur, von=None, bis=None):
         runden = gitter_zyklen(z)
     else:
         runden = []
+    runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
     return kennzahlen(runden, "USD")
 
 
@@ -191,10 +202,13 @@ def zahl(x):
         return None
 
 
-def zeilen(spur, datei="handelsjournal.csv", von=None, bis=None):
-    """Die Journalzeilen einer Spur, wahlweise auf ein Fenster beschraenkt.
+def zeilen(spur, datei="handelsjournal.csv"):
+    """Die Journalzeilen einer Spur - alle, ungeschnitten.
 
-    von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
+    Kein Zeitfenster. Wer in Runden zaehlt, braucht ALLE Zeilen: die
+    Paarung in _paare() findet den Einstieg sonst nicht, wenn er vor dem
+    Fenster liegt, und verwirft die Runde stillschweigend. Geschnitten wird
+    nach der Paarung, an der Ausstiegszeit - siehe kennzahlen_fuer().
     """
     if STUFE:
         # Risikostufe: dieselbe Auswertung auf den Dateien der Stufe
@@ -205,8 +219,7 @@ def zeilen(spur, datei="handelsjournal.csv", von=None, bis=None):
     if not p.exists():
         return []
     with p.open(encoding="utf-8", newline="") as f:
-        return [r for r in csv.DictReader(f)
-                if zeitfenster.im_fenster(r, von, bis)]
+        return list(csv.DictReader(f))
 
 
 def tage(von, bis):
@@ -312,6 +325,10 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
             "inst": schluessel, "einsatz": einsatz, "ergebnis": ergebnis,
             "kosten": kosten, "grund": (r.get(grund_feld) or "").strip() or None,
             "halten": tage(ein.get("zeit"), r.get("zeit")),
+            # Die Zeit der Runde ist die ihres AUSSTIEGS - dort faellt das
+            # Ergebnis an. Der Name `zeit` ist der der Journalspalte, damit
+            # zeitfenster.im_fenster() die Runde ohne Sonderfall liest.
+            "zeit": r.get("zeit") or "",
         })
     return runden
 
@@ -384,13 +401,21 @@ def runden_orbk(zeilen_):
         runden.append({"inst": r.get("inst", ""), "einsatz": 0.0,
                        "ergebnis": gv, "kosten": 0.0,
                        "grund": (r.get("ausgang") or "").strip() or None,
-                       "halten": None})
+                       "halten": None, "zeit": r.get("zeit") or ""})
     return runden
 
 
+# Die Aktionsnamen, mit denen gitter/handeln.py eine Stufe schliesst.
+# `AUSSTIEG` ist der, den es wirklich schreibt (gitter/handeln.py:377);
+# `VERKAUF` stand hier allein und traf damit keine einzige Zeile - der
+# Rundenweg meldete fuer gitter immer null Zyklen, waehrend die eigene
+# Auswertung der Spur dieselben Zeilen zaehlte.
+GITTER_AUSSTIEG = ("AUSSTIEG", "VERKAUF")
+
+
 def gitter_zyklen(zeilen_):
-    """Ein Gitter-Zyklus ist ein Verkauf einer Stufe, die vorher gekauft wurde.
-    Der Gewinn steht als gw_usd in der Verkaufszeile."""
+    """Ein Gitter-Zyklus ist der Ausstieg aus einer vorher gekauften Stufe.
+    Der Gewinn steht als gw_usd in der Ausstiegszeile."""
     offen = {}
     zyklen = []
     for r in zeilen_:
@@ -398,7 +423,7 @@ def gitter_zyklen(zeilen_):
         stufe = r.get("stufe")
         if art == "KAUF":
             offen.setdefault(stufe, []).append(r)
-        elif art == "VERKAUF":
+        elif art in GITTER_AUSSTIEG:
             kette = offen.get(stufe) or []
             if not kette:
                 continue
@@ -410,7 +435,8 @@ def gitter_zyklen(zeilen_):
             zyklen.append({"inst": r.get("inst", ""), "einsatz": einsatz,
                            "ergebnis": gw, "kosten": 0.0,
                            "grund": "Stufe %s" % stufe,
-                           "halten": tage(ein.get("zeit"), r.get("zeit"))})
+                           "halten": tage(ein.get("zeit"), r.get("zeit")),
+                           "zeit": r.get("zeit") or ""})
     return zyklen
 
 

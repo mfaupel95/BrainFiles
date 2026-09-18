@@ -9,6 +9,7 @@ Gearbeitet wird auf erfundenen Journalen in einem Temp-Ordner.
 """
 
 import datetime as dt
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -35,6 +36,13 @@ JOURNAL = KOPF + (
 
 
 class TestFensterInZeilen(unittest.TestCase):
+    """zeilen() liefert die Zeilen der Spur - ungeschnitten.
+
+    Der Fensterschnitt sitzt nicht mehr hier. Ein Schnitt VOR der Paarung
+    verwirft jede Runde, deren Einstieg vor dem Fenster liegt: _paare()
+    sieht dann einen Ausstieg ohne Einstieg und wirft ihn weg. Geschnitten
+    wird nach der Paarung, an der Ausstiegszeit der Runde.
+    """
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -49,16 +57,21 @@ class TestFensterInZeilen(unittest.TestCase):
         aa.HIER = self._alt
         self.tmp.cleanup()
 
-    def test_ohne_fenster_alle_zeilen(self):
+    def test_zeilen_liefert_alle_zeilen(self):
         self.assertEqual(len(aa.zeilen("squeeze")), 4)
 
-    def test_fenster_schneidet(self):
+    def test_zeilen_nimmt_kein_fenster_mehr_entgegen(self):
+        # Ein Fensterschnitt VOR der Paarung ist die falsche Bedeutung; das
+        # Schluesselwort darf nicht zurueckkommen, ohne dass es auffaellt.
         von = dt.datetime(2026, 9, 1, tzinfo=dt.timezone.utc)
-        self.assertEqual(len(aa.zeilen("squeeze", von=von, bis=None)), 2)
+        with self.assertRaises(TypeError):
+            aa.zeilen("squeeze", von=von)
 
-    def test_fenster_ohne_treffer_ist_leer_nicht_fehler(self):
-        von = dt.datetime(2030, 1, 1, tzinfo=dt.timezone.utc)
-        self.assertEqual(aa.zeilen("squeeze", von=von, bis=None), [])
+    def test_fenster_schneidet_die_runden(self):
+        von = dt.datetime(2026, 9, 1, tzinfo=dt.timezone.utc)
+        k = aa.kennzahlen_fuer("squeeze", von=von, bis=None)
+        self.assertEqual(k["n"], 1)
+        self.assertAlmostEqual(k["ergebnis"], -10.0)
 
     def test_kennzahlen_ohne_zeilen_sind_none(self):
         von = dt.datetime(2030, 1, 1, tzinfo=dt.timezone.utc)
@@ -163,6 +176,145 @@ class TestAnzeigeFuer(unittest.TestCase):
             [{"ergebnis": 1.0, "einsatz": 100.0, "grund": "ziel"}]
             * aa.MIN_RUNDEN, "USD")
         self.assertEqual(aa.anzeige_fuer("squeeze", k), "belastbar")
+
+
+# Eine Runde ueber die Fensterkante: Einstieg im August, Ausstieg im
+# September. Dazu das Gegenstueck: Einstieg im September, Ausstieg im
+# Oktober. Genau die beiden Faelle, an denen sich die Bedeutung entscheidet.
+JOURNAL_UEBER_DIE_KANTE = KOPF + (
+    "2026-08-25T10:00:00+00:00,kauf,BTC,100,einstieg\n"
+    "2026-09-05T10:00:00+00:00,verkauf,BTC,120,ziel\n"
+    "2026-09-20T10:00:00+00:00,kauf,ETH,100,einstieg\n"
+    "2026-10-05T10:00:00+00:00,verkauf,ETH,90,stop\n"
+)
+
+
+class TestRundeGehoertInsFensterIhresAusstiegs(unittest.TestCase):
+    """Eine Runde faellt beim AUSSTIEG an - das ist ihr Fenster.
+
+    Vorher schnitt zeilen() die Zeilen vor der Paarung. Eine Runde, die vor
+    dem Fenster einstieg und darin ausstieg, verschwand damit spurlos: ihr
+    Ausstieg stand ohne Einstieg da und wurde weggeworfen. Die Zahl war zu
+    klein, ohne dass irgendwo etwas gemeldet wurde.
+    """
+
+    VON = dt.datetime(2026, 9, 1, tzinfo=dt.timezone.utc)
+    BIS = dt.datetime(2026, 9, 30, 23, 59, 59, tzinfo=dt.timezone.utc)
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        wurzel = Path(self.tmp.name)
+        (wurzel / "squeeze").mkdir()
+        (wurzel / "squeeze" / "handelsjournal.csv").write_text(
+            JOURNAL_UEBER_DIE_KANTE, encoding="utf-8")
+        self._alt = aa.HIER
+        aa.HIER = wurzel
+
+    def tearDown(self):
+        aa.HIER = self._alt
+        self.tmp.cleanup()
+
+    def test_einstieg_vor_dem_fenster_zaehlt_trotzdem(self):
+        k = aa.kennzahlen_fuer("squeeze", von=self.VON, bis=self.BIS)
+        self.assertEqual(k["n"], 1)
+        self.assertAlmostEqual(k["ergebnis"], 20.0)
+
+    def test_ausstieg_nach_dem_fenster_zaehlt_nicht(self):
+        k = aa.kennzahlen_fuer("squeeze", von=self.VON, bis=self.BIS)
+        self.assertNotIn("stop", k["gruende"])
+
+    def test_ohne_fenster_bleiben_es_beide_runden(self):
+        k = aa.kennzahlen_fuer("squeeze")
+        self.assertEqual(k["n"], 2)
+
+
+# Das Gitter-Journal so, wie handeln.py es schreibt: KAUF und AUSSTIEG,
+# der Zyklusgewinn als gw_usd in der Ausstiegszeile.
+GITTER_KOPF = ("zeit,modus,aktion,inst,stufe,preis,menge,einsatz_usd,"
+               "wert_usd,gw_usd,kasse_usd,buchwert_usd,bestand_menge,"
+               "letzter_kurs,grund\n")
+GITTER_JOURNAL = GITTER_KOPF + (
+    "2026-08-25T10:00:00+00:00,papier,KAUF,BTC-USDT,6,100,1,100,,,,,,,Stufe 6\n"
+    "2026-09-05T10:00:00+00:00,papier,AUSSTIEG,BTC-USDT,6,110,1,100,110,10,"
+    ",,,,Stufe 6 -> 7\n"
+    "2026-09-20T10:00:00+00:00,papier,KAUF,BTC-USDT,5,100,1,100,,,,,,,Stufe 5\n"
+    "2026-10-05T10:00:00+00:00,papier,AUSSTIEG,BTC-USDT,5,90,1,100,90,-10,"
+    ",,,,Stufe 5 -> 6\n"
+)
+
+
+def _lade_gitter():
+    """gitter/auswertung.py ueber den Dateipfad - die Spur ist kein Paket."""
+    name = "fenstertest_gitter_auswertung"
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(
+        name, HIER.parent / "gitter" / "auswertung.py")
+    modul = importlib.util.module_from_spec(spec)
+    sys.modules[name] = modul
+    spec.loader.exec_module(modul)
+    return modul
+
+
+class TestBeideWegeZaehlenGleich(unittest.TestCase):
+    """Dieselben Daten, dasselbe Fenster, dieselbe Rundenzahl.
+
+    gitter ist die einzige Spur, die beide Wege kennt: den Rundenweg aus
+    auswertung_alle (kennzahlen_fuer) und die eigene Auswertung
+    (kennzahlen_kurz ueber buchauswertung.lade_zeilen). gesamtbilanz.summe()
+    addiert beide Wege in dieselbe Zelle - liefern sie verschiedene Zahlen,
+    beantwortet eine Zelle zwei Fragen.
+
+    lade_ausstiege() wird ueber das MODULATTRIBUT ersetzt: sein Vorgabewert
+    `pfad=JOURNAL` wird beim Import gebunden, ein blosses Umbiegen von
+    JOURNAL erreicht ihn nicht.
+    """
+
+    VON = dt.datetime(2026, 9, 1, tzinfo=dt.timezone.utc)
+    BIS = dt.datetime(2026, 9, 30, 23, 59, 59, tzinfo=dt.timezone.utc)
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        wurzel = Path(self.tmp.name)
+        (wurzel / "gitter").mkdir()
+        self.journal = wurzel / "gitter" / "handelsjournal.csv"
+        self.journal.write_text(GITTER_JOURNAL, encoding="utf-8")
+        self.wachen = wurzel / "gitter" / "wachen.json"
+        self.wachen.write_text("{}", encoding="utf-8")
+        self._alt = aa.HIER
+        aa.HIER = wurzel
+        self.m = _lade_gitter()
+        self._alt_journal = self.m.JOURNAL
+        self._alt_wachen = self.m.WACHEN
+        self._alt_laden = self.m.lade_ausstiege
+        echt = self._alt_laden
+        pfad = str(self.journal)
+        self.m.JOURNAL = pfad
+        self.m.WACHEN = str(self.wachen)
+        self.m.lade_ausstiege = (
+            lambda p=pfad, von=None, bis=None: echt(p, von=von, bis=bis))
+
+    def tearDown(self):
+        self.m.JOURNAL = self._alt_journal
+        self.m.WACHEN = self._alt_wachen
+        self.m.lade_ausstiege = self._alt_laden
+        aa.HIER = self._alt
+        self.tmp.cleanup()
+
+    def test_gleiche_rundenzahl_im_fenster(self):
+        eins = aa.kennzahlen_fuer("gitter", von=self.VON, bis=self.BIS)
+        zwei = self.m.kennzahlen_kurz(von=self.VON, bis=self.BIS)
+        self.assertIsNotNone(eins)
+        self.assertIsNotNone(zwei)
+        self.assertEqual(eins["n"], zwei["n"])
+        self.assertEqual(eins["n"], 1)
+
+    def test_gleiche_rundenzahl_ohne_fenster(self):
+        eins = aa.kennzahlen_fuer("gitter")
+        zwei = self.m.kennzahlen_kurz()
+        self.assertEqual(eins["n"], zwei["n"])
+        self.assertEqual(eins["n"], 2)
+
 
 
 if __name__ == "__main__":
