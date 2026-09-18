@@ -1,8 +1,8 @@
 ---
 name: hermes-config-ops
-description: "Hermes-Config, .env, Benutzervariablen und Ausgabestil (SOUL.md) ändern — belegt."
+description: "Use when Config, .env oder Profile zu aendern sind."
 version: 0.1.0
-author: Hermes Agent
+author: Hermes
 license: MIT
 platforms: [windows]
 metadata:
@@ -360,6 +360,36 @@ als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
 6. **Geteilte Zeilen, die keine Warnung ausloesen, nicht mitstrichen** (z. B.
    `A2A_*`, `SMS_*`): melden und als eigene Entscheidung stellen — ein
    stillschweigend mitgestrichener Nebeneintrag ist spaeter nicht mehr zuordenbar.
+
+## Profilflotte: pruefen, bevor geheilt wird
+
+Bei "ein Bot antwortet nicht" oder einer Liste von `hermes profile list`-Warnungen
+gilt eine feste Reihenfolge: **(1)** `hermes profile list` zeigt die KANAELE, nicht
+die Antwort-Ursache; **(2)** die Antwort-Ursache ist fast immer die Modellkennung
+(Profile erben nichts vom Startprofil) und wird nur durch einen echten Aufruf belegt
+(`hermes -p NAME chat -q "Antworte nur mit dem einen Wort: fertig" -Q`); **(3)** den
+`fallback_providers`-Block des PROFILS lesen, BEVOR der Provider verdaechtigt wird -
+ein Kleinmodell in der Kette verdeckt den Anmeldefehler mit einem
+Kontextfenster-Fehler.
+
+Ein Befehl statt 29 Einzelaufrufe (je 30-60 s Kaltstart):
+`scripts/profilflotte-bericht.py` (venv-Python von `hermes-agent`, `HERMES_HOME`
+gesetzt) zeigt je Profil Modell, hinterlegte Anmeldung, Kanalzeilen, Kette und
+Befund; `--nur-probleme` kuerzt auf die auffaelligen. Es schreibt nichts. Danach
+beheben die drei Werkzeuge unter `Agenten/Hermes/scripts/` je Befund
+(`profil-kanaele-bereinigen.py`, `bot-modell-auf-router.py`,
+`bot-rueckfallkette-bereinigen.py`): erst Trockenlauf ohne Argument, dann
+`--anwenden`, `--zuruecknehmen` holt zurueck; je Profil `.bak-JJJJMMTT`; alle drei
+sind idempotent und nennen je uebersprungenem Profil den Grund.
+
+Der Nachweis ist eine Leiter, keine Behauptung: `hermes profile list` mit 0
+Warnzeilen - Gegenprobe mit `--zuruecknehmen` (die Warnungen kehren zurueck) - ein
+echter Aufruf je Muster (vorher kaputt, wiederhergestellt, Sonderfall) -
+`git diff --numstat` JE Datei (2 Einfuegungen/3 Loeschungen = Modellwechsel,
+0/7 = entfernte Kette) - jede geaenderte `config.yaml` mit `yaml.safe_load`
+geparst und Zielwerte assertiert, LF-only-Zeilen 0. Rezept, Entscheidungstabelle,
+Zeitbudget und die Liste "was nicht angefasst wird":
+`references/profilflotte-audit.md`.
 
 ## Fallen
 

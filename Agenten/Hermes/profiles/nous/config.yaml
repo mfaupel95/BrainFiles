@@ -39,6 +39,14 @@ plugins:
   enabled: []
 _config_version: 45
 agent: {}
+providers:
+  omniroute:
+    api: http://localhost:20128/v1
+    base_url: http://localhost:20128/v1
+    model: auto
+    default_model: auto
+    name: OmniRoute
+    discover_models: true
 
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,
