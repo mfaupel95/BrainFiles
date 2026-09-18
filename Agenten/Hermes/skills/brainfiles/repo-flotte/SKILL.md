@@ -1,6 +1,6 @@
 ---
 name: repo-flotte
-description: "Use when Repos wiederherstellen, klonen und Bots je Repo."
+description: "Use when Repos wiederherstellen, Bots je Repo, Telegram."
 category: brainfiles
 ---
 
@@ -52,6 +52,33 @@ dort angemeldet.
    uebernimmt Modell, Werkzeuge und Skills des Startprofils, `--description`
    landet in `profile.yaml` und wird vom Kanban-Orchestrator zum Sortieren benutzt.
    *Fertig, wenn* `hermes profile list` jeden Bot fuehrt.
+6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/Repos/` gegen
+   `ls Agenten/Hermes/profiles/` halten — ein Ordner in profiles/ mit config.yaml
+   ist ein Bot. Ein Verzeichnis unter Repos/ OHNE `.git` (z. B. eine
+   Worktree-Sammlung) ist keine Repo und bekommt keinen Bot. Die Zaehlung als
+   dauerhafte Notiz ablegen (z. B. Wissen/Repo-Bots.md), mit dem Hinweis, dass
+   die Platte die Wahrheit bleibt und die Notiz altert.
+7. **Bots in Telegram anbinden (SkillsBot).** `Agenten/Bus/skillsbot.py` um
+   zwei Befehle erweitern: `/bots` liest die Profile von der Platte
+   (`profiles/<name>/config.yaml`), `/bot NAME NACHRICHT` startet einen
+   frischen Einzelauftrag `hermes.exe -p NAME chat -q "TEXT" -Q` per
+   `subprocess.run` (kein Gateway, kein A2A-Kontext; der Bot antwortet aus
+   seinem eigenen Verlauf). Regeln, die sich bewaehrt haben:
+   - Name gegen die Platte validieren - unbekannter Name und fehlende Nachricht
+     enden OHNE Aufruf mit Syntax-Hinweis, sonst startet ein geratener Bot.
+   - PYTHONHOME/PYTHONPATH aus der Umgebung entfernen und HERMES_HOME setzen,
+     bevor hermes.exe startet (Falle aus MCP-Brueckensitzungen, siehe unten).
+   - Kaltstart 30-60 s: vorher eine Zwischenmeldung senden („Spreche mit Bot X
+     - das kann bis 5 min dauern"), sonst wirkt der Bot haengend.
+   - `session_id:`-Zeile aus der Ausgabe entfernen - der Rest ist die Antwort;
+     Fehlercode mit dem letzten stderr-Ausschnitt melden.
+   - Beide Befehle in `hilfe_text()` aufnehmen.
+   - Tests in `Agenten/Bus/tests/test_skillsbot_sicherheit.py`: `subprocess.run`
+     mocken, NIE einen echten hermes.exe starten (Kaltstart 30-60 s schreibt
+     echte Sessions). Pruefen: unbekannter Name -> kein Aufruf, fehlender Text,
+     Subprozess-Form (-p NAME, -q TEXT), Umgebungsbereinigung.
+   - SkillsBot-Task neu starten (`Stop-ScheduledTask`/`Start-ScheduledTask
+     -TaskName 'BrainFiles-SkillsBot'`); ein neuer Befehl gilt erst danach.
 
 ## Nachweis
 
@@ -60,6 +87,10 @@ dort angemeldet.
 - `git -C <dir> remote -v` je Klon: `origin` = Fork, `upstream` = Original.
 - `hermes profile list` fuehrt jeden Bot, `hermes profile describe <bot>` zeigt
   die gesetzte Rolle.
+- `python tests/test_ende_zu_ende.py` aus `Agenten/Bus` endet mit
+  „Ende-zu-Ende bestanden".
+- `/bots` im SkillsBot zeigt jeden Bot mit Rolle; `/bot NAME PONG` einmal echt
+  laufen lassen (Kaltstart 30-60 s) - die Antwort ist der Beleg.
 
 ## Fallen
 
@@ -84,6 +115,26 @@ dort angemeldet.
   Dokumentation und Schemata: Fork, Klon und Bot laufen wie sonst, es gibt nur
   nichts zu bauen. Der Nutzen ist das Referenzmaterial — z. B. ein mitgeliefertes
   GraphQL-Schema, aus dem die Feldnamen kommen.
+- **Ein Fremd-Repo ist erst fertig eingerichtet, wenn der Capability-Check des
+  Repos selbst gruen ist — nicht wenn `pip`/`npm install` durchlief.** Ein
+  Registry-/Doctor-Mechanismus im Repo prueft haeufig `shutil.which(<befehl>)`
+  oder eine Config-Datei, nicht das Vorhandensein des Python-Pakets in der
+  Repo-`.venv`. Nach jeder Installation den mitgelieferten Status-Aufruf
+  laufen lassen (Registry-Dump, `<tool> doctor`) und JEDE neu verfuegbare
+  Faehigkeit einzeln zaehlen (vorher/nachher), statt aus einem fehlerfreien
+  `pip install` auf Einsatzbereitschaft zu schliessen. Schwere optionale
+  Zusatzpakete (torch, whisper, GPU-Bildmodelle) nicht blind mitziehen — nur
+  installieren, was auf der vorhandenen Hardware sinnvoll laeuft, und die
+  ausgelassenen Faehigkeiten im Bericht namentlich nennen statt sie
+  stillschweigend wegzulassen.
+- **Ein Fremd-LLM-Agent hat oft ein hart codiertes Standardmodell, das lokal
+  gar nicht existiert** (z. B. ein Cloud-Modellname als Default, obwohl das
+  Repo auch einen lokalen Ollama-Pfad kennt). Vor dem ersten echten Lauf im
+  Modell-Auswahlcode nach dem Default suchen und ihn auf ein tatsaechlich
+  installiertes lokales Modell umstellen (per Registry-Eintrag oder Fallback-
+  Kette, nicht durch Herunterladen des erwarteten Modells) — sonst laeuft
+  jeder Aufruf sofort in einen Modellfehler, ohne dass der Rest der
+  Integration das zeigt.
 - **Fremd-Repo unter `Werkstatt/` liegt per Junction auf einem anderen Laufwerk.** Seine `.venv` belegt daher keinen Platz auf `C:` - die Meldung „Actual location" der venv lesen, bevor man Plattenplatz zurechnet. Und die venv heisst `.venv` (Hausstandard), auch wenn die Anleitung des Repos `venv` sagt.
 - **`hermes.exe` aus einer MCP-Brueckensitzung** braucht davor
   `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` und ein gesetztes
@@ -94,6 +145,13 @@ dort angemeldet.
   `create`-Aufruf auf ein vorhandenes Profil meldet einen Fehler, aendert aber
   nichts - Beschreibung und `terminal.cwd` gehoeren in eigene Aufrufe, dann laeuft
   der ganze Satz idempotent.
+- **Nur drei Dateien je Profil sind versioniert.** Die `.gitignore`-Whitelist
+  gibt je `profiles/<name>/` genau `SOUL.md`, `config.yaml`, `profile.yaml`
+  frei — state.db, sessions, credentials bleiben unversioniert, wie gewollt.
+  Nach dem Anlegen wirkt der ganze Ordnername als `??`; `git add` des Ordners
+  nimmt trotzdem nur die drei freigegebenen Dateien auf (Vorabkontrolle mit
+  `git add --dry-run <profilordner>`). Steht etwas anderes im Dry-Run, ist die
+  Whitelist falsch — nicht stumm aufraeumen, sondern die Freigabe pruefen.
 - **`--clone` kopiert die ganze Skill-Bibliothek ins Profil.** Bei vielen Bots
   kostet das Plattenplatz und, sobald der Bot laeuft, die gleichen Tokens wie das
   Startprofil; ein Bot je Repo braucht nur einen Bruchteil davon.
@@ -124,9 +182,65 @@ dort angemeldet.
 - **Hilfsskripte gehoeren nicht nach `Agenten/Routinen/`.** Dort gilt jede `.ps1`
   als Routine und muss am Bus haengen, sonst reisst `tests/test_ende_zu_ende.py`
   mit „ohne Bus-Anbindung". Werkzeuge nach `Agenten/Werkzeuge/`.
+- **Eine neue `.ps1` unter `Agenten/Routinen/` reisst die Bus-Suite, wenn sie
+  ohne Anbindung liegt.** Eine Waechter-/Start-Routine braucht Melde-Start/
+  Melde-Ende aus `Bus/Ereignis.ps1` (Muster `bus-integration`); ein
+  Registrierungsskript mit `Register-ScheduledTask` wird vom Test generisch
+  uebersprungen und bleibt ohne Anbindung (beides gemessen am
+  gateway-waechter, 16.09.2026).
+- **skillsbot.py ist CRLF; das Patch-Werkzeug vermurkst seine Einrueckung.**
+  Mehrzeilige Ersetzungen im Python-Code enden mit verschobener Einrueckung
+  (Syntax-Fehler). Nicht erneut patchen, sondern byte-genau per kleinem
+  Python-Skript ersetzen (bytes lesen, `assert data.count(alt) == 1`, bytes
+  schreiben) - Zeilenenden dabei unangetastet lassen.
+- **Kanalzugangsdaten gehoeren nur ins Profil `default` (18.09.2026).** Ein
+  Telegram-/Photon-Token gehoert genau einem Profil. 17 Bot-Profile trugen die
+  Kennung des Startprofils, `hermes profile list` warnte je Profil, und ein
+  Bot-Gateway auf demselben Token nahm dem Hauptgateway die Nachrichten weg
+  (projectatlas hatte am 18.09. um 01:18 Telegram-Sitzungen, obwohl das
+  Hauptgateway nur `default` bedient). Aufraeumen:
+  `Agenten/Hermes/scripts/profil-kanaele-bereinigen.py` - ohne Argument nur
+  zeigen, `--anwenden` schreibt (je Profil erst `.env.bak-JJJJMMTT`, Zeilen-
+  enden bleiben), `--zuruecknehmen` holt die Sicherung zurueck. Welche Zeile
+  ein Kanal ist, entscheidet `hermes_cli.profile_channels.ChannelKeyIndex`,
+  nicht eine eigene Liste. Gegenprobe: `hermes profile list` zeigt 0 Warnungen.
+- **Die Bots fahren ueber den lokalen Router, nicht ueber ein eigenes Portal-Login
+  (18.09.2026).** Profile sind Inseln und lesen nur ihr eigenes `auth.json`/`.env`;
+  24 Bots standen auf `provider: nous` ohne Portal-Anmeldung, jeder `/bot`-Aufruf
+  endete mit "not logged into Nous Portal", danach griff die geerbte
+  `fallback_providers`-Kette auf ein lokales 8k-Modell, das Hermes ablehnt. Jetzt
+  `Agenten/Hermes/scripts/bot-modell-auf-router.py` (Trockenlauf, `--anwenden`,
+  `--zuruecknehmen`) -> `model.provider=omniroute`, `model.default=auto/best-coding`;
+  der Router-Schluessel steht schon in jeder Profil-`.env`. Unberuehrt:
+  `superpowers` und `awesome-systematic-trading` (eigene Portal-Anmeldung),
+  `openmontage` (`llamacpp`). Vor "Bot geht nicht" also erst die Modellkennung
+  pruefen, nicht die Kanaele.
+- **`hermes config set` schneidet den Kommentar-Schluss der `config.yaml` ab.**
+  In 6 Profilen fehlten danach 38 Zeilen Doku am Dateiende (nur Kommentare, kein
+  Schaden an Werten). Der Fix ist nicht "Block anhaengen", sondern die Ziel-Fassung
+  exakt bauen: die Sicherung/HEAD-Fassung BYTE-genau nehmen und nur den `model:`-Block
+  ersetzen - beim Schreiben `newline=""` setzen, sonst wandelt `read_text()` die
+  CRLF-Datei still nach LF um und der Diff zeigt plotzlich die ganze Datei.
+  `bot-modell-auf-router.py` macht das von selbst.
+- **`terminal.backend: docker` macht Repo-Bots lahm (17.09.2026).** Mit
+  `docker_mount_cwd_to_workspace: false` (Default) sieht der Bot das Repo
+  NICHT: TERMINAL_CWD wird ignoriert, er arbeitet in /root eines Linux-
+  Containers. Beim ersten echten Auftrag (caveman, /bot) grub er ueber den
+  windows_mcp-Umweg auf den Host (172 s je Aufruf) und lief in den 300-s-
+  Timeout des SkillsBot - „Bot X ist gescheitert". `hermes -p NAME config
+  set terminal.backend local` stellt auf den Host-Arbeitsplatz um (wie die
+  15 neueren Bots). Nach der Umstellung funktioniert der Bot (PONG in 10 s,
+  ls/git log im Repo in 50 s). Alle 27 Profile sind seit 17.09.2026 local;
+  `grep -l "backend: docker" profiles/*/config.yaml` muss leer sein. Neben-
+  wirkung: `hermes config set` schreibt die Datei neu und entfernt den
+  auskommentierten Vorlagen-Block am Ende - harmlos.
 
 ## Abgrenzung
 
 - Host-Zugriff, PowerShell-Fallen, gezielter Dateiersatz: `windows-host-zugriff`
 - Hermes-Installation reparieren (venv, PYTHONHOME, SQLite): `hermes-maintenance`
 - Skill-Ablagen abgleichen und Fundus nutzen: `skill-library-sync`, `fundus-zugriff`
+- Telegram-Bruecke, A2A, SkillsBot-Befehle: `a2a-telegram-skills`
+- Profil-Zugangsdaten (Kanalzeilen strippen, Modellkennung und Router, `hermes config set`
+  mit seinen Fallen) und der Weg einer Einstellung ueber ALLE Profile:
+  `hermes-config-ops`, dort `references/profil-kanalzugangsdaten.md`

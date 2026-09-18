@@ -268,6 +268,10 @@ ersetzt die Begruendung nicht.
 
 83. **Eine neue Spur kopiert die Sperrschreibungen des Vorbilds** — `z["modus"]` setzen und `wx.sperre_zu()` in Kill- und EV-Zweig, sonst schliessen die Notbremsen das Wachen-Tor nie.
 
+84. **'Verwaiste Sperre ... wird ersetzt' ohne Zyklus-Zeilen dazwischen ist ein Absturzloop, kein haengender Prozess.**
+
+85. **Eine 'Fixes Applied'-Notiz einer fremden Sitzung ist eine Behauptung, kein Beweis — nach jeder uebernommenen Fremdaenderung die VOLLE Testsuite laufen lassen.**
+
 ## Welche Daten eine Sperre liest
 
 Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdrücklich fest,
@@ -426,6 +430,16 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   `count == 1` schlaegt fehl — oder schlimmer, sie trifft und schreibt Unsinn).
   Gegenmittel: Zielzeile mit `repr()` ausgeben und **Zeile fuer Zeile** ersetzen
   (`split("\n")`, Praefix suchen, Zeile tauschen), statt im ganzen Text.
+- **Terminal-Ausgabe nicht als Beweis fuer exakte Zeichen nehmen (Diffs, JSON mit
+  Sonderzeichen, ein Commit-Hash, ein Textmuster-Treffer) — bei Zweifel in eine
+  Datei schreiben und mit `read_file` zurueckholen.** Die gerenderte
+  Tool-Antwort kann einzelne Zeichen unterdruecken oder verschieben, ohne dass
+  die zugrundeliegenden Daten falsch sind. Ein kleines Diagnoseskript, das sein
+  Ergebnis als JSON in eine Datei schreibt statt es zu drucken, und per
+  `read_file` gelesen wird, zeigt den echten Stand zuverlaessig — dieselbe
+  Disziplin wie bei den doppelten Backslashes, nur fuer den allgemeinen Fall.
+  Vor jeder Aussage "das Muster existiert nicht" oder "dieser Commit/Wert ist
+  da" erst so gegenpruefen, statt der gedruckten Ausgabe zu glauben.
 - **Das Host-PowerShell-Werkzeug hat eine harte Zeitgrenze (~300 s).** Eine
   rekursive Größenmessung über einen großen Baum reißt sie. Stattdessen
   vorher/nachher `Win32_LogicalDisk.FreeSpace` messen oder je Ordner einzeln — der

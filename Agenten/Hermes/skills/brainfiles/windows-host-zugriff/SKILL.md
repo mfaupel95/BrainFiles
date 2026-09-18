@@ -73,9 +73,27 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    auch ein 60-180-s-Zeitlimit. Stattdessen eine explizite Pfadliste uebergeben:
    `Select-String -Path "$h\*.py","$h\xperp\*.py"` — kein `-Recurse`.
 2. **Erhöhte Rechte bleiben Handarbeit.** Aufgabenplanung mit `-RunLevel Highest`
-   kann eine nicht erhöhte Sitzung nicht registrieren („Zugriff verweigert").
-   Dann Max den einen Befehl ausführen lassen und danach **lesend** belegen:
-   `Get-ScheduledTask`, `Get-ScheduledTaskInfo`, Port prüfen.
+   kann eine nicht erhöhte Sitzung nicht registrieren („Zugriff verweigert";
+   auch `schtasks` scheitert genauso, `Register-ScheduledTask` wirft
+   0x80070005). Der fuehrende Weg ist die selbst ausgeloeste Elevation statt
+   eines Max-auftrags: `Start-Process powershell -ArgumentList
+   '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File','<setup.ps1>'
+   -Verb RunAs -WindowStyle Hidden` — das Setup-Skript schreibt ein Log (das
+   Fenster ist versteckt) und registriert die Aufgabe fuer den angemeldeten
+   Benutzer; der Lauf danach braucht keine Rechte. Danach **lesend** belegen:
+   `Get-ScheduledTask`, `Get-ScheduledTaskInfo`, das Log, der Port.
+   Wird der UAC-Dialog abgelehnt, NICHT erneut aufpoppen: die Arbeit
+   vorbereitet hinterlassen (Wrapper + Setup-Skript versioniert) und Max die
+   Registrierung als Ein-Zeilen-Aufgabe nennen.
+   **Fuer Dauerlaeufer-Aufgaben im Wrapper zwingend:** `ExecutionTimeLimit
+   ([TimeSpan]::Zero)` — sonst beendet Windows die Aufgabe nach 72 Stunden;
+   `MultipleInstances IgnoreNew`, damit je Trigger nicht eine Instanz
+   dazuwaechst; `-WindowStyle Hidden` in der Action. Dem Kindprozess
+   `$env:PYTHONIOENCODING='utf-8'` mitgeben: ein per Wrapper gestartetes
+   Windows-Python bricht sonst unter der cp1252-Codepage beim ersten
+   Emoji-print ab (`UnicodeEncodeError`), waehrend derselbe Code aus einer
+   UTF-8-Shell laeuft — die Codepage erbt der Kindprozess vom Wrapper, nicht
+   vom Benutzerprofil.
 3. **Kein Geheimnis in eine Kommandozeile.** PowerShell gibt Argumente in
    Fehlermeldungen im Klartext aus. Werte in der Datei lassen und nur Länge oder
    Hash ausgeben.
@@ -162,6 +180,13 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
 - **Zweimal geänderte Datei unter eigenem Namen sichern.** Ein zweites
   `.bak-<JJJJMMTT>` am selben Tag überschreibt genau den Stand, den es erhalten
   sollte; Zeitstempel anhängen.
+- **Suchmuster in deutschen Texten gegen BEIDE Schreibweisen pruefen** — Umlaut
+  UND ASCII-Umschreibung (`geändert`/`geaendert`). Ein Filter, der nur eine
+  Form kennt, findet die andere nicht, und ein Nulltreffer liest sich wie
+  „nichts offen" statt wie ein Fehler (belegt: ein Statusabschnitt meldete
+  leer, obwohl sechs Statuszeilen existierten). Die echten Statuswoerter aus
+  der Quelle ablesen (nie aus dem Kopf) und einen Nulltreffer mit einer
+  Zaehlung der Quelldatei gegenrechnen, bevor „nichts da" gemeldet wird.
 
 ### Fallen, die anders aussehen als sie sind
 
@@ -279,6 +304,60 @@ das die Sandbox, `C:\` ist fuer sie unsichtbar. Wer ihnen Arbeit am Host gibt
 
 Ohne dieses Rezept koennen Review-Subagenten nur raten — ein Befund ohne
 Host-Beleg ist dann ein Hinweis, keine Tatsache.
+
+## GUI-Automation über windows-mcp: Klicks landen auf dem falschen Fenster
+
+Snapshots liefern Koordinaten, aber die Wahrheit entscheidet die Z-Ordnung:
+
+- **Der Klick geht an das OBERSTE Fenster an der Stelle, nicht an das im
+  UI-Tree gelistete.** Ein grosses Terminal oder ein maximierter Browser in
+  Depth 8 frisst Klicks, die für ein dahinter liegendes Fenster (Depth 45)
+  gedacht waren — der Snapshot listet beide, der Klick trifft nur den
+  Vordergrund. Vor dem Klicken das Zielfenster per Win32 nach vorne holen:
+  `Add-Type` mit `user32.dll`, `SetForegroundWindow($h)` UND
+  `SetWindowPos($h, -1, 0,0,0,0, 0x0001 -bor 0x0002)` (HWND_TOPMOST); nur
+  Foreground reicht nicht immer. Oder Tastatur statt Maus: `Shortcut enter`
+  auf das Element mit `has_focused: 1` im UI-Tree.
+- **Tray-Menues sind die verlaesslichere Koordinate.** Ein Rechtsklick auf
+  das Taskleisten-Icon (fester Platz, keine Z-Ordnung) oeffnet ein
+  Kontextmenue mit den Aktionen, die man im Fenster sucht — und der UI-Tree
+  des Menues liefert die Punkt-Koordinaten direkt.
+- **Koordinatensysteme der Screenshot-Backends unterscheiden sich.** pillow-
+  und dxcam-Snapshots melden unterschiedliche Originalgroessen (z. B.
+  3847x2167 gegen 3840x2160); Bildkoordinaten nur mit dem Skalierungsfaktor
+  des jeweiligen Backends auf Klick-Koordinaten umrechnen, nicht mischen.
+
+## "Keine Verbindung" zu einem Dienst: erst lokal von global trennen
+
+Wenn ein Dienst (Claude Desktop, eine API, eine Webseite) „keine Verbindung“
+meldet, nicht an der Konfiguration drehen — erst ortbar machen, wo der Fehler
+sitzt, in dieser Reihenfolge:
+
+1. **Globalen Ausfall ausschliessen per Fremd-Check:**
+   `curl "https://check-host.net/check-tcp?host=<ip>:<port>&max_nodes=3" -H
+   "Accept: application/json"` gibt ein `request_id`; das Ergebnis einige
+   Sekunden spaeter mit `GET https://check-host.net/check-result/<request_id>`
+   holen. Antwortet ein fremder Knoten in Millisekunden, ist der Dienst oben
+   und der Fehler sitzt im lokalen Pfad. Statusseite des Anbieters als zweite
+   Quelle.
+2. **DNS NICHT der lokalen Auflösung glauben** — VPN-DNS und
+   Threat-Protection koennen Antworten umschreiben. Gegenprobe per DoH:
+   `curl "https://dns.google/resolve?name=<host>&type=A"` (bzw.
+   `cloudflare-dns.com`). Stimmt die IP nicht mit der lokalen ueberein, ist
+   die lokale Auflösung manipuliert/geblockt.
+3. **Welche Schnittstelle traegt das Ziel?** `Find-NetRoute
+   -RemoteIPAddress <ip>` zeigt Interface und NextHop. Steht ein Tunnel
+   (NordLynx, NextHop 100.64.x) mit Metric 1 vor dem LAN (Metric 25), laeuft
+   der Verkehr durch den Tunnel — und `curl --interface` umgeht das NICHT,
+   es aendert nur die Quell-IP, nicht die Routenwahl. Der echte Weg am
+   Tunnel vorbei heisst: VPN trennen (Tray, kein Admin) oder Admin-Route.
+   ICMP-Ping ist durch den Tunnel grundsätzlich blockiert und damit kein
+   Diagnosemittel; `curl -o /dev/null -w "%{http_code} (%{time_total}s)"`
+   ist die Masszahl.
+
+Belegtes Beispiel: NordLynx-Exit (Frankfurt, AS207137 PacketHub) konnte das
+Anthropic-Netz nicht routen — alle Anthropic-Domains timeouteten, andere
+Domains liefen. Nach VPN-Trennung antwortete `api.anthropic.com` in 0,1 s.
 
 ## Aufgabenplanung beurteilen
 

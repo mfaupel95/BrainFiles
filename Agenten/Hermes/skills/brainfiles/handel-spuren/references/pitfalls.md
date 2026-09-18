@@ -941,9 +941,42 @@ Kurzfassung ersetzt die Begruendung nicht.
   bei Live-Trades weiterhin "papier"; (2) `wx.sperre_zu(...)` im Kill-Switch-
   Zweig (`wachen.json handel_erlaubt -> false`) und bei negativem EV in
   `zeige_wachen` (`if s["ev_negativ"] and w.get("handel_erlaubt")`) - ohne sie
-  kann der Kill-Switch das Wachen-Tor nie schliessen und Live bleibt ein
+  Notbremsen kann der Kill-Switch das Wachen-Tor nie schliessen und Live bleibt ein
   Ewigkeitsschalter, den nur ein Mensch umlegt. Pruefung beim Bau einer neuen
   Spur: `Select-String -Pattern 'sperre_zu|modus'` ueber die neue Spur gegen
   dieselbe Suche in `xperp/handeln.py` halten (xperp ist die Referenz). Ein
   Regressionstest setzt `z["modus"]` nach einem `lauf("papier")`-Durchlauf
   voraus.
+
+- **'Verwaiste Sperre ... wird ersetzt' ohne Zyklus-Zeilen dazwischen ist ein
+  Absturzloop, kein haengender Prozess.** Der Waechter (z. B.
+  `MaxHirn-Handel-Dauerlauf-Waechter`) erkennt nur einen TOTEN Prozess und
+  startet neu — er unterscheidet nicht zwischen "brauchte laenger" und "stirbt
+  sofort wieder beim Start". Zwoelf Neustarts in drei Stunden ohne eine einzige
+  `<spur> (papier) ok`-Zeile dazwischen (Befund: ein Crash beim Rendern der
+  Startmeldung, JEDES Mal an derselben Stelle, bevor der erste Spurenzyklus
+  lief) sehen im Waechter-Log wie normale Selbstheilung aus, sind aber ein
+  Dauerausfall — dieselbe Ursache betraf hier zusaetzlich die Handelszentrale
+  (GUI), die denselben Code beim Start aufruft. Diagnose: die Log-Zeilen
+  ZWISCHEN zwei Waechter-Meldungen pruefen — fehlen Zyklus-Zeilen komplett, den
+  Einstiegspunkt EINMAL im Vordergrund direkt starten (ohne Wrapper, ohne
+  `background=true`): der Traceback erscheint sofort, statt in zwoelf
+  Neustarts zu verschwinden. Nach dem Fix ueber den regulaeren Waechter neu
+  starten (`Start-ScheduledTask`), nicht von Hand im Hintergrund lassen — ein
+  manuell gestarteter Prozess hinterlaesst oft keine `.pid`-Datei und faellt
+  aus der naechsten Doppellauf-Pruefung heraus.
+
+- **Eine 'Fixes Applied'-Notiz einer fremden Sitzung ist eine Behauptung, kein
+  Beweis — nach jeder uebernommenen Fremdaenderung die VOLLE Testsuite laufen
+  lassen, nicht nur den Test zum gemeldeten Symptom.** Eine als "Bug gefixt"
+  dokumentierte Aenderung kann echte Aufrufer zerschiessen, wenn sie nur den
+  beschriebenen HYPOTHETISCHEN Fall bedenkt: hier wurde ein Substring-Check
+  (`any(w in grund for w in ABLEHNUNGSGRUENDE)`) auf Exact-Match umgestellt mit
+  der Begruendung "'stoppage' sollte nicht wie 'stop' zaehlen" — dieser Fall
+  kam im echten Code nirgends vor, aber der "Fix" brach alle vier echten
+  Aufrufer (`"Telegram stop"`, `"Befehl /stop"` sind nie exakt `"stop"`). Der
+  volle Testlauf (nicht nur ein neuer, gezielter Test) deckte die Regression
+  auf; ein Wortgrenzen-Match (`re.search(r"\\b%s\\b" % re.escape(w), grund)`)
+  loest beide Faelle richtig. Vor jeder Uebernahme einer fremd committeten
+  "Fixes Applied"/"Bug Report"-Notiz: die volle Suite laufen lassen, nicht nur
+  glauben, dass Beschreibung und Wirkung uebereinstimmen.

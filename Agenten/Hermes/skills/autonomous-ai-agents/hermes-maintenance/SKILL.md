@@ -115,6 +115,42 @@ Eintraege fuer denselben Server im Abstand von Sekunden sind ein zweiter
 Gateway-Prozess (der Doppelstart), kein Serverfehler. Der Server ist Zeuge,
 nicht Taeter.
 
+**Zweite Form der Gateway-Dopplung: Login-Items im Startup-Ordner.** Ein
+`hermes -p <profil> gateway start` legt `…\Startup\Hermes_Gateway_<profil>.vbs`
+plus `profiles/<profil>/gateway-service/` an — pro Anmeldung ein zweites
+Gateway neben dem Standard-Gateway. `Get-ScheduledTask` zeigt das NICHT.
+Zusaetzlich pruefen:
+
+    ls "$APPDATA/Microsoft/Windows/Start Menu/Programs/Startup" | grep -i hermes
+    ls -d <HERMES_HOME>/profiles/*/gateway-service
+
+Beweis sind die EIGENEN Logs der Profile (`profiles/<p>/logs/gateway.log`):
+abwechselnde „Starting Hermes Gateway" / „Stopping gateway for restart",
+„explicit --replace handoff completed" (ein Profil-Gateway nimmt dem
+Standard-Gateway Token und Port weg) und im Standard-Log „another gateway
+already holds the dispatcher lock". Mehrere Gateways auf einem Host
+verdraengen sich gegenseitig; das Gateway faellt minutenlang aus. Entfernen
+ohne Admin — `gateway uninstall` loescht Login-Item UND Launcher:
+
+    hermes -p <profil> gateway stop
+    hermes -p <profil> gateway uninstall
+
+Endzustand: genau EIN Starter (Launcher-Task) plus der Waechter.
+
+**Ohne `-p` gilt das STICKY Profil.** `hermes profile use` schreibt es
+(`active_profile` im HERMES_HOME; `hermes gateway list` markiert es mit
+„(current)"). Steht es auf einem Bot-Profil, meldet `hermes gateway status`
+„No gateway process detected", obwohl das Standard-Gateway laeuft — und jeder
+Aufruf ohne `-p` installiert/startet dort ein Gateway. Zurueck mit
+`hermes profile use default` (die Datei verschwindet dann).
+
+**Der Waechter erkennt Prozesse am Kommandozeilen-Teilstring**
+(`hermes_cli.main gateway`) — das trifft auch einen kurzlebigen eigenen
+`hermes gateway list`-Aufruf und kann ein „laeuft schon" vortaeuschen. Bei
+Ausfaellen die Eltern-Kette ansehen (Launcher-VBS -> venv-python ->
+`.hermes-runtime`-python), nicht dem Substring glauben; die PIDs stehen in
+`gateway.pid`/`gateway_state.json`.
+
 **Vorsorge: ein Gateway-Waechter.** Kleines Skript (Ablage `Agenten/Routinen/`),
 das alle 2 Minuten prueft, ob ein Prozess mit `hermes_cli.main gateway` in der
 Kommandozeile lebt, und wenn keiner lebt, den offiziellen Launcher-VBS aus

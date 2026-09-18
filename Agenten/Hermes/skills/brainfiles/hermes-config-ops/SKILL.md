@@ -305,6 +305,13 @@ ein Eintrag in einer Allowlist) werden uebernommen und im Commit-Text als
 uebernommen benannt — wer sie wegwirft, zwingt die andere Sitzung, sie noch
 einmal zu setzen.
 
+Der eigene Anteil geht HUNK-weise in den Commit und die fremden bleiben liegen:
+`git restore --staged <datei>`, dann `printf 'n\nn\ny\n' | git add -p -- <datei>`
+(ein `y`/`n` je Hunk, die eigene Aenderung zuletzt), danach `git diff --cached -- <datei>`
+lesen — steht dort genau die eigene Aenderung, committen, sonst wiederholen. Die
+fremden Hunks bleiben als `M` im Arbeitsbaum und werden im Commit-Text als nicht
+enthalten benannt; fremd Gestagetes nie mitcommitten (Regeln (immer) 7).
+
 **Nachweis:** `git diff --stat` muss additiv aussehen (viele Zeilen rein, nur
 die eigene Ersetzung raus). Ein Diff, der mehr loescht als hinzufuegt, hat
 fremde Arbeit verschluckt. Danach `hermes config get` fuer jeden angefassten
@@ -312,6 +319,47 @@ Schluessel, und die Datei einmal als YAML parsen lassen, BEVOR sie geschrieben
 wird — bei einer Config gibt es keinen `ast.parse`, aber `yaml.safe_load` auf
 dem neuen Text im Speicher leistet dasselbe (dazu die erwarteten Invarianten
 als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
+
+## Kanal-Zugangsdaten gehoeren genau einem Profil (Telegram, Photon, ...)
+
+1. **Ein Bot-Token, ein Profil.** Traegt ein Profil dieselbe Verbindungskennung
+   wie `default`, warnt `hermes profile list` je Profil
+   (`hermes_cli/profile_channels.shared_channel_credentials`: Byte-Vergleich der
+   Kennungszeilen aus `.env` und von `platforms.<p>.token|api_key` aus
+   `config.yaml`). Ein zweites Gateway auf demselben Token nimmt dem ersten die
+   Nachrichten weg — beide pollen `getUpdates` —, und
+   `hermes gateway migrate --multiplex` verweigert, solange die Dopplung steht.
+   Die Dopplung ist also nicht kosmetisch: sie kostet Nachrichten.
+2. **Ein Bot-PROFIL braucht keine Kanalzugangsdaten — es braucht eine eigene
+   Modellkennung.** Der `/bot`-Weg des SkillsBot startet
+   `hermes -p NAME chat -q` ohne Gateway. Also die geteilten Kanalzeilen
+   entfernen statt jedem Bot einen eigenen Bot zu geben. Profile sind Inseln:
+   sie lesen nur ihr eigenes `auth.json`/`.env`.
+   Die Modellkennung holt man NICHT, indem man die Konto-Anmeldung des
+   Startprofils in jedes Profil kopiert: das ist dieselbe Kennung in vielen
+   Dateien (dieselbe Fehlerklasse wie beim Kanal) und eine geteilte
+   Refresh-Sitzung kann allen Profilen gleichzeitig ablaufen — im Startprofil
+   stand `Refresh session has been revoked`, waehrend ein anderes Profil
+   dieselbe Kennung benutzte. Stattdessen auf den LOKALEN Router zeigen:
+   `model.provider=omniroute`, `model.default=auto/best-coding`; seinen
+   Schluessel traegt jede Profil-`.env` schon, den Provider-Block jede
+   `config.yaml`. Rezept und der Weg ueber alle Profile:
+   `references/profil-kanalzugangsdaten.md`.
+3. **Kein Unterkommando entfernt Kanaele aus einem bestehenden Profil** (nur
+   `--clone` strippt beim Anlegen). Nicht selbst eine Schluesselliste bauen:
+   `ChannelKeyIndex(<startprofil>).platform_for(<ENV_NAME>)` ist dieselbe
+   Zuordnung, mit der `--clone` strippt. Ablauf, Werkzeug und Belege:
+   `references/profil-kanalzugangsdaten.md`.
+4. **Geheimnisse nicht in den Diff.** Ein `diff` gegen die Sicherung gibt die
+   Werte im Klartext aus — redigieren (`sed -E 's/=.*/=<wert>/'`) oder ueber
+   Hashes und Zeilenzahlen nachweisen.
+5. **Nachweis:** `hermes profile list` ohne eine einzige Warnzeile UND die
+   Gegenprobe (Sicherung zuruecklegen → Warnungen wieder da → erneut strippen →
+   0). Die `.env` des Startprofils bleibt unveraendert (Hash vorher/nachher):
+   dort gehoeren die Zugangsdaten hin.
+6. **Geteilte Zeilen, die keine Warnung ausloesen, nicht mitstrichen** (z. B.
+   `A2A_*`, `SMS_*`): melden und als eigene Entscheidung stellen — ein
+   stillschweigend mitgestrichener Nebeneintrag ist spaeter nicht mehr zuordenbar.
 
 ## Fallen
 
@@ -386,6 +434,25 @@ als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
 - **Fuer Provider-Anmeldedaten braucht das laufende Gateway KEINEN Neustart.** Sie kommen aus dem Credential-Pool (`auth.json`) und der `.env` des Profils, nicht aus der Prozessumgebung: ein `delegate_task`-Kind lief sofort mit `provider=anthropic model=claude-opus-5` (Logzeile `platform=subagent … id=msg_…`). Wer „greift erst nach Neustart" behauptet, muss diesen Unterschied zeigen — er gilt nur fuer `${env:NAME}`-Verweise.
 - **`patch` und `write_file` auf `config.yaml` sind gesperrt** („Refusing to write to Hermes config file", bei der AppData-Config zusaetzlich `HERMES_WRITE_SAFE_ROOT`). Zwei Wege bleiben, und sie sind nicht gleichwertig: `hermes config set …` fuer den EINZELNEN Wert (auch fuer Listen — der Wert wird als YAML/JSON geparst, `'[{"provider":"omniroute","model":"auto/best-coding"}]'` funktioniert), und ein Wegwerf-Skript unter `Agenten/Hermes/cache/`, das die Datei binaer liest, chirurgisch ersetzt und zurueckschreibt — fuer eine Zusammenfuehrung mit mehreren Hunks. Das Skript ist dort das BESSERE Mittel, weil `hermes config set` die Datei neu schreibt und dabei den Kommentar-Schluss abschneidet (naechste Falle). Fuer das Skript gelten dieselben Regeln wie fuer jede Textaenderung: Zeilenenden binaer feststellen (`b"\r\n" in raw`) und erhalten, je Ersetzung `count == 1` asserten, den NEUEN Text vor dem Schreiben mit `yaml.safe_load` pruefen, vorher `.bak-JJJJMMTT`.
 - **`hermes config set` schneidet den Kommentar-Schluss der Datei ab.** Es schreibt die ganze Datei neu; ein Dokumentationsblock am Dateiende (Beispiele fuer `security:`, `fallback_model:`) ist danach weg — funktional harmlos, aber eine stille Aenderung an der Datei des Nutzers. Nach **jedem** `config set` diffen und den Block zurueckholen (`Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`), sonst waechst bei jeder Aenderung eine unsichtbare Differenz. Die Aenderung selbst sieht im Diff wie eine Zeilenersetzung aus — genau pruefen, ob noch mehr fehlt.
+- **Der Kommentar-Schluss fehlt auch bei PROFIL-Configs** (`profiles/<name>/config.yaml`),
+  nicht nur im Hauptprofil (gemessen: 38 Zeilen in 6 Profilen). Dort ist "Block anhaengen"
+  der falsche Fix — die Ziel-Fassung BYTE-genau aus `git show HEAD:<pfad>` bauen und nur
+  den geaenderten Block ersetzen. `read_text()`/`write_text()` ohne `newline=""` drehen
+  eine CRLF-Datei still auf LF (die selbst eingesetzten Zeilen behalten `\r\n`, die
+  gelesenen nicht) — der Diff zeigt danach die GANZE Datei. `Agenten/Hermes/scripts/bot-modell-auf-router.py`
+  arbeitet genau so und heilt den Kommentar-Schluss gleich mit.
+- **Nach einer Massenaenderung den Diff JE DATEI zaehlen, nicht die Summe.** Erwartet sind
+  die Zeilen der gewollten Ersetzung (Beispiel `model`: 2 Einfuegungen/3 Loeschungen, weil
+  `base_url` entfaellt). Ein Diff, der wie die ganze Datei aussieht, heisst gekippte
+  Zeilenenden oder verschwundener Doku-Block — in einer Summe ueber 25 Dateien faellt
+  beides nicht auf. Zusaetzlich jede geaenderte `config.yaml` mit `yaml.safe_load` parsen
+  und die Zielwerte asserten.
+- **Ein kaputter Fallback ueberdeckt die echte Fehlermeldung.** Ist der Primaerpfad nicht
+  angemeldet und die geerbte Kette zeigt auf ein lokales Modell unter der Mindestgroesse,
+  endet der Lauf mit „context window ... below the minimum" — der Anmeldefehler ist dann
+  unsichtbar. Passt eine Meldung nicht zur vermuteten Ursache, zuerst den
+  `fallback_providers`-Block des PROFILS lesen und die Zahl der Eintraege zaehlen, bevor
+  der Provider verdaechtigt wird.
 
 ## Nachweis (Abschluss)
 

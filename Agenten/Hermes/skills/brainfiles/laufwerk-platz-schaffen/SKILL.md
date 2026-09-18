@@ -35,7 +35,12 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
    - *regenerierbar* (Temp, Build-Cache, `node_modules`, `.build`, `target`,
      Duplikat-Ordner mit `DUPLIKAT` im Namen) → löschen, mit Nachweis.
    - *Umgebung* (`hiberfil.sys`, `pagefile.sys`, Windows-Update-Cache) →
-     melden und den Befehl nennen, nicht selbst entscheiden.
+     melden, erst nach ausdruecklicher Freigabe des Nutzers umsetzen (Admin
+     + Neustart noetig). Nachweis fuer eine aufgeblaehte Auslagerungsdatei:
+     `Get-CimInstance Win32_PageFileUsage` — `AllocatedBaseSize` gegen
+     `CurrentUsage` stellen (belegt: 40.960 MB zugeteilt, 193 MB benutzt).
+     Das komplette Fix-Rezept (Registry-MultiString, Admin-Skript, UAC,
+     Verifikation): `references/auslagerung-ruhezustand.md`.
    - *Archiv, das nur einmal existiert* → **verschieben, nie löschen**.
    - *Nutzerdaten* (Papierkorb, Bilder, Videos, Dokumente) → nur melden. Der
      Papierkorb gehört dem Nutzer; Größe nennen, nicht leeren.
@@ -127,3 +132,12 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   mehreren gleichzeitig arbeitenden Sitzungen kann sich der belegte Platz
   zwischen zwei Messungen um Gigabyte ändern. Vorher und nachher im selben
   Durchgang messen und beide Zahlen nennen.
+- **Ein ploetzlicher Schwund von zig GB ist oft die Auslagerungsdatei, nicht
+  ein laufender Schreiber.** Eine systemverwaltete `pagefile.sys` waechst bei
+  einer Commit-Spitze auf RAM-Groesse und schrumpft nie von selbst; sie kann
+  40 GB belegen und 200 MB benutzen. Bevor ein „aktiver Schreiber" gesucht
+  wird: `Win32_PageFileUsage` lesen und den freien Platz zweimal messen
+  (~45 s Abstand) — bleibt die Differenz im Rauschen, gibt es keinen Schreiber,
+  der Druck ist die Datei. Den Schluessel im Befund nennen: systemverwaltete
+  Dateien verlassen den Platz nicht zurueck (Heilung erst mit fester Groesse
+  + Neustart).

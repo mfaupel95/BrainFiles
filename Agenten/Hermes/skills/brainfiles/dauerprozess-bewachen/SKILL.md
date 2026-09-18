@@ -140,6 +140,15 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   zufaellig antippt). Deshalb zuerst die Wachenliste ansehen (Hermes-Cron-Liste und
   `Get-ScheduledTask -TaskName 'MaxHirn-*'`, Zustand `Ready` heisst nur „registriert“),
   dann nach dem Muster aus Schritt 4 nachruesten.
+- **Ein Watchdog mit hoher `RestartCount` kann einen Crash-Loop stundenlang
+  verstecken.** `RestartCount 99 / RestartInterval 1 min` startet einen sofort
+  wieder abstuerzenden Prozess brav neu — der Scheduler zeigt `Running`/`Ready`
+  ohne Fehlermeldung, waehrend in Wahrheit seit Stunden kein einziger Zyklus
+  durchlief. Prozess-**Uptime** (`Get-Process <name> | Select StartTime`) gegen
+  den Zeitpunkt des letzten VOLLSTAENDIGEN Zyklus im eigenen Log halten — klafft
+  das auseinander (Prozess wenige Minuten alt, letzter echter Erfolg Stunden
+  zurueck), ist es ein Crash-Loop und kein gesunder Dauerbetrieb, auch wenn
+  gerade ein Prozess laeuft.
 - **Ein aus der Agentensitzung gestarteter Hintergrundprozess stirbt mit ihr.**
   Symptom: Stunden spaeter endet er mit Exit 127, waehrend der per `.cmd`
   gestartete weiterlaeuft — das ist kein Fehler der Komponente und kein Grund zur
@@ -207,6 +216,33 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   dem Aufraeumen loeschen.
 - **Nach jedem Deploy des Starters die Routine-Zeile nachziehen**
   (`Wissen/Routinen.md`) — sonst weiss die naechste Sitzung nichts von der Wache.
+- **`Start-ScheduledTask` auf eine Aufgabe mit `MultipleInstances=IgnoreNew`
+  ist ein No-Op, wenn der Scheduler die Aufgabe noch als „Running“ sieht** —
+  der ALTE Prozess (mit dem ALTEN Code) laeuft einfach weiter, ohne
+  Fehlermeldung und ohne dass ein neuer Prozess entsteht. Nach jeder
+  Codeaenderung an einem so registrierten Dauerprozess zuerst
+  `Get-ScheduledTaskInfo` pruefen, dann den KOMPLETTEN Prozessbaum beenden
+  (`taskkill /F /T /PID <Wurzel-PID>` — ein einfaches `Stop-Process` auf die
+  Wurzel-PID laesst Kinder weiterlaufen), erst DANACH neu starten und am
+  Zeitstempel im Log verifizieren, dass die beobachtete Instanz wirklich seit
+  dem Neustart laeuft — sonst wird der alte, ungepatchte Lauf fuer einen
+  Beleg des Fixes gehalten.
+- **Eine `CommandLine -like '*Suchtext*'`-Abfrage trifft oft die eigene
+  Suchanfrage**, wenn das Terminal den Befehl selbst in einer Bash-/
+  PowerShell-Huelle mit dem vollen Text weiterreicht — der gesuchte String
+  taucht dann in der Kommandozeile des Abfrageprozesses auf und erzeugt
+  Phantomtreffer, die wie ein echter laufender Prozess aussehen. Vor
+  „laeuft noch“ das `CommandLine`-Feld ansehen (nicht nur die PID zaehlen);
+  ein Treffer, dessen Kommandozeile die eigene Abfrage enthaelt, ist kein
+  echter Prozess.
+- **Vor einem manuellen Neustart den Cron-Verlauf des Waechters lesen, nicht
+  nur den Live-Zustand.** Ein `no_agent`-Hermes-Cron schreibt jeden Lauf nach
+  `Agenten/Hermes/cron/output/<job-id>/<zeitstempel>.md` — bei Erfolg leer
+  (`silent (empty output)`), bei Eingriff mit Befund und Startversuch. Die
+  Job-ID liefert `hermes.exe cron list`. Mehrere Dateien in Zeitfolge zeigen,
+  ob der Waechter einen Ausfall bereits selbst geheilt hat, bevor manuell
+  eingegriffen wird — sonst ist der manuelle Neustart entweder ueberfluessig
+  oder verdeckt, dass der Waechter allein schon ausgereicht haette.
 
 ## Verification
 

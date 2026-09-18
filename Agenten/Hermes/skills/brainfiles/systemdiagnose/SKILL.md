@@ -110,7 +110,11 @@ fehlgedeutet.
 - **`$_.Message.Substring(0, N)` wirft**, sobald eine Meldung kuerzer als N ist
   (`ArgumentOutOfRangeException`), und ueberschwemmt die Ausgabe mit
   PowerShell-Fehlerbloecken. Immer `[Math]::Min(N, $_.Message.Length)` als
-  Laenge nehmen.
+  Laenge nehmen — und zwar gemessen an **demselben String, der gekuerzt wird**:
+  `($m -replace "\r\n",' ').Substring(0, [Math]::Min(N, $m.Length))` wirft
+  weiter, weil das Ersetzen den Text verkuerzt, die Laenge aber noch vom
+  Original stammt. Erst in eine Variable legen, dann ersetzen, dann messen:
+  `$t = $m -replace ...; $t.Substring(0, [Math]::Min(N, $t.Length))`.
 - **Zwei Prozesse mit gleichem Namen sind nicht automatisch ein Doppelstart.**
   Vor der Alarmmeldung `ParentProcessId` pruefen: laeuft der zweite als Kind
   des ersten, ist es ein gewolltes Gespann (Fall: der Dauerlauf startet einen
@@ -160,6 +164,20 @@ fehlgedeutet.
   Haushaltslogs wachsen ueber Stunden; die **letzten** Zeilen lesen. Viele
   Systeme heilen sich selbst (Verbindungs-Wiederaufbau, „error cleared“) —
   sonst steht im Bericht ein Problem, das sich laengst geloest hat.
+- **`robocopy`-`FEHLER 32` (Zugriff verweigert) in einer eigenen Sicherung ist
+  meist ein SELBST gehaltenes Schloss, keine Beschaedigung.** Eine lang
+  laufende eigene Automatisierung (eine Headless-Browser-Instanz, eine offene
+  DB-Journaldatei, ein Cache-Prozess) haelt Dateien offen; mit `/R:1 /W:1`
+  bricht der Lauf nach einer Wiederholung ab (robocopy-Code 20/21, Task-Exit
+  `0x40010004`). Halter finden ueber
+  `Get-CimInstance Win32_Process -Filter "Name='<prozess>.exe'"` — die
+  `CommandLine` nennt den betroffenen Datenpfad (z. B. `--user-data-dir=...`),
+  `ParentProcessId` den Starter. Fix ist, den Ordner per `/XD` aus dem
+  Kopierumfang zu nehmen, nicht die Wiederholungszahl zu erhoehen (das wartet
+  nur laenger auf denselben Halter). Ein Abbruch OHNE jedes Ereignis im
+  Zeitfenster des betroffenen Laufs (`Get-WinEvent` liefert nichts) ist meist
+  ein spaeterer Reboot/Shutdown (Event 1074), der den Prozess von aussen
+  beendet hat — kein Fehler im Skript selbst.
 
 ## Ereignis-IDs
 Welche ID was bedeutet (Kernel-Power 41, Volsnap 36, disk 11/153, Service

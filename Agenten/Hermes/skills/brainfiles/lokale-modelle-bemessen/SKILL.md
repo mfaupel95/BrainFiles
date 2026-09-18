@@ -75,6 +75,16 @@ Modellnamen führen, ohne dass es auffällt.
 - **Der Import eines vorhandenen GGUF als Ollama-Modell ist billig** (Kopie im
   Store, kein Download) und der schnellste Weg zu einer belastbaren Messung.
   Aufräumen danach mit `ollama rm <name>`.
+- **`localhost` und `127.0.0.1` sind auf diesem Rechner NICHT dieselbe
+  Ollama-Instanz.** `localhost` löst auf `::1` (IPv6) auf, wo eine ZWEITE,
+  modell-lose Instanz lauschen kann — ein Aufruf gegen
+  `http://localhost:11434/api/generate` mit einem installierten Modell liefert
+  dann `404 model not found`, obwohl `ollama list`/`curl 127.0.0.1:11434/api/tags`
+  das Modell zeigt (die Abfrage traf zufällig die richtige Instanz, der Aufruf
+  die falsche). Jeden Ollama-Client fest auf `127.0.0.1` eintragen, nie
+  `localhost`. Bei einem 404 „model not found“ für ein nachweislich
+  installiertes Modell zuerst `localhost` und `127.0.0.1` EINZELN gegen
+  `/api/tags` UND `/api/generate` testen, bevor am Modellnamen gesucht wird.
 
 ## References
 - `references/vram-faustregeln.md` — Formeln, Bitwerte je Stufe, gemessene

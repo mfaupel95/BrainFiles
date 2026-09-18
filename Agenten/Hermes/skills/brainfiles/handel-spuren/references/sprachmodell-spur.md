@@ -19,9 +19,34 @@ Arbeitsteilung:
 ## 1. Ein Zugang fuer alle: `Handel/llm_lokal.py`
 - Ollama auf `127.0.0.1:11434`, nur `urllib` (das gemeinsame venv hat kein
   ollama-Paket). Kein Schluessel, keine Kosten, keine fremde Rechnung.
+- **Nie `localhost` als Ollama-URL, immer die IP `127.0.0.1`.** `localhost`
+  loest auf diesem Rechner auf `::1` (IPv6) auf, wo eine ANDERE, modell-lose
+  Ollama-Instanz antwortet. Symptom: `/api/generate` liefert HTTP 404 `model
+  '<name>' not found`, obwohl `ollama list` bzw. `/api/tags` ueber `127.0.0.1`
+  das Modell klar zeigt - der Name ist richtig, nur der Host trifft die
+  falsche Instanz. Jede NEUE Ollama-Anbindung (nicht nur `llm_lokal.py`,
+  jeder Fremd-Code mit eigenem HTTP-Aufruf, z. B. `verbesserer/digest.py`)
+  einmal gegen `http://localhost:11434/api/tags` UND `http://127.0.0.1:11434/api/tags`
+  pruefen - liefert `localhost` eine leere Modell-Liste, ist das der Fehler,
+  nicht das Modell oder der Modellname.
 - **`think: false` ist Pflicht.** Mit Denken verbraucht das Modell das
   Token-Kontingent im Denken: `content` kam LEER zurueck (num_predict 80).
   Symptom: die Spur handelt nie, ohne Fehlermeldung.
+- **Der OpenAI-kompatible `/v1/chat/completions`-Weg ist trotzdem eine
+  Falle**: gegen dasselbe Modell liefert er IMMER leeren `content` (die
+  Antwort steht im `reasoning`-Feld), auch mit `think: false` oben im
+  Koerper. Nur die native `/api/chat` mit `think: false` und `stream: false`
+  antwortet zuverlaessig. Wer einen Fremd-Agenten ueber das openai-SDK
+  anbindet, muss den Aufruf auf `/api/chat` umschreiben (urllib reicht),
+  sonst laeuft der Agent und faellt still auf den DO-NOTHING-Default
+  zurueck - Symptom einer stummen Modellstrecke ist eine lange Folge
+  identischer DO-NOTHING-Urteile ohne Fehlermeldung.
+- **Ollama hat auf dieser Maschine keinen Windows-Dienst.** Der Daemon
+  stirbt mit der Sitzung, die `ollama serve` gestartet hat; dann antwortet
+  Port 11434 nicht mehr und ALLE LLM-Urteile kippen still auf den
+ DO-NOTHING-Default. Vor dem „Modell ist schlecht"-Urteil immer
+  `Test-NetConnection 127.0.0.1 -Port 11434` pruefen und notfalls neu
+  starten (Wrapper: `Agenten/Routinen/ollama-start.ps1`).
 - `temperature: 0` + fester `seed`: dasselbe Marktbild -> dasselbe Urteil.
 - **Vertrag wortgleich zum Bot** (`llm_lokal.VERTRAG`): genau 3 Zeilen,
   Zeile 1 `BUY`/`SELL`/`NOTHING`, Zeile 3 `Confidence: X%`. Streng lesen

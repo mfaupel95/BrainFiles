@@ -142,3 +142,16 @@ Drei Fallen, die dort Zeit gekostet haben:
   (Blender 28015, Affinity 6767) scheitern im Log im Minutentakt, solange das
   Programm zu ist. Vor dem Melden den Port prüfen, sonst wird Erwartetes als Störung
   gemeldet.
+- **NordVPN-Exit kann Anthropic blocken (16.09.2026).** Clara Desktop meldete
+  „keine Verbindung“: alle Anthropic-Domains (claude.ai, api.anthropic.com,
+  www/docs.anthropic.com, platform.claude.com — alle auf 160.79.104.10)
+  timeouteten, Google/GitHub/OKX liefen. Der NordLynx-Exit (Frankfurt,
+  AS207137 PacketHub) konnte das Anthropic-Netz nicht routen; check-host.net
+  erreichte dieselbe IP von DE aus in 1 ms. Behebung: VPN trennen (NordVPN-App
+  oder Tray-Kontextmenü), dann api.anthropic.com antwortet in 0,1 s und Claude
+  verbindet nach Neustart. Vor solchen Meldungen: `curl -s -o /dev/null -w
+  "%{http_code}" https://api.anthropic.com` und `curl ipinfo.io/json` —
+  Exit-IP/Land prüfen, Gegenprobe mit check-host.net. VPN wieder verbinden
+  erst über einen ANDEREN Server, nie denselben Exit. Kein Admin nötig für
+  Trennen; ICMP-Ping ist durch den Tunnel grundsätzlich blockiert (kein
+  Diagnosemittel).

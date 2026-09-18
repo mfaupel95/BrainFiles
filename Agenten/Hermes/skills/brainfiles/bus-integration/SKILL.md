@@ -72,6 +72,13 @@ category: brainfiles
   sichtbar dasteht) - dann nicht weiter probieren, sondern die Ersetzung per
   Skript mit binaer gelesenem Text und `newline=''` fahren und den Erfolg an der
   Trefferzahl festmachen (`assert text.count(alt) == 1`, sonst NICHTS schreiben).
+  Eine dritte Form der Falle: das Patch-Werkzeug FINDET den Anker, ersetzt aber
+  mit verschobener Einruedung (gemessen: 12 -> 24/28 Spaces im Ersatzblock).
+  Einmal war die Datei danach syntaktisch kaputt, einmal gruen - ein falsch
+  eingerueckter String in einer Verkettung ist fuer den Parser gueltig. Deshalb
+  nach JEDEM Patch auf CRLF-Ziel den Ersatzbereich ansehen (git diff), nicht nur
+  den Lint glauben; ist die Einruedung verschoben, die Korrektur per Skript mit
+  eindeutigem Anker fahren, nicht ein zweites Patch versuchen.
   Nach jeder Massenaenderung `git diff --stat` ansehen: eine gewollte Zeile darf
   nicht als ganzes Dateidiff erscheinen.
 - **Zugriff verweigert heisst hier: erhoehte PowerShell.** `Register-ScheduledTask`
@@ -207,6 +214,30 @@ sie eine zweite Instanz oder der Wrapper stirbt vor seiner Schlusszeile:
   `Agenten/Routinen/` zaehlt als Routine — Bus-Anbindung (oben) und eine Zeile
   in `Wissen/Routinen.md` gehoeren dazu.
 
+## Neue Routine anlegen — was der Bau am 16.09.2026 gelehrt hat
+
+- **Ohne Admin registrieren.** Fuer eine wöchentliche Aufgabe des angemeldeten
+  Benutzers (`Interactive`, `RunLevel Limited`) genuegte eine **nicht** erhöhte
+  Sitzung: `Register-ScheduledTask` lief durch, `Get-ScheduledTaskInfo` meldete
+  danach `rc=0`. Die Warnung „ADMINISTRATOR NOETIG" in `handelszentrale-aufgabe.ps1`
+  gilt fuer deren Anmelde-Sonderfall, nicht generell — erst versuchen, dann Max um
+  den einen erhöhten Befehl bitten.
+- **Das Protokoll ist die spätere Abnahmeprüfung.** Erste Zeile
+  `=== Lauf <Zeitstempel> ===`, letzte Zeile beginnt mit `ENDE`. Nur damit lässt
+  sich hinterher unterscheiden, ob ein Lauf fertig wurde oder abgeschnitten ist —
+  `Agenten/Hermes/scripts/optimierungen-finden.py` prüft genau das. Achtung:
+  `Set-Content -Encoding UTF8` setzt ein BOM vor die erste Zeile; beim Lesen
+  abschneiden, sonst greift die Kopfzeilen-Prüfung nicht.
+- **Befund ist kein Fehler.** „Es gibt etwas zu melden" gehört in `Melde-Hinweis`
+  (wird immer gemeldet); `Melde-Ende -Code 1` bleibt echten Fehlern vorbehalten.
+  Sonst sieht die Routine jede Woche wie ein kaputter Lauf aus.
+- **Neue `.ps1` kommen als LF an und müssen auf CRLF.** Nach dem Schreiben
+  umstellen (siehe Zeilenenden-Falle oben) — und den Testlauf aus der
+  Aufgabenplanung heraus fahren (`Start-ScheduledTask`, dann
+  `Get-ScheduledTaskInfo`), nicht nur von Hand.
+- **Abnahme:** `python tests/test_anbindung_routinen.py` aus `Agenten/Bus`. Jede
+  neue `.ps1` in `Routinen/` ohne Anbindung reisst die ganze Suite ein.
+
 ## Abnahme am laufenden System
 
 Die vier Punkte der Spec werden am echten Rechner geprüft, nicht am Testcode
@@ -325,6 +356,16 @@ Befehl gilt:
    gesammelt.append(text)`, dann `s.bearbeite('/run <name> [auftrag]', 1)`. Die
    Antwort in eine Datei schreiben und dort lesen, nicht durch `tail` schicken -
    so sind Zwischenmeldung, Katalogpruefung und A2A-Weg in EINEM Durchlauf belegt.
+12. **Eine dritte Sorte Befehl spricht ein PROFIL an statt den A2A-Agenten.**
+   `/bot NAME NACHRICHT` (seit 16.09.2026) startet einen frischen Einzelauftrag
+   `hermes -p NAME chat -q` als Subprozess - kein A2A, kein Gateway, kein
+   Kontext. Der Name wird gegen die Platte validiert (`profiles/<name>/` mit
+   config.yaml existiert), nie gegen eine gepflegte Liste. Subprozess-Umgebung:
+   PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME explizit setzen (cwd des
+   SkillsBot ist nicht das Hermes-Home). Kaltstart 30-60 s, deshalb vorher eine
+   Zwischenmeldung senden. Tests mocken `subprocess.run` und pruefen die
+   Aufrufform (Name hinter -p, Text hinter -q) - ein echter hermes.exe-Start im
+   Test schreibt in echte Sitzungsdateien und dauert eine Minute.
 
 ## When to Use
 Use this skill whenever you need to add a new automated routine to the BrainFiles Telegram Bus, or when you are setting up the bus for the first time on a new machine. Auch beim Auftrag "Autostart Routine einrichten" fuer einen Dienst oder ein Fenster (Abschnitt Dienst-Start-Routinen).

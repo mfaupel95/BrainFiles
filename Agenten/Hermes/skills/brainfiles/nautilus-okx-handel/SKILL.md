@@ -166,6 +166,11 @@ Signal - gemessen wird die FORM, nicht ein Markt-Urteil).
 - **`backtest_grid_ergebnis.json` wird von JEDEM Grid-Lauf ueberschrieben**
   (auch vom Sweep): nach einem Sweep ist der Arbeitsbaum nicht sauber - die
   Ergebnisdatei gehoert in denselben Commit.
+- **Warnungsflut schluckt die Ausgabe.** Die Backtests laufen auf pandas 3.x und
+  schreiben je Zeile eine `Pandas4Warning`; mit einer Ausgabefilterung
+  (`Select-Object -First N`) stehen dann nur Warnungen im Fenster und die
+  Ergebnistabelle faellt heraus. Im Skript oben `warnings.filterwarnings("ignore")`
+  setzen (der Kategorie-Filter `FutureWarning` allein greift nicht).
 
 ## Ablage (Kostenfalle)
 - Lauffähiger Node-Code gehört nach `Agenten/Handel/` (versioniert, in der
