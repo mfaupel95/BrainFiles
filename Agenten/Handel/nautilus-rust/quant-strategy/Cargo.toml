@@ -1,0 +1,13 @@
+[package]
+name = "quant-strategy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+quant-signal = { path = "../quant-signal" }
+nautilus-backtest = "0.64"
+nautilus-model = { version = "0.64", features = ["test-support"] }
+nautilus-trading = { version = "0.64", features = ["examples"] }
+anyhow = "1"
+serde_json = "1"

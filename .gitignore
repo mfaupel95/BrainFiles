@@ -659,6 +659,14 @@ Agenten/Handel/OpenAlice/
 # Er liegt seit 12.09.2026 hier statt in Werkstatt/, weil er dort bei jedem
 # Aufraeumen verschwindet und in keiner Sicherung war.
 Agenten/Handel/nautilus/
+# Rust-KI-Referenz-Workspace (Zwei-Ebenen-Architektur, vadim.blog). Bewusst
+# NEBEN nautilus/ - der Node hat sein eigenes .git, dieser Ordner ist Teil
+# von BrainFiles. Nur die Textebene; target/ und .venv bleiben gesperrt.
+!Agenten/Handel/nautilus-rust/Cargo.toml
+!Agenten/Handel/nautilus-rust/Cargo.lock
+!Agenten/Handel/nautilus-rust/*.md
+!Agenten/Handel/nautilus-rust/*/Cargo.toml
+!Agenten/Handel/nautilus-rust/*/src/*.rs
 !Agenten/Handel/docs/
 !Agenten/Handel/docs/design/
 !Agenten/Handel/docs/design/*.md
