@@ -54,19 +54,22 @@ from tkinter import ttk
 HIER = Path(__file__).resolve().parent
 WACHEN = {"spot": HIER / "scanner" / "wachen.json",
           "hebel": HIER / "xperp" / "wachen.json",
-          "kraken": HIER / "kraken" / "wachen.json"}
+          "kraken": HIER / "kraken" / "wachen.json",
+          "mosaic": HIER / "mosaic" / "wachen.json"}
 
 # Spuren mit Kapitaleinsatz ohne Hebel. Sie rechnen gleich; verschieden sind
 # nur Boerse, Waehrung und der Schluessel des Betragsfeldes.
-SPOTARTIG = ("spot", "kraken")
+SPOTARTIG = ("spot", "kraken", "mosaic")
 
 # Wie das Betragsfeld im Auftrag heisst. Es traegt die Waehrung der Spur -
 # ein Feld "usd" mit EUR-Inhalt waere genau die stille Verwechslung, die
 # kraken/wachen.json ausschliesst.
-BETRAGSFELD = {"spot": "usd", "kraken": "eur", "hebel": "risiko_usd"}
+BETRAGSFELD = {"spot": "usd", "kraken": "eur", "hebel": "risiko_usd",
+               "mosaic": "usd"}
 
 TITEL = {"spot": "1 Spot (OKX)", "hebel": "2 Hebel (XPERP)",
-         "kraken": "3 Kraken (Spot, EUR)"}
+         "kraken": "3 Kraken (Spot, EUR)",
+         "mosaic": "Mosaic (OKX, USD, Live Stufe A)"}
 
 # Jede Freigabe und jede Ablehnung wird hier fortgeschrieben. Die Datei ist
 # Protokoll, keine Grenze: sie wird nur angehaengt, nie gelesen, und sie
@@ -202,7 +205,7 @@ def rechne_hebel(a, w):
 
 
 RECHNER = {"spot": rechne_spot, "hebel": rechne_hebel,
-           "kraken": rechne_spot}
+           "kraken": rechne_spot, "mosaic": rechne_spot}
 
 
 # --- Pruefung gegen die Wachen ---------------------------------------------
@@ -217,9 +220,13 @@ def pruefe(r, w, spur, bestand):
     offen_vorher = int(bestand.get("offene_positionen", 0))
 
     if spur in SPOTARTIG:
-        je = _z(w, "max_pro_trade_usd", 50)
-        ges = _z(w, "max_gesamt_usd", 200)
-        maxoffen = _z(w, "max_offene_positionen", 4)
+        # Mosaic fuehrt live_*-Grenzen (Papier rechnet mit den Basis-Werten,
+        # Live hat eigene). Bevorzugt werden sie hier, damit das Fenster
+        # gegen die Betraege prueft, die live wirklich bewegt werden.
+        je = w.get("live_max_pro_trade_usd", _z(w, "max_pro_trade_usd", 50))
+        ges = w.get("live_max_gesamt_usd", _z(w, "max_gesamt_usd", 200))
+        maxoffen = w.get("live_max_offene_positionen",
+                         _z(w, "max_offene_positionen", 4))
         smin = _z(w, "pflicht_stop_prozent_min", 4.0)
         smax = _z(w, "pflicht_stop_prozent_max", 12.0)
         mcr = _z(w, "mindest_chance_risiko", 1.5)

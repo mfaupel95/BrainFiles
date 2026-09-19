@@ -13,13 +13,17 @@ Signalkette (alles lange Kerzen = Aufwaertstrend):
 
 Ein Einstieg verlangt ALLE drei. Ausstieg: ATR-Stop, Ziel 2R.
 
-Papier-Handel: handel_erlaubt=false. Keine Orders.
+Papier-Handel: handel_erlaubt=false. Keine Orders. Der Live-Pfad (--live)
+stellt echte OKX-Spot-Orders erst, wenn die volle Sperrenkette offen ist
+(handel_erlaubt, freigabe.erfuellt, Herzschlag, EV, Guthaben, Sitzung, kein
+Demo-Modus). Siehe MOSAIC-LIVE-PLAN-OKX.md, Stufe A. Papier laeuft parallel
+unveraendert weiter.
 
 Aufruf:
  python handeln.py --vorschau   waere dran, ohne schreiben
  python handeln.py --papier     Papierlauf mit Journal
  python handeln.py --wachen     Grenzen als Momentaufnahme
- python handeln.py --live       verweigert, nennt den Grund
+ python handeln.py --live       echte OKX-Spot-Orders, wenn alle Sperren offen
 """
 
 import argparse
@@ -41,6 +45,7 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
 
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
+import okx_spot  # noqa: E402
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt
 # eine Ebene hoeher und heisst wie kein Paket. Ein Import ueber sys.path
@@ -82,6 +87,17 @@ SCHREIBEN = True
 kerzen_quelle = None
 # Zeit-Quelle: None = utcnow. Tests koennen setzen.
 zeit_quelle = None
+# Live-Orderweg: Tests ersetzen die Funktionen, damit kein Test je eine echte
+# Order an OKX stellt und kein Test ein Netzgewicht traegt. Der Betrieb laeuft
+# auf den echten okx_spot-Funktionen.
+op_kauf = okx_spot.markt_kauf
+op_verkauf = okx_spot.markt_verkauf
+op_stop = okx_spot.algo_stop_setzen
+op_stop_stornieren = okx_spot.algo_stornieren
+op_gefuellt = okx_spot.gefuellte_menge
+op_guthaben = okx_spot.guthaben_usdt
+live_kurs_quelle = okx_spot.letzter_kurs
+live_menge_fuer = okx_spot.menge_fuer
 
 
 # --- Zeit ------------------------------------------------------------------
@@ -460,6 +476,302 @@ def pruefe_ausstiege(z, k5, w, nur=None):
     z["positionen"] = behalten
 
 
+# --- Live (Stufe A, OKX-Spot) ------------------------------------------------
+
+# Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
+FREIGABE_ZEITLIMIT_S = 120
+
+
+def _live_grenze(w, name, ersatz):
+    """Live-Grenze aus den Wachen: live_<name> bevorzugt, sonst <name>.
+
+    Papier rechnet mit den Basis-Werten (max_pro_trade_usd 150, Max-Offen 4,
+    max_gesamt_usd 600); der Live-Pfad darf eigene, kleinere Grenzen
+    tragen (Stufe A: 10/5/200). So bleibt Papier aussagekraeftig, ohne die
+    Live-Betraege mitzuschleifen.
+    """
+    return w.get("live_" + name, w.get(name, ersatz))
+
+
+def sitzung_da():
+    """Sitzt jemand davor, der das Freigabefenster bedienen kann?
+
+    Nur eine erste Huerde (isatty() taegt auch bei umgeleitetem stdin).
+    Der tragende Schutz ist FREIGABE_ZEITLIMIT_S; MAXHIRN_ROUTINE=1 setzt der
+    Wrapper einer geplanten Aufgabe = "hier sitzt niemand".
+    """
+    if os.environ.get("MAXHIRN_ROUTINE"):
+        return False
+    try:
+        return bool(sys.stdin and sys.stdin.isatty())
+    except (ValueError, AttributeError):
+        return False
+
+
+def hole_freigabe(vs, z, s):
+    """Jeden Einstieg im Fenster bestaetigen lassen. Leer = abgelehnt - und
+    abgelehnt heisst kein Einstieg. Faellt das Fenster aus, wird nicht
+    gehandelt: ein Fehler darf nie zu einem ungefragten Kauf werden."""
+    sys.path.insert(0, str(HIER.parent))
+    try:
+        import freigabe
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabefenster nicht verfuegbar (%s) - kein Einstieg." % e,
+              file=sys.stderr)
+        return []
+    bestand = {
+        "gebunden": sum(p["nominal"] for p in z["positionen"]),
+        "offene_positionen": len(z["positionen"]),
+        "verlust_gesamt": s["ruecklauf_usd"],
+    }
+    try:
+        return freigabe.bestaetige(vs, "mosaic", bestand,
+                                   zeitlimit=FREIGABE_ZEITLIMIT_S)
+    except Exception as e:  # noqa: BLE001
+        print("  Freigabe abgebrochen (%s) - kein Einstieg." % e,
+              file=sys.stderr)
+        return []
+
+
+def live_sperren(w, s):
+    """Gruende, die --live auf Papier zurueckwerfen. Leer = scharf, aber
+    weiterhin nur mit Freigabefenster je Einstieg."""
+    g = []
+    if not risikostufe.live_erlaubt():
+        # Eine Risikostufe geht NIE live: ihre Betraege sind zum Messen da und
+        # ihr Buch ist getrennt. Grund traegt keinen Wort 'Freigabefenster',
+        # damit der Dauerlauf keine Fenster-Bitte stellt.
+        g.append("Risikostufe %s: kein Live-Pfad in einer Stufe"
+                 % risikostufe.stufe())
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false")
+    if not okx_spot.schluessel_vorhanden():
+        g.append("OKX_API_KEY/SECRET/PASSPHRASE nicht gesetzt")
+    if not s["freigabe_erfuellt"]:
+        g.append("freigabe.erfuellt=false (Bedingung 1)")
+    if not s["herzschlag_frisch"]:
+        g.append("Herzschlag alt (Bedingung 3)")
+    if s["ev_negativ"]:
+        g.append("rollierender EV %s < 0 (Bedingung 5)"
+                 % ("%.3f USD" % s["rollierender_ev"]
+                    if s["rollierender_ev"] is not None else "n/a"))
+    if not w.get("journal_zweitziel"):
+        g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+    if okx_spot.demo_modus():
+        g.append("OKX_DEMO/OKX_SIMULATED gesetzt - Demo-Konto, keine echten "
+                 "Orders")
+    if not sitzung_da():
+        g.append("keine Sitzung am Bildschirm - Freigabefenster nicht moeglich")
+    noetig = w.get("mindest_guthaben_usdt", 0)
+    if noetig and okx_spot.schluessel_vorhanden():
+        try:
+            frei = op_guthaben()
+            if frei < noetig:
+                g.append("nur %.2f USDT frei, noetig %.2f" % (frei, noetig))
+        except Exception as e:  # noqa: BLE001
+            g.append("Guthaben nicht abrufbar (%s)" % e)
+    return g
+
+
+def _kurs_live(inst):
+    """Lebender Kurs fuer den Live-Pfad (nicht der 5M-Schluss)."""
+    return float(live_kurs_quelle(inst))
+
+
+def live_ausstiege(z, w):
+    """Live-Positionen auf Stop/Ziel pruefen und echt verkaufen.
+
+    Papier-Positionen im selben Buch bleiben unberuehrt (modus=['papier']).
+    Der Boersen-Stop wird zuerst storniert, dann beim aktuellen Kurs
+    verkauft. Schlaegt der Verkauf fehl, bleibt die Position im Buch.
+    """
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("modus") != "live":
+            behalten.append(p)
+            continue
+        try:
+            kurs = _kurs_live(p["inst"])
+        except Exception as e:  # noqa: BLE001
+            print("  Kursausfall fuer %s (%s) - Position bleibt" % (p["inst"], e),
+                  file=sys.stderr)
+            behalten.append(p)
+            continue
+        grund = None
+        vz = 1 if p["seite"] == "long" else -1
+        if p["seite"] == "long":
+            if kurs <= p["stop"]:
+                grund = "stop"
+            elif kurs >= p["ziel"]:
+                grund = "ziel"
+        else:
+            if kurs >= p["stop"]:
+                grund = "stop"
+            elif kurs <= p["ziel"]:
+                grund = "ziel"
+        if not grund:
+            behalten.append(p)
+            continue
+        # Boersen-Stop zuerst weg.
+        if p.get("stop_algo_id"):
+            try:
+                op_stop_stornieren(p["inst"], p["stop_algo_id"])
+            except Exception as e:  # noqa: BLE001
+                print("  Stop-Algo %s nicht stornierbar: %s"
+                      % (p["stop_algo_id"], e), file=sys.stderr)
+        try:
+            op_verkauf(p["inst"], p["menge"])
+        except Exception as e:  # noqa: BLE001
+            print("  Verkauf %s fehlgeschlagen: %s" % (p["inst"], e),
+                  file=sys.stderr)
+            behalten.append(p)
+            continue
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+        erloes = p["nominal"] + gv
+        print("  AUSSTIEG (%s): %s @ %.6g  G/V %+.2f USD"
+              % (grund, p["inst"], kurs, gv))
+        journal(zeit=_jetzt(), modus="live", aktion="verkauf", inst=p["inst"],
+                seite=p["seite"], preis="%.6f" % kurs,
+                einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
+                ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
+                grund=grund)
+    z["positionen"] = behalten
+
+
+def flach_stellen_live(z, w, grund):
+    """Alle Live-Positionen sofort echt verkaufen - Notausstieg fuer
+    Kill-Switch und alten Herzschlag. Papier-Positionen bleiben stehen."""
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("modus") != "live":
+            behalten.append(p)
+            continue
+        try:
+            kurs = _kurs_live(p["inst"])
+        except Exception as e:  # noqa: BLE001
+            print("  Kursausfall %s (%s) - bleibt im Buch" % (p["inst"], e),
+                  file=sys.stderr)
+            behalten.append(p)
+            continue
+        if p.get("stop_algo_id"):
+            try:
+                op_stop_stornieren(p["inst"], p["stop_algo_id"])
+            except Exception as e2:  # noqa: BLE001
+                print("  Stop-Algo %s nicht stornierbar: %s"
+                      % (p["stop_algo_id"], e2), file=sys.stderr)
+        try:
+            op_verkauf(p["inst"], p["menge"])
+        except Exception as e:  # noqa: BLE001
+            print("  Verkauf %s fehlgeschlagen (%s) - bleibt im Buch"
+                  % (p["inst"], e), file=sys.stderr)
+            behalten.append(p)
+            continue
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"]
+        print("  NOTAUS (%s): %s @ %.6g  G/V %+.2f USD"
+              % (grund, p["inst"], kurs, gv))
+        journal(zeit=_jetzt(), modus="live", aktion="verkauf", inst=p["inst"],
+                seite=p["seite"], preis="%.6f" % kurs,
+                einsatz_usd="%.2f" % (p["nominal"] + gv),
+                stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
+                stop_pct="%.2f" % p["stop_pct"], grund=grund)
+    z["positionen"] = behalten
+
+
+def live_einstiege(z, w, s):
+    """Echte OKX-Spot-Einstiege nach dem Mosaic-Signal.
+
+    Jeder Einstieg laeuft durch das Freigabefenster; erst danach wird gekauft
+    und der Boersen-Stop (conditional order) gelegt. Schlaegt der Stop fehl,
+    wird zurueckverkauft (Muster kraken/handeln.py) - nie eine Position ohne
+    Bewachung im Buch lassen.
+    """
+    betrag = float(_live_grenze(w, "max_pro_trade_usd", 10.0))
+    maxoffen = int(_live_grenze(w, "max_offene_positionen", 4))
+    maxges = float(_live_grenze(w, "max_gesamt_usd", 200.0))
+    ziel_r = float(w.get("ziel_r_vielfaches", 2.0))
+    gebunden = sum(p["nominal"] for p in z["positionen"])
+
+    for inst in w.get("instrumente", []):
+        if len(z["positionen"]) >= maxoffen:
+            break
+        if any(p["inst"] == inst for p in z["positionen"]):
+            continue
+        k4 = lade_kerzen(inst, w.get("kerzen_takt_4h", "4H"),
+                         w.get("mindest_kerzen", 300))
+        k30 = lade_kerzen(inst, w.get("kerzen_takt_30m", "30m"),
+                          w.get("mindest_kerzen", 300))
+        k5 = lade_kerzen(inst, w.get("kerzen_takt_5m", "5m"),
+                         w.get("mindest_kerzen", 300))
+        if not k4 or not k30 or not k5:
+            continue
+        if signal(k4, k30, k5, w) != "long":
+            continue
+        try:
+            kurs = _kurs_live(inst)
+        except Exception as e:  # noqa: BLE001
+            print("  Kursausfall %s (%s) - kein Einstieg" % (inst, e),
+                  file=sys.stderr)
+            continue
+        atr = atr_abs(k5, len(k5) - 1, 14)
+        if not atr or atr <= 0:
+            continue
+        stop_pct = atr / kurs * 100.0
+        stop_pct = max(stop_pct, w.get("pflicht_stop_prozent_min", 5.0))
+        stop_pct = min(stop_pct, w.get("pflicht_stop_prozent_max", 12.0))
+        abstand = kurs * stop_pct / 100.0
+        stop = kurs - abstand
+        ziel = kurs + abstand * ziel_r
+        if gebunden + betrag > maxges:
+            continue
+        menge, fehler = live_menge_fuer(inst, betrag, kurs)
+        if fehler:
+            print("  -- %-9s uebersprungen: %s" % (inst, fehler))
+            continue
+        vs = hole_freigabe([{"inst": inst, "einstieg": kurs,
+                             "stop_pct": stop_pct, "stop": stop, "ziel": ziel,
+                             "cr": ziel_r, "usd": betrag}], z, s)
+        if not vs:
+            print("  Freigabe abgelehnt/leer - kein Einstieg %s" % inst)
+            continue
+        try:
+            ord_id = op_kauf(inst, menge)
+            gefuellt = op_gefuellt(inst, ord_id)
+            menge = gefuellt if gefuellt and gefuellt > 0 else menge
+            algo_id = None
+            try:
+                algo_id = op_stop(inst, menge, "long", stop)
+            except Exception as e:  # noqa: BLE001
+                print("  Stop fuer %s fehlgeschlagen (%s) - zurueckverkauft"
+                      % (inst, e), file=sys.stderr)
+                try:
+                    op_verkauf(inst, menge)
+                except Exception as e2:  # noqa: BLE001
+                    stop_fehlt = True
+                else:
+                    continue
+        except Exception as e:  # noqa: BLE001
+            print("  Kauf %s fehlgeschlagen: %s" % (inst, e), file=sys.stderr)
+            continue
+        nominal = menge * kurs
+        z["positionen"].append({
+            "inst": inst, "seite": "long", "einstieg": kurs, "stop": stop,
+            "ziel": ziel, "stop_pct": stop_pct, "nominal": nominal,
+            "menge": menge, "kauf_ord_id": ord_id,
+            "stop_algo_id": algo_id, "modus": "live",
+            "boersen_stop_fehlt": algo_id is None,
+            "eroeffnet_zeit": _jetzt(),
+        })
+        gebunden += betrag
+        print("  AUF %-9s @ %.6g Stop %.6g (-%.1f%%) Ziel %.6g  %.2f USDT%s"
+              % (inst, kurs, stop, stop_pct, ziel, betrag,
+                 "  [KEIN BOERSEN-STOP - unbewacht]" if algo_id is None else ""))
+        journal(zeit=_jetzt(), modus="live", aktion="kauf", inst=inst,
+                seite="long", preis="%.6f" % kurs,
+                einsatz_usd="%.2f" % nominal, stop="%.6f" % stop,
+                ziel="%.6f" % ziel, stop_pct="%.2f" % stop_pct,
+                grund="mosaic")
+
+
 # --- Laeufe -----------------------------------------------------------------
 
 def lauf(modus):
@@ -477,38 +789,76 @@ def lauf(modus):
     ruecklauf = s.get("ruecklauf_usd", 0.0)
     faktor = groessenfaktor(ruecklauf, w)
 
+    # Live-Sperrenkette: --live wird nur scharf, wenn nichts sperrt. Sonst
+    # laeuft dieser Zyklus Papier (Muster kraken/handeln.py). live bleibt
+    # False fuer alle papier/vorschau/wachen-Modi.
+    live = False
+    if modus == "live":
+        g = live_sperren(w, s)
+        if g:
+            print("--live angefordert, aber gesperrt: " + "; ".join(g))
+            print("-> es wird Papier gehandelt.")
+        else:
+            live = True
+
     if s.get("kill"):
         print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach." % ruecklauf)
-        z["positionen"] = []
+        if live:
+            flach_stellen_live(z, w, "kill_switch")
+        else:
+            z["positionen"] = []
+        schreibe_zustand(z)
+        spiegeln(z, w)
+        return
+
+    # Bedingung 3 - Herzschlag alt: Live-Positionen glatt stellen, dieser Lauf
+    # handelt nicht mehr. (Papier wird von wachen_pruefung ueber den
+    # Herzschlag nicht automatisch flachgestellt - das ist die Live-Regel.)
+    if live and not s["herzschlag_frisch"]:
+        print("- Herzschlag alt (%s min > %d) -> Live-Notausstieg, kein Handel "
+              "dieser Lauf -"
+              % ("?" if s["herzschlag_alter_min"] is None
+                 else "%.0f" % s["herzschlag_alter_min"],
+                 w.get("herzschlag_max_minuten", 180)))
+        flach_stellen_live(z, w, "herzschlag_alt")
         schreibe_zustand(z)
         spiegeln(z, w)
         return
 
     if modus == "vorschau":
         print("Vorschau: keine Dateien geschrieben.")
+        print("Live waere gesperrt durch: %s"
+              % ("; ".join(live_sperren(w, s)) or "nichts"))
         return
 
-    # Kerzen fuer alle Instrumente laden (drei Zeitrahmen je Instrument).
-    for inst in w.get("instrumente", []):
-        k4 = lade_kerzen(inst, w.get("kerzen_takt_4h", "4H"),
-                         w.get("mindest_kerzen", 300))
-        k30 = lade_kerzen(inst, w.get("kerzen_takt_30m", "30m"),
-                          w.get("mindest_kerzen", 300))
-        k5 = lade_kerzen(inst, w.get("kerzen_takt_5m", "5m"),
-                         w.get("mindest_kerzen", 300))
-        if not k4 or not k30 or not k5:
-            print("Uebersprungen (%s): keine Kerzen" % inst, file=sys.stderr)
-            continue
+    if live:
+        # Echte Orders. Ausstiege zuerst (ein Stop muss greifen, auch wenn
+        # niemand davorsitzt), dann Einstiege mit Freigabefenster je Stueck.
+        live_ausstiege(z, w)
+        live_einstiege(z, w, s)
+    else:
+        # Papier-Zyklus: Kerzen fuer alle Instrumente laden (drei Zeitrahmen
+        # je Instrument), Ausstiege vor Einstiegen.
+        for inst in w.get("instrumente", []):
+            k4 = lade_kerzen(inst, w.get("kerzen_takt_4h", "4H"),
+                             w.get("mindest_kerzen", 300))
+            k30 = lade_kerzen(inst, w.get("kerzen_takt_30m", "30m"),
+                              w.get("mindest_kerzen", 300))
+            k5 = lade_kerzen(inst, w.get("kerzen_takt_5m", "5m"),
+                             w.get("mindest_kerzen", 300))
+            if not k4 or not k30 or not k5:
+                print("Uebersprungen (%s): keine Kerzen" % inst, file=sys.stderr)
+                continue
 
-        # Ausstiege zuerst
-        bestehend = [p for p in z["positionen"] if p["inst"] == inst]
-        if bestehend:
-            z["positionen"] = [p for p in z["positionen"] if p["inst"] != inst]
-            z["positionen"].extend(bestehend)
-            pruefe_ausstiege(z, k5, w, nur=inst)
+            # Ausstiege zuerst
+            bestehend = [p for p in z["positionen"] if p["inst"] == inst]
+            if bestehend:
+                z["positionen"] = [p for p in z["positionen"] if p["inst"] != inst]
+                z["positionen"].extend(bestehend)
+                pruefe_ausstiege(z, k5, w, nur=inst)
 
-        # Neue Einstiege
-        pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)
+            # Neue Einstiege
+            pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)
 
     schreibe_zustand(z)
     spiegeln(z, w)
@@ -534,10 +884,8 @@ def _main():
     ap.set_defaults(modus="vorschau")
     a = ap.parse_args()
 
-    if a.modus == "live":
-        print("--live verweigert: Papier-Spur, keine Orders moeglich.")
-        return 1
-
+    # --live wird von lauf() ueber die Sperrenkette entschieden: bei einem
+    # gesperrten Zustand wird Papier gehandelt und der Grund gesagt.
     lauf(a.modus)
     return 0
 

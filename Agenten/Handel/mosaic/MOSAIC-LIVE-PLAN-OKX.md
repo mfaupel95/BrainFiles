@@ -6,6 +6,21 @@
 > freigibt. Jeder Bau-Schritt braucht eine eigene Bestätigung mit
 > Betragshöhe. Ein „ja“ auf diesen Plan ist NICHT die Live-Freigabe.
 
+> **STAND 2026-09-19 (Stufe A gebaut, nichts scharf):** Der abgetrennte
+> OKX-Spot-Orderweg ist gebaut (Commit `be62611` + Folge-Commit):
+> `mosaic/okx_spot.py`, Live-Zweig in `mosaic/handeln.py` (Sperrenkette,
+> Freigabefenster, Notaus), Freigabefenster-Eintrag in `freigabe.py`,
+> Live-Grenzen 10/5/200 + `freigabe`-Block in `wachen.json`, Tests 25/25 grün.
+> `--live` ist gesperrt und zeigt die offenen Sperren namentlich (gemessen):
+>   1. `handel_erlaubt=false`
+>   2. `freigabe.erfuellt=false` (Bedingung 1 — 1 Papierrunde, braucht 50)
+>   3. `OKX_DEMO/OKX_SIMULATED` gesetzt (Demo-Konto)
+>   4. OKX-Keys passen nicht zur Basis: `50101 APIKey does not match current
+>      environment` — vermutlich EEA-Portal-Key, braucht `OKX_BASE=
+>      https://eea.okx.com`.
+> Keine echte Order ist bisher ausgeführt worden und keine geht, solange eine
+> dieser Sperren offen ist.
+
 ## 1. Was wir bauen wollen
 
 Mosaic bekommt einen **eigenen, abgetrennten Live-Zweig** in seinem

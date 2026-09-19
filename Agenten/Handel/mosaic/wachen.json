@@ -2,7 +2,8 @@
  "_zweck": "Harte Grenzen der Mosaic-Spur. Papier-Handel auf Preisaktions-Setups: 4H-Aufwaertstrend (gruene Kerze), 30M-Pullback zur Nachfragezone (Swing-Tiefs), 5M-Structure-Shift (Schluss ueber dem letzten relevanten Swing-High). Top-down: Erst der grosse Rahmen, dann der Einstieg im kleinen.",
  "waehrung": "USD",
  "handel_erlaubt": false,
- "herzschlag_max_minuten": 180,
+ "_herzschlag_regel": "45 min (Handelsregeln, Hausregel): BEVOR handel_erlaubt auf true geht. Nur der Live-Pfad setzt den Herzschlag durch (Notausstieg); Papier nutzt ihn nicht.",
+ "herzschlag_max_minuten": 45,
  "_risiko_erklaerung": "risiko_je_position_usd 5.0 x max_offene_positionen 4 = 20.0 USD Buchrisiko. ATR-Stop im Pflichtrahmen.",
  "risiko_je_position_usd": 5.0,
  "max_offene_positionen": 4,
@@ -32,5 +33,21 @@
  "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",
  "journal_zweitziel": "Q:\\Handel_Journal\\mosaic",
  "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 x buch_risiko = 20.0. Steht explizit statt prozent.",
- "drawdown_halbierung_usd": 20.0
+ "drawdown_halbierung_usd": 20.0,
+
+ "_live": "Stufe A (2026-09-19, MOSAIC-LIVE-PLAN-OKX.md): eigener OKX-Spot-Orderweg. Live nutzt live_*-Grenzen (10/5/200); Papier rechnet mit max_pro_trade_usd 150/max_offene_positionen 4/max_gesamt_usd 600. Scharf nur ueber Freigabekette UND handel_erlaubt=true; solange OKX_DEMO/OKX_SIMULATED gesetzt ist, geht auch --live aufs Demo-Konto (zugleich Live-Sperre).",
+ "live_max_pro_trade_usd": 10.0,
+ "live_max_offene_positionen": 5,
+ "live_max_gesamt_usd": 200.0,
+ "mindest_guthaben_usdt": 30.0,
+
+ "freigabe": {
+   "erfuellt": false,
+   "papierlauf_min_wochen": 2,
+   "papierlauf_min_runden": 50,
+   "netto_positiv_nach_gebuehren_und_funding": false,
+   "groesster_ruecklauf_papierlauf_usd": null,
+   "geprueft_am": null,
+   "_aenderung": "2026-09-19: neu angelegt fuer Stufe A (MOSAIC-LIVE-PLAN-OKX.md). Aktuell 1 Papierrunde - unter jeder Mindestzahl. erfuellt bleibt false, bis 50 echte Papierrunden netto positiv und der Ruecklauf innerhalb der Grenze liegt."
+ }
 }
