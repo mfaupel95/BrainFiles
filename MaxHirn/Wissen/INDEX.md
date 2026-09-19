@@ -107,6 +107,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 ### Person und Fachliches
 
 - `20260830-profil` — **Profil** — `Wissen/Profil.md` — Wer Max ist und wie er arbeitet; Fundament für Antworten ohne Werkzeugaufruf.
+- `20260919-willkommen` — **Willkommen für KI — Q&A über Max und das System** — `Wissen/Willkommen-fuer-KI.md` — Einführung für eine weitere KI: wer Max ist, wie das KI-Betriebssystem gebaut ist (Wissensarchiv, mehrere Agenten auf geteilter Basis, harte Trennung Betrieb/Finanzen) und welche Spielregeln gelten; bewusst ohne konkrete Inhalte, Zugangsdaten, Pfade oder Zahlen.
 - `20260830-projekte` — **Projekte** — `Wissen/Projekte.md` — Was gerade läuft, ein Abschnitt je Projekt.
 - `20260830-fachkunde-holztechnik` — **Fachkunde Holztechnik** — `Wissen/Fachkunde-Holztechnik.md` — Inhalt und Ablage des Lehrwerks im Archiv.
 - `20260908-studium` — **Studium — Unterlagen im Archiv** — `Wissen/Studium.md` — Studienunterlagen (TH Bingen, Uni KL: Botanik, Physik, Wirtschaftslehre u. a.) im Archiv, für Archivsuche erschlossen.
