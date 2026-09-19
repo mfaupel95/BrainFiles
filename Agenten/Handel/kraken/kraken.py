@@ -77,7 +77,7 @@ def _variable(name):
 
 
 def schluessel_vorhanden():
-    return bool(_variable("KRAKEN_API_KEY") and _variable("KRAKEN_API_SECRET"))
+    return bool(_variable("KRAKEN_SPOT_API_KEY") and _variable("KRAKEN_SPOT_API_SECRET"))
 
 
 # --- HTTP ------------------------------------------------------------------
@@ -99,8 +99,8 @@ def _roh_oeffentlich(methode, **parameter):
 
 
 def _roh_privat(methode, **parameter):
-    schluessel = _variable("KRAKEN_API_KEY")
-    geheim = _variable("KRAKEN_API_SECRET")
+    schluessel = _variable("KRAKEN_SPOT_API_KEY")
+    geheim = _variable("KRAKEN_SPOT_API_SECRET")
     if not (schluessel and geheim):
         raise RuntimeError("KRAKEN_API_KEY / KRAKEN_API_SECRET fehlen")
 

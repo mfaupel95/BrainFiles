@@ -84,11 +84,11 @@ def _variable(name: str) -> str:
 
 
 def _zugangsdaten() -> tuple[str, str]:
-    schluessel = _variable("KRAKEN_API_KEY")
-    geheim = _variable("KRAKEN_API_SECRET")
+    schluessel = _variable("KRAKEN_SPOT_API_KEY")
+    geheim = _variable("KRAKEN_SPOT_API_SECRET")
     if not schluessel or not geheim:
         raise RuntimeError(
-            "KRAKEN_API_KEY und/oder KRAKEN_API_SECRET fehlen. Beide als "
+            "KRAKEN_SPOT_API_KEY und/oder KRAKEN_SPOT_API_SECRET fehlen. Beide als "
             "Windows-Benutzervariablen setzen - der "
             "Server liest sie auch direkt aus der Registry."
         )
@@ -121,7 +121,7 @@ def _privat(methode: str, **parameter) -> dict:
     pfad = f"/0/private/{methode}"
     # Kraken verlangt streng monotone Nonces je Schluessel. Der Dauerlauf
     # (Handel/kraken.py) und dieser MCP-Server teilen denselben
-    # KRAKEN_API_KEY - jeder erhebt die nonce deshalb ueber den gemeinsamen
+    # KRAKEN_SPOT_API_KEY - jeder erhebt die nonce deshalb ueber den gemeinsamen
     # nonce_pool (spezierende Datei), sonst antwortet Kraken
     # "EAPI:Invalid nonce" (gemessen 2026-09-19).
     daten = {"nonce": str(_monotone_nonce()), **{
@@ -239,9 +239,9 @@ def kraken_status() -> dict:
     akzeptiert. Die Werte selbst werden nie ausgegeben, auch nicht gekuerzt.
     """
     gesetzt = {
-        "KRAKEN_API_KEY": bool(_variable("KRAKEN_API_KEY")),
-        "KRAKEN_API_SECRET": bool(_variable("KRAKEN_API_SECRET")),
-    }
+            "KRAKEN_SPOT_API_KEY": bool(_variable("KRAKEN_SPOT_API_KEY")),
+            "KRAKEN_SPOT_API_SECRET": bool(_variable("KRAKEN_SPOT_API_SECRET")),
+        }
     if not all(gesetzt.values()):
         return {"variablen_gesetzt": gesetzt, "verbindung": "nicht geprueft - Variablen fehlen"}
     try:
