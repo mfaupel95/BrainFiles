@@ -17,11 +17,7 @@ use nautilus_model::{
 };
 use nautilus_trading::examples::strategies::EmaCross;
 use quant_signal::RankedBook;
-
-/// Die Evidenz-Huerde. Kompiliert, nicht konfigurierbar.
-const MIN_EVIDENCE_T: f64 = 2.0;
-/// Mindestens zwei Folds, um Skill von Regime zu trennen.
-const MIN_EVIDENCE_FOLDS: usize = 2;
+use quant_strategy::evidence::{EvidenceGate, Verdict, MIN_EVIDENCE_T};
 
 /// Bildet den t-Wert aus den gemessenen Werten des Produzenten.
 fn t_stat(book: &RankedBook) -> f64 {
@@ -29,12 +25,6 @@ fn t_stat(book: &RankedBook) -> f64 {
         return 0.0;
     }
     book.evidence.net_bps / book.evidence.se_bps
-}
-
-/// Entscheidet, ob das Buch demonstrierte Faehigkeit hat.
-fn has_demonstrated_skill(book: &RankedBook) -> bool {
-    let t = t_stat(book);
-    book.evidence.folds >= MIN_EVIDENCE_FOLDS && t >= MIN_EVIDENCE_T
 }
 
 /// Prueft, ob eine Instrument-ID venue-qualifiziert ist (SYMBOL.VENUE).
@@ -105,15 +95,18 @@ fn main() -> Result<()> {
     println!("  t = {:.2} (Huerde {:.1})", t, MIN_EVIDENCE_T);
 
     // 2. Die Engine entscheidet. Kein Modell, kein Score — nur die Zahl.
-    if !has_demonstrated_skill(&book) {
-        println!(
-            "  book state   book has no demonstrated skill: t = {:.2} on {:.3} bps over n={}, below the {:.1} floor",
-            t, book.evidence.net_bps, book.evidence.n, MIN_EVIDENCE_T
-        );
-        println!("  rebalances   0");
-        println!("  positions    0 opened at the venue");
-        println!("  -> Leg A: das Modell ist entfernbar, das System ueberlebt.");
-        return Ok(());
+    match EvidenceGate::decide(&book.evidence) {
+        Verdict::Refuse { reason } => {
+            println!(
+                "  book state   book has no demonstrated skill: {} (net={:.3} bps over n={})",
+                reason, book.evidence.net_bps, book.evidence.n
+            );
+            println!("  rebalances   0");
+            println!("  positions    0 opened at the venue");
+            println!("  -> Leg A: das Modell ist entfernbar, das System ueberlebt.");
+            return Ok(());
+        }
+        Verdict::Admit => {}
     }
 
     // 3. Nur wenn die Evidenz haelt: Zielgroessen aus den Gewichten bilden
