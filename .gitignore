@@ -477,6 +477,8 @@ Agenten/Hermes/skills/.locks/
 !Agenten/Werkzeuge/projectatlas/docs/
 !Agenten/Werkzeuge/projectatlas/docs/design/
 !Agenten/Werkzeuge/projectatlas/docs/design/*.md
+!Agenten/Werkzeuge/projectatlas/docs/plans/
+!Agenten/Werkzeuge/projectatlas/docs/plans/*.md
 # FUNDUS-SUCHE, freigelegt am 16.09.2026. Ein Werkzeug, kein Laufzeitstand:
 # der Skill fundus-zugriff nennt es als EINEN Zugang zum Fundus, und
 # Wissen/Fundus-Index.md wird damit erzeugt. Ohne die Zeile lag es nur auf der
