@@ -116,6 +116,8 @@ Agenten/Handel/stand/
 !Agenten/Handel/spiegel/*.py
 !Agenten/Handel/spiegel/*.md
 !Agenten/Handel/spiegel/wachen.json
+!Agenten/Handel/spiegel/wachen.knapp.json
+!Agenten/Handel/spiegel/wachen.weit.json
 !Agenten/Handel/spiegel/tests/*.py
 # Kopier-Spur (Copy-Trading der Pump.fun-Rangliste als Papierbuch): Code,
 # Wachen und Tests in den Verlauf - das Buch nicht (zustand.json, Journal,
@@ -470,6 +472,11 @@ Agenten/Hermes/skills/.locks/
 !Agenten/Werkzeuge/projectatlas/*.cmd
 !Agenten/Werkzeuge/projectatlas/*.sh
 !Agenten/Werkzeuge/projectatlas/*.py
+# PROJECTATLAS-DESIGNS (19.09.2026): Design-/Plan-Dokumente fuer die
+# Atlas-Erschliessung der Fremd-Agenten-Repos (Teilprojekte A/B/C).
+!Agenten/Werkzeuge/projectatlas/docs/
+!Agenten/Werkzeuge/projectatlas/docs/design/
+!Agenten/Werkzeuge/projectatlas/docs/design/*.md
 # FUNDUS-SUCHE, freigelegt am 16.09.2026. Ein Werkzeug, kein Laufzeitstand:
 # der Skill fundus-zugriff nennt es als EINEN Zugang zum Fundus, und
 # Wissen/Fundus-Index.md wird damit erzeugt. Ohne die Zeile lag es nur auf der
