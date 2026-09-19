@@ -81,6 +81,7 @@ MAX_FEHLER = 4          # Telegram-Gegenstellenfehler hintereinander -> Pause
 POLL_DAUER = 25         # getUpdates long polling
 A2A_POLL_S = 3          # GetTask-Intervall
 A2A_TIMEOUT_S = 300     # so lange auf eine Antwort warten
+NACHRICHT_VERSUCHE = 3  # Netzfehler erneut versuchen, dann verwerfen
 
 
 class SkillsBotFehler(RuntimeError):
@@ -263,15 +264,32 @@ def _speichere_json(pfad, wert):
     os.replace(tmp, pfad)
 
 
-def _log(chat, kommando, dauer_s, status, zeichen):
+def _log(chat, kommando, dauer_s, status, zeichen, fehler=None):
     eintrag = {"zeit": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                "chat": chat, "kommando": kommando, "dauer_s": dauer_s,
                "status": status, "zeichen": zeichen}
+    if fehler:
+        eintrag["fehler"] = fehler[:300]
     try:
         with open(LOG_PFAD, "a", encoding="utf-8") as f:
             f.write(json.dumps(eintrag, ensure_ascii=False) + "\n")
     except OSError:
         pass
+
+
+def _ist_netzfehler(fehler):
+    """Verbindungsfehler zum A2A-Gateway - darf erneut versucht werden.
+
+    Nur solche Fehler werden automatisch wiederholt. Ein fachlicher Fehler
+    (SkillsBotFehler) kann bedeuten, dass der Agent die Aufgabe schon
+    angenommen hat - eine Wiederholung koennte sie doppelt ausfuehren.
+    Netzfehler dagegen heisst: die Anfrage kam nie an (Gateway im Neustart,
+    Port kurz zu). Seit 19.09.2026 prueft der Gateway-Waechter den Prozess
+    am Namen UND am Port 9900; trotzdem bleibt der SkillsBot gegen kurze
+    Aussetzer gewappnet.
+    """
+    return isinstance(fehler, (urllib.error.URLError, ConnectionError,
+                               TimeoutError, OSError))
 
 
 class Sperre:
@@ -637,18 +655,21 @@ def schleife():
             "setx SKILLSBOT_TOKEN <token>")
     offset = _lade_json(OFFSET_PFAD, 0) or 0
     fehler_reihe = 0
+    versuche = {}          # update_id -> bisherige Netzfehler-Versuche
     while True:
         try:
             nachrichten = _nachrichten(offset)
             fehler_reihe = 0
+            netzfehler = False
             for n in nachrichten:
-                offset = n["update_id"] + 1
+                uid = n["update_id"]
                 chat = (n.get("message") or {}).get("chat", {}).get("id")
                 text = (n.get("message") or {}).get("text")
                 if chat is None or text is None:
                     continue
                 if chat != chat_id():
                     _log(chat, "(fremd)", 0, "abgewiesen", len(text))
+                    offset = uid + 1
                     continue
                 start = time.time()
                 try:
@@ -656,14 +677,34 @@ def schleife():
                     sende(chat, antwort)
                     _log(chat, text[:40], round(time.time() - start, 1),
                          "ok", len(antwort))
+                    versuche.pop(uid, None)
+                    offset = uid + 1
                 except Exception as e:  # noqa: BLE001
-                    fehler = "Fehler: %s" % e
+                    grund = str(e)[:200]
+                    if (_ist_netzfehler(e)
+                            and versuche.get(uid, 0) < NACHRICHT_VERSUCHE - 1):
+                        # Gateway kurz weg (Neustart/Port zu): Nachricht NICHT
+                        # verwerfen. Der Offset bleibt stehen, die fehlgeschlagene
+                        # Nachricht kommt beim naechsten Poll erneut. Eine Pause
+                        # gibt dem Gateway Zeit, hochzukommen.
+                        versuche[uid] = versuche.get(uid, 0) + 1
+                        _log(chat, text[:40], round(time.time() - start, 1),
+                             "fehler", 0,
+                             fehler="%s (Netzversuch %d/%d)"
+                             % (grund, versuche[uid] + 1, NACHRICHT_VERSUCHE))
+                        netzfehler = True
+                        break
+                    fehlertext = "Fehler: %s" % e
                     try:
-                        sende(chat, fehler)
+                        sende(chat, fehlertext)
                     except Exception:  # noqa: BLE001
                         pass
                     _log(chat, text[:40], round(time.time() - start, 1),
-                         "fehler", 0)
+                         "fehler", 0, fehler=grund)
+                    versuche.pop(uid, None)
+                    offset = uid + 1
+            if netzfehler:
+                time.sleep(20)
             _speichere_json(OFFSET_PFAD, offset)
         except SkillsBotFehler as e:
             fehler_reihe += 1

@@ -1,9 +1,11 @@
 import contextlib
 import io
+import json
 import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -273,3 +275,115 @@ class OhneDenken(unittest.TestCase):
 
     def test_leerer_text(self):
         self.assertEqual(s.ohne_denken(""), "")
+
+class NachrichtenZuverlaessigkeit(unittest.TestCase):
+    """Eine fehlgeschlagene Nachricht darf nicht verloren gehen.
+
+    Seit 19.09.2026: Ein NETZfehler (Gateway kurz weg, Port zu) wird
+    wiederholt - der Offset bleibt stehen, der naechste Poll holt die
+    Nachricht erneut. Ein FACHlicher Fehler wird einmal gemeldet und die
+    Nachricht verworfen (eine Wiederholung koennte eine bereits angenommene
+    Aufgabe doppelt ausfuehren). Der Log-Eintrag traegt den Fehlergrund.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = Path(self.tmp.name)
+        self.log_datei = t / "log.jsonl"
+        self.offset_datei = t / "offset.json"
+        self.pfad = patch.object(s, "LOG_PFAD", str(self.log_datei))
+        self.pfad.start()
+        self.offset = patch.object(s, "OFFSET_PFAD", str(self.offset_datei))
+        self.offset.start()
+        self.kontext = patch.object(s, "KONTEXT_PFAD", str(t / "kontext.json"))
+        self.kontext.start()
+        self.schlaf = patch.object(s.time, "sleep")
+        self.schlaf.start()
+        self.var = patch.object(s, "_variable",
+                                side_effect=lambda n: {
+                                    "SKILLSBOT_TOKEN": "bot-a",
+                                    "TELEGRAM_TOKEN": "bot-b"}[n])
+        self.var.start()
+        self.chat = patch.object(s, "chat_id", return_value=7)
+        self.chat.start()
+        self.gesendet = []
+
+    def tearDown(self):
+        self.chat.stop()
+        self.var.stop()
+        self.schlaf.stop()
+        self.kontext.stop()
+        self.offset.stop()
+        self.pfad.stop()
+        self.tmp.cleanup()
+
+    def nachricht(self, uid=42):
+        return {"update_id": uid,
+                "message": {"chat": {"id": 7}, "text": "hallo"}}
+
+    def start(self, nachrichten, bearbeite):
+        """schleife() mit gemockten Polls fahren; KeyboardInterrupt beendet."""
+        with patch.object(s, "sende",
+                          side_effect=lambda chat, text:
+                          self.gesendet.append((chat, text))), \
+                patch.object(s, "_nachrichten", side_effect=nachrichten), \
+                patch.object(s, "bearbeite", side_effect=bearbeite):
+            with self.assertRaises(KeyboardInterrupt):
+                s.schleife()
+
+    def test_netzfehler_nachricht_geht_nicht_verloren(self):
+        # Poll 1 bringt die Nachricht (offset 0), bearbeite scheitert mit
+        # Netzfehler -> Offset bleibt 0, Poll 2 liefert sie erneut, diesmal ok.
+        aufrufe = {"n": 0}
+
+        def nachrichten(offset):
+            aufrufe["n"] += 1
+            if aufrufe["n"] == 1:
+                return [self.nachricht()]          # offset 0: kommt
+            if aufrufe["n"] == 2 and offset == 0:  # Offset stehen geblieben
+                return [self.nachricht()]
+            raise KeyboardInterrupt()
+
+        def bearbeite(text, chat):
+            if aufrufe["n"] == 1:
+                raise urllib.error.URLError("gateway weg")
+            return "die antwort", None
+
+        self.start(nachrichten, bearbeite)
+        self.assertEqual(self.gesendet, [(7, "die antwort")])
+        with open(self.offset_datei, "r", encoding="utf-8") as f:
+            self.assertEqual(json.load(f), 43)    # verarbeitet, kein Verlust
+        zeilen = self.log_datei.read_text(encoding="utf-8").splitlines()
+        fehler = [z for z in zeilen if '"fehler"' in z]
+        self.assertTrue(fehler, "Netzfehler muss mit Grund geloggt sein")
+        self.assertIn("gateway weg", fehler[0])
+
+    def test_fachfehler_wird_einmal_gemeldet_und_verworfen(self):
+        aufrufe = {"n": 0}
+
+        def nachrichten(offset):
+            aufrufe["n"] += 1
+            if aufrufe["n"] == 1:
+                return [self.nachricht()]
+            raise KeyboardInterrupt()
+
+        def bearbeite(text, chat):
+            raise s.SkillsBotFehler("kaputt")
+
+        self.start(nachrichten, bearbeite)
+        self.assertEqual(self.gesendet, [(7, "Fehler: kaputt")])
+        with open(self.offset_datei, "r", encoding="utf-8") as f:
+            self.assertEqual(json.load(f), 43)    # verworfen, kein Endlos-Poll
+
+    def test_netzfehler_fachfehler_unterscheidung(self):
+        self.assertTrue(s._ist_netzfehler(
+            urllib.error.URLError("weg")))
+        self.assertTrue(s._ist_netzfehler(ConnectionError("weg")))
+        self.assertTrue(s._ist_netzfehler(TimeoutError("weg")))
+        self.assertFalse(s._ist_netzfehler(s.SkillsBotFehler("kaputt")))
+        self.assertFalse(s._ist_netzfehler(ValueError("kaputt")))
+
+    def test_log_traegt_fehlergrund(self):
+        s._log(7, "Test", 1.0, "fehler", 0, fehler="grund-xyz")
+        zeilen = self.log_datei.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any('"fehler": "grund-xyz"' in z for z in zeilen))
