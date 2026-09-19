@@ -22,7 +22,7 @@ class FormTest(unittest.TestCase):
                 self.assertIsInstance(s["positionen"], list)
 
     def test_holer_sind_vollzaehlig(self):
-        self.assertEqual(len(lage.HOLER), 24)
+        self.assertEqual(len(lage.HOLER), 25)
 
 
 class KursVariantenTest(unittest.TestCase):

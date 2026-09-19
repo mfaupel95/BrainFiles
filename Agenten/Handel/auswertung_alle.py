@@ -60,6 +60,9 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
 # Rechenweg - nur der NAME der Gruppe ist ein anderer.
 BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               "moondev_marktlage", "iv_wand",
+              # IV-WAELLE (18.09.2026): Deribit-IV-Waende, dieselbe
+              # Journalform (kauf/verkauf mit einsatz_usd) - derselbe Weg.
+              "iv_waelle",
               # Die drei Sprachmodell-Spuren (17.09.2026) fuehren dasselbe
               # Journal (kauf/verkauf mit einsatz_usd) - derselbe Rechenweg.
               "moondev_whale", "moondev_liquidation", "moondev_sentiment")

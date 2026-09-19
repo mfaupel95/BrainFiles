@@ -581,6 +581,14 @@ def spur_iv_wand():
     return _spur_indikator("iv_wand", "IV-Wand (Optionszone)")
 
 
+def spur_iv_waelle():
+    """Die IV-Waelle (Deribit): erwartete Tagesspanne aus HV plus
+    Options-Bepreisung (DVOL), dann an den Waenden (Strikes mit hohem OI)
+    gegen die Bewegung. Dieselbe Journalform wie die Indikator-Spuren
+    (kauf/verkauf mit einsatz_usd) - derselbe Leser."""
+    return _spur_indikator("iv_waelle", "IV-Waelle (Deribit, Optionszone)")
+
+
 def spur_moondev_whale():
     """Sprachmodell-Spur: Open-Interest-Anomalie. Journalform wie die
     Bot-Spuren (kauf/verkauf mit einsatz_usd) - derselbe Leser."""
@@ -969,5 +977,6 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
+    spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment)
 

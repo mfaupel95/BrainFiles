@@ -260,6 +260,14 @@ SPUREN = {
     # oeffentlichen OKX-Optionsendpunkten, Ziel ist die Wand selbst, das Buch
     # fuehrt Handel/spur_buch.py. Papier, kein Live.
     "iv_wand": {"ordner": "iv_wand", "waehrung": "USD", "skript": "handeln.py"},
+    # IV-WAELLE (18.09.2026): Deribit-IV-Waende. Aus historischer Volatilitaet
+    # UND Options-Bepreisung (DVOL) eine erwartete Tagesspanne rechnen, dann an
+    # den Waenden (Strikes mit hohem offenem Interesse) gegen die Bewegung
+    # handeln - Stop hinter die Wand, Ziel der halbe Rueckweg. Daten von den
+    # oeffentlichen Deribit-Endpunkten (daten.py), das Buch fuehrt die Spur
+    # selbst nach spur_buch-Muster. Papier, kein Live (handel_erlaubt=false).
+    "iv_waelle": {"ordner": "iv_waelle", "waehrung": "USD",
+                  "skript": "handeln.py"},
     # DREI SPRACHMODELL-SPUREN (17.09.2026): dieselbe Bauform wie die Bot-Spuren
     # oben, aber die RICHTUNG kommt nicht aus einer Haus-Regel, sondern aus dem
     # LOKALEN Modell (Handel/llm_lokal.py, Ollama auf 127.0.0.1:11434 - kein

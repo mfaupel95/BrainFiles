@@ -52,6 +52,7 @@ SPUREN = [
     ("moondev_topmovers", "moondev_topmovers", "scanner", "wachen_pruefung"),
     ("moondev_marktlage", "moondev_marktlage", "scanner", "wachen_pruefung"),
     ("iv_wand", "iv_wand", "scanner", "wachen_pruefung"),
+    ("iv_waelle", "iv_waelle", "scanner", "wachen_pruefung"),
     # Die drei Sprachmodell-Spuren (17.09.2026) nutzen denselben Kern
     # (spur_buch) und dieselbe Wachenpruefung wie die Bot-Spuren.
     ("moondev_whale", "moondev_whale", "scanner", "wachen_pruefung"),

@@ -91,6 +91,10 @@ FAMILIE = {
     # Optionsmarkt. Eigene Familie, damit der Bericht sie nicht unter
     # "Bot-Signal" mischt.
     "iv_wand": "Options-Zone",
+    # IV-WAELLE (18.09.2026): dieselbe Optionszone wie iv_wand, nur auf
+    # Deribit-IV-Waenden statt auf OKX-OI-Strikes. Gleiche Familie, damit
+    # beide Optionszonen im Bericht zusammenstehen.
+    "iv_waelle": "Options-Zone",
     # Die drei Sprachmodell-Spuren (17.09.2026): Quelle und Gate sind Haus-Bau,
     # die RICHTUNG kommt aus dem lokalen Modell. Eigene Familie, damit im
     # Bericht sichtbar bleibt, wo ein Sprachmodell geurteilt hat.
