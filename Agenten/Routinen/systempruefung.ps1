@@ -593,8 +593,8 @@ try {
 # heilt also nach hoechstens rund 32 Minuten von selbst. Jede Grenze darunter
 # stellt bei JEDER solchen Stoerung flach und verbucht eine Runde, die keine
 # Handelsentscheidung war (am 11./12.09.2026 mit 30 Minuten in xperp und swap
-# geschehen). Regel vom 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 fuer
-# Spuren mit Handelserlaubnis. Diese Pruefung haelt sie fest - ohne sie
+# geschehen). Regel vom 19.09.2026: 180 Minuten fuer ALLE Spuren - auch fuer
+# Spuren mit Handelserlaubnis (Live); die 45-Live-Grenze vom 14.09. ist aufgehoben. Diese Pruefung haelt sie fest - ohne sie
 # verfaellt die Regel wie die gewachsenen Zahlen davor (30/45/90/180/2880).
 try {
   Notiz "`n--- 11b) Handel: Herzschlag-Regel ---"
@@ -605,14 +605,14 @@ try {
     $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
     $hm = [int]$wj.herzschlag_max_minuten
     $erlaubt = ($wj.handel_erlaubt -eq $true)
-    $soll = if ($erlaubt) { 45 } else { 180 }
+    $soll = 180   # eine Grenze fuer alle Spuren (Papier UND Live) seit 19.09.2026
     if ($hm -ne $soll) {
-      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - handel_erlaubt ist $erlaubt, also gilt die $(if ($erlaubt) { 'Live' } else { 'Papier' })-Grenze. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
+      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - seit 19.09.2026 gilt 180 fuer alle Spuren (Papier UND Live); ein Live-Wert darunter schliesst eine offene Position bei einem PC-Ausfall am Markt. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
     } else {
       $regelkonform++
     }
   }
-  Info "$regelkonform von $($handelsSpuren.Count) Handels-Spuren folgen der Herzschlag-Regel (180 Papier / 45 mit Handelserlaubnis)."
+  Info "$regelkonform von $($handelsSpuren.Count) Handels-Spuren folgen der Herzschlag-Regel (180 fuer alle, Papier UND Live)."
 } catch { Notiz "  ! Herzschlag-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------

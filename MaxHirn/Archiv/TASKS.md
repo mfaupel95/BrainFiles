@@ -141,7 +141,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
       Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
 
-- [?] **T-033 — `OKX_API.env`: Schlüssel im Portal widerrufen**
+- [x] **T-033 — `OKX_API.env`: Schlüssel im Portal widerrufen** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** Alter Key im Portal widerrufen; neue Schlüssel
+      per `setx` in der **User-Umgebung** registriert und bestätigt
+      (`OKX_API_KEY`/`OKX_API_SECRET`/`OKX_PASSPHRASE`, alle Werte **neu**, nicht
+      der widerrufene). Die Klartext-Kopie in `_zu_loeschen` existiert nicht
+      mehr (schon im Aufräumen entfernt). Hinweis: Ein 4-Zeichen-`OKX_SECRET_KEY`
+      steht noch in der User-Umgebung — vermutlich der alte unbrauchbare Rest,
+      bei Bedarf entfernen.
       Kontext: Beim Abräumen von `G:` am 03.09.2026 im Altzweig gefunden
       (`Claude\Worktrees\Investment\OKX_API.env`, 124 Bytes, Stand
       07.08.2026). Kein Duplikat, sondern der letzte Rest eines alten
@@ -315,7 +322,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: claude.ai-Konto, nicht den Vault
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
-- [?] **T-008 — MCP-Server `mail` ist nicht eingerichtet**
+- [x] **T-008 — MCP-Server `mail` ist nicht eingerichtet** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** Zugang ist hinterlegt und funktioniert:
+      Adresse `faupel3107@googlemail.com` + App-Passwort im
+      Windows-Anmeldeinformationsspeicher (`MaxMailVersand`), SMTP-Anmeldung
+      getestet = `anmeldung: ok`. Kein Einrichten nötig; der Server war
+      inzwischen konfiguriert.
       Kontext: `Archiv/CLAUDE.md` beschreibt den Versand über `mail_senden`
       als den vorgesehenen Weg für „schick mir das per Mail". Der Server
       antwortet aber mit „Keine Absenderadresse hinterlegt" — in 53 Sitzungen
@@ -327,7 +339,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Zugangsdaten von Max
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
-- [?] **T-009 — `Zugaenge.md` als einzige Notiz ohne Frontmatter**
+- [x] **T-009 — `Zugaenge.md` als einzige Notiz ohne Frontmatter** — erledigt 2026-09-19
+      **Erledigt 2026-09-19 (von Max freigegeben).** Acht Zeilen Frontmatter
+      vorangestellt (`id: 20260830-zugaenge`, `tags: [sicherheit]`, Template wie
+      die übrigen Notizen); der Body wurde byte-erhalten, kein Wert der Datei
+      ausgelesen oder ausgegeben.
       Kontext: Am 30.08.2026 haben alle 21 übrigen Notizen in `Wissen/`
       YAML-Frontmatter mit stabiler `id` bekommen, dazu `Wissen/INDEX.md` als
       vollständige Registry. `Zugaenge.md` wurde bewusst ausgelassen, weil sie
@@ -506,6 +522,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Systempruefung misst es in Block 11b nach: 26 von 26 Handels-Spuren
       folgen der Regel. Der zweite Weg ist damit der eine Weg - der Dauerlauf
       laeuft.
+      **Nachtrag 19.09.2026 (T-035 ueberdacht, von Max angeordnet):** Die
+      45-Live-Grenze ist aufgehoben - seit 19.09.2026 gilt 180 fuer ALLE
+      Spuren (Papier UND Live). Grund: ungeklaerte Abschaltungen (T-004)
+      lassen die Herzschlag-Luecke bei einem PC-Ausfall ueber 45 min wachsen;
+      ein Fehlschluss der Live-Position (scanner) waere ein Verlust in echtem
+      Geld. Die Position loest die Spur ueber Stop-/Risiko-Logik auf, nicht
+      der Herzschlag. Umgesetzt: `scanner/wachen.json`
+      `herzschlag_max_minuten` 45 -> 180 (+ `_herzschlag_regel` konsistent),
+      `systempruefung.ps1` Block 11b `$soll = 180` (war 45 live / 180 papier).
+      Nachweis: 11b-Formel gegen scanner = konform true.
       Betrifft: `Agenten/Handel/xperp/wachen.json`, `dauerlauf.py`
 
 - [x] **T-015 — Seagate Portable (`G:`) war ab, Hauptsicherung ohne Ziel**
