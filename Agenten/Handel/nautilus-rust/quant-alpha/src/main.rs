@@ -9,6 +9,7 @@
 
 use candle_core::{Device, Tensor};
 use candle_nn::{AdamW, Module, Optimizer, VarBuilder, VarMap};
+use quant_alpha::cross_panel::{required_periods, CrossPanel};
 use quant_signal::{BookEvidence, RankedBook, RankedWeight};
 use rand::Rng;
 use std::error::Error;
@@ -93,6 +94,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         "quant-alpha: Buch geschrieben, {} Gewichte, dollar-neutral: {}",
         book.weights.len(),
         book.is_dollar_neutral(1e-9)
+    );
+
+    // Panel-Fingerprint: macht Drift des Cross-Section-Panels attribuierbar.
+    let panel = CrossPanel::new(
+        vec!["BTC-USDT-SWAP.OKX".into(), "ETH-USDT-SWAP.OKX".into()],
+        vec![0.5, -0.5],
+        vec![0.2, 0.3],
+    );
+    println!(
+        "quant-alpha: Panel-Fingerprint {}, Perioden-Bedarf {:?}",
+        panel.fingerprint(),
+        required_periods(0.5, 0.1)
     );
     Ok(())
 }
