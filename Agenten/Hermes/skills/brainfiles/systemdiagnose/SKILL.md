@@ -100,6 +100,38 @@ Ports: echter TCP-Connect oder `Get-NetTCPConnection` — `netstat` nicht parsen
 die deutsche Anzeige schreibt „ABHOEREN“ mit Umlaut und wird als Binaer
 fehlgedeutet.
 
+## systempruefung.ps1 pflegen
+
+- **Neue Bloecke zuerst isoliert testen, nicht ueber den vollen Lauf.**
+  `systempruefung.ps1` braucht ~2 min und mischt viele Bloecke — ein Fehler
+  im neuen Block ist im vollen Lauf schwer zu orten. Den Block in eine
+  Standalone-Testdatei kopieren, die Stub-Funktionen `Notiz`/`Info`/
+  `Entscheiden` definiert (je `Write-Host`), und pruefen, dass er die
+  erwartete Info-/Entscheiden-Zeile liefert. Erst dann den vollen Lauf
+  (`-NurPruefen`, im Hintergrund, `grep` auf den Block) als Beleg.
+- **Gewollt deaktivierte Aufgaben in eine Whitelist, nicht als Entscheiden.**
+  Block 9 meldet jede deaktivierte `MaxHirn-*`-Aufgabe als Entscheiden. Ist
+  die Deaktivierung gewollt (z. B. ersetzt durch einen Dauerlauf), gehoert sie
+  in die Hashtable `$gewolltDeaktiviert` (Name → Grund) — dann meldet der
+  Block sie als Info mit Grund. Jede ANDERE deaktivierte Aufgabe bleibt
+  Entscheiden. Eintrag + Grund, damit der Grund im Bericht steht.
+  Aktuelle Eintraege: `MaxHirn-MoonDev-Agent` (ersetzt durch den
+  MoonDev-Dauerlauf, kein Doppelstart).
+- **Block 14 (Docker `nautilus-demo`) kennt drei Fallen, die alle im Code
+  dokumentiert sind:** (1) EAP lokal auf `Continue` setzen, sonst zaehlt
+  stderr von docker als NativeCommandError und die Zuweisung bleibt leer;
+  (2) `docker logs` liefert ANSI-Escape-Sequenzen (`\x1b[...m`) — vor dem
+  Regex-Match entfernen, sonst beginnt die Zeile nicht mit der Ziffer;
+  (3) `[datetimeoffset]::Parse(ts+'Z', InvariantCulture, AssumeUniversal)`
+  statt `[datetime]::ParseExact(AssumeUniversal)` — das speichert als Local
+  und verfaelscht die Differenz um die Zeitzone (120-min-Fehler).
+- **Grosse PowerShell-Bloecke ganz neu schreiben statt in kleinen Patches
+  iterieren.** Der Patch-Mechanismus verzieht bei mehrzeiligen Bloecken gern
+  die Einrueckung und schleust Tippfehler ein (`Select-ObjectObject`,
+  `nautilusutilus`, `\}:` im Regex) — und ein `continue`, das aus dem `if`
+  herausgezogen wird, bricht die Schleife nach dem ersten Element ab. Nach
+  jedem Patch den Block exakt lesen und den isolierten Test laufen lassen.
+
 ## Pitfalls
 
 - **Werkzeugnamen nie erfinden.** Schlaegt ein Aufruf mit „Tool X does not
