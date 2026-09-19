@@ -70,7 +70,11 @@ Der Live-Checkout bleibt unberuehrt.
 - `git -C Agenten/Hermes/hermes-agent status --porcelain` unveraendert (die 3
   package.json-Aenderungen aus `npm audit fix` bleiben liegen).
 
-## Woechentlicher Diagnose-Cron (optional)
+## Woechentlicher Diagnose-Cron (aktiv seit 19.09.2026)
 
-NUR `--diagnose` (kein `--claude`, kein `--repair`) — ein Cron repariert nie
-automatisch. Ausgabe als Telegram-Nachricht ueber den Bus.
+Cron `hermes-doctor-check` (job 011d13bd9684, Montag 9:45, deliver telegram,
+no_agent) nutzt den Wrapper `scripts/hermes-doctor-report.py`, der `--report`
+an hermes-doctor.py durchreicht (der Scheduler ruft Skripte OHNE Argumente
+auf - das script-Feld ist nur ein Pfad). NUR Diagnose, kein --claude, kein
+--repair - ein Cron repariert nie automatisch. Der Bericht IST die Lieferung
+(wie repo-updates-check/skill-usage-report).
