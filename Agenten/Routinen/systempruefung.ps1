@@ -387,10 +387,23 @@ try {
 try {
   Notiz "`n--- 9) Geplante Aufgaben ---"
   $tasks = @(Get-ScheduledTask -TaskName 'MaxHirn-*' -EA SilentlyContinue)
+  # Gewollt deaktivierte Aufgaben: sie werden nicht als Entscheiden gemeldet,
+  # nur als Info. Eintrag + Grund. (MoonDev-Agent: ersetzt durch den
+  # MoonDev-Dauerlauf, kein Doppelstart.)
+  $gewolltDeaktiviert = @{
+    'MaxHirn-MoonDev-Agent' = 'ersetzt durch MaxHirn-MoonDev-Dauerlauf'
+  }
   $schlecht = 0
   foreach ($t in $tasks) {
     $i = Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -EA SilentlyContinue
-    if ($t.State -eq 'Disabled') { $schlecht++; Entscheiden "Aufgabe $($t.TaskName) ist deaktiviert." ; continue }
+    if ($t.State -eq 'Disabled') {
+      if ($gewolltDeaktiviert.ContainsKey($t.TaskName)) {
+        Info "Aufgabe $($t.TaskName) ist deaktiviert (gewollt: $($gewolltDeaktiviert[$t.TaskName]))."
+      } else {
+        $schlecht++; Entscheiden "Aufgabe $($t.TaskName) ist deaktiviert."
+      }
+      continue
+    }
     # 267009 = laeuft gerade, 267011 = noch nie gelaufen; LastRunTime 1999-11-30
     # ist der "nie"-Platzhalter der Aufgabenplanung.
     $nieGelaufen = ($i.LastTaskResult -eq 267011) -or (-not $i.LastRunTime) -or ($i.LastRunTime.Year -lt 2000)
