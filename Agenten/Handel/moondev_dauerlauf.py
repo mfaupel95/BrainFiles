@@ -244,6 +244,8 @@ class MoonDevDauerlauf:
         umgebung = dict(os.environ)
         umgebung["MAXHIRN_ROUTINE"] = MAXHIRN_ROUTINE
         umgebung["HANDEL_RISIKO"] = self.risiko
+        # Haus-Ordner fuer CSV-Export der Agenten (Emppfehlungen/Urteile).
+        umgebung["MOONDEV_HAUS_DIR"] = str(HIER)
         # PFLICHT: die Agenten drucken Emoji (print_fancy). Ueber eine PIPE
         # (subprocess.PIPE, kein echtes Konsolenfenster) faellt Python ohne
         # dieses Flag auf die Windows-ANSI-Codepage zurueck und stirbt beim
