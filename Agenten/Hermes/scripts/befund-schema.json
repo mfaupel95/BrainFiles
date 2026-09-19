@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["befunde", "aenderungen", "tests", "verbote_verletzt"],
+  "properties": {
+    "befunde": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["schwere", "bereich", "beschreibung"],
+        "properties": {
+          "schwere": { "enum": ["kritisch", "mittel", "niedrig", "info"] },
+          "bereich": { "type": "string" },
+          "beschreibung": { "type": "string" },
+          "ursache": { "type": "string" },
+          "empfohlener_fix": { "type": "string" }
+        }
+      }
+    },
+    "aenderungen": { "type": "array", "items": { "type": "string" } },
+    "tests": { "type": "array", "items": { "type": "string" } },
+    "verbote_verletzt": { "type": "array", "items": { "type": "string" } }
+  }
+}
