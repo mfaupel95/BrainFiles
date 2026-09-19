@@ -46,7 +46,7 @@ HIER = Path(__file__).resolve().parent
 # dieselbe Frage laufen sonst auseinander.
 MIN_RUNDEN = 8
 
-SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus")
+SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Die vier Indikator-Spuren journalisieren kauf/verkauf mit `einsatz_usd`
 # (beim Kauf der Einsatz, beim Verkauf der Erloes). Sie stehen getrennt,

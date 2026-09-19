@@ -684,3 +684,12 @@ Agenten/Handel/nautilus/
 !Agenten/Handel/filter_studie_ergebnis.json
 !Agenten/Handel/docs/plans/
 !Agenten/Handel/docs/plans/*.md
+!Agenten/Handel/nautilus_kraken/*.py
+!Agenten/Handel/nautilus_kraken/*.md
+!Agenten/Handel/nautilus_kraken/wachen.json
+!Agenten/Handel/nautilus_kraken/wachen.futures.json
+!Agenten/Handel/nautilus_kraken/tests/*.py
+Agenten/Handel/nautilus_kraken/zustand.json
+Agenten/Handel/nautilus_kraken/zustand.futures.json
+Agenten/Handel/nautilus_kraken/handelsjournal.csv
+Agenten/Handel/nautilus_kraken/handelsjournal.futures.csv

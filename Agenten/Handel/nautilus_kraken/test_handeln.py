@@ -1,0 +1,147 @@
+"""Tests fuer nautilus_kraken/handeln.py - die papierfeste Spur-Schnittstelle.
+
+Kein Netz: Geprueft wird der Vertrag mit dauerlauf.py, nicht der
+Quotenpfad. Der echte Quotenpfad steht in test_quote_pfad.py.
+
+Die vier Modi (--wachen, --vorschau, --papier, --live) muessen dieselbe
+Form haben wie bei den anderen Spuren. Kritisch fuer den Dauerlauf:
+
+  - --vorschau druckt die Zeile "Live waere gesperrt durch: ...". Daraus
+    liest dauerlauf.nur_fenster_fehlt die Sperrgruende. Das Wort
+    Freigabefenster darf in dem Grund NICHT vorkommen (papierfest).
+  - --papier schreibt zustand.json (Herzschlag) und handelsjournal.csv.
+
+Dazu Bedingung 4: die Kopie von Journal und Zustand nach
+`journal_zweitziel` (Q:).
+
+Aufruf:  .venv\\Scripts\\python.exe test_handeln.py
+"""
+
+import os
+import subprocess
+import tempfile
+import unittest
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+PYTHON = os.path.join(HIER, os.pardir, "nautilus", ".venv", "Scripts", "python.exe")
+
+
+def ruf(*args):
+    p = subprocess.run([PYTHON, os.path.join(HIER, "handeln.py"), *args],
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=60)
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+class Schnittstelle(unittest.TestCase):
+    def test_wachen_druckt_die_grenzen(self):
+        code, ausgabe = ruf("--wachen")
+        self.assertEqual(code, 0)
+        for feld in ("max_risiko_pro_trade", "herzschlag_max_minuten",
+                     "handel_erlaubt", "symbol", "waehrung"):
+            self.assertIn(feld, ausgabe)
+
+    def test_vorschau_nennt_den_papierfesten_grund(self):
+        code, ausgabe = ruf("--vorschau")
+        self.assertEqual(code, 0)
+        self.assertIn("Live waere gesperrt durch: ", ausgabe)
+        zeile = next(z for z in ausgabe.splitlines()
+                     if "gesperrt durch" in z)
+        grund = zeile.split(":", 1)[-1]
+        self.assertNotIn("Freigabefenster", grund)
+        self.assertNotIn(";", grund)
+
+    def test_live_verweigert_mit_dem_papierfesten_grund(self):
+        code, ausgabe = ruf("--live")
+        self.assertEqual(code, 0)
+        self.assertIn("kein Live-Pfad", ausgabe)
+
+    def test_vorschau_schreibt_nichts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            alt = (os.path.join(HIER, "zustand.json"),
+                   os.path.join(HIER, "handelsjournal.csv"))
+            neu = (os.path.join(tmp, "zustand.json"),
+                   os.path.join(tmp, "handelsjournal.csv"))
+            for a, n in zip(alt, neu):
+                if os.path.exists(a):
+                    os.replace(a, n)
+            try:
+                code, _ = ruf("--vorschau")
+                self.assertEqual(code, 0)
+                self.assertFalse(os.path.exists(alt[0]),
+                                 "Vorschau darf zustand.json nicht schreiben")
+                self.assertFalse(os.path.exists(alt[1]),
+                                 "Vorschau darf kein Journal schreiben")
+            finally:
+                for a, n in zip(alt, neu):
+                    if os.path.exists(n):
+                        os.replace(n, a)
+
+
+class ZyklusAufbau(unittest.TestCase):
+    def test_strategie_ueberschreibt_on_stop(self):
+        import handeln
+        self.assertIn("on_stop", handeln.QuoteSammler.__dict__,
+                      "ohne eigenen on_stop warnt die Engine bei jedem "
+                      "node.stop() - und die Zeile geht nach Telegram")
+
+    def test_node_session_hat_den_stillen_log_pegel(self):
+        import handeln
+        cfg = handeln.baue_node_config({}, {})
+        self.assertEqual(cfg.logging.log_level, handeln.LOG_PEGEL)
+        self.assertEqual(handeln.LOG_PEGEL, "ERROR")
+
+
+class JournalAusserHaus(unittest.TestCase):
+    """Bedingung 4: Kopie von Journal und Zustand nach journal_zweitziel."""
+
+    def test_kopiert_journal_und_zustand(self):
+        import handeln
+        with tempfile.TemporaryDirectory() as tmp:
+            ziel = os.path.join(tmp, "nautilus_kraken")
+            ok, info = handeln.spiegle_journal(ziel)
+            self.assertTrue(ok, info)
+            for name in ("handelsjournal.csv", "zustand.json"):
+                quelle = os.path.join(HIER, name)
+                if not os.path.exists(quelle):
+                    continue
+                kopie = os.path.join(ziel, name)
+                self.assertTrue(os.path.exists(kopie), kopie)
+                with open(quelle, "rb") as a, open(kopie, "rb") as b:
+                    self.assertEqual(a.read(), b.read(),
+                                     "%s nicht byte-gleich kopiert" % name)
+
+    def test_ohne_ziel_nennt_es_den_grund(self):
+        import handeln
+        ok, info = handeln.spiegle_journal(None)
+        self.assertFalse(ok)
+        self.assertIn("nicht gesetzt", info)
+
+    def test_nicht_erreichbares_laufwerk_ist_kein_fehler(self):
+        import handeln
+        ok, info = handeln.spiegle_journal("Z:/gibt-es-nicht-nautilus-kraken")
+        self.assertFalse(ok)
+        self.assertTrue(info.strip(), "der Grund darf nicht leer sein")
+
+    def test_vermerk_schreibt_nur_bei_aenderung(self):
+        import handeln
+        with tempfile.TemporaryDirectory() as tmp:
+            pfad = os.path.join(tmp, "zustand.json")
+            z = {}
+            self.assertTrue(handeln.vermerke_spiegelung(
+                z, "Q:/Handel_Journal/nautilus_kraken", True,
+                "Q:/Handel_Journal/nautilus_kraken", pfad))
+            self.assertTrue(os.path.exists(pfad))
+            vorher = os.path.getmtime(pfad)
+            self.assertFalse(handeln.vermerke_spiegelung(
+                z, "Q:/Handel_Journal/nautilus_kraken", True,
+                "Q:/Handel_Journal/nautilus_kraken", pfad),
+                "gleicher Stand darf nicht erneut schreiben")
+            self.assertEqual(os.path.getmtime(pfad), vorher)
+            self.assertTrue(handeln.vermerke_spiegelung(
+                z, "Q:/Handel_Journal/nautilus_kraken", False, "FileNotFoundError",
+                pfad), "ein Wechsel muss geschrieben werden")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -62,7 +62,7 @@ SPUREN = [
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.
-RUHT = ("orb", "nautilus")
+RUHT = ("orb", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Toleranz beim Vergleich Betrag gegen 1.0 x Buchrisiko (Rundung in der Datei).
 TOLERANZ = 0.005

@@ -68,6 +68,8 @@ FAMILIE = {
     "orbk": "Breakout (ORB)",
     "gitter": "Grid",
     "nautilus": "Quote-Sammler",
+    "nautilus_kraken": "Kraken-Spot (EUR)",
+    "nautilus_kraken_futures": "Kraken-Futures (USD)",
     "spiegel": "Feed-Spiegel",
     # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): dieselbe
     # Signalquelle wie spiegel, andere Stop/Trailing-Parameter. Gleiche

@@ -207,6 +207,18 @@ SPUREN = {
                  "skript": "handeln.py",
                  "python": os.path.join(HIER, "nautilus", ".venv",
                                         "Scripts", "python.exe")},
+    # KRAKEN-SPUREN (19.09.2026): zwei Varianten der Nautilus-Trailing-
+    # Strategie auf Kraken. Spot (BTC/EUR, EUR, kein Hebel, gebuehrfrei bis
+    # 10k via Pro-Abo) und Futures (PF_XBTUSD Perpetual, USD, Hebel). Beide
+    # Papier, kein Live-Orderpfad. Nutzen das nautilus-venv (nautilus_trader).
+    "nautilus_kraken": {"ordner": "nautilus_kraken", "waehrung": "EUR",
+                        "skript": "handeln.py",
+                        "python": os.path.join(HIER, "nautilus", ".venv",
+                                               "Scripts", "python.exe")},
+    "nautilus_kraken_futures": {"ordner": "nautilus_kraken", "waehrung": "USD",
+                        "skript": "handeln_futures.py",
+                        "python": os.path.join(HIER, "nautilus", ".venv",
+                                               "Scripts", "python.exe")},
     # Die Gitter-Spur braucht kein eigenes venv: sie liest OKX-Kerzen ueber
     # scanner/okx und rechnet die Stufen mit Handel/grid.py - beides liegt im
     # gemeinsamen venv.

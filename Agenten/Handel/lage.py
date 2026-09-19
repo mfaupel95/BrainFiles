@@ -801,6 +801,45 @@ def spur_nautilus():
     }
 
 
+def _spur_nautilus_kraken_arm(suffix, name, waehrung):
+    """Kraken-Spur (Spot/Futures) - Papierzyklus, Herzschlag statt Wache.
+
+    Wie spur_nautilus: kein Pruefmodul, papierfest, zeigt die letzte Quote.
+    suffix "" = Spot (wachen.json/zustand.json), ".futures" = Futures.
+    """
+    ordner = os.path.join(HIER, "nautilus_kraken")
+    w = _lies(os.path.join(ordner, "wachen%s.json" % suffix), {})
+    z = _lies(os.path.join(ordner, "zustand%s.json" % suffix), {}) or {}
+
+    q = z.get("letzte_quote") or {}
+    if q:
+        zeile = "letzte Quote bid=%s ask=%s" % (q.get("bid"), q.get("ask"))
+    else:
+        zeile = "noch kein Papierzyklus gelaufen"
+    if z.get("letzter_lauf"):
+        zeile += "  (Herzschlag %s)" % z["letzter_lauf"]
+
+    return {
+        "name": "%s (%s)" % (name, z.get("modus") or "papier"),
+        "waehrung": waehrung, "w": w, "z": z,
+        "positionen": [], "ordner": ordner,
+        "pruefmodul": None,
+        "papierfest": True,
+        "journal": os.path.join(ordner, "handelsjournal%s.csv" % suffix),
+        "bilanz": zeile,
+    }
+
+
+def spur_nautilus_kraken():
+    """Kraken-Spot (BTC/EUR, EUR, kein Hebel)."""
+    return _spur_nautilus_kraken_arm("", "Kraken-Spot (EUR)", "EUR")
+
+
+def spur_nautilus_kraken_futures():
+    """Kraken-Futures (PF_XBTUSD, USD, Hebel)."""
+    return _spur_nautilus_kraken_arm(".futures", "Kraken-Futures (USD)", "USD")
+
+
 def spur_xperp_positionen():
     """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
 
@@ -1026,6 +1065,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier, spur_kopier1zu1,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
+    spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
