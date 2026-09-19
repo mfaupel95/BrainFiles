@@ -12,6 +12,10 @@ Region prüfen, eine Order-Aufgabe testen — alles, was den lokalen
 Nautilus-Knoten gegen die OKX-API betrifft. Abgrenzung: scanner/xperp/orb sind
 `handel-spuren`; OKX-Wallet/Onchain sind die `okx-*`-Bundled-Skills.
 
+Fuer den Rust-KI-Stack (NautilusTrader-Rust-Crates + Hugging-Face-candle,
+Zwei-Ebenen-Architektur, candle-0.11-API, BacktestEngine in Rust):
+`references/rust-stack.md`.
+
 ## Kernkonfiguration (bewährt, Stand Nautilus 1.231)
 - OKX kennt nur **DEMO** und **LIVE** — kein „paper“. `environment` ist
   `OKXEnvironment.DEMO` (Demo-Key) bzw. `LIVE` (Live-Key); `region` ist das
@@ -32,6 +36,11 @@ Nautilus-Knoten gegen die OKX-API betrifft. Abgrenzung: scanner/xperp/orb sind
 ## Fallen (OKX-API)
 - `50110` — öffentliche IP fehlt in der API-Key-Whitelist. Im Portal eintragen
   oder Whitelist deaktivieren.
+- **Echtes HTTP 401 (nicht 50110) = Key-Problem, nicht Whitelist**
+  (19.09.2026): 401 auf `my.okx.com` UND `www.okx.com` mit HKCU-Keys heisst
+  deaktiviert/geloescht oder Passphrase geaendert. Kein Code-Fix moeglich -
+  Key im OKX-Portal pruefen. demo_order_test.py stoppt davor sauber im
+  Preflight (require_clean/require_trade), keine Order wird gesendet.
 - `50101` — „APIKey does not match current environment“: Key gegen falsches
   environment verwendet (Demo-Key auf Live-Endpunkt).
 - `403 code 1010` ohne `User-Agent`-Header; mit `Mozilla/5.0` kommt die echte
@@ -72,6 +81,51 @@ Nautilus-Knoten gegen die OKX-API betrifft. Abgrenzung: scanner/xperp/orb sind
   `handel-spuren/references/spur-bericht.md`; der 1-s-Lauf je Zyklus dort ist
   die Vorschau von `dauerlauf.nur_fenster_fehlt`, kein Fehler.
 
+## Node starten — Docker bevorzugt (ab 19.09.2026)
+- **Docker ist die robuste Startmethode** (kein Desktop, kein Fokus-/DPI-/
+  Virtuelle-Desktop-Kampf, startet nach Neustart selbst):
+  `docker build -t nautilus-demo-node:1.231.0 .` dann
+  `docker run -d --name nautilus-demo --restart unless-stopped -e
+  OKX_API_KEY=dummy-node-key -e OKX_API_SECRET=dummy-node-secret -e
+  OKX_API_PASSPHRASE=dummy-node-pass nautilus-demo-node:1.231.0`;
+  Quotes: `docker logs -f nautilus-demo`. Dockerfile + requirements-node.txt
+  liegen im nautilus-Ordner (eigenes Repo, committen).
+- **Nautilus-OKXFactory verlangt die Env-Variablen HART**, auch fuer den
+  oeffentlichen HTTP-Client (Instrumenten-Metadaten) — im Container stehen
+  Dummy-Werte, echte Keys verlassen den Rechner nie. Der Quotenstrom selbst
+  braucht keine Schluessel.
+- **`load_client_configs` verlangte die Keys auch im reinen Quoten-Modus**
+  (SystemExit) — seit 19.09.2026 nur noch bei `mit_order_client=True`.
+  Der Quoten-Modus ist damit ohne Keys lauffaehig (Doku versprach es, der
+  Code hielt es nicht).
+
+## Docker-Log-Auswertung in PowerShell (systempruefung.ps1 Block 14)
+- **EAP lokal auf Continue** fuer den docker-Aufruf: mit
+  `$ErrorActionPreference='Stop'` zaehlt stderr von docker als Fehler
+  (NativeCommandError) und die Zuweisung bleibt leer.
+- **docker logs liefert ANSI-Escape-Sequenzen** (`\x1b[...m`) - vor dem
+  Regex-Match entfernen (`$_ -replace "\x1b\[[0-9;]*m", ""`), sonst
+  beginnt die Zeile nicht mit der Ziffer und `^\d{4}-` matcht nie.
+- **`[datetimeoffset]` statt `[datetime]::ParseExact(AssumeUniversal)`**
+  fuer den UTC-Zeitstempel: ParseExact speichert als Local und verfaelscht
+  die Differenz um die Zeitzone (120 min). `[datetimeoffset]::Parse(ts+'Z',
+  InvariantCulture, AssumeUniversal)` respektiert das Z korrekt.
+
+## GUI-Node starten (nautilus_gui.py)
+- **Das GUI startet den Node NICHT von selbst** — Status bleibt STOPPED, bis
+  der Button "▶ Start DEMO-Node" geklickt wird. Es gibt kein
+  Autostart-Argument; ein Start per `Start-Process` oeffnet nur das leere
+  Fenster. Oeffnen + Klick auf den Start-Button, ODER headless den
+  Zyklus-Einstieg (`handeln.py`/`run_okx_paper_node.py`) nehmen.
+- **Fuer den reinen Quotenstrom sind KEINE Keys noetig** (Data-Client ohne
+  Credentials). Das Badge "Keys: OK ✓" spiegelt nur, ob die drei
+  Env-Variablen in der Prozessumgebung stehen; der Haken "Order-Client
+  (DEMO)" ist opt-in und der EINZIGE Pfad, der die Keys wirklich braucht.
+  Startet das GUI per Wrapper, die Variablen in dessen Umgebung setzen
+  (nicht nur in HKCU\Environment — os.environ liest die Prozessumgebung).
+- Der GUI-Zyklus macht dieselbe Bedingung-4-Spiegelung wie die Dauerlauf-
+  Spur (Journal/Zustand nach Q:\Handel_Journal\nautilus).
+
 ## Backtest im nautilus-venv (13.09.2026)
 
 Werkzeuge im Ordner (eigene Rueckgabe-Dateien, keine Netzverbindung):
@@ -80,6 +134,35 @@ Werkzeuge im Ordner (eigene Rueckgabe-Dateien, keine Netzverbindung):
 `test_grid.py` (19 Tests, echte Engine-Laeufe), `seitwaerts_probe.py`
 (Seitwaerts-Fenster suchen). Start jeweils mit
 `.venv/Scripts/python.exe <datei>`, Tests mit `-m unittest test_grid`.
+- **`daten/*.csv` sind TAGESdaten** (`Datum,Open,High,Low,Close`), keine
+1H-Kerzen: BTC reicht bis 2014 zurueck (~4.347 Zeilen). Alle Dateien sind
+CRLF — neue Zeilen NUR mit CRLF anhaengen, sonst Mischzeilenenden und
+Ganzdatei-Diff.
+- **Auffrischen seit 19.09.2026: `nautilus/daten_auffrischen.py`**
+  (yfinance, Start `.venv/Scripts/python.exe daten_auffrischen.py`, Tests
+  `-m unittest test_daten_auffrischen`): fehlende Tage ab dem letzten
+  CSV-Datum anhaengen, eine unmoegliche Schlusszeile (Close < Low o. a.)
+  entfernen und durch die frische Zeile fuer dasselbe Datum ersetzen,
+  Ticker ohne neue Daten dokumentieren statt abzubrechen. yfinance ist
+  nicht vorinstalliert: `pip install yfinance` ins nautilus-venv.
+- **yfinance-Aufruf mit `auto_adjust=False`** — der Default (True) liefert
+  Dividenden-/Split-bereinigte Preise, die nicht zur unbereinigten
+  Historie der Dateien passen.
+- **MATIC-USD liefert seit 2025-03-24 keine neuen Daten** (Yahoo-Ticker
+  wurde zu POL umbenannt). "keine neuen Daten" ist ein Befund JE Ticker,
+  kein Abbruchgrund fuer die ganze Auffrischung.
+- **`entferne_letzte_unmoegliche` MUSS die Datei zurueckschreiben** (19.09.2026):
+  entfernt sie die defekte Zeile nur im Speicher, bleibt sie im Bestand und
+  yfinance liefert sie beim naechsten Lauf erneut -> Datums-Doppel (passiert:
+  08-10-Kerzen in BTC/ETH/SOL/XRP, erst der Sweep deckte es auf).
+  `--saeubern` bereinigt den Bestand einmalig (ALLE unmoeglichen Zeilen und
+  Datums-Doppel, letzte gewinnt).
+- **`daten/*.csv` ist NICHT versioniert** (gitignore `*` greift in
+  `Agenten/Handel/daten`): vor massenhaften Schreiblauefen
+  `daten.bak-JJJJMMTT` anlegen, git kann die Daten nicht wiederherstellen.
+  Der Sweep verwarf unmoegliche Kerzen bereits (nautilus-Engine), nur
+  unsichtbar im tail — eine Saetuberung aendert Aktien-Ergebnisse spuerbar
+  (AAPL trail +39,4 -> -30,2).
 
 - **Die Venue kommt vom INSTRUMENT, nie geraten.** `Venue("SIM")` neben einem
   BINANCE-Instrument laesst `add_instrument` mit "Cannot add an Instrument
@@ -148,6 +231,11 @@ Signal - gemessen wird die FORM, nicht ein Markt-Urteil).
   nicht), `Money`/`TraderId`/`BarType`/`Venue` aus `nautilus_trader.model`,
   `USDT` aus `model.currencies`. Die bestehenden Backtests sind die
   Import-Referenz - von dort abschreiben, nicht aus dem Gedaechtnis.
+- **candle-0.11 hat die API geaendert:** `Linear::new(weight, bias)` ist jetzt
+  die freie Funktion `candle_nn::linear(in, out, vb)`, und `AdamW::new(vars,
+  lr)` heisst `AdamW::new_lr(vars, lr)`. Vor dem Schreiben die Signaturen in
+  `~/.cargo/registry/src/index.crates.io-*/candle-nn-0.11.0/src/` pruefen,
+  nicht aus dem Gedaechtnis (Details: `references/rust-stack.md`).
 - **`bars[i].ts_event` ist int-Nanosekunden.** `ts_event + timedelta` wirft
   TypeError; erst `datetime.fromtimestamp(te/1e9, tz=timezone.utc)`. Und eine
   Funktion, die ein datetime erwartet (z. B. `ausstiegsgrund`), darf nicht mit
