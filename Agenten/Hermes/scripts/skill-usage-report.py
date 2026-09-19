@@ -21,6 +21,7 @@ WAS ES TUT (nur lesend)
 Aufruf:
     python Agenten/Hermes/scripts/skill-usage-report.py
 """
+import argparse
 import os
 import subprocess
 import sys
@@ -70,6 +71,13 @@ def parse(zeilen):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="Skill-Nutzungsbericht")
+    ap.add_argument("--nur", default="",
+                    help="nur Skills mit diesem Namens-Praefix zeigen "
+                         "(Komma-getrennt, z.B. 'okx,handel')")
+    args = ap.parse_args()
+    praefixe = [p.strip() for p in args.nur.split(",") if p.strip()]
+
     code, zeilen = curator_usage()
     kopf, daten = parse(zeilen)
     if code != 0 or not daten:
@@ -77,10 +85,21 @@ def main():
         print("\n".join(zeilen[:10]))
         return 0
 
+    if praefixe:
+        daten = [d for d in daten
+                 if any(d[0].startswith(p) for p in praefixe)]
+        if not daten:
+            print("Skill-Nutzung: kein Skill mit Praefix %s gefunden."
+                  % ", ".join(praefixe))
+            return 0
+
     top = sorted(daten, key=lambda d: -d[3])[:10]
     ungenutzt = [d for d in daten if d[2] == 0]
 
-    print("Skill-Nutzung (woechentlich): %d Skills geladen" % len(daten))
+    titel = "Skill-Nutzung (woechentlich): %d Skills geladen" % len(daten)
+    if praefixe:
+        titel += "  [nur %s]" % ", ".join(praefixe)
+    print(titel)
     if kopf:
         print(kopf[0])
     print("\nMeistgenutzt (act):")
