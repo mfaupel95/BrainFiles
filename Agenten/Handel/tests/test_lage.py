@@ -25,6 +25,51 @@ class FormTest(unittest.TestCase):
         self.assertEqual(len(lage.HOLER), 24)
 
 
+class KursVariantenTest(unittest.TestCase):
+    """Bare Symbole ("AAVE") finden ihren Kurs ueber -USDT/-USDC."""
+
+    def test_bare_symbol_erst_usdt_dann_usdc(self):
+        gerufen = []
+
+        class Okx:
+            @staticmethod
+            def letzter_kurs(inst):
+                gerufen.append(inst)
+                if inst == "AAVE-USDT":
+                    return 139.5
+                raise ValueError("unbekannte InstId")
+
+        self.assertEqual(lage._kurs_ueber_varianten(Okx(), "AAVE"), 139.5)
+        self.assertEqual(gerufen, ["AAVE", "AAVE-USDT"])
+
+    def test_erstes_symbol_trifft_sofort(self):
+        class Okx:
+            @staticmethod
+            def letzter_kurs(inst):
+                return 0.999905
+
+        self.assertEqual(lage._kurs_ueber_varianten(Okx(), "DAI"), 0.999905)
+
+    def test_unbekannt_bleibt_none(self):
+        class Okx:
+            @staticmethod
+            def letzter_kurs(inst):
+                raise ValueError("unbekannt")
+
+        self.assertIsNone(lage._kurs_ueber_varianten(Okx(), "FIGR_HELOC"))
+
+    def test_null_ist_kein_treffer(self):
+        class Okx:
+            @staticmethod
+            def letzter_kurs(inst):
+                gerufen = []
+                if inst == "HYPE-USDC":
+                    return 91.5
+                return 0.0
+
+        self.assertEqual(lage._kurs_ueber_varianten(Okx(), "HYPE"), 91.5)
+
+
 class BuchlageTest(unittest.TestCase):
     def test_kategorie_kein_buch_wenn_journal_fehlt(self):
         roh = {"name": "Testspur", "waehrung": "USD", "w": {}, "z": {},

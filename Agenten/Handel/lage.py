@@ -470,6 +470,25 @@ bilanz = _bilanz
 # Ziel = R x Stop, Papier ohne Live-Zweig. Sie teilen sich EINE Funktion -
 # vier Abschriften waeren vier Wahrheiten fuer dieselbe Frage.
 
+def _kurs_ueber_varianten(okx_modul, inst):
+    """Bare Symbole ("AAVE") auf OKX-InstIds aufloesen: Symbol, -USDT, -USDC.
+
+    Manche Spuren tragen nur das Symbol in `zustand.json` (Bot-Spuren auf
+    CoinGecko-Daten), `okx.letzter_kurs` braucht aber eine InstId
+    ("AAVE-USDT"). Der erste Treffer gewinnt; keiner -> None. Ein Ausfall
+    ist still - der Bericht haengt nicht am Netz und zeigt sonst "(kein
+    Kurs)".
+    """
+    for versuch in (inst, inst + "-USDT", inst + "-USDC"):
+        try:
+            wert = float(okx_modul.letzter_kurs(versuch))
+        except Exception:                                       # noqa: BLE001
+            continue
+        if wert > 0:
+            return wert
+    return None
+
+
 def _spur_indikator(ordner, name):
     """Eine der vier Indikator-Spuren: Bestand gegen den aktuellen Kurs.
 
@@ -489,10 +508,12 @@ def _spur_indikator(ordner, name):
             sys.path.insert(0, os.path.join(HIER, "scanner"))
             import okx                                          # noqa: PLC0415
             for p in pos:
-                try:
-                    kurse[p["inst"]] = float(okx.letzter_kurs(p["inst"]))
-                except Exception:                               # noqa: BLE001
-                    pass
+                inst = (p.get("inst") or "").strip()
+                if not inst:
+                    continue
+                k = _kurs_ueber_varianten(okx, inst)
+                if k:
+                    kurse[inst] = k
         except Exception:                                       # noqa: BLE001
             pass
 
