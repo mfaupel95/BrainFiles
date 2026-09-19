@@ -219,6 +219,7 @@ class MoonDevDauerlauf:
         self.stumm = stumm
         self.kinder: dict[str, subprocess.Popen] = {}
         self.letzter_neustart: dict[str, float] = {}
+        self.ag_log: dict[str, Path] = {}
         self.protokoll: list[str] = []
 
     def protokolliere(self, zeile: str) -> None:
@@ -254,11 +255,23 @@ class MoonDevDauerlauf:
         # Welcher Modellweg? Steht danach im Log neben der PID - ohne diese
         # Zeile sieht ein 404 (Modell fehlt) wie ein gesunder Lauf aus.
         weg = _weg_fuer(name, umgebung, wege)
+        # Pro Agent eine angehaengte Log-Datei. subprocess.PIPE wuerde die
+        # Agenten-Ausgabe (Analyse + Empfehlungen) verlieren: der Driver liest
+        # PIPE nie (nur stderr beim Absturz). Datei auch fuer den Absturz-Tail.
+        ag_log = HIER / ("moondev_%s.log" % name)
+        self.ag_log[name] = ag_log
+        try:
+            with open(ag_log, "a", encoding="utf-8") as _:
+                pass
+            ag_datei = open(ag_log, "a", encoding="utf-8", errors="replace")
+        except Exception as e:                                    # noqa: BLE001
+            self.protokolliere(f"{name}: Log-Datei nicht oeffbar: {e}")
+            ag_datei = subprocess.DEVNULL
         try:
             kind = subprocess.Popen(
                 eintrag["cmd"], cwd=eintrag["cwd"],
                 env=umgebung,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                stdout=ag_datei, stderr=subprocess.STDOUT,
                 text=True, errors="replace",
             )
         except Exception as e:                                    # noqa: BLE001
@@ -292,7 +305,11 @@ class MoonDevDauerlauf:
                     code = kind.poll()
                     if code not in (None, 0):
                         try:
-                            fehler = (kind.stderr.read() or "")[-1500:]
+                            fehler = ""
+                            alog = self.ag_log.get(name) if hasattr(self, "ag_log") else None
+                            if alog is not None and alog.exists():
+                                fehler = alog.read_text(
+                                    encoding="utf-8", errors="replace")[-1500:]
                         except Exception:                          # noqa: BLE001
                             fehler = ""
                         if fehler.strip():
