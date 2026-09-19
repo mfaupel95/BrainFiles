@@ -775,7 +775,10 @@ def zeige_wachen(w):
     print("  freigabe.erfuellt       %s" % fr.get("erfuellt"))
     print("    Papierlauf min        %s Wochen / %s Runden"
           % (fr.get("papierlauf_min_wochen"), fr.get("papierlauf_min_runden")))
-    print("    netto positiv         %s" % fr.get("netto_positiv_nach_gebuehren_und_funding"))
+    if fr.get("_netto_positiv_entfaellt"):
+        print("    netto positiv         entfaellt (Max 19.09.2026)")
+    else:
+        print("    netto positiv         %s" % fr.get("netto_positiv_nach_gebuehren_und_funding"))
     print("    groesster Ruecklauf   %s USD" % fr.get("groesster_ruecklauf_papierlauf_usd"))
     print("    geprueft am           %s" % fr.get("geprueft_am"))
     print("  2 drawdown_halbierung   %s %%" % w.get("drawdown_halbierung_prozent"))

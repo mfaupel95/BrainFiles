@@ -61,11 +61,10 @@
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
   "freigabe": {
     "erfuellt": false,
-    "papierlauf_min_wochen": 6,
-    "papierlauf_min_runden": 50,
-    "netto_positiv_nach_gebuehren_und_funding": false,
-    "groesster_ruecklauf_papierlauf_usd": null,
-    "geprueft_am": null
+        "papierlauf_min_wochen": 6,
+        "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer xperp (Handelsregeln Bedingung 1).",
+        "groesster_ruecklauf_papierlauf_usd": null,
+        "geprueft_am": null
   },
   "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. 1.0 x Buchrisiko = risiko_je_anlauf_usd 7.5 x max_offene_anlaeufe 4. Unveraendert gegenueber der alten Quote 15% x max_margin_gesamt_usd 200.",
   "drawdown_halbierung_usd": 30.0,

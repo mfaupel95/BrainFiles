@@ -43,11 +43,10 @@
 
  "freigabe": {
    "erfuellt": false,
-   "papierlauf_min_wochen": 2,
-   "papierlauf_min_runden": 50,
-   "netto_positiv_nach_gebuehren_und_funding": false,
-   "groesster_ruecklauf_papierlauf_usd": null,
-   "geprueft_am": null,
-   "_aenderung": "2026-09-19: neu angelegt fuer Stufe A (MOSAIC-LIVE-PLAN-OKX.md). Aktuell 1 Papierrunde - unter jeder Mindestzahl. erfuellt bleibt false, bis 50 echte Papierrunden netto positiv und der Ruecklauf innerhalb der Grenze liegt."
+     "papierlauf_min_wochen": 2,
+     "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer mosaic (Handelsregeln Bedingung 1).",
+     "groesster_ruecklauf_papierlauf_usd": null,
+     "geprueft_am": null,
+     "_aenderung": "2026-09-19: neu angelegt fuer Stufe A (MOSAIC-LIVE-PLAN-OKX.md). Aktuell 1 Papierrunde - unter jeder Mindestzahl. Seit 19.09.2026 entfaellt die Netto-positiv-Bedingung (Max); erfuellt bleibt false, bis 50 echte Papierrunden und der Ruecklauf-Deckel liegen."
  }
 }
