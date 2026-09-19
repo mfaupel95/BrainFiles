@@ -190,7 +190,7 @@ reine Standardbibliothek fuer die CSV-Verarbeitung.
 
 - [ ] **Schritt 3: Test laufen lassen und Fehlschlag verifizieren**
   Run (aus `Agenten/Handel/nautilus/`):
-  `../.venv/Scripts/python.exe -m unittest test_daten_auffrischen`
+  `.venv/Scripts/python.exe -m unittest test_daten_auffrischen`
   Erwartet: FAIL/ERROR (Modul `daten_auffrischen` fehlt).
 
 - [ ] **Schritt 4: Minimale Implementierung** — `daten_auffrischen.py`:
@@ -313,7 +313,7 @@ reine Standardbibliothek fuer die CSV-Verarbeitung.
 
 - [ ] **Schritt 5: Test laufen lassen, PASS verifizieren**
   Run (aus `Agenten/Handel/nautilus/`):
-  `../.venv/Scripts/python.exe -m unittest test_daten_auffrischen -v`
+  `.venv/Scripts/python.exe -m unittest test_daten_auffrischen -v`
   Erwartet: 8 Tests, alle ok.
 
 - [ ] **Schritt 6: Dateityp pruefen (CRLF-Handler der neuen Datei)**
@@ -337,7 +337,7 @@ reine Standardbibliothek fuer die CSV-Verarbeitung.
 
 - [ ] **Schritt 1: Lauf ausfuehren (Netz)**
   Run (aus `Agenten/Handel/nautilus/`):
-  `../.venv/Scripts/python.exe daten_auffrischen.py`
+  `.venv/Scripts/python.exe daten_auffrischen.py`
   Erwartet: je CSV eine Zeile `+N Tage ... bis <heute>`; MATIC-USD darf den
   Hinweis `keine neuen Daten (Ticker umbenannt?)` tragen. Exit 0.
 
@@ -348,7 +348,7 @@ reine Standardbibliothek fuer die CSV-Verarbeitung.
   ```
   Erwartet: letzte Zeile = heute (19.09.2026 bzw. naechster Handelstag davor)
   fuer alle ausser ggf. MATIC-USD. Danach Lueckenpruefung:
-  `../.venv/Scripts/python.exe -c "
+  `.venv/Scripts/python.exe -c "
   import csv, sys
   from datetime import date, timedelta
   from pathlib import Path
@@ -373,7 +373,7 @@ reine Standardbibliothek fuer die CSV-Verarbeitung.
 
 - [ ] **Schritt 4: Gegenprobe Sweep laeuft (nur Vorschau, kein Komplett-Sweep)**
   Run (aus `Agenten/Handel/nautilus/`):
-  `../.venv/Scripts/python.exe -c "import sweep_strategien; print('import ok')"`
+  `.venv/Scripts/python.exe -c "import sweep_strategien; print('import ok')"`
   Erwartet: `import ok` — die Datenstruktur ist kompatibel.
 
 - [ ] **Schritt 5: Committen**
