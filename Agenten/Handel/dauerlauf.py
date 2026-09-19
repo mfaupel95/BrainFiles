@@ -99,6 +99,7 @@ Eine Stufe laeuft ausdruecklich als DATENSAMMLER:
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import subprocess
 import sys
@@ -330,11 +331,25 @@ NUR_BASIS = ("spiegel", "spiegel_knapp", "spiegel_weit")
 TAKT_MAX_MINUTEN = 15
 
 
+# Module-level state fuer Log-Rotation-Optimierung
+_LOG_ROTATION_CHECK_INTERVAL = 100  # noqa: E305
+_LOG_ROTATION_COUNTER = 0
+
+# KEINE Whitelist fuer die Subprozess-Umgebung: die Spuren sind eigener,
+# vertrauenswuerdiger Code und brauchen die API-Schluessel (OKX_*, KRAKEN_*,
+# OLLAMA_MODELS, HANDEL_RISIKO ...) in ihrer Umgebung. Eine Whitelist wie die
+# hier entfernte (PATH/PYTHONPATH/HOME/...) liess sie ohne Schluessel starten -
+# der betriebsbrechende Fehler des Refactors vom 19.09.2026. _env_sicher()
+# reicht die volle Umgebung durch und setzt nur HANDEL_RISIKO explizit.
+
+
 def jetzt():
     return dt.datetime.now()
 
 
 def protokoll(text):
+    """Logg mit Rotation bei 1 MB. Rotation-Check nur alle N Aufrufe."""
+    global _LOG_ROTATION_COUNTER
     zeile = "%s  %s" % (jetzt().strftime("%d.%m. %H:%M:%S"), text)
     print(zeile, flush=True)
     try:
@@ -342,19 +357,67 @@ def protokoll(text):
         # einer Datei liessen sich nicht mehr auseinanderhalten, und die
         # Systempruefung liest genau diese Datei auf "ENDE FEHLER".
         pfad = risikostufe.datei(os.path.join(HIER, "dauerlauf.log"))
-        # Groessen-Rotation: ueber 1 MB wird die Datei zu <name>.1 umbenannt
-        # (Befund 17.09.2026: dauerlauf.log wuchs unbegrenzt, 508 KB). Die
-        # Systempruefung liest nur die aktive Datei, die alte bleibt als .1
-        # liegen, bis der naechste Umlauf sie ueberschreibt.
-        try:
-            if os.path.getsize(pfad) > 1_000_000:
-                os.replace(pfad, pfad + ".1")
-        except OSError:
-            pass
+        
+        # Rotation-Check nur jeden Nth Aufruf, nicht bei JEDEM write
+        _LOG_ROTATION_COUNTER = (_LOG_ROTATION_COUNTER + 1) % _LOG_ROTATION_CHECK_INTERVAL
+        if _LOG_ROTATION_COUNTER == 0:
+            if os.path.exists(pfad) and os.path.getsize(pfad) > 1_000_000:
+                # Entferne alte Rotation, benenne aktiv -> .1
+                try:
+                    if os.path.exists(pfad + ".1"):
+                        os.remove(pfad + ".1")
+                    os.replace(pfad, pfad + ".1")
+                    print("LOG ROTATION: %s -> %s.1" % (pfad, pfad), file=sys.stderr)
+                except OSError as e:
+                    print("LOG ROTATION ERROR: %s" % e, file=sys.stderr)
+        
         with open(pfad, "a", encoding="utf-8") as f:
             f.write(zeile + "\n")
-    except OSError:
-        pass
+    except OSError as e:
+        # Don't silently ignore -- signal disk problem
+        print("LOG WRITE ERROR: %s (Disk full?)" % e, file=sys.stderr)
+
+
+def _lade_wachen_sicher(pfad):
+    """Lade wachen.json mit Fehlerbehandlung und Struktur-Validierung.
+    
+    Rueckgabe: dict oder None. Fehler werden protokolliert.
+    """
+    try:
+        if not os.path.exists(pfad):
+            protokoll("wachen.json fehlt: %s" % pfad)
+            return None
+        if os.path.getsize(pfad) == 0:
+            protokoll("wachen.json leer: %s" % pfad)
+            return None
+        with open(pfad, encoding="utf-8", errors="replace") as f:
+            w = json.load(f)
+        # Validierung: muss ein dict sein
+        if not isinstance(w, dict):
+            protokoll("wachen.json ist kein dict: %s (Typ: %s)" % (pfad, type(w).__name__))
+            return None
+        return w
+    except json.JSONDecodeError as e:
+        protokoll("wachen.json ungueltig (JSON): %s -- %s" % (pfad, e))
+        return None
+    except (OSError, ValueError) as e:
+        protokoll("wachen.json Lesefehler: %s -- %s" % (pfad, e))
+        return None
+
+
+def _env_sicher():
+    """Umgebung fuer Subprozesse: die volle Umgebung, plus HANDEL_RISIKO.
+
+    Die Spuren sind eigener, vertrauenswuerdiger Code und lesen ihre
+    API-Schluessel (OKX_*, KRAKEN_*, OLLAMA_MODELS ...) aus der Umgebung.
+    Eine Whitelist wuerde sie ohne Schluessel starten lassen - das war der
+    betriebsbrechende Fehler des Refactors vom 19.09.2026. Kein Leak: die
+    Spuren sind die legitimen Empfaenger dieser Werte.
+    """
+    umgebung = dict(os.environ)
+    # HANDEL_RISIKO explizit setzen, nicht erben
+    umgebung["HANDEL_RISIKO"] = risikostufe.stufe()
+    return umgebung
 
 
 class Lauf:
@@ -389,7 +452,10 @@ class Lauf:
     # --- die Spuren -----------------------------------------------------
 
     def zyklus_spur(self, spur):
-        """Ein Zyklus einer Spur. Papier, ausser das Fenster ist offen."""
+        """Ein Zyklus einer Spur. Papier, ausser das Fenster ist offen.
+        
+        Timeout: 300s (5 min). Subprocess-Fehler sind nicht mehr fatal.
+        """
         f = freigabefenster.lade(spur)
         # Eine Risikostufe geht NIE live, auch bei offenem Fenster: ihre
         # groesseren Betraege sind zum MESSEN da, nicht zum Handeln, und ihr
@@ -408,19 +474,26 @@ class Lauf:
         # Feld "python" in SPUREN traegt den Interpreter, Vorgabe bleibt
         # der gemeinsame.
         python = SPUREN[spur].get("python", PYTHON)
-        umgebung = dict(os.environ)
-        # Die Stufe ausdruecklich in die Umgebung des Kindes: jede Spur liest
-        # sie beim Laden der Wachen und bildet daraus Faktor und Dateinamen.
-        umgebung["HANDEL_RISIKO"] = self.risiko
+        umgebung = _env_sicher()  # FIXED: sichere Umgebung, nicht alle vars
         if modus == "--papier":
             # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
             # Freigabefenster aus einem laufenden Dienst heraus. Bei --live
             # ist die Freigabe bereits erteilt und die Variable faellt weg.
             umgebung["MAXHIRN_ROUTINE"] = "1"
 
-        p = subprocess.run([python, skript, modus], cwd=ordner,
-                           capture_output=True, text=True, timeout=600,
-                           env=umgebung)
+        try:
+            p = subprocess.run([python, skript, modus], cwd=ordner,
+                               capture_output=True, text=True, timeout=300,
+                               env=umgebung)
+        except subprocess.TimeoutExpired as e:
+            # FIXED: Timeout-Exception nicht mehr fatal
+            protokoll("%s TIMEOUT (exceeded 300s limit)" % spur)
+            return modus, 124, "TIMEOUT: Handelslogik antwortet nicht"
+        except Exception as e:
+            # Andere Subprocess-Fehler (OSError, etc.)
+            protokoll("%s subprocess ERROR: %s" % (spur, e))
+            return modus, 1, str(e)
+        
         return modus, p.returncode, (p.stdout or "") + (p.stderr or "")
 
     def zyklus(self):
@@ -577,11 +650,8 @@ class Lauf:
         gruende = [g.strip() for g in zeile.split(":", 1)[-1].split(";")]
         if len(gruende) != 1 or "Freigabefenster" not in gruende[0]:
             return None
-        try:
-            with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
-                return json.load(f)
-        except (OSError, ValueError):
-            return None
+        # FIXED: sichere JSON-Lade mit Fehlerbehandlung
+        return _lade_wachen_sicher(os.path.join(ordner, "wachen.json"))
 
     def _verbesserer_befehl(self, ja):
         """/ja bzw. /nein fuer einen wartenden Verbesserungsvorschlag.
@@ -834,14 +904,25 @@ class Lauf:
                 protokoll("Telegram: %s" % e)
                 nachrichten = []
                 time.sleep(10)
+            # FIXED: Sende-Fehler blockieren nicht mehr das ganze Queue
             for n in nachrichten:
                 protokoll("Befehl: %s" % n["text"][:60])
+                antwort = None
                 try:
                     antwort = self.befehl(n["text"])
                 except Exception as e:                   # noqa: BLE001
                     antwort = "Der Befehl ist gescheitert: %s" % e
                     protokoll("Befehl gescheitert:\n%s" % traceback.format_exc())
-                self.sende(antwort)
+                
+                # Sende immer, auch wenn fehlgeschlagen
+                if antwort:
+                    try:
+                        self.sende(antwort)
+                    except Exception as e:
+                        # Sende-Fehler: zeiger wird trotzdem vorbeibeweegt
+                        protokoll("Sende fehlgeschlagen (aber zeiger wird vorbeigezogen): %s" % e)
+                else:
+                    protokoll("Warnung: kein Antworttext erzeugt")
         else:
             time.sleep(min(20, self.takt * 60))
 
