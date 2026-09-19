@@ -16,6 +16,10 @@ $ts  = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
 function Log($m) { "$ts $m" | Out-File -FilePath $log -Append -Encoding utf8 }
 
+# Bus-Anbindung: jede Routine meldet Start und Ende (test_anbindung_routinen).
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/nautilus-docker-start'
+
 # 1) Warten, bis der Docker-Daemon erreichbar ist (max. 120 s).
 $bereit = $false
 for ($i = 0; $i -lt 24; $i++) {
@@ -25,6 +29,7 @@ for ($i = 0; $i -lt 24; $i++) {
 }
 if (-not $bereit) {
   Log "Docker-Daemon nach 120 s nicht erreichbar - Container nicht gestartet."
+  Melde-Ende -Marke $marke -Code 0 -Text "Docker-Daemon nach 120 s nicht erreichbar"
   exit 0
 }
 
@@ -45,4 +50,5 @@ if (-not $c) {
 } else {
   Log "Container laeuft bereits: $c"
 }
+Melde-Ende -Marke $marke -Code 0
 exit 0
