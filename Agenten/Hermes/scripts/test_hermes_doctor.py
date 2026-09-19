@@ -57,7 +57,6 @@ class DiagnoseIntegrationTest(unittest.TestCase):
             orig_logs = hd.LOGS
             hd.LOGS = Path(tmp)
             try:
-                rc = hd.main.__wrapped__ if hasattr(hd.main, "__wrapped__") else None
                 # main() liest argparse aus sys.argv - direkt aufrufen mit Test-argv
                 old_argv = sys.argv
                 sys.argv = ["hermes-doctor.py", "--diagnose"]
@@ -99,6 +98,22 @@ class BerichtTest(unittest.TestCase):
         }
         b = hd.bericht(roh, "x")
         self.assertNotIn("Warnungen", b)
+
+
+class AufgabePromptTest(unittest.TestCase):
+    def test_aufgabe_ueberschreibt_repair(self):
+        roh = {"zeitpunkt": "t"}
+        p = hd.claude_prompt(roh, "repair", aufgabe="Zaehle die TODO-Kommentare.")
+        self.assertIn("AUFGABE:", p)
+        self.assertIn("Zaehle die TODO-Kommentare.", p)
+        # die Standard-Reparatur-Anweisung (BEFUNDE) darf NICHT erscheinen
+        self.assertNotIn("BEFUNDE:", p)
+
+    def test_ohne_aufgabe_bleibt_standard(self):
+        roh = {"zeitpunkt": "t"}
+        p = hd.claude_prompt(roh, "repair")
+        self.assertIn("BEFUNDE:", p)
+        self.assertNotIn("AUFGABE:", p)
 
 
 if __name__ == "__main__":

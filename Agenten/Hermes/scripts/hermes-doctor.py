@@ -16,7 +16,8 @@
 #   doctor-context.md als CLAUDE.md hinein und laesst Claude Code dort mit
 #   Edit/Write/Bash(git*)/Bash(pytest*) arbeiten. Der Fix-Branch bleibt zur
 #   Pruefung stehen; das Worktree wird entfernt. Der Live-Checkout bleibt
-#   unberuehrt.
+#   unberuehrt. --aufgabe ueberschreibt die Standard-Reparatur mit einer
+#   eigenen Aufgabe (z.B. harmloser Test: nur zaehlen, kein Code aendern).
 #
 # --report: kompakte Telegram-taugliche Zusammenfassung auf stdout (fuer den
 #   woechentlichen Diagnose-Cron; no_agent liefert stdout verbatim).
@@ -25,6 +26,7 @@
 #   python Agenten/Hermes/scripts/hermes-doctor.py --diagnose
 #   python Agenten/Hermes/scripts/hermes-doctor.py --diagnose --claude
 #   python Agenten/Hermes/scripts/hermes-doctor.py --repair --max-turns 15
+#   python Agenten/Hermes/scripts/hermes-doctor.py --repair --aufgabe "..."
 #   python Agenten/Hermes/scripts/hermes-doctor.py --report
 import argparse
 import json
@@ -145,8 +147,10 @@ def befund_roh_sammeln():
     }
 
 
-def claude_prompt(befund_roh, modus):
-    """Prompt fuer Claude Code. modus='diagnose' -> nur Read; 'repair' -> Edit/Write."""
+def claude_prompt(befund_roh, modus, aufgabe=None):
+    """Prompt fuer Claude Code. modus='diagnose' -> nur Read; 'repair' -> Edit/Write.
+    aufgabe (nur repair): ueberschreibt die Standard-Reparatur-Anweisung mit
+    einer eigenen Aufgabe (z.B. harmloser Test: nur zaehlen, kein Code aendern)."""
     kontext = CONTEXT.read_text(encoding="utf-8") if CONTEXT.exists() else ""
     if modus == "diagnose":
         return (
@@ -160,6 +164,17 @@ def claude_prompt(befund_roh, modus):
             "{schwere, bereich, beschreibung, ursache, empfohlener_fix}), "
             "aenderungen (leer), tests (leer), verbote_verletzt (leer)."
             % (json.dumps(befund_roh, ensure_ascii=False, indent=2), kontext)
+        )
+    if aufgabe:
+        return (
+            "Du bist der Hermes-Doctor im Reparaturmodus. Du arbeitest in einem "
+            "git-worktree des Hermes-Checkouts.\n\n"
+            "AUFGABE:\n%s\n\n"
+            "ARBEITSREGELN:\n%s\n\n"
+            "Schreibe am Ende befund.json in das Worktree-Wurzelverzeichnis mit "
+            "den Feldern: befunde, aenderungen (Liste geaenderter Dateien), "
+            "tests (Liste ausgefuehrter Tests), verbote_verletzt."
+            % (aufgabe, kontext)
         )
     return (
         "Du bist der Hermes-Doctor im Reparaturmodus. Du arbeitest in einem "
@@ -176,15 +191,17 @@ def claude_prompt(befund_roh, modus):
     )
 
 
-def claude_ausfuehren(prompt, modus, max_turns):
+def claude_ausfuehren(prompt, modus, max_turns, cwd=None):
     """claude -p aufrufen; gibt (rc, text) zurueck. Der Prompt wird per stdin
-    gepipt (Windows-Befehlszeilenlimit ~32k Zeichen), nicht als Argument."""
+    gepipt (Windows-Befehlszeilenlimit ~32k Zeichen), nicht als Argument.
+    cwd: Arbeitsverzeichnis fuer claude - im repair-Modus das WORKTREE
+    (doc_dir), NICHT der Live-Checkout - sonst waere die Isolation aufgehoben."""
     allowed = "Read" if modus == "diagnose" else "Read,Edit,Write,Bash(git*),Bash(pytest*)"
     cmd = [CLAUDE, "-p", "Analysiere den stdin-Inhalt und antworte wie gefordert.",
            "--allowedTools", allowed, "--max-turns", str(max_turns),
            "--output-format", "json"]
     try:
-        r = subprocess.run(cmd, cwd=str(CHECKOUT), input=prompt,
+        r = subprocess.run(cmd, cwd=cwd or str(CHECKOUT), input=prompt,
                            capture_output=True, text=True, timeout=600,
                            env=saubere_umgebung())
         return r.returncode, (r.stdout or r.stderr or "")
@@ -226,8 +243,9 @@ def schreibe_befund(befund, modus):
     return ziel
 
 
-def repair_worktree(befund_roh, max_turns):
-    """Reparatur in einem git-worktree. Gibt (befund, fix_branch) zurueck."""
+def repair_worktree(befund_roh, max_turns, aufgabe=None):
+    """Reparatur in einem git-worktree. Gibt (befund, fix_branch) zurueck.
+    aufgabe: eigene (z.B. harmlose) Aufgabe statt der Standard-Reparatur."""
     stamp = time.strftime("%Y%m%d-%H%M%S")
     doc_dir = WORKTREES / stamp
     branch = "doctor-fix-%s" % stamp
@@ -240,8 +258,8 @@ def repair_worktree(befund_roh, max_turns):
         if CONTEXT.exists():
             (doc_dir / "CLAUDE.md").write_text(CONTEXT.read_text(encoding="utf-8"),
                                                encoding="utf-8")
-        prompt = claude_prompt(befund_roh, "repair")
-        rc, text = claude_ausfuehren(prompt, "repair", max_turns)
+        prompt = claude_prompt(befund_roh, "repair", aufgabe=aufgabe)
+        rc, text = claude_ausfuehren(prompt, "repair", max_turns, cwd=str(doc_dir))
         befund = {"claude_rc": rc, "claude_ausgabe": parse_claude_json(text)}
         bf = doc_dir / "befund.json"
         if bf.exists():
@@ -290,6 +308,9 @@ def main():
                     help="claude -p --max-turns (Kosten-/Laufzeit-Deckel)")
     ap.add_argument("--report", action="store_true",
                     help="kompakte Zusammenfassung auf stdout (fuer Cron-Lieferung)")
+    ap.add_argument("--aufgabe", default=None,
+                    help="eigene Aufgabe fuer --repair statt der Standard-Reparatur "
+                         "(z.B. harmloser Test: nur zaehlen, kein Code aendern)")
     args = ap.parse_args()
 
     if args.repair:
@@ -298,7 +319,8 @@ def main():
     befund_roh = befund_roh_sammeln()
 
     if args.repair:
-        befund, branch = repair_worktree(befund_roh, args.max_turns)
+        befund, branch = repair_worktree(befund_roh, args.max_turns,
+                                         aufgabe=args.aufgabe)
         befund["modus"] = "repair"
         befund["fix_branch"] = branch
         befund["roh"] = befund_roh
