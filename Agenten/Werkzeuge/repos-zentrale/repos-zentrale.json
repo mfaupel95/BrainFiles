@@ -201,6 +201,13 @@
       "bot": "winget-cli",
       "notiz": "nur Dokumentation und Skills",
       "gruppe": "doku"
+    },
+    {
+      "ordner": "agent-trade-kit",
+      "art": "doku",
+      "bot": "agent-trade-kit",
+      "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)",
+      "gruppe": "doku"
     }
   ]
 }

@@ -33,15 +33,16 @@ Der Aufruf entfernt PYTHONHOME/PYTHONPATH aus der Umgebung (Falle: hermes.exe
 aus einer MCP-Brueckensitzung) und setzt HERMES_HOME explizit, damit er nicht
 vom Arbeitsverzeichnis des SkillsBot abhaengt.
 
-## Flottenstand (Stand 16.09.2026)
+## Flottenstand (Stand 19.09.2026)
 
-26 Repo-Bots + das besondere Profil `nous` (kein Repo, deepseek-v4-flash-free).
+27 Repo-Bots + das besondere Profil `nous` (kein Repo, deepseek-v4-flash-free).
 Standgemessen mit `git ls-files Agenten/Hermes/profiles/` gegen
 `ls Werkstatt/Repos/`.
 
 | Repo (Werkstatt/Repos) | Bot | Besonderheit |
 |---|---|---|
 | Agent-Reach | agent-reach | Internet lesen ohne API-Gebuehren |
+| agent-trade-kit | agent-trade-kit | OKX Trading-MCP-Server, neu 19.09.2026 |
 | basic-memory | basic-memory | Wissensspeicher, Repo warten |
 | caveman | caveman | token-sparende Agenten-Kommunikation |
 | claude-code | claude-code | Claude Code CLI |
