@@ -402,7 +402,30 @@ def in_abklingzeit(basis, z, w):
     return d < w.get("abklingzeit_tage", 3)
 
 
+def papier_w(w, live):
+    """Papier-Vergroesserung: skaliert die Sizing-Werte NUR im Papierlauf.
+
+    `papier_faktor` (wachen.json, hier 4.0) vergroessert die Positionsgroesse
+    im Papier, damit die Freigabe-Kriterien (netto_positiv, groesster
+    Ruecklauf) aussagekraeftigere Werte liefern. Live bleibt bei den echten
+    Werten. Die Runden-ZAHL (Bedingung 1, 50 Runden) aendert das nicht - ein
+    Zaehler, keine Groesse.
+    """
+    if live:
+        return w
+    pf = w.get("papier_faktor", 1.0)
+    if pf == 1.0:
+        return w
+    w2 = dict(w)
+    for k in ("risiko_je_anlauf_usd", "max_margin_je_anlauf_usd",
+              "max_margin_gesamt_usd"):
+        if k in w2:
+            w2[k] = w2[k] * pf
+    return w2
+
+
 def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
+    w = papier_w(w, live)
     offen = {p["basis"] for p in z["positionen"]}
     margin_gebunden = sum(p["margin"] for p in z["positionen"])
     fam_stand = wx.familien_belegung(z["positionen"], w)

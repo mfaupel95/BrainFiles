@@ -14,6 +14,8 @@
 
   "_max_gesamt_usd": "Gebundenes Kapital ueber alle offenen Positionen. Am 15.09.2026 von 400 auf 1000 gehoben (Max). Wirkung: bis dahin band das Geld vor den Plaetzen - bei 400 USD passten je nach Stop-Weite nur 3,3 bis 5,8 Positionen, gemessen 4. Ab 1000 bindet dieser Wert NICHT mehr: das groesste ueberhaupt moegliche Buch ist max_offene_positionen x (risiko_je_position_usd / pflicht_stop_prozent_min) = 6 x 120 = 720 USD. Der Engpass ist ab jetzt max_offene_positionen (6), nicht das Kapital. Die 280 USD Luft ueber 720 decken keine Regel ab - sie sind Vorrat fuer eine spaetere Erhoehung von max_offene_positionen oder risiko_je_position_usd. Gesamtrisiko bleibt gedeckelt: 6 Positionen x 6 USD = 36 USD, wenn ALLE Stops gleichzeitig reissen.",
   "max_gesamt_usd": 1000,
+  "_budget_usd": "Tatsaechlich verfuegbares Handelskapital der Spur (Max, 19.09.2026): 80 USD total. max_gesamt_usd (1000) ist die Obergrenze des Buches, budget_usd das, was wirklich eingesetzt ist. Anzeige im /bericht.",
+  "budget_usd": 80,
   "max_offene_positionen": 6,
 
   "pflicht_stop_prozent_min": 5.0,

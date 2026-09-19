@@ -331,6 +331,54 @@ def _block(s, d):
     return "\n".join(t)
 
 
+def guthaben_zeile():
+    """scanner-Guthaben fuer den Bericht: Budget + verfuegbares Guthaben.
+
+    Budget kommt aus `scanner/wachen.json` (`budget_usd`, Max 19.09.2026:
+    80 USD total). Verfuegbar liest den Lese-Schluessel der Spur 1
+    (scanner/okx, OKX_LIVE_*) - availBal, Rueckfall totalEq. Ein
+    Guthaben-Ausfall darf den Bericht nie fallen lassen: 'nicht lesbar'.
+    """
+    budget = None
+    try:
+        import json                                            # noqa: PLC0415
+        with open(os.path.join(HIER, "scanner", "wachen.json"),
+                  "r", encoding="utf-8") as f:
+            budget = json.load(f).get("budget_usd")
+    except Exception:                                          # noqa: BLE001
+        budget = None
+    try:
+        import okx                                             # noqa: PLC0415
+        teile = []
+        for ccy in ("USDT", "USDC"):
+            try:
+                d = okx._mit_wiederholung(
+                    "/api/v5/account/balance?ccy=" + ccy, signiert=True)
+            except Exception:                                   # noqa: BLE001
+                teile.append("%s n/A" % ccy)
+                continue
+            first = (d or [{}])[0] or {}
+            verfuegbar = 0.0
+            details = first.get("details") or []
+            if details:
+                for e in details:
+                    try:
+                        verfuegbar += float(e.get("availBal") or 0.0)
+                    except (TypeError, ValueError):
+                        pass
+            else:
+                try:
+                    verfuegbar = float(first.get("totalEq") or 0.0)
+                except (TypeError, ValueError):
+                    pass
+            teile.append("%s %.2f" % (ccy, verfuegbar))
+    except Exception as e:                                      # noqa: BLE001
+        return "Guthaben (scanner): nicht lesbar: %s" % str(e)[:80]
+    budget_text = ("Budget $%s" % budget) if budget is not None else "Budget n/A"
+    return "Guthaben (scanner): %s | verfuegbar %s" % (
+        budget_text, "  ".join(teile))
+
+
 def baue(mit_xperp=True):
     """Der ganze Bericht als Text. Kein Netz noetig fuer den Rahmen.
 
@@ -407,6 +455,10 @@ def _baue(mit_xperp=True):
     stufe = stufenzeile()
     if stufe:
         t.append(stufe)
+    try:
+        t.append(guthaben_zeile())
+    except Exception:                                  # noqa: BLE001
+        pass
     t.append("\n%d offene Position(en) insgesamt." % gesamt_offen)
     if not melder.bereit():
         t.append("Melder nicht eingerichtet: %s fehlt." % melder.fehlt())
