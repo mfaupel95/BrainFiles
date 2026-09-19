@@ -2130,7 +2130,7 @@ _config_version: 45
 a2a_agents:
   omniroute:
     auth:
-      token: ${HERMES_CUSTOM_127_0_0_1_20128_API_KEY}
+      token: ${OMNIROUTE_API_KEY}
       type: bearer
     capabilities:
       - smart-routing
@@ -2150,8 +2150,14 @@ a2a_agents:
       - terminal
       - memory
       - skills
+    auth:
+      type: bearer
+      token: ${HERMES_A2A_TOKEN}
   '8741749061':
     url: http://127.0.0.1:9900/
+    auth:
+      type: bearer
+      token: ${HERMES_A2A_TOKEN}
 custom_providers:
   - base_url: http://127.0.0.1:20128/v1
     key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
