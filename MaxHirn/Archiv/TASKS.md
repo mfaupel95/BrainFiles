@@ -61,7 +61,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 - [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
-      **Erledigt 2026-09-13.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
+      **Erledigt 2026-09-19.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
       3,2 GB → 66,1 GB). Die 21,1 GB `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` liegen
       unter `O:\Modelle\GGUF\`; das 0,84 GB große mmproj wurde nach
       `O:\Modelle\hermes\assets\` verschoben, und
@@ -79,7 +79,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       liest derzeit niemand diesen Ordner. Vor dem Einschalten muss entschieden
       werden, wohin die Gewichte gehören — sonst landen 20 GB wieder auf `C:`
       oder in der Sicherung.
-      Zuletzt: 2026-09-13
+      Zuletzt: 2026-09-19
       --- ursprünglicher Befund vom 08.09.2026 ---
       Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
       `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
@@ -114,7 +114,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Modelle/.onchainos` → `Archiv/OnChainOS_Backup_20260908/`
       Angelegt: 2026-08-30 · Zuletzt: 2026-09-08
 
-- [ ] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird**
+- [x] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** `Werkstatt/Protokolle/Codex` (78 Dateien) nach
+      `O:\Archiv\Protokolle\Codex` verschoben — liegt jetzt in der über
+      `sichern.ps1` geschützten Archivmenge. `Werkstatt/Sitzungen/m3u_cleaner`
+      wurde **nicht** überschrieben: `O:\Archiv\Software\m3u_cleaner` existiert
+      bereits (229 Dateien, neueste `.py` in beiden Kopien identisch), die
+      m3u_cleaner-Arbeit ist damit schon im gesicherten Archiv. Die
+      Werkstatt-Kopie (335 MB) bleibt als redundante Fassung stehen;
+      Kollisionsschutz hatte den Umzug verhindert. Kein Eingriff in
+      `sichern.ps1`. Hinweis: eine parallele Sitzung reorganisiert gerade
+      `O:\Archiv\Software\m3u_cleaner`.
       Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
       ist aus beiden Sicherungen ausgenommen — richtig für geklonte Fremd-Repos
       und Sitzungsreste, falsch für das, was tatsächlich dort liegt:
@@ -815,8 +825,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Geplante Aufgaben stehen alle (State Ready): `MaxHirn-Handel-Dauerlauf`
       (+ `-Waechter`), `MaxHirn-Handel-Wachen`, `MaxHirn-Verbesserer`.
 
-- [x] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt** — erledigt 2026-09-13
-      **Erledigt 2026-09-13.** Tabelle auf 3,6× (SOL), 4,1× (HYPE), 1,7×
+- [x] **T-039 — Hebel-Deckel-Tabelle in [[XPERP-Handel]] ist überholt** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** Tabelle auf 3,6× (SOL), 4,1× (HYPE), 1,7×
       (ZEC) ersetzt, die Aussage „alle Tore bestanden" für die drei
       zurückgenommen, und der Messfehler als Falle danebengeschrieben
       (Deckel auf **Tageskerzen** rechnen — das 300-Kerzen-Fenster des
