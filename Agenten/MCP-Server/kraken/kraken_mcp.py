@@ -33,6 +33,14 @@ import urllib.parse
 import httpx
 from mcp.server.mcpserver import MCPServer
 
+# Gemeinsamer Kraken-nonce-Pool mit dem Handel-Dauerlauf: derselbe
+# KRAKEN_API_KEY, deshalb dieselbe monotone nonce-Quelle (sonst ueberholt
+# ein Prozess den anderen und Kraken antwortet "EAPI:Invalid nonce").
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "Handel", "kraken"))
+from nonce_pool import monotone_nonce as _monotone_nonce
+
 # stdout gehoert dem JSON-RPC-Protokoll. Jede Ausgabe dorthin zerstoert die
 # Verbindung, und der Fehler sieht aus wie ein Verbindungsabbruch - deshalb
 # gehen Diagnosemeldungen ausschliesslich nach stderr.
@@ -111,9 +119,12 @@ def _oeffentlich(methode: str, **parameter) -> dict:
 def _privat(methode: str, **parameter) -> dict:
     schluessel, geheim = _zugangsdaten()
     pfad = f"/0/private/{methode}"
-    # Kraken verlangt streng monotone Nonces je Schluessel. Mikrosekunden
-    # reichen dafuer auch bei schnell aufeinanderfolgenden Aufrufen.
-    daten = {"nonce": str(int(time.time() * 1_000_000)), **{
+    # Kraken verlangt streng monotone Nonces je Schluessel. Der Dauerlauf
+    # (Handel/kraken.py) und dieser MCP-Server teilen denselben
+    # KRAKEN_API_KEY - jeder erhebt die nonce deshalb ueber den gemeinsamen
+    # nonce_pool (spezierende Datei), sonst antwortet Kraken
+    # "EAPI:Invalid nonce" (gemessen 2026-09-19).
+    daten = {"nonce": str(_monotone_nonce()), **{
         k: v for k, v in parameter.items() if v is not None
     }}
     kopf = {

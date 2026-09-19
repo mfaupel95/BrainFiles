@@ -35,6 +35,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# Gemeinsamer nonce-Pool mit dem Kraken-MCP-Server (siehe Modul-Docstring).
+try:
+    from nonce_pool import monotone_nonce as _monotone_nonce
+except ImportError:                                   # pragma: no cover
+    # Fallback, falls der Ordner nicht im sys.path liegt: gleicher Ordner.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from nonce_pool import monotone_nonce as _monotone_nonce
+
 BASIS = "https://api.kraken.com"
 HEADERS = {"User-Agent": "MaxHirn-Handel/1.0"}
 MAX_FEHLER = 6
@@ -97,7 +105,7 @@ def _roh_privat(methode, **parameter):
         raise RuntimeError("KRAKEN_API_KEY / KRAKEN_API_SECRET fehlen")
 
     pfad = "/0/private/%s" % methode
-    daten = {"nonce": str(int(time.time() * 1_000_000))}
+    daten = {"nonce": str(_monotone_nonce())}
     daten.update({k: v for k, v in parameter.items() if v is not None})
     formular = urllib.parse.urlencode(daten)
 
