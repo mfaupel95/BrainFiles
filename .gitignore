@@ -638,6 +638,17 @@ Agenten/Handel/moondev_liquidation/handelsjournal.csv
 Agenten/Handel/moondev_sentiment/zustand.json
 Agenten/Handel/moondev_sentiment/handelsjournal.csv
 
+# MOONDEV_SNIPER (19.09.2026): neue Solana-Launches (Pump.fun), eigener
+# Ordner, Code/Wachen/README/Tests frei, Zustand und Journal gesperrt.
+!Agenten/Handel/moondev_sniper/*.py
+!Agenten/Handel/moondev_sniper/*.md
+# Nur die Wachen sind Konfiguration von Hand - zustand.json und
+# zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
+!Agenten/Handel/moondev_sniper/wachen.json
+!Agenten/Handel/moondev_sniper/tests/*.py
+Agenten/Handel/moondev_sniper/zustand.json
+Agenten/Handel/moondev_sniper/handelsjournal.csv
+
 # Handkopien. Sie waren der Ersatz fuer fehlende Versionsverwaltung - ab jetzt
 # macht Git das. Die vorhandenen bleiben liegen, neue braucht es nicht mehr.
 *.bak-*

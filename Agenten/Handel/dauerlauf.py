@@ -294,6 +294,14 @@ SPUREN = {
                             "skript": "handeln.py"},
     "moondev_sentiment": {"ordner": "moondev_sentiment", "waehrung": "USD",
                           "skript": "handeln.py"},
+    # MOONDEV_SNIPER (19.09.2026): neue Solana-Token-Launches von Pump.fun als
+    # Papierbuch. Der Bot-Agent `sniper_agent` ist ein Anzeige-Scanner ohne
+    # eigenes Urteil - die Regel liegt im Haus (jung, nicht gesperrt, Marktwert
+    # im Band). Quelle ueber die oeffentliche Pump.fun-API
+    # (Handel/moondev_daten.py), Buch in Handel/spur_buch.py. Kein
+    # Sprachmodell, kein Wallet, kein Live.
+    "moondev_sniper": {"ordner": "moondev_sniper", "waehrung": "USD",
+                       "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

@@ -65,7 +65,10 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               "iv_waelle",
               # Die drei Sprachmodell-Spuren (17.09.2026) fuehren dasselbe
               # Journal (kauf/verkauf mit einsatz_usd) - derselbe Rechenweg.
-              "moondev_whale", "moondev_liquidation", "moondev_sentiment")
+              "moondev_whale", "moondev_liquidation", "moondev_sentiment",
+              # MOONDEV_SNIPER (19.09.2026): neue Solana-Launches, dasselbe
+              # Journal - derselbe Weg.
+              "moondev_sniper")
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 

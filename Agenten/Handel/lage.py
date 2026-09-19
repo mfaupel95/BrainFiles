@@ -646,6 +646,15 @@ def spur_moondev_sentiment():
     return _spur_indikator("moondev_sentiment", "Schlagzeilen (LLM-Urteil)")
 
 
+def spur_moondev_sniper():
+    """Moon-Dev-Sniper-Spur: neue Solana-Launches (Pump.fun) als Papierbuch.
+
+    Dieselbe Journalform wie die Bot-Spuren (kauf/verkauf mit einsatz_usd) -
+    derselbe Leser.
+    """
+    return _spur_indikator("moondev_sniper", "Moon-Dev Sniper")
+
+
 def spur_mosaic():
     """Mosaic-Spur: Mehr-Zeitrahmen-Preisaktion (4H/30M/5M), USD.
 
@@ -1021,6 +1030,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
+    spur_moondev_sniper,
     # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): dieselbe
     # Signalquelle wie spiegel, andere Stop/Trailing-Parameter. Eigene
     # Holer, damit der Bericht sie neben dem Hauptbuch zeigt.

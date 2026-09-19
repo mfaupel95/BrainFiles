@@ -1018,3 +1018,46 @@ stillschweigend drosselt, waere schlimmer als keiner. Einschalten ist ein Feld
 - Paarung Kauf/Verkauf, Zeitfenster, alle vier Grenzen, Buchdeckel, Schalter
 aus) plus der Einbau im Buch; die fuenf Spuren 48 Tests, Handel-Suite 83 Tests,
 alle gruen.
+
+## Moon-Dev-Sniper: neue Solana-Launches als Papierbuch (19.09.2026)
+
+**Spur `moondev_sniper`** (`Agenten/Handel/moondev_sniper/`) - die Gruppe-C-Spur
+aus `Moon-Dev-Agenten.md`: der Fremd-Agent `sniper_agent` scannt neue
+Solana-Token-Launches und zeigt sie an (kein eigenes Kaufurteil). Die
+Haus-Regel ist deterministisch und nachrechenbar, kein Sprachmodell, kein
+Live-Zweig.
+
+**Quelle** (oeffentlich, kein Schluessel):
+- `frontend-api-v3.pump.fun/coins?sort=created_timestamp&order=DESC` - die
+  neuesten Launches mit Alter, Marktwert und Liquiditaet.
+- `swap-api.pump.fun/v2/coins/<mint>/trades?limit=1` - der letzte gehandelte
+  Preis (`priceUsd`).
+
+**Regel:** Ein neuer Launch wird **long** gekauft, wenn er jung ist
+(`max_alter_minuten`, Vorgabe 60), nicht gebannt/nsfw, Marktwert im Band
+(`marktkap_band_usd`, Vorgabe 200-100k USD) und einen Preis hat. Stop/Ziel
+ueber `spur_buch` (Vorgabe 8 % Stop, 1.5R Ziel), Buch ueber `spur_buch.py`.
+
+**Verdrahtet:** `dauerlauf.SPUREN`, `auswertung_alle.BOT_SPUREN`,
+`pruefe_ratschen` (Ratsche 1.0x Buchrisiko), `befehle.FAMILIE`
+(Bot-Signal), `lage.HOLER` (28.), Bus-Anbindung, Spiegelung nach
+`Q:\Handel_Journal\moondev_sniper`. Tests 13, Handel-Suite 402, Bus-Suite
+gruen, spiegelstand 28/28 byte-gleich.
+
+**Zwei ehrliche Befunde (19.09.2026):**
+- **Slippage ist real.** Der Preis kommt vom letzten Swap-Trade. Bei frischen
+  Launches mit duenner Liquiditaet rutscht der Kurs zwischen zwei Zyklen
+  durch den Stop - der 8-%-Stop wird mit deutlich groesserem Verlust
+  ausgefuehrt (gemessen: -37.59 USD bei 62.50 Nominal). Kein Bug, sondern die
+  Memecoin-Realitaet.
+- **Rate-Limit.** swap-api.pump.fun deckelt hart (HTTP 429). Nur die
+  `max_offene_positionen` juengsten Kandidaten bekommen einen Preis, nicht
+  alle 40 - sonst reisst der Deckel und die Spur liefert nichts.
+
+**Journal-Praezision:** `spur_buch.pformat()` formatiert Preise mit genug
+Nachkommastellen, dass Einstieg und Stop unterscheidbar bleiben. `%.6f`
+reichte fuer BTC (60000.000000), nicht aber fuer die Mini-Preise der
+Sniper-Spur (~1e-6): dort stuerzten Einstieg und Stop beim Runden auf
+denselben String zusammen und die Auswertung haette G/V = 0 gelesen. Grosse
+Kurse bleiben 6 Stellen (bestehende Spuren unveraendert), kleine bekommen
+mehr.

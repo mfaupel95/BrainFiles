@@ -404,7 +404,7 @@ class BuchSpurenTest(unittest.TestCase):
 
     SPUREN = ("moondev_listingarb", "moondev_topmovers", "moondev_marktlage",
               "iv_wand", "moondev_whale", "moondev_liquidation",
-              "moondev_sentiment")
+              "moondev_sentiment", "moondev_sniper")
 
     def setUp(self):
         self.alt = os.environ.get("HANDEL_RISIKO")

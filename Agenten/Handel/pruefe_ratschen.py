@@ -58,6 +58,7 @@ SPUREN = [
     ("moondev_whale", "moondev_whale", "scanner", "wachen_pruefung"),
     ("moondev_liquidation", "moondev_liquidation", "scanner", "wachen_pruefung"),
     ("moondev_sentiment", "moondev_sentiment", "scanner", "wachen_pruefung"),
+    ("moondev_sniper", "moondev_sniper", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

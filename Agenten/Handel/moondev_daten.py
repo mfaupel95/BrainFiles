@@ -24,6 +24,7 @@ Nur Standardbibliothek (urllib): die Spuren laufen im gemeinsamen venv, und
 """
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -193,6 +194,68 @@ def zahl(wert):
         return float(wert)
     except (TypeError, ValueError):
         return None
+
+
+# --- Pump.fun: neue Solana-Token-Launches --------------------------------
+# Der Bot-Agent `sniper_agent` scannt neue Solana-Launches und zeigt sie an -
+# aber seine Quelle ist `http://api.moondev.com:8000/files/new_token_addresses.csv`
+# (der tote Eigen-Server des Autors). Hier kommt derselbe Inhalt ueber die
+# oeffentliche Pump.fun-API: der Endpunkt `/coins?sort=created_timestamp`
+# liefert die neuesten Launches mit Alter, Marktwert und Liquiditaet - alles
+# ohne Schluessel und nur Standardbibliothek.
+PUMPFUN = "https://frontend-api-v3.pump.fun"
+PUMP_SWAP = "https://swap-api.pump.fun"
+KOPF_PUMP = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+
+def pump_neue_token(grenze=30, zeitgrenze=ZEITGRENZE):
+    """Die neuesten Solana-Launches: [{mint, symbol, ...}, ...], neueste zuerst.
+
+    Spalten je Token: mint, symbol, name, created_timestamp (ms UTC),
+    real_sol_reserves (SOL in der Bonding-Curve = Liquiditaet), market_cap_usd,
+    is_banned, nsfw, verified, complete, total_supply. Fehler werden geworfen,
+    nie ueberdeckt.
+    """
+    url = "%s/coins?offset=0&limit=%d&sort=created_timestamp&order=DESC" % (
+        PUMPFUN, max(1, min(100, int(grenze))))
+    anfrage = urllib.request.Request(url, headers=KOPF_PUMP)
+    with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
+        daten = json.loads(antwort.read().decode("utf-8", "replace"))
+    aus = daten if isinstance(daten, list) else daten.get("coins") or []
+    return aus
+
+
+def pump_letzter_preis(mint, zeitgrenze=ZEITGRENZE):
+    """Letzter gehandelter Preis eines Tokens (USD) oder None.
+
+    Nutzt den letzten Swap-Trade (`priceUsd`) - das ist der wahre gehandelte
+    Preis, kein aus Reserven abgeleiteter. Der Marktwert laesst sich nicht
+    in einen Preis rechnen (die total_supply stimmt nicht mit der gehandelten
+    Menge eines Paars ueberein - Faktor 10^6 Diskrepanz, gemessen 19.09.).
+
+    Rate-Limit-Falle: swap-api.pump.fun antwortet bei zu vielen Abrufen mit
+    HTTP 429. Ein 429 ist kein dauerhafter Fehler, sondern eine Bitte zu
+    warten - deshalb einmal kurz warten und erneut versuchen. Bleibt es bei
+    429 (harter Deckel), wird None zurueckgegeben und die Spur bucht in
+    diesem Zyklus nichts - nie einen geratenen Preis.
+    """
+    url = "%s/v2/coins/%s/trades?limit=1&program=pump" % (PUMP_SWAP, mint)
+    for versuch in (1, 2):
+        anfrage = urllib.request.Request(url, headers=KOPF_PUMP)
+        try:
+            with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
+                daten = json.loads(antwort.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and versuch == 1:
+                time.sleep(1.0)
+                continue
+            return None
+        for t in daten.get("trades") or []:
+            p = zahl(t.get("priceUsd"))
+            if p:
+                return p
+        return None
+    return None
 
 
 # --- Schlagzeilen aus oeffentlichen RSS-Feeds ------------------------------

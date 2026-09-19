@@ -106,6 +106,10 @@ FAMILIE = {
     "moondev_whale": "Bot-Signal (LLM)",
     "moondev_liquidation": "Bot-Signal (LLM)",
     "moondev_sentiment": "Bot-Signal (LLM)",
+    # MOONDEV_SNIPER (19.09.2026): neue Solana-Launches, deterministische
+    # Haus-Regel - dieselbe Familie wie die anderen deterministischen
+    # Moon-Dev-Bot-Spuren.
+    "moondev_sniper": "Bot-Signal",
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")

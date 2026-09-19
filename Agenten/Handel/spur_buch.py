@@ -54,6 +54,25 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
 
 SCHREIBEN = True
 
+
+def pformat(x):
+    """Ein Preis ins Journal - mit genug Nachkommastellen, dass Einstieg und
+    Stop unterscheidbar bleiben.
+
+    `%.6f` reicht fuer BTC (60000.000000) nicht aber fuer die Mini-Preise der
+    Sniper-Spur (~1e-6): dort stuerzen Einstieg und Stop beim Runden auf
+    denselben String zusammen und die Auswertung liest G/V = 0. Die Zahl
+    bestimmt die Nachkommastellen selbst: grosse Kurse bleiben 6 Stellen
+    (unveraendert fuer die bestehenden Spuren), kleine bekommen mehr.
+    """
+    x = float(x or 0.0)
+    ax = abs(x)
+    if ax >= 1.0:
+        return "%.6f" % x
+    if ax >= 1e-6:
+        return "%.8f" % x
+    return "%.12f" % x
+
 # Test-Seams, die jede Spur mitbenutzt: None -> echte Uhr/echte Quelle.
 zeit_quelle = None
 
@@ -214,9 +233,9 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None):
         print("AUSSTIEG (%s) %s %.6f G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
         journal(journal_pfad, zeit=jetzt(), modus="papier", aktion="verkauf",
-                inst=p["inst"], seite=p["seite"], preis="%.6f" % kurs,
+                inst=p["inst"], seite=p["seite"], preis=pformat(kurs),
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
-                stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
+                stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                 stop_pct="%.2f" % p["stop_pct"], grund=grund)
 
     z["positionen"] = behalten
@@ -298,9 +317,9 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
                          p["ziel"], p["nominal"]))
                 journal(journal_pfad, zeit=jetzt(), modus="papier",
                         aktion="kauf", inst=inst, seite=seite,
-                        preis="%.6f" % p["einstieg"],
+                        preis=pformat(p["einstieg"]),
                         einsatz_usd="%.2f" % p["nominal"],
-                        stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
+                        stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                         stop_pct="%.2f" % p["stop_pct"],
                         # Der Grund stand hier fest auf "moondev_bot", obwohl
                         # jede Spur in ihrer wachen.json einen eigenen Namen

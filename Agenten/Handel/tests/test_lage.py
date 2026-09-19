@@ -25,8 +25,8 @@ class FormTest(unittest.TestCase):
         # 25 Spuren + 2 Spiegel-Schattenbuecher (18.09.2026, V1
         # Ausstiegsgeometrie): spiegel_knapp und spiegel_weit teilen die
         # Signalquelle von spiegel, haben aber eigene Holer, damit der
-        # Bericht sie neben dem Hauptbuch zeigt.
-        self.assertEqual(len(lage.HOLER), 27)
+        # Bericht sie neben dem Hauptbuch zeigt. + moondev_sniper (19.09.).
+        self.assertEqual(len(lage.HOLER), 28)
 
 
 class KursVariantenTest(unittest.TestCase):
