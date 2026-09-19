@@ -103,10 +103,11 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if a.modus == "live":
-        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
-              "(Papier). Der Fremd-Agent handelt mit echten Schluesseln - "
-              "dieser Haus-Lauf bucht nur Papier.")
-        return 0
+        # Erster echter Geldpfad: eigener Live-Stamm in live_kraken.py
+        # (Kraken-Spot, Long, kleine Einsatzhöhe, 9-Sperrenkette). Papier
+        # ueber spur_buch bleibt unangetastet. handel_erlaubt=false zentral.
+        import live_kraken  # noqa: E402
+        return live_kraken.lauf("live")
     # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
