@@ -49,6 +49,25 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
 - **PYTHONPATH-Falle**: Einmal gesetzt, bleibt es in der windows-mcp-PowerShell-Sitzung erhalten und vergiftet spaetere Python-Aufrufe (3.13-Lib auf 3.11 -> SRE mismatch). Vor Python-Aufrufen immer `$env:PYTHONPATH=''` setzen.
 - config.yaml nie manuell editieren: `hermes_cli.main config set <key> <wert>`; unbekannte Schluessel warnen, werden aber gespeichert (ok fuer a2a_agents).
 
+## Gateway-Waechter (MaxHirn-Gateway-Waechter, alle 2 min)
+- **FALLE 19.09.2026, zweifach (Commit 3c5e0f6):** Der A2A-Gateway laeuft
+  als `python.exe -m hermes_cli.main gateway run` und BINDET PORT 9900.
+  `python -m tui_gateway.entry` ist das TUI/Desktop-JSON-RPC-Backend
+  (node-/electron-Eltern), lauscht NICHT auf 9900 und ist NICHT der Gateway.
+  Das alte Suchmuster `hermes_cli.main gateway` zu eng -> Waechter startete
+  alle ~16 min neu (--replace-Handoff, A2A-Port ~90 s weg). Der spaetere
+  "Fix" auf den Namen `tui_gateway` zu breit -> er hielt die Desktop-Backends
+  fuer den Gateway; als der echte Gateway ausfiel, meldete der Waechter weiter
+  "laeuft schon" und der Ausfall (~01:49 bis 14:16) blieb UNERKANNT, der
+  SkillsBot scheiterte.
+- RICHTIG (03c5e0f6): Port 9900 ist die ERSTE Wahrheit (offen + Test-
+  NetConnection -> kein Start). Nur ein Prozess mit `hermes_cli.main gateway`
+  zaehlt als Gateway; `tui_gateway` allein zaehlt NIE. Boot-Gnadenfrist 120 s
+  gegen --replace-Churn, ein alter haengender Prozess wird neu gestartet.
+- Symptom eines echten Ausfalls: `logs/gateway-waechter.log` waechst mit
+  'Gateway nicht gefunden - Neustart ausgeloest' OHNE dass Port 9900 offen
+  wird; der SkillsBot-Log zeigt `status: fehler`/300-s-A2A-Timeouts.
+
 ## Bekannte Zustände
 - omniroute (Port 20128, LLM-Router, custom provider 'smart') kann aus sein: dann laufen Gateway-Antworten ueber Ausweichpfade oder scheitern. `Test-NetConnection 127.0.0.1 -Port 20128`.
 - omniroute-Bearer-Token steht im Klartext in config.yaml (a2a_agents.omniroute.auth) — dokumentiertes Hermes-Muster, aber sekretaer.

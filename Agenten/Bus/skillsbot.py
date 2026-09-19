@@ -55,6 +55,7 @@ ueber Agenten/Routinen/skillsbot.ps1 registrierbar).
 import argparse
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -137,6 +138,35 @@ def _a2a_token():
     except OSError:
         return None
     return None
+
+
+def _a2a_status():
+    """Kurzstatus der A2A-Bruecke: Port 9900 + Agent-Card. Nur lesend, schnell.
+
+    Kein SendMessage (das wuerde einen echten Agenten-Task anstossen und
+    Sekunden kosten); ein offener Port plus lesbare Agent-Card beweisen, dass
+    der Gateway steht und Freitext//run ihn erreichen.
+    """
+    port_offen = False
+    try:
+        with socket.create_connection(("127.0.0.1", 9900), timeout=2):
+            port_offen = True
+    except OSError:
+        port_offen = False
+    if not port_offen:
+        return ("A2A-Gateway (127.0.0.1:9900) ist DOWN - Freitext und /run "
+                "erreichen hermes-maks-pc nicht. Der Waechter "
+                "(MaxHirn-Gateway-Waechter) startet ihn alle 2 min neu; "
+                "sonst: VBS Hermes_Gateway_2ef9d0b7.vbs.")
+    agent = "unbekannt"
+    try:
+        with urllib.request.urlopen(KARTE_URL, timeout=3) as ant:
+            karte = json.loads(ant.read().decode("utf-8"))
+            agent = karte.get("name") or "unbekannt"
+    except Exception:  # noqa: BLE001
+        agent = "(Agent-Card nicht lesbar)"
+    return ("A2A-Bruecke OK: Port 9900 offen, Agent-Card = %s. "
+            "Freitext und /run erreichen den Agenten." % agent)
 
 
 def bereit():
@@ -477,7 +507,8 @@ def hilfe_text():
             "/indikatoren - die vier Indikator-Spuren: Signale und Treffer\n"
             "/markt - Kurs, 24 h, Trend, Volatilitaet\n"
             "/status - gespeicherter Dateistand (alle Spuren)\n"
-            "/papierstatus - nur Papierspuren\n"
+            "/papierstatus - nur Papierspuren\n"\
+            "/a2a - Status der A2A-Bruecke (Port 9900 + Agent-Card)\n"
             "/prognose [N] - Marktbeobachtung long/short (bis 240 s)\n"
             "/skills [SUCHE] - die gelernten Skills, nach Gruppen\n"
             "/skill NAME - ein Skill im Volltext\n"
@@ -595,6 +626,9 @@ def bearbeite(text, chat):
     if t in ("/status", "/papierstatus"):
         import handel_befehle
         return handel_befehle.status(papier=t == "/papierstatus"), kontext
+    if t == "/a2a":
+        # Kurzstatus der A2A-Bruecke (Port 9900 + Agent-Card), rein lesend.
+        return _a2a_status(), kontext
     if wort == "/spur":
         import handel_befehle
         try:
