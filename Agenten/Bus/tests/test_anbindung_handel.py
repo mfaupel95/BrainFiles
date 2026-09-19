@@ -132,6 +132,38 @@ def _subprocess_skriptnamen(baum):
     return namen
 
 
+def _spuren_skripte(baum):
+    """Liest je Spur das Skript, das dauerlauf.py fuer SIE startet.
+
+    Die Wahrheit ist das "skript"-Feld jeder Spur in SPUREN (Default
+    "handeln.py"). Seit die Spiegel-Schattenbuecher (18.09.2026) denselben
+    Ordner wie spiegel teilen (spiegel/spiegel_knapp/spiegel_weit -> alle
+    Ordner "spiegel", aber drei verschiedene Skripte), ist die alte
+    "alle Skriptnamen gegen alle Spuren"-Pruefung falsch-positiv: sie
+    verlangte, dass spiegel.py auch "handel/spiegel_knapp" traegt. Geprueft
+    wird jetzt nur das Skript, das dauerlauf.py fuer die jeweilige Spur
+    wirklich startet.
+    """
+    skripte = {}
+    for knoten in ast.walk(baum):
+        if (isinstance(knoten, ast.Assign)
+                and any(isinstance(z, ast.Name) and z.id == "SPUREN"
+                        for z in knoten.targets)
+                and isinstance(knoten.value, ast.Dict)):
+            for schluessel, wert in zip(knoten.value.keys,
+                                        knoten.value.values):
+                if not isinstance(wert, ast.Dict):
+                    continue
+                skript = "handeln.py"
+                for k2, v2 in zip(wert.keys, wert.values):
+                    if (isinstance(k2, ast.Constant) and k2.value == "skript"
+                            and isinstance(v2, ast.Constant)
+                            and isinstance(v2.value, str)):
+                        skript = v2.value
+                skripte[schluessel.value] = skript
+    return skripte
+
+
 def test_dauerlauf_subprocess_skripte_haben_bus():
     """Genau der Weg, auf dem Befund 1 durchgerutscht ist: die alte Pruefung
     (test_jede_spur_ruft_den_bus oben) sieht nur, OB irgendeine Datei den Bus
@@ -162,27 +194,29 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
     baum = ast.parse(quelle, filename=pfad)
     spuren_ordner = _spuren_ordner(baum)
     assert spuren_ordner, "SPUREN-Dict in dauerlauf.py nicht gefunden/leer"
-    skriptnamen = _subprocess_skriptnamen(baum)
-    assert skriptnamen, "keine per subprocess gestarteten .py-Dateien gefunden"
+    spuren_skripte = _spuren_skripte(baum)
+    assert spuren_skripte, "keine Spur-Skript-Zuordnung in dauerlauf.py gefunden"
 
     kern = os.path.join(HANDEL, "spur_buch.py")
     kern_gebunden = os.path.exists(kern) and "ereignis.lauf" in open(
         kern, encoding="utf-8").read()
 
     fehlt = []
-    for spur, ordner in spuren_ordner.items():
-        for skript in skriptnamen:
-            datei = os.path.join(HANDEL, ordner, skript)
-            if not os.path.exists(datei):
-                continue          # dieser Ordner kennt das Skript nicht
-            with open(datei, encoding="utf-8") as f:
-                inhalt = f.read()
-            wer = "handel/%s" % spur
-            direkt = "ereignis.lauf" in inhalt and wer in inhalt
-            ueber_kern = (kern_gebunden and wer in inhalt
-                          and "buch.zyklus" in inhalt)
-            if not (direkt or ueber_kern):
-                fehlt.append(os.path.join(ordner, skript))
+    for spur, skript in spuren_skripte.items():
+        ordner = spuren_ordner.get(spur)
+        if ordner is None:
+            continue          # Spur ohne Ordner-Zuordnung (sollte nicht sein)
+        datei = os.path.join(HANDEL, ordner, skript)
+        if not os.path.exists(datei):
+            continue          # dieser Ordner kennt das Skript nicht
+        with open(datei, encoding="utf-8") as f:
+            inhalt = f.read()
+        wer = "handel/%s" % spur
+        direkt = "ereignis.lauf" in inhalt and wer in inhalt
+        ueber_kern = (kern_gebunden and wer in inhalt
+                      and "buch.zyklus" in inhalt)
+        if not (direkt or ueber_kern):
+            fehlt.append(os.path.join(ordner, skript))
     assert not fehlt, "automatisch gestartet, aber ohne Bus-Anbindung: %s" % fehlt
 
 

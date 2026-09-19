@@ -50,6 +50,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import PurePath
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 BUS = os.path.join(HIER, os.pardir, os.pardir, "Bus")
@@ -88,11 +89,29 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
-WACHEN = os.path.join(HIER, "wachen.json")
-VERFOLGTE = os.path.join(HIER, "verfolgte.json")
-ZUSTAND = os.path.join(HIER, "zustand.json")
-JOURNAL = os.path.join(HIER, "handelsjournal.csv")
-ABLEHNUNGEN = os.path.join(HIER, "ablehnungen.csv")
+def _buch_datei(pfad):
+    """Dateiname eines Schattenbuchs: `.../zustand.json` -> `.../zustand.knapp.json`.
+
+    Die Schattenbuecher (V1, 18.09.2026) fahren dieselbe Signalquelle mit
+    anderen Stop/Trailing-Parametern - das Hauptbuch bleibt die
+    Vergleichsgrundlage. `HANDEL_BUCH` (leer = Hauptbuch) haengt den
+    Arm-Namen vor die Endung, Muster `risikostufe.datei()`. Der Typ bleibt
+    erhalten (str bleibt str, Path bleibt Path).
+    """
+    arm = (os.environ.get("HANDEL_BUCH") or "").strip()
+    if not arm:
+        return pfad
+    war_path = isinstance(pfad, PurePath)
+    basis, endung = os.path.splitext(os.fspath(pfad))
+    neu = basis + "." + arm + endung
+    return type(pfad)(neu) if war_path else neu
+
+
+WACHEN = _buch_datei(os.path.join(HIER, "wachen.json"))
+VERFOLGTE = _buch_datei(os.path.join(HIER, "verfolgte.json"))
+ZUSTAND = _buch_datei(os.path.join(HIER, "zustand.json"))
+JOURNAL = _buch_datei(os.path.join(HIER, "handelsjournal.csv"))
+ABLEHNUNGEN = _buch_datei(os.path.join(HIER, "ablehnungen.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "token", "symbol",
            "preis", "menge", "einsatz_usd", "wert_usd", "marktkap_usd",

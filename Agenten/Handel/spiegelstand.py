@@ -114,7 +114,48 @@ def spuren_im_lauf(handel=HANDEL):
     return None
 
 
-def spur_zeile(handel, spur, risiko=None):
+def spuren_ordner(handel=HANDEL):
+    """Spurname -> Unterordner aus dauerlauf.SPUREN (per ast).
+
+    Seit den Spiegel-Schattenbuechern (18.09.2026) teilen sich mehrere Spuren
+    einen Ordner (spiegel/spiegel_knapp/spiegel_weit -> alle "spiegel"). Der
+    Spurname ist also nicht mehr der Ordnername. None, wenn nicht lesbar -
+    dann faellt spur_zeile auf den Spurnamen als Ordnernamen zurueck.
+    """
+    try:
+        with open(os.path.join(handel, "dauerlauf.py"), encoding="utf-8") as f:
+            baum = ast.parse(f.read())
+    except (OSError, SyntaxError):
+        return None
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, ast.Assign) and any(
+                isinstance(z, ast.Name) and z.id == "SPUREN"
+                for z in knoten.targets):
+            if not isinstance(knoten.value, ast.Dict):
+                return None
+            ordner = {}
+            for schluessel, wert in zip(knoten.value.keys,
+                                        knoten.value.values):
+                if not isinstance(wert, ast.Dict):
+                    continue
+                for k2, v2 in zip(wert.keys, wert.values):
+                    if (isinstance(k2, ast.Constant) and k2.value == "ordner"
+                            and isinstance(v2, ast.Constant)
+                            and isinstance(v2.value, str)):
+                        ordner[schluessel.value] = v2.value
+            return ordner or None
+    return None
+
+
+def _arm_datei(name, suffix):
+    """Dateiname eines Schattenbuchs: zustand.json -> zustand.knapp.json."""
+    if not suffix:
+        return name
+    stamm, endung = os.path.splitext(name)
+    return "%s.%s%s" % (stamm, suffix, endung)
+
+
+def spur_zeile(handel, spur, risiko=None, ordner=None):
     """Ein Pruefergebnis je Spur: Ziel, Kopiestand, Herzschlag, Journalzeilen.
 
     Verglichen werden die zwei Pflichtdateien plus die Zusatzdateien DIESER
@@ -126,17 +167,31 @@ def spur_zeile(handel, spur, risiko=None):
     die Dateien zustand.mittel.json und handelsjournal.mittel.csv (siehe
     risikostufe.datei_fuer). Ohne Angabe gilt die Stufe der Umgebung, also im
     Regelfall die Basis.
+
+    `ordner` ist der Unterordner der Spur (aus dauerlauf.SPUREN). Seit den
+    Spiegel-Schattenbuechern (18.09.2026) teilen sich mehrere Spuren einen
+    Ordner; ohne Angabe faellt spur_zeile auf den Spurnamen zurueck.
     """
     def benenne(n):
         return n if risiko is None else risikostufe.datei_fuer(n, risiko)
 
-    ordner = os.path.join(handel, spur)
-    w = lade(os.path.join(ordner, "wachen.json")) or {}
-    z = lade(os.path.join(ordner, benenne("zustand.json"))) or {}
+    ordner = ordner or spur
+    spurordner = os.path.join(handel, ordner)
+    # Die Spiegel-Schattenbuecher (18.09.2026) tragen eigene Wachen-Dateien
+    # (wachen.knapp.json / wachen.weit.json), deren journal_zweitziel auf ihr
+    # eigenes Ziel zeigt. Die Haupt-Wachen (wachen.json) gilt nur, wenn die
+    # Spur der Ordnername ist (spiegel -> wachen.json).
+    wachen_name = "wachen.json"
+    if spur != ordner and "_" in spur:
+        kandidat = "wachen.%s.json" % spur.split("_", 1)[1]
+        if os.path.isfile(os.path.join(spurordner, kandidat)):
+            wachen_name = kandidat
+    w = lade(os.path.join(spurordner, wachen_name)) or {}
+    z = lade(os.path.join(spurordner, benenne("zustand.json"))) or {}
     ziel = w.get("journal_zweitziel")
     ziel = ziel.replace("\\", os.sep) if isinstance(ziel, str) else None
     alter = alter_minuten(z.get("letzter_lauf"))
-    anzahl = zeilen(os.path.join(ordner, benenne("handelsjournal.csv")))
+    anzahl = zeilen(os.path.join(spurordner, benenne("handelsjournal.csv")))
 
     if not ziel:
         return {"spur": spur, "stand": "kein Ziel", "grund": "journal_zweitziel leer",
@@ -146,8 +201,15 @@ def spur_zeile(handel, spur, risiko=None):
                 "ziel": ziel, "alter": alter, "zeilen": anzahl}
 
     dateien = [benenne(n) for n in DATEIEN + ZUSATZ.get(spur, ())]
+    # Die Spiegel-Schattenbuecher (18.09.2026) tragen ihre Dateien mit
+    # Suffix (zustand.knapp.json, handelsjournal.knapp.csv). Der Vergleich
+    # muss dieselben Namen nehmen, sonst meldet er eine Abweichung, wo die
+    # Kopie byte-gleich ist.
+    if wachen_name != "wachen.json":
+        suffix = wachen_name[len("wachen."):-len(".json")]
+        dateien = [benenne(_arm_datei(n, suffix)) for n in dateien]
     abweichungen = [n for n in dateien
-                    if not gleich(os.path.join(ordner, n), os.path.join(ziel, n))]
+                    if not gleich(os.path.join(spurordner, n), os.path.join(ziel, n))]
     return {"spur": spur,
             "stand": "gleich" if not abweichungen else "ABWEICHUNG",
             "grund": ", ".join(abweichungen) if abweichungen else
@@ -171,11 +233,25 @@ def stand(handel=HANDEL, stunden=30.0, risiko=None):
     alle = sorted(d for d in os.listdir(handel)
                   if os.path.isfile(os.path.join(handel, d, "wachen.json")))
     im_lauf = spuren_im_lauf(handel)
+    ordner_zuordnung = spuren_ordner(handel)
     ergebnis = {"spuren": [], "geprueft": 0, "abweichend": [], "ausserhalb": [],
                 "alt": [], "handel": handel, "risiko": risiko,
                 "im_lauf_lesbar": im_lauf is not None}
+    # Die Spiegel-Schattenbuecher (18.09.2026) teilen den Ordner von spiegel,
+    # tragen aber eigene Wachen-Dateien (wachen.knapp.json / wachen.weit.json)
+    # und eigene Ziele. Sie stehen in dauerlauf.SPUREN, aber nicht in `alle`
+    # (das nur Verzeichnisse mit wachen.json listet). Fuer jede Spur im Lauf,
+    # deren Ordner schon in `alle` steckt, wird die Arm-Wachen-Datei ergaenzt.
+    if ordner_zuordnung:
+        for spur, ordner in ordner_zuordnung.items():
+            if ordner in alle and spur not in alle:
+                for wname in ("wachen.knapp.json", "wachen.weit.json"):
+                    if os.path.isfile(os.path.join(handel, ordner, wname)):
+                        alle.append(spur)
+        alle = sorted(set(alle))
     for spur in alle:
-        e = spur_zeile(handel, spur, risiko)
+        ordner = (ordner_zuordnung or {}).get(spur, spur)
+        e = spur_zeile(handel, spur, risiko, ordner=ordner)
         im_dienst = im_lauf is None or spur in im_lauf
         if not im_dienst:
             ergebnis["ausserhalb"].append(spur)

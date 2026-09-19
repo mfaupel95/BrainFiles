@@ -69,6 +69,11 @@ FAMILIE = {
     "gitter": "Grid",
     "nautilus": "Quote-Sammler",
     "spiegel": "Feed-Spiegel",
+    # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): dieselbe
+    # Signalquelle wie spiegel, andere Stop/Trailing-Parameter. Gleiche
+    # Familie, damit sie im Bericht neben dem Hauptbuch stehen.
+    "spiegel_knapp": "Feed-Spiegel",
+    "spiegel_weit": "Feed-Spiegel",
     "kopier": "Feed-Kopie",
     "kopier1zu1": "Feed-Kopie 1:1",
     "omniquant": "Prognose-Buch",

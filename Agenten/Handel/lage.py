@@ -235,9 +235,41 @@ def spur_spiegel():
     mit derselben Formel wie das Buch selbst, damit der Bericht nicht
     schoenrechnet, was die Spur richtig rechnet.
     """
+    return _spur_spiegel_arm("")
+
+
+def spur_spiegel_knapp():
+    """Schattenbuch 'knapp' der Spiegel-Spur (V1 Ausstiegsgeometrie).
+
+    Dieselbe Signalquelle wie spiegel, engere Stop/Trailing-Parameter
+    (wachen.knapp.json). Liest zustand.knapp.json und handelsjournal.knapp.csv.
+    """
+    return _spur_spiegel_arm("knapp")
+
+
+def spur_spiegel_weit():
+    """Schattenbuch 'weit' der Spiegel-Spur (V1 Ausstiegsgeometrie).
+
+    Dieselbe Signalquelle wie spiegel, weitere Stop/Trailing-Parameter
+    (wachen.weit.json). Liest zustand.weit.json und handelsjournal.weit.csv.
+    """
+    return _spur_spiegel_arm("weit")
+
+
+def _spur_spiegel_arm(suffix):
+    """Gemeinsamer Leser fuer spiegel und seine Schattenbuecher.
+
+    `suffix` ist "" (Hauptbuch), "knapp" oder "weit". Die Dateinamen tragen
+    dann das Suffix vor der Endung (zustand.knapp.json, wachen.knapp.json).
+    """
     ordner = os.path.join(HIER, "spiegel")
-    w = _lies(os.path.join(ordner, "wachen.json"), {})
-    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    def _arm(n):
+        if not suffix:
+            return n
+        stamm, endung = os.path.splitext(n)
+        return "%s.%s%s" % (stamm, suffix, endung)
+    w = _lies(os.path.join(ordner, _arm("wachen.json")), {})
+    z = _lies(os.path.join(ordner, _arm("zustand.json")), {}) or {}
     pos = z.get("positionen", [])
 
     kurse, buch = {}, None
@@ -267,8 +299,11 @@ def spur_spiegel():
             "stop": p.get("stop_preis"), "seit": p.get("eroeffnet"),
             "familie": p.get("risiko"),
         })
+    name = "Spiegel (Papier, Copy)"
+    if suffix:
+        name = "Spiegel-%s (Papier, Copy)" % suffix
     return {
-        "name": "Spiegel (Papier, Copy)", "waehrung": "USD", "w": w, "z": z,
+        "name": name, "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         # Kein Pruefmodul: die anderen Spuren wachen ueber fuenf Bedingungen,
         # diese fuehrt ein Buch. Ohne diesen Eintrag wuerde der Bericht eine
@@ -276,8 +311,10 @@ def spur_spiegel():
         # schreiben.
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
-        "bilanz": _bilanz("spiegel"),
+        "journal": os.path.join(ordner, _arm("handelsjournal.csv")),
+        "bilanz": _bilanz("spiegel" + (".%s" % suffix if suffix else ""),
+                          ordner=ordner,
+                          journal=os.path.join(ordner, _arm("handelsjournal.csv"))),
     }
 
 
@@ -426,7 +463,7 @@ def spur_kopier1zu1():
     }
 
 
-def _bilanz(spur):
+def _bilanz(spur, ordner=None, journal=None):
     """Die Bilanzzeile einer Buch-Spur - rein lesend, aus EINER Quelle.
 
     Sie kommt aus <spur>/auswertung.py: derselbe Aufruf, den eine GUI zeigt.
@@ -437,8 +474,13 @@ def _bilanz(spur):
     Spuren haben ein auswertung.py, und sys.modules gaebe beim zweiten
     Import das erste zurueck - die Spiegel-Zeile traege dann die Zahlen von
     Omniquant.
+
+    `ordner`/`journal` ueberschreiben den Standard (Spurname als Ordner,
+    handelsjournal.csv): die Spiegel-Schattenbuecher (18.09.2026) teilen den
+    Ordner von spiegel, lesen aber ihr eigenes Journal (handelsjournal.knapp.csv).
     """
-    ordner = os.path.join(HIER, spur)
+    ordner = ordner or os.path.join(HIER, spur)
+    journal = journal or os.path.join(ordner, "handelsjournal.csv")
     # Ein Bericht LIEST. Python legt beim Laden eines Moduls aus einer Datei
     # einen Bytecode-Cache an - im Spurordner, also neben dem Journal. Das
     # schaltet der Import fuer die Dauer des Ladens ab (der Test
@@ -452,7 +494,7 @@ def _bilanz(spur):
             "auswertung_%s" % spur, pfad)
         modul = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modul)
-        return modul.kernzeile(os.path.join(ordner, "handelsjournal.csv"))
+        return modul.kernzeile(journal)
     except Exception as e:                                 # noqa: BLE001
         return "Auswertung nicht lesbar: %s" % str(e)[:80]
     finally:
@@ -978,5 +1020,9 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
-    spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment)
+    spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
+    # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): dieselbe
+    # Signalquelle wie spiegel, andere Stop/Trailing-Parameter. Eigene
+    # Holer, damit der Bericht sie neben dem Hauptbuch zeigt.
+    spur_spiegel_knapp, spur_spiegel_weit)
 

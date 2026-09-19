@@ -234,6 +234,15 @@ SPUREN = {
     # Minuten statt auf 30 wie bei xperp: ein Rechnerneustart soll die
     # Papierpositionen nicht flachstellen (kraken/wachen.json, _herzschlag).
     "kraken": {"ordner": "kraken", "waehrung": "EUR"},
+    # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): fahren
+    # dieselbe Signalquelle wie spiegel mit anderen Stop/Trailing-Parametern
+    # (wachen.knapp.json / wachen.weit.json). Die Launcher setzen HANDEL_BUCH
+    # und rufen spiegel.py - alle Buchdateien tragen dann das Suffix .knapp
+    # bzw. .weit, das Hauptbuch bleibt unveraendert (Vergleichsgrundlage).
+    "spiegel_knapp": {"ordner": "spiegel", "waehrung": "USD",
+                      "skript": "spiegel_knapp.py"},
+    "spiegel_weit": {"ordner": "spiegel", "waehrung": "USD",
+                     "skript": "spiegel_weit.py"},
     # MOONDEV_FUNDING (16.09.2026): Papierbuch auf den Funding-Extremen von
     # Hyperliquid. Die Zahlen liefert der geklonte Bot
     # (Werkstatt/Repos/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
@@ -291,7 +300,7 @@ SPUREN = {
 # denselben Einsatz (Vorgabe Max). Er liefe dort mit identischem Inhalt und
 # schriebe in dieselben Dateien wie der Basislauf - zwei Schreiber auf einem
 # Buch. Deshalb ueberspringt ihn jede Stufe.
-NUR_BASIS = ("spiegel",)
+NUR_BASIS = ("spiegel", "spiegel_knapp", "spiegel_weit")
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
 # herzschlag_max_minuten auf 30. Laeuft der Zyklus seltener, stellt der
