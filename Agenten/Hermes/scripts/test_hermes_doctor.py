@@ -75,5 +75,31 @@ class DiagnoseIntegrationTest(unittest.TestCase):
                 hd.LOGS = orig_logs
 
 
+class BerichtTest(unittest.TestCase):
+    def test_bericht_kompakt(self):
+        roh = {
+            "zeitpunkt": "2026-09-19 03:00:00",
+            "hermes_doctor": "All checks passed\n⚠ eine Warnung",
+            "git_status": "Zweig: main\nCommits hinter origin/main: 0",
+            "log_fehler": "letzte 60 Zeilen gateway.log: keine CRITICAL/ERROR/Traceback",
+        }
+        b = hd.bericht(roh, "C:/pfad/befund.json")
+        self.assertIn("Hermes-Doctor", b)
+        self.assertIn("hermes doctor: OK", b)
+        self.assertIn("Warnungen: 1", b)
+        self.assertIn("gateway.log: keine Fehler", b)
+        self.assertIn("C:/pfad/befund.json", b)
+
+    def test_bericht_ok_ohne_warnung(self):
+        roh = {
+            "zeitpunkt": "t",
+            "hermes_doctor": "All checks passed",
+            "git_status": "Zweig: main",
+            "log_fehler": "keine CRITICAL",
+        }
+        b = hd.bericht(roh, "x")
+        self.assertNotIn("Warnungen", b)
+
+
 if __name__ == "__main__":
     unittest.main()

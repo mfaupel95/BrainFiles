@@ -18,10 +18,14 @@
 #   Pruefung stehen; das Worktree wird entfernt. Der Live-Checkout bleibt
 #   unberuehrt.
 #
+# --report: kompakte Telegram-taugliche Zusammenfassung auf stdout (fuer den
+#   woechentlichen Diagnose-Cron; no_agent liefert stdout verbatim).
+#
 # Aufruf:
 #   python Agenten/Hermes/scripts/hermes-doctor.py --diagnose
 #   python Agenten/Hermes/scripts/hermes-doctor.py --diagnose --claude
 #   python Agenten/Hermes/scripts/hermes-doctor.py --repair --max-turns 15
+#   python Agenten/Hermes/scripts/hermes-doctor.py --report
 import argparse
 import json
 import os
@@ -251,6 +255,29 @@ def repair_worktree(befund_roh, max_turns):
               str(doc_dir)], timeout=120)
 
 
+def bericht(befund_roh, ziel):
+    """Kompakte, Telegram-taugliche Zusammenfassung des Diagnose-Befunds."""
+    hd = befund_roh.get("hermes_doctor", "")
+    ok = "All checks passed" in hd
+    warn = hd.count("⚠")
+    git = befund_roh.get("git_status", "")
+    log = befund_roh.get("log_fehler", "")
+    zeilen = [
+        "Hermes-Doctor (%s):" % befund_roh.get("zeitpunkt", "?"),
+        "- hermes doctor: %s" % ("OK" if ok else "Befund vorhanden"),
+    ]
+    if warn:
+        zeilen.append("- Warnungen: %d" % warn)
+    for g in git.splitlines():
+        zeilen.append("- git: %s" % g)
+    if "keine CRITICAL" in log:
+        zeilen.append("- gateway.log: keine Fehler")
+    else:
+        zeilen.append("- gateway.log: %s" % log.splitlines()[0])
+    zeilen.append("- Befund: %s" % ziel)
+    return "\n".join(zeilen)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Hermes-Doctor (Diagnose/Reparatur)")
     ap.add_argument("--diagnose", action="store_true", default=True,
@@ -261,6 +288,8 @@ def main():
                     help="Reparatur in einem git-worktree (opt-in, explizit)")
     ap.add_argument("--max-turns", type=int, default=10,
                     help="claude -p --max-turns (Kosten-/Laufzeit-Deckel)")
+    ap.add_argument("--report", action="store_true",
+                    help="kompakte Zusammenfassung auf stdout (fuer Cron-Lieferung)")
     args = ap.parse_args()
 
     if args.repair:
@@ -294,9 +323,12 @@ def main():
         else:
             befund["analyse"] = parse_claude_json(text)
     ziel = schreibe_befund(befund, "diagnose")
-    print("HERMES-DOCTOR diagnose fertig.")
-    print("Befund: %s" % ziel)
-    print("hermes doctor: %s" % ("OK" if "All checks passed" in befund_roh["hermes_doctor"] else "Befund vorhanden"))
+    if args.report:
+        print(bericht(befund_roh, ziel))
+    else:
+        print("HERMES-DOCTOR diagnose fertig.")
+        print("Befund: %s" % ziel)
+        print("hermes doctor: %s" % ("OK" if "All checks passed" in befund_roh["hermes_doctor"] else "Befund vorhanden"))
     return 0
 
 
