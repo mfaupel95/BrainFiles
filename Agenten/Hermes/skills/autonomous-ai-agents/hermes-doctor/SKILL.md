@@ -44,7 +44,20 @@ Mit Claude-Code-Analyse (Ursachen + empfohlene Fixes):
 Legt ein git-worktree vom Checkout an, kopiert `doctor-context.md` als CLAUDE.md
 hinein und laesst Claude Code dort mit Edit/Write/Bash(git*)/Bash(pytest*)
 arbeiten. Der Fix-Branch bleibt zur Pruefung stehen; das Worktree wird entfernt.
-Der Live-Checkout bleibt unberuehrt.
+Der Live-Checkout bleibt unberuehrt. `--aufgabe "..."` ueberschreibt die
+Standard-Reparatur mit einer eigenen Aufgabe (z.B. harmloser Test: nur zaehlen,
+kein Code aendern) - noetig fuer unbeaufsichtigte Tests. WICHTIG:
+claude_ausfuehren muss im repair-Modus cwd=str(doc_dir) bekommen, sonst waere
+die Isolation aufgehoben.
+
+## Repair-Endtest nach Rate-Limit-Reset
+
+Einmal-Cron `hermes-doctor-repair-test` (job faf1cdae33d8, 20.09.2026 03:45,
+deliver telegram, no_agent) nutzt `scripts/hermes-doctor-repair-test.py`, das
+`--repair --aufgabe "<TODO zaehlen, kein Code aendern>" --max-turns 3`
+ausfuehrt. Er prueft die volle Repair-Pipeline ohne den Live-Checkout zu
+beruehren. Nach dem Lauf: Worktree-Liste pruefen (muss nur Haupt-Checkout
+zeigen) und befund.json in logs/ lesen.
 
 ## WICHTIGE FALLEN
 
