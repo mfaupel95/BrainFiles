@@ -182,6 +182,24 @@ AGENTEN = {
         "cmd": [REPO_PYTHON, str(REPO / "src" / "agents" / "kraken_agent.py")],
         "cwd": str(REPO),
     },
+    # sniper_agent (19.09.2026): scannt neue Solana-Launches ueber die
+    # oeffentliche Pump.fun-API (kein Schluessel). Reiner Anzeige-Scanner,
+    # kein Handel - die Haus-Spur moondev_sniper fuehrt das Buch. Als
+    # Dauerlaeufer im Hintergrund: AUTO_OPEN_BROWSER=False, SOUND_ENABLED=False.
+    "sniper": {
+        "cmd": [REPO_PYTHON, "-m", "src.agents.sniper_agent"],
+        "cwd": str(REPO),
+    },
+    # trading_agent (19.09.2026): LLM-Trading-Bot im PAPIER-MODUS. Der
+    # Original-Bot hat echte Solana-Orders (market_buy/chunk_kill). Der Umbau
+    # (staging-Patch) sperrt diese hinter der Haus-Freigabedatei
+    # Agenten/Handel/moondev_trading_freigabe.json (handel_erlaubt=false).
+    # Ohne Freigabe NUR Protokollierung, keine echten Orders. Marktdaten von
+    # Birdeye brauchen einen Schluessel - fehlt er, macht der Bot NOTHING.
+    "trading": {
+        "cmd": [REPO_PYTHON, "-m", "src.agents.trading_agent"],
+        "cwd": str(REPO),
+    },
 }
 
 PAUSE_NEUSTART = 15          # s zwischen Absturz und Neustart
