@@ -22,11 +22,11 @@ class FormTest(unittest.TestCase):
                 self.assertIsInstance(s["positionen"], list)
 
     def test_holer_sind_vollzaehlig(self):
-        # 25 Spuren + 2 Spiegel-Schattenbuecher (18.09.2026, V1
-        # Ausstiegsgeometrie): spiegel_knapp und spiegel_weit teilen die
-        # Signalquelle von spiegel, haben aber eigene Holer, damit der
-        # Bericht sie neben dem Hauptbuch zeigt. + moondev_sniper (19.09.).
-        self.assertEqual(len(lage.HOLER), 28)
+        # Die Kopie-Familie (spiegel, spiegel_knapp, spiegel_weit, kopier,
+        # kopier1zu1) wird seit dem Berichts-Schlankbund als EIN Holer
+        # (spur_kopier_familie) gezaehlt; die 5 Einzelholer existieren weiter,
+        # stehen aber nicht mehr im HOLER.
+        self.assertEqual(len(lage.HOLER), 26)
 
 
 class KursVariantenTest(unittest.TestCase):

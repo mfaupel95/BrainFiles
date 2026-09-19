@@ -240,6 +240,18 @@ def _block(s, d):
     if s["fehler"]:
         return "\n<b>%s</b>\n  AUSFALL: %s" % (s["name"], s["fehler"])
 
+    if s.get("familie") is not None:
+        # Die Kopie-Familie: ein Block, je Buch eine schlanke Zeile. Die
+        # Positionen selbst bleiben (Snapshots, Summe), werden hier aber
+        # nicht aufgezogen - wer Einzelpositionen will, schaut ins Buch.
+        zeilen = ["\n<b>%s</b>" % s["name"]]
+        for g in s.get("familie"):
+            zeilen.append("  %-24s %3d offen | %s"
+                          % (g["name"][:24], g["offen"], g["bilanz"]))
+        if s.get("bilanz"):
+            zeilen.append("  " + s["bilanz"])
+        return "\n".join(zeilen)
+
     t = ["\n<b>%s</b>%s" % (s["name"],
                             "  — STILLGELEGT" if s["stillgelegt"] else "")]
     if s["positionen"]:

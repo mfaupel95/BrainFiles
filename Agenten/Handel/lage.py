@@ -1008,6 +1008,12 @@ def zu_lage(roh, schluessel, tage=FENSTER_TAGE, kennzahlen=_UNGESETZT):
         "buch_seit": auswertung_alle.buch_seit(schluessel) if schluessel else None,
         "bilanz": roh.get("bilanz"),
         "fehler": None,
+        # Passthrough der Kopie-Familie: zu_lage normalisiert sonst auf eine
+        # feste Form und wuerde diese zwei Felder still verwerfen (18.09.2026,
+        # Berichts-Schlankung). Ohne "familie" rendert _block die Familie als
+        # Positionen-Liste statt als schlanken Block.
+        "familie": roh.get("familie"),
+        "familie_offen": roh.get("familie_offen", 0),
         "roh": roh,
     }
 
@@ -1020,6 +1026,46 @@ def _schluessel_von(roh):
         return None
     name = os.path.basename(ordner.rstrip(os.sep))
     return name if name in auswertung_alle.SPUREN else None
+
+
+def spur_kopier_familie():
+    """Die Kopie-Familie (Spiegel + 2 Schattenbuecher + 2 Kopier) als EIN Block.
+
+    Die Positionen aller Buecher bleiben in `positionen` (Schnappschuss und
+    Gesamtsumme zaehlen sie weiter), gerendert wird aber je Buch nur eine
+    schlanke Zeile aus `familie`. Keine zweite Formel: die Bilanzzeile jedes
+    Buchs kommt aus seiner eigenen Auswertung (lage._bilanz) - dieselbe, die
+    der Bericht heute schon zeigt.
+
+    Bewusst KEIN "ordner": der Schluessel kaeme sonst aus dem Ordnernamen und
+    kollidierte mit "spiegel" (_schluessel_von). Die Familie hat keinen
+    auswertung_alle-Eintrag - ihr Schluessel bleibt None (Bericht nimmt den
+    Namen).
+    """
+    quellen = (spur_spiegel, spur_spiegel_knapp, spur_spiegel_weit,
+               spur_kopier, spur_kopier1zu1)
+    glieder, positionen = [], []
+    for hole in quellen:
+        try:
+            b = hole()
+        except Exception:                                 # noqa: BLE001
+            continue
+        name = b.get("name", "?")
+        offen = len(b.get("positionen") or [])
+        glieder.append({"name": name, "offen": offen,
+                        "bilanz": b.get("bilanz") or "keine Auswertung"})
+        for p in b.get("positionen") or []:
+            pos = dict(p)
+            pos["buch"] = name
+            positionen.append(pos)
+    offen = len(positionen)
+    return {
+        "name": "Kopie-Familie (Spiegel/Copy)", "waehrung": "USD",
+        "w": {}, "positionen": positionen, "pruefmodul": None,
+        "papierfest": True, "familie": glieder, "familie_offen": offen,
+        "bilanz": "Kopie-Familie: %d offene Position ueber %d Buecher"
+                  % (offen, len(glieder)),
+    }
 
 
 def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
@@ -1062,17 +1108,13 @@ def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
 
 
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-    spur_spiegel, spur_orbk, spur_omniquant, spur_nautilus,
-    spur_gitter, spur_kopier, spur_kopier1zu1,
+    spur_orbk, spur_omniquant, spur_nautilus,
+    spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
-    spur_moondev_sniper,
-    # SPIEGEL-SCHATTENBUECHER (18.09.2026, V1 Ausstiegsgeometrie): dieselbe
-    # Signalquelle wie spiegel, andere Stop/Trailing-Parameter. Eigene
-    # Holer, damit der Bericht sie neben dem Hauptbuch zeigt.
-    spur_spiegel_knapp, spur_spiegel_weit)
+    spur_moondev_sniper)
 
