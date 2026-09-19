@@ -142,10 +142,18 @@ also want the perf harness.
   kill nukes Chromium's socket pool, and the resulting `ERR_NETWORK_CHANGED`
   gets blamed on whatever you just changed.
 - **A throwaway `HERMES_HOME` has no backend.** The app logs `ECONNREFUSED` for
-  `hermes:api` and may exit on its own. The renderer still mounts and the DOM is
-  readable — read promptly, and don't mistake a self-exited probe for a broken
-  port. Chromium logs `DevTools listening on ws://127.0.0.1:<port>/…` when it
-  binds; that line is the proof the port opened.
+  `hermes:api` and may exit on its own. Chromium logs `DevTools listening on
+  ws://127.0.0.1:<port>/…` when it binds; that line is the proof the port opened.
+- **The renderer does NOT mount without a backend (v0.17+).** With a bare
+  `HERMES_HOME` the page sits at `readyState: "interactive"` with an empty
+  `#root` (0 children) — React never mounts, so there is nothing to read and no
+  console errors to capture. To read renderer console errors from an isolated
+  instance, add `HERMES_DESKTOP_BOOT_FAKE=1` (optionally
+  `HERMES_DESKTOP_BOOT_FAKE_STEP_MS=200`) to the launch env — the simulated boot
+  lets the renderer mount and the DOM/console become readable. `Log.enable`
+  replays buffered entries; `Runtime.consoleAPICalled` + `Runtime.exceptionThrown`
+  catch live ones. Don't `Page.reload` a probe — it can strand the execution
+  context (empty `document.body`); reconnect fresh instead.
 - **Poll, don't probe once.** A just-launched app needs a second or two before
   the port answers.
 - **Never dump the whole DOM.** The desktop renders hundreds of nodes and
