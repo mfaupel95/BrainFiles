@@ -689,6 +689,56 @@ try {
 } catch { Notiz "  ! Zweig-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
+# 14) Docker: laeuft der Nautilus-Quoten-Container, und liefert er Quotes?
+# ---------------------------------------------------------------------------
+# Der OKX-Demo-Quoten-Node laeuft seit 19.09.2026 als Container
+# (nautilus-demo, --restart unless-stopped). Er ist der sichtbare
+# Quotenstrom; die Dauerlauf-Spur zyklisiert unabhaengig davon. Zwei Fragen:
+# laeuft der Container, und sind die Logs frisch (Quote-Zeilen je Tick)?
+# docker ps/logs sind langsam (~1-2 s) - nur einmal aufrufen.
+try {
+  Notiz "`n--- 14) Docker: Nautilus-Quoten-Container ---"
+  $c = docker ps --filter "name=nautilus-demo" --format "{{.Names}}|{{.Status}}" 2>$null
+  if (-not $c) {
+    Entscheiden "Docker-Container nautilus-demo laeuft nicht (docker ps leer) - starten: 'docker start nautilus-demo' oder 'docker run -d --name nautilus-demo --restart unless-stopped -e OKX_API_KEY=dummy-node-key -e OKX_API_SECRET=dummy-node-secret -e OKX_API_PASSPHRASE=dummy-node-pass nautilus-demo-node:1.231.0'"
+  } else {
+    $status = ($c -split '\|')[1]
+    if ($status -match 'Restarting|Exited|Dead') {
+      Entscheiden "Docker-Container nautilus-demo ist '$status' - Logs pruefen: 'docker logs --tail 20 nautilus-demo', dann 'docker start nautilus-demo'."
+    } else {
+      # Quote-Frische: letzte Log-Zeile mit Quote-Zeitstempel (UTC).
+      # Drei Fallen: (1) EAP lokal auf Continue, sonst zaehlt stderr von
+      # docker als Fehler (NativeCommandError) und die Zuweisung bleibt leer;
+      # (2) docker logs liefert ANSI-Escape-Sequenzen (\x1b[...m) - vor dem
+      # Match entfernen, sonst beginnt die Zeile nicht mit der Ziffer;
+      # (3) [datetimeoffset] statt [datetime]::ParseExact(AssumeUniversal),
+      # das speichert als Local und verfaelscht die Differenz um die
+      # Zeitzone.
+      $eap = $ErrorActionPreference
+      $ErrorActionPreference = 'Continue'
+      $logzeilen = @(docker logs --tail 200 nautilus-demo 2>$null) |
+        ForEach-Object { $_ -replace "\x1b\[[0-9;]*m", "" }
+      $ErrorActionPreference = $eap
+      $letzteQuote = $logzeilen | Where-Object { $_ -match 'Quote BTC-USDT-SWAP' } |
+        Select-Object -Last 1
+      if ($letzteQuote -and $letzteQuote -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})') {
+        $t = [datetimeoffset]::Parse($matches[1] + 'Z',
+          [System.Globalization.CultureInfo]::InvariantCulture,
+          [System.Globalization.DateTimeStyles]::AssumeUniversal)
+        $alterMin = [int](([datetimeoffset]::UtcNow) - $t).TotalMinutes
+        if ($alterMin -gt 5) {
+          Entscheiden "Docker-Container nautilus-demo laeuft ($status), letzte Quote aber vor $alterMin min - haengt der Feed? 'docker logs --tail 20 nautilus-demo'."
+        } else {
+          Info "Docker-Container nautilus-demo laeuft ($status), letzte Quote vor $alterMin min."
+        }
+      } else {
+        Info "Docker-Container nautilus-demo laeuft ($status), aber keine Quote-Zeile in den letzten 200 Logzeilen - Feed pruefen: 'docker logs --tail 20 nautilus-demo'."
+      }
+    }
+  }
+} catch { Notiz "  ! Docker-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
 # Bericht schreiben
 # ---------------------------------------------------------------------------
 $vortag = Get-ChildItem $logs -Filter 'systempruefung-*.md' -EA SilentlyContinue |
