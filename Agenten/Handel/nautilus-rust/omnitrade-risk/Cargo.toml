@@ -1,0 +1,8 @@
+[package]
+name = "omnitrade-risk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+quant-strategy = { path = "../quant-strategy" }
