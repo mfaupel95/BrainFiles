@@ -1,7 +1,7 @@
 {
  "_zweck": "Harte Grenzen der Mosaic-Spur. Papier-Handel auf Preisaktions-Setups: 4H-Aufwaertstrend (gruene Kerze), 30M-Pullback zur Nachfragezone (Swing-Tiefs), 5M-Structure-Shift (Schluss ueber dem letzten relevanten Swing-High). Top-down: Erst der grosse Rahmen, dann der Einstieg im kleinen.",
  "waehrung": "USD",
- "handel_erlaubt": false,
+ "handel_erlaubt": true,
  "_herzschlag_regel": "45 min (Handelsregeln, Hausregel): BEVOR handel_erlaubt auf true geht. Nur der Live-Pfad setzt den Herzschlag durch (Notausstieg); Papier nutzt ihn nicht.",
  "herzschlag_max_minuten": 45,
  "_risiko_erklaerung": "risiko_je_position_usd 5.0 x max_offene_positionen 4 = 20.0 USD Buchrisiko. ATR-Stop im Pflichtrahmen.",
