@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["quant-alpha", "quant-strategy", "quant-signal"]
+members = ["quant-alpha", "quant-strategy", "quant-signal", "quant-planes"]
 
 [workspace.package]
 version = "0.1.0"
