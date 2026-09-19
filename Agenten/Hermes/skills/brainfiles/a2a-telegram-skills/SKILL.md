@@ -68,6 +68,26 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
   'Gateway nicht gefunden - Neustart ausgeloest' OHNE dass Port 9900 offen
   wird; der SkillsBot-Log zeigt `status: fehler`/300-s-A2A-Timeouts.
 
+## a2a_agents-Peer-Wiring (config.yaml, Commit 47d5f8b)
+- Die a2a-Werkzeuge (a2a_call/a2a_orchestrate) lesen `a2a_agents.<name>.auth.token`
+  aus der EFFEKTIVEN Config; `\${VAR}`-Referenzen werden aus `os.environ` aufgeloest
+  (config_effective.load_user_config_effective). Der SkillsBot umgeht diese Config
+  und nutzt A2A_PEER_TOKENS direkt - er funktioniert auch, wenn die Peers tot sind.
+- FALLE 19.09.2026: ALLE drei Peers waren fuer a2a_call tot. Lokale Peers
+  (hermes-mcp, 8741749061 -> 9900) hatten KEIN auth -> 401. omniroute (20128)
+  hatte den /v1-Key (\${HERMES_CUSTOM_127_0_0_1_20128_API_KEY}), den omniroutes
+  A2A ablehnt (400) - A2A akzeptiert nur den Key, der dem laufenden Prozess als
+  OMNIROUTE_API_KEY (Windows-Benutzervariable) gesetzt ist.
+- RICHTIG: lokale Peers auth: {type: bearer, token: \${HERMES_A2A_TOKEN}} (erster
+  A2A_PEER_TOKENS-Token, in .env als HERMES_A2A_TOKEN, NICHT versioniert);
+  omniroute token: \${OMNIROUTE_API_KEY}. NIE Literal-Secrets in config.yaml
+  (versioniert) - immer Env-Referenz. `hermes config set` speichert String-Werte
+  verbatim (Referenz bleibt).
+- Env-Var in .env wirkt erst nach Prozess-Neustart (os.environ ist fix); eine
+  Windows-Benutzervariable (OMNIROUTE_API_KEY) ist sofort da. omniroute-Auth
+  besteht jetzt (500 statt 400); die Ausfuehrung scheitert noch an fehlenden
+  openrouter-Provider-Credentials in omniroute - separates Problem.
+
 ## Bekannte Zustände
 - omniroute (Port 20128, LLM-Router, custom provider 'smart') kann aus sein: dann laufen Gateway-Antworten ueber Ausweichpfade oder scheitern. `Test-NetConnection 127.0.0.1 -Port 20128`.
 - omniroute-Bearer-Token steht im Klartext in config.yaml (a2a_agents.omniroute.auth) — dokumentiertes Hermes-Muster, aber sekretaer.
