@@ -116,8 +116,20 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 3. Nur wenn die Evidenz haelt: Backtest mit der Strategie.
+    // 3. Nur wenn die Evidenz haelt: Zielgroessen aus den Gewichten bilden
+    //    (Seam-Guard Defekt 3, kontinuierlich) und Backtest fahren. Der
+    //    echte Modell-Anschluss haengt hier ein: w.gewicht -> Richtung,
+    //    zielgroesse(w.gewicht) -> Menge.
     println!("  -> Evidenz haelt, Backtest laeuft.");
+    for w in &book.weights {
+        let richtung = if w.weight >= 0.0 { "long" } else { "short" };
+        println!(
+            "    ziel {} {} x {:.2}",
+            richtung,
+            w.instrument_id,
+            zielgroesse(w.weight)
+        );
+    }
     let mut engine = BacktestEngine::new(BacktestEngineConfig::default())?;
     engine.add_venue(
         nautilus_backtest::config::SimulatedVenueConfig::builder()
