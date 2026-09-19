@@ -3,7 +3,7 @@ id: 20260913-projektatlas
 title: 'ProjectAtlas'
 tags: [mcp, betrieb, ki-agenten]
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-19
 related: [20260830-verbindungen, 20260830-hermes, 20260830-werkzeuge]
 summary: 'ProjectAtlas: Rust-Werkzeug, das je Repo eine SQLite-Karte der Struktur anlegt, damit Agenten die richtige Datei finden statt breit zu lesen. Fork, Laufzeit, MCP-Eintrag, Rezept je Repo und die gemessenen Grenzen.'
 ---
@@ -92,8 +92,11 @@ hermes.exe -p <bot> mcp add projectatlas --command "<exe>" --args --require-vers
 ```
 
 Die Rückfrage „Enable all 43 tools?" braucht **stdin**: Ohne Terminal hängt `hermes mcp add`
-und endet mit `Cancelled`, **ohne** zu schreiben — aus einer Werkzeugsitzung deshalb
-`printf 'Y\n' | …` davor setzen (das Skript tut das).
+und endet mit `Cancelled`, **ohne** zu schreiben. Gemessen 19.09.2026: ein einzelnes
+`printf 'Y\n' |` reicht dabei NICHT (der Befehl brach ab, der alte Eintrag blieb
+stehen — die Folge waren Bots, die auf den falschen Atlas zeigten). Korrekt ist
+`yes | hermes mcp add ...` (das Skript tut das): es liefert für jeden Prompt ein
+`Y`, und der Eintrag wird mit `--db` auf das Repo des Bots geschrieben.
 
 ## Grenzen und Fallen (gemessen 13.09.2026)
 
@@ -166,6 +169,48 @@ hermes.exe mcp test projectatlas                     # Verbindung + 43 Werkzeuge
 powershell -File Agenten\mcp-sync-check.ps1          # Manifest gegen beide Agenten
 python -c "import json;print(len(json.load(open('Agenten/MCP-Manifest.json'))['servers']))"
 ```
+
+## Stand 2026-09-19
+
+**Fremd-Agenten-Kampagne:** `indexieren.sh` hat einen **Repo-Filter**
+(`bash indexieren.sh <name>...` bearbeitet nur die genannten Repos, ohne
+Argumente alle) und eine **Ausschluss-Vorphase** (`.next`/`.turbo` werden je
+Repo bedingt ergänzt; `.venv`/`node_modules`/`__pycache__`/`build`/`dist`/
+`target` sind Standard-Ausschluss von v0.4.5 und bleiben unangetastet).
+
+Acht Repos neu kartiert (alle `scan.status: verified`, IDs der Karten aus den
+Logs): Agent-Reach, agent-trade-kit, awesome-systematic-trading,
+Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, openmontage,
+santiment, Trading-View-MCP-for-AI-by-Moon-Dev. **29 Karten in Werkstatt/Repos
+(21 Bestand + 8 neue), Atlanten gesamt 42 (inkl. Werkstatt-Extra-Repos,
+nautilus, hermes-agent); 7 Bots an ihre Karte gehängt**
+(bot-verdrahten.sh, je `mcp test` „Connected", `--db` auf das jeweilige Repo):
+agent-reach, awesome-systematic-trading, harvard-trading, moon-dev-agents,
+openmontage, santiment, tradingview-mcp. `agent-trade-kit` hat kein Bot-Profil
+— Atlas ja, Verdrahtung nein. Zwecke kuratiert für **moon-dev-ai-agents**
+(src/agents, src/data, src/nice_funcs.py, src/models, src/main.py),
+**santiment** (mcp, graphql, finops, blogs, kin, security) und
+**agent-trade-kit** (packages/cli, packages/core, packages/mcp, docs) —
+`purpose_source: agent`, santiment-Queue 11→5. `mcp-sync-check.ps1` Exit 0,
+default-`hermes mcp test projectatlas` „Connected", keine Klartext-Schlüssel.
+
+Nicht kartiert (Gründe gemessen):
+
+- `Moon-Dev-Code` — enthält nur PDFs, kein Code, keine Struktur zu kartieren.
+- `copilot-worktrees` — kein eigenes `.git` (Worktree-Sammlung), Projektgrenze
+  ist die nächstgelegene Wurzel.
+- `caveman` und `gbrain` — Steuerzeichen im Graph (`identity text contains control characters`)
+- `deepseek-harness` — `document unresolved reason batch exceeds the graph row limit`
+- `OmniRoute` — init bricht weiter mit `completed with failed phase(s)` ab
+  (Scan-Last, siehe Stand 2026-09-13).
+
+Noch offen:
+
+- **Zwecke** für die übrigen Repos nach Bedarf (`projectatlas purpose queue` /
+  `purpose set`); die 3 großen sind kuratiert.
+- **Claude Desktop** hat den Server nicht (Manifest `agent: hermes`) — siehe
+  Stand 2026-09-13.
+- Für Bots, die neu dazukommen: `bash Agenten/Werkzeuge/projectatlas/bot-verdrahten.sh <bot>`.
 
 ## Stand 2026-09-13
 

@@ -29,7 +29,10 @@ fi
 
 db_native="$(cygpath -w "$cwd/.projectatlas/projectatlas.db")"
 cfg_native="$(cygpath -w "$cwd/.projectatlas/config.toml")"
-printf 'Y\n' | "$HERMES" -p "$bot" mcp add projectatlas \
+# EIN printf 'Y\n' reicht NICHT: die Frage "Enable all 43 tools?" blieb damit
+# unbeantwortet (hermes endete mit "Cancelled.", der Eintrag blieb unveraendert,
+# gemessen 19.09.2026). `yes |` liefert so viele Y, wie Prompts kommen.
+yes | "$HERMES" -p "$bot" mcp add projectatlas \
   --command "$(cygpath -w "$PA")" \
   --args --require-version 0.4.5 --db "$db_native" --config "$cfg_native" mcp 2>&1 | tail -3
 "$HERMES" -p "$bot" mcp test projectatlas 2>&1 | grep -E "Connected|Tools discovered|fehlgeschlagen|error"
