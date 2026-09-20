@@ -334,7 +334,7 @@ TAKT_MAX_MINUTEN = 15
 # ohne /ja, sobald nur noch das Fenster fehlt. NUR Spuren mit echtem Live-Pfad
 # (moondev-* verweigern --live). Zeitlich begrenzt auf AUTO_FREIGABE_STUNDEN -
 # danach laeuft die Freigabe ab und es muss wieder bestaetigt werden.
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic")
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken")
 AUTO_FREIGABE_STUNDEN = 12
 
 

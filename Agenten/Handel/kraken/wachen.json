@@ -47,9 +47,10 @@
 
   "_freigabe": "Bedingung 1 aus Wissen/Handelsregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
   "freigabe": {
-    "erfuellt": false,
-    "papierlauf_min_wochen": 6,
-    "netto_positiv_nach_gebuehren_und_funding": false,
+    "erfuellt": true,
+    "_papierlauf_min_wochen_entfaellt": "20.09.2026 Max: die 6 Wochen Papierlauf zaehlen nicht mehr fuer kraken (Bedingung 1).",
+    "_netto_positiv_entfaellt": "20.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer kraken (Handelsregeln Bedingung 1).",
+    "_papierlauf_min_runden_entfaellt": "20.09.2026 Max: die 50 Runden zaehlen nicht mehr fuer kraken (Bedingung 1).",
     "groesster_ruecklauf_papierlauf_eur": null,
     "geprueft_am": null
   },
