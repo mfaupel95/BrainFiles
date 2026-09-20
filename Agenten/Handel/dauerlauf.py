@@ -183,8 +183,17 @@ SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
     "swap":    {"ordner": "swap",    "waehrung": "USD"},
-    "spiegel": {"ordner": "spiegel", "waehrung": "USD",
-                "skript": "spiegel.py"},
+    # SPIEGEL AUS seit 21.09.2026 (Max: "spiegel Spuren erstmal deaktivieren").
+    # Die drei Arme laufen nicht mehr; ihre Buecher bleiben als
+    # Vergleichsgrundlage stehen, wachsen aber nicht weiter.
+    # WIEDER ANSCHALTEN: die Zeilen hier und in NUR_BASIS wieder einkommentieren
+    # UND vorher in spiegel/zustand.json, zustand.knapp.json und
+    # zustand.weit.json "letzter_lauf" auf jetzt setzen - sonst gilt der
+    # Herzschlag nach mehr als 180 Minuten als alt und der erste Zyklus stellt
+    # alle offenen Papierpositionen flach (spiegel.py, flach_stellen
+    # "herzschlag_alt"). Ohne diesen Schritt waeren die Vergleichsbuecher weg.
+    # "spiegel": {"ordner": "spiegel", "waehrung": "USD",
+    #             "skript": "spiegel.py"},
     # KOPIER (Papierbuch auf der Pump.fun-Rangliste, angelegt 14.09.2026):
     # kopiert die Top-Trader der taeglichen PnL-Rangliste (user-portfolio als
     # Positions-Spiegel, trades/batch als Signal-Bestätigung). Kein Live-Zweig
@@ -252,10 +261,11 @@ SPUREN = {
     # (wachen.knapp.json / wachen.weit.json). Die Launcher setzen HANDEL_BUCH
     # und rufen spiegel.py - alle Buchdateien tragen dann das Suffix .knapp
     # bzw. .weit, das Hauptbuch bleibt unveraendert (Vergleichsgrundlage).
-    "spiegel_knapp": {"ordner": "spiegel", "waehrung": "USD",
-                      "skript": "spiegel_knapp.py"},
-    "spiegel_weit": {"ordner": "spiegel", "waehrung": "USD",
-                     "skript": "spiegel_weit.py"},
+    # SPIEGEL-SCHATTENBUECHER AUS seit 21.09.2026, siehe oben bei "spiegel".
+    # "spiegel_knapp": {"ordner": "spiegel", "waehrung": "USD",
+    #                   "skript": "spiegel_knapp.py"},
+    # "spiegel_weit": {"ordner": "spiegel", "waehrung": "USD",
+    #                  "skript": "spiegel_weit.py"},
     # MOONDEV_FUNDING (16.09.2026): Papierbuch auf den Funding-Extremen von
     # Hyperliquid. Die Zahlen liefert der geklonte Bot
     # (Werkstatt/Repos/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
@@ -326,7 +336,11 @@ SPUREN = {
 # denselben Einsatz (Vorgabe Max). Er liefe dort mit identischem Inhalt und
 # schriebe in dieselben Dateien wie der Basislauf - zwei Schreiber auf einem
 # Buch. Deshalb ueberspringt ihn jede Stufe.
-NUR_BASIS = ("spiegel", "spiegel_knapp", "spiegel_weit")
+# LEER seit 21.09.2026: die drei Spiegel-Arme sind deaktiviert (siehe SPUREN).
+# Beim Wiedereinschalten gehoeren sie hier wieder hinein - ohne den Eintrag
+# faehrt JEDE Risikostufe jede Spur, und Basis und mittel schrieben in
+# dieselben Buchdateien (zwei Schreiber auf einem Buch).
+NUR_BASIS = ()
 
 # Der Takt ist bei Spur 2 keine Geschmacksfrage: xperp/wachen.json setzt
 # herzschlag_max_minuten auf 30. Laeuft der Zyklus seltener, stellt der
