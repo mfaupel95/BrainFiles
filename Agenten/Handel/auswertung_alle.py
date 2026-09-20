@@ -46,6 +46,25 @@ HIER = Path(__file__).resolve().parent
 # dieselbe Frage laufen sonst auseinander.
 MIN_RUNDEN = 8
 
+# Spuren, deren Journal NICHT im gleichnamigen Ordner liegt. Grund: eine Spur
+# kann eine zweite Strategie im selben Ordner fahren (nautilus_kraken faehrt
+# Spot in handelsjournal.csv und Futures in handelsjournal.futures.csv). Ohne
+# diese Zuordnung sucht die Auswertung einen Ordner, den es nicht gibt, und
+# meldet "kein Buch", obwohl das Journal gefuellt ist.
+FREMDES_BUCH = {
+    "nautilus_kraken_futures": ("nautilus_kraken", "handelsjournal.futures.csv"),
+}
+
+
+def _ort(spur, datei):
+    """Ordner und Dateiname des Journals einer Spur."""
+    if spur in FREMDES_BUCH:
+        ordner, eigene = FREMDES_BUCH[spur]
+        if datei == "handelsjournal.csv":
+            return ordner, eigene
+        return ordner, datei
+    return spur, datei
+
 SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Die vier Indikator-Spuren journalisieren kauf/verkauf mit `einsatz_usd`
@@ -145,7 +164,8 @@ def hat_buch(spur, datei="handelsjournal.csv"):
     """
     if STUFE:
         datei = risikostufe.datei_fuer(datei, STUFE)
-    return (HIER / spur / datei).exists()
+    ordner, datei = _ort(spur, datei)
+    return (HIER / ordner / datei).exists()
 
 
 def buch_seit(spur):
@@ -221,7 +241,8 @@ def zeilen(spur, datei="handelsjournal.csv"):
         # (handelsjournal.mittel.csv). Der Rechenweg bleibt derselbe - die
         # Betraege sind groesser, die Regeln nicht anders.
         datei = risikostufe.datei_fuer(datei, STUFE)
-    p = HIER / spur / datei
+    ordner, datei = _ort(spur, datei)
+    p = HIER / ordner / datei
     if not p.exists():
         return []
     with p.open(encoding="utf-8", newline="") as f:

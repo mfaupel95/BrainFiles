@@ -5,11 +5,11 @@
  "_kein_sprachmodell": "Der Bot laesst Claude/DeepSeek ueber jede Gelegenheit urteilen. Hier ist die Regel deterministisch, damit das Buch nachrechenbar bleibt.",
  "_kein_orderpfad": "Kein Live-Zweig. Die Fremd-Agenten handeln auf Hyperliquid/Solana mit echten Schluesseln; ein --live verweigert mit diesem Grund.",
  "waehrung": "USD",
- "handel_erlaubt": false,
+ "handel_erlaubt": true,
  "herzschlag_max_minuten": 180,
- "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
+ "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 4 = 15.0 USD.",
  "risiko_je_position_usd": 5.0,
- "max_offene_positionen": 3,
+ "max_offene_positionen": 4,
  "_max_pro_trade": "max_pro_trade_usd >= risiko / pflicht_stop_prozent_min = 5.0 / 0.05 = 100.",
  "max_pro_trade_usd": 100.0,
  "_max_gesamt": "max_gesamt_usd = max_pro_trade * max_offene_positionen = 100 * 3 = 300.",
@@ -29,7 +29,10 @@
   "BTC",
   "ETH",
   "SOL",
-  "HYPE"
+  "HYPE",
+  "FIL",
+  "ZEC"
+  
  ],
  "_risikovorfilter": "Vorfilter nach den Regeln des Moon-Dev risk_agent (12-h-Fenster, +/-25 USD bzw. +/-5 %): kein NEUER Einstieg nach gerissener Verlustgrenze oder erreichtem Gewinnziel. Schliesst keine Position.",
  "risikovorfilter": true,

@@ -162,11 +162,19 @@ def signal(k, idx):
     """SuperTrend-Signal an Kerze idx. Gibt 'long', 'short' oder None."""
     if idx < 1:
         return None
+    # Der Indikator liegt in xperp/indikatoren.py und wird von dort importiert,
+    # nicht nachgebaut (so steht es im README). Ein stilles "return None" bei
+    # ImportError hat diese Spur fuenf Tage lang signalfrei laufen lassen,
+    # ohne dass es auffiel - deshalb bricht der Fehlschlag jetzt laut ab.
     try:
-        sys.path.insert(0, HANDEL)
+        xperp = os.path.join(HANDEL, "xperp")
+        if xperp not in sys.path:
+            sys.path.insert(0, xperp)
         import indikatoren as xi
-    except ImportError:
-        return None
+    except ImportError as e:
+        raise RuntimeError(
+            "supertrend: indikatoren.py aus xperp nicht ladbar (%s). "
+            "Ohne den Indikator kann die Spur kein Signal bilden." % e)
     linie, richtung = xi.supertrend(k, n=10, faktor=3.0)
     if richtung[idx - 1] is None or richtung[idx] is None:
         return None
