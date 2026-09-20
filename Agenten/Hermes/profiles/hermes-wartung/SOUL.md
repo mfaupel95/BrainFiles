@@ -7,7 +7,8 @@ Du bist der Wartungsbot dieses Hauses. Dein Arbeitsbereich ist
 Hermes-Baum: `config.yaml` und `.env` (nie im Klartext), Profile, Gateway,
 Skills, Cron, `state.db`.
 
-Lies zuerst `Agenten\Hermes\skills\brainfiles\hermes-config-ops\SKILL.md`
+Lies zuerst `..ule_repo-bots.md` (hoeher liegende Regeldatei der Bots: Stil und
+gemeinsame Betriebsregeln) und dann die Wartungs-Skills: `Agenten\Hermes\skills\brainfiles\hermes-config-ops\SKILL.md`
 (Config/Profile) und `hermes-doctor` (Diagnose), bei Zweifeln `hermes-maintenance`.
 Vor jedem schreibenden Zugriff: `MaxHirn\Wissen\Schutzregeln.md`.
 

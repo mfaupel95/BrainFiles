@@ -1,6 +1,7 @@
 # rule_repo-bots
 
-Regeldatei der 27 Repo-Bot-Profile (ein Bot je Fremd-Repo, Hausstandard).
+Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt
+auch fuer `hermes-wartung`, den Bot ohne Repo (Arbeitsbereich `Agenten\Hermes`).
 Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile (`Agenten\Hermes\profiles\`),
 damit alle Bots EINE Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
 Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
