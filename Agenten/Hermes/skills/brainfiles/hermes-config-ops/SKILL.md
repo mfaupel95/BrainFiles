@@ -47,7 +47,10 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 2. **Kein Geheimnis in einer Kommandozeile.** Werte in der Datei lesen, ausgeben nur
    Länge und SHA-256-Anfang. PowerShell gibt Argumente in Fehlermeldungen im
    Klartext aus — ein Secret in einem Befehl steht danach im Protokoll.
-   Verglichen wird über Hashes, nie über Werte.
+   Verglichen wird über Hashes, nie über Werte. **Auch eine Vorschau ist eine
+   Ausgabe:** `print(zeile[:60])` bei einer `.env`-Zeile schreibt den
+   Schluesselanfang in den Verlauf. Zum Pruefen einer `.env` nur NAMEN und
+   Laengen zeigen (`awk -F= '{print $1" "length($2)}'`), nie Zeilenanfaenge.
 3. **Nie einen laufenden Agenten neu starten**, um eine Änderung wirksam zu machen.
    So ändern, dass der Prozess weiterläuft. Beleg: `hermes gateway status`
    (Aufgabe registriert, Prozess läuft) vor und nach der Änderung.
@@ -172,6 +175,18 @@ $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
   fest verdrahteten Namensliste ist **kein Beweis fuer Abwesenheit** — die Variable
   kann zwischen zwei Aufrufen gesetzt worden sein, oft von einer zweiten Sitzung
   des Nutzers. Vor jeder Abwesenheitsmeldung neu aus `HKCU:\Environment` lesen.
+- **In einer MCP-/Dienst-PowerShell kann `HKCU:\` einen ANDEREN Nutzer meinen als den
+  interaktiven.** `Get-ItemProperty HKCU:\Environment` meldete hier faelschlich
+  „keine OKX-Variable", waehrend `[Environment]::GetEnvironmentVariable('OKX_API_KEY','User')`
+  denselben Namen als gesetzt zeigte. Die autoritative Existenz-/Wert-Pruefung fuer die
+  persistente Benutzerumgebung ist deshalb immer dieser .NET-Aufruf — nie die
+  Registry-Lese als einzige Quelle. Wer `setx /M` genutzt haben koennte, prueft zusaetzlich
+  den `'System'`-Scope (`[Environment]::GetEnvironmentVariable('<NAME>','System')`);
+  `setx` (ohne `/M`) schreibt nach `HKCU\Environment` und wird von Anwendern gern
+  gesetzt — eine fehlende Umgebungsvariable heisst also nicht automatisch „nicht
+  vorhanden", wenn ein Nutzer dazwischengekommen ist. Dynamischer Zugriff auf einen
+  Variablennamen aus einer String-Variablen braucht in PowerShell 5.1 ausserdem die
+  `${env:<NAME>}`-Schreibweise; `$env:<NAME>` ist ein Parse-Fehler.
 - **Laufende Prozesse erben neu gesetzte Variablen nicht.** In der Sitzung nachziehen:
   `$env:NAME = (Get-Item HKCU:\Environment).GetValue('NAME')`.
 - **Belegt wird nicht „steht drin", sondern „wird akzeptiert":** den Wert in eine
@@ -185,6 +200,49 @@ $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
   nachgehen, dort stand die einzige Notiz zur Variable. Breites `grep -rIn` ueber die
   Wurzel laeuft ins Zeitlimit (45 GB Archiv, Junctions) — `search_files` mit engem
   Pfad und `file_glob` nehmen.
+
+## Docker-Sandbox: Umgebungsvariablen hineinreichen
+
+Trigger: Tools laufen im Docker-Terminal-Backend (Desktop/GUI) und sehen
+Variablen nicht — `${env:NAME}` bleibt leer, Ollama findet keine Modelle,
+Werkzeuge laufen ohne Key. Der Sandbox-Container erbt die Host- oder
+Profil-Umgebung **nicht von selbst**.
+
+Zwei Schluessel unter `terminal:` legen fest, was hineinkommt:
+
+- `terminal.docker_forward_env` — Liste von Variablen**Namen**. Hermes loest
+deren Werte beim Ausfuehren aus der Shell-Umgebung, dann aus der Profil-`.env`
+auf und injectet sie in den Container. Die echten Geheimnisse stehen **nie** in
+der Config, nur die Namen — fuer Tokens/Keys ist das immer die richtige Wahl.
+- `terminal.docker_env` — Literale `KEY: value`-Paare direkt in der Config.
+Fuer statische Schalter (DEBUG, PYTHONUNBUFFERED), nicht fuer Geheimnisse.
+
+Setzen und belegen:
+
+    hermes config set terminal.docker_forward_env '["A","B"]'
+    hermes config get terminal.docker_forward_env   # Block-Liste, kein String
+
+`hermes config set` speichert den JSON/YAML-Wert als echte Liste (dieselbe
+strukturierte Parsung wie bei `fallback_providers`) — kein Handedit, keine
+eigenen Listenzeilen in der Datei.
+
+Fallen:
+
+- **Der Container erbt nur, was im Prozess steht, der Hermes startet.**
+  Windows-Benutzervariablen (HKCU, z. B. `OLLAMA_MODELS`, `HANDEL_RISIKO`)
+  findet `docker_forward_env` nur, wenn der Desktop/Gateway sie in seiner
+  Umgebung hat (HKCU erben sie beim Start). Stehen sie nur in einer
+  bash-Session, fehlen sie dem Container. Namen in die Forward-Liste
+  aufnehmen; die Werte kommen aus HKCU.
+- **Backend-Konfig gilt fuer alle Oberflaechen gleichzeitig.** Die CLI kann
+  `terminal.backend: local` laufen, waehrend Desktop/GUI den Docker-Backend
+  nutzt — `docker_forward_env` wirkt nur auf den Docker-Zweig, unabhaengig
+  vom gerade aktiven Backend. „Im Docker verfuegbar" heisst: den Docker-Zweig
+  der `terminal:`-Sektion konfigurieren, den aktiven Backend nicht umstellen.
+- **Nachweis nur aus einer Docker-Sitzung.** Aus einer Host-`local`-Sitzung
+  (git-bash) ist kein docker-exec-Nachweis moeglich; den Live-Check
+  (`env | grep -E 'NAME'`) als Schritt dem Container-User ueberlassen.
+  Config-seitig belegt: `hermes config get` + die Datei lesen.
 
 ## Fremden MCP-Server anbinden (HTTP/OAuth)
 
@@ -206,14 +264,26 @@ dieser Anbieter ueberhaupt, und mit welchem Befehl".
    danach `hermes mcp login <name>`; `hermes mcp --help` fuehrt zusaetzlich
    `reauth`, `list`, `test`, `configure`. Der Token kommt ausschliesslich ueber
    diesen Weg.
-3. **Der Anmeldeschritt gehoert dem Nutzer.** OAuth laeuft im Browser gegen
+3. **`hermes mcp add`/`remove` stellen MEHRERE Prompts — ein einzelnes
+   `printf 'Y\n'` reicht nicht.** Die Rueckfragen (Anlegen/Ueberschreiben,
+   "Enable all N tools?", bei `remove` "Remove server?") kommen nacheinander;
+   ein einzelnes Y beantwortet nur den ersten, der naechste Prompt bekommt EOF
+   und der Aufruf endet mit `Cancelled` **ohne** zu schreiben. Der Eintrag in
+   `config.yaml` bleibt dann der ALTSTAND — und `hermes mcp test` meldet trotzdem
+   "✓ Connected", weil es den alten Eintrag testet. Falscher gruener Nachweis:
+   nach einem `Cancelled` ist die Verbindung zu einem ANDEREN Ziel belegt.
+   `yes |` (unendlicher Y-Strom) beantwortet alle Prompts. Danach IMMER die
+   gespeicherte Config lesen und den `--db`/`--url`-Pfad gegen die Absicht
+   halten (bei Bots je Profil `profiles/<bot>/config.yaml`), nicht nur auf
+   "Connected" vertrauen.
+4. **Der Anmeldeschritt gehoert dem Nutzer.** OAuth laeuft im Browser gegen
    SEIN Konto und laesst sich von einem Agenten nicht abschliessen — als
    offenen Schritt melden („Kandidat, ein Klick fehlt"), nie als erledigt.
-4. **Im Ergebnis trennen, was live geprueft ist und was aus der Doku stammt.**
+5. **Im Ergebnis trennen, was live geprueft ist und was aus der Doku stammt.**
    Handschlag und Werkzeugliste sind pruefbar; Metriknamen, Feldlisten und
    Tarifgrenzen stehen oft nur in der Anbieter-Doku. Beides ausdruecklich
    benennen — ein „funktioniert" ohne diese Trennung ist eine Behauptung.
-5. **Erst danach der Manifest-Eintrag**, und als Kandidat mit Begruendung:
+6. **Erst danach der Manifest-Eintrag**, und als Kandidat mit Begruendung:
    `mcp-sync`.
 
 ## Fallback-Kette und lokale Provider
@@ -272,6 +342,29 @@ liest `get_default_hermes_root() / "models"` — also `%LOCALAPPDATA%\hermes\mod
 gehört keine Junction auf die Modellplatte hin (`laufwerk-platz-schaffen`). Vor jedem
 Umräumen prüfen, ob der Verbraucher überhaupt läuft: bei `local_runtime.enabled: false`
 liest den Ordner niemand, und die Gewichtsdateien sind dann nur belegter Platz.
+- **Ein ungueltiger Ketten-Eintrag in einem PROFIL wird als BLOCK entfernt, nicht per
+`hermes config set`.** `config set` kann keinen Listeneintrag einzeln aendern (und schneidet
+den Kommentar-Schluss ab). Richtig ist ein byte-genauer Blockschnitt: die Zeile
+`fallback_providers:` in Spalte 0 plus die eingerueckten Folgezeilen entfernen, die Datei
+VORHER und NACHHER mit `yaml.safe_load` parsen und asserten, dass alles AUSSERHALB des
+Blocks gleich geblieben ist (`{k: v for k, v in vorher.items() if k != schluessel} ==
+nachher`) — damit ist "nur die Kette entfernt" bewiesen und nicht gehofft. Eine
+eingerueckte Kette (z. B. unter `delegation:`) bleibt stehen; `fallback_providers: []`
+ist bereits sauber (leere Liste ist falsy — nicht "leer" mit "fehlt" verwechseln, die
+Erkennung ueber `grep` findet beide Formen). Werkzeug:
+`Agenten/Hermes/scripts/bot-rueckfallkette-bereinigen.py`.
+- **Eine Kette, deren erster Eintrag denselben Dienst nennt wie das Hauptmodell, ist
+keine Reserve.** Faellt dieser Dienst aus, scheitert der erste Eintrag genauso, und erst
+der zweite entscheidet den Fehlertext. Reserve ist nur, was auf einen ANDEREN
+erreichbaren Dienst zeigt — sonst lieber ehrlich gar keine Kette (die Fehlermeldung des
+Primaerpfads ist dann sichtbar).
+- **Massenänderung ueber viele Profile: Trockenlauf ist der Standard.** Ein Werkzeug fuer
+solche Aenderungen zeigt ohne Argument, was es taete, schreibt nur mit `--anwenden`, legt
+je Profil `.bak-JJJJMMTT` an und nimmt mit `--zuruecknehmen` zurueck; es nennt je
+uebersprungenes Profil den GRUND (eigene Anmeldung, lokaler Provider, schon umgestellt)
+und ist idempotent, damit ein Abbruch mittendrin einfach neu gestartet werden kann.
+Muster: `Agenten/Hermes/scripts/bot-modell-auf-router.py` und
+`profil-kanaele-bereinigen.py`.
 
 ## Eine Config mit fremden Aenderungen zusammenfuehren
 
@@ -305,12 +398,26 @@ ein Eintrag in einer Allowlist) werden uebernommen und im Commit-Text als
 uebernommen benannt — wer sie wegwirft, zwingt die andere Sitzung, sie noch
 einmal zu setzen.
 
-Der eigene Anteil geht HUNK-weise in den Commit und die fremden bleiben liegen:
-`git restore --staged <datei>`, dann `printf 'n\nn\ny\n' | git add -p -- <datei>`
-(ein `y`/`n` je Hunk, die eigene Aenderung zuletzt), danach `git diff --cached -- <datei>`
-lesen — steht dort genau die eigene Aenderung, committen, sonst wiederholen. Die
-fremden Hunks bleiben als `M` im Arbeitsbaum und werden im Commit-Text als nicht
-enthalten benannt; fremd Gestagetes nie mitcommitten (Regeln (immer) 7).
+Der eigene Anteil geht allein in den Commit, die fremden bleiben liegen. Bei einer
+gemischten Datei den Index DETERMINISTISCH bauen statt Hunk-Antworten zu raten:
+`git show HEAD:<datei>`, die eigene Aenderung byte-genau im Speicher einsetzen,
+`git hash-object -w --path=<datei> --stdin` und
+`git update-index --cacheinfo 100644,<sha>,<datei>` (der Arbeitsbaum bleibt unberuehrt,
+die fremde Aenderung steht weiter als `M`). Falle dabei: ist die Datei CRLF,
+liefert `git show HEAD:` `\r\n` — erst das Zeilenende bestimmen und DARAUF
+splitten (`nl = '\r\n' if '\r\n' in text else '\n'`), sonst trifft ein
+Zeilenvergleich (`zeile == '  schluessel: wert'`) nie, weil jede Zeile ein `\r`
+traegt, und der "gebaute" Index bleibt unbemerkt identisch zum HEAD — der
+Gegencheck `git diff --cached --numstat` faengt das (0 Zeilen). `git apply
+--cached` mit selbstgebauten Hunks scheitert an CRLF-Configs (`corrupt patch`) —
+der Index-Weg ist dort die stabile Route. Danach `git diff --cached --numstat --
+<datei>` lesen — dort steht genau der eigene Anteil (Beispiel: `30 0` fuer einen
+eingefuegten Abschnitt, `32 2` mit zwei geaenderten Frontmatter-Zeilen) — und die
+Restmenge gegenpruefen: `git diff --numstat -- <datei>` muss die fremden Zeilen
+unveraendert weiter ausweisen. `git add -p` bleibt der Notweg fuer zwei klar getrennte
+kleine Hunks. Die fremden Zeilen werden im Commit-Text als nicht enthalten benannt;
+fremd Gestagetes nie mitcommitten (Regeln (immer) 7). Rezept und Regeln:
+`arbeitsbaum-git-hygiene`.
 
 **Nachweis:** `git diff --stat` muss additiv aussehen (viele Zeilen rein, nur
 die eigene Ersetzung raus). Ein Diff, der mehr loescht als hinzufuegt, hat
@@ -372,6 +479,21 @@ die Antwort-Ursache; **(2)** die Antwort-Ursache ist fast immer die Modellkennun
 ein Kleinmodell in der Kette verdeckt den Anmeldefehler mit einem
 Kontextfenster-Fehler.
 
+**Ein Bot, der nach Sekunden MITTEN im Lauf stirbt, ist eine andere Klasse als
+„antwortet nicht".** Im Profil-Log steht dann
+`Non-retryable client error: <provider>/<model>: …` und daneben liegt das volle
+Request-Dump `profiles/<bot>/sessions/request_dump_<sitzung>_*.json` mit
+`reason` und `error.body` — dieselbe Meldung, die der Client gesehen hat; der
+Bot-Name steht im Dateinamen, man braucht keinen Live-Lauf. Eine terminale
+Fremdklasse (Guthaben/Permission, z. B. `403 free tier can only be used from
+within OpenCode`) bricht im Router die ganze `auto/*`-Kombo ab und wird von
+Hermes NICHT wiederholt. Erst ueber alle Profile zaehlen
+(`grep -h "Non-retryable client error" */logs/errors.log`) und nach Fehlertext
+gruppieren: gleicher Text in vielen Profilen = eine gemeinsame Ursache im
+Router, kein kaputter Bot. Der Fix gehoert dann dorthin (`omniroute-betrieb`:
+terminale Kandidaten abschalten, `POST /api/resilience/reset`) — nicht in die
+Bot-Config.
+
 Ein Befehl statt 29 Einzelaufrufe (je 30-60 s Kaltstart):
 `scripts/profilflotte-bericht.py` (venv-Python von `hermes-agent`, `HERMES_HOME`
 gesetzt) zeigt je Profil Modell, hinterlegte Anmeldung, Kanalzeilen, Kette und
@@ -390,6 +512,177 @@ echter Aufruf je Muster (vorher kaputt, wiederhergestellt, Sonderfall) -
 geparst und Zielwerte assertiert, LF-only-Zeilen 0. Rezept, Entscheidungstabelle,
 Zeitbudget und die Liste "was nicht angefasst wird":
 `references/profilflotte-audit.md`.
+
+## Ein neues Profil OHNE Repo anlegen (Wartungsbot-Muster)
+
+Ein Profil, dessen Arbeitsbereich ein Hausordner ist statt eines Fremd-Repos
+(Beispiel: `hermes-wartung` mit `terminal.cwd = Agenten\Hermes`).
+
+1. `hermes profile create <name> --no-alias` (ohne `--clone`, damit keine
+   fremde Modellkennung und keine Kanalzeilen mitkommen).
+2. **Ein frisches Profil ist NICHT fertig** - es hat eine 45-Zeilen-`config.yaml`
+   ohne `providers`- und `terminal`-Block, `SOUL.md` ist die eingebaute
+   Standard-Identitaet, und **`profile.yaml` fehlt ganz** (ohne sie kennt `/bots`
+   das Profil nicht). Der `--clone`-Weg liefert dagegen eine 1700-Zeilen-Config.
+3. `providers.omniroute` byte-genau aus einem bestehenden Bot-Profil einsetzen
+   (nicht abtippen - die `auto/*`-Modellliste ist 1700 Zeilen), dazu
+   `model.provider=omniroute`, `model.default=auto/best-coding` (per
+   `hermes -p <name> config set`, danach Kommentar-Schluss zurueckholen).
+4. `terminal:`-Block mit `backend: local` und dem gewuenschten `cwd` ergaenzen.
+   Die Bloecke VOR dem Schreiben mit `yaml.safe_load` parsen und Assertions
+   setzen (`rest == vorher` ausserhalb der beiden Bloecke).
+5. Die Router-Schluesselnamen in die eigene `.env` (frisch = leere Vorlage).
+   Ein Kommentar ohne `#` laesst `python-dotenv` beim JEDEN Start meckern
+   ("could not parse statement starting at line N") - Zeilen pruefen.
+6. Beschreibung per `hermes profile describe <name> --text "..."` - das erzeugt
+   `profile.yaml` erst an.
+7. Ein Bot ohne Repo liest dieselbe Stilquelle wie die Repo-Bots:
+   `profiles/rule_repo-bots.md`. Dort seinen Geltungsbereich im Kopf nennen und in
+   der eigenen `SOUL.md` darauf verweisen — die Datei hat ein Budget von 6000
+   Zeichen, also nur den Geltungsbereich ergaenzen, nichts anhaengen.
+8. **Skills nachziehen — ein frisches Profil hat KEINE Haus-Skills.** Ohne
+   `--clone` enthaelt `profiles/<name>/skills/` nur die eingebauten Kategorien
+   (apple, autonomous-ai-agents, devops, …). Verweist die eigene `SOUL.md` auf
+   Haus-Skills (`brainfiles/hermes-config-ops`, `hermes-doctor`,
+   `dauerprozess-bewachen`, `systemdiagnose`), laufen die ersten Zuege des Bots
+   in fehlgeschlagene `skill_view`-Aufrufe („Skill '<name>' not found") — der
+   Lauf kostet Zeit und wirkt kaputt, ohne es zu sein. Die genannten Skills aus
+   `Agenten/Hermes/skills/` hinueberkopieren und mit
+   `hermes -p <name> skills list` belegen (Zaehlzeile „N local" plus die Namen
+   in der `source`-Spalte `local`) — vor dem ersten Bot-Lauf, nicht danach.
+
+Beleg-Pflicht (nichts davon ist durch "Datei steht da" bewiesen):
+`hermes -p <name> chat -q "Fuehre pwd aus und nenne Modell und Arbeitsverzeichnis." -Q -t terminal`
+- `pwd` muss den Zielordner melden, das Modell den Routerpfad. Dazu
+`hermes profile list` (0 Warnzeilen) und die Profilliste des SkillsBot
+(`bot_namen()` in `Agenten/Bus/skillsbot.py`) gegen die Zahl der Profilordner.
+
+Falle: Zeilenenden nicht raten. Ein Profil, das per `hermes config set`
+angefasst wurde, kann LF-only sein, waehrend ein aus einem CRLF-Profil
+kopierter Block CRLF mitbringt - die Datei ist danach gemischt. Vor dem
+Schreiben `\r\n` in den ROHEN Bytes bestimmen und die GANZE Datei auf das
+Hausformat (CRLF) normalisieren; der `yaml.safe_load`-Vergleich beweist, dass
+nur die Enden normalisiert wurden, der Diff gegen die Sicherung zeigt genau
+die neuen Zeilen.
+
+## Einem Profil eine Modell-Anmeldung geben (Symlink, nicht Kopie)
+
+Ausloeser: "/bot NAME antwortet nicht", `hermes -p NAME chat -q ...` endet mit
+"Hermes is not logged into Nous Portal". Ein Profil ohne eigene `auth.json`
+liest NIE die des Root-Homes (`profile_credential_audit.py`); `NOUS_API_KEY` in
+der Benutzerumgebung genuegt NICHT - der Gate verlangt den Provider-State in der
+`auth.json` des Profils.
+
+Richtig ist ein **Symlink** auf den Root-Store, nicht eine Kopie:
+`Agenten/Hermes/scripts/auth-verknuepfen.ps1` (Trockenlauf ohne Argument,
+`-Anwenden`, `-Zuruecknehmen`). Der Grund gegen die Kopie: eine device_code-
+OAuth-Sitzung enthaelt einen Refresh-Token; als Kopie in vielen Profilen
+entwertet die erste Rotation alle anderen ("Refresh session has been revoked").
+Ein Symlink haelt EINEN Store, und genau dafuer hat Hermes die Sperre und die
+"Peer hat rotiert, uebernimm seinen Token"-Logik
+(`hermes_cli/auth.py::_nous_shared_store_lock`); `auth_oauth_grants.py` behandelt
+einen Symlink auf den Root-Store ausdruecklich als "kein Klon" und laesst ihn
+stehen. Symlinks brauchen auf Windows Adminrechte (`New-Item -ItemType
+SymbolicLink` scheitert sonst mit "Administratorrechte erforderlich") -
+Einzelaufruf ueber `Start-Process -Verb RunAs -Wait`. **`-PassThru` und
+`-RedirectStandardOutput` vertragen sich in PowerShell 5.1 NICHT mit `-Verb
+RunAs`** (AmbiguousParameterSet); das innere Skript schreibt sein Ergebnis
+selbst per `Start-Transcript` in eine Logdatei.
+
+Fallen: Ein Profil mit eigener `auth.json` bleibt unberuehrt (die Datei NICHT
+ueberschreiben). Enthaelt sie nur einen Pool-Eintrag ohne `providers.nous`,
+nutzt sie nichts - vorher sichern und dann ebenfalls verknuepfen. Ein
+`api_key`-Provider (llamacpp, docker) braucht keine Sitzung.
+
+Beleg: `hermes -p NAME chat -q "Antworte nur mit dem einen Wort: fertig" -Q -t
+memory` je Muster (verknuepft, eigene Sitzung, Sonderfall) - und danach das
+Hauptprofil einmal aufrufen: bleibt SEINE Sitzung intakt, ist die gemeinsame
+Nutzung bewiesen.
+
+## Modellwechsel ueber viele Profile: was die Werkzeuge NICHT sagen
+
+- **`git commit -- <pfade>` committet den ARBEITSBAUM dieser Pfade, nicht den
+  Index.** Ein zuvor per `update-index` deterministisch gebauter Index wird von
+  so einem Aufruf ignoriert - fremde Hunks in derselben Datei landen mit im
+  Commit. Fuer "nur meine Zeilen" ohne Pathspec committen (`git commit`), davor
+  `git diff --cached --name-only` lesen und gegen die eigene Absicht zaehlen.
+- **Staged Eintraege koennen verschwinden, wenn eine zweite Sitzung committet:**
+  ein `git commit` OHNE Pfadangabe committet den ganzen Index - die eigene
+  Aenderung landet dann im fremden Commit (richtig, aber falsch beschriftet),
+  oder ein `git add -A` der anderen Sitzung zieht sie mit. Deshalb: eigenen
+  Index bauen, `git diff --cached --name-only` gegen die Absicht zaehlen und
+  in DERSELBEN Sitzung committen - kein Zeitfenster dazwischen.
+- **Der Kommentar-Schluss geht auch bei PROFIL-Configs verloren**, wenn
+  `hermes config set` die Datei neu schreibt (gemessen: 38 Zeilen). Ein
+  Profil, das nur "laeuft schon" ist, wird von einem Umstellungs-Werkzeug
+  uebersprungen - seinen Schaden heilt dann niemand. Nach jeder Umstellung
+  `git diff --numstat` JE Datei lesen: 2/2 ist richtig, hunderte Zeilen heissen
+  gekippte Zeilenenden oder weggefallener Doku-Block.
+- **Zeilenenden sind bei Profil-Configs gemischt.** Ein `hermes config set`
+  schreibt LF-only; aus einem CRLF-Profil kopierte Bloecke bringen CRLF mit.
+  Vor dem Einfuegen die ROHEN Bytes ansehen und die Zeilen einzeln behandeln
+  (an Zeilenumbruch trennen und ein abschliessendes CR vor der Zeile abstreifen),
+  nicht auf ein einheitliches Zeilenende vertrauen. `subprocess(... text=True)`
+  wandelt CRLF still nach LF und baut dann eine LF-Kopie der ganzen Datei.
+
+## Desktop-App zeigt nur das default-Profil (multiplex_profiles)
+
+Symptom: die Desktop-App ist „unvollständig" — kein Bots-Tab, kein
+Profil-Umschalter, nur `default`. Ursache fast immer: `gateway.multiplex_profiles`
+ist **nicht explizit gesetzt** (nur der Default `true`), der Gateway serviert
+dann nur `default`. `hermes config get gateway.multiplex_profiles` liefert den
+Default und ist damit **kein Beweis**, dass der Schluessel in der Datei steht —
+`grep -n multiplex config.yaml` entscheidet. `hermes gateway status` warnt
+„Serving the default profile only (gateway.multiplex_profiles unset)".
+
+Fix (der dokumentierte Weg der Status-Meldung, nicht `migrate --multiplex`, das
+auf Windows an den Scheduled Tasks scheitert):
+
+    hermes config set gateway.multiplex_profiles true
+    hermes gateway restart
+
+Danach `hermes gateway status` (Warnung muss weg) und `hermes gateway list`
+(alle Profile aufgelistet). Die Desktop-App liest die Projekt-Config, wenn
+`HERMES_HOME` als Benutzervariable gesetzt ist (`resolveHermesHome2` prueft
+`process.env.HERMES_HOME` → Registry → `%LOCALAPPDATA%\hermes`); der
+`desktop.log` unter `$HERMES_HOME/logs/` belegt, welches Home die App wirklich
+nutzt. Eine veraltete `%LOCALAPPDATA%\hermes\config.yaml` (eigene .env/auth.json
+mit Klartext-Zugangsdaten) ist eine komplette Alt-Installation, keine bloße
+Zweitablage — nicht loeschen, als Altlast melden.
+
+### Gegenrichtung: multiplex + Profil-`gateway:`-Bloecke = Absturzkreislauf
+
+Jede Profil-`config.yaml` ist beim Anlegen aus dem Hauptprofil kopiert und traegt
+deshalb einen kompletten `gateway:`-Block (`a2a enabled: true, port: 9900`).
+Kanal-Zugangsdaten entfernt man zwar (profil-kanaele-bereinigen), die
+`gateway:`-Bloecke bleiben stehen. Setzt man dann `multiplex_profiles: true`,
+startet der zentrale Gateway JEDES Profil als Sekundaeradapter auf demselben
+Port 9900, haengt beim Plugin-Import (`plugins_loader.exec_module`, synchron in
+der Event-Loop), verpasst die Liveness-Probes, und der Watchdog beendet den
+Prozess — ein Neustart-Kreislauf.
+
+Diagnose am lebenden System (Symptom-Signatur):
+
+- **Kill-Kadenz = rund 3 x Probe-Intervall** (Probes alle 5 min → Kills alle
+  ~16 min): `grep CRITICAL gateway.shutdown_watchdog logs/gateway.log` und die
+  Zeitstempel-Abstaende der Eintraege messen, nicht nur zaehlen.
+- **`gateway_state.json`: `last_heartbeat_at` eingefroren** (identischer
+  Zeitstempel in jedem Kill-Eintrag) und `updated_at`-Alter > Probe-Intervall —
+  das heisst die Loop haengt, nicht nur der Schreibvorgang.
+- **CPU-Sekunden ≈ Uptime-Sekunden** (Spin statt Warten).
+- **`logs/gateway-stdio.log` (faulthandler-Dump beim Kill):** der
+  Event-Loop-Thread steckt in einem Import/Load — synchrones Plugin-Laden in
+der Loop ist die haengende Stelle.
+
+Fix: `multiplex_profiles: false` (Bot-Profile kommen ueber `/bot`
+Einzelauftraege `hermes -p NAME chat -q`, sie brauchen keine Adapter) und die
+jetzt obsoleten `profile_routes`-Eintraege deaktivieren, nicht nur den Port
+frei lassen. Beleg nach dem Neustart: `updated_at` stampet durchgehend frisch
+(Alter < Probe-Intervall), `state: running`, keine neue CRITICAL-Zeile, CPU
+flach. End-zu-End-Probe: dieselbe Nachricht an den SkillsBot antwortete
+waehrend des Kills `status: fehler` und nach dem Fix `status: ok` — der Bot
+haengt ueber den A2A-Weg am Gateway, nicht am Bus, und ist damit ein
+kostenloser Gesundheitsindikator fuer den Gateway.
 
 ## Fallen
 
@@ -458,12 +751,24 @@ Zeitbudget und die Liste "was nicht angefasst wird":
   Argumente im Klartext aus. Umlaute und mehrzeilige Blöcke nicht über die Kommandozeile
   transportieren: mehrzeiligen Text als Datei schreiben oder als Array mit
   `-join [char]10` bauen.
+- **Ein Einzelauftrag (`-q`, so startet der SkillsBot `/bot`) hat keinen Nutzer
+  fuer Freigaben.** In diesem Modus werden Kommandozeilen mit `-c/-e` und
+  `execute_code` blockiert („runs without a user present to approve") — der
+  Auftrag endet dann in einem Werkzeugfehler, den der Bot als Ergebnis meldet.
+  Auftraege fuer solche Bots deshalb so formulieren, dass sie ohne
+  Shell-Einzeiler auskommen (Datei schreiben und ein bestehendes Skript
+  aufrufen, `read_file`/`search_files` statt Inline-Python) — und einen Bot,
+  dessen Kern Kommandos fahren soll, aus einer Sitzung mit Nutzer oder als
+  Routine starten, nicht per `-q`.
 
 - **Ein Umgebungsvariablen-Namen kann ein Tippfehler sein — Namen aus der Registry lesen, nicht eine Kandidatenliste abfragen.** Im Ist-Stand stand `#ANTHROPIC_API_KEY` (mit Rautenzeichen!) und `ANTHROPIC_API_KEY_BILLING`; der kanonische `ANTHROPIC_API_KEY`, den Hermes' Provider-Profil liest, fehlte. Eine Abwesenheitsmeldung ist erst gueltig, wenn die Namen aufgelistet wurden: `(Get-Item HKCU:\Environment).GetValueNames()`, dann je Name Laenge und SHA-256-Anfang der Kandidaten vergleichen — gleicher Hash = derselbe Wert, und das Setzen ist ein Umbenennen, kein neues Geheimnis.
 - **Ein Provider braucht oft keinen Block in `providers:`.** Hermes' eingebaute Model-Provider-Profile (`hermes-agent/plugins/model-providers/<name>/__init__.py`) bringen `base_url`, `api_mode` und `env_vars` selbst mit — fuer Anthropic sind das `https://api.anthropic.com`, `anthropic_messages` und `(ANTHROPIC_API_KEY, ANTHROPIC_TOKEN, CLAUDE_CODE_OAUTH_TOKEN)`. Ist die Variable gesetzt, ist der Provider da; ein zusaetzlicher Eintrag in `config.yaml` ist hoechstens eine zweite Wahrheit.
 - **Fuer Provider-Anmeldedaten braucht das laufende Gateway KEINEN Neustart.** Sie kommen aus dem Credential-Pool (`auth.json`) und der `.env` des Profils, nicht aus der Prozessumgebung: ein `delegate_task`-Kind lief sofort mit `provider=anthropic model=claude-opus-5` (Logzeile `platform=subagent … id=msg_…`). Wer „greift erst nach Neustart" behauptet, muss diesen Unterschied zeigen — er gilt nur fuer `${env:NAME}`-Verweise.
+- **`hermes config edit` oeffnet auf Windows notepad und blockiert den Aufruf, bis das Fenster geschlossen ist.** Intern laeuft ein synchrones `subprocess.run([editor, config_path])` ohne Timeout — aus einer Werkzeugsitzung haengt der Aufruf bis ins Zeitlimit. Der Befehl ist fuer Menschen am Desktop gedacht, nicht fuer Agenten: einzelne Werte gehoeren zu `hermes config set`, nur ein mehrzeiliger Eingriff verdient das Wegwerf-Skript (`Agenten/Hermes/cache/`). Wer `config edit` in einem Agenten-Flow braucht, startet es mit `background=true` und laesst das Fernster dem Nutzer.
+- **Der Auxiliary-Client loest `auxiliary.*.model` ueber den Nous/OpenRouter-Katalog auf — ein lokales GGUF dort ist ein kategorischer 404, kein langsamer Server.** Zeigt `auxiliary.compression.model` (oder `auxiliary.mcp`/`auxiliary.skills_hub`) auf ein Laufzeitmodell (`llamacpp/DeepSeek-...`), wirft das Komprimieren `Failed to generate context summary: 404 - Model '...' not found ... in our configuration or OpenRouter catalog`; Muster davor in `logs/errors.log`/`gateway.log`: `Auxiliary compression: model '...' no longer in Nous catalog`. Der Client hat keinen lokalen llamacpp-Pfad — ein lokales GGUF ist fuer ihn prinzipiell unaufloesbar, und Sessions wachsen stumm auf 100k+ Tokens unkomprimiert, ohne dass die Kompression irgendwo laut scheitert. Fix: `hermes config set auxiliary.compression.provider nous` und `...model deepseek/deepseek-v4-flash-0731` (dasselbe Provider/Modell wie das Hauptmodell, 786k — nachweislich aufloesbar). Nicht zurueck auf den frueher dokumentierten `auto/coding:free`-Router-Weg: der reroutet aktuell auf OpenCode-Free, das ausserhalb von OpenCode 403 liefert — kein zuverlaessiges Kompressionsmodell. **Nach JEDEM `hermes update` alle `auxiliary.*`-Modellpfade (compression, mcp, skills_hub) pruefen**: das Update schreibt die Config neu und setzt Modell/`threshold` zurueck auf einen lokalen GGUF-Stand (gemessen: `threshold` 0.19 → 0.66, compression auf llamacpp). `auxiliary.skills_hub` kann dabei auf ein CLIP-Projektor-GGUF zeigen, das gar nicht als Hauptmodell ladbar ist ("CLIP cannot be used as main model") — ebenfalls ueber den Katalogpfad ersetzen. Beleg: `hermes config check` Exit 0; die laufende Sitzung nutzt die neue Config erst ab `/new`.
+- **Die Kompression-schwellen-Warnung kennt einen dauerhaften Fix, und die Schwelle ist KONTEXT-RELATIV, kein Fixwert.** Hermes meldet per Sitzung, das Kompressionsmodell habe kleineren Kontext als die Schwelle des Hauptmodells (`auxiliary.compression.model` vs. `compression.threshold`), und senkt die Schwelle nur fuer diese Sitzung. Der Trigger in Tokens ist `(model.context_length - max_tokens) * compression.threshold` (min. 64k; Fenster < 512k werden auf 75% angehoben) — `threshold` ist ein PROZENTSATZ des Kontextfensters. Der frueher dokumentierte Wert 0.19 gilt nur, solange das Aux-Kompressionsmodell ~200k hat; ist es dasselbe Modell wie das Hauptmodell (deepseek-v4-flash, 1M), hebt man beides an: `hermes config set model.context_length 1000000` UND `hermes config set compression.threshold 0.60` → komprimiert erst bei 600k statt ~190k. Faustregel: `threshold` so waehlen, dass der Trigger-Tokenwert unter dem Fenster des Aux-Kompressionsmodells bleibt, sonst senkt Hermes die Session-Schwelle beim Start selbst ab (`_lower_threshold_to_aux_context`); ein grosses Aux-Modell erlaubt eine hohe Schwelle = Kompression ruht bis kurz vor dem Fensterende. Nach `hermes config check` (Exit 0 = sauberes YAML); die laufende Sitzung nutzt die neue Schwelle erst nach `/new`.
 - **`patch` und `write_file` auf `config.yaml` sind gesperrt** („Refusing to write to Hermes config file", bei der AppData-Config zusaetzlich `HERMES_WRITE_SAFE_ROOT`). Zwei Wege bleiben, und sie sind nicht gleichwertig: `hermes config set …` fuer den EINZELNEN Wert (auch fuer Listen — der Wert wird als YAML/JSON geparst, `'[{"provider":"omniroute","model":"auto/best-coding"}]'` funktioniert), und ein Wegwerf-Skript unter `Agenten/Hermes/cache/`, das die Datei binaer liest, chirurgisch ersetzt und zurueckschreibt — fuer eine Zusammenfuehrung mit mehreren Hunks. Das Skript ist dort das BESSERE Mittel, weil `hermes config set` die Datei neu schreibt und dabei den Kommentar-Schluss abschneidet (naechste Falle). Fuer das Skript gelten dieselben Regeln wie fuer jede Textaenderung: Zeilenenden binaer feststellen (`b"\r\n" in raw`) und erhalten, je Ersetzung `count == 1` asserten, den NEUEN Text vor dem Schreiben mit `yaml.safe_load` pruefen, vorher `.bak-JJJJMMTT`.
-- **`hermes config set` schneidet den Kommentar-Schluss der Datei ab.** Es schreibt die ganze Datei neu; ein Dokumentationsblock am Dateiende (Beispiele fuer `security:`, `fallback_model:`) ist danach weg — funktional harmlos, aber eine stille Aenderung an der Datei des Nutzers. Nach **jedem** `config set` diffen und den Block zurueckholen (`Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`), sonst waechst bei jeder Aenderung eine unsichtbare Differenz. Die Aenderung selbst sieht im Diff wie eine Zeilenersetzung aus — genau pruefen, ob noch mehr fehlt.
+- **`hermes config set` schneidet den Kommentar-Schluss der Datei ab.** Es schreibt die ganze Datei neu; ein Dokumentationsblock am Dateiende (Beispiele fuer `security:`, `fallback_model:`) ist danach weg — funktional harmlos, aber eine stille Aenderung an der Datei des Nutzers. Nach **jedem** `config set` diffen und den Block zurueckholen (`Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`), sonst waechst bei jeder Aenderung eine unsichtbare Differenz. Die Aenderung selbst sieht im Diff wie eine Zeilenersetzung aus — genau pruefen, ob noch mehr fehlt. **Rueckholquelle:** `hermes config set` legt vor dem Schreiben ein Backup unter `backups/config/config.yaml.good.<zeitstempel>` an — den fehlenden Block daraus byte-genau (CRLF erhalten) an die Datei anhaengen, dann `diff` gegen die Sicherung: er darf exakt die eine gewollte Zeile zeigen.
 - **Der Kommentar-Schluss fehlt auch bei PROFIL-Configs** (`profiles/<name>/config.yaml`),
   nicht nur im Hauptprofil (gemessen: 38 Zeilen in 6 Profilen). Dort ist "Block anhaengen"
   der falsche Fix — die Ziel-Fassung BYTE-genau aus `git show HEAD:<pfad>` bauen und nur
