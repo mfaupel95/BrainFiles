@@ -44,11 +44,22 @@ def _konto_fn(spur):
 
 
 def _gebunden(spur):
-    """Was gerade in offenen Positionen steckt."""
-    for e in lage.erhebe(mit_xperp=False):
-        if e["schluessel"] == spur:
-            return sum(p.get("wert") or 0 for p in e["positionen"])
-    return 0.0
+    """Was gerade in offenen Positionen steckt.
+
+    Eigener HIER-Mantel (wie tagesbericht.baue()/wochenbericht.baue()):
+    lage.erhebe() liest ueber lage.HIER, und dieser Aufruf darf sich nicht
+    heimlich auf den Mantel eines Aufrufers verlassen - bisher lief er nur
+    zufaellig richtig, weil text() bislang ausschliesslich innerhalb von
+    wochenbericht.baue() gerufen wird."""
+    alt = lage.HIER
+    lage.HIER = HIER
+    try:
+        for e in lage.erhebe(mit_xperp=False):
+            if e["schluessel"] == spur:
+                return sum(p.get("wert") or 0 for p in e["positionen"])
+        return 0.0
+    finally:
+        lage.HIER = alt
 
 
 def abgleich(spur, konto=None, bilanz=None, gebunden=None):

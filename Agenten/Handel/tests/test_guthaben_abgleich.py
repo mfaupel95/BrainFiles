@@ -2,8 +2,12 @@
 
 Kein Test geht ans Netz: der Kontostand wird uebergeben.
 """
+import io
+import json
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -50,6 +54,44 @@ class AbgleichTest(unittest.TestCase):
         t = guthaben_abgleich.text(abgleiche=[a])
         self.assertIn("unbekannt", t)
         self.assertNotIn("Konto 0.00", t)
+
+    def test_gebunden_bindet_das_eigene_hier_ohne_fremden_mantel(self):
+        """Befund 3 der Schlusspruefung: _gebunden() rief lage.erhebe() bisher
+        ohne eigenen HIER-Mantel auf und funktionierte nur zufaellig, weil es
+        stets innerhalb von wochenbericht.baue() lief. Dieser Test ruft
+        _gebunden() DIREKT, ohne einen fremden Mantel aktiv zu haben - waehrend
+        lage.HIER auf einen unbeteiligten Ordner zeigt - und belegt, dass der
+        Aufruf trotzdem im eigenen guthaben_abgleich.HIER erhebt und lage.HIER
+        danach unveraendert laesst."""
+        tmp = tempfile.mkdtemp(prefix="guthaben-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        # "fremd" hat KEIN merkmal.json - steht fuer lage.HIER ausserhalb
+        # jedes Mantels (weder wochenbericht.baue() noch guthaben_abgleich
+        # haben gerade gebunden).
+        fremd = tempfile.mkdtemp(prefix="fremd-")
+        self.addCleanup(shutil.rmtree, fremd, ignore_errors=True)
+        with io.open(os.path.join(tmp, "merkmal.json"), "w",
+                    encoding="utf-8") as f:
+            json.dump({"spur": "scanner"}, f)
+
+        def fake_holer():
+            pfad = os.path.join(guthaben_abgleich.lage.HIER, "merkmal.json")
+            with io.open(pfad, encoding="utf-8") as f:
+                spur = json.load(f)["spur"]
+            return {"name": spur, "waehrung": "USD",
+                    "positionen": [{"wert": 42.0}], "w": {},
+                    "ordner": os.path.join(guthaben_abgleich.lage.HIER, spur)}
+
+        guthaben_abgleich.lage.HIER = fremd  # kein aktiver fremder Mantel
+        try:
+            with patch.object(guthaben_abgleich, "HIER", tmp), \
+                    patch.object(guthaben_abgleich.lage, "HOLER",
+                                (fake_holer,)):
+                gebunden = guthaben_abgleich._gebunden("scanner")
+            self.assertEqual(gebunden, 42.0)
+            self.assertEqual(guthaben_abgleich.lage.HIER, fremd)
+        finally:
+            guthaben_abgleich.lage.HIER = HIER
 
     def test_papierspur_ist_nicht_dabei(self):
         self.assertNotIn("swap", guthaben_abgleich.LIVE)
