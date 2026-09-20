@@ -136,11 +136,15 @@ class ZusammenarbeitTest(unittest.TestCase):
     Spur umgestellt worden - dann gehoert pruefe_ratschen.py mitgelesen."""
 
     ERWARTET = {
-        "scanner": 36.0,
+        # scanner: 20.09.2026 auf 5 Plaetze umgestellt (Max: "600 gesamt,
+        # 120 pro Trade, 5") - Buchrisiko 6.0 x 5 = 30.0 statt 36.0.
+        "scanner": 30.0,
         "xperp": 30.0,
         "swap": 30.0,
         "orbk": 10.0,
         "kraken": 24.0,
+        # signalwelle: 20.09.2026 neu, 5.0 x 3 Plaetze = 15.0.
+        "moondev_signalwelle": 15.0,
     }
 
     def test_jede_spur_ergibt_ihren_betriebswert(self):

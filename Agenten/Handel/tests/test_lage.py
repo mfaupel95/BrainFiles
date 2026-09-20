@@ -26,7 +26,7 @@ class FormTest(unittest.TestCase):
         # kopier1zu1) wird seit dem Berichts-Schlankbund als EIN Holer
         # (spur_kopier_familie) gezaehlt; die 5 Einzelholer existieren weiter,
         # stehen aber nicht mehr im HOLER.
-        self.assertEqual(len(lage.HOLER), 26)
+        self.assertEqual(len(lage.HOLER), 27)
 
 
 class KursVariantenTest(unittest.TestCase):
