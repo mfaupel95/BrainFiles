@@ -60,7 +60,7 @@
   "wochenend_faktor": 0.5,
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
         "_papierlauf_min_wochen_entfaellt": "19.09.2026 Max: die 6 Wochen Papierlauf zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",
                 "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer xperp (Handelsregeln Bedingung 1).",
                         "_papierlauf_min_runden_entfaellt": "20.09.2026 Max: die 50 Runden zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",

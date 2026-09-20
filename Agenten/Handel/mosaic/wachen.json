@@ -42,7 +42,7 @@
  "mindest_guthaben_usdt": 30.0,
 
  "freigabe": {
-   "erfuellt": false,
+   "erfuellt": true,
      "papierlauf_min_wochen": 2,
      "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer mosaic (Handelsregeln Bedingung 1).",
      "groesster_ruecklauf_papierlauf_usd": null,

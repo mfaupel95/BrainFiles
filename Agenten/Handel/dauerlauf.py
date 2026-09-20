@@ -330,6 +330,13 @@ NUR_BASIS = ("spiegel", "spiegel_knapp", "spiegel_weit")
 # ausgefallenen Zyklus zu, bevor es eng wird.
 TAKT_MAX_MINUTEN = 15
 
+# Spuren mit Auto-Freigabe (20.09.2026, Max): der Dauerlauf erteilt die Freigabe
+# ohne /ja, sobald nur noch das Fenster fehlt. NUR Spuren mit echtem Live-Pfad
+# (moondev-* verweigern --live). Zeitlich begrenzt auf AUTO_FREIGABE_STUNDEN -
+# danach laeuft die Freigabe ab und es muss wieder bestaetigt werden.
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic")
+AUTO_FREIGABE_STUNDEN = 12
+
 
 # Module-level state fuer Log-Rotation-Optimierung
 _LOG_ROTATION_CHECK_INTERVAL = 100  # noqa: E305
@@ -579,6 +586,14 @@ class Lauf:
                 continue
             w = offen_bis_auf_fenster
             dauer = freigabefenster.anfrage_stellen(spur, 12 * 60)
+            if spur in AUTO_FREIGABE:
+                # Auto-Freigabe (20.09.2026, Max): sofort bestaetigen statt
+                # auf /ja zu warten. anfrage_stellen() legt die Anfrage an,
+                # oeffnen() bestaetigt sie - genau der Weg, den /ja geht.
+                m = freigabefenster.oeffnen(spur, AUTO_FREIGABE_STUNDEN, "auto")
+                if m:
+                    protokoll("Auto-Freigabe %s (%d min)" % (spur, m))
+                continue
             protokoll("Freigabe-Anfrage %s (%d min)" % (spur, dauer))
             self.sende(freigabefenster.anfrage_text(
                 spur, w, dauer, d.get("waehrung", "USD")))
