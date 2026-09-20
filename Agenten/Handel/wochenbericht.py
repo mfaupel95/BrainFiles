@@ -88,7 +88,14 @@ def _baue():
     for e in erhebung:
         if not e["schluessel"]:
             continue
-        t.append(verlaufszeile(e["schluessel"], verlauf(e["schluessel"])))
+        # Je Spur gekapselt wie lage.erhebe() je Holer: eine kaputte Spur
+        # (z. B. ein beschaedigtes Journal) kostet eine Fehlzeile, nicht den
+        # gesamten Wochenbericht.
+        try:
+            t.append(verlaufszeile(e["schluessel"], verlauf(e["schluessel"])))
+        except Exception as fehler:                        # noqa: BLE001
+            t.append("  %-20s Verlauf ausgefallen: %s: %s"
+                     % (e["schluessel"], type(fehler).__name__, fehler))
     t.append("  n=<Zahl> heisst: zu wenige Runden fuer eine Aussage.")
 
     von, bis = zeitfenster.fenster(tage=FENSTER_TAGE * FENSTER_ANZAHL)

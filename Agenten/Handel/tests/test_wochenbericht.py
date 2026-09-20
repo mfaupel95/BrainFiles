@@ -90,6 +90,40 @@ class BaueTest(unittest.TestCase):
         # Der Mantel stellt lage.HIER zurueck - kein Zustand bleibt haengen.
         self.assertEqual(wochenbericht.lage.HIER, vorher)
 
+    def test_eine_kaputte_spur_reisst_den_bericht_nicht_mit(self):
+        """Befund 1 der Schlusspruefung: verlauf() darf fuer eine Spur werfen,
+        ohne _baue() mitzureissen - dieselbe Kapselung wie lage.erhebe() je
+        Holer. Die kaputte Spur bekommt eine erkennbare Fehlzeile, die
+        gesunde Spur bleibt normal im Bericht."""
+        def fake_holer_gesund():
+            return {"name": "kraken", "waehrung": "USD", "positionen": [],
+                    "w": {}, "ordner": os.path.join(wochenbericht.lage.HIER,
+                                                    "kraken")}
+
+        def fake_holer_kaputt():
+            return {"name": "swap", "waehrung": "USD", "positionen": [],
+                    "w": {}, "ordner": os.path.join(wochenbericht.lage.HIER,
+                                                    "swap")}
+
+        echter_verlauf = wochenbericht.verlauf
+
+        def verlauf_mit_ausfall(spur, *a, **kw):
+            if spur == "swap":
+                raise OSError("Journal kaputt")
+            return echter_verlauf(
+                spur, kennzahlen_fn=lambda *a2, **k2:
+                    {"n": 10, "ergebnis": 1.0, "treffer": 6})
+
+        with patch.object(wochenbericht.lage, "HOLER",
+                          (fake_holer_gesund, fake_holer_kaputt)), \
+                patch.object(wochenbericht, "verlauf",
+                             side_effect=verlauf_mit_ausfall):
+            text = wochenbericht.baue()
+        self.assertIn("kraken", text)
+        self.assertIn("swap", text)
+        self.assertIn("ausgefallen", text)
+        self.assertIn("Journal kaputt", text)
+
     def test_ohne_guthaben_abgleich_zeigt_eine_fehlzeile(self):
         """Erzwingt den ImportError unabhaengig davon, ob guthaben_abgleich.py
         (Aufgabe 7) inzwischen existiert: None in sys.modules laesst
