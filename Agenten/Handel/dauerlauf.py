@@ -496,7 +496,8 @@ class Lauf:
         try:
             p = subprocess.run([python, skript, modus], cwd=ordner,
                                capture_output=True, text=True, timeout=300,
-                               env=umgebung)
+                               env=umgebung,
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         except subprocess.TimeoutExpired as e:
             # FIXED: Timeout-Exception nicht mehr fatal
             protokoll("%s TIMEOUT (exceeded 300s limit)" % spur)
@@ -656,7 +657,8 @@ class Lauf:
             p = subprocess.run([python, skript, "--vorschau"],
                                cwd=ordner, capture_output=True, text=True,
                                timeout=600, env=dict(os.environ,
-                                                     MAXHIRN_ROUTINE="1"))
+                                                     MAXHIRN_ROUTINE="1"),
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         except Exception:                                # noqa: BLE001
             return None
         zeile = ""

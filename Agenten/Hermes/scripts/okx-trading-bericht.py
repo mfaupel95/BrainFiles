@@ -83,7 +83,8 @@ def onchainos_aufruf(argumente, zeitgrenze=120):
     try:
         r = subprocess.run([ONCHAINOS] + argumente,
                            capture_output=True, text=True, timeout=zeitgrenze,
-                           errors="replace")
+                           errors="replace",
+                           creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError):
         return False, None
     if r.returncode != 0:

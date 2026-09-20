@@ -58,7 +58,8 @@ def onchainos_lebt(zeitgrenze=30):
         r = subprocess.run(
             [ONCHAINOS, "memepump", "tokens", "--chain", "solana"],
             capture_output=True, text=True, timeout=zeitgrenze,
-            errors="replace")
+            errors="replace",
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError):
         return False
     if r.returncode != 0:

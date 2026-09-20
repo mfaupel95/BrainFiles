@@ -27,6 +27,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import os
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -99,7 +100,12 @@ def onchainos(*args):
     """Ruft die CLI auf. Hartes Zeitlimit, damit ein haengender Aufruf nicht
     den Agenten blockiert."""
     try:
-        proc = subprocess.run(["onchainos", *args], capture_output=True, timeout=120)
+        if os.name == "nt":
+            proc = subprocess.run(
+                ["onchainos", *args], capture_output=True, timeout=120,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            proc = subprocess.run(["onchainos", *args], capture_output=True, timeout=120)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "Zeitlimit überschritten"}
     except FileNotFoundError:
