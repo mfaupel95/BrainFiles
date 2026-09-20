@@ -3,7 +3,7 @@ id: 20260916-repo-bots
 title: 'Repo-Bots: Flottenstand und Telegram-Zugang'
 tags: [bots, telegram, repos]
 created: 2026-09-16
-updated: 2026-09-18
+updated: 2026-09-21
 summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
 ---
 
@@ -35,7 +35,8 @@ vom Arbeitsverzeichnis des SkillsBot abhaengt.
 
 ## Flottenstand (Stand 19.09.2026)
 
-27 Repo-Bots + das besondere Profil `nous` (kein Repo, deepseek-v4-flash-free).
+27 Repo-Bots + zwei Profile ohne Repo: `nous` (deepseek-v4-flash-free) und
+`hermes-wartung` (Arbeitsbereich `Agenten/Hermes`, kein Klon; angelegt 21.09.2026).
 Standgemessen mit `git ls-files Agenten/Hermes/profiles/` gegen
 `ls Werkstatt/Repos/`.
 
@@ -127,5 +128,17 @@ Worktree-Sammlung zu den Schwester-Repos.
 - **SOUL.md je Bot individuell:** Repo, Aufbau, Aufgaben und Grenzen des jeweiligen Fremd-Repos, dazu der Verweis auf die Regeldatei - statt 27 wortgleicher Stiltexte (3030 Zeichen, MD5 D5EC74ACD025B18710647B2651F4A085).
 - Alte Fassung gesichert: `profiles\.sicherung\SOUL-generisch-20260918.md`; Historie in Git.
 - Git-Freigabe der Regeldatei: `!Agenten/Hermes/profiles/*.md` - ohne diese Zeile greift die Sperre `Agenten/Hermes/**`. Pruefen: `git check-ignore -v`. 
+
+## Profil ohne Repo: hermes-wartung (21.09.2026)
+
+Kein Fremd-Repo, sondern der Hermes-Baum selbst: Arbeitsverzeichnis
+`Agenten/Hermes` statt `Werkstatt/Repos/<name>`. Angelegt mit
+`hermes profile create hermes-wartung` (frisches Profil, kein `--clone`),
+dann `providers.omniroute` (aus einem Bot-Profil kopiert),
+`model.provider=omniroute` / `model.default=auto/best-coding`,
+`terminal.cwd = Agenten/Hermes`, die drei Router-Schluesselnamen in die
+eigene `.env` (keine Kanalzugangsdaten), `profile.yaml`-Beschreibung per
+`hermes profile describe --text`. Belegter Aufruf: `pwd` meldet
+`Agenten/Hermes`, Modell `auto/best-coding`.
 
 Verwandt: [[Agent-Reach]], [[Moon-Dev-Agenten]], [[Projektatlas]], [[Routinen]].
