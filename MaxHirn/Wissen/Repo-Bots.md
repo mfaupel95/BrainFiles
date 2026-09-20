@@ -142,3 +142,40 @@ eigene `.env` (keine Kanalzugangsdaten), `profile.yaml`-Beschreibung per
 `Agenten/Hermes`, Modell `auto/best-coding`.
 
 Verwandt: [[Agent-Reach]], [[Moon-Dev-Agenten]], [[Projektatlas]], [[Routinen]].
+
+## Bots auf dem Nous-Portal (21.09.2026)
+
+Ausloeser: Die Combo `auto/best-coding` des lokalen Routers zeigte auf einen toten
+Zweig - `oc/big-pickle` antwortete mit 403 ("OpenCode's free tier can only be used
+from within OpenCode") bzw. 500 server_error. Damit standen ALLE Bots still
+(Stichprobe am Router: best-coding 403, best-fast 502, best-chat/pro-coding 503).
+
+Umstellung (12 Profile + `hermes-wartung`): `model.provider=nous`,
+`model.default=deepseek/deepseek-v4-flash-0731` - Werkzeug
+`Agenten/Hermes/scripts/bot-modell-auf-nous.py` (Trockenlauf / `--anwenden` /
+`--zuruecknehmen`, je Profil `config.yaml.bak-JJJJMMTT`).
+
+Die Sitzung holt jedes Profil ueber einen SYMLINK auf den Root-Store, nicht ueber
+eine Kopie: `Agenten/Hermes/scripts/auth-verknuepfen.ps1` (erhoehte Shell noetig,
+ein UAC-Prompt) verweist `profiles/<bot>/auth.json` auf `Agenten/Hermes/auth.json`.
+Grund: Ein Profil ohne eigene `auth.json` ist eine Insel und antwortet "Hermes is
+not logged into Nous Portal"; die Sitzung zu KOPIEREN waere dieselbe Refresh-Kennung
+in vielen Dateien, und eine Rotation entwertet die anderen. Der Symlink haelt EINEN
+Store, fuer den Hermes Sperre und "Peer hat rotiert, uebernimm seinen Token"
+mitbringt (`hermes_cli/auth.py::_nous_shared_store_lock`;
+`auth_oauth_grants.py` behandelt einen Symlink auf den Root-Store ausdruecklich als
+"kein Klon"). Profile mit eigener `auth.json` (basic-memory, caveman*, 
+awesome-systematic-trading) und eigene Wege (openmontage/llamacpp,
+awesome-systematic-trading/docker) blieben unberuehrt; *caveman hatte nur einen
+Pool-Eintrag ohne Sitzung und wurde nach Sicherung ebenfalls verknuepft
+(`profiles/.sicherung/caveman-auth.json.bak-20260921`).
+
+Belege: `hermes -p <bot> chat -q "..."` antwortet je Bot (caveman, gbrain,
+claudian, openterminal, moon-dev-agents), das Hauptprofil meldet weiter
+`deepseek/deepseek-v4.1-flash auf nous` (keine entwertete Sitzung).
+
+OFFEN: Dieselbe Umstellung gilt fuer die 17 Profile in `profiles/.deleted/`
+(projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
+scrapling, ...; am 19.09.2026 weggelegt) - sie sind nicht erreichbar und wurden
+nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
+

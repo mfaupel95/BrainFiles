@@ -463,6 +463,10 @@ Agenten/Hermes/skills/.locks/
 # befund-schema.json (Befund-Schema) sind Prozedurwissen wie die .py-Skripte.
 !Agenten/Hermes/scripts/doctor-context.md
 !Agenten/Hermes/scripts/befund-schema.json
+# Wartungsbot (21.09.2026): auth-verknuepfen.ps1 koppelt ein Profil per
+# Symlink an den Root-auth.json-Store - Prozedurwissen, auf das
+# Wissen/Repo-Bots.md verweist.
+!Agenten/Hermes/scripts/auth-verknuepfen.ps1
 #
 # PROJECTATLAS-WERKZEUGE, freigelegt am 15.09.2026. Die Skripte, die
 # den Watcher starten und die Repos kartieren - Prozedurwissen, auf das
