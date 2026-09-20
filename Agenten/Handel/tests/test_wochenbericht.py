@@ -14,6 +14,13 @@ sys.path.insert(0, HIER)
 import wochenbericht                                     # noqa: E402
 
 
+class FensterTageTest(unittest.TestCase):
+    def test_fenster_tage_kommt_aus_lage_keine_zweitdefinition(self):
+        """Befund 2 der Schlusspruefung: eine Quelle fuer die Fensterbreite,
+        damit eine kuenftige Aenderung nicht an einer Stelle stehen bleibt."""
+        self.assertIs(wochenbericht.FENSTER_TAGE, wochenbericht.lage.FENSTER_TAGE)
+
+
 class VerlaufTest(unittest.TestCase):
     def test_vier_fenster_vier_eintraege(self):
         gerufen = []

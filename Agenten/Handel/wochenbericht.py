@@ -19,7 +19,7 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 
 # Vier Wochen nebeneinander. Darstellungsgroesse, keine Handelsgroesse.
 FENSTER_ANZAHL = 4
-FENSTER_TAGE = 7
+FENSTER_TAGE = lage.FENSTER_TAGE  # dieselbe Fensterbreite wie im Tagesbericht
 
 
 def verlauf(spur, anzahl=FENSTER_ANZAHL, tage=FENSTER_TAGE, kennzahlen_fn=None):
