@@ -7,7 +7,7 @@
 
 $ErrorActionPreference = 'Stop'
 $name   = 'MaxHirn-MoonDev-Dauerlauf'
-$venvpy = Join-Path $PSScriptRoot '..\Handel\scanner\.venv\Scripts\python.exe'
+$venvpy = Join-Path $PSScriptRoot '..\Handel\scanner\.venv\Scripts\pythonw.exe'
 $treiber = Join-Path $PSScriptRoot '..\Handel\moondev_dauerlauf.py'
 if (-not (Test-Path $venvpy))  { throw "venv-Python fehlt: $venvpy" }
 if (-not (Test-Path $treiber)) { throw "Treiber fehlt: $treiber" }

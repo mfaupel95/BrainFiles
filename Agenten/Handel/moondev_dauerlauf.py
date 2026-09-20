@@ -49,7 +49,11 @@ REPO = (HIER / ".." / ".." / "Werkstatt" / "Repos" / "moon-dev-ai-agents").resol
 # (z.B. scanner/.venv, wenn der Haus-Dauerlauf startet) und hat diese Pakete
 # NICHT. Fest auf den Repo-Interpreter zeigen (gemessen 17.09.2026:
 # ModuleNotFoundError: requests, solange sys.executable verwendet wurde).
-REPO_PYTHON = str(REPO / ".venv" / "Scripts" / "python.exe")
+# pythonw statt python: die Kinder laufen als Konsolen-Fensterprozesse und
+# poppen bei jedem Start fuer den Nutzer auf (gemessen 20.09.2026: 27
+# verwaiste Konsolenfenster nach einem Treiber-Absturz). pythonw zeigt kein
+# Fenster; die Ausgabe laeuft weiter in die ag_log-Dateien, nichts geht verloren.
+REPO_PYTHON = str(REPO / ".venv" / "Scripts" / "pythonw.exe")
 
 def _repo_env() -> dict[str, str]:
     """Liest die WURZEL-.env des Repos direkt (nur OLLAMA_*).
