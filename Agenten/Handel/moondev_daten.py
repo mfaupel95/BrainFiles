@@ -47,12 +47,15 @@ def hole_json(url, zeitgrenze=ZEITGRENZE):
         return json.loads(antwort.read().decode("utf-8", "replace"))
 
 
-def maerkte(vs="usd", anzahl=100, seiten=1, sortierung="market_cap_desc"):
-    """CoinGecko `/coins/markets` - Preis, Volumen, 24h-Aenderung.
+def maerkte(vs="usd", anzahl=100, seiten=1, sortierung="market_cap_desc",
+            prozentfelder="24h,7d"):
+    """CoinGecko `/coins/markets` - Preis, Volumen, Aenderung.
 
     `seiten` > 1 blaettert weiter (je Seite 250). Der Endpunkt ist derselbe,
     den der Bot nutzt; ohne Schluessel begrenzt CoinGecko nur die Rate, nicht
-    die Felder.
+    die Felder. `prozentfelder` steuert, welche Zeitfenster CoinGecko fuer
+    die Preisaenderung mitliefert ("1h,24h,7d" liefert zusaetzlich
+    `price_change_percentage_1h_in_currency`).
     """
     felder = {
         "vs_currency": vs,
@@ -60,7 +63,7 @@ def maerkte(vs="usd", anzahl=100, seiten=1, sortierung="market_cap_desc"):
         "per_page": str(max(1, min(250, int(anzahl)))),
         "page": str(max(1, int(seiten))),
         "sparkline": "false",
-        "price_change_percentage": "24h,7d",
+        "price_change_percentage": prozentfelder,
     }
     return hole_json("%s/coins/markets?%s" % (COINGECKO, urllib.parse.urlencode(felder)))
 

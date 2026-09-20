@@ -78,6 +78,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
 # der Indikator-Spuren (kauf/verkauf mit einsatz_usd), deshalb derselbe
 # Rechenweg - nur der NAME der Gruppe ist ein anderer.
 BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
+              "moondev_signalwelle",
               "moondev_marktlage", "iv_wand",
               # IV-WAELLE (18.09.2026): Deribit-IV-Waende, dieselbe
               # Journalform (kauf/verkauf mit einsatz_usd) - derselbe Weg.

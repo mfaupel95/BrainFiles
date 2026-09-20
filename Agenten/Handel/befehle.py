@@ -93,6 +93,7 @@ FAMILIE = {
     "moondev_funding": "Bot-Signal",
     "moondev_listingarb": "Bot-Signal",
     "moondev_topmovers": "Bot-Signal",
+    "moondev_signalwelle": "Bot-Signal",
     "moondev_marktlage": "Bot-Signal",
     # Die IV-Wand ist keine Bot-Spur: sie rechnet eine Zone aus dem
     # Optionsmarkt. Eigene Familie, damit der Bericht sie nicht unter

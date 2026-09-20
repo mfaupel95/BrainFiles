@@ -275,6 +275,11 @@ SPUREN = {
                            "skript": "handeln.py"},
     "moondev_topmovers": {"ordner": "moondev_topmovers", "waehrung": "USD",
                           "skript": "handeln.py"},
+    # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
+    # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
+    # kein Live-Zweig. Siehe moondev_signalwelle/README.md.
+    "moondev_signalwelle": {"ordner": "moondev_signalwelle", "waehrung": "USD",
+                            "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im

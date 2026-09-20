@@ -589,6 +589,12 @@ Agenten/Handel/moondev_listingarb/handelsjournal.csv
 !Agenten/Handel/moondev_topmovers/tests/*.py
 Agenten/Handel/moondev_topmovers/zustand.json
 Agenten/Handel/moondev_topmovers/handelsjournal.csv
+!Agenten/Handel/moondev_signalwelle/*.py
+!Agenten/Handel/moondev_signalwelle/*.md
+!Agenten/Handel/moondev_signalwelle/wachen.json
+!Agenten/Handel/moondev_signalwelle/tests/*.py
+Agenten/Handel/moondev_signalwelle/zustand.json
+Agenten/Handel/moondev_signalwelle/handelsjournal.csv
 !Agenten/Handel/moondev_marktlage/*.py
 !Agenten/Handel/moondev_marktlage/*.md
 # Nur die Wachen sind Konfiguration von Hand - zustand.json und

@@ -613,6 +613,10 @@ def spur_moondev_topmovers():
     return _spur_indikator("moondev_topmovers", "Moon-Dev Top-Mover")
 
 
+def spur_moondev_signalwelle():
+    return _spur_indikator("moondev_signalwelle", "Signalwelle (1h)")
+
+
 def spur_moondev_marktlage():
     return _spur_indikator("moondev_marktlage", "Moon-Dev Marktlage")
 
@@ -1113,7 +1117,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
-    spur_moondev_topmovers, spur_moondev_marktlage, spur_iv_wand,
+    spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
     spur_moondev_sniper)
