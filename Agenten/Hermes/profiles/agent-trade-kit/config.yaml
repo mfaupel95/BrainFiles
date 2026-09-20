@@ -1,6 +1,6 @@
 model:
-  default: auto/best-coding
-  provider: omniroute
+  default: deepseek/deepseek-v4-flash-0731
+  provider: nous
   api_mode: chat_completions
 providers:
   ollama-launch:

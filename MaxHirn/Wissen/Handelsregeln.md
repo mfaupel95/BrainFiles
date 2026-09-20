@@ -3,7 +3,7 @@ id: 20260902-handelsregeln
 title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
-updated: 2026-09-15
+updated: 2026-09-21
 related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
 summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
@@ -848,10 +848,26 @@ Freigabe-Anfrage, und beim Beenden werden die Freigabefenster NICHT
 geschlossen (sie gehoeren dem Basislauf). Zwei Laeufe an einem Bot nehmen sich
 sonst die Nachrichten weg (Telegram antwortet dem zweiten Abrufer mit 409).
 
-**Spiegel:** bleibt bei Faktor 1,0 (Max' Vorgabe) und laeuft **nur im
+**Spiegel:** bleibt bei Faktor 1,0 (Max' Vorgabe) und lief **nur im
 Basislauf** (`dauerlauf.NUR_BASIS`). Liefe er in allen Stufen mit, entstuenden
 drei identische Buecher — dieselbe Beobachtung dreimal, dazu zwei Schreiber
 auf denselben Dateien. `spiegel.py` bricht in einer Stufe mit Klartext ab.
+
+**Seit 21.09.2026 laufen die drei Spiegel-Arme nicht mehr** (`spiegel`,
+`spiegel_knapp`, `spiegel_weit` stehen nicht mehr in `dauerlauf.SPUREN`,
+`NUR_BASIS` ist leer). Max: „spiegel Spuren erstmal deaktivieren". Die Buecher
+bleiben als Vergleichsgrundlage liegen und wachsen nicht weiter; Bedingung 4
+fuehrt das Hauptbuch weiter als „ausserhalb des Dauerlaufs mitgeprueft"
+(`spiegelstand.py`: 27 von 27 byte-gleich, `spiegel` und `orb` daneben).
+
+Wieder einschalten: die drei Zeilen in `SPUREN` und `NUR_BASIS` einkommentieren
+(der Weg steht als Kommentar an beiden Stellen in `dauerlauf.py`) — UND vorher
+`letzter_lauf` in `spiegel/zustand.json`, `zustand.knapp.json` und
+`zustand.weit.json` auf jetzt setzen. Ohne diesen Schritt gilt der Herzschlag
+nach mehr als 180 Minuten als alt und der erste Zyklus stellt alle offenen
+Papierpositionen flach (`spiegel.py`, `flach_stellen "herzschlag_alt"`) — die
+Vergleichsbuecher waeren dann weg. Danach `dauerlauf.py` neu starten (nur der
+Treiber liest `SPUREN`).
 
 **Betrieb (Stand 15.09.2026, 23:59):** Der zweite Lauf ist **gestartet** und
 hat eine eigene Waechter-Aufgabe, `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`
