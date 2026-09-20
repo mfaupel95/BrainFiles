@@ -108,20 +108,45 @@ def _roh(pfad, methode="GET", body=None, signiert=False):
         with urllib.request.urlopen(req, timeout=20) as antwort:
             d = json.loads(antwort.read().decode())
     except urllib.error.HTTPError as e:
-        # OKX legt auch bei 4xx eine JSON-Antwort mit code/msg bei. 401/403 auf
-        # eine signierte Abfrage ist ein Schluesselproblem (falsche Passphrase,
-        # falsches Secret, Key inaktiv, IP nicht freigegeben) - das heilt kein
-        # Wiederholen. Als OKXFehler werfen, den _mit_wiederholung durchreicht.
-        if signiert and e.code in (401, 403):
+        # OKX legt auch bei 4xx eine JSON-Antwort mit code/msg bei. Diese
+        # Meldung ist die eigentliche Auskunft ("Order-Menge zu klein",
+        # "Instrument ausgesetzt", ...) - ohne sie steht im Journal nur
+        # "HTTP Error 400: Bad Request", und niemand weiss, was zu tun ist.
+        #
+        # ALLE 4xx als OKXFehler werfen, nicht nur 401/403: ein 400 ist eine
+        # fachliche Ablehnung und heilt durch Wiederholen nicht. Vorher fiel
+        # er durch und wurde von _mit_wiederholung als Transportfehler
+        # dreimal erneut gesendet - bei einer Verkaufsorder ist das
+        # gefaehrlich, weil jeder Versuch eine echte Order sein kann.
+        if 400 <= e.code < 500:
             try:
                 f = json.loads(e.read().decode())
-                raise OKXFehler("OKX %s: %s (HTTP %d - Schluessel/Passphrase/IP pruefen)"
-                                % (f.get("code"), f.get("msg") or f, e.code)) from None
             except (ValueError, AttributeError):
-                raise OKXFehler("OKX HTTP %d auf signierte Abfrage - "
-                                "Schluessel/Passphrase/IP pruefen" % e.code) from None
+                f = {}
+            hinweis = ""
+            if e.code in (401, 403):
+                hinweis = " - Schluessel/Passphrase/IP pruefen"
+            if f.get("code") or f.get("msg"):
+                # Einzelne Orderfehler stehen in data[0], nicht oben.
+                erste = (f.get("data") or [{}])[0]
+                detail = erste.get("sMsg") or f.get("msg") or ""
+                code = erste.get("sCode") or f.get("code") or "?"
+                raise OKXFehler("OKX %s: %s (HTTP %d%s)"
+                                % (code, detail, e.code, hinweis)) from None
+            raise OKXFehler("OKX HTTP %d ohne Auskunft%s"
+                            % (e.code, hinweis)) from None
         raise
     if d.get("code") not in ("0", 0):
+        # OKX meldet Orderfehler mit HTTP 200 und code="1"; die eigentliche
+        # Auskunft steht in data[0].sMsg ("Your order amount does not meet
+        # the minimum order amount"), waehrend das aeussere msg nur "All
+        # operations failed" sagt. Ohne sMsg steht im Journal eine Meldung,
+        # aus der niemand ablesen kann, was zu tun ist.
+        erste = (d.get("data") or [{}])[0]
+        detail = erste.get("sMsg")
+        code = erste.get("sCode") or d.get("code")
+        if detail:
+            raise OKXFehler("OKX %s: %s" % (code, detail))
         raise OKXFehler("OKX %s: %s" % (d.get("code"), d.get("msg") or d))
     return d.get("data", [])
 
