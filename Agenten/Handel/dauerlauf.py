@@ -362,7 +362,12 @@ TAKT_MAX_MINUTEN = 15
 # ohne /ja, sobald nur noch das Fenster fehlt. NUR Spuren mit echtem Live-Pfad
 # (moondev-* verweigern --live). Zeitlich begrenzt auf AUTO_FREIGABE_STUNDEN -
 # danach laeuft die Freigabe ab und es muss wieder bestaetigt werden.
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken", "swap")
+# kraken ist am 21.09.2026 herausgenommen: sein handel_erlaubt steht auf false
+# (Auftrag Max: nur xperp, swap, scanner, mosaic, listingarb, topmovers), ein
+# automatisch geoeffnetes Fenster waere dort wirkungslos. Dafuer die zwei
+# Buch-Spuren, die Max scharf gestellt hat.
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
+                 "moondev_listingarb", "moondev_topmovers")
 AUTO_FREIGABE_STUNDEN = 12
 
 
