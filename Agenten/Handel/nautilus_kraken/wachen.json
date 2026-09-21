@@ -12,22 +12,18 @@
   "kill_switch_gesamt": 100,
   "slippage_pct": 0.1,
   "gebuehr_pct": 0,
-
   "_gebuehren": "Kraken-Pro-Abo: Handelsvolumen bis 10.000 EUR im Monat gebuehrenfrei (Kauf UND Verkauf zaehlen, also 100 EUR je Runde bei 50 EUR Einsatz, rund 100 Runden/Monat). Faellt das Abo weg, gilt wieder 0,40 % je Seite (Taker) - dann sofort gebuehr_pct auf 0.4 zuruecknehmen, BEVOR Runden fuer die Freigabe gezaehlt werden. Es bleibt der Spread.",
-
   "_ausstieg": "Die Ausstiegsform, die Max am 15.09.2026 bestellt hat (wie spiegel/kopier): KEIN festes Ziel, stattdessen Trailing-Stop. Sobald eine Papier-Position trail_aktiv_ab_pct ueber ihrem Einstieg lag, haengt der Ausstieg trail_abstand_pct unter dem hoechsten beobachteten Kurs. Der harte Stop begrenzt den SCHADEN: stop_pct sitzt so, dass der realisierte Verlust am Stop inklusive Slippage und Gebuehr maximal 20 % des Einsatzes betraegt (Kraken-Spot: 0,1 % Slippage + 0 % Gebuehr -> (1-0,198)*0,999*1,0^2 = 0,80). Ein gerissener Stop schliesst SOFORT zum beobachteten Kurs. Die Frist (168 h) ist nur noch ein Sicherheitsnetz gegen tote Positionen. Die Strategie stellt KEINE Broker-Order - Papierbuch.",
   "stop_pct": 19.8,
   "trail_aktiv_ab_pct": 30.0,
   "trail_abstand_pct": 25.0,
   "haltedauer_stunden": 168,
-
   "_signalquelle": "Einstiegs-Signale kommen aus der KOPIER-Spur (Pump.fun Copy Trade): jeder frische Kauf dort (aktion=eroeffnen im kopier-Journal) wird zu einer Papier-Position in BTC/EUR zum aktuellen Mid - ein Proxy, der die AUSSTIEGSFORM auf dem liquiden Instrument misst, kein Markt-Urteil ueber Pump.fun-Tokens.",
   "signalquelle": "kopier",
   "_einfall_herzschlag": "Faellt der Kraken-Quote-Feed aus, haelt die Spur ihren Herzschlag ueber die Kopier-Daten am Leben (sie braucht Kraken nicht), statt still totzugehen. Nur Frist-Ausstiege werden im Fallback gerechnet - ohne Kurse ruhen Stop und Trailing.",
   "einfall_herzschlag_kopier": true,
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Papier-Spur; auf 45, sobald handel_erlaubt true wird.",
-
   "freigabe": {
     "erfuellt": false,
     "papierlauf_min_wochen": 6,
@@ -36,6 +32,6 @@
     "geprueft_am": null
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\nautilus_kraken",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_hinweis": "false = nur Papier-/Demo-Modus. Auf true erst wenn alle vier freigabe-Werte erfuellt, journal_zweitziel gesetzt, und ein Kraken-Live-API-Key (KRAKEN_SPOT_API_KEY/SECRET) mit Trade-Permission steht."
+  "handel_erlaubt": true,
+  "_handel_erlaubt_hinweis": "true seit 21.09.2026 (Auftrag Max: 'kraken spuren handel_erlaubt=true'). Wirkung: die Spur gilt als handelserlaubt - handeln kann sie trotzdem nicht, ihr Code hat KEINEN Orderpfad (kein markt_kauf/order_aufgeben; sie ist eine NautilusTrader-Papierspur). Ein Live-Pfad muesste erst gebaut werden; bis dahin bleibt sie Papier, egal welcher Schalter."
 }

@@ -56,10 +56,19 @@ BETRIEB = {"funding", "rollover", "zyklus", "quotes"}
 # herzschlag_alt und jede spaetere Schreibweise mit demselben Wort.
 STOERUNG_MERKMAL = ("herzschlag", "zwangsschluss", "notaus")
 
+# Zweite Klasse derselben Sache: BUCHHALTUNGS-Korrekturen. Sie sind weder
+# Handelsentscheidung noch Waechter-Reaktion, sondern eine Bereinigung des
+# Buchs - eine Position ohne echte Order (Papier-Altlast im Live-Buch) wird
+# ausgebucht (scanner/handeln.bueche_papier_altlasten_aus, Muster
+# buchbereinigung.py). Fuer jede Zaehlung gilt dasselbe wie fuer eine Stoerung:
+# das ist keine Runde. Eigener Name, weil die Ursache eine andere ist - wer die
+# Fehlersuche macht, soll sehen, WELCHE der beiden Klassen vorliegt.
+BUCHHALTUNG = ("buchbereinigung",)
+
 
 def ist_stoerung(grund):
     g = (grund or "").strip().lower()
-    return any(m in g for m in STOERUNG_MERKMAL)
+    return any(m in g for m in STOERUNG_MERKMAL + BUCHHALTUNG)
 
 
 def teile_runden(runden):

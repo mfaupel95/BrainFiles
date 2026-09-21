@@ -149,6 +149,30 @@ class MerkmalTest(unittest.TestCase):
         riskanteste Runde aus der Trefferquote."""
         self.assertFalse(ST.ist_stoerung("LIQUIDATION"))
 
+    def test_buchbereinigung_ist_keine_runde(self):
+        """Eine Buchbereinigung ist eine Korrektur am Buch, keine Runde.
+
+        Sie entsteht, wenn eine Position ohne echte Order im Live-Buch steht
+        (Papier-Altlast) und ausgebucht wird. Fuer die Kennzahlen gilt dasselbe
+        wie fuer einen Zwangsschluss - sonst zaehlt eine Korrektur als
+        Handelsentscheidung. Eigene Klasse, eigene Schreibweisen:
+        """
+        for grund in ("buchbereinigung", "Buchbereinigung", "BUCHBEREINIGUNG"):
+            self.assertTrue(ST.ist_stoerung(grund), grund)
+        self.assertIn("buchbereinigung", ST.BUCHHALTUNG)
+        self.assertNotIn("buchbereinigung", ST.STOERUNG_MERKMAL,
+                         "die beiden Klassen bleiben unterscheidbar")
+
+    def test_scanner_zaehlt_bereinigung_nicht_als_runde(self):
+        """Der belegte Fall: scanner trug 10 Bereinigungs-Zeilen im Buch."""
+        runden = [{"grund": g} for g in
+                  ("ziel", "stop", "herzschlag_alt", "buchbereinigung",
+                   "buchbereinigung", "trail")]
+        echt, stoer = ST.teile_runden(runden)
+        self.assertEqual([r["grund"] for r in echt],
+                         ["ziel", "stop", "trail"])
+        self.assertEqual(len(stoer), 3)
+
 
 class TeilRundenTest(unittest.TestCase):
     def test_trennt_nach_grund(self):
