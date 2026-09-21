@@ -306,6 +306,13 @@ SPUREN = {
                            "skript": "handeln.py"},
     "moondev_topmovers": {"ordner": "moondev_topmovers", "waehrung": "USD",
                           "skript": "handeln.py"},
+    # TRENDWENDE-BTC (21.09.2026, Auftrag Max): SHORT, sobald der SuperTrend auf
+    # 1H von aufwaerts auf abwaerts dreht UND der Schluss unter der EMA200
+    # liegt. Papier, kein Live-Zweig (--live verweigert), Buch ueber
+    # Handel/spur_buch.py wie die Feed-Spuren. Ein Instrument (BTC-USDT-SWAP),
+    # ein Platz, Risiko 5 USD, Stop 4 %, Ziel 2R.
+    "trendwende_btc": {"ordner": "trendwende_btc", "waehrung": "USD",
+                       "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.

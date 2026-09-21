@@ -872,6 +872,16 @@ def lauf(modus):
 
     w = scan.wachen()
 
+    # Bedingung 4 an der ERSTEN Stelle des Zyklus: die Dateien dieses Ordners
+    # auf den Stand des letzten Zyklus nach Q: bringen - VOR jedem return.
+    # Vorher stand die Spiegelung nur am ENDE, deshalb fehlten die fruehen
+    # Ausgaenge (--wachen, "Kein Bericht", und der abgebrochene Lauf, der die
+    # Zeitgrenze reisst: gemessen am 21.09.2026 Q: 21:23 gegen lokal 21:40).
+    # Ein Zyklus, der nie fertig wird, zieht jetzt trotzdem nach, was der
+    # vorige geschrieben hat.
+    if w.get("journal_zweitziel"):
+        _spiegeln(w)
+
     if modus == "wachen":
         zeige_wachen(w)
         return
@@ -908,16 +918,6 @@ def lauf(modus):
         if n_alt:
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
 
-    # Bedingung 4 ZUERST: die Dateien dieses Ordners auf den Stand des letzten
-    # Zyklus nach Q: bringen. Bisher stand die Spiegelung nur am ENDE - laeuft
-    # der Zyklus in die Zeitgrenze oder bricht er ab, wird er VOR dem Kopieren
-    # beendet und Q: bleibt stehen. Gemessen am 21.09.2026: Q: 21:23 gegen
-    # lokal 21:40, waehrend der scanner seit 19:22 jeden Zyklus in den Timeout
-    # lief. Jetzt ist Q: hoechstens einen Zyklus alt, auch wenn dieser nie
-    # fertig wird.
-    if w.get("journal_zweitziel"):
-        _spiegeln(w)
-
     if modus == "vorschau":
         for v in vs:
             print("  %-10s Score %.1f  Einstieg %.6f  Stop %.6f (-%.1f%%)  Ziel %.6f"
@@ -933,6 +933,12 @@ def lauf(modus):
         g = sperren_live(w, s)
         if g:
             print("Live waere gesperrt durch: " + "; ".join(g))
+        # Bedingung 4 gilt AUCH hier: die Vorschau ist der haeufigste Aufruf
+        # (der Dauerlauf fragt jede Spur damit ab), und wenn NUR sie laeuft,
+        # weil der echte Zyklus in die Zeitgrenze laeuft, muss Q: trotzdem
+        # nachgezogen werden.
+        if w.get("journal_zweitziel"):
+            _spiegeln(w)
         return
 
     # Bedingung 2 - Kill-Switch: alles zu, Sperre zu, Schluss.

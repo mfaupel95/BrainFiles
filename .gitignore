@@ -628,6 +628,12 @@ Agenten/Handel/moondev_listingarb/handelsjournal.csv
 # zustand.mittel.json schreibt jeder Lauf und bleiben gesperrt.
 !Agenten/Handel/moondev_topmovers/wachen.json
 !Agenten/Handel/moondev_topmovers/tests/*.py
+!Agenten/Handel/trendwende_btc/*.py
+!Agenten/Handel/trendwende_btc/*.md
+!Agenten/Handel/trendwende_btc/wachen.json
+!Agenten/Handel/trendwende_btc/tests/*.py
+Agenten/Handel/trendwende_btc/zustand.json
+Agenten/Handel/trendwende_btc/handelsjournal.csv
 Agenten/Handel/moondev_topmovers/zustand.json
 Agenten/Handel/moondev_topmovers/handelsjournal.csv
 !Agenten/Handel/moondev_signalwelle/*.py
@@ -743,3 +749,6 @@ Agenten/Handel/nautilus_kraken/handelsjournal.futures.csv
 auswertung-stand.json
 auswertung-alle-stand.json
 kraken-lockout-stand.json
+!Agenten/Handel/bt_opt/
+!Agenten/Handel/bt_opt/*.py
+!Agenten/Handel/bt_opt/*.json
