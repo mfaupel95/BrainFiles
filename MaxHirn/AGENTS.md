@@ -30,6 +30,7 @@ Umgebungsvariable `ARCHIV_ROOT` (siehe [Wissen/Ordnerstruktur.md](Wissen/Ordners
 | Modul | Ort | Inhalt |
 |---|---|---|
 | **Wissen** | `Wissen/` | Wer Max ist, laufende Projekte, Werkzeuge — Einstieg über [Wissen/INDEX.md](Wissen/INDEX.md) |
+| **Wiki** | `Wiki/` | Lernspeicher der Agenten: Lehren, Betriebsstand, offene Punkte — Einstieg über [Wiki/INDEX.md](Wiki/INDEX.md) |
 | **Archiv** | `Archiv/` | Dateiarchiv mit Volltextsuche (eigene `CLAUDE.md`), 45 GB. **Hieß bis 30.08.2026 „Claude“** |
 | **Skills** | `.claude/skills/` | eigene, wiederverwendbare Fähigkeiten |
 | **Verbindungen** | `Wissen/Verbindungen.md` | MCP-Server und ihr Anmeldestatus |
@@ -63,6 +64,11 @@ Einstieg für Menschen: [Dashboard.md](Dashboard.md)
    Anleitungen? Dann `archiv`-Skill benutzen, nicht das Internet.
 3. **Erst danach Internet** (WebSearch/WebFetch) — für allgemeines Weltwissen.
 
+**Und bei allem, was den Betrieb betrifft** (Hermes, Bus, Handel, Wachen, Werkzeuge):
+zuerst [Wiki/INDEX.md](Wiki/INDEX.md). Dort steht, was beim Arbeiten schon einmal Zeit
+gekostet hat — die Falle, der Merksatz, der gemessene Stand. Das Wiki gehoert den
+Agenten, `Wissen/` gehoert Max.
+
 **Bei jedem Schritt gezielt lesen, nicht vollständig.** Vor einem Datei-Read
 zuerst gezielt suchen (`rg` für Projektdateien, `archiv`-Skill für persönliche
 Unterlagen) und nur die nötigen Trefferbereiche lesen. Eine ganze Datei nur,
@@ -81,6 +87,7 @@ ungefragt, und die Ablage in einem Satz gemeldet:
 |---|---|
 | ein Verfahren mit Fallen | Skill unter `.claude/skills/` (Skill `skill`) |
 | eine Zahl, ein Befund, ein Zustand | Notiz unter `Wissen/` (Skill `notiz`) |
+| eine Lehre, ein Merksatz, eine Falle | Wiki-Seite unter `Wiki/` (Skill `wiki-pflege`), `Wiki/INDEX.md` im selben Schritt nachziehen |
 | etwas, das ohne Nachdenken laufen soll | Skript in `../Agenten/Routinen/` oder `Archiv/ArchivSuche/` |
 | ein offener Punkt | `Archiv/TASKS.md`, sofort |
 

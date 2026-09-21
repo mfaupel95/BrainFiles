@@ -35,6 +35,7 @@
 !/*.md
 !MaxHirn/*.md
 !MaxHirn/Wissen/**/*.md
+!MaxHirn/Wiki/**/*.md
 !MaxHirn/.claude/skills/**
 !MaxHirn/.claude/agents/**
 # Skills im Hermes-Format. Sie steuern Verhalten und haben keinen zweiten Ort:
