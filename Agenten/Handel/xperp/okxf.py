@@ -396,11 +396,33 @@ def auf_tick(instr, preis):
 
 # --- signiert: Konto --------------------------------------------------------
 
-def guthaben_usdt():
-    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDT", signiert=True)
+def guthaben_usdc():
+    """Freies USDC - die Margin-Waehrung der XPERP-Kontrakte dieses Kontos.
+
+    Gemessen am 21.09.2026: /api/v5/account/positions?instType=FUTURES zeigt
+    FIL-USD_UM_XPERP mit mgnMode=isolated und ccy=USDC; die Balance-Zeile USDC
+    traegt isoEq 279,83 (die laufende Position) und availEq 255,01 (frei). Eine
+    Abfrage mit ccy=USDT liefert dagegen eine LEERE Liste - auf diesem Konto gibt
+    es gar kein USDT. Wer die 0 als "kein Geld" liest, sperrt eine Spur, die
+    voll besichert ist.
+    """
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDC", signiert=True)
     if not d or not d[0].get("details"):
         return 0.0
-    return float(d[0]["details"][0].get("availBal") or 0.0)
+    det = d[0]["details"][0]
+    return float(det.get("availEq") or det.get("availBal") or 0.0)
+
+
+def guthaben_usdt():
+    """Freies USDT - und, wenn es keins gibt, das freie USDC.
+
+    Der Name bleibt, weil er an mehreren Stellen gelesen wird; die Zahl kommt
+    jetzt aus der Waehrung, in der das Konto tatsaechlich besichert ist.
+    """
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDT", signiert=True)
+    if d and d[0].get("details"):
+        return float(d[0]["details"][0].get("availBal") or 0.0)
+    return guthaben_usdc()
 
 
 def positionen(inst=None):
