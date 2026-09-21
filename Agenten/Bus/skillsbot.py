@@ -361,6 +361,8 @@ def _handelsantwort(wort):
     import handel_befehle                                     # noqa: PLC0415
     if wort == "/lage":
         return handel_befehle.lage()
+    if wort == "/live":
+        return handel_befehle.live()
     if wort == "/bericht":
         return handel_befehle.bericht()
     if wort == "/spuren":
@@ -500,6 +502,8 @@ def hilfe_text():
             "Agenten (hermes-maks-pc) weiter - der hat alle Skills.\n"
             "\nHandel (lesend, aus dem Handel-Ordner)\n"
             "/lage - offene Positionen je Spur, Live-Tore, Freigaben\n"
+            "/live - NUR die Spuren mit Orderweg: Fenster, Buch, letzter "
+            "echter Vorgang\n"
             "/bericht - voller Tagesbericht (dauert, mit Rangliste)\n"
             "/spuren - alle Spur-Namen\n"
             "/spur NAME - eine Spur in der Tiefe\n"
@@ -636,7 +640,7 @@ def bearbeite(text, chat):
                 handel_befehle.spur(" ".join(teile[1:]))), kontext
         except Exception as e:                                # noqa: BLE001
             return "Spur nicht lesbar: %s" % str(e)[:120], kontext
-    if wort in ("/lage", "/bericht", "/spuren", "/strategien",
+    if wort in ("/lage", "/live", "/bericht", "/spuren", "/strategien",
                 "/indikatoren", "/markt"):
         try:
             import handel_befehle

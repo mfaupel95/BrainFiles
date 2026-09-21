@@ -290,6 +290,195 @@ def lage():
     return "\n".join(text)
 
 
+# --- Nur die live handelnden Spuren -----------------------------------------
+
+def _positionen_je_modus(name):
+    """Offene Positionen einer Spur, nach `modus` getrennt (live/papier).
+
+    Gelesen aus den zustand-Dateien des Spurordners. Nicht jede Spur fuehrt ein
+    modus-Feld: die Kontrakt-Spuren buchen live und Papier ins SELBE Buch (dort
+    ist die Wache je Position der Unterschied, nicht ein Feld), spur_buch-Spuren
+    fuehren getrennte Staende (zustand.live.json). Was kein Feld traegt, wird
+    als 'ohne modus-feld' gezaehlt - nicht als live geraten.
+    """
+    zaehl = {}
+    ordner = os.path.join(HIER, name)
+    if not os.path.isdir(ordner):
+        return zaehl
+    for datei in sorted(os.listdir(ordner)):
+        if not (datei.startswith("zustand") and datei.endswith(".json")) \
+                or ".bak-" in datei:
+            continue
+        try:
+            with open(os.path.join(ordner, datei), encoding="utf-8") as f:
+                z = json.load(f)
+        except Exception:                                     # noqa: BLE001
+            continue
+        pos = z.get("positionen")
+        if isinstance(pos, list):
+            liste = pos
+        elif isinstance(z.get("position"), dict):
+            liste = [z["position"]]
+        else:
+            liste = []
+        for p in liste:
+            m = p.get("modus") or "ohne modus-feld"
+            zaehl[m] = zaehl.get(m, 0) + 1
+    return zaehl
+
+
+def _letzter_live_vorgang(name):
+    """Die juengste Journalzeile mit modus=live - der letzte echte Vorgang.
+
+    Papier- und Live-Zeilen stehen in denselben Journalen, unterschieden nur
+    durch die Spalte `modus` (so schreibt jede Spur seit 14.09.2026). Ein
+    fehlendes modus=live heisst: diese Spur hat noch nie mit echtem Geld
+    gehandelt - das ist eine Aussage, keine Luecke.
+    """
+    ordner = os.path.join(HIER, name)
+    if not os.path.isdir(ordner):
+        return None
+    juengste = None
+    for datei in sorted(os.listdir(ordner)):
+        if not datei.startswith("handelsjournal") or not datei.endswith(".csv") \
+                or ".bak-" in datei or "falsch" in datei:
+            continue
+        try:
+            with open(os.path.join(ordner, datei), encoding="utf-8") as f:
+                zeilen = list(csv.reader(f))
+        except Exception:                                     # noqa: BLE001
+            continue
+        if not zeilen:
+            continue
+        kopf = zeilen[0]
+        if "modus" not in kopf:
+            continue
+        i_modus, i_zeit = kopf.index("modus"), kopf.index("zeit") \
+            if "zeit" in kopf else 0
+        for z in zeilen[1:]:
+            if len(z) <= i_modus or z[i_modus] != "live":
+                continue
+            if juengste is None or z[i_zeit] > juengste[0]:
+                juengste = (z[i_zeit], _spalte(z, kopf, "aktion"),
+                            _spalte(z, kopf, "inst"))
+    return juengste
+
+
+def _spalte(zeile, kopf, name):
+    try:
+        return zeile[kopf.index(name)]
+    except (ValueError, IndexError):
+        return ""
+
+
+def live():
+    """Nur die Spuren, die WIRKLICH live handeln koennen - mit ihrem Ist-Stand.
+
+    WARUM ein eigener Befehl: `/lage` listet alle Spuren, und seit dem Auftrag
+    vom 21.09.2026 ('alle weiteren Spuren live offen und handel erlaubt') steht
+    `handel_erlaubt=true` in JEDER wachen.json - auch in 22 Spuren, die gar
+    keinen Orderaufruf im Code haben. Wer /lage liest, sieht dort 29x 'erlaubt:
+    true' und kann nicht unterscheiden, welche Spur echtes Geld bewegen kann.
+    Genau diese Unterscheidung macht dieser Befehl.
+
+    Drei Gruppen, hart getrennt:
+      1. eigener Haus-Orderweg (xperp, scanner, swap, kraken, mosaic,
+         moondev_marktlage) - diese Spuren koennen an der Boerse ordern.
+      2. Orderweg ueber eine Fremd-Laufzeit (Nautilus-Node, DEMO-Konto) -
+         die Spur selbst hat keine eigene Orderanbindung.
+      3. `handel_erlaubt=true` OHNE Orderweg - der Schalter ist dort wirkungslos
+         (so steht es als _handel_erlaubt_vermerk in der wachen.json).
+
+    Rein lesend, wie alle Befehle hier.
+    """
+    import spuren_stand as ss                                  # noqa: PLC0415
+    daten = {e["spur"]: e for e in ss.sammle()}
+    jetzt = dt.datetime.now()
+    kopf = ["<b>Live-Stand  %s</b>" % jetzt.strftime("%d.%m.%Y %H:%M")]
+    alter, takt = _log_alter(), _takt_minuten()
+    if alter is None:
+        kopf.append("letzter Zyklus: unbekannt (Log nicht lesbar)")
+    elif takt and alter > takt + 5:
+        kopf.append("<b>letzter Zyklus vor %.0f min - Takt ist %d min</b>"
+                    % (alter, takt))
+    else:
+        kopf.append("letzter Zyklus vor %.0f min%s"
+                    % (alter, " (Takt %d min)" % takt if takt else ""))
+
+    haus, fremd, stumm = [], [], []
+    for name in spuren() or list(daten):
+        e = daten.get(name)
+        if e is None or not e["order"]:
+            stumm.append(name)
+            continue
+        (haus if e.get("art") == "haus" else fremd).append((name, e))
+
+    def _block(titel, eintraege, hinweis=""):
+        if not eintraege:
+            return []
+        zeilen = ["", "<b>%s</b>" % titel]
+        if hinweis:
+            zeilen.append(hinweis)
+        for name, e in eintraege:
+            fenster = e["fenster"]
+            tore = []
+            if e["erlaubt"] is not True:
+                tore.append("handel_erlaubt=%s" % e["erlaubt"])
+            if e["frei"] is not True:
+                tore.append("freigabe.erfuellt=%s" % e["frei"])
+            if not str(fenster).startswith("offen"):
+                tore.append("kein offenes Freigabefenster")
+            tor = "LIVE BEREIT" if not tore else "gesperrt: " + ", ".join(tore)
+            zeilen.append("%-16s %s" % (name, tor))
+            buch = _positionen_je_modus(name)
+            if buch:
+                mix = ", ".join("%s=%d" % kv for kv in sorted(buch.items()))
+            else:
+                mix = "keine offene Position"
+            hol = _holer_fuer(name)
+            schnitt = ""
+            if hol:
+                s = _spur_stand(hol)
+                mit = [p for p in (s.get("positionen") or [])
+                       if p.get("vh") is not None]
+                if mit:
+                    schnitt = " (%+.1f%% im Schnitt)" % (
+                        sum(p["vh"] for p in mit) / len(mit))
+            zeilen.append("                 Fenster %s | Buch: %s%s"
+                          % (fenster, mix, schnitt))
+            zeilen.append("                 Orderweg: %s | Zyklus %s"
+                          % (", ".join(e["order"])[:60],
+                             "%s min" % e["alter"] if e["alter"] is not None
+                             else "keine Zeile im Log"))
+            lv = _letzter_live_vorgang(name)
+            if lv:
+                # Kein str.replace: der ReinLesendTest verbietet jeden Aufruf
+                # namens replace (Path.replace benennt Dateien um) - er kann
+                # str.replace nicht davon unterscheiden. Deshalb Slicing.
+                z = lv[0]
+                kurz = ("%s %s" % (z[:10], z[11:16])) if len(z) >= 16 else z
+                zeilen.append("                 letzter Live-Vorgang: %s %s %s"
+                              % (kurz, lv[1], lv[2]))
+            else:
+                zeilen.append("                 letzter Live-Vorgang: keiner - "
+                              "diese Spur hat noch nie mit echtem Geld gehandelt")
+        return zeilen
+
+    text = kopf
+    text += _block("Eigener Orderweg (echtes Konto moeglich)", haus)
+    text += _block("Orderweg ueber Fremd-Laufzeit (DEMO-Konto, kein echtes Geld)",
+                   fremd,
+                   "Diese Spuren ordern nicht selbst - sie lassen einen "
+                   "Nautilus-Node im DEMO-Modus handeln.")
+    text += ["", "%d Spur(en) mit Orderweg, davon %d eigene. %d Spur(en) tragen "
+             "handel_erlaubt=true OHNE Orderweg - der Schalter ist dort "
+             "wirkungslos (Vermerk in der jeweiligen wachen.json)."
+             % (len(haus) + len(fremd), len(haus), len(stumm))]
+    text.append("Wer eine stumme Spur live nehmen will, baut ZUERST den "
+                "Orderweg (/spur NAME zeigt ihre Wachen).")
+    return "\n".join(text)
+
+
 # --- Eine Spur in der Tiefe -------------------------------------------------
 
 def _holer_fuer(name):
@@ -638,6 +827,8 @@ def hilfe():
         "<b>Handelsbefehle</b>",
         "<b>Wie steht es gerade</b>",
         "  /lage        offene Positionen je Spur, Live-Tore, Freigaben",
+        "  /live        NUR die Spuren mit Orderweg (welche Spur kann echtes "
+        "Geld bewegen) - Fenster, Buch, letzter echter Vorgang",
         "  /bericht     voller Tagesbericht (mit Rangliste)",
         "  /spuren      alle Spur-Namen",
         "<b>Eine Spur / eine Strategie</b>",

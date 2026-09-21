@@ -788,6 +788,12 @@ class Lauf:
         if wort in ("lage", "status"):
             return befehle.lage()
 
+        # /live ist die reine Live-Sicht: nur die Spuren mit Orderweg im Code,
+        # getrennt nach eigenem Haus-Orderweg und Fremd-Laufzeit (DEMO), mit
+        # Fenster, Buch und letztem echten Vorgang.
+        if wort in ("live", "livestand"):
+            return befehle.live()
+
         if wort == "bericht":
             return tagesbericht.baue(mit_xperp=True)
 

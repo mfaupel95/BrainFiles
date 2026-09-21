@@ -21,6 +21,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
@@ -28,6 +29,7 @@ sys.path.insert(0, HANDEL)
 
 import befehle                                                # noqa: E402
 import dauerlauf                                              # noqa: E402
+import spuren_stand                                           # noqa: E402
 
 
 class SpurenTest(unittest.TestCase):
@@ -186,6 +188,41 @@ class LageTest(unittest.TestCase):
         self.assertIn("offene Position(en) insgesamt", text)
         fehlend = [s for s in befehle.spuren() if s not in text]
         self.assertEqual(fehlend, [])
+
+
+class LiveTest(unittest.TestCase):
+    """Der /live-Befehl: nur Spuren, die echtes Geld bewegen KOENNEN.
+
+    Der Fehler, gegen den diese Tests stehen: `handel_erlaubt=true` steht seit
+    dem 21.09.2026 in JEDER wachen.json - auch in den 22 Spuren ohne Orderaufruf.
+    Eine Anzeige, die den Schalter allein liest, behauptet 29 handelnde Spuren.
+    """
+
+    def test_live_trennt_orderweg_von_schalter(self):
+        text = befehle.klartext(befehle.live())
+        self.assertIn("Live-Stand", text)
+        self.assertIn("Eigener Orderweg", text)
+        self.assertIn("OHNE Orderweg", text)
+        # Die Spuren mit Haus-Orderweg muessen namentlich drinstehen.
+        for spur in ("xperp", "scanner", "kraken", "mosaic"):
+            self.assertIn(spur, text)
+
+    def test_testdateien_zaehlen_nicht_als_orderweg(self):
+        """demo_order_test.py ruft submit_order - das ist eine Anbindungsprobe."""
+        import spuren_stand
+        ordner = os.path.join(HANDEL, "nautilus_kraken")
+        dateien, _ = spuren_stand.orderweg(Path(ordner))
+        self.assertEqual([d for d in dateien if "test" in d], [])
+
+    def test_orderweg_art_haus_gegen_fremd(self):
+        import spuren_stand
+        dateien, art = spuren_stand.orderweg(Path(os.path.join(HANDEL, "scanner")))
+        self.assertIn("okx.py", dateien)
+        self.assertEqual(art, "haus")
+
+    def test_modus_zaehlung_liest_keine_bak_dateien(self):
+        buch = befehle._positionen_je_modus("scanner")
+        self.assertTrue(all(v >= 1 for v in buch.values()))
 
 
 if __name__ == "__main__":

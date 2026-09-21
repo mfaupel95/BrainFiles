@@ -16,7 +16,7 @@ s.sende = lambda chat, text: gesendet.append(text)
 
 befehle = ["/hilfe", "/skills", "/skills handel", "/skill systemdiagnose",
            "/status", "/papierstatus", "/markt", "/spuren", "/strategien",
-           "/indikatoren", "/lage", "/model", "/modeö", "/",
+           "/indikatoren", "/lage", "/live", "/model", "/modeö", "/",
            "/run gibt-es-nicht", "/run"]
 
 for b in befehle:

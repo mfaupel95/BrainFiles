@@ -28,6 +28,11 @@ def lage():
     return _handel().lage()
 
 
+def live():
+    """Nur die Spuren mit Orderweg - der reine Live-Stand."""
+    return _handel().live()
+
+
 def spur(name):
     return _handel().spur(name)
 

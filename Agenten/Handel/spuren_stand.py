@@ -11,7 +11,10 @@ SPALTEN
   hs        herzschlag_max_minuten (Ausfalltoleranz; Hausregel 180 seit 19.09.2026)
   fenster   offen bis ... / zu / - (keine Sitzung; aus freigabe_fenster.json)
   frei      freigabe.erfuellt (der von Hand gesetzte Endhaken)
-  Order     Dateien des Ordners, die eine Order-Funktion aufrufen = Live-Pfad
+  Order     Dateien des Ordners, die eine Orderfunktion AUFRUFEN = Live-Pfad.
+            Testdateien (demo_order_test.py) zaehlen nicht - sie pruefen nur die
+            Anbindung. Die Art steht daneben: haus (eigene Orderanbindung der
+            Spur) oder fremd (Fremd-Laufzeit ordert, z.B. der Nautilus-DEMO-Node)
   Auto      gehoert zu dauerlauf.AUTO_FREIGABE (oeffnet sein Fenster selbst)
   Buch      offene Positionen im zustand*.json
   Zyklus    Alter der letzten Zeile in dauerlauf.log (min)
@@ -19,7 +22,8 @@ SPALTEN
 Aufruf (aus dem Handel-Ordner):
     python spuren_stand.py
     python spuren_stand.py --json
-    python spuren_stand.py --nur live        # nur Spuren mit Live-Pfad
+    python spuren_stand.py --nur live        # nur Spuren mit Orderweg im Code
+    python spuren_stand.py --nur scharf      # Orderweg UND handel_erlaubt=true
 """
 
 from __future__ import annotations
@@ -34,10 +38,29 @@ from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
 
-# Wortlaute, an denen ein Live-Pfad erkennbar ist (Order-Funktionsnamen).
-ORDER_MUSTER = ("order_aufgeben", "place_order", "submit_order", "new_order",
-                "create_order", "order_senden", "kauf_ausfuehren",
-                "verkauf_ausfuehren")
+# Wortlaute, an denen ein Live-Pfad erkennbar ist: die NAMEN der Orderfunktionen,
+# nicht die Namen fremder Bibliotheken. Bis 21.09.2026 stand hier eine Liste
+# (order_aufgeben, place_order, submit_order, ...), die im Baum fast nichts traf -
+# die Haus-Module heissen okxf.order_limit, okx.markt_kauf, kraken.markt_verkauf,
+# mosaic.kraken_spot.algo_stop_setzen. Getroffen wurden damit nur die
+# Nautilus-TESTDATEIEN (demo_order_test.py, kraken_order_test.py): die Spalte
+# "Order-Code" war also genau verkehrt herum - sie zeigte Tests statt Orderwege
+# und verschwieg xperp/scanner/swap/kraken/mosaic/moondev_marktlage.
+ORDER_MUSTER = ("markt_kauf", "markt_verkauf", "markt_schliessen",
+                "order_limit", "order_aufgeben", "order_senden",
+                "algo_stop_setzen", "stop_setzen", "_add_order",
+                "kauf_ausfuehren", "verkauf_ausfuehren",
+                "place_order", "submit_order", "create_order", "new_order")
+
+# Welche dieser Namen sind HAUS-Funktionen (eigene Orderanbindung der Spur) und
+# welche sind Methoden einer fremden Bibliothek. Das entscheidet, ob die Spur
+# selbst an die Boerse schreibt oder eine Fremd-Laufzeit (Nautilus-Node) fuer
+# sich ordern laesst - der Unterschied zwischen echtem Geldpfad und DEMO-Node.
+HAUS_ORDERS = ("markt_kauf", "markt_verkauf", "markt_schliessen", "order_limit",
+               "order_aufgeben", "order_senden", "algo_stop_setzen",
+               "stop_setzen", "_add_order")
+FREMD_ORDERS = ("place_order", "submit_order", "create_order", "new_order",
+                "kauf_ausfuehren", "verkauf_ausfuehren")
 
 
 def spurenliste():
@@ -60,6 +83,33 @@ def spurenliste():
     m = re.search(r"AUTO_FREIGABE\s*=\s*\(([^)]*)\)", t)
     auto = re.findall(r'"([^"]+)"', m.group(1)) if m else []
     return namen, auto
+
+
+def orderweg(ordner: Path, nur_dateien: bool = True):
+    """Dateien des Spurordners, die eine Orderfunktion aufrufen oder definieren.
+
+    Das ist die EINE Erkennung eines Live-Pfads (spuren_stand.py und
+    befehle.live() benutzen sie) - bewusst nicht als zweite Liste gepflegt.
+
+    Testdateien zaehlen NICHT: `demo_order_test.py` und `kraken_order_test.py`
+    rufen submit_order, um die Anbindung zu PRUEFEN. Wer sie mitzaehlt, haelt
+    Nautilus fuer eine Live-Spur und uebersieht, dass die Spur selbst nur Papier
+    bucht. Ausgeschlossen sind deshalb `test_*.py` und alles unter `tests/`.
+    """
+    treffer, arten = [], set()
+    for f in sorted(ordner.rglob("*.py")):
+        p = str(f).replace("\\", "/")
+        if "test" in f.name or "/tests/" in p or "/.venv/" in p:
+            continue
+        txt = f.read_text(encoding="utf-8", errors="ignore")
+        gefunden = [m for m in ORDER_MUSTER
+                    if re.search(r"\b%s\s*\(" % m, txt)]
+        if not gefunden:
+            continue
+        treffer.append(f.name)
+        arten.add("haus" if any(m in HAUS_ORDERS for m in gefunden)
+                  else "fremd")
+    return treffer, ("haus" if "haus" in arten else "fremd" if arten else None)
 
 
 def fensterlage(name, fenster):
@@ -135,12 +185,12 @@ def sammle(nur=None):
                 e["frei"] = (d.get("freigabe") or {}).get("erfuellt")
             except Exception as ex:                                # noqa: BLE001
                 e["fehler"] = str(ex)[:80]
-        for f in ordner.glob("*.py"):
-            txt = f.read_text(encoding="utf-8", errors="ignore")
-            if any(m in txt for m in ORDER_MUSTER):
-                e["order"].append(f.name)
+        e["order"], e["art"] = orderweg(ordner)
         e["buch"] = buecher(ordner)
+        e["scharf"] = bool(e["order"]) and e["erlaubt"] is True
         if nur == "live" and not e["order"]:
+            continue
+        if nur == "scharf" and not e["scharf"]:
             continue
         raus.append(e)
     return raus
@@ -149,7 +199,8 @@ def sammle(nur=None):
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--json", action="store_true")
-    p.add_argument("--nur", choices=["live"], help="nur Spuren mit Live-Pfad")
+    p.add_argument("--nur", choices=["live", "scharf"],
+                   help="live = Orderweg im Code; scharf = Orderweg UND handel_erlaubt")
     a = p.parse_args()
     daten = sammle(a.nur)
     if a.json:
