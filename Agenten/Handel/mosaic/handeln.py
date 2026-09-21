@@ -520,6 +520,9 @@ def pruefe_ausstiege(z, k5, w, nur=None):
 # --- Live (Stufe A, OKX-Spot) ------------------------------------------------
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
+# MUSS unter dauerlauf.TIMEOUT_S bleiben (700): ein Abbruch des Aufrufers
+# toetet den Lauf mitten in der Wartezeit und reisst die Spiegelung mit
+# (21.09.2026, scanner: Fenster 600 s > Abbruch 300 s).
 FREIGABE_ZEITLIMIT_S = 600
 
 
@@ -549,11 +552,68 @@ def sitzung_da():
         return False
 
 
+# Spur, unter der diese Datei im Dauerlauf und in freigabefenster.py steht.
+SPUR = "mosaic"
+
+
+def zeitfenster_offen():
+    """Hat Max am Handy freigegeben (freigabefenster.py)?
+
+    Das ist die ZWEITE Fassung von Punkt 3 der Handelsregeln. Am Bildschirm
+    fragt freigabe.py je Einstieg; im Dauerbetrieb, wo niemand sitzen kann,
+    ist das scharf geschaltete Zeitfenster die Freigabe - genau wie bei
+    scanner und kraken. Best effort: fehlt das Modul oder wirft es, gilt
+    *nicht* freigegeben. Im Zweifel Papier - ein Lesefehler darf nie zu einer
+    Order fuehren.
+    """
+    try:
+        # HANDEL statt str(HIER.parent): HIER und HANDEL sind in dieser
+        # Datei STRINGS, keine Path-Objekte.
+        sys.path.insert(0, HANDEL)
+        import freigabefenster
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception:                                   # noqa: BLE001
+        return False
+
+
+def freigabe_protokoll(vs, z, s):
+    """Haelt fest, dass Einstiege ueber das Zeitfenster freigegeben wurden.
+
+    Ohne diese Zeilen waere im Protokoll nicht zu sehen, welche Einstiege ohne
+    Fenster am Bildschirm durchgingen. Best effort wie in freigabe.py: ein
+    Schreibfehler darf den Einstieg nicht verhindern.
+    """
+    try:
+        # HANDEL statt str(HIER.parent): HIER und HANDEL sind in dieser
+        # Datei STRINGS, keine Path-Objekte.
+        sys.path.insert(0, HANDEL)
+        import freigabe
+        for v in vs:
+            freigabe.audit({
+                "spur": SPUR, "ergebnis": "bestaetigt",
+                "quelle": "zeitfenster", "modus": "live",
+                "waehrung": GUTHABEN_WAEHRUNG, "inst": v.get("inst"),
+                "einstieg": v.get("einstieg"), "stop": v.get("stop"),
+                "ziel": v.get("ziel"), "stop_pct": v.get("stop_pct"),
+                "gebunden": v.get("usd"),
+                "gebunden_gesamt": sum(p["nominal"] for p in z["positionen"]),
+                "offene_positionen": len(z["positionen"]),
+                "ruecklauf_usd": s.get("ruecklauf_usd")})
+    except Exception:                                   # noqa: BLE001
+        pass
+
+
 def hole_freigabe(vs, z, s):
     """Jeden Einstieg im Fenster bestaetigen lassen. Leer = abgelehnt - und
     abgelehnt heisst kein Einstieg. Faellt das Fenster aus, wird nicht
     gehandelt: ein Fehler darf nie zu einem ungefragten Kauf werden."""
-    sys.path.insert(0, str(HIER.parent))
+    # HANDEL statt str(HIER.parent): HIER und HANDEL sind in dieser Datei
+    # STRINGS (os.path.dirname), keine Path-Objekte - str(HIER.parent)
+    # wirft AttributeError. Die Zeile kam mit dem Kraken-Umbau
+    # (28e23b1, 21.09.2026) herein, stand VOR dem try und liess jede
+    # Bildschirm-Freigabe mit 'Freigabefenster nicht verfuegbar' enden:
+    # kein Einstieg, ohne dass es jemandem auffiel.
+    sys.path.insert(0, HANDEL)
     try:
         import freigabe
     except Exception as e:  # noqa: BLE001
@@ -600,8 +660,15 @@ def live_sperren(w, s):
         g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
     if VENUE.demo_modus():
         g.append("%s im Demo-Modus - keine echten Orders" % VENUE.__name__)
-    if not sitzung_da():
-        g.append("keine Sitzung am Bildschirm - Freigabefenster nicht moeglich")
+    # Punkt 3 der Handelsregeln in ZWEI Fassungen: am Bildschirm das
+    # Freigabefenster, im Dauerbetrieb das Zeitfenster (AUTO_FREIGABE oder
+    # /ja am Handy). Eine muss offen sein. Bis zum 21.09.2026 fehlte hier die
+    # zweite Fassung: unter MAXHIRN_ROUTINE=1 ist sitzung_da() immer False,
+    # also lief mosaic in JEDEM Zyklus Papier - waehrend der Dauerlauf wegen
+    # genau dieser Zeile ein Freigabefenster nach dem anderen oeffnete.
+    if not sitzung_da() and not zeitfenster_offen():
+        g.append("Freigabefenster nicht offen - keine Sitzung am "
+                 "Bildschirm und kein Zeitfenster (Handelsregeln Punkt 3)")
     noetig = MINDEST_GUTHABEN
     if noetig and VENUE.schluessel_vorhanden():
         try:
@@ -772,9 +839,24 @@ def live_einstiege(z, w, s):
         if fehler:
             print("  -- %-9s uebersprungen: %s" % (inst, fehler))
             continue
-        vs = hole_freigabe([{"inst": inst, "einstieg": kurs,
-                             "stop_pct": stop_pct, "stop": stop, "ziel": ziel,
-                             "cr": ziel_r, "usd": betrag}], z, s)
+        vorschlag = [{"inst": inst, "einstieg": kurs,
+                      "stop_pct": stop_pct, "stop": stop, "ziel": ziel,
+                      "cr": ziel_r, "usd": betrag}]
+        if not sitzung_da() and zeitfenster_offen():
+            # Kein Bildschirm, aber ein offenes Zeitfenster. Es wurde beim
+            # Sperrenpruefen schon geprueft; hier noch einmal, weil dazwischen
+            # Netzabfragen liegen und das Fenster in der Zeit zulaufen kann.
+            try:
+                import freigabefenster
+                stand = freigabefenster.lade(SPUR).text()
+            except Exception:                           # noqa: BLE001
+                stand = "offen"
+            print("  Freigabe ueber das Zeitfenster (%s) - Einstieg %s ohne "
+                  "Fenster am Bildschirm." % (stand, inst))
+            freigabe_protokoll(vorschlag, z, s)
+            vs = vorschlag
+        else:
+            vs = hole_freigabe(vorschlag, z, s)
         if not vs:
             print("  Freigabe abgelehnt/leer - kein Einstieg %s" % inst)
             continue

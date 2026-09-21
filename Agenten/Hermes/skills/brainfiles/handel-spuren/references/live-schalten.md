@@ -313,6 +313,46 @@ laeuft in einen Fehler, und ein Notausstieg will verkaufen, was nicht da ist.
   dem eigenen Grund, die Position MIT Order bleibt. Ohne Test waechst der
   Zustand nach.
 
+## Zwei Formen von Punkt 3: Bildschirmfenster UND Zeitfenster
+
+`sitzung_da()` allein genuegt NICHT. Der Dauerlauf setzt `MAXHIRN_ROUTINE=1` in beiden
+Modi, damit ist `sitzung_da()` immer `False`. Wer im Sperrtext nur
+`if not sitzung_da(): sperre` schreibt, baut eine Spur, die im Dauerlauf NIE live geht -
+waehrend der Dauerlauf brav `<spur> (live) ok` protokolliert (sein Modus, kein Orderbeleg)
+und im 30-Minuten-Takt Fenster oeffnet, die nichts bewirken.
+
+Richtig ist die scanner-Fassung, woertlich:
+
+```python
+if not sitzung_da() and not zeitfenster_offen():
+    g.append("Freigabefenster nicht offen - keine Sitzung am Bildschirm "
+             "und kein Zeitfenster (Handelsregeln Punkt 3)")
+```
+
+Dazu gehoert in der Spur: `SPUR = "<name>"`, `zeitfenster_offen()` (importiert
+`freigabefenster` und liest `.offen()`, best effort -> im Zweifel False),
+`freigabe_protokoll(vs, z, s)` (`freigabe.audit`, quelle `zeitfenster`) und im
+Einstiegspfad die Verzweigung: kein Bildschirm + offenes Zeitfenster -> Einstieg ohne
+Tk-Fenster (`vs = vorschlag`), sonst `hole_freigabe()`. Das Fenster kurz VOR dem Kauf
+noch einmal lesen - dazwischen liegen Netzabfragen und `/stop` kann greifen.
+
+**Messprobe:** `<spurinterpreter> handeln.py --vorschau` MIT `MAXHIRN_ROUTINE=1` - genau
+so ruft der Dauerlauf die Spur. Ohne die Variable sieht dieselbe Spur frei aus; der
+Unterschied ist der Befund.
+
+**Zweite Falle derselben Stelle: `HIER` ist nicht immer ein `Path`.** In
+mosaic/handeln.py sind `HIER` und `HANDEL` Strings (`os.path.dirname`) - `str(HIER.parent)`
+wirft `AttributeError`. Stand die Zeile VOR dem `try`, brach jede Bildschirm-Freigabe mit
+"Freigabefenster nicht verfuegbar (...)" ab und der Einstieg entfiel lautlos; stand sie
+im `try`, wurde der Fehler geschluckt. Beim Kopieren eines Freigabe-Blocks aus scanner
+(Path) in eine Spur mit Strings (mosaic) deshalb `sys.path.insert(0, HANDEL)` schreiben.
+
+**Testmuster:** `handeln.zeitfenster_offen` in `setUp` auf `False` patchen (sonst haengt
+der Test davon ab, ob Max gerade freigegeben hat), die echten Seams VOR dem Patchen in
+`self._seams_alt` sichern und im `tearDown` zuruecksetzen (Fakes lecken sonst in die
+naechsten Tests), und den Einstiegspfad mit einem `hole_freigabe`, das bei Aufruf wirft,
+gegen die Bildschirm-Fassung absichern.
+
 ## Nach dem Scharfschalten beobachten
 
 Eine scharfe Spur kann still nichts tun — aus zwei Gruenden, die im Journal

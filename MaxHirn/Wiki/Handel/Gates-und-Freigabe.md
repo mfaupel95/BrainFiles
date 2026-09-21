@@ -55,6 +55,34 @@ Auto-Freigabe, Zyklus 07:11:27 „ok". `kraken` und frueher `mosaic` waren nicht
 Fenster gesperrt, sondern durch das **Guthaben in der richtigen Waehrung** („nur 33.15 EUR
 frei, noetig 60.00", „nur 0.00 USDT frei, noetig 30.00").
 
+## Punkt 3 hat ZWEI Formen — und eine kann still fehlen
+
+Punkt 3 der Handelsregeln ("scharf geschaltet wird von Hand") ist zweimal umgesetzt,
+und die Spur muss BEIDE kennen:
+
+| Form | Modul | Wo sie greift |
+|---|---|---|
+| Freigabefenster am Bildschirm | `freigabe.py` (Tk) | jemand sitzt davor, bestaetigt je Einstieg |
+| **Zeitfenster** | `freigabefenster.py` (`freigabe_fenster.json`) | Dauerbetrieb: `AUTO_FREIGABE` oder `/ja` am Handy |
+
+**Unter `MAXHIRN_ROUTINE=1` ist `sitzung_da()` immer `False`** — und der Dauerlauf setzt
+die Variable seit dem 21.09.2026 in BEIDEN Modi. Eine Spur, deren Sperrtext nur
+`sitzung_da()` prueft, kann damit **im Dauerlauf nie live gehen**, egal wie oft ein Fenster
+offen ist. Der Dauerlauf protokolliert trotzdem `<spur> (live) ok` — das ist SEIN Modus,
+kein Beleg fuer eine Order.
+
+**Beleg 21.09.2026 (mosaic):** Sperrtext `keine Sitzung am Bildschirm - Freigabefenster
+nicht moeglich` → `nur_fenster_fehlt` sah "genau ein Grund, Wort Freigabefenster" →
+oeffnete im 30-Minuten-Takt Fenster, die nichts bewirkten; das Journal hatte keine einzige
+Live-Zeile. Zusaetzlich stand in `hole_freigabe()` `str(HIER.parent)`, obwohl `HIER` in
+mosaic/handeln.py ein **String** ist (`os.path.dirname`) — `AttributeError` schon VOR dem
+`try`, also "Freigabefenster nicht verfuegbar" und kein Einstieg, auch am Bildschirm.
+
+**Messprobe (die einzige Wahrheit):** `<spurinterpreter> handeln.py --vorschau` **mit**
+`MAXHIRN_ROUTINE=1` — genau so ruft der Dauerlauf sie. Steht dort "nicht offen - keine
+Sitzung am Bildschirm und kein Zeitfenster", fehlt die zweite Form. Ohne die Variable
+sieht dieselbe Spur frei aus.
+
 ## Wiedervorlage-Fristen
 
 `freigabefenster.neue_anfrage_erlaubt()` verhindert, dass dieselbe Frage alle 30 Minuten

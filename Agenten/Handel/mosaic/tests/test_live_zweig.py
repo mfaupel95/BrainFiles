@@ -138,6 +138,13 @@ class _Basis(unittest.TestCase):
     """Temporaere Wachen/Zustand/Journal, SCHREIBEN=False, OP-Seams fake."""
 
     def setUp(self):
+        # Die echten Seams ZUERST sichern - nach dem Patchen waeren hier die
+        # Fakes drin und das Zuruecksetzen im tearDown wirkungslos.
+        self._seams_alt = (handeln.op_kauf, handeln.op_verkauf, handeln.op_stop,
+                           handeln.op_stop_stornieren, handeln.op_gefuellt,
+                           handeln.op_guthaben, handeln.live_kurs_quelle,
+                           handeln.live_menge_fuer, handeln.hole_freigabe)
+        self._zf_alt = handeln.zeitfenster_offen
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = self._tmp.name
         self.w = {
@@ -177,6 +184,11 @@ class _Basis(unittest.TestCase):
         handeln.live_kurs_quelle = lambda inst: 105.0
         handeln.live_menge_fuer = lambda inst, usdt, kurs: (0.12345, None)
         handeln.hole_freigabe = lambda vs, z, s: vs  # bestaetigt unveraendert
+        # Das Zeitfenster (freigabefenster.py) zeigt in Tests NIE auf das echte
+        # freigabe_fenster.json: sonst haengt das Ergebnis davon ab, ob Max
+        # gerade live freigegeben hat - ein Test, der bei offenem Fenster anders
+        # laeuft, prueft den Kalender, nicht den Code.
+        handeln.zeitfenster_offen = lambda: False
         # Registry kann Demo-Variable UND Keys tragen (Umgebungs-pop loescht
         # sie nicht). Fuer deterministische Tests das Modul direkt mocken; in
         # tearDown zuruecksetzen.
@@ -246,6 +258,11 @@ class _Basis(unittest.TestCase):
         self._okx.schluessel_vorhanden = self._okx_keys_alt
         (handeln.WACHEN, handeln.ZUSTAND, handeln.JOURNAL, handeln.SCHREIBEN,
          handeln.kerzen_quelle) = self._saved
+        handeln.zeitfenster_offen = self._zf_alt
+        (handeln.op_kauf, handeln.op_verkauf, handeln.op_stop,
+         handeln.op_stop_stornieren, handeln.op_gefuellt,
+         handeln.op_guthaben, handeln.live_kurs_quelle,
+         handeln.live_menge_fuer, handeln.hole_freigabe) = self._seams_alt
         self._saved = None
         self._tmp.cleanup()
 
@@ -285,12 +302,65 @@ class LiveSperrenTest(_Basis):
             handeln.sitzung_da = gespeichert
         self.assertEqual(g, [])
 
+    def test_zeitfenster_ohne_bildschirm_ist_eine_freigabe(self):
+        """Punkt 3 der Handelsregeln hat zwei Fassungen - im Dauerbetrieb
+        zaehlt das Zeitfenster.
+
+        Unter MAXHIRN_ROUTINE=1 ist sitzung_da() immer False. Ohne die zweite
+        Fassung sperrte sich mosaic damit in jedem Zyklus selbst, obwohl der
+        Dauerlauf zu Recht ein Fenster geoeffnet hatte (Befund 21.09.2026).
+        """
+        os.environ["MAXHIRN_ROUTINE"] = "1"
+        handeln.zeitfenster_offen = lambda: True
+        g = handeln.live_sperren(self.w, _lage(self.w))
+        self.assertEqual(g, [], "offenes Zeitfenster muss die Kette leeren")
+        # Gegenprobe: ohne Zeitfenster bleibt dieselbe Lage gesperrt.
+        handeln.zeitfenster_offen = lambda: False
+        g = handeln.live_sperren(self.w, _lage(self.w))
+        self.assertTrue(any("Freigabefenster" in x for x in g))
+
     def test_live_grenze_bevorzugt(self):
         self.assertEqual(handeln._live_grenze(self.w, "max_pro_trade_usd", 9),
                          10.0)
         self.assertEqual(handeln._live_grenze(self.w, "max_offene_positionen",
                                               1), 5)
         self.assertEqual(handeln._live_grenze(self.w, "max_gesamt_usd", 1), 200)
+
+
+class BildschirmFreigabeTest(_Basis):
+
+    def test_hole_freigabe_erreicht_das_modul(self):
+        """hole_freigabe scheiterte bis zum 21.09.2026 am eigenen Pfad.
+
+        Dort stand str(HIER.parent); HIER ist in handeln.py ein String
+        (os.path.dirname), also AttributeError - und zwar VOR dem try, sodass
+        jede Bildschirm-Freigabe mit "Freigabefenster nicht verfuegbar"
+        endete: kein Einstieg, ohne dass es auffiel. Geprueft wird der Weg bis
+        zum Freigabe-Modul; das Fenster selbst ist ersetzt (kein Klick, keine
+        Anzeige).
+        """
+        import freigabe
+        gerufen = []
+
+        def fake_bestaetige(vs, spur, bestand, zeitlimit=None):
+            gerufen.append((spur, bestand, zeitlimit))
+            return list(vs)
+
+        alt = freigabe.bestaetige
+        freigabe.bestaetige = fake_bestaetige
+        try:
+            v = [{"inst": "TEST-USDT", "einstieg": 105.0, "stop_pct": 5.0,
+                  "stop": 99.75, "ziel": 115.5, "cr": 2.0, "usd": 10.0}]
+            # Die ECHTE Funktion, nicht den Seam-Fake aus setUp: nur so wird
+            # der Pfad bis zum Freigabe-Modul wirklich durchlaufen.
+            echt = self._seams_alt[8]
+            raus = echt(v, {"positionen": []}, _lage(self.w))
+        finally:
+            freigabe.bestaetige = alt
+        self.assertEqual(raus, v, "bestätigter Auftrag kommt zurueck")
+        self.assertEqual(gerufen[0][0], "mosaic")
+        self.assertEqual(gerufen[0][2], handeln.FREIGABE_ZEITLIMIT_S,
+                         "Zeitlimit geht mit (ohne Bedienung wird abgelehnt)")
 
 
 class LiveEinstiegeTest(_Basis):
@@ -314,6 +384,44 @@ class LiveEinstiegeTest(_Basis):
         handeln.live_einstiege(z, self.w, _lage(self.w))
         self.assertEqual(z["positionen"], [])
         self.assertNotIn(("kauf", "TEST-USDT", 0.12345), self.aufrufe)
+
+    def test_einstieg_ueber_zeitfenster_ohne_bildschirm(self):
+        """Kein Bildschirm + offenes Zeitfenster = Einstieg ohne Tk-Fenster.
+
+        Geprueft wird der Weg, der im Dauerbetrieb laeuft: hole_freigabe darf
+        dabei NICHT gerufen werden (es wuerde 600 s auf einen Klick warten und
+        dann ablehnen), und der Einstieg muss im Protokoll stehen.
+        """
+        os.environ["MAXHIRN_ROUTINE"] = "1"     # hier sitzt niemand
+        handeln.zeitfenster_offen = lambda: True
+
+        def nie_gerufen(*a, **k):
+            raise AssertionError("Freigabefenster am Bildschirm wurde gerufen")
+        handeln.hole_freigabe = nie_gerufen
+
+        protokoll = []
+        import freigabe
+        alt_audit = freigabe.audit
+        freigabe.audit = protokoll.append
+        try:
+            z = {"positionen": []}
+            handeln.live_einstiege(z, self.w, _lage(self.w))
+        finally:
+            freigabe.audit = alt_audit
+        self.assertEqual(len(z["positionen"]), 1, "Einstieg erfolgt")
+        self.assertEqual(z["positionen"][0]["modus"], "live")
+        self.assertIn(("kauf", "TEST-USDT", 0.12345), self.aufrufe)
+        self.assertTrue(protokoll, "Freigabe muss protokolliert sein")
+        self.assertEqual(protokoll[0]["quelle"], "zeitfenster")
+        self.assertEqual(protokoll[0]["spur"], "mosaic")
+
+    def test_zeitfenster_zu_kein_kauf(self):
+        os.environ["MAXHIRN_ROUTINE"] = "1"
+        handeln.zeitfenster_offen = lambda: False
+        handeln.hole_freigabe = lambda vs, z, s: []      # niemand bestaetigt
+        z = {"positionen": []}
+        handeln.live_einstiege(z, self.w, _lage(self.w))
+        self.assertEqual(z["positionen"], [])
 
     def test_max_offene_respektiert(self):
         z = {"positionen": [
