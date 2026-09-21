@@ -31,6 +31,21 @@ cd Agenten/Werkzeuge/repos-zentrale
 `--pruefen` ist der schnelle Beleg ohne Fenster: nennt je Gruppe jedes Repo und
 seinen Startbefehl und markiert Auffaelligkeiten (NEU/FEHLT).
 
+## Die Klone aktuell halten
+
+```
+python Agenten/Werkzeuge/repos-updaten.py --trocken            # nur zeigen
+python Agenten/Werkzeuge/repos-updaten.py                      # vorspulen
+python Agenten/Werkzeuge/repos-updaten.py --nur ProjectAtlas   # einzelne
+```
+
+Je Klon: Quelle bestimmen (**upstream hat Vorrang vor origin**), deren
+Standardzweig erfragen (`main`/`master`/`dev`/`v8`/`github-main` — nicht raten),
+fetchen und **nur vorspulen** (`--ff-only`). Nie Merge, nie Rebase, nie Push.
+Schmutzig heisst nur: eine Aenderung an einer **verfolgten** Datei. Ein untracked
+`.env.template` — das tragen fast alle Klone — sperrt nicht.
+Zustand: `Agenten/Hermes/cache/repos-update.json`.
+
 ## Die fuenf Gruppen
 
 STARTBAR (Befehl belegt UND Abhaengigkeiten da) · EINRICHTEN (es fehlt etwas:
@@ -82,6 +97,11 @@ den Windows-PATH nicht (VS Code liegt in
   `routine/<name>`; Ausnahmen sind `einmalig-*`, `*-hook.ps1` und der Vermerk
   `BUS: Bibliothek` im Kopf. Ein Einmal-Skript gehoert umbenannt auf
   `einmalig-JJJJMMTT-<name>.ps1`.
+- **Shallow-Klon bricht beim Vorspulen ab.** Mit `--depth=1` fehlt der
+  gemeinsame Vorfahr, `merge --ff-only` sagt `refusing to merge unrelated
+  histories` — gemessen am 21.09.2026 an OpenTerminal (1 Commit) und santiment
+  (4). Das Werkzeug holt dann die Historie nach (`fetch --unshallow`) und spult
+  erneut; von Hand ist das der Weg.
 - **Beim Testen eines Launchers keine Fensterflut ausloesen.**
   `repos-launcher.ps1 -Mode Gui` oeffnet je Repo ein VSCode-Fenster (28 Stueck,
   je mehrere Prozesse). Vorher `-Repos <eins>` setzen. Nach einem versehentlichen
