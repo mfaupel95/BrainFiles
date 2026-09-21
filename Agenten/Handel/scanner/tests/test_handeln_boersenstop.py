@@ -62,6 +62,7 @@ class AttrappeOKX:
         return "kauf-1"
 
     def order_details(self, inst, ord_id):
+        self.rufe.append(("details", inst, ord_id))
         return {"accFillSz": "%.8f" % self.fuellung}
 
     def markt_verkauf(self, inst, menge):
@@ -189,6 +190,20 @@ class AusstiegLive(Basis):
         _, z = self._ausstieg(fake)
         self.assertEqual(len(z["positionen"]), 1)
         self.assertIsNone(z.get("offene_stops"))
+
+    def test_ohne_okx_order_wird_nicht_verkauft(self):
+        # Papier-Altlast im Live-Buch (21.09.2026): kein kauf_ord_id, also gibt
+        # es am Handelsplatz nichts zu verkaufen. Ein Market-Verkauf wuerde den
+        # GESAMTEN Bestand des Werts auf dem Konto treffen - auch Coins, die
+        # diese Spur nie gekauft hat. Vorher lief das in OKX 51000
+        # ("Parameter ordId error"), weil mit ordId=None abgefragt wurde.
+        fake = AttrappeOKX(kurs=P["ziel"] + 1)
+        pos = dict(P, kauf_ord_id=None)
+        text, z = self._ausstieg(fake, pos=pos)
+        self.assertNotIn("verkauf", fake.namen(), "keine Order an die Boerse")
+        self.assertNotIn("details", fake.namen(), "gar nicht erst abfragen")
+        self.assertEqual(len(z["positionen"]), 1, "Position bleibt bis zur Bereinigung")
+        self.assertIn("ohne OKX-Order", text)
 
     def test_notausstieg_storniert_den_stop(self):
         fake = AttrappeOKX()

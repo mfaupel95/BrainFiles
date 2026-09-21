@@ -395,8 +395,21 @@ def _live_verkauf(p, z):
             z.setdefault("offene_stops", []).append(
                 {"inst": p["inst"], "stop_ord_id": p["stop_ord_id"],
                  "seit": _heute()})
+    kauf_id = p.get("kauf_ord_id")
+    if not kauf_id:
+        # Ohne Handelsplatz-Order gibt es dort nichts zu verkaufen. Ein
+        # Market-Verkauf wuerde nicht "nichts" verkaufen, sondern den GESAMTEN
+        # Bestand dieses Werts auf dem Konto - auch Coins, die diese Spur nie
+        # gekauft hat. Am 21.09.2026 lief genau das in "OKX 51000: Parameter
+        # ordId error": order_details fragte mit ordId=None an (urlencode macht
+        # daraus den Text "None"), die Position kam aus dem Papierlauf und
+        # hatte keine Order. Solche Altlasten bucht bueche_papier_altlasten_aus
+        # aus; kommt eine trotzdem hier an, wird nicht verkauft.
+        print("  %s steht ohne OKX-Order im Buch - kein Verkauf moeglich"
+              % p["inst"], file=sys.stderr)
+        return "fehler"
     try:
-        d = okx.order_details(p["inst"], p["kauf_ord_id"])
+        d = okx.order_details(p["inst"], kauf_id)
         menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
         okx.markt_verkauf(p["inst"], round(menge, 8))
     except Exception as e:  # noqa: BLE001
