@@ -78,3 +78,27 @@ nicht geschaetzt.
 Muster fuer den Test: `Agenten/Handel/tests/test_indikator_auswertung.py` —
 synthetisches Journal schreiben, per `csv.DictReader` einlesen, `runden_*` direkt
 aufrufen (kein Netz, kein Lauf, kein Schreiben in echte Pfade).
+## Die Uhr im Test: fester Bezugspunkt nur, wo er auch ankommt
+
+Ein Test mit festem `JETZT` ist nur an seinem eigenen Tag gruen. Zwei Faelle
+sind zu trennen — der Unterschied hat am 21.09.2026 zwei Fehler in der
+Handel-Suite verursacht, die tagelang wie echte Regressionen aussahen:
+
+1. **Reine Funktionstests** (`vf.pruefe(..., JETZT)`) duerfen ein festes JETZT
+   benutzen — sie uebergeben es der geprueften Funktion, also muss auch das
+   synthetische Journal gegen dieses JETZT geschrieben werden
+   (`journal(..., jetzt=JETZT)`).
+2. **Einbautests**, die durch die halbe Kette laufen (`buch.einstieg()` →
+   `risikovorfilter` → `datetime.now()`), bekommen das feste JETZT NICHT
+   durchgereicht. Dort muss der Helfer die ECHTE Uhr nehmen, sonst liegt das
+   synthetische Journal ausserhalb des Zeitfensters und der Filter greift
+   nicht — der Test faellt, obwohl der Code stimmt.
+
+Dritte Form derselben Klasse: ein Test, der eine Frage offen erwartet, die
+der Code inzwischen automatisch bestaetigt (`dauerlauf.AUTO_FREIGABE` seit
+20.09.2026). Solche Politik-Schalter im `setUp` stilllegen und im `tearDown`
+zuruecklegen — sonst prueft der Test eine Lage, die es nicht mehr gibt.
+
+Regel: einen Test nie an die Wanduhr oder an einen Kalendertag binden, und
+jeden Schalter, den der Test stilllegen muss, ausdruecklich sichern und
+zuruecklegen.
