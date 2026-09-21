@@ -60,7 +60,8 @@
   "wochenend_faktor": 0.5,
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
+    "_erfuellt_vermerk": "true auf Auftrag Max 21.09.2026 ('swap ebenfalls handel erlaubt live offen'). Der Haken ist die von Hand gesetzte Endabnahme; die Zahlen dieses Arms sind noch duenn (0 gemessene Runden im eigenen lage(), 5 Buchungen insgesamt, davon 1 Herzschlag-Stoerung) - das ist bewusst so entschieden. Live-Grenzen bleiben die Wachen (max_margin_je_anlauf_usd 50, max_margin_gesamt_usd 200, max_offene_anlaeufe 4, max_hebel 5, kill_switch_gesamt_usd 40).",
     "papierlauf_min_wochen": 6,
     "netto_positiv_nach_gebuehren_und_funding": false,
     "groesster_ruecklauf_papierlauf_usd": null,
