@@ -35,6 +35,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
+| täglich 20:40 | Fremdarbeit beendeter Sitzungen in die Hauptarbeit (`master`) übernehmen | `Routinen/fremdarbeit-einziehen.ps1` | **eingeplant** 21.09.2026 — `MaxHirn-Fremdarbeit-Einziehen`. Läuft **nach** dem Zwischenstand (20:00): der sichert die Arbeit erst auf den Branch `zwischenstand`, diese Aufgabe holt dieselbe Arbeit ein zweites Mal ab und schreibt sie in **einem** Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Bis dahin blieb jede Hintergrundsitzung als „Fremdarbeiter“ im Arbeitsbaum stehen — sichtbar, aber nie in der Hauptarbeit. Ruhend heißt: länger als 30 Minuten unberührt. Details im Abschnitt „Fremdarbeit übernehmen“ unten. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
 | bei Systemstart | BrainFiles-Bus | `Agenten/Bus/bus.py` | **eingeplant** 10.09.2026 — `BrainFiles-Bus`, registriert über `Agenten/Routinen/bus.ps1`. Meldet Start und Ende aller geplanten Aufgaben, wertet deren Erfolg aus und sichert Fehler auf dem Handy. Ein toter Bus darf niemals einen Lauf abbrechen — alle Erzeuger schreiben lokal ins Journal zurück. |
 | dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht ab 08:00 | `Handel/dauerlauf.py` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf` (Anmeldung) + Wächter. `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` seit 07.09.2026 gesetzt, siehe Abschnitt „Der Telegram-Melder" |
@@ -67,6 +68,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-OmniRoute` | `Routinen/omniroute-start.ps1` | `Routinen/logs/omniroute-letzter-lauf.log` |
 | `MaxHirn-Handelszentrale` | `Routinen/handelszentrale.ps1` (angelegt über `Routinen/handelszentrale-aufgabe.ps1`) | `Routinen/logs/handelszentrale-letzter-lauf.log` |
 | `MaxHirn-Optimierungen-Finden` | `Routinen/optimierungen-finden.ps1` (angelegt über `Routinen/optimierungen-finden-aufgabe.ps1`) | `Routinen/logs/optimierungen-finden-letzter-lauf.log` |
+| `MaxHirn-Fremdarbeit-Einziehen` | `Routinen/fremdarbeit-einziehen.ps1` | `Routinen/logs/fremdarbeit-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
@@ -423,6 +425,59 @@ mehr erreichbar und verschwinden bei der nächsten Garbage Collection.
 **Zugangsdaten sind nicht betroffen:** Die `.gitignore` ist eine Whitelist,
 `Zugaenge.md`, `.env`, `.pem`, `.pfx`, `.p12`, `.kdbx` und `*_key.txt` bleiben
 auch hier draußen. Geprüft am 25.08.2026 gegen den ersten Zwischenstand-Commit.
+
+## Fremdarbeit übernehmen: ruhende Hintergrundarbeit in die Hauptarbeit
+
+Der Zwischenstand oben **sichert** fremde Arbeit, er holt sie aber nicht in die
+Hauptarbeit: sie bleibt als „Fremdarbeiter“ im Arbeitsbaum stehen (als `M` oder
+`??` in jedem `git status`), und die Historie von `master` weiß nichts davon.
+Genau das war der Dauerzustand — Hintergrund- und Parallel-Sitzungen (Subagenten,
+Bots, Desktop-, CLI- und Telegram-Sitzungen) schreiben in denselben Baum und
+committen ihre Arbeit oft nicht.
+
+`Routinen/fremdarbeit-einziehen.ps1` (Aufgabe `MaxHirn-Fremdarbeit-Einziehen`,
+täglich 20:40, also **nach** dem Zwischenstand) schließt das:
+
+- Es nimmt **nur ruhende** Änderungen — länger als 30 Minuten unberührt (dieselbe
+  Schwelle wie in [[Schutzregeln]] und `arbeitsbaum-pruefen.ps1`). Was eine
+  laufende Sitzung gerade schreibt, bleibt liegen.
+- Es schreibt **einen** Commit mit dem Autor `Andere Sitzung <fremd@local>` — im
+  Text steht, dass es eine Übernahme ist und welche Pfade sie umfasst, damit die
+  Historie nicht behauptet, jemand hätte diese Arbeit getan.
+- Es fasst den Arbeitsbaum nie an: eigener Index über `GIT_INDEX_FILE`,
+  `git commit-tree`, dann `git update-ref` **mit Alt-Wert**. Bewegt eine andere
+  Sitzung `master` währenddessen, bricht der Lauf ab statt zu überschreiben.
+- Es ist bei jedem Zweifel lieber zu spät als zu früh: liegt `.git/index.lock`
+  (eine andere Sitzung committet), wird der Lauf übersprungen; eine gelöschte
+  Datei gilt nur dann als ruhend, wenn auch ihr **Ordner** alt ist (eine
+  Löschung schreibt die Ordnerzeit fort — sonst würde die Aufräumarbeit einer
+  laufenden Sitzung sofort übernommen).
+
+Nach dem Commit zieht das Skript den **normalen Index** für die übernommenen
+Pfade nach: sonst stünden sie in `git status` gleichzeitig als gelöscht und als
+ungetrackt, und ein `git commit` einer anderen Sitzung ohne Pfadangabe (es
+committet den ganzen Index) würde sie wieder aus `master` löschen. Dieselbe
+Reparatur läuft zu Beginn jedes weiteren Laufs für die letzten eigenen
+Übernahme-Commits — nachweisbare Herkunft statt Raten, idempotent.
+
+Nachsehen:
+
+```
+powershell -File Agenten/Routinen/fremdarbeit-einziehen.ps1 -Testlauf   # was wuerde uebernommen
+git log --oneline --author=fremd@local                                  # was uebernommen wurde
+```
+
+Geprüft am 21.09.2026: erst auf einer Probe (eigenes Repo unter
+`Agenten/Hermes/cache/probe-fremdarbeit-*` mit geänderter, neuer, gelöschter und
+bereits vorgemerkter Datei plus einer frischen, die liegen bleiben muss), dann am
+echten Baum — vier Läufe, 36 Pfade übernommen, danach kein Phantomeintrag im
+Index; in der Probe blieb frische Arbeit liegen und eine vorgemerkte fremde
+Änderung unangetastet. Der Lauf über die Aufgabenplanung wurde mit Ergebniscode 0
+gemessen.
+
+**Was die Regel in [[AGENTS]] nicht ersetzt:** die 10-Minuten-Regel dort gilt für
+Sitzungen, die selbst committen. Diese Routine ist der Nettofang für alles, was
+trotzdem liegen bleibt.
 
 ## Grenzen
 

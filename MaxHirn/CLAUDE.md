@@ -131,6 +131,7 @@ vernichten. Deshalb:
   `git add -A`, `git add .` oder `git commit -a`. Liegen lassen, was in den
   letzten **10 Minuten** geschrieben wurde (`(Get-Item <pfad>).LastWriteTime`)
   — älter gilt als ruhend.
+- **Das erledigt jetzt auch eine Routine.** `Agenten/Routinen/fremdarbeit-einziehen.ps1` läuft täglich 20:40 (Aufgabe `MaxHirn-Fremdarbeit-Einziehen`, nach dem Zwischenstand um 20:00) und zieht die **ruhende** Fremdarbeit in einem Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Ruhend heißt: länger als 30 Minuten unberührt — was eine laufende Sitzung gerade schreibt, bleibt liegen. Dieselbe Arbeit von Hand zu committen bleibt richtig und schneller; die Routine ist der Nettofang für alles, was liegen bleibt.
 - **Nie verwerfen:** `git reset --hard`, `checkout -- <datei>`, `restore`,
   `stash`, `clean` löschen die uncommittete Arbeit anderer Sitzungen
   unwiederbringlich. Nur auf ausdrückliche Anweisung, vorher ansagen.

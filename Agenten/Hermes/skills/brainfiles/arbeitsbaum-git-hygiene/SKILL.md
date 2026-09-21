@@ -75,7 +75,11 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    vorher nicht sicher bekannt.
 4. **Fremde Aenderungen bleiben als `M` im Arbeitsbaum** und werden im Commit-Text als
    NICHT enthalten benannt, nicht stillschweigend mitgenommen und nicht verworfen.
-   Fremd Gestagetes nie mitcommitten.
+   Fremd Gestagetes nie mitcommitten. **Liegen bleiben heisst aber nicht fuer immer:**
+   was niemand einsammelt, holt die Routine `Agenten/Routinen/fremdarbeit-einziehen.ps1`
+   (taeglich 20:40, Aufgabe `MaxHirn-Fremdarbeit-Einziehen`) in EINEM Commit mit dem
+   Autor `Andere Sitzung <fremd@local>` nach `master` - siehe den Abschnitt
+   „Fremde Arbeit aus beendeten Sitzungen einsammeln".
 5. **Ein Commit kann einen fremden, schon vorhandenen Commit vor sich haben.** Nach
    dem Push `git log --oneline -4` lesen und im Bericht nennen, was mitging, das nicht
    aus dieser Sitzung stammt. **Und der eigene, schon GESTAGTE Eintrag kann in einem
@@ -128,6 +132,15 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  it — die eigene Zeile behaelt ihren eigenen Commit (Regel 3).
 
 ## Fremde Arbeit aus beendeten Sitzungen einsammeln
+
+**Zuerst nachsehen, was schon geholt wurde, statt es ein zweites Mal zu bauen:**
+`Agenten/Routinen/fremdarbeit-einziehen.ps1` laeuft taeglich 20:40 und zieht die RUHENDE
+Fremdarbeit selbst nach `master` (Autor `Andere Sitzung <fremd@local>`, Schwelle 30 min,
+eigener Index, `update-ref` mit Alt-Wert). Stand lesen mit
+`git log --oneline --author=fremd@local`; Probe mit `-Testlauf`. Die Uebernahme von Hand
+bleibt richtig und ist schneller - die Routine ist der Nettofang fuer alles, was liegen
+bleibt, und sie zieht nach jedem eigenen Commit den normalen Index fuer die uebernommenen
+Pfade nach (sonst meldet `git status` sie gleichzeitig als geloescht und als ungetrackt).
 
 Der Auftrag „die letzten Sitzungen / Hintergrund-Aufgaben nach nicht uebernommenen
 Aenderungen durchgehen" meint selten die OFFENEN Sitzungen: die liegengebliebene Arbeit
