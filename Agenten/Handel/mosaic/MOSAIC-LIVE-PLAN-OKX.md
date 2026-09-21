@@ -181,3 +181,16 @@ war damit dauerhaft zu, obwohl 255 USDC frei lagen. Jetzt:
 Wirkung: das Guthaben-Tor ist offen (Vorschau: "Live waere gesperrt durch:
 nichts"), die Freigabekette bleibt unveraendert - ohne offenes Fenster laeuft
 die Spur Papier.
+
+## Beobachtung im Live-Betrieb (21.09.2026)
+
+Max: "Einsatz erstmal so lassen und beobachten." Die Grenzen bleiben damit
+bei 10 USDC je Position, 5 Plaetzen und 200 gesamt. Die Beobachtung
+uebernimmt der Hermes-Cron `mosaic-live-wache` (alle 10 Minuten, no_agent,
+Skript `Agenten/Hermes/scripts/mosaic-live-wache.py`):
+
+- meldet jede NEUE Live-Zeile im Journal (also den ersten echten Einstieg -
+  er ist zugleich der Beweis, dass der Schluesselsatz ordern darf),
+- meldet den Fensterwechsel (live -> Papier, Papier -> live),
+- schweigt, wenn nichts passiert (leere Ausgabe = keine Nachricht),
+- fuehrt seinen Stand in `Agenten/Hermes/cache/mosaic-live-wache.json`.
