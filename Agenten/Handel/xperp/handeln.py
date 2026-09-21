@@ -676,7 +676,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     offen = {p.get("basis") for p in belegt}
     margin_gebunden = sum(float(p.get("margin") or 0.0) for p in belegt)
     fam_stand = wx.familien_belegung(belegt, w)
-    we = s["wochenende"]
+    wochenende_gesperrt = s["wochenende"]
 
     for kandidat in kand:
         if len(belegt) >= w["max_offene_anlaeufe"]:
@@ -687,7 +687,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         # Wochenende: keine neuen Anlaeufe in Familien, deren Basiswert
         # nicht handelt. Der Kontrakt liefe weiter, das Gap zum Wochenstart
         # traegt trotzdem niemand.
-        if we and kandidat["kategorie"] in ("aktie", "rohstoff"):
+        if wochenende_gesperrt and kandidat["kategorie"] in ("aktie", "rohstoff"):
             continue
 
         fam = fam_stand.get(kandidat["kategorie"])
