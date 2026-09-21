@@ -676,7 +676,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
 # Das ist der tragende Schutz - nicht die Erkennung darunter: geht das Fenster
 # je versehentlich in einer geplanten Aufgabe auf, blockiert es sie nicht,
 # sondern sagt Nein und der Lauf handelt nicht.
-FREIGABE_ZEITLIMIT_S = 120
+FREIGABE_ZEITLIMIT_S = 600
 
 
 def sitzung_da():

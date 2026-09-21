@@ -520,7 +520,7 @@ def pruefe_ausstiege(z, k5, w, nur=None):
 # --- Live (Stufe A, OKX-Spot) ------------------------------------------------
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
-FREIGABE_ZEITLIMIT_S = 120
+FREIGABE_ZEITLIMIT_S = 600
 
 
 def _live_grenze(w, name, ersatz):

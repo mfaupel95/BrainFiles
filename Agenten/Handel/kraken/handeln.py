@@ -81,7 +81,7 @@ import scan                                              # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
-FREIGABE_ZEITLIMIT_S = 120
+FREIGABE_ZEITLIMIT_S = 600
 
 
 def _jetzt():
