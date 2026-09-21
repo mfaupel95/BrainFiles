@@ -100,6 +100,46 @@ op_guthaben = okx_spot.guthaben_waehrung
 live_kurs_quelle = okx_spot.letzter_kurs
 live_menge_fuer = okx_spot.menge_fuer
 
+# --- Boerse des Live-Wegs ---------------------------------------------------
+#
+# Die Strategie ist boersenunabhaengig; nur der Orderweg wechselt. Welcher gilt,
+# steht in der wachen.json (`boerse`): "okx" (Standard, Spot gegen USDC) oder
+# "kraken" (Spot gegen EUR). Beide Module stellen dieselben Funktionsnamen
+# bereit - okx_spot.markt_kauf wie kraken_spot.markt_kauf -, sodass der Rest der
+# Datei unveraendert bleibt.
+#
+# WARUM UEBER EINE BINDEFUNKTION und nicht ueber einen Import: Die Bindung haengt
+# an der wachen.json, nicht am Programmstart. Tests ersetzen genau diese Namen
+# (siehe Test-Seams oben) und keine echte Order wird je gestellt.
+import kraken_spot  # noqa: E402
+
+VENUE = okx_spot                       # aktives Boersenmodul (fuer die Sperren)
+GUTHABEN_WAEHRUNG = "USDC"             # Kontowaehrung des Live-Wegs
+MINDEST_GUTHABEN = 0.0                 # Tor aus der wachen.json
+
+def venue_binden(w):
+    """Live-Orderweg und Kontowaehrung an die wachen.json haengen."""
+    global VENUE, GUTHABEN_WAEHRUNG, MINDEST_GUTHABEN
+    global op_kauf, op_verkauf, op_stop, op_stop_stornieren, op_gefuellt
+    global op_guthaben, live_kurs_quelle, live_menge_fuer
+    name = str(w.get("boerse") or "okx").strip().lower()
+    modul = kraken_spot if name == "kraken" else okx_spot
+    VENUE = modul
+    GUTHABEN_WAEHRUNG = str(w.get("guthaben_waehrung") or
+                            ("EUR" if name == "kraken" else "USDC"))
+    MINDEST_GUTHABEN = float(w.get("mindest_guthaben",
+                                   w.get("mindest_guthaben_usdc",
+                                         w.get("mindest_guthaben_eur", 0)) or 0))
+    op_kauf = modul.markt_kauf
+    op_verkauf = modul.markt_verkauf
+    op_stop = modul.algo_stop_setzen
+    op_stop_stornieren = modul.algo_stornieren
+    op_gefuellt = modul.gefuellte_menge
+    op_guthaben = modul.guthaben_waehrung
+    live_kurs_quelle = modul.letzter_kurs
+    live_menge_fuer = modul.menge_fuer
+    return name
+
 
 # --- Zeit ------------------------------------------------------------------
 
@@ -546,8 +586,8 @@ def live_sperren(w, s):
                  % risikostufe.stufe())
     if not w.get("handel_erlaubt"):
         g.append("wachen.json handel_erlaubt=false")
-    if not okx_spot.schluessel_vorhanden():
-        g.append("OKX_API_KEY/SECRET/PASSPHRASE nicht gesetzt")
+    if not VENUE.schluessel_vorhanden():
+        g.append("%s-Schluessel nicht gesetzt" % VENUE.__name__)
     if not s["freigabe_erfuellt"]:
         g.append("freigabe.erfuellt=false (Bedingung 1)")
     if not s["herzschlag_frisch"]:
@@ -558,18 +598,17 @@ def live_sperren(w, s):
                     if s["rollierender_ev"] is not None else "n/a"))
     if not w.get("journal_zweitziel"):
         g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
-    if okx_spot.demo_modus():
-        g.append("OKX_DEMO/OKX_SIMULATED gesetzt - Demo-Konto, keine echten "
-                 "Orders")
+    if VENUE.demo_modus():
+        g.append("%s im Demo-Modus - keine echten Orders" % VENUE.__name__)
     if not sitzung_da():
         g.append("keine Sitzung am Bildschirm - Freigabefenster nicht moeglich")
-    noetig = w.get("mindest_guthaben_usdc", 0)
-    if noetig and okx_spot.schluessel_vorhanden():
+    noetig = MINDEST_GUTHABEN
+    if noetig and VENUE.schluessel_vorhanden():
         try:
-            frei = op_guthaben()
+            frei = op_guthaben(GUTHABEN_WAEHRUNG)
             if frei < noetig:
                 g.append("nur %.2f %s frei, noetig %.2f"
-                         % (frei, w.get("guthaben_waehrung", "USDC"), noetig))
+                         % (frei, GUTHABEN_WAEHRUNG, noetig))
         except Exception as e:  # noqa: BLE001
             g.append("Guthaben nicht abrufbar (%s)" % e)
     return g
@@ -803,6 +842,10 @@ def lauf(modus):
     w = lade_wachen()
     z = lade_zustand()
     z.setdefault("positionen", [])
+    # Boerse des Live-Wegs aus der wachen.json (okx oder kraken) - VOR jeder
+    # Sperrenpruefung, damit Schluessel-, Demo- und Guthaben-Tor die richtige
+    # Boerse fragen.
+    venue_binden(w)
 
     if modus == "wachen":
         print(json.dumps(wp.lage(w, JOURNAL, z), indent=2, ensure_ascii=False))
