@@ -27,6 +27,15 @@ fallback_providers:
     model: deepseek/deepseek-v4.1-flash
   - provider: ollama-launch
     model: qwen35-8k:cpu
+delegation:
+  model: deepseek/deepseek-v4-flash-0731
+  provider: nous
+"""
+
+
+NUR_MODELL = """model:
+  default: x
+  provider: y
 """
 
 
@@ -66,6 +75,26 @@ class ModellBefehl(unittest.TestCase):
     def test_nicht_lesbare_datei_ergibt_hinweis(self):
         text = s.modell_text(str(Path(tempfile.gettempdir()) / "gibt-es-nicht.yaml"))
         self.assertIn("nicht lesbar", text)
+
+    def test_delegationsmodell_wird_genannt(self):
+        """Subagenten fahren ein eigenes Modell - /model muss es zeigen.
+
+        Seit 21.09.2026 steht das Haus auf nous/deepseek-v4-flash-0731 (vorher
+        anthropic/claude-opus-5); wer nach dem Modell fragt, meint haeufig genau
+        die Delegation.
+        """
+        text = s.modell_text(self._config(BEISPIEL))
+        self.assertIn("Subagenten: deepseek/deepseek-v4-flash-0731 ueber nous", text)
+
+    def test_ohne_delegationsblock_keine_zeile(self):
+        """Eine Config ohne delegation: darf keine leere Zeile erfinden."""
+        text = s.modell_text(self._config(NUR_MODELL))
+        self.assertNotIn("Subagenten:", text)
+
+    def test_echte_config_nennt_das_delegationsmodell(self):
+        """Gegen die ECHTE Hermes-config: der Haus-Wert muss ankommen."""
+        text = s.modell_text()
+        self.assertIn("Subagenten:", text)
 
     def test_hilfe_kennt_den_befehl(self):
         self.assertIn("/model", s.hilfe_text())

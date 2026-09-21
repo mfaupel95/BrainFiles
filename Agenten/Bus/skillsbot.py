@@ -541,13 +541,23 @@ def modell_text(pfad=None):
     im_modell = False
     rueckfall = []
     im_rueckfall = False
+    # Subagenten (delegate_task) fahren ein EIGENES Modell, nicht das des
+    # Hauptagenten. Wer nach "welches Modell" fragt, meint oft genau das -
+    # deshalb wird der delegation:-Block mitgelesen.
+    delegation = {}
+    im_delegation = False
     for zeile in zeilen:
         if not zeile.strip() or zeile.lstrip().startswith("#"):
             continue
         if not zeile.startswith(" "):
             im_modell = zeile.strip() == "model:"
             im_rueckfall = zeile.strip() == "fallback_providers:"
+            im_delegation = zeile.strip() == "delegation:"
             continue
+        if im_delegation and zeile.startswith("  ") and not zeile.startswith("   "):
+            s, _, w = zeile.strip().partition(":")
+            if s in ("model", "provider"):
+                delegation[s] = w.strip().strip("\"'")
         if im_modell and zeile.startswith("  ") and not zeile.startswith("   "):
             schluessel, _, wert = zeile.strip().partition(":")
             block[schluessel] = wert.strip()
@@ -569,6 +579,9 @@ def modell_text(pfad=None):
     if rueckfall:
         aus.append("Fallback: " + " -> ".join(
             "%s/%s" % (r.get("provider", "?"), r.get("model", "?")) for r in rueckfall))
+    if delegation.get("model"):
+        aus.append("Subagenten: %s ueber %s" % (delegation["model"],
+                                                delegation.get("provider", "?")))
     aus.append("Der Bot selbst hat kein Modell; gewechselt wird in")
     aus.append("Agenten/Hermes/config.yaml (hermes config set model.provider /")
     aus.append("model.default). Nur lesend, kein A2A-Aufruf.")
