@@ -48,17 +48,27 @@ class KatalogTest(unittest.TestCase):
             self.assertNotIn(".archive", p.replace("\\", "/"))
 
     def test_fremdes_system_wird_nicht_als_geladen_gezeigt(self):
-        # apple/* und vllm tragen platforms: [macos] bzw. [linux, macos] -
-        # auf Windows laedt Hermes sie nicht. Der Katalog darf sie deshalb
-        # nicht als Faehigkeit ausgeben.
-        namen = [e["name"] for e in skillkatalog.eintraege() if e["ladbar"]]
-        for fremd in ("apple-notes", "findmy", "imessage", "serving-llms-vllm"):
-            self.assertNotIn(fremd, namen)
+        # Skills mit platforms: [macos] bzw. [linux, macos] laedt Hermes auf
+        # Windows nicht. Der Katalog darf sie nicht als Faehigkeit ausgeben.
+        #
+        # Seit dem Ausmisten am 21.09.2026 liegt der apple-Baum im Archiv
+        # (nie benutzt), deshalb wird nicht mehr auf einen festen Namen
+        # geprueft: der Test fragt, ob JEDER nicht-ladbare Eintrag aus der
+        # Faehigkeitsliste verschwindet UND in der Schlusszeile auftaucht.
+        # Ein Test, der an einem einzelnen Skillnamen haengt, geht beim
+        # naechsten Aufraeumen wieder kaputt.
+        eintraege = skillkatalog.eintraege()
+        ladbar = [e["name"] for e in eintraege if e["ladbar"]]
+        fremde = [e["name"] for e in eintraege if not e["ladbar"]]
+        for fremd in fremde:
+            self.assertNotIn(fremd, ladbar)
         # Verschweigen waere die andere Haelfte des Fehlers: die Liste nennt
         # sie in der Schlusszeile.
         text = skillkatalog.katalog()
-        self.assertIn("Hier nicht geladen", text)
-        self.assertIn("apple-notes", text)
+        if fremde:
+            self.assertIn("Hier nicht geladen", text)
+            for fremd in fremde:
+                self.assertIn(fremd, text)
 
     def test_katalog_ist_klartext(self):
         # Der SkillsBot sendet ohne parse_mode - HTML-Marken staenden
