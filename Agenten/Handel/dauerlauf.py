@@ -362,12 +362,12 @@ TAKT_MAX_MINUTEN = 15
 # ohne /ja, sobald nur noch das Fenster fehlt. NUR Spuren mit echtem Live-Pfad
 # (moondev-* verweigern --live). Zeitlich begrenzt auf AUTO_FREIGABE_STUNDEN -
 # danach laeuft die Freigabe ab und es muss wieder bestaetigt werden.
-# kraken ist am 21.09.2026 herausgenommen: sein handel_erlaubt steht auf false
-# (Auftrag Max: nur xperp, swap, scanner, mosaic, listingarb, topmovers), ein
-# automatisch geoeffnetes Fenster waere dort wirkungslos. Dafuer die zwei
-# Buch-Spuren, die Max scharf gestellt hat.
+# kraken ist 21.09.2026 wieder aufgenommen (Auftrag Max: kraken wieder live
+# und Handel erlaubt): handel_erlaubt steht wieder auf true, der Live-Pfad
+# (Kraken Spot, EUR) ist im Code vorhanden. Bindende Grenze bleibt das freie
+# EUR-Guthaben (mindest_guthaben_eur 60).
 AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
-                 "moondev_listingarb", "moondev_topmovers")
+                 "moondev_listingarb", "moondev_topmovers", "kraken")
 AUTO_FREIGABE_STUNDEN = 12
 
 
