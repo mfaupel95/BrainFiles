@@ -223,6 +223,66 @@ wieder bestaetigt werden. Kein Dauerzustand.
   `AUTO_FREIGABE` nehmen oder `handel_erlaubt` auf false). Umgekehrt gilt: vor
   dem Aufladen die Waehrung pruefen (siehe oben) — meist fehlt kein Geld,
   sondern die falsche Rechnungswaehrung.
+- **Eine bereite Spur scharf stellen — was sofort wirkt und was einen Neustart
+  braucht.** Nennt die Vorschau GENAU EINEN Grund und dieser heisst
+  "Freigabefenster" (der Haken `freigabe.erfuellt` steht schon), dann stellt der
+  LAUFENDE Dauerlauf selbst eine Anfrage (`anfrage_stellen`,
+  `anfrage_bis` in `freigabe_fenster.json`). `freigabefenster.oeffnen(spur,
+  stunden, wer)` bestaetigt sie — ohne wartende Anfrage verweigert `oeffnen()`
+  bewusst (nichts wird aus dem Nichts scharf; der Anstoss kommt immer vom
+  Dauerlauf, der die Lage geprueft hat). Danach laeuft die Spur im NAECHSTEN
+  Zyklus live, **ohne Neustart**: der Modus kommt aus der Fensterdatei. Ein
+  Neustart ist nur noetig, wenn `AUTO_FREIGABE` selbst geaendert wurde (das
+  Tupel steht im laufenden Prozess) oder ein Code-Pfad angefasst ist. Beleg ist
+  die Logzeile `<spur> (live) ok` im `dauerlauf.log`.
+- **Eine zurueckgenommene Spur wieder scharf stellen (Auftrag "<spur> wieder
+  live und Handel erlaubt") sind DREI Schritte, nicht einer.** (1)
+  `handel_erlaubt` in der wachen.json auf true UND den alten
+  `_handel_erlaubt_vermerk` durch einen neuen datierten Vermerk ersetzen (der
+  alte begruendet sonst weiter das Gegenteil - ein Widerspruch in der Datei ist
+  schlimmer als kein Vermerk). (2) Die Spur in `dauerlauf.AUTO_FREIGABE`
+  zuruecknehmen und den Kommentar darueber, der die Herausnahme begruendet,
+  mitschreiben. (3) Dauerlauf neu starten - das Tupel liegt im laufenden
+  Prozess. Belegen vor dem Neustart: `handeln.py --vorschau` muss "Live waere
+  gesperrt durch: nichts" sagen, und das Guthaben-Tor mit echten Zahlen zeigen
+  (`handeln._guthaben_text(json.load(open('wachen.json')))` - `wachen()` gibt es
+  in kraken/handeln.py nicht).
+- **Eine Spur, die aus dem Papier zurueck ins Live kommt, traegt Papier-
+  Positionen ohne Order-Kennung.** Der erste Live-Lauf bucht sie per
+  `bueche_papier_altlasten_aus` als "buchbereinigung" aus (kraken-Massstab:
+  `kauf_txid` fehlt; scanner: `kauf_ord_id`; xperp: `modus`). Das ist gewollt,
+  aber es muss VOR dem Neustart gesagt werden - sonst sieht es im Journal wie
+  ein Verlusttag aus.
+- **Boerse wechseln statt Waehrung (`boerse` in der wachen.json).** Wenn die
+  Zielboerse den Markt kennt, aber unter eigenem Paarnamen und in anderer
+  Kontowaehrung: Adaptermodul mit DENSELBEN Funktionsnamen wie das bisherige
+  Order-Modul, Bindung ueber eine Funktion (nicht per Import), Paar-Abbildung an
+  EINER Stelle mit lautem Fehler bei Unbekanntem, Sperrenkette je Boerse
+  (Schluessel, Demo-Modus, Guthaben in der richtigen Waehrung, Mindestbetrag aus
+  der wachen.json). Die Instrumente duerfen in den alten Namen stehen bleiben,
+  damit Kerzen und Papierzweig unberuehrt sind — nur die Order wird uebersetzt.
+  Vollstaendiges Rezept mit den Fallen (JSON-Duplikatschluessel, `.format`+`%`,
+  Testvergleich ueber Modulnamen): `references/zweite-boerse.md`.
+- **`handel_erlaubt: true` ist ein Schalter, kein Orderweg — erst die Flotte
+  pruefen, dann scharf stellen.** Auftraege wie "alle Spuren live offen und
+  handel_erlaubt" sind mit einem Dateischalter erledigt, sagen aber nichts
+  darueber, welche Spur ueberhaupt ordern KANN. Vor jeder Meldung "erlaubt":
+  je Spur nach einem Orderaufruf im Code suchen (Endpunkt-Zeichenketten wie
+  `/api/v5/trade/order`, `AddOrder`, `place_order`, `order_senden`; Testdateien
+  und `tests/` ausschliessen, sonst zaehlt ein Demo-Testskript als Live-Pfad).
+  Spuren ohne Orderaufruf bekommen den Schalter mit Vermerk
+  (`_handel_erlaubt_vermerk`: "kein Orderaufruf im Code - hat heute keine
+  Wirkung") — sonst liest die naechste Sitzung den Schalter als Faehigkeit.
+- **Die Spurenliste NIE zweitens fuehren.** Welche Spur laeuft, steht in
+  `dauerlauf.SPUREN` (Dict, nicht Liste — beim Auslesen per Regex die
+  Klammer-Ebene zaehlen, sonst trifft die Suche `NUR_BASIS` oder einen Kommentar).
+  Wer eine Statusanzeige baut, liest sie von dort; die Werkzeuge dafuer sind
+  `Agenten/Handel/spuren_stand.py` (Tabelle: handel_erlaubt, Herzschlag, Fenster,
+  `freigabe.erfuellt`, Orderpfad, Buchgroesse, Zyklusalter) und
+  `Agenten/Handel/sperrgruende.py` (Sperrgruende aus der EIGENEN Vorschau jeder
+  Spur, markiert "nur das Fenster fehlt" = der Fall, in dem die Auto-Freigabe
+  greift). Beide rein lesend — sie ersetzen die Frage "welche Spur darf und
+  woran haengt sie" durch eine Messung, statt durch eine gepflegte Zweitliste.
 
 ## Papier und Live teilen EIN Buch — der teuerste Zwischenzustand
 
