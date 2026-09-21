@@ -860,6 +860,39 @@ bleiben als Vergleichsgrundlage liegen und wachsen nicht weiter; Bedingung 4
 fuehrt das Hauptbuch weiter als „ausserhalb des Dauerlaufs mitgeprueft"
 (`spiegelstand.py`: 27 von 27 byte-gleich, `spiegel` und `orb` daneben).
 
+**Ergebnis der Schattenbuecher (ausgewertet 21.09.2026, Ausstiegsgeometrie V1).**
+Gefahren mit `Agenten/Handel/spiegel/auswertung.py --pfad handelsjournal[.knapp|.weit].csv`
+(die Arme spiegeln dieselbe Signalquelle, nur Stop/Trailing unterscheiden sich;
+Hauptbuch 15/30/25, knapp 8/15/15, weit 25/40/30):
+
+| Buch | Ausstiege | nach Kosten | vor Kosten | Treffer |
+|---|---|---|---|---|
+| Hauptbuch | 1153 | **-9,22 %** | -1,66 % | 26 % |
+| knapp 8/15/15 | 358 | **-8,95 %** | -1,37 % | 22 % |
+| weit 25/40/30 | 98 | **-10,46 %** | -3,00 % | 35 % |
+
+Befund: **kein Arm traegt.** Die Kosten allein machen rund 7,5 Prozentpunkte aus
+(Hauptbuch: 4.359,78 USD auf 57.650 USD Einsatz). Die Ausstiegsgeometrie bewegt
+nur etwa 1,5 Punkte - knapp ist der beste Arm, liegt aber im Rauschen des
+Hauptbuchs, weit ist deutlich schlechter. Der Hebel liegt NICHT in der
+Geometrie, sondern beim Einstieg und bei den Kosten:
+
+- **Stop-Ausstiege sind der groesste Verlustposten** (Hauptbuch 637 Stueck zu
+  Ø -44,59 %; knapp Ø -30,73 %; weit Ø -58,06 %). Wer einen Stop bei -8 % setzt
+  und dann im Mittel -31 % bis -58 % bucht, hat kein Stop-Problem, sondern ein
+  Ausfuehrungs-/Slippage-Problem - die Annahme in `wachen.json` ist zu freundlich.
+- **Tiefe unter 250k Marktkapitalisierung ist das Verlustbecken**: 610 Kopien,
+  Ø -20,50 % (vor Kosten -13,88 %). Das Band wurde am 16.09.2026 bereits auf
+  250k-1M eingeengt; die Schattenbuecher liefen genau dort (Ø -8,95 % knapp,
+  -10,46 % weit) und bleiben trotzdem negativ.
+- **Zwangsschluesse (`herzschlag_alt`) sind harmloser als Stops** (+6,22 %,
+  180 Stueck) - die Notausstiege haben das Bild nicht verdorben.
+
+Folge: die Arme bleiben aus. Wer sie wieder einschaltet, soll zuerst die
+Slippage-Annahme messen (Ausfuehrungspreis gegen Signalpreis), nicht die
+Parameter drehen - dieselbe Reihenfolge wie beim Gitter (Parameter war nicht
+der Hebel).
+
 Wieder einschalten: die drei Zeilen in `SPUREN` und `NUR_BASIS` einkommentieren
 (der Weg steht als Kommentar an beiden Stellen in `dauerlauf.py`) — UND vorher
 `letzter_lauf` in `spiegel/zustand.json`, `zustand.knapp.json` und
