@@ -573,13 +573,32 @@ def main():
               % (spur, k["n"], k["treffer"], k["ergebnis"],
                  k["treffer_pct"], anzeige))
     if ohne_buch:
-        print("\n  KEIN BUCH - diese Spuren schreiben kein Journal:")
+        # ZWEI Faelle, die frueher in einen Topf geworfen wurden (21.09.2026):
+        # Diese Spuren schreiben NUR Handelszeilen, keine Zykluszeilen - ein
+        # fehlendes Journal heisst bei ihnen zuerst "noch kein Signal" und nicht
+        # "kaputt" (supertrend, iv_wand, iv_waelle). Ein Betriebsfehler ist es
+        # erst, wenn die Spur auch nicht mehr laeuft.
+        heute = datetime.now().date()
+        wartend, kaputt = [], []
         for spur in ohne_buch:
             seit = buch_seit(spur)
-            print("    %-10s Zustand zuletzt %s"
-                  % (spur, seit.isoformat() if seit else "nie"))
-        print("  Eine laufende Spur ohne Journal ist ein Betriebsfehler, "
-              "keine Formatfrage.")
+            frisch = seit is not None and (heute - seit).days <= 1
+            (wartend if frisch else kaputt).append((spur, seit))
+        if wartend:
+            print("\n  WARTET AUF DAS ERSTE SIGNAL - diese Spuren schreiben nur "
+                  "Handelszeilen:")
+            for spur, seit in wartend:
+                print("    %-10s Zustand zuletzt %s - laeuft, hat aber noch "
+                      "nichts gekauft" % (spur, seit.isoformat() if seit else "nie"))
+            print("  Kein Fehler: das Journal entsteht beim ersten Handel. Wer "
+                  "wissen will, woran es haengt, fragt das Tor der Spur.")
+        if kaputt:
+            print("\n  KEIN BUCH UND LAEUFT NICHT - das ist ein Betriebsfehler:")
+            for spur, seit in kaputt:
+                print("    %-10s Zustand zuletzt %s"
+                      % (spur, seit.isoformat() if seit else "nie"))
+            print("  Erst den Betrieb pruefen (Dauerlauf-Log, Herzschlag), dann "
+                  "das Buch - eine stehende Spur schreibt keine Zeilen.")
     print("\n  spiegel, omniquant und gitter haben eigene Auswertungen "
           "(auswertung.py im jeweiligen Ordner).")
     if STUFE:

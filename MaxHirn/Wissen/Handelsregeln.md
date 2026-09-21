@@ -1219,3 +1219,44 @@ Absturz (`3221226505` = STATUS_STACK_BUFFER_OVERRUN) und einmal der 300-s-Timeou
 der Futures. Genau in diesem Fenster war das Windows-Commit zu 99 % belegt (siehe
 MoonDev-Leak). Seit dem Aufraeumen um 10:25 laufen alle Zyklen wieder "ok" - der
 Befund ist damit erklart und nicht offen.
+## Kosten-Wendepunkt je Spur (21.09.2026)
+
+Nicht jede Spur traegt dieselbe Gebuehr. Die Rechnung steht als Werkzeug
+`Agenten/Handel/kosten_wendepunkt.py` (rein lesend) und ist eine Zeile:
+
+    EV je Runde = p*(C - f) - (1-p)*(R + f)
+    => f_max = p*C - (1-p)*R
+
+R = mittlerer Risikoabstand (Einstieg -> Stop) in Prozent, C = mittlerer
+Chancenabstand (Einstieg -> Ziel), p = gemessene Trefferquote, f = Gebuehr JE
+RUNDE (Kauf + Verkauf). **f_max ist die Gebuehr, ab der die Spur bei der
+eigenen gemessenen Trefferquote nur noch die Nullinie trifft.**
+
+Stand 21.09.2026 (nur Buecher mit mindestens 4 Runden):
+
+| Spur | Runden | R | C | Treffer | f_max je Runde |
+|---|---|---|---|---|---|
+| orbk | 8 | 0,48 % | 0,62 % | 50 % | **+0,07 %** |
+| orbk (mittel) | 6 | 0,50 % | 0,55 % | 50 % | +0,03 % |
+| omniquant | 8 | 5,81 % | 10,63 % | 25 % | **-1,70 %** |
+| moondev_topmovers | 7 | 8,00 % | 12,00 % | 71 % | +6,29 % |
+| swap | 7 | 1,33 % | 2,65 % | 71 % | +1,52 % |
+| xperp | 30 | 3,16 % | 6,32 % | 67 % | +3,16 % |
+| scanner | 150 | 6,42 % | 12,83 % | 80 % | +8,98 % |
+
+Zwei Aussagen, die daraus folgen:
+
+- **orbk haengt an der Gebuehrfreiheit.** Seine Runden sind knapp 0,5 % breit;
+  f_max liegt bei +0,07 %. Ohne das Kraken-Pro-Abo kostet eine Runde 0,4 %
+  (Taker 0,2 % je Seite) - das ist fuenfmal so viel wie der ganze Vorteil.
+  Der Merksatz "Faellt das Abo weg, 0,004 zuruecknehmen" ist damit beziffert:
+  **bevor orbk-Runden gezaehlt werden, muss die Gebuehr im Wachen stehen** -
+  sonst zaehlt die Spur zu freundlich (dieselbe Regel wie am 14.09.2026).
+- **omniquant ist auch bei 0 % Gebuehr nicht tragfaehig** (f_max -1,70 % bei 8
+  Runden, 25 % Treffer). Das ist noch kein Urteil - acht Runden sind wenig -, aber
+  genug, um die Spur NICHT scharf zu stellen und die Trefferquote im Auge zu
+  behalten.
+
+Methodische Grenze: f_max benutzt die eigenen Runden der Spur, also auch deren
+Stichprobengroesse. Bei weniger als 8 Runden ist die Zahl ein Befund, keine
+Messung (dieselbe Schwelle wie in `auswertung_alle.py`).
