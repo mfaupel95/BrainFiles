@@ -337,6 +337,74 @@ def _warten_auf_fuellung(inst, ord_id, kontrakte, versuche=4, warte=2.0):
     return 0.0
 
 
+def wartende_auftraege(z, live, w, still=False):
+    """Wartende Limit-Auftraege pflegen: fuellen -> buchen, sonst liegen lassen.
+
+    ANLASS (gemessen 21.09.2026, xperp): Die Spur setzt ihren Einstieg aus der
+    eigenen Zonenrechnung - ein Kauflimit UNTER dem Markt (CRCL: Order 93.81/
+    93.63/94.46 bei Markt 94.84). Das ist keine kaputte Order, sondern eine
+    WARTENDE: sie fillt, wenn der Kurs zurueckkommt. Die Fuellungspruefung vom
+    selben Tag hat sie aber nach 8 s storniert und als `order_nicht_gefuellt`
+    ins Journal geschrieben - drei Mal an einem Abend, jedes Mal mit demselben
+    Ergebnis. Beides zusammen ergibt eine Schleife.
+
+    Die Trennung ist deshalb: ein Limit, das fillen KANN (Kauf ab dem Ask,
+    Verkauf bis zum Bid), muss auch fuellen - sonst ist es ein Fehler und wird
+    storniert. Ein Limit, das NICHT fillen kann, bleibt liegen und wird hier
+    verwaltet: fuellt es spaeter, wird die Position gebucht (Stop und Ziel
+    haengen als attachAlgoOrds an der Order und werden beim Fuellen aktiv);
+    stirbt es, wird es vergessen.
+    """
+    wartend = z.get("wartende") or []
+    if not wartend:
+        return 0
+    behalten, gebucht = [], 0
+    for a in wartend:
+        stand = okxf.order_stand(a["inst"], a["ord_id"]) if a.get("ord_id") else {}
+        zustand = (stand or {}).get("state") or ""
+        if zustand == "filled":
+            try:
+                kontrakte = float(stand.get("accFillSz") or a.get("kontrakte") or 0)
+            except (TypeError, ValueError):
+                kontrakte = float(a.get("kontrakte") or 0)
+            pos = {
+                "inst": a["inst"], "basis": a.get("basis", ""),
+                "seite": a.get("seite", "long"), "familie": a.get("familie", ""),
+                "einstieg": float(stand.get("avgPx") or a.get("einstieg") or 0),
+                "stop": a.get("stop"), "ziel": a.get("ziel"),
+                "liq": a.get("liq"), "kontrakte": kontrakte,
+                "nominal": a.get("nominal", 0.0), "margin": a.get("margin", 0.0),
+                "hebel": a.get("hebel", 0.0), "gebuehr_taker": a.get("gebuehr_taker"),
+                "modus": "live", "ord_id": a["ord_id"],
+                "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
+                "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
+            }
+            z.setdefault("positionen", []).append(pos)
+            gebucht += 1
+            if not still:
+                print("  Wartender Auftrag %s ist GEFUELLT -> Position gebucht "
+                      "(%.4f Kontrakte @ %.6f)" % (a["inst"], kontrakte, pos["einstieg"]))
+            journal(zeit=_jetzt(), modus="live", aktion="eroeffnen", inst=a["inst"],
+                    seite=pos["seite"], familie=pos["familie"],
+                    preis="%.6f" % pos["einstieg"], kontrakte=kontrakte,
+                    nominal_usd="%.2f" % a.get("nominal", 0.0),
+                    margin_usd="%.2f" % a.get("margin", 0.0),
+                    hebel="%.2f" % a.get("hebel", 0.0),
+                    stop="%.6f" % (a.get("stop") or 0.0),
+                    ziel="%.6f" % (a.get("ziel") or 0.0),
+                    liq="%.6f" % (a.get("liq") or 0.0),
+                    grund="order_gefuellt")
+            continue
+        if zustand in ("canceled", "mmp_canceled"):
+            if not still:
+                print("  Wartender Auftrag %s ist %s - wird vergessen"
+                      % (a["inst"], zustand))
+            continue
+        behalten.append(a)
+    z["wartende"] = behalten
+    return gebucht
+
+
 def bueche_geister_aus(z, w, still=False):
     """Positionen aus dem Buch, die an der Boerse NICHT (mehr) existieren.
 
@@ -673,9 +741,41 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             # keine Position (siehe _warten_auf_fuellung).
             gehandelt = _warten_auf_fuellung(a["inst"], ord_antwort, kontrakte)
             if not gehandelt:
-                print("  Eroeffnen %s: Order angenommen, aber NICHT gefuellt "
-                      "(%.6f) - Order wird storniert, keine Position gebucht"
-                      % (a["inst"], a["einstieg"]), file=sys.stderr)
+                # Kann das Limit hier ueberhaupt fillen? Ein Kauflimit unter
+                # dem Ask ist eine WARTENDE Order (der Einstieg kommt aus der
+                # Zonenrechnung), kein Fehler.
+                _, bid, ask = okxf.kurs_und_spanne(a["inst"])
+                marktbar = False
+                if ask and bid:
+                    if a["seite"] == "long":
+                        marktbar = a["einstieg"] >= ask
+                    else:
+                        marktbar = a["einstieg"] <= bid
+                if not marktbar:
+                    print("  Eroeffnen %s: Limit %.6f liegt hinter dem Markt "
+                          "(bid %s / ask %s) und wartet - Auftrag bleibt liegen"
+                          % (a["inst"], a["einstieg"], bid, ask))
+                    z.setdefault("wartende", []).append({
+                        "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
+                        "familie": a["kategorie"], "einstieg": a["einstieg"],
+                        "stop": a["stop"], "ziel": a["ziel"], "liq": g["liq"],
+                        "kontrakte": kontrakte, "nominal": g["nominal"],
+                        "margin": g["margin"], "hebel": g["hebel"],
+                        "gebuehr_taker": w["gebuehr_taker"],
+                        "ord_id": ord_antwort, "gestellt": _jetzt(),
+                    })
+                    journal(zeit=_jetzt(), modus="live", aktion="order_offen",
+                            inst=a["inst"], seite=a["seite"],
+                            familie=a["kategorie"], preis="%.6f" % a["einstieg"],
+                            kontrakte=kontrakte,
+                            nominal_usd="%.2f" % g["nominal"],
+                            margin_usd="%.2f" % g["margin"],
+                            stop="%.6f" % a["stop"], ziel="%.6f" % a["ziel"],
+                            grund="limit_wartet")
+                    continue
+                print("  Eroeffnen %s: Order war marktbar (Limit %.6f gegen "
+                      "ask %s), ist aber NICHT gefuellt - wird storniert"
+                      % (a["inst"], a["einstieg"], ask), file=sys.stderr)
                 try:
                     okxf.order_stornieren(a["inst"], ord_antwort)
                 except Exception as e:                         # noqa: BLE001
@@ -916,6 +1016,12 @@ def lauf(modus):
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
         # Danach gegen die Boerse pruefen: Papier-Altlasten sind EINE Ursache
         # fuer ein falsches Buch, eine nie gefuellte Order die andere.
+        # Erst die wartenden Auftraege abarbeiten: ein Auftrag, der ueber
+        # Nacht gefuellt hat, ist eine Position - und die gehoert ins Buch,
+        # BEVOR neue Einstiege geplant werden (sie belegt sonst keinen Platz).
+        n_neu = wartende_auftraege(z, live, w, still=False)
+        if n_neu:
+            print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht" % n_neu)
         n_geist = bueche_geister_aus(z, w, still=False)
         if n_geist:
             print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "

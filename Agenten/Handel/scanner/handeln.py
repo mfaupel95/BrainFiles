@@ -23,8 +23,13 @@ gilt, sagt die Lage:
 
   * **Sitzung am Bildschirm** - vor jedem Einstieg zeigt freigabe.py das
     Bestaetigungsfenster. Bedient es niemand, lehnt es nach
-    FREIGABE_ZEITLIMIT_S von selbst ab; eine geplante Aufgabe bleibt so nie
-    an einem Fenster haengen.
+    FREIGABE_ZEITLIMIT_S von selbst ab. Zwei Bedingungen muessen dafuer
+    zusammenpassen: eine geplante Aufgabe oder ein Dauerlauf darf dieses
+    Fenster GAR NICHT erst erreichen (dauerlauf.py setzt MAXHIRN_ROUTINE=1,
+    das schlaegt die isatty-Erkennung), und FREIGABE_ZEITLIMIT_S muss unter
+    dem Abbruch-Zeitlimit des Aufrufers bleiben (dauerlauf.TIMEOUT_S) -
+    sonst reisst der Abbruch den Lauf mit, und mit ihm die Spiegelung.
+    Beides war am 21.09.2026 verletzt (Fenster 600 s, Abbruch 300 s).
   * **Kein Bildschirm, aber offenes Zeitfenster** - freigabefenster.py
     traegt die Freigabe: Max hat sie am Handy mit /ja erteilt, sie laeuft
     nach spaetestens 24 h ab und /stop schliesst sie sofort. Dann tritt
@@ -673,9 +678,10 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
-# Das ist der tragende Schutz - nicht die Erkennung darunter: geht das Fenster
-# je versehentlich in einer geplanten Aufgabe auf, blockiert es sie nicht,
-# sondern sagt Nein und der Lauf handelt nicht.
+# Das ist der tragende Schutz fuer den Bildschirmweg - aber nur, solange der
+# Aufrufer laenger wartet als dieses Limit: dauerlauf.TIMEOUT_S (700) > hier
+# (600) > vorher 120. Die Umkehr dieses Verhaeltnisses hat am 21.09.2026
+# jeden scanner-Zyklus abgebrochen.
 FREIGABE_ZEITLIMIT_S = 600
 
 
@@ -901,6 +907,16 @@ def lauf(modus):
         n_alt = bueche_papier_altlasten_aus(z)
         if n_alt:
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
+
+    # Bedingung 4 ZUERST: die Dateien dieses Ordners auf den Stand des letzten
+    # Zyklus nach Q: bringen. Bisher stand die Spiegelung nur am ENDE - laeuft
+    # der Zyklus in die Zeitgrenze oder bricht er ab, wird er VOR dem Kopieren
+    # beendet und Q: bleibt stehen. Gemessen am 21.09.2026: Q: 21:23 gegen
+    # lokal 21:40, waehrend der scanner seit 19:22 jeden Zyklus in den Timeout
+    # lief. Jetzt ist Q: hoechstens einen Zyklus alt, auch wenn dieser nie
+    # fertig wird.
+    if w.get("journal_zweitziel"):
+        _spiegeln(w)
 
     if modus == "vorschau":
         for v in vs:

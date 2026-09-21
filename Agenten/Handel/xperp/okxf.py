@@ -490,6 +490,27 @@ def markt_schliessen(inst, kontrakte, seite, tdmode="isolated", posside=None):
     return d[0]["ordId"]
 
 
+def kurs_und_spanne(inst):
+    """(letzter Kurs, bester Bid, bester Ask).
+
+    Gebraucht fuer die Frage, ob ein Limit ueberhaupt fillen KANN: ein
+    Kauflimit UNTER dem Markt ist keine kaputte Order, sondern eine wartende
+    (genau der CRCL-Fall vom 21.09.2026: Order 93.81 bei Markt 94.84).
+    """
+    d = _roh("/api/v5/market/ticker?instId=%s" % inst, "GET")
+    if not d:
+        return None, None, None
+
+    def _f(x):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+
+    z = d[0]
+    return _f(z.get("last")), _f(z.get("bidPx")), _f(z.get("askPx"))
+
+
 def order_stand(inst, ord_id):
     """Zustand EINER Order: state und tatsaechlich gefuellte Kontrakte.
 
