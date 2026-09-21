@@ -460,6 +460,51 @@ def _merke_extrem(p, kurs):
     p["mae_pct"] = min(p.get("mae_pct", 0.0), bewegung)
 
 
+def bueche_papier_altlasten_aus(z):
+    """Positionen OHNE echte OKX-Order aus dem Live-Buch buchen.
+
+    Anlass (21.09.2026, gemessen): Das Buch ist EINES fuer Papier und Live.
+    Laeuft die Spur mit geschlossenem Freigabefenster im Papier, fuellt sie
+    dasselbe Buch; wird das Fenster geoeffnet, stehen diese Positionen im
+    Live-Buch. Ihnen fehlt die kauf_ord_id, am Handelsplatz gibt es also
+    nichts zu verkaufen - sie blockieren nur Plaetze, und jeder
+    Ausstiegsversuch laeuft in denselben Fehler. Am 20.09.2026 von Hand
+    bereinigt (buchbereinigung.py), am 21.09. um 02:06 wieder vier Altlasten
+    im Buch, weil der Papier-Zyklus um 23:48 dasselbe Buch gefuellt hatte.
+    Darum jetzt bei JEDEM Live-Lauf: ausbuchen als Papier-Verkauf mit Grund
+    "buchbereinigung", echte Order-Traeger bleiben liegen. Idempotent.
+    """
+    altlasten = [p for p in z["positionen"] if not p.get("kauf_ord_id")]
+    if not altlasten:
+        return 0
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("kauf_ord_id"):
+            behalten.append(p)
+            continue
+        try:
+            kurs = okx.letzter_kurs(p["inst"])
+        except Exception as e:                                     # noqa: BLE001
+            print("  Buchbereinigung %s: kein Kurs (%s) - bleibt liegen"
+                  % (p["inst"], e))
+            behalten.append(p)
+            continue
+        if not kurs:
+            print("  Buchbereinigung %s: kein Kurs - bleibt liegen" % p["inst"])
+            behalten.append(p)
+            continue
+        erloes = p["usd"] * (kurs / p["einstieg"])
+        gv = erloes - p["usd"]
+        print("  Buchbereinigung: %s (ohne Order) @ %.6f  G/V %+.2f USD"
+              % (p["inst"], kurs, gv))
+        journal(_jetzt(), "papier", "verkauf", p["inst"], "%.6f" % kurs,
+                "%.2f" % erloes, "", "", "buchbereinigung",
+                "%.4f" % p.get("mfe_pct", 0.0),
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
+    z["positionen"] = behalten
+    return len(altlasten)
+
+
 def pruefe_ausstiege(z, live):
     if live:
         raeume_offene_stops(z)
@@ -837,6 +882,12 @@ def lauf(modus):
           % ("LIVE" if live else "Papier", bericht["datum"], len(vs)))
 
     z["modus"] = "live" if live else "papier"
+
+    # Erst aufraeumen, dann handeln: ein Live-Lauf uebernimmt kein Papierbuch.
+    if live and SCHREIBEN:
+        n_alt = bueche_papier_altlasten_aus(z)
+        if n_alt:
+            print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
 
     if modus == "vorschau":
         for v in vs:
