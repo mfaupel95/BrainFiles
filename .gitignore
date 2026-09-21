@@ -463,6 +463,27 @@ Agenten/Hermes/skills/.locks/
 # geloescht committet, also ist 'git show <commit>^:<pfad>' der Weg
 # zurueck, und auf der Platte liegt alles unter .archive/.
 Agenten/Hermes/skills/.archive/
+# Nachtrag 21.09.2026: Fremd-Klone IM Skill-Baum (1,8 GB, jeder mit eigenem .git).
+# Sie kamen am 19.09.2026 herein und haben seitdem JEDEN naechtlichen Zwischenstand
+# zum Absturz gebracht: 'git add -A' bricht mit Exitcode 128 ab, weil 'mfaupel95'
+# keinen Commit ausgecheckt hat ('does not have a commit checked out') - der Lauf
+# endet in 'ENDE FEHLER', letzter Zwischenstand ist der 18.09.2026.
+# Zwei Gruende fuer die Sperre: ein verschachteltes Repo wird nie versioniert (Git
+# merkt nur einen Zeiger an), und eines OHNE Commit macht den ganzen Lauf unmoeglich.
+# Der Inhalt (SKILL.md) liegt vollstaendig im jeweiligen Fremd-Repo; der Fundus und
+# Werkstatt/Repos sind der richtige Ort fuer so etwas, nicht die Bibliothek.
+Agenten/Hermes/skills/EasyCLIProxyAPI/
+Agenten/Hermes/skills/OmniRoute/
+Agenten/Hermes/skills/acoustid-index/
+Agenten/Hermes/skills/chromaprint/
+Agenten/Hermes/skills/claude-code/
+Agenten/Hermes/skills/mfaupel95/
+Agenten/Hermes/skills/nautilus_trader/
+Agenten/Hermes/skills/onchainos-skills/
+Agenten/Hermes/skills/one-skill-to-rule-them-all/
+Agenten/Hermes/skills/one-skill-to-rule-them-all-main/
+Agenten/Hermes/skills/public-apis/
+Agenten/Hermes/skills/unsloth/
 #
 # CRON-SKRIPTE, freigelegt am 15.09.2026. Die Skripte, die der
 # Hermes-Scheduler ohne Modell fahrt (no_agent) - sie sind Prozedurwissen
