@@ -155,6 +155,22 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 
 ## Fallen
 
+- **Ein Fremd-Klon IM versionierten Baum kann eine ganze Routine stilllegen.** Ein
+  verschachteltes Repo versioniert Git nie (es merkt nur einen Zeiger an); hat es
+  zusaetzlich keinen Commit ausgecheckt, bricht `git add -A` mit Exitcode 128 ab
+  (`error: '<pfad>/' does not have a commit checked out`, `fatal: adding files failed`)
+  - und damit JEDER Lauf, der `git add -A` benutzt. Am 19.09.2026 landeten zwoelf
+  Klone (1,8 GB) in `Agenten/Hermes/skills/`, einer davon (`mfaupel95`) ohne Commit;
+  die taegliche Routine `zwischenstand.ps1` scheiterte daraufhin an drei Abenden in
+  Folge ("ENDE FEHLER: git add fehlgeschlagen"), ohne dass der Zweig `zwischenstand`
+  noch wuchs. **Unsichtbar, solange niemand den Zweig ansieht:** Fruehwarnung ist
+  `git log -1 --format=%ci zwischenstand` - steht der letzte Zwischenstand tagealt,
+  liegt es nicht an fehlenden Aenderungen, sondern an einem Abbruch. Beleg und
+  Gegenprobe sind EIN Befehl: `git add -A --dry-run` mit `echo $?` (128 = Abbruch,
+  0 = gesund), die Ursache steht in der Ausgabe. Fix ist eine Sperrzeile je
+  Fremd-Klon im `.gitignore` - nicht das Loeschen.
+
+
 - **Neuer Ordner in der Whitelist: jede Ebene einzeln freigeben.** Ein neuer
   Unterordner (`Agenten/Handel/docs/plans/`) bleibt fuer Git unsichtbar, bis JEDE
   Ebene eine eigene `!`-Zeile hat (`!…/docs/`, `!…/docs/plans/`, dann
