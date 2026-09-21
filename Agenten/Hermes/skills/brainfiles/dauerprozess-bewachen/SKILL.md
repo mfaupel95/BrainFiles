@@ -198,11 +198,50 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   Diagnose bei „aufploppender Konsole“: alle Task-Aktionen listen
   (`Get-ScheduledTask … | % Actions[0]`) und nach `python.exe` (sichtbar) vs.
   `pythonw.exe` (versteckt) filtern — Dienste, die ihr Journal auf die Platte
-  schreiben (Prints nur Status), auf pythonw umstellen. **Die Live-Aktion einer
-  `-RunLevel Highest`-Aufgabe zu aendern verweigert die normale Sitzung
-  (0x80070005, `Set-ScheduledTask` wie `Register-ScheduledTask`)** — solche
-  Fixes als weiteren Schritt in das vorhandene Admin-Skript legen
-  (`vorsorge-*-admin.ps1`), damit EINE Admin-Sitzung alles erledigt.
+  schreiben (Prints nur Status), auf pythonw umstellen. Das gilt fuer den
+  Wrapper **und** fuer die vom Treiber gespawnten Kinder: ein Supervisor, der
+  seine Agenten mit `python.exe` (Repo-venv) startet, poppt bei jedem
+  Kindprozess ein Fenster auf; `pythonw.exe` im Startbefehl des Supervisors
+  (nicht nur im Task) schaltet ALLE Kindfenster ab, die Ausgabe laeuft weiter
+  in die ag_log-Dateien.
+- **Einen Konsolen-Rundgang fahren: alle Task-Aktionen nach Sichtbarkeit
+  klassifizieren, nicht raten.** Der schnelle Diagnose-Scan fuer
+  "aufploppende Fenster" listet die Top-Aufgaben (`MaxHirn-*`, `BrainFiles-*`,
+  `Hermes-*`) und stuft jede Action in drei Klassen ein: `-WindowStyle Hidden`
+  im Arguments => versteckt; `pythonw.exe` / `wscript //B` => fensterlos (ok);
+  alles andere => `CHECK` (potenziell sichtbar). `CHECK` heisst noch nicht
+  Fenster: `pythonw` ist immer fensterlos, aber jedes `python.exe` und ein
+  `powershell.exe` OHNE `-WindowStyle Hidden` zeigt eine Konsole. Echte
+  Verursacher sind oefters die leisen Nebenlaeufer (ein Waechter, der alle
+  2 Minuten feuert, ohne Hidden ist das staendige Flackern) als die grossen
+  Dauerlauefe. Fuer den Endcheck die laufenden Prozesse nach
+  `ExecutablePath`/Kommandzeile ansehen — nicht nur die Action lesen.
+- **Den Fix in BEIDE Schichten schreiben: die Live-Task-Action UND das
+  Registrierungs-Wrapper-Skript.** `Set-ScheduledTask` aendert die laufende
+  Aufgabe, aber der Anleger (`*-aufgabe.ps1` im Routinen-Ordner) traegt die
+  ALTE Executable/Argumente weiter (`python.exe`, ohne Hidden). Wer nur den
+  Task fixen, gibt den Fix beim naechsten Re-Registrieren zurueck. Beides
+  patchen (pythonw + Hidden), versionskontrolliert committen.
+- **Eine Aktion zu aendern verweigert die normale Sitzung, sobald die Aufgabe
+  aus erhoehtem Kontext registriert wurde — unabhaengig vom `-RunLevel` des
+  Prinzipals** (0x80070005, `Set-ScheduledTask` wie `Register-ScheduledTask`).
+  Auch eine `Limited`-Principal-Aufgabe weist einen nicht erhoehten
+  Action-Umbau ab; `Principal.RunLevel` vorhersagen zu wollen in die Irre.
+  Solche Fixes als weiteren Schritt in das vorhandene Admin-Skript legen
+  (`vorsorge-*-admin.ps1`), damit EINE Admin-Sitzung alles erledigt. Das
+  Admin-Skript schreibt sein Ergebnis in eine Log-Datei (das Fenster ist
+  versteckt); der Aufrufer liest die Datei statt der stdout der erhoehten
+  Sitzung.
+- **Ein toter Supervisor laesst seine Kinder als Waisen weiterlaufen.**
+  Endet der Treiber von aussen (`Get-ScheduledTaskInfo`-Result 267014), bleiben
+die von ihm gespawnten Agentenprozesse am Leben — sichtbare Konsolenfenster,
+die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
+  Vor dem Bericht pruefen, ob der Treiber ueberhaupt noch laeuft
+  (`State=Ready` statt `Running`, Result=267014): wenn nicht, die Kinder per
+  PID beenden (`Get-CimInstance` nach dem Agenten-Modulnamen filtern, nie per
+  Prozessname), Treiber per `Start-ScheduledTask` neu starten und das
+  Prozesspaar samt Kindern nachverifizieren. Das Speichern der Orphans ist
+  Aufraeumen, kein Bestandsfehler.
 - **Ein Prozess je Ziel.** `watch` und Verwandte nehmen EIN Ziel; „alle 33 Repos“
   sind 33 Prozesse. Bewusst nur das Standardziel anbinden und das im Bericht sagen.
 - **Ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.** Eine Wache,
@@ -216,7 +255,17 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   dem Aufraeumen loeschen.
 - **Nach jedem Deploy des Starters die Routine-Zeile nachziehen**
   (`Wissen/Routinen.md`) — sonst weiss die naechste Sitzung nichts von der Wache.
-- **`Start-ScheduledTask` auf eine Aufgabe mit `MultipleInstances=IgnoreNew`
+- **Ein Kind, das mit Exit-Code 0 endet, ist im Supervisor-Log unsichtbar.**
+  Ein Supervisor, der nur bei `code != 0` die stderr des Kindes loggt, zeigt bei
+  einem Kind, das nach wenigen Sekunden sauber endet, nur „gestartet … gestoppt“
+  ohne Grund — und die Sterbeschleife sieht aus wie ein Kinderfehler, obwohl der
+  Treiber selbst von aussen abgebrochen wird (Task-Result 3221225786). Diagnose:
+  das Kind EINMAL direkt mit der Umgebung starten, die der Supervisor setzt
+  (die env-Variablen, die er dem Kind mitgibt — nicht die eigene Shell-Umgebung),
+  und die stderr ansehen; laeuft es dort, ist der Treiber das Problem, nicht das
+  Kind. Danach den Task-Weg pruefen: `Get-ScheduledTaskInfo`-Result 3221225786
+  = der Treiber wurde abgebrochen, nicht die Kinder.
+- **`Start-ScheduledTask` auf eine Aufgabe mit `MultipleInstances=IgnoreNew`**
   ist ein No-Op, wenn der Scheduler die Aufgabe noch als „Running“ sieht** —
   der ALTE Prozess (mit dem ALTEN Code) laeuft einfach weiter, ohne
   Fehlermeldung und ohne dass ein neuer Prozess entsteht. Nach jeder
@@ -235,6 +284,13 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   „laeuft noch“ das `CommandLine`-Feld ansehen (nicht nur die PID zaehlen);
   ein Treffer, dessen Kommandozeile die eigene Abfrage enthaelt, ist kein
   echter Prozess.
+- **Kommandozeilen-Filter praezise auf den SKRIPTnamen stellen, nicht auf einen
+  gemeinsamen Wortstamm.** `*dauerlauf*` matcht auch `moondev_dauerlauf.py`
+  und andere verwandte Treiber desselben Stamms — eine „laueft noch“-/Instanzen-
+  Zaehlung wird damit um eine fremde Prozessgruppe falsch (gemessen: 9 Treffer,
+  davon 6 Fremdprozesse). Vor dem Zaehlen die Trefferliste je Prozess gegen den
+  vollen Skriptnamen halten oder auf den exakten Pfad filtern
+  (`CommandLine` endet auf `handel\dauerlauf.py`).
 - **Vor einem manuellen Neustart den Cron-Verlauf des Waechters lesen, nicht
   nur den Live-Zustand.** Ein `no_agent`-Hermes-Cron schreibt jeden Lauf nach
   `Agenten/Hermes/cron/output/<job-id>/<zeitstempel>.md` — bei Erfolg leer

@@ -34,6 +34,17 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
    Kandidat ist die jüngste Sitzung, die **nicht** die laufende ist. Mit `query` das
    Thema finden, dann die Nutzer-Nachrichten dieser Sitzung lesen: die letzte offene
    Frage ist der Auftrag.
+   - **Eine nackte Ziffer ist ein Verweis, kein Auftrag.** Sie zeigt auf eine
+   nummerierte Liste, die in einer anderen Sitzung stand. Also die letzten
+   Assistenten-Nachrichten der zwei juengsten fremden Sitzungen lesen
+   (`session_search` mit `session_id` - das Fenster liegt von selbst am Ende) und
+   pruefen, ob eine davon mit einer Liste endet. Endet KEINE damit (typisch: beide
+   Sitzungen starben mitten in einem Werkzeugaufruf), hat die Ziffer keinen Bezug -
+   dann EINE Rueckfrage ueber `clarify` stellen: die 2-4 offenen Straenge als
+   klickbare Optionen, der wahrscheinlichste zuerst, plus eine Versehen-Option. Die
+   Straenge mit Datei/Testname benennen, nicht als Thema - die Antwort soll sofort
+   weiterfuehren. In Prosa angebotene Optionen sind hier der Fehler: sie sind nicht
+   klickbar und der Nutzer tippt, was er sonst nur anwaehlt.
 2. **Nur wenn Schritt 1 den Faden nicht hergibt, in die DB sehen** (lesend):
    `sqlite3.connect("file:<HERMES_HOME>/state.db?mode=ro", uri=True)`, Tabelle
    `messages` mit `id, session_id, role, content, tool_name, tool_calls, timestamp,
@@ -79,6 +90,18 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
   aktiv, nicht doppelt schreiben: ihr Ergebnis unabhängig nachprüfen und den Bericht
   darauf umstellen — „was sie getan hat, was ich nachgeprüft habe, was offen blieb".
   Zwei Schreiber auf derselben Datei sind der Schaden, nicht die verlorene Zeit.
+  - **Konkret messen, nicht vermuten: `stat -c '%y' <pfad>` zweimal mit ~5 s
+    Abstand.** Bleibt die mtime gleich, ruht die Datei (die andere Sitzung hat
+    geschrieben und ist fertig); aendert sie sich, schreibt sie gerade — dann
+    nicht committen, sondern ihr Ergebnis nachpruefen. Eine mtime, die NACH
+    deinem eigenen Patch liegt, heisst: die andere Sitzung hat auf deiner
+    Version aufgebaut oder sie ueberschrieben — `git diff` zeigt, was wirklich
+    drinsteht, bevor du committest.
+  - **Ein `index.lock` ist nicht automatisch ein aktiver Schreiber.** Pruefen:
+    `tasklist //FI "IMAGENAME eq git.exe"` (kein Treffer = kein git-Prozess)
+    und die lock-Groesse (0 Byte) + Alter. Ein verwaister lock (kein
+    git-Prozess, 0 Byte, aelter als Minuten) blockiert jeden Commit — `rm -f
+    .git/index.lock` und weiter. Nur bei einem AKTIVEN git-Prozess warten.
 - **Der fertige Bericht einer parallelen Sitzung ist eine Behauptung, kein Beleg** — auch
   wenn er plausibel klingt und eine Kommandoausgabe mitbringt. Meist fehlt genau der
   entscheidende Schritt: belegt ist der Transport oder die Datei, nicht die Wirkung — dazu

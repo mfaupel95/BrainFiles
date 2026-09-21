@@ -112,6 +112,20 @@ Portal-Anmeldung hat, und meldet je Profil den Grund.
 6. **Im Bericht trennen:** was umgestellt wurde, was ausdruecklich unberuehrt blieb (Profile
    mit eigener Anmeldung, lokale Provider) und wie die Ruecknahme lautet (`--zuruecknehmen`).
 
+## Listen-Schluessel im Profil: Block schneiden statt `config set`
+
+`hermes config set` kann keinen EINZELNEN Listeneintrag aendern — bei
+`fallback_providers` bleibt nur die ganze Liste oder ein Blockschnitt. Ein ungueltig
+gewordener Eintrag (lokales Modell unter der Mindest-Kontextgroesse) wird deshalb
+byte-genau entfernt: die Zeile in Spalte 0 plus die eingerueckten Folgezeilen, dabei die
+Datei VORHER und NACHHER mit `yaml.safe_load` parsen und asserten, dass alles ausserhalb
+des Schluessels gleich geblieben ist. Eine EINGERUECKTE Kette (z. B. unter `delegation:`)
+bleibt dabei stehen, und `fallback_providers: []` ist schon sauber — die beiden Formen
+nicht verwechseln, `grep '^fallback_providers:'` findet beide. Werkzeug im Haus:
+`Agenten/Hermes/scripts/bot-rueckfallkette-bereinigen.py` (Trockenlauf, `--anwenden`,
+`--zuruecknehmen`). Regeln und Fallen: SKILL.md, Abschnitt „Fallback-Kette und lokale
+Provider".
+
 ## Wenn der Zieltext nur in uncommitteter Fremdarbeit steht
 
 Die Skill-Bibliothek unter `Agenten/Hermes/skills/` kann uncommittete Aenderungen

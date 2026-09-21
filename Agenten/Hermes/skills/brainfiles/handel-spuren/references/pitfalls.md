@@ -980,3 +980,34 @@ Kurzfassung ersetzt die Begruendung nicht.
   loest beide Faelle richtig. Vor jeder Uebernahme einer fremd committeten
   "Fixes Applied"/"Bug Report"-Notiz: die volle Suite laufen lassen, nicht nur
   glauben, dass Beschreibung und Wirkung uebereinstimmen.
+
+- **Eine Whitelist fuer die Subprozess-Umgebung bricht ALLE Spuren.**
+  `dauerlauf.py` startet jede Spur als Unterprozess und reicht ihr die Umgebung
+  weiter; die Spuren sind vertrauenswuerdiger eigener Code und lesen ihre
+  API-Schluessel (`OKX_*`, `KRAKEN_*`, `OLLAMA_MODELS`, `HANDEL_RISIKO`) aus
+  `os.environ`. Ein Refactor, der die Umgebung auf eine Whitelist filtert
+  (PATH/PYTHONPATH/HOME/...), laesst beim naechsten Neustart jede Spur ohne
+  Schluessel starten — still, ohne Fehlermeldung, erst die erste echte Order
+  scheitert. `_env_sicher()` reicht die volle Umgebung durch
+  (`dict(os.environ)`) und setzt nur `HANDEL_RISIKO` explizit. Nachweis:
+  `_env_sicher()` direkt aufrufen und pruefen, dass ein gesetzter `OKX_API_KEY`
+  durchkommt.
+
+- **Feste Zaehl-/Sollwert-Tests sind eine LISTE, die eine Spur nennt — beim
+  Anschliessen (neue Spur ODER geaenderter Wachenwert einer bestehenden)
+  mitziehen, sonst faellt die volle Suite rot ohne echten Defekt.** Zwei Muster
+  wiederholen sich: `assertEqual(len(lage.HOLER), N)` zaehlt die Holer-Funktionen
+  und muss bei jeder neuen Spur +1 bekommen; ein `ERWARTET`-Dict in
+  `test_ratschen.ZusammenarbeitTest` haelt den Ratschen-Sollwert je Spur fest und
+  muss bei jeder Wachen-Umstellung (Plaetze, Risiko je Position) den neuen Wert
+  UND einen Eintrag fuer jede neue Spur bekommen. Ein solcher Test faellt nicht
+  nur beim Anlegen, sondern auch VERSPAETET: eine schon frueher umgestellte
+  Spur (Plaetze reduziert) kann den Test schon vorher rot haben, ohne dass es
+  auffiel, bis die volle Suite lief. **Vor jeder Behauptung "das ist ein
+  vorbestehender, fremder Fehlschlag": Stash-Gegenprobe** — die eigenen
+  Aenderungen wegstashen (`git stash push -q <eigene dateien>`), den
+  fehlschlagenden Test isoliert laufen lassen, danach `git stash pop`. Faellt
+  er identisch OHNE die eigenen Aenderungen, ist er vorbestehend und darf
+  unangetastet bleiben; faellt er nur MIT den eigenen Aenderungen, gehoert er
+  repariert, nicht als "fremd" abgetan.
+

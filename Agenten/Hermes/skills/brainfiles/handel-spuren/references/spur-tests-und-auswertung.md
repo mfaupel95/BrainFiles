@@ -17,6 +17,26 @@ Drei Aufrufe, die scheitern und dabei nach einem Code-Fehler aussehen:
   aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
   lassen, bevor der eigene Code verdaechtigt wird.
 
+## Tests gegen echte Laufzeitdateien schuetzen: das Modul patchen, das den Pfad BESITZT
+
+Ein Test, der die Pfad-Konstante des falschen Moduls patcht, liest still die
+ECHTEN Laufzeitdateien — er haengt am Bestand statt an seinem Fixture. Wandert
+eine Spur-Funktion in ein anderes Modul (z. B. `spur_spiegel` nach `lage.py`,
+tagesbericht re-exportiert nur noch), patcht der alte Test weiter
+`tagesbericht.HIER` — die Funktion baut ihren Ordner aber ueber das `HIER` des
+Moduls, in dem SIE definiert ist, und liest das echte Journal. Eine
+hartkodierte Erwartung ("1 Ausstiege") faellt dann nach ein paar Tagen
+Dauerlauf ("875 Ausstiege"), schlimmer: eine falsche Erwartung kann gegen
+Live-Daten gruen bleiben.
+
+Regel: **vor dem Patch nachsehen, wo die Funktion ihren Pfad wirklich aufbaut**
+(Modul-Konstante, nicht Funktionsargument), und das besitzende Modul patchen
+(z. B. `patch.object(lage, "HIER", t)` ZUSAETZLICH zu tagesbericht). Eine
+hartkodierte Zeilenzahl im Test ist nur gueltig, wenn das gelesene Journal
+nachweislich das Temp-Journal ist — im Zweifel die Pfad-Konstante pruefen, die
+der Test-Code durchlaufen muss. Erkennungszeichen, dass ein Test am echten
+Bestand haengt: die Erwartung nennt eine Zahl, die mit dem Dauerlauf waechst.
+
 ## Ausstiegsrechnung: zwei Fehler, die jede neue Spur aus der Vorlage erbt
 
 1. **G/V auf den NOMINALWERT, nicht auf den Kurs.**

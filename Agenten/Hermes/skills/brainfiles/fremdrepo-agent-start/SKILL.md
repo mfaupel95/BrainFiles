@@ -1,6 +1,6 @@
 ---
 name: fremdrepo-agent-start
-description: "Python-Agent aus Fremd-Repo starten: venv, .env, Ollama."
+description: "Fremd-Repo-Agenten/-Tools lokal starten: Python (venv, .env, Ollama) und Node (MCP/CLI)."
 license: MIT
 metadata:
   hermes:
@@ -8,16 +8,22 @@ metadata:
     related_skills: [handel-spuren, repo-flotte, lokale-modelle-bemessen]
 ---
 
-# Fremd-Repo-Python-Agenten lokal starten
+# Fremd-Repo-Agenten/-Tools lokal starten
 
-Geklonte Fremd-Repos (Werkstatt/Repos/) bringen Python-Agenten mit: eigenes
-venv, .env, LLM-Aufrufe, Dauerlaeufe. Dieses Skill ist der Weg, so einen
-Agenten LAUFFAEHIG zu bekommen, ohne echte Schluessel einzutragen — die
-lokale Ollama-Ersetzung ist der Hausstandard (Max, 16.09.2026).
+Geklonte Fremd-Repos (Werkstatt/Repos/) bringen Agenten und Tools mit: Python-
+Agenten mit eigenem venv, .env, LLM-Aufrufen, Dauerlaeufen — oder
+Node/TypeScript-MCP/CLI-Tools. Dieses Skill ist der Weg, so etwas LAUFFAEHIG
+zu bekommen, ohne echte Schluessel einzutragen — die lokale
+Ollama-Ersetzung ist der Hausstandard fuer Python-Agenten (Max, 16.09.2026),
+fuer Node-Tools der npm-Globalinstall und die no-auth-Verifikation.
 
 ## Wann
 „X starten aus dem Repo-Ordner", ein geklonter Agent soll laufen (moondev,
-agent-reach …), ein Repo-Agent als Datenschicht/Demo.
+agent-reach …), ein Repo-Agent als Datenschicht/Demo, ein Node-MCP/CLI-Tool
+aus der awesome-trading-agents-Liste (okx/agent-trade-kit …).
+
+Fuer den Node/TypeScript-Weg (npm-Globalinstall, stdio-MCP-Handshake per
+Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
 
 ## Vorgehen
 
@@ -118,6 +124,14 @@ agent-reach …), ein Repo-Agent als Datenschicht/Demo.
   Patchskript nach Agenten/Hermes/cache/ (Wegwerfzone) und mit python
   ausfuehren; Newlines: rb lesen, nl ableiten, wb schreiben — sonst
   Ganzdatei-Diff.
+- **Mehrzeiligen String in eine CRLF-Datei einsetzen, ohne jede Zeile auf
+  die Datei-Newline zu normalisieren, zerlegt die Struktur** (hier: Duplikat
+  des Blocks + IndentationError). Der neue Block muss ZEILENWEISE mit
+  `nl` verknuepft sein (`nl.join(zeilen)`), nicht als ein String mit
+  eingebauten `\n` in die CRLF-Datei geschrieben werden; vor dem Schreiben
+  immer `ast.parse()` gegen den FERTIGEN Text. Wird trotzdem ein kaputter
+  Block geschrieben, den ganzen Bereich neu konstruieren statt in dem
+  kaputten Block weiterzupatchen.
 - **Erster Zyklus dauert:** lokales Modell kalt 15-40 s je Analyse plus
   Rate-Limit-Delays — 3-5 min warten, bevor ein Fehler diagnostiziert wird.
 - **Fremd-Code, fremde Keys:** nie echte Schluessel in die .env des Repos
@@ -159,3 +173,32 @@ agent-reach …), ein Repo-Agent als Datenschicht/Demo.
   (`UnicodeEncodeError`) — gilt genauso, wenn ein PYTHON-Treiber den Agenten
   startet, nicht nur bei einem PowerShell-Wrapper. `PYTHONIOENCODING=utf-8`
   in die Subprozess-Umgebung setzen, bevor der Kindprozess startet.
+- **Eine Konsolen-CLI aus einem Hintergrund-/Agent-Prozess oeffnet auf
+  Windows bei JEDEM Aufruf ein sichtbares Fenster**, wenn der
+  `subprocess.run` kein `creationflags=subprocess.CREATE_NO_WINDOW` setzt —
+  `-WindowStyle Hidden` im PowerShell-Wrapper versteckt nur die eigene
+  Shell, NICHT die Kinder; jeder onchainos/agent.exe-Aufruf klappt sonst ein
+  Fenster auf, das der Nutzer als "Popup" meldet. `-WindowStyle Hidden` von
+  aussen versteckt das Kind nicht — das Flag gehoert in den subprocess-Call
+  selbst (`creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0`).
+  Bei einem Fix VOR dem Start des laufenden Treibers pruefen, wann der
+  Treiberprozess gestartet wurde: ein schon laufender Hintergrundprozess
+  nutzt den ALten Code weiter — nur ein Neustart (bei Live-Trading-
+  Prozessen vorher Rueckfrage) oder die naechste getrennte Aufgabe
+  (Scheduled Task/Cron startet frisch) uebernimmt ihn.
+- **Ollama bei knappem VRAM:** ein Modell, das nicht in die GPU passt
+  (cudaMalloc OOM), als CPU-Variante fest verdrahten statt pro Aufruf
+  `num_gpu 0` durchzureichen: `ollama create <name>:cpu` mit einem
+  Modelfile (`FROM <base>`, `PARAMETER num_gpu 0`) — der Tag ist dann
+  persistent, auch der GUI/Autostart-Server nutzt ihn, ohne dass jede
+  Aufrufstelle das Flag traegt. `ollama ps` zeigt die geladene Groesse und
+  ob "100% CPU". ACHTUNG Systemfolge: ein 3-GB-Modell auf CPU kostet ~3 GB
+  RAM — bei kleinem Pagefile kann das den Rechner instabil machen
+  (Terminal/PowerShell sturzen mit 0xc0000409 Stack-Overrun ab, `can't
+  start new thread`). Erst das schwere Modell entladen (Ollama stoppen),
+  dann weiterarbeiten. Server-Einstellungen (OLLAMA_MODELS als
+  Benutzervariable) und die Autostart-Verknuepfung pruefen — eine .lnk auf
+  einen alten `BrainFiles\Modelle\Programme\Ollama\…`-Pfad startet nach
+  Neustart nie (Modelle ist nur Gewichte, kein Programmordner); das Ziel
+  der .lnk mit `Test-Path` gegen die echte Installation
+  (`AppData\Local\Programs\Ollama\ollama app.exe`) pruefen.

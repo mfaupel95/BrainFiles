@@ -54,6 +54,13 @@ Stattdessen **byte-genau ersetzen** (Skript über `execute_code`):
   anderen hier LF).
 - Muster als Raw-String, Trefferzahl auf `1` asserten, danach `json.load` — die
   Datei muss weiter parsen.
+- **Das fuzzy `patch`-Werkzeug re-indentiert CRLF-JSON** und kann dabei in einem
+  Aufruf mehrere Zeilen auf 8 Spaces ziehen statt sauber eine zu loeschen
+  (getroffen an `swap/` und `xperp/`, beide CRLF). Zeile vorher mit `repr()`
+  bauen, Loeschung byte-exakt per Regex: `re.subn(br'^[ \t]*"<key>":\s*<wert>,\r?\n', b"", raw, count=1)`
+  und nachher `json.loads`. Kronzeuge dafuer, dass eine json-Aenderung gelandet
+  ist, ist der Diff: eine entfernte Zeile muss als `-` ZEILE und nur als solche
+  erscheinen, nicht als Umformatierung des umgebenden Blocks.
 - **Jede Spur bekommt einen eigenen Zielordner.** Ein Ziel, das auf den Ordner
   einer anderen Spur zeigt, ist eine Zeitbombe: gleiche Dateinamen, der
   zweite Schreiber überschreibt die Kopie der ersten Spur (so stand `swap` auf
@@ -176,7 +183,18 @@ Das zeitliche Fenster gehört in den Bericht („letzter automatischer Zyklus
 
 ## Fallen
 
-- **Testzyklen spiegeln mit.** Fährt ein Test den vollen `lauf()` und patcht
+- **Das `freigabe`-Tor entscheidet nur das Feld `erfuellt`; `min_wochen`/
+  `min_runden`/`netto_positiv` sind Doku, keine Sperren.** Live bleibt gesperrt,
+  solange `erfuellt` nicht von Hand gesetzt ist — ein entfernter
+  `papierlauf_min_runden`-Wert oeffnet also KEINEN Live-Pfad (die Wachen-lesenden
+  Pfade in freigabe.py und wachen_pruefung.py prüfen nur `erfuellt`). Wird ein
+  solches Schwellwert-Feld entfernt, ist das eine Doku-Aenderung, kein
+  Sicherheits-Eingriff: im Abschlussbericht so benennen und die
+  `erfuellt=false`-Sperre weiter ausweisen. Umgekehrt, in die andere Richtung:
+  ein leuchtendes Feld (`netto_positiv: true`) ohne gesetzten Haken fuehrt
+  trotzdem nicht zu Live. Wer die Freigabebedingung selbst lockern will, setzt
+  den Haken — nicht die Zahl daneben.
+- **Testzyklen spiegeln mit.** Faehrt ein Test den vollen `lauf()` und patcht
   dabei nur `ZUSTAND`/`JOURNAL` auf Temp-Pfade, kopiert die Spiegelung die
   **Temp-Datei an das echte Ziel** — die gute Kopie außer Haus ist danach durch
   einen Teststand ersetzt (im Zielordner liegen plötzlich 200-Byte-Dateien mit

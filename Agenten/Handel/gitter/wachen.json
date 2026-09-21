@@ -32,8 +32,8 @@
   "freigabe": {
     "erfuellt": false,
     "backtest_bestanden": false,
-    "backtest_urteil": "Gitter +2.19 % gegen Halten +15.75 % (7 Zyklen, 12 Stufen, 1344 Stundenkerzen) | Achtung: die laufende Leiter hat 12 Stufen, die wachen.json 6",
-    "backtest_geprueft_am": "2026-09-15"
+    "backtest_urteil": "Gitter +1.25 % gegen Halten +25.05 % (4 Zyklen, 12 Stufen, 1344 Stundenkerzen) | Achtung: die laufende Leiter hat 12 Stufen, die wachen.json 6",
+    "backtest_geprueft_am": "2026-09-20"
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\gitter"
 }

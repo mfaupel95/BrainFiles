@@ -326,6 +326,34 @@ Snapshots liefern Koordinaten, aber die Wahrheit entscheidet die Z-Ordnung:
   und dxcam-Snapshots melden unterschiedliche Originalgroessen (z. B.
   3847x2167 gegen 3840x2160); Bildkoordinaten nur mit dem Skalierungsfaktor
   des jeweiligen Backends auf Klick-Koordinaten umrechnen, nicht mischen.
+- **GetWindowRect liefert in nicht-DPI-aware PowerShell virtuelle Pixel.**
+  Bei 150 %-Skalierung meldet powershell.exe 5.1 ein Fenster als 1066x719
+  bei (99,616), physisch ist es 1599x1079 bei (149,924) — Klicks mit den
+  virtuellen Koordinaten landen 1,5x daneben. Vor jedem Koordinatenwechsel
+  `SetProcessDPIAware()` (user32.dll) aufrufen und die Position FRISCH
+  lesen; der Skalierungsfaktor ist physische/virtuelle Fensterbreite und
+  multipliziert ALLE aus Bitmaps abgeleiteten Offsets.
+- **Tkinter-Widgets erscheinen NICHT im UI-Tree von Snapshot.** Tk zeichnet
+  seine Controls selbst; der Tree listet nur Fensterrahmen, Menues und
+  Taskleiste. Button-Koordinaten aus dem Quelltext-Layout ableiten
+  (pack-Reihenfolge, Padding) oder per Fenster-Capture messen — nie im
+  UI-Tree suchen.
+- **Nur das Zielfenster capturen statt des ganzen Desktops:**
+  `user32.dll PrintWindow(hwnd, dc, 2)` auf einen System.Drawing-Graphics-
+  Context rendert genau EIN Fenster in eine PNG — funktioniert auch hinter
+  anderen Fenstern und auf anderen virtuellen Desktops und zeigt keine
+  fremden privaten Inhalte. Das Bitmap liegt im VIRTUELLEN Pixelraum (bei
+  150 % also 1066x719 fuer ein 1599x1079-Fenster): Offsets daraus vor dem
+  Klick mit dem Skalierungsfaktor multiplizieren.
+- **Python-GUI mit RedirectStandardOutput starten: die Logdateien bleiben
+  LEER.** Ohne TTY puffert Python stdout blockweise; ein laufender
+  Tk-Knoten schreibt nichts in die umgeleitete Datei. GUI-Start nie ueber
+  die Redirect-Datei belegen — erst den Fensterzustand pruefen
+  (PrintWindow-Capture/Statuszeile).
+- **`-WindowStyle Hidden` versteckt auch das Tk-Hauptfenster.**
+  `Start-Process -WindowStyle Hidden` auf einen Python-Tk-Knoten macht das
+  Fenster unsichtbar, waehrend der Prozess laeuft. Fuer sichtbare GUIs
+  nicht verwenden; die Konsole des Wrappers ist davon getrennt regelbar.
 
 ## "Keine Verbindung" zu einem Dienst: erst lokal von global trennen
 
@@ -381,6 +409,47 @@ vermisst haette. Ein Code ohne Wache ist kein Beweis, dass alles laeuft.
 Ein Ledger-Skript kann nach einem Kill keine Schlusszeile mehr schreiben: Eine
 angefangene Meldung ohne Ende ist dann kein Skriptfehler, sondern die Folge des
 Abbruchs. Deshalb vor jedem Befund erst `LastTaskResult` ansehen.
+
+## Linux-gated Installer/CLI: in WSL2 laufen lassen, nicht in der MSYS-Bash
+
+Manche Fremd-Installer und CLIs sind auf Linux/macOS fest verdrahtet (z.B. ein
+`setup-in-agent.sh`, dessen Bun-Runtime-Auswahl per `uname` nur Linux/macOS
+kennt) und lehnen Windows ab. Auf diesem Rechner ist die WSL2-Distribution
+`archlinux` der einzige Linux-Computer — dort laufen lassen, nicht in der
+MSYS-Bash. Der Aufruf von Windows aus:
+
+```
+wsl.exe -d archlinux -- /bin/sh /mnt/c/Users/faupe/Documents/BrainFiles/Agenten/Hermes/scripts/<skript>.sh
+```
+
+### WSL2-Fallen, die Zeit kosten
+
+Vollstaendiger GBrain-Install-/Reparatur-Ablauf: `references/gbrain-install.md`.
+
+- **`wsl.exe` verschluckt inline uebergebene Flags und `-w`-Formatstrings**
+  (die MSYS/Windows-Argumentgrenze frisst sie: `curl: option : blank argument`).
+  Den Befehl in ein Skript unter `Agenten/Hermes/scripts/` legen und das
+  Skript ausfuehren statt eines Inline-Einzeilers.
+- **`/tmp` in WSL ist tmpfs und wird zwischen zwei Aufrufen geleert** — was
+  dort gestaged wurde (Helper, Quelldatei), ist beim naechsten Aufruf weg.
+  Scratch im persistenten `/mnt/c/...`-Baum ablegen oder im selben Lauf neu
+  erzeugen.
+- **WSL2-`archlinux`-pacman scheitert ueber IPv6** (`Resolving timed out`),
+  obwohl GitHub laeuft. Fix: EINEN IPv4-faehigen offiziellen Mirror pinnen
+  (`Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch`) und IPv4 per
+  `XferCommand = /usr/bin/curl -4 -L -C - -f -o %o %u` in pacman.conf
+  erzwingen. `$repo`/`$arch` muessen die aeussere Shell ueberleben — die
+  Mirrorlist aus einer Skriptdatei schreiben, nicht per Inline-`printf`, das
+  die aeussere Shell expandiert.
+- **Ein abgebrochener Installer-Lauf hinterlaesst eine korrupte Runtime**
+  (z.B. `bun` als 100-MB-Datei, `file` sagt `data` statt ELF) und eine
+  Receipt im Zustand `installing`. Die Receipt nennt den exakten
+  Wiederherstellungsbefehl; ihn erneut ausfuehren repariert, ohne den
+  Speicher neu zu initialisieren. Nicht den Root loeschen, um den Fehler
+  „verschwinden zu lassen".
+- **`head -c` auf einen Multi-Datei-Glob druckt pro Datei einen
+  `==> <pfad> <==`-Kopf** — `head -c 4 /pfad/*/bun` zeigt den Kopf, nicht die
+  Dateibytes. Fuer echten Inhalt `od`/`file` auf EINEN Pfad.
 
 ## Abgrenzung
 

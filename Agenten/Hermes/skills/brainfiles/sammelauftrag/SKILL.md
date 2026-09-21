@@ -1,6 +1,6 @@
 ---
 name: sammelauftrag
-description: "Alle offenen Sitzungen einsammeln und als Routine fahren."
+description: "Offene Sitzungen zusammenfuehren, pruefen, schliessen."
 version: 0.1.0
 author: Hermes
 license: MIT
@@ -19,6 +19,11 @@ registriert die Routine samt Nachweis. Es ist **kein** Ersatz für `sitzungs-rek
 (eine abgebrochene Sitzung verstehen) und baut **keine** neue Fachlogik: es ordnet,
 was schon existiert.
 
+Zwei Quellen: der Hermes-Sitzungsspeicher (`state.db`, Schritt 0) und der Arbeitsbaum.
+Am Ende steht der Abschluss: erledigte Sitzungen werden **archiviert** (weiches
+Verstecken, umkehrbar), nie gelöscht. Tiefe Details zum Speicher in
+`references/sitzungsspeicher.md` (laden mit `skill_view`).
+
 Weil Raten hier teuer ist, gilt: jeder Punkt braucht Beleg, Fertig-Kriterium und
 Prüfkommando. Ein Punkt ohne diese drei wird nicht aufgenommen, sondern verworfen.
 
@@ -28,6 +33,8 @@ Prüfkommando. Ein Punkt ohne diese drei wird nicht aufgenommen, sondern verworf
 - nach mehreren parallelen Sitzungen oder nach einem Rechnerabsturz, wenn unklar ist, was fertig ist
 - „mach daraus einen Task / eine Routine“, „das soll automatisch laufen“
 - ein nicht abgeschlossener Auftrag soll nicht im Chatverlauf liegen bleiben
+- „aus allen offenen Sitzungen Informationen ziehen“, „was steht in den offenen Sitzungen“, „Sitzungen zusammenführen“
+- „Sitzungen schließen/aufräumen, die erledigt sind“, „offene Sitzungen aufräumen“
 
 **Don't use for:** eine einzelne abgebrochene Sitzung rekonstruieren (`sitzungs-rekonstruktion`),
 Arbeitsbaum nur committen (`sichern`), eine bestehende Routine an den Bus hängen
@@ -65,8 +72,28 @@ nie in einem Rutsch:
 | versprochene Routinen | `MaxHirn/Wissen/Routinen.md` (Spalte **Status**) |
 | Termine | `MaxHirn/Wissen/Fristen.md` |
 | Aufgabenzustand | `Get-ScheduledTask -TaskName 'MaxHirn-*'`, `Get-ScheduledTaskInfo` |
+| offene Sitzungen | `scripts/offene_sitzungen.py` (nur lesend) |
+| beendete, nicht archivierte | `scripts/beendete_sitzungen.py` (nur lesend) |
+| Sitzungsspeicher | `Agenten/Hermes/state.db` (+ `profiles/<name>/state.db`) |
+| Sitzungen verwalten | `hermes sessions list/archive/prune/pin/pinned` |
 
 ## Procedure
+
+### 0. Sitzungsspeicher abklopfen (lesend)
+
+Dafür liegt `scripts/offene_sitzungen.py` im Skill (stdlib, **nur lesend**). Über das
+`terminal`-Werkzeug aus der Repo-Wurzel:
+
+```bash
+python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/offene_sitzungen.py
+```
+
+Es listet die offenen Sitzungen (`ended_at IS NULL`) mit Alter, Umfang und Quelle,
+ordnet sie in lebendig / abgebrochen / still ein, zeigt die letzte Nutzer- und
+Assistentenzeile je Sitzung (die Grundlage des Zusammenführens) und nennt die
+Abschluss-Kandidaten samt Trockenlauf-Befehl. `--alle-profile` bezieht auch die
+Bot-Sitzungen unter `profiles/<name>/state.db` ein. Tiefe Details zum Speicher:
+`references/sitzungsspeicher.md`.
 
 ### 1. Quellen abklopfen (lesend, 5–10 Minuten)
 
@@ -205,6 +232,35 @@ häufigste Fehler.
 - Die Übergabedatei in `Werkstatt/` ist **nicht** im Git (Regel 4) — sie ist
   Durchgangsware. Was bleiben soll, in den Vault.
 
+### 8. Sitzungen abschließen
+
+Erledigte Sitzungen **archivieren**, nie löschen — `archive` ist weiches Verstecken
+(umkehrbar, kein Datenverlust), `prune` löscht endgültig. Immer zuerst trockenlaufen.
+Der vollständige Abschluss-Ablauf (drei Zustandsachsen, was „erledigt“ heißt,
+Befehlssatz, Fallen) steht in `references/sitzungen-schliessen.md` (laden mit
+`skill_view`). Zwei lesende Skripte decken den Bestand ab: `offene_sitzungen.py`
+(offen) und `beendete_sitzungen.py` (beendet, noch nicht archiviert — die
+natürlichen Abschluss-Kandidaten):
+
+```bash
+python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/beendete_sitzungen.py
+```
+
+Dann der Abschluss selbst:
+
+```bash
+hermes sessions archive --older-than 30d --dry-run     # was würde versteckt?
+hermes sessions archive --older-than 30d --yes          # dann wirklich
+```
+
+Vor einem Massen-Abschluss `hermes sessions pinned` lesen und Angeheftete ausnehmen
+(`archive`/`prune` schützen sie ohnehin, solange kein `--include-pinned` steht).
+Reine Hüllen (0 Nachrichten) sind Kandidaten für `prune --never-active`. Eine
+Sitzung mit wiederaufnahmefähigem `end_reason` (`agent_close`, `ws_orphan_reap`,
+`startup_orphan_reap`, `superseded_by_resume`) ist verlassen, nicht erledigt —
+auch sie nur archivieren. Fremde Sitzungen (Claude/Codex) schließt Hermes nicht;
+sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
+
 ## Pitfalls
 
 - **`Wissen/Routinen.md` ist CRLF mit einzelnen LF-Zeilen.** Weder `write_file`
@@ -257,10 +313,44 @@ häufigste Fehler.
 - **Nichts löschen, was nach Stufe 0 aussieht** (Schlüssel, Dokumente, Bilder,
   unsortierter Posteingang). Löschkandidaten nach
   `Claude/Posteingang/_zu_loeschen/`, dort entscheidet Max.
+- **`archive` ist kein Löschen.** Es setzt nur `archived=1` (umkehrbar). `prune`
+  löscht endgültig und schützt Archivierte/Angeheftete standardmäßig — nur
+  `--include-*` nimmt sie mit. `prune` ohne Filter löscht standardmäßig 90 Tage:
+  immer `--dry-run` zuerst.
+- **`archive` und `prune` greifen nur auf BEENDETE Sitzungen.** Offene Sitzungen
+  (`ended_at IS NULL`) werden stillschweigend uebergangen; `prune` sagt es selbst:
+  "N open sessions also match these filters but will be skipped because prune
+  only deletes ended sessions". Ein "No sessions match" bei `--older-than 30d`
+  ist deshalb KEIN Beweis, dass nichts offen ist - offene Sitzungen koennen
+  wochenlang still liegen und bleiben trotzdem unberuehrt (gemessen 18.09.2026:
+  46 offene, still seit ueber 24 h, kein Filter greift). Solche Sitzungen sind
+  kein Aufraeum-Kandidat, sondern ein Speicherbefund; nur `hermes sessions
+  delete <id>` entfernt eine ausdruecklich, und das ist Loeschen, nicht
+  Archivieren. Was `archive` wirklich bewegt hat, beweist nur ein Vergleich der
+  Zaehler aus `scripts/offene_sitzungen.py` (offen/beendet/archiviert) davor und
+  danach.
+- **`hermes sessions list` kann nicht nach „offen“ filtern.** Für den Bestand
+  offener Sitzungen die DB direkt lesen (`scripts/offene_sitzungen.py`) oder
+  `browse`. Jedes Profil hat eine eigene `state.db` — ein Sweep nur der
+  Default-DB verpasst die Bot-Sitzungen.
+- **Angeheftete Sitzungen sind Keep-Flags.** Vor einem Massen-Abschluss
+  `hermes sessions pinned` lesen.
+- **Eine Sitzung mit wiederaufnahmefähigem `end_reason` ist nicht erledigt.**
+  `agent_close`/`ws_orphan_reap`/`startup_orphan_reap`/`superseded_by_resume`
+  holt die Wiederaufnahme zurück — nur archivieren, nie löschen.
 
 ## Verification
 
-Zwei Kommandos beweisen den Lauf — das erste die Anbindung, das zweite den Zeitplan:
+Drei Kommandos beweisen den Lauf — das erste den Sitzungsbestand, das zweite die
+Anbindung, das dritte den Zeitplan. Sitzungsbestand (muss die erwarteten offenen
+Sitzungen und Abschluss-Kandidaten zeigen):
+
+```bash
+python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/offene_sitzungen.py
+python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/beendete_sitzungen.py
+```
+
+Anbindung und Zeitplan:
 
 ```bash
 cd Agenten/Bus && python tests/test_ende_zu_ende.py     # muss enden mit: Ende-zu-Ende bestanden

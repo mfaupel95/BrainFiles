@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: deepseek/deepseek-v4.1-flash
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -1760,16 +1760,15 @@ providers:
       ollama-local/bge-m3: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
+  smart:
+    api: http://127.0.0.1:20128/v1
+    name: smart
+    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
+    models:
+      auto/smart:
+        context_length: 400000
+    default_model: auto/smart
 fallback_providers:
-  - provider: omniroute
-    model: auto/coding:free
-    base_url: http://localhost:20128/v1
-  - provider: llamacpp
-    model: Qwen3.8-27B-UD-Q4_K_M
-  - provider: anthropic
-    model: claude-sonnet-5
-  - provider: opencode-free
-    model: nemotron-3-ultra-free
   - provider: nous
     model: deepseek/deepseek-v4.1-flash
 toolsets:
@@ -1780,16 +1779,59 @@ runtime:
   nofile_soft_limit: 4096
 agent:
   api_max_retries: 3
-  service_tier: ''
+  service_tier: auto
   personalities: {}
-  reasoning_effort: high
+  reasoning_effort: medium
   verbose: false
 terminal:
   backend: local
-  cwd: C:\Users\faupe\documents\BrainFiles\Agenten\Hermes
+  cwd: C:\Users\faupe\documents\BrainFiles
   font_family: ''
   timeout: 180
   home_mode: auto
+  docker_forward_env:
+    - A2A_AGENT_NAME
+    - A2A_HOST
+    - A2A_PEER_TOKENS
+    - A2A_PORT
+    - AGENT_BROWSER_ENGINE
+    - ANTHROPIC_TOKEN
+    - BROWSER_INACTIVITY_TIMEOUT
+    - BROWSER_SESSION_TIMEOUT
+    - BROWSERBASE_ADVANCED_STEALTH
+    - BROWSERBASE_PROXIES
+    - GITHUB_TOKEN
+    - GOOGLE_API_KEY
+    - HANDEL_RISIKO
+    - HERMES_A2A_TOKEN
+    - HERMES_CUSTOM_127_0_0_1_20128_API_KEY
+    - HERMES_CUSTOM_LOCALHOST_20128_API_KEY
+    - HERMES_CUSTOM_OMNIROUTE_API_KEY
+    - HERMES_HOME
+    - HERMES_WRITE_SAFE_ROOT
+    - HF_TOKEN
+    - IMAGE_TOOLS_DEBUG
+    - MNEMOVERSE_API_KEY
+    - MOA_TOOLS_DEBUG
+    - OLLAMA_API_KEY
+    - OLLAMA_MODELS
+    - OPENAI_API_KEY
+    - OPENROUTER_API_KEY
+    - PHOTON_ALLOWED_USERS
+    - PHOTON_HOME_CHANNEL
+    - PHOTON_PROJECT_ID
+    - PHOTON_PROJECT_SECRET
+    - SMS_ALLOWED_USERS
+    - SMS_HOME_CHANNEL
+    - TELEGRAM_ALLOWED_USERS
+    - TELEGRAM_BOT_TOKEN
+    - TELEGRAM_HOME_CHANNEL
+    - TERMINAL_ENV
+    - TERMINAL_LIFETIME_SECONDS
+    - TERMINAL_MODAL_IMAGE
+    - TERMINAL_TIMEOUT
+    - VISION_TOOLS_DEBUG
+    - WEB_TOOLS_DEBUG
   container_cpu: 1
   container_memory: 5120
   container_disk: 51200
@@ -1811,11 +1853,11 @@ checkpoints:
 file_read_max_chars: 1000000
 tool_output:
   max_bytes: 500000
-  max_lines: 5000
-  max_line_length: 5000
+  max_lines: 10000
+  max_line_length: 10000
 tool_loop_guardrails:
   warnings_enabled: true
-  hard_stop_enabled: false
+  hard_stop_enabled: true
   warn_after:
     exact_failure: 2
     same_tool_failure: 3
@@ -1827,8 +1869,8 @@ tool_loop_guardrails:
 compression:
   enabled: true
   progress_notices: false
-  threshold: 0.75
-  target_ratio: 0.6
+  threshold: 0.6
+  target_ratio: 0.4
   protect_last_n: 6
   min_tail_user_messages: 1
   max_attempts: 3
@@ -1845,36 +1887,34 @@ prompt_caching:
 auxiliary:
   free_only: false
   vision:
-    provider: nous
-    model: deepseek/deepseek-v4.1-flash
-    reasoning_effort: medium
+    provider: auto
+    model: ''
   compression:
-    provider: custom
-    model: auto/coding:free
-    base_url: http://localhost:20128/v1
+    provider: auto
+    model: ''
   skills_hub:
-    provider: llamacpp
-    model: Qwen3.8-27B-UD-Q4_K_M
+    provider: auto
+    model: ''
   mcp:
-    provider: custom
-    model: auto/coding:free
+    provider: auto
+    model: ''
   curator:
-    provider: nous
-    model: deepseek/deepseek-v4-flash-0731
+    provider: auto
+    model: ''
 display:
   compact: false
   personality: creative
   busy_input_mode: queue
-  bell_on_complete: false
+  bell_on_complete: true
   show_reasoning: true
   background_process_notifications: concise
   streaming: false
   skin: default
-  language: en
+  language: ger
   interim_assistant_messages: true
   pet:
     enabled: false
-    slug: ''
+    slug: gf-sd
     scale: 0.33
   busy_ack_detail: true
   cleanup_progress: false
@@ -1885,7 +1925,7 @@ dashboard:
   theme: midnight
   font: ibm-plex-mono
 tts:
-  provider: openai
+  provider: gemini
   edge:
     voice: en-US-AriaNeural
 stt:
@@ -1897,18 +1937,18 @@ stt:
   openai:
     model: gpt-4o-mini-transcribe
     language: ''
-  provider: openai
+  provider: local
 voice:
-  auto_tts: true
   gpt_live:
     instructions: german
+  auto_tts: true
 context:
   engine: compressor
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 220000
-  user_char_limit: 137500
+  memory_char_limit: 750000
+  user_char_limit: 237500
   nudge_interval: 10
   provider: ''
 delegation:
@@ -1926,15 +1966,12 @@ moa:
         - provider: nous
           model: deepseek/deepseek-v4.1-flash
           enabled: true
-        - provider: omniroute
-          model: auto/best-coding
-          enabled: true
         - provider: nous
           model: openai/gpt-5.6-sol
-          enabled: true
+          enabled: false
         - provider: nous
           model: openai/gpt-6-astra
-          enabled: true
+          enabled: false
         - provider: llamacpp
           model: Qwen3.8-27B-UD-Q4_K_M
           enabled: true
@@ -1942,11 +1979,11 @@ moa:
           model: gemma-4-E4B-it-OBLITERATED-Q8_0
           enabled: true
         - provider: anthropic
-          model: claude-opus-5
-          enabled: true
+          model: claude-opus-4-8
+          enabled: false
       aggregator:
-        provider: llamacpp
-        model: Qwen3.8-27B-UD-Q4_K_M
+        provider: nous
+        model: deepseek/deepseek-v4-flash-0731
       degraded_reference_policy: loud
       fanout: user_turn
     Max:
@@ -2022,8 +2059,8 @@ moa:
       degraded_reference_policy: loud
       fanout: user_turn
   aggregator:
-    provider: llamacpp
-    model: Qwen3.8-27B-UD-Q4_K_M
+    provider: nous
+    model: deepseek/deepseek-v4-flash-0731
   degraded_reference_policy: loud
   enabled: true
   fanout: user_turn
@@ -2032,15 +2069,12 @@ moa:
     - provider: nous
       model: deepseek/deepseek-v4.1-flash
       enabled: true
-    - provider: omniroute
-      model: auto/best-coding
-      enabled: true
     - provider: nous
       model: openai/gpt-5.6-sol
-      enabled: true
+      enabled: false
     - provider: nous
       model: openai/gpt-6-astra
-      enabled: true
+      enabled: false
     - provider: llamacpp
       model: Qwen3.8-27B-UD-Q4_K_M
       enabled: true
@@ -2048,8 +2082,8 @@ moa:
       model: gemma-4-E4B-it-OBLITERATED-Q8_0
       enabled: true
     - provider: anthropic
-      model: claude-opus-5
-      enabled: true
+      model: claude-opus-4-8
+      enabled: false
 skills:
   creation_nudge_interval: 15
 curator:
@@ -2061,6 +2095,7 @@ approvals:
   mode: smart
   timeout: 300
   deny: []
+  destructive_slash_confirm: false
 command_allowlist:
   - delete in root path
   - execute_code
@@ -2075,6 +2110,7 @@ plugins:
     - drain
     - email-platform
     - everything-claude-code
+    - memory-wiki
     - meta-ai-image-gen
     - nous
     - okx-a2a
@@ -2086,15 +2122,10 @@ security:
 kanban:
   review_dispatch: true
 code_execution:
+  mode: project
   max_tool_calls: 50
   timeout: 300
-  mode: project
 gateway:
-  platforms:
-    a2a:
-      enabled: true
-      extra:
-        port: 9900
   multiplex_profiles: false
   profile_routes:
     - name: telegram-max
@@ -2102,6 +2133,11 @@ gateway:
       chat_id: '7648512088'
       profile: awesome-systematic-trading
       enabled: false
+  platforms:
+    a2a:
+      enabled: true
+      extra:
+        port: 9900
 streaming:
   enabled: false
 sessions:
@@ -2158,14 +2194,7 @@ a2a_agents:
     auth:
       type: bearer
       token: ${HERMES_A2A_TOKEN}
-custom_providers:
-  - base_url: http://127.0.0.1:20128/v1
-    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
-    model: auto/smart
-    models:
-      auto/smart:
-        context_length: 400000
-    name: smart
+custom_providers: []
 group_sessions_per_user: true
 image_gen:
   provider: nous
@@ -2184,6 +2213,7 @@ known_builtin_toolsets:
     - file
     - homeassistant
     - image_gen
+    - kanban
     - memory
     - session_search
     - skills
@@ -2313,11 +2343,15 @@ mcp_servers:
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - get_mcp_server_version
         - list_duo_sessions
+  airtable:
+    url: https://mcp.airtable.com/mcp
+    auth: oauth
+    enabled: false
 platform_toolsets:
   cli:
     - a2a

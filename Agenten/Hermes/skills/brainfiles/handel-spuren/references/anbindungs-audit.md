@@ -68,3 +68,17 @@ fehlt in `tagesbericht.py` plus der Eintrag im Tupel in `baue()`“. Dazu die
 Trennung, die Max immer mitliest: was absichtlich **nicht** angefasst wurde
 (laufender Zustand, Fremdarbeit, generierte Dateien) und was eine Entscheidung
 von ihm braucht.
+
+## Der Bus-Anbindungstest (test_anbindung_handel.py)
+
+- Die Pruefung ist zweistufig: eine **dynamische ast-Pruefung ueber
+  `dauerlauf.SPUREN`** (jede per subprocess gestartete Datei muss
+  „handel/<spur>“ wortwoertlich uebergeben) deckt NEUE Spuren automatisch ab -
+  kein Eintrag, kein Testumbau noetig. Daneben existiert eine **feste
+  7er-Legacy-Liste mit `len == 7`-Guard: NICHT erweitern** (der Guard bricht),
+  neue Spuren brauchen dort nichts.
+- Spuren, die ihr Buch ueber `Handel/spur_buch.py` fuehren, oeffnen den Bus im
+  Kern (`ereignis.lauf`) - die Pruefung zaehlt das als Kern-Bindung, wenn die
+  gestartete Datei ihren EIGENEN Namen uebergibt und spur_buch.py
+  `ereignis.lauf` traegt. Eine solche Spur ohne eigenen Bus-Aufruf ist trotzdem
+  angebunden; nicht als „ohne Anbindung“ melden, solange diese Bedingung gilt.

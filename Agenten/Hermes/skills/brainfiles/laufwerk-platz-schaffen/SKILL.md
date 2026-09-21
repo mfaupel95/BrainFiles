@@ -109,9 +109,17 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
 - **Kein Zwischenzustand stehen lassen.** Gelingt die Junction nicht, weil
   eine Anwendung den Ordner hält, bleibt eine leere Hülle liegen — und wer
   dort schreibt, füllt das alte Laufwerk wieder. Das gehört in den Bericht.
-- **Dubletten-Verdacht prüfen, nicht annehmen.** Ein Ordner namens `…DUPLIKAT`
-  ist ein Hinweis, kein Beweis; vor dem Löschen Inhalt gegen die eine Kopie
+- **Dubletten-Verdacht pruefen, nicht annehmen.** Ein Ordner namens `…DUPLIKAT`
+  ist ein Hinweis, kein Beweis; vor dem Loeschen Inhalt gegen die eine Kopie
   stellen, die bleiben soll.
+- **Vor einem Umzug in ein festes Ziel (Archiv) auf Kollision pruefen.**
+  `Test-Path <ziel>`; existiert das Ziel, ABBRECHEN statt ueberschreiben — der
+  Erhaltenswerte kann dort schon liegen, und zwar vollstaendiger (belegt:
+  eine 151-Dateien-Kopie fast ueber einen 229-Dateien-Bestand geschrieben;
+  der Kollisionsschutz hat es verhindert). Gleich davor die Praemisse pruefen,
+  dass die Quelle ueberhaupt die einzige Kopie ist: existiert der Erhaltenswerte
+  schon im Archiv oder in der Zweitkopie, ist der Umzug ueberfluessig — die
+  Quelle wird dann zu Redundanz, kein neuer Zielort noetig.
 - **Eine Junction innerhalb einer Sicherungsquelle zieht die Daten in die
   Sicherung.** robocopy folgt Verknüpfungen. Ein Junction irgendwo unter der
   Quelle (`Agenten/`, Vault) lässt den nächsten Sicherungslauf den Inhalt des

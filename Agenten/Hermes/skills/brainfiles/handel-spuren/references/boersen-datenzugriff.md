@@ -82,6 +82,73 @@ verwechseln.
   (`kraken._erste_reihe`). `last` = Zeitstempel der JUENGSTEN Kerze.
 - Schluessel: `KRAKEN_API_KEY`, `KRAKEN_API_SECRET` (private Calls);
   OHLC/Ticker/AssetPairs sind ohne Schluessel lesbar.
+- **Die Spot-Anbindung kann NUR kaufen/verkaufen: buy/sell, kein Short, kein
+  Hebel.** `markt_kauf`/`markt_verkauf`/`stop_setzen` decken Long ab; ein
+  Leerverkauf oder eine Position mit Hebel ist auf diesem Weg nicht machbar.
+  Short-mit-Hebel ist **Margin-Trading** (eigener Margin-Schluessel mit
+  Margin-Recht, freigegebenem Kontingent, `leverage`-Parameter, Margin-API,
+  Nachschusspflicht) - ein anderer Pfad, kein Feature der Spot-Anbindung.
+  Wer "Long UND Short" an einer Spur will, muss das als EIGENES Teilprojekt
+  mit eigener Freischaltung planen, nicht als Erweiterung des vorhandenen
+  Kraken-Spot-Wegs.
+
+### Kraken `EAPI:Invalid nonce` — ein Sequencing-Problem, kein Schluessel-Problem
+
+Kommen private Kraken-Calls mit `EAPI:Invalid nonce` zurueck, ist die
+**Signatur korrekt** (Key+Secret+`api_sign` kanonisch; der Fehler kommt als
+fachliche `error`-Liste, nicht als HTTP 401/403 — Kraken hat die Anfrage
+verarbeitet und nur den nonce abgelehnt). Nicht den Key verdaechtigen, sondern
+den nonce-Wert.
+
+**Diagnose (Reihenfolge, jeweils eigener Balance-Aufruf mit gesetztem nonce):**
+1. `public/Time` holen → Serverzeit s. Lokale Uhr dagegenhalten: eilt sie der
+   Serverzeit VORAUS (hier 2-3 s), liegt ein Wallclock-nonce in der Zukunft und
+   wird abgelehnt — Kraken akzeptiert nur ~Gegenwart bis ~1-2 s Zukunft
+   (Gegenprobe: +1 Tag sicher abgelehnt).
+2. Nicht-monoton sondieren: nonces **weit VOR** (s-600s) und **weit NACH**
+   (s+300s) der Serverzeit. Werden BEIDE abgelehnt, sitzt der bei Kraken
+   gespeicherte nonce-Peak auf/ueber der aktuellen Serverzeit — der gueltige
+   Korridor (Peak < nonce < Serverzeit+~2 s) ist LEER, und **kein nonce
+   funktioniert**, bis die echte Zeit den Peak ueberholt (Sekunden bis Minuten)
+   ODER der sendende Prozess neustartet.
+3. Wer treibt den Peak ueber die Serverzeit? Ein Prozess, der den nonce aus der
+   LOKALEN Uhr ableitet, waehrend die Uhr voreilt — sobald zwei Programme
+denselben `KRAKEN_API_KEY` nutzen (Haus-`kraken.py` UND der Kraken-MCP-Server,
+README warnt: „eigenen Schluessel je Programm"), sendet einer nonces in der
+Zukunft, Kraken merkt sie sich als neuen Peak, und der andere wird dauerhaft
+abgelehnt. Laufende Prozesse (MCP-Instanzen, Spur-Kinds) tragen die ALTE Logik
+im Speicher — ein Fix greift erst nach Neustart der Prozesstrees.
+
+**Fix-Kern:** ein geteilter, persistenter nonce-Pool (`kraken/nonce_pool.py`),
+den ALLE Programme mit demselben Key laden, als monoton steigende Datei mit
+Datei-Lock. Fuer die Sperre das **O_EXCL-Sperrdatei-Muster** verwenden —
+`msvcrt.locking` (8-Byte-Sperre) scheitert auf leerer/kuerzerer Datei mit
+Permission denied. Nur wenn alle Sender denselben Pool nutzen, ueberholt
+niemand mehr; die Laufzeitdatei ist strikt lokal (nie committen).
+
+**Zwei Fallen, die ein Pool NICHT loest — beide gemessen 2026-09-19:**
+1. **Drift-Korrektur (nonce = Serverzeit statt Wallclock) macht es SCHLIMMER**
+   und ist der falsche Weg. Sie senkt den nonce UNTER den von parallelen
+   Sendern gesetzten Kraken-Peak → dauerhaft `EAPI:Invalid nonce`. Die einzige
+   nachweislich funktionierende Erhebung war die monotone **Wallclock**
+   (`max(time.time()*1e6, letzter+1)` — die 5/5-Sonde). Nicht "korrigieren",
+   sondern den gemeinsamen Zaehler streng monoton halten.
+2. **Sitzt der Kraken-seitige nonce-Peak STUNDEN ueber der aktuellen Zeit,
+   hilft kein lokaler Pool.** Wenn monotone nonces in normalem Bereich ueber
+   mehrere Minuten ALLE abgelehnt werden (und auch ein Sweep ueber ±Stunden
+   um die Serverzeit nichts akzeptiert), ist der gespeicherte Peak nicht mehr
+   einzuholen — weder Wallclock noch Serverzeit erreicht ihn. Kein Code und
+   kein Neustart loest das; es braucht einen **neuen API-Key** (Kraken-Login
+   + 2FA liegt beim Benutzer) oder das Warten, bis die echte Zeit den Peak
+   einholt.
+
+**Nonce-Logik IMMER in dem Uhren-Kontext testen, in dem die Sender laufen.**
+Der Hermes-Terminal-Backend ist eine Docker-Sandbox, deren Uhr von der
+Windows-Host-Uhr abweichen kann (gemessen >10 s bis zur Serverzeit, waehrend
+der Host nur ~2-3 s voreilt). Ein nonce, der in der Sandbox "richtig"
+aussieht, ist im Host-Kontext falsch. Messung und Signatur gegen die
+**Kraken-Serverzeit** (`public/Time`) und die **Host-Uhr** ausfuehren, nicht
+gegen die Sandbox-Uhr.
 
 ## Credentials: Stufe-0-Weg (nie Werte durch die Konversation)
 
@@ -201,3 +268,22 @@ verwechseln.
    einmal und meldet, wie viele geantwortet haben — damit ist „die Quelle traegt“
    ein Befehl statt einer Behauptung, und die naechste Sitzung sieht sofort, ob
    eine Stufe weggefallen ist.
+
+## Kurs fuer Berichtszeilen: bare Symbole ⇄ instId
+
+Positions-Zustaende speichern bare Symbole (`AAVE`, `HYPE`), aber
+`okx.letzter_kurs()` will eine instId (`AAVE-USDT`) — ein direkter Aufruf mit
+nacktem Symbol liefert Fehler/None, und der Bericht zeigt „(kein Kurs)“-Zeilen
+mit rohen Floats.
+
+- **Den Lookup in der ANZEIGE-Schicht fixen, nicht die Spur.** Varianten-
+  Schleife probieren: Symbol, `Symbol-USDT`, `Symbol-USDC`, erster Treffer
+  gewinnt, sonst `None`. Die Spur-Instanz umzubauen wuerde die Ausstiege der
+  Bot-Spuren brechen: sie laufen ueber ihre eigene Quelle (CoinGecko) mit dem
+  bare Symbol als Schluessel und waeren danach still ohne Kurs.
+- **Strukturelle Luecken ehrlich als „(kein Kurs)“ stehen lassen und so
+  kommentieren:** DAI hat auf OKX kein Spot-Paar (51001), FIGR_HELOC stammt
+  aus der FTX-Zeit, ANT im Spiegel ist eine Feed-Datenluecke — keins davon ist
+  ein Anzeigefehler, der einen Workaround vertraegt.
+- **Test:** den Boersen-Lookup mocken und je Variantenstufe einzeln pruefen
+  (erstes Mock liefert, zweites wirft → Fallback greift), letzte Stufe `None`.

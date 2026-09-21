@@ -208,6 +208,19 @@ Drei Regeln, die jede Schleife hier einhalten muss:
   Gegenprobe.
 - **Nicht am Arbeitsbaum vorbeiarbeiten:** im Mehrsitzungsbetrieb nur die
   eigenen Pfade stagen (`git status` kann Fremdarbeit zeigen, die liegen bleibt).
+- **`script` im Cron nimmt KEINE Argumente.** `script: "x.py --nur okx"`
+  scheitert mit "Script file not found". Fuer einen gefilterten Aufruf einen
+  Wrapper anlegen, der `sys.argv` setzt und das Ziel per
+  `importlib.util.spec_from_file_location` laedt (Dateinamen mit Bindestrich
+  sind nicht importierbar).
+- **OKX-REST antwortet urllib mit 403, curl nicht.** Ohne `User-Agent`-Header
+  lehnt `api/v5/*` ab (gefundene Falle beim Bau des okx-trading-bericht).
+  Immer `urllib.request.Request(url, headers={"User-Agent": ...})` verwenden.
+- **onchainos-CLI (okx-dex-market) liefert read-only ohne Anmeldung:**
+  `memepump tokens --chain solana`, `leaderboard list --chain solana
+  --time-frame 3 --sort-by 4` und `market index` geben JSON mit `ok:true`
+  zurueck, ohne Schluessel. Damit ist ein no_agent-Bericht moeglich, der die
+  OKX-DEX-Daten ohne Zugangsdaten holt. Pfad: `C:\Users\faupe\.local\bin\onchainos.exe`.
 
 ## Nachweis
 

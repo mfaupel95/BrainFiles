@@ -85,7 +85,11 @@ Runde — zwei Arme gleichzeitig kosten den dreifachen Feed-Abruf je Zyklus und
 verwaessern das Bild. Messzeitraum bis 30 Ausstiege je Arm. Billige Naeherung
 fuer spaeter: `tiefster_kurs` je Position im Zustand mitschreiben (analog
 `hoechster_kurs`) — grob, weil die Reihenfolge von Hoch und Tief nicht
-rekonstruierbar ist.
+rekonstruierbar ist. Wird die Auswertung verfrueht angefragt („alle N
+Ausstiege auswerten", bevor die Schwele erreich ist): erst zaehlen, unter 30
+je Arm ehrlich „nicht entschieden" sagen (n=1-Token-Falle bedenken), dann
+Waechter-Cron bis zur Schwele — vollstaendiger Ablauf in
+`references/schattenbuch-auswertung.md`.
 
 ## Pitfalls
 - **In-Sample-Falle.** Alle Regeln stammen aus derselben Stichprobe; die

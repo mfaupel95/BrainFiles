@@ -33,9 +33,11 @@ Symptom: every `hermes` CLI call dies with `Fatal Python error: init_import_site
 
 Diagnosis in one line (run via the windows-mcp PowerShell tool, which has the poisoned env): `Write-Output $env:PYTHONHOME` — if set, that's it. Confirm the venv is healthy with `Remove-Item Env:PYTHONHOME; venv\Scripts\python.exe -c "import sys; print(sys.base_prefix)"` (must print the venv's own base, e.g. `.hermes-runtime\python\cpython-3.11...`).
 
-Fix: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` (and set `$env:HERMES_HOME`) at the top of every PowerShell one-liner that invokes `hermes.exe` through the windows-mcp/desktop-commander tools. Do NOT reinstall uv Python or touch the venv for this: a `hermes.exe` that fails only because of PYTHONHOME is not a
+Fix: `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` (and set `$env:HERMES_HOME`) at the top of every PowerShell one-liner that invokes `hermes.exe` through the windows-mcp/desktop-commander tools.
+
+**Root cause + durable fix (18.09.2026):** the poison is not the supervisor — it is the MCP server's OWN venv. `ant` builds every Python MCP-server venv on a uv-managed base (`AppData\Roaming\uv\python\cpython-3.13...`), and a uv venv's `python.exe` sets `PYTHONHOME` in its OWN process environment at startup. Any child the server spawns (PowerShell from windows-mcp, subprocesses from archiv/kraken/mail/tooluniverse/blender) inherits it. Verify: run the server venv's python and print `os.environ.get('PYTHONHOME')` — a uv venv prints the base, a python.org venv prints `None`. Durable fix: rebuild the server venv on a python.org interpreter (`C:\Users\faupe\AppData\Local\Programs\Python\Python313\python.exe -m venv .venv`), which does NOT set PYTHONHOME, then reinstall deps. `requires-python >=3.13` is satisfied by python.org 3.13. Pitfall: `pip install -e .` can silently skip deps when a dep is unsatisfiable (tooluniverse's `fitz>=0.0.1.dev2` has no PyPI release — only 0.0.0); the server only imports fitz in one lazy tool, so install `-e . --no-deps` + `pip install PyMuPDF` (provides the `fitz` module) + the rest of the dep list manually. The fix takes effect for NEW sessions (the current session's MCP servers were spawned with the old venv). Do NOT reinstall uv Python or touch the venv for this: a `hermes.exe` that fails only because of PYTHONHOME is not a
 repair case — clear the variable, then `hermes --version` and `hermes doctor`
-are the whole test. Also note the venv has no `hermes_agent` module — the importable package is `hermes_cli` (`import hermes_agent` fails by design; editable-install finder is `__editable___hermes_agent_0_21_1_finder`).
+are the whole test. Full rebuild recipe per server (dep tables, the `fitz` workaround, child-process verification): load `references/mcp-venv-rebuild.md`. Also note the venv has no `hermes_agent` module — the importable package is `hermes_cli` (`import hermes_agent` fails by design; editable-install finder is `__editable___hermes_agent_0_21_1_finder`).
 
 - `hermes update` pulls git, reinstalls deps into `venv`, migrates config
   format, pauses/restarts the gateway profile(s). It can require approval
@@ -60,32 +62,55 @@ session and 15 profiles go down for a minute”. `--check` only asks whether an
 update is available; `--yes` runs without prompts (config migration and
 stash-restore); `--keep-stash` parks local changes instead of restoring them.
 
-**3. The dependency half can be skipped while the code half succeeds — exit code 2.**
+**3. Exit code 2 = venv rebuild blocked by a holder — and the code half may not have run either.**
 Any process mapping the venv's own executable blocks the rebuild (typically the
-desktop app's backend: `venv\Scripts\python.exe -m hermes_cli.main --profile …`).
-The update then still pulls the code, refreshes the Windows gateway launcher
-scripts and restarts the gateway, but skips venv/dependencies to avoid leaving a
-broken install, printing
+desktop app's backend: `venv\Scripts\python.exe -m hermes_cli.main --profile …`;
+on Windows the requesting session itself maps the venv, so exit 2 with your own
+session still alive is the expected outcome, not a repair failure). The update
+pauses the gateway, refreshes the Windows gateway launcher scripts and restarts
+it, then exits 2 — the git pull can be skipped too. VERIFY the checkout before
+concluding anything: `git -C <checkout> log -1 --oneline` and
+`git rev-list --count HEAD..origin/main` after `git fetch origin`. It prints
 
 > Other Hermes processes are running from this install's venv: PID … ← Hermes backend (if the Desktop app is open, close it)
 > dependency update would fail partway and leave a broken install.
 > (or use `hermes update --force-venv` to proceed anyway at your own risk)
 
-So never read "update ran" as "update done". After every update: read the log
+read "update ran" "update done". FALLE (20.09.2026): after a blocked run `hermes --version` prints `upstream <sha>` with the FETCHED sha, not the checked-out one (printed 118984d7 while HEAD was still a51143fb). Only `git log -1 --oneline` in the checkout proves a pull happened. After every update: read log
 tail, check the exit code, and read `hermes --version`, which prints
 `upstream <sha> · local <sha> (+N carried commits)` — that line tells code-pulled-but-deps-
-skipped apart from a clean run. Do not use `--force-venv` to push past a holder;
-close the holder (the user does that, not you) and run the update again.
+skipped apart from a clean run. Ground truth is git, not the update counter:
+`hermes update --check`'s "N commits behind" counts from the installed version,
+not from local HEAD, and can be far larger than the real gap — measure with
+`git rev-list --count HEAD..origin/main` and judge urgency from
+`git diff --stat HEAD..origin/main -- pyproject.toml requirements*.txt uv.lock`;
+no dependency changes means the pending commits are safe to defer until Hermes
+is closed. Do not use `--force-venv` to push past a holder; do not manually
+`git pull` the live checkout (the sandbox refuses rewrites of the running
+install — close Hermes and let `hermes update` do the pull); close the holder
+(the user does that, not you) and run the update again.
+
+**3b. Aber auch ein LOSGELOESTER Lauf wird vom eigenen TUI blockiert (21.09.2026).** Der Halter-Scan ueberspringt "sich selbst und die eigene Ahnenschaft" (`_self_and_non_gateway_ancestor_pids`) — ein aus der Session gestarteter Scan meldet deshalb `processes: []`, obwohl die TUI-Backends (`venv\Scripts\python.exe -m tui_gateway.entry`) die venv halten. Ein per `Start-Process` DETACHTER Updater hat diese Kette nicht mehr (Elternprozess tot) und sieht sie als Halter -> Abbruch mit Exit 2 VOR dem git pull (der Guard steht in `update_cmd.py:_cmd_update_impl` vor `_prepare_git_command`), Gateway wird pausiert und wieder gestartet, Code bleibt alt. Beleg: `AFTER_HEAD` im Log == `BEFORE_HEAD`. `--force-venv` NICHT nehmen (bei tausenden Commits Rueckstand + npm-Bauten strandet die Installation). Richtiger Weg, ohne dass Max Kommandos tippt: eine EINMAL-Aufgabe (Task Scheduler, `Register-ScheduledTask` ohne Admin moeglich, `-MultipleInstances IgnoreNew`, `-ExecutionTimeLimit` 4 h), die alle 20 s `venv\Scripts\python.exe` mit einem Probe-Skript aufruft, das `_detect_venv_python_processes()` ohne `gateway run`-Zeilen zaehlt (Gateways pausiert das Update selbst), und bei 0 Haltern `update --yes --keep-stash` faehrt; bis 3 Anlaeufe, weil ein Cron-/Bot-Lauf (`hermes -p <profil> chat -q`) jederzeit als Halter dazwischenkommen kann. Danach Hermes einmal schliessen = die einzige Nutzeraktion; die Aufgabe ueberlebt das Sitzungsende, der Waechter-Task der Session NICHT.
 
 **4. Detach the run and log it.** The update restarts the gateway, which kills
 the very session that requested it — and an update process started from inside
 that session dies with it, mid-dependency-install. Write a small `.ps1` that
 clears `PYTHONHOME`/`PYTHONPATH`, sets `HERMES_HOME`, runs
-`<runtime-python> -m hermes_cli.main update --yes` from the checkout and pipes
-everything to a log file, then start it with
+`venv\Scripts\python.exe -m hermes_cli.main update --yes` from the checkout and
+pipes everything to a log file, then start it with
 `Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',<pfad> -WindowStyle Hidden -PassThru`.
 The invoking tool call gets interrupted; the log file is the evidence, and the
 next session reads it (`Log-Ende`, exit code, version before/after).
+
+`<runtime-python>` is the VENV python (`venv\Scripts\python.exe`) — the bare
+uv-managed base under `.hermes-runtime\python\cpython-3.11*` has NO
+site-packages and dies instantly with `ModuleNotFoundError: No module named
+'yaml'`. Use the venv python for the normal update path; the external
+interpreter route below is only for the SQLite self-lock case.
+
+PS 5.1 `Tee-Object` writes the log as UTF-16: every second byte is NUL, so
+`grep -c "Log-Ende"` on the log returns 0 even after the run finished. Read it
+with `tr -d '\0'` / `grep -a`, or write the log with `-Encoding UTF8`.
 
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 
@@ -150,6 +175,34 @@ Aufruf ohne `-p` installiert/startet dort ein Gateway. Zurueck mit
 Ausfaellen die Eltern-Kette ansehen (Launcher-VBS -> venv-python ->
 `.hermes-runtime`-python), nicht dem Substring glauben; die PIDs stehen in
 `gateway.pid`/`gateway_state.json`.
+
+**Exitus-75-Restart-Schleife: Startup schafft die Sekundaerprofile nicht.** Loggt der Waechter alle ~6-8 min „Gateway nicht gefunden - Neustart ausgeloest" und zeigt `gateway-exit-diag.log` nur wiederholte `gateway.start`-Eintraege OHNE `previous_unclean_exit`, ist es kein Crash, sondern: Event-Loop blockiert beim Startup → `shutdown_watchdog` „missed 3 consecutive liveness probes; dumping all thread stacks" → Exit 75 → Supervisor/Waechter startet neu. Beweis im Thread-Dump, der in `logs/gateway-stdio.log` NACH der CRITICAL-Zeile steht: der Frame „Current thread" IST der Watchdog selbst — den Event-Loop-Thread (in `asyncio`-Frames, Stack endet ueber `gateway run`) lesen. Block in `ntpath.realpath` / `importlib.get_data` / `sqlite_util.open_db` waehrend `_start_secondary_profiles` (`restore_undelivered_completions`) = Start-Recovery ist die Blockade. Ausloeser meist ein LANGSAMER/INKONSISTENTER Sekundaerprofil-Start (27 Profile x ~1 s je im guten Fall; im schlechten Fall Netzwerk-Timeout wie `[Telegram] ... ConnectTimeout` = Minuten je Profil). Gegenprobe im `gateway.log`: schafft ein Start alle Profile in ~60 s und der naechste haengt beim ersten Profil, ist es Netzwerk/Last, kein Code-Fehler — kein Update repariert das; es heilt, sobald das Netzwerk antwortet. Watchdog-Timeout/Profilzahl anfassen nur mit Max-Entscheidung.
+
+**Multiplex-Falle als Root Cause (19.09.2026, Commit 51ca333).** Wenn JEDES Bot-Profil
+in `profiles/<p>/config.yaml` einen kopierten `gateway:`-Block traegt
+(`a2a: enabled: true, extra: port: 9900`) UND die Haupt-config
+`gateway.multiplex_profiles: true` setzt, faehrt der zentrale Gateway beim Start ALLE
+Profile als Sekundaeradapter auf denselben Port 9900 hoch. Der Dump-Stack zeigt dann
+nicht `restore_undelivered_completions`, sondern `_load_secondary_profile_config` →
+`load_gateway_config` → `shared_loop_targets` → `plugin_entries` → `_resolve_all` →
+`_load_plugin_scoped` → `_load_directory_module` → `exec_module` (synchron in der
+Event-Loop) — ein Config-Fehler, KEIN Netz/Last-Fall. Erkennung: (a) `last_heartbeat_at`
+ist in JEDEM `previous_unclean_exit`-Eintrag DERSELBE Zeitstempel (der Stamp kam seit
+dem ersten Einfrieren nie mehr durch), waehrend `updated_at` weiterlaeuft; (b) die
+CPU-Zeit des haengenden Prozesses waechst (hunderte Sekunden in Minuten) = Hot-Spin,
+kein passiver Hang; (c) Kill-Kadenz ~16 min (nicht 6-8). Fix: `gateway.multiplex_profiles:
+false` in der Haupt-config und obsolete `profile_routes`-Eintraege deaktivieren
+(`enabled: false`) — die Bots laufen als Einzelauftraege (`hermes -p <name> chat -q`
+via SkillsBot `/bot`), nicht als Multiplex-Adapter. Config byte-genau aendern (CRLF!):
+`.bak-JJJJMMTT` anlegen, binaer lesen, `multiplex_profiles: true` → `false`,
+`git diff --stat` muss 2 Zeilen zeigen; das patch-Werkzeug ist fuer Hermes-config.yaml
+gesperrt (siehe hermes-config-ops), und in der gemischten Datei NUR die eigenen Zeilen
+committen (deterministischer Index-Bau, siehe arbeitsbaum-git-hygiene — die Datei
+kann fremde Update-Migrationszeilen enthalten). Beleg nach Neustart: `gateway_state.json`
+zeigt `running`, `updated_at` altert nie ueber ~60 s, keine neue CRITICAL-Zeile in
+`logs/gateway.log`, und der SkillsBot antwortet wieder (`Agenten/Bus/skillsbot.log`:
+Test-Nachricht vorher `status: fehler`, nachher `status: ok` — er haengt ueber den
+a2a-Port 9900 am Gateway).
 
 **Vorsorge: ein Gateway-Waechter.** Kleines Skript (Ablage `Agenten/Routinen/`),
 das alle 2 Minuten prueft, ob ein Prozess mit `hermes_cli.main gateway` in der
@@ -272,11 +325,23 @@ Root cause: Hermes's own MCP client runs under the **launcher's interpreter** (e
 
 Check it directly, not via server venvs: `python -c "import mcp"` under the interpreter that launches `hermes`. Fix: `python -m pip install mcp` into that runtime, then `hermes gateway restart` (twice — once after install, and MCP tools only load in processes started *after* the install). Already-running sessions won't hot-reload MCP tools; start a new one.
 
+## npm vulnerabilities: `doctor --fix` does not fix them
+
+`hermes doctor` reports e.g. "Browser tools (agent-browser) has 2 npm vulnerabilities" / "web workspace has 6 npm vulnerabilities"; `doctor --fix` leaves them untouched. They are a build-tool advisory (`hermes_cli/doctor_tools.py::_check_npm_audit` audits 4 targets: checkout root with `--workspaces=false` [labelled "agent-browser"], `--workspace web`, `--workspace ui-tui`, the WhatsApp-bridge dir — each reported only if its `node_modules` exists).
+
+Fix:
+1. Enumerate: `npm audit --json --workspaces=false` and `npm audit --json --workspace web` (parse `metadata.vulnerabilities` + per-package `fixAvailable`).
+2. `npm audit fix --workspaces=false` for the root.
+3. Direct dep pinned exactly (e.g. `"vitest": "4.1.10"`): `npm audit fix --workspace web` answers "outside the stated dependency range" — bump the version in the workspace's `package.json` with `patch`, then `npm install --workspace web` (repeat for `ui-tui`).
+4. Re-verify with the same `npm audit --json` — count 0 per target, then `hermes doctor` ends in "All checks passed" (expected benign leftovers besides it: orphan aliases).
+5. The changed files (`package-lock.json`, `web/package.json`, `ui-tui/package.json`) sit in the hermes-agent git checkout — leave them uncommitted unless asked.
+
 ## Windows scheduling and terminal quoting (pitfalls that cost a session)
 
 - **`schtasks` cannot set StartWhenAvailable — use `Register-ScheduledTask`.** `schtasks /create` has no flag for "Starten, sobald möglich". For that you need `Register-ScheduledTask` with `New-ScheduledTaskSettingsSet -StartWhenAvailable` (`$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable; Register-ScheduledTask -Settings $settings`). Every daily/weekly task that must survive Kernel-Power-41 reboots needs this.
 - **Driving PowerShell through the bash `terminal` tool expands `$` variables.** An inline `powershell.exe -Command "Get-ScheduledTask … | ForEach-Object { '{0} | {1}' -f $_.TaskName }"` is parsed by bash first — `$_.TaskName` and `$action`/`$trigger` vanish and the command fails with `ExpectedValueExpression`. Write PowerShell to a `.ps1` file via `write_file` and invoke it with `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/…/tmp_xyz.ps1"` instead. Same for `printf '…\venv\…'` which eats `\v` as vertical tab — use a heredoc or `write_file`.
 - **PS 5.1 behandelt stderr von `git`/`hermes` als Fehler: mit `ErrorActionPreference='Stop'` und `2>&1` bricht ein .ps1-Skript mitten im Lauf ab (NativeCommandError).** In Skripten `ErrorActionPreference='Continue'` setzen, bei `git clone` `--quiet` verwenden, und Erfolg nur am Exit-Code/Ergebnis pruefen.
+- **`hermes dashboard --stop` only sees CLI-started dashboards.** When the dashboard runs from its Scheduled Task (`Hermes_Dashboard` → wscript `Hermes_Dashboard.vbs`), `--stop` answers "No hermes dashboard processes running" although the PID pair exists. Kill by PID and restart with `Start-ScheduledTask -TaskName 'Hermes_Dashboard'`. The dashboard pair (venv python + `.hermes-runtime` python) is a venv holder — it appears in the update's holder list and must be closed before a rebuild can succeed.
 
 ## Iron-proxy configuration for egress
 

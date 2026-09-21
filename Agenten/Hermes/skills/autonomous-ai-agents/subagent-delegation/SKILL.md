@@ -133,6 +133,41 @@ Auftraege so schneiden, dass sie sich nicht beruehren: **getrennte Ordner,
 Crates oder Dateimengen.** Zwei Kinder im selben Baum serialisieren sich ueber
 gemeinsame `target/`- oder Lock-Dateien und kollidieren bei derselben Datei.
 
+**Der `tasks`-JSON-Parser ist waehlerisch beim Goal- UND Context-Text.**
+Ein Goal oder Context, der Shell-Sonderzeichen oder escaped Anfuehrungszeichen
+in eingebetteten Zitaten traegt (z. B. ein Aufruf mit `&&`, `2>&1`, `"$r"`
+als zitiertem Argument, oder `\"`-Sequenzen in einem langen Context), scheitert
+im Dispatcher mit `Expecting ',' delimiter`, obwohl das JSON valide ist. Ein
+Prosa-Text ohne solche Zeichen laeuft durch. Bevor ein Goal/Context mit
+Shell-Text oder verschachtelten Zitaten abgeschickt wird: den Befehl in den
+`context` legen und im Goal nur beschreiben ("das Skript X ausfuehren und
+verifizieren"), nicht zitieren — oder dem Kind erlauben, die Fachbegriffe aus
+dem Context zu nehmen. Scheitert der erste Versuch trotzdem, den Text
+vereinfachen (Zitate entfernen, Prosa statt Befehl) — nicht denselben Aufruf
+unveraendert wiederholen (naechste Regel).
+
+Zwei weitere Ausloeser desselben `Expecting ',' delimiter`-Fehlers, beide
+beobachtet: **Literal-Zeilenumbrueche in einem mehrzeiligen `context`** (ein
+String mit echten `\n`-Zeilen bricht den Parser, obwohl er als JSON valide
+ist) und ein **verschachteltes `output_schema`-Objekt im Task** (ein
+mehrstufiges Schema mit `properties`/`required` kippt den Parser, waehrend
+derselbe Task ohne Schema durchlaeuft). Beide sind nicht am Text zu erkennen —
+die robuste Vorlage ist: `context` und `goal` als EINZEILIGE Prosa-Strings
+ohne eingebettete Zeilenumbrueche und ohne `output_schema`; die erwartete
+Ausgabe stattdessen als Prosa-Satz im `goal` beschreiben ("Antworte mit:
+Dateien, Testzahl, Commit-Hash"). Ein minimaler Test-Dispatch (kurzer
+`context`, kein Schema) vor dem echten Auftrag trennt Tool-Fehler von
+Text-Fehler: laeuft der minimale durch, liegt es am Inhalt, nicht am Tool.
+
+
+**Fehlversuche gleichen Arguments kosten den Dispatch-Budget und enden im
+Hard-Limit.** Wiederholt man denselben `tasks`-Aufruf unveraendert (auch nach
+`Expecting ',' delimiter`), zaehlt JEDER Versuch gegen das
+Subagent-Limit pro Sitzung; nach 50 Versuchen blockiert der Dispatcher dauerhaft
+mit `already spawned 50 subagents`. Also: kein zweiter identischer Versuch —
+nach dem ersten Fehler den Goal vereinfachen oder die Ausfuehrung inline
+weiterfuehren (siehe "Wenn die Kette fehlt").
+
 ## Nach dem Dispatch
 
 - **Ein Blick in den Live-Transcript belegt, dass das Kind arbeitet** (nicht

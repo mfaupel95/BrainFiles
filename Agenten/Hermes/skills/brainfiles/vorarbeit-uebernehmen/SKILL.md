@@ -54,6 +54,22 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
 
 ## Pitfalls
 
+- **Ein PR-Body ist ein Schnappschuss, kein Git-Zustand.** Der Text „der Zweig ist
+  noch nicht fertig" kann stehen bleiben, obwohl der PR laengst gemergt ist und
+  alle Commits in master liegen. Stand immer aus Git lesen (`git merge-base
+  --is-ancestor <oid> master` je Commit, `git log --oneline <basis>..master --
+  <pfade>`), nie aus dem PR-Text.
+- **„Vorbestehender Fehler" ist eine Behauptung, bis git log sie belegt.** Bevor
+  ein Testfehler als gruenfremd/bekannt abgehakt wird: pruefen, wann der Test
+  eingefuehrt wurde und ob der Aenderungsbereich die Dateien unter dem Test je
+  angefasst hat (`git log --oneline <planstart>..master -- <dateien>` leer =
+  wirklich fremd; `git show <planstart>^:<pfad>` = existierte schon vorher).
+- **Ein Differenz-/Vortags-Test braucht Kontrolle, sonst behauptet er nichts.** Bei
+  „Bericht von Hand"-Pruefungen: den echten `stand/<datum>.json` nach /tmp sichern,
+  den Testvortag absichtlich veraendern (eine Position entfernen), damit eine
+  Differenzzeile garantiert ist, laufen lassen, danach den echten Stand zurueck.
+  Ohne Manipulation kann der zweite Lauf zeichengleich sein und der Test ist gruen,
+  ohne etwas geprueft zu haben.
 - **Verwaiste Worktrees nicht aufraeumen.** `locked` und `prunable` in `git
   worktree list` heissen nicht „loeschbar“: dort kann fremde, noch nicht
   gesicherte Arbeit liegen. Melden, nichts entfernen — im Ergebnis ausdruecklich
@@ -71,8 +87,32 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
   der Testlauf eine Fassung, die es nicht mehr gibt.
 - **Nicht pushen, ohne zu fragen.** Commits liegen auf dem lokalen Zweig; ein
   Push nach `origin` ist eine eigene Entscheidung des Nutzers.
+- **Ein „Sicherheits-Refactor" an geteilter Infrastruktur kann den Betrieb
+  brechen.** Bevor ein fremder Refactor an env-Weitergabe, Subprozess-Spawning
+  oder Config-Laden uebernommen wird: pruefen, welche Variablen die
+  Kindprozesse wirklich lesen (grep nach `os.environ.get`/`_variable` in den
+  Spuren) und ob die neue Fassung sie durchlaesst. Eine Env-Whitelist ist
+  fragil: jede neue benoetigte Variable bricht still, und ein „Security-Fix"
+  filtert oft genau die Schluessel heraus, die die Kinder brauchen. Die robuste
+  Form ist eine Blocklist (bekannte Secrets rausfiltern), nicht eine Whitelist
+  — sonst starten alle Spuren beim naechsten Neustart ohne Schluessel.
+- **Das Patch-Werkzeug wendet Tippfehler und Einrueckungs-Drift trotzdem an.**
+  Der Fuzzy-Abgleich findet den Anker auch bei falsch getipptem
+  old_string/new_string und ersetzt mit verschobener Einrueckung (gemessen:
+  4 -> 8 Spaces in JSON-Blöcken). Nach jedem Patch auf JSON/PS/MD den
+  Ersatzbereich per `git diff` ansehen, nicht nur den Lint glauben — ein
+  falsch eingerueckter String ist fuer den Parser gueltig und faellt erst
+  beim naechsten Lauf auf. Bei CRLF-Zielen (wachen.json, Routinen.md) den
+  Anker binaer lesen und die Ersetzung per Skript mit `newline=''` fahren,
+  nie per Patch-Werkzeug: es normalisiert die Zeilenenden und dreht die
+  Datei auf LF um. Nach jeder Massenaenderung `git diff --stat` pruefen:
+  eine gewollte Zeile muss 1 insertion/1 deletion zeigen, nie ein
+  Ganzdatei-Diff.
 
 ## Abgrenzung
 
 - Arbeitsbaum im Mehrsitzungsbetrieb committen: `sichern` (Claude-Import).
 - Dateien auf dem Host schreiben/ersetzen: `windows-host-zugriff`.
+- Superpowers-Plan-Arbeit von Claude Code uebernehmen (ENTWURF-*/PLAN-*.md,
+  Abschlusspruefung-Block, Checkboxen mit Beleg):
+  `references/superpowers-plan-abschluss.md`.

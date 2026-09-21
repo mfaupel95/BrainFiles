@@ -81,6 +81,13 @@ category: brainfiles
   eindeutigem Anker fahren, nicht ein zweites Patch versuchen.
   Nach jeder Massenaenderung `git diff --stat` ansehen: eine gewollte Zeile darf
   nicht als ganzes Dateidiff erscheinen.
+  Fuer `.ps1` gibt es statt Augenschein eine harte Gegenprobe nach jedem Patch:
+  `$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile($pfad,[ref]$null,[ref]$e); $e.Count`
+  muss `0` ergeben - ein falsch eingerueckter Ersatz kann fuer den Parser gueltig
+  sein und trotzdem die Verkettung zerstoeren. Umgekehrt gilt: eine nachweislich
+  LF-reine `.ps1` (binaer lesen) darf mit dem Patch-Werkzeug bearbeitet werden,
+  die Zeilenenden- und Einrueckungsfallen gelten fuer CRLF-Ziele. Erst messen,
+  dann das Werkzeug waehlen.
 - **Zugriff verweigert heisst hier: erhoehte PowerShell.** `Register-ScheduledTask`
   legt ohne Admin GAR keine Aufgabe an (`HRESULT 0x80070005`), auch keine harmlose
   ohne `-RunLevel Highest` - unabhaengig davon, ob der Benutzer lokal
@@ -99,7 +106,9 @@ category: brainfiles
 
 - **Jedes neue Skript in `Agenten/Routinen/` gilt als Routine.** Die Prüfung
   `tests/test_anbindung_routinen.py::geplante()` nimmt **jede** `*.ps1` in diesem
-  Ordner, ausgenommen nur `einmalig-*`, `*-hook.ps1` und `bus.ps1`. Ein
+  Ordner, ausgenommen `einmalig-*`, `*-hook.ps1`, `bus.ps1`, Dateien mit
+  `BUS: Bibliothek` und Registrierungsskripte (`Register-ScheduledTask` ohne
+  `Melde-Start`). Ein
   Registrierungsskript (eigene Aufgabe per `Register-ScheduledTask`, wie das
   Gegenstück zu `bus.ps1`) fällt damit unter den Routine-Begriff und färbt die
   ganze Kette rot: `test_ende_zu_ende.py` bricht in `test_alle_modultests_laufen`
@@ -107,6 +116,14 @@ category: brainfiles
   anbinden, sondern die Ausnahme generisch fassen — Dateien mit
   `Register-ScheduledTask` überspringen, statt Namen aufzuzählen; sonst reißt das
   nächste Registrierungsskript die Suite erneut ein.
+- **Eine einmalige Aktion ist keine Routine und heisst deshalb `einmalig-`.**
+  Ein Skript, das genau einmal laeuft (Admin-Handgriff, Umstellung, Aufraeumen),
+  bekommt **keine** Bus-Anbindung: es meldet nie wieder, die Zeilen waeren eine
+  Attrappe. Richtig ist der Name in der Hauskonvention
+  `einmalig-JJJJMMTT-<thema>.ps1` — die Pruefung ueberspringt genau diesen
+  Praefix, und `git mv` haelt den Verlauf. Umgekehrt gilt: ein Einmal-Skript ohne
+  diesen Praefix faerbt die Suite rot, obwohl es mit ihm seine Richtigkeit hat;
+  dann wird umbenannt, nicht angebunden.
 - **Die dritte Sorte ist die Bibliothek.** Ein Skript, das andere Routinen per
   dot-source einbinden (`safe-file-ops.ps1` in `posteingang.ps1` und
   `datensortierung.ps1`, mit eigenem `$MyInvocation`-Einsprung), bekommt **keine**
@@ -133,6 +150,18 @@ category: brainfiles
   Registrierungsbefehl daneben. Ein Dokument, das eine Aufgabe als geplant
   fuehrt, die es nicht gibt, ist derselbe Fehler eine Ebene hoeher; der Wrapper
   darf dafuer schon bewiesen sein.
+- **Umgekehrt: der Autostart kann trotzdem stehen — ueber den Startup-Ordner.**
+  Scheitert das Anlegen der Aufgabe an der fehlenden Erhoehung, wird der Dienst
+  still durch eine Verknuepfung im Benutzer-Startup gestartet (der Weg ohne
+  Admin). Vor jedem Befund „Autostart fehlt" ODER „Autostart ist da" deshalb
+  BEIDE Orte fragen: `Get-ScheduledTask -TaskName <aufgabe>` (Fehler = gibt es
+  nicht) und den Ordner
+  `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`. Ruft die
+  Verknuepfung den Wrapper auf, ist dessen Bus-Anbindung sehr wohl scharf — ein
+  Wrapper ohne Aufgabe ist kein toter Code, und ein Dokument, das nur den einen
+  der beiden Wege kennt, fuehrt in die Irre. Die Kopie im Startup-Ordner ist
+  maschinengebunden und traegt einen absoluten Pfad: die Fassung im Repo gehoert
+  in die `.gitignore`-Freigabe und muss nach einem Umzug neu geschrieben werden.
 - **Logik unangetastet lassen.** Beim Anbinden einer bestehenden Routine keine
   Bedingungen, Reihenfolgen, Exit-Codes oder Ausgaben ändern; ein Fremdskript
   (`.ps1`) nie per Python-Rewrite bearbeiten, das stellt CRLF auf LF um.
@@ -220,8 +249,26 @@ sie eine zweite Instanz oder der Wrapper stirbt vor seiner Schlusszeile:
   Benutzers (`Interactive`, `RunLevel Limited`) genuegte eine **nicht** erhöhte
   Sitzung: `Register-ScheduledTask` lief durch, `Get-ScheduledTaskInfo` meldete
   danach `rc=0`. Die Warnung „ADMINISTRATOR NOETIG" in `handelszentrale-aufgabe.ps1`
-  gilt fuer deren Anmelde-Sonderfall, nicht generell — erst versuchen, dann Max um
-  den einen erhöhten Befehl bitten.
+  Der Unterschied liegt am AUSLOESER, nicht am Benutzer: eine
+  Anmelde-Aufgabe (`-AtLogOn`, Principal `Interactive`) verlangt Erhoehung - eine
+  nicht erhoehte Registrierung endet mit „Zugriff verweigert", und die Aufgabe
+  existiert danach schlicht nicht, waehrend Wrapper und Startverknuepfung daneben
+  unbeanstandet weiterlaufen (der Dienst startet also, nur ohne Task). Fuer eine
+  Anmelde-Aufgabe darum gleich erhoeht registrieren und den einen UAC-Klick
+  ankuendigen; fuer eine zeitgesteuerte Wochenaufgabe zuerst ohne Admin versuchen.
+  **Erhoeht registrieren und VORHER/NACHHER belegen:** ein duenner Aufrufer
+  (`Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru
+  -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',<aufgabe.ps1>`)
+  schreibt in ein eigenes Protokoll: Aufgabe vorher (State oder „NICHT VORHANDEN"),
+  Exitcode der erhoehten Sitzung, danach `Get-ScheduledTask` mit State, Aktion,
+  Ausloeser-Delay, `MultipleInstances`, `StartWhenAvailable`, `ExecutionTimeLimit`
+  und Principal. Ohne diese Zeilen ist ein abgelehnter UAC-Klick von einem
+  fehlgeschlagenen Registrierungsversuch nicht zu unterscheiden.
+  **Und die Kopfzeile des Registrierungsskripts danach korrigieren.** „Kein
+  Administrator noetig" war genau der Satz, der eine fehlgeschlagene Registrierung
+  ueberlebt hat: er stand im Skriptkopf, in der To-do-Notiz des Repos und in
+  diesem Skill. Wer den Fehlschlag findet, schreibt die falsche Zusage an allen
+  drei Stellen um - sonst laeuft die naechste Sitzung in dieselbe Wand.
 - **Das Protokoll ist die spätere Abnahmeprüfung.** Erste Zeile
   `=== Lauf <Zeitstempel> ===`, letzte Zeile beginnt mit `ENDE`. Nur damit lässt
   sich hinterher unterscheiden, ob ein Lauf fertig wurde oder abgeschnitten ist —
@@ -284,6 +331,17 @@ harmlos, `pid_sperren` ersetzt sie.
 Beim ersten Start nach Stillstand holt `sprecher.nachholen()` das Journal des
 Tages nach - bis zum Deckel (`deckel_je_stunde`, 20). Ein Schwall alter
 Meldungen direkt nach dem Start ist also kein neuer Fehler.
+
+**Probelauf: echt fahren, ohne das Handy zu wecken.** `auffaellig.bewerte`
+schickt nur `hinweis`-Ereignisse und ein `ende` mit `code != 0` (oder
+auffaelliger Dauer) hinaus; `start` und ein sauberes `ende` bleiben im Journal.
+Ein Lauf mit Exit 0 und leerem Fehlerpfad ist also still und trotzdem der beste
+Beweis fuer eine Anbindung. Wer auch den Journaleintrag nicht will, nutzt die
+Testhaken aus `Ereignis.ps1`:
+`BUS_PORT=9999 BUS_JOURNAL=$LOCALAPPDATA/Temp/bus-probe powershell.exe -NoProfile -File <routine>.ps1`
+schreibt beide Ereignisse in eine Wegwerfdatei statt an den Bus (im
+bash-Terminal so gesetzt, in PowerShell `$env:BUS_PORT='9999'`). Danach die zwei
+Zeilen lesen (`wer`/`was`/`code`) und den Probeordner loeschen.
 
 ## Einen Befehl im SkillsBot ergaenzen
 

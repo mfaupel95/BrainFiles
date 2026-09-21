@@ -70,19 +70,27 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 
 ## Gelerntes
 
-- 18.09.2026 angelegt: die 27 Repo-Bots hatten wortgleiche SOUL.md (3030 Zeichen,
-  MD5 D5EC74ACD025B18710647B2651F4A085). Umstellung auf EINE hoeher liegende Stilquelle
-  (diese Datei) + individuelle, repo-bezogene SOUL.md je Bot. Alte Fassung gesichert
-  unter `profiles\.sicherung\SOUL-generisch-20260918.md`, Historie in Git.
+- 18.09.2026 angelegt: 27 wortgleiche SOUL.md ersetzt durch EINE hoehere Stilquelle
+  (diese Datei) + individuelle SOUL.md je Bot. Alte Fassung: `profiles\.sicherung\`.
 - Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (die
-  allgemeine Sperre `Agenten/Hermes/**` gewinnt sonst). Pruefen: `git check-ignore -v`.- 18.09.2026 Anzahl: 27 Repo-Bots, nicht 26. Ohne `nous` (kein Repo) und ohne
+  allgemeine Sperre `Agenten/Hermes/**` gewinnt sonst). Pruefen: `git check-ignore -v`.
+- 18.09.2026 Anzahl: 27 Repo-Bots. Ohne `nous` (kein Repo) und ohne
   `awesome-systematic-trading` (eigene Regeldatei `rule_maXtrade.md`).
-- 18.09.2026 Werkzeugfalle beim Massenschreiben: das MCP-PowerShell-Werkzeug verschluckt
-  bei MEHREREN Here-Strings in EINEM Befehl still den Inhalt - die Datei landet mit
-  0 Byte, ohne Fehlermeldung. Eine Datei je Aufruf schreiben (oder das FileSystem-
-  Werkzeug mit mode=write) und danach Groesse UND Identitaetszeile pruefen.
-- 18.09.2026 `Get-FileHash` fehlt in dieser PowerShell (5.1). Es liefert still nichts,
-  und eine Pruefung darauf meldet dann "alle Dateien gleich" - ein falscher Befund.
-  Stattdessen `[System.Security.Cryptography.MD5]::Create()` auf die Bytes.
-- 18.09.2026 Beleg, dass die Kette wirkt: frische Sitzung eines Bots fragen
-  "Welche Regeldatei liest du zuerst?" - die Antwort kommt allein aus `SOUL.md`.
+- 18.09.2026 MCP-PowerShell verschluckt bei MEHREREN Here-Strings in EINEM Befehl still
+  den Inhalt (0-Byte-Datei, keine Fehlermeldung). Eine Datei je Aufruf, Groesse pruefen.
+- 18.09.2026 `Get-FileHash` fehlt (PowerShell 5.1) und liefert stumm nichts - eine
+  Pruefung darauf meldet faelschlich "alle gleich". MD5 ueber .NET auf die Bytes.
+- 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle werden
+  abgewiesen, `write_file` laeuft in den 420-s-Timeout statt zu melden. Auch der INHALT
+  zaehlt - Loesch-Kommandos als Literal blockieren; Risikomuster aus Teilen bauen.
+- 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction, ausserhalb
+  HERMES_WRITE_SAFE_ROOT). Arbeitsergebnisse unter `C:\...\BrainFiles` ablegen.
+- 20.09.2026 Tool-Ausgabe ist LOSSY: Gleichheitszeichen, Pfeile, doppelte Leerzeichen
+  fallen weg. Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen oder
+  inspect.signature lesen, sonst diagnostiziert man Fehler, die gar nicht dastehen.
+- 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
+  Testreihen gruen sind. Die Naht ist das Vokabular: eine Uebersetzungstabelle braucht
+  einen Test PRO WORT der Gegenseite (hier fehlten drei - ein Sicherheitsabbruch waere
+  wiederholt statt gesperrt worden). Ein Probe-Modus darf keine Marke fortschreiben.
+
+Verdichtet 2026-09-20: 5922 -> 5907 Zeichen

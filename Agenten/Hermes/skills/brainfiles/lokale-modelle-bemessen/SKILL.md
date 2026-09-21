@@ -75,6 +75,13 @@ Modellnamen führen, ohne dass es auffällt.
 - **Der Import eines vorhandenen GGUF als Ollama-Modell ist billig** (Kopie im
   Store, kein Download) und der schnellste Weg zu einer belastbaren Messung.
   Aufräumen danach mit `ollama rm <name>`.
+- **MoE: ALLE Gewichte muessen resident sein, nicht nur die aktiven.** Bei
+  einem MoE (z.B. GLM-5.3-Flash: 320B gesamt / 18B aktiv je Token) muessen
+  saemtliche Experten-Gewichte in RAM/VRAM liegen, obwohl nur ein Bruchteil je
+  Token rechnet — die „18B aktiv“-Angabe ist KEIN Speicherbedarf. Vor dem
+  Bemessen die GESAMT-Parameterzahl pruefen; „flash“ im Namen heisst nicht
+  klein. Und der Engpass ist RAM + VRAM, nie das Disk-Budget: eine 200-GB-SSD
+  entscheidet nicht, ob ein 320B-Modell laeuft — 63 GB RAM tun das.
 - **`localhost` und `127.0.0.1` sind auf diesem Rechner NICHT dieselbe
   Ollama-Instanz.** `localhost` löst auf `::1` (IPv6) auf, wo eine ZWEITE,
   modell-lose Instanz lauschen kann — ein Aufruf gegen

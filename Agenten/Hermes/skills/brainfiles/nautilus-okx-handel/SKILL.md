@@ -32,17 +32,35 @@ Zwei-Ebenen-Architektur, candle-0.11-API, BacktestEngine in Rust):
 - Paper-Client-Order-IDs müssen **alphanumerisch** sein.
 - `nautilus_trader` ist nicht global installiert — der Node läuft aus einem
   eigenen `.venv` (nicht das Handel-venv der scanner/xperp-Spuren).
+- **OpenBLAS bricht beim Import ab** („Memory allocation still failed after
+  10 retries“), wenn Threads knapp sind oder viele Prozesse parallel laufen:
+  vor dem Start `OPENBLAS_NUM_THREADS=1` und `OMP_NUM_THREADS=1` setzen —
+  die Thread-Allokation begrenzen, nicht den RAM (RAM war frei).
 
 ## Fallen (OKX-API)
 - `50110` — öffentliche IP fehlt in der API-Key-Whitelist. Im Portal eintragen
   oder Whitelist deaktivieren.
-- **Echtes HTTP 401 (nicht 50110) = Key-Problem, nicht Whitelist**
-  (19.09.2026): 401 auf `my.okx.com` UND `www.okx.com` mit HKCU-Keys heisst
-  deaktiviert/geloescht oder Passphrase geaendert. Kein Code-Fix moeglich -
-  Key im OKX-Portal pruefen. demo_order_test.py stoppt davor sauber im
-  Preflight (require_clean/require_trade), keine Order wird gesendet.
+- **HTTP 401: IMMER den Body lesen** (19.09.2026) — OKX verpackt Business-
+  Fehler als HTTP 401, der Code im Body discriminiert: `50101` = Key passt
+  nicht zum Environment (EEA-LIVE-Key mit Demo-Header), `50119` = Key
+  existiert auf dieser Region nicht (Global-Aufruf mit EEA-Key). Gemessen:
+  EEA-LIVE-Key -> my.okx.com OHNE x-simulated-trading = 200, MIT
+  Demo-Header = 50101, www.okx.com = 50119. Ein Demo-Header-Aufruf auf
+  einen LIVE-Key ist nie der Weg zu einem Demo-Test — demo_order_test.py
+  verlangt einen echten DEMO-Key (OKX-Portal, Bereich Demo Trading) und
+  stoppt sonst sauber im Preflight, keine Order wird gesendet.
 - `50101` — „APIKey does not match current environment“: Key gegen falsches
   environment verwendet (Demo-Key auf Live-Endpunkt).
+- `50124` — „This API Key does not have trading permission for the market“:
+  der Key hat `trade` im Account-Config, aber nicht fuer DERIVATIVES (SWAP ist
+  Derivatives). Im Portal beim API-Key die Trade-Permission zusaetzlich fuer
+  Contracts/Derivatives setzen — ein Haekchen bei Spot allein reicht nicht.
+  Kommt VOR der Margin-Pruefung, also auch bei leerem Konto.
+- **Balance pruefen, bevor eine Order erwartet wird:** `/api/v5/account/balance`
+  zeigt, welche Waehrungen das Konto hat. Ein Demo-Konto kann Dollar-basierte
+  Waehrungen (USD/USDG/USDC) haben, aber KEIN USDT — dann scheitert eine
+  BTC-USDT-SWAP-Order an der Margin, selbst wenn die Permission stimmt.
+  `avail None`/`eq None` = Waehrung fehlt, nicht "Konto leer".
 - `403 code 1010` ohne `User-Agent`-Header; mit `Mozilla/5.0` kommt die echte
   Antwort (z. B. 50110) statt eines Geoblock-Fehlschlusses.
 - Fehlende Quotes („node.run() – verbinde …“ und danach nichts) haben zwei
@@ -53,6 +71,24 @@ Zwei-Ebenen-Architektur, candle-0.11-API, BacktestEngine in Rust):
   auf ihn und keine Strategie startet, kein Abo. Belegbar sauberer Pfad:
   Data-Client ohne Credentials, Order-Client opt-in, `test_gui_quote_pfad.py`
   mit ankommenden Quote-Ticks.
+
+## Kraken-Adapter (Spot) — fuer die Migration von OKX-SWAP
+
+Der installierte Nautilus-1.231-Kraken-Adapter (geprueft 19.09.2026) ist der
+Weg, die nautilus-Spur von OKX-Derivat auf Kraken-Spot (BTC/EUR, gebuehrfrei
+bis 10k EUR Monatsvolumen) umzustellen. Verifizierte API-Fakten:
+- Venue-Konstante `KRAKEN` (`KRAKEN_VENUE = Venue("KRAKEN")`), Client-ID
+  `KRAKEN_CLIENT_ID`; Factories `KrakenLiveDataClientFactory` /
+  `KrakenLiveExecClientFactory`; Configs `KrakenDataClientConfig` /
+  `KrakenExecClientConfig`.
+- `KrakenEnvironment` hat nur `LIVE` und `DEMO` — **Demo ist nur fuer
+  FUTURES verfuegbar, Spot hat kein Demo**. Ein Spot-Quote-Feed laeuft also
+  gegen LIVE (oeffentliche Quotes brauchen keinen Key).
+- `KrakenProductType` hat `SPOT` und `FUTURES`; Default ist `(SPOT,)`.
+- Env-Variablen: `KRAKEN_SPOT_API_KEY` / `KRAKEN_SPOT_API_SECRET` (Spot),
+  `KRAKEN_FUTURES_*` (Futures).
+- Spot ist CASH (kein Hebel): die auf SWAP gebaute Spur (max_hebel 5) wird
+  auf Spot zu einem 1x-Kauf — andere Mechanik, kein Derivat.
 
 ## Dauerlauf-Spur (seit 13.09.2026)
 - `nautilus/handeln.py` ist der Zyklus-Einstieg fuer den Dauerlauf
@@ -98,6 +134,24 @@ Zwei-Ebenen-Architektur, candle-0.11-API, BacktestEngine in Rust):
   (SystemExit) — seit 19.09.2026 nur noch bei `mit_order_client=True`.
   Der Quoten-Modus ist damit ohne Keys lauffaehig (Doku versprach es, der
   Code hielt es nicht).
+
+## DEMO-Order-Smoke-Test (`demo_order_test.py`)
+- **Der Test ist der EINZIGE Pfad fuer eine echte DEMO-Order** (nie LIVE):
+  Default ist read-only Preflight, `--execute` erlaubt genau EINE DEMO-Runde
+  (Market-Buy, Stop-Protection, Reduce-Only-Close), Evidenz als append-only
+  JSONL in `logs/demo-orders-*.jsonl` ohne Credentials/Balances.
+- **`load_client_configs` braucht `mit_order_client=True`** (2 Stellen: `get()`
+  und der Node-Aufbau) — ohne Exec-Client ist `execution` leer und `guard()`
+  wirft `KeyError 'OKX'`. Der reine Quoten-Modus (Default False) hat keinen
+  Exec-Client und kann keine Orders senden.
+- **Preflight stoppt sicher vor jeder Order:** `require_clean` (keine
+  Bestand/Orders/Algos) und `require_trade` (Key-Permission) laufen VOR dem
+  Senden. Ein Auth-Fehler (HTTP 401) bricht im Preflight ab, es wird nichts
+  gesendet — der Test ist damit ein sicheres Diagnosewerkzeug fuer die Keys.
+- **Keys pruefen ohne Portal:** 401 auf `my.okx.com` UND `www.okx.com` heisst
+  Key deaktiviert/geloescht oder Passphrase geaendert (siehe Fallen oben);
+  die aktuelle oeffentliche IP (`Invoke-RestMethod api.ipify.org`) im
+  OKX-Portal freigeben, wenn die Whitelist aktiv ist.
 
 ## Docker-Log-Auswertung in PowerShell (systempruefung.ps1 Block 14)
 - **EAP lokal auf Continue** fuer den docker-Aufruf: mit

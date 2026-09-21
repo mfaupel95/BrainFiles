@@ -116,6 +116,56 @@ ziel(daten, w)   -> Preis | None                # optional: Ziel als MARKTPUNKT
   (Ollama, Router), schreibt diese Grenze ausdruecklich in die README: das Buch
   haengt dann am Modell und ist nicht mehr nachrechenbar.
 
+## Eine Datenfunktion fuer mehrere Spuren erweitern, statt sie zu forken
+
+Teilen zwei Bot-Spuren denselben Datenabruf (`moondev_daten.maerkte()` fuer
+24h- UND 1h-Momentum-Varianten), bekommt die bestehende Funktion ein neues
+Parameter mit unveraendertem Vorgabewert (`prozentfelder="24h,7d"`) statt
+einer zweiten Kopie. Sonst driften zwei Kopien derselben API-Anfrage
+auseinander, sobald eine spaeter einen Fix bekommt und die andere nicht.
+
+## CoinGecko `/coins/markets` teilt sich den Rate-Limit ueber alle Spuren
+
+Mehrere Bot-Spuren, die `moondev_daten.maerkte()` rufen (topmovers,
+marktlage, listingarb, jede neue Momentum-Variante), teilen sich denselben
+oeffentlichen CoinGecko-Deckel. Wird beim Bauen/Testen einer neuen Spur
+kurz hintereinander mehrfach `--vorschau`/`--papier` gegen mehrere dieser
+Spuren gefahren, kommt `HTTP Error 429: Too Many Requests` - das ist kein
+Bug der neuen Spur, sondern der geteilte Deckel. `quelle()` faengt das
+bereits ab ("Keine Daten - Zyklus ohne Buchung beendet", kein Absturz,
+keine gebuchte Position). Beim Nachweis-Lauf 20-60 s zwischen Testaufrufen
+gegen verschiedene CoinGecko-Spuren lassen, statt den 429 als Fehler zu
+behandeln oder einen zweiten Versuch sofort hinterherzuschicken.
+
+## Fallen bei Mini-Preisen und Rate-Limits (moondev_sniper, 19.09.2026)
+
+- **`%.6f` im Journal kollabiert Mini-Preise.** Bei Kursen ~1e-6 (frische
+  Solana-Launches) runden Einstieg und Stop auf denselben String
+  (`0.000003` == `0.000003`) - die Auswertung liest G/V = 0, obwohl die
+  Position im Zustand float-Praezision hat. Der gemeinsame Kern hat dafuer
+  `spur_buch.pformat()`: grosse Kurse bleiben 6 Stellen (bestehende Spuren
+  unveraendert), kleine bekommen 8 bzw. 12. Wer eine Spur mit Mini-Preisen
+  baut, nutzt `pformat` fuer preis/stop/ziel im Journal - nie `%.6f`.
+- **Eine oeffentliche API mit hartem Rate-Limit (HTTP 429) liefert nichts,
+  wenn man fuer ALLE Kandidaten einen Preis holt.** swap-api.pump.fun deckelt
+  nach wenigen Abrufen; 40 Preis-Abrufe je Zyklus reissen den Deckel und die
+  Spur bucht still nichts. Einstiege koennen ohnehin nur die
+  `max_offene_positionen` juengsten sein (das Buch ist danach voll) - genau
+  fuer die den Preis holen, plus fuer die gehaltenen Positionen (deren
+  Stop/Ziel weiter laufen muss, auch wenn der Mint die Neuesten-Liste
+  verlassen hat). 429 mit einem Retry+Pause behandeln statt still None.
+- **Slippage ist bei duenner Liquiditaet real, kein Bug.** Der Preis kommt vom
+  letzten Swap-Trade; zwischen zwei Zyklen rutscht der Kurs durch den Stop,
+  und der 8-%-Stop wird mit deutlich groesserem Verlust ausgefuehrt (gemessen
+  -37.59 USD bei 62.50 Nominal). Das gehoert ehrlich in die README und die
+  Handelsregeln-Notiz - nicht als Fehler, sondern als Abbildung der
+  Memecoin-Realitaet.
+- **Ein Test-Token braucht BEIDE Felder, wenn quelle() und signal()
+  verschiedene ableiten.** quelle() rechnet das Alter selbst aus
+  `created_timestamp`, signal() liest das vorberechnete `alter_minuten`.
+  Fehlt eines, ist der Test gruen, aber der echte Lauf bucht nie (signal()
+  gibt None, weil das Feld fehlt). Das Test-Token stellt beide bereit.
+
 ## Was nach dem Anschliessen zu tun bleibt
 
 Nicht alle Agenten eines Repos werden Spuren (fehlender Daten- oder

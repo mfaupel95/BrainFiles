@@ -62,7 +62,6 @@
   "freigabe": {
     "erfuellt": false,
     "papierlauf_min_wochen": 6,
-    "papierlauf_min_runden": 50,
     "netto_positiv_nach_gebuehren_und_funding": false,
     "groesster_ruecklauf_papierlauf_usd": null,
     "geprueft_am": null
