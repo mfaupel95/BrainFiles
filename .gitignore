@@ -454,6 +454,15 @@ Agenten/Hermes/skills/.curator_state
 # sie gehoeren keinem Commit. Ohne diese Zeile kamen sie ueber die
 # Freigabe oben herein.
 Agenten/Hermes/skills/.locks/
+# Weggelegte Skills (skills-entdoppeln.py, 21.09.2026): NICHT versioniert.
+# Abweichung von der Regel oben (Zeile 426, '70 Skills, 3,4 MB'): der
+# neue Archivstapel ist 281 MB und enthaelt FUENF Fremd-Klone mit .git
+# (notebooklm-py 189 MB, context7 61 MB, claude-plugins-official 18 MB,
+# cli, financial-services). Der TEXT jedes weggelegten Skills steht
+# weiterhin in der Git-Historie - die Dateien wurden in d0ea4d als
+# geloescht committet, also ist 'git show <commit>^:<pfad>' der Weg
+# zurueck, und auf der Platte liegt alles unter .archive/.
+Agenten/Hermes/skills/.archive/
 #
 # CRON-SKRIPTE, freigelegt am 15.09.2026. Die Skripte, die der
 # Hermes-Scheduler ohne Modell fahrt (no_agent) - sie sind Prozedurwissen
