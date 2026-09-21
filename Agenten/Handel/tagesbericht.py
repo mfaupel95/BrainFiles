@@ -338,7 +338,7 @@ def stillblock(stille):
             alter = "noch kein Handel (Journal traegt nur Kurse)"
         else:
             alter = "%d Buchung(en) ohne lesbares Datum" % n_b
-        w = e.get("wachen") or {}
+        w = e.get("wachen") or (e.get("roh") or {}).get("w") or {}
         erlaubt = w.get("handel_erlaubt")
         name = e["name"]
         if len(name) > 29:
