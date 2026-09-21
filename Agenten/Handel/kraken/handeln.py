@@ -295,6 +295,50 @@ def flach_stellen(z, w, live, grund):
     z["positionen"] = behalten
 
 
+def bueche_papier_altlasten_aus(z):
+    """Positionen OHNE echte Kraken-Order aus dem Live-Buch buchen.
+
+    Anlass (21.09.2026, gemessen): kraken ist seit 08:43 live - das
+    Freigabefenster der Auto-Freigabe war offen und das EUR-Guthaben reichte.
+    Sein Buch trug aber die vier Positionen der Papierphase, alle ohne
+    `kauf_txid`. Folgen, dieselbe Klasse wie bei scanner am selben Tag:
+      1. alle vier Plaetze belegt -> live wird nichts Neues gekauft,
+      2. im Live-Modus versucht der Ausstieg, Coins zu verkaufen, die am Konto
+         gar nicht liegen (die Buchung kam nie von einer Order).
+    Deshalb zu Beginn JEDES Live-Laufs ausbuchen - als PAPIER-Verkauf mit
+    Grund "buchbereinigung"; Positionen MIT txid bleiben liegen. Idempotent.
+    """
+    altlasten = [p for p in z["positionen"] if not p.get("kauf_txid")]
+    if not altlasten:
+        return 0
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("kauf_txid"):
+            behalten.append(p)
+            continue
+        try:
+            kurs = kraken.letzter_kurs(p["paar"])
+        except Exception as e:                                     # noqa: BLE001
+            print("  Buchbereinigung %s: kein Kurs (%s) - bleibt liegen"
+                  % (p["paar"], e), file=sys.stderr)
+            behalten.append(p)
+            continue
+        if not kurs:
+            print("  Buchbereinigung %s: kein Kurs - bleibt liegen" % p["paar"],
+                  file=sys.stderr)
+            behalten.append(p)
+            continue
+        erloes = p["eur"] * (kurs / p["einstieg"])
+        gv = erloes - p["eur"]
+        print("  Buchbereinigung: %s (ohne Order) @ %.6g  G/V %+.2f EUR"
+              % (p["paar"], kurs, gv))
+        journal(_jetzt(), "papier", "verkauf", p["paar"], "%.8g" % kurs,
+                "%.2f" % erloes, "%.8f" % p.get("menge", 0.0), "", "",
+                "buchbereinigung")
+    z["positionen"] = behalten
+    return len(altlasten)
+
+
 def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     gehalten = {p["paar"] for p in z["positionen"]}
     eingesetzt = sum(p["eur"] for p in z["positionen"])
@@ -591,6 +635,12 @@ def lauf(modus):
           % ("LIVE" if live else "Papier", bericht.get("datum"), len(vs)))
 
     z["modus"] = "live" if live else "papier"
+
+    # Erst aufraeumen, dann handeln: ein Live-Lauf uebernimmt kein Papierbuch.
+    if live:
+        n_alt = bueche_papier_altlasten_aus(z)
+        if n_alt:
+            print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
 
     if modus == "vorschau":
         for v in vs:
