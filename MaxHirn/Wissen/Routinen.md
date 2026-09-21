@@ -68,7 +68,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-OmniRoute` | `Routinen/omniroute-start.ps1` | `Routinen/logs/omniroute-letzter-lauf.log` |
 | `MaxHirn-Handelszentrale` | `Routinen/handelszentrale.ps1` (angelegt über `Routinen/handelszentrale-aufgabe.ps1`) | `Routinen/logs/handelszentrale-letzter-lauf.log` |
 | `MaxHirn-Optimierungen-Finden` | `Routinen/optimierungen-finden.ps1` (angelegt über `Routinen/optimierungen-finden-aufgabe.ps1`) | `Routinen/logs/optimierungen-finden-letzter-lauf.log` |
-| `MaxHirn-Fremdarbeit-Einziehen` | `Routinen/fremdarbeit-einziehen.ps1` | `Routinen/logs/fremdarbeit-letzter-lauf.log` |
+| `MaxHirn-Fremdarbeit-Einziehen` | `Routinen/fremdarbeit-einziehen.ps1` (angelegt über `Routinen/fremdarbeit-einziehen-aufgabe.ps1`) | `Routinen/logs/fremdarbeit-letzter-lauf.log` |
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts

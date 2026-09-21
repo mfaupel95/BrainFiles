@@ -71,7 +71,8 @@ def test_toter_bus_laesst_die_routine_durchlaufen():
 def test_alle_modultests_laufen():
     for name in ("test_journal", "test_bus", "test_ereignis",
                  "test_ereignis_ps1", "test_auffaellig", "test_sprecher",
-                 "test_anbindung_handel", "test_anbindung_routinen"):
+                 "test_anbindung_handel", "test_anbindung_routinen",
+                 "test_fremdarbeit_einziehen"):
         a = subprocess.run([sys.executable,
                             os.path.join(BUS, "tests", name + ".py")],
                            capture_output=True, text=True, cwd=BUS, timeout=300)
