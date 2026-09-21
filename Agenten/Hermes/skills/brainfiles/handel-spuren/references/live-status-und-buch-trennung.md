@@ -93,3 +93,25 @@ ueberhaupt kennt — und was das KONTO hergibt:
   kennt, meldet faelschlich null.
 - Ein Instrumentenwechsel gehoert in die Wachen-Datei (nicht in den Code), die alten
   Positionen bleiben unter ihrem alten Instrument stehen und laufen normal aus.
+
+## 8. Die Zeile "Live-Anbindung" im Tagesbericht
+
+Seit dem Auftrag vom 21.09.2026 steht `handel_erlaubt=true` in JEDER `wachen.json` -
+auch bei Spuren ohne einen einzigen Orderaufruf im Code. Der Tagesbericht zeigte damit
+29x "erlaubt" und verschwieg, welche Spur ueberhaupt Geld bewegen kann.
+`tagesbericht.livezeile()` (Zeile direkt unter `spiegelzeile()`) trennt darum drei
+Gruppen in einer Zeile: `haus` (eigene Orderanbindung der Spur), `fremd` (eine
+Fremd-Laufzeit ordert, z.B. der Nautilus-DEMO-Node) und die Zahl der Spuren ohne
+Orderweg. Ein `(F)` hinter dem Namen heisst: Freigabefenster steht offen.
+
+Regeln dabei:
+- Die Erkennung kommt aus `spuren_stand.sammle()` - DIESELBE Quelle wie `/live` und
+  `spuren_stand.py`. Eine zweite Liste im Bericht waere beim naechsten neuen
+  Spurordner veraltet.
+- Ein Fehler darf den Bericht nicht kippen: `except` liefert "nicht geprueft (<grund>)",
+  genau wie `spiegelzeile()`.
+- Getestet wird gegen eine GEFAELSCHTE Erhebung (`ss.sammle` im Test ersetzen), nicht
+  gegen die echten Spurordner - sonst haengt der Test am Tagesstand des Dauerlaufs
+  (`tests/test_tagesbericht_livezeile.py`).
+- Wirkt erst nach einem Dauerlauf-Neustart: `dauerlauf.py` importiert `tagesbericht`
+  beim Start.
