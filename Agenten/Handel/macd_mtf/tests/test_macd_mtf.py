@@ -294,7 +294,11 @@ class TestWachenDatei(unittest.TestCase):
         self.assertGreaterEqual(self.w["max_pro_trade_usd"], noetig)
 
     def test_zwei_instrumente(self):
-        self.assertEqual(self.w["instrumente"], ["BTC-USDT", "ETH-USDT"])
+        # USDC seit 21.09.2026 (Auftrag Max: die OKX-Spuren mit der Waehrung
+        # bedienen, in der das Geld liegt - USDT ist auf dem Konto nicht
+        # vorhanden). Der Test prueft die LISTE, nicht die Waehrung: er soll
+        # auffallen, wenn ein Instrument still verschwindet.
+        self.assertEqual(self.w["instrumente"], ["BTC-USDC", "ETH-USDC"])
 
     def test_zweitziel_gesetzt(self):
         self.assertTrue(self.w["journal_zweitziel"].endswith("macd_mtf"))
