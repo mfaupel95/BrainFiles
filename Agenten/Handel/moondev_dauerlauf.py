@@ -206,7 +206,15 @@ AGENTEN = {
     },
 }
 
-PAUSE_NEUSTART = 15          # s zwischen Absturz und Neustart
+PAUSE_NEUSTART = 120         # s zwischen Absturz und Neustart
+# Warum 120 statt 15 (gemessen 21.09.2026): der haeufigste Sterbegrund der
+# Agenten ist die GRATIS-Rate-Limit-Grenze der Datenanbieter - new_or_top
+# traegt 139 Rate-Limit-Meldungen im eigenen Log, der Absturz ist
+# "You have exceeded the Rate Limit" von CoinGecko (HTTP 429), kraken_agent
+# stirbt in kraken_roe_oeffentlich. Wer 15 s nach dem Absturz sofort wieder
+# anfragt, laeuft in dieselbe Grenze; zwei Minuten geben dem Kontingent
+# Luft. Die Agenten sind Scanner (kein Orderpfad) - die Pause kostet nur
+# Datenluecken, keinen Handel.
 PRUEF_ALLE = 60              # s: Kinder alle 60 s pruefen
 MAXHIRN_ROUTINE = "1"        # keiner fragt nach einem Fenster
 

@@ -1,8 +1,9 @@
 {
   "_zweck": "Harte Grenzen des XPERP-Bots. Eine Datei, eine Wahrheit. Wird von bot.py gelesen, nie von ihm geschrieben. Vorbild: scanner/wachen.json.",
   "_kapital": "Gleicher Rahmen wie der Marktscanner. Margin, nicht Nominal: bei 5x Hebel sind 50 USD Margin = 250 USD Positionswert.",
-  "max_margin_je_anlauf_usd": 50,
-  "max_margin_gesamt_usd": 200,
+  "max_margin_je_anlauf_usd": 80,
+  "_grenzen_vermerk": "80 USD je Anlauf und 600 USD gesamt auf Auftrag Max 21.09.2026 ('Limit pro Trade 80, insgesamt 600'). Vorher 50 / 200. Unveraendert bleiben max_offene_anlaeufe 4, max_hebel 5 und risiko_je_anlauf_usd 7.5 - damit bleibt das BUCHRISIKO 30 USD und die Drawdown-Ratsche (30.00) gueltig. Hinweis: mit 4 Plaetzen bindet der Deckel 600 nicht, die Plaetze binden (4 x 80 = 320).",
+  "max_margin_gesamt_usd": 600,
   "max_offene_anlaeufe": 4,
   "_hebel": "Deckel, kein Ziel. Der tatsaechliche Hebel faellt aus dem Stop-Abstand und liegt oft darunter. bot.py senkt ihn zusaetzlich auf den Wert, den der groesste Ruecklauf der letzten 7 Tage ueberlebt haette.",
   "max_hebel": 5,
