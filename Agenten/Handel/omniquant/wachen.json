@@ -1,34 +1,27 @@
 {
   "_zweck": "Harte Grenzen der Omniquant-Spur. Sie handelt die Signale, die prognose.py findet - als Papierbuch, ohne Orderpfad. 'Omniquant' ist dabei keine externe API, sondern die Idee aus der Recherche vom 10.09.2026: Ein Trader, der nur handelt, was eine probabilistische Bewertung mit Toren als guenstig ausweist - und der sich enthaelt, wenn kein frisches Signal da ist. Die Werte sind bewusst konservativ gesetzt und vor jedem Live-Gedanken zu belegen.",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_nichts_live": "false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft: kein Broker-Aufruf, kein Orderpfad, --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster NICHT vorkommt - so fragt der Dauerlauf keine Freigabe an, die nichts oeffnen kann (Muster: spiegel-Spur).",
   "waehrung": "USD",
-
   "_signal": "Die Spur handelt den voLLEN Prognose-Bericht (prognose_berichte/neuester.json), nicht den --kurz-Weg des SkillsBot: Nur der volle Lauf schreibt neuester.json und deckt den ganzen Markt ab. Ein Bericht aelter als max_bericht_alter_stunden ist kein Signal - dann wird nichts eroeffnet (Abstention ist Teil der Strategie, nicht ein Ausfall).",
   "signal_quelle": "prognose_berichte/neuester.json",
   "max_bericht_alter_stunden": 26,
-
   "_rahmen": "Zwei Deckel, absichtlich klein. Die Spur beantwortet die Frage, ob die Prognose-Treffer nach Kosten tragen - sie bewegt kein Kapital.",
   "max_einsatz_je_position_usd": 50,
   "max_offen": 10,
   "max_neu_je_zyklus": 5,
   "max_gesamt_risiko_usd": 500,
-
   "_redundanz": "Streuungs-Filter: max_je_basiswert begrenzt, wie viele Positionen auf DENSELBEN Basiswert gleichzeitig laufen duerfen. Der Prognose-Bericht meldet Paare (SOL-USDC und SOL-USDT sind zwei Treffer, aber ein Asset) - zwei Positionen im selben Basiswert sind keine Diversifikation und verzerren die Messung, ob die Prognose traegt. 1 = nur die staerkste Position je Basiswert. Zaehlt NUR neue Kandidaten gegen den Bestand: einmal offene Doppel (vor dem Filter eroeffnet) bleiben liegen, der Filter wirkt ab dem naechsten Einstieg.",
   "max_je_basiswert": 1,
-
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker), Slippage 0,15 % als konservative Annahme fuer ein Paar mit ueber 3 Mio USD Tagesumsatz. Wer diese Zahlen kleiner setzt, baut eine Wunschrechnung.",
   "gebuehr_pct": 0.1,
   "slippage_pct": 0.15,
-
   "_ausstieg": "Stop und Ziel kommen aus dem Prognose-Bericht (gerechnet gegen 20-/60-Tage-Extrema). Zusaetzlich ein Zwangsschluss nach max_halte_dauer_tagen: Ein Signal, das sich in zwei Wochen nicht bewegt hat, ist verfallen - die Position wird zum Marktpreis geschlossen, damit die Auswertung weiss, was die Strategie wirklich gebracht haette.",
   "max_halte_dauer_tage": 14,
-
   "_ruhe": "Ein Herzschlag, der aelter ist als das hier, bedeutet: die Spur lief nicht. Beim naechsten Start werden alle offenen Papierpositionen flachgestellt - eine Position, die einen Ausfall ueberlebt, ist unbewacht.",
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Papier-Spur; vorher 90 aus der Anlaufzeit.",
-
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\omniquant"
 }

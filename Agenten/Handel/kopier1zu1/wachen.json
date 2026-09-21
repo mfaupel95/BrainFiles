@@ -1,14 +1,14 @@
 {
   "_zweck": "1:1-Copy-Trade der Pump.fun-Rangliste. Anders als kopier/ arbeitet diese Spur auf TRADE-EREIGNISSEN (trades/batch), nicht auf Portfolio-Diff: jeder KAUF-Trade eines verfolgten Traders auf einem Token oeffnet eine Papier-Position; jeder VERKAUF-Trade schliesst sie zum aktuellen Kurs. Damit trifft die Spur den Ausstieg des Modells auf die Sekunde genau (statt erst beim naechsten Portfolio-Snapshot). Kein Live-Pfad - kopier/lesen.py ist der einzige Zugang (Waechter).",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_nichts_live": "false = nur Papier. Es gibt keinen Zweig, der etwas kauft. lesen.py aus kopier/ kennt keine Schreibpfade.",
   "waehrung": "USD",
-  "ketten": ["solana"],
-
+  "ketten": [
+    "solana"
+  ],
   "_auswahl": "Die verfolgten Trader kommen aus derselben Rangliste wie kopier - der Zyklus liest kopier/verfolgte.json (kein zweiter Rangliste-Abruf). Dadurch teilen beide Spuren dieselbe taegliche Auswahl.",
   "verfolgte_aus_kopier": true,
-
   "_einsatz": "Kleiner als kopier, weil hier JEDER Trade des Vorbilds gebucht wird - Nachkaufen, Umschichten inklusive. Der Deckel je Kauf ist absichtlich klein (30 USD statt 50), der Buch-Deckel ist grosszuegiger (bis zu 100 Positionen), damit ein Vorbild, das viele Tokens haelt, wirklich abgebildet wird.",
   "max_einsatz_je_kauf_usd": 30,
   "max_offen": 30,
@@ -17,28 +17,25 @@
   "max_kaeufe_je_token": 3,
   "kill_switch_gesamt_usd": 100,
   "kill_switch_gesamt_usd_papier": 300,
-
   "_kosten": "Wie kopier: Pump.fun-Buecher sind duenn, 5 % Slippage + 1 % Gebuehr. Jede Buchung rechnet mit diesen Werten.",
   "slippage_pct": 5.0,
   "gebuehr_pct": 1.0,
-
   "_ausstieg": "1:1-Kopie: der VERKAUF des Vorbilds ist das primaere Ausstiegssignal - beobachtet ueber trades/batch (typ=sell). Erkannt: die Position wird sofort im naechsten Zyklus zum letzten beobachteten Kurs geschlossen (grund=verkauft). Die eigene Mathematik ist Sicherheitsnetz: Stop in USD (kein Prozent, siehe kopier), Trailing-Stop (10x/100x laufen lassen), Frist gegen tote Positionen.",
   "stop_usd": 10.0,
   "trail_aktiv_ab_pct": 30.0,
   "trail_abstand_pct": 25.0,
   "haltedauer_stunden": 168,
-
   "_alter": "Der Trade-Zeitstempel muss frisch sein - sonst kopieren wir einen Kauf, den das Vorbild vor Stunden gemacht hat (Nachlauf). 900 s (15 min) statt 1800 wie kopier, weil hier der Zyklus die trades/batch direkt liest und ein Kauf beim naechsten Zyklus schon protokolliert ist.",
   "max_alter_trade_sekunden": 900,
   "_bewertung": "Kappt die trades/batch-Abrufe je Zyklus: ein Abruf je Trader. Bei 10 Traedern also 10 Abrufe pro Zyklus (plus verfolgte-Neuaufbau alle 4 h).",
   "max_trader_je_zyklus": 10,
-
   "_tor": "Nur zwei Tore vor jedem Kauf: Kette (nur Solana) und Marktkapitalisierung im Band (dasselbe Band wie kopier: bis 1 Mio USD tragen Nachahmer-Kaeufe, darueber nicht). KEIN Risiko-Scan hier - der laeuft in kopier/ (dieselben Coins), das ist eine bewusste Doppelung: die Spur soll den 1:1-Effekt sauber messen, nicht doppelte HTTP-Abrufe verursachen.",
-  "marketcap_band_usd": [50000, 1000000],
-
+  "marketcap_band_usd": [
+    50000,
+    1000000
+  ],
   "_ruhe": "180 Minuten wie alle Papier-Spuren. Herzschlag alt -> Buch flach.",
   "herzschlag_max_minuten": 180,
-
   "_journal_zweitziel": "Bedingung 4: nach jedem Zyklus wird Journal, Zustand und Ablehnungen nach Q: gespiegelt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\kopier1zu1"
 }

@@ -2,15 +2,36 @@
   "_zweck": "Harte Grenzen der fuenften Spur (ORB auf Kraken-Spot, USD/EUR). Eine Datei, eine Wahrheit. Gelesen von backtest.py, nie von ihm geschrieben. Duplikat der OKX-ORB-Spur (orbk), angelegt 2026-09-13 fuer den HYPE-Papiertest.",
   "_waehrung": "Kraken rechnet je Paar in der Quotierungswaehrung. HYPE_USD in USD, HYPE_EUR in EUR. Positionsrechnung wie Spur 3 (Kraken): EUR als Hauswaehrung, jedes Paar traegt ein _usd-Aequivalent.",
   "waehrung": "EUR",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_handel_erlaubt_hinweis": "false = nur Papierhandel. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_eur frei ist und journal_zweitziel gesetzt ist.",
   "instrument_aktiv": "ETH_USD",
   "_instrument_aktiv": "Welches Instrument die Papierphase faehrt. null bis der Backtest ein Urteil hat. Danach 'HYPE_USD' oder 'HYPE_EUR'.",
   "instrumente": {
-    "ETH_USD": {"kraken": "ETHUSD", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usd": 1.0},
-    "HYPE_USD": {"kraken": "HYPEUSD", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.3, "punkt_wert_usd": 1.0},
-    "HYPE_EUR": {"kraken": "HYPE/EUR", "zone": "UTC", "eroeffnung": "00:00", "session_ende": "24:00", "spread_punkte": 0.3, "punkt_wert_usd": 1.0}
+    "ETH_USD": {
+      "kraken": "ETHUSD",
+      "zone": "UTC",
+      "eroeffnung": "00:00",
+      "session_ende": "24:00",
+      "spread_punkte": 0.1,
+      "punkt_wert_usd": 1.0
+    },
+    "HYPE_USD": {
+      "kraken": "HYPEUSD",
+      "zone": "UTC",
+      "eroeffnung": "00:00",
+      "session_ende": "24:00",
+      "spread_punkte": 0.3,
+      "punkt_wert_usd": 1.0
+    },
+    "HYPE_EUR": {
+      "kraken": "HYPE/EUR",
+      "zone": "UTC",
+      "eroeffnung": "00:00",
+      "session_ende": "24:00",
+      "spread_punkte": 0.3,
+      "punkt_wert_usd": 1.0
+    }
   },
   "_instrumente": "spread_punkte Startannahme in Preispunkten. HYPE notiert ~79 USD / ~69 EUR (2026-09-13); die Range-Grenzen sind Startwerte aus der beobachteten Volatilitaet und werden vom Backtest gedeckt.",
   "_kosten_kraken": "Das Buch rechnet im OANDA-Modell (SPEC.md): ein voller Spread + Slippage je Runde, KEINE Kommission. Fuer Kraken-Spot waere das ein Modellfehler (Taker 0,40 % je Seite, siehe kraken/wachen.json) - seit 13.09.2026 ist es durch Max' Kraken-Pro-Abo gedeckt: bis 10.000 EUR Handelsvolumen im Monat gebuehrenfrei, fuer ALLE Paare, gebunden an das Abo. Das Freivolumen zaehlt auf das Handelsvolumen (Kauf + Verkauf, bestaetigt 13.09.2026) und damit doppelt je Runde: 10.000 EUR sind bei 20 EUR Nominal rund 250 Runden im Monat, bei 100 EUR rund 50. Darueber - und sofort, wenn das Abo entfaellt - gilt Taker 0,40 % je Seite und diese Rechnung wird zu optimistisch. Diese Spur ist die einzige, deren Kalkulation auf 0 % Gebuehr gebaut ist: sie gehoert vor einem Live-Gedanken mit dem Abo-Satz nachgerechnet.",
@@ -20,13 +41,25 @@
   "_max_offene_positionen": "STRUKTURELLE TATSACHE, keine neue Grenze: die Spur fuehrt genau EINEN Platz - handeln.py legt z['position'] als Dict an (Zeile 213, Zuweisung statt append) und prueft mit 'if not z.get(\"position\")' (Zeilen 257/265), es gibt also gar keinen zweiten. Der Schluessel steht hier, weil ratschen.buch_risiko() das Buchrisiko als Risiko je Position x Hoechstzahl Positionen rechnet und diese Zahl dafuer braucht (10 x 1 = 10 USD). Die Handelslogik liest ihn NICHT - sie kann den Platz bauartbedingt nicht ueberschreiten. Wer hier je mehr als 1 eintraegt, muss zuerst handeln.py auf eine Positionsliste umbauen.",
   "ziel_modus": "r_vielfaches",
   "ziel_k": 1.5,
-  "ziel_punkte": {"ETH_USD": 30, "HYPE_USD": 12, "HYPE_EUR": 10},
+  "ziel_punkte": {
+    "ETH_USD": 30,
+    "HYPE_USD": 12,
+    "HYPE_EUR": 10
+  },
   "_ziel": "ziel_modus=r_vielfaches -> TP = ziel_k * Range-Hoehe. ziel_modus=punkte -> TP = ziel_punkte[instrument] Preispunkte. Startwerte aus dem Backtest.",
   "hebel_deckel": 3,
   "_hebel_deckel": "Obergrenze fuer Spot (kein echter Hebel bei Kraken-Spot, aber die Rechnung deckelt trotzdem).",
   "letzter_einstieg_min_vor_schluss": 60,
-  "mindest_range_punkte": {"ETH_USD": 1.0, "HYPE_USD": 0.6, "HYPE_EUR": 0.5},
-  "max_range_punkte":     {"ETH_USD": 40.0, "HYPE_USD": 6.0, "HYPE_EUR": 5.0},
+  "mindest_range_punkte": {
+    "ETH_USD": 1.0,
+    "HYPE_USD": 0.6,
+    "HYPE_EUR": 0.5
+  },
+  "max_range_punkte": {
+    "ETH_USD": 40.0,
+    "HYPE_USD": 6.0,
+    "HYPE_EUR": 5.0
+  },
   "_range_filter": "Range unter mindest -> Session aussetzen (Rauschen). Range ueber max -> aussetzen (Stop zu weit). HYPE bewegt sich in 30 min oft 0.5-5 Punkte.",
   "mindest_marge_frei_usd": 50,
   "kill_switch_gesamt_usd": 150,

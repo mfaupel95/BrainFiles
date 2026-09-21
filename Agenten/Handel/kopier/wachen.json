@@ -1,18 +1,18 @@
 {
   "_zweck": "Harte Grenzen der Kopier-Spur. Sie kopiert die Trader der oeffentlichen Pump.fun-Rangliste (PnL-Leaderboard) als Papierbuch - ohne Orderpfad: gesehen wird die Wallet-Position (user-portfolio), gekauft wird nach eigener Mathematik. Die Werte sind NICHT gemessen wie bei spiegel, sondern bewusst konservativ gesetzt: Pump.fun-Buecher sind duenner als der OnchainOS-Feed, und ein Nachahmer kauft spaeter und in duennere Buecher. Jeder Wert hier ist eine Annahme und vor jedem Live-Gedanken zu belegen.",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_nichts_live": "false = nur Papier. Es gibt in kopier.py keinen Zweig, der etwas kauft: die Pump.fun-API hat hier gar keinen Schreibzugang - lesen.py kennt nur lesende Pfade und verweigert alles andere.",
   "waehrung": "USD",
   "_ketten": "Pump.fun ist Solana. Das PnL-Leaderboard und user-portfolio liefern auch andere Ketten mit (EVM, Base, BNB); kopiert wird nur Solana (chainId 1399811149), der Rest ist ein Lage-Zaehler.",
-  "ketten": ["solana"],
-
+  "ketten": [
+    "solana"
+  ],
   "_auswahl": "Verfolgt wird der FEED, nicht die eigenen Gewinner von gestern: die Rangliste ist das Feld der aktiven Trader (taeglich neu), und die gemessenen Zahlen (Rang, PnL) stehen daneben in verfolgte.json, damit die Bilanz spaeter zeigen kann, ob sie die Kopierbarkeit vorhersagen. Zuchtauswahl nach Ergebnis ist dem Kopieren inhärent - das Buch misst, was Nachahmen dieser Trader kostet, und die Ranglistenzahlen erlauben, die Selektion selbst zu beurteilen.",
   "anzahl_trader": 10,
   "rangliste_periode": "daily",
   "_verfolgte_alter": "Die Liste ist ein Fenster auf die taegliche Rangliste, kein Stammbuch: alle 4 Stunden wird sie aus dem Feed neu gebaut (ein Abruf). Portfolio-Abrufe je Trader laufen in JEDEM Zyklus.",
   "verfolgte_max_alter_stunden": 4,
-
   "_einsatz": "Zwei Deckel wie bei spiegel, absichtlich klein: je Kopie und insgesamt offen. Die Spur beantwortet, ob Nachahmen dieser Trader traegt - nicht Kapital bewegen.",
   "max_einsatz_je_kopie_usd": 50,
   "max_offen": 20,
@@ -21,33 +21,32 @@
   "max_kopien_je_token": 2,
   "kill_switch_gesamt_usd": 100,
   "kill_switch_gesamt_usd_papier": 300,
-
   "_kosten": "Der ehrlichste Teil des Papierbuchs. 5 % Slippage statt 3 % wie spiegel: Pump.fun-Tokens handeln in duenneren Buechern (Bonding Curve und PumpSwap), und ein Nachahmer zahlt den Preis. 1 % Gebuehr deckt DEX-Gebuehr plus Vorlauf. --messen haelt den Nachlauf gegen die Annahme.",
   "slippage_pct": 5.0,
   "gebuehr_pct": 1.0,
-
   "_ausstieg": "Eigene Mathematik, KEIN Auto-Exit nach dem Vorbild-Timing - aber seit dem 15.09.2026 die Ausstiegsform, die Max bestellt hat: KEIN festes Ziel mehr (ein +60-%-Deckel schneidet 10x/100x ab), stattdessen ein Trailing-Stop. Sobald eine Kopie trail_aktiv_ab_pct ueber ihrem Einstieg lag, haengt der Ausstieg trail_abstand_pct unter dem hoechsten seither beobachteten Kurs. ZUSAETZLICH schliesst die Spur eine Kopie, wenn die Position des Vorbilds aus dessen Portfolio verschwindet (follow_ausstieg) - die beobachtbare Ausstiegs-Entscheidung des Modells, geschlossen zum letzten beobachteten Kurs. Der harte Stop begrenzt den SCHADEN: stop_pct sitzt so, dass der realisierte Verlust am Stop inklusive Slippage und Gebuehr maximal 20 % des Einsatzes betraegt (bei 5 % Slippage + 1 % Gebuehr: (1-0,15)*0,95*0,99 = 0,80). Ein gerissener Stop schliesst SOFORT zum beobachteten Kurs. Die Frist ist nur noch ein Sicherheitsnetz gegen tote Positionen (7 Tage). OKX-Vorbereitung: Stop = Stop-Market, Trailing = OKX-Trailing-Stop (Trigger trail_aktiv_ab_pct, Callback trail_abstand_pct); Orderspezifikation beim Anbinden gegen die OKX-API pruefen. Altbestand (vor dem 15.09.2026) laeuft unter seinen gebuchten stop/ziel/frist aus.",
-    "_stop_usd": "Seit 15.09.2026 (Max): Stop als Verlust in USD, keine Prozent. Bei Pump.fun-Volatilitaet fliegen Kopien mit -15 % zu frueh raus. stop_pct bleibt als Rueckfall fuer Altbestand.",
-    "stop_usd": 15.0,
-    "stop_pct": 15.0,
-    "trail_aktiv_ab_pct": 30.0,
-    "trail_abstand_pct": 25.0,
-    "haltedauer_stunden": 168,
-    "follow_ausstieg": true,
-
+  "_stop_usd": "Seit 15.09.2026 (Max): Stop als Verlust in USD, keine Prozent. Bei Pump.fun-Volatilitaet fliegen Kopien mit -15 % zu frueh raus. stop_pct bleibt als Rueckfall fuer Altbestand.",
+  "stop_usd": 15.0,
+  "stop_pct": 15.0,
+  "trail_aktiv_ab_pct": 30.0,
+  "trail_abstand_pct": 25.0,
+  "haltedauer_stunden": 168,
+  "follow_ausstieg": true,
   "_alter": "Hinterherlaufen ist kein Nachahmen. Das Signalalter kommt aus dem LETZTEN KAUF des Vorbilds auf diesem Token (trades/batch, Transaktionsebene), nicht aus der Abfragezeit. 1800 s (30 min) statt 300 s wie spiegel, weil diese Spur Positionen diff-findet: die Aufloesung begrenzt der Zyklus (15 Minuten), und ein Kauf zwischen zwei Zyklen muss noch als frisch gelten.",
   "max_alter_signal_sekunden": 1800,
   "_bewertung": "Kappt die teuren Pruefungen je Zyklus (je ein trades/batch-Abruf). Nach dem Einlauf (erster Zyklus einer neuen Wallet uebernimmt deren Bestand still) sind es nur noch die wirklich neuen Positionen eines Tages - selten mehr als eine Handvoll.",
   "max_signale_je_zyklus": 30,
-
   "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (dasselbe Band wie spiegel, dort am 14.09.2026 mit 107 geschlossenen Runden belegt: ueber 1 Mio USD rechnet sich Nachahmen mit Ziel +60 % nicht), und das Token muss unauffaellig sein (nicht gebannt, nicht nsfw - die Felder des Coin-Endpunkts; es gibt keinen Sicherheits-Scan wie bei OnchainOS, das ist die ehrliche Schwaechstelle).",
-  "marketcap_band_usd": [50000, 1000000],
+  "marketcap_band_usd": [
+    50000,
+    1000000
+  ],
   "risiko_pflicht": true,
-  "max_risiko_stufen": ["ok"],
-
+  "max_risiko_stufen": [
+    "ok"
+  ],
   "_ruhe": "Ein Herzschlag, der aelter ist als das hier, bedeutet: die Spur lief nicht. Beim naechsten Start wird das Papierbuch flachgestellt - eine Kopie, die einen Ausfall ueberlebt, ist unbewacht. 180 Minuten wie alle Papier-Spuren (REGEL 14.09.2026).",
   "herzschlag_max_minuten": 180,
-
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus (Journal, Zustand, Ablehnungen). Nicht G: (gleiches Gehaeuse).",
   "journal_zweitziel": "Q:\\Handel_Journal\\kopier"
 }

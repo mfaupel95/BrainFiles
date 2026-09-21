@@ -1,8 +1,8 @@
 {
   "_zweck": "Harte Grenzen der MACD-MTF-Spur. Papier-Handel auf macd_mtf aus ti_indikatoren.py. Trendfolge nur bei Einigkeit ueber drei Zeitrahmen.",
   "waehrung": "USD",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko = 5.0 * 4 = 20.0 USD.",
   "risiko_je_position_usd": 5.0,

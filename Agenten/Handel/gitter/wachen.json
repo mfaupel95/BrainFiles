@@ -1,7 +1,7 @@
 {
   "_zweck": "Harte Grenzen der Gitter-Spur. Sie fuehrt ein Papierbuch auf einem statischen Preisgitter ueber OKX-Stundenkerzen - ohne Orderpfad, ohne echtes Geld. Der Backtest dieser Idee steht in nautilus/backtest_grid.py; hier laeuft dasselbe Gitter auf laufenden Kursen.",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_nichts_live": "false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft: kein Broker-Aufruf, kein Orderpfad, --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster NICHT vorkommt - so fragt der Dauerlauf keine Freigabe an, die nichts oeffnen kann (Muster: spiegel, omniquant, nautilus).",
   "waehrung": "USDT",
   "instrument": "BTC-USDT",
@@ -9,7 +9,6 @@
   "kerzen_takt": "1H",
   "kerzen_anzahl": 300,
   "_kerzen": "OKX liefert hoechstens 300 Kerzen je Abruf (1H = 12,5 Tage). Die laufende Kerze wird verworfen - ein Hoch, das noch steigen kann, ist keine Ausfuehrung. Je Zyklus werden alle Kerzen seit der letzten nachgezogen; ein ausgefallener Zyklus verliert nichts, solange die Luecke kleiner als das Fenster ist.",
-
   "_spanne": "Grenzen des Gitters als ANTEIL des ersten gesehenen Kurses, nicht in USDT: eine feste Zahl waere nach einer Verdopplung des Kurses sinnlos. Sie werden EINMAL festgeschrieben (zustand.json) und danach nie verschoben - ein Gitter, das seiner Spanne nachzieht, waere eine andere Strategie.",
   "spanne_prozent": 20.0,
   "stufen": 6,
@@ -17,18 +16,14 @@
   "geometrisch": true,
   "einsatz_usd": 1000.0,
   "_einsatz": "Der Einsatz wird gleichmaessig auf die Kaufstufen verteilt (Einsatz / (Stufen-1)). Mehr als dieser Betrag kommt nie ins Buch; die Stufen werden deshalb auch mit dem Raster der Boerse ABgerundet, nicht aufgerundet.",
-
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker - auch wenn das Gitter mit Limits arbeitet, wird nicht mit Maker-Rabatt gerechnet) und 0,05 % Slippage je Seite. Im Backtest derselben Leiter auf BTC-Stundenkerzen frisst der Absturz -32 % und das Gitter liegt mit -17,7 % davor: der Stufenabstand muss die Kosten beider Seiten deutlich uebersteigen, sonst verliert das Gitter unabhaengig vom Kurs.",
   "gebuehr_pct": 0.1,
   "slippage_pct": 0.05,
-
   "_kill": "Kill-Switch: ab diesem kumulierten Verlust werden keine neuen Kauforders mehr armiert. Die belegten Stufen verkaufen weiter - ein Gitter, das im Verlust seine Verkaeufe abschaltet, sitzt endgueltig fest.",
   "max_verlust_usd": 200.0,
-
   "_herzschlag": "Nur eine Anzeige, keine Wache: anders als die Kontraktspuren muss hier nichts flachgestellt werden. Ein Gitter hat keine Order am Markt, die unbewacht waere - es holt beim naechsten Zyklus alle Kerzen seit dem letzten nach. Die Zahl steht trotzdem im Zustand, damit ein Ausfall auffaellt.",
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Hier sind die Minuten reine Anzeige - ein Gitter hat keine Order am Markt (siehe _herzschlag), es wird nichts flachgestellt.",
-
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "freigabe": {
     "erfuellt": false,

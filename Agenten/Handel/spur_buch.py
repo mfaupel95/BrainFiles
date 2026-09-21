@@ -20,6 +20,7 @@ und ist einzeln getestet). Beim naechsten Anfassen gehoert es hierher.
 import csv
 import json
 import os
+from pathlib import Path
 import sys
 from datetime import datetime, timezone
 
@@ -36,6 +37,8 @@ for _p in (SCANNER, HANDEL, BUS):
 from importlib.util import module_from_spec, spec_from_file_location  # noqa: E402
 
 import wachen_pruefung as wp  # noqa: E402
+import risikostufe  # noqa: E402
+import freigabefenster  # noqa: E402
 
 
 def _lade_modul(name):
@@ -139,8 +142,103 @@ def groessenfaktor(ruecklauf, w):
     return ratschen.groessenfaktor(ruecklauf, w)
 
 
+# --- Orderweg (Live) --------------------------------------------------------
+#
+# EINE Fassung fuer ALLE Buch-Spuren. Welche Boerse gilt, steht in der wachen
+# (`boerse`): "okx" (Spot gegen USDC, Standard) oder "kraken" (Spot gegen EUR).
+# Beide Module sind Adapter mit DENSELBEN Funktionsnamen (markt_kauf,
+# markt_verkauf, algo_stop_setzen, algo_stornieren, gefuellte_menge,
+# guthaben_waehrung, letzter_kurs, menge_fuer, schluessel_vorhanden,
+# demo_modus) - die Strategie merkt den Unterschied nicht.
+#
+# Warum hier und nicht je Spur: die Buch-Spuren (moondev_*, iv_*) teilen sich
+# dieses Modul ohnehin; eine zweite Live-Fassung je Spur waere N Stellen, an
+# denen dieselbe Sperrenkette nachgezogen werden muss.
+_ORDER_MODULE = {}
+
+
+def orderweg(w):
+    """Das Boersenmodul zur `boerse` aus der wachen. None = kein Live-Weg."""
+    name = str(w.get("boerse") or "okx").strip().lower()
+    if name in _ORDER_MODULE:
+        return _ORDER_MODULE[name]
+    # _lade_modul haengt ".py" selbst an und sucht unter HANDEL - deshalb der
+    # relative Name mit Unterordner, kein absoluter Pfad.
+    pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot"}.get(name)
+    if not pfad or not (Path(HANDEL) / (pfad + ".py")).is_file():
+        return None
+    _ORDER_MODULE[name] = _lade_modul(pfad)
+    return _ORDER_MODULE[name]
+
+
+def venue_inst(inst, w):
+    """Das Instrument in der Schreibweise der BOERSE.
+
+    Die Buch-Spuren fuehren Kurzzeichen ("XMR", "ZRO"), die Boerse will das
+    Paar ("XMR-USDC"). Gemerkt wird beides: `inst` bleibt der Weg, ueber den die
+    Spur ihre Kurse holt, `venue_inst` geht an die Boerse. Ohne diese Trennung
+    laeuft der Live-Einstieg in einen OKX-Fehler (Instrument unbekannt) - oder
+    schlimmer: in ein anderes Paar mit demselben Namen.
+    """
+    if "-" in inst:
+        return inst
+    boerse = str(w.get("boerse") or "okx").strip().lower()
+    return "%s-%s" % (inst, "EUR" if boerse == "kraken" else "USDC")
+
+
+def live_grenze(w, name, ersatz):
+    """Live-Grenze aus der wachen: `live_<name>`, sonst der Papierwert."""
+    return float(w.get("live_" + name, w.get(name, ersatz)) or ersatz)
+
+
+def sperren_live(w, s, spur):
+    """Alles, was --live gerade verschliesst. Leere Liste = frei.
+
+    Dieselbe Kette wie scanner/mosaic/swap/kraken: Risikostufe, Schalter,
+    Schluessel, Freigabe, Herzschlag, EV, Journal-Zweitziel, Demo-Modus,
+    Guthaben - und zuletzt, mit dem Wort Freigabefenster fuer
+    dauerlauf.nur_fenster_fehlt, das Zeitfenster.
+    """
+    g = []
+    weg = orderweg(w)
+    if not risikostufe.live_erlaubt():
+        g.append("Risikostufe %s: kein Live-Pfad in einer Stufe"
+                 % risikostufe.stufe())
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false")
+    if weg is None:
+        g.append("kein Orderweg fuer boerse=%s" % w.get("boerse"))
+    elif not weg.schluessel_vorhanden():
+        g.append("%s-Schluessel nicht gesetzt" % (w.get("boerse") or "okx"))
+    if not s.get("freigabe_erfuellt"):
+        g.append("freigabe.erfuellt=false (Bedingung 1)")
+    if not s.get("herzschlag_frisch"):
+        g.append("Herzschlag alt (Bedingung 3)")
+    if s.get("ev_negativ"):
+        g.append("rollierender EV negativ (Bedingung 5)")
+    if w.get("journal_zweitziel") is None:
+        g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+    if weg is not None and weg.demo_modus():
+        g.append("Demo-Modus gesetzt - keine echten Orders")
+    try:
+        if not freigabefenster.lade(spur).offen():
+            g.append("kein offenes Freigabefenster (Handelsregeln Punkt 3)")
+    except Exception:                                          # noqa: BLE001
+        g.append("freigabefenster.py nicht erreichbar")
+    noetig = float(w.get("mindest_guthaben", 0) or 0)
+    if noetig and weg is not None and weg.schluessel_vorhanden():
+        try:
+            frei = weg.guthaben_waehrung(w.get("guthaben_waehrung", "USDC"))
+            if frei < noetig:
+                g.append("nur %.2f %s frei, noetig %.2f"
+                         % (frei, w.get("guthaben_waehrung", "USDC"), noetig))
+        except Exception as e:                                 # noqa: BLE001
+            g.append("Guthaben nicht abrufbar (%s)" % e)
+    return g
+
+
 def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
-            ziel_preis=None, journal_pfad=None):
+            ziel_preis=None, journal_pfad=None, live=False, weg=None):
     """Eine Position eroeffnen - Stop in Prozent, Ziel als Preis oder Vielfaches.
 
     `ziel_preis` gibt es fuer Signale, deren Ziel ein MARKTPUNKT ist (die
@@ -193,12 +291,61 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
 
     p = {"inst": inst, "seite": seite, "einstieg": kurs, "stop": stop,
          "ziel": ziel, "stop_pct": pct, "nominal": nominel,
+         "modus": "live" if live else "papier",
          "eroeffnet_zeit": jetzt()}
+
+    if live:
+        # ERST die Order, DANN ins Buch. Scheitert sie, entsteht keine Position -
+        # ein Buch, das eine Order behauptet, die es nicht gibt, ist genau der
+        # Zustand, den xperp am 21.09.2026 hatte.
+        if weg is None:
+            return None
+        betrag = min(nominel, live_grenze(w, "max_pro_trade_usd", nominel))
+        vinst = venue_inst(inst, w)
+        try:
+            menge, fehler = weg.menge_fuer(vinst, betrag, kurs)
+        except Exception as e:                                 # noqa: BLE001
+            # Ein Live-Weg darf den Zyklus NIE reissen: ein unbekanntes Paar,
+            # ein Netzfehler oder eine abgelehnte Abfrage endet hier als
+            # uebersprungener Einstieg, nicht als Absturz der Spur.
+            print("  Live-Einstieg %s uebersprungen (Menge nicht bestimmbar: %s)"
+                  % (inst, e), file=sys.stderr)
+            return None
+        if fehler:
+            print("  Live-Einstieg %s uebersprungen: %s" % (inst, fehler))
+            return None
+        try:
+            ord_id = weg.markt_kauf(vinst, menge)
+        except Exception as e:                                 # noqa: BLE001
+            print("  Live-Einstieg %s fehlgeschlagen (%s) - nicht gebucht"
+                  % (inst, e), file=sys.stderr)
+            return None
+        if not ord_id:
+            print("  Live-Einstieg %s: keine Order-Kennung - nicht gebucht" % inst)
+            return None
+        p["ord_id"] = str(ord_id)
+        p["menge"] = menge
+        p["venue_inst"] = vinst
+        try:
+            stop_id = weg.algo_stop_setzen(vinst, menge, seite, stop)
+            p["stop_id"] = str(stop_id) if stop_id else ""
+        except Exception as e:                                 # noqa: BLE001
+            # Ohne Boersen-Stop wird sofort zurueckverkauft (Hausregel: eine
+            # Position ohne Stop an der Boerse ist unbewacht).
+            print("  Stop fuer %s fehlgeschlagen (%s) - zurueckverkauft"
+                  % (inst, e), file=sys.stderr)
+            try:
+                weg.markt_verkauf(vinst, menge)
+            except Exception:                                  # noqa: BLE001
+                pass
+            return None
+
     z["positionen"].append(p)
     return p
 
 
-def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None):
+def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
+                    weg=None):
     """Stop und Ziel pruefen. Der G/V laeuft auf den NOMINALWERT.
 
     Die rohe Kursdifferenz war der Fehler vom 15.09.2026: bei BTC ein Faktor
@@ -230,9 +377,29 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None):
 
         vz = 1 if p["seite"] == "long" else -1
         gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+        ist_live = bool(live and p.get("modus") == "live" and weg is not None)
+        if ist_live:
+            # Boersen-Stop zuerst stornieren, dann verkaufen. Schlaegt der
+            # Verkauf fehl, bleibt die Position im Buch (sie ist ja noch da).
+            # Die Boerse kennt das Paar (venue_inst), die Spur ihr Kurzzeichen.
+            vinst = p.get("venue_inst") or p["inst"]
+            try:
+                if p.get("stop_id"):
+                    weg.algo_stornieren(vinst, p["stop_id"])
+            except Exception as e:                             # noqa: BLE001
+                print("  Stop %s nicht stornierbar (%s)" % (p["inst"], e),
+                      file=sys.stderr)
+            try:
+                weg.markt_verkauf(vinst, p.get("menge") or 0)
+            except Exception as e:                             # noqa: BLE001
+                print("  Verkauf %s fehlgeschlagen (%s) - bleibt im Buch"
+                      % (p["inst"], e), file=sys.stderr)
+                behalten.append(p)
+                continue
         print("AUSSTIEG (%s) %s %.6f G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
-        journal(journal_pfad, zeit=jetzt(), modus="papier", aktion="verkauf",
+        journal(journal_pfad, zeit=jetzt(),
+                modus="live" if ist_live else "papier", aktion="verkauf",
                 inst=p["inst"], seite=p["seite"], preis=pformat(kurs),
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
                 stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
@@ -251,8 +418,10 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
     Ohne `ziel` bleibt es beim Vielfachen aus den Wachen.
 
     Reihenfolge: erst die Ratsche (Buch-Ruecklauf), dann Ausstiege, dann
-    Einstiege. Bei `--vorschau` wird gerechnet und nichts geschrieben; ein
-    `--live` gibt es in diesen Spuren nicht (siehe die README der Spur).
+    Einstiege. Bei `--vorschau` wird gerechnet und nichts geschrieben. `--live`
+    laeuft ueber `sperren_live()` und `orderweg()` (Boerse aus der wachen);
+    jede Sperre, die noch steht, laesst den Zyklus Papier handeln und nennt den
+    Grund.
     """
     import ereignis
 
@@ -272,6 +441,20 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
         ruecklauf = s.get("ruecklauf_usd", 0.0)
         faktor = groessenfaktor(ruecklauf, w)
 
+        # Live nur, wenn die Spur --live anfordert UND die Sperrenkette leer ist.
+        # Der Name der Spur kommt aus dem Ordner - so braucht zyklus() keinen
+        # weiteren Parameter und jede Buch-Spur meldet unter ihrem eigenen Namen
+        # (das Freigabefenster haengt an diesem Namen).
+        spur_name = os.path.basename(os.path.abspath(ordner))
+        live, weg = False, None
+        if modus == "live":
+            gruende = sperren_live(w, s, spur_name)
+            if gruende:
+                print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
+                print("-> es wird Papier gehandelt.")
+            else:
+                live, weg = True, orderweg(w)
+
         if s.get("kill"):
             print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
                   % ruecklauf)
@@ -290,7 +473,7 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
                 print("Vorschau: keine Dateien geschrieben.")
             return 0
 
-        pruefe_ausstiege(z, kurse, w, journal_pfad)
+        pruefe_ausstiege(z, kurse, w, journal_pfad, live=live, weg=weg)
         if modus == "vorschau":
             for inst in sorted(daten):
                 seite = signal(daten[inst], w)
@@ -309,13 +492,14 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          w.get("grund", "moondev_bot"),
                          ziel_preis=(ziel(daten[inst], w) if ziel else None),
-                         journal_pfad=journal_pfad)
+                         journal_pfad=journal_pfad, live=live, weg=weg)
             if p:
                 print("EINSTIEG %s %s @ %.6f  Stop %.2f%%  Ziel %.6f  "
                       "Nominal %.2f USD"
                       % (seite.upper(), inst, p["einstieg"], p["stop_pct"],
                          p["ziel"], p["nominal"]))
-                journal(journal_pfad, zeit=jetzt(), modus="papier",
+                journal(journal_pfad, zeit=jetzt(),
+                        modus="live" if live else "papier",
                         aktion="kauf", inst=inst, seite=seite,
                         preis=pformat(p["einstieg"]),
                         einsatz_usd="%.2f" % p["nominal"],
