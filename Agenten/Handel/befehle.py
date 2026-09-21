@@ -66,6 +66,7 @@ FAMILIE = {
     "scanner": "Spot-Rangliste",
     "kraken": "Spot Kraken (EUR)",
     "orbk": "Breakout (ORB)",
+    "orb": "Breakout (ORB)",
     "gitter": "Grid",
     "nautilus": "Quote-Sammler",
     "nautilus_kraken": "Kraken-Spot (EUR)",

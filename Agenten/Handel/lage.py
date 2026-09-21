@@ -226,6 +226,59 @@ def spur_orbk():
         "journal": os.path.join(ordner, "handelsjournal.csv"),
     }
 
+def spur_orb():
+    """ORB auf OKX-Perpetuals - Papierspur, USDT, angeschlossen 21.09.2026.
+
+    Dieselbe Strategie wie orbk, andere Boerse: BTC-/ETH-USDT-SWAP, Session
+    ist die 00:00-UTC-Tagesgrenze. Sie fuehrt hoechstens EINE Position
+    ('position' in zustand.json, kein 'positionen'). Papier ohne Live-Pfad;
+    das eigene Backtest-Urteil ist fuer beide Instrumente negativ, die Spur
+    laeuft nur zur Beobachtung des gemessenen Erwartungswerts.
+    """
+    ordner = os.path.join(HIER, "orb")
+    w = _lies(os.path.join(ordner, "wachen.json"), {})
+    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    p = z.get("position")
+    pos = [p] if p else []
+
+    kurse = {}
+    if pos:
+        try:
+            sys.path.insert(0, os.path.join(HIER, "xperp"))
+            import okxf                                          # noqa: PLC0415
+            for x in pos:
+                konf = (w.get("instrumente") or {}).get(x.get("inst"), {})
+                if konf.get("okx"):
+                    try:
+                        kurse[x["inst"]] = float(okxf.letzter_kurs(konf["okx"]))
+                    except Exception:                            # noqa: BLE001
+                        pass
+        except Exception:                                        # noqa: BLE001
+            pass
+
+    zeilen = []
+    for x in pos:
+        k = kurse.get(x.get("inst"))
+        vz = 1 if x.get("richtung") == "long" else -1
+        if k and x.get("einstieg"):
+            bewegung = vz * (k / x["einstieg"] - 1) * 100
+        else:
+            bewegung = None
+        zeilen.append({
+            "name": "%s %s" % (x.get("inst", "?"), x.get("richtung", "?")),
+            "einstieg": x.get("einstieg"), "kurs": k,
+            "wert": 0, "vh": bewegung,
+            "stop": x.get("stop"), "seit": x.get("tag"),
+        })
+    return {
+        "name": "ORB-OKX (Papier)",
+        "waehrung": "USDT", "w": w, "z": z,
+        "positionen": zeilen, "ordner": ordner,
+        "pruefmodul": "wachen_orb",
+        "journal": os.path.join(ordner, "handelsjournal.csv"),
+    }
+
+
 def spur_spiegel():
     """Spiegel-Spur - Papierbuch fuer Copy-Trading, USD je Kopie.
 
@@ -1112,7 +1165,7 @@ def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
 
 
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-    spur_orbk, spur_omniquant, spur_nautilus,
+    spur_orb, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,

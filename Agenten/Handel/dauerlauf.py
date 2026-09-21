@@ -211,6 +211,15 @@ SPUREN = {
                    "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
+    # ORB AUF OKX-PERPETUALS (angeschlossen 21.09.2026, Auftrag Max: "orb
+    # aktivieren"). Dieselbe Strategie wie orbk, andere Boerse: BTC-/ETH-USDT-
+    # SWAP, 00:00-UTC-Tagesgrenze, USDT. Papier ohne Live-Pfad; der eigene
+    # Backtest ist fuer BEIDE Instrumente negativ (EV -45.1 bzw. -3.7 Pkt je
+    # Runde, nachrechenbar mit orb/backtest.py), deshalb laeuft die Spur nur,
+    # um den gemessenen Erwartungswert an laufenden Kursen zu beobachten -
+    # handel_erlaubt bleibt false und freigabe.backtest_bestanden auch.
+    "orb":     {"ordner": "orb",     "waehrung": "USDT",
+                "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",
                   "skript": "handeln.py"},
     "nautilus": {"ordner": "nautilus", "waehrung": "USD",

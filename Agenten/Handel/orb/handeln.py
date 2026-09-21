@@ -1,0 +1,347 @@
+"""ORB auf OKX-Perpetuals - Papierzyklus (Spur orb).
+
+Reine Simulation: M15-Kerzen von der oeffentlichen OKX-API (okxf, kein
+Schluessel), Buch in zustand.json, kein einziger Order-Call. handel_erlaubt
+bleibt false - diese Datei kann gar nicht echt handeln.
+
+Vorlage ist `orbk/handeln.py` (dieselbe Strategie auf Kraken, laeuft seit
+15.09.2026). Unterschiede: Datenquelle okxf (OKX-Perpetuals, USDT) statt
+kraken, Session ist die UTC-Tagesgrenze (orb/session.py), und das Ziel kommt
+aus `ziel_modus`/`ziel_k`/`ziel_punkte` der eigenen wachen.json.
+
+--live ist trotzdem ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur
+scharf, wenn ihr Zeitfenster offen ist. Ohne Live-Pfad gibt es nichts
+freizugeben - der Aufruf nennt genau einen Grund (ohne das Wort
+"Freigabefenster", damit der Dauerlauf keine Anfrage stellt) und laeuft als
+Papier weiter, statt mit einem argparse-Fehler abzubrechen. Muster: orbk,
+spiegel.
+
+DAS URTEIL STEHET IM WACHENBUCH UND BLEIBT STEHEN: der OKX-Backtest vom
+13.09.2026 (siehe `_backtest` in wachen.json, nachrechenbar mit
+`backtest.py`) ergibt fuer BTC_USDT EV -45.1 Punkte und fuer ETH_USDT
+EV -3.7 Punkte je Runde - die 81-Prozent-Behauptung haelt auf Krypto NICHT.
+Diese Spur laeuft deshalb ausschliesslich als PAPIER und ist nur da, um den
+gemessenen Erwartungswert an echten, laufenden Kursen zu beobachten; sie ist
+KEIN Kandidat fuer echtes Geld. `freigabe.backtest_bestanden` bleibt false,
+damit niemand sie aus Versehen scharf schaltet.
+
+Zyklus (alle 15 min):
+  1. Ausstiege zuerst: offene Papier-Position gegen Stop/Ziel/Zwangsschluss
+  2. Einstieg: nur wenn die Range fertig ist, heute noch nichts lief, die
+     Range innerhalb mindest/max liegt und eine Kerze ueber/unter ihr schliesst
+  3. Journal + Zustand schreiben, Journal nach Q: spiegeln (Bedingung 4)
+"""
+
+import argparse
+import csv
+import json
+import os
+import sys
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+HIER = Path(__file__).resolve().parent
+BUS = HIER.parent.parent / "Bus"
+sys.path.insert(0, str(HIER))
+sys.path.insert(0, str(HIER.parent / "xperp"))      # okxf
+sys.path.insert(0, str(BUS))
+
+import ereignis                                            # noqa: E402
+import okxf                                                # noqa: E402
+import session as sess                                     # noqa: E402
+import wachen_orb as wp                                    # noqa: E402
+
+# Risikostufe (HANDEL_RISIKO) ueber den PFAD laden, wie ratschen.py: die Spur
+# hat ihren eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an
+# der Reihenfolge der Eintraege.
+from importlib.util import module_from_spec as _rs_mod, \
+    spec_from_file_location as _rs_spec
+_rs_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "risikostufe.py")
+_rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
+risikostufe = _rs_mod(_rs_spec_obj)
+_rs_spec_obj.loader.exec_module(risikostufe)
+
+ZUSTAND = risikostufe.datei(HIER / "zustand.json")
+JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
+
+# Genau ein Grund, ohne das Wort "Freigabefenster": dauerlauf.nur_fenster_fehlt
+# liest diese Zeile und fragt nur dann nach einer Freigabe. Diese Spur hat
+# keinen Live-Pfad - es gibt nichts freizugeben, also wird nicht gefragt.
+GRUND_KEIN_LIVE = ("Live waere gesperrt durch: kein Live-Pfad in dieser "
+                   "Spur (Papier; Backtest-Urteil negativ)")
+
+
+def _jetzt():
+    return datetime.now(timezone.utc)
+
+
+def _wachen():
+    return risikostufe.skaliere(
+        json.loads((HIER / "wachen.json").read_text(encoding="utf-8")))
+
+
+def lade_zustand():
+    if ZUSTAND.exists():
+        z = json.loads(ZUSTAND.read_text(encoding="utf-8"))
+        z.setdefault("modus", "papier")
+        return z
+    return {"position": None, "letzter_lauf": None, "modus": "papier"}
+
+
+def schreibe_zustand(z):
+    z.setdefault("modus", "papier")
+    ZUSTAND.write_text(json.dumps(z, indent=2, ensure_ascii=False),
+                       encoding="utf-8")
+
+
+def journal(*felder):
+    neu = not JOURNAL.exists()
+    with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if neu:
+            w.writerow(["zeit", "inst", "richtung", "einstieg", "stop",
+                        "ziel", "ausgang", "ausstieg", "gv_punkte", "gv_usd"])
+        w.writerow(felder)
+
+
+def _inst_konf(w):
+    key = w.get("instrument_aktiv")
+    if not key:
+        return None, None
+    return key, w["instrumente"][key]
+
+
+def _range_fenster(w, key, tag):
+    return sess.opening_range_fenster(w["instrumente"][key], tag)
+
+
+def ziel_kurs(w, key, richtung, einstieg, range_hoehe):
+    """Ziel aus der Wachen-Datei: r_vielfaches (k x Range) oder feste Punkte."""
+    if w.get("ziel_modus") == "punkte":
+        punkte = w["ziel_punkte"][key]
+        return einstieg + punkte if richtung == "long" else einstieg - punkte
+    k = w.get("ziel_k", 1.5)
+    return (einstieg + k * range_hoehe if richtung == "long"
+            else einstieg - k * range_hoehe)
+
+
+def pruefe_ausstiege(z, w, jetzt=None):
+    """Offene Papier-Position gegen Stop/Ziel/Zwangsschluss."""
+    p = z.get("position")
+    if not p:
+        return False, None
+    jetzt = jetzt or _jetzt()
+    konf = w["instrumente"][p["inst"]]
+    tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
+    if p["richtung"] == "long":
+        stop_verletzt = p["letzter_kurs"] <= p["stop"]
+        ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
+    else:
+        stop_verletzt = p["letzter_kurs"] >= p["stop"]
+        ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
+    if jetzt >= sess.zwangsschluss(konf, tag):
+        _schliesse(p, p["letzter_kurs"], "zwangsschluss")
+        return True, "zwangsschluss"
+    if stop_verletzt:
+        _schliesse(p, p["stop"], "stop")
+        return True, "stop"
+    if ziel_verletzt:
+        _schliesse(p, p["ziel"], "ziel")
+        return True, "ziel"
+    return False, None
+
+
+def _schliesse(p, kurs, grund):
+    """Abschluss buchen. 'tag' kommt aus JSON als String zurueck - umparsen,
+    sonst scheitert jeder echte Ausstieg (Befund orbk 13.09.2026)."""
+    tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
+    gv = (kurs - p["einstieg"]) if p["richtung"] == "long" else (p["einstieg"] - kurs)
+    gv_usd = gv * p.get("punkt_wert_usdt", 1.0)
+    journal(tag.isoformat(), p["inst"], p["richtung"], p["einstieg"],
+            p["stop"], p["ziel"], grund, kurs, round(gv, 4), round(gv_usd, 2))
+    p["ausgang"] = grund
+    p["ausstieg"] = kurs
+    p["gv_punkte"] = gv
+
+
+def _kerzen_heute(w, key):
+    """Die heutigen M15-Kerzen des Instruments (OKX-oeffentlich)."""
+    konf = w["instrumente"][key]
+    roh = okxf.kerzen(konf["okx"], bar="15m", anzahl=300)
+    heute = _jetzt().date()
+    return [{"zeit": datetime.fromtimestamp(r[0] / 1000, timezone.utc),
+             "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
+            for r in roh
+            if datetime.fromtimestamp(r[0] / 1000, timezone.utc).date() == heute]
+
+
+def opening_range(kerzen, w, key, tag):
+    start, ende = _range_fenster(w, key, tag)
+    im_fenster = [k for k in kerzen if start <= k["zeit"] < ende]
+    if len(im_fenster) < 2:
+        return None
+    zwei = im_fenster[:2]
+    return max(k["h"] for k in zwei), min(k["l"] for k in zwei)
+
+
+def breakout_signal(kerzen, hoch, tief):
+    """Erste Kerze nach der Range, die darueber/darunter schliesst."""
+    for k in kerzen:
+        if k["c"] > hoch:
+            return "long", k["c"]
+        if k["c"] < tief:
+            return "short", k["c"]
+    return None, None
+
+
+# Test-Seam: Tests ersetzen die Quelle durch synthetische Kerzen.
+kerzen_quelle = None
+
+
+def _schon_gehandelt_heute(z, tag):
+    """Ein Trade je UTC-Tag (ORB-Regel). Das Merkzeichen ueberlebt den
+    Ausstieg - sonst steigt derselbe Breakout im selben Zyklus wieder ein."""
+    p = z.get("position")
+    if p and p.get("tag") == tag.isoformat():
+        return True
+    return z.get("zuletzt_gehandelt_tag") == tag.isoformat()
+
+
+def pruefe_einstieg(z, w, jetzt=None):
+    jetzt = jetzt or _jetzt()
+    key, konf = _inst_konf(w)
+    if not key:
+        return None, "kein instrument_aktiv (Backtest-Urteil offen)"
+    tag = sess.handelstag(jetzt)
+    start, ende = _range_fenster(w, key, tag)
+    if jetzt < ende:
+        return None, "Range laeuft noch (%s bis %s)" % (
+            start.strftime("%H:%M"), ende.strftime("%H:%M"))
+    if jetzt >= sess.zwangsschluss(konf, tag):
+        return None, "Session vorbei"
+    if jetzt >= sess.letzter_einstieg(konf, tag,
+                                      w.get("letzter_einstieg_min_vor_schluss", 60)):
+        return None, "zu spaet fuer einen Einstieg"
+    if _schon_gehandelt_heute(z, tag):
+        return None, "heute schon gehandelt"
+    kerzen = (kerzen_quelle(w, key) if kerzen_quelle else _kerzen_heute(w, key))
+    hr = opening_range(kerzen, w, key, tag)
+    if hr is None:
+        return None, "keine komplette Range (Daten?)"
+    hoch, tief = hr
+    hoehe = hoch - tief
+    if hoehe < w["mindest_range_punkte"][key]:
+        return None, "Range zu klein (%.2f Pkt)" % hoehe
+    if hoehe > w["max_range_punkte"][key]:
+        return None, "Range zu gross (%.2f Pkt)" % hoehe
+    richtung, kurs = breakout_signal(kerzen, hoch, tief)
+    if not richtung:
+        return None, "kein Breakout (Range %.2f..%.2f)" % (tief, hoch)
+    stop = tief if richtung == "long" else hoch
+    ziel = ziel_kurs(w, key, richtung, kurs, hoehe)
+    z["position"] = {"inst": key, "richtung": richtung, "einstieg": kurs,
+                     "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
+                     "letzter_kurs": kurs,
+                     "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
+                     "range_hoehe": hoehe,
+                     "risiko_usdt": w.get("risiko_pro_trade_usdt")}
+    z["zuletzt_gehandelt_tag"] = tag.isoformat()
+    return "papier", "%s %s @ %.4f (Stop %.4f, Ziel %.4f, Range %.2f)" % (
+        richtung, key, kurs, stop, ziel, hoehe)
+
+
+def _letzter_kurs(w, key):
+    return okxf.letzter_kurs(w["instrumente"][key]["okx"])
+
+
+def lauf(modus="papier"):
+    w = _wachen()
+    z = lade_zustand()
+    jetzt = _jetzt()
+    z["letzter_lauf"] = jetzt.isoformat()
+    meldungen = []
+
+    veraendert, grund = pruefe_ausstiege(z, w, jetzt)
+    if veraendert:
+        p = z.pop("position", None)
+        meldungen.append("AUSSTIEG (Papier, %s): %s %s, Einstieg %.4f" % (
+            grund, p["richtung"], p["inst"], p["einstieg"]))
+
+    if not z.get("position"):
+        einstieg, meldung = pruefe_einstieg(z, w, jetzt)
+        if einstieg:
+            meldungen.append("EINSTIEG (Papier): " + meldung)
+        elif meldung:
+            meldungen.append("kein Einstieg: " + meldung)
+
+    if z.get("position"):
+        z["position"]["letzter_kurs"] = _letzter_kurs(w, z["position"]["inst"])
+    schreibe_zustand(z)
+    return meldungen
+
+
+def zeige_wachen(w):
+    key, konf = _inst_konf(w)
+    z = lade_zustand()
+    kopie = ("   |   Journal-Zweitziel %s%s"
+             % (w.get("journal_zweitziel") or "-- nicht gesetzt",
+                "" if "journal_zweitziel_ok" not in z
+                else " (letzte Kopie %s)" % z["journal_zweitziel_ok"]))
+    if not konf:
+        return ("kein instrument_aktiv - Spur gesperrt (Backtest-Urteil: "
+                "negativ fuer beide Instrumente)")
+    f = w.get("freigabe") or {}
+    return ("%s (%s): handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
+            % (key, konf["okx"], w["handel_erlaubt"], key,
+               f.get("erfuellt"), f.get("backtest_bestanden"), kopie))
+
+
+def main(argv=None):
+    with ereignis.lauf("handel/orb"):
+        return _main(argv)
+
+
+def _main(argv=None):
+    p = argparse.ArgumentParser()
+    p.add_argument("modus", nargs="?", default="papier",
+                   choices=("papier", "--papier", "status", "vorschau",
+                            "--status", "--vorschau", "live", "--live"))
+    p.add_argument("--papier", dest="flag_papier", action="store_true")
+    p.add_argument("--status", dest="flag_status", action="store_true")
+    p.add_argument("--vorschau", dest="flag_vorschau", action="store_true")
+    p.add_argument("--live", dest="flag_live", action="store_true")
+    a = p.parse_args(argv)
+    modus = a.modus
+    if a.flag_papier:
+        modus = "papier"
+    if a.flag_status:
+        modus = "status"
+    if a.flag_vorschau:
+        modus = "vorschau"
+    if a.flag_live:
+        modus = "live"
+    w = _wachen()
+    if modus == "status":
+        print(zeige_wachen(w))
+        return 0
+    if modus == "vorschau":
+        print(zeige_wachen(w))
+        print(GRUND_KEIN_LIVE)
+        return 0
+    if modus == "live":
+        print(GRUND_KEIN_LIVE)
+    meldungen = lauf()
+    for m in meldungen:
+        print(m)
+    z = lade_zustand()
+    ziel = w.get("journal_zweitziel")
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        wp.spiegele_journal([ZUSTAND], ziel)
+    print("Journal ausser Haus: %s (%s)" % ("ok" if ok else "--", info))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

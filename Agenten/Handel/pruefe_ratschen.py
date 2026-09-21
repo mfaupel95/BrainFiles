@@ -45,6 +45,7 @@ SPUREN = [
     ("xperp", "xperp", "xperp", "wachen_xperp"),
     ("swap", "swap", "xperp", "wachen_xperp"),
     ("orbk", "orbk", "orbk", "wachen_orb"),
+    ("orb", "orb", "orb", "wachen_orb"),
     ("kraken", "kraken", "kraken", "wachen_kraken"),
     ("mosaic", "mosaic", "scanner", "wachen_pruefung"),
     ("moondev_funding", "moondev_funding", "scanner", "wachen_pruefung"),
@@ -63,7 +64,8 @@ SPUREN = [
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.
-RUHT = ("orb", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
+# orb stand hier bis zum 21.09.2026 - seither laeuft die Spur (Papier).
+RUHT = ("nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Toleranz beim Vergleich Betrag gegen 1.0 x Buchrisiko (Rundung in der Datei).
 TOLERANZ = 0.005

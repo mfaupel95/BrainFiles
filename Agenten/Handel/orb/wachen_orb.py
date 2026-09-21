@@ -25,38 +25,83 @@ drawdown = basis.drawdown
 herzschlag_frisch = basis.herzschlag_frisch
 rollierender_ev = basis.rollierender_ev
 spiegele_journal = basis.spiegele_journal
+vermerke_spiegelung = basis.vermerke_spiegelung
+freigabe_erfuellt = basis.freigabe_erfuellt
+teile_runden = basis.teile_runden
 
 
 def runden_aus_journal(journal_pfad):
+    """Jede abgeschlossene Runde aus dem orbk-Journal.
+
+    orbk/handeln.py schreibt je abgeschlossener Runde EINE Zeile im Schema
+    zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd
+    - anders als das alte orb-Journal (aktion einstieg/ausstieg, Spalte
+    eur), fuer das dieser Leser urspruenglich gebaut war. Der Mis-Match
+    schlug als KeyError: 'eur' im Bericht auf (Befund 14.09.2026).
+
+    Die Spur ist papierfest: jede Zeile ist eine Papierrunde. gv_usd ist
+    das Ergebnis der Runde (punkt_wert_usd=1.0, USD). Die
+    ausgange sind ziel/stop/zwangsschluss.
+    """
     p = Path(journal_pfad)
     if not p.exists():
         return []
-    offen, runden = {}, []
+    runden = []
     with p.open("r", newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            inst = r["inst"]
+            if not r.get("ausgang"):
+                continue                        # keine abgeschlossene Runde
             try:
-                eur = float(r["eur"])
-            except (TypeError, ValueError):
+                gv_usd = float(r["gv_usd"])
+            except (TypeError, ValueError, KeyError):
                 continue
-            if r["aktion"] == "einstieg":
-                offen.setdefault(inst, []).append(eur)
-            elif r["aktion"] == "ausstieg" and offen.get(inst):
-                einsatz = offen[inst].pop(0)
-                runden.append({"zeit": r["zeit"], "inst": inst, "modus": r["modus"],
-                               "einsatz": einsatz, "erloes": eur, "gv": eur - einsatz,
-                               "grund": r.get("grund", "")})
+            runden.append({
+                "zeit": r.get("zeit", ""), "inst": r.get("inst", ""),
+                "modus": "papier",              # papierfest, keine modus-Spalte
+                "einsatz": 0.0, "erloes": gv_usd, "gv": gv_usd,
+                "grund": r.get("ausgang", ""),
+            })
     return runden
 
 
-def groessenfaktor(ruecklauf_eur, w):
-    grenze = w.get("drawdown_halbierung_prozent", 15.0) / 100.0 * w["kill_switch_gesamt_eur"]
-    return 0.5 if ruecklauf_eur >= grenze > 0 else 1.0
+def _ratschen():
+    """Laedt Handel/ratschen.py ueber den PFAD statt ueber sys.path.
+
+    Die Spur wird mit ihrem eigenen Ordner als sys.path[0] gestartet. Handel/
+    waere nur ueber einen sys.path-Eintrag erreichbar, und der koennte
+    gleichnamige Spurenmodule verdecken (gitter/ importiert ein eigenes grid.py,
+    daneben liegt Handel/grid.py).
+    """
+    import os
+    from importlib.util import spec_from_file_location, module_from_spec
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "ratschen.py")
+    _s = spec_from_file_location("ratschen", _p)
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
 
 
-def kill_ausgeloest(ruecklauf_eur, w):
-    ks = w.get("kill_switch_gesamt_eur")
-    return ks is not None and ruecklauf_eur >= ks
+RATSCHEN = _ratschen()
+
+
+def groessenfaktor(ruecklauf_usd, w):
+    """Bedingung 2, erste Stufe: ab der Halbierungsschwelle wird halbiert.
+
+    Die Schwelle kommt aus ratschen.py - EINE Umsetzung fuer alle Spuren.
+
+    AUSDRUECKLICH 10.00 = 1.0 x Buchrisiko (21.09.2026): die Spur fuehrt
+    strukturell EINE Position (z["position"] ist ein Dict), Buchrisiko ist
+    also risiko_pro_trade_usdt 10 x 1 Platz. Der Betrag steht ausdruecklich in
+    wachen.json - eine aus dem Kill-Switch abgeleitete Zahl war der Fehler,
+    den die Vereinheitlichung vom 15.09.2026 beseitigt hat.
+    """
+    return RATSCHEN.groessenfaktor(ruecklauf_usd, w)
+
+
+def kill_ausgeloest(ruecklauf_usd, w):
+    ks = w.get("kill_switch_gesamt_usd")
+    return ks is not None and ruecklauf_usd >= ks
 
 
 def range_ok(range_punkte, inst_key, w):
@@ -95,13 +140,23 @@ def _wochen_und_sessions(runden):
 def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
+    echt, stoer = teile_runden(runden)
     hoch, rueck = drawdown(runden)
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 45))
-    ev = rollierender_ev(runden)
+    # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
+    # ist keine Handelsentscheidung und darf den Erwartungswert nicht ins
+    # Negative ziehen (Entscheidung Max, 15.09.2026).
+    ev = rollierender_ev(echt)
     wochen, sessions = _wochen_und_sessions(runden)
     return {
+        "freigabe_erfuellt": freigabe_erfuellt(w),   # Bed. 1 - Haken aus wachen.json
         "runden_gesamt": len(runden), "runden_papier": len(papier),
-        "hoechststand_eur": hoch, "ruecklauf_eur": rueck,
+        # Kennzahl auf Handelsrunden, Kurve auf allen Buchungen:
+        # drawdown(runden) oben bleibt absichtlich ungefiltert.
+        "runden_echt": len(echt), "runden_stoerung": len(stoer),
+        "runden_papier_echt": len([r for r in echt if r["modus"] == "papier"]),
+        "rollierender_ev_alle": rollierender_ev(runden),
+        "hoechststand_usd": hoch, "ruecklauf_usd": rueck,
         "groessenfaktor": groessenfaktor(rueck, w), "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch, "herzschlag_alter_min": alter,
         "rollierender_ev": ev, "ev_negativ": ev is not None and ev < 0,

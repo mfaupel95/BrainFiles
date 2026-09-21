@@ -9,10 +9,15 @@ class TestWachenJson(unittest.TestCase):
         self.w = json.loads(WACHEN.read_text(encoding="utf-8"))
 
     def test_start_gesperrt(self):
+        # Handelserlaubnis und Freigabe bleiben gesperrt: der Backtest ist fuer
+        # beide Instrumente negativ (EV -45.1 / -3.7 Pkt je Runde), es gibt
+        # keinen Live-Pfad im Code. Was der Papierlauf BRAUCHT, ist dagegen
+        # gesetzt: ein Instrument und ein Spiegelziel (Bedingung 4).
         self.assertIs(self.w["handel_erlaubt"], False)
-        self.assertIsNone(self.w["instrument_aktiv"])
         self.assertIs(self.w["freigabe"]["erfuellt"], False)
-        self.assertIsNone(self.w["journal_zweitziel"])
+        self.assertIs(self.w["freigabe"]["backtest_bestanden"], False)
+        self.assertIn(self.w["instrument_aktiv"], ("BTC_USDT", "ETH_USDT"))
+        self.assertTrue(self.w["journal_zweitziel"])
 
     def test_pflichtfelder_da(self):
         for schluessel in ("risiko_pro_trade_usdt", "ziel_modus", "hebel_deckel",
