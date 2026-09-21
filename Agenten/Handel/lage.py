@@ -645,6 +645,16 @@ def spur_supertrend():
     return _spur_indikator("supertrend", "SuperTrend (Indikator)")
 
 
+def spur_trendwende_btc():
+    return _spur_indikator("trendwende_btc",
+                           "Trendwende BTC (Short bei Wende)")
+
+
+def spur_liq_wand():
+    return _spur_indikator("liq_wand",
+                           "Liquidations-Wand (BTC)")
+
+
 def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
@@ -1168,6 +1178,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_orb, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
+    spur_trendwende_btc, spur_liq_wand,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,

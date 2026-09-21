@@ -632,6 +632,12 @@ Agenten/Handel/moondev_listingarb/handelsjournal.csv
 !Agenten/Handel/trendwende_btc/*.md
 !Agenten/Handel/trendwende_btc/wachen.json
 !Agenten/Handel/trendwende_btc/tests/*.py
+!Agenten/Handel/liq_wand/*.py
+!Agenten/Handel/liq_wand/*.md
+!Agenten/Handel/liq_wand/wachen.json
+!Agenten/Handel/liq_wand/tests/*.py
+Agenten/Handel/liq_wand/zustand.json
+Agenten/Handel/liq_wand/handelsjournal.csv
 Agenten/Handel/trendwende_btc/zustand.json
 Agenten/Handel/trendwende_btc/handelsjournal.csv
 Agenten/Handel/moondev_topmovers/zustand.json

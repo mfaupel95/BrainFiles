@@ -99,6 +99,50 @@ def signal(d, w):
     return "short"
 
 
+def trend_richtung(w):
+    """Aktuelle SuperTrend-Richtung auf der letzten abgeschlossenen Kerze.
+
+    Eigene kleine Funktion, damit signal() und rueckdreh() nachweislich
+    DIESELBE Rechnung benutzen - zwei Kopien derselben Formel waeren die
+    Stelle, an der Einstieg und Ausstieg auseinanderlaufen.
+    """
+    daten, _kurse, fehler = quelle(w)
+    if fehler:
+        return None
+    inst = w.get("instrument", "BTC-USDT-SWAP")
+    k = (daten.get(inst) or {}).get("kerzen") or []
+    n_st = int(w.get("supertrend_n", 10))
+    if len(k) < n_st * 3 + 2:
+        return None
+    k = k[:-1]
+    try:
+        _, richtung = xi.supertrend(k, n=n_st,
+                                    faktor=float(w.get("supertrend_faktor", 3.0)))
+    except Exception:  # noqa: BLE001
+        return None
+    return richtung[-1] if richtung else None
+
+
+def rueckdreh(p, w):
+    """'rueckdreh', sobald der Trend wieder nach oben zeigt - sonst None.
+
+    AUFTRAG Max 21.09.2026. Die Spur steigt beim Wechsel +1 -> -1 short ein;
+    der ehrliche Gegenpart ist der Ausstieg, sobald der SuperTrend wieder auf
+    +1 steht. Ohne ihn endet ein Short nur an Stop, Ziel oder Frist - also
+    moeglicherweise erst weit, nachdem die eigene Begruendung entfallen ist.
+
+    Stop und Ziel behalten Vorrang (spur_buch fragt diesen Zusatz erst danach).
+    Nur fuer Short-Positionen: die Spur eroeffnet keine Longs, eine Long-
+    Position waere ein Fremdkoerper und wird nicht angefasst.
+    """
+    if (p.get("seite") or "").lower() != "short":
+        return None
+    if not w.get("ausstieg_bei_rueckdreh", True):
+        return None
+    return "rueckdreh" if trend_richtung(w) == 1 else None
+
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = p.add_mutually_exclusive_group()
@@ -118,7 +162,8 @@ def main():
               "Hand). Diese Spur hat zusaetzlich keinen Orderaufruf.")
         modus = "papier"
     return spur_buch.zyklus(HIER, quelle, signal, modus,
-                            ereignis_name="handel/trendwende_btc")
+                            ereignis_name="handel/trendwende_btc",
+                            zusatz_ausstieg=rueckdreh)
 
 
 def _live_erlaubt() -> bool:

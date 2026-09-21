@@ -29,6 +29,8 @@
  "pflicht_stop_prozent_min": 2.5,
  "pflicht_stop_prozent_max": 8.0,
  "ziel_r_vielfaches": 2.0,
+ "_ausstieg_bei_rueckdreh": "Auftrag Max 21.09.2026: die Spur steigt beim Wechsel +1 -> -1 short ein, also endet sie auch, sobald der SuperTrend wieder auf +1 steht. Stop und Ziel haben Vorrang; false schaltet den Zusatz ab.",
+ "ausstieg_bei_rueckdreh": true,
  "gebuehr_taker": 0.0005,
  "risikovorfilter": true,
  "risiko_fenster_stunden": 12,

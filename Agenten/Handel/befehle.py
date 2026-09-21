@@ -83,6 +83,8 @@ FAMILIE = {
     "macd_mtf": "Indikator",
     "squeeze": "Indikator",
     "supertrend": "Indikator",
+    "trendwende_btc": "Indikator",
+    "liq_wand": "Options-Zone",
     "wavetrend": "Indikator",
     # Mosaic ist keine Indikator-Spur: sie handelt Preisaktion (4H-Bias,
     # 30M-Pullback, 5M-Structure-Shift). Eigene Familie statt "?" - die
@@ -116,7 +118,8 @@ FAMILIE = {
     "moondev_sniper": "Bot-Signal",
 }
 
-INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend")
+INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend",
+               "trendwende_btc")
 
 
 def spuren():

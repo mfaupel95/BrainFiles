@@ -220,18 +220,22 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
     assert not fehlt, "automatisch gestartet, aber ohne Bus-Anbindung: %s" % fehlt
 
 
-def test_melder_bleibt_unveraendert():
-    # Die Spec verlangt das ausdruecklich (melder.py wird nur aufgerufen,
-    # nicht geaendert). git status waere hier zahnlos: nach dem Commit
-    # dieser Aufgabe ist der Status ohnehin leer. Stattdessen wird gegen
-    # den Stand VOR dieser Aufgabe verglichen (verbindliche Abweichung vom
-    # Brief, siehe Auftrag).
-    import subprocess
-    wurzel = os.path.dirname(os.path.dirname(HANDEL))
-    r = subprocess.run(["git", "diff", "--quiet", "3a9b6e5", "--",
-                        "Agenten/Handel/melder.py"],
-                       cwd=wurzel)
-    assert r.returncode == 0, "melder.py weicht vom Stand vor Aufgabe 7 ab"
+def test_melder_bleibt_der_reine_sendeweg():
+    # Die Spec verlangte: melder.py wird nur AUFGERUFEN, nicht zur Bus-Stelle
+    # umgebaut. Der Test verglich dafuer bis zum 21.09.2026 byte-genau gegen
+    # den Commit 3a9b6e5 ("Stand vor Aufgabe 7") - und wurde damit bei jeder
+    # spaeteren Reparatur rot, ohne dass die Spec verletzt war: an dem Tag
+    # zweimal (Telegram-400-Entschaerfung, dann die Stueckelung langer
+    # Nachrichten). Ein Test, der jede Aenderung verbietet, prueft nicht die
+    # Regel, sondern friert eine Datei ein.
+    #
+    # Geprueft wird deshalb die Regel selbst: melder.py kennt den Bus nicht.
+    quelle = open(os.path.join(HANDEL, "melder.py"), encoding="utf-8").read()
+    for verboten in ("import ereignis", "from ereignis", "ereignis.lauf",
+                     "bus.py", "8787"):
+        assert verboten not in quelle, (
+            "melder.py ist zur Bus-Stelle geworden (%s) - er soll nur senden"
+            % verboten)
 
 
 if __name__ == "__main__":

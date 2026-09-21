@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Liquidations-Wand (liq_wand): gegen den Zwangsschluss-Cluster handeln.
+
+AUFTRAG Max 21.09.2026: "Bau liq_wand". Schwesterspur zu iv_wand - dort ist
+die Wand der Options-Strike mit dem groessten offenen Interesse, hier der
+Preis, an dem sich gerade Zwangsschluesse haeufen.
+
+DIE REGEL, nachrechenbar
+------------------------
+OKX liefert oeffentlich (kein Schluessel) die letzten ausgefuehrten
+Liquidationen je Instrument:
+    /api/v5/public/liquidation-orders?instType=SWAP&uly=BTC-USDT&state=filled
+Gemessen 21.09.2026: 100 Eintraege je Abruf ueber rund 78 Minuten, mit
+Preis (bkPx), Groesse (sz) und Seite (posSide).
+
+1. Die Liquidationen werden in Preisbaender (Vorgabe 0,25 %) gelegt und je
+   Band die Kontraktmenge summiert. Das groesste Band ist die WAND.
+2. Gehandelt wird nur, wenn die Wand
+   - genug Masse hat (mindest_anteil der gesamten Menge im Fenster) und
+   - nahe genug am Spot liegt (max_abstand_prozent).
+3. RICHTUNG - und das ist der Kern: eine Liquidationswand ist kein
+   Widerstand, sondern ein Beschleuniger. Werden dort SHORTS
+   zwangsgeschlossen (posSide short), entsteht Kaufdruck nach oben; werden
+   LONGS geschlossen, entsteht Verkaufsdruck nach unten. Die Spur geht also
+   MIT der Richtung des Clusters, nicht dagegen.
+   Gemessen am 21.09.2026 20:26-21:44: 71 Short-Liquidationen mit 4.897
+   Kontrakten gegen 29 Long-Liquidationen mit 116 Kontrakten - also ein
+   klarer Aufwaertsdruck, und die Wand lag 0,75 % ueber dem Spot.
+4. Ziel ist die Wand selbst (als Marktpunkt uebergeben), Stop auf der
+   anderen Seite des Spot.
+
+Papier, kein Orderpfad. --live verweigert mit Grund. Buch, Ratsche,
+Risikovorfilter und Spiegelung nach Q:\\Handel_Journal\\liq_wand kommen aus
+Handel/spur_buch.py.
+
+Aufruf:
+    python handeln.py --vorschau     # rechnen, nichts schreiben
+    python handeln.py --papier       # Papierzyklus (Standard)
+    python handeln.py --wachen       # Grenzen zeigen
+"""
+
+from __future__ import annotations
+
+import argparse
+import collections
+import json
+import os
+import sys
+from pathlib import Path
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+HANDEL = os.path.dirname(HIER)
+# Reihenfolge: die eigene Spur ZULETZT, sonst gewinnt ein gleichnamiges
+# Modul aus scanner/ (dieselbe Falle wie in den Spurtests).
+for _p in (os.path.join(HANDEL, "scanner"), HANDEL, HIER):
+    if _p in sys.path:
+        sys.path.remove(_p)
+    sys.path.insert(0, _p)
+
+import spur_buch                                                   # noqa: E402
+import moondev_daten as md                                         # noqa: E402
+import okx                                                         # noqa: E402
+
+# Test-Seam: None = echte Quelle (OKX, oeffentlich).
+liq_quelle = None
+
+
+def liquidationen(inst_familie, grenze=100):
+    """Zwangsschluesse: [{"seite", "preis", "kontrakte", "usd", "ts"}, ...].
+
+    Der Abruf liegt bewusst NICHT hier, sondern in moondev_daten - dort holt
+    ihn schon die Spur moondev_liquidation, samt Umrechnung der Kontrakte in
+    USD ueber ctVal. Zwei Abrufe derselben Zahlen waeren zwei Wahrheiten.
+    """
+    if liq_quelle is not None:
+        return liq_quelle(inst_familie, grenze)
+    return md.okx_liquidationen(uly=inst_familie, grenze=grenze)
+
+
+def wand(liqs, spot, bandbreite_prozent):
+    """(Preis, Kontrakte, Seite) des groessten Liquidationsbandes.
+
+    Die Seite ist die des liquidierten Bestands: 'short' heisst, dort wurden
+    Shorts glattgestellt - also Kaufdruck.
+    """
+    if not liqs or spot <= 0:
+        return None
+    band = spot * (bandbreite_prozent / 100.0)
+    if band <= 0:
+        return None
+    masse = collections.defaultdict(float)
+    seiten = collections.defaultdict(lambda: collections.defaultdict(float))
+    for x in liqs:
+        try:
+            px = float(x.get("preis") or 0)
+            sz = float(x.get("kontrakte") or 0)
+        except (TypeError, ValueError):
+            continue
+        if px <= 0 or sz <= 0:
+            continue
+        schlussel = round(px / band) * band
+        masse[schlussel] += sz
+        seiten[schlussel][(x.get("seite") or "").lower()] += sz
+    if not masse:
+        return None
+    preis, menge = max(masse.items(), key=lambda t: t[1])
+    seite = max(seiten[preis].items(), key=lambda t: t[1])[0] or ""
+    return preis, menge, seite
+
+
+def quelle(w):
+    """Spot und Liquidationen. Rueckgabe wie bei allen Buch-Spuren."""
+    inst = w.get("instrument", "BTC-USDT-SWAP")
+    familie = w.get("inst_familie", "BTC-USDT")
+    daten, kurse, fehler = {}, {}, []
+    try:
+        spot = okx.letzter_kurs(inst)
+    except Exception as e:                                         # noqa: BLE001
+        return {}, {}, ["%s: Spot nicht abrufbar (%s)" % (inst, e)]
+    if not spot:
+        return {}, {}, ["%s: kein Spotkurs" % inst]
+    try:
+        liqs = liquidationen(familie, int(w.get("liq_grenze", 100)))
+    except Exception as e:                                         # noqa: BLE001
+        return {}, {}, ["%s: Liquidationen nicht abrufbar (%s)" % (familie, e)]
+    daten[inst] = {"spot": spot, "liqs": liqs}
+    kurse[inst] = spot
+    return daten, kurse, fehler
+
+
+def signal(d, w):
+    """'long'/'short', wenn eine nahe Liquidationswand mit Masse da ist."""
+    spot = float(d.get("spot") or 0)
+    liqs = d.get("liqs") or []
+    if spot <= 0 or len(liqs) < int(w.get("mindest_liquidationen", 20)):
+        return None
+
+    treffer = wand(liqs, spot, float(w.get("bandbreite_prozent", 0.25)))
+    if not treffer:
+        return None
+    preis, menge, seite = treffer
+
+    gesamt = 0.0
+    for x in liqs:
+        try:
+            gesamt += float(x.get("kontrakte") or 0)
+        except (TypeError, ValueError):
+            pass
+    if gesamt <= 0:
+        return None
+    if menge / gesamt < float(w.get("mindest_anteil", 0.30)):
+        return None                       # zu verstreut - keine Wand
+
+    abstand = abs(preis / spot - 1) * 100
+    if abstand > float(w.get("max_abstand_prozent", 2.0)):
+        return None                       # zu weit weg, um sie zu erreichen
+
+    # Eine Liquidationswand ist ein BESCHLEUNIGER, kein Widerstand:
+    # geschlossene Shorts = Kaufdruck, geschlossene Longs = Verkaufsdruck.
+    if seite == "short":
+        return "long" if preis >= spot else None
+    if seite == "long":
+        return "short" if preis <= spot else None
+    return None
+
+
+def ziel(d, w):
+    """Die Wand selbst als Zielpunkt (spur_buch nimmt sie statt des R-Ziels)."""
+    spot = float(d.get("spot") or 0)
+    treffer = wand(d.get("liqs") or [], spot,
+                   float(w.get("bandbreite_prozent", 0.25)))
+    return treffer[0] if treffer else None
+
+
+def _live_erlaubt() -> bool:
+    w = json.loads((Path(HIER) / "wachen.json").read_text(encoding="utf-8"))
+    return bool(w.get("handel_erlaubt")) and bool(
+        (w.get("freigabe") or {}).get("erfuellt"))
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--vorschau", action="store_const", dest="modus",
+                   const="vorschau", help="nur rechnen, nichts schreiben")
+    g.add_argument("--papier", action="store_const", dest="modus",
+                   const="papier", help="Papierbuch (Standard)")
+    g.add_argument("--live", action="store_const", dest="modus", const="live",
+                   help="verweigert: diese Spur hat keinen Live-Zweig")
+    g.add_argument("--wachen", action="store_const", dest="modus",
+                   const="wachen", help="nur den Wachenstand zeigen")
+    a = p.parse_args()
+    modus = a.modus or "papier"
+    if modus == "live" and not _live_erlaubt():
+        print("--live verweigert: handel_erlaubt ist false und freigabe.erfuellt "
+              "ist nicht gesetzt - Handelsregeln Punkt 3 (scharf schalten von "
+              "Hand). Diese Spur hat zusaetzlich keinen Orderaufruf.")
+        modus = "papier"
+    return spur_buch.zyklus(HIER, quelle, signal, modus,
+                            ereignis_name="handel/liq_wand",
+                            ziel=ziel)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

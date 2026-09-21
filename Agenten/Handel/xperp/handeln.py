@@ -658,13 +658,28 @@ def papier_w(w, live):
 
 def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     w = papier_w(w, live)
-    offen = {p["basis"] for p in z["positionen"]}
-    margin_gebunden = sum(p["margin"] for p in z["positionen"])
-    fam_stand = wx.familien_belegung(z["positionen"], w)
+
+    # WARTENDE AUFTRAEGE BELEGEN EINEN PLATZ (gemessen 21.09.2026).
+    # Vorher zaehlte hier nur z["positionen"]. Ein Limit hinter dem
+    # Markt wird aber als WARTENDER Auftrag gefuehrt und ist noch
+    # keine Position - nach dem Stellen war fuer Platz, Margin und
+    # Familie alles unveraendert, und der naechste Zyklus legte fuer
+    # denselben Basiswert nach. Ergebnis an der Boerse: 13 offene
+    # Limit-Auftraege, CL sechsmal und XAU fuenfmal, aus einem
+    # einzigen Abend. Ein wartender Auftrag bindet denselben Platz,
+    # dieselbe Margin und denselben Familienanteil wie die Position,
+    # die aus ihm wird.
+    wartend = [a for a in (z.get("wartende") or [])
+               if isinstance(a, dict)]
+    belegt = list(z["positionen"]) + wartend
+
+    offen = {p.get("basis") for p in belegt}
+    margin_gebunden = sum(float(p.get("margin") or 0.0) for p in belegt)
+    fam_stand = wx.familien_belegung(belegt, w)
     we = s["wochenende"]
 
     for kandidat in kand:
-        if len(z["positionen"]) >= w["max_offene_anlaeufe"]:
+        if len(belegt) >= w["max_offene_anlaeufe"]:
             return
         if kandidat["basis"] in offen or in_abklingzeit(kandidat["basis"], z, w):
             continue

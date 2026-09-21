@@ -313,6 +313,12 @@ SPUREN = {
     # ein Platz, Risiko 5 USD, Stop 4 %, Ziel 2R.
     "trendwende_btc": {"ordner": "trendwende_btc", "waehrung": "USD",
                        "skript": "handeln.py"},
+    # LIQ_WAND (21.09.2026, Auftrag Max): handelt MIT dem Liquidations-
+    # Cluster - zwangsgeschlossene Shorts sind Kaufdruck, geschlossene
+    # Longs Verkaufsdruck. Wand = groesstes Preisband der letzten ~78 min
+    # Zwangsschluesse (OKX oeffentlich). Papier, kein Live-Zweig.
+    "liq_wand": {"ordner": "liq_wand", "waehrung": "USD",
+                 "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.

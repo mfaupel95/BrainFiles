@@ -345,7 +345,7 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
 
 
 def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
-                    weg=None):
+                    weg=None, zusatz=None):
     """Stop und Ziel pruefen. Der G/V laeuft auf den NOMINALWERT.
 
     Die rohe Kursdifferenz war der Fehler vom 15.09.2026: bei BTC ein Faktor
@@ -371,6 +371,18 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                 grund = "stop"
             elif kurs <= p["ziel"]:
                 grund = "ziel"
+        if not grund and zusatz is not None:
+            # ZUSATZ-AUSSTIEG (21.09.2026): Stop und Ziel haben Vorrang -
+            # sie sind die teurere Wahrheit und muessen im Journal stehen,
+            # wenn sie gerissen sind. Erst danach darf ein Signal die
+            # Position beenden (z. B. der Rueckdreh des Trends).
+            try:
+                grund = zusatz(p, w)
+            except Exception as e:  # noqa: BLE001
+                print("  %s: Zusatz-Ausstieg nicht rechenbar (%s)"
+                      % (p.get("inst"), e), file=sys.stderr)
+                grund = None
+
         if not grund:
             behalten.append(p)
             continue
@@ -410,7 +422,8 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
 
 # --- Das Lauf-Geruest ------------------------------------------------------
 
-def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
+def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
+           zusatz_ausstieg=None):
     """Ein Zyklus einer Spur. `quelle(w)`, `signal(daten, w)` kommen von ihr.
 
     `ziel(daten, w)` ist optional und liefert ein ZIEL ALS MARKTPUNKT (die
@@ -473,7 +486,8 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None):
                 print("Vorschau: keine Dateien geschrieben.")
             return 0
 
-        pruefe_ausstiege(z, kurse, w, journal_pfad, live=live, weg=weg)
+        pruefe_ausstiege(z, kurse, w, journal_pfad, live=live, weg=weg,
+                         zusatz=zusatz_ausstieg)
         if modus == "vorschau":
             for inst in sorted(daten):
                 seite = signal(daten[inst], w)

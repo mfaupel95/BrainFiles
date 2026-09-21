@@ -25,8 +25,21 @@ class FormTest(unittest.TestCase):
         # Die Kopie-Familie (spiegel, spiegel_knapp, spiegel_weit, kopier,
         # kopier1zu1) wird seit dem Berichts-Schlankbund als EIN Holer
         # (spur_kopier_familie) gezaehlt; die 5 Einzelholer existieren weiter,
-        # stehen aber nicht mehr im HOLER.
-        self.assertEqual(len(lage.HOLER), 28)
+        # stehen aber nicht mehr in HOLER.
+        # Eine feste Zahl geht bei jeder neuen Spur kaputt und sagt nichts
+        # darueber, ob der Bericht vollstaendig ist. Geprueft wird deshalb die
+        # REGEL: jede Spur aus dauerlauf.SPUREN hat einen Holer.
+        import dauerlauf
+        namen = {f.__name__.replace("spur_", "") for f in lage.HOLER}
+        familie = {"spiegel", "spiegel_knapp", "spiegel_weit", "kopier",
+                   "kopier1zu1"}
+        # Ein Holer darf praeziser heissen als die Spur (spur_xperp_positionen
+        # fuer xperp) - gesucht ist, ob die Spur ueberhaupt gelesen wird.
+        fehlen = {s for s in dauerlauf.SPUREN
+                  if s not in familie
+                  and not any(n == s or n.startswith(s + "_") for n in namen)}
+        self.assertEqual(fehlen, set(), "ohne Holer im Bericht: %s" % fehlen)
+        self.assertGreaterEqual(len(lage.HOLER), 28)
 
 
 class KursVariantenTest(unittest.TestCase):
