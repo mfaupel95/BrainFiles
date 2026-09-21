@@ -889,9 +889,34 @@ Geometrie, sondern beim Einstieg und bei den Kosten:
   180 Stueck) - die Notausstiege haben das Bild nicht verdorben.
 
 Folge: die Arme bleiben aus. Wer sie wieder einschaltet, soll zuerst die
-Slippage-Annahme messen (Ausfuehrungspreis gegen Signalpreis), nicht die
-Parameter drehen - dieselbe Reihenfolge wie beim Gitter (Parameter war nicht
-der Hebel).
+Slippage MESSEN, nicht die Parameter drehen - dieselbe Reihenfolge wie beim
+Gitter (dort war der Parameter ebenfalls nicht der Hebel).
+
+**Gemessen (21.09.2026, `spiegel/slippage_messen.py`, Pool-Tiefe live von
+DexScreener, Round-Trip-Naeherung 2 x Order / Quote-Tiefe):**
+
+- Stichprobe: die 80 juengsten Einstiege des Spiegel-Buchs. Pool-Tiefe Median
+  **62.900 USD** (p25 34.500, p10 9.800, min 5 USD).
+- Preiseinfluss 50 USD: **Median 0,33 %** (p25 0,27 %, p75 0,94 %). Bei 100 USD
+  0,67 %, bei 500 USD 3,34 %.
+- Die Annahme im Wachenbuch (3 % je Seite, also 6 % Round Trip) ist fuer den
+  Median-Handel **rund fuenf Prozentpunkte zu streng**. Sie beschreibt nicht
+  den Normalfall, sondern den Rand.
+- Der Rand ist aber kein "3 % teurer", sondern **kein Fill**: 7 von 77 Pools
+  lagen unter 5.000 USD Tiefe (9 %), 4 davon unter 2.000 USD. Bei 50 USD Order
+  ist das nicht teuer, sondern nicht ausfuehrbar.
+
+Folge fuer die Bewertung: mit gemessenen Kosten (2 x 0,33 % Impact + 2 x 1 %
+Gebuehr ~ 2,7 % Round Trip) bleibt das Buch negativ, aber bei etwa -4,4 %
+statt -9,22 %. Das Urteil "Arme bleiben aus" haelt; die Zahl "wie schlimm"
+war jedoch vom Modell gepraegt, nicht vom Markt. Wer den Kostensatz im
+Wachenbuch korrigiert, gehoert dazu: Groesse gegen Tiefe rechnen und Kopien
+ohne Tiefe (< 5 x Order) als NICHT ausfuehrbar zaehlen, statt sie mit 3 % zu
+bepreisen.
+
+Noch nicht gemessen: der ZEITVERSATZ (Kursweg zwischen Signal und Ausfuehrung).
+Dafuer fehlt eine Vorwaerts-Messung, die den Preis bei Signal und nach 1/5/15
+Minuten nebeneinander schreibt.
 
 Wieder einschalten: die drei Zeilen in `SPUREN` und `NUR_BASIS` einkommentieren
 (der Weg steht als Kommentar an beiden Stellen in `dauerlauf.py`) — UND vorher
