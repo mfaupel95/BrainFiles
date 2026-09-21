@@ -80,3 +80,33 @@ Seiten trennen. Ein einzelnes positives Feld ist Zufall.
 - Melden: was jetzt laeuft (mit Nachweisbefehl), was absichtlich NICHT angefasst
   wurde (laufender Dauerlauf, fremde Profile, Laufzeitstaende), und was eine
   Entscheidung braucht. Commit + Push wie jeder andere Auftrag.
+
+## 6. Fremdstrategie, die als CODE vorliegt (Repo statt Clip)
+- Original-Code nehmen, nicht nachbauen: nur Datenpfad und Gebuehr
+  parametrisieren, den Rest unveraendert lassen. Der Mac-Pfad im Original bleibt
+  stehen, der eigene Lauf liest die lokale CSV.
+- Zweimal fahren, mit 0,05 % und 0,20 % je Seite. Erst der Unterschied zeigt, ob
+  die Strategie einen Vorteil hat oder nur von Gebuehrfreiheit lebt. Beispiel
+  21.09.2026 (TTM-Squeeze+ADX, neun Jahre BTC 1h): +158 % bei 0,05 %, -60 % bei
+  0,20 %, auf frischen Hausdaten auch ohne Gebuehrdruck negativ.
+- Ergebnis gegen `Handel/kosten_wendepunkt.py` halten: dessen f_max ist die
+  Gebuehr je Runde, bei der nur noch die Nullinie getroffen wird, und damit
+  direkt mit der Fremdstrategie vergleichbar (dort ~0,10 %, Haus-Scanner
+  9,98 %). Eine Fremdstrategie, deren f_max unter dem der schwaechsten eigenen
+  Spur liegt, wird nicht uebernommen - Parameter-Optimierung aendert daran
+  nichts.
+- Fremd-Repos bringen oft die KURS DATEN mit, die im Haus fehlen: neun Jahre
+  BTC-Stundenkerzen liegen unter
+  `Werkstatt/Repos/Harvard-Algorithmic-Trading-with-AI/backtest/data/`, dazu
+  BTC-6h, ETH-1d, SOL-1d.
+- Lauffaehige Fremd-Backtester mit fertigem venv: `Werkstatt/freqtrade` (ccxt,
+  `user_data/data` muss erst gefuellt werden), `FinRL`, `RLTrader`,
+  `intelligent-trading-bot`. talib + backtesting.py liegen im venv von
+  `Werkstatt/Repos/moon-dev-ai-agents`.
+- Ausgemusterte Skills liegen unter `Agenten/Hermes/skills/.archive/` und sind
+  dort mit `read_file` lesbar - **ohne** sie in die Bibliothek zu laden. Nur
+  zurueckholen, was wirklich laeuft (`hermes curator restore <name>`); ein Skill,
+  der auf ein fehlendes Werkzeug zeigt (z. B. `marktbriefing` -> `traderhub`
+  nicht installiert), bleibt liegen.
+- Belegnotiz: `Wissen/Archiv-Trading-Skills.md`, Skript
+  `Agenten/Handel/backtest_archiv_strategie.py`.
