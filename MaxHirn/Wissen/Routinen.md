@@ -233,6 +233,23 @@ Tagesbericht einmal täglich ab 08:00. **Er ersetzt die Tagesroutinen nicht**,
 er legt sich darüber — `marktscanner.ps1` und `kraken-scanner.ps1` rechnen
 deshalb weiterhin die Ranglisten der beiden Scanner-Spuren.
 
+**Stille Spuren namentlich (Auftrag Max, 21.09.2026).** Der Tagesbericht nennt
+neben der Sammelzeile ("N Spuren still: ...") jede stille Spur EINZELN, mit dem
+Alter ihrer letzten **Buchung** und ihrem `handel_erlaubt`:
+
+    Kraken-Futures (USD) (papier)  letzte Buchung vor 1 Tag(en)
+    Omniquant (papier)             letzte Buchung vor 4 Tag(en)
+    ORB-Kraken (Papier)            noch kein Handel (Journal traegt nur Kurse)
+    SuperTrend (Indikator)         kein Journal
+
+Buchung heisst kauf/verkauf/eroeffnen/schliessen/EINSTIEG/AUSSTIEG. Die
+`zyklus`-Zeilen der Nautilus-Arme (Bid/Ask-Sammlung) zaehlen ausdruecklich
+NICHT - sonst gaelte eine Spur als frisch beschaftigt, die seit Wochen nicht
+handelt. Ein geteilter `schluessel` wird ausgeschrieben: beide Kraken-Arme
+tragen `nautilus_kraken`, in der Sammelzeile stand deshalb zweimal derselbe
+Name. Werkzeug: `tagesbericht.sammelzeile` / `stillblock` / `letzte_buchung`,
+Tests `Handel/tests/test_stille_spuren.py`.
+
 **Je Spur ein Schreiber (14.09.2026).** Der Dauerlauf führt seit dem
 14.09.2026 auch die Kraken-Spur (sie war vom 03.09.2026 bis dahin stillgelegt);
 ihre Rangliste kommt weiter aus der Tagesroutine, gehandelt wird nur im Takt.

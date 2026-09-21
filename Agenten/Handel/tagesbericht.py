@@ -21,6 +21,7 @@ Aufruf:
 """
 
 import argparse
+import csv
 import datetime as dt
 import json
 import os
@@ -222,11 +223,108 @@ def rang(e, diff):
 
 
 def sammelzeile(stille):
-    """Der stille Rest als eine Zeile: gezaehlt und benannt."""
+    """Der stille Rest als eine Zeile: gezaehlt und benannt.
+
+    Der Name einer Spur ist ihr `schluessel` - AUSSER er ist nicht eindeutig
+    (die beiden Kraken-Nautilus-Arme teilen sich `nautilus_kraken`, sie
+    erschienen deshalb zweimal als "nautilus_kraken" in einer Zeile, Befund
+    21.09.2026). Dann steht der sprechende Name da.
+    """
     if not stille:
         return ""
-    namen = [e["schluessel"] or e["name"] for e in stille]
-    return "%d Spuren still: %s" % (len(namen), ", ".join(sorted(namen)))
+    schluessel = [e.get("schluessel") for e in stille if e.get("schluessel")]
+    doppelt = {k for k in schluessel if schluessel.count(k) > 1}
+    namen = []
+    for e in stille:
+        k = e.get("schluessel")
+        namen.append(e["name"] if (not k or k in doppelt) else k)
+    return "%d Spuren still: %s" % (len(stille), ", ".join(sorted(namen)))
+
+
+NL = chr(10)          # Zeilenumbruch ohne Escape-Ketten im Quelltext
+
+# Was im Journal ein HANDEL ist. Alles andere (zyklus, quotes, funding,
+# rollover) ist Betriebsnotiz und darf das Alter einer stillen Spur nicht
+# frisch aussehen lassen.
+BUCHUNGEN = ("kauf", "verkauf", "eroeffnen", "schliessen", "einstieg",
+             "ausstieg")
+
+
+def letzte_buchung(journal):
+    """Was das Journal einer Spur hergibt: (Tage seit letzter BUCHUNG,
+    Buchungen, Tage seit der letzten Zeile, Zeilen).
+
+    Unterschieden wird zwischen Buchung und Zeile, weil nicht jede Zeile ein
+    Handel ist: die Nautilus-Arme schreiben im Takt `zyklus`-Zeilen mit
+    Bid/Ask (Quote-Sammlung). Wer nur die letzte Zeile liest, haelt diese Spur
+    fuer frisch beschaftigt, obwohl sie seit Wochen nicht handelt (Befund
+    21.09.2026 beim Einbau der stillen Spuren).
+    """
+    p = Path(journal) if journal else None
+    if not p or not p.is_file():
+        return None, 0, None, 0
+    letzte_b, n_b, letzte_z, n_z = None, 0, None, 0
+    try:
+        with p.open("r", newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                n_z += 1
+                z = (r.get("zeit") or "").strip()
+                if z and (letzte_z is None or z > letzte_z):
+                    letzte_z = z
+                if (r.get("aktion") or "").strip().lower() not in BUCHUNGEN:
+                    continue
+                n_b += 1
+                if z and (letzte_b is None or z > letzte_b):
+                    letzte_b = z
+    except OSError:
+        return None, 0, None, 0
+    return _alter_tage(letzte_b), n_b, _alter_tage(letzte_z), n_z
+
+
+def _alter_tage(zeitstempel):
+    if not zeitstempel:
+        return None
+    try:
+        d = dt.datetime.fromisoformat(zeitstempel.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=dt.timezone.utc)
+    return max((dt.datetime.now(dt.timezone.utc) - d).days, 0)
+
+
+def stillblock(stille):
+    """Jede stille Spur einzeln: wie lange keine Buchung, und ob sie duerfte.
+
+    Auftrag Max 21.09.2026: die stillen Spuren (Omniquant, iv_waelle, iv_wand,
+    nautilus, nautilus_kraken, orbk, supertrend ...) gehoeren in den Bericht -
+    eine Zeile mit acht Namen sagt nicht, welche davon seit einer Stunde und
+    welche seit drei Wochen nichts tun.
+    """
+    if not stille:
+        return ""
+    ergebnis = []
+    for e in sorted(stille, key=lambda x: x["name"].lower()):
+        tage_b, n_b, _, n_z = letzte_buchung((e.get("roh") or {}).get("journal"))
+        if tage_b is not None:
+            alter = "letzte Buchung vor %d Tag(en)" % tage_b
+        elif n_z == 0:
+            alter = "kein Journal"
+        elif n_b == 0:
+            alter = "noch kein Handel (Journal traegt nur Kurse)"
+        else:
+            alter = "%d Buchung(en) ohne lesbares Datum" % n_b
+        w = e.get("wachen") or {}
+        erlaubt = w.get("handel_erlaubt")
+        name = e["name"]
+        if len(name) > 29:
+            name = name[:28].rstrip() + "…"
+        ergebnis.append("  %-30s %s%s"
+                        % (name, alter,
+                           "" if erlaubt is None
+                           else "  handel_erlaubt=%s" % str(erlaubt).lower()))
+    return NL.join(ergebnis)
+
 
 
 def _block(s, d):
@@ -423,6 +521,14 @@ def _baue(mit_xperp=True):
     zeile = sammelzeile(stille)
     if zeile:
         t.append("\n" + zeile)
+        # Und dann JEDE stille Spur einzeln mit dem Alter ihrer letzten
+        # Buchung (Auftrag Max 21.09.2026). Die Namenszeile allein laesst
+        # nicht erkennen, welche Spur seit einer Stunde und welche seit drei
+        # Wochen nichts tut - genau das ist der Unterschied zwischen "ruhig"
+        # und "kaputt".
+        detail = stillblock(stille)
+        if detail:
+            t.append(detail)
 
     if mit_xperp:
         try:
