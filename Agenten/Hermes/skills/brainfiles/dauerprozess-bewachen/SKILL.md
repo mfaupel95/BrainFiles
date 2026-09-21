@@ -113,6 +113,51 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   und bei gemeinsamen Zustandsdateien zusaetzlich vierfache
   Positionsueberwachung.
 
+## Wache auf eine DATEI statt auf einen Prozess
+
+Manchmal ist nicht ein Prozess zu bewachen, sondern ein Ergebnis: „melde die
+erste echte Order dieser Spur“, „melde, wenn das Buch sich aendert“. Der Aufbau
+ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
+
+1. **Ein Zustand in `cache/`, ein Befund je NEUEM Ereignis.** Die Wache merkt
+   sich in einer eigenen JSON den letzten Stand (z. B. die Zahl der
+   Ereigniszeilen) und meldet nur die Differenz. Ohne diesen Merker meldet sie
+   entweder bei jedem Lauf dasselbe (Spam) oder nie (weil sie den alten Stand
+   als neu liest).
+2. **Erstlauf still stellen.** Beim ersten Lauf nur den Stand schreiben und
+   nichts senden — sonst kommt beim Einrichten sofort eine Meldung ueber
+   Ereignisse, die der Nutzer laengst kennt.
+3. **Auch Zustandswechsel melden**, nicht nur neue Zeilen (z. B. „Fenster zu,
+   laeuft wieder Papier“). Ein stiller Rueckfall sieht sonst aus wie „die Spur
+   tut nichts“.
+4. **Die Wache sieht nur, was geschrieben wird.** Ein Fehlerpfad, der seine
+   Meldung nach stderr schreibt und die Zeile im Datenfile auslaesst, ist fuer
+   die Wache unsichtbar — und der Supervisor meldet die Spur trotzdem als „ok“,
+   weil er stderr verwirft. Gehoert genau dieser Fehler ueberwacht (darf der
+   Schluessel wirklich ordern?), muss der Fehler ZUERST eine Zeile im
+   ueberwachten File bekommen — mit eigenem Kennzeichen, damit die Wache ihn
+   anders formatiert als den Normalfall. Diese Zeile ist kein Buchungssatz:
+   sie darf die Auswertung nicht verfaelschen (Kennzeichen ausserhalb der
+   Buchungs-Menge waehlen und das in der Auswertung pruefen).
+5. **Gegenprobe ohne echte Ereignisse:** die Wache in einem Einmal-Aufruf gegen
+   ein Temp-File mit erfundener Zeile laufen lassen — sie muss genau einmal
+   melden und beim zweiten Lauf schweigen. Danach `cronjob_manage action=run`
+   fuer den echten Weg; ein Lauf mit leerer Ausgabe ist der Beweis, dass der
+   still bleibende Fall still bleibt.
+6. **Mehrere Objekte derselben Art: EIN Modul, je Objekt ein duenner Wrapper.**
+   Fuenf Buecher heissen nicht fuenf Wachenskripte: die Rechnung (letzter Stand,
+   Differenz, Fensterwechsel) liegt EINMAL in `scripts/<familie>_wache.py` mit
+   einer Tabelle `{objekt: {datei, schluessel, waehrung}}`, und je Cron-Job gibt
+   es eine Wrapper-Datei, die `main("<objekt>")` aufruft. Sonst muss jede
+   Verbesserung in N Kopien nachgezogen werden, und eine Kopie wird vergessen.
+7. **Nur Handelszeilen melden, nicht jede Zeile mit dem Ziel-Modus.** Ein
+   Journal schreibt im Live-Modus auch Verwaltungszeilen (Funding alle 8 h,
+   Rollover, Zyklus, Quote) — eine Wache, die stumpf auf `modus == live`
+   filtert, meldet alle 8 h ein „Ereignis“, das keine Order ist. Die
+   Ausschlussliste aus der Fachlogik uebernehmen (hier: dieselben Wortlaute
+   `funding/rollover/zyklus/quotes/info` wie in der Runden-Zaehlung), statt sie
+   in der Wache neu zu erfinden.
+
 ## Pitfalls
 
 - **`Start-Process -RedirectStandardOutput` blockiert bei einem Dauerprozess** —
@@ -232,6 +277,40 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   Admin-Skript schreibt sein Ergebnis in eine Log-Datei (das Fenster ist
   versteckt); der Aufrufer liest die Datei statt der stdout der erhoehten
   Sitzung.
+- **Ein laufender Treiber, der je Zyklus eine neue Kindgeneration spawnt und die
+alte nicht beendet, ist ein Speicherleck — und die Symptome tauchen ANDERSWO auf.**
+Der Treiber gilt als gesund (Prozess lebt, Log frisch), waehrend sich die Kinder
+stapeln: gemessen 84 gleichartige Agentenprozesse, 80 davon aelter als eine Stunde,
+aus einem einzigen Tag. Sichtbar wird das nicht am RAM, sondern am **Commit-Limit**:
+bei 28 GB freiem RAM war das Commit zu 99 % reserviert (`Win32_OperatingSystem`:
+`FreeVirtualMemory` gegen `TotalVirtualMemorySize`), und danach scheiterten fremde
+Dinge — jede Puffer-Anforderung eines Modellladers, `git commit`, ganze Werkzeugaufrufe
+(`WinError 1455`). Diagnose: Prozesse nach Kommandozeilen-MUSTER des Kindes gruppieren
+(nicht nach Name), `CreationDate` ansehen und die Generationen zaehlen; erwartet ist
+EINE je laufendem Zyklus. Aufraeumen durch Beenden der alten Generationen per PID,
+dann Commit frei nachmessen — und den Fix im Treiber nachziehen (Kinder vor dem
+naechsten Spawn beenden), sonst ist der Speicher in Stunden wieder weg.
+  Der Gegenentwurf, der sich bewaehrt hat (moondev_dauerlauf, 21.09.2026):
+  (a) Stoppen beendet den ganzen BAUM (`taskkill /T /F /PID`) — das Kind ist
+  unter Windows ein PAAR, das Startprogramm allein zu beenden laesst den
+  Interpreter als Waise stehen; (b) jeder Zyklus raeumt VOR dem Spawn auf:
+  Prozesse mit der Kennung des Kindes, die zu keinem lebenden Kind gehoeren
+  und aelter als eine Schonfrist sind (300 s), werden beendet — die Schonfrist
+  schuetzt einen gerade startenden Enkel; (c) stirbt die verfolgte Wurzel,
+  wird ihr Baum VOR dem Neustart beendet, sonst laufen mit jedem Zyklus zwei
+  Kinder desselben Namens. Erwarteter Ruhezustand: GENAU zwei Prozesse je Kind
+  (Startprogramm + Interpreter) — 4 Kinder = 8 Prozesse, gemessen nach dem
+  Fix; vorher 84. Prozessliste ueber `Get-CimInstance Win32_Process` (wmic ist
+  auf Windows 11 abgekuendigt), und bei fehlgeschlagener Abfrage NICHT
+  aufraeumen statt zu raten. Wer die Aufraeumfunktion aus einer frischen
+  Instanz ruft, erschlaegt die legitimen Kinder des laufenden Treibers — der
+  Aufruf gehoert in den Zyklus des laufenden Treibers.
+- **Ein Test, der `protokolliere()` prueft, schreibt in die ECHTE Logdatei.**
+  Der Modulpfad des Logs ist eine Konstante; ein Test des Aufraeumens landete
+  damit als Zeile im Betriebsprotokoll des Treibers ("PIDs 600") und war dort
+  nicht von einem echten Befund zu unterscheiden. In `setUp` die Logkonstante
+  auf einen Temp-Ordner umbiegen (`m.LOG = Path(tmp)/"log.txt"`) — dieselbe
+  Falle wie bei den Handels-Spuren (journal_zweitziel).
 - **Ein toter Supervisor laesst seine Kinder als Waisen weiterlaufen.**
   Endet der Treiber von aussen (`Get-ScheduledTaskInfo`-Result 267014), bleiben
 die von ihm gespawnten Agentenprozesse am Leben — sichtbare Konsolenfenster,
@@ -247,6 +326,15 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
 - **Ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.** Eine Wache,
   die ihren Befund in den Bus oder in die ueberwachte Warteschlange schreibt,
   schweigt genau beim Ausfall. Deshalb Cron/Scheduler direkt nach Telegram.
+- **Das Wachenskript liegt unter `Agenten/Hermes/scripts/` — ein Skript neben der
+  Komponente wird nicht angenommen.** `cronjob_manage` erwartet einen Pfad RELATIV
+  zu diesem Ordner; ein absoluter Pfad auf einen anderen Ort (z. B.
+  `Agenten/Handel/…`) wird abgewiesen. Gehoert die Logik fachlich zur Komponente,
+  also einen duennen Wrapper in `scripts/` legen, der die eigentliche Datei ueber
+  `importlib.util.spec_from_file_location` laedt (NICHT ueber `sys.path` — ein
+  Eintrag kann gleichnamige Module verdecken) und deren `main()` aufruft; beide
+  Dateien versionieren. Der Wrapper haelt dieselbe Melde-Regel ein: leere Ausgabe,
+  wenn es nichts zu melden gibt.
 - **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/`powershell`:
   die Konsole schreibt cp1252, nicht UTF-8. `encoding="cp1252", errors="replace"`
   setzen, sonst reisst ein `UnicodeDecodeError` im Lesethread den Aufruf ab.
