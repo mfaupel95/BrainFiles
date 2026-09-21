@@ -914,7 +914,26 @@ Wachenbuch korrigiert, gehoert dazu: Groesse gegen Tiefe rechnen und Kopien
 ohne Tiefe (< 5 x Order) als NICHT ausfuehrbar zaehlen, statt sie mit 3 % zu
 bepreisen.
 
-Noch nicht gemessen: der ZEITVERSATZ (Kursweg zwischen Signal und Ausfuehrung).
+**Zeitversatz (21.09.2026).** Gemessen wird er seit dem mit
+`Agenten/Handel/zeitversatz_messen.py` (Cron `zeitversatz-sammeln`, alle 10
+Minuten, sammelt leise nach `Agenten/Handel/zeitversatz.csv`). Er holt fuer die
+juengsten Einstiege der Kopier-Spuren den aktuellen Marktpreis und schreibt je
+Einstieg und Altersstufe (0-5, 5-15, 15-30, 30-60, 60-180, 180-720 min) eine
+Zeile; `--bericht` rechnet daraus den Median der Kursaenderung gegen den
+Signalpreis.
+
+Bereits gemessen (ohne dieses Werkzeug, aus `kopier1zu1/handelsjournal.csv`):
+der Verzug zwischen dem Kauf des Vorbilds (`trade_zeit`) und unserer Buchung
+(`zeit`) ist **Median 566 s, p75 777 s** - die Kopier-Spuren entdecken einen
+Kauf erst beim naechsten Abruf, und der Dauerlauf laeuft im 15-Minuten-Takt.
+
+Und der eigentliche Befund: `kopier1zu1` bucht den Einstieg nicht mit dem
+Marktpreis, sondern mit `preis_vorbild * 1,05`. Die 5 % stehen in JEDER Zeile
+identisch - das ist eine gesetzte Zahl, keine gemessene. Erst der Sammler sagt,
+ob sie reicht. Erste Stichproben (Alter 1-12 h, also nicht der eigentliche
+Verzug): Median -2,97 % im Band 60-180 min und -15,61 % im Band 180-720 min -
+der Kurs laeuft in der Wartezeit eher weg als hoch. Die Baender unter 15
+Minuten fuellen sich mit den naechsten frischen Signalen.
 Dafuer fehlt eine Vorwaerts-Messung, die den Preis bei Signal und nach 1/5/15
 Minuten nebeneinander schreibt.
 
