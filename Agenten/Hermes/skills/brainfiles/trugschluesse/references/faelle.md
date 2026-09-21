@@ -1,0 +1,208 @@
+# Belegte Faelle — Trugschluesse aus 259 Sitzungen (22.08.–21.09.2026)
+
+Quelle des Destillats: `Agenten/Hermes/state.db`, 259 Sitzungen / 26.897
+Nachrichten; die Zeilen unten stammen aus dem Sitzungsspeicher, dem jeweiligen
+Journal oder der Messung, nicht aus dem Gedaechtnis.
+
+Jeder Fall in derselben Form: **Behauptung** — **wie sie entstand** — **wie sie
+auffiel** — **Beleg**.
+
+## Handel
+
+### 1. Vier Live-Positionen, die es nicht gab (21.09.2026, xperp)
+- Behauptung: xperp laeuft live mit vier Positionen (ZEC, XAG, LINK, ETC).
+- Entstehung: Papierlauf bei `buchmodus: live` schrieb Positionen ins selbe
+  Buch; das Buch kannte keinen Unterschied.
+- Auffallen: Boerse gefragt — `/api/v5/account/positions` fuehrte nur die
+  manuelle FIL-Position (margin 183,40, upl -26) und einen XRP-Rest; ZEC/LINK
+  standen mit `pos=0`, XAG/ETC fehlten ganz.
+- Beleg: von 14 Live-Zeilen in `xperp/handelsjournal.csv` waren **alle 14**
+  `funding` — kein Live-Kauf, kein Live-Verkauf.
+- Gegenmassnahme: Positionen tragen `modus` + Order-Kennung; jeder Live-Lauf
+  bucht Altlasten mit Grund `buchbereinigung` aus.
+
+### 2. scanner: Platz 5/5 belegt, aber unverkaufbar (21.09.2026)
+- Behauptung: das Buch fuehrt Positionen, also laufen sie.
+- Entstehung: ein Buch fuer Papier UND Live; Papier-Zyklen fuellten es, waehrend
+  das Fenster zu war.
+- Auffallen: 4 Positionen ohne `kauf_ord_id` (im Live-Modus kein Neukauf, jeder
+  Ausstieg fehlerhaft).
+
+### 3. Erfolgreiche Live-Erklaerung ohne Orderweg (19.09.2026, xperp)
+- Behauptung: xperp kann live ordern.
+- Auffallen: signierter Leseaufruf mit dem xperp-Schluesselsatz → OKX 50101
+  „APIKey does not match current environment".
+- Merksatz: jeder Spur-Satz ist ein anderer
+  (`OKX_API_KEY/SECRET/PASSPHRASE` fuer xperp/okxf/mosaic, `OKX_LIVE_*` fuer
+  scanner/okx). Die falsche Variable zu aendern wirkt nicht.
+
+### 4. „nur das Freigabefenster fehlt" (21.09.2026)
+- Behauptung: die Spur ist gesperrt, weil niemand freigegeben hat.
+- Auffallen: die `--vorschau`-Zeile nannte **zwei** Gruende, das Guthaben in der
+  falschen Waehrung war der bindende.
+- Merksatz: `dauerlauf.nur_fenster_fehlt` greift nur bei **genau einem** Grund,
+  der das Wort „Freigabefenster" enthaelt.
+
+### 5. Margin-Waehrung (21.09.2026, OKX)
+- Behauptung: das Konto hat kein Guthaben („USDT 0").
+- Auffallen: `/api/v5/account/positions` zeigt `mgnMode=isolated, ccy=USDC`;
+  eine Abfrage mit `ccy=USDT` liefert eine LEERE Liste.
+- Merksatz: die Margin-Waehrung der POSITION pruefen, nicht den Namen im Kopf.
+
+### 6. Kerzen, die still zu kurz waren (15.09.2026)
+- Behauptung: 96 Kerzen sind „acht Wochen".
+- Auffallen: OKX `/api/v5/market/candles` gibt oeffentlich nur 1440
+  Stundenkerzen (60 Tage), egal was angefragt wird; `macd_mtf` bekam hart 300
+  Basiskerzen → Ausrichtung immer `None` → die Spur haette NIE gehandelt.
+- Beleg: 500 Kerzen → `None`, ab 550 vorhanden (Rechnung 544).
+
+## Betrieb
+
+### 7. Gateway 12 Stunden tot, Wache meldete gruen (19.09.2026)
+- Behauptung: der A2A-Gateway laeuft.
+- Entstehung: erst ein zu enges Prozessmuster (startete alle ~16 min neu, 90 s
+  Ausfall je Mal), dann ein zu breites (`tui_gateway`-Backends galten als
+  Gateway) — der echte Ausfall von ~01:49 bis 14:16 blieb unerkannt, SkillsBot
+  scheiterte.
+- Ersatzwahrheit: **Port 9900**, nicht der Prozessname.
+
+### 8. Bus vier Tage stumm (11.–15.09.2026)
+- Behauptung: das System meldet.
+- Auffallen: Routinen schrieben weiter ins Journal (9.591 Eintraege), aber
+  niemand bekam etwas; kein Systemereignis, der Prozess war von aussen beendet,
+  der Task hat keinen Wiederholungs-Trigger.
+- Merksatz: ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.
+
+### 9. Datei groesser als die Platte, die es nicht gibt (12.09.2026)
+- Behauptung: es gibt eine Ausser-Haus-Sicherung.
+- Auffallen: `sichern-ausser-haus.ps1` zielte auf `E:`, fand nichts und stieg
+  mit Exitcode 2 **lautlos** aus; Ziel ist seit dem `Q:`.
+- Merksatz: Exitcode auswerten, nicht Ausgabe lesen.
+
+### 10. Groessenangabe in `AGENTS.md` (19.09.2026)
+- Behauptung: `MaxHirn/` ist 45 GB.
+- Messung: ~6 GB, davon 4,9 GB DockerDesktopWSL; die 42-GB-Medien liegen auf
+  `O:\Archiv`. Echte C:-Fresser sind App-Daten (`AppData\Local\Packages` 23,9 GB,
+  `uv\cache` 11,8 GB).
+
+### 11. 84 Agentenprozesse, RAM gesund (21.09.2026, moondev)
+- Behauptung: dem Rechner geht der Arbeitsspeicher aus.
+- Auffallen: `Win32_OperatingSystem` → `FreeVirtualMemory` 1,94 GB von 89,8 GB;
+  danach scheiterte jeder Modellstart (`failed to allocate 1,1 GB`) und `git` im
+  Sandbox-Terminal starb mit WinError 1455.
+- Ursache: der Treiber hielt nur das Startprogramm, die Interpreter der alten
+  Generation liefen als Waisen weiter.
+- Merksatz: Prozesszahl am KINDMUSTER gruppieren und `CreationDate` ansehen —
+  erwartet ist EINE Generation je Zyklus.
+
+### 12. Absturzursache verwechselt (21.09.2026)
+- Behauptung: die vier MoonDev-Agenten sterben in einer Crash-Schleife.
+- Auffallen: die haeufigste echte Sterbeursache war CoinGecko HTTP 429
+  („You have exceeded the Rate Limit"), Kraken public bei `kraken_agent`; vier
+  Abstuerze mit Code 4294967295 im selben Moment waren eigene Abschuesse.
+- Merksatz: Absturzzeilen mit Grund lesen, nicht die Zaehler im Treiberlog.
+
+## Werkzeuge und Umgebung
+
+### 13. „0 Treffer von 0 Skills" (16.09.2026, fundus-suche.ps1)
+- Behauptung: der Fundus hat keine Skills.
+- Entstehung: unter PowerShell 5.1 fehlt `Get-FileHash`
+  (CommandNotFoundException); der Hash blieb leer → alle Skills in EINER Gruppe.
+- Fix: `[System.Security.Cryptography.MD5]` + `[IO.File]::OpenRead`, plus
+  Gruppierung nach Pfad als Rueckfall.
+
+### 14. Tippfehler, die trotzdem ankommen (19.09.2026, patch)
+- Behauptung: `kill_switch_gesamt_usd` und `papier_faktor: 4.0` stehen wie geplant.
+- Auffallen: das fuzzy `patch`-Werkzeug hatte `kill_switch_h_gesamt_usd` und
+  `6.0` geschrieben.
+- Merksatz: nach jedem Patch den Schluessel/Wert per `read_file` nachlesen.
+
+### 15. Ganzdatei-Diff bei einer Zeile (16.09.2026, SKILL.md)
+- Behauptung: eine Zeile geaendert.
+- Auffallen: `git diff --stat` zeigte die ganze Datei — `open(pfad, encoding=...)`
+  wandelt CRLF still nach LF, danach ist `"\r\n" in text` immer False.
+- Richtig: `open(pfad,'rb').read()`, Zeilenende aus dem ROHEN Text ableiten,
+  `open(pfad,'wb').write(t.encode('utf-8'))` — zweimal passiert.
+
+### 16. Verweis als Wert gezaehlt (12.09.2026, a2a-Token)
+- Behauptung: der a2a-Token steht im Klartext in allen 13 Hermes-Configs.
+- Entstehung: die Suche nahm nur `${env:…}` aus, nicht aber `${NAME}`.
+- Wahrheit: 12 Configs tragen den Verweis, das Profil `nous` hat gar keinen
+  `a2a_agents`-Block. Urteil zurueckgenommen.
+
+### 17. Env-Variable „fehlt" (19.09.2026, windows-mcp)
+- Behauptung: die OKX-Variablen sind leer.
+- Entstehung: `Get-ItemProperty HKCU\Environment` loest HKCU in einen anderen
+  Benutzerkontext auf.
+- Richtig: `[Environment]::GetEnvironmentVariable(name,'User')` bzw. `'System'`.
+
+### 18. `which` sieht Windows nicht (18.09.2026)
+- Behauptung: VS Code ist nicht installiert.
+- Auffallen: `which code.cmd` findet nichts, `Get-Command code` findet
+  `AppData\Local\Programs\Microsoft VS Code\bin\code.cmd`.
+
+### 19. PYTHONHOME aus dem falschen venv (18.09.2026)
+- Behauptung: das venv des MCP-Servers ist gesund, der Supervisor vergiftet.
+- Messung: ein uv-venv-`python.exe` setzt `PYTHONHOME` in die eigene
+  Prozessumgebung, jedes Kind erbt sie.
+- Fix: venv auf python.org 3.13 neu bauen (setzt kein PYTHONHOME), 6 Server.
+
+### 20. Junction nicht als Symlink erkannt (21.09.2026)
+- Behauptung: die `okx-*`-Skills sind Symlinks und koennen mit verschoben werden.
+- Auffallen: Python meldet `is_symlink`/`islink` False; nur `os.path.isjunction`
+  erkennt die Windows-Junction. Ein Verschieben haette die Quelle fuer andere
+  Agenten mitgerissen.
+
+## Git und Arbeitsbaum
+
+### 21. `index.lock`, 46 Minuten alt, 0 Byte (21.09.2026, zweimal)
+- Behauptung: ein Committer laeuft noch.
+- Messung: 12 `git.exe`, alle `git fsmonitor--daemon run --detach`, kein echter
+  Commitprozess.
+- Vorgehen: Alter + echte git-Prozesse zaehlen, Sperre **umbenennen**
+  (`.git/index.lock.verwaist-20260921`), Commit wiederholen.
+
+### 22. Neue Spur ist unsichtbar (15.09.2026)
+- Behauptung: die vier Prognose-Spuren liegen in Git.
+- Auffallen: `git status --porcelain --ignored <ordner>` zeigte `!!`.
+- Regel: erst alles ignorieren, dann einzeln freigeben — je Spur vier Eintraege;
+  Gegenprobe `git check-ignore -v <spur>/zustand.mittel.json` **und**
+  `git ls-files 'Agenten/Handel/*/zustand*.json'` (muss leer sein).
+
+### 23. Nachtsicherung stand still (19.–21.09.2026)
+- Behauptung: der Zweig `zwischenstand` laeuft naechtlich.
+- Auffallen: `git add -A --dry-run` brach mit Exitcode 128 ab (`mfaupel95`-Klon
+  ohne ausgecheckten Commit in `skills/`); letzter Commit 18.09.
+- Merksatz: Fruehwarnung `git log -1 --format=%ci zwischenstand`.
+
+## Tests
+
+### 24. Alle Tests gruen, Bedigung 4 verletzt (14.09.2026)
+- Behauptung: die Testsuiten sind harmlos.
+- Auffallen: sie schrieben in das echte `journal_zweitziel`; jede
+  `discover`-Runde ueberschrieb `Q:\Handel_Journal\<spur>` (spiegel Zustand
+  13.816 → 222 Byte), omniquant Zustand+Journal ebenso.
+- Nachweismuster: alle Suiten laufen lassen und DANACH `spiegelstand.py`
+  aufrufen — muss `N/N byte-gleich` melden; Gegenprobe durch Zuruecknehmen des
+  Fixes.
+
+### 25. 16 Testbuchungen im echten Journal (16.09.2026, moondev_funding)
+- Behauptung: der Test pruefe nur.
+- Auffallen: Tests, die `pruefe_einstieg`/`pruefe_ausstiege` direkt aufrufen,
+  buchen ins echte Journal.
+- Fix-Muster: in diesen Klassen `SCHREIBEN=False` **und** einen Modulwaechter
+  (Dateiliste + Groessen vor/nach) einbauen.
+
+### 26. Gruene Tests, die nichts prueften (15.09.2026)
+- Behauptung: `bewertung.bewerten` rechnet richtig.
+- Auffallen: ein Test uebergab sein Gewichte-dict POSITIONELL, es landete in
+  `richtung`, rutschte still in den long-Zweig, `66.7 == 66.7`.
+- Fix: unbekannte Richtung wirft `ValueError`; `gewichte=` immer als Keyword.
+
+### 27. Zwei vorbestehende rote Tests (21.09.2026)
+- `test_risikovorfilter.EinbauTest` haengt an einem festen JETZT (17.09.): das
+  12-h-Fenster ist leer, sobald der Lauf Tage spaeter stattfindet.
+- `test_telegram_freigabe.WiedervorlageImLaufTest` erwartet eine offene ANFRAGE,
+  bekommt durch `AUTO_FREIGABE` aber eine offene FREIGABE.
+- Merksatz: A/B mit `dauerlauf.py` aus `HEAD` fahren, bevor eine Aenderung als
+  Ursache gemeldet wird (`git stash`-Vergleich).

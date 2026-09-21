@@ -1,0 +1,197 @@
+---
+name: trugschluesse
+description: Use when Zustand belegt statt vermutet werden muss.
+version: 0.1.0
+author: Hermes
+platforms: [windows]
+metadata:
+  hermes:
+    tags: [Belege, Verifikation, Zustand, Betrieb, BrainFiles]
+    related_skills: [systemdiagnose, arbeitsbaum-git-hygiene, handel-spuren, sammelauftrag]
+---
+
+# Trugschluesse — jede Zustandsaussage an der Quelle belegen
+
+Destillat aus 259 Sitzungen (22.08.–21.09.2026) des Sitzungsspeichers
+`Agenten/Hermes/state.db`: die wiederkehrende Fehlerklasse ist **nicht** ein
+kaputter Code, sondern eine **Behauptung ueber einen Zustand, die aus der
+falschen Quelle stammt**. Dieser Skill nennt je Klasse die Ersatzwahrheit und
+den Befehl, der sie zeigt. Er ist keine Systempruefung
+(`systemdiagnose`) und kein Git-Leitfaden (`arbeitsbaum-git-hygiene`) — er ist
+die Regel, die vor dem Satz greift: „X ist so" oder „X ist nicht da".
+
+Keine spekulative Vollstaendigkeit: alle Faelle unten sind belegt, die
+ausfuehrlichen Belege stehen in `references/faelle.md` (laden mit
+`skill_view(name='trugschluesse', file_path='references/faelle.md')`).
+
+## When to Use
+
+- „X laeuft / ist live / hat N Positionen", „X ist nicht installiert", „die Datei gibt es nicht"
+- eine Zahl aus einer Datei, einem Zustandsstand oder einem Log soll als Bestand gelten
+- ein Befund klingt rund („alle gruen", „0 Treffer", „keine offenen Sitzungen") — runde Zahlen sind das Warnsignal
+- vor jedem Commit, jeder Freigabe und jeder Meldung an Max
+- zwei Zeugen widersprechen sich (Buch vs. Boerse, Datei vs. Prozess, Doku vs. Messung)
+
+**Don't use for:** eine Systempruefung fahren (`systemdiagnose`), nur den
+Arbeitsbaum sichern (`sichern`, `brainfiles-auftrag`), eine Handels-Spur
+anbinden (`handel-spuren`).
+
+## Prerequisites
+
+- Arbeiten aus der Repo-Wurzel `BrainFiles/`; das `terminal`-Werkzeug laeuft in
+einer Linux-Sandbox (bash/MSYS), Host-Fragen gehen ueber `mcp__windows_mcp__PowerShell`.
+- Der Sitzungsspeicher ist lesbar: `Agenten/Hermes/state.db` (SQLite, Tabelle
+`messages`, Rolle `assistant`/`user`, `tool_calls` als JSON).
+
+## How to Run
+
+Jede Behauptung in drei Schritten, in dieser Reihenfolge — nie in einem:
+
+1. Quelle benennen („laut `zustand.json`", „laut `/api/v5/account/positions`").
+2. Zweiten, unabhaengigen Zeugen holen (Tabelle unten) — ueber `terminal` bzw.
+`mcp__windows_mcp__PowerShell`.
+3. Erst dann reden. Widersprechen sich beide, gilt der Zeuge **naeher am
+Gegenstand** (Boerse vor Buch, Prozess/Task vor Datei, Messung vor Doku).
+
+## Quick Reference — falsche Quelle → Ersatzwahrheit → Befehl
+
+| Behauptung aus | Ersatzwahrheit | Beleg |
+|---|---|---|
+| `zustand.json` / eigenes Journal einer Spur | Boerse | `GET /api/v5/account/positions?instType=SWAP` (signiert) bzw. Kraken Balance+OpenOrders; dazu Live-Zeilen im Journal (`kauf`/`verkauf`), nicht `funding`/`zyklus` |
+| „Aufgabe laeuft" (Zeile in `Routinen.md`) | Aufgabenplanung | `Get-ScheduledTask -TaskName 'MaxHirn-*'` + `Get-ScheduledTaskInfo` (`LastRunTime`, `LastTaskResult`) |
+| „Dienst laeuft" (Prozessliste) | Port | `Test-NetConnection 127.0.0.1 -Port 9900` (Gateway) bzw. `-Port 20128` (Router) |
+| Prozessname/-zahl | Prozessbaum je Generation | `Get-CimInstance Win32_Process` mit `Name`, `ParentProcessId`, `CreationDate` |
+| Windows-Benutzervariable (`Get-ItemProperty HKCU\Environment`) | beide Stores | `[Environment]::GetEnvironmentVariable($k,'User')` und `('System')` |
+| „Variable ist gesetzt" in einer Config | Klartext vs. Verweis | Wert mit `"${"`-Anfang als Verweis lesen, nicht als Wert |
+| „Skill/Tool ist nicht installiert" (`which`) | Windows-PATH | `Get-Command <name>` in PowerShell (`which` sieht nur die MSYS-PATH) |
+| „Datei ist versioniert/ignoriert" | Git-Regeln | `git check-ignore -v <pfad>` und `git ls-files '<muster>'` |
+| Groesse/Alter aus einer Notiz | Dateisystem | `Get-ChildItem -Recurse | Measure-Object Length -Sum` (Doku veraltet still) |
+| „Speicher ist knapp" am RAM | Commit | `Win32_OperatingSystem` → `FreeVirtualMemory` (RAM sah gesund aus, Commit war bei 1,94 GB) |
+| „Der Agent stuerzt ab" (Zaehler im Treiberlog) | Absturzzeile mit Grund | Logzeilen mit Grund lesen; eigene `taskkill`-Abschuesse zaehlen mit (4294967295) |
+
+## Procedure — die fuenf haeufigsten Klassen
+
+### 1. Buch vs. Boerse (Handel)
+Eine Spur kann live laufen und trotzdem ein **fiktives Buch** fuehren: die
+Positionen stammen aus dem Papierlauf bei `buchmodus: live` (belegt 21.09.2026:
+xperp fuehrte ZEC/XAG/LINK/ETC, die Boerse kannte keine davon; alle 14
+Live-Journalzeilen waren `funding`).
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel && ./scanner/.venv/Scripts/python.exe spuren_stand.py
+```
+
+Zusaetzlich in `Agenten/Handel/`: `spiegelstand.py` (byte-genau gegen
+`Q:\Handel_Journal`), `pruefe_ratschen.py`, `sperrgruende.py`. Positionszahl
+**nie** aus `zustand.json` melden.
+
+### 2. Datei vs. Laufzeit (Betrieb)
+Wechselnde Staende (`Bus/stand.json`, `skillsbot.kontext.json`, `zustand.json`)
+sind Momentaufnahmen. Fuer einen Dienst zaehlt der **Port**, fuer eine Aufgabe
+der **Task**, fuer ein Modell der lebende Endpunkt.
+
+```bash
+powershell.exe -NoProfile -Command "Get-ScheduledTask -TaskName 'MaxHirn-*' | ForEach-Object { $i=$_|Get-ScheduledTaskInfo; \"$($_.TaskName) $($_.State) $($i.LastRunTime) $($i.LastTaskResult)\" }"
+```
+
+Nicht-`0`-Codes sind bei Dauerprozessen normal (`267014`/`1073807364` = von
+aussen beendet, `2147946720` = laeuft schon). Ein Fehler ist nur: `0` **ohne**
+`ende` im Journal oder ein Fehlercode **mit** `ENDE FEHLER` im eigenen Log.
+
+### 3. Textdatei geschrieben, aber nicht das geaenderte
+Ein Schreibvorgang kann still mehr aendern als gewollt: Zeilenenden
+(`Path.write_text` dreht LF → CRLF; `open(..., encoding=...)` dreht CRLF → LF),
+oder das `patch`-Werkzeug trifft fuzzy und setzt einen Tippfehler trotzdem
+(belegt: `kill_switch_gesamt_usd` → `kill_switch_h_gesamt_usd`, `papier_faktor`
+4.0 → 6.0).
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles && git --no-pager diff --numstat
+```
+
+Eine gewollte Zeile = **1 insertion / 1 deletion**. Zeigt eine Datei die ganze
+Datei, `git checkout HEAD -- <datei>` und neu patchen. Nach jeder Aenderung am
+Ziel **den Wert** nachlesen (`read_file`), nicht die Absicht.
+
+### 4. Umgebung, die die Sitzung faelscht
+Fremde Variablen und fremde Interpreter erzeugen Aussagen, die in dieser
+Sitzung wahr und in der naechsten falsch sind: `PYTHONHOME`/`PYTHONPATH` aus
+einem uv-venv vergiften jedes Kind (Symptom: `Fatal Python error:
+init_import_site ... _thread`); ein relativer Programmname in `argv[0]` wird
+gegen das Arbeitsverzeichnis des **Aufrufers** aufgeloest; ASCII-`Get-FileHash`
+fehlt in PowerShell 5.1 und liefert dann **still** ein falsches Ergebnis statt
+eines Fehlers (belegt: `fundus-suche.ps1` meldete „0 Treffer von 0" bei 182
+Skills).
+
+```bash
+unset PYTHONHOME PYTHONPATH   # vor jedem hermes.exe/python-Aufruf aus dem MCP-Kontext
+powershell.exe -NoProfile -Command "Get-Host | Select-Object Version"   # 5.1 oder 7?
+```
+
+.NET-Ersatz statt Cmdlet: `[System.Security.Cryptography.MD5]::Create()` +
+`[IO.File]::OpenRead` (die Form aus `systempruefung.ps1`) — oder `pwsh`
+benutzen, wenn es installiert ist.
+
+### 5. Pfade, Verknuepfungen, Arbeitsbaum
+`Modelle` und `Werkstatt` sind **Junctions** (auf `O:`). Python meldet sie nicht
+als Symlink (`is_symlink`/`islink` = False), nur `os.path.isjunction` erkennt
+sie; `write_file` lehnt Ziele darunter ab, weil es den Pfad aufloest („outside
+HERMES_WRITE_SAFE_ROOT") — schreiben dann ueber `terminal`.
+
+```bash
+python -c "import os;print(os.path.isjunction('Werkstatt'))"
+git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht wegraeumen
+```
+
+## Pitfalls
+
+- **Ein zweiter Zeuge, der dieselbe Quelle liest, ist kein Zeuge.**
+  `zustand.json` und das eigene Journal sind EIN Zeuge; die Boerse, der Task,
+  die Registry sind der andere.
+- **`archive`/Filter decken offene Sitzungen nicht ab.** „No sessions match" bei
+  `--older-than 30d` heisst nur: beendete Sitzungen passten nicht — 46 offene
+  Sitzungen blieben still liegen. Bestand nur ueber die DB zaehlen.
+- **`git.exe`-Prozesse beweisen keinen Committer.** 12 gleichzeitige `git.exe`
+  waren alle `git fsmonitor--daemon run --detach`. Vorgehen bei `index.lock`:
+  Alter + echte git-Prozesse **ohne** `fsmonitor` zaehlen, dann die 0-Byte-Sperre
+  **umbenennen** (`.git/index.lock.verwaist-<datum>`, nie loeschen).
+- **Ein Shallow-Klon laesst sich nicht pushen** (`did not receive expected
+  object ... index-pack failed`) und spult nicht vor (`refusing to merge
+  unrelated histories`) — `git fetch --unshallow <remote>` zuerst.
+- **Ein Test darf nie in ein echtes Ziel schreiben.** Zweimal passiert: eine
+  Wachen-Kopie behielt das echte `journal_zweitziel`, jede Testsuite
+  ueberschrieb `Q:\Handel_Journal\<spur>`, alle Tests gruen (spiegel Zustand
+  13.816 → 222 Byte); und Tests, die `pruefe_einstieg` direkt aufrufen,
+  buchten 16 Positionen ins echte Journal. Muster: Zielpfad auf einen Temp-Ordner
+  umbiegen **und** einen Modulwaechter (Dateiliste+Groessen vor/nach) einbauen.
+- **Nach Tests kurzzeitige Abweichungen sind normal.** Spurentests schreiben in
+  die echten Spurenordner; `spiegelstand.py` zieht erst im naechsten Zyklus nach.
+  Bleibt eine Abweichung ueber zwei Zyklen, ist es ein echter Befund.
+- **Freie Auslagerungsdatei, nicht freier RAM, ist die Grenze fuer Massenlaeufe.**
+  84 verwaiste Agentenprozesse drueckten `FreeVirtualMemory` auf 1,94 GB; danach
+  scheiterte jeder Modellstart und `git` starb mit WinError 1455. Solche Laeufe
+  ueber `mcp__windows_mcp__PowerShell` auf dem Host fahren, nicht im
+  Sandbox-Terminal.
+- **Prozesssuche nie ueber die eigene Kommandozeile filtern** —
+  `CommandLine -like '*x.py*'` findet den Suchenden selbst; immer zusaetzlich
+  `Name` einschraenken.
+- **Eine Dokumentation ist keine Messung.** „MaxHirn ist 45 GB" stand in
+  `AGENTS.md` und war 6 GB; `sichern-ausser-haus.ps1` zielte auf `E:` und stieg
+  mit Exitcode 2 lautlos aus, deshalb gab es nie eine Ausser-Haus-Kopie. Bei
+  Zahlen aus Notizen: einmal nachmessen und die Notiz nachziehen.
+
+## Verification
+
+Eine Aussage ist belegt, wenn Quelle **und** Gegenprobe im selben Lauf sichtbar
+sind. Sammelnachweis (aus der Repo-Wurzel):
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel && ./scanner/.venv/Scripts/python.exe spuren_stand.py && ./scanner/.venv/Scripts/python.exe spiegelstand.py
+```
+
+Erwartet: je Spur eine Zeile mit Sperrgrund, und im Spiegel eine Zeile je
+`Q:\Handel_Journal\<spur>` mit `gleich`/`ABWEICHEND`. Eine `ABWEICHEND`-Zeile ist
+ein Befund, kein Werkzeugfehler — gemessen am 21.09.2026: `scanner` (Q: lief 24
+min hinterher, die Spiegelung wurde auf einem frueheren Zykluspfad uebersprungen)
+gegen `27 von 28 gleich`. Kommt eine Zahl ohne diese zwei Zeugen in die Antwort,
+gehoert sie nicht in die Antwort.
