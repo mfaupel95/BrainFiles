@@ -662,26 +662,39 @@ die neuen Zeilen.
 
 ### Ein Rollen-Bot, der nur verteilen soll (Verteil-/Dispatcher-Bot)
 
-Ein Profil, dessen Aufgabe „Auftrag verstehen, Ziel finden, delegieren" ist, krankt an
-einer Erwartung, die man leicht falsch aufschreibt: **eine SOUL-Regel wie „bearbeite
-den Auftrag NICHT selbst" erzwingt nichts.** Gemessen an einer klaren
-Aufgabenstellung („pruefe, ob die Repos aktuell sind") hat der Bot die Pruefung SELBST
-gefahren — mit einem kleinen Modell in 18 Werkzeugaufrufen, mit einem starken in 7; es
-aenderte sich nur die Zahl der Umwege. Zwei Konsequenzen:
+Ein Profil, dessen Aufgabe „Auftrag verstehen, Ziel finden, delegieren" ist.
+**Ein Verbot allein haelt nicht, eine Selbstpruefung haelt.** Gemessen an derselben
+klaren Aufgabenstellung („pruefe, ob die Repos aktuell sind"): mit der SOUL-Regel
+„bearbeite den Auftrag NICHT selbst" hat der Bot die Pruefung SELBST gefahren —
+18 Werkzeugaufrufe mit einem kleinen Modell, 7 mit einem starken; es aenderte sich nur
+die Zahl der Umwege. Erst die drei Zusaetze unten haben die Rolle gehalten (danach
+2 Aufrufe und eine Rueckfrage statt Eigenlauf; bei „lass Bot X sein Repo pruefen" hat
+er wirklich delegiert und das Ergebnis des Ziels samt dessen Empfehlung berichtet):
 
-1. **Den Weg deterministisch machen, nicht die Absicht.** Ein Skript kapselt den
+1. **Eine Frage, die der Bot sich vor JEDEM Schritt selbst stellt** — „Fuehre ich
+   gerade den Auftrag aus, oder suche ich sein Ziel?" — mit den Merkmalen des
+   Abweichens, an denen er sich ertappt: Verzeichnisse des Gegenstands lesen, ein
+   Fachwerkzeug aufrufen, zaehlen, vergleichen, ein Fachergebnis formulieren. Und
+   ausdruecklich: **auch ein Trockenlauf ist Ausfuehrung** — „ich schaue nur schnell
+   nach" ist der Weg, auf dem die Rolle verloren geht. Dazu die Regel fuer den Fall
+   ohne Ziel: **kein Bot passt → Werkzeug NENNEN und fragen, nicht starten.** Ein
+   Rollen-Verbot braucht diese Pruefung, sonst bleibt es wirkungslos.
+2. **Den Weg deterministisch machen, nicht die Absicht.** Ein Skript kapselt den
    mechanischen Teil (`Agenten/Werkzeuge/<rolle>-route.py`): `--liste` (Ziele samt
    Beschreibung aus `profiles/*/profile.yaml`, damit die Zielliste nicht abgetippt
    wird), `--suche <wort>` (welche Ziele passen), `--an <ziel> "<auftrag>"` (startet
    wirklich `hermes -p <ziel> chat -q`, entfernt `PYTHONHOME`/`PYTHONPATH`, setzt eine
    Frist). In der SOUL genau diese drei Aufrufe als ERSTEN Schritt nennen. Damit ist
    der Ausgang nachvollziehbar und wiederholbar, auch wenn das Modell umwege nimmt.
-2. **Nicht mehr versprechen als gemessen ist.** „Der Bot verteilt" ist erst wahr,
-   wenn ein Auftrag nachweislich bei einem anderen Profil ankam. Vorher ehrlich sagen:
-   er kennt die Rolle, arbeitet aber auch selbst. Die harte Durchsetzung waere ein
-   eingeschraenkter Werkzeugsatz — Hermes bietet dafuer heute keinen Config-Schluessel
-   (`tools` regelt die Werkzeugsuche, `toolsets` die Plugin-Sets), also nicht als
-   geloest darstellen.
+3. **Nicht mehr versprechen als gemessen ist.** „Der Bot verteilt" ist erst wahr,
+   wenn ein Auftrag nachweislich bei einem anderen Profil ankam — je Rolle DREI
+   Auftragsarten durchspielen (ein Sachauftrag ohne Bot, ein Fachauftrag mit Werkzeug,
+   ein echter Delegationsauftrag) und die Werkzeugaufrufe zaehlen, nicht das Gefuehl
+   befragen. Die harte Durchsetzung waere ein eingeschraenkter Werkzeugsatz — Hermes
+   bietet dafuer heute keinen Config-Schluessel (`tools` regelt die Werkzeugsuche,
+   `toolsets` die Plugin-Sets), also nicht als geloest darstellen. Das Rollenmodell
+   selbst bleibt Geschmackssache: ein kleines Modell folgt der Charta genauso wenig
+   wie ein grosses, nur mit mehr Umwegen — die Selbstpruefung ist der Hebel.
 
 Dazu die Profil-Pflichten wie oben (frisches Profil = 45 Zeilen ohne `providers`/
 `terminal`, `profile.yaml` fehlt), `hermes profile describe <name> --text "<Satz>"`
