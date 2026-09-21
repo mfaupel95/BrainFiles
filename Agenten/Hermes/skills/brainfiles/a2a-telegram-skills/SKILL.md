@@ -88,6 +88,8 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
   besteht jetzt (500 statt 400); die Ausfuehrung scheitert noch an fehlenden
   openrouter-Provider-Credentials in omniroute - separates Problem.
 
+- Der Bot hat dafuer den Befehl `/model` (rein lesend, kein A2A-Aufruf):
+  Modell, Endpunkt, Kontextlaenge aus dem Providerblock und die Fallback-Kette.
 ## Modell des SkillsBots (21.09.2026)
 
 - Der SkillsBot hat KEIN eigenes Modell: `skillsbot.py` reicht per A2A an den

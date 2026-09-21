@@ -68,6 +68,7 @@ import urllib.request
 HIER = os.path.dirname(os.path.abspath(__file__))
 WURZEL = os.path.abspath(os.path.join(HIER, os.pardir, os.pardir))
 ENV_HERMES = os.path.join(WURZEL, "Agenten", "Hermes", ".env")
+CONFIG_HERMES = os.path.join(WURZEL, "Agenten", "Hermes", "config.yaml")
 LOG_PFAD = os.path.join(HIER, "skillsbot.log")
 OFFSET_PFAD = os.path.join(HIER, "skillsbot.offset")
 KONTEXT_PFAD = os.path.join(HIER, "skillsbot.kontext.json")
@@ -495,6 +496,85 @@ def _bot_liste():
     return "Bots (%d):\n%s" % (len(namen), "\n".join(zeilen))
 
 
+def _provider_kontext(zeilen, provider, modell):
+    """context_length eines Modells aus dem providers-Block, sonst None."""
+    in_provider = in_models = in_modell = False
+    for zeile in zeilen:
+        roh = zeile.rstrip()
+        if not roh or roh.lstrip().startswith("#"):
+            continue
+        tiefe = len(roh) - len(roh.lstrip())
+        name = roh.strip().split(":", 1)[0].strip()
+        if tiefe == 2 and roh.endswith(":"):
+            in_provider = name == provider
+            in_models = in_modell = False
+            continue
+        if not in_provider:
+            continue
+        if tiefe == 4 and name == "models":
+            in_models = True
+            continue
+        if in_models and tiefe == 6 and roh.endswith(":"):
+            in_modell = name == modell
+            continue
+        if in_modell and tiefe >= 8 and name == "context_length":
+            wert = roh.split(":", 1)[1].strip()
+            return wert or None
+    return None
+
+
+def modell_text(pfad=None):
+    """Modell und Fallback-Kette DES SKILLSBOTS - rein lesend (21.09.2026).
+
+    Der Bot hat kein eigenes Modell: er reicht per A2A an den Gateway weiter,
+    und der bedient das default-Profil. Gewechselt wird deshalb in der
+    Hermes-config, nicht hier.
+    """
+    pfad = pfad or CONFIG_HERMES
+    try:
+        with open(pfad, "r", encoding="utf-8") as f:
+            zeilen = f.read().splitlines()
+    except OSError as e:
+        return "Hermes-config nicht lesbar: %s" % str(e)[:120]
+
+    block = {}
+    im_modell = False
+    rueckfall = []
+    im_rueckfall = False
+    for zeile in zeilen:
+        if not zeile.strip() or zeile.lstrip().startswith("#"):
+            continue
+        if not zeile.startswith(" "):
+            im_modell = zeile.strip() == "model:"
+            im_rueckfall = zeile.strip() == "fallback_providers:"
+            continue
+        if im_modell and zeile.startswith("  ") and not zeile.startswith("   "):
+            schluessel, _, wert = zeile.strip().partition(":")
+            block[schluessel] = wert.strip()
+        if im_rueckfall:
+            if zeile.strip().startswith("- provider:"):
+                rueckfall.append({"provider": zeile.split(":", 1)[1].strip()})
+            elif zeile.strip().startswith("model:") and rueckfall:
+                rueckfall[-1]["model"] = zeile.split(":", 1)[1].strip()
+
+    provider = block.get("provider", "?")
+    modell = block.get("default", "?")
+    aus = ["Modell des SkillsBots (default-Profil, A2A nach 127.0.0.1:9900):",
+           "%s  ueber  %s" % (modell, provider)]
+    if block.get("base_url"):
+        aus.append("Endpunkt: " + block["base_url"])
+    kontext = _provider_kontext(zeilen, provider, modell)
+    aus.append("Kontext: %s Token" % kontext if kontext
+               else "Kontext: nicht in der config angegeben")
+    if rueckfall:
+        aus.append("Fallback: " + " -> ".join(
+            "%s/%s" % (r.get("provider", "?"), r.get("model", "?")) for r in rueckfall))
+    aus.append("Der Bot selbst hat kein Modell; gewechselt wird in")
+    aus.append("Agenten/Hermes/config.yaml (hermes config set model.provider /")
+    aus.append("model.default). Nur lesend, kein A2A-Aufruf.")
+    return "\n".join(aus)
+
+
 def hilfe_text():
     # Kein HTML: der SkillsBot sendet ohne parse_mode - Marken staenden
     # woertlich in der Nachricht (der Handelsbot nutzt dafuer befehle.hilfe()).
@@ -513,6 +593,7 @@ def hilfe_text():
             "/status - gespeicherter Dateistand (alle Spuren)\n"
             "/papierstatus - nur Papierspuren\n"\
             "/a2a - Status der A2A-Bruecke (Port 9900 + Agent-Card)\n"
+            "/model - Modell und Fallback-Kette dieses Bots (lesend)\n"
             "/prognose [N] - Marktbeobachtung long/short (bis 240 s)\n"
             "/skills [SUCHE] - die gelernten Skills, nach Gruppen\n"
             "/skill NAME - ein Skill im Volltext\n"
@@ -633,6 +714,11 @@ def bearbeite(text, chat):
     if t == "/a2a":
         # Kurzstatus der A2A-Bruecke (Port 9900 + Agent-Card), rein lesend.
         return _a2a_status(), kontext
+    if wort == "/model":
+        # Das Modell des SkillsBots ist das des default-Profils (der Bot hat
+        # keins). Rein lesend - ein Schreibpfad aus Telegram heraus wuerde die
+        # Hermes-config anfassen, das bleibt Handarbeit.
+        return modell_text(), kontext
     if wort == "/spur":
         import handel_befehle
         try:

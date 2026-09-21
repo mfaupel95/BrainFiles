@@ -115,6 +115,9 @@ In beiden Bots:
   Spot-Paare, beide Richtungen, keine Order, kein Berichtschreiben. Im
   Handelsbot verweist der Befehl hierher, damit die Analyse den Handelszyklus
   nicht blockiert. Ohne N ganzer Markt; N zwischen 1 und 200.
+- `/model` (SkillsBot): Modell, Endpunkt und Fallback-Kette, auf denen der Bot
+  laeuft - rein lesend aus der Hermes-config. Der Bot hat kein eigenes Modell;
+  gewechselt wird in `Agenten/Hermes/config.yaml`.
 - `/skills [SUCHE]` (SkillsBot): die geladenen Skills, nach Gruppen gefiltert.
 - `/skill NAME` (SkillsBot): ein Skill im Volltext - lesen.
 - `/run NAME [Auftrag]` (SkillsBot, bis 5 min): einen Skill **ausfuehren** -
