@@ -67,3 +67,69 @@ wavetrend 22 / 18 % −2,81 %. Das Kurzfenster war ein reiner Aufwaertsmarkt
 ```bash
 cd Agenten/Handel && python bt_lang.py     # Serienlauf, schreibt bt_lang.json/.txt
 ```
+
+## Varianten-Studie (21.09.2026, abends): was den Langlauf verbessert
+
+**Treiber:** `Agenten/Handel/bt_varianten_fast.py` (Indikator-Arrays einmal je
+Instrument vorrechnen, Einstieg/Ausstieg weiter aus `<spur>/handeln.py` ueber den
+Pfad) und `bt_oos.py` (Halbierung). Rein lesend, `SCHREIBEN=False`, Journal
+abgefangen. Alle 22 Varianten mit Zahlen: `Werkstatt/backtest-optimierung-2026-09-21.md`
+(Durchgangsware, nicht der Massstab). Fenster und Kosten wie oben: 7000 h, long,
+netto 0,10 %/Seite.
+
+| Spur | Variante | Runden | Quote | netto/Runde | Summe | max. Ruecklauf |
+|---|---|---|---|---|---|---|
+| macd_mtf | BASE (Stand) | 62 | 48,4 % | +2,277 % | +141,18 | -63,51 |
+| macd_mtf | **hist1+4** | 54 | **51,9 %** | **+2,787 %** | **+150,50** | **-54,82** |
+| macd_mtf | fakt(1,4,8) | 81 | 37,0 % | +0,117 % | +9,49 | -171,39 |
+| macd_mtf | macd(5,35,5) | 63 | 41,3 % | +1,006 % | +63,36 | -103,76 |
+| macd_mtf | ziel R=3 | 46 | 41,3 % | +3,382 % | +155,56 | -61,29 |
+| macd_mtf | stop 3-15 | 127 | 44,9 % | +0,868 % | +110,23 | -78,70 |
+| squeeze | BASE (Stand) | 60 | 45,0 % | +1,568 % | +94,09 | -67,15 |
+| squeeze | laenge30 | 44 | 50,0 % | +2,531 % | +111,38 | -64,31 |
+| squeeze | kc1.2 | 48 | 47,9 % | +2,076 % | +99,65 | -77,18 |
+| squeeze | laenge15 | 76 | 39,5 % | +0,538 % | +40,87 | -121,38 |
+
+Die reproduzierte BASE stimmt Zeichen fuer Zeichen mit dem Langlauf oben
+(macd_mtf-long +2,277/+141,18/-63,51; squeeze-long +1,568/+94,09/-67,15) - die
+Vorberechnung ist also nicht die Ursache der Zahlen.
+
+**OOS-Stabilitaet** (Halbierung 0-3500 / 3500-7000 h):
+
+| Variante | H1 netto/Runde | H1 Quote | H2 netto/Runde | H2 Quote |
+|---|---|---|---|---|
+| macd BASE | +1,047 % | 40,0 % | +1,783 % | 47,8 % |
+| macd hist1+4 | +1,693 % | 46,2 % | +2,590 % | 52,6 % |
+| squeeze BASE | +1,611 % | 46,2 % | +3,293 % | 52,6 % |
+| squeeze laenge30 | +4,704 % | 63,6 % | +3,380 % | 54,5 % |
+
+**Befund:**
+
+- **Traegt: macd_mtf `hist1+4`.** Das Histogramm muss zusaetzlich zum 1er- auch im
+  4er-Zeitrahmen steigen. Quote 48,4 -> 51,9 %, netto/Runde +2,28 -> +2,79 %,
+  Summe +141 -> +150, Ruecklauf -63,5 -> -54,8, und beides auf beiden Haelften.
+  Es ist eine Bestaetigungs-Bedingung am SELBEN Indikator, kein neuer Parameter -
+  damit kein Overfit im Sinne der Hausmethodik.
+- **Parameter-Knoepfe tragen nicht.** `ziel R=3` zeigt zwar +3,38 %/Runde, aber
+  bei nur 46 Runden und 41 % Quote; `ziel R=1,5` und `stop min4` erhoehen die
+  Rundenzahl, ohne den Vorsprung zu halten; `stop max15` ist wirkungslos
+  (identisch zu BASE). Kein Stop-/Ziel-Knopf hebt den Stand robust.
+- **Faktor- und MACD-Varianten verschlechtern** die Long-Seite durchweg: mehr
+  Runden, niedrigere Quote, tieferer Ruecklauf. Der Indikator selbst ist der
+  Deckel, nicht seine Fensterlaenge.
+- **squeeze `laenge30`** schlaegt BASE auf beiden Haelften (netto/Runde +2,53 %,
+  Quote 50 %), aber bei nur 44 statt 60 Runden (H2 nur 11) - zu duenn belegt fuer
+  eine Empfehlung.
+
+**Offen (Entscheidung Max):** `hist1+4` ist ein Eingriff in die Signallogik von
+`macd_mtf/handeln.py` (bzw. ein Feld `hist_mehrere` in `macd_mtf/wachen.json`).
+Die Spur laeuft Papier mit `handel_erlaubt=false`; ein Umbau braucht einen Test
+in `macd_mtf/tests/` und danach einen frischen Langlauf als Gegenprobe.
+
+**Nachweis:**
+
+```bash
+cd Agenten/Handel
+python bt_varianten_fast.py --json bt_varianten_fast.json   # 22 Varianten, 7000 h long
+python bt_oos.py                                            # Halbierung H1/H2
+```
