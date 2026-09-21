@@ -453,6 +453,45 @@ def _block(s, d):
     return "\n".join(t)
 
 
+def livezeile():
+    """Eine Zeile: welche Spur kann ueberhaupt echtes Geld bewegen.
+
+    WARUM: seit dem Auftrag vom 21.09.2026 steht `handel_erlaubt=true` in JEDER
+    wachen.json - auch bei Spuren ohne einen einzigen Orderaufruf im Code. Der
+    Bericht zeigte damit 29x "erlaubt" und verschwieg, dass nur eine Handvoll
+    Spuren eine Boersenanbindung hat. Die Erkennung kommt aus DERSELBEN Quelle
+    wie /live und spuren_stand.py (spuren_stand.sammle) - keine zweite Liste.
+
+    haus = eigene Orderanbindung der Spur (echter Geldpfad).
+    fremd = eine Fremd-Laufzeit ordert (Nautilus-Node, DEMO-Konto).
+    Ein (F) hinter dem Namen heisst: Freigabefenster steht gerade offen.
+    """
+    try:
+        import spuren_stand as ss  # noqa: PLC0415
+        daten = ss.sammle()
+    except Exception as fehler:  # noqa: BLE001
+        return "Live-Anbindung: nicht geprueft (%s)" % str(fehler)[:80]
+    haus, fremd = [], []
+    for e in daten:
+        if not e.get("order"):
+            continue
+        name = e["spur"]
+        if str(e.get("fenster", "")).startswith("offen"):
+            name += " (F)"
+        (haus if e.get("art") == "haus" else fremd).append(name)
+    if not haus and not fremd:
+        return "Live-Anbindung: keine Spur hat einen Orderweg im Code."
+    teile = []
+    if haus:
+        teile.append("haus: " + ", ".join(haus))
+    if fremd:
+        teile.append("fremd: " + ", ".join(fremd))
+    ohne = len(daten) - len(haus) - len(fremd)
+    return ("Live-Anbindung (%d von %d Spuren): %s; %d ohne Orderweg "
+            "(handel_erlaubt dort wirkungslos)"
+            % (len(haus) + len(fremd), len(daten), " | ".join(teile), ohne))
+
+
 def guthaben_zeile():
     """scanner-Guthaben fuer den Bericht: Budget + verfuegbares Guthaben.
 
@@ -582,6 +621,7 @@ def _baue(mit_xperp=True):
 
     t.append("")
     t.append(spiegelzeile())
+    t.append(livezeile())
     stufe = stufenzeile()
     if stufe:
         t.append(stufe)
