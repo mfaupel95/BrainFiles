@@ -338,6 +338,7 @@ ungetrackten Dateien. Reihenfolge:
   <datei>` fragen und den ungetrackten Stand nennen (der Klon ist shallow: vor
   einem Push `git fetch --unshallow <upstream>`).
 
+- **`git status` luegt unter `Werkstatt/`.** Bei laufendem `core.fsmonitor` (BrainFiles hatte ihn an) meldet git fuer Pfade unter der Junction `Werkstatt` -> `O:\Werkstatt` „nichts geaendert“, obwohl die Datei neu geschrieben ist: `git diff` bleibt leer, `git add <pfad>` ist still wirkungslos, `git hash-object <pfad>` zeigt dagegen den neuen Inhalt. Wer dem `git status` dort glaubt, committet nichts und merkt es erst beim naechsten Mal. Gegenprobe: `git rev-parse :<pfad>` gegen `git hash-object <pfad>` halten. Fix: `git -c core.fsmonitor=false add <pfad>` - oder fsmonitor im Repo ganz aus, seit 21.09.2026 gesetzt (`git config core.fsmonitor false`). Trifft jeden Pfad unterhalb einer Junction, auch `Modelle`.
 ## Verification
 
 - `git diff --cached -- <datei>` nennt genau die eigene Aenderung.
