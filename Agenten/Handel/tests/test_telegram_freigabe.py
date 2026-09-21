@@ -119,7 +119,13 @@ class WiedervorlageImLaufTest(unittest.TestCase):
         import datetime as dt
         self.tmp = tempfile.TemporaryDirectory()
         self.alt = (f.DATEI, f._jetzt, dauerlauf.protokoll,
-                    dauerlauf.Lauf.nur_fenster_fehlt, dauerlauf.Lauf.pruefe_verbesserer)
+                    dauerlauf.Lauf.nur_fenster_fehlt, dauerlauf.Lauf.pruefe_verbesserer,
+                    dauerlauf.AUTO_FREIGABE)
+        # Auto-Freigabe (20.09.2026) stilllegen: sie bestaetigt eine Anfrage
+        # SOFORT, damit steht gar keine Frage mehr offen - und genau die ist
+        # hier der Pruefgegenstand. Ohne diese Zeile faellt der Test seit dem
+        # 20.09. (Befund 21.09.2026), weil scanner in AUTO_FREIGABE steht.
+        dauerlauf.AUTO_FREIGABE = ()
         f.DATEI = str(Path(self.tmp.name) / 'f.json')
         self.jetzt = self.alt[1]()
         f._jetzt = lambda: self.jetzt
@@ -134,7 +140,7 @@ class WiedervorlageImLaufTest(unittest.TestCase):
 
     def tearDown(self):
         (f.DATEI, f._jetzt, dauerlauf.protokoll, dauerlauf.Lauf.nur_fenster_fehlt,
-         dauerlauf.Lauf.pruefe_verbesserer) = self.alt
+         dauerlauf.Lauf.pruefe_verbesserer, dauerlauf.AUTO_FREIGABE) = self.alt
         self.tmp.cleanup()
 
     def test_abgelehnte_spur_wird_nicht_erneut_gefragt(self):

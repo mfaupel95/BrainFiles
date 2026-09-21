@@ -44,14 +44,24 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis", "einsatz_usd",
            "stop", "ziel", "stop_pct", "grund"]
 
 
-def journal(runden, tmp):
-    """Journal mit Paaren schreiben: runden = [(alter_stunden, kauf, verkauf)]."""
+def journal(runden, tmp, jetzt=None):
+    """Journal mit Paaren schreiben: runden = [(alter_stunden, kauf, verkauf)].
+
+    jetzt ist der Bezugspunkt der Alterangaben. Die reinen Funktionstests
+    uebergeben ihr festes JETZT; der Einbautest geht durch buch.einstieg() und
+    damit durch risikovorfilter, das datetime.now() liest - dort MUSS der
+    Bezugspunkt die echte Uhr sein, sonst liegt das synthetische Journal
+    ausserhalb des 12-Stunden-Fensters und der Test faellt (Befund 21.09.2026:
+    JETZT stand fest auf dem 17.09., der Test war nur an seinem eigenen Tag
+    gruen).
+    """
+    jetzt = jetzt or datetime.now(timezone.utc)
     p = os.path.join(tmp, "handelsjournal.csv")
     with open(p, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=SPALTEN)
         w.writeheader()
         for i, (alter, kauf, verkauf) in enumerate(runden):
-            t = (JETZT - timedelta(hours=alter)).isoformat(timespec="seconds")
+            t = (jetzt - timedelta(hours=alter)).isoformat(timespec="seconds")
             w.writerow({"zeit": t, "modus": "papier", "aktion": "kauf",
                         "inst": "TEST%d" % i, "seite": "long", "preis": "100",
                         "einsatz_usd": "%.2f" % kauf,
@@ -71,14 +81,14 @@ class FensterTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_paarung_und_ergebnis(self):
-        p = journal([(1, 100.0, 110.0)], self.tmp.name)
+        p = journal([(1, 100.0, 110.0)], self.tmp.name, jetzt=JETZT)
         ergebnis, einsatz, n = vf.fenster_pnl(p, WACHEN, JETZT)
         self.assertEqual(n, 1)
         self.assertAlmostEqual(ergebnis, 10.0)
         self.assertAlmostEqual(einsatz, 100.0)
 
     def test_alte_runden_zaehlen_nicht(self):
-        p = journal([(20, 100.0, 50.0)], self.tmp.name)
+        p = journal([(20, 100.0, 50.0)], self.tmp.name, jetzt=JETZT)
         ergebnis, einsatz, n = vf.fenster_pnl(p, WACHEN, JETZT)
         self.assertEqual(n, 0)
         self.assertAlmostEqual(ergebnis, 0.0)
@@ -102,32 +112,32 @@ class GrenzenTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_verlustgrenze_stoppt(self):
-        p = journal([(1, 100.0, 70.0)], self.tmp.name)     # -30 USD
+        p = journal([(1, 100.0, 70.0)], self.tmp.name, jetzt=JETZT)     # -30 USD
         ok, warum = vf.pruefe(WACHEN, p, self.z, 5.0, JETZT)
         self.assertFalse(ok)
         self.assertIn("Tagesverlust", warum)
 
     def test_gewinnziel_stoppt(self):
-        p = journal([(1, 100.0, 130.0)], self.tmp.name)    # +30 USD
+        p = journal([(1, 100.0, 130.0)], self.tmp.name, jetzt=JETZT)    # +30 USD
         ok, warum = vf.pruefe(WACHEN, p, self.z, 5.0, JETZT)
         self.assertFalse(ok)
         self.assertIn("Gewinn", warum)
 
     def test_prozentgrenze_stoppt_frueher_als_die_betragsgrenze(self):
         # -6 USD auf 20 USD Einsatz sind -30 %, aber noch unter 25 USD.
-        p = journal([(1, 20.0, 14.0)], self.tmp.name)
+        p = journal([(1, 20.0, 14.0)], self.tmp.name, jetzt=JETZT)
         ok, warum = vf.pruefe(WACHEN, p, self.z, 5.0, JETZT)
         self.assertFalse(ok)
         self.assertIn("%", warum)
 
     def test_ruhiges_fenster_laesst_durch(self):
-        p = journal([(1, 100.0, 101.0)], self.tmp.name)
+        p = journal([(1, 100.0, 101.0)], self.tmp.name, jetzt=JETZT)
         ok, warum = vf.pruefe(WACHEN, p, self.z, 5.0, JETZT)
         self.assertTrue(ok, warum)
 
     def test_buchdeckel_greift(self):
         z = {"positionen": [{"nominal": 299.0, "stop_pct": 100.0}]}
-        p = journal([], self.tmp.name)
+        p = journal([], self.tmp.name, jetzt=JETZT)
         ok, warum = vf.pruefe(WACHEN, p, z, 5.0, JETZT)
         self.assertFalse(ok)
         self.assertIn("Deckel", warum)
@@ -135,13 +145,13 @@ class GrenzenTest(unittest.TestCase):
     def test_ohne_schalter_ist_der_vorfilter_aus(self):
         w = dict(WACHEN)
         w["risikovorfilter"] = False
-        p = journal([(1, 100.0, 10.0)], self.tmp.name)     # -90 USD
+        p = journal([(1, 100.0, 10.0)], self.tmp.name, jetzt=JETZT)     # -90 USD
         ok, warum = vf.pruefe(w, p, self.z, 5.0, JETZT)
         self.assertTrue(ok)
         self.assertIn("aus", warum)
 
     def test_lage_zeigt_das_fenster(self):
-        p = journal([(1, 100.0, 95.0)], self.tmp.name)
+        p = journal([(1, 100.0, 95.0)], self.tmp.name, jetzt=JETZT)
         lage = vf.lage(WACHEN, p, self.z, JETZT)
         self.assertTrue(lage["aktiv"])
         self.assertEqual(lage["runden"], 1)
