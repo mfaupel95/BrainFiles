@@ -48,8 +48,6 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    Basis und Schluessel ausgeben (`okx._live_basis()`, `okx.schluessel_vorhanden()`),
    dann `okx._roh(pfad, signiert=True)` fuer Kontostand je Waehrung und Orderhistorie.
    Rezept + fertige Endpunkte: `references/okx-fehler-und-nachweis.md`.
-   Buch gegen Boerse stellen (Fuellung, Geister, Wiederherstellung):
-   `references/buch-gegen-boerse.md`.
 4. **Folgen benennen**: was war echt (Konto), was nur Buch (Journal), was der Nutzer
    wissen muss. Leere Kontodetails + leere Orderhistorie = die Position hat es am
    Handelsplatz nie gegeben — dann ist der abgebrochene Verkauf RICHTIG gewesen.
@@ -71,41 +69,6 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   Python-`urlencode` schreibt `None` als den Text „None"; eine Position ohne
   Order-Kennung schickt also genau das. Ein formal gueltiger, aber unbekannter
   `ordId` ergibt `51603`. Immer die Aufrufstelle lesen, nie den Code allein deuten.
-- **Eine ANGENOMMENE Order ist keine Position.** `order_limit()` gibt die ordId
-  zurueck, sobald der Handelsplatz sie annimmt — nicht wenn sie fuellt. Wer sofort
-  bucht, hat bei einem Limit, das nie fuellt, eine Position im Buch und an der
-  Boerse nur eine offene Order (`accFillSz 0`, `state live`): ein Platz ist belegt,
-  der Ausstieg verkauft ins Leere, Funding und Bilanz rechnen fuer etwas, das
-  niemand haelt. Vor dem Buchen die Fuellung pruefen (`accFillSz`), bei 0 die Order
-  stornieren und nichts buchen, bei Teilfuellung den Rest stornieren und nur das
-  Gehandelte buchen. Unbekannte Antwort (Abfragefehler) zaehlt als nicht gefuellt.
-- **Das Buch gegen die BOERSE pruefen, nicht gegen sich selbst.** `/account/positions`
-  ist die Wahrheit eines Live-Buchs; fehlender Bestand oder Groesse 0 (OKX behaelt
-  geschlossene Positionen als Zeile) ist ein Geist. Beim Ausbuchen die offene Order
-  dazu stornieren, sonst fuellt sie spaeter und erzeugt eine Position ohne Buch.
-  Reihenfolge beachten: **erst den Orderzustand fragen, dann ausbuchen** — ein
-  Limit, das genau jetzt fuellt, sieht wie ein Geist aus, ist aber eine echte
-  Position (gefuellte Order = Position, auch wenn die Positionsliste nachhinkt).
-  Faellt die Abfrage aus, bleibt das Buch unberuehrt: ein Netzfehler darf nie
-  Positionen loeschen.
-- **Ein PAPIERLAUF schliesst keine Position mit `modus=live`.** Loest der
-  Kill-Switch aus, waehrend die Spur ohne Fenster (oder mit `handel_erlaubt=false`)
-  im Papier laeuft, schliesst die Flachstellung sonst auch echte Positionen — aber
-  nur im Buch, an der Boerse bleibt die Position offen. Ergebnis: eine gehebelte
-  Position ohne Buch, kein Ausstieg, kein Funding. Solche Positionen im Papierlauf
-  stehen lassen und im Klartext melden; geschlossen werden sie nur vom Live-Lauf.
-- **Sperre und Kill-Switch sind zwei Dinge — vor dem Entsperren beide rechnen.**
-  `handel_erlaubt=true` allein genuegt nicht: liegt der Ruecklauf ueber
-  `kill_switch_gesamt_usd`, stellt der naechste Zyklus sofort wieder flach und
-  verkauft dabei die gerade wieder eingebuchte Position. Vor dem Entsperren die
-  eigene `lage()` fragen (Ruecklauf, Hoechststand, Groessenfaktor) und den Deckel
-  datiert anheben oder die Sperre bleibt sinnlos. Danach einen Zyklus abwarten und
-  Buch, Journal und Boerse gegeneinander belegen.
-- **Eine ausgebuchte, aber echt vorhandene Position gehoert ins Buch zurueck** — mit
-  den Werten der Eroeffnungszeile aus dem JOURNAL, nie geschaetzt; zusaetzlich
-  pruefen, ob der boersenseitige Stop noch steht (Anhaenge einer Order greifen
-  nicht immer), und ihn sonst nachsetzen. Eine gehebelte Position ohne Stop laeuft
-  bis zur Liquidation, wenn der Rechner ausfaellt.
 - **Kein Market-Verkauf ohne Order-Kennung.** Eine Position ohne `kauf_ord_id` hat am
   Handelsplatz nichts, was verkauft werden koennte: der Verkauf muss VOR der ersten
   Abfrage abbrechen. Ein Market-Verkauf ohne Kennung verkauft nicht „nichts", sondern

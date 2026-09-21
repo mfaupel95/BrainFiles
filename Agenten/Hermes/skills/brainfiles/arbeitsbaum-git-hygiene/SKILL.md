@@ -234,17 +234,9 @@ ungetrackten Dateien. Reihenfolge:
  echte Committer hat eine CreationDate in den letzten Sekunden und `add`/`commit`
  in der Kommandozeile; fehlt beides und ist die Sperre 0 Byte und aelter als ein paar
  Minuten, ist sie verwaist.
- **Die ZAHL der `git.exe` ist kein Kriterium, nur die ART.** Eine lange Liste
- beantwortet die Frage nicht: sie kann vollstaendig aus `fsmonitor--daemon`
- bestehen (die laufen dauerhaft, auch ohne jede Fremdsitzung). Erst filtern
- (`Get-CimInstance Win32_Process -Filter "Name='git.exe'" | Where-Object {
- $_.CommandLine -notlike '*fsmonitor*' }`): bleibt die gefilterte Liste LEER und
- ist die Sperre 0 Byte und aelter als ein paar Minuten, ist sie verwaist -
- umbenennen und denselben Befehl sofort wiederholen, das ist dann der richtige
- Weg und kein Risiko.
- **Laeuft dagegen ein ECHTER Committer** (CreationDate in den letzten Sekunden,
- `add`/`commit` in der Kommandozeile) und haelt die Sperre ueber die Wartezeit
- hinweg, ist die richtige Antwort NICHT das Umbenennen, sondern der Abbruch: die eigene Arbeit liegt vollstaendig und unversehrt auf der Platte,
+ **Laufen dagegen viele `git.exe` (gemessen: 12) und haelt die Sperre ueber die
+ Wartezeit hinweg, ist die richtige Antwort NICHT das Umbenennen, sondern der
+ Abbruch:** die eigene Arbeit liegt vollstaendig und unversehrt auf der Platte,
  nur uncommittet. Dann den Bericht als „gebaut und geprueft, Commit haengt an einer
  fremden Git-Sperre" schreiben, die Sperre unangetastet lassen und den Commit in
  einer spaeteren Runde nachziehen (oder dem Nutzer anbieten, ihn auszuloesen).

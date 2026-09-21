@@ -142,6 +142,18 @@ except Exception:                                        # noqa: BLE001
 
 PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
+# Sekunden, die EIN Zyklus EINER Spur dauern darf, bevor der Dauerlauf ihn
+# abbricht. Der Wert ist keine Schaetzung, sondern eine Obergrenze mit Grund:
+# er MUSS ueber dem Zeitlimit des Freigabefensters liegen (scanner, kraken,
+# mosaic und moondev_marktlage fuehren FREIGABE_ZEITLIMIT_S = 600). Sonst
+# toetet der Timeout einen Lauf, der korrekt auf eine Freigabe wartet, statt
+# sie abzulehnen - und mit ihm die Spiegelung nach Q: (Bedingung 4).
+# Genau das passierte am 21.09.2026, als das Zeitlimit von 120 auf 600 s ging
+# und der Timeout bei 300 s stehen blieb: scanner lief ab 19:22 in jedem
+# Zyklus in den Abbruch, das Journal wuchs lokal weiter, Q: stand still.
+# Festgehalten von tests/test_zyklus_zeitgrenze.py.
+TIMEOUT_S = 700
+
 # Spuren, die dieser Lauf fuehrt.
 #
 # Spur 2 (xperp) ist seit 03.09.2026 der Hauptweg und hat seit demselben Tag
@@ -460,6 +472,22 @@ def _env_sicher():
     return umgebung
 
 
+def zyklus_umgebung(modus, basis=None):
+    """Umgebung EINES Spur-Zyklus - in beiden Modi dieselbe Zusicherung.
+
+    MAXHIRN_ROUTINE=1 heisst: hier sitzt niemand am Bildschirm. Das schlaegt
+    in jeder Spur die isatty-Erkennung (sitzung_da) und verhindert, dass ein
+    Dienstprozess das Freigabefenster aufzieht und auf einen Klick wartet.
+    Der Modus ist deshalb absichtlich KEIN Parameter der Entscheidung - er
+    steht nur in der Signatur, damit ein Aufrufer nicht in Versuchung kommt,
+    die Variable wieder an --papier zu binden (Fehler vom 21.09.2026).
+    Geprueft von tests/test_zyklus_zeitgrenze.py.
+    """
+    umgebung = dict(basis) if basis is not None else _env_sicher()
+    umgebung["MAXHIRN_ROUTINE"] = "1"
+    return umgebung
+
+
 class Lauf:
     def __init__(self, takt, trocken=False):
         self.takt = takt
@@ -494,7 +522,7 @@ class Lauf:
     def zyklus_spur(self, spur):
         """Ein Zyklus einer Spur. Papier, ausser das Fenster ist offen.
         
-        Timeout: 300s (5 min). Subprocess-Fehler sind nicht mehr fatal.
+        Timeout: TIMEOUT_S (siehe Konstante oben). Subprocess-Fehler sind nicht mehr fatal.
         """
         f = freigabefenster.lade(spur)
         # Eine Risikostufe geht NIE live, auch bei offenem Fenster: ihre
@@ -515,20 +543,24 @@ class Lauf:
         # der gemeinsame.
         python = SPUREN[spur].get("python", PYTHON)
         umgebung = _env_sicher()  # FIXED: sichere Umgebung, nicht alle vars
-        if modus == "--papier":
-            # Sagt handeln.py, dass niemand am Bildschirm sitzt: kein
-            # Freigabefenster aus einem laufenden Dienst heraus. Bei --live
-            # ist die Freigabe bereits erteilt und die Variable faellt weg.
-            umgebung["MAXHIRN_ROUTINE"] = "1"
+        # Sagt handeln.py, dass niemand am Bildschirm sitzt - in BEIDEN Modi.
+        # Bis zum 21.09.2026 stand die Variable nur bei --papier, mit der
+        # Begruendung "bei --live ist die Freigabe ohnehin schon erteilt".
+        # Die Annahme war falsch: sitzung_da() prueft isatty() auf stdin, und
+        # ein Dienstprozess erbt ein Terminal - der Live-Lauf hielt sich fuer
+        # eine Sitzung am Bildschirm, oeffnete das Freigabefenster, wartete
+        # auf einen Klick, den niemand geben kann, und lief in den Timeout
+        # (scanner ab 21.09. 19:22 in jedem Zyklus).
+        umgebung = zyklus_umgebung(modus, umgebung)
 
         try:
             p = subprocess.run([python, skript, modus], cwd=ordner,
-                               capture_output=True, text=True, timeout=300,
+                               capture_output=True, text=True, timeout=TIMEOUT_S,
                                env=umgebung,
                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         except subprocess.TimeoutExpired as e:
             # FIXED: Timeout-Exception nicht mehr fatal
-            protokoll("%s TIMEOUT (exceeded 300s limit)" % spur)
+            protokoll("%s TIMEOUT (exceeded %ds limit)" % (spur, TIMEOUT_S))
             return modus, 124, "TIMEOUT: Handelslogik antwortet nicht"
         except Exception as e:
             # Andere Subprocess-Fehler (OSError, etc.)
