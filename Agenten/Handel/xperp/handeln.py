@@ -269,6 +269,49 @@ def _ergebnis(p, kurs):
     return p["margin"] + gewinn - gebuehr
 
 
+def bueche_papier_altlasten_aus(z, w, still=False):
+    """Positionen OHNE Live-Herkunft aus dem Live-Buch buchen.
+
+    ANLASS (gemessen 21.09.2026): xperp lief live, sein Buch fuehrte aber vier
+    Positionen (ZEC, XAG, LINK, ETC), die an der Boerse NICHT existieren - die
+    Abfrage /account/positions kennt nur zwei (die manuelle FIL-Position und
+    einen XRP-Rest). Das Journal beweist es: von 14 Live-Zeilen sind ALLE 14
+    `funding`, kein einziger Live-Kauf und kein Live-Verkauf. Die vier
+    Positionen stammen also aus dem Papierlauf, der Buchmodus stand trotzdem auf
+    `live`. Folge ohne diesen Schritt: die Live-Ausstiege versuchen, Kontrakte zu
+    verkaufen, die es nicht gibt, und die Funding-Zeilen rechnen Gebuehren fuer
+    Positionen, die niemand haelt.
+
+    MASSSTAB ist das Feld `modus` der Position: `live` heisst, sie wurde unter
+    `--live` eroeffnet. Aeltere Positionen tragen das Feld nicht - sie sind
+    Papier. Dieselbe Rechnung wie scanner/handeln.bueche_papier_altlasten_aus.
+    """
+    alt = [p for p in z["positionen"] if p.get("modus") != "live"]
+    if not alt:
+        return 0
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
+        kurs = p.get("letzter_kurs") or p.get("einstieg") or 0.0
+        erloes = _ergebnis(p, kurs) if kurs else p.get("margin", 0.0)
+        gv = erloes - p.get("margin", 0.0)
+        if not still:
+            print("  Buchbereinigung: %s %s (Papier, keine Order an der Boerse) "
+                  "@ %.6f  G/V %+.2f USD" % (p.get("inst"), p.get("seite"),
+                                             kurs, gv))
+        journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                familie=p.get("familie", ""), preis="%.6f" % kurs,
+                kontrakte=p.get("kontrakte", ""),
+                nominal_usd="%.2f" % p.get("nominal", 0.0),
+                margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
+                grund="buchbereinigung")
+    z["positionen"] = behalten
+    return len(alt)
+
+
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
@@ -485,6 +528,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                   % (a["basis"], a["seite"], p["hebel"], p["hebel_deckel"]))
             continue
 
+        ord_antwort = None
         if live:
             try:
                 okxf.hebel_setzen(a["inst"], g["hebel"])
@@ -495,9 +539,9 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 # die Kernel-Power-41-Abschaltungen aus Wissen/Hardware.md
                 # nehmen ihn ohne Vorwarnung mit. Eine gehebelte Position
                 # ohne boersenseitigen Stop laeuft dann bis zur Liquidation.
-                okxf.order_limit(a["inst"], "buy" if a["seite"] == "long"
-                                 else "sell", kontrakte, a["einstieg"],
-                                 tp=a["ziel"], sl=a["stop"])
+                ord_antwort = okxf.order_limit(
+                    a["inst"], "buy" if a["seite"] == "long" else "sell",
+                    kontrakte, a["einstieg"], tp=a["ziel"], sl=a["stop"])
             except Exception as e:                       # noqa: BLE001
                 print("  Eroeffnen %s fehlgeschlagen: %s" % (a["inst"], e),
                       file=sys.stderr)
@@ -510,6 +554,12 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             "kontrakte": kontrakte, "nominal": g["nominal"],
             "margin": g["margin"], "hebel": g["hebel"],
             "gebuehr_taker": w["gebuehr_taker"],
+            # WOHER DIESE POSITION KOMMT. Bis zum 21.09.2026 stand hier nichts -
+            # damit liess sich im Buch nicht unterscheiden, ob eine Position echt
+            # an der Boerse liegt oder aus dem Papierlauf stammt (genau der
+            # Zustand, den das Aufraeumen unten bereinigt).
+            "modus": "live" if live else "papier",
+            "ord_id": str(ord_antwort)[:40] if live and ord_antwort else "",
             "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
             "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
         }
@@ -705,6 +755,11 @@ def lauf(modus):
         return
 
     z["modus"] = "live" if live else "papier"
+    if live:
+        # ERST aufraeumen, dann handeln: ein Live-Lauf uebernimmt kein Papierbuch.
+        n_alt = bueche_papier_altlasten_aus(z, w, still=False)
+        if n_alt:
+            print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
 
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:
