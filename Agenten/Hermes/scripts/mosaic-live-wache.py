@@ -76,6 +76,11 @@ def main() -> int:
     vorher = int(stand.get("live_runden", 0))
     if len(zeilen) > vorher:
         for r in zeilen[vorher:]:
+            if (r.get("aktion") or "") == "fehler":
+                meldungen.append("LIVE-FEHLER: %s %s  %s" % (
+                    r.get("zeit", "")[:16], r.get("inst", ""),
+                    r.get("grund", "")))
+                continue
             meldungen.append("LIVE: %s %s %s @ %s  %s USD  (%s)" % (
                 r.get("zeit", "")[:16], r.get("aktion", ""), r.get("inst", ""),
                 r.get("preis", ""), r.get("einsatz_usd", ""), r.get("grund", "")))

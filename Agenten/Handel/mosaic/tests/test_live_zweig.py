@@ -25,6 +25,7 @@ import os
 import shutil
 import sys
 import tempfile
+import csv
 import unittest
 
 HIER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -196,6 +197,28 @@ class _Basis(unittest.TestCase):
         if self._k4 is None:
             self._k4, self._k30, self._k5 = _setup_kerzen(self.w)
         return {"4H": self._k4, "30m": self._k30, "5m": self._k5}[iv]
+
+    def test_gescheiterter_kauf_wird_journalisiert(self):
+        """Ein gescheiterter Live-Kauf MUSS eine Journalzeile hinterlassen.
+
+        Ohne sie meldet der Dauerlauf die Spur als "ok", stderr wird verworfen,
+        und der Grund fuer einen ausbleibenden Einstieg waere spaeter nicht
+        feststellbar (Auftrag Max 21.09.2026: "erste order melden"; der Waechter
+        mosaic-live-wache liest genau diese Zeile).
+        """
+        handeln.SCHREIBEN = True
+        handeln.op_kauf = lambda inst, menge: (_ for _ in ()).throw(
+            RuntimeError("50101 APIKey does not match current environment"))
+        z = {"positionen": [], "modus": "papier"}
+        s = {"kill": False, "herzschlag_frisch": True, "rollierender_ev": 1.0,
+             "ruecklauf_usd": 0.0}
+        handeln.live_einstiege(z, self.w, s)
+        self.assertEqual(z["positionen"], [], "kein Einstieg ins Buch")
+        with open(handeln.JOURNAL, newline="", encoding="utf-8") as f:
+            zeilen = [r for r in csv.DictReader(f) if r["aktion"] == "fehler"]
+        self.assertEqual(len(zeilen), 1, "genau eine Fehlerzeile")
+        self.assertIn("50101", zeilen[0]["grund"])
+        self.assertEqual(zeilen[0]["modus"], "live")
 
     def _fake_kauf(self, inst, menge):
         self.aufrufe.append(("kauf", inst, menge))

@@ -626,6 +626,10 @@ def live_ausstiege(z, w):
         except Exception as e:  # noqa: BLE001
             print("  Verkauf %s fehlgeschlagen: %s" % (p["inst"], e),
                   file=sys.stderr)
+            journal(zeit=_jetzt(), modus="live", aktion="fehler",
+                    inst=p["inst"], seite=p["seite"], preis="", einsatz_usd="",
+                    stop="", ziel="", stop_pct="",
+                    grund="verkauf fehlgeschlagen: %s" % e)
             behalten.append(p)
             continue
         gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
@@ -749,10 +753,28 @@ def live_einstiege(z, w, s):
                     op_verkauf(inst, menge)
                 except Exception as e2:  # noqa: BLE001
                     stop_fehlt = True
+                    journal(zeit=_jetzt(), modus="live", aktion="fehler",
+                            inst=inst, seite="long", preis="", einsatz_usd="",
+                            stop="", ziel="", stop_pct="",
+                            grund="stop fehlgeschlagen (%s) UND Rueckverkauf "
+                                  "fehlgeschlagen (%s) - Position ohne Stop "
+                                  "offen" % (e, e2))
                 else:
+                    journal(zeit=_jetzt(), modus="live", aktion="fehler",
+                            inst=inst, seite="long", preis="", einsatz_usd="",
+                            stop="", ziel="", stop_pct="",
+                            grund="stop fehlgeschlagen (%s) - zurueckverkauft" % e)
                     continue
         except Exception as e:  # noqa: BLE001
             print("  Kauf %s fehlgeschlagen: %s" % (inst, e), file=sys.stderr)
+            # Ins Journal, nicht nur auf stderr: ein gescheiterter Live-Kauf
+            # hinterlaesst sonst KEINE Spur (der Dauerlauf meldet die Spur als
+            # "ok", stderr wird verworfen), und niemand kann spaeter sagen,
+            # warum kein Einstieg kam. Der Waechter mosaic-live-wache meldet
+            # genau diese Zeile (Auftrag Max, 21.09.2026: "erste order melden").
+            journal(zeit=_jetzt(), modus="live", aktion="fehler", inst=inst,
+                    seite="long", preis="", einsatz_usd="", stop="", ziel="",
+                    stop_pct="", grund="kauf fehlgeschlagen: %s" % e)
             continue
         nominal = menge * kurs
         z["positionen"].append({
