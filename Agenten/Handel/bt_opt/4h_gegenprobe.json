@@ -1,0 +1,42 @@
+{
+ "macd_mtf/BASE": {
+  "n": 38,
+  "offen": 4,
+  "quote": 52.6,
+  "netto_pct_mittel": 3.357,
+  "netto_pct_summe": 127.58,
+  "gv_netto_usd": 127.58,
+  "max_ruecklauf_usd": -49.1,
+  "stunden_median": 258.0
+ },
+ "macd_mtf/hist1+4": {
+  "n": 27,
+  "offen": 1,
+  "quote": 59.3,
+  "netto_pct_mittel": 4.232,
+  "netto_pct_summe": 114.27,
+  "gv_netto_usd": 114.27,
+  "max_ruecklauf_usd": -29.22,
+  "stunden_median": 372.0
+ },
+ "squeeze/BASE": {
+  "n": 36,
+  "offen": 1,
+  "quote": 38.9,
+  "netto_pct_mittel": 1.07,
+  "netto_pct_summe": 38.53,
+  "gv_netto_usd": 38.53,
+  "max_ruecklauf_usd": -64.84,
+  "stunden_median": 174.0
+ },
+ "squeeze/laenge30": {
+  "n": 11,
+  "offen": 0,
+  "quote": 63.6,
+  "netto_pct_mittel": 5.204,
+  "netto_pct_summe": 57.25,
+  "gv_netto_usd": 57.25,
+  "max_ruecklauf_usd": -18.75,
+  "stunden_median": 228.0
+ }
+}

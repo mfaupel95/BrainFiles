@@ -103,13 +103,39 @@ Vorberechnung ist also nicht die Ursache der Zahlen.
 | squeeze BASE | +1,611 % | 46,2 % | +3,293 % | 52,6 % |
 | squeeze laenge30 | +4,704 % | 63,6 % | +3,380 % | 54,5 % |
 
+**Zweites Fenster, unabhaengig (4H-Kerzen).** Dieselben vier Varianten auf
+`daten/backtest_kerzen/*_4H.json` (je 2379 Kerzen ab 21.08.2025 - ein anderer
+Zeitraum als der 1H-Langlauf). Die Vorberechnung wurde dort an Stichproben
+gegen die schrittweise Rechnung der Spur geprueft (25/25 Treffer je Spur):
+
+| Variante | Runden | Quote | netto/Runde | Summe | max. Ruecklauf |
+|---|---|---|---|---|---|
+| macd BASE | 38 | 52,6 % | +3,357 % | +127,58 | -49,10 |
+| macd hist1+4 | 27 | 59,3 % | +4,232 % | +114,27 | -29,22 |
+| squeeze BASE | 36 | 38,9 % | +1,070 % | +38,53 | -64,84 |
+| squeeze laenge30 | 11 | 63,6 % | +5,204 % | +57,25 | -18,75 |
+
+Der Charakter bleibt, die Deutung wird schaerfer: `hist1+4` verbessert auch hier
+Quote (+6,7 pp), Wert je Runde und Ruecklauf - aber bei 27 statt 38 Runden ist
+die Summe kleiner. **Der Filter macht die einzelne Runde besser, nicht den
+Ertrag groesser.** `laenge30` bleibt mit 11 Runden zu duenn.
+
+**Fahrweise gegengeprueft.** `Agenten/Handel/bt_opt/verify_equivalence.py` stellt
+das vorberechnete Signal dem der Spur selbst gegenueber: macd_mtf 1200 Schritte,
+squeeze 2700 Schritte, je 0 Abweichung im Long-Signal und 0 Abweichung im
+Einstieg, Urteil **gleichwertig** (nachgefahren 21.09.2026). Damit ist die
+Einstiegslogik-Kopie in `bt_varianten_fast.py` belegt und nicht behauptet - die
+Varianten-Zahlen stammen aus derselben Mechanik wie die Spur.
+
 **Befund:**
+
 
 - **Traegt: macd_mtf `hist1+4`.** Das Histogramm muss zusaetzlich zum 1er- auch im
   4er-Zeitrahmen steigen. Quote 48,4 -> 51,9 %, netto/Runde +2,28 -> +2,79 %,
-  Summe +141 -> +150, Ruecklauf -63,5 -> -54,8, und beides auf beiden Haelften.
-  Es ist eine Bestaetigungs-Bedingung am SELBEN Indikator, kein neuer Parameter -
-  damit kein Overfit im Sinne der Hausmethodik.
+  Summe +141 -> +150, Ruecklauf -63,5 -> -54,8, und beides auf beiden Haelften
+  (sowie auf dem 4H-Fenster). Es ist eine Bestaetigungs-Bedingung am SELBEN
+  Indikator, kein neuer Parameter - damit kein Overfit im Sinne der Hausmethodik.
+  Preis dafuer: weniger Runden (62 -> 54; auf 4H 38 -> 27).
 - **Parameter-Knoepfe tragen nicht.** `ziel R=3` zeigt zwar +3,38 %/Runde, aber
   bei nur 46 Runden und 41 % Quote; `ziel R=1,5` und `stop min4` erhoehen die
   Rundenzahl, ohne den Vorsprung zu halten; `stop max15` ist wirkungslos

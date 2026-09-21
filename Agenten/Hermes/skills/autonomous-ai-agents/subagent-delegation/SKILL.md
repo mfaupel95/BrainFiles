@@ -244,6 +244,33 @@ Weiterverwenden die zitierten Werte gegen die DATEI halten, nicht gegen die
 Erinnerung — Aenderungen der Sitzung sind der zweite Grund, die Gegenprobe zu
 fahren, neben der Fehlbarkeit des Kindes selbst.
 
+## Ein fertiges Kind, das nur die Antwortform verfehlt
+
+Ein Kind mit `output_schema` kann die ARBEIT abgeschlossen haben (Datei geschrieben,
+Zahlen ermittelt) und trotzdem am Antwortvertrag scheitern: der Validator weist die
+Prosa ab, das Kind bekommt die Aufforderung, NUR JSON zu senden — und statt
+umzuformatieren faengt es von vorn an, bis die aeussere Frist es erschlaegt. Von
+aassen sieht das wie ein Fehlschlag aus; auf der Platte liegt der Befund laengst.
+
+- **Fuer Datei-Lieferungen kein `output_schema` verlangen.** Wer einen Bericht, eine
+  Tabelle oder eine Messreihe als Artefakt will, beschreibt die erwartete Ausgabe in
+  Prosa ("Antworte mit: Pfad, Kennzahlen, Urteil"). Ein Schema auf einem Auftrag mit
+  Prosa-Werkzeugen erzeugt genau diese Schleife.
+- **Vor jedem Neu-Dispatch den Baum lesen.** Nach dem Abbruch zuerst Zieldateien und
+  Transkript (`cache/delegation/live/<id>/task-N.log`) pruefen: existieren Bericht
+  und Zahlen schon, werden sie geborgen, gegen die Artefakte geprueft und nur der
+  Rest ergaenzt. Neu dispatchen bezahlt dieselbe Arbeit ein zweites Mal.
+- **Ein Kind kann versionierte Dateien geloescht haben.** Beim Aufraeumen nach einem
+  Abbruch `git status` nach `D`-Eintraegen ansehen: ein Kind, das seine Hilfsdatei
+  "wieder entfernt", trifft manchmal eine gleichnamige Datei aus dem Repo. Diese
+  eine Datei zurueckholen, den Rest der Scratch-Spur loeschen.
+- **Die Frist gehoert zum Auftrag.** Ein Auftrag mit echten Backtests oder
+  Serienlaeufen dauert schnell 20-30 Minuten. Steckt der Absender in einer harten
+  Grenze (Bot-Bruecken wie der SkillsBot kappen nach 30 Minuten, `-q`-Aufrufe,
+  Werkzeug-Timeouts), stirbt der ganze Kinderbaum mit — also vorher in Teilstuecke
+  schneiden, die je unter der Grenze bleiben, und das Ergebnis als DATEI abliefern
+  lassen statt als Antwort.
+
 ## Ein aufloesender Modellname ist noch kein taugliches Modell
 
 Die Kette kann technisch stehen und trotzdem unbrauchbar sein: ein kleines

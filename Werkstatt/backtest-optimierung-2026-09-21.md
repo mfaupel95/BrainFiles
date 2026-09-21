@@ -125,3 +125,30 @@ python bt_oos.py                                             # Halbierung H1/H2
 Skripte und `bt_varianten_fast.json` liegen in `Agenten/Handel/` (Durchgangsware,
 nicht versioniert). Keine Spur-, `wachen.json`- oder Live-Datei wurde
 geschrieben oder verändert.
+## 6. Gegenproben (nachgeholt 21.09.2026 nach dem Abbruch)
+
+Der Auftrag wurde um 21:46 vom 30-Minuten-Limit des SkillsBot gekappt; die
+Gegenproben liefen danach nach.
+
+**(a) Fahrweise — rechnet der schnelle Treiber wie die Spur?**
+`Agenten/Handel/bt_opt/verify_equivalence.py` stellt das vorberechnete Signal
+(dazu die Einstiegslogik) dem schrittweisen Weg der Spur selbst gegenueber:
+macd_mtf **1 200 Schritte**, squeeze **2 700 Schritte**, je **0 Abweichungen**
+im Long-Signal und **0 Abweichungen** im Einstieg (Wert, Stop, Ziel, Nominal).
+Urteil: **gleichwertig** (vom Auftraggeber selbst nachgefahren).
+
+**(b) Zweites, unabhaengiges Fenster (4H-Kerzen).**
+`Agenten/Handel/bt_opt/4h_gegenprobe.py` auf `daten/backtest_kerzen/*_4H.json`
+(je 2 379 Kerzen ab 21.08.2025 — anderer Zeitraum als der 1H-Langlauf):
+
+| Variante | Runden | Quote | netto/R | Summe | max. Ruecklauf |
+|---|---|---|---|---|---|
+| macd BASE | 38 | 52,6 % | +3,357 % | +127,58 | −49,10 |
+| macd **hist1+4** | 27 | **59,3 %** | **+4,232 %** | +114,27 | **−29,22** |
+| squeeze BASE | 36 | 38,9 % | +1,070 % | +38,53 | −64,84 |
+| squeeze laenge30 | 11 | 63,6 % | +5,204 % | +57,25 | −18,75 |
+
+**Deutung, die die Empfehlung schaerft:** `hist1+4` verbessert auch hier Quote,
+Wert je Runde und Ruecklauf — aber bei 27 statt 38 Runden ist die **Summe
+kleiner**. Der Filter macht die einzelne Runde besser, nicht den Ertrag
+groesser. `laenge30` bleibt mit 11 Runden zu duenn belegt.
