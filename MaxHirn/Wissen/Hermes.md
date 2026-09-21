@@ -987,3 +987,69 @@ Benutzervariable, `resolveHermesHome2` liest Registry-HERMES_HOME vor
 LOCALAPPDATA). Altlast, nicht angefasst - Entscheidung offen.
 
 Sicherungen: `config.yaml.bak-20260918`, `backups/config/config.yaml.good.20260918-133615`.
+## SkillsBot/Hauptmodell auf den lokalen Router, 21.09.2026
+
+Auftrag Max: das Standardmodell des SkillsBots auf ein ausfallsicheres lokales
+mit mindestens 400.000 Token umstellen, zur Fehlerbehebung.
+
+**Der SkillsBot hat kein eigenes Modell.** `Agenten/Bus/skillsbot.py` ist eine
+Bruecke: er reicht jede Nachricht per A2A an den Gateway (Port 9900), und der
+bedient das `default`-Profil. Das Modell des SkillsBots ist deshalb der
+`model:`-Block in `Agenten/Hermes/config.yaml.` Ein eigener Modellschalter je
+Plattform existiert nicht; A2A-`served_agents` koennten nur ein anderes PROFIL
+bedienen, und ein frisches Profil ist eine Insel ohne Max' Skills.
+
+**Der Zielprovider lag schon da und war unbenutzt:** `providers.smart`
+(`base_url` http://127.0.0.1:20128/v1, `key_env`
+HERMES_CUSTOM_127_0_0_1_20128_API_KEY, `models.auto/smart.context_length:
+400000`). Der Router meldet fuer `auto/smart` live 1.000.000 Token Kontext
+(`/v1/models`), also mehr als die geforderten 400.000. Damit ist das Modell
+lokal erreichbar (127.0.0.1) und haengt nicht an der Nous-Portal-Anmeldung,
+die zuletzt mehrfach ausfiel.
+
+Gesetzt per `hermes config set` (nicht per Hand editiert):
+
+```yaml
+model:
+  default: auto/smart
+  provider: smart
+  base_url: http://127.0.0.1:20128/v1
+```
+
+dazu `providers.smart.base_url` und `providers.smart.api_mode:
+chat_completions`. Beim Providerwechsel hat `hermes config set` die alten
+nous-Werte `model.base_url`/`model.api_mode` selbst geleert - das ist richtig
+so, der Endpunkt gehoerte zu nous.
+
+**Ausfallsicherheit kommt aus der Kette**, nicht aus dem Router:
+`fallback_providers` = `nous`/`deepseek/deepseek-v4.1-flash` (786k) und
+dahinter `ollama-launch`/`qwen35-8k:cpu` (lokal, laeuft immer). Der Router ist
+selbst eine Abhaengigkeit - seine Combo `auto/best-coding` lag am 21.09. schon
+auf toten Zweigen.
+
+**Belege (echter Lauf, kein Schaetzen):**
+
+- `curl /v1/models` mit dem Router-Key: `auto/smart` = 1.000.000 Token.
+- A2A-SendMessage an 127.0.0.1:9900 ("Antworte nur mit PONG") -> `PONG` in
+  7,6 s; `logs/agent.log` 18:21:45: `API call #1: model=auto/smart
+  provider=custom base_url=http://127.0.0.1:20128/v1 in=94635 out=5`,
+  `platform=a2a` - das ist genau der Weg des SkillsBots.
+- Werkzeugtest ueber denselben Weg: terminal `hostname` -> `MaksPC420` in 7,3 s
+  (die Combo fuehrt Tool-Aufrufe aus, nicht nur Prosa).
+- Kein Gateway-Neustart noetig: der laufende Gateway liest die neue Config fuer
+  neue Sitzungen. Der SkillsBot-Prozess selbst wurde nicht angefasst.
+
+**Falle, zum dritten Mal (siehe 18.09.2026 oben):** JEDES `hermes config set`
+schneidet den 38-zeiligen Kommentar-Schluss der Datei ab (Security- und
+Fallback-Model-Doku) - 2474 -> 2437 Zeilen. Aus
+`Agenten/Hermes/config.yaml.bak-20260921-181826` byte-genau (CRLF) wieder
+angehaengt; der Commit enthaelt danach nur die gewollten Zeilen. Nach jedem
+`hermes config set` also `git diff --stat` pruefen.
+
+**Bewusst NICHT angefasst:** die 26 Repo-Bots bleiben auf nous (eigene Profile,
+eigene auth.json); ihre Router-Kette wurde am 21.09. gerade erst umgestellt.
+Das Desktop-Gespraech und der Telegram-Hauptbot laufen im selben `default`-
+Profil und fahren damit ebenfalls auf `auto/smart` - wer nur den SkillsBot
+umstellen will, braucht ein eigenes Profil (Inselproblem, siehe oben).
+
+Sicherung: `Agenten/Hermes/config.yaml.bak-20260921-181826`.

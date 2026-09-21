@@ -88,6 +88,31 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
   besteht jetzt (500 statt 400); die Ausfuehrung scheitert noch an fehlenden
   openrouter-Provider-Credentials in omniroute - separates Problem.
 
+## Modell des SkillsBots (21.09.2026)
+
+- Der SkillsBot hat KEIN eigenes Modell: `skillsbot.py` reicht per A2A an den
+  Gateway (9900), und der bedient das `default`-Profil. "SkillsBot-Modell" ist
+  also der `model:`-Block in `Agenten/Hermes/config.yaml`. Einen Modellschalter
+  je Plattform gibt es nicht; A2A-`served_agents`
+  (`plugins/platforms/a2a/adapter.py`, `_load_served_agents`,
+  `platforms.a2a.extra.agents`) koennen nur ein anderes PROFIL bedienen - und
+  ein frisches Profil ist eine Insel ohne Max' Skills.
+- Gesetzt am 21.09.2026 auf Auftrag Max ("ausfallsicheres lokales mit mindestens
+  400000 Token"): `provider: smart`, `default: auto/smart`, `base_url`
+  http://127.0.0.1:20128/v1. `providers.smart` traegt `context_length: 400000`,
+  der Router meldet fuer `auto/smart` live 1.000.000. Die Ausfallsicherheit
+  kommt aus `fallback_providers`: nous (786k) -> ollama-launch/qwen35-8k:cpu
+  (lokal, laeuft immer). Der Router selbst ist eine Abhaengigkeit, keine
+  Versicherung.
+- Nachweis ohne Bot-Last: A2A-SendMessage an 127.0.0.1:9900 ("Antworte nur mit
+  PONG"), dann `logs/agent.log` auf `model=... provider=...` mit `platform=a2a`
+  lesen. Der laufende Gateway uebernimmt Config-Aenderungen fuer NEUE Sitzungen
+  - kein Neustart noetig, der SkillsBot-Prozess wird nicht angefasst.
+- **FALLE:** jedes `hermes config set` schneidet den 38-zeiligen
+  Kommentar-Schluss der config.yaml ab (Security-/Fallback-Model-Doku). Nach
+  JEDEM Set `git diff --stat` pruefen und den Schluss aus der `.bak`
+  byte-genau (CRLF) wieder anhaengen.
+
 ## Bekannte Zustände
 - omniroute (Port 20128, LLM-Router, custom provider 'smart') kann aus sein: dann laufen Gateway-Antworten ueber Ausweichpfade oder scheitern. `Test-NetConnection 127.0.0.1 -Port 20128`.
 - omniroute-Bearer-Token steht im Klartext in config.yaml (a2a_agents.omniroute.auth) — dokumentiertes Hermes-Muster, aber sekretaer.
