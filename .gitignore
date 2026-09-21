@@ -515,6 +515,7 @@ Agenten/Hermes/skills/.locks/
 !Agenten/Werkzeuge/repos-zentrale/docs/plans/*.md
 !Agenten/Werkzeuge/repos-zentrale/tests/
 !Agenten/Werkzeuge/repos-zentrale/tests/*.py
+!Agenten/Werkzeuge/lotse-route.py
 
 # AUTOSTART-SKRIPTE von Hermes (17.09.2026): Die .vbs starten Gateway und
 # Dashboard bei der Anmeldung. Sie sind Konfiguration von Hand (keine

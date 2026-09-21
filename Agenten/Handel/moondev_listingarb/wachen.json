@@ -47,7 +47,8 @@
   "boerse": "okx",
   "guthaben_waehrung": "USDC",
   "mindest_guthaben": 30.0,
-  "live_max_pro_trade_usd": 20.0,
-  "live_max_gesamt_usd": 100.0,
+  "live_max_pro_trade_usd": 50.0,
+  "_live_grenzen_vermerk": "50 USD je Trade auf Auftrag Max 21.09.2026 (vorher 20). Mit 3 Plaetzen sind das hoechstens 150; der Gesamtdeckel steht deshalb auf 150, damit nicht der Deckel bindet, sondern die Plaetze. Papierwerte unveraendert (100/300). Gedeckt: OKX USDC frei 610.74.",
+  "live_max_gesamt_usd": 150.0,
   "_orderweg_vermerk": "Orderweg seit 21.09.2026: der gemeinsame Live-Weg in spur_buch (boerse okx, Spot gegen USDC). Live-Grenzen bewusst KLEIN angesetzt (20 USD je Trade, 100 USD gesamt) - der Papierlauf rechnet mit risiko_je_position_usd 5 und max_pro_trade_usd 100; wer live groesser fahren will, nennt die Zahl und hebt live_max_pro_trade_usd."
 }
