@@ -655,8 +655,8 @@ Nutzung bewiesen.
   (`read_bytes`, Endung aus den Rohdaten ableiten, `write_bytes`) — so repariert,
   mit isoliertem Test gegen eine Fixture. Bestandsdateien heilt
   `scripts/zeilenenden-zuruecksetzen.py <pfad>`; wenn neue Zeilen keine
-  HEAD-Vorlage haben, normalisiert `cache/enden-auf-head-format.py` die GANZE
-  Datei auf die Endung aus `git show HEAD:<pfad>`.
+  HEAD-Vorlage haben, normalisiert `scripts/zeilenenden-auf-head-format.py` die
+  GANZE Datei auf die Endung aus `git show HEAD:<pfad>`.
 - **Ein Bot auf `terminal.backend: docker` stirbt mit einer irrefuehrenden
   Meldung.** Ist der Docker-Daemon langsam, laeuft der 5-Sekunden-Probe
   (`docker version`) in `TimeoutExpired`, der Lauf bricht ab und der Client sagt
