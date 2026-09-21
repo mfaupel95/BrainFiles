@@ -159,6 +159,21 @@ verifizieren. Die drei Pruefungen, in dieser Reihenfolge:
    (EURC/BTC/MON/...) sind kein Handelskapital. Ohne die Handelswaehrung kann
    die Spur nichts kaufen, selbst mit Freigabe.
 
+   **Pruefe zuerst, ob die WAEHRUNG falsch gewaehlt ist, bevor du Geld
+   bewegst.** Fehlt genau die Handelswaehrung, die anderen Stablecoins aber
+   liegen im selben Konto, ist die kleinere Aenderung nicht der Umtausch,
+   sondern der Wechsel der Quote-Waehrung auf eine, die schon da ist (gemessen:
+   eine OKX-Spot-Spur verlangte USDT, davon lag nichts vor, waehrend USDC frei
+   lag — die Paare BTC/ETH/SOL gibt es gegen beide). Das ist kein Trick, sondern
+   derselbe Markt mit anderer Rechnung. Was dabei mitmuss, alles zusammen:
+   `instrumente` in der `wachen.json` (die Kerzen kommen vom selben Endpunkt),
+   `mindest_guthaben_<ccy>`, ein Feld `guthaben_waehrung`, die
+   Guthaben-Funktion des Order-Moduls (`guthaben_waehrung(ccy="USDC")` mit
+   erhaltenem Altnamen, falls Tests ihn aufrufen), jede gedruckte Zeile mit der
+   alten Waehrung und die Test-Wachen. Danach `--vorschau` lesen: das Tor muss
+   offen sein, ohne dass eine Order lief. Das Backtest-Urteil aendert der
+   Waechsel nicht — ein negativ gemessenes Urteil bleibt negativ.
+
 ## Auto-Freigabe (Dauerlauf bestaetigt selbst)
 
 Max kann die Freigabekette automatisieren: `AUTO_FREIGABE` in `dauerlauf.py`
@@ -181,10 +196,107 @@ wieder bestaetigt werden. Kein Dauerzustand.
   "verweigert" <spur>/handeln.py` > 0 heisst Papier-only (die moondev-Spuren
   verweigern `--live` — sie haben keinen echten Orderweg und koennen gar nicht
   live handeln). Eine Auto-Freigabe fuer eine Papier-Spur ist wirkungslos.
+- **Auch eine FERTIGE Spur wird nicht automatisch scharf - die Formulierung
+  entscheidet.** `nur_fenster_fehlt` verlangt GENAU EINEN Grund und darin das
+  Wort „Freigabefenster“. Zwei Randfaelle folgen daraus, beide im Betrieb
+  gemessen: (a) eine Spur mit ZWEI Gruenden wird nie gefragt (die zweite
+  Blockade haelt die Freigabe still zu); (b) eine Spur OHNE Blockade druckt
+  `Live waere gesperrt durch: nichts` — auch das ist kein Fenster-Grund, also
+  wird nicht gefragt und die Auto-Freigabe schaltet NICHTS. Wer vorhersagen
+  will, ob eine Spur scharf geht, liest die `--vorschau`-Zeile; aus „der
+  Schalter steht auf true“ und „das Guthaben reicht“ folgt es NICHT. Soll eine
+  bereite Spur ueber die Auto-Freigabe scharf werden, muss ihr Vorschau-Text
+  das fehlende Fenster in genau dieser Form nennen - das ist eine Aenderung am
+  Sperrtext (siehe pitfalls.md, erster Punkt: der Text ist eine Schnittstelle),
+  nicht am Dauerlauf. Konsequenz fuer den Bericht: „nur noch das Fenster fehlt“
+  und „die Auto-Freigabe oeffnet es dann von selbst“ sind zwei verschiedene
+  Aussagen — die zweite nur sagen, wenn die Zeile sie traegt.
 - **Konsequenz klar benennen, bevor gebaut wird:** Auto-Freigabe = die Spur
   handelt vollautomatisch mit echtem Geld, jedes Einstiegssignal wird ohne
   menschliche Bestaetigung ausgefuehrt. Die zeitliche Begrenzung ist die einzige
   Grenze.
+- **Ein aufgeladenes Guthaben IST eine Live-Freigabe.** Fehlt nur noch die
+  Handelswaehrung, dann raeumt das Aufladen den letzten Nicht-Fenster-Grund weg —
+  im naechsten Zyklus nennt die Vorschau nur noch das Fenster, und die
+  Auto-Freigabe oeffnet es. Wer zum Aufladen raet, sagt die Folge mit; wer sie
+  nicht will, laesst das Guthaben und nennt die zwei Wege (Spur aus
+  `AUTO_FREIGABE` nehmen oder `handel_erlaubt` auf false). Umgekehrt gilt: vor
+  dem Aufladen die Waehrung pruefen (siehe oben) — meist fehlt kein Geld,
+  sondern die falsche Rechnungswaehrung.
+
+## Papier und Live teilen EIN Buch — der teuerste Zwischenzustand
+
+Jede Spur fuehrt EIN Buch (`zustand.json`) fuer beide Modi. Laeuft sie mit
+geschlossenem Fenster im Papier, fuellt sie dasselbe Buch; wird das Fenster
+dann geoeffnet, liest der Live-Pfad diese Positionen als seine eigenen. Ihnen
+fehlt die `kauf_ord_id`, am Handelsplatz gibt es also nichts zu verkaufen:
+das Buch ist mit Plaetzen belegt (kein Neukauf mehr), jeder Ausstiegsversuch
+laeuft in einen Fehler, und ein Notausstieg will verkaufen, was nicht da ist.
+
+- **Messen statt ahnen:** `zustand.json` lesen und je Position `kauf_ord_id`
+  pruefen. `null` bei `modus: live` = Papier-Altlast. Gegenprobe:
+  `grep -c ",live," <spur>/handelsjournal.csv` gegen die Zahl der
+  Buchpositionen — ein volles Buch ohne Live-Zeilen ist der Befund.
+- **Einmal-Aufraeumen heilt nicht.** Das Aufraeumen von Hand
+  (`buchbereinigung.py`-Muster: Positionen OHNE Order zum Marktkurs als
+  Papier-Verkauf mit eigenem `grund` ausbuchen, Positionen MIT Order liegen
+  lassen, idempotent) wirkt nur bis zum naechsten Papier-Zyklus.
+- **Dauerhaft sind zwei Wege, am besten beide:** (a) der Live-Zweig raeumt zu
+  BEGINN jedes Live-Laufs selbst aus — eine Funktion, die vor dem
+  Ausstiegspruefen laeuft, ohne Kurs nichts anfasst und die Altlast als
+  Papier-Verkauf journalisiert; (b) jede Position traegt ihren Modus und der
+  Live-Pfad ueberspringt fremde (`if p.get("modus") != "live": continue`).
+  (b) allein genuegt, wenn die Spur den Modus immer setzt — ein Altbestand
+  ohne Feld gilt dann als Papier und bleibt liegen, was gewollt ist.
+- **Test:** Temp-Buch mit je einer Position mit und ohne Order, Fake-Boerse fuer
+  den Kurs; geprueft wird: keine Order ausgeloest, genau eine Journalzeile mit
+  dem eigenen Grund, die Position MIT Order bleibt. Ohne Test waechst der
+  Zustand nach.
+
+## Nach dem Scharfschalten beobachten
+
+Eine scharfe Spur kann still nichts tun — aus zwei Gruenden, die im Journal
+gleich aussehen (keine neue Zeile):
+
+1. **Die Order scheitert.** Fehler gehen auf stderr, der Dauerlauf verwirft sie
+   und meldet die Spur als `ok`. Deshalb: **jede Fehlerstelle im Live-Pfad
+   schreibt eine Journalzeile** (`modus="live"`, `aktion="fehler"`,
+   `grund=<Meldung>`) — mindestens Kauf, Stop und Verkauf. Die Zeile ersetzt
+   keine Buchung (die Auswertung zaehlt nur `kauf`/`verkauf`) und macht aus
+   einem ausbleibenden Einstieg eine beantwortbare Frage. Genau der Fall, der
+   die offene Frage „darf der Schluesselsatz ordern?" entscheidet, ist sonst
+   unsichtbar.
+2. **Das Fenster ist abgelaufen.** Danach laeuft die Spur wieder Papier, bis die
+   Auto-Freigabe neu oeffnet oder jemand `/ja` sagt — das sieht ohne Meldung aus
+   wie „die Spur tut nichts".
+
+Wache dafuer (Muster `Agenten/Hermes/scripts/mosaic-live-wache.py`, Hermes-Cron
+mit `no_agent`): Journalzeilen mit `modus="live"` zaehlen, jede NEUE melden
+(`LIVE: <zeit> <aktion> <inst> @ <kurs> <einsatz>` bzw.
+`LIVE-FEHLER: <zeit> <inst> <grund>`), zusaetzlich den Wechsel des Fensters
+melden und sonst SCHWEIGEN (leere Ausgabe = keine Nachricht). Den Stand in eine
+Laufzeitdatei unter `Agenten/Hermes/cache/` schreiben, sonst meldet die Wache
+jedes Mal alles erneut; im Erstlauf nur den Zustand setzen und nichts senden.
+Beleg je Meldungsart: eine Probe-Journalzeile in einem Temp-Ordner — der erste
+Lauf meldet genau einmal, der zweite ist still.
+
+## Wie man Max die Entscheidung stellt
+
+Live-Fragen sind Entscheidungen mit Geld — sie gehoeren als NUMMERIERTE Optionsliste
+vorgestellt (Empfehlung zuerst, je Option eine Zeile Konsequenz), damit Max mit zwei
+Woertern antworten kann. Er tut das: „Ja", „Liegen lassen ja", „2. ja", oder er
+antwortet mit einer Bedingung („Auf okx usdc nehmen!"), die keine der beiden Optionen
+war, sondern die Ursache der Frage aufloest.
+
+- **Ein „ja" ohne Nummer bezieht sich auf die Empfehlung.** Nicht nachfassen.
+- **„Liegen lassen" heisst: nichts aendern.** Keine Datei anfassen, keinen Schalter
+  setzen — und das im Bericht ausdruecklich als getroffene Entscheidung nennen.
+- **Eine Antwort, die eine VORAUSSETZUNG nennt statt einer Option, ist ein Auftrag an
+  der Ursache.** Wer dann nur die gewaehlte Option ausfuehrt, laesst den teuren Teil
+  stehen (Beispiel: statt Geld umzutauschen die Handelswaehrung der Spur wechseln).
+- **Die eindeutige Haelfte sofort ausfuehren, die uneindeutige benennen** — nicht
+  beides zurueckstellen: eine Rueckfrage auf eine schon erteilte Anweisung kostet
+  einen Zug und wirkt, als haette man nichts verstanden.
 
 ## Sibling-Session armiert parallel
 

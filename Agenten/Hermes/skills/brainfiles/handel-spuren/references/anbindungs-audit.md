@@ -69,6 +69,51 @@ Trennung, die Max immer mitliest: was absichtlich **nicht** angefasst wurde
 (laufender Zustand, Fremdarbeit, generierte Dateien) und was eine Entscheidung
 von ihm braucht.
 
+## Eine NEUE Spur in den Betrieb verdrahten (Reihenfolge)
+
+Der Handelszyklus ist der kleinste Teil. Diese Stellen gehoeren alle mit, sonst
+faellt es erst im Test oder gar nicht auf:
+
+1. `dauerlauf.SPUREN` — Eintrag `{"ordner", "waehrung", "skript"}`; ohne ihn
+   laeuft die Spur nie. Der Dauerlauf startet je Zyklus einen Unterprozess:
+   eine NEUE Zeile wirkt ohne Neustart, eine geaenderte erst danach.
+2. `lage.py` — eine `spur_<name>()`-Funktion UND der Eintrag in `HOLER`.
+   `tests/test_lage.py` prueft die ZAHL (`assertEqual(len(lage.HOLER), N)`) —
+   die Zahl im Test mitziehen. Sonst bricht die Suite an einer Stelle, die mit
+   der neuen Spur nichts zu tun zu haben scheint.
+3. `befehle.py::FAMILIE` — Anzeigename fuer `/strategien`. `test_befehle.py`
+   prueft je SPUREN-Eintrag, dass FAMILIE **und** ein HOLER-Leser existieren.
+4. `pruefe_ratschen.py` — ZWEI Stellen: Eintrag in der Liste
+   `(spur, ordner, modulordner, modulname)` UND aus der `RUHT`-Tupel
+   herausnehmen. Eine vergessene Spur wird dort stillschweigend NICHT geprueft
+   („Ruhend, nicht geprueft") — das Werkzeug meldet gruen, ohne sie angesehen
+   zu haben.
+5. Bus: die gestartete Datei uebergibt `handel/<spur>` wortwoertlich
+   (`ereignis.lauf("handel/<spur>")`), sonst meldet `test_anbindung_handel.py`
+   sie als ohne Anbindung.
+6. `wachen.json` der Spur: `journal_zweitziel` setzen (Bedingung 4), die
+   Ratsche als AUSDRUECKLICHEN Betrag (`drawdown_halbierung_usd` — der
+   Prozentwert wird nicht mehr gelesen) und `instrument_aktiv` fuellen, wenn die
+   Strategie eins waehlt.
+7. `.gitignore`-Freigabe je Ebene, belegt mit
+   `git check-ignore -v --no-index <pfad>` — sonst ist die Spur fuer Git
+   unsichtbar und wird nie versioniert.
+8. Nach dem ersten echten Zyklus: `spiegelstand.py` (byte-genau gegen Q:) und
+   `pruefe_ratschen.py` laufen lassen — beide lesen die Spurenliste aus
+   `dauerlauf.SPUREN` und decken die neue Spur damit automatisch ab. Die
+   Spurtests aus `<spur>/` mit ihrer eigenen Aufrufregel (siehe
+   `spur-tests-und-auswertung.md`).
+
+**Ein negatives eigenes Backtest-Urteil sperrt die Spur nicht, es begrenzt sie:**
+angeschlossen wird sie als PAPIER (`handel_erlaubt=false`, `freigabe.erfuellt=false`,
+`backtest_bestanden=false`, kein Live-Zweig im Code), das Urteil bleibt im
+Wachen-Text stehen, und der Bericht nennt es — sonst sieht die Zeile im Log
+(`<spur> (live) ok`) nach Fortschritt aus, obwohl gemessen nichts zu holen ist.
+Wer eine Papier-Spur mit `--live` anfahert, laesst sie den Aufruf mit GENAU
+EINEM Grund und OHNE das Wort „Freigabefenster" ablehnen (Muster `orbk`,
+`spiegel`) — sonst stellt der Dauerlauf eine Freigabe-Anfrage fuer eine Spur,
+die gar nicht live handeln kann.
+
 ## Der Bus-Anbindungstest (test_anbindung_handel.py)
 
 - Die Pruefung ist zweistufig: eine **dynamische ast-Pruefung ueber

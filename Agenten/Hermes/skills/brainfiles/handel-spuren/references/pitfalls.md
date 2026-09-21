@@ -12,6 +12,17 @@ Kurzfassung ersetzt die Begruendung nicht.
   enthält — kein `;` und kein `:` darin. Text ändern ohne die Leser zu suchen
   heisst: es wird nie gefragt, jedes `/ja` bleibt folgenlos. Vor jeder
   Textänderung nach den Verbrauchern greppen.
+  **Und die Zeile entscheidet, ob überhaupt gefragt wird:** steht eine Spur in
+  `dauerlauf.AUTO_FREIGABE` (xperp, scanner, mosaic, kraken), bestätigt der
+  Dauerlauf die Anfrage selbst — aber nur, wenn `nur_fenster_fehlt` GENAU EINEN
+  Grund sieht. Eine zweite Blockade („nur 33,15 EUR frei, nötig 60,00“) hält die
+  Freigabe dauerhaft zu, ohne dass irgendwo ein Fehler erscheint: die Spur läuft
+  still im Papier weiter. Wer wissen will, woran eine Freigabe hängt, lässt
+  `--vorschau` laufen und liest genau diese Zeile — nicht das Freigabefenster.
+  Umgekehrt muss JEDER Test, der eine offene Frage erwartet (`/ja` soll etwas
+  bewirken), `dauerlauf.AUTO_FREIGABE` im `setUp` stilllegen und im `tearDown`
+  zurücklegen; sonst prüft er eine Lage, die es seit der Auto-Freigabe nicht
+  mehr gibt.
 - **Diagnose in jedem Modus drucken, den ein Aufrufer parst.** Eine Zeile, die nur
   im `--live`-Zweig fällt, existiert für `--vorschau` nicht — und `--vorschau` ist
   genau das, womit der Dauerlauf die Lage prüft.
@@ -146,6 +157,16 @@ Kurzfassung ersetzt die Begruendung nicht.
   test_stoerungen.py` (Merkmale inklusive der Faelle, die NICHT treffen duerfen
   - `stop`, `ziel`, `LIQUIDATION`; alle vier Wachenfassungen; Kurve ungefiltert;
   gedruckte Zeilen gerendert, nicht im Quelltext gelesen).
+  - **Zweite Klasse: Buchhaltungs-Korrekturen sind ebenfalls keine Runde.**
+    `buchbereinigung` (eine Position ausbuchen, die keine Order hat) ist weder
+    Handel noch Stoerung; ohne eigene Klasse zaehlt die Freigabebedingung (50
+    Runden) Aufraeumarbeit mit — gemessen beim scanner: 150 Buchungen = 122 echte
+    Runden + 18 Zwangsschluesse + 10 Bereinigungen (rund 7 % des
+    7-Tage-Ergebnisses). `stoerungen.py` fuehrt beide Klassen; Kapitalkurve,
+    Ratsche und Kill-Switch rechnen weiter auf ALLEN Buchungen. Das Feld, das eine
+    Position als "echt" kennzeichnet, heisst je Handelsplatz anders
+    (`kauf_ord_id` bei den OKX-Spuren, `kauf_txid` bei kraken) — jede Spur nutzt
+    IHR Feld, nie eine gemeinsame Wortliste.
 - **Zahlen im Quelltext sind Behauptungen.** Beispielwerte in einem Docstring
   ("bei xperp -0,74 gegen +38,14 USD") gehoeren nachgerechnet, bevor sie in
   eine Notiz oder einen Bericht wandern - hier trugen sie die Messung nicht.
@@ -241,16 +262,22 @@ Kurzfassung ersetzt die Begruendung nicht.
   flachen zur SELBEN Minute ab. Kleiner heisst nicht frueher, nur haeufiger ohne
   Anlass; jede Grenze darunter stellt bei JEDER Stoerung flach und bucht eine
   Runde ins Journal, die keine Handelsentscheidung war (11./12.09.2026 mit 30
-  Minuten in xperp/swap). Regel seit 14.09.2026: **180 Minuten fuer Papier-Spuren,
-  45 Minuten fuer Spuren mit `handel_erlaubt: true`** — bei echtem Geld ist die
-  unbewachte Position das groessere Uebel. Sie steht als `_herzschlag_regel` in
-  jeder `wachen.json` und gilt fuer ALLE Spuren mit `wachen.json` — auch fuer eine
-  ruhende Konfiguration (`orb`: kein `zustand.json`, keine Aufgabe), damit die
-  Regel keine stillen Ausnahmen hat. Die Erklaerfelder, die den alten Wert
-  begruenden (`_herzschlag_folge` in xperp/swap, `_herzschlag` in kraken), im
-  SELBEN Zug korrigieren. Wer eine Spur auf live nimmt, setzt 45, BEVOR
-  `handel_erlaubt` auf true geht. Der Wert wirkt ohne Neustart (jeder Zyklus liest
-  die Datei frisch).
+  Minuten in xperp/swap). **Regel seit dem 19.09.2026: 180 Minuten fuer ALLE
+  Spuren — die alte Trennung (45 Minuten fuer Spuren mit `handel_erlaubt: true`)
+  ist AUFGEHOBEN.** Sie stellte bei jedem Ausfall laenger als 45 Minuten eine
+  LIVE-Position flach und buchte eine Runde, die keine Handelsentscheidung war;
+  eine offene Position loest die Spur selbst ueber Stop/Ziel/Risiko auf, nicht der
+  Herzschlag, und der Waechter heilt eine Stoerung in rund 32 Minuten von selbst.
+  Wer eine Spur auf live nimmt, setzt 180 BEVOR `handel_erlaubt` auf true geht.
+  Sie steht als `_herzschlag_regel` in jeder `wachen.json` und gilt fuer ALLE
+  Spuren mit `wachen.json` — auch fuer eine ruhende Konfiguration (`orb`: kein
+  `zustand.json`, keine Aufgabe), damit die Regel keine stillen Ausnahmen hat.
+  Die Erklaerfelder, die den alten Wert begruenden (`_herzschlag_folge` in
+  xperp/swap, `_herzschlag` und `_herzschlag_regel` in kraken), im SELBEN Zug
+  korrigieren — Block 11b der Systempruefung rechnet gegen 180 und meldet jeden
+  Altwert als "zu entscheiden", ein stehengebliebenes 45 faellt also beim
+  naechsten Lauf auf. Der Wert wirkt ohne Neustart (jeder Zyklus liest die Datei
+  frisch).
 - **Eine Regel ohne Messung verfaellt.** So entstanden die neun verschiedenen
   Herzschlag-Zahlen (30/45/90/180/2880): jeder Wert war einmal
   begruendet, nachgemessen hat ihn niemand, und die Spur mit
@@ -1010,4 +1037,60 @@ Kurzfassung ersetzt die Begruendung nicht.
   er identisch OHNE die eigenen Aenderungen, ist er vorbestehend und darf
   unangetastet bleiben; faellt er nur MIT den eigenen Aenderungen, gehoert er
   repariert, nicht als "fremd" abgetan.
+
+- **Ein Buch fuer Papier UND Live: der Live-Lauf muss die Papier-Altlasten
+  selbst ausbuchen.** Eine Spur fuehrt EIN `zustand.json`; solange ihr Fenster
+  geschlossen ist, fuellt der Papier-Zyklus dasselbe Buch, das der Live-Zyklus
+  liest. Im Live-Modus stehen dann Positionen ohne jede Order am Handelsplatz
+  (`kauf_ord_id` leer): sie belegen nur Plaetze (bei voller Platzliste kauft die
+  Spur live nichts mehr) und JEDER Ausstiegsversuch laeuft in einen Fehler, weil
+  es nichts zu verkaufen gibt — das Journal zeigt weiter Papierzeilen, das Bild
+  sieht nach Stillstand aus. Eine Einmal-Bereinigung von Hand ist kein Fix: der
+  naechste Papier-Zyklus fuellt das Buch erneut. Richtig ist die Bereinigung an
+  der einen Stelle, an der der Modus feststeht — zu Beginn JEDES Live-Laufs,
+  VOR dem Ausstiegspruefen: jede Position ohne Order zum Marktkurs als
+  PAPIER-Verkauf mit eigenem Grund ausbuchen (nicht loeschen, die Historie
+  bleibt), Positionen MIT Order liegen lassen (dort haengt echtes Geld, sie
+  gehoeren in den normalen Ausstiegspfad), kein Kurs -> Position bleibt liegen,
+  keine Order an die Boerse. Idempotent, also auch beim zweiten Lauf
+  unschaedlich. Nachweis: erster echter Live-Zyklus im `dauerlauf.log`, der
+  Buchungsgrund im Journal, Buchgroesse vorher/nachher — plus vier Tests
+  (ausbuchen, idempotent, ohne Kurs, leeres Buch).
+- **Die Bereinigung nie am ECHTEN Buch "proben".** Die Funktion schreibt Journal
+  UND Zustand: ein Probelauf gegen den lebenden Zustand bucht Zeilen, waehrend die
+  Positionen stehen bleiben — Buch und Journal sagen danach Verschiedenes, und der
+  naechste Live-Lauf bucht dieselbe Position ein zweites Mal. Probe gegen eine
+  KOPIE des Zustands mit umgebogenem Journalpfad (`h.JOURNAL = tmp`), oder, wenn
+  es schon passiert ist, das Buch an den bereits geschriebenen Zeilen ausrichten
+  (Positionen von Hand entfernen, `.bak-JJJJMMTT` daneben) statt die Zeilen zu
+  loeschen — das Journal ist die Historie.
+- **Ein Freigabe-Tor kann ohne Code-Aenderung aufgehen.** `AUTO_FREIGABE` oeffnet
+  ein Fenster selbst, sobald die `--vorschau`-Zeile GENAU EINEN Grund nennt — und
+  der zweite Grund (Guthaben, Waehrung) verschwindet, sobald Max einzahlt. Die Spur
+  ist dann im naechsten Zyklus live, ohne dass jemand am Code war. Wer eine Spur
+  fuer Papier haelt, liest den Modus aus `zustand.json` bzw. dem Fenster, nicht aus
+  dem Gedaechtnis; bei einem frisch live gegangenen Buch ZUERST nach orderlosen
+  Papier-Positionen sehen (Regel oben), BEVOR Ergebnisse gedeutet werden.
+- **Eine ruhende Spur aktivieren: erst nachsehen, was ueberhaupt fehlt.** Spec,
+  Backtest und `wachen.json` koennen vollstaendig dastehen und die Spur trotzdem
+  nirgends laufen — die ZYKLUSDATEI wurde bei einer frueheren Umstellung
+  entfernt (Spur auf eine andere Boerse umgebaut). `git log --diff-filter=D --
+  <spur>/handeln.py` zeigt den Commit, `git show <commit>^:<pfad>` die Fassung
+  davor. Nicht neu erfinden: die LAUFENDE Schwester-Spur mit derselben Strategie
+  als Vorlage nehmen — samt ihrem Lesemodul, denn ein aelteres eigenes Modul
+  liest ein Journal-Schema, das die neue Zyklusdatei nicht mehr schreibt
+  (Symptom: `KeyError` auf eine Spalte, die es nur im Altschema gab). Vier
+  Dinge, die eine ruhende `wachen.json` typisch nicht hat: `instrument_aktiv`,
+  `journal_zweitziel` (Bedingung 4), die Ratsche als BETRAG (das alte
+  Prozentfeld liest niemand mehr) und ein gepflegtes Erklaerfeld. **Das
+  Backtest-Urteil bleibt stehen, auch wenn die Spur jetzt laeuft:** Papier
+  braucht keine bestandene Pruefung, echtes Geld schon — `handel_erlaubt` und
+  `freigabe.backtest_bestanden` bleiben false, ein negativ gemessenes Urteil
+  gehoert woertlich in den Bericht. Beim Verdrahten faellt eine Stelle leicht
+  durch: `pruefe_ratschen.RUHT` — eine Spur, die dort noch als ruhend steht,
+  wird NIE geprueft, ohne dass irgendwo etwas fehlt. Sie gehoert in die
+  Pruefliste und aus `RUHT` heraus, dazu die uebrigen Listen (SPUREN,
+  `befehle.FAMILIE`, `lage`-Holer samt Sollwert-Test). Nachweis: ein echter
+  `--papier`-Zyklus (Zustand, Journal, Q:), `spiegelstand.py` byte-gleich,
+  `pruefe_ratschen.py` nennt die Spur mit ihrer Schwelle.
 

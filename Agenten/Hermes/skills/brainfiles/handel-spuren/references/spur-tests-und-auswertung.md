@@ -2,14 +2,40 @@
 
 ## Tests richtig aufrufen
 
-Die Spur-Suiten laufen NUR aus ihrem `tests/`-Ordner heraus:
+Die Sammlung laeuft aus dem SPURENORDNER heraus, nicht aus `tests/`:
 
-    cd Agenten/Handel/<spur>/tests && ../../scanner/.venv/Scripts/python.exe -m unittest test_<spur>
+    cd Agenten/Handel/<spur> && <venv-python> -m unittest discover -s tests -t . -p "test_*.py"
 
-Drei Aufrufe, die scheitern und dabei nach einem Code-Fehler aussehen:
+`-t .` gilt, wenn `tests/` ein `__init__.py` hat (orb, orbk); ohne
+`__init__.py` scheitert es mit `ImportError: Start directory is not importable`,
+dann ist `-s tests -t tests` (mit `PYTHONPATH=.`) der richtige Aufruf — die
+Meldung sieht wie ein Code-Fehler aus, ist aber die Aufruf-form.
 
-- `discover -s tests` aus dem Spurenordner: `ImportError: Start directory is not
-  importable` — es fehlt kein `__init__.py`, der Aufruf ist der falsche.
+Aufrufe, die scheitern und dabei nach einem Code-Fehler aussehen:
+
+- **Einzelne Testdatei** (`cd <spur>/tests && … -m unittest test_<name>`):
+  `ModuleNotFoundError: No module named 'handeln'/'session'` — die Spurenmodule
+  liegen eine Ebene hoeher, die Sammlung legt sie auf den Pfad, der Einzelstart nicht.
+- `-m unittest tests.test_<spur>` aus dem Spurenordner: der Modulkopf schiebt
+  `scanner/` und `HANDEL` auf `sys.path`, und je nach Reihenfolge gewinnt
+  `scanner/handeln.py`. Symptom: `AttributeError: module 'handeln' has no attribute
+  'pruefe_einstieg'. Did you mean: 'pruefe_einstiege'?` — der Test laeuft, prueft
+  aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
+  lassen, bevor der eigene Code verdaechtigt wird.
+
+**Zwei Fehlschlaege sind VORBESTEHEND und trotzdem kein Befund.** Bevor eine
+Suite-Fehlermeldung der eigenen Aenderung zugeschrieben wird, die Testdatei
+selbst lesen:
+
+- Ein festes `JETZT`/`jetzt` im Modul, das weit in der VERGANGENHEIT liegt,
+  waehrend der gepruefte Code gegen `datetime.now()` rechnet — das Fenster
+  (Stunden) ist dann laengst gerissen und der Test kann den gepruefen Fall gar
+  nicht mehr herstellen. Er heilt nur, wenn die Uhr wieder passt.
+- Eine Annahme, die eine BETRIEBSAenderung ueberholt hat: erwartet der Test
+  eine offene Frage (`anfrage_offen()`), die ein spaeter eingebauter
+  Automatismus sofort bestaetigt, ist der Test falsch und nicht der Code. Solche
+  Stellen im Bericht als vorbestehend benennen (mit Grund), statt sie zu
+  „reparieren" — sie gehoeren der Sitzung, die den Automatismus gebaut hat.
 - `-m unittest tests.test_<spur>` aus dem Spurenordner: der Modulkopf schiebt
   `scanner/` und `HANDEL` auf `sys.path`, und je nach Reihenfolge gewinnt
   `scanner/handeln.py`. Symptom: `AttributeError: module 'handeln' has no attribute
@@ -78,6 +104,7 @@ nicht geschaetzt.
 Muster fuer den Test: `Agenten/Handel/tests/test_indikator_auswertung.py` —
 synthetisches Journal schreiben, per `csv.DictReader` einlesen, `runden_*` direkt
 aufrufen (kein Netz, kein Lauf, kein Schreiben in echte Pfade).
+
 ## Die Uhr im Test: fester Bezugspunkt nur, wo er auch ankommt
 
 Ein Test mit festem `JETZT` ist nur an seinem eigenen Tag gruen. Zwei Faelle

@@ -113,10 +113,17 @@ Dabei gilt:
 cd Agenten/Handel/<spur> && PYTHONPATH=. <venv-python> -m unittest discover -s tests -t tests
 ```
 
-Zwei Fallen, beide am 13.09.2026 getroffen:
+Fallen beim Aufruf:
 
-- `discover -s tests -t .` scheitert mit **„Start directory is not importable"**,
-  wenn `tests/` kein `__init__.py` hat — und die Meldung sieht wie ein
+- **Einzeln gestartete Testdateien laufen ins Leere.** `python -m unittest test_session`
+  aus `<spur>/tests` scheitert mit `ModuleNotFoundError: No module named 'session'` —
+  die Spurenmodule liegen im Ordner DARUEBER, den nur die Sammlung auf den Pfad legt.
+  Nie einzeln starten.
+- **`-t .` ist der erste Versuch, `-t tests` der Rueckfall.** Hat `tests/` ein
+  `__init__.py` (orb, orbk), laeuft
+  `cd Agenten/Handel/<spur> && <venv-python> -m unittest discover -s tests -t . -p "test_*.py"`;
+  ohne `__init__.py` scheitert `-t .` mit **„Start directory is not importable"**,
+  und dann ist `-t tests` (mit `PYTHONPATH=.`) richtig. Die Meldung sieht wie ein
   Testfehler aus, obwohl gar nichts lief.
 - **Einzeln gestartete Testdateien laufen gegen das falsche Modul.** Bei
   gleichnamigen Modulen zweier Spuren (`handeln.py`, `auswertung.py`, `gui.py`)
