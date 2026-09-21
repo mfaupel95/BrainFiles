@@ -312,6 +312,105 @@ def bueche_papier_altlasten_aus(z, w, still=False):
     return len(alt)
 
 
+def _warten_auf_fuellung(inst, ord_id, kontrakte, versuche=4, warte=2.0):
+    """Wie viel dieser Order ist wirklich gehandelt? None = unbekannt.
+
+    ANLASS (21.09.2026, nachgemessen): order_limit() gibt die ordId zurueck,
+    sobald die Boerse die Order ANGENOMMEN hat. xperp buchte danach sofort
+    eine Position. Bei HBAR-USD_UM_XPERP-310815 stand so eine Position im Buch
+    (Einstieg 0.08956), waehrend an der Boerse eine OFFENE, nie gefuellte
+    Order lag - accFillSz = 0, state = live, /account/positions kennt das
+    Instrument nicht. Folge: die Spur zaehlt einen Platz als belegt, der
+    Ausstieg wuerde ins Leere verkaufen, und die Bilanz zeigt eine Position,
+    die es nicht gibt.
+
+    Ein Limit kann in Sekundenbruchteilen fuellen, deshalb wird kurz gewartet -
+    aber nicht blind gebucht.
+    """
+    import time as _time
+    for i in range(versuche):
+        stand = okxf.gefuellte_kontrakte(inst, ord_id)
+        if stand is not None and stand > 0:
+            return stand
+        if i < versuche - 1:
+            _time.sleep(warte)
+    return 0.0
+
+
+def bueche_geister_aus(z, w, still=False):
+    """Positionen aus dem Buch, die an der Boerse NICHT (mehr) existieren.
+
+    Anders als `bueche_papier_altlasten_aus` (die Papier-Positionen ohne
+    Live-Herkunft) prueft diese Funktion gegen die BOERSE: /account/positions
+    ist die Wahrheit. Eine Position mit modus=live, die dort fehlt oder mit
+    Groesse 0 steht, ist ein Geist - sie belegt einen Platz, blockiert
+    Kaeufe und laesst jeden Ausstieg fehlschlagen.
+
+    Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
+    nicht leeren.
+    """
+    try:
+        an_der_boerse = {p["instId"]: float(p.get("pos") or 0.0)
+                         for p in okxf.positionen()}
+    except Exception as e:                                     # noqa: BLE001
+        print("  Geisterpruefung uebersprungen (%s) - Buch bleibt unberuehrt" % e)
+        return 0
+    geister, echte = [], []
+    for p in z["positionen"]:
+        if p.get("modus") != "live":
+            continue
+        groesse = an_der_boerse.get(p.get("inst"))
+        if groesse is not None and abs(groesse) >= 1e-9:
+            echte.append(p)
+            continue
+        # Fehlt die Position, ist die ORDER die naechste Frage: ein Limit, das
+        # genau jetzt fuellt, sieht hier wie ein Geist aus. Am 21.09.2026 ist
+        # das passiert (HBAR: beim Pruefen accFillSz=0, Sekunden spaeter
+        # gefuellt) - die Position wurde ausgebucht und lief dann OHNE Buch
+        # weiter. Darum: gefuellte Order = echte Position, auch wenn
+        # /account/positions sie noch nicht zeigt.
+        gefuellt = (okxf.gefuellte_kontrakte(p["inst"], p["ord_id"])
+                    if p.get("ord_id") else 0.0)
+        if gefuellt:
+            print("  %s steht noch nicht in /account/positions, die Order ist "
+                  "aber gefuellt (%.4f) - Position bleibt im Buch"
+                  % (p.get("inst"), gefuellt))
+            echte.append(p)
+            continue
+        geister.append(p)
+    if not geister:
+        return 0
+    behalten = [p for p in z["positionen"] if p in echte
+                or p.get("modus") != "live"]
+    for p in geister:
+        # Die offene Order gehoert dazu: bliebe sie liegen, koennte sie
+        # spaeter fuellen und eine Position ohne Buch erzeugen - dann haette
+        # niemand einen Ausstieg im Blick. Sie traegt zwar einen
+        # boersenseitigen Stop, aber ein Platz im Buch ist besser.
+        if p.get("ord_id"):
+            try:
+                okxf.order_stornieren(p["inst"], p["ord_id"])
+                if not still:
+                    print("  offene Order zu %s storniert (ord_id %s)"
+                          % (p.get("inst"), str(p["ord_id"])[:14]))
+            except Exception as e:                             # noqa: BLE001
+                print("  Storno der offenen Order zu %s fehlgeschlagen: %s"
+                      % (p.get("inst"), e))
+        if not still:
+            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
+                  "(nur eine offene Order, kein Bestand)"
+                  % (p.get("inst"), p.get("seite")))
+        journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                familie=p.get("familie", ""), preis="%.6f" % (p.get("einstieg") or 0.0),
+                kontrakte=p.get("kontrakte", ""),
+                nominal_usd="%.2f" % (p.get("nominal") or 0.0),
+                margin_usd="0.00", hebel=p.get("hebel", ""),
+                grund="buchbereinigung_geist")
+    z["positionen"] = behalten
+    return len(geister)
+
+
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
@@ -547,6 +646,39 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                       file=sys.stderr)
                 continue
 
+        if live:
+            # ERST die Fuellung, dann das Buch. Eine angenommene Order ist
+            # keine Position (siehe _warten_auf_fuellung).
+            gehandelt = _warten_auf_fuellung(a["inst"], ord_antwort, kontrakte)
+            if not gehandelt:
+                print("  Eroeffnen %s: Order angenommen, aber NICHT gefuellt "
+                      "(%.6f) - Order wird storniert, keine Position gebucht"
+                      % (a["inst"], a["einstieg"]), file=sys.stderr)
+                try:
+                    okxf.order_stornieren(a["inst"], ord_antwort)
+                except Exception as e:                         # noqa: BLE001
+                    print("  Storno %s fehlgeschlagen: %s" % (a["inst"], e),
+                          file=sys.stderr)
+                journal(zeit=_jetzt(), modus="live", aktion="fehler",
+                        inst=a["inst"], seite=a["seite"],
+                        familie=a["kategorie"], preis="%.6f" % a["einstieg"],
+                        kontrakte=kontrakte,
+                        nominal_usd="%.2f" % g["nominal"],
+                        margin_usd="%.2f" % g["margin"],
+                        grund="order_nicht_gefuellt")
+                continue
+            if gehandelt < kontrakte:
+                # Teilverfuellung: den Rest stornieren, nur das Gehandelte buchen.
+                print("  Eroeffnen %s: nur %.4f von %g Kontrakten gefuellt - "
+                      "Rest wird storniert" % (a["inst"], gehandelt, kontrakte))
+                try:
+                    okxf.order_stornieren(a["inst"], ord_antwort)
+                except Exception as e:                         # noqa: BLE001
+                    print("  Storno %s fehlgeschlagen: %s" % (a["inst"], e),
+                          file=sys.stderr)
+                kontrakte = gehandelt
+                g["nominal"] = gehandelt * (a["einstieg"] / max(a["hebel"], 1e-9))
+
         pos = {
             "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
             "familie": a["kategorie"], "einstieg": a["einstieg"],
@@ -760,6 +892,12 @@ def lauf(modus):
         n_alt = bueche_papier_altlasten_aus(z, w, still=False)
         if n_alt:
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
+        # Danach gegen die Boerse pruefen: Papier-Altlasten sind EINE Ursache
+        # fuer ein falsches Buch, eine nie gefuellte Order die andere.
+        n_geist = bueche_geister_aus(z, w, still=False)
+        if n_geist:
+            print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
+                  "der Boerse)" % n_geist)
 
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:

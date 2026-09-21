@@ -490,9 +490,73 @@ def markt_schliessen(inst, kontrakte, seite, tdmode="isolated", posside=None):
     return d[0]["ordId"]
 
 
+def order_stand(inst, ord_id):
+    """Zustand EINER Order: state und tatsaechlich gefuellte Kontrakte.
+
+    ANLASS (21.09.2026): order_limit() gibt die ordId zurueck, sobald die
+    Boerse die Order ANGENOMMEN hat - nicht, wenn sie gefuellt ist. xperp
+    buchte danach sofort eine Position; bei einem Limit, das nicht fuellt
+    (z.B. HBAR-USD_UM_XPERP-310815 am 21.09.) stand sie im Buch, waehrend an
+    der Boerse nur eine offene Order lag. Diese Funktion ist der einzige Weg,
+    das auseinanderzuhalten.
+    """
+    d = _roh("/api/v5/trade/order?instId=%s&ordId=%s" % (inst, ord_id),
+             "GET", None, signiert=True)
+    return d[0] if d else {}
+
+
+def gefuellte_kontrakte(inst, ord_id):
+    """Wieviel von dieser Order ist wirklich gehandelt? (0.0 bei unbekannt)"""
+    try:
+        o = order_stand(inst, ord_id)
+    except Exception:                                          # noqa: BLE001
+        return None
+    if not o:
+        return None
+    try:
+        return float(o.get("accFillSz") or 0.0)
+    except (TypeError, ValueError):
+        return None
+
+
 def order_stornieren(inst, ord_id):
     body = {"instId": inst, "ordId": ord_id}
     return _roh("/api/v5/trade/cancel-order", "POST", body, signiert=True)
+
+
+def schutz_stop_setzen(inst, seite, kontrakte, stop, ziel=None,
+                       tdmode="isolated"):
+    """Einen boersenseitigen Stop (und Ziel) zu einer BESTEHENDEN Position.
+
+    ANLASS (21.09.2026): xperp bucht Stop und Ziel beim Eroeffnen als
+    attachAlgoOrds an die Order. Wird die Order aber erst spaeter gefuellt -
+    oder wird die Order storniert, bevor die Anhaenge greifen - dann liegt die
+    Position OHNE Stop an der Boerse. Gemessen am HBAR-Fall: Konto zeigt die
+    Position (9.4 Kontrakte), orders-algo-pending ist LEER. Eine gehebelte
+    Position ohne Stop laeuft bis zur Liquidation, wenn der Rechner ausfaellt
+    (genau die Kernel-Power-41-Abschaltungen aus Wissen/Hardware.md).
+
+    Side ist die GEGENrichtung der Position: ein Long wird per Verkauf
+    geschlossen. Beide Ausloesungen werden als Market ausgefuehrt (ordPx -1) -
+    ein Stop, der selbst ein Limit ist, fuellt im Absturz nicht.
+    """
+    gegen = "sell" if seite == "long" else "buy"
+    body = {"instId": inst, "tdMode": tdmode, "side": gegen,
+            "ordType": "conditional", "sz": str(kontrakte),
+            "reduceOnly": True, "slTriggerPx": str(stop), "slOrdPx": "-1"}
+    if ziel is not None:
+        body["tpTriggerPx"] = str(ziel)
+        body["tpOrdPx"] = "-1"
+    d = _roh("/api/v5/trade/order-algo", "POST", body, signiert=True)
+    return d[0] if d else {}
+
+
+def schutz_stops(inst=None):
+    """Offene Stop-/Ziel-Orders an der Boerse (Algo)."""
+    p = "/api/v5/trade/orders-algo-pending?instType=FUTURES&ordType=conditional"
+    if inst:
+        p += "&instId=" + inst
+    return _mit_wiederholung(p, signiert=True)
 
 
 def offene_orders(inst=None):

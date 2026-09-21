@@ -82,7 +82,10 @@ MAX_ZEICHEN = 4000      # Telegram bricht bei 4096 hart ab
 MAX_FEHLER = 4          # Telegram-Gegenstellenfehler hintereinander -> Pause
 POLL_DAUER = 25         # getUpdates long polling
 A2A_POLL_S = 3          # GetTask-Intervall
-A2A_TIMEOUT_S = 300     # so lange auf eine Antwort warten
+A2A_TIMEOUT_S = 300     # so lange auf eine Antwort des Hauptagenten warten
+BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
+
+HERMES_EXE = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
 NACHRICHT_VERSUCHE = 3  # Netzfehler erneut versuchen, dann verwerfen
 
 
@@ -426,32 +429,46 @@ def _hermes_umgebung():
     return env
 
 
-def _bot_fragen(name, text, zeit=A2A_TIMEOUT_S + 30):
+def _bot_fragen(name, text, frist=BOT_FRIST_S):
     """Eine Frage an das Profil <name> - der Bot antwortet selbst.
 
     Der Weg ist ein frischer Einzelauftrag (chat -q): keine Sitzung, kein
     Kontext, kein Gateway. Was der Bot kann, kann er hier; der SkillsBot
     fuehrt nichts aus, er stellt nur die Verbindung her.
     """
-    exe = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
+    exe = HERMES_EXE
     if not os.path.isfile(exe):
         raise SkillsBotFehler("hermes.exe nicht gefunden: %s" % exe)
+    # NICHT mit subprocess.run(timeout=...) arbeiten: das killt den Bot
+    # mitten in der Arbeit und die ganze Aufgabe ist verloren. Gemessen am
+    # 21.09.2026 lag die alte Grenze bei A2A_TIMEOUT_S + 30 = 330 s; ein Bot,
+    # der ein Repo liest oder ein Buch auswertet, braucht laenger - die
+    # Befehle brachen deshalb "wegen Zeitlimit" ab, ohne dass etwas kaputt war.
+    # Jetzt laeuft der Bot bis BOT_FRIST_S; erst danach wird abgebrochen, und
+    # die Meldung sagt, was zu tun ist.
     try:
-        lauf = subprocess.run(
+        lauf = subprocess.Popen(
             [exe, "-p", name, "chat", "-q", text, "-Q"],
-            capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=zeit, env=_hermes_umgebung())
-    except subprocess.TimeoutExpired:
-        raise SkillsBotFehler(
-            "Bot %s hat nicht innerhalb von %s s geantwortet."
-            % (name, A2A_TIMEOUT_S))
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            encoding="utf-8", errors="replace", env=_hermes_umgebung(),
+            cwd=WURZEL)
     except OSError as e:
         raise SkillsBotFehler("Bot %s nicht startbar: %s" % (name, e))
+    try:
+        aus, fehler = lauf.communicate(timeout=frist)
+    except subprocess.TimeoutExpired:
+        lauf.kill()
+        lauf.communicate()
+        raise SkillsBotFehler(
+            "Bot %s hat nach %d Minuten nicht geantwortet - der Auftrag war "
+            "zu gross. Teile ihn in Teilstuecke (z.B. erst lesen, dann "
+            "aendern) oder nimm fuer lange Laeufe einen Cronjob."
+            % (name, frist // 60))
     if lauf.returncode != 0:
-        stderr = (lauf.stderr or "").strip().splitlines()
+        stderr = (fehler or "").strip().splitlines()
         grund = stderr[-1][:200] if stderr else "Exit-Code %s" % lauf.returncode
         raise SkillsBotFehler("Bot %s ist gescheitert: %s" % (name, grund))
-    antwort = (lauf.stdout or "").strip()
+    antwort = (aus or "").strip()
     # hermes -q druckt die reine Antwort; eine session_id-Zeile ist Status.
     zeilen = [z for z in antwort.splitlines()
               if not z.startswith("session_id:")]
@@ -476,7 +493,9 @@ def _bot_befehl(rest, chat):
         return ("Was soll ich Bot %s fragen? Syntax: /bot %s NACHRICHT"
                 % (name, name)), None
     # Erst sagen, dann tun: ein frischer Agent braucht 30-60 s Kaltstart.
-    sende(chat, "Spreche mit Bot %s - das kann bis 5 min dauern." % name)
+    sende(chat, "Bot %s uebernimmt: 30-60 s Kaltstart, eine echte Aufgabe "
+              "darf bis %d min dauern. Ergebnis kommt, sobald er fertig "
+              "ist." % (name, BOT_FRIST_S // 60))
     try:
         antwort = _bot_fragen(name, texte)
     except Exception as fehler:                           # noqa: BLE001

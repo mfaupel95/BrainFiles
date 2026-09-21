@@ -55,6 +55,7 @@ Neues Terminal noetig, damit setx sichtbar wird.
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -165,7 +166,7 @@ def sende(text, stumm=False, ziel=None):
     """
     if not bereit():
         return False
-    for stueck in _stuecke(text):
+    for stueck in _stuecke(_entschaerfe(text)):
         _ruf("sendMessage", {
             "chat_id": ziel or chat_id(),
             "text": stueck,
@@ -174,6 +175,45 @@ def sende(text, stumm=False, ziel=None):
             "disable_web_page_preview": True,
         })
     return True
+
+
+# Erlaubte Telegram-HTML-Marken. Alles andere, was wie eine Marke aussieht,
+# wird entschaerft - siehe _entschaerfe().
+_ERLAUBT = re.compile(r"</?(?:b|i|u|s|code|pre|a)(?:\s[^<>]*)?>", re.I)
+# Eine schon gueltige Entitaet darf NICHT doppelt entschaerft werden.
+_NACKTES_UND = re.compile(r"&(?!(?:amp|lt|gt|quot|#\d+|#x[0-9a-fA-F]+);)")
+
+
+def _entschaerfe(text):
+    """Rohe < > & entschaerfen, Telegram-Marken stehen lassen.
+
+    ANLASS (21.09.2026, gemessen): Der Wochenbericht enthaelt den Satz
+    "n=<Zahl> heisst: zu wenige Runden". Telegram liest mit parse_mode=HTML
+    ein "<Zahl>" als Marke und weist die ganze Nachricht ab -
+    "400 Bad Request: can't parse entities: Unsupported start tag \"zahl\"".
+    Der Bericht kam deshalb nie an, und es sah aus, als haette Telegram
+    generell etwas gegen den Bericht.
+
+    Derselbe Fehler lauerte in jedem Traceback im Bericht (<module>, <lambda>)
+    und in jeder Fehlermeldung eines fremden Programms. Deshalb steht die
+    Rettung hier an der Sendestelle und nicht in jedem Bericht einzeln - sie
+    wirkt fuer Tagesbericht, Wochenbericht, Handelsmeldungen und Wachen
+    gleichermassen.
+    """
+    teile, letzter = [], 0
+    for m in _ERLAUBT.finditer(text):
+        teile.append(_roh(text[letzter:m.start()]))
+        teile.append(m.group(0))
+        letzter = m.end()
+    teile.append(_roh(text[letzter:]))
+    return "".join(teile)
+
+
+def _roh(text):
+    # Nur nackte & entschaerfen - eine schon gueltige Entitaet (&amp;, &#39;)
+    # bleibt stehen, sonst stuende "&amp;amp;" in der Nachricht.
+    text = _NACKTES_UND.sub("&amp;", text)
+    return text.replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _stuecke(text):
