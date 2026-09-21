@@ -84,9 +84,9 @@ class WaiseTest(unittest.TestCase):
         self.getoetet = []
         self.m._kill_baum = lambda pid: (self.getoetet.append(pid), True)[1]
 
-    def _p(self, pid, eltern, cmd, alter_min=60):
+    def _p(self, pid, eltern, cmd, alter_min=60, name="pythonw.exe"):
         return {"ProcessId": pid, "ParentProcessId": eltern,
-                "CommandLine": cmd,
+                "Name": name, "CommandLine": cmd,
                 "CreationDate": "/Date(%d)/" % int(
                     (time.time() - alter_min * 60) * 1000)}
 
@@ -132,3 +132,18 @@ class WaiseTest(unittest.TestCase):
                 self._p(701, 700, "pythonw.exe -m src.agents.sniper_agent")]
         raus = sorted(e["ProcessId"] for e in self.lauf.fremde_agenten(alle))
         self.assertEqual(raus, [700, 701])
+
+    def test_huelle_mit_der_kennung_ist_kein_agent(self):
+        """Eine PowerShell-Abfrage, die den Agentennamen ENTHAELT, ist kein Agent.
+
+        Am 21.09.2026 zaehlte die Wache kraken=5 statt 2, weil die eigene
+        Suchabfrage in der Kommandozeile stand. Ein Aufraeumer, der das fuer ein
+        Kind haelt, beendet die eigene Suche (taskkill /T) - deshalb muss der
+        Prozessname mitgeprueft werden.
+        """
+        alle = [self._p(900, 1, "powershell -Command Get-CimInstance ... kraken_agent.py",
+                        name="powershell.exe"),
+                self._p(901, 1, "pythonw.exe -m src.agents.sniper_agent")]
+        raus = [e["ProcessId"] for e in self.lauf.fremde_agenten(alle)]
+        self.assertNotIn(900, raus)
+        self.assertIn(901, raus)

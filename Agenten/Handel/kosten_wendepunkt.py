@@ -32,6 +32,9 @@ import statistics
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import stoerungen  # gleicher Ordner: Zwangsschluesse sind keine Runden
+
 HIER = Path(__file__).resolve().parent
 
 EINSTIEG = ("kauf", "eroeffnen", "KAUF", "EINSTIEG", "buy")
@@ -50,18 +53,18 @@ def _zahl(r, *namen):
 
 
 def runden_aus_journal(pfad: Path):
-    """(R, C, ergebnis_prozent) je Runde - aus beiden Journalformen.
+    """((R, C, ergebnis_prozent), zwangsschluesse) - aus beiden Journalformen.
 
     Form A (orbk): eine Zeile je FERTIGER Runde mit einstieg/stop/ziel/ausgang.
     Form B (Spuren mit spur_buch): je Einstieg eine Zeile mit stop/ziel, je
     Ausstieg eine Zeile mit preis - gepaart wird je Instrument.
     """
     if not pfad.is_file():
-        return []
+        return [], []
     with pfad.open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
     if not rows:
-        return []
+        return [], []
     felder = set(rows[0])
     if {"einstieg", "stop", "ziel", "ausgang"} <= felder:
         raus = []
@@ -73,10 +76,10 @@ def runden_aus_journal(pfad: Path):
                 continue
             ergebnis = ((_zahl(r, "ausstieg") or e) / e - 1) * 100
             raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100, ergebnis))
-        return raus
+        return raus, []
 
     # Form B: paaren
-    offen, raus = {}, []
+    offen, raus, zwang = {}, [], []
     for r in rows:
         akt = (r.get("aktion") or "").strip()
         inst = (r.get("inst") or r.get("symbol") or "").strip()
@@ -91,9 +94,19 @@ def runden_aus_journal(pfad: Path):
                 offen[inst] = (preis, s, z)
         elif akt in AUSSTIEG and inst in offen:
             e, s, z = offen.pop(inst)
+            # ZWANGSSCHLUESSE ZAEHLEN NICHT MIT: ein Ausstieg mit "herzschlag"
+            # im Grund ist keine Handelsentscheidung, sondern die Folge eines
+            # Ausfalls. Sie sitzen meist im Verlust - wer sie mitzaehlt, macht
+            # die Trefferquote kuenstlich schlecht (gemessen am 21.09.2026:
+            # omniquant stand mit 8 solcher Zeilen als "25 % Treffer, nicht
+            # tragfaehig" in der Tabelle, obwohl ALLE acht Zwangsschluesse der
+            # Ausfaelle vom 16./17.09. waren).
+            if stoerungen.ist_stoerung(r.get("grund")):
+                zwang.append((inst, (r.get("grund") or "").strip()))
+                continue
             raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100,
                          (preis / e - 1) * 100))
-    return raus
+    return raus, zwang
 
 
 def wendepunkt(runden):
@@ -134,7 +147,7 @@ def main() -> int:
         "Spur", "Runden", "R %", "C %", "Treffer", "Gebuehr, ab der die Spur kippt"))
     zeilen = []
     for name, pfad in dateien:
-        runden = runden_aus_journal(pfad)
+        runden, zwang = runden_aus_journal(pfad)
         w = wendepunkt(runden)
         if not w:
             print("%-22s %6s   -      -      -      keine messbare Runde" % (name, 0))
@@ -153,8 +166,10 @@ def main() -> int:
             hinweis = "  <<< haengt an der Gebuehrfreiheit (unter 0,4 %)"
         if geb is not None and geb > 0 and geb >= w["f_max"]:
             hinweis += " UND die gesetzte Gebuehr %.3f % liegt darueber" % geb
-        print("%-22s %6d %6.2f %6.2f %5.0f%%   %+.2f %% je Runde%s" % (
-            name, w["runden"], w["R"], w["C"], w["p"] * 100, w["f_max"], hinweis))
+        zahl = ("  (%d Zwangsschluss-Zeile(n) nicht mitgezaehlt)" % len(zwang)
+                if zwang else "")
+        print("%-22s %6d %6.2f %6.2f %5.0f%%   %+.2f %% je Runde%s%s" % (
+            name, w["runden"], w["R"], w["C"], w["p"] * 100, w["f_max"], hinweis, zahl))
         zeilen.append((name, w))
 
     print("\nLesart: f_max ist die Gebuehr JE RUNDE (Kauf+Verkauf) in Prozent des "

@@ -1238,7 +1238,7 @@ Stand 21.09.2026 (nur Buecher mit mindestens 4 Runden):
 |---|---|---|---|---|---|
 | orbk | 8 | 0,48 % | 0,62 % | 50 % | **+0,07 %** |
 | orbk (mittel) | 6 | 0,50 % | 0,55 % | 50 % | +0,03 % |
-| omniquant | 8 | 5,81 % | 10,63 % | 25 % | **-1,70 %** |
+| omniquant | 0 | - | - | - | **keine Messung** |
 | moondev_topmovers | 7 | 8,00 % | 12,00 % | 71 % | +6,29 % |
 | swap | 7 | 1,33 % | 2,65 % | 71 % | +1,52 % |
 | xperp | 30 | 3,16 % | 6,32 % | 67 % | +3,16 % |
@@ -1252,10 +1252,16 @@ Zwei Aussagen, die daraus folgen:
   Der Merksatz "Faellt das Abo weg, 0,004 zuruecknehmen" ist damit beziffert:
   **bevor orbk-Runden gezaehlt werden, muss die Gebuehr im Wachen stehen** -
   sonst zaehlt die Spur zu freundlich (dieselbe Regel wie am 14.09.2026).
-- **omniquant ist auch bei 0 % Gebuehr nicht tragfaehig** (f_max -1,70 % bei 8
-  Runden, 25 % Treffer). Das ist noch kein Urteil - acht Runden sind wenig -, aber
-  genug, um die Spur NICHT scharf zu stellen und die Trefferquote im Auge zu
-  behalten.
+- **omniquant hat gar keine Messung** (Korrektur vom selben Tag). Eine erste
+  Fassung dieses Abschnitts nannte 8 Runden mit 25 % Treffern und f_max -1,70 %.
+  Falsch: **alle acht Ausstiege tragen `herzschlag` als Grund** - es waren
+  Zwangsschluesse der Ausfaelle vom 16./17.09.2026, keine Handelsentscheidungen
+  (7 Einstiege, alle zwangsweise geschlossen). Das Werkzeug zaehlt sie seit der
+  Korrektur nicht mehr mit (`stoerungen.ist_stoerung`, dieselbe Fassung wie
+  `auswertung_alle.py`); omniquant steht damit auf "keine messbare Runde".
+  Lehre: **die Störungs-Trennung gehoert in JEDES Werkzeug, das Runden zaehlt** -
+  ein Zwangsschluss sitzt meist im Verlust und macht die Trefferquote
+  kuenstlich schlecht.
 
 Methodische Grenze: f_max benutzt die eigenen Runden der Spur, also auch deren
 Stichprobengroesse. Bei weniger als 8 Runden ist die Zahl ein Befund, keine

@@ -237,6 +237,21 @@ LOG = HIER / "moondev_dauerlauf.log"
 # ---------------------------------------------------------------------------
 # Prozessliste (fuer das Aufraeumen) - nur Standardbibliothek + PowerShell
 # ---------------------------------------------------------------------------
+def _powershell_pfad() -> str:
+    """PowerShell mit ABSOLUTEM Pfad.
+
+    Ein blosser Name haengt am PATH - und der ist unter der Aufgabenplanung ein
+    anderer als in einer Sitzung. Am 21.09.2026 lief der Dauerlauf nach einem
+    Neustart ohne Fehlermeldung weiter, raeumte aber nichts auf: die
+    Prozessabfrage kam leer zurueck, und "leer" heisst in _prozesse()
+    ausdruecklich "nicht aufraeumen, statt zu raten". Mit festem Pfad ist die
+    Abfrage ueberall dieselbe.
+    """
+    fest = os.path.join(os.environ.get("SystemRoot", "C:" + os.sep + "Windows"),
+                        "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    return fest if os.path.exists(fest) else "powershell"
+
+
 def _prozesse() -> list[dict]:
     """Alle laufenden Prozesse mit Kommandozeile.
 
@@ -248,9 +263,10 @@ def _prozesse() -> list[dict]:
     if os.name != "nt":
         return []
     skript = ("Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
-              "CreationDate,CommandLine | ConvertTo-Json -Compress")
+              "CreationDate,Name,CommandLine | ConvertTo-Json -Compress")
     try:
-        p = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", skript],
+        p = subprocess.run([_powershell_pfad(), "-NoProfile", "-NonInteractive",
+                            "-Command", skript],
                            capture_output=True, text=True, timeout=60)
     except Exception:                                          # noqa: BLE001
         return []
@@ -267,7 +283,15 @@ def _prozesse() -> list[dict]:
 
 
 def _ist_agentenprozess(eintrag: dict) -> bool:
-    """Traegt der Prozess die Kennung eines MoonDev-Agenten?"""
+    """Ist das ein MoonDev-Agentenprozess?
+
+    ZWEI Bedingungen: Kennung in der Kommandozeile UND ein echter Interpreter.
+    Die Kennung allein traf am 21.09.2026 auch eine PowerShell-Abfrage, die den
+    Text enthielt - und ein Aufraeumer, der die eigene Suche fuer ein Kind haelt,
+    BEENDET sie (taskkill /T). Deshalb zusaetzlich der Prozessname.
+    """
+    if (eintrag.get("Name") or "").lower() not in ("python.exe", "pythonw.exe"):
+        return False
     cmd = eintrag.get("CommandLine") or ""
     return any(k in cmd for k in KENNUNG_AGENTEN)
 
@@ -452,7 +476,13 @@ class MoonDevDauerlauf:
     def zyklus(self) -> None:
         # ERST aufraeumen, dann starten: sonst lebt bei jedem Neustart die Waise
         # des vorigen Laufs weiter (Leak vom 21.09.2026).
-        self.aufraeumen()
+        # EINE Abfrage je Zyklus: leer heisst "nicht aufraeumen, statt zu raten" -
+        # das muss laut sein, sonst bleibt ein liegengebliebener Waise unbemerkt.
+        alle = _prozesse()
+        if not alle:
+            self.protokolliere("WARNUNG: Prozessliste nicht lesbar - Aufraeumen "
+                               "uebersprungen (verwaiste Agenten bleiben liegen)")
+        self.aufraeumen(alle)
         for name, eintrag in AGENTEN.items():
             if self._ist_tot(name):
                 kind = self.kinder.get(name)
