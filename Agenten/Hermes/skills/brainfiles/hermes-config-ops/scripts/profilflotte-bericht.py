@@ -40,17 +40,35 @@ ZUGANGSDATEI_MUSTER = r"_API_KEY$|_TOKEN$|_KEY$|_SECRET$"
 
 
 def kopfzeilen(config: Path):
-    """{provider, model, kette} aus den ersten Zeilen der config.yaml."""
+    """{provider, model, kette} aus der config.yaml.
+
+    Erst YAML lesen, dann erst das Zeilenmuster: der model:-Block steht nicht
+    immer am Dateianfang - ein vorangestellter providers:-Block (z.B. im
+    Wartungsbot) verschiebt ihn, und ein Regex ueber die ersten zwoelf Zeilen
+    liest dann die falschen Schluessel. Gemessen 21.09.2026: hermes-wartung
+    meldete 'kein model-Block; Provider ohne Block und ohne Zugangsdatei',
+    obwohl die Datei sauber ist und der Bot antwortet.
+    """
     aus = {"provider": "", "model": "", "kette": []}
     if not config.is_file():
         return aus
     text = config.read_text(encoding="utf-8", errors="replace")
-    for zeile in text.splitlines()[:12]:
-        treffer = re.match(r"\s+(default|provider):\s*(\S+)", zeile)
-        if treffer:
-            schluessel = "model" if treffer.group(1) == "default" else "provider"
-            if not aus[schluessel]:
-                aus[schluessel] = treffer.group(2).strip("'\"")
+    try:
+        import yaml
+        daten = yaml.safe_load(text) or {}
+        block = daten.get("model")
+        if isinstance(block, dict):
+            aus["model"] = str(block.get("default") or "").strip("'\"")
+            aus["provider"] = str(block.get("provider") or "").strip("'\"")
+    except Exception:
+        pass
+    if not (aus["model"] or aus["provider"]):
+        for zeile in text.splitlines()[:12]:
+            treffer = re.match(r"\s+(default|provider):\s*(\S+)", zeile)
+            if treffer:
+                schluessel = "model" if treffer.group(1) == "default" else "provider"
+                if not aus[schluessel]:
+                    aus[schluessel] = treffer.group(2).strip("'\"")
     block = re.search(r"^fallback_providers:\s*(.*?)(?=^\S|\Z)",
                       text.replace("\r\n", "\n"), re.S | re.M)
     if block:
