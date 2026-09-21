@@ -81,6 +81,9 @@ import scan                                              # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
+# MUSS unter dauerlauf.TIMEOUT_S bleiben (700): ein Abbruch des Aufrufers
+# toetet den Lauf mitten in der Wartezeit und reisst die Spiegelung mit
+# (21.09.2026, scanner: Fenster 600 s > Abbruch 300 s).
 FREIGABE_ZEITLIMIT_S = 600
 
 

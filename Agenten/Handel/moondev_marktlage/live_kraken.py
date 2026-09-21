@@ -188,6 +188,12 @@ def lade_wachen():
 
 # --- Sperrenkette -----------------------------------------------------------
 
+# Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
+# MUSS unter dauerlauf.TIMEOUT_S bleiben (700) - sonst bricht der Aufrufer
+# einen Lauf ab, der korrekt auf eine Freigabe wartet (21.09.2026, scanner).
+FREIGABE_ZEITLIMIT_S = 600
+
+
 def sitzung_da():
     if os.environ.get("MAXHIRN_ROUTINE"):
         return False
@@ -262,7 +268,7 @@ def hole_freigabe(vorschlag, z, s):
         "verlust_gesamt": s.get("ruecklauf_eur", 0.0),
     }
     try:
-        return _freigabe.bestaetige(vs, "kraken", bestand, zeitlimit=600)
+        return _freigabe.bestaetige(vs, "kraken", bestand, zeitlimit=FREIGABE_ZEITLIMIT_S)
     except Exception as e:                                       # noqa: BLE001
         print("  Freigabe abgebrochen (%s) - kein Einstieg." % e, file=sys.stderr)
         return []
