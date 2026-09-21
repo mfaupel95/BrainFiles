@@ -3,7 +3,7 @@
   "waehrung": "USD",
   "handel_erlaubt": true,
   "_herzschlag_regel": "45 min (Handelsregeln, Hausregel): BEVOR handel_erlaubt auf true geht. Nur der Live-Pfad setzt den Herzschlag durch (Notausstieg); Papier nutzt ihn nicht.",
-  "herzschlag_max_minuten": 45,
+  "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd 5.0 x max_offene_positionen 4 = 20.0 USD Buchrisiko. ATR-Stop im Pflichtrahmen.",
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 4,

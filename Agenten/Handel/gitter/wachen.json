@@ -1,6 +1,7 @@
 {
   "_zweck": "Harte Grenzen der Gitter-Spur. Sie fuehrt ein Papierbuch auf einem statischen Preisgitter ueber OKX-Stundenkerzen - ohne Orderpfad, ohne echtes Geld. Der Backtest dieser Idee steht in nautilus/backtest_grid.py; hier laeuft dasselbe Gitter auf laufenden Kursen.",
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "_nichts_live": "false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft: kein Broker-Aufruf, kein Orderpfad, --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster NICHT vorkommt - so fragt der Dauerlauf keine Freigabe an, die nichts oeffnen kann (Muster: spiegel, omniquant, nautilus).",
   "waehrung": "USDT",
   "instrument": "BTC-USDT",

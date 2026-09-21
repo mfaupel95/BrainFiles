@@ -1,6 +1,7 @@
 {
   "_zweck": "Harte Grenzen der Omniquant-Spur. Sie handelt die Signale, die prognose.py findet - als Papierbuch, ohne Orderpfad. 'Omniquant' ist dabei keine externe API, sondern die Idee aus der Recherche vom 10.09.2026: Ein Trader, der nur handelt, was eine probabilistische Bewertung mit Toren als guenstig ausweist - und der sich enthaelt, wenn kein frisches Signal da ist. Die Werte sind bewusst konservativ gesetzt und vor jedem Live-Gedanken zu belegen.",
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "_nichts_live": "false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft: kein Broker-Aufruf, kein Orderpfad, --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster NICHT vorkommt - so fragt der Dauerlauf keine Freigabe an, die nichts oeffnen kann (Muster: spiegel-Spur).",
   "waehrung": "USD",
 

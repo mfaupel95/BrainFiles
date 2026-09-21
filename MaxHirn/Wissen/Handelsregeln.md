@@ -1154,3 +1154,23 @@ Sniper-Spur (~1e-6): dort stuerzten Einstieg und Stop beim Runden auf
 denselben String zusammen und die Auswertung haette G/V = 0 gelesen. Grosse
 Kurse bleiben 6 Stellen (bestehende Spuren unveraendert), kleine bekommen
 mehr.
+## Positionen von Hand im Konto (21.09.2026)
+
+Nicht jede offene Position kommt von einer Spur. Wer in der OKX-Kontouebersicht
+etwas findet, das im Buch keiner Spur steht, sucht zuerst hier - sonst wird eine
+selbst gesetzte Position beim naechsten Audit als Fehler gemeldet.
+
+- **FIL-USD_UM_XPERP** (OKX, XPERP-Kontrakt, `mgnMode=isolated`, Margin-Waehrung
+  **USDC**): von Max selbst eroeffnet, am 21.09.2026 bestaetigt. Margin rund
+  386,05 USDC, P&L zum Zeitpunkt der Pruefung -107,17 USD. **Keine Spur
+  verwaltet sie** - xperp fuehrt vier andere Kontrakte (LINK, ZEC, ETC, XAG) und
+  fasst diese nicht an.
+
+Folge fuer die Tore der Spuren: die gebundene Margin sitzt im **USDC**-Topf. Die
+Oberflaeche meldet `isoEq 279,83` (laufende Margin) und `availEq 255,01` (frei) -
+eine Spur mit Guthaben-Tor sieht also nur die freien 255,01.
+
+Merksatz: **Margin-Waehrung einer Position pruefen, nicht die Waehrung im Kopf
+des Kontos.** Die XPERP-Kontrakte dieses Kontos sind in USDC besichert; es gibt
+dort gar kein USDT. `xperp/okxf.guthaben_usdt()` lieferte deshalb 0,0, bis die
+Funktion am 21.09.2026 auf USDC als Rueckfall umgestellt wurde.

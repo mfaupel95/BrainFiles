@@ -1,6 +1,7 @@
 {
   "_zweck": "1:1-Copy-Trade der Pump.fun-Rangliste. Anders als kopier/ arbeitet diese Spur auf TRADE-EREIGNISSEN (trades/batch), nicht auf Portfolio-Diff: jeder KAUF-Trade eines verfolgten Traders auf einem Token oeffnet eine Papier-Position; jeder VERKAUF-Trade schliesst sie zum aktuellen Kurs. Damit trifft die Spur den Ausstieg des Modells auf die Sekunde genau (statt erst beim naechsten Portfolio-Snapshot). Kein Live-Pfad - kopier/lesen.py ist der einzige Zugang (Waechter).",
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "_nichts_live": "false = nur Papier. Es gibt keinen Zweig, der etwas kauft. lesen.py aus kopier/ kennt keine Schreibpfade.",
   "waehrung": "USD",
   "ketten": ["solana"],

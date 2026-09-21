@@ -49,9 +49,24 @@ STAND_ORDNER = Path(__file__).resolve().parents[1] / "cache"
 SPUREN = {
     "mosaic": {"journal": HANDEL / "mosaic" / "handelsjournal.csv",
                "fenster": "mosaic", "waehrung": "USDC"},
+    # scanner: OKX-Spot, das aktivste Live-Buch (7 Tage 118 Runden). Sein
+    # Journal hat die Betragsspalte `usd` statt `eur`/`einsatz_usd` - deshalb
+    # liest _text() alle drei Namen.
+    "scanner": {"journal": HANDEL / "scanner" / "handelsjournal.csv",
+                "fenster": "scanner", "waehrung": "USDC"},
+    # xperp: XPERP-Kontrakte auf OKX, USD-marginiert (USDC), live seit 17.09.
+    # Sein Journal schreibt Betraege als `nominal_usd` und alle 8 h eine
+    # `funding`-Zeile mit modus=live - die ist kein Handel und wird uebersprungen.
+    "xperp": {"journal": HANDEL / "xperp" / "handelsjournal.csv",
+              "fenster": "xperp", "waehrung": "USDC"},
     "kraken": {"journal": HANDEL / "kraken" / "handelsjournal.csv",
                "fenster": "kraken", "waehrung": "EUR"},
 }
+
+
+# Aktionen ohne Handelsentscheidung - sie stehen mit modus=live im Journal
+# (z. B. Funding alle 8 h), sind aber keine Runde. Wortgleich zu stoerungen.py.
+KEIN_HANDEL = {"funding", "rollover", "zyklus", "quotes", "info"}
 
 
 def _lies(pfad):
@@ -96,7 +111,8 @@ def _text(r):
                                            r.get("inst") or r.get("paar") or "?",
                                            r.get("grund") or "")
     inst = r.get("inst") or r.get("paar") or r.get("symbol") or "?"
-    betrag = r.get("einsatz_usd") or r.get("eur") or ""
+    betrag = (r.get("einsatz_usd") or r.get("eur") or r.get("usd")
+              or r.get("nominal_usd") or "")
     return "LIVE: %s %s %s @ %s  %s  (%s)" % (
         (r.get("zeit") or "")[:16], aktion, inst,
         r.get("preis") or r.get("einstieg") or "", betrag, r.get("grund") or "")
@@ -118,6 +134,11 @@ def wache(spur: str) -> int:
     vorher = int(stand.get("live_runden", 0))
     neu = zeilen[vorher:] if len(zeilen) > vorher else []
     for r in neu:
+        # Funding/Rollover/Zyklus sind kein Handel (dieselben Wortlaute wie in
+        # Handel/stoerungen.py) - sonst meldet die Wache alle 8 h eine
+        # "Live-Zeile", die keine Order ist.
+        if (r.get("aktion") or "").strip() in KEIN_HANDEL:
+            continue
         meldungen.append(_text(r))
     bereinigt = [r for r in neu if (r.get("grund") or "") == "buchbereinigung"]
     if bereinigt:

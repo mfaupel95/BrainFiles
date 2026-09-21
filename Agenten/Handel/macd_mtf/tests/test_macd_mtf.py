@@ -282,7 +282,12 @@ class TestWachenDatei(unittest.TestCase):
             self.w = json.load(f)
 
     def test_papier_und_pflichtfelder(self):
-        self.assertFalse(self.w["handel_erlaubt"])
+                # handel_erlaubt steht seit dem 21.09.2026 auf True (Auftrag Max:
+        # "alle weiteren spuren live offen und handel erlaubt"). Die Spur
+        # hat aber KEINEN Orderaufruf im Code - der Schalter allein handelt
+        # nicht. Der Test prueft weiter, dass der Wert gesetzt ist und
+        # niemand ihn still auf None/Text umstellt.
+        self.assertTrue(self.w["handel_erlaubt"])
         self.assertEqual(self.w["waehrung"], "USD")
         self.assertEqual(self.w["herzschlag_max_minuten"], 180)
         self.assertEqual(self.w["ziel_r_vielfaches"], 2.0)
