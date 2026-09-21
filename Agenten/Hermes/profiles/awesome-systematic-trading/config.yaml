@@ -1,7 +1,6 @@
 model:
-  default: gemma-4-E4B-it-mmproj-BF16
-  provider: llamacpp
-  base_url: http://127.0.0.1:18434/v1
+  default: deepseek/deepseek-v4-flash-0731
+  provider: nous
   api_mode: chat_completions
 providers:
   ollama-launch:
@@ -1760,6 +1759,13 @@ providers:
       ollama-local/bge-m3: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
+  docker:
+    name: Docker
+    base_url: http://127.0.0.1:12434
+    model: sha256:5f60862074a4c585126288d08555e5ad9ef65044bf490ff3a64855fc84d06823
+    discover_models: true
+    models:
+      sha256:5f60862074a4c585126288d08555e5ad9ef65044bf490ff3a64855fc84d06823: {}
 fallback_providers:
   - provider: omniroute
     model: auto/coding:free
@@ -1782,7 +1788,7 @@ agent:
   api_max_retries: 3
   service_tier: ''
   personalities: {}
-  reasoning_effort: xhigh
+  reasoning_effort: high
   verbose: false
 terminal:
   backend: local
@@ -2079,7 +2085,7 @@ streaming:
   enabled: false
 sessions:
   auto_archive: true
-  auto_archive_days: 14
+  auto_archive_days: 28
 onboarding:
   seen:
     busy_input_prompt: true
@@ -2268,9 +2274,9 @@ mcp_servers:
       - --require-version
       - 0.4.5
       - --db
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\projectatlas.db
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\awesome-systematic-trading\.projectatlas\projectatlas.db
       - --config
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\config.toml
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\awesome-systematic-trading\.projectatlas\config.toml
       - mcp
     enabled: true
 platform_toolsets:
@@ -2341,3 +2347,39 @@ session_reset:
   mode: none
 video_gen:
   provider: nous
+# ── Security ──────────────────────────────────────────────────────────
+# Secret redaction is ON by default — strings that look like API keys,
+# tokens, and passwords are masked in tool output, logs, and chat
+# responses before the model or user ever sees them. Set redact_secrets
+# to false to disable (e.g. when developing the redactor itself).
+# tirith pre-exec scanning is enabled by default when the tirith binary
+# is available. Configure via security.tirith_* keys or env vars
+# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
+#
+# security:
+#   redact_secrets: true
+#   tirith_enabled: true
+#   tirith_path: "tirith"
+#   tirith_timeout: 5
+#   tirith_fail_open: true
+# ── Fallback Model ────────────────────────────────────────────────────
+# Automatic provider failover when primary is unavailable.
+# Uncomment and configure to enable. Triggers on rate limits (429),
+# overload (529), service errors (503), or connection failures.
+#
+# Supported providers:
+#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
+#   openai-codex (OAuth — hermes auth) — OpenAI Codex
+#   nous         (OAuth — hermes auth) — Nous Portal
+#   zai          (ZAI_API_KEY)         — Z.AI / GLM
+#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
+#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
+#   minimax      (MINIMAX_API_KEY)     — MiniMax
+#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
+#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
+#
+# For custom OpenAI-compatible endpoints, add base_url and key_env.
+#
+# fallback_model:
+#   provider: openrouter
+#   model: anthropic/claude-sonnet-4

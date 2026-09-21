@@ -17,7 +17,13 @@ Aufruf (aus Agenten/Hermes):
 
   python scripts/bot-modell-auf-nous.py              # nur zeigen
   python scripts/bot-modell-auf-nous.py --anwenden   # schreiben
+  python scripts/bot-modell-auf-nous.py --auch-lokale --anwenden
   python scripts/bot-modell-auf-nous.py --zuruecknehmen
+
+Ohne `--auch-lokale` bleiben Profile auf lokalen Providern (llamacpp, docker,
+ollama) stehen; mit dem Schalter kommen sie mit (Max 21.09.2026: "alle auf nous").
+Ein lokales `base_url` wird beim Umstellen entfernt, sonst zeigt der Aufruf
+weiter auf den lokalen Endpunkt.
 
 Je Profil entsteht vorher `config.yaml.bak-JJJJMMTT`. Profile mit eigener
 Portal-Anmeldung und Profile, die schon auf nous laufen, bleiben unberuehrt.
@@ -39,6 +45,10 @@ ZIEL_MODELL = "deepseek/deepseek-v4-flash-0731"
 PORTAL_BASE = "https://inference-api.nousresearch.com/v1"
 # Provider, die eine Anmeldung beim Anbieter brauchen - nur die werden umgestellt.
 UMSTELLBAR = ("omniroute", "nous", "gemini")
+# Lokale Provider (llamacpp, docker) laufen ohne Anmeldefrei und brauchen kein
+# Portal - sie werden nur mit --auch-lokale angefasst (Max: "alle auf nous").
+UMSTELLBAR_LOKAL = ("llamacpp", "docker", "ollama-launch", "llama.cpp", "ollama",
+                    "vllm", "custom")
 
 
 def hermes_aufruf(exe: Path, hermes_home: Path, *args):
@@ -89,22 +99,29 @@ def kommentar_schluss_zurueckholen(config: Path, sicherung: Path) -> int:
     """`hermes config set` schreibt die Datei neu und laesst den auskommentierten
     Doku-Block am Dateiende weg. Fix: die Ziel-Fassung exakt bauen - Sicherung
     uebernehmen, nur den model-Block ersetzen. Rueckgabe: zurueckgeholte Zeilen.
+
+    BINAER lesen und schreiben: `read_text()` ohne `newline=""` uebersetzt CRLF
+    zu LF - danach zeigt der Diff die GANZE Datei (5 Profile, 21.09.2026).
     """
-    alt = sicherung.read_text(encoding="utf-8").splitlines(keepends=True)
-    ist = config.read_text(encoding="utf-8")
+    roh = sicherung.read_bytes()
+    nl = b"\r\n" if b"\r\n" in roh else b"\n"
+    alt = roh.split(nl)
+    if alt and alt[-1] == b"":
+        alt.pop()
+    ist = config.read_bytes()
     for i, z in enumerate(alt):
-        if z.rstrip("\r\n") == "model:":
+        if z == b"model:":
             kopf, rest, ersetzt = alt[:i + 1], alt[i + 1:], 0
-            while rest and re.match(r"\s+(default|provider|base_url):", rest[0]):
+            while rest and re.match(rb"\s+(default|provider|base_url):", rest[0]):
                 rest, ersetzt = rest[1:], ersetzt + 1
             if ersetzt < 2:
                 return 0
-            neu = "".join(kopf + ["  default: %s\r\n" % ZIEL_MODELL,
-                                  "  provider: %s\r\n" % ZIEL_PROVIDER] + rest)
+            neu = nl.join(kopf + [b"  default: " + ZIEL_MODELL.encode(),
+                                  b"  provider: " + ZIEL_PROVIDER.encode()] + rest) + nl
             if neu == ist:
                 return 0
-            fehlend = len(alt) - len(ist.splitlines(keepends=True))
-            config.write_text(neu, encoding="utf-8", newline="")
+            fehlend = len(alt) - len(ist.split(nl))
+            config.write_bytes(neu)
             return max(fehlend, 0)
     return 0
 
@@ -114,6 +131,8 @@ def main() -> int:
     ap.add_argument("--anwenden", action="store_true", help="schreiben")
     ap.add_argument("--zuruecknehmen", action="store_true",
                     help="config.yaml.bak-JJJJMMTT zuruecklegen")
+    ap.add_argument("--auch-lokale", action="store_true",
+                    help="auch Profile auf lokalen Providern (llamacpp, docker, ollama) umstellen")
     args = ap.parse_args()
     if args.anwenden and args.zuruecknehmen:
         print("--anwenden und --zuruecknehmen schliessen sich aus.")
@@ -142,13 +161,14 @@ def main() -> int:
         print("\n%d Profil(e) zurueckgenommen." % zurueck)
         return 0
 
+    umstellbar = tuple(UMSTELLBAR) + (UMSTELLBAR_LOKAL if args.auch_lokale else ())
     umgestellt, uebersprungen, fehler = [], [], []
     for p in profile:
         config = p / "config.yaml"
         block = model_block(config)
         frisch = block.get("provider")
         sitzung, verknuepft = auth_lage(p)
-        if frisch not in UMSTELLBAR:
+        if frisch not in umstellbar:
             uebersprungen.append((p.name, "Provider %r braucht keine Anmeldung" % frisch))
             continue
         if frisch == ZIEL_PROVIDER and block.get("default") == ZIEL_MODELL:
@@ -175,7 +195,9 @@ def main() -> int:
         if rc:
             fehler.append((p.name, "default: " + err.strip()[-160:]))
             continue
-        if block.get("base_url", "") == PORTAL_BASE:
+        base = block.get("base_url", "")
+        if base and base != PORTAL_BASE:
+            # lokaler Endpunkt (llamacpp/docker/ollama) zeigt sonst weiter dorthin
             hermes_aufruf(exe, hermes_home, "-p", p.name, "config", "unset", "model.base_url")
         zeilen_nachher = len(config.read_text(encoding="utf-8", errors="replace").splitlines())
         hinweis = ""
@@ -184,7 +206,8 @@ def main() -> int:
             hinweis = ("  Kommentar-Schluss zurueckgeholt (%d Zeile(n))" % zurueck
                        if zurueck else "  ACHTUNG Zeilen %d -> %d" % (zeilen_vorher, zeilen_nachher))
         neu = model_block(config)
-        if neu.get("provider") != ZIEL_PROVIDER or neu.get("default") != ZIEL_MODELL:
+        if (neu.get("provider") != ZIEL_PROVIDER or neu.get("default") != ZIEL_MODELL
+                or neu.get("base_url", "") not in ("", PORTAL_BASE)):
             fehler.append((p.name, "nicht angekommen: %s" % neu))
             continue
         umgestellt.append((p.name, frisch, neu.get("default", "?")))
