@@ -93,6 +93,9 @@ Agenten/Handel/stand/
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
+!Agenten/Handel/xperp/tests/*.py
+# Dieselbe Falle wie bei scanner/tests (Zeile 20 faengt sonst mit ein):
+# die Tests der Spur brauchen eine EIGENE Freigabezeile.
 !Agenten/Handel/kraken/*.py
 !Agenten/Handel/kraken/*.md
 !Agenten/Handel/kraken/*.json
