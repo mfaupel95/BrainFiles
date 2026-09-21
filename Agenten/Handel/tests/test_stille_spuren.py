@@ -70,6 +70,38 @@ class LetzteBuchungTest(unittest.TestCase):
         self.assertEqual(tb.letzte_buchung(None), (None, 0, None, 0))
 
 
+class JournalOhneAktionsspalteTest(unittest.TestCase):
+    """orbk und orb schreiben `einstieg`/`ausgang` OHNE `aktion`-Spalte.
+
+    Genau daran ist der erste Entwurf gescheitert: jede Zeile galt als "keine
+    Buchung", und orbk stand mit 8 echten Zeilen als "noch kein Handel" im
+    Bericht. Ein Schema-Wechsel darf das Alter einer Spur nicht erfinden.
+    """
+
+    def test_orbk_schema_zaehlt_als_buchung(self):
+        tmp = Path(tempfile.mkdtemp()) / "handelsjournal.csv"
+        with tmp.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["zeit", "inst", "richtung", "einstieg", "stop", "ziel",
+                        "ausgang", "ausstieg", "gv_punkte", "gv_usd"])
+            w.writerow([_zeit(1), "ETH_USD", "long", "100", "98", "105",
+                        "ziel", "105", "5", "5"])
+        tage, n, _, _ = tb.letzte_buchung(tmp)
+        self.assertEqual(n, 1)
+        self.assertEqual(tage, 1)
+
+    def test_quotespalte_schlaegt_nicht_zu(self):
+        tmp = Path(tempfile.mkdtemp()) / "handelsjournal.csv"
+        with tmp.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["zeit", "inst", "bid", "ask", "quotes", "grund", "preis"])
+            w.writerow([_zeit(0), "BTC/USD", "1", "2", "5", "quotes", ""])
+        tage, n, tage_z, _ = tb.letzte_buchung(tmp)
+        self.assertIsNone(tage)
+        self.assertEqual(n, 0)
+        self.assertEqual(tage_z, 0)
+
+
 class StillblockTest(unittest.TestCase):
 
     def _eintrag(self, name, journal=None, erlaubt=False, schluessel=None):

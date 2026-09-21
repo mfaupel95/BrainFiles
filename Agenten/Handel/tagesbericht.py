@@ -248,6 +248,30 @@ NL = chr(10)          # Zeilenumbruch ohne Escape-Ketten im Quelltext
 # frisch aussehen lassen.
 BUCHUNGEN = ("kauf", "verkauf", "eroeffnen", "schliessen", "einstieg",
              "ausstieg")
+NOTIZEN = ("zyklus", "quotes", "funding", "rollover")
+
+
+def _ist_buchung(zeile):
+    """Ist diese Journalzeile ein Handel - oder nur Betriebsnotiz?
+
+    Zwei Journal-Schemata im Haus: die meisten Spuren schreiben eine
+    `aktion`-Spalte (kauf/verkauf/...). orbk und orb schreiben stattdessen
+    `einstieg`/`ausgang` OHNE aktion-Spalte - dort war jede Zeile "keine
+    Buchung", und die Spur sah aus, als haette sie nie gehandelt (8 echte
+    Zeilen im orbk-Journal, Befund beim Einbau 21.09.2026). Quote-Sammler
+    (`zyklus`, `quotes`, `funding`, `rollover`) bleiben in beiden Schemata
+    NOTIZ und zaehlen nicht.
+    """
+    a = (zeile.get("aktion") or "").strip().lower()
+    if a in BUCHUNGEN:
+        return True
+    if a:
+        return False                      # bekannte Spalte, unbekannte Aktion
+    if (zeile.get("grund") or "").strip().lower() in NOTIZEN:
+        return False
+    return any((zeile.get(f) or "").strip()
+               for f in ("einstieg", "ausgang", "preis", "einsatz_usd",
+                         "einsatz_eur", "menge"))
 
 
 def letzte_buchung(journal):
@@ -271,7 +295,7 @@ def letzte_buchung(journal):
                 z = (r.get("zeit") or "").strip()
                 if z and (letzte_z is None or z > letzte_z):
                     letzte_z = z
-                if (r.get("aktion") or "").strip().lower() not in BUCHUNGEN:
+                if not _ist_buchung(r):
                     continue
                 n_b += 1
                 if z and (letzte_b is None or z > letzte_b):
