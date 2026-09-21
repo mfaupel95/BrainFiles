@@ -25,6 +25,8 @@ In Obsidian erscheint der Ordner als `Wiki/` mit `[[Wikilinks]]` im Graphen.
 
 ## Regel fuer jede Sitzung
 
+Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](LEITFADEN.md).
+
 1. **Vor einer Aufgabe:** hier nachsehen, wenn es um Betrieb, Handel oder Werkzeuge geht —
    die Seite nennt den Stand und die Falle, die Zeit gekostet hat.
 2. **Nach einer Aufgabe:** jede Lehre, die in einem Monat noch gilt, in eine Seite
