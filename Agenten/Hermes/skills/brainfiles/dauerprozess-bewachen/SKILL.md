@@ -158,6 +158,76 @@ ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
    `funding/rollover/zyklus/quotes/info` wie in der Runden-Zaehlung), statt sie
    in der Wache neu zu erfinden.
 
+## Wache auf PROZESSE (wenn ein Prozesskriterium geprueft wird)
+
+Eine Wache, die Prozesse zaehlt, ist die fehleranfaelligste Bauform: sie schlaegt
+Alarm, wenn ihre Zaehlregel falsch ist, nicht wenn etwas kaputt ist. Eine Wache,
+die bei JEDEM Lauf dasselbe meldet, ist deshalb zuerst ein Fehler der Wache -
+pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
+
+1. **Je Einheit zaehlen, nicht ueber alles.** Ein Dienst unter Windows ist ein
+   PAAR (Startprogramm + Interpreter). Erwartet sind **genau zwei Prozesse je
+   Kind** (4 Kinder = 8). Eine Gesamtzahl oder das ALTER als Kriterium ist
+   falsch: ein Agent laeuft legitim stundenlang, sein Paar altert mit (gemessen:
+   eine Wache meldete „8 Prozesse aelter als 1 h = Leak" alle 15 Minuten, obwohl
+   genau der Normalzustand vorlag).
+2. **Erst ab der Aufraeum-Schonfrist zaehlen.** Raeumt der Treiber selbst auf
+   (jeder Zyklus, Schonfrist z. B. 300 s), stehen nach jedem Neustart junge
+   Waisen im Zaehlfenster, die in Minuten von allein verschwinden. Wer sie
+   mitzaehlt, alarmiert bei jedem Neustart. Also nur Prozesse aelter als die
+   Schonfrist als Befund werten — und die Gesamtzahl ebenfalls so filtern.
+3. **Zwei Bedingungen fuer einen Treffer: Kennung UND Prozessname.** Eine
+   `CommandLine`-Suche nach dem Modulnamen trifft auch die eigene Abfrage und
+   jede Huelle, die den Text enthaelt — in beide Richtungen schaedlich: die
+   Wache zaehlt Phantome (kraken=5 statt 2), und ein Aufraeumer, der das fuer ein
+   Kind haelt, BEENDET seine eigene Suche per `taskkill /T`. Immer zusaetzlich auf
+   `python.exe`/`pythonw.exe` (bzw. den echten Programmnamen) filtern.
+
+**`powershell` immer mit absolutem Pfad aufrufen**
+(`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der
+Aufgabenplanung ist der PATH ein anderer als in einer Sitzung. Symptom einer
+leeren Prozessliste ist NICHT ein Fehler, sondern **stilles Nichtstun** — der
+Treiber raeumt dann nichts auf und meldet trotzdem „ok". Wo „leer = nicht raten"
+gilt, muss die leere Liste LAUT protokolliert werden, und die Abfrage je Zyklus
+EINMAL laufen (Ergebnis an die Aufraeumfunktion durchreichen, nicht zweimal fragen).
+
+Gegenprobe in beide Richtungen: auf gesundem System gibt die Wache **nichts** aus,
+und im Treiber-Log steht die Aufraeumzeile mit der Zahl der beendeten Waisen.
+
+## Wache auf die DAUER eines Ausfalls (Neustart-Schleifen sichtbar machen)
+
+Ein Zustands-Waechter („laeuft / laeuft nicht“) sieht eine Neustart-Schleife
+nicht: er startet brav neu, jeder Lauf meldet Erfolg, und dass der Dienst den
+halben Tag weg war, faellt nur als Nebenwirkung auf (gescheiterte Auftraege,
+unklare Meldungen an den Nutzer). Dafuer eine ZWEITE, unabhaengige Wache - nicht
+in den Neustart-Waechter hineinbauen: stirbt der Neustart-Waechter, muss die
+Messung weiterlaufen.
+
+1. **Zustand = Ausfallbeginn, nicht „aus“.** Eigene JSON in `cache/`:
+   `{"seit": <ISO>, "gemeldet": <bool>}`. Erster Lauf mit zu Port: nur den
+   Beginn schreiben, lautlos.
+2. **Meldeschwelle in Sekunden** (Startwert 300): ein Neustart von zwei Minuten
+   ist Betrieb, kein Befund. Darunter nichts ausgeben.
+3. **Zweiter Lauf im selben Ausfall schweigt** (`gemeldet` setzen) - sonst feuert
+   die Wache bei jedem Takt denselben Alarm.
+4. **Die Erholung melden, sobald die Schwelle ueberschritten war**, mit der
+   gemessenen Dauer, und den Zustand danach loeschen. Ein Ausfall ohne
+   Erholungsmeldung laesst offen, ob es weitergeht.
+5. **Den Zustand des Neustart-Waechters in den Befund schreiben** (Windows:
+   `Get-ScheduledTask`/`Get-ScheduledTaskInfo`). Sonst ist „Dienst weg“ nicht von
+   „Waechter tot“ zu unterscheiden - und genau dafuer ist die zweite Wache da.
+6. **Fuenf Richtungen belegen, bevor „fertig“ gemeldet wird:** gesund = lautlos;
+   Ausfall ueber der Schwelle = Alarm mit Dauer; zweiter Lauf = lautlos; Ausfall
+   unter der Schwelle = lautlos; wieder offen = Erholungsmeldung plus geloeschter
+   Zustand. Dafuer nimmt das Skript Pruefhaken (`--port`, `--stand`,
+   `--schwelle`) und laeuft gegen einen geschlossenen Port / eine
+   Temp-Zustandsdatei - nie gegen den echten Dienst.
+- **Ein Pruefhaken ist ein eigener Code-Pfad und gehoert in die Probe.** Liegt der
+  Zustandspfad als `Path` im Modul und kommt ueber den Haken als `str`, bricht
+  `pfad.parent` NUR im Pruefweg ab, waehrend der Produktivpfad gesund aussieht.
+  Im Schreib-/Lesepfad zuerst `pfad = Path(pfad)` normalisieren, und die Probe
+  ueber genau diesen Weg fahren.
+
 ## Pitfalls
 
 - **`Start-Process -RedirectStandardOutput` blockiert bei einem Dauerprozess** —
@@ -305,6 +375,9 @@ naechsten Spawn beenden), sonst ist der Speicher in Stunden wieder weg.
   aufraeumen statt zu raten. Wer die Aufraeumfunktion aus einer frischen
   Instanz ruft, erschlaegt die legitimen Kinder des laufenden Treibers — der
   Aufruf gehoert in den Zyklus des laufenden Treibers.
+  Symptomkatalog (was bei erschoepftem Commit alles scheitert), die Messbefehle und
+  die Route fuer einen Massenlauf, der im Sandbox-Terminal abbricht:
+  `references/massenprozesse-und-commit-limit.md`.
 - **Ein Test, der `protokolliere()` prueft, schreibt in die ECHTE Logdatei.**
   Der Modulpfad des Logs ist eine Konstante; ein Test des Aufraeumens landete
   damit als Zeile im Betriebsprotokoll des Treibers ("PIDs 600") und war dort
@@ -338,6 +411,26 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
 - **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/`powershell`:
   die Konsole schreibt cp1252, nicht UTF-8. `encoding="cp1252", errors="replace"`
   setzen, sonst reisst ein `UnicodeDecodeError` im Lesethread den Aufruf ab.
+- **Ein neuer Prozess gleich nach dem Neustart ist kein Befund.** Wer seinen
+  eigenen Treiber neu startet, erzeugt regelmaessig Waisen der VORIGEN Instanz:
+  `Stop-Process` auf die Treiber-PID beendet den Baum nicht, und die Kinder des
+  alten Laufs leben weiter, bis der neue sie beim Aufraeumen erwischt. Vor jeder
+  Aussage „zu viele Prozesse" die Startzeit der Treiberinstanz gegen die
+  `CreationDate` der Prozesse halten — was vor dem Neustart entstand, ist
+  Altlast, kein Doppellauf.
+- **Nicht jeder Codefix braucht einen Neustart des Treibers.** Startet der Treiber
+  je Zyklus ein KIND als eigenen Prozess (typisch `handeln.py`), liest das Kind die
+  Datei bei jedem Start neu — ein Fix in der Komponente wirkt also im NAECHSTEN
+  Zyklus, ohne den Treiber anzufassen (nachgemessen: das Aufraeumen einer Spur lief
+  schon vor dem Treiber-Neustart). Ein Neustart ist noetig, wenn sich der
+  TREIBER-Code selbst aendert (seine Konstanten, seine Modulliste) — der laufende
+  Prozess hat das Modul beim Start importiert.
+- **Vor dem Neustart eines Treibers mit echten Ordern pruefen, dass kein Kind
+  gerade im Order-Zyklus steht.** Die Prozessliste nach dem Kommandozeilen-Merkmal
+  des Live-Laufs filtern (z. B. `--live`) und warten, bis keines mehr laeuft —
+  ein `taskkill /T` mitten im Zyklus reisst eine Order ab. Danach Baeume PID-genau
+  beenden, Basis UND Variante neu starten und im Log den frischen Zyklus plus die
+  unveraenderte Live-Position nachweisen.
 - **Kein Doppelbetrieb.** Nach einem Test mit `Stop-Process` pruefen, dass genau EIN
   Prozess der Komponente laeuft (`Get-Process <name>`); verwaiste PID-Dateien nach
   dem Aufraeumen loeschen.

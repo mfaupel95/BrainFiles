@@ -48,10 +48,28 @@ dort angemeldet.
    entpackte Kopie), es nach `<name>.vorher` verschieben statt hineinzuklonen.
 5. **Ein Bot je Repo.** Bots sind Hermes-Profile:
    `hermes.exe profile create <name> --clone --description "<Rolle, 1-2 Saetze>"`
-   und danach `hermes.exe -p <name> config set terminal.cwd <repo-pfad>`. `--clone`
-   uebernimmt Modell, Werkzeuge und Skills des Startprofils, `--description`
-   landet in `profile.yaml` und wird vom Kanban-Orchestrator zum Sortieren benutzt.
-   *Fertig, wenn* `hermes profile list` jeden Bot fuehrt.
+   und danach ZWEI `config set`-Aufrufe: `terminal.cwd <repo-pfad>` UND
+   `terminal.backend local` - ohne den zweiten erbt der Klon `docker` und sieht
+   das Repo nicht (Falle unten). Danach `git add --dry-run
+   Agenten/Hermes/profiles/<name>/` gegenpruefen: nur `SOUL.md`, `config.yaml`,
+   `profile.yaml` duerfen erscheinen. `--clone`
+ uebernimmt Modell, Werkzeuge und Skills des Startprofils, `--description`
+ landet in `profile.yaml` und wird vom Kanban-Orchestrator zum Sortieren benutzt.
+ Danach die zwei Hausskripte fahren: `bot-modell-auf-router.py --anwenden`
+ (idempotent, stellt nur den Neuen auf den Router um - „1 Profil umgestellt,
+ N uebersprungen") und `profil-kanaele-bereinigen.py --anwenden` (bei einem
+ Klon nach der 18.09.-Bereinigung erwartbar „Nichts zu tun", trotzdem laufen
+ lassen und 0 Warnungen in `hermes profile list` belegen).
+ *Fertig, wenn* `hermes profile list` jeden Bot fuehrt. Danach der Skill-Trim:
+   `diff <(ls profiles/<neu>/skills) <(ls profiles/<alt-getrimmt>/skills)` - leer
+   = identisch; leere Klon-Ordner entfernen (siehe Falle unten).
+   **Neuer Bot in den Repo-Betrieb eintragen:** `Agenten/Werkzeuge/repos-zentrale/-
+   repos-zentrale.json` um einen Eintrag ergaenzen (`ordner`, `art`, `bot`,
+   `notiz`); `art: "doku"` solange kein Startbefehl belegt ist (Gruppe NUR
+   DOKU), erst wenn ein Start echter Laeufe belegt ist, auf node/python/rust
+   hochstufen. Dazu die Flotten-Doku `MaxHirn/Wissen/Repo-Bots.md` (Zahl +
+   Tabelle) aktualisieren. `/bots` liest Profile von der Platte - kein
+   SkillsBot-Neustart noetig (der ist nur fuer NEUE Befehle).
 6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/Repos/` gegen
    `ls Agenten/Hermes/profiles/` halten — ein Ordner in profiles/ mit config.yaml
    ist ein Bot. Ein Verzeichnis unter Repos/ OHNE `.git` (z. B. eine
@@ -168,6 +186,24 @@ dort angemeldet.
   `git fetch --unshallow <upstream>` und die Tiefe gegenpruefen
   (`git rev-list --count HEAD`), dann laeuft der Push durch. Betrifft die ganze
   Flotte: die Klone unter `Werkstatt/Repos/` sind shallow angelegt.
+- **Ein Klon, dessen `origin` aufs ORIGINAL zeigt, ist KEIN Flotten-Klon.**
+  Kommt ein Repo als Direkt-Klon des Upstreams an, nachtraeglich auf die
+  Flotten-Form bringen: `gh api -X POST "repos/<upstream>/forks"`, in einer
+  Schleife abfragen bis der Name aufloest, `git remote set-url origin
+  https://github.com/<konto>/<name>.git`, `git remote add upstream <original>`,
+  dann `git push -u origin <branch>`. GitHub spiegelt die Branches beim Fork
+  automatisch — der Push meldet oft „Everything up-to-date“, das ist kein
+  Fehler; Nachweis ueber `gh api repos/<konto>/<name>/commits/<sha>` (Fork
+  enthaelt den Commit) plus `git remote -v`. Den Branch-Namen der Fremd-Repo
+  respektieren (z. B. `github-main` statt `master`/`main`) — nicht auf den
+  Hausnamen umbenennen.
+- **Repo-Bot ist kein Handel-Spur.** Der Handels-Dauerlauf (`dauerlauf.SPUREN`)
+  und `/bericht` zaehlen ausschliesslich Handelsspuren (Papier-/Live-Strategien
+  mit eigenem Buch); ein Repo-Bot (MCP-Server, Tool, Referenzsammlung) gehoert
+  dort bewusst NICHT hinein, auch wenn er "trade" im Namen traegt. Sein
+  Betrieb ist der Repo-Betrieb (repos-zentrale-Manifest, Flotten-Doku) und die
+  Abfrage ueber `/bot`. Den Unterschied beim "Bot hinzufuegen"-Auftrag offen
+  benennen statt einen Werkzeug-Klon in den Handelszyklus zu ziehen.
 - **Sichern ohne Veroeffentlichen: eigenes privates Repo statt Fork.** Soll ein
   Repo ausser Haus liegen, ohne dass eigene Arbeit oeffentlich wird, **keinen**
   Fork des oeffentlichen Upstreams anlegen (der waere zwingend oeffentlich),
@@ -204,17 +240,30 @@ dort angemeldet.
   enden bleiben), `--zuruecknehmen` holt die Sicherung zurueck. Welche Zeile
   ein Kanal ist, entscheidet `hermes_cli.profile_channels.ChannelKeyIndex`,
   nicht eine eigene Liste. Gegenprobe: `hermes profile list` zeigt 0 Warnungen.
-- **Die Bots fahren ueber den lokalen Router, nicht ueber ein eigenes Portal-Login
-  (18.09.2026).** Profile sind Inseln und lesen nur ihr eigenes `auth.json`/`.env`;
-  24 Bots standen auf `provider: nous` ohne Portal-Anmeldung, jeder `/bot`-Aufruf
-  endete mit "not logged into Nous Portal", danach griff die geerbte
-  `fallback_providers`-Kette auf ein lokales 8k-Modell, das Hermes ablehnt. Jetzt
-  `Agenten/Hermes/scripts/bot-modell-auf-router.py` (Trockenlauf, `--anwenden`,
-  `--zuruecknehmen`) -> `model.provider=omniroute`, `model.default=auto/best-coding`;
-  der Router-Schluessel steht schon in jeder Profil-`.env`. Unberuehrt:
-  `superpowers` und `awesome-systematic-trading` (eigene Portal-Anmeldung),
-  `openmontage` (`llamacpp`). Vor "Bot geht nicht" also erst die Modellkennung
+- **Die Bots fahren auf dem Nous-Portal, nicht ueber den lokalen Router.** Profile
+  sind Inseln und lesen nur ihr eigenes `auth.json`/`.env`; ohne Anmeldung endet
+  jeder `/bot`-Aufruf mit "Hermes is not logged into Nous Portal", und eine
+  geerbte `fallback_providers`-Kette verdeckt das mit einem Kontextfenster-Fehler.
+  Stand: `model.provider=nous`, `model.default=deepseek/deepseek-v4-flash-0731`,
+  Werkzeug `Agenten/Hermes/scripts/bot-modell-auf-nous.py` (Trockenlauf,
+  `--anwenden`, `--zuruecknehmen`). Der Router war nur Zwischenloesung: faellt
+  seine Combo auf einen toten Zweig (Gratisstufe), stehen ALLE Bots gleichzeitig
+  still — darum haengt die Flotte nicht mehr daran. Unberuehrt bleiben Profile mit
+  eigener Anmeldung (`basic-memory`, `awesome-systematic-trading`) und eigene Wege
+  (`openmontage` = llamacpp). Vor "Bot geht nicht" also erst die Modellkennung
   pruefen, nicht die Kanaele.
+- **Ohne eigene `auth.json` antwortet ein Profil nicht — Sitzung per SYMLINK, nicht
+  per Kopie.** `Agenten/Hermes/scripts/auth-verknuepfen.ps1` (erhoehte Shell, ein
+  UAC-Prompt) verweist `profiles/<bot>/auth.json` auf
+  `Agenten/Hermes/auth.json`. Eine Kopie waere dieselbe Refresh-Kennung in vielen
+  Dateien, und die erste Rotation entwertet alle anderen. `NOUS_API_KEY` in der
+  Benutzerumgebung genuegt NICHT — der Gate verlangt den Provider-State im
+  `auth.json` des Profils. Ein frisch aus `profiles/.deleted/` zurueckgeholtes
+  Profil hat noch keine Sitzung und faellt sofort durch.
+- **`profiles/.deleted/` sind keine Bots.** Weggelegte Profile zaehlen bei keiner
+  Flottenzaehlung mit (sonst stimmt `ls profiles/` gegen `ls Werkstatt/Repos/`
+  nicht) und sind per `/bot` nicht erreichbar. Bei "Bot fehlt" zuerst hier
+  nachsehen, bevor ein Profil neu angelegt wird.
 - **`hermes config set` schneidet den Kommentar-Schluss der `config.yaml` ab.**
   In 6 Profilen fehlten danach 38 Zeilen Doku am Dateiende (nur Kommentare, kein
   Schaden an Werten). Der Fix ist nicht "Block anhaengen", sondern die Ziel-Fassung

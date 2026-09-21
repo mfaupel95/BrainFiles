@@ -39,6 +39,10 @@ Ausloeser → Referenz:
 - „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
+- **"in meinem OKX sehe ich keine Order"**, Zweifel an einem echten Kauf — Order am
+  Handelsplatz LESEND nachpruefen (`avgPx` gegen Bucheinstieg), Unterkonto-Falle,
+  und die verbraucher-/erzeuger-Falle (gehandelt auf einer Datei, die niemand mehr
+  schreibt): `references/live-order-nachpruefen.md` + `scripts/okx_live_order_probe.py`
 - **Zustandsbericht** („Bericht", „wie laeuft die Spur") — lesend, mit den
   Quellen, den Lese-Fallen (BOM im Bus-Journal, UTC vs. lokal, Vorschau-Lauf je
   Zyklus, kurze Abstaende vs. Luecken) und der Form, die Max erwartet:
@@ -60,6 +64,10 @@ Ausloeser → Referenz:
   `risikostufe.py`): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
   was skaliert wird und was nie, warum eine Stufe nie live geht, kein Telegram
   bekommt und warum der Spiegel aussen vor bleibt: `references/risikostufen.md`
+- **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
+  `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
+  Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
+  `references/live-status-und-buch-trennung.md`
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -67,6 +75,11 @@ Ausloeser → Referenz:
   Adressen, MVRV, Exchange-Zu-/Abfluesse, Social Volume, Dev-Aktivitaet):
   `references/santiment.md` — SanAPI ohne Schluessel, jede Metrik mit eigenem
   Zeitfenster.
+- **Schattenbuch-Spur** (dieselbe Signalquelle mit ANDEREN Parametern parallel
+  laufen lassen, Hauptbuch bleibt Vergleichsgrundlage — spiegel_knapp/weit):
+  `references/schattenbuch-spur.md` — Suffix-Mechanik durch die
+  Datei-Konstanten, Launcher je Arm, Verdrahtung inkl. spiegelstand- und
+  Bus-Anbindungs-Falle.
 
 ## Landkarte (nur was zum Arbeiten nötig ist)
 - `Agenten/Handel/<spur>/` — je Spur `handeln.py`, `wachen.json` (die Grenzen;
@@ -272,6 +285,10 @@ ersetzt die Begruendung nicht.
 
 85. **Eine 'Fixes Applied'-Notiz einer fremden Sitzung ist eine Behauptung, kein Beweis — nach jeder uebernommenen Fremdaenderung die VOLLE Testsuite laufen lassen.**
 
+86. **Eine Whitelist fuer die Subprozess-Umgebung bricht ALLE Spuren** — die Spuren sind vertrauenswuerdiger eigener Code und brauchen die API-Schluessel in ihrer Umgebung; `_env_sicher()` reicht die volle Umgebung durch.
+
+87. **Feste Zaehl-/Sollwert-Tests (`len(HOLER)`, `ERWARTET`-Dicts) sind eine LISTE, die eine Spur nennt** — beim Anschliessen mitziehen, sonst faellt die volle Suite rot, ohne dass etwas kaputt ist.
+
 ## Welche Daten eine Sperre liest
 
 Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdrücklich fest,
@@ -473,6 +490,14 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   Satzhaelfte, einen Zahlenwert) — und den Rest in einem zweiten Aufruf
   ersetzen. Gilt auch fuer Anker mit Backslash-Pfaden: erst `repr()` der
   Rohzeile zeigen, dann das Muster bauen.
+- **Der fuzzy Patch wendet Tippfehler im old/new-String trotzdem an.** Ein
+  vertippter JSON-Key (`kill_switch_gesamtmt_usd` statt `gesamt_usd`) oder
+  Wert (`papier_faktor 6.0` statt `4.0`) wird vom Matcher als "aehnlich"
+  akzeptiert und landet in der Datei - der Fehler ist erst nach dem Schreiben
+  sichtbar. Nach JEDEM JSON-Patch den Schluessel/Wert per `read_file`
+  verifizieren (nicht der Diff-Ausgabe glauben) und `json.loads` laufen
+  lassen. Bei wiederholtem Vertippen: den Block einmal komplett mit exaktem
+  old/new neu schreiben statt weiter zu flicken.
 - Geschriebene `.py`/`.json` pruefen — den NEUEN Text im Speicher VOR dem
   Schreiben, nicht erst die Platte danach: `ast.parse` bzw. `json.loads` (ein
   eingefuegtes Feld ohne abschliessendes Komma faellt sonst erst auf, wenn die
@@ -496,11 +521,22 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   JEDE Metrik ihr eigenes Zeitfenster hat und `erlaubtes_fenster()` die Grenze
   aus der Fehlermeldung liest, warum eine leere Reihe kein Fehler ist und wie
   der MCP-Weg (OAuth) daneben aussieht.
+- `references/schattenbuch-spur.md` — Varianten einer bestehenden Spur mit
+  getrennten Dateien (Suffix durch die Datei-Konstanten, Launcher je Arm):
+  Mechanik, Verdrahtung inkl. spiegelstand- und Bus-Anbindungs-Falle,
+  Auswertung erst ab genug Ausstiegen je Arm.
 - `references/browser-edge-sperre.md` — Hermes-Edge / browser-profile: eine
   laufende Headless-Edge-Instanz hält Cookies/Sessions gesperrt und bricht
   die Sicherungsläufe mit FEHLER 32 / Exit 20/21. `/XD browser-profile` in
   sichern.ps1 und sichern-zweitkopie.ps1; `0xC000013A` = Rechner-Neustart
   (Event 1074), kein Skript-Fix.
+- `references/okx-fehlermeldungen.md` — OKX meldet Orderfehler mit HTTP 200
+  und `code="1"` (Auskunft in `data[0].sMsg`, nicht im aeusseren `msg`); ein
+  echter HTTP 4xx muss als fachlicher Fehler gelten statt als Transportfehler
+  wiederholt zu werden (sonst geht eine abgelehnte Order dreimal raus).
+- `references/kraken-nonce-und-lockout.md` — `Invalid nonce` und `Temporary
+  lockout` erst unterscheiden, bevor man den nonce-Code jagt: eine Sperre
+  lehnt JEDEN nonce ab, auch einen korrekten; weitere Sonden verlaengern sie.
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,
@@ -530,6 +566,10 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   Tagesberichts, der geteilte Journal-Leser, die Nachweis-Kette bis zum ersten
   Zyklus, und die Fallen (Zustand schlaegt wachen.json, fehlender
   Duplikat-Schutz, CRLF im Test-grep).
+- Live schalten oder „gefechtsbereit machen" — Freigabekette, Plane-Zuerst-\
+  Disziplin fuer den ERSTEN echten Geldpfad, Instrument-Verfuegbarkeit an der
+  Zielboerse vor dem Umbau pruefen, abgetrennter Live-Zweig statt gemeinschaft
+  Kern: `references/live-schalten.md`
 - `references/freigabe-kette.md` — Punkt 3 der Handelsregeln in beiden Fassungen:
   Bildschirm- und Zeitfenster, wer wann öffnet, was eine Freigabe nicht kann.
 - `references/tor-kalibrierung.md` — Schwellen und Kostenannahmen kalibrieren,

@@ -90,6 +90,74 @@ Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
    - Request: `POST /v1/chat/completions` mit `model: auto/best-fast` und
      kleinem Prompt -> 200 plus gemeldetes Zielmodell.
 
+## Wenn eine Bot-/Client-Sitzung sofort stirbt: der terminale Fremdfehler
+
+Symptom: `hermes -p <bot> chat -q …` endet nach Sekunden ohne Antwort, im
+Profil-Log steht `Non-retryable client error: <provider>/<model>: … [403] …` —
+und die Sitzung hatte vorher schon Werkzeuge aufgerufen, das Modell stirbt also
+MITTEN im Lauf.
+
+Mechanik (im Router-Log belegbar): die `auto/*`-Kombo probiert ihre Kandidaten
+der Reihe nach. Ist der erste erschoepft (429), geht sie weiter; endet der
+LETZTE Versuch in einer **terminalen** Klasse (Kontingent/Permission, z. B.
+`403 … free tier can only be used from within OpenCode`,
+`insufficient_quota`), bricht OmniRoute die GANZE Kombo ab
+(`terminalReason: quota_exhausted`) und Hermes wertet das als
+`non_retryable_client_error`: Sitzung beendet, kein zweiter Versuch. Eine reine
+Gratisstufen-Frage wird so zum harten Sitzungsabbruch — und zwar bei JEDEM
+Lauf, weil der tote Kandidat im Pool bleibt. Zwei Logzeilen belegen den Weg:
+`claude native failed (429), retrying via CLIProxyAPI` und danach
+`UPSTREAM_PROXY … CLIProxyAPI fallback also failed`.
+
+**Erst den Kanal proben, dann die Clients untersuchen.** "Alle Bots stehen
+   gleichzeitig" ist fast immer eine Router-Diagnose, kein Flottenproblem: ein
+toter Kandidat im `auto/*`-Pool trifft jeden Client. Ein Aufruf je Kanal trennt
+beides in Sekunden (Key aus `.env` in eine Variable laden, nie ausgeben):
+
+    curl -s -o /dev/null -w '%{http_code}' -m 60 http://127.0.0.1:20128/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"model":"auto/best-coding","messages":[{"role":"user","content":"ping"}],"max_tokens":5}'
+
+Den Modelnamen je Kanal austauschen. 403/502/503 heisst: der Kanal traegt nicht
+(terminaler bzw. erschoepfter Kandidat) — dann gehoert der Befund in den Pool,
+nicht in die Bots. 200 heisst: die Ursache liegt im Client, dann
+`profiles/<bot>/logs/errors.log` lesen. Fuer die Read-API (`/api/*`, `/v1/models`)
+denselben Inferenz-Schluessel als `Authorization: Bearer` schicken; `x-api-key`
+antwortet dort 401.
+
+1. **Zuerst die Fehlerquelle lesen, nicht den Bot.** Je Profil liegen die
+   Rohdaten: `profiles/<bot>/logs/errors.log` (Zeile
+   `Non-retryable client error: …`) und das volle Request-Dump
+   `profiles/<bot>/sessions/request_dump_<sitzung>_*.json` mit `reason` und
+   `error.body` — dieselbe Meldung, die der Client gesehen hat. Ueber alle
+   Profile zaehlen (`grep -h "Non-retryable client error" */logs/errors.log`)
+   und nach Fehlertext gruppieren: gleicher Text in vielen Profilen = EINE
+   gemeinsame Ursache im Router, kein kaputter Bot. Zeitstempel dabei
+   umrechnen — `call_logs.timestamp` ist UTC, die Profil-Logs lokal (CEST).
+2. **Terminale Kandidaten aus dem Pool nehmen** (`is_active=0`, siehe Ablauf
+   Schritt 3). Der Beleg ist ein erneuter `POST /v1/chat/completions` auf
+   dieselbe `auto/*`-Kennung: vorher `permission_error`/`insufficient_quota`
+   (nicht wiederholbar), nachher
+   `503 Service temporarily unavailable: all targets were skipped by
+   pre-dispatch filters` (wiederholbar). Nur dieser Unterschied trennt
+   „Sitzung tot" von „nochmal versuchen" — die Abschaltung ist deshalb ein
+   Wirksamkeits-Fix, nicht nur Aufraeumen.
+3. **Verbindungen umschalten per API statt per SQL:** `PUT /api/providers/<id>`
+   mit `{"isActive":false}` — die Teilmenge genuegt (das Schema nimmt einzelne
+   Felder), die Antwort zeigt die neue Verbindung (`isActive: false`). Gleiche
+   Wirkung wie das UPDATE, aber ohne eigenen Backup-/Commit-Schritt.
+4. **Breaker und Cooldown zuruecksetzen: `POST /api/resilience/reset`.** Nach
+   einer Fehlerserie haelt der laufende Prozess Provider-Breaker und
+   Connection-Cooldowns im SPEICHER. Die Zeile in `domain_circuit_breakers` zu
+   loeschen oder zu editieren wirkt NICHT — der Prozess schreibt seinen
+   In-Memory-Stand sofort wieder zurueck, und `provider_circuit_open` mit
+   `retry_after: 1` bleibt stehen. Richtig: `POST /api/resilience/reset` mit
+   `{}` (alle) oder `{"provider":"claude"}`; Antwort
+   `{"ok":true,"resetCount":N}`, danach `CLOSED`.
+5. **Der Sidecar-Rueckfallweg hat eine eigene Skill-Datei:** routet eine
+   `claude`-Verbindung nach 429 auf `127.0.0.1:8317` (CLIProxyAPI) und der Port
+   ist zu, ist das ein fehlender eingebetteter Dienst, kein Provider-Ausfall —
+   Zustand, Installation und Lebenszyklus per API:
+   `references/embedded-services.md`.
+
 ## Betrieb: starten, pruefen, Varianten unterscheiden
 
 - **Zwei Varianten, nie beide gleichzeitig**: der Quell-Klon
@@ -150,8 +218,55 @@ Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
   quota headroom“. Vor jeder Provider-Diagnose pruefen, ob der Proxy-Port
   wirklich lauscht — und den Port tot nennen, nicht den Anbieter.
 
+## MCP-Server und CLI
+
+- **Der MCP-Server ist standardmaessig DEAKTIVIERT** (`enabled=false`,
+  `online=false`). Die REST-Endpunkte `/api/mcp/tools` und `/api/mcp/status`
+  antworten trotzdem 200 (reine Katalog-/Status-Reads), aber echte MCP-Tool-
+  Aufrufe (`memory_add`, `skill_list`, `omniroute_best_combo_for_task`,
+  `combo suggest`) liefern **503 "MCP server is disabled"**.
+- **Aktivieren ist scriptbar, nicht nur ueber das Dashboard**: `PATCH
+  /api/settings` mit `{"mcpEnabled": true}` (Auth-Key aus
+  `HERMES_CUSTOM_127_0_0_1_20128_API_KEY`). Danach den Transport auf
+  `streamable-http` stellen (`{"mcpTransport": "streamable-http"}`) — der
+  Default `stdio` braucht einen externen Client-Prozess und bleibt `online:
+  false`, waehrend HTTP lazy im Serverprozess startet. Zustand pruefen mit
+  `GET /api/mcp/status` (muss `enabled:true, online:true,
+  httpTransport.online:true` zeigen).
+- **MCP-Tools ueber streamable HTTP aufrufen**: `POST /api/mcp/stream` mit
+  `Accept: application/json, text/event-stream` (fehlt der SSE-Accept, kommt
+  400 "Not Acceptable"). Der `initialize`-Response traegt die `Mcp-Session-Id`
+  im Header — die muss jeder Folge-Request als `Mcp-Session-Id`-Header
+  mitsenden, sonst 400. Antworten kommen als SSE (`data: {...}`-Zeilen), nicht
+  als reines JSON. Fertiges Skript: `Agenten/Hermes/scripts/omni_mcp_call.py`
+  (initialize + Session-Handling + tools/call).
+- **Tool-Namen weichen von der Skill-Doku ab**: Memory heisst
+  `omniroute_memory_search`/`_add`/`_clear` (nicht `memory_add`), Skills
+  `omniroute_skills_list`/`_enable`/`_execute`/`_executions` (nicht
+  `skill_list`). Die 110 Tools ueber `tools/list` auflisten statt aus der Doku
+  abschreiben; `omniroute_agent_skills_*` und `omniroute_github_skills_*`
+  existieren zusaetzlich.
+- **Der lokale Server lauscht auf HTTP, nicht HTTPS** — `http://localhost:20128`,
+  nicht `https://`. Skill-Beispiele mit `https://` scheitern mit curl exit 35
+  (SSL connect error).
+- **CLI-Subkommandos fuer Routing/Memory/Skills**: `omniroute combo list`
+  (Combos + `isActive`-Flag, Modellliste unter dem Schluessel `models`),
+  `combo suggest --task "..."` (AI-Scoring, braucht den MCP-Server),
+  `simulate "<prompt>"` (Trockenlauf-Routing ohne Upstream-Aufruf),
+  `memory list`, `skills list`, `mcp status|restart`. `mcp call <tool>` ist in
+  der installierten Version exit 127 (nicht implementiert) — MCP-Tools stattdessen
+  ueber den HTTP-Pfad (omni_mcp_call.py).
+- **Auth-Key fuer die REST-/MCP-API**: `HERMES_CUSTOM_127_0_0_1_20128_API_KEY`
+  in `Agenten/Hermes/.env` — in eine Variable laden, nie ausgeben.
+
 ## Pitfalls
 
+- **Die omniroute-CLI schreibt ihre Env-Warnungen auf STDOUT, nicht stderr.**
+  `omniroute ... --output json | python -c json.load` scheitert, solange die
+  Zeilen "📋 Loaded env" / "⚠ ... is ignored" vor dem JSON stehen. Fix:
+  `tail -n +4` (die ersten 3 Zeilen sind Env-Noise) oder nur Zeilen ab `{`
+  filtern. Nie `grep -v '^  '` verwenden — das entfernt auch die eingerueckten
+  JSON-Zeilen und macht die Ausgabe leer.
 - **GGUF-Modellnamen (Q4_K_M, Q8_0, ...) sind lokale Namen.** Als Default in
   einer Client-Config landen sie als 403/402-Sackgassen, weil der Router ein
   bezahltes Pendant probiert (Fall: `Qwen3.6-35B-A3B-UD-Q4_K_M` -> OpenRouter

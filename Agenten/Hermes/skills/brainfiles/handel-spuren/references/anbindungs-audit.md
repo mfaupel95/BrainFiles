@@ -127,3 +127,26 @@ die gar nicht live handeln kann.
   gestartete Datei ihren EIGENEN Namen uebergibt und spur_buch.py
   `ereignis.lauf` traegt. Eine solche Spur ohne eigenen Bus-Aufruf ist trotzdem
   angebunden; nicht als „ohne Anbindung“ melden, solange diese Bedingung gilt.
+
+## Werkzeuge: Stand aller Spuren und Sperrgruende in einem Aufruf
+
+Statt die Verdrahtungsstellen von Hand gegeneinander zu halten (aus
+`Agenten/Handel/`, rein lesend, kein Fenster, keine Order):
+
+- `python spuren_stand.py` — eine Tabelle ueber ALLE Spuren aus
+  `dauerlauf.SPUREN`: `handel_erlaubt`, Herzschlag-Grenze, Fensterzustand,
+  `freigabe.erfuellt`, gefundener Orderaufruf, Buchgroesse je Zustandsdatei,
+  Alter des letzten Zyklus im Log. Beantwortet „was laeuft, was darf, woran
+  haengt es" in einem Bild.
+- `python sperrgruende.py` — faehrt je Spur ihre EIGENE `--vorschau` und zeigt
+  die Gruende, markiert „NUR das Fenster - der Dauerlauf fragt hier nach
+  Freigabe". Das ist die VORHERSAGE, ob eine Spur scharf geht (Regel in
+  `live-schalten.md`: genau ein Grund, darin das Wort „Freigabefenster") — nicht
+  aus Schaltern und Guthaben schliessen.
+
+**Eine Heuristik-Spalte ist ein Hinweis, kein Befund.** Die Order-Spalte sucht
+Order-Endpunkte im Spurordner (`/api/v5/trade/order`, `AddOrder`, ...) und
+UEBERSIEHT Spuren, deren Orderweg in einem Boersenmodul liegt (`okxf.py`,
+`kraken.py`, ein Adapter wie `kraken_spot.py`) — live-faehige Spuren standen so
+als „keiner" in der Tabelle. Fuer die Wahrheit `sperren_live()` der Spur lesen
+oder nach dem Aufruf greppen; nie anhand der Spalte entscheiden.

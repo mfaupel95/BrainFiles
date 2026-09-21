@@ -53,6 +53,60 @@ Setzen in `wachen.json` ist eine eigene Entscheidung des Nutzers, und eine
    Wachen-Werte und der ehrliche Vorbehalt. Unangetastet lassen: die Wachen der
    Spur, laufende Prozesse, fremde Dateien im Arbeitsbaum.
 
+## Was eine Spur an Kosten traegt (Kosten-Wendepunkt)
+
+Jede Auswertung endet mit der Frage, wie viel Gebuehr das Buch ueberhaupt traegt
+- mehrere Spuren sind nur wegen einer Gebuehrenbefreiung (Abo, Pro-Tarif) positiv.
+Die Rechnung ist eine Zeile und gehoert in jeden Bericht:
+
+```
+EV je Runde      = p*(C - f) - (1-p)*(R + f)
+=> f_max         = p*C - (1-p)*R        # Gebuehr je Runde, ab der nur die Nullinie bleibt
+```
+
+R = mittlerer Stop-Abstand (Einstieg -> Stop) in Prozent, C = mittlerer
+Ziel-Abstand, p = gemessene Trefferquote, f = Gebuehr JE RUNDE (Kauf + Verkauf).
+Werkzeug: `Agenten/Handel/kosten_wendepunkt.py` (rein lesend) - **je JOURNAL eine
+Zeile**, nicht je Ordner (ein Ordner fuehrt Basis/Mittel/knapp/weit/futures, ein
+Sammel-glob zaehlt dasselbe Buch mehrfach), und umskalierte Altbestaende
+(`*.falsch-skaliert-*`) nie mitzaehlen. Unter 8 Runden ist f_max ein Befund,
+keine Messung.
+
+Lesart: `f_max` deutlich unter der naechsten realistischen Runde (0,4 % fuer
+Kauf+Verkauf ohne Abo) heisst, die Spur steht nur auf der Gebuehrenfreiheit -
+das ausdruecklich sagen, denn sie kippt, sobald das Abo endet.
+
+## Eine Spur OHNE geschlossene Runden beurteilen
+
+Ausloeser: "analysiere Spur X", und im Journal stehen nur `zyklus`-Zeilen. Dann
+ist keine Trefferquote, kein EV und kein Verdikt moeglich — aber sehr wohl eine
+Aussage. Diese vier Schritte statt einer erfundenen Kennzahl:
+
+1. **Bestand zaehlen, nicht Runden.** Je Buch (`zustand*.json`, je Risikostufe eine)
+   Zahl der offenen Positionen, Summe des Einsatzes und den **unrealisierten** G/V
+   ausweisen. Ein Buch mit `n` Einstiegen und 0 Ausstiegen liefert nur eine Aussage
+   ueber den offenen Bestand — das ausdruecklich sagen.
+2. **Die Entscheidung mit der REINEN Funktion nachrechnen, nie mit dem Schreibpfad.**
+   Die Ausstiegslogik liegt als reine Funktion vor (hier
+   `trailing_stop_strategie.ausstiegsgrund(p, kurs, jetzt, w)`, daneben
+   `stop_preis_fuer`, `verkaeuflich`). Auf **Kopien** der Positionen aufrufen
+   (`copy.deepcopy`) — die Funktion schreibt in das uebergebene dict
+   (`hoechster_kurs`-Maximum) — und NIE `handeln.py --vorschau` als Probe nehmen:
+   der Ausstiegspfad schreibt beim Erkennen sofort Journalzeilen und bucht die
+   Position aus. Der Import braucht das venv der Spur (`nautilus_trader` steht im
+   Kopf des Moduls) — sonst `ModuleNotFoundError` auf den ersten Import.
+3. **Erreichbarkeit der Ausstiegsgeometrie pruefen — der billigste, schaerfste Befund.**
+   Den seit Einstieg beobachteten Hoechststand gegen die Trailing-Aktivierung
+   halten: +30 % Aktivierung bei beobachtetem Peak +8,5 % heisst Faktor 3,5 zu weit —
+   das Trailing greift NIE, wirksamer Ausstieg ist allein die Frist. Damit ist die
+   Spur faktisch "N Tage halten" und misst das nicht, was auf dem Etikett steht. Diese
+   Rechnung gehoert in jeden Bericht ueber eine Spur mit Stop/Trailing — sie ist in
+   Minuten zu machen und entscheidet ueber den Wert der ganzen Spur.
+4. **Doppelte Arme sind EINE Wette, nicht Diversifikation.** Mehrere Arme mit
+   derselben Signalquelle und demselben Instrument (oder Index-Abbildern davon) zu
+   denselben Minuten: die Anzahl unabhaengiger Positionen ist EINS. Das im Bericht
+   sagen, sonst liest der Leser vier Bestaetigungen, wo eine steht.
+
 ## Nicht rueckwirkend pruefbar
 
 - **Ausstiegsgeometrie** (Stop-Hoehe, Trailing-Aktivierung): braucht die
@@ -68,6 +122,22 @@ Setzen in `wachen.json` ist eine eigene Entscheidung des Nutzers, und eine
   Paritaet und Verdikt nur aus EINEM Lauf berichten.
 - **Kosten dominieren das Ergebnis.** Oe vor und nach Kosten getrennt ausweisen:
   eine Filteraenderung kann in Wahrheit eine Slippage-Korrektur sein.
+- **Zwangsschluesse sind keine Runden - in JEDEM Werkzeug, das Runden zaehlt.**
+  Ein Ausstieg mit `herzschlag`/`zwangsschluss`/`notaus`/`buchbereinigung` im
+  Grund ist die Folge eines Ausfalls oder einer Buchkorrektur, keine
+  Handelsentscheidung; sie sitzen meist im Verlust und machen die Trefferquote
+  kuenstlich schlecht. Die EINE Fassung ist `Agenten/Handel/stoerungen.py`
+  (`ist_stoerung(grund)`, `teile_runden`). Wer ein neues Auswertungsskript baut,
+  muss sie aufrufen - `auswertung_alle.py` tut es, eine eigene Neuentwicklung
+  vergisst es gern und liefert dann ein falsches Verdikt. Gegenprobe: sind ALLE
+  Ausstiege einer Spur Zwangsschluesse, hat die Spur **gar keine Messung** -
+  das sagen, statt aus Fremdschliessen eine Quote zu erfinden.
+- **Ein fehlendes Journal ist nicht automatisch ein Betriebsfehler.** Viele
+  Spuren schreiben NUR Handelszeilen (kein Zyklus-Eintrag): ohne Signal gibt es
+  keine Datei, und das ist der Normalfall. Zwei Faelle trennen - die Spur laeuft
+  (Zustand heute/gestern angefasst) = "wartet auf das erste Signal"; die Spur
+  laeuft auch nicht (Zustand alt/leer) = echter Fehler. Wer beides in einen Topf
+  wirft, meldet einen Defekt, wo nur Ruhe ist.
 - **Tests schreiben nur in Tempdateien** und belegen das mit einem Modulwaechter
   (Dateiliste + Groessen der Spurenordner vor/nach vergleichen). Ein Test, der
   ins echte Journal schreibt, verfaelscht das Buch - und faellt danach niemandem auf.

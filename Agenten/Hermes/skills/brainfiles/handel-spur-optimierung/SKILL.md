@@ -51,10 +51,17 @@ an Spuren.
    „nicht entschieden" ist das ehrliche Ergebnis kleiner Buecher (unter 30
    Ausstiegen je Haelfte) — dort wird KEIN Verdikt erfunden. Junge Spuren
    liefern genau das; so stehen lassen.
-7. **Kosten dominieren.** Bei 3–5 % Slippage je Seite liegt das Ergebnis VOR
-   Kosten oft nahe Null und NACH Kosten deutlich negativ. Eine Regel, die nur
-   vor Kosten traegt, ist kein Vorschlag, sondern eine Slippage-Korrektur — als
-   solche benennen.
+7. **Kosten dominieren — und die Kosten selbst sind erst eine Annahme.** Bei
+   3–5 % Slippage je Seite liegt das Ergebnis VOR Kosten oft nahe Null und NACH
+   Kosten deutlich negativ: dann beherrscht die Annahme das Urteil, nicht der
+   Markt. Eine Regel, die nur vor Kosten traegt, ist kein Vorschlag, sondern
+   eine Slippage-Korrektur — als solche benennen. Bevor eine
+   Ausstiegsgeometrie gegeneinander antritt, wird die Annahme GEMESSEN
+   (Ordergroesse gegen echte Pool-Tiefe, mehrere Groessen, Median und
+   Perzentile) — Verfahren, Formel und die drei Fallen unter
+   `references/kosten-slippage.md`. Passt die Annahme nicht zum Median, aendert
+   das nicht das Vorzeichen des Urteils, aber die Aussage „wie schlimm"; das
+   getrennt sagen, statt die alte Zahl weiterzutragen.
 8. **Design-Gate.** Erst Design, dann Code (Skills `brainstorming`, danach
    `writing-plans`): Messung zeigen -> 2–3 Wege mit Abwaegung und EINER
    Empfehlung -> genau EINE Frage -> Spezifikation nach
@@ -113,6 +120,20 @@ Waechter-Cron bis zur Schwele — vollstaendiger Ablauf in
 - **Die Zeilenenden der .gitignore aus den Rohbytes ableiten** und mit demselben
   Terminator anhaengen; danach `git diff --numstat` pruefen (eine gewollte Zeile
   = `1 1`).
+- **Eine Ausstiegsschwelle muss im Haltefenster ERREICHBAR sein — vorher messen.**
+  Steht die Trailing-Aktivierung bei +30 %, die Frist bei 168 h, und der hoechste
+  Stand des Instruments nach sechs Tagen bei +8,5 %, dann hat das Trailing nie
+  gegriffen: der Ausstieg ist die Frist, und gemessen wird „X Tage halten" statt
+  der Ausstiegsregel. Die Aktivierung aus dem INSTRUMENT ableiten (Peak ueber das
+  Haltefenster der laufenden Positionen), nie aus Stop oder Wunschdenken — sonst
+  ist die Regel nicht falsch, sondern nur unerreichbar. Gilt verstaerkt, wenn die
+  Spur einen PROXY auf ein anderes Instrument bucht: dann zaehlt die Volatilitaet
+  des Proxy (z. B. BTC), nicht die des Signals (Token).
+- **Vier Positionen, die Minuten auseinander auf DEMSELBEN Instrument eroeffnet
+  wurden, sind EINE Wette.** Fuer jede Auswertung zaehlen sie als ein Datenpunkt;
+  als vier gelesen entsteht eine Schein-Stichprobe (gleichzeitige Korrelation,
+  zu kleine Streuung). Vor jeder Kennzahl pruefen, ob die Positionen unabhaengige
+  Einstiege sind oder ein Vorbild-Signal vervielfacht haben.
 
 ## Nachweis
 Ein Optimierungsauftrag ist fertig, wenn (a) die Messung mit Stichprobenzahlen
@@ -123,3 +144,4 @@ und einen sauberen Diff hat (`git diff --numstat`, gepusht), und (e) der
 naechste echte Dauerlauf-Zyklus die Wirkung zeigt.
 
 Regelkatalog, Werkzeugaufruf und Paritaetsprobe: `references/filter-studie.md`.
+Kostenschaetzung gegen echte Tiefe messen: `references/kosten-slippage.md`.

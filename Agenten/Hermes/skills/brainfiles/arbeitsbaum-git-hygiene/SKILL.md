@@ -48,8 +48,15 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    `30 0` = ein eingefuegter Abschnitt, `32 2` = Abschnitt plus zwei geaenderte
    Frontmatter-Zeilen. Gegenprobe: `git diff --numstat -- <datei>` muss die fremden
    Zeilen unveraendert weiter ausweisen. Text dabei binaer lesen und schreiben
-   (`read_bytes`/`write_bytes`) — `read_text()`/`write_text()` ohne `newline=""`
-   kippen eine CRLF-Datei auf LF, und der Diff zeigt danach die GANZE Datei.
+  (`read_bytes`/`write_bytes`) — `read_text()`/`write_text()` ohne `newline=""`
+  kippen das Zeilenende in BEIDE Richtungen (CRLF-Datei wird LF, LF-Datei wird
+  CRLF, weil `write_text` den Umbruch gegen `os.linesep` tauscht), und der Diff
+  zeigt danach die GANZE Datei. Nach JEDER Textaenderung `git diff --numstat`
+  JE Datei zaehlen; ist die ganze Datei umgekippt, das Zeilenende auf den
+  HEAD-Stand zuruecknormalisieren (`read_bytes().decode(...).replace(CRLF, LF)`
+  bzw. umgekehrt, dann `write_bytes`) statt den Churn zu committen — die
+  Semantik ist dann schon geprueft, `yaml.safe_load`/`json.load` beweist, dass
+  nur die Enden normalisiert wurden.
    **Der so gebaute Index wirkt nur bei `git commit` OHNE Pfadangabe.**
    `git commit -- <pfad>` committet den ARBEITSBAUM dieser Pfade (wie `git add <pfad>`
    plus Commit) und wirft den eigenen Index-Eintrag weg: die fremden Zeilen gehen mit
@@ -68,7 +75,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Fremd Gestagetes nie mitcommitten.
 5. **Ein Commit kann einen fremden, schon vorhandenen Commit vor sich haben.** Nach
    dem Push `git log --oneline -4` lesen und im Bericht nennen, was mitging, das nicht
-   aus dieser Sitzung stammt.
+   aus dieser Sitzung stammt. **Und der eigene, schon GESTAGTE Eintrag kann in einem
+   fremden Commit landen:** ein `git commit` der anderen Sitzung ohne Pfadangabe
+   committet den ganzen Index mit. Deshalb Index bauen und committen in DERSELBEN
+   Ausfuehrung, ohne Zeitfenster dazwischen — und danach `git show --stat HEAD` lesen:
+   traegt der neueste Commit eine fremde Nachricht und die eigene Datei, ist die
+   Aenderung inhaltlich da, aber falsch beschriftet; das im Bericht sagen, statt sie
+   ein zweites Mal zu committen (ein zweiter Commit derselben Zeile ist ein leerer
+   Diff und verwirrt mehr, als er klaert).
 6. **Eine fremde Aenderung, die einen Absturz oder Testfehlschlag verursacht, wird
    wie ein eigener Bug behandelt — nicht nur liegen gelassen.** Eine plausibel
    klingende Begruendung im Fremd-Commit ('X sollte nicht wie Y zaehlen') ist kein
@@ -99,6 +113,16 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  heute dazukam. Fremde Arbeit in einem Rueckstand ist kein Grund, sie liegen zu lassen,
  wenn der Nutzer den Stapel ausdruecklich freigibt — aber der Text muss die Herkunft
  nennen.
+ **Zeitgrenze und Urheber:** einen Stapel fremder Arbeit NICHT mit `git add -A`
+ einziehen, sondern aus `git status --porcelain` die Pfade sammeln und je Pfad die
+ mtime gegen eine Grenze halten (`time.time() - 20*60`): was juenger ist, gehoert
+ einer SITZUNG, DIE GERADE SCHREIBT — halb geschriebene Dateien gehen sonst mit.
+ Alles unter einem Junction-Ordner (`Werkstatt/` -> O:) bleibt draussen, das ist
+ Durchgangsware, kein Repo-Inhalt. Ist der Stapel vollstaendig fremd, ist EIN
+ Commit mit `--author="Andere Sitzung <fremd@local>"` und im Text die Herkunft
+ („nicht sicher zuzuordnen, mehrere Sitzungen parallel") die richtige Form;
+ gemischte Dateien (eigene + fremde Zeilen) gehen NICHT in diesen Comm
+ it — die eigene Zeile behaelt ihren eigenen Commit (Regel 3).
 
 ## Datei soll aus dem Verlauf verschwinden
 
@@ -153,14 +177,57 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
   Prozess laesst die Sperre stehen. Erst wenn der eigene Befehl ueber ~5 Minuten
   wiederholt daran scheitert, sie per `mv` zur Seite legen
   (`.git/index.lock.verwaist-<zeitstempel>`, nie loeschen — der Schritt muss umkehrbar
-  bleiben) und im Bericht sagen, dass eine parallele Sitzung aktiv war. Die Sperre
-  ist damit auch ein Messinstrument: sie zeigt an, dass parallel committet wird, also
-  direkt danach `git log --oneline -4` lesen und benennen, was mitging, das nicht aus
-  dieser Sitzung stammt.
+  bleiben) und im Bericht sagen, dass eine parallele Sitzung aktiv war. **Prozesse ansehen,
+ nicht nur die Uhr:** `git fsmonitor--daemon` laeuft dauerhaft und ist KEIN Commit —
+ eine `git.exe`-Liste voller fsmonitor-Zeilen beweist keine parallele Sitzung. Ein
+ echte Committer hat eine CreationDate in den letzten Sekunden und `add`/`commit`
+ in der Kommandozeile; fehlt beides und ist die Sperre 0 Byte und aelter als ein paar
+ Minuten, ist sie verwaist.
+ **Laufen dagegen viele `git.exe` (gemessen: 12) und haelt die Sperre ueber die
+ Wartezeit hinweg, ist die richtige Antwort NICHT das Umbenennen, sondern der
+ Abbruch:** die eigene Arbeit liegt vollstaendig und unversehrt auf der Platte,
+ nur uncommittet. Dann den Bericht als „gebaut und geprueft, Commit haengt an einer
+ fremden Git-Sperre" schreiben, die Sperre unangetastet lassen und den Commit in
+ einer spaeteren Runde nachziehen (oder dem Nutzer anbieten, ihn auszuloesen).
+ Kein force, kein `git commit --amend`, kein Wegwerfen der Aenderung, und den
+ Erfolg nicht als „fertig committet" melden, solange `git log` ihn nicht zeigt.
+ Die Sperre
+ ist damit auch ein Messinstrument: sie zeigt an, dass parallel committet wird, also
+ direkt danach `git log --oneline -4` lesen und benennen, was mitging, das nicht aus
+ dieser Sitzung stammt.
 - **Zeilenenden.** Versionierte Textdateien in BrainFiles sind teils CRLF (`.gitignore`
   LF, `config.yaml` CRLF, viele `SKILL.md` CRLF). Nach JEDER Textaenderung
   `git diff --numstat <pfad>` lesen: eine gewollte Zeile = 1/1. Zeigt der Diff die ganze
   Datei, `git checkout HEAD -- <pfad>` und byte-genau neu patchen — nicht committen.
+- **Ein Ganzdatei-Diff kommt nicht immer von den Zeilenenden — der INDEX kann stale sein.**
+  `git diff` vergleicht Arbeitsbaum gegen INDEX, nicht gegen HEAD. Liegt im Index noch eine
+  frueher gestagte Fassung (typisch nach einem abgebrochenen oder verweigerten Commit),
+  zeigt der Diff scheinbar die ganze Datei, waehrend der Arbeitsbaum in Ordnung ist. Vor
+  jeder Selbstheilung beide Seiten ansehen: `git diff --cached --numstat` (Index gegen HEAD)
+  und `git diff --numstat` (Arbeitsbaum gegen Index). Bringt `git reset -- <pfade>` die
+  kleinen Zahlen zurueck, war nur der Index stale — `reset` ohne `--hard` fasst den
+  Arbeitsbaum nicht an und ist damit auch im Mehrsitzungsbetrieb erlaubt.
+- **Eine `.bak-JJJJMMTT` ist der Stand IHRES Vorgangs, nicht der von HEAD.** Eine
+  gleichnamige Sicherung aus einer frueheren Runde zurueckzukopieren holt stilla alle
+  Aenderungen zurueck, die seither committet wurden (gemessen: eine Instrumentenliste und
+  eine ganze Wachen-Datei). Richtiger Rueckweg fuer "meine Zeilen raus": den Zieltext aus
+  `git show HEAD:<pfad>` nehmen und die gewollte Aenderung byte-genau einsetzen; die
+  Sicherung nur benutzen, wenn sie NACHWEISLICH der letzte Commit-Stand ist (Hash gegen
+  `git show HEAD:<pfad>` vergleichen). Und: in einem VERSCHACHTELTEN eigenen Repo
+  (`Agenten/Handel/nautilus/`) ist die Datei fuer BrainFiles ungetrackt — dort liefert
+  `git show HEAD:<pfad>` LEER, ohne Fehlermeldung: Rueckgriff auf `git -C <unterrepo> show
+  HEAD:<datei>` und den Commit auch dort machen. Leerer Treffer immer als Verdacht lesen,
+  nicht als "Datei ist leer".
+- **Beim Einfuegen in JSON/YAML nach dem Schreiben parsen lassen, und die Kommas mitdenken.**
+  Eine eingefuegte Zeile, deren Wert ein doppeltes Anfuehrungszeichen enthaelt, zerbricht die
+  Datei (`Expecting ',' delimiter` an der Folgezeile) — im Textwert einfache Anfuehrungszeichen
+  verwenden oder escapen. Und: eine neue Zeile hinter `"schluessel": false,` braucht genau
+  dann ein abschliessendes Komma, wenn die Ankerzeile eins hatte; fehlt es, ist das Objekt
+  ungueltig, steht aber optisch richtig da. Nach jedem Einfuegen `json.loads`/`yaml.safe_load`
+  auf die GESCHRIEBENE Datei (nicht auf den Text im Speicher) und die drei Zielwerte asserten.
+  **Eine schreibende Funktion nie als "Probe" gegen das ECHTE Ziel laufen lassen:** ein
+  Testaufruf am echten Buch schreibt Journalzeilen, auch wenn er nur pruefen sollte — Probe
+  gegen eine Kopie, sonst muss der Zustand von Hand nachgezogen werden.
 - **`patch` auf `Agenten/Hermes/config.yaml` ist gesperrt** („Refusing to write to Hermes
   config file"); dafuer `hermes config set`. Siehe `hermes-config-ops`.
 - **Ein `.bak-JJJJMMTT` ist nicht nur Sicherung, sondern der einzige Rueckweg**, wenn ein

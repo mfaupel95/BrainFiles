@@ -25,6 +25,11 @@ aus der awesome-trading-agents-Liste (okx/agent-trade-kit …).
 Fuer den Node/TypeScript-Weg (npm-Globalinstall, stdio-MCP-Handshake per
 Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
 
+Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
+(transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):
+`references/huggingface-modell-lokal.md` — venv, HF-Cache auf O:, Sonde mit
+eigenen Messwerten.
+
 ## Vorgehen
 
 1. **Erkunden:** README-Quickstart lesen (Einstiegspunkt, venv-Name —
@@ -202,3 +207,18 @@ Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
   Neustart nie (Modelle ist nur Gewichte, kein Programmordner); das Ziel
   der .lnk mit `Test-Path` gegen die echte Installation
   (`AppData\Local\Programs\Ollama\ollama app.exe`) pruefen.
+- **Herstellerzahlen sind keine Messung.** README-Latenzen ("33 ms auf einer
+  T4") und Benchmark-Genauigkeiten gelten fuer die Hardware und den Datensatz
+  des Autors. Vor jeder Empfehlung eine eigene Sonde laufen lassen und die
+  ZAHL dieser Maschine berichten (Ladezeit, ms je Aufruf und je Frage,
+  device) — mit einem Gegenbeispiel, dessen richtige Antwort man selbst
+  kennt. Ein Fremdmodell, das eine vorhandene Funktion ersetzen soll, wird
+  zuerst als ZWEITE Stimme neben die bestehende gehaengt (gleicher Vertrag,
+  gleiche Rueckgabe): erst wenn die Gegenprobe Gleichstand oder Vorteil
+  zeigt, wird umgestellt. Nie eine Schwelle oder ein Tor auf ein ungemessenes
+  Fremdmodell setzen.
+- **Modellgewichte gehoeren auf O:, nicht auf C:.** `HF_HOME` ist hier keine
+  Windows-Variable; ohne `HF_HOME=O:\Modelle` beim Aufruf landen die Gewichte
+  im Benutzerprofil auf der fast vollen C:-Platte. Welche Stelle im Cache die
+  echten Bytes haelt, steht in
+  `references/huggingface-modell-lokal.md`.

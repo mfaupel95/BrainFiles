@@ -267,6 +267,33 @@ Aufgabenplanung startet `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell
 (5.1). Was unter 7 parst und läuft, kann unter 5.1 scheitern — vor „fertig" das
 Skript oder wenigstens einen Trockenlauf unter der 5.1-Bahn laufen lassen.
 
+## Massenlaeufe und git: erst den Commit-Spielraum messen, dann auf den Host
+
+Massenlaeufe (viele `git`-Aufrufe, Subprozesse je Datei, Modellstarts) brechen im
+Kasten mit **`OSError: [WinError 1455] Die Auslagerungsdatei ist zu klein`** ab —
+oder MSYS meldet `fork: Resource temporarily unavailable` / `child_copy: cygheap
+read copy failed`. Das ist kein Skriptfehler und keine kaputte Shell: Windows kann
+den Speicher nicht mehr *zusagen* (Commit), weil viele Prozesse reserviert haben.
+
+- **Spielraum messen, nicht raten:** `$o = Get-CimInstance Win32_OperatingSystem;
+  '{0:N0} MB frei von {1:N0} MB' -f ($o.FreeVirtualMemory/1KB),
+  ($o.TotalVirtualMemorySize/1KB)`. Ein Modellstart braucht mehrere GB Spielraum;
+  unter ~2 GB freiem Commit scheitert er mit
+  `ggml_backend_cpu_buffer_type_alloc_buffer: failed to allocate buffer`.
+- **Der RAM ist die falsche Zahl.** 28 GB freier RAM und trotzdem kein Commit
+  ist der Normalfall — die Reservierungen zaehlen, nicht der belegte Speicher.
+- **Erster Verdaechtiger sind geleakte Kindprozesse desselben Programms**, nicht
+  der Massenlauf selbst: Prozesse nach dem Kommandozeilen-MUSTER des Kindes
+  gruppieren (nicht nach Namen) und die Generationen zaehlen. Erwartet ist EINE
+  Generation je laufendem Zyklus.
+- **Ausweg:** denselben Lauf ueber `mcp__windows_mcp__PowerShell` auf dem Host
+  fahren (eigener Prozessbaum, eigener Adressraum) und danach dieselbe Messung
+  wiederholen. Das ist die Regel fuer alles, was viele Kindprozesse startet:
+  der Kasten ist fuer Einzelabfragen da, nicht fuer Flottenlaeufe.
+- **Ein abgebrochener `git commit` ist kein Datenverlust.** Erneut versuchen —
+  `git status` zeigt danach den echten Stand; ein `index.lock` mit falschem Alter
+  stammt aus dem Abbruch und wird umbenannt, nicht geloescht.
+
 ## Prozess-Befunde: erst die eigene Kette, dann Urteile
 
 - **Vor jedem Beenden von Prozessen die EIGENE Kette lesen.** Von `$PID`

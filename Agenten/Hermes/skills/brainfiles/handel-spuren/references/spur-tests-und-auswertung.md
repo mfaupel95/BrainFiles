@@ -105,6 +105,48 @@ Muster fuer den Test: `Agenten/Handel/tests/test_indikator_auswertung.py` —
 synthetisches Journal schreiben, per `csv.DictReader` einlesen, `runden_*` direkt
 aufrufen (kein Netz, kein Lauf, kein Schreiben in echte Pfade).
 
+## Was eine Kennzahl tragen muss: die Gebuehren-Grenze
+
+Eine Trefferquote ohne die Gebuehr sagt nichts. `Agenten/Handel/kosten_wendepunkt.py`
+rechnet je Buch die Gebuehr, ab der die Spur nur noch die Nullinie trifft:
+
+    f_max = p*C - (1-p)*R
+
+R = mittlerer Abstand Einstieg→Stop, C = mittlerer Abstand Einstieg→Ziel,
+p = gemessene Trefferquote, f = Gebuehr JE RUNDE (Kauf + Verkauf, in Prozent des
+Einsatzes). Drei Regeln, die dabei gelten:
+
+- **Zwangsschluesse zuerst ausschliessen — in JEDEM Zaehlwerkzeug.** Runden zaehlen
+  heisst: `stoerungen.ist_stoerung(grund)` fragen (Waechter-Reaktionen UND
+  Buchhaltungs-Korrekturen), genau wie `auswertung_alle.kennzahlen` es tut. Ein
+  Zwangsschluss sitzt meist im Verlust und macht die Trefferquote kuenstlich schlecht:
+  gemessen an einer Spur, deren acht Buchzeilen ALLE `herzschlag` trugen — sie stand
+  damit als „8 Runden, 25 % Treffer, nicht tragfaehig“ in der Tabelle und in einer
+  Notiz, obwohl sie gar keine Messung hatte. Neue Auswertungen immer gegen ein Buch
+  pruefen, das nur Zwangsschluesse enthaelt: dort muss „keine messbare Runde“ stehen.
+- **Je JOURNAL zaehlen, nicht je Ordner.** Ein Spurenordner fuehrt mehrere Buecher
+  (Basis/Mittel, knapp/weit, futures); ein Sammel-glob ueber
+  `handelsjournal*.csv` zaehlt dasselbe Buch mehrfach und mischt Varianten.
+  Umskalierte Altbestaende (`.falsch-skaliert-*`) gehoeren in KEINE Kennzahl.
+- **Unter 8 Runden ist die Zahl ein Befund, keine Messung** — dieselbe Schwelle
+  wie in der Uebersicht, und der Grund, warum ein „100 % Treffer“ aus zwei
+  Runden nichts ueber die Spur sagt.
+- **Runden sind nur so gut wie ihre Risikobreite.** Ein Buch mit ~0,5 % breiten
+  Runden kann nur ohne Gebuehr bestehen (0,4 % Runde = fuenfmal der Vorteil);
+  steht die Gebuehr nicht in der `wachen.json`, ist sie 0 und die Spur rechnet
+  zu freundlich. Faellt ein Gebuehrenrabatt weg, zuerst diesen Wert zuruecknehmen
+  — nicht die Trefferquote neu deuten.
+
+## „Kein Journal“ ist zuerst ein WARTEN, kein Fehler
+
+Mehrere Spurvorlagen schreiben **nur Handelszeilen**, keine Zykluszeile (das
+Spur-Buch ebenso: `spur_buch.zyklus` journalt erst beim Einstieg). Ein fehlendes
+Journal heisst dort „hat noch nichts gekauft“ — erst wenn die Spur AUCH nicht
+mehr laeuft, ist es ein Betriebsfehler. Die Auswertung unterscheidet das an der
+Aenderungszeit von `zustand.json` (heute/gestern = laeuft) und meldet die Faelle
+getrennt; eine Sammelmeldung „Betriebsfehler“ fuer eine wartende Spur schickt die
+naechste Sitzung auf eine falsche Fehlersuche.
+
 ## Die Uhr im Test: fester Bezugspunkt nur, wo er auch ankommt
 
 Ein Test mit festem `JETZT` ist nur an seinem eigenen Tag gruen. Zwei Faelle

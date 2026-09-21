@@ -358,6 +358,43 @@ keine Reserve.** Faellt dieser Dienst aus, scheitert der erste Eintrag genauso, 
 der zweite entscheidet den Fehlertext. Reserve ist nur, was auf einen ANDEREN
 erreichbaren Dienst zeigt — sonst lieber ehrlich gar keine Kette (die Fehlermeldung des
 Primaerpfads ist dann sichtbar).
+- **Ein Profil kann die Kette NUR unter `delegation:` tragen — dann hat es gar keine.**
+Ein `fallback_providers:` mit Einrueckung (typisch unter `delegation:`) ist die
+Subagenten-Kette und keine Reserve fuer den Hauptlauf. Erst `grep -n "^fallback_providers:"`
+(Spalte 0!) entscheidet, ob die Wurzel-Kette existiert; `grep -l fallback` findet beide
+Formen und taugt nicht als Beleg. Fehlt sie, den Block vor einem Wurzel-Schluessel
+einfuegen — und den RICHTIGEN waehlen: nicht jedes Profil hat `toolsets:` (ein
+Wartungsprofil hatte nur `providers/terminal/model/plugins`), also den ersten
+vorhandenen Wurzel-Schluessel nehmen und vorher per Byte-Vergleich zeigen, dass nur
+der Block dazukam.
+- **Der Eintrag braucht den Provider-Block IM Profil.** Ein Bot-Profil, das
+`providers.<name>` nicht kennt (frisch angelegte Profile haben nur `omniroute`), kann
+den Namen nicht aufloesen — den Block (api/base_url/model/name) mit einsetzen, sonst
+zeigt die Kette auf einen Namen, den nur andere Profile kennen.
+- **Eine lokale Reserve gehoert als ERSTER Eintrag in die Kette, die alten bleiben dahinter.**
+Der Zweck ist, den Ausfall des Primärpfads ohne fremde Abhaengigkeit zu ueberbruecken — steht
+die lokale Adresse hinten, entscheidet zuerst der (moeglicherweise genauso tote) Cloud-Eintrag
+davor. Praktisch: den `fallback_providers:`-Block der Profil-Config ersetzen (Zeile in Spalte 0
+plus eingerueckte Folgezeilen), die vorhandenen Eintraege unveraendert dahinter wieder einsetzen,
+neuen Block vor dem Schreiben mit `yaml.safe_load` parsen und `rest == vorher` ausserhalb des
+Blocks asserten. Danach **je Profil** `hermes -p <name> fallback list` lesen (nicht nur die
+Datei): die Ausgabe nennt `Primary:` und die numerierte Kette — nur sie zeigt, was gilt, und
+nur so faellt auf, wenn ein Profil gar keine Wurzel-Kette hatte.
+- **Der lokale Rueckfall traegt nur bei freiem Commit.** Ein Profil mit gesetzter Kette ist noch
+kein Nachweis: das Modell muss laden, und ein Modelllader scheitert an einer erschoepften
+Commit-Grenze auch bei reichlich freiem RAM (Symptomkatalog und Messbefehle:
+`dauerprozess-bewachen`, `references/massenprozesse-und-commit-limit.md`). Nach dem Setzen den
+Endpunkt einmal wirklich rufen (`POST <base_url>/chat/completions`) — nicht nur die Config lesen.
+- **Eine konfigurierte Kette ist kein Beleg — das Modell muss LADEN.** Nach dem Setzen
+nicht nur `hermes fallback list` lesen, sondern den Endpunkt wirklich rufen
+(`POST <base_url>/chat/completions` mit dem eingetragenen Modellnamen; ein leeres
+`content` bei gesetztem `reasoning` ist normal, solange die Antwort kommt). Schlaegt
+der Modellstart fehl, ist die Ursache oft NICHT der Speicher des Modells: zuerst das
+COMMIT-Limit pruefen (`Win32_OperatingSystem.FreeVirtualMemory` gegen
+`TotalVirtualMemorySize`) — bei reichlich freiem RAM kann das Commit trotzdem fast
+aufgebraucht sein (viele Prozesse reservieren), und dann scheitert jede
+Puffer-Anforderung des Laders unabhaengig von der Modellgroesse. Erst danach ueber
+Modellwahl oder Ollama-Einstellungen nachdenken.
 - **Massenänderung ueber viele Profile: Trockenlauf ist der Standard.** Ein Werkzeug fuer
 solche Aenderungen zeigt ohne Argument, was es taete, schreibt nur mit `--anwenden`, legt
 je Profil `.bak-JJJJMMTT` an und nimmt mit `--zuruecknehmen` zurueck; es nennt je
@@ -365,6 +402,50 @@ uebersprungenes Profil den GRUND (eigene Anmeldung, lokaler Provider, schon umge
 und ist idempotent, damit ein Abbruch mittendrin einfach neu gestartet werden kann.
 Muster: `Agenten/Hermes/scripts/bot-modell-auf-router.py` und
 `profil-kanaele-bereinigen.py`.
+
+## Das Hauptmodell auf einen anderen Provider umstellen
+
+Gilt fuer den `model:`-Block — also fuer den Hauptlauf. **Es gibt keinen
+Modell-Schalter je Plattform:** Gateway, A2A-Bruecke und der SkillsBot bedienen
+alle das `default`-Profil und lesen genau diesen Block. Ein A2A-`served_agents`-
+Eintrag (Adapter `_load_served_agents`, `platforms.a2a.extra.agents`) kann nur ein
+anderes PROFIL bedienen, und ein frisches Profil ist eine Insel ohne die
+Haus-Skills. Wer „nur den Bot" umstellen will, muss das wissen, bevor er schreibt —
+sonst behauptet er eine Trennung, die es nicht gibt.
+
+1. **Den Zielprovider zuerst finden, nicht erfinden.** Ein Block unter `providers:`,
+   den nichts referenziert, ist tote Konfiguration — aber oft genau der gemeinte
+   (`providers.<name>.models.<modell>.context_length` nennt die erwartete
+   Fenstergroesse). Vor dem Setzen die Live-Metadaten des Dienstes holen
+   (`curl -s <base_url>/models`, bzw. `/api/tags` bei Ollama) und die Zahl gegen die
+   Anforderung halten: was der Dienst meldet, gilt, nicht was in der Config steht.
+2. `hermes config set model.provider <neu>` und `model.default <modell>`, dann
+   `model.base_url` explizit auf den Endpunkt des neuen Providers. Der Providerwechsel
+   **leert `model.base_url` und `model.api_mode` von selbst** und sagt das in der
+   Ausgabe („that route belonged to <altersprovider>") — diese Zeile lesen, nicht
+   ueberfliegen: ohne neu gesetztes `base_url` zeigt der Aufruf ins Leere.
+   Bei einem selbst benannten Provider zusaetzlich `providers.<name>.base_url` und
+   `providers.<name>.api_mode` setzen (die `api:`-Zeile allein reicht nicht).
+3. **Reserve dahinter, nicht davor.** Den lokalen Eintrag als LETZTES Glied der
+   `fallback_providers`-Kette eintragen (siehe Abschnitt oben) und den Cloud-Eintrag
+   davor lassen: der lokale Zweig soll den Ausfall ueberbruecken, nicht den
+   Normalbetrieb tragen.
+4. **Ein selbst benannter Provider erscheint im Protokoll als `provider=custom`.**
+   Das ist kein Widerspruch und kein Beleg gegen die Umstellung — nur die
+   `model=`-Angabe zaehlt hier.
+
+**Beweis am lebenden Dienst, ohne Neustart** (gilt fuer jede Oberflaeche, die ueber
+den Gateway laeuft): eine Nachricht ueber den A2A-Endpunkt schicken und danach die
+Logzeile lesen, die Modell und Provider nennt —
+
+      curl -s http://127.0.0.1:9900/ -H "Authorization: Bearer <A2A-Token>" -H 'Content-Type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"SendMessage","params":{"message":{"messageId":"m1","role":"ROLE_USER","parts":[{"text":"Antworte nur mit PONG"}]}}}'
+      grep -oE "model=[^ ]+ provider=[^ ]+ .*platform=a2a" logs/agent.log | tail -3
+
+Die Zeile muss das neue Modell UND `platform=a2a` tragen; ein Werkzeugaufruf im
+selben Auftrag (z. B. `hostname`) belegt zusaetzlich, dass die Route auch
+Werkzeugschleifen faehrt, nicht nur Prosa. Danach ist auch der Bot-Weg bewiesen —
+kein Prozessneustart, kein „muesste jetzt greifen".
 
 ## Eine Config mit fremden Aenderungen zusammenfuehren
 
@@ -506,6 +587,18 @@ Router-Weg `bot-modell-auf-router.py`): erst Trockenlauf ohne Argument, dann
 `--anwenden`, `--zuruecknehmen` holt zurueck; je Profil `.bak-JJJJMMTT`; alle drei
 sind idempotent und nennen je uebersprungenem Profil den Grund.
 
+- **Ein Pruefwerkzeug kann den Block an der falschen Stelle suchen - Falschbefund.**
+  Der Flottenbericht las `provider`/`model` per Regex aus den ersten zwoelf Zeilen
+  der `config.yaml`. Bei einem Profil, dessen `providers:`-Block VOR dem
+  `model:`-Block steht (z. B. ein Wartungsprofil), meldete er „kein model-Block;
+  Provider ohne Block und ohne Zugangsdatei" - das Profil war gesund und
+  antwortete. Regel: `yaml.safe_load` zuerst, den `model:`-Block daraus nehmen,
+  das Zeilenmuster nur als Rueckfall fuer unlesbare Dateien. Und: **jeden Befund
+  erst am lebenden System nachstellen, dann „reparieren"** - ein echter Aufruf
+  des Profils kostet eine Minute und trennt einen Werkzeugfehler von einem
+  echten Ausfall. Ein Befund ohne Gegenprobe fuehrt sonst zu Reparaturen an
+  gesunden Dateien.
+
 Der Nachweis ist eine Leiter, keine Behauptung: `hermes profile list` mit 0
 Warnzeilen - Gegenprobe mit `--zuruecknehmen` (die Warnungen kehren zurueck) - ein
 echter Aufruf je Muster (vorher kaputt, wiederhergestellt, Sonderfall) -
@@ -567,6 +660,36 @@ Hausformat (CRLF) normalisieren; der `yaml.safe_load`-Vergleich beweist, dass
 nur die Enden normalisiert wurden, der Diff gegen die Sicherung zeigt genau
 die neuen Zeilen.
 
+### Ein Rollen-Bot, der nur verteilen soll (Verteil-/Dispatcher-Bot)
+
+Ein Profil, dessen Aufgabe „Auftrag verstehen, Ziel finden, delegieren" ist, krankt an
+einer Erwartung, die man leicht falsch aufschreibt: **eine SOUL-Regel wie „bearbeite
+den Auftrag NICHT selbst" erzwingt nichts.** Gemessen an einer klaren
+Aufgabenstellung („pruefe, ob die Repos aktuell sind") hat der Bot die Pruefung SELBST
+gefahren — mit einem kleinen Modell in 18 Werkzeugaufrufen, mit einem starken in 7; es
+aenderte sich nur die Zahl der Umwege. Zwei Konsequenzen:
+
+1. **Den Weg deterministisch machen, nicht die Absicht.** Ein Skript kapselt den
+   mechanischen Teil (`Agenten/Werkzeuge/<rolle>-route.py`): `--liste` (Ziele samt
+   Beschreibung aus `profiles/*/profile.yaml`, damit die Zielliste nicht abgetippt
+   wird), `--suche <wort>` (welche Ziele passen), `--an <ziel> "<auftrag>"` (startet
+   wirklich `hermes -p <ziel> chat -q`, entfernt `PYTHONHOME`/`PYTHONPATH`, setzt eine
+   Frist). In der SOUL genau diese drei Aufrufe als ERSTEN Schritt nennen. Damit ist
+   der Ausgang nachvollziehbar und wiederholbar, auch wenn das Modell umwege nimmt.
+2. **Nicht mehr versprechen als gemessen ist.** „Der Bot verteilt" ist erst wahr,
+   wenn ein Auftrag nachweislich bei einem anderen Profil ankam. Vorher ehrlich sagen:
+   er kennt die Rolle, arbeitet aber auch selbst. Die harte Durchsetzung waere ein
+   eingeschraenkter Werkzeugsatz — Hermes bietet dafuer heute keinen Config-Schluessel
+   (`tools` regelt die Werkzeugsuche, `toolsets` die Plugin-Sets), also nicht als
+   geloest darstellen.
+
+Dazu die Profil-Pflichten wie oben (frisches Profil = 45 Zeilen ohne `providers`/
+`terminal`, `profile.yaml` fehlt), `hermes profile describe <name> --text "<Satz>"`
+fuer `/bots` — und ein neues Werkzeugskript unter `Agenten/Werkzeuge/` in die
+`.gitignore`-Freigabeliste aufnehmen (`!Agenten/Werkzeuge/<datei>.py`): ohne die Zeile
+ist es beim naechsten `git status` unsichtbar (`git check-ignore -v <pfad>` zeigt `!!`)
+und wird nie versioniert.
+
 ## Einem Profil eine Modell-Anmeldung geben (Symlink, nicht Kopie)
 
 Ausloeser: "/bot NAME antwortet nicht", `hermes -p NAME chat -q ...` endet mit
@@ -584,16 +707,22 @@ Ein Symlink haelt EINEN Store, und genau dafuer hat Hermes die Sperre und die
 "Peer hat rotiert, uebernimm seinen Token"-Logik
 (`hermes_cli/auth.py::_nous_shared_store_lock`); `auth_oauth_grants.py` behandelt
 einen Symlink auf den Root-Store ausdruecklich als "kein Klon" und laesst ihn
-stehen. **Symlinks: PowerShell 7 nehmen, nicht 5.1.** Der Developer-Mode ist hier
-AN (`AllowDevelopmentWithoutDevLicense=1`), trotzdem scheitert PowerShell 5.1 mit
-`NewItemSymbolicLinkElevationRequired` ("Fuer diesen Vorgang sind
-Administratorrechte erforderlich"); der Ausweg `Start-Process powershell -Verb
-RunAs -Wait` endet mit "Der Vorgang wurde durch den Benutzer abgebrochen", wenn
-der UAC-Prompt nicht bestaetigt wird. **`pwsh` 7
-(`C:\Program Files\PowerShell\7\pwsh.exe`) legt den Symlink OHNE Erhoehung an**
-(gemessen 21.09.2026, Profil `easycliproxyapi`):
-`pwsh -NoProfile -Command "New-Item -ItemType SymbolicLink -Path <ziel> -Target <root>"`.
-Danach mit `os.path.islink()` gegenpruefen, nicht mit `os.path.exists()`. Fuer EIN
+stehen. **Symlinks: erst den direkten Versuch, dann die Leiter.** Ein Symlink braucht nicht
+per se Erhoehung: ein schlichtes
+`New-Item -ItemType SymbolicLink -Path <ziel> -Target <root>` ist hier mehrfach OHNE
+Admin durchgelaufen (Developer-Mode AN, `AllowDevelopmentWithoutDevLicense=1`),
+waehrend derselbe Aufruf in einer anderen Sitzung mit
+`NewItemSymbolicLinkElevationRequired` („Fuer diesen Vorgang sind
+Administratorrechte erforderlich") abbrach — die Anforderung haengt also am Kontext,
+nicht am Befehl. Reihenfolge, die keinen UAC-Klick kostet: (1) `New-Item
+-ItemType SymbolicLink` direkt; (2) falls es verweigert, `pwsh` 7
+(`C:\Program Files\PowerShell\7\pwsh.exe`)
+`-NoProfile -Command "New-Item -ItemType SymbolicLink -Path <ziel> -Target <root>"`;
+(3) erst dann das Hausskript erhoeht (UAC, `auth-verknuepfen.ps1` braucht `-Anwenden`,
+ein Aufruf ohne den Schalter ist ein TROCKENLAUF und legt nichts an). Danach mit
+`os.path.islink()` gegenpruefen, nicht mit `os.path.exists()`. **Ein Symlink ist keine
+Kopie** — die Begruendung oben gilt unveraendert; wo schon eine eigene `auth.json`
+liegt, nicht ueberschreiben. Fuer EIN
 Profil ist das der kuerzere Weg als das Skript samt UAC-Prompt. **`-PassThru` und
 `-RedirectStandardOutput` vertragen sich in PowerShell 5.1 NICHT mit `-Verb
 RunAs`** (AmbiguousParameterSet); das innere Skript schreibt sein Ergebnis
@@ -641,6 +770,23 @@ Nutzung bewiesen.
   Ueberschrift mit. Byte-genau per Skript schreiben (Bytes lesen, ersetzen,
   schreiben, `count == 1` asserten) und die geaenderte Stelle danach noch
   einmal lesen — ein gelungener Patch ist kein Beleg fuer sauberen Text.
+  **Es kippt ausserdem die Zeilenenden der Region, die es anfasst:** in einer Datei
+  mit GEMISCHTEN Enden (ein Teil LF, ein Teil CRLF — Normalfall bei einer Datei, die
+  eine andere Sitzung per `config set` angefasst hat) schreibt es den beruehrten
+  Abschnitt geschlossen auf CRLF, gemessen 64/61 an einer README, in der EINE Zeile
+  gemeint war. Deshalb `git diff --numstat` NACH JEDER EINZELNEN Aenderung lesen,
+  nicht erst am Ende eines Stapels: stimmt die Zahl nicht, `git show HEAD:<pfad> >
+  <pfad>` (nur wenn die Datei ausschliesslich die eigene Aenderung traegt) und mit
+  dem byte-genauen Skript neu setzen — danach muss die Zahl der Absicht entsprechen
+  (drei eingefuegte Zeilen = `3 0`).
+  **Der Skript-Weg selbst, damit keine Escape-Sequenz als echter Umbruch landet:**
+  den Text erst auf LF normalisieren (`raw.replace(b"\r\n", b"\n")`), das
+  Zeilenende der ANKERZEILE bestimmen (endet sie auf `\r\n`, dann dieses, sonst `\n`)
+  und beim Schreiben die neuen Zeilen mit genau diesem Ende setzen. Mehrere Zeilen
+  hinter einer Ankerzeile einhaengen heisst: Index der Marke suchen, dann das naechste
+  `\n` — den Anker NICHT mit einem Zeilenumbruch im Suchmuster schreiben (trifft sonst
+  nicht), und in der Datei selbst kein `\n` in einem String-Literal bilden, das als
+  Text gemeint ist.
 - **`bot-modell-auf-nous.py --auch-lokale` greift auch lokale Provider.** Ohne den
   Schalter bleiben `llamacpp`/`docker`/`ollama` stehen (Grund: sie brauchen keine
   Anmeldung). Beim Umstellen MUSS das lokale `model.base_url` (z. B.
@@ -814,7 +960,14 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   der falsche Fix — die Ziel-Fassung BYTE-genau aus `git show HEAD:<pfad>` bauen und nur
   den geaenderten Block ersetzen. `read_text()`/`write_text()` ohne `newline=""` drehen
   eine CRLF-Datei still auf LF (die selbst eingesetzten Zeilen behalten `\r\n`, die
-  gelesenen nicht) — der Diff zeigt danach die GANZE Datei. `Agenten/Hermes/scripts/bot-modell-auf-router.py`
+  gelesenen nicht) — der Diff zeigt danach die GANZE Datei. **Beide Richtungen sind
+  betroffen:** mit `newline=None` setzt Python beim Schreiben `os.linesep` ein, eine
+  LF-Datei wird also genauso auf CRLF gedreht (gemessen an Python-Dateien, die im Haus
+  LF fuehren). Wer eine Datei in Textmodus anfasst, erzeugt einen Ganzdatei-Diff, in
+  welche Richtung auch immer — Bytes lesen, Bytes schreiben, danach `git diff --numstat`
+  JE Datei gegen die erwartete Zeilenzahl halten; bei einem Werkzeug, das ganze
+  Ordnerbaeume umstellt, diesen Check fuer jede geaenderte Datei einzeln fahren, weil
+  eine Summe den Ausreisser verbirgt. `Agenten/Hermes/scripts/bot-modell-auf-router.py`
   arbeitet genau so und heilt den Kommentar-Schluss gleich mit.
 - **Nach einer Massenaenderung den Diff JE DATEI zaehlen, nicht die Summe.** Erwartet sind
   die Zeilen der gewollten Ersetzung (Beispiel `model`: 2 Einfuegungen/3 Loeschungen, weil
