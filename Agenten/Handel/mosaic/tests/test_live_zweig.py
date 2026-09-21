@@ -156,7 +156,7 @@ class _Basis(unittest.TestCase):
             "journal_zweitziel": r"Q:\Handel_Journal\mosaic",
             "drawdown_halbierung_usd": 20.0,
             "live_max_pro_trade_usd": 10.0, "live_max_offene_positionen": 5,
-            "live_max_gesamt_usd": 200.0, "mindest_guthaben_usdt": 30.0,
+            "live_max_gesamt_usd": 200.0, "mindest_guthaben_usdc": 30.0,
             "freigabe": {"erfuellt": True},
         }
         self._saved = (handeln.WACHEN, handeln.ZUSTAND, handeln.JOURNAL,

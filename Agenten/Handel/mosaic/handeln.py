@@ -95,7 +95,8 @@ op_verkauf = okx_spot.markt_verkauf
 op_stop = okx_spot.algo_stop_setzen
 op_stop_stornieren = okx_spot.algo_stornieren
 op_gefuellt = okx_spot.gefuellte_menge
-op_guthaben = okx_spot.guthaben_usdt
+# Freies Guthaben der Handelswaehrung (USDC seit 21.09.2026).
+op_guthaben = okx_spot.guthaben_waehrung
 live_kurs_quelle = okx_spot.letzter_kurs
 live_menge_fuer = okx_spot.menge_fuer
 
@@ -562,12 +563,13 @@ def live_sperren(w, s):
                  "Orders")
     if not sitzung_da():
         g.append("keine Sitzung am Bildschirm - Freigabefenster nicht moeglich")
-    noetig = w.get("mindest_guthaben_usdt", 0)
+    noetig = w.get("mindest_guthaben_usdc", 0)
     if noetig and okx_spot.schluessel_vorhanden():
         try:
             frei = op_guthaben()
             if frei < noetig:
-                g.append("nur %.2f USDT frei, noetig %.2f" % (frei, noetig))
+                g.append("nur %.2f %s frei, noetig %.2f"
+                         % (frei, w.get("guthaben_waehrung", "USDC"), noetig))
         except Exception as e:  # noqa: BLE001
             g.append("Guthaben nicht abrufbar (%s)" % e)
     return g
@@ -762,7 +764,7 @@ def live_einstiege(z, w, s):
             "eroeffnet_zeit": _jetzt(),
         })
         gebunden += betrag
-        print("  AUF %-9s @ %.6g Stop %.6g (-%.1f%%) Ziel %.6g  %.2f USDT%s"
+        print("  AUF %-9s @ %.6g Stop %.6g (-%.1f%%) Ziel %.6g  %.2f USDC%s"
               % (inst, kurs, stop, stop_pct, ziel, betrag,
                  "  [KEIN BOERSEN-STOP - unbewacht]" if algo_id is None else ""))
         journal(zeit=_jetzt(), modus="live", aktion="kauf", inst=inst,

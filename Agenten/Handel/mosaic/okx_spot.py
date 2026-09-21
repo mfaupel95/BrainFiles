@@ -8,8 +8,8 @@ Key aus Umgebung/Registry) in schlanker Form.
 
 SPOT- vs.-Futures-Unterschiede, die zaehlen:
   - tdMode ist immer "cash", nie isolated/cross. kein Hebel, keine posSide.
-  - Mengen sind Betraege der BASIS-Waehrung (BTC bei BTC-USDT), nicht
-    Kontrakte. Fuer einen 10-USDT-Kauf also menge = usdt / kurs, auf lotSz
+  - Mengen sind Betraege der BASIS-Waehrung (BTC bei BTC-USDC), nicht
+    Kontrakte. Fuer einen 10-USDC-Kauf also menge = usdc / kurs, auf lotSz
     abgerundet (Aufrunden ueberschreitet den Rahmen), minSz geprueft.
   - Ein Stop-Loss wird als Bedingte Order (ordType=conditional) an der Boerse
     gelegt und ueberlebt damit einen Neustart dieses Skripts - kein
@@ -192,11 +192,23 @@ def menge_fuer(inst, usdt, kurs):
 
 # --- signiert: Konto --------------------------------------------------------
 
-def guthaben_usdt():
-    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDT", signiert=True)
+def guthaben_waehrung(ccy="USDC"):
+    """Freies Guthaben einer Waehrung (availBal).
+
+    Standard ist USDC: die Mosaic-Spur handelt seit dem 21.09.2026 auf
+    USDC-Paaren (Max: "Auf okx usdc nehmen!") - vorher USDT, wovon im Konto
+    nichts frei lag, waehrend USDC reichlich vorhanden ist. Der Wert 0.0 ist
+    kein Fehler, sondern ein leeres Guthaben.
+    """
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=" + ccy, signiert=True)
     if not d or not d[0].get("details"):
         return 0.0
     return float(d[0]["details"][0].get("availBal") or 0.0)
+
+
+def guthaben_usdt():
+    """Altname - liefert dieselbe Zahl wie guthaben_waehrung()."""
+    return guthaben_waehrung()
 
 
 # --- signiert: Orders (bewegen Geld) ---------------------------------------
@@ -258,10 +270,10 @@ if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print("OKX-Spot-Modul. Kurse:")
-    for inst in ("BTC-USDT", "ETH-USDT", "SOL-USDT"):
+    for inst in ("BTC-USDC", "ETH-USDC", "SOL-USDC"):
         k = letzter_kurs(inst)
         m, f = menge_fuer(inst, 10.0, k)
-        print("  %-9s Kurs %-10.7g  10 USDT -> %.10g %s"
+        print("  %-9s Kurs %-10.7g  10 USDC -> %.10g %s"
               % (inst, k, m, ("[%s]" % f) if f else ""))
     print("  Schluessel gesetzt: %s  (Demo-Modus: %s)"
           % (schluessel_vorhanden(), demo_modus()))

@@ -165,3 +165,19 @@ Stufe A ist erst dann „gefechtsbereit", wenn ALL das echte Ergebnisse sind:
    ankommen.
 4. Stufe B (Freigabekriterien + Papierlauf bis 50 Runden) läuft parallel zum
    Bau — die echte Freischaltung kommt erst, wenn Bedingung 1 erfüllt ist.
+
+## Wechsel auf USDC (21.09.2026)
+
+Max: "Auf okx usdc nehmen!". Die Spur handelte gegen USDT-Paare, waehrend im
+OKX-Konto gar kein USDT lag - das Guthaben-Tor ("mindest_guthaben_usdt 30")
+war damit dauerhaft zu, obwohl 255 USDC frei lagen. Jetzt:
+
+- `instrumente`: BTC-USDC / ETH-USDC / SOL-USDC (dieselben Maerkte, andere
+  Quote-Waehrung; die Kerzen kommen aus demselben oeffentlichen Endpunkt),
+- `mindest_guthaben_usdc` 30.00 ersetzt `mindest_guthaben_usdt`,
+- `okx_spot.guthaben_waehrung(ccy)` mit Standard USDC; `guthaben_usdt()` bleibt
+  als Altname erhalten.
+
+Wirkung: das Guthaben-Tor ist offen (Vorschau: "Live waere gesperrt durch:
+nichts"), die Freigabekette bleibt unveraendert - ohne offenes Fenster laeuft
+die Spur Papier.
