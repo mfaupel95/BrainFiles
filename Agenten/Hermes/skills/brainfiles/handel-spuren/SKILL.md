@@ -39,6 +39,13 @@ Ausloeser → Referenz:
 - „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
+- **Buch und Boerse passen nicht zusammen** („die Spur zeigt Positionen, live ist
+  aber nur X da", „Order ging nicht durch", „Limit wartet", Position ohne
+  boersenseitigen Stop, Kill-Switch entsperren, Q: laeuft hinterher):
+  `references/live-order-und-buchpflege.md` — Order angenommen ist keine Fuellung,
+  ein Limit hinter dem Markt ist WARTEND statt fehlerhaft, Geisterpruefung erst
+  nach dem Orderzustand, ein Papierlauf schliesst keine echte Position, die
+  Spiegelung gehoert an den Zyklusanfang.
 - **"in meinem OKX sehe ich keine Order"**, Zweifel an einem echten Kauf — Order am
   Handelsplatz LESEND nachpruefen (`avgPx` gegen Bucheinstieg), Unterkonto-Falle,
   und die verbraucher-/erzeuger-Falle (gehandelt auf einer Datei, die niemand mehr
@@ -613,3 +620,13 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   ORB-Grundregel). Ausgelagert, weil SKILL.md sonst ueber das
   100.000-Zeichen-Limit laeuft und gar nicht mehr patchbar ist. Nur laden,
   wenn genau diese Spur ansteht.
+- `references/wartende-auftraege-belegen-platz.md` — ein Limit hinter dem Markt
+  ist noch keine Position, belegt aber einen Platz; sonst legt jeder Zyklus
+  nach (13 Dubletten an einem Abend). Plus: `_roh` serialisiert selbst,
+  "mehrfach gebucht" zuerst an `orders-pending` pruefen.
+- `references/test-friert-stand-ein.md` — ein Test gegen einen Commit-Hash oder
+  eine feste Anzahl meldet Aenderung, nicht Fehler. Auf die Eigenschaft pruefen,
+  die gelten soll; Zeit als Parameter hereingeben.
+- `references/schaltername-benennt-die-sperre.md` — ein boolescher Name benennt
+  den Zustand, den er schaltet, nicht den Anlass (`wochenende_gesperrt`, nicht
+  `we`); `wenn_nicht_X` gehoert nie in einen Namen.
