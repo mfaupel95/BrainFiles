@@ -210,7 +210,93 @@ PAUSE_NEUSTART = 15          # s zwischen Absturz und Neustart
 PRUEF_ALLE = 60              # s: Kinder alle 60 s pruefen
 MAXHIRN_ROUTINE = "1"        # keiner fragt nach einem Fenster
 
+# --- Verwaiste Agentenprozesse (Leak gemessen 21.09.2026) -------------------
+#
+# BEFUND: Der Treiber startet je Zyklus ein Kind neu, wenn das vorige tot ist.
+# Ein Kind besteht unter Windows aber aus ZWEI Prozessen (venv-Startprogramm +
+# echter Interpreter, beide mit derselben Kommandozeile). Der Treiber hielt nur
+# das Startprogramm; starb es, blieb der Interpreter als WAISE stehen. Ueber
+# Nacht (20.09. 22:17 bis 21.09. 10:00) sammelten sich so 84 Agentenprozesse,
+# 80 davon aelter als eine Stunde - sie frischen das Commit-Limit auf (1,94 GB
+# frei von 89,8) und liessen das lokale Modell nicht mehr laden
+# (ggml_backend_cpu_buffer_type_alloc_buffer: failed to allocate).
+#
+# Gegenmittel an zwei Stellen:
+#   1. `_stoppe` beendet den ganzen BAUM (taskkill /T /F), nicht nur das
+#      Startprogramm.
+#   2. Jeder Zyklus raeumt zuerst auf: Agentenprozesse, die zu keinem lebenden
+#      Kind gehoeren, werden beendet - aber erst nach SCHONFRIST_S, damit ein
+#      frisch gestarteter Enkel nicht im eigenen Start erschlagen wird.
+KENNUNG_AGENTEN = ("src.agents", "kraken_agent.py")
+SCHONFRIST_S = 300           # s: so lange gilt ein fremder Agentenprozess als frisch
+#                             (kurz gehalten: die Waisen des eigenen Baums
+#                              beendet der Zyklus sofort, s. _kill_baum)
+
 LOG = HIER / "moondev_dauerlauf.log"
+
+# ---------------------------------------------------------------------------
+# Prozessliste (fuer das Aufraeumen) - nur Standardbibliothek + PowerShell
+# ---------------------------------------------------------------------------
+def _prozesse() -> list[dict]:
+    """Alle laufenden Prozesse mit Kommandozeile.
+
+    PowerShell statt wmic: wmic ist auf Windows 11 abgekuendigt und liefert auf
+    diesem Rechner keine Kommandozeilen mehr. Rueckgabe: Liste von dicts mit
+    ProcessId, ParentProcessId, CreationDate, CommandLine - leer, wenn die
+    Abfrage scheitert (dann raeumt der Treiber nicht auf, statt zu raten).
+    """
+    if os.name != "nt":
+        return []
+    skript = ("Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
+              "CreationDate,CommandLine | ConvertTo-Json -Compress")
+    try:
+        p = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", skript],
+                           capture_output=True, text=True, timeout=60)
+    except Exception:                                          # noqa: BLE001
+        return []
+    roh = (p.stdout or "").strip()
+    if not roh:
+        return []
+    try:
+        daten = json.loads(roh)
+    except ValueError:
+        return []
+    if isinstance(daten, dict):
+        daten = [daten]
+    return daten
+
+
+def _ist_agentenprozess(eintrag: dict) -> bool:
+    """Traegt der Prozess die Kennung eines MoonDev-Agenten?"""
+    cmd = eintrag.get("CommandLine") or ""
+    return any(k in cmd for k in KENNUNG_AGENTEN)
+
+
+def _alter_sekunden(eintrag: dict) -> float:
+    """Alter des Prozesses in Sekunden; sehr gross, wenn unlesbar."""
+    roh = str(eintrag.get("CreationDate") or "")
+    # PowerShell liefert "/Date(1789979174000)/" ueber JSON, CIM direkt ISO.
+    ziffern = "".join(c for c in roh if c.isdigit())
+    if not ziffern:
+        return 1e9
+    try:
+        stamp = datetime.fromtimestamp(int(ziffern) / 1000.0)
+    except (ValueError, OSError, OverflowError):
+        return 1e9
+    return max(0.0, (datetime.now() - stamp).total_seconds())
+
+
+def _kill_baum(pid: int) -> bool:
+    """Prozess UND seine Nachfahren beenden (Windows: taskkill /T)."""
+    try:
+        if os.name == "nt":
+            return subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)],
+                                  capture_output=True, timeout=30).returncode == 0
+        os.kill(pid, 15)
+        return True
+    except Exception:                                          # noqa: BLE001
+        return False
+
 
 def _jetzt() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -291,12 +377,72 @@ class MoonDevDauerlauf:
         kind = self.kinder.pop(name, None)
         if kind is None or kind.poll() is not None:
             return
-        kind.terminate()
+        # GANZEN Baum beenden: das Startprogramm allein zu beenden liess den
+        # echten Interpreter als Waise stehen (Leak vom 21.09.2026).
+        _kill_baum(kind.pid)
         try:
             kind.wait(timeout=5)
         except subprocess.TimeoutExpired:
             kind.kill()
         self.protokolliere(f"{name}: gestoppt")
+
+    # -- Aufraeumen verwaister Agentenprozesse ------------------------------
+    def _baum(self, wurzel: int, alle: list[dict]) -> set:
+        """Wurzel-PID und alle Nachfahren (ueber ParentProcessId verkettet)."""
+        kinder: dict = {}
+        for e in alle:
+            kinder.setdefault(e.get("ParentProcessId"), []).append(e.get("ProcessId"))
+        gesehen, stapel = set(), [wurzel]
+        while stapel:
+            pid = stapel.pop()
+            if pid in gesehen or pid is None:
+                continue
+            gesehen.add(pid)
+            stapel.extend(kinder.get(pid, []))
+        return gesehen
+
+    def fremde_agenten(self, alle: list[dict] | None = None) -> list[dict]:
+        """Agentenprozesse, die zu KEINEM lebenden Kind des Treibers gehoeren.
+
+        Sie sind die Waisen aus einem abgestuerzten oder ersetzten Kind. Frische
+        Prozesse (juenger als SCHONFRIST_S) bleiben unangetastet - ein Enkel,
+        der gerade startet, darf nicht im eigenen Start erschlagen werden.
+        """
+        alle = _prozesse() if alle is None else alle
+        behalten: set = set()
+        for kind in self.kinder.values():
+            if kind.poll() is None:
+                behalten |= self._baum(kind.pid, alle)
+        ich = os.getpid()
+        raus = []
+        for e in alle:
+            if not _ist_agentenprozess(e):
+                continue
+            pid = e.get("ProcessId")
+            if pid is None or pid == ich or pid in behalten:
+                continue
+            if _alter_sekunden(e) < SCHONFRIST_S:
+                continue
+            raus.append(e)
+        return raus
+
+    def aufraeumen(self, alle: list[dict] | None = None) -> int:
+        """Waise beenden und die Zahl der Aufraeumten zurueckgeben (Beleg).
+
+        NUR der laufende Treiber darf das aufrufen: eine frische Instanz kennt
+        die Kinder des laufenden Treibers nicht und hielte sie fuer Waisen
+        (ein Agent laeuft legitim stundenlang). Im Zyklus ist das unkritisch -
+        dort sind `self.kinder` die Wahrheit; nach einem Neustart schuetzt die
+        Schonfrist die frisch gestarteten Kinder.
+        """
+        fremde = self.fremde_agenten(alle)
+        for e in fremde:
+            _kill_baum(e["ProcessId"])
+        if fremde:
+            self.protokolliere(
+                "Aufraeumen: %d verwaiste Agentenprozess(e) beendet (PIDs %s)"
+                % (len(fremde), ", ".join(str(e["ProcessId"]) for e in fremde[:8])))
+        return len(fremde)
 
     def _ist_tot(self, name: str) -> bool:
         kind = self.kinder.get(name)
@@ -304,10 +450,18 @@ class MoonDevDauerlauf:
 
     # -- Zyklus -------------------------------------------------------------
     def zyklus(self) -> None:
+        # ERST aufraeumen, dann starten: sonst lebt bei jedem Neustart die Waise
+        # des vorigen Laufs weiter (Leak vom 21.09.2026).
+        self.aufraeumen()
         for name, eintrag in AGENTEN.items():
             if self._ist_tot(name):
                 kind = self.kinder.get(name)
                 if kind is not None:
+                    # Die Wurzel dieses Agenten ist tot. Ihre Nachfahren koennen
+                    # weiterleben (venv-Startprogramm + Interpreter) - sie sind
+                    # die Quelle des Leaks. Vor dem Neustart den Baum beenden,
+                    # sonst laufen mit jedem Zyklus zwei Agenten desselben Namens.
+                    _kill_baum(kind.pid)
                     code = kind.poll()
                     if code not in (None, 0):
                         try:
