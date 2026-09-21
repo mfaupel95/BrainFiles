@@ -80,9 +80,15 @@ powershell -NoProfile -Command "Get-ScheduledTask | Where-Object { \$_.TaskName 
 (0x41301) = laeuft gerade, `267014` (0x41306) und `1073807364` (0x40010004) =
 Prozess von aussen beendet (bei Dauerlaeufen der Normalfall beim Herunterfahren),
 `2147946720` (0x800710E0) = Aufgabe laeuft schon (`IgnoreNew`), `3221225786`
-(0xC000013A) = abgebrochen. Jeden Nicht-`0`-Wert als Fehler zu melden, erzeugt
+(0xC000013A) = abgebrochen, `3221225794` (0xC0000142) = der Prozess kam gar nicht
+hoch (DLL-/Speicher-Initialisierung; typisch, wenn der Commit knapp ist). Jeden
+Nicht-`0`-Wert als Fehler zu melden, erzeugt
 Fehlalarme; ein Befund ist er erst zusammen mit `ENDE FEHLER` im eigenen
-Protokoll oder wenn der Dienst nachweislich nicht antwortet.
+Protokoll oder wenn der Dienst nachweislich nicht antwortet. Umgekehrt gilt für
+`3221225794`: ist das eigene Protokoll **aelter als `LastRunTime`**, hat der Lauf
+nicht einmal begonnen — der letzte `ENDE ok`-Eintrag stammt dann vom Vorlauf und
+belegt gar nichts. Eine solche Aufgabe einmal von Hand starten und das Ergebnis
+gegen den Code halten, bevor daraus ein Fehler der Aufgabe wird.
 Dauerlaeufe und ihre Kinder:
 ```
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | ForEach-Object { \$_.ProcessId.ToString() + ' | Parent ' + \$_.ParentProcessId + ' | ' + \$_.CreationDate + ' | ' + \$_.CommandLine }"
@@ -210,6 +216,20 @@ fehlgedeutet.
   Zeitfenster des betroffenen Laufs (`Get-WinEvent` liefert nichts) ist meist
   ein spaeterer Reboot/Shutdown (Event 1074), der den Prozess von aussen
   beendet hat — kein Fehler im Skript selbst.
+
+- **Ein Schreibjob ist erst gesund, wenn sich sein ARTEFAKT bewegt hat — und das
+  Alter des Artefakts ist die Messung.** `LastTaskResult` sagt *dass* ein Lauf brach,
+  nicht *seit wann*: eine taegliche Routine kann jeden Abend mit `1` enden, ohne dass
+  es auffaellt, weil niemand das Erzeugnis ansieht. Beim Zwischenstand ist das
+  Erzeugnis der Zweig — dafuer reicht ein Befehl:
+  `git log -1 --format=%ci zwischenstand`; steht der letzte Eintrag tagealt, ist die
+  Routine abgebrochen (bei Stillstand schreibt sie ausdruecklich „ENDE unveraendert“)
+  und nicht „es gab nichts zu tun". Denselben Griff auf JEDEN Schreibjob uebertragen:
+  **Alter des Erzeugnisses gegen den Zeitplan halten**, nicht nur den Aufgabenzustand
+  lesen. Ist der Abbruch gefunden, liegt die Ursache fast immer im Arbeitsbaum und
+  nicht im Skript — Gegenprobe mit genau dem Befehl, der scheitert
+  (`git add -A --dry-run`; Exitcode 128 = kaputt, 0 = gesund), dann den Lauf einmal
+  von Hand nachziehen, damit die Luecke zu ist.
 
 ## Ereignis-IDs
 Welche ID was bedeutet (Kernel-Power 41, Volsnap 36, disk 11/153, Service

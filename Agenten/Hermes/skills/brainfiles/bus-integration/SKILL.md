@@ -313,15 +313,39 @@ an `.ps1`-Routinen die Suite zeigen: `python tests/test_ende_zu_ende.py` aus
 
 `melder.sende()` sendet mit `parse_mode=HTML`. Zwei Regeln folgen daraus:
 
-1. **Freitext escapen.** `sprecher._sende` escaped jeden Text mit `html.escape`,
-   bevor er an den Melder geht. Ein Fehlertext wie
-   `URLError: <urlopen error timed out>` enthaelt spitze Klammern; Telegram
-   antwortet dann mit `400 Bad Request`, `_sende` verschluckt das (ein totes
-   Telegram darf den Bus nicht reissen) - die Meldung kommt nie an, und zwar
-   lautlos. Neue Meldetexte immer durch `html.escape`, niemals roh.
+1. **Freitext escapen - und zwar an der SENDESTELLE, nicht nur im Erzeuger.**
+   `sprecher._sende` escaped jeden Text mit `html.escape`; richtig ist die
+   Entschaerfung aber IN `melder.sende()` selbst, direkt vor dem Teilen der
+   Nachricht. Grund: Texte kommen aus mehreren Erzeugern (Tagesbericht,
+   Wochenbericht, Handelsmeldungen, Wachen) und enthalten Fremdtext, den kein
+   Erzeuger escapen kann.
+   Telegram liest mit `parse_mode=HTML` JEDES `<wort>` als Marke und weist die
+   ganze Nachricht ab: `400 Bad Request: can't parse entities: Unsupported start
+   tag "zahl"`. Ein Bericht mit dem Satz `n=<Zahl> heisst: zu wenige Runden` kam
+   deshalb NIE an - und ein Traceback im Bericht (`<module>`, `<lambda>`) trifft
+   dieselbe Falle. Der Fehler sieht aus wie "Telegram mag den Bericht nicht",
+   ist aber ein Wort im Text.
+   Vorgehen beim Entschaerfen: nur **rohe** `<`, `>` und nackte `&` umschreiben;
+   erlaubte Marken (`b i u s code pre a`, mit optionalen Attributen) stehen
+   lassen; gueltige Entitaeten (`&amp;`, `&#39;`, `&lt;`) NICHT doppelt
+   entschaerfen, sonst steht `&amp;amp;` in der Nachricht. Gegenproben, die den
+   Test wert sind: `n=<Zahl>` wird zu `n=&lt;Zahl&gt;`, ein `<b>` bleibt Marke,
+   `a & b` wird `a &amp; b`, und die Entschaerfung ist idempotent.
+   Den ECHTEN Bericht mitpruefen: `wochenbericht.baue()` entschaerfen und
+   zusichern, dass nach dem Entfernen der erlaubten Marken keine `<`/`>`
+   uebrig bleiben.
 2. **Ursache mitschicken.** `auffaellig.bewerte` haengt bei Fehlern `text` und
    `log` an den Grund (`_mit_ursache`). Ohne das sagt die Meldung nur
    "Ergebniscode 1" und ist nicht zu deuten; die Ursache steht im Journal.
+   **Die Ursache kann selbst die Ursache des 400 sein** - sie ist Fremdtext und
+   wird nach Regel 1 mitentschaerft.
+
+Warum die Meldung ueberhaupt lautlos verschwand: `sprecher._sende` **verschluckt**
+den 400er (ein totes Telegram darf den Bus nicht reissen). Ein Bericht, der nie
+ankommt, sieht dann aus wie ein Bericht, den niemand liest. Beim Senden deshalb
+so pruefen, dass der Fehler SICHTBAR wird: das Sendeskript wirft bei `ok=false`
+(`melder.sende` tut das), und der Beweis ist ein Lauf, der ohne Ausnahme
+durchgeht - nicht die gerenderte Nachricht.
 
 Nach jeder Aenderung an `sprecher.py` oder `auffaellig.py` den Bus neu starten
 (`Stop-ScheduledTask`/`Start-ScheduledTask -TaskName 'BrainFiles-Bus'`): er
@@ -419,11 +443,28 @@ Befehl gilt:
    `hermes -p NAME chat -q` als Subprozess - kein A2A, kein Gateway, kein
    Kontext. Der Name wird gegen die Platte validiert (`profiles/<name>/` mit
    config.yaml existiert), nie gegen eine gepflegte Liste. Subprozess-Umgebung:
-   PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME explizit setzen (cwd des
-   SkillsBot ist nicht das Hermes-Home). Kaltstart 30-60 s, deshalb vorher eine
-   Zwischenmeldung senden. Tests mocken `subprocess.run` und pruefen die
-   Aufrufform (Name hinter -p, Text hinter -q) - ein echter hermes.exe-Start im
-   Test schreibt in echte Sitzungsdateien und dauert eine Minute.
+   PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME explizit setzen, cwd auf die
+   BrainFiles-Wurzel (das SkillsBot-cwd ist nicht das Hermes-Home).
+   **Nicht `subprocess.run(timeout=...)` benutzen:** das KILLT den Bot mitten in
+   der Arbeit, und die ganze Aufgabe ist verloren. Ein Repo-Bot, der liest oder
+   rechnet, braucht Minuten bis eine Viertelstunde; eine Frist von wenigen
+   Minuten laesst JEDEN echten Auftrag mit "Zeitlimit" abbrechen, obwohl nichts
+   kaputt ist. Richtig ist `Popen` + `communicate(timeout=<grosszuegige Frist>)`
+   (Haus: `BOT_FRIST_S = 1800`), und erst danach wird getoetet - die Meldung
+   nennt dann Ziel und Frist und sagt, was zu tun ist (Auftrag teilen oder
+   Cronjob). Vorher eine Zwischenmeldung senden (Kaltstart 30-60 s, echte
+   Aufgabe bis 30 min), sonst wirkt der Bot haengend.
+   Den hermes.exe-Pfad als **Modulkonstante** halten (`HERMES_EXE`), nicht im
+   Funktionorumpf zusammensetzen: der Test ersetzt sie durch ein Stub-Skript und
+   prueft dann die ECHTE Prozessstrecke (schneller Lauf liefert die Antwort,
+   langer Lauf bricht mit der erklaerenden Meldung ab) - ein gemocktes
+   `subprocess.run` bemerkt den Unterschied zwischen killendem und abwartendem
+   Aufruf nicht.
+   Frist und Form gehoeren in einen **Selbsttest gegen Rueckbau**: den Quelltext
+   zwischen `def _bot_fragen` und dem Ende lesen, Kommentarzeilen entfernen und
+   `subprocess.run(` darin verbieten (`subprocess.Popen` muss dastehen). Sonst
+   faellt die naechste Sitzung in dieselbe Falle, weil der Bot dann einfach
+   wieder nach fuenf Minuten abbricht.
 
 ## When to Use
 Use this skill whenever you need to add a new automated routine to the BrainFiles Telegram Bus, or when you are setting up the bus for the first time on a new machine. Auch beim Auftrag "Autostart Routine einrichten" fuer einen Dienst oder ein Fenster (Abschnitt Dienst-Start-Routinen).

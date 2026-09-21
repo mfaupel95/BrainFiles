@@ -21,6 +21,8 @@ geladene Bibliothek prüfen. Der Vault bleibt Quelle und wird zeichengleich
 ## Wann
 
 - "such die Skills und füge sie hinzu", "der Skill fehlt in Hermes", "importier die Skills"
+- "Skills durchgehen und Duplikate entfernen", "die Bibliothek ist zu gross/zu teuer",
+  derselbe Baum steht mehrfach im Prompt → Abschnitt „Bibliothek ausmisten"
 - nach jedem neuen Skill unter `.claude/skills/`
 - nach jedem Umbenennen oder Verschieben im Vault — dann driften alle Kopien mit
 - ein **fremder, benannter** Skill soll einzeln übernommen werden (Abschnitt
@@ -147,6 +149,43 @@ Fallen:
   Skills über ihre Einstellungen hoch; `MaxHirn/.claude/skills/` allein deckt
   Claude Code ab. Diesen Schritt beim Nutzer als **offen** melden, solange kein
   Lauf ihn zeigt — nie als erledigt zählen.
+
+## Bibliothek ausmisten (Duplikate und ungenutzte Baeume)
+
+Ausloeser: "Skills durchgehen und Duplikate entfernen", die Bibliothek kostet zu viel
+je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
+`Agenten/Hermes/scripts/skills-entdoppeln.py` (ohne Argument Trockenlauf,
+`--anwenden` verschiebt).
+
+1. **Messen, nicht schaetzen.** Je SKILL.md Name + Beschreibung zaehlen — das ist die
+   Dauerlast JEDER Anfrage (der Text kommt erst per `skill_view`); dazu byte-identische
+   Gruppen per Hash. Vorher/Nachher dieselbe Messung zeigen, in Zeichen und Tokens.
+2. **Nach Nutzung entscheiden, nicht nach Gefuehl.** `hermes curator usage` nennt je
+   Skill den Zaehler. Regel: ein Baum ohne JEDE Nutzung geht ganz weg; ein Baum mit
+   wenigen genutzten behaelt genau diese; eigene Arbeit ist unantastbar (die
+   `brainfiles/`- und Arbeitsbaum-Skills des Hauses). Byte-identische Doppel: nur EINE
+   Fassung behalten, und zwar die im benutzten Baum.
+3. **Weglegen statt loeschen** — `.archive/<baum>/`, vorher `hermes curator backup`.
+   Danach zaehlen (`hermes skills list`, Gesamtzahl der SKILL.md) und Stichproben
+   laden: die wichtigsten Haus-Skills muessen weiter erscheinen.
+4. **Falle Windows-Junction.** Fremd-Importe (die `okx-*`) sind JUNCTIONS auf
+   `~/.agents/skills`. Python meldet sie NICHT als Symlink — `Path.is_symlink()` und
+   `os.path.islink()` sind beide `False`, nur `os.path.isjunction()` erkennt sie. Ein
+   Verschieben haette die Quelle fuer andere Agenten mitgerissen. Vor jedem
+   Massenverschieben `getattr(os.path, "isjunction", lambda p: False)(pfad)` pruefen.
+5. **Archiv und Versionierung getrennt entscheiden.** Enthaelt der Archivstapel
+   Fremd-Klone mit `.git` (gemessen 281 MB in fuenf Klonen), dann NICHT versionieren und
+   die Ausnahme im `.gitignore`-Kommentar begruenden: der TEXT jeder weggelegten Datei
+   bleibt ueber die Git-Historie (`git show <commit>^:<pfad>`) und die Platte
+   erreichbar, `hermes curator restore` funktioniert weiter. Vorher `du -sh` messen und
+   `find . -name .git` zaehlen. Reine Fremd-Klone ohne ein einziges SKILL.md in einem
+   Skill-Baum sind kein Inhalt, sondern belegter Platz — als Aufraeumkandidat melden,
+   nicht ungefragt loeschen.
+6. **Ein Test darf nicht an einem Skillnamen haengen.** Ein Katalog- oder
+   Vollstaendigkeitstest, der einen festen Namen prueft („<name> ist da"), wird durch
+   JEDES Aufraeumen rot, obwohl nichts kaputt ist. Auf die REGEL pruefen (jeder Eintrag
+   einer Klasse fehlt in der geladenen Liste UND steht in der Schlusszeile), dann haelt
+   der Test auch die naechste Ausmistung aus.
 
 ## Fallen
 

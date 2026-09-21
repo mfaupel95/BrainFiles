@@ -27,6 +27,9 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
   Bus-Zustaende, `stand.json`, Skill-Dateien)
 - eine Datei soll aus dem Verlauf verschwinden (Nebenprodukt eines Fremdprogramms)
 - eine `.gitignore`-Freigabe soll zurueckgenommen werden
+- „geh die letzten Sitzungen und Hintergrund-Aufgaben nach Aenderungen durch, die noch
+  nicht uebernommen wurden" — dann Abschnitt „Fremde Arbeit aus beendeten Sitzungen
+  einsammeln"
 
 ## Regeln (immer)
 
@@ -123,6 +126,38 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  („nicht sicher zuzuordnen, mehrere Sitzungen parallel") die richtige Form;
  gemischte Dateien (eigene + fremde Zeilen) gehen NICHT in diesen Comm
  it — die eigene Zeile behaelt ihren eigenen Commit (Regel 3).
+
+## Fremde Arbeit aus beendeten Sitzungen einsammeln
+
+Der Auftrag „die letzten Sitzungen / Hintergrund-Aufgaben nach nicht uebernommenen
+Aenderungen durchgehen" meint selten die OFFENEN Sitzungen: die liegengebliebene Arbeit
+steckt in den gerade BEENDETEN Hintergrund-Sitzungen (`bg_*`, `tui`, `cli`) und in
+ungetrackten Dateien. Reihenfolge:
+
+1. **Bestand aus dem Baum zuerst** — `git status --porcelain`, je Treffer die mtime.
+   `??`-Dateien sind die Kandidaten. `M` an einer Datei, die diese Sitzung nie anfasste,
+   ist fremde, womoeglich noch laufende Arbeit.
+2. **Die BEENDETEN Sitzungen lesen, nicht die offenen.** Jedes Profil hat eine eigene
+   `state.db`; `offene_sitzungen.py` zeigt beendete nicht (`ended_at` ist gesetzt).
+   Direkt abfragen:
+   `SELECT id, source, title, ended_at, started_at FROM sessions ORDER BY started_at DESC LIMIT 25`,
+   dann je Sitzung die letzten Nutzer- und Assistentenzeilen (`SELECT role, content FROM
+   messages WHERE session_id=? AND role IN ('user','assistant') AND content!='' ORDER BY
+   id DESC LIMIT 4`). Der Schlussbericht nennt die offenen Punkte und die „Naechste
+   Aktion" — das ist die Landkarte der liegengebliebenen Arbeit.
+3. **Jede Behauptung daraus gegen den Baum pruefen.** Ein Selbstbericht ist kein Beleg:
+   genannte Commits (`git log --oneline | grep <hash>`), Dateien
+   (`git status --porcelain -- <pfad>`) und Zahlen einzeln nachsehen. Der typische
+   Ausgang ist „Treiber und Messung geschrieben, Ergebnis nie committet", waehrend der
+   Bericht mit „Naechste Aktion: Ergebnis ansehen" endet.
+4. **Uebernehmen heisst nachmessen, dann committen.** Fremdes, ruhendes (>10 min) geht
+   in EINEN Commit mit `--author="Andere Sitzung <fremd@local>"` und der Herkunft im
+   Text; gemischte Dateien nach Regel 3; Durchgangsware unter `Werkstatt/` (Regel 4) und
+   Datenausgaben ueber der Whitelist bleiben draussen und gehoeren in den Bericht unter
+   „nicht angefasst".
+5. **Was eine laufende Sitzung gerade schreibt, wird nur benannt.** Der Stand aendert
+   sich zwischen zwei Werkzeugaufrufen (Regel 7): vor dem Uebernahme-Commit frisch
+   `git status --porcelain` lesen, sonst zieht man halb fertige Arbeit hinein.
 
 ## Datei soll aus dem Verlauf verschwinden
 
