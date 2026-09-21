@@ -1174,3 +1174,48 @@ Merksatz: **Margin-Waehrung einer Position pruefen, nicht die Waehrung im Kopf
 des Kontos.** Die XPERP-Kontrakte dieses Kontos sind in USDC besichert; es gibt
 dort gar kein USDT. `xperp/okxf.guthaben_usdt()` lieferte deshalb 0,0, bis die
 Funktion am 21.09.2026 auf USDC als Rueckfall umgestellt wurde.
+## Nautilus-Arme: Stand und Befund (21.09.2026)
+
+Drei Papier-Arme haengen am NautilusTrader-Baum (`Agenten/Handel/nautilus*`). Sie
+nehmen die **Kaeufe der kopier-Spur** (Solana, Pump.fun) als Signal und buchen
+darauf einen **Proxy** auf einen BTC-Instrument: nautilus -> `BTC-USDT-SWAP`
+(OKX, Demo-Node), nautilus_kraken -> `BTC/EUR` (Kraken Spot, Gebuehr 0 ueber das
+Pro-Abo), nautilus_kraken_futures -> `PF_XBTUSD` (Kraken Futures, 0,05 %).
+Ausstiegsgeometrie in allen drei: Stop -19,8 %, Trailing ab **+30 %** mit 25 %
+Abstand, **Frist 168 h**; Quelle der Zahlen ist `trailing_stop_strategie.ausstiegsgrund`
+(reine Funktion, eine Stelle fuer die Entscheidung).
+
+**Stand 21.09.2026, 10:50** (jeder Arm 4 offene Positionen, 200 Einheiten Einsatz):
+
+| Arm | offen G/V | Stop-Abstand | Peak seit Einstieg | erste Frist |
+|---|---|---|---|---|
+| nautilus (BTC-USDT-SWAP) | +14,64 USD (+7,32 %) | +33 % | +8,5 % | 15 h |
+| nautilus_kraken (BTC/EUR) | +5,58 EUR (+2,79 %) | +28 % | +3,3 % | 132 h |
+| nautilus_kraken_futures (PF_XBTUSD) | +5,83 USD (+2,91 %) | +28 % | +3,2 % | 131 h |
+
+**Befund 1: kein einziger Ausstieg.** In 4 bis 6 Tagen Laufzeit hat kein Arm eine
+Runde geschlossen (nur `zyklus`-Zeilen im Journal, je 4 `eroeffnen`). Damit ist
+bisher **keine Aussage ueber die Strategie moeglich** - nur ueber den offenen
+Bestand. Die ersten echten Ausstiege stehen morgen frueh an (Frist, ~00:05 UTC).
+
+**Befund 2: das Trailing kann hier nicht greifen.** Es aktiviert bei +30 %; der
+hoechste Stand nach sechs Tagen sind +8,5 % - Faktor 3,5 zu weit. Wirklicher
+Ausstieg ist damit allein die **Frist** (168 h): die Arme messen "sieben Tage
+halten", nicht "Trailing". Wer das Trailing messen will, muss die Aktivierung auf
+eine Spanne setzen, die BTC in einer Woche erreichen kann, und den Abstand der
+BTC-Volatilitaet anpassen (25 % Abstand ist fuer einen Token richtig, fuer BTC
+sehr weit).
+
+**Befund 3: die vier Positionen sind EINE Wette.** Alle Einstiege liegen Minuten
+auseinander (15.09. 00:05-00:36), alle auf demselben Instrument - der Arm
+diversifiziert nicht, er vervierfacht. Und der Proxy misst den **BTC-Weg** nach
+einem Solana-Signal, nicht den Weg des Tokens: die kopier-Spur selbst bleibt die
+einzige Quelle fuer die Token-Frage.
+
+**Befund 4: die Fehlschlaege waren Speicherdruck, kein Logikfehler.** 11 von ~170
+Zyklen je Arm scheiterten heute zwischen 08:41 und 10:16: `Rueckgabe 1` (die Spur
+sagt selbst "keine Quote angekommen und Kopier-Spur tot"), zweimal ein nativer
+Absturz (`3221226505` = STATUS_STACK_BUFFER_OVERRUN) und einmal der 300-s-Timeout
+der Futures. Genau in diesem Fenster war das Windows-Commit zu 99 % belegt (siehe
+MoonDev-Leak). Seit dem Aufraeumen um 10:25 laufen alle Zyklen wieder "ok" - der
+Befund ist damit erklart und nicht offen.
