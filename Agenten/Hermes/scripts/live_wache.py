@@ -61,6 +61,16 @@ SPUREN = {
               "fenster": "xperp", "waehrung": "USDC"},
     "kraken": {"journal": HANDEL / "kraken" / "handelsjournal.csv",
                "fenster": "kraken", "waehrung": "EUR"},
+    # Die beiden Buch-Spuren (Feed-Signal -> spur_buch.py) seit 21.09.2026 live:
+    # 50 USDC je Trade, 150 gesamt, 3 Plaetze. Ihr Risiko-Vorfilter kann den
+    # Einstieg sperren, obwohl das Fenster offen ist - deshalb meldet die Wache
+    # bei ihnen zusaetzlich den VORFILTER-Grund (siehe vorfilter_grund()).
+    "moondev_listingarb": {"journal": HANDEL / "moondev_listingarb" / "handelsjournal.csv",
+                           "fenster": "moondev_listingarb", "waehrung": "USDC",
+                           "vorfilter": True},
+    "moondev_topmovers": {"journal": HANDEL / "moondev_topmovers" / "handelsjournal.csv",
+                          "fenster": "moondev_topmovers", "waehrung": "USDC",
+                          "vorfilter": True},
 }
 
 
@@ -118,6 +128,40 @@ def _text(r):
         r.get("preis") or r.get("einstieg") or "", betrag, r.get("grund") or "")
 
 
+def vorfilter_grund(spur):
+    """Warum die Spur gerade NICHT einsteigt - aus ihrer eigenen Rechnung.
+
+    Wichtig: nicht nachgebaut. Es wird `Handel/risikovorfilter.py` mit den
+    echten Wachen, dem echten Journal und dem echten Zustand gefragt, so wie
+    `spur_buch.py` es vor jedem Einstieg tut. Eine nachgebaute Formel wuerde
+    die Formel pruefen, nicht die Spur.
+
+    Rueckgabe: Text, wenn der Vorfilter sperrt; sonst None.
+    """
+    import importlib.util
+
+    ordner = HANDEL / spur
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "risikovorfilter_wache", HANDEL / "risikovorfilter.py")
+        rv = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rv)
+        w = json.loads((ordner / "wachen.json").read_text(encoding="utf-8"))
+        z = json.loads((ordner / "zustand.json").read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        return "%s: Vorfilter nicht lesbar (%s)" % (spur, e)
+    if not w.get("risikovorfilter"):
+        return None
+    journal = ordner / "handelsjournal.csv"
+    # Das Risiko eines geplanten Einstiegs: Nominal x Stop-Abstand.
+    nominal = float(w.get("live_max_pro_trade_usd") or w.get("max_pro_trade_usd") or 0)
+    stop_pct = float(w.get("stop_prozent") or w.get("pflicht_stop_prozent_min") or 5)
+    erlaubt, grund = rv.pruefe(w, journal, z, nominal * stop_pct / 100.0)
+    if erlaubt:
+        return None
+    return "%s: VORFILTER haelt den Einstieg zurueck - %s" % (spur, grund)
+
+
 def wache(spur: str) -> int:
     cfg = SPUREN.get(spur)
     if not cfg:
@@ -156,9 +200,26 @@ def wache(spur: str) -> int:
     if not erstlauf and not war_offen and offen:
         meldungen.append("%s: Freigabefenster offen bis %s - live." % (spur, bis))
 
+    # Bei den Buch-Spuren ist ein offenes Fenster nicht genug: ihr eigener
+    # Risiko-Vorfilter kann den Einstieg sperren. Gemeldet wird nur der
+    # WECHSEL des Grundes - sonst stuende dieselbe Zeile alle 10 Minuten da.
+    if cfg.get("vorfilter"):
+        grund = vorfilter_grund(spur)
+        if grund != stand.get("vorfilter_grund"):
+            if grund:
+                meldungen.append(grund)
+            elif not erstlauf:
+                meldungen.append("%s: Vorfilter gibt den Weg frei - der "
+                                 "naechste Kandidat kann live gekauft werden."
+                                 % spur)
+        vorfilter_stand = grund
+    else:
+        vorfilter_stand = None
+
     STAND_ORDNER.mkdir(parents=True, exist_ok=True)
     stand_pfad.write_text(json.dumps({
         "live_runden": len(zeilen), "fenster_offen": offen, "offen_bis": bis,
+        "vorfilter_grund": vorfilter_stand,
         "geprueft": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }, ensure_ascii=False, indent=1), encoding="utf-8")
 
