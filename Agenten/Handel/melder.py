@@ -216,18 +216,63 @@ def _roh(text):
     return text.replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _harte_schnitte(zeile):
+    """Eine Zeile, die allein schon zu lang ist, in Stuecke zerlegen.
+
+    GEMESSEN 21.09.2026: eine einzelne Zeile ueber der Grenze rutschte
+    UNGETEILT durch - 4500 Zeichen bei MAX_ZEICHEN 4000, Telegram schnitt sie
+    ab. Selten, aber real: ein Traceback ohne Umbruch, eine lange Fehlerzeile
+    eines fremden Programms.
+    """
+    return [zeile[i:i + MAX_ZEICHEN] for i in range(0, len(zeile), MAX_ZEICHEN)]
+
+
+def _marken_schliessen(stueck):
+    """Offene Marken am Stueckende schliessen. Rueckgabe (Stueck, offene).
+
+    GEMESSEN 21.09.2026: ein <b>, das ueber die Stueckgrenze hinweg aufgespannt
+    war, hinterliess im ersten Stueck ein offenes und im zweiten ein verwaistes
+    </b> - Telegram weist BEIDE Nachrichten ab ("can't parse entities"). Die
+    Trennung darf die Marken also nicht zerreissen.
+    """
+    offen = []
+    for m in _ERLAUBT.finditer(stueck):
+        marke = m.group(0)
+        name = marke.strip("</>").split()[0].lower()
+        if marke.startswith("</"):
+            if offen and offen[-1] == name:
+                offen.pop()
+        elif not marke.endswith("/>"):
+            offen.append(name)
+    return stueck + "".join("</%s>" % n for n in reversed(offen)), offen
+
+
 def _stuecke(text):
-    """Lange Texte an Zeilengrenzen teilen, statt sie abschneiden zu lassen."""
+    """Lange Texte an Zeilengrenzen teilen, statt sie abschneiden zu lassen.
+
+    Zwei Sonderfaelle, beide am 21.09.2026 gemessen: eine einzelne ueberlange
+    Zeile (harter Schnitt) und eine Marke, die ueber die Stueckgrenze reicht
+    (wird am Ende geschlossen und am naechsten Anfang neu geoeffnet).
+    """
     if len(text) <= MAX_ZEICHEN:
         return [text]
-    stuecke, jetzt = [], ""
+
+    roh, jetzt = [], ""
     for zeile in text.split("\n"):
-        if len(jetzt) + len(zeile) + 1 > MAX_ZEICHEN:
-            stuecke.append(jetzt.rstrip("\n"))
-            jetzt = ""
-        jetzt += zeile + "\n"
+        teile = _harte_schnitte(zeile) if len(zeile) > MAX_ZEICHEN else [zeile]
+        for teil in teile:
+            if jetzt and len(jetzt) + len(teil) + 1 > MAX_ZEICHEN:
+                roh.append(jetzt.rstrip("\n"))
+                jetzt = ""
+            jetzt += teil + "\n"
     if jetzt.strip():
-        stuecke.append(jetzt.rstrip("\n"))
+        roh.append(jetzt.rstrip("\n"))
+
+    stuecke, offen = [], []
+    for s in roh:
+        s = "".join("<%s>" % n for n in offen) + s
+        s, offen = _marken_schliessen(s)
+        stuecke.append(s)
     return stuecke
 
 
