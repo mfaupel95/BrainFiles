@@ -179,3 +179,34 @@ OFFEN: Dieselbe Umstellung gilt fuer die 17 Profile in `profiles/.deleted/`
 scrapling, ...; am 19.09.2026 weggelegt) - sie sind nicht erreichbar und wurden
 nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
 
+
+## clipproxy angelegt, alle Bots auf Nous (21.09.2026)
+
+- **Neuer Bot `easycliproxyapi`** (Repo `Werkstatt\Repos\EasyCLIProxyAPI`,
+  router-for-me: Tauri-Konsole fuer CLIProxyAPI). Angelegt mit
+  `hermes profile create easycliproxyapi --clone-from openterminal --no-alias`,
+  danach `terminal.cwd` auf sein Repo gezogen (3 Vorkommen: `cwd` plus die zwei
+  projectatlas-Pfade), eigene `SOUL.md`, `profile.yaml`-Beschreibung und
+  `auth.json` als Symlink auf den Root-Store. Beleg:
+  `hermes -p easycliproxyapi chat -q "..." -Q -t terminal` antwortet
+  `deepseek-v4-flash-0731 / nous / Werkstatt\Repos\EasyCLIProxyAPI`.
+  `repos-zentrale.py --pruefen` fuehrt ihn (17 Bot-Profile, Gruppe EINRICHTEN -
+  fuer das Repo ist noch kein Startbefehl belegt).
+- **Alle Bots auf `nous / deepseek/deepseek-v4-flash-0731`:** 15 standen schon
+  dort; `Agenten/Hermes/scripts/bot-modell-auf-nous.py --auch-lokale --anwenden`
+  holte die zwei Ausnahmen herueber - `openmontage` (llamacpp, CLIP-mmproj als
+  Hauptmodell ist gar nicht ladbar) und `awesome-systematic-trading` (docker).
+  Der Schalter entfernt dabei ein lokales `model.base_url`, sonst zeigt der
+  Aufruf weiter auf den lokalen Endpunkt. Ergebnis: 17 Profile umgestellt bzw.
+  schon richtig, 0 Fehler, `hermes profile list` ohne Warnzeile. Live geprueft:
+  `easycliproxyapi`, `openmontage`, `awesome-systematic-trading`.
+- `awesome-systematic-trading` stand zusaetzlich auf `terminal.backend: docker`;
+  die Docker-Probe lief in den 5-Sekunden-Timeout und der Lauf brach mit
+  "Switch to a different model" ab - Ursache war der TERMINAL-Backend, nicht das
+  Modell. Auf `local` gezogen (Hausstandard), danach antwortet er live.
+- Zwei Fallen dabei: PowerShell 5.1 legt keinen Symlink an, auch mit
+  eingeschaltetem Developer-Mode (`pwsh` 7 legt ihn ohne Erhoehung an); und
+  `hermes config set` schreibt LF und schneidet den Kommentar-Schluss ab -
+  5 Profil-Configs mussten zeilenweise auf ihr HEAD-Format geheilt werden.
+- Von den 17 weggelegten Profilen in `profiles/.deleted/` ist damit
+  `easycliproxyapi` wieder angelegt; die uebrigen 16 bleiben offen (siehe oben).

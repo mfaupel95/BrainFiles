@@ -447,11 +447,12 @@ als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
    Dateien (dieselbe Fehlerklasse wie beim Kanal) und eine geteilte
    Refresh-Sitzung kann allen Profilen gleichzeitig ablaufen — im Startprofil
    stand `Refresh session has been revoked`, waehrend ein anderes Profil
-   dieselbe Kennung benutzte. Stattdessen auf den LOKALEN Router zeigen:
-   `model.provider=omniroute`, `model.default=auto/best-coding`; seinen
-   Schluessel traegt jede Profil-`.env` schon, den Provider-Block jede
-   `config.yaml`. Rezept und der Weg ueber alle Profile:
-   `references/profil-kanalzugangsdaten.md`.
+   dieselbe Kennung benutzte. Die Sitzung holt ein Profil stattdessen ueber
+   einen SYMLINK auf den Root-Store oder eine eigene Anmeldung (Abschnitt
+   „Einem Profil eine Modell-Anmeldung geben"); der lokale Router war nur
+   Zwischenloesung und traegt die Flotte nicht mehr, weil ein toter Kandidat in
+   seiner Combo alle Bots gleichzeitig stilllegt. Rezept und der Weg ueber alle
+   Profile: `references/profil-kanalzugangsdaten.md`.
 3. **Kein Unterkommando entfernt Kanaele aus einem bestehenden Profil** (nur
    `--clone` strippt beim Anlegen). Nicht selbst eine Schluesselliste bauen:
    `ChannelKeyIndex(<startprofil>).platform_for(<ENV_NAME>)` ist dieselbe
@@ -499,8 +500,9 @@ Ein Befehl statt 29 Einzelaufrufe (je 30-60 s Kaltstart):
 gesetzt) zeigt je Profil Modell, hinterlegte Anmeldung, Kanalzeilen, Kette und
 Befund; `--nur-probleme` kuerzt auf die auffaelligen. Es schreibt nichts. Danach
 beheben die drei Werkzeuge unter `Agenten/Hermes/scripts/` je Befund
-(`profil-kanaele-bereinigen.py`, `bot-modell-auf-router.py`,
-`bot-rueckfallkette-bereinigen.py`): erst Trockenlauf ohne Argument, dann
+(`profil-kanaele-bereinigen.py`, `bot-rueckfallkette-bereinigen.py`,
+`auth-verknuepfen.ps1` = Sitzung, `bot-modell-auf-nous.py` bzw. fuer den
+Router-Weg `bot-modell-auf-router.py`): erst Trockenlauf ohne Argument, dann
 `--anwenden`, `--zuruecknehmen` holt zurueck; je Profil `.bak-JJJJMMTT`; alle drei
 sind idempotent und nennen je uebersprungenem Profil den Grund.
 
@@ -582,9 +584,17 @@ Ein Symlink haelt EINEN Store, und genau dafuer hat Hermes die Sperre und die
 "Peer hat rotiert, uebernimm seinen Token"-Logik
 (`hermes_cli/auth.py::_nous_shared_store_lock`); `auth_oauth_grants.py` behandelt
 einen Symlink auf den Root-Store ausdruecklich als "kein Klon" und laesst ihn
-stehen. Symlinks brauchen auf Windows Adminrechte (`New-Item -ItemType
-SymbolicLink` scheitert sonst mit "Administratorrechte erforderlich") -
-Einzelaufruf ueber `Start-Process -Verb RunAs -Wait`. **`-PassThru` und
+stehen. **Symlinks: PowerShell 7 nehmen, nicht 5.1.** Der Developer-Mode ist hier
+AN (`AllowDevelopmentWithoutDevLicense=1`), trotzdem scheitert PowerShell 5.1 mit
+`NewItemSymbolicLinkElevationRequired` ("Fuer diesen Vorgang sind
+Administratorrechte erforderlich"); der Ausweg `Start-Process powershell -Verb
+RunAs -Wait` endet mit "Der Vorgang wurde durch den Benutzer abgebrochen", wenn
+der UAC-Prompt nicht bestaetigt wird. **`pwsh` 7
+(`C:\Program Files\PowerShell\7\pwsh.exe`) legt den Symlink OHNE Erhoehung an**
+(gemessen 21.09.2026, Profil `easycliproxyapi`):
+`pwsh -NoProfile -Command "New-Item -ItemType SymbolicLink -Path <ziel> -Target <root>"`.
+Danach mit `os.path.islink()` gegenpruefen, nicht mit `os.path.exists()`. Fuer EIN
+Profil ist das der kuerzere Weg als das Skript samt UAC-Prompt. **`-PassThru` und
 `-RedirectStandardOutput` vertragen sich in PowerShell 5.1 NICHT mit `-Verb
 RunAs`** (AmbiguousParameterSet); das innere Skript schreibt sein Ergebnis
 selbst per `Start-Transcript` in eine Logdatei.
@@ -624,6 +634,36 @@ Nutzung bewiesen.
   (an Zeilenumbruch trennen und ein abschliessendes CR vor der Zeile abstreifen),
   nicht auf ein einheitliches Zeilenende vertrauen. `subprocess(... text=True)`
   wandelt CRLF still nach LF und baut dann eine LF-Kopie der ganzen Datei.
+- **Beim Ersetzen von Text mit Backslashes (Windows-Pfade, `\r\n`, Regex) das
+  Patch-Werkzeug nicht benutzen.** Es deutet Escapes: eine Zeichenfolge wie
+  Backslash-r-Backslash-n landet als echter Zeilenumbruch MITTEN im Satz, und
+  wer den Anker der Ersetzung nicht im Ersatztext wiederholt, loescht die
+  Ueberschrift mit. Byte-genau per Skript schreiben (Bytes lesen, ersetzen,
+  schreiben, `count == 1` asserten) und die geaenderte Stelle danach noch
+  einmal lesen — ein gelungener Patch ist kein Beleg fuer sauberen Text.
+- **`bot-modell-auf-nous.py --auch-lokale` greift auch lokale Provider.** Ohne den
+  Schalter bleiben `llamacpp`/`docker`/`ollama` stehen (Grund: sie brauchen keine
+  Anmeldung). Beim Umstellen MUSS das lokale `model.base_url` (z. B.
+  `http://127.0.0.1:18434/v1`) mit weg, sonst zeigt der Nous-Aufruf weiter auf den
+  lokalen Endpunkt — das Werkzeug entfernt es und prueft nach. Gemessen 21.09.2026:
+  17 Profile, `openmontage` (llamacpp mit CLIP-mmproj, als Hauptmodell gar nicht
+  ladbar) und `awesome-systematic-trading` (docker) waren die letzten zwei.
+- **Die LF-Falle sitzt IN `kommentar_schluss_zurueckholen()` selbst.** Es las die
+  Sicherung mit `read_text()` (ohne `newline=""`) und schrieb mit `newline=""`:
+  der zurueckgeholte Block kam als LF in eine CRLF-Datei, der Diff zeigte die
+  ganze Datei (5 von 17 Profilen). Der ganze Vorgang gehoert auf BYTES
+  (`read_bytes`, Endung aus den Rohdaten ableiten, `write_bytes`) — so repariert,
+  mit isoliertem Test gegen eine Fixture. Bestandsdateien heilt
+  `scripts/zeilenenden-zuruecksetzen.py <pfad>`; wenn neue Zeilen keine
+  HEAD-Vorlage haben, normalisiert `cache/enden-auf-head-format.py` die GANZE
+  Datei auf die Endung aus `git show HEAD:<pfad>`.
+- **Ein Bot auf `terminal.backend: docker` stirbt mit einer irrefuehrenden
+  Meldung.** Ist der Docker-Daemon langsam, laeuft der 5-Sekunden-Probe
+  (`docker version`) in `TimeoutExpired`, der Lauf bricht ab und der Client sagt
+  nur "Switch to a different model with `/model`" — der Verdacht faellt auf das
+  Modell, obwohl der TERMINAL-Backend das Problem ist. Vor dem Modellwechsel
+  pruefen: `terminal.backend` muss bei Repo-Bots `local` sein (Hausstandard);
+  `docker` gehoert nur zu einer bewussten Container-Spur.
 
 ## Desktop-App zeigt nur das default-Profil (multiplex_profiles)
 
