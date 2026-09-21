@@ -1760,6 +1760,9 @@ providers:
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
+  - provider: ollama-launch
+    model: qwen35-8k:cpu
+    base_url: http://127.0.0.1:11434/v1
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1

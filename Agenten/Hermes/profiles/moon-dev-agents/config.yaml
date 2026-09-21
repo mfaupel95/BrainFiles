@@ -1758,6 +1758,10 @@ providers:
       ollama-local/bge-m3: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
+fallback_providers:
+  - provider: ollama-launch
+    model: qwen35-8k:cpu
+    base_url: http://127.0.0.1:11434/v1
 toolsets:
   - hermes-cli
 database:
@@ -2187,9 +2191,9 @@ mcp_servers:
       - --require-version
       - 0.4.5
       - --db
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\projectatlas.db
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\moon-dev-ai-agents\.projectatlas\projectatlas.db
       - --config
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\config.toml
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\moon-dev-ai-agents\.projectatlas\config.toml
       - mcp
     enabled: true
 platform_toolsets:
@@ -2298,3 +2302,4 @@ video_gen:
 # fallback_model:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
+

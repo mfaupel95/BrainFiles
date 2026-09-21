@@ -1767,6 +1767,9 @@ providers:
     models:
       sha256:5f60862074a4c585126288d08555e5ad9ef65044bf490ff3a64855fc84d06823: {}
 fallback_providers:
+  - provider: ollama-launch
+    model: qwen35-8k:cpu
+    base_url: http://127.0.0.1:11434/v1
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1
