@@ -45,7 +45,8 @@
   "_live": "Stufe A (2026-09-19, MOSAIC-LIVE-PLAN-OKX.md): eigener OKX-Spot-Orderweg. Live nutzt live_*-Grenzen (10/5/200); Papier rechnet mit max_pro_trade_usd 150/max_offene_positionen 4/max_gesamt_usd 600. Scharf nur ueber Freigabekette UND handel_erlaubt=true; solange OKX_DEMO/OKX_SIMULATED gesetzt ist, geht auch --live aufs Demo-Konto (zugleich Live-Sperre).",
   "live_max_pro_trade_usd": 10.0,
   "live_max_offene_positionen": 5,
-  "live_max_gesamt_usd": 200.0,
+  "live_max_gesamt_usd": 400.0,
+  "_live_grenzen_vermerk": "400 USD gesamt auf Auftrag Max 21.09.2026 (vorher 200). BINDEND sind aber live_max_pro_trade_usd 10 und live_max_offene_positionen 5: mehr als 10 x 5 = 50 USD kann die Spur gar nicht einsetzen, solange diese beiden stehen. Wer die 400 wirklich nutzen will, muss den Betrag JE TRADE nennen (dann bindet zuerst das Kraken-Guthaben: 129 EUR frei).",
   "freigabe": {
     "erfuellt": true,
     "papierlauf_min_wochen": 2,
