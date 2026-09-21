@@ -128,5 +128,45 @@ class Fuellung(unittest.TestCase):
                 h._warten_auf_fuellung("X", "1", 10, versuche=3, warte=0), 5.0)
 
 
+class PapierlaufLaesstEchtePositionenInRuhe(unittest.TestCase):
+    """Ein Papierlauf darf keine echte Position ausbuchen.
+
+    ANLASS (gemessen 21.09.2026, 20:52): xperp lief mit handel_erlaubt=false
+    im PAPER, der Kill-Switch loeste aus und schrieb
+    "papier,schliessen,HBAR-...,grund kill_switch" ins Journal - waehrend
+    /account/positions die 9.4 Kontrakte unveraendert hielt. Die echte Position
+    war damit aus dem Buch, aber nicht an der Boerse geschlossen.
+    """
+
+    def setUp(self):
+        self.geschrieben = []
+        self.j = patch.object(h, "journal",
+                              side_effect=lambda **k: self.geschrieben.append(k))
+        self.j.start()
+        self.addCleanup(self.j.stop)
+        self.storno = patch.object(h.okxf, "markt_schliessen")
+        self.storno.start()
+        self.addCleanup(self.storno.stop)
+
+    def test_flach_stellen_papier_laesst_live_stehen(self):
+        z = {"positionen": [_pos("HBAR-100"), _pos("ALT-1", modus="papier")]}
+        self.j.stop()   # der echte journal()-Aufruf wuerde schreiben
+        h.journal = lambda **k: None
+        with patch.object(h, "_kurs_aktuell", return_value=1.0):
+            h.flach_stellen(z, live=False, grund="kill_switch")
+        self.assertEqual([p["inst"] for p in z["positionen"]], ["HBAR-100"])
+        h.okxf.markt_schliessen.assert_not_called()
+
+    def test_pruefe_ausstiege_papier_laesst_live_stehen(self):
+        z = {"positionen": [_pos("HBAR-100")]}
+        z["positionen"][0]["stop"] = 99.0     # Kurs 1.0 -> Stop laengst gerissen
+        z["positionen"][0]["ziel"] = 99.0
+        h.journal = lambda **k: None
+        with patch.object(h, "_kurs_aktuell", return_value=1.0):
+            h.pruefe_ausstiege(z, live=False, w={})
+        self.assertEqual(len(z["positionen"]), 1,
+                         "Papierlauf darf eine echte Position nicht schliessen")
+
+
 if __name__ == "__main__":
     unittest.main()

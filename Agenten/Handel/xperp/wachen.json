@@ -10,9 +10,12 @@
   "wartungsmarge": 0.005,
   "_risiko": "risiko_je_anlauf_usd ist der Kill-Switch je Versuch: soviel darf ein einzelner Anlauf kosten, wenn der Stop greift. Daraus faellt die Positionsgroesse. 7,50 USD bei 200 USD Gesamtrahmen heisst rund 26 Fehlversuche in Folge, bevor der Rahmen leer ist.",
   "risiko_je_anlauf_usd": 7.5,
-    "_papier_faktor": "Nur Papier: Positionsgroesse 4x (19.09.2026, Max) - mehr Daten fuer die Freigabe-Kriterien. Live bleibt bei den echten Werten; die Runden-ZAHL aendert sich nicht.",
-    "papier_faktor": 4.0,
-    "kill_switch_gesamt_usd": 40,
+  "_papier_faktor": "Nur Papier: Positionsgroesse 4x (19.09.2026, Max) - mehr Daten fuer die Freigabe-Kriterien. Live bleibt bei den echten Werten; die Runden-ZAHL aendert sich nicht.",
+  "papier_faktor": 4.0,
+  "kill_switch_gesamt_usd": 100,
+  "entsperrt_am": "2026-09-21",
+  "_entsperrt_von": "Auftrag Max 21.09.2026 (Xperp entsperren) nach dem Kill-Switch des Abends.",
+  "_kill_switch_erhoeht": "40 -> 100 am 21.09.2026. Grund: der Kill-Switch hat um 20:37 flachgestellt und die Sperre geschlossen (Ruecklauf 71.14 USD >= 40, Hoechststand 95.34, danach 24.19); mit 40 haette JEDER naechste Zyklus sofort wieder flachgestellt und die gerade wieder eingebuchte HBAR-Position verkauft. 100 ist bewusst ein hoeherer Verlustdeckel - die Ratsche (drawdown_halbierung_usd 30) und alles andere bleiben unveraendert.",
   "_stop": "In ATR, nicht in Prozent. Ein fester Prozentwert ist bei 2 % ATR ein Rauschstop und bei 0,5 % ATR ein Scheunentor. 1,5 ATR liegt ausserhalb des ueblichen Zappelns, 3,0 ATR Ziel ergibt 2:1.",
   "stop_atr_faktor": 1.5,
   "ziel_atr_faktor": 3.0,
@@ -64,11 +67,11 @@
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind - und selbst dann nur, wenn die Ausnahme in Schutzregeln.md fuer Hebel einen Live-Pfad nennt. bot.py liest den Block.",
   "freigabe": {
     "erfuellt": true,
-        "_papierlauf_min_wochen_entfaellt": "19.09.2026 Max: die 6 Wochen Papierlauf zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",
-                "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer xperp (Handelsregeln Bedingung 1).",
-                        "_papierlauf_min_runden_entfaellt": "20.09.2026 Max: die 50 Runden zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",
-                        "groesster_ruecklauf_papierlauf_usd": null,
-        "geprueft_am": null
+    "_papierlauf_min_wochen_entfaellt": "19.09.2026 Max: die 6 Wochen Papierlauf zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",
+    "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer xperp (Handelsregeln Bedingung 1).",
+    "_papierlauf_min_runden_entfaellt": "20.09.2026 Max: die 50 Runden zaehlen nicht mehr fuer xperp (Bedingung 1). freigabe.erfuellt ist der von Hand gesetzte Haken.",
+    "groesster_ruecklauf_papierlauf_usd": null,
+    "geprueft_am": null
   },
   "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. 1.0 x Buchrisiko = risiko_je_anlauf_usd 7.5 x max_offene_anlaeufe 4. Unveraendert gegenueber der alten Quote 15% x max_margin_gesamt_usd 200.",
   "drawdown_halbierung_usd": 30.0,
@@ -78,6 +81,10 @@
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\xperp",
   "handel_erlaubt": true,
-    "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Seit 03.09.2026 gibt es hier einen Live-Pfad (handeln.py); bis dahin stand an dieser Stelle, es gebe keinen, und der Schalter oeffne nichts - das war der Kern von T-019, die Regel lief der Umsetzung voraus. Auf true erst, wenn (1) der Papierlauf die vier Werte in freigabe erfuellt, (2) journal_zweitziel gesetzt ist, (3) die OKX-Schluessel stehen. Und selbst dann handelt ein Lauf nur scharf, wenn zusaetzlich ein Freigabefenster offen ist (freigabefenster.py, Handelsregeln Punkt 3) - der Schalter allein schaltet nichts scharf. Zustand 20.09.2026: handel_erlaubt true nach OKX-Key-Reparatur (OKX_SIMULATED entfernt, eea, 50101 weg); das Freigabefenster ist der eigentliche Arm.",
-  "_herzschlag_folge": "Die 180 Minuten aus _herzschlag sind seit dem 14.09.2026 die Papier-Regel (siehe _herzschlag_regel): eine Stoerung heilt nach spaetestens rund 32 Minuten von selbst, jede engere Grenze haette bei JEDER solchen Stoerung ALLE offenen Positionen flachgestellt, bevor der Lauf irgendetwas anderes tut. Der alte Wert waren 30 Minuten - aus der Zeit vor dem Dauerlauf, als diese Spur taeglich oder von Hand lief. Am 11./12.09.2026 hat er genau das getan: Papierrunden ohne Anlass geschlossen und damit die 50 Runden aus Bedingung 1 verdorben, statt sie zu sammeln. Die Gegenrechnung gilt weiter und ist der Grund, warum der Wert NICHT fuer live taugt: eine gehebelte Position mit echtem Geld, die einen Neustart 'ueberlebt', ist unbewacht - und die Kernel-Power-41-Abschaltungen aus Wissen/Hardware.md nehmen den Rechner ohne Vorwarnung mit. Wer diese Spur auf live nimmt (handel_erlaubt true), setzt 45 Minuten; in Papier kostet eine Stoerung nur Bildqualitaet."
+  "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Seit 03.09.2026 gibt es hier einen Live-Pfad (handeln.py); bis dahin stand an dieser Stelle, es gebe keinen, und der Schalter oeffne nichts - das war der Kern von T-019, die Regel lief der Umsetzung voraus. Auf true erst, wenn (1) der Papierlauf die vier Werte in freigabe erfuellt, (2) journal_zweitziel gesetzt ist, (3) die OKX-Schluessel stehen. Und selbst dann handelt ein Lauf nur scharf, wenn zusaetzlich ein Freigabefenster offen ist (freigabefenster.py, Handelsregeln Punkt 3) - der Schalter allein schaltet nichts scharf. Zustand 20.09.2026: handel_erlaubt true nach OKX-Key-Reparatur (OKX_SIMULATED entfernt, eea, 50101 weg); das Freigabefenster ist der eigentliche Arm.",
+  "_herzschlag_folge": "Die 180 Minuten aus _herzschlag sind seit dem 14.09.2026 die Papier-Regel (siehe _herzschlag_regel): eine Stoerung heilt nach spaetestens rund 32 Minuten von selbst, jede engere Grenze haette bei JEDER solchen Stoerung ALLE offenen Positionen flachgestellt, bevor der Lauf irgendetwas anderes tut. Der alte Wert waren 30 Minuten - aus der Zeit vor dem Dauerlauf, als diese Spur taeglich oder von Hand lief. Am 11./12.09.2026 hat er genau das getan: Papierrunden ohne Anlass geschlossen und damit die 50 Runden aus Bedingung 1 verdorben, statt sie zu sammeln. Die Gegenrechnung gilt weiter und ist der Grund, warum der Wert NICHT fuer live taugt: eine gehebelte Position mit echtem Geld, die einen Neustart 'ueberlebt', ist unbewacht - und die Kernel-Power-41-Abschaltungen aus Wissen/Hardware.md nehmen den Rechner ohne Vorwarnung mit. Wer diese Spur auf live nimmt (handel_erlaubt true), setzt 45 Minuten; in Papier kostet eine Stoerung nur Bildqualitaet.",
+  "_sperre_zu_ausgeloest": {
+    "zeit": "2026-09-21T18:37:25+00:00",
+    "grund": "kill_switch: Ruecklauf 48.34 USD"
+  }
 }

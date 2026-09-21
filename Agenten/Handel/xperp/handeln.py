@@ -414,6 +414,10 @@ def bueche_geister_aus(z, w, still=False):
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
+        if not live and p.get("modus") == "live":
+            # Siehe flach_stellen: ein Papierlauf schliesst keine echte Position.
+            behalten.append(p)
+            continue
         try:
             kurs = _kurs_aktuell(p)
         except Exception as e:                           # noqa: BLE001
@@ -504,9 +508,27 @@ def buche_funding(z, live, w):
 
 
 def flach_stellen(z, live, grund):
-    """Alle Positionen sofort schliessen - Bedingung 2 und 3."""
+    """Alle Positionen sofort schliessen - Bedingung 2 und 3.
+
+    ECHTE POSITIONEN GEHOEREN DEM LIVE-LAUF (21.09.2026): Laeuft die Spur im
+    Papier (kein Freigabefenster oder handel_erlaubt=false) und loest dabei der
+    Kill-Switch aus, schloss diese Funktion BISHER auch Positionen mit
+    modus=live - aber nur im BUCH. An der Boerse blieb die Position offen.
+    Genau das ist am HBAR passiert: um 20:52 stand "papier,schliessen,grund
+    kill_switch" im Journal, waehrend /account/positions die 9.4 Kontrakte
+    unveraendert hielt. Ergebnis: eine echte, gehebelte Position ohne Buch -
+    kein Ausstieg, kein Funding, keine Bilanz.
+
+    Deshalb: im Papierlauf bleiben Positionen mit modus=live stehen und werden
+    ausdruecklich gemeldet. Geschlossen werden sie nur vom Live-Lauf.
+    """
     behalten = []
     for p in z["positionen"]:
+        if not live and p.get("modus") == "live":
+            print("  %s bleibt im Buch: echte Position (modus=live) wird nur "
+                  "vom Live-Lauf geschlossen" % p.get("inst"))
+            behalten.append(p)
+            continue
         try:
             kurs = _kurs_aktuell(p)
         except Exception as e:                           # noqa: BLE001
