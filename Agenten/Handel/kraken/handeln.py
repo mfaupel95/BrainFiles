@@ -67,6 +67,17 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
+# Freigabefenster ebenso ueber den PFAD laden - Handel/ liegt im Spurlauf
+# NICHT auf sys.path (nur <spur>/../../Bus). Ein blankes 'import freigabefenster'
+# scheitert mit ModuleNotFoundError; zeitfenster_offen() wuerde das still
+# schluecken und die Spur koennte im Dauerlauf nie live gehen (Befund
+# scanner 22.09.2026 - dieselbe Falle).
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
+
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
@@ -414,6 +425,23 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
 
+SPUR = "kraken"
+
+
+def zeitfenster_offen():
+    """Hat Max am Handy freigegeben (freigabefenster.py)?
+
+    Gelesen wird das Modul aus dem Handel-Ordner (oben ueber den PFAD geladen).
+    Ein Lesefehler gilt als *nicht* freigegeben - im Zweifel keine Order. Er
+    wird aber GEMELDET statt still verschluckt zu werden (Befund 22.09.2026)."""
+    try:
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception as e:                                   # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
+        return False
+
+
 def sitzung_da():
     """Sitzt jemand davor, der das Freigabefenster bedienen kann?
 
@@ -554,9 +582,9 @@ def live_sperren(w, s):
                        % s["rollierender_ev"])
     if not w.get("journal_zweitziel"):
         gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
-    if not sitzung_da():
-        gruende.append("keine Sitzung am Bildschirm - Freigabefenster nicht "
-                       "moeglich (Handelsregeln Punkt 3)")
+    if not sitzung_da() and not zeitfenster_offen():
+        gruende.append("Freigabefenster nicht offen - keine Sitzung am "
+                       "Bildschirm und kein Zeitfenster (Handelsregeln Punkt 3)")
     noetig = w.get("mindest_guthaben_eur", 0)
     if noetig and kraken.schluessel_vorhanden():
         try:

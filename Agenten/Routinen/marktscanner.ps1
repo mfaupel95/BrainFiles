@@ -40,18 +40,12 @@ if (-not (Test-Path $py)) {
   exit 1
 }
 
-# Sperre gegen den Doppellauf: laeuft der Dauerlauf, schreibt dieser Aufruf
-# auf denselben Zustand wie jener. Dann nur melden und aussteigen.
-$pidDatei = Join-Path $wurzel 'Handel\dauerlauf.pid'
-if (Test-Path $pidDatei) {
-  $dl = (Get-Content $pidDatei -Raw).Trim()
-  if ($dl -match '^[0-9]+$' -and (Get-Process -Id ([int]$dl) -ErrorAction SilentlyContinue)) {
-    "ENDE uebersprungen: der Dauerlauf fuehrt die Spur (PID $dl) - ein zweiter Schreiber auf denselben Zustand ist nicht noetig." |
-      Add-Content $log -Encoding UTF8
-    Melde-Ende -Marke $marke -Code 0 -Text "uebersprungen, Dauerlauf laeuft"
-    exit 0
-  }
-}
+# Sperre frueher: laeuft der Dauerlauf, schreibt dieser Aufruf auf denselben
+# Zustand wie jener. Das galt fuer handeln.py (14.09.2026 - 22.09.2026).
+# scan.py schreibt NUR berichte/*.json - keinen Zustand, kein Journal, keine
+# Position. Zwei scan.py auf demselben Scanner-Ordner sind harmlos (idempotent,
+# letzter Schreiber gewinnt). Die Sperre blockierte seit 14.09.2026 den
+# Tagesbericht und liess die Rangliste einfrieren. Entfernt 22.09.2026.
 
 try {
   Push-Location $scanner
