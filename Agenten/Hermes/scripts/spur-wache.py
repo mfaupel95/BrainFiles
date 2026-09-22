@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Wache auf die jungen Papierspuren trendwende_btc und liq_wand.
+"""Wache auf die jungen Papierspuren trendwende_btc, liq_wand, supertrend, iv_waelle.
 
-WARUM: Beide Spuren sind am 21.09.2026 angelegt worden und warten auf ihr
-erstes Signal. Beide haben ein SELTENES Tor - trendwende_btc braucht einen
+WARUM: Die Spuren warten auf ein SELTENES Tor. trendwende_btc braucht einen
 SuperTrend-Wechsel +1 -> -1 unter der EMA200 (3x in den letzten 200 Kerzen),
 liq_wand einen Liquidations-Cluster mit 30 % der Menge in einem Band, hoechstens
-2 % entfernt. Nachsehen waere Warten auf ein Ereignis, das tagelang ausbleibt.
+2 % entfernt, supertrend einen Wechsel auf der letzten Kerze, iv_waelle eine
+handelbare Optionswand mit dem Kurs in Reichweite. Nachsehen waere Warten auf
+ein Ereignis, das tagelang ausbleibt.
+
+DAZU SEIT 22.09.2026: supertrend und iv_waelle (Auftrag Max). Bei beiden ist
+Stille der Normalfall — supertrend stand nach einem stillen ImportError fuenf
+Tage still, ohne dass es auffiel, und iv_waelle hat seit dem 19.09. keine Zeile
+geschrieben. Ohne Wache ist "wartet korrekt" nicht von "kaputt" zu
+unterscheiden.
 
 Gemeldet wird je Spur NUR, was neu ist:
   1. jeder neue EINSTIEG (der erste ist die Antwort auf "greift die Regel?"),
@@ -196,9 +203,108 @@ def _zurueck_liqwand(w):
                      % (preis, spot, "; ".join(gruende)))
 
 
+def _zurueck_supertrend(w):
+    """(kennung, text), wenn der SuperTrend dreht, aber kein Einstieg entstand.
+
+    supertrend handelt NUR beim Wechsel auf der letzten Kerze (+1 -> -1 oder
+    -1 -> +1, siehe `signal()`). Bleibt der Einstieg aus, obwohl die Wende da
+    ist, liegt es an einer Kapazitaetsgrenze: Buch voll oder ATR nicht
+    rechenbar. Genau dieser Fall ist die Antwort auf "wartet die Spur richtig
+    oder ist sie kaputt?" - fuenf Tage signalfrei sah vor dem ImportFix
+    genauso aus wie ein seltener Wechsel.
+    """
+    try:
+        spur = _spur_laden("supertrend")
+    except Exception as e:
+        return None, "supertrend nicht ladbar: %s" % e
+    inst = w.get("instrument", "BTC-USDT-SWAP")
+    try:
+        k = spur.lade_kerzen(inst, w.get("kerzen_takt", "1H"),
+                             int(w.get("mindest_kerzen", 300)) + 60)
+    except Exception as e:
+        return None, "Kerzen nicht abrufbar: %s" % e
+    if not k or len(k) < int(w.get("mindest_kerzen", 300)):
+        return None, None
+    idx = len(k) - 1                      # dieselbe Kerze wie der Zyklus
+    sig = spur.signal(k, idx)
+    if not sig:
+        return None, None                 # keine Wende - Ruhe, kein Befund
+    seite, _linie = sig
+    kurs = float(k[idx][4])
+
+    z = _lies(HANDEL / "supertrend" / "zustand.json")
+    offen = len(z.get("positionen") or [])
+    grenze = int(w.get("max_offene_positionen", 4))
+    if offen >= grenze:
+        warum = "Buch voll (%d von %d)" % (offen, grenze)
+    else:
+        atr = spur.atr_abs(k, idx, 14)
+        warum = ("ATR nicht rechenbar" if not atr or atr <= 0
+                 else "Kapazitaet frei, aber kein Einstieg gebucht")
+    kennung = "%s|%s" % (str(k[idx][0]), seite)
+    return (kennung,
+            "supertrend: Wende %s bei %.2f auf der letzten Kerze, aber kein "
+            "Einstieg - %s. Der Papierlauf greift also nur, wenn Platz ist."
+            % (seite.upper(), kurs, warum))
+
+
+def _zurueck_ivwaelle(w):
+    """(kennung, text), wenn eine HANDELBARE Wand da ist, der Kurs aber fehlt.
+
+    Die Regel (siehe `iv_waelle.signal`): Einstieg nur, wenn der laufende Kurs
+    hoechstens `naehe_prozent` von der Wand entfernt steht UND die Wand
+    handelbar ist (zwischen Grenze und 3 Sigma, siehe `wandelage`). Steht eine
+    handelbare Wand da und der Kurs ist noch weit weg, ist das der Fall, auf
+    den die Spur wartet - einmal je Tag und Wand gemeldet, nicht je Zyklus.
+    """
+    try:
+        spur = _spur_laden("iv_waelle")
+    except Exception as e:
+        return None, "iv_waelle nicht ladbar: %s" % e
+    try:
+        daten, _kurse, fehler = spur._hole_markt(w)
+    except Exception as e:
+        return None, "Markt nicht abrufbar: %s" % e
+    if fehler:
+        # Datenlage, kein Signal - nicht taeglich melden (wie bei liq_wand).
+        return None, None
+    inst = w.get("instrument", "BTC-PERPETUAL")
+    d = daten.get(inst) or {}
+    if not d.get("spot"):
+        return None, None
+    try:
+        sig = spur.spanne_und_signal(d, w)
+    except Exception as e:
+        return None, "Signal nicht rechenbar: %s" % e
+    if sig.get("richtung") and sig["richtung"] != "kein_signal":
+        return None, None                 # die Spur handelt
+    spot = float(sig.get("spot") or d["spot"])
+    naehe = float(w.get("naehe_prozent", 0.5))
+    for name, lage in sorted((sig.get("lagen") or {}).items()):
+        if not isinstance(lage, dict) or lage.get("lage") != "handelbar":
+            continue                      # keine Wand / Rauschen / unerreichbar
+        strike = float(lage.get("strike") or 0)
+        if strike <= 0:
+            continue
+        abstand = abs(strike - spot) / spot * 100.0
+        if abstand <= naehe:
+            continue                      # Nah genug - dann haette sie gehandelt
+        kennung = "%s|%s|%.0f" % (dt.datetime.now(dt.timezone.utc)
+                                  .strftime("%Y-%m-%d"), name, strike)
+        return (kennung,
+                "iv_waelle: handelbare Wand %s bei %.0f (%.1f Sigma), der Kurs "
+                "steht %.2f %% entfernt - noetig sind hoechstens %.2f %%. "
+                "Warten auf die Naehe ist die Regel, kein Fehler."
+                % (name, strike, float(lage.get("abstand_sigma") or 0),
+                   abstand, naehe))
+    return None, None
+
+
 SPUREN = {
     "trendwende_btc": _zurueck_trendwende,
     "liq_wand": _zurueck_liqwand,
+    "supertrend": _zurueck_supertrend,
+    "iv_waelle": _zurueck_ivwaelle,
 }
 
 
