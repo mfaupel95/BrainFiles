@@ -209,7 +209,6 @@ try {
       $gewolltStores = @{
         'models--convaiinnovations--laya-multilingual' = 'laya-Modell (NandhaKishorM/laya), 21.09.2026 geladen - Entscheidung Max'
         'hub'                                          = 'laya-Blob (615 MB) liegt in hub/blobs - derselbe Modellbestand'
-        'models--unslothai--Qwen3-ASR-1.7B-GGUF'       = 'Sprachmodell-Bestand, Herkunft nicht belegt - vor dem Loeschen pruefen'
       }
       $aktivNamen = @{}
       Get-ChildItem $aktivBlobs -File -Force -EA SilentlyContinue | ForEach-Object { $aktivNamen[$_.Name] = $true }
