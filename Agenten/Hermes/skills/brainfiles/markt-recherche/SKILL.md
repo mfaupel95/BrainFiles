@@ -113,6 +113,7 @@ zweite Zeuge (`/account/positions`, Balance).
 ## Abgrenzung
 
 - Handelsregeln, Freigabe, Papier/Live: `Handel/AGENTS.md`, `Wissen/Handelsregeln.md`
-- Spuren auswerten und deuten: `handel-spuren`, `handelsspur-studie`
+- Spuren auswerten und deuten: `handel-spur-studie` (im Bot vorhanden) und
+  die Betriebsdoku `handel-spuren` im Hauptbaum
 - Webseiten ernten, wenn RSS nicht reicht: `scrapling-ernte`, `wiki-pflege`
 - Fundus fremder Faehigkeiten: `fundus-zugriff`
