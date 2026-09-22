@@ -471,6 +471,34 @@ def _lade_wachen_sicher(pfad):
         return None
 
 
+def _handel_erlaubt_aus(ordner):
+    """`handel_erlaubt` der Spur (None, wenn Datei/Feld fehlt).
+
+    Gebraucht fuer die MELDUNG: das Freigabefenster sagt nur, dass --live
+    erlaubt waere - ob die Spur live geht, entscheidet ihr eigener Riegel.
+    Am 22.09.2026 stand fuenfmal "(live)" im Log, waehrend kraken Papier
+    handelte (handel_erlaubt=false); Max hat genau danach gefragt.
+    """
+    w = _lade_wachen_sicher(os.path.join(ordner, "wachen.json"))
+    if not isinstance(w, dict):
+        return None
+    return w.get("handel_erlaubt")
+
+
+def _meldungsmodus(modus, ordner):
+    """Der Modus, der GEMELDET wird: die Wirkung, nicht die Anfrage.
+
+    Das Freigabefenster erlaubt --live, die Spur kann es trotzdem verweigern
+    (wachen.json handel_erlaubt=false). Am 22.09.2026 stand fuenfmal
+    "(kraken (live) ok)" im Log, waehrend kraken Papier handelte - Max hat
+    genau danach gefragt. Der AUFRUF bleibt der angeforderte Modus; nur die
+    Meldung sagt die Wahrheit.
+    """
+    if modus == "--live" and _handel_erlaubt_aus(ordner) is False:
+        return "--papier"
+    return modus
+
+
 def _env_sicher():
     """Umgebung fuer Subprozesse: die volle Umgebung, plus HANDEL_RISIKO.
 
@@ -547,6 +575,11 @@ class Lauf:
         modus = "--live" if (f.offen() and not self.stumm) else "--papier"
 
         ordner = os.path.join(HIER, SPUREN[spur]["ordner"])
+        # WIRKUNG STATT ANFRAGE (siehe _meldungsmodus): der AUFRUF bleibt der
+        # angeforderte Modus - sonst aendert sich das Verhalten der Spur
+        # (z.B. laeuft die Buchbereinigung nur im Live-Zweig) -, gemeldet wird
+        # aber, was wirklich passiert.
+        kennung = _meldungsmodus(modus, ordner)
         # Nicht jede Spur heisst handeln.py: die Spiegel-Spur liest einen
         # fremden Feed und bucht nach (spiegel.py). Der Eintrag in SPUREN
         # entscheidet, welche Datei gestartet wird.
@@ -575,13 +608,13 @@ class Lauf:
         except subprocess.TimeoutExpired as e:
             # FIXED: Timeout-Exception nicht mehr fatal
             protokoll("%s TIMEOUT (exceeded %ds limit)" % (spur, TIMEOUT_S))
-            return modus, 124, "TIMEOUT: Handelslogik antwortet nicht"
+            return kennung, 124, "TIMEOUT: Handelslogik antwortet nicht"
         except Exception as e:
             # Andere Subprocess-Fehler (OSError, etc.)
             protokoll("%s subprocess ERROR: %s" % (spur, e))
-            return modus, 1, str(e)
+            return kennung, 1, str(e)
         
-        return modus, p.returncode, (p.stdout or "") + (p.stderr or "")
+        return kennung, p.returncode, (p.stdout or "") + (p.stderr or "")
 
     def zyklus(self):
         self.zyklen += 1
