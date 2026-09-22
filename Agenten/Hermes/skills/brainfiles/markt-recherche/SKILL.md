@@ -38,6 +38,10 @@ Anlageberatung, oder eine Spur live schalten.
     python marktdaten.py news --anzahl 10          # Markt- und Krypto-Feeds
     python marktdaten.py selbsttest                # Parser ohne Netz
 
+Aus dem Arbeitsbereich `Agenten\Handel` heraus (dort steht der Bot) heisst
+derselbe Aufruf `python ..\Werkzeuge\marktdaten.py kurs ...` - der Pfad ist
+relativ zur Repo-Wurzel angegeben.
+
 Quellen und ihre Grenzen:
 
 | Frage | Weg | Bemerkung |
