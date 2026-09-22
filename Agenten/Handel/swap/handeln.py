@@ -322,6 +322,49 @@ def _ergebnis(p, kurs):
     return p["margin"] + gewinn - gebuehr
 
 
+def bueche_papier_altlasten_aus(z):
+    """Positionen ohne modus='live' aus dem Live-Buch buchen.
+
+    Anlass (22.09.2026): Das Buch ist EINES fuer Papier und Live. Laeuft
+    die Spur mit geschlossenem Freigabefenster im Papier, fuellt sie dasselbe
+    Buch; wird das Fenster geoeffnet, stehen diese Positionen im Live-Buch.
+    pruefe_ausstiege() pruefte kein modus-Feld und haette im naechsten
+    Stop-Ausstieg ein echtes okxf.markt_schliessen() auf eine Position
+    geschickt, die an der Boerse nie existiert hat.
+
+    Erkennung: Positionen ohne 'modus'-Feld ODER modus != 'live'.
+    Idempotent: eine zweite Bereinigung findet nichts mehr.
+    """
+    altlasten = [p for p in z["positionen"] if p.get("modus") != "live"]
+    if not altlasten:
+        return 0
+    behalten = []
+    for p in z["positionen"]:
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
+        # Aktuellen Kurs holen; scheitert das, Altlast zum Einstiegspreis buchen.
+        try:
+            kurs = _kurs(p["inst"])
+        except Exception:                                  # noqa: BLE001
+            kurs = p["einstieg"]
+        erloes = _ergebnis(p, kurs) if kurs else p["margin"]
+        gv = erloes - p["margin"]
+        print("  Buchbereinigung: %s (ohne Live-Order) @ %.6f  G/V %+.2f USD"
+              % (p["inst"], kurs or p["einstieg"], gv))
+        journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                inst=p["inst"], seite=p["seite"],
+                familie=p.get("familie", ""),
+                preis="%.6f" % (kurs or p["einstieg"]),
+                kontrakte=p["kontrakte"],
+                nominal_usd="%.2f" % p["nominal"],
+                margin_usd="%.2f" % erloes,
+                hebel=p["hebel"],
+                grund="buchbereinigung")
+    z["positionen"] = behalten
+    return len(altlasten)
+
+
 def pruefe_ausstiege(z, live, w):
     """Stop, Ziel, Liquidation - gerechnet aus dem eigenen Zustand.
 
@@ -650,6 +693,10 @@ def lauf(modus):
             print("-> es wird Papier gehandelt.")
         else:
             live = True
+            n_alt = bueche_papier_altlasten_aus(z)
+            if n_alt:
+                print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht"
+                      % n_alt)
 
     werte, alter = rangliste(z)
     kand = kandidaten_aus(werte, w)
