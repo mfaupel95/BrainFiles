@@ -165,7 +165,7 @@ def main() -> int:
             # liegt, handelt nur, solange die Gebuehr 0 ist.
             hinweis = "  <<< haengt an der Gebuehrfreiheit (unter 0,4 %)"
         if geb is not None and geb > 0 and geb >= w["f_max"]:
-            hinweis += " UND die gesetzte Gebuehr %.3f % liegt darueber" % geb
+            hinweis += " UND die gesetzte Gebuehr %.3f %% liegt darueber" % geb
         zahl = ("  (%d Zwangsschluss-Zeile(n) nicht mitgezaehlt)" % len(zwang)
                 if zwang else "")
         print("%-22s %6d %6.2f %6.2f %5.0f%%   %+.2f %% je Runde%s%s" % (

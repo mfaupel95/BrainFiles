@@ -23,6 +23,14 @@ Registry-Host, Rechte des Schluessels im OKX-Portal.
 
 ## 2. `kraken` bleibt im Papier (aktualisiert 22.09.2026)
 
+**Seit 22.09.2026 laeuft trotzdem eine Kraken-Spur live: `moondev_marktlage`.**
+Sie ist die einzige Spur mit fertigem Kraken-Orderweg, deren eigene Messung die gemessene
+Gebuehr schlaegt (`kosten_wendepunkt.py`: f_max **+9,00 %** je Runde gegen 1,2 % Kraken-Runde).
+Paar **XXBTZEUR** (die Waehrung, in der das Geld liegt — XBTUSD waere an 12,27 USD gescheitert),
+Einsatz 60–150 EUR nach Signalstaerke, **ein** Platz (das Signal ist eine Marktlage-Wette),
+Ratsche 9,00 = 1,0x Buchrisiko, Kill 27,00. Der Kraken-Blker bleibt nur fuer die Haus-Spur
+`kraken` selbst (eigene Rueckrechnung negativ).
+
 **Das Guthaben ist kein Blocker mehr.** Das Konto ist seit dem 22.09.2026 wieder frei
 (`EGeneral:Temporary lockout` vorbei): **189,15 EUR** verfuegbar, `mindest_guthaben_eur` 60.
 

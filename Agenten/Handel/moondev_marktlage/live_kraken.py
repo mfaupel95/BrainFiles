@@ -93,7 +93,12 @@ ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.live.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.live.csv"))
 
 WAEHRUNG = "EUR"          # Kraken-Spot rechnet in EUR-Paaren
-PAAR = "XBTUSD"           # BTC an Kraken-Spot
+PAAR = "XXBTZEUR"         # BTC an Kraken-Spot in EUR
+# Warum EUR und nicht XBTUSD (22.09.2026): das Konto haelt EUR (189.15 frei),
+# aber nur 12.27 USD. Ein Kauf auf XBTUSD waere am Guthaben gescheitert, und
+# der Guthaben-Puffer dieser Datei prueft ohnehin EUR. Die Waehrung des Paares
+# muss die Waehrung des Guthabens sein - sonst ist die Sperre gruen und die
+# Order faellt trotzdem um.
 GRUND = "moondev_marktlage_long"
 
 # Einsatz: 10..30 EUR, dynamisch nach Signalstaerke (Plan Punkt 2).
@@ -174,21 +179,38 @@ def daten_holen(w):
     return aus, aus, []
 
 
-def signalstaerke(staerke):
-    """Einsatz in EUR: 10..30 nach Signalstaerke (Plan Punkt 2).
+def signalstaerke(staerke, spanne=None):
+    """Einsatz in EUR: nach Signalstaerke zwischen zwei Grenzen.
 
     staerke ist ein (pct, breite)-Dict. Je weiter BTC ueber der Schwelle und
-    je breiter der Markt, desto mehr Einsatz. Hart zwischen EINSATZ_MIN und
-    EINSATZ_MAX gedeckelt; werte unter der Schwelle kleben am Minimum.
+    je breiter der Markt, desto mehr Einsatz. Hart zwischen den Grenzen
+    gedeckelt; Werte unter der Schwelle kleben am Minimum.
+
+    Die Grenzen sind die ZAHLEN (Hausregel: Zahlen stehen in der wachen.json,
+    nicht im Code). Uebergeben wird `spanne` = (min, max) aus
+    `live_einsatz_min_eur` / `live_einsatz_max_eur`; ohne Angabe gelten die
+    Hauswerte als Rueckfall, damit ein Aufruf ohne Wachen nicht still 0 kauft.
     """
     pct = float(staerke.get("pct") or 0.0)
     breite = float(staerke.get("breite") or 0.0)
+    unten, oben = spanne or (EINSATZ_MIN, EINSATZ_MAX)
     # Signalueberhang: wie weit ueber der +2-%-Schwelle, 0..+4 pp skaliert.
     ueberhang = max(0.0, min(4.0, pct - 2.0)) / 4.0
     # Marktbreite: 0.60..1.00 skaliert als zweiter Faktor.
     breiten_teil = max(0.0, min(1.0, (breite - 0.60) / 0.40))
     t = 0.5 * ueberhang + 0.5 * breiten_teil
-    return round(EINSATZ_MIN + t * (EINSATZ_MAX - EINSATZ_MIN), 2)
+    return round(float(unten) + t * (float(oben) - float(unten)), 2)
+
+
+def einsatz_spanne(w):
+    """(min, max) aus der wachen. Fehlende oder verdrehte Werte = Hauswerte."""
+    unten = float(w.get("live_einsatz_min_eur", EINSATZ_MIN))
+    oben = float(w.get("live_einsatz_max_eur", EINSATZ_MAX))
+    deckel = float(w.get("max_pro_trade_usd", oben))
+    oben = min(oben, deckel)
+    if unten <= 0 or oben < unten:
+        return EINSATZ_MIN, EINSATZ_MAX
+    return unten, oben
 
 
 def lade_wachen():
@@ -359,7 +381,7 @@ def pruefe_einstiege(z, w, live):
     if not kurs or kurs <= 0:
         print("- Kurs %s nicht abrufbar - kein Einstieg" % PAAR, file=sys.stderr)
         return
-    eur = signalstaerke(staerke)
+    eur = signalstaerke(staerke, einsatz_spanne(w))
     menge, fehler = menge_fuer(eur, kurs)
     if fehler:
         print("- Menge fuer %.2f EUR: %s - kein Einstieg" % (eur, fehler),

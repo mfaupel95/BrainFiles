@@ -15,9 +15,21 @@ import unittest
 HIER = os.path.dirname(os.path.abspath(__file__))
 SPUR = os.path.dirname(HIER)
 HANDEL = os.path.dirname(SPUR)
+
+# Reihenfolge ist entscheidend: eine bereits importierte NACHBARSPUR kann ihren
+# Ordner auf sys.path gelegt haben (live_kraken.py laedt die Haus-Kraken-Spur
+# ueber den Pfad und tut das). Dann gewinnt deren handeln.py und diese Suite
+# prueft still das falsche Modul - genau dafuer steht die Zusicherung unten.
+# Deshalb: fremde Spurordner raus, eigenes handeln aus dem Modulcache werfen,
+# eigene Spur ZULETZT einfuegen (landet damit ganz vorne).
+for fremd in [p for p in sys.path if os.path.basename(p) == "kraken"]:
+    sys.path.remove(fremd)
+sys.modules.pop("handeln", None)
 for p in (os.path.join(HANDEL, "scanner"), HANDEL, SPUR):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    # OHNE "if p not in sys.path": die Nachbarspur hat die Pfade schon
+    # eingetragen (nur weiter hinten). Der eigene Ordner muss nach vorne,
+    # sonst gewinnt wieder ein fremdes handeln.py.
+    sys.path.insert(0, p)
 
 import handeln as h  # noqa: E402
 import spur_buch as buch  # noqa: E402

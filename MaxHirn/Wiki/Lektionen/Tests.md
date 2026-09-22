@@ -69,7 +69,26 @@ Skill-Bibliothek entdoppelt wurde, fiel er. Richtig ist die Pruefung der REGEL
 („jeder nicht ladbare Eintrag fehlt in der Faehigkeitsliste und steht in der
 Schlusszeile").
 
-## 5. Laufender Stand
+## 5. Ein Nachbar verdeckt das eigene Modul (22.09.2026)
+
+`live_kraken.py` laedt die Haus-Kraken-Spur ueber den PFAD und legt dabei
+`Agenten/Handel/kraken` auf `sys.path`. Wird es vor der eigenen Suite importiert
+(alphabetische Reihenfolge beim `discover`), gewinnt `kraken/handeln.py` und die
+Suite prueft still das FALSCHE Modul - sie war gruen, weil die Zusicherung
+`h.__file__.startswith(SPUR)` den Fall abfaengt.
+
+Zwei Fallen in der Reparatur:
+
+1. `if p not in sys.path` ist hier falsch: die Nachbarspur hat die Pfade schon
+   eingetragen, nur weiter hinten - der eigene Ordner muss trotzdem nach vorne
+   (`sys.path.insert(0, p)` ohne Bedingung).
+2. Fremde Spurordner vorher entfernen und `sys.modules.pop("handeln")`, sonst
+   liegt das bereits geladene fremde Modul im Cache.
+
+**Merksatz:** Eine Suite, die ihr eigenes Modul importiert, muss VOR dem Import
+aufraeumen und danach pruefen, WAS sie geladen hat (`__file__`).
+
+## 6. Laufender Stand
 
 Agenten/Handel, `discover -s tests -t tests`: **418 Tests, 2 vorbestehende rote**
 (21.09.2026) — `test_risikovorfilter.EinbauTest` (festes Datum, s. o.) und
