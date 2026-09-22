@@ -374,3 +374,31 @@ ist die Gewinnkarte - die Verlustseite fehlt, und damit fehlt der Track Record
 - Die neue Spur durchlaeuft danach die regulaere Anbindung (die fuenf Stellen
   und die `.gitignore`-Whitelist, siehe SKILL.md) - ein Sonderweg nur fuer
   Signalmuster existiert nicht.
+
+## Fremder SAMMLER, eigene Spur (Radar-Muster)
+
+Sammelt das Fremd-Repo die Daten selbst (Radar, Index, MCP), wird die Spur
+**nicht** per `subprocess` oder Netz an den Sammler gehaengt. Stattdessen:
+
+1. **Die Spur liest die Datenbank des Fremd-Repos** - genau ein Zugang, `mode=ro`
+   und eine Whitelist der erlaubten Anweisungen (`SELECT`/`WITH`/`PRAGMA`, sonst
+   Abbruch). Den Pfad als Umgebungsvariable fuehren (Naht fuer Tests).
+2. **Der Sammler laeuft als eigener no_agent-Cron** (`discover`/`track` im
+   Fremd-venv, leere Ausgabe = nichts senden, Watchdog-Muster).
+3. Folge: die Spur ist **offline testbar** (Fixture-Datenbank, kein Netz), ein
+   Sammlerausfall ist an EINER Stelle sichtbar, und die Spur kann nie in fremde
+   Daten schreiben.
+
+Zwei Merksaetze dazu:
+
+- **Das Geschehen kopieren, nicht die Rangliste.** Wer die Bestenliste kopiert,
+  zuechtet nach dem Ergebnis und misst nichts. Bei Ereignis-Feed-Spuren: die
+  Handlungen einer Kohorte sind das Signal (ab zwei verschiedenen Kaeufern,
+  Verkaufsdruck derselben Kohorte blockiert).
+- **Einen neuen Einstieg je Zyklus** (staerkster Kandidat zuerst). Sonst fuellt
+  der erste Zyklus mit Daten das ganze Buch, und die Auswertung kann nicht
+  zeigen, welcher Rang traegt.
+- **Die Spurliste altert.** `pruefe_ratschen.py` fuehrte die drei juengsten
+  `spur_buch`-Spuren nicht, weil niemand sie nachgetragen hatte - nach jeder
+  neuen Spur diese Liste mitpruefen (sie ist neben `dauerlauf.SPUREN` die
+  zweite Stelle, die einen Spurnamen von Hand traegt).
