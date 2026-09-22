@@ -88,7 +88,10 @@ impl MatchingEngine {
             }
 
             let fill_qty = order.remaining_quantity();
-            if fill_qty <= 0.0 {
+            if fill_qty < f64::EPSILON {
+                if order.status != OrderStatus::Filled {
+                    order.status = OrderStatus::Filled;
+                }
                 continue;
             }
 
@@ -154,7 +157,10 @@ impl MatchingEngine {
             }
 
             let fill_qty = order.remaining_quantity();
-            if fill_qty <= 0.0 {
+            if fill_qty < f64::EPSILON {
+                if order.status != OrderStatus::Filled {
+                    order.status = OrderStatus::Filled;
+                }
                 continue;
             }
 
@@ -249,7 +255,7 @@ impl MatchingEngine {
                 }
             }
             OrderType::TrailingStop { percent } => {
-                // Update highest price tracking
+                // Initialize highest price on first candle if not set; track the running high
                 let current_high = candle.high;
                 let highest = order.trailing_highest_price.unwrap_or(current_high);
                 let updated_highest = highest.max(current_high);
@@ -370,6 +376,26 @@ mod tests {
     }
 
     #[test]
+    fn trailing_stop_initializes_highest_on_first_candle() {
+        let mut engine = setup_engine();
+        let order = create_test_order(
+            1,
+            Side::Buy,
+            OrderType::TrailingStop { percent: 0.05 },
+            0.0,
+            1.0,
+        );
+        assert_eq!(order.trailing_highest_price, None);
+        let mut pending = vec![order];
+
+        // First candle: highest should be initialized to candle.high
+        let candle1 = Candle::new(2000, 50_000.0, 51_000.0, 50_000.0, 50_500.0, 1000.0);
+        let fills1 = engine.process_candle(&candle1, &mut pending);
+        assert!(fills1.is_empty());
+        assert_eq!(pending[0].trailing_highest_price, Some(51_000.0));
+    }
+
+    #[test]
     fn trailing_stop_updates_highest_and_triggers() {
         let mut engine = setup_engine();
         let order = create_test_order(
@@ -413,6 +439,24 @@ mod tests {
         assert!((fill.fill_price - 50_050.0).abs() < 1e-6);
         assert!(fill.is_maker);
         assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn zero_remaining_quantity_marks_order_filled() {
+        let mut engine = setup_engine();
+        let mut order = create_test_order(1, Side::Buy, OrderType::Market, 0.0, 1.0);
+        order.filled_quantity = 1.0;  // Fully filled
+        order.status = OrderStatus::PartiallyFilled;
+        let mut pending = vec![order];
+
+        let tick = Tick::new(2000, 50_000.0, 1.0, false);
+        let fills = engine.process_tick(&tick, &mut pending);
+
+        // No new fill generated (order already filled)
+        assert!(fills.is_empty());
+        // Order should have been marked as Filled, but then removed from pending_orders
+        // because retain() only keeps active orders (New, PartiallyFilled)
+        assert!(pending.is_empty(), "Filled orders are removed from pending_orders");
     }
 
     #[test]
