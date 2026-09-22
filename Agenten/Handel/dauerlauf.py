@@ -393,7 +393,7 @@ TAKT_MAX_MINUTEN = 15
 # EUR-Guthaben (mindest_guthaben_eur 60).
 AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
                  "moondev_listingarb", "moondev_topmovers", "kraken",
-                 "trendwende_btc", "liq_wand")
+                 "trendwende_btc", "liq_wand", "moondev_marktlage")
 AUTO_FREIGABE_STUNDEN = 12
 
 

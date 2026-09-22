@@ -76,6 +76,17 @@ def _lade(name, pfad):
 
 _ereignis = _lade("ereignis", os.path.join(BUS, "ereignis.py"))
 _freigabe = _lade("freigabe", os.path.join(HANDEL, "freigabe.py"))
+# Das Zeitfenster wird ueber den PFAD geladen, nicht ueber 'import': die Spur
+# startet mit ihrem eigenen Ordner als sys.path[0], und ein blanker Import
+# scheitert dort mit ModuleNotFoundError - im except-Zweig sah das dann aus wie
+# "Fenster ist zu" (Befund 22.09.2026, scanner).
+freigabefenster = _lade("freigabefenster",
+                        os.path.join(HANDEL, "freigabefenster.py"))
+
+# Der eigene Spurname im Freigabefenster. NICHT "kraken": das ist die
+# Haus-Kraken-Spur, und ein Fenster fuer sie darf diese Spur nicht mit
+# scharf schalten (und umgekehrt).
+SPUR = "moondev_marktlage"
 
 # --- Dateien (Live-Buch getrennt vom Papier) --------------------------------
 ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.live.json"))
@@ -203,6 +214,21 @@ def sitzung_da():
         return False
 
 
+def zeitfenster_offen():
+    """Hat Max am Handy freigegeben (freigabefenster.py)?
+
+    Gelesen wird das Modul aus dem Handel-Ordner (oben ueber den PFAD geladen).
+    Ein Lesefehler gilt als *nicht* freigegeben - im Zweifel keine Order -, wird
+    aber GEMELDET statt still verschluckt zu werden (Befund 22.09.2026).
+    """
+    try:
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception as e:                                       # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
+        return False
+
+
 def live_sperren(w, z):
     """Alle Gruende, die diesen Lauf auf Papier/Ausstellen zurueckwerfen."""
     gruende = []
@@ -222,8 +248,9 @@ def live_sperren(w, z):
                        % s["rollierender_ev"])
     if not w.get("journal_zweitziel"):
         gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
-    if not sitzung_da():
-        gruende.append("keine Sitzung am Bildschirm - Freigabefenster nicht moeglich")
+    if not sitzung_da() and not zeitfenster_offen():
+        gruende.append("Freigabefenster nicht offen - keine Sitzung am "
+                       "Bildschirm und kein Zeitfenster (Handelsregeln Punkt 3)")
     noetig = w.get("mindest_guthaben_eur", 0)
     if noetig and kraken.schluessel_vorhanden():
         try:
@@ -268,7 +295,7 @@ def hole_freigabe(vorschlag, z, s):
         "verlust_gesamt": s.get("ruecklauf_eur", 0.0),
     }
     try:
-        return _freigabe.bestaetige(vs, "kraken", bestand, zeitlimit=FREIGABE_ZEITLIMIT_S)
+        return _freigabe.bestaetige(vs, SPUR, bestand, zeitlimit=FREIGABE_ZEITLIMIT_S)
     except Exception as e:                                       # noqa: BLE001
         print("  Freigabe abgebrochen (%s) - kein Einstieg." % e, file=sys.stderr)
         return []
@@ -403,6 +430,22 @@ def spiegeln(w, z):
     return ok
 
 
+def sperren_zeile():
+    """Die Live-Sperren als DIE eine Zeile, die der Dauerlauf liest.
+
+    `dauerlauf.nur_fenster_fehlt()` verlangt GENAU EINEN Grund und darin das
+    Wort "Freigabefenster", damit AUTO_FREIGABE ein Fenster selbst oeffnet.
+    Ohne diese Zeile wird nie gefragt - und eine Spur, die nur auf eine
+    Freigabe wartet, wartet fuer immer (Befund 22.09.2026).
+    """
+    w = lade_wachen()
+    z = lade_zustand()
+    z.setdefault("positionen", [])
+    gruende = live_sperren(w, z)
+    print("Live waere gesperrt durch: " + ("; ".join(gruende) or "nichts"))
+    return gruende
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -416,13 +459,34 @@ def lauf(modus):
         return 0
 
     live = False
+    gruende = live_sperren(w, z)
     if modus == "live":
-        gruende = live_sperren(w, z)
         if gruende:
             print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
             print("-> es wird Papier (Live-Buch) gehandelt.")
         else:
             live = True
+
+    if modus == "vorschau":
+        # DIE VORSCHAU SCHREIBT NICHTS UND HANDELT NICHT - kein Zustand, kein
+        # Ausstieg, keine Order. Sie ist der haeufigste Aufruf (der Dauerlauf
+        # fragt jede Spur damit ab, und Werkzeuge tun es auch), und zwei Dinge
+        # haengen daran: wuerde sie den Zustand schreiben, saehe der Herzschlag
+        # frisch aus, ohne dass ein Zyklus lief; und pruefe_ausstiege kann in
+        # einem reinen Nachsehe-Lauf verkaufen (beides am 22.09.2026 an
+        # iv_waelle bzw. spiegel gelernt). Bedingung 4 gilt trotzdem: wenn NUR
+        # die Vorschau laeuft, muss Q: nachgezogen werden.
+        print("- Einstiege -")
+        print("Stand: %d/%d Position, %.2f EUR gebunden"
+              % (len(z.get("positionen", [])), w.get("max_offene_positionen", 1),
+                 sum(p["eur"] for p in z.get("positionen", []))))
+        # Diese Zeile liest dauerlauf.nur_fenster_fehlt(): nennt sie GENAU
+        # EINEN Grund und enthaelt er das Wort "Freigabefenster", oeffnet
+        # AUTO_FREIGABE das Fenster selbst. Ohne sie wird nie gefragt.
+        print("Live waere gesperrt durch: " + ("; ".join(gruende) or "nichts"))
+        if w.get("journal_zweitziel"):
+            spiegeln(w, z)
+        return 0
 
     # Kill-Switch
     if s.get("kill"):
@@ -430,19 +494,30 @@ def lauf(modus):
               % s.get("ruecklauf_eur", 0.0))
         if wp.sperre_zu("kill_switch: Ruecklauf %.2f EUR" % s.get("ruecklauf_eur", 0.0)):
             print("  wachen.json handel_erlaubt -> false")
+        schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            spiegeln(w, z)
         return 0
 
     # Herzschlag alt -> kein Handel dieser Lauf
     if not s.get("herzschlag_frisch"):
         print("- Herzschlag alt -> kein Handel dieser Lauf -")
+        # DEN HERZSCHLAG TROTZDEM SCHREIBEN. Er kommt aus `zustand.letzter_lauf`
+        # (wachen_pruefung.herzschlag_frisch). Ohne diesen Schreibvorgang bliebe
+        # die Sperre FUER IMMER zu: kein Lauf schriebe je wieder einen frischen
+        # Zeitstempel, und die Spur wartete dauerhaft auf sich selbst
+        # (Deadlock, am 22.09.2026 beim Verdrahten gefunden). Die uebrigen
+        # Spuren schreiben den Zustand in jedem Ausgang - hier fehlte er.
+        schreibe_zustand(z)
+        if w.get("journal_zweitziel"):
+            spiegeln(w, z)
         return 0
 
     print("- Ausstiege -")
     pruefe_ausstiege(z, w, live)
 
     print("- Einstiege -")
-    if modus != "vorschau":
-        pruefe_einstiege(z, w, live)
+    pruefe_einstiege(z, w, live)
 
     schreibe_zustand(z)
     if w.get("journal_zweitziel"):

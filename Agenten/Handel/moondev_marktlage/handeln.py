@@ -112,8 +112,20 @@ def main():
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
     # ist es nur so lange richtig, wie Ordner und Spurname gleich heissen.
-    return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/moondev_marktlage")
+    r = buch.zyklus(HIER, daten_holen, signal, a.modus,
+                    "handel/moondev_marktlage")
+    if a.modus == "vorschau":
+        # Der gemeinsame Papier-Kern kann die LIVE-Sperren nicht beurteilen -
+        # sie liegen im eigenen Live-Zweig. Der Dauerlauf liest aber genau
+        # diese eine Zeile, um zu entscheiden, ob sich eine Freigabe-Anfrage
+        # lohnt (dauerlauf.nur_fenster_fehlt); ohne sie oeffnet AUTO_FREIGABE
+        # nie ein Fenster und die Spur kann nie live gehen (Befund 22.09.2026).
+        try:
+            import live_kraken  # noqa: E402
+            live_kraken.sperren_zeile()
+        except Exception as e:                                   # noqa: BLE001
+            print("Live waere gesperrt durch: nicht bestimmbar (%s)" % e)
+    return r
 
 
 if __name__ == "__main__":

@@ -7,11 +7,13 @@ kraken-Orderfunktionen durch Stubs ersetzt.
 
 Aufruf aus diesem Verzeichnis:  python -m unittest test_live_kraken
 """
+import builtins
 import json
 import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SPUR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, SPUR)
@@ -165,6 +167,105 @@ class FreigabeDurchlaufTest(LiveBase):
         w = {"max_offene_positionen": 1}
         lk.pruefe_einstiege(z, w, live=False)
         self.assertEqual(len(z["positionen"]), 0)
+
+
+class Verdrahtung(unittest.TestCase):
+    """Der Live-Zweig muss im DAUERLAUF funktionieren (22.09.2026, Auftrag Max
+    "Ja kraken verdrahten"). Drei Dinge fehlten dafuer:
+
+      1. `sitzung_da()` ist unter MAXHIRN_ROUTINE=1 immer False -> ohne das
+         Zeitfenster (freigabefenster.py) konnte die Spur NIE live gehen.
+      2. Das Fenster stand auf "kraken" - ein Fenster der Haus-Spur haette
+         diese mit scharf geschaltet.
+      3. Der alte Herzschlag schrieb den Zustand NICHT -> die Sperre blieb fuer
+         immer zu (Deadlock: der Herzschlag kommt aus zustand.letzter_lauf).
+    """
+
+    def setUp(self):
+        self.gedruckt = []
+        self.p = patch.object(builtins, "print",
+                              side_effect=lambda *a, **k: self.gedruckt.append(
+                                  " ".join(str(x) for x in a)))
+        self.p.start()
+        self.addCleanup(self.p.stop)
+
+    def _text(self):
+        return "\n".join(self.gedruckt)
+
+    def test_sperrenzeile_nennt_einen_lesbaren_grund(self):
+        self.addCleanup(setattr, lk, "live_sperren", lk.live_sperren)
+        lk.live_sperren = lambda w, z: ["Freigabefenster nicht offen - keine "
+                                        "Sitzung am Bildschirm und kein Zeitfenster"]
+        gruende = lk.sperren_zeile()
+        self.assertEqual(len(gruende), 1)
+        self.assertIn("Live waere gesperrt durch: Freigabefenster", self._text())
+
+    def test_zeitfenster_folgt_dem_fenster(self):
+        self.addCleanup(setattr, lk, "freigabefenster", lk.freigabefenster)
+
+        class Fenster:
+            offen_wert = False
+
+            def lade(self, spur):
+                assert spur == "moondev_marktlage", "eigener Spurname erwartet"
+                return self
+
+            def offen(self):
+                return Fenster.offen_wert
+
+        lk.freigabefenster = Fenster()
+        self.assertFalse(lk.zeitfenster_offen())
+        Fenster.offen_wert = True
+        self.assertTrue(lk.zeitfenster_offen())
+
+    def test_lesefehler_gilt_als_zu(self):
+        self.addCleanup(setattr, lk, "freigabefenster", lk.freigabefenster)
+
+        class Kaputt:
+            def lade(self, spur):
+                raise RuntimeError("Datei kaputt")
+
+        lk.freigabefenster = Kaputt()
+        self.assertFalse(lk.zeitfenster_offen())
+
+    def _umgebung(self, frisch=False, kill=False):
+        """Alles, was `lauf()` anfasst, lokal ersetzen - kein Netz, keine Datei."""
+        stub_kraken(lk)
+        self.addCleanup(setattr, lk, "schreibe_zustand", lk.schreibe_zustand)
+        self.addCleanup(setattr, lk, "lade_wachen", lk.lade_wachen)
+        self.addCleanup(setattr, lk, "lade_zustand", lk.lade_zustand)
+        self.addCleanup(setattr, lk.wp, "lage", lk.wp.lage)
+        lk.lade_wachen = lambda: {"herzschlag_max_minuten": 180,
+                                  "journal_zweitziel": None,
+                                  "max_offene_positionen": 1,
+                                  "mindest_guthaben_eur": 0}
+        lk.lade_zustand = lambda: {"positionen": []}
+        lk.wp.lage = lambda w, j, z: {
+            "herzschlag_frisch": frisch, "kill": kill, "ruecklauf_eur": 0.0,
+            "freigabe_erfuellt": True, "ev_negativ": False,
+            "rollierender_ev": 0.0}
+
+    def test_alter_herzschlag_schreibt_trotzdem(self):
+        """Der Deadlock: ohne diesen Schreibvorgang heilt die Sperre nie."""
+        geschrieben = []
+        self._umgebung(frisch=False)
+        lk.schreibe_zustand = lambda z: geschrieben.append(z)
+        lk.lauf("live")
+        self.assertEqual(len(geschrieben), 1,
+                         "Herzschlag muss geschrieben werden, sonst Deadlock")
+
+    def test_vorschau_schreibt_und_handelt_nicht(self):
+        geschrieben, ausstiege = [], []
+        self._umgebung(frisch=False)
+        self.addCleanup(setattr, lk, "pruefe_ausstiege", lk.pruefe_ausstiege)
+        self.addCleanup(setattr, lk, "pruefe_einstiege", lk.pruefe_einstiege)
+        lk.schreibe_zustand = lambda z: geschrieben.append(z)
+        lk.pruefe_ausstiege = lambda z, w, live: ausstiege.append(1)
+        lk.pruefe_einstiege = lambda z, w, live: ausstiege.append(2)
+        lk.lauf("vorschau")
+        self.assertEqual(geschrieben, [], "die Vorschau schreibt keinen Zustand")
+        self.assertEqual(ausstiege, [], "die Vorschau handelt nicht")
+        self.assertIn("Live waere gesperrt durch:", self._text())
 
 
 if __name__ == "__main__":
