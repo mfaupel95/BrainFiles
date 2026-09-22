@@ -56,3 +56,20 @@ darf eine Wache nicht ueber den Weg melden, den sie ueberwacht.
   Ohne das: der 84-Prozess-Leak vom 21.09.2026 (siehe [[Lektionen/Windows-Umgebung]]).
 - Neustartabstand nicht zu kurz: `PAUSE_NEUSTART` 120 s, sonst haemmert der Treiber gegen
   Rate Limits der Datenanbieter und erzeugt selbst die Abstuerze, die er beheben will.
+
+## Herzschlag misst die SPUR, nicht den Live-Pfad (22.09.2026)
+
+Der Herzschlag (Bedingung 3) ist das Alter des letzten Zyklus. Er darf NICHT aus
+dem Live-Buch-Zustand kommen: den schreibt nur der Live-Pfad, der Live-Pfad laeuft
+nur bei offenem Freigabefenster, und das Fenster oeffnet `AUTO_FREIGABE` nur, wenn
+als EINZIGER Grund das Fenster fehlt. Eine Spur, die lange nicht live lief, meldet
+dann fuer immer "Herzschlag alt" und kann sich nie selbst scharf machen.
+
+Richtig ist der Zustand, den der LAUFENDE Zyklus schreibt (bei einer Spur mit
+eigenem Live-Buch also `<spur>/zustand.json`, nicht `zustand.live.json`) - ueber
+`risikostufe.datei()` stufenrichtig. Belegter Fall: `moondev_marktlage` nannte vor
+der Aenderung zwei Gruende, danach genau einen ("Freigabefenster nicht offen") -
+erst damit greift die Auto-Freigabe.
+
+**Prueffrage bei jeder neuen Live-Spur:** nennt die Vorschau mit `MAXHIRN_ROUTINE=1`
+genau EINEN Grund und enthaelt er das Wort "Freigabefenster"?
