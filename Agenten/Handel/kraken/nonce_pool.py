@@ -42,7 +42,17 @@ _SPERRE = _DATEI + ".lock"
 
 
 def monotone_nonce() -> int:
-    """Naechster nonce: streng steigende monotone Wallclock (bewaehrte Logik)."""
+    """Naechster nonce: streng steigende monotone Wallclock (bewaehrte Logik).
+
+    EINHEIT: NANOSEKUNDEN (seit 22.09.2026; vorher Mikrosekunden).
+    Anlass: die kraken-cli (offizielles Kraken-Werkzeug) signiert mit
+    Nanosekunden. Kraken merkt sich je Schluessel den HOECHSTEN gesehenen
+    Wert; danach war jeder Mikrosekunden-nonce rund tausendfach kleiner und
+    JEDE Hausabfrage endete mit "EAPI:Invalid nonce" - der Ausfall traf sofort
+    die Live-Sperre von mosaic und die kraken-Spur. Die Einheit muss also
+    mindestens die groesste sein, die ein Werkzeug auf denselben Schluessel
+    sendet. Nanosekunden sind belegt: die CLI arbeitet im Betrieb damit.
+    """
     # Exklusiv erzeugen; warten, falls ein anderer Prozess gerade schreibt.
     while True:
         try:
@@ -59,7 +69,7 @@ def monotone_nonce() -> int:
         except (OSError, ValueError):
             letzter = 0
         # max() haelt die Datei monoton ueber NTP-Rueckspruenge hinweg.
-        nonce = max(int(time.time() * 1_000_000), letzter + 1)
+        nonce = max(int(time.time() * 1_000_000_000), letzter + 1)
         with open(_DATEI, "w") as f:
             f.write(str(nonce))
             f.flush()

@@ -102,7 +102,7 @@ def _wachen_handel_erlaubt(spur: str):
 
 def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
              grund: str, gueltig_sekunden: int = GUELTIG_SEKUNDEN,
-             preis_min: float | None = None) -> dict:
+             preis_min: float | None = None, zusatz: dict | None = None) -> dict:
     """Einen Beleg ausstellen. Verweigert, wenn die Spur nicht freigegeben ist.
 
     Rueckgabe: der Beleg als dict. Bei Verweigerung: {"ok": False, "grund": ...}.
@@ -139,6 +139,7 @@ def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
         "preis_max": float(preis_max) if (seite == "buy" and preis_max is not None) else None,
         "preis_min": float(preis_min) if (seite == "sell" and preis_min is not None) else None,
         "grund": grund,
+        "zusatz": zusatz or {},
         "erstellt": jetzt.isoformat(timespec="seconds"),
         "gueltig_bis": (jetzt + timedelta(seconds=int(gueltig_sekunden))).isoformat(timespec="seconds"),
         "verbraucht": None,

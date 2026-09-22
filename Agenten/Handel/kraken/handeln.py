@@ -78,6 +78,17 @@ _fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
 freigabefenster = _rs_mod(_fw_spec_obj)
 _fw_spec_obj.loader.exec_module(freigabefenster)
 
+# Freigabe-Beleg (Agenten/Handel/freigabebeleg.py). Dieselbe Erlaubnis, die
+# auch das Kraken-MCP-Werkzeug `kraken_order_mit_beleg` verlangt - damit ist
+# die Erlaubnis EINE Datei: die Spur entscheidet unter ihren Wachen, der MCP
+# (oder das Hand-Skript) ist nur die ausfuehrende Hand. Ebenfalls ueber den
+# PFAD geladen, aus demselben Grund wie das Fenster.
+_fb_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabebeleg.py")
+_fb_spec_obj = _rs_spec("freigabebeleg", _fb_datei)
+freigabebeleg = _rs_mod(_fb_spec_obj)
+_fb_spec_obj.loader.exec_module(freigabebeleg)
+
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
@@ -353,6 +364,26 @@ def bueche_papier_altlasten_aus(z):
     return len(altlasten)
 
 
+def _beleg_zur_order(inst, menge, kurs, stop, ziel):
+    """Freigabe-Beleg fuer einen Live-Kauf ausstellen. None = kein Kauf.
+
+    Der Beleg entsteht nur, wenn das Freigabefenster offen ist UND
+    `handel_erlaubt=true` - also unter genau den Bedingungen, unter denen
+    diese Spur ohnehin kaufen darf. Er macht sie pruefbar und gibt der Hand
+    (MCP-Werkzeug `kraken_order_mit_beleg`, Skript beleg_hand.py) dieselbe
+    Erlaubnis, ohne die Entscheidung dorthin zu verlagern.
+    """
+    beleg = freigabebeleg.schreibe(SPUR, "buy", inst, menge,
+                                   preis_max=float(kurs) * 1.05,
+                                   grund="Einstieg %s" % inst,
+                                   zusatz={"inst": inst, "stop": stop, "ziel": ziel})
+    if not beleg.get("kennung"):
+        print("  kein Beleg fuer %s: %s" % (inst, beleg.get("grund")),
+              file=sys.stderr)
+        return None
+    return beleg
+
+
 def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     gehalten = {p["paar"] for p in z["positionen"]}
     eingesetzt = sum(p["eur"] for p in z["positionen"])
@@ -375,6 +406,32 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
         kauf_txid = stop_txid = None
         stop_fehlt = False
         if live:
+            beleg = _beleg_zur_order(v["inst"], menge, v["einstieg"],
+                                     v["stop"], v["ziel"])
+            if beleg is None:
+                continue
+            if str(w.get("order_ueber", "spur")).lower() == "mcp":
+                # Die Order fuehrt die HAND aus: das MCP-Werkzeug
+                # `kraken_order_mit_beleg` oder Agenten/Handel/beleg_hand.py -
+                # beide pruefen denselben Beleg. Er bleibt liegen (180 s);
+                # laeuft er ab, ist der Einstieg verfallen, und der naechste
+                # Zyklus entscheidet neu.
+                print("  Beleg %s ausgestellt - Order geht an die Hand"
+                      % beleg["kennung"])
+                journal(_jetzt(), "live", "kauf_beleg", v["inst"],
+                        "%.8g" % v["einstieg"], "%.2f" % eur, "%.8f" % menge,
+                        "%.8g" % v["stop"], "%.8g" % v["ziel"],
+                        "beleg %s" % beleg["kennung"])
+                continue
+            # Eigener Weg: den Beleg SOFORT einloesen. Einmalig heisst einmalig
+            # - bliebe er liegen, koennte die Hand dieselbe Order ein zweites
+            # Mal ausfuehren, und das waere ein echter Doppelkauf.
+            ok, warum = freigabebeleg.pruefe(beleg["kennung"], SPUR, "buy",
+                                             v["inst"], menge, v["einstieg"])
+            if not ok:
+                print("  Beleg nicht einloesbar: %s" % warum, file=sys.stderr)
+                continue
+            freigabebeleg.verbrauche(SPUR, beleg["kennung"], ergebnis="spur")
             try:
                 kauf_txid = kraken.markt_kauf(v["inst"], menge, echt=True)
                 gefuellt = kraken.gefuellte_menge(kauf_txid) if kauf_txid else 0.0
