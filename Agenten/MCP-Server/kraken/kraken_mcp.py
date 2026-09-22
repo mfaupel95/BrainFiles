@@ -52,6 +52,36 @@ ZEITLIMIT = 20.0
 
 mcp = MCPServer("Kraken")
 
+# --------------------------------------------------------------------------
+# Freigabe-Beleg: das Tor fuer echte Orders aus dem MCP
+# --------------------------------------------------------------------------
+# Ein MCP-Werkzeug ist aus JEDER Sitzung aufrufbar - aus einem Chat, aus einem
+# Bot, aus einer A2A-Nachricht. Die Sperrenkette der Handels-Spuren haengt aber
+# am Skript. Deshalb gilt: der MCP fuehrt NUR aus, was eine Spur vorher
+# beschlossen und mit einem Beleg versehen hat (Agenten/Handel/freigabebeleg.py).
+# Ohne Beleg bleibt es beim Trockenlauf. Das Modul stellt keine Belege aus -
+# das kann nur die Spur, und nur bei offenem Freigabefenster.
+HANDEL = os.environ.get("MAXHIRN_HANDEL") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "Handel")
+
+
+def _beleg_modul():
+    """freigabebeleg.py ueber den PFAD laden (kein sys.path-Eintrag, der
+    gleichnamige Spurenmodule verdecken koennte). Der Cache-Schluessel enthaelt
+    den Pfad - zwei verschiedene Ordner duerfen sich nicht denselben Eintrag
+    teilen (sonst liest der MCP spaeter aus dem falschen Ordner)."""
+    import importlib.util
+    schluessel = "freigabebeleg_mcp@%s" % os.path.abspath(HANDEL)
+    if schluessel in sys.modules:
+        return sys.modules[schluessel]
+    pfad = os.path.join(HANDEL, "freigabebeleg.py")
+    spec = importlib.util.spec_from_file_location(schluessel, pfad)
+    modul = importlib.util.module_from_spec(spec)
+    sys.modules[schluessel] = modul
+    spec.loader.exec_module(modul)
+    return modul
+
 
 # --------------------------------------------------------------------------
 # Transport
@@ -382,15 +412,15 @@ def kraken_order_aufgeben(
     preis: str | None = None,
     echt_ausfuehren: bool = False,
 ) -> dict:
-    """Gibt eine Order auf - standardmaessig als PRUEFUNG, nicht als echte Order.
+    """Gibt eine Order auf - NUR als PRUEFUNG, niemals echt (Tor seit 22.09.2026).
 
-    Mit `echt_ausfuehren=False` (Standard) schickt Kraken die Order durch die
-    komplette Validierung und meldet jeden Fehler, legt sie aber NICHT ins
-    Buch. So laesst sich eine Order vollstaendig durchrechnen, ohne Geld zu
-    bewegen. Erst `echt_ausfuehren=True` platziert wirklich.
-
-    Das echte Platzieren ist Max' Schritt. Der Assistent bereitet vor und legt
-    vor; er setzt `echt_ausfuehren` nicht selbst.
+    Dieses Werkzeug schickt die Order durch die komplette Validierung von Kraken
+    und meldet jeden Fehler, legt sie aber NICHT ins Buch. Es kann seit dem
+    22.09.2026 auch nicht mehr echt ausfuehren: echte Orders laufen
+    ausschliesslich ueber `kraken_order_mit_beleg`, und das verlangt einen
+    Beleg, den nur eine Handels-Spur bei offenem Freigabefenster ausstellen
+    kann. Grund: ein MCP-Werkzeug ist aus jeder Sitzung aufrufbar, die
+    Sperrenkette der Spuren haengt aber am Skript.
 
     Args:
         paar: Kraken-Paarname, z. B. "XBTEUR".
@@ -398,7 +428,7 @@ def kraken_order_aufgeben(
         menge: Menge in der Basiswaehrung, als Zeichenkette, z. B. "0.01".
         art: "limit" (Standard) oder "market".
         preis: Limitpreis - bei art="limit" Pflicht, bei "market" weglassen.
-        echt_ausfuehren: False = nur pruefen (Standard). True = wirklich aufgeben.
+        echt_ausfuehren: wird nicht mehr unterstuetzt - immer nur Pruefung.
     """
     if richtung not in ("buy", "sell"):
         raise ValueError('richtung muss "buy" oder "sell" sein.')
@@ -406,6 +436,13 @@ def kraken_order_aufgeben(
         raise ValueError('art muss "limit" oder "market" sein.')
     if art == "limit" and not preis:
         raise ValueError("Bei art='limit' ist preis erforderlich.")
+    if echt_ausfuehren:
+        return {
+            "modus": "abgelehnt",
+            "grund": "Echte Orders nur ueber kraken_order_mit_beleg (Beleg der "
+                     "Spur bei offenem Freigabefenster). Dieses Werkzeug prueft "
+                     "nur.",
+        }
 
     parameter = {
         "pair": paar,
@@ -429,15 +466,130 @@ def kraken_order_aufgeben(
 
 
 @mcp.tool()
-def kraken_order_stornieren(kennung: str) -> dict:
-    """Storniert eine offene Order. Nimmt Risiko heraus und bewegt kein Geld.
+def kraken_beleg_uebersicht() -> dict:
+    """Zeigt die Freigabe-Belege, die JETZT gelten (rein lesend).
+
+    Ein Beleg ist die Erlaubnis einer Handels-Spur, eine bestimmte Order
+    auszufuehren. Er gilt nur kurz, nur fuer eine Seite, ein Paar, eine
+    Hoechstmenge und einen Hoechstpreis, und nur einmal. Ohne gueltigen Beleg
+    kann `kraken_order_mit_beleg` nichts ausfuehren.
+    """
+    try:
+        module = _beleg_modul()
+    except Exception as e:                                        # noqa: BLE001
+        return {"fehler": "freigabebeleg nicht ladbar: %s" % e}
+    offen = module.offene()
+    return {"anzahl": len(offen), "belege": offen}
+
+
+@mcp.tool()
+def kraken_order_mit_beleg(
+    spur: str,
+    beleg: str,
+    paar: str,
+    richtung: str,
+    menge: str,
+    art: str = "limit",
+    preis: str | None = None,
+    echt_ausfuehren: bool = False,
+) -> dict:
+    """Fuehrt eine Order aus, die eine Spur mit einem Beleg freigegeben hat.
+
+    Das ist der EINZIGE Weg, auf dem der MCP wirklich handeln darf. Der Beleg
+    kommt von der Spur (Agenten/Handel/freigabebeleg.py) und beweist, dass die
+    Entscheidung unter deren Wachen gefallen ist: offenes Freigabefenster und
+    `handel_erlaubt=true`. Dieses Werkzeug stellt KEINE Belege aus - es prueft
+    nur und fuehrt aus.
+
+    Ohne gueltigen Beleg passiert nichts (Absage mit Grund). Mit
+    `echt_ausfuehren=False` (Standard) wird nur durchgerechnet, der Beleg
+    bleibt bestehen. Erst `echt_ausfuehren=True` platziert wirklich und
+    verbraucht den Beleg.
 
     Args:
-        kennung: Order-ID aus `kraken_offene_orders`, oder "all" fuer alle.
+        spur: Name der Handels-Spur, die den Beleg ausgestellt hat.
+        beleg: Beleg-Kennung aus `kraken_beleg_uebersicht`.
+        paar: Kraken-Paarname, z. B. "XBTEUR" - muss der Beleg tragen.
+        richtung: "buy" oder "sell" - muss der Beleg tragen.
+        menge: Menge in der Basiswaehrung; darf die Hoechstmenge des Belegs
+            nicht ueberschreiten.
+        art: "limit" (Standard) oder "market".
+        preis: Limitpreis; beim Kauf darf er den Hoechstpreis des Belegs nicht
+            ueberschreiten (0,1 % Rundungstoleranz).
+        echt_ausfuehren: True platziert wirklich und verbraucht den Beleg.
+    """
+    try:
+        module = _beleg_modul()
+    except Exception as e:                                        # noqa: BLE001
+        return {"modus": "abgelehnt", "grund": "freigabebeleg nicht ladbar: %s" % e}
+
+    if richtung not in ("buy", "sell"):
+        raise ValueError('richtung muss "buy" oder "sell" sein.')
+    if art not in ("limit", "market"):
+        raise ValueError('art muss "limit" oder "market" sein.')
+    if art == "limit" and not preis:
+        raise ValueError("Bei art='limit' ist preis erforderlich.")
+
+    try:
+        volumen = float(menge)
+        kurs = float(preis) if preis else None
+    except ValueError:
+        return {"modus": "abgelehnt",
+                "grund": "menge/preis sind keine Zahlen - Absage"}
+
+    ok, grund = module.pruefe(beleg, spur, richtung, paar, volumen, kurs)
+    if not ok:
+        return {"modus": "abgelehnt", "grund": grund, "spur": spur}
+
+    parameter = {
+        "pair": paar,
+        "type": richtung,
+        "ordertype": art,
+        "volume": str(menge),
+        "price": preis if art == "limit" else None,
+    }
+    if not echt_ausfuehren:
+        parameter["validate"] = "true"
+
+    ergebnis = _privat("AddOrder", **parameter)
+    kennungen = ergebnis.get("txid", []) or []
+    satz = {
+        "spur": spur, "beleg": beleg, "paar": paar, "richtung": richtung,
+        "menge": menge, "art": art, "preis": preis,
+        "echt": bool(echt_ausfuehren), "order_kennungen": kennungen,
+        "beschreibung": ergebnis.get("descr", {}).get("order"),
+    }
+    if echt_ausfuehren:
+        # Erst verbrauchen, dann protokollieren: der Beleg ist EINMALIG, auch
+        # wenn das Protokoll nicht geschrieben werden kann (die Bindung zaehlt,
+        # nicht die Akte).
+        module.verbrauche(spur, beleg, ergebnis=" ".join(kennungen) or "ohne Kennung")
+    module.protokolliere(spur, satz)
+    return {
+        "modus": "wirklich aufgegeben (Beleg verbraucht)" if echt_ausfuehren
+                 else "nur geprueft, nichts platziert (Beleg unberuehrt)",
+        "beschreibung": satz["beschreibung"],
+        "order_kennungen": kennungen,
+        "spur": spur,
+    }
+
+
+@mcp.tool()
+def kraken_order_stornieren(kennung: str) -> dict:
+    """Storniert EINE offene Order. Nimmt Risiko heraus und bewegt kein Geld.
+
+    Kuerzt nur Risiko: eine einzelne Order zu stornieren ist erlaubt, auch aus
+    einer Sitzung. "all" ist es nicht - ein Sammelstorno kann den Schutz-Stop
+    einer offenen Position mitnehmen und eine nackte Position hinterlassen.
+    Sammelstorno deshalb nur von Hand ueber das Kraken-Portal.
+
+    Args:
+        kennung: Order-ID aus `kraken_offene_orders`. "all" wird abgelehnt.
     """
     if kennung.lower() == "all":
-        ergebnis = _privat("CancelAll")
-        return {"storniert": ergebnis.get("count", 0)}
+        return {"storniert": 0, "abgelehnt": "Sammelstorno ist gesperrt - er "
+                "kann den Schutz-Stop einer offenen Position mitnehmen. "
+                "Einzelkennungen stornieren oder im Kraken-Portal."}
     ergebnis = _privat("CancelOrder", txid=kennung)
     return {"storniert": ergebnis.get("count", 0), "ausstehend": ergebnis.get("pending")}
 

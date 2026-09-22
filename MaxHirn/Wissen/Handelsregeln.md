@@ -370,9 +370,20 @@ heimlich eingesetzt.
   Bedingung: Der Automat entscheidet über **Positionen**, nicht darüber, ob er
   selbst scharf ist.
 - **Kein Auszahlungsrecht**, in keiner Spur.
-- **Der Kraken-MCP bleibt lesend.** Keine Order, keine Stornierung aus einer
-  Sitzung heraus — gehandelt wird auf Kraken nur durch das Skript der Spur 3,
-  siehe oben.
+- **Der Kraken-MCP bleibt lesend — mit genau einem Tor.** Aus einer Sitzung
+  heraus gibt es keine Order und keinen Sammelstorno. Die einzige Ausnahme ist
+  das Werkzeug `kraken_order_mit_beleg`: es führt nur aus, was eine Handels-Spur
+  vorher mit einem **Freigabe-Beleg** versehen hat
+  (`Agenten/Handel/freigabebeleg.py`). Einen Beleg stellt allein die Spur aus,
+  und nur bei offenem Freigabefenster und `handel_erlaubt=true` — er ist an
+  Spur, Seite, Paar, Höchstmenge, Höchstpreis und eine Frist von drei Minuten
+  gebunden und nach dem Ausführen verbraucht. So bleibt die Entscheidung dort,
+  wo die Wachen sind, und der MCP ist nur die Hand.
+  Seit dem 22.09.2026 kann `kraken_order_aufgeben` **nicht mehr echt**
+  ausführen (nur noch durchrechnen — der alte Weg ist geschlossen), und
+  `kraken_order_stornieren("all")` ist gesperrt, weil ein Sammelstorno den
+  Schutz-Stop einer offenen Position mitnehmen und eine nackte Position
+  hinterlassen kann. Einzelstornos bleiben erlaubt: sie kürzen nur Risiko.
 - **Jede andere Geldbewegung** — Überweisungen, Ein- und Auszahlungen, Umtausch
   außerhalb dieser beiden Spuren — bleibt vorbereitend. Der Skill `geld`
   arbeitet bis zur Bestätigungsseite und hält dort an.

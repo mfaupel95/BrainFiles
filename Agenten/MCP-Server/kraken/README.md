@@ -11,8 +11,15 @@ Ausschließlich über zwei **Windows-Benutzer-Umgebungsvariablen**:
 
 | Variable | Inhalt bei Kraken |
 |---|---|
-| `KRAKEN_API_KEY` | „API Key" |
-| `KRAKEN_API_SECRET` | „Private Key" (base64) |
+| `KRAKEN_SPOT_API_KEY` | „API Key" — **dieses Paar liest der Server** |
+| `KRAKEN_SPOT_API_SECRET` | „Private Key" (base64) |
+
+**Achtung, gemessen am 22.09.2026:** in der Benutzerumgebung liegen zwei Paare.
+`KRAKEN_API_KEY`/`KRAKEN_API_SECRET` existiert ebenfalls, wird von Kraken aber
+mit `EAPI:Invalid key` abgelehnt — es ist ein anderer (toter) Zugang. Wer ein
+neues Werkzeug anschließt, muss prüfen, **welchen Namen** es liest: die
+kraken-cli liest die generischen Namen und scheitert damit, bis man ihr die
+SPOT-Variablen gibt (`Agenten/Werkzeuge/kraken.ps1` tut das).
 
 Sie stehen **nicht** im Vault, nicht in `claude_desktop_config.json` und in
 keiner Ausgabe dieses Servers — auch nicht gekürzt. `kraken_status` meldet nur,
@@ -56,8 +63,16 @@ Weg dorthin.
 
 | Werkzeug | Verhalten |
 |---|---|
-| `kraken_order_aufgeben` | **Standard: nur Prüfung.** Kraken rechnet die Order komplett durch und meldet Fehler, legt sie aber nicht ins Buch. Erst `echt_ausfuehren=True` platziert wirklich — diesen Schritt macht Max. |
-| `kraken_order_stornieren` | Storniert eine oder alle offenen Orders. Bewegt kein Geld. |
+| `kraken_order_aufgeben` | **Nur Prüfung, niemals echt** (seit 22.09.2026). Kraken rechnet die Order komplett durch und meldet Fehler, legt sie aber nicht ins Buch. `echt_ausfuehren=True` wird abgelehnt und verweist auf `kraken_order_mit_beleg`. |
+| `kraken_order_mit_beleg` | **Der einzige Weg zu einer echten Order.** Führt nur aus, was eine Handels-Spur mit einem Freigabe-Beleg versehen hat (`Agenten/Handel/freigabebeleg.py`): Beleg-Kennung, Spur, Seite, Paar, Höchstmenge und Höchstpreis müssen passen, der Beleg muss frisch und unverbraucht sein. Standard ist auch hier nur die Prüfung (`echt_ausfuehren=False`); echt ausführen verbraucht den Beleg. Dieses Werkzeug stellt **keine** Belege aus. |
+| `kraken_beleg_uebersicht` | Rein lesend: welche Belege gelten jetzt. |
+| `kraken_order_stornieren` | Storniert **eine** Order (kürzt nur Risiko). `"all"` wird abgelehnt — ein Sammelstorno kann den Schutz-Stop einer offenen Position mitnehmen. |
+
+**Warum das Tor:** ein MCP-Werkzeug ist aus jeder Sitzung aufrufbar (Chat, Bot,
+A2A-Nachricht), die Sperrenkette der Spuren (Freigabefenster, Herzschlag, Stop,
+Kill-Switch, Deckel) hängt aber am Skript. Der Beleg verbindet beides: die
+Entscheidung bleibt bei der Spur, der MCP ist nur die Hand. Siehe
+`Wissen/Handelsregeln.md`.
 
 ## Testen
 
