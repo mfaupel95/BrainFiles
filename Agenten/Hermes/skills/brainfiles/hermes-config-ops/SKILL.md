@@ -613,6 +613,20 @@ Zeitbudget und die Liste "was nicht angefasst wird":
 Ein Profil, dessen Arbeitsbereich ein Hausordner ist statt eines Fremd-Repos
 (Beispiel: `hermes-wartung` mit `terminal.cwd = Agenten\Hermes`).
 
+**Erst den WEG waehlen — `--clone-from` ist der kurze, die Schritte 1-8 sind der
+Notfallweg.** Existiert in der Flotte schon ein eingerichtetes Profil mit demselben
+Zuschnitt (Hausordner, `terminal.backend: local`, Flottenmodell), ist
+`hermes profile create <name> --clone-from <quellprofil> --description "<Rolle>"`
+der richtige Aufruf: er bringt `providers`-Block, `.env`-Vorlage, `SOUL.md`, die
+getrimmte Skill-Bibliothek und die Beschreibung fuer `/bots` mit. Kanalzugangsdaten
+bleiben dabei von selbst draussen (`--clone-channels` waere der ausdrueckliche
+Zusatz), und eine `auth.json` kommt ebenfalls NICHT mit — die gehoert als Symlink
+dazu (Abschnitt „Einem Profil eine Modell-Anmeldung geben"). Danach bleiben nur
+drei Handgriffe: `terminal.cwd` setzen, **`SOUL.md` auf die NEUE Rolle umschreiben**
+(der Klon traegt die Rolle des Quellprofils wortwoertlich weiter — wer das
+uebersieht, hat einen Wartungsbot, der ploetzlich Marktdaten liefert), `profile.yaml`
+pruefen. Die Schritte 1-8 gelten, wenn kein passendes Quellprofil existiert.
+
 1. `hermes profile create <name> --no-alias` (ohne `--clone`, damit keine
    fremde Modellkennung und keine Kanalzeilen mitkommen).
 2. **Ein frisches Profil ist NICHT fertig** - es hat eine 45-Zeilen-`config.yaml`
@@ -645,6 +659,15 @@ Ein Profil, dessen Arbeitsbereich ein Hausordner ist statt eines Fremd-Repos
    `Agenten/Hermes/skills/` hinueberkopieren und mit
    `hermes -p <name> skills list` belegen (Zaehlzeile „N local" plus die Namen
    in der `source`-Spalte `local`) — vor dem ersten Bot-Lauf, nicht danach.
+   Zwei Fallen beim Kopieren: **den Zielordner vorher anlegen**
+   (`mkdir -p profiles/<name>/skills/<kategorie>`) — `cp -r <quelle> <zielkategorie>/`
+   mit fehlendem Ziel legt die Kategorie als KOPIE der ersten Quelle an, und die
+   zweite Quelle landet darin verschachtelt (`SKILL.md` direkt im Kategorieordner,
+   daneben ein Ordner der zweiten Quelle). Und **Skillnamen im Baum nachsehen**
+   (`ls Agenten/Hermes/skills/<kategorie>/`), nicht aus dem Gedaechtnis tippen:
+   `handelsspur-studie` existiert nicht, `handel-spur-studie` schon — ein `cp` auf
+   den geratenen Namen bricht ab, und ob der Skill im Profil liegt, zeigt erst
+   `hermes -p <name> skills list`.
 
 Beleg-Pflicht (nichts davon ist durch "Datei steht da" bewiesen):
 `hermes -p <name> chat -q "Fuehre pwd aus und nenne Modell und Arbeitsverzeichnis." -Q -t terminal`
@@ -798,8 +821,16 @@ Nutzung bewiesen.
   und beim Schreiben die neuen Zeilen mit genau diesem Ende setzen. Mehrere Zeilen
   hinter einer Ankerzeile einhaengen heisst: Index der Marke suchen, dann das naechste
   `\n` — den Anker NICHT mit einem Zeilenumbruch im Suchmuster schreiben (trifft sonst
-  nicht), und in der Datei selbst kein `\n` in einem String-Literal bilden, das als
+  nicht, und in der Datei selbst kein `\n` in einem String-Literal bilden, das als
   Text gemeint ist.
+  **Im eigenen Skript die Windows-Pfade als Raw-String schreiben** (`r"…"` oder
+  verdoppelte Backslashes): ein einteiliger Pfad in einem normalen String-Literal
+  frisst Escape-Sequenzen — aus `Handel\auswertung_alle.py` wird `Handel` + BEL +
+  `uswertung_alle.py` (\a), waehrend \H, \W und \k einfach stehen bleiben; das
+  faellt erst auf, wenn die geschriebene Datei gelesen wird (eine Zeile mitten im
+  Text ist still kaputt). Nach jedem solchen Schreibvorgang die Steuerzeichen
+  zaehlen: `[hex(ord(z)) for z in text if ord(z) < 32 and z not in "\r\n\t"]` muss
+  leer sein.
 - **`bot-modell-auf-nous.py --auch-lokale` greift auch lokale Provider.** Ohne den
   Schalter bleiben `llamacpp`/`docker`/`ollama` stehen (Grund: sie brauchen keine
   Anmeldung). Beim Umstellen MUSS das lokale `model.base_url` (z. B.
