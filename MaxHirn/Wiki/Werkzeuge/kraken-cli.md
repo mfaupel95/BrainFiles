@@ -6,6 +6,11 @@ tags: [werkzeug, handel, kraken]
 
 # Kraken CLI — was es ist und wie es hier läuft
 
+> **Falle zuerst:** Die CLI signiert mit **Nanosekunden**-Nonces. Seit dem
+> ersten Aufruf muss die Hausseite dasselbe tun, sonst antwortet Kraken jeder
+> Abfrage `EAPI:Invalid nonce`. Gemessen, behoben und begründet in
+> [../Lektionen/Boersen-und-Schluessel.md](../Lektionen/Boersen-und-Schluessel.md).
+
 `krakenfx/kraken-cli` ist die **offizielle CLI von Kraken** (Rust, ein
 Einzelprogramm, Apache/MIT, v0.4.1 am 22.09.2026). Sie ist nicht nur ein
 Lesewerkzeug: sie kann handeln, Papier handeln, aufzeichnen und einen eigenen
