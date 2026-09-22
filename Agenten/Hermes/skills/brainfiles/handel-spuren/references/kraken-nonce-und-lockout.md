@@ -1,6 +1,6 @@
-# Kraken: Invalid nonce und Temporary lockout
+# Kraken: Invalid nonce, Temporary lockout und der falsche Variablenname
 
-Stand 20.09.2026. Reihenfolge der Pruefung, damit nicht stundenlang die
+Stand 22.09.2026. Reihenfolge der Pruefung, damit nicht stundenlang die
 falsche Ursache gejagt wird.
 
 ## Erst den Kontostatus, dann den nonce
@@ -33,6 +33,72 @@ einen** Abruf pro Stunde macht und nur den Uebergang meldet
   gespeicherten Peak - danach geht gar nichts mehr.
 - Alte Prozesse halten ihren Code im Speicher. Ein nonce-Fix wirkt erst,
   wenn ALLE Sender neu gestartet sind (Dauerlaeufe, MCP-Server, Gateway).
+
+## `EAPI:Invalid key`: erst den VARIABLENNAMEN pruefen, dann den Schluessel
+
+**Die Regel: meldet ein Programm `Invalid key`, waehrend eine andere Anwendung
+auf DEMSELBEN Rechner mit derselben Boerse nachweislich arbeitet, ist fast
+immer der gelesene VARIABLENNAME falsch — nicht der Schluessel.**
+
+Gemessen am 22.09.2026: die Benutzerumgebung traegt ZWEI Kraken-Paare.
+
+| Variablen | wer liest sie | Zustand |
+|---|---|---|
+| `KRAKEN_SPOT_API_KEY` / `KRAKEN_SPOT_API_SECRET` | `Handel/kraken/kraken.py`, `MCP-Server/kraken/kraken_mcp.py` | gilt |
+| `KRAKEN_API_KEY` / `KRAKEN_API_SECRET` | die kraken-cli (und jedes Fremdwerkzeug mit "generischem" Namen) | von Kraken abgelehnt |
+
+Pruefweg (keine Werte ausgeben):
+
+```powershell
+([Environment]::GetEnvironmentVariable('KRAKEN_SPOT_API_KEY','User')).Length
+([Environment]::GetEnvironmentVariable('KRAKEN_API_KEY','User')).Length
+```
+
+Beide vorhanden und `HKCU\Environment`, aber nur eines authentifiziert. Der
+Gegenbeweis kommt vom eigenen Client: `kraken.guthaben('ZEUR')` liefert eine
+Zahl (also gilt dieser Satz), waehrend das Fremdwerkzeug 401-artig scheitert.
+Erst DANN ist der Schluessel verdaechtig.
+
+Zwei Nachbarn dieser Falle, beide billig zu pruefen: `Get-ItemProperty
+HKCU:\Environment` loest in manchen Sitzungen einen anderen Benutzerkontext auf
+(immer `[Environment]::GetEnvironmentVariable(name,'User')` benutzen), und ein
+gewachsener Schluesselname (`KRAKEN_API_KEY_BILLING` o. ae.) sieht aus wie eine
+Variante, ist aber ein anderer Zugang.
+
+### kraken-cli als zweiter Kraken-Weg
+
+Die offizielle `krakenfx/kraken-cli` (Rust, Einzelprogramm) liest die
+generischen Namen und scheitert damit an diesem Konto. Es gibt **keine
+Windows-Binaries** (nur macOS/Linux, Anleitung sagt "use WSL") — mit
+vorhandenem Rust baut sie trotzdem nativ:
+
+```powershell
+cd Werkstatt\Repos\kraken-cli
+cargo build --release --bin kraken     # Ergebnis: target\release\kraken.exe
+```
+
+Aufruf ueber den Haus-Wrapper `Agenten/Werkzeuge/kraken.ps1`: er setzt
+`KRAKEN_API_KEY`/`KRAKEN_API_SECRET` aus den SPOT-Variablen (Werte bleiben im
+Prozess) und reicht `$args` durch. Der Wrapper hat **keinen `param`-Block und
+kein `[CmdletBinding()]`** — sonst deutet PowerShell den CLI-Schalter `-o` als
+eigenen Parameter (`-OutVariable`/`-OutBuffer`) und bricht mit "Parametername o
+ist nicht eindeutig" ab.
+
+Nutzen fuer die Spuren, ohne Orderrecht: `ticker`/`ohlc`/`orderbook` (oeffentlich),
+`balance`/`open-orders`/`ledger` (lesend), und der **eigene Papiermodus** mit
+Livekursen und einstellbarer Gebuehr:
+
+```powershell
+.\kraken.ps1 workspace create sandbox --capital 10000 --mode paper --fee-rate 0.006 -o json
+$env:KRAKEN_WORKSPACE='sandbox'
+.\kraken.ps1 paper buy BTCUSD 0.01 -o json
+```
+
+`--fee-rate 0.006` ist der gemessene Haus-Satz; ohne ihn rechnet die CLI mit
+0,26 %. `record`/`session`/`replay` legen Marktdaten lokal ab (DuckDB/JSONL) —
+eine Rate-Limit-freie Quelle fuer Backtests. Der **eingebaute MCP der CLI** wird
+bewusst nicht eingebunden: zwei Wege auf einem Schluessel erzeugen zwei
+Meinungen darueber, was erlaubt ist.
 
 ## Nach dem Ende der Sperre: erst messen, dann urteilen
 

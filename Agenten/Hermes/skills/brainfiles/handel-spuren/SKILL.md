@@ -87,6 +87,12 @@ Ausloeser → Referenz:
   mitnehmen", eine geaenderte Datei, die man selbst nicht angefasst hat) —
   Fertig-Erkennung, Waechter-Cron, getrennter Commit und die Frage, was eine
   Entscheidung von Max braucht: `references/fremdarbeit-mitnehmen.md`
+- **Ein MCP-Werkzeug soll handeln dürfen** („was ist mit dem Boersen-MCP?",
+  „Werkzeug bauen", Order aus einer Fremdsitzung), ein zweites Programm auf
+  demselben Boersenschluessel streikt mit `Invalid key`:
+  `references/mcp-tor-freigabebeleg.md` + `references/kraken-nonce-und-lockout.md`
+  — Entscheidung bleibt bei der Spur, Einmal-Beleg als Tor, die alten Wege
+  werden geschlossen, Ausstiege bleiben frei.
 - **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
   Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
   `risikostufe.py`): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
@@ -615,6 +621,10 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   Disziplin fuer den ERSTEN echten Geldpfad, Instrument-Verfuegbarkeit an der
   Zielboerse vor dem Umbau pruefen, abgetrennter Live-Zweig statt gemeinschaft
   Kern: `references/live-schalten.md`
+- `references/mcp-tor-freigabebeleg.md` — einem Boersen-MCP genau EIN Tor zum
+  Ausfuehren geben (Einmal-Beleg der Spur, Felder und Fail-closed-Regeln, die
+  alten Wege schliessen, Cache-Schluessel nach Pfad, Nachweis ueber
+  `tools/list`), damit eine Fremdsitzung nicht am Skript vorbei ordert.
 - `references/freigabe-kette.md` — Punkt 3 der Handelsregeln in beiden Fassungen:
   Bildschirm- und Zeitfenster, wer wann öffnet, was eine Freigabe nicht kann.
 - `references/tor-kalibrierung.md` — Schwellen und Kostenannahmen kalibrieren,

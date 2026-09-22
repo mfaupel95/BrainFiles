@@ -2275,31 +2275,36 @@ mcp_servers:
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv
   blender:
     args:
       - -c
       - from blmcp import main; main()
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.blender.blender-mcp\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.blender.blender-mcp\.venv\Scripts\python.exe
     enabled: false
   desktop-commander:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp\dist\index.js
     command: node
     env:
-      MCP_DXT: 'true'
+      MCP_DXT: "true"
       NODE_ENV: production
-    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
+    cwd: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -2314,25 +2319,30 @@ mcp_servers:
   tooluniverse:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src\run_stdio.py
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\.venv\Scripts\python.exe
     env:
       PYTHONIOENCODING: utf-8
-      PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
+      PYTHONPATH: 
+        C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
-    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
+    cwd: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
   windows-mcp:
     args:
       - -c
       - from windows_mcp.__main__ import main; main()
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
     env:
-      ANONYMIZED_TELEMETRY: 'false'
+      ANONYMIZED_TELEMETRY: "false"
       MODE: local
-      WINDOWS_MCP_DEBUG: 'false'
-      WINDOWS_MCP_PROFILE_SNAPSHOT: 'true'
+      WINDOWS_MCP_DEBUG: "false"
+      WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
+    command: 
+      C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
     args:
       - --require-version
       - 0.4.5
@@ -2354,6 +2364,18 @@ mcp_servers:
     url: https://mcp.airtable.com/mcp
     auth: oauth
     enabled: false
+  MCP_DOCKER:
+    command: docker
+    args:
+      - mcp
+      - gateway
+      - run
+      - --profile
+      - max_2_docker
+    env:
+      LOCALAPPDATA: C:\Users\faupe\AppData\Local
+      ProgramData: C:\ProgramData
+      ProgramFiles: C:\Program Files
 platform_toolsets:
   cli:
     - a2a
@@ -2436,41 +2458,3 @@ platforms:
     enabled: true
   telegram:
     enabled: true
-
-# ── Security ──────────────────────────────────────────────────────────
-# Secret redaction is ON by default — strings that look like API keys,
-# tokens, and passwords are masked in tool output, logs, and chat
-# responses before the model or user ever sees them. Set redact_secrets
-# to false to disable (e.g. when developing the redactor itself).
-# tirith pre-exec scanning is enabled by default when the tirith binary
-# is available. Configure via security.tirith_* keys or env vars
-# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
-#
-# security:
-#   redact_secrets: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-
-# ── Fallback Model ────────────────────────────────────────────────────
-# Automatic provider failover when primary is unavailable.
-# Uncomment and configure to enable. Triggers on rate limits (429),
-# overload (529), service errors (503), or connection failures.
-#
-# Supported providers:
-#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
-#   openai-codex (OAuth — hermes auth) — OpenAI Codex
-#   nous         (OAuth — hermes auth) — Nous Portal
-#   zai          (ZAI_API_KEY)         — Z.AI / GLM
-#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
-#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
-#   minimax      (MINIMAX_API_KEY)     — MiniMax
-#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
-#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
-#
-# For custom OpenAI-compatible endpoints, add base_url and key_env.
-#
-# fallback_model:
-#   provider: openrouter
-#   model: anthropic/claude-sonnet-4

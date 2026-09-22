@@ -7,10 +7,10 @@ ascii-video:ef426288e59d90dfb5c9d6b93678b015
 baoyu-infographic:1b579423cada421b9b79d44ed988b21b
 blocked-page-recovery:692952333ddaca689047c9b34ebfef17
 box:f8f4d45d3813549a00741539b0d495a8
-claude-code:00656c220892cb9d38a24ff3db110b02
+claude-code:dc4227a201138283739648ad2a400f8a
 claude-design:a839ed75e38167058cb363f63b64c6a3
 codebase-inspection:1775b8518df273a4d671c4afe54696b4
-codex:8822d280c3de7ad5827937b83afa0a88
+codex:4c716449fd88683f8832a682da60ee85
 competitor-news-monitor:3a0452873c3c1e6dc0f7391bdb9c5b99
 computer-use:71427f1788e9bb83494610aebfdfb92c
 design-md:b2077c0e0a2414078b14d862f50c49b0
@@ -33,7 +33,7 @@ llm-wiki:e8487d38dcef97498cdc8eb8d2c4f8e1
 manim-video:1b5c9160137283e15602ebe8031eb1df
 maps:0f4c08095eab9e889351b48f90961d4c
 meeting-action-items:4f0a15c7ae32595b16358d1e10f60403
-node-inspect-debugger:75143985fb8d291df54a49505df1c0ff
+node-inspect-debugger:0002f0aa236cda09075f55ad3c7b800c
 notion:3a81e26d21a1282d3f332b999d0c9428
 obsidian:7db3d16697eabd5881fc4bb04eae0713
 opencode:d2a166c7f2c74f6e47d548ed1290c458
@@ -42,8 +42,8 @@ pdf:4a551297908e51f24fa138f1b9801d68
 popular-web-designs:265b89848275df6a039e8ea2b466fc1f
 powerpoint:8ec620340f215db1725f5546561720af
 product-price-monitor:7dd11fd1609f3bec2486d925ad924714
-python-debugpy:76a10139bbd9860b863c16bb987c60d8
-requesting-code-review:6853f2192a20f13f2fb3f63486db53a1
+python-debugpy:aec27eadb3a29fe474f5c858c2fbd739
+requesting-code-review:a5f1e52435ea08f7251e4353cb54f545
 sdlc-review:4a4be11e979ac444fdc9c277b8500a81
 simplify-code:39e505ca71f8ecc74be6acec1dc0a4de
 songsee:644dc0f267b6661a3df6c76ce80d7f1f
