@@ -9,6 +9,33 @@ frisch ist -> `betriebsfehler-spuren.md` (kaputtes wachen.json, Absturz im
 Zyklus, `signal()` bildet nie ein Signal). Hier geht es um den haeufigeren
 Fall: die Spur arbeitet, sieht aber still aus.
 
+## Ein Etikett nennt den ZUSTAND, ein zweites die AENDERUNG — nie beides in einem Wort
+
+Max liest die Uebersichtszeilen woertlich: „7 Spuren still: … (papier) …
+handel_erlaubt=false" wurde als „die sind abgeschaltet" gelesen, obwohl alle sieben
+im Papier liefen. Zwei verschiedene Fragen steckten in einer Zeile:
+
+- **„(papier)"** = der MODUS einer Spur.
+- **„still"** = der UNTERSCHIED zum letzten Bericht (`rang() == 3`: kein Fehler,
+  keine neue Runde, keine neue oder weggefallene Position). Eine stille Spur
+  laeuft weiter — sie hatte nur nichts Neues.
+
+Regel: eine Zeile, die Zustand und Aenderung in EIN Wort legt, erzeugt genau diese
+Rueckfrage. Die Sammelzeile nennt die Bedeutung jetzt selbst
+(„still = kein Fehler und nichts Neues seit dem letzten Bericht — die Spuren laufen
+weiter"); wer sie aendert, prueft, ob beide Aussagen noch lesbar sind.
+
+**Dieselbe Verwechslung im `dauerlauf.log`:** `<spur> (live) ok` ist die ANGEFORDERTE
+Betriebsart des Dauerlaufs (er entscheidet sie allein aus dem offenen Freigabefenster),
+nicht die Wirkung. Ob die Spur wirklich live geht, entscheidet ihr eigener Riegel
+(`wachen.json handel_erlaubt`); sie schrieb selbst „--live angefordert, aber gesperrt:
+wachen.json handel_erlaubt=false — es wird Papier gehandelt", waehrend das Log `(live)`
+sagte. Gemeldet wird deshalb die WIRKUNG (`_meldungsmodus(modus, ordner)` druckt
+`(papier)`, wenn `handel_erlaubt` false ist) — der AUFRUF bleibt der angeforderte
+Modus, sonst aendert sich das Verhalten der Spur still (die Buchbereinigung laeuft nur
+im Live-Zweig). `istatty`/Konfiguration zu lesen ist kein Beleg fuer den Modus; die
+Vorschau-Zeile der Spur mit `MAXHIRN_ROUTINE=1` ist einer.
+
 ## Werkzeug statt Handarbeit (Dauerauftrag Max, 21.09.2026)
 
 Die Pruefung ist gebaut und angebunden - nicht jedes Mal neu skripten:

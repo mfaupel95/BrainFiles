@@ -27,7 +27,9 @@ Ausloeser → Referenz:
 - Bus-Meldung „Ergebniscode 1“ deuten; „nimm die Spur auf Dauerbeobachtung“
   (heisst: sie steht in `dauerlauf.SPUREN` UND jede Positionsaenderung erreicht
   Telegram); Bestandscheck „was ist noch nicht angebunden?“:
-  `references/anbindungs-audit.md`
+  `references/anbindungs-audit.md` — zum Deutbaren gehoert
+  `references/betriebsfehler-spuren.md` (Bus-Journal als Ursachenquelle,
+  Zaehlung „Rueckgabe N“ je Spur, halber `except` in der Datenschicht).
 - **Bestehende Spur nachtraeglich in den Takt haengen** (sie hat `handeln.py` +
   `wachen.json`, laeuft aber nicht im Dauerlauf - auch mehrere auf einmal, mit
   allen fuenf Stellen, dem Vertrag des Tagesberichts, der Nachweis-Kette von der
@@ -45,7 +47,21 @@ Ausloeser → Referenz:
   `references/live-order-und-buchpflege.md` — Order angenommen ist keine Fuellung,
   ein Limit hinter dem Markt ist WARTEND statt fehlerhaft, Geisterpruefung erst
   nach dem Orderzustand, ein Papierlauf schliesst keine echte Position, die
-  Spiegelung gehoert an den Zyklusanfang.
+  Spiegelung gehoert an den Zyklusanfang; ein gemeinsames Buch fuer Papier und
+  Live fuellt die LIVE-Plaetze (der Deckel greift, bevor ein Kaufversuch
+  entsteht), Positionen ohne Orderkennung sind Papier-Altlasten; der Abgleich prueft die
+  GROESSE, und eine Ausbuchung darf keinen Verlust erfinden.
+- **Ein Orderpreis wird abgelehnt** („price can only be specified up to N
+  decimals“, `tickSz`, der Notausstieg kommt nicht zustande und die eben
+  gekaufte Position wird zurueckverkauft): `references/zweite-boerse.md` —
+  Preisregeln je Paar/Instrument aus der API, Rundungsrichtung, Probe mit
+  `validate=true`. Dazu gehoeren die gemessenen Gebuehrensatze: siehe
+  `references/tor-kalibrierung.md`, Regel 8.
+- **Max aendert Positionen von HAND** (in der Boersen-App schliessen,
+  verkleinern, aufstocken) - das Buch folgt der Boerse, die handgeschlossene
+  Position bekommt ihr ECHTES Ergebnis, Stop/Ziel bleiben der Spur, und der
+  Nachzieher samt Routine fuer alte kaputte Journalzeilen:
+  `references/handgriffe-von-hand.md`
 - **"in meinem OKX sehe ich keine Order"**, Zweifel an einem echten Kauf — Order am
   Handelsplatz LESEND nachpruefen (`avgPx` gegen Bucheinstieg), Unterkonto-Falle,
   und die verbraucher-/erzeuger-Falle (gehandelt auf einer Datei, die niemand mehr
@@ -54,6 +70,11 @@ Ausloeser → Referenz:
   Quellen, den Lese-Fallen (BOM im Bus-Journal, UTC vs. lokal, Vorschau-Lauf je
   Zyklus, kurze Abstaende vs. Luecken) und der Form, die Max erwartet:
   `references/spur-bericht.md`
+- **Stille Spur / falsch gelesenes Etikett** („warum still und nicht papier?",
+  eine Spur bucht nichts, eine Uebersicht zeigt 0 Ausstiege):
+  `references/stille-spuren-deuten.md` — „still" heisst nichts Neues, nicht
+  abgeschaltet; Werkzeug `stille_spuren.py`, bei Eigenspuren `--papier` statt
+  `--vorschau`, Entscheidungsbaum zum Einschalten.
 - Änderung, die **alle Spuren** trifft („das gilt für alle", Bedingung 4, neuer
   Kosten-/Ausstiegsgrund, Befund an mehreren Spuren) — Ausrollweg von Inventar
   bis Commit, inklusive Testaufruf-Falle und versehentlich überschriebener Kopie
@@ -137,6 +158,19 @@ Ausloeser → Referenz:
    `ast.get_source_segment` holen, mit `ast.parse`/`compile` übersetzen, mit
    Beispieldaten ausführen. Eine Formatprüfung im Kopf ist kein Nachweis, und
    `ast.parse` prüft nur Syntax.
+   **Rote Tests vor der Deutung gegenproben.** Den EIGENEN Anteil stashen
+   (`git stash push <eigene Pfade>`), dieselben Tests erneut laufen lassen, dann
+   zurueckholen (`git stash pop`). Fallen sie ohne die eigene Aenderung genauso,
+   ist der Befund vorbestehend — im Bericht als solcher benennen, nicht
+   mitreparieren. Danach im Arbeitsbaum per `grep` pruefen, dass die eigenen
+   Aenderungen wieder da sind: die Stash-Liste ist kein Beleg (mehrere
+   Push-Aufrufe koennen in EINEM Eintrag landen, der zweite `pop` meldet dann
+   "No stash entries found", obwohl alles zurueck ist).
+   **Ein Test, der die Nicht-Existenz einer Spuren-Datei behauptet
+   (`assertFalse(pfad.exists())`), faellt, sobald die Spur einmal echt gelaufen
+   ist** — er friert den Zustand vor dem ersten Zyklus ein. Statt der Abwesenheit
+   pruefen, dass der Live-/Vorschau-Pfad NICHTS schreibt: Dateigroessen vor und
+   nach dem Aufruf vergleichen.
 5. **Versionieren.** `.gitignore` ist eine **Whitelist**. Jede neue
    `.py`/`.json`/Testdatei braucht eine eigene `!`-Zeile, sonst landet sie still
    nicht im Verlauf — es sei denn, eine Glob-Zeile deckt sie schon
@@ -296,6 +330,10 @@ ersetzt die Begruendung nicht.
 
 87. **Feste Zaehl-/Sollwert-Tests (`len(HOLER)`, `ERWARTET`-Dicts) sind eine LISTE, die eine Spur nennt** — beim Anschliessen mitziehen, sonst faellt die volle Suite rot, ohne dass etwas kaputt ist.
 
+89. **Ein stiller `except`-Zweig behauptet einen Sachverhalt, den er gar nicht geprueft hat.** Faengt eine Funktion wie `zeitfenster_offen()` eine Ausnahme ab und gibt `False` zurueck, meldet sie "kein Zeitfenster" — obwohl das Fenster offen sein kann und der Importfehler die Ursache ist. Ausnahme-Zweige im Live-Pfad: nach `stderr` schreiben, nicht schweigen. Die MELDUNG muss den Fehler nennen (`Zeitfenster nicht lesbar`), nicht den Zustand (`Freigabefenster nicht offen`).
+
+88. **Eine Skip-Wache auf den falschen Teil gesetzt macht die Routine dauerhaft wirkungslos.** Vor dem Einbauen einer Uebersprungs-Bedingung pruefen, was die Routine HEUTE noch tut — nicht was sie mal tat. Belegt: `marktscanner.ps1` sprang bei laufendem Dauerlauf ueber `scan.py` (harmlos, schreibt nur `berichte/*.json`), weil frueher auch `handeln.py` in der Routine stand. Folge: der Ranglisten-Bericht fror auf den Vortag ein, Spuren kauften zu alten Preisen. Alter des ERZEUGNISSES messen (Datei-Mtime von `berichte/neuester.json`), nicht den Exitcode der Routine.
+
 ## Welche Daten eine Sperre liest
 
 Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdrücklich fest,
@@ -337,7 +375,7 @@ wenn genau diese Spur ansteht.
 
 ## Boersendaten und Orderflow
 
-Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen in `references/boersen-datenzugriff.md`. Kernregeln: `okxf.kerzen()` unbekannte Instrumente leere Liste (len pruefen); Kraken-OHLC max 720 Kerzen ohne Rueckwaerts-Pagination (M15 7,5 Tage); 4h-CVD nur ueber `/rubik/` (nicht aus dem Tape); Host nur `www.okx.com`; Rubik-429 wird nicht wiederholt. **Vor dem Anbinden einer Spur die Warmlauf-Laenge ihres Indikators gegen die Abrufgrenze rechnen** — ein Indikator, der mehr Historie braucht als der Abruf liefert, ist nicht ungenau, sondern still tot (Details und die OKX-Grenzen: `references/boersen-datenzugriff.md`).
+Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen in `references/boersen-datenzugriff.md`. Kernregeln: `okxf.kerzen()` unbekannte Instrumente leere Liste (len pruefen); Kraken-OHLC max 720 Kerzen ohne Rueckwaerts-Pagination (M15 7,5 Tage); 4h-CVD nur ueber `/rubik/` (nicht aus dem Tape); Host nur `www.okx.com`; Rubik-429 wird nicht wiederholt; Kaufkraft ist `availEq` je Waehrung (nicht `eq`), boersenseitige Stops stehen nur in `orders-algo-pending`. **Vor dem Anbinden einer Spur die Warmlauf-Laenge ihres Indikators gegen die Abrufgrenze rechnen** — ein Indikator, der mehr Historie braucht als der Abruf liefert, ist nicht ungenau, sondern still tot (Details und die OKX-Grenzen: `references/boersen-datenzugriff.md`).
 
 ## Ein Fenster ueber alle Spuren (Handelszentrale, 13.09.2026)
 

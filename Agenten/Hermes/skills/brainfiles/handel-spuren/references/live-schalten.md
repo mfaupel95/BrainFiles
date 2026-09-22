@@ -396,6 +396,60 @@ der Test davon ab, ob Max gerade freigegeben hat), die echten Seams VOR dem Patc
 naechsten Tests), und den Einstiegspfad mit einem `hole_freigabe`, das bei Aufruf wirft,
 gegen die Bildschirm-Fassung absichern.
 
+## Eine GEBAUTE, aber nie verdrahtete Live-Verzweigung anschliessen
+
+Auftrag „<Spur> live verdrahten". Der Zweig existiert (eigener `live_kraken.py`-Stil,
+Aufruf aus `handeln.py --live`), ist aber noch nie gelaufen. **Verdrahten heisst: die
+Verzweigung aus dem Dauerlauf heraus erreichbar und beobachtbar machen — nicht einen
+Schalter umlegen.** `handel_erlaubt` bleibt dabei auf `false`; der Bericht nennt die
+zwei Haken (Schalter + `freigabe.erfuellt`) als noch offen.
+
+Vier Stellen der Reihe nach pruefen, jede war schon einmal die Ursache:
+
+1. **Fensterschluessel = eigener Spurname.** Ein Zweig, der `freigabe.bestaetige(vs,
+   "kraken", …)` mit dem Namen der NACHBARSPUR aufruft, teilt sich das Fenster mit ihr:
+   ein `/ja_kraken` schaltet beide Spur-Pfade scharf (und die Auto-Freigabe der einen
+   oeffnet der anderen das Tor). Immer `SPUR = "<eigener name>"` setzen und diesen Namen
+   an beiden Stellen benutzen — Fensteranfrage UND `freigabefenster.lade(SPUR)`.
+   Gegenprobe im Test: das Fake-Fenster assertet `spur == "<eigner name>"`.
+2. **Der zweite Weg zu Punkt 3.** Steht im Sperrtext nur `if not sitzung_da()`, ist er
+   im Dauerlauf (`MAXHIRN_ROUTINE=1`) dauerhaft zu — der Zweig kann nie live gehen. Den
+   Zeitfenster-Weg nachruesten (Abschnitt "Zwei Formen von Punkt 3" oben).
+3. **Die Sperrzeile muss in dem Pfad stehen, den der Dauerlauf AUFRUFT.** `nur_fenster_fehlt`
+   liest `"Live waere gesperrt durch: …"` aus der Vorschau-Ausgabe. Fuehrt eine Spur ZWEI
+   Wege (Papier-Kern `spur_buch.zyklus` fuer `--papier`/`--vorschau`, eigener Live-Zweig
+   fuer `--live`), dann laeuft die Vorschau durch den PAPIER-Kern — die Sperrzeile des
+   Live-Zweigs wird nie gedruckt, die Auto-Freigabe fragt nie. Fix: `--vorschau` den
+   Papier-Kern fahren lassen und danach `live_kraken.sperren_zeile()` aufrufen (eine
+   Funktion, die `live_sperren()` rechnet und genau diese Zeile druckt); Ausfall dieses
+   Aufrufs als eigenen Text melden (`nicht bestimmbar (…)`), nicht verschweigen.
+4. **`AUTO_FREIGABE` um den Spurnamen ergaenzen** (sonst oeffnet niemand ein Fenster),
+   und den Kommentar darueber mitziehen. Wirkt erst nach einem Dauerlauf-Neustart.
+
+**Der Deadlock: ein Tor, dessen Wert nur auf dem gesperrten Pfad geschrieben wird.**
+Der Herzschlag kommt aus `zustand.json:letzter_lauf` (`wachen_pruefung.herzschlag_frisch`).
+Ein Zweig, der im Ausgang „Herzschlag alt" `return` macht, OHNE `schreibe_zustand(z)`
+aufzurufen, kann diesen Wert nie erneuern: das Tor bleibt fuer immer zu, kein Zyklus
+schreibt je einen frischen Zeitstempel, und die Spur wartet dauerhaft auf sich selbst.
+Dasselbe gilt fuer den Kill-Switch-Ausgang. **Regel: jeder Ausgang eines Zyklus schreibt
+Zustand und Spiegelung, auch der abbrechende** — die uebrigen Hausspuren tun das.
+Nachweis in zwei Laeufen: Lauf 1 schreibt `letzter_lauf` (Zeitstempel zeigen), Lauf 2
+nennt den Grund nicht mehr.
+
+**Die Vorschau des Live-Zweigs schreibt und handelt nicht.** Eigener Rueckweg VOR
+`pruefe_ausstiege`: eine Vorschau, die schreibt, setzt einen frischen Herzschlag ohne
+Zyklus, und `pruefe_ausstiege` kann in einem reinen Nachsehe-Lauf verkaufen (siehe
+`references/vorschau-schreibt-nicht.md`). Bedingung 4 bleibt: die Vorschau darf spiegeln.
+
+**Nachweis-Kette, in dieser Reihenfolge:** (a) `handeln.py --live` mit
+`MAXHIRN_ROUTINE=1` nennt alle Sperren und handelt Papier; (b) zweimal `--live` — der
+zweite Lauf meldet „Herzschlag alt" nicht mehr; (c) `--vorschau` schreibt nichts (Dateigroessen
+vor/nach) und nennt die Sperrzeile; (d) Tests gruen, inklusive Gegenprobe „alter
+Herzschlag schreibt trotzdem" und „Vorschau schreibt/handelt nicht"; (e) Dauerlauf per
+`Stop-Process` neu starten und die Prozesszahl nachzaehlen.
+
+
+
 ## Papier-Altlasten blockieren Live-Plaetze in Buch-Spuren (spur_buch.py)
 
 `spur_buch.live_einstiege()` prueft `len(z["positionen"]) >= maxoffen` ohne nach

@@ -158,6 +158,45 @@ ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
    `funding/rollover/zyklus/quotes/info` wie in der Runden-Zaehlung), statt sie
    in der Wache neu zu erfinden.
 
+## Wache auf ein SELTENES SIGNAL (Ereignis kommt vielleicht tagelang nicht)
+
+Fuer Spuren/Jobs, deren Tor selten aufgeht. Stille ist hier der NORMALFALL —
+und damit ist "wartet korrekt" ohne Wache nicht von "kaputt" zu unterscheiden
+(ein stiller ImportError liess eine Spur einmal tagelang signalfrei laufen).
+Die Wache meldet deshalb nicht den Zustand, sondern das **zurueckgehaltene
+Signal** — und nur das.
+
+1. **ZURUECKGEHALTENES Signal melden, nicht Abwesenheit.** Der Befund ist: das
+   Ereignis ist DA, aber ein Tor ist zu (Filter, Kapazitaet, Entfernung).
+   Formulierung immer mit Grund und Zahlen ("Wende da, aber Schluss liegt
+   darueber", "Wand handelbar bei X, Kurs noch Y % entfernt"). Wer nur
+   "kein Signal" meldet, baut einen Wecker, der beim Normalzustand klingelt.
+2. **Datenlage ist kein Befund.** Ein Datenfehler (Feed nicht erreichbar, zu
+   wenige Kerzen) und eine strukturell unerreichbare Lage ("mehr als 3 Sigma
+   entfernt") bleiben STILL — sie sind der Normalfall, nicht die Regel bei der
+   Arbeit. Nur der Fall, in dem die Komponente bei vorhandenem Ereignis nicht
+   handelt, ist meldenswert.
+3. **Kennung = Identitaet des Ereignisses**, nicht der Zustandstext: Kerzenzeit
+   oder `Tag|Instrument|Preis`. Der Merker in `cache/` haelt die Kennung, die
+   Meldung kommt EINMAL je Kennung. Ein wechselnder Freitext als Kennung feuert
+   sonst bei jedem Takt (dieselbe Feststellung, hundertmal).
+4. **Mit den FUNKTIONEN der Komponente rechnen, nie mit einer Nachbildung.**
+   Die Wache laedt das Modul der Spur und ruft deren `signal()`/`wand()`/
+   `quelle()` — sonst prueft sie die Nachbildung, nicht die Spur. Auch die Daten
+   ueber die Funktion der Spur holen, damit Wache und Zyklus auf DENSELBEN
+   Eingaben rechnen.
+5. **Fehler LAUT, Signal leise.** Rueckgabe `(None, text)` = echter Fehler (wird
+   gemeldet), `(None, None)` = kein Befund (still). Ein Fehler darf nie als
+   "kein Signal" durchgehen — genau so verschwindet eine kaputte Spur.
+6. **Test ohne Netz und ohne echtes Buch:** das Laden der Spur ersetzen
+   (`wache._spur_laden = lambda spur: SimpleNamespace(...)` mit nur den
+   benoetigten Funktionen) und die Modulkonstante mit dem Wurzelpfad
+   (`HANDEL`) auf ein Temp-Verzeichnis biegen, in dem `zustand.json` liegt.
+   Vier Faelle je Spur: Ereignis+zurueckgehalten, kein Ereignis (still),
+   Datenfehler (still), echter Fehler (laut).
+
+
+
 ## Wache auf PROZESSE (wenn ein Prozesskriterium geprueft wird)
 
 Eine Wache, die Prozesse zaehlt, ist die fehleranfaelligste Bauform: sie schlaegt
@@ -440,6 +479,19 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   schon vor dem Treiber-Neustart). Ein Neustart ist noetig, wenn sich der
   TREIBER-Code selbst aendert (seine Konstanten, seine Modulliste) — der laufende
   Prozess hat das Modul beim Start importiert.
+- **Eine Zykluszeile meldet die WIRKUNG, nicht die Anforderung.** Leitet der
+  Treiber den Modus allein aus einer Erlaubnis ab (offenes Zeitfenster) und
+  entscheidet das KIND erst, ob es sie nutzt, dann steht im Log `(live)`,
+  waehrend die Komponente Papier arbeitet — nachgewiesen an einer Spur, die
+  selbst "--live angefordert, aber gesperrt" schrieb, waehrend die Logzeile
+  `(live) ok` sagte. Vor dem Melden den eigenen Riegel der Komponente lesen
+  (`wachen.json`/Konfigfeld) und den Modus danach waehlen. Der AUFRUF bleibt der
+  angeforderte Modus — ein umgeschriebener Aufruf waere eine stille
+  Verhaltensaenderung (Aufraeumpfade haengen am Live-Zweig).
+- **Ein Zustandswort und ein Aenderungswort nicht in eine Zeile legen.**
+  "N Spuren still: …" hiess "seit dem letzten Bericht nichts Neues", wurde aber
+  als "abgeschaltet" gelesen. Sammelzeilen sagen ihre Bedeutung selbst an, oder
+  sie tragen den Modus je Eintrag — der Nutzer fragt sonst genau danach.
 - **Vor dem Neustart eines Treibers mit echten Ordern pruefen, dass kein Kind
   gerade im Order-Zyklus steht.** Die Prozessliste nach dem Kommandozeilen-Merkmal
   des Live-Laufs filtern (z. B. `--live`) und warten, bis keines mehr laeuft —
@@ -472,27 +524,25 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Zeitstempel im Log verifizieren, dass die beobachtete Instanz wirklich seit
   dem Neustart laeuft — sonst wird der alte, ungepatchte Lauf fuer einen
   Beleg des Fixes gehalten.
-- **`taskkill` in einer Schleife schweigt und toetet nichts, wenn seine Ausgabe in eine
-  Pipe laeuft.** `foreach ($p in $pids) { taskkill /T /F /PID $p 2>&1 | Out-String }`
-  laeuft durch und laesst JEDEN Prozess am Leben (gemessen: 4 von 4 unveraendert) —
-  die Schleife meldet keinen Fehler, der Kill ist einfach nicht passiert. Richtig:
-  die Ausgabe erst einer Variablen zuweisen und dann ausgeben
-  (`$r = & taskkill /T /F /PID $p 2>&1; $r -join ' | '`), damit der Aufruf wirklich
-  startet — und **danach die Prozesszahl NACHZAEHLEN**. Beleg ist die gezaehlte Zahl,
-  nicht die Schleife.
-  **Nachtrag 22.09.2026: auch die Variablenform half nicht.** Aus der
-  windows-mcp-PowerShell blieben 4 von 4 Prozessen am Leben, ohne Fehlermeldung,
-  waehrend der naechste Schritt schon startete — kurzzeitig liefen vier
-  Dauerlauf-Loops statt zwei (vierfache Netz-/Scanlast und bei gemeinsamem
-  Zustand vierfache Positionsueberwachung). **Nimm `Stop-Process -Id <pid> -Force`**
-  (nativ, meldet je PID Erfolg oder „kein Prozess mit dieser ID“) und zaehle
-  danach. Wurde versehentlich schon neu gestartet, sind die ALTEN PIDs zu beenden
-  (nicht alles killen): die neuen tragen den frischen Code.
+- **Manuell beenden: `Stop-Process -Id <pid> -Force`, nicht `taskkill`.** Aus der
+  windows-mcp-PowerShell beendet `taskkill` **nichts** — weder in einer Schleife mit
+  `| Out-String` noch als `$r = & taskkill /T /F /PID $p 2>&1; $r -join ' | '`
+  (in beiden Formen blieben 4 von 4 Prozessen am Leben, ohne Fehlermeldung, waehrend
+  der naechste Schritt schon startete). Folge: kurzzeitig vier Dauerlauf-Loops statt
+  zwei — vierfache Netz-/Scanlast und bei gemeinsamem Zustand vierfache
+  Positionsueberwachung. `Stop-Process` meldet je PID Erfolg oder „kein Prozess mit
+  dieser ID“, und **die Prozesszahl wird danach NACHGEZAEHLT** — Beleg ist die
+  gezaehlte Zahl plus die gelesene PID-Datei, nicht die Schleife. Ist versehentlich
+  schon neu gestartet worden, sind die ALTEN PIDs zu beenden (die neuen tragen den
+  frischen Code), nicht alles. Im CODE eines Treibers bleibt `taskkill /T` fuer den
+  ganzen Baum richtig — die Regel hier gilt fuer den Handgriff aus einer Sitzung.
 - **Vor dem Beenden die WURZELN der Prozessgruppe bestimmen, nicht eine beliebige PID
   greifen.** Aus einer Liste gleichartiger Prozesse sind die Wurzeln die, deren
-  `ParentProcessId` nicht selbst zur Gruppe gehoert; `taskkill /T /F` auf jede Wurzel
-  beendet den ganzen Baum. Trifft man nur Kinder, laeuft die Wurzel weiter und die
-  Kinder wachsen nach — es sieht aus, als haette der Kill nicht gewirkt.
+  `ParentProcessId` nicht selbst zur Gruppe gehoert; beendet wird jede Wurzel per
+  `Stop-Process -Id <wurzel-pid> -Force`, danach die Kindprozesse nachpruefen (sie
+  haengen unter Windows nicht automatisch am Elternprozess). Trifft man nur Kinder,
+  laeuft die Wurzel weiter und die Kinder wachsen nach — es sieht aus, als haette
+  der Kill nicht gewirkt.
 - **Eine `CommandLine -like '*Suchtext*'`-Abfrage trifft oft die eigene
   Suchanfrage**, wenn das Terminal den Befehl selbst in einer Bash-/
   PowerShell-Huelle mit dem vollen Text weiterreicht — der gesuchte String
