@@ -5,7 +5,7 @@ tags: [offen]
 created: 2026-09-21
 updated: 2026-09-22
 related: ['[[INDEX]]', '[[Betrieb/Sicherung-und-Laufwerke]]', '[[Handel/Spuren-Uebersicht]]']
-summary: 'Die offenen Punkte mit dem Stand vom 21.09.2026 — je Punkt: was gemessen ist, was fehlt, was der naechste Schritt ist.'
+summary: 'Die offenen Punkte mit dem Stand vom 22.09.2026 — je Punkt: was gemessen ist, was fehlt, was der naechste Schritt ist.'
 ---
 
 # Offen — was auf eine Entscheidung wartet
@@ -21,13 +21,42 @@ obwohl `handel_erlaubt` und `freigabe.erfuellt` true sind und das Fenster offen 
 Kein Dateischalter loest das. Kandidaten zum Gegenpruefen: signierter Leseaufruf gegen den
 Registry-Host, Rechte des Schluessels im OKX-Portal.
 
-## 2. `kraken` bleibt im Papier
+## 2. `kraken` bleibt im Papier (aktualisiert 22.09.2026)
 
-Freies Guthaben reichte zuletzt nicht fuer `mindest_guthaben_eur 60`, und die eigene
-Rueckrechnung ist **-0,57 % je Runde**. Der Schalter steht auf `false`, `stillgelegt` ist
-gesetzt.
-**Offen:** Entscheidung, ob Kraken-Guthaben aufgestockt wird. Ohne das ist kraken bewusst
-nicht live — die Auto-Freigabe wuerde nur das Fenster oeffnen, nicht das Guthaben.
+**Das Guthaben ist kein Blocker mehr.** Das Konto ist seit dem 22.09.2026 wieder frei
+(`EGeneral:Temporary lockout` vorbei): **189,15 EUR** verfuegbar, `mindest_guthaben_eur` 60.
+
+**Der Blocker ist die Gebuehr — und die ist gemessen, nicht angenommen.** Kraken hat an den
+Fuellungen vom 22.09.2026 je Seite **0,60 %** berechnet (SOLEUR: Kauf 50,01954 EUR mit
+0,30012 EUR, Verkauf 50,01466 EUR mit 0,30009 EUR), und `TradeVolume` meldet taker 0,6000 %
+(EUR 3.479 Monatsvolumen, naechste Stufe 0,38 % ab EUR 10.000). Das Kraken-**Pro-Abo wirkt auf
+diesem Konto damit nicht** — eine Runde kostet **1,2 %** statt 0. `gebuehr_taker` steht
+deshalb auf dem gemessenen `0.006`.
+
+**Stand des Schalters:** `handel_erlaubt = false` (Auftrag Max „Kraken papier", 22.09.2026);
+`freigabe.erfuellt` bleibt true; `stillgelegt` ist false. Die Spur laeuft Papier und nennt
+den Sperrgrund selbst (`Live waere gesperrt durch: wachen.json handel_erlaubt=false`).
+**Offen:** ob die Spur live gehen soll — die eigene Rueckrechnung war schon ohne Gebuehr
+**-0,57 % je Runde**, mit 1,2 % ist sie es deutlicher. Reihenfolge, falls doch: erst messen
+(Monatsvolumen, Signal ohne Gebuehr), dann `handel_erlaubt`, dann das Fenster.
+
+## 2a. `moondev_signalwelle` — neue Papierspur (22.09.2026)
+
+Angelegt als ehrliches Gegenstueck zu einem VIP-Signal-Kanal (Max' Screenshot: NVDAUSDT
+10x, +27 % ROI, ohne Verlusthistorie). 1h-Momentum 3-15 % plus Tagesvolumen >= 20 Mio USD,
+Long, deterministisch, **kein Hebel, kein Live-Zweig**. Grenzen: 3 Plaetze, 5 USD Risiko,
+Stop 7 %, Ratsche 15 USD. Erster Zyklus am 22.09. buchte 3 Papierpositionen.
+**Offen:** nach ein paar Tagen die Auswertung ansehen (`auswertung_alle.py`, `BOT_SPUREN`) —
+ob eine 1h-Regel dieser Art ueberhaupt traegt, entscheidet die Stichprobe, nicht der Kanal.
+
+## 2b. `iv_waelle` und `supertrend` sind jetzt bewacht (22.09.2026)
+
+Beide sind still, und bei beiden ist Stille der Normalfall (supertrend stand nach einem
+stillen ImportError fuenf Tage ohne Signal; iv_waelle schreibt seit dem 19.09. nichts).
+Der Cron `spur-wache` fuehrt jetzt vier junge Spuren und meldet nur, was NEU ist —
+zurueckgehaltene Signale, Einstiege, Runden, Stillstand.
+**Offen:** nichts zu entscheiden; zu beobachten ist, ob die Meldungen kommen, bevor Max
+selbst nachfragt.
 
 ## 3. Ausser-Haus-Kopie
 
