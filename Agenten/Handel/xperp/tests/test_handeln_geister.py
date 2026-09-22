@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -102,6 +103,47 @@ class Geister(unittest.TestCase):
         z = {"positionen": [_pos("CRCL-1")]}
         with patch.object(h.okxf, "positionen",
                           return_value=[{"instId": "CRCL-1", "pos": "1.1"}]):
+            self.assertEqual(h.bueche_geister_aus(z, {}), 0)
+        self.assertEqual(len(z["positionen"]), 1)
+
+
+    def test_alte_position_mit_gefuellter_order_ist_ein_geist(self):
+        """Die Karteileiche (gemessen 22.09.2026: BZ, CL, CRCL).
+
+        Die Order, die eine Position eroeffnet hat, bleibt "gefuellt" - auch
+        nachdem Max die Position von Hand geschlossen hat. Die Entschuldigung
+        zaehlt nur im Grace-Fenster nach dem Eroeffnen, sonst bliebe eine
+        handgeschlossene Position FUER IMMER im Buch.
+        """
+        p = _pos("BZ-100")
+        p.update({"ord_id": "394338698122", "margin": 39.82, "kontrakte": 208.0,
+                  "eroeffnet_zeit": "2026-09-21T21:48:29+00:00"})
+        z = {"positionen": [p]}
+        with patch.object(h.okxf, "positionen", return_value=[]), \
+                patch.object(h.okxf, "gefuellte_kontrakte", return_value=208.0), \
+                patch.object(h.okxf, "geschlossene_position", return_value=None):
+            n = h.bueche_geister_aus(z, {})
+        self.assertEqual(n, 1, "nach dem Grace-Fenster ist es ein Geist")
+        self.assertEqual(z["positionen"], [])
+
+    def test_frisch_gefuellte_order_bleibt(self):
+        # Eroeffnung vor zwei Minuten: der Wettlauf Order->Position gilt weiter.
+        frisch = (datetime.now(timezone.utc)
+                  - timedelta(minutes=2)).isoformat(timespec="seconds")
+        p = _pos("NEU-1"); p.update({"ord_id": "1", "eroeffnet_zeit": frisch})
+        z = {"positionen": [p]}
+        with patch.object(h.okxf, "positionen", return_value=[]), \
+                patch.object(h.okxf, "gefuellte_kontrakte", return_value=9.4):
+            self.assertEqual(h.bueche_geister_aus(z, {}), 0)
+        self.assertEqual(len(z["positionen"]), 1)
+
+    def test_position_ohne_eroeffnungszeit_bleibt_konservativ(self):
+        # Unbekanntes Alter: NICHT ausbuchen. Eine echte Position ohne Buch
+        # liefe unbewacht - das wiegt schwerer als eine Karteileiche.
+        p = _pos("OHNE-ZEIT"); p["ord_id"] = "1"
+        z = {"positionen": [p]}
+        with patch.object(h.okxf, "positionen", return_value=[]), \
+                patch.object(h.okxf, "gefuellte_kontrakte", return_value=9.4):
             self.assertEqual(h.bueche_geister_aus(z, {}), 0)
         self.assertEqual(len(z["positionen"]), 1)
 

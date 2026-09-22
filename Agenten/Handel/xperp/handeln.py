@@ -463,6 +463,20 @@ def _geist_erloes(p):
     return margin + pnl * anteil, "boerse", anteil
 
 
+# Nur in diesem Fenster nach dem Eroeffnen darf eine GEFUELLTE Order eine
+# fehlende Position entschuldigen (Wettlauf Order->Position). Danach ist eine
+# Order, die irgendwann gefuellt hat, kein Beweis mehr fuer einen Bestand.
+_GEIST_FUELLUNG_GRACE_MIN = 10
+
+
+def _minuten_seit(iso):
+    """Minuten seit einem ISO-Zeitstempel (None, wenn unlesbar/leer)."""
+    t = _zeit_ms(iso)
+    if t is None:
+        return None
+    return (datetime.now(timezone.utc).timestamp() * 1000 - t) / 60000.0
+
+
 def bueche_geister_aus(z, w, still=False):
     """Positionen aus dem Buch, die an der Boerse NICHT (mehr) existieren.
 
@@ -499,14 +513,23 @@ def bueche_geister_aus(z, w, still=False):
         # gefuellt) - die Position wurde ausgebucht und lief dann OHNE Buch
         # weiter. Darum: gefuellte Order = echte Position, auch wenn
         # /account/positions sie noch nicht zeigt.
-        gefuellt = (okxf.gefuellte_kontrakte(p["inst"], p["ord_id"])
-                    if p.get("ord_id") else 0.0)
-        if gefuellt:
-            print("  %s steht noch nicht in /account/positions, die Order ist "
-                  "aber gefuellt (%.4f) - Position bleibt im Buch"
-                  % (p.get("inst"), gefuellt))
-            echte.append(p)
-            continue
+        #
+        # ABER (gemessen 22.09.2026): diese Entschuldigung darf NICHT ewig
+        # gelten. Die Order, die eine Position irgendwann eroeffnet hat, ist
+        # immer noch "gefuellt" - auch nachdem Max die Position von Hand
+        # geschlossen hat. Damit blieben BZ, CL und CRCL als Karteileichen im
+        # Buch (an der Boerse weg, im Buch mit Platz und Stop). Die Fuellung
+        # zaehlt deshalb nur im Grace-Fenster nach dem Eroeffnen.
+        frisch = _minuten_seit(p.get("eroeffnet_zeit"))
+        if frisch is None or frisch <= _GEIST_FUELLUNG_GRACE_MIN:
+            gefuellt = (okxf.gefuellte_kontrakte(p["inst"], p["ord_id"])
+                        if p.get("ord_id") else 0.0)
+            if gefuellt:
+                print("  %s steht noch nicht in /account/positions, die Order "
+                      "ist aber gefuellt (%.4f) - Position bleibt im Buch"
+                      % (p.get("inst"), gefuellt))
+                echte.append(p)
+                continue
         geister.append(p)
     if not geister:
         return 0
