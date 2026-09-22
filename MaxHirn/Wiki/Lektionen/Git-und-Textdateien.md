@@ -77,6 +77,17 @@ uncommittete Arbeit der anderen Sitzung unwiederbringlich.
 **Merksatz.** Was in den letzten 10 Minuten geschrieben wurde, liegt still und wird
 nicht angefasst.
 
+**Falle — `git commit -- <pfad>` committet den ARBEITSBAUM, nicht den Index.** Ein
+pfadbeschraenkter Commit geht am Index vorbei und nimmt den aktuellen Dateiinhalt:
+wer fremde und eigene Zeilen in EINER Datei trennen will, schreibt damit die
+Fremdarbeit in den eigenen Commit (am 22.09.2026 passiert: 47 statt 15 Zeilen).
+Richtig ist: den Blob selbst bauen (`git hash-object -w --path=<pfad> --stdin`), ihn
+in den Index legen (`git update-index --cacheinfo 100644,<sha>,<pfad>`) und **ohne
+Pfadangabe** committen — dann zaehlt allein der Index. Der Arbeitsbaum bleibt
+unberuehrt, die Fremdzeilen kommen in einen zweiten Commit mit neutraler Kennung.
+Gegenprobe vorher: `git diff --cached --numstat -- <pfad>` muss die eigene Zeilenzahl
+zeigen, `git diff --numstat -- <pfad>` den fremden Rest.
+
 ## 5. Zweige
 
 `master` ist der einzige Arbeitszweig. `zwischenstand` ist die automatische
