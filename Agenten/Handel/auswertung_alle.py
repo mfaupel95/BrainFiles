@@ -88,7 +88,11 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               "moondev_whale", "moondev_liquidation", "moondev_sentiment",
               # MOONDEV_SNIPER (19.09.2026): neue Solana-Launches, dasselbe
               # Journal - derselbe Weg.
-              "moondev_sniper")
+              "moondev_sniper",
+              # ROBINHOOD_RADAR (22.09.2026): Buch ueber
+              # Handel/spur_buch.py, Journalform kauf/verkauf mit
+              # einsatz_usd - derselbe Rechenweg.
+              "robinhood_radar")
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 

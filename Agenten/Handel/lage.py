@@ -655,6 +655,11 @@ def spur_liq_wand():
                            "Liquidations-Wand (BTC)")
 
 
+def spur_robinhood_radar():
+    return _spur_indikator("robinhood_radar",
+                           "Robinhood-Radar (Wallet-Kohorte)")
+
+
 def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
@@ -1178,7 +1183,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_orb, spur_orbk, spur_omniquant, spur_nautilus,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
-    spur_trendwende_btc, spur_liq_wand,
+    spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,

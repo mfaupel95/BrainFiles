@@ -79,6 +79,9 @@ FAMILIE = {
     "spiegel_weit": "Feed-Spiegel",
     "kopier": "Feed-Kopie",
     "kopier1zu1": "Feed-Kopie 1:1",
+    # Robinhood-Radar (22.09.2026): Buch auf einem fremden Feed -
+    # dieselbe Familie wie die Kopier-Spuren.
+    "robinhood_radar": "Feed-Kopie",
     "omniquant": "Prognose-Buch",
     "macd_mtf": "Indikator",
     "squeeze": "Indikator",

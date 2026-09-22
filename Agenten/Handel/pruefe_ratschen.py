@@ -61,6 +61,12 @@ SPUREN = [
     ("moondev_liquidation", "moondev_liquidation", "scanner", "wachen_pruefung"),
     ("moondev_sentiment", "moondev_sentiment", "scanner", "wachen_pruefung"),
     ("moondev_sniper", "moondev_sniper", "scanner", "wachen_pruefung"),
+    # Nachgetragen 22.09.2026: die drei juengsten spur_buch-Spuren fehlten in
+    # dieser Liste (liq_wand und trendwende_btc seit dem 21.09., robinhood_radar
+    # neu) - sie laufen im Dauerlauf und fuehren den Betrag ausdruecklich.
+    ("trendwende_btc", "trendwende_btc", "scanner", "wachen_pruefung"),
+    ("liq_wand", "liq_wand", "scanner", "wachen_pruefung"),
+    ("robinhood_radar", "robinhood_radar", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

@@ -93,3 +93,30 @@ EINEN Grund). Wer die Liste aendert, prueft das gegen die Spalte „Orderweg im 
 - `Agenten/Handel/spiegelstand.py` — Bedingung 4 (Spiegel byte-gleich), zuletzt 30/30.
 - `Agenten/Handel/auswertung_alle.py` — Kennzahlen je Spur auf echten Runden.
 - SkillsBot-Befehle: `/lage`, `/live`, `/spuren`, `/spur NAME`, `/bericht`, `/geschlossen`.
+
+## robinhood_radar — Papier auf bewerteten Wallets (Robinhood Chain)
+
+Angelegt 22.09.2026 (Auftrag „Radar -papierspur und -bot"). Quelle ist die SQLite
+`fomo_agent.db` des Fremd-Repos `Werkstatt/Repos/fomo-robinhood-radar` — **nur lesend**
+(`lesen.py` oeffnet mit `mode=ro` und lehnt jede Anweisung ab, die nicht mit `SELECT`/`WITH`/
+`PRAGMA` beginnt).
+
+Regel: mindestens **zwei verschiedene bewertete Wallets** (Score ≥ 60, Status ≠ `dropped`)
+kaufen denselben Token innerhalb von sechs Stunden; Verkaufsdruck derselben Kohorte blockiert
+das Signal. Nur long — Robinhood Chain hat in diesem Haus **keinen Orderweg**, `--live`
+verweigert mit Grund.
+
+- Einstiegspreis = Preis des juengsten beobachteten Kaufs (`usd_value / token_amount`)
+  **+2 % Nachlauf**, plus 1 % Gebuehr je Seite. Eine Kopie ohne Kursbewegung ergibt ein Minus —
+  das ist Absicht, keine Ungenauigkeit.
+- **Ein** neuer Einstieg je Zyklus, staerkster Kandidat zuerst (sonst fuellt der erste Zyklus
+  mit Daten das ganze Buch und die Auswertung kann den Rang nicht tragen). Stop/Ziel (25 %,
+  2,0 R) sind **gesetzt, nicht gemessen**.
+- Sammeln tut der Cron `radar-sammler` (20 Minuten, `Agenten/Hermes/scripts/radar-sammeln.py`),
+  nicht die Spur — damit ist die Spur offline testbar, `FOMO_RADAR_DB` ist die Naht.
+- Papier: `handel_erlaubt=false`, `freigabe.erfuellt=false`; Ratsche 15,00 = 1,0x Buchrisiko
+  (Risiko 5 USD × 3 Plaetze).
+
+**Nachtrag 22.09.2026:** `pruefe_ratschen.py` fuehrte `trendwende_btc`, `liq_wand` und
+`robinhood_radar` nicht — die Liste war seit dem 21.09. hinter den Spuren her. Jetzt alle drei
+drin, alle „1.0x? ja".

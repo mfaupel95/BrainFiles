@@ -319,6 +319,14 @@ SPUREN = {
     # Zwangsschluesse (OKX oeffentlich). Papier, kein Live-Zweig.
     "liq_wand": {"ordner": "liq_wand", "waehrung": "USD",
                  "skript": "handeln.py"},
+    # ROBINHOOD_RADAR (22.09.2026, Auftrag Max "Radar -papierspur"):
+    # kopiert das GESCHEHEN (nicht die Rangliste) auf Robinhood Chain -
+    # kaufen mindestens zwei bewertete Wallets (Score >= 60) denselben
+    # Token im Fenster, ist das ein Signal. Quelle ist die SQLite des
+    # Fremd-Repos fomo-robinhood-radar, NUR LESEND. Papier, kein
+    # Orderweg (Robinhood Chain hat in diesem Haus keinen).
+    "robinhood_radar": {"ordner": "robinhood_radar", "waehrung": "USD",
+                        "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.
