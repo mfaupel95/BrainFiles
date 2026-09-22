@@ -114,3 +114,70 @@ Tests: `kraken/tests/test_preis_gerundet.py`, `mosaic/tests/test_preis_gerundet.
 **Merksatz.** Ein Orderpreis gehoert durch die Regeln der Boerse, bevor er rausgeht — und die
 Regeln kommen aus der API des Paares, nicht aus einer Konstanten. Probe ohne Geld: `AddOrder`
 mit `validate=true` nimmt den gerundeten Preis an und den rohen nicht.
+
+## 9. Eine Ausbuchung darf kein Ergebnis erfinden
+
+**Regel.** Wird eine Position nur aus dem BUCH genommen (kein eigener Verkauf), muss die
+Verkaufszeile das **echte Ergebnis** tragen — oder **neutral** sein (Einsatz zurueck). Nie
+eine Null, nie eine Schaetzung.
+
+**Belegter Fall (21.09.2026, `xperp`).** `bueche_geister_aus` schrieb `margin_usd = 0.00`.
+Die Wachen lesen die `schliessen`-Zeile als **Erloes** — eine von Hand geschlossene Position
+zaehlte damit als **Totalverlust ihres Einsatzes**. HBAR kostete das **-16,84 USD** in
+genau der Drawdown-Kurve, aus der der Kill-Switch liest (vier Minuten spaeter feuerte er).
+Am 22.09. standen drei weitere Handschluesse an (BZ, CL, CRCL = 97 USD Einsatz) — mit dem
+alten Code waere der Ruecklauf von 71,14 auf **168,22** gesprungen, der Deckel 100 gerissen
+und die Spur **falsch** flachgestellt und gesperrt worden.
+
+**Fix.** `_geist_erloes()` holt `realizedPnl` aus `/api/v5/account/positions-history` und legt
+es auf den Einsatz; ohne Boersensatz (kein Eintrag, Netzfehler, unlesbare Zahl) wird NEUTRAL
+gebucht. Stand die Boerse **groesser** als das Buch (Handaufstockung), wird das Ergebnis
+**anteilig** gerechnet (Buchkontrakte / `closeTotalPos`) — sonst zaehlt die Runde Gewinne,
+die ihr nicht gehoeren. Nachweis am laufenden Betrieb (22.09., Zyklus 10:43):
+BZ 39,82 → 41,51 · CL 36,70 → 38,84 · CRCL 20,56 → 17,89; Ruecklauf 71,14 → 81,95 statt
+168,22.
+
+## 10. Eine Entschuldigung braucht ein Verfallsdatum
+
+**Regel.** Eine Sonderregel, die einen Fehlerfall entschuldigt, muss zeitlich begrenzt sein —
+sonst wird sie zur Dauerkarte.
+
+**Belegter Fall (22.09.2026, `xperp`).** Die Geisterpruefung ueberspringt eine fehlende
+Position, wenn ihre Order „gefuellt" ist (Wettlauf Order → Position, HBAR am 21.09.). Diese
+Order bleibt aber **fuer immer** `accFillSz > 0` — auch nachdem ein Mensch die Position
+laengst geschlossen hat. BZ, CL und CRCL blieben so zwei Zyklen lang **Karteileichen**: an
+der Boerse weg, im Buch mit Platz, Stop und Ziel, und jeder neue Einstieg blockiert.
+Der erste Fix (echtes Ergebnis) reichte nicht — der 10:24-Zyklus buchte die drei nicht aus.
+
+**Fix.** Die Fuellung zaehlt nur im Grace-Fenster `_GEIST_FUELLUNG_GRACE_MIN = 10` Minuten
+nach dem Eroeffnen. **Ohne** Eroeffnungszeit bleibt es konservativ (nicht ausbuchen) — eine
+echte Position ohne Buch liefe unbewacht, das wiegt schwerer als eine Karteileiche.
+
+## 11. Ein Handgriff aendert die GROESSE — nicht nur die Existenz
+
+**Auftrag Max (22.09.2026):** „Auch zukuenftig moechte ich noch per Hand Positionen
+veraendern koennen." Geprueft wurde bis dahin nur, OB eine Position existiert.
+
+**Belegte Abweichungen.** CL Buch 20 / Boerse 19 · BZ 208 / 727 · HBAR 9,4 / 47,1.
+
+**Warum die Richtung zaehlt.** Ein zu KLEINES Buch ist der gefaehrliche Fall: der Ausstieg
+schloesst nur den Buchteil und laesst den Rest **unbewacht** an der Boerse stehen. Darum ist
+die Boerse die Wahrheit und das Buch folgt ihr (`bueche_groessen_abgleichen`, beide
+Richtungen, Journalzeile `aktion=anpassen`, `grund=handanpassung`).
+
+**Grenzen, die bleiben.** Stop, Ziel und Einstieg werden NICHT angefasst (die
+Handelsentscheidung bleibt die der Spur), es geht KEINE Order raus, und die Buchhaltung der
+Runde bleibt unberuehrt — sie kommt aus der `eroeffnen`-Zeile im Journal, nicht aus dem
+Zustand. Die neue Aktion ist fuer den Rundenleser unsichtbar; so entsteht aus einem Handgriff
+keine erfundene Runde.
+
+**Altlasten heilen sich nicht von selbst.** Frueher geschriebene Null-Zeilen bleiben in der
+Kurve. `Handel/xperp/geister_nachziehen.py` zieht sie auf den echten Wert (Vorschau Standard,
+Kopie `handelsjournal.bak-JJJJMMTT.csv`); der Cron **`geister-zeilen-wache`** (alle 6 h,
+`no_agent`) ruft das Werkzeug und schweigt, wenn nichts zu tun ist. Er fasst kein Journal an,
+das juenger als 5 Minuten ist — das Werkzeug liest und schreibt die ganze Datei, mitten in
+einen Zyklus ginge eine frische Zeile verloren.
+
+Angriffspunkte in einer neuen Spur: `handeln.py` (`bueche_geister_aus`,
+`bueche_groessen_abgleichen`), `okxf.geschlossene_position()`, Tests
+`xperp/tests/test_handeln_geister.py` + `test_geister_nachziehen.py` (70 gruen).

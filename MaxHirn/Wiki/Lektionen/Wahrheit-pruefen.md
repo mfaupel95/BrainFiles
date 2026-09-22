@@ -80,3 +80,32 @@ sich selbst, bis jemand die Meldung im Chat hinterfragte.
 **Merksatz.** Ein Sperrgrund ist eine Aussage. Wenn die Ursache des Sperrens ein Fehler
 beim *Pruefen* sein kann, muss die Meldung das sagen. Sonst ist die Wache kaputt, nicht
 die Lage.
+
+## 7. Gemeldet wird, was WIRKT — nicht, was angefordert wurde
+
+**Regel.** Eine Zustandszeile beschreibt das ERGEBNIS. Wo eine Absicht und eine Wirkung
+auseinanderfallen koennen, muss die Meldung die Wirkung nennen — sonst liest der Nutzer
+„aus" statt „ruhig".
+
+**Zwei belegte Faelle am 22.09.2026, beide von Max hinterfragt.**
+
+(a) **Tagesbericht:** `N Spuren still: kraken, omniquant, …` — gelesen als „die sind
+abgeschaltet". „Still" war aber `tagesbericht.rang() == 3`: kein Fehler, keine neue Runde,
+keine neue oder weggefallene Position **seit dem letzten Bericht**. Die betroffenen Spuren
+liefen in Papier weiter. Die Sammelzeile nennt die Bedeutung jetzt selbst.
+
+(b) **Dauerlauf-Log:** `kraken (live) ok`, waehrend kraken Papier handelte. Der Modus kam
+allein aus dem Freigabefenster (`modus = "--live" if f.offen() …`); ob die Spur live geht,
+entscheidet ihr eigener Riegel (`wachen.json handel_erlaubt`). Die Spur schrieb selbst
+`--live angefordert, aber gesperrt: wachen.json handel_erlaubt=false`. Fix:
+`_meldungsmodus(modus, ordner)` meldet `(papier)`, wenn `handel_erlaubt=false` ist — der
+AUFRUF bleibt der angeforderte Modus, sonst aendert sich das Verhalten der Spur still
+(die Buchbereinigung laeuft nur im Live-Zweig).
+
+**Prueffrage fuer jede neue Zeile.** Ist das ein Zustand (Modus, Position, Sperre) oder eine
+Aenderung (neu, weg, anders)? Wer beides in ein Wort legt, erzeugt genau diese Rueckfrage.
+
+**Zusatzregel fuer die Wirkung:** Nicht aus der Konfiguration schliessen, sondern die Spur
+selbst fragen. `handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1` (so ruft der Dauerlauf sie)
+ist die einzige Wahrheit — `<spur> (live) ok` im Log ist der Modus des DAUERLAUFS, kein
+Orderbeleg.

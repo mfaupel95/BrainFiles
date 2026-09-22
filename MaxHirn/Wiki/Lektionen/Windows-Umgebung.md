@@ -75,10 +75,29 @@ windows-mcp-PowerShell auf dem HOST fahren, nicht im Docker-Terminal.
 „Crash-Loop"-Aussage die Absturzzeilen mit Grund lesen; die „gestartet/gestoppt"-Zaehler
 im Treiberlog zaehlen auch eigene Neustarts mit.
 
-## 6. Kindprozesse beenden
+## 6. Kindprozesse beenden: `Stop-Process`, nicht `taskkill`
 
-**Regel.** `$r = & taskkill /T /F /PID <pid> 2>&1; $r -join ' | '` — und danach die
-Prozesszahl nachzaehlen.
+**Regel.** `Stop-Process -Id <pid> -Force` je PID — und danach die Prozesszahl NACHZAEHLEN.
 
-**Warum.** Eine Schleife mit `| Out-String` schluckt die Ausgabe und beendet NICHTS.
-Treiber muessen die ganze Baumstruktur beenden (`taskkill /T`), sonst bleiben Waisen.
+**Warum (zweimal gemessen, 22.09.2026).** Aus der windows-mcp-PowerShell beendet
+`taskkill` **nichts**: weder in einer Schleife mit `| Out-String` noch als
+`foreach ($p in $pids) { $r = & taskkill /T /F /PID $p 2>&1; $r -join ' | ' }` — 4 von 4
+Prozessen lebten weiter, ohne Fehlermeldung, waehrend der naechste Schritt schon startete.
+Beim Handels-Dauerlauf liefen dadurch kurzzeitig **vier Loops statt zwei** (vierfache
+Netz-/Scanlast, bei gemeinsamem Zustand vierfache Positionsueberwachung, und bei offenem
+Fenster echtes Doppelorder-Risiko).
+
+**Richtig, in dieser Reihenfolge.**
+
+1. Prozesse auflisten (`Get-CimInstance Win32_Process`, nach dem vollen SKRIPTnamen
+   filtern — `*dauerlauf*` trifft auch `moondev_dauerlauf.py`), Paare Launcher+Kind
+   notieren.
+2. `Stop-Process -Id … -Force`; „kein Prozess mit dieser ID" ist in Ordnung, wenn ein
+   Partner schon mitgestorben ist.
+3. Prozesszahl nachzaehlen UND die PID-Dateien lesen — sie muessen auf die NEUEN Prozesse
+   zeigen. Wer die Prozesse beendet, aber die Sperrdatei stehen laesst, startet nie neu.
+4. Ist versehentlich schon neu gestartet worden: die ALTEN PIDs beenden (die neuen tragen
+   den frischen Code), nicht alles killen.
+
+Treiber, die ihre Kinder beenden, brauchen weiter die ganze Baumstruktur — dort bleibt
+`taskkill /T` im Code die richtige Wahl; die Regel hier gilt fuer den **manuellen** Eingriff.
