@@ -392,7 +392,8 @@ TAKT_MAX_MINUTEN = 15
 # (Kraken Spot, EUR) ist im Code vorhanden. Bindende Grenze bleibt das freie
 # EUR-Guthaben (mindest_guthaben_eur 60).
 AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
-                 "moondev_listingarb", "moondev_topmovers", "kraken")
+                 "moondev_listingarb", "moondev_topmovers", "kraken",
+                 "trendwende_btc", "liq_wand")
 AUTO_FREIGABE_STUNDEN = 12
 
 
