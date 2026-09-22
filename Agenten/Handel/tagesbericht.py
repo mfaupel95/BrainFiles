@@ -229,6 +229,13 @@ def sammelzeile(stille):
     (die beiden Kraken-Nautilus-Arme teilen sich `nautilus_kraken`, sie
     erschienen deshalb zweimal als "nautilus_kraken" in einer Zeile, Befund
     21.09.2026). Dann steht der sprechende Name da.
+
+    UND DIE BEDEUTUNG STEHT DAZUS (Befund Max, 22.09.2026: "Warum still und
+    nicht papier?"). "Still" beschreibt den UNTERSCHIED zum letzten Bericht -
+    kein Fehler, keine neue Runde, keine neue oder weggefallene Position -,
+    NICHT den Modus: eine stille Spur laeuft weiter, im Papier wie eingestellt.
+    Wer die Zeile ohne den Zusatz liest, haelt sie fuer abgeschaltet; genau das
+    ist passiert.
     """
     if not stille:
         return ""
@@ -238,7 +245,9 @@ def sammelzeile(stille):
     for e in stille:
         k = e.get("schluessel")
         namen.append(e["name"] if (not k or k in doppelt) else k)
-    return "%d Spuren still: %s" % (len(stille), ", ".join(sorted(namen)))
+    return ("%d Spuren still: %s  (still = kein Fehler und nichts Neues seit "
+            "dem letzten Bericht - die Spuren laufen weiter)"
+            % (len(stille), ", ".join(sorted(namen))))
 
 
 NL = chr(10)          # Zeilenumbruch ohne Escape-Ketten im Quelltext
