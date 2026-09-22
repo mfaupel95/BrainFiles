@@ -65,11 +65,26 @@ Gegenteil, es liegt 1,18 Prozentpunkte darueber.** Als Handelssignal ist das
 wertlos.
 
 Was das NICHT heisst: geprueft ist **ein** Modell (Small, 24,7 M), **eine** Reihe
-(BTC 1H), **ohne** Nachtrainieren und **mit einer einzigen Probe** je Fenster.
-Ein generatives Modell mit `sample_count=1` ist die pessimistischste
-Einstellung; Mittelung ueber mehrere Proben ist der naheliegende Gegentest
-(`_kronos_fenster2.py`, laeuft). Das Repo bringt eigene Finetuning-Skripte mit —
-ohne die ist Kronos ein Basismodell, kein fertiger Prognostiker.
+(BTC 1H), **ohne** Nachtrainieren. Der faire Gegentest — Mittelung ueber
+mehrere Proben, weil ein generatives Modell mit `sample_count=1` die
+pessimistischste Einstellung ist — wurde gefahren (`_kronos_fenster2.py`,
+30 Fenster, 5 Proben):
+
+| Groesse | 1 Probe (100 Fenster) | 5 Proben (30 Fenster) |
+|---|---|---|
+| Horizont-Richtung richtig | 47,0 % | **50,0 %** |
+| besser als die Nullinie | 20,0 % | **30,0 %** |
+| mittlerer Fehler | 2,059 % | 1,767 % |
+| Nullinie | 0,875 % | 0,663 % |
+| Abstand zur Nullinie | +1,184 pp | **+1,104 pp** |
+
+**Die Mittelung verbessert den Fehler (2,06 % → 1,77 %) und aendert das Urteil
+nicht.** Beide Einstellungen bleiben rund **2,7-fach ueber** der Nullinie, die
+Richtung bleibt ein Muenzwurf. Damit ist der Fall geschlossen: Kronos-small ist
+**kein** fertiger Prognostiker fuer BTC 1H auf 24 h. Ein ernsthafter Versuch
+braeuchte Nachtrainieren (die Skripte liegen im Repo) — das ist ein Projekt,
+keine Zehn-Minuten-Messung, und der Nutzen stuende erst nach einer ebenso
+strengen Gegenprobe fest.
 
 Sonden: `Agenten/Hermes/cache/scratch/kronos_fenster.py` (100 Fenster),
-`kronos_fenster2.py` (Proben-Mittelung, Groesse waehlbar).
+`kronos_fenster2.py` (Proben-Mittelung, Modellgroesse per Argument waehlbar).
