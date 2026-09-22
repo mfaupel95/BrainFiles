@@ -393,6 +393,12 @@ def bot_namen():
     ergebnis = []
     try:
         for name in os.listdir(wurzel):
+            # Versteckte Ordner sind keine Profile: `.deleted`, `.sicherung`
+            # und die Staging-Reste eines abgebrochenen
+            # `hermes profile create` (.nerd.staging-<pid>) tragen eine
+            # config.yaml und stuenden sonst als Phantom-Bot in /bots.
+            if name.startswith("."):
+                continue
             if os.path.isfile(os.path.join(wurzel, name, "config.yaml")):
                 ergebnis.append(name)
     except OSError:
