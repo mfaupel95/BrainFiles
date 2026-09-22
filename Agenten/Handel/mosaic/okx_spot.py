@@ -33,6 +33,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import sys
 import time
@@ -233,6 +234,38 @@ def markt_verkauf(inst, menge):
     return d[0]["ordId"]
 
 
+def preis_gerundet(inst, preis, richtung="auf"):
+    """Einen Preis auf die Tick-Groesse des Instruments bringen (tickSz).
+
+    OKX lehnt eine Order ab, deren Preis kein Vielfaches von tickSz ist
+    ("Order price must be a multiple of the tick size"). Der Stop-Preis kommt
+    aus einer Rechnung (Einstieg x (1 - stop_pct)) und hat damit praktisch
+    immer zu viele Stellen. Derselbe Fehler ist bei Kraken am 22.09.2026
+    aufgetreten ("SOL/EUR price can only be specified up to 2 decimals") und
+    liess den Notausstieg ausfallen - hier wird er vermieden.
+
+    Richtung "auf": der Stop eines LONG liegt nie tiefer als gerechnet, das
+    Risiko wird also nicht groesser als die Wache erlaubt. Laesst sich tickSz
+    nicht abrufen, wird der rohe Wert gesendet und gewarnt - das ist genau
+    das Verhalten von vorher, kein neuer stiller Fehler.
+    """
+    if richtung not in ("auf", "ab"):
+        raise ValueError("richtung muss 'auf' oder 'ab' sein")
+    try:
+        tick = float(spot_instrument(inst)["tickSz"])
+    except Exception as e:  # noqa: BLE001
+        print("  tickSz fuer %s nicht abrufbar (%s) - Preis ungerundet"
+              % (inst, e), file=sys.stderr)
+        return str(preis)
+    if tick <= 0:
+        return str(preis)
+    stellen = max(0, len(("%.10f" % tick).rstrip("0").split(".")[1]))
+    faktor = 10 ** stellen
+    x = round(float(preis) * faktor, 6)
+    ganz = math.ceil(x) if richtung == "auf" else math.floor(x)
+    return "%.*f" % (stellen, ganz / faktor)
+
+
 def algo_stop_setzen(inst, menge, seite, trigger):
     """Bedingte Stop-Loss-Order an der Boerse (ueberlebt Neustart).
 
@@ -243,7 +276,8 @@ def algo_stop_setzen(inst, menge, seite, trigger):
     gegen = "sell" if seite == "long" else "buy"
     body = {"instId": inst, "tdMode": "cash", "side": gegen,
             "ordType": "conditional", "sz": str(menge),
-            "slTriggerPx": str(trigger), "slOrdPx": "-1"}
+            "slTriggerPx": preis_gerundet(inst, trigger, "auf"),
+            "slOrdPx": "-1"}
     d = _roh("/api/v5/trade/order-algo", "POST", body, signiert=True)
     return d[0]["algoId"]
 

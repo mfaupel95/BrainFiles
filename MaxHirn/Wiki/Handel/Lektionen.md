@@ -3,9 +3,9 @@ id: 20260921-handel-lektionen
 title: 'Handel — Lektionen'
 tags: [handel, lektion]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Lektionen/Wahrheit-pruefen]]']
-summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus.'
+summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg.'
 ---
 
 # Handel — Lektionen
@@ -91,3 +91,26 @@ und wird nie verschoben — ein neuer `stufen`-Wert wirkt nur auf eine frische L
 Jede Kennzahl auf dieser Wiki-Seite ist mit dem genannten Werkzeug nachrechenbar
 (`auswertung_alle.py`, `kosten_wendepunkt.py`, `stoerungen.py`, `spiegelstand.py`,
 `pruefe_ratschen.py`). Eine Kennzahl ohne Werkzeug ist beim naechsten Mal eine Behauptung.
+
+## 8. Jede Boerse hat Preisregeln — ein roher Rechenwert fehlt den Notausstieg
+
+**Belegter Fall (22.09.2026, Zyklus 42, `mosaic` live auf Kraken).** Kauft `SOL-USDC`, will den
+Stop setzen, Kraken antwortet `EOrder:Invalid price:SOL/EUR price can only be specified up to
+2 decimals` — daraufhin verkauft die Spur die Position **sofort zurueck** (richtige Reaktion:
+nie eine Position ohne Notausstieg halten). Kosten 0,605 EUR in gut einer Sekunde, ohne Handel.
+
+**Ursache.** `kraken._add_order` schrieb `str(preis)` — der Stop-Preis kommt aus
+`Einstieg x (1 - stop_pct)` und hat praktisch immer zu viele Stellen. Die erlaubte Stellenzahl
+steht **je Paar** in `AssetPairs.pair_decimals` (SOLEUR/XETHZEUR 2, XXBTZEUR 1, AKEEUR 8,
+KASEUR 5) — ein fester Formatstring waere fuer jedes andere Paar falsch. Bei OKX heisst dieselbe
+Regel `tickSz` (`okx_spot.slTriggerPx` sendete ebenfalls roh).
+
+**Fix.** `kraken.preis_gerundet(paar, preis, richtung="auf")` und das Gegenstueck
+`okx_spot.preis_gerundet`; beide runden AUF (der Long-Stop liegt nie tiefer als gerechnet, das
+Risiko wird also nicht groesser als die Wache erlaubt) und geben einen fertig formatierten
+String zurueck (`str(float)` schreibt kleine Werte als `1e-08`, was ebenfalls abgelehnt wird).
+Tests: `kraken/tests/test_preis_gerundet.py`, `mosaic/tests/test_preis_gerundet.py`.
+
+**Merksatz.** Ein Orderpreis gehoert durch die Regeln der Boerse, bevor er rausgeht — und die
+Regeln kommen aus der API des Paares, nicht aus einer Konstanten. Probe ohne Geld: `AddOrder`
+mit `validate=true` nimmt den gerundeten Preis an und den rohen nicht.

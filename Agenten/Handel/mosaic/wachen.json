@@ -58,5 +58,6 @@
   },
   "guthaben_waehrung": "EUR",
   "mindest_guthaben_usdc": 30.0,
-  "_mindest_guthaben_usdc": "Mindestbetrag FREI auf dem Konto, in der Handelswaehrung. Seit 21.09.2026 USDC statt USDT (Max: 'Auf okx usdc nehmen!') - im OKX-Konto liegen USDC frei, USDT gar nicht; die Paare sind dieselben Krypto-Maerkte gegen USDC."
+  "_mindest_guthaben_usdc": "Mindestbetrag FREI auf dem Konto, in der Handelswaehrung. Seit 21.09.2026 USDC statt USDT (Max: 'Auf okx usdc nehmen!') - im OKX-Konto liegen USDC frei, USDT gar nicht; die Paare sind dieselben Krypto-Maerkte gegen USDC.",
+  "_gebuehren": "GEMESSEN 22.09.2026: Kraken rechnet auf diesem Konto je Seite 0,60 % (TradeVolume: SOLEUR/XXBTZEUR/XETHZEUR/SUIEUR/HYPEEUR alle 0,6000 %, 30-Tage-Volumen 3.479 EUR) - eine Runde aus Kauf und Verkauf kostet 1,2 %, unabhaengig von Stop und Ziel. Die Spur fuehrt KEIN Gebuehrenfeld: ihr Journal (einstieg/ausstieg) und die Auswertung ueber auswertung_alle.runden_indikator rechnen BRUTTO. Gemessener Beleg: der erste Live-Vorgang am 22.09.2026 um 10:46 kostete 0,605 EUR in gut einer Sekunde (Kauf 50,01954 EUR / Verkauf 50,01466 EUR / Gebuehren 0,60021 EUR) - der Stop war an der Preisregel gescheitert (SOL/EUR price can only be specified up to 2 decimals) und die Position wurde zurueckverkauft. Wer mosaics Netto beurteilt, muss diese 1,2 % je Runde selbst abziehen."
 }

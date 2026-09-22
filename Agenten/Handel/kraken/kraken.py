@@ -28,6 +28,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import sys
 import time
@@ -223,11 +224,48 @@ def markt_verkauf(paar, menge, echt=False):
     return _add_order(paar, "sell", menge, "market", echt=echt)
 
 
+def preis_gerundet(paar, preis, richtung="auf"):
+    """Einen Preis auf die Nachkommastellen DIESES Paares bringen.
+
+    Kraken lehnt eine Order ab, deren Preis mehr Stellen hat als das Paar
+    zulaesst - "EOrder:Invalid price:SOL/EUR price can only be specified up to
+    2 decimals" (gemessen 22.09.2026 an einem Stop auf SOLEUR). Die Order wird
+    dabei nicht teilweise ausgefuehrt, sie kommt gar nicht zustande: der
+    Notausstieg fehlt dann komplett, und die Spur verkauft die frisch gekaufte
+    Position sofort wieder zurueck (Spesen ohne Handel).
+
+    Die Stellenzahl ist JE PAAR verschieden (AssetPairs.pair_decimals, am
+    22.09.2026 geprueft: SOLEUR/XETHZEUR 2, XXBTZEUR 1, AKEEUR 8, KASEUR 5) -
+    ein fester Formatstring waere fuer jedes andere Paar falsch.
+
+    richtung "auf": der Stop eines LONG wird aufgerundet und liegt damit nie
+    TIEFER als gerechnet - das Risiko wird nicht groesser als die Wache
+    erlaubt. "ab" ist die Gegenrichtung (Stop eines Short).
+    """
+    if richtung not in ("auf", "ab"):
+        raise ValueError("richtung muss 'auf' oder 'ab' sein")
+    stellen = paar_info(paar).get("preis_stellen")
+    if stellen is None:
+        # Attrappe ohne Preisregeln (Tests): nicht raten, roh weitergeben.
+        return str(preis)
+    faktor = 10 ** int(stellen)
+    # round() vor ceil/floor: 128.995 * 100 ist binaer 12899.499999999998.
+    x = round(float(preis) * faktor, 6)
+    ganz = math.ceil(x) if richtung == "auf" else math.floor(x)
+    # Fertig formatiert zurueckgeben: str(float) wuerde kleine Werte als
+    # "1e-08" schreiben, was Kraken ebenfalls ablehnt.
+    return "%.*f" % (int(stellen), ganz / faktor)
+
+
 def stop_setzen(paar, menge, stop_preis, echt=False):
     """Notausstieg als Stop-Loss-Order im Buch. Sie ueberlebt einen Neustart
     des Rechners - das ist der Sinn: eine Position, die nur ein laufendes
-    Skript bewacht, ist unbewacht (Bedingung 3)."""
-    return _add_order(paar, "sell", menge, "stop-loss", preis=stop_preis,
+    Skript bewacht, ist unbewacht (Bedingung 3).
+
+    Der Preis wird auf die Stellen des Paares gerundet (preis_gerundet) - ein
+    roher Rechenwert wird von Kraken abgelehnt."""
+    return _add_order(paar, "sell", menge, "stop-loss",
+                      preis=preis_gerundet(paar, stop_preis, "auf"),
                       echt=echt)
 
 

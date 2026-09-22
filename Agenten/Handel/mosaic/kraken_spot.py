@@ -23,6 +23,14 @@ WAS KRAKEN ANDERS MACHT
 
 Paarnamen: Kraken fuehrt BTC/EUR als `XXBTZEUR`, ETH/EUR als `XETHZEUR`,
 SOL/EUR als `SOLEUR`. Das steht in der wachen.json (`instrumente`).
+
+Preisregeln: jede Boerse laesst nur eine bestimmte Zahl von Nachkommastellen
+zu - Kraken je Paar (pair_decimals: SOLEUR 2, XXBTZEUR 1), OKX je Instrument
+(tickSz). `kraken.stop_setzen` rundet den Stop-Preis ueber
+`kraken.preis_gerundet` auf, `mosaic/okx_spot.algo_stop_setzen` ueber sein
+eigenes `preis_gerundet`. Ein roher Rechenwert wird abgelehnt ("SOL/EUR price
+can only be specified up to 2 decimals"), und dann fehlt der Notausstieg
+(22.09.2026: Position wurde zurueckverkauft).
 """
 
 from __future__ import annotations

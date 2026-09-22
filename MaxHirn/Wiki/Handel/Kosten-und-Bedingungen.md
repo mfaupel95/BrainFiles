@@ -3,9 +3,9 @@ id: 20260921-kosten-und-bedingungen
 title: 'Handel — Kosten und Bedingungen'
 tags: [handel, kosten]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Wissen/Handelsregeln]]', '[[Wissen/Handelsbots]]']
-summary: 'Gebuehren und ihr Wendepunkt je Spur (f_max), die Bedingungen 1-5, und der Merksatz zur Aussagekraft kleiner Stichproben.'
+summary: 'Gebuehren (Kraken gemessen 0,6 % je Seite) und ihr Wendepunkt je Spur (f_max), die Bedingungen 1-5, und der Merksatz zur Aussagekraft kleiner Stichproben.'
 ---
 
 # Kosten und Bedingungen
@@ -41,19 +41,30 @@ Nachzug wieder byte-gleich.
 
 | Boerse | Gebuehr | Besonderheit |
 |---|---|---|
-| Kraken (Spot) | `gebuehr_taker: 0` | Kraken-Pro-Abo: Kauf+Verkauf bis 10.000 EUR Monatsvolumen gebuehrenfrei |
+| Kraken (Spot) | `gebuehr_taker: 0.006` | **gemessen** 0,60 % je Seite = **1,2 % je Runde** — das Abo wirkt nicht |
 | OKX | wie in `wachen.json` | Margin ist **USDC**, nicht USDT (siehe [[Handel/Boersen-und-Schluessel]]) |
 | Deribit (`iv_waelle`) | 0,05 % | hier NICHT 0 — bewusst eigener Wert |
 
-**Risiko des Kraken-Nullsatzes:** Das ist ein **Abo-Vorteil, kein Marktpreis**. Faellt das Abo
-weg, kostet die Runde wieder 0,4–0,8 %; die Rueckrechnung von `kraken` ist dann **-0,57 % je
-Runde** und die Freigabe bleibt zu. Vor jedem Zaehlen von Runden fuer Bedingung 1 pruefen, ob
-`gebuehr_taker` noch 0 sein DARF. Altzeilen im Journal tragen 50.20 (vor der Umstellung),
-neue 50.00 — der Uebergang ist sichtbar.
+**GEMESSEN 22.09.2026 — der Kraken-Nullsatz war falsch.** Zwei unabhaengige Zeugen:
+die Fuellungen (`SOLEUR`: Kauf 50,01954 EUR mit 0,30012 EUR Gebuehr, Verkauf 50,01466 EUR mit
+0,30009 EUR) und `/0/private/TradeVolume` (taker 0,6000 % fuer SOLEUR, XXBTZEUR, XETHZEUR,
+SUIEUR, HYPEEUR; 30-Tage-Volumen 3.479 EUR, naechste Stufe 0,38 % ab 10.000 EUR). Das
+Kraken-Pro-Abo entfaellt also **nicht** — es greift auf diesem Konto nicht. `kraken` traegt
+deshalb wieder den gemessenen Satz (`gebuehr_taker: 0.006`, datierter Vermerk
+`_gebuehren_abo_widerlegt`); eine Runde kostet damit 1,2 % statt 0 %. **Merksatz: eine
+Gebuehrenannahme wird an einer echten Fuellung geprueft, nicht an einer Tarifseite** —
+`TradeVolume` ist der zweite Zeuge, `handeln.py --wachen` zeigt nur, was in der Datei steht.
+
+**`mosaic` fuehrt KEIN Gebuehrenfeld.** Sein Journal (einstieg/ausstieg) und die Auswertung
+ueber `auswertung_alle.runden_indikator` rechnen **brutto** — wer es netto beurteilt, muss
+1,2 % je Runde selbst abziehen. Erster Live-Vorgang am 22.09.2026: 0,605 EUR Kosten in gut
+einer Sekunde (Kauf, gescheiterter Stop, Rueckverkauf).
 
 **Freivolumen zaehlt auf das HANDELSVOLUMEN** (Kauf + Verkauf), also doppelt je Runde:
-~250 Runden/Monat bei 20 EUR Nominal, ~50 bei 100 EUR. Gilt fuer alle Paare und ist an das
-Abo gebunden. `orbk` ist die einzige Spur, deren Kalkulation auf 0 % Gebuehr gebaut ist.
+~250 Runden/Monat bei 20 EUR Nominal, ~50 bei 100 EUR. Diese Angabe stammt aus der
+Abo-Annahme vom 13.09.2026 und ist seit der Messung vom 22.09.2026 **gegenstandslos**: es gibt
+kein Freivolumen auf diesem Konto. `orbk` ist die einzige Spur, deren Kalkulation auf 0 %
+Gebuehr gebaut ist — bei ihm ist der Nullsatz Teil der Rechnung, nicht nur eine Annahme.
 
 ## `kosten_wendepunkt.py` — f_max je Buch
 
