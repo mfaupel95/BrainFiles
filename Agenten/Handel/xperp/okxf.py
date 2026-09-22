@@ -432,6 +432,53 @@ def positionen(inst=None):
     return _mit_wiederholung(p, signiert=True)
 
 
+def geschlossene_positionen(inst=None, limit=20):
+    """Zuletzt GESCHLOSSENE Positionen (`/account/positions-history`).
+
+    Das ist die einzige Stelle, an der OKX das realisierte Ergebnis einer
+    Position fuehrt - das eigene Journal hat gar keine G+V-Spalte. Wird
+    gebraucht, wenn eine Position von HAND geschlossen wurde: dann gibt es
+    keine eigene Verkaufszeile, aber an der Boerse sehr wohl ein Ergebnis.
+    """
+    p = "/api/v5/account/positions-history?limit=%d" % limit
+    if inst:
+        p += "&instId=" + inst
+    return _mit_wiederholung(p, signiert=True)
+
+
+def geschlossene_position(inst, seit_ms):
+    """Die juengste geschlossene Position dieses Instruments nach `seit_ms`.
+
+    `seit_ms` ist der Veroeffentlichungszeitpunkt (ms) der Position, die im
+    Buch stand - aeltere Schliessungen desselben Instruments gehoeren zu
+    einer frueheren Runde und wuerden das Ergebnis verfaelschen.
+    Gibt None zurueck, wenn nichts gefunden wurde oder die Abfrage scheitert;
+    der Aufrufer darf daraus NICHT auf "kein Ergebnis" schliessen, sondern
+    muss neutral buchen (siehe handeln._geist_erloes).
+    """
+    try:
+        eintraege = geschlossene_positionen(inst)
+    except Exception:                                          # noqa: BLE001
+        return None
+    treffer = None
+    for e in eintraege or []:
+        try:
+            t = int(e.get("uTime") or 0)
+        except (TypeError, ValueError):
+            continue
+        if t >= int(seit_ms) and (treffer is None or t > treffer):
+            treffer = t
+    if treffer is None:
+        return None
+    for e in eintraege:
+        try:
+            if int(e.get("uTime") or 0) == treffer:
+                return e
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 # --- signiert: Orders -------------------------------------------------------
 #
 # Diese Funktionen bewegen Geld. Sie werden von keinem Skript in diesem Ordner

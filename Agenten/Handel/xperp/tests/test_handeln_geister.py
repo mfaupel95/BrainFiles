@@ -106,6 +106,167 @@ class Geister(unittest.TestCase):
         self.assertEqual(len(z["positionen"]), 1)
 
 
+class GeistErgebnis(unittest.TestCase):
+    """Das ERGEBNIS einer von Hand geschlossenen Position.
+
+    ANLASS (22.09.2026): Die Geisterpruefung buchte `margin_usd = 0.00`.
+    wachen_xperp liest die schliessen-Zeile als ERLoes - eine von Hand
+    geschlossene Position zaehlte damit als TOTALVERLUST ihres Einsatzes
+    (HBAR: -16.84 USD in der Drawdown-Kurve, aus der der Kill-Switch liest).
+    Max schliesst auch kuenftig von Hand, also muss das Ergebnis stimmen.
+    """
+
+    def setUp(self):
+        self.geschrieben = []
+        self.j = patch.object(h, "journal",
+                              side_effect=lambda **k: self.geschrieben.append(k))
+        self.j.start()
+        self.addCleanup(self.j.stop)
+
+    def _p(self, margin=16.84, kontrakte=9.4):
+        p = _pos("HBAR-100")
+        p.update({"margin": margin, "kontrakte": kontrakte,
+                  "eroeffnet_zeit": "2026-09-21T14:06:51+00:00"})
+        return p
+
+    def test_boersenergebnis_kommt_ins_buch(self):
+        with patch.object(h.okxf, "geschlossene_position",
+                          return_value={"realizedPnl": "1.50",
+                                        "closeTotalPos": "9.4"}):
+            erloes, quelle, anteil = h._geist_erloes(self._p())
+        self.assertEqual(quelle, "boerse")
+        self.assertAlmostEqual(erloes, 18.34, places=6)
+        self.assertAlmostEqual(anteil, 1.0, places=6)
+
+    def test_ohne_boersensatz_wird_neutral_gebucht(self):
+        with patch.object(h.okxf, "geschlossene_position", return_value=None):
+            erloes, quelle, _ = h._geist_erloes(self._p())
+        self.assertEqual(quelle, "neutral")
+        self.assertAlmostEqual(erloes, 16.84, places=6,
+                               msg="der Einsatz kommt zurueck, kein Verlust")
+
+    def test_netzfehler_wird_neutral(self):
+        with patch.object(h.okxf, "geschlossene_position",
+                          side_effect=RuntimeError("kein Netz")):
+            erloes, quelle, _ = h._geist_erloes(self._p())
+        self.assertEqual(quelle, "neutral")
+        self.assertAlmostEqual(erloes, 16.84, places=6)
+
+    def test_anteil_bei_groesserer_boersenposition(self):
+        """Stand an der Boerse mehr als im Buch, gehoert uns nur unser Anteil."""
+        with patch.object(h.okxf, "geschlossene_position",
+                          return_value={"realizedPnl": "10.0",
+                                        "closeTotalPos": "47.0"}):
+            erloes, quelle, anteil = h._geist_erloes(self._p(kontrakte=9.4))
+        self.assertEqual(quelle, "boerse")
+        self.assertAlmostEqual(anteil, 0.2, places=6)
+        self.assertAlmostEqual(erloes, 16.84 + 2.0, places=6)
+
+    def test_ausbuchung_schreibt_das_ergebnis_ins_journal(self):
+        z = {"positionen": [self._p()]}
+        with patch.object(h.okxf, "positionen", return_value=[]),                 patch.object(h.okxf, "geschlossene_position",
+                          return_value={"realizedPnl": "1.50",
+                                        "closeTotalPos": "9.4"}):
+            h.bueche_geister_aus(z, {})
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(self.geschrieben[0]["grund"], "buchbereinigung_geist")
+        self.assertEqual(self.geschrieben[0]["margin_usd"], "18.34",
+                         "0.00 war der Totalverlust - das ist der Bug")
+
+    def test_ausbuchung_ohne_satz_schreibt_den_einsatz_zurueck(self):
+        z = {"positionen": [self._p()]}
+        with patch.object(h.okxf, "positionen", return_value=[]),                 patch.object(h.okxf, "geschlossene_position", return_value=None):
+            h.bueche_geister_aus(z, {})
+        self.assertEqual(self.geschrieben[0]["margin_usd"], "16.84")
+
+
+class Groessenabgleich(unittest.TestCase):
+    """Handgriffe an einer offenen Position: das Buch folgt der Boerse.
+
+    Auftrag Max (22.09.2026): "Auch zukuenftig moechte ich noch per Hand
+    Positionen veraendern koennen." Gemessen an dem Tag: CL Buch 20 / Boerse 19,
+    BZ Buch 208 / Boerse 727, HBAR Buch 9.4 / Boerse 47.1 - geprueft wurde
+    bisher nur, ob eine Position ueberhaupt existiert.
+    """
+
+    def setUp(self):
+        self.geschrieben = []
+        self.j = patch.object(h, "journal",
+                              side_effect=lambda **k: self.geschrieben.append(k))
+        self.j.start()
+        self.addCleanup(self.j.stop)
+
+    def _p(self, kontrakte=20.0):
+        p = _pos("CL-100")
+        p.update({"kontrakte": kontrakte, "nominal": 183.5, "margin": 36.7,
+                  "stop": 89.9, "ziel": 99.97, "einstieg": 92.18})
+        return p
+
+    def test_teilweise_geschlossen_buch_folgt_der_boerse(self):
+        z = {"positionen": [self._p(20.0)]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "19"}]):
+            abw = h.bueche_groessen_abgleichen(z, {})
+        self.assertEqual(len(abw), 1)
+        self.assertEqual(z["positionen"][0]["kontrakte"], 19.0)
+        self.assertAlmostEqual(z["positionen"][0]["nominal"], 183.5 * 19 / 20,
+                               places=4)
+
+    def test_handgriff_laesst_stop_und_ziel_unangetastet(self):
+        z = {"positionen": [self._p(9.4)]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "47.1"}]):
+            h.bueche_groessen_abgleichen(z, {})
+        p = z["positionen"][0]
+        self.assertEqual(p["kontrakte"], 47.1)
+        self.assertEqual(p["stop"], 89.9, "Handelsentscheidung bleibt die der Spur")
+        self.assertEqual(p["ziel"], 99.97)
+        self.assertEqual(p["einstieg"], 92.18)
+
+    def test_aufstocken_wird_uebernommen(self):
+        z = {"positionen": [self._p(9.4)]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "47.1"}]):
+            h.bueche_groessen_abgleichen(z, {})
+        self.assertEqual(z["positionen"][0]["kontrakte"], 47.1)
+        self.assertEqual(self.geschrieben[0]["aktion"], "anpassen")
+        self.assertEqual(self.geschrieben[0]["grund"], "handanpassung")
+
+    def test_gleiche_groesse_bleibt_unberuehrt(self):
+        z = {"positionen": [self._p(19.0)]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "19"}]):
+            self.assertEqual(h.bueche_groessen_abgleichen(z, {}), [])
+        self.assertEqual(self.geschrieben, [])
+
+    def test_api_rauschen_ist_kein_handgriff(self):
+        z = {"positionen": [self._p(19.0)]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "19.0000001"}]):
+            self.assertEqual(h.bueche_groessen_abgleichen(z, {}), [])
+
+    def test_netzfehler_laesst_das_buch_in_ruhe(self):
+        z = {"positionen": [self._p(20.0)]}
+        with patch.object(h.okxf, "positionen", side_effect=RuntimeError("kein Netz")):
+            self.assertEqual(h.bueche_groessen_abgleichen(z, {}), [])
+        self.assertEqual(z["positionen"][0]["kontrakte"], 20.0)
+
+    def test_fehlende_position_ist_nicht_meine_aufgabe(self):
+        # Eine ganz verschwundene Position bucht die Geisterpruefung aus.
+        z = {"positionen": [self._p(20.0)]}
+        with patch.object(h.okxf, "positionen", return_value=[]):
+            self.assertEqual(h.bueche_groessen_abgleichen(z, {}), [])
+        self.assertEqual(z["positionen"][0]["kontrakte"], 20.0)
+
+    def test_papierposition_bleibt_unberuehrt(self):
+        p = self._p(20.0); p["modus"] = "papier"
+        z = {"positionen": [p]}
+        with patch.object(h.okxf, "positionen",
+                          return_value=[{"instId": "CL-100", "pos": "19"}]):
+            self.assertEqual(h.bueche_groessen_abgleichen(z, {}), [])
+        self.assertEqual(z["positionen"][0]["kontrakte"], 20.0)
+
+
 class Fuellung(unittest.TestCase):
     def test_nicht_gefuellte_order_ergibt_null(self):
         with patch.object(h.okxf, "gefuellte_kontrakte", return_value=0.0):

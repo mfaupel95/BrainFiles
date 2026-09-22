@@ -405,6 +405,64 @@ def wartende_auftraege(z, live, w, still=False):
     return gebucht
 
 
+def _zeit_ms(iso):
+    """ISO-Zeitstempel -> Millisekunden seit Epoche (None bei Unlesbarem)."""
+    if not iso:
+        return None
+    try:
+        t = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return int(t.timestamp() * 1000)
+
+
+def _geist_erloes(p):
+    """Was kommt fuer eine von HAND geschlossene Position zurueck?
+
+    DIE FALLE, DIE DAS BEHEBT (gemessen 21.09.2026): Die Geisterpruefung buchte
+    die Verkaufszeile mit margin_usd = 0.00. wachen_xperp liest die
+    schliessen-Zeile als ERLoes - eine von Hand geschlossene Position zaehlte
+    damit als TOTALVERLUST in Hoehe des Einsatzes. Bei HBAR waren das -16.84
+    USD in der Drawdown-Kurve, die den Kill-Switch auswertet - ein Verlust,
+    den es nie gab, und eine Sperre, die dadurch mit ausgeloest werden konnte.
+
+    JETZT: das ECHTE Ergebnis von der Boerse (/account/positions-history,
+    `realizedPnl`), plus den Einsatz. Nur wenn die Boerse nichts hergibt
+    (kein Eintrag, Netzfehler, unlesbare Zahl), wird NEUTRAL gebucht - der
+    Einsatz kommt zurueck, kein erfundenes Ergebnis.
+
+    Anteil: Stand an der Boerse MEHR als im Buch (Max kann von Hand
+    aufstocken), wird das Boersenergebnis nur anteilig gerechnet - sonst
+    zaehlte die Runde Gewinne, die gar nicht ihr gehoeren.
+
+    Rueckgabe: (erloes_usd, quelle, anteil) mit quelle "boerse" oder "neutral".
+    """
+    margin = float(p.get("margin") or 0.0)
+    kontrakte = abs(float(p.get("kontrakte") or 0.0))
+    seit = _zeit_ms(p.get("eroeffnet_zeit"))
+    if not seit:
+        return margin, "neutral", None
+    try:
+        satz = okxf.geschlossene_position(p.get("inst", ""), seit)
+    except Exception:                                          # noqa: BLE001
+        # Ein Netzfehler darf die Ausbuchung nicht verhindern - er darf nur
+        # kein Ergebnis erfinden.
+        return margin, "neutral", None
+    if not satz:
+        return margin, "neutral", None
+    try:
+        pnl = float(satz.get("realizedPnl") or 0.0)
+        geschlossen = abs(float(satz.get("closeTotalPos") or 0.0))
+    except (TypeError, ValueError):
+        return margin, "neutral", None
+    anteil = 1.0
+    if geschlossen > 0 and kontrakte > 0:
+        anteil = min(1.0, kontrakte / geschlossen)
+    return margin + pnl * anteil, "boerse", anteil
+
+
 def bueche_geister_aus(z, w, still=False):
     """Positionen aus dem Buch, die an der Boerse NICHT (mehr) existieren.
 
@@ -413,6 +471,10 @@ def bueche_geister_aus(z, w, still=False):
     ist die Wahrheit. Eine Position mit modus=live, die dort fehlt oder mit
     Groesse 0 steht, ist ein Geist - sie belegt einen Platz, blockiert
     Kaeufe und laesst jeden Ausstieg fehlschlagen.
+
+    Haeufigster Fall ist ein HANDGRIFF: Max schliesst eine Position in der
+    App. Dann gibt es keine Verkaufszeile im eigenen Journal - das Ergebnis
+    kommt von der Boerse (siehe `_geist_erloes`).
 
     Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
     nicht leeren.
@@ -464,19 +526,95 @@ def bueche_geister_aus(z, w, still=False):
             except Exception as e:                             # noqa: BLE001
                 print("  Storno der offenen Order zu %s fehlgeschlagen: %s"
                       % (p.get("inst"), e))
+        erloes, quelle, anteil = _geist_erloes(p)
         if not still:
             print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
                   "(nur eine offene Order, kein Bestand)"
                   % (p.get("inst"), p.get("seite")))
+            if quelle == "boerse":
+                print("    Ergebnis von der Boerse: Einsatz %.2f -> zurueck "
+                      "%.2f (Anteil %.0f%%)"
+                      % (p.get("margin") or 0.0, erloes,
+                         round((anteil or 0.0) * 100)))
+            else:
+                print("    Kein Boersenergebnis auffindbar - NEUTRAL gebucht: "
+                      "Einsatz %.2f zurueck, kein erfundenes Ergebnis"
+                      % erloes)
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 inst=p.get("inst", ""), seite=p.get("seite", ""),
                 familie=p.get("familie", ""), preis="%.6f" % (p.get("einstieg") or 0.0),
                 kontrakte=p.get("kontrakte", ""),
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
-                margin_usd="0.00", hebel=p.get("hebel", ""),
+                margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund="buchbereinigung_geist")
     z["positionen"] = behalten
     return len(geister)
+
+
+# Kontraktzahlen sind gebrochen (CRCL 1.1), aber nicht beliebig fein: unter
+# dieser Schwelle ist es API-Rauschen, kein Handgriff.
+_KONTRAKT_TOLERANZ = 1e-6
+
+
+def bueche_groessen_abgleichen(z, w, still=False):
+    """Buch und Boerse auf DIESELBE Kontraktzahl bringen.
+
+    ANLASS (Auftrag Max, 22.09.2026): "Auch zukuenftig moechte ich noch per
+    Hand Positionen veraendern koennen." Ein Handgriff aendert die Kontraktzahl
+    an der Boerse - das Buch merkte davon bisher NICHTS, geprueft wurde nur, ob
+    eine Position ueberhaupt existiert. Gemessen am 22.09.2026:
+
+        CL    Buch 20.0   Boerse 19    (41 von 60 Kontrakten von Hand zu)
+        BZ    Buch 208    Boerse 727   (aufgestockt)
+        HBAR  Buch 9.4    Boerse 47.1  (aufgestockt)
+
+    Der gefaehrliche Fall ist ein zu KLEINES Buch: der Ausstieg schloesse nur
+    den Buchteil und liesse den Rest unbewacht an der Boerse stehen. Darum ist
+    die BOERSE die Wahrheit und das Buch folgt ihr - in beide Richtungen.
+
+    Was NICHT passiert: Stop, Ziel und Einstieg bleiben unangetastet (die
+    Handelsentscheidung bleibt die der Spur), es wird KEINE Order geschickt,
+    und die Buchhaltung der Runde bleibt unberuehrt - die kommt aus der
+    eroeffnen-Zeile im Journal, nicht aus diesem Zustand. `margin`/`nominal`
+    werden nur im Verhaeltnis mitgezogen, damit die Anzeige nicht luegt.
+
+    Fehlt die Position ganz, ist das nicht die Aufgabe dieser Funktion - das
+    erledigt die Geisterpruefung.
+    """
+    try:
+        an_der_boerse = {p["instId"]: float(p.get("pos") or 0.0)
+                         for p in okxf.positionen()}
+    except Exception as e:                                     # noqa: BLE001
+        print("  Groessenabgleich uebersprungen (%s) - Buch bleibt unberuehrt"
+              % e)
+        return []
+    abweichungen = []
+    for p in z["positionen"]:
+        if p.get("modus") != "live" or p.get("inst") not in an_der_boerse:
+            continue
+        soll = abs(float(p.get("kontrakte") or 0.0))
+        ist = abs(an_der_boerse[p["inst"]])
+        if soll <= 0 or abs(ist - soll) <= _KONTRAKT_TOLERANZ:
+            continue
+        faktor = ist / soll
+        for feld in ("nominal", "margin"):
+            if p.get(feld) is not None:
+                p[feld] = round(float(p[feld]) * faktor, 4)
+        p["kontrakte"] = ist
+        abweichungen.append({"inst": p["inst"], "buch": soll, "boerse": ist})
+        if not still:
+            print("  Groessenabgleich %s: Buch %.4f -> Boerse %.4f Kontrakte%s"
+                  % (p["inst"], soll, ist,
+                     "  (Handgriff: aufgestockt)"
+                     if faktor > 1 else "  (Handgriff: teilweise geschlossen)"))
+        journal(zeit=_jetzt(), modus="live", aktion="anpassen",
+                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                familie=p.get("familie", ""),
+                kontrakte="%.4f" % ist,
+                nominal_usd="%.2f" % (p.get("nominal") or 0.0),
+                margin_usd="%.2f" % (p.get("margin") or 0.0),
+                hebel=p.get("hebel", ""), grund="handanpassung")
+    return abweichungen
 
 
 def pruefe_ausstiege(z, live, w):
@@ -1041,6 +1179,14 @@ def lauf(modus):
         if n_geist:
             print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
                   "der Boerse)" % n_geist)
+        # Dann die GROESSE: ein Handgriff aendert die Kontraktzahl, ohne dass
+        # eine Position verschwindet (Max, 22.09.2026). Muss VOR den Ausstiegen
+        # laufen, sonst schliesst die Spur nur ihren Buchteil und laesst den
+        # Rest unbewacht an der Boerse stehen.
+        n_groesse = bueche_groessen_abgleichen(z, w, still=False)
+        if n_groesse:
+            print("  %d Position(en) auf die Boersengroesse gezogen"
+                  % len(n_groesse))
 
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:
