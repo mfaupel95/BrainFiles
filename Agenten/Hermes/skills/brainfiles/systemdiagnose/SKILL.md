@@ -123,14 +123,23 @@ fehlgedeutet.
   Entscheiden. Eintrag + Grund, damit der Grund im Bericht steht.
   Aktuelle Eintraege: `MaxHirn-MoonDev-Agent` (ersetzt durch den
   MoonDev-Dauerlauf, kein Doppelstart).
-- **Block 14 (Docker `nautilus-demo`) kennt drei Fallen, die alle im Code
-  dokumentiert sind:** (1) EAP lokal auf `Continue` setzen, sonst zaehlt
-  stderr von docker als NativeCommandError und die Zuweisung bleibt leer;
-  (2) `docker logs` liefert ANSI-Escape-Sequenzen (`\x1b[...m`) — vor dem
-  Regex-Match entfernen, sonst beginnt die Zeile nicht mit der Ziffer;
-  (3) `[datetimeoffset]::Parse(ts+'Z', InvariantCulture, AssumeUniversal)`
+- **Block 14 (Docker `nautilus-demo`) kennt vier Fallen, die alle im Code
+  dokumentiert sind:** (1) JEDER docker-Aufruf braucht eine Zeitgrenze
+  (`DockerMitFrist`, `System.Diagnostics.Process` mit `WaitForExit(ms)`,
+  Ausgabe asynchron lesen): ist die Engine aus, wartet der Client
+  unbegrenzt auf die Pipe, der ganze Lauf wird von aussen gekillt und der
+  Bericht **gar nicht mehr geschrieben** — 19.–22.09.2026 dreimal passiert,
+  `letzter-lauf.md` blieb auf dem 19.09. stehen. Ohne Antwort in 20/25 s
+  liefert der Helfer `$null` und der Block meldet „Engine antwortet nicht".
+  Gemessen: 8,2 s statt unbegrenzt; (2) EAP lokal auf `Continue` setzen, sonst
+  zaehlt stderr von docker als NativeCommandError; (3) `docker logs` liefert
+  ANSI-Escape-Sequenzen (`\x1b[...m`) — vor dem Regex-Match entfernen;
+  (4) `[datetimeoffset]::Parse(ts+'Z', InvariantCulture, AssumeUniversal)`
   statt `[datetime]::ParseExact(AssumeUniversal)` — das speichert als Local
   und verfaelscht die Differenz um die Zeitzone (120-min-Fehler).
+  Dazu: ein toter Daemon nimmt auch den Container mit. Fehlt `nautilus-demo`
+  **samt Image**, hilft nur Neubau aus `Agenten/Handel/nautilus/Dockerfile`
+  (Routine `nautilus-docker-start.ps1` macht das idempotent).
 - **Grosse PowerShell-Bloecke ganz neu schreiben statt in kleinen Patches
   iterieren.** Der Patch-Mechanismus verzieht bei mehrzeiligen Bloecken gern
   die Einrueckung und schleust Tippfehler ein (`Select-ObjectObject`,
@@ -202,6 +211,22 @@ fehlgedeutet.
   Haushaltslogs wachsen ueber Stunden; die **letzten** Zeilen lesen. Viele
   Systeme heilen sich selbst (Verbindungs-Wiederaufbau, „error cleared“) —
   sonst steht im Bericht ein Problem, das sich laengst geloest hat.
+- **Ein Pruefer, der haengen kann, verliert den ganzen Bericht — und die
+  Luecke ist unsichtbar.** Der Aufgabenzustand bleibt „Ready", die Tageslogs
+  existieren, nur `systempruefung-letzter-lauf.md` wird alt. Wer eine
+  Systempruefung „abarbeitet", vergleicht deshalb ZUERST das Datum im Bericht
+  mit heute: ist es aelter als der letzte geplante Lauf, wurde der Lauf
+  abgebrochen und die Befunde darin sind Geschichte. Zweiter Zeuge: das Ende
+  des Tagesprotokolls (`Agenten/Routinen/logs/systempruefung-<datum>.log`)
+  muss eine Ende-Zeile haben.
+- **Bloecke, die jeden Lauf dieselben Zeilen melden, gehoeren in eine
+  Whitelist mit Grund — nicht in die Entscheiden-Liste.** Ein Dauerfehlalarm
+  deckt die echten Neufunde zu. Muster im Skript: `$gewolltDeaktiviert`
+  (Aufgaben), `$gewolltStores` (Ollama-Stores mit Nur-hier-Blobs),
+  `$ausgenommen` (Pfad-Pruefung) und der Fremd-Baum-Ausschluss in Block 6
+  (`.mcp.json` in `skills/`, `plugins/` — dort gilt die Umgebung des
+  Herstellers, `bun` fehlt hier absichtlich). Neue Eintraege nur mit
+  Begruendung, und nur der NAME wird freigestellt, nie eine Loeschung.
 - **`robocopy`-`FEHLER 32` (Zugriff verweigert) in einer eigenen Sicherung ist
   meist ein SELBST gehaltenes Schloss, keine Beschaedigung.** Eine lang
   laufende eigene Automatisierung (eine Headless-Browser-Instanz, eine offene

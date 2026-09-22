@@ -5,7 +5,7 @@ tags: [lektion, methode]
 created: 2026-09-21
 updated: 2026-09-22
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Vier Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe.'
+summary: 'Acht Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer.'
 ---
 
 # Wahrheit pruefen
@@ -109,3 +109,31 @@ Aenderung (neu, weg, anders)? Wer beides in ein Wort legt, erzeugt genau diese R
 selbst fragen. `handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1` (so ruft der Dauerlauf sie)
 ist die einzige Wahrheit — `<spur> (live) ok` im Log ist der Modus des DAUERLAUFS, kein
 Orderbeleg.
+
+## 8. Ein Pruefer, der haengen kann, liefert still GAR KEINEN Befund
+
+**Regel.** Jeder Aufruf an ein fremdes System (Docker, Netz, ein Dienst) braucht eine
+Zeitgrenze. Ein Haenger ist nicht „keine Meldung" — er ist der **Verlust aller Meldungen
+danach**, denn der Bericht wird am Ende geschrieben.
+
+**Belegter Fall (19.–22.09.2026).** `Docker Desktop` war aus (WSL-Distro `docker-desktop`
+gestoppt), der Docker-Client wartete unbegrenzt auf die Pipe. `systempruefung.ps1` Block 14
+war deshalb **dreimal** die letzte Zeile im Protokoll, der Lauf wurde von aussen gekillt
+(Code `267014`), und der Bericht `systempruefung-letzter-lauf.md` blieb auf dem 19.09.
+stehen. Sichtbar war das an nichts: Der Aufgabenzustand sagte „Ready", die Tageslogs
+existierten, nur der Bericht war alt.
+
+**Behebung.** `DockerMitFrist` in Block 14 (Aufruf ueber
+`System.Diagnostics.Process` mit `WaitForExit(ms)` und asynchronem Lesen, damit die
+Ausgabe nicht den Puffer verstopft). Ohne Antwort in 20/25 s kommt `$null` zurueck und
+der Block meldet ausdruecklich „Docker-Engine antwortet nicht". Gemessen: 8,2 s statt
+unbegrenzt, Lauf danach 97–160 s mit Ende-Zeile.
+
+**Prueffrage fuer jede Wache.** Kann der Aufruf, mit dem sie prueft, haengen? Wenn ja:
+Zeitgrenze setzen **und** den Zeitueberschreitungs-Fall als eigenen Befund melden — nicht
+als „alles in Ordnung".
+
+**Nebenbefund, der zum Merksatz gehoert.** Derselbe Ausfall hatte eine zweite unsichtbare
+Folge: der Nautilus-Quoten-Container war weg (samt Image), weil Docker beim toten Daemon
+nichts hochzieht. Ein Dienst, der „nur noch im Log" existiert, ist kein laufender Dienst —
+der Container wurde am 22.09. neu gebaut und liefert wieder Quotes.
