@@ -87,6 +87,18 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
+# Freigabefenster ebenso ueber den PFAD laden: der eigene Ordner ist
+# sys.path[0], der Handel-Ordner liegt dort NICHT (nur <spur>/../../Bus).
+# Ein blankes 'import freigabefenster' scheiterte deshalb mit
+# ModuleNotFoundError, zeitfenster_offen() fing das still ab und die Sperre
+# meldete "kein Zeitfenster" - obwohl eines offen war (Befund 22.09.2026, der
+# Scanner handelte Papier, waehrend der Dauerlauf --live anforderte).
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
+
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
@@ -710,13 +722,15 @@ SPUR = "scanner"
 def zeitfenster_offen():
     """Hat Max am Handy freigegeben (freigabefenster.py)?
 
-    Best effort: fehlt das Modul oder wirft es, gilt *nicht* freigegeben.
-    Im Zweifel Papier - ein Fehler beim Lesen darf nie zu einer Order
-    fuehren."""
+    Gelesen wird das Modul aus dem Handel-Ordner (oben ueber den PFAD geladen).
+    Ein Lesefehler gilt als *nicht* freigegeben - im Zweifel keine Order. Er
+    wird aber GEMELDET: dieselbe Zeile stand am 22.09.2026 fuer ein offenes
+    Fenster im Chat, und die Ursache war nur im stderr zu sehen."""
     try:
-        import freigabefenster
         return bool(freigabefenster.lade(SPUR).offen())
-    except Exception:                                   # noqa: BLE001
+    except Exception as e:                                   # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
         return False
 
 
@@ -993,7 +1007,6 @@ def lauf(modus):
             # Netzabfragen liegen und /stop in der Zeit greifen kann.
             if zeitfenster_offen():
                 try:
-                    import freigabefenster
                     stand = freigabefenster.lade(SPUR).text()
                 except Exception:                       # noqa: BLE001
                     stand = "offen"
