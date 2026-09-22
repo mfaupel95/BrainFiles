@@ -418,6 +418,21 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Aussage „zu viele Prozesse" die Startzeit der Treiberinstanz gegen die
   `CreationDate` der Prozesse halten — was vor dem Neustart entstand, ist
   Altlast, kein Doppellauf.
+- **Ein Dienstprozess ist keine Sitzung am Bildschirm - und die Zeitgrenze des
+  Treibers toetet mitten in der Buchfuehrung.** Zwei zusammenhaengende Fallen im
+  Zyklusbetrieb: (a) eine Spur, die per `isatty()` auf stdin prueft, ob jemand am
+  Bildschirm sitzt, haelt einen Dienstprozess fuer eine Sitzung (er erbt ein
+  Terminal) und wartet auf eine Freigabe, die niemand geben kann - Symptom ist
+  `TIMEOUT` / Rueckgabe 124 in JEDEM Zyklus, waehrend die Spur selbst "nichts tut".
+  Die Routine-Umgebungsvariable deshalb in BEIDEN Modi setzen, nicht mit der
+  Begruendung "bei live ist die Freigabe ohnehin erteilt" weglassen. (b) Die
+  Zeitgrenze je Kind muss zum Aufwand passen (breite Scanner brauchen mehr als
+  enge Signal-Spuren) - und weil ein gekilltes Kind seine letzten Schritte NIE
+  erreicht, gehoert jede Abschlussarbeit (Spiegelung, Zustandsschreiben,
+  Protokollzeile) an den ANFANG oder an einen Punkt vor den langsamen Teil: sonst
+  bleibt die Kopie ausser Haus still stehen und sieht wie ein Datenproblem aus.
+  Beleg in beide Richtungen: Log-Zeile des Zyklus ohne `TIMEOUT` UND ein
+  frischer Zeitstempel des Ziels ausser Haus.
 - **Nicht jeder Codefix braucht einen Neustart des Treibers.** Startet der Treiber
   je Zyklus ein KIND als eigenen Prozess (typisch `handeln.py`), liest das Kind die
   Datei bei jedem Start neu — ein Fix in der Komponente wirkt also im NAECHSTEN
@@ -457,6 +472,27 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Zeitstempel im Log verifizieren, dass die beobachtete Instanz wirklich seit
   dem Neustart laeuft — sonst wird der alte, ungepatchte Lauf fuer einen
   Beleg des Fixes gehalten.
+- **`taskkill` in einer Schleife schweigt und toetet nichts, wenn seine Ausgabe in eine
+  Pipe laeuft.** `foreach ($p in $pids) { taskkill /T /F /PID $p 2>&1 | Out-String }`
+  laeuft durch und laesst JEDEN Prozess am Leben (gemessen: 4 von 4 unveraendert) —
+  die Schleife meldet keinen Fehler, der Kill ist einfach nicht passiert. Richtig:
+  die Ausgabe erst einer Variablen zuweisen und dann ausgeben
+  (`$r = & taskkill /T /F /PID $p 2>&1; $r -join ' | '`), damit der Aufruf wirklich
+  startet — und **danach die Prozesszahl NACHZAEHLEN**. Beleg ist die gezaehlte Zahl,
+  nicht die Schleife.
+  **Nachtrag 22.09.2026: auch die Variablenform half nicht.** Aus der
+  windows-mcp-PowerShell blieben 4 von 4 Prozessen am Leben, ohne Fehlermeldung,
+  waehrend der naechste Schritt schon startete — kurzzeitig liefen vier
+  Dauerlauf-Loops statt zwei (vierfache Netz-/Scanlast und bei gemeinsamem
+  Zustand vierfache Positionsueberwachung). **Nimm `Stop-Process -Id <pid> -Force`**
+  (nativ, meldet je PID Erfolg oder „kein Prozess mit dieser ID“) und zaehle
+  danach. Wurde versehentlich schon neu gestartet, sind die ALTEN PIDs zu beenden
+  (nicht alles killen): die neuen tragen den frischen Code.
+- **Vor dem Beenden die WURZELN der Prozessgruppe bestimmen, nicht eine beliebige PID
+  greifen.** Aus einer Liste gleichartiger Prozesse sind die Wurzeln die, deren
+  `ParentProcessId` nicht selbst zur Gruppe gehoert; `taskkill /T /F` auf jede Wurzel
+  beendet den ganzen Baum. Trifft man nur Kinder, laeuft die Wurzel weiter und die
+  Kinder wachsen nach — es sieht aus, als haette der Kill nicht gewirkt.
 - **Eine `CommandLine -like '*Suchtext*'`-Abfrage trifft oft die eigene
   Suchanfrage**, wenn das Terminal den Befehl selbst in einer Bash-/
   PowerShell-Huelle mit dem vollen Text weiterreicht — der gesuchte String
