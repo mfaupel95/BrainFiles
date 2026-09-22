@@ -204,6 +204,13 @@ Aufgabe:
 - Ein GUI-Kontrollzentrum (Tkinter) fuer so ein Repo bauen (Boersendaten,
   Agenten-Start/Stop, Wallet, Doku-Browser): `references/gui-kontrollzentrum.md`.
 
+## Weiterfuehrend
+
+- Ein Repo bewertet/urteilt mit einem BEZAHLTEN Sprachmodell und bringt einen
+  Export/Import-Weg mit: Urteil lokal auf Ollama faellen, ohne das Fremd-Repo
+  anzufassen - `references/bewertung-lokal-statt-api.md` (Werkzeug
+  `Agenten/Werkzeuge/fomo_lokal.py` als Vorlage).
+
 ## Abgrenzung
 
 - Forks/Klone anlegen, Bots je Repo, Shallow-Push, Telegram-Anbindung:

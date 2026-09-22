@@ -549,6 +549,15 @@ Agenten/Hermes/skills/unsloth/
 !Agenten/Werkzeuge/repos-zentrale/tests/
 !Agenten/Werkzeuge/repos-zentrale/tests/*.py
 !Agenten/Werkzeuge/lotse-route.py
+# FOMO-RADAR AUF LOKALEM MODELL (23.09.2026): Das Fremd-Repo
+# Werkstatt/Repos/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
+# Guthaben faellt das Urteil lokal (Ollama) - ueber die Export/Import-Naht, die
+# das Repo selbst verlangt. Ohne diese Zeilen laege das Werkzeug nur auf dieser
+# Platte; der Export-/Ergebnis-Zwischenstand liegt bewusst AUSSERHALB des Repos
+# unter Agenten/Hermes/cache/fomo-lokal/.
+!Agenten/Werkzeuge/fomo_lokal.py
+!Agenten/Werkzeuge/tests/
+!Agenten/Werkzeuge/tests/*.py
 
 # AUTOSTART-SKRIPTE von Hermes (17.09.2026): Die .vbs starten Gateway und
 # Dashboard bei der Anmeldung. Sie sind Konfiguration von Hand (keine

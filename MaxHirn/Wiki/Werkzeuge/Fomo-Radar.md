@@ -35,12 +35,50 @@ gelassen: Fremd-Repo, nicht unsere Baustelle.
   entwickelt worden.
 - **Bewertung nicht ueber die API.** `init` meldete „anthropic key: set" — das
   ist Max' Console-Schluessel, und der hat **kein Guthaben**. Der dafuer
-  vorgesehene Weg `--export` / `--import` ist anbieterunabhaengig und passt auf
-  das lokale Ollama (Hausregel: Sprachmodell lokal).
+  vorgesehene Weg `--export` / `--import` ist anbieterunabhaengig und laeuft
+  seit dem 23.09.2026 auf dem lokalen Ollama (eigener Abschnitt unten).
 - **fomo.family blockt Serveraufrufe** (Cloudflare) — Nutzerlisten kommen nur
   per Browser-Export (`scripts/fomo_export.js` → `fomo-radar fomo-import`).
 - Das Repo bringt eine eigene `SKILL.md` mit. **Nicht** in die
   Hermes-Skill-Bibliothek importieren (Hausregel `skill-library-sync`).
+
+## Bewertung auf dem lokalen Modell (23.09.2026)
+
+Der API-Weg ist auf diesem Rechner tot. Das Repo verlangt selbst, dass die
+Bewertung ohne Schluessel ueber `score --export` / `score --import` weiterlaeuft —
+genau diese Naht bedient das Haus-Werkzeug **`Agenten/Werkzeuge/fomo_lokal.py`**.
+Es liest Prompt (`pipeline/score.py: SYSTEM`) und Ergebnis-Schema
+(`models.ScoreResult`) aus dem Repo, damit das lokale Urteil dieselbe Form und
+dieselben Regeln hat wie das Urteil der API, und aendert am Fremd-Repo nichts.
+
+Aufruf (Interpreter ist der Repo-venv, weil das Werkzeug `fomo_agent` liest):
+
+    Werkstatt/Repos/fomo-robinhood-radar/.venv/Scripts/python.exe \
+        Agenten/Werkzeuge/fomo_lokal.py [--anzahl N] [--adresse 0x..] [--trocken] [--alle] [--modell M]
+
+- Je Wallet EIN Ollama-Aufruf gegen `127.0.0.1:11434`, `think:false`,
+  Temperatur 0, Seed 42, `format` = das Schema; drei Stufen, wenn die Antwort
+  unlesbar ist (Schema → `format=json` → freier Text), danach faellt die Wallet
+  AUS statt geraten zu werden.
+- Export und Ergebnis liegen unter `Agenten/Hermes/cache/fomo-lokal/` — der
+  Fremd-Klon bleibt sauber.
+- `--trocken` rechnet nur. `--unscored` ist die Vorgabe; ist die Warteschlange
+  leer (nach einem Import), bewertet `--alle` die Kohorte erneut.
+- Tests: `Agenten/Werkzeuge/tests/test_fomo_lokal.py`, 21 gruen, ohne Netz
+  (Nahten `ANFRAGE` und `LAUF` werden gehalten).
+
+Gemessen mit `qwen35-8k:latest` ueber die 16 Wallets der Warteschlange:
+**16/16 im Schema, 0 unlesbar, 81-85 s gesamt (≈5 s je Wallet, erster Aufruf
+kalt ≈7 s)**. Zwei Laeufe liefern dieselben Punktzahlen (temperaturfrei).
+Ergebnis in der Datenbank: 4 × `active` (Score 92: unipcs, 0xAvast,
+Salem1299534, AvgJoesCrypto), 4 × `watch`, 8 × `dropped`, alle mit
+`ai_model=ollama-qwen35-8k`; `fomo-radar report --hours 24` zeigt die
+Kohorte mit diesen Begruendungen. Damit ist die Kohorte ab 60 Punkten
+(`analyze.TRUSTED`) erstmals gefuellt — vorher war kein Wallet bewertet.
+
+Nicht angefasst: das Fremd-Repo selbst (kein Code, keine `.env`, keine
+Testanpassung) und die 9 Wallets, die der Export als „nichts zu beurteilen"
+aussortiert (keine Fuellungen, kein offenes Buch).
 
 ## Was daran fuer den Handel interessant ist
 
