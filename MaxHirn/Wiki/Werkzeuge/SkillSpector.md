@@ -106,9 +106,56 @@ SKILLSPECTOR_MODEL=auto/best-coding \
 Beleg: `status partial`, `execution_successful true`, ein MEDIUM-Befund
 (`hermes-doctor-router.json` in der Wegwerfzone).
 
+## Fundus und Repos (22.09.2026)
+
+Zweiter Lauf, dieselbe Schleife, 1231 Skill-Ordner gefunden, nach MD5 der
+`SKILL.md` bleiben **654** (Fundus `C:\Users\faupe\Documents\GitHub` + `O:\Werkstatt\Repos`;
+Fundus und Repos fuehren viele Skills doppelt, `copilot-worktrees` kopiert die
+Schwester-Repos). 27 min, 8 parallel. Ergebnis:
+`Agenten/Hermes/cache/skillspector-fundus/`, Werkzeuge `cache/scratch/skillspector-fundus*.py`.
+
+| Kennzahl | Wert |
+|---|---|
+| LOW / MEDIUM / HIGH / CRITICAL | 478 / 82 / 47 / 47 |
+| Empfehlung SAFE / CAUTION / DO_NOT_INSTALL | 81 / 479 / **94** |
+| Skills, die ausfuehrbaren Code mitbringen | 68 |
+| Lauf fehlgeschlagen (`execution_successful: false`) | 17 |
+
+**Befund, der zaehlt:** **54 der 94 `DO_NOT_INSTALL` tragen denselben Ordnernamen
+wie ein Skill der GELADENEN Bibliothek** — darunter `superpowers` (brainstorming,
+subagent-driven-development, systematic-debugging), die `omni-*`-Skills und
+`claude-code/plugin-dev`. Die Empfehlung ist ein Filter fuer NEUE Importe, kein
+Urteil ueber die eigene Bibliothek.
+
+Was die Regeln wirklich bedeuten (aus `src/skillspector/nodes/analyzers/pattern_defaults.py`):
+
+| Regel | Bedeutung | Haus-Lage |
+|---|---|---|
+| E1 | externe URL im Text | 581 Treffer = Doku-Rauschen |
+| RP1 | Rollen-/Persona-Anweisung („you are an expert") | 436 = Rauschen |
+| AS3 | liest SKILL.md ANDERER Skills | 220 — genau das tun `fundus-zugriff` und `skill-library-sync` gewollt |
+| RA2 | „unerlaubte Persistenz per Cron" | trifft „create a task for" → Rauschen |
+| EA2/EA5 | autonome Entscheidungen ohne Mensch, `claude -p --allowedTools` | **lesen** — hier greifen Hausregeln/Freigabekette |
+| AR1/AR2/AR3 | „never refuse", „always respond", „no restrictions" | Marktplatz-Skills; der Grund, sie nicht zu laden |
+| P5 | Inhalt, der zu koerperlichem Schaden anleiten kann | `one-skill-to-rule-them-all` („kill someone") |
+| YR4 | Prompt-Injection-Text | `receipts`: „model; ignore previous instructions" |
+| YR1 | YARA-Signatur | `okx-agentic-wallet`: „Send / transfer native, ERC-20, SPL, BTC" — genau der Job eines Wallet-Skills |
+| SSRF2 | Anfrage an loopback | `openmontage`-Skills (lokaler Dienst) |
+| LP3 | keine Tool-Grenzen deklariert, Code nutzt Faehigkeiten | Hygiene: `permissions`/`allowed-tools` nachtragen |
+| PE1 | `permissions: *` | `kraken-cli/skills/kraken-autonomy-levels` |
+
+**Nie importieren:** `one-skill-to-rule-them-all`(-main) und
+`copilot-worktrees/.../superpowers-*` sind absichtlich gegen Regeln gebaut
+(AR2/AR3/P5/YR1) — im Fundus zu Recht ungeladen.
+
 ## Offen
 
-- Falschmeldungen einmal als **Baseline** einsperren (`skillspector baseline`)
-  — dann zeigen Wiederholungslaeufe nur noch NEUES.
-- Fremd-Fundus (`MaxHirn/skills`, `O:\Werkstatt\Repos`) ist noch nicht gescannt.
+- **Nicht gescannt:** die Skill-Bibliotheken der 26 Repo-Bots
+  (`Agenten/Hermes/profiles/<bot>/skills`, je ~52 Skills — DIE sind geladen),
+  `Werkstatt/security-skills-claude-code` (10), `MaxHirn/optional-skills` (1).
+  Nicht scanbar: die `okx-*`-Junctions.
+- 17 Berichte im Fundus- und 3 im Bibliothekslauf sind fehlgeschlagen
+  (unaufgeloeste Referenzen) — dort ist die Pruefung nur teilweise gelaufen.
+- Falschmeldungen einmal als **Baseline** einsperren (`skillspector baseline`),
+  dann zeigen Wiederholungslaeufe nur noch NEUES.
 - Wiederholung als Routine/Wache ist noch nicht verdrahtet.
