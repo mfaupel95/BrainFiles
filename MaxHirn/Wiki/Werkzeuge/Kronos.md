@@ -46,17 +46,30 @@ Merksatz: Bei einem harten Absturz zuerst `-X faulthandler` laufen lassen. Die
 Vermutung „das Modell ist zu neu fuer die Bibliothek" kostete hier zwei
 Torch-Neuinstallationen, der Zeuge zeigte in eine ganz andere Ecke.
 
-## Erster Messbefund (22.09.2026, BTC 1H, Horizont 24 h)
+## Messbefund (22.09.2026, BTC 1H, Horizont 24 h, Kontext 400 Kerzen)
 
-Zwei Hold-outs, Kontext je 400 Kerzen, gegen die **Nullinie** (Vorhersage =
-letzter Kurs) gestellt:
+Zuerst zwei Hold-outs, gegen die **Nullinie** (Vorhersage = letzter Kurs)
+gestellt — 1 Treffer, 1 besser. Dann die belastbare Rechnung ueber
+**100 nicht ueberlappende Fenster** mit `Kronos-small`, einer Probe je Fenster
+(`sample_count=1`), Sonde `_kronos_fenster.py`:
 
-| Fenster | Prognose | wirklich | Horizont | Richtung je Kerze | mittlerer Fehler | besser als Nullinie |
-|---|---|---|---|---|---|---|
-| letzte 24 h | 77.200 | 79.240 | daneben | 16/24 = 67 % | 0,831 % (Nullinie 0,731 %) | NEIN |
-| 7 Tage frueher | 63.664 | 64.115 | **Treffer** | 10/24 = 42 % | 0,489 % (Nullinie 0,509 %) | JA |
+| Groesse | Wert |
+|---|---|
+| Horizont-Richtung richtig | **47/100 = 47,0 %** (Muenzwurf) |
+| besser als die Nullinie | **20/100 = 20,0 %** |
+| Richtung je Kerze | 1176/2400 = 49,0 % |
+| mittlerer Fehler | **2,059 %** gegen Nullinie **0,875 %** |
 
-**Zwei Fenster sind ein Befund, keine Messung.** Weder Sieg noch Niederlage
-belegt; der naechste Schritt ist dieselbe Rechnung ueber viele Fenster
-(100+ Hold-outs), sonst ist es Rauschen. Sonde:
-`Agenten/Hermes/cache/scratch/kronos_probe.py`.
+**Ergebnis: Kronos-small schlaegt in dieser Form die Nullinie nicht — im
+Gegenteil, es liegt 1,18 Prozentpunkte darueber.** Als Handelssignal ist das
+wertlos.
+
+Was das NICHT heisst: geprueft ist **ein** Modell (Small, 24,7 M), **eine** Reihe
+(BTC 1H), **ohne** Nachtrainieren und **mit einer einzigen Probe** je Fenster.
+Ein generatives Modell mit `sample_count=1` ist die pessimistischste
+Einstellung; Mittelung ueber mehrere Proben ist der naheliegende Gegentest
+(`_kronos_fenster2.py`, laeuft). Das Repo bringt eigene Finetuning-Skripte mit —
+ohne die ist Kronos ein Basismodell, kein fertiger Prognostiker.
+
+Sonden: `Agenten/Hermes/cache/scratch/kronos_fenster.py` (100 Fenster),
+`kronos_fenster2.py` (Proben-Mittelung, Groesse waehlbar).
