@@ -35,10 +35,13 @@ vom Arbeitsverzeichnis des SkillsBot abhaengt.
 
 ## Flottenstand (Stand 19.09.2026)
 
-27 Repo-Bots + zwei Profile ohne Repo: `nous` (deepseek-v4-flash-free) und
-`hermes-wartung` (Arbeitsbereich `Agenten/Hermes`, kein Klon; angelegt 21.09.2026).
-Standgemessen mit `git ls-files Agenten/Hermes/profiles/` gegen
-`ls Werkstatt/Repos/`.
+15 Repo-Bots + Profile ohne Repo: `hermes-wartung` (Arbeitsbereich
+`Agenten/Hermes`, angelegt 21.09.2026), `lotse` (Verteil-Bot, 21.09.2026),
+`markt-recherche` (Marktdaten, 23.09.2026, siehe unten) sowie
+`awesome-systematic-trading` und `one-skill-to-rule-them-all` ohne gesetztes
+`terminal.cwd`.
+Stand am 23.09.2026 aus `profiles/*/config.yaml` gezaehlt (nicht aus dieser
+Tabelle); die Platte bleibt die Wahrheit.
 
 | Repo (Werkstatt/Repos) | Bot | Besonderheit |
 |---|---|---|
@@ -142,6 +145,33 @@ eigene `.env` (keine Kanalzugangsdaten), `profile.yaml`-Beschreibung per
 `Agenten/Hermes`, Modell `auto/best-coding`.
 
 Verwandt: [[Agent-Reach]], [[Moon-Dev-Agenten]], [[Projektatlas]], [[Routinen]].
+
+## Profil ohne Repo: markt-recherche (23.09.2026)
+
+Ein Recherche-Bot fuer aktuelle Krypto- und Aktienfragen - kein Repo,
+sondern ein Arbeitsbereich im Haus: `terminal.cwd = Agenten\Handel`,
+dort liegen die Marktdaten- und Auswertungswerkzeuge.
+
+- **Angelegt:** `hermes profile create markt-recherche --clone-from
+  hermes-wartung --description "..."` (der Klon bringt `providers`,
+  `terminal.backend: local`, das Flottenmodell und die getrimmte
+  Skill-Bibliothek mit; die Rollenbeschreibung fuer `/bots` kommt aus
+  `profile.yaml`).
+- **Rolle statt Wartung:** `profiles/markt-recherche/SOUL.md` wurde auf
+  `Markt-Recherche` umgeschrieben (der Klon trug die Wartungs-Rolle).
+- **Skills dazu:** `markt-recherche` (Verfahren, Werkzeugaufrufe,
+  Belegpflicht), `handel-spur-studie`, `scrapling-ernte`, `fundus-zugriff`,
+  `marktbriefing`, `notiz`.
+- **Anmeldung:** `auth.json` als Symlink auf den Root-Store (wie die 13
+  verknuepften Profile), **keine** Kanalzugangsdaten - der Bot wird per
+  `/bot markt-recherche ...` bedient.
+- **Werkzeug:** `Agenten/Werkzeuge/marktdaten.py` (OKX fuer Krypto, Yahoo
+  Chart fuer Aktien/Indizes/ETFs, RSS fuer Schlagzeilen; rein lesend, ohne
+  Schluessel), Tests `Agenten/Handel/tests/test_marktdaten.py` (14).
+- **Beleg:** `hermes -p markt-recherche chat -Q -q "..."` nannte am
+  23.09.2026 BTC-USDT (OKX) und AAPL (Yahoo) je mit Quelle und Uhrzeit;
+  `hermes profile list` ohne Warnzeile. Details:
+  [[Marktdaten-und-Bot-markt-recherche]].
 
 ## Bots auf dem Nous-Portal (21.09.2026)
 
