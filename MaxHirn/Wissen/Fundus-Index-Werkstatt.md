@@ -2,7 +2,7 @@
 
 Erzeugt von `Agenten/Werkzeuge/fundus-suche.ps1 -Index`. Nicht von Hand pflegen.
 
-Geklonte Fremd-Repos: **505 eindeutige Skills** in 22 Repos (705 Dateien, 200 byte-identische Kopien zusammengefasst).
+Geklonte Fremd-Repos: **581 eindeutige Skills** in 24 Repos (784 Dateien, 203 byte-identische Kopien zusammengefasst).
 
 Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-suche.ps1 -Begriff "<wort>"`.
 
@@ -46,10 +46,10 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `basic-memory\integrations\pi\skills\basic-memory-pi-setup\SKILL.md`
 - **basic-memory-setup** - Guide Basic Memory setup in Tau. Use when a user wants to install or configure the Tau memory extension, choose a memory destination or capture policy, verify connectivity, or troubleshoot setup. Chec...
   `basic-memory\integrations\tau\skills\basic-memory-setup\SKILL.md`
-- **bm-checkpoint** - Create an immutable Codex handoff in Basic Memory and return an exact bm-orient resume command.
-  `basic-memory\plugins\codex\skills\bm-checkpoint\SKILL.md`
 - **bm-checkpoint** - Save a deliberate work checkpoint to Basic Memory with the story, changed files, verification, decisions, blockers, and the next action. Use when the user asks to checkpoint, wrap up, hand off, or rem...
   `basic-memory\plugins\claude-code\skills\bm-checkpoint\SKILL.md`
+- **bm-checkpoint** - Create an immutable Codex handoff in Basic Memory and return an exact bm-orient resume command.
+  `basic-memory\plugins\codex\skills\bm-checkpoint\SKILL.md`
 - **bm-decide** - Capture a durable engineering decision in Basic Memory with rationale, alternatives, consequences, and affected work.
   `basic-memory\plugins\codex\skills\bm-decide\SKILL.md`
 - **bm-decide** - Capture a durable engineering decision in Basic Memory with rationale, alternatives, consequences, and affected work. Use when the user makes or asks to record a real choice —
@@ -58,26 +58,26 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `basic-memory\plugins\codex\skills\bm-orient\SKILL.md`
 - **bm-orient** - Orient Claude from Basic Memory before substantial repo work by reading active tasks, open decisions, recent checkpoints, and repo conventions. Use when resuming old work or when the user asks where t...
   `basic-memory\plugins\claude-code\skills\bm-orient\SKILL.md`
-- **bm-remember** - Quickly capture a thought, fact, or reminder into Basic Memory as a lightweight note. Use when the user says
-  `basic-memory\plugins\claude-code\skills\bm-remember\SKILL.md`
 - **bm-remember** - Quickly save a small fact, reminder, or user preference into Basic Memory from Codex without turning it into a full decision or checkpoint.
   `basic-memory\plugins\codex\skills\bm-remember\SKILL.md`
+- **bm-remember** - Quickly capture a thought, fact, or reminder into Basic Memory as a lightweight note. Use when the user says
+  `basic-memory\plugins\claude-code\skills\bm-remember\SKILL.md`
 - **bm-setup** - Set up the Basic Memory plugin for this project — a short guided interview that configures the project mapping, seeds note schemas, learns or suggests placement conventions, and enables capture reflex...
   `basic-memory\plugins\claude-code\skills\bm-setup\SKILL.md`
 - **bm-setup** - Set up Basic Memory for Codex at user or project level by mapping a Basic Memory project and seeding schemas.
   `basic-memory\plugins\codex\skills\bm-setup\SKILL.md`
-- **bm-share** - Share a personal Basic Memory note to a configured team project from Codex with attribution and explicit confirmation.
-  `basic-memory\plugins\codex\skills\bm-share\SKILL.md`
 - **bm-share** - Promote a note from your personal Basic Memory project to a shared team project, with attribution. Use when the user says
   `basic-memory\plugins\claude-code\skills\bm-share\SKILL.md`
-- **bm-status** - Report the Basic Memory for Codex configuration, reachability, hook expectations, recent Codex checkpoints, and active tasks.
-  `basic-memory\plugins\codex\skills\bm-status\SKILL.md`
+- **bm-share** - Share a personal Basic Memory note to a configured team project from Codex with attribution and explicit confirmation.
+  `basic-memory\plugins\codex\skills\bm-share\SKILL.md`
 - **bm-status** - Show the Basic Memory plugin's current state for this project — active project, capture folders, output style, recent session checkpoints, and whether Basic Memory is reachable.
   `basic-memory\plugins\claude-code\skills\bm-status\SKILL.md`
-- **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Claude. Use with bm-remember, the basic-memory output style's decision captures, and other Basic...
-  `basic-memory\plugins\claude-code\skills\bm-writing\SKILL.md`
+- **bm-status** - Report the Basic Memory for Codex configuration, reachability, hook expectations, recent Codex checkpoints, and active tasks.
+  `basic-memory\plugins\codex\skills\bm-status\SKILL.md`
 - **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Codex. Use with bm-checkpoint, bm-decide, bm-remember, and other Basic Memory note-writing workf...
   `basic-memory\plugins\codex\skills\bm-writing\SKILL.md`
+- **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Claude. Use with bm-remember, the basic-memory output style's decision captures, and other Basic...
+  `basic-memory\plugins\claude-code\skills\bm-writing\SKILL.md`
 - **cmux** - End-user control of cmux topology and routing (windows, workspaces, panes/surfaces, focus, moves, reorder, identify, trigger flash). Use when automation needs deterministic placement and navigation in...
   `basic-memory\.agents\skills\cmux\SKILL.md`
 - **cmux-markdown** - Open markdown files in a formatted viewer panel with live reload. Use when you need to display plans, documentation, or notes alongside the terminal with rich rendering (headings, code blocks, tables,...
@@ -264,6 +264,159 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **writing-hookify-rules** *(auch im Fundus)* - This skill should be used when the user asks to
   `claude-plugins-official\plugins\hookify\skills\writing-rules\SKILL.md`
 
+## claude-red (75)
+
+- **offensive-active-directory** - Active Directory attack methodology for internal network red team engagements. Covers reconnaissance (BloodHound, PowerView, ADExplorer), credential abuse (Kerberoasting, ASREProasting, NTLM relay, LL...
+  `claude-red\Skills\active-directory\offensive-active-directory\SKILL.md`
+- **offensive-advanced-redteam** - Comprehensive red team operations methodology covering full engagement lifecycle from planning through reporting. Addresses engagement scoping and rules of engagement negotiation, multi-tier C2 infras...
+  `claude-red\Skills\infrastructure\offensive-advanced-redteam\SKILL.md`
+- **offensive-ai-security**
+  `claude-red\Skills\ai\offensive-ai-security\SKILL.md`
+- **offensive-anti-forensics** - Anti-forensics and evidence destruction techniques for red team operators conducting authorized engagements. Covers log clearing on Windows (wevtutil, Clear-EventLog, ETW provider patching) and Linux ...
+  `claude-red\Skills\forensics\offensive-anti-forensics\SKILL.md`
+- **offensive-api-abuse** - Advanced API exploitation methodology focused on business logic abuse and sophisticated attack patterns that bypass traditional security controls. Covers business logic bypass through API call chainin...
+  `claude-red\Skills\api\offensive-api-abuse\SKILL.md`
+- **offensive-api-security** - Comprehensive API security testing methodology covering REST, gRPC, and WebSocket attack surfaces. Addresses the full OWASP API Security Top 10 2023 including BOLA/IDOR, broken authentication, excessi...
+  `claude-red\Skills\api\offensive-api-security\SKILL.md`
+- **offensive-basic-exploitation**
+  `claude-red\Skills\exploit-dev\offensive-basic-exploitation\SKILL.md`
+- **offensive-bluetooth-ble** - Bluetooth Low Energy (BLE) attack methodology — GATT enumeration, characteristic read/write without auth, pairing downgrade (Just Works forced), LE Secure Connections bypass, MITM via active relay, sn...
+  `claude-red\Skills\wireless\offensive-bluetooth-ble\SKILL.md`
+- **offensive-bluetooth-classic** - Bluetooth Classic (BR/EDR) attack methodology — device discovery, service enumeration via SDP, LMP/L2CAP layer attacks, legacy PIN cracking (BlueBorne / KNOB), Bluetooth file-transfer abuse (BlueSnarf...
+  `claude-red\Skills\wireless\offensive-bluetooth-classic\SKILL.md`
+- **offensive-bug-identification**
+  `claude-red\Skills\fuzzing\offensive-bug-identification\SKILL.md`
+- **offensive-business-logic** - Business logic vulnerability testing for web/mobile/API engagements. Covers workflow bypass, state machine violations, multi-step process abuse, price/quantity/discount manipulation, currency confusio...
+  `claude-red\Skills\web\offensive-business-logic\SKILL.md`
+- **offensive-c2-frameworks** - Command and Control framework deployment, configuration, and operational tradecraft for red team engagements. Covers Cobalt Strike (malleable C2 profiles, Beacon types HTTP/HTTPS/DNS/SMB, Beacon Objec...
+  `claude-red\Skills\forensics\offensive-c2-frameworks\SKILL.md`
+- **offensive-cicd-pipeline** - Comprehensive CI/CD pipeline exploitation methodology covering GitHub Actions injection vectors (expression injection via PR titles and issue bodies, workflow_run event abuse, GITHUB_TOKEN over-scopin...
+  `claude-red\Skills\cicd\offensive-cicd-pipeline\SKILL.md`
+- **offensive-cicd-secrets** - Comprehensive secrets extraction methodology targeting CI/CD environments across all major platforms. Covers environment variable extraction from build contexts, exploitation of vault and secrets-mana...
+  `claude-red\Skills\cicd\offensive-cicd-secrets\SKILL.md`
+- **offensive-cloud** - Cloud security attack methodology covering AWS, Azure, and GCP. Includes credential harvesting (IMDS, ~/.aws, env vars, leaked CI secrets, instance roles), enumeration with cloud-specific tools (pacu,...
+  `claude-red\Skills\cloud\offensive-cloud\SKILL.md`
+- **offensive-container-escape** - Container escape and breakout techniques targeting Docker, containerd, and Podman runtimes. Covers privileged container breakout via host filesystem mount and nsenter, Docker socket abuse through /var...
+  `claude-red\Skills\container\offensive-container-escape\SKILL.md`
+- **offensive-crash-analysis**
+  `claude-red\Skills\exploit-dev\offensive-crash-analysis\SKILL.md`
+- **offensive-crypto-attacks** - Systematic methodology for identifying and exploiting cryptographic implementation weaknesses in real-world applications. Covers padding oracle attacks against CBC-mode ciphers with PKCS7 padding (Vau...
+  `claude-red\Skills\crypto\offensive-crypto-attacks\SKILL.md`
+- **offensive-data-exfiltration** - Dense methodology covering DNS exfiltration (dnscat2, iodine, dns2tcp), HTTPS tunneling (domain fronting, CDN abuse, legitimate service channels), ICMP tunneling (icmpsh, ptunnel-ng), cloud storage de...
+  `claude-red\Skills\post-exploitation\offensive-data-exfiltration\SKILL.md`
+- **offensive-deauth-disassoc** - Deauthentication and disassociation attacks against 802.11 networks — targeted single-client deauth for handshake capture, broadcast deauth for DoS (with authorization), action-frame attacks bypassing...
+  `claude-red\Skills\wireless\offensive-deauth-disassoc\SKILL.md`
+- **offensive-dependency-confusion** - Deep-dive offensive methodology for dependency confusion and namespace attacks across all major package ecosystems. Covers npm scope confusion exploiting the gap between public and private scoped pack...
+  `claude-red\Skills\supply-chain\offensive-dependency-confusion\SKILL.md`
+- **offensive-deserialization** - Insecure deserialization exploitation across Java, PHP, .NET, Python, Node.js, and Ruby. Covers gadget chain construction with ysoserial/phpggc/ysoserial.net, ObjectInputStream and BinaryFormatter sin...
+  `claude-red\Skills\web\offensive-deserialization\SKILL.md`
+- **offensive-edr-evasion**
+  `claude-red\Skills\infrastructure\offensive-edr-evasion\SKILL.md`
+- **offensive-evil-twin** - Evil Twin / KARMA / Mana access point methodology — rogue AP construction with hostapd-mana / wifiphisher / airgeddon, KARMA universal probe response, Mana selective probe response, captive portal phi...
+  `claude-red\Skills\wireless\offensive-evil-twin\SKILL.md`
+- **offensive-exploit-dev-course**
+  `claude-red\Skills\exploit-dev\offensive-exploit-dev-course\SKILL.md`
+- **offensive-exploit-development**
+  `claude-red\Skills\exploit-dev\offensive-exploit-development\SKILL.md`
+- **offensive-fast-checking**
+  `claude-red\Skills\utility\offensive-fast-checking\SKILL.md`
+- **offensive-fuzzing** - Practical offensive fuzzing methodology covering target identification, fuzzer selection (AFL++, libFuzzer, Honggfuzz, Boofuzz, syzkaller), harness writing, corpus curation, mutation strategies, cover...
+  `claude-red\Skills\fuzzing\offensive-fuzzing\SKILL.md`
+- **offensive-fuzzing-course**
+  `claude-red\Skills\fuzzing\offensive-fuzzing-course\SKILL.md`
+- **offensive-graphql** - Offensive methodology for attacking GraphQL APIs during penetration tests and bug bounty engagements. Covers the full attack lifecycle: endpoint discovery, introspection abuse and blind schema reconst...
+  `claude-red\Skills\web\offensive-graphql\SKILL.md`
+- **offensive-idor**
+  `claude-red\Skills\web\offensive-idor\SKILL.md`
+- **offensive-initial-access**
+  `claude-red\Skills\infrastructure\offensive-initial-access\SKILL.md`
+- **offensive-iot** - IoT and embedded device security testing methodology. Covers hardware reconnaissance (UART, JTAG, SWD, SPI flash, I2C EEPROM, eMMC chip-off), firmware acquisition (vendor portals, OTA capture, flash d...
+  `claude-red\Skills\iot\offensive-iot\SKILL.md`
+- **offensive-jwt** - JWT attack methodology for penetration testers. Covers algorithm confusion (alg:none, RS256→HS256), weak HMAC secret brute force, kid parameter injection (SQLi, path traversal), jku/x5u/jwk header inj...
+  `claude-red\Skills\auth\offensive-jwt\SKILL.md`
+- **offensive-k8s-attacks** - Kubernetes cluster attack techniques covering the full attack lifecycle from initial foothold in a pod to cluster-wide compromise. Covers service account token theft and impersonation, RBAC misconfigu...
+  `claude-red\Skills\container\offensive-k8s-attacks\SKILL.md`
+- **offensive-keylogger-arch**
+  `claude-red\Skills\infrastructure\offensive-keylogger-arch\SKILL.md`
+- **offensive-krack-fragattacks** - KRACK (CVE-2017-13077..082) and FragAttacks (CVE-2020-24586..588 + 26139-26147) — key reinstallation, fragmentation, and aggregation attacks against WPA2 supplicants. Covers Vanhoef's test scripts, vi...
+  `claude-red\Skills\wireless\offensive-krack-fragattacks\SKILL.md`
+- **offensive-lateral-movement** - Comprehensive lateral movement tradecraft for authorized red team engagements covering credential-based movement (pass-the-hash, pass-the-ticket, overpass-the-hash), NTLM relay attacks (ntlmrelayx wit...
+  `claude-red\Skills\post-exploitation\offensive-lateral-movement\SKILL.md`
+- **offensive-linux-privesc** - Comprehensive Linux privilege escalation methodology for offensive security engagements. Covers the full attack surface from a low-privilege shell to root: SUID/SGID binary abuse via GTFOBins, Linux c...
+  `claude-red\Skills\privesc\offensive-linux-privesc\SKILL.md`
+- **offensive-lorawan-sub-ghz** - LoRaWAN and sub-GHz (433 / 868 / 915 MHz) attack methodology — LoRaWAN ABP/OTAA join attack, network/session key reuse, frame counter replay, downlink injection on TTN/Helium-style networks, sub-GHz p...
+  `claude-red\Skills\wireless\offensive-lorawan-sub-ghz\SKILL.md`
+- **offensive-mitigations**
+  `claude-red\Skills\exploit-dev\offensive-mitigations\SKILL.md`
+- **offensive-mobile** - Mobile (Android + iOS) application penetration testing methodology. Covers static analysis (apktool/jadx for Android, class-dump/Hopper/IDA for iOS), dynamic instrumentation with Frida and Objection, ...
+  `claude-red\Skills\mobile\offensive-mobile\SKILL.md`
+- **offensive-netexec** - Use this skill whenever the user asks about NetExec (nxc) — a network exploitation and post-exploitation tool for Active Directory environments. Triggers include: any mention of 'nxc', 'netexec', 'cra...
+  `claude-red\Skills\active-directory\offensive-netexec\SKILL.md`
+- **offensive-network-attacks** - Dense description covering ARP spoofing, LLMNR/NBT-NS/mDNS poisoning, DNS poisoning, MITM attacks, VLAN hopping, DHCP attacks, 802.1X/NAC bypass, IPv6 attacks. Tools: Bettercap, Responder, mitm6, Ette...
+  `claude-red\Skills\network\offensive-network-attacks\SKILL.md`
+- **offensive-oauth**
+  `claude-red\Skills\auth\offensive-oauth\SKILL.md`
+- **offensive-open-redirect**
+  `claude-red\Skills\web\offensive-open-redirect\SKILL.md`
+- **offensive-osint** - Comprehensive OSINT methodology skill for offensive security, red team intelligence gathering, and bug bounty reconnaissance. Covers domain recon, email harvesting, social media profiling, GitHub/code...
+  `claude-red\Skills\recon\offensive-osint\SKILL.md`
+- **offensive-osint-methodology**
+  `claude-red\Skills\recon\offensive-osint-methodology\SKILL.md`
+- **offensive-parameter-pollution**
+  `claude-red\Skills\web\offensive-parameter-pollution\SKILL.md`
+- **offensive-persistence** - Comprehensive persistence tradecraft for authorized red team engagements covering Windows and Linux mechanisms. Windows techniques include registry Run/RunOnce keys, scheduled tasks, WMI event subscri...
+  `claude-red\Skills\post-exploitation\offensive-persistence\SKILL.md`
+- **offensive-phishing** - Phishing campaign execution methodology for authorized red team engagements. Covers end-to-end campaign lifecycle: infrastructure provisioning (GoPhish, SMTP relay configuration, domain acquisition an...
+  `claude-red\Skills\social-engineering\offensive-phishing\SKILL.md`
+- **offensive-race-condition**
+  `claude-red\Skills\web\offensive-race-condition\SKILL.md`
+- **offensive-reporting** - Penetration test and red team report writing methodology. Covers executive summary structuring (risk-led narrative for non-technical readers), technical finding format (title, severity, affected scope...
+  `claude-red\Skills\utility\offensive-reporting\SKILL.md`
+- **offensive-request-smuggling**
+  `claude-red\Skills\web\offensive-request-smuggling\SKILL.md`
+- **offensive-social-engineering** - Social engineering attack techniques beyond email phishing for authorized red team and physical penetration testing engagements. Covers pretexting methodology (persona creation, authority and urgency ...
+  `claude-red\Skills\social-engineering\offensive-social-engineering\SKILL.md`
+- **offensive-ssrf**
+  `claude-red\Skills\web\offensive-ssrf\SKILL.md`
+- **offensive-ssti** - Dense description covering Server-Side Template Injection across Jinja2, Twig, Freemarker, Velocity, Pebble, Smarty, Mako, Handlebars, ERB, Thymeleaf, EJS, Pug. Engine fingerprinting, filter bypass, b...
+  `claude-red\Skills\web\offensive-ssti\SKILL.md`
+- **offensive-supply-chain** - Comprehensive offensive methodology for software supply chain attacks covering the full kill chain from reconnaissance through exploitation. Addresses dependency confusion across npm, PyPI, and NuGet ...
+  `claude-red\Skills\supply-chain\offensive-supply-chain\SKILL.md`
+- **offensive-tls-attacks** - Comprehensive methodology for auditing and exploiting TLS/SSL implementations and misconfigurations across network services and mobile applications. Covers protocol downgrade attacks including POODLE ...
+  `claude-red\Skills\crypto\offensive-tls-attacks\SKILL.md`
+- **offensive-toctou** - Time-of-Check / Time-of-Use (TOCTOU) race condition exploitation methodology across binary, kernel, filesystem, web, and container layers. Covers symbolic-link races (open/access/stat split), file-des...
+  `claude-red\Skills\exploit-dev\offensive-toctou\SKILL.md`
+- **offensive-vuln-classes**
+  `claude-red\Skills\fuzzing\offensive-vuln-classes\SKILL.md`
+- **offensive-waf-bypass**
+  `claude-red\Skills\web\offensive-waf-bypass\SKILL.md`
+- **offensive-wifi** - Wireless / 802.11 attack methodology for red team engagements and wireless security assessments. Covers monitor-mode setup, WPA/WPA2-PSK handshake capture and PMKID attacks, WPA3 SAE downgrade and Dra...
+  `claude-red\Skills\wireless\offensive-wifi\SKILL.md`
+- **offensive-wifi-recon** - Wi-Fi reconnaissance methodology — adapter selection, monitor mode and packet injection setup, regulatory domain handling, multi-band airspace mapping, hidden SSID discovery, BSSID/ESSID/channel/PMF/e...
+  `claude-red\Skills\wireless\offensive-wifi-recon\SKILL.md`
+- **offensive-windows-boundaries**
+  `claude-red\Skills\infrastructure\offensive-windows-boundaries\SKILL.md`
+- **offensive-windows-mitigations**
+  `claude-red\Skills\infrastructure\offensive-windows-mitigations\SKILL.md`
+- **offensive-windows-privesc** - Comprehensive Windows privilege escalation methodology for offensive security engagements. Covers the full attack surface from a standard user shell to NT AUTHORITY\\SYSTEM: token impersonation via Se...
+  `claude-red\Skills\privesc\offensive-windows-privesc\SKILL.md`
+- **offensive-wpa2-psk** - WPA/WPA2-PSK attack methodology — four-way handshake capture via targeted deauthentication, PMKID attacks (no client required), hcxdumptool / hcxpcapngtool conversion to hashcat hc22000 format, GPU-ac...
+  `claude-red\Skills\wireless\offensive-wpa2-psk\SKILL.md`
+- **offensive-wpa3-sae** - WPA3 / SAE (Simultaneous Authentication of Equals) attack methodology — transition-mode (mixed WPA2/WPA3) downgrade, Dragonblood side-channel attacks (CVE-2019-9494, 9495, 13377, 13456), SAE auth floo...
+  `claude-red\Skills\wireless\offensive-wpa3-sae\SKILL.md`
+- **offensive-wpa-enterprise** - WPA/WPA2/WPA3-Enterprise (802.1X / EAP) attack methodology — EAP method identification (PEAP-MSCHAPv2, EAP-TTLS, EAP-TLS, EAP-GTC, EAP-PWD, EAP-FAST), evil-twin RADIUS attacks with eaphammer for crede...
+  `claude-red\Skills\wireless\offensive-wpa-enterprise\SKILL.md`
+- **offensive-wps** - WPS (Wi-Fi Protected Setup) PIN attack methodology — Pixie Dust offline attack against vulnerable chipsets (Ralink, Realtek, Broadcom, MediaTek), online PIN brute-force with reaver/bully, lockout hand...
+  `claude-red\Skills\wireless\offensive-wps\SKILL.md`
+- **offensive-xss**
+  `claude-red\Skills\web\offensive-xss\SKILL.md`
+- **offensive-xxe**
+  `claude-red\Skills\web\offensive-xxe\SKILL.md`
+- **offensive-zigbee-thread-matter** - Zigbee, Thread, and Matter mesh-protocol attack methodology — IEEE 802.15.4 sniffing with TI CC2531 / CC2540 / Sonoff Zigbee Dongle E, KillerBee toolkit, Touchlink commissioning abuse with the well-kn...
+  `claude-red\Skills\wireless\offensive-zigbee-thread-matter\SKILL.md`
+- **offensive-z-wave** - Z-Wave attack methodology — sniffing with Z-Force / EZ-Wave / RTL-SDR + ZniffMobile, S0 (legacy) network-key derivation flaw and key reuse, S2 (modern) ECDH commissioning analysis, replay/injection on...
+  `claude-red\Skills\wireless\offensive-z-wave\SKILL.md`
+
 ## codex (17)
 
 - **babysit-pr** - Babysit a GitHub pull request after creation by continuously polling review comments, CI checks/workflow runs, and mergeability state until the PR is merged/closed or user help is required. Diagnose f...
@@ -416,6 +569,11 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **verification-loop**
   `everything-claude-code\skills\verification-loop\SKILL.md`
 
+## fomo-robinhood-radar (1)
+
+- **fomo-agent** - FOMO Robinhood Radar — a research watchlist of Robinhood Chain memecoin traders discovered through fomo.family. Use when the user asks who the good traders are, who moved between active/watch/dropped,...
+  `fomo-robinhood-radar\SKILL.md`
+
 ## gbrain (115)
 
 - **academic-verify** *(auch im Fundus)* - Verify a research claim or academic citation by tracing it through publication → methodology → raw data → independent replication. Routes through perplexity-research for the actual web lookup, then fo...
@@ -438,12 +596,12 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\skills\brain-ingest-gate\SKILL.md`
 - **brain-link-discipline** *(auch im Fundus)* - When you report a brain page to the user — created, edited, committed, or relayed from a subagent — a working link is part of the deliverable, in the SAME message. Derive the path mechanically (git ls...
   `gbrain\skills\brain-link-discipline\SKILL.md`
+- **brain-ops** *(auch im Fundus)* - Read, enrich, and write brain pages with source attribution.
+  `gbrain\test\fixtures\skill-catalog\skills\brain-ops\SKILL.md`
 - **brain-ops** *(auch im Fundus)* - Core read/write cycle for the generic agent-workspace fixture.
   `gbrain\test\fixtures\generic-agents-workspace\skills\brain-ops\SKILL.md`
 - **brain-ops** *(auch im Fundus)* - Brain knowledge base operations. The core read/write cycle: brain-first lookup, read-enrich-write loop, source attribution, ambient enrichment, back-linking. Read this before any brain interaction.
   `gbrain\skills\brain-ops\SKILL.md`
-- **brain-ops** *(auch im Fundus)* - Read, enrich, and write brain pages with source attribution.
-  `gbrain\test\fixtures\skill-catalog\skills\brain-ops\SKILL.md`
 - **brain-ops** *(auch im Fundus)* - Core read/write cycle for the OpenClaw reference fixture.
   `gbrain\test\fixtures\openclaw-reference-minimal\skills\brain-ops\SKILL.md`
 - **brain-pdf** *(auch im Fundus)* - Generate a publication-quality PDF from any brain page via the gstack make-pdf binary. Strips YAML frontmatter, sanitizes emoji, applies running headers and page numbers. Brain page is always the sour...
@@ -452,10 +610,10 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\brain-search\SKILL.md`
 - **brain-taxonomist** *(auch im Fundus)* - Filing gate for ALL brain writes. Consulted before creating any new brain page to determine the correct path. Reads the ACTIVE schema pack via `gbrain schema show --json` — no hardcoded directory tabl...
   `gbrain\skills\brain-taxonomist\SKILL.md`
-- **briefing** *(auch im Fundus)*
-  `gbrain\test\fixtures\openclaw-mixed-merge\skills\briefing\SKILL.md`
 - **briefing** *(auch im Fundus)* - Compile daily briefing with meeting context, active deals, and citation tracking
   `gbrain\skills\briefing\SKILL.md`
+- **briefing** *(auch im Fundus)*
+  `gbrain\test\fixtures\openclaw-mixed-merge\skills\briefing\SKILL.md`
 - **broken** *(auch im Fundus)*
   `gbrain\test\fixtures\skill-catalog\skills\broken\SKILL.md`
 - **bulk-ingestion** *(auch im Fundus)* - End-to-end discipline for turning any large data source (audio libraries, email takeouts, document corpora, chat exports, API dumps) into brain pages at scale. The lifecycle spine: SCHEMA → ACCESS → T...
@@ -580,10 +738,10 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\skills\postgres-adopt\SKILL.md`
 - **publish** *(auch im Fundus)* - Share brain pages as beautiful password-protected HTML with zero LLM calls
   `gbrain\skills\publish\SKILL.md`
-- **query** *(auch im Fundus)* - Answer questions using the brain's knowledge with 3-layer search, synthesis, and citation propagation. Use when the user asks a question, wants a lookup, or needs information from the brain.
-  `gbrain\skills\query\SKILL.md`
 - **query** *(auch im Fundus)* - Look up brain pages in the generic agent-workspace fixture.
   `gbrain\test\fixtures\generic-agents-workspace\skills\query\SKILL.md`
+- **query** *(auch im Fundus)* - Answer questions using the brain's knowledge with 3-layer search, synthesis, and citation propagation. Use when the user asks a question, wants a lookup, or needs information from the brain.
+  `gbrain\skills\query\SKILL.md`
 - **query** *(auch im Fundus)* - Look up brain pages in the OpenClaw reference fixture.
   `gbrain\test\fixtures\openclaw-reference-minimal\skills\query\SKILL.md`
 - **query** *(auch im Fundus)*
@@ -610,10 +768,10 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\setup\SKILL.md`
 - **setup** *(auch im Fundus)* - Add keyless GBrain memory to an existing agent, or connect a hosted brain while preserving identity and configuration
   `gbrain\skills\setup\SKILL.md`
-- **signal-detector** *(auch im Fundus)* - Always-on ambient signal capture for the OpenClaw reference fixture.
-  `gbrain\test\fixtures\openclaw-reference-minimal\skills\signal-detector\SKILL.md`
 - **signal-detector** *(auch im Fundus)* - Opt-in ambient signal capture. After explicit enablement, applies on substantive inbound messages to detect original thinking and entity mentions. Use an authorized sub-agent where supported; otherwis...
   `gbrain\skills\signal-detector\SKILL.md`
+- **signal-detector** *(auch im Fundus)* - Always-on ambient signal capture for the OpenClaw reference fixture.
+  `gbrain\test\fixtures\openclaw-reference-minimal\skills\signal-detector\SKILL.md`
 - **skill-autobench** *(auch im Fundus)* - Author an eval for an existing skill from its REAL usage history, not its spec. Mine invocations from the brain's conversation archive (conversations/) and per-harness session transcripts — a user cor...
   `gbrain\skills\skill-autobench\SKILL.md`
 - **skill-creator** *(auch im Fundus)* - Create new skills following the GBrain conformance standard. Generates SKILL.md with frontmatter, Contract, Phases, Output Format, and Anti-Patterns. Checks MECE against existing skills. Updates manif...
@@ -797,10 +955,10 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 
 ## odysseus (2)
 
-- **odysseus** - Use when the user asks Codex to read or write Odysseus data (todos, email, calendar, memory, documents) or to launch/monitor/stop a Cookbook model-serve task through the scoped Codex Agent API. Requir...
-  `odysseus\integrations\codex\skills\odysseus\SKILL.md`
 - **odysseus** - Use when the user asks Claude Code to read or write Odysseus data (todos, email, calendar, memory, documents) or to launch/monitor/stop a Cookbook model-serve task through the scoped Claude Agent API....
   `odysseus\integrations\claude\skills\odysseus\SKILL.md`
+- **odysseus** - Use when the user asks Codex to read or write Odysseus data (todos, email, calendar, memory, documents) or to launch/monitor/stop a Cookbook model-serve task through the scoped Codex Agent API. Requir...
+  `odysseus\integrations\codex\skills\odysseus\SKILL.md`
 
 ## one-skill-to-rule-them-all (1)
 

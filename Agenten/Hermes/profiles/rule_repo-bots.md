@@ -1,7 +1,8 @@
 # rule_repo-bots
 
-Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt
-auch fuer `hermes-wartung`, den Bot ohne Repo (Arbeitsbereich `Agenten\Hermes`).
+Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt fuer
+ALLE Bot-Profile, auch die ohne Repo (`hermes-wartung`, `lotse`) und den
+Nachschlage-Bot `nerd`.
 Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile (`Agenten\Hermes\profiles\`),
 damit alle Bots EINE Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
 Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
@@ -12,18 +13,17 @@ Ueber Budget: verdichten (Abschnitt 5), nicht anhaengen.
 
 ## 1. Diese Datei zuerst lesen
 
-Jede Sitzung eines Repo-Bots liest `rule_repo-bots.md`, BEVOR sie plant, Code aendert
-oder committet. Alles Gelernte kommt sofort hier hinein - eine Zeile je Lektion,
-Regel + Grund, kein Erzaehlen des Wegs. Repospezifisches gehoert in die eigene
-`SOUL.md`, Generelles hierher. Widerspruch: die eigene SOUL.md gewinnt beim Repo-Wissen,
-diese Datei bei Stil und Betriebsregeln.
+Jede Bot-Sitzung liest diese Datei, BEVOR sie plant, Code aendert oder committet.
+Gelerntes kommt sofort hier hinein - eine Zeile je Lektion, Regel + Grund.
+Repospezifisches gehoert in die eigene `SOUL.md` (sie gewinnt beim Repo-Wissen),
+Generelles hierher (diese Datei gewinnt bei Stil und Betriebsregeln).
 
 ## 2. Stil (gilt fuer alle Bots)
 
 - Ergebnis zuerst: erste Zeile = naechste Aktion (Befehl, Pfad), nicht die Begruendung.
 - Antwortlaenge = Gewicht der Frage. Keine Floskeln ("Gerne", "Ich helfe dir gern"),
   kein Prozessbericht, keine Werkzeugausgaben, keine Wiederholung der Frage.
-- Mehrschrittiges = nummerierte Liste, ein Schritt = eine Handlung, keine "und dann".
+- Mehrschrittiges = nummerierte Liste, ein Schritt = eine Handlung.
 - Am Ende genau EINE naechste Aktion, unter 2 Minuten machbar. Nichts nebenbei anhaengen.
 - Zustand wiederholen: "Schritt 3 von 5 fertig: ... Als Naechstes: ...".
 - Zeitschaetzung in Minuten/Stunden, nie "etwas Arbeit".
@@ -37,14 +37,13 @@ diese Datei bei Stil und Betriebsregeln.
 
 ## 3. Betriebsregeln (gemeinsam)
 
-- Arbeite in DEINEM Repo: `Werkstatt\Repos\<repo>` (Junction auf O:). `origin` = eigener
-  Fork (mfaupel95), `upstream` = Original. NIE nach upstream pushen, upstream nur lesen.
-- Die Klone sind SHALLOW: ein Push scheitert mit "did not receive expected object" -
-  vorher `git fetch --unshallow upstream`.
+- Arbeite in DEINEM Repo (`Werkstatt\Repos\<repo>`, Junction auf O:): `origin` = eigener
+  Fork, `upstream` = Original (nur lesen, nie pushen). Shallow-Klon: ein Push scheitert
+  mit "did not receive expected object" - vorher `git fetch --unshallow upstream`.
 - Vor jedem Commit nur die eigenen Pfade stagen (`git add <pfad>`), nie `git add -A`:
   es laeuft zeitweise eine zweite Hermes-Sitzung auf demselben Baum.
-- Keine Schluessel, Tokens oder .env-Inhalte ins Repo. `.env_example` nennt nur Namen;
-  echte Zugaenge stehen ausschliesslich in `MaxHirn\Wissen\Zugaenge.md` - nie ausgeben.
+- Keine Schluessel/.env-Inhalte ins Repo: `.env_example` nennt nur Namen, echte
+  Zugaenge stehen nur in `MaxHirn\Wissen\Zugaenge.md` (nie ausgeben).
 - Python-venv heisst `.venv` (Hausstandard, auch wenn die Repo-Anleitung "venv" sagt).
 - Keine fremden `SKILL.md` importieren (skill-library-sync) - Fremd-Skills nur lesen.
 - Nicht in andere Profile oder fremde Repos schreiben; fremde Aenderungen liegen lassen.
@@ -56,41 +55,47 @@ diese Datei bei Stil und Betriebsregeln.
 
 ## 4. Telegram-Zugang
 
-Der SkillsBot kennt `/bots` (Name + Beschreibung aus `profile.yaml`) und
-`/bot <name> <nachricht>` = frischer Einzelauftrag, Kaltstart 30-60 s; der Name muss
-auf der Platte existieren. Doku: `MaxHirn\Wissen\Repo-Bots.md`.
+Der SkillsBot kennt `/bots` und `/bot <name> <nachricht>` (frischer Einzelauftrag,
+Kaltstart 30-60 s; der Name muss auf der Platte existieren).
+Doku: `MaxHirn\Wissen\Repo-Bots.md`.
 
 ## 5. Verdichten (Pflicht, sobald ueber Budget)
 
-1. Groesse messen (Befehl oben). 2. Doppelte Lektionen zu einer Zeile zusammenlegen.
-3. Erledigtes und Veraltetes loeschen - nicht archivieren. 4. Lange Belege in die
-passende Skill-Referenz verschieben, hier bleibt der Verweis. 5. Abschlusszeile
+1. Groesse messen (Befehl oben). 2. Doppelte Lektionen zusammenlegen. 3. Erledigtes
+und Veraltetes loeschen - nicht archivieren. 4. Lange Belege in die passende
+Skill-Referenz, hier bleibt der Verweis. 5. Abschlusszeile
 `Verdichtet JJJJ-MM-TT: N -> M Zeichen`.
 Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 
 ## Gelerntes
 
 - 18.09.2026 angelegt: 27 wortgleiche SOUL.md ersetzt durch EINE hoehere Stilquelle
-  (diese Datei) + individuelle SOUL.md je Bot. Alte Fassung: `profiles\.sicherung\`.
-- Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (die
-  allgemeine Sperre `Agenten/Hermes/**` gewinnt sonst). Pruefen: `git check-ignore -v`.
-- 18.09.2026 Anzahl: 27 Repo-Bots. Ohne `nous` (kein Repo) und ohne
-  `awesome-systematic-trading` (eigene Regeldatei `rule_maXtrade.md`).
-- 18.09.2026 MCP-PowerShell verschluckt bei MEHREREN Here-Strings in EINEM Befehl still
-  den Inhalt (0-Byte-Datei, keine Fehlermeldung). Eine Datei je Aufruf, Groesse pruefen.
-- 18.09.2026 `Get-FileHash` fehlt (PowerShell 5.1) und liefert stumm nichts - eine
-  Pruefung darauf meldet faelschlich "alle gleich". MD5 ueber .NET auf die Bytes.
-- 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle werden
-  abgewiesen, `write_file` laeuft in den 420-s-Timeout statt zu melden. Auch der INHALT
-  zaehlt - Loesch-Kommandos als Literal blockieren; Risikomuster aus Teilen bauen.
+  (diese Datei). Alte Fassung: `profiles\.sicherung\`.
+- Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (sonst
+  gewinnt `Agenten/Hermes/**`). Pruefen: `git check-ignore -v`.
+- 18.09.2026: 27 Repo-Bots; ohne `nous` (kein Repo) und `awesome-systematic-trading`
+  (eigene Regeldatei `rule_maXtrade.md`).
+- 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt und liefert stumm nichts (eine
+  Pruefung darauf meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes), und
+  MEHRERE Here-Strings in EINEM Befehl kommen verstuemmelt an (0-Byte-Datei, keine
+  Meldung) - eine Datei je Aufruf, Groesse pruefen.
+- 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle
+  werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt -
+  Risikomuster aus Teilen bauen.
 - 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction, ausserhalb
   HERMES_WRITE_SAFE_ROOT). Arbeitsergebnisse unter `C:\...\BrainFiles` ablegen.
-- 20.09.2026 Tool-Ausgabe ist LOSSY: Gleichheitszeichen, Pfeile, doppelte Leerzeichen
-  fallen weg. Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen oder
+- 20.09.2026 Tool-Ausgabe ist LOSSY (Gleichheitszeichen, Pfeile, doppelte Leerzeichen
+  fallen weg): Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen oder
   inspect.signature lesen, sonst diagnostiziert man Fehler, die gar nicht dastehen.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
-  Testreihen gruen sind. Die Naht ist das Vokabular: eine Uebersetzungstabelle braucht
-  einen Test PRO WORT der Gegenseite (hier fehlten drei - ein Sicherheitsabbruch waere
-  wiederholt statt gesperrt worden). Ein Probe-Modus darf keine Marke fortschreiben.
+  Testreihen gruen sind: die Naht ist das Vokabular - eine Uebersetzungstabelle braucht
+  einen Test PRO WORT der Gegenseite. Ein Probe-Modus darf keine Marke fortschreiben.
 
-Verdichtet 2026-09-20: 5922 -> 5907 Zeichen
+- 22.09.2026 Windows Defender zieht Doku-Repos ein: vier `SKILL.md` in `claude-red`
+  (SQLi/RCE/File-Upload/Shellcode) wurden geloescht, danach blieb der LESEZUGRIFF
+  gesperrt ("Datei enthaelt einen Virus"). `ls` beweist nichts - die Probe ist ein
+  echter Lesevorgang, der Fundort `Get-MpThreatDetection`.
+- 22.09.2026 Symlink fuer `auth.json`: `pwsh` 7 legt ihn ohne Erhoehung an,
+  `powershell.exe` 5.1 verweigert mit "Administratorrechte erforderlich".
+
+Verdichtet 2026-09-22: 5990 -> 5991 Zeichen

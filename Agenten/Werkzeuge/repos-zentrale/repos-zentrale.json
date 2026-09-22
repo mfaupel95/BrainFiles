@@ -1,5 +1,5 @@
 {
-  "stand": "2026-09-18",
+  "stand": "2026-09-22",
   "repos": [
     {
       "ordner": "Agent-Reach",
@@ -43,6 +43,13 @@
       "art": "doku",
       "bot": "claude-plugins-official",
       "notiz": "nur Dokumentation und Skills",
+      "gruppe": "doku"
+    },
+    {
+      "ordner": "claude-red",
+      "art": "doku",
+      "bot": "nerd",
+      "notiz": "Offensive-Security-Nachschlagewerk (79 SKILL.md, 23 Kategorien) - kein Startprogramm, der Bot liest die Skills auf Anforderung",
       "gruppe": "doku"
     },
     {

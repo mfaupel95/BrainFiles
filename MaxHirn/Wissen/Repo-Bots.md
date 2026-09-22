@@ -210,3 +210,31 @@ nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
   5 Profil-Configs mussten zeilenweise auf ihr HEAD-Format geheilt werden.
 - Von den 17 weggelegten Profilen in `profiles/.deleted/` ist damit
   `easycliproxyapi` wieder angelegt; die uebrigen 16 bleiben offen (siehe oben).
+
+## Bot `nerd` fuer claude-red (22.09.2026)
+
+- **Repo:** `Werkstatt\Repos\claude-red` = Fork `mfaupel95/claude-red` von
+  `SnailSploit/Claude-Red` (MIT), vollstaendiger Klon, 7,3 MB, 44 Commits.
+  Offensive-Security-Nachschlagewerk: **79 `SKILL.md` in 23 Kategorien**, kein
+  startbares Programm. Als Faehigkeit im Fundus gefuehrt (Werkstatt-Index:
+  24 Repos / 581 eindeutige Skills, davon claude-red 75) - **nicht** in die
+  geladene Bibliothek importiert.
+- **Bot:** `Agenten/Hermes/profiles/nerd`, `terminal.cwd` auf das Repo, Modell
+  `nous / deepseek/deepseek-v4.1-flash`, `auth.json` als Symlink auf den
+  Root-Store, eigene `SOUL.md` (Faehigkeitsliste, Grenzen: nur autorisierte
+  Ziele, beratend statt ausfuehrend), Haus-Skills kopiert.
+  Angelegt mit `hermes profile create nerd --no-alias`, danach
+  `terminal.backend/cwd`, `providers.ollama-launch` + `fallback_providers`
+  (lokales `qwen35-8k:cpu` zuerst) und `hermes profile describe`.
+  Beleg: `hermes -p nerd chat -q "..." -Q -t terminal` nennt Arbeitsverzeichnis
+  und Kategorien-/Dateizahl; `hermes profile list` ohne Warnzeile.
+- **Falle (Defender):** Windows Defender hat beim Klonen vier `SKILL.md`
+  eingeordnet (`Backdoor:PHP/Perhetshell.A!dha` fuer `offensive-sqli` und
+  `offensive-rce`, `Trojan:Script/Wacatac.H!ml` fuer `offensive-file-upload`,
+  dazu `offensive-shellcode`) und zweimal geloescht; nach `git checkout -- .`
+  liegen sie wieder da, sind aber **nicht lesbar** („Datei enthaelt einen
+  Virus"). Von 79 Dateien sind damit 75 nutzbar. `ls` beweist hier nichts -
+  die Probe ist ein echter Lesevorgang, der Fundort `Get-MpThreatDetection`.
+- **Offen (Entscheidung Max):** Defender-Ausnahme fuer den Ordner
+  (`Add-MpPreference -ExclusionPath 'O:\Werkstatt\Repos\claude-red'`), danach
+  sind die vier Dateien lesbar. Details: [[Claude-Red-und-nerd-Bot]].
