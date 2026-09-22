@@ -11,7 +11,6 @@
     "_papierlauf_min_wochen_entfaellt": "21.09.2026 Max: die Wartezeit ist mit dem Auftrag abgenommen, nicht berechnet.",
     "netto_positiv_nach_gebuehren_und_funding": false
   },
-
   "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
@@ -44,11 +43,11 @@
   "drawdown_halbierung_usd": 15.0,
   "_grund": "Der Grund, der im Journal steht.",
   "grund": "moondev_listingarb",
-  "boerse": "okx",
-  "guthaben_waehrung": "USDC",
-  "mindest_guthaben": 30.0,
+  "boerse": "kraken",
+  "guthaben_waehrung": "EUR",
+  "mindest_guthaben": 50.0,
   "live_max_pro_trade_usd": 50.0,
   "_live_grenzen_vermerk": "50 USD je Trade auf Auftrag Max 21.09.2026 (vorher 20). Mit 3 Plaetzen sind das hoechstens 150; der Gesamtdeckel steht deshalb auf 150, damit nicht der Deckel bindet, sondern die Plaetze. Papierwerte unveraendert (100/300). Gedeckt: OKX USDC frei 610.74.",
   "live_max_gesamt_usd": 150.0,
-  "_orderweg_vermerk": "Orderweg seit 21.09.2026: der gemeinsame Live-Weg in spur_buch (boerse okx, Spot gegen USDC). Live-Grenzen bewusst KLEIN angesetzt (20 USD je Trade, 100 USD gesamt) - der Papierlauf rechnet mit risiko_je_position_usd 5 und max_pro_trade_usd 100; wer live groesser fahren will, nennt die Zahl und hebt live_max_pro_trade_usd."
+  "_orderweg_vermerk": "Anbindung 22.09.2026 auf Kraken umgestellt (Auftrag Max). Signal: gross+nicht-auf-Binance. Paare in mosaic/kraken_spot.PAARE (AKE/DAI/HYPE/KAS/LIT/MNT/VVV/WBT/XMR gegen EUR). Stop/Ziel aus Boersen-Kurs EUR, nicht CoinGecko USD (spur_buch.einstieg Boersen-Kurs-Fix)."
 }

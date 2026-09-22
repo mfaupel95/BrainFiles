@@ -59,6 +59,18 @@ PAARE = {
     "ETH-USDT": "XETHZEUR",
     "SOL-USDC": "SOLEUR",
     "SOL-USDT": "SOLEUR",
+    # Listing-Arb-Paare (moondev_listingarb, 22.09.2026):
+    # Kraken fuehrt diese Coins gegen EUR mit eigenen Kurzbezeichnungen.
+    # Quelle: GET /0/public/AssetPairs, geprueft am 22.09.2026.
+    "AKE-EUR":  "AKEEUR",
+    "DAI-EUR":  "DAIEUR",
+    "HYPE-EUR": "HYPEEUR",
+    "KAS-EUR":  "KASEUR",
+    "LIT-EUR":  "LITEUR",
+    "MNT-EUR":  "MNTEUR",
+    "VVV-EUR":  "VVVEUR",
+    "WBT-EUR":  "WBTEUR",
+    "XMR-EUR":  "XXMRZEUR",  # Kraken-Sonderform: X-Prefix + Z-Quote
 }
 
 

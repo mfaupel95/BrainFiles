@@ -302,6 +302,39 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
             return None
         betrag = min(nominel, live_grenze(w, "max_pro_trade_usd", nominel))
         vinst = venue_inst(inst, w)
+        # Im Live-Lauf den BOERSEN-Kurs verwenden, nicht den aus quelle().
+        # Zwei Grunde: (1) CoinGecko liefert USD, Kraken-Stop-Loss braucht EUR
+        # - ein Stop bei USD-Preis 158 wuerde bei Kraken als 158 EUR gesetzt
+        # und sofort reissen, wenn der Markt bei 497 EUR steht.
+        # (2) Zwischen quelle() und dem Kauf liegen Netzabfragen; ein
+        # veralteter Kurs kann die Menge falsch rechnen.
+        # Faellt der Abruf aus, wird der Einstieg uebersprungen.
+        if weg is not None:
+            try:
+                kurs_live = float(weg.letzter_kurs(vinst))
+                if kurs_live > 0:
+                    kurs = kurs_live
+                    # Stop und Ziel neu rechnen auf Basis des Boersen-Kurses:
+                    abstand = kurs * pct / 100.0
+                    stop = kurs - vz * abstand
+                    if ziel_preis:
+                        if (seite == "long" and float(ziel_preis) <= kurs) or \
+                                (seite == "short" and float(ziel_preis) >= kurs):
+                            return None
+                        ziel = float(ziel_preis)
+                    else:
+                        ziel = kurs + vz * r * abstand
+                    # Nominale ebenfalls neu - der Betrag bleibt an pct gebunden.
+                    nominel = w["risiko_je_position_usd"] / (pct / 100.0)
+                    nominel = min(nominel, w["max_pro_trade_usd"]) * faktor
+                    p["einstieg"] = kurs
+                    p["stop"] = stop
+                    p["ziel"] = ziel
+                    p["nominal"] = nominel
+            except Exception as e:                             # noqa: BLE001
+                print("  Boersen-Kurs %s nicht abrufbar (%s) - Einstieg uebersprungen"
+                      % (inst, e), file=sys.stderr)
+                return None
         try:
             menge, fehler = weg.menge_fuer(vinst, betrag, kurs)
         except Exception as e:                                 # noqa: BLE001

@@ -213,6 +213,41 @@ class SchreibweiseTest(unittest.TestCase):
         self.assertEqual(weg.aufrufe[0], ("kauf", "XMR-USDC", 0.2))
         self.assertEqual(p["inst"], "XMR", "das Buch behaelt das Kurzzeichen")
 
+    def test_boersen_kurs_ersetzt_quelle_kurs_im_live_lauf(self):
+        """Im Live-Lauf holt spur_buch den Kurs von der Boerse, nicht aus quelle().
+
+        Beleg 22.09.2026: CoinGecko liefert USD (z. B. 170 fuer XMR),
+        Kraken erwartet EUR (z. B. 497). Ein Stop bei 158 USD wuerde an Kraken
+        als 158 EUR gesetzt - viel zu tief und sofort gerissen.
+        Die Attrappe gibt 200.0 zurueck (Boersen-EUR-Kurs), spur_buch muss
+        diesen Kurs fuer Stop, Ziel und Menge verwenden, nicht den uebergebenen 100.
+        """
+        class BoesenKursAttrappe(Attrappe):
+            def letzter_kurs(self, inst):
+                return 200.0   # "EUR"-Kurs, deutlich anders als 100 USD
+
+        weg = BoesenKursAttrappe()
+        z = {"positionen": []}
+        p = buch.einstieg(z, "XMR", "long", 100.0, W, 1.0, "test", live=True, weg=weg)
+        self.assertIsNotNone(p)
+        # Einstieg muss auf Boersen-Kurs liegen
+        self.assertAlmostEqual(p["einstieg"], 200.0)
+        # Stop und Ziel muessen auf Basis 200 gerechnet sein
+        self.assertAlmostEqual(p["stop"], 200.0 * 0.93, places=2)
+        self.assertAlmostEqual(p["ziel"], 200.0 * 1.14, places=2)
+
+    def test_kein_boersen_kurs_ueberspring_den_einstieg(self):
+        """Wenn der Boersen-Kurs nicht abrufbar ist, wird der Einstieg uebersprungen."""
+        class KeinKursAttrappe(Attrappe):
+            def letzter_kurs(self, inst):
+                raise RuntimeError("Netz weg")
+
+        z = {"positionen": []}
+        p = buch.einstieg(z, "XMR", "long", 100.0, W, 1.0, "test",
+                          live=True, weg=KeinKursAttrappe())
+        self.assertIsNone(p)
+        self.assertEqual(z["positionen"], [])
+
     def test_menge_fehler_reisst_den_zyklus_nicht(self):
         class Krach(Attrappe):
             def menge_fuer(self, inst, betrag, kurs):
