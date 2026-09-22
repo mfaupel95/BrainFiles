@@ -63,3 +63,27 @@ gesperrt (sonst bricht `git add -A` mit Exitcode 128 ab).
 `C:` ist bei **61,1 GB frei von 475 GB** (gemessen 22.09.2026) — nicht mehr kritisch.
 `uv/cache` ist auf 0,8 GB geschrumpft. Der Plattendruck ist damit entschaerft; `uv cache clean`
 bleibt ein reproduzierbarer Knopf, falls es wieder knapp wird. Kein Umzug von `MaxHirn` noetig.
+
+## 8. Marktscanner-Bericht friert ein — der scanner kauft zu Tagespreisen
+
+**Gemessen 22.09.2026:** `scanner/berichte/neuester.json` traegt `erzeugt 2026-09-21T00:08:25Z`;
+der scanner kauft seine Vorschlaege aus genau dieser Datei
+(`vorschlaege()`: `einstieg = z["preis"]`, daraus Stop und Ziel). Der Tageslauf
+`MaxHirn-Marktscanner` (07:30) schreibt **nichts**, weil `marktscanner.ps1` bei laufendem
+Dauerlauf mit „ENDE uebersprungen: der Dauerlauf fuehrt die Spur" aussteigt — der
+Dauerlauf laeuft aber dauerhaft. Die Sperre war fuer den `handeln.py`-Teil gedacht, der
+seit 14.09.2026 gar nicht mehr in der Routine steht; `scan.py` schreibt nur
+`berichte/*.json` und kollidiert mit keinem Dauerlauf-Zustand.
+
+**Wirkung in echtem Geld (erste zwei Live-Kaeufe nach dem Import-Fix):**
+
+| Position | gebucht (Berichtspreis) | echter Fill | Stop real | Ziel real | C/R |
+|---|---|---|---|---|---|
+| `ETH-USDC` | 2655,28 | 2773,36 | −9,8 % | +6,8 % | 0,69:1 |
+| `SOL-USDC` | 111,71 | 118,63 | −11,8 % | +6,0 % | 0,51:1 |
+
+Geplant war **2:1**. Beide Positionen stehen damit mit umgekehrtem Chance/Risiko im Buch.
+
+**Offen:** Entscheidung, ob der Marktscanner wieder taeglich rechnen darf (Skip-Wache auf
+den `handeln.py`-Teil verkuerzen, `scan.py` durchlassen) — oder ob der scanner einen
+**frischen Kurs** beim Einstieg nehmen soll (`okx.letzter_kurs`) statt des Berichtspreises.

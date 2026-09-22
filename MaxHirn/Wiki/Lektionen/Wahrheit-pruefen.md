@@ -3,7 +3,7 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
 summary: 'Vier Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe.'
 ---
@@ -60,3 +60,23 @@ normal (267014/1073807364 = von aussen beendet, 2147946720 = laeuft schon).
 Ausgabe), nicht die Aenderung am Code. Bei Textdateien zusaetzlich `git diff --numstat`;
 bei Massenaenderungen pruefen, ob die Dateien in einem EIGENEN Repo liegen
 (`nautilus/`) oder per Whitelist ausgeklammert sind.
+
+## 6. Ein stiller `except` darf keinen Sachverhalt behaupten
+
+**Regel.** Wer eine Ausnahme verschluckt und daraus einen Befund formt, behauptet etwas
+ueber die Welt, das er gar nicht geprueft hat. Im `except`-Zweig gilt: **fail-safe
+handeln, laut melden** — nach `stderr` schreiben und den Text der Meldung vom Befund
+trennen („Zeitfenster nicht lesbar" ist etwas anderes als „Zeitfenster ist zu").
+
+**Belegter Fall (22.09.2026, scanner).** `zeitfenster_offen()` las das Freigabefenster per
+blankem `import freigabefenster`, der im Spurlauf nicht aufloesbar war
+(`ModuleNotFoundError`), und gab im `except` `False` zurueck. Die Sperre meldete daraufhin
+`Freigabefenster nicht offen - keine Sitzung am Bildschirm und kein Zeitfenster`, obwohl
+das Fenster offen war. Die Folge war doppelt schlecht: die Spur handelte Papier, **und**
+der Dauerlauf glaubte der Meldung — `nur_fenster_fehlt()` sah genau einen Grund mit dem
+Wort „Freigabefenster" und oeffnete im 30-Minuten-Takt neue Fenster. Der Fehler verdeckte
+sich selbst, bis jemand die Meldung im Chat hinterfragte.
+
+**Merksatz.** Ein Sperrgrund ist eine Aussage. Wenn die Ursache des Sperrens ein Fehler
+beim *Pruefen* sein kann, muss die Meldung das sagen. Sonst ist die Wache kaputt, nicht
+die Lage.

@@ -3,7 +3,7 @@ id: 20260921-gates-und-freigabe
 title: 'Handel — Gates und Freigabe'
 tags: [handel, sicherheit]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Wissen/Handelsregeln]]']
 summary: 'Die Sperrenkette vor jeder Live-Order, das Freigabefenster und die Armingschritte — in der Reihenfolge, in der sie geprueft werden.'
 ---
@@ -82,6 +82,37 @@ mosaic/handeln.py ein **String** ist (`os.path.dirname`) — `AttributeError` sc
 `MAXHIRN_ROUTINE=1` — genau so ruft der Dauerlauf sie. Steht dort "nicht offen - keine
 Sitzung am Bildschirm und kein Zeitfenster", fehlt die zweite Form. Ohne die Variable
 sieht dieselbe Spur frei aus.
+
+### Die Beschwerde kann selbst falsch sein — die Spur muss das Fenster LESEN koennen
+
+**Beleg 22.09.2026 (scanner, live):** In jedem Zyklus stand
+`scanner: --live angefordert, aber gesperrt: Freigabefenster nicht offen ...` — obwohl der
+Dauerlauf `--live` nur vergibt, wenn `freigabefenster.lade(spur).offen()` wahr ist, und das
+Fenster bis `02:02:42` offen war.
+
+Ursache: `scanner/handeln.py` legte am Modulkopf **nur** `<spur>/../../Bus` auf `sys.path`,
+nie den `Handel/`-Ordner. `zeitfenster_offen()` las das Fenster per blankem
+`import freigabefenster` → `ModuleNotFoundError` → der `except`-Zweig gab **still `False`**
+zurueck. Seit `MAXHIRN_ROUTINE=1` in beiden Modi ist `sitzung_da()` zusaetzlich dauerhaft
+`False` — Regel 3 war damit fuer den scanner **dauerhaft zu**, und er handelte Papier,
+waehrend der Dauerlauf `(live)` protokollierte. Erster echter Live-Kauf nach dem
+21.09. 21:53: **22.09. 00:14 UTC** (`Buch gegen Boerse`: `ETH-USDC` 0,037301 @ 2773.36,
+`SOL-USDC` 0,80283 @ 118.63).
+
+**Regel fuer jede Spur.** Module aus `Handel/` — `freigabefenster`, `freigabe`, `ratschen`,
+`risikostufe`, `spur_buch` — nur **ueber den Pfad** laden (`spec_from_file_location`) oder
+`HANDEL` selbst in `sys.path` legen. Ein blankes `import` haengt an der Reihenfolge der
+`sys.path`-Eintraege, die im Spurlauf anders ist als von Hand.
+
+**Gegenprobe, die den Fehler zeigt** (aus dem Spurenordner, ohne den Elternordner):
+
+```bash
+cd Agenten/Handel/scanner && .venv/Scripts/python.exe -c \
+  "import handeln; print(handeln.zeitfenster_offen())"
+```
+
+Vorher: `ModuleNotFoundError` in `zeitfenster_offen()` → `False`. Nachher: derselbe Wert,
+den `freigabefenster.lade("scanner").offen()` liefert.
 
 ## Wiedervorlage-Fristen
 
