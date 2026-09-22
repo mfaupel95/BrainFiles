@@ -21,7 +21,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 if ($Protokoll) { Start-Transcript -Path $Protokoll -Force | Out-Null }
-$home_ = 'C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes'
+$home_ = Split-Path $PSScriptRoot -Parent   # Agenten\Hermes (kein absoluter Benutzerpfad)
 $root  = Join-Path $home_ 'auth.json'
 $profDir = Join-Path $home_ 'profiles'
 

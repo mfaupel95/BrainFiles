@@ -1,6 +1,8 @@
 import sys, os, time
+from pathlib import Path
 
-sys.path.insert(0, r"C:\Users\faupe\Documents\BrainFiles\Agenten\Handel\kraken")
+# Pfad relativ zur eigenen Datei (SSD-umzugsfaehig, kein absoluter Benutzerpfad).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kraken
 
 # Quelle der Schlüssel anzeigen (ohne Werte):

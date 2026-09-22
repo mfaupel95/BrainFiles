@@ -8,15 +8,19 @@ Nur geaendert: Datenquelle (lokal statt Mac-Pfad), Gebuehr als Parameter,
 Optimierung abgeschaltet (Dauer), Buy-and-Hold als Vergleich.
 """
 import json
+from pathlib import Path
 import pandas as pd
 import talib
 from backtesting import Backtest, Strategy
 
-REPO = r"C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\Harvard-Algorithmic-Trading-with-AI\backtest\data"
+# Pfade relativ zur eigenen Datei (SSD-umzugsfaehig, keine absoluten
+# Benutzerpfade): Agenten/Handel/<datei> -> parents[2] ist die Wurzel.
+WURZEL = Path(__file__).resolve().parents[2]
+REPO = WURZEL / "Werkstatt" / "Repos" / "Harvard-Algorithmic-Trading-with-AI" / "backtest" / "data"
 
 
 def lade_harvard(datei="BTC-1h-1000wks-data.csv"):
-    p = f"{REPO}\\{datei}"
+    p = REPO / datei
     df = pd.read_csv(p, parse_dates=["datetime"], index_col="datetime")
     df.columns = ["Open", "High", "Low", "Close", "Volume"]
     return df
@@ -24,7 +28,7 @@ def lade_harvard(datei="BTC-1h-1000wks-data.csv"):
 
 def lade_frisch():
     """Agenten/Handel/kerzen_BTC-USDT_1H_8760.json - 1 Jahr Stundenkerzen bis heute."""
-    p = r"C:\Users\faupe\Documents\BrainFiles\Agenten\Handel\kerzen_BTC-USDT_1H_8760.json"
+    p = WURZEL / "Agenten" / "Handel" / "kerzen_BTC-USDT_1H_8760.json"
     with open(p, "r", encoding="utf-8") as f:
         roh = json.load(f)
     if roh and isinstance(roh[0], dict):

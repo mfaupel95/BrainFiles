@@ -202,6 +202,15 @@ try {
       Entscheiden "Aktiver Ollama-Store $aktivBlobs fehlt - OLLAMA_MODELS zeigt ins Leere."
     } else {
       $aktivNorm = [System.IO.Path]::GetFullPath($aktivReal).TrimEnd('\').ToLower()
+      # Stores, die bewusst hier liegen und deren Blobs es nur hier gibt - sonst
+      # meldet der Block sie JEDEN Tag als Entscheiden, und ein Dauerfehlalarm
+      # deckt echte Neufunde zu. Nur der NAME steht hier, nie eine Loeschung:
+      # ein Store, der nicht in dieser Liste steht, wird weiter gemeldet.
+      $gewolltStores = @{
+        'models--convaiinnovations--laya-multilingual' = 'laya-Modell (NandhaKishorM/laya), 21.09.2026 geladen - Entscheidung Max'
+        'hub'                                          = 'laya-Blob (615 MB) liegt in hub/blobs - derselbe Modellbestand'
+        'models--unslothai--Qwen3-ASR-1.7B-GGUF'       = 'Sprachmodell-Bestand, Herkunft nicht belegt - vor dem Loeschen pruefen'
+      }
       $aktivNamen = @{}
       Get-ChildItem $aktivBlobs -File -Force -EA SilentlyContinue | ForEach-Object { $aktivNamen[$_.Name] = $true }
       $blobDirs = Get-ChildItem $modelleReal -Recurse -Depth 3 -Force -Directory -EA SilentlyContinue -Filter 'blobs'
@@ -227,7 +236,12 @@ try {
             } catch { Entscheiden "Verwaister Ollama-Store $relStore ($gb GB), Loeschen fehlgeschlagen: $_" }
           }
         } else {
-          Entscheiden "Ollama-Store $relStore ($gb GB): $($fremd.Count) von $($blobs.Count) Blobs gibt es NUR hier - vor dem Loeschen pruefen (evtl. eigenes Modell)."
+          $storeName = Split-Path $storeDir -Leaf
+          if ($gewolltStores.ContainsKey($storeName)) {
+            Info "Ollama-Store $relStore ($gb GB): $($fremd.Count) von $($blobs.Count) Blobs nur hier - gewollt ($($gewolltStores[$storeName]))."
+          } else {
+            Entscheiden "Ollama-Store $relStore ($gb GB): $($fremd.Count) von $($blobs.Count) Blobs gibt es NUR hier - vor dem Loeschen pruefen (evtl. eigenes Modell)."
+          }
         }
       }
       if ($sonst -eq 0) { Info "Nur der aktive Ollama-Store vorhanden." }
@@ -291,7 +305,9 @@ try {
   #                      meldete der Block jeden Tag dieselben 14 Cache-Dateien
   #                      als Portabilitaetsproblem - ein Dauerfehlalarm deckt
   #                      die echten Funde zu.
-  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\')
+  #   Hermes\tmp\ und Hermes\.sicherung\ - dasselbe: Wegwerf bzw. Altkopien,
+  #                      beide nicht versioniert (22.09.2026, 11 der 37 Zeilen).
+  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\')
   $musterAbs = [regex]('C' + ':\\Users\\faupe')
   $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
   $absTreffer = @(); $altTreffer = @()
@@ -318,8 +334,13 @@ try {
     (Join-Path $wurzel 'MaxHirn\.mcp.json'),
     (Join-Path $wurzel 'MaxHirn\Archiv\.mcp.json')
   ) + @($baum.Files | Where-Object { [System.IO.Path]::GetFileName($_) -eq '.mcp.json' })
-  $mcpProblem = 0; $geprueft = 0
+  $mcpProblem = 0; $geprueft = 0; $fremdAusgelassen = 0
   foreach ($mfp in ($mcpDateien | Sort-Object -Unique)) {
+    # Fremd-Repos bringen ihre EIGENE .mcp.json mit (claude-plugins-official,
+    # financial-services): dort gilt die Umgebung des Herstellers (bun/node),
+    # nicht dieser Rechner. Gemeldet wurden daraus 8 Entscheiden-Zeilen je
+    # Lauf - nichts davon ist hier behebbar, ohne ein Fremd-Repo zu verbiegen.
+    if ($mfp -match '\\skills\\|\\plugins\\') { $fremdAusgelassen++; continue }
     if (-not (Test-Path $mfp)) { continue }
     $geprueft++
     $dir = Split-Path $mfp -Parent
@@ -333,6 +354,7 @@ try {
     }
   }
   if ($mcpProblem -eq 0) { Info "$geprueft .mcp.json geprueft, alle command-Pfade loesen auf." }
+  if ($fremdAusgelassen -gt 0) { Info "$fremdAusgelassen .mcp.json in Fremd-Baeumen (skills/, plugins/) ausgelassen - dort gilt die Umgebung des Herstellers." }
 } catch { Notiz "  ! MCP-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
@@ -709,29 +731,58 @@ try {
 # Quotenstrom; die Dauerlauf-Spur zyklisiert unabhaengig davon. Zwei Fragen:
 # laeuft der Container, und sind die Logs frisch (Quote-Zeilen je Tick)?
 # docker ps/logs sind langsam (~1-2 s) - nur einmal aufrufen.
+#
+# JEDER Docker-Aufruf laeuft mit Zeitgrenze: ist die Engine tot, wartet der
+# Client unbegrenzt auf die Pipe. Am 19.-22.09.2026 war Docker Desktop aus -
+# Block 14 war jedes Mal die letzte Zeile im Protokoll, der Lauf wurde von
+# aussen gekillt (267014) und der Bericht danach gar nicht mehr geschrieben.
+# Ohne Antwort in der Frist kommt $null zurueck, nie ein Haenger.
+function DockerMitFrist {
+  param([int]$Sekunden = 20, [string[]]$Argumente)
+  try {
+    $si = New-Object System.Diagnostics.ProcessStartInfo
+    $si.FileName = 'docker'
+    $si.Arguments = (($Argumente | ForEach-Object {
+      if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+    }) -join ' ')
+    $si.RedirectStandardOutput = $true
+    $si.RedirectStandardError  = $true
+    $si.UseShellExecute = $false
+    $si.CreateNoWindow  = $true
+    $p = [System.Diagnostics.Process]::Start($si)
+    $tOut = $p.StandardOutput.ReadToEndAsync()
+    $tErr = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit($Sekunden * 1000)) {
+      try { $p.Kill() } catch { }
+      return $null
+    }
+    $text = $tOut.GetAwaiter().GetResult()
+    @($text -split "`r?`n" | Where-Object { $_ -ne '' })
+  } catch { return $null }
+}
 try {
   Notiz "`n--- 14) Docker: Nautilus-Quoten-Container ---"
-  $c = docker ps --filter "name=nautilus-demo" --format "{{.Names}}|{{.Status}}" 2>$null
-  if (-not $c) {
+  $cZeilen = DockerMitFrist 20 @('ps', '--filter', 'name=nautilus-demo', '--format', '{{.Names}}|{{.Status}}')
+  if ($null -eq $cZeilen) {
+    Entscheiden "Docker-Engine antwortet nicht (Frist 20 s) - Container nautilus-demo ungeprueft. Ist die Engine wieder da: 'docker start nautilus-demo' und Block 14 erneut laufen lassen."
+  } elseif (-not $cZeilen) {
     Entscheiden "Docker-Container nautilus-demo laeuft nicht (docker ps leer) - starten: 'docker start nautilus-demo' oder 'docker run -d --name nautilus-demo --restart unless-stopped -e OKX_API_KEY=dummy-node-key -e OKX_API_SECRET=dummy-node-secret -e OKX_API_PASSPHRASE=dummy-node-pass nautilus-demo-node:1.231.0'"
   } else {
-    $status = ($c -split '\|')[1]
+    $status = ((@($cZeilen)[0]) -split '\|')[1]
     if ($status -match 'Restarting|Exited|Dead') {
       Entscheiden "Docker-Container nautilus-demo ist '$status' - Logs pruefen: 'docker logs --tail 20 nautilus-demo', dann 'docker start nautilus-demo'."
     } else {
       # Quote-Frische: letzte Log-Zeile mit Quote-Zeitstempel (UTC).
-      # Drei Fallen: (1) EAP lokal auf Continue, sonst zaehlt stderr von
-      # docker als Fehler (NativeCommandError) und die Zuweisung bleibt leer;
-      # (2) docker logs liefert ANSI-Escape-Sequenzen (\x1b[...m) - vor dem
-      # Match entfernen, sonst beginnt die Zeile nicht mit der Ziffer;
-      # (3) [datetimeoffset] statt [datetime]::ParseExact(AssumeUniversal),
-      # das speichert als Local und verfaelscht die Differenz um die
-      # Zeitzone.
-      $eap = $ErrorActionPreference
-      $ErrorActionPreference = 'Continue'
-      $logzeilen = @(docker logs --tail 200 nautilus-demo 2>$null) |
-        ForEach-Object { $_ -replace "\x1b\[[0-9;]*m", "" }
-      $ErrorActionPreference = $eap
+      # Zwei Fallen: (1) docker logs liefert ANSI-Escape-Sequenzen
+      # (\x1b[...m) - vor dem Match entfernen, sonst beginnt die Zeile nicht
+      # mit der Ziffer; (2) [datetimeoffset]::Parse(...AssumeUniversal) statt
+      # [datetime]::ParseExact, das speichert als Local und verfaelscht die
+      # Differenz um die Zeitzone.
+      $logroh = DockerMitFrist 25 @('logs', '--tail', '200', 'nautilus-demo')
+      $logzeilen = @()
+      if ($logroh) {
+        $logzeilen = @($logroh | ForEach-Object { $_ -replace "\x1b\[[0-9;]*m", "" })
+      }
       $letzteQuote = $logzeilen | Where-Object { $_ -match 'Quote BTC-USDT-SWAP' } |
         Select-Object -Last 1
       if ($letzteQuote -and $letzteQuote -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})') {

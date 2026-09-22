@@ -15,7 +15,8 @@ import json
 import sys
 from pathlib import Path
 
-HANDEL = Path(r"C:\Users\faupe\Documents\BrainFiles\Agenten\Handel")
+# Pfad relativ zur eigenen Datei (SSD-umzugsfaehig, kein absoluter Benutzerpfad).
+HANDEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HANDEL / "xperp"))
 import okxf                                                        # noqa: E402
 
