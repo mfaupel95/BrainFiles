@@ -133,7 +133,13 @@ def quelle(w):
     anzahl = int(w.get("max_offene_positionen", 3))
     for _, c in kandidaten[:anzahl]:
         mint = c["mint"]
-        preis = daten.pump_letzter_preis(mint)
+        try:
+            preis = daten.pump_letzter_preis(mint)
+        except Exception as e:                                 # noqa: BLE001
+            # Ein einzelner Kursabruf darf den Zyklus nicht kippen (22.09.2026:
+            # Verbindungsabbruch -> Rueckgabe 1, der ganze Lauf fiel aus).
+            fehler.append("Preis %s: %s" % (mint[:8], str(e)[:80]))
+            continue
         if not preis:
             continue
         alter = _alter_minuten(c)
@@ -152,7 +158,12 @@ def quelle(w):
         inst = p.get("inst")
         if not inst or inst in kurse:
             continue
-        preis = daten.pump_letzter_preis(inst)
+        try:
+            preis = daten.pump_letzter_preis(inst)
+        except Exception as e:                                 # noqa: BLE001
+            # Wie oben: ein Kursausfall wird gemeldet, nicht geworfen.
+            fehler.append("Preis %s: %s" % (str(inst)[:8], str(e)[:80]))
+            continue
         if preis:
             kurse[inst] = preis
 

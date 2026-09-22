@@ -241,6 +241,14 @@ def pump_letzter_preis(mint, zeitgrenze=ZEITGRENZE):
     warten - deshalb einmal kurz warten und erneut versuchen. Bleibt es bei
     429 (harter Deckel), wird None zurueckgegeben und die Spur bucht in
     diesem Zyklus nichts - nie einen geratenen Preis.
+
+    Abbruch-Falle: dieselbe Antwort gibt es bei einem Abbruch der Verbindung
+    (WinError 10054 "vorhandene Verbindung wurde vom Remotehost geschlossen").
+    Auch das ist kein Fehler der Spur, sondern des Netzes - ein Abbruch darf
+    NIE den ganzen Zyklus mitreissen (Rueckgabe 1 im Dauerlauf, 22.09.2026
+    dreimal an einem Tag). Deshalb derselbe Weg wie beim 429: einmal kurz
+    warten, dann None. Eine unvollstaendig gelesene Antwort (JSONDecodeError)
+    ist derselbe Fall - die Verbindung brach mitten im Rumpf ab.
     """
     url = "%s/v2/coins/%s/trades?limit=1&program=pump" % (PUMP_SWAP, mint)
     for versuch in (1, 2):
@@ -252,6 +260,15 @@ def pump_letzter_preis(mint, zeitgrenze=ZEITGRENZE):
             if e.code == 429 and versuch == 1:
                 time.sleep(1.0)
                 continue
+            return None
+        except (urllib.error.URLError, OSError, ValueError):
+            # URLError/OSError = Verbindung weg oder Zeitueberschreitung,
+            # ValueError = abgeschnittene Antwort. Nur einmal nachfassen.
+            if versuch == 1:
+                time.sleep(0.5)
+                continue
+            return None
+        if not isinstance(daten, dict):
             return None
         for t in daten.get("trades") or []:
             p = zahl(t.get("priceUsd"))

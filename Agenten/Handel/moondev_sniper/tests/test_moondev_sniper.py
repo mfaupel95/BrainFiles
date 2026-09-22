@@ -20,6 +20,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 SPUR = os.path.dirname(HIER)
@@ -92,6 +93,11 @@ def token(mint="AAA", mk=1000.0, alter_min=10.0, preis=1e-5, banned=False,
         "is_banned": banned, "nsfw": nsfw, "complete": False,
         "kurs": preis,
     }
+
+
+def _abbruch(mint, *a, **k):
+    """Steht fuer einen abgerissenen Kursabruf (WinError 10054)."""
+    raise urllib.error.URLError(ConnectionResetError(10054, "reset"))
 
 
 class SignalTest(unittest.TestCase):
@@ -274,6 +280,94 @@ class DateienTest(unittest.TestCase):
         self.assertEqual(h.main(), 0)
         self.assertEqual(self.aufrufe, [])
         # Bus-Ereignis darf bei --live nicht entstehen.
+
+
+class NetzabbruchTest(unittest.TestCase):
+    """Ein Verbindungsabbruch beim Kursabruf darf den Zyklus nicht kippen.
+
+    Befund 22.09.2026: `pump_letzter_preis` fing nur HTTP 429. Ein Abbruch der
+    Verbindung (WinError 10054) flog durch `quelle()` bis in den Dauerlauf und
+    machte aus einem Zyklus eine Rueckgabe 1 - dreimal an einem Tag, jedes Mal
+    eine Bus-Meldung. Ein Netzfehler ist kein Fehler der Spur.
+    """
+
+    def test_kursausfall_wird_gemeldet_statt_geworfen(self):
+        urspr_t = h.daten.pump_neue_token
+        urspr_p = h.daten.pump_letzter_preis
+        urspr_l = h.buch.lade_zustand
+        h.daten.pump_neue_token = lambda s=40: [token("A", mk=1000.0, alter_min=5.0)]
+        h.daten.pump_letzter_preis = _abbruch
+        h.buch.lade_zustand = lambda _p: {"positionen": []}
+        try:
+            daten, kurse, fehler = h.quelle(dict(WACHEN))
+        finally:
+            h.daten.pump_neue_token = urspr_t
+            h.daten.pump_letzter_preis = urspr_p
+            h.buch.lade_zustand = urspr_l
+        self.assertEqual((daten, kurse), ({}, {}))
+        self.assertEqual(len(fehler), 1)
+        self.assertIn("10054", fehler[0])
+
+    def test_gehaltene_position_ueberlebt_den_kursausfall(self):
+        urspr_t = h.daten.pump_neue_token
+        urspr_p = h.daten.pump_letzter_preis
+        urspr_l = h.buch.lade_zustand
+        h.daten.pump_neue_token = lambda s=40: []
+        h.daten.pump_letzter_preis = _abbruch
+        h.buch.lade_zustand = lambda _p: {"positionen": [
+            {"inst": "ALT", "seite": "long", "einstieg": 1e-5, "stop": 0.9e-5,
+             "ziel": 1.2e-5, "stop_pct": 8.0, "nominal": 100.0}]}
+        try:
+            daten, kurse, fehler = h.quelle(dict(WACHEN))
+        finally:
+            h.daten.pump_neue_token = urspr_t
+            h.daten.pump_letzter_preis = urspr_p
+            h.buch.lade_zustand = urspr_l
+        self.assertEqual((daten, kurse), ({}, {}))
+        self.assertEqual(len(fehler), 1)
+
+
+class ZyklusBeiNetzabbruchTest(unittest.TestCase):
+    """Der ganze Papierlauf gegen einen Temp-Ordner - mit abgerissener Leitung.
+
+    Das ist der Beweis, der zaehlt: der Zyklus endet mit 0, statt den
+    Dauerlauf mit einer Rueckgabe 1 und einer Bus-Meldung zu beschweren.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt_schreiben = h.buch.SCHREIBEN
+        h.buch.SCHREIBEN = True
+        w = dict(WACHEN)
+        w["journal_zweitziel"] = os.path.join(self.tmp.name, "zweitziel")
+        w["grund"] = "test"
+        with open(os.path.join(self.tmp.name, "wachen.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(w, f)
+        self.alt_t = h.daten.pump_neue_token
+        self.alt_p = h.daten.pump_letzter_preis
+        h.daten.pump_neue_token = lambda s=40: [token("AAA", mk=1000.0, alter_min=5.0)]
+
+    def tearDown(self):
+        h.daten.pump_neue_token = self.alt_t
+        h.daten.pump_letzter_preis = self.alt_p
+        h.buch.SCHREIBEN = self.alt_schreiben
+        self.tmp.cleanup()
+
+    def _lauf(self):
+        return h.buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "papier",
+                             "handel/moondev_sniper")
+
+    def test_abbruch_ergibt_rueckgabe_null(self):
+        h.daten.pump_letzter_preis = _abbruch
+        self.assertEqual(self._lauf(), 0)
+
+    def test_gesunde_leitung_bucht_weiter(self):
+        h.daten.pump_letzter_preis = lambda m: 1e-5
+        self.assertEqual(self._lauf(), 0)
+        with open(os.path.join(self.tmp.name, "handelsjournal.csv"),
+                  encoding="utf-8") as f:
+            self.assertIn("AAA", f.read())
 
 
 if __name__ == "__main__":

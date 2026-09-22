@@ -5,7 +5,7 @@ tags: [handel, lektion]
 created: 2026-09-21
 updated: 2026-09-22
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Lektionen/Wahrheit-pruefen]]']
-summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg.'
+summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg, ein Netzabbruch riss den ganzen Zyklus mit.'
 ---
 
 # Handel — Lektionen
@@ -181,3 +181,31 @@ einen Zyklus ginge eine frische Zeile verloren.
 Angriffspunkte in einer neuen Spur: `handeln.py` (`bueche_geister_aus`,
 `bueche_groessen_abgleichen`), `okxf.geschlossene_position()`, Tests
 `xperp/tests/test_handeln_geister.py` + `test_geister_nachziehen.py` (70 gruen).
+
+## 12. Ein Netzfehler ist kein Fehler der Spur
+
+**Regel.** In der Datenschicht einer Spur wird nur gefangen, was man kennt — alles andere
+reisst den ganzen Zyklus mit. Jeder Abruf, der an einer Boerse oder einem fremden Server
+haengt, braucht einen Zweig fuer **Verbindungsabbruch, Zeitueberschreitung und
+abgeschnittene Antwort**: einmal nachfassen, dann `None` — wie beim bekannten HTTP 429.
+Gibt die Spur an `zyklus()` eine Fehlerliste zurueck, steht das Ereignis im Bericht, statt
+als Rueckgabe 1 beim Bus zu landen.
+
+**Belegter Fall (22.09.2026, `moondev_sniper`).** `moondev_daten.pump_letzter_preis` fing
+**nur** `HTTPError` (429). Ein Abbruch der Verbindung — `WinError 10054`, „vorhandene
+Verbindung wurde vom Remotehost geschlossen" — flog durch `quelle()` bis in den Dauerlauf:
+`Rueckgabe 1`, Bus-Alarm „Ergebniscode 1 - URLError: <urlopen error [WinError 10054] …>",
+**dreimal an einem Tag** (02:07, 10:38, 12:11) bei rund 160 Zyklen. Der naechste Zyklus lief
+jedes Mal normal — es war ein Netzfehler, kein Spurenfehler, und er kostete trotzdem einen
+ganzen Zyklus.
+
+**Fix (Muster fuer jede Datenschicht).** `except (urllib.error.URLError, OSError, ValueError)`
+— `OSError` deckt Zeitueberschreitung, `ValueError` die mitten im Rumpf abgeschnittene
+Antwort (`JSONDecodeError`). Zusaetzlich umschliesst die Spur **jeden einzelnen**
+Kursabruf: ein Mint, der nicht antwortet, darf nicht die anderen mitreissen.
+
+**Merksatz.** Ein `except` auf einen Statuscode ist ein halber Fang. Wer ein `except`
+schreibt, muss sagen, was im NICHT gefangenen Fall passiert — hier: der Zyklus stirbt.
+Nachweis: `Handel/tests/test_moondev_daten.py` (9) und
+`moondev_sniper/tests/test_moondev_sniper.py` (`ZyklusBeiNetzabbruchTest` prueft die
+Rueckgabe des GANZEN Papierlaufs, nicht nur die Ausnahme).
