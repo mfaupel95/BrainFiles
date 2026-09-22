@@ -260,7 +260,7 @@ def live_sperren(w, z):
         gruende.append("wachen.json handel_erlaubt=false")
     if not kraken.schluessel_vorhanden():
         gruende.append("KRAKEN_API_KEY/SECRET nicht gesetzt")
-    s = wp.lage(w, JOURNAL, z)
+    s = wp.lage(w, JOURNAL, _papier_zustand())
     if not s["freigabe_erfuellt"]:
         gruende.append("freigabe.erfuellt=false (Bedingung 1)")
     if not s["herzschlag_frisch"]:
@@ -468,13 +468,34 @@ def sperren_zeile():
     return gruende
 
 
+def _papier_zustand():
+    """Der Zustand, den der LAUFENDE Zyklus schreibt - die Quelle des Herzschlags.
+
+    Warum nicht der Live-Zustand (22.09.2026, gemessener Kreislauf): der
+    Herzschlag ist das Alter des letzten Zyklus. Stand er auf `zustand.live.json`,
+    konnte er nur frisch sein, wenn der Live-Pfad lief; der Live-Pfad laeuft aber
+    nur bei offenem Freigabefenster, und das Fenster oeffnet AUTO_FREIGABE nur,
+    wenn als EINZIGER Grund das Fenster fehlt. Ergebnis: eine Spur, die noch nie
+    live lief (oder lange nicht), meldete "Herzschlag alt" und kam nie zum
+    Fenster - sie konnte sich nicht selbst scharf machen.
+    Der Papierzustand wird JEDEN Zyklus geschrieben und beweist die richtige
+    Sache: die Spur laeuft. Das Live-BUCH bleibt getrennt in ZUSTAND.
+    """
+    pfad = risikostufe.datei(os.path.join(HIER, "zustand.json"))
+    try:
+        with open(pfad, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {"letzter_lauf": None}
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     w = lade_wachen()
     z = lade_zustand()
     z.setdefault("positionen", [])
-    s = wp.lage(w, JOURNAL, z)
+    s = wp.lage(w, JOURNAL, _papier_zustand())
 
     if modus == "wachen":
         print(json.dumps(s, indent=2, ensure_ascii=False))
