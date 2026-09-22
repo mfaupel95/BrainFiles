@@ -1,9 +1,9 @@
 <#
-  fundus-suche.ps1 - Zugang zum Skill-Fundus (MaxHirn/skills) UND zu den
+  fundus-suche.ps1 - Zugang zum Skill-Fundus (Documents/GitHub) UND zu den
   Skill-Klonen unter Werkstatt/Repos, ohne Token-Last.
 
   Zwei Quellen:
-    Fundus:        MaxHirn/skills  (10 geklonte Fremd-Repos, ~238 SKILL.md)
+    Fundus:        %USERPROFILE%\Documents\GitHub  (alle Skill-Klone dort)
     Werkstatt:     Werkstatt/Repos (19 Repos mit SKILL.md, ~356 Dateien)
   Wuerde man alle in die Hermes-Bibliothek legen, kostet das ~14.700 Tokens
   bei JEDER Anfrage. Dieses Skript haelt sie draussen und sucht nur auf
@@ -34,7 +34,8 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $stamm   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$fundus  = Join-Path $stamm 'MaxHirn\skills'
+# Fundus liegt seit 18.09.2026 unter Documents/GitHub (ausserhalb BrainFiles).
+$fundus  = Join-Path $env:USERPROFILE 'Documents\GitHub'
 $werkstatt = Join-Path $stamm 'Werkstatt\Repos'
 $ziel    = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index.md'
 $zielWk  = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index-Werkstatt.md'
@@ -77,8 +78,11 @@ function Sammle([string]$quelle, [string]$wurzel) {
   if (-not (Test-Path $wurzel)) { return @() }
   Get-ChildItem $wurzel -Recurse -File -Filter 'SKILL.md' -ErrorAction SilentlyContinue | ForEach-Object {
     $k = Get-SkillKopf $_
-    $pfad = $_.FullName.Substring($stamm.Length + 1)
+    # Pfad RELATIV zur eigenen Wurzel (nicht zu $stamm): der Fundus liegt seit
+    # 18.09.2026 ausserhalb BrainFiles - ein Substring auf $stamm schnitt
+    # mitten in "C:\...\Documents\GitHub\" und verstaemmte jeden Pfad.
     $rel = $_.FullName.Substring($wurzel.Length + 1)
+    $pfad = $rel
     [pscustomobject]@{
       Quelle = $quelle
       Repo   = ($rel -split '\\')[0]

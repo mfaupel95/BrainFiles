@@ -144,6 +144,23 @@ Aussage. Diese vier Schritte statt einer erfundenen Kennzahl:
 - **Ein geaendertes Eingangstor wirkt nur auf NEUE Positionen**; offene laufen
   unter ihrem gebuchten Stop und ihrer Frist aus. Das im Vorschlag nennen.
 
+## Eine Kennzahl ist erst eine Messung, wenn das Modell sie nicht gesehen hat
+
+Vor jeder Bewertung, die auf trainierten Modellen beruht (AUC, Trefferquote, EV),
+zuerst fragen: **welche Zeilen hat das Modell beim Vorhersagen schon gesehen?**
+Ein Lauf, der auf denselben Daten vorhersagt, auf denen er trainiert wurde, ist
+keine Messung - der Abstand ist bei Kursdaten riesig (gemessen: AUC 0,83
+in-sample gegen 0,51 walk-forward bei BTC 1 h).
+
+Wer selbst nachrechnen will, hat dafuer einen fertigen, NICHT in den Dauerlauf
+eingebundenen Pruefstand: `Werkstatt/intelligent-trading-bot` (venv fertig,
+Kette `download` -> `merge` -> `features` -> `labels` -> `train` -> `predict`
+-> `predict_rolling` -> `signals` -> `simulate`, Binance-Kurse oeffentlich mit
+`api_key: "dummy"`). Er nutzt Binance und MetaTrader 5 - fuer den eigenen
+OKX-/Kraken-Handel ist er ein Massstab, kein Orderweg.
+
+Zahlen und Befehle: [[Handel/Lektionen]] Abschnitt 13.
+
 ## Hauswerkzeug
 
 - `Agenten/Handel/filter_studie.py` (`--spur NAME`, mehrfach; `--json`), Ergebnis

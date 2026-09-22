@@ -209,3 +209,56 @@ schreibt, muss sagen, was im NICHT gefangenen Fall passiert — hier: der Zyklus
 Nachweis: `Handel/tests/test_moondev_daten.py` (9) und
 `moondev_sniper/tests/test_moondev_sniper.py` (`ZyklusBeiNetzabbruchTest` prueft die
 Rueckgabe des GANZEN Papierlaufs, nicht nur die Ausnahme).
+
+## 13. In-sample luegt — jede ML-Kennzahl braucht den Walk-Forward
+
+**Regel.** Eine Trefferquote oder AUC aus einem Lauf, in dem das Modell auf DENSELBEN Daten
+vorhersagt, auf denen es trainiert wurde, ist keine Messung. Der ehrliche Wert entsteht erst,
+wenn zwischen Training und Vorhersage eine Zeitgrenze liegt und das Modell danach neu
+trainiert wird (**Walk-Forward**). Der Abstand zwischen beiden Zahlen ist bei Kursdaten kein
+Detail, sondern das ganze Ergebnis.
+
+**Belegte Messung (22.09.2026, `Werkstatt/intelligent-trading-bot`, BTCUSDT 1 h, SVC auf
+SMA/Linearreg-Slope/Stddev, Fenster 1-672):**
+
+| Lauf | Daten | AUC Auf | AUC Ab | Handelsergebnis (beste von 100 Parameterkombinationen) |
+|---|---|---|---|---|
+| in-sample (`train`+`predict` auf denselben 8.672 Zeilen) | 2025-09-26 bis 2026-09-22 | **0,83** | **0,85** | **-26,3 %** |
+| Walk-Forward (4 Schritte, je 3.000 h, je neu trainiert) | 2025-05-10 bis 2026-09-22 | **0,51** | **0,46** | **-5,1 %** |
+
+Die AUC faellt von 0,83 auf 0,51 (Muenzwurf) — das Modell hatte **keinen** Vorteil, es sah nur
+die Antworten. Auch der Walk-Forward-Lauf ist in ALLEN 100 Kombinationen negativ (beste:
+110 Transaktionen, 43,6 % profitabel, -5,1 % vor Gebuehren). Befund: SMA/Slope/Stddev +
+SVC auf BTC 1 h traegt nicht aus dem Trainingsfenster heraus.
+
+**Die Mechanik dahinter.** `simulate` (Parameterraster ueber Kauf-/Verkaufsschwellen) liest
+`signals.csv`; `predict_rolling` schreibt die Vorhersagen aus nicht gesehenen Fenstern in
+dieselbe Datei. Es ist derselbe Simulator, nur mit ehrlichem Input — genau deshalb ist der
+Vergleich aussagekraeftig.
+
+**Nachweis / Werkzeug.** Der Klon kann die ganze Kette (venv Python 3.13 ist fertig, alle
+noetigen Bibliotheken vorhanden; `tsfresh` und `MetaTrader5` fehlen, beide optional):
+
+```
+cd Werkstatt/intelligent-trading-bot
+./.venv/Scripts/python.exe -m scripts.download -c <config.json>
+./.venv/Scripts/python.exe -m scripts.merge    -c <config.json>
+./.venv/Scripts/python.exe -m scripts.features -c <config.json>
+./.venv/Scripts/python.exe -m scripts.labels   -c <config.json>
+./.venv/Scripts/python.exe -m scripts.train    -c <config.json>
+./.venv/Scripts/python.exe -m scripts.predict  -c <config.json>
+./.venv/Scripts/python.exe -m scripts.predict_rolling -c <config.json>
+./.venv/Scripts/python.exe -m scripts.signals  -c <config.json>
+./.venv/Scripts/python.exe -m scripts.simulate -c <config.json>
+```
+
+Ergebnisse landen unter `data_folder/<symbol>/` (`predictions.txt` = AUC/AP/F1,
+`signal_models.txt` = Handelsergebnis je Schwellenpaar). `train_length: 0` haelt alle Zeilen,
+`algorithms[0].params.length` ist das Trainingsfenster je Schritt, `rolling_predict`
+(`prediction_size`, `prediction_steps`) der Walk-Forward. Kurse kommen oeffentlich von Binance
+(`api_key: "dummy"` genuegt fuers Herunterladen).
+
+**Merksatz.** Bevor eine Spur mit ML-Kennzahlen bewertet wird, zuerst fragen: **welche Zeilen
+hat das Modell beim Vorhersagen schon gesehen?** Der Klon taugt als Pruefstand fuer diese eine
+Frage — er ist NICHT in den Dauerlauf eingebunden und braucht dort auch nicht hin: seine
+Ordner nutzen Binance und MetaTrader 5, waehrend der eigene Handel ueber OKX und Kraken laeuft.
