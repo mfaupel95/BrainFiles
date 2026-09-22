@@ -669,6 +669,21 @@ pruefen. Die Schritte 1-8 gelten, wenn kein passendes Quellprofil existiert.
    den geratenen Namen bricht ab, und ob der Skill im Profil liegt, zeigt erst
    `hermes -p <name> skills list`.
 
+6. **Ein abgebrochenes `--clone` hinterlaesst eine Muellehalde.** Wird der Lauf
+   gekappt (Zeitlimit, Abbruch), liegt danach
+   `profiles/.<name>.staging-<pid>/` auf der Platte: eine VOLLE Kopie des
+   Startprofils samt `.env` (Kanalzugangsdaten!) und Sessions, gemessen
+   599 MB. Sie traegt eine `config.yaml` und stand deshalb als Phantom-Bot in
+   `/bots` (`skillsbot.bot_namen()` ueberspringt seit 22.09.2026 Punkte-Ordner).
+   Nach einem abgebrochenen Anlegen also `profiles/` nach `.`-Ordnern absuchen
+   und den Staging-Rest loeschen. Fuer einen Bot mit Repo ist der stille Weg
+   `hermes profile create <name> --no-alias` + Nacharbeiten ohnehin der bessere:
+   `--clone` bringt die 1700-Zeilen-Config des Startprofils mit.
+7. **`auth.json` verknuepfen: `pwsh` 7, nicht `powershell.exe`.** Ein SymbolicLink
+   auf den Root-Store braucht in dieser Umgebung Erhoehung; `New-Item` unter
+   `C:\Program Files\PowerShell\7\pwsh.exe` laeuft ohne UAC durch, unter
+   `powershell.exe` 5.1 endet er mit "Administratorrechte erforderlich".
+
 Beleg-Pflicht (nichts davon ist durch "Datei steht da" bewiesen):
 `hermes -p <name> chat -q "Fuehre pwd aus und nenne Modell und Arbeitsverzeichnis." -Q -t terminal`
 - `pwd` muss den Zielordner melden, das Modell den Routerpfad. Dazu
