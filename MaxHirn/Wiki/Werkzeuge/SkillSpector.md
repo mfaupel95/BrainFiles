@@ -148,13 +148,56 @@ Was die Regeln wirklich bedeuten (aus `src/skillspector/nodes/analyzers/pattern_
 `copilot-worktrees/.../superpowers-*` sind absichtlich gegen Regeln gebaut
 (AR2/AR3/P5/YR1) — im Fundus zu Recht ungeladen.
 
+## Bot-Profile und Struktur (22./23.09.2026)
+
+Dritter Lauf ueber die **geladenen** Bibliotheken der Bot-Profile
+(`profiles/<bot>/skills`, nach Hash-Dedupe **278** Skills, 20 min). Die 20
+Profile tragen weithin dieselben Skills — ohne Dedupe waeren es 1389.
+Ergebnis: `cache/skillspector-bots/`.
+
+| Kennzahl | Wert |
+|---|---|
+| LOW / MEDIUM / HIGH / CRITICAL | 190 / 35 / 26 / 27 |
+| SAFE / CAUTION / DO_NOT_INSTALL | 5 / 220 / 53 |
+| mit ausfuehrbarem Code | 53 |
+| Lauf fehlgeschlagen | 8 |
+
+Echt und behoben: **SC8** — `hermes-config-ops/scripts/__pycache__/` lag als
+Bytecode in zwei Profilkopien; alle 8 `__pycache__` unter `skills/` und
+`profiles/` geloescht. Sonst dieselben Rauschklassen wie im Fundus
+(E1 302 = URLs, PE3 141 = Doku ueber Schluessel, RP1 75 = „du bist ein Experte",
+RA2 68 = „create a task for"). Was zu LESEN bleibt: EA5/EA2 in
+`autonomous-ai-agents/claude-code` und `codex` (`claude -p … --allowedTools`,
+`codex exec --sandbox danger-full-access`) — Anleitungen zum schrankenlosen
+Lauf, in jedem der Profile.
+
+### Struktur schlanker — was gemacht wurde
+
+| Eingriff | Vorher | Nachher | Beleg |
+|---|---|---|---|
+| `profiles/caveman/checkpoints` (`hermes -p caveman checkpoints clear -f`) | 10,6 GB | 0 B | `checkpoints status`, C: 41 → 52 GB frei |
+| `.hub/index-cache/*.json` in 19 Bot-Profilen (Cache der Skill-Registry) | 707 MB | 0,4 MB | Hauptbibliothek bewusst behalten |
+| 686 inhaltsgleiche Skill-Ordner in den Profilen → Junction auf `Agenten/Hermes/skills/<...>` | 1389 Ordner, 20,9 MB Kopien | 686 Junctions | Trockenlauf + `skills list` aller 21 Profile VOR/NACH identisch |
+
+Werkzeug: `Agenten/Hermes/scripts/skill-kopien-verknuepfen.py`
+(Trockenlauf Standard, `--anwenden`, `--zuruecknehmen` aus
+`<profil>/skills/.sicherung-junctions/`; Manifest `cache/skill-junctions.json`).
+Verglichen wird der GANZE Ordner (jede Datei), nicht nur die SKILL.md — sonst
+ginge eine abweichende Referenzdatei verloren. **Lehre:** `Werkstatt` ist eine
+Junction, deshalb braucht SkillSpector `O:\...`; fuer die Skill-Prüfung ist das
+ohne Belang.
+
+**Nicht angefasst, weil es Qualitaet kostet oder Backup ist:** die 753
+profil-eigenen Skills (u. a. `nerd` mit 166 Skills ≈ 5.891 Token je Anfrage —
+der einzige echte Token-Brocken), `.archive` (70–80 Skills je Profil),
+`.curator_backups` (11–13 MB je Profil), `lsp` (29–52 MB je Profil),
+`checkpoints` der uebrigen Profile (0,2–231 MB, echtes Rollback).
+
 ## Offen
 
-- **Nicht gescannt:** die Skill-Bibliotheken der 26 Repo-Bots
-  (`Agenten/Hermes/profiles/<bot>/skills`, je ~52 Skills — DIE sind geladen),
-  `Werkstatt/security-skills-claude-code` (10), `MaxHirn/optional-skills` (1).
-  Nicht scanbar: die `okx-*`-Junctions.
-- 17 Berichte im Fundus- und 3 im Bibliothekslauf sind fehlgeschlagen
+- **Nicht gescannt:** `Werkstatt/security-skills-claude-code` (10),
+  `MaxHirn/optional-skills` (1). Nicht scanbar: die `okx-*`-Junctions.
+- 17 Berichte im Fundus-, 8 im Bot- und 3 im Bibliothekslauf sind fehlgeschlagen
   (unaufgeloeste Referenzen) — dort ist die Pruefung nur teilweise gelaufen.
 - Falschmeldungen einmal als **Baseline** einsperren (`skillspector baseline`),
   dann zeigen Wiederholungslaeufe nur noch NEUES.
