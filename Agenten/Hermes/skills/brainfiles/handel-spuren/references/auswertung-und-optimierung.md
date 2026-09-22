@@ -107,11 +107,33 @@ Schwellen). Reihenfolge:
    belegt. Eine zweite Umsetzung daneben misst die Nachbildung.
    Werkzeuge: `gitter/backtest_gitter.py`, `suche_gitter.py`,
    `regime_gitter.py`, `filter_gitter.py`, `optimieren_gitter.py`.
+   - **Vorberechnen ist erlaubt, aber nur mit Gleichheits-Nachweis.** Rechnet die
+     Spur ihren Indikator bei JEDEM Schritt neu (MACD-MTF ueber drei Zeitrahmen
+     ist O(n^2); ein Lauf ueber 7000 Kerzen dauert Minuten), rechnet der Treiber
+     die Indikator-Arrays einmal je Instrument vor — und muss dann beweisen, dass
+     er dasselbe entscheidet. Pruefskript nach dem Muster
+     `Agenten/Handel/bt_opt/verify_equivalence.py`: je Index das vorberechnete
+     Signal gegen `signal()` der Spur stellen UND den Einstieg (Wert, Stop, Ziel,
+     Nominal) gegen `pruefe_einstieg()` (SCHREIBEN=False, Journal abgefangen) —
+     Ergebnis als Zaehlung („1200 Schritte, 0 Abweichungen"), nicht als Urteil.
+     Abweichungen im ROHsignal sind zu erwarten und kein Fehler, wenn der Treiber
+     nur EINE Seite nachbildet: dann die gepruefte Seite benennen.
+     Die Kopie der Einstiegslogik im Treiber ist genau der Grund fuer diesen
+     Nachweis — sie ist eine zweite Wahrheit, bis sie belegt ist. Ohne den
+     Nachweis sind die Varianten-Zahlen die Zahlen der Nachbildung.
+     Die Treiber und der Nachweis gehoeren versioniert (`!Agenten/Handel/*.py`
+     greift, ein Unterordner wie `bt_opt/` braucht eine eigene `!`-Zeile).
 2. **Zwei Fenster ohne Ueberlappung.** Auf dem Suchfenster suchen, auf einem
    Fenster DANACH pruefen. Acht Wochen sind EIN Marktzustand; ohne Gegenprobe ist
    der Bestwert von N Kombinationen nicht von Zufall zu unterscheiden. Gealterte
    lokale Reihe fuer das Suchfenster, Live-Abruf fuer das Prueffenster, die
    Ueberlappung explizit nachrechnen und ausgeben.
+   Reicht die Historie nicht fuer ein Fenster DANACH, ist die Halbierung
+   derselben Reihe (H1/H2) das Minimum. Staerker ist ein zweiter Zeitrahmen mit
+   anderem Kalenderbereich — die 4H-Reihe reicht Monate weiter zurueck als die
+   1H-Reihe und deckt damit einen Zeitraum ab, den die Suche nie gesehen hat.
+   Der Nachweis, dass die Vorberechnung auch dort stimmt, gehoert dazu
+   (Stichproben-Indizes gegen die schrittweise Rechnung, Trefferzahl nennen).
 3. **Den Parameterraum einmal ganz messen, bevor gedreht wird.** Spannt er fast
    nichts (42 Kombinationen zwischen +0,17 % und +2,23 %), ist der Parameter nicht
    der Hebel - dann die Abhaengigkeit messen, statt weiter zu suchen: Fenster
@@ -129,6 +151,20 @@ Schwellen). Reihenfolge:
    ueber alle Fenster blieb negativ. „Optimiere bis positiv" laesst sich dann
    nicht ehrlich liefern - das wird gesagt, statt so lange zu drehen, bis ein
    Fenster positiv ist.
+   - **Ein schaerferer Filter macht die RUNDE besser, nicht den Ertrag.** Eine
+     zusaetzliche Bestaetigungs-Bedingung hebt Trefferquote, Wert je Runde und
+     senkt den Ruecklauf (im Beispiel: 48,4 -> 51,9 % Quote, +2,28 -> +2,79 %/R,
+     -63,5 -> -54,8), aber sie laesst Runden fallen (62 -> 54; auf dem zweiten
+     Fenster 38 -> 27). Deshalb IMMER auch die Summe vergleichen: sie kann trotz
+     besserer Runde kleiner werden. Beides gehoert in den Befund, sonst wird eine
+     Qualitaets-Verbesserung als Ertrags-Verbesserung verkauft.
+   - **Zwei Sorten Variante, zwei Urteile.** Parameter-Knoepfe (Ziel-R, Stop-Band)
+     verschieben die Rundenzahl und halten den Vorsprung je Runde nicht;
+     Faktor-/Fenster-Aenderungen am Indikator verschlechtern oft durchweg. Der
+     tragbare Fund war eine BESTAETIGUNGS-Bedingung am selben Indikator (das
+     Histogramm muss auch im groesseren Zeitrahmen steigen) - kein neuer
+     Parameter, damit kein Overfit im Sinne der Hausmethodik. Wirkt ein Knopf
+     identisch zum Stand (`stop max15`), bindet er nicht und ist kein Befund.
 6. **Pruefen, WANN der geaenderte Wert gelesen wird.** Die Gitter-Leiter entsteht
    nur im Erstlauf (`neu = not z.get("leiter")`) und wird nie verschoben - ein
    geaenderter `stufen`-Wert wirkt erst auf eine frische Leiter. Das im Bericht

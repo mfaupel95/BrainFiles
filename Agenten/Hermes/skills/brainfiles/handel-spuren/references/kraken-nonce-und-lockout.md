@@ -33,3 +33,25 @@ einen** Abruf pro Stunde macht und nur den Uebergang meldet
   gespeicherten Peak - danach geht gar nichts mehr.
 - Alte Prozesse halten ihren Code im Speicher. Ein nonce-Fix wirkt erst,
   wenn ALLE Sender neu gestartet sind (Dauerlaeufe, MCP-Server, Gateway).
+
+## Nach dem Ende der Sperre: erst messen, dann urteilen
+
+Die Sperre laeuft von selbst ab (Minuten bis Stunden), **ohne dass am Code
+etwas geaendert wird**. Der erste erfolgreiche Leseaufruf danach ist deshalb
+der Beweis, dass nonce-Pool und Schluessel in Ordnung waren - nicht der Beweis,
+dass eine Reparatur gewirkt hat.
+
+- Solange die Sperre steht, ist "der nonce-Code ist kaputt" **unbewiesen**:
+die Sperre lehnt jeden nonce ab. Eine neue Schluessel-Empfehlung ist eine
+  Absicherung, kein belegter Befund - im Bericht so benennen.
+- Nach dem Ende der Sperre den **ersten Leseaufruf** als Beleg nehmen
+  (`guthaben()` liefert eine Zahl statt einer Ausnahme).
+- **Die Sperre war ein versteckter Blocker der Spuren.** Ein Guthaben-Tor
+  ("nur X frei, noetig Y") kann waehrend der Sperre gar nicht anders antworten.
+  Nach dem Ende der Sperre `handeln.py --vorschau` erneut laufen lassen: faellt
+  "Live waere gesperrt durch: nichts", ist die Spur ohne Code-Aenderung frei -
+  und der naechste Zyklus handelt. Nie einen Blocker aus der Sperrzeit
+  weitererzaehlen.
+- Eine Wache auf einen solchen Zustand ist nach dessen Ende entbehrlich; sie
+  abzuraeumen ist Teil des Abschlusses. Der Merker, dass mehr als EIN Abruf je
+  Stunde die Sperre verlaengert, bleibt gueltig.

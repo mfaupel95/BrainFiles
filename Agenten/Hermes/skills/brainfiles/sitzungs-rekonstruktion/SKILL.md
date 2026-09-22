@@ -71,6 +71,36 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
    Arbeitsstände, Dateien, generierte Artefakte. Ohne sie ist der wiederhergestellte
    Stand unvollständig.
 
+## Wenn ein Bot- oder Subagenten-Auftrag abgebrochen ist
+
+Ein `/bot <name> <auftrag>` oder ein Aufruf mit harter Frist endet mit
+„Zeitlimit" - der Auftrag steht danach nirgends im eigenen Kontext.
+
+1. **Den vollen Auftrag aus den Artefakten holen, nicht aus dem Protokoll.**
+   `Agenten/Bus/skillsbot.log` schneidet den Befehl nach rund 40 Zeichen ab.
+   Vollstaendig steht er in der `state.db` des Profils
+   (`Agenten/Hermes/profiles/<name>/state.db`, Tabelle `messages`, die
+   `role='user'`-Zeile ist der Kickoff) und in
+   `Agenten/Hermes/cache/delegation/live/deleg_*/manifest.json` (goal) samt
+   `task-N.log` (Live-Transcript des Kindes).
+2. **Zuerst pruefen, was schon FERTIG ist.** Der Abbruch trifft oft nur den
+   Schluss - Bericht, Messreihe und Skripte liegen bereits auf der Platte,
+   waehrend das Kind an seiner Antwortform scheiterte. `task-N.log` bis zur
+   letzten Zeile lesen und jeden dort genannten Pfad im Baum pruefen.
+3. **Bergen statt neu fahren.** Vorhandene Artefakte gegen ihre eigene Quelle
+   halten (JSON gegen die Berichtstabelle), dann nur die fehlenden Gegenproben
+   nachziehen. Ein Neu-Dispatch bezahlt dieselbe Arbeit ein zweites Mal.
+4. **Nach versionierten Dateien sehen, die der Lauf geloescht hat.**
+   `git status --porcelain` nach `D`-Eintraegen abklopfen: ein Kind, das „seine
+   Hilfsdatei entfernt", trifft manchmal eine gleichnamige Datei aus dem Repo -
+   `git checkout HEAD -- <pfad>` und nur die echte Scratch-Spur loeschen.
+5. **Die Frist ist eine Eigenschaft des Absenders, kein Bot-Fehler.** Beim
+   SkillsBot kappt `BOT_FRIST_S` (`Agenten/Bus/skillsbot.py`). Lange Fachlaeufe
+   (Backtests, Serienlaeufe) deshalb in Teilstuecke schneiden oder als Cron
+   abgeben; die Frist hochzusetzen verschiebt nur den Abbruch.
+6. **Kind- und Bot-Zusammenfassungen sind Selbstauskunft.** Beleg sind die
+   Artefakte und die eigenen Laeufe, nie der Schlussabsatz des Kindes.
+
 ## Regeln (Standing)
 
 - **Zuerst suchen, dann fragen.** Eine Nachricht ohne Bezug ist in dieser Umgebung fast
@@ -100,8 +130,10 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
   - **Ein `index.lock` ist nicht automatisch ein aktiver Schreiber.** Pruefen:
     `tasklist //FI "IMAGENAME eq git.exe"` (kein Treffer = kein git-Prozess)
     und die lock-Groesse (0 Byte) + Alter. Ein verwaister lock (kein
-    git-Prozess, 0 Byte, aelter als Minuten) blockiert jeden Commit — `rm -f
-    .git/index.lock` und weiter. Nur bei einem AKTIVEN git-Prozess warten.
+    git-Prozess, 0 Byte, aelter als Minuten) blockiert jeden Commit — die Sperre UMBENENNEN
+    (`mv .git/index.lock .git/index.lock.verwaist-<datum>`), nicht loeschen:
+    laeuft doch ein Schreiber, ist die Datei der einzige Hinweis darauf. Nur
+    bei einem AKTIVEN git-Prozess warten.
 - **Der fertige Bericht einer parallelen Sitzung ist eine Behauptung, kein Beleg** — auch
   wenn er plausibel klingt und eine Kommandoausgabe mitbringt. Meist fehlt genau der
   entscheidende Schritt: belegt ist der Transport oder die Datei, nicht die Wirkung — dazu
@@ -113,5 +145,8 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
 - `hermes-config-ops` — wenn der Stand eine Hermes-Einstellung betrifft: dort steht, wie
   man „was gilt" belegt (Kommando statt YAML-Lesen) und wo Vorher-Kopien liegen.
 - `absturz-recovery` — wenn zusätzlich der Arbeitsbaum nach einem Absturz zu prüfen ist.
+- `subagent-delegation` — die Lehren zur Kind-Seite: output_schema erzeugt eine
+  Wiederholungsschleife, fertige Artefakte vor dem Neu-Dispatch bergen, Fristen
+  gehoeren in den Auftrag.
 - Hinweis: `absturz-recovery` ist nutzereigen und für die automatische Pflege gesperrt
   (`hermes curator adopt absturz-recovery`, wenn sie mitgepflegt werden soll).

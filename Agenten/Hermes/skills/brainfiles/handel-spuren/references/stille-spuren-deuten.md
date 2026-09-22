@@ -9,7 +9,89 @@ frisch ist -> `betriebsfehler-spuren.md` (kaputtes wachen.json, Absturz im
 Zyklus, `signal()` bildet nie ein Signal). Hier geht es um den haeufigeren
 Fall: die Spur arbeitet, sieht aber still aus.
 
-## Vier Lagen - nur eine ist ein Befund
+## Werkzeug statt Handarbeit (Dauerauftrag Max, 21.09.2026)
+
+Die Pruefung ist gebaut und angebunden - nicht jedes Mal neu skripten:
+
+- `Agenten/Handel/stille_spuren.py` - Bericht ueber ALLE Spuren aus
+  `dauerlauf.SPUREN`; `--kurz` nur Auffaelliges, `--wache` schweigt bei
+  Gesundheit (Watchdog-Muster).
+- `Agenten/Hermes/scripts/stille-spuren-wache.py` + Cron `stille-spuren-wache`
+  (alle 2 h, no_agent, Telegram). Meldet NUR `TOT` und `UEBERFAELLIG`.
+- Tests: `Agenten/Handel/tests/test_stille_spuren_werkzeug.py` (eigener Name -
+  `tests/test_stille_spuren.py` gehoert zur Berichtszeile des Tagesberichts).
+
+Regel aus dem Auftrag: solche Pruefungen gelten **fuer alle Spuren und alle
+kuenftigen**. Deshalb Spurliste bei JEDEM Lauf frisch aus `dauerlauf.SPUREN`
+lesen, nie eine eigene Namensliste pflegen - eine neue Spur erscheint dann von
+selbst (belegt: der erste Lauf fand 30 statt der erwarteten 29 Spuren,
+`trendwende_btc` war neu dazugekommen). Ein Test nagelt das fest.
+
+Aus-/Einstiegswoerter NIE neu definieren, sondern `stoerungen.teile(spur)`
+benutzen - die eine Hausdefinition. Sie kennt die `orbk`/`orb`-Eigenheit
+bereits; eine eigene Zaehlung ueber `aktion` weist diese Spuren
+faelschlich als still aus (genau dieser Fehler entstand hier im Wegwerfskript
+und verschwand mit `stoerungen.teile`).
+
+Weitere Fallen, beide gemessen: `positionen` ist bei `orbk` ein **Dict**
+(genau ein Platz), sonst eine Liste - `isinstance(..., dict)` abfangen, sonst
+zaehlt Python die Schluessel. Und die nautilus-Felder heissen
+`preis_einstieg` / `letzter_kurs` / `hoechster_kurs` / `stop_preis` / `frist`;
+wer `einstieg`/`hoch` raet, bekommt ueberall 0 und damit den Scheinbefund
+"Einstieg 0, kaputt", obwohl die Positionen gesund sind.
+
+Jede Wache in beide Richtungen beweisen: einmal gesund (0 Zeichen Ausgabe) und
+einmal mit kuenstlich verstelltem Zustand (Alarm), danach zuruecknehmen.
+
+## `--vorschau` zeigt bei Eigenspuren KEINE Signale — `--papier` verwenden
+
+Viele handgeschriebene Spuren (supertrend, macd_mtf, squeeze, wavetrend) tun
+in `--vorschau` sofort `return` nach `print("Vorschau: keine Dateien geschrieben.")`
+— **ohne Kerzen zu laden oder Signale zu rechnen**. Der Modus ist dort nur eine
+"nichts schreiben"-Markierung, kein Diagnosemodus. `--vorschau` auf diesen Spuren
+zeigt immer Stille, egal ob ein Signal vorliegt oder nicht.
+
+`--papier` laedt Kerzen, rechnet Indikatoren und gibt `EINSTIEG LONG/SHORT ...` aus
+— oder schweigt, wenn kein Signal vorliegt. Das ist die einzige Methode, die den
+Signalstatus dieser Spuren zeigt.
+
+Ausnahme: Spuren auf Basis von `spur_buch.zyklus` (moondev_\*, iv_wand, iv_waelle,
+liq_wand, trendwende_btc) drucken in `--vorschau` echte Signale
+(`Vorschau: Einstieg waere LONG XMR`) und dann die Sperrliste
+(`Live waere gesperrt durch: ...`). Dort taugt `--vorschau`.
+
+Faustregel: wenn `--vorschau` bei einer stillen Spur keine Sperrliste druckt,
+ist es eine Eigenspur — `--papier` einmalig laufen lassen um das Signal zu sehen.
+
+## Stille Spuren einschalten: Entscheidungsbaum
+
+Auftrag "stille Spuren untersuchen und einschalten" bedeutet: diagnostizieren,
+dann alle bereitgestellten Spuren scharf stellen, ohne nachzufragen.
+
+1. **Signal prufen** (s. o.: `--papier` fuer Eigenspuren, `--vorschau` fuer
+   spur_buch-Spuren). Kein Signal heute → Spur wartet korrekt.
+
+2. **Live-Pfad prufen:**
+   `grep -c 'markt_kauf\|AddOrder\|place_order\|/trade/order' <spur>/handeln.py`
+   (ohne tests/). 0 Treffer = Papier-only, kein Einschalten moeglich.
+
+3. **`handel_erlaubt` blockiert Papier:** Bei spur_buch-Spuren sperrt
+   `handel_erlaubt: false` AUCH den Papierlauf (`spur_buch.sperren_live()`
+   laeuft bei `--live`). Bei handgeschriebenen Eigenspuren hat `handel_erlaubt`
+   haeufig gar keine Wirkung auf Papier — dort laeuft der Papierlauf schon.
+
+4. **Einschalten** (Spur hat Live-Pfad und nur Fenster fehlt):
+   - `handel_erlaubt: true` in `wachen.json`
+   - `freigabe.erfuellt: true` (von Hand gesetzter Haken, mit datiertem Vermerk)
+   - Herzschlag-Reset wenn `letzter_lauf` > herzschlag_max_minuten alt
+   - Eintrag in `dauerlauf.AUTO_FREIGABE` (damit der Dauerlauf ohne `/ja` selbst
+     oeffnet, sobald nur das Fenster fehlt)
+   - Dauerlauf neu starten NUR wenn `AUTO_FREIGABE`-Tupel oder Code geaendert
+
+5. **Kein Signal** → warten. Nicht scharf stellen, weil kein Einstieg sichtbar;
+   der naechste Zyklus handelt automatisch sobald das Signal kommt.
+
+
 
 | Lage | Merkmal | Urteil |
 |---|---|---|

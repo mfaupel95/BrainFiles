@@ -70,6 +70,22 @@ Sperren. Zwei Fehlerrichtungen, beide gefährlich:
    Annahme danach stehen, gehört in die Begründung, **dass sie gemessen
    trägt** — nicht, dass sie streng ist. Eine Messung ist eine Momentaufnahme:
    dazuschreiben, wann neu zu messen ist.
+   - **Gebührensätze an einer ECHTEN Füllung prüfen, nicht an einer Tarifseite
+     oder einem Abo-Versprechen.** Zwei Zeugen, beide aus der API: die
+     abgerechnete Order (`TradesHistory` der Börse: `cost` gegen `fee`, beide
+     je Trade) und der Kontostand-Tarif (`GET /0/private/TradeVolume`, Feld
+     `fees[paar].fee` für Taker bzw. `fees_maker`; dazu `volume` = 30-Tage-
+     Volumen und `nextfee`/`nextvolume` der nächsten Stufe). Ein Nullsatz, der
+     nur in `wachen.json` steht, ist eine Annahme: `handeln.py --wachen` zeigt
+     die Datei, nicht die Wahrheit. Ein Abo-/Aktionsvorteil ist kein
+     Marktpreis — sein Wegfall gehört als auslösende Bedingung an dieselbe
+     Stelle wie der Wert (`_gebuehren_abo` samt Rücknahme-Satz), und die
+     Rücknahme passiert **bevor** Runden für die Freigabe gezählt werden.
+   - **Ein fehlendes Gebührenfeld ist auch eine Aussage.** Spuren, deren
+     Auswertung über einen gemeinsamen Leser läuft (z. B.
+     `auswertung_alle.runden_indikator`), rechnen ohne `gebuehr_taker` in
+     `wachen.json` **brutto** — dann gehört der Satz als Kommentarfeld in die
+     `wachen.json`, damit niemand das Netto aus der Zahl liest.
 9. **Dieselbe Zahl in gespiegelter Richtung ist keine Kalibrierung.** Wird eine
    Schwelle auf die Gegenrichtung übertragen (Long-Tor → Short), erst **beide
    Verteilungen messen** (Median, oberes Quartil, Maximum je Richtung) und den

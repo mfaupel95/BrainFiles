@@ -1,7 +1,8 @@
 model:
-  default: auto/smart
-  provider: smart
-  base_url: http://127.0.0.1:20128/v1
+  default: deepseek/deepseek-v4.1-flash
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
 providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
@@ -1772,9 +1773,6 @@ providers:
 fallback_providers:
   - provider: nous
     model: deepseek/deepseek-v4.1-flash
-  - provider: ollama-launch
-    model: qwen35-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
 toolsets:
   - hermes-cli
 database:
@@ -1908,7 +1906,7 @@ auxiliary:
 display:
   compact: false
   personality: creative
-  busy_input_mode: queue
+  busy_input_mode: steer
   bell_on_complete: true
   show_reasoning: true
   background_process_notifications: concise
@@ -2438,6 +2436,7 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,
 # tokens, and passwords are masked in tool output, logs, and chat

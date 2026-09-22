@@ -82,6 +82,17 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
   summieren (je Eintrag den erzeugten Pfad messen) oder den echten Pfad
   (`O:/Werkstatt/...`) nennen. Vor einer Zahl kurz prüfen, ob der gemessene Pfad
   selbst eine Verknüpfung ist.
+- **Auch ein Elternordner, der Verknüpfungen nur ENTHÄLT, wird unterschätzt —
+  nicht nur der Verknüpfungspfad selbst.** Ein rekursives Aufsummieren über den
+  Elternpfad (`du -sh <ordner>` oder `Get-ChildItem -Recurse | Measure-Object
+  Length -Sum`) zählt die Junction-Kinder nicht mit, weil es den Links nicht
+  folgt; der korrekte Befehl ist die **Liste der Einträge**: `du -sh <ordner>/*/`
+  liefert die Junction-Ziele mit. Sanity-Check vor dem Melden: **eine Summe,
+  die kleiner ist als ein einziges bekanntes Kind, ist selbst-evident falsch**
+  (gemessen 0,7 GB für einen Ordner mit bekanntem 828-MB-Unterordner) — dann
+  neu messen statt die Zahl zu glauben. Derselbe Fehler entsteht leise, wenn
+  `-ErrorAction SilentlyContinue` eine abgebrochene Rekursion verschluckt: eine
+  zu niedrige Zahl ist kein Befund, sondern ein Messfehler.
 - **Rekursive Größenmessung großer Bäume reißt die Zeitgrenze des
   Host-PowerShell-Werkzeugs (~300 s).** Das gilt auch fuer einen **einzelnen**
   Ordner: `AppData\Local\Temp`, `AppData\Local\Packages` und `C:\$Recycle.Bin`

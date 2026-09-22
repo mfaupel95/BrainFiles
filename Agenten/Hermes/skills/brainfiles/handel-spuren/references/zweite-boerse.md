@@ -37,7 +37,43 @@ jede Spur, deren Live-Weg ueber gebundene Funktionsnamen laeuft.
    **Kontowaehrung gehoert in die wachen.json** (hier EUR), sonst prueft die Spur
    60 USDC statt 60 EUR.
 
-## Fallen, die dabei aufgefallen sind
+## Kurs-Waehrungs-Mismatch: quelle() liefert USD, Boerse braucht EUR
+
+`spur_buch.einstieg()` rechnet Stop und Ziel aus dem `kurs`-Wert, der aus
+`quelle()` kommt — bei CoinGecko-basierten Spuren ist das der USD-Preis.
+Kraken setzt den Stop als EUR-Betrag. Ergebnis: ein Stop bei 158 USD wird als
+158 EUR gesetzt, waehrend der Markt bei 497 EUR steht. Entweder sofort gerissen
+(Stop ueber dem Preis) oder viel zu nah (Stop deutlich unter dem Preis in
+anderer Waehrung).
+
+**Fix (in `spur_buch.py`):** Im Live-Einstieg den Boersen-Kurs holen (`weg.letzter_kurs(vinst)`)
+und Stop, Ziel und Menge auf Basis dieses Kurses neu berechnen. Schlaegt der Abruf
+fehl, Einstieg uebergehen (niemals mit falschem Kurs ordern):
+
+```python
+try:
+    kurs_live = float(weg.letzter_kurs(vinst))
+    if kurs_live > 0:
+        kurs = kurs_live  # Stop/Ziel/Menge neu rechnen
+except Exception as e:
+    print("Boersen-Kurs nicht abrufbar (%s) - Einstieg uebersprungen" % e,
+          file=sys.stderr)
+    return None
+```
+
+Testmuster (`test_spur_buch_orderweg.py`):
+- Attrappe mit `letzter_kurs = lambda self, inst: 200.0` (deutlich != quelle-Kurs 100)
+- Assert auf `p["einstieg"] == 200.0`, `p["stop"] == 200*0.93`, `p["ziel"] == 200*1.14`
+- Attrappe mit `letzter_kurs` der `RuntimeError` wirft → `einstieg()` gibt `None`
+
+Die Paar-Abbildung (`venue_inst(inst, w)`) erzeugt aus `XMR` bei `boerse: kraken`
+den String `XMR-EUR`. Dieser String muss in `kraken_spot.PAARE` stehen; fehlt er,
+wirft `paar_fuer()` `ValueError` — der Einstieg wird lautlos uebersprungen
+(Exception in spur_buch faengt das ab). Vor dem Anbinden einer neuen Spur an Kraken
+die Paare live validieren: `GET /0/public/AssetPairs` und die EUR-Paarnamen je Signal
+in die `PAARE`-Dict eintragen.
+
+
 
 - **Duplikate JSON-Schluessel beim Einfuegen.** Ein eingefuegtes
   `"guthaben_waehrung": "EUR"` direkt hinter `handel_erlaubt` war wirkungslos,
@@ -55,6 +91,43 @@ jede Spur, deren Live-Weg ueber gebundene Funktionsnamen laeuft.
   es wird ausschliesslich aus dem Live-Zweig gerufen, der vorher die ganze
   Sperrenkette passiert. Der Papierzweig laeuft ueber einen eigenen Pfad und
   beruehrt das Modul nie.
+
+## Jede Boerse hat Preisregeln — der Orderpreis muss gerundet raus
+
+Ein Stop-/Trigger-/Limitpreis kommt aus einer Rechnung (`Einstieg * (1 - stop_pct)`)
+und hat damit zu viele Stellen. Beide Boersen lehnen ihn dann ab, ohne Teilausfuehrung —
+der Notausstieg fehlt komplett und die Spur verkauft die gerade gekaufte Position
+sofort zurueck (Spesen ohne Handel). Die erlaubte Stellenzahl steht **je Paar bzw.
+je Instrument in der API**, nie in einer Konstanten:
+
+| Boerse | Feld | Beispiele |
+|---|---|---|
+| Kraken | `AssetPairs[paar].pair_decimals` | SOLEUR/XETHZEUR 2, XXBTZEUR 1, AKEEUR 8, KASEUR 5 |
+| OKX | `instruments[instId].tickSz` | SOL-USDC 0.01, BTC-USDC 0.1, XRP-USDC 0.0001 |
+
+Muster: eine Funktion `preis_gerundet(paar, preis, richtung="auf")` **je
+Boersenmodul** (`kraken.preis_gerundet`, `okx_spot.preis_gerundet`), aufgerufen in
+der Stop-Funktion selbst — nicht beim Aufrufer. So sind alle Spuren mitgemeint:
+`kraken.stop_setzen` wird von `kraken/handeln.py`,
+`moondev_marktlage/live_kraken.py` und `mosaic/kraken_spot.py` gerufen.
+
+- **Richtung `auf` (ceil) fuer den Long-Stop:** der Ausstieg liegt dann nie TIEFER
+  als gerechnet, das Risiko wird also nicht groesser als die Wache erlaubt. `ab`
+  (floor) ist die Gegenrichtung fuer den Short-Stop.
+- **Fertig formatierten String zurueckgeben**, nicht `float`: `str(float)` schreibt
+  kleine Werte als `1e-08`, was ebenfalls abgelehnt wird.
+- **`round(x, 6)` vor `ceil`/`floor`:** `128.995 * 100` ist binaer
+  `12899.499999999998` und kippt die Rundung sonst.
+- **Test-Doubles ohne Preisregel-Feld nicht raten lassen:** liefert `paar_info()`
+  kein `preis_stellen` (handgeschriebene Attrappen in aelteren Tests), den rohen
+  Wert weitergeben statt eine Stellenzahl zu erfinden. Neue Tests fuellen das Feld.
+- **Probe ohne Geld:** die Order mit `validate=true` (Kraken `AddOrder`) bzw. gegen
+  den `order-algo`-Pruefweg senden — sie nimmt den gerundeten Preis an und den
+  rohen nicht. Das ist der Beleg vor dem Commit, ohne Orderrisiko.
+- **Unbekannter Paarname wirft laut** (`EQuery:Unknown asset pair`). Vor dem
+  Anschliessen die echten Paarnamen aus der `watchlist`/Instrumentenliste gegen
+  `AssetPairs` pruefen; OKX ist bei zu vielen Stellen nachsichtig (live
+  angenommene Stops mit 5 Stellen), Kraken nicht.
 
 ## Pruefen
 

@@ -78,7 +78,21 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   der Ausstieg verkauft ins Leere, Funding und Bilanz rechnen fuer etwas, das
   niemand haelt. Vor dem Buchen die Fuellung pruefen (`accFillSz`), bei 0 die Order
   stornieren und nichts buchen, bei Teilfuellung den Rest stornieren und nur das
-  Gehandelte buchen. Unbekannte Antwort (Abfragefehler) zaehlt als nicht gefuellt.
+  - **Unbekannte Antwort (Abfragefehler) zaehlt als nicht gefuellt.**
+  - **Ein Limit HINTER dem Markt ist keine Nichtfuellung, sondern ein WARTENDER Auftrag.**
+    Ein Kauflimit unter dem Ask (bzw. ein Verkaufslimit ueber dem Bid) kann im Moment
+    gar nicht fuellen — es wartet auf einen Ruecklauf, und das ist bei einer
+    Einstiegsrechnung aus Zonen/Swing-Punkten die Absicht. Erst die Marktbarkeit
+    entscheiden, dann urteilen (`kurs_und_spanne` → letzter Kurs, Bid, Ask):
+    **marktbar und trotzdem nicht gefuellt** = echter Fehler (stornieren, Journalzeile
+    `order_nicht_gefuellt`); **nicht marktbar** = liegen lassen, Journalzeile
+    `order_offen` mit Grund `limit_wartet`, und eine eigene Liste im Zustand
+    (`wartende`) fuehren. Diese Liste am ANFANG jedes Live-Zyklus abarbeiten: gefuellt →
+    als Position buchen (Stop und Ziel haengen als `attachAlgoOrds` an der Order und
+    werden beim Fuellen aktiv), storniert → vergessen, sonst unveraendert liegen
+    lassen. Ohne diesen dritten Weg entsteht eine Schleife: Order setzen, Order nach
+    Sekunden wegwerfen, Order wieder setzen — jede Runde ein Fehlerprotokolleintrag,
+    den niemand entscheiden kann, und ein Platz, der nie belegt wird.
 - **Das Buch gegen die BOERSE pruefen, nicht gegen sich selbst.** `/account/positions`
   ist die Wahrheit eines Live-Buchs; fehlender Bestand oder Groesse 0 (OKX behaelt
   geschlossene Positionen als Zeile) ist ein Geist. Beim Ausbuchen die offene Order

@@ -466,5 +466,47 @@ Befehl gilt:
    faellt die naechste Sitzung in dieselbe Falle, weil der Bot dann einfach
    wieder nach fuenf Minuten abbricht.
 
+## Eine neue Windows-Aufgabe registrieren, ohne Einstellungen nachzubauen
+
+- **Vorlage spiegeln statt Einstellungen nachbauen:** `Export-ScheduledTask -TaskName
+  <bewaehrte-aufgabe>` liefert die XML, darin die Action-Argumente und
+  `<StartBoundary>` per `-replace` ersetzen, dann
+  `Register-ScheduledTask -TaskName <neu> -Xml $xml -Force`. Damit sind
+  `StartWhenAvailable`, `MultipleInstances=IgnoreNew`, Zeitlimit und das versteckte
+  Fenster (`-WindowStyle Hidden` steht in den Action-Argumenten) mitgenommen - genau
+  die Einstellungen, die eine von Hand gebaute Aufgabe still anders hat.
+- **Das Registrierungsskript heisst `Routinen/<name>-aufgabe.ps1`** (Hauskonvention,
+  neben `bus.ps1` / `handelszentrale-aufgabe.ps1`) und enthaelt kein `Melde-Start`:
+  damit faellt es unter die Ausnahme fuer Registrierer und braucht weder Bus-Anbindung
+  noch `einmalig-`-Praefix.
+- **Erhoehung haengt am AUSLOESER, nicht am Benutzer:** eine ZEIT-Aufgabe (taeglich/
+  woechentlich, Principal `Interactive`) liess sich ohne Admin registrieren; eine
+  ANMELDE-Aufgabe (`-AtLogOn`) verlangt Erhoehung. Nach der Registrierung
+  `NextRunTime` nennen und einmal ueber die Aufgabenplanung fahren
+  (`Start-ScheduledTask`, dann muss `Get-ScheduledTaskInfo` `LastTaskResult: 0` zeigen).
+- **Reihenfolge im Tageslauf mitdenken:** eine Uebernahme-Aufgabe nach der
+  Sicherungs-Aufgabe legen (erst sichern, dann umziehen) - laeuft die Uebernahme
+  zuerst, arbeitet sie auf einem Stand, den die Sicherung gleich danach ueberschreibt.
+
+## Eine Routine testen, die es nur so gibt (Temp-Baum statt Attrappe)
+
+- **Funktionstest einer `.ps1`-Routine:** Kopie in einen Temp-Baum legen, der die
+  Pfadableitung nachbildet - `<tmp>/Agenten/Routinen/<routine>.ps1` und
+  `<tmp>/Agenten/Bus/Ereignis.ps1`, weil die Routine Wurzel und Bus relativ zu
+  `$PSScriptRoot` sucht. Dann laeuft das unveraenderte ORIGINAL ohne Testschalter; ein
+  `-Wurzel`-Parameter nur fuer Tests waere eine Hintertuer in ein Produktionsskript.
+  Assertions gegen `git log/show/status/ls-files` und ein bare-Origin-Repo, nie gegen
+  die Stdout-Ausgabe des Skripts.
+- **Ein neues Testmodul muss in `test_ende_zu_ende.py` in die Namenstuple von
+  `test_alle_modultests_laufen`** - sonst laeuft es nie mit der Suite, und "einzeln
+  gruen" heisst nicht "mitgelaufen".
+- **Die Suite bricht am ERSTEN roten Modul ab** (das `assert` steht in der Schleife):
+  alles danach laeuft gar nicht. Bei einem roten Lauf die Module einzeln nachfahren
+  und im Bericht TRENNEN, was vorbestehend rot ist und was von der eigenen Aenderung
+  kommt - `git log --oneline -- <datei>` nennt den Commit, der die Annahme des Tests
+  gebrochen hat. Ein hart auf einen alten Commit verdrahteter Vergleich ("weicht vom
+  Stand vor Aufgabe N ab") ist der typische Uebeltaeter; er wird NICHT still
+  umgeschrieben, sondern als Befund gemeldet.
+
 ## When to Use
 Use this skill whenever you need to add a new automated routine to the BrainFiles Telegram Bus, or when you are setting up the bus for the first time on a new machine. Auch beim Auftrag "Autostart Routine einrichten" fuer einen Dienst oder ein Fenster (Abschnitt Dienst-Start-Routinen).

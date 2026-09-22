@@ -236,23 +236,35 @@ wieder bestaetigt werden. Kein Dauerzustand.
   Tupel steht im laufenden Prozess) oder ein Code-Pfad angefasst ist. Beleg ist
   die Logzeile `<spur> (live) ok` im `dauerlauf.log`.
 - **Eine zurueckgenommene Spur wieder scharf stellen (Auftrag "<spur> wieder
-  live und Handel erlaubt") sind DREI Schritte, nicht einer.** (1)
+  live und Handel erlaubt") sind mehrere Schritte, nicht einer.** (1)
   `handel_erlaubt` in der wachen.json auf true UND den alten
   `_handel_erlaubt_vermerk` durch einen neuen datierten Vermerk ersetzen (der
   alte begruendet sonst weiter das Gegenteil - ein Widerspruch in der Datei ist
-  schlimmer als kein Vermerk). (2) Die Spur in `dauerlauf.AUTO_FREIGABE`
-  zuruecknehmen und den Kommentar darueber, der die Herausnahme begruendet,
-  mitschreiben. (3) Dauerlauf neu starten - das Tupel liegt im laufenden
-  Prozess. Belegen vor dem Neustart: `handeln.py --vorschau` muss "Live waere
-  gesperrt durch: nichts" sagen, und das Guthaben-Tor mit echten Zahlen zeigen
-  (`handeln._guthaben_text(json.load(open('wachen.json')))` - `wachen()` gibt es
-  in kraken/handeln.py nicht).
-- **Eine Spur, die aus dem Papier zurueck ins Live kommt, traegt Papier-
-  Positionen ohne Order-Kennung.** Der erste Live-Lauf bucht sie per
-  `bueche_papier_altlasten_aus` als "buchbereinigung" aus (kraken-Massstab:
-  `kauf_txid` fehlt; scanner: `kauf_ord_id`; xperp: `modus`). Das ist gewollt,
-  aber es muss VOR dem Neustart gesagt werden - sonst sieht es im Journal wie
-  ein Verlusttag aus.
+  schlimmer als kein Vermerk). (2) `stillgelegt` auf false setzen, falls vorhanden.
+  (3) Herzschlag-Reset: nach laengerer Stilllegung ist `zustand.json.letzter_lauf`
+  viele Stunden alt und die Herzschlag-Sperre greift sofort. Alter messen:
+  `python -c "import json,datetime; z=json.load(open('<spur>/zustand.json'));
+  ts=datetime.datetime.fromisoformat(z['letzter_lauf']).astimezone(datetime.timezone.utc);
+  print((datetime.datetime.now(datetime.timezone.utc)-ts).total_seconds()/60, 'min')"`
+  Bei Alter > herzschlag_max_minuten: `letzter_lauf` auf jetzt setzen, BEVOR
+  das Fenster geoeffnet wird — sonst sperrt der erste Zyklus sofort alle
+  Positionen (flach_stellen). (4) Die Spur in `dauerlauf.AUTO_FREIGABE`
+  eintragen, falls gewuenscht, und den Kommentar darueber aktualisieren.
+  (5) Dauerlauf neu starten nur, wenn AUTO_FREIGABE oder Code geaendert wurde
+  (das Tupel liegt im laufenden Prozess; wachen.json und zustand.json werden je
+  Zyklus neu eingelesen). Belegen vor dem Neustart: `handeln.py --vorschau` muss
+  "Live waere gesperrt durch: nichts" sagen, und das Guthaben-Tor mit echten
+  Zahlen zeigen.
+**Eine Spur, die aus dem Papier zurueck ins Live kommt, traegt Papier-
+Positionen ohne Order-Kennung.** Der erste Live-Lauf bucht sie per
+`bueche_papier_altlasten_aus` als "buchbereinigung" aus. Erkennungsmerkmal
+je Spur: kraken `kauf_txid` fehlt; scanner `kauf_ord_id` fehlt; xperp und swap
+`modus != 'live'` (swap traegt kein `kauf_ord_id`-Feld). Das ist gewollt,
+aber es muss VOR dem Neustart gesagt werden — sonst sieht es im Journal wie
+ein Verlusttag aus. Funding-Zeilen mit `modus=live` koennen auch aus dem
+Papierlauf stammen (der Dauerlauf-Modus wird als `live` protokolliert, nicht
+der Positions-Modus) — kein Beleg fuer eine echte Live-Order. Beleg ist eine
+`kauf`- oder `eroeffnen`-Zeile mit `modus=live` im Journal.
 - **Boerse wechseln statt Waehrung (`boerse` in der wachen.json).** Wenn die
   Zielboerse den Markt kennt, aber unter eigenem Paarnamen und in anderer
   Kontowaehrung: Adaptermodul mit DENSELBEN Funktionsnamen wie das bisherige
@@ -301,6 +313,13 @@ laeuft in einen Fehler, und ein Notausstieg will verkaufen, was nicht da ist.
   (`buchbereinigung.py`-Muster: Positionen OHNE Order zum Marktkurs als
   Papier-Verkauf mit eigenem `grund` ausbuchen, Positionen MIT Order liegen
   lassen, idempotent) wirkt nur bis zum naechsten Papier-Zyklus.
+- **Befund Buch \u2260 Boerse: sofort bereinigen, nicht nachfragen.** Zeigt
+  eine Spur N Positionen, die Boerse kennt sie nicht — das ist die
+  Papier-Altlast-Situation. Keine Rueckfrage, keine Option-Liste: Sicherung
+  (`.bak-JJJJMMTT`), `bueche_papier_altlasten_aus` ausfuehren, spiegeln, im
+  Bericht erwaehnen. Das Erkennungsmerkmal (kein `kauf_ord_id`, oder
+  `modus != 'live'`) und die richtige Funktion sind bekannt — Max erwartet
+  die Ausfuehrung, nicht die Frage.
 - **Dauerhaft sind zwei Wege, am besten beide:** (a) der Live-Zweig raeumt zu
   BEGINN jedes Live-Laufs selbst aus — eine Funktion, die vor dem
   Ausstiegspruefen laeuft, ohne Kurs nichts anfasst und die Altlast als
@@ -347,13 +366,58 @@ wirft `AttributeError`. Stand die Zeile VOR dem `try`, brach jede Bildschirm-Fre
 im `try`, wurde der Fehler geschluckt. Beim Kopieren eines Freigabe-Blocks aus scanner
 (Path) in eine Spur mit Strings (mosaic) deshalb `sys.path.insert(0, HANDEL)` schreiben.
 
+**Dritte Falle: `import freigabefenster` (blanker Import) findet das Modul im Spurlauf
+nicht — und der `except`-Zweig meldet es nicht.** Jede Spur hat ihren eigenen Ordner als
+`sys.path[0]`; `Handel/` liegt dort NICHT (nur `<spur>/../../Bus` oder gar nichts). Ein
+blankes `import freigabefenster` schlaegt mit `ModuleNotFoundError` fehl; der
+`best-effort`-`except`-Block faengt das auf, gibt `False` zurueck, und die Sperre meldet
+`Freigabefenster nicht offen — keine Sitzung am Bildschirm und kein Zeitfenster` —
+obwohl das Fenster offen war. Der Dauerlauf las dieselbe Meldung, fand `nur_fenster_fehlt`
+bestaetigt und oeffnete im 30-Minuten-Takt Fenster, die nichts bewirkten. Das Modul muss
+ueber den PFAD geladen werden (Muster `risikostufe.py`: `spec_from_file_location`):
+
+```python
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec = spec_from_file_location("freigabefenster", _fw_datei)
+freigabefenster = module_from_spec(_fw_spec)
+_fw_spec.loader.exec_module(freigabefenster)
+```
+
+Der `except`-Zweig in `zeitfenster_offen()` muss den Fehler nach `stderr` schreiben —
+nicht verschlucken: eine stumme `False`-Rueckgabe behauptet einen Sachverhalt
+(`kein Zeitfenster`), den sie gar nicht geprueft hat. Nachweis: im Kindprozess (cwd =
+Spurordner, gleiche Vorbedingungen wie im Zyklus) testen:
+`python -c "import handeln; print(handeln.zeitfenster_offen())"`
+
 **Testmuster:** `handeln.zeitfenster_offen` in `setUp` auf `False` patchen (sonst haengt
 der Test davon ab, ob Max gerade freigegeben hat), die echten Seams VOR dem Patchen in
 `self._seams_alt` sichern und im `tearDown` zuruecksetzen (Fakes lecken sonst in die
 naechsten Tests), und den Einstiegspfad mit einem `hole_freigabe`, das bei Aufruf wirft,
 gegen die Bildschirm-Fassung absichern.
 
-## Nach dem Scharfschalten beobachten
+## Papier-Altlasten blockieren Live-Plaetze in Buch-Spuren (spur_buch.py)
+
+`spur_buch.live_einstiege()` prueft `len(z["positionen"]) >= maxoffen` ohne nach
+`modus` zu filtern. Positionen ohne `modus`-Feld (Altbestand aus dem Papierlauf)
+zaehlen damit als belegte Plaetze — bei 4 Altlasten und `max_offene_positionen: 4`
+kauft die Spur NIE live, ohne irgendeine Fehlermeldung.
+
+- **Symptom:** Vorschau sagt `Live waere gesperrt durch: nichts`, aber das Journal
+  hat keine `,live,`-Zeile, und `zustand.json` zeigt nur Positionen ohne `modus`-Feld.
+- **Diagnose:** `python -c "import json; z=json.load(open('mosaic/zustand.json'));
+  print('live:', [p for p in z['positionen'] if p.get('modus')=='live']);
+  print('altlasten:', [p for p in z['positionen'] if not p.get('modus')])"`
+- **Fix:** Positionen ohne `modus='live'` vor dem Live-Lauf aus `zustand.json` entfernen
+  (Sicherung vorher: `.bak-JJJJMMTT`). Beachte: `pruefe_ausstiege` und `live_ausstiege`
+  ueberspringen Positionen ohne `modus='live'` bereits korrekt (`if p.get('modus') !=
+  'live': continue`) — sie werden nicht verkauft, nur stillgelegt. Altlasten koennen
+  also stehen bleiben, solange sie keine Plaetze belegen muessen.
+- **Dauerhaft:** `live_einstiege()` sollte `len([p for p in z['positionen'] if p.get('modus')
+  == 'live']) >= maxoffen` zaehlen, nicht alle Positionen. Vor einem Fix an `spur_buch.py`
+  testen, dass die Aenderung nicht `pruefe_ausstiege`-Logik anderer Buch-Spuren trifft.
+
+
 
 Eine scharfe Spur kann still nichts tun — aus zwei Gruenden, die im Journal
 gleich aussehen (keine neue Zeile):
@@ -379,6 +443,61 @@ Laufzeitdatei unter `Agenten/Hermes/cache/` schreiben, sonst meldet die Wache
 jedes Mal alles erneut; im Erstlauf nur den Zustand setzen und nichts senden.
 Beleg je Meldungsart: eine Probe-Journalzeile in einem Temp-Ordner — der erste
 Lauf meldet genau einmal, der zweite ist still.
+
+## Stille Spuren diagnostizieren (kauft nie, kein Journal)
+
+Eine Spur läuft seit Wochen, das Journal ist leer oder hat nur wenige Zeilen. Vor
+auch nur einem Schalter-Flip das Schweigen verstehen.
+
+**Schritt 1 – `--wachen` auswerten:** zeigt den echten Lage-Stand (`freigabe_erfuellt`,
+`herzschlag_frisch`, `ev_negativ`, Ratsche). Ist `freigabe_erfuellt: false` → die Spur
+wartet auf den von Hand gesetzten Haken, kein Fehler.
+
+**Schritt 2 – Signal messen mit `--papier`, nicht `--vorschau`:** Viele selbstgeschriebene
+Spuren (supertrend, macd_mtf, squeeze, wavetrend) geben in `--vorschau` sofort `return`
+ohne Signalinformation (der Vorschau-Modus ist in diesen Spuren nur eine "nichts
+ schreiben"-Markierung). Ein Kaufsignal ist NUR an `stdout` bei `--papier` sichtbar:
+`EINSTIEG LONG ...` oder eben Stille. `--vorschau` eignet sich in diesen Spuren nur,
+um sicher zu sein, dass nichts geschrieben wird — nicht um Signale zu prüfen.
+
+**Ausnahme:** Spuren auf Basis von `spur_buch.zyklus` (moondev_*, iv_wand, iv_waelle,
+liq_wand, trendwende_btc) geben in `--vorschau` echte Signale aus (`Vorschau: Einstieg
+waere LONG XMR`) und danach `Live waere gesperrt durch: ...`. Dort taugt `--vorschau`.
+
+**Schritt 3 – Live-Pfad prüfen:** Nicht jede Spur mit `handel_erlaubt: true` kann
+ordern. Suche nach echten Orderaufrufen in `handeln.py`:
+`grep -n 'markt_kauf\|AddOrder\|place_order\|/trade/order' <spur>/handeln.py`
+(Testdateien ausschließen). Kein Treffer = Papier-only; `--live` verweigert mit Text
+`--live verweigert: ...`. Solche Spuren brauchen KEINEN freigabe.erfuellt-Haken und
+keine AUTO_FREIGABE-Eintragung — das wäre wirkungslos.
+
+**Schritt 4 – `handel_erlaubt` blockiert Papier nur bei spur_buch-Spuren, NICHT
+ bei handeln.py-Eigenspuren:** `spur_buch.sperren_live()` läuft nur bei `--live`;
+der Papierlauf läuft unabhängig. Eigenspuren prüfen selbst. Ein `handel_erlaubt:
+false` in der wachen.json einer Eigenspur hat häufig gar keine Wirkung auf Papier.
+
+**Schritt 5 – Einschalten (wenn gewünscht):**
+- Spur hat Live-Pfad UND nur Fenster fehlt → `handel_erlaubt: true` +
+  `freigabe.erfuellt: true` + Eintrag in `dauerlauf.AUTO_FREIGABE`. Herzschlag-Reset
+  wenn `letzter_lauf` veraltet (> herzschlag_max_minuten).
+- Spur hat keinen Live-Pfad → nichts zu tun; Papier läuft bereits.
+- Kein Signal vorhanden → warten; nicht scharf stellen, weil kein Einstieg sichtbar.
+
+## Marktscanner-Tageslauf: scan.py vs handeln.py
+
+`scan.py` schreibt **nur** `berichte/*.json` — keinen Zustand, kein Journal, keine
+Position. Zwei gleichzeitige `scan.py`-Läufe auf demselben Ordner sind harmlos
+(idempotent, letzter Schreiber gewinnt). Die Doppellauf-Sperre in `marktscanner.ps1`
+(`if dauerlauf.pid exists → exit 0`) war für den Fall gebaut, dass `handeln.py` noch
+in der Routine lief (bis 14.09.2026). Läuft `handeln.py` ausschließlich im Dauerlauf,
+stoppt die Sperre auch `scan.py` → der Tagesbericht friert ein; der scanner kauft an
+jedem Einstieg zum Preis von gestern mit falschem Stop/Ziel.
+
+**Regel:** Doppellauf-Sperren in Tagesroutinen immer auf die SCHREIBENDE Datei zuschneiden.
+`scan.py` (nur Lesen + berichte schreiben) braucht keine Sperre gegen den Dauerlauf.
+Ist die Sperre entfernt und der Bericht veraltet, `scan.py` einmalig von Hand ausführen:
+`cd Agenten/Handel/scanner && .venv/Scripts/python.exe scan.py`
+Nachweis: `berichte/neuester.json` → `erzeugt`-Feld und Datum prüfen.
 
 ## Wie man Max die Entscheidung stellt
 

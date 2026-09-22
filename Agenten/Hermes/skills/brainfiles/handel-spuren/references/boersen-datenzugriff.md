@@ -150,6 +150,36 @@ aussieht, ist im Host-Kontext falsch. Messung und Signatur gegen die
 **Kraken-Serverzeit** (`public/Time`) und die **Host-Uhr** ausfuehren, nicht
 gegen die Sandbox-Uhr.
 
+## Kontostand und Orderlage lesen (signiert)
+
+Drei getrennte Abrufe — nie einer fuer alle drei Fragen:
+
+```bash
+python -c "import okxf;b=okxf._roh('/api/v5/account/balance?ccy=USDC', signiert=True);d=b[0]['details'][0];print(d['eq'],d['availEq'],d['frozenBal'],d['isoEq'],d['stgyEq'])"
+python -c "import okxf;print(len(okxf._roh('/api/v5/trade/orders-pending', signiert=True)))"
+python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in okxf._roh('/api/v5/trade/orders-algo-pending?ordType=conditional', signiert=True)])"
+```
+
+- **`okxf._roh` gibt die Liste DIREKT zurueck** (kein `["data"]`-Mantel). Ein
+  `.get('data')` darauf ist ein Attributfehler, kein leeres Ergebnis.
+- **Kaufkraft ist `availEq`, nicht `eq`.** `frozenBal` zerfaellt in `isoEq`
+  (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`
+  (OKX-eigene Reserve, Mechanik nicht dokumentiert). Gemessen: `eq` 864,
+  `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei „Live waere gesperrt
+  durch: nichts" melden, weil ihre eigenen Tore offen sind; die Order scheitert
+  dann erst am freien Betrag. Kaufkraft immer in der Waehrung nennen, in der
+  bezahlt wird (Spot-USDC-Kauf und Perp-Margin liegen im selben Konto,
+  `acctLv=2` rechnet je Waehrung).
+- **Bedingte Stops liegen NICHT in `orders-pending`,** sondern nur in
+  `orders-algo-pending?ordType=conditional`. „0 offene Auftraege" ist damit
+  keine Aussage ueber den Schutz einer Position (siehe
+  `references/wartende-auftraege-belegen-platz.md`).
+- **Das Buch ist der zweite Zeuge — und der schwaechere.** Eine Position ohne
+  Orderkennung (`kauf_ord_id`/`ord_id`, bei aelteren Spuren das Feld `modus`)
+  ist keine Position an der Boerse: sie belegt nur einen Platz und laesst jeden
+  Ausstieg in einen Boersenfehler laufen. Vor jeder Aussage „die Spur haelt N
+  Positionen" die Boerse fragen und die Live-Zeilen im Journal zaehlen.
+
 ## Credentials: Stufe-0-Weg (nie Werte durch die Konversation)
 
 Schluesseldateien (`MaxHirn\Wissen\OKX_API.env` und Co.) sind Stufe 0 — nie

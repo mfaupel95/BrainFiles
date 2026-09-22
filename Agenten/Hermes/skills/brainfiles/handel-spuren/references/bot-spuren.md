@@ -54,6 +54,34 @@ Dann dieselben Endpunkte ueber die oeffentliche API holen (`urllib`, nur
 Standardbibliothek - kein `requests` im Haus-venv) und in der README
 **ausdruecklich sagen**, dass es nicht der Bot selbst ist.
 
+## Signal-Kanal-Screenshot: das ehrliche Gegenstueck statt Copytrading
+
+Ausloeser: Max schickt einen Screenshot aus einem VIP-Signal-Kanal (Gewinnkarte,
+hoher Hebel, ROI in Prozent) und fragt „koennen wir das auch schaffen?" —
+oder kurz danach „Ja spur anlegen".
+
+Erst die drei Punkte klar sagen, dann bauen (nicht umgekehrt):
+
+- Ein Screenshot ist eine **Gewinnkarte, kein Track Record** — die
+  Verlustsignale sieht niemand (Zuchtauswahl).
+- **10–20x Hebel** auf Einzelsignale ohne sichtbare Stop-Definition ist genau
+  das Risikoprofil, das die Hausregeln ausschliessen. Ein Hebel ist keine
+  Strategie.
+- Ein **synthetischer Aktien-/Rohstoff-Perpetual** liegt auf keiner
+  angebundenen Boerse (OKX-Spot, Kraken-Spot) — nicht handelbar, egal wie gut
+  das Signal war.
+
+Das Gegenstueck ist eine Papierspur auf demselben BEOBACHTBAREN Muster (z. B.
+kurzfristiger Kursimpuls plus Volumenfilter), deterministisch, mit Stop und
+Ziel, ohne Hebel, ohne Live-Zweig, ueber den gemeinsamen Kern
+(`spur_buch.py`) — nach ein paar Wochen Papierlauf auswertbar und nachrechenbar.
+Das ist ehrlich vergleichbar, ein Kanal-Copytrading ist es nicht.
+
+Nachweis beim Bauen: `--vorschau` gegen die echte Quelle (greift die Regel
+ueberhaupt?), dann ZWEI echte Papierzyklen — der erste bucht die Positionen,
+der zweite muss den Bestand halten. Ein Volumen-/Groessenfilter im Tor gehoert
+in `wachen.json`, nicht in den Code.
+
 ## Der gemeinsame Kern
 
 `Agenten/Handel/spur_buch.py` traegt das Buch fuer alle Feed-Spuren: `pfade()`

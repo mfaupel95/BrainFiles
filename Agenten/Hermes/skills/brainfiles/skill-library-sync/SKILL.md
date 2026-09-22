@@ -181,6 +181,16 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
    `find . -name .git` zaehlen. Reine Fremd-Klone ohne ein einziges SKILL.md in einem
    Skill-Baum sind kein Inhalt, sondern belegter Platz — als Aufraeumkandidat melden,
    nicht ungefragt loeschen.
+   **Vor dem Verschieben belegen, dass nichts auf sie zeigt:** in `skills/` und
+   `profiles/` nach `skills/<ordner>` suchen (`search_files`, eng gefasst — ein
+   rekursives `grep` ueber `profiles/` laeuft ins Zeitlimit). Kein Treffer = die
+   Klone sind reine Doppel fremder Repos, alle neu klonbar, und duerfen verschoben
+   werden. **Ziel benennen und am freien PLATZ messen, nicht an der Ordnerzahl:**
+   `Drive-Frei` vorher/nachher (`(Get-PSDrive C).Free`) — die Zahl der Ordner am Ziel
+   sagt nichts ueber den gewonnenen Platz. Verschieben (nicht loeschen), Zielordner
+   mit sprechendem Namen (`Werkstatt/repos-verschoben-aus-skills/`), und im Bericht
+   trennen: was WEG ist (reine Klone) und was BLEIBT, weil dort geladene Skills liegen
+   (Ordner mit `SKILL.md` nie mitverschieben — sie sind die Bibliothek).
 6. **Ein Test darf nicht an einem Skillnamen haengen.** Ein Katalog- oder
    Vollstaendigkeitstest, der einen festen Namen prueft („<name> ist da"), wird durch
    JEDES Aufraeumen rot, obwohl nichts kaputt ist. Auf die REGEL pruefen (jeder Eintrag

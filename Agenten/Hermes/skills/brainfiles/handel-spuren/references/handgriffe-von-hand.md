@@ -59,6 +59,54 @@ Regel: die Fuellung zaehlt nur in einem Grace-Fenster nach dem Eroeffnen
 konservativ (nicht ausbuchen) - eine echte Position ohne Buch liefe
 unbewacht, das wiegt schwerer als eine Karteileiche.
 
+## 4. Ein reparierter Schreibpfad repariert die ALTEN Zeilen nicht
+
+Der Code ist die halbe Miete. Was er bisher falsch geschrieben hat, steht
+weiter in den Journalen und wirkt weiter - eine Wache, die nur den Code
+prueft, sieht es nie. Nach JEDEM Fix an einem Schreibpfad:
+
+1. die bestehenden Dateien nach Zeilen aus dem alten Pfad absuchen
+   (`grep` auf den Grund/das Merkmal, hier `buchbereinigung_geist`),
+2. ein **Nachzieh-Werkzeug** bauen (Vorschau ist Standard, `--anwenden`
+   schreibt, vorher eine Kopie `handelsjournal.bak-JJJJMMTT.csv`),
+3. eine **Routine** daraufsetzen (Cron ohne Modell, leere Ausgabe = nichts
+   senden), damit der Fall nicht wieder von Hand auffallen muss.
+
+Regeln fuer das Werkzeug:
+
+- **Mit DERSELBEN Paarungsregel lesen wie der Verbraucher** (hier die FIFO-
+  Paarung aus `wachen_xperp.runden_aus_journal`: eroeffnen = Einsatz,
+  schliessen = Erloes, je Instrument in Reihenfolge). Eine nachgebaute
+  Paarung korrigiert auf einen Wert, den hinterher niemand verrechnet.
+- **Nur den einen Wert ersetzen.** Keine Zeile loeschen, keine andere Zahl
+  anfassen - das Journal bleibt die Wahrheit.
+- **Der Korrekturwert ist NEUTRAL (Einsatz zurueck), nicht "das echte
+  Ergebnis".** Bei diesen Zeilen stand die Position in Wahrheit noch (sie
+  wurde am selben Abend zurueckgebucht) - ein Boersenergebnis gibt es dazu
+  nicht. Ein erfundenes Ergebnis waere derselbe Fehler in der anderen
+  Richtung.
+- **Kaputte Zeile = Merkmal UND Wert** (`grund = buchbereinigung_geist`
+  und Erloes genau 0.00). Nur das Merkmal zu pruefen trifft auch einen
+  echten Stop, der wirklich 0 zurueckgab.
+- **Wiederholbar**: nach dem Lauf findet ein zweiter Lauf nichts mehr.
+
+Regel fuer die Routine (gilt fuer jedes Werkzeug, das eine GANZE Datei neu
+schreibt): **Ruhe-Bedingung gegen den Schreiber.** Ein Journal, das juenger
+als ein paar Minuten ist, wird NICHT angefasst - das Werkzeug liest und
+schreibt die komplette Datei, mitten in einen laufenden Zyklus liefe eine
+frisch angehaengte Zeile verloren. Ein Zyklus dauert Sekunden bis Minuten,
+der Takt der Routine ist Stunden: Warten kostet nichts.
+
+Nachweis, den ein solcher Nachzieher liefern muss:
+
+- genau EINE Zeile unterscheidet sich von der Sicherung (`Compare-Object`),
+  Zeilenzahl unveraendert,
+- der zweite Lauf meldet "keine kaputten Zeilen gefunden",
+- die Kurve VOR und NACH: hier Ruecklauf 81,95 -> 65,11 (Luft zum Kill-Deckel
+  100 damit 34,89 statt 18,05),
+- die Wache laeuft gegen die echten Buecher und schweigt,
+- `spiegelstand.py` byte-gleich (die Korrektur muss auch nach Q:).
+
 ## Nachweis-Muster
 
 1. Trockenlauf gegen die Boerse, ohne zu schreiben: Buch und

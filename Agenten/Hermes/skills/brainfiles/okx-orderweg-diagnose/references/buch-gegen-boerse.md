@@ -12,6 +12,7 @@ bzw. `spur/okx.py` und sind ueberall gleich benannt.
 | Im Buch, nicht an der Boerse | Buch `zustand.json` gegen die Liste | Geist: ausbuchen + offene Order stornieren |
 | An der Boerse, nicht im Buch | Liste gegen das Buch | unverwaltet: keine Ausstiegslogik, kein Funding |
 | Order wirklich gehandelt? | `okxf.gefuellte_kontrakte(inst, ord_id)` → `accFillSz` | `0` = angenommen, nicht gefuellt |
+| Konditionen des Fills | `okx.order_details(inst, ord_id)` → `avgPx`, `fillSz`, `fee` | gegen `einstieg`/`menge` im Buch stellen — Existenz ist nicht Kondition |
 | Offene Orders | `okxf.offene_orders(inst=None)` → `orders-pending` | `state live` = liegt noch |
 | Schutz vorhanden? | `okxf.schutz_stops(inst)` → `orders-algo-pending?instType=FUTURES&ordType=conditional` | leer = KEIN boersenseitiger Stop |
 
@@ -23,10 +24,33 @@ bevor die Positionsliste nachzieht — `accFillSz` ist die Zahl, die zaehlt.
 1. `ord_id = okxf.order_limit(inst, seite, kontrakte, preis, tp=…, sl=…)`
 2. `gehandelt = _warten_auf_fuellung(inst, ord_id, kontrakte)` — kurz warten
    (Sekundenbruchteile bis Sekunden), dann `accFillSz` lesen.
-3. `0` oder unbekannt → `okxf.order_stornieren(inst, ord_id)`, Journalzeile
-   `aktion=fehler, grund=order_nicht_gefuellt`, KEINE Position.
+3. Nicht gefuellt: **erst die Marktbarkeit entscheiden.**
+   * nicht marktbar (Kauflimit unter dem Ask, Verkaufslimit ueber dem Bid): der
+     Auftrag WARTET — **nicht stornieren.** Journalzeile
+     `aktion=order_offen, grund=limit_wartet` und einen Eintrag in `zustand["wartende"]`
+     (inst, seite, einstieg, stop, ziel, kontrakte, nominal, margin, hebel, ord_id,
+     gestellt). Buchung erfolgt spaeter, wenn er fuellt.
+   * marktbar (Limit auf/ueber dem Ask bzw. auf/unter dem Bid) und trotzdem ohne
+     Fuellung: das ist ein echter Fehler → `okxf.order_stornieren(inst, ord_id)`,
+     Journalzeile `aktion=fehler, grund=order_nicht_gefuellt`, KEINE Position.
 4. Teilfuellung → Rest stornieren, nur die gehandelte Menge buchen (Nominal neu
    rechnen), damit Plaetze und Bilanz stimmen.
+
+## 2b. Wartende Auftraege pflegen (am ANFANG jedes Live-Zyklus)
+
+Je Eintrag in `zustand["wartende"]`: Orderzustand ueber
+`okxf.order_stand(inst, ord_id)` lesen (`accFillSz` ist die Zahl, nicht `state`).
+
+| Zustand | Was tun |
+|---|---|
+| gefuellt | als Position buchen (`modus=live`, `einstieg = avgPx`, Kontrakte = `accFillSz`), Journalzeile `eroeffnen, grund=order_gefuellt`, Eintrag entfernen |
+| storniert (`canceled`, `mmp_canceled`) | Eintrag entfernen |
+| noch `live` | liegen lassen — nichts tun |
+| Abfrage gescheitert | liegen lassen UND melden; ein Netzfehler darf keinen Auftrag verlieren (er liegt an der Boerse) |
+
+Zwei Reihenfolgen, die zusammengehoeren: wartende Auftraege abarbeiten BEVOR neue
+Einstiege geplant werden (ein gefuellter Auftrag belegt sonst keinen Platz), und die
+Geisterpruefung danach.
 
 ## 3. Geister ausbuchen (idempotent, am Anfang jedes Live-Laufs)
 
@@ -64,6 +88,32 @@ cd Agenten/Handel/<spur> && ../scanner/.venv/Scripts/python.exe -c "import okxf;
 Ein Zyklus muss abgewartet werden (der Dauerlauf startet `handeln.py` je Zyklus
 neu): erst danach sagt das Log `<spur> (live) ok`, ob die Sperrenkette den Lauf
 ueberhaupt live fahren liess.
+
+## 5b. Einstiegspreis: den FILL-Preis nehmen, nie einen Berichtspreis
+
+Eine bestaetigte Position beweist den Vorgang, nicht den Kurs. Nach jedem
+Live-Kauf `order_details(inst, ord_id)` lesen und `avgPx` gegen `einstieg` im
+Buch/Journal stellen:
+
+```bash
+cd Agenten/Handel/<spur> && ../scanner/.venv/Scripts/python.exe -c \
+  "import okx,json;print(json.dumps(okx.order_details('<inst>','<ordId>'),ensure_ascii=False)[:200])"
+```
+
+Weichen beide ab, stammt der Buchpreis aus einer aelteren Quelle als der Fill —
+meist einer Berichts-/Ranglistendatei, aus der die Spur ihre Vorschlaege zieht
+(`einstieg = z["preis"]`). Folge: Stop und Ziel sind aus dem ALTEN Preis gerechnet
+und die Chance/Risiko-Geometrie kippt, ohne dass im Buch etwas falsch aussieht
+(belegt: 2:1 geplant, nach einem 4-6 % hoeheren Fill real 0,51-0,69:1).
+
+**Zwei Prueffragen, die den Fall aufdecken:**
+1. Ist der Buchpreis einer Position **exakt** gleich einem Preis in der
+   Berichts-/Ranglistendatei? Dann wird beim Einstieg kein lebender Kurs genommen.
+2. Wie alt ist diese Datei? Ein Tageslauf, der sich selbst ueberspringt (weil der
+   Dauerlauf laeuft), schreibt sie nie neu.
+
+Beim Buchen einer echten Position `einstieg = avgPx` setzen (nicht den Planpreis),
+sonst rechnen Bilanz, Ratsche und Kill-Switch mit einem Kurs, den es nie gab.
 
 ## Fallen
 

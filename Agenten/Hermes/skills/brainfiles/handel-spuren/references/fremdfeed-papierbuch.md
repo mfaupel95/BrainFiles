@@ -347,3 +347,30 @@ und der Pfad stand nirgends dokumentiert. Der Weg, der funktioniert hat:
    liefert `priceUSD`, der v2-Trades-Endpunkt `priceUsd`). Die
    Normalisierung deckt beide ab, aber nur der echte Abruf zeigt, welcher
    Endpunkt welchen Namen nutzt.
+
+## Ein Signal-Kanal-Screenshot ist kein Feed
+
+Zeigt der Nutzer einen Signal-Kanal (VIP-Gruppe, Push-Nachricht) und fragt
+"koennen wir das auch?", ist das **keine** Feed-Anbindung: es gibt keinen
+lesenden Endpunkt, der die Signale und ihre Ergebnisse fuehrt. Was sichtbar ist,
+ist die Gewinnkarte - die Verlustseite fehlt, und damit fehlt der Track Record
+(Survivorship).
+
+- **Nicht nachbauen, was nicht belegbar ist.** Kein Copytrading einer Blackbox,
+  keine Uebernahme fremder Hebel (10x/20x) und keine fremden Zahlen als
+  Massstab. Die Karte ist kein Benchmark.
+- **Die ehrliche Antwort ist eine eigene Spur mit derselben FORM:** ein
+  deterministisches Muster aus oeffentlichen Kurs-/Volumendaten (z. B. schnelle
+  1h-Bewegung mit Volumen-Untergrenze), ausdruecklich OHNE Hebel, mit Stop und
+  Ziel aus der eigenen Geometrie, Papier, Kosten eingerechnet. Fuer solche
+  Signalmuster ist `spur_buch.py` das leichte Muster (gemeinsames Buch der
+  Feed-Spuren) statt der komplette Spur-Neubau.
+- **Instrument zuerst pruefen.** Karten zeigen gern Aktien-Perpetuals
+  (`NVDAUSDT` und Verwandte); die sind nicht an jeder Boerse handelbar, die wir
+  angebunden haben. Vor jeder Zusage die Verfuegbarkeit am Zielmarkt pruefen -
+  sonst verspricht man eine Spur, die es dort nicht gibt.
+- **Den Unterschied im Bericht benennen:** eigener Gewinn ist erst nach genug
+  Papierrunden eine Aussage; "wie im Kanal" ist keine Zielgroesse.
+- Die neue Spur durchlaeuft danach die regulaere Anbindung (die fuenf Stellen
+  und die `.gitignore`-Whitelist, siehe SKILL.md) - ein Sonderweg nur fuer
+  Signalmuster existiert nicht.

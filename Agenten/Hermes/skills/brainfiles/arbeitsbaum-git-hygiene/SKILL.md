@@ -38,7 +38,11 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Werkzeug-Ergebnis ist echt, nicht Rauschen.
 2. **Vor dem Commit zwei Blicke:** `git status --porcelain` (was ist ueberhaupt da) und
    `git diff --cached` (was geht wirklich mit). Danach `git show --stat` gegen die
-   Absicht halten.
+   Absicht halten. **Und die ZAHL pruefen, nicht nur die Namen:**
+   `git diff --cached --name-only` zaehlen und bei mehr Pfaden als den eigenen
+   abbrechen (`git reset -- <fremder-pfad>` nimmt einen fremden Eintrag zurueck, ohne
+   den Arbeitsbaum anzufassen) - der Index kann von einer anderen Sitzung gefuellt
+   sein, und ein `git commit` ohne Pfadangabe nimmt alles mit, was darin steht.
 3. **Gemischte Datei = nur die eigene Aenderung in den Index, nicht die Datei opfern
    und nicht die Fremdarbeit mitnehmen.** Zuerst `git diff --numstat -- <datei>` lesen:
    mehrere Hunks unterschiedlicher Groesse heissen "hier steckt fremde Arbeit drin".
@@ -141,6 +145,8 @@ eigener Index, `update-ref` mit Alt-Wert). Stand lesen mit
 bleibt richtig und ist schneller - die Routine ist der Nettofang fuer alles, was liegen
 bleibt, und sie zieht nach jedem eigenen Commit den normalen Index fuer die uebernommenen
 Pfade nach (sonst meldet `git status` sie gleichzeitig als geloescht und als ungetrackt).
+Das vollstaendige Rezept - Bauart des Skripts, Ruhekriterium, Index-Nachtrag,
+Testaufbau, Registrierung der Aufgabe - steht in `references/fremdarbeit-routine.md`.
 
 Der Auftrag „die letzten Sitzungen / Hintergrund-Aufgaben nach nicht uebernommenen
 Aenderungen durchgehen" meint selten die OFFENEN Sitzungen: die liegengebliebene Arbeit
@@ -232,6 +238,36 @@ ungetrackten Dateien. Reihenfolge:
   Sichtbarkeit NICHT ablesen. Neue Zeilen mit dem Zeilenende der Datei anhaengen
   (`.gitignore` ist LF, binaer lesen/schreiben).
 - **Das Loeschen UNGETRACKTER Dateien ist kein Git-Event.** `git add <untracked-datei>` schlaegt mit `fatal: pathspec … did not match any files` fehl (die Datei ist nie im Index), und `git add -A <ordner>` als Ersatz nimmt JEDE andere ungetrackte Datei in dem Ordner mit — der Commit traegt dann eine Nachricht, die nicht zum Inhalt passt (passiert mit einer `BEFUND-*.md`, die versehentlich mitcommittet wurde). Eine ungetrackte Datei ist mit `rm` schon geloescht; es gibt nichts zu stagen. Nur GETRACKTE Loeschungen brauchen `git add`/`git rm`. Wer eine Loeschung committen will, stagt ausschliesslich die getrackten Pfade namentlich und prueft `git diff --cached --stat` gegen die Absicht — nie `git add -A <ordner>`.
+- **Eine geloeschte Datei hat keine mtime - die Ersatzwahrheit ist ihr ORDNER.** Wer
+  ruhende Fremdarbeit nach Aenderungsalter auswaehlt, findet fuer ` D`-Eintraege keinen
+  Zeitstempel. Sie deshalb als ruhend zu behandeln ist falsch: Windows schreibt beim
+  Loeschen die Zeit des ORDNERS fort, also `LastWriteTime` des Elternordners messen.
+  Ist er frisch, ruht die Loeschung nicht und bleibt liegen. Folge, die man kennen
+  muss: eine Loeschung wird fruehestens im naechsten Lauf uebernehmbar und nie,
+  solange in demselben Ordner weiter geschrieben wird.
+- **Ein Commit ueber einen EIGENEN Index laesst den normalen Index stale zurueck.**
+  Wer fremde Arbeit committet, ohne den Staging-Bereich anzufassen (`GIT_INDEX_FILE`
+  + `git read-tree <tip>` + `git add -- <pfade>` + `git write-tree` + `git commit-tree`
+  + `git update-ref refs/heads/master <neu> <alt>`), hat danach fuer JEDEN uebernommenen
+  Pfad einen Index, der den neuen HEAD nicht kennt: eine neue Datei steht gleichzeitig
+  als `D ` (Index gegen HEAD) und `??` (ungetrackt), eine geaenderte als `M ` mit dem
+  ALTEN Inhalt - und ein `git commit` einer anderen Sitzung ohne Pfadangabe (es
+  committet den ganzen Index) wuerde die neuen Dateien wieder loeschen bzw. die
+  Aenderungen zurueckdrehen. Nach dem Commit je Pfad den ECHTEN Index angleichen,
+  aber nur dort, wo er noch auf dem Stand VOR dem Commit steht (`git ls-files -s`
+  gegen `git ls-tree <alt-tip>` vergleichen): `git update-index --add --cacheinfo
+  <mode>,<sha>,<pfad>` bzw. `git update-index --force-remove -- <pfad>`. Eine frische
+  Vormerkung einer anderen Sitzung (Index-Blob != Alt-Stand) bleibt unberuehrt.
+  Vorher `Remove-Item Env:\GIT_INDEX_FILE` - sonst schreibt `update-index` in den
+  falschen Index. Die Reparatur ist idempotent und laeuft am besten zu Beginn jedes
+  weiteren Laufs ueber die Pfade der letzten eigenen Uebernahme-Commits
+  (`git log -5 --author=fremd@local --name-only --format=`). Rezept:
+  `references/fremdarbeit-routine.md`.
+- **`Set-Content -Encoding UTF8` schreibt ein BOM.** Unter PS 5.1 wandert es als
+  unsichtbares Zeichen in die erste Zeile - und bei `git commit-tree -F <datei>`
+  direkt in die Betreffzeile des Commits (`git log` zeigt dann ein BOM vor dem
+  Betreff). Nachrichtendateien mit `[System.IO.File]::WriteAllText($pfad, $text,
+  (New-Object System.Text.UTF8Encoding($false)))` schreiben.
 - **`fatal: Unable to create '…/.git/index.lock': File exists`** heisst fast immer:
   eine andere Sitzung schreibt GERADE in denselben Index. Die Sperre NICHT loeschen -
   warten (Sekunden) und denselben Befehl wiederholen, dann geht er durch. Ist die
@@ -271,6 +307,16 @@ ungetrackten Dateien. Reihenfolge:
   LF, `config.yaml` CRLF, viele `SKILL.md` CRLF). Nach JEDER Textaenderung
   `git diff --numstat <pfad>` lesen: eine gewollte Zeile = 1/1. Zeigt der Diff die ganze
   Datei, `git checkout HEAD -- <pfad>` und byte-genau neu patchen — nicht committen.
+  **Eine Datei kann GEMISCHT sein** (ueberwiegend CRLF mit einzelnen LF-Zeilen —
+  `Wissen/Routinen.md` und viele `SKILL.md` sind es): vor dem Schreiben die Enden
+  binaer zaehlen (`b.count(b"\r\n")` gegen `b.count(b"\n")`; ein Textmodus-`read()`
+  verschleiert das). Ein Rewrite, der das DOMINANTE Ende auf alle Zeilen anwendet,
+  dreht genau die einzelnen Zeilen um und erzeugt Diff-Churn, den niemand gemacht hat
+  (gemessen: 6 geaenderte Zeilen statt der einen eingefuegten). Richtig ist, aus der
+  `.bak` BYTE-GENAU einzufuegen: `open(pfad,'rb').read()`, Anker als bytes suchen
+  (`assert b.count(anker) == 1`), hinter dem Anker einfuegen, `open(pfad,'wb').write()`
+  — nichts normalisieren. Gegenprobe: `git diff --numstat` muss reine Einfuegungen
+  zeigen (`55 0`), keine Loeschungen.
 - **Ein Ganzdatei-Diff kommt nicht immer von den Zeilenenden — der INDEX kann stale sein.**
   `git diff` vergleicht Arbeitsbaum gegen INDEX, nicht gegen HEAD. Liegt im Index noch eine
   frueher gestagte Fassung (typisch nach einem abgebrochenen oder verweigerten Commit),
