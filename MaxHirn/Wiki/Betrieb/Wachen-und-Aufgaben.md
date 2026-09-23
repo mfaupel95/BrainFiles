@@ -3,7 +3,7 @@ id: 20260921-wachen-und-aufgaben
 title: 'Betrieb — Wachen und geplante Aufgaben'
 tags: [betrieb, wachen]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 related: ['[[Betrieb/Hermes]]', '[[Handel/Gates-und-Freigabe]]']
 summary: 'Zwei Scheduler (Windows-Aufgabenplanung und Hermes-Cron), das Wachen-Muster, und die Frage, die man vor jeder Wache stellt.'
 ---
@@ -73,3 +73,23 @@ erst damit greift die Auto-Freigabe.
 
 **Prueffrage bei jeder neuen Live-Spur:** nennt die Vorschau mit `MAXHIRN_ROUTINE=1`
 genau EINEN Grund und enthaelt er das Wort "Freigabefenster"?
+
+## Ein Merker braucht eine Wache (23.09.2026)
+
+`scanner/zustand.json` trug 23 Kopien DESSELBEN Notausstiegs-Stops; jede Live-Runde
+meldete `offener Stop ... bleibt liegen: OKX 50014`. Aufgefallen ist das **Max**, nach
+einer Nacht - es gab keine Wache auf diesen Merker. Zwei Fehler auf einmal: `cancel-algos`
+verlangt `instId` (ohne sie geht der Storno NIE durch), und `51400` ("gefuellt, storniert
+oder nicht vorhanden") wurde als Fehler behandelt statt als *erledigt*.
+
+Merksatz: **ein Merker, der nur beim Erfolg faellt, braucht einen Dedupe - und ein
+Ereignis, das "gibt es nicht mehr" bedeutet, ist kein Fehler.** Und: jeder Merker, der
+wachsen kann, gehoert in eine Wache (hier `live_wache.stop_lage`, alle 10 min ueber
+`scanner-live-wache`): sie meldet den Merker, Waisenstops (an der Boerse, zu keiner
+Position) und Positionen ohne Boersenstop - nur bei Aenderung, leere Ausgabe sonst.
+
+Nachweis: `python Agenten/Hermes/scripts/scanner-live-wache.py` (leise, Zustand
+`stop_lage` zeigt `boerse: 5, buch: 5`); Tester
+`Agenten/Hermes/scripts/test_live_wache_stops.py` (7); Aufraeumer
+`Agenten/Handel/scanner/stops_bereinigen.py`; Details in
+[[Handel/Boersen-und-Schluessel]].
