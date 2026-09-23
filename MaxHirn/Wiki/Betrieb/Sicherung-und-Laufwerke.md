@@ -60,6 +60,12 @@ Freier Platz schwankt ohne Zutun. Vier Funde, alle gemessen:
 | `AppData\Local` + `AppData\Roaming` | **~86 GB + ~30 GB** | Die echten C:-Fresser sind App-Daten, nicht BrainFiles (`MaxHirn` 6,5 GB). Nachgemessen 23.09.2026 mit PowerShell (Reparse-Punkte aussortiert): Local `Packages` 24,5 GB, `Programs` 8,7 GB, `NVIDIA` 5,9 GB, `Microsoft` 5,7 GB, **`pip` 5,4 GB**, `hermes` 4,2 GB, `Google` 4,0 GB, **`pnpm` 3,4 GB**, **`ms-playwright` 2,6 GB**, **`npm-cache` 2,4 GB**, `uv` 2,2 GB, `wsl` 1,9 GB, **`CrashDumps` 1,7 GB**, **`Temp` 1,6 GB**. Roaming: `Pioneer` 11,9 GB, **`npm` 4,8 GB**, `Cemu` 4,5 GB, `Mozilla` 4,1 GB. Fett = reproduzierbarer Cache/Muell. |
 | `Agenten/Handel/moondev_*.log` | 172 MB | Agenten-Logs des Moon-Dev-Treibers, ~50 MB je Tag |
 
+**Cache-Lauf 23.09.2026** (nur reproduzierbare Posten, `Packages`/`Programs`/`Roaming/npm`/`ms-playwright` unangetastet):
+`pip` 5.428 → **1 MB** · `uv` 2.164 → **1 MB** (`uv cache clean`, meldet „No cache found" und
+raeumt trotzdem) · `npm-cache` 2.381 → **951 MB** · `pnpm` 3.398 → **2.970 MB** · `CrashDumps`
+1.663 → **0 MB** · `Temp` 1.596 → **255 MB**. Summe der Posten ~12,4 GB, an `df` gemessen
+**+11,2 GB** (Differenz: `Temp` und Nachbarprozesse schreiben weiter). `C:` danach ~61,7 GB frei.
+
 **Log-Rotation (neu 23.09.2026).** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start ab
 50 MB nach `<name>.log.1` (`_log_drehen`). Gedreht wird **beim Start**, nicht im Betrieb: ein
 laufender Agent haelt die Datei offen, Windows verweigert dann jedes Umbenennen (nachgemessen).
