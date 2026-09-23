@@ -262,3 +262,21 @@ Ergebnisse landen unter `data_folder/<symbol>/` (`predictions.txt` = AUC/AP/F1,
 hat das Modell beim Vorhersagen schon gesehen?** Der Klon taugt als Pruefstand fuer diese eine
 Frage — er ist NICHT in den Dauerlauf eingebunden und braucht dort auch nicht hin: seine
 Ordner nutzen Binance und MetaTrader 5, waehrend der eigene Handel ueber OKX und Kraken laeuft.
+
+## Ein Ziel-Ausstieg ist kein Kaufsignal (23.09.2026)
+
+ZEC wurde live im Ziel verkauft (1618,36) und **acht Sekunden spaeter** zum fast selben Kurs neu
+gekauft (1619,38) — 1,2 % Gebuehren fuer dieselbe Bewegung. Der Kandidat stand weiter auf der
+Rangliste, weil sein Signal nicht verschwunden war, sondern gerade **erfuellt** wurde.
+
+- Nach einem Ausstieg mit Grund `ziel` gilt jetzt `sperrfrist_nach_ziel_stunden` (scanner: 2,0;
+  Zahl in der Wachen, 0 = aus). Gemerkt wird der Zeitpunkt je Instrument in
+  `zustand.json → letzte_ziele`; der Kandidat wird mit Grund „Sperrfrist nach Ziel-Ausstieg"
+  abgelehnt.
+- **Nach einem STOP gilt die laengere Abklingzeit** (`abklingzeit_tage`, scanner 4) — ein
+  gescheiterter Versuch ist ein anderer Grund als ein gelungener. Zwei Mechanismen, zwei
+  Zeitraeume, beide in der `wachen.json`.
+- Merksatz: **Ein Ausstieg, der das Ziel erreicht, hat das Signal verbraucht.** Wer sofort
+  wieder einsteigt, bezahlt die Gebuehr fuer eine Information, die schon bezahlt war.
+- Der Test dazu darf nicht nur „Sperre greift" pruefen: die Gegenprobe (nach 2,5 h wird wieder
+  gekauft) ist der Teil, der eine kaputte Sperre findet, die nie aufgeht.
