@@ -503,5 +503,63 @@ class FlachStellenTest(_Basis):
                 "stop_algo_id": "ALGO2"}
 
 
+class BetragGedeckeltTest(unittest.TestCase):
+    """Auftrag Max 23.09.2026 ("Mosaic 100"): live_max_pro_trade_usd 50 -> 100.
+
+    Ein 100-EUR-Kauf bei 88,56 EUR frei waere eine von Kraken abgelehnte Order.
+    Deshalb deckelt handeln.betrag_gedeckelt() den Einsatz VOR dem
+    Freigabefenster auf das freie Guthaben minus Gebuehr und 0,2 % Luft.
+    """
+
+    def setUp(self):
+        self.alt_guthaben = handeln.op_guthaben
+        self.alt_waehrung = handeln.GUTHABEN_WAEHRUNG
+        handeln.GUTHABEN_WAEHRUNG = "EUR"
+        self.addCleanup(setattr, handeln, "op_guthaben", self.alt_guthaben)
+        self.addCleanup(setattr, handeln, "GUTHABEN_WAEHRUNG", self.alt_waehrung)
+
+    def test_deckelt_auf_das_freie_guthaben(self):
+        handeln.op_guthaben = lambda ccy="EUR": 88.56
+        betrag, hinweis = handeln.betrag_gedeckelt(100.0, {"gebuehr_taker": 0.006})
+        self.assertLessEqual(betrag, 88.56)
+        self.assertGreater(betrag, 87.0)
+        self.assertIn("gedeckelt", hinweis)
+
+    def test_kleiner_betrag_bleibt_unveraendert(self):
+        handeln.op_guthaben = lambda ccy="EUR": 200.0
+        betrag, hinweis = handeln.betrag_gedeckelt(50.0, {"gebuehr_taker": 0.006})
+        self.assertEqual(betrag, 50.0)
+        self.assertIsNone(hinweis)
+
+    def test_unlesbares_guthaben_aendert_nichts(self):
+        def kaputt(ccy="EUR"):
+            raise RuntimeError("Netz weg")
+        handeln.op_guthaben = kaputt
+        betrag, hinweis = handeln.betrag_gedeckelt(100.0, {"gebuehr_taker": 0.006})
+        self.assertEqual(betrag, 100.0)
+        self.assertIn("nicht abrufbar", hinweis)
+
+    def test_kein_guthaben_meldet_statt_zu_raten(self):
+        handeln.op_guthaben = lambda ccy="EUR": 0.0
+        betrag, hinweis = handeln.betrag_gedeckelt(100.0, {"gebuehr_taker": 0.006})
+        self.assertEqual(betrag, 100.0)
+        self.assertIn("kein freies", hinweis)
+
+    def test_gebuehr_und_luft_sind_eingerechnet(self):
+        handeln.op_guthaben = lambda ccy="EUR": 100.0
+        betrag, _ = handeln.betrag_gedeckelt(100.0, {"gebuehr_taker": 0.01})
+        self.assertAlmostEqual(betrag, 100.0 * (1 - 0.01 - 0.002), places=6)
+
+    def test_der_deckel_steht_vor_der_order(self):
+        """Ein Deckel nach dem Kauf waere kein Deckel."""
+        with open(os.path.join(HIER, "handeln.py"), encoding="utf-8") as f:
+            quelle = f.read()
+        self.assertIn("betrag, deckel_hinweis = betrag_gedeckelt(betrag, w)",
+                      quelle)
+        self.assertLess(quelle.index("betrag_gedeckelt(betrag, w)"),
+                        quelle.index("op_kauf(inst, menge)"),
+                        "der Deckel muss VOR der Order stehen")
+
+
 if __name__ == "__main__":
     unittest.main()

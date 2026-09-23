@@ -537,6 +537,35 @@ def _live_grenze(w, name, ersatz):
     return w.get("live_" + name, w.get(name, ersatz))
 
 
+def betrag_gedeckelt(betrag, w):
+    """Den Live-Einsatz auf das FREIE Guthaben deckeln (Gebuehr + etwas Luft).
+
+    Auftrag Max 23.09.2026 ("Mosaic 100"): live_max_pro_trade_usd 50 -> 100.
+    Ein 100-EUR-Kauf bei 88,56 EUR frei waere eine von Kraken abgelehnte Order -
+    kein Handel, aber im Journal eine Fehlerzeile, die wie ein Defekt aussieht.
+    Deshalb wird der Betrag vor dem Freigabefenster auf
+    `frei * (1 - gebuehr - 0,2 %)` gedeckelt. Reicht auch das nicht fuer die
+    Mindestmenge des Paares, lehnt live_menge_fuer ab - ein eigener
+    Mindestbetrag ist dafuer nicht noetig.
+
+    Rueckgabe: (betrag, hinweis oder None). Unlesbares Guthaben aendert NICHTS -
+    die Sperrenkette hat denselben Abruf schon gemacht und dort gemeldet.
+    """
+    try:
+        frei = op_guthaben(GUTHABEN_WAEHRUNG)
+    except Exception as e:                                     # noqa: BLE001
+        return betrag, "Guthaben nicht abrufbar (%s) - Einsatz unveraendert" % e
+    if not frei:
+        return betrag, ("kein freies %s-Guthaben gemeldet - Einsatz "
+                        "unveraendert" % GUTHABEN_WAEHRUNG)
+    geb = float(w.get("gebuehr_taker", 0.006) or 0.0)
+    deckel = frei * (1 - geb - 0.002)
+    if betrag <= deckel:
+        return betrag, None
+    return deckel, ("Einsatz %.2f -> %.2f EUR gedeckelt (%.2f EUR frei)"
+                    % (betrag, deckel, frei))
+
+
 def sitzung_da():
     """Sitzt jemand davor, der das Freigabefenster bedienen kann?
 
@@ -798,6 +827,9 @@ def live_einstiege(z, w, s):
     Bewachung im Buch lassen.
     """
     betrag = float(_live_grenze(w, "max_pro_trade_usd", 10.0))
+    betrag, deckel_hinweis = betrag_gedeckelt(betrag, w)
+    if deckel_hinweis:
+        print("  " + deckel_hinweis)
     maxoffen = int(_live_grenze(w, "max_offene_positionen", 4))
     maxges = float(_live_grenze(w, "max_gesamt_usd", 200.0))
     ziel_r = float(w.get("ziel_r_vielfaches", 2.0))
