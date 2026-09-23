@@ -79,15 +79,27 @@ Kernel-Power 41 mit BugcheckCode 0, kein Minidump, kein WHEA; Netzteiltausch erf
 **Offen:** naechste Verdaechtige sind Kaltgeraetekabel/Steckdose und Lastspitzen. Bis dahin
 keine langen Schreiblaeufe ohne Sicherung, keine Windows-Reparaturinstallation.
 
-## 5. Skill-Baum: ~914 MB Fremd-Klone
+## 5. Fremd-Klone: Plugins-Ordner und Skill-Baum (22.09.2026 aufgeraeumt)
 
-`Agenten/Hermes/skills/` traegt noch **fuenf** unversionierte Fremd-Repo-Klone ohne
-SKILL.md: OmniRoute 828M, claude-code 45M, onchainos-skills 31M, one-skill-to-rule-them-all
-6,9M und -main 3,4M (gemessen 22.09.2026). Die uebrigen ~892 MB (unsloth, nautilus_trader,
-EasyCLIProxyAPI, chromaprint, public-apis, acoustid-index, mfaupel95) sind am 21.09.2026 nach
-`Werkstatt/repos-verschoben-aus-skills` verschoben. Alle neu klonbar; per `.gitignore`
-gesperrt (sonst bricht `git add -A` mit Exitcode 128 ab).
-**Offen:** die fuenf loeschen oder bewusst behalten — Kosten sind nur Plattenplatz.
+Die Sammelstelle `Agenten/Hermes/plugins/` war **2,1 GB** gross (21 Eintraege) und ist jetzt
+**11 MB**: Wahrheit ist allein `plugins/.install-metadata.json` (drei installierte Plugins:
+`memory-wiki` aus dem Katalog, `everything-claude-code`, `one-skill-to-rule-them-all`) plus
+`hermes plugins list --json` (60 Plugins, 59x `source: bundled`, 1x `catalog:`). Die lebenden
+Claude-Marketplaces liegen unter `~/.claude/plugins/marketplaces/`, nie in diesem Ordner.
+Entfernt (alle re-clonbar): nautilus_trader 401M, unsloth 428M, OmniRoute 828M, notebooklm-py 189M,
+context7 61M, claude-code 45M, onchainos-skills 31M, claude-plugins-official 18M, cli, financial-services,
+chromaprint, public-apis, acoustid-index, EasyCLIProxyAPI, one-skill-to-rule-them-all-main, mfaupel95, productivity.
+
+Im Skill-Baum `Agenten/Hermes/skills/` tragen fuenf Klone **geladene** Skills (OmniRoute 3,
+onchainos-skills 4, claude-code 1, one-skill-to-rule-them-all je 1) — die Rumpf-Ordner bleiben, denn die
+Skills verweisen hinein (`docs/openapi.yaml`, `src/lib/agentSkills/generator.ts`). Geschnitten wurde nur
+das `.git` der drei grossen (570M + 32M + 23M = **625 MB**, je 0 eigene Commits; Arbeitsbaum unveraendert,
+`hermes skills list` meldet weiter **113 enabled**).
+**Offen:** `Werkstatt/repos-verschoben-aus-skills/` traegt noch 451 MB reine Parkware
+(unsloth 426M, chromaprint 9M, public-apis 8,8M, acoustid-index 6,7M, mfaupel95 61K) — verifiziert:
+0 eigene Commits, kein SKILL.md, kein Zwilling, keine Routine liest sie. `EasyCLIProxyAPI` ist dort
+geloescht (der lebende Klon steht in `Werkstatt/Repos`, 136M, Stand 21.09.).
+Verfahren: `laufwerk-platz-schaffen/references/fremd-klon-ballast.md`.
 
 ## 6. Profile in `.deleted/`
 
