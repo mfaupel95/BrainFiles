@@ -32,8 +32,17 @@ def _env(name):
 
 
 def _live_basis():
-    """Host fuer echte Orders: OKX_BASE (EEA/global), sonst www.okx.com."""
-    return _env("OKX_BASE") or "https://www.okx.com"
+    """Host fuer echte Orders: OKX_BASE (EEA/global), sonst www.okx.com.
+
+    Wichtig: wie bei den Schluesseln mit REGISTRY-RUECKFALL (siehe _variable).
+    Der Prozess erbt die Windows-Benutzervariablen naemlich nicht immer - aus
+    einem MCP-Server oder einer geplanten Aufgabe gestartet fehlen sie. Dann
+    fand der Schluessel ueber die Registry, der HOST aber fiel auf
+    www.okx.com zurueck, und OKX antwortete mit 50119 "API key doesn't exist":
+    gemessen am 23.09.2026, daran scheiterte der Verkauf ZEC-USDC. xperp und
+    mosaic haben diesen Rueckfall seit laengerem - der scanner fehlte.
+    """
+    return (_variable("OKX_BASE") or "https://www.okx.com").rstrip("/")
 
 
 # Echte Orders nutzen den LIVE-Key (OKX_LIVE_API_*), nie den DEMO-Key.
@@ -123,14 +132,25 @@ def _roh(pfad, methode="GET", body=None, signiert=False):
                 f = json.loads(e.read().decode())
             except (ValueError, AttributeError):
                 f = {}
+            # Einzelne Orderfehler stehen in data[0], nicht oben.
+            erste = (f.get("data") or [{}])[0]
+            oben_code = str(f.get("code") or "")
+            tief_code = str(erste.get("sCode") or "")
             hinweis = ""
             if e.code in (401, 403):
                 hinweis = " - Schluessel/Passphrase/IP pruefen"
-            if f.get("code") or f.get("msg"):
-                # Einzelne Orderfehler stehen in data[0], nicht oben.
-                erste = (f.get("data") or [{}])[0]
+            if "50119" in (oben_code, tief_code) or "50101" in (oben_code, tief_code):
+                # 50119 "API key doesn't exist" / 50101 "does not match current
+                # environment": der haeufigste Grund ist NICHT ein toter
+                # Schluessel, sondern der falsche HOST - ein EEA-Schluessel am
+                # globalen Host (siehe _live_basis).
+                hinweis = (" - Schluessel/Host passen nicht zusammen. Dieser Prozess "
+                           "spricht %s an, OKX_BASE aus der Registry ist %s. Ein "
+                           "EEA-Schluessel am globalen Host gibt genau diesen Code."
+                           % (_live_basis(), _variable("OKX_BASE") or "NICHT GESETZT"))
+            if oben_code or f.get("msg"):
                 detail = erste.get("sMsg") or f.get("msg") or ""
-                code = erste.get("sCode") or f.get("code") or "?"
+                code = tief_code or oben_code or "?"
                 raise OKXFehler("OKX %s: %s (HTTP %d%s)"
                                 % (code, detail, e.code, hinweis)) from None
             raise OKXFehler("OKX HTTP %d ohne Auskunft%s"

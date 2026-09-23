@@ -70,6 +70,30 @@ der eigenen `wachen.json` auf 0,05 % — bewusst NICHT 0.
 - `/api/v5/market/candles` gibt oeffentlich nur **1440 Stundenkerzen** (60 Tage), egal was man
   anfordert.
 
+## Schluessel gefunden, HOST nicht — OKX 50119 (23.09.2026)
+
+Der scanner scheiterte eine Nacht lang bei **jedem** Verkauf: `OKX 50119: API key doesn't
+exist (HTTP 401)`. Der Schluessel war gesund — der **Host** war falsch.
+
+- `okx.py` suchte den Schluessel mit **Registry-Rueckfall** (`_variable`), den Host aber nur in
+  der **Prozessumgebung** (`_env`). Ein Kindprozess, der die Windows-Benutzervariablen nicht
+  geerbt hat (aus einem MCP-Server oder einer geplanten Aufgabe gestartet), fand also den
+  EEA-Schluessel ueber die Registry — und signierte damit gegen `www.okx.com`. Genau das gibt
+  50119/50101. Denken und messen: probeweise mit `env -u OKX_BASE` starten.
+- **Merksatz: Schluessel und Host gehoeren zu EINEM Zugang.** Wer einen von beiden mit
+  Rueckfall liest, muss den anderen genauso lesen. `xperp/okxf.py` und `mosaic/okx_spot.py`
+  hatten den Rueckfall laenger, `scanner/okx.py` fehlte er — jetzt alle drei gleich.
+- Die Meldung nennt seit dem Fix beide Seiten (`spricht <url> an, OKX_BASE aus der Registry ist
+  <url>`), sonst sucht man den Fehler wieder beim Schluessel.
+
+**Zweiter Befund derselben Nacht:** `_live_verkauf` bestellt ZUERST den Notausstieg ab (sonst
+blockiert er den Bestand). Scheitert der Verkauf danach, stand die Position **ohne Stop** an der
+Boerse, bis der naechste Zyklus es erneut versuchte — ZEC stand so bei +19 % ueber Nacht ohne
+Schutz. `_schutz_zurueck()` legt den Stop jetzt mit der echten Fuellungsmenge wieder an (ein
+alter, nicht stornierbarer Stop bleibt unberuehrt; ohne Stop-Preis wird gemeldet, nicht geraten).
+Ein fehlgeschlagener Verkauf ist ein halber Vorgang — der halbe Zustand muss zurueckgenommen
+werden.
+
 ## Kraken-Flotte (nicht verwechseln)
 
 `kraken` (Spot-Spur, EUR) · `nautilus_kraken` / `nautilus_kraken_futures` (Papier-Arme,

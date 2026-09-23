@@ -19,6 +19,10 @@ from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
 sys.path.insert(0, str(HIER.parent))
+# spiegelstand.py liegt im Handel-Ordner und importiert `risikostufe` von dort.
+# Ans ENDE haengen: scanner/handeln.py muss vorn bleiben (gleichnamige Module
+# in den Spurordnern duerfen es nicht verdraengen).
+sys.path.append(str(HIER.parent.parent))
 
 import handeln as h                                          # noqa: E402
 

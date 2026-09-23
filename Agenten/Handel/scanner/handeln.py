@@ -428,12 +428,54 @@ def _live_verkauf(p, z):
     try:
         d = okx.order_details(p["inst"], kauf_id)
         menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
+    except Exception as e:  # noqa: BLE001
+        print("  Menge fuer %s nicht lesbar: %s" % (p["inst"], e),
+              file=sys.stderr)
+        _schutz_zurueck(p)
+        return "fehler"
+    try:
         okx.markt_verkauf(p["inst"], round(menge, 8))
     except Exception as e:  # noqa: BLE001
         print("  Verkauf %s fehlgeschlagen: %s" % (p["inst"], e),
               file=sys.stderr)
+        _schutz_zurueck(p, menge)
         return "fehler"
     return "ok"
+
+
+def _schutz_zurueck(p, menge=None):
+    """Nach einem fehlgeschlagenen Verkauf den Notausstieg wieder anlegen.
+
+    Der Verkauf bestellt ZUERST den Stop ab - sonst blockiert er den Bestand,
+    und OKX lehnt den Verkauf ab. Scheitert der Verkauf DANACH, steht die
+    Position ohne Notausstieg an der Boerse, bis der naechste Zyklus es erneut
+    versucht. Genau das passierte am 22./23.09.2026: weil der Prozess ohne
+    OKX_BASE lief und gegen www.okx.com signierte (OKX 50119), scheiterte JEDER
+    Verkaufsversuch, und ZEC stand die Nacht ueber bei +19 % ohne Stop.
+
+    Ein alter Stop, dessen Storno scheiterte, bleibt unberuehrt (er schuetzt
+    schon). Ohne Stop-Preis wird nur gemeldet, nie geraten.
+    """
+    if p.get("stop_ord_id") or not p.get("stop"):
+        return False
+    if menge is None:
+        try:
+            d = okx.order_details(p["inst"], p.get("kauf_ord_id"))
+            menge = float(d.get("accFillSz") or 0) or p["usd"] / p["einstieg"]
+        except Exception as e:  # noqa: BLE001
+            print("  Schutz fuer %s nicht wiederherstellbar (Menge unbekannt): %s"
+                  % (p["inst"], e), file=sys.stderr)
+            return False
+    try:
+        algo = okx.stop_setzen(p["inst"], round(menge, 8), p["stop"])
+        p["stop_ord_id"] = algo
+        print("  Schutz wieder angelegt: %s Stop %.6f (algoId %s)"
+              % (p["inst"], p["stop"], algo), file=sys.stderr)
+        return True
+    except Exception as e:  # noqa: BLE001
+        print("  Schutz liess sich NICHT wieder anlegen (%s): %s"
+              % (p["inst"], e), file=sys.stderr)
+        return False
 
 
 def raeume_offene_stops(z):

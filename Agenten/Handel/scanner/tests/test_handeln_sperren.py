@@ -87,15 +87,15 @@ class TestZeitfensterOffen(unittest.TestCase):
     """Faellt freigabefenster aus, gilt NICHT freigegeben - im Zweifel Papier."""
 
     def test_ohne_modul_false(self):
-        echt = sys.modules.pop("freigabefenster", None)
-        sys.modules["freigabefenster"] = None
+        # handeln laedt freigabefenster ueber den PFAD und haelt die Referenz
+        # als Modulattribut - ein Eintrag in sys.modules erreicht sie nicht
+        # mehr. Geprueft wird die REGEL: ein Ladefehler gilt als "zu".
+        echt = handeln.freigabefenster
+        handeln.freigabefenster = None
         try:
             self.assertFalse(handeln.zeitfenster_offen())
         finally:
-            if echt is not None:
-                sys.modules["freigabefenster"] = echt
-            else:
-                sys.modules.pop("freigabefenster", None)
+            handeln.freigabefenster = echt
 
 
 class TestFreigabeProtokoll(unittest.TestCase):
