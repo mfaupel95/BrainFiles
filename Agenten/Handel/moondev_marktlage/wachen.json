@@ -19,8 +19,11 @@
     "geprueft_am": null
   },
   "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
-  "_mindest_guthaben_eur": "Live-Zweig: 3x Max-Einsatz (30 EUR) als Sicherheitspuffer.",
-  "mindest_guthaben_eur": 100.0,
+  "_mindest_guthaben_eur": "Live-Zweig: Untergrenze des freien EUR-Guthabens, damit der kleinste Einsatz (live_einsatz_min_eur 60) hineinpasst. Vorher 100 aus einer veralteten Rechnung (3x 30 EUR); bei 88.56 EUR frei sperrte das den Live-Zweig dauerhaft.",
+  "mindest_guthaben_eur": 70.0,
+  "_mindest_guthaben_geaendert": "23.09.2026, Auftrag Max 'Marktlage 70': 100.00 -> 70.00. Puffer ueber dem Mindest-Einsatz bleibt 10 EUR.",
+  "_gebuehr_taker": "Kraken taker 0,6000 % je Seite (gemessen an einer echten Fuellung). Wird fuer den Gebuehrenpuffer der Einsatz-Deckelung gelesen.",
+  "gebuehr_taker": 0.006,
   "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 1 = 5.0 USD.",
   "risiko_je_position_usd": 9.0,

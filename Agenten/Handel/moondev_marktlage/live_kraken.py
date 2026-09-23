@@ -213,6 +213,38 @@ def einsatz_spanne(w):
     return unten, oben
 
 
+def einsatz_gedeckelt(eur, w):
+    """Den Einsatz auf das FREIE Guthaben deckeln (Gebuehr + etwas Luft).
+
+    Ein Signal kann bis live_einsatz_max_eur verlangen (150 EUR). Ist weniger
+    Guthaben da, lehnt Kraken die Order ab - das ist kein Handel, sondern
+    Laerm, und im Log nicht von einem Signalfehler zu unterscheiden. Deshalb
+    wird der Einsatz VOR dem Freigabefenster auf `frei * (1 - gebuehr - 0.2 %)`
+    gedeckelt; das Fenster zeigt damit genau den Betrag, der ausgefuehrt wird.
+    Faellt der gedeckelte Einsatz unter live_einsatz_min_eur, wird nicht
+    gehandelt - das entscheidet der Aufrufer.
+
+    Anlass 23.09.2026 (Auftrag Max "Marktlage 70"): bei 88.56 EUR frei war der
+    Live-Zweig dauerhaft gesperrt, obwohl ein Einsatz von 60 EUR hineinpasst.
+
+    Rueckgabe: (einsatz, hinweis oder None). Unlesbares Guthaben aendert
+    NICHTS am Einsatz - die Sperrenkette hat denselben Abruf schon gemacht und
+    dort korrekt gemeldet.
+    """
+    try:
+        frei = kraken.guthaben("ZEUR")
+    except Exception as e:                                       # noqa: BLE001
+        return eur, "Guthaben nicht abrufbar (%s) - Einsatz unveraendert" % e
+    if not frei:
+        return eur, "kein freies EUR-Guthaben gemeldet - Einsatz unveraendert"
+    geb = float(w.get("gebuehr_taker", 0.006) or 0.0)
+    deckel = frei * (1 - geb - 0.002)
+    if eur <= deckel:
+        return eur, None
+    return deckel, ("Einsatz %.2f -> %.2f EUR gedeckelt (%.2f EUR frei)"
+                    % (eur, deckel, frei))
+
+
 def lade_wachen():
     with open(risikostufe.datei(os.path.join(HIER, "wachen.json")),
               encoding="utf-8") as f:
@@ -382,6 +414,14 @@ def pruefe_einstiege(z, w, live):
         print("- Kurs %s nicht abrufbar - kein Einstieg" % PAAR, file=sys.stderr)
         return
     eur = signalstaerke(staerke, einsatz_spanne(w))
+    eur, deckel_hinweis = einsatz_gedeckelt(eur, w)
+    if deckel_hinweis:
+        print("- " + deckel_hinweis, file=sys.stderr)
+    mindest = float(w.get("live_einsatz_min_eur", EINSATZ_MIN))
+    if eur < mindest:
+        print("- kein Einstieg: gedeckelter Einsatz %.2f EUR unter der "
+              "Untergrenze %.2f" % (eur, mindest), file=sys.stderr)
+        return
     menge, fehler = menge_fuer(eur, kurs)
     if fehler:
         print("- Menge fuer %.2f EUR: %s - kein Einstieg" % (eur, fehler),
@@ -469,24 +509,37 @@ def sperren_zeile():
 
 
 def _papier_zustand():
-    """Der Zustand, den der LAUFENDE Zyklus schreibt - die Quelle des Herzschlags.
+    """Der Zustand, dessen `letzter_lauf` den Herzschlag beweist.
 
-    Warum nicht der Live-Zustand (22.09.2026, gemessener Kreislauf): der
-    Herzschlag ist das Alter des letzten Zyklus. Stand er auf `zustand.live.json`,
-    konnte er nur frisch sein, wenn der Live-Pfad lief; der Live-Pfad laeuft aber
-    nur bei offenem Freigabefenster, und das Fenster oeffnet AUTO_FREIGABE nur,
-    wenn als EINZIGER Grund das Fenster fehlt. Ergebnis: eine Spur, die noch nie
-    live lief (oder lange nicht), meldete "Herzschlag alt" und kam nie zum
-    Fenster - sie konnte sich nicht selbst scharf machen.
-    Der Papierzustand wird JEDEN Zyklus geschrieben und beweist die richtige
-    Sache: die Spur laeuft. Das Live-BUCH bleibt getrennt in ZUSTAND.
+    Der Herzschlag ist das Alter des letzten ZYKLUS, nicht das des Papierbuchs.
+    Gelesen wird deshalb der FRISCHESTE der beiden Staende: das Papierbuch
+    (zustand.json) und das Live-Buch (zustand.live.json).
+
+    Warum nicht nur der Live-Zustand (22.09.2026, gemessener Kreislauf): stand
+    er allein, meldete eine Spur, die noch nie live lief, "Herzschlag alt" und
+    kam nie zum Fenster - sie konnte sich nicht selbst scharf machen.
+
+    Warum nicht nur der Papierzustand (23.09.2026): laeuft die Spur live,
+    schreibt der Papierzweig nichts mehr. Der Zustand stand seit dem 22.09.
+    21:12 still, waehrend die Spur alle 15 Minuten live lief - nach
+    herzschlag_max_minuten sperrte sie sich damit SELBST: "Live waere gesperrt
+    durch: Herzschlag alt". Beide Staende zu lesen macht den Kreislauf
+    unmoeglich, ohne den Sinn des Herzschlags zu aendern.
+
+    Das LIVE-BUCH bleibt getrennt in ZUSTAND - hier wird nur `letzter_lauf`
+    verglichen.
     """
-    pfad = risikostufe.datei(os.path.join(HIER, "zustand.json"))
-    try:
-        with open(pfad, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
+    staende = []
+    for name in ("zustand.json", "zustand.live.json"):
+        try:
+            with open(risikostufe.datei(os.path.join(HIER, name)),
+                      encoding="utf-8") as f:
+                staende.append(json.load(f))
+        except (OSError, ValueError):
+            continue
+    if not staende:
         return {"letzter_lauf": None}
+    return max(staende, key=lambda z: z.get("letzter_lauf") or "")
 
 
 def lauf(modus):

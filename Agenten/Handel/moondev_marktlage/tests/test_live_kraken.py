@@ -101,7 +101,14 @@ class SperrenTest(LiveBase):
         self.assertTrue(any("freigabe" in g.lower() for g in gruende))
 
     def test_sperre_ohne_freigabefenster(self):
+        # Der ECHTE Zustand darf hier nicht mitreden: laeuft die Spur live, ist
+        # ihr Freigabefenster offen - dann fehlt der Grund zu Recht, und der
+        # Test meldete einen gesunden Betrieb als Fehler. Geprueft wird die
+        # Regel: keine Sitzung UND kein Zeitfenster = gesperrt.
+        self.addCleanup(setattr, lk, "sitzung_da", lk.sitzung_da)
+        self.addCleanup(setattr, lk, "zeitfenster_offen", lk.zeitfenster_offen)
         lk.sitzung_da = lambda: False
+        lk.zeitfenster_offen = lambda: False
         w = {"handel_erlaubt": True, "journal_zweitziel": self.tmp.name}
         z = {"positionen": []}
         gruende = lk.live_sperren(w, z)
@@ -266,6 +273,106 @@ class Verdrahtung(unittest.TestCase):
         self.assertEqual(geschrieben, [], "die Vorschau schreibt keinen Zustand")
         self.assertEqual(ausstiege, [], "die Vorschau handelt nicht")
         self.assertIn("Live waere gesperrt durch:", self._text())
+
+
+class EinsatzDeckelungTest(unittest.TestCase):
+    """Der Einsatz darf nie groesser sein als das freie Guthaben.
+
+    Anlass 23.09.2026 (Auftrag Max "Marktlage 70"): 88.56 EUR frei, mindestens
+    noetig 100 -> der Live-Zweig war dauerhaft gesperrt. Die Schwelle ist jetzt
+    70, und der Einsatz wird zusaetzlich auf das freie Guthaben gedeckelt -
+    ein Signal von 150 EUR bei 88 EUR frei waere sonst eine abgelehnte Order,
+    kein Handel.
+    """
+
+    def setUp(self):
+        self.alt = lk.kraken.guthaben
+
+    def tearDown(self):
+        lk.kraken.guthaben = self.alt
+
+    def wachen(self, **a):
+        w = {"live_einsatz_min_eur": 60.0, "live_einsatz_max_eur": 150.0,
+             "gebuehr_taker": 0.006}
+        w.update(a)
+        return w
+
+    def test_deckelt_auf_das_freie_guthaben(self):
+        lk.kraken.guthaben = lambda ccy="ZEUR": 88.56
+        eur, hinweis = lk.einsatz_gedeckelt(150.0, self.wachen())
+        self.assertLessEqual(eur, 88.56)
+        self.assertGreater(eur, 87.0)
+        self.assertIn("gedeckelt", hinweis)
+
+    def test_kleiner_einsatz_bleibt_unveraendert(self):
+        lk.kraken.guthaben = lambda ccy="ZEUR": 500.0
+        eur, hinweis = lk.einsatz_gedeckelt(60.0, self.wachen())
+        self.assertEqual(eur, 60.0)
+        self.assertIsNone(hinweis)
+
+    def test_unlesbares_guthaben_aendert_nichts(self):
+        def kaputt(ccy="ZEUR"):
+            raise RuntimeError("Netz weg")
+        lk.kraken.guthaben = kaputt
+        eur, hinweis = lk.einsatz_gedeckelt(120.0, self.wachen())
+        self.assertEqual(eur, 120.0)
+        self.assertIn("nicht abrufbar", hinweis)
+
+    def test_kein_guthaben_meldet_statt_zu_raten(self):
+        lk.kraken.guthaben = lambda ccy="ZEUR": 0.0
+        eur, hinweis = lk.einsatz_gedeckelt(120.0, self.wachen())
+        self.assertEqual(eur, 120.0)
+        self.assertIn("kein freies", hinweis)
+
+    def test_gebuehr_und_luft_sind_eingerechnet(self):
+        lk.kraken.guthaben = lambda ccy="ZEUR": 100.0
+        eur, _ = lk.einsatz_gedeckelt(150.0, self.wachen(gebuehr_taker=0.01))
+        self.assertAlmostEqual(eur, 100.0 * (1 - 0.01 - 0.002), places=6)
+
+
+class HerzschlagQuelleTest(unittest.TestCase):
+    """Der Herzschlag kommt aus dem FRISCHESTEN Zustand (Papier oder Live).
+
+    Befund 23.09.2026: die Spur lief alle 15 Minuten live, ihr Papierzustand
+    stand aber seit dem 22.09. 21:12 still - nach herzschlag_max_minuten sperrte
+    sie sich damit selbst ("Live waere gesperrt durch: Herzschlag alt").
+    Umgekehrt darf eine Spur, die NOCH NIE live lief, nicht gesperrt sein -
+    deshalb zaehlen beide Staende.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt = lk.HIER
+        lk.HIER = self.tmp.name
+        self.addCleanup(setattr, lk, "HIER", self.alt)
+
+    def _schreibe(self, name, letzter):
+        with open(os.path.join(self.tmp.name, name), "w",
+                  encoding="utf-8") as f:
+            json.dump({"letzter_lauf": letzter, "positionen": []}, f)
+
+    def test_frischer_live_zustand_schlaegt_alten_papierzustand(self):
+        self._schreibe("zustand.json", "2026-09-22T19:12:16+00:00")
+        self._schreibe("zustand.live.json", "2026-09-23T05:42:11+00:00")
+        self.assertEqual(lk._papier_zustand()["letzter_lauf"],
+                         "2026-09-23T05:42:11+00:00")
+
+    def test_frischer_papierzustand_zaehlt_weiter(self):
+        # Eine Spur, die noch nie live lief, muss sich scharf machen koennen.
+        self._schreibe("zustand.json", "2026-09-23T05:50:00+00:00")
+        self._schreibe("zustand.live.json", "2026-09-20T05:42:11+00:00")
+        self.assertEqual(lk._papier_zustand()["letzter_lauf"],
+                         "2026-09-23T05:50:00+00:00")
+
+    def test_ohne_dateien_kein_herzschlag(self):
+        self.assertIsNone(lk._papier_zustand().get("letzter_lauf"))
+
+    def test_kaputte_datei_wird_uebersprungen(self):
+        self._schreibe("zustand.json", "2026-09-23T05:50:00+00:00")
+        with open(os.path.join(self.tmp.name, "zustand.live.json"), "w") as f:
+            f.write("{ kein json")
+        self.assertEqual(lk._papier_zustand()["letzter_lauf"],
+                         "2026-09-23T05:50:00+00:00")
 
 
 if __name__ == "__main__":
