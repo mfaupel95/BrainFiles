@@ -64,7 +64,7 @@ class MarginBedarfTest(unittest.TestCase):
         m = an.margin_bedarf(d, b, 80.0)
         self.assertEqual(m["margin_ist"], 40.0)
         self.assertEqual(m["liq_abstand_prozent"], 10.0)
-        self.assertEqual(m["wartungsrate_prozent"], 0.0)   # 10 % - 40/400
+        self.assertEqual(m["rest_prozent"], 0.0)   # 10 % - 40/400
         self.assertEqual(m["ziel_abstand_prozent"], 20.0)
         self.assertEqual(m["noetige_margin_usdc"], 40.0)
 

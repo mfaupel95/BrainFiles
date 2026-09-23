@@ -70,9 +70,13 @@ def margin_bedarf(details, bot, ziel_boden):
     """Was kostet es, die Liquidation bis unter den Planboden zu druecken?
 
     Hergeleitet, nicht geraten: fuer eine isolierte Position gilt
-        Abstand(Einstand -> Liquidation) = Margin / Notional + Wartungsrate.
-    Margin, Notional und der Abstand sind alle bekannt - die Wartungsrate
-    faellt damit als Rest heraus und wird NICHT angenommen.
+        Abstand(Einstand -> Liquidation) = Margin / Notional + Rest,
+    wobei der Rest die Wartungsrate UND alles ist, was die Boerse sonst
+    anrechnet (z.B. einrealisierte Gewinne, die als Puffer auf der Position
+    liegen). Margin, Notional und der Abstand sind alle bekannt - der Rest
+    faellt damit heraus und wird NICHT angenommen. Ist er gross (ueber 5 %),
+    steckt mehr Margin in der Position als die Leiterbetraege hergeben; das
+    wird gemeldet, weil es die Rechnung sonst still verschoenert.
     """
     avg = _zahl(details, "avgPx")
     liq = _zahl(details, "liqPx")
@@ -84,14 +88,15 @@ def margin_bedarf(details, bot, ziel_boden):
     gefuellt = _zahl(details, "fillSafetyOrds", 0.0) or 0.0
     margin_ist = init_amt + gefuellt * safety_amt
     liq_abstand = 1.0 - liq / avg
-    mmr = liq_abstand - margin_ist / notional
+    rest = liq_abstand - margin_ist / notional
     ziel_abstand = 1.0 - ziel_boden / avg
     noetig = max(0.0, (ziel_abstand - liq_abstand) * notional)
     return {"margin_ist": round(margin_ist, 2), "notional_usd": round(notional, 2),
             "liq_abstand_prozent": round(liq_abstand * 100.0, 2),
-            "wartungsrate_prozent": round(mmr * 100.0, 2),
+            "rest_prozent": round(rest * 100.0, 2),
             "ziel_abstand_prozent": round(ziel_abstand * 100.0, 2),
-            "noetige_margin_usdc": round(noetig, 2)}
+            "noetige_margin_usdc": round(noetig, 2),
+            "rest_hoch": rest > 0.05}
 
 
 def koerper_margin(algo_id, amt):
@@ -292,10 +297,11 @@ def main(argv=None):
               % ("", p["bedarf_usdc"], p["frei_usdc"]))
         if p.get("margin"):
             m = p["margin"]
-            print("%-26s Wand: Liquidation %s unter dem Einstand = %s%% | Margin heute %s "
-                  "von %s notional (Wartungsrate %s%%)"
+            print("%-26s Wand: Liquidation %s unter dem Einstand = %s%% | Leiterbetraege "
+                  "heute %s von %s notional (Rest %s%%%s)"
                   % ("", p["liqPx"], m["liq_abstand_prozent"], m["margin_ist"],
-                     m["notional_usd"], m["wartungsrate_prozent"]))
+                     m["notional_usd"], m["rest_prozent"],
+                     " = mehr Margin als die Leiter hergibt" if m["rest_hoch"] else ""))
             if m["noetige_margin_usdc"] > 0:
                 print("%-26s fuer eine Leiter bis %s%% tief fehlen %s USDC Margin an diesem "
                       "Bot" % ("", m["ziel_abstand_prozent"], m["noetige_margin_usdc"]))

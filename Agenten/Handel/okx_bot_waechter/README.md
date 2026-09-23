@@ -181,8 +181,11 @@ Weitere Wege auf denselben Bot:
 ### Die Wand rechnen, statt sie zu schaetzen
 
 Fuer eine isolierte Position gilt `Abstand(Einstand -> Liquidation) = Margin/Notional +
-Wartungsrate`. Margin, Notional und der Abstand sind bekannt - die Wartungsrate faellt als
-Rest heraus (UNI-Bot 23.09.2026: 2,65 %) und wird NICHT angenommen. Daraus folgt der
+Rest`, wobei der Rest die Wartungsrate UND alles ist, was die Boerse sonst anrechnet
+(z.B. einrealisierte Gewinne als Puffer). Margin, Notional und der Abstand sind bekannt -
+der Rest faellt heraus (UNI-Bot 23.09.2026: 2,6 %) und wird NICHT angenommen. Ist er
+gross (ueber 5 %, z.B. BCH 36,2 %), steckt mehr Margin in der Position als die
+Leiterbetraege hergeben - die Zeile sagt es. Daraus folgt der
 Margin-Bedarf: `(Zielabstand - heutiger Abstand) x Notional`.
 
 ### Aufruf
