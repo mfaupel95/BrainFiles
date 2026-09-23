@@ -162,6 +162,106 @@ def vorfilter_grund(spur):
     return "%s: VORFILTER haelt den Einstieg zurueck - %s" % (spur, grund)
 
 
+# --- Stops: Merker und Boersenlage ------------------------------------------
+#
+# Befund 23.09.2026: `scanner/zustand.json` trug 23 Kopien DESSELBEN Stops, und
+# der Live-Lauf meldete jede Runde "offener Stop ... bleibt liegen: OKX 50014".
+# Aufgefallen ist das erst Max - es gab keine Wache auf diesen Merker. Ein
+# Stop, den nur das Buch kennt oder den nur die Boerse kennt, ist der teure
+# Fall: der eine kann eine spaetere Position zum alten Preis verkaufen, der
+# andere fehlt als Notausstieg ganz.
+
+OKX_BUCH = "scanner"        # fuehrt Stop-Kennungen, die an OKX liegen
+
+
+def _buch_stops(z):
+    """Stop-Kennungen der OFFENEN Positionen aus dem Zustand."""
+    aus = set()
+    for p in z.get("positionen") or []:
+        for feld in ("stop_ord_id", "stop_algo_id", "stop_txid"):
+            if p.get(feld):
+                aus.add(str(p[feld]))
+    return aus
+
+
+def boersenstops():
+    """Aktive Conditional-Algos des OKX-Kontos, lesend. None = nicht lesbar.
+
+    Ueber das okx-Modul der scanner-Spur, weil es denselben Zugang liest wie
+    die Order selbst (`OKX_LIVE_*` + `OKX_BASE`). Es wird NICHTS veraendert.
+    """
+    import importlib.util
+
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "okx_wache", HANDEL / OKX_BUCH / "okx.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod._roh("/api/v5/trade/orders-algo-pending?ordType=conditional",
+                        "GET", signiert=True) or []
+    except Exception:                                          # noqa: BLE001
+        return None
+
+
+def _lage_gleich(vorher, jetzt):
+    """Hat sich die Stop-Lage wirklich geaendert?
+
+    Verglichen werden nur die Zahlen und die Kennungen - `abruf_ok` und der
+    Zeitstempel allein sind kein Grund fuer eine Telegram-Nachricht.
+    """
+    felder = ("offene_stops", "boerse", "buch")
+    for f in felder:
+        if int(vorher.get(f) or 0) != int(jetzt.get(f) or 0):
+            return False
+    for f in ("waisen", "ohne_stop"):
+        if sorted(vorher.get(f) or []) != sorted(jetzt.get(f) or []):
+            return False
+    return True
+
+
+def stop_lage(spur):
+    """(Meldungen, Zustand) zur Stop-Lage einer Spur.
+
+    Gemeldet wird nur der WECHSEL (wie beim Vorfilter) - sonst stuende dieselbe
+    Zeile alle 10 Minuten im Telegram.
+    """
+    z = _lies(HANDEL / spur / "zustand.json")
+    offen = [e for e in (z.get("offene_stops") or []) if e.get("stop_ord_id")]
+    lage = {"offene_stops": len(offen)}
+    meldungen = []
+    if offen:
+        kennungen = sorted({str(e["stop_ord_id"]) for e in offen})
+        meldungen.append(
+            "%s: %d offener Stop(s) im Merker (%s, seit %s) - der Storno geht "
+            "nicht durch. Sie gehoeren mit scanner/stops_bereinigen.py "
+            "abgeglichen." % (spur, len(kennungen), ", ".join(kennungen[:3]),
+                              (offen[0].get("seit") or "?")))
+
+    if spur != OKX_BUCH:
+        return meldungen, lage
+
+    boerse = boersenstops()
+    lage["abruf_ok"] = boerse is not None
+    if boerse is None:
+        return meldungen, lage
+    kennungen = {str(a.get("algoId")) for a in boerse if a.get("algoId")}
+    buch = _buch_stops(z)
+    waisen = sorted(kennungen - buch)
+    ohne = sorted(buch - kennungen)
+    lage.update({"boerse": len(kennungen), "buch": len(buch),
+                 "waisen": waisen, "ohne_stop": ohne})
+    if waisen:
+        meldungen.append(
+            "%s: %d Stop(s) liegen an der Boerse, die zu keiner Position im Buch "
+            "gehoeren (%s) - ein Waisenstop kann eine spaetere Position zum "
+            "alten Preis verkaufen." % (spur, len(waisen), ", ".join(waisen[:3])))
+    if ohne:
+        meldungen.append(
+            "%s: %d Position(en) im Buch ohne Boersenstop (%s) - kein "
+            "Notausstieg." % (spur, len(ohne), ", ".join(ohne[:3])))
+    return meldungen, lage
+
+
 def wache(spur: str) -> int:
     cfg = SPUREN.get(spur)
     if not cfg:
@@ -216,10 +316,16 @@ def wache(spur: str) -> int:
     else:
         vorfilter_stand = None
 
+    # Stop-Lage: derselbe Merker waechst sonst unbemerkt (Befund 23.09.2026).
+    # Gemeldet wird nur bei Aenderung - sonst stuende dieselbe Zeile alle 10 min.
+    stop_roh, stop_stand = stop_lage(spur)
+    if not _lage_gleich(stand.get("stop_lage") or {}, stop_stand):
+        meldungen += stop_roh
+
     STAND_ORDNER.mkdir(parents=True, exist_ok=True)
     stand_pfad.write_text(json.dumps({
         "live_runden": len(zeilen), "fenster_offen": offen, "offen_bis": bis,
-        "vorfilter_grund": vorfilter_stand,
+        "vorfilter_grund": vorfilter_stand, "stop_lage": stop_stand,
         "geprueft": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }, ensure_ascii=False, indent=1), encoding="utf-8")
 
