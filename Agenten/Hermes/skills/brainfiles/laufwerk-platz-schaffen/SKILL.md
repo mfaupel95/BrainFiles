@@ -34,6 +34,14 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
 4. **Jeden Kandidaten einordnen, bevor gelöscht wird:**
    - *regenerierbar* (Temp, Build-Cache, `node_modules`, `.build`, `target`,
      Duplikat-Ordner mit `DUPLIKAT` im Namen) → löschen, mit Nachweis.
+   - *Fremd-Klon / Werkzeugordner* (geklonte Fremd-Repos, Plugin-Sammlungen) →
+     **erst nachweisen, dass niemand ihn liest**, dann löschen. Ein Klon mit
+     eigenem `.git` und bekanntem Remote ist jederzeit neu holbar und damit
+     regenerierbar; ein Ordner mit `SKILL.md` oder Plugin-Marker ist es nicht.
+     Traegt der Klon geladene Skills, ist oft schon sein `.git` allein der dicke
+     Brocken (belegt: 570 von 828 MB) und darf weg, solange der Arbeitsbaum
+     bleibt. Rezept mit Befehlen, inklusive der Pruefung auf eigene Commits:
+     `references/fremd-klon-ballast.md`.
    - *Umgebung* (`hiberfil.sys`, `pagefile.sys`, Windows-Update-Cache) →
      melden, erst nach ausdruecklicher Freigabe des Nutzers umsetzen (Admin
      + Neustart noetig). Nachweis fuer eine aufgeblaehte Auslagerungsdatei:
@@ -120,6 +128,34 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
 - **Kein Zwischenzustand stehen lassen.** Gelingt die Junction nicht, weil
   eine Anwendung den Ordner hält, bleibt eine leere Hülle liegen — und wer
   dort schreibt, füllt das alte Laufwerk wieder. Das gehört in den Bericht.
+- **Ein Ordner unter einem Werkzeug-/Plugin-Verzeichnis ist noch kein
+  benutztes Werkzeug.** Vor dem Löschen die Quelle autoritativ erfragen, nicht
+  aus dem Ordnernamen schließen: `hermes plugins list --json` liefert je Plugin
+  `source` — `bundled` heißt, es steckt im Hermes-Paket und der Ordner wird
+  nicht gebraucht; nur ein Katalog-/Pfadeintrag (`catalog:…`) macht den Ordner
+  zur Quelle. (Belegt: von 21 Ordnern in `Agenten/Hermes/plugins` mit 2,1 GB war
+  genau einer ein echtes Katalog-Plugin.) Genauso bei Claude-Plugins: die
+  lebenden Marketplaces stehen in `~/.claude/plugins/known_marketplaces.json`
+  unter `~/.claude/plugins/marketplaces/…` — ein Ordner mit
+  `.claude-plugin/marketplace.json` unter `Agenten/Hermes/plugins/` ist eine
+  Kopie, nicht die Quelle.
+- **Eine SKILL.md-Zählung mit zu kleiner Tiefe erklärt einen skill-tragenden
+  Klon für tot.** `find <ordner> -maxdepth 2 -name SKILL.md` meldete 0 für einen
+  Ordner mit 46 Skills (die liegen in Unterordnern der Klone) — dieselbe Zahl
+  hätte 828 MB gelöscht, die Skills tragen. Immer mindestens `-maxdepth 4`
+  zählen, bevor „kein SKILL.md, also Ballast" behauptet wird.
+- **Ein Suchlauf über einen Baum mit einem großen Klon reißt die Zeitgrenze.**
+  `grep -rn` (und rekursives Lesen über `~/.claude`) bricht nach der Grenze ab
+  und liefert **nichts**, was wie ein sauberes „keine Treffer" aussieht. Suche
+  auf die kleinen Wahrheitsdateien begrenzen (`config.yaml`, `profile.yaml`,
+  `MCP-Manifest.json`) bzw. `--exclude-dir=plugins --exclude-dir=.venv`, und
+  Indizes lesen statt Bäume scannen.
+- **Bash-`/tmp` ist für native Windows-Werkzeuge unsichtbar.** Eine Ausgabe, die
+  die Shell nach `/tmp/x.json` schreibt, findet `python` beim Lesen nicht
+  (`FileNotFoundError`) — die MSYS-Pfade werden nicht übersetzt. In den
+  Scratch-Ordner mit **nativem** Pfad schreiben
+  (`C:/Users/<user>/…/Agenten/Hermes/cache/scratch/x.json`) und diesen Pfad auch
+  dem Leser geben.
 - **Dubletten-Verdacht pruefen, nicht annehmen.** Ein Ordner namens `…DUPLIKAT`
   ist ein Hinweis, kein Beweis; vor dem Loeschen Inhalt gegen die eine Kopie
   stellen, die bleiben soll.
