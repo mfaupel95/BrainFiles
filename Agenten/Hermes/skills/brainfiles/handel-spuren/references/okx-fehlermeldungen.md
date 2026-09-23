@@ -38,8 +38,38 @@ okx.markt_verkauf('AVAX-USDT', 0.001)
 # jetzt:  OKX 51020: Your order amount does not meet the minimum order amount.
 ```
 
+## 3. `50119`/`50101` heisst meist FALSCHER HOST, nicht toter Schluessel
+
+Symptom: **jede** Order scheitert mit `OKX 50119: API key doesn't exist (HTTP
+401)`, waehrend Leseaufrufe weiter funktionieren.
+
+Mechanismus: ein Zugang besteht aus Schluessel **und** Host (`OKX_BASE`, EEA
+`https://eea.okx.com` gegen global `www.okx.com`). Wird der Schluessel mit
+Registry-Rueckfall gelesen (`_variable`), der Host aber nur aus der
+Prozessumgebung (`_env`), dann findet ein Kindprozess ohne geerbte
+Benutzervariablen den Schluessel - und signiert gegen den Vorgabe-Host. Der
+Fehler sieht wie ein toter Schluessel aus, ist aber ein falscher Endpunkt.
+
+**Regel: Schluessel und Host gehoeren zu EINEM Zugang - wer einen Teil mit
+Rueckfall liest, liest jeden Teil so.** Und: ein `50119`/`50101`, das auf
+JEDER Order steht, ist kein abgelaufener Schluessel.
+
+Pruefen, **bevor** ein Schluessel getauscht wird:
+
+```bash
+env -u OKX_BASE python -c "import okx; print(okx._live_basis())"
+# muss den EEA-Host nennen, sonst faellt der Kindprozess auf den globalen zurueck
+```
+
+Reihenfolge der Diagnose: erst Host, dann Kontoberechtigung, dann Schluessel.
+Kontoberechtigung lesend: `/api/v5/account/config` signiert, Feld `perm`
+(`read_only,trade`) und Feld `ip` (leer = keine IP-Sperre). **`okx._roh()` gibt
+die DATA-LISTE zurueck, nicht das Antwort-Dict** - ein Probeaufruf mit `.get()`
+faellt mit `AttributeError` um, obwohl der Abruf geklappt hat.
+
 ## Falle beim Nachstellen
 
 OKX antwortet ohne `User-Agent` mit **HTTP 403 (Cloudflare 1010)**. Wer
 ein Wegwerfskript baut und `okx.HEADERS` vergisst, misst seinen eigenen
 Fehler und haelt ihn fuer einen Schluesselfehler.
+
