@@ -3,9 +3,9 @@ id: 20260921-windows-umgebung
 title: 'Lektionen — Windows-Umgebung'
 tags: [lektion, windows]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 related: ['[[Betrieb/Docker-und-Sandbox]]', '[[Betrieb/Hermes]]']
-summary: 'PYTHONHOME-Vergiftung, Pfadaufloesung relativer Programme, Werkzeugsuche, Umgebungsvariablen-Stores, Commit-Limit als echte Grenze.'
+summary: 'PYTHONHOME-Vergiftung, Pfadaufloesung relativer Programme, Werkzeugsuche, Umgebungsvariablen-Stores, Commit-Limit, Kindprozesse beenden, Groessen messen unter Junctions.'
 ---
 
 # Windows-Umgebung
@@ -101,3 +101,26 @@ Fenster echtes Doppelorder-Risiko).
 
 Treiber, die ihre Kinder beenden, brauchen weiter die ganze Baumstruktur — dort bleibt
 `taskkill /T` im Code die richtige Wahl; die Regel hier gilt fuer den **manuellen** Eingriff.
+
+## 7. Plattenplatz messen: `du` folgt Verweisen, PowerShell nicht (23.09.2026)
+
+**Regel.** Groessen auf Windows mit **PowerShell** messen und Reparse-Punkte vorher aussortieren:
+
+```powershell
+Get-ChildItem <ordner> -Force -Directory | ForEach-Object {
+  if ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) { "$($_.Name)`tVERWEIS (nicht gezaehlt)" }
+  else { $s = (Get-ChildItem $_.FullName -Recurse -Force -File -EA SilentlyContinue |
+               Measure-Object -Property Length -Sum).Sum
+         "$($_.Name)`t{0}" -f [math]::Round($s/1MB) }
+}
+```
+
+**Warum.** In `AppData\Local` liegt der historische Verweis `Anwendungsdaten` (englisch
+`Application Data`), der auf **denselben** Ordner zurueckzeigt. `du -sm AppData/Local/*` folgt ihm —
+und GNU `du` zaehlt denselben Verzeichnis-Inode nur einmal: deshalb erschien die Liste als
+`Anwendungsdaten 91.418 MB` und die echten Unterordner fielen ganz weg. Die Zahl „AppData\Local
+88 GB" war damit ein **Artefakt der Zaehlung**, kein Messwert.
+
+**Merksatz.** Eine Groessenangabe, in der ein Verweis-Ordner (`Anwendungsdaten`, `Application Data`,
+Junctions unter `Modelle`/`Werkstatt`) als groesster Posten auftaucht, ist doppelt gezaehlt —
+nachmessen, bevor sie in eine Notiz oder Entscheidung einfliesst.
