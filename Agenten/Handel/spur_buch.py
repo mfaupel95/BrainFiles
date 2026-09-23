@@ -456,7 +456,7 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
 # --- Das Lauf-Geruest ------------------------------------------------------
 
 def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
-           zusatz_ausstieg=None):
+           zusatz_ausstieg=None, datenlage=None):
     """Ein Zyklus einer Spur. `quelle(w)`, `signal(daten, w)` kommen von ihr.
 
     `ziel(daten, w)` ist optional und liefert ein ZIEL ALS MARKTPUNKT (die
@@ -513,10 +513,22 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         for f in fehler:
             print("Uebersprungen (%s)" % f, file=sys.stderr)
         if not daten:
-            print("Keine Daten - Zyklus ohne Buchung beendet (%s)"
-                  % ("; ".join(fehler)[:200] if fehler else "keine Instrumente"))
+            grund = "; ".join(fehler)[:200] if fehler else "keine Instrumente"
+            print("Keine Daten - Zyklus ohne Buchung beendet (%s)" % grund)
             if modus == "vorschau":
                 print("Vorschau: keine Dateien geschrieben.")
+                return 0
+            # Der Zyklus ist GELAUFEN, auch wenn er nichts zu buchen hatte.
+            # Ohne diesen Schreibvorgang fror `letzter_lauf` ein, und die
+            # stille-spuren-wache meldete "TOT" fuer eine Spur, die alle
+            # 15 Minuten arbeitet (23.09.2026, robinhood_radar: der Radar hatte
+            # schlicht keine Kaeufe von bewerteten Wallets). Ein trockener
+            # Zulauf ist keine tote Spur - und der GRUND gehoert in den
+            # Zustand, sonst ist Stille nicht zu deuten.
+            z["datenlage"] = {"keine_daten": True, "grund": grund,
+                              "hinweis": datenlage() if datenlage else None}
+            schreibe_zustand(zustand_pfad, z)
+            spiegeln(zustand_pfad, journal_pfad, z, w)
             return 0
 
         pruefe_ausstiege(z, kurse, w, journal_pfad, live=live, weg=weg,
@@ -561,6 +573,8 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                         grund=(w.get("_grund") or w.get("grund")
                                or "moondev_bot"))
 
+        z["datenlage"] = {"keine_daten": False, "kandidaten": len(daten),
+                          "hinweis": datenlage() if datenlage else None}
         schreibe_zustand(zustand_pfad, z)
         spiegeln(zustand_pfad, journal_pfad, z, w)
         return 0

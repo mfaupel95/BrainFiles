@@ -102,14 +102,28 @@ def _stunden_her(wert):
 
 
 def _zustand(ordner):
-    p = os.path.join(ordner, "zustand.json")
-    if not os.path.isfile(p):
+    """Den Zustand mit dem JUENGSTEN `letzter_lauf` liefern.
+
+    Gelesen werden BEIDE Staende: das Papierbuch (zustand.json) und das
+    Live-Buch (zustand.live.json). Eine Spur, die live laeuft, schreibt den
+    Papierzweig nicht mehr - sie wurde sonst als "TOT" gemeldet, obwohl sie
+    alle 15 Minuten arbeitete (23.09.2026, moondev_marktlage; dieselbe Falle
+    wie beim Herzschlag, siehe Wiki/Handel/Gates-und-Freigabe.md).
+    Fehlt jede Datei, gibt es keinen Zustand - das bleibt "TOT".
+    """
+    staende = []
+    for name in ("zustand.json", "zustand.live.json"):
+        p = os.path.join(ordner, name)
+        if not os.path.isfile(p):
+            continue
+        try:
+            with open(p, encoding="utf-8") as f:
+                staende.append(json.loads(f.read()))
+        except Exception:
+            continue
+    if not staende:
         return None
-    try:
-        with open(p, encoding="utf-8") as f:
-            return json.loads(f.read())
-    except Exception:
-        return None
+    return max(staende, key=lambda z: (z or {}).get("letzter_lauf") or "")
 
 
 def _positionen(z):

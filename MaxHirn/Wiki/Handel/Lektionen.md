@@ -280,3 +280,27 @@ Rangliste, weil sein Signal nicht verschwunden war, sondern gerade **erfuellt** 
   wieder einsteigt, bezahlt die Gebuehr fuer eine Information, die schon bezahlt war.
 - Der Test dazu darf nicht nur „Sperre greift" pruefen: die Gegenprobe (nach 2,5 h wird wieder
   gekauft) ist der Teil, der eine kaputte Sperre findet, die nie aufgeht.
+
+## Ein trockener Zulauf ist keine tote Spur (23.09.2026)
+
+Die `stille-spuren-wache` meldete **robinhood_radar TOT — Zustand 6,8 h alt**, waehrend der
+Dauerlauf alle 15 Minuten `robinhood_radar (papier) ok` schrieb. Beides stimmte: der Zyklus lief,
+aber er schrieb nichts.
+
+- Ursache: `spur_buch.zyklus()` kehrte im Zweig **„keine Daten"** ohne `schreibe_zustand()`
+  zurueck. Damit fror `letzter_lauf` ein — und die Wache liest genau dieses Feld. Jetzt wird der
+  Zustand auch dann geschrieben und gespiegelt (Bedingung 4 gilt fuer **jeden** Ausgang); in
+  `--vorschau` weiterhin nicht.
+- **Der Grund gehoert in den Zustand.** Neu steht je Zyklus `datenlage` darin, z. B.
+  `{"keine_daten": true, "grund": "keine Instrumente", "hinweis": {"zu wenige bewertete Kaeufer": 2}}`.
+  Die Zaehler liefert die Spur ueber den optionalen `datenlage=`-Haken an `zyklus()` (robinhood_radar
+  reicht die Ablehnungsgruende aus `_kennzahlen` durch). Vorher rechnete die Spur diese Zaehler und
+  **niemand sah sie** — Stille war von einem Defekt nicht zu unterscheiden.
+- Nebenbefund derselben Meldung: `stille_spuren._zustand()` las nur `zustand.json`. Eine live
+  laufende Spur schreibt den Papierzweig nicht mehr (dieselbe Falle wie beim Herzschlag) — jetzt
+  gewinnt der **frischste** der beiden Staende, Papier oder Live.
+- Merksatz: **Ein Zyklus, der nichts bucht, ist trotzdem gelaufen.** Wer den Herzschlag nur im
+  Erfolgsfall schreibt, baut sich eine Wache, die den eigenen Betrieb als Ausfall meldet.
+- Nachweis: robinhood_radar von „TOT" auf **HAELT** (2 Positionen), moondev_marktlage auf
+  **LAEUFT** (2 echte Ausstiege), die echte Wache gibt nichts mehr aus (leer = gesund).
+  Tests: `tests/test_spur_buch_trocken.py` (5) + `tests/test_stille_spuren_werkzeug.py` (11).

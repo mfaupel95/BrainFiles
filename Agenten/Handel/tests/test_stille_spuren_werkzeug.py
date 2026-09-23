@@ -83,6 +83,41 @@ class StilleSpurenTest(unittest.TestCase):
     def _frisch(self):
         return (self.jetzt - datetime.timedelta(minutes=5)).isoformat()
 
+    def _zustands_paar(self, name, papier_h, live_h):
+        """Papierbuch und Live-Buch mit verschiedenem Alter."""
+        ordner = os.path.join(self.tmp, name)
+        os.makedirs(ordner, exist_ok=True)
+        for datei, stunden in (("zustand.json", papier_h),
+                               ("zustand.live.json", live_h)):
+            with open(os.path.join(ordner, datei), "w", encoding="utf-8") as f:
+                json.dump({"letzter_lauf":
+                           (self.jetzt - datetime.timedelta(hours=stunden))
+                           .isoformat(), "positionen": []}, f)
+        return ordner
+
+    def test_frischer_live_zustand_gilt_als_laufend(self):
+        """Eine live laufende Spur schreibt den Papierzweig nicht mehr.
+
+        Befund 23.09.2026: moondev_marktlage lief alle 15 Minuten live, ihr
+        zustand.json stand seit dem Morgen still - die Wache meldete "TOT".
+        """
+        self._zustands_paar("live_spur", papier_h=7.0, live_h=0.2)
+        r = self.mod.pruefe("live_spur", "live_spur")
+        self.assertNotEqual(r["lage"], "TOT", r["text"])
+
+    def test_beide_staende_alt_bleibt_tot(self):
+        self._zustands_paar("tote_spur", papier_h=9.0, live_h=8.0)
+        r = self.mod.pruefe("tote_spur", "tote_spur")
+        self.assertEqual(r["lage"], "TOT")
+
+    def test_kaputte_live_datei_kippt_nicht_auf_tot(self):
+        ordner = self._spur("halb",
+                            {"letzter_lauf": self._frisch(), "positionen": []})
+        with open(os.path.join(ordner, "zustand.live.json"), "w") as f:
+            f.write("{ kein json")
+        r = self.mod.pruefe("halb", "halb")
+        self.assertNotEqual(r["lage"], "TOT", r["text"])
+
     def test_frischer_zustand_ohne_buch_ist_wartet(self):
         """Eine neue Spur ohne Signal ist gesund, nicht kaputt."""
         self._spur("neu", {"letzter_lauf": self._frisch(), "positionen": []})

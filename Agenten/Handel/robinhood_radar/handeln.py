@@ -209,7 +209,8 @@ def main():
               "Hand). Diese Spur hat zusaetzlich keinen Orderaufruf.")
         modus = "papier"
     return spur_buch.zyklus(HIER, quelle, signal, modus,
-                            ereignis_name="handel/robinhood_radar")
+                            ereignis_name="handel/robinhood_radar",
+                            datenlage=lambda: dict(_zyklus.get("ablehnung") or {}))
 
 
 if __name__ == "__main__":
