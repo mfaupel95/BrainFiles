@@ -296,16 +296,46 @@ def stop_setzen(inst, basismenge, stop_preis):
     return d[0]["algoId"]
 
 
-def stop_stornieren(algo_id):
+def stop_stornieren(algo_id, inst=None):
     """Den Notausstieg beim Handelsplatz abbestellen.
 
     Muss zu JEDEM Ausstieg gehoeren: eine Algo-Order, die keiner mehr kennt,
     bleibt im Buch und kann eine spaetere Position desselben Instruments zum
     alten Stoppreis verkaufen.
+
+    ``inst`` ist PFLICHT - OKX verlangt bei ``cancel-algos`` das Feld instId
+    und antwortet ohne es mit ``50014: Parameter instId can not be empty``
+    (gemessen am 23.09.2026, mit instId kommt fuer dieselbe Order die richtige
+    Auskunft). Deshalb geben ALLE Aufrufer das Instrument mit; fehlt es, holt
+    :func:`stop_inst` es lesend nach.
+
+    Ein Stop, den es nicht mehr gibt (OKX 51400: schon gefuellt, storniert oder
+    nie existent), gilt als erledigt und wird NICHT als Fehler geworfen - sonst
+    bliebe der Eintrag fuer immer in ``zustand.json`` liegen. Rueckgabe: die
+    algoId, wenn wirklich storniert wurde, sonst None.
     """
-    d = _roh("/api/v5/trade/cancel-algos", "POST", [{"algoId": algo_id}],
-             signiert=True)
+    body = {"algoId": algo_id}
+    if inst:
+        body["instId"] = inst
+    try:
+        d = _roh("/api/v5/trade/cancel-algos", "POST", [body], signiert=True)
+    except OKXFehler as e:
+        if "51400" in str(e):
+            return None                 # es gibt nichts mehr zu stornieren
+        raise
     return (d[0].get("algoId") if d else None)
+
+
+def stop_inst(algo_id):
+    """Instrument einer Algo-Order, lesend erfragt.
+
+    Fuer Alteintraege in ``zustand.json``, die noch kein ``inst`` tragen: ohne
+    instId ist das Storno nicht moeglich (50014). Rueckgabe: instId oder None.
+    """
+    try:
+        return (stop_details(algo_id) or {}).get("instId") or None
+    except Exception:  # noqa: BLE001 - Leseprobe, kein Grund abzubrechen
+        return None
 
 
 def stop_details(algo_id):

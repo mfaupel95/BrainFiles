@@ -3,7 +3,7 @@ id: 20260921-boersen-und-schluessel
 title: 'Handel — Boersen und Schluessel'
 tags: [handel, zugaenge]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 related: ['[[Handel/Gates-und-Freigabe]]', '[[Wissen/Zugaenge]]']
 summary: 'Welcher Schluesselsatz zu welcher Boerse und welcher Spur gehoert, was die OKX-Fehlercodes bedeuten — ohne jeden Schluesselwert.'
 ---
@@ -38,6 +38,31 @@ oder einer anderen Umgebung: EEA vs. global, Demo-Key, oder fehlende IP-Whitelis
 **Pruefen mit einem signierten LESEaufruf (`guthaben`, `offene_orders`) gegen den
 Registry-Host** — nie gegen einen geratenen Host. Stand 21.09.2026 lieferte der xperp-Satz
 50101; echte Orderfaehigkeit ist damit ungeklaert, obwohl das Konto den Handel zulaesst.
+
+### Fehlercode 50014 / 51400 — Storno einer Algo-Order
+
+**Regel: jedes `cancel-algos` schickt `instId` mit.** OKX verlangt beim Abbestellen eines
+Conditional-Stops das Instrument; ohne es kommt `50014 Parameter instId can not be empty`,
+und der Stop laesst sich **nie** abbestellen. Gemessen am 23.09.2026 am EEA-Host:
+
+| Aufruf | Antwort |
+|---|---|
+| `cancel-algos` nur mit `algoId` | `50014 Parameter instId can not be empty` |
+| `cancel-algos` mit `algoId` **und** `instId` | `51400 … has been filled, canceled or does not exist` (bei einer Attrappen-Kennung) |
+
+`51400` heisst **erledigt, nicht Fehler**: der Stop ist gefuellt, storniert oder existiert
+nicht mehr. Wird es als Fehler behandelt, bleibt der Merker fuer immer liegen und der
+Live-Lauf meldet jede Runde „offener Stop … bleibt liegen". Genau das war der Befund:
+`scanner/zustand.json` trug 23 Kopien desselben Stops (3940642343922589696), entstanden
+beim Ziel-Ausstieg von ZEC-USDC am 22./23.09., solange der Verkauf zusaetzlich am
+falschen Host scheiterte (`50119`, siehe `_live_basis`).
+
+Nachweis: `Agenten/Handel/scanner/okx.stop_stornieren(algo_id, inst)` +
+`handeln.raeume_offene_stops` (Dedupe, fehlendes `inst` wird lesend nachgeholt);
+Tester `scanner/tests/test_okx_stornieren.py`; Bestandsaufraeumer
+`scanner/stops_bereinigen.py` (Vorschau Standard, `--anwenden`, `--stornieren`).
+Gegenprobe: Probe-Zustand mit 23 Kopien → `23 -> 0`, Positionen unveraendert,
+Buch gegen Boerse 5/5 (`/api/v5/trade/orders-algo-pending?ordType=conditional`).
 
 ## Kraken
 

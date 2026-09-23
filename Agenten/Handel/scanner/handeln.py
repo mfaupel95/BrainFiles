@@ -402,16 +402,14 @@ def _live_verkauf(p, z):
     """
     if p.get("stop_ord_id"):
         try:
-            okx.stop_stornieren(p["stop_ord_id"])
+            okx.stop_stornieren(p["stop_ord_id"], p.get("inst"))
         except Exception as e:  # noqa: BLE001
             print("  Stop %s nicht stornierbar: %s" % (p["stop_ord_id"], e),
                   file=sys.stderr)
             if _boersenstop_gefuellt(p):
                 print("  der Boersen-Stop hat ausgeloest - Position ist weg")
                 return "boerse"
-            z.setdefault("offene_stops", []).append(
-                {"inst": p["inst"], "stop_ord_id": p["stop_ord_id"],
-                 "seit": _heute()})
+            _merke_offenen_stop(z, p.get("inst"), p["stop_ord_id"])
     kauf_id = p.get("kauf_ord_id")
     if not kauf_id:
         # Ohne Handelsplatz-Order gibt es dort nichts zu verkaufen. Ein
@@ -478,6 +476,21 @@ def _schutz_zurueck(p, menge=None):
         return False
 
 
+def _merke_offenen_stop(z, inst, stop_ord_id):
+    """Einen nicht stornierbaren Stop EINMAL merken.
+
+    Ohne die Pruefung wuchs die Liste bei jedem weiteren Ausstiegsversuch: am
+    23.09.2026 standen 23 Kopien DESSELBEN Stop in ``zustand.json``, weil der
+    Storno an einem OKX-Fehler scheiterte und jeder Zyklus ihn erneut merkte.
+    """
+    offen = z.setdefault("offene_stops", [])
+    for e in offen:
+        if e.get("stop_ord_id") == stop_ord_id:
+            return False                # steht schon drin - nicht doppelt
+    offen.append({"inst": inst, "stop_ord_id": stop_ord_id, "seit": _heute()})
+    return True
+
+
 def raeume_offene_stops(z):
     """Stops abarbeiten, die beim Ausstieg nicht stornierbar waren.
 
@@ -485,13 +498,30 @@ def raeume_offene_stops(z):
     es erneut versucht; erst wenn einer wirklich weg ist, faellt der Eintrag.
     Ohne das koennte ein alter Stop eine spaetere Position desselben
     Instruments zum alten Stoppreis verkaufen.
+
+    Zwei Altlasten werden hier mit aufgeraeumt:
+      * doppelte Eintraege (derselbe Stop mehrfach gemerkt), und
+      * das fehlende ``inst`` alter Eintraege - OKX verlangt beim Storno die
+        instId (50014 ``Parameter instId can not be empty``), deshalb wird sie
+        lesend nachgeholt (``okx.stop_inst``).
     """
     offen = z.get("offene_stops") or []
-    rest = []
+    eindeutig, gesehen = [], set()
     for e in offen:
+        sid = e.get("stop_ord_id")
+        if sid and sid not in gesehen:
+            gesehen.add(sid)
+            eindeutig.append(e)
+    rest = []
+    for e in eindeutig:
         try:
-            okx.stop_stornieren(e["stop_ord_id"])
-            print("  offener Stop %s storniert" % e["stop_ord_id"])
+            inst = e.get("inst") or okx.stop_inst(e["stop_ord_id"])
+            weg = okx.stop_stornieren(e["stop_ord_id"], inst)
+            if not e.get("inst") and inst:
+                e["inst"] = inst
+            print("  offener Stop %s %s"
+                  % (e["stop_ord_id"],
+                     "storniert" if weg else "war schon weg (gefuellt/abgelaufen)"))
         except Exception as ex:  # noqa: BLE001
             if not _boersenstop_gefuellt(e):
                 rest.append(e)

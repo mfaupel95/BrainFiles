@@ -44,13 +44,14 @@ class AttrappeOKX:
 
     def __init__(self, kurs=11.9, fuellung=4.2, stop_fehler=False,
                  verkauf_fehler=False, storno_fehler=False,
-                 stop_gefuellt=False):
+                 stop_gefuellt=False, storno_erledigt=False):
         self.kurs = kurs
         self.fuellung = fuellung
         self.stop_fehler = stop_fehler
         self.verkauf_fehler = verkauf_fehler
         self.storno_fehler = storno_fehler
         self.stop_gefuellt = stop_gefuellt
+        self.storno_erledigt = storno_erledigt
         self.rufe = []
 
     def letzter_kurs(self, inst):
@@ -77,17 +78,26 @@ class AttrappeOKX:
             raise RuntimeError("OKX 51000: Parameter falsch")
         return "algo-1"
 
-    def stop_stornieren(self, algo_id):
-        self.rufe.append(("storno", algo_id))
+    def stop_stornieren(self, algo_id, inst=None):
+        self.rufe.append(("storno", algo_id, inst))
+        if self.storno_erledigt:
+            return None                 # wie okx.py bei OKX 51400: nichts mehr da
         if self.storno_fehler:
-            raise RuntimeError("OKX 51400: Order nicht gefunden")
+            # Nicht 51400 - "erledigt" wird von okx.stop_stornieren geschluckt.
+            # Hier muss ein echter Fehler stehen, sonst prueft der Test nichts.
+            raise RuntimeError("OKX 50014: Parameter instId can not be empty")
         return algo_id
 
     def stop_details(self, algo_id):
         self.rufe.append(("stopdetails", algo_id))
         return {"state": "filled" if self.stop_gefuellt else "live",
+                "instId": "LINK-USDC",
                 "accFillSz": "%.8f" % (self.fuellung if self.stop_gefuellt
                                        else 0)}
+
+    def stop_inst(self, algo_id):
+        self.rufe.append(("stopinst", algo_id))
+        return "LINK-USDC"
 
     def namen(self):
         return [r[0] for r in self.rufe]
@@ -218,7 +228,7 @@ class AusstiegLive(Basis):
              "offene_stops": [{"inst": "LINK-USDC", "stop_ord_id": "algo-9",
                                "seit": "2026-09-14"}]}
         text = self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
-        self.assertIn(("storno", "algo-9"), fake.rufe)
+        self.assertIn(("storno", "algo-9", "LINK-USDC"), fake.rufe)
         self.assertEqual(z["offene_stops"], [])
         self.assertIn("storniert", text)
 
@@ -230,6 +240,50 @@ class AusstiegLive(Basis):
         self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
         self.assertEqual(len(z["offene_stops"]), 1,
                          "was nicht weggeht, bleibt gemerkt")
+
+    def test_fehlendes_inst_wird_lesend_nachgeholt(self):
+        # Alteintrag ohne inst: ohne instId antwortet OKX mit 50014 und der
+        # Stop liesse sich nie stornieren (Befund 23.09.2026).
+        fake = AttrappeOKX()
+        z = {"positionen": [], "letzte_stops": {},
+             "offene_stops": [{"stop_ord_id": "algo-9", "seit": "2026-09-14"}]}
+        self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
+        self.assertIn(("storno", "algo-9", "LINK-USDC"), fake.rufe)
+        self.assertEqual(z["offene_stops"], [])
+
+    def test_doppelte_offene_stops_werden_zusammengefasst(self):
+        # Genau der Befund: 23 Kopien desselben Stops in zustand.json.
+        fake = AttrappeOKX()
+        z = {"positionen": [], "letzte_stops": {},
+             "offene_stops": [{"inst": "LINK-USDC", "stop_ord_id": "algo-9",
+                               "seit": "2026-09-14"}] * 23}
+        self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
+        self.assertEqual([r for r in fake.rufe if r[0] == "storno"],
+                         [("storno", "algo-9", "LINK-USDC")],
+                         "derselbe Stop wird EINMAL storniert")
+        self.assertEqual(z["offene_stops"], [])
+
+    def test_an_der_boerse_erledigter_stop_faellt_aus_der_liste(self):
+        # OKX 51400 (gefuellt/storniert/nicht existent) heisst: erledigt. Sonst
+        # meldet der Live-Lauf jede Runde "bleibt liegen" (der eigentliche
+        # Befund vom 23.09.2026).
+        fake = AttrappeOKX(storno_erledigt=True)
+        z = {"positionen": [], "letzte_stops": {},
+             "offene_stops": [{"inst": "LINK-USDC", "stop_ord_id": "algo-9",
+                               "seit": "2026-09-14"}]}
+        text = self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
+        self.assertEqual(z["offene_stops"], [], "erledigt ist kein Fehler")
+        self.assertIn("war schon weg", text)
+
+    def test_derselbe_stop_wird_nicht_zweimal_gemerkt(self):
+        fake = AttrappeOKX(storno_fehler=True, kurs=11.9)
+        z = {"positionen": [], "letzte_stops": {}, "offene_stops": []}
+        self._lauf(fake, lambda: h.pruefe_einstiege(z, [dict(V)], W, True))
+        fake.rufe.clear()
+        for _ in range(2):
+            self._lauf(fake, lambda: h.pruefe_ausstiege(z, True))
+        self.assertLessEqual(len(z.get("offene_stops") or []), 1,
+                             "kein Wachstum bei wiederholten Versuchen")
 
 
 if __name__ == "__main__":

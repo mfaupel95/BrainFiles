@@ -73,3 +73,37 @@ OKX antwortet ohne `User-Agent` mit **HTTP 403 (Cloudflare 1010)**. Wer
 ein Wegwerfskript baut und `okx.HEADERS` vergisst, misst seinen eigenen
 Fehler und haelt ihn fuer einen Schluesselfehler.
 
+## 4. Storno einer Algo-Order: `50014` = instId fehlt, `51400` = erledigt
+
+Befund 23.09.2026, Spur `scanner`: jede Runde
+`offener Stop 3940642343922589696 bleibt liegen: OKX 50014: Parameter instId
+can not be empty`, und `zustand.json` trug **23 Kopien** desselben Stops.
+
+Zwei Fehler auf einmal:
+
+* `cancel-algos` braucht **`instId`**. Ohne sie: `50014`, der Stop laesst sich
+  **nie** abbestellen. Gemessen am EEA-Host mit einer Attrappen-Kennung:
+  `{"algoId": FAKE}` -> `50014`; `{"algoId": FAKE, "instId": "ZEC-USDC"}` ->
+  `51400 Order cancellation failed as the order has been filled, canceled or
+  does not exist`.
+* **`51400` heisst erledigt, nicht Fehler.** Wer es als Fehler behandelt,
+  laesst den Merker fuer immer liegen und meldet jede Runde dasselbe. Ein
+  Stop, den es nicht mehr gibt, ist kein offener Stop.
+
+Regel: `stop_stornieren(algo_id, inst)` - Instrument IMMER mitgeben;
+`51400` still als erledigt werten; fehlt einem Alteintrag das Instrument,
+lesend nachholen (`stop_inst`, `state`/`instId` aus `order-algo`).
+
+Der zweite Fehler war der Merker selbst: `z["offene_stops"].append(...)` ohne
+Dedupe. Wuchs bei jedem weiteren Ausstiegsversuch, denn solange der Verkauf
+zusatzlich scheiterte (falscher Host, `50119`), blieb die Position im Buch und
+der naechste Zyklus merkte denselben Stop erneut.
+
+**Merksatz: ein Merker, der nur beim Erfolg faellt, braucht einen Dedupe - und
+eine Antwort, die "gibt es nicht mehr" bedeutet, ist kein Fehler.**
+
+Nachweis/Bestandsaufraeumer: `Agenten/Handel/scanner/stops_bereinigen.py`
+(Vorschau Standard, `--anwenden`, `--stornieren` fuer Waisenstops);
+Tester `scanner/tests/test_okx_stornieren.py`; Gegenprobe
+`zustand.json` (23 -> 0, Buch gegen Boerse 5/5 ueber
+`/api/v5/trade/orders-algo-pending?ordType=conditional`).

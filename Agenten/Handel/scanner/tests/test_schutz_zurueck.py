@@ -40,8 +40,11 @@ class FakeOKX:
         self.stops.append((inst, menge, preis))
         return "algo-neu"
 
-    def stop_stornieren(self, algo_id):
+    def stop_stornieren(self, algo_id, inst=None):
         return algo_id
+
+    def stop_inst(self, algo_id):
+        return "ZEC-USDC"
 
 
 def position(**abweichend):
