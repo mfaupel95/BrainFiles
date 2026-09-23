@@ -95,6 +95,14 @@ Agenten/Handel/stand/
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
 !Agenten/Handel/xperp/tests/*.py
+# Der OKX-Bot-Waechter ist ein WERKZEUG, kein Handelsbuch: Code, Wachen,
+# Doku und Tests gehoeren in den Verlauf. Zustand, Protokoll und Vorschlaege
+# bleiben draussen (Sperrliste unten) - ein Vorschlag traegt einen echten
+# Orderkoerper, ein Zustand ist Laufzeitstand.
+!Agenten/Handel/okx_bot_waechter/*.py
+!Agenten/Handel/okx_bot_waechter/*.md
+!Agenten/Handel/okx_bot_waechter/wachen.json
+!Agenten/Handel/okx_bot_waechter/tests/*.py
 # Dieselbe Falle wie bei scanner/tests (Zeile 20 faengt sonst mit ein):
 # die Tests der Spur brauchen eine EIGENE Freigabezeile.
 !Agenten/Handel/kraken/*.py

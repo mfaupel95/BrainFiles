@@ -1,0 +1,38 @@
+{
+  "_zweck": "Waechter ueber die ECHTEN OKX-Bots (Future DCA = contract_dca, Future Grid = contract_grid). Er meldet, wenn ein Bot aus seiner LETZTEN KAUFBAREN GRENZE herauslaeuft (kein Nachkauf mehr moeglich) oder der Liquidation zu nahe kommt - und kann ihn dann stoppen. Er legt ausserdem neue Bots vor (vorschlag.py) und baut sie auf Auftrag (bauen.py).",
+  "_stand": "2026-09-23",
+
+  "_tore": "Zwei Schalter, beide Vorgabe AUS. stop_erlaubt schaltet das Stoppen scharf, bauen_erlaubt das Anlegen. Beide wirken NUR zusammen mit dem Schalter --anwenden auf der Kommandozeile; ohne --anwenden ist jeder Lauf ein Bericht, der nichts schreibt. Ein Schalter allein reicht nie.",
+  "stop_erlaubt": false,
+  "bauen_erlaubt": false,
+
+  "_stop_art": "Was beim Stoppen mit der Position passiert: '1' = Positionen am Markt schliessen (Stop-Loss-Nachbildung, Vorgabe), '2' = Positionen behalten (nur Bot aus). Bei contract_dca/contract_grid bedeutet das woertlich: 1 = Market close all positions, 2 = Keep positions.",
+  "stop_art": "1",
+
+  "_reserve_prozent": "So viel Prozent UNTER der letzten Kaufgrenze gilt als 'ausgelaufen'. 0.0 heisst: schon das Unterschreiten der Grenze selbst zaehlt.",
+  "reserve_prozent": 0.0,
+
+  "_liq_warnung_prozent": "Abstand des Kurses zum Liquidationspreis, ab dem gewarnt wird.",
+  "liq_warnung_prozent": 8.0,
+  "_liq_notfall_prozent": "Abstand, ab dem sofort gestoppt wird (Notfall) - auch wenn die Kaufgrenze noch nicht gerissen ist. 0 = aus.",
+  "liq_notfall_prozent": 4.0,
+
+  "_bots": "Ausnahmen je Bot (algoId). 'scharf': false haelt einen Bot vom Stoppen zurueck, auch wenn stop_erlaubt gilt; 'reserve_prozent'/'stop_art' ueberschreiben die Vorgabe fuer diesen einen Bot. Beispiel: {\"3947610369740500992\": {\"scharf\": false}}",
+  "bots": {},
+
+  "_vorschlag": {
+    "_zweck": "Vorgaben fuer vorschlag.py - neue Bots werden aus diesen Zahlen und dem Kursverlauf gerechnet.",
+    "budget_usd": 100.0,
+    "dca_max_steps": 12,
+    "dca_px_steps": 0.0075,
+    "_dca_fallraum_prozent": "Geplanter Fallraum eines NEUEN DCA-Bots. Der Marktboden (Tagestief) bleibt die harte Untergrenze: geplant wird der KUERZERE der beiden Wege. Ohne diese Grenze ergaebe ein stark gefallener Kurs Stufen von 4-5 % und einen Stop 38 % unter dem Einstieg.",
+    "dca_fallraum_prozent": 15.0,
+    "dca_lever_max": 10,
+    "dca_tp_pct": 0.05,
+    "dca_sl_pct": 0.0,
+    "grid_spanne_tage": 30,
+    "grid_num_max": 120,
+    "grid_lever": 3,
+    "startgeld_max_usd": 300.0
+  }
+}

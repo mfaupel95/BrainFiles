@@ -304,3 +304,25 @@ aber er schrieb nichts.
 - Nachweis: robinhood_radar von „TOT" auf **HAELT** (2 Positionen), moondev_marktlage auf
   **LAEUFT** (2 echte Ausstiege), die echte Wache gibt nichts mehr aus (leer = gesund).
   Tests: `tests/test_spur_buch_trocken.py` (5) + `tests/test_stille_spuren_werkzeug.py` (11).
+
+## Ein Bot, der nicht mehr nachkaufen kann, hat keinen Stop (23.09.2026)
+
+Future-DCA und Future-Grid kaufen nach, solange der Kurs faellt. Ist die letzte
+Stufe gefuellt, endet das - und dann haelt der Bot nur noch und laeuft in die
+Liquidation. Bei allen fuenf laufenden DCA-Bots war `slPx` leer, also schuetzte
+niemand: UNI 5,6 % und ARB 5,0 % vor der Liquidation, Munition 0/11 bzw. 0/8.
+
+- **Die Grenze ist messbar, nicht zu schaetzen.** Tiefste Kauforder aus
+  `/tradingBot/dca/orders` (cycleId aus `cycle-list`) - und die Planrechnung
+  `initPx * (1 - maxSafetyOrds * pxSteps)` ergab beim echten Bot denselben Wert
+  (9,613). Zwei unabhaengige Wege, ein Ergebnis: erst dann darf eine Grenze in
+  eine Wache.
+- **Ein Bot-Zustand ist kein Konto-Zustand.** `fillSafetyOrds` gegen
+  `maxSafetyOrds` sagt, ob noch gekauft werden kann; das steht in keiner
+  Position und in keinem Guthaben.
+- **Ein Stop-Loss, den die Boerse nicht kennt, ist keiner.** Die Bots haben
+  kein `slPx`; ein Waechter, der nicht laeuft, schuetzt nichts. Deshalb setzt ein
+  NEUER Bot bei uns seinen Stop gleich mit (`slPct` bzw. `slTriggerPx = minPx`).
+- Handwerkszeug: `Agenten/Handel/okx_bot_waechter/`, Meldung per Cron
+  `okx-bot-wache` (30 min, nur Neues). Gestoppt wird nur mit `stop_erlaubt=true`
+  UND `--anwenden` - zwei Tore, wie bei den Spuren.

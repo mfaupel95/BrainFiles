@@ -77,5 +77,6 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Kronos.md](Werkzeuge/Kronos.md) | Kerzen-Foundation-Modell lokal: Aufruf, der pandas-2.2.2-Absturz (`-X faulthandler`), erster Messbefund gegen die Nullinie |
 | [Werkzeuge/Fomo-Radar.md](Werkzeuge/Fomo-Radar.md) | Robinhood-Chain-Beobachtung: was schluessellos laeuft (147 Wallets, 65 Fills), Fallen, Anschluss als Papierspur |
 | [Werkzeuge/Marktdaten-und-Bot-markt-recherche.md](Werkzeuge/Marktdaten-und-Bot-markt-recherche.md) | Marktdaten ohne Schluessel (OKX/Yahoo/RSS), das Werkzeug `marktdaten.py` und der Bot `markt-recherche` |
+| [Werkzeuge/okx-bot-waechter.md](Werkzeuge/okx-bot-waechter.md) | Waechter ueber die echten OKX-Bots (Future DCA/Grid): letzte kaufbare Grenze, Munition, Liquidation; stoppen, vorschlagen, bauen |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
