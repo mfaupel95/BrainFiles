@@ -41,5 +41,7 @@
   },
   "_dca_fallraum_prozent": "VERALTET als Vorgabe: der Fallraum wird seit 23.09.2026 aus dem Instrument selbst gerechnet (ATR x dca_atr_vielfaches und der beobachtete Rueckgang, siehe analyse.py). Der Wert hier gilt nur noch als Rueckfall, wenn keine Kerzen da sind.",
   "dca_atr_vielfaches": 3.0,
-  "_dca_atr_vielfaches": "Wie oft die Tagesspanne (ATR 14) der Plan reichen muss. Gemessen 23.09.2026: die fuenf laufenden Bots hatten Leitern von 4-8 % Tiefe, waehrend ihre Instrumente 8-13 % pro Tag laufen - nach 1-2 Tagen war die Munition weg. 3x ATR ist die Untergrenze, der beobachtete Rueckgang der letzten 90/180/365 Tage schlaegt sie, wenn er groesser ist."
+  "_dca_atr_vielfaches": "Wie oft die Tagesspanne (ATR 14) der Plan reichen muss. Gemessen 23.09.2026: die fuenf laufenden Bots hatten Leitern von 4-8 % Tiefe, waehrend ihre Instrumente 8-13 % pro Tag laufen - nach 1-2 Tagen war die Munition weg. 3x ATR ist die Untergrenze, der beobachtete Rueckgang der letzten 90/180/365 Tage schlaegt sie, wenn er groesser ist.",
+  "anpassen_erlaubt": false,
+  "_anpassen_erlaubt": "Tor fuer anpassen.py (POST dca/amend-order-algo). Aendert einen LAUFENDEN Bot: Leiter (maxSafetyOrds, pxSteps) und Stop (slPct/tpPct). Beweis der Existenz 23.09.2026 ohne Aenderung: Amend mit unbekannter algoId -> OKX 51291 'The bot doesn't exist or has already stopped'."
 }

@@ -147,3 +147,52 @@ Schalter `--tiefe 20` erzwingt eine feste Zahl.
 
 Der Wochenchart kommt bewusst vom **Spot**-Paar: die XPERP-Kontrakte sind zu jung
 (7-26 Wochenkerzen), dort ist jede Trendaussage geraten.
+## Parameter eines LAUFENDEN Bots aendern (anpassen.py)
+
+Frage: lassen sich die Zahlen eines laufenden DCA-Bots umstellen, sodass es ab dem
+naechsten Lauf greift? Antwort: ja - aber nicht alle Wege sind harmlos.
+
+**Beweis, dass der Weg fuer dieses Konto existiert, ohne etwas zu aendern:** ein POST auf
+`/api/v5/tradingBot/dca/amend-order-algo` mit einer algoId, die es nicht gibt, antwortet
+`OKX 51291: The bot doesn't exist or has already stopped`. Damit ist belegt: der Endpunkt
+gibt es, die Signatur stimmt, der Host passt - und der Bot wurde nicht beruehrt. Ein GET
+darauf antwortet `OKX 3: Operation not supported` (falscher Weg).
+
+Der Koerper traegt laut Doku ALLE Leiterparameter: `pxSteps`, `pxStepsMult`, `volMult`,
+`tpPct`, `slPct`, `initOrdAmt`, `safetyOrdAmt`, `maxSafetyOrds`, `reserveFunds`.
+Ein Amend schreibt also immer die ganze Leiter neu - auch Stop und Ziel. Deshalb gilt:
+**was nicht ausdruecklich gewaehlt ist, bleibt wie es war.** `tpPct` wird, wenn der Bot es
+nicht nennt, aus `tpPx / avgPx` hergeleitet (nicht mit 5 % angenommen).
+
+Weitere Wege auf denselben Bot:
+
+* `dca/margin/add` - Margin nachschiessen, drueckt die Liquidation nach unten,
+* `dca/orders/manual-buy` - von Hand in den laufenden Zyklus kaufen.
+
+### Was ein Amend NICHT kann
+
+* Er aendert nicht, was schon gefuellt ist - die Position bleibt wie sie ist.
+* Er schafft kein Geld: zusaetzliche Sicherungsstufen entstehen, koennen aber nicht
+  fuellen, solange kein freies Guthaben da ist (die Warnung nennt Bedarf und Bestand).
+* Er hebt die **Liquidation** nicht auf. Bei einer voll gefuellten Position ist das die
+  bindende Wand, nicht die Leiter: liegt der Planboden unter `liqPx`, erreicht der Bot die
+  tiefsten Stufen nie.
+
+### Die Wand rechnen, statt sie zu schaetzen
+
+Fuer eine isolierte Position gilt `Abstand(Einstand -> Liquidation) = Margin/Notional +
+Wartungsrate`. Margin, Notional und der Abstand sind bekannt - die Wartungsrate faellt als
+Rest heraus (UNI-Bot 23.09.2026: 2,65 %) und wird NICHT angenommen. Daraus folgt der
+Margin-Bedarf: `(Zielabstand - heutiger Abstand) x Notional`.
+
+### Aufruf
+
+```
+python anpassen.py                              # Bericht: alt gegen neu, je Bot
+python anpassen.py --nur-schutz --sl-pct 0.21   # nur den Bueren-Stop setzen
+python anpassen.py --stufen 20 --schritt 2.5    # Leiter tiefer legen
+python anpassen.py --margin 50 --anwenden       # Margin nachschiessen
+```
+
+Gesendet wird nur mit `--anwenden` UND `anpassen_erlaubt=true` in `wachen.json` UND einer
+ausdruecklichen Wahl; jede Aenderung landet in `bot_waechter_journal.jsonl`.

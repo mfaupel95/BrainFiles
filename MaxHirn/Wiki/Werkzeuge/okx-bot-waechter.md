@@ -109,3 +109,14 @@ allerdings 51 % bzw. 90 % unter ihrem Wochenhoch), Max erwartet die Rueckkehr un
 Laufen ins Plus. Festgehalten als `bots: {"<algoId>": {"scharf": false, "vermerk":
 "Entscheidung Max ..."}}` in `wachen.json` - damit kippt die Entscheidung nicht bei
 der naechsten Freigabe still um. `stop_erlaubt` bleibt `false`.
+## Laufende Bots umstellen (anpassen.py, 23.09.2026)
+
+Der Amend-Weg fuer einen laufenden DCA ist belegt: `POST /api/v5/tradingBot/dca/amend-order-algo`
+mit allen Leiterparametern. Beweis ohne Wirkung: eine unbekannte algoId antwortet
+`OKX 51291 The bot doesn't exist or has already stopped` - Endpunkt, Signatur und Host sind
+damit geprueft, ohne einen Bot anzufassen. Ein GET darauf: `OKX 3 Operation not supported`.
+
+Die zwei ehrlichen Grenzen: neue Sicherungsstufen brauchen freies Guthaben (am 23.09.2026
+waren es 0,03 USDC), und die bindende Wand einer voll gefuellten Position ist die
+Liquidation, nicht die Leiter. Margin-Bedarf = `(Zielabstand - heutiger Abstand) x Notional`,
+Wartungsrate als Rest gemessen.
