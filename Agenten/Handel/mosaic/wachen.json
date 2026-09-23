@@ -2,6 +2,7 @@
   "_zweck": "Harte Grenzen der Mosaic-Spur. Papier-Handel auf Preisaktions-Setups: 4H-Aufwaertstrend (gruene Kerze), 30M-Pullback zur Nachfragezone (Swing-Tiefs), 5M-Structure-Shift (Schluss ueber dem letzten relevanten Swing-High). Top-down: Erst der grosse Rahmen, dann der Einstieg im kleinen.",
   "waehrung": "USD",
   "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 23.09.2026 ('Mosaic handel erlaubt'). Beim Nachsehen war der Schalter schon offen - die Spur handelt seit dem 22.09.2026 live bei Kraken (Buch: SOL-USDC 0.48058439 @ 104.04, BTC-USDC 0.00066027 @ 75726.40, beide mit stop-loss am Handelsplatz). freigabe.erfuellt war seit dem 19.09.2026 gesetzt (Auftrag Max, Kriterium 'netto positiv' entfaellt). Der Schalter allein handelt nicht: es binden die Plaetze (5), der Deckel (400 USD) und das freie EUR-Guthaben (88.56).",
   "boerse": "kraken",
   "_boerse_vermerk": "kraken seit 21.09.2026 (Auftrag Max: 'Mosaic an kraken anbinden live offen handel erlaubt'). Der Live-Orderweg laeuft ueber mosaic/kraken_spot.py (Kraken Spot, EUR, Gebuehr 0 ueber das Pro-Abo); die Strategie, ihre Kerzen und ihr Buch bleiben unveraendert. Die Instrumente stehen weiter in OKX-Namen (BTC/ETH/SOL-USDC) und werden fuer die Order auf XXBTZEUR/XETHZEUR/SOLEUR abgebildet - so bleibt der Papierzweig (OKX-Kerzen) unberuehrt. Kontowaehrung EUR, Mindestguthaben 60 EUR.",
   "mindest_guthaben": 60.0,
