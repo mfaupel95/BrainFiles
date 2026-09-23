@@ -36,6 +36,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from datetime import datetime
@@ -363,9 +364,18 @@ def _jetzt() -> str:
 class MoonDevDauerlauf:
     """Faehrt die MoonDev-Agenten als langlebige Kindprozesse."""
 
-    def __init__(self, risiko: str = "basis", stumm: bool = True) -> None:
+    def __init__(self, risiko: str = "basis", stumm: bool = True,
+                 trocken: bool = False) -> None:
         self.risiko = risiko
         self.stumm = stumm
+        # TROCKEN (nur fuer Tests, gemessen 23.09.2026): eine Testsuite, die den
+        # echten Treiber baut und zyklus() ruft, hat in den LAUFENDEN Betrieb
+        # gegriffen - sie hat die lebenden Agenten als Waisen beendet (8 PIDs),
+        # die Logdatei des Laufs gedreht und ihre Startzeilen ins Treiberlog
+        # geschrieben. Im Trockenmodus entfaellt das Aufraeumen, Logs landen in
+        # einem Temp-Ordner und es wird nicht ins Treiberlog geschrieben.
+        self.trocken = trocken
+        self._logbasis = Path(tempfile.mkdtemp(prefix="moondev-test-")) if trocken else HIER
         self.kinder: dict[str, subprocess.Popen] = {}
         self.letzter_neustart: dict[str, float] = {}
         self.ag_log: dict[str, Path] = {}
@@ -375,6 +385,8 @@ class MoonDevDauerlauf:
         marke = f"[{_jetzt()}] {zeile}"
         self.protokoll.append(marke)
         print(marke, flush=True)
+        if self.trocken:
+            return
         # Datei-Log: unter der Aufgabenplanung gibt es keine Konsole, die
         # print() abfaengt - ohne Datei ist ein Fehlstart nicht nachzuvoll-
         # ziehen (gemessen 17.09.2026: Task lief laut Scheduler, aber kein
@@ -409,7 +421,7 @@ class MoonDevDauerlauf:
         # Pro Agent eine angehaengte Log-Datei. subprocess.PIPE wuerde die
         # Agenten-Ausgabe (Analyse + Empfehlungen) verlieren: der Driver liest
         # PIPE nie (nur stderr beim Absturz). Datei auch fuer den Absturz-Tail.
-        ag_log = HIER / ("moondev_%s.log" % name)
+        ag_log = self._logbasis / ("moondev_%s.log" % name)
         self.ag_log[name] = ag_log
         # Gedreht wird HIER, nicht im Betrieb: jetzt ist der alte Baum beendet
         # und die Datei frei. Im Betrieb haelt der Agent sie offen und Windows
@@ -523,7 +535,12 @@ class MoonDevDauerlauf:
         if not alle:
             self.protokolliere("WARNUNG: Prozessliste nicht lesbar - Aufraeumen "
                                "uebersprungen (verwaiste Agenten bleiben liegen)")
-        self.aufraeumen(alle)
+        if self.trocken:
+            # Ein Test darf die Agenten des ECHTEN Laufs nicht als Waisen
+            # beenden (das ist am 23.09.2026 passiert: 8 PIDs).
+            self.protokolliere("Trockenlauf: Aufraeumen fremder Agenten uebersprungen")
+        else:
+            self.aufraeumen(alle)
         for name, eintrag in AGENTEN.items():
             if self._ist_tot(name):
                 kind = self.kinder.get(name)

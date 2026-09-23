@@ -24,7 +24,7 @@ class StartStoppTest(unittest.TestCase):
 
     def test_startet_beide_agenten(self):
         m = lade_treiber()
-        lauf = m.MoonDevDauerlauf(risiko="basis", stumm=True)
+        lauf = m.MoonDevDauerlauf(risiko="basis", stumm=True, trocken=True)
         lauf.zyklus()
         time.sleep(6)
         self.assertIn("new_or_top", lauf.kinder)
@@ -36,10 +36,26 @@ class StartStoppTest(unittest.TestCase):
             self.fail(f"new_or_top muss laufen, endete mit {code}:\n{fehler}")
         lauf._stoppe("new_or_top")
         lauf._stoppe("kraken")
+        # ALLE Kinder beenden - und die Nachfahren EINZELN: der venv-Launcher
+        # (Wurzel) kann schon tot sein, waehrend der Interpreter weiterlaeuft
+        # (Leak-Muster vom 21.09.2026). taskkill /T erreicht dann nichts mehr,
+        # und der Test liesse vier Waisen stehen, die danach der echte Treiber
+        # aufraeumen muesste (am 23.09.2026 zweimal passiert).
+        meine = {k.pid for k in lauf.kinder.values()}
+        alle = m._prozesse()
+        nachfahren = set(meine)
+        for _ in range(4):
+            for e in alle:
+                if e.get("ParentProcessId") in nachfahren:
+                    nachfahren.add(e["ProcessId"])
+        for name in list(lauf.kinder):
+            lauf._stoppe(name)
+        for pid in nachfahren:
+            m._kill_baum(pid)
 
     def test_umgebung_hat_routine(self):
         m = lade_treiber()
-        lauf = m.MoonDevDauerlauf(risiko="basis", stumm=True)
+        lauf = m.MoonDevDauerlauf(risiko="basis", stumm=True, trocken=True)
         eintrag = m.AGENTEN["kraken"]
         umgebung = dict(os.environ)
         umgebung["MAXHIRN_ROUTINE"] = "1"
@@ -80,7 +96,7 @@ class WaiseTest(unittest.TestCase):
         # nie in eine echte Datei schreiben.
         self.tmp = tempfile.mkdtemp(prefix="moondev-waise-")
         self.m.LOG = Path(self.tmp) / "log.txt"
-        self.lauf = self.m.MoonDevDauerlauf(stumm=True)
+        self.lauf = self.m.MoonDevDauerlauf(stumm=True, trocken=True)
         self.getoetet = []
         self.m._kill_baum = lambda pid: (self.getoetet.append(pid), True)[1]
 
@@ -195,3 +211,44 @@ class LogDrehenTest(unittest.TestCase):
         i_dreh = quelle.index("_log_drehen(ag_log)")
         i_offen = quelle.index('ag_datei = open(ag_log')
         self.assertLess(i_dreh, i_offen)
+
+
+class TrockenlaufSchutzTest(unittest.TestCase):
+    """Ein Test darf nie in den LAUFENDEN Betrieb schreiben.
+
+    Am 23.09.2026 hat ein Lauf dieser Suite die lebenden Agenten als Waisen
+    beendet (8 PIDs), die Logdatei des Laufs gedreht (160,6 MB) und ihre
+    Startzeilen ins Treiberlog geschrieben - der Betrieb merkte es nur daran,
+    dass die Agenten kurz darauf neu starteten.
+    """
+
+    def test_trocken_schreibt_nicht_ins_treiberlog(self):
+        m = lade_treiber()
+        log = HIER.parent / "moondev_dauerlauf.log"
+        vorher = log.stat().st_size if log.exists() else 0
+        lauf = m.MoonDevDauerlauf(stumm=True, trocken=True)
+        lauf.protokolliere("diese Zeile darf NICHT im Treiberlog landen")
+        nachher = log.stat().st_size if log.exists() else 0
+        self.assertEqual(vorher, nachher)
+        self.assertNotIn("diese Zeile darf NICHT", log.read_text(encoding="utf-8", errors="replace"))
+        self.assertIn("diese Zeile darf NICHT", "\n".join(lauf.protokoll))
+
+    def test_trocken_schreibt_agentenlogs_in_den_temporaeren_ordner(self):
+        m = lade_treiber()
+        lauf = m.MoonDevDauerlauf(stumm=True, trocken=True)
+        self.assertNotEqual(lauf._logbasis, HIER.parent)
+        self.assertTrue(str(lauf._logbasis).endswith("") or True)
+        self.assertIn("moondev-test-", str(lauf._logbasis))
+        self.assertTrue(lauf._logbasis.is_dir())
+
+    def test_trocken_raeumt_fremde_agenten_nicht_auf(self):
+        """Aufraeumen wuerde die Agenten des echten Laufs beenden."""
+        m = lade_treiber()
+        lauf = m.MoonDevDauerlauf(stumm=True, trocken=True)
+        gerufen = []
+        lauf.aufraeumen = lambda alle=None: gerufen.append(alle)          # type: ignore
+        lauf._ist_tot = lambda name: True                                  # type: ignore
+        lauf._starte = lambda name, beschreibung="": None                  # type: ignore
+        lauf.zyklus()
+        self.assertEqual(gerufen, [])
+        self.assertTrue(any("Trockenlauf" in z for z in lauf.protokoll))
