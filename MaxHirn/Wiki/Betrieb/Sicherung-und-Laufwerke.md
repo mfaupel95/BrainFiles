@@ -3,9 +3,9 @@ id: 20260921-sicherung-und-laufwerke
 title: 'Betrieb — Sicherung und Laufwerke'
 tags: [betrieb, sicherung]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 related: ['[[Wissen/Off-Site-Backup]]', '[[Wissen/Ordnerstruktur]]', '[[Wissen/Hardware]]']
-summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junctions funktionieren und was die Sicherung NICHT kann.'
+summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junctions funktionieren, wohin der Plattenplatz geht (pagefile, Logs) und was die Sicherung NICHT kann.'
 ---
 
 # Sicherung und Laufwerke
@@ -14,8 +14,8 @@ summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junc
 
 | Laufwerk | Was | Platz frei |
 |---|---|---|
-| `C:` | System, BrainFiles (Vault + Agenten), App-Daten | ~59 GB |
-| `O:` | eigene physische Platte (Disk 1): `Archiv`, `Modelle`, `Werkstatt`, Wiki (Junction), `Documents` | ~236 GB |
+| `C:` | System, BrainFiles (Vault + Agenten), App-Daten | ~52 GB |
+| `O:` | eigene physische Platte (Disk 1): `Archiv`, `Modelle`, `Werkstatt`, Wiki (Junction), `Documents` | ~214 GB |
 | `G:` | Sicherungsplatte — taegliche Sicherung 20:00 | ~551 GB |
 | `Q:` | SanDisk Portable SSD, **ausser Haus**, exFAT, **nicht verschluesselt** | ~204 GB |
 
@@ -48,6 +48,23 @@ und wiederherstellbar.
 
 Pruefen: `Get-ChildItem <ordner> -Force | ? LinkType | Select Name,LinkType,Target`.
 Junctions brauchen **keine** Adminrechte — Symlinks schon (`auth-verknuepfen.ps1` fragt UAC).
+
+## Wohin der Platz geht (nachgemessen 23.09.2026)
+
+Freier Platz schwankt ohne Zutun. Vier Funde, alle gemessen:
+
+| Fund | Groesse | Was es ist |
+|---|---|---|
+| `O:\pagefile.sys` | **15,96 GB** | Auslagerungsdatei (eingestellt 4096–16384 MB, stand am Maximum; zuletzt geaendert 22.09. 23:16). Ein Ausbau um 12 GB sieht wie Datenzuwachs aus, ist aber Systemverhalten. |
+| `Agenten/_Backups/` + `Hermes/state-snapshots/` | 1,17 GB + 410 MB | Notfallkopien der Hermes-`state.db` vom Update 22.09. (15:20 und 15:37) |
+| `AppData\Local` + `AppData\Roaming` | **88 GB + 33 GB** | Die echten C:-Fresser sind App-Daten, nicht BrainFiles (`MaxHirn` 6,5 GB). |
+| `Agenten/Handel/moondev_*.log` | 172 MB | Agenten-Logs des Moon-Dev-Treibers, ~50 MB je Tag |
+
+**Log-Rotation (neu 23.09.2026).** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start ab
+50 MB nach `<name>.log.1` (`_log_drehen`). Gedreht wird **beim Start**, nicht im Betrieb: ein
+laufender Agent haelt die Datei offen, Windows verweigert dann jedes Umbenennen (nachgemessen).
+Merksatz: **Wachstum von Dauerprozessen faellt nicht an RAM oder Prozesszahl auf, sondern nur am
+Plattenplatz** — wer Platz sucht, sieht zuerst Prozesstabellen an und findet dort nichts.
 
 ## Was offen bleibt
 

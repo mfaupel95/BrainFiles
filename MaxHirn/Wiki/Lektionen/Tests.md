@@ -3,9 +3,9 @@ id: 20260921-tests
 title: 'Lektionen — Tests'
 tags: [lektion, tests]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-23
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Git-und-Textdateien]]']
-summary: 'Tests, die in echte Datenordner schreiben; Modulwaechter als Gegenmittel; Reihenfolge der sys.path-Eintraege; Tests, die nichts pruefen.'
+summary: 'Tests, die echte Datenordner ODER den laufenden Betrieb anfassen; Modulwaechter und Trockenmodus als Gegenmittel; sys.path-Reihenfolge; Tests, die nichts pruefen.'
 ---
 
 # Tests
@@ -88,7 +88,30 @@ Zwei Fallen in der Reparatur:
 **Merksatz:** Eine Suite, die ihr eigenes Modul importiert, muss VOR dem Import
 aufraeumen und danach pruefen, WAS sie geladen hat (`__file__`).
 
-## 6. Laufender Stand
+## 6. Ein Test darf auch den LAUFENDEN Betrieb nicht anfassen (23.09.2026)
+
+**Belegter Fall.** `Agenten/Handel/tests/test_moondev_dauerlauf.py` baute den ECHTEN Treiber und
+rief `zyklus()`. Ein Lauf hat damit:
+
+- die **lebenden** Moon-Dev-Agenten als Waisen beendet (8 PIDs — der Treiber startete sie 60 s
+  spaeter neu, der Betrieb merkte es nur daran),
+- die **Logdatei des Laufs** gedreht (`moondev_sniper.log`, 160,6 MB → `.log.1`),
+- seine Startzeilen **ins echte Treiberlog** geschrieben,
+- vier eigene Agenten als **Waisen** stehen gelassen.
+
+**Regel.** Fuer jede Suite, die Betriebscode startet, gibt es einen **Trockenmodus** — ein
+Konstruktorargument, das die drei Eingriffe abschaltet: kein Aufraeumen fremder Prozesse, Logs in
+einen `tempfile.mkdtemp()`-Ordner, nichts ins echte Log (`MoonDevDauerlauf(trocken=True)`).
+Der Test prueft den Vertrag selbst (`TrockenlaufSchutzTest`): Treiberlog unveraendert, Logbasis im
+Tempordner, `aufraeumen()` wird nicht gerufen.
+
+**Zweite Falle: die Wurzel ist frueher tot als der Nachfahre.** `_stoppe()` endet, wenn die Wurzel
+schon `poll() is not None` liefert — der venv-Launcher ist dann weg, waehrend der Interpreter
+weiterlaeuft. `taskkill /T` erreicht ueber eine tote Wurzel nichts mehr. Der Test sammelt deshalb
+**vor** dem Beenden die Nachfahren aus der Prozessliste (Parentkette, transitive Huelle) und beendet
+sie einzeln. Nachweis: `pythonw.exe`-Prozesse danach **10** (Treiberpaar + 8 Agenten).
+
+## 7. Laufender Stand
 
 Agenten/Handel, `discover -s tests -t tests`: **418 Tests, 2 vorbestehende rote**
 (21.09.2026) — `test_risikovorfilter.EinbauTest` (festes Datum, s. o.) und
