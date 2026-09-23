@@ -108,6 +108,23 @@ FARBEN = {
     "zellgruen": "#1b4d3e", "zellrot": "#5c1f2b",
 }
 
+# Schrift: EIN Basiswert, alles andere relativ dazu - so skalieren Titel,
+# Tabellen, Chart und Konsole gemeinsam, wenn der Nutzer die Groesse wechselt.
+# Wird nur im Speicher gehalten (die Zentrale schreibt nichts).
+SCHRIFT_ART = "Consolas"
+SCHRIFT_GROESSE = 11            # Basis; Vorgabe 11 statt 10: zu klein war der Befund
+SCHRIFT_AUSWAHL = tuple(str(g) for g in range(8, 17))
+KLEIN = -1                      # Konsole, Fusszeile
+TINY = -2                       # Chart-Beschriftung
+TITEL = 3                       # Fensterkopf
+
+
+def schrift(rel=0, fett=False):
+    """Schriftart dieser Ansicht: Basis + relative Groesse."""
+    if fett:
+        return (SCHRIFT_ART, SCHRIFT_GROESSE + rel, "bold")
+    return (SCHRIFT_ART, SCHRIFT_GROESSE + rel)
+
 
 # --------------------------------------------------------------------------
 # Reine Funktionen: hier steht die ganze Deutung, damit sie ohne Fenster
@@ -571,14 +588,38 @@ class Handelszentrale:
         self._pos_id = {}          # Tabellenzeile -> Position
         self._kurs_laeuft = False
         self._kerzen_wunsch = None
+        self._schrift_widgets = [] # (widget, rel, fett) fuer die Schrift-Option
         root.title("Handelszentrale — %d Spuren (Papier, nur lesend)"
                    % len(SPUREN))
         root.configure(bg=FARBEN["bg"])
         root.geometry("1280x860")
         root.minsize(1000, 640)
         self._baue()
+        self._buero_im_bild()
         self.refresh()
         root.after(REFRESH_MS, self._planer)
+
+    def _buero_im_bild(self):
+        """Einmalig: Fenster zurueckholen, wenn es ausserhalb liegt.
+
+        Nach dem Abziehen eines Monitors startet Tk das Fenster mit der alten
+        (negativen) Position und es ist unsichtbar, obwohl es laeuft. Der
+        Bildschirm des Python-Prozesses ist dann der einzige Beleg - die
+        Fenstersystem-Abfrage beantwortet die Position erst nach einem
+        Update-Zyklus, deshalb hier `update_idletasks`.
+        """
+        try:
+            self.root.update_idletasks()
+            x, y = self.root.winfo_x(), self.root.winfo_y()
+            breite = self.root.winfo_screenwidth()
+            hoehe = self.root.winfo_screenheight()
+            # Rand von 60 Pixeln: ein Fenster, das nur einen Strich zeigt,
+            # ist genauso unbenutzbar wie eines ganz draussen.
+            if (x + self.root.winfo_width() < 60 or y + self.root.winfo_height() < 60
+                    or x > breite - 60 or y > hoehe - 60):
+                self.root.geometry("+80+60")
+        except Exception:                                    # noqa: BLE001
+            pass          # kein Fensterdienst: Position nicht beantwortbar
 
     def _stufe_gewaehlt(self, _event=None):
         """Umschalter: RISIKO umsetzen und die Ansicht neu lesen."""
@@ -586,6 +627,36 @@ class Handelszentrale:
         wahl = self.w_stufe.get()
         RISIKO = None if wahl == BASIS_NAME else wahl
         self.refresh()
+
+    def _schrift_gewaehlt(self, _event=None):
+        """Schrift-Option: Basisgroesse umsetzen und neu anwenden."""
+        global SCHRIFT_GROESSE
+        wahl = self.w_schrift.get()
+        try:
+            SCHRIFT_GROESSE = int(wahl)
+        except (TypeError, ValueError):
+            return
+        self._wende_schrift_an()
+
+    def _registriere_schrift(self, widget, rel=0, fett=False):
+        """Ein Widget fuer die Schrift-Option merken und sofort setzen."""
+        widget.configure(font=schrift(rel, fett))
+        self._schrift_widgets.append((widget, rel, fett))
+
+    def _wende_schrift_an(self):
+        """Neue Schriftgroesse an allen gemerkten Widgets anwenden."""
+        st = ttk.Style()
+        st.configure(".", font=schrift())
+        st.configure("Treeview", rowheight=max(18, SCHRIFT_GROESSE * 2))
+        st.configure("Treeview.Heading", font=schrift(0, fett=True))
+        st.configure("TCombobox", font=schrift())
+        for widget, rel, fett in self._schrift_widgets:
+            try:
+                widget.configure(font=schrift(rel, fett))
+            except Exception:                                # noqa: BLE001
+                pass
+        self._zeichne_chart()
+        self._schreibe_konsole(datetime.now(UTC))
 
     # ---------- Aufbau ----------
     def _baue(self):
@@ -595,22 +666,26 @@ class Handelszentrale:
         except Exception:                                    # noqa: BLE001
             pass
         st.configure(".", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     fieldbackground=FARBEN["blatt"], font=("Consolas", 10))
+                     fieldbackground=FARBEN["blatt"], font=schrift())
         st.configure("Treeview", background=FARBEN["blatt"],
                      fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=21, borderwidth=0)
+                     rowheight=max(18, SCHRIFT_GROESSE * 2), borderwidth=0)
         st.configure("Treeview.Heading", background="#313244",
-                     foreground=FARBEN["akzent"], font=("Consolas", 10, "bold"))
+                     foreground=FARBEN["akzent"], font=schrift(0, fett=True))
+        st.configure("TCombobox", font=schrift())
         st.map("Treeview", background=[("selected", "#45475a")])
 
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
         kopf.pack(fill="x", padx=10, pady=(8, 2))
-        tk.Label(kopf, text="HANDELSZENTRALE", bg=FARBEN["bg"],
-                 fg=FARBEN["akzent"], font=("Consolas", 13, "bold")).pack(side="left")
-        self.l_dauerlauf = tk.Label(kopf, bg=FARBEN["bg"], font=("Consolas", 10, "bold"))
+        t_kopf = tk.Label(kopf, text="HANDELSZENTRALE", bg=FARBEN["bg"],
+                          fg=FARBEN["akzent"])
+        self._registriere_schrift(t_kopf, TITEL, fett=True)
+        t_kopf.pack(side="left")
+        self.l_dauerlauf = tk.Label(kopf, bg=FARBEN["bg"])
+        self._registriere_schrift(self.l_dauerlauf, 0, fett=True)
         self.l_dauerlauf.pack(side="left", padx=(16, 0))
-        self.l_takt = tk.Label(kopf, bg=FARBEN["bg"], font=("Consolas", 10),
-                               fg=FARBEN["matt"])
+        self.l_takt = tk.Label(kopf, bg=FARBEN["bg"], fg=FARBEN["matt"])
+        self._registriere_schrift(self.l_takt)
         self.l_takt.pack(side="right")
         # Umschalter Basis/mittel/hoch: eine Ansicht, zwei Buecher. Ohne ihn
         # waere der zweite Lauf in dieser GUI unsichtbar, obwohl er laeuft.
@@ -619,14 +694,27 @@ class Handelszentrale:
         self.w_stufe.set(RISIKO or BASIS_NAME)
         self.w_stufe.pack(side="left", padx=(16, 0))
         self.w_stufe.bind("<<ComboboxSelected>>", self._stufe_gewaehlt)
+        # Schrift-Option: 8-16 pt, sofort wirksam. Reine Anzeige-Einstellung,
+        # wird bewusst NICHT gespeichert (die Zentrale schreibt nichts).
+        t_schrift = tk.Label(kopf, text="Schrift:", bg=FARBEN["bg"],
+                             fg=FARBEN["matt"])
+        self._registriere_schrift(t_schrift, KLEIN)
+        t_schrift.pack(side="left", padx=(16, 0))
+        self.w_schrift = ttk.Combobox(kopf, values=SCHRIFT_AUSWAHL, width=3,
+                                      state="readonly")
+        self.w_schrift.set(str(SCHRIFT_GROESSE))
+        self.w_schrift.pack(side="left", padx=(4, 0))
+        self.w_schrift.bind("<<ComboboxSelected>>", self._schrift_gewaehlt)
         self.l_konto = tk.Label(kopf, bg=FARBEN["bg"], fg=FARBEN["matt"],
-                                font=("Consolas", 10),
                                 text="Kraken-Konto: …")
+        self._registriere_schrift(self.l_konto)
         self.l_konto.pack(side="left", padx=(16, 0))
 
         # --- Spurtabelle
-        tk.Label(self.root, text="Spuren", bg=FARBEN["bg"], fg=FARBEN["akzent"],
-                 font=("Consolas", 10, "bold"), anchor="w").pack(fill="x", padx=10)
+        t_spur_label = tk.Label(self.root, text="Spuren", bg=FARBEN["bg"],
+                                fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t_spur_label, 0, fett=True)
+        t_spur_label.pack(fill="x", padx=10)
         r1 = tk.Frame(self.root, bg=FARBEN["blatt"])
         r1.pack(fill="x", padx=10)
         sp_spur = ("spur", "modus", "fenster", "stand", "pos", "herzschlag",
@@ -649,11 +737,11 @@ class Handelszentrale:
         self.t_spuren.tag_configure("gut", foreground=FARBEN["gruen"])
 
         # --- Positionstabelle
-        tk.Label(self.root, text="Offene Positionen (Zeile anklicken = Chart)",
-                 bg=FARBEN["bg"], fg=FARBEN["akzent"],
-                 font=("Consolas", 10, "bold"), anchor="w").pack(fill="x",
-                                                                 padx=10,
-                                                                 pady=(6, 0))
+        t_pos_label = tk.Label(self.root,
+                               text="Offene Positionen (Zeile anklicken = Chart)",
+                               bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t_pos_label, 0, fett=True)
+        t_pos_label.pack(fill="x", padx=10, pady=(6, 0))
         r2 = tk.Frame(self.root, bg=FARBEN["blatt"])
         r2.pack(fill="x", padx=10)
         sp_pos = ("spur", "instrument", "seite", "einstieg", "kurs", "stop",
@@ -683,8 +771,8 @@ class Handelszentrale:
 
         # --- Chart
         self.l_chart = tk.Label(self.root, bg=FARBEN["bg"], fg=FARBEN["akzent"],
-                                font=("Consolas", 10, "bold"), anchor="w",
-                                text="Chart")
+                                anchor="w", text="Chart")
+        self._registriere_schrift(self.l_chart, 0, fett=True)
         self.l_chart.pack(fill="x", padx=10, pady=(6, 0))
         self.canvas = tk.Canvas(self.root, bg=FARBEN["blatt"], height=260,
                                 highlightthickness=0)
@@ -692,14 +780,15 @@ class Handelszentrale:
         self.canvas.bind("<Configure>", lambda _e: self._zeichne_chart())
 
         # --- Konsole
-        tk.Label(self.root, text="Konsole — letzte Buchungen und Dauerlauf",
-                 bg=FARBEN["bg"], fg=FARBEN["akzent"],
-                 font=("Consolas", 10, "bold"), anchor="w").pack(fill="x", padx=10,
-                                                                 pady=(6, 0))
+        t_konsole_label = tk.Label(self.root,
+                                   text="Konsole — letzte Buchungen und Dauerlauf",
+                                   bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t_konsole_label, 0, fett=True)
+        t_konsole_label.pack(fill="x", padx=10, pady=(6, 0))
         r3 = tk.Frame(self.root, bg=FARBEN["blatt"])
         r3.pack(fill="x", padx=10)
         self.konsole = tk.Text(r3, height=9, bg=FARBEN["blatt"],
-                               fg=FARBEN["text"], font=("Consolas", 9),
+                               fg=FARBEN["text"], font=schrift(KLEIN),
                                relief="flat", wrap="none")
         sb2 = ttk.Scrollbar(r3, orient="vertical", command=self.konsole.yview)
         self.konsole.configure(yscrollcommand=sb2.set, state="disabled")
@@ -712,11 +801,14 @@ class Handelszentrale:
 
         fuss = tk.Frame(self.root, bg=FARBEN["bg"])
         fuss.pack(fill="x", padx=10, pady=(4, 6))
-        self.l_summe = tk.Label(fuss, bg=FARBEN["bg"], font=("Consolas", 10, "bold"))
+        self.l_summe = tk.Label(fuss, bg=FARBEN["bg"])
+        self._registriere_schrift(self.l_summe, 0, fett=True)
         self.l_summe.pack(side="left")
-        tk.Label(fuss, text="nur lesend — der Dauerlauf bleibt der einzige Schreiber",
-                 bg=FARBEN["bg"], fg=FARBEN["matt"],
-                 font=("Consolas", 9)).pack(side="right")
+        t_fuss = tk.Label(fuss,
+                          text="nur lesend — der Dauerlauf bleibt der einzige Schreiber",
+                          bg=FARBEN["bg"], fg=FARBEN["matt"])
+        self._registriere_schrift(t_fuss, KLEIN)
+        t_fuss.pack(side="right")
 
     # ---------- Daten ----------
     def refresh(self):
@@ -865,7 +957,7 @@ class Handelszentrale:
         if not self.chart_wahl:
             c.create_text(breite // 2, hoehe // 2,
                           text="Zeile in der Positionstabelle anklicken",
-                          fill=FARBEN["matt"], font=("Consolas", 10))
+                          fill=FARBEN["matt"], font=schrift())
             return
         spur, schluessel, p = self.chart_wahl
         kerzen, grund = self.kerzen.get((spur, schluessel), ([], None))
@@ -873,7 +965,7 @@ class Handelszentrale:
         if not kerzen:
             c.create_text(breite // 2, hoehe // 2,
                           text=grund or "keine Kerzen verfuegbar",
-                          fill=FARBEN["matt"], font=("Consolas", 10))
+                          fill=FARBEN["matt"], font=schrift())
             self.l_chart.config(text=titel)
             return
 
@@ -890,7 +982,7 @@ class Handelszentrale:
             ys = rand_o + (hoehe - rand_o - rand_u) * s / 4
             c.create_line(rand_l, ys, breite - rand_r, ys, fill=FARBEN["gitter"])
             c.create_text(rand_l - 4, ys, anchor="e", fill=FARBEN["matt"],
-                          font=("Consolas", 8),
+                          font=schrift(TINY),
                           text=kurs_fmt(hoch - spanne * s / 4))
 
         kbreite = max(1.5, (breite - rand_l - rand_r) / len(kerzen) * 0.6)
@@ -913,7 +1005,7 @@ class Handelszentrale:
             c.create_line(rand_l, ys, breite - rand_r, ys, fill=farbe,
                           dash=(4, 3))
             c.create_text(breite - rand_r + 2, ys, anchor="w", fill=farbe,
-                          font=("Consolas", 8, "bold"), text=name)
+                          font=schrift(TINY, fett=True), text=name)
 
         def tag_str(ms):
             try:
@@ -923,9 +1015,9 @@ class Handelszentrale:
                 return "?"
 
         c.create_text(rand_l, hoehe - 4, anchor="w", fill=FARBEN["matt"],
-                      font=("Consolas", 8), text=tag_str(kerzen[0][0]))
+                      font=schrift(TINY), text=tag_str(kerzen[0][0]))
         c.create_text(breite - rand_r, hoehe - 4, anchor="e", fill=FARBEN["matt"],
-                      font=("Consolas", 8), text=tag_str(kerzen[-1][0]))
+                      font=schrift(TINY), text=tag_str(kerzen[-1][0]))
 
         kurs = self.kurse.get((p["quelle"], schluessel))
         gv = gv_prozent(p["seite"], kurs, p["einstieg"])
@@ -1114,6 +1206,7 @@ def nach_vorn(root):
 
 
 def main():
+    global RISIKO, SCHRIFT_GROESSE
     ap = argparse.ArgumentParser(description="Handelszentrale (nur lesend)")
     ap.add_argument("--pruefen", action="store_true",
                     help="nur ausgeben, was das Fenster zeigen wuerde")
@@ -1123,10 +1216,13 @@ def main():
                          "Basis). Die Stufe laeuft als eigener Dauerlauf mit "
                          "eigenen Dateien - siehe risikostufe.py."
                          % risikostufe.STANDARD)
+    ap.add_argument("--schrift", type=int, default=SCHRIFT_GROESSE,
+                    choices=range(8, 17),
+                    help="Schriftgroesse in pt (Vorgabe %d)" % SCHRIFT_GROESSE)
     args = ap.parse_args()
-    global RISIKO
     RISIKO = (None if args.risiko == risikostufe.STANDARD
               else args.risiko)
+    SCHRIFT_GROESSE = args.schrift
     if args.pruefen:
         for zeile in pruefe():
             print(zeile)

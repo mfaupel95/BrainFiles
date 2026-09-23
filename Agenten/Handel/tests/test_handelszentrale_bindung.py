@@ -470,5 +470,36 @@ class PrueflaufTest(unittest.TestCase):
                             "%s fehlt in der Ausgabe" % spur)
 
 
+class SchriftTest(unittest.TestCase):
+    """Die Schrift-Option: eine Basis, alles relativ, kein hart kodierter Wert."""
+
+    def test_basis_ohne_relativ(self):
+        art, groesse = gui.schrift()
+        self.assertEqual(art, "Consolas")
+        self.assertEqual(groesse, gui.SCHRIFT_GROESSE)
+
+    def test_relativ_verschiebt_groesse(self):
+        self.assertEqual(gui.schrift(gui.TINY)[1],
+                         gui.SCHRIFT_GROESSE + gui.TINY)
+        self.assertEqual(gui.schrift(gui.TITEL)[1],
+                         gui.SCHRIFT_GROESSE + gui.TITEL)
+
+    def test_fett_ist_drittes_element(self):
+        tupel = gui.schrift(0, fett=True)
+        self.assertEqual(tupel[2], "bold")
+
+    def test_auswahl_enthaelt_die_vorgabe(self):
+        self.assertIn(str(gui.SCHRIFT_GROESSE), gui.SCHRIFT_AUSWAHL)
+
+    def test_kein_hart_kodierter_consolas_ausser_der_art(self):
+        # Ein hart kodierter Font an einer Stelle wuerde nicht mit der Option
+        # mitwandern - und genau das ist der Fehler, den die Option behebt.
+        with open(gui.__file__, encoding="utf-8") as f:
+            quelle = f.read()
+        for n in quelle.split("\n"):
+            if '("Consolas"' in n and "SCHRIFT_ART" not in n:
+                self.fail("harter Font: %s" % n.strip())
+
+
 if __name__ == "__main__":
     unittest.main()
