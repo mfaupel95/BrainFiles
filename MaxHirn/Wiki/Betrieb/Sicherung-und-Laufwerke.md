@@ -57,7 +57,7 @@ Freier Platz schwankt ohne Zutun. Vier Funde, alle gemessen:
 |---|---|---|
 | `O:\pagefile.sys` | **15,96 GB** | Auslagerungsdatei (eingestellt 4096–16384 MB, stand am Maximum; zuletzt geaendert 22.09. 23:16). Ein Ausbau um 12 GB sieht wie Datenzuwachs aus, ist aber Systemverhalten. |
 | `Agenten/_Backups/` + `Hermes/state-snapshots/` | 1,17 GB + 410 MB | Notfallkopien der Hermes-`state.db` vom Update 22.09. (15:20 und 15:37) |
-| `AppData\Local` + `AppData\Roaming` | **88 GB + 33 GB** | Die echten C:-Fresser sind App-Daten, nicht BrainFiles (`MaxHirn` 6,5 GB). |
+| `AppData\Local` + `AppData\Roaming` | **~86 GB + ~30 GB** | Die echten C:-Fresser sind App-Daten, nicht BrainFiles (`MaxHirn` 6,5 GB). Nachgemessen 23.09.2026 mit PowerShell (Reparse-Punkte aussortiert): Local `Packages` 24,5 GB, `Programs` 8,7 GB, `NVIDIA` 5,9 GB, `Microsoft` 5,7 GB, **`pip` 5,4 GB**, `hermes` 4,2 GB, `Google` 4,0 GB, **`pnpm` 3,4 GB**, **`ms-playwright` 2,6 GB**, **`npm-cache` 2,4 GB**, `uv` 2,2 GB, `wsl` 1,9 GB, **`CrashDumps` 1,7 GB**, **`Temp` 1,6 GB**. Roaming: `Pioneer` 11,9 GB, **`npm` 4,8 GB**, `Cemu` 4,5 GB, `Mozilla` 4,1 GB. Fett = reproduzierbarer Cache/Muell. |
 | `Agenten/Handel/moondev_*.log` | 172 MB | Agenten-Logs des Moon-Dev-Treibers, ~50 MB je Tag |
 
 **Log-Rotation (neu 23.09.2026).** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start ab
