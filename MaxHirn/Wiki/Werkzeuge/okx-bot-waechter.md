@@ -78,3 +78,34 @@ dem OKX-Mindestinvestment (Grid: 534,42 bei diesem Bereich) = Warnung und
   Stufenzahl (`grid_num_max`).
 * `stopType 1` schliesst die Positionen am Markt, `2` laesst sie stehen - der
   Waechter hat 1 als Vorgabe, weil ein Stop ohne Schliessung kein Stop ist.
+
+## Das Schema der Nachkauf-Leitern (Analyse 23.09.2026)
+
+`analyse.py` misst je Bot, ob die Leiter zum Instrument passt. Ergebnis: **die
+Leitern reichten 4-8 %, die Instrumente laufen 8-13 % pro Tag.** Kein Einzelfall,
+ein Konstruktionsfehler - die Munition ist nach ein bis zwei Tagen weg.
+
+| Bot | Leiter | Rueckgang seit Kauf | bis Liq | ATR/Tag | 90-T-Rueckgang |
+|---|---|---|---|---|---|
+| UNI | 7,92 % | -12,5 % | 5,5 % | 11,9 % | -25,4 % |
+| ARB | 4,16 % | -12,0 % | 5,0 % | 13,2 % | -27,5 % |
+| MON | 8,00 % | -12,1 % | 13,1 % | 8,6 % | -25,1 % |
+| ZEC | 8,40 % | -10,0 % | 18,5 % | 10,6 % | -21,2 % |
+| BCH | 7,98 % | -2,7 % | - | 9,0 % | -24,6 % |
+
+Regel (in `analyse.py`, Vorgabe fuer neue Bots): Tiefe = max(3 x ATR, beobachteter
+Rueckgang, 10 %); Abstand je Stufe 0,15-0,5 x ATR, aber mindestens 2,5 %; Hebel so,
+dass die Liquidation 5 % unter dem Planboden liegt; Planboden moeglichst unter dem
+90-Tage-Tief. `vorschlag.py --tiefe auto` rechnet das jetzt so.
+
+Wochenchart: die Kontrakte sind zu jung (7-26 Wochenkerzen) - die Trendaussage kommt
+vom SPOT-Paar (`analyse.py --woche`).
+
+## Entscheidung Max zum Stoppen (23.09.2026)
+
+UNI und ARB werden **nicht** gestoppt: der uebergeordnete Trend im Wochenchart ist
+aufwaerts (UNI 2,25x ueber dem 30-Wochen-Durchschnitt, der steigt; ARB 2,0x - beide
+allerdings 51 % bzw. 90 % unter ihrem Wochenhoch), Max erwartet die Rueckkehr und ein
+Laufen ins Plus. Festgehalten als `bots: {"<algoId>": {"scharf": false, "vermerk":
+"Entscheidung Max ..."}}` in `wachen.json` - damit kippt die Entscheidung nicht bei
+der naechsten Freigabe still um. `stop_erlaubt` bleibt `false`.

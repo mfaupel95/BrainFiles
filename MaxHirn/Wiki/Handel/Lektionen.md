@@ -326,3 +326,23 @@ niemand: UNI 5,6 % und ARB 5,0 % vor der Liquidation, Munition 0/11 bzw. 0/8.
 - Handwerkszeug: `Agenten/Handel/okx_bot_waechter/`, Meldung per Cron
   `okx-bot-wache` (30 min, nur Neues). Gestoppt wird nur mit `stop_erlaubt=true`
   UND `--anwenden` - zwei Tore, wie bei den Spuren.
+
+## Eine Nachkauf-Leiter wird in ATR-Einheiten gebaut, nicht in Prozent (23.09.2026)
+
+Fuenf Future-DCA-Bots, fuenf leere Leitern. Aus den eigenen Tageskerzen gemessen: die
+Stufen reichten 4,16 bis 8,40 % unter den ersten Kauf - die Instrumente laufen aber
+8,6 bis 13,2 % pro Tag und fielen in 90 Tagen 21 bis 28 % vom Hoch. Eine Leiter, die
+nicht weiter reicht als die Tagesspanne, ist nach einem Tag verbraucht: dann kauft
+nichts mehr nach, und die Position laeuft ungebremst in die Liquidation.
+
+- **Die Einheit ist der Fehler, nicht der Wert.** 0,72 % Abstand sieht bei einer
+  Aktie vernuenftig aus und ist bei einem Wert mit 12 % Tagesspanne Rauschen. Regel:
+  Tiefe >= 3 x ATR, Abstand 0,15-0,5 x ATR und nie unter 2,5 %.
+- **Der Engpass sind die Stufen, nicht die Tiefe.** `maxSafetyOrds` deckelt, was
+  ueberhaupt erreichbar ist (12 Stufen a 2,5 % = 30 %). Will man mehr Tiefe, muss man
+  die Stufenzahl erhoehen - die Analyse nennt die noetige Zahl.
+- **Die Barriere muss unter dem letzten Tief liegen**, sonst endet die Leiter, bevor
+  der Markt dort war. Die Analyse vergleicht Planboden mit dem 90-Tage-Tief.
+- **Der Wochenchart des Kontrakts luegt.** XPERP-Kontrakte haben 7-26 Wochenkerzen -
+  eine Trendaussage daraus ist geraten. Der Trend kommt vom Spot-Paar.
+- Merksatz: **Ein Vorrat, der in einem Tag leer ist, ist kein Vorrat.**

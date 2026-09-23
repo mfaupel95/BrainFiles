@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 HIER = os.path.dirname(os.path.abspath(__file__))
 if HIER not in sys.path:
     sys.path.insert(0, HIER)
+import analyse  # noqa: E402
 import bots  # noqa: E402
 import okx  # noqa: E402
 
@@ -188,6 +189,38 @@ def koerper_grid(p, inst):
     }
 
 
+def tiefe_bestimmen(tiefe_schalter, kerzen, kurs, v, max_stufen):
+    """Den Fallraum des Plans bestimmen - gemessen, nicht geraten.
+
+    'auto' heisst: aus dem ATR des Instruments und seinem beobachteten
+    Rueckgang. Das ist die Lehre aus den fuenf leer gelaufenen Leitern (4-8 %
+    tief bei 8-13 % Tagesspanne). Ohne Kerzen faellt es auf den festen Wert
+    aus wachen.json zurueck - ehrlich, mit Hinweis.
+    """
+    fest = float(v.get("dca_fallraum_prozent") or 15.0)
+    if str(tiefe_schalter).lower() != "auto":
+        try:
+            return float(tiefe_schalter), None
+        except ValueError:
+            return fest, None
+    z = {"kurs": kurs,
+         "atr_prozent_14": analyse.atr_prozent(kerzen),
+         "max_rueckgang_90": analyse.max_rueckgang(kerzen, 90),
+         "max_rueckgang_180": analyse.max_rueckgang(kerzen, 180),
+         "max_rueckgang_365": analyse.max_rueckgang(kerzen, 365),
+         "letzter_boden_90": analyse.letzter_boden(kerzen, 90),
+         "leiter_tiefe_prozent": 0.0}
+    e = analyse.empfehlung(z, max_stufen=int(max_stufen),
+                           atr_vielfaches=float(v.get("dca_atr_vielfaches") or 3.0))
+    if e.get("fehler"):
+        e = dict(e)
+        e.setdefault("warnungen", [])
+        e["warnungen"] = list(e["warnungen"]) + [
+            "%s - es gilt der feste Wert %s %%" % (e["fehler"], fest)]
+        return fest, e
+    return float(e["ziel_tiefe_prozent"]), e
+
+
 def inst_typ(inst):
     """Aus der Kennung ableiten, welcher Markt gemeint ist.
 
@@ -238,6 +271,9 @@ def main(argv=None):
     ap.add_argument("--hoehe", type=float, default=None)
     ap.add_argument("--tage", type=int, default=30, help="Zeitfenster fuer Boden/Hoehe")
     ap.add_argument("--hebel", type=int, default=None)
+    ap.add_argument("--tiefe", default="auto",
+                    help="Fallraum des Plans: 'auto' (aus ATR und beobachtetem Rueckgang "
+                         "gerechnet) oder eine Zahl in Prozent")
     a = ap.parse_args(argv)
 
     w = json.load(open(os.path.join(HIER, "wachen.json"), encoding="utf-8"))
@@ -258,12 +294,28 @@ def main(argv=None):
           % (kurs, a.tage, boden, hoehe, len(kerzen)))
 
     if a.art == "dca":
-        p = dca_plan(kurs, boden, budget, n_max=int(v.get("dca_max_steps") or 12),
+        max_stufen = int(v.get("dca_max_steps") or 12)
+        tiefe, basis = tiefe_bestimmen(a.tiefe, kerzen, kurs, v, max_stufen)
+        if basis:
+            print("Tiefe AUTO %.2f %% (ATR %s %%/Tag, groesster Rueckgang %s %%, "
+                  "90-Tage-Tief %s, %s Stufen noetig)"
+                  % (tiefe, basis.get("atr_prozent_14"),
+                     basis.get("instrument_rueckgang_180_prozent"),
+                     basis.get("letzter_boden_90"), basis.get("stufen_noetig_fuer_ziel")))
+            for w_ in basis.get("warnungen") or []:
+                print("  WARNUNG: %s" % w_)
+        p = dca_plan(kurs, boden, budget, n_max=max_stufen,
                      px_schritt=float(v.get("dca_px_steps") or 0.0075),
                      tp_pct=float(v.get("dca_tp_pct") or 0.05),
                      sl_pct=float(v.get("dca_sl_pct") or 0.0),
-                     fallraum_prozent=float(v.get("dca_fallraum_prozent") or 15.0),
+                     fallraum_prozent=tiefe,
                      hebel_max=a.hebel or int(v.get("dca_lever_max") or 10))
+        if basis and not p.get("fehler"):
+            p["tiefe_auto"] = True
+            p["basis"] = {k: basis.get(k) for k in
+                          ("atr_prozent_14", "instrument_rueckgang_180_prozent",
+                           "letzter_boden_90", "stufen_noetig_fuer_ziel", "atr_vielfaches")}
+            p["warnungen"] = list(p.get("warnungen") or []) + list(basis.get("warnungen") or [])
         koerper = koerper_dca(p, a.inst) if not p.get("fehler") else None
     else:
         ai = bots.grid_ai_param(a.inst, richtung="long", dauer="14D")

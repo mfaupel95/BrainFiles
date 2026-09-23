@@ -113,6 +113,16 @@ def kurs(inst):
     return float(t[0]["last"]) if t else None
 
 
+def kerzen(inst, bar="1D", anzahl=365):
+    """Tageskerzen des Instruments, aufsteigend ([ts, o, h, l, c, vol]).
+
+    Die XPERP-Instrumente haben nur ihre eigene Lebensdauer an Historie - ein
+    Bot auf einem 310718-Kontrakt sieht also weniger als 365 Tage. Was fehlt,
+    fehlt ehrlich (die Auswertung nennt die Zahl der Kerzen mit).
+    """
+    return okx.kerzen(inst, bar, anzahl)
+
+
 # --- Rechnen (reine Funktionen, ohne Netz testbar) ---------------------------
 
 def kaufstufen(orders):

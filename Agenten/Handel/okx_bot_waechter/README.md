@@ -107,3 +107,43 @@ Der Vorschlag lehnt einen Plan ab, statt ihn zu beschönigen:
   (`bot_waechter_journal.jsonl`, nicht versioniert).
 * Der Waechter ist kein Ersatz fuer einen boersenseitigen Stop: ein leeres
   `slPx` heisst, dass niemand schuetzt, solange der Waechter nicht laeuft.
+
+## Die Leiter dimensionieren (Nachkauf-Barriere-Zonen)
+
+`analyse.py` misst, ob die Leiter eines Bots zu seinem Instrument passt - und
+rechnet die Zahlen fuer einen neuen. Gemessener Befund vom 23.09.2026 (alle fuenf
+laufenden Bots, aus den eigenen Tageskerzen):
+
+| Bot | Leiter tief | Kurs fiel seit Kauf | bis Liquidation | ATR/Tag | groesster Rueckgang 90 T |
+|---|---|---|---|---|---|
+| UNI | 7,92 % | -12,5 % | 5,5 % | 11,9 % | -25,4 % |
+| ARB | 4,16 % | -12,0 % | 5,0 % | 13,2 % | -27,5 % |
+| MON | 8,00 % | -12,1 % | 13,1 % | 8,6 % | -25,1 % |
+| ZEC | 8,40 % | -10,0 % | 18,5 % | 10,6 % | -21,2 % (180 T: -46,2 %) |
+| BCH | 7,98 % | -2,7 % | - | 9,0 % | -24,6 % (180 T: -45,8 %) |
+
+**Das Schema war falsch, nicht die einzelne Zahl:** die Leitern reichten 4-8 %,
+die Instrumente laufen 8-13 % pro TAG. Die Munition ist damit nach ein bis zwei
+Tagen weg - kein Nachkauf mehr, und die Position laeuft ungebremst in die
+Liquidation. Deshalb steht die Regel jetzt in ATR-Einheiten:
+
+* **Tiefe** = max(3 x ATR, beobachteter Rueckgang 90/180/365 Tage, 10 %) - hoechstens 60 %
+* **Abstand** je Stufe: mindestens 0,15 x ATR und 0,3 %, hoechstens 0,5 x ATR und 5 %,
+  aber nie kleiner als 2,5 % - eine Stufe muss eine echte Bewegung sein
+* **Hebel** so, dass die Liquidation 5 % UNTER dem Planboden liegt
+* **Barriere**: der Planboden soll unter dem 90-Tage-Tief liegen. Liegt er darueber,
+  sagt die Analyse es - die Leiter endet dann, bevor der Markt dort war
+
+`vorschlag.py` rechnet die Tiefe seit 23.09.2026 so (`--tiefe auto`, Standard); ohne
+Kerzen faellt es auf den festen Wert aus `wachen.json` zurueck, mit Hinweis. Der
+Schalter `--tiefe 20` erzwingt eine feste Zahl.
+
+```bash
+# Was passt zu diesem Instrument? (Bericht ueber alle laufenden Bots)
+../scanner/.venv/Scripts/python.exe analyse.py
+# Nur der uebergeordnete Trend im Wochenchart (Quelle: Spot-Paar, nicht der Kontrakt)
+../scanner/.venv/Scripts/python.exe analyse.py --woche
+```
+
+Der Wochenchart kommt bewusst vom **Spot**-Paar: die XPERP-Kontrakte sind zu jung
+(7-26 Wochenkerzen), dort ist jede Trendaussage geraten.

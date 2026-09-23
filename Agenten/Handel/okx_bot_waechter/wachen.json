@@ -1,25 +1,29 @@
 {
   "_zweck": "Waechter ueber die ECHTEN OKX-Bots (Future DCA = contract_dca, Future Grid = contract_grid). Er meldet, wenn ein Bot aus seiner LETZTEN KAUFBAREN GRENZE herauslaeuft (kein Nachkauf mehr moeglich) oder der Liquidation zu nahe kommt - und kann ihn dann stoppen. Er legt ausserdem neue Bots vor (vorschlag.py) und baut sie auf Auftrag (bauen.py).",
   "_stand": "2026-09-23",
-
   "_tore": "Zwei Schalter, beide Vorgabe AUS. stop_erlaubt schaltet das Stoppen scharf, bauen_erlaubt das Anlegen. Beide wirken NUR zusammen mit dem Schalter --anwenden auf der Kommandozeile; ohne --anwenden ist jeder Lauf ein Bericht, der nichts schreibt. Ein Schalter allein reicht nie.",
   "stop_erlaubt": false,
   "bauen_erlaubt": false,
-
   "_stop_art": "Was beim Stoppen mit der Position passiert: '1' = Positionen am Markt schliessen (Stop-Loss-Nachbildung, Vorgabe), '2' = Positionen behalten (nur Bot aus). Bei contract_dca/contract_grid bedeutet das woertlich: 1 = Market close all positions, 2 = Keep positions.",
   "stop_art": "1",
-
   "_reserve_prozent": "So viel Prozent UNTER der letzten Kaufgrenze gilt als 'ausgelaufen'. 0.0 heisst: schon das Unterschreiten der Grenze selbst zaehlt.",
   "reserve_prozent": 0.0,
-
   "_liq_warnung_prozent": "Abstand des Kurses zum Liquidationspreis, ab dem gewarnt wird.",
   "liq_warnung_prozent": 8.0,
   "_liq_notfall_prozent": "Abstand, ab dem sofort gestoppt wird (Notfall) - auch wenn die Kaufgrenze noch nicht gerissen ist. 0 = aus.",
   "liq_notfall_prozent": 4.0,
-
   "_bots": "Ausnahmen je Bot (algoId). 'scharf': false haelt einen Bot vom Stoppen zurueck, auch wenn stop_erlaubt gilt; 'reserve_prozent'/'stop_art' ueberschreiben die Vorgabe fuer diesen einen Bot. Beispiel: {\"3947610369740500992\": {\"scharf\": false}}",
-  "bots": {},
-
+  "bots": {
+    "3947610369740500992": {
+      "scharf": false,
+      "vermerk": "UNI - Entscheidung Max 23.09.2026: NICHT stoppen. Der uebergeordnete Trend im Wochenchart ist aufwaerts (Kurs 2,25x ueber dem 30-Wochen-Durchschnitt, der steigt), Max erwartet die Rueckkehr und ein Laufen ins Plus."
+    },
+    "3946581582064128000": {
+      "scharf": false,
+      "vermerk": "ARB - Entscheidung Max 23.09.2026: NICHT stoppen (Wochenchart aufwaerts, Kurs 2,0x ueber dem 30-Wochen-Durchschnitt)."
+    },
+    "_hinweis": "scharf:false nimmt einen Bot von der Stopp-Regel aus. Bei stop_erlaubt=false stoppt ohnehin nichts - dieser Block haelt die Entscheidung FEST, damit sie nicht bei der naechsten Freigabe still umkippt."
+  },
   "_vorschlag": {
     "_zweck": "Vorgaben fuer vorschlag.py - neue Bots werden aus diesen Zahlen und dem Kursverlauf gerechnet.",
     "budget_usd": 100.0,
@@ -34,5 +38,8 @@
     "grid_num_max": 120,
     "grid_lever": 3,
     "startgeld_max_usd": 300.0
-  }
+  },
+  "_dca_fallraum_prozent": "VERALTET als Vorgabe: der Fallraum wird seit 23.09.2026 aus dem Instrument selbst gerechnet (ATR x dca_atr_vielfaches und der beobachtete Rueckgang, siehe analyse.py). Der Wert hier gilt nur noch als Rueckfall, wenn keine Kerzen da sind.",
+  "dca_atr_vielfaches": 3.0,
+  "_dca_atr_vielfaches": "Wie oft die Tagesspanne (ATR 14) der Plan reichen muss. Gemessen 23.09.2026: die fuenf laufenden Bots hatten Leitern von 4-8 % Tiefe, waehrend ihre Instrumente 8-13 % pro Tag laufen - nach 1-2 Tagen war die Munition weg. 3x ATR ist die Untergrenze, der beobachtete Rueckgang der letzten 90/180/365 Tage schlaegt sie, wenn er groesser ist."
 }
