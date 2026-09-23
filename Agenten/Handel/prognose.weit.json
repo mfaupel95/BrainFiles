@@ -1,0 +1,42 @@
+{
+  "_zweck": "WEICHE Fassung der Prognose-Tore fuer den Schattenarm omniquant_weit. Rechnet dieselben Maerkte und dieselbe Bewertung wie prognose.json, laesst aber drei Tore weiter offen (hoechst_rsi, mindest_cr, ruecksetzer_bis). Zweck ist DATEN, nicht Freigabe: der strenge Arm omniquant bleibt unveraendert und ist die Vergleichsgrundlage. Angelegt am 24.09.2026 auf Max' Auftrag 'omniquant weit bauen'.",
+  "_stufe": "Stufe 2: Datei ist frei aenderbar. Sie beruehrt KEINE Order und keine Buchdatei des Hauptarms.",
+  "_maerkte": "Quote-Waehrungen, die abgesucht werden. USDT ist der breiteste Markt, USDC der, in dem die Spur scanner handelt. Der Umsatzfilter haelt die toten Paare draussen, die den Lauf nur langsam machen.",
+  "maerkte": [
+    "USDT",
+    "USDC"
+  ],
+  "min_volumen_24h_usd": 3000000,
+  "pause_s": 0.12,
+  "_tore": "Was ein 'sehr guenstiger Einstieg' ist - je Richtung. Die gemeinsamen Werte gelten fuer beide; hoechst_rsi/ruecksetzer_* gelten fuer LONG, mindest_rsi/erholung_* sind ihr SHORT-Gegenstueck. Alle Tore gleichzeitig - ein Treffer ist die Ausnahme, nicht die Regel. Was hier nicht steht, wird nicht gemeldet. Am 11.09.2026 an den echten Zahlen des ganzen Marktes kalibriert (41 Maerkte): mit den ersten, aus dem Bauch gesetzten Werten fand sich nie etwas. Wo es die Grenze schon gibt, steht hier derselbe Wert wie in scanner/wachen.json - eine zweite Wahrheit waere eine zweite Meinung zum selben Geld.",
+  "tore": {
+    "_mindest_score": "LONG: wie wachen.json mindest_score. Die Bewertung ist dieselbe, also auch die Schwelle.",
+    "mindest_score": 60,
+    "_mindest_score_short": "SHORT braucht eine eigene Zahl, weil die Score-Skala long-kalibriert ist. Gemessen am 13.09.2026 ueber 31 Maerkte (1D): LONG Median 57,5 / q75 64,7 / max 71,4 - SHORT Median 34,9 / q75 39,1 / max 53,3. Dieselbe Zahl 60 liegt auf der Long-Seite beim ~60. Perzentil und auf der Short-Seite ueber dem Maximum, das Tor ginge also nie auf. 45 ist dort das obere Quartil (q75 39,1) - derselbe Rang, nicht dieselbe Zahl. Bei mindest_score: 60 neu messen.",
+    "mindest_score_short": 45,
+    "_hoechst_rsi": "WEIT (24.09.2026): 55 -> 70. Am 23.09.2026 lag der RSI der umsatzstaerksten Maerkte bei 60-72 (LTC 68.6, BTC 67.7, AVAX 72.5) - das Tor 55 wies damit JEDEN Bewerber ab. Die strenge Fassung bleibt bei 55; hier wird bewusst ein ueberhitzter Markt zugelassen, damit ueberhaupt Papierrunden entstehen.",
+    "hoechst_rsi": 70,
+    "_mindest_rsi": "SHORT, Gegenstueck: nicht ueberverkauft. Eine Erholung in einem Abwaertstrend hat RSI 45-60; unter 45 steht der Wert schon am Boden, dann ist der Short zu spaet.",
+    "mindest_rsi": 45,
+    "_ruecksetzer": "WEIT (24.09.2026): -4 -> -2 (Abstand zum 60-Tage-Hoch). BTC stand bei -3.4 %, TRX bei -2.9 % und fiel nur an dieser Grenze raus.",
+    "ruecksetzer_von_pct": -25.0,
+    "ruecksetzer_bis_pct": -2.0,
+    "_erholung": "SHORT, Gegenstueck: Abstand zum Tief der letzten 60 Tage. Unter +4 % ist es keine Erholung, ueber +25 % ist der Abwaertstrend gebrochen - beides faellt raus.",
+    "erholung_von_pct": 4.0,
+    "erholung_bis_pct": 25.0,
+    "_max_volatilitaet_pa": "Wie wachen.json max_volatilitaet_pa.",
+    "max_volatilitaet_pa": 1.2,
+    "_trend_ueber_sma": "Der laengere Trend muss stehen: LONG verlangt den Preis ueber dem 100-Tage-Schnitt (sonst kauft man in einen Abschwung), SHORT spiegelbildlich darunter.",
+    "trend_ueber_sma": 100,
+    "_mindest_volumen_verhaeltnis": "Volumen der letzten 5 Tage gegen den 30-Tage-Schnitt. Unter 0,5 ist der Markt eingeschlafen - dann fehlt die Gegenwehr, die einen Ruecksetzer von einem Abschwung unterscheidet.",
+    "mindest_volumen_verhaeltnis": 0.5,
+    "_mindest_cr": "WEIT (24.09.2026): 1.5 -> 1.0. Chance/Risiko gegen das 60-Tage-Hoch; am 23.09. lag es bei 0.31-1.17, weil alles nah am Hoch stand. 1.0 ist die Grenze, ab der das Ziel doppelt so weit ist wie der Stop.",
+    "mindest_cr": 1.0,
+    "_stop": "Wie pflicht_stop_prozent_min/max in wachen.json.",
+    "stop_min_pct": 5.0,
+    "stop_max_pct": 12.0
+  },
+  "melden": {
+    "hoechstens": 5
+  }
+}

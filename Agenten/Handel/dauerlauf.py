@@ -234,6 +234,13 @@ SPUREN = {
                 "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",
                   "skript": "handeln.py"},
+    # Schattenarm 'weit' (24.09.2026, Auftrag Max): dasselbe Buch, aber die
+    # weiche Prognose-Fassung (prognose.weit.json -> neuester.weit.json).
+    # Eigene Dateien (wachen.weit.json, zustand.weit.json, handelsjournal.weit.csv),
+    # eigene Spiegelung nach Q:\Handel_Journal\omniquant_weit. Der Hauptarm
+    # bleibt unveraendert und ist die Vergleichsgrundlage.
+    "omniquant_weit": {"ordner": "omniquant", "waehrung": "USD",
+                       "skript": "omniquant_weit.py"},
     "nautilus": {"ordner": "nautilus", "waehrung": "USD",
                  "skript": "handeln.py",
                  "python": os.path.join(HIER, "nautilus", ".venv",

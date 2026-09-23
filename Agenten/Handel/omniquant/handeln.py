@@ -72,10 +72,25 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
-WACHEN = os.path.join(HIER, "wachen.json")
-ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
-JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
-DEFAULT_BERICHT = os.path.join(HANDEL, "prognose_berichte", "neuester.json")
+# Schattenarm (24.09.2026): HANDEL_BUCH=weit haengt an JEDE Buchdatei das
+# Suffix .weit - Wachen (wachen.weit.json), Zustand, Journal und der
+# Prognose-Bericht (neuester_weit.json). Ohne die Variable aendert sich
+# nichts; das Hauptbuch bleibt Vergleichsgrundlage. Bauart wie spiegel_knapp.
+ARM = (os.environ.get("HANDEL_BUCH") or "").strip()
+
+
+def _arm(pfad):
+    """Suffix vor die Endung: handelsjournal.csv -> handelsjournal.weit.csv."""
+    if not ARM:
+        return pfad
+    stamm, endung = os.path.splitext(pfad)
+    return "%s.%s%s" % (stamm, ARM, endung)
+
+
+WACHEN = _arm(os.path.join(HIER, "wachen.json"))
+ZUSTAND = risikostufe.datei(_arm(os.path.join(HIER, "zustand.json")))
+JOURNAL = risikostufe.datei(_arm(os.path.join(HIER, "handelsjournal.csv")))
+DEFAULT_BERICHT = os.path.join(HANDEL, "prognose_berichte", _arm("neuester.json"))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
            "einsatz_usd", "wert_usd", "stop", "ziel", "grund",
@@ -163,7 +178,8 @@ def lade_bericht():
             with open(DEFAULT_BERICHT, encoding="utf-8") as f:
                 b = json.load(f)
         except (OSError, ValueError):
-            return None, "kein Bericht (prognose_berichte/neuester.json fehlt)"
+            return None, ("kein Bericht (%s fehlt)"
+                          % os.path.basename(DEFAULT_BERICHT))
     try:
         erzeugt = datetime.fromisoformat(str(b.get("erzeugt", "")))
     except (TypeError, ValueError):

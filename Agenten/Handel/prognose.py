@@ -59,7 +59,27 @@ sys.path.insert(0, str(HIER / os.pardir / "Bus"))
 import bewertung                                          # noqa: E402
 import okx                                                # noqa: E402
 
-KONFIG = HIER / "prognose.json"
+# Fassung (24.09.2026): PROGNOSE_FASSUNG=weit liest prognose_weit.json und
+# schreibt neuester_weit.json. Damit laesst sich eine WEICHE Fassung der Tore
+# rechnen, ohne die strenge anzufassen - die strenge Quelle bleibt fuer den
+# Hauptarm und den Kraken-Papierzweig unveraendert. Ohne die Variable aendert
+# sich nichts.
+FASSUNG = (os.environ.get("PROGNOSE_FASSUNG") or "").strip()
+
+
+def _fassung(name):
+    """neuester.json -> neuester.weit.json (ohne Fassung: unveraendert).
+
+    Punkt wie bei den Buchdateien (zustand.weit.json, handelsjournal.knapp.csv) -
+    damit dieselbe Form ueberall.
+    """
+    if not FASSUNG:
+        return name
+    stamm, endung = os.path.splitext(name)
+    return "%s.%s%s" % (stamm, FASSUNG, endung)
+
+
+KONFIG = HIER / _fassung("prognose.json")
 BERICHTE = HIER / "prognose_berichte"
 
 
@@ -326,11 +346,13 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
     }
     if not kurz:
         BERICHTE.mkdir(exist_ok=True)
-        (BERICHTE / ("%s.json" % heute)).write_text(
+        name_heute = _fassung("%s.json" % heute)
+        name_neu = _fassung("neuester.json")
+        (BERICHTE / name_heute).write_text(
             json.dumps(bericht, ensure_ascii=False, indent=2), "utf-8")
-        (BERICHTE / "neuester.json").write_text(
+        (BERICHTE / name_neu).write_text(
             json.dumps(bericht, ensure_ascii=False, indent=2), "utf-8")
-        print("\nBericht: prognose_berichte/%s.json" % heute)
+        print("\nBericht: prognose_berichte/%s" % name_heute)
 
     if melden and not kurz:
         text = meldung(treffer, geprueft, k["melden"]["hoechstens"])

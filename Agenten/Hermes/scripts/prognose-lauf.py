@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 import sys
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -52,13 +53,33 @@ def main() -> int:
     if not os.path.exists(PYTHON):
         print("Prognose-Lauf: Python fehlt (%s)" % PYTHON)
         return 1
-    try:
-        p = subprocess.run([PYTHON, "prognose.py", "--ohne-meldung"], cwd=HANDEL,
-                           env=_umgebung(), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=FRIST_S)
-    except Exception as e:                                          # noqa: BLE001
-        print("Prognose-Lauf fehlgeschlagen: %s" % e)
-        return 1
+    # Zwei Fassungen: streng (Hauptarm omniquant, kraken-Papierzweig) und weit
+    # (Schattenarm omniquant_weit). Beide still, beide in derselben Datei-Familie.
+    fassungen = [("", "neuester.json"), ("weit", "neuester.weit.json")]
+    for fassung, datei in fassungen:
+        umg = _umgebung()
+        if fassung:
+            umg["PROGNOSE_FASSUNG"] = fassung
+        ziel = os.path.join(HANDEL, "prognose_berichte", datei)
+        try:
+            p = subprocess.run([PYTHON, "prognose.py", "--ohne-meldung"], cwd=HANDEL,
+                               env=umg, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=FRIST_S)
+        except Exception as e:                                      # noqa: BLE001
+            print("Prognose-Lauf (%s) fehlgeschlagen: %s" % (fassung or "streng", e))
+            return 1
+        if p.returncode not in (0, 1):
+            aus = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()
+            print("Prognose-Lauf (%s) brach ab (Rueckgabe %d):
+%s"
+                  % (fassung or "streng", p.returncode, "
+".join(aus[-8:])))
+            return 1
+        frisch = os.path.getmtime(ziel) if os.path.exists(ziel) else 0
+        if frisch < time.time() - 300:
+            print("Prognose-Lauf: Bericht %s nicht erneuert (%s)"
+                  % (fassung or "streng", ziel))
+            return 1
 
     # prognose.py gibt 1 zurueck, wenn es KEINE Treffer gibt - das ist kein Fehler.
     if p.returncode not in (0, 1):
@@ -73,11 +94,19 @@ def main() -> int:
         return 1
 
     treffer = d.get("treffer") or []
-    if not treffer:
+    # Die weiche Fassung mitlesen: sie versorgt den Schattenarm omniquant_weit.
+    try:
+        with open(os.path.join(HANDEL, "prognose_berichte", "neuester.weit.json"),
+                  encoding="utf-8") as fh:
+            weit = (json.load(fh).get("treffer") or [])
+    except Exception:                                               # noqa: BLE001
+        weit = []
+    if not treffer and not weit:
         return 0                                   # leere Ausgabe = nichts senden
-    zeilen = ["Prognose %s: %d Treffer von %s Maerkten"
-              % (str(d.get("erzeugt"))[:16], len(treffer), d.get("maerkte_geprueft"))]
-    for t in treffer[:6]:
+    zeilen = ["Prognose %s: streng %d, weit %d Treffer von %s Maerkten"
+              % (str(d.get("erzeugt"))[:16], len(treffer), len(weit),
+                 d.get("maerkte_geprueft"))]
+    for t in (treffer or weit)[:6]:
         zeilen.append("  %-12s %-5s Score %s  Stop %s  Ziel %s"
                       % (t.get("inst"), t.get("richtung"), t.get("score"),
                          t.get("stop"), t.get("ziel")))

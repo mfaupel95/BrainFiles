@@ -81,6 +81,8 @@ Agenten/Handel/stand/
 !Agenten/Handel/requirements.txt
 !Agenten/Handel/prognose.py
 !Agenten/Handel/prognose.json
+# Schattenarm 'weit' (24.09.2026): die weiche Fassung der Prognose-Tore.
+!Agenten/Handel/prognose.weit.json
 # Die Tests am Fuss von Handel/ (prognose) wie die der Spuren.
 !Agenten/Handel/tests/*.py
 !Agenten/Handel/scanner/*.py
@@ -346,6 +348,10 @@ Agenten/Handel/orbk/daten/**
 # (Grenzen von Hand); Zustand und Journal schreibt jeder Zyklus.
 Agenten/Handel/omniquant/zustand.json
 Agenten/Handel/omniquant/handelsjournal.csv
+# Schattenarm 'weit' (24.09.2026): Laufzeitstand, keine Konfiguration -
+# wachen.weit.json BLEIBT versioniert (oben per *.json freigegeben).
+Agenten/Handel/omniquant/zustand.weit*.json
+Agenten/Handel/omniquant/handelsjournal.weit*.csv
 # Gitter-Spur: Laufzeitstand gesperrt (schreibt jeder Zyklus), Code und
 # wachen.json sind oben freigegeben.
 Agenten/Handel/gitter/zustand.json

@@ -795,7 +795,7 @@ def spur_mosaic():
     return _spur_indikator("mosaic", "Mosaic (4H/30M/5M)", live_faehig=True)
 
 
-def spur_omniquant():
+def spur_omniquant(arm=""):
     """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
 
     Sie hat kein Pruefmodul und keine fuenf Bedingungen (wie die
@@ -806,8 +806,9 @@ def spur_omniquant():
     /ja".
     """
     ordner = os.path.join(HIER, "omniquant")
-    w = _lies(os.path.join(ordner, "wachen.json"), {})
-    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
+    suf = (".%s" % arm) if arm else ""
+    w = _lies(os.path.join(ordner, "wachen%s.json" % suf), {})
+    z = _lies(os.path.join(ordner, "zustand%s.json" % suf), {}) or {}
     pos = z.get("positionen", [])
 
     kurse = {}
@@ -837,14 +838,27 @@ def spur_omniquant():
             "seite": p.get("seite"),
         })
     return {
-        "name": "Omniquant (%s)" % (z.get("modus") or "papier"),
+        "name": "Omniquant%s (%s)" % ((" " + arm) if arm else "",
+                                      z.get("modus") or "papier"),
         "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
-        "bilanz": _bilanz("omniquant"),
+        "journal": os.path.join(ordner, "handelsjournal%s.csv" % suf),
+        "bilanz": _bilanz("omniquant", ordner,
+                          os.path.join(ordner, "handelsjournal%s.csv" % suf)),
     }
+
+
+def spur_omniquant_weit():
+    """Schattenarm 'weit' - dasselbe Buch, aber die WEICHE Prognose-Fassung.
+
+    Angelegt am 24.09.2026: die strenge Fassung hatte bei 71 geprueften Maerkten
+    0 Treffer (Ruecksetzer-Kaeufer ohne Ruecksetzer), der Arm soll Papierrunden
+    erzeugen. Gleiche Groessen, gleiches Risiko, nur weitere Tore - der Vergleich
+    misst damit die Tore. Eigenes Journal (handelsjournal.weit.csv).
+    """
+    return spur_omniquant("weit")
 
 
 def spur_gitter():
@@ -1238,7 +1252,7 @@ def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
 
 
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
-    spur_orb, spur_orbk, spur_omniquant, spur_nautilus,
+    spur_orb, spur_orbk, spur_omniquant, spur_omniquant_weit, spur_nautilus,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,

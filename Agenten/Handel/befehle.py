@@ -83,6 +83,7 @@ FAMILIE = {
     # dieselbe Familie wie die Kopier-Spuren.
     "robinhood_radar": "Feed-Kopie",
     "omniquant": "Prognose-Buch",
+    "omniquant_weit": "Prognose-Buch (weit)",
     "macd_mtf": "Indikator",
     "squeeze": "Indikator",
     "supertrend": "Indikator",
