@@ -138,3 +138,28 @@ rund 32 min von selbst. **Jede Grenze darunter stellt bei JEDER Stoerung flach**
 11./12.09.2026 mit 30 min in xperp/swap passiert). Wer eine Spur live nimmt, setzt 180
 BEVOR `handel_erlaubt` auf `true` geht. Der Wert ist die Zahl in der `wachen.json`
 (`_herzschlag_regel` ist nur Doku) und wirkt ohne Neustart.
+
+**Selbstsperre durch die falsche Quelle (23.09.2026, moondev_marktlage):** Der Herzschlag ist
+das Alter des letzten **Zyklus** — er muss aus dem Zustand kommen, den der **laufende** Zweig
+schreibt. `_papier_zustand()` las nur `zustand.json`; seit die Spur live lief, schrieb der
+Papierzweig nichts mehr (Stand 22.09. 21:12), waehrend live alle 15 Minuten lief. Nach 180 min
+meldete die Spur **„Live waere gesperrt durch: Herzschlag alt"** — sie sperrte sich selbst, und
+weil `nur_fenster_fehlt` GENAU EINEN Grund verlangt, oeffnete AUTO_FREIGABE weiter Fenster fuer
+einen Lauf, der nicht handeln konnte. Richtig ist der **frischste** der beiden Staende (Papier
+und Live): nur Papier sperrt eine Spur, die nie live lief; nur Live ist ein Kreislauf.
+Merksatz: **Wenn ein Tor aus einem Zustand liest, muss es der Zustand des Zweigs sein, der
+schreibt.** Und `--vorschau` mit `MAXHIRN_ROUTINE=1` ist der einzige Beleg fuer den Modus.
+
+## Guthaben-Tor und Einsatz-Deckelung (23.09.2026)
+
+- `mindest_guthaben_eur` ist die Untergrenze des freien Guthabens, damit der **kleinste** Einsatz
+  hineinpasst (marktlage: 70 bei Mindest-Einsatz 60; vorher 100 aus einer veralteten Rechnung
+  „3x 30 EUR", was bei 88,56 EUR frei den Live-Zweig dauerhaft sperrte — Auftrag Max
+  „Marktlage 70").
+- Der Einsatz wird **zusaetzlich auf das freie Guthaben gedeckelt**
+  (`live_kraken.einsatz_gedeckelt`, `frei*(1-gebuehr_taker-0,2 %)`) und faellt er unter
+  `live_einsatz_min_eur`, wird nicht gehandelt. Ein Signal von 150 EUR bei 88 EUR frei waere
+  sonst eine abgelehnte Order — kein Handel, aber im Log nicht von einem Signalfehler zu
+  unterscheiden.
+- Reihenfolge merken: **erst deckeln, dann das Freigabefenster zeigen** — das Fenster muss den
+  Betrag zeigen, der wirklich ausgefuehrt wird.
