@@ -241,6 +241,33 @@ SCHONFRIST_S = 300           # s: so lange gilt ein fremder Agentenprozess als f
 #                              beendet der Zyklus sofort, s. _kill_baum)
 
 LOG = HIER / "moondev_dauerlauf.log"
+# Ab dieser Groesse wird eine Agenten-Logdatei beim naechsten Start gedreht.
+# Ein langlebiger Agent schreibt bis zu ~50 MB je Tag (gemessen 23.09.2026:
+# moondev_sniper.log 160 MB nach vier Tagen), und niemand sah es, weil das
+# Wachstum nicht am RAM und nicht an der Prozesszahl auffaellt - nur am Platz.
+AG_LOG_MAX_MB = 50
+
+
+def _log_drehen(pfad: Path, max_mb: int = AG_LOG_MAX_MB) -> str:
+    """Zu grosse Logdatei nach <name>.1 umbenennen (die alte .1 faellt weg).
+
+    Nur beim START aufrufen: laeuft der Agent noch, haelt er die Datei offen
+    und Windows verweigert das Umbenennen (gemessen 23.09.2026). Rueckgabe:
+    kurze Beschreibung fuer das Treiberlog.
+    """
+    try:
+        if not pfad.exists():
+            return ""
+        groesse = pfad.stat().st_size
+        if groesse <= max_mb * 1024 * 1024:
+            return ""
+        alt = pfad.with_name(pfad.name + ".1")
+        if alt.exists():
+            alt.unlink()
+        pfad.rename(alt)
+        return "%s gedreht (%.1f MB -> %s)" % (pfad.name, groesse / 1048576, alt.name)
+    except OSError as e:
+        return "%s nicht gedreht: %s" % (pfad.name, e)
 
 # ---------------------------------------------------------------------------
 # Prozessliste (fuer das Aufraeumen) - nur Standardbibliothek + PowerShell
@@ -384,6 +411,12 @@ class MoonDevDauerlauf:
         # PIPE nie (nur stderr beim Absturz). Datei auch fuer den Absturz-Tail.
         ag_log = HIER / ("moondev_%s.log" % name)
         self.ag_log[name] = ag_log
+        # Gedreht wird HIER, nicht im Betrieb: jetzt ist der alte Baum beendet
+        # und die Datei frei. Im Betrieb haelt der Agent sie offen und Windows
+        # verweigert jedes Umbenennen.
+        gedreht = _log_drehen(ag_log)
+        if gedreht:
+            self.protokolliere("Log: " + gedreht)
         try:
             with open(ag_log, "a", encoding="utf-8") as _:
                 pass

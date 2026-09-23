@@ -147,3 +147,51 @@ class WaiseTest(unittest.TestCase):
         raus = [e["ProcessId"] for e in self.lauf.fremde_agenten(alle)]
         self.assertNotIn(900, raus)
         self.assertIn(901, raus)
+
+
+class LogDrehenTest(unittest.TestCase):
+    """Agenten-Logs duerfen nicht unbegrenzt wachsen (160 MB am 23.09.2026)."""
+
+    def test_unter_der_schwelle_passiert_nichts(self):
+        m = lade_treiber()
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "moondev_sniper.log"
+            p.write_bytes(b"x" * 1000)
+            self.assertEqual(m._log_drehen(p, max_mb=1), "")
+            self.assertTrue(p.exists())
+            self.assertFalse((Path(d) / "moondev_sniper.log.1").exists())
+
+    def test_ueber_der_schwelle_wird_gedreht(self):
+        m = lade_treiber()
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "moondev_sniper.log"
+            p.write_bytes(b"x" * (2 * 1024 * 1024))
+            text = m._log_drehen(p, max_mb=1)
+            self.assertIn("gedreht", text)
+            self.assertFalse(p.exists())
+            self.assertEqual((Path(d) / "moondev_sniper.log.1").stat().st_size,
+                             2 * 1024 * 1024)
+
+    def test_alte_drehung_wird_ersetzt_nicht_angehaengt(self):
+        m = lade_treiber()
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "moondev_sniper.log"
+            alt = Path(d) / "moondev_sniper.log.1"
+            alt.write_bytes(b"alt" * 100)
+            p.write_bytes(b"y" * (2 * 1024 * 1024))
+            m._log_drehen(p, max_mb=1)
+            self.assertEqual(alt.stat().st_size, 2 * 1024 * 1024)
+
+    def test_fehlende_datei_ist_kein_fehler(self):
+        """Der Treiber dreht vor JEDEM Start - auch wenn es die Datei nicht gibt."""
+        m = lade_treiber()
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(m._log_drehen(Path(d) / "gibtsnicht.log"), "")
+
+    def test_starte_dreht_vor_dem_oeffnen(self):
+        """Der Aufruf muss VOR dem Oeffnen stehen: ein laufender Agent haelt die
+        Datei offen, Windows verweigert dann das Umbenennen (gemessen)."""
+        quelle = TREIBER.read_text(encoding="utf-8")
+        i_dreh = quelle.index("_log_drehen(ag_log)")
+        i_offen = quelle.index('ag_datei = open(ag_log')
+        self.assertLess(i_dreh, i_offen)
