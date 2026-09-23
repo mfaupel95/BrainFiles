@@ -119,9 +119,11 @@ def _heute():
 
 def lade_zustand():
     if ZUSTAND.exists():
-        return json.loads(ZUSTAND.read_text("utf-8"))
-    return {"positionen": [], "letzte_stops": {}, "letzter_lauf": None,
-            "modus": None}
+        z = json.loads(ZUSTAND.read_text("utf-8"))
+        z.setdefault("letzte_ziele", {})   # Sperrfrist nach Ziel-Ausstieg
+        return z
+    return {"positionen": [], "letzte_stops": {}, "letzte_ziele": {},
+            "letzter_lauf": None, "modus": None}
 
 
 def schreibe_zustand(z):
@@ -371,6 +373,38 @@ def in_abklingzeit(inst, z, w):
         return False
     tage = (date.fromisoformat(_heute()) - date.fromisoformat(d)).days
     return tage < w["abklingzeit_tage"]
+
+
+def in_zielsperre(inst, z, w):
+    """War dieses Instrument gerade erst im Ziel - laeuft die Sperrfrist noch?
+
+    Anlass 23.09.2026 (Auftrag Max "Sperrfrist 2h"): ZEC wurde live im Ziel
+    verkauft (1618.36) und acht Sekunden spaeter zum fast selben Kurs neu
+    gekauft (1619.38). Die Runde kostet 1,2 % Gebuehren, ohne dass sich am Markt
+    etwas geaendert haette - der Kandidat stand weiter auf der Rangliste, weil
+    das Signal nicht verschwunden war, sondern gerade ERFUELLT wurde.
+
+    Ein Ziel-Ausstieg heisst: der geplante Gewinn ist da. Sofort wieder
+    einzusteigen ist kein neues Signal, sondern dieselbe Bewegung noch einmal
+    bezahlt. Nach einem STOP gilt die laengere Abklingzeit (Tage) - ein
+    gescheiterter Versuch ist ein anderer Grund als ein gelungener.
+
+    Die Frist steht als Zahl in der wachen (sperrfrist_nach_ziel_stunden,
+    Standard 0 = aus).
+    """
+    stunden = float(w.get("sperrfrist_nach_ziel_stunden", 0) or 0)
+    if stunden <= 0:
+        return False
+    t = (z.get("letzte_ziele") or {}).get(inst)
+    if not t:
+        return False
+    try:
+        zu = datetime.fromisoformat(t)
+    except (TypeError, ValueError):
+        return False
+    if zu.tzinfo is None:
+        zu = zu.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - zu).total_seconds() < stunden * 3600
 
 
 def _boersenstop_gefuellt(p):
@@ -645,6 +679,10 @@ def pruefe_ausstiege(z, live):
                 "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
         if grund.startswith("stop"):
             z["letzte_stops"][p["inst"]] = _heute()
+        elif grund == "ziel":
+            # Sperrfrist nach Ziel-Ausstieg (Auftrag Max 23.09.2026): sonst
+            # kauft der naechste Zyklus dasselbe Instrument sofort wieder.
+            z.setdefault("letzte_ziele", {})[p["inst"]] = _jetzt()
     z["positionen"] = behalten
 
 
@@ -705,6 +743,10 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
             continue
         if in_abklingzeit(v["inst"], z, w):
             protokolliere_kandidat(v["inst"], "Abklingzeit nach Stop",
+                                   score=v.get("score"))
+            continue
+        if in_zielsperre(v["inst"], z, w):
+            protokolliere_kandidat(v["inst"], "Sperrfrist nach Ziel-Ausstieg",
                                    score=v.get("score"))
             continue
         kauf_id = stop_id = None

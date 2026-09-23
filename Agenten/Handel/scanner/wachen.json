@@ -27,6 +27,8 @@
   "max_volatilitaet_pa": 1.20,
 
   "abklingzeit_tage": 4,
+  "_sperrfrist_nach_ziel_stunden": "Nach einem Ausstieg mit Grund 'ziel' bleibt das Instrument so viele Stunden fuer neue Einstiege gesperrt (0 = aus). Auftrag Max 23.09.2026 'Sperrfrist 2h': ZEC wurde im Ziel verkauft (1618.36) und acht Sekunden spaeter fast zum selben Kurs neu gekauft (1619.38) - 1,2 % Gebuehren fuer dieselbe Bewegung, weil der Kandidat weiter auf der Rangliste stand. Nach einem STOP gilt die laengere Abklingzeit (abklingzeit_tage).",
+  "sperrfrist_nach_ziel_stunden": 2.0,
 
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
   "freigabe": {
