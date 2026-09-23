@@ -107,11 +107,32 @@ Verfahren: `laufwerk-platz-schaffen/references/fremd-klon-ballast.md`.
 `agent-reach`, `nous`, `codex`, `scrapling`, `santiment`, …) sind per `/bot` nicht erreichbar.
 **Offen:** zurueckholen, was wieder gebraucht wird — oder liegen lassen.
 
-## 7. Uv-Cache und App-Daten auf C:
+## 7. Speicher: C: und O: (nachgemessen 23.09.2026)
 
-`C:` ist bei **61,1 GB frei von 475 GB** (gemessen 22.09.2026) — nicht mehr kritisch.
-`uv/cache` ist auf 0,8 GB geschrumpft. Der Plattendruck ist damit entschaerft; `uv cache clean`
-bleibt ein reproduzierbarer Knopf, falls es wieder knapp wird. Kein Umzug von `MaxHirn` noetig.
+`C:` ist bei **52,3 GB frei von 475 GB** (89 % belegt) — der Plattendruck ist entschaerft,
+kein Umzug von `MaxHirn` noetig. `uv/cache` ist auf 0,8 GB geschrumpft, `uv cache clean`
+bleibt ein reproduzierbarer Knopf.
+
+**Wohin der Platz geht, wenn er scheinbar grundlos schwindet** (gemessen waehrend einer
+Aufraeumsitzung, in der 3,1 GB freigeraeumt und trotzdem 5–11 GB weniger frei wurden):
+
+| Fund | Groesse | Erklaerung |
+|---|---|---|
+| `O:\pagefile.sys` | **15,96 GB** | Windows-Auslagerungsdatei, eingestellt 4096–16384 MB, stand am Maximum; letzte Aenderung 22.09. 23:16. Ein Ausbau um 12 GB sieht wie Datenzuwachs aus, ist aber Systemverhalten. |
+| `Agenten/_Backups/` | 1,17 GB | Hermes-Notfallkopien vom Update 22.09. 15:20 und 15:37: `state.db` 2 × 408 MB |
+| `Agenten/Hermes/state-snapshots/20260922-155224-pre-update/` | 410 MB | dasselbe Update, dritte Kopie |
+| `Agenten/Hermes/state.db` | 427 MB | Sitzungsdatenbank selbst |
+| `Agenten/Handel/moondev_sniper.log` | **160 MB und wachsend** | Kindprozess des Moon-Dev-Treibers schreibt bis ~50 MB/Tag; keine Drehung |
+
+**Behoben (23.09.2026):** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start, sobald
+sie 50 MB ueberschreitet (`_log_drehen`, Ziel `<name>.log.1`). Gedreht wird **beim Start**, nicht im
+Betrieb — ein laufender Agent haelt die Datei offen und Windows verweigert das Umbenennen
+(nachgemessen: `mv` schlaegt fehl, solange der Prozess lebt). Der bereits gewachsene
+`moondev_sniper.log` faellt beim naechsten Start des Agenten der Drehung anheim; die Aenderung
+greift mit dem naechsten Neustart des Treibers (Aufgabe `MaxHirn-MoonDev-Dauerlauf`).
+Merkregel: **Wachstum von Dauerprozessen faellt nicht an RAM oder Prozesszahl auf, sondern nur am
+Plattenplatz** — wer Platz sucht, sieht zuerst Prozesstabellen an und findet dort nichts.
+**Offen:** die beiden 408-MB-Notfallkopien in `_Backups` (Rollmaterial des Updates) sind noch da.
 
 ## 8. Marktscanner-Bericht friert ein — der scanner kauft zu Tagespreisen
 
