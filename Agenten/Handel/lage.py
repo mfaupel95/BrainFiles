@@ -584,33 +584,87 @@ def _kurs_ueber_varianten(okx_modul, inst):
     return None
 
 
-def _spur_indikator(ordner, name):
+def _boerse_von(p, w):
+    """Die Boerse einer Position: ihr eigenes Feld, sonst die erste der Spur.
+
+    Wichtig fuer den Kurs: OKX notiert in USDC, Kraken in EUR. Ein Mix aus
+    beiden zeigt Prozente, die es nicht gibt (23.09.2026 stand die BTC-Position
+    im Bericht +11 %, real -2 %).
+    """
+    name = str(p.get("boerse") or "").strip().lower()
+    if name:
+        return name
+    roh = w.get("boersen") or ([w.get("boerse")] if w.get("boerse") else [])
+    return str(roh[0]).strip().lower() if roh else ""
+
+
+def _spur_indikator(ordner, name, live_faehig=False):
     """Eine der vier Indikator-Spuren: Bestand gegen den aktuellen Kurs.
 
     Derselbe Rechenweg wie bei der Gitter-Spur (kein eigener). Kein
     Wachenblock: ihre `wachen.json` fuehrt weder `freigabe` noch die fuenf
     Bedingungen, und `wachenlage()` wuerde die fremde Rechnung auf sie
     anwenden.
+
+    `live_faehig=True` fuer Spuren MIT Live-Zweig (mosaic): sonst meldet der
+    Bericht "kein Live-Zweig (Papierpfad)" und Max liest eine Unwahrheit -
+    mosaic handelt seit dem 22.09.2026 live bei Kraken (Befund 23.09.2026).
     """
     pfad = os.path.join(HIER, ordner)
     w = _lies(os.path.join(pfad, "wachen.json"), {})
     z = _lies(os.path.join(pfad, "zustand.json"), {}) or {}
     pos = z.get("positionen", []) or []
 
+    if live_faehig:
+        # Modus aus den Wachen, nicht aus dem Buch: eine Spur ohne offene
+        # Position ist trotzdem live bereit.
+        bereit = bool(w.get("handel_erlaubt")
+                      and (w.get("freigabe") or {}).get("erfuellt"))
+        # `boersen` (Liste, Vorrang) oder das alte einzelne `boerse`.
+        roh = w.get("boersen") or ([w.get("boerse")] if w.get("boerse") else [])
+        boerse = ", ".join(str(b).strip() for b in roh if str(b).strip())
+        name = "%s (%s)" % (name,
+                            "live ueber %s" % boerse if bereit and boerse
+                            else "Papier")
+
     kurse = {}
+    kraken_kurse = {}
     if pos:
+        if any(_boerse_von(p, w) == "kraken" for p in pos):
+            # Positionen an der Boerse Kraken werden mit KRAKEN-Kursen gerechnet
+            # (EUR). Das Modul uebersetzt mosaics OKX-Namen auf Kraken-Paare und
+            # wird per Pfad geladen - kein sys.path-Eintrag, der gleichnamige
+            # Module verdecken koennte.
+            try:
+                import importlib.util                             # noqa: PLC0415
+                pfad = os.path.join(HIER, "mosaic", "kraken_spot.py")
+                spec = importlib.util.spec_from_file_location(
+                    "lage_mosaic_kraken_spot", pfad)
+                ks = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(ks)
+                for p in pos:
+                    if _boerse_von(p, w) != "kraken":
+                        continue
+                    try:
+                        kraken_kurse[p.get("inst")] = float(
+                            ks.letzter_kurs(p.get("inst")))
+                    except Exception:                         # noqa: BLE001
+                        pass
+            except Exception:                                 # noqa: BLE001
+                pass
         try:
             sys.path.insert(0, os.path.join(HIER, "scanner"))
             import okx                                          # noqa: PLC0415
             for p in pos:
                 inst = (p.get("inst") or "").strip()
-                if not inst:
+                if not inst or inst in kraken_kurse:
                     continue
                 k = _kurs_ueber_varianten(okx, inst)
                 if k:
                     kurse[inst] = k
         except Exception:                                       # noqa: BLE001
             pass
+    kurse.update(kraken_kurse)
 
     zeilen = []
     for p in pos:
@@ -619,7 +673,8 @@ def _spur_indikator(ordner, name):
         vz = 1 if (p.get("seite") or "long") == "long" else -1
         bewegt = (vz * (k / einstieg - 1) * 100) if (k and einstieg) else None
         zeilen.append({
-            "name": "%s %s" % (p.get("inst", "?"), p.get("seite", "")),
+            "name": "%s %s%s" % (p.get("inst", "?"), p.get("seite", ""),
+                                 " (live)" if p.get("modus") == "live" else ""),
             "einstieg": einstieg, "kurs": k, "wert": p.get("nominal", 0),
             "vh": bewegt, "stop": p.get("stop"), "ziel": p.get("ziel"),
             "seit": (p.get("eroeffnet_zeit") or "")[:10],
@@ -628,7 +683,7 @@ def _spur_indikator(ordner, name):
     return {
         "name": name, "waehrung": w.get("waehrung", "USD"), "w": w, "z": z,
         "positionen": zeilen, "ordner": pfad, "pruefmodul": None,
-        "papierfest": True,
+        "papierfest": not live_faehig,
         "journal": os.path.join(pfad, "handelsjournal.csv"),
     }
 
@@ -732,9 +787,12 @@ def spur_mosaic():
 
     Gleicher Buch-Aufbau wie die Indikator-Spuren: liest zustand.json,
     bewertet Bestand gegen den aktuellen Kurs, kein Wachenblock (keine
-    fuenf Bedingungen, reines Papierbuch).
+    fuenf Bedingungen). EIGENHEIT seit 21.09.2026: mosaic hat einen echten
+    Live-Zweig (boerse in der wachen.json, Orderweg kraken_spot.py bzw.
+    okx_spot.py) - der Bericht darf sie deshalb nicht als Papierpfad
+    ausgeben (live_faehig=True).
     """
-    return _spur_indikator("mosaic", "Mosaic (4H/30M/5M)")
+    return _spur_indikator("mosaic", "Mosaic (4H/30M/5M)", live_faehig=True)
 
 
 def spur_omniquant():

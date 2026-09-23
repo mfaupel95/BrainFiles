@@ -35,9 +35,30 @@ mit `modus=live` — aber nur im **Buch**, an der Boerse blieb die Position offe
 `modus=live`-Positionen im Papierlauf stehen und werden gemeldet; geschlossen werden sie nur
 vom Live-Lauf. Tests: `xperp/tests/test_handeln_geister`.
 
-**Verwandt:** `mosaic` ist die einzige Spur mit einem MODUS-Waechter je Position
-(`if p.get('modus') != 'live': continue`) — Papier und Live liegen dort in EINEM Buch, ohne
-sich zu stoeren. `scanner` hat diesen Waechter nicht; dort war die Bereinigung noetig.
+**Verwandt — und 23.09.2026 WIDERLEGT:** der Satz, `mosaic` habe den Waechter je Position,
+galt nur fuer den LIVE-Zweig (`live_ausstiege`/`flach_stellen_live`). Der PAPIERzweig
+(`pruefe_ausstiege`) hatte ihn nicht: als das Freigabefenster um 19:29 ablief, lief der Zyklus
+**19:33:43 Papier** und buchte die echte BTC-Position mit `grund=ziel` aus dem Buch
+(`papier,verkauf,BTC-USDC`, Kurs 84088.80). An der Boerse lagen `XXBT 0.00066027` und der
+Stop `O3QKG4-P6QVQ-6SLH5V` unveraendert weiter — das Buch war flach, die Position nicht.
+
+**Regel (gilt fuer JEDEN Zweig einer Spur mit gemeinsamem Buch).** Ein Papierlauf darf eine
+Position mit `modus=live` **nie** ausbuchen — auch nicht beim Kill-Pfad. Er laesst sie stehen
+und meldet sie. Belegt ist das erst, wenn der PAPIERZWEIG denselben Test hat wie der
+Live-Zweig: `mosaic/tests/test_papier_laesst_live_stehen.py` (Ziel, Stop, Papier daneben,
+Kill-Pfad). Bei `mosaic` ist die Regel in `nur_papier_verwerfen()` ausgelagert, damit sie
+pruefbar ist statt als Zeile in `lauf()` zu stehen.
+
+**Eine Luecke im Freigabefenster ist ein echter Betriebszustand, kein Randfall.** Zwischen
+Ablauf (19:29) und Auto-Freigabe (19:36) lief genau ein Zyklus Papier — das reichte. Wer die
+Modus-Trennung an einer Stelle prueft, prueft sie an der falschen; sie muss in beiden Zweigen
+gelten.
+
+**Werkzeug fuer den entstandenen Geist:** `mosaic/geist_zurueckbuchen.py` liest die
+Falschbuchung im Journal, holt die Boersenwerte (Guthaben + offene Order-Algos) und bucht die
+Position mit `modus=live` zurueck; die Falschbuchung wandert nach
+`handelsjournal.verworfen-JJJJMMTT.csv`. Danach entscheidet der Live-Zweig wieder regulaer.
+Trockenlauf ist Standard.
 
 ## 3. Eine Stoerung ist keine Runde
 

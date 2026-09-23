@@ -113,23 +113,115 @@ live_menge_fuer = okx_spot.menge_fuer
 # (siehe Test-Seams oben) und keine echte Order wird je gestellt.
 import kraken_spot  # noqa: E402
 
+# Modul je Boersenname. Beide stellen dieselben Funktionsnamen bereit.
+BOERSEN = {"okx": okx_spot, "kraken": kraken_spot}
+# Kontowaehrung je Boerse, wenn die wachen.json keine nennt: Kraken handelt in
+# EUR, OKX-Spot gegen USDC.
+WAEHRUNG_JE_BOERSE = {"kraken": "EUR", "okx": "USDC"}
+
 VENUE = okx_spot                       # aktives Boersenmodul (fuer die Sperren)
+VENUE_NAME = "okx"                     # Name des aktiven Moduls
 GUTHABEN_WAEHRUNG = "USDC"             # Kontowaehrung des Live-Wegs
 MINDEST_GUTHABEN = 0.0                 # Tor aus der wachen.json
 
-def venue_binden(w):
-    """Live-Orderweg und Kontowaehrung an die wachen.json haengen."""
-    global VENUE, GUTHABEN_WAEHRUNG, MINDEST_GUTHABEN
+
+def boersen_liste(w):
+    """Die Boersen des Live-Wegs in Vorrang-Reihenfolge.
+
+    `boersen: ["kraken", "okx"]` = erste einsatzbereite gewinnt (Auftrag Max
+    23.09.2026: "Mosaic live schalten, gerne auf okx und kraken"). Ein altes
+    einzelnes `boerse` gilt weiter; fehlt beides, bleibt es bei OKX.
+    """
+    roh = w.get("boersen")
+    if not roh:
+        roh = [w.get("boerse")] if w.get("boerse") else ["okx"]
+    namen = [str(x).strip().lower() for x in roh if str(x).strip()]
+    unbekannt = [n for n in namen if n not in BOERSEN]
+    if unbekannt:
+        raise ValueError("unbekannte Boerse(n) in der wachen.json: %s "
+                         "(bekannt: %s)" % (unbekannt, sorted(BOERSEN)))
+    return namen
+
+
+def _waehrung_fuer(w, name):
+    je = w.get("guthaben_waehrung_je_boerse") or {}
+    return str(je.get(name) or w.get("guthaben_waehrung")
+               or WAEHRUNG_JE_BOERSE.get(name) or "USDC")
+
+
+def _mindest_fuer(w, name):
+    je = w.get("mindest_guthaben_je_boerse") or {}
+    if name in je:
+        return float(je[name] or 0)
+    return float(w.get("mindest_guthaben",
+                       w.get("mindest_guthaben_usdc",
+                             w.get("mindest_guthaben_eur", 0))) or 0)
+
+
+def _guthaben_roh(name, ccy):
+    """Freies Guthaben einer Boerse - Naht fuer Tests (kein Netz im Test)."""
+    return BOERSEN[name].guthaben_waehrung(ccy)
+
+
+def boerse_bereit(name, w):
+    """(bereit, grund) fuer eine Boerse: Schluessel, Demo, freies Guthaben.
+
+    Das Guthaben wird hier NICHT abgefragt, wenn die Boerse schon an einem
+    harten Tor scheitert - jede Abfrage ist ein signierter Aufruf.
+    """
+    modul = BOERSEN[name]
+    if not modul.schluessel_vorhanden():
+        return False, "%s-Schluessel nicht gesetzt" % name
+    if modul.demo_modus():
+        return False, "%s im Demo-Modus - keine echten Orders" % name
+    noetig = _mindest_fuer(w, name)
+    if not noetig:
+        return True, None
+    try:
+        frei = _guthaben_roh(name, _waehrung_fuer(w, name))
+    except Exception as e:                                        # noqa: BLE001
+        return False, "%s: Guthaben nicht abrufbar (%s)" % (name, e)
+    if frei < noetig:
+        return False, "%s: nur %.2f %s frei, noetig %.2f" % (
+            name, frei, _waehrung_fuer(w, name), noetig)
+    return True, None
+
+
+def venue_binden(w, name=None):
+    """Live-Orderweg und Kontowaehrung an die wachen.json haengen.
+
+    Ohne `name` gewinnt die ERSTE einsatzbereite Boerse der Liste; ist keine
+    bereit, bleibt es bei der ersten (die Sperrenkette nennt dann deren Grund,
+    damit im Bericht nicht drei Gruende stehen).
+    """
+    global VENUE, VENUE_NAME, GUTHABEN_WAEHRUNG, MINDEST_GUTHABEN
     global op_kauf, op_verkauf, op_stop, op_stop_stornieren, op_gefuellt
     global op_guthaben, live_kurs_quelle, live_menge_fuer
-    name = str(w.get("boerse") or "okx").strip().lower()
-    modul = kraken_spot if name == "kraken" else okx_spot
+    namen = boersen_liste(w)
+    gewaehlt = None
+    if name:
+        gewaehlt = str(name).strip().lower()
+        if gewaehlt not in BOERSEN:
+            raise ValueError("unbekannte Boerse: %s" % name)
+    elif len(namen) == 1:
+        # Eine Boerse: keine zusaetzliche Netzabfrage, altes Verhalten.
+        gewaehlt = namen[0]
+    else:
+        # Mehrere Boersen: die erste einsatzbereite gewinnt. Ist keine bereit,
+        # bleibt es bei der ersten - die Sperrenkette nennt dann deren Grund,
+        # damit im Bericht nicht drei Gruende stehen.
+        for kandidat in namen:
+            bereit, _grund = boerse_bereit(kandidat, w)
+            if bereit:
+                gewaehlt = kandidat
+                break
+        if gewaehlt is None:
+            gewaehlt = namen[0]
+    modul = BOERSEN[gewaehlt]
     VENUE = modul
-    GUTHABEN_WAEHRUNG = str(w.get("guthaben_waehrung") or
-                            ("EUR" if name == "kraken" else "USDC"))
-    MINDEST_GUTHABEN = float(w.get("mindest_guthaben",
-                                   w.get("mindest_guthaben_usdc",
-                                         w.get("mindest_guthaben_eur", 0)) or 0))
+    VENUE_NAME = gewaehlt
+    GUTHABEN_WAEHRUNG = _waehrung_fuer(w, gewaehlt)
+    MINDEST_GUTHABEN = _mindest_fuer(w, gewaehlt)
     op_kauf = modul.markt_kauf
     op_verkauf = modul.markt_verkauf
     op_stop = modul.algo_stop_setzen
@@ -138,6 +230,21 @@ def venue_binden(w):
     op_guthaben = modul.guthaben_waehrung
     live_kurs_quelle = modul.letzter_kurs
     live_menge_fuer = modul.menge_fuer
+    return gewaehlt
+
+
+def venue_fuer_position(p, w):
+    """Die Boerse EINER Position binden, wenn sie eine andere ist.
+
+    Eine Position traegt seit dem 23.09.2026 ihr `boerse`-Feld; verkauft wird
+    an der Boerse, an der sie liegt - nicht an der, die gerade gewaehlt ist.
+    Rueckgabe: None (nichts zu tun, Seams bleiben unberuehrt), sonst der Name.
+    Alte Positionen ohne Feld laufen weiter ueber die gebundene Boerse.
+    """
+    name = str(p.get("boerse") or "").strip().lower()
+    if not name or name == VENUE_NAME:
+        return None
+    venue_binden(w, name)
     return name
 
 
@@ -468,6 +575,18 @@ def pruefe_einstieg(inst, k4, k30, k5, z, w, faktor):
             stop_pct="%.2f" % stop_pct_eff, grund="mosaic")
 
 
+def nur_papier_verwerfen(z):
+    """Alle PAPIER-Positionen aus dem Buch nehmen - Live-Positionen bleiben.
+
+    Ein Papierlauf darf eine echte Position nicht aus dem Buch werfen: an der
+    Boerse bliebe sie offen und im Buch waere sie verschwunden (genau das ist
+    am 23.09.2026 mit der BTC-Position passiert). Eigene Funktion, damit die
+    Regel pruefbar ist statt als Zeile in lauf() zu stehen.
+    """
+    z["positionen"] = [p for p in z.get("positionen", [])
+                       if p.get("modus") == "live"]
+
+
 def pruefe_ausstiege(z, k5, w, nur=None):
     """Bestehende Positionen auf Stop/Ziel pruefen.
 
@@ -476,7 +595,18 @@ def pruefe_ausstiege(z, k5, w, nur=None):
     diesen einen Kurs geprueft (Befund 15.09.2026).
     """
     behalten = []
+    uebersprungen = 0
     for p in z.get("positionen", []):
+        # Eine Live-Position gehoert der BOERSE, nicht dem Papierzweig: dieser
+        # Lauf verkauft nichts echt, er wuerde sie nur aus dem Buch nehmen.
+        # Genau das ist am 23.09.2026 passiert - der Zyklus 19:33 lief Papier
+        # (Freigabefenster-Luecke), buchte die ECHTE BTC-Position mit
+        # grund=ziel aus, und an der Boerse blieb sie mit Stop stehen. Muster
+        # wie xperp (bueche_geister_aus): stehen lassen und melden.
+        if p.get("modus") == "live":
+            behalten.append(p)
+            uebersprungen += 1
+            continue
         if nur is not None and p.get("inst") != nur:
             behalten.append(p)
             continue
@@ -515,6 +645,9 @@ def pruefe_ausstiege(z, k5, w, nur=None):
                 grund=grund)
 
     z["positionen"] = behalten
+    if uebersprungen:
+        print("  %d Live-Position(en) bleiben stehen - der Papierzweig verkauft "
+              "sie nicht (nur der Live-Lauf schliesst sie)." % uebersprungen)
 
 
 # --- Live (Stufe A, OKX-Spot) ------------------------------------------------
@@ -723,10 +856,15 @@ def live_ausstiege(z, w):
     verkauft. Schlaegt der Verkauf fehl, bleibt die Position im Buch.
     """
     behalten = []
+    wechsel = False
     for p in z["positionen"]:
         if p.get("modus") != "live":
             behalten.append(p)
             continue
+        # Liegt die Position an einer ANDEREN Boerse, wird fuer sie umgebunden
+        # (beide Boersen sind seit 23.09.2026 konfigurierbar).
+        if venue_fuer_position(p, w):
+            wechsel = True
         try:
             kurs = _kurs_live(p["inst"])
         except Exception as e:  # noqa: BLE001
@@ -777,16 +915,22 @@ def live_ausstiege(z, w):
                 ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
                 grund=grund)
     z["positionen"] = behalten
+    if wechsel:
+        # Standardwahl der Spur wiederherstellen (Seams/Einstiege danach).
+        venue_binden(w)
 
 
 def flach_stellen_live(z, w, grund):
     """Alle Live-Positionen sofort echt verkaufen - Notausstieg fuer
     Kill-Switch und alten Herzschlag. Papier-Positionen bleiben stehen."""
     behalten = []
+    wechsel = False
     for p in z["positionen"]:
         if p.get("modus") != "live":
             behalten.append(p)
             continue
+        if venue_fuer_position(p, w):
+            wechsel = True
         try:
             kurs = _kurs_live(p["inst"])
         except Exception as e:  # noqa: BLE001
@@ -816,6 +960,8 @@ def flach_stellen_live(z, w, grund):
                 stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
                 stop_pct="%.2f" % p["stop_pct"], grund=grund)
     z["positionen"] = behalten
+    if wechsel:
+        venue_binden(w)
 
 
 def live_einstiege(z, w, s):
@@ -935,6 +1081,7 @@ def live_einstiege(z, w, s):
             "ziel": ziel, "stop_pct": stop_pct, "nominal": nominal,
             "menge": menge, "kauf_ord_id": ord_id,
             "stop_algo_id": algo_id, "modus": "live",
+            "boerse": VENUE_NAME,
             "boersen_stop_fehlt": algo_id is None,
             "eroeffnet_zeit": _jetzt(),
         })
@@ -987,7 +1134,10 @@ def lauf(modus):
         if live:
             flach_stellen_live(z, w, "kill_switch")
         else:
-            z["positionen"] = []
+            # Nur PAPIER-Positionen verwerfen: eine Live-Position gehoert der
+            # Boerse, ein Papierlauf darf sie nicht aus dem Buch werfen (siehe
+            # pruefe_ausstiege).
+            nur_papier_verwerfen(z)
         schreibe_zustand(z)
         spiegeln(z, w)
         return

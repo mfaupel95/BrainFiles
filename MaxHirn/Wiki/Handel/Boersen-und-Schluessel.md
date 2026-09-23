@@ -119,6 +119,28 @@ alter, nicht stornierbarer Stop bleibt unberuehrt; ohne Stop-Preis wird gemeldet
 Ein fehlgeschlagener Verkauf ist ein halber Vorgang — der halbe Zustand muss zurueckgenommen
 werden.
 
+## Zwei Boersen fuer EINE Spur (23.09.2026, mosaic)
+
+Ein Auftrag von Max („gerne auf okx und kraken") heisst nicht zwei Spuren, sondern eine Spur mit
+einer **Boersenliste**:
+
+- `wachen.json`: `"boersen": ["kraken", "okx"]` — die Reihenfolge ist der **Vorrang**.
+  `venue_binden()` nimmt die erste Boerse, die **einsatzbereit** ist: Schluessel vorhanden,
+  kein Demo-Modus, mindestens `mindest_guthaben` **in der Waehrung dieser Boerse** frei
+  (`guthaben_waehrung_je_boerse`). Ist keine bereit, bleibt es bei der ersten — die
+  Sperrenkette nennt dann deren Grund, damit im Bericht nicht drei Gruende stehen.
+- **Das Guthaben ist die Waehrung der Boerse, nicht des Kontos im Kopf.** Kraken handelt in
+  EUR, OKX-Spot gegen USDC. Ein einzelnes `guthaben_waehrung: "EUR"` haette OKX nach EUR
+  gefragt und ewig gesperrt.
+- **Jede Position traegt ihr `boerse`-Feld**, und der Ausstieg laeuft ueber die Boerse, an der
+  sie liegt (`venue_fuer_position()`) — nicht ueber die, die gerade gewaehlt ist. Ohne das
+  verkauft eine Kraken-Position ueber den OKX-Weg ins Leere.
+- **Einzelboerse bleibt eine Netzabfrage aermer:** die Bereitschaftspruefung laeuft nur bei
+  mehreren Boersen. Sonst waere jeder Zyklus ein signierter Aufruf mehr.
+- Gemessen 23.09.2026: Kraken 96,81 EUR frei (handelt), OKX 0,03 USDC frei (faellt durch das
+  60er-Tor). Derselbe Schluesselsatz, der die Position oeffnet, muss sie auch schliessen
+  koennen — beide Wege werden vorher mit `validate=true` geprueft.
+
 ## Kraken-Flotte (nicht verwechseln)
 
 `kraken` (Spot-Spur, EUR) · `nautilus_kraken` / `nautilus_kraken_futures` (Papier-Arme,
