@@ -231,3 +231,34 @@ sollten (Auftrag Max) und im Guthaben nicht zu finden waren:
 * Werkzeug: `Agenten/Handel/kraken/margin_stops.py` (Vorschau Standard,
   `--anwenden` ordert). Nachweis: 8 Stops gesetzt, alle mit
   `close position @ stop loss` in `QueryOrders` bestaetigt.
+
+## Kraken Futures ist ein eigener Dienst (24.09.2026)
+
+Futures ist NICHT die Spot-API mit anderem Host. Eigene Basis, eigene
+Signatur, eigene Schluessel:
+
+* Basis `https://futures.kraken.com/derivatives/api/v3`, Kopf
+  `APIKey`/`Nonce`/`Authent`.
+* `Authent = base64(HMAC-SHA512(base64decode(secret), SHA256(postData +
+  nonce + "/api/v3" + pfad)))`. **Der Signaturpfad traegt KEIN
+  "/derivatives"** - mit dem vollen Pfad antwortet Kraken
+  `Authentication error`. Pfad und Aufrufpfad sind zwei verschiedene Dinge.
+* Schluessel `KRAKEN_FUTURE_API_KEY`/`KRAKEN_FUTURE_API_SECRET` (HKCU) -
+  die Spot-Schluessel gelten hier nicht und umgekehrt. Wer nur einen liest
+  oder den Host raet, bekommt "Invalid key", obwohl der Zugang lebt.
+* **Kein Koerper am lesenden Aufruf.** Ein GET mit `data=b""` wird zum POST
+  und laeuft in `HTTP 404 NOT_FOUND` (auch das sieht wie ein Rechteproblem
+  aus, ist aber keins): Lesen = GET ohne Koerper, Ordern = POST mit Formkoerper.
+* Einheiten: Die Order nimmt KONTRAKTE. Bei `PF_XBTUSD` ist contractSize 1,
+  also 1 Kontrakt = 1 USD Nominal; BTC-Menge x Kurs = Kontraktzahl, tickSize 1.
+* Ausstieg und Schutz-Stop gehoeren als **`reduceOnly`** abgeschickt
+  (orderType `stp` mit `stopPrice`) - sonst eroeffnet ein Ausstieg eine neue
+  Position auf der Gegenseite.
+* Besicherung kommt aus dem CASH-Konto der Futures-Boerse: ohne freies USD
+  ist jede Order abgelehnt. Ein Coin-Bestand in `fi_<coin>usd` hilft nicht.
+  Am 24.09.2026: USD 0.00 - der Weg ist gebaut, aber nicht fahrbar.
+
+Umsetzung: `Agenten/Handel/nautilus_kraken/kraken_futures.py`; der Live-Zweig
+ruft weiterhin `kraken_rest`, das per `KRAKEN_PRODUKT=futures` das
+Futures-Modul laedt. Nachweis: signierte Leseaufrufe gruen, PF_XBTUSD 84385,
+Stop 78000.4 -> 78001, 24 Tests gruen.
