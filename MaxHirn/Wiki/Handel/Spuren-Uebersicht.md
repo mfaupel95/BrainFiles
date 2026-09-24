@@ -17,13 +17,23 @@ und die `wachen.json` jeder Spur. Stand 22.09.2026 (31 Spuren).
 
 Ein einziger Schreiber auf allen Spuren: `Handel/dauerlauf.py` (Takt 15 min, `TAKT_MAX_MINUTEN`
 ist eine harte Obergrenze wegen des eigenen Herzschlags). Geplante Aufgaben:
-`MaxHirn-Handel-Dauerlauf` (Basis) und `...-Mittel-Waechter` (Risikostufe mittel), je mit
-`IgnoreNew`. Wache: `MaxHirn-Handel-Dauerlauf-Waechter` (30 min) startet einen toten Lauf neu.
+`MaxHirn-Handel-Dauerlauf` (Basis), `...-Mittel-Waechter` (Stufe mittel) und seit
+24.09.2026 `...-Hoch-Waechter` (Stufe hoch), je mit `IgnoreNew`. Wache:
+`MaxHirn-Handel-Dauerlauf-Waechter` (30 min) startet einen toten Lauf neu.
 
 **Risikostufen:** `dauerlauf.py --risiko mittel|hoch` fahren dieselben Spuren mit groesseren
-Betraegen in eigenen Dateien (`zustand.mittel.json`, `dauerlauf.mittel.log`), **nie live**,
-ohne Telegram und ohne Befehle. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt
-(derzeit leer).
+Betraegen in eigenen Dateien, **nie live**, ohne Telegram und ohne Befehle. Je Stufe eine
+eigene Sperrdatei, ein eigenes Log und ein eigener Waechter-Task:
+
+| Stufe | Sperre | Log | Waechter-Task |
+|---|---|---|---|
+| Basis | `dauerlauf.pid` | `dauerlauf.log` | `MaxHirn-Handel-Dauerlauf-Waechter` |
+| mittel | `dauerlauf.mittel.pid` | `dauerlauf.mittel.log` | `...-Mittel-Waechter` |
+| hoch | `dauerlauf.hoch.pid` | `dauerlauf.hoch.log` | `...-Hoch-Waechter` |
+
+Stand 24.09.2026: alle drei laufen. `hoch` wurde an diesem Tag gestartet (Wrapper
+`Routinen/handel-dauerlauf.ps1 -Risiko hoch`), sein Waechter ist ein Klon des Mittel-Waechters
+mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt (derzeit leer).
 
 ## 31 Spuren im Dauerlauf
 
