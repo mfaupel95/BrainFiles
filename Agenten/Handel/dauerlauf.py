@@ -211,16 +211,22 @@ SPUREN = {
     # Positions-Spiegel, trades/batch als Signal-Bestätigung). Kein Live-Zweig
     # wie spiegel - lesen.py kennt keine Schreibpfade. Reine
     # Standardbibliothek (urllib), laeuft unter dem scanner-venv.
-    "kopier":  {"ordner": "kopier", "waehrung": "USD",
-                "skript": "kopier.py"},
+    # KOPIE AUS seit 24.09.2026 (Max: "kopie Familie stilllegen").
+    # kopier und kopier1zu1 laufen nicht mehr; ihre Buecher bleiben
+    # als Vergleichsgrundlage stehen, wachsen aber nicht weiter.
+    # WIEDER ANSCHALTEN: die Zeilen hier auskommentieren UND vorher
+    # in kopier/zustand.json ("letzter_lauf") auf jetzt setzen, sonst
+    # stellt der erste Zyklus offene Papierpositionen flach.
+    # "kopier":  {"ordner": "kopier", "waehrung": "USD",
+    #             "skript": "kopier.py"},
     # KOPIER1ZU1 (Papierbuch, angelegt 15.09.2026): zweite Copy-Trade-Spur,
     # die auf TRADE-Ereignissen arbeitet (trades/batch) statt auf einem
     # Portfolio-Diff. Jeder Kauf des Vorbilds oeffnet eine Papier-Position,
     # jeder Verkauf schliesst sie sofort. Kein Live-Zweig - teilt lesen.py
     # mit kopier/ und liest verfolgte.json aus kopier/ (kein zweiter
     # Rangliste-Abruf).
-    "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
-                   "skript": "handeln.py"},
+    # "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
+    #                "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     # ORB AUF OKX-PERPETUALS (angeschlossen 21.09.2026, Auftrag Max: "orb
