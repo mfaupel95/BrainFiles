@@ -39,10 +39,12 @@ import urllib.request
 # Gemeinsamer nonce-Pool mit dem Kraken-MCP-Server (siehe Modul-Docstring).
 try:
     from nonce_pool import monotone_nonce as _monotone_nonce
+    from nonce_pool import vorwaerts as _vorwaerts
 except ImportError:                                   # pragma: no cover
     # Fallback, falls der Ordner nicht im sys.path liegt: gleicher Ordner.
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from nonce_pool import monotone_nonce as _monotone_nonce
+    from nonce_pool import vorwaerts as _vorwaerts
 
 BASIS = "https://api.kraken.com"
 HEADERS = {"User-Agent": "MaxHirn-Handel/1.0"}
@@ -106,29 +108,48 @@ def _roh_privat(methode, **parameter):
         raise RuntimeError("KRAKEN_API_KEY / KRAKEN_API_SECRET fehlen")
 
     pfad = "/0/private/%s" % methode
-    daten = {"nonce": str(_monotone_nonce())}
-    daten.update({k: v for k, v in parameter.items() if v is not None})
-    formular = urllib.parse.urlencode(daten)
 
-    roh = (daten["nonce"] + formular).encode()
-    nachricht = pfad.encode() + hashlib.sha256(roh).digest()
-    sig = base64.b64encode(
-        hmac.new(base64.b64decode(geheim), nachricht, hashlib.sha512).digest()
-    ).decode()
+    # "EAPI:Invalid nonce" heisst NICHT, dass unsere nonce nicht steigt: ein
+    # fremdes Werkzeug auf demselben Schluessel (die offizielle kraken-cli)
+    # setzt einen hoeheren Wert, und Kraken vergleicht gegen den HOECHSTEN.
+    # Deshalb bis zu drei Versuche, ab dem zweiten mit vorgeschobenem Zaehler
+    # (nonce_pool.vorwaerts schreibt ihn in die gemeinsame Datei, damit die
+    # Monotonie erhalten bleibt). Ohne das scheitert JEDER Hausaufruf, bis die
+    # Uhr den fremden Wert eingeholt hat - genau der Ausfall vom 22.09.2026.
+    letzter_fehler = None
+    for versuch in range(3):
+        if versuch == 0:
+            nonce = _monotone_nonce()
+        else:
+            nonce = _vorwaerts(versuch)
+        daten = {"nonce": str(nonce)}
+        daten.update({k: v for k, v in parameter.items() if v is not None})
+        formular = urllib.parse.urlencode(daten)
 
-    kopf = dict(HEADERS)
-    kopf.update({"API-Key": schluessel, "API-Sign": sig,
-                 "Content-Type": "application/x-www-form-urlencoded"})
-    req = urllib.request.Request(BASIS + pfad, data=formular.encode(),
-                                 headers=kopf, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=20) as antwort:
-            return _auswerten(json.loads(antwort.read().decode()))
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            raise KrakenFehler("Kraken HTTP %d auf signierte Abfrage - "
-                               "Schluessel/Rechte pruefen" % e.code) from None
-        raise
+        roh = (daten["nonce"] + formular).encode()
+        nachricht = pfad.encode() + hashlib.sha256(roh).digest()
+        sig = base64.b64encode(
+            hmac.new(base64.b64decode(geheim), nachricht, hashlib.sha512).digest()
+        ).decode()
+
+        kopf = dict(HEADERS)
+        kopf.update({"API-Key": schluessel, "API-Sign": sig,
+                     "Content-Type": "application/x-www-form-urlencoded"})
+        req = urllib.request.Request(BASIS + pfad, data=formular.encode(),
+                                     headers=kopf, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=20) as antwort:
+                return _auswerten(json.loads(antwort.read().decode()))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise KrakenFehler("Kraken HTTP %d auf signierte Abfrage - "
+                                   "Schluessel/Rechte pruefen" % e.code) from None
+            raise
+        except KrakenFehler as e:
+            if "Invalid nonce" not in str(e) or versuch == 2:
+                raise
+            letzter_fehler = e
+    raise letzter_fehler
 
 
 def _mit_wiederholung(fn, *a, **kw):
@@ -267,6 +288,26 @@ def stop_setzen(paar, menge, stop_preis, echt=False):
     return _add_order(paar, "sell", menge, "stop-loss",
                       preis=preis_gerundet(paar, stop_preis, "auf"),
                       echt=echt)
+
+
+def offene_orders():
+    """Alle offenen Orders des Kontos (lesend, /0/private/OpenOrders).
+
+    Gebraucht wird das fuer den Abgleich BUCH <-> BOERSE: eine Position, die an
+    der Boerse einen Schutz-Stop hat, aber im Buch keine Kennung traegt, laesst
+    sich spaeter nicht mehr adressieren (der scanner hatte genau so 23 Kopien
+    desselben Stops im Zustand, siehe scanner/stops_bereinigen.py).
+    Rueckgabe: {ordertxid: {paar, seite, art, menge, preis, eroeffnet}}.
+    """
+    ergebnis = _mit_wiederholung(_roh_privat, "OpenOrders") or {}
+    aus = {}
+    for txid, o in (ergebnis.get("open") or {}).items():
+        d = o.get("descr") or {}
+        aus[txid] = {"paar": d.get("pair"), "seite": d.get("type"),
+                     "art": d.get("ordertype"), "menge": o.get("vol"),
+                     "preis": d.get("price"), "eroeffnet": o.get("opentm"),
+                     "beschreibung": d.get("order")}
+    return aus
 
 
 def stop_gefuellt(txid):

@@ -71,6 +71,11 @@ SPUREN = {
     "moondev_topmovers": {"journal": HANDEL / "moondev_topmovers" / "handelsjournal.csv",
                           "fenster": "moondev_topmovers", "waehrung": "USDC",
                           "vorfilter": True},
+    # swap: OKX-Perp, live seit 21.09.2026 11:11 (Freigabe per Auftrag). War die
+    # einzige LIVE handelnde Spur OHNE Wache (Befund 24.09.2026) - deshalb hier
+    # nachgetragen statt eine zweite Wache-Datei zu bauen.
+    "swap": {"journal": HANDEL / "swap" / "handelsjournal.csv",
+             "fenster": "swap", "waehrung": "USDC"},
 }
 
 

@@ -80,3 +80,43 @@ def monotone_nonce() -> int:
         except OSError:
             pass
     return nonce
+
+def vorwaerts(sekunden: float = 1.0) -> int:
+    """Den gemeinsamen Zaehler um <sekunden> vor die JETZIGE Zeit schieben.
+
+    ANLASS (gemessen 24.09.2026): Kraken merkt sich je Schluessel den HOECHSTEN
+    gesehenen nonce. Setzt ein Werkzeug, das diesen Pool NICHT benutzt, einen
+    hoeheren Wert (die offizielle kraken-cli signiert in Nanosekunden aus ihrer
+    eigenen Uhr), ist jeder Pool-Wert darunter und Kraken antwortet
+    "EAPI:Invalid nonce" - auch bei streng monotonen eigenen Werten. Ein
+    einfacher Wiederholversuch mit demselben Wert hilft dann nicht.
+
+    Der neue Wert wird IN DIE DATEI geschrieben, damit die Monotonie erhalten
+    bleibt: sonst waere der naechste normale Aufruf wieder zu niedrig.
+    """
+    while True:
+        try:
+            fd = os.open(_SPERRE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            time.sleep(0.01)
+    try:
+        letzter = 0
+        try:
+            with open(_DATEI) as f:
+                roh = f.read().strip()
+                letzter = int(roh) if roh else 0
+        except (OSError, ValueError):
+            letzter = 0
+        jetzt = int(time.time() * 1_000_000_000)
+        nonce = max(jetzt, letzter) + int(sekunden * 1_000_000_000)
+        with open(_DATEI, "w") as f:
+            f.write(str(nonce))
+            f.flush()
+    finally:
+        os.close(fd)
+        try:
+            os.remove(_SPERRE)
+        except OSError:
+            pass
+    return nonce

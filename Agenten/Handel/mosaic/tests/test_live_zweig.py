@@ -169,6 +169,13 @@ class _Basis(unittest.TestCase):
         }
         self._saved = (handeln.WACHEN, handeln.ZUSTAND, handeln.JOURNAL,
                        handeln.SCHREIBEN, handeln.kerzen_quelle)
+        # VENUE ist eine MODULGLOBALE (venue_binden() setzt sie): ein Test, der
+        # die Boerse wechselt (z. B. test_boersenwahl), laesst sie stehen. Dann
+        # prueft live_sperren() die Demo-Sperre der ANDEREN Boerse, und
+        # test_demo_ist_harte_sperre faellt um - je nach Reihenfolge. Deshalb
+        # hier sichern und im tearDown zuruecksetzen; der Demo-Test bindet die
+        # Boerse zusaetzlich ausdruecklich selbst.
+        self._venue_alt = handeln.VENUE
         handeln.WACHEN = os.path.join(self.tmp, "wachen.json")
         handeln.ZUSTAND = os.path.join(self.tmp, "zustand.json")
         handeln.JOURNAL = os.path.join(self.tmp, "handelsjournal.csv")
@@ -252,6 +259,7 @@ class _Basis(unittest.TestCase):
         return 0.11234
 
     def tearDown(self):
+        handeln.VENUE = self._venue_alt
         os.environ.clear()
         os.environ.update(self._env)
         self._okx.demo_modus = self._okx_demo_alt
@@ -287,6 +295,9 @@ class LiveSperrenTest(_Basis):
         self.assertTrue(any("freigabe" in x and "false" in x for x in g))
 
     def test_demo_ist_harte_sperre(self):
+        # Die Boerse ausdruecklich binden: live_sperren() fragt VENUE.demo_modus(),
+        # und VENUE ist eine Modulglobale (siehe setUp).
+        handeln.VENUE = self._okx
         self._okx.demo_modus = lambda: True
         g = handeln.live_sperren(self.w, _lage(self.w))
         # Demo -> keine echten Orders, Grund wird namentlich genannt.
