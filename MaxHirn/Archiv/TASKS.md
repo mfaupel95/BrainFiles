@@ -178,22 +178,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
       `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
       Angelegt: 2026-09-25
-- [ ] **T-073 — Kraken-Futures-Schluessel wird von Kraken abgewiesen**
-      Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` noch
-      mit dem echten Stand (flex/multiCollateral: USD 8,8926 + EUR 45,7427 (Wert
-      52,0447) + USDC 81,0838 = balanceValue 142,0016, availableMargin 141,5963,
-      keine Position, keine Order) - das Geld ist also da. Ab etwa 00:29 antwortet
-      derselbe Aufruf nur noch `authenticationError`, und zwar fuer JEDE nonce
-      (ms/us/ns/1,8e18/9e18) und mit ZWEI unabhaengigen Umsetzungen (unser
-      `kraken_futures.py` UND die offizielle kraken-cli `futures accounts`).
-      Am Haus liegt es nicht: die Werte in HKCU\Environment sind unveraendert
-      (gegen die PowerShell-History vom 24.09. 21:22 verglichen), Host-Uhr und
-      Kraken-Zeit gehen 1,3 s auseinander, Kraken ist online.
-      Naechster Schritt: Max prueft im Kraken-Portal den Derivatives-/Futures-Key -
-      existiert er noch, ist er aktiv, hat er Lesen (und fuer Ordern Trade) und
-      KEINE IP-Beschraenkung? Danach einmal neu messen.
+- [ ] **T-073 — Kraken-Futures-Schluessel war ~1 h lang abgewiesen (Grund offen)**
+      Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` mit
+      dem echten Stand (availableMargin 141,5963; USD 8,89 + EUR 45,74 + USDC 81,08),
+      ab etwa 00:29 nur noch `authenticationError` - fuer JEDE nonce (ms/us/ns/1,8e18/
+      9e18) und mit ZWEI unabhaengigen Umsetzungen (unser `kraken_futures.py` UND die
+      offizielle kraken-cli `futures accounts`). Am Haus lag es nicht: die Werte in
+      HKCU\Environment waren unveraendert (Hash gegen die PowerShell-History vom
+      24.09. 21:22 verglichen), Uhr 1,3 s, Kraken online. Um 01:33 ging es OHNE Zutun
+      wieder (Zeuge: guthaben 141,5949 USD).
+      Erledigt am 25.09.2026: `kraken_futures.guthaben()` las nur `cash.balances`
+      (alles 0,0) statt des flex-Kontos - die Spur sah deshalb 0 USD, obwohl 141,59
+      verfuegbar waren. Jetzt flex zuerst, cash als Rueckfall; Tests 27 gruen.
+      Naechster Schritt: beim naechsten Auftreten Zeitpunkt notieren und pruefen, ob
+      Max in dem Fenster im Kraken-Portal war (Schluessel bearbeiten/erzeugen).
       Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, HKCU\Environment
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
 - [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
       Kontext: Der Arm ist scharf (handel_erlaubt=true, freigabe.erfuellt=true,
       live_einsatz_eur 1.0), kauft aber nur bei einem FRISCHEN Kauf der kopier-Spur.

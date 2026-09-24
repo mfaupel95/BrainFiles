@@ -315,3 +315,31 @@ ein Messfehler der einen Boerse wird gemeldet, statt die andere zu verdecken.
 **Lehre:** Eine Kennzahl ohne ihre Boerse ist wertlos - "Stop groesser als
 Position" heisst bei OKX (reduceOnly) harmlos und bei Kraken-Margin lebensgefaehrlich.
 Vor jeder Alarmstufe die Mechanik des jeweiligen Handelsplatzes pruefen.
+## Das Futures-Guthaben liegt im flex-Konto, nicht im cash-Konto (25.09.2026)
+
+Gemessen am echten Konto, nachdem Max Geld auf das Kraken-Futures-Konto gelegt
+hatte: `/derivatives/api/v3/accounts` antwortet mit BEIDEN Kontenformen -
+
+- `accounts.cash.balances` = alles 0,0 (die alte Form),
+- `accounts.flex` = `availableMargin` 141,5931, `balanceValue` 141,9984,
+  `currencies` mit USD 8,8926, EUR 45,7427, USDC 81,0838,
+  `type: multiCollateralMarginAccount`.
+
+`kraken_futures.guthaben()` las nur `cash.balances` und meldete deshalb **0,0 USD**,
+obwohl 141,59 USD verfuegbar waren: das Guthaben-Tor der Spur war dauerhaft zu -
+ohne Fehlermeldung, ohne Absturz, ohne Logzeile. Jetzt liest es flex zuerst
+(`availableMargin` bzw. `currencies.<CCY>.available`) und cash nur als Rueckfall
+fuer reine Cash-Konten.
+
+**Lehre:** Ein Tor, das 0 liest, sieht wie "kein Geld" aus und nicht wie ein Fehler.
+Wer ein Guthaben-Tor baut, haelt die ROHE Antwort der Boerse einmal daneben und
+prueft, ob das gelesene Feld ueberhaupt gefuellt ist.
+
+Nebenbefund derselben Stunde: derselbe Aufruf antwortete etwa von 00:29 bis 01:33
+mit `authenticationError` - fuer jede nonce und mit zwei unabhaengigen Umsetzungen
+(unser Modul und die offizielle kraken-cli), waehrend die Werte in
+`HKCU\Environment` unveraendert waren; danach ging es ohne Zutun wieder. Ein
+`authenticationError` ist also kein Beweis fuer einen falschen Schluessel: erst mit
+einer ZWEITEN Umsetzung gegenpruefen, die eigenen Werte belegen (Hash gegen die
+PowerShell-History), die Uhr stellen - und nach Minuten erneut messen, statt einen
+neuen Schluessel zu erzeugen.
