@@ -128,5 +128,69 @@ class SicherheitTest(Basis):
         self.assertIn("modul.lage(kraken, stops)", quelle)
 
 
+class BoersenTest(Basis):
+    """Seit dem Refine prueft die Wache Kraken UND OKX - je Boerse getrennt."""
+
+    def jetzt(self):
+        return datetime.now(timezone.utc)
+
+    def test_okx_waise_geht_durch_dieselbe_meldung(self):
+        waisen = [{"kennung": "okx:A9", "boerse": "okx", "inst": "BTC-USDC",
+                   "menge": 0.001, "preis": 80673.7, "waise": True}]
+        text, neu = self.w.meldung(waisen, {}, self.jetzt())
+        self.assertIn("okx:A9", neu["gemeldet"])
+        self.assertIn("okx:A9 BTC-USDC", text)
+        self.assertIn("okx_waisen.py", text)          # richtiger Storno-Weg
+        self.assertNotIn("waisen_stops.py", text)     # nicht der falsche
+
+    def test_kraken_waise_nennt_den_kraken_weg(self):
+        text, _ = self.w.meldung([waise("T1")], {}, self.jetzt())
+        self.assertIn("kraken/waisen_stops.py", text)
+
+    def test_fehlende_boerse_verdeckt_die_andere_nicht(self):
+        def kaputt():
+            raise RuntimeError("Kraken meldet: EGeneral:Permission denied")
+
+        def gesund():
+            return [{"kennung": "A1", "inst": "ETH-USDC", "menge": 1,
+                     "preis": 2, "waise": True}]
+
+        m = lade()                       # frisches Modul: echtes messen()
+        m.QUELLEN = (("kraken", kaputt), ("okx", gesund))
+        waisen, fehler = m.messen()
+        self.assertEqual([z["kennung"] for z in waisen], ["okx:A1"])
+        self.assertEqual(len(fehler), 1)
+        self.assertIn("kraken:", fehler[0])
+        self.assertIn("Permission denied", fehler[0])
+
+    def test_okx_zeile_traegt_boerse_und_kennung(self):
+        m = lade()
+        m.QUELLEN = (("okx", lambda: [{"kennung": "A1", "inst": "ETH-USDC",
+                                       "menge": 1, "preis": 2, "waise": True}]),)
+        waisen, fehler = m.messen()
+        self.assertEqual(fehler, [])
+        self.assertEqual(waisen[0]["boerse"], "okx")
+        self.assertEqual(waisen[0]["kennung"], "okx:A1")
+
+    def test_selbsttest_zeigt_die_form_ohne_netz_und_ohne_zustand(self):
+        alt = self.w.messen
+        self.w.messen = lambda: (_ for _ in ()).throw(
+            AssertionError("kein Netz im Selbsttest"))
+        try:
+            text, rc = self.lauf("--selbsttest")
+        finally:
+            self.w.messen = alt
+        self.assertEqual(rc, 0)
+        self.assertIn("OTEST-1", text)
+        self.assertIn("SHORT", text)
+        self.assertFalse(os.path.exists(self.w.MERKDATEI))   # nichts geschrieben
+
+    def test_werkzeug_storniert_nur_waisen(self):
+        quelle = (SKRIPT.parents[2] / "Handel" / "okx_waisen.py").read_text(
+            encoding="utf-8")
+        self.assertIn('for z in waisen:', quelle)
+        self.assertNotIn("storniere(okx, z", quelle.split("for z in waisen:")[0])
+
+
 if __name__ == "__main__":
     unittest.main()
