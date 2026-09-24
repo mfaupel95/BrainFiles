@@ -541,6 +541,12 @@ Agenten/Hermes/skills/unsloth/
 !Agenten/Werkzeuge/repos-updaten.py
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
+# OLLAMA-BRUECKE, freigelegt am 24.09.2026. Sie ist der EINE Weg, auf dem
+# Fremd-Agenten mit OpenAI-Zweig ohne bezahlten Schluessel ein Urteil vom
+# lokalen Modell bekommen (Ollama-eigener /v1-Adapter liefert bei Denk-Modellen
+# leeren content, die Bruecke ruft nativ mit think:false auf). Ohne diese Zeile
+# laege sie nur auf dieser Platte.
+!Agenten/Werkzeuge/ollama-openai-bruecke.py
 # REPOS-LAUNCHER, freigelegt am 18.09.2026. Er lag seit dem 16.09. unter
 # Agenten/Routinen/ (dort gilt jede .ps1 als Bus-Routine, was er nicht ist) und
 # war NIE versioniert - nach einem Verlust waere der Massenstart-Weg weg

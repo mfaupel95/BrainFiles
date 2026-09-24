@@ -77,6 +77,24 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
    - base_url MUSS auf `/v1` enden (OpenAI-kompatible API); endet die .env auf
      `/api` (native Ollama-API), schlaegt der Call fehl. Robust:
      `(os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434/v1").replace("/api", "/v1")`.
+   - **Ollamas EIGENER `/v1`-Adapter liefert bei Denk-Modellen LEEREN content.**
+     Gemessen 24.09.2026 (qwen35-8k, gemma-e4b-8k): `finish_reason: length`, der
+     Text steht im Feld `reasoning`, `"think": false` im Body wird dort NICHT
+     durchgereicht und der Soft-Switch `/no_think` wirkt ebenfalls nicht. Ein
+     Agent auf `/v1` wird damit STUMM statt fehlerhaft. Was traegt: die
+     Haus-Bruecke `Agenten/Werkzeuge/ollama-openai-bruecke.py` (127.0.0.1:11499)
+     — sie nimmt den OpenAI-Aufruf entgegen und ruft Ollama NATIV mit
+     `think:false`; Wache `Agenten/Hermes/scripts/ollama-bruecke-wache.py`
+     (Cron, leere Ausgabe = laeuft). In die Repo-.env dann
+     `DEEPSEEK_KEY=lokal-ollama` und `DEEPSEEK_BASE_URL=http://127.0.0.1:11499/v1`
+     — der Schluessel ist nur ein nicht-leerer Platzhalter, kein Geheimnis.
+   - **Der env-Leser gehoert an den AUFRUFORT, nicht in die Konstante.** In
+     mehreren Agenten steht `import os` erst NACH der Konstantenzeile
+     (`DEEPSEEK_BASE_URL = "https://api.deepseek.com"` ganz oben) - ein
+     `os.getenv` dort faellt beim LADEN mit NameError um, bevor irgendetwas
+     laeuft (24.09.2026: 5 von 11 Dateien). Muster: Konstante unveraendert
+     lassen, Aufrufort `base_url=os.getenv("DEEPSEEK_BASE_URL") or DEEPSEEK_BASE_URL`.
+     EIN Muster fuer alle Dateien, sonst raet der Naechste.
    - Der Analyze-Pfad muss `chat.completions.create(...)` nehmen. Agenten mit
      `if "deepseek" in model ... else anthropic` brauchen den Ollama-Zweig
      VOR dem DeepSeek-Zweig — `anthropic.messages.create` ist gegen Ollama
@@ -99,7 +117,12 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
    mit `UnicodeEncodeError: 'charmap'` ab (aus git-bash lief es, weil MSYS
    UTF-8 setzt). VOR `Start-Process`
    `$env:PYTHONIOENCODING='utf-8'` setzen.
-6. **Tote Repo-Endpoints ersetzen, nicht reparieren.** Der sniper_agent aus
+6. **Tote Repo-Endpoints ersetzen, nicht reparieren.** ZUERST die DATENQUELLE
+   pruefen, dann den Schluessel: ein fehlender Sprachmodell-Schluessel ist
+   selten der Blocker. Gemessen 24.09.2026: `api.moondev.com:8000` antwortet
+   gar nicht (kein HTTP-Status) - die Agenten, die dort ihre Daten holen
+   (whale/funding/liquidation/fundingarb, alles unter `src/agents/api.py`),
+   bleiben ohne Daten, egal welcher Schluessel eingetragen wird. Der sniper_agent aus
    moon-dev-ai-agents hing an `api.moondev.com:8000/files/new_token_addresses.csv`
    (tot, kein Zugriff). Ersatz: die oeffentliche Pump.fun-API
    `frontend-api-v3.pump.fun/coins?sort=created_timestamp&order=DESC` liefert

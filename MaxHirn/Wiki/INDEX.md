@@ -73,6 +73,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Claude-Red-und-nerd-Bot.md](Werkzeuge/Claude-Red-und-nerd-Bot.md) | Offensive-Security-Sammlung claude-red als Fundus-Faehigkeit, der Bot `nerd`, Defender sperrt vier Skill-Dateien |
 | [Werkzeuge/SkillSpector.md](Werkzeuge/SkillSpector.md) | Sicherheitsscan der Skills (NVIDIA SkillSpector): Aufruf, Falschmeldungen, Risikowert lesen |
 | [Werkzeuge/kraken-cli.md](Werkzeuge/kraken-cli.md) | Kraken CLI selbst gebaut (Windows, kein WSL), Wrapper `Agenten/Werkzeuge/kraken.ps1`, die Schluessel-Namen-Falle, Papiermodus mit echter Gebuehr |
+| [Werkzeuge/Ollama-Bruecke.md](Werkzeuge/Ollama-Bruecke.md) | Der eine Weg zum lokalen Sprachmodell-Urteil ohne Schluessel: Ollamas `/v1` liefert bei Denk-Modellen leeren content, die Bruecke ruft nativ mit `think:false`; Wache und Treiber-Anschluss |
 | [Werkzeuge/openmontage.md](Werkzeuge/openmontage.md) | Video- und Bilderzeugung: Zero-Key-Demos, welcher Anbieterschluessel wirklich traegt, lokale Diffusion auf der 3060 Ti, CUDA-Wheel-Falle |
 | [Werkzeuge/Kronos.md](Werkzeuge/Kronos.md) | Kerzen-Foundation-Modell lokal: Aufruf, der pandas-2.2.2-Absturz (`-X faulthandler`), erster Messbefund gegen die Nullinie |
 | [Werkzeuge/Fomo-Radar.md](Werkzeuge/Fomo-Radar.md) | Robinhood-Chain-Beobachtung: was schluessellos laeuft (147 Wallets, 65 Fills), Fallen, Anschluss als Papierspur |

@@ -60,6 +60,52 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-060 — coingecko_agent: Nebenwege (Token-Extraktor, Runden-Synopsis) auf den lokalen Weg holen**
+      Kontext: Seit dem 24.09.2026 laufen die HAUPTURTEILE des Agenten lokal über
+      die Ollama-Bruecke (Werkzeug `Agenten/Werkzeuge/ollama-openai-bruecke.py`),
+      ohne bezahlten Schlüssel. Zwei Nebenwege sprechen aber weiter den
+      Anthropic-Client an und sterben: `TokenExtractorAgent.__init__`
+      (`anthropic.Anthropic(api_key=ANTHROPIC_KEY)`, Zeile ~556) und die Synopsis
+      (`self.agent_one.client.messages.create`, Zeile ~642). Beleg im Log:
+      „Error extracting tokens: Messages.create() got an unexpected keyword
+      argument 'temperature'“ und „'OpenAI' object has no attribute 'messages'“.
+      Naechster Schritt: beide auf den OpenAI-Zweig legen (`openai.OpenAI(
+      api_key=os.getenv("DEEPSEEK_KEY"), base_url=os.getenv("DEEPSEEK_BASE_URL"))`)
+      und das Antwort-Parsing anpassen — Anthropic liefert eine Blockliste,
+      OpenAI einen String.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/coingecko_agent.py
+- [ ] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
+      Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
+      HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
+      `fundingarb_agent` und alles unter `src/agents/api.py` ohne Daten — ein
+      Schlüssel hilft dort nicht, es fehlt die Quelle. Dagegen laufen
+      `new_or_top`, `kraken_agent`, `sniper_agent` und `trading_agent` schon
+      schluessellos (freie Quellen: CoinGecko public, Pump.fun, OKX/Kraken).
+      Die Content-Agenten (Twitter, YouTube, Restream, ElevenLabs, Google)
+      brauchen Fremdkonten und haben mit Handel nichts zu tun — bewusst nicht
+      verdrahtet.
+      Naechster Schritt: Max nennt, welche der fünf datenlosen Agenten für die
+      Haus-Spuren interessant sind; je Kandidat einen oeffentlichen Ersatz
+      bauen (Muster `sniper_agent`: Pump.fun statt api.moondev.com).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/
+- [ ] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
+      Kontext: Im Klon liegen Änderungen, die nicht aus meiner Sitzung stammen:
+      `rbi_agent.py` (36 Einfügungen / 78 Löschungen), `sniper_agent.py`,
+      `src/models/ollama_model.py`, `src/nice_funcs.py`, `src/data/rbi/ideas.txt`,
+      gelöschtes `src/.env_example`, dazu untracked `BUG_REPORT_DETAILED.md`,
+      `FIXES_APPLIED.md`, `README_FIXES.md`, `SESSION_2_SUMMARY.md`, `START_GUI.bat`,
+      `VALIDATE_ALL.bat`, `startup.py`, `src/utils/`, `src/data/coingecko_results/`.
+      MEINE Änderung in `rbi_agent.py` (Aufrufort liest `DEEPSEEK_BASE_URL`) ist
+      deshalb NICHT mitcommittet — sie liegt im Arbeitsbaum und wirkt, ist aber
+      nur auf dieser Platte bzw. in der Arbeitsbaum-Kopie gesichert.
+      Naechster Schritt: fremde Arbeit sichten und in einem eigenen Commit mit
+      Autor „Andere Sitzung <fremd@local>“ sichern, danach die eine Zeile im
+      rbi_agent nachziehen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Fork mfaupel95/moon-dev-ai-agents)
+
 - [ ] **T-052 — OKX-DCA-Parameter der laufenden Bots anpassen**
       Kontext: Der Weg ist bekannt (dca/amend-order-algo), aber `anpassen_erlaubt`
       steht auf false und es fehlt Guthaben: 0,03 USDC frei gegen ~428 USDC

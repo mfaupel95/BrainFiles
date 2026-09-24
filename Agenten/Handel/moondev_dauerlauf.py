@@ -87,6 +87,68 @@ def _repo_env() -> dict[str, str]:
         pass
     return werte
 
+# Der LOKALE Weg fuer Agenten, die ihre Sprachmodell-Antwort ueber das
+# OpenAI-SDK holen (Zweig: "deepseek" in AI_MODEL): der Ollama-eigene
+# /v1-Adapter liefert bei Denk-Modellen LEEREN content (gemessen
+# 24.09.2026: finish_reason=length, Text im Feld reasoning). Die Bruecke
+# ruft Ollama stattdessen NATIV mit think:false auf.
+BRUECKE_PORT = 11499
+BRUECKE_BASIS = "http://127.0.0.1:11499/v1"
+BRUECKE_WERKZEUG = (HIER / ".." / "Werkzeuge" / "ollama-openai-bruecke.py").resolve()
+
+def _bruecke_gesund(port: int = BRUECKE_PORT, frist: float = 5.0) -> bool:
+    """Antwortet die OpenAI-Bruecke auf Ollama?
+
+    Gefragt wird der eigene Gesundheitsweg - ein reiner TCP-Test wuerde auch
+    einen fremden Lauscher auf dem Port fuer gesund halten.
+    """
+    try:
+        with urllib.request.urlopen(
+                "http://127.0.0.1:%d/gesundheit" % port, timeout=frist) as a:
+            return bool(json.loads(a.read().decode("utf-8", "replace")).get("ok"))
+    except Exception:                                              # noqa: BLE001
+        return False
+
+
+def _bruecke_sicherstellen() -> str:
+    """Bruecke starten, falls sie nicht laeuft. Leere Rueckgabe = laeuft.
+
+    Sie ist ein DIENST, kein Agent: sie laeuft in eigener Prozessgruppe und
+    wird nicht als Kind gefuehrt (ein Kind stuerbe beim Aufraeumen des Treibers
+    mit und muesste jeden Zyklus neu starten).
+    """
+    if _bruecke_gesund():
+        return ""
+    if not BRUECKE_WERKZEUG.exists():
+        return ("WARNUNG: Bruecke fehlt (%s) - Sprachmodell-Aufrufe ueber den "
+                "OpenAI-Zweig scheitern." % BRUECKE_WERKZEUG)
+    umgebung = {k: v for k, v in os.environ.items()
+                if k not in ("PYTHONHOME", "PYTHONPATH")}
+    log = HIER / "logs" / "moondev_bruecke.out"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    flags = 0
+    if os.name == "nt":
+        flags = (getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200))
+    try:
+        with log.open("ab") as fh:
+            fh.write(("\n--- Start durch den Treiber %s ---\n"
+                      % time.strftime("%Y-%m-%d %H:%M:%S")).encode("utf-8"))
+            subprocess.Popen([sys.executable, str(BRUECKE_WERKZEUG),
+                              "--port", str(BRUECKE_PORT)],
+                             stdout=fh, stderr=subprocess.STDOUT,
+                             cwd=str(HIER.parent.parent), env=umgebung,
+                             creationflags=flags, close_fds=True)
+    except Exception as fehler:                                    # noqa: BLE001
+        return "Bruecke liess sich nicht starten: %s" % fehler
+    for _ in range(10):
+        time.sleep(1.5)
+        if _bruecke_gesund():
+            return ("Bruecke gestartet (Port %d, think:false) - war nicht "
+                    "erreichbar." % BRUECKE_PORT)
+    return "Bruecke gestartet, antwortet aber nach 15 s nicht - Protokoll: %s" % log
+
+
 # ---------------------------------------------------------------------------
 # Modellweg je Agent (Max, 18.09.2026: "auf nous/deepseek wechseln, sonst lokal")
 # ---------------------------------------------------------------------------
@@ -421,6 +483,12 @@ class MoonDevDauerlauf:
         umgebung["PYTHONIOENCODING"] = "utf-8"
         wege = _repo_env()
         umgebung.update(wege)
+        # VORGABE fuer jeden Agenten mit OpenAI-/DeepSeek-Zweig: die lokale
+        # Bruecke. Einen bezahlten DEEPSEEK_KEY gibt es im Haus nicht; ohne
+        # diese Zeilen faellt der Zweig mit 'not found in environment
+        # variables' um. Der Nous-Weg ueberschreibt beides danach.
+        umgebung["DEEPSEEK_KEY"] = "lokal-ollama"
+        umgebung["DEEPSEEK_BASE_URL"] = BRUECKE_BASIS
         # Welcher Modellweg? Steht danach im Log neben der PID - ohne diese
         # Zeile sieht ein 404 (Modell fehlt) wie ein gesunder Lauf aus.
         weg = _weg_fuer(name, umgebung, wege)
@@ -534,6 +602,12 @@ class MoonDevDauerlauf:
 
     # -- Zyklus -------------------------------------------------------------
     def zyklus(self) -> None:
+        # Die Bruecke VOR die Agenten: sie traegt den lokalen
+        # Sprachmodell-Weg. Eine leere Meldung heisst: sie lief schon.
+        if not self.trocken:
+            meldung = _bruecke_sicherstellen()
+            if meldung:
+                self.protokolliere(meldung)
         # ERST aufraeumen, dann starten: sonst lebt bei jedem Neustart die Waise
         # des vorigen Laufs weiter (Leak vom 21.09.2026).
         # EINE Abfrage je Zyklus: leer heisst "nicht aufraeumen, statt zu raten" -
