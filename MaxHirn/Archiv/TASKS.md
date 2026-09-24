@@ -60,6 +60,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-063 — moon-dev-ai-agents: entscheiden, ob die Content-/Medienagenten ueberhaupt laufen sollen**
+      Kontext: In der .env stehen acht Platzhalter, die nur ueber Fremdkonten zu
+      fuellen sind und mit Handel nichts zu tun haben: ELEVENLABS_API_KEY,
+      GROQ_API_KEY, YOUTUBE_API_KEY, RESTREAM_CLIENT_ID/-SECRET/-EMBED_TOKEN,
+      TWITTER_USERNAME/-EMAIL/-PASSWORD, GOOGLE_APPLICATION_CREDENTIALS. Alles,
+      was fuer den HANDEL zaehlt, laeuft schluessellos (lokales Modell ueber die
+      Bruecke, oeffentliches CoinGecko statt Schluessel, RPC_ENDPOINT gesetzt).
+      Solange diese Frage offen ist, bleiben die betroffenen Agenten dunkel -
+      sie sind aber kein Betriebsfehler, sondern eine Entscheidung.
+      Naechster Schritt: Max sagt je Gruppe ja/nein (Twitter, Yo
+      uTube, Restream, ElevenLabs, Google) - bei nein die Platzhalter
+      auskommentieren, damit der Zustand nicht als "unfertig" gelesen wird.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/.env
+
 - [ ] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
       Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
       HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
