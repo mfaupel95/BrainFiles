@@ -59,6 +59,24 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-070 — Waisen-Wächter für Kraken-Schutz-Orders (meldend)**
+      Kontext: Wird eine Margin-Position geschlossen, LÖSCHT Kraken den
+      zugehörigen Stop-Loss NICHT. Der Stop bleibt offen, sieht in der
+      Oberfläche aus wie eine offene Position, und ein Schließversuch scheitert
+      ohne Bestand und ohne Position (EOrder:Insufficient funds) — das war die
+      Antwort auf „warum kann ich SUI/EUR nicht schließen". Gefährlich ist der
+      Waise selbst: ein Margin-SELL-Stop ohne Long-Position ist beim Auslösen
+      ein SHORT-Einstieg. Am 24.09.2026 lagen nach dem Schließen der
+      Margin-Positionen 7 Waisen im Markt (5× SUIEUR 615 SUI @0,777/0,814,
+      ZECUSD 0,1834 @1410,4, NEAREUR 31,19 @3,5591) und wurden von Hand
+      storniert; Werkzeug Agenten/Handel/kraken/waisen_stops.py (Vorschau
+      Standard, --stornieren), gegen die Börse geprüft: 0 Waisen übrig,
+      5 echte Stops (SOL×2, ALGO, ETH, BTC) unberührt.
+      Nächster Schritt: meldender Cron auf waisen_stops.py (Muster
+      okx-bot-wache) — nur melden, nie selbst stornieren; Stand in
+      Agenten/Hermes/cache/waisen-wache.json, leere Ausgabe = nichts senden.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/kraken/waisen_stops.py, Agenten/Routinen/
 - [ ] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
       Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
       Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im

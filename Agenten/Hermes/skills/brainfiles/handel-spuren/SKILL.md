@@ -54,9 +54,15 @@ Ausloeser → Referenz:
 - **Ein Orderpreis wird abgelehnt** („price can only be specified up to N
   decimals“, `tickSz`, der Notausstieg kommt nicht zustande und die eben
   gekaufte Position wird zurueckverkauft): `references/zweite-boerse.md` —
-  Preisregeln je Paar/Instrument aus der API, Rundungsrichtung, Probe mit
-  `validate=true`. Dazu gehoeren die gemessenen Gebuehrensatze: siehe
-  `references/tor-kalibrierung.md`, Regel 8.
+ Preisregeln je Paar/Instrument aus der API, Rundungsrichtung, Probe mit
+ `validate=true`. Dazu gehoeren die gemessenen Gebuehrensatze: siehe
+ `references/tor-kalibrierung.md`, Regel 8.
+ - **Derselbe Anbieter, ein ANDERES Produkt** (Spot gegen Futures/Terminkontrakt:
+ eigener Host, eigene Kopfzeilen, eigene Schluesselnamen, `Authentication error`
+ oder `404 NOT_FOUND` trotz gueltigem Schluessel, Groesse in Kontrakten statt
+ Muenzen, Ausstieg braucht `reduceOnly`, Besicherung aus dem Cash-Konto des
+ Dienstes): `references/zweite-boerse.md`, Abschnitt "Ein zweiter Dienst sieht aus
+ wie eine zweite Boerse".
 - **Max aendert Positionen von HAND** (in der Boersen-App schliessen,
   verkleinern, aufstocken) - das Buch folgt der Boerse, die handgeschlossene
   Position bekommt ihr ECHTES Ergebnis, Stop/Ziel bleiben der Spur, und der
@@ -71,10 +77,12 @@ Ausloeser → Referenz:
   Zyklus, kurze Abstaende vs. Luecken) und der Form, die Max erwartet:
   `references/spur-bericht.md`
 - **Stille Spur / falsch gelesenes Etikett** („warum still und nicht papier?",
-  eine Spur bucht nichts, eine Uebersicht zeigt 0 Ausstiege):
+  eine Spur bucht nichts, eine Uebersicht zeigt 0 Ausstiege) **sowie Stilllegen**
+  („<spur> stillegen bis eine Messung da ist"):
   `references/stille-spuren-deuten.md` — „still" heisst nichts Neues, nicht
   abgeschaltet; Werkzeug `stille_spuren.py`, bei Eigenspuren `--papier` statt
-  `--vorschau`, Entscheidungsbaum zum Einschalten.
+  `--vorschau`, Entscheidungsbaum zum Einschalten, und zum Ausschalten die ZWEI
+  Schalter (ein einzelner laesst den Papierlauf den Bereinigungskreis fuellen).
 - Änderung, die **alle Spuren** trifft („das gilt für alle", Bedingung 4, neuer
   Kosten-/Ausstiegsgrund, Befund an mehreren Spuren) — Ausrollweg von Inventar
   bis Commit, inklusive Testaufruf-Falle und versehentlich überschriebener Kopie
@@ -95,9 +103,12 @@ Ausloeser → Referenz:
   werden geschlossen, Ausstiege bleiben frei.
 - **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
   Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
-  `risikostufe.py`): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
+  `risikostufe.py`, „Strategie Hoch hat noch kein PID", „alle drei Stufen
+  gegeneinander"): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
   was skaliert wird und was nie, warum eine Stufe nie live geht, kein Telegram
-  bekommt und warum der Spiegel aussen vor bleibt: `references/risikostufen.md`
+  bekommt und warum der Spiegel aussen vor bleibt, wie eine Stufe einen eigenen
+  Waechter-Task bekommt und warum drei Stufen keine Skalierung derselben
+  Geschaefte sind: `references/risikostufen.md`
 - **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
@@ -622,6 +633,12 @@ Werkzeuge: `kraken/margin_stops.py` (Margin; Vorschau Standard, `--anwenden`),
 AKTUELLE Kurs statt eines Einstiegs - fuer Bestaende, die von Hand gekauft
 wurden; `--ab-eur 50 --prozent 7.5`, Vorschau Standard, `--anwenden`, idempotent
 weil nur der freie Teil (Betrag minus `hold_trade`) geordert wird),
+`kraken/waisen_stops.py` (findet Schutz-Orders, deren Position es NICHT mehr
+   gibt; Vorschau Standard, `--stornieren`. **Merksatz: beim Schliessen einer
+   Margin-Position loescht Kraken den zugehoerigen Stop-Loss NICHT** - der Stop
+   bleibt offen, sieht in der Oberflaeche wie eine offene Position aus, ein
+   Schliessversuch scheitert ohne Bestand/Position, und beim Ausloesen eroeffnet
+   ein Margin-SELL-Stop einen SHORT. Also nach jedem Schliessen nachsehen),
 `mosaic/kraken_stops_7_5.py` (Spot mit Buch-Einstieg; `--anwenden`, danach
 `--nur-buch`),
 `kraken.stop_setzen(..., leverage=, close_txid=)`, `okx.stop_setzen` /
