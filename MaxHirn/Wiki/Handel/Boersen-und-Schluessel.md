@@ -147,3 +147,30 @@ einer **Boersenliste**:
 nautilus-venv) · `moondev_marktlage.live_kraken.py` (abgetrennter Live-Zweig, nicht verdrahtet)
 · `kraken_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` (Fremd-Bot, eigener Treiber
 `MaxHirn-MoonDev-Dauerlauf`).
+
+## Dasselbe Paar, zwei Schreibweisen (Kraken)
+
+Ein Abgleich BUCH gegen BOERSE darf die Paarnamen nicht roh vergleichen. Kraken
+nimmt in der Order-Anfrage `XXBTZEUR` / `XETHZEUR`, liefert in der offenen Order
+(`/0/private/OpenOrders`, Feld `descr.pair`) aber die kurze Form `XBTEUR` /
+`ETHEUR`. Gemessen am 24.09.2026 beim Nachtragen der Stop-Kennungen in mosaics
+Buch: von drei Positionen passte nur `SOLEUR` - BTC und ETH sahen aus wie
+ungeschuetzte Positionen, obwohl an der Boerse ein Stop lag. Beide Seiten auf
+(Basis, Quote) zurueckfuehren (X/Z-Praefixe und Aliasse aufloesen), dann
+vergleichen. Das Werkzeug dafuer ist `mosaic/stops_nachziehen.py`, die
+Erkennung frieren 7 Tests ein.
+
+## `EAPI:Invalid nonce` heisst nicht "unsere Werte steigen nicht"
+
+Kraken vergleicht die nonce gegen den HOECHSTEN Wert, den es je Schluessel
+gesehen hat. Der gemeinsame Pool (`kraken/nonce_pool.py`) haelt die eigenen
+Werte streng steigend - aber sobald ein Werkzeug auf DENSELBEN Schluessel einen
+hoeheren Wert sendet (die offizielle `kraken-cli` signiert in Nanosekunden aus
+ihrer eigenen Uhr), ist jeder Pool-Wert darunter und Kraken lehnt ab, bis die
+Uhr den fremden Wert eingeholt hat. Ein Wiederholversuch mit demselben Wert
+hilft dann nicht. Richtig: `nonce_pool.vorwaerts(sekunden)` schiebt den
+gemeinsamen Zaehler in der DATEI vor (sonst waere der naechste normale Aufruf
+wieder zu niedrig), und `kraken._roh_privat` wiederholt bei "Invalid nonce" bis
+zu dreimal mit vorgeschobenem Wert. Symptom, an dem man es erkennt: derselbe
+Aufruf gelingt eine Minute spaeter wieder, ohne dass sich am Code etwas
+geaendert hat.
