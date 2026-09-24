@@ -323,7 +323,7 @@ def _ergebnis(p, kurs):
 
 
 def bueche_papier_altlasten_aus(z):
-    """Positionen ohne modus='live' aus dem Live-Buch buchen.
+    """ALTBESTAENDE ohne modus-Feld aus dem Buch buchen (Live-Lauf).
 
     Anlass (22.09.2026): Das Buch ist EINES fuer Papier und Live. Laeuft
     die Spur mit geschlossenem Freigabefenster im Papier, fuellt sie dasselbe
@@ -332,15 +332,21 @@ def bueche_papier_altlasten_aus(z):
     Stop-Ausstieg ein echtes okxf.markt_schliessen() auf eine Position
     geschickt, die an der Boerse nie existiert hat.
 
-    Erkennung: Positionen ohne 'modus'-Feld ODER modus != 'live'.
+    Seit dem 25.09.2026 traegt JEDE Position ein modus-Feld und
+    pruefe_ausstiege()/flach_stellen() fassen nur noch den eigenen Zweig an -
+    damit ist eine Papier-Position im Live-Buch harmlos. Diese Bereinigung
+    raeumt deshalb nur noch, was das Feld GAR NICHT hat (Altbestand): eine
+    solche Position laesst sich keinem Zweig zuordnen, und der Zweig ohne
+    Zuordnung waere der teure Fall (echter Verkauf einer Scheinposition).
+
     Idempotent: eine zweite Bereinigung findet nichts mehr.
     """
-    altlasten = [p for p in z["positionen"] if p.get("modus") != "live"]
+    altlasten = [p for p in z["positionen"] if not p.get("modus")]
     if not altlasten:
         return 0
     behalten = []
     for p in z["positionen"]:
-        if p.get("modus") == "live":
+        if p.get("modus"):
             behalten.append(p)
             continue
         # Aktuellen Kurs holen; scheitert das, Altlast zum Einstiegspreis buchen.
@@ -373,7 +379,17 @@ def pruefe_ausstiege(z, live, w):
     im Zustand geschlossen.
     """
     behalten = []
+    eigen = "live" if live else "papier"
     for p in z["positionen"]:
+        # Nur der eigene Zweig. Sonst schickt ein Live-Lauf ein echtes
+        # markt_schliessen() fuer eine Papier-Position (die es an der Boerse nie
+        # gab) - und ein Papierlauf bucht eine echte Position aus dem Buch, die
+        # an der Boerse offen weiterlaeuft (Geister-Muster, 21./22.09.2026).
+        # Positionen aus der Zeit vor dem modus-Feld gelten als Papier; sie
+        # raeumt bueche_papier_altlasten_aus() zu Beginn eines Live-Laufs aus.
+        if (p.get("modus") or "papier") != eigen:
+            behalten.append(p)
+            continue
         try:
             kurs = _kurs(p["inst"])
         except Exception as e:                            # noqa: BLE001
@@ -463,7 +479,11 @@ def buche_funding(z, live, w):
 def flach_stellen(z, live, grund):
     """Alle Positionen schliessen - Bedingung 2 und 3."""
     behalten = []
+    eigen = "live" if live else "papier"
     for p in z["positionen"]:
+        if (p.get("modus") or "papier") != eigen:
+            behalten.append(p)      # fremder Zweig: siehe pruefe_ausstiege()
+            continue
         try:
             kurs = _kurs(p["inst"])
         except Exception as e:                            # noqa: BLE001
@@ -504,13 +524,17 @@ def in_abklingzeit(basis, z, w):
 
 def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     """Einstiege. Live geht der Auftrag an die Boerse, Papier nur ins Journal."""
-    offen = {p["basis"] for p in z["positionen"]}
-    margin_gebunden = sum(p["margin"] for p in z["positionen"])
-    fam_stand = wx.familien_belegung(z["positionen"], w)
+    eigen = "live" if live else "papier"
+    meine = [p for p in z["positionen"]
+             if (p.get("modus") or "papier") == eigen]
+    offen = {p["basis"] for p in meine}
+    margin_gebunden = sum(p["margin"] for p in meine)
+    fam_stand = wx.familien_belegung(meine, w)
+    plaetze = len(meine)
     we = s["wochenende"]
 
     for kandidat in kand:
-        if len(z["positionen"]) >= w["max_offene_anlaeufe"]:
+        if plaetze >= w["max_offene_anlaeufe"]:
             return
         if kandidat["basis"] in offen or in_abklingzeit(kandidat["basis"], z, w):
             continue
@@ -588,19 +612,31 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             "gebuehr_taker": w["gebuehr_taker"],
             "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
             "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
+            # OHNE dieses Feld gilt die Position als PAPIER-Altlast:
+            # bueche_papier_altlasten_aus() bucht sie im naechsten Live-Zyklus
+            # aus, der naechste Papier-Zyklus eroeffnet sie neu - Journal
+            # 22.-24.09.2026 dreimal: eroeffnen, 13 bis 28 Minuten spaeter
+            # buchbereinigung. Die Papierstrecke kam so nie an Stop oder Ziel.
+            # Umgekehrt haengt eine ECHTE Position ohne dieses Feld nach dem
+            # naechsten Live-Zyklus ohne Buch an der Boerse. Muster scanner
+            # (kauf_ord_id) und xperp (modus).
+            "modus": "live" if live else "papier",
         }
         z["positionen"].append(pos)
+        meine.append(pos)       # eigener Zweig, siehe oben
         margin_gebunden += g["margin"]
+        plaetze += 1
         offen.add(a["basis"])
-        fam_stand = wx.familien_belegung(z["positionen"], w)
+        fam_stand = wx.familien_belegung(meine, w)
 
         print("  AUF %-22s %-5s @ %.6f  %g Kontrakte, %.1fx, "
               "%.2f Margin (%.2f nominal)" % (
                   a["inst"], a["seite"], a["einstieg"], kontrakte,
                   g["hebel"], g["margin"], g["nominal"]))
-        # Instrument und Seite stehen in jeder Zeile. Der Dauerlauf meldet jede
-        # Zeile mit dem Wort Stop einzeln weiter - eine Fortsetzungszeile ohne
-        # Subjekt ist dort nicht zuzuordnen.
+        # Instrument und Seite stehen im Subjekt der AUF-Zeile. Der Dauerlauf
+        # meldet aus diesem Block nur diese eine Zeile weiter (ereigniszeilen);
+        # eine Fortsetzungszeile ohne Subjekt waere im Chat nicht zuzuordnen,
+        # und "Stop" als Spaltenueberschrift ist kein Geschehen.
         print("      %-22s %-5s  Stop %.6f (%.2f%%)  Ziel %.6f  Liq %.6f "
               "(%.1f%% weg)"
               % (a["inst"], a["seite"], a["stop"], g["abstand"] * 100,

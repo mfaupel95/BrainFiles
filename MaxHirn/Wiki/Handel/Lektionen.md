@@ -3,7 +3,7 @@ id: 20260921-handel-lektionen
 title: 'Handel — Lektionen'
 tags: [handel, lektion]
 created: 2026-09-21
-updated: 2026-09-22
+updated: 2026-09-25
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Lektionen/Wahrheit-pruefen]]']
 summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg, ein Netzabbruch riss den ganzen Zyklus mit.'
 ---
@@ -431,3 +431,59 @@ Zwei Tests verlangten den Textbaustein „handel_erlaubt=false" in der Vorschau.
 Beim Freischalten wurden sie rot, obwohl der Code stimmte — sie froren einen
 Stand ein. Richtig ist: den Wert aus der `wachen.json` lesen und pruefen, dass
 die Ausgabe genau die Gruende nennt, die dort stehen (und keinen erfundenen).
+
+## Eine Meldung ohne Geschehen ist kein Bericht (25.09.2026)
+
+Die Zyklusmeldung der Basis schickte fuenf Zeilen, von denen keine ein Ereignis
+war: zwei Spaltenueberschriften (`- Ausstiege -`), die Fortsetzungszeile einer
+frisch eroeffneten Anlage (`XAU-USDT-SWAP short Stop 4318.2 …` — das Instrument
+steht nur in der ersten Zeile) und dreimal derselbe Hinweis (`3 Live-Position(en)
+bleiben stehen …`). Der alte Filter im Dauerlauf suchte Woerter wie `stop` und
+`verkauf` und traf damit Ueberschriften und Tabellenspalten.
+
+Zwei Regeln, an EINER Stelle im Code (`dauerlauf.ereigniszeilen`): eine gemeldete
+Zeile muss ein GESCHEHEN aussprechen (Ausstieg, Eroeffnung, Notaus, Kill,
+Fehlschlag) UND ihr Subjekt selbst nennen. Dazu ein Gedaechtnis je Spur: eine
+Zeile, die im vorigen Zyklus schon stand, wird nicht wiederholt — sonst fuellt
+eine Dauerzeile jede Meldung.
+
+Die dreifache Zeile hatte eine eigene Ursache: die Funktion laeuft je Instrument
+ueber ALLE Positionen und druckte jedes Mal. Wer in einer solchen Schleife
+druckt, druckt N mal; richtig ist ein Rueckgabewert und EINE Meldung im Aufrufer.
+Und: die Aenderung wirkt erst nach einem Neustart des BASIS-Laufs — nur er sendet,
+die Stufenlaeufe laufen stumm mit altem Code weiter.
+
+## Ein gemeinsames Buch braucht die Herkunft an jeder Position (25.09.2026)
+
+Die swap-Spur fuehrt Papier und Live in EINEM Buch. Ohne `modus`-Feld an der
+Position entstand eine Schleife: der Papierzweig legte eine Position an, der
+naechste Live-Zyklus hielt sie fuer eine Altlast und buchte sie aus, der naechste
+Papierzweig legte sie wieder an (Journal 22.-24.09.2026 dreimal, jeweils 13 bis 28
+Minuten auseinander). Die Papierstrecke kam so nie an Stop oder Ziel — ihre Zahlen
+taugen nicht. Die teurere Richtung waere ein Live-Ausstieg auf eine Position, die
+es an der Boerse nie gab.
+
+Deshalb: jede Position traegt `modus`; `pruefe_ausstiege()` und `flach_stellen()`
+fassen nur den eigenen Zweig an; die Plaetze- und Margin-Tore zaehlen nur den
+eigenen Zweig (sonst blockiert der Papierlauf den Live-Lauf); und die Bereinigung
+raeumt nur noch ALTBESTAND ohne Feld. Belegt wird das im JOURNAL, spaltenweise
+gelesen — Zustand und Log zeigen die Schleife nicht.
+
+## Ein Grid ist ein Hebelgeschaeft, kein Netz (25.09.2026)
+
+62 geschlossene OKX-Grids, vollstaendig gemessen (Methode und Zahlen:
+[[okx-bot-waechter]]): Netzgewinn **+305,64**, Richtungsgewinn **-392,99**,
+Gebuehren und Funding -45,64 -> **-77,01 auf 7.072,87 USDC Einsatz**. 30 Gewinner,
+28 Verlierer, mittlere Lebensdauer 1,3 Tage. Lief der Markt waehrend der
+Lebensdauer in Richtung des Grids, waren 82 % Gewinner; lief er dagegen, 21 %.
+
+Merksatz: **das Netz verdient klein und zuverlaessig, die Position verliert gross
+und selten.** Ein einziges lange laufendes Long-Grid (BICO, -19,3 % Markt in
+1,66 Tagen) verlor -304,33 USDC - viermal der Gewinn aller 62 Grids zusammen.
+
+Was daraus folgt: der Stop gehoert an die untere Netzkante (`slTriggerPx = minPx`),
+und die **Richtung** entscheidet, nicht die Feinheit des Netzes (Hebel, Netzzahl
+und Bandbreite trennten Gewinner und Verlierer messbar nicht). Die zwei
+Vorzeige-Bots des Kontos waren genau deshalb erfolgreich: PUMP (+109,53) zu 96 %
+aus Richtung und mit automatischem Stop, ZEC (+46,76) zu 75 % aus Oszillation -
+beide im Plus gestoppt, keiner auslaufen gelassen.

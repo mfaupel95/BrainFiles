@@ -47,7 +47,15 @@ def _pos_kein_modus(inst="TRX-USDT-SWAP"):
 
 
 class BuchbereinigungTest(unittest.TestCase):
-    """bueche_papier_altlasten_aus entfernt Positionen ohne modus=live."""
+    """bueche_papier_altlasten_aus entfernt nur ALTBESTAND ohne modus-Feld.
+
+    Seit 25.09.2026 traegt jede Position ein modus-Feld, und pruefe_ausstiege()
+    sowie flach_stellen() fassen nur noch den eigenen Zweig an. Eine
+    Papier-Position im Live-Buch ist damit harmlos und wird NICHT mehr
+    ausgebucht - sie haette sonst nie Stop oder Ziel erreicht (Journal
+    22.-24.09.2026: dreimal eroeffnen, 13 bis 28 Minuten spaeter
+    buchbereinigung).
+    """
 
     def setUp(self):
         self.alt_journal = h.JOURNAL
@@ -68,14 +76,13 @@ class BuchbereinigungTest(unittest.TestCase):
         h.JOURNAL = self.alt_journal
         h.journal = self._orig_journal
 
-    def test_papier_position_wird_ausgebucht(self):
+    def test_papier_position_bleibt_im_buch(self):
+        """Papier ist kein Altbestand: die Position darf ihren Ausstieg erleben."""
         z = {"positionen": [_pos(modus="papier")], "letzte_stops": {}}
         n = h.bueche_papier_altlasten_aus(z)
-        self.assertEqual(n, 1)
-        self.assertEqual(z["positionen"], [])
-        zeilen = [r for r in csv.reader(
-            io.StringIO(self.buf.getvalue())) if r]
-        self.assertTrue(any("buchbereinigung" in r for r in zeilen))
+        self.assertEqual(n, 0)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.buf.getvalue(), "")
 
     def test_kein_modus_feld_wird_ausgebucht(self):
         z = {"positionen": [_pos_kein_modus()], "letzte_stops": {}}
@@ -90,13 +97,16 @@ class BuchbereinigungTest(unittest.TestCase):
         self.assertEqual(n, 0)
         self.assertEqual(len(z["positionen"]), 1)
 
-    def test_gemischt_nur_papier_raus(self):
-        z = {"positionen": [_pos(modus="papier"), _pos(modus="live",
-             inst="XAU-USDT-SWAP")], "letzte_stops": {}}
+    def test_gemischt_nur_altbestand_raus(self):
+        """Nur die Position OHNE modus-Feld faellt - Papier und Live bleiben."""
+        z = {"positionen": [_pos(modus="papier"),
+                            _pos(modus="live", inst="XAU-USDT-SWAP"),
+                            _pos_kein_modus(inst="BZ-USDT-SWAP")],
+             "letzte_stops": {}}
         n = h.bueche_papier_altlasten_aus(z)
         self.assertEqual(n, 1)
-        self.assertEqual(len(z["positionen"]), 1)
-        self.assertEqual(z["positionen"][0]["inst"], "XAU-USDT-SWAP")
+        self.assertEqual(sorted(p["inst"] for p in z["positionen"]),
+                         ["TRX-USDT-SWAP", "XAU-USDT-SWAP"])
 
     def test_lauf_ruft_bereinigung_im_live_modus(self):
         """Im Live-Lauf wird bueche_papier_altlasten_aus am Anfang aufgerufen."""

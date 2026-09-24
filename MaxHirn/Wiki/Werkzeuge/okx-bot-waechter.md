@@ -120,3 +120,65 @@ Die zwei ehrlichen Grenzen: neue Sicherungsstufen brauchen freies Guthaben (am 2
 waren es 0,03 USDC), und die bindende Wand einer voll gefuellten Position ist die
 Liquidation, nicht die Leiter. Margin-Bedarf = `(Zielabstand - heutiger Abstand) x Notional`,
 Wartungsrate als Rest gemessen.
+
+## Das Schema der Grids (Analyse 25.09.2026)
+
+Gemessen an ALLEN 62 geschlossenen Grids des Kontos: `grid/orders-algo-history`
+fuer die Liste, `grid/orders-algo-details` je Kennung fuer `floatProfit`, und
+1H-Kerzen ueber `market/history-candles` fuer die Kursbewegung waehrend der
+Lebensdauer (die normale `market/candles`-Abfrage reicht nur ~12 Tage zurueck und
+haette bei den August-Bots still das falsche Fenster geliefert).
+
+Summe ueber 62 Grids (Investment 7.072,87 USDC):
+
+| Groesse | Summe |
+|---|---|
+| Netzgewinn (`gridProfit`) | **+305,64** |
+| Richtungsgewinn (`floatProfit`) | **-392,99** |
+| Gebuehren + Funding | -45,64 |
+| **Ergebnis** | **-77,01 (-1,09 % des Einsatzes)** |
+
+Die Mechanik verdient also zuverlaessig, die Richtung verliert mehr. 30 Gewinner
+gegen 28 Verlierer, mittlere Lebensdauer **1,3 Tage**. Entscheidend ist die
+Marktrichtung waehrend der Lebensdauer: lief sie in Richtung des Grids, waren
+**82 %** der Laeufe Gewinner (Summe +392,51); lief sie dagegen, **21 %**
+(Summe -469,52). Hebel, Netzzahl und Bandbreite trennen NICHT (Gewinner im
+Mittel 7,0x / 62 Netze / 32 % Band gegen Verlierer 5,8x / 75 Netze / 45 % Band).
+
+### Die zwei genannten Kennungen
+
+| algoId | Instrument | Laufzeit | Markt | Netzgewinn | Richtung | Ergebnis |
+|---|---|---|---|---|---|---|
+| `3850683993419132928` | PUMP long | 1,42 T | **+25,6 %** | 4,56 | 104,97 | **+109,53 (93,2 %)** |
+| `3936916024150462464` | ZEC long | 3,95 T | +5,7 % | 35,28 | 11,48 | **+46,76 (30,6 %)** |
+
+Zwei verschiedene Mechanismen, beide erfolgreich - und beide IM PLUS gestoppt
+worden, keiner lief aus:
+
+* **PUMP:** 96 % des Gewinns kam aus dem RICHTUNGSgewinn, das Netz lieferte 4 %.
+  Hebel 10, Band 0,0035-0,005 (42,9 %), der Markt lief 25,6 % hoch - ein
+  gehebelter Long im Netzkostuem. Automatisch gestoppt bei 0,00388
+  (`slTriggerPx` 0,00345, `triggerType auto`).
+* **ZEC:** 75 % aus dem Netz - 92 Arbitrage-Runden in einem 17,2 %-Band, der
+  Kurs schwankte vier Tage zwischen -6,1 % und +10,5 %, ohne auszubrechen. Von
+  Hand gestoppt, **ohne Stop** (`slTriggerPx` leer).
+
+### Die Regel, die daraus folgt
+
+Ein Long-Grid ist ein **gehebelter Long mit Mean-Reversion-Overlay**. Es gibt
+zwei Wege zum Gewinn (Richtung oder Oszillation) und **einen** Weg zum grossen
+Verlust: laufen lassen, waehrend der Markt gegen die Position geht. Der groesste
+Einzelverlust der Serie - BICO 10.-12.08.2026, 1,66 Tage, Markt -19,3 % - war
+**-304,33 USDC, viermal der Gewinn aller 62 Grids zusammen**.
+
+Daraus drei Regeln:
+
+1. `slTriggerPx = minPx` **immer** setzen. `vorschlag.py` tut das schon; von Hand
+   angelegt fehlte der Stop (ZEC 19.09. und das laufende Grid, T-077).
+2. Kein neues Long-Grid gegen einen fallenden Wochenchart - die gemessene
+   Trefferquote dort ist 21 %.
+3. Das Band aus dem ATR, nicht aus dem Bauch: im Erfolgsfall fuellte sich das
+   Netz wegen der BEWEGUNG, nicht wegen der Enge.
+
+Nachpruefbar mit `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py` (Wegwerfsonde
+vom 25.09.2026; die Uebernahme in den Waechter steht als T-076).

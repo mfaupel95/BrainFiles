@@ -97,10 +97,14 @@ Ausloeser → Referenz:
   Entscheidung von Max braucht: `references/fremdarbeit-mitnehmen.md`
 - **Ein MCP-Werkzeug soll handeln dürfen** („was ist mit dem Boersen-MCP?",
   „Werkzeug bauen", Order aus einer Fremdsitzung), ein zweites Programm auf
-  demselben Boersenschluessel streikt mit `Invalid key`:
+  demselben Boersenschluessel streikt mit `Invalid key`, **oder ein Live-Tor
+  meldet nach Wochen plotzlich `Permission denied` / `authenticationError`
+  und der Kontostand ist nicht mehr abrufbar**:
   `references/mcp-tor-freigabebeleg.md` + `references/kraken-nonce-und-lockout.md`
+  + `references/boersen-schluessel-diagnose.md`
   — Entscheidung bleibt bei der Spur, Einmal-Beleg als Tor, die alten Wege
-  werden geschlossen, Ausstiege bleiben frei.
+  werden geschlossen, Ausstiege bleiben frei; die Zuordnung „unser Code,
+  der Schluessel oder die Boerse" laeuft in der Reihenfolge der Diagnose-Datei.
 - **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
   Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
   `risikostufe.py`, „Strategie Hoch hat noch kein PID", „alle drei Stufen
@@ -689,6 +693,17 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 - `references/kraken-nonce-und-lockout.md` — `Invalid nonce` und `Temporary
   lockout` erst unterscheiden, bevor man den nonce-Code jagt: eine Sperre
   lehnt JEDEN nonce ab, auch einen korrekten; weitere Sonden verlaengern sie.
+- `references/boersen-schluessel-diagnose.md` — wenn ein Zugang von einer Minute
+  auf die andere streikt: in welcher REIHENFOLGE man entscheidet, ob unsere
+  Signatur, der Schluessel oder die Boerse die Ursache ist. Kernregeln: einen
+  privaten Aufruf NIE von Hand signieren (die Hausmodule teilen den nonce-Pool
+  `kraken/.kraken_nonce`; ein eigener Zeitstempel liegt unter dem Peak und Kraken
+  antwortet mit `Permission denied`/`authenticationError` statt mit einem
+  nonce-Fehler), eine UNABHAENGIGE Umsetzung als Schiedsrichter fahren (kraken-cli
+  `futures accounts`; sie liest `KRAKEN_FUTURES_API_KEY`/`_SECRET`), die
+  nonce-Verdacht ueber Groessenordnungen (ms/us/ns/1,8e18) ausschliessen und den
+  Zugang ohne Klartext pruefen (Hash/Laenge gegen die `setx`-Zeile der
+  PowerShell-History; `reg query` gibt die Werte aus).
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,
@@ -788,3 +803,10 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   Grenze in der Kette je Trade → Plaetze → Gesamtdeckel → Guthaben bindet, und
   `mindest_guthaben*` mit dem KLEINSTEN Einsatz begruenden, nicht mit einem alten
   Beispielbetrag.
+- `references/meldungen-des-dauerlaufs.md` — was in den Chat gehoert: eine Zeile
+  muss ein GESCHEHEN aussprechen UND ihr Subjekt nennen (`EREIGNIS_ANFANG` /
+  `EREIGNIS_WORTE`, `ereigniszeilen()` / `neue_ereignisse()`); Ueberschriften,
+  Fortsetzungs- und Hinweiszeilen sind kein Ereignis (Zyklus 21 der Basis,
+  25.09.2026: fuenf Zeilen, null Geschehen). Eine je Instrument gedruckte Zeile
+  wird zum Zaehler plus EINER Meldung im Aufrufer. Wirkt erst nach einem
+  Neustart des BASIS-Laufs.

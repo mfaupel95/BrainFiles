@@ -65,7 +65,10 @@ def position(**over):
          "ziel": 106.0, "liq": 82.0, "kontrakte": 10, "nominal": 100.0,
          "margin": 20.0, "hebel": 5.0, "gebuehr_taker": 0.0005,
          "eroeffnet": "2026-09-11", "eroeffnet_zeit": "2026-09-11T10:00:00+00:00",
-         "funding_zuletzt": "2026-09-11T10:00:00+00:00", "funding_summe": 0.0}
+         "funding_zuletzt": "2026-09-11T10:00:00+00:00", "funding_summe": 0.0,
+         # Seit 25.09.2026 ordnet jedes Buchstueck einem Zweig zu; Vorgabe ist
+         # Papier (die Papierlauf-Tests), Live-Tests sagen modus="live" an.
+         "modus": "papier"}
     p.update(over)
     return p
 
@@ -336,9 +339,52 @@ class Livezweig(unittest.TestCase):
         self.assertEqual(self.aufrufe, [])
         self.assertIn(",papier,eroeffnen,", self.journal_zeilen()[1])
 
+    def test_live_einstieg_traegt_modus_live(self):
+        """Sonst bucht der naechste Live-Zyklus die eigene Position als Altlast aus.
+
+        Belegt im Journal 22.-24.09.2026 (dreimal): eroeffnen, 13 bis 28
+        Minuten spaeter 'buchbereinigung' durch den Live-Zyklus, dann wieder
+        eroeffnen - die Papierstrecke kam nie an Stop oder Ziel. Die andere
+        Richtung waere teurer: eine ECHTE Position ohne dieses Feld bleibt nach
+        dem Ausbuchen ohne Buch an der Boerse stehen.
+        """
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [KAND], WACHEN, True,
+                           {"wochenende": False}, 1.0)
+        self.assertEqual(z["positionen"][0]["modus"], "live")
+        # Die Probe: die Bereinigung des naechsten Live-Laufs laesst sie stehen.
+        self.assertEqual(h.bueche_papier_altlasten_aus(z), 0)
+        self.assertEqual(len(z["positionen"]), 1)
+
+    def test_papier_einstieg_traegt_modus_papier(self):
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [KAND], WACHEN, False,
+                           {"wochenende": False}, 1.0)
+        self.assertEqual(z["positionen"][0]["modus"], "papier")
+        # Papier ist kein Altbestand: die Bereinigung laesst sie stehen.
+        self.assertEqual(h.bueche_papier_altlasten_aus(z), 0)
+        self.assertEqual(len(z["positionen"]), 1)
+
+    def test_live_fasst_papier_position_nicht_an(self):
+        """Die teure Richtung: kein echtes markt_schliessen fuer Scheinware."""
+        h._kurs = lambda inst: 96.0
+        z = {"positionen": [position(modus="papier")], "letzte_stops": {}}
+        h.pruefe_ausstiege(z, True, WACHEN)
+        h.flach_stellen(z, True, "kill_switch")
+        self.assertEqual(self.aufrufe, [])
+        self.assertEqual(len(z["positionen"]), 1)
+
+    def test_papier_fasst_live_position_nicht_an(self):
+        """Spiegelbild: der Papierzweig verkauft keine echte Position."""
+        h._kurs = lambda inst: 96.0
+        z = {"positionen": [position(modus="live")], "letzte_stops": {}}
+        h.pruefe_ausstiege(z, False, WACHEN)
+        h.flach_stellen(z, False, "kill_switch")
+        self.assertEqual(len(z["positionen"]), 1)
+
     def test_live_stop_ruft_markt_schliessen(self):
         h._kurs = lambda inst: 96.0
-        z = {"positionen": [position()], "letzte_stops": {}}
+        z = {"positionen": [position(modus="live")], "letzte_stops": {}}
         h.pruefe_ausstiege(z, True, WACHEN)
         self.assertEqual(z["positionen"], [])
         self.assertEqual(self.aufrufe[0][0], "markt_schliessen")
@@ -347,14 +393,14 @@ class Livezweig(unittest.TestCase):
 
     def test_papier_stop_ruft_keine_order(self):
         h._kurs = lambda inst: 96.0
-        z = {"positionen": [position()], "letzte_stops": {}}
+        z = {"positionen": [position(modus="papier")], "letzte_stops": {}}
         h.pruefe_ausstiege(z, False, WACHEN)
         self.assertEqual(z["positionen"], [])
         self.assertEqual(self.aufrufe, [])
 
     def test_live_notausstieg_ruft_markt_schliessen(self):
         h._kurs = lambda inst: 100.5
-        z = {"positionen": [position()], "letzte_stops": {}}
+        z = {"positionen": [position(modus="live")], "letzte_stops": {}}
         h.flach_stellen(z, True, "kill_switch")
         self.assertEqual(len(self.aufrufe), 1)
         self.assertEqual(self.aufrufe[0][0], "markt_schliessen")

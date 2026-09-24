@@ -124,3 +124,33 @@ Regeln dabei:
   (`tests/test_tagesbericht_livezeile.py`).
 - Wirkt erst nach einem Dauerlauf-Neustart: `dauerlauf.py` importiert `tagesbericht`
   beim Start.
+
+## 9. Ein gemeinsames Buch fuer Papier und Live: das `modus`-Feld
+
+Ein Buch, in das BEIDE Modi schreiben, braucht an jeder Position die Herkunft. Sonst
+entsteht eine Endlosschleife: der Papierzweig legt eine Position an, der naechste
+Live-Zyklus haelt sie fuer eine Altlast und bucht sie aus (`buchbereinigung`), der
+naechste Papierzweig legt sie wieder an. Gemessen in `swap` (Journal 22.-24.09.2026,
+dreimal: eroeffnen, 13 bis 28 Minuten spaeter ausgebucht) — die Papierstrecke kam so
+NIE an Stop oder Ziel, ihre Zahlen sind wertlos. Die teurere Richtung: ohne das Feld
+kann der Live-Zweig eine ECHTE Position ausbuchen; sie bleibt ohne Buch an der Boerse
+stehen (Geister-Muster).
+
+Regel, in `swap/handeln.py` durchgesetzt (Vorbild `mosaic`):
+
+1. **Jede Position traegt `modus`** (`live`/`papier`) — gesetzt im Einstieg, auch im
+   Papierzweig.
+2. **`pruefe_ausstiege()` und `flach_stellen()` fassen nur den EIGENEN Zweig an**
+   (`(p.get("modus") or "papier") != eigen -> behalten`). Ohne diese Zeile schickt ein
+   Live-Lauf ein echtes `markt_schliessen()` fuer eine Scheinposition.
+3. **Die Plaetze/Margin-Tore zaehlen nur den eigenen Zweig** (`plaetze = len(meine)`,
+   `meine` beim Einstieg mitgefuehrt). Sonst blockiert der Papierlauf den Live-Lauf.
+4. **Die Bereinigung raeumt nur noch ALTBESTAND ohne `modus`-Feld.** Eine Position ohne
+   Feld ist keinem Zweig zuzuordnen — genau der teure Fall —, eine Papierposition im
+   Live-Buch ist dagegen harmlos.
+5. Vor der Aenderung des Bestands: die Zuordnung fehlt nur bei Positionen aus der Zeit
+   davor; sie zaehlen als Papier.
+
+Beleg statt Vermutung: das JOURNAL liest man spaltenweise (`modus,aktion,...,grund`) und
+zwar fuer BEIDE Modi — drei `eroeffnen` mit `papier` und ein paar Minuten spaeter
+`buchbereinigung` sind der Beweis. Zustand und Log allein zeigen die Schleife nicht.

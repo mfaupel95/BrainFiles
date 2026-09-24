@@ -59,6 +59,79 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
+      Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
+      (`dca/ongoing-list`, `grid/orders-algo-pending`). Die 62 geschlossenen Grids
+      (`grid/orders-algo-history`, 08.08.-24.09.2026) sind damit unsichtbar -
+      genau die Bots, deren Ergebnis man auswerten will. Die Auswertung vom
+      25.09.2026 (Netzgewinn +305,64 gegen Richtungsgewinn -392,99 = -77,01 auf
+      7.072,87 USDC Einsatz) entstand aus einer Wegwerfsonde in
+      `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py`.
+      Naechster Schritt: die Sonde als `grid_historie.py` in `okx_bot_waechter`
+      uebernehmen (je Grid: Seite, Laufzeit, Netzgewinn, Richtungsgewinn, Stop
+      vorhanden ja/nein, Marktbewegung waehrend der Lebensdauer) und in den
+      Bericht aufnehmen; rein lesend, wie der uebrige Bericht.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/okx_bot_waechter/, MaxHirn/Wiki/Werkzeuge/okx-bot-waechter.md
+- [ ] **T-077 — Das laufende ZEC-Grid hat keinen Stop**
+      Kontext: `3951805062334382080`, ZEC-USD_UM_XPERP-310530, long, 90,12 USDC,
+      Hebel 5 (tatsaechlich 2,43), Band 1480-1680, 20 Netze, liqPx 1111,64,
+      `slTriggerPx` LEER (Stand 25.09.2026 01:30). Von den 62 geschlossenen Grids
+      war der groesste Einzelverlust (-304,33 USDC, BICO) ein Grid ohne Stop, das
+      lief, waehrend der Markt -19,3 % machte.
+      Naechster Schritt: entscheiden, ob der Stop an die untere Netzkante (1480)
+      bzw. unter den 90-Tage-Boden gesetzt wird - `anpassen.py` kann das mit
+      `--nur-schutz`; danach die Entscheidung als `bots.<algoId>.vermerk` mit
+      Datum in `wachen.json` festhalten.
+      Angelegt: 2026-09-25
+      Wartet auf: Entscheidung Max
+      Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3951805062334382080
+- [ ] **T-076 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
+      Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
+      Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am
+      24.09. 18:49 gestartet) neben Basis und Mittel. Stufenlaeufe senden nicht und
+      gehen nie live, ein Doppel kostet also nur Rechenzeit und Netz — es ist aber
+      dieselbe Klasse wie die vier gleichzeitigen Laeufe vom 16.09.2026, die bei
+      offenem Freigabefenster echtes Doppelorder-Risiko trugen. Nicht angefasst
+      (Fremdstart einer anderen Sitzung).
+      Naechster Schritt: pruefen, welcher Ausloeser den zweiten hoch-Lauf startet
+      (Get-ScheduledTask der MaxHirn-Handel-Aufgaben), ein Paar geordnet beenden und
+      IgnoreNew setzen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/dauerlauf.hoch.pid, Agenten/Routinen/handel-dauerlauf.ps1
+- [ ] **T-077 — swap: der erste echte Live-Einstieg steht noch aus**
+      Kontext: swap hat seit dem 25.09.2026 einen tragfaehigen Zweig-Trenner (`modus`
+      an jeder Position, Ausstiege und Tore nur im eigenen Zweig, Bereinigung nur
+      fuer Altbestand ohne Feld). Im Journal stehen bis 24.09. AUSSCHLIESSLICH
+      Papierzeilen; der Live-Zweig hat noch nie geordert, obwohl sein Freigabefenster
+      seit dem 24.09. 23:55 offen ist. Belegt ist damit nur, dass eine Papierposition
+      jetzt stehen bleibt (kein `buchbereinigung` mehr im Kreis).
+      Naechster Schritt: beim ersten Live-Kauf pruefen, dass die Zeile `modus=live`
+      traegt und der naechste Papierzweig sie NICHT verkauft.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/swap/
+- [ ] **T-078 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
+      Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
+      angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
+      Zeile kommt einmal statt in jedem Zyklus. Das ist gewollt (Rauschen), laesst
+      aber den Dauerfall offen: eine scharfe Spur, die wochenlang an Guthaben oder
+      einem anderen Tor haengt, faellt nur im Tagesbericht auf.
+      Naechster Schritt: pruefen, ob `sperrgruende.py` oder `spuren_stand.py` von
+      einer Wache taeglich aufgerufen werden soll (Muster stille-spuren-wache).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
+- [ ] **T-079 — Fremdarbeit im Arbeitsbaum liegen gelassen (parallele Sitzung)**
+      Kontext: Beim Commit am 25.09.2026 lagen Aenderungen im Arbeitsbaum, die nicht
+      aus dieser Sitzung stammen: geloescht `Agenten/Hermes/scripts/test_waisen_wache.py`,
+      geaendert vier Skill-Dateien (arbeitsbaum-git-hygiene, dauerprozess-bewachen,
+      fremdrepo-agent-start, laufwerk-platz-schaffen) sowie
+      `handel-spuren/references/boersen-aufrufe.md` und `okx-fehlermeldungen.md`, neu
+      `Agenten/Hermes/skills/brainfiles/sicherung-fahren/` und `kraken-cli/` im
+      Wurzelordner. Bewusst NICHT mitgenommen (eigene Pfade stagen).
+      Naechster Schritt: der naechste Lauf von `fremdarbeit-einziehen.ps1` (taeglich
+      20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
+      `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
+      Angelegt: 2026-09-25
 - [ ] **T-073 — Kraken-Futures-Schluessel wird von Kraken abgewiesen**
       Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` noch
       mit dem echten Stand (flex/multiCollateral: USD 8,8926 + EUR 45,7427 (Wert
