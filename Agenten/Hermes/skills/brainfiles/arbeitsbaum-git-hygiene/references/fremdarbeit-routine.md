@@ -116,6 +116,44 @@ richtig ist, dass die Routine den Stand SELBST unmittelbar vor dem Commit frisch
 (`git status --porcelain` im Skript), und im Bericht die Zahl aus dem Commit
 (`git show --stat`), nicht die aus dem Testlauf.
 
+## Wache: den stillen Ausfall melden (`sperren-wache.py`)
+
+Ein Nachweis ist keine Wache - niemand ruft ihn von selbst auf. Referenz:
+`Agenten/Hermes/scripts/sperren-wache.py`, Cron `sperren-wache` (`da82ced995e1`,
+alle 60 min, `no_agent`, `deliver: telegram`), Test `test_sperren_wache.py`.
+
+Geprueft werden in EINEM Lauf drei Dinge (jedes einzeln war schon ein Ausfall):
+
+| Pruefung | Wie | Warum nicht anders |
+|---|---|---|
+| `.git/index.lock` aelter als `FRIST_MIN` 10 | `REPOS` = BrainFiles + `Agenten/Handel/nautilus` | die Sperre ist das Symptom, nicht die Ursache |
+| letzte ENDE-Zeile des Fremdarbeit-Logs enthaelt `uebersprungen` | `skip_zeile()` liest rueckwaerts bis zur ersten `ENDE`-Zeile | das Log wird bei JEDEM Lauf ueberschrieben - nur hier sichtbar |
+| ZUWACHS der `index.lock.verwaist-*` | `_verwaist_gesamt` im Merker, gemeldet nur die Differenz | der Bestand allein ist kein Befund (sonst Alarm bei der Einrichtung) |
+
+Bauart-Regeln, die aus Fehlern stammen:
+
+- **Prozessabfrage filtern, nicht zaehlen.** `Get-CimInstance Win32_Process -Filter
+  "Name='git.exe'"` mit `Where-Object { $_.CommandLine -notlike '*fsmonitor*' }`.
+  `git fsmonitor--daemon` laeuft dauerhaft; die blosse Anzahl beweist keine parallele
+  Sitzung. Ist die Zahl `0`, sagt die Meldung "kein echter git-Prozess" - bei
+  `unbekannt` (Abfrage gescheitert) wird NICHTS behauptet.
+- **Pfade zur LAUFZEIT aus dem Modul lesen, nicht als Default-Argument binden.**
+  `def skip_zeile(log=FREMDARBEIT_LOG)` wertet den Pfad beim Import aus; ein Test kann
+  ihn danach nicht mehr umbiegen, und die Tests laufen ins Leere (drei Fehlschlage in
+  einem Lauf). Richtig: `def skip_zeile(log=None): log = FREMDARBEIT_LOG if log is None else log`.
+- **Schluessel der Entdopplung ist der Text VOR dem Doppelpunkt** (Repo- bzw.
+  Herkunftsname), nicht die ganze Zeile: "liegt seit 25 min" und "liegt seit 90 min"
+  sind DIESELBE Feststellung, sonst waere eine liegende Sperre ein Alarm je Lauf.
+  Wiederholung nach 6 h.
+- **Den Merker immer schreiben**, auch im stillen Fall - sonst ist der Bestand beim
+  naechsten Lauf wieder unbekannt und der Zuwachs nicht messbar.
+- **`--frist 0` und `--alle` sind die Abnahmewerkzeuge:** `--frist 0` zeigt die
+  Alarmrichtung an einer echten Sperre, `--alle` nennt den geprueften Umfang
+  ("2 Repository(s) geprueft, 22 weggeraeumte Sperren im Bestand").
+- **Die Wache raeumt nichts weg und committet nichts** - ein Waechter, der selbst
+  eingreift, verdeckt den Befund. Test dafuer: `test_wache_raeumt_nichts_weg` prueft
+  nach dem Lauf, dass die Sperre noch liegt.
+
 ## Nachweis - zweistufig, nie nur am echten Baum
 
 1. **Funktionstest in einem Temp-Repo** (`Agenten/Bus/tests/test_fremdarbeit_einziehen.py`):

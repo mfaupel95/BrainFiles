@@ -181,6 +181,20 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   laengst entfernt sein), und das Alter ihres ERZEUGNISSES messen, nicht ihren
   Exitcode. Belegt: ein Tageslauf uebersprang sich selbst, sein Bericht war
   einen Tag alt, und eine Spur kaufte danach zu diesen alten Preisen.
+- **Der stille Skip hat einen Namen: Exitcode 0 plus `uebersprungen`.** Gemessen
+  24.09.2026 an der Fremdarbeit-Routine: bei liegender `.git/index.lock` endet ihr
+  Lauf mit Code 0 und der Zeile `ENDE uebersprungen` - `Get-ScheduledTaskInfo`
+  zeigt `LastTaskResult: 0`, die Aufgabenplanung meldet also ERFOLG. Eine Nacht
+  lang wurde nichts uebernommen, 44 Dateien lagen bis zu 44 h im Baum. Wer den
+  Ausfall sucht, liest nicht den Exitcode, sondern den GRUND in der Logzeile (bei
+  dieser Routine gibt es zwei: falscher Zweig, liegende Sperre) und misst das
+  Alter des ERZEUGNISSES. Das Log war ein Einzellauf-Protokoll und beim naechsten
+  Lauf ueberschrieben - den Befund also sofort abschreiben, danach hilft nur noch
+  die Historie der Uebernahme-Commits (`git log --author=fremd@local`). Weckzeichen
+  im Alltag ist die Zeile "N uncommittete Datei(en) aelter als 1 h" des
+  Tagesberichts; danach gehoert der Ausfall bewacht
+  (`Agenten/Hermes/scripts/sperren-wache.py`, Cron `sperren-wache`), nicht nur
+  repariert.
 - **Der Fahrer meldet jede Spur als `ok`, auch wenn sie intern Papier handelt.**
   Vor "die Spur handelt live" immer die Journalzeilen mit `modus=live` zaehlen
   (0 heisst: kein einziger Vorgang).

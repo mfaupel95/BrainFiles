@@ -181,6 +181,14 @@ leer - zurueckgehaltene frische Dateien und fremd vorgemerkte Eintraege (`A `) b
 absichtlich stehen; sauber ist der Lauf, wenn die EIGENEN uebernommenen Pfade aus
 `git status` verschwunden sind.
 
+**Der stille Ausfall ist seit 24.09.2026 bewacht:** `Agenten/Hermes/scripts/sperren-wache.py`
+(Test `test_sperren_wache.py`, 23 Tests; Cron `sperren-wache` `da82ced995e1`, alle 60 min,
+`no_agent`, Telegram). Sie prueft in EINEM Lauf die Sperre (`.git/index.lock` aelter als
+10 min in `BrainFiles` und `Agenten/Handel/nautilus`), die Skip-Zeile des Fremdarbeit-Logs
+und den ZUWACHS der weggeraeumten Sperren. Leere Ausgabe = nichts senden. Sie raeumt
+NICHTS weg - eine Sperre umzubenennen bleibt eine Entscheidung mit Kontext. Bauart,
+Merkdatei und Fallen: `references/fremdarbeit-routine.md`.
+
 Der Auftrag „die letzten Sitzungen / Hintergrund-Aufgaben nach nicht uebernommenen
 Aenderungen durchgehen" meint selten die OFFENEN Sitzungen: die liegengebliebene Arbeit
 steckt in den gerade BEENDETEN Hintergrund-Sitzungen (`bg_*`, `tui`, `cli`) und in
