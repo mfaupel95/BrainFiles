@@ -114,7 +114,13 @@ def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
 
     fenster = _fenster()
     try:
-        offen = bool(fenster.offen(spur))
+        # _fenster() liefert das MODUL, nicht ein Fenster. Die Frage "ist fuer
+        # DIESE Spur ein Fenster offen?" beantwortet lade(spur).offen().
+        # Mit fenster.offen(spur) schlug JEDER Beleg fehl ("Freigabefenster
+        # nicht lesbar") - und damit war der einzige sanktionierte Orderweg
+        # (MCP kraken_order_mit_beleg) tot, ohne dass es auffiel: die Spur
+        # verbuchte es als normalen Sperrgrund. Gefunden am 24.09.2026.
+        offen = bool(fenster.lade(spur).offen())
     except Exception as e:                                        # noqa: BLE001
         return {"ok": False, "grund": "Freigabefenster nicht lesbar (%s)" % e}
     if not offen:

@@ -103,9 +103,20 @@ class Basis(unittest.TestCase):
         self.addCleanup(setattr, h, "JOURNAL", self.alt)
 
     def _lauf(self, fake, fn):
-        """fn() mit Attrappe statt kraken und abgefangener Ausgabe."""
+        """fn() mit Attrappe statt kraken, gestelltem Beleg, abgefangener Ausgabe.
+
+        WARUM der Beleg hier gestubbt wird: `_beleg_zur_order` verlangt ein
+        OFFENES Freigabefenster und handel_erlaubt=true. Diese Klasse prueft den
+        BOERSENWEG (Fuellung, Stop, Rueckverkauf) - das Tor selbst hat eigene
+        Tests (Handel/tests/test_freigabebeleg_tor.py) und hier einen eigenen
+        Fall: `test_ohne_beleg_kein_kauf`. Vor dem 24.09.2026 waren diese vier
+        Tests rot, weil das Tor gar keinen Beleg ausstellen konnte (Aufruf auf
+        dem Modul statt auf dem Fenster).
+        """
         puffer = io.StringIO()
-        with patch.object(h, "kraken", fake):
+        with patch.object(h, "kraken", fake),              patch.object(h, "_beleg_zur_order",
+                          return_value={"kennung": "testbeleg"}),              patch.object(h.freigabebeleg, "pruefe",
+                          return_value=(True, "ok")),              patch.object(h.freigabebeleg, "verbrauche", return_value=True):
             with patch("sys.stdout", puffer), patch("sys.stderr", puffer):
                 fn()
         return puffer.getvalue()
@@ -146,6 +157,18 @@ class EinstiegLive(Basis):
         text, z = self._einstieg(fake)
         self.assertEqual(z["positionen"], [])
         self.assertIn("ohne Fuellung", text)
+
+    def test_ohne_beleg_kein_kauf(self):
+        """Ohne Beleg gibt es an der Boerse nichts zu tun - kein Kauf, kein Stop."""
+        fake = AttrappeKraken()
+        z = {"positionen": [], "letzte_stops": {}}
+        puffer = io.StringIO()
+        with patch.object(h, "kraken", fake):
+            with patch("sys.stdout", puffer), patch("sys.stderr", puffer):
+                h.pruefe_einstiege(z, [dict(V)], W, True)
+        self.assertEqual(z["positionen"], [])
+        self.assertNotIn("kauf", fake.namen())
+        self.assertIn("kein Beleg", puffer.getvalue())
 
 
 class AusstiegLive(Basis):
