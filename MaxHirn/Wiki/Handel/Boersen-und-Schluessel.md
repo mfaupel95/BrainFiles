@@ -262,3 +262,29 @@ Umsetzung: `Agenten/Handel/nautilus_kraken/kraken_futures.py`; der Live-Zweig
 ruft weiterhin `kraken_rest`, das per `KRAKEN_PRODUKT=futures` das
 Futures-Modul laedt. Nachweis: signierte Leseaufrufe gruen, PF_XBTUSD 84385,
 Stop 78000.4 -> 78001, 24 Tests gruen.
+
+## Ein geschlossener Margin-Trade laesst seinen Stop zurueck (24.09.2026)
+
+Wird eine Margin-Position geschlossen, **loescht Kraken den zugehoerigen
+Stop-Loss NICHT**. Der Stop bleibt `open`, steht weiter in `OpenOrders` und
+sieht in der Oberflaeche aus wie eine offene Position - ein Schliessversuch
+scheitert dann ohne Bestand und ohne Position (`OpenPositions` ist leer).
+Das war die Antwort auf "warum kann ich SUI/EUR nicht schliessen": die
+Position war um 21:30/21:55/23:39 zu 0,8937-0,8997 EUR verkauft (Einstiege
+0,84/0,88), offen lagen nur noch die Stops.
+
+Ein solcher Waise ist nicht harmlos: ein Margin-SELL-Stop ohne Long-Position
+verkauft, was nicht da ist - beim Ausloesen entsteht ein **SHORT**. Am
+24.09.2026 waren es 7 Waisen mit rund 940 EUR Nominal (5x SUIEUR 615 SUI
+@0,777/0,814, ZECUSD 0,1834 @1410,4, NEAREUR 31,19 @3,5591) bei 500 EUR
+freier Margin - sie haetten wirklich geordert.
+
+Werkzeug: `Agenten/Handel/kraken/waisen_stops.py` (Vorschau Standard,
+`--stornieren`). Wache: Cron `waisen-wache` (30 min, no_agent, Telegram)
+meldet neue Waisen sofort und dieselben hoechstens alle 6 h - sie storniert
+**nie**, ein Waechter mit Loeschrecht an einem echten Konto ist selbst ein
+Risiko.
+
+Zweite Falle derselben Nacht: `OpenOrders` traegt die TXID im **Schluessel**,
+nicht im Wert. Mit `o.get("txid")` kam eine leere Kennung heraus und Kraken
+antwortete `EOrder:Invalid order` - storniert war dabei nichts.

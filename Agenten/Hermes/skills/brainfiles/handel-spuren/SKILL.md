@@ -638,7 +638,9 @@ weil nur der freie Teil (Betrag minus `hold_trade`) geordert wird),
    Margin-Position loescht Kraken den zugehoerigen Stop-Loss NICHT** - der Stop
    bleibt offen, sieht in der Oberflaeche wie eine offene Position aus, ein
    Schliessversuch scheitert ohne Bestand/Position, und beim Ausloesen eroeffnet
-   ein Margin-SELL-Stop einen SHORT. Also nach jedem Schliessen nachsehen),
+   ein Margin-SELL-Stop einen SHORT. Also nach jedem Schliessen nachsehen. Der Cron `waisen-wache`
+   (30 min, no_agent, Telegram) meldet solche Waisen von selbst und storniert
+   NIE),
 `mosaic/kraken_stops_7_5.py` (Spot mit Buch-Einstieg; `--anwenden`, danach
 `--nur-buch`),
 `kraken.stop_setzen(..., leverage=, close_txid=)`, `okx.stop_setzen` /
