@@ -3,9 +3,9 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-22
+updated: 2026-09-24
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Acht Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer.'
+summary: 'Neun Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer.'
 ---
 
 # Wahrheit pruefen
@@ -137,3 +137,28 @@ als „alles in Ordnung".
 Folge: der Nautilus-Quoten-Container war weg (samt Image), weil Docker beim toten Daemon
 nichts hochzieht. Ein Dienst, der „nur noch im Log" existiert, ist kein laufender Dienst —
 der Container wurde am 22.09. neu gebaut und liefert wieder Quotes.
+
+## 9. Eine erzeugte Fehlermeldung ist kein Befund
+
+**Regel.** Bevor eine Fehlermeldung (Code, Text) zur Diagnose wird, die Zeile in der
+QUELLE suchen: Journal, Log, Zustandsdatei. Steht sie dort nicht, ist sie ein Modelltext
+- ein Messwert sieht anders aus.
+
+**Belegter Fall (24.09.2026).** Die Meldung "nautilus-kraken Spuren haben Fehler OKX
+51001" war erzeugt. Die Suche nach `51001` im Handelsbaum findet Treffer NUR in
+`xperp/` (abgelaufener XPERP-Kontrakt `CL-USD_UM_XPERP-310509`) und in der Skill-Doku;
+in `nautilus/`, `nautilus_kraken/`, `nautilus_rc5/` und den drei dauerlauf-Protokollen:
+kein Treffer. 51001 heisst "Instrument ID does not exist" und gehoert zu OKX-Kontrakten,
+die die Kraken-Arme nie anfassen - sie importieren kein OKX-Modul, geteilt ist nur das
+venv.
+
+**Was der gemessene Fehler war.** `RuntimeError(Authentication error: Failed to get
+WebSocket token: API error: EGeneral:Permission denied)` im Exec-Client des
+Nautilus-Kraken-Adapters (24.09. 18:49 UTC, `nautilus_kraken/logs/kraken-orders-
+20260924T184919894096Z.jsonl` -> `success: false`). Dem Kraken-Schluessel fehlt die
+Berechtigung "Access WebSockets API"; ueber REST arbeitet derselbe Schluessel
+(Kontostand und 14 offene Orders lesbar).
+
+**Merksatz.** Ein Fehlercode ohne Fundstelle ist keine Spur. Die erfundene Diagnose hat
+einen echten, aber ganz anderen Fehler verdeckt - erst die falsche Faehrte erledigen,
+dann den gemessenen Fehler nennen.

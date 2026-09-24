@@ -137,20 +137,6 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   `(live)` — die eigene Vorschau allein belegt es nicht.
 - **Eine Statuszeile im Log ist der Modus des Fahrers, kein Orderbeleg.**
   Massstab ist die Zeile mit der Aktion am Gegenstand (Journal/Boerse).
-- **Ein Lauf `ok` ist kein Zustellbeleg.** Ein Cron-Auftrag meldet seinen
-  Exit-Code; ob die Nachricht ankam, steht woanders - im Job-Satz
-  (`last_delivery_error`) und in der Ausgabedatei unter
-  `cron/output/<job-id>/`. Ein Auftrag mit `deliver: all` scheitert, sobald EIN
-  Kanal nicht kann (Photon/iMessage, SMS): der Lauf bleibt gruen, und niemand
-  bekommt etwas. Auf einen Kanal umstellen, der nachweislich liefert, und das
-  BELEGEN statt annehmen: einen EINMAL-Auftrag auf genau diesen Kanal feuern
-  (Skript unter `Agenten/Hermes/scripts/`, absolute Pfade werden abgewiesen),
-  den Zustellstatus lesen, danach Auftrag und Testskript wieder entfernen. Bleibt
-  der Fehler, liegt die Ursache auf der Anbieterseite und gehoert als solche
-  berichtet (Drosselung fuer NEUE Kontakte: „replies are limited … until they
-  respond“ - die Behebung liegt beim Empfaenger, nicht im Code); die Gegenprobe
-  nach der Behebung ist derselbe Einmal-Auftrag mit leerem
-  `last_delivery_error`.
 - **Ein stiller `except`-Zweig macht aus einem Beweis ein Nichts — und aus
   einem Fehler eine Behauptung.** Zwei Faelle, eine Wurzel. (a) Die
   Protokollierung im `try` zu haben ist gut, aber dann muss die Funktion

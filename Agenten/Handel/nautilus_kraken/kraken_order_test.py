@@ -44,10 +44,10 @@ def _hkcue(name):
 
 
 def load_keys():
-    api_key = _hkcue("KRAKEN_SPOT_API_KEY")
-    api_secret = _hkcue("KRAKEN_SPOT_API_SECRET")
+    api_key = _hkcue("KRAKEN_API_KEY")
+    api_secret = _hkcue("KRAKEN_API_SECRET")
     if not (api_key and api_secret):
-        raise SystemExit("KRAKEN_SPOT_API_KEY/SECRET fehlen in HKCU\\Environment")
+        raise SystemExit("KRAKEN_API_KEY/SECRET fehlen in HKCU\\Environment")
     return api_key, api_secret
 
 

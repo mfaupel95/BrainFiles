@@ -1773,8 +1773,6 @@ providers:
 fallback_providers:
   - provider: nous
     model: deepseek/deepseek-v4.1-flash
-  - provider: nous
-    model: upstage/solar-pro4:free
 toolsets:
   - hermes-cli
 database:
@@ -1894,9 +1892,8 @@ auxiliary:
     provider: auto
     model: ''
   compression:
-    provider: omniroute
-    model: 'auto/best-free'
-    base_url: http://localhost:20128/v1
+    provider: auto
+    model: ''
   skills_hub:
     provider: auto
     model: ''

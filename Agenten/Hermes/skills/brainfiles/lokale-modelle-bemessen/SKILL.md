@@ -92,22 +92,8 @@ Modellnamen führen, ohne dass es auffällt.
   `localhost`. Bei einem 404 „model not found“ für ein nachweislich
   installiertes Modell zuerst `localhost` und `127.0.0.1` EINZELN gegen
   `/api/tags` UND `/api/generate` testen, bevor am Modellnamen gesucht wird.
- - **CUDA OOM ist nicht das Ende — ein Modell, das nicht in den FREIEN VRAM passt
- (andere Prozesse halten den Rest der Karte), laeuft als CPU-Tag weiter.**
- Modelfile `FROM <name>:latest` + `PARAMETER num_gpu 0` + `ollama create
- <name>:cpu`. Fuer kurze Einzel-Antworten (Handels-LLM-Spurs, CPU warm ~8 s)
- voll tragfaehig; GPU erst freiräumen, wenn man WEISS, was den VRAM haelt
- (`nvidia-smi --query-compute-apps`), statt das Modell in einen halb vollen
- Speicher zu zwingen.
- - **`/api/tags` leer, obwohl Modelle installiert sind: der Server sieht einen
- ANDEREN Modelle-Ordner.** Er erbt nur Windows-Benutzervariablen, nicht in einer
- bash-Session exportierte. `OLLAMA_MODELS` muss in `HKCU\Environment` stehen
- (`reg add`/`setx`), dann den SERVER NEU starten — ein laufender Server behaelt
- den alten leeren Wert. Und die Autostart-Verknuepfung (Startup-Ordner) muss auf
- eine EXISTIERENDE Binary zeigen (`Test-Path` auf das Ziel), sonst startet der
- Server nie; beide Symptome zusammen lesen sich wie "kein Modell da".
 
- ## References
+## References
 - `references/vram-faustregeln.md` — Formeln, Bitwerte je Stufe, gemessene
   Werte dieses Rechners und die Grenzwerte für 8 GB VRAM.
 - `scripts/gguf-kopf.py` — liest den GGUF-Kopf und rechnet Gewichte je Stufe

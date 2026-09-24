@@ -60,6 +60,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt
+      Kontext: `nautilus_kraken` und `nautilus_kraken_futures` laufen Papier
+      (`handel_erlaubt=false`, `freigabe.erfuellt=false`). Der gemeldete Fehler "OKX
+      51001" war ERZEUGT und steht in keiner Datei (Suche ueber den Handelsbaum: nur
+      xperp und Skill-Doku). Der echte Blocker ist der Exec-Client des
+      Nautilus-Kraken-Adapters: `Failed to get WebSocket token: API error:
+      EGeneral:Permission denied` (gemessen 24.09. 18:49 UTC,
+      `nautilus_kraken/logs/kraken-orders-20260924T184919894096Z.jsonl` ->
+      `success: false, entered: false`). Ueber REST arbeitet derselbe Kraken-Schluessel
+      einwandfrei (Kontostand und 14 offene Orders lesbar). Eine parallele Sitzung baut
+      `nautilus_kraken/kraken_rest.py` + Live-Zweig in `handeln.py` (24.09. 20:33, noch
+      uncommittet) - Kraken direkt per REST am Nautilus-Adapter vorbei.
+      Naechster Schritt: entweder den Kraken-API-Schluessel um "Access WebSockets API"
+      erweitern (dann traegt auch der Nautilus-Weg) ODER bewusst beim REST-Weg bleiben
+      und den Nautilus-Exec-Client aufgeben.
+      Betrifft: Agenten/Handel/nautilus_kraken (+ `_futures`), Werkstatt/Repos/nautilus*
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+
 - [ ] **T-063 — moon-dev-ai-agents: entscheiden, ob die Content-/Medienagenten ueberhaupt laufen sollen**
       Kontext: In der .env stehen acht Platzhalter, die nur ueber Fremdkonten zu
       fuellen sind und mit Handel nichts zu tun haben: ELEVENLABS_API_KEY,

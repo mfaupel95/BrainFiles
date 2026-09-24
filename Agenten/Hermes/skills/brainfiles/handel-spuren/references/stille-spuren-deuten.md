@@ -90,32 +90,6 @@ liq_wand, trendwende_btc) drucken in `--vorschau` echte Signale
 Faustregel: wenn `--vorschau` bei einer stillen Spur keine Sperrliste druckt,
 ist es eine Eigenspur — `--papier` einmalig laufen lassen um das Signal zu sehen.
 
-## Eine Spur stilllegen: ZWEI Schalter, und der Erklaertext im selben Schritt
-
-Der Gegenauftrag ("<spur> stillegen bis eine Messung da ist") ist NICHT mit
-`handel_erlaubt: false` erledigt:
-
-1. **Beide Schalter setzen** - `handel_erlaubt: false` UND `stillgelegt: true`.
-   `handel_erlaubt` allein nimmt nur den Live-Weg; der Papierlauf laeuft weiter
-   und kauft in das gemeinsame Buch. Genau dieser Papierbestand ist es, den der
-   naechste Live-Lauf als Altlast ausbucht (`bueche_papier_altlasten_aus`, nur
-   `if live:`) - jede solche Ausbuchung steht als `buchbereinigung` im Journal
-   und zaehlt in der Störungsstatistik mit. Ein einziger Schalter erzeugt also
-   im Kreis neue "Betriebsstoerungen", waehrend die Spur als stillgelegt gilt.
-2. **Den Erklaertext im selben Schritt nachziehen** (`_stillgelegt`,
-   `_stillgelegt_bis_messung`): ein Feld, das eine ueberholte Begruendung traegt,
-   ist schlimmer als keines - der naechste Leser entscheidet danach.
-3. **Verweigerung in BEIDEN Modi belegen:** `--papier` UND `--live` muessen
-   ablehnen (Exit 0, mit Klartext), dazu `0 offene Positionen` im Buch. Ein
-   Zustand allein ist kein Beleg.
-
-**Zahlen einer stillgelegten Spur vor dem Urteil trennen.** Die gezaehlten
-"Betriebsstoerungen" mischen zwei ganz verschiedene Ursachen:
-`herzschlag_alt` (Zwangsschluss, weil der Zustand zu alt war - vor der
-Herzschlag-Regel ein Altbestand) und `buchbereinigung` (aus dem Kreislauf
-oben). Erst nach `grund` aufschluesseln, dann deuten; die Zahl selbst sagt
-nichts ueber die Strategie. Wiedereinschalten: Entscheidungsbaum unten.
-
 ## Stille Spuren einschalten: Entscheidungsbaum
 
 Auftrag "stille Spuren untersuchen und einschalten" bedeutet: diagnostizieren,

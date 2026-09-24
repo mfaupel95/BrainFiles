@@ -71,12 +71,10 @@ Ausloeser → Referenz:
   Zyklus, kurze Abstaende vs. Luecken) und der Form, die Max erwartet:
   `references/spur-bericht.md`
 - **Stille Spur / falsch gelesenes Etikett** („warum still und nicht papier?",
-  eine Spur bucht nichts, eine Uebersicht zeigt 0 Ausstiege) **sowie Stilllegen**
-  („<spur> stillegen bis eine Messung da ist"):
+  eine Spur bucht nichts, eine Uebersicht zeigt 0 Ausstiege):
   `references/stille-spuren-deuten.md` — „still" heisst nichts Neues, nicht
   abgeschaltet; Werkzeug `stille_spuren.py`, bei Eigenspuren `--papier` statt
-  `--vorschau`, Entscheidungsbaum zum Einschalten, und zum Ausschalten die ZWEI
-  Schalter (ein einzelner laesst den Papierlauf den Bereinigungskreis fuellen).
+  `--vorschau`, Entscheidungsbaum zum Einschalten.
 - Änderung, die **alle Spuren** trifft („das gilt für alle", Bedingung 4, neuer
   Kosten-/Ausstiegsgrund, Befund an mehreren Spuren) — Ausrollweg von Inventar
   bis Commit, inklusive Testaufruf-Falle und versehentlich überschriebener Kopie
@@ -97,12 +95,9 @@ Ausloeser → Referenz:
   werden geschlossen, Ausstiege bleiben frei.
 - **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
   Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
-  `risikostufe.py`, „Strategie Hoch hat noch kein PID", „alle drei Stufen
-  gegeneinander"): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
+  `risikostufe.py`): derselbe Handel mit Faktor 1/2/4 auf getrennten Dateien —
   was skaliert wird und was nie, warum eine Stufe nie live geht, kein Telegram
-  bekommt und warum der Spiegel aussen vor bleibt, wie eine Stufe einen eigenen
-  Waechter-Task bekommt und warum drei Stufen keine Skalierung derselben
-  Geschaefte sind: `references/risikostufen.md`
+  bekommt und warum der Spiegel aussen vor bleibt: `references/risikostufen.md`
 - **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:

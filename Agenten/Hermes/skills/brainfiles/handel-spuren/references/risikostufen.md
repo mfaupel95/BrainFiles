@@ -180,35 +180,6 @@ koennen - sonst sammelt die Variante Daten, die niemand sieht:
 - Gegenprobe in beide Richtungen: ohne Variante muss jede Ausgabe unveraendert
   sein (Basisnamen, keine Zusatzzeile, kein leerer Absatz).
 
-## Die Stufen gegen einander lesen
-
-Drei Laeufe sind **kein Skalierungsexperiment**: jede Stufe fuehrt ihr EIGENES
-Buch und eroeffnet ihre Positionen in ihren eigenen Zyklen. Gemessen standen bei
-derselben Spur 20 Runden in der Basis gegen 11 in der mittleren Stufe, bei einer
-anderen 123 gegen 229 — die Stufen handeln also nicht dieselben Geschaefte mit
-anderem Einsatz, sondern VERSCHIEDENE Geschaefte. Eine Gegenueberstellung der
-Summen mischt damit zwei Effekte (andere Trades UND groesserer Einsatz) und
-misst am Ende Glueck mit.
-
-- **Je Runde vergleichen, nicht die Summe** — `Ergebnis / Runden`, mit der
-  Rundenzahl daneben. Der Quotient zwischen zwei Stufen muss in der Naehe des
-  Stufen-Faktors (2 bzw. 4) liegen; ein Vielfaches davon zeigt andere Trades an,
-  nicht einen besseren Einsatz.
-- **Paaren, sobald es eine Aussage tragen soll:** je Instrument und ueberlappendem
-  Zeitfenster die Runden einander zuordnen. Ohne diese Paarung ist der Vergleich
-  eine Behauptung.
-- **Erst ab der Mindest-Rundenzahl je Stufe** (die Grenze aus
-  `auswertung_alle.py` nehmen, nicht selbst setzen) — eine frisch gestartete Stufe
-  hat 0 Runden und liefert bis dahin ueberhaupt keine Zahl. Das im Bericht sagen,
-  statt eine Null als Ergebnis zu lesen.
-- **Vor dem Start der dritten Stufe die Last messen** (freier Commit): jede Stufe
-  faehrt alle Objekte ein weiteres Mal. Rezept fuer den Waechter-Task der neuen
-  Stufe (aus dem XML der Geschwisterstufe klonen): `dauerprozess-bewachen`,
-  Abschnitt „Zweite Instanz“.
-
-Stand 24.09.2026: Basis, `mittel` und `hoch` laufen gleichzeitig, jede Stufe mit
-PID-Datei, Log und eigenem Waechter-Task.
-
 ## Pruefen
 
 `Agenten/Handel/tests/test_risikostufe.py` faehrt ueber JEDE Spur: sie wird per
