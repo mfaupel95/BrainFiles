@@ -3,6 +3,8 @@
   "_projekt": "Kraken-Spot-Variante der Nautilus-Trailing-Strategie (BTC/EUR, gebuehrfrei bis 10.000 EUR Monatsvolumen via Kraken-Pro-Abo).",
   "_status": "Papier-Modus, Kraken-Spot-Quote-Feed (BTC/EUR), kein Orderpfad.",
   "symbol": "BTC/EUR",
+  "paar": "XXBTZEUR",
+  "_paar_vermerk": "Kraken-REST-Paar zur Order (24.09.2026). kraken.py spricht die REST-API mit dem PAARNAMEN, nicht mit dem Nautilus-Symbol: der Nautilus-Name BTC/EUR wird von Kraken abgelehnt ('EQuery:Unknown asset pair'), gemessen am 24.09.2026.",
   "waehrung": "EUR",
   "produkt": "spot",
   "max_risiko_pro_trade": 50,

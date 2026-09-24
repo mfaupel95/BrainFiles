@@ -17,6 +17,7 @@ Dazu Bedingung 4: die Kopie von Journal und Zustand nach
 Aufruf:  .venv\\Scripts\\python.exe test_handeln.py
 """
 
+import json
 import os
 import subprocess
 import tempfile
@@ -149,3 +150,34 @@ class JournalAusserHaus(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class Orderpaar(unittest.TestCase):
+    """Der Live-Zweig ordert ueber Kraken-REST mit dem PAARNAMEN.
+
+    kraken.py spricht die REST-API mit 'XXBTZEUR' an; das Nautilus-Symbol
+    'BTC/EUR' wird abgelehnt - 'EQuery:Unknown asset pair', gemessen am
+    24.09.2026. Ohne 'paar' in der wachen fiel handeln.py auf das Symbol
+    zurueck, die erste echte Order waere an der Schreibweise gescheitert.
+    Geprueft wird die REGEL (Kraken-Paar vorhanden, kein Nautilus-Symbol),
+    nicht der Wert.
+    """
+
+    def test_wachen_traegt_ein_kraken_paar_und_nicht_das_symbol(self):
+        with open(os.path.join(HIER, 'wachen.json'), encoding='utf-8') as f:
+            w = json.load(f)
+        paar = w.get('paar')
+        self.assertTrue(paar, "wachen.json braucht 'paar' fuer den "
+                                 "Kraken-REST-Orderweg")
+        self.assertNotIn('/', paar, 'Kraken will keine Nautilus-Schreibweise')
+        self.assertEqual(paar, paar.upper())
+        self.assertNotEqual(paar, w.get('symbol'))
+
+    def test_kraken_rest_bietet_den_weg_den_handeln_ruft(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            'kraken_rest', os.path.join(HIER, 'kraken_rest.py'))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        for name in ('markt_kauf', 'markt_verkauf', 'stop_setzen',
+                     'offene_orders', 'order_stornieren'):
+            self.assertTrue(callable(getattr(m, name, None)), name)
