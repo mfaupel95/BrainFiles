@@ -277,6 +277,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Beleg 24.09.2026: signierte Leseaufrufe gruen (/accounts, /tickers,
       /openorders, /openpositions, /instruments), PF_XBTUSD 84385, tickSize 1,
       Stop 78000.4 -> 78001, 24 Tests gruen. Freies USD: 0.00.
+      Beleg 25.09.2026 (nach Max' Einzahlung): 81,08378700 USDC kamen 24.09. 23:31
+      auf dem SPOT-Konto an (Status Success), gingen 23:53 als interne Umbuchung
+      (type=transfer, refid LAI5VMG-FO6F6-6AKSSS) wieder ab - auf der Futures-Seite
+      steht NICHTS (/transfers kennt keinen Vorgang nach dem 11.09., alle 11 Konten
+      0), und in keinem ueber die API lesbaren Spot-Wallet liegt es. Die manuelle
+      PF_NEARUSD-Short (56 Kontrakte) ist inzwischen geschlossen, die Besicherung
+      damit ebenfalls 0. Nachweis-Kette: Skill handel-spuren,
+      references/einzahlung-und-guthaben.md.
       Naechster Schritt: USD auf das Futures-Konto einzahlen (oder Besicherung
       klaeren); danach einen kleinen echten Round-Trip fahren und die
       Fill-Lesung (/fills) pruefen - das ist zugleich die Messung fuer T-066.
