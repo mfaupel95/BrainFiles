@@ -536,6 +536,7 @@ Agenten/Hermes/skills/unsloth/
 # Wissen/Fundus-Index.md wird damit erzeugt. Ohne die Zeile lag es nur auf der
 # Platte - eine Wiederherstellung aus dem Verlauf haette den Zugang verloren.
 !Agenten/Werkzeuge/fundus-suche.ps1
+!Agenten/Werkzeuge/bonsai-27b.ps1
 !Agenten/Werkzeuge/kraken.ps1
 # Werkzeug: Fremd-Klone auf den Stand ihrer Quelle spulen (21.09.2026)
 !Agenten/Werkzeuge/repos-updaten.py

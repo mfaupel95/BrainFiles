@@ -59,6 +59,38 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-082 — Bonsai 2 27B: PQ2_0-Packung ist ungemessen**
+      Kontext: Auf dem Rechner liegen 5,95 GB als PTQ1_0; erzeugt 32 t/s bei 8k
+      Kontext (gemessen 25.09.2026). Die PrismML-Karte nennt fuer Ampere-Karten
+      (diese 3060 Ti ist Ampere) PQ2_0 beim Dekodieren SCHNELLER als PTQ1_0 -
+      die Packung ist aber 7,21 GB gross und passt nicht mehr vollstaendig in den
+      VRAM, braucht also Teilauslagerung. Ob das unter dem Strich schneller ist,
+      ist nicht gemessen.
+      Naechster Schritt: PQ2_0 herunterladen (7,21 GB), mit `-ngl 99` und mit
+      abgestufter Auslagerung (`-ngl 60/70`) messen, Zahlen in
+      Wiki/Werkzeuge/Bonsai-2-27B.md stellen.
+      Angelegt: 2026-09-25
+      Betrifft: Modelle/GGUF/, Agenten/Werkzeuge/bonsai-27b.ps1
+- [ ] **T-083 — Bonsai 2 27B: Vision nicht angeschlossen**
+      Kontext: Das Modell kann Bilder lesen; die Vision-Komponente (mmproj Q8_0,
+      0,63 GB) ist absichtlich nicht geladen worden, weil der VRAM bei 8k Kontext
+      schon randvoll ist (322 MiB frei). `BONSAI_MMPROJ_CPU=1` bzw.
+      `--no-mmproj-offload` wuerde den Projektor in den RAM legen - ungemessen.
+      Naechster Schritt: mmproj laden, mit `--no-mmproj-offload` starten, ein Bild
+      (Screenshot) durchschicken und Geschwindigkeit notieren.
+      Angelegt: 2026-09-25
+      Betrifft: Modelle/GGUF/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf (fehlt noch)
+- [ ] **T-084 — Sprachmodell-Spuren koennten auf Bonsai umziehen (braucht OpenAI-Weg)**
+      Kontext: `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` holen ihr
+      Urteil ueber `Agenten/Handel/llm_lokal.py` aus Ollamas EIGENER Schnittstelle
+      (127.0.0.1:11434, `/api/...`). Der Bonsai-Server bietet diesen Weg nicht
+      (gemessen 25.09.2026: `/api/chat` -> 404, nur OpenAI unter `/v1`). Ein Umzug
+      waere inhaltlich reizvoll (27B statt 8B beurteilt die Lage), kostet aber eine
+      zweite Schnittstelle im llm_lokal-Modul - Entscheidung von Max.
+      Naechster Schritt: Angebot vorlegen (Aufwand: kleine Erweiterung in
+      llm_lokal.py, Wahl des Wegs ueber die wachen.json je Spur), erst danach bauen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/llm_lokal.py, Agenten/Handel/moondev_*/wachen.json
 - [ ] **T-078 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
       Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
       Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am

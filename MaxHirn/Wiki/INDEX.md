@@ -79,5 +79,6 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Fomo-Radar.md](Werkzeuge/Fomo-Radar.md) | Robinhood-Chain-Beobachtung: was schluessellos laeuft (147 Wallets, 65 Fills), Fallen, Anschluss als Papierspur |
 | [Werkzeuge/Marktdaten-und-Bot-markt-recherche.md](Werkzeuge/Marktdaten-und-Bot-markt-recherche.md) | Marktdaten ohne Schluessel (OKX/Yahoo/RSS), das Werkzeug `marktdaten.py` und der Bot `markt-recherche` |
 | [Werkzeuge/okx-bot-waechter.md](Werkzeuge/okx-bot-waechter.md) | Waechter ueber die echten OKX-Bots (Future DCA/Grid): letzte kaufbare Grenze, Munition, Liquidation; stoppen, vorschlagen, bauen |
+| [Werkzeuge/Bonsai-2-27B.md](Werkzeuge/Bonsai-2-27B.md) | Ternares 27B-Modell lokal (5,95 GB, PrismML-Fork von llama.cpp): 32 t/s auf der 3060 Ti bei 8k Kontext, kein Hermes-Agent-Modell (64k-Grenze), Ollama kann die Dateien nicht laden |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
