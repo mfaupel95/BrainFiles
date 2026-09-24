@@ -174,6 +174,16 @@ verifizieren. Die drei Pruefungen, in dieser Reihenfolge:
    offen sein, ohne dass eine Order lief. Das Backtest-Urteil aendert der
    Waechsel nicht — ein negativ gemessenes Urteil bleibt negativ.
 
+   **Beim Wechsel der BOERSE gilt dasselbe, nur schaerfer: das Paar muss die
+   KONTOWAEHRUNG als Quote tragen.** Ein Zweig auf `XBTUSD` gegen ein Konto mit
+   EUR-Guthaben ist ein stiller Fehlschlag: die Sperrenkette prueft das
+   EUR-Guthaben (Tor gruen, die Zahlen sehen gut aus) und die Order faellt an der
+   fehlenden USD-Deckung um. Vor dem Scharfstellen das Paar gegen den echten
+   Kontostand waehlen (`XXBTZEUR` bei EUR-Konto) und die Groesse gegen die
+   Paar-Regeln der Boerse rechnen (Mindestmenge, Mindestwert, Nachkommastellen —
+   `pair_decimals`/`min_order_size`) — sonst scheitert die Order an der Rundung,
+   nicht am Kapital.
+
 ## Auto-Freigabe (Dauerlauf bestaetigt selbst)
 
 Max kann die Freigabekette automatisieren: `AUTO_FREIGABE` in `dauerlauf.py`
@@ -436,6 +446,22 @@ Zustand und Spiegelung, auch der abbrechende** — die uebrigen Hausspuren tun d
 Nachweis in zwei Laeufen: Lauf 1 schreibt `letzter_lauf` (Zeitstempel zeigen), Lauf 2
 nennt den Grund nicht mehr.
 
+**Der Herzschlag muss aus dem Zustand kommen, den der LAUFENDE Zyklus schreibt —
+sonst hilft das Schreiben nichts.** Ein Live-Zweig fuehrt oft ein eigenes Buch
+(`zustand.live.json`). Liest er den Herzschlag von DORT, kann er ihn nur waehrend
+eines Live-Laufs erneuern; ein Live-Lauf passiert nur bei offenem Fenster, und das
+Fenster oeffnet die Auto-Freigabe nur, wenn die Vorschau GENAU EINEN Grund nennt.
+Gemessener Kreislauf: die Vorschau nannte ZWEI Gruende („Herzschlag alt" UND
+„Freigabefenster nicht offen"), `nur_fenster_fehlt` feuerte nie, und die Spur lief
+jeden Zyklus Papier — obwohl `handel_erlaubt` und `freigabe.erfuellt` gesetzt waren
+und der Schalter seit Stunden „scharf" aussah. **Regel: der Herzschlag misst die
+SPUR, nicht den Pfad** — den Papier-/Hauptzustand (`zustand.json`, den jeder Zyklus
+schreibt) an `wachen_pruefung.lage()` geben, das Live-Buch nur fuer die Positionen.
+Das ist eng: `lage()` benutzt den uebergebenen Zustand ausschliesslich fuer
+`herzschlag_frisch()`, alles andere kommt aus dem Journal. Nachweis: die Vorschau mit
+`MAXHIRN_ROUTINE=1` nennt danach GENAU EINEN Grund (das Fenster) — erst dann darf
+„die Auto-Freigabe oeffnet es selbst" gesagt werden.
+
 **Die Vorschau des Live-Zweigs schreibt und handelt nicht.** Eigener Rueckweg VOR
 `pruefe_ausstiege`: eine Vorschau, die schreibt, setzt einen frischen Herzschlag ohne
 Zyklus, und `pruefe_ausstiege` kann in einem reinen Nachsehe-Lauf verkaufen (siehe
@@ -593,7 +619,15 @@ Sibling-Commit ueberschrieben.
   rechnet weiter mit den Basis-Werten (`max_pro_trade_usd` usw.). So bleibt der
   Papierlauf statistisch aussagekraeftig, waehrend Live klein anfaengt (z. B.
   10/5/200 gegen 150/4/600). Der Live-Code liest die `live_*`-Felder mit
-  Fallback auf die Basis-Werte.
+ Fallback auf die Basis-Werte.
+ - **Jede Zahl, die der Live-Zweig benutzt, wird zur Aufrufzeit aus der
+ `wachen.json` gelesen — eine Konstante im Live-Modul ist eine zweite Wahrheit.**
+ Gemessen: ein Live-Zweig trug `EINSATZ_MIN`/`EINSATZ_MAX` als Konstanten im
+ Modul, waehrend die `wachen.json` eine Einsatz-SPANNE fuehrte — die Aenderung an
+ der Wachen-Datei sah erledigt aus und bewegte nichts. Beim Anschliessen jede Zahl
+ im Live-Pfad suchen (Einsatz, Deckel, Mindestbetrag, Plaetze) und durch einen
+ Lesezugriff auf `w` ersetzen: nur so ist der Wert versioniert, fuer
+ `spuren_stand.py`/`handeln.py --wachen` sichtbar und von Max aenderbar.
 - **Damit das Freigabefenster gegen die LIVE-Grenzen prueft** (nicht gegen die
   grossen Papier-Werte, sonst wuerde ein 100-USDT-Auftrag im Fenster
   durchkommen): `freigabe.pruefe()` muss im `SPOTARTIG`-Zweig die `live_*`-

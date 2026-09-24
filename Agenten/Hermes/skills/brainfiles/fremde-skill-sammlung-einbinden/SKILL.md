@@ -1,0 +1,116 @@
+---
+name: fremde-skill-sammlung-einbinden
+version: 0.1.0
+author: Hermes Agent
+license: MIT
+description: "Use when fremde Skill-Sammlungen eingebunden werden."
+metadata:
+  hermes:
+    tags: [Skills, Bibliothek, Einbinden, BotProfil]
+    related_skills: [fundus-zugriff, skill-library-sync, repo-flotte]
+---
+
+# Fremde Skill-Sammlung einbinden
+
+## When to Use
+
+- "Repo X zu den Faehigkeiten hinzufuegen", "installieren und vollstaendig zum
+  Laufen bringen", "effizient einbinden" - ein Fremd-Repo, dessen Inhalt
+  `SKILL.md`-Dateien sind.
+- "Warum ist Skill Y nicht verfuegbar?" nach einem Importversuch.
+- Nachfragen zur Bauart: Fundus, geladene Bibliothek oder eigenes Bot-Profil.
+
+**Tragende Regel:** Ein ganzer Skill-Baum kommt **nie** in die geladene
+Hauptbibliothek. Namen und Beschreibungen kosten bei JEDER Anfrage, nur der
+Rumpf wird bei Bedarf nachgeladen; die Hausbibliothek ist absichtlich klein
+getrimmt (nachmessen mit `hermes curator usage`, nicht schaetzen). Ausgeliefert
+wird dreistufig:
+
+| Stufe | Ort | Zweck |
+|---|---|---|
+| halten | `Werkstatt/Repos/<name>` (gitignored) | Klon, bleibt aktualisierbar |
+| finden | `MaxHirn/Wissen/<name>-Index.md` + `fundus-suche.ps1` | null Ladepreis |
+| benutzen | eigenes Bot-Profil (`/bot <name> ...`) | zahlt nur im eigenen Kontext |
+
+Format, Messzahlen und die Konverter-Nahtstellen: `references/claude-format-konverter.md`.
+
+## Vorgehen
+
+1. **Klon voll** nach `Werkstatt/Repos/<name>` (kein `--depth 1`): ein shallow
+   Klon laesst sich spaeter nicht in den eigenen Fork pushen. `origin` = eigener
+   Fork, `upstream` = Original - wie bei allen Repo-Klonen hier.
+2. **Format pruefen, bevor konvertiert wird:** YAML-Frontmatter vorhanden?
+   Manifest (`claude-skills.json`, `SKILL.md`-Index) vorhanden? Groesse der
+   groessten Datei? Ohne Frontmatter laedt Hermes **gar nichts** - der
+   Konverter ist Pflicht, nicht Kosmetik.
+3. **Groessenverteilung messen** (sortierte Liste, nicht Mittelwert) und die
+   Schwelle festlegen: ein `SKILL.md` ueber ~60 KB kommt NICHT in die ladbare
+   Bibliothek - Hermes laedt eine Skill-Datei immer ganz. Solche Dateien stehen
+   nur im Index, mit Zeiger auf den Klonpfad.
+4. **Konverter schreiben** (idempotent, nach jedem `git pull` erneut laufbar):
+   Frontmatter aus Manifest + `## Description`-Block, Triggergruesse als `tags`,
+   Ziel `<klon>/hermes-skills/<kategorie>/<skill>/SKILL.md`. Nie von Hand
+   nachbessern, was der Konverter erzeugen soll.
+5. **Index schreiben:** je Skill Name, Kategorie, Groesse, Einzeiler, Pfad -
+   damit "finden" ohne Ladepreis geht (Fundus-Skript deckt `Werkstatt/Repos`
+   schon ab).
+6. **Bot-Profil anlegen** und die konvertierten Skills in dessen
+   `skills/`-Baum legen. `hermes profile create <name>` OHNE `--clone` erzeugt
+   nur eine schlanke config.yaml: `providers`-Block, `model.provider`,
+   `terminal.cwd`, die Router-Schluesselnamen in der eigenen `.env` und
+   `hermes profile describe <name> --text` danach nachziehen.
+7. **Grenze in die SOUL.md** des Bots schreiben, wenn die Sammlung
+   Doppelnutzung traegt (Security-Methoden): nur eigene oder ausdruecklich
+   freigegebene Systeme, kein Vorgehen gegen fremde Ziele, nichts laeuft ohne
+   ausdrueckliche Anweisung gegen ein echtes Ziel. Text bleibt Text - die
+   Grenze gehoert trotzdem dauerhaft hin, nicht in eine Sitzung.
+8. **Nachweis fuehren** (das ist "zum Laufen gebracht"):
+   `hermes -p <profil> skills list` zeigt die Skills, und der Bot gibt eine
+   Datei WORTGENAU wieder - ihn Ueberschrift und Zeilenzahl EINES `SKILL.md`
+   nennen lassen und gegen `wc -l` halten. "Skills sind geladen" beweist nur,
+   dass die Dateien liegen, nicht dass der Bot sie liest und richtig zitiert.
+   Bei einem Nachfrage-Bot (kein Startprogramm) heisst "zum Laufen gebracht"
+   genau das: eine Frage zur Sammlung, eine richtige Antwort.
+
+## Fallen
+
+- **Fremdes `install.sh` nicht ausfuehren.** Solche Skripte kopieren nach
+  `~/.claude/skills` o. ae. - ein fremdes Ziel, das hier nichts bewirkt, weil
+  Claude und Hermes aus eigenen Pfaden laden. Der eigene Konverter ist der Weg.
+- **Kein Symlink des Fremdbaums in `Agenten/Hermes/skills/`** - das hebelt die
+  Import-Sperre aus und kostet den vollen Dauerpreis bei jeder Anfrage.
+- **Nie rekursiv durch die Skill- und Profilbaeume greppen.** `grep -r` unter
+  `Agenten/Hermes/profiles/` oder `Agenten/Hermes/skills/` folgt den
+  Windows-Junctions (`okx-*` zeigen auf `~/.agents/skills/`) in multi-GB
+  Fremdbaeume und laeuft ohne Ergebnis in den Timeout. Gezielt suchen: ein
+  Ordner, `ls -1`, `search_files` mit engem Pfad oder `fundus-suche.ps1`.
+- **Virenscanner sperrt Dateien: "Datei ist da" ist nicht "Datei ist lesbar".**
+  Windows Defender quarantaeniert offensive Doku (SQLi-/RCE-/Shellcode-
+  Signaturen) und sperrt danach den LESEZUGRIFF: `ls` und `Get-Item` zeigen
+  Groesse und Datum, das Oeffnen scheitert mit "Datei enthaelt einen Virus",
+  und ein Indexierer ueberspringt sie STILL. Nach dem Klonen deshalb nicht
+  zaehlen, was auf der Platte liegt, sondern was lesbar ist (jede Datei einmal
+  wirklich oeffnen), und die Zahl so berichten ("75 von 79 Skills lesbar").
+  `git checkout -- .` holt geloeschte Dateien zurueck, die Lesesperre bleibt.
+  Fundort der Sperren: `Get-MpThreatDetection | Sort-Object
+  InitialDetectionTime -Descending`. Eine Defender-Ordnerausnahme ist eine
+  NUTZERENTSCHEIDUNG (Schutz wird abgesenkt) - sie anbieten, nicht selbst
+  setzen, und die vier gesperrten Skills namentlich nennen.
+- **`--clone` beim Profil-Anlegen ist der lange Weg und hinterlaesst bei Abbruch
+  Muell.** Ein abgebrochenes `hermes profile create --clone` legt
+  `profiles/.<name>.staging-<pid>/` ab (volle Kopie des Startprofils samt `.env`
+  und Sessions) und damit einen Phantom-Bot in `/bots`; nach dem Abbruch
+  `profiles/` nach `.`-Ordnern absuchen. Details und die Symlink-Regel fuer
+  `auth.json`: `hermes-config-ops`.
+- **Beschreibungen sind der Preis, nicht die Rumpftexte.** Beim Schaetzen der
+  Kosten die Zahl der Skills mit der Beschreibungslaenge multiplizieren; der
+  gemessene Mittelwert dieser Bauart steht in der Referenz.
+- **Vor dem Bauen die Hausregeln zur Bibliothek lesen** (`skill-library-sync`,
+  `fundus-zugriff`) - beide sind Eigentum von Max und werden nicht ueberschrieben.
+
+## Verifikation
+
+Fertig ist es, wenn (1) `hermes -p <profil> skills list` die Skills zeigt,
+(2) ein Testlauf genau eine Datei ladet, (3) die Hauptbibliothek unveraendert
+ist (`git status` auf `Agenten/Hermes/skills/` leer) und (4) der Index in
+`Wissen/` steht.

@@ -11,6 +11,55 @@ Original bezahlte API-Keys. Hausstandard: schluessellos — Urteil vom lokalen
 Ollama, Marktdaten ueber oeffentliche API-Endpunkte, Autostart als geplante
 Aufgabe. Hier: der Weg vom ersten Startfehler zum laufenden Dauerlaeufer.
 
+## Vor dem Installieren: Anspruch gegen Inhalt pruefen
+
+Ein Repo-Name und eine README versprechen regelmaessig mehr, als im Baum liegt.
+Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufrufe:
+
+- `gh api repos/<owner>/<repo>/contents --jq '.[] | .type + "  " + .name'` und
+  `gh api repos/<owner>/<repo> --jq '{size_kb:.size, zweig:.default_branch}'`.
+  Wenige KB, EIN Commit („Initial commit: Complete …") und die Dateisammlung
+  `.env.example` + `docker-compose.yml` + `config.json` + leere Ordner sind die
+  Signatur eines Bauplans, nicht eines Systems.
+- **`.gitkeep`-Ordner sind kein Code.** Bestehen die Dienstordner nur aus
+  `.gitkeep`, existieren die Dienste nicht. Ein `docker-compose.yml`, dessen
+  `build.context` auf Ordner ohne `Dockerfile` zeigt, kann gar nicht hochkommen —
+  hoch kommen nur die reinen `image:`-Dienste (redis, postgres). `./start.sh`
+  ist dann ein Skript, das in einen Abbruch laeuft.
+- **Der Name kann ein echtes Einzelstueck enthalten, das nicht im Repo liegt.**
+  Namen zerlegen und jeden Teil an seinem eigenen Upstream pruefen: Klon des
+  echten Projekts, dann messen (Parameterzahl, Lizenz, Paper/Konferenz,
+  Geraetebedarf) und genau das als Ergebnis melden — nicht die Fassade davor.
+  Ein leerer Rahmen mit einem klangvollen Namen ist kein Grund, die fehlenden
+  Dienste nachzubauen.
+- **Ein `.env.example`, das Wallet- oder Boersen-Geheimnisse verlangt**
+  (`PRIVATE_KEY`, Broker-Keys, Chain-IDs), gehoert als Befund in die Antwort:
+  davon wird nichts verdrahtet, kein Live-Pfad, keine Order ausserhalb der
+  Haus-Freigabekette. Auch nicht, wenn die README darum bittet.
+- Klon-Konvention (origin=Fork, upstream=Original, shallow) und Bots je Repo:
+  Skill `repo-flotte`.
+
+## Nachweis der Anbindung (bevor etwas verdrahtet wird)
+
+- **Den schluessellosen Kernpfad EINMAL echt fahren und die Zahlen nennen** — die
+  Testsuite allein belegt die Anbindung nicht. Muster solcher Repos:
+  `init` (Zustand/Datenbank) -> Discovery aus einer kostenlosen Liste -> ein
+  echter Lese-/Erfassungslauf -> Bericht. Belegte Groessen aus einem solchen Lauf:
+  wie viele Objekte gefunden, wie viele echte Datensaetze gelesen, wie viele
+  externe Aufrufe, wie viele Fehler. Ein laufender Pfad mit Zahlen schlaegt jede
+  Beschreibung des Pfades.
+- **Die Status-/`init`-Ausgabe des Repos LESEN und zitieren.** Sie nennt selbst,
+  welche Schluessel fehlen und welche Wege dadurch tot sind. Steht dort ein
+  Schluessel als „set", heisst das nur vorhanden — ob er traegt, sagt erst ein
+  echter Aufruf (siehe „Schluessel messen, nicht annehmen").
+- **Erst danach einordnen, was das fuer den Hausbetrieb ist.** Gleicht die Bauart
+  einer bestehenden Haus-Spur (z. B. einer Menge bewerteter Wallets nachkaufen),
+  ist es ein Kandidat fuer eine PAPIERENE Spur; sonst ein Werkzeug mit Wiki-Seite.
+  Die Einordnung als Satz in den Bericht, mit dem Unterschied zur naechsten
+  Haus-Spur — nicht als Optionsliste.
+- Ein Beobachtungs-/Werkzeug-Repo bringt oft eine eigene `SKILL.md` mit: **nicht
+  importieren** (Hausregel `skill-library-sync`), sondern im Wiki dokumentieren.
+
 ## Start (in dieser Reihenfolge)
 
 1. **Als Modul starten, nicht als Skriptpfad.** Scripte, die Paket-Imports
@@ -150,6 +199,97 @@ Aufgabe. Hier: der Weg vom ersten Startfehler zum laufenden Dauerlaeufer.
    `Content-Type: application/json` EXPLIZIT setzen — urllib schickt ihn
    nicht automatisch mit, sonst `415 Unsupported Media Type`.
 
+9. **Schluessel messen, nicht annehmen — und tote Schluessel wieder entfernen.**
+   Ein gueltiger Schluessel ist noch kein nutzbarer: die Faehigkeit kann im Tarif
+   fehlen oder das Guthaben leer sein. Vor dem Eintragen in die Repo-`.env` je
+   Kandidat EINEN echten Aufruf fahren und die Antwort LESEN:
+   `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $KEY" https://api.openai.com/v1/models`
+   (200 = gueltig) und `https://generativelanguage.googleapis.com/v1beta/models?key=$KEY`
+   (Modellnamen auflisten). Gemessene Fallen: Google liefert 200 und listet
+   Bildmodelle, antwortet aber bei Bildaufrufen mit `429 RESOURCE_EXHAUSTED …
+   free_tier_requests limit: 0` (Bild ist nicht im Gratis-Tarif); OpenAI listet
+   `gpt-image-1`, antwortet aber `credit_balance_exhausted`; OpenRouter
+   `GET https://openrouter.ai/api/v1/key` zeigt `limit_remaining: 0`.
+   - **Ein toter Schluessel in der `.env` ist schaedlicher als keiner**, weil die
+     Repos ihren Anbieter nach ANWESENHEIT auswaehlen (Muster `_detect_provider()`:
+     erst `OPENAI_API_KEY` → „openai", dann FAL, dann `import diffusers` →
+     „local"). Der tote Weg gewinnt und die lokale Kette kommt nie zum Zug.
+     Also: Zeile durch eine Hinweiszeile ersetzen (Datum + Grund, kein Wert) und
+     den Schluessel dort lassen, wo er herkam. Vorher `_detect_provider()`/
+     `get_status()` lesen und die REIHENFOLGE kennen, sonst wirkt die Aenderung nicht.
+   - **Der schluessellose Weg ist ein Rechenweg, kein Notbehelf.** Diffusions-
+     Ketten (`diffusers` + `torch`) laufen auf der Haus-GPU und kosten nichts.
+     Reihenfolge, die traegt: erst pruefen, welcher CUDA-Index fuer die
+     gewuenschte torch-Version ueberhaupt ein Wheel hat
+     (`curl -s https://download.pytorch.org/whl/<cuNNN>/torch/ | grep -o 'torch-2\.[0-9]*\.[0-9]*%2B<cuNNN>-cp31[0-9]-win_amd64'`),
+     dann `pip install --force-reinstall --no-deps --index-url
+     https://download.pytorch.org/whl/<cuNNN> torch`, danach
+     `pip install diffusers transformers accelerate safetensors` in das
+     Repo-venv und `torch.cuda.is_available()` PRUEFEN.
+     - **Ein falscher CUDA-Index installiert still die CPU-Variante.**
+       `pip install torch` ohne Index holt `2.14.0+cpu`. Der Gegenversuch mit
+       `--index-url .../cu130` „installiert" dann nur `torchvision`: pip
+       vergleicht `2.14.0+cpu` und `2.14.0+cu130` als GLEICHE Version (lokale
+       Versionsanhaenge zaehlen nicht) und laesst das vorhandene stehen. Nur
+       `--force-reinstall --no-deps` bewegt es. Symptom: Skript laeuft, aber
+       jede Bilderzeugung ist unbrauchbar langsam oder faellt um.
+       `torch.version.cuda` und `torch.cuda.is_available()` sind der Beleg,
+       nicht die Erfolgsmeldung von pip.
+     - Modellwahl gegen den VRAM bemessen (SD-Turbo/SD-2.1-base ≈ 2-5 GB);
+       das Repo-Vorgabemodell ist oft das langsamste (30 Schritte bei ~5 GB
+       Gewichten). Kleines Turbo-Modell mit 4 Schritten und `guidance_scale: 0`
+       nehmen und das Modell im Aufruf explizit setzen; der erste Bildaufruf
+       traegt das Modellladen (~25 s), danach Sekunden.
+     - Installation und Modelldownload im Hintergrund starten und per
+       Notification einsammeln — sie dauern laenger als ein Aufruf erlaubt.
+       Beweis ist die Zieldatei PLUS die Kostenzeile des Werkzeugs (`cost_usd: 0.0`).
+   - **Schluessel-Ablage: die Sicherung gehoert AUSSERHALB des Repos.** Ein
+     Repo, das `*.env` in der `.gitignore` fuehrt, deckt `.env.bak-JJJJMMTT`
+     NICHT — die Sicherung mit den Klartext-Schluesseln waere als „untracked"
+     im fremden Repo gestanden und beim naechsten `git add` mitgegangen. Nach
+     jeder Sicherung `git check-ignore -v <datei>` je Datei pruefen und die
+     Kopie in `Agenten/Hermes/.sicherung/` legen.
+   - **Bevor ein Dienst als Anbieter eingeplant wird: seine ROUTEN lesen.**
+     Aus dem installierten Paket listen, was er ueberhaupt bedient
+     (`grep -rhoE '"/v1/[a-z0-9/_-]+"' <site-packages>/<paket>` und
+     `grep -rIn 'images/generations\|image_generation' <paket>`). Ein
+     Abo-/Proxy-Verteiler mit nur `/v1/messages` + `/v1/models` kann keine
+     Bilder liefern, egal welcher Schluessel hinterlegt wird — und ein
+     Treffer auf „image" im Paket heisst oft nur *Bild im Prompt*
+     (`input_image`), nicht Bilderzeugung. Dieselbe Regel fuer den Zweck:
+     erst die Faehigkeitsliste des Pakets, dann die Frage beantworten; ein
+     toter oder falsch einsortierter Schluessel aendert nichts an der Faehigkeit.
+   - **Gratis-Crowd-Anbieter sind keine zuverlaessige Quelle.** Ein Router, der
+     AI-Horde-Modelle anbietet, antwortet korrekt, aber `No Horde workers …` oder
+     `queue wait ~1780s … budget 595s left` — vor dem Einplanen die echte
+     Warteschlange messen (`https://aihorde.net/api/v2/status/models?type=image`
+     listet je Modell die Arbeiterzahl), nicht den Modellkatalog.
+
+## Harter Absturz: erst den Zeugen holen, dann nichts neu installieren
+
+Ein Fremd-Repo, das den Prozess mit `Segmentation fault` bzw. `0xC0000005`
+(Access Violation) abwirft, verleitet zum Umbau des falschen Teils. Reihenfolge,
+die Zeit spart:
+
+- **Sofort `python -X faulthandler <skript> 2>&1 | tail -40`**, und zwar auch
+  auf dem HOST (Per-Prozess-Launcher), nicht nur in der Sandbox — sonst haelt
+  man einen Umgebungsfehler fuer einen Codefehler. Die Ausgabe nennt Datei und
+  Zeile des Absturzes; alles davor ist Raten.
+- **Die gepinnte alte Abhaengigkeit im fremden `requirements.txt` ist der
+  haeufigere Verdaechtige als das Modell.** Gemessenes Muster: `pandas==2.2.2`
+  reisst beim blossen `pd.date_range` den Prozess ab (Python 3.13/Windows) —
+  die Vermutung „das Modell ist zu neu fuer die Bibliothek" kostete zwei
+  Torch-Neuinstallationen, waehrend der Zeuge in den `pandas`-Code zeigte. Die
+  Pins des Repos sind keine Hausregel: `pip install -U <paket>` ist der Fix,
+  nicht das Heruntersetzen des Interpreters.
+- **Vorher in Stufen proben und jede Stufe mit `flush=True` melden**: Modul
+  importieren -> Tokenizer/Modell laden -> Objekt bauen -> rechnen. Der
+  Absturzort grenzt die Ursache ein, ohne Debugger.
+- **Ausgabe in eine Logdatei schreiben, nicht durch `| grep | tail` schicken.**
+  Bei einem harten Abbruch verschluckt die Pipe den Fehlertext; das
+  zurueckgebliebene `tcsetattr: Inappropriate ioctl` im Log ist dann das
+  einzige Symptom.
+
 ## Autostart als geplante Aufgabe
 
 - Wrapper nach `Agenten/Routinen/` (Bus-Meldungen `Melde-Start`/`Melde-Ende`,
@@ -203,12 +343,12 @@ Aufgabe:
 
 - Ein GUI-Kontrollzentrum (Tkinter) fuer so ein Repo bauen (Boersendaten,
   Agenten-Start/Stop, Wallet, Doku-Browser): `references/gui-kontrollzentrum.md`.
-
-## Weiterfuehrend
-
-- Ein Repo bewertet/urteilt mit einem BEZAHLTEN Sprachmodell und bringt einen
-  Export/Import-Weg mit: Urteil lokal auf Ollama faellen, ohne das Fremd-Repo
-  anzufassen - `references/bewertung-lokal-statt-api.md` (Werkzeug
+- Bilder ohne Cloud-Schluessel erzeugen (Anbieter-Triage, CUDA-Wheel, Aufruf
+  ueber das Werkzeug des Repos, Sonde sauber halten):
+  `references/lokale-bildkette.md`.
+- Ein Repo bewertet/urteilt mit einem BEZAHLTEN Sprachmodell und hat einen
+  Export/Import-Weg: Urteil lokal auf Ollama faellen, ohne das Fremd-Repo
+  anzufassen: `references/bewertung-lokal-statt-api.md` (Werkzeug
   `Agenten/Werkzeuge/fomo_lokal.py` als Vorlage).
 
 ## Abgrenzung

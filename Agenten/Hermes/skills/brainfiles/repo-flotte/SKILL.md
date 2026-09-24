@@ -76,6 +76,19 @@ dort angemeldet.
    Worktree-Sammlung) ist keine Repo und bekommt keinen Bot. Die Zaehlung als
    dauerhafte Notiz ablegen (z. B. Wissen/Repo-Bots.md), mit dem Hinweis, dass
    die Platte die Wahrheit bleibt und die Notiz altert.
+   **Rest-Ordner eines Anlegevorgangs zaehlen mit — und nach dem Alter beurteilen.**
+   `hermes profile create` laesst bei einem Abbruch oder einer Umbenennung einen
+   Punkt-Ordner `.<name>.staging-<pid>` in `profiles/` stehen; er traegt eine
+   `config.yaml` und galt damit als Bot (Phantom in `/bots`;
+   `skillsbot.bot_namen()` ueberspringt seit 23.09.2026 Punkte-Ordner, die
+   Gegenprobe bleibt `ls profiles/ | grep '^\\.'`). Im Bericht nennen. Dann die
+   Frage, ob er noch jemandem gehoert: laeuft kein `profile create`-Prozess mehr
+   (`Get-CimInstance Win32_Process`, Kommandozeile), ist der Ordner tot und
+   gehoert weg — er ist nicht nur Platz, sondern eine VOLLE Kopie des
+   Startprofils samt `.env` (Kanalzugangsdaten) und Sessions (gemessen 599 MB),
+   also eine zweite Ablage derselben Kennung, die die Bereinigung der Kanaele
+   gerade beseitigt hat. Einen MINUTEN alten Ordner dagegen liegen lassen: dann
+   schreibt eine parallele Sitzung noch.
 7. **Bots in Telegram anbinden (SkillsBot).** `Agenten/Bus/skillsbot.py` um
    zwei Befehle erweitern: `/bots` liest die Profile von der Platte
    (`profiles/<name>/config.yaml`), `/bot NAME NACHRICHT` startet einen
@@ -114,6 +127,16 @@ dort angemeldet.
 
 - **Namen aus einem Screenshot sind oft falsch geschrieben - Konto und Repo GETRENNT pruefen.** Ein 404 von `gh api repos/<owner>/<repo>` heisst nur, dass DIESES Repo so nicht heisst; `gh api users/<owner>` klaert, ob das Konto existiert (Schreibweise!). Oft existiert das Konto und nur das Repo fehlt - umgekehrt wird sonst die ganze Flotte verworfen.
 - **Ein 404 auf das erwartete Repo heisst nicht „geloescht".** Kanal-, Playlist- und Spiegel-Beschreibungen nennen den aktuellen Namen; ein Fork traegt das Original in `.parent.full_name` und `.source.full_name`. Bleibt das Original verschwunden ODER ist es privat (beides ergibt denselben 404), ist ein Nachbau die Quelle - dann im Klon und in der Doku ausdruecklich als Nachbau kennzeichnen, nie als Original ausgeben.
+- **Nach jedem frischen Klon zaehlen, was LESBAR ist — nicht was auf der Platte liegt.**
+  Der Virenscanner greift Dateien eines Klons an (Exploit-Muster, Webshell-Signaturen,
+  Makros) und laesst sie danach als Datei stehen, sperrt aber das Oeffnen: `ls` und
+  `Get-Item` zeigen Groesse und Datum, jeder Lesevorgang scheitert mit „Datei enthaelt
+  einen Virus", und ein Index/Test ueberspringt sie STILL (`git ls-files` kennt sie
+  weiterhin). `git checkout -- .` holt Geloeschtes zurueck, die Lesesperre bleibt.
+  Beleg der Sperren: `Get-MpThreatDetection | Sort-Object InitialDetectionTime
+  -Descending`. Betroffene Dateien namentlich melden und die Ausnahme als
+  Nutzerentscheidung anbieten — nie selbst eine Scanner-Ausnahme setzen. Rezept:
+  `fremde-skill-sammlung-einbinden`.
 - **Fremd-Repo mit eigenem CLI: dessen eigenen Zustandsbefehl nutzen.** `<tool> doctor` (bzw. `install`) sagt, welche Kanaele/Abhaengigkeiten fehlen - das ist die Lage, die man sonst raten muesste. `skill --install` o.ae. NICHT aufrufen: das schreibt eine fremde SKILL.md in Agenten-Skill-Verzeichnisse und verstoesst gegen `skill-library-sync`. Statt dessen eine eigene, kurze Hausfassung schreiben (was es ist, wo es liegt, wie man es aufruft, was noch fehlt).
 - **Ein Kanal ist erst fertig, wenn sein Backend auf dem PATH liegt — nicht in
   der Repo-venv.** Ein `pip install` in die venv laesst den `doctor` weiter
@@ -170,6 +193,7 @@ dort angemeldet.
   nimmt trotzdem nur die drei freigegebenen Dateien auf (Vorabkontrolle mit
   `git add --dry-run <profilordner>`). Steht etwas anderes im Dry-Run, ist die
   Whitelist falsch — nicht stumm aufraeumen, sondern die Freigabe pruefen.
+- **`profile create` OHNE `--clone` legt nur eine 45-Zeilen-`config.yaml` an — kein `profile.yaml`, keine Beschreibung, keine Skills, und die `.env` fehlt ganz.** Der schlanke Weg ist trotzdem richtig (kein Skill-Ballast), er verlangt aber drei Nacharbeiten, sonst ist der Bot halb: (a) Vorlagendateien eines anderen Bots kopieren bringt dessen ROLLE mit — die Beschreibung nach `hermes profile describe <name> --text "…"` neu setzen und `hermes profile describe <name>` gegenlesen; (b) die `.env` des Startprofils uebernehmen, sonst fehlen die Providers-Schluessel; (c) `providers:`-Block und `model.provider`/`model.default` in die eigene `config.yaml` schreiben bzw. aus einem fertigen Bot kopieren. Nachweis: `hermes profile describe <name>` zeigt die eigene Rolle, `hermes -p <name> fallback list` die Kette, und ein echter `/bot`-Aufruf antwortet aus dem richtigen Repo. Ein Bot, der antwortet, ist noch kein Beleg fuer das RICHTIGE Modell — er kann komplett ueber den lokalen Rueckfall laufen; das im Bericht sagen, wenn die Primaeranmeldung noch fehlt.
 - **`--clone` kopiert die ganze Skill-Bibliothek ins Profil.** Bei vielen Bots
   kostet das Plattenplatz und, sobald der Bot laeuft, die gleichen Tokens wie das
   Startprofil; ein Bot je Repo braucht nur einen Bruchteil davon.
@@ -255,7 +279,16 @@ dort angemeldet.
 - **Ohne eigene `auth.json` antwortet ein Profil nicht — Sitzung per SYMLINK, nicht
   per Kopie.** `Agenten/Hermes/scripts/auth-verknuepfen.ps1` (erhoehte Shell, ein
   UAC-Prompt) verweist `profiles/<bot>/auth.json` auf
-  `Agenten/Hermes/auth.json`. Eine Kopie waere dieselbe Refresh-Kennung in vielen
+  `Agenten/Hermes/auth.json`. Von Hand braucht der Link NICHT die Erhoehung:
+  `pwsh` 7 legt ihn direkt an (`New-Item -ItemType SymbolicLink`), waehrend
+  `powershell.exe` 5.1 mit „Administratorrechte erforderlich" abbricht — den
+  Admin-Weg also nicht als Bedingung melden, sondern das Werkzeug waehlen.
+  Von Hand, ohne Erhoehung, in EINER Zeile (Beispiel fuer ein neues Profil):
+  `pwsh -NoProfile -Command "New-Item -ItemType SymbolicLink -Path '<...>\profiles\<bot>\auth.json' -Target '<...>\Agenten\Hermes\auth.json'"` —
+  danach gegenpruefen (`Get-Item <pfad> -Force | Select LinkType, Target`), denn
+  ein Symlink, der nach einem fehlgeschlagenen Versuch NICHT angelegt wurde,
+  sieht im Profil wie ein fehlender Schluessel aus und der Bot antwortet still
+  ueber die Fallback-Kette weiter. Eine Kopie waere dieselbe Refresh-Kennung in vielen
   Dateien, und die erste Rotation entwertet alle anderen. `NOUS_API_KEY` in der
   Benutzerumgebung genuegt NICHT — der Gate verlangt den Provider-State im
   `auth.json` des Profils. Ein frisch aus `profiles/.deleted/` zurueckgeholtes

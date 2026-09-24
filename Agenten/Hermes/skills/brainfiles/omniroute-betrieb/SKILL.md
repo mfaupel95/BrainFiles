@@ -17,6 +17,15 @@ OmniRoute (Port 20128, Quell-Klon `Werkstatt/OmniRoute`) ist Max' AI-Gateway:
 ein Endpunkt fuer viele Provider, mit auto/*-Routing, Combos, Caching,
 Komprimierung und Budgets. Hermes, Claude Desktop und die Bots haengen daran.
 
+## Wann
+
+- Ein Client (Bot, Fremdwerkzeug, Skript) antwortet nicht oder stirbt sofort
+  und der Verdacht faellt auf den Router — erst den Kanal proben, dann den
+  Client untersuchen.
+- Ein Provider/Kanal soll geprueft, deaktiviert, angelegt oder repariert werden.
+- Eine andere Modalitaet als Chat (Bilder) soll ueber den Router laufen.
+- Routing-Kosten, Pools, Budgets oder Cache sollen bewertet werden.
+
 ## Kernwissen: Wo die Config liegt
 
 - **Die Config liegt in `~/.omniroute/storage.sqlite`** (SQLite, vom Dashboard
@@ -217,6 +226,14 @@ antwortet dort 401.
   424/502, leere `auto/*`-Pools, „no plan-included connection has verified
   quota headroom“. Vor jeder Provider-Diagnose pruefen, ob der Proxy-Port
   wirklich lauscht — und den Port tot nennen, nicht den Anbieter.
+
+## Andere Modalitaeten als Chat (Bilder)
+
+Der Router bedient `/v1/images/generations` und kann ein OpenAI-kompatibles
+Fremdwerkzeug tragen — aber nur, wenn ein echter Anbieter hinter der Route
+steht. Regeln (Katalog gegen `provider_connections` joinen, leere
+Verbindungshuellen, Verdrahtungsbeweis ohne `.env`-Schreibzugriff,
+Umschaltgrenze bei langsamen Routen): `references/bildroute.md`.
 
 ## MCP-Server und CLI
 

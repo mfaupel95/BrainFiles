@@ -72,6 +72,13 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    `Get-ChildItem -Recurse` laeuft in `Agenten\Handel` durch `.venv` und reisst
    auch ein 60-180-s-Zeitlimit. Stattdessen eine explizite Pfadliste uebergeben:
    `Select-String -Path "$h\*.py","$h\xperp\*.py"` — kein `-Recurse`.
+   **Bei jeder mehrzeiligen Messung die Ausgabe SELBST in eine Datei schreiben**
+   (`& $py <skript> > $o 2>&1; 'exit=' + $LASTEXITCODE`) und die Datei mit
+   `read_file` lesen. Die Bruecke kuerzt lange Zeilen ab, und ein Zeitlimit
+   verwirft die Ausgabe des Aufrufs ganz — die Datei ueberlebt beides.
+   `Select-Object -Last N` auf der Konsolenausgabe ist KEIN Ersatz: es kuerzt
+   erneut und man sieht nicht, dass gekuerzt wurde. Am Ende der Antwort auf
+   die Datei zeigen, nicht die Ausgabe abschreiben.
 2. **Erhöhte Rechte bleiben Handarbeit.** Aufgabenplanung mit `-RunLevel Highest`
    kann eine nicht erhöhte Sitzung nicht registrieren („Zugriff verweigert";
    auch `schtasks` scheitert genauso, `Register-ScheduledTask` wirft
@@ -123,6 +130,11 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    lesen und belegen, was dort steht, den Rest dem geplanten Lauf überlassen.
    Dabei offen sagen, dass der Durchlauf nicht end-to-end belegt ist — und die
    Anschlussprüfung beim nächsten geplanten Lauf nachholen.
+   Ein `Start-Sleep` **innerhalb** eines MCP-Aufrufs ist der zweite Fehlerfall:
+   dauert er länger als das Limit, kommt der ganze Aufruf als `TimeoutError`
+   zurück und die Ausgabe des Befehls ist verloren — Warten und Messen trennen
+   (kurz warten, dann in einem EIGENEN Aufruf lesen) oder den Lauf als
+   Hintergrundprozess starten und seinen Status abfragen.
 7. **Eine Messung ist ein Zeitpunkt, kein Zustand.** Auf diesem Rechner arbeiten
    mehrere Sitzungen und Agenten gleichzeitig am selben Baum: zwischen zwei
    Aufrufen können Ordner auftauchen oder verschwinden (eine parallele
@@ -239,6 +251,36 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   mehrzeiligen Text in einem Aufruf mischen. Statt zu wiederholen: in mehrere
   kleine Aufrufe teilen, oder die Logik in eine Datei schreiben und diese
   starten — ein Werkzeugaufruf gehört nicht in einen Satz Text.
+- **PowerShell-Code gehoert in eine `.ps1`-DATEI, nicht inline durch die
+  bash-Schicht.** Die Terminal-Schicht ist bash: sie liest den Backtick als
+  Kommando-Substitution. Ein PowerShell-String mit Backtick-Escapes
+  (`` `t `` fuer Tabulator, `` `r`n ``) wird deshalb von bash verarbeitet — das
+  Ergebnis ist entweder ein Abbruch („syntax error near unexpected token") oder,
+  schlimmer, eine **halb-leere, kaputte Ausgabe**, die wie eine Messung
+  aussieht: gemessen lieferte `'{0}`t{1}' -f $name, $wert` Namen ohne Zahl, und
+  die Liste fiel auf drei von 15 Zeilen zusammen. Richtig: die Logik mit
+  `write_file` als `.ps1` unter `Agenten/Hermes/cache/scratch/` ablegen
+  (`$ErrorActionPreference='Continue'`, keine Backtick-Formatstrings noetig),
+  mit `powershell -NoProfile -ExecutionPolicy Bypass -File <pfad> > <out> 2>&1`
+  starten und `<out>` mit `read_file` lesen. Dieselbe Regel gilt fuer jedes
+  Fremdwerkzeug mit `$`, Backtick oder `%` in den Argumenten — Datei statt
+  Einzeiler, und `2>/dev/null` weglassen, sonst verschluckt sie die Ursache.
+- **Dasselbe fuer Python-Code: Datei statt Heredoc.** Ein Heredoc
+  (`python - <<'PY' … PY`) durch die Terminal-Schicht loest die Fluchtfolgen VOR
+  Python auf — aus dem zweibuchstabigen `\n` INNERHALB eines String-Literals wird ein
+  echter Zeilenumbruch, und die Zieldatei traegt danach
+  `SyntaxError: unterminated string literal`. Der Befehl selbst meldet Erfolg; der
+  Fehler faellt erst beim naechsten Lauf auf (ein Cron-Skript stand so stundenlang
+  still, ohne dass es jemandem auffiel). Richtig: das Schreib-/Reparaturskript mit
+  `write_file` auf die Platte legen und ausfuehren, oder das `patch`-Werkzeug nehmen.
+  Muss es doch inline sein, die Fluchtfolge aus `chr(92) + "n"` bauen statt als
+  Literal — und die geaenderte Datei danach mit `ast.parse` parsen.
+- **Syntax mit `ast.parse` pruefen, nicht mit `py_compile`.**
+  `py_compile.compile(p, doraise=True)` wirft `PyCompileError` (kein `SyntaxError`) —
+  ein `except SyntaxError` greift nicht, und eine Reparatur per `lineno` laeuft ins
+  Leere. `ast.parse(text)` wirft `SyntaxError` MIT `lineno`. Nach jeder
+  Massenaenderung alle angefassten `.py` einmal durchparsen; „0 kaputte Dateien" ist
+  der Beleg.
 - **Skript unter 5.1 auf Syntax prüfen:** `[Parser]::ParseFile($p,[ref]$null,[ref]$err)`
   und bei Treffern Zeile und Meldung ausgeben. Häufigste Ursache: `\"` ist in einem doppelt-quotierten
   PowerShell-String **kein** Escape — die Zeichenkette endet zu früh und der Rest
@@ -260,7 +302,23 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   Umlaute und alle Nicht-ASCII-Zeichen (auch chinesische Beschreibungen)
   werden zu Mojibake, das beim Weiterschreiben in die Datei gelangt. Beim
   Lesen von Skript- und Skill-Dateien immer `-Encoding UTF8` angeben; beim
-  Schreiben `[IO.File]::WriteAllText` mit explizitem UTF8Encoding.
+  beim Schreiben `[IO.File]::WriteAllText` mit explizitem UTF8Encoding.
+  - **`Start-Process -ArgumentList` zerlegt Inline-Code an den Leerzeichen.**
+    `-ArgumentList '-c','from x import y; tu_was()'` uebergibt dem Kind nur das
+    erste Wort; es stirbt mit `SyntaxError: invalid syntax` auf `from`, und der
+    Auftrag liest sich wie ein kaputtes Skript oder ein fehlendes Modul. Inline-Code
+    gehoert in eine DATEI; die Datei per `-ArgumentList <skriptpfad>` starten.
+  - **Ein Lauf, der laenger dauert als das Bruecken-Limit, als abgekoppelten
+    Prozess starten — nicht synchron warten.** `Start-Process -FilePath <exe>
+    -ArgumentList <skript> -WorkingDirectory <ordner> -RedirectStandardOutput
+    <datei> -RedirectStandardError <datei>.err -PassThru -WindowStyle Hidden`,
+    dann NICHT `Wait-Process` (das erschiesst den Aufruf am Limit). Die Datei
+    waechst weiter, waehrend der Aufruf schon zurueckkam; Status und Ergebnis in
+    einem SPAETEREN Aufruf lesen (Groesse der Datei, `.HasExited`). Ein Import
+    ueber hunderte Module kann minutenlang bei wenigen MB Speicher haengen, ohne
+    Fehler und ohne Ausgabe — das ist kein Fortschritt: nach der Frist per PID
+    beenden (`Stop-Process -Id <pid> -Force`) und den Zustand als "nicht
+    gemessen" berichten statt eine Zahl zu erfinden.
 
 **Die Werkzeugschicht ist nicht der Interpreter der Aufgabe.** Sie ist 7.x, die
 Aufgabenplanung startet `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`

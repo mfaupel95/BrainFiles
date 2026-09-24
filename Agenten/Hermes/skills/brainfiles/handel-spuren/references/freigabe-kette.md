@@ -63,6 +63,19 @@ beiden muss offen sein.
   anhängen, nie lesen, entscheidet nichts; ein Schreibfehler darf ein
   Freigeben nie verhindern. Wer ohne Fenster freigibt (Zeitfenster-Weg), ruft
   `freigabe.audit(...)` selbst auf — sonst fehlt die Spur.
+- **Was das Fenster zeigt, muss ausgeführt werden können.** Die Groesse wird
+  VOR dem Freigabefenster auf das FREIE Guthaben gedeckelt (freies Guthaben
+  minus Gebuehrenpuffer der Zielboerse) und faellt sie unter die Untergrenze
+  des Einsatzes, wird nicht gehandelt — mit Begruendung im Log. Sonst zeigt das
+  Fenster einen Betrag, den die Boerse ablehnt: das ist kein Handel, sondern
+  Laerm, und im Protokoll nicht von einem Signalfehler zu unterscheiden.
+- **Das Guthaben-Tor meint den KLEINSTEN Einsatz, nicht einen Wunschpuffer.**
+  `mindest_guthaben_…` muss so tief liegen, dass der Mindest-Einsatz hineinpasst
+  (Mindest-Einsatz + kleiner Rest). Ein Tor aus einer veralteten Rechnung
+  (z. B. „3x Einsatz“, als der Einsatz noch halb so hoch war) sperrt den
+  Live-Zweig dauerhaft, waehrend alles "scharf" aussieht — und weil
+  `nur_fenster_fehlt` GENAU EINEN Grund verlangt, oeffnet der Fahrer weiter
+  Fenster fuer einen Lauf, der nicht handeln kann.
 - Der Sperrgrund muss **genau ein** Grund bleiben und das Wort
   „Freigabefenster“ tragen — daran hängt `dauerlauf.nur_fenster_fehlt`.
 

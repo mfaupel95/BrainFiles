@@ -40,6 +40,20 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
 
 ## Procedure
 
+0. **Ein Befehl ist der SOLL-Stand, nicht der IST-Stand.** Bevor ein Schalter
+   gesetzt wird, den Max befiehlt (`handel_erlaubt`, `freigabe.erfuellt`, ein
+   Limit, eine Grenze): den Wert in der Datei LESEN. Steht er schon so, wird
+   NICHT geschrieben - sonst entsteht ein leerer Diff, ein Commit ohne Aenderung
+   und die Meldung, man habe gerade etwas bewirkt. Stattdessen die
+   Wirkungskette nachmessen (Vorschau in der Fahrerumgebung, Konto-/Boersenzeuge,
+   Journal) und den Ist-Stand berichten: "war schon gesetzt, hier ist der Beleg,
+   dass es wirkt". Faellt beim Nachmessen ein Fehler auf, der die Anordnung
+   faktisch wirkungslos macht, ist DAS der Befund - belegt: ein befohlenes
+   Freischalten war laengst gesetzt, aber der erste signierte Leseaufruf des
+   Zyklus scheiterte an einem nonce-Fehler, die Spur war also scharf und
+   trotzdem blockiert. Ein Nebeneffekt auf einem ANDEREN Gegenstand ist oft das
+   einzige Symptom.
+
 1. **Behauptung und ihre Quelle trennen.** Schreib hin, wer was gesagt hat:
    `dauerlauf.log` sagt `(live) ok`; das Journal sagt gar nichts. Das sind zwei
    verschiedene Saetze.
@@ -98,6 +112,29 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   waehrend der Fahrer sie als "live" protokolliert und im festen Takt Fenster
   oeffnet, die nichts loesen. Beim Nachbauen immer beide Formen einbauen und den
   Sperrtext woertlich dem der nachgebauten Spur angleichen.
+- **Ein Tor, das den Zustand liest, den nur der freigegebene Weg schreibt, kann
+  nie aufgehen.** Der Herzschlag (Bedingung 3) ist Voraussetzung jeder Freigabe:
+  kommt er aus der Zustandsdatei des LIVE-Buchs, dann frischt ihn nur ein
+  Live-Lauf auf, ein Live-Lauf startet nur bei offenem Fenster, und das Fenster
+  oeffnet der Fahrer nur bei frischem Herzschlag — ein Kreislauf, der sich
+  selbst blockiert. Die Spur bleibt fuer immer Papier, waehrend alles "scharf"
+  gesetzt aussieht. Der Herzschlag misst die SPUR, nicht den Pfad — und er muss aus dem
+ FRISCHESTEN der beiden Staende kommen, die es je Spur geben kann
+ (Papierzustand UND Live-Zustand), nicht aus einem von beiden.
+ Nur der Live-Zustand ist der Kreislauf oben. Nur der Papierzustand ist die
+ ZWEITE Falle, genau so gemessen: laeuft die Spur live, schreibt der
+ Papierzweig nichts mehr, der Papierzustand fror ein — und nach der
+ Herzschlag-Grenze sperrte sich die Spur SELBST ("Live waere gesperrt durch:
+ Herzschlag alt"), obwohl sie alle 15 Minuten live lief. Faellt das Sperrwort
+ auf "Herzschlag alt" bei einer Spur, die nachweislich zyklisch laeuft, ist
+ die QUELLE des Herzschlags falsch, nicht die Grenze. Beide Staende zu
+ vergleichen macht den Kreislauf unmoeglich, ohne den Sinn zu aendern: nur
+ Papier sperrt eine Spur, die noch nie live lief, nur Live ist ein Kreislauf.
+  Belegt: eine fertig verdrahtete Spur mit `handel_erlaubt`/`freigabe.erfuellt`
+  true blieb Papier, weil ihre Vorschau ZWEI Gruende nannte (Herzschlag alt +
+  Fenster) und der Fahrer bei zwei Gruenden kein Fenster oeffnet. Nachweis der
+  Reparatur ist die Fahrerzeile `Auto-Freigabe <spur>` plus der naechste Zyklus
+  `(live)` — die eigene Vorschau allein belegt es nicht.
 - **Eine Statuszeile im Log ist der Modus des Fahrers, kein Orderbeleg.**
   Massstab ist die Zeile mit der Aktion am Gegenstand (Journal/Boerse).
 - **Ein stiller `except`-Zweig macht aus einem Beweis ein Nichts — und aus
@@ -153,6 +190,39 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   ersetzt) und bleibt gruen, ohne etwas zu pruefen. Das Zeitfenster der Spur in
   Tests auf einen Festwert patchen — ein Test darf nicht davon abhaengen, ob Max
   gerade freigegeben hat.
+- **Ein Test, der das falsche Modul laedt, ist gruen, ohne etwas zu pruefen.**
+  Laedt die Suite vorher eine Nachbarspur (die ihre Pfade selbst auf `sys.path`
+  legt), stehen diese Pfade schon in der Liste — ein `if p not in sys.path:
+  insert(0, p)` sieht "schon da" und schiebt den EIGENEN Ordner nie nach vorn,
+  und `import handeln` holt das `handeln.py` der Nachbarspur. Den eigenen Ordner
+  unbedingt (ohne Vorbedingung) per `insert(0, ...)` nach vorn legen und mit
+  `assert modul.__file__.startswith(SPUR)` absichern — ein gruener Lauf ohne
+  diese Zusicherung beweist nichts.
+- **Ein "nichts abzusetzen" ist eine Aussage, die man belegen muss.** Bevor ein
+  Auftrag wie "storniere die Order" als erledigt oder als gegenstandslos
+  gemeldet wird, drei Stellen lesen: den Orderpfad im CODE (gibt es ueberhaupt
+  einen Aufruf, oder nur Signalbuchung?), das eigene Buch (Journalzeilen mit
+  echter Aktion) und die BOERSE (`offene_orders`). Ein leeres Ergebnis an allen
+  drei Stellen ist ein vollwertiges Ergebnis — es gehoert mit den drei Aufrufen
+  in die Antwort, nicht als Vermutung.
+- **Bevor du einen roten Test dir zuschreibst oder freisprichst: den A/B-Lauf
+  fahren.** `git stash push -- <datei>` (nur die eigene Aenderung), Suite laufen
+  lassen, `git stash pop`, Suite erneut. Sind beide Zahlen gleich, ist der
+  Fehler vorbestehend. Ohne diesen Lauf wird entweder eine fremde Regression als
+  eigene gemeldet (und an der falschen Stelle gesucht) oder die eigene Aenderung
+  als unschuldig durchgewinkt. Das Urteil mit BEIDEN Zahlen belegen
+  ("vorher 30 Fehler, nachher 30") — nicht nur mit dem Wort "vorbestehend".
+  `git stash` nie auf den ganzen Baum anwenden: parallel laufende Fremdarbeit
+  verschwindet sonst mit.
+- **Zaehle mit der Hausdefinition, nicht mit einer eigenen Wortliste.** Ein
+  selbstgebautes Auswertungsskript, das seine Aktionswoerter selbst mitbringt,
+  zaehlt jede Komponente falsch, die ein anderes Schema fuehrt (belegt: eine
+  Spur mit acht abgeschlossenen Runden stand als "still, 0 Einstiege" da, weil
+  sie keine `aktion`-Spalte schreibt, sondern `ausgang`). Die Woerter und die
+  Trennung echter Runden von Betriebszeilen aus dem EINEN Modul nehmen, das sie
+  im Haus definiert (hier `stoerungen.py`), per `spec_from_file_location` laden
+  und dessen `teile()`/`ist_stoerung()` aufrufen. Faellt der eigene Zaehler
+  daneben, ist zuerst der Zaehler falsch — nicht die Komponente.
 
 ## Verification
 

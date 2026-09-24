@@ -80,8 +80,15 @@ verwechseln.
 - Antwort kommt unter dem **kanonischen** Paarnamen (HYPEUSD → XHYPEUSD
   o.ae.): nie `d.get(paar)`, sondern den einzigen Nicht-`last`-Eintrag nehmen
   (`kraken._erste_reihe`). `last` = Zeitstempel der JUENGSTEN Kerze.
-- Schluessel: `KRAKEN_API_KEY`, `KRAKEN_API_SECRET` (private Calls);
-  OHLC/Ticker/AssetPairs sind ohne Schluessel lesbar.
+- Schluessel: die gueltigen Hausvariablen sind **`KRAKEN_SPOT_API_KEY` /
+  `KRAKEN_SPOT_API_SECRET`** (liest `kraken/kraken.py` UND der Kraken-MCP);
+  OHLC/Ticker/AssetPairs sind ohne Schluessel lesbar. In `HKCU\Environment`
+  liegt ZUSAETZLICH ein Paar `KRAKEN_API_KEY` / `KRAKEN_API_SECRET` - es
+  existiert, aber Kraken antwortet damit `EAPI:Invalid key`. **Ein Programm, das
+  "Invalid key" meldet, waehrend ein anderes mit demselben Konto arbeitet, liest
+  den anderen VARIABLENNAMEN, nicht einen falschen Schluessel:** erst den im
+  Quelltext gelesenen Namen nachsehen, dann die generischen Namen aus den
+  SPOT-Werten setzen (Wrapper `Agenten/Werkzeuge/kraken.ps1`).
 - **Die Spot-Anbindung kann NUR kaufen/verkaufen: buy/sell, kein Short, kein
   Hebel.** `markt_kauf`/`markt_verkauf`/`stop_setzen` decken Long ab; ein
   Leerverkauf oder eine Position mit Hebel ist auf diesem Weg nicht machbar.
@@ -91,6 +98,131 @@ verwechseln.
   Wer "Long UND Short" an einer Spur will, muss das als EIGENES Teilprojekt
   mit eigener Freischaltung planen, nicht als Erweiterung des vorhandenen
   Kraken-Spot-Wegs.
+
+### Margin-Positionen liegen NICHT im Guthaben — und der Stop muss sie SCHLIESSEN
+
+Wenn Positionen "auf Kraken" abgesichert werden sollen, sie aber in keiner
+Bestandsliste auftauchen: **drei verschiedene Orte pruefen, in dieser
+Reihenfolge** — Guthaben (`BalanceEx`, alle Waehrungen), offene
+MARGIN-Positionen (`OpenPositions`, signiert) und erst danach die
+Futures-Brieftasche (eigener Zugang). Gemessen: SUI, ZEC und NEAR waren weder in
+`BalanceEx` noch im OKX-Konto, sondern als sechs SUIEUR-, eine NEAREUR- und eine
+XZECZUSD-Margin-Position offen. **Aus "steht nicht im Guthaben" folgt nicht
+"hat er nicht".**
+
+`OpenPositions` gibt je Position: `vol`, `cost`, `margin`, `ordertxid`,
+`posstatus`, `terms` (das ist die ROLLOVER-Gebuehr, z. B. `0.0200% per 4 hours` —
+NICHT der Hebel) und `rollovertm`. Der Einstieg ist `cost / vol`.
+
+- **Ein gewoehnlicher Verkaufsstop scheitert** (`EOrder:Insufficient funds`): die
+  Stuecke gehoeren nicht der Brieftasche, sie sind geliehen/auf Margin gekauft.
+- **Richtig ist die VERKNUEPFTE Schlussorder.** `AddOrder` mit
+  `close[ordertxid]=<ordertxid der Position>`, `close[ordertype]=stop-loss`,
+  `close[price]=<Preis>` PLUS die Hauptfelder (`type=sell`,
+  `ordertype=stop-loss`, `volume=<Menge der Position>`, `price`, `leverage`).
+  Kraken antwortet dann `descr.close = "close position @ stop loss ..."` und setzt
+  das Flag `c` in `oflags` (`QueryOrders` zeigt beides). Wird die Position von
+  Hand geschlossen, verschwindet der Stop mit ihr. **Ohne die Verknuepfung bleibt
+  ein nackter Verkaufsstop stehen, der bei fehlender Position einen SHORT
+  aufmacht** — der teuerste Fehler dieses Wegs.
+- **Menge = Menge der POSITION, nie mehr** (sonst dreht der Rest short); der Hebel
+  muss im Erlaubten des Paares liegen (`AssetPairs[paar].leverage_sell`; gemessen
+  SUIEUR bis 10, NEAREUR bis 3, XZECZUSD bis 5). Fuer eine schliessende Order ist
+  er Formsache — Hauptsache innerhalb der Grenze.
+- **`validate=true` nimmt Kraken fuer alle diese Formen an.** Eine Probe kostet
+  nichts und zeigt die Beschreibung, die Kraken versteht ("sell 30.694 SUIEUR @
+  stop loss 0.8140 with 5:1 leverage" + "close position @ stop loss 0.8140") —
+  vor jeder echten Order zeigen, was sie bewirkt.
+- **Staub ist nicht orderbar:** liegt die Menge unter `ordermin`/`costmin` des
+  Paares, wird die Position uebersprungen und GEMELDET (gemessen: 0,00000023 NEAR).
+- **Ein Stop ueber dem Markt ist kein Schutz, sondern ein sofortiger Verkauf.**
+  Liegt "Einstieg minus X %" ueber dem aktuellen Kurs (Einstieg ueber dem Markt),
+  Position ueberspringen und den Grund nennen — nicht stillschweigend ordern.
+- Diese Positionen gehoeren KEINER Spur: sie stehen in keinem Buch, keine
+  Spiegelung kennt sie. Im Bericht als Konto-Zeile fuehren (Position, Menge,
+  Einstieg, Stop, Kennung) und **keine Buchzeile erfinden** — der Abgleich
+  Buch <-> Boerse darf sie nicht als "fehlend" zaehlen.
+- Werkzeug: `Agenten/Handel/kraken/margin_stops.py` (Vorschau Standard,
+  `--anwenden` ordert, `--prozent`); die Orderfelder haengen an
+  `kraken.stop_setzen(..., leverage=..., close_txid=...)` — rueckwaerts
+  kompatibel, alle bisherigen Aufrufer bleiben unveraendert.
+
+### Dasselbe Paar, zwei Schreibweisen - nie roh vergleichen
+
+Kraken nimmt in der Order-Anfrage `XXBTZEUR` / `XETHZEUR`, liefert in der offenen
+Order (`/0/private/OpenOrders`, Feld `descr.pair`) aber die KURZE Form `XBTEUR` /
+`ETHEUR`. Ein Abgleich Buch <-> Boerse ueber die rohen Zeichenketten findet die
+Positionen dann nicht und haelt geschuetzte Positionen fuer ungeschuetzt (nur das
+Paar ohne X/Z-Praefix, z. B. `SOLEUR`, passt). Beide Seiten auf (Basis, Quote)
+zurueckfuehren: X/Z-Praefixe und Aliasse aufloesen, Quote-Kandidaten nach Laenge
+absteigend probieren (`ZEUR` VOR `EUR`, sonst bleibt das `Z` am Basisnamen haengen),
+dann vergleichen.
+
+- `kraken.offene_orders()` (lesend, `/0/private/OpenOrders`) liefert
+  `{txid: {paar, seite, art, menge, preis, eroeffnet}}` - damit ist der Schutz einer
+  Position belegbar und die Kennung ins Buch nachtragbar
+  (`mosaic/stops_nachziehen.py`, Vorschau Standard, `--anwenden` schreibt mit `.bak`
+  und spiegelt). Ein Buch ohne Stop-Kennung kann den Stop spaeter nicht stornieren
+  oder ersetzen - ein Waisen-Stop faellt niemandem auf.
+- Ein Stop gehoert nur zu SEINER Position: Paar UND Menge muessen passen
+  (Toleranz ~1 %, Boersen runden). Ein Stop ueber eine andere Menge ist nicht der
+  Schutz dieser Position.
+- **Eine fehlende Waehrung in der Kontoliste ist 0, kein Fehler.** Die
+  Guthaben-Werkzeuge blenden Nullbestaende standardmaessig aus: fehlt `ZEUR` in der
+  Antwort, ist das Guthaben 0 (und das Guthaben-Tor der Spur zu Recht zu), nicht der
+  Abruf kaputt.
+
+### Orderpreise: die Boerse rundet nicht, sie lehnt ab
+
+Ein Order-/Stop-Preis muss auf die Nachkommastellen des PAARES gerundet sein,
+sonst gibt es keinen Notausstieg: Kraken antwortet `EOrder:Invalid price:SOL/EUR
+price can only be specified up to 2 decimals` und die Position steht ohne Stop da
+(bei OKX heisst die Grenze `tickSz`). Je Paar verschieden (SOLEUR/XETHZEUR 2,
+XXBTZEUR 1, AKEEUR 8, KASEUR 5).
+
+- Runden **AUF** (Long-Stop nie tiefer als gerechnet) und das Ergebnis fertig
+  formatiert zurueckgeben — `str(float)` schreibt sonst `1e-08`, und die Boerse
+  liest das nicht als Zahl.
+- Die Rundung gehoert in die EINE Funktion, die den Preis setzt
+  (`kraken.stop_setzen`, `okx_spot.algo_stop_setzen`), nicht in jeden Aufrufer.
+- **Ohne Geld pruefen:** bei Kraken `AddOrder` mit `validate=true` (rechnet
+  durch, platziert nicht) — der gerundete Preis wird angenommen, der rohe nicht.
+- **Nach einem fehlgeschlagenen Einstieg, der zurueckverkauft wurde, kann eine
+  Order als WAISE stehenbleiben** (gesehen: eine Take-Profit-Verkaufsorder mit
+  `vol 0` fuer ein Paar ohne Position). Nach jedem Rueckverkauf `OpenOrders` UND
+  `orders-algo-pending` ansehen und den Befund als Konto-Zeile nennen, statt ihn
+  zu verschweigen.
+
+### Einen bestehenden Stop VERSETZEN: Kraken reserviert die Menge
+
+- **Kraken reserviert die Menge eines Stop-Loss.** Ein zweiter Stop auf dieselbe
+  Menge wird mit `EOrder:Insufficient funds` abgelehnt, obwohl die Position offen
+  ist. Reihenfolge beim AENDERN: alten Stop stornieren -> neuen setzen -> und wenn
+  das Setzen scheitert, den ALTEN sofort wiederherstellen. "Erst den neuen setzen,
+  dann den alten stornieren" klingt sicherer und ist es nicht: scheitert der neue
+  (z. B. an der Menge), steht die Position in der Zwischenzeit OHNE Stop da.
+- **Das Buch fuehrt brutto, die Brieftasche netto.** Die Boerse schreibt den
+  Netto-Zufluss gut (Gebuehr abgezogen): das Buch fuehrte 0,00066027 BTC,
+  verfuegbar waren 0,0006527067. Ein Stop ueber die Buchmenge scheitert — und
+  waehrend des Fehlversuchs ist die Position ungeschuetzt. **Stop-Menge =
+  min(Buchmenge, verfuegbar), ABGERUNDET auf die Lotstellen** (`stop_menge()`);
+  Aufrunden laesst die Order wieder scheitern.
+- **`OpenOrders` zeigt einen frisch gesetzten Stop nicht sofort.** Die Abfrage
+  direkt danach zaehlte 2 statt 3 Orders, eine Sekunde spaeter 3. Vor jeder
+  Aussage "der Stop fehlt" ein zweites Mal fragen — und nie aus der Liste allein
+  schliessen, dass eine Order abgelehnt wurde.
+- **Nach dem Handgriff das Buch aus den OFFENEN Orders nachziehen, nicht neu
+  ordern.** Ein zweiter `--anwenden`-Lauf wuerde den frisch gesetzten Stop
+  stornieren und einen dritten setzen. Dafuer ein eigener Modus (`--nur-buch`):
+  je Position Stop, Kennung und Menge aus `offene_orders()` uebernehmen, verglichen
+  ueber (Basis, Quote) — sonst passt `XXBTZEUR` nicht auf `XBTEUR` und das Buch
+  meldet "kein Stop an der Boerse", obwohl einer liegt.
+- Ein Handgriff an echten Stops ist eine GELD-Aktion: erst rechnen und zeigen
+  (`--vorschau`), dann ausfuehren, danach die offenen Orders als Beleg nennen
+  (Kennung, Menge, Preis je Position).
+
+**Wie eine Spur eine Order ABGIBT, statt sie selbst auszufuehren (Freigabe-Beleg
++ ausfuehrende Hand): `references/beleg-und-hand.md`.**
 
 ### Kraken `EAPI:Invalid nonce` — ein Sequencing-Problem, kein Schluessel-Problem
 
@@ -126,12 +258,28 @@ Datei-Lock. Fuer die Sperre das **O_EXCL-Sperrdatei-Muster** verwenden —
 Permission denied. Nur wenn alle Sender denselben Pool nutzen, ueberholt
 niemand mehr; die Laufzeitdatei ist strikt lokal (nie committen).
 
+**Die EINHEIT des nonce ist die zweite Falle, und sie kommt von AUSSEN.** Kraken
+vergleicht nur "groesser als der gemerkte Peak", unabhaengig von jeder Einheit -
+wer in Mikrosekunden rechnet, ist gegen ein Werkzeug in NANOSEKUNDEN rund eine
+Million Mal kleiner, und danach wird JEDE eigene Abfrage abgelehnt (gemessen: die
+offizielle `kraken-cli` signiert in ns, ~1,78e18; nach EINEM Aufruf kam von der
+ganzen Hausseite nur noch `EAPI:Invalid nonce`). **Regel: die eigene Nonce-Einheit
+muss die GROESSTE sein, die irgendein Werkzeug auf denselben Schluessel sendet.**
+Vor dem Anbinden eines zweiten Clients seine Einheit MESSEN (Sonde
+`Agenten/Hermes/cache/kraken_nonce_sonde.py`) und den Pool heben -
+`max(int(time.time()*1e9), letzter+1)`: `max()` haelt die Datei monoton, ein
+Sprung nach OBEN ist harmlos, ein Wert darunter toedlich. **Das Symptom taucht
+meist NICHT an der Spur auf, die den zweiten Client benutzt:** sichtbar wurde es
+an der Live-Sperre einer ANDEREN Kraken-Spur ("Guthaben nicht abrufbar"), weil
+dort der erste signierte Leseaufruf des Zyklus scheiterte. Also nie nur die Spur
+pruefen, die umgebaut wurde.
+
 **Zwei Fallen, die ein Pool NICHT loest — beide gemessen 2026-09-19:**
 1. **Drift-Korrektur (nonce = Serverzeit statt Wallclock) macht es SCHLIMMER**
    und ist der falsche Weg. Sie senkt den nonce UNTER den von parallelen
    Sendern gesetzten Kraken-Peak → dauerhaft `EAPI:Invalid nonce`. Die einzige
    nachweislich funktionierende Erhebung war die monotone **Wallclock**
-   (`max(time.time()*1e6, letzter+1)` — die 5/5-Sonde). Nicht "korrigieren",
+   (`max(time.time()*1e9, letzter+1)` — die 5/5-Sonde). Nicht "korrigieren",
    sondern den gemeinsamen Zaehler streng monoton halten.
 2. **Sitzt der Kraken-seitige nonce-Peak STUNDEN ueber der aktuellen Zeit,
    hilft kein lokaler Pool.** Wenn monotone nonces in normalem Bereich ueber
@@ -272,6 +420,33 @@ Fallen:
 - Eine neue Komponente lage() bekommt das Instrument, nicht die Reihe:
   lage(k, ..., inst=<voller instId>, <name>_lage=<fertiges Ergebnis>), inst
   fuer den Abruf, das fertige Ergebnis fuer die Anzeige.
+
+### Zwangsschluesse (Liquidationsbaender) — der Strom zeigt die Vergangenheit
+
+- **Der oeffentliche Strom ist ein Ausschnitt, kein Bestand.** `/api/v5/public/
+  liquidation-orders` liefert nur die letzten ~100 Eintraege; gemessen deckten die
+  100 Eintraege 1,8 bis 14,7 Minuten ab, der juengste war 0,6 bis 26 Minuten alt.
+  Wer "die Wand der letzten Stunde" rechnet, rechnet auf Minuten — die Zeitspanne
+  des Abrufs vor der Deutung messen und im Bericht mitnennen.
+- **Die SEITE eines Bandes ist die Richtung des letzten Laufs, keine Eigenschaft
+  des Bandes.** Longs werden beim FALLEN liquidiert, Shorts beim STEIGEN; in
+  beiden Messungen waren 100 von 100 Liquidationen Longs. Eine short-liquidierte
+  Wand, die eine Long-Spur braucht, existiert nur mitten in einem Aufwaertsimpuls.
+- **Ein Band entsteht dort, wo der Kurs GERADE WAR.** Das groesste Band lag 0,25 %
+  UEBER dem Spot und bestand ganz aus liquidierten Longs: die Verkaeufe sind
+  durch das Band gelaufen, der Kurs war schon darunter. Eine Regel "die Wand muss
+  VOR dem Kurs liegen (in Handelsrichtung)" ist damit fast nie erfuellbar — die
+  Spur meldet "falsche Seite" und schweigt, obwohl der Cluster real ist.
+- **Richtig ist eine Toleranz HINTER dem Kurs** (`hinter_dem_spot_prozent`, 0,5 %):
+  der Cluster zaehlt als Beschleuniger, auch wenn er knapp hinter dem Kurs sitzt;
+  die Entfernungsgrenze (`max_abstand_prozent`) bleibt der Deckel, `0` stellt die
+  strenge Fassung wieder her. Die These bleibt "MIT dem Cluster", nur die
+  Lageanforderung wird weicher — eine Liquidationswand ist ein Beschleuniger, kein
+  Widerstand.
+- Eine Wache, die "falsche Seite" meldet, ist eine LAGEaussage, kein Fehler: sie
+  sagt, dass der Impuls vorbei ist. Beim Nachmessen Abstand UND Masse mitdrucken
+  (Sonde `liq_wand/probe_seiten.py`), sonst ist "falsche Seite" nicht von "Daten
+  fehlen" zu unterscheiden.
 
 ## Eine neue Fremd-API anbinden: erst messen, dann bauen
 

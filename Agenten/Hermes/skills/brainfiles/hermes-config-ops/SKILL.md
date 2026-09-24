@@ -608,6 +608,31 @@ geparst und Zielwerte assertiert, LF-only-Zeilen 0. Rezept, Entscheidungstabelle
 Zeitbudget und die Liste "was nicht angefasst wird":
 `references/profilflotte-audit.md`.
 
+## Repo-Bot in Minuten: Geschwisterprofil kopieren (schnellster Weg)
+
+Fuer einen Bot auf einem FREMD-REPO ist das Kopieren eines bestehenden Bot-Profils
+kuerzer als `--clone-from` (das die Skill-Bibliothek mitbringt, hier aber oft die
+falsche ist) und viel kuerrzer als der Notfallweg Schritt 1-8:
+
+1. `hermes profile create <name> --no-alias` — legt Config, `SOUL.md` und `.env` an.
+2. Aus einem bestehenden Bot-Profil `config.yaml` uebernehmen und **nur den Repo-Pfad
+   umschreiben** (`Repos\<vorbild>` -> `Repos\<neu>`); `terminal.cwd` ist in der
+   Flotte ABSOLUT (`C:\...\Werkstatt\Repos\<name>`) — den Hausstil uebernehmen, nicht
+   einen relativen Pfad erfinden. Die Vorlagen-Config als `.bak-vorlage` daneben legen.
+3. `profile.yaml` mitkopieren und **die Beschreibung sofort setzen**
+   (`hermes profile describe <name> --text "..."`): die Kopie traegt den Text des
+   Vorbilds wortwoertlich, und `/bots` zeigt dann den falschen Zweck — bei diesem
+   Nutzer die einzige Stelle, an der er die Rolle eines Bots nachliest.
+4. `.env` des Vorbilds uebernehmen (nur Namen und Laengen pruefen, Werte nie ausgeben).
+5. Modell/Provider der Kopie gegenpruefen (`grep -n "^  provider:\|^  default:"`
+   `<profil>/config.yaml`), Fallback-Kette lesen
+   (`hermes -p <name> fallback list`), dann `auth.json` verknuepfen (Abschnitt oben).
+6. **Beleg ist ein echter Auftrag, nicht die Dateiliste:**
+   `hermes -p <name> chat -q "Nenne Startordner, Repo und die Datei, in der die Rohdaten liegen." -Q`.
+   Ein Bot, der ohne `auth.json` nur ueber den Ollama-Rueckfall antwortet, ist
+   einsatzbereit — aber das im Bericht sagen, statt die Anmeldung als erledigt
+   darzustellen.
+
 ## Ein neues Profil OHNE Repo anlegen (Wartungsbot-Muster)
 
 Ein Profil, dessen Arbeitsbereich ein Hausordner ist statt eines Fremd-Repos
@@ -771,7 +796,15 @@ nicht am Befehl. Reihenfolge, die keinen UAC-Klick kostet: (1) `New-Item
 `-NoProfile -Command "New-Item -ItemType SymbolicLink -Path <ziel> -Target <root>"`;
 (3) erst dann das Hausskript erhoeht (UAC, `auth-verknuepfen.ps1` braucht `-Anwenden`,
 ein Aufruf ohne den Schalter ist ein TROCKENLAUF und legt nichts an). Danach mit
-`os.path.islink()` gegenpruefen, nicht mit `os.path.exists()`. **Ein Symlink ist keine
+`os.path.islink()` gegenpruefen, nicht mit `os.path.exists()`.
+**Die Leiter NICHT ueberspringen — und den UAC-Weg nie aus einer Nachtsitzung.**
+Das Hausskript direkt nicht-erhoeht aufzurufen liefert nur
+`Administratorrechte erforderlich` (erwartet, kein Befund), und der naechste Griff
+nach `Start-Process -Verb RunAs ... -Wait` ist der teure Fehler: ohne Nutzer am
+Geraet bleibt der Prompt unbeantwortet, das `-Wait` laeuft ins Zeitlimit und der
+Schritt bleibt offen, obwohl Stufe (1) oder (2) ihn in Sekunden erledigt haette.
+Erhoehte Schritte gehoeren in den Bericht als offener Punkt fuer den Nutzer, nicht
+in einen Warteversuch. **Ein Symlink ist keine
 Kopie** — die Begruendung oben gilt unveraendert; wo schon eine eigene `auth.json`
 liegt, nicht ueberschreiben. Fuer EIN
 Profil ist das der kuerzere Weg als das Skript samt UAC-Prompt. **`-PassThru` und

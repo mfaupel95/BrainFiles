@@ -1,6 +1,6 @@
 ---
 name: skill-library-sync
-description: "Skills zwischen Vault (Claude) und Hermes abgleichen, einzelne Fremd-Skills übernehmen."
+description: "Skills zwischen Vault und Hermes abgleichen und übernehmen."
 version: 0.1.0
 author: Hermes Agent
 license: MIT
@@ -44,8 +44,10 @@ geladene Bibliothek prüfen. Der Vault bleibt Quelle und wird zeichengleich
 | `Agenten/Hermes/skills/<sachkategorie>/<name>/` | Ziel für Skills im Hermes-Format |
 | `Agenten/Hermes/.sicherung/` | Sicherung ersetzter Dateien |
 
-**Nicht die eigene Bibliothek:** `MaxHirn/skills/` (geklonte Fremd-Repos) und
-`MaxHirn/codex/` (Codex-CLI samt `skills/src/assets/samples/`). Aus fremden Bäumen
+**Nicht die eigene Bibliothek:** der geklonte Skill-Fundus (geklonte Fremd-Repos;
+seit dem Umzug ausserhalb BrainFiles — den aktuellen Pfad in
+`Agenten/Werkzeuge/fundus-suche.ps1` nachlesen, nicht aus einer Notiz uebernehmen)
+und `MaxHirn/codex/` (Codex-CLI samt `skills/src/assets/samples/`). Aus fremden Bäumen
 nichts importieren — die Beispiele dort gehören anderen Werkzeugen.
 
 Erreichbar bleiben sie trotzdem, ohne Import: Skill `fundus-zugriff` sucht sie auf
@@ -104,6 +106,12 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Sicherheitsscan mit Verdikt (`SAFE` / `BLOCKED`), dann
    `Installed: <kategorie>/<name>`. `--force` nur bei blockiertem Verdikt und nur
    nach dem Lesen der Scanbegründung. Fehlt ein `name:` im Frontmatter, `--name` setzen.
+   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt/Repos`) gibt es **keinen**
+   Hub-Scan — den vor dem Uebernehmen selbst scannen: Ablauf, Regelbedeutungen und
+   die zwei Fallen des Scanners in `references/sicherheitsscan.md`. Die fertige
+   Schleife (alle Skill-Ordner einer oder mehrerer Wurzeln, Hash-Dedupe,
+   `--arbeiter N`, ein JSON je Skill) liegt als `scripts/skillbibliothek-scan.py`
+   daneben.
 3. **Vor dem Nehmen prüfen, was es sonst gibt:** `hermes skills search <wort>`
    listet die Register (skills.sh, clawhub, …) mit Quelle und Vertrauensstufe.
    Oft existiert schon eine gepflegte Fassung, dann ist der Fremd-Klon unnötig.

@@ -22,6 +22,15 @@ Aufrufe, die scheitern und dabei nach einem Code-Fehler aussehen:
   'pruefe_einstieg'. Did you mean: 'pruefe_einstiege'?` — der Test laeuft, prueft
   aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
   lassen, bevor der eigene Code verdaechtigt wird.
+  **Und der Fix im Testmodul selbst: `sys.path.insert(0, p)` OHNE die Bedingung
+  `if p not in sys.path`.** Die Bedingung sieht vorsichtig aus und ist genau der
+  Fehler: hat eine Nachbarspur `HANDEL`/`scanner` schon eingetragen, bleibt der
+  EIGENE Spurenordner hinten stehen und `import handeln` holt weiter das fremde
+  Modul — die REIHENFOLGE der `insert`-Aufrufe entscheidet, nicht die Absicht. Die
+  eigene Spur zuletzt einfuegen (dann liegt sie vorne) und die Annahme im
+  Testmodul absichern: `assert h.__file__.startswith(SPUR)`. Ein zweites Signal:
+  meldet dieselbe Suite nach dem Fix ploetzlich MEHR Tests als vorher, hat sie
+  vorher ein fremdes Modul geprueft (dessen Testklassen fehlten).
 
 **Zwei Fehlschlaege sind VORBESTEHEND und trotzdem kein Befund.** Bevor eine
 Suite-Fehlermeldung der eigenen Aenderung zugeschrieben wird, die Testdatei
@@ -41,8 +50,6 @@ selbst lesen:
   `scanner/handeln.py`. Symptom: `AttributeError: module 'handeln' has no attribute
   'pruefe_einstieg'. Did you mean: 'pruefe_einstiege'?` — der Test laeuft, prueft
   aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
-  lassen, bevor der eigene Code verdaechtigt wird.
-
 ## Tests gegen echte Laufzeitdateien schuetzen: das Modul patchen, das den Pfad BESITZT
 
 Ein Test, der die Pfad-Konstante des falschen Moduls patcht, liest still die

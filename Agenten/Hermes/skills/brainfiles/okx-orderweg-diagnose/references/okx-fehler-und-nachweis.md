@@ -7,15 +7,24 @@
 | `51000` | Parameter ungueltig | Ein Wert ist leer/`None` (z. B. `ordId`, weil die Position keine Order-Kennung hat). `urlencode` schreibt `None` als Text „None". |
 | `51603` | Order unbekannt | Kennung formal gueltig, aber die Order existiert nicht / liegt ausserhalb des Orderhistorie-Fensters. |
 | `51008` | zu wenig Guthaben | Quote-Waehrung des Paares ist leer (0 USDT bei gefuelltem USDC). |
-| `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`). |
+| `50119` | Key existiert nicht (in dieser Umgebung) | **Haeufigster Grund ist der falsche HOST**, nicht ein toter Schluessel: der Schluessel kam ueber den Registry-Rueckfall, der Host aber nicht (nur `os.environ`) — ein EEA-Schluessel gegen `www.okx.com` gibt genau diesen Code. Erst die Basis pruefen, dann den Schluessel. |
+| `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
 
 Merksatz: `51000` ist ein FORMfehler (der Wert selbst), `51603` ein
 EXISTENZfehler. Wer beides verwechselt, sucht am falschen Ende.
 
+**`50119`/`50101` vor jeder Schluessel-Theorie gegen den Host pruefen.** Der Schluessel
+wird mit Registry-Rueckfall gelesen, der Host muss es genauso. Probe ohne Netz:
+`env -u OKX_BASE <venv>/python.exe -c "import okx; print(okx._live_basis())"` — kommt
+die Kontakt-Basis, ist der Prozess in Ordnung; kommt die globale, hat der Aufrufer den
+Schluessel nur ueber die Registry gefunden. Den Host im Fehlertext MITNENNEN (welcher
+angesprochen wurde und welcher in der Registry steht), sonst sucht der Naechste wieder
+beim Schluessel.
+
 ## Beleg-Rezept (signiert, rein lesend)
 
-Aus dem Spur-Ordner, Haus-Modul `okx.py` (liest Keys aus Prozessumgebung, sonst
-aus `HKCU\Environment`):
+Aus dem Spur-Ordner, Haus-Modul `okx.py` (liest **Schluessel UND Host** aus
+der Prozessumgebung, sonst aus `HKCU\Environment`):
 
 ```python
 import sys
@@ -24,13 +33,26 @@ import okx
 print("Basis:", okx._live_basis())            # IMMER zuerst: sonst deutet man
 print("Key da:", okx.schluessel_vorhanden())   # den Fehler der falschen Umgebung
 
+# Handelsrecht des Schluessels (perm muss 'trade' enthalten) + IP-Sperre ('ip' leer)
+d = okx._roh("/api/v5/account/config", "GET", signiert=True)
+r = (d or [{}])[0]
+
 # Kontostand EINER Waehrung: details == [] bedeutet Bestand 0
 okx._roh("/api/v5/account/balance?ccy=NEAR", signiert=True)
 
 # Orderhistorie EINES Instruments (Fenster ca. 7 Tage): [] = keine Order
 okx._roh("/api/v5/trade/orders-history?instType=SPOT&instId=NEAR-USDT&limit=20",
          signiert=True)
+
+# Steht fuer JEDE Live-Position ein Notausstieg? Ein fehlender ist ein Risiko.
+okx._roh("/api/v5/trade/orders-algo-pending?ordType=conditional",
+         "GET", signiert=True)
 ```
+
+**`okx._roh` gibt die DATA-LISTE zurueck, nicht das Antwort-Dict** (`code`/`msg`
+hängen intern). Wer `.get("code")` darauf aufruft, bekommt einen `AttributeError`,
+obwohl der Abruf geklappt hat — nicht als Fehler deuten, sondern die Liste lesen.
+Ein Fehlschlag kommt als `OKXFehler` mit Code und Text.
 
 Ausfuehren mit dem Spur-venv (`scanner/.venv/Scripts/python.exe`), Skript nach
 `Agenten/Hermes/cache/` schreiben und danach loeschen. Die Modulpfade sind der

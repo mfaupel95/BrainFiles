@@ -3,7 +3,7 @@ id: 20260922-claude-red-nerd-bot
 title: 'Werkzeuge — claude-red und der nerd-Bot'
 tags: [werkzeuge, bots, skills, sicherheit]
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 related: ['[[Werkzeuge/Fundus-Skills-Bots]]', '[[Werkzeuge/SkillSpector]]', '[[Wissen/Repo-Bots]]', '[[Lektionen/Wahrheit-pruefen]]']
 summary: 'Offensive-Security-Skill-Sammlung claude-red als Fundus-Faehigkeit und der Bot nerd dafuer; dazu der Befund, dass Windows Defender Teile des Repos sperrt.'
 ---
@@ -85,6 +85,18 @@ Probe ist ein echter Lesevorgang, und der Fundort ist
 `git checkout` und die vier Dateien sind lesbar). Der Ordner enthaelt keine
 Programme, nur Text — die Ausnahme ist eng, aber es ist eine Aenderung am
 Virenschutz und wird deshalb nicht ohne Zuruf gesetzt.
+
+## Zwei Fallen beim Anlegen
+
+- **`--clone` ist der falsche Weg und kann Muell hinterlassen.** Der erste Versuch
+  (`hermes profile create nerd --clone`) lief in den Abbruch und liess
+  `profiles/.nerd.staging-38880` stehen — eine **volle Kopie des Startprofils**
+  mit dessen `.env` (Kanalzugangsdaten) und Sessions, 599 MB. Sie traegt eine
+  `config.yaml` und stand als Phantom-Bot in `/bots`; `skillsbot.bot_namen()`
+  ueberspringt seit dem 23.09.2026 Punkte-Ordner. Fuer einen Bot mit Repo ist
+  `hermes profile create <name> --no-alias` + Nacharbeiten der bessere Weg.
+- **Symlink nur mit `pwsh` 7.** `powershell.exe` 5.1 verweigert den `auth.json`-Link
+  („Administratorrechte erforderlich"), `pwsh` 7 legt ihn ohne UAC an.
 
 ## Betrieb
 

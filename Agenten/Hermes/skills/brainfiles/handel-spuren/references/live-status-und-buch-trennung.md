@@ -40,6 +40,15 @@ AUSSERHALB von `tests/` und `.venv/`?
   Absicherung aus.
 - Eine Spur, deren Orderaufruf nur in einer `*_test.py` steht, hat ebenfalls keinen
   Live-Pfad im Betrieb.
+- **Die Sperre im CODE muss am ORDERWEG haengen, nicht am Schalter.** Seit dem
+  Sammelauftrag stehen `handel_erlaubt` UND `freigabe.erfuellt` in JEDER `wachen.json`
+  auf true; eine `_live_erlaubt()`, die nur diese zwei Felder liest, laesst `--live`
+  durch — und eine Spur ohne Orderaufruf schreibt dann ein Buch mit `modus=live`, das
+  an keiner Boerse existiert (dieselbe Fiktion wie ein Papierbuch im Live-Modus, nur
+  schwerer zu sehen). Muster: Modulkonstante `LIVE_ORDERWEG = False` plus eine REINE
+  Funktion `live_gate(modus) -> (modus, meldung)`, die `--live` immer auf Papier zieht
+  und den Grund nennt. Rein, damit der Test sie ohne Buchzugriff pruefen kann
+  (Form: `references/test-friert-stand-ein.md`, dritte Familie).
 
 ## 4. Ein Live-Lauf darf kein Papierbuch erben
 

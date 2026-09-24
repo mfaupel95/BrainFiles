@@ -54,3 +54,59 @@ Fenster hat selbst abgelehnt, Sekunden = kein Fenster im Spiel. Daneben
 `Agenten/Handel/freigabe_journal.jsonl` (Eintraege "abgelehnt, Grund
 Zeitlimit" = das Fenster ging auf) und das Dauerlauf-Log
 (`<spur> TIMEOUT (exceeded <n>s limit)`).
+
+## Aenderungen wirken ohne Neustart - der Neustart hat Nebenwirkungen
+
+- Der Dauerlauf startet jede Spur JEDEN Zyklus als Kindprozess (Eintrag in
+  `dauerlauf.SPUREN`: Ordner + Skript). Aenderungen an `<spur>/handeln.py`,
+  `wachen.json`, Adaptermodulen und Tests wirken damit im NAECHSTEN Zyklus - ein
+  Neustart des Dauerlaufs ist dafuer nicht noetig und nicht zu rechtfertigen.
+- Nur `dauerlauf.py` selbst braucht einen Neustart: Spurenliste, `NUR_BASIS`,
+  `AUTO_FREIGABE`, `TIMEOUT_S`.
+- **Ein Neustart ist nicht harmlos.** Eine neu gestartete Spur bewertet den
+  Herzschlag gegen den frischen Prozess; steht eine Live-Position, kann der erste
+  Zyklus sie flachstellen. Vorher offene Live-Positionen und
+  `freigabe_fenster.json` pruefen, Instanzen per PID beenden (nicht per
+  Prozessname), danach die Prozesszahl NACHZAEHLEN - ein fehlgeschlagenes
+  Beenden laesst zwei Treiber parallel laufen (Doppelorder-Risiko).
+- **Beleg, dass eine Aenderung greift:** `--vorschau` MIT `MAXHIRN_ROUTINE=1`
+  aufrufen (genau so ruft der Dauerlauf die Spur). Ohne die Variable beantwortet
+  der Lauf eine andere Frage; `(live) ok` im Log ist der Modus des AUFRUFS und
+  kein Beleg, dass eine Order moeglich waere.
+
+## Das Tor muss aus dem Zweig lesen, der SCHREIBT
+
+Der Herzschlag ist das Alter des letzten **Zyklus** - die Quelle muss der
+Zustand sein, den der **laufende** Zweig fortschreibt. Wird er aus dem
+Papierzustand gelesen, waehrend die Spur live faehrt, friert er ein: nach
+`herzschlag_max_minuten` sperrt sich die Spur SELBST, `--vorschau` meldet
+`Live waere gesperrt durch: Herzschlag alt`, waehrend das Dauerlauf-Log weiter
+`(live) ok` schreibt. Und weil die Auto-Freigabe GENAU EINEN Grund verlangt,
+(„nur das Fenster fehlt"), oeffnet sie weiter Fenster fuer einen Lauf, der
+nicht handeln kann.
+
+Richtig ist der **frischste** der beiden Staende (Papier UND Live, verglichen
+ueber `letzter_lauf`): nur Papier sperrt eine Spur, die nie live lief - das war
+der Grund, aus dem der Papierzustand ueberhaupt gelesen wurde -, nur Live ist
+ein Kreislauf.
+
+Merksatz: **Wenn ein Tor aus einem Zustand liest, muss es der Zustand des
+Zweigs sein, der schreibt.** Und `--vorschau` mit `MAXHIRN_ROUTINE=1` ist der
+einzige Beleg fuer den MODUS eines Laufs; `(live) ok` im Dauerlauf-Log ist der
+Modus des Aufrufs, kein Orderbeleg.
+
+## Guthaben-Tor: ERST deckeln, DANN das Fenster zeigen
+
+- `mindest_guthaben_*` ist die Untergrenze des freien Guthabens, damit der
+  **kleinste** Einsatz hineinpasst (`live_einsatz_min_*`). Ein Wert aus einer
+  frueheren Einsatz-Rechnung sperrt sonst den ganzen Zweig, sobald das Guthaben
+  darunter faellt - und der Sperrtext nennt nur das Guthaben, nicht die
+  veraltete Annahme dahinter.
+- Der Einsatz wird **zusaetzlich auf das freie Guthaben gedeckelt**
+  (`frei * (1 - gebuehr_taker - 0,2 %)`); unter der Untergrenze wird NICHT
+  gehandelt, mit Begruendung im Log. Ein Signal von 150 EUR bei 88 EUR frei
+  waere sonst eine abgelehnte Order - kein Handel, aber im Log nicht von einem
+  Signalfehler zu unterscheiden.
+- **Die Reihenfolge ist Teil der Regel:** erst deckeln, dann das Freigabefenster
+  oeffnen. Das Fenster (und die Freigabe am Bildschirm) muss den Betrag zeigen,
+  der wirklich ausgefuehrt wird.

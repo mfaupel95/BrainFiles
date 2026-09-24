@@ -115,12 +115,37 @@ Kill-Switch oder ein alter Herzschlag aus, dann schliesst `flach_stellen` auch
 Ergebnis: echte Position ohne Buch.
 
 - Regel: im Papierlauf bleiben `modus=live`-Positionen stehen und werden
-gemeldet; geschlossen werden sie ausschliesslich vom Live-Lauf.
-- Dasselbe gilt fuer `pruefe_ausstiege` im Papiermodus.
-- Beim Wiederherstellen einer echten Position: Werte aus der ERoeffnungszeile des
-  Journals nehmen, nichts schaetzen, und eine eigene Journal-Zeile mit
-  `grund=buchwiederherstellung` schreiben, damit der Eingriff nachvollziehbar ist.
-  Sicherung der Zustandsdatei vorher anlegen.
+  gemeldet; geschlossen werden sie ausschliesslich vom Live-Lauf.
+- **Die Regel gilt in JEDEM Zweig - und muss in JEDEM Zweig getestet werden.**
+  Ein Waechter im Live-Zweig (`live_ausstiege`, `flach_stellen_live`) sagt nichts
+  ueber den Papierzweig: dort lief `pruefe_ausstiege` weiter mit den eigenen
+  Kerzen und buchte eine echte Position mit `grund=ziel` aus, waehrend der
+  Live-Zweig dieselbe Position als "laufend" sah. Wer die Modus-Trennung an einer
+  Stelle einbaut, hat sie an der falschen eingebaut.
+- **Der Kill-Pfad des Papierzweigs zaehlt mit:** `z["positionen"] = []` loescht
+  auch Live-Positionen. Regel in eine eigene, pruefbare Funktion ziehen
+  (`nur_papier_verwerfen(z)`) statt als Zeile in `lauf()` stehen zu lassen.
+- **Ein einziger Papierzyklus genuegt fuer den Schaden.** Die Luecke zwischen
+  Ablauf und Auto-Freigabe des Freigabefensters (Sekunden bis Minuten) ist ein
+  normaler Betriebszustand, kein Randfall - genau dort entsteht der Geist.
+- **Testform fuer den PAPIERzweig** (der Live-Test deckt das nicht ab):
+  Live-Position UND Papier-Position ins Buch, Kerze ueber dem Ziel und eine unter
+  dem Stop -> die Live-Position bleibt stehen, die Papier-Position wird verkauft,
+  im Journal steht nur der Papierverkauf; dazu der Kill-Pfad und ein leeres Buch
+  (kein KeyError).
+- **Falschbuchung richtig zuruecknehmen:** die `papier,verkauf`-Zeile ist sachlich
+  falsch und erzeugt sonst eine Runde, die nie stattfand. Sie nach
+  `handelsjournal.verworfen-JJJJMMTT.csv` sichern, aus dem Journal entfernen und
+  durch `live,anpassen,<inst>,<seite>,...,buch_nachgezogen_boerse` ersetzen
+  (`anpassen` paart keine Runde). Vorher `.bak-JJJJMMTT` von Zustand UND Journal.
+- **Werte fuer die Rueckbuchung von der Boerse holen, nicht aus dem Buch:**
+  Guthaben (Menge) + offene Order-Algos (Stop-Kennung) lesen, die
+  Eroeffnungszeile des Journals gegenlesen, nichts schaetzen.
+- **Zurueckbuchen heisst NICHT "der Live-Zweig verkauft sie gleich":** Stop und
+  Ziel der wiederhergestellten Position sind in der Waehrung ihrer Boerse gerechnet
+  und der Live-Zweig entscheidet mit dem Kurs DIESER Boerse (siehe
+  `zweite-boerse.md`). Ein Ziel, das im Papierzweig "erreicht" war, kann live weit
+  entfernt sein - erst nachsehen, dann erwarten.
 
 ## 5. Nach jeder Wiederherstellung: hat die Position einen Stop?
 
@@ -132,6 +157,58 @@ Ist die Liste leer, den Stop mit den Werten der Eroeffnungszeile nachsetzen
 (`/api/v5/trade/order-algo`, `ordType=conditional`, `slTriggerPx`, `slOrdPx=-1`,
 `reduceOnly=true`, Gegenrichtung der Position). Eine gehebelte Position ohne Stop
 laeuft bis zur Liquidation, wenn der Rechner ausfaellt.
+
+### 5a. Was der Ausstieg zuerst ABBESTELLT, muss er bei einem Fehlschlag zuruecklegenn
+
+Ein Live-Verkauf bestellt VOR der Verkaufsorder den boersenseitigen Schutz-Stop
+ab (sonst nimmt der Stop die Verkaufsorder weg). Scheitert der Verkauf danach -
+andere Fehlermeldung, falscher Host, abgelehnte Order -, steht die Position
+**ohne Stop** an der Boerse: gehebelt bis zur Liquidation, und im Buch sieht sie
+unveraendert aus. Der Verlust waere nicht aus dem Journal ablesbar.
+
+- Jeder Ausstiegspfad braucht den Rueckweg: scheitert der Verkauf, den Stop mit
+  der **echten Fuellungsmenge** wieder anlegen und das in die Meldung schreiben.
+- Probe je offener Live-Position:
+  `/api/v5/trade/orders-algo-pending?ordType=conditional` - eine Position ohne
+  Eintrag dort ist ungeschuetzt.
+- Testform: den Bestellweg stilllegen und `markt_verkauf` scheitern lassen; der
+  Test muss danach eine **Stop-Bestellung** sehen, nicht nur "kein Absturz".
+- Merksatz: eine Operation in zwei Schritten (abbestellen, dann handeln) ist erst
+  fertig, wenn der Abbruch sie rueckgaengig macht.
+
+### 5b. Ein Stop-MERKER braucht Dedupe und eine Wache
+
+Lässt sich ein boersenseitiger Stop beim Ausstieg nicht abbestellen, merkt sich die
+Spur ihn (`zustand["offene_stops"]`) und versucht es im naechsten Live-Lauf erneut.
+Zwei Fehler, die dabei entstehen, sind unsichtbar und wachsen:
+
+- **Das Storno braucht die `instId`.** OKX antwortet auf `cancel-algos` ohne sie mit
+  `50014 Parameter instId can not be empty` - der Stop ist dann NIE abbestellbar, und
+  jede Runde meldet "bleibt liegen". Gemessen am EEA-Host: mit `instId` kommt fuer
+dieselbe Order `51400 … has been filled, canceled or does not exist`. **`51400` heisst
+  erledigt, nicht Fehler** - wer es als Fehler wertet, laesst den Merker fuer immer
+  stehen. Alteintraegen ohne Instrument die `instId` lesend nachholen (`order-algo`
+  liefert `instId` und `state`).
+- **Ein Merker, der nur beim Erfolg faellt, braucht einen Dedupe.** Ohne Duplikat-Schutz
+  haengt jeder weitere Ausstiegsversuch denselben Stop erneut an; solange zugleich der
+  Verkauf scheitert (z. B. falscher Host -> `50119`), bleibt die Position im Buch und der
+  naechste Zyklus merkt wieder - der Zaehler waechst unbemerkt, waehrend der Schalter
+  "ok" meldet.
+
+Regel: **jeder Merker, der wachsen kann, gehoert in eine Wache.** Die Wache
+(`Agenten/Hermes/scripts/live_wache.py`, `stop_lage`) vergleicht in BEIDE Richtungen -
+Stop an der Boerse ohne Position (Waisenstop: kann eine spaetere Position zum alten
+Preis verkaufen) und Position ohne Boersenstop (kein Notausstieg) - und meldet nur den
+WECHSEL der Lage, sonst stuende dieselbe Zeile in jedem Takt.
+
+Aufraeumen des Bestands (eigenes Werkzeug, Vorschau Standard, `--anwenden`): je Eintrag
+den ECHTEN Boersenzustand lesen, erledigte und doppelte entfernen, unlesbare STEHEN
+LASSEN (lieber behalten als eine echte Order vergessen), Waisen nur mit ausdruecklichem
+`--stornieren` abbestellen. Eine Zustandsdatei, die juenger ist als ein Zyklus, nicht
+anfassen - der laufende Zyklus ueberschreibt die Aenderung ohnehin und man verliert eine
+Buchung. Nachweis: Buch gegen Boerse zaehlen
+(`/api/v5/trade/orders-algo-pending?ordType=conditional`), beide Richtungen muessen
+leer sein.
 
 ## 6. Sperre aufloesen heisst: die Ursache mit aufloesen
 
@@ -160,6 +237,13 @@ Zeitgrenze laeuft oder abstuerzt, **gar nichts**: Q: bleibt stehen, und
 - Ein Vorschau-Lauf schreibt nichts - die Spiegelung dort nicht erwarten.
 - Beweis: `mtime` von Q:-Datei gegen die lokale Datei halten, dann
   `spiegelstand.py` (muss alle Spuren byte-gleich melden).
+- **Ein Ausgang kann jeden Ausgang vergessen** - der Zyklus hat mehrere
+  (`--wachen`, "kein Bericht", abgebrochener Lauf, Notausstieg). Dagegen hilft ein
+  Test, der die QUELLE liest und vor JEDEM `return` der `lauf()`-Funktion eine
+  Spiegelung verlangt (`test_spiegelung_jeder_zyklus.py`): er faellt bei jeder
+  neuen Rueckkehr, auch bei einer, die es heute noch nicht gibt. Eine Zusicherung
+  auf "spiegelt am Ende" fangen den Fall nicht ab, weil der abgebrochene Zyklus
+  das Ende nie erreicht.
 
 ## 8. Ein Dienstprozess ist keine Sitzung am Bildschirm
 
@@ -259,3 +343,42 @@ Vorschau nennt keinen Sperrgrund, und es entsteht trotzdem keine Position.
   offenen Befund benennen, nicht als Rechnung ausgeben.
 - Die Zeile "Live waere gesperrt durch: nichts" heisst nur: **kein Tor sperrt.**
   Sie ist kein Beleg, dass ein Kauf zustande kommt.
+
+## 13. Die Live-Sperre haengt am ORDERWEG, nicht am Schalter
+
+Ein Sammelauftrag ("schalte alle Spuren scharf") setzt `handel_erlaubt=true` UND
+`freigabe.erfuellt=true` in JEDER `wachen.json` — auch in Spuren, die gar keinen
+Orderaufruf haben. Eine Live-Sperre, die nur diese zwei Felder liest, laesst
+`--live` danach **ueberall** durch. Fuer eine Spur ohne Orderweg heisst das:
+sie schreibt Buchungen mit `modus=live`, die an keiner Boerse existieren — genau
+das Muster "Buch war Fiktion", nur diesmal vom eigenen Tor erzeugt statt von
+einem Papierlauf.
+
+- Die Sperre prueft den **Orderweg** (Konstante `LIVE_ORDERWEG = False` bzw. das
+  Vorhandensein des Boersenmoduls), nicht die Schalter. Ein Schalter, der
+  ueberall an ist, sagt nichts mehr.
+- Die Entscheidung als **reine Funktion** bauen (`live_gate(modus) -> (modus,
+  meldung)`), die `main()` aufruft: so kann der Test beide Faelle pruefen, ohne
+  `main()` zu starten — und ohne dass ein Testlauf in das echte Buch schreibt.
+- Der Text nennt den GRUND ("diese Spur hat keinen Orderaufruf"), nicht nur das
+  Ergebnis; sonst sieht die Verweigerung wie ein fehlender Schalter aus und wird
+  beim naechsten "schalte alles scharf" wieder aufgemacht.
+- Gegenprobe: `handeln.py --live` im Kindprozess starten und pruefen, dass die
+  Verweigerungszeile kommt — nicht nur, dass `wachen.json` false traegt.
+
+## 14. Beim Abgleich Namen normalisieren, nicht vergleichen
+
+Dieselbe Boerse nennt dasselbe Paar in zwei Schreibweisen: Kraken traegt in der
+Order-Anfrage `XXBTZEUR`/`XETHZEUR`, in der Liste der offenen Orders aber
+`XBTEUR`/`ETHEUR`. Ein Abgleich ueber den rohen String findet dann 1 von 3 Stops
+und liest sich wie eine Datenluecke ("Kennung fehlt") statt wie ein Namensproblem.
+
+- Vor jedem Vergleich **auf (Basis, Quote) zurueckfuehren** (X/Z-Praefixe und
+  Fuellzeichen entfernen, Gross-/Kleinschreibung vereinheitlichen) und erst dann
+  paaren; die Normalisierung gehoert in EINE Funktion, die alle Aufrufer nutzen.
+- Dasselbe gilt fuer Instrument-Schreibweisen zwischen den Boersen (OKX `BTC-USDC`
+  gegen Kraken `XXBTZEUR`) — eine Abbildungstabelle, kein `if` je Aufrufstelle.
+- Ein Abgleich, der weniger Treffer liefert als erwartet, ist zuerst ein
+  Namensverdacht, dann erst ein Datenverdacht. Beleg: nach der Normalisierung
+  fanden sich alle drei Stop-Kennungen, ohne dass sich an der Boerse etwas
+  geaendert hatte.

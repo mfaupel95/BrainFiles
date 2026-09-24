@@ -42,9 +42,37 @@ eigenen Zahlen, Gewichte liegen nicht auf C:.
 - Ergebnis in den Bericht als "gemessen auf dieser Maschine" — nie die
   Herstellerangaben (T4-Latenzen, Benchmark-Genauigkeit) als eigene Zahl
   weitergeben.
+- **Bei einer Prognose gehoert die NULLINIE daneben.** Ein Zeitreihen-Modell,
+  das den letzten Kurs fortschreibt ("aendert sich nicht"), ist der
+  Vergleichsmassstab: mittlerer Fehler und Richtungstreffer des Modells GEGEN
+  dieselben Groessen der Nullinie stellen. Bericht ohne diese Zeile ist keine
+  Messung. Und: ein, zwei Hold-out-Fenster sind ein Befund, keine Messung —
+  dieselbe Rechnung ueber viele Fenster, bevor eine Zahl als Eigenschaft
+  weitergegeben wird. Beides gilt fuer jedes Fremdmodell, das in eine
+  Handelsspur soll.
 
 ## Pitfalls
 
+- **Repos ohne `pyproject.toml`** (z.B. Kronos: nur `model/` + Beispiel-
+  Skripte) werden nicht installiert, sondern benutzt:
+  `pip install -r requirements.txt` im venv, Aufruf AUS dem Repo-Ordner, damit
+  `from model import ...` greift (sonst `sys.path.insert(0, <repo>)` in der
+  Sonde). Ein Modul namens `model` ist kein Paket auf PyPI — nie dort suchen.
+- **Gepinnte Abhaengigkeiten sind die haeufigste Absturzursache, nicht das
+  Modell.** Beim ersten Lauf auf diesem Rechner (Python 3.13 / Windows)
+  starb die Vorhersage mit einer Access Violation, obwohl das Modell sauber
+  lud (24,7 M Parameter). `python -X faulthandler` zeigte die Stelle:
+  `pandas/core/indexes/datetimes.py`, `date_range` — das von der
+  `requirements.txt` gepinnte `pandas==2.2.2` reisst den Prozess ab.
+  `pip install -U pandas numpy` (3.0.6 / 2.5.3) war der Fix. Vor jedem
+  "Modell unbrauchbar"-Urteil also: faulthandler, dann Pin hochziehen, dann
+  erneut messen — kein Grund, die Gewichte zu verurteilen.
+- **Das Modell laedt und rechnet — beides getrennt pruefen.** Ein Skript, das
+  nur die Vorhersage faehrt, sagt bei einem Absturz nicht, WELCHER Schritt
+  gestorben ist. Stufenweise Sonde: (1) Tokenizer laden, (2) Modell laden und
+  die Parameterzahl ausgeben (`sum(p.numel() for p in m.parameters())`),
+  (3) Predictor bauen, (4) eine winzige Vorhersage auf ZUFALLSDATEN. Erst
+  danach die echte Reihe — so ist "Absturz" sofort einer Stufe zuzuordnen.
 - **`du` auf den Modellordner luegt:** `Modelle/hub/models--<org>--<name>/`
   enthaelt nur Symlinks (KB-Groesse). Die echten Gewichte liegen in
   `Modelle/hub/blobs/<erste 2 Zeichen>/<sha>` — dort messen

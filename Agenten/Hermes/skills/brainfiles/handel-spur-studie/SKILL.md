@@ -161,6 +161,47 @@ OKX-/Kraken-Handel ist er ein Massstab, kein Orderweg.
 
 Zahlen und Befehle: [[Handel/Lektionen]] Abschnitt 13.
 
+## Eine Prognosequelle gegen die NULLINIE stellen
+
+Ausloeser: ein Modell, ein Indikator oder ein Fremd-Repo wird als Signalquelle
+vorgeschlagen ("koennen wir das auch schaffen?"). Untergrenze jeder Bewertung
+ist die **Nullinie** — die Annahme „der naechste Kurs ist der letzte". Wer die
+nicht schlaegt, hat nichts; sie ist kein Messziel, sondern die Ausscheidung.
+
+Rezept (auf den eigenen Kerzen der Spur, z. B.
+`Agenten/Handel/kerzen_BTC-USDT_1H_8760.json`, Format `[ts_ms, open, high, low,
+close]`):
+
+1. **Nicht ueberlappende Hold-outs steppen**, Kontext z. B. 400 Kerzen,
+   Horizont 24, **mindestens 100 Fenster**. Ein Fenster ist kein Befund, zwei
+   sind ein Muenzwurf mit Meinung.
+2. Je Fenster DREI Werte erheben: Horizont-Richtung richtig (ja/nein), mittlerer
+   Fehler in Prozent und die Nullinie desselben Fensters (Fehler der
+   „letzter-Kurs"-Annahme). Nur der Vergleich je Fenster ist fair — die
+   Nullinie schwankt mit der Volatilitaet des Fensters.
+3. Gesamt: Anteil Fenster mit kleinerem Fehler als die Nullinie, mittlerer
+   Fehler gegen mittlere Nullinie (Differenz in Prozentpunkten), Richtung je
+   Kerze als Nebenmass.
+4. **Ein generatives Modell braucht Proben-Mittelung.** `sample_count=1` ist die
+   pessimistischste Einstellung; denselben Lauf mit 5 Proben fahren, sonst ist
+   der Verriss nicht fair.
+5. Zwischenstand fortlaufend in eine JSON-Datei schreiben, damit ein Abbruch die
+   gerechneten Fenster nicht verliert.
+
+Verdikt-Regel: Richtung ≈ 50 % UND Fehler ueber der Nullinie = **als Signal
+wertlos** — das so sagen. Umgekehrt gilt: solange die Stichprobe klein ist,
+lautet das Verdikt „Befund, keine Messung", nie „traegt".
+
+In denselben Satz gehoeren die **Grenzen der Aussage**: geprueft sind EIN Modell,
+EINE Reihe, ohne Nachtrainieren. Sonst liest der Nutzer ein Urteil ueber die
+Gattung, wo eines ueber eine Einstellung steht.
+
+Vorlage (nachbaubar, nicht importieren):
+`Agenten/Hermes/cache/scratch/kronos_fenster.py` (100 Fenster) und
+`kronos_fenster2.py` (Proben-Mittelung, Modellgroesse als Argument). Die Sonde
+im Fremd-Klon nach der Messung wieder entfernen, die nachrechenbare Fassung im
+Cache behalten und im Wiki verlinken.
+
 ## Hauswerkzeug
 
 - `Agenten/Handel/filter_studie.py` (`--spur NAME`, mehrfach; `--json`), Ergebnis

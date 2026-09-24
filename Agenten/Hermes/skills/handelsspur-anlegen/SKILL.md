@@ -27,6 +27,9 @@ aber nach dem Geruest hier. Eine bestehende Spur aendern: `handel-spuren`.
 - "bau einen Agenten/Bot, der <Instrument> handelt, sobald <Bedingung>"
 - "neue Spur", "weitere Strategie", "dieselbe Idee mit anderen Parametern"
 - eine Signalidee soll Papierdaten sammeln, ohne gleich live zu gehen
+- eine BESTEHENDE Spur soll eine ZWEITE Messung bekommen (weichere Tore, andere
+  Ausstiegsform), ohne ihr Hauptbuch anzufassen — Schattenarm, Rezept in
+  `references/schattenarm.md`
 
 ## 1. Bauform waehlen (zuerst entscheiden)
 
@@ -130,6 +133,18 @@ Herkunft. Eine willkuerliche Reihe prueft die Laune der Reihe, nicht die Regel.
 - **Modulwaechter:** die reinen Funktionen duerfen keine Datei anlegen
   (Ordner vorher/nachher vergleichen). Tests, die Buchfunktionen direkt rufen,
   schreiben sonst in das ECHTE Journal der Spur.
+- **Kein Test darf die BOERSE anfassen - und die Attrappe muss an der UNTERSTEN
+  Schicht sitzen.** Eine Attrappe fuer die hochwertige Funktion (`markt_kauf`)
+  reicht NICHT: die Spur ruft darin weiter innen echte Abfragen
+  (`gefuellte_menge` -> `QueryOrders`, Stop-Pruefung), und der Test spricht
+  trotzdem mit der Boerse - bei `echt=True` heisst das: er KANN kaufen. Zwei
+  Massnahmen zusammen: die hochwertigen Funktionen ersetzen UND einen
+  Stolperdraht auf den Transport legen (`kraken._roh_privat` bzw. `okxf._roh`),
+  der jede signierte Abfrage mit `AssertionError` abbricht und den Methodennamen
+  sammelt. Muster: `kraken/tests/test_beleg_tor.py`. Nebeneffekt: die Suite
+  laeuft in 0,2 s statt 22 s, weil die echten Wiederholversuche wegfallen. Wer
+  nur die Attrappe patcht, merkt davon nichts - der Test ist gruen und hat
+  draussen gefragt.
 - **Eine Pflicht an JEDEM Ausgang als Quellen-Test.** Gilt eine Pflicht fuer jeden
   Weg des Zyklus (Spiegelung, Zustandsdatei, Protokollzeile), liest der Test die
   QUELLE: die Funktion per `ast` finden, ihren Rumpf zeilenweise durchgehen und
@@ -138,6 +153,11 @@ Herkunft. Eine willkuerliche Reihe prueft die Laune der Reihe, nicht die Regel.
   Quellen-Test faellt genau darauf. Muster: `scanner/tests/test_spiegelung_jeder_zyklus.py`.
 
 ## 7. Nachweis (erst dann "fertig")
+
+Ein Schattenarm wird GENAU SO nachgewiesen wie eine neue Spur — plus eine
+Gegenprobe, die nur er braucht: **zweimal denselben Zyklus fahren** und
+verlangen, dass der zweite Lauf NICHT doppelt kauft (die Kandidaten muessen als
+"gefiltert" erscheinen). Rezept: `references/schattenarm.md`.
 
 ```bash
 cd Agenten/Handel/<spur> && ../scanner/.venv/Scripts/python.exe handeln.py --vorschau
@@ -169,6 +189,14 @@ Start gelesen) — ein Fix in `<spur>/handeln.py` dagegen im naechsten Zyklus.
   Muster und Reihenfolge: `okx-orderweg-diagnose`.
 - **Zahlen gehoeren in die `wachen.json`.** Eine Schwelle im Code ist eine zweite
   Wahrheit; wer sie dort findet, meldet das.
+- **„Die Spur handelt nicht" erst diagnostizieren, dann bauen.** Drei Zeugen,
+  bevor irgendetwas entsteht: die Vorschau-Sperrzeile (`MAXHIRN_ROUTINE=1 …
+  --vorschau`), das JOURNAL (gibt es Einstiegszeilen der letzten Tage) und die
+  Schwellen gegen die gemessene Verteilung des Instruments. Ein leeres Buch am
+  Tagesende ist bei einem Tagesmuster die Bauart, ein alter generierter Bericht
+  ein Kadenz-Problem (kein fehlendes Signal), und eine Kennzahl aus
+  `herzschlag`-Zwangsschluessen ist keine Handelsmessung. Zahlenbeispiele:
+  `references/schattenarm.md`.
 - **Antwortform an Max:** zuerst was jetzt laeuft (mit dem Beleg des ersten
   Zyklus), dann die Regel in einem Satz mit den ZAHLEN dieser Maschine, dann was
   absichtlich NICHT gebaut wurde (Live-Pfad, Signal-Ausstieg) und was dafuer fehlt.

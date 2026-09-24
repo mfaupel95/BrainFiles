@@ -79,6 +79,37 @@ zaehlt genau die verbliebenen Spuren, und `spiegelstand.py` faellt auf die
 kleinere Zahl zurueck und fuehrt das Hauptbuch als „ausserhalb des Dauerlaufs
 mitgeprueft" mit (Bedingung 4 bleibt fuer es bestehen).
 
+## Der Hauptarm uebernimmt die QUELLE des Arms (Fassung statt Arm)
+
+Kommt beim Nachmessen heraus, dass die Einstellung des Arms besser passt, ist die
+richtige Aenderung nicht "Arm weiterlaufen lassen", sondern: der Hauptarm liest
+dieselbe Fassung.
+
+- **Die Quelle ueber ein Wachen-Feld waehlen, nicht ueber Dateinamen.**
+  `prognose_fassung: weit` in der Haupt-`wachen.json`; der Berichtspfad wird daraus
+  abgeleitet (`weit` -> `neuester.weit.json`, fehlt/`streng` -> `neuester.json`).
+  Damit behalten Buch, Zustand und Journal ihre NAMEN - die Historie des
+  Hauptbuchs bleibt zusammenhaengend, und ein Zurueckstellen ist eine Zeile.
+- **Danach den Arm aus `SPUREN` UND `NUR_BASIS` nehmen.** Laeuft er weiter, buchen
+  zwei Buecher dieselben Signale; das ist kein Vergleich mehr, sondern eine
+  Doppelung, und jede Auswertung zaehlt dieselbe Bewegung zweimal.
+- **Die Arm-Dateien liegen lassen** (Buch, Journal, Arm-Wachen) - sie sind die
+  Aufzeichnung des Vergleichs. Nur die Startzeile faellt weg.
+- **Der Arm laeuft bis zum naechsten Treiber-Neustart weiter**, weil der laufende
+  Prozess seine Spurliste beim Import gelesen hat. Das im Bericht sagen, statt zu
+  behaupten, er sei sofort aus - und die Aenderung nicht mit einem Neustart
+  erzwingen, solange echte Positionen laufen.
+- **Die Anschluss-Tests mitziehen:** ein Test, der den Arm in `dauerlauf.SPUREN`
+  verlangt, wird zur Gegenprobe (`assertNotIn`); dazu ein Test auf die FASSUNG als
+  Regel (der Hauptarm liest den weiten Bericht, wenn das Feld `weit` ist) - sonst
+  ist die Umstellung eine Konfigurationszeile ohne Wache.
+- **Zwei Fallen im Fassungs-Pfad.** `(w or lade_wachen())` behandelt ein LEERES Dict
+  wie `None` — ein Test, der `bericht_pfad({})` aufruft, faellt damit auf die ECHTE
+  Wachen-Datei zurueck und liest den weiten Bericht statt des strengen (richtig:
+  `if w is None: w = lade_wachen() or {}`). Und die Fassung vor dem Dateinamen klein
+  schreiben: `WEIT` ergaebe `neuester.WEIT.json`, einen Namen, den niemand schreibt —
+  die Spur liefe still auf "Bericht fehlt".
+
 ## Auswertung
 
 Erst ab genug Ausstiegen je Arm (z. B. 30) gegen das Hauptbuch vergleichen:

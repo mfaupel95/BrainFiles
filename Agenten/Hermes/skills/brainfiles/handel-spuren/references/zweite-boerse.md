@@ -37,6 +37,41 @@ jede Spur, deren Live-Weg ueber gebundene Funktionsnamen laeuft.
    **Kontowaehrung gehoert in die wachen.json** (hier EUR), sonst prueft die Spur
    60 USDC statt 60 EUR.
 
+## Mehrere Boersen gleichzeitig: eine Liste mit Vorrang
+
+Soll dieselbe Spur BEIDE Boersen nutzen ("gerne auf okx und kraken"), ist das
+KEINE zweite Spur, sondern das Feld `boersen: ["kraken", "okx"]` in der
+`wachen.json` - die Reihenfolge ist der Vorrang.
+
+- **Die erste EINSATZBEREITE gewinnt**, nicht die erste der Liste: Schluessel
+  vorhanden, kein Demo-Modus, Mindestguthaben frei. Ist keine bereit, bleibt es
+  bei der ersten der Liste - so nennt die Sperrenkette EINEN Grund, und die
+  Auto-Freigabe (die genau einen Freigabefenster-Grund verlangt) bleibt scharf.
+- **Das Guthaben wird in der Waehrung DIESER Boerse geprueft**
+  (`guthaben_waehrung_je_boerse`: Kraken EUR, OKX USDC). Ein einzelnes
+  `guthaben_waehrung: "EUR"` fragt OKX nach EUR und sperrt es dauerhaft. Der
+  Mindestbetrag darf je Boerse gesetzt werden, sonst gilt einer in beiden
+  Waehrungen. **Margin-Guthaben ist kein Spot-Guthaben:** `availEq` in USDC aus
+  der Kontoansicht kann voll aussehen, waehrend fuer einen Spot-Kauf fast nichts
+  frei ist - die Boerse fragt man mit der Waehrung des Kaufpfads.
+- **Einzelboerse bleibt eine signierte Abfrage aermer:** die
+  Bereitschaftspruefung nur bei mehr als einer Boerse laufen lassen, sonst wird
+  jeder Zyklus teurer, ohne dass sich etwas entscheiden kann.
+- **Jede Position traegt ihr `boerse`-Feld** (beim Einstieg stempeln), und der
+  Ausstieg bindet die Boerse der POSITION (`venue_fuer_position(p, w)`) - nicht
+  die gerade gewaehlte. Ohne das verkauft eine Kraken-Position ueber den OKX-Weg
+  ins Leere. Positionen ohne Feld laufen weiter ueber die gebundene Boerse
+  (Altdaten); ein unbekannter Name ist ein `ValueError`, kein stiller Rueckfall.
+- **Nach dem Umbinden zurueckbinden**, wenn gewechselt wurde (Flag ueber die
+  Schleife, `venue_binden(w)` am Ende) - sonst haengen die anschliessenden
+  Einstiege und die Seams an der falschen Boerse.
+- **Test-Naht fuer das Guthaben** (`_guthaben_roh(name, ccy)`): eine
+  Bereitschaftspruefung, die direkt ins Boersenmodul greift, macht JEDEN Test zu
+  einem echten Netzaufruf und laesst die Suite mit fremden Fehlern rot werden.
+  In Tests das Modul-Dict (`BOERSEN`) durch Attrappen mit denselben Funktionsnamen
+  ersetzen und die Seams (`op_*`) am Ende der Testklasse neu binden - sonst zeigt
+  die naechste Testdatei auf die Attrappen.
+
 ## Kurs-Waehrungs-Mismatch: quelle() liefert USD, Boerse braucht EUR
 
 `spur_buch.einstieg()` rechnet Stop und Ziel aus dem `kurs`-Wert, der aus
@@ -65,6 +100,26 @@ Testmuster (`test_spur_buch_orderweg.py`):
 - Attrappe mit `letzter_kurs = lambda self, inst: 200.0` (deutlich != quelle-Kurs 100)
 - Assert auf `p["einstieg"] == 200.0`, `p["stop"] == 200*0.93`, `p["ziel"] == 200*1.14`
 - Attrappe mit `letzter_kurs` der `RuntimeError` wirft → `einstieg()` gibt `None`
+
+**Dieselbe Waehrungsfalle in der ANZEIGE.** Ein Berichts-Holer fuer die
+Papier-Spuren holte die Kurse fuer ALLE Positionen von OKX (USDC) - eine
+Kraken-Position in EUR stand damit mit **+11 %** im Bericht, waehrend sie real
+**-2 %** lag. Ein Prozentwert aus fremder Waehrung ist kein Rundungsfehler, er
+dreht das Vorzeichen und laesst ein Ziel "erreicht" erscheinen, das weit weg ist.
+
+- Der Kurs gehoert zur **Boerse der Position** (`p["boerse"]`, sonst die erste
+  Boerse der Spur). Kraken-Kurse ueber das Adaptermodul holen
+  (`kraken_spot.letzter_kurs` uebersetzt die OKX-Namen auf Kraken-Paare), per
+  `importlib`-Pfad geladen - kein `sys.path`-Eintrag, der gleichnamige Module
+  verdecken kann. Pro Position die passende Quelle waehlen, nicht einmal fuer alle.
+- **Ein "Papier"-Etikett im Bericht darf nicht fest verdrahtet sein.** Ein
+  gemeinsamer Holer fuer viele Papier-Spuren setzte das Papier-Merkmal hart; die
+  eine Spur mit Live-Zweig stand damit als "kein Live-Zweig (Papierpfad)" im
+  Bericht, obwohl sie live handelte. Die Faehigkeit ist ein PARAMETER des Holers
+  (Standard Papier), der angezeigte Modus kommt aus `handel_erlaubt` +
+  `freigabe.erfuellt` + Boersenliste, und Live-Positionen bekommen "(live)" in den
+  Namen. Merksatz: **wer eine Anzeige baut, die eine Faehigkeit behauptet, muss
+  sie aus der Konfiguration lesen - nicht aus einer Konstante.**
 
 Die Paar-Abbildung (`venue_inst(inst, w)`) erzeugt aus `XMR` bei `boerse: kraken`
 den String `XMR-EUR`. Dieser String muss in `kraken_spot.PAARE` stehen; fehlt er,

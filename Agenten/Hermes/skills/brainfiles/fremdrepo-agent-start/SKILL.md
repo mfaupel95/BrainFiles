@@ -22,13 +22,33 @@ fuer Node-Tools der npm-Globalinstall und die no-auth-Verifikation.
 agent-reach …), ein Repo-Agent als Datenschicht/Demo, ein Node-MCP/CLI-Tool
 aus der awesome-trading-agents-Liste (okx/agent-trade-kit …).
 
+**Wenn Max nur eine Repo-URL schickt („aneignen, lernen, anbinden")**, gilt
+diese Reihenfolge, und der Bericht liefert die Zahlen aus Schritt 4:
+Klon/Fork nach `Werkstatt/Repos/<name>` (ein Fork kann schon existieren —
+`gh repo fork <orig> --clone=false` meldet das und ist kein Fehler),
+`upstream` setzen, eigenes `.venv` mit dem Haus-Python, Abhaengigkeiten
+installieren, `pytest` laufen lassen, und dann **zuerst den schluessellosen
+Pfad** des Repos wirklich fahren (bevorzugt der Zweig, den die README selbst
+als kostenlos/ohne Key nennt). Erst dessen ECHTE Ausgabe (Anzahl geholter
+Datensaetze, Zeilen, Fehlerquote) macht Aussagen wie "laeuft" zulaessig;
+ein gruener Testlauf allein belegt keine Funktion.
+
 Fuer den Node/TypeScript-Weg (npm-Globalinstall, stdio-MCP-Handshake per
 Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
 
 Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 (transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):
 `references/huggingface-modell-lokal.md` — venv, HF-Cache auf O:, Sonde mit
-eigenen Messwerten.
+eigenen Messwerten, dazu die Falle gepinnter Abhaengigkeiten.
+
+**Ein leerer Rahmen ist kein System.** Ein Repo, dessen Dienstordner nur
+`.gitkeep` enthalten und dem die `Dockerfile`s fehlen, die die
+`docker-compose.yml` als Build-Kontext nennt, ist ein Bauplan: `up` bricht
+bei jedem Dienst ab. Das nachzaehlen (Dienstordner auflisten mit
+`search_files(target='files')`, Dockerfile vorhanden?) und im Bericht als Befund nennen, statt es zu starten. Ebenso
+die Schluesselnamen der `.env.example` LESEN und benennen, wenn sie nach
+echtem Geld rufen (`PRIVATE_KEY`, Boersen-Secrets) — das ist eine Warnung
+wert, nicht nur eine Zeile im Protokoll.
 
 ## Vorgehen
 
@@ -124,11 +144,59 @@ eigenen Messwerten.
     setzen. Belegt: RBI lief nach dem Fix lokal bis Research-Phase.
 
 ## Pitfalls
+- **Ein natives Fremd-Werkzeug auf einen Pfad unter `Werkstatt/` zeigen und sich
+  ueber den Abbruch wundern:** `Werkstatt/` ist eine Junction auf `O:\`.
+  Programme, die ihre Eingabe aufloesen, verweigern das mit `Refusing to
+  resolve input with a symlinked parent` — der Lauf endet vor der ersten Datei.
+  Denselben Pfad ueber das **Aufloesungsziel** aufrufen (`/o/Werkstatt/...`)
+  und den Umweg im Bericht nennen, nicht als Werkzeugfehler. Dieselbe Regel
+  trifft die `okx-*`-Skill-Junctions: die sind fuer solche Werkzeuge
+  strukturell unerreichbar.
+- **Native Programme verstehen die MSYS-Notation nicht:** `/c/Users/...` als
+  Argument gibt `Cannot determine input type` / "cannot change to". Windows-
+  Pfade mit Schraegstrichen uebergeben (`C:/Users/...`) — in bash bleibt `cd`
+  nach `/c/...` trotzdem erlaubt (eingebaut), nur das weitergegebene Argument
+  muss native Form haben.
 - **patch/write_file verweigern Dateien unter Werkstatt/** (Junction auf O:,
   ausserhalb HERMES_WRITE_SAFE_ROOT). Fix-Muster: byte-sauberes Wegwerf-
   Patchskript nach Agenten/Hermes/cache/ (Wegwerfzone) und mit python
   ausfuehren; Newlines: rb lesen, nl ableiten, wb schreiben — sonst
-  Ganzdatei-Diff.
+  Ganzdatei-Diff. Fuer Sonden und Proben reicht der einfache Weg: Datei nach
+  `Agenten/Hermes/cache/scratch/` schreiben und mit `cp` in den Klon legen
+  (`read_file` und das Ausfuehren im Klon sind nicht betroffen, nur die
+  Schreibwerkzeuge verweigern). Der Klon ist ein eigenes Repo — Sonden dort
+  hinterlassen ist harmlos, aber Wegwerf-Dateien nach dem Lauf wieder
+  entfernen.
+- **Harter Absturz eines Fremd-Repos (Segfault, Exit 139, `0xC0000005`
+  Access Violation, `bash: ... Segmentation fault`): ZUERST
+  `python -X faulthandler <skript>` laufen lassen und den C-Stack lesen**,
+  nicht raten. Die Absturzstelle sitzt fast nie dort, wo man sie vermutet:
+  im Fall Kronos stand sie in `pandas/core/indexes/datetimes.py`
+  (`date_range`) — die von `requirements.txt` gepinnte `pandas==2.2.2` reisst
+  den Prozess auf neuerem Python/Windows ab; zwei Torch-Neuinstallationen
+  waren umsonst, `pip install -U pandas numpy` war der Fix. Merksatz: nicht
+  "das Modell ist zu neu fuer die Bibliothek" vermuten, sondern den Zeugen
+  fragen. Pins in `requirements.txt` sind eine Hypothese des Autors, keine
+  Wahrheit fuer dieses System.
+- **Ein Absturz in der Sandbox beweist nicht, dass die Sandbox schuld ist:**
+  denselben Bruchtest einmal auf dem HOST fahren (windows-mcp PowerShell,
+  `Remove-Item Env:PYTHONHOME, Env:PYTHONPATH` vorher) — reproduziert er sich
+  dort, ist es die Bibliothek/das Modell, nicht der Container. Umgekehrt vor
+  jeder Speicherdebatte die Zahlen holen (`FreeVirtualMemory`, freie
+  Prozess-Commits), sonst diagnostiziert man Luftmangel, wo ein Pin das
+  Problem ist.
+- **Lange Installationen im HINTERGRUND starten, nicht im Vordergrund:**
+  ein Vordergrundaufruf wird bei ~420 s gekappt, mitten im Download von
+  `torch` & Co. Das venv bleibt HALBFERTIG zurueck, ohne Fehlermeldung —
+  der naechste Lauf meldet dann ein schwer deutbares Einzelpaket als
+  fehlend. `terminal(background=true, notify=true)` mit dem vollen Befehl
+  (venv anlegen, installieren, Imports pruefen) und danach die Import-
+  Bestaetigung aus dem Log lesen.
+- **Der Bericht ist deutsch, auch wenn Werkzeugausgaben englisch sind.** Und
+  in dieser Reihenfolge: was jetzt konkret laeuft (mit den gemessenen Zahlen
+  und den Befehlen, die sie erzeugt haben), was absichtlich NICHT angefasst
+  wurde (Schluessel, Fremd-Repo-Code, fremde Sitzungsarbeit, Live-Pfade),
+  welche Entscheidung offen ist, und genau eine naechste Aktion.
 - **Mehrzeiligen String in eine CRLF-Datei einsetzen, ohne jede Zeile auf
   die Datei-Newline zu normalisieren, zerlegt die Struktur** (hier: Duplikat
   des Blocks + IndentationError). Der neue Block muss ZEILENWEISE mit
@@ -222,3 +290,18 @@ eigenen Messwerten.
   im Benutzerprofil auf der fast vollen C:-Platte. Welche Stelle im Cache die
   echten Bytes haelt, steht in
   `references/huggingface-modell-lokal.md`.
+- **Ein Medien-/Render-Repo erst messen, dann "kann rendern" sagen.** Drei
+  Dinge getrennt pruefen: den Interpreter
+  (`<repo>/.venv/Scripts/python.exe -V`), die externen Programme
+  (`Get-Command node,npx,ffmpeg` auf dem Host — in der MSYS-Bash sieht
+  `command -v` nur das MSYS-PATH und meldet Windows-Programme faelschlich als
+  fehlend) und den Schluesselbestand im EIGENEN `.env` des Repos: je NAME
+  zaehlen, ob ein Wert gesetzt ist (`awk -F= '/^[A-Z_]+=/'`), Werte niemals
+  ausgeben. Ein leeres Schluesselverzeichnis heisst nicht "kaputt" — viele
+  solcher Repos haben einen Zero-Key-Zweig (z.B. gerenderte Daten-Charts statt
+  KI-Bilder), und genau DER ist der belastbare Nachweis der Lauffaehigkeit;
+  den Unterschied "laeuft ohne Keys" gegen "braucht bezahlten Provider" im
+  Bericht trennen. Einen langen Render als Hintergrundprozess starten (cwd =
+  Repo) und den Prozessstatus getrennt abfragen statt synchron zu warten; die
+  Ausgabe endet mit dem Ablagepfad, und der wird danach mit Groesse
+  nachgelesen — "Rendered 690/690" allein ist noch kein Artefakt.

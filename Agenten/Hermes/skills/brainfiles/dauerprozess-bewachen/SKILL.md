@@ -130,6 +130,41 @@ ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
 3. **Auch Zustandswechsel melden**, nicht nur neue Zeilen (z. B. „Fenster zu,
    laeuft wieder Papier“). Ein stiller Rueckfall sieht sonst aus wie „die Spur
    tut nichts“.
+4. **Eine kritische Lage muss sich wiederholen, eine gute nie.** Ein Merker, der
+   nur auf Aenderung meldet, laesst den Nutzer nach der ersten Warnung
+   verstummen, obwohl die Lage unveraendert kritisch bleibt (eine Position, die
+   seit Stunden 5 % vor der Liquidation steht, wird nicht besser, weil sich
+   nichts geaendert hat). Denselben Zustand deshalb nach einer Frist erneut
+   melden (z. B. 6 h), gute Lagen aber nur einmal beim Wechsel.
+
+**Der Herzschlag muss aus JEDEM Ausgang kommen, auch aus dem leeren.** Ist das
+Kriterium der Wache `letzter_lauf` im Zustand des Objekts, dann darf kein Pfad
+zurueckkehren, BEVOR der Zustand geschrieben (und gespiegelt) ist — auch der
+Zweig „keine Daten / nichts zu tun“ nicht. Sonst friert der Zeitstempel ein,
+waehrend das Objekt gesund weiterarbeitet: gemessen meldete eine Wache
+„TOT — Zustand 6,8 h alt“ fuer eine Spur, die alle 15 Minuten `ok` ins
+Betriebslog schrieb, weil ihr gemeinsamer Buchkern im Zweig „keine Daten“
+ohne Zustandsschreiben ausstieg. Der Nur-Lese-Modus (`--vorschau`) schreibt
+weiterhin nichts — der Unterschied liegt zwischen „nichts gebucht“ und
+„nichts geschrieben“.
+
+**Der Grund des Nichtstuns gehoert in den Zustand, nicht nur ins Log.** Wer nur
+den Zeitstempel frisch haelt, hat Stille immer noch nicht gedeutet: das Objekt
+rechnet fuer seine eigene Ablehnung oft schon Zaehler („zu wenige bewertete
+Kaeufer“) und **niemand sieht sie**. Ein Feld im Zustand, das je Zyklus Grund
+und Zahlen traegt (`{"keine_daten": true, "grund": …, "hinweis": {"<tor>": n}}`),
+macht aus „Spur tut nichts“ ein „Spur wartet auf X“. Dafuer einen optionalen
+Haken an der gemeinsamen Laufschnittstelle vorsehen (Rueckruf, der die Zaehler
+liefert) statt den Vertrag aller Aufrufer zu erweitern; wer den Haken nicht
+setzt, verliert nichts.
+
+**Eine Wache muss den Stand lesen, den der LAUFENDE Zweig schreibt.** Laeuft ein
+Objekt live, schreibt es seinen Papierzustand nicht mehr mit; eine Wache auf
+einen fest verdrahteten Dateinamen meldet es dann faelschlich als tot (dieselbe
+Falle wie beim Herzschlag eines Gates). Die vorhandenen Staende einlesen und den
+mit dem juengsten `letzter_lauf` nehmen — Papier ODER Live, nicht eine feste
+Datei. Eine unlesbare Nebendatei darf das Urteil nicht umwerfen, sondern wird
+uebergangen.
 4. **Die Wache sieht nur, was geschrieben wird.** Ein Fehlerpfad, der seine
    Meldung nach stderr schreibt und die Zeile im Datenfile auslaesst, ist fuer
    die Wache unsichtbar — und der Supervisor meldet die Spur trotzdem als „ok“,
@@ -139,11 +174,41 @@ ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
    anders formatiert als den Normalfall. Diese Zeile ist kein Buchungssatz:
    sie darf die Auswertung nicht verfaelschen (Kennzeichen ausserhalb der
    Buchungs-Menge waehlen und das in der Auswertung pruefen).
+8. **Die Objektliste nicht im Wachenskript fuehren, sondern aus der EINEN Quelle
+   lesen.** Eine eigene Liste ist eine zweite Wahrheit: ein neu angelegtes Objekt
+   fehlt in der Wache, und niemand merkt es. Die Liste aus der zentralen
+   Registrierung ziehen — und wenn das die Datei des FAHRERS ist (`SPUREN` im
+   Treiber), per `ast.parse` statt `import`: ein Import startet dessen Prozesse.
+   `ast.literal_eval` scheitert, sobald der Wert Aufrufe enthaelt
+   (`os.path.join`) — deshalb den Baum abschreiten, die Dict-Schluessel und das
+   Pfadfeld (`ordner`) einzeln herausziehen und zwei Spuren, die sich einen
+   Ordner teilen, ueber den ORDNER zaehlen, nicht ueber den Namen. Ein Test
+   nagelt die Kopplung fest (Mindestzahl plus ein bekannter Name), damit sie
+   nicht still verloren geht. Belegt: eine Wache ueber "alle Spuren" fand beim
+   ersten Lauf 30 statt der erwarteten 29 — die Liste war mitgewachsen, ohne
+   dass die Wache angefasst wurde.
 5. **Gegenprobe ohne echte Ereignisse:** die Wache in einem Einmal-Aufruf gegen
    ein Temp-File mit erfundener Zeile laufen lassen — sie muss genau einmal
    melden und beim zweiten Lauf schweigen. Danach `cronjob_manage action=run`
    fuer den echten Weg; ein Lauf mit leerer Ausgabe ist der Beweis, dass der
    still bleibende Fall still bleibt.
+   **Die Alarmrichtung zusaetzlich an ECHTEN Daten zeigen — mit Rueckweg.** Die
+   Zustandsdatei EINES Objekts kopieren (`.probe`), einen Zustand verfaelschen,
+   der das Kriterium reisst (z. B. `letzter_lauf` weit in die Vergangenheit),
+   die Wache laufen lassen (sie muss GENAU dieses Objekt melden), dann die Kopie
+   zurueckschieben und erneut laufen lassen (wieder still). Das ist der staerkere
+   Beleg als ein Temp-File: er zeigt, dass die Wache die echte Datei am echten
+   Ort liest. Ohne das Zurueckschieben bleibt ein verfaelschter Betriebszustand
+   stehen — und die naechste Sitzung sucht einen Fehler, den es nie gab.
+   **Melde nur zwei Lagen: tot und ueberfaellig.** Stille ist der NORMALFALL,
+   nicht ein Befund. Ein Objekt ohne Buch, dessen Zustand frisch ist, WARTET
+   (gesund — jede neue Spur startet dort); ein Objekt mit offenen Posten
+   innerhalb ihrer Frist HAELT (gesund, die Strategie tut nichts); die beiden
+   meldenswerten Lagen sind TOT (Zustand aelter als die Schonfrist, oder Ordner
+   weg) und UEBERFAELLIG (Frist abgelaufen, ohne dass der Ausstieg gebucht
+   wurde). Wer "still" als Fehler meldet, baut einen Wecker, der beim
+   Normalbetrieb klingelt — und wer die Altersgrenze nicht setzt, meldet eine
+   abgeschaltete Spur nie.
 6. **Mehrere Objekte derselben Art: EIN Modul, je Objekt ein duenner Wrapper.**
    Fuenf Buecher heissen nicht fuenf Wachenskripte: die Rechnung (letzter Stand,
    Differenz, Fensterwechsel) liegt EINMAL in `scripts/<familie>_wache.py` mit
@@ -294,6 +359,16 @@ Messung weiterlaufen.
   zufaellig antippt). Deshalb zuerst die Wachenliste ansehen (Hermes-Cron-Liste und
   `Get-ScheduledTask -TaskName 'MaxHirn-*'`, Zustand `Ready` heisst nur „registriert“),
   dann nach dem Muster aus Schritt 4 nachruesten.
+- **Ein Objekt, das live geht, braucht seine Wache im SELBEN Schritt.** Die
+  Vollstaendigkeitspruefung laeuft ueber die Liste der Objekte, die wirklich handeln
+  koennen (Erlaubnis-Haken UND Freigabe-Haken UND ein echter Orderweg im Code) — nicht
+  ueber die, an die man sich erinnert. Gemessen lief ein Objekt tagelang live, ohne
+  dass irgendeine Wache seinen Ausfall gemeldet haette; nur der Tagesbericht haette ihn
+  gezeigt. Nachruesten ist billig und braucht KEIN zweites Wachenskript: eine Zeile in
+  der Tabelle der gemeinsamen Wache (Datei, Schluessel, Waehrung) + eine duenne
+  Wrapper-Datei, die `main("<objekt>")` aufruft + ein Cron `no_agent`. Gegenprobe: der
+  erste Lauf meldet den Ist-Stand EINMAL ("N Zeilen im Journal - Beobachtung laeuft ab
+  jetzt") und schweigt danach.
 - **Ein Watchdog mit hoher `RestartCount` kann einen Crash-Loop stundenlang
   verstecken.** `RestartCount 99 / RestartInterval 1 min` startet einen sofort
   wieder abstuerzenden Prozess brav neu — der Scheduler zeigt `Running`/`Ready`
@@ -417,12 +492,38 @@ naechsten Spawn beenden), sonst ist der Speicher in Stunden wieder weg.
   Symptomkatalog (was bei erschoepftem Commit alles scheitert), die Messbefehle und
   die Route fuer einen Massenlauf, der im Sandbox-Terminal abbricht:
   `references/massenprozesse-und-commit-limit.md`.
-- **Ein Test, der `protokolliere()` prueft, schreibt in die ECHTE Logdatei.**
-  Der Modulpfad des Logs ist eine Konstante; ein Test des Aufraeumens landete
-  damit als Zeile im Betriebsprotokoll des Treibers ("PIDs 600") und war dort
-  nicht von einem echten Befund zu unterscheiden. In `setUp` die Logkonstante
-  auf einen Temp-Ordner umbiegen (`m.LOG = Path(tmp)/"log.txt"`) — dieselbe
-  Falle wie bei den Handels-Spuren (journal_zweitziel).
+- **Eine Testsuite, die den Treiber baut und `zyklus()` ruft, greift in den
+  LAUFENDEN Betrieb.** Gemessen: ein Testlauf hat die lebenden Agenten als Waisen
+  beendet (8 PIDs — der Treiber startete sie 60 s spaeter neu, der Eingriff fiel
+  nur daran auf), die Logdatei des laufenden Betriebs gedreht, seine Startzeilen
+  ins ECHTE Treiberlog geschrieben und vier eigene Agenten als Waisen stehen
+  gelassen. Kein Modulwaechter faengt das ab: der Eingriff ist ein Prozesskill,
+  keine Dateiaenderung. Gegenmittel ist ein **Trockenmodus im Konstruktor**
+  (`trocken=True`, Standard `False`), der drei Dinge abschaltet: Aufraeumen
+  fremder Prozesse, Schreiben ins echte Log, Agentenlogs in einen
+  `tempfile.mkdtemp()`-Ordner — dazu ein Test, der den Vertrag selbst prueft
+  (Treiberlog unveraendert, Logbasis im Temp, `aufraeumen()` nicht gerufen).
+  Ein Umbiegen einzelner Logkonstanten in `setUp`
+  (`m.LOG = Path(tmp)/"log.txt"`) genuegt nur fuer Tests, die keine Prozesse
+  starten — sonst landet „PIDs 600" als Zeile im Betriebsprotokoll.
+  **Zweite Falle: die Wurzel ist frueher tot als der Nachfahre.** `_stoppe()`
+  endet bei `poll() is not None`, und ein Baumkill ueber eine tote Wurzel
+  erreicht nichts mehr — der Test muss die Nachfahren VOR dem Beenden aus der
+  Prozessliste sammeln (Parentkette, transitive Huelle) und einzeln beenden.
+  Nachweis: die Prozesszahl danach ist die erwartete (zwei je Kind), gefiltert
+  auf den echten Programmnamen — sonst zaehlt die eigene Abfrage mit.
+- **Das Log eines langlebigen Kindes waechst unbegrenzt und faellt nur am
+  Plattenplatz auf.** Ein Anzeige-Agent schrieb ~50 MB je Tag in die
+  stdout-Datei, die der Treiber beim Spawn oeffnet (nach vier Tagen 160 MB) —
+  RAM, Prozesszahl und Zykluszeiten sahen gesund aus, der Schwund fiel erst bei
+  der Platznachmessung auf; eine Wache ueber Prozesse oder RAM erkennt das nie.
+  Deshalb gehoert in den Spawn-Pfad eine **Drehung**: vor dem Oeffnen bei
+  Ueberschreiten einer Schwelle (50 MB) nach `<name>.log.1` umbenennen, die alte
+  `.1` dabei ersetzen, und die Drehung als Zeile ins Treiberlog schreiben.
+  **Gedreht wird BEIM START, nie im Betrieb** — das laufende Kind haelt die
+  Datei offen, Windows verweigert dann jedes Umbenennen (`mv` schlaegt fehl,
+  solange der Prozess lebt). Eine Aenderung am Treiber wirkt erst in der neuen
+  Instanz: solange der alte Treiberprozess laeuft, dreht niemand.
 - **Ein toter Supervisor laesst seine Kinder als Waisen weiterlaufen.**
   Endet der Treiber von aussen (`Get-ScheduledTaskInfo`-Result 267014), bleiben
 die von ihm gespawnten Agentenprozesse am Leben — sichtbare Konsolenfenster,
@@ -447,6 +548,21 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Eintrag kann gleichnamige Module verdecken) und deren `main()` aufruft; beide
   Dateien versionieren. Der Wrapper haelt dieselbe Melde-Regel ein: leere Ausgabe,
   wenn es nichts zu melden gibt.
+- **Eine Wache laeuft unter dem Interpreter von Hermes, nicht in der venv der
+  Komponente.** Ein Skript, das `requests`, `pandas` oder ein Spur-venv braucht,
+  stirbt im Cron — und zwar lautlos, weil niemand die Ausgabe liest, wenn der
+  Auftrag nur „ok“ meldet. Deshalb nur Standardbibliothek importieren und die
+  Fachmodule ueber `importlib.util.spec_from_file_location` per PFAD laden (deren
+  eigene Stdlib-Abhaengigkeit vorher pruefen: `grep '^import\|^from' <modul>`),
+  und den Beweis mit einem FREMDEN Interpreter fahren, nicht mit der venv, in der
+  man entwickelt hat — die Wache muss auch mit dem nackten python.org-Interpreter
+  laufen.
+- **Aus `Agenten/Hermes/scripts/` sind es DREI `dirname()`-Stufen bis zur
+  Repo-Wurzel** (`scripts` -> `Hermes` -> `Agenten` -> Wurzel). Mit zwei landet man
+  auf `Agenten/` und der Modulpfad wird zu `Agenten/Agenten/Handel/...` — Symptom
+  ist ein `FileNotFoundError` beim Laden des Fachmoduls, obwohl die Datei
+  existiert. Nach jeder Pfadherleitung einmal ausgeben und gegen die echte Datei
+  pruefen statt zu zaehlen.
 - **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/`powershell`:
   die Konsole schreibt cp1252, nicht UTF-8. `encoding="cp1252", errors="replace"`
   setzen, sonst reisst ein `UnicodeDecodeError` im Lesethread den Aufruf ab.
@@ -472,6 +588,27 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   bleibt die Kopie ausser Haus still stehen und sieht wie ein Datenproblem aus.
   Beleg in beide Richtungen: Log-Zeile des Zyklus ohne `TIMEOUT` UND ein
   frischer Zeitstempel des Ziels ausser Haus.
+- **Vor dem Neustart des Treibers die Herzschlag-Zeitstempel der uebernommenen
+  Objekte frisch setzen.** Nimmt der neu gestartete Lauf Objekte auf, die vorher
+  nicht in seiner Liste standen (neue Spur, neuer Schattenarm), traegt deren
+  Zustand noch den alten `letzter_lauf`. Der erste Zyklus liest das als
+  „Herzschlag alt“ und faehrt den Notausstieg: gemessen stellte ein frisch
+  aufgenommener Arm seine gerade gebuchten Papierpositionen im ERSTEN Zyklus
+  flach (`grund=herzschlag`) und stand danach leer da — die Positionsdaten waren
+  weg. Also fuer jede neu aufgenommene Datei den Zeitstempel auf jetzt setzen
+  (`.bak`-Kopie behalten), DANN neu starten; der Nachweis ist die erste
+  Buchzeile nach dem Neustart (kein `herzschlag`-Ausstieg) und der frische
+  Zykluszeitpunkt je Objekt im Log.
+- **Ein Neustartskript muss einen bereits toten Prozess vertragen.** Stirbt die
+  Wurzel mit ihrem Kind (Windows: venv-Startprogramm + Interpreter), wirft
+  `Stop-Process -Id <wurzel>` „kein Prozess mit dieser ID“ — mit
+  `$ErrorActionPreference='Stop'` bricht das Skript DA ab und die Komponente
+  bleibt tot, waehrend der Aufrufer „Neustart ausgefuehrt“ liest. Reihenfolge:
+  erst das Kind, dann die Wurzel beenden, jeden Schritt als „schon weg“
+  hinnehmen (Fehler gezielt schlucken, nicht global abschalten), erst danach
+  starten. Beleg ist NICHT die ausbleibende Fehlermeldung, sondern die
+  nachgezaehlte Prozesszahl (Erwartung: ein Paar je Loop) plus die gelesene
+  PID-Datei UND eine frische Zykluszeile im Log.
 - **Nicht jeder Codefix braucht einen Neustart des Treibers.** Startet der Treiber
   je Zyklus ein KIND als eigenen Prozess (typisch `handeln.py`), liest das Kind die
   Datei bei jedem Start neu — ein Fix in der Komponente wirkt also im NAECHSTEN
@@ -565,7 +702,32 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Job-ID liefert `hermes.exe cron list`. Mehrere Dateien in Zeitfolge zeigen,
   ob der Waechter einen Ausfall bereits selbst geheilt hat, bevor manuell
   eingegriffen wird — sonst ist der manuelle Neustart entweder ueberfluessig
-  oder verdeckt, dass der Waechter allein schon ausgereicht haette.
+  ueberfluessig oder verdeckt, dass der Waechter allein schon ausgereicht haette.
+  Ob ein frisch angelegter Auftrag ueberhaupt schon gefeuert hat, steht im
+  Job-Satz selbst (`Agenten/Hermes/cron/jobs.json`: `last_run_at`, `last_status`,
+  `failure_streak`, `next_run_at`) — fuer `no_agent`-Auftraege kann
+  `hermes cron runs <name>` leer bleiben; der Job-Satz plus die Ausgabedatei sind
+  die Belege. Ein neuer Cron gilt erst als eingerichtet, wenn `last_status=ok`
+  und mindestens eine Ausgabedatei mit dem erwarteten Inhalt existiert.
+- **Nach der Reparatur eines Cron-Skripts den Auftrag SOFORT feuern, nicht auf den
+  naechsten Takt warten.** Der gespeicherte `last_status` bleibt auf `error`
+  stehen, bis der Auftrag wieder gelaufen ist — bei einem 6-Stunden-Takt also bis
+  zu sechs Stunden nach dem Fix. In dieser Zeit meldet jede Wache, die den
+  Job-Satz liest (Automatik-Waechter), weiter den reparierten Defekt, und eine
+  Frische-Pruefung, die auf `letzter_lauf` der betroffenen Objekte schaut, sieht
+  einen Ausfall, der schon behoben ist. Reihenfolge: Skript reparieren ->
+  `cronjob_manage action=run` -> den frischen Lauf als `ok` lesen -> erst dann
+  "behoben" berichten. Ein Befund, der nur aus einem alten Status stammt, ist
+  kein Befund.
+- **Ein Syntaxfehler im Cron-Skript ist ein Dauerausfall, kein Einzelfehler.**
+  Jeder Lauf stirbt an derselben Stelle mit demselben Traceback, waehrend der
+  Schaden woanders sitzt: Berichte und Merker, die dieses Skript schreiben
+  sollen, frieren ein, und die Objekte sehen danach "seit Tagen alt" aus. Beim
+  Reparieren das Skript mit `write_file` schreiben und als DATEI ausfuehren -
+  Python-Quelltext mit Escape-Sequenzen durch einen Shell-Heredoc zu schieben
+  zerstoert ihn (die Huelle loest die Escapes auf). Und in einer Reparaturschleife
+  mit `ast.parse` pruefen: `py_compile.compile(..., doraise=True)` wirft
+  `PyCompileError`, das ein `except SyntaxError` NICHT faengt.
 
 ## Verification
 

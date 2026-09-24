@@ -24,7 +24,7 @@ fuer die Auswertung der Buecher (`handel-spuren`).
 ## When to Use
 
 - „scanner: Verkauf X fehlgeschlagen: OKX 51000 …" / „Kauf X fehlgeschlagen" / „Stop … fehlgeschlagen"
-- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50101)
+- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50119, 50101)
 - eine echte Position scheint zu fehlen, oder das Buch und das Konto passen nicht zusammen
 - eine Order soll gesetzt/verkauft werden und der Live-Pfad ist unklar
 
@@ -48,6 +48,9 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    Basis und Schluessel ausgeben (`okx._live_basis()`, `okx.schluessel_vorhanden()`),
    dann `okx._roh(pfad, signiert=True)` fuer Kontostand je Waehrung und Orderhistorie.
    Rezept + fertige Endpunkte: `references/okx-fehler-und-nachweis.md`.
+   Fertige Sonde statt Handarbeit: `scripts/okx-zugang-pruefen.py` druckt Host,
+   Handelsrecht, freie Quote-Waehrung und die offenen Notausstiege — rein lesend,
+   setzt keine Order.
    Buch gegen Boerse stellen (Fuellung, Geister, Wiederherstellung):
    `references/buch-gegen-boerse.md`.
 4. **Folgen benennen**: was war echt (Konto), was nur Buch (Journal), was der Nutzer
@@ -140,6 +143,32 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
 - **Kein Schalter fuer eine Diagnose.** Ein Fehlercode ist kein Grund, `--live` zu
   fahren, eine Testorder zu setzen oder Guthaben zu verschieben. Beweis ist der
   LESEaufruf.
+- **`50119`/`50101` heisst meistens FALSCHER HOST, nicht toter Schluessel.** Ein
+  Prozess, der die Windows-Benutzervariablen nicht geerbt hat (aus einem MCP-Server
+  oder einer geplanten Aufgabe gestartet), findet den Schluessel ueber den
+  Registry-Rueckfall, den HOST aber nicht, wenn der nur aus `os.environ` gelesen
+  wird — dann signiert ein EEA-Schluessel gegen `www.okx.com`, und OKX antwortet
+  `50119 API key doesn't exist`. **Regel: Schluessel und Host gehoeren zu EINEM
+  Zugang — wer einen von beiden mit Rueckfall liest, liest den anderen genauso.**
+  Probe ohne Netz: `env -u OKX_BASE <venv>/python.exe -c "import okx; print(okx._live_basis())"`
+  muss die Kontakt-Basis liefern. Vor dem Umbau pruefen, was die Nachbarspuren tun
+  (`xperp/okxf.py`, `mosaic/okx_spot.py`) — dort steht die richtige Form meist schon.
+- **Ein fehlgeschlagener Ausstieg hinterlaesst einen halben Zustand.** Der Verkauf
+  bestellt ZUERST den Notausstieg ab (sonst blockiert er den Bestand). Scheitert der
+  Verkauf DANACH, steht die Position ohne Stop an der Boerse, bis der naechste Zyklus
+  es erneut versucht — ueber Nacht mit einem Festnetz-Verlustrisiko, das niemand
+  sieht. Nach einem fehlgeschlagenen Verkauf den Stop mit der ECHTEN Fuellungsmenge
+  (`accFillSz` der Kauforder) neu setzen; einen alten, nicht stornierbaren Stop
+  unberuehrt lassen (er schuetzt schon) und ohne Stop-Preis melden statt raten.
+  Gegenprobe: `/api/v5/trade/orders-algo-pending?ordType=conditional` muss fuer JEDE
+  Live-Position eine Verkaufsorder zeigen.
+- **Modul-Attrappen: das Modulattribut patchen, nicht `sys.modules`.** Wird ein
+  Helfer ueber den PFAD geladen und als Attribut gehalten, laeuft eine Attrappe, die
+  nur `sys.modules["<name>"]` umbiegt, ins Leere — der Test ist dann gruen oder rot
+  aus dem falschen Grund. Ebenso: einen Helfer aus dem ELTERN-Ordner (z. B.
+  `spiegelstand.py`, das `risikostufe` importiert) per `sys.path.APPEND` einbinden,
+  nie per `insert(0, ...)` — sonst verdraengt ein gleichnamiges Modul der Spur
+  (`handeln.py` liegt in vielen Ordnern) das richtige.
 - **Diagnose-Skripte nicht in den Spur-Ordner legen.** Nach
   `Agenten/Hermes/cache/` schreiben und danach loeschen; der Spur-Ordner ist
   versioniert und wird gespiegelt.

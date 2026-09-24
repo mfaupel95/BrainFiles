@@ -31,6 +31,31 @@ einen** Abruf pro Stunde macht und nur den Uebergang meldet
 - Monotone Wallclock ist die bewaehrte Basis. Ein "Drift-Abzug" gegen die
   Kraken-Serverzeit klingt richtig, senkt den nonce aber unter den bereits
   gespeicherten Peak - danach geht gar nichts mehr.
+- **Die EINHEIT ist die groesste, die ein Programm auf demselben Schluessel
+  benutzt.** Kraken merkt sich den HOECHSTEN Wert je Schluessel: signiert ein
+  zweites Werkzeug in Nanosekunden (~1,78e18), waehrend die Hausseite
+  Mikrosekunden (~1,77e12) sendet, ist danach JEDE Hausabfrage rund tausendfach
+  zu klein — `EAPI:Invalid nonce` fuer alle Hausspuren, ausgeloest von einem
+  fremden Programm, das einmal gelaufen ist. Fix ist die Angleichung der Einheit
+  (`monotone_nonce()` auf Nanosekunden), nicht Abwarten. Vor dem Einbinden eines
+  zweiten Werkzeugs auf denselben Schluessel dessen Einheit an einer signierten
+  Ausgabe MESSEN, nicht annehmen.
+- **Das Symptom auf der Spur-Seite ist kein nonce-Text.** Es kommt als
+  Guthaben-Tor herein („Guthaben nicht abrufbar"), als gescheiterte Live-Sperre
+  oder als stumm bleibender Live-Zweig. Wer nur nach `Invalid nonce` grept, findet
+  die Ursache nicht — die betroffene Spur fragt ihren Kontostand ab und deutet die
+  Ausnahme als fehlendes Guthaben.
+- **Auch bei richtiger Einheit und streng monotonen EIGENEN Werten kann
+  `EAPI:Invalid nonce` kommen.** Kraken vergleicht gegen den HOECHSTEN je Schluessel
+  gesehenen Wert. Ein Werkzeug, das den gemeinsamen Pool NICHT benutzt (die
+  kraken-cli), hebt ihn einmal hoch - danach liegt jeder Pool-Wert darunter, bis die
+  Uhr den fremden Wert eingeholt hat, und ein Wiederholversuch mit DEMSELBEN Wert
+  hilft nicht. Fix: den gemeinsamen Zaehler in der DATEI vorwaerts schieben
+  (`nonce_pool.vorwaerts(sekunden)`; ohne das Schreiben waere der naechste normale
+  Aufruf wieder zu niedrig) und mit dem vorgeschobenen Wert bis zu dreimal
+  wiederholen (`kraken._roh_privat`). Erkennungszeichen: derselbe Aufruf gelingt eine
+  Minute spaeter ohne Codeaenderung, und ein Schreibvorgang scheitert, waehrend der
+  Leseaufruf Sekunden vorher durchging.
 - Alte Prozesse halten ihren Code im Speicher. Ein nonce-Fix wirkt erst,
   wenn ALLE Sender neu gestartet sind (Dauerlaeufe, MCP-Server, Gateway).
 

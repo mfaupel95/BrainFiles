@@ -55,6 +55,80 @@ self.assertTrue(wx.wochenende_sperrt(W, _zeit(4, 19, 0)))   # Fr 19:00 UTC
 self.assertFalse(wx.wochenende_sperrt(W, _zeit(0, 9)))      # Mo 09:00
 ```
 
+## Zweite Familie: der Test legt nur die HALBE Umgebung still
+
+Nicht der eingefrorene Wert ist hier das Problem, sondern der **echte
+Betriebszustand, der mitentscheidet**. Der Test ersetzt einen Eingang, den die
+geprueffte Regel liest - aber nicht alle.
+
+| Test | stillgelegt | vergessen | Folge |
+|---|---|---|---|
+| `test_sperre_ohne_freigabefenster` | `sitzung_da()` | `zeitfenster_offen()` | Bei offenem Fenster fehlt der Sperrgrund ZU RECHT -> rot genau dann, wenn die Spur korrekt live faehrt |
+| `test_ohne_modul_false` | `sys.modules[...]` | das Modul wird ueber den DATEIPFAD geladen und als **Modulattribut** gehalten | Der Stub erreicht die Spur nie; der Test prueft nichts |
+
+**Regel: vor dem Stilllegen auflisten, was die Regel liest, und JEDE dieser
+Quellen stilllegen - nicht nur die, die im Rueckgabewert sichtbar wird.** Ein
+Test, der gegen den echten Betriebszustand mitrechnet, ist gruen, solange
+niemand arbeitet, und rot, sobald die Spur tut, was sie soll: er erzeugt genau
+dann Fehlalarm, wenn das System gesund ist.
+
+Rezept fuer zustandslesende Funktionen: die **Pfad-Konstante** des Moduls auf
+einen Temp-Ordner zeigen lassen (`mod.HIER = tmp`, zurueck per
+`addCleanup(setattr, ...)`), dort die Varianten anlegen (frisch / alt / kaputt /
+fehlend) und alle Faelle in einem Test durchspielen. So wird die Regel geprueft,
+ohne die echten Dateien anzufassen - und der Test belegt die Rangfolge
+(z. B. "frischester Stand gewinnt"), nicht nur einen Einzelwert.
+
+## Dritte Familie: der Test behauptet einen SCHALTER, nicht die Regel
+
+Ein Test, der ein Konfigfeld gegen seinen AKTUELLEN Wert prueft, ist derselbe
+Fehler wie ein eingefrorener Stand — nur friert er eine Entscheidung des Nutzers
+statt einen Commit ein. Gemessen: `test_kein_live_und_keine_freigabe` verlangte
+`handel_erlaubt == False` und `freigabe.erfuellt == False`. Ein Sammelauftrag
+("schalte alle Spuren scharf") setzte beide Felder in JEDER `wachen.json` auf
+true — der Test war rot, ohne dass irgendetwas kaputt war, und die Versuchung
+ist, ihn "zu reparieren", indem man den Schalter zurueckdreht.
+
+**Regel: die Eigenschaft pruefen, die gelten soll — hier "diese Spur hat keinen
+Orderweg" — nicht die Stellung des Schalters.**
+
+```python
+# schlecht - behauptet eine Entscheidung
+self.assertFalse(W["handel_erlaubt"])
+self.assertFalse(W["freigabe"]["erfuellt"])
+
+# gut - prueft die Eigenschaft, die den Schalter wirkungslos macht
+modus, meldung = h.live_gate("live")
+self.assertEqual(modus, "papier")
+self.assertIn("Orderaufruf", meldung)
+```
+
+Dieselbe Form gilt fuer jeden "ist abgeschaltet"-Test: nicht das Flag lesen,
+sondern den Weg, der ohne das Flag scharf waere (Orderaufruf, Schreibpfad,
+Netzaufruf) — und pruefen, dass er nicht erreicht wird. Ein Flag ist eine
+Absicht, kein Verhalten.
+
+## Modulglobale zwischen Testdateien: sichern und zuruecklegen
+
+Ein Modulglobal, das ein Test umbiegt (`VENUE`, `SCHREIBEN`, `HIER`, ein
+Boersenmodul-Attribut), leckt in die naechste Testdatei derselben Suite. Symptom:
+ein Test, der allein gruen ist, faellt im Gesamtlauf (oder umgekehrt), und die
+Reihenfolge der Dateien entscheidet ueber das Ergebnis.
+
+```python
+def setUp(self):
+    self._alt = handeln.VENUE          # vor dem Umbiegen merken
+    handeln.VENUE = self._okx
+
+def tearDown(self):
+    handeln.VENUE = self._alt          # zuruecklegen, nicht auf den
+                                       # "erwarteten" Wert setzen
+```
+
+Ein Modul, das einen Schalter selbst beim IMPORT setzt, braucht zusaetzlich eine
+Klasse, die den Import isoliert. Und die Reihenfolge nicht als Schutz benutzen:
+eine Suite, die nur in EINER Reihenfolge gruen ist, ist eine Zeitbombe.
+
 ## Wann ein eingefrorener Stand DOCH richtig ist
 
 Wenn die Unveraenderlichkeit selbst der Vertrag ist und es keine formulierbare

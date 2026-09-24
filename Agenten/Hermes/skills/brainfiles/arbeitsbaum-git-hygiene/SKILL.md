@@ -49,7 +49,13 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Dann den Index DETERMINISTISCH bauen statt Hunk-Antworten zu raten:
    `git show HEAD:<datei>`, die eigene Aenderung byte-genau im Speicher einsetzen,
    `git hash-object -w --path=<datei> --stdin`, danach
-   `git update-index --cacheinfo 100644,<sha>,<datei>`. Der Arbeitsbaum bleibt
+   `git update-index --cacheinfo 100644,<sha>,<datei>`. **Der Anker fuer das
+   Einsetzen muss aus `git show HEAD:<datei>` kommen, nicht aus dem
+   Arbeitsbaum:** eine Zeile, die man dort gerade sieht, kann selbst zur
+   fremden Aenderung gehoeren - dann findet der Anker in HEAD nichts
+   (`0 mal`) und der eigene Block wird nie eingefuegt. Vor dem Schreiben
+   `assert head.count(anker) == 1` und beim Anker NICHT auf den Text aus dem
+   Arbeitsbaum zurueckgreifen. Der Arbeitsbaum bleibt
    unberuehrt (die fremde Aenderung steht weiterhin als `M`), und
    `git diff --cached --numstat -- <datei>` nennt genau die eigenen Zeilen —
    `30 0` = ein eingefuegter Abschnitt, `32 2` = Abschnitt plus zwei geaenderte
@@ -64,6 +70,16 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
   bzw. umgekehrt, dann `write_bytes`) statt den Churn zu committen — die
   Semantik ist dann schon geprueft, `yaml.safe_load`/`json.load` beweist, dass
   nur die Enden normalisiert wurden.
+   **Vor dem Bau des Fremd-Blobs den Index ZUERST LEEREN (`git reset`, ohne Pfade).**
+   Sind die eigenen Dateien schon gestagt, nimmt der Fremd-Commit sie mit: der ganze
+   eigene Stapel landete in einem Commit mit dem Autor `Andere Sitzung <fremd@local>` -
+   inhaltlich richtig, aber falsch beschriftet und von der eigenen Arbeit nicht mehr zu
+   trennen. Reihenfolge: `git reset` -> Fremd-Blob
+   (`git hash-object -w --path=… --stdin` + `git update-index --cacheinfo …`) ->
+   `git diff --cached --name-only` muss GENAU den fremden Pfad nennen (nicht mehr!) ->
+   Commit mit Fremd-Autor -> erst danach die eigene Pfadliste stagen und committen.
+   Ist es doch passiert: `git reset --soft HEAD~1`, dann `git reset` (Index leeren),
+   Fremd-Teil neu bauen und committen, danach den eigenen.
    **Der so gebaute Index wirkt nur bei `git commit` OHNE Pfadangabe.**
    `git commit -- <pfad>` committet den ARBEITSBAUM dieser Pfade (wie `git add <pfad>`
    plus Commit) und wirft den eigenen Index-Eintrag weg: die fremden Zeilen gehen mit
@@ -277,7 +293,32 @@ ungetrackten Dateien. Reihenfolge:
   Prozess laesst die Sperre stehen. Erst wenn der eigene Befehl ueber ~5 Minuten
   wiederholt daran scheitert, sie per `mv` zur Seite legen
   (`.git/index.lock.verwaist-<zeitstempel>`, nie loeschen — der Schritt muss umkehrbar
-  bleiben) und im Bericht sagen, dass eine parallele Sitzung aktiv war. **Prozesse ansehen,
+  bleiben) und im Bericht sagen, dass eine parallele Sitzung aktiv war. **Das
+  Alter der Sperre ist ein schwaches Zeichen:** eine frische, 0 Byte grosse Sperre
+  ist genauso verwaist wie eine alte — eine Sitzung kann zwischen Staging und
+  Commit abgebrochen sein, waehrend eine andere gerade fertig committet hat (dann
+  ist die Sperre Minuten jung und trotzdem tot). Entscheidend ist die ART der
+  Prozesse, nicht die Uhr: keine `git.exe` ohne `fsmonitor` in der Kommandozeile =
+  umbenennen und SOFORT denselben Befehl wiederholen; die Wartezeit ist nur fuer
+  den unklaren Fall. Gegenprobe nach dem Umbenennen: `Test-Path` auf Quell- UND
+  Zielpfad, dann den Commit wiederholen und `git log -1` lesen — erst der
+  durchgelaufene Commit beweist, dass die Sperre wirklich weg war. **Unter
+  Windows mit `[System.IO.File]::Move($quell, $ziel)` (**ZWEI** Argumente) umbenennen, NICHT mit
+  `Move-Item`:** bei der versteckten Datei `.git\index.lock` tat `Move-Item` still
+  NICHTS (keine Fehlermeldung, die Sperre stand danach unveraendert mit altem
+  Zeitstempel da, waehrend die Ausgabe wie Erfolg aussah). Danach mit `Test-Path`
+  auf BEIDE Pfade nachsehen - sonst arbeitet man weiter gegen eine Sperre, die man
+  fuer weg haelt. **Die Ueberladung mit DREI Argumenten gibt es in Windows
+ PowerShell 5.1 nicht:** `[System.IO.File]::Move($quell, $ziel, $true)` bricht mit
+ „Es kann keine Ueberladung gefunden werden: 3" ab und die Sperre bleibt liegen —
+ der Zielname muss also selbst frei sein (Zeitstempel im Namen), sonst die
+ Zwei-Argument-Fassung nehmen. **Hat der echte Committer die Sperre nur
+ HINTERLASSEN statt sie zu entfernen** (kein echter `git.exe` mehr, Sperre 0 Byte
+ und Minuten alt), ist sie verwaist: umbenennen und denselben Befehl sofort
+ wiederholen. Die Abbruchregel gilt nur, SOLANGE ein echter Committer lebt — erst pruefen, dann warten, dann umbenennen ist die Reihenfolge (gemessen: nach dem
+ Warten auf einen fremden Commit stand die 0-Byte-Sperre noch da und der eigene
+ Commit lief erst nach dem Umbenennen durch).
+ **Prozesse ansehen,
  nicht nur die Uhr:** `git fsmonitor--daemon` laeuft dauerhaft und ist KEIN Commit —
  eine `git.exe`-Liste voller fsmonitor-Zeilen beweist keine parallele Sitzung. Ein
  echte Committer hat eine CreationDate in den letzten Sekunden und `add`/`commit`
@@ -342,10 +383,41 @@ ungetrackten Dateien. Reihenfolge:
   verwenden oder escapen. Und: eine neue Zeile hinter `"schluessel": false,` braucht genau
   dann ein abschliessendes Komma, wenn die Ankerzeile eins hatte; fehlt es, ist das Objekt
   ungueltig, steht aber optisch richtig da. Nach jedem Einfuegen `json.loads`/`yaml.safe_load`
-  auf die GESCHRIEBENE Datei (nicht auf den Text im Speicher) und die drei Zielwerte asserten.
+  **auf den Text IM SPEICHER, und zwar VOR dem Schreiben** (`json.loads(neu)`, dann
+  erst `open(pfad,'wb').write(neu.encode())`) — nicht erst auf der geschriebenen Datei.
+  Eine kaputte Datei ist teuer: liegt der Pfad unter einem verschachtelten eigenen Repo
+  oder ist er ignoriert, gibt es kein `git show HEAD:` als Rueckweg, und
+  `git checkout -- <datei>` holt nur den letzten Commit-Stand (ohne die eigene Aenderung).
+  Ist die Datei unversioniert, vorher eine byte-genaue Kopie daneben legen. Die drei
+  Zielwerte danach asserten. Zwei Anker-Fallen derselben Arbeit: **`rfind('}')` als
+  Einfuegepunkt trifft ein `}` INNERHALB eines Notiz-Strings** — dann sauber parsen, den
+  Schluessel ergaenzen und mit `json.dumps(..., indent=2, ensure_ascii=False)` schreiben
+  (Gegenprobe: `git diff --numstat` bleibt klein, z. B. 4/3; Zeilenende vorher aus dem
+  Original ableiten); und **der Anker muss die Schreibweise des WERTS treffen** —
+  `'"ETH_USDT": 12'` findet kein `12.0` und umgekehrt, also vor dem Ersetzen
+  `count(anker) == 1` asserten und `repr()` gegen die Stelle halten.
   **Eine schreibende Funktion nie als "Probe" gegen das ECHTE Ziel laufen lassen:** ein
   Testaufruf am echten Buch schreibt Journalzeilen, auch wenn er nur pruefen sollte — Probe
   gegen eine Kopie, sonst muss der Zustand von Hand nachgezogen werden.
+- **Reparaturcode nie durch einen Shell-Heredoc schicken.** Ein Heredoc
+  (`python - <<'PY' … ersatz = "…\n…" …`) zerlegt die Escapes im Ersatztext: ein
+  `\n` in einem Stringliteral landet als ECHTER Zeilenumbruch in der Zieldatei —
+  die Datei kompiliert danach nicht mehr (`SyntaxError: unterminated string
+  literal` in einer Zeile, die richtig aussieht) und sie ist schon
+  ueberschrieben. Den Helfer per `write_file` als DATEI nach
+  `Agenten/Hermes/cache/scratch/` schreiben (Inhalt kommt unveraendert an) und
+  mit `python <datei>` starten; die Stelle ueber ZEILENINDIZES ersetzen, nicht
+  ueber einen Suchtext — ein mehrfach vorkommender Anker (`print(…)`, `)))`)
+  trifft die fruehere Fundstelle, der Ersatz landet am falschen Ort und der
+  eigentliche Schaden bleibt stehen (mehrere Anlaeufe lang unbemerkt). Fuer den
+  Rueckweg `git show HEAD:<pfad>` bereithalten (bei ungetrackten Pfaden gibt es
+  ihn nicht — dann vorher byte-genau kopieren). Nach jeder Textaenderung einen
+  Syntax-Sweep ueber die angefassten `.py` fahren: `ast.parse` je Datei (nicht
+  `py_compile.compile(doraise=True)` — das wirft `PyCompileError`, nicht
+  `SyntaxError`, und der `except SyntaxError` faengt nichts), inklusive
+  `Agenten/Hermes/scripts/`: ein Skript, das nicht kompiliert, nimmt seinen
+  Cron-Job mit, und das faellt nur an `last_status: failed` in `cron/jobs.json`
+  auf — nie in einer Meldung.
 - **`patch` auf `Agenten/Hermes/config.yaml` ist gesperrt** („Refusing to write to Hermes
   config file"); dafuer `hermes config set`. Siehe `hermes-config-ops`.
 - **Ein `.bak-JJJJMMTT` ist nicht nur Sicherung, sondern der einzige Rueckweg**, wenn ein

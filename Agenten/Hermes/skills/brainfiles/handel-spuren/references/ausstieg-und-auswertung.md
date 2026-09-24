@@ -87,6 +87,39 @@ Gilt fuer jede Spur unter `Agenten/Handel/<spur>/`: die Ausstiegsrechnung in
   Nachweis ist eine neue Zeile mit plausibler Groessenordnung, nicht der gruene
   Test.
 
+## Wiedereinstieg nach dem Ausstieg
+
+- **Ein Ausstieg, der das Ziel erreicht, hat das Signal VERBRAUCHT.** Der
+  Kandidat bleibt danach auf der Rangliste (sein Signal ist ja nicht
+  verschwunden, sondern gerade erfuellt), und der naechste Zyklus kauft
+  dasselbe Instrument zum fast selben Kurs neu: zwei Gebuehrenrunden fuer eine
+  Bewegung. Nach einem Ausstieg mit Grund `ziel` deshalb das Instrument fuer
+  `sperrfrist_nach_ziel_stunden` sperren (Zahl in der `wachen.json`, 0 = aus).
+- **Zwei Mechanismen, zwei Zeitraeume.** Nach einem STOP gilt die laengere
+  Abklingzeit in TAGEN (`abklingzeit_tage`, z. B. 4) — ein gescheiterter
+  Versuch ist ein anderer Grund als ein gelungener. Nicht einen Mechanismus
+  fuer beide Gruende bauen und nicht einen Zeitraum fuer beide.
+- **Den ZEITPUNKT merken, nicht das Datum.** Fuer Stunden braucht der Zustand
+  einen ISO-Zeitstempel je Instrument (`zustand["letzte_ziele"][inst]`),
+  gesetzt in `pruefe_ausstiege` unmittelbar neben dem Stop-Merker und geprueft
+  in der Kaufliste. Eine Tagesangabe macht aus 2 Stunden eine Sperre bis
+  Mitternacht.
+- **Altbestand-Rueckfall im Zustandslader**: `lade_zustand()` setzt das neue
+  Feld auf `{}`, wenn die vorhandene `zustand.json` es nicht kennt — sonst
+  faellt der naechste Zyklus ueber einen fehlenden Schluessel.
+- **Ein kaputter Zeitstempel sperrt NICHT dauerhaft** (fail-open mit Meldung),
+  sonst legt ein alter Zustand die Spur still. Der Rueckfall ist hier bewusst
+  die Gegenrichtung zum Rest des Hauses: die Sperre schuetzt Gebuehren, keine
+  Position.
+- **Die Sperre muss im Ablehnungsprotokoll sichtbar sein** (eigener Grund
+  "Sperrfrist nach Ziel-Ausstieg"), sonst liest sich die Stille wie "kein
+  Kandidat" und beim Kalibrieren sucht man am falschen Ende.
+- **Test mit GEGENPROBE.** Nur "in der Sperrfrist wird nicht gekauft" zu
+  pruefen findet eine Sperre nicht, die nie aufgeht. Der Test braucht drei
+  Faelle: Ziel-Ausstieg setzt die Sperre, STOP-Ausstieg setzt sie NICHT, und
+  nach Ablauf der Frist wird wieder gekauft. Der Zweite ist der wichtigste — er
+  haelt die beiden Mechanismen auseinander.
+
 ## Spurtests aufrufen
 
 - Aus `<spur>/tests` heraus: `<Handel>/scanner/.venv/Scripts/python.exe -m unittest test_<spur>`

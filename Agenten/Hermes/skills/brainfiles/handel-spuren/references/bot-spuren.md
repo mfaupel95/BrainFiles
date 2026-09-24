@@ -202,3 +202,38 @@ LLM-Schluessel, Wallet, kein Handelsbezug). Den **Rest vormerken**: eine Notiz
 gruppiert (Daten-Schluessel, LLM-Schluessel, RPC/Wallet, kein Handelsbezug) -
 und je Gruppe den Weg nennt, wenn es weitergehen soll. Nicht nach Namen
 auflisten: die Gruppe sagt, was zu tun waere.
+
+## Ein Liquidationsband liegt HINTER dem Kurs, nicht davor
+
+Fuer Spuren, deren Signal aus dem Strom der Zwangsschluesse kommt
+(`moondev_liquidation`, `liq_wand`). Drei gemessene Eigenschaften der oeffentlichen
+Quelle, die jede Regel davor beruecksichtigen muss:
+
+- **Der Strom ist ein Ausschnitt, kein Bestand.** Die ~100 Eintraege eines Abrufs
+deckten 1,8 bis 14,7 Minuten ab, der juengste war 0,6 bis 26 Minuten alt. Man
+sieht die unmittelbare Vergangenheit, nicht "die offenen Wände".
+- **Die SEITE eines Bandes ist die Richtung des letzten Laufs**, keine Eigenschaft
+des Bandes: Longs sterben beim Fallen, Shorts beim Steigen. In beiden Messungen
+waren 100 von 100 Liquidationen Longs (fallender Kurs) - eine Short-liquidierte
+Wand gibt es nur mitten in einem Aufwaertsimpuls.
+- **Ein Band entsteht dort, wo der Kurs GERADE WAR.** Das groesste Band lag 0,25 %
+ueber dem Spot und bestand ganz aus liquidierten Longs: die Verkaeufe sind durch
+das Band gelaufen, der Kurs ist schon darunter.
+
+**Folge fuer die Regel: "die Wand muss VOR dem Kurs liegen" ist fast nie
+erfuellbar** - die Spur meldet dann "falsche Seite" und schweigt tagelang, was wie
+ein Datenausfall aussieht. Richtig ist eine **Toleranz hinter dem Kurs** als
+Wachen-Feld (`hinter_dem_spot_prozent`, Startwert 0.5, `0` stellt die strenge
+Fassung wieder her), waehrend die Entfernungsgrenze (`max_abstand_prozent`) den
+Deckel bleibt. Der Cluster zaehlt als BESCHLEUNIGER: man geht MIT ihm, nicht gegen
+ihn.
+
+Vorgehen, bevor an der Regel gedreht wird: eine **Messsonde** bauen, die aus dem
+Live-Strom dieselben Baender bildet und je Band Seite, Abstand und Signal
+ausgibt (Vorbild `liq_wand/probe_seiten.py`). Erst messen, dann die Regel
+begruenden - und dieselbe Sonde nach der Aenderung erneut laufen lassen, damit
+aus der Behauptung ein Beleg wird. Dazu zwei Testfaelle: ein Band knapp hinter
+dem Kurs ergibt ein Signal, eines deutlich dahinter nicht.
+
+Wie bei jeder Signalquelle gilt: "die Vorschau meldet ein Signal" ist nicht "es
+wird gehandelt" - mit `MAXHIRN_ROUTINE=1` nachfahren (siehe `vorschau-schreibt-nicht.md`).
