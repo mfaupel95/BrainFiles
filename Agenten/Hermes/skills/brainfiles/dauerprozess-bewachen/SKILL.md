@@ -72,9 +72,20 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
    gemeinsame Warteschlangen und Freigabedateien: die zweite laeuft stumm, liest
    keine Befehle, oeffnet/schliesst keine Fenster der ersten. Zwei Abrufer an
    einem Bot verschlucken sich gegenseitig (Telegram 409).
-5. **Getrennte Zustands-/Ergebnisdateien je Instanz**, sonst ueberschreiben sie
-   sich die Positionen. Sind die Namen abgeleitet (`datei()`), ist das EINE Zeile
-   in der gemeinsamen Bibliothek statt eines Sonderwegs je Aufrufer.
+6. **Den Waechter-Task der zweiten Instanz aus dem der ersten KLONEN**, nicht von
+   Hand bauen: `Export-ScheduledTask -TaskName '<geschwister>'` liefert das XML mit
+   Trigger, `IgnoreNew`, Laufzeitgrenze und Principal; darin Name, das
+   Varianten-Argument und die Beschreibung ersetzen und mit
+   `Register-ScheduledTask -TaskName '<neu>' -Xml $x -Force` registrieren. Ein von
+   Hand gebauter Trigger vergisst regelmaessig den Anmelde-Trigger oder die
+   Wiederholung, und der Vergleich mit dem Geschwister faellt weg. Danach EINMAL
+   feuern: die Logzeile „laeuft bereits (PID …, Variante …)“ plus
+   `LastTaskResult 0` und eine unveraenderte Prozesszahl beweisen, dass der Klon
+   greift und nicht ein zweites Mal startet.
+   **Vor der DRITTEN Variante die Last messen** (freier Commit): jede Variante
+   faehrt alle Objekte ein weiteres Mal, und ein erschoepftes Commit-Limit laesst
+   danach fremde Dinge scheitern, die mit der Variante nichts zu tun haben
+   (`references/massenprozesse-und-commit-limit.md`).
 
 ## Doppelbetrieb erkennen und beenden
 
@@ -384,6 +395,20 @@ Messung weiterlaufen.
   Annahme, der Dauerbetrieb sei weg. Deshalb fuehrt der Weg ueber die `.cmd`
   (Schritt 2), und Testprozesse werden danach beendet, damit kein Doppelbetrieb
   bleibt.
+- **Einen langen Start nie in derselben Anfrage abwarten.** Ein Kommando ueber eine
+  Werkzeugbruecke hat ein Zeitfenster (hier rund 300 s); ein Lauf, der laenger
+  braucht, wird als Timeout gemeldet, obwohl er weiterarbeitet - und wer ihn
+  danach noch einmal startet, hat zwei Instanzen. Lange Laeufe deshalb ABGEKOPPELT
+  starten (`Start-Process` ohne `-Wait`, Ausgabe UND Fehler in eine Datei) und
+  spaeter die Datei lesen; ob der Lauf noch lebt, entscheidet die Prozessliste,
+  nicht die Rueckkehr des Aufrufs. Eine Ausgabedatei mit 0 Byte bei winzigem
+  Speicherverbrauch heisst „haengt beim Laden“, nicht „arbeitet noch“ - dann
+  nachsehen, was er importiert, und den Versuch beenden statt weiter zu warten.
+- **Ein Massenlauf, der im Sandbox-Terminal abbricht, gehoert auf den Host.**
+  Bei knappem Commit scheitert das Terminal der Werkzeug-Sandbox mit
+  `WinError 1455` („Auslagerungsdatei zu klein“), waehrend dieselbe Schleife ueber
+  die Host-PowerShell durchlaeuft. Symptom ist ein Abbruch MITTEN im Lauf, ohne
+  Fehler der Komponente.
 - **Die Uhr messen, bevor ein Ausbleiben gemeldet wird** (`date`): aus den letzten
   Zeitstempeln im Kopf eine Uhrzeit weiterzaehlen erzeugt Fehlalarme („Zyklus seit
   2 h ausgeblieben"). Gegenprobe in derselben Reihenfolge: PID lebt -> Log-Zeile des
@@ -408,9 +433,15 @@ Messung weiterlaufen.
   zwei gleichnamige Prozesse unterschieden werden muessen (Basis vs. Variante -
   `Get-Process` zeigt keine Argumente), ist die WMI-Abfrage das Mittel - dann
   einmal gezielt, nicht in einer Schleife.
-- **`Register-ScheduledTask` braucht Administrator** („Zugriff verweigert“) — der
+- **Eine NEUE Aufgabe fuer den eigenen Benutzer braucht keinen Administrator -
+  eine BESTEHENDE aus erhoehtem Kontext zu aendern schon.** Gemessen: einen Klon
+  mit demselben interaktiven Benutzer und `RunLevel Limited` registrieren lief
+  ohne Erhoehung durch, waehrend `Set-ScheduledTask` auf einer erhoeht
+  registrierten Aufgabe mit `0x80070005` abgewiesen wird. Also nicht pauschal
+  „braucht Admin“ annehmen und die Aufgabe deshalb gar nicht anlegen, sondern
+  erst registrieren und den Fehler auswerten. Fuer alles andere gilt weiter: der
   Hermes-Cron laeuft ohne Erhoehung und heilt zusaetzlich einen toten Prozess, was
-  ein Autostart-Eintrag nicht kann. Nur wenn Max eine sichtbare Aufgabe will,
+  ein Autostart-Eintrag nicht kann - nur wenn Max eine sichtbare Aufgabe will,
   braucht es einen erhoehten Aufruf von ihm.
 - **Geplante Routine-Aufgaben versteckt registrieren** (`-WindowStyle Hidden` in
   der Task-Action): eine sichtbare Aufgabe zeigt bei JEDEM Lauf ein
