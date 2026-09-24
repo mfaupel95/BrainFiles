@@ -103,6 +103,16 @@
       "gruppe": "doku"
     },
     {
+      "ordner": "intelligent-trading-bot",
+      "art": "python",
+      "notiz": "ML-Backtest-Pruefstand: Start zeigt Modellguete in-sample gegen Walk-Forward (BTCUSDT 1h, Binance-Kurse oeffentlich, kein Schluessel)",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "itb_pruefstand.py"
+      ],
+      "venv_pflicht": true
+    },
+    {
       "ordner": "moon-dev-ai-agents",
       "art": "python",
       "bot": "moon-dev-agents",
