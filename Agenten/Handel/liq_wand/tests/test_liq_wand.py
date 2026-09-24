@@ -73,10 +73,36 @@ class Signal(unittest.TestCase):
         self.assertEqual(h.signal(d, W), "short")
 
     def test_shorts_liquidiert_unter_dem_spot_ergibt_nichts(self):
-        # Kaufdruck unterhalb des Marktes ergibt keinen Long nach oben -
-        # die Wand liegt auf der falschen Seite.
+        # Kaufdruck ein Prozent unter dem Markt ist zu weit hinter dem Kurs -
+        # die Toleranz (0,5 %) deckt das nicht ab.
         d = {"spot": SPOT, "liqs": _cluster(SPOT * 0.99, "short")}
         self.assertIsNone(h.signal(d, W))
+
+    def test_longs_liquidiert_knapp_ueber_dem_spot_ergibt_short(self):
+        # DER gemessene Fall (24.09.2026): das groesste Band lag 0,25 % ueber
+        # dem Spot und bestand ganz aus liquidierten Longs - Verkaufsdruck, der
+        # gerade durch das Band gelaufen ist. Die Wand sitzt knapp HINTER dem
+        # Kurs; mit Toleranz ist das ein Short, ohne sie blieb die Spur stumm.
+        d = {"spot": SPOT, "liqs": _cluster(SPOT * 1.0025, "long")}
+        self.assertEqual(h.signal(d, W), "short")
+
+    def test_shorts_liquidiert_knapp_unter_dem_spot_ergibt_long(self):
+        # Die Spiegelform: Kaufdruck, der eben nach oben durchgelaufen ist.
+        d = {"spot": SPOT, "liqs": _cluster(SPOT * 0.9975, "short")}
+        self.assertEqual(h.signal(d, W), "long")
+
+    def test_longs_liquidiert_weit_ueber_dem_spot_ergibt_nichts(self):
+        # Zwei Prozent hinter dem Kurs ist keine Beschleunigung mehr.
+        d = {"spot": SPOT, "liqs": _cluster(SPOT * 1.02, "long")}
+        self.assertIsNone(h.signal(d, W))
+
+    def test_toleranz_null_stellt_die_strenge_fassung_wieder_her(self):
+        # Das Feld ist ein Schalter, kein fest verdrahteter Wert: mit 0 gilt
+        # wieder "Wand muss vor dem Kurs liegen".
+        streng = dict(W, hinter_dem_spot_prozent=0)
+        d = {"spot": SPOT, "liqs": _cluster(SPOT * 1.0025, "long")}
+        self.assertIsNone(h.signal(d, streng))
+        self.assertEqual(h.signal(d, W), "short")
 
     def test_zu_weit_entfernte_wand_ergibt_nichts(self):
         d = {"spot": SPOT, "liqs": _cluster(SPOT * 1.05, "short")}
@@ -108,9 +134,19 @@ class Ziel(unittest.TestCase):
 
 
 class Wachen(unittest.TestCase):
-    def test_kein_live_und_keine_freigabe(self):
-        self.assertFalse(W["handel_erlaubt"])
-        self.assertFalse(W["freigabe"]["erfuellt"])
+    def test_live_wird_trotz_schalter_zu_papier(self):
+        # Seit dem Auftrag Max vom 21./22.09.2026 stehen handel_erlaubt UND
+        # freigabe.erfuellt in ALLEN Spuren auf true - ein Test auf den Schalter
+        # meldete hier eine Aenderung, keinen Fehler. Was zaehlt: liq_wand hat
+        # keinen Orderaufruf, deshalb muss '--live' IMMER zu Papier werden.
+        modus, meldung = h.live_gate("live")
+        self.assertEqual(modus, "papier")
+        self.assertIn("keinen Orderaufruf", meldung)
+        self.assertFalse(h.LIVE_ORDERWEG)
+
+    def test_papier_und_vorschau_bleiben_unberuehrt(self):
+        for m in ("papier", "vorschau", "wachen"):
+            self.assertEqual(h.live_gate(m), (m, None))
 
     def test_ratschenbetrag_ist_das_buchrisiko(self):
         self.assertEqual(W["drawdown_halbierung_usd"],

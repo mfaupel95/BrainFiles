@@ -38,5 +38,7 @@
     "_erfuellt_vermerk": "true auf Auftrag Max 22.09.2026 (stille Spuren einschalten). Stand: 0 eigene Runden (liq_wand angelegt 21.09.2026). Papier-Beobachtung laeuft, Live-Weg ueber spur_buch.zyklus. AUTO_FREIGABE oeffnet Fenster beim naechsten Signal wenn nur das Fenster fehlt."
   },
   "grund": "liq_wand",
-  "journal_zweitziel": "Q:\\Handel_Journal\\liq_wand"
+  "journal_zweitziel": "Q:\\Handel_Journal\\liq_wand",
+  "hinter_dem_spot_prozent": 0.5,
+  "_wand_hinter_dem_kurs": "Gemessen 24.09.2026 (100 echte Zwangsschluesse, BTC): das groesste Band lag 0,25 % ueber dem Spot und bestand ganz aus liquidierten Longs. Die Wand liegt also typisch KNAPP HINTER dem Kurs - sie entsteht dort, wo der Kurs gerade war. Diese Toleranz laesst sie bis 0,5 % hinter dem Kurs als Beschleuniger gelten; max_abstand_prozent 2.0 deckelt die Entfernung weiterhin. 0 = alte strenge Fassung (Wand muss vor dem Kurs liegen)."
 }

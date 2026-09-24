@@ -157,10 +157,22 @@ def signal(d, w):
 
     # Eine Liquidationswand ist ein BESCHLEUNIGER, kein Widerstand:
     # geschlossene Shorts = Kaufdruck, geschlossene Longs = Verkaufsdruck.
+    #
+    # Die Wand darf ein Stueck HINTER dem Kurs liegen (hinter_dem_spot_prozent).
+    # Messung 24.09.2026 an 100 echten Zwangsschluessen: das groesste Band lag
+    # 0,25 % UEBER dem Spot und bestand zu 100 % aus liquidierten LONGS - die
+    # Verkaeufe liefen also durch dieses Band, der Kurs war schon darunter.
+    # Genau das ist der Normalfall: ein Band entsteht dort, wo der Kurs gerade
+    # war, nicht dort, wo er hinwill. Die strenge Fassung ("Wand muss vor dem
+    # Kurs liegen") verlangte deshalb etwas, das der Datenstrom fast nie
+    # hergibt - die Spur blieb tagelang stumm. Mit der Toleranz zaehlt der
+    # Cluster als Beschleuniger, auch wenn er knapp hinter dem Kurs sitzt; die
+    # 2-%-Grenze (max_abstand_prozent) deckelt weiterhin die Entfernung.
+    toleranz = spot * float(w.get("hinter_dem_spot_prozent", 0.5)) / 100.0
     if seite == "short":
-        return "long" if preis >= spot else None
+        return "long" if preis >= spot - toleranz else None
     if seite == "long":
-        return "short" if preis <= spot else None
+        return "short" if preis <= spot + toleranz else None
     return None
 
 
@@ -178,6 +190,34 @@ def _live_erlaubt() -> bool:
         (w.get("freigabe") or {}).get("erfuellt"))
 
 
+# Diese Spur hat KEINEN Orderaufruf. Seit dem Auftrag Max vom 21./22.09.2026
+# stehen handel_erlaubt und freigabe.erfuellt aber in JEDER Spur auf true -
+# _live_erlaubt() allein wuerde '--live' also durchlassen und ein Buch mit
+# modus=live OHNE Boersenauftrag schreiben. Genau das war der Fehler, der am
+# 21.09.2026 bei xperp und scanner auffiel ("Buch war Fiktion"): die Positionen
+# standen nur im Buch. Deshalb entscheidet hier der ORDERWEG, nicht der Schalter.
+LIVE_ORDERWEG = False
+
+
+def live_gate(modus):
+    """(modus, meldung): 'live' wird ohne Orderweg IMMER zu Papier.
+
+    Reine Funktion - kein Dateizugriff, damit sie ohne Nebenwirkung pruefbar ist
+    (ein Test darf nie in ein echtes Buch schreiben).
+    """
+    if modus != "live":
+        return modus, None
+    if not LIVE_ORDERWEG:
+        return "papier", ("--live verweigert: diese Spur hat keinen Orderaufruf "
+                          "(Papierbuch auf dem Liquidations-Signal). Ein Buch "
+                          "mit modus=live ohne Boersenauftrag waere Fiktion.")
+    if not _live_erlaubt():
+        return "papier", ("--live verweigert: handel_erlaubt ist false und "
+                          "freigabe.erfuellt ist nicht gesetzt - Handelsregeln "
+                          "Punkt 3 (scharf schalten von Hand).")
+    return "live", None
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = p.add_mutually_exclusive_group()
@@ -191,11 +231,9 @@ def main():
                    const="wachen", help="nur den Wachenstand zeigen")
     a = p.parse_args()
     modus = a.modus or "papier"
-    if modus == "live" and not _live_erlaubt():
-        print("--live verweigert: handel_erlaubt ist false und freigabe.erfuellt "
-              "ist nicht gesetzt - Handelsregeln Punkt 3 (scharf schalten von "
-              "Hand). Diese Spur hat zusaetzlich keinen Orderaufruf.")
-        modus = "papier"
+    modus, meldung = live_gate(modus)
+    if meldung:
+        print(meldung)
     return spur_buch.zyklus(HIER, quelle, signal, modus,
                             ereignis_name="handel/liq_wand",
                             ziel=ziel)
