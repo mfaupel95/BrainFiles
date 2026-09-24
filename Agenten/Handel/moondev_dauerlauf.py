@@ -50,11 +50,15 @@ REPO = (HIER / ".." / ".." / "Werkstatt" / "Repos" / "moon-dev-ai-agents").resol
 # (z.B. scanner/.venv, wenn der Haus-Dauerlauf startet) und hat diese Pakete
 # NICHT. Fest auf den Repo-Interpreter zeigen (gemessen 17.09.2026:
 # ModuleNotFoundError: requests, solange sys.executable verwendet wurde).
-# pythonw statt python: die Kinder laufen als Konsolen-Fensterprozesse und
-# poppen bei jedem Start fuer den Nutzer auf (gemessen 20.09.2026: 27
-# verwaiste Konsolenfenster nach einem Treiber-Absturz). pythonw zeigt kein
-# Fenster; die Ausgabe laeuft weiter in die ag_log-Dateien, nichts geht verloren.
-REPO_PYTHON = str(REPO / ".venv" / "Scripts" / "pythonw.exe")
+# python.exe (nicht pythonw) ZUSAMMEN mit creationflags=CREATE_NO_WINDOW am
+# Popen unten: ein pythonw-Kind ist ein GUI-Subsystem-Prozess OHNE Konsole,
+# dessen eigene Konsolen-Kinder (onchainos.exe, powershell) daher je ein
+# SICHTBARES Fenster allozieren - der Fokus-Raeuber. python.exe mit
+# CREATE_NO_WINDOW besitzt dagegen eine fensterlose Konsole, die alle
+# Nachfahren erben: kein Popup, keine verwaisten Fenster (frueher der Grund
+# fuer pythonw: 27 verwaiste Fenster nach Absturz; CREATE_NO_WINDOW behebt das
+# an der Wurzel). Die Ausgabe laeuft weiter in die ag_log-Dateien.
+REPO_PYTHON = str(REPO / ".venv" / "Scripts" / "python.exe")
 
 def _repo_env() -> dict[str, str]:
     """Liest die WURZEL-.env des Repos direkt (nur OLLAMA_*).
@@ -303,7 +307,8 @@ def _prozesse() -> list[dict]:
     try:
         p = subprocess.run([_powershell_pfad(), "-NoProfile", "-NonInteractive",
                             "-Command", skript],
-                           capture_output=True, text=True, timeout=60)
+                           capture_output=True, text=True, timeout=60,
+                           creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception:                                          # noqa: BLE001
         return []
     roh = (p.stdout or "").strip()
@@ -351,7 +356,8 @@ def _kill_baum(pid: int) -> bool:
     try:
         if os.name == "nt":
             return subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)],
-                                  capture_output=True, timeout=30).returncode == 0
+                                  capture_output=True, timeout=30,
+                                  creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0).returncode == 0
         os.kill(pid, 15)
         return True
     except Exception:                                          # noqa: BLE001
@@ -442,6 +448,7 @@ class MoonDevDauerlauf:
                 env=umgebung,
                 stdout=ag_datei, stderr=subprocess.STDOUT,
                 text=True, errors="replace",
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
         except Exception as e:                                    # noqa: BLE001
             self.protokolliere(f"{name}: Start fehlgeschlagen: {e}")

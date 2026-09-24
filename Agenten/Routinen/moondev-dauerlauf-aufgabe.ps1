@@ -7,12 +7,11 @@
 
 $ErrorActionPreference = 'Stop'
 $name   = 'MaxHirn-MoonDev-Dauerlauf'
-$venvpy = Join-Path $PSScriptRoot '..\Handel\scanner\.venv\Scripts\pythonw.exe'
-$treiber = Join-Path $PSScriptRoot '..\Handel\moondev_dauerlauf.py'
-if (-not (Test-Path $venvpy))  { throw "venv-Python fehlt: $venvpy" }
-if (-not (Test-Path $treiber)) { throw "Treiber fehlt: $treiber" }
+$wrapper = Join-Path $PSScriptRoot 'moondev-dauerlauf.ps1'
+if (-not (Test-Path $wrapper)) { throw "Wrapper fehlt: $wrapper" }
 
-$aktion  = New-ScheduledTaskAction -Execute $venvpy -Argument ('"' + $treiber + '" --stumm')
+$aktion  = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $wrapper + '"')
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 $trigger.Delay = 'PT2M'
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable

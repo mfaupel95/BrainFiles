@@ -12,9 +12,12 @@
 # spaeter nicht mehr von einem Dienst unterscheiden. Die Verzweigung steht im
 # Protokoll - ein "nichts zu tun" ohne Zeile sieht wie ein stummer Abbruch aus.
 #
-# Gestartet wird pythonw.exe (fensterlos). Ein Fehler beim Aufbau der Ansicht
-# landet in handelszentrale-fehler.log. Mit python.exe waere er sofort
-# sichtbar, dafuer stuende bei jedem Start ein schwarzes Konsolenfenster da.
+# Gestartet wird python.exe mit verstecktem Fenster (-WindowStyle Hidden).
+# Das ist der dokumentierte Fix gegen aufblitzende Konsolenfenster: nur ein
+# Elternprozess MIT eigener Konsole (python.exe statt pythonw.exe) vererbt sie
+# als eine versteckte Konsole an alle Kinder (powershell, onchainos ...), statt
+# dass jedes Kind sein eigenes sichtbares anlegt (Hermes main.ts:2986). Ein
+# Fehler beim Aufbau landet weiter in handelszentrale-fehler.log.
 #
 # Nachweis ist der FENSTERTITEL des Kindes, nicht die PID des Starters: ein
 # venv-Start ist ein Paar aus Launcher und Interpreter.
@@ -68,15 +71,15 @@ try {
   }
 
   if (-not (Test-Path $skript)) { throw "Fenster fehlt: $skript" }
-  $starter = $pythonw
-  if (-not (Test-Path $starter)) { $starter = $python }
-  if (-not (Test-Path $starter)) { throw "kein Python unter $pythonw" }
+  $starter = $python
+    if (-not (Test-Path $starter)) { $starter = $pythonw }
+    if (-not (Test-Path $starter)) { throw "kein Python unter $python" }
 
   Schreib "kein Fenster offen - starte $([IO.Path]::GetFileName($starter))"
   Remove-Item $fehlerlog -Force -ErrorAction SilentlyContinue
   $p = Start-Process -FilePath $starter -ArgumentList $skript `
-                     -WorkingDirectory $handel -PassThru `
-                     -RedirectStandardError $fehlerlog
+                       -WorkingDirectory $handel -WindowStyle Hidden -PassThru `
+                       -RedirectStandardError $fehlerlog
 
   $pid_neu = 0
   for ($i = 0; $i -lt 30; $i++) {
