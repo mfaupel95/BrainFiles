@@ -60,16 +60,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-051 — Stops fuer die uebrigen Kraken-Spotbestaende**
-      Kontext: Am 24.09.2026 wurden die mosaic-Bestaende (BTC/ETH/SOL) und die
-      Margin-Positionen SUI/NEAR/ZEC abgesichert. Das uebrige Guthaben traegt
-      KEINEN Stop: ALGO, KAS, PEPE, JTO, ONDO, STG, SYN, ADA, DIMO und weitere
-      Kleinstbestaende - ein Kursrutsch dort laeuft ungebremst.
-      Naechster Schritt: Max nennt die Liste (oder "alle ab X EUR"), dann laufen
-      sie durch dasselbe Muster (Skill handel-spuren, Abschnitt "Bestehende
-      Positionen nachtraeglich absichern" + references/boersen-aufrufe.md).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Handel/kraken/, Agenten/Handel/mosaic/kraken_stops_7_5.py
 - [ ] **T-052 — OKX-DCA-Parameter der laufenden Bots anpassen**
       Kontext: Der Weg ist bekannt (dca/amend-order-algo), aber `anpassen_erlaubt`
       steht auf false und es fehlt Guthaben: 0,03 USDC frei gegen ~428 USDC
@@ -574,6 +564,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-16
 ## Erledigt
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
+- [x] **T-051 — Stops fuer die uebrigen Kraken-Spotbestaende**
+      Kontext: Am 24.09.2026 wurden die mosaic-Bestaende (BTC/ETH/SOL) und die
+      Margin-Positionen SUI/NEAR/ZEC abgesichert. Das uebrige Guthaben traegt
+      KEINEN Stop: ALGO, KAS, PEPE, JTO, ONDO, STG, SYN, ADA, DIMO und weitere
+      Kleinstbestaende - ein Kursrutsch dort laeuft ungebremst.
+      Naechster Schritt: Max nennt die Liste (oder "alle ab X EUR"), dann laufen
+      sie durch dasselbe Muster (Skill handel-spuren, Abschnitt "Bestehende
+      Positionen nachtraeglich absichern" + references/boersen-aufrufe.md).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/kraken/, Agenten/Handel/mosaic/kraken_stops_7_5.py
+      **Erledigt 2026-09-24.** Max: "alle ab 50 €". Zwei Bestaende trugen
+      keinen Stop und bekamen einen: **ALGO** 513,98026315 @ **0,09033**
+      (`O6DA3U-7D5IU-Z2FKJR`) und **SOL** 0,98120906 @ **94,48**
+      (`OB5P52-TSYY4-QTIJUN`) - der Rest der 1,4618 SOL war schon durch den
+      mosaic-Stop (0,48058439 @ 96,24) belegt. Werkzeug:
+      `Agenten/Handel/kraken/spot_stops.py` (Vorschau Standard, `--anwenden`,
+      `--ab-eur`, `--prozent`); es ordert nur den FREIEN Teil (Betrag minus
+      `hold_trade`), ist damit idempotent und der zweite Lauf meldet
+      "0 Bestaende ohne Stop". 76 kraken-Tests gruen, an der Boerse geprueft:
+      13 offene Stops, jeder unter dem Markt (5,3-11,6 %).
+      Unter der 50er-Schwelle blieben liegen: KAS 43,3 · SYN 27,0 · STG 24,8 ·
+      JTO 22,6 · ONDO 20,2 · DUAL 12,2 · HYPE 2,0 · PEPE 1,6 EUR/USD, dazu die
+      gestakten ATOM21.S/ADA.S und XPEV.EQ (kein Paar).
+      Betrifft: Agenten/Handel/kraken/spot_stops.py,
+      Agenten/Handel/kraken/tests/test_spot_stops.py
       **Erledigt 2026-09-16.** Der Router war von 10:39 bis 16:04 nicht
       erreichbar. Ursache war der eigene Startweg: `omniroute-start.ps1` rief
       das Startskript mit einer Pipe auf, das Startskript startet aber einen

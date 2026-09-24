@@ -618,7 +618,12 @@ Die exakten Aufrufe und Felder stehen in `references/boersen-aufrufe.md`.
     "8 Stops gesetzt" nach "alles geschuetzt" aus.
 
 Werkzeuge: `kraken/margin_stops.py` (Margin; Vorschau Standard, `--anwenden`),
-`mosaic/kraken_stops_7_5.py` (Spot; `--anwenden`, danach `--nur-buch`),
+`kraken/spot_stops.py` (ALLE SPOT-Bestaende ab einem Mindestwert, Bezug ist der
+AKTUELLE Kurs statt eines Einstiegs - fuer Bestaende, die von Hand gekauft
+wurden; `--ab-eur 50 --prozent 7.5`, Vorschau Standard, `--anwenden`, idempotent
+weil nur der freie Teil (Betrag minus `hold_trade`) geordert wird),
+`mosaic/kraken_stops_7_5.py` (Spot mit Buch-Einstieg; `--anwenden`, danach
+`--nur-buch`),
 `kraken.stop_setzen(..., leverage=, close_txid=)`, `okx.stop_setzen` /
 `okx.stop_stornieren(algo_id, inst)` (inst ist PFLICHT). Nach einem `--anwenden`
 NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
