@@ -36,6 +36,16 @@ import threading
 import time
 from datetime import datetime, timezone
 
+# OpenBLAS-Speichersturz (24.09.2026): nautilus_trader zieht numpy -> OpenBLAS
+# und oeffnet beim Import so viele Thread-Buffer wie Kerne da sind. Drei
+# nautilus-Spuren x Basis+Mittel laufen im Dauerlauf ZYKLUS-WEISE parallel;
+# jedes Lademal "Memory allocation still failed" (heute ~2x so viele
+# Fehlschlaege wie Erfolge). Mit Threads=1 laeuft der Import zuverlaessig
+# durch. setdefault: ein bewusster Themenaufsatz gewinnt.
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+
 HIER = os.path.dirname(os.path.abspath(__file__))
 BUS = os.path.join(HIER, os.pardir, os.pardir, "Bus")
 for p in (HIER, BUS):
