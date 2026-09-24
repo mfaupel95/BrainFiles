@@ -108,6 +108,40 @@ sondern den Weg, der ohne das Flag scharf waere (Orderaufruf, Schreibpfad,
 Netzaufruf) — und pruefen, dass er nicht erreicht wird. Ein Flag ist eine
 Absicht, kein Verhalten.
 
+## Vierte Familie: der Test kann den ECHTEN Weg erreichen
+
+Seit eine Spur scharf gestellt werden kann, ist die gefaehrlichste Testart nicht
+mehr der rote, sondern der **gruene, der eine echte Order ausloest**. Ein Test,
+der den Live-Zweig fahrt (weil die Wachen inzwischen `handel_erlaubt: true` und
+ein offenes Freigabefenster tragen), schickt Geld an die Boerse - und die Suite
+meldet danach "ok".
+
+Regel: **Tests duerfen Konstruktoren, Sperrenketten, Vorschau und Ausstiegslogik
+fahren - nie den Orderweg.** Beleg das ueber die QUELLE des Testmoduls:
+
+```python
+text = open(__file__, encoding="utf-8").read()
+verboten = "--" + "live"          # aus Teilen bauen!
+self.assertNotIn(verboten, text)
+self.assertNotIn("markt_kauf", text)      # bzw. der Orderaufruf des Hauses
+self.assertNotIn("stop_setzen", text)
+```
+
+**Den verbotenen Suchtext aus TEILEN bauen** (`"--" + "live"`): steht er ganz im
+Testmodul, findet der Test sich selbst und ist immer rot - oder, schlimmer, er
+wird "repariert", indem die Pruefung weich gemacht wird.
+
+Wo der Live-Weg trotzdem geprueft werden soll, pruefe ihn ueber
+**eingeschleuste Attrappen** (Seam-Bindung des Moduls, `validate=true`-Probe ohne
+Geld) statt ueber den echten Aufruf - und die Seam-Bindung muss VOR der ersten
+Sperrenpruefung passieren, sonst laeuft der Zweig ungebunden.
+
+Dieselbe Familie, harmlosere Form: ein Test, der den Vorschau-/Sperrtext gegen
+den Zustand von HEUTE prueft (`assertIn("handel_erlaubt", text)`). Er wird rot,
+sobald die Spur (korrekt) scharf geht. Richtig ist die Pruefung gegen die QUELLE
+- die Menge der Sperrgruende muss der Menge der Gruende in der `wachen.json`
+entsprechen, und ein Grund muss aus dem Zustand folgen, nicht zitiert sein.
+
 ## Modulglobale zwischen Testdateien: sichern und zuruecklegen
 
 Ein Modulglobal, das ein Test umbiegt (`VENUE`, `SCHREIBEN`, `HIER`, ein

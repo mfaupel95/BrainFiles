@@ -67,6 +67,31 @@ Kontoberechtigung lesend: `/api/v5/account/config` signiert, Feld `perm`
 die DATA-LISTE zurueck, nicht das Antwort-Dict** - ein Probeaufruf mit `.get()`
 faellt mit `AttributeError` um, obwohl der Abruf geklappt hat.
 
+## 5. `51001` = unbekanntes Instrument — erst die Spur suchen, dann deuten
+
+`51001` ("Instrument ID does not exist") heisst: die Anfrage trug eine
+`instId`, die die Boerse nicht kennt. Typische Ursachen: ein **abgelaufener
+Kontrakt** (Papier- und Live-Buecher behalten das Instrument, die Boerse kennt
+es nicht mehr), ein fehlender Suffix (`-USDT`, `-SWAP`) oder ein Symbol der
+falschen Boerse (Kraken `XBT/USD` an einem OKX-Endpunkt).
+
+**Bevor der Code gedeutet oder die gemeldete Spur repariert wird, ihn in DER
+Spur suchen, die ihn angeblich schreibt:**
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel
+grep -rn '51001' xperp/ nautilus_kraken/ | head -20
+```
+
+Ein leerer Treffer ist der Befund: diese Spur erzeugt den Code nicht. Gemessen
+trat `51001` ausschliesslich in `xperp` auf (abgelaufener Kontrakt
+`CL-USD_UM_XPERP-310509` ueber `okxf.letzter_kurs_mit_fallback`), waehrend die
+nautilus-Arme die Zahl nirgends enthielten - ihnen wurde sie trotzdem
+zugeschrieben. Und die Trefferzahl sagt nichts: derselbe Zahlenwert steht
+harmlos in Modell-Metadaten und Kennungen, also die **Fundstelle** lesen, nie
+bloss zaehlen. Ein `grep -r` ueber ganz `Agenten/` laeuft in den Timeout -
+imner je Spur/Ordner suchen.
+
 ## Falle beim Nachstellen
 
 OKX antwortet ohne `User-Agent` mit **HTTP 403 (Cloudflare 1010)**. Wer

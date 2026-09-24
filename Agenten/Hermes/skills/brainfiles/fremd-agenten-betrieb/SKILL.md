@@ -60,6 +60,33 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
 - Ein Beobachtungs-/Werkzeug-Repo bringt oft eine eigene `SKILL.md` mit: **nicht
   importieren** (Hausregel `skill-library-sync`), sondern im Wiki dokumentieren.
 
+## Fehlende Schluessel: Ersatz suchen, nicht fragen
+
+Bevor „die restlichen Platzhalter kann nur der Nutzer fuellen" berichtet wird, fuer
+JEDEN fehlenden Schluessel einen Ersatzweg pruefen — die Antwort „kann ich nicht"
+ist hier keine Antwort. Tabelle, die traegt:
+
+| Platzhalter im Fremd-Repo | Ersatzweg |
+|---|---|
+| Sprachmodell-Schluessel (`DEEPSEEK_KEY`, `ANTHROPIC_KEY`, `OPENAI_KEY`, `GEMINI_KEY`) | Haus-Bruecke `127.0.0.1:11499` mit `DEEPSEEK_KEY=lokal-ollama` |
+| Marktdaten-Schluessel (`COINGECKO_API_KEY`, `BIRDEYE_API_KEY`) | oeffentliche Endpunkte, wo es sie gibt (CoinGecko `/coins/markets` und `market_chart` ohne Schluessel; Birdeye nur mit) |
+| `RPC_ENDPOINT` (Helius) | oeffentlicher Chain-RPC |
+| Wallet-/Private-Key (`SOLANA_PRIVATE_KEY`) | fuer den Papierlauf nicht noetig — Live-Weg bleibt hinter der Haus-Freigabe (Punkt 7) |
+| tote Repo-Quelle (`api.moondev.com`) | KEIN Schluessel hilft; die Quelle ersetzen (Punkt 6) |
+| Content-Konten (`TWITTER_*`, `GOOGLE_APPLICATION_CREDENTIALS`, `RESTREAM_*`, `ELEVENLABS_API_KEY`, `GROQ_API_KEY`, `YOUTUBE_API_KEY`) | kein schluesselfreier Ersatz |
+
+- **Ein absichtlich leerer Platzhalter braucht eine Hinweiszeile daneben.**
+  Bleibt ein Schluessel leer, weil der oeffentliche Weg traegt, in die `.env` die
+  Begruendung schreiben (Zeile, Grund) — sonst liest die naechste Sitzung den
+  Zustand als unfertig und fuellt ihn mit einem toten Schluessel (Punkt 9).
+- **Die Content-Konten sind kein Betriebsfehler, sondern eine Entscheidung.**
+  Im Bericht getrennt von den Handels-Wegen nennen und als Task in
+  `MaxHirn/Archiv/TASKS.md` unter `## Offen` eintragen — mit den Namen der
+  betroffenen Agenten, nicht als „ein paar Schluessel fehlen".
+- **Berichtsform: drei Gruppen statt einer Maengelliste** — gesetzt / bewusst leer
+  (mit dem oeffentlichen Weg daneben) / nur ueber Fremdkonto. Wer alles in einen
+  Topf „offen" wirft, macht aus einer Entscheidung einen Vorwurf.
+
 ## Start (in dieser Reihenfolge)
 
 1. **Als Modul starten, nicht als Skriptpfad.** Scripte, die Paket-Imports
@@ -88,6 +115,21 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
      (Cron, leere Ausgabe = laeuft). In die Repo-.env dann
      `DEEPSEEK_KEY=lokal-ollama` und `DEEPSEEK_BASE_URL=http://127.0.0.1:11499/v1`
      — der Schluessel ist nur ein nicht-leerer Platzhalter, kein Geheimnis.
+        - **Das Kontextfenster ist die ZWEITE Stummschaltung.** Ist eine Anfrage
+          groesser als das Fenster des lokalen Modells (Vorgabe 8192 Token),
+          antwortet Ollama hart mit **HTTP 400** (`request (N tokens) exceeds the
+          available context size (8192 tokens)`) — der Fremd-Agent sieht nur
+          „503 Ollama nicht erreichbar" und haelt die Bruecke fuer tot, obwohl sie
+          gesund ist. Die Bruecke muss deshalb MITRECHNEN: Token schaetzen
+          (konservativ ~2,5 Zeichen je Token bei deutschem Text), `num_ctx` in
+          Zweierpotenzen bis 32768 anheben und erst darueber kuerzen — und zwar die
+          **Mitte** des Textes (Kopf = Anweisung, Ende = frischeste Daten). Kommt
+          trotzdem eine `exceeds the available context size`-Antwort, Mitte kuerzen
+          und ERNEUT senden (hoechstens drei Versuche) statt 400 durchzureichen:
+          der Agent soll eine Antwort bekommen, keinen Verbindungsfehler. Jede
+          Kuerzung ins Bruecken-Protokoll schreiben (nur Zahlen, kein Inhalt).
+          Messwert: 150k Zeichen (~60k Token) liefen als EIN Aufruf durch, das
+          Fenster wurde selbsttaetig angehoben.
    - **Der env-Leser gehoert an den AUFRUFORT, nicht in die Konstante.** In
      mehreren Agenten steht `import os` erst NACH der Konstantenzeile
      (`DEEPSEEK_BASE_URL = "https://api.deepseek.com"` ganz oben) - ein
@@ -99,6 +141,24 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
      `if "deepseek" in model ... else anthropic` brauchen den Ollama-Zweig
      VOR dem DeepSeek-Zweig — `anthropic.messages.create` ist gegen Ollama
      falsch und faellt erst auf, sobald die Daten laufen.
+   - **Eine Umleitung ist erst fertig, wenn JEDER Aufruf im Modul durch sie
+     laeuft — Nebenwege bauen sich ihren EIGENEN Client.** Ein Agent hat oft
+     mehr als eine LLM-Stelle: Haupturteil plus Extraktor, Synopsis,
+     Zusammenfassung. Diese Nebenwege konstruieren ihren Client selbst
+     (`TokenExtractorAgent` baute sich einen Anthropic-Client, waehrend der
+     Hauptweg schon lokal lief) und sterben am falschen Anbieter, obwohl das
+     Haupturteil „repariert" ist — im Log als
+     `'OpenAI' object has no attribute 'messages'` bzw.
+     `Messages.create() got an unexpected keyword argument 'temperature'`,
+     waehrend die Runde weiter „Complete" meldet. Zwei Regeln daraus:
+     (a) die FORM des Clients abfragen statt eine Wolke zu raten —
+     `hasattr(client, "chat")` → OpenAI-Form, sonst Anthropic-Bloecke, alles in
+     EINER Hilfsfunktion (`_llm_text(client, model, system, user, max_tokens,
+     temperature) -> str`) mit den vorhandenen Argumenten; (b) den Nebenweg
+     Client und Modell vom System UEBERGEBEN lassen
+     (`TokenExtractorAgent(agent.client, agent.model)`) statt ihn einen zweiten
+     bauen zu lassen. Gegenprobe vor dem Start:
+     `grep -n "messages.create\|\.messages\b" <datei>` muss leer sein.
    - `model=` bekommt den OLLAMA-Modellnamen (z. B. `qwen35-8k:latest`),
      nicht den Repo-Modellnamen; `AI_MODEL` entsprechend vorbelegen.
 4. **Pro-Endpoints ersetzen, nicht kaufen.** Fehler 10005
@@ -132,6 +192,38 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
    wird. Werkstatt/Repos ist gitignored - Aenderung per Staging-Kopie in der
    BrainFiles-Wurzel patchen, py_compile + Kurzlauf, dann `cp` zurueck und im
    Fork committen/pushen (voller Klon, origin=Fork).
+   - **Dieselbe Schnittstelle, dieselben Spaltennamen, dieselbe REIHENFOLGE.**
+     Der Ersatz liegt als eigene Datei neben der toten Quelle (`api_frei.py`),
+     Klasse und Methodennamen bleiben gleich, die Agenten tauschen nur die
+     IMPORTZEILE (eine Zeile je Agent, mit dem Rueckweg als Kommentar).
+     Viele Agenten setzen ihre Spaltennamen selbst per Position
+     (`df.columns = ["symbol", "side", ...]`) - eine andere Reihenfolge liefert
+     damit STILLE Falschzahlen (Long- und Short-Liquidationen vertauscht) statt
+     eines Fehlers.
+   - **Nicht jede Methode ist ersetzbar - die nicht ersetzbare gibt `None`
+     zurueck, keine Nullen.** Daten, die der tote Dienst selbst erzeugt hat
+     (Copybot-Positionen, Folgelisten), haben keine oeffentliche Quelle. `None`
+     laesst den Agenten den Zyklus ueberspringen; ein leeres DataFrame mit Nullen
+     ist eine erfundene Aussage.
+   - **Erst die Quellen messen, dann bauen.** Nicht welcher Dienst fehlt, sondern
+     welcher Endpunkt traegt: gemessen sind z. B. Binance `premiumIndex` (alle
+     Symbole in EINEM Aufruf) und `openInterest` (je Symbol) brauchbar, der
+     Liquidations-Endpunkt von Binance dagegen **404** - dort traegt OKX. Die
+     Messung ist ein Aufruf je Kandidat; die Tabelle steht in
+     `references/tote-quelle-ersetzen.md`.
+   - **Den Beweis je Agent fahren und die ZAHLEN nennen** (Aenderungen gezaehlt,
+     Funding-Saetze, USD-Volumen). "Import getauscht" ist kein Nachweis.
+   - **Ausgabe ohne `-u` ist kein Beweis.** Ein gestarteter Agent mit
+     umgeleitetem stdout zeigt LEERE Logs, weil Python blockweise puffert - wer
+     den Prozess nach dem Timeout beendet, verliert alles und schliesst falsch
+     auf "Agent erzeugt nichts". `python -u` bzw. `PYTHONUNBUFFERED=1` setzen,
+     dann ist die Zeile sofort da.
+   - **Vor dem Start JEDEN Key-Namen exportieren, den der Konstruktor prueft** -
+     die Agenten verlangen oft mehrere WEITERE (Analyse-Schluessel neben dem
+     Datenweg) und brechen VOR der ersten Datenzeile ab, ohne die Datenquelle
+     zu beruehren. Dazu die Haus-Bruecke als `*_BASE_URL` fuer jeden dieser
+     Schluessel setzen, sonst geht ein "reparierter" Agent gegen den toten
+     Wolken-Anbieter.
 7. **Two-key trading agents: run them paper with the live path gated.** Ein
    LLM-Trading-Agent verlangt oft ZWEI getrennte bezahlte Abhaengigkeiten:
    einen Marktdaten-Provider (Birdeye) UND eine Ausfuehrungs-Wallet
@@ -373,6 +465,9 @@ Aufgabe:
   Export/Import-Weg: Urteil lokal auf Ollama faellen, ohne das Fremd-Repo
   anzufassen: `references/bewertung-lokal-statt-api.md` (Werkzeug
   `Agenten/Werkzeuge/fomo_lokal.py` als Vorlage).
+- Eine tote Datenquelle des Fremd-Repos durch oeffentliche Endpunkte ersetzen
+  (Ersatzmodul mit identischer Schnittstelle, gemessene Endpunkte je Methode,
+  was sich NICHT ersetzen laesst): `references/tote-quelle-ersetzen.md`.
 
 ## Abgrenzung
 

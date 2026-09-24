@@ -356,7 +356,15 @@ ungetrackten Dateien. Reihenfolge:
  $_.CommandLine -notlike '*fsmonitor*' }`): bleibt die gefilterte Liste LEER und
  ist die Sperre 0 Byte und aelter als ein paar Minuten, ist sie verwaist -
  umbenennen und denselben Befehl sofort wiederholen, das ist dann der richtige
- Weg und kein Risiko.
+ Weg und kein Risiko. **Der Filter „nicht fsmonitor" ist aber zu GROB:** er trifft
+ auch git-Aufrufe, die NIE committen — `git worktree list --porcelain` aus dem
+ Editor/Projekt-Werkzeug, `rev-parse` aus einer Anzeige. Zwei solche Prozesse
+ (Startzeit identisch) sahen wie ein laufender Committer aus, waehrend die
+ 0-Byte-Sperre 7 Minuten alt war und niemand sie hielt. Entscheidend ist die
+ UNTERKommandozeile: nur `add`/`commit`/`merge`/`rebase`/`push`/`cherry-pick`
+ sind Verdaechtige — besteht die gefilterte Liste nur aus lesenden Aufrufen,
+ ist die Sperre verwaist. Wer nur die Zahl zaehlt, wartet endlos auf einen
+ Prozess, der nichts schreibt.
  **Laeuft dagegen ein ECHTER Committer** (CreationDate in den letzten Sekunden,
  `add`/`commit` in der Kommandozeile) und haelt die Sperre ueber die Wartezeit
  hinweg, ist die richtige Antwort NICHT das Umbenennen, sondern der Abbruch: die eigene Arbeit liegt vollstaendig und unversehrt auf der Platte,

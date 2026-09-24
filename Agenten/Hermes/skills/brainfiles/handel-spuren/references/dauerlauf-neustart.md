@@ -14,23 +14,30 @@ verschachtelten Anfuehrungszeichen und `$_` wird von bash verschluckt):
 
 ```powershell
 Get-CimInstance Win32_Process | Where-Object {
-  $_.Name -eq "python.exe" -and $_.CommandLine -match "handel\\dauerlauf.py"
+  $_.Name -eq "python.exe" -and $_.CommandLine -match "dauerlauf.py" -and $_.CommandLine -notmatch "moondev"
 } | Select-Object ProcessId,ParentProcessId,CreationDate | Format-List
 ```
 
-- CommandLine auf die EXAKTE Skriptdatei (`handel\\dauerlauf.py`) filtern -
-  `-match "dauerlauf"` erwischt auch `moondev_dauerlauf.py` (eigener Task,
-  kein Handelslauefer) und faelscht den Bestand.
-- Es laufen ZWEI: Basis (ohne `--risiko`) und Mittel (`--risiko mittel`);
-  beide neu starten.
+- Der Treiber laeuft mit der RELATIVEN Datei `dauerlauf.py` (der Wrapper
+  startet ihn mit `-WorkingDirectory $handel` und ArgumentList `'dauerlauf.py'`)
+  - ein Filter auf den Vollpfad `handel\dauerlauf.py` findet 0 Prozesse.
+  `-match "dauerlauf.py"` allein erwischt auch `moondev_dauerlauf.py` (eigener
+  Task, kein Handelslauefer) und faelscht den Bestand - deshalb das
+  `-notmatch "moondev"` obendrauf.
+- Es laufen DREI Stufen: Basis/niedrig (`MaxHirn-Handel-Dauerlauf`, Wrapper
+  ohne `-Risiko` = Parameter-Default, Sperre `dauerlauf.pid`), mittel
+  (`MaxHirn-Handel-Dauerlauf-Mittel-Waechter`, `-Risiko mittel`,
+  `dauerlauf.mittel.pid`) und hoch (`MaxHirn-Handel-Dauerlauf-Hoch-Waechter`,
+  `-Risiko hoch`, `dauerlauf.hoch.pid`). Alle drei neu starten.
 
 ## Beenden und starten
 
 - `taskkill //F //T //PID <nr>` scheitert im bash (MSYS-Pfadkonvertierung ist
   dort abgeschaltet, `//` bleibt doppelt) - EINFACHER Slash:
   `taskkill /F /T /PID <treiber-pid>` (beendet den Baum inkl. Kind).
-- Nach dem Beenden `Start-ScheduledTask MaxHirn-Handel-Dauerlauf` UND
-  `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`. Der Wrapper startet und kehrt
+- Nach dem Beenden `Start-ScheduledTask` auf alle drei -
+  `MaxHirn-Handel-Dauerlauf`, `MaxHirn-Handel-Dauerlauf-Mittel-Waechter` und
+  `MaxHirn-Handel-Dauerlauf-Hoch-Waechter`. Der Wrapper startet und kehrt
   sofort zurueck - der Task-State springt damit zurueck auf "Ready", obwohl
   der Prozess laeuft. **Den Prozess pruefen, nicht den Task-State.**
 - Falle: Solange die alte PID noch in der pid-Datei steht und der Task
@@ -39,8 +46,20 @@ Get-CimInstance Win32_Process | Where-Object {
 
 ## Nachweis
 
-1. Neue PIDs in `dauerlauf.pid`/`dauerlauf.mittel.pid` (Mittel-Nr. in der
-   mittel-Datei).
+1. Neue PIDs in den drei Sperrdateien je Stufe (`dauerlauf.pid`,
+   `dauerlauf.mittel.pid`, `dauerlauf.hoch.pid`).
 2. Erster Zyklus liegt im Journal; Zyklusalter < Takt.
 3. `scanner/.venv/Scripts/python.exe spiegelstand.py` -> `N von N Spuren
    byte-gleich (Q:)`, mit N = neuer SPUREN-Stand - die Neue ist dabei.
+
+## Spur-Subprozesse fensterlos halten
+
+Der Dauerlauf startet je Spur `handeln.py` als `subprocess.run`. Jeder
+Konsolen-Subprozess, den ein HINTERGRUND-/Task-Prozess auf Windows startet,
+bekommt OHNE Sicherheits-Flag ein eigenes Konsolenfenster, das aufblitzt und
+den Fokus stiehlt - `-WindowStyle Hidden` in der Task-Action ERBT das Kind
+nicht. Unter `if os.name == "nt":` `creationflags=subprocess.CREATE_NO_WINDOW`
+setzen - fuer die Spur-Kinder und fuer jeden CLI-Aufruf aus einem
+Hintergrundprozess (onchainos u. a.). Der Linux-Zweig bleibt unveraendert.
+Nach so einem Patch den Lauf am Aufgabe-Task pruefen: das verdeckte
+Hintergrundfenster sonst wieder sichtbar heraus.

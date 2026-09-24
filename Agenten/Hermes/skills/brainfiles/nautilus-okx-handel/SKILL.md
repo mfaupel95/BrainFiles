@@ -87,8 +87,22 @@ bis 10k EUR Monatsvolumen) umzustellen. Verifizierte API-Fakten:
 - `KrakenProductType` hat `SPOT` und `FUTURES`; Default ist `(SPOT,)`.
 - Env-Variablen: `KRAKEN_SPOT_API_KEY` / `KRAKEN_SPOT_API_SECRET` (Spot),
   `KRAKEN_FUTURES_*` (Futures).
+- **Der Exec-Client braucht ein WebSocket-Token.** Ein Kraken-Key ohne die
+  Berechtigung `Access WebSockets API` scheitert beim Connect mit
+  `RuntimeError(Authentication error: Failed to get WebSocket token: API
+  error: EGeneral:Permission denied)`, waehrend DERSELBE Key ueber REST
+  (Guthaben, offene Orders) einwandfrei antwortet. Erst den REST-Gegenbeweis
+  fuehren, dann im Portal den Haken setzen — nie umgekehrt den Schluessel fuer
+  fuer tot erklaeren. Ohne WS-Recht bleibt der REST-Orderpfad der einzige Weg
+  - und der ist seit 24.09.2026 GEBaut (`kraken_rest.py` + Live-Zweig in
+  `handeln.py`): die Order laeuft direkt ueber den hauseigenen
+  `kraken/kraken.py`-REST-Client, Nautilus bleibt fuer Quotes/Strategie
+  (Details: `references/kraken-spur.md`).
 - Spot ist CASH (kein Hebel): die auf SWAP gebaute Spur (max_hebel 5) wird
   auf Spot zu einem 1x-Kauf — andere Mechanik, kein Derivat.
+- Vollstaendige Adapter-API, Instrument-IDs, Order-Test, der
+  postxid-Fill-Bug (1.231.0) und warum 2.0.0rc5 trotz verifiziertem Fix kein
+  brauchbares Ziel ist: `references/kraken-spur.md`.
 
 ## Dauerlauf-Spur (seit 13.09.2026)
 - `nautilus/handeln.py` ist der Zyklus-Einstieg fuer den Dauerlauf

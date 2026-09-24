@@ -184,6 +184,71 @@ der Stop-Funktion selbst — nicht beim Aufrufer. So sind alle Spuren mitgemeint
   `AssetPairs` pruefen; OKX ist bei zu vielen Stellen nachsichtig (live
   angenommene Stops mit 5 Stellen), Kraken nicht.
 
+## Ein zweiter Dienst sieht aus wie eine zweite Boerse
+
+Dieselbe Firma, anderes Produkt: **Kraken Futures ist ein eigener Dienst**, nicht
+die Spot-API mit anderem Host. Wer ihn nach dem Muster oben anhaengt, muss die
+vier Angaben aus der Doku holen, BEVOR eine Zeile Code entsteht - sie sind alle
+vier anders als beim Spotweg:
+
+| Angabe | Spot | Futures |
+|---|---|---|
+| Basis | `api.kraken.com/0` | `futures.kraken.com/derivatives/api/v3` |
+| Kopf | `API-Key`/`API-Sign` | `APIKey`/`Nonce`/`Authent` |
+| Signatur | HMAC-SHA512 ueber Pfad+Nonce+POST-Daten | `base64(HMAC-SHA512(base64decode(secret), SHA256(postData + nonce + "<pfad>")))` |
+| Schluessel | `KRAKEN_SPOT_API_KEY`/`_SECRET` | `KRAKEN_FUTURE_API_KEY`/`_SECRET` |
+
+- **Signaturpfad und Aufrufpfad sind zwei verschiedene Dinge.** Der signierte Pfad
+  traegt das Basis-Praefix NICHT (`/api/v3/accounts`, nicht
+  `/derivatives/api/v3/accounts`) - mit dem vollen Pfad antwortet der Dienst
+  `Authentication error`, obwohl der Schluessel lebt. Der Praefix gehoert als
+  eigener Aufrufpfad in die URL.
+- **Ein Koerper am lesenden Aufruf macht ihn zum POST.** Ein GET mit `data=b""`
+  wird als POST gesendet und laeuft in `HTTP 404 NOT_FOUND` - das liest sich wie
+  ein Rechteproblem und schickt die Fehlersuche auf die falsche Spur. Deshalb das
+  Verfahren EXPLIZIT machen: jeder Aufruf traegt ein `post=False` und setzt `data`
+  nur beim Senden (`post=True` an den Order- und Storno-Stellen), statt es aus
+  "es gibt Werte" abzuleiten. Test: bei einem Leseaufruf muss `request.data`
+  `None` sein; beim Orderaufruf `get_method() == "POST"`.
+- **Die Order nimmt KONTRAKTE, nicht Muenzen.** `contractSize` und `tickSize`
+  stehen in der Instrumentenliste (`/instruments`); bei `PF_XBTUSD` ist
+  contractSize 1 = 1 USD Nominal, die Kontraktzahl also `menge * kurs` (mindestens
+  1, ganzzahlig), der Preis auf `tickSize` gerundet (dieselbe `preis_gerundet`-
+  Regel wie oben, nur aus dem anderen Feld).
+- **Ausstieg und Schutz-Stop brauchen `reduceOnly`** (Stop als `orderType: stp`
+  mit `stopPrice`): ohne das Kennzeichen eroeffnet ein "Verkauf" auf der
+  Gegenseite eine neue Position. Eine Ausstiegsorder ist nie eine Eroeffnung.
+- **Besichert wird aus dem CASH-Konto dieses Dienstes.** Ein Coin-Bestand im
+  Futures-Wallet (`fi_<coin>usd`) finanziert keine Order; ohne freies USD ist jede
+  Order abgelehnt. Die Sperrenkette fragt die Waehrung DIESES Kontos und nennt den
+  echten Grund ("kein freies USD im Futures-Konto") - nicht "Schluessel fehlt".
+- **Ein Programm meldet `Invalid key`, waehrend unser eigenes Konto arbeitet:** es
+  liest den ANDEREN Variablennamen. Beide Paare existieren gleichzeitig in der
+  Umgebung; erst die Namen vergleichen, dann den Schluessel verdaechtigen.
+- **Produktweiche statt zweiter Datei:** `KRAKEN_PRODUKT=futures` laesst das
+  bestehende Adaptermodul (`kraken_rest`) den Futures-Weg laden und laesst die
+  Spot-Datei unveraendert - die Spur schaltet ueber ihre Umgebung, nicht ueber
+  kopierten Code. Ein eigener Launcher setzt die Variable (plus eigene Wachen-,
+  Zustands- und Journalsuffixe), damit beide Produkte nicht ein Buch teilen.
+- **Ein Bestand von 0 in der Kontowaehrung heisst gebaut, aber nicht fahrbar.**
+  Weg bauen, live LESEND belegen (Salden, Instrumentenliste, ein Storno ohne
+  Wirkung), den echten Sperrgrund in die Vorschau schreiben und die Entscheidung
+  zur Einzahlung Max ueberlassen - kein Geld umschichten, kein Transfer auf
+  Verdacht. Und: eine Kontoleiche in der Vorschau (mehrere Sperrgruende) haelt die
+  Auto-Freigabe fern, weil sie genau einen Freigabefenster-Grund verlangt - das ist
+  hier richtig, nicht ein Fehler.
+- **Die Test-Attrappe muss je PFAD antworten und das Verfahren mitpruefen.** Ein
+  Fake-Transport, der fuer jede Anfrage dieselbe Antwort liefert, laesst den
+  Methodenfehler (GET/POST) durch: die Order erscheint erfolgreich, die Auswertung
+  der Antwort faellt spaeter um. Pro Pfad eine Antwort hinterlegen (Senden ->
+  Erfolgsantwort mit Orderkennung, Lesen -> Datenliste) und zusaetzlich die
+  HTTP-Methode und `data` asserten.
+- **Die "Probe ohne Geld" aus dem Spotweg gibt es hier nicht.** Ohne `validate`-
+  Schalter bleibt als Beleg nur der Trockenlauf: der Sendeweg ueber eine
+  Transport-Attrappe, die die erwartete Erfolgsform liefert (Kennung, Status),
+  plus die echten lesenden Aufrufe gegen das Konto. Keinen Sendeweg "mit einer
+  Minimalmenge" ausprobieren, solange Saldo oder Kennung unklar sind.
+
 ## Pruefen
 
 ```

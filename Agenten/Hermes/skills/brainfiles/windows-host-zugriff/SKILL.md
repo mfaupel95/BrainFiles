@@ -440,6 +440,43 @@ Snapshots liefern Koordinaten, aber die Wahrheit entscheidet die Z-Ordnung:
   Fenster unsichtbar, waehrend der Prozess laeuft. Fuer sichtbare GUIs
   nicht verwenden; die Konsole des Wrappers ist davon getrennt regelbar.
 
+## Aufblitzende Konsolenfenster / Fokus-Klau: der ELTERNprozess ist die Quelle
+
+Wenn „alle paar Sekunden poppt ein Fenster auf und raubt den Fokus" (kurz
+aufblitzende cmd/powershell/git-Fenster), liegt die Ursache fast nie am Kind,
+sondern am Elternprozess:
+
+- **Ein GUI-Subsystem-Elternprozess (pythonw.exe, Electron) hat keine Konsole —
+  jedes Konsolen-Subsystem-Kind (git.exe, gh, cmd, onchainos, powershell …)
+  legt deshalb sein EIGENES sichtbares Fenster an.** Das gilt je Spawn: ein
+  Dauertakt, der ein Konsolen-Kind startet, blitzt je Takt.
+- **`windowsHide: true` ist gegen einen GUI-Eltern WIRKUNGSLOS.** Das Flag
+  wirkt nur, wenn der Elternprozess selbst eine Konsole besitzt; ein
+  GUI-Prozess hat keine, auf die es einwirken koennte (Hermes dokumentiert das
+  in `apps/desktop/electron/main.ts` wörtlich: „A GUI-subsystem parent has no
+  console, so every console-subsystem child must allocate its own — which
+  flashes a window").
+
+**Diagnose: die NEUEN zaehlen, nicht den Bestand.** Eine hohe Zahl vorhandener
+`conhost.exe` ist kumulierter Bestand und beweist keinen Takt. Ueber ein festes
+Fenster (30–45 s, in 3–5-s-Schritten) alle NEU entstandenen
+`conhost`/`cmd`/`powershell` mit `ParentProcessId` aufzeichnen und die Eltern
+per `Win32_Process` nach `Name`/`CommandLine` aufloesen. Der Elternprozess ist
+die Quelle — nicht der fluechtige Kindprozess, der beim Nachschauen oft schon
+wieder tot ist. Typisch: ein GUI-Eltern ruft ein Konsolen-Tool auf (Electron
+pollt `git`, ein pythonw-Daemon startet CLI-Kinder).
+
+**Fix: den spawenden Prozess auf Konsolen-Subsystem stellen, nicht jeden
+Kind-Spawn.** Einen pythonw-Daemon durch `python.exe` ersetzen und dessen
+Konsole versteckt starten (`Start-Process -FilePath python.exe -WindowStyle
+Hidden`). Dann besitzt der Elternprozess EIN fensterloses Konsolenfenster, das
+alle Kinder erben — kein Kind legt mehr ein eigenes sichtbares an; `-WindowStyle
+Hidden` trifft nur die Konsole des Parents, nicht die Arbeit der Kinder. Fuer
+einen DAEMON ohne eigenes Fenster ist der Wechsel gefahrlos; eine sichtbare
+GUI (Tk-Hauptfenster) hat den eigenen Konflikt oben (`-WindowStyle Hidden`
+versteckt auch das Fenster) — dort die Konsole getrennt regeln statt das
+Fenster zu verstecken.
+
 ## "Keine Verbindung" zu einem Dienst: erst lokal von global trennen
 
 Wenn ein Dienst (Claude Desktop, eine API, eine Webseite) „keine Verbindung“
