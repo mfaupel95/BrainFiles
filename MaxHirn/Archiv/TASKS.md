@@ -59,6 +59,54 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-073 — Kraken-Futures-Schluessel wird von Kraken abgewiesen**
+      Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` noch
+      mit dem echten Stand (flex/multiCollateral: USD 8,8926 + EUR 45,7427 (Wert
+      52,0447) + USDC 81,0838 = balanceValue 142,0016, availableMargin 141,5963,
+      keine Position, keine Order) - das Geld ist also da. Ab etwa 00:29 antwortet
+      derselbe Aufruf nur noch `authenticationError`, und zwar fuer JEDE nonce
+      (ms/us/ns/1,8e18/9e18) und mit ZWEI unabhaengigen Umsetzungen (unser
+      `kraken_futures.py` UND die offizielle kraken-cli `futures accounts`).
+      Am Haus liegt es nicht: die Werte in HKCU\Environment sind unveraendert
+      (gegen die PowerShell-History vom 24.09. 21:22 verglichen), Host-Uhr und
+      Kraken-Zeit gehen 1,3 s auseinander, Kraken ist online.
+      Naechster Schritt: Max prueft im Kraken-Portal den Derivatives-/Futures-Key -
+      existiert er noch, ist er aktiv, hat er Lesen (und fuer Ordern Trade) und
+      KEINE IP-Beschraenkung? Danach einmal neu messen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, HKCU\Environment
+- [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
+      Kontext: Der Arm ist scharf (handel_erlaubt=true, freigabe.erfuellt=true,
+      live_einsatz_eur 1.0), kauft aber nur bei einem FRISCHEN Kauf der kopier-Spur.
+      Gemessen am 25.09. 01:15: (1) Kraken-Spot-EUR frei = 0,7059 - unter
+      `mindest_guthaben_eur` 2 (das Guthaben sitzt im FUTURES-Konto, T-073);
+      (2) Freigabefenster zu: der Dauerlauf hat 22:40:42 eine Anfrage gestellt, sie
+      lief 23:10:42 ab, ohne dass jemand `/ja` gegeben hat - nautilus_kraken steht
+      NICHT in AUTO_FREIGABE; (3) kein neues kopier-Signal seit 24.09. 15:36.
+      Zusaetzlich: `handeln.py --vorschau` meldet 'Guthaben nicht abrufbar (Kraken
+      meldet: EGeneral:Permission denied)', waehrend derselbe Key ueber
+      `kraken/kraken.py` und ueber mosaics Vorschau 0,7059 liefert - der Leseweg
+      NUR von `kraken_rest.py` scheitert (T-075).
+      Naechster Schritt: entscheiden, ob die 1-EUR-Endabnahme (T-065) auf das
+      Spot-Konto soll - dann muessten Geld vom Futures- ins Spot-Konto und das
+      Freigabefenster gestellt werden; sonst bleibt der Arm Papier.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/wachen.json, freigabe_fenster.json
+- [ ] **T-075 — kraken_rest.guthaben() scheitert sporadisch mit EGeneral:Permission denied**
+      Kontext: `kraken_rest.py` laedt `../kraken/kraken.py` ueber
+      spec_from_file_location. Derselbe Aufruf `guthaben("ZEUR")` liefert in EINEM
+      Prozess ueber den normalen Import 0,7059 und ueber den spec-Weg
+      'EGeneral:Permission denied'; in einer Serie von 12 Aufrufen fielen alle 12
+      (beide Wege), Minuten spaeter gingen wieder alle. Nicht die Ursache: Key
+      (unveraendert), Uhr (1,3 s), nonce_pool (beide Wege laden dieselbe Datei
+      `kraken/.kraken_nonce`), venv, cwd, oeffentliche IP (Terminal und Host
+      identisch).
+      Naechster Schritt: den von kraken.py benutzten nonce bzw. die Antwort im
+      Fehlerfall mitschreiben (Header/Statuscode) und gegen den erfolgreichen Fall
+      stellen - dies ist der einzige verbleibende Unterschied.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_rest.py,
+      Agenten/Handel/kraken/kraken.py
 - [ ] **T-071 — Bot-Profil fuer intelligent-trading-bot fehlt**
       Kontext: Der Klon ist seit 25.09.2026 im Startfenster angebunden (Eintrag in
       `Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json`, Startbefehl
