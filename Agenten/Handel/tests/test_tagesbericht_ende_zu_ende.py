@@ -103,7 +103,19 @@ class BilanzImFertigenBericht(unittest.TestCase):
         sammelzeile = next((z for z in text.splitlines()
                             if z.strip().endswith("still:")
                             or "Spuren still:" in z), "")
-        self.assertNotIn("omniquant", sammelzeile.lower())
+        # Die Still-Zeile darf den STRENGEN Arm nicht verschlucken - der
+        # Schattenarm "omniquant weit" gehoert dort aber hin (er hat seit dem
+        # letzten Bericht nichts Neues). Deshalb wird der Eintrag genau
+        # verglichen und nicht als Teilwort: "omniquant weit (papier)" ist ein
+        # anderer Eintrag als "omniquant (papier)". Ein fester Namensvergleich
+        # haette hier gemeldet, dass sich etwas geaendert hat - nicht, dass
+        # etwas falsch ist.
+        eintraege = [e.strip().lower()
+                     for e in sammelzeile.split(":", 1)[-1].split(",")]
+        verschluckt = [e for e in eintraege
+                       if e.startswith("omniquant (") or e == "omniquant"]
+        self.assertFalse(verschluckt,
+                         "der strenge Arm liegt in der Sammelzeile: %s" % eintraege)
         self.assertIn("<b>Omniquant (papier)</b>", text)
 
         # Spurgebunden statt Allerweltsfragment: dieselbe Bilanzzeile, wie sie
