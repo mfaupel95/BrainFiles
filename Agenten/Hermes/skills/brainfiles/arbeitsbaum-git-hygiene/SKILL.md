@@ -164,6 +164,23 @@ Pfade nach (sonst meldet `git status` sie gleichzeitig als geloescht und als ung
 Das vollstaendige Rezept - Bauart des Skripts, Ruhekriterium, Index-Nachtrag,
 Testaufbau, Registrierung der Aufgabe - steht in `references/fremdarbeit-routine.md`.
 
+**Die Routine kann eine ganze Nacht still ausfallen - „uebersprungen" ist nicht
+„erledigt".** Sie endet bei einer liegenden `.git/index.lock` (oder einem anderen
+Arbeitszweig) mit Exitcode **0** und der Zeile `ENDE uebersprungen`; die Aufgabenplanung
+meldet damit Erfolg, und niemand merkt, dass nichts uebernommen wurde. Genau das war der
+Fall: Skip am 23.09. 20:40, danach lagen **44 Dateien bis zu 44 h** im Baum. Das
+Weckzeichen ist der Tagesbericht („N uncommittete Datei(en) aelter als 1 h")
+- wer die Zeile liest, fuehrt die Routine VON HAND aus, statt auf 20:40 zu warten:
+`-Testlauf` lesen, dann ohne Schalter laufen lassen. Reihenfolge ist eine Falle: der
+`-Testlauf` wird von DERSELBEN Sperre uebersprungen - erst Sperre pruefen (0 Byte,
+kein `git.exe` ohne `fsmonitor` = verwaist, umbenennen), dann beide Laeufe.
+Das Log `Agenten/Routinen/logs/fremdarbeit-letzter-lauf.log` wird bei JEDEM Lauf
+ueberschrieben: den Skip-Grund sofort lesen, sonst ist er beim naechsten Lauf weg
+(Historie nur ueber `git log --author=fremd@local`). Nach dem Lauf ist der Baum NICHT
+leer - zurueckgehaltene frische Dateien und fremd vorgemerkte Eintraege (`A `) bleiben
+absichtlich stehen; sauber ist der Lauf, wenn die EIGENEN uebernommenen Pfade aus
+`git status` verschwunden sind.
+
 Der Auftrag „die letzten Sitzungen / Hintergrund-Aufgaben nach nicht uebernommenen
 Aenderungen durchgehen" meint selten die OFFENEN Sitzungen: die liegengebliebene Arbeit
 steckt in den gerade BEENDETEN Hintergrund-Sitzungen (`bg_*`, `tui`, `cli`) und in

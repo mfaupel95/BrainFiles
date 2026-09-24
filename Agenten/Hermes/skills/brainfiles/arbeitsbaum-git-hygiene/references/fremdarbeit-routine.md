@@ -64,6 +64,58 @@ heilt auch ein Lauf, der ohne den Nachtrag beendet wurde. Idempotent.
 `git update-index` braucht `.git/index.lock`: in einer Schleife wiederholen
 (12 x 5 s), damit die Sperre einer anderen Sitzung nicht den ganzen Lauf kostet.
 
+## Der stille Ausfall: „uebersprungen" heisst nicht „erledigt"
+
+Beide Ausgaenge der Routine, die NICHT uebernehmen, enden mit **Exitcode 0** und
+`ENDE uebersprungen` - `Get-ScheduledTaskInfo` zeigt `LastTaskResult: 0`, also Erfolg:
+
+| Skip-Grund | Zeile im Log |
+|---|---|
+| falscher Arbeitszweig | `ENDE uebersprungen - Arbeitszweig ist '<x>', nicht master` |
+| liegende Sperre | `ENDE uebersprungen - .git\index.lock liegt vor (andere Sitzung committet gerade)` |
+
+Die Zweig-Pruefung steht VOR der Sperrenpruefung - beim Auswerten die Zeile lesen, nicht
+den Exitcode. Gemessen 24.09.2026: Skip am 23.09. 20:40 wegen einer verwaisten Sperre,
+danach 44 Dateien bis zu 44 h im Baum; ein Handlauf holte 51 ruhende Dateien in 64 s
+(Commit `aae26a9`, gepusht).
+
+**Das Log wird bei jedem Lauf ueberschrieben** (`"=== Lauf …" | Set-Content $log`), es
+ist also ein Einzellauf-Protokoll, keine Historie. Den Skip-Grund sofort lesen; fuer die
+Vergangenheit nur `git log --oneline --author=fremd@local` (was wurde wann geholt) und der
+Tagesbericht („N uncommittete Datei(en) aelter als 1 h") heranziehen.
+
+### Von Hand nachziehen (Ablauf)
+
+1. Sperre pruefen: Groesse, Alter, `Get-CimInstance Win32_Process -Filter "Name='git.exe'"`
+   ohne `fsmonitor` filtern. 0 Byte + kein echter Prozess = verwaist ->
+   `[System.IO.File]::Move($quell, $ziel)` (ZWEI Argumente), Zielname mit Zeitstempel,
+   danach `Test-Path` auf BEIDE Pfade.
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File Agenten\Routinen\fremdarbeit-einziehen.ps1 -Testlauf`
+   -> zeigt `TESTLAUF - es wuerde uebernommen (n)` und `IN ARBEIT - bleibt liegen (m)`.
+3. Derselbe Aufruf OHNE `-Testlauf` (`-NichtPushen` nur, wenn der Push bewusst ausbleibt).
+4. Belege: `git show --stat <sha>` (Autor `Andere Sitzung <fremd@local>`, Dateizahl),
+   `git log --oneline origin/master..HEAD` (leer = gepusht), `git status --porcelain`.
+
+### Was nach dem Lauf ABSICHTLICH stehen bleibt
+
+- **Frische Dateien** (< Schwelle, Standard 30 min): gehoeren einer Sitzung, die gerade
+  schreibt. Im Testlauf als `IN ARBEIT` ausgewiesen.
+- **Fremd vorgemerkte Index-Eintraege** (`A `/`M ` in `git status --porcelain`): die
+  Routine meldet `(fremd vorgemerkt bleibt: …)` - eine frische Vormerkung einer anderen
+  Sitzung wird nie ueberschrieben.
+- **Loeschungen mit frischem Elternordner** und alles unter `Werkstatt/`.
+
+Ein Lauf ist also NICHT daran zu messen, dass der Baum leer ist, sondern dass die eigenen
+uebernommenen Pfade aus `git status` verschwunden sind.
+
+### Die Zahl ist eine Momentaufnahme
+
+Gemessen am 24.09.2026: 34 -> 44 -> 51 ruhende Dateien in etwa 30 Minuten, waehrend eine
+parallele Sitzung schrieb. Die Testlauf-Liste kann beim echten Lauf schon ueberholt sein -
+richtig ist, dass die Routine den Stand SELBST unmittelbar vor dem Commit frisch liest
+(`git status --porcelain` im Skript), und im Bericht die Zahl aus dem Commit
+(`git show --stat`), nicht die aus dem Testlauf.
+
 ## Nachweis - zweistufig, nie nur am echten Baum
 
 1. **Funktionstest in einem Temp-Repo** (`Agenten/Bus/tests/test_fremdarbeit_einziehen.py`):
