@@ -113,6 +113,41 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       einen Zyklus abwarten und die Quoten im Zustand zaehlen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: nautilus (eigenes Repo), Docker Desktop
+- [ ] **T-057 — Hermes-Desktop git-Poller blitzt Konsolenfenster alle 2-3 s**
+      Kontext: Hermes.exe (Electron) rief `git status --porcelain` und
+      `git merge-base --is-ancestor` alle 2-3 s auf und blitzte je ein
+      Konsolenfenster - der eigentliche Fokus-Raeuber (gemessen 24.09.2026:
+      ~8 Blitze/40 s). Nach dem Fix der zwei Haus-Prozesse ist er still, aber
+      die HAEUFIGKEIT ist ungeklaert: bundle-skew.ts:107 soll einmalig beim App-
+      Start laufen, nicht im Sekundentakt. Vermutlich Update-Check-/Fokus-
+      Rueckkopplungs-Schleife.
+      Naechster Schritt: Aufrufer von bundle-skew.ts pruefen (wer triggert den
+      Poll wiederholt), dann auf einmaligen Check stellen; windowsHide greift
+      gegen GUI-Eltern nicht (main.ts:2986).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Hermes/hermes-agent/apps/desktop
+- [ ] **T-058 — MoonDev-Aufgabe auf fensterlosen Wrapper umstellen (UAC offen)**
+      Kontext: Der Registrierer zeigt jetzt auf powershell -WindowStyle Hidden →
+      moondev-dauerlauf.ps1, aber die AKTIVE geplante Aufgabe zeigt noch auf
+      pythonw.exe (Elevation hing, UAC nicht bestaetigt). Der laufende Treiber
+      ist schon gefixt (via Wrapper neu gestartet), nur der naechste Logon-Start
+      waere wieder pythonw.
+      Naechster Schritt: moondev-dauerlauf-aufgabe.ps1 erhoeht ausfuehren und UAC
+      bestaetigen, danach die Action pruefen (Execute muss powershell.exe sein).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Routinen, geplante Aufgabe MaxHirn-MoonDev-Dauerlauf
+- [ ] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
+      Kontext: Nach dem Fix der Haus-Prozesse bleiben ~6 kurze Konsolenfenster je
+      Minute: (a) die moondev-Agenten (Fremd-Repo new_or_top/kraken) spawnen
+      onchainos.exe weiter ohne CREATE_NO_WINDOW; (b) GitHub Copilot (copilot.EXE
+      via npx) blitzt; (c) einmalige docker/npx/uvx-Build-Ketten. Kein
+      kontinuierlicher Fokus-Raeuber wie der git-Poller, aber noch sichtbare
+      Fenster.
+      Naechster Schritt: (a) im Fremd-Repo die onchainos-Spawns auf
+      CREATE_NO_WINDOW stellen; (b/c) beobachten, ob Copilot/docker-Builds im
+      Alltag stoeren, dann gezielt.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents, GitHub Copilot, Docker
 
 - [?] **T-049 — xperp-Key antwortet 50101, kein Orderweg**
       Kontext: Der OKX-EEA-Satz von xperp liefert 50101
