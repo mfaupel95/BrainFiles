@@ -2,6 +2,10 @@
 name: laufwerk-platz-schaffen
 description: "Platz auf Laufwerken schaffen: messen, löschen, umziehen."
 category: brainfiles
+platforms: [windows]
+metadata:
+  hermes:
+    tags: [Plattenplatz, Aufraeumen, Windows, Caches]
 ---
 
 # Platz schaffen, ohne etwas zu verlieren
@@ -62,6 +66,21 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
    erst die Quelle entfernen. Die Zusammenfassung eines Kopierwerkzeugs ist
    kein Nachweis.
 
+## Skripte im Skill (statt abtippen)
+
+Alle per `terminal` aufrufen, Ausgabe in eine Datei im Scratch-Ordner leiten.
+
+| Skript | Wofuer | Aufruf |
+|---|---|---|
+| `scripts/groessen-messen.ps1` | Posten je Unterordner **reparse-sicher** messen (Reparse-Punkte werden benannt statt gezaehlt) | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/groessen-messen.ps1 -Wurzel $env:LOCALAPPDATA -Top 15` |
+| `scripts/caches-leeren.sh` | reproduzierbare Caches leeren und je Ordner vorher/nachher messen | `bash scripts/caches-leeren.sh > <scratch>/cache-leeren.txt 2>&1` |
+| `scripts/muell-leeren.ps1` | Inhalte von Muell-Ordnern leeren, mit Zahl je Ordner | `powershell … -File scripts/muell-leeren.ps1` (oder `-Ordner <pfad>`) |
+
+Alle drei als **Hintergrundauftrag** starten (ein Lauf braucht Minuten, das
+Terminal-Zeitlimit liegt bei ~420 s), danach die Ausgabedatei mit `read_file`
+lesen. `scripts/caches-leeren.sh` nennt jede Zahl selbst — die Meldung eines
+Reinigungswerkzeugs ist keine Quittung, die Ordnergroesse ist es.
+
 ## Regeln (Standing)
 - **Routine-Aufräumen fasst nur Temp und Cache an.** `node_modules`, `.venv`,
   virtuelle Umgebungen sind Projektzustand, kein Müll; sie nur löschen, wenn
@@ -90,6 +109,20 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
   summieren (je Eintrag den erzeugten Pfad messen) oder den echten Pfad
   (`O:/Werkstatt/...`) nennen. Vor einer Zahl kurz prüfen, ob der gemessene Pfad
   selbst eine Verknüpfung ist.
+  **Selbst-Verweise machen die ganze Liste unbrauchbar, nicht nur eine Zeile:**
+  In `%LOCALAPPDATA%` zeigt der historische Verweis `Anwendungsdaten`
+  (englisch `Application Data`) auf den Elternordner zurück. `du -sm <ordner>/*/`
+  folgt ihm, zaehlt den Verzeichnis-Inode einmal — und druckt danach fast nichts
+  mehr: die Liste bestand aus drei Eintraegen (`Anwendungsdaten` als groesster
+  Posten mit der ganzen Summe), die zwoelf echten Unterordner fehlten ganz. Wer
+  daraus schliesst, es liege nur ein Ordner dort, irrt sich um zwei
+  Zehnerpotenzen. Richtig fuer Groessen unter Windows: PowerShell, mit
+  Reparse-Punkten explizit aussortiert
+  (`if ($d.Attributes -band [IO.FileAttributes]::ReparsePoint) { … }`), und den
+  Rest je Unterordner mit `Get-ChildItem -Recurse -File | Measure-Object Length
+  -Sum` summieren. Merkmal eines Artefakts: ein Verweis-Ordner
+  (`Anwendungsdaten`, `Application Data`, Junction-Namen) erscheint als
+  groesster oder einziger Posten.
 - **Auch ein Elternordner, der Verknüpfungen nur ENTHÄLT, wird unterschätzt —
   nicht nur der Verknüpfungspfad selbst.** Ein rekursives Aufsummieren über den
   Elternpfad (`du -sh <ordner>` oder `Get-ChildItem -Recurse | Measure-Object
@@ -156,6 +189,27 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   Scratch-Ordner mit **nativem** Pfad schreiben
   (`C:/Users/<user>/…/Agenten/Hermes/cache/scratch/x.json`) und diesen Pfad auch
   dem Leser geben.
+- **Die dicken Posten liegen in App-Daten und Update-Rueckstaenden, nicht in den
+  Nutzerordnern.** Gemessen auf einem vollen `C:`: `AppData\Local` 88 GB,
+  `AppData\Roaming` 33 GB — der Vault selbst 6,5 GB. Bevor ein Umzug von
+  Dokumenten vorgeschlagen wird, diese drei Kandidaten pruefen und mit Zahlen
+  nennen: (a) App-Daten und Paket-Caches (`AppData\Local`, `Roaming`,
+  `Local\Packages`, `uv\cache`, Docker-vhdx), (b) **Update-Rueckstaende**: ein
+  Programmupdate legt Kopien seiner Zustandsdateien ab (belegt: 2 x 408 MB
+  Notfallkopien plus 410 MB Snapshot plus 427 MB Live-Datenbank = ~1,6 GB fuer
+  EIN Update), (c) Prozess-Logs von Dauerprozessen. Diese Baeume rekursiv zu
+  messen reisst die Zeitgrenze (s. o.) — benannte Teilpfade mit begrenzter Tiefe
+  messen oder ueber die Liste der Eintraege summieren (`du -sm <ordner>/*/`). Legt
+  das Programm seine Rueckstaende in einen EIGENEN Ordner (`state-snapshots/`),
+  gehoert dessen Groesse in den Bericht — sonst wird der Nutzer beim naechsten
+  Mal wieder den Vault verdaechtigen. Gemessene Posten je Unterordner und was
+  davon NICHT geloescht werden darf (Roaming-`npm` traegt global installierte
+  CLIs, `ms-playwright` die Browser-Binaries, `Packages` Programmzustand):
+  `references/app-daten-und-caches.md`.
+- **`skill_view` listet nicht jede Datei unter `scripts/` auf.** Nach dem Anlegen
+  der Skripte erschien in `linked_files` nur die `.sh`-Datei, die beiden `.ps1`
+  waren aber da (per `search_files`/`read_file` im Skill-Ordner nachsehen). Kein
+  Grund, ein Skript neu zu schreiben, nur weil die Liste es nicht nennt.
 - **Dubletten-Verdacht pruefen, nicht annehmen.** Ein Ordner namens `…DUPLIKAT`
   ist ein Hinweis, kein Beweis; vor dem Loeschen Inhalt gegen die eine Kopie
   stellen, die bleiben soll.
@@ -187,12 +241,32 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   mehreren gleichzeitig arbeitenden Sitzungen kann sich der belegte Platz
   zwischen zwei Messungen um Gigabyte ändern. Vorher und nachher im selben
   Durchgang messen und beide Zahlen nennen.
+- **Ein Cache-Befehl ist kein Nachweis — die Ordnergroesse vor und nach dem
+  Befehl ist es.** Werkzeuge melden Unzutreffendes: `uv cache clean` schrieb
+  „No cache found at <pfad>", waehrend der Ordner von 2,2 GB auf 1 MB fiel —
+  die Meldung ist keine Quittung. Und die Ausbeute ist je Werkzeug sehr
+  verschieden: ein inhaltsadressiertes Store-Pruning (`pnpm store prune`) gibt
+  nur wenige hundert MB zurueck, `npm cache clean --force` etwa die Haelfte,
+  `pip cache purge` und die Dump-/Temp-Ordner fast alles. Deshalb je Ordner
+  eine Zahl VORHER nennen, dieselbe NACHHER, und die erwartete Ausbeute nicht
+  an der Summe der Ordner festmachen (sonst wirkt ein korrekter Lauf wie ein
+  Fehlschlag). Bleibt in `Temp`/`CrashDumps` ein Rest, sind das Dateien in
+  Benutzung — kein Fehler. Die Reinigungsbefehle selbst plus die Nachmessung
+  sprengen das Zeitlimit des Terminals (~420 s): als EINEN Hintergrundauftrag
+  mit Ausgabedatei fahren und die Datei lesen. Messwerte und Fahrplan:
+  `references/app-daten-und-caches.md`.
 - **Ein ploetzlicher Schwund von zig GB ist oft die Auslagerungsdatei, nicht
-  ein laufender Schreiber.** Eine systemverwaltete `pagefile.sys` waechst bei
-  einer Commit-Spitze auf RAM-Groesse und schrumpft nie von selbst; sie kann
-  40 GB belegen und 200 MB benutzen. Bevor ein „aktiver Schreiber" gesucht
-  wird: `Win32_PageFileUsage` lesen und den freien Platz zweimal messen
-  (~45 s Abstand) — bleibt die Differenz im Rauschen, gibt es keinen Schreiber,
-  der Druck ist die Datei. Den Schluessel im Befund nennen: systemverwaltete
-  Dateien verlassen den Platz nicht zurueck (Heilung erst mit fester Groesse
-  + Neustart).
+  ein laufender Schreiber.** `pagefile.sys` waechst bei einer Commit-Spitze und
+  schrumpft nie von selbst; sie kann 40 GB belegen und 200 MB benutzen. Das gilt
+  NICHT nur fuer die systemverwaltete Form: auch eine per Registry mit **Bereich**
+  eingestellte Datei (`PagingFiles`-Eintrag `o:\pagefile.sys 4096 16384`, sichtbar
+  auch in `Win32_PageFileSetting` als `InitialSize`/`MaximumSize`) laeuft bis zu
+  ihrem Maximum hoch — belegt: 4 GB zugeteilt, 16 GB Maximum, stand bei 15,96 GB,
+  und der Schwund sah wie ein Datenschreiber von 12 GB aus. Bevor ein „aktiver
+  Schreiber" gesucht wird: `Win32_PageFileUsage` (`AllocatedBaseSize` gegen
+  `MaximumSize` stellen), die **Datei selbst** ansehen (`Get-Item
+  O:\pagefile.sys | Select Length,LastWriteTime` — der Aenderungszeitpunkt sagt,
+  WANN der Platz weg ging) und den freien Platz zweimal messen (~45 s Abstand).
+  Den Schluessel im Befund nennen: die Datei gibt den Platz nicht zurueck
+  (Heilung erst mit fester Groesse + Neustart) — und sie ist kein Grund, irgendwo
+  Daten zu loeschen.
