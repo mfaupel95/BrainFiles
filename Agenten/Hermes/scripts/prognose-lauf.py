@@ -70,10 +70,8 @@ def main() -> int:
             return 1
         if p.returncode not in (0, 1):
             aus = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()
-            print("Prognose-Lauf (%s) brach ab (Rueckgabe %d):
-%s"
-                  % (fassung or "streng", p.returncode, "
-".join(aus[-8:])))
+            print("Prognose-Lauf (%s) brach ab (Rueckgabe %d):\n%s"
+                  % (fassung or "streng", p.returncode, "\n".join(aus[-8:])))
             return 1
         frisch = os.path.getmtime(ziel) if os.path.exists(ziel) else 0
         if frisch < time.time() - 300:
