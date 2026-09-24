@@ -449,6 +449,24 @@ def pruefe_ausstiege(z, w):
                      if m.get("am") == _heute()]
 
 
+def _spiegeln(w, z=None):
+    """Bedingung 4: Journal und Zustand ausser Haus.
+
+    Eigenes Helferchen, weil die Kopie nicht nur am ZYKLUSENDE stehen darf:
+    der Herzschlag-Ausstieg weiter unten kehrt frueh zurueck (Befund
+    24.09.2026 - der Schattenarm omniquant_weit stellte seine sechs
+    Papierpositionen als 'herzschlag' flach, schrieb den Zustand, spiegelte
+    aber nicht; Q: blieb auf dem Stand des VORIGEN Zyklus stehen und
+    spiegelstand meldete dauerhaft ABWEICHUNG).
+    """
+    ziel = w.get("journal_zweitziel")
+    ok, info = wp.spiegele_journal([JOURNAL, ZUSTAND], ziel)
+    if z is not None and wp.vermerke_spiegelung(z, ziel, ok, info, schreibe_zustand) and ok:
+        # Der Vermerk ist juenger als die Kopie: einmal nachziehen.
+        wp.spiegele_journal([ZUSTAND], ziel)
+    return ok, info
+
+
 def herzschlag_alt(z, w):
     """Bedingung 3: der letzte Lauf darf nicht zu lange zurueckliegen."""
     letzter = z.get("letzter_lauf")
@@ -534,6 +552,12 @@ def lauf(modus):
             schliesse(z, p, "herzschlag", kurs, w)
         z["modus"] = "papier"
         schreibe_zustand(z)
+        # Bedingung 4 auch auf DIESEM Ausgang: er kehrt vor dem Zyklusende
+        # zurueck (Befund 24.09.2026 - omniquant_weit stellte sechs Positionen
+        # als 'herzschlag' flach, Q: blieb auf dem alten Stand, spiegelstand
+        # meldete dauerhaft ABWEICHUNG). Eine Vorschau kommt hier nie an:
+        # sie hat einen frischen Zustand, sonst waere sie ein Schreibzugriff.
+        _spiegeln(w, z)
         return
 
     # Kill-Switch: keine neuen Einstiege, wenn die kumulierten Verluste die
