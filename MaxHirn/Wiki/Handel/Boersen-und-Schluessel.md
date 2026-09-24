@@ -174,3 +174,26 @@ wieder zu niedrig), und `kraken._roh_privat` wiederholt bei "Invalid nonce" bis
 zu dreimal mit vorgeschobenem Wert. Symptom, an dem man es erkennt: derselbe
 Aufruf gelingt eine Minute spaeter wieder, ohne dass sich am Code etwas
 geaendert hat.
+
+## Ein Stop-Loss reserviert die Menge - und das Buch fuehrt brutto
+
+Handgriff 24.09.2026 (Kraken-Stops der mosaic-Positionen von 5 % auf 7,5 %
+gestellt, Werkzeug `Agenten/Handel/mosaic/kraken_stops_7_5.py`):
+
+* **Kraken reserviert die Menge eines Stop-Loss.** Ein zweiter Stop auf dieselbe
+  Menge scheitert mit `EOrder:Insufficient funds` - "erst neuen Stop setzen,
+  dann den alten stornieren" ist damit unmoeglich. Richtig ist: alten Stop
+  stornieren, neuen setzen, und wenn das Setzen scheitert, den alten SOFORT
+  wiederherstellen.
+* **Das Buch fuehrt die Buchmenge, die Brieftasche den Netto-Zufluss.** Gemessen:
+  Buch 0.00066027 BTC, verfuegbar 0.0006527067 (die Gebuehr ging vom Zufluss ab).
+  Ein Stop ueber die Buchmenge scheitert - und waehrend des Fehlversuchs stand
+  die Position OHNE Stop da. Deshalb gilt: Stop-Menge = min(Buchmenge,
+  verfuegbar), ABGERUNDET auf die Lotstellen (`stop_menge()`).
+* Der Handgriff laeuft in drei Schritten: `--vorschau` (rechnen),
+  `--anwenden` (ordern), `--nur-buch` (Buch aus den OFFENEN Orders nachziehen,
+  ohne zu ordern). Nach einem Handgriff NIE einfach `--anwenden` erneut laufen
+  lassen - das wuerde den frisch gesetzten Stop wieder stornieren.
+* Ein frisch gesetzter Stop erscheint in `OpenOrders` **nicht sofort** (die
+  Abfrage direkt danach zeigte 2 statt 3 Orders). Vor jeder "Stop fehlt"-Aussage
+  eine zweite Abfrage machen.
