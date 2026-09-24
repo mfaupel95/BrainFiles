@@ -72,7 +72,27 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
+# Freigabefenster und Freigabe-Beleg ueber den PFAD laden - Handel/ liegt im
+# Spurlauf NICHT auf sys.path (nur <spur>/../../Bus). Ein blankes 'import
+# freigabefenster' wuerde still einen anderen Ordner treffen oder scheitern.
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
+
+_fb_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabebeleg.py")
+_fb_spec_obj = _rs_spec("freigabebeleg", _fb_datei)
+freigabebeleg = _rs_mod(_fb_spec_obj)
+_fb_spec_obj.loader.exec_module(freigabebeleg)
+
+# Kraken-REST-Orderweg (laedt kraken/kraken.py ueber den Pfad).
+import kraken_rest                                                       # noqa: E402
+
 WACHEN = os.path.join(HIER, os.environ.get("KRAKEN_WACHEN", "wachen.json"))
+# Spurname fuer Freigabefenster/-beleg (Spot=nautilus_kraken, Futures=..._futures).
+SPUR_NAME = os.environ.get("KRAKEN_SPUR_NAME", "nautilus_kraken")
 # Futures-Variante fuehrt getrennte Zustand/Journal-Dateien (Suffix .futures),
 # damit Spot und Futures nicht denselben Zustand teilen (Muster: spiegel_knapp/weit).
 _SUFFIX = os.environ.get("KRAKEN_SUFFIX", "")
@@ -336,6 +356,30 @@ def lade_wachen():
     return risikostufe.skaliere(lade(WACHEN, None))
 
 
+def sperren_zeile(w):
+    """Sperrgruende fuer den Live-Modus - oder None, wenn live erlaubt.
+
+    Die Sperrenkette: handel_erlaubt, freigabe.erfuellt, offenes
+    Freigabefenster. Nur wenn ALLE offen sind, darf die Spur echte Orders
+    ueber kraken_rest aufgeben. Ein Chat kann kein Fenster oeffnen -
+    freigabefenster.oeffnen verweigert ohne wartende Anfrage, die stellt nur
+    der laufende Dauerlauf (Muster: kraken-Spur).
+    """
+    sperren = []
+    if not w.get("handel_erlaubt"):
+        sperren.append("handel_erlaubt=false")
+    freigabe = w.get("freigabe") or {}
+    if not freigabe.get("erfuellt"):
+        sperren.append("freigabe.erfuellt=false")
+    try:
+        fenster = freigabefenster.lade(SPUR_NAME)
+        if not fenster.offen():
+            sperren.append("Freigabefenster zu")
+    except Exception as e:                                   # noqa: BLE001
+        sperren.append("Freigabefenster nicht lesbar (%s)" % e)
+    return "; ".join(sperren) if sperren else None
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -355,9 +399,13 @@ def lauf(modus):
         return 0
 
     if modus == "live":
-        print("--live angefordert, aber gesperrt: kein Live-Pfad in dieser "
-              "Spur (Papier)")
-        print("-> es wird Papier gefahren.")
+        sperren = sperren_zeile(w)
+        if sperren:
+            print("--live angefordert, aber gesperrt: %s" % sperren)
+            print("-> es wird Papier gefahren.")
+        else:
+            print("--live: Freigabekette offen - echte Orders ueber "
+                  "Kraken-REST (kraken_rest).")
 
     if modus == "vorschau":
         print("Waere: Node-Session %d s, %s-Quotes sammeln, Herzschlag und "
@@ -365,8 +413,8 @@ def lauf(modus):
               "(Bedingung 4). Keine Order, keine Zugangsdaten am "
               "Data-Client." % (LAUFZEIT_S, symbol,
                                 w.get("journal_zweitziel") or "-- nicht gesetzt"))
-        print("Live waere gesperrt durch: kein Live-Pfad in dieser Spur "
-              "(Papier)")
+        print("Live waere gesperrt durch: %s"
+              % (sperren_zeile(w) or "nichts"))
         return 0
 
     # Papierzyklus: Signale aus der Kopier-Spur, begrenzter Node-Lauf mit
@@ -450,22 +498,41 @@ def lauf(modus):
             "ask": str(letzte.ask_price),
             "zeit": str(letzte.ts_event),
         }
+    live = (modus == "live" and not sperren_zeile(w))
     # Buchungen der Strategie (Kaeufe und Schluesse) ins Journal.
     for b in buchungen:
+        if live:
+            # Echte Order ueber Kraken-REST (kraken_rest) - der Nautilus-
+            # Adapter kann Fills nicht lesen (postxid-Bug, 24.09.2026),
+            # die Order laeuft deshalb direkt ueber die Kraken-REST-API.
+            paar = w.get("paar", "BTC/EUR")
+            try:
+                if b["aktion"] == "schliessen":
+                    txid = kraken_rest.markt_verkauf(paar, b["menge"],
+                                                     echt=True)
+                else:
+                    txid = kraken_rest.markt_kauf(paar, b["menge"],
+                                                  echt=True)
+                b["txid"] = txid
+            except Exception as e:                   # noqa: BLE001
+                print("  LIVE-ORDER GESCHEITERT (%s): %s %s - %s"
+                      % (b["aktion"], b["symbol"], b["token"], e))
+                continue
+        modus_buch = "live" if live else "papier"
         if b["aktion"] == "schliessen":
             print("  AUSSTIEG (%s): %s %s @ %.10g  G/V %+.2f %s auf "
                   "%.0f %s"
                   % (b["grund"], b["symbol"], b["token"], b["kurs"],
                      b[wert_feld] - b[einsatz_feld], waehrung.upper(),
                      b[einsatz_feld], waehrung.upper()))
-            journal(w, zeit=jetzt, modus="papier", aktion="schliessen",
+            journal(w, zeit=jetzt, modus=modus_buch, aktion="schliessen",
                     inst=symbol, grund=b["grund"], symbol=b["symbol"],
                     token=b["token"], preis="%.10g" % b["kurs"],
                     menge="%.6f" % b["menge"],
                     **{einsatz_feld: "%.2f" % b[einsatz_feld],
                        wert_feld: "%.2f" % b[wert_feld]})
         else:
-            journal(w, zeit=jetzt, modus="papier", aktion="eroeffnen",
+            journal(w, zeit=jetzt, modus=modus_buch, aktion="eroeffnen",
                     inst=symbol, grund=b["grund"], symbol=b["symbol"],
                     token=b["token"], preis="%.10g" % b["kurs"],
                     menge="%.6f" % b["menge"],

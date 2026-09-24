@@ -48,13 +48,17 @@ class Schnittstelle(unittest.TestCase):
         zeile = next(z for z in ausgabe.splitlines()
                      if "gesperrt durch" in z)
         grund = zeile.split(":", 1)[-1]
-        self.assertNotIn("Freigabefenster", grund)
-        self.assertNotIn(";", grund)
+        # Die Spur ist Papier (handel_erlaubt=false, freigabe.erfuellt=false,
+        # kein offenes Fenster) - die Vorschau nennt die Sperrgruende.
+        self.assertIn("handel_erlaubt=false", grund)
+        self.assertIn("freigabe.erfuellt=false", grund)
+        self.assertIn("Freigabefenster", grund)
 
     def test_live_verweigert_mit_dem_papierfesten_grund(self):
         code, ausgabe = ruf("--live")
         self.assertEqual(code, 0)
-        self.assertIn("kein Live-Pfad", ausgabe)
+        self.assertIn("gesperrt", ausgabe)
+        self.assertIn("handel_erlaubt=false", ausgabe)
 
     def test_vorschau_schreibt_nichts(self):
         with tempfile.TemporaryDirectory() as tmp:

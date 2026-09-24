@@ -19,6 +19,7 @@ os.environ["KRAKEN_PRODUKT"] = "futures"
 os.environ["KRAKEN_WACHEN"] = "wachen.futures.json"
 os.environ["KRAKEN_SUFFIX"] = ".futures"
 os.environ["KRAKEN_BUS_NAME"] = "handel/nautilus_kraken_futures"
+os.environ["KRAKEN_SPUR_NAME"] = "nautilus_kraken_futures"
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
