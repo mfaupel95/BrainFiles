@@ -42,24 +42,47 @@ class Schnittstelle(unittest.TestCase):
                      "handel_erlaubt", "symbol", "waehrung"):
             self.assertIn(feld, ausgabe)
 
-    def test_vorschau_nennt_den_papierfesten_grund(self):
+    def test_vorschau_nennt_die_gruende_aus_der_wachen(self):
+        # REGEL statt Stand: die Vorschau nennt genau die Gruende, die in der
+        # wachen.json stehen - und keinen erfundenen. Frueher stand hier
+        # 'handel_erlaubt=false' fest verdrahtet; beim Freischalten der Spur
+        # (24.09.2026) war der Test rot, ohne dass etwas kaputt war.
         code, ausgabe = ruf("--vorschau")
         self.assertEqual(code, 0)
         self.assertIn("Live waere gesperrt durch: ", ausgabe)
-        zeile = next(z for z in ausgabe.splitlines()
-                     if "gesperrt durch" in z)
-        grund = zeile.split(":", 1)[-1]
-        # Die Spur ist Papier (handel_erlaubt=false, freigabe.erfuellt=false,
-        # kein offenes Fenster) - die Vorschau nennt die Sperrgruende.
-        self.assertIn("handel_erlaubt=false", grund)
-        self.assertIn("freigabe.erfuellt=false", grund)
-        self.assertIn("Freigabefenster", grund)
+        grund = next(z for z in ausgabe.splitlines()
+                     if "gesperrt durch" in z).split(":", 1)[-1].strip()
+        with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+        erwartet = []
+        if not w.get("handel_erlaubt"):
+            erwartet.append("handel_erlaubt=false")
+        if not (w.get("freigabe") or {}).get("erfuellt"):
+            erwartet.append("freigabe.erfuellt=false")
+        for name in erwartet:
+            self.assertIn(name, grund,
+                          "die Vorschau muss nennen, was die Wachen sperren")
+        if not erwartet:
+            # Offen: die alten Gruende duerfen NICHT mehr erscheinen.
+            self.assertNotIn("handel_erlaubt=false", grund)
+            self.assertNotIn("freigabe.erfuellt=false", grund)
+        if w.get("live_einsatz_eur") and grund:
+            # Sperrt das Guthaben, gehoert die Zahl in den Text (sonst sieht
+            # man nur 'irgendwas ist zu').
+            if "Guthaben" in grund:
+                self.assertRegex(grund, r"\d+[.,]\d\d (EUR|USD) frei")
 
-    def test_live_verweigert_mit_dem_papierfesten_grund(self):
-        code, ausgabe = ruf("--live")
-        self.assertEqual(code, 0)
-        self.assertIn("gesperrt", ausgabe)
-        self.assertIn("handel_erlaubt=false", ausgabe)
+    def test_diese_suite_faehrt_niemals_live(self):
+        # Ein Test darf --live NICHT aufrufen: die Spur ist seit 24.09.2026
+        # freigegeben - bei offenem Freigabefenster und Guthaben wuerde der
+        # Testlauf ECHTE Orders ausloesen. Die Sperrenkette selbst prueft
+        # test_sperrenkette.py (mit Attrappen), hier wird die Regel gesichert.
+        with open(os.path.join(HIER, "test_handeln.py"), encoding="utf-8") as f:
+            quelle = f.read()
+        # Der Suchstring wird aus Teilen gebaut, sonst findet der Test sich
+        # selbst (Muster: Prozessfilter in moondev_dauerlauf).
+        verboten = 'ruf(' + '"-"' + '-live")'
+        self.assertNotIn(verboten, quelle)
 
     def test_vorschau_schreibt_nichts(self):
         with tempfile.TemporaryDirectory() as tmp:

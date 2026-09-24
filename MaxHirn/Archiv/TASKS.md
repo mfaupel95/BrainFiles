@@ -76,11 +76,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: USD auf das Futures-Konto einzahlen (oder Besicherung
       klaeren); danach einen kleinen echten Round-Trip fahren und die
       Fill-Lesung (/fills) pruefen - das ist zugleich die Messung fuer T-066.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      STAND 24.09.2026 abends: die Freigabekette ist fertig eingerichtet -
+      herzschlag_max_minuten zurueck auf 180 (Hausregel 19.09.2026, T-004:
+      eine 45er-Grenze stellt nach einem Rechner-Ausfall echte Positionen ohne
+      Handelsentscheidung flach und war zugleich der einzige Wert, den
+      systempruefung.ps1 Block 11b als Fehler meldet), Guthaben-Tor fuer Spot
+      in sperren_zeile() (Muster kraken/mosaic), live_einsatz_eur 1.00 mit
+      live_max_risiko_gesamt_eur 20 statt der Papier-Grenzen 50/200, Schutz-Stop
+      direkt nach dem echten Kauf, Journalzeile bei gescheitertem Live-Auftrag
+      und ein Waechter je Position: der Live-Lauf ordert Papier-Positionen des
+      gemeinsamen Buchs NICHT (4 Papier-Positionen liegen dort, sie haetten beim
+      ersten echten Zyklus einen Verkauf von BTC ausgeloest, das es an der
+      Boerse nicht gibt - der Fehler von scanner/xperp am 21./23.09.).
+      Probe: `handeln.py --vorschau` nennt genau EINEN Sperrgrund
+      ("Freigabefenster zu") - damit stellt der Dauerlauf die Anfrage und die
+      Auto-Freigabe greift nicht (sie verlangt genau einen Fenster-Grund UND
+      das Wort Freigabefenster). Der Round-Trip selbst wartet auf das /ja von
+      Max im Dauerlauf; freies Guthaben 4,10 EUR liegt ueber dem Einsatz 1,00.
+      Tests: nautilus_kraken 38 gruen inkl. test_live_orderweg.py (5).
+      Kontext (T-068): `nautilus_kraken/wachen.json` traegt seit 24.09.2026      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, kraken_rest.py,
       handeln.py (Guthaben-Sperre), wachen.futures.json
 
-- [ ] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
+- [x] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
       Kontext: `nautilus_kraken/wachen.json` traegt seit 24.09.2026
       handel_erlaubt=true und freigabe.erfuellt=true (Vermerk T-065, ~1-EUR-
       Round-Trip als Endabnahme des REST-Orderwegs; fremde Sitzung). Zwei
@@ -88,8 +106,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       "handel_erlaubt=false" im Vorschau-Text) und schlagen fehl, obwohl der
       Code stimmt. Freies Guthaben real: rund 4,10 EUR; die Futures-Seite
       hat 0,00 USD.
-      Naechster Schritt: Test auf die REGEL umstellen (den wachen-Wert lesen)
-      statt auf den Zustand - oder bewusst als Arming-Warnung stehen lassen.
+      Erledigt: 2026-09-24 (Auftrag Max "nautilus_kraken Freigabe einrichten").
+      Die beiden Tests pruefen jetzt die REGEL statt den Zustand: sie lesen
+      handel_erlaubt/freigabe.erfuellt aus der wachen.json und verlangen genau
+      die Gruende, die dort stehen - kein erfundener Grund, kein fehlender.
+      Ein dritter Test sichert die Lehre: eine Suite darf `--live` NIE fahren
+      (bei offenem Freigabefenster wuerde der Testlauf echte Orders ausloesen).
+      Beleg: nautilus_kraken 38 Tests gruen (test_handeln 12,
+      test_sperrenkette 7, test_live_orderweg 5, test_trailing_stop 14).
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
 - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**

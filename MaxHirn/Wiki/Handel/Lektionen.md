@@ -398,3 +398,19 @@ Buch mit `modus=live`, das an keiner Boerse existiert (der Fehler "Buch war
 Fiktion" vom 21.09. bei xperp und scanner). Die Sperre muss am **Orderweg**
 haengen (`LIVE_ORDERWEG`), nicht am Schalter; liq_wand macht das seit
 24.09.2026 ueber `live_gate()`.
+
+## Ein Test darf `--live` nie fahren, sobald eine Spur freigegeben ist
+
+`nautilus_kraken/test_handeln.py` rief `--live` auf, um die Papier-Sperre zu
+zeigen. Solange `handel_erlaubt=false` stand, war das harmlos. Mit der
+Freigabe vom 24.09.2026 haette derselbe Testlauf bei offenem Freigabefenster
+und Guthaben **echte Orders** ausgeloest — ein Test, der Geld bewegt.
+Die Suite prueft die Sperrenkette jetzt mit Attrappen (`test_sperrenkette.py`)
+und sichert die Regel in einem eigenen Test.
+
+## Tests auf die Regel stellen, nicht auf den Zustand
+
+Zwei Tests verlangten den Textbaustein „handel_erlaubt=false" in der Vorschau.
+Beim Freischalten wurden sie rot, obwohl der Code stimmte — sie froren einen
+Stand ein. Richtig ist: den Wert aus der `wachen.json` lesen und pruefen, dass
+die Ausgabe genau die Gruende nennt, die dort stehen (und keinen erfundenen).

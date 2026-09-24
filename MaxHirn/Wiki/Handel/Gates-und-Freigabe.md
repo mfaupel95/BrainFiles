@@ -163,3 +163,33 @@ schreibt.** Und `--vorschau` mit `MAXHIRN_ROUTINE=1` ist der einzige Beleg fuer 
   unterscheiden.
 - Reihenfolge merken: **erst deckeln, dann das Freigabefenster zeigen** — das Fenster muss den
   Betrag zeigen, der wirklich ausgefuehrt wird.
+
+## Freigabekette einrichten — Checkliste (nautilus_kraken, 24.09.2026)
+
+Ein Schalter ist keine Freigabe. Wer eine Spur scharf stellt, geht diese
+fuenf Punkte durch — jeder hat schon einmal gefehlt:
+
+1. **Herzschlag 180, auch live.** Die 45-Minuten-Grenze fuer Live-Spuren ist
+   seit 19.09.2026 aufgehoben (T-004): ein Rechner-Ausfall stellt sonst echte
+   Positionen ohne Handelsentscheidung flach und bucht eine Runde, die keine
+   war. `systempruefung.ps1` Block 11b prueft 180 fuer alle Spuren.
+2. **Guthaben-Tor in der Sperrenkette**, in der Waehrung des Kontos
+   (`live_einsatz_eur` gegen `kraken_rest.guthaben()`). Ohne das Tor
+   scheitert die Order an `EOrder:Insufficient funds` und die Spur saehe
+   trotzdem `ok` aus. Ohne Einsatz-Zahl: keine Abfrage, kein Tor.
+3. **Eigener Live-Einsatz** (`live_einsatz_eur`, `live_max_risiko_gesamt_eur`):
+   der Papier-Einsatz von 50 EUR darf nicht ungefragt live gehen. `--wachen`
+   muss beide Zahlen zeigen.
+4. **Schutz-Stop gehoert zum Kauf.** Nach `markt_kauf(...)` sofort
+   `stop_setzen(...)` — ohne ihn laeuft die Position bis zum naechsten Zyklus
+   ungeschuetzt, und der kann bei einem Ausfall Stunden spaeter kommen.
+5. **Papierbestand im gemeinsamen Buch schuetzen.** Positionen ohne
+   `modus=live` sind Papier; der Live-Lauf ordert sie NIE (sonst verkauft der
+   erste echte Zyklus BTC, das es an der Boerse nicht gibt). Neue Positionen
+   tragen ihren Stempel, der Rest gilt als Papier.
+
+Probe zum Schluss: `handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1`. Nennt sie
+genau EINEN Grund mit dem Wort „Freigabefenster", stellt der Dauerlauf die
+Anfrage und die Auto-Freigabe greift nicht (sie verlangt genau einen
+Fenster-Grund). Nennt sie einen zweiten Grund, fragt niemand — und die Spur
+bleibt still stehen.

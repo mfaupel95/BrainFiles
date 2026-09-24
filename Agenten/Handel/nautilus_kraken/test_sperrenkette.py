@@ -42,6 +42,40 @@ class SperrenketteTest(unittest.TestCase):
             sperren = handeln.sperren_zeile(w)
         self.assertIn("Freigabefenster", sperren)
 
+    def test_spot_guthaben_unter_dem_einsatz_sperrt(self):
+        # Spot: ohne freies Guthaben scheitert die Order an
+        # 'EOrder:Insufficient funds' - und die Spur saehe trotzdem ok aus.
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True},
+             "live_einsatz_eur": 1.0}
+        with patch("handeln.freigabefenster.lade") as lade, \
+             patch("handeln.kraken_rest.produkt", return_value="spot"), \
+             patch("handeln.kraken_rest.guthaben", return_value=0.5):
+            lade.return_value.offen.return_value = True
+            sperren = handeln.sperren_zeile(w)
+        self.assertIn("Guthaben zu klein", sperren)
+        self.assertIn("0.50 EUR frei", sperren)
+        self.assertIn("noetig 1.00", sperren)
+
+    def test_spot_guthaben_ueber_dem_einsatz_erlaubt(self):
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True},
+             "live_einsatz_eur": 1.0}
+        with patch("handeln.freigabefenster.lade") as lade, \
+             patch("handeln.kraken_rest.produkt", return_value="spot"), \
+             patch("handeln.kraken_rest.guthaben", return_value=4.1):
+            lade.return_value.offen.return_value = True
+            self.assertIsNone(handeln.sperren_zeile(w))
+
+    def test_ohne_einsatz_kein_guthabenabruf(self):
+        # Ohne Einsatz-Zahl gibt es kein Tor und keinen Netzaufruf: die
+        # Sperrenkette darf nicht bei jedem Aufruf Kraken fragen.
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
+        with patch("handeln.freigabefenster.lade") as lade, \
+             patch("handeln.kraken_rest.produkt", return_value="spot"), \
+             patch("handeln.kraken_rest.guthaben") as guthaben:
+            lade.return_value.offen.return_value = True
+            self.assertIsNone(handeln.sperren_zeile(w))
+        guthaben.assert_not_called()
+
     def test_alle_offen_erlaubt(self):
         w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
         with patch("handeln.freigabefenster.lade") as lade:

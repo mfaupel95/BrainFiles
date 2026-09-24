@@ -659,3 +659,34 @@ Sibling-Commit ueberschrieben.
   `SCHREIBEN=True` setzen (auf den Temp-JOURNAL-Pfad).** Mit `SCHREIBEN=False`
   entsteht die Datei nie und `open` wirft FileNotFoundError. Temp-Ziel plus
   Modulwaechter schuetzen den echten Spurenordner.
+
+## Freigabekette einrichten - fuenf Punkte, die jede neue scharfe Spur braucht
+
+Am 24.09.2026 fuer nautilus_kraken (Spot) durchgegangen; jeder Punkt hatte
+vorher gefehlt. Ein Schalter ist keine Freigabe.
+
+1. `herzschlag_max_minuten` auf **180**, auch live (Hausregel 19.09.2026,
+   T-004). Eine niedrigere Grenze stellt nach einem Rechner-Ausfall echte
+   Positionen ohne Handelsentscheidung flach - und `systempruefung.ps1`
+   Block 11b meldet sie als Fehler.
+2. **Guthaben-Tor** in `sperren_zeile()`, in der Waehrung des Kontos,
+   verglichen mit dem EINSATZ (`live_einsatz_eur`), nicht mit einem
+   Wunschwert. Ohne Einsatz-Zahl: keine Abfrage, kein Tor.
+3. **Eigener Live-Einsatz** (`live_einsatz_eur` + `live_max_risiko_gesamt_eur`):
+   der Papier-Einsatz geht live nicht ungefragt raus. `--wachen` muss beide
+   Zahlen zeigen, sonst zeigt es eine Zahl, die der Live-Lauf nicht benutzt.
+4. **Schutz-Stop direkt nach dem Kauf** (`stop_setzen` nach `markt_kauf`).
+   Ein nackter Live-Kauf ist kein Handel, sondern ein offenes Risiko.
+5. **Papierbestand im gemeinsamen Buch schuetzen**: Positionen ohne
+   `modus=live` werden im Live-Lauf NIE geordert. Sonst verkauft der erste
+   echte Zyklus BTC, das an der Boerse nicht existiert - genau der Fehler von
+   scanner/xperp am 21./23.09.2026. Neue Positionen tragen ihren Stempel.
+
+Probe: `handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1` nennen lassen. Genau
+EIN Grund mit dem Wort "Freigabefenster" -> der Dauerlauf stellt die Anfrage.
+Ein zweiter Grund -> niemand fragt, die Spur steht still.
+
+Dazu die Testregel: **eine Suite darf `--live` nie fahren, sobald die Spur
+freigegeben ist** - bei offenem Fenster und Guthaben wuerde der Testlauf echte
+Orders ausloesen. Sperrenketten werden mit Attrappen geprueft.
+

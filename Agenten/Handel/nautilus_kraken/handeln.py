@@ -343,6 +343,16 @@ def zeige_wachen(w):
     print("  %-28s %s" % ("handel_erlaubt", w.get("handel_erlaubt")))
     freigabe = w.get("freigabe") or {}
     print("  %-28s %s" % ("freigabe.erfuellt", freigabe.get("erfuellt")))
+    # Live rechnet mit eigenen Grenzen (live_wachen): der Papier-Einsatz von
+    # 50 EUR geht live NICHT raus - sonst zeigt --wachen eine Zahl, die der
+    # Live-Lauf gar nicht benutzt.
+    if w.get("live_einsatz_eur") or w.get("live_max_risiko_gesamt_eur"):
+        lw = live_wachen(w)
+        print("  %-28s %s" % ("live_einsatz_eur", w.get("live_einsatz_eur")))
+        print("  %-28s %s" % ("  live max_risiko_pro_trade",
+                              lw.get("max_risiko_pro_trade")))
+        print("  %-28s %s" % ("  live max_risiko_gesamt",
+                              lw.get("max_risiko_gesamt")))
     z = lade_zustand()
     print("  %-28s %s" % ("journal_zweitziel",
                           w.get("journal_zweitziel") or "-- nicht gesetzt"))
@@ -354,6 +364,26 @@ def zeige_wachen(w):
 def lade_wachen():
     """Wachen dieser Spur samt Risikostufe."""
     return risikostufe.skaliere(lade(WACHEN, None))
+
+
+def live_wachen(w):
+    """Wachen fuer den LIVE-Lauf: eigener Einsatz, eigener Gesamtdeckel.
+
+    Der Papierlauf bleibt bei max_risiko_pro_trade 50 EUR und
+    max_risiko_gesamt 200 EUR; live wird in Cent-Hoehe geprueft
+    (live_einsatz_eur, T-065). max_risiko_gesamt gilt live NICHT - bei
+    1-EUR-Einsaetzen waere er wirkungslos und bei einem spaeteren Anheben
+    zu weit. Rueckgabe ist eine KOPIE: der Aufrufer schreibt w nicht
+    zurueck in die Datei.
+    """
+    if not (w.get("live_einsatz_eur") or w.get("live_max_risiko_gesamt_eur")):
+        return w
+    lw = dict(w)
+    if lw.get("live_einsatz_eur"):
+        lw["max_risiko_pro_trade"] = float(lw["live_einsatz_eur"])
+    if lw.get("live_max_risiko_gesamt_eur"):
+        lw["max_risiko_gesamt"] = float(lw["live_max_risiko_gesamt_eur"])
+    return lw
 
 
 def sperren_zeile(w):
@@ -387,6 +417,22 @@ def sperren_zeile(w):
                 sperren.append("kein freies USD im Futures-Konto")
         except Exception as e:                               # noqa: BLE001
             sperren.append("Futures-Guthaben nicht abrufbar (%s)" % e)
+    else:
+        # Spot: der Einsatz kommt aus dem freien EUR-Guthaben. Kraken
+        # reserviert die Menge erst bei der Order - ohne freies Guthaben
+        # scheitert sie mit 'EOrder:Insufficient funds' und die Spur saehe
+        # trotzdem 'ok' aus. Muster kraken/mosaic.
+        try:
+            noetig = float(w.get("live_einsatz_eur")
+                           or w.get("mindest_guthaben_eur") or 0)
+            if noetig:
+                frei = kraken_rest.guthaben()
+                if frei < noetig:
+                    sperren.append(
+                        "Guthaben zu klein (%.2f EUR frei, noetig %.2f)"
+                        % (frei, noetig))
+        except Exception as e:                               # noqa: BLE001
+            sperren.append("Guthaben nicht abrufbar (%s)" % e)
     return "; ".join(sperren) if sperren else None
 
 
@@ -416,6 +462,7 @@ def lauf(modus):
         else:
             print("--live: Freigabekette offen - echte Orders ueber "
                   "Kraken-REST (kraken_rest).")
+            w = live_wachen(w)
 
     if modus == "vorschau":
         print("Waere: Node-Session %d s, %s-Quotes sammeln, Herzschlag und "
@@ -433,6 +480,12 @@ def lauf(modus):
     seit = z.get("kopier_signale_seit") or z.get("letzter_lauf") or ""
     signale = lies_kopier_signale(seit)
     positionen = z.get("positionen") or []
+    # Papierstand im gemeinsamen Buch: Positionen ohne modus=live stammen aus
+    # dem Papierlauf. Ein Live-Lauf darf sie NICHT anfassen - sonst verkauft
+    # der erste echte Zyklus BTC, das nie gekauft wurde (scanner/xperp hatten
+    # genau diesen Fall).
+    papier_tokens = {p.get("token") for p in positionen
+                     if p.get("modus") != "live"}
     buchungen = []
     feed_ok = False
     try:
@@ -497,7 +550,7 @@ def lauf(modus):
               % (info if gespiegelt else "nicht kopiert - %s" % info))
         return 0
 
-    z["modus"] = "papier"
+    z["modus"] = "papier"          # unten auf den echten Buchmodus gezogen
     z["zyklen"] = z.get("zyklen", 0) + 1
     z["quotes_letzter_zyklus"] = len(quotes)
     z["feed_quelle"] = "kraken"
@@ -509,9 +562,19 @@ def lauf(modus):
             "zeit": str(letzte.ts_event),
         }
     live = (modus == "live" and not sperren_zeile(w))
+    z["modus"] = "live" if live else "papier"
     # Buchungen der Strategie (Kaeufe und Schluesse) ins Journal.
     for b in buchungen:
-        if live:
+        # Eine Papier-Position wird im Live-Lauf NICHT geordert. Sie bleibt im
+        # Buch stehen und steigt im Papierlauf aus; der Live-Lauf fasst sie
+        # nicht an (sonst: echter Verkauf fuer einen nie gekauften Bestand).
+        if live and b.get("token") in papier_tokens:
+            print("  PAPIER-POSITION im Live-Lauf nicht geordert: %s %s (%s)"
+                  % (b["symbol"], b["token"], b["grund"]))
+            live_buchung = False
+        else:
+            live_buchung = live
+        if live_buchung:
             # Echte Order ueber Kraken-REST (kraken_rest) - der Nautilus-
             # Adapter kann Fills nicht lesen (postxid-Bug, 24.09.2026),
             # die Order laeuft deshalb direkt ueber die Kraken-REST-API.
@@ -524,11 +587,32 @@ def lauf(modus):
                     txid = kraken_rest.markt_kauf(paar, b["menge"],
                                                   echt=True)
                 b["txid"] = txid
+                if b["aktion"] != "schliessen":
+                    # Ein nackter Live-Kauf gibt es nicht: der boersenseitige
+                    # Stop gehoert zum Kauf. Ohne ihn laeuft die Position bis
+                    # zum naechsten Zyklus ungeschuetzt - und der kann bei
+                    # einem Rechner-Ausfall Stunden spaeter kommen.
+                    stop_pct = float(w.get("stop_pct") or 0)
+                    if stop_pct:
+                        stop_preis = b["kurs"] * (1 - stop_pct / 100.0)
+                        b["stop_id"] = kraken_rest.stop_setzen(
+                            paar, b["menge"], stop_preis, echt=True)
+                        print("  SCHUTZ-STOP gesetzt: %s %.8f @ %.8f (%s)"
+                              % (paar, b["menge"], stop_preis, b["stop_id"]))
             except Exception as e:                   # noqa: BLE001
                 print("  LIVE-ORDER GESCHEITERT (%s): %s %s - %s"
                       % (b["aktion"], b["symbol"], b["token"], e))
+                # Ein Live-Fehler gehoert ins Journal, nicht nur auf die
+                # Konsole: sonst faellt die Buchung still weg und niemand
+                # sieht, dass eine Entscheidung nicht ausgefuehrt wurde.
+                journal(w, zeit=jetzt, modus="live", aktion="fehler",
+                        inst=symbol, grund="order_gescheitert",
+                        symbol=b["symbol"], token=b["token"],
+                        preis="%.10g" % b["kurs"], menge="%.6f" % b["menge"],
+                        **{einsatz_feld: "%.2f" % b[einsatz_feld],
+                           wert_feld: ""})
                 continue
-        modus_buch = "live" if live else "papier"
+        modus_buch = "live" if live_buchung else "papier"
         if b["aktion"] == "schliessen":
             print("  AUSSTIEG (%s): %s %s @ %.10g  G/V %+.2f %s auf "
                   "%.0f %s"
@@ -547,10 +631,20 @@ def lauf(modus):
                     token=b["token"], preis="%.10g" % b["kurs"],
                     menge="%.6f" % b["menge"],
                     **{einsatz_feld: "%.2f" % b[einsatz_feld]})
+    # Neue Positionen tragen ihren Buchmodus. Alles ohne Stempel ist
+    # Papier-Altbestand: der Live-Lauf hat es nie gekauft, also darf er es
+    # auch nicht als live fuehren.
+    neu_eroeffnet = {b["token"] for b in buchungen
+                     if b["aktion"] != "schliessen"}
+    for pos in positionen:
+        if "modus" not in pos:
+            pos["modus"] = ("live" if (live and pos.get("token") in neu_eroeffnet)
+                            else "papier")
     z["positionen"] = positionen
     z["kopier_signale_seit"] = jetzt
     schreibe_zustand(z)
-    journal(w, zeit=jetzt, modus="papier", aktion="zyklus", inst=symbol,
+    journal(w, zeit=jetzt, modus=("live" if live else "papier"),
+            aktion="zyklus", inst=symbol,
             bid=z.get("letzte_quote", {}).get("bid", ""),
             ask=z.get("letzte_quote", {}).get("ask", ""),
             quotes=len(quotes),
@@ -562,9 +656,10 @@ def lauf(modus):
     if vermerke_spiegelung(z, ziel, gespiegelt, info) and gespiegelt:
         spiegle_journal(ziel, dateien=(ZUSTAND,))
 
-    print("=== Kraken (PAPIER) | %d Quotes in %d s | %d Signale | "
+    print("=== Kraken (%s) | %d Quotes in %d s | %d Signale | "
           "%d Positionen | Herzschlag gesetzt ==="
-          % (len(quotes), LAUFZEIT_S, len(signale), len(positionen)))
+          % ("LIVE" if live else "PAPIER", len(quotes), LAUFZEIT_S,
+             len(signale), len(positionen)))
     print("  Journal ausser Haus: %s"
           % (info if gespiegelt else "nicht kopiert - %s" % info))
     if quotes:
