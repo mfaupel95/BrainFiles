@@ -60,6 +60,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [?] **T-049 — xperp-Key antwortet 50101, kein Orderweg**
+      Kontext: Der OKX-EEA-Satz von xperp liefert 50101
+      ("APIKey does not match current environment"), obwohl handel_erlaubt
+      und freigabe.erfuellt true sind und das Fenster offen war. Kein
+      Dateischalter loest das - es ist ein Konto-/Schluesselproblem: Host
+      (EEA vs. global), IP-Whitelist oder fehlendes Trade-Recht.
+      Naechster Schritt (Max, OKX-Portal): signierter Leseaufruf gegen den
+      Registry-Host (guthaben/offene_orders), Schluesselrechte im Portal
+      pruefen (read_only -> Trade), Host/Whitelist abgleichen.
+      Wartet auf: Max - OKX-Key-Rechte/-Umgebung fuer xperp
+      Betrifft: Agenten/Handel/xperp/okxf.py, OKX EEA (OKX_BASE)
+      Angelegt: 2026-09-22 · Zuletzt: 2026-09-22
+
+- [?] **T-050 — kraken bleibt Papier: Guthaben und Rueckrechnung**
+      Kontext: Freies Guthaben reichte zuletzt nicht fuer mindest_guthaben_eur
+      60 (33,15 EUR frei), und die eigene Rueckrechnung ist -0,57 % je Runde.
+      handel_erlaubt=false, stillgelegt gesetzt. Die Auto-Freigabe oeffnet nur
+      das Fenster, nicht das Guthaben.
+      Naechster Schritt (Max): entscheiden, ob Kraken-Guthaben aufgestockt
+      wird; bis dahin bleibt kraken bewusst nicht live.
+      Wartet auf: Max - Aufstockung Kraken-EUR oder bewusst Papier lassen
+      Betrifft: Agenten/Handel/kraken/wachen.json (mindest_guthaben_eur)
+      Angelegt: 2026-09-22 · Zuletzt: 2026-09-22
+
 - [?] **T-048 — Ausser-Haus-Kopie verschluesseln (BitLocker To Go)**
       Kontext: Q:\MaxHirn-AusserHaus ist vollstaendig und geprueft
       (150.732 Dateien / 63,74 GB), aber NICHT verschluesselt und enthaelt
