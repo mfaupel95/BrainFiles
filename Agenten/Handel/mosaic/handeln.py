@@ -605,7 +605,12 @@ def pruefe_ausstiege(z, k5, w, nur=None):
         # wie xperp (bueche_geister_aus): stehen lassen und melden.
         if p.get("modus") == "live":
             behalten.append(p)
-            uebersprungen += 1
+            # Gezaehlt wird nur, was zu DIESEM Aufruf gehoert: pruefe_ausstiege
+            # laeuft je Instrument einmal ueber ALLE Positionen, ohne die
+            # Einschraenkung meldete ein Zyklus dieselbe Live-Position dreimal
+            # (Befund 25.09.2026, Zyklus 21 der Basis).
+            if nur is None or p.get("inst") == nur:
+                uebersprungen += 1
             continue
         if nur is not None and p.get("inst") != nur:
             behalten.append(p)
@@ -645,9 +650,9 @@ def pruefe_ausstiege(z, k5, w, nur=None):
                 grund=grund)
 
     z["positionen"] = behalten
-    if uebersprungen:
-        print("  %d Live-Position(en) bleiben stehen - der Papierzweig verkauft "
-              "sie nicht (nur der Live-Lauf schliesst sie)." % uebersprungen)
+    # Kein print hier: der Aufrufer meldet EINMAL je Zyklus (siehe lauf()),
+    # sonst steht die Zeile einmal je Instrument im Chat.
+    return uebersprungen
 
 
 # --- Live (Stufe A, OKX-Spot) ------------------------------------------------
@@ -1170,6 +1175,7 @@ def lauf(modus):
     else:
         # Papier-Zyklus: Kerzen fuer alle Instrumente laden (drei Zeitrahmen
         # je Instrument), Ausstiege vor Einstiegen.
+        uebersprungen = 0
         for inst in w.get("instrumente", []):
             k4 = lade_kerzen(inst, w.get("kerzen_takt_4h", "4H"),
                              w.get("mindest_kerzen", 300))
@@ -1186,10 +1192,15 @@ def lauf(modus):
             if bestehend:
                 z["positionen"] = [p for p in z["positionen"] if p["inst"] != inst]
                 z["positionen"].extend(bestehend)
-                pruefe_ausstiege(z, k5, w, nur=inst)
+                uebersprungen += pruefe_ausstiege(z, k5, w, nur=inst)
 
             # Neue Einstiege
             pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)
+
+        if uebersprungen:
+            print("  %d Live-Position(en) bleiben stehen - der Papierzweig "
+                  "verkauft sie nicht (nur der Live-Lauf schliesst sie)."
+                  % uebersprungen)
 
     schreibe_zustand(z)
     spiegeln(z, w)
