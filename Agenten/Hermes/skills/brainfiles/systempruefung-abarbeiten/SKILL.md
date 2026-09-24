@@ -107,7 +107,10 @@ zum Befund mit dem eigenen Protokoll daneben.
 9. **Verwaiste Sperre:** bricht git mit `index.lock: File exists` ab, Alter
    pruefen und echte `git.exe`-Prozesse ohne `fsmonitor` zaehlen. Ist die Sperre
    0 Byte alt und kein echter Prozess da, UMBENENNEN (z.B.
-   `.git/index.lock.verwaist-JJJJMMTT`), nie loeschen.
+   `.git/index.lock.verwaist-JJJJMMTT-HHMM`), nie loeschen. Traegt die Sperre den
+   Zeitstempel des EIGENEN Commit-Versuchs (Erstversuch 17:11:43, Lock 17:11:43),
+   ist sie das Abbruch-Artefakt des eigenen Aufrufs - umbenennen und denselben
+   Commit wiederholen.
 10. **Bericht neu erzeugen und den Rueckgang zeigen** (Anzahl Entscheidungen
     vorher/nachher) — das ist der Beleg, dass die Rauschfixes greifen.
 11. **Committen und pushen:** nur eigene Pfade namentlich, nie `git add -A`;
