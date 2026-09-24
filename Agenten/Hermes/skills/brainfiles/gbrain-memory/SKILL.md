@@ -46,6 +46,8 @@ and date.
 - Round trip verified: fact #1 "My setup test phrase is amber-orbit-f0c2c7",
   provenance "explicit setup test, 2026-09-20", entity `projects/gbrain-setup`,
   recalled by a separate process with the exact phrase.
+- Fresh-conversation test VERIFIED (2026-09-20): a new conversation recalled
+  the phrase via this skill and the WSL launcher without it being supplied.
 - Bulk capture and paid maintenance stayed opt-in (off).
 - Generated instructions: `/workspace/gbrain/instructions/gbrain-skill.md` and
   `/workspace/gbrain/instructions/maintenance.md` (Linux paths inside WSL).
