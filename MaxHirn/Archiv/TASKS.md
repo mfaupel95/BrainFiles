@@ -60,21 +60,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-060 — coingecko_agent: Nebenwege (Token-Extraktor, Runden-Synopsis) auf den lokalen Weg holen**
-      Kontext: Seit dem 24.09.2026 laufen die HAUPTURTEILE des Agenten lokal über
-      die Ollama-Bruecke (Werkzeug `Agenten/Werkzeuge/ollama-openai-bruecke.py`),
-      ohne bezahlten Schlüssel. Zwei Nebenwege sprechen aber weiter den
-      Anthropic-Client an und sterben: `TokenExtractorAgent.__init__`
-      (`anthropic.Anthropic(api_key=ANTHROPIC_KEY)`, Zeile ~556) und die Synopsis
-      (`self.agent_one.client.messages.create`, Zeile ~642). Beleg im Log:
-      „Error extracting tokens: Messages.create() got an unexpected keyword
-      argument 'temperature'“ und „'OpenAI' object has no attribute 'messages'“.
-      Naechster Schritt: beide auf den OpenAI-Zweig legen (`openai.OpenAI(
-      api_key=os.getenv("DEEPSEEK_KEY"), base_url=os.getenv("DEEPSEEK_BASE_URL"))`)
-      und das Antwort-Parsing anpassen — Anthropic liefert eine Blockliste,
-      OpenAI einen String.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/coingecko_agent.py
 - [ ] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
       Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
       HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
@@ -634,6 +619,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-060 — coingecko_agent: Token-Extraktor und Runden-Synopsis auf den lokalen Weg geholt** — erledigt 2026-09-24
+      Kontext: Beide Nebenwege sprachen hart den Anthropic-Client an und
+      starben am OpenAI-Client ("'OpenAI' object has no attribute 'messages'",
+"Messages.create() got an unexpected keyword argument 'temperature'").
+      Loesung: EINE Hilfsfunktion `_llm_text(client, model, system, user,
+      max_tokens, temperature)` in coingecko_agent.py fragt die FORM des
+      Clients ab (`hasattr(client, "chat")`) statt eine Wolke zu raten; der
+      TokenExtractorAgent bekommt Client und Modell jetzt vom System
+      uebergeben (`TokenExtractorAgent(self.agent_one.client,
+      self.agent_one.model)`) statt sich einen eigenen Anthropic-Client zu
+      bauen. Nachweis: kompletter Lauf ueber die Bruecke ohne eine einzige
+      Fehlerzeile - Extraktor nennt 6 Tokens (NEAR, ONDO, ASTRO, BP, LTC, ETH),
+      Synopsis liefert echten Text. 23 Tests in
+      Agenten/Werkzeuge/tests/test_ollama_openai_bruecke.py gruen.
+      Angelegt: 2026-09-24 · Erledigt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/coingecko_agent.py
 - [x] **T-058 — MoonDev-Aufgabe auf fensterlosen Wrapper umgestellt** — erledigt 2026-09-24
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
 - [x] **T-051 — Stops fuer die uebrigen Kraken-Spotbestaende**

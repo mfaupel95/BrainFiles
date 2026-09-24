@@ -64,14 +64,24 @@ und kein erfundenes Geheimnis.
 | Ein Aufruf ueber den OpenAI-Weg des Agenten | 4,0 s (erster, kalt) |
 | `coingecko_agent`: komplette Runde zweier „AI-Agenten“ | lokal, ohne Schluessel, Urteile im Log |
 | Antwort ohne Bruecke (`/v1` direkt) | **leer** (`finish_reason: length`) |
+| Kleiner Text (8k Zeichen) ueber die Bruecke | 1 Aufruf, kein `num_ctx` im Rumpf |
+| Grosser Text (150k Zeichen, ~60k Token) | **1 Aufruf**, Fenster automatisch auf 32768 angehoben, Umweg ueber den Nachbesserungspfad (2 Aufrufe) messbar langsamer |
+
+### Das Kontextfenster ist die zweite Stummschaltung
+
+Lokale Modelle sind auf **8192 Token** gebaut. Ist eine Anfrage groesser,
+antwortet Ollama hart mit **HTTP 400** (`request (25219 tokens) exceeds the
+available context size (8192 tokens)`) — der Fremd-Agent sieht nur „503 Ollama
+nicht erreichbar“ und haelt die Bruecke fuer tot, obwohl sie laeuft. Die Bruecke
+rechnet deshalb jetzt mit (`geschaetzte_token`, `ZEICHEN_JE_TOKEN = 2.5`
+konservativ), hebt `num_ctx` in Zweierpotenzen bis **32768** an und kuerzt erst
+darueber die **Mitte** des Textes (Kopf = Anweisung, Ende = frischeste Daten).
+Kommt trotzdem eine „exceeds the available context size“-Antwort, wird die Mitte
+gekuerzt und **erneut gesendet** (hoechstens drei Versuche) — der Agent bekommt
+eine Antwort statt einer 503. Jede Kuerzung steht im Protokoll.
 
 ## Was ausdruecklich offen ist
 
-- **`coingecko_agent`-Nebenwege:** Token-Extraktor und Runden-Synopsis sprechen
-  weiter den **Anthropic-Client** an (`client.messages.create`) — dort liegen
-  `Messages.create() got an unexpected keyword argument 'temperature'` und
-  `'OpenAI' object has no attribute 'messages'` im Log. Die Haupturteile laufen,
-  die Nebenwege nicht. Wer sie braucht: denselben OpenAI-Zweig ueber die Bruecke.
 - **Tote Datenquelle bleibt tot:** `whale_agent`, `funding_agent`,
   `liquidation_agent` und alles unter `src/agents/api.py` holen ihre Daten von
   `api.moondev.com` (Port 8000, antwortet nicht). Ein Schluessel hilft dort
@@ -91,6 +101,19 @@ und kein erfundenes Geheimnis.
   Bibliothek** ansetzen, nicht am Anbieternamen: die Fremd-Agenten waehlen ihren
   Weg nach `AI_MODEL`/Schluessel-Anwesenheit — die Umgebungsvariable ist der
   Hebel, der ohne Codeaenderung wirkt.
+- **Nebenwege sprechen oft einen ANDEREN Client als der Hauptweg.** Im
+  `coingecko_agent` bauten Token-Extraktor und Synopsis je ihren eigenen
+  Anthropic-Client, waehrend die Haupturteile schon lokal liefen: das Haupturteil
+  war „repariert“, zwei Drittel des Agenten aber tot. Muster, das traegt: **die
+  Form des Clients abfragen** (`hasattr(client, "chat")` → OpenAI-Form,
+  sonst Anthropic-Bloecke) und den Extraktor den Client uebergeben lassen
+  (`TokenExtractorAgent(agent.client, agent.model)`) statt ihn einen eigenen
+  bauen zu lassen. Eine Umleitung ist erst fertig, wenn **jeder** Aufruf im
+  Modul durch sie laeuft — `grep -n "messages.create\|\.messages\b" <datei>`.
+- **Ein Fehler im Nebenweg ist ein Fehler, kein Rauschen:** beide Ausfaelle
+  standen als `❌ Error extracting tokens` / `Synopsis generation failed` im Log,
+  waehrend die Runde „Complete“ meldete. Ein Agent, der seine Zusammenfassung
+  still verliert, sieht fuer den Betreiber gesund aus.
 
 Verwandt: [Betrieb/Wachen-und-Aufgaben.md](../Betrieb/Wachen-und-Aufgaben.md),
 [Werkzeuge/openmontage.md](openmontage.md) (lokale Kette statt Cloud-Schluessel),

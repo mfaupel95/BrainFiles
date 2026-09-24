@@ -65,6 +65,67 @@ HIER = Path(__file__).resolve().parent
 HAUS = HIER.parent.parent  # BrainFiles-Wurzel
 STANDARD_LOG = HAUS / "Agenten" / "Hermes" / "cache" / "ollama-openai-bruecke.log"
 
+# Kontextfenster der lokalen Modelle (qwen35-8k/qwen36-35b-a3b sind auf 8192
+# gebaut). Reicht das Modellfenster fuer eine Anfrage nicht, hebt die Bruecke
+# num_ctx bis KONTEXT_MAX an; darueber wird die Mitte des Textes gekuerzt.
+KONTEXT_STANDARD = 8192
+KONTEXT_MAX = 32768
+RESERVE_AUSGABE = 1024       # Platz fuer die Antwort, wird vom Fenster abgezogen
+ZEICHEN_JE_TOKEN = 2.5       # konservativ: gemessen ~2,6 Zeichen/Token (deutsch)
+
+
+def geschaetzte_token(nachrichten: list) -> int:
+    """Grobe, absichtlich UEBERschaetzende Tokenzahl der Nachrichten."""
+    zeichen = 0
+    for nachricht in nachrichten or []:
+        inhalt = nachricht.get("content")
+        if isinstance(inhalt, list):      # OpenAI-Form mit Textteilen
+            inhalt = " ".join(str(t.get("text") or t) for t in inhalt)
+        zeichen += len(str(inhalt or ""))
+    return int(zeichen / ZEICHEN_JE_TOKEN) + 8 * len(nachrichten or [])
+
+
+def naechste_potenz(bedarf: int) -> int:
+    """Kleinste Zweierpotenz >= bedarf (num_ctx verlangt feste Groessen)."""
+    wert = 1024
+    while wert < bedarf and wert < KONTEXT_MAX:
+        wert *= 2
+    return wert
+
+
+def mitte_kuerzen(nachrichten: list, budget: int):
+    """Die MITTE langer Nachrichten ersetzen, Kopf und Ende behalten.
+
+    Der Kopf traegt die Anweisung, das Ende die frischesten Daten - die Mitte
+    ist der entbehrlichste Teil. Rueckgabe: (neue Nachrichten, ersetzte Zeichen).
+    """
+    erlaubt = int(max(budget, 512) * ZEICHEN_JE_TOKEN)
+    neu, ersetzt = [], 0
+    for nachricht in nachrichten:
+        inhalt = nachricht.get("content")
+        if isinstance(inhalt, list):
+            inhalt = " ".join(str(t.get("text") or t) for t in inhalt)
+        inhalt = str(inhalt or "")
+        if len(inhalt) > erlaubt:
+            kopf, ende = erlaubt // 2, erlaubt // 2
+            weg = len(inhalt) - kopf - ende
+            inhalt = ("%s\n\n[... %d Zeichen gekuerzt: Kontextfenster des lokalen "
+                      "Modells ...]\n\n%s" % (inhalt[:kopf], weg, inhalt[-ende:]))
+            ersetzt += weg
+        neu.append(dict(nachricht, content=inhalt))
+    return neu, ersetzt
+
+
+def protokoll(zeile: str):
+    """Eine Zeile ins Bruecken-Protokoll (nur Zahlen/Metadaten, kein Inhalt)."""
+    pfad = Path(os.environ.get("BRUECKE_LOG") or STANDARD_LOG)
+    try:
+        pfad.parent.mkdir(parents=True, exist_ok=True)
+        with pfad.open("a", encoding="utf-8") as fh:
+            fh.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), zeile))
+    except OSError:
+        pass
+
 
 def ollama_basis() -> str:
     """Basis-URL des Ollama-Servers, ohne /v1 (native API)."""
@@ -99,6 +160,14 @@ def ollama_nativ(basis: str, modell: str, nachrichten: list, temperature=None,
     """EIN Aufruf an die native Ollama-API mit think: false.
 
     Rueckgabe: (content, denk_zeichen, usage) - content ist der sichtbare Text.
+
+    KONTEXT-GRENZE (gemessen 24.09.2026): Ollama antwortet hart mit HTTP 400
+    ("request (25219 tokens) exceeds the available context size (8192 tokens)"),
+    sobald die Anfrage groesser ist als das Modellfenster - der Fremd-Agent
+    sieht dann nur "503 Ollama nicht erreichbar" und haelt die Bruecke fuer tot.
+    Deshalb: num_ctx hochsetzen, so weit der Bedarf reicht, und erst wenn auch
+    die harte Obergrenze nicht reicht, die MITTE des Textes kuerzen (Kopf und
+    Ende bleiben - Anweisung vorn, frische Daten hinten).
     """
     optionen = {}
     if temperature is not None:
@@ -107,6 +176,23 @@ def ollama_nativ(basis: str, modell: str, nachrichten: list, temperature=None,
         optionen["num_predict"] = int(max_tokens)
     if top_p is not None:
         optionen["top_p"] = top_p
+
+    reserve = int(os.environ.get("BRUECKE_RESERVE") or RESERVE_AUSGABE)
+    obergrenze = int(os.environ.get("BRUECKE_KONTEXT_MAX") or KONTEXT_MAX)
+    bedarf = geschaetzte_token(nachrichten) + reserve
+    if bedarf > KONTEXT_STANDARD:
+        optionen["num_ctx"] = min(obergrenze, naechste_potenz(bedarf))
+    if bedarf > obergrenze:
+        vorher = geschaetzte_token(nachrichten)
+        nachrichten, rest = mitte_kuerzen(nachrichten, obergrenze - reserve)
+        optionen["num_ctx"] = obergrenze
+        gekuerzt = "gekuerzt: %d -> %d geschaetzte Token, %d Zeichen Mitte ersetzt" % (
+            vorher, geschaetzte_token(nachrichten), rest)
+    else:
+        gekuerzt = ""
+    if gekuerzt:
+        protokoll("KONTEXT %s %s" % (modell, gekuerzt))
+
     koerper = {
         "model": modell,
         "messages": nachrichten,
@@ -118,8 +204,44 @@ def ollama_nativ(basis: str, modell: str, nachrichten: list, temperature=None,
     anfrage = urllib.request.Request(
         basis + "/api/chat", data=daten,
         headers={"Content-Type": "application/json"}, method="POST")
-    with urllib.request.urlopen(anfrage, timeout=frist) as antwort:
-        roh = json.loads(antwort.read().decode("utf-8", "replace"))
+    # Zwei Nachbesserungen, falls die Schaetzung zu knapp war: Ollama sagt im
+    # Rumpf genau, um wie viel es zu gross war ("exceeds the available context
+    # size") - dann Mitte kuerzen und dieselbe Anfrage erneut senden, statt den
+    # Aufrufer mit einer 503 stehen zu lassen.
+    for versuch in range(3):
+        try:
+            with urllib.request.urlopen(anfrage, timeout=frist) as antwort:
+                roh = json.loads(antwort.read().decode("utf-8", "replace"))
+            break
+        except urllib.error.HTTPError as fehler:
+            try:
+                rumpf = fehler.read().decode("utf-8", "replace")
+            except Exception:
+                rumpf = ""
+            zu_gross = ("exceeds the available context size" in rumpf
+                        or "exceed_context_size_error" in rumpf)
+            if zu_gross and versuch < 2:
+                nachrichten, rest = mitte_kuerzen(nachrichten, int(
+                    geschaetzte_token(nachrichten) * 0.6))
+                koerper["messages"] = nachrichten
+                protokoll("KONTEXT %s nachgebessert (%d. Versuch): %d Zeichen "
+                          "Mitte ersetzt, Fenster %s"
+                          % (modell, versuch + 1, rest, koerper["options"].get("num_ctx")))
+                anfrage = urllib.request.Request(
+                    basis + "/api/chat",
+                    data=json.dumps(koerper).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}, method="POST")
+                continue
+            # Ollama nennt im Rumpf den Grund (z. B. "does not support tools").
+            # Ohne ihn bleibt nur "HTTP Error 400" und man raet - deshalb den
+            # Rumpf mitgeben, gekuerzt und ohne Nutzinhalt.
+            zeilen = len(koerper.get("messages") or [])
+            zeichen = sum(len(str(m.get("content") or "")) for m in koerper.get("messages") or [])
+            raise urllib.error.HTTPError(
+                fehler.url, fehler.code,
+                "%s | Ollama-Rumpf: %s | Nachrichten: %d, Zeichen: %d, options: %s"
+                % (fehler.reason, rumpf[:300], zeilen, zeichen, koerper.get("options")),
+                fehler.headers, fehler.fp)
     nachricht = roh.get("message") or {}
     content = nachricht.get("content") or ""
     denk = nachricht.get("thinking") or ""
