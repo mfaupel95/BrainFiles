@@ -66,6 +66,14 @@ raeumt trotzdem) · `npm-cache` 2.381 → **951 MB** · `pnpm` 3.398 → **2.970
 1.663 → **0 MB** · `Temp` 1.596 → **255 MB**. Summe der Posten ~12,4 GB, an `df` gemessen
 **+11,2 GB** (Differenz: `Temp` und Nachbarprozesse schreiben weiter). `C:` danach ~61,7 GB frei.
 
+**Platz-Wache (neu 24.09.2026).** Cron `platz-wache` (Job 2404f4a15149, Montag 08:45,
+`no_agent`, Telegram) ruft `Agenten/Hermes/scripts/platz-wache.py`: freier Platz C:/Q:,
+Caches (pip/npm/pnpm/uv), Muell (CrashDumps/Temp), groesste Agenten-Logs,
+`Agenten/_Backups` und ein liegengebliebenes `.git/index.lock`. Gemeldet wird nur, was
+eine Schwelle reisst (Zahlen in `SCHWELLEN` im Skript) - leere Ausgabe = nichts senden.
+Volle Tabelle jederzeit: `python Agenten/Hermes/scripts/platz-wache.py --immer`.
+Die Systempruefung (Block 7) misst weiterhin nur den Endstand je Laufwerk, die Wache
+liefert die Ursachen.
 **Log-Rotation (neu 23.09.2026).** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start ab
 50 MB nach `<name>.log.1` (`_log_drehen`). Gedreht wird **beim Start**, nicht im Betrieb: ein
 laufender Agent haelt die Datei offen, Windows verweigert dann jedes Umbenennen (nachgemessen).
