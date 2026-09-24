@@ -170,14 +170,29 @@ def kontrakte(symbol, menge, kurs=None):
 # --- signiert ---------------------------------------------------------------
 
 def guthaben(waehrung="usd"):
-    """Freies Guthaben im Verrechnungskonto (cash.balances.<waehrung>).
+    """Freies Guthaben im Futures-Konto.
 
-    Futures besichert aus dem CASH-Konto, nicht aus den fi_<coin>usd-Konten
-    (die tragen die Coin-Bestaende). Ein leeres Feld heisst 0.0, nicht None.
+    ZWEI KONTENFORMEN, gemessen 25.09.2026: ein multiCollateral-Konto legt das
+    Geld in den Block 'flex' (availableMargin, currencies.<CCY>.available) und
+    laesst 'cash.balances' auf 0,0 stehen. Die alte Lesart - nur cash - meldete
+    deshalb 0,0, obwohl 141,59 USD verfuegbar waren: das Guthaben-Tor der Spur
+    war dauerhaft zu, ohne dass es auffiel. Reihenfolge deshalb: flex zuerst,
+    sonst cash (reines Cash-Konto, z. B. Demo).
     """
-    konten = _roh("/accounts")
-    cash = (konten.get("accounts") or {}).get("cash") or {}
-    bal = (cash.get("balances") or {}).get(str(waehrung).lower())
+    w = str(waehrung).lower()
+    konten = _roh("/accounts").get("accounts") or {}
+    flex = konten.get("flex") or {}
+    if flex:
+        if w == "usd":
+            wert = flex.get("availableMargin")
+            if wert is None:
+                wert = ((flex.get("currencies") or {}).get("USD") or {}).get(
+                    "available")
+            return float(wert or 0.0)
+        return float(((flex.get("currencies") or {}).get(w.upper()) or {}).get(
+            "available") or 0.0)
+    cash = konten.get("cash") or {}
+    bal = (cash.get("balances") or {}).get(w)
     return float(bal or 0.0)
 
 

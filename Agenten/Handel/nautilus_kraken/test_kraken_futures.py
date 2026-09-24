@@ -206,9 +206,38 @@ class GuthabenTest(unittest.TestCase):
         with patch.object(kf, "_roh", return_value=antwort):
             self.assertEqual(kf.guthaben(), 0.0)
 
+    def test_guthaben_liest_das_flex_konto(self):
+        """Gemessen 25.09.2026 am echten Konto: multiCollateral legt das Geld in
+        'flex', 'cash.balances' bleibt 0,0 - die alte Lesart meldete 0 USD,
+        obwohl 141,59 USD verfuegbar waren."""
+        antwort = {"result": "success", "accounts": {
+            "cash": {"type": "cashAccount", "balances": {"usd": 0, "eur": 0}},
+            "flex": {"type": "multiCollateralMarginAccount",
+                     "availableMargin": 141.5931, "balanceValue": 141.9984,
+                     "collateralValue": 141.5931,
+                     "currencies": {"USD": {"quantity": 8.8926, "available": 8.8926},
+                                    "EUR": {"quantity": 45.7427, "available": 45.7427},
+                                    "USDC": {"quantity": 81.0838, "available": 81.0838}}}}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            self.assertAlmostEqual(kf.guthaben(), 141.5931, places=4)
+            self.assertAlmostEqual(kf.guthaben("EUR"), 45.7427, places=4)
+            self.assertAlmostEqual(kf.guthaben("usdc"), 81.0838, places=4)
+            self.assertEqual(kf.guthaben("gbp"), 0.0)
+
+    def test_flex_ohne_availablemargin_faellt_auf_usd_zurueck(self):
+        antwort = {"result": "success", "accounts": {
+            "flex": {"currencies": {"USD": {"available": 3.25}}}}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            self.assertAlmostEqual(kf.guthaben(), 3.25, places=4)
+
+    def test_leeres_flex_ist_null_nicht_fehler(self):
+        antwort = {"result": "success", "accounts": {"flex": {"currencies": {}}}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            self.assertEqual(kf.guthaben(), 0.0)
+
 
 class SperrenketteTest(unittest.TestCase):
-    """Futures besichert aus dem CASH-Konto: ohne freies USD keine Order."""
+    """Futures besichert aus dem Verrechnungskonto: ohne freies Guthaben keine Order."""
 
     def test_ohne_usd_gesperrt(self):
         w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
