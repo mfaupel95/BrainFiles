@@ -222,7 +222,8 @@ def guthaben(waehrung="ZEUR"):
     return float(d.get(waehrung, 0.0) or 0.0)
 
 
-def _add_order(paar, seite, menge, ordertyp="market", preis=None, echt=False):
+def _add_order(paar, seite, menge, ordertyp="market", preis=None, echt=False,
+               **zusatz):
     """Eine Order. echt=False laesst Kraken sie nur durchrechnen (validate) -
     sie landet dann nicht im Buch. handeln.py setzt echt=True ausschliesslich
     im Live-Zweig, wenn alle Sperren offen sind."""
@@ -232,6 +233,7 @@ def _add_order(paar, seite, menge, ordertyp="market", preis=None, echt=False):
         p["price"] = str(preis)
     if not echt:
         p["validate"] = "true"
+    p.update(zusatz)          # z.B. leverage, close[ordertxid]
     d = _roh_privat("AddOrder", **p)
     txids = d.get("txid") or []
     return txids[0] if txids else None
@@ -278,16 +280,26 @@ def preis_gerundet(paar, preis, richtung="auf"):
     return "%.*f" % (int(stellen), ganz / faktor)
 
 
-def stop_setzen(paar, menge, stop_preis, echt=False):
-    """Notausstieg als Stop-Loss-Order im Buch. Sie ueberlebt einen Neustart
-    des Rechners - das ist der Sinn: eine Position, die nur ein laufendes
-    Skript bewacht, ist unbewacht (Bedingung 3).
+def stop_setzen(paar, menge, stop_preis, echt=False, leverage=None,
+                close_txid=None):
+    """Stop-Loss setzen. Fuer eine MARGIN-Position mit close_txid verknuepft.
 
-    Der Preis wird auf die Stellen des Paares gerundet (preis_gerundet) - ein
-    roher Rechenwert wird von Kraken abgelehnt."""
-    return _add_order(paar, "sell", menge, "stop-loss",
-                      preis=preis_gerundet(paar, stop_preis, "auf"),
-                      echt=echt)
+    close_txid ist die ordertxid der offenen Position (aus OpenPositions). Kraken
+    haengt die Order dann an DIESE Position ('close position @ stop loss ...') -
+    wird die Position von Hand geschlossen, verschwindet auch der Stop. Ohne die
+    Verknuepfung bliebe ein nackter Verkaufsstop stehen, der bei fehlender
+    Position einen SHORT eroeffnen wuerde.
+    """
+    preis = preis_gerundet(paar, stop_preis, "auf")
+    felder = {}
+    if leverage is not None:
+        felder["leverage"] = str(leverage)
+    if close_txid:
+        felder["close[ordertxid]"] = close_txid
+        felder["close[ordertype]"] = "stop-loss"
+        felder["close[price]"] = preis
+    return _add_order(paar, "sell", menge, "stop-loss", preis=preis,
+                      echt=echt, **felder)
 
 
 def offene_orders():

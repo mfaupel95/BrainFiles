@@ -197,3 +197,37 @@ gestellt, Werkzeug `Agenten/Handel/mosaic/kraken_stops_7_5.py`):
 * Ein frisch gesetzter Stop erscheint in `OpenOrders` **nicht sofort** (die
   Abfrage direkt danach zeigte 2 statt 3 Orders). Vor jeder "Stop fehlt"-Aussage
   eine zweite Abfrage machen.
+
+## Eine Margin-Position liegt NICHT in der Brieftasche
+
+Gemessen 24.09.2026, als SUI, ZEC und NEAR "auf Kraken" abgesichert werden
+sollten (Auftrag Max) und im Guthaben nicht zu finden waren:
+
+* `BalanceEx` zeigte kein SUI, kein ZEC, kein NEAR - die drei lagen als
+  **offene Margin-Positionen** in `OpenPositions` (6x SUIEUR, 1x NEAREUR,
+  1x XZECZUSD, dazu ein Staubrest). Wer nur das Guthaben liest, schliesst
+  falsch "hat er nicht". **Erst Guthaben, dann `OpenPositions`, dann die
+  Brieftasche der Futures** - drei verschiedene Orte.
+* `OpenPositions` gibt je Position: `vol`, `cost`, `margin`, `ordertxid`,
+  `terms` (Rollover-Gebuehr, NICHT der Hebel - SUIEUR 0,02 % je 4 h) und
+  `posstatus`. Der Einstieg ist `cost / vol`.
+* Ein gewoehnlicher Verkaufsstop scheitert bei einer Margin-Position
+  (`EOrder:Insufficient funds`): die Stuecke gehoeren nicht der Brieftasche.
+* **Richtig ist die verknuepfte Schlussorder:** `AddOrder` mit
+  `close[ordertxid]=<ordertxid der Position>`, `close[ordertype]=stop-loss`,
+  `close[price]=<Preis>` plus die Hauptfelder (`type=sell`,
+  `ordertype=stop-loss`, `volume=<Menge der Position>`, `price`, `leverage`).
+  Kraken antwortet dann `"close": "close position @ stop loss ..."`, die Order
+  traegt das Flag `c` in `oflags` - und wenn die Position von Hand geschlossen
+  wird, verschwindet der Stop mit ihr. **Ohne die Verknuepfung bleibt ein
+  nackter Verkaufsstop stehen, der bei fehlender Position einen SHORT
+  aufmacht.**
+* Die Menge ist die der Position, nie mehr (sonst dreht der Rest short); der
+  Hebel muss im Erlaubten des Paares liegen (`leverage_sell` aus `AssetPairs`;
+  SUIEUR bis 10, NEAREUR bis 3, XZECZUSD bis 5). Fuer eine schliessende Order
+  ist er nur Formsache.
+* `validate=true` nimmt Kraken fuer ALLE diese Formen an - eine Probe kostet
+  nichts und zeigt die Beschreibung, die Kraken versteht.
+* Werkzeug: `Agenten/Handel/kraken/margin_stops.py` (Vorschau Standard,
+  `--anwenden` ordert). Nachweis: 8 Stops gesetzt, alle mit
+  `close position @ stop loss` in `QueryOrders` bestaetigt.
