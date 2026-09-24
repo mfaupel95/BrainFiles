@@ -60,6 +60,70 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-051 — Stops fuer die uebrigen Kraken-Spotbestaende**
+      Kontext: Am 24.09.2026 wurden die mosaic-Bestaende (BTC/ETH/SOL) und die
+      Margin-Positionen SUI/NEAR/ZEC abgesichert. Das uebrige Guthaben traegt
+      KEINEN Stop: ALGO, KAS, PEPE, JTO, ONDO, STG, SYN, ADA, DIMO und weitere
+      Kleinstbestaende - ein Kursrutsch dort laeuft ungebremst.
+      Naechster Schritt: Max nennt die Liste (oder "alle ab X EUR"), dann laufen
+      sie durch dasselbe Muster (Skill handel-spuren, Abschnitt "Bestehende
+      Positionen nachtraeglich absichern" + references/boersen-aufrufe.md).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/kraken/, Agenten/Handel/mosaic/kraken_stops_7_5.py
+- [ ] **T-052 — OKX-DCA-Parameter der laufenden Bots anpassen**
+      Kontext: Der Weg ist bekannt (dca/amend-order-algo), aber `anpassen_erlaubt`
+      steht auf false und es fehlt Guthaben: 0,03 USDC frei gegen ~428 USDC
+      Margin (UNI 163,90 · ARB 145,19 · MON 102,09 · BCH 17,25). Die Leitern der
+      fuenf DCA-Bots sind 4,2-8,4 % tief, die Instrumente laufen 8,6-13,2 % je
+      TAG (ATR14) - Regel fuer neue Bots: Tiefe = max(3x ATR, Rueckgang 90/180/
+      365 Tage, 10 %), Schritt 0,15-0,5x ATR, nie unter 2,5 %; der Engpass ist
+      die STUFENZAHL (dca_max_steps 12 deckt bei 2,5 % nur 30 %).
+      Naechster Schritt: Max nennt je Bot die gewuenschten Zahlen; danach
+      `wachen.json` scharf schalten und mit --anwenden amendieren.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bots UNI/ARB/MON/BCH
+- [ ] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
+      Kontext: Der Auftrag beruhte auf meiner Meldung, skill_manage verweigere
+      jede Ergänzung (100.663 von 100.000 Zeichen). Nachgemessen: die Datei ist
+      52.814 Bytes / 715 Zeilen, und der Einfuegevorgang wurde angenommen - die
+      alte Meldung stimmte nicht mehr. Der Kontohandgriff ist deshalb direkt
+      eingefuegt (neuer Abschnitt + references/boersen-aufrufe.md).
+      Naechster Schritt: nur wenn Max die Struktur trotzdem teilen will - dann
+      die fuenf grossen Bloecke (Wann 7,6 kB, Pitfalls 8,0 kB, Handelszentrale
+      6,8 kB, Werkzeugfallen 7,5 kB, Prozedur 6,7 kB) nach references/ auslagern
+      und im SKILL.md nur den Ausloeser lassen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Hermes/skills/brainfiles/handel-spuren/SKILL.md
+- [ ] **T-054 — Fremde SKILL.md-Aenderungen unter skills/brainfiles sichern**
+      Kontext: Seit dem 24.09.2026 stehen mehrere SKILL.md geaendert im
+      Arbeitsbaum, die nicht aus meiner Sitzung stammen (u.a.
+      dauerprozess-bewachen/SKILL.md mit 169 Einfuegungen / 7 Loeschungen,
+      dazu arbeitsbaum-git-hygiene, fremd-agenten-betrieb, fremdrepo-agent-start).
+      Nach Hausregel gehoeren sie in einem EIGENEN Commit mit
+      `Andere Sitzung <fremd@local>` gesichert.
+      Naechster Schritt: Diff je Datei ansehen, dann namentlich stagen
+      (kein `git add -A`) und als Fremdarbeit committen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Hermes/skills/brainfiles/
+- [ ] **T-055 — fomo-radar-Bot ohne auth.json-Verknuepfung**
+      Kontext: Das Profil laeuft, aber `auth.json` ist noch eine eigene Datei
+      statt eines Symlinks auf Agenten/Hermes/auth.json; das Anlegen braucht
+      Adminrechte (UAC-Prompt blieb nachts unbestaetigt). Bis dahin traegt die
+      Ollama-Rueckfallkette.
+      Naechster Schritt: `Agenten/Hermes/scripts/auth-verknuepfen.ps1` erhoeht
+      ausfuehren, UAC bestaetigen, danach `hermes -p fomo-radar chat -q "hallo"`
+      und den Modellnamen pruefen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Hermes/profiles/fomo-radar/
+- [ ] **T-056 — OKX-Quoten-Node (nautilus) liefert nichts**
+      Kontext: `docker ps` antwortet nicht mehr, der Container nautilus-demo
+      ist damit unerreichbar; der Nautilus-Arm bekommt keine Fills und fuellt
+      kein Buch (Quote-Feed tot, feed_quelle=fallback_kopier, quotes=0).
+      Naechster Schritt: Docker Desktop pruefen (Dienst + Container), danach
+      einen Zyklus abwarten und die Quoten im Zustand zaehlen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: nautilus (eigenes Repo), Docker Desktop
+
 - [?] **T-049 — xperp-Key antwortet 50101, kein Orderweg**
       Kontext: Der OKX-EEA-Satz von xperp liefert 50101
       ("APIKey does not match current environment"), obwohl handel_erlaubt

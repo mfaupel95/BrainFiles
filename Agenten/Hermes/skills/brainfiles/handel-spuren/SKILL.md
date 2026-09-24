@@ -102,6 +102,14 @@ Ausloeser → Referenz:
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
   `references/live-status-und-buch-trennung.md`
+- **Eine live geschaltete Spur kommt nicht ins Handeln** (sie ist scharf, es
+  passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
+  oeffnet Fenster ohne Ergebnis) oder **eine Grenze soll erhoeht werden**
+  („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
+  Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
+  der Einsatz wird auf das freie Guthaben gedeckelt BEVOR das Freigabefenster
+  ihn zeigt, und nach jeder Erhoehung wird nachgerechnet, welches Limit dann
+  bindet.
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -540,7 +548,13 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   escapte Zeichen waehlen — einen Teilstring ohne Anfuehrungszeichen (die
   Satzhaelfte, einen Zahlenwert) — und den Rest in einem zweiten Aufruf
   ersetzen. Gilt auch fuer Anker mit Backslash-Pfaden: erst `repr()` der
-  Rohzeile zeigen, dann das Muster bauen.
+  Rohzeile zeigen, dann das Muster bauen. **Und fuer den ERSATZtext:** ein
+  escaptes Anfuehrungszeichen im `new_string` (`\"Freigabefenster\"`) landet
+  WOERTLICH als `\"` in der Datei — kein Syntaxfehler, nur falscher Text an
+  einer Stelle, die niemand mehr ansieht. Nach jedem Patch, dessen Ersatz
+  Anfuehrungszeichen enthaelt, die betroffene Zeile per `read_file` lesen und
+  den Diff ansehen; Korrektur ist ein zweiter Patch mit dem Zeichen ohne
+  Backslash.
 - **Der fuzzy Patch wendet Tippfehler im old/new-String trotzdem an.** Ein
   vertippter JSON-Key (`kill_switch_gesamtmt_usd` statt `gesamt_usd`) oder
   Wert (`papier_faktor 6.0` statt `4.0`) wird vom Matcher als "aehnlich"
@@ -561,12 +575,73 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   einer Alternation brechen mit „unclosed group“ ohne klaren Grund. Nach dem
   nackten Symbol suchen (ohne `(`), wenn eine Mustersuche mit Klammern zweimal
   scheitert.
-- Viele chirurgische Ersetzungen in einer Datei: je (alt, neu)-Paar mit
-  `count == 1` asserten, danach `ast.parse` — ein stiller Mehrfachtreffer oder
-  eine verrutschte Fundstelle faellt sofort auf. Zeilenenden vorher erkennen
-  (LF/CRLF) und beim Schreiben erhalten.
+- Viele chirurgische Ersetzungen: je (alt, neu)-Paar `count == 1` asserten, danach
+  `ast.parse` — Mehrfachtreffer und verrutschte Fundstellen fallen sofort auf.
+  Zeilenenden VORHER erkennen und die Ersatztexte MIT ihnen bauen
+  (`alt.replace(chr(10), nl)`), sonst findet der Anker in einer CRLF-Datei nichts;
+  in einem per Heredoc erzeugten `.py` `chr(10)` statt `"\n"` schreiben, sonst
+  steht ein echter Zeilenumbruch im String (unterminated string literal).
+
+## Bestehende Positionen nachtraeglich absichern (Spot wie Margin)
+
+Auftrag "Kraken positionen mit stop loss 7,5% ausstatten" / "Sui Zec und near
+ebenfalls absichern". Geht es um Positionen, die SCHON offen sind, ist das ein
+Handgriff am Konto - nicht der Stop, den die Spur beim Einstieg selbst setzt.
+Die exakten Aufrufe und Felder stehen in `references/boersen-aufrufe.md`.
+
+1. **Ort klaeren, nicht raten.** Drei Stellen: Spot (`BalanceEx`),
+   MARGIN-Positionen (`OpenPositions`), Futures-Brieftasche. Wer nur das
+   Guthaben liest, schliesst falsch "hat er nicht" - SUI/ZEC/NEAR lagen als
+   6x `SUIEUR`, 1x `NEAREUR`, 1x `XZECZUSD` in `OpenPositions`.
+2. **Einstieg je Position:** Margin `cost / vol`, Spot aus dem Buch. Ohne
+   Einstieg keinen Stop setzen.
+3. **Stop = Einstieg minus Prozent** - und NIE ueber dem Markt. Ein Stop ueber
+   dem Kurs ist ein sofortiger Verkauf, keine Absicherung: ueberspringen, melden.
+4. **Menge = min(Position, verfuegbar)**, abgerundet auf `lot_decimals`. Das
+   Buch fuehrt BRUTTO, die Brieftasche NETTO (Gebuehr ging vom Zufluss ab).
+   Bei Margin genau die Menge der Position - mehr dreht den Rest short.
+5. **Preis runden** auf `pair_decimals` (`preis_gerundet(paar, preis, "auf")`);
+   ein roher Rechenwert wird abgelehnt.
+6. **Margin-Stop MUSS verknuepft sein:** `close[ordertxid]` der Position. Ohne
+   die Verknuepfung bleibt nach einem Handverkauf ein nackter Verkaufsstop
+   stehen, der einen SHORT aufmacht.
+7. **Reihenfolge:** Kraken reserviert die Menge eines Stop-Loss, ein zweiter
+   Stop auf dieselbe Menge scheitert mit `EOrder:Insufficient funds` - also
+   stornieren -> setzen, und bei Setzfehler den ALTEN Stop sofort zurueck.
+8. **Am Konto nachsehen**, nicht im Buch: `OpenOrders` je Position ein
+   `stop-loss`, `QueryOrders` mit `descr.close` = "close position @ stop loss"
+   und dem Flag `c` in `oflags`. Frisch gesetzte Stops erscheinen verzoegert.
+9. **Buch folgt der Boerse** (`zustand.json`: stop/stop_txid/menge), dann
+   spiegeln und `spiegelstand.py` byte-gleich.
+10. **Loecher melden:** uebersprungene Positionen (Staub, Stop nicht unter dem
+    Markt) und Bestaende ohne Stop gehoeren in die Antwort - sonst sieht
+    "8 Stops gesetzt" nach "alles geschuetzt" aus.
+
+Werkzeuge: `kraken/margin_stops.py` (Margin; Vorschau Standard, `--anwenden`),
+`mosaic/kraken_stops_7_5.py` (Spot; `--anwenden`, danach `--nur-buch`),
+`kraken.stop_setzen(..., leverage=, close_txid=)`, `okx.stop_setzen` /
+`okx.stop_stornieren(algo_id, inst)` (inst ist PFLICHT). Nach einem `--anwenden`
+NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
+`--nur-buch`.
 
 ## References
+- `references/boersen-aufrufe.md` — Stops an BESTEHENDE Positionen: die exakten
+  Kraken-Aufrufe (`AddOrder` mit `close[...]`, `OpenPositions`-Felder,
+  `QueryOrders`-Antwort, Paarregeln), OKX-Stops und die Fehlermeldungen
+  (`EOrder:Insufficient funds`, `EAPI:Invalid nonce/key`, `50014`, `51400`).
+  Ausloeser: "absichern", "Stop nachziehen", "Sui/ZEC/NEAR"
+- `references/sprachmodell-spur.md` — eine Spur, deren Richtung ein LOKALES
+  Sprachmodell liefert: Vertrag (BUY/SELL/NOTHING + Confidence), Gate bleibt
+  deterministisch und nachrechenbar, Messung der Modellwahl, Cache, Nachfassen,
+  `think:false` und was ohne Gate passiert. Ausloeser: "LLM-Spur",
+  "Modell entscheidet", "Confidence"
+- `references/ausstieg-und-auswertung.md` — Ausstieg rechnen und Journal deuten
+  (G/V auf den Nominalwert, Ausstiegspruefung je Instrument, Journalformate der
+  Familien, Spur auswertbar machen, Testaufruf) **plus die Wiedereinstiegs-Regel:
+  ein Ziel-Ausstieg hat das Signal verbraucht** (Sperrfrist in Stunden nach
+  `ziel`, laengere Abklingzeit in Tagen nach `stop`, Zeitstempel statt Datum,
+  Test mit Gegenprobe). Ausloeser: „kauft sofort wieder", „Sperrfrist",
+  „Gebuehren fuer dieselbe Bewegung".
 - `references/santiment.md` — Santiment SanAPI (GraphQL, anonym in der freien
   Stufe nutzbar): wo das Repo liegt, welche Metriken live geprueft sind, dass
   JEDE Metrik ihr eigenes Zeitfenster hat und `erlaubtes_fenster()` die Grenze
@@ -584,7 +659,9 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
 - `references/okx-fehlermeldungen.md` — OKX meldet Orderfehler mit HTTP 200
   und `code="1"` (Auskunft in `data[0].sMsg`, nicht im aeusseren `msg`); ein
   echter HTTP 4xx muss als fachlicher Fehler gelten statt als Transportfehler
-  wiederholt zu werden (sonst geht eine abgelehnte Order dreimal raus).
+  wiederholt zu werden (sonst geht eine abgelehnte Order dreimal raus); das
+  STORNO einer Algo-Order braucht `instId` (`50014` ohne sie) und `51400`
+  heisst erledigt, nicht Fehler.
 - `references/kraken-nonce-und-lockout.md` — `Invalid nonce` und `Temporary
   lockout` erst unterscheiden, bevor man den nonce-Code jagt: eine Sperre
   lehnt JEDEN nonce ab, auch einen korrekten; weitere Sonden verlaengern sie.
@@ -678,3 +755,12 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
 - `references/schaltername-benennt-die-sperre.md` — ein boolescher Name benennt
   den Zustand, den er schaltet, nicht den Anlass (`wochenende_gesperrt`, nicht
   `we`); `wenn_nicht_X` gehoert nie in einen Namen.
+- `references/live-tor-und-einsatzgroesse.md` — eine scharfe Spur, die nicht
+  handelt: ein Tor muss den Zustand des Zweigs lesen, der SCHREIBT (Herzschlag aus
+  dem frischesten Papier-/Livestand, sonst Selbstsperre und nutzlose
+  Auto-Freigabe-Fenster); der Einsatz wird auf das freie Guthaben gedeckelt, bevor
+  das Freigabefenster ihn zeigt (`gedeckelt = frei * (1 - gebuehr_taker - 0,2 %)`,
+  Rueckfall-Regeln als Tabelle); nach jeder Grenz-Erhoehung nachrechnen, welche
+  Grenze in der Kette je Trade → Plaetze → Gesamtdeckel → Guthaben bindet, und
+  `mindest_guthaben*` mit dem KLEINSTEN Einsatz begruenden, nicht mit einem alten
+  Beispielbetrag.
