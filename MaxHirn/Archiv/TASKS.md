@@ -59,7 +59,18 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-
+- [ ] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
+      Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
+      Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im
+      Klon Werkstatt/Repos/moon-dev-ai-agents. Der Fork mfaupel95/moon-dev-ai-agents
+      hat den Stand nicht - ein Plattenausfall kostet die Arbeit. Ein Push in ein
+      Fremd-Repo wird nicht ungefragt gemacht; der Klon traegt ausserdem fremde
+      uncommittete Arbeit (T-062), die nicht mitgehen darf.
+      Naechster Schritt: entscheiden, ob der Stand in den Fork gepusht wird -
+      dann `git fetch --unshallow` pruefen, nur die vier eigenen Dateien stagen
+      (api_frei.py + die drei Agenten) und pushen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Branch main, Commit 1b3c650)
 - [ ] **T-067 — Kraken-Futures-Orderweg (PF_XBTUSD): gebaut, Konto hat 0 USD**
       Kontext: `nautilus_kraken/kraken_futures.py` spricht die Futures-REST an
       (eigener Dienst, eigene Signatur: base64(HMAC-SHA512(secret, SHA256(
