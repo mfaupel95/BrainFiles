@@ -557,6 +557,51 @@ def zyklus_umgebung(modus, basis=None):
     return umgebung
 
 
+# --- Was in den Chat gehoert -------------------------------------------------
+#
+# Eine reine Wortsuche ("verkauf", "stop", "ausstieg") traf auch Zeilen, die
+# kein Ereignis melden. Zyklus 21 der Basis am 25.09.2026 schickte fuenf Zeilen,
+# davon NULL Ereignisse: zweimal die Ueberschrift "- Ausstiege -" (die Spuren
+# scanner und kraken hatten nichts zu melden), die Fortsetzungszeile einer
+# frisch eroeffneten swap-Anlage ("XAU-USDT-SWAP short Stop 4318.2 ...", das
+# Wort stop ist dort eine Spaltenueberschrift) und dreimal derselbe mosaic-
+# Hinweis "... der Papierzweig verkauft sie nicht".
+#
+# Deshalb: gemeldet wird, was einen Ausstieg, eine Eroeffnung, einen Notaus
+# oder einen FEHLSCHLAG AUSSPRICHT - und zwar an der Zeile, die ihr Instrument
+# selbst nennt (Befund 11.09.2026: die Stop-Zeile von xperp kam ohne Wertnamen
+# an). Wiederholt sich dieselbe Zeile im naechsten Zyklus, wird sie nicht
+# erneut geschickt (eine Sperre, die stehen bleibt, war sonst 96-mal am Tag
+# im Chat).
+EREIGNIS_ANFANG = ("AUSSTIEG", "NOTAUS", "AUF ")
+EREIGNIS_WORTE = ("kill-switch", "kill-schwelle", "notausstieg",
+                  "fehlgeschlagen", "hat ausgeloest", "gesperrt")
+
+
+def ereigniszeilen(ausgabe):
+    """Die Zeilen einer Spur-Ausgabe, die ein Ereignis melden."""
+    treffer = []
+    for zeile in ausgabe.splitlines():
+        z = zeile.strip()
+        if not z:
+            continue
+        if z.startswith(EREIGNIS_ANFANG) or any(
+                w in z.lower() for w in EREIGNIS_WORTE):
+            treffer.append(z)
+    return treffer
+
+
+def neue_ereignisse(ausgabe, vorher=()):
+    """(neue Zeilen, alle Zeilen) - `vorher` sind die Zeilen des letzten Zyklus.
+
+    Gemeldet werden nur die neuen; gespeichert wird die volle Liste, damit
+    ein Ereignis nach einer Pause wieder gemeldet wird.
+    """
+    alle = ereigniszeilen(ausgabe)
+    alt = set(vorher or ())
+    return [z for z in alle if z not in alt], alle
+
+
 class Lauf:
     def __init__(self, takt, trocken=False):
         self.takt = takt
@@ -574,6 +619,9 @@ class Lauf:
         self.letzter_bericht = None
         self.zyklen = 0
         self.fehler = 0
+        # Je Spur die Ereigniszeilen des VORIGEN Zyklus: dieselbe Zeile wird
+        # nicht zweimal geschickt (siehe ereigniszeilen()).
+        self.gemeldet = {}
 
     # --- senden ---------------------------------------------------------
 
@@ -669,18 +717,14 @@ class Lauf:
             else:
                 protokoll("%s (%s) ok" % (spur, kurz))
 
-            # Verkauf oder Stop im Lauf: das gehoert sofort gemeldet, nicht
-            # erst im Tagesbericht. Gemeldet wird nur die Zeile, die das
-            # Wort traegt - deshalb muss jede gemeldete Zeile ihr
-            # Instrument selbst nennen. Eine Fortsetzungszeile ohne Subjekt
-            # ist im Chat nicht zuzuordnen (Befund 11.09.2026: die
-            # Stop-Zeile von xperp kam ohne Wertnamen an).
-            for wort in ("verkauf", "stop", "KILL", "gesperrt", "ausstieg"):
-                if wort.lower() in ausgabe.lower():
-                    for zeile in ausgabe.splitlines():
-                        if wort.lower() in zeile.lower():
-                            auffaellig.append("%s: %s" % (spur, zeile.strip()))
-                    break
+            # Ausstieg, Eroeffnung, Notaus oder Fehlschlag im Lauf: das gehoert
+            # sofort gemeldet, nicht erst im Tagesbericht. Ausgewaehlt wird
+            # ueber ereigniszeilen() - siehe die Anmerkung dort, warum eine
+            # Wortsuche dafuer zu grob ist.
+            neu, alle = neue_ereignisse(ausgabe, self.gemeldet.get(spur))
+            for zeile in neu:
+                auffaellig.append("%s: %s" % (spur, zeile))
+            self.gemeldet[spur] = alle
 
         if auffaellig:
             self.sende("<b>Zyklus %d</b>\n%s" % (

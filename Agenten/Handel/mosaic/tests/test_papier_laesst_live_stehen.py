@@ -9,7 +9,9 @@ Geprueft wird:
  (a) pruefe_ausstiege verkauft eine LIVE-Position NICHT (weder am Ziel noch am
      Stop) und laesst sie im Buch;
  (b) daneben liegende PAPIER-Positionen werden weiter verkauft;
- (c) nur_papier_verwerfen (Kill-Pfad des Papierzweigs) raeumt nur Papier.
+ (c) nur_papier_verwerfen (Kill-Pfad des Papierzweigs) raeumt nur Papier;
+ (d) die Zahl der stehen gelassenen Live-Positionen wird EINMAL gezaehlt und
+     EINMAL gemeldet (Zaehler je Instrument, Meldung im Aufrufer).
 
 Kein Netz, kein echtes Ziel: Journal und Zustand zeigen auf ein
 Temp-Verzeichnis, ein Modulwaechter vergleicht danach den echten Spurenordner.
@@ -123,6 +125,31 @@ class PapierLaesstLiveStehenTest(unittest.TestCase):
         z = {"positionen": [_live(), _papier()]}
         handeln.nur_papier_verwerfen(z)
         self.assertEqual([p["inst"] for p in z["positionen"]], ["BTC-USDC"])
+
+    # (d) Der Zaehler darf nicht dreifach zaehlen (Befund Zyklus 21, 25.09.2026:
+    #     ein Zyklus meldete dieselbe Live-Position dreimal, weil lauf() je
+    #     Instrument einmal ueber ALLE Positionen prueft).
+    def test_live_position_zaehlt_nur_einmal(self):
+        z = {"positionen": [_live(), _live("ETH-USDC"), _live("SOL-USDC")]}
+        self.assertEqual(handeln.pruefe_ausstiege(
+            z, _kerzen(120.0), {}, nur="BTC-USDC"), 1)
+        self.assertEqual(len(z["positionen"]), 3)
+        self.assertEqual(self._journal(), [])
+
+    def test_ohne_einschraenkung_zaehlt_alle_live(self):
+        z = {"positionen": [_live(), _live("ETH-USDC"), _live("SOL-USDC")]}
+        self.assertEqual(handeln.pruefe_ausstiege(
+            z, _kerzen(120.0), {}, nur=None), 3)
+
+    def test_meldet_nichts_selbst(self):
+        """Die Zeile schreibt der Aufrufer - sonst steht sie je Instrument da."""
+        import io
+        from contextlib import redirect_stdout
+        z = {"positionen": [_live(), _live("ETH-USDC")]}
+        puffer = io.StringIO()
+        with redirect_stdout(puffer):
+            handeln.pruefe_ausstiege(z, _kerzen(120.0), {}, nur="BTC-USDC")
+        self.assertEqual(puffer.getvalue().strip(), "")
 
     # Gegenprobe: ein leeres Buch bleibt leer (kein KeyError)
     def test_leeres_buch(self):
