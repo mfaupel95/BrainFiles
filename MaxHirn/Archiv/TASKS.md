@@ -60,6 +60,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
+      Kontext: Die Futures-Variante (PF_XBTUSD, USD, Hebel) laeuft Papier. Die
+      Gebuehr 0,05% ist eine Annahme, nicht gemessen. Vor dem Scharfschalten
+      der Futures-Spur an einer echten Fuellung pruefen.
+      Naechster Schritt: Futures-Gebuehr an einer echten (oder Demo-)Order
+      messen, in wachen.futures.json eintragen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/nautilus_kraken/wachen.futures.json
+
+- [ ] **T-065 — nautilus_kraken: echter ~1-EUR-Spot-Live-Test (Freigabekette)**
+      Kontext: Der REST-Orderweg (kraken_rest.py) ist committed (de433da) und
+      per Preflight verifiziert (Keys, Guthaben, markt_kauf echt=False). Der
+      echte Orderweg (markt_kauf/markt_verkauf mit echt=True) wird nur aktiv,
+      wenn die Spur ueber die Freigabekette scharf ist (handel_erlaubt=true +
+      freigabe.erfuellt=true + offenes Freigabefenster). Ein winziger
+      ~1-EUR-Round-Trip verifiziert den echten Spot-Pfad.
+      Naechster Schritt: Freigabekette oeffnen (nur Max), dann einen
+      ~1-EUR-Round-Trip ausfuehren und die Fuellung pruefen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/nautilus_kraken
+
 - [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt
       Kontext: `nautilus_kraken` und `nautilus_kraken_futures` laufen Papier
       (`handel_erlaubt=false`, `freigabe.erfuellt=false`). Der gemeldete Fehler "OKX
@@ -70,11 +91,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `nautilus_kraken/logs/kraken-orders-20260924T184919894096Z.jsonl` ->
       `success: false, entered: false`). Ueber REST arbeitet derselbe Kraken-Schluessel
       einwandfrei (Kontostand und 14 offene Orders lesbar). Eine parallele Sitzung baut
-      `nautilus_kraken/kraken_rest.py` + Live-Zweig in `handeln.py` (24.09. 20:33, noch
-      uncommittet) - Kraken direkt per REST am Nautilus-Adapter vorbei.
-      Naechster Schritt: entweder den Kraken-API-Schluessel um "Access WebSockets API"
-      erweitern (dann traegt auch der Nautilus-Weg) ODER bewusst beim REST-Weg bleiben
-      und den Nautilus-Exec-Client aufgeben.
+      `nautilus_kraken/kraken_rest.py` + Live-Zweig in `handeln.py` (24.09. 20:33,
+      Commit de433da) - Kraken direkt per REST am Nautilus-Adapter vorbei. Der
+      REST-Weg ist verifiziert (Keys, Guthaben, markt_kauf echt=False Preflight
+      ok, 28/28 Tests + 4/4 Sperrenkette). Offen: echter ~1-EUR-Round-Trip
+      (T-065) und Futures-Gebuehr (T-066).
+      ENTSCHEIDUNG Max 24.09.2026: REST bleibt. Der Nautilus-Exec-Client wird aufgegeben,
+      der Kraken-Schluessel NICHT um WebSockets-Rechte erweitert.
+      BELEG (24.09. 21:35, Trockenlauf validate=true, kein Geld bewegt): Marktkauf und
+      Stop-Loss werden angenommen ('buy 0.00010 XBTEUR @ market' / 'sell 0.00010 XBTEUR
+      @ stop loss 78000.0'), ein falsches Paar wird abgelehnt - der Weg ist befahrbar UND
+      fehlerempfindlich. Dabei gefunden und behoben: wachen.json trug kein 'paar',
+      handeln.py fiel auf das Nautilus-Symbol BTC/EUR zurueck, das Kraken mit
+      'EQuery:Unknown asset pair' abweist -> "paar": "XXBTZEUR" ergaenzt, Test Orderpaar
+      in test_handeln.py.
+      OFFEN: Der Futures-Arm (PF_XBTUSD) hat GAR KEINEN REST-Zweig - kraken.py ist die
+      SPOT-REST-API, Kraken Futures eine eigene Schnittstelle (anderer Host, eigene
+      Signatur). Der REST-Weg traegt nur nautilus_kraken (Spot).
+      GUTHABEN: 4,10 EUR frei (24.09. 21:35) - unter jedem sinnvollen Einsatz, der
+      Live-Zweig bleibt also ohnehin zu, bis EUR frei ist.
+      Naechster Schritt: pruefen, ob der Nautilus-Exec-Client aus dem Code verschwindet
+      (kraken_order_test.py, Altlasten), damit niemand den toten Weg neu verdrahtet.
+
       Betrifft: Agenten/Handel/nautilus_kraken (+ `_futures`), Werkstatt/Repos/nautilus*
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
 
