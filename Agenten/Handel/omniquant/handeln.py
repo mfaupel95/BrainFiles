@@ -92,6 +92,28 @@ ZUSTAND = risikostufe.datei(_arm(os.path.join(HIER, "zustand.json")))
 JOURNAL = risikostufe.datei(_arm(os.path.join(HIER, "handelsjournal.csv")))
 DEFAULT_BERICHT = os.path.join(HANDEL, "prognose_berichte", _arm("neuester.json"))
 
+
+def bericht_pfad(w=None):
+    """Der Bericht der gewaehlten FASSUNG (wachen-Feld `prognose_fassung`).
+
+    Fassung und Arm sind unabhaengig: "weit" liest den weiten Bericht
+    (neuester.weit.json, geschrieben von prognose.py mit PROGNOSE_FASSUNG=weit),
+    waehrend die BUCHDATEIEN unveraendert heissen. Ohne das Feld bleibt es beim
+    strengen Bericht - die Voreinstellung aendert sich nicht, und wer nur den
+    Bericht tauscht, verliert keine Buchhistorie.
+
+    Anlass (Auftrag Max 24.09.2026, "Omniquant auf Papier auf weit stellen"):
+    der strenge Bericht liefert seit Tagen 0 Treffer, der weite 6-7. Statt den
+    Schattenarm zu verdoppeln, waehlt das Hauptbuch seine Signalquelle.
+    """
+    if w is None:                     # {} heisst "nichts gesetzt", nicht "lies selbst"
+        w = lade_wachen() or {}
+    fassung = str(w.get("prognose_fassung") or "").strip().lower()
+    if not fassung or fassung in ("streng", "standard"):
+        return DEFAULT_BERICHT
+    return os.path.join(os.path.dirname(DEFAULT_BERICHT),
+                        "neuester.%s.json" % fassung)
+
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
            "einsatz_usd", "wert_usd", "stop", "ziel", "grund",
            "score", "cr", "mfe_pct", "mae_pct", "haltetage"]
@@ -171,15 +193,16 @@ def journal(**felder):
 
 def lade_bericht():
     """Der volle Prognose-Bericht. None, wenn er zu alt ist - Abstention."""
+    w = lade_wachen()
+    pfad = bericht_pfad(w)
     if bericht_quelle is not None:
         b = bericht_quelle
     else:
         try:
-            with open(DEFAULT_BERICHT, encoding="utf-8") as f:
+            with open(pfad, encoding="utf-8") as f:
                 b = json.load(f)
         except (OSError, ValueError):
-            return None, ("kein Bericht (%s fehlt)"
-                          % os.path.basename(DEFAULT_BERICHT))
+            return None, ("kein Bericht (%s fehlt)" % os.path.basename(pfad))
     try:
         erzeugt = datetime.fromisoformat(str(b.get("erzeugt", "")))
     except (TypeError, ValueError):
@@ -191,7 +214,6 @@ def lade_bericht():
         # geschriebene Berichte werden als UTC gelesen (wie prognose.py).
         erzeugt = erzeugt.replace(tzinfo=timezone.utc)
     alter_h = (datetime.now(timezone.utc) - erzeugt).total_seconds() / 3600
-    w = lade_wachen()
     max_alter = w.get("max_bericht_alter_stunden", 26)
     if alter_h > max_alter:
         return None, "Bericht %.1f h alt, Grenze %g h" % (alter_h, max_alter)
@@ -508,7 +530,9 @@ def zeige_wachen(w):
               "slippage_pct", "max_halte_dauer_tage", "herzschlag_max_minuten",
               "max_bericht_alter_stunden", "max_je_basiswert"):
         print("  %-28s %s" % (k, w.get(k)))
-    print("  Signalquelle: %s" % w.get("signal_quelle", "prognose_berichte/neuester.json"))
+    print("  Signalquelle: %s (Fassung %s)"
+          % (os.path.relpath(bericht_pfad(w), HANDEL),
+             w.get("prognose_fassung") or "streng"))
     z = lade_zustand()
     print("  %-28s %s" % ("journal_zweitziel",
                           w.get("journal_zweitziel") or "-- nicht gesetzt"))

@@ -130,22 +130,34 @@ class ToreTest(unittest.TestCase):
 
 
 class AnbindungTest(unittest.TestCase):
-    """Der Arm muss im Dauerlauf stehen UND in der Anzeige auftauchen."""
+    """Der Arm existiert als Dateisatz - und der Dauerlauf faehrt ihn NICHT mehr.
 
-    def test_im_dauerlauf_und_in_der_lage(self):
+    Am 24.09.2026 (Auftrag Max "Omniquant auf Papier auf weit stellen") liest
+    der HAUPTARM die weite Fassung selbst. Der Arm bleibt als Aufzeichnung
+    liegen; liefe er weiter, buchten zwei Buecher dieselben Signale.
+    """
+
+    def test_arm_laeuft_nicht_mehr_und_hauptarm_liest_weit(self):
         sys.path.insert(0, HANDEL)
         import dauerlauf
         import lage
-        self.assertIn("omniquant_weit", dauerlauf.SPUREN)
-        e = dauerlauf.SPUREN["omniquant_weit"]
-        self.assertEqual(e["ordner"], "omniquant")
-        self.assertEqual(e["skript"], "omniquant_weit.py")
+        self.assertNotIn("omniquant_weit", dauerlauf.SPUREN)
+        # Die Anzeige kennt den Arm weiterhin (sein Buch bleibt lesbar) ...
         namen = [f.__name__ for f in lage.HOLER]
         self.assertIn("spur_omniquant_weit", namen)
         s = lage.spur_omniquant_weit()
         self.assertIn("weit", s["name"])
         self.assertTrue(s["journal"].endswith("handelsjournal.weit.csv"))
         self.assertNotEqual(s["journal"], lage.spur_omniquant()["journal"])
+        # ... und die weite Fassung hat trotzdem einen Abnehmer: den Hauptarm.
+        with open(os.path.join(SPUR, "wachen.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f).get("prognose_fassung"), "weit")
+
+    def test_arm_dateien_liegen_bereit(self):
+        # Wieder einschalten soll moeglich sein, ohne etwas zu rekonstruieren.
+        for name in ("omniquant_weit.py", "wachen.weit.json",
+                     "handelsjournal.weit.csv"):
+            self.assertTrue(os.path.isfile(os.path.join(SPUR, name)), name)
 
 
 if __name__ == "__main__":

@@ -234,13 +234,19 @@ SPUREN = {
                 "skript": "handeln.py"},
     "omniquant": {"ordner": "omniquant", "waehrung": "USD",
                   "skript": "handeln.py"},
-    # Schattenarm 'weit' (24.09.2026, Auftrag Max): dasselbe Buch, aber die
-    # weiche Prognose-Fassung (prognose.weit.json -> neuester.weit.json).
-    # Eigene Dateien (wachen.weit.json, zustand.weit.json, handelsjournal.weit.csv),
-    # eigene Spiegelung nach Q:\Handel_Journal\omniquant_weit. Der Hauptarm
-    # bleibt unveraendert und ist die Vergleichsgrundlage.
-    "omniquant_weit": {"ordner": "omniquant", "waehrung": "USD",
-                       "skript": "omniquant_weit.py"},
+    # Schattenarm 'weit' (24.09.2026): dasselbe Buch, aber die weiche
+    # Prognose-Fassung (prognose.weit.json -> neuester.weit.json).
+    # AUS DEM DAUERLAUF GENOMMEN am 24.09.2026, Auftrag Max "Omniquant auf
+    # Papier auf weit stellen": der HAUPTARM liest die weite Fassung jetzt
+    # selbst (wachen.json prognose_fassung=weit), damit die Spur nicht zweimal
+    # dieselben Signale in zwei Buecher bucht. Die Arm-Dateien
+    # (wachen.weit.json, zustand.weit.json, handelsjournal.weit.csv) und die
+    # Spiegelung Q:\Handel_Journal\omniquant_weit bleiben als Aufzeichnung
+    # stehen, sie wachsen nicht weiter. Wieder einschalten: Zeilen
+    # einkommentieren UND vorher in zustand.weit.json 'letzter_lauf' auf jetzt
+    # setzen - sonst stellt der erste Zyklus alles als 'herzschlag_alt' flach.
+    # "omniquant_weit": {"ordner": "omniquant", "waehrung": "USD",
+    #                    "skript": "omniquant_weit.py"},
     "nautilus": {"ordner": "nautilus", "waehrung": "USD",
                  "skript": "handeln.py",
                  "python": os.path.join(HIER, "nautilus", ".venv",
