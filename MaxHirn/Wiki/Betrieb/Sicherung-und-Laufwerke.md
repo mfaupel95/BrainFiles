@@ -72,6 +72,8 @@ Caches (pip/npm/pnpm/uv), Muell (CrashDumps/Temp), groesste Agenten-Logs,
 `Agenten/_Backups` und ein liegengebliebenes `.git/index.lock`. Gemeldet wird nur, was
 eine Schwelle reisst (Zahlen in `SCHWELLEN` im Skript) - leere Ausgabe = nichts senden.
 Volle Tabelle jederzeit: `python Agenten/Hermes/scripts/platz-wache.py --immer`.
+Gemessene Laufzeit des ganzen Messlaufs: **7 s** (18:39) - die Wache ist billig,
+weil jede Messung eine eigene Zeitgrenze hat und "nicht gemessen" nie als 0 zaehlt.
 Die Systempruefung (Block 7) misst weiterhin nur den Endstand je Laufwerk, die Wache
 liefert die Ursachen.
 **Log-Rotation (neu 23.09.2026).** `moondev_dauerlauf.py` dreht eine Agenten-Logdatei beim Start ab
