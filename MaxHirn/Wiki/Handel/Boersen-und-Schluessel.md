@@ -288,3 +288,30 @@ Risiko.
 Zweite Falle derselben Nacht: `OpenOrders` traegt die TXID im **Schluessel**,
 nicht im Wert. Mit `o.get("txid")` kam eine leere Kennung heraus und Kraken
 antwortete `EOrder:Invalid order` - storniert war dabei nichts.
+
+## WAISEN-STOPS BEI OKX - MILDER, ABER DASSELBE MUSTER (25.09.2026)
+
+Dieselbe Klasse wie bei Kraken (siehe oben): eine Schutz-Order bleibt stehen,
+wenn ihre Position oder ihr Bestand verschwunden ist. Bei OKX ist der Schaden
+kleiner und die Erkennung anders:
+
+* **Spot** (`tdMode=cash`): mehr als der Bestand laesst sich nicht verkaufen,
+  ein zu grosser Stop ist harmlos. Gefaehrlich ist nur, dass der Stop den
+  Bestand **sperrt** (Reservierung) - ein manueller Verkauf scheitert dann.
+* **Perp/XPERP** (`tdMode=isolated` oder `cross`) mit `reduceOnly=true`:
+  OKX schliesst hoechstens, stockt nie auf. Ein Stop, der groesser ist als die
+  Position (Befund: MON-USD_UM_XPERP 4143 gegen 2985), ist damit **kein** Risiko,
+  nur eine Notiz ("ueberdeckt").
+* Bei **Kraken-Margin** ist es anders: ein Sell-Stop ohne Long-Position ist ein
+  echter Auftrag und eroeffnet beim Ausloesen einen **SHORT**. Deshalb dort Alarm,
+  hier Notiz.
+
+Werkzeuge (25.09.2026):
+`Agenten/Handel/okx_waisen.py` (Vorschau storniert nichts, `--stornieren` fasst
+nur Waisen an) und `Agenten/Handel/kraken/waisen_stops.py`. Beide werden von der
+Wache `waisen-wache` (Cron, 30 min, no_agent) **je Boerse getrennt** aufgerufen;
+ein Messfehler der einen Boerse wird gemeldet, statt die andere zu verdecken.
+
+**Lehre:** Eine Kennzahl ohne ihre Boerse ist wertlos - "Stop groesser als
+Position" heisst bei OKX (reduceOnly) harmlos und bei Kraken-Margin lebensgefaehrlich.
+Vor jeder Alarmstufe die Mechanik des jeweiligen Handelsplatzes pruefen.
