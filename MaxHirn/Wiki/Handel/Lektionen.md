@@ -367,3 +367,34 @@ nichts mehr nach, und die Position laeuft ungebremst in die Liquidation.
 - **Der Wochenchart des Kontrakts luegt.** XPERP-Kontrakte haben 7-26 Wochenkerzen -
   eine Trendaussage daraus ist geraten. Der Trend kommt vom Spot-Paar.
 - Merksatz: **Ein Vorrat, der in einem Tag leer ist, ist kein Vorrat.**
+
+## Eine Liquidationswand liegt hinter dem Kurs, nicht davor
+
+Gemessen am 24.09.2026 an 100 echten Zwangsschluessen (oeffentliche OKX-Daten,
+BTC, Werkzeug `Agenten/Handel/liq_wand/probe_seiten.py`):
+
+* Die 100 Eintraege decken nur **1,8 bis 14,7 Minuten** ab, der juengste war
+  0,6 bis 26 Minuten alt. Der Strom ist ein Ausschnitt der letzten Bewegung.
+* In beiden Messungen waren **100 von 100 Liquidationen Longs** (fallender
+  Kurs). Die Seite eines Bandes ist keine Eigenschaft des Bandes, sondern der
+  Richtung des letzten Laufs: Longs sterben beim Fallen, Shorts beim Steigen.
+* Das groesste Band lag **0,25 % UEBER dem Spot** und bestand ganz aus
+  liquidierten Longs - die Verkaeufe sind durch das Band gelaufen, der Kurs war
+  schon darunter.
+
+Merksatz: **ein Band entsteht dort, wo der Kurs gerade war, nicht dort, wo er
+hinwill.** Wer verlangt, dass die Wand VOR dem Kurs liegt, verlangt etwas, das
+der Datenstrom fast nie hergibt - die Spur meldet dann "falsche Seite" und
+schweigt. Richtig ist eine Toleranz hinter dem Kurs
+(`hinter_dem_spot_prozent`, 0.5 %), damit der Cluster als Beschleuniger zaehlt;
+die Entfernungsgrenze (`max_abstand_prozent`) bleibt der Deckel.
+
+## Ein Schalter, der ueberall an ist, sagt nichts mehr
+
+`handel_erlaubt` und `freigabe.erfuellt` stehen seit dem Auftrag vom
+21./22.09.2026 in JEDER Spur auf true. Eine Live-Sperre, die nur diese beiden
+liest, laesst `--live` durch - und eine Spur ohne Orderaufruf schreibt dann ein
+Buch mit `modus=live`, das an keiner Boerse existiert (der Fehler "Buch war
+Fiktion" vom 21.09. bei xperp und scanner). Die Sperre muss am **Orderweg**
+haengen (`LIVE_ORDERWEG`), nicht am Schalter; liq_wand macht das seit
+24.09.2026 ueber `live_gate()`.
