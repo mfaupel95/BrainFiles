@@ -578,6 +578,171 @@ def bueche_geister_aus(z, w, still=False):
 # dieser Schwelle ist es API-Rauschen, kein Handgriff.
 _KONTRAKT_TOLERANZ = 1e-6
 
+# Nur die EIGENE Kontraktfamilie wird uebernommen. Alles andere am Konto
+# (Spot-Bestaende der scanner-Spur, handelsuebliche Fremdkontrakte) gehoert
+# einer anderen Spur und darf hier nicht ins Buch wandern.
+_FREMD_MUSTER = "_UM_XPERP-"
+
+
+def bueche_fremde_positionen_uebernehmen(z, w, still=False):
+    """BOERSE -> BUCH: von Hand eroeffnete Positionen ins Buch holen.
+
+    ANLASS (24.09.2026, gemessen): Max eroeffnet Positionen in der OKX-App;
+    OKX kennzeichnet solche Auftraege mit tag='OTversionB' (eigene Auftraege
+    haben kein tag). Die Spur sieht sie nie - sie kennt nur ihr eigenes
+    Journal. Am 23.09.2026 lagen so BZ (1467 Kontrakte aus drei Fillungen,
+    13:19-14:22 UTC) und CL (133 aus drei Fillungen, 13:15-14:18 UTC)
+    unbemerkt offen: Margin belegt, kein Buchplatz, keine Ausstiegslogik, und
+    zwei von drei BZ-Fillungen trugen NUR ein Ziel, keinen Stop.
+
+    `bueche_geister_aus` raeumt die Gegenrichtung auf (Buchposition, die an
+    der Boerse fehlt). Diese Funktion ist die fehlende Richtung. Sie ist
+    bewusst kein Einstieg: sie kauft nichts, sie macht Vorhandenes sichtbar
+    und schuetzt es.
+
+    Grenzen, damit daraus keine wilde Position wird:
+      * nur Instrumente der eigenen Kontraktfamilie (_UM_XPERP-)
+      * Einstieg ist der Boersenschnitt (avgPx), nie geschaetzt
+      * Stop/Ziel aus derselben Rechnung wie ein eigener Einstieg
+        (stop_atr_faktor / ziel_atr_faktor mal ATR 1H)
+      * existiert an der Boerse schon ein Stop (Position oder Auftrag), wird
+        KEIN zweiter gestellt
+      * laesst sich der ATR nicht rechnen, wird NICHT gebucht (lieber ein
+        gemeldeter Fremdbestand als ein erfundener Stop)
+      * faellt die Boersenfrage aus, bleibt das Buch unberuehrt
+    """
+    try:
+        roh = okxf.positionen()
+    except Exception as e:                                     # noqa: BLE001
+        print("  Fremdbestand-Pruefung uebersprungen (%s) - Buch bleibt unberuehrt" % e)
+        return 0
+    an_der_boerse = {}
+    for p in roh or []:
+        try:
+            groesse = float(p.get("pos") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if abs(groesse) >= 1e-9:
+            an_der_boerse[p.get("instId")] = (groesse, p)
+    if not an_der_boerse:
+        return 0
+    bekannt = {p.get("inst") for p in z.get("positionen") or []}
+    neu = []
+    for inst, (groesse, roh_pos) in sorted(an_der_boerse.items()):
+        if _FREMD_MUSTER not in (inst or ""):
+            continue
+        if inst in bekannt:
+            continue
+        seite = "long" if groesse > 0 else "short"
+        vz = 1.0 if seite == "long" else -1.0
+        try:
+            einstieg = float(roh_pos.get("avgPx") or 0.0)
+        except (TypeError, ValueError):
+            einstieg = 0.0
+        if einstieg <= 0:
+            print("  %s: kein Boersenschnitt (avgPx) - NICHT uebernommen" % inst)
+            continue
+        try:
+            kerzen = okxf.kerzen(inst, "1H", 300)
+            # atr() liefert eine REIHE (None in der Aufwaermphase) - gebraucht
+            # wird der letzte fertige Wert, nicht die Liste.
+            reihe = [x for x in indikatoren.atr(kerzen) if x]
+            spanne = reihe[-1] if reihe else None
+        except Exception as e:                                 # noqa: BLE001
+            spanne = None
+            print("  %s: ATR nicht rechenbar (%s) - NICHT uebernommen" % (inst, e))
+        if not spanne or spanne <= 0:
+            print("  %s: ATR leer - NICHT uebernommen" % inst)
+            continue
+        try:
+            instr = okxf.instrument(inst)
+        except Exception as e:                                 # noqa: BLE001
+            print("  %s: Kontrakt nicht lesbar (%s) - NICHT uebernommen" % (inst, e))
+            continue
+        stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * spanne)
+        ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * spanne)
+        kontrakte = abs(groesse)
+        try:
+            margin = float(roh_pos.get("margin") or roh_pos.get("imr") or 0.0)
+        except (TypeError, ValueError):
+            margin = 0.0
+        try:
+            nominal = float(roh_pos.get("notionalUsd") or 0.0)
+        except (TypeError, ValueError):
+            nominal = 0.0
+        pos = {
+            "inst": inst, "basis": inst.split("-")[0], "seite": seite,
+            "familie": _familie_von(inst, z), "einstieg": einstieg,
+            "stop": stop, "ziel": ziel, "liq": 0.0, "kontrakte": kontrakte,
+            "nominal": nominal, "margin": margin, "hebel": 0.0,
+            "gebuehr_taker": 0.0005, "modus": "live", "ord_id": "",
+            "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
+            "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
+            "herkunft": "boerse_handgriff",
+        }
+        geschuetzt = _stop_vorhanden(inst, roh_pos)
+        # Auch in der Vorschau sichtbar: die Uebernahme selbst (Journal, Stop,
+        # Zustand) passiert nur mit still=False.
+        print("  %sFREMDER BESTAND: %s %s %.4f Kontrakte @ %.6f (Boersenschnitt) "
+              "%s Stop %.6f, Ziel %.6f (Familie %s)"
+              % ("VORSCHAU - " if still else "", inst, seite, kontrakte, einstieg,
+                 "-> ins Buch,", stop, ziel, pos["familie"] or "unbekannt"))
+        print("    Stop an der Boerse: %s"
+              % ("schon vorhanden" if geschuetzt else
+                 ("wird gestellt" if not still else "fehlt - wuerde gestellt")))
+        if not geschuetzt and not still:
+            try:
+                okxf.schutz_stop_setzen(inst, seite, kontrakte, stop, ziel)
+                print("    Schutz-Stop gestellt (%s)" % inst)
+            except Exception as e:                             # noqa: BLE001
+                print("    Schutz-Stop FEHLGESCHLAGEN (%s): %s - Position steht "
+                      "im Buch und wird gemeldet" % (inst, e))
+        z.setdefault("positionen", []).append(pos)
+        neu.append(inst)
+        if not still:
+            journal(zeit=_jetzt(), modus="live", aktion="eroeffnen", inst=inst,
+                    seite=seite, familie=pos["familie"], preis="%.6f" % einstieg,
+                    kontrakte=kontrakte, nominal_usd="%.2f" % nominal,
+                    margin_usd="%.2f" % margin, hebel="",
+                    stop="%.6f" % stop, ziel="%.6f" % ziel,
+                    grund="fremdposition_uebernommen")
+    return len(neu)
+
+
+def _familie_von(inst, z=None):
+    """Die Kategorie eines Instruments - aus der Rangliste des Zustands.
+
+    Die Familie ist keine Anzeige: die Wachen deckeln sie
+    (max_anteil_gesamt je Familie). Eine uebernommene Position mit leerer
+    Familie wuerde diesen Deckel umgehen, deshalb wird sie hier aus derselben
+    Quelle gelesen, aus der auch ein eigener Einstieg sie hat: der Rangliste.
+    """
+    basis = (inst or "").split("-")[0].upper()
+    for e in ((z or {}).get("rangliste") or {}).get("werte") or []:
+        if str(e.get("basis", "")).upper() == basis:
+            return e.get("kategorie") or ""
+    return ""
+
+
+def _stop_vorhanden(inst, roh_pos):
+    """Hat die Position an der Boerse schon einen Stop?
+
+    Zwei Wege, weil OKX zwei Bauarten kennt: ein Stop direkt an der Position
+    (Feld slTriggerPx in /account/positions) oder ein bedingter Auftrag mit
+    gefuelltem slTriggerPx. Ein angehaengter Stop (attachAlgoOrds einer
+    gefuellten Order) erscheint in KEINER der beiden Listen - deshalb zaehlt
+    auch das Positionsfeld.
+    """
+    if str(roh_pos.get("slTriggerPx") or "").strip():
+        return True
+    try:
+        for s in okxf.schutz_stops(inst) or []:
+            if str(s.get("slTriggerPx") or "").strip():
+                return True
+    except Exception:                                          # noqa: BLE001
+        return True                        # im Zweifel keinen zweiten Stop stellen
+    return False
+
 
 def bueche_groessen_abgleichen(z, w, still=False):
     """Buch und Boerse auf DIESELBE Kontraktzahl bringen.
@@ -1202,6 +1367,15 @@ def lauf(modus):
         if n_geist:
             print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
                   "der Boerse)" % n_geist)
+        # Die GEGENrichtung (24.09.2026): Positionen, die in der App von Hand
+        # entstanden sind, fehlen im Buch - sie belegen Margin, haben keinen
+        # Buchplatz und keine Ausstiegslogik. Gemessen am 23.09.2026 mit BZ
+        # (1467 Kontrakte) und CL (133). Muss VOR den Einstiegen laufen, sonst
+        # zaehlt der Platz nicht und der naechste Zyklus legt nach.
+        n_fremd = bueche_fremde_positionen_uebernehmen(z, w, still=False)
+        if n_fremd:
+            print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
+                  % n_fremd)
         # Dann die GROESSE: ein Handgriff aendert die Kontraktzahl, ohne dass
         # eine Position verschwindet (Max, 22.09.2026). Muss VOR den Ausstiegen
         # laufen, sonst schliesst die Spur nur ihren Buchteil und laesst den
