@@ -59,6 +59,32 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-071 — Bot-Profil fuer intelligent-trading-bot fehlt**
+      Kontext: Der Klon ist seit 25.09.2026 im Startfenster angebunden (Eintrag in
+      `Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json`, Startbefehl
+      `itb_pruefstand.py`, Verknuepfung `Werkstatt/Repos/intelligent-trading-bot`).
+      Als einziges Flotten-Repo hat er KEIN Hermes-Profil - `/bot` kennt ihn nicht.
+      Anlegen kostet Arbeit: Profil erzeugen (ohne --clone), providers-/model-Block
+      (nous/deepseek-v4-flash-0731), terminal.cwd auf den Klon, die drei
+      Router-Schluesselnamen in die eigene .env, und die auth.json als Verknuepfung
+      auf `Agenten/Hermes/auth.json` (braucht einen UAC-Klick).
+      Naechster Schritt: entscheiden, ob ueberhaupt ein Bot gebraucht wird - eine
+      Spur entsteht hier nicht (der Klon ist nur Pruefstand, Wiki Lektion 13).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/profiles/, Agenten/Werkzeuge/repos-zentrale
+- [ ] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
+      Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
+      ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -
+      sie liegen seit 19.09.2026 unter `Agenten/Hermes/profiles/.deleted/`
+      (projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
+      scrapling, santiment, claude-plugins-official, coder, easycliproxyapi,
+      graphify, max, moon-dev-code, odysseus, winget-cli). Der Test ist richtig -
+      das Manifest ist veraltet; unklar ist, ob die Profile zurueckkommen sollen.
+      Naechster Schritt: entscheiden - Profile zurueckholen ODER die bot-Felder im
+      Manifest entfernen bzw. kennzeichnen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
+      Agenten/Hermes/profiles/.deleted/
 - [ ] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
       Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
       Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im

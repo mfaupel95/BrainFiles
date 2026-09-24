@@ -239,18 +239,19 @@ wenn zwischen Training und Vorhersage eine Zeitgrenze liegt und das Modell danac
 trainiert wird (**Walk-Forward**). Der Abstand zwischen beiden Zahlen ist bei Kursdaten kein
 Detail, sondern das ganze Ergebnis.
 
-**Belegte Messung (22.09.2026, `Werkstatt/intelligent-trading-bot`, BTCUSDT 1 h, SVC auf
+**Belegte Messung (25.09.2026, `Werkstatt/intelligent-trading-bot`, BTCUSDT 1 h, SVC auf
 SMA/Linearreg-Slope/Stddev, Fenster 1-672):**
 
 | Lauf | Daten | AUC Auf | AUC Ab | Handelsergebnis (beste von 100 Parameterkombinationen) |
 |---|---|---|---|---|
-| in-sample (`train`+`predict` auf denselben 8.672 Zeilen) | 2025-09-26 bis 2026-09-22 | **0,83** | **0,85** | **-26,3 %** |
-| Walk-Forward (4 Schritte, je 3.000 h, je neu trainiert) | 2025-05-10 bis 2026-09-22 | **0,51** | **0,46** | **-5,1 %** |
+| in-sample (`train`+`predict` auf denselben 8.000 Zeilen) | 2025-10-26 bis 2026-09-24 | **0,837** | **0,849** | **-22,7 %** |
+| Walk-Forward (4 Schritte, je 3.000 h, je neu trainiert) | 2025-05-12 bis 2026-09-24 | **0,508** | **0,462** | **-4,8 %** |
 
-Die AUC faellt von 0,83 auf 0,51 (Muenzwurf) — das Modell hatte **keinen** Vorteil, es sah nur
+Die AUC faellt von 0,837 auf 0,508 (Muenzwurf) — das Modell hatte **keinen** Vorteil, es sah nur
 die Antworten. Auch der Walk-Forward-Lauf ist in ALLEN 100 Kombinationen negativ (beste:
-110 Transaktionen, 43,6 % profitabel, -5,1 % vor Gebuehren). Befund: SMA/Slope/Stddev +
-SVC auf BTC 1 h traegt nicht aus dem Trainingsfenster heraus.
+107 Transaktionen, 40,2 % profitabel, -4,8 % vor Gebuehren). Befund: SMA/Slope/Stddev +
+SVC auf BTC 1 h traegt nicht aus dem Trainingsfenster heraus. Zwei Laeufe an verschiedenen
+Tagen (22.09. und 25.09.) liegen bei denselben Aussagen — die Kette ist reproduzierbar.
 
 **Die Mechanik dahinter.** `simulate` (Parameterraster ueber Kauf-/Verkaufsschwellen) liest
 `signals.csv`; `predict_rolling` schreibt die Vorhersagen aus nicht gesehenen Fenstern in
@@ -258,20 +259,36 @@ dieselbe Datei. Es ist derselbe Simulator, nur mit ehrlichem Input — genau des
 Vergleich aussagekraeftig.
 
 **Nachweis / Werkzeug.** Der Klon kann die ganze Kette (venv Python 3.13 ist fertig, alle
-noetigen Bibliotheken vorhanden; `tsfresh` und `MetaTrader5` fehlen, beide optional):
+noetigen Bibliotheken vorhanden; `tsfresh` und `MetaTrader5` fehlen, beide optional). Zwei
+fertige Konfigurationen liegen im Klon — der in-sample-Lauf und die ehrliche Gegenprobe:
 
 ```
 cd Werkstatt/intelligent-trading-bot
-./.venv/Scripts/python.exe -m scripts.download -c <config.json>
-./.venv/Scripts/python.exe -m scripts.merge    -c <config.json>
-./.venv/Scripts/python.exe -m scripts.features -c <config.json>
-./.venv/Scripts/python.exe -m scripts.labels   -c <config.json>
-./.venv/Scripts/python.exe -m scripts.train    -c <config.json>
-./.venv/Scripts/python.exe -m scripts.predict  -c <config.json>
-./.venv/Scripts/python.exe -m scripts.predict_rolling -c <config.json>
-./.venv/Scripts/python.exe -m scripts.signals  -c <config.json>
-./.venv/Scripts/python.exe -m scripts.simulate -c <config.json>
+K=configs/config-hermes-walk-forward.json     # oder config-hermes-in-sample.json
+./.venv/Scripts/python.exe -m scripts.download -c $K      # Binance, oeffentlich, ~60 s
+./.venv/Scripts/python.exe -m scripts.merge    -c $K
+./.venv/Scripts/python.exe -m scripts.features -c $K
+./.venv/Scripts/python.exe -m scripts.labels   -c $K
+./.venv/Scripts/python.exe -m scripts.train    -c $K      # nur in-sample
+./.venv/Scripts/python.exe -m scripts.predict  -c $K      # nur in-sample
+./.venv/Scripts/python.exe -m scripts.predict_rolling -c $K   # nur Walk-Forward, ~2 min
+./.venv/Scripts/python.exe -m scripts.signals  -c $K
+./.venv/Scripts/python.exe -m scripts.simulate -c $K
 ```
+
+Der ganze Stand steht danach in einer Zeile: `.venv/Scripts/python.exe itb_pruefstand.py`
+(braucht kein Netz, aendert nichts) — dieselbe Zeile ist der Startbefehl im Startfenster
+`Agenten/Werkzeuge/repos-zentrale`. Der Klon haengt dort als Verknuepfung
+`Werkstatt/Repos/intelligent-trading-bot` -> `Werkstatt/intelligent-trading-bot`, damit die
+absoluten Pfade im venv gueltig bleiben.
+
+**Zwei Fallen beim Nachrechnen.** (1) `predictions.txt` und `signal_models.txt` werden
+**angehaengt**: jeder Lauf schreibt einen Block, getrennt durch eine Leerzeile, der letzte
+Block ist der laufende Stand. Der in-sample-Stand liegt als `predictions.in-sample.txt` /
+`signal_models.in-sample.txt` daneben, sonst ist er beim naechsten Lauf weg. (2) Die Daten
+liegen unter `DATA/` **im Klon** (das Repo ignoriert `/DATA/` und `/MODELS/` selbst) — ein
+Arbeitsordner unter `Agenten/Hermes/cache/scratch` ist nach 24 h Ruhe geleert, und mit ihm das
+Ergebnis (so passiert nach dem ersten Lauf am 22.09.).
 
 Ergebnisse landen unter `data_folder/<symbol>/` (`predictions.txt` = AUC/AP/F1,
 `signal_models.txt` = Handelsergebnis je Schwellenpaar). `train_length: 0` haelt alle Zeilen,

@@ -124,3 +124,19 @@ und GNU `du` zaehlt denselben Verzeichnis-Inode nur einmal: deshalb erschien die
 **Merksatz.** Eine Groessenangabe, in der ein Verweis-Ordner (`Anwendungsdaten`, `Application Data`,
 Junctions unter `Modelle`/`Werkstatt`) als groesster Posten auftaucht, ist doppelt gezaehlt —
 nachmessen, bevor sie in eine Notiz oder Entscheidung einfliesst.
+
+## 8. Die Uhr im Terminal-Container geht falsch — Datum vom Host holen (25.09.2026)
+
+`date` im Terminal liefert die Zeit des **Docker-Sandbox-Containers**, nicht des Rechners. Am
+25.09.2026 lag sie **7,5 Stunden zurueck** (Terminal: 24.09. 17:06, Host und Git: 25.09. 00:46) —
+ein Rechner, der aus dem Ruhezustand kommt, zieht die Container-Uhr nicht mit.
+
+Folgen, beide erlebt: ein Befund wurde mit dem falschen Tag ins Wiki geschrieben, und **jede
+frische Datei traegt einen Zeitstempel von vor 7 Stunden** — die Routine
+`fremdarbeit-einziehen.ps1` haelt sie damit sofort fuer ruhend und committet fremde Arbeit
+schneller, als gedacht (mein eigener Manifest-Eintrag landete so als `Andere Sitzung` in HEAD,
+Commit `db2293f`).
+
+**Regel.** Ein Datum fuer eine Notiz, ein Wiki-Kapitel oder einen Commit-Text NIE aus `date`
+im Terminal nehmen. Zeugen sind der Host (`Get-Date` ueber windows-mcp-PowerShell) und
+`git log -1 --format=%ci`.
