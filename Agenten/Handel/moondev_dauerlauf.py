@@ -124,7 +124,7 @@ def _bruecke_sicherstellen() -> str:
                 "OpenAI-Zweig scheitern." % BRUECKE_WERKZEUG)
     umgebung = {k: v for k, v in os.environ.items()
                 if k not in ("PYTHONHOME", "PYTHONPATH")}
-    log = HIER / "logs" / "moondev_bruecke.out"
+    log = HIER / "moondev_bruecke.out"
     log.parent.mkdir(parents=True, exist_ok=True)
     flags = 0
     if os.name == "nt":
