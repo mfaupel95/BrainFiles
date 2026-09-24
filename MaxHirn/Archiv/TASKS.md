@@ -126,16 +126,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       gegen GUI-Eltern nicht (main.ts:2986).
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Hermes/hermes-agent/apps/desktop
-- [ ] **T-058 — MoonDev-Aufgabe auf fensterlosen Wrapper umstellen (UAC offen)**
-      Kontext: Der Registrierer zeigt jetzt auf powershell -WindowStyle Hidden →
-      moondev-dauerlauf.ps1, aber die AKTIVE geplante Aufgabe zeigt noch auf
-      pythonw.exe (Elevation hing, UAC nicht bestaetigt). Der laufende Treiber
-      ist schon gefixt (via Wrapper neu gestartet), nur der naechste Logon-Start
-      waere wieder pythonw.
-      Naechster Schritt: moondev-dauerlauf-aufgabe.ps1 erhoeht ausfuehren und UAC
-      bestaetigen, danach die Action pruefen (Execute muss powershell.exe sein).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Routinen, geplante Aufgabe MaxHirn-MoonDev-Dauerlauf
 - [ ] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
       Kontext: Nach dem Fix der Haus-Prozesse bleiben ~6 kurze Konsolenfenster je
       Minute: (a) die moondev-Agenten (Fremd-Repo new_or_top/kraken) spawnen
@@ -598,6 +588,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-058 — MoonDev-Aufgabe auf fensterlosen Wrapper umgestellt** — erledigt 2026-09-24
 - [x] **T-043 — OmniRoute lag 5,5 Stunden still, und die Aufgabe sah harmlos aus**
 - [x] **T-051 — Stops fuer die uebrigen Kraken-Spotbestaende**
       Kontext: Am 24.09.2026 wurden die mosaic-Bestaende (BTC/ETH/SOL) und die
