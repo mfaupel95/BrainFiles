@@ -15,7 +15,7 @@ nicht aus dem Bericht (der Bericht waehlt aus, er nennt keinen Preis mehr).
 
 Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     1. wachen.json  handel_erlaubt == true
-    2. KRAKEN_API_KEY / KRAKEN_API_SECRET gesetzt
+    2. KRAKEN_SPOT_API_KEY / KRAKEN_SPOT_API_SECRET gesetzt
     3. --live ausdruecklich auf der Kommandozeile
     4. wachen.json  freigabe.erfuellt == true      (Handelsregeln, Bedingung 1)
     5. Herzschlag frisch                            (Bedingung 3)

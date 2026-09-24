@@ -198,6 +198,11 @@ vier anders als beim Spotweg:
 | Signatur | HMAC-SHA512 ueber Pfad+Nonce+POST-Daten | `base64(HMAC-SHA512(base64decode(secret), SHA256(postData + nonce + "<pfad>")))` |
 | Schluessel | `KRAKEN_SPOT_API_KEY`/`_SECRET` | `KRAKEN_FUTURE_API_KEY`/`_SECRET` |
 
+Die Namen sind FAST gleich und trotzdem verschieden: unser Modul liest die
+**Einzahl** (`KRAKEN_FUTURE_API_KEY`), die offizielle kraken-cli die **Mehrzahl**
+(`KRAKEN_FUTURES_API_KEY`). Gemessen 25.09.2026: nur die Einzahl ist gesetzt.
+Ein `Invalid key` eines fremden Werkzeugs ist deshalb zuerst ein Namensverdacht.
+
 - **Signaturpfad und Aufrufpfad sind zwei verschiedene Dinge.** Der signierte Pfad
   traegt das Basis-Praefix NICHT (`/api/v3/accounts`, nicht
   `/derivatives/api/v3/accounts`) - mit dem vollen Pfad antwortet der Dienst

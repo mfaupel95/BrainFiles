@@ -105,6 +105,19 @@ Ausloeser → Referenz:
   — Entscheidung bleibt bei der Spur, Einmal-Beleg als Tor, die alten Wege
   werden geschlossen, Ausstiege bleiben frei; die Zuordnung „unser Code,
   der Schluessel oder die Boerse" laeuft in der Reihenfolge der Diagnose-Datei.
+- **"hab eingezahlt" und das Guthaben ist nicht da** („wo ist das Geld hin",
+  „die Spur kann nicht handeln, weil 0 EUR frei sind", eine Einzahlung steht auf
+  `Success` und trotzdem ist der Saldo 0): `references/einzahlung-und-guthaben.md`
+  — eine Einzahlung wird ueber die BUCHUNGSKETTE nachgewiesen (Eingang ->
+  Gegenbuchung mit `refid` -> Zielkonto -> alle Wallets), nicht ueber einen Saldo;
+  die Boerse kennt Wallets, die ihre Handels-API nicht zeigt; kein Geld selbst
+  bewegen.
+  Ein Zugang, der eine Stunde lang abgewiesen wird und danach OHNE Zutun wieder
+  geht, ist kein Schluesselproblem: Zeitpunkte notieren, Werte per Hash gegen die
+  `setx`-Zeile der PowerShell-History halten, Uhr stellen, nach Minuten erneut
+  messen. Und nach dem Freischalten nicht das Guthaben verwechseln - bei einem
+  multiCollateral-Konto traegt `flex` das Geld und `cash.balances` steht auf 0,0
+  (`references/einzahlung-und-guthaben.md`).
 - **Risikostufen** („mit groesseren Positionen fahren", „zweiter Lauf mit mehr
   Einsatz", „mehr Daten in kuerzerer Zeit", `HANDEL_RISIKO`, `--risiko`,
   `risikostufe.py`, „Strategie Hoch hat noch kein PID", „alle drei Stufen
@@ -704,6 +717,12 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   nonce-Verdacht ueber Groessenordnungen (ms/us/ns/1,8e18) ausschliessen und den
   Zugang ohne Klartext pruefen (Hash/Laenge gegen die `setx`-Zeile der
   PowerShell-History; `reg query` gibt die Werte aus).
+- `references/einzahlung-und-guthaben.md` — Geld verfolgen: die Nachweis-Kette
+  vom `DepositStatus` ueber die Gegenbuchung (`Ledgers`, PLURAL) bis zum
+  Zielkonto, die Fallen (aufsteigende `/transfers`-Liste, Konten nicht nach
+  `usd` filtern, Epoch umrechnen, Einzahl- vs. Mehrzahl-Schluesselnamen) und die
+  Regel, dass ein Transfer zwischen Konten eine Kontohandlung ist. Ausloeser:
+  "hab eingezahlt", "Guthaben fehlt", "wo ist das Geld hin".
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,

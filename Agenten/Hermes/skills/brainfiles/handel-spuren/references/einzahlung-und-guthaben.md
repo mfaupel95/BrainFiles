@@ -1,0 +1,111 @@
+# Geld verfolgen: Einzahlung, Umbuchung, Guthaben je Wallet
+
+Wann: "hab eingezahlt", "das Guthaben fehlt", "warum kann die Spur nicht handeln",
+"wo ist das Geld hin". Diese Datei ist die Nachweis-Kette und die Leseordnung.
+
+## Grundregel
+
+**Eine Einzahlung wird ueber die BUCHUNGSKETTE nachgewiesen, nicht ueber einen
+Saldo.** Ein Kontostand von 0 in einem Wallet beweist nur, dass das Geld nicht
+DORT liegt - nicht, dass es nicht angekommen ist. Und "hab eingezahlt" ist eine
+Behauptung wie jeder andere gemeldete Zustand: erst die Buchung zeigen, dann die
+Lage der Spur beurteilen.
+
+## Reihenfolge (jede Stufe ist ein eigener Messpunkt)
+
+1. **Eingang pruefen** - `DepositStatus` des SPOT-Kontos, je Waehrung. Liefert
+   Betrag, Status und einen Epoch-Zeitstempel. Nach Zeit sortieren und das Datum
+   per `datetime` umrechnen, nie im Kopf.
+2. **Gegenbuchung suchen** - `Ledgers` (PLURAL, siehe Falle unten) fuer dieselbe
+   Waehrung. Eine Buchung `type=transfer` mit `refid` heisst: interne Umbuchung,
+   das Gegenstueck liegt in einem anderen Wallet. Der Zeitabstand zwischen Ein-
+   und Abbuchung ist oft klein (Minuten) - dann ging das Geld nicht in den Handel.
+3. **Zielkonto pruefen** - beim Futures-Dienst `/transfers` (Liste ist
+   AUFSTEIGEND, siehe Falle) und `/accounts` gegen ALLE Konten und ALLE
+   Waehrungsschluessel. Erst wenn dort nichts steht, ist es nicht dort.
+4. **Alle Spot-Wallets pruefen** - `BalanceEx` (Einlagen/Bestand), dazu die
+   Margin-Seite (`OpenPositions`, `TradeBalance` mit den `mf`-Feldern): eine
+   Umbuchung kann auch ins Margin-Wallet gehen.
+5. **Erst dann urteilen** und die Kette Schritt fuer Schritt berichten
+   (Betrag + Status + Zeitstempel der Einzahlung, Gegenbuchung mit refid und
+   Zeitpunkt, was auf der Zielseite steht, was NICHT dort steht), dann EINE
+   naechste Handlung nennen.
+
+## Aufrufe
+
+```python
+k = _lade("kraken", os.path.join(HANDEL, "kraken", "kraken.py"))
+k._roh_privat("DepositStatus", asset="USDC")     # Eingaenge je Waehrung
+k._roh_privat("Ledgers", asset="USDC", start=<epoch>)   # PLURAL
+k._roh_privat("WithdrawStatus", asset="USDC")    # Gegenrichtung
+k._roh_privat("BalanceEx")                       # Spot-Bestand
+
+kf = _lade("kraken_futures", os.path.join(HANDEL, "nautilus_kraken", "kraken_futures.py"))
+kf._roh("/transfers")                            # Lesen: post=False
+kf._roh("/accounts")                             # alle Konten, alle Waehrungen
+```
+
+OKX als Gegenprobe: `/api/v5/account/balance` (signiert) - **`availEq` je
+Waehrung ist die Kaufkraft, `eq` ist der Bestand inkl. gebundener Betraege**; ein
+voll aussehendes `eq` kann bei `availEq` fast nichts bedeuten.
+
+## Fallen
+
+- **`/0/private/Ledger` gibt HTTP 404** - der Endpunkt heisst `Ledgers`. Ein 404
+  liest sich wie "gibt es nicht" und schickt die Suche auf die falsche Spur.
+- **Die `/transfers`-Liste des Futures-Dienstes ist AUFSTEIGEND** (aeltester
+  Vorgang zuerst): `liste[:6]` zeigt die AELTESTEN und verdeckt genau den frischen
+  Transfer. Nach Zeit sortieren oder das Ende nehmen - und die Anzahl der
+  Eintraege nennen, nicht nur die Auswahl.
+- **Konten nicht nach `usd`/`eur` filtern.** Das Futures-Konto traegt ein Dutzend
+  Konten (`cash`, `flex`, `fi_<coin>usd`, Einzelwaehrungskonten) mit je vielen
+  Waehrungsschluesseln; nur die Werte ungleich 0 ausgeben, sonst liest man
+  "alles 0" aus einer abgeschnittenen Liste.
+- **Epoch-Zeitstempel umrechnen, nicht schaetzen.** Eine Kopfrechnung macht aus
+  einem alten Vorgang scheinbar einen frischen (oder umgekehrt) - und damit aus
+  einem Beleg einen Fehlschluss.
+- **Die Boerse kennt Wallets, die ihre Handels-API NICHT zeigt** (Consumer-App-/
+  Pay-Guthaben neben dem Handelstopf). Eine Einzahlung kann "Success" sein und in
+  KEINEM ueber die API lesbaren Wallet auftauchen. Dann heisst die richtige
+  Antwort: Kette nennen, sagen dass es in diesem Login verbucht wurde, und EINEN
+  Handgriff in der Boersen-Oberflaeche vorschlagen - nicht "Geld verschwunden".
+- **Bei Kraken-Futures liegt das Geld im `flex`-Konto, nicht im `cash`-Konto.**
+  Gemessen an einem multiCollateral-Konto: `accounts.cash.balances` steht auf
+  0,0, waehrend `accounts.flex.availableMargin` den verfuegbaren Betrag traegt
+  (dazu `currencies.<CCY>.available` je Waehrung und `balanceValue` als
+  Gesamtwert). Wer nur `cash` liest, meldet 0,0 USD - das sieht wie ein leeres
+  Konto aus und ist kein Fehler, der auffaellt: das Guthaben-Tor der Spur bleibt
+  still zu, ohne Meldung, ohne Absturz. Erst `flex`, dann `cash` als Rueckfall
+  fuer reine Cash-Konten. Ein Coin-Bestand in `fi_<coin>usd` finanziert keine
+  Order - die Besicherung haengt an der Waehrung des Verrechnungskontos.
+- **Ein Tor, das einen FESTEN Feldnamen liest, kann still 0 messen.** Beim Bau
+  eines Guthaben-Tores die ROHE Antwort der Boerse einmal daneben halten und
+  pruefen, ob das gelesene Feld gefuellt ist: "0 frei" liest sich wie "kein
+  Geld", nicht wie ein Fehler. Gegenprobe nach dem Fix am echten Konto (nicht
+  am Testfixture) und in der `--vorschau` der Spur: der Guthaben-Sperrgrund
+  muss VERSCHWINDEN, wenn Geld da ist.
+- **Kein Geld selbst bewegen.** Ein Transfer zwischen Konten ist eine Kontohandlung
+  und erst nach ausdruecklichem Ja faellig; bis dahin baut man den Weg (z. B.
+  `POST /transfer`) und laesst ihn liegen. Dasselbe gilt fuer Umschichten in eine
+  andere Waehrung.
+- **Zugangsdaten nur auf EXISTENZ pruefen.** `reg query HKCU\Environment` gibt die
+  Werte im Klartext aus (Passphrasen landen im Sitzungsprotokoll) - fuer einen
+  Nachweis `[Environment]::GetEnvironmentVariable(name, 'User')` lesen und nur
+  Laenge/Anfang nennen. Gilt fuer jeden Zugangsvergleich (OKX, Kraken, MCP).
+  **Und einen Hash-Helfer NIE kurz benennen:** `function H { ... }` kollidiert mit
+  dem Alias `h` → `Get-History`, die Bindung schlaegt fehl und PowerShell druckt
+  die Argumente im Fehlertext aus - der geheime Wert steht dann im Sitzungs-
+  protokoll, obwohl die Funktion nur einen Hash liefern sollte. Lange, eindeutige
+  Namen (`Sha256Hex`) verwenden und nur `GLEICH`/`ANDERS` bzw. die ersten
+  Hexzeichen ausgeben, nie den Wert, aus dem der Hash gebildet wurde.
+- **Nebenbefund mitberichten:** verschwindet beim Kontolesen eine Handposition
+  samt Schutzauftraegen, ist die Besicherung des Kontos ebenfalls weg - der
+  Sperrgrund der Spur kann sich dadurch aendern. Handbuchungen sind von den
+  Hausspuren nicht verursacht; sie gehoeren in den Bericht, nicht in eine stille
+  Buchkorrektur.
+
+## Was ein brauchbarer Bericht enthaelt
+
+Gemessene Kette in Schritten (je Schritt Betrag/Zeitpunkt), wo es NICHT ist, wo
+es laut Buchung hin ging, was das fuer die Spur bedeutet (Sperrgrund, weiter
+Papier) - und genau eine naechste Handlung unter zwei Minuten.
