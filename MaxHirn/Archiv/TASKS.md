@@ -60,6 +60,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-067 — Kraken-Futures-Orderweg (PF_XBTUSD): gebaut, Konto hat 0 USD**
+      Kontext: `nautilus_kraken/kraken_futures.py` spricht die Futures-REST an
+      (eigener Dienst, eigene Signatur: base64(HMAC-SHA512(secret, SHA256(
+      postData + nonce + "/api/v3" + pfad))), Kopf APIKey/Nonce/Authent,
+      Schluessel KRAKEN_FUTURE_API_KEY/SECRET aus HKCU. Der Live-Zweig ruft
+      weiter `kraken_rest`; KRAKEN_PRODUKT=futures laedt dort das Futures-
+      Modul, sonst unveraendert die Spot-Datei. BTC-Menge -> Kontrakte
+      (1 Kontrakt = 1 USD), Preis auf tickSize gerundet, Ausstieg und Stop
+      als reduceOnly. Sperrenkette nennt jetzt "kein freies USD im
+      Futures-Konto".
+      Beleg 24.09.2026: signierte Leseaufrufe gruen (/accounts, /tickers,
+      /openorders, /openpositions, /instruments), PF_XBTUSD 84385, tickSize 1,
+      Stop 78000.4 -> 78001, 24 Tests gruen. Freies USD: 0.00.
+      Naechster Schritt: USD auf das Futures-Konto einzahlen (oder Besicherung
+      klaeren); danach einen kleinen echten Round-Trip fahren und die
+      Fill-Lesung (/fills) pruefen - das ist zugleich die Messung fuer T-066.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, kraken_rest.py,
+      handeln.py (Guthaben-Sperre), wachen.futures.json
+
+- [ ] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
+      Kontext: `nautilus_kraken/wachen.json` traegt seit 24.09.2026
+      handel_erlaubt=true und freigabe.erfuellt=true (Vermerk T-065, ~1-EUR-
+      Round-Trip als Endabnahme des REST-Orderwegs; fremde Sitzung). Zwei
+      Tests in `test_handeln.py` frieren den alten Zustand ein (sie erwarten
+      "handel_erlaubt=false" im Vorschau-Text) und schlagen fehl, obwohl der
+      Code stimmt. Freies Guthaben real: rund 4,10 EUR; die Futures-Seite
+      hat 0,00 USD.
+      Naechster Schritt: Test auf die REGEL umstellen (den wachen-Wert lesen)
+      statt auf den Zustand - oder bewusst als Arming-Warnung stehen lassen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
 - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
       Kontext: Die Futures-Variante (PF_XBTUSD, USD, Hebel) laeuft Papier. Die
       Gebuehr 0,05% ist eine Annahme, nicht gemessen. Vor dem Scharfschalten

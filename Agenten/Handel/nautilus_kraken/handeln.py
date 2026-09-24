@@ -377,6 +377,16 @@ def sperren_zeile(w):
             sperren.append("Freigabefenster zu")
     except Exception as e:                                   # noqa: BLE001
         sperren.append("Freigabefenster nicht lesbar (%s)" % e)
+    if kraken_rest.produkt() == "futures":
+        # Futures besichert aus dem CASH-Konto der Futures-Boerse.
+        # Ohne freies USD ist jede Order abgelehnt - das ist ein
+        # Guthaben-Grund, kein Fenster-Grund (Muster moondev_marktlage).
+        try:
+            frei = kraken_rest.guthaben()
+            if frei <= 0:
+                sperren.append("kein freies USD im Futures-Konto")
+        except Exception as e:                               # noqa: BLE001
+            sperren.append("Futures-Guthaben nicht abrufbar (%s)" % e)
     return "; ".join(sperren) if sperren else None
 
 

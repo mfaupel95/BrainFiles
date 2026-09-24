@@ -3,6 +3,7 @@
   "_projekt": "Kraken-Futures-Variante der Nautilus-Trailing-Strategie (PF_XBTUSD Perpetual, gehebelt).",
   "_status": "Papier-Modus, Kraken-Futures-Quote-Feed (PF_XBTUSD), kein Orderpfad.",
   "symbol": "PF_XBTUSD",
+  "paar": "PF_XBTUSD",
   "waehrung": "USD",
   "produkt": "futures",
   "max_risiko_pro_trade": 50,

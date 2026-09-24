@@ -17,17 +17,36 @@ import importlib.util
 import os
 
 HIER = os.path.dirname(os.path.abspath(__file__))
+
+# Zwei Boersen, EINE Anschlussstelle: Der Live-Zweig ruft kraken_rest.
+# Welche Schnittstelle dahinter liegt, entscheidet KRAKEN_PRODUKT (der
+# Futures-Launcher setzt 'futures'). Spot und Futures sind bei Kraken
+# getrennte Dienste mit getrennter Signatur und getrennten Schluesseln -
+# 'gleicher Weg, anderer Host' waere falsch.
+PRODUKT = (os.environ.get("KRAKEN_PRODUKT") or "spot").lower()
 KRAKEN_PY = os.path.join(HIER, os.pardir, "kraken", "kraken.py")
 
 
-def _lade_kraken():
-    spec = importlib.util.spec_from_file_location("kraken_rest_quelle", KRAKEN_PY)
+def _lade(dateiname):
+    pfad = os.path.join(HIER, dateiname)
+    spec = importlib.util.spec_from_file_location("kraken_rest_quelle_" + dateiname, pfad)
     modul = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modul)
     return modul
 
 
-_kraken = _lade_kraken()
+def _lade_quelle():
+    if PRODUKT == "futures":
+        return _lade("kraken_futures.py")
+    return _lade(os.path.join(os.pardir, "kraken", "kraken.py"))
+
+
+_kraken = _lade_quelle()
+
+
+def produkt():
+    """Welche Schnittstelle haengt dran ('spot' oder 'futures')."""
+    return PRODUKT
 
 
 def schluessel_vorhanden():
@@ -35,7 +54,11 @@ def schluessel_vorhanden():
     return _kraken.schluessel_vorhanden()
 
 
-def guthaben(waehrung="ZEUR"):
+GUTHABEN_WAEHRUNG = "usd" if PRODUKT == "futures" else "ZEUR"
+
+
+def guthaben(waehrung=None):
+    return _kraken.guthaben(waehrung or GUTHABEN_WAEHRUNG)
     return _kraken.guthaben(waehrung)
 
 
