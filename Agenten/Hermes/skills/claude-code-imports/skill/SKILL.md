@@ -95,8 +95,8 @@ Anlegen einer `references/<thema>.md` gehoren ZWEI Stellen nachgezogen: der
 Ausloeser-Block oben (welche Worte Max benutzt) und die References-Liste unten
 (was drinsteht). Gegenprobe: `grep -c "<dateiname>" SKILL.md` muss >= 2 sein.
 Am 25.09.2026 lag eine fertige Einzahlungs-Referenz im Ordner des Handel-Skills,
-war aber nirgends verlinkt - der Skill haette sie nie gefunden. Auch die Landkarte der Pitfalls ist so eine zweite Liste, die still
-altert.
+war aber nirgends verlinkt - der Skill haette sie nie gefunden. Auch die
+Landkarte der Pitfalls ist so eine zweite Liste, die still altert.
 
 Ein Skill wird geändert, sobald sein Verfahren beim Anwenden nicht mehr stimmte.
 Das ist kein Nebenprodukt, sondern Teil der Aufgabe: **Fällt beim Arbeiten auf,
