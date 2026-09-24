@@ -210,6 +210,14 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   der Skripte erschien in `linked_files` nur die `.sh`-Datei, die beiden `.ps1`
   waren aber da (per `search_files`/`read_file` im Skill-Ordner nachsehen). Kein
   Grund, ein Skript neu zu schreiben, nur weil die Liste es nicht nennt.
+- **Ein laufendes Skript darf man nicht ueberschreiben.** bash liest eine
+  Skriptdatei stueckweise waehrend der Ausfuehrung; wird sie mittendrin neu
+  geschrieben, bricht der LAUFENDE Prozess mit
+  `unexpected EOF while looking for matching "` ab (Exitcode 2, belegt am
+  23.09.2026: ich habe `caches-leeren.sh` verbessert, waehrend die alte Fassung
+  lief). Neue Fassung als eigene Datei schreiben oder den Lauf abwarten — sonst
+  ist der gerade laufende Auftrag verloren und die Ausgabedatei bricht mitten
+  in der Liste ab.
 - **Dubletten-Verdacht pruefen, nicht annehmen.** Ein Ordner namens `…DUPLIKAT`
   ist ein Hinweis, kein Beweis; vor dem Loeschen Inhalt gegen die eine Kopie
   stellen, die bleiben soll.
