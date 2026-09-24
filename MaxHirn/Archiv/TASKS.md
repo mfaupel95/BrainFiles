@@ -187,7 +187,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents/.env
 
-- [ ] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
+- [x] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
       Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
       HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
       `fundingarb_agent` und alles unter `src/agents/api.py` ohne Daten — ein
@@ -197,9 +197,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Die Content-Agenten (Twitter, YouTube, Restream, ElevenLabs, Google)
       brauchen Fremdkonten und haben mit Handel nichts zu tun — bewusst nicht
       verdrahtet.
-      Naechster Schritt: Max nennt, welche der fünf datenlosen Agenten für die
-      Haus-Spuren interessant sind; je Kandidat einen oeffentlichen Ersatz
-      bauen (Muster `sniper_agent`: Pump.fun statt api.moondev.com).
+      Erledigt: 2026-09-24. Keiner der drei api.py-Agenten braucht den
+      MoonDev-Schluessel: `src/agents/api_frei.py` stellt dieselbe Klasse mit
+      derselben Schnittstelle bereit (gleiche Methoden, gleiche DataFrame-
+      Spalten) und holt die Daten aus oeffentlichen Quellen - Funding 910
+      Saetze je Aufruf von Binance /fapi/v1/premiumIndex, Open Interest von
+      Binance /fapi/v1/openInterest + markPrice, Liquidationen von OKX
+      /api/v5/public/liquidation-orders je uly (Binance allForceOrders
+      antwortet 404, der Endpunkt ist weg). Die Klasse versucht ZUERST die
+      echte API und schaltet nur um, wenn der Host nicht antwortet; Rueckweg
+      ist der Import in den drei Agenten.
+      KORREKTUR der Annahme im Eintrag: es sind DREI Agenten, nicht fuenf -
+      `fundingarb_agent` nutzt api.py nicht (eigene Datenwege), und die
+      Content-Agenten brauchen Fremdkonten statt einer Datenquelle.
+      Bewusst NICHT ersetzt: `get_copybot_follow_list` und
+      `get_recent_transactions` sind MoonDevs eigene Kopierhandels-Datenbank;
+      beide geben None zurueck, damit die Agenten den Zyklus ueberspringen
+      statt mit Nullwerten zu rechnen.
+      Nachweis (je ein Lauf, echte Zahlen): whale_agent BTC-OI 8,09 Mrd USD /
+      ETH 6,11 Mrd / Total 14,21 Mrd (Binance); liquidation_agent 300 OKX-
+      Zeilen, 1-h-LONGS 28.249,61 USD (6 Ereignisse), 4-h-LONGS 314.626,55 USD
+      (96 Ereignisse); funding_agent 910 Saetze.
+      Fallen: die Agenten verlangen OPENAI_KEY UND ANTHROPIC_KEY schon im
+      Konstruktor; ohne `python -u` bleibt bei einem abgebrochenen Lauf das
+      Log LEER, obwohl der Agent arbeitet.
+      Doku: MaxHirn/Wiki/Werkzeuge/MoonDev-Freie-Datenquellen.md
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/
 - [ ] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
