@@ -641,11 +641,29 @@ def bueche_papier_altlasten_aus(z):
     return len(altlasten)
 
 
+def ist_live_position(p):
+    """Eine ECHTE Position am Handelsplatz - erkennbar an der Kauf-Order.
+
+    Das Buch ist EINES fuer Papier und Live. Ein Papierzyklus (Fenster zu) darf
+    eine live gekaufte Position deshalb NICHT im Buch schliessen: an der Boerse
+    bliebe sie offen, der Stop wuerde spaeter ohne Buchzeile ausloesen, und die
+    Spur haette Margin belegt, ohne es zu wissen (genau so entstand am 21.09.2026
+    die HBAR-Karteileiche in xperp; dasselbe Muster traf mosaic am 23.09.).
+    """
+    return bool(p.get("kauf_ord_id"))
+
+
 def pruefe_ausstiege(z, live):
     if live:
         raeume_offene_stops(z)
     behalten = []
     for p in z["positionen"]:
+        if not live and ist_live_position(p):
+            # Der Papierlauf hat hier nichts zu schliessen - nur zu melden.
+            print("  %s bleibt stehen: echte Position (kauf_ord_id), wird nur "
+                  "vom Live-Lauf geschlossen" % p["inst"])
+            behalten.append(p)
+            continue
         kurs = okx.letzter_kurs(p["inst"])
         _merke_extrem(p, kurs)
         grund = None
@@ -693,6 +711,11 @@ def flach_stellen(z, live, grund):
     laesst die Position stehen und wird gemeldet."""
     behalten = []
     for p in z["positionen"]:
+        if not live and ist_live_position(p):
+            print("  %s bleibt stehen: echte Position (kauf_ord_id) - ein "
+                  "Papierlauf stellt sie nicht flach" % p["inst"])
+            behalten.append(p)
+            continue
         kurs = okx.letzter_kurs(p["inst"])
         _merke_extrem(p, kurs)
         # Wie in pruefe_ausstiege: Gebuehr nur in der journalisierten Zeile.

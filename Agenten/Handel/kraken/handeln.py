@@ -293,11 +293,28 @@ def _schliesse(p, kurs, w, live, grund, z):
     return True
 
 
+def ist_live_position(p):
+    """Eine ECHTE Position bei Kraken - erkennbar an der Transaktionskennung.
+
+    Das Buch ist EINES fuer Papier und Live. Ein Papierzyklus (Fenster zu,
+    Guthaben zu) darf eine live gekaufte Position deshalb NICHT im Buch
+    schliessen: bei Kraken bliebe sie offen, der Schutz-Stop wuerde spaeter
+    ohne Buchzeile ausloesen, und die Spur belegt Kapital, ohne es zu wissen.
+    Dasselbe Muster traf scanner und xperp (HBAR) am 21.09.2026.
+    """
+    return bool(p.get("kauf_txid") or p.get("beleg"))
+
+
 def pruefe_ausstiege(z, w, live):
     if live:
         raeume_offene_stops(z)
     behalten = []
     for p in z["positionen"]:
+        if not live and ist_live_position(p):
+            print("  %s bleibt stehen: echte Position (kauf_txid), wird nur "
+                  "vom Live-Lauf geschlossen" % p.get("inst", p.get("paar")))
+            behalten.append(p)
+            continue
         kurs = kraken.letzter_kurs(p["paar"])
         grund = None
         if kurs <= p["stop"]:
@@ -314,6 +331,11 @@ def flach_stellen(z, w, live, grund):
     (Kill-Switch) und Bedingung 3 (Herzschlag alt)."""
     behalten = []
     for p in z["positionen"]:
+        if not live and ist_live_position(p):
+            print("  %s bleibt stehen: echte Position (kauf_txid) - ein "
+                  "Papierlauf stellt sie nicht flach" % p.get("inst", p.get("paar")))
+            behalten.append(p)
+            continue
         kurs = kraken.letzter_kurs(p["paar"])
         if not _schliesse(p, kurs, w, live, grund, z):
             behalten.append(p)
