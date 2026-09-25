@@ -59,6 +59,39 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
+      Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
+      1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur
+      759 aus (30 % Verlust); bei macd_mtf 1209 gegen 774, bei wavetrend 1506
+      gegen 1128. Ursache: die Funktion legt offene Positionen in einem Dict
+      `offen[inst]` ab - zwei gleichzeitige Positionen im selben Instrument
+      ueberschreiben einander, die erste Ausstiegszeile paart dann mit dem
+      falschen Einstieg oder faellt weg. Die Spuren erlauben mehrere Plaetze und
+      besetzen denselben Wert mehrfach, das ist also der Normalfall.
+      Auswirkung: Trefferquote und f_max werden auf einer Teilmenge gerechnet,
+      und die uebersprungene Teilmenge ist nicht zufaellig (gleichzeitige
+      Positionen im selben Instrument sind eher gleichgerichtet).
+      Naechster Schritt: Positionskennung ins Journal (Spalte `pos_id` beim
+      Einstieg, von der Ausstiegszeile mitgefuehrt) und `runden_aus_journal`
+      darauf paaren - mit Rueckfall auf die Instrumentenpaarung fuer alte
+      Journale. Betrifft ALLE Auswertungen, nicht nur den Backtest.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/kosten_wendepunkt.py, Agenten/Handel/auswertung_alle.py, spur_buch.py
+- [ ] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
+      Kontext: Fuer 2021-2026 gerechnet und belegt sind bisher vier Spuren
+      (squeeze, wavetrend, macd_mtf, supertrend) - je 750 bis 1130 auswertbare
+      Runden. Der Kern (`replay.py`) kann Familie A und Familie B; es fehlen die
+      per-Spore-Historienquellen fuer die Feed-Spuren (moondev_listingarb,
+      -topmovers, -marktlage, -sniper, -signalwelle brauchen 24h-Aenderung und
+      Volumen aus Kerzen, moondev_funding braucht Binance-Funding-Historie).
+      Nicht nachrechenbar und mit Grund vermerkt: moondev_whale (OKX-OI),
+      -liquidation, -sentiment, liq_wand, iv_wand, iv_waelle, robinhood_radar,
+      kopier, nautilus-Arme.
+      Naechster Schritt: je Spur eine historische Quelle bauen (Aufgabe 5 des
+      Plans), anfangen mit moondev_funding (Fundingsatz liegt frei vor) und
+      moondev_marktlage (BTC-Kerzen + Breite, beides aus derselben Quelle).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md
 - [ ] **T-086 — MoA-Presets und der verwaltete llama-Server: Bonsai oder nicht**
       Kontext: Bonsai laeuft seit 25.09.2026 mit 64k (`-Kontext 65536`, VRAM
       7.772/253 MiB, 12,1 t/s) und wird von Hermes als Agent-Modell angenommen
@@ -430,7 +463,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (api_frei.py + die drei Agenten) und pushen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Branch main, Commit 1b3c650)
-- [ ] **T-067 — Kraken-Futures-Orderweg LIVE bewiesen; PF_XBTUSD ist mit 141 USD nicht handelbar**
+- [ ] **T-067 — Kraken-Futures-Orderweg LIVE bewiesen, Spur auf PF_SOLUSD umgestellt (armt noch nicht)**
       Kontext: `nautilus_kraken/kraken_futures.py` spricht die Futures-REST an
       (eigener Dienst, eigene Signatur, Kopf APIKey/Nonce/Authent, Schluessel
       KRAKEN_FUTURE_API_KEY/SECRET). Der Live-Zweig ruft weiter `kraken_rest`;
@@ -470,10 +503,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       das Wort Freigabefenster). Der Round-Trip selbst wartet auf das /ja von
       Max im Dauerlauf; freies Guthaben 4,10 EUR liegt ueber dem Einsatz 1,00.
       Tests: nautilus_kraken 38 gruen inkl. test_live_orderweg.py (5).
-      OFFEN (Entscheidung Max): das Symbol der Futures-Spur. Mit diesem Guthaben
-      sind nur PF_SOLUSD und kleinere Maerkte handelbar; BTC ist es nicht.
-      Naechster Schritt: Symbol waehlen (Vorschlag PF_SOLUSD) oder die Spur
-      Papier lassen - bis dahin keine Aenderung an wachen.futures.json.
+      ERLEDIGT 25.09.2026 (Auftrag Max: 'SOL'): Symbol und Paar der Spur stehen
+      auf PF_SOLUSD, dazu live_einsatz_usd 118.00 (= EIN Kontrakt SOL, rund
+      117,5 USD Nennwert) und live_max_risiko_gesamt_usd 25.00. Das BUCH wurde
+      dabei sauber gezogen: die vier offenen Papier-Positionen (alle PF_XBTUSD,
+      Einstiege 81.110-81.475) sind zum Kurs 84.263 mit grund=symbolwechsel
+      geschlossen (Einsatz 200,00 -> Erloes 206,80 USD, +6,80), weil die
+      Strategie JEDE Position mit dem Kurs des EINEN konfigurierten Symbols
+      bewertet - ein offenes BTC-Buch waere beim ersten SOL-Kurs als 'stop'
+      ausgestiegen. Spiegelung nach Q: bestaetigt, Buch jetzt leer.
+      Die Sperrenkette nennt jetzt den ECHTEN Bedarf: `handelbar()` sagt
+      '1 Kontrakt PF_SOLUSD braucht 11.75 USD Einschuss, frei sind ...', und
+      ein Einsatz UNTER einem Kontrakt wird gesperrt ('Mindestgroesse der
+      Boerse') statt still aufgerundet - das war der eigentliche Fallstrick:
+      bei live_einsatz_eur 1.00 haette die Boerse 1 Kontrakt = 118 USD
+      gefuellt. Tests nautilus_kraken 73 gruen (test_futures_grenzen 5 neu).
+      WARTET AUF MAX: handel_erlaubt steht weiter false - die Spur armt nicht.
+      Vor dem Arming ist zu entscheiden, ob eine Mindestposition von 118 USD
+      (Risiko am 19,8-%-Stop rund 23 USD) gewollt ist. Kleiner geht auf Kraken
+      Futures nicht: die Boerse kennt keine Kontraktbruchteile.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-25
       Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, futures_probe.py,
       test_kraken_futures.py, wachen.futures.json (Symbol, offen)

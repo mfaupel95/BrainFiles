@@ -59,7 +59,34 @@ GUTHABEN_WAEHRUNG = "usd" if PRODUKT == "futures" else "ZEUR"
 
 def guthaben(waehrung=None):
     return _kraken.guthaben(waehrung or GUTHABEN_WAEHRUNG)
-    return _kraken.guthaben(waehrung)
+
+
+def einschuss(paar, kontrakte=1, kurs=None):
+    """Einschuss (USD) fuer N Kontrakte - nur Futures, sonst None.
+
+    Futures notiert in KONTRAKTEN, und 1 Kontrakt ist EINE Einheit der
+    Basiswaehrung (gemessen 25.09.2026, siehe kraken_futures.einschuss).
+    Der Live-Pfad muss das wissen: eine Menge, die kleiner als ein Kontrakt
+    ist, wird sonst still auf 1 aufgerundet - mit dem Zehnfachen des
+    gedachten Einsatzes.
+    """
+    if not hasattr(_kraken, "einschuss"):
+        return None
+    return _kraken.einschuss(paar, kontrakte, kurs=kurs)
+
+
+def handelbar(paar, kontrakte=1, frei=None):
+    """Reicht das Guthaben fuer den kleinsten Satz? Grund oder None."""
+    if not hasattr(_kraken, "handelbar"):
+        return None
+    return _kraken.handelbar(paar, kontrakte, frei=frei)
+
+
+def kontrakte(paar, menge, kurs=None):
+    """Basis-Menge -> Kontraktzahl (Futures) bzw. die Menge selbst (Spot)."""
+    if not hasattr(_kraken, "kontrakte"):
+        return menge
+    return _kraken.kontrakte(paar, menge, kurs=kurs)
 
 
 def markt_kauf(paar, menge, echt=False):

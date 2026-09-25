@@ -279,33 +279,41 @@ class GuthabenTest(unittest.TestCase):
 
 
 class SperrenketteTest(unittest.TestCase):
-    """Futures besichert aus dem Verrechnungskonto: ohne freies Guthaben keine Order."""
+    """Futures besichert aus dem Verrechnungskonto - und nennt den ECHTEN Bedarf.
 
-    def test_ohne_usd_gesperrt(self):
-        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
+    Der kleinste handelbare Satz ist 1 Kontrakt = 1 Einheit der Basiswaehrung
+    (gemessen 25.09.2026). Ein Sperrtext, der nur "kein freies USD" sagt,
+    verschweigt genau die Zahl, an der es haengt."""
+
+    def _sperren(self, w, frei, handelbar_grund, einschuss):
         with patch("handeln.freigabefenster.lade") as lade, \
              patch("handeln.kraken_rest.produkt", return_value="futures"), \
-             patch("handeln.kraken_rest.guthaben", return_value=0.0):
+             patch("handeln.kraken_rest.guthaben", return_value=frei), \
+             patch("handeln.kraken_rest.handelbar", return_value=handelbar_grund), \
+             patch("handeln.kraken_rest.einschuss", return_value=einschuss):
             lade.return_value.offen.return_value = True
-            sperren = handeln.sperren_zeile(w)
-        self.assertIn("kein freies USD im Futures-Konto", sperren)
+            return handeln.sperren_zeile(w)
 
-    def test_mit_usd_offen(self):
-        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
-        with patch("handeln.freigabefenster.lade") as lade, \
-             patch("handeln.kraken_rest.produkt", return_value="futures"), \
-             patch("handeln.kraken_rest.guthaben", return_value=100.0):
-            lade.return_value.offen.return_value = True
-            self.assertIsNone(handeln.sperren_zeile(w))
+    def test_ohne_guthaben_gesperrt_mit_kontraktzahl(self):
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True},
+             "paar": "PF_SOLUSD"}
+        sperren = self._sperren(w, 0.0,
+                                "1 Kontrakt PF_SOLUSD braucht 11.75 USD "
+                                "Einschuss, frei sind 0.00 USD", 11.75)
+        self.assertIn("braucht 11.75 USD Einschuss", sperren)
 
-    def test_spot_fragt_kein_guthaben(self):
-        """Der Spot-Zweig bleibt unveraendert - dort gilt die alte Kette."""
-        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True}}
-        with patch("handeln.freigabefenster.lade") as lade, \
-             patch("handeln.kraken_rest.guthaben") as g:
-            lade.return_value.offen.return_value = True
-            self.assertIsNone(handeln.sperren_zeile(w))
-        g.assert_not_called()
+    def test_einsatz_kleiner_als_ein_kontrakt_wird_gesperrt(self):
+        """1,00 USD Einsatz bei 11,75 USD Mindestkontrakt: die Order waere
+        aufgerundet das Zwoelfache - ein anderer Handel, kein Rundungsfehler."""
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True},
+             "paar": "PF_SOLUSD", "live_einsatz_usd": 1.0}
+        sperren = self._sperren(w, 141.58, None, 11.75)
+        self.assertIn("Mindestgroesse der Boerse", sperren)
+
+    def test_mit_guthaben_und_passendem_einsatz_offen(self):
+        w = {"handel_erlaubt": True, "freigabe": {"erfuellt": True},
+             "paar": "PF_SOLUSD", "live_einsatz_usd": 118.0}
+        self.assertIsNone(self._sperren(w, 141.58, None, 11.75))
 
 
 class WeicheTest(unittest.TestCase):

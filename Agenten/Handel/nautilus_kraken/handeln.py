@@ -376,13 +376,19 @@ def live_wachen(w):
     zu weit. Rueckgabe ist eine KOPIE: der Aufrufer schreibt w nicht
     zurueck in die Datei.
     """
-    if not (w.get("live_einsatz_eur") or w.get("live_max_risiko_gesamt_eur")):
+    if not (w.get("live_einsatz_eur") or w.get("live_max_risiko_gesamt_eur")
+            or w.get("live_einsatz_usd") or w.get("live_max_risiko_gesamt_usd")):
         return w
     lw = dict(w)
-    if lw.get("live_einsatz_eur"):
-        lw["max_risiko_pro_trade"] = float(lw["live_einsatz_eur"])
-    if lw.get("live_max_risiko_gesamt_eur"):
-        lw["max_risiko_gesamt"] = float(lw["live_max_risiko_gesamt_eur"])
+    # Beide Waehrungsnamen: Spot-Spuren (kraken, mosaic) rechnen in EUR, die
+    # Futures-Spur in USD. Gelesen wird derselbe Gedanke - der Einsatz je
+    # Position und der Deckel des Live-Buchs.
+    einsatz = lw.get("live_einsatz_eur") or lw.get("live_einsatz_usd")
+    deckel = lw.get("live_max_risiko_gesamt_eur") or lw.get("live_max_risiko_gesamt_usd")
+    if einsatz:
+        lw["max_risiko_pro_trade"] = float(einsatz)
+    if deckel:
+        lw["max_risiko_gesamt"] = float(deckel)
     return lw
 
 
@@ -408,14 +414,32 @@ def sperren_zeile(w):
     except Exception as e:                                   # noqa: BLE001
         sperren.append("Freigabefenster nicht lesbar (%s)" % e)
     if kraken_rest.produkt() == "futures":
-        # Futures besichert aus dem CASH-Konto der Futures-Boerse.
-        # Ohne freies USD ist jede Order abgelehnt - das ist ein
-        # Guthaben-Grund, kein Fenster-Grund (Muster moondev_marktlage).
+        # Futures besichert aus dem CASH-Konto der Futures-Boerse. Ohne freies
+        # USD ist jede Order abgelehnt - das ist ein Guthaben-Grund, kein
+        # Fenster-Grund (Muster moondev_marktlage). Geprueft wird der KLEINSTE
+        # handelbare Satz (1 Kontrakt = 1 Einheit der Basiswaehrung, gemessen
+        # 25.09.2026): 1 Kontrakt PF_SOLUSD braucht rund 11,75 USD Einschuss,
+        # PF_XBTUSD rund 8.450 USD. Der Sperrtext nennt die Zahl, damit
+        # "Guthaben reicht nicht" nachpruefbar ist.
         try:
             frei = kraken_rest.guthaben()
-            if frei <= 0:
-                sperren.append("kein freies USD im Futures-Konto")
-        except Exception as e:                               # noqa: BLE001
+            grund = kraken_rest.handelbar(w.get("paar"), 1, frei=frei)
+            if grund:
+                sperren.append(grund)
+            else:
+                # Zweite Sperre: ein Einsatz, der unter EINEM Kontrakt liegt,
+                # wird beim Senden aufgerundet - die echte Position waere dann
+                # ein Vielfaches des gedachten Einsatzes. Das ist keine
+                # Rundung, das ist ein anderer Handel.
+                einsatz = float(w.get("live_einsatz_usd")
+                                or w.get("live_einsatz_eur") or 0)
+                noetig = kraken_rest.einschuss(w.get("paar"), 1)
+                if einsatz and noetig and einsatz < noetig:
+                    sperren.append(
+                        "Einsatz %.2f kleiner als 1 Kontrakt %s (%.2f USD "
+                        "Einschuss) - Mindestgroesse der Boerse"
+                        % (einsatz, w.get("paar"), noetig))
+        except Exception as e:                                   # noqa: BLE001
             sperren.append("Futures-Guthaben nicht abrufbar (%s)" % e)
     else:
         # Spot: der Einsatz kommt aus dem freien EUR-Guthaben. Kraken
