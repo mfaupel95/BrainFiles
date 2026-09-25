@@ -1986,10 +1986,10 @@ moa:
         - provider: nous
           model: openai/gpt-6-astra
           enabled: false
-        - provider: llamacpp
+        - provider: bonsai
           model: bonsai
           enabled: true
-        - provider: llamacpp
+        - provider: bonsai
           model: bonsai
           enabled: true
         - provider: anthropic
@@ -2032,17 +2032,17 @@ moa:
         - provider: nous
           model: openai/gpt-6-astra
           enabled: true
-        - provider: llamacpp
+        - provider: bonsai
           model: bonsai
           enabled: true
-        - provider: llamacpp
+        - provider: bonsai
           model: bonsai
           enabled: true
         - provider: anthropic
           model: claude-opus-5
           enabled: true
       aggregator:
-        provider: llamacpp
+        provider: bonsai
         model: bonsai
       degraded_reference_policy: loud
       fanout: user_turn
@@ -2068,7 +2068,7 @@ moa:
           model: claude-opus-5
           enabled: true
       aggregator:
-        provider: llamacpp
+        provider: bonsai
         model: bonsai
       degraded_reference_policy: loud
       fanout: user_turn
@@ -2089,10 +2089,10 @@ moa:
     - provider: nous
       model: openai/gpt-6-astra
       enabled: false
-    - provider: llamacpp
+    - provider: bonsai
       model: bonsai
       enabled: true
-    - provider: llamacpp
+    - provider: bonsai
       model: bonsai
       enabled: true
     - provider: anthropic
