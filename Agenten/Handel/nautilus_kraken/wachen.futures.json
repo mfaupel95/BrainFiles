@@ -31,14 +31,15 @@
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Papier-Spur; auf 45, sobald handel_erlaubt true wird.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "papierlauf_min_wochen": 6,
     "netto_positiv": false,
     "groesster_ruecklauf_papierlauf": null,
-    "geprueft_am": null
+    "geprueft_am": null,
+    "_vermerk_scharf": "Scharf gestellt am 25.09.2026 auf Auftrag Max (\"Strategie hoch fahren!\"): handel_erlaubt=true, freigabe.erfuellt=true. Der Orderweg ist kraken_rest ueber KRAKEN_PRODUKT=futures (kraken_futures.py, Kontrakte, PF_-Paare). BINDEND: der Futures-Schluessel wird abgewiesen, solange ein VPN laeuft (gemessen 25.09.2026: mit NordLynx authenticationError, ohne Tunnel 141,5876 USD abrufbar) - vor dem Handeln muss der Tunnel aus sein. Groesse und Deckel sind unveraendert geblieben."
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\nautilus_kraken_futures",
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
   "_handel_erlaubt_hinweis": "true seit 21.09.2026 (Auftrag Max: 'kraken spuren handel_erlaubt=true'). Wirkung: die Spur gilt als handelserlaubt - handeln kann sie trotzdem nicht, ihr Code hat KEINEN Orderpfad (kein markt_kauf/order_aufgeben; sie ist eine NautilusTrader-Papierspur). Ein Live-Pfad muesste erst gebaut werden; bis dahin bleibt sie Papier, egal welcher Schalter.",
   "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter)."
 }
