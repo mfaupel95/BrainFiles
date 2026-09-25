@@ -45,6 +45,22 @@ import urllib.request
 OLLAMA = "http://127.0.0.1:11434/api/chat"
 OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
 
+# ZWEITER WEG: ein OpenAI-kompatibler Dienst auf demselben Rechner. Anlass ist
+# Bonsai 2 27B (PrismML-Fork von llama.cpp, `Agenten/Werkzeuge/bonsai-27b.ps1`):
+# 27B statt 4,3B, aber NUR unter /v1 - /api/chat gibt es dort nicht (gemessen
+# 25.09.2026: 404). Gewaehlt wird der Weg je Spur in der wachen.json
+# (`llm_weg`), sonst aus dem Modellnamen: wer ein Modell nennt, das der
+# Ollama-Bestand nicht kennt, meint den zweiten Dienst.
+BONSAI = "http://127.0.0.1:8080/v1/chat/completions"
+BONSAI_TAGS = "http://127.0.0.1:8080/v1/models"
+BONSAI_MODELL = "bonsai"
+# Denken zaehlt gegen `max_tokens` (Wiki Bonsai-2-27B): mit 250 kamen LEERE
+# Antworten zurueck. Fuer den Drei-Zeilen-Vertrag ist Denken unnoetig - mit
+# `reasoning_effort: none` antwortete Bonsai in 1,5 s mit 25 Token gegen 8,7 s
+# mit 236 Token ohne die Angabe (gemessen 25.09.2026, gleicher Prompt).
+BONSAI_REASONING = "none"
+BONSAI_MAX_TOKENS = 512
+
 # Vorgabe-Modell: qwen35-8k (4,3B). Gemessen am 17.09.2026 mit
 # `Handel/llm_probe.py --wiederholungen 2` gegen drei Marktbilder (Wale,
 # Liquidationen, Schlagzeilen), je 6 Aufrufe:
@@ -88,6 +104,8 @@ AKTIONEN = {"BUY": "long", "LONG": "long",
 # Test-Seam: None -> echter HTTP-Aufruf. Tests setzen eine Funktion
 # (prompt, modell, zeitgrenze) -> Text. Kein Test darf Ollama brauchen.
 ANFRAGE = None
+# Derselbe Seam fuer den zweiten Weg (Bonsai ueber /v1).
+BONSAI_ANFRAGE = None
 
 # Ein Zyklus fragt dasselbe Marktbild zweimal (Vorschau-Frage des Dauerlaufs
 # und Papierlauf). Der Zwischenspeicher spart den zweiten Aufruf und stellt
@@ -132,19 +150,60 @@ def _echte_anfrage(prompt, modell, zeitgrenze):
     return ((roh.get("message") or {}).get("content") or "").strip()
 
 
-def frage(prompt, modell=None, zeitgrenze=None):
+def weg_aus(modell=None, weg=None, w=None):
+    """Welcher Dienst gefragt wird: 'bonsai' (OpenAI unter /v1) oder 'ollama'.
+
+    Reihenfolge: ausdruecklicher Wert, Feld `llm_weg` der wachen.json, dann der
+    Modellname. Ein Modellname, den Ollama nicht kennt, ist der zweite Dienst -
+    der llama.cpp-Fork meldet seine Datei als vollen Pfad auf eine .gguf.
+    """
+    if weg:
+        return str(weg).strip().lower()
+    if w and w.get("llm_weg"):
+        return str(w["llm_weg"]).strip().lower()
+    name = str(modell or "").strip().lower()
+    if name.startswith("bonsai") or name.endswith(".gguf") or ".gguf" in name:
+        return "bonsai"
+    return "ollama"
+
+
+def _bonsai_anfrage(prompt, modell, zeitgrenze):
+    """Ein Aufruf gegen den OpenAI-kompatiblen Dienst (Bonsai 2 27B)."""
+    koerper = {
+        "model": modell or BONSAI_MODELL,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "temperature": 0,
+        "seed": SEED,
+        "max_tokens": BONSAI_MAX_TOKENS,
+        "reasoning_effort": BONSAI_REASONING,
+    }
+    daten = json.dumps(koerper).encode("utf-8")
+    anfrage = urllib.request.Request(
+        BONSAI, data=daten, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
+        roh = json.loads(antwort.read().decode("utf-8", "replace"))
+    wahl = (roh.get("choices") or [{}])[0]
+    return ((wahl.get("message") or {}).get("content") or "").strip()
+
+
+def frage(prompt, modell=None, zeitgrenze=None, weg=None):
     """Rohtext des Modells, oder None. Wirft nie - ein Fehler ist kein Urteil."""
-    modell = modell or MODELL_STANDARD
+    weg = weg_aus(modell, weg)
+    modell = modell or (BONSAI_MODELL if weg == "bonsai" else MODELL_STANDARD)
     zg = float(zeitgrenze or ZEITGRENZE)
     schluessel = _schluessel(prompt, modell)
     aus_cache = _aus_cache(schluessel)
     if aus_cache is not None:
         return aus_cache
     try:
-        text = (ANFRAGE(prompt, modell, zg) if ANFRAGE
-                else _echte_anfrage(prompt, modell, zg))
+        if weg == "bonsai":
+            text = ((BONSAI_ANFRAGE or _bonsai_anfrage)(prompt, modell, zg))
+        else:
+            text = ((ANFRAGE or _echte_anfrage)(prompt, modell, zg))
     except Exception as e:                                     # noqa: BLE001
-        print("LLM nicht erreichbar (%s): %s" % (modell, str(e)[:150]))
+        print("LLM nicht erreichbar (%s ueber %s): %s"
+              % (modell, weg, str(e)[:150]))
         return None
     if text:
         _CACHE[schluessel] = (time.monotonic(), text)
@@ -166,6 +225,16 @@ def modell_da(name):
     namen = modelle() or []
     return any(n == name or n.split(":")[0] == name.split(":")[0]
                for n in namen)
+
+
+def bonsai_da():
+    """Antwortet der zweite Dienst (Bonsai unter /v1)? Rein lesend."""
+    try:
+        with urllib.request.urlopen(BONSAI_TAGS, timeout=10) as antwort:
+            daten = json.loads(antwort.read().decode("utf-8", "replace"))
+    except Exception:                                          # noqa: BLE001
+        return False
+    return bool(daten.get("models") or daten.get("data"))
 
 
 def urteil(text):
@@ -210,11 +279,13 @@ def entscheide(prompt, w=None):
     (`llm_nachfassen: false` in der wachen.json schaltet das ab).
     """
     w = w or {}
-    modell = w.get("llm_modell") or MODELL_STANDARD
+    weg = weg_aus(w.get("llm_modell"), w.get("llm_weg"), w)
+    modell = w.get("llm_modell") or (BONSAI_MODELL if weg == "bonsai"
+                                     else MODELL_STANDARD)
     zg = w.get("llm_zeitgrenze_s", ZEITGRENZE)
-    roh = frage(prompt, modell, zg)
+    roh = frage(prompt, modell, zg, weg=weg)
     if not roh:
-        return None, {"fehler": "kein Urteil (%s)" % modell}
+        return None, {"fehler": "kein Urteil (%s ueber %s)" % (modell, weg)}
 
     u = urteil(roh)
     info = {}
@@ -222,7 +293,7 @@ def entscheide(prompt, w=None):
         if not w.get("llm_nachfassen", True):
             return None, {"fehler": "Antwort nicht im Vertrag",
                           "roh": roh.replace("\n", " | ")[:150]}
-        zweiter = frage(prompt + "\n\n" + NACHFASSEN, modell, zg)
+        zweiter = frage(prompt + "\n\n" + NACHFASSEN, modell, zg, weg=weg)
         u2 = urteil(zweiter) if zweiter else None
         if u2 is None or u2["confidence"] is None:
             return None, {"fehler": "Antwort nicht im Vertrag (auch nach "
@@ -238,7 +309,7 @@ def entscheide(prompt, w=None):
                      "aktion": u["aktion"], "grund": u["grund"]})
         return None, info
     info.update({"aktion": u["aktion"], "confidence": u["confidence"],
-                 "grund": u["grund"], "modell": modell})
+                 "grund": u["grund"], "modell": modell, "weg": weg})
     return u["seite"], info
 
 

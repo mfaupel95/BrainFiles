@@ -76,11 +76,26 @@ If the headlines point in no clear direction, answer NOTHING.
 
 
 def frage(modell, prompt, mit_denken=False, tokens=None):
-    """Eine rohe Frage ohne Zwischenspeicher. Rueckgabe: (text, dauer, fehler)."""
+    """Eine rohe Frage ohne Zwischenspeicher. Rueckgabe: (text, dauer, fehler).
+
+    Der WEG gehoert dazu (25.09.2026): die Sonde rief frueher `_echte_anfrage`
+    direkt und damit IMMER Ollama - ein zweites Modell wie Bonsai (nur /v1)
+    konnte sie nicht messen und meldete es als "(leer)". Jetzt entscheidet
+    `llm.weg_aus`, und der Denk-Schalter wird je Weg uebersetzt (Ollama:
+    `num_predict`, Bonsai: `reasoning_effort`).
+    """
     t0 = time.time()
+    weg = llm.weg_aus(modell)
     try:
         llm.leere_cache()
-        if mit_denken:
+        if weg == "bonsai":
+            alt = llm.BONSAI_REASONING
+            llm.BONSAI_REASONING = "medium" if mit_denken else "none"
+            try:
+                text = llm._bonsai_anfrage(prompt, modell, llm.ZEITGRENZE)
+            finally:
+                llm.BONSAI_REASONING = alt
+        elif mit_denken:
             alt = llm.NUM_PREDICT
             llm.NUM_PREDICT = tokens or 80
             try:

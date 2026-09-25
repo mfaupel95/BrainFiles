@@ -99,6 +99,39 @@ Bilder (mit mmproj), Vergleichsmessungen gegen kleinere lokale Modelle.
   Ampere-Karten (diese 3060 Ti ist Ampere) beim Dekodieren **schneller** als
   `PTQ1_0`, verlangt aber Teilauslagerung, weil es nicht mehr in den VRAM passt.
 - **Vision** (mmproj 0,63 GB) ist nicht geladen — kostet VRAM, das hier fehlt.
-- **Sprachmodell-Spuren** (`moondev_whale`, `-liquidation`, `-sentiment`) laufen
-  auf `qwen35-8k`. Sie koennten auf Bonsai umziehen, wenn `llm_lokal.py` einen
-  OpenAI-Weg bekommt (dieser Bau bietet kein `/api/chat`).
+- **Vision** (mmproj) — siehe T-083; **`PQ2_0`** — siehe T-082.
+
+## Sprachmodell-Spuren laufen auf Bonsai (25.09.2026, T-084)
+
+`moondev_whale`, `moondev_liquidation` und `moondev_sentiment` holen ihr Urteil
+seit dem 25.09.2026 hier ab (27B statt 4,3B). `llm_lokal.py` hat dafuer einen
+zweiten Weg bekommen; gewaehlt wird er je Spur in der `wachen.json`:
+
+| Feld | Wirkung |
+|---|---|
+| `llm_weg: "bonsai"` | OpenAI unter `127.0.0.1:8080/v1` (dieser Dienst) |
+| `llm_weg: "ollama"` | Ollamas `/api/chat` (`think:false`, wie bisher) |
+
+Ohne das Feld entscheidet der Modellname (`bonsai…` oder ein `.gguf`-Pfad -> Bonsai).
+Es gibt **absichtlich keinen stillen Rueckfall**: laeuft der Dienst nicht, faellt
+das Urteil aus und die Spur handelt nicht — statt heimlich auf ein kleineres
+Modell zu wechseln.
+
+Gemessen mit `Handel/llm_probe.py --modelle bonsai` (drei echte Marktbilder):
+
+| Groesse | Wert |
+|---|---|
+| Vertragstreue | **3/3** (BUY 75 % / SELL 65 % / SELL 65 %) |
+| Dauer | kalt 3,4 s, im Mittel **2,9 s** |
+| Koerper | `reasoning_effort: "none"` und `max_tokens: 512` |
+
+**Der Denk-Schalter gehoert in den Koerper:** mit `reasoning_effort: "none"`
+antwortete Bonsai in 1,5 s mit 25 Token, ohne die Angabe in 8,7 s mit 236 Token —
+und mit einem kleinen `max_tokens` kommt eine LEERE Antwort zurueck, weil das
+Denken das Kontingent frisst.
+
+**Falle, die die Sonde selbst hatte:** `llm_probe.py` rief `_echte_anfrage` direkt
+und damit IMMER Ollama — ein Modell auf dem zweiten Weg konnte sie nicht messen
+und meldete es als „(leer) 0/6, 0,0 s". Jetzt fragt sie `llm.weg_aus` und
+uebersetzt den Denk-Schalter je Weg (Ollama `num_predict`, Bonsai
+`reasoning_effort`). **Wer messen will, muss denselben Weg nehmen wie der Betrieb.**

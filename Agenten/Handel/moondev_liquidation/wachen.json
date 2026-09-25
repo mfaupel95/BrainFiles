@@ -3,7 +3,7 @@
   "_quelle": "OKX oeffentlich, kein Schluessel: /public/liquidation-orders?instType=SWAP&uly=BTC-USDT&state=filled (neueste 100 Saetze) und /market/candles (Kurs). Der USD-Wert je Satz entsteht ueber ctVal (0.01 BTC je Kontrakt) - OKX liefert sz in Kontrakten. Datenweg in Handel/moondev_daten.py.",
   "_regel": "GATE: Der Abruf deckt nur die neuesten 100 Saetze ab, deshalb wird die SPANNE gemessen und die Summe darauf bezogen (USD je Stunde). Geurteilt wird nur, wenn die Spanne zwischen 10 und 240 Minuten frisch ist, die Rate mindestens mindest_rate_usd_pro_stunde betraegt UND das Ungleichgewicht deutlich ist (Long-Anteil >= 0.75 oder <= 0.25) oder eine Kaskade laeuft (Rate >= kaskade_rate_usd_pro_stunde). Ohne Gate kein Aufruf und keine Buchung. Die RICHTUNG kommt vom Modell.",
   "_schwellen_herkunft": "Momentaufnahme 17.09.2026 (BTC-USDT-SWAP): 100 Saetze ueber 111,8 Minuten, Summe 1.431.060 USD = rund 768.000 USD/h; Satzgroessen median 841 USD, 90. Perzentil 20.105 USD, groesster Satz 697.009 USD. mindest_rate 100.000 USD/h liegt darunter (ein ruhiger Markt soll NICHT urteilen), kaskade_rate 750.000 USD/h entspricht der gemessenen Stunde. Keine Zahl ist geraten - wer sie aendert, misst neu.",
-  "_llm": "Lokales Modell ueber Handel/llm_lokal.py (Ollama 127.0.0.1:11434, kein Schluessel, keine Kosten). Vertrag und Prompt-Schlusszeilen wie beim Bot: 3 Zeilen, Zeile 1 BUY/SELL/NOTHING, Zeile 3 Confidence: X%. Unter llm_mindest_confidence faellt das Urteil aus.",
+  "_llm": "Lokales Modell ueber Handel/llm_lokal.py. Seit 25.09.2026 Bonsai 2 27B (27B statt 4,3B) ueber den OpenAI-Weg 127.0.0.1:8080/v1 - llm_weg \"bonsai\", denn der PrismML-Fork bietet Ollamas /api/chat nicht. Laeuft der Dienst nicht, faellt das Urteil aus (kein Handel) - es gibt absichtlich keinen stillen Rueckfall auf ein kleineres Modell. Vertrag wortgleich zum Bot: genau drei Zeilen, Zeile 1 BUY/SELL/NOTHING, Zeile 3 Confidence: X%. Unter llm_mindest_confidence faellt das Urteil aus, eine Antwort ausserhalb des Vertrags ebenfalls.",
   "_kein_live": "Kein Live-Zweig: der Fremd-Agent handelt mit echten Schluesseln, diese Spur bucht Papier. Ein --live verweigert.",
   "waehrung": "USD",
   "handel_erlaubt": false,
@@ -34,8 +34,8 @@
   "kaskade_rate_usd_pro_stunde": 750000.0,
   "schief_anteil_oben": 0.75,
   "schief_anteil_unten": 0.25,
-  "_llm_einstellung": "Modell und Confidence-Schwelle (Modellvergleich: Handel/llm_probe.py).",
-  "llm_modell": "qwen35-8k:latest",
+  "_llm_einstellung": "Modell, Weg und Confidence-Schwelle. llm_weg \"bonsai\" = OpenAI-Dienst auf 8080 (Agenten/Werkzeuge/bonsai-27b.ps1), \"ollama\" = 127.0.0.1:11434. Modellvergleich: llm_probe.py.",
+  "llm_modell": "bonsai",
   "llm_mindest_confidence": 60.0,
   "llm_zeitgrenze_s": 120,
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",
@@ -43,5 +43,6 @@
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 * buch_risiko = 5.0.",
   "drawdown_halbierung_usd": 5.0,
   "_grund": "Der Grund, der im Journal steht (das Modell ergaenzt Aktion und Confidence).",
-  "grund": "moondev_liquidation"
+  "grund": "moondev_liquidation",
+  "llm_weg": "bonsai"
 }
