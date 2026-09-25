@@ -45,6 +45,16 @@ OPT_PFAD = os.path.join(HIER, "spur_opt.json")
 # Fenster keine Stichprobe mehr.
 MINDEST_KERZEN_JE_FENSTER = 600
 
+# Unter dieser Rundenzahl ist ein Fenster keine Stichprobe: bei ~0,5 % Vorsprung
+# je Runde und ~5 % Streuung braucht es die Groessenordnung 100 Runden, damit
+# Vorsprung und Rauschen zu trennen sind. Der erste Entwurf liess 8 zu - damit
+# "ueberlebten" 18 von 18 Kandidaten.
+MINDEST_RUNDEN_JE_FENSTER = 30
+
+# Ein Kandidat muss die heutige Einstellung um mindestens so viel schlagen, dass
+# der Unterschied nicht im Rauschen liegt.
+MINDEST_VORSPRUNG_PCT = 0.10
+
 # Gemessene Kosten eines Schrittes (2026-09-25, squeeze 1H ueber 50.223 Kerzen:
 # 9 Minuten -> ~0,011 s je Schritt und Instrument). Nur fuer die Schaetzung im
 # Trockenlauf, nicht fuer eine Entscheidung.
@@ -114,41 +124,97 @@ def kerzen_je_monat(takt):
     return {"1H": 730, "4H": 182, "1D": 30}.get(takt, 730)
 
 
-def je_runde(k):
-    """Ergebnis je Runde in Prozent des Einsatzes - das Vergleichsmass.
+def je_runde(k, gebuehr_pct=0.0):
+    """Ergebnis je Runde in Prozent des Einsatzes - NETTO, nach Gebuehren.
 
     Die Hausfunktion `kosten_wendepunkt.wendepunkt()` liefert R, C, p, f_max,
     ev_ohne und ergebnis_summe; ein Feld `netto_pct_mittel` gibt es dort NICHT
     (das stammt aus `backtest_prognose.kennzahlen`). Wer es hier erwartet,
-    stuerzt ab - genau das ist am 2026-09-25 passiert. Deshalb EINE Stelle, die
-    beide Formen kennt.
+    stuerzt ab - genau das ist am 2026-09-25 passiert.
+
+    Die Gebuehr MUSS abgezogen werden: `ergebnis_summe` ist brutto. Ein engerer
+    Stop erzeugt mehr, kleinere Runden - brutto sieht das oft besser aus,
+    waehrend je Runde 2 x Gebuehr mehr bezahlt wird. Wer brutto vergleicht,
+    empfehlt die Einstellung mit den meisten Runden statt der besten.
     """
     if "netto_pct_mittel" in k:
-        return float(k["netto_pct_mittel"])
-    runden = k.get("runden") or 0
-    if not runden:
-        return 0.0
-    return float(k.get("ergebnis_summe", 0.0)) / runden
+        roh = float(k["netto_pct_mittel"])
+    else:
+        runden = k.get("runden") or 0
+        if not runden:
+            return -2 * gebuehr_pct
+        roh = float(k.get("ergebnis_summe", 0.0)) / runden
+    return roh - 2 * float(gebuehr_pct)
 
 
-def urteil_aus(such, pruef, weitere=None, mindest_runden=8):
-    """Ueberlebt ein Kandidat das Prueffenster?"""
+def urteil_aus(such, pruef, weitere=None, grundlinie=None, gebuehr_pct=0.0,
+               mindest_runden=MINDEST_RUNDEN_JE_FENSTER):
+    """Ueberlebt ein Kandidat? Verglichen wird NETTO gegen den STATUS QUO.
+
+    Der erste Entwurf verglich die Such- gegen die Pruefhaelfte DESSELBEN
+    Kandidaten. Gemessen am 2026-09-25: in einem 6-Monats-Zeitraum war die erste
+    Haelfte fast durchweg negativ und die zweite positiv - darauf "ueberlebten"
+    14 von 18 (squeeze) und 18 von 18 (supertrend). Ein Filter, der alles
+    durchlaesst, filtert nicht; die Ursache war der Regimewechsel zwischen den
+    Haelften, nicht ein Vorteil der Parameter.
+
+    Die handlungsrelevante Frage ist eine andere: ist der Kandidat im
+    PRUEFENSTER besser als die EINSTELLUNG, DIE HEUTE LAEUFT? Genau das prueft
+    `grundlinie` - dieselbe Rechnung im selben Zeitraum mit den heutigen Werten.
+    """
     weitere = weitere or []
     if pruef.get("runden", 0) < mindest_runden:
         return {"ueberlebt": False,
-                "grund": "unter %d Runden - ein Befund, keine Messung"
+                "grund": "unter %d Runden - ein Befund, keine Messung "
+                         "(Vorsprung und Streuung sind sonst nicht zu trennen)"
                          % mindest_runden}
     if not pruef.get("runden"):
         return {"ueberlebt": False, "grund": "kein Hebel: Prueffenster ohne Runde"}
-    if je_runde(pruef) <= je_runde(such[0]):
+    netto = je_runde(pruef, gebuehr_pct)
+    if netto <= 0:
+        return {"ueberlebt": False,
+                "grund": "kein Hebel: netto %.3f %% je Runde im Prueffenster" % netto}
+    if grundlinie is not None:
+        netto_basis = je_runde(grundlinie, gebuehr_pct)
+        if netto - netto_basis < MINDEST_VORSPRUNG_PCT:
+            return {"ueberlebt": False,
+                    "grund": "kein Hebel: %.3f %% netto gegen %.3f %% der "
+                             "heutigen Einstellung (Vorsprung unter %.2f %%)"
+                             % (netto, netto_basis, MINDEST_VORSPRUNG_PCT)}
+    elif je_runde(pruef, gebuehr_pct) <= je_runde(such[0], gebuehr_pct):
         return {"ueberlebt": False, "grund": "kein Hebel: Prueffenster nicht besser"}
-    mittel = (je_runde(pruef) + sum(je_runde(x) for x in weitere)) / (1 + len(weitere))
+    mittel = (netto + sum(je_runde(x, gebuehr_pct) for x in weitere)) / (1 + len(weitere))
     if mittel <= 0:
         return {"ueberlebt": False,
                 "grund": "kein Hebel: rollierendes Mittel nicht positiv (%.3f %%)"
                          % mittel}
     return {"ueberlebt": True,
-            "grund": "Prueffenster und rollierendes Mittel besser (%.3f %%)" % mittel}
+            "grund": "netto %.3f %% je Runde, %.3f %% besser als heute"
+                     % (netto, netto - je_runde(grundlinie, gebuehr_pct)
+                        if grundlinie is not None else 0.0)}
+
+
+def felder_ohne_wirkung(ergebnisse):
+    """Suchfelder, deren Werte im Ergebnis NICHTS unterscheiden.
+
+    Gemessen am 2026-09-25: `pflicht_stop_prozent_max` 8 und 12 lieferten
+    dieselben Zahlen - der Deckel greift nie, weil der ATR-Stop darunter bleibt.
+    Ein solches Feld ist fuer die Suche wertlos, und wer es nicht bemerkt,
+    haelt ein Raster von 18 Kandidaten fuer 18 verschiedene Versuche.
+    """
+    gruppen = {}
+    for e in ergebnisse:
+        f = (e.get("je_fenster") or [{}])[-1]
+        gruppen.setdefault((f.get("runden"), round(f.get("ergebnis_summe", 0.0), 6)),
+                           []).append(e.get("werte") or {})
+    tot = set()
+    for werte_liste in gruppen.values():
+        if len(werte_liste) < 2:
+            continue
+        for name in set().union(*[set(w) for w in werte_liste]):
+            if len({w.get(name) for w in werte_liste}) > 1:
+                tot.add(name)
+    return sorted(tot)
 
 
 def _kompakt(spur, werte):
@@ -258,8 +324,29 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
                                       dt.timezone.utc)))
 
     ergebnisse = []
+    grundlinie = None
     with tempfile.TemporaryDirectory() as tmp:
         temp = os.path.join(tmp, "fenster.csv")
+
+        # ZUERST die heutige Einstellung im SELBEN Zeitraum messen. Ohne diese
+        # Zahl ist "besser" bedeutungslos: der Vergleich mit der eigenen
+        # Suchhaelfte hat am 2026-09-25 nur den Regimewechsel zwischen den
+        # Haelften gemessen und 18 von 18 Kandidaten durchgelassen.
+        basis_patch = {k: w[k] for k in tab["schluessel"] if k in w}
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) if still else \
+                    contextlib.nullcontext():
+                replay.lauf_a(spur, gebuehr_pct, "grundlinie", wachen_patch=basis_patch,
+                              abschnitt=(von_index, gesamt))
+            basis_zeilen = _journal_zeilen(os.path.join(
+                replay.buch_ordner(spur, "grundlinie"), "handelsjournal.csv"))
+            basis_fenster = [_fenster_kennzahlen(basis_zeilen, a, b, temp)
+                             for a, b in grenzen]
+            grundlinie = basis_fenster[-1] if basis_fenster else None
+        except Exception as e:                                     # noqa: BLE001
+            print("Grundlinie nicht messbar (%s) - es wird gegen die Suchhaelfte "
+                  "verglichen." % str(e)[:120])
+
         for werte in kand:
             lauf = _kompakt(spur, werte)
             try:
@@ -279,15 +366,28 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
             if len(je_fenster) < 2:
                 ergebnisse.append({"werte": werte, "fehler": "zu wenige Fenster"})
                 continue
-            u = urteil_aus([je_fenster[0]], je_fenster[-1], je_fenster[1:-1])
-            ergebnisse.append({"werte": werte, "je_fenster": je_fenster, **u})
+            u = urteil_aus([je_fenster[0]], je_fenster[-1], je_fenster[1:-1],
+                           grundlinie=grundlinie, gebuehr_pct=gebuehr_pct)
+            ergebnisse.append({"werte": werte, "je_fenster": je_fenster,
+                               "netto_je_runde": round(
+                                   je_runde(je_fenster[-1], gebuehr_pct), 4), **u})
 
     ergebnisse.sort(key=lambda x: (
-        x.get("ueberlebt", False),
-        je_runde((x.get("je_fenster") or [{}])[-1])), reverse=True)
+        x.get("ueberlebt", False), x.get("netto_je_runde", 0.0)), reverse=True)
+
+    # TOTE RASTERFELDER: Kandidaten mit identischen Zahlen. Gemessen am
+    # 2026-09-25 lieferten `pflicht_stop_prozent_max` 8 und 12 dieselben
+    # Ergebnisse - der Deckel greift in diesem Zeitraum nie, das Feld ist fuer
+    # die Suche wertlos. Das gehoert in den Bericht, nicht in eine Randnotiz.
     aus = dict(plan)
     aus["kandidaten"] = ergebnisse
     aus["ueberlebt"] = [e["werte"] for e in ergebnisse if e.get("ueberlebt")]
+    aus["grundlinie"] = grundlinie
+    aus["grundlinie_netto_je_runde"] = round(
+        je_runde(grundlinie or {}, gebuehr_pct), 4)
+    aus["ohne_wirkung"] = felder_ohne_wirkung(ergebnisse)
+    aus["mindest_runden_je_fenster"] = MINDEST_RUNDEN_JE_FENSTER
+    aus["mindest_vorsprung_pct"] = MINDEST_VORSPRUNG_PCT
     aus["kerzenquelle"] = "binance"
     aus["gebuehr_pct"] = gebuehr_pct
     ziel = os.path.join(replay.wurzel(), spur)
@@ -316,7 +416,11 @@ def main():
         print("Trockenlauf: nichts gerechnet, nichts geschrieben.")
         return
     print(json.dumps({"spur": aus["spur"], "kandidaten": len(aus["kandidaten"]),
+                      "heute_netto_je_runde": aus["grundlinie_netto_je_runde"],
+                      "beste_netto_je_runde": (aus["kandidaten"] or [{}])[0].get(
+                          "netto_je_runde"),
                       "ueberlebt": aus["ueberlebt"],
+                      "ohne_wirkung": aus["ohne_wirkung"],
                       "gebuehr_pct": aus["gebuehr_pct"],
                       "kerzenquelle": aus["kerzenquelle"]},
                      indent=2, ensure_ascii=False))

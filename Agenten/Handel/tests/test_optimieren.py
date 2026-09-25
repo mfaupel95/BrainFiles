@@ -35,7 +35,7 @@ class FensterTest(unittest.TestCase):
 
 class UrteilTest(unittest.TestCase):
     def test_kandidat_ohne_prueffenster_vorteil_ist_kein_hebel(self):
-        gleich = {"runden": 20, "netto_pct_mittel": 0.5}
+        gleich = {"runden": 40, "netto_pct_mittel": 0.5}
         u = optimieren.urteil_aus([gleich], dict(gleich), [])
         self.assertFalse(u["ueberlebt"])
         self.assertIn("kein Hebel", u["grund"])
@@ -56,21 +56,79 @@ class UrteilTest(unittest.TestCase):
             return {"runden": runden, "ergebnis_summe": summe,
                     "R": 5.0, "C": 10.0, "p": 0.5, "f_max": 2.5}
         self.assertAlmostEqual(0.2, optimieren.je_runde(haus(10, 2.0)))
-        u = optimieren.urteil_aus([haus(10, 1.0)], haus(10, 3.0), [haus(10, 2.5)])
+        u = optimieren.urteil_aus([haus(50, 5.0)], haus(50, 15.0), [haus(50, 12.5)])
         self.assertTrue(u["ueberlebt"])
 
     def test_besser_im_prueffenster_und_im_mittel_ueberlebt(self):
-        u = optimieren.urteil_aus([{"runden": 20, "netto_pct_mittel": 0.1}],
-                                  {"runden": 20, "netto_pct_mittel": 1.0},
-                                  [{"runden": 20, "netto_pct_mittel": 0.8}])
+        u = optimieren.urteil_aus([{"runden": 40, "netto_pct_mittel": 0.1}],
+                                  {"runden": 40, "netto_pct_mittel": 1.0},
+                                  [{"runden": 40, "netto_pct_mittel": 0.8}])
         self.assertTrue(u["ueberlebt"])
 
     def test_positiv_im_prueffenster_aber_negatives_mittel_faellt_durch(self):
-        u = optimieren.urteil_aus([{"runden": 20, "netto_pct_mittel": 0.1}],
-                                  {"runden": 20, "netto_pct_mittel": 0.3},
-                                  [{"runden": 20, "netto_pct_mittel": -2.0}])
+        u = optimieren.urteil_aus([{"runden": 40, "netto_pct_mittel": 0.1}],
+                                  {"runden": 40, "netto_pct_mittel": 0.3},
+                                  [{"runden": 40, "netto_pct_mittel": -2.0}])
         self.assertFalse(u["ueberlebt"])
         self.assertIn("rollierendes Mittel", u["grund"])
+
+    def test_unter_der_mindestrundenzahl_zaehlt_nichts(self):
+        """8 Runden waren im ersten Entwurf genug - und liessen 18 von 18 durch."""
+        u = optimieren.urteil_aus([{"runden": 12, "netto_pct_mittel": 5.0}],
+                                  {"runden": 12, "netto_pct_mittel": 9.0}, [])
+        self.assertFalse(u["ueberlebt"])
+        self.assertIn("Befund", u["grund"])
+
+    def test_gegen_die_heutige_einstellung_zaehlt_der_vorsprung(self):
+        """Positiv, aber nicht besser als der Status quo -> kein Hebel."""
+        kand = {"runden": 50, "ergebnis_summe": 50.0}        # 1,0 % je Runde
+        basis = {"runden": 50, "ergebnis_summe": 55.0}       # 1,1 % je Runde
+        u = optimieren.urteil_aus([kand], kand, [], grundlinie=basis,
+                                  gebuehr_pct=0.1)
+        self.assertFalse(u["ueberlebt"])
+        self.assertIn("heutigen Einstellung", u["grund"])
+
+    def test_klarer_vorsprung_gegen_die_heutige_einstellung_ueberlebt(self):
+        kand = {"runden": 50, "ergebnis_summe": 150.0}       # 3,0 % je Runde
+        basis = {"runden": 50, "ergebnis_summe": 25.0}       # 0,5 % je Runde
+        u = optimieren.urteil_aus([kand], kand, [], grundlinie=basis,
+                                  gebuehr_pct=0.1)
+        self.assertTrue(u["ueberlebt"])
+        self.assertIn("besser als heute", u["grund"])
+
+    def test_gebuehr_wird_abgezogen(self):
+        """Brutto 0,15 % je Runde sind netto -0,05 % - kein Hebel."""
+        k = {"runden": 50, "ergebnis_summe": 7.5}            # 0,15 % brutto
+        self.assertAlmostEqual(0.15, optimieren.je_runde(k), places=6)
+        self.assertAlmostEqual(-0.05, optimieren.je_runde(k, 0.1), places=6)
+        u = optimieren.urteil_aus([k], k, [], grundlinie={"runden": 50,
+                                                          "ergebnis_summe": 0.0},
+                                  gebuehr_pct=0.1)
+        self.assertFalse(u["ueberlebt"])
+
+
+class TotesFeldTest(unittest.TestCase):
+    """Ein Rasterfeld, das nichts unterscheidet, gehoert in den Bericht."""
+
+    def test_feld_ohne_wirkung_wird_erkannt(self):
+        ergebnisse = [
+            {"werte": {"stop_max": 8.0, "stop_min": 3.0},
+             "je_fenster": [{}, {"runden": 50, "ergebnis_summe": 100.0}]},
+            {"werte": {"stop_max": 12.0, "stop_min": 3.0},
+             "je_fenster": [{}, {"runden": 50, "ergebnis_summe": 100.0}]},
+            {"werte": {"stop_max": 8.0, "stop_min": 7.0},
+             "je_fenster": [{}, {"runden": 50, "ergebnis_summe": 20.0}]},
+        ]
+        self.assertEqual(["stop_max"], optimieren.felder_ohne_wirkung(ergebnisse))
+
+    def test_ohne_gleiche_ergebnisse_ist_nichts_tot(self):
+        ergebnisse = [
+            {"werte": {"a": 1}, "je_fenster": [{}, {"runden": 50,
+                                                    "ergebnis_summe": 10.0}]},
+            {"werte": {"a": 2}, "je_fenster": [{}, {"runden": 50,
+                                                    "ergebnis_summe": 20.0}]},
+        ]
+        self.assertEqual([], optimieren.felder_ohne_wirkung(ergebnisse))
 
 
 class SchluesselTest(unittest.TestCase):
