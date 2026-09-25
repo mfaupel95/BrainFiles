@@ -1,35 +1,45 @@
 {
   "_zweck": "Harte Grenzen des Marktscanners. Eine Datei, eine Wahrheit. Wird von scan.py und handeln.py gelesen, nie von ihnen geschrieben.",
-
-  "watchlist": ["BTC-USDC", "BNB-USDC", "XRP-USDC", "DOGE-USDC", "ADA-USDC", "TRX-USDC", "AVAX-USDC", "LINK-USDC", "DOT-USDC", "SUI-USDC", "LTC-USDC"],
-
+  "watchlist": [
+    "BTC-USDC",
+    "BNB-USDC",
+    "XRP-USDC",
+    "DOGE-USDC",
+    "ADA-USDC",
+    "TRX-USDC",
+    "AVAX-USDC",
+    "LINK-USDC",
+    "DOT-USDC",
+    "SUI-USDC",
+    "LTC-USDC"
+  ],
   "_universum": "Seit 14.09.2026 sieht der Scan auf Wunsch den ganzen OKX-Spotmarkt statt der Watchlist: modus 'alle' holt die Paare ueber okx.alle_paare (Quote-Waehrungen laut quotes, Mindestumsatz laut min_volumen_24h_usd). Die Watchlist bleibt als enge Liste und als Rueckfall erhalten (modus zurueck auf 'watchlist'). Die Kauf-Tore (mindest_score, max_volatilitaet_pa, mindest_chance_risiko) sind unveraendert - ein weiteres Universum laesst mehr Kandidaten durch, aber nicht mehr schlechte. Angeordnet von Max am 14.09.2026.",
-  "universum": {"modus": "alle", "quotes": ["USDT", "USDC"], "min_volumen_24h_usd": 3000000},
-
+  "universum": {
+    "modus": "alle",
+    "quotes": [
+      "USDT",
+      "USDC"
+    ],
+    "min_volumen_24h_usd": 3000000
+  },
   "_max_pro_trade_usd": "Obergrenze je Position. Am 15.09.2026 von 100 auf 120 gehoben, damit das risiko-normierte Sizing in BEIDE Richtungen wirkt: bei 6 USD Risiko und dem engsten nach pflicht_stop_prozent_min ueberhaupt moeglichen Stop (5 Prozent) entsteht ein Nominal von 6.0/0.05 = 120.00 USD. 120 ist damit nicht gegriffen, sondern genau der Punkt, ab dem die Stop-Hausregel die Obergrenze setzt und nicht mehr der Deckel. Mit 100 wurden 7 von 18 Vorschlaegen gekappt und riskierten nur 5,20-5,80 statt 6,00 USD - die Normierung wirkte nur nach unten. Wer risiko_je_position_usd aendert, rechnet diesen Wert mit: Deckel = risiko / (pflicht_stop_prozent_min/100).",
   "max_pro_trade_usd": 120,
-
   "_risiko_je_position_usd": "Risiko-normiertes Sizing, eingefuehrt am 15.09.2026. Das Nominal einer Position faellt aus diesem Betrag und dem Stop-Abstand (nominal = risiko / stop_pct), gedeckelt auf max_pro_trade_usd. Vorher band jede Position feste 100 USD bei einem Stop zwischen 5 und 12 Prozent - gemessen riskierten die 18 Vorschlaege eines Zyklus 5,20 bis 8,70 USD, Faktor 1,7 bei gleichem Kapital. 6.0 ist bewusst der bisherige DURCHSCHNITT (100 USD bei rund 6 Prozent Stop): die Risikosumme bleibt, nur ihre Verteilung aendert sich. Auf null setzen stellt das alte feste Nominal wieder her - handeln.py faellt dann ueber nominal_fuer() auf max_pro_trade_usd zurueck.",
   "risiko_je_position_usd": 6.0,
-
   "_max_gesamt_usd": "Gebundenes Kapital ueber alle offenen Positionen. Am 15.09.2026 von 400 auf 1000 gehoben (Max). Wirkung: bis dahin band das Geld vor den Plaetzen - bei 400 USD passten je nach Stop-Weite nur 3,3 bis 5,8 Positionen, gemessen 4. Ab 1000 bindet dieser Wert NICHT mehr: das groesste ueberhaupt moegliche Buch ist max_offene_positionen x (risiko_je_position_usd / pflicht_stop_prozent_min) = 6 x 120 = 720 USD. Der Engpass ist ab jetzt max_offene_positionen (6), nicht das Kapital. Die 280 USD Luft ueber 720 decken keine Regel ab - sie sind Vorrat fuer eine spaetere Erhoehung von max_offene_positionen oder risiko_je_position_usd. Gesamtrisiko bleibt gedeckelt: 6 Positionen x 6 USD = 36 USD, wenn ALLE Stops gleichzeitig reissen.",
   "max_gesamt_usd": 600,
   "_budget_usd": "Tatsaechlich verfuegbares Handelskapital der Spur (Max, 19.09.2026): 80 USD total. max_gesamt_usd (1000) ist die Obergrenze des Buches, budget_usd das, was wirklich eingesetzt ist. Anzeige im /bericht.",
   "budget_usd": 600,
   "_budget_vermerk": "Auftrag Max 21.09.2026: Gesamtdeckel 600. ACHTUNG: budget_usd wird im Code NICHT gelesen (geprueft mit grep ueber scanner/*.py) - die wirksamen Grenzen sind max_gesamt_usd (600, geprueft in handeln.py Zeile 604) und max_pro_trade_usd (120, risikonormiert: 6.0 / pflicht_stop_prozent_min 5 Prozent = 120). Mit 5 Plaetzen binden beide gleichzeitig. budget_usd bleibt hier nur als Lesewert stehen und ist auf 600 angeglichen, damit die Datei nicht zwei Zahlen nennt.",
   "max_offene_positionen": 5,
-
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,
   "mindest_chance_risiko": 1.5,
-
   "mindest_score": 60,
-  "max_volatilitaet_pa": 1.20,
-
+  "max_volatilitaet_pa": 2.0,
   "abklingzeit_tage": 4,
   "_sperrfrist_nach_ziel_stunden": "Nach einem Ausstieg mit Grund 'ziel' bleibt das Instrument so viele Stunden fuer neue Einstiege gesperrt (0 = aus). Auftrag Max 23.09.2026 'Sperrfrist 2h': ZEC wurde im Ziel verkauft (1618.36) und acht Sekunden spaeter fast zum selben Kurs neu gekauft (1619.38) - 1,2 % Gebuehren fuer dieselbe Bewegung, weil der Kandidat weiter auf der Rangliste stand. Nach einem STOP gilt die laengere Abklingzeit (abklingzeit_tage).",
   "sperrfrist_nach_ziel_stunden": 2.0,
-
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
   "freigabe": {
     "erfuellt": true,
@@ -39,18 +49,15 @@
     "geprueft_am": null,
     "_aenderung": "2026-09-07: papierlauf_min_wochen von 6 auf 3 gesenkt, angeordnet von Max am 06.09.2026 mit der Begruendung, Krypto sei schnelllebig. KEINE Gegenrechnung vorgelegt - es gibt kein Backtest-Skript fuer diesen Scanner, und die Verkuerzung ist damit nach Wissen/Handelsregeln.md ein Befund, kein Betriebsvorgang. Seit 19.09.2026 entfaellt die Netto-positiv-Bedingung (Max); bindend bleiben 50 Runden und der Ruecklauf-Deckel."
   },
-
   "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. 1.0 x Buchrisiko = risiko_je_position_usd 6.0 x max_offene_positionen 6. Vorher 60.0 (aus der alten Quote 6% x max_gesamt_usd 1000). Die alten 60.0 waren NICHT abgeschaltet - drawdown() rechnet hoch minus kum, und die Kurve darf ins Minus laufen - aber sie haetten erst bei einem Stand von -9.76 USD gegriffen, also nach mehr Verlust als dem gesamten Gewinnhoechststand von 140.24 USD: kein Gewinnschutz mehr, sondern ein zweiter Kill-Switch. Die 36.0 sind strenger und greifen bei einem Stand von 104.24 USD, also noch deutlich innerhalb des Gewinns.",
   "drawdown_halbierung_usd": 30.0,
   "kill_switch_gesamt_usd": 200,
-
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. Wert an die Aufruf-Taktung koppeln: die Tagesroutine laeuft 1x/Tag, 2880 = 48 h faengt einen ausgefallenen Lauf ab, ohne bei jedem normalen Lauf auszuloesen. Ein Schnelllauf-Bot steht bei ~30.",
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 19.09.2026: 180 Minuten fuer Papier-Spuren UND fuer Live-Spuren (handel_erlaubt=true); Live-Angleichung an 3 h wegen ungeklaerter Abschaltungen (T-004). Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Seit 19.09.2026 gilt fuer diese Live-Spur ebenfalls 180: ein Herzschlag-Fehlschluss nach einem PC-Ausfall (T-004) wuerde die offene Position am Markt schliessen - Verlust in echtem Geld; die Position loest die Spur ueber Stop-/Risiko-Logik auf, nicht der Herzschlag. Vorher standen hier 2880 (48 h) aus der Zeit, als die Aufgabe MaxHirn-Marktscanner sie einmal taeglich fuhr - im Viertelstundentakt waere das eine Woche unbewachter Handel.",
-
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal",
-
   "handel_erlaubt": true,
-  "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'."
+  "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'.",
+  "_max_volatilitaet_pa_erhoeht_20260925": "ERHOEHT 25.09.2026 (Auftrag Max: erlaubte Volatilitaet erhoehen): 1,20 -> 2,00. Gemessen mit scan.py: die JA-Kandidaten lagen bei 0,67-1,18, direkt darueber RAY 1,39 / ENA 1,27 / ARB 1,27 (fallen ohnehin am Score) - die Grenze war heute NICHT der Blocker, sondern mindest_score 60. Ueber 2,0 bleibt gesperrt, weil der Stop der Spur (stop_prozent 7) dann kleiner ist als eine normale Tagesspanne."
 }
