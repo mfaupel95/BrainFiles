@@ -551,19 +551,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       einen Zyklus abwarten und die Quoten im Zustand zaehlen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: nautilus (eigenes Repo), Docker Desktop
-- [ ] **T-057 — Hermes-Desktop git-Poller blitzt Konsolenfenster alle 2-3 s**
-      Kontext: Hermes.exe (Electron) rief `git status --porcelain` und
-      `git merge-base --is-ancestor` alle 2-3 s auf und blitzte je ein
-      Konsolenfenster - der eigentliche Fokus-Raeuber (gemessen 24.09.2026:
-      ~8 Blitze/40 s). Nach dem Fix der zwei Haus-Prozesse ist er still, aber
-      die HAEUFIGKEIT ist ungeklaert: bundle-skew.ts:107 soll einmalig beim App-
-      Start laufen, nicht im Sekundentakt. Vermutlich Update-Check-/Fokus-
-      Rueckkopplungs-Schleife.
-      Naechster Schritt: Aufrufer von bundle-skew.ts pruefen (wer triggert den
-      Poll wiederholt), dann auf einmaligen Check stellen; windowsHide greift
-      gegen GUI-Eltern nicht (main.ts:2986).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Hermes/hermes-agent/apps/desktop
+- [ ] **T-057 — Hermes-Desktop git-Poller (bundle-skew) feuert auf jeden Fokus**
+      URSACHE GEKLAERT (25.09.2026, belegt): onFocus (src/store/updates.ts:1083) ruft
+      refreshDesktopVersion() (1084) -> getVersion() -> IPC hermes:version
+      (electron/main.ts:18193) -> detectRendererSkew() (18172) -> detectBundleSkew()
+      (zwei runGit: merge-base + rev-list) - auf JEDEN Fokus, OHNE Rate-Limit.
+      Kontrast: runPassiveChecks (der eigentliche Update-Poll) ist korrekt per
+      passiveCheckDue auf 24h begrenzt (BACKGROUND_UPDATE_CHECK_MS), nur der
+      Versions-Check im Fokus-Handler ist ungebremst. Rueckkopplung: der git-
+      Prozess (Konsolen-Kind eines GUI-Elterns ohne Konsole) blitzt ein Fenster,
+      das den Fokus stiehlt; der Focus-Wechsel feuert onFocus erneut -> 2-3s-
+      Schleife (gemessen 24.09.: ~8 git-Blitze/40s). Nach dem Haus-Fix (moondev/
+      handelszentrale fensterlos) ist der direkte Fokus-Raeuber weg, die Schleife
+      stoppt; der Verstaerker bleibt latent (jeder echte Fokus-Wechsel laeuft
+      wieder git).
+      Fix (upstream Nous Research, das Repo ist KEIN Fork): detectRendererSkew()-
+      Ergebnis cachen (1x je Lauf oder TTL), oder refreshDesktopVersion() in
+      onFocus an passiveCheckDue binden. Ein lokaler Patch wird von `hermes update`
+      ueberschrieben.
+      Naechster Schritt: als Issue an NousResearch/hermes-agent melden, oder einen
+      lokalen Cache-Patch anlegen und den Update-Verlust bewusst in Kauf nehmen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-25
+      Betrifft: hermes-agent apps/desktop (updates.ts:1083, main.ts:18172)
 - [ ] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
       Kontext: Nach dem Fix der Haus-Prozesse bleiben ~6 kurze Konsolenfenster je
       Minute: (a) die moondev-Agenten (Fremd-Repo new_or_top/kraken) spawnen
