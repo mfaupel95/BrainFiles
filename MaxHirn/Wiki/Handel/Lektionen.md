@@ -518,3 +518,43 @@ eine uebersprungene aus.
 **Was beide Faelle verbindet:** eine Fehlermeldung der Boerse beschreibt ihren
 Namensraum, nicht unsere Absicht. Wer sie deutet, bevor er die eigene Kennung
 und die eigene Frage geprueft hat, baut am falschen Ende.
+
+
+## Eine Zwischenlagerung muss den GEHANDELTEN Kontrakt mitnehmen (25.09.2026)
+
+`swap` bekam am Vormittag den XPERP-Zwilling als handelbares Instrument
+(`kandidaten.handels_kontrakte()`), und `handeln.anlauf()` nahm ihn auch. Am
+Mittag lief dieselbe Spur trotzdem wieder in den alten Fehler: die Vorschau
+zeigte `XAU-USDT-SWAP` statt `XAU-USD_UM_XPERP-310502`.
+
+Der Grund stand zwischen den beiden Stellen. `rangliste()` lagert den
+Kennzahlenstand bis zu **zwei Stunden** in `zustand.json` zwischen und schrieb
+dabei nur die *schlanken* Felder (Punkte, Vola, Umsatz) — der Zwilling
+(`handels_instId`, `handels_instr`) fiel heraus. Damit griff in jedem Zyklus
+innerhalb der Gueltigkeit der Rueckfall in `anlauf()`:
+
+```python
+instr = kandidat.get("handels_instr") or okxf.instrument(kandidat["instId"])
+```
+
+und der loeste den **Reihennamen** auf, also genau den Markt, den OKX mit `50124
+does not have trading permission for the market` abweist. Der Fix wirkte so nur
+auf den ersten Lauf nach dem Schreiben einer frischen Rangliste.
+
+**Regel: ein Zwischenlager ist ein Vertrag.** Wer ein Ergebnis weglegt und
+spaeter wieder einliest, muss ALLE Felder mitnehmen, die der Verbraucher
+braucht — nicht nur die, die im Kopf der Anzeige stehen. Und die Gegenprobe
+gehoert dazu: den Verbraucher mit einem Stand aus der DATEI fahren, nicht mit
+einem frisch gebauten Dict im Speicher. Ein Test, der `anlauf()` mit
+`handels_instr` direkt aufruft, war gruen, waehrend die laufende Spur den
+falschen Markt handelte.
+
+Zwei Sicherungen, die aus demselben Grund dazugehoeren:
+
+- **Ein Stand aus altem Schema wird verworfen, nicht akzeptiert.** Fehlt in
+  einer zwischengelagerten Zeile das neue Feld, wird neu geholt — sonst
+  schleppt der alte Stand den Fehler bis zum Ablauf mit.
+- **Der Rueckfall darf nie auf den unbrauchbaren Wert zeigen.** `anlauf()`
+  holt sich den Zwilling notfalls frisch aus der Tabelle des Boersenzugs; gibt
+  es keinen, entsteht KEIN Vorschlag (`kein XPERP-Zwilling, kein Anlauf`)
+  statt einer Order, die nur abgewiesen wird.

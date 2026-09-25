@@ -281,31 +281,35 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Kraken-Konto (Spot), Agenten/Handel/mosaic
 - [ ] **T-087 — swap handelt jetzt den XPERP-Kontrakt; der Geld-Blocker bleibt**
       Kontext: Der Fehler `OKX 50124` (25.09.2026, jede Runde) kam vom falschen
+      Markt-Namensraum: swap handelte `XAU-USDT-SWAP` (instType=SWAP), handelbar
+      ist auf diesem Konto nur der XPERP-Zwilling (`XAU-USD_UM_XPERP-310502`,
+      instType=FUTURES, belegt mit 93 gefuellten Kontrakten am 24.09.).
+      Behoben: `kandidaten.handels_kontrakte()` bildet je Basiswert auf den
+      Zwilling ab, `handeln.anlauf()` handelt ihn, und die Sperrliste nennt die
+      freie Margin (`nur 0.15 USDC frei, noetig 50.00`), damit AUTO_FREIGABE
+      kein Fenster fuer einen Lauf oeffnet, der nicht handeln kann.
       NACHGETRAGEN (25.09.2026, gleiche Spur): Der Umbau wirkte nur auf den
-      ERSTEN Lauf. `handeln.rangliste()` lagerte die Kennzahlen ohne den
+      ERSTEN Lauf. `handeln.rangliste()` lagerte die Kennzahlen OHNE den
       Zwilling zwischen - jeder Zyklus innerhalb der zwei Stunden Gueltigkeit
       fiel in `anlauf()` auf den gewoehnlichen Perpetual zurueck. Belegt: die
-      gespeicherte Rangliste (05:37 UTC, nach dem Umbau) hatte kein
-      Zuletzt: 2026-09-25
+      gespeicherte Rangliste (05:37 UTC, nach dem Umbau) trug kein
+      `handels_instId`, und `--vorschau` zeigte `XAU-USDT-SWAP` statt des
       XPERP-Kontrakts. Behoben: die Zeile traegt `handels_instId`/
       `handels_instr`, ein Stand aus altem Schema wird verworfen statt bis zum
       Ablauf zu gelten, ohne Zwilling entsteht kein Vorschlag mehr, und
       `anlauf()` loest nie auf den Reihennamen auf (frische Zwillingstabelle
-      als Rueckfall). Vorschau nennt jetzt je Kandidat den gehandelten
-      Kontrakt; 57 Tests gruen (11 neue, Gegenprobe ohne Fix: 9 rot).
+      als Rueckfall). Die Vorschau nennt jetzt je Kandidat den GEHANDELTEN
+      Kontrakt, und die Sperrzeile steht auch dann da, wenn nichts sperrt.
+      Nachweis: 57 Tests gruen (11 neue; Gegenprobe ohne den Fix: 9 rot),
+      Vorschau listet `META-USD_UM_XPERP-310613` und `XAU-USD_UM_XPERP-310502`.
       OFFEN: swap kann weiterhin NICHT live handeln - es fehlt die freie
       Margin, gemessen 0.00 USDC frei (siehe T-089). Und die Papierposition im
-      Buch traegt noch die alte Kennung `XAU-USDT-SWAP`.
-      Naechster Schritt: bei freier Margin zuerst `handeln.py --vorschau`
-      lesen - dort muss je Kandidat der XPERP-Zwilling stehen.
-      freie Margin (`nur 0.15 USDC frei, noetig 50.00`), damit AUTO_FREIGABE
-      kein Fenster fuer einen Lauf oeffnet, der nicht handeln kann.
-      OFFEN: swap kann damit weiterhin NICHT live handeln - es fehlt die freie
-      Margin (siehe T-089). Und die Papierposition im Buch traegt noch die alte
-      Kennung `XAU-USDT-SWAP`; neue Positionen laufen unter dem XPERP-Namen.
-      Naechster Schritt: beobachten, ob der naechste Live-Zyklus mit offenem
-      Fenster eine Order versucht; bei freier Margin zuerst `--vorschau` lesen.
+      Buch traegt noch die alte Kennung `XAU-USDT-SWAP`; neue Positionen laufen
+      unter dem XPERP-Namen.
+      Naechster Schritt: bei freier Margin zuerst `handeln.py --vorschau` lesen -
+      dort muss je Kandidat der XPERP-Zwilling stehen.
       Angelegt: 2026-09-25
+      Zuletzt: 2026-09-25
       Betrifft: Agenten/Handel/swap (handeln.py, kandidaten.py, tests/)
 - [ ] **T-086 — moon-dev-ai-agents: RBI-Schleife laeuft, aber die Kursdatei ist die des Autors**
       Kontext: Die vier RBI-Laeufer des GUI starten seit 25.09.2026 (UTF-8 +

@@ -179,8 +179,19 @@ def rangliste(z, still=True, vorsortiert=60):
     if alt:
         vergangen = (datetime.now(timezone.utc)
                      - datetime.fromisoformat(alt)).total_seconds() / 60
-        if vergangen < SCAN_ALTER_MINUTEN:
-            return z["rangliste"]["werte"], vergangen
+        werte = z["rangliste"].get("werte") or []
+        # Ein Stand aus der Zeit VOR dem Zwilling (25.09.2026) traegt ihn
+        # nicht - und ohne ihn liefe jede Zeile ueber den Rueckfall auf den
+        # nicht handelbaren Perpetual. Der Stand wird deshalb verworfen statt
+        # bis zum Ablauf alter zu bleiben.
+        ohne_zwilling = [x for x in werte
+                         if not (x.get("handels_instr")
+                                 or x.get("handels_instId"))]
+        if werte and ohne_zwilling:
+            print("  Rangliste ohne XPERP-Zwilling (%d von %d Zeilen) - "
+                  "wird neu geholt" % (len(ohne_zwilling), len(werte)))
+        elif vergangen < SCAN_ALTER_MINUTEN:
+            return werte, vergangen
 
     d = kandidaten.sammle(still=still, vorsortiert=vorsortiert)
     schlank = [{
@@ -190,6 +201,13 @@ def rangliste(z, still=True, vorsortiert=60):
         "vola_tor": x.get("vola_tor", 1.20),
         "umsatz": x["umsatz"], "ruhe": x.get("ruhe", 0),
         "mae_long": x["mae_long"], "mae_short": x["mae_short"],
+        # Der GEHANDELTE Kontrakt muss die Zwischenlagerung ueberleben.
+        # Fehlte er hier, loeste anlauf() im naechsten Zyklus den gewoehnlichen
+        # Perpetual auf - und der ist auf diesem EEA-Konto nicht handelbar
+        # (OKX 50124). Die Rangliste lebt SCAN_ALTER_MINUTEN und wurde aus
+        # genau diesem Grund nie handelbar.
+        "handels_instId": x.get("handels_instId"),
+        "handels_instr": x.get("handels_instr"),
     } for x in d]
     z["rangliste"] = {"zeit": _jetzt(), "werte": schlank}
     return schlank, 0.0
@@ -220,10 +238,49 @@ def kandidaten_aus(werte, w, anzahl=6):
             deckel = auswahl.hebel_deckel(mae)
             if deckel < w["max_hebel"]:
                 continue
+            # Ohne handelbaren Zwilling gibt es keinen Vorschlag: der
+            # gewoehnliche Perpetual desselben Basiswerts ist auf diesem Konto
+            # nicht handelbar (OKX 50124), und ein Vorschlag, den die Boerse
+            # abweist, ist keiner. Der Zwilling kommt aus der Rangliste.
+            twin = x.get("handels_instr")
+            if not twin:
+                continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
+                        "handels_instId": x.get("handels_instId")
+                        or twin.get("instId"),
+                        "handels_instr": twin,
                         "seite": seite, "kategorie": x["kategorie"],
                         "punkte": x["punkte"][seite], "deckel": deckel})
     return aus
+
+
+_ZWILLINGE = None
+
+
+def _zwilling(kandidat):
+    """Der handelbare XPERP-Kontrakt zu einem Kandidaten - oder None.
+
+    Reihenfolge: der mitgegebene Kontrakt, die mitgegebene Kennung, zuletzt
+    eine frische Abfrage der Zwillingstabelle (ein Aufrufer mit eigener
+    Kandidatenzeile und ein Stand aus altem Ranglisten-Schema haben keinen).
+    Der gewoehnliche Perpetual wird NIE genommen: er ist auf diesem EEA-Konto
+    nicht handelbar (OKX 50124).
+    """
+    global _ZWILLINGE
+    instr = kandidat.get("handels_instr")
+    if instr:
+        return instr
+    if kandidat.get("handels_instId"):
+        instr = okxf.instrument(kandidat["handels_instId"])
+        if instr:
+            return instr
+    if _ZWILLINGE is None:
+        try:
+            _ZWILLINGE = kandidaten.handels_kontrakte()
+        except Exception as e:                           # noqa: BLE001
+            print("  Zwillingstabelle nicht abrufbar (%s)" % e)
+            return None
+    return _ZWILLINGE.get(kandidat.get("basis"))
 
 
 def anlauf(w, kandidat):
@@ -234,8 +291,10 @@ def anlauf(w, kandidat):
     der fehlt, wird der volle instId aufgeloest. Das Signal kommt vom
     gehandelten Kontrakt selbst, nicht aus der Rangliste.
     """
-    instr = kandidat.get("handels_instr") or okxf.instrument(kandidat["instId"])
+    instr = _zwilling(kandidat)
     if not instr:
+        print("  -- %-22s kein XPERP-Zwilling, kein Anlauf"
+              % kandidat["instId"])
         return None
     k = okxf.kerzen(instr["instId"], bot.BAR, 300)
     if len(k) < 60:
@@ -775,14 +834,19 @@ def lauf(modus):
 
     if modus == "vorschau":
         for k in kand[:10]:
-            print("  %-22s %-5s Punkte %.1f  Deckel %.1fx  (%s)"
-                  % (k["instId"], k["seite"], k["punkte"], k["deckel"],
-                     k["kategorie"]))
+            # Der GEHANDELTE Kontrakt, nicht der Reihenname: die Kennzahlen
+            # kommen vom umsatzstaerkeren Perpetual, die Order geht an den
+            # XPERP-Zwilling. Eine Vorschau, die nur den Reihennamen zeigt,
+            # liest sich, als wuerde der gewoehnliche Perpetual gehandelt.
+            print("  %-22s %-30s %-5s Punkte %.1f  Deckel %.1fx  (%s)"
+                  % (k["instId"], k.get("handels_instId") or "-- kein Zwilling",
+                     k["seite"], k["punkte"], k["deckel"], k["kategorie"]))
         print("\nOffener Bestand: %d Positionen, %.2f USD Margin"
               % (len(z["positionen"]), gebunden))
         g = sperren_live(w, s)
-        if g:
-            print("Live waere gesperrt durch: " + "; ".join(g))
+        # Immer drucken: eine fehlende Zeile ist von "nicht geprueft" nicht zu
+        # unterscheiden, und der Dauerlauf parst genau diese Zeile.
+        print("Live waere gesperrt durch: " + ("; ".join(g) if g else "nichts"))
         # Bewusst KEIN schreibe_zustand: eine Vorschau schreibt nicht (so
         # halten es omniquant, spiegel und nautilus). Vorher setzte jeder
         # Vorschau-Lauf einen frischen Herzschlag - und weil der Dauerlauf
