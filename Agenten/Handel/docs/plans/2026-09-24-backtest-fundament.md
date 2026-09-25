@@ -1601,6 +1601,40 @@ cd ../Bus && python tests/test_ende_zu_ende.py   # MUSS 'Ende-zu-Ende bestanden'
 
 ---
 
+---
+
+## Nachträge aus der Umsetzung (Aufgabe 3+4 gebaut, 2026-09-25)
+
+Vier Stellen des Plans waren falsch. Sie sind im gebauten Code korrigiert; hier
+stehen sie, damit der nächste Leser nicht über dieselben Annahmen stolpert.
+
+1. **Das Journal muss die Zeilen der SPUR enthalten, nicht nachgebaute.**
+   Der Plan schrieb nur Ausstiegszeilen (`aktion=verkauf`). `kosten_wendepunkt.
+   runden_aus_journal()` paart aber Einstieg ↔ Ausstieg je Instrument — ein
+   Journal ohne Einstiegszeilen hätte **0 Runden** ergeben und jede Kennzahl
+   wäre 0 gewesen. Richtig: die Journalzeilen der Spur werden abgefangen
+   (`journal()`-Naht) und so geschrieben, wie die Spur sie gebildet hat
+   (`kauf` MIT `stop`/`ziel`, `verkauf` mit Endpreis). Gemessen: Positionen
+   tragen `stop` **und** `ziel` (`squeeze/handeln.py:244-248`).
+2. **Ein rollierendes Fenster statt wachsendem Präfix** (`fenster=`).
+   Der Plan ließ die Spur je Schritt den ganzen Zeitraum bis hierher sehen.
+   Zwei Fehler auf einmal: (a) **untreu** — im Betrieb fordert jede Spur eine
+   feste `kerzen_anzahl` an, sie sieht nie die ganze Geschichte; (b) **O(n²)** —
+   gemessen 900 Schritte über 1.200 Kerzen = 20 s, hochgerechnet auf die volle
+   1H-Historie (50.223 Kerzen) ≈ **16 Stunden**. Mit Fenster bleibt der Schritt
+   konstant und die ganze Historie läuft in Minuten.
+3. **`max_kerzen=`** für kurze Läufe (Tests, Gegenprobe) — ohne ihn hätte die
+   Testsuite Stunden gebraucht.
+4. **Aufgabe 6 (Gebühr) wird zur Voraussetzung, nicht zur Nacharbeit.** Die
+   vier Indikator-Spuren tragen keine `gebuehr_taker`; bis sie sie tragen,
+   laufen Backtest-Läufe mit `--gebuehr 0.1` von Hand. Das ist ein
+   Zwischenstand, kein Endzustand.
+
+**Was die Gegenprobe beweist:** `squeeze` liefert über den neuen Kern exakt
+dieselben Runden wie `backtest_prognose.py` (gleiche Kerzen, beide Wege) — der
+neue Kern erfindet nichts, er macht denselben Walk über eine andere Datenquelle
+und um ein Vielfaches schneller.
+
 ## Self-Review dieses Plans
 
 - **Spezifikations-Abdeckung:** Datenschicht → Aufgaben 1–2. Replay-Kern →
