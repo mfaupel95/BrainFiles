@@ -3,7 +3,7 @@ id: 20260921-wiki-index
 title: 'Wiki — Index'
 tags: [betrieb, wiki]
 created: 2026-09-21
-updated: 2026-09-22
+updated: 2026-09-25
 related: ['[[LEITFADEN]]', '[[Wissen/INDEX]]']
 summary: 'Einstieg in das Agenten-Wiki: Verzeichnis aller Seiten mit Zweck, plus die Regel, wann hier etwas abgelegt wird.'
 ---
@@ -44,7 +44,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Lektionen/Tests.md](Lektionen/Tests.md) | Tests, die in echte Datenordner schreiben; Modulwaechter; sys.path-Reihenfolge |
 | [Lektionen/Windows-Umgebung.md](Lektionen/Windows-Umgebung.md) | PYTHONHOME, Pfadaufloesung, Umgebungsvariablen, Auslagerungsdatei/Commit-Limit |
 | [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig" |
-| [Lektionen/Boersen-und-Schluessel.md](Lektionen/Boersen-und-Schluessel.md) | Zwei Werkzeuge auf einem Schluessel (Nonce-Einheit), zwei Namen fuer ein Programmpaar |
+| [Lektionen/Boersen-und-Schluessel.md](Lektionen/Boersen-und-Schluessel.md) | Zwei Werkzeuge auf einem Schluessel (Nonce-Einheit), zwei Namen fuer ein Programmpaar, eine Abweisung ohne Zeugen ist keine Messung |
 
 ### Betrieb
 
@@ -75,6 +75,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Claude-Red-und-nerd-Bot.md](Werkzeuge/Claude-Red-und-nerd-Bot.md) | Offensive-Security-Sammlung claude-red als Fundus-Faehigkeit, der Bot `nerd`, Defender sperrt vier Skill-Dateien |
 | [Werkzeuge/SkillSpector.md](Werkzeuge/SkillSpector.md) | Sicherheitsscan der Skills (NVIDIA SkillSpector): Aufruf, Falschmeldungen, Risikowert lesen |
 | [Werkzeuge/kraken-cli.md](Werkzeuge/kraken-cli.md) | Kraken CLI selbst gebaut (Windows, kein WSL), Wrapper `Agenten/Werkzeuge/kraken.ps1`, die Schluessel-Namen-Falle, Papiermodus mit echter Gebuehr |
+| [Werkzeuge/kraken-abweisungs-sonde.md](Werkzeuge/kraken-abweisungs-sonde.md) | Zeuge und Wache fuer zeitweise Kraken-Abweisungen: vier Wege (offen/signiert x Spot/Futures), Kuehlzeit gegen den Lockout-Timer, Rohantwort im Fehlerfall |
 | [Werkzeuge/Ollama-Bruecke.md](Werkzeuge/Ollama-Bruecke.md) | Der eine Weg zum lokalen Sprachmodell-Urteil ohne Schluessel: Ollamas `/v1` liefert bei Denk-Modellen leeren content, die Bruecke ruft nativ mit `think:false`; Wache und Treiber-Anschluss |
 | [Werkzeuge/openmontage.md](Werkzeuge/openmontage.md) | Video- und Bilderzeugung: Zero-Key-Demos, welcher Anbieterschluessel wirklich traegt, lokale Diffusion auf der 3060 Ti, CUDA-Wheel-Falle |
 | [Werkzeuge/Kronos.md](Werkzeuge/Kronos.md) | Kerzen-Foundation-Modell lokal: Aufruf, der pandas-2.2.2-Absturz (`-X faulthandler`), erster Messbefund gegen die Nullinie |

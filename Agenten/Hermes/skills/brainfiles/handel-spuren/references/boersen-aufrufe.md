@@ -102,6 +102,14 @@ margin   True
 | `EOrder:Invalid price:...can only be specified up to N decimals` | roher Rechenwert | `preis_gerundet(paar, preis, "auf")` |
 | `EAPI:Invalid nonce` | ein anderes Werkzeug (z.B. kraken-cli) hat den Schluessel-Nonce hochgesetzt | `nonce_pool.vorwaerts()`; `_roh_privat` wiederholt bis zu dreimal |
 | `EAPI:Invalid key` | falscher VARIABLENNAME gelesen (`KRAKEN_API_KEY` statt `KRAKEN_SPOT_API_KEY`) | das SPOT-Paar benutzen |
+| `EGeneral:Permission denied` (Spot) / `authenticationError` (Futures) | Schluessel-, Rechte- ODER Konto-Ebene - Kraken sperrt ein Konto zeitweise (`EGeneral:Temporary lockout`, ~15 min), wenn zu viele Fehlversuche kamen | NICHT weiterklopfen (jeder Versuch setzt den Timer zurueck); Lage messen mit `Agenten/Handel/kraken_abweisungs_sonde.py`, dann 60 min warten |
+| `5xx`/`1020` OHNE JSON | cloudflare/Netz, kein Kraken-Fehler | kurze Pause, dann wiederholen - `content-type` im Zeugen zeigt es |
+
+**Abweisung ohne Zeugen ist keine Messung.** Ein Nachweis ueber die Lage (Status,
+Header, Rohantwort) laeuft als Sonde + Cron `kraken-abweisung-wache`; sie misst
+OEFFENTLICHE und SIGNIERTE Wege, weil ein fallender oeffentlicher Aufruf kein
+Schluesselproblem sein kann. Details: Wiki `Werkzeuge/kraken-abweisungs-sonde.md`,
+Lektion 3 in `Lektionen/Boersen-und-Schluessel.md`.
 
 ## OKX (scanner/okx.py)
 

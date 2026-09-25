@@ -226,10 +226,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Erledigt am 25.09.2026: `kraken_futures.guthaben()` las nur `cash.balances`
       (alles 0,0) statt des flex-Kontos - die Spur sah deshalb 0 USD, obwohl 141,59
       verfuegbar waren. Jetzt flex zuerst, cash als Rueckfall; Tests 27 gruen.
-      Naechster Schritt: beim naechsten Auftreten Zeitpunkt notieren und pruefen, ob
-      Max in dem Fenster im Kraken-Portal war (Schluessel bearbeiten/erzeugen).
+      Erledigt am 25.09.2026 (zweiter Teil, Werkzeug): Der Ausfall blieb offen, weil
+      im Haus NICHTS aufgezeichnet wurde - kein Log, kein Journal, keine Zeile mit
+      Statuscode, Header oder Rohantwort; die Spuren liefen im Papier weiter und
+      schrieben `(papier) ok`. Neu: `Agenten/Handel/kraken_abweisungs_sonde.py`
+      misst je Lauf vier Wege (oeffentlich/signiert x Spot/Futures), unterscheidet
+      damit `netz` von `schluessel`, schreibt im Fehlerfall den ZEUGEN (Status,
+      content-type, cloudflare-Header, Rohkoerper) nach
+      `Agenten/Handel/cache/kraken-abweisungen.jsonl` und wartet nach einer
+      Abweisung 60 min (bei einem Konto-Lockout setzt jeder Versuch den Timer
+      zurueck). Wache: Cron `kraken-abweisung-wache` (30 min, no_agent, Telegram).
+      Test-Nachweis: 10 Tests mit Kraken-Attrappe, echter Lauf gesund (03:16), Wache
+      schweigt. Wiki: Werkzeuge/kraken-abweisungs-sonde.md, Lektion 3 in
+      Lektionen/Boersen-und-Schluessel.md.
+      Naechster Schritt: Beim naechsten Auftreten die Protokollzeile lesen
+      (`lage` sagt die Ebene, `zeuge.roh_*` Rechte gegen Lockout gegen cloudflare)
+      und Max fragen, ob er in dem Fenster im Kraken-Portal war (Schluessel
+      bearbeiten/erzeugen).
       Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py,
+      Agenten/Handel/kraken_abweisungs_sonde.py
 - [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
       Kontext: Der Arm ist scharf (handel_erlaubt=true, freigabe.erfuellt=true,
       live_einsatz_eur 1.0), kauft aber nur bei einem FRISCHEN Kauf der kopier-Spur.
@@ -259,6 +275,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: den von kraken.py benutzten nonce bzw. die Antwort im
       Fehlerfall mitschreiben (Header/Statuscode) und gegen den erfolgreichen Fall
       stellen - dies ist der einzige verbleibende Unterschied.
+      Werkzeug vorhanden (25.09.2026): `Agenten/Handel/kraken_abweisungs_sonde.py`
+      haelt genau das fest (Status, content-type, Header, Rohkoerper) und laeuft als
+      Cron `kraken-abweisung-wache` alle 30 min; sie deckt den signierten Spot-Weg
+      ueber die Haus-kraken.py ab. Beim naechsten Auftreten zuerst dort nachsehen
+      (cache/kraken-abweisungen.jsonl), statt eine neue Sonde zu bauen.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/nautilus_kraken/kraken_rest.py,
       Agenten/Handel/kraken/kraken.py
