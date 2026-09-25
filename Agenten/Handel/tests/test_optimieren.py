@@ -107,6 +107,49 @@ class UrteilTest(unittest.TestCase):
         self.assertFalse(u["ueberlebt"])
 
 
+class WalkForwardTest(unittest.TestCase):
+    """Jedes Fenster zaehlt, nicht "erstes gegen letztes"."""
+
+    @staticmethod
+    def f(runden, je_runde):
+        return {"runden": runden, "ergebnis_summe": runden * je_runde}
+
+    def test_gewinnt_alle_fenster_und_ist_positiv_im_mittel(self):
+        kand = [self.f(50, 1.0), self.f(50, 0.8), self.f(50, 1.2)]
+        basis = [self.f(50, 0.2), self.f(50, 0.3), self.f(50, 0.1)]
+        u = optimieren.urteil_walkforward(kand, basis, gebuehr_pct=0.1)
+        self.assertTrue(u["ueberlebt"])
+        self.assertEqual(3, u["fenster_gewonnen"])
+
+    def test_ein_verlorenes_fenster_kippt_das_urteil(self):
+        kand = [self.f(50, 1.0), self.f(50, 0.05), self.f(50, 1.2)]
+        basis = [self.f(50, 0.2), self.f(50, 0.3), self.f(50, 0.1)]
+        u = optimieren.urteil_walkforward(kand, basis, gebuehr_pct=0.1)
+        self.assertFalse(u["ueberlebt"])
+        self.assertIn("verliert in 1 von 3", u["grund"])
+
+    def test_alle_gewonnen_aber_im_mittel_negativ_faellt_durch(self):
+        kand = [self.f(50, 0.05), self.f(50, 0.05)]
+        basis = [self.f(50, -0.9), self.f(50, -0.9)]     # noch schlechter
+        u = optimieren.urteil_walkforward(kand, basis, gebuehr_pct=0.1)
+        self.assertFalse(u["ueberlebt"])
+        self.assertIn("negativ", u["grund"])
+
+    def test_zu_wenige_auswertbare_fenster_ist_ein_befund(self):
+        kand = [self.f(5, 9.0), self.f(50, 1.0), self.f(4, 8.0)]
+        basis = [self.f(5, 0.1), self.f(50, 0.2), self.f(4, 0.1)]
+        u = optimieren.urteil_walkforward(kand, basis, gebuehr_pct=0.1)
+        self.assertFalse(u["ueberlebt"])
+        self.assertIn("Befund", u["grund"])
+        self.assertEqual(2, u["fenster_zu_wenig"])
+
+    def test_fenstermittel_wird_berichtet(self):
+        kand = [self.f(50, 1.0), self.f(50, 2.0)]
+        basis = [self.f(50, 0.1), self.f(50, 0.1)]
+        u = optimieren.urteil_walkforward(kand, basis, gebuehr_pct=0.1)
+        self.assertAlmostEqual(1.3, u["netto_mittel"], places=3)
+
+
 class TotesFeldTest(unittest.TestCase):
     """Ein Rasterfeld, das nichts unterscheidet, gehoert in den Bericht."""
 
@@ -238,7 +281,9 @@ class TrockenTest(unittest.TestCase):
         finally:
             rp.verzeichnis = alt
         self.assertEqual([], aus["kandidaten"])
-        self.assertEqual(18, aus["plan"]["kandidaten"])
+        # 3 x 3 Rasterfelder. Vorher 18 (3 x 2 x 3) - das tote Feld
+        # `pflicht_stop_prozent_max` ist entfernt, siehe spur_opt.json.
+        self.assertEqual(9, aus["plan"]["kandidaten"])
         self.assertGreater(aus["plan"]["geschaetzte_sekunden"], 0)
         self.assertEqual([], os.listdir(tmp))
 

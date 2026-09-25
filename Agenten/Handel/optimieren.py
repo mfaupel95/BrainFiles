@@ -194,6 +194,58 @@ def urteil_aus(such, pruef, weitere=None, grundlinie=None, gebuehr_pct=0.0,
                         if grundlinie is not None else 0.0)}
 
 
+def urteil_walkforward(je_fenster, basis_fenster, gebuehr_pct=0.0,
+                       mindest_runden=MINDEST_RUNDEN_JE_FENSTER):
+    """Urteil ueber ALLE Fenster - nicht "erstes gegen letztes".
+
+    Die erste Fassung verglich die Suchhaelfte des ERSTEN mit der Pruefhaelfte
+    des LETZTEN Fensters. Bei zwei Fenstern ist das noch vertretbar, bei vier
+    willkuerlich: welches Paar man nimmt, entscheidet ueber den Ausgang. Hier
+    zaehlt jedes auswertbare Fenster als eigener Vergleich Kandidat gegen
+    Grundlinie, und ein Kandidat muss sie ALLE gewinnen - bei mindestens zwei
+    auswertbaren Fenstern.
+
+    Auswertbar heisst: genug Runden. Ein Fenster mit 5 Runden kann keinen
+    Vorsprung von einem halben Prozent zeigen, es ist Rauschen.
+    """
+    gewonnen, verloren, zu_wenig, netto_liste = 0, 0, 0, []
+    for kand, basis in zip(je_fenster or [], basis_fenster or []):
+        if kand.get("runden", 0) < mindest_runden:
+            zu_wenig += 1
+            continue
+        n_kand, n_basis = je_runde(kand, gebuehr_pct), je_runde(basis, gebuehr_pct)
+        netto_liste.append(n_kand)
+        if n_kand > n_basis + MINDEST_VORSPRUNG_PCT:
+            gewonnen += 1
+        else:
+            verloren += 1
+    if gewonnen + verloren < 2:
+        return {"ueberlebt": False, "fenster_gewonnen": gewonnen,
+                "fenster_verloren": verloren, "fenster_zu_wenig": zu_wenig,
+                "netto_mittel": round(sum(netto_liste) / len(netto_liste), 4)
+                                if netto_liste else 0.0,
+                "grund": "weniger als 2 auswertbare Fenster (%d zu wenig Runden) "
+                         "- ein Befund, keine Messung" % zu_wenig}
+    mittel = sum(netto_liste) / len(netto_liste)
+    if verloren:
+        return {"ueberlebt": False, "fenster_gewonnen": gewonnen,
+                "fenster_verloren": verloren, "fenster_zu_wenig": zu_wenig,
+                "netto_mittel": round(mittel, 4),
+                "grund": "kein Hebel: verliert in %d von %d auswertbaren Fenstern"
+                         % (verloren, gewonnen + verloren)}
+    if mittel <= 0:
+        return {"ueberlebt": False, "fenster_gewonnen": gewonnen,
+                "fenster_verloren": verloren, "fenster_zu_wenig": zu_wenig,
+                "netto_mittel": round(mittel, 4),
+                "grund": "kein Hebel: gewinnt jedes Fenster, ist aber im Mittel "
+                         "negativ (%.3f %%)" % mittel}
+    return {"ueberlebt": True, "fenster_gewonnen": gewonnen,
+            "fenster_verloren": verloren, "fenster_zu_wenig": zu_wenig,
+            "netto_mittel": round(mittel, 4),
+            "grund": "gewinnt alle %d auswertbaren Fenster, netto %.3f %% je Runde"
+                     % (gewonnen, mittel)}
+
+
 def felder_ohne_wirkung(ergebnisse):
     """Suchfelder, deren Werte im Ergebnis NICHTS unterscheiden.
 
@@ -324,7 +376,7 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
                                       dt.timezone.utc)))
 
     ergebnisse = []
-    grundlinie = None
+    grundlinie, grundlinie_fenster = None, None
     with tempfile.TemporaryDirectory() as tmp:
         temp = os.path.join(tmp, "fenster.csv")
 
@@ -343,6 +395,7 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
             basis_fenster = [_fenster_kennzahlen(basis_zeilen, a, b, temp)
                              for a, b in grenzen]
             grundlinie = basis_fenster[-1] if basis_fenster else None
+            grundlinie_fenster = basis_fenster
         except Exception as e:                                     # noqa: BLE001
             print("Grundlinie nicht messbar (%s) - es wird gegen die Suchhaelfte "
                   "verglichen." % str(e)[:120])
@@ -366,8 +419,12 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
             if len(je_fenster) < 2:
                 ergebnisse.append({"werte": werte, "fehler": "zu wenige Fenster"})
                 continue
-            u = urteil_aus([je_fenster[0]], je_fenster[-1], je_fenster[1:-1],
-                           grundlinie=grundlinie, gebuehr_pct=gebuehr_pct)
+            if grundlinie_fenster and len(grundlinie_fenster) == len(je_fenster):
+                # Mehrere Fenster: jedes Paar zaehlt (Walk-Forward).
+                u = urteil_walkforward(je_fenster, grundlinie_fenster, gebuehr_pct)
+            else:
+                u = urteil_aus([je_fenster[0]], je_fenster[-1], je_fenster[1:-1],
+                               grundlinie=grundlinie, gebuehr_pct=gebuehr_pct)
             ergebnisse.append({"werte": werte, "je_fenster": je_fenster,
                                "netto_je_runde": round(
                                    je_runde(je_fenster[-1], gebuehr_pct), 4), **u})
