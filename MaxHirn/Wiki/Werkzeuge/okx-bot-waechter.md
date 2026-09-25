@@ -182,3 +182,21 @@ Daraus drei Regeln:
 
 Nachpruefbar mit `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py` (Wegwerfsonde
 vom 25.09.2026; die Uebernahme in den Waechter steht als T-076).
+
+## Eine laufende Contract-DCA nimmt keinen Stop an (25.09.2026)
+
+Gemessen an acht laufenden Future-DCA-Bots: `dca/amend-order-algo` weist JEDEN
+Amend mit `51291: The bot doesn't exist or has already stopped` ab - auch mit
+korrektem Koerper (alle Felder wie in der Doku) und laufendem Bot. Der Grund steht
+in der Doku-Ueberschrift: der Endpunkt heisst **"Amend SPOT dca basic param"**, ist
+also nur fuer SPOT-DCA. Fuer `algoOrdType: contract_dca` gibt es keinen Amend.
+
+Ein Stop auf die POSITION geht ebenfalls nicht: `/api/v5/account/positions` liefert
+fuer dieses Konto **0 Eintraege** (auch mit `instType=FUTURES`/`SWAP`); abgefragt mit
+dem Bot-Instrument kommt eine Zeile mit `pos=0`. Die Bots halten ihre Marge intern,
+es liegt keine Position zum Absichern draussen.
+
+**Das einzige Schutzmittel ist deshalb `dca/stop`** - den Bot anhalten, was die
+Position zum Markt schliesst (Tor `stop_erlaubt` in der `wachen.json`).
+Anders als beim Grid: dort gibt es `grid/amend-order-algo` (der ZEC-Grid-Stop 1354
+liess sich damit setzen, `sCode 0`).

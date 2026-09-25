@@ -59,6 +59,23 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-088 — OKX-Contract-DCA laesst sich nicht mit einem Stop versehen - nur der Bot selbst**
+      Kontext: Auftrag Max 25.09.2026 ("Okx-bot-wache stop setzen"). Zwei Wege geprueft,
+      beide zu: (a) `POST /api/v5/tradingBot/dca/amend-order-algo` heisst in der OKX-Doku
+      woertlich "Amend **spot** dca basic param" - acht laufende CONTRACT-DCAs wurden mit
+      `51291: The bot doesn't exist or has already stopped` abgewiesen; der slPct einer
+      laufenden Contract-DCA ist also nicht setzbar. (b) ein Stop auf die POSITION geht
+      nicht, weil das Konto keine Position zeigt: `/api/v5/account/positions` liefert 0
+      Eintraege (auch mit instType FUTURES/SWAP), je Bot-Instrument eine Zeile mit pos=0.
+      Die Bots halten ihre Marge also intern. Folge: das EINZIGE Schutzmittel ist
+      `dca/stop` - den Bot anhalten (Tor `stop_erlaubt`), was die Position zum Markt
+      schliesst. Der Waechter verlangt das fuer UNI (NOTFALL, 4,3 % vor der Liquidation,
+      PnL -59 %, Munition 0/11).
+      Naechster Schritt: entscheiden - UNI-Bot anhalten (realisiert rund -59 % / ~-40 USDC)
+      ODER laufen lassen. Danach `stop_erlaubt` in `okx_bot_waechter/wachen.json` setzen
+      und `waechter.py --anwenden` fahren.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3947610369740500992
 - [ ] **T-087 — moondev_listingarb auf OKX: das Spot-Guthaben ist durch die Scanner-Stops gesperrt**
       Kontext: Auf Auftrag Max 25.09.2026 auf OKX/USDC umgestellt (vorher kraken/EUR,
       dort nur 0,71 EUR frei). Der Orderweg bindet jetzt `mosaic/okx_spot`
