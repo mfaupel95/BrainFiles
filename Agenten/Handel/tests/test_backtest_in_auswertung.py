@@ -1,0 +1,97 @@
+"""Die Backtest-Zeile in der Auswertung.
+
+Sie muss drei Faelle SAUBER trennen: gerechnet, nicht gerechnet und nicht
+nachrechenbar. Ein leeres Feld waere von einem Messwert nicht zu unterscheiden.
+"""
+
+import csv
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+HANDEL = os.path.dirname(HIER)
+sys.path.insert(0, HANDEL)
+
+import auswertung_alle                                            # noqa: E402
+
+SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund"]
+
+
+def _journal(pfad, runden, ts_start=1700000000000):
+    """Ein Journal mit EIN- und AUSSTIEGSZEILEN (nur so paart die Hausfunktion)."""
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    with pfad.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=SPALTEN + ["_kerzen_ts"])
+        w.writeheader()
+        for i in range(runden):
+            ts = ts_start + i * 3600000
+            for akt, preis in (("kauf", 100.0), ("verkauf", 105.0)):
+                w.writerow({"zeit": "2024-01-01T00:00:00+00:00", "modus": "papier",
+                            "aktion": akt, "inst": "BTC-USDC", "seite": "long",
+                            "preis": preis, "einsatz_usd": "100.00",
+                            "stop": "95.0", "ziel": "110.0", "stop_pct": "5.0",
+                            "grund": "backtest", "_kerzen_ts": ts})
+
+
+class StandTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt = auswertung_alle.BACKTEST_WURZEL
+        auswertung_alle.BACKTEST_WURZEL = Path(self.tmp.name)
+
+    def tearDown(self):
+        auswertung_alle.BACKTEST_WURZEL = self.alt
+        self.tmp.cleanup()
+
+    def test_nicht_nachrechenbare_spur_nennt_den_grund(self):
+        text = auswertung_alle.backtest_stand("moondev_whale")
+        self.assertIn("nicht nachrechenbar", text)
+        self.assertIn("50030", text)
+
+    def test_kern_spur_nennt_die_fehlende_naht(self):
+        self.assertIn("keine Kerzen-Naht", auswertung_alle.backtest_stand("scanner"))
+
+    def test_spur_ohne_lauf_wird_als_kein_lauf_gemeldet(self):
+        text = auswertung_alle.backtest_stand("squeeze")
+        self.assertIn("kein Lauf", text)
+        self.assertIn("replay.py", text)
+
+    def test_gerechneter_lauf_nennt_runden_treffer_und_zeitraum(self):
+        _journal(Path(self.tmp.name) / "squeeze" / "ganz" / "handelsjournal.csv", 5)
+        text = auswertung_alle.backtest_stand("squeeze")
+        self.assertIn("5 Runden", text)
+        self.assertIn("%", text)
+        self.assertIn("2023-11", text)          # aus den Kerzenstempeln
+        self.assertIn("Lauf 'ganz'", text)
+
+    def test_der_lauf_mit_den_meisten_zeilen_gewinnt(self):
+        """Nicht der neueste: die Parametersuche schreibt kurze Fensterlaeufe."""
+        _journal(Path(self.tmp.name) / "squeeze" / "ganz" / "handelsjournal.csv", 9)
+        _journal(Path(self.tmp.name) / "squeeze" / "squeeze_abcd1234"
+                 / "handelsjournal.csv", 2)
+        neu = Path(self.tmp.name) / "squeeze" / "squeeze_abcd1234" / "handelsjournal.csv"
+        os.utime(neu, (2_000_000_000, 2_000_000_000))       # kuenstlich neu
+        self.assertIn("Lauf 'ganz'", auswertung_alle.backtest_stand("squeeze"))
+
+    def test_alter_lauf_ohne_kerzenuhr_sagt_das(self):
+        pfad = Path(self.tmp.name) / "squeeze" / "alt" / "handelsjournal.csv"
+        _journal(pfad, 3)
+        with pfad.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=SPALTEN)       # ohne _kerzen_ts
+            w.writeheader()
+            for akt, preis in (("kauf", 100.0), ("verkauf", 105.0)):
+                w.writerow({"zeit": "2024-01-01T00:00:00+00:00", "modus": "papier",
+                            "aktion": akt, "inst": "BTC-USDC", "seite": "long",
+                            "preis": preis, "einsatz_usd": "100.00",
+                            "stop": "95.0", "ziel": "110.0", "stop_pct": "5.0",
+                            "grund": "backtest"})
+        self.assertIn("vor der Kerzenuhr",
+                      auswertung_alle.backtest_stand("squeeze"))
+
+
+if __name__ == "__main__":
+    unittest.main()

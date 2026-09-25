@@ -29,7 +29,7 @@ import csv
 import json
 import statistics
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import stoerungen  # gleicher Ordner: trennt Zwangsschluesse von Handelsrunden
@@ -510,6 +510,82 @@ def zeige(spur, k):
               "Belastbar wird es ab %d." % (k["n"], MIN_RUNDEN))
 
 
+# --- Backtest (historisch) --------------------------------------------------
+# Der Backtest ist eine MESSUNG, keine Live-Erfahrung: seine Runden zaehlen
+# NICHT fuer die Freigabe-Bedingungen (Bedingung 1, Wissen/Handelsregeln.md).
+# Deshalb steht er hier in einer EIGENEN Sektion und wird nirgends zu den
+# Live-Runden addiert. Werkzeuge: replay.py, optimieren.py; Doku:
+# Wiki/Handel/Backtest-Fundament.md
+BACKTEST_WURZEL = Path(__file__).resolve().parent / "daten" / "backtest"
+
+
+def backtest_stand(spur):
+    """Ein Satz je Spur: was der Backtest sagt - oder warum er nichts sagt.
+
+    Der Grund wird IMMER genannt. "kein Lauf" und "nicht nachrechenbar" sind
+    verschiedene Dinge, und ein leeres Feld waere von einem Messwert nicht zu
+    unterscheiden.
+    """
+    import replay                                                # noqa: PLC0415
+
+    grund = replay.NICHT_NACHRECHENBAR.get(spur)
+    if grund:
+        return "nicht nachrechenbar (%s)" % grund
+    ordner = BACKTEST_WURZEL / spur
+    if not ordner.is_dir():
+        return "kein Lauf - python replay.py --spur %s --lauf ganz" % spur
+    # Der Lauf mit den MEISTEN Zeilen gewinnt, nicht der neueste: die
+    # Parametersuche schreibt viele kurze Fensterlaeufe (6 Monate), deren
+    # Zahlen neben einem Lauf ueber die ganze Historie irrefuehrend klein
+    # waeren. Die Zeilenzahl ist der beste vorhandene Massstab fuer den
+    # abgedeckten Zeitraum - und der wird mitgenannt.
+    laeufe = []
+    for name in sorted(p.name for p in ordner.iterdir() if p.is_dir()):
+        pfad = ordner / name / "handelsjournal.csv"
+        if pfad.is_file():
+            with pfad.open(encoding="utf-8", newline="") as f:
+                zeilen = sum(1 for _ in csv.reader(f)) - 1      # ohne Kopf
+            laeufe.append((zeilen, name, pfad))
+    if not laeufe:
+        return "kein Lauf mit Journal"
+    zeilen_zahl, name, pfad = max(laeufe)
+    try:
+        k = replay.kennzahlen(pfad)
+    except Exception as e:                                       # noqa: BLE001
+        return "Journal nicht lesbar (%s)" % str(e)[:60]
+    if not k.get("runden"):
+        return "Lauf '%s' ohne auswertbare Runde" % name
+    return ("%d Runden, %.0f %% Treffer, %+.3f %% je Runde, %s (%d Zeilen, "
+            "Lauf '%s')"
+            % (k["runden"], 100 * k.get("p", 0.0),
+               k.get("ergebnis_summe", 0.0) / k["runden"],
+               _backtest_zeitraum(pfad), zeilen_zahl, name))
+
+
+def _backtest_zeitraum(pfad):
+    """Der abgedeckte Zeitraum eines Backtest-Journals - aus den Kerzenstempeln."""
+    try:
+        with pfad.open(encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+    except (OSError, ValueError):
+        return "Zeitraum unbekannt"
+    stempel = []
+    for r in rows:
+        ts = r.get("_kerzen_ts")
+        if ts:
+            try:
+                stempel.append(float(ts))
+            except (TypeError, ValueError):
+                pass
+    if not stempel:
+        # Laeufe vor dem 2026-09-25 haben den Kerzenstempel nicht. Die Spalte
+        # `zeit` waere die WANDUHR des Laufs - sie als Zeitraum auszugeben waere
+        # eine falsche Aussage, deshalb steht hier der Grund.
+        return "Zeitraum unbekannt (Lauf vor der Kerzenuhr)"
+    fmt = lambda ms: datetime.fromtimestamp(ms / 1000.0, timezone.utc).strftime("%Y-%m")  # noqa: E731
+    return "%s bis %s" % (fmt(min(stempel)), fmt(max(stempel)))
+
+
 def main():
     global MIN_RUNDEN, STUFE
     if hasattr(sys.stdout, "reconfigure"):
@@ -608,6 +684,14 @@ def main():
     if STUFE:
         print("  Gezaehlt wurde die Risikostufe %s - der Basislauf laeuft "
               "daneben unveraendert weiter." % STUFE)
+
+    print("\n=== Backtest (historisch) - zaehlt NICHT fuer die Freigabe ===")
+    for spur in spuren:
+        print("  %-14s %s" % (spur, backtest_stand(spur)))
+    print("  Runden aus historischen Daten sind eine Messung, keine "
+          "Live-Erfahrung: sie fuellen keine Freigabe-Bedingung.")
+    print("  Fahren: python replay.py --spur <spur> --lauf ganz | "
+          "Suchen: python optimieren.py --spur <spur>")
 
 
 if __name__ == "__main__":
