@@ -95,3 +95,21 @@ Nachtsicherung (nie dort committen). Ein eigener Zweig kostet Ueberblick ohne Ge
 Fruehwarnung, wenn die Nachtsicherung stillsteht:
 `git log -1 --format=%ci zwischenstand`; Gegenprobe `git add -A --dry-run`
 (Exitcode 128 = ein Fremd-Klon im Baum ohne ausgecheckten Commit blockiert das Staging).
+
+## 6. Ein `D` im Arbeitsbaum wandert in den EIGENEN Commit
+
+25.09.2026: `Agenten/Hermes/scripts/test_breite_wache.py` war committet
+(`ad081ef`) und verschwand **zweimal** aus dem Arbeitsbaum. Beim zweiten Mal
+stand beim Commit `D Agenten/Hermes/scripts/test_breite_wache.py` in der eigenen
+Pfadliste - `git add <pfad>` stagt dann das LOESCHEN, und der Commit nahm 125
+Zeilen mit. Nur weil der Stand in `ad081ef` lag, war er zurueckzuholen.
+
+Die Ursache der Loeschung ist offen (kein Defender-Fund, kein Cron-Job, kein
+`reset`/`clean` im Reflog). Die Lehre haengt nicht daran:
+
+**Vor jedem Commit `git status --porcelain -- <pfade>` LESEN, nicht nur
+abschicken.** Steht dort ein `D` oder `M` an einer Datei, die man nicht angefasst
+hat, ist das ein Befund: erst `git checkout <letzter-guter-commit> -- <pfad>`,
+den Inhalt zurueckholen, dann committen. Eine Pfadliste macht einen Commit nicht
+sicher - nur ihr Inhalt tut es.
+Gegenprobe danach: `git cat-file -e HEAD:<pfad>` (Exitcode 0 = liegt in HEAD).

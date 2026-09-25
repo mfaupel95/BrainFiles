@@ -59,6 +59,20 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-100 — Ungeklaerte Loeschung: test_breite_wache.py verschwand zweimal aus dem Arbeitsbaum**
+      Kontext: Am 25.09.2026 war die Datei committet (`ad081ef`) und lag zweimal
+      nicht mehr auf der Platte; beim zweiten Mal nahm mein eigener Commit das
+      Loeschen mit (`c49111f`, 125 Zeilen), wiederhergestellt in `a257c62`.
+      Ausgeschlossen: Defender (kein Fund seit 24.09.), Cron-Jobs (41 geprueft),
+      `git reset`/`checkout`/`clean` (Reflog zeigt nur Commits). Betroffen war
+      NUR diese Datei - `breite.py` und `breite-wache.py` blieben liegen.
+      Naechster Schritt: beim naechsten Auftreten sofort einen Datei-Watcher auf
+      `Agenten/Hermes/scripts/` setzen (FileSystemWatcher) und den Loescher
+      namentlich fassen. Bis dahin gilt die Lehre in
+      `Wiki/Lektionen/Git-und-Textdateien.md` §6: den Arbeitsbaum VOR dem Commit
+      lesen, ein `D` in der eigenen Pfadliste ist ein Befund.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/scripts/
 - [ ] **T-099 — Breite-Wache justieren: sind 10 Punkte Rueckgang richtig?**
       Kontext: Die Wache meldet seit 25.09.2026 einen Rueckgang erst ab **10
       Punkten** gegenueber der letzten Meldung - vorher war sie innerhalb der
