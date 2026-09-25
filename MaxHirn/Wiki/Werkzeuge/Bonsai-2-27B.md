@@ -52,22 +52,54 @@ Sprachmodell-Spuren) erreicht ihn damit nicht.
 | 16384 | 99 | 10,3–12,6 t/s | 10–44 t/s | 7.848 / 177 MiB |
 
 Der grosse Kontext **frisst den Speicher, den die Prompt-Verarbeitung braucht** —
-mehr Kontext war hier nicht schneller, sondern viermal langsamer. Deshalb ist
-8192 die Vorgabe des Starters.
+mehr Kontext war hier nicht schneller, sondern viermal langsamer. Fuer reine
+Chat-Aufrufe bleibt 8192 deshalb richtig (`-Kontext 8192`); die **Vorgabe** ist
+seit dem 25.09.2026 trotzdem 65536, weil Hermes 64k verlangt (Abschnitt unten).
 
-## Die harte Grenze: kein Hermes-Agent-Modell
+## 64k geht doch - und damit ist es ein Hermes-Modell (25.09.2026)
 
-`hermes -z … --provider bonsai -m bonsai` bricht ab mit:
+Der erste Befund („kein Hermes-Agent-Modell") galt fuer die damalige Vorgabe von
+**8192** Kontext; Hermes lehnt das mit
 
 > Model bonsai has a context window of 8,192 tokens, which is below the minimum
 > 64,000 required by Hermes Agent.
 
-64k braeuchten 4 GiB KV **plus** 5,5 GiB Gewichte = 9,5 GiB — auf einer 8-GB-Karte
-unmoeglich. Der Provider steht trotzdem in der Config: fuer API-Kunden ist der
-Dienst nutzbar, und der Agent scheitert mit einer klaren Meldung statt still.
+ab. Gemessen ist 64k auf dieser Karte aber **moeglich**: die Hybrid Attention
+(~75 % linear) braucht viel weniger KV als ein Voll-Attention-Modell derselben
+Groesse.
 
-Nutzbar ist es fuer: eigene Skripte, Einzelfragen, zusammenfassen, uebersetzen,
-Bilder (mit mmproj), Vergleichsmessungen gegen kleinere lokale Modelle.
+| Kontext | -ngl | Erzeugung | Prompt | VRAM belegt/frei | von Hermes angenommen? |
+|---|---|---|---|---|---|
+| 8192 | 99 | 31,7 t/s | 666 t/s | 7.703 / 322 MiB | nein (unter 64k) |
+| 16384 | 99 | 10,3–12,6 t/s | 10–44 t/s | 7.848 / 177 MiB | nein |
+| **65536** | 99, `-fa on` | **12,1 t/s** | **85,1 t/s** | **7.772 / 253 MiB** | **ja** (`n_ctx: 65536`) |
+
+`-Kontext 65536` ist deshalb die **Vorgabe des Starters**; 8192 bleibt der
+schnellere Weg fuer reine Chat-Aufrufe (`-Kontext 8192`, Sprachmodell-Spuren).
+Der Dienst meldet sich dank `--alias bonsai` unter dem kurzen Namen `bonsai`
+(vorher stand dort der ganze GGUF-Pfad).
+
+**Folge fuer den Betrieb:** die Karte ist mit 64k voll (253 MiB frei) — Ollama
+und Bonsai teilen sie sich weiterhin, Ollama-Modelle laufen dann auf der CPU.
+Die Delegation (die Coding-Subagenten) faehrt seit dem 25.09.2026 auf Bonsai:
+`delegation.provider: bonsai`, `model: bonsai`, dahinter als Rueckfall
+`nous/deepseek-v4-flash-0731` und `anthropic/claude-opus-5`.
+
+### Achtung: `provider: llamacpp` ist NICHT dieser Dienst
+
+Hermes loest den Alias `llamacpp` **zuerst** auf seinen EIGENEN verwalteten
+Server auf (State-Datei, hier Port **18434**) und erst danach auf einen
+gefundenen fremden llama-server (`local_runtime/detect.py`, Probelauf auf 8080).
+Die acht `provider: llamacpp`-Eintraege der MoA-Presets zeigten deshalb nicht
+auf Bonsai, sondern auf den verwalteten Dienst — ihre Modellnamen
+(`Qwen3.8-27B-UD-Q4_K_M`, `gemma-4-E4B-it-OBLITERATED-Q8_0`) gibt es dort nicht
+mehr. Wer diesen Dienst meint, nennt `provider: bonsai` (Port 8080).
+Der verwaltete Server ist der upgestreamte llama.cpp — er **kann die ternaren
+Gewichte nicht laden**; ihn auf Bonsai umzustellen braucht den PrismML-Fork.
+
+Nutzbar ist Bonsai fuer: Hermes-Subagenten (Delegation), die drei
+Sprachmodell-Spuren, eigene Skripte, Einzelfragen, zusammenfassen, uebersetzen,
+Bilder (mit mmproj, noch nicht geladen), Vergleichsmessungen.
 
 ## Fallen (alle erlebt)
 

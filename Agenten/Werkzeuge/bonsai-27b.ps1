@@ -10,8 +10,14 @@
 # Auf DIESEM Rechner gemessen (RTX 3060 Ti 8 GB, 25.09.2026, PTQ1_0):
 #   Kontext  8192, -ngl 99: 32 t/s Erzeugung, 666 t/s Prompt (1942 T in 2,9 s)
 #   Kontext 16384, -ngl 99: 10 t/s Erzeugung,  44 t/s Prompt (VRAM randvoll, 177 MiB frei)
-# Deshalb ist 8192 die Vorgabe: der grosse Kontext frisst den Speicher, den die
-# Prompt-Verarbeitung braucht.
+#   Kontext 65536, -ngl 99, -fa on: 12 t/s Erzeugung, 85 t/s Prompt
+#       (VRAM 7.772/253 MiB - passt also, dicht). 65536 ist deshalb die VORGABE:
+#       HERMES VERLANGT 64K, sonst lehnt es das Modell als Agent-Modell ab
+#       ("Model bonsai has a context window of 8,192 tokens, which is below the
+#       minimum 64,000 required by Hermes Agent"). Fuer reine Chat-Aufrufe
+#       (Sprachmodell-Spuren, llm_lokal) ist 8192 schneller und reicht:
+#       -Kontext 8192. Der grosse Kontext frisst den Speicher, den die
+#       Prompt-Verarbeitung braucht.
 #
 # Der Dienst ist ein Schwergewicht und wird NICHT bei jedem Start gebraucht: vor dem
 # Start werden Ollama-Modelle aus dem VRAM entladen (sie laufen danach wieder, notfalls
@@ -26,7 +32,7 @@
 param(
     [ValidateSet('start', 'stopp', 'status', 'test', 'log')]
     [string]$Aktion = 'status',
-    [int]$Kontext = 8192,
+    [int]$Kontext = 65536,
     [int]$GpuLayers = 99,
     [int]$Port = 8080,
     [string]$Reasoning = 'medium',
@@ -143,6 +149,7 @@ if (-not $OllamaBehalten) {
 $chatKargs = '{\"reasoning_effort\":\"' + $Reasoning + '\"}'
 $argumente = @(
     '-m', $Modell,
+    '--alias', 'bonsai',
     '--host', '127.0.0.1', '--port', "$Port",
     '-ngl', "$GpuLayers",
     '-c', "$Kontext",

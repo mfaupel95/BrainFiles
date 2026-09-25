@@ -1964,9 +1964,11 @@ memory:
   nudge_interval: 10
   provider: ''
 delegation:
-  model: deepseek/deepseek-v4-flash-0731
-  provider: nous
+  model: bonsai
+  provider: bonsai
   fallback_providers:
+    - provider: nous
+      model: deepseek/deepseek-v4-flash-0731
     - provider: anthropic
       model: claude-opus-5
   max_iterations: 250
@@ -1985,10 +1987,10 @@ moa:
           model: openai/gpt-6-astra
           enabled: false
         - provider: llamacpp
-          model: Qwen3.8-27B-UD-Q4_K_M
+          model: bonsai
           enabled: true
         - provider: llamacpp
-          model: gemma-4-E4B-it-OBLITERATED-Q8_0
+          model: bonsai
           enabled: true
         - provider: anthropic
           model: claude-opus-4-8
@@ -2031,17 +2033,17 @@ moa:
           model: openai/gpt-6-astra
           enabled: true
         - provider: llamacpp
-          model: Qwen3.8-27B-UD-Q4_K_M
+          model: bonsai
           enabled: true
         - provider: llamacpp
-          model: gemma-4-E4B-it-OBLITERATED-Q8_0
+          model: bonsai
           enabled: true
         - provider: anthropic
           model: claude-opus-5
           enabled: true
       aggregator:
         provider: llamacpp
-        model: Qwen3.8-27B-UD-Q4_K_M
+        model: bonsai
       degraded_reference_policy: loud
       fanout: user_turn
     Vision:
@@ -2067,7 +2069,7 @@ moa:
           enabled: true
       aggregator:
         provider: llamacpp
-        model: Qwen3.8-27B-UD-Q4_K_M
+        model: bonsai
       degraded_reference_policy: loud
       fanout: user_turn
   aggregator:
@@ -2088,10 +2090,10 @@ moa:
       model: openai/gpt-6-astra
       enabled: false
     - provider: llamacpp
-      model: Qwen3.8-27B-UD-Q4_K_M
+      model: bonsai
       enabled: true
     - provider: llamacpp
-      model: gemma-4-E4B-it-OBLITERATED-Q8_0
+      model: bonsai
       enabled: true
     - provider: anthropic
       model: claude-opus-4-8
