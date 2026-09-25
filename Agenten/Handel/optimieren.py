@@ -151,6 +151,18 @@ def _journal_zeilen(pfad):
 
 
 def _zeit_von(zeile):
+    """Zeitstempel einer Journalzeile - bevorzugt der KERZENstempel.
+
+    `_kerzen_ts` setzt der Replay selbst (Millisekunden der Kerze). Die Spalte
+    `zeit` ist nur der Rueckfall: sie kommt aus der Uhr der Spur und traegt bei
+    einer nicht gesetzten Uhr die Wanduhr des Laufs.
+    """
+    ts = zeile.get("_kerzen_ts")
+    if ts not in (None, "", "None"):
+        try:
+            return dt.datetime.fromtimestamp(float(ts) / 1000.0, dt.timezone.utc)
+        except (TypeError, ValueError):
+            pass
     try:
         return dt.datetime.fromisoformat(zeile["zeit"])
     except (KeyError, TypeError, ValueError):
@@ -192,6 +204,18 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
         raise RuntimeError("keine Historie fuer %s - erst "
                            "'python historie.py --auffuellen'" % spur)
     kerzen = min(gesamt, int(monate) * kerzen_je_monat(takt))
+    # Ein zu kurzer Zeitraum ist kein Fehler des Aufrufers, sondern eine Rechnung:
+    # 6 Monate im 4H-Takt sind 1092 Kerzen und reichen fuer 2 Fenster nicht.
+    # Der Zeitraum wird angehoben UND GEMELDET - still eine andere Zahl zu
+    # rechnen waere schlimmer als der Abbruch.
+    noetig = int(n_fenster) * MINDEST_KERZEN_JE_FENSTER
+    if kerzen < noetig:
+        neu = -(-noetig // kerzen_je_monat(takt))
+        print("Zeitraum angehoben: %d Monate im %s-Takt sind %d Kerzen, fuer %d "
+              "Fenster noetig sind %d -> %d Monate."
+              % (monate, takt, kerzen, n_fenster, noetig, neu))
+        monate = neu
+        kerzen = min(gesamt, int(monate) * kerzen_je_monat(takt))
     von_index = gesamt - kerzen
     abschnitte = fenster(kerzen, n_fenster)
     kand = kandidaten(tab, max_kandidaten)

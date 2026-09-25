@@ -251,17 +251,34 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
         fenster = fenster_vorgabe(w)
 
     runden, offen, gesammelt = [], {}, []
+    zustand_ts = {"ts": None}
     # Die Spur schreibt ihre Journalzeilen selbst (kauf/verkauf mit stop und
     # ziel). Wir fangen sie ab und schreiben sie hinterher in den Backtest-
     # Ordner - so entsteht KEINE zweite Journalform, und
     # kosten_wendepunkt.runden_aus_journal() kann sie paaren.
-    modul.journal = lambda **f: gesammelt.append(f)
+    #
+    # Jede Zeile bekommt zusaetzlich `_kerzen_ts` (den Zeitstempel der Kerze, an
+    # der sie entstand). Ohne den haengt eine spaetere Fensterteilung an der
+    # Spalte `zeit` - und die traegt die WANDUHR, wenn die Spur ihre eigene
+    # `_jetzt()` benutzt und die Uhr nicht gesetzt wurde (gemessen 2026-09-25:
+    # ein 6-Monats-Lauf schrieb alle Zeilen mit der Uhrzeit des Laufs).
+    modul.journal = lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"]))
+    alt_zeit = getattr(modul, "zeit_quelle", None)
+    hat_zeit = hasattr(modul, "zeit_quelle")
     z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
          "verluste_usd": 0.0}
     laenge = min(len(k) for k in kerzen.values())
     mindest = int(w.get("mindest_kerzen", 300))
 
     for i in range(mindest, laenge):
+        # DIESELBE NAHT WIE FAMILIE B: die Spuren lesen `zeit_quelle`, wenn sie
+        # gesetzt ist. Ohne das schreibt das Journal die Uhrzeit des Backtest-
+        # Laufs statt der Kerzenzeit - und jede Zeitrechnung darauf ist falsch.
+        ts_schritt = max(k[i][0] for k in kerzen.values())
+        zustand_ts["ts"] = ts_schritt
+        if hat_zeit:
+            modul.zeit_quelle = lambda _t=ts_schritt: dt.datetime.fromtimestamp(
+                _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
         for inst, alle in kerzen.items():
             k = (alle[max(0, i + 1 - fenster):i + 1] if fenster
                  else alle[:i + 1])
@@ -292,6 +309,8 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
                                     "nominal": p["nominal"],
                                     "stop_pct": p.get("stop_pct", 0.0),
                                     "ts": k[-1][0]}
+    if hat_zeit:
+        modul.zeit_quelle = alt_zeit
     _journal_schreiben(ordner, gesammelt)
     return runden, len(z["positionen"])
 

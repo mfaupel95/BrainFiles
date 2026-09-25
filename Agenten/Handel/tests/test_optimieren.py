@@ -104,6 +104,57 @@ class WachenUnberuehrtTest(unittest.TestCase):
         self.assertEqual(vorher, _hash(echt))
 
 
+class ZeitraumTest(unittest.TestCase):
+    """Ein zu kurzer Zeitraum wird angehoben und GEMELDET, nicht still gerechnet."""
+
+    def test_zu_kurzer_zeitraum_im_4h_takt_wird_angehoben(self):
+        # 6 Monate im 4H-Takt sind 1092 Kerzen - fuer 2 Fenster zu wenig (1200).
+        # Vorher stuerzte genau das mit ValueError ab.
+        aus = optimieren.suche("supertrend", 0.1, n_fenster=2, monate=6,
+                               trocken=True)
+        self.assertGreaterEqual(aus["plan"]["kerzen"], 1200)
+
+    def test_kerzen_je_monat_kennt_die_takte(self):
+        self.assertGreater(optimieren.kerzen_je_monat("1H"),
+                           optimieren.kerzen_je_monat("4H"))
+        self.assertGreater(optimieren.kerzen_je_monat("4H"),
+                           optimieren.kerzen_je_monat("1D"))
+
+
+class KerzenuhrTest(unittest.TestCase):
+    """Familie A muss DIESELBE Uhr-Naht benutzen wie Familie B.
+
+    Ohne sie schreibt das Backtest-Journal die Wanduhr des Laufs statt der
+    Kerzenzeit - gemessen 2026-09-25: alle 48 Zeilen eines 6-Monats-Laufs
+    trugen die Uhrzeit des Laufs, und jede Fensterteilung darauf war falsch
+    (alle 18 Kandidaten meldeten "0 Runden").
+    """
+
+    def test_journalzeit_ist_die_kerzenzeit(self):
+        import csv
+        import datetime as dt
+        import tempfile
+        import replay as rp
+        tmp = tempfile.mkdtemp()
+        alt = rp.verzeichnis
+        rp.verzeichnis = lambda: tmp
+        try:
+            rp.lauf_a("squeeze", 0.1, "uhr", max_kerzen=900, fenster=400)
+            pfad = os.path.join(rp.buch_ordner("squeeze", "uhr"),
+                                "handelsjournal.csv")
+        finally:
+            rp.verzeichnis = alt
+        with open(pfad, encoding="utf-8", newline="") as f:
+            zeilen = list(csv.DictReader(f))
+        self.assertGreater(len(zeilen), 0)
+        for z in zeilen:
+            self.assertTrue(z.get("_kerzen_ts"), "Kerzenstempel fehlt")
+            aus_stempel = dt.datetime.fromtimestamp(
+                float(z["_kerzen_ts"]) / 1000.0, dt.timezone.utc).isoformat(
+                    timespec="seconds")
+            self.assertEqual(aus_stempel, z["zeit"])
+
+
 class TrockenTest(unittest.TestCase):
     def test_trockenlauf_rechnet_nicht_und_schreibt_nicht(self):
         import replay as rp
