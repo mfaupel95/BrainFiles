@@ -46,6 +46,19 @@ class UrteilTest(unittest.TestCase):
         self.assertFalse(u["ueberlebt"])
         self.assertIn("Befund", u["grund"])
 
+    def test_hausform_ohne_netto_pct_mittel_wird_verstanden(self):
+        """`kosten_wendepunkt.wendepunkt()` liefert kein netto_pct_mittel.
+
+        Genau daran ist der erste Optimierer-Lauf abgestuerzt (KeyError). Das
+        Vergleichsmass ist dann ergebnis_summe / runden.
+        """
+        def haus(runden, summe):
+            return {"runden": runden, "ergebnis_summe": summe,
+                    "R": 5.0, "C": 10.0, "p": 0.5, "f_max": 2.5}
+        self.assertAlmostEqual(0.2, optimieren.je_runde(haus(10, 2.0)))
+        u = optimieren.urteil_aus([haus(10, 1.0)], haus(10, 3.0), [haus(10, 2.5)])
+        self.assertTrue(u["ueberlebt"])
+
     def test_besser_im_prueffenster_und_im_mittel_ueberlebt(self):
         u = optimieren.urteil_aus([{"runden": 20, "netto_pct_mittel": 0.1}],
                                   {"runden": 20, "netto_pct_mittel": 1.0},

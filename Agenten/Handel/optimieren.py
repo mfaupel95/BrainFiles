@@ -114,6 +114,23 @@ def kerzen_je_monat(takt):
     return {"1H": 730, "4H": 182, "1D": 30}.get(takt, 730)
 
 
+def je_runde(k):
+    """Ergebnis je Runde in Prozent des Einsatzes - das Vergleichsmass.
+
+    Die Hausfunktion `kosten_wendepunkt.wendepunkt()` liefert R, C, p, f_max,
+    ev_ohne und ergebnis_summe; ein Feld `netto_pct_mittel` gibt es dort NICHT
+    (das stammt aus `backtest_prognose.kennzahlen`). Wer es hier erwartet,
+    stuerzt ab - genau das ist am 2026-09-25 passiert. Deshalb EINE Stelle, die
+    beide Formen kennt.
+    """
+    if "netto_pct_mittel" in k:
+        return float(k["netto_pct_mittel"])
+    runden = k.get("runden") or 0
+    if not runden:
+        return 0.0
+    return float(k.get("ergebnis_summe", 0.0)) / runden
+
+
 def urteil_aus(such, pruef, weitere=None, mindest_runden=8):
     """Ueberlebt ein Kandidat das Prueffenster?"""
     weitere = weitere or []
@@ -123,10 +140,9 @@ def urteil_aus(such, pruef, weitere=None, mindest_runden=8):
                          % mindest_runden}
     if not pruef.get("runden"):
         return {"ueberlebt": False, "grund": "kein Hebel: Prueffenster ohne Runde"}
-    if pruef["netto_pct_mittel"] <= such[0]["netto_pct_mittel"]:
+    if je_runde(pruef) <= je_runde(such[0]):
         return {"ueberlebt": False, "grund": "kein Hebel: Prueffenster nicht besser"}
-    mittel = (pruef["netto_pct_mittel"]
-              + sum(x["netto_pct_mittel"] for x in weitere)) / (1 + len(weitere))
+    mittel = (je_runde(pruef) + sum(je_runde(x) for x in weitere)) / (1 + len(weitere))
     if mittel <= 0:
         return {"ueberlebt": False,
                 "grund": "kein Hebel: rollierendes Mittel nicht positiv (%.3f %%)"
@@ -268,7 +284,7 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
 
     ergebnisse.sort(key=lambda x: (
         x.get("ueberlebt", False),
-        (x.get("je_fenster") or [{}])[-1].get("netto_pct_mittel", 0)), reverse=True)
+        je_runde((x.get("je_fenster") or [{}])[-1])), reverse=True)
     aus = dict(plan)
     aus["kandidaten"] = ergebnisse
     aus["ueberlebt"] = [e["werte"] for e in ergebnisse if e.get("ueberlebt")]
