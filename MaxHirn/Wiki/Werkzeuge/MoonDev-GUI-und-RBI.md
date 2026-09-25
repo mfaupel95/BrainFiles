@@ -41,8 +41,35 @@ nimmt jetzt `DEEPSEEK_BASE_URL` — also die lokale Brücke
 (`Agenten/Werkzeuge/ollama-openai-bruecke.py`, Port 11499) statt der bezahlten API.
 
 **Das Fenster muss dafür einmal neu gestartet werden** — es hält den alten Code
-im Speicher. Nachweis nach dem Fix: `rbi_agent` läuft, druckt
-„Phase 1: Research", wählt `ollama qwen35-8k:latest` und wartet auf das Modell.
+im Speicher.
+
+### Die dritte Ursache: leerer content statt Fehlermeldung
+
+Nach dem UTF-8-Fix startete der Agent, lief bis „Phase 1: Research" — und meldete
+dann für **jede** Idee `❌ Research phase failed!`, ohne etwas zu schreiben.
+Gemessen am 25.09.2026 mit dem echten Research-Prompt (1340 Zeichen Systemtext):
+
+| Weg | Dauer | content | Feld `reasoning` | finish |
+|---|---|---|---|---|
+| Ollama `/v1` (Port 11434) | 51,8 s | **0 Zeichen** | ja | `length` |
+| Haus-Brücke (Port 11499) | 9,3 s | **3603 Zeichen** | nein | `stop` |
+
+Das Denk-Modell verbrennt das Token-Budget im reasoning-Teil; der sichtbare Text
+bleibt leer und der Agent wertet das als Fehlschlag. Genau die Falle, für die die
+Brücke gebaut wurde — nur war `OLLAMA_BASE_URL` im Fenster auf **Ollamas eigenes**
+`/v1` gesetzt. Jetzt zeigt es auf die Brücke (auch in der Repo-`.env`).
+
+**Zweite Brücken-Erweiterung:** Das `OllamaModel` der moon-dev-Agenten spricht die
+**native** API (`GET /api/tags`, `POST /api/chat`) und hält die Brücke ohne diese
+Wege für tot („Model type 'ollama' not available"). Die Brücke beantwortet sie
+jetzt mit — dieselbe Denk-Abschaltung, aber in der Feldform, die diese Agenten
+erwarten. Damit ist sie für beide Formen einsetzbar (OpenAI **und** Ollama nativ).
+
+**Nachweis (25.09.2026, 3,5 Minuten Lauf):** Idee 1 → `research/AdaptiveKeltnerBreakout_strategy.txt`,
+`backtests/AdaptiveKeltnerBreakout_BT.py`, `backtests_package/…_PKG.py`,
+`backtests_final/…_BTFinal.py`; Idee 2 → `research/VIX-DivergenceShort_strategy.txt`,
+danach Phase 2. Die erzeugten Skripte nennen den **lokalen** Kurs-Pfad
+(`O:\Werkstatt\…\BTC-USD-15m.csv`), nicht mehr den des Autors.
 
 ## Die zweite Hälfte war nie verdrahtet: Backtest-Ausführung
 
@@ -99,3 +126,5 @@ immer neue dazu.
 - Prozesswache nicht vergessen: ein `rbi_agent` ist ein eigener Prozess und wird
   vom Haus-Dauerlauf **nicht** verwaltet (der kennt nur `new_or_top` und
   `kraken_agent`).
+- Ein RBI-Lauf **schreibt weiter Ideen ab** (Zähler im Fenster), auch wenn eine
+  Idee scheitert — 4482 Zeilen sind kein Vorrat, sondern ein Verbrauch.

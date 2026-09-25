@@ -59,6 +59,19 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-090 — RBI-Schleife laeuft unbeaufsichtigt und wird nicht gewacht**
+      Kontext: Seit 25.09.2026 laeuft die Research-Backtest-Implement-Schleife
+      des moon-dev-Klons (rbi_agent) echt durch: Idee -> Strategie -> Backtest-
+      Code -> Paket -> Final. Sie arbeitet 4482 Ideen ab, schreibt je Idee Dateien
+      nach src/data/rbi/<datum>/ und braucht je Idee Minuten auf der CPU. Es gibt
+      KEINE Wache dafuer (der Haus-Dauerlauf kennt sie nicht, der MoonDev-Treiber
+      startet nur new_or_top und kraken_agent). Ein haengender Lauf faellt niemandem
+      auf, ein wiederholter faellt nur an der Platte auf.
+      Naechster Schritt: entscheiden, ob die Schleife ueberhaupt dauerhaft laufen
+      soll. Wenn ja: no_agent-Cron (15 min) auf Prozesszahl + Alter + freien Commit,
+      wie bei moondev-agenten-wache.
+      Angelegt: 2026-09-25
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/rbi_agent.py
 - [ ] **T-089 — Kein freies Guthaben fuer neue Live-Einstiege (Kraken 0,71 EUR / OKX 0,15 USDC)**
       Kontext: `mosaic` und `swap` nennen ihre Sperre seit 25.09.2026 mit Boerse
       und Waehrung. Der Fakt dahinter: Kraken traegt **0,71 EUR** frei, waehrend

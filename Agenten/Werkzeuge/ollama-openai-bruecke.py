@@ -21,6 +21,10 @@ Aufruf (Dienst, gebunden auf 127.0.0.1):
     python ... --pruefen          # Selbsttest: ein echter Aufruf, Dauer, Antwort
     python ... --trocken          # nur die Zuordnung zeigen, nichts starten
 
+Sie spricht BEIDE Formen: OpenAI (/v1/chat/completions) und die native
+Ollama-Form (/api/chat, /api/tags) - Agenten, die die native API nutzen
+(OllamaModel der moon-dev-Agenten), laufen damit ebenso.
+
 Danach in die .env des Agenten:
     DEEPSEEK_KEY=lokal-ollama
     DEEPSEEK_BASE_URL=http://127.0.0.1:11499/v1
@@ -309,6 +313,19 @@ class Bruecke(BaseHTTPRequestHandler):
                       for k in MODELL_ABBILDUNG]
             self._antwort(200, {"object": "list", "data": liste})
             return
+        if self.path.split("?")[0] == "/api/tags":
+            # Native Ollama-Sicht: manche Fremd-Agenten pruefen ihre
+            # Verbindung ueber /api/tags (so macht es das OllamaModel der
+            # moon-dev-Agenten). Ohne diesen Weg halten sie die Bruecke fuer
+            # tot und der Modellaufbau scheitert.
+            try:
+                with urllib.request.urlopen(basis + "/api/tags", timeout=10) as antwort:
+                    roh = antwort.read().decode("utf-8", "replace")
+            except Exception as fehler:
+                self._fehler(503, "Ollama nicht erreichbar (%s): %s" % (basis, fehler))
+                return
+            self._antwort(200, roh)
+            return
         if self.path.split("?")[0] in ("/gesundheit", "/health"):
             try:
                 namen = modelle(basis)
@@ -319,8 +336,62 @@ class Bruecke(BaseHTTPRequestHandler):
             return
         self._fehler(404, "unbekannter Weg: %s" % self.path)
 
+    def _nativ_chat(self):
+        """Die NATIVE Ollama-Antwortform - fuer Agenten, die /api/chat sprechen.
+
+        Sie bekommen dieselbe Abschaltung des Denkens, aber die Antwortfelder,
+        die sie erwarten (message.content, done, eval_count).
+        """
+        try:
+            laenge = int(self.headers.get("Content-Length") or 0)
+            anfrage = json.loads(self.rfile.read(laenge).decode("utf-8", "replace") or "{}")
+        except Exception as fehler:
+            self._fehler(400, "Anfrage nicht lesbar: %s" % fehler)
+            return
+        gewuenscht = anfrage.get("model") or ""
+        modell = lokales_modell(gewuenscht, self.server.standard)
+        nachrichten = anfrage.get("messages") or []
+        if not nachrichten:
+            self._fehler(400, "keine messages")
+            return
+        optionen = anfrage.get("options") or {}
+        start = time.time()
+        try:
+            content, denk, usage = ollama_nativ(
+                self.server.ollama, modell, nachrichten,
+                temperature=optionen.get("temperature"),
+                max_tokens=optionen.get("num_predict"),
+                top_p=optionen.get("top_p"))
+        except urllib.error.URLError as fehler:
+            self._log("FEHLER (nativ) %s -> %s (%s)" % (modell, self.server.ollama, fehler))
+            self._fehler(503, "Ollama nicht erreichbar (%s): %s" % (self.server.ollama, fehler))
+            return
+        except Exception as fehler:
+            self._log("FEHLER (nativ) %s: %s" % (modell, fehler))
+            self._fehler(500, "Aufruf gescheitert: %s" % fehler)
+            return
+        dauer = time.time() - start
+        self._log("nativ %s -> %s  %.1fs  %d Zeichen%s" % (
+            gewuenscht or "-", modell, dauer, len(content),
+            "  ACHTUNG leer" if not content else ""))
+        nachricht = {"role": "assistant", "content": content}
+        if denk:
+            nachricht["thinking"] = denk
+        self._antwort(200, {
+            "model": modell,
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%S.000000000Z", time.gmtime()),
+            "message": nachricht,
+            "done": True,
+            "done_reason": "stop",
+            "prompt_eval_count": usage.get("prompt_tokens", 0),
+            "eval_count": usage.get("completion_tokens", 0),
+        })
+
     def do_POST(self):
         weg = self.path.split("?")[0]
+        if weg == "/api/chat":
+            self._nativ_chat()
+            return
         if weg not in ("/v1/chat/completions", "/chat/completions"):
             self._fehler(404, "unbekannter Weg: %s" % weg)
             return
