@@ -152,6 +152,33 @@ wert, nicht nur eine Zeile im Protokoll.
   und den Umweg im Bericht nennen, nicht als Werkzeugfehler. Dieselbe Regel
   trifft die `okx-*`-Skill-Junctions: die sind fuer solche Werkzeuge
   strukturell unerreichbar.
+- **Ein Projekt, das NICHT unter `Werkstatt/Repos` liegt, wird per Junction
+  erreichbar gemacht** - nicht verschoben (im venv steht der Pfad absolut,
+  `Scripts/python.exe` bricht danach) und nicht kopiert (verdoppelt ein venv von
+  mehreren hundert MB). Beleg in zwei Zeilen: `os.path.samefile(original, klon)`
+  muss True sein und `os.path.isjunction(klon)` True - unter Windows meldet
+  Python eine Junction NICHT als `is_symlink()`, eine Pruefung darauf sagt
+  faelschlich "Kopie".
+- **Ergebnisdaten, Sonden und eigene Konfigurationen gehoeren in den KLON, nicht
+  in `Agenten/Hermes/cache/scratch/`.** Der Scratch-Ordner wird nach 24 h Ruhe
+  geleert: ein einmal gemessener Lauf ist danach weg, samt der Config, mit der er
+  entstand. Die Daten unter den Datenordner des Repos legen (dessen eigene
+  `.gitignore` sperrt ihn meist schon); Hausdateien bleiben im Klon ungetrackt
+  (`??`) - das ist in Ordnung, solange keine VERFOLGTE Datei geaendert wird und
+  `repos-updaten.py` weiter vorspulen kann. Gegenprobe vor dem Melden:
+  `git -C <klon> status --porcelain`.
+- **Ergebnisdateien eines Fremd-Werkzeugs werden oft ANGEHAENGT, nicht
+  ueberschrieben.** Vor dem Vergleichen den LETZTEN Block lesen, nicht die erste
+  Zahlenreihe, die im Suchlauf auftaucht - sonst haelt man den alten Messwert
+  fuer den neuen. Und die eigene Sonde so bauen, dass sie ihren Wert SELBST
+  ausgibt: dann bleibt der Nachweis unabhaengig davon, wie das Werkzeug seine
+  Ergebnisse ablegt.
+- **Was nichts handelt, wird als lesender Pruefstand gefahren** (rechnen und
+  ausgeben, kein Netz, kein Schluessel) und im Bericht so BENANNT - samt der
+  Gegenprobe, die zeigt, dass der Fremdweg nicht traegt. Ein Messlauf, der ein
+  Ergebnis bestaetigt, das der Autor des Repos behauptet, ist kein Nachweis;
+  erst der Vergleich des behaupteten mit dem selbst gemessenen Wert
+  (in-sample gegen ungesehenes Fenster) sagt, was das Werkzeug wirklich kann.
 - **Native Programme verstehen die MSYS-Notation nicht:** `/c/Users/...` als
   Argument gibt `Cannot determine input type` / "cannot change to". Windows-
   Pfade mit Schraegstrichen uebergeben (`C:/Users/...`) — in bash bleibt `cd`

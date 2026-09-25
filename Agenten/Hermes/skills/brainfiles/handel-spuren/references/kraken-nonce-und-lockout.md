@@ -3,6 +3,12 @@
 Stand 22.09.2026. Reihenfolge der Pruefung, damit nicht stundenlang die
 falsche Ursache gejagt wird.
 
+Verwandt: `references/boersen-schluessel-diagnose.md` — die Zuordnung „unser
+Code, der Schluessel oder die Boerse?" samt der Falle, einen PRIVATEN Aufruf von
+Hand zu signieren: ein selbstgebauter Aufruf liegt unter dem nonce-Peak und
+bekommt `EGeneral:Permission denied` bzw. `authenticationError` — der Fehlertext
+klingt dann nach fehlenden Rechten, obwohl der Schluessel in Ordnung ist.
+
 ## Erst den Kontostatus, dann den nonce
 
 `EAPI:Invalid nonce` und `EGeneral:Temporary lockout` sehen im Log

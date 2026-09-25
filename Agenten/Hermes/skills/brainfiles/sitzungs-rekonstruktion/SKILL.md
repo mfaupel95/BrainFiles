@@ -59,6 +59,20 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
    - Assistenten-Zeilen mit leerem `content` sind reine Werkzeugaufruf-Turns; die Zeile
      `role='tool'` mit `tool_name` und Ergebnis darunter zeigt, woran gearbeitet wurde
      und wie weit es kam.
+   - **Eine im Kontext "demotierte" Werkzeugausgabe ist in der DB vollstaendig da.**
+     Nach einer Kompaktierung steht im Verlauf nur ein Platzhalter
+     (`[terminal output demoted … N chars preserved in session history]`) — und
+     `session_search` liefert genau diesen Platzhalter zurueck. Die Ausgabe ist trotzdem
+     zu holen: in der DB nach einem FELD suchen, das nur in IHR vorkommt, nicht nach
+     Sitzung oder Zeit.
+     `SELECT id, length(content) FROM messages WHERE content LIKE '%<feldname>%' ORDER BY id DESC LIMIT 6`
+     — die Laenge gegen die im Platzhalter genannte Zeichenzahl halten, dann
+     `SELECT content WHERE id=…` und im Python-String nur die Fundstelle ausschneiden
+     (`for s in re.finditer(feld, t): t[s-90:s+70]`), statt 20 kB auszugeben.
+     Ein Feldname aus der Ausgabe ist der bessere Anker als alles andere: er ist
+     eindeutig und man kennt ihn, weil man die Ausgabe ja gelesen hat.
+     Beleg-Beispiel: ueber `availableMargin` kam der echte Kontostand zurueck, den der
+     Platzhalter verschluckt hatte.
    - Die letzte Zeile einer abgebrochenen Sitzung ist oft ein Werkzeugergebnis ohne
      Nachsatz — der Assistent starb **vor** dem Bericht, nicht weil die Arbeit fehlte.
      Das ist die gute Nachricht: die Fakten sind schon da.

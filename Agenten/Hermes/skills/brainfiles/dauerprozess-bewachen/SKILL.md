@@ -234,6 +234,53 @@ uebergangen.
    `funding/rollover/zyklus/quotes/info` wie in der Runden-Zaehlung), statt sie
    in der Wache neu zu erfinden.
 
+## Wache auf einen BETRIEBSZUSTAND am Handelsplatz (Waisen, Stops, Salden)
+
+Manche Wachen pruefen weder einen Prozess noch eine Datei, sondern den Zustand an
+einem echten Konto (Schutz-Orders ohne Position, Guthaben, Sperren). Fuenf Regeln,
+ohne die so eine Wache selbst zum Risiko wird:
+
+1. **Eine Wache meldet, sie handelt nicht.** Ein Waechter mit Storno-/Loeschrecht an
+einem echten Konto ist selbst das Risiko. Das Werkzeug daneben darf schreiben
+(`<werkzeug> --stornieren`), die Wache ruft es nie mit Schreibrecht auf — und ein
+**Quelltext-Test** haelt das fest (der Modultext der Wache darf den Storno-Aufruf
+nicht enthalten). Ohne diesen Test haengt eine spaetere Erweiterung still eine
+Loeschfunktion in den Automatikpfad.
+2. **Ein Messfehler ist keine Entwarnung.** Kann die Wache nicht messen (Rechte,
+Netz, Schluessel), meldet sie das AUSDRUECKLICH („das ist keine Entwarnung — es ist
+unbekannt, ob ...") — aber hoechstens einmal je Frist (Merker `letzter_fehler`),
+sonst kommt bei jedem Takt derselbe Fehler.
+3. **Mehrere Quellen: je Quelle ein eigener `try`, und der Fehler nennt die
+Quelle.** Sonst verdeckt die eine Boerse die andere: gemessen meldete eine Wache
+fuer Kraken `EGeneral:Permission denied`, waehrend derselbe Aufruf aus der Shell
+durchging — ohne Quellenname und zweiten `try` waere das als „Wache schweigt"
+durchgegangen, obwohl die andere Boerse ungeprueft blieb. Ein Ausfall EINER Quelle
+ist kein Grund, die andere nicht zu melden.
+4. **`--selbsttest`: die fertige Meldung einmal zeigen, ohne Netz und ohne
+Zustand.** Eine Wache, deren Meldung noch niemand gesehen hat, ist in ihrem
+wichtigsten Teil ungeprueft. Der Selbsttest beweist die FORM, nicht die Lage — das
+auch so sagen. Er darf die Merkdatei nicht schreiben (Test: nach dem Lauf
+existiert sie nicht).
+5. **An eine bestehende Testdatei anhaengen: erst die Namen der Datei lesen.**
+Ersetzt deren `setUp` die Fachfunktion (`modul.messen = lambda: ...`), pruefen neue
+Faelle ueber diese Instanz die Attrappe statt den Code — die eigenen Faelle brauchen
+ein FRISCH geladenes Modul. Und die Namen sind nicht uebertragbar (Modulvariable,
+Hilfsfunktion, Pfadkonstante): geraten (`W`, `HIER`, `JETZT`) reisst die ganze
+Suite mit `NameError` um, obwohl der Testcode fachlich stimmt.
+
+**Der Job-Status `ok` sagt nur, dass der Auftrag gelaufen ist.** Eine Wache, die
+einen Messfehler oder eine echte Fundmenge meldet, ist genauso `ok` wie eine
+lautlose. Wer `last_status` liest und daraus „nichts gefunden" schliesst, hat
+nichts geprueft — die Aussage steht im Ausgabetext
+(`cron/output/<job-id>/<zeitstempel>.md`) bzw. in der Telegram-Meldung. Erst den
+Text lesen, dann urteilen.
+
+**Einen Waise nicht als Position lesen.** Ein Stop-Loss bleibt am Handelsplatz
+offen, wenn seine Position geschlossen wurde; er sieht in der Oberflaeche wie eine
+offene Position aus, und ein Schliessversuch scheitert ohne Bestand. Vor jeder
+Aussage „es steht noch eine Position" den Bestand/die offenen Positionen am
+Handelsplatz lesen, nicht die Orderliste.
+
 ## Wache auf ein SELTENES SIGNAL (Ereignis kommt vielleicht tagelang nicht)
 
 Fuer Spuren/Jobs, deren Tor selten aufgeht. Stille ist hier der NORMALFALL —

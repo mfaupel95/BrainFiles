@@ -12,9 +12,13 @@ antwortet bei diesen Schluesseln mit 50101). GET-Parameter in den PFAD, nicht in
 | Stufen eines DCA | `GET /api/v5/tradingBot/dca/orders?algoId=<id>` |
 | Munition/Position | `GET /api/v5/tradingBot/dca/position-details?algoId=<id>` |
 | Rundenhistorie | `GET /api/v5/tradingBot/dca/cycle-list?algoId=<id>` |
-| laufende Grids | `GET /api/v5/tradingBot/grid/orders?algoOrdType=contract_grid` |
+| laufende Grids | `GET /api/v5/tradingBot/grid/orders-algo-pending?algoOrdType=contract_grid` |
+| GESCHLOSSENE DCA-Bots | `GET /api/v5/tradingBot/dca/history-list?algoOrdType=contract_dca` |
+| GESCHLOSSENE Grids | `GET /api/v5/tradingBot/grid/orders-algo-history?algoOrdType=contract_grid` |
+| Details je Grid-Kennung (auch nach dem Stopp) | `GET /api/v5/tradingBot/grid/orders-algo-details?algoId=<id>&algoOrdType=contract_grid` |
 | Instrumentregeln | `GET /api/v5/public/instruments?instType=SWAP&instId=<inst>` |
 | Kontraktkerzen | `GET /api/v5/market/candles` (Spot-Paar fuer lange Reihen) |
+| Kerzen weiter als ~12 Tage zurueck | `GET /api/v5/market/history-candles?instId=<inst>&bar=1H&after=<ts_ms>&limit=100` (rueckwaerts blaettern) |
 
 Felder, auf die es ankommt: `algoId`, `instId`, `initPx` (Startkurs), `maxSafetyOrds`
 (Stufen), `pxSteps` (Abstand als Anteil, z. B. `0.0075`), `slPx` (Stop, oft leer =
@@ -32,6 +36,31 @@ sind high/low/close.
 
 algoOrdType-Werte: `contract_dca`, `spot_dca`, `recurring`, `contract_grid`,
 `moon_grid`.
+
+## Geschlossene Bots auswerten (Historie)
+
+Die Historie-Antwort ist eine Liste je Bot mit `cTime`/`uTime` (ms), `state`,
+`investment`, `lever`, `gridNum`/`maxSafetyOrds`, `minPx`/`maxPx`, `gridProfit`,
+`totalPnl`, `arbitrageNum`, `fee`, `fundingFee`, `slTriggerPx`, `triggerParams`.
+`/api/v5/tradingBot/dca/orders-algo-history` gibt es NICHT (HTTP 404) — der Weg
+heisst `dca/history-list`. Die Antwort enthaelt eine begrenzte Zahl der juengsten
+Eintraege (gemessen: 100); ob sich aeltere nachblaettern lassen, ist ungeprueft.
+
+- **Der Richtungsgewinn steht NUR in der Detailantwort.** In der Liste sind
+  `floatProfit`, `runPx` und `tradeNum` leer; wer das als 0 liest, haelt einen
+  Richtungstreffer fuer ein Netz-Ergebnis. `grid/orders-algo-details` antwortet
+auch fuer GESCHLOSSENE Kennungen — die Werte sind nach dem Stopp noch messbar.
+- **`totalPnl = gridProfit + floatProfit`.** `fee` und `fundingFee` sind
+  Ausweisposten und in den beiden Summanden bereits enthalten — nicht ein
+  zweites Mal abziehen.
+- **Wer gestoppt hat**, steht in `triggerParams[-1]`: `triggerType manual` (von
+  Hand) oder `auto` mit `triggerPx`. `stopType 1` = Positionen am Markt
+  geschlossen, `2` = stehen gelassen.
+- **Lebensdauer** = `uTime - cTime`; fuer die Kursbewegung in diesem Fenster 1H-
+  oder 4H-Kerzen ueber `market/history-candles` blaettern.
+- **Kennung ohne Kontext zuordnen**: `dca/position-details?algoId=<id>` auf eine
+  Grid-Kennung antwortet `OKX 50016: algoId and algoOrdType don't match` (und
+  umgekehrt) — damit ist die Art bestimmbar, ohne sie zu raten.
 
 ## Schreiben (am LAUFENDEN Bot)
 

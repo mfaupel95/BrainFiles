@@ -141,7 +141,12 @@ Reinigungswerkzeugs ist keine Quittung, die Ordnergroesse ist es.
   Nie rekursiv messen, um eine Zahl zu bekommen: die Belegung je Laufwerk aus
   `Win32_LogicalDisk`/`df` nehmen und darunter nur benannte Teilpfade mit
   begrenzter Tiefe ansehen. Die billigste belastbare Zahl bleibt die Differenz
-  des freien Platzes vor/nach der Aktion.
+  des freien Platzes vor/nach der Aktion. Liegt die Quelle auf einem externen
+  oder langsamen Laufwerk (USB, exFAT) oder laeuft dort gerade eine Kopie, ist
+  auch eine einzelne rekursive Messung unbrauchbar: Umfang und Bytes stattdessen
+  aus einem **Trockenlauf des Kopierers** holen (`robocopy <quelle> <ziel> /L /E`
+  meldet Dateien und Bytes, ohne zu kopieren) — das kostet Sekunden statt der
+  Zeitgrenze.
 - **Lange Pfade (~260 Zeichen) brechen Umzüge.** `robocopy /MOVE` bleibt an
 tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   Fortschritt deshalb am freien Platz messen. Das `\\?\`-Präfix hilft bei

@@ -26,6 +26,8 @@ einen LAUFENDEN Bot umstellen).
 - „Bot laeuft aus seiner letzten Kaufgrenze“, „wie tief kauft der noch nach“
 - „neuen DCA/Grid aufsetzen“, „Nachkauf-Barrieren besser einrichten“
 - ein laufender Bot soll gestoppt oder geaendert werden
+- „warum war dieser Bot so erfolgreich“, „was ist das Schema dahinter“ —
+  geschlossene Bots auswerten (eigener Abschnitt unten)
 
 ## Die Kernregel: Leiter in ATR-Einheiten, nicht in Prozent
 
@@ -50,10 +52,45 @@ decken nur 30 % — fuer 3 x ATR braucht es oft 20 und mehr Stufen. Die Analyse
 nennt die noetige Zahl als Warnung; wer sie still auf 12 kappt, baut wieder eine
 zu flache Leiter.
 
+## Geschlossene Bots auswerten: ein Grid ist ein gehebelter Long
+
+Wer fragt „warum war dieser Bot so erfolgreich“, will das SCHEMA, nicht die
+Kennzahl. Der Bericht des Waechters enthaelt nur LAUFENDE Bots — geschlossene
+kommen ueber die Historie (Endpunkte und Feldnamen: `references/okx-bot-api.md`).
+
+Ein Grid-Bot ist kein marktneutrales Geschaeft: innerhalb des Bandes handelt er
+(Netzgewinn), ausserhalb liegt die Position voll und macht die Richtungsbewegung
+mit Hebel mit. Zwei Wege zum Gewinn, **ein** Weg zum grossen Verlust.
+
+- `totalPnl = gridProfit + floatProfit`. Die Gebuehren NICHT ein zweites Mal
+  abziehen — `fee`/`fundingFee` sind Ausweisposten und in den beiden Summanden
+  bereits enthalten.
+- Die **Marktrichtung waehrend der Lebensdauer** trennt Gewinner von Verlierern;
+  Hebel, Netzzahl und Bandbreite trennen NICHT. Ohne diese Messung ist jede
+  Aussage ueber „gute Parameter“ geraten.
+- Die Laufzeit ist kurz (Groessenordnung ein Tag): ein „erfolgreicher“ Bot ist
+  meist ein Lauf, der IM PLUS gestoppt wurde, nicht ein Netz, das lange geerntet
+  hat. Nachsehen, WER gestoppt hat (`triggerParams[-1].triggerType`, `manual`
+  oder `auto`) — das entscheidet, ob es die Mechanik war oder ein Griff.
+- Zwei Vorzeige-Bots koennen ZWEI verschiedene Mechanismen sein (Richtungstreffer
+  mit Hebel gegen echte Oszillation im Band). Jeden einzeln nachrechnen, nicht
+  aus einem den anderen erklaeren.
+- Der groesste Einzelverlust einer Serie ist regelmaessig ein Bot OHNE Stop, der
+  lief, waehrend der Markt gegen die Position ging — `slTriggerPx` je Bot LESEN,
+  auch bei geschlossenen.
+
+Reihenfolge je Auswertung: (1) Historie und Detailantwort je Kennung holen,
+(2) Kursbewegung waehrend der Lebensdauer aus 1H-Kerzen ueber
+`market/history-candles` seitenweise rueckwaerts, (3) je Bot Seite, Laufzeit,
+Netzgewinn, Richtungsgewinn, Stop und die Bewegung in Richtung der Position
+nebeneinander stellen, (4) ERST DANN gruppieren (mit/gegen die Richtung) und
+Mittel vergleichen, (5) Ergebnis als Wiki-Seite und offene Punkte nach
+`Archiv/TASKS.md`.
+
 ## Ablauf
 
 1. **Ist-Lage messen** (rein lesend): `waechter.py` gibt je Bot den Zustand
-   OK/KNAPP/AUSGELAUFEN/NOTFALL/WARNUNG. Die **letzte kaufbare Grenze zweimal**
+   OK/KNAPP/AUSGELAUFEN/NOTFALL/WARNUNG — nur fuer LAUFENDE Bots. Die **letzte kaufbare Grenze zweimal**
    bestimmen — tiefste Kauforder aus `dca/orders?algoId=...` UND die Planrechnung
    `initPx x (1 - maxSafetyOrds x pxSteps)`. Weichen beide ab, ist die Orderliste
    die Wahrheit. Munition = `maxSafetyOrds - fillSafetyOrds`.
@@ -158,6 +195,21 @@ druecken), `dca/orders/manual-buy` (von Hand in den Zyklus kaufen).
   Attrappen als MODULkonstanten anlegen (ein Klassenattribut, das eine Klasse im
   eigenen Koerper benutzt, ist ein NameError) und einen Modulwaechter einbauen,
   der Dateiliste und Groessen des echten Ordners vor/nach vergleicht.
+- **Ein leeres Feld ist keine Null.** In der LISTEN-Antwort der Historie stehen
+  `floatProfit`, `runPx` und `tradeNum` leer, in der DETAILANTWORT derselben
+  Kennung gefuellt. Wer das leere Feld als 0,00 liest, rechnet einen Anteil von
+  0 % aus und begruendet damit die falsche These. Vor jeder Aussage „X ist null“
+  die Detailantwort ziehen.
+- **`algoId` und `algoOrdType` gehoeren zusammen.** `dca/position-details` auf
+  eine Grid-Kennung antwortet `OKX 50016: algoId and algoOrdType don't match` —
+  der billigste Weg, eine unbekannte Kennung einer Bot-Art zuzuordnen, statt zu
+  raten.
+- **1H-Kerzen reichen nur rund zwoelf Tage zurueck** (`market/candles`) und
+  liefern fuer aeltere Bots still das FALSCHE Fenster. Fuer die Lebensdauer
+  eines Bots `market/history-candles` seitenweise rueckwaerts blaettern
+  (`after=<ts_ms>&limit=100`, bis der aelteste Punkt unter dem Start liegt) —
+  und niemals still auf „die letzten n Kerzen“ zurueckfallen, das liefert
+  plausible Zahlen zum falschen Zeitraum.
 
 ## Verification
 

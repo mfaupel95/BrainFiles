@@ -132,3 +132,24 @@ Nachweis/Bestandsaufraeumer: `Agenten/Handel/scanner/stops_bereinigen.py`
 Tester `scanner/tests/test_okx_stornieren.py`; Gegenprobe
 `zustand.json` (23 -> 0, Buch gegen Boerse 5/5 ueber
 `/api/v5/trade/orders-algo-pending?ordType=conditional`).
+
+## 6. `50103` aus einer UNGESIGNETEN Abfrage — sieht wie ein fehlender Schluessel aus
+
+`OKX 50103: OK-ACCESS-KEY can not be empty` heisst: die Anfrage ging OHNE Signatur
+raus. Beim Sondieren vergisst man das leicht, denn `_roh(pfad)` signiert NICHT —
+der Schalter muss ausdruecklich mit: `_roh('/api/v5/account/positions',
+signiert=True)`. Ohne ihn liest man einen Schluesselfehler, wo keiner ist, und
+"repariert" die Schluessel einer Spur, die gesund ist.
+
+**Regel: bevor ein Schluessel verdaechtigt wird, pruefen, ob die Sonde ueberhaupt
+signiert hat.** Lesende Kontodaten (`account/positions`, `account/balance`,
+`trade/orders-algo-pending`) brauchen `signiert=True`, oeffentliche Marktdaten
+(`market/*`, `public/*`) nicht. GET-Parameter gehoeren in den PFAD (so wie oben),
+`body=` ist fuer POST.
+
+Alle conditional Stops eines Kontos liegen in EINEM Aufruf
+(`orders-algo-pending?ordType=conditional`): je Zeile `algoId`, `instId`, `sz`,
+`slTriggerPx`, `tdMode`, `side`, `reduceOnly`. Das ist die Quelle fuer die Frage
+"welche Schutz-Orders liegen am Markt, und deckt jede eine Position?" — und
+`reduceOnly: true` ist der Grund, warum eine Order groesser als ihre Position
+dort harmlos ist (siehe SKILL.md, "Waisen").

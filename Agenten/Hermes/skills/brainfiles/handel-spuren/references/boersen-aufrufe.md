@@ -34,6 +34,21 @@ k.letzter_kurs("SUIEUR")                    # Ticker
 `leverage_buy`, `leverage_sell` (Liste, z.B. SUIEUR `[2..10]`, NEAREUR `[2,3]`,
 XZECZUSD `[2..5]`).
 
+## Kraken: Einzahlungen und Guthaben je Wallet
+
+```python
+k._roh_privat("DepositStatus", asset="USDC")            # Eingaenge je Waehrung
+k._roh_privat("Ledgers", asset="USDC", start=<epoch>)   # PLURAL - 'Ledger' gibt 404
+k._roh_privat("WithdrawStatus", asset="USDC")
+```
+
+Die vollstaendige Nachweis-Kette (Einzahlung, Gegenbuchung mit `refid`, Zielkonto,
+Margin-Wallet, Futures `/accounts`) und ihre Fallen stehen in
+`references/einzahlung-und-guthaben.md`. **Zugangsdaten nur auf Existenz pruefen:**
+`reg query HKCU\Environment` druckt die Werte im Klartext - stattdessen
+`[Environment]::GetEnvironmentVariable(name, 'User')` lesen und nur Laenge/Anfang
+nennen.
+
 ## Kraken: Stop setzen
 
 ```python
