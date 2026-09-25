@@ -81,9 +81,15 @@ Der Dienst meldet sich dank `--alias bonsai` unter dem kurzen Namen `bonsai`
 
 **Folge fuer den Betrieb:** die Karte ist mit 64k voll (253 MiB frei) — Ollama
 und Bonsai teilen sie sich weiterhin, Ollama-Modelle laufen dann auf der CPU.
-Die Delegation (die Coding-Subagenten) faehrt seit dem 25.09.2026 auf Bonsai:
-`delegation.provider: bonsai`, `model: bonsai`, dahinter als Rueckfall
-`nous/deepseek-v4-flash-0731` und `anthropic/claude-opus-5`.
+Die Delegation (die Coding-Subagenten) faehrt seit dem 25.09.2026 wieder auf
+`nous/deepseek-v4-flash-0731`; **Bonsai ist der erste Rueckfall** (`delegation.
+fallback_providers: [bonsai, anthropic/claude-opus-5]`), damit Coding lokal
+weiterlaeuft, wenn die Cloud klemmt. Derselbe Ein-Wort-Auftrag als Messwert:
+
+| Delegations-Modell | Laufzeit |
+|---|---|
+| `deepseek/deepseek-v4-flash-0731` (nous) | **13,9 s** |
+| `bonsai` (lokal) | **343,3 s** |
 
 **Nachweis, dass der Agent darauf laeuft** (nicht nur der Endpunkt antwortet):
 `HERMES_HOME=<leeres Verzeichnis> hermes -z "Antworte mit genau einem Wort: OK"`
