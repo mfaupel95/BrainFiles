@@ -59,6 +59,20 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-086 — moon-dev-ai-agents: RBI-Schleife laeuft, aber die Kursdatei ist die des Autors**
+      Kontext: Die vier RBI-Laeufer des GUI starten seit 25.09.2026 (UTF-8 +
+      Wurzel-.env im Kind, conda durch den venv-Interpreter ersetzt, Prompt-
+      Datenpfad lokalisiert). OFFEN: die Kursdatei src/data/rbi/BTC-USD-15m.csv
+      ist der Datensatz des Autors (31.046 Kerzen 15m, Ende 2023) - fuer eine
+      Aussage ueber HEUTE muesste sie durch eine frische Reihe (OKX/Binance,
+      eigener Abruf) ersetzt werden. Ausserdem: kein Walk-Forward, keine
+      Kostenmodellierung ausser der Strategie-eigenen Gebuehr.
+      Naechster Schritt: entscheiden, ob die Schleife ueberhaupt weiterlaufen
+      soll - die gemessenen Ergebnisse (95-97 % Verlust) sprechen dagegen, dass
+      sie ohne Walk-Forward je etwas Tragfaehiges liefert.
+      Angelegt: 2026-09-25
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (geaenderter Klon: moongui.py,
+      src/agents/rbi_agent*.py, backtest_runner.py, 19 *_BT.py)
 - [ ] **T-085 — Repos-Zentrale: fuer die meisten Repos fehlen Anleitung und Befehle**
       Kontext: Das Fenster zeigt seit 25.09.2026 zu jedem Projekt einen Bereich
       "Was dieses Projekt kann" (Ablauf in Worten + anklickbare Befehle). Hinterlegt

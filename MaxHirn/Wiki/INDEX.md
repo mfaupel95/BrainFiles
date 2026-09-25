@@ -69,6 +69,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
+| [Werkzeuge/MoonDev-GUI-und-RBI.md](Werkzeuge/MoonDev-GUI-und-RBI.md) | Startfenster des moon-dev-Klons: warum die RBI-Knoepfe starben (UTF-8, src/.env), conda-Ausfuehrung ersetzt, und die nachgemessenen Strategie-Ergebnisse (95-97 % Verlust gegen +128 % Buy & Hold) |
 | [Werkzeuge/repos-zentrale.md](Werkzeuge/repos-zentrale.md) | Startfenster fuer alle Repos: Gruppen, Startbelege, und der Bereich "Was dieses Projekt kann" mit anklickbaren Befehlen, Kopieren und Bot-Auftrag |
 | [Werkzeuge/Fundus-Skills-Bots.md](Werkzeuge/Fundus-Skills-Bots.md) | Skill-Fundus, Hermes-Bibliothek, Repo-Bots, Katalog |
 | [Werkzeuge/Claude-Red-und-nerd-Bot.md](Werkzeuge/Claude-Red-und-nerd-Bot.md) | Offensive-Security-Sammlung claude-red als Fundus-Faehigkeit, der Bot `nerd`, Defender sperrt vier Skill-Dateien |
