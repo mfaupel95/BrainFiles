@@ -203,7 +203,14 @@ Zahlen der Basis. Die Stufe wirkt jetzt ueber `lage._buch()`:
   sie wieder aus der Basis. `_lies()` ist der eine Weg zu Zustandsdateien - dort
   ist der Aufruf eingebaut, die Journalpfade in den Spur-Rueckgaben tragen ihn
   ebenfalls.
-- Pruefen: `tests/test_bericht_stufen.py` (22) haelt die Regel - Suffix ja/nein,
+- **Auch die Zahlen aus `auswertung_alle` brauchen die Stufe.** Dort ist
+  `STUFE` eine MODULVARIABLE (Vorgabe `None` = Basis; nur die Kommandozeile setzt
+  sie), und `kennzahlen_fuer`/`hat_buch` lesen sie. `lage.zu_lage` stellt sie
+  deshalb fuer die Dauer des Aufbaus auf die Stufe des Prozesses
+  (`_stufe_der_umgebung`, Quelle `HANDEL_RISIKO`) und im `finally` zurueck — ohne
+  das standen in einer Zeile die Positionen der Stufe und die Runden der Basis
+  (7-Tage-Zeile in allen drei Berichten identisch).
+- Pruefen: `tests/test_bericht_stufen.py` (18) haelt die Regel - Suffix ja/nein,
   `_lies` trifft die Stufendatei, eine echte Spur liest im Stufenlauf ihren
   Zustand aus der Stufe UND ihre Wachen aus der Basis, `--risiko alle` baut drei
   Berichte, Umgebung danach zurueckgestellt.

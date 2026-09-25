@@ -1135,8 +1135,41 @@ def sperren(spur, lage):
 
 
 
+def _stufe_der_umgebung():
+    """Die Risikostufe dieses Prozesses als `auswertung_alle.STUFE`.
+
+    `None` heisst Basis - so erwartet es `auswertung_alle` (dort ist STUFE
+    eine Modulvariable, die nur die Kommandozeile setzt). Der Bericht muss
+    die Stufe aber ueber DIESELBE Quelle beziehen wie seine Buchdateien
+    (`HANDEL_RISIKO`), sonst zeigt ein Stufenbericht die Positionen der Stufe
+    und die Runden der Basis.
+    """
+    return None if risikostufe.stufe() == risikostufe.STANDARD \
+        else risikostufe.stufe()
+
+
 def zu_lage(roh, schluessel, tage=FENSTER_TAGE, kennzahlen=_UNGESETZT):
     """Eine spur_*()-Rueckgabe in die feste Form bringen.
+
+    Der Aufbau selbst steht in `_zu_lage`; hier steht nur die Risikostufe
+    drumherum. `auswertung_alle.STUFE` ist eine MODULVARIABLE (die
+    Kommandozeile setzt sie, Vorgabe None = Basis), und `kennzahlen_fuer` und
+    `hat_buch` lesen sie. Ohne diese Zeilen zeigte ein Stufenbericht die
+    Positionen der Stufe und die Runden der Basis.
+    """
+    alt_stufe = auswertung_alle.STUFE
+    if schluessel:
+        auswertung_alle.STUFE = _stufe_der_umgebung()
+    try:
+        return _zu_lage(roh, schluessel, tage, kennzahlen)
+    finally:
+        # Auch bei einem Fehler zurueckstellen: der Bericht ist ein Leser und
+        # darf den Prozess (Handelszentrale!) nicht umstellen.
+        auswertung_alle.STUFE = alt_stufe
+
+
+def _zu_lage(roh, schluessel, tage, kennzahlen):
+    """Die feste Form einer spur_*()-Rueckgabe.
 
     kennzahlen wird nur von Tests gesetzt; im Betrieb holt die Funktion sie
     selbst. Der Wachtposten _UNGESETZT unterscheidet "nicht uebergeben" von

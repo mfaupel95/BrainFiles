@@ -29,6 +29,7 @@ HIER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HIER)
 sys.path.insert(0, os.path.join(HIER, "scanner"))
 
+import auswertung_alle                                       # noqa: E402
 import lage                                                    # noqa: E402
 import risikostufe                                             # noqa: E402
 import tagesbericht                                            # noqa: E402
@@ -210,6 +211,56 @@ class BerichtTest(unittest.TestCase):
             sys.argv = alt_argv
         self.assertEqual(gerufen, ["niedrig", "mittel", "hoch"])
         self.assertEqual(rc, 0)
+
+
+class KennzahlenStufeTest(unittest.TestCase):
+    """Auch die Runden- und 7-Tage-Zahlen muessen aus der Stufe kommen.
+
+    `auswertung_alle.STUFE` ist eine MODULVARIABLE (Vorgabe None = Basis).
+    Wird sie nicht mitgestellt, zeigt ein Stufenbericht die Positionen der
+    Stufe und die Runden der Basis - zwei Zahlen aus zwei Buechern in einer
+    Zeile.
+    """
+
+    def setUp(self):
+        self.alt_env = os.environ.pop("HANDEL_RISIKO", None)
+        self.gesehen = []
+        self.alt_k = auswertung_alle.kennzahlen_fuer
+        self.alt_h = auswertung_alle.hat_buch
+        self.alt_s = auswertung_alle.STUFE
+        auswertung_alle.kennzahlen_fuer = lambda spur, von=None, bis=None: (
+            self.gesehen.append(auswertung_alle.STUFE)
+            or {"n": 3, "ergebnis": 1.0})
+        auswertung_alle.hat_buch = lambda spur: True
+
+    def tearDown(self):
+        auswertung_alle.kennzahlen_fuer = self.alt_k
+        auswertung_alle.hat_buch = self.alt_h
+        auswertung_alle.STUFE = self.alt_s
+        os.environ.pop("HANDEL_RISIKO", None)
+        if self.alt_env is not None:
+            os.environ["HANDEL_RISIKO"] = self.alt_env
+
+    def test_basis_fragt_die_basis(self):
+        lage.zu_lage({"name": "X", "waehrung": "USD"}, "scanner")
+        self.assertEqual(self.gesehen, [None])
+
+    def test_stufe_fragt_die_stufe(self):
+        os.environ["HANDEL_RISIKO"] = "mittel"
+        lage.zu_lage({"name": "X", "waehrung": "USD"}, "scanner")
+        self.assertEqual(self.gesehen, ["mittel"])
+        self.assertIsNone(auswertung_alle.STUFE)
+
+    def test_stufe_bleibt_auch_bei_einem_fehler_nicht_stehen(self):
+        os.environ["HANDEL_RISIKO"] = "hoch"
+        auswertung_alle.kennzahlen_fuer = self._kaputt
+        with self.assertRaises(ValueError):
+            lage.zu_lage({"name": "X", "waehrung": "USD"}, "scanner")
+        self.assertIsNone(auswertung_alle.STUFE)
+
+    @staticmethod
+    def _kaputt(*a, **k):
+        raise ValueError("kaputt")
 
 
 if __name__ == "__main__":
