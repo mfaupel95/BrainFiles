@@ -62,7 +62,7 @@ Gewinn**. Bei supertrend liegt `f_max` bei +2,50 %, die Summe aber bei −6,9 %:
 `f_max` unterstellt, dass jeder Gewinner sein Ziel erreicht und jeder Verlierer
 den Stop; die tatsaechliche Verteilung (viele kleine Ausstiege) liegt darunter.
 
-## Vier Fallen, die die Umsetzung aufgedeckt hat
+## Sechs Fallen, die die Umsetzung aufgedeckt hat
 
 1. **Ein Backtest-Journal braucht die Zeilen der SPUR.** Selbst gebaute
    Ausstiegszeilen sind wertlos: `kosten_wendepunkt.runden_aus_journal()` paart
@@ -81,7 +81,20 @@ den Stop; die tatsaechliche Verteilung (viele kleine Ausstiege) liegt darunter.
    Bus-Journal und Telegram-Nachrichten aus einem Backtest), `spur_buch.spiegeln`
    (Bedingung 4 spiegelt nach Q:) und die Risikostufe (sonst entstehen
    `.mittel`-Dateien). Alles im `finally` zurueckstellen.
-4. **Import-Reihenfolge:** `spur_buch` legt beim Import den Bus-Ordner in
+4. **Die Uhr der Spur muss gesetzt werden — auch bei Familie A.** `squeeze`,
+   `wavetrend`, `macd_mtf` und `supertrend` haben dieselbe Naht wie Familie B
+   (`zeit_quelle` + `_jetzt()`); wer sie nicht setzt, bekommt ein Journal mit
+   der **Wanduhr des Laufs**. Gemessen: ein 6-Monats-Lauf schrieb alle 48 Zeilen
+   mit der Uhrzeit des Laufs, und die Fensterteilung des Optimierers fand darauf
+   **nichts** — alle 18 Kandidaten meldeten „0 Runden", was wie ein ehrliches
+   „kein Hebel" aussieht und keines war. Zusätzlich schreibt der Replay zu jeder
+   Zeile `_kerzen_ts`; die Fensterteilung benutzt diesen Stempel und fällt nur
+   notfalls auf `zeit` zurück.
+5. **Ein zu kurzer Zeitraum ist eine Rechnung, kein Fehler.** 6 Monate im
+   4H-Takt sind 1092 Kerzen; für 2 Fenster à 600 sind 1200 nötig. Der
+   Optimierer hebt den Zeitraum an **und meldet es** — still eine andere Zahl
+   zu rechnen wäre schlimmer als der Abbruch.
+6. **Import-Reihenfolge:** `spur_buch` legt beim Import den Bus-Ordner in
    `sys.path`; ein alphabetisch vorgezogenes `import ereignis` faellt mit
    `ModuleNotFoundError` um, obwohl das Modul existiert.
 
