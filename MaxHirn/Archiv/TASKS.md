@@ -59,6 +59,20 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-089 — xperp haengt am eigenen KILL-SWITCH, nicht an handel_erlaubt**
+      Kontext: Auftrag Max 25.09.2026 ("SPUREN auto freigabe live"). kraken liess sich
+      scharf stellen (haengt nur am Guthaben: 0,71 von 60 EUR), xperp NICHT: nach dem
+      Setzen von handel_erlaubt=true stand es im naechsten Lauf wieder auf false, weil
+      der Kill-Switch erreicht ist - Ruecklauf 137,16 USD gegen den Deckel
+      `kill_switch_gesamt_usd` 100 (Hoechststand 497,42 USD), Meldung im Wachen-Bericht
+      "KILL-SWITCH erreicht - der naechste Lauf stellt flach". Ein blosses
+      handel_erlaubt=true reicht deshalb nicht: der naechste Zyklus wuerde flachstellen
+      und die offene Position verkaufen (genau der Fall vom 21.09.2026, damals Deckel
+      40 -> 100). Rollierender EV ist positiv (+10,005 USD).
+      Naechster Schritt: entscheiden - Deckel erhoehen (mit datiertem Vermerk
+      `_kill_switch_erhoeht` in xperp/wachen.json) ODER flachstellen lassen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/xperp/wachen.json
 - [ ] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
       Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
       (2026-09-25) zeigt: KEIN Kandidat gewinnt alle vier Fenster, weil in jeder

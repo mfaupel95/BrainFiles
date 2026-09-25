@@ -418,7 +418,8 @@ TAKT_MAX_MINUTEN = 15
 # und Handel erlaubt): handel_erlaubt steht wieder auf true, der Live-Pfad
 # (Kraken Spot, EUR) ist im Code vorhanden. Bindende Grenze bleibt das freie
 # EUR-Guthaben (mindest_guthaben_eur 60).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "nautilus_kraken_futures", "swap",
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "nautilus_kraken",
+                 "nautilus_kraken_futures", "swap",
                  "moondev_listingarb", "moondev_topmovers", "kraken",
                  "trendwende_btc", "liq_wand", "moondev_marktlage")
 AUTO_FREIGABE_STUNDEN = 12
