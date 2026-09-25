@@ -153,6 +153,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: der naechste Lauf von `fremdarbeit-einziehen.ps1` (taeglich
       20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
       `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
+      Stand 25.09.2026 03:20 weiterhin im Baum (nicht angefasst, eigene Pfade
+      gestaged): `Agenten/Handel/swap/handeln.py`, `swap/kandidaten.py`, drei
+      swap-Tests, `Agenten/Hermes/skills/brainfiles/arbeitsbaum-git-hygiene/SKILL.md`,
+      `kraken-cli/`. Der eigene Commit 1fcea14 (Kraken-Abweisungs-Sonde) hat nur
+      die acht eigenen Pfade mitgenommen.
       Angelegt: 2026-09-25
 - [ ] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
       Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
