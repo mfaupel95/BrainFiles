@@ -1,9 +1,10 @@
 {
-  "_hinweis": "Suchbereiche je Spur. Der Code kennt keine Zahlen. 'schluessel' MUSS in der wachen.json der Spur stehen - pruefe_schluessel() bricht sonst ab. Gemessen 2026-09-25: die vier Indikator-Spuren lesen aus ihrer wachen.json nur die Ausstiegs-Geometrie (pflicht_stop_prozent_min/_max, ziel_r_vielfaches, max_offene_positionen); ihre Indikatorschwellen stehen als Konstanten im Code. trendwende_btc liest supertrend_n, supertrend_faktor und ema_filter_n.",
+  "_hinweis": "Suchbereiche je Spur. Der Code kennt keine Zahlen. 'schluessel' MUSS in der wachen.json der Spur stehen - pruefe_schluessel() bricht sonst ab. Gemessen 2026-09-25: die vier Indikator-Spuren lesen aus ihrer wachen.json nur die Ausstiegs-Geometrie; ihre Indikatorschwellen stehen als Konstanten im Code (T-097). trendwende_btc liest supertrend_n, supertrend_faktor und ema_filter_n.",
+  "_gemessen_20260925": "pflicht_stop_prozent_max ist AUS DEM RASTER ENTFERNT: die Werte 8.0 und 12.0 lieferten ueber 6 Monate Runde fuer Runde IDENTISCHE Zahlen (der ATR-Stop bleibt immer unter dem Deckel). Ein solches Feld sieht nach einem Versuch aus und ist keiner - felder_ohne_wirkung() meldet es jetzt selbst im Bericht.",
+  "_mindestrunden": "MINDEST_RUNDEN_JE_FENSTER = 30 im Code. Ueber 6 Monate kamen je Fenster nur 8 bis 49 Runden heraus - zu wenig, um einen Vorsprung von rund 0,5 % gegen rund 5 % Streuung zu trennen. Fuer ein Urteil deshalb --monate 24 fahren.",
   "squeeze": {
     "schluessel": [
       "pflicht_stop_prozent_min",
-      "pflicht_stop_prozent_max",
       "ziel_r_vielfaches"
     ],
     "raster": {
@@ -11,10 +12,6 @@
         3.0,
         5.0,
         7.0
-      ],
-      "pflicht_stop_prozent_max": [
-        8.0,
-        12.0
       ],
       "ziel_r_vielfaches": [
         1.5,
@@ -26,7 +23,6 @@
   "wavetrend": {
     "schluessel": [
       "pflicht_stop_prozent_min",
-      "pflicht_stop_prozent_max",
       "ziel_r_vielfaches"
     ],
     "raster": {
@@ -34,10 +30,6 @@
         3.0,
         5.0,
         7.0
-      ],
-      "pflicht_stop_prozent_max": [
-        8.0,
-        12.0
       ],
       "ziel_r_vielfaches": [
         1.5,
@@ -49,7 +41,6 @@
   "macd_mtf": {
     "schluessel": [
       "pflicht_stop_prozent_min",
-      "pflicht_stop_prozent_max",
       "ziel_r_vielfaches"
     ],
     "raster": {
@@ -57,10 +48,6 @@
         3.0,
         5.0,
         7.0
-      ],
-      "pflicht_stop_prozent_max": [
-        8.0,
-        12.0
       ],
       "ziel_r_vielfaches": [
         1.5,
@@ -72,7 +59,6 @@
   "supertrend": {
     "schluessel": [
       "pflicht_stop_prozent_min",
-      "pflicht_stop_prozent_max",
       "ziel_r_vielfaches"
     ],
     "raster": {
@@ -80,10 +66,6 @@
         3.0,
         5.0,
         7.0
-      ],
-      "pflicht_stop_prozent_max": [
-        8.0,
-        12.0
       ],
       "ziel_r_vielfaches": [
         1.5,
