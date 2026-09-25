@@ -59,6 +59,62 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-107 — Doctor meldet 18 Photon-Doppelkennungen (Fehlalarm oder echte Kollision?)**
+      Kontext: `hermes doctor` und `hermes gateway status` melden seit dem 25.09.2026 in
+      JEDEM Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon credential
+      (PHOTON_PROJECT_ID/PHOTON_PROJECT_SECRET)" und schliessen daraus "gateway is STANDALONE:
+      profiles NOT served (their bots stay silent)". Ursache ist mit hoher Wahrscheinlichkeit
+      der gemeinsame Credential-Store: die `profiles/<bot>/auth.json` sind SYMLINKS auf
+      `Agenten/Hermes/auth.json`, der Photon-Eintrag im Pool ist also physisch EINE Kennung,
+      die der Doctor je Profil neu zaehlt. Die Bots fahren ohnehin als Einzelauftraege
+      (`hermes -p <name> chat -q`), nicht als Multiplex-Adapter.
+      Naechster Schritt: pruefen, ob die Profile in ihrer eigenen `config.yaml` Photon
+      ueberhaupt aktivieren (dann ist es ein Fehlalarm und der Doctor-Ratgeber "Kennung
+      entfernen" waere falsch) - und entweder den Befund im Wiki festhalten oder jedem Bot
+      eine eigene Kennung geben.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/auth.json
+- [ ] **T-108 — Legacy-Gateway-Task `Hermes_Gateway` und seine Skripte liegen noch auf der Platte**
+      Kontext: `hermes gateway status` warnt nach jedem Update: "legacy pre-suffix task launcher
+      still installed: gateway-service/Hermes_Gateway.vbs", ".../Hermes_Gateway.cmd" und
+      "legacy pre-suffix Scheduled Task still installed: Hermes_Gateway - these predate
+      per-profile launcher names and also start the gateway at logon". Der Task ist seit dem
+      16.09.2026 deaktiviert, das VBS entschaerft; die Dateien selbst sind die Doppelstart-Quelle,
+      die der Skill als Ausfallursache beschreibt.
+      Naechster Schritt: `hermes gateway uninstall` + `hermes gateway install` in einer erhoehten
+      Sitzung (Max bestaetigt den UAC-Prompt), danach `Get-ScheduledTask Hermes_Gateway*` und
+      `gateway-state.json` als Beleg - NICHT vorher, weil der laufende Launcher `Hermes_Gateway_2ef9d0b7`
+      dabei ersetzt wird.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/gateway-service/, geplante Aufgaben `Hermes_Gateway`, `Hermes_Gateway_2ef9d0b7`
+- [ ] **T-109 — Die Update-Warteprobe `tmp/venv_halter.py` bricht beim Import ab**
+      Kontext: Die Aufgabe `Hermes-Update-20260921` (Einmal-Trigger, PRUEFEN alle 20 s, faehrt
+      `hermes update --yes --keep-stash` bei 0 Haltern) ruft `tmp/venv_halter.py` mit dem
+      venv-Python auf. Am 25.09.2026 brach dieses Skript in JEDEM Lauf mit
+      `ModuleNotFoundError: No module named 'ruamel'` (auch als Kopie in `tmp/`), waehrend
+      derselbe Import per `python -c "..."` und `python -m hermes_cli.main` aus demselben venv
+      fehlerfrei lief - die Ursache ist nicht geklaert, die Probe ist damit unzuverlaessig.
+      Eine Probe, die beim Import stirbt, meldet nie "0 Halter": die Aufgabe wartet 45 min und
+      fahrt nichts.
+      Naechster Schritt: Halter ueber die kanonischen Funktionen zaehlen
+      (`hermes_cli.update_cmd_windows._detect_venv_python_processes` /
+      `_hermes_holder_subcommand`) und von aussen aufrufen, statt eine eigene Prozessliste per
+      Teilstring zu bauen; danach EINMAL gegen den laufenden Dashboard-PID-Paar pruefen, dass die
+      Probe ihn wirklich sieht.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/tmp/venv_halter.py, Task `Hermes-Update-20260921`
+- [ ] **T-110 — Verwaiste Update-Autostashes im Checkout**
+      Kontext: Jedes `hermes update` legt einen Autostash an und stellt ihn wieder her; bleibt
+      einer liegen, warnt das Update nach 7 Tagen (`stash@{1}` vom 17.09. besteht weiter, dazu
+      `stash@{0}` = der Lauf vom 25.09.2026 17:06, der nach dem Pull erfolgreich zurueckerstattet
+      wurde). Die Aenderung `js-yaml` 4.3.1 -> 4.3.2 in `package.json` lag am 25.09.2026 nur im
+      Arbeitsbaum (npm-Audit damit 0), sie wird bei jedem Update mitgestasht und
+      zurueckerstattet.
+      Naechster Schritt: Inhalte mit `git stash show -p stash@{n}` ansehen, was noch gebraucht wird
+      als Patch sichern, den Rest bewusst verwerfen (`git stash drop`); entscheiden, ob der
+      js-yaml-Fix upstream gemeldet oder im Checkout committet wird.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/hermes-agent (git stash, package.json)
 - [ ] **T-089 — xperp haengt am eigenen KILL-SWITCH, nicht an handel_erlaubt**
       Kontext: Auftrag Max 25.09.2026 ("SPUREN auto freigabe live"). kraken liess sich
       scharf stellen (haengt nur am Guthaben: 0,71 von 60 EUR), xperp NICHT: nach dem

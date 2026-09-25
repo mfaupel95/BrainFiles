@@ -78,3 +78,44 @@ Hauptmodell traegt 786k. Mit einem groesseren Kompressionsmodell darf die Schwel
   zu seinem eigenen Arbeitsordner.
 - Subagenten-Selbstberichte sind Selbstauskuenfte, kein Beweis: externe Wirkungen
   (Upload, Remote-Schreibvorgang) immer selbst nachpruefen.
+## Update und Reparatur (Stand 25.09.2026)
+
+- **Ablauf eines `hermes update`:** Halter-Pruefung -> `git pull` (Autostash) -> Bau von
+  Node/TUI/Web/Desktop -> Python-Abhaengigkeiten + Gateway-Neustart. Belegquelle ist
+  `logs/update-*.log`; die Wahrheit ueber den Codestand ist `git log -1 --oneline` **im
+  Checkout**, nicht die Zeile "Update available: N commits behind" (die zaehlt ab der
+  installierten Version und laeuft weit voraus).
+- **Exit 1 heisst nicht "Update fehlgeschlagen".** Der Lauf am 25.09.2026 endete mit Exit 1,
+  weil EIN Dienst nicht automatisch zurueckkam: "A web dashboard/serve process was stopped
+  during update and could not be auto-restarted". Der Code war da schon gepullt und gebaut
+  (HEAD 60 Commits weiter, `rev-list --count HEAD..origin/main` = 0). Nachziehen:
+  `Start-ScheduledTask -TaskName 'Hermes_Dashboard'`, Beleg danach
+  `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9119/` = `200`.
+- **Abgeloest starten ist Pflicht**, wenn das Update aus einer Sitzung heraus angestossen wird
+  (das Update pausiert und startet das Gateway neu). Skript: `Remove-Item Env:PYTHONHOME,
+  Env:PYTHONPATH`, `HERMES_HOME` setzen, `venv\Scripts\python.exe -m hermes_cli.main update
+  --yes` aus dem Checkout, alles mit `Out-File -Encoding UTF8` in eine Logdatei, Start per
+  `Start-Process -WindowStyle Hidden`. PS 5.1 `Tee-Object` schreibt UTF-16 - dann findet
+  `grep "Log-Ende"` nichts.
+- **Halter zaehlen, nicht raten.** Kanonisch sind
+  `hermes_cli.update_cmd_windows._detect_venv_python_processes` und `_hermes_holder_subcommand`.
+  Halter sind das Dashboard-PID-Paar (venv-python + `.hermes-runtime`-python), die
+  Desktop-Backends und jeder Bot-Lauf `hermes -p <name> chat -q`; das Gateway pausiert das
+  Update selbst.
+- **Falle (25.09.2026):** Eine Halter-Probe als PYTHON-DATEI (`tmp/venv_halter.py` mit
+  `sys.path.insert(0, <checkout>)`) brach in jedem Lauf mit
+  `ModuleNotFoundError: No module named 'ruamel'` ab, waehrend derselbe Import per
+  `python -c "..."` und `python -m hermes_cli.main` aus demselben venv fehlerfrei lief.
+  Eine Probe, die beim Import stirbt, meldet nie "0 Halter" - die Warteaufgabe
+  `Hermes-Update-20260921` wartete 45 min und tat nichts. Probe deshalb von aussen aufrufen
+  (`-m`/`-c`, cwd = Checkout) und EINMAL gegen einen bekannten Halter gegenpruefen.
+- **npm-Audit im Checkout:** `js-yaml` steht doppelt - als direkte Abhaengigkeit und im
+  `overrides`-Block (`"js-yaml@^4"`). Nur eins zu heben laesst `npm install` mit
+  `EOVERRIDE ... conflicts with direct dependency` abbrechen; beide auf dieselbe Fassung
+  (4.3.2), danach `npm audit --json --workspaces=false` = 0. Der Fix liegt nur im Arbeitsbaum
+  des Checkouts und wird bei jedem Update mitgestasht/zurueckerstattet.
+- **Doctor-Stand nach dem 25.09.2026:** Python 3.14.7 (Launcher) / SQLite 3.53.1 = **kein**
+  WAL-Reset-Bug, Browser-Tools "no known vulnerabilities", `web`/`ui-tui` je 3 moderate
+  Advisories (nur zur Kenntnis). Die 18 Restmeldungen sind die Photon-Doppelkennungen aus dem
+  gemeinsamen Credential-Store (`profiles/<bot>/auth.json` ist ein Symlink auf
+  `Agenten/Hermes/auth.json`) - siehe T-107, T-108, T-109 in `Archiv/TASKS.md`.

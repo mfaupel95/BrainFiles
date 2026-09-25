@@ -112,6 +112,63 @@ PS 5.1 `Tee-Object` writes the log as UTF-16: every second byte is NUL, so
 `grep -c "Log-Ende"` on the log returns 0 even after the run finished. Read it
 with `tr -d '\0'` / `grep -a`, or write the log with `-Encoding UTF8`.
 
+## Nach dem Lauf: Exit 1 trotz erfolgreichem Update (25.09.2026)
+
+Ein Lauf kann mit **Exit 1** enden, obwohl Code gepullt, Node/TUI/Web/Desktop gebaut und die
+Python-Abhaengigkeiten installiert sind. Im Log steht dann:
+
+> A web dashboard/serve process was stopped during update and could not be auto-restarted.
+> Planned runtimes the restart phase never touched: ✗ dashboard [default] pid … — planned mechanism: respawn-argv
+
+Beleg aus demselben Log: `EXIT=1`, `AFTER_HEAD` != `BEFORE_HEAD`, `Abstand nachher: 0 Commits`.
+Nachziehen mit dem **Task**, nicht mit dem CLI-Befehl:
+
+    Start-ScheduledTask -TaskName 'Hermes_Dashboard'
+    curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9119/    # muss 200 sein
+
+Erst danach gilt der Lauf als fertig. (Der Plan nennt denselben Dienst vorab:
+`hermes update --plan` listet ihn als „restart: stop before code swap, relaunch with recorded
+launch args" — was der Lauf nicht immer schafft.)
+
+## Halter-Probe: stirbt sie beim Import, meldet sie nie "0 Halter"
+
+`tmp/venv_halter.py` (Datei, `sys.path.insert(0, <checkout>)`, danach
+`from hermes_cli.update_cmd_windows import _detect_venv_python_processes`) brach am 25.09.2026
+in **jedem** Lauf mit `ModuleNotFoundError: No module named 'ruamel'` ab, obwohl dieselbe
+Importkette per `venv\Scripts\python.exe -m hermes_cli.main --version` und per `-c` aus
+demselben venv fehlerfrei lief (Ursache nicht geklaert; `import hermes_cli.config` allein
+funktioniert, `update_cmd_windows` nicht). Folge: die Warteaufgabe wartet 45 min auf "0 Halter"
+und faehrt nichts.
+
+Regel: Die Halter-Probe von aussen aufrufen (`-m` bzw. `-c`, cwd = Checkout), NICHT als
+Datei mit eigenem `sys.path`-Eingriff, und sie **einmal gegen einen bekannten Halter**
+gegenpruefen — bei laufendem Dashboard muss die Probe dessen PID-Paar sehen. Kanonisch sind
+`_detect_venv_python_processes()` und `_hermes_holder_subcommand()` in
+`hermes_cli/update_cmd_windows.py`; eine eigene Prozessliste per Kommandozeilen-Teilstring ist
+genau die Falle, die der Gateway-Waechter schon zweimal getroffen hat.
+
+## npm-Audit im Checkout: doppelte Pins brechen `npm install`
+
+`js-yaml` steht im Checkout **zweimal** — als direkte Abhaengigkeit (`"js-yaml": "4.3.1"`) und
+im `overrides`-Block (`"js-yaml@^4": "4.3.1"`). Nur eins zu heben laesst
+`npm install --workspaces=false` mit
+`npm error EOVERRIDE Override for js-yaml@4.3.2 conflicts with direct dependency` abbrechen.
+Beide auf dieselbe Fassung setzen (4.3.2), dann `npm install --workspaces=false`, danach
+`npm audit --json --workspaces=false` = 0 und `hermes doctor`:
+"Browser tools (agent-browser) deps (no known vulnerabilities)". Der Fix liegt nur im
+Arbeitsbaum des Checkouts und wird bei jedem Update mitgestasht und zurueckerstattet.
+
+## Photon-Doppelkennungen: Fehlalarm bei geteiltem Credential-Store
+
+`hermes doctor` meldet fuer jedes Bot-Profil "Profiles 'default' and '<bot>' both hold the
+same photon credential (PHOTON_PROJECT_ID/PHOTON_PROJECT_SECRET)" (25.09.2026: 18 Meldungen,
+die **einzigen** verbliebenen Issues) und `hermes gateway status` leitet daraus "This gateway is
+STANDALONE … Profiles NOT served (their bots stay silent)" ab. Ursache: die
+`profiles/<bot>/auth.json` sind Symlinks auf `Agenten/Hermes/auth.json` — es ist EINE Kennung,
+die je Profil neu gezaehlt wird. Die Bots laufen als Einzelauftraege (`hermes -p <name> chat -q`),
+nicht als Multiplex-Adapter. **Nicht** reflexhaft die Kennung aus den Profilen loeschen; die
+Meldung ist ein Befund der Konto-Zaehlung, kein Ausfall.
+
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 
 Erste Weiche bei „Gateway ist ausgefallen": Kernel-Power 41 in den letzten 24 h
