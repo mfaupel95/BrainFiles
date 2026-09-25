@@ -1,0 +1,118 @@
+{
+  "_hinweis": "Suchbereiche je Spur. Der Code kennt keine Zahlen. 'schluessel' MUSS in der wachen.json der Spur stehen - pruefe_schluessel() bricht sonst ab. Gemessen 2026-09-25: die vier Indikator-Spuren lesen aus ihrer wachen.json nur die Ausstiegs-Geometrie (pflicht_stop_prozent_min/_max, ziel_r_vielfaches, max_offene_positionen); ihre Indikatorschwellen stehen als Konstanten im Code. trendwende_btc liest supertrend_n, supertrend_faktor und ema_filter_n.",
+  "squeeze": {
+    "schluessel": [
+      "pflicht_stop_prozent_min",
+      "pflicht_stop_prozent_max",
+      "ziel_r_vielfaches"
+    ],
+    "raster": {
+      "pflicht_stop_prozent_min": [
+        3.0,
+        5.0,
+        7.0
+      ],
+      "pflicht_stop_prozent_max": [
+        8.0,
+        12.0
+      ],
+      "ziel_r_vielfaches": [
+        1.5,
+        2.0,
+        3.0
+      ]
+    }
+  },
+  "wavetrend": {
+    "schluessel": [
+      "pflicht_stop_prozent_min",
+      "pflicht_stop_prozent_max",
+      "ziel_r_vielfaches"
+    ],
+    "raster": {
+      "pflicht_stop_prozent_min": [
+        3.0,
+        5.0,
+        7.0
+      ],
+      "pflicht_stop_prozent_max": [
+        8.0,
+        12.0
+      ],
+      "ziel_r_vielfaches": [
+        1.5,
+        2.0,
+        3.0
+      ]
+    }
+  },
+  "macd_mtf": {
+    "schluessel": [
+      "pflicht_stop_prozent_min",
+      "pflicht_stop_prozent_max",
+      "ziel_r_vielfaches"
+    ],
+    "raster": {
+      "pflicht_stop_prozent_min": [
+        3.0,
+        5.0,
+        7.0
+      ],
+      "pflicht_stop_prozent_max": [
+        8.0,
+        12.0
+      ],
+      "ziel_r_vielfaches": [
+        1.5,
+        2.0,
+        3.0
+      ]
+    }
+  },
+  "supertrend": {
+    "schluessel": [
+      "pflicht_stop_prozent_min",
+      "pflicht_stop_prozent_max",
+      "ziel_r_vielfaches"
+    ],
+    "raster": {
+      "pflicht_stop_prozent_min": [
+        3.0,
+        5.0,
+        7.0
+      ],
+      "pflicht_stop_prozent_max": [
+        8.0,
+        12.0
+      ],
+      "ziel_r_vielfaches": [
+        1.5,
+        2.0,
+        3.0
+      ]
+    }
+  },
+  "trendwende_btc": {
+    "schluessel": [
+      "supertrend_n",
+      "supertrend_faktor",
+      "ema_filter_n"
+    ],
+    "raster": {
+      "supertrend_n": [
+        7,
+        10,
+        14
+      ],
+      "supertrend_faktor": [
+        2.0,
+        3.0,
+        4.0
+      ],
+      "ema_filter_n": [
+        100,
+        200
+      ]
+    }
+  }
+}

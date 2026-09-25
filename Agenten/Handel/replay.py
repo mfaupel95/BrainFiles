@@ -177,7 +177,7 @@ def fenster_vorgabe(w):
     return max(anzahl, int(w.get("mindest_kerzen", 300)) + 40)
 
 
-def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None):
+def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     """{inst: [kerzen]} aus der eigenen Historie, aufsteigend.
 
     Fehlt eine Reihe, wird sie GEMELDET und das Instrument faellt aus dem Lauf
@@ -187,6 +187,14 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None):
     Schaetzen, sondern die Laufzeit: die Spuren rechnen ihre Indikatoren je
     Schritt ueber die ganze Reihe, ein Lauf ueber 50.000 Kerzen dauerte Stunden
     (derselbe Grund, aus dem es `bt_varianten_fast.py` gibt).
+
+    `abschnitt=(von_index, bis_index)` schneidet einen Zeitabschnitt heraus -
+    so bildet der Optimierer Such- und Prueffenster. Bewusst nach INDIZES und
+    nicht nach Zeitstempeln: der Walk laeuft ueber die kuerzeste Reihe
+    (`laenge = min(len(k))`), ein Index gilt also fuer alle Instrumente
+    gleich. Ein Zeitstempel dagegen muss erst je Instrument gesucht werden -
+    und ein Index, der versehentlich als `bis_ms` uebergeben wird, ergibt ein
+    still falsches, winziges Fenster.
     """
     insts = _instrumente(w)
     takt = _takt(w)
@@ -195,6 +203,9 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None):
         reihen = historie.lade(inst, takt)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
+        if abschnitt:
+            von, bis = abschnitt
+            reihen = reihen[int(von):int(bis)]
         if max_kerzen:
             reihen = reihen[-int(max_kerzen):]
         if len(reihen) < int(w.get("mindest_kerzen", 300)) + 20:
@@ -207,7 +218,7 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None):
 
 
 def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
-           max_kerzen=None, fenster=None):
+           max_kerzen=None, fenster=None, abschnitt=None):
     """Familie A ueber die Historie. Rueckgabe wie backtest_prognose.lauf().
 
     `wachen_patch` ueberschreibt einzelne Wachen-Werte - so setzt der Optimierer
@@ -232,7 +243,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
     if wachen_patch:
         w.update(wachen_patch)
-    kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen)
+    kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen, abschnitt)
     if not kerzen:
         raise RuntimeError("keine Historie fuer %s - erst "
                            "'python historie.py --auffuellen'" % spur)
@@ -392,7 +403,7 @@ def historische_quelle(modul, spur, zugriff):
 
 
 def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
-           still=True):
+           still=True, abschnitt=None):
     """Familie B ueber die Historie: ein `spur_buch.zyklus` je Kerze.
 
     Drei Dinge werden waehrend des Laufs stillgelegt, jedes aus einem konkreten
@@ -435,6 +446,9 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
                            "'python historie.py --auffuellen'" % spur)
     if bis_ms:
         alle = {i: [r for r in k if r[0] <= bis_ms] for i, k in alle.items()}
+    if abschnitt:
+        von, bis = abschnitt
+        alle = {i: k[int(von):int(bis)] for i, k in alle.items()}
     if max_kerzen:
         alle = {i: k[-int(max_kerzen):] for i, k in alle.items()}
 
@@ -470,6 +484,19 @@ def _kein_bus(*a, **k):
     """Ersatz fuer `ereignis.lauf` im Backtest: tut nichts, meldet nichts."""
     import contextlib as _c
     return _c.nullcontext()
+
+
+def kerzenlaenge(spur, w=None):
+    """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
+
+    Der Walk laeuft ueber `min(len(k))`; der Optimierer muss seine Fenster
+    deshalb an derselben Zahl ausrichten, sonst liegen die Fenster fuer ein
+    Instrument ausserhalb der Reihe.
+    """
+    if w is None:
+        w = dict(spur_modul(spur).lade_wachen())
+    takt = _takt(w)
+    return min((len(historie.lade(i, takt)) for i in _instrumente(w)), default=0)
 
 
 def kennzahlen(journal_pfad):

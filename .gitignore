@@ -73,6 +73,7 @@
 # geschrieben werden - genau deshalb ist sie hier sichtbar und nicht versteckt.
 !Agenten/Routinen/moondev-gui-autostart.vbs
 !Agenten/Handel/*.py
+!Agenten/Handel/spur_opt.json
 !Agenten/Handel/*.md
 # Laufzeitdaten: der Tagesschnappschuss. Abgeleitet, kein Buch.
 Agenten/Handel/stand/
