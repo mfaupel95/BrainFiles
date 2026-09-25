@@ -121,8 +121,8 @@ Gemessen mit `Handel/llm_probe.py --modelle bonsai` (drei echte Marktbilder):
 
 | Groesse | Wert |
 |---|---|
-| Vertragstreue | **3/3** (BUY 75 % / SELL 65 % / SELL 65 %) |
-| Dauer | kalt 3,4 s, im Mittel **2,9 s** |
+| Vertragstreue | **6/6** ueber drei Marktbilder, je zweimal gefragt (BUY 75 % / SELL 65 % / SELL 65 %) |
+| Dauer | kalt 1,3 s, im Mittel **1,3 s** |
 | Koerper | `reasoning_effort: "none"` und `max_tokens: 512` |
 
 **Der Denk-Schalter gehoert in den Koerper:** mit `reasoning_effort: "none"`
