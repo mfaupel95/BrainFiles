@@ -95,13 +95,26 @@ Standardbibliothek, kein Schluessel.
 
 ```
 python Agenten/Werkzeuge/breite.py              # messen und zeigen (schreibt nichts)
-python Agenten/Werkzeuge/breite.py --merken     # an die Reihe anhaengen
-python Agenten/Werkzeuge/breite.py --reihe      # die letzten 30 Messungen
+python Agenten/Werkzeuge/breite.py --merken     # in die Reihe schreiben
+python Agenten/Werkzeuge/breite.py --reihe      # Verlauf je Kerzentag
 ```
 
 Reihe: `Agenten/Werkzeuge/breite-reihe.jsonl` — Laufzeitstand wie die
 Handelsjournale, **nicht versioniert**; die Sicherung nach G:/Q: nimmt sie
 trotzdem mit.
+
+**Die Reihe fuehrt EINE ZEILE JE KERZENTAG**, nicht je Messung: eine Messung
+derselben Kerze **ersetzt** ihre Zeile, die letzte des Tages gewinnt. Vorher
+stand hier ein Anbau bei jedem Lauf — sechs Laeufe am 25.09.2026 ergaben sechs
+Zeilen mit **demselben** Wert (Kerze 2026-09-23, 100,0 %), und "die letzten 30
+Messungen" waren damit **ein Tag**. Genau die Richtungsaussage, fuer die die
+Reihe gebaut ist, war so nicht belegbar. Die Tageskerze wechselt **16:00 UTC**;
+der Cron um 19:00 Ortszeit (17:00 UTC) liegt richtig danach. `--reihe` rechnet
+daraus den Verlauf und nennt die Veraenderung in Punkten je Tag; bei nur einem
+Kerzentag sagt es ausdruecklich, dass ein Messpunkt keine Richtung ist.
+Tests `Agenten/Werkzeuge/tests/test_breite.py` (10, ohne Netz, biegt die Naht
+`REIHE` auf einen Temp-Ordner um und prueft, dass der echte Stand unberuehrt
+bleibt).
 
 Wache: `Agenten/Hermes/scripts/breite-wache.py`, Hermes-Cron `breite-wache`
 (taeglich 19:00, `no_agent`, Telegram, leere Ausgabe = nichts senden). Sie misst,

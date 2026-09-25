@@ -6,6 +6,10 @@ Ein einzelner Messpunkt sagt nichts ueber die Richtung. Dieses Werkzeug misst
 und kann den Wert in eine REIHE schreiben (`--merken`), damit "die Breite
 schrumpft" belegbar wird statt behauptet.
 
+Die Reihe fuehrt EINE ZEILE JE KERZENTAG (siehe `merken`) - mehrere Messungen
+desselben Tages ersetzen einander. `--reihe` zeigt daraus den VERLAUF mit der
+Veraenderung in Punkten je Tag.
+
 WOHER
 -----
 Oeffentliche OKX-Tageskerzen (`/api/v5/market/candles`), nur Standardbibliothek,
@@ -13,7 +17,8 @@ kein Schluessel, keine Kosten. Der EEA-Host ist der Haushost; faellt er aus,
 wird www.okx.com probiert.
 
 Zeitbezug: gerechnet wird auf der letzten GESCHLOSSENEN Tageskerze, nicht auf
-dem laufenden Kurs. Die Kerze steht in der Ausgabe.
+dem laufenden Kurs. Die Kerze steht in der Ausgabe. OKX-Tageskerzen beginnen
+16:00 UTC (00:00 UTC+8) - die Kerze wechselt also um 16:00 UTC.
 
 FALLE (gemessen 25.09.2026)
 ---------------------------
@@ -24,8 +29,8 @@ gemessen wurden und welche nicht.
 
 AUFRUF (aus Agenten/Handel heraus: ..\\Werkzeuge\\breite.py)
     python breite.py                    # messen und zeigen (schreibt nichts)
-    python breite.py --merken           # messen und an die Reihe anhaengen
-    python breite.py --reihe            # die letzten 30 Messungen
+    python breite.py --merken           # messen und in die Reihe schreiben
+    python breite.py --reihe            # Verlauf je Kerzentag
     python breite.py --json             # Maschinenform fuer die Wache
 """
 import json
@@ -155,7 +160,15 @@ def zeige(m):
 
 
 def merken(m):
-    """Eine Zeile je Messung. Abstaende mit, sonst ist der Verlauf blind."""
+    """Eine Zeile je KERZENTAG. Abstaende mit, sonst ist der Verlauf blind.
+
+    FALLE (gemessen 25.09.2026): zuerst wurde bei JEDER Messung angebaut. Sechs
+    Laeufe am selben Tag ergaben sechs Zeilen mit DEMSELBEN Wert (Kerze
+    2026-09-23) - "die letzten 30 Messungen" waren damit EIN Tag, und "die
+    Breite schrumpft" blieb unbelegbar. Eine Messung derselben Kerze ERSETZT
+    daher ihre Zeile; die letzte Messung des Tages gewinnt. Die Tageskerze
+    wechselt um 16:00 UTC.
+    """
     satz = {
         "ts": m["ts"], "kerze": m["kerze"],
         "n_ueber": m["n_ueber"], "n_gesamt": m["n_gesamt"],
@@ -165,35 +178,88 @@ def merken(m):
         "abstand": {s["inst"]: round(s["abstand"], 2)
                     for s in m["ueber"] + m["unter"]},
     }
-    with open(REIHE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(satz, ensure_ascii=False) + "\n")
+    # Reihenfolge bleibt zeitlich: eine aeltere Kerze wird dort ersetzt, wo sie
+    # steht (kommt bei einem Nachlauf vor), nicht angehaengt.
+    alt = [z for z in reihe(None)
+           if not (satz["kerze"] and z.get("kerze") == satz["kerze"])]
+    alt.append(satz)
+    alt.sort(key=lambda z: (z.get("kerze") or ""))
+    with open(REIHE, "w", encoding="utf-8", newline="\n") as f:
+        for z in alt:
+            f.write(json.dumps(z, ensure_ascii=False) + "\n")
     return satz
 
 
 def reihe(n=30):
+    """Zeilen der Reihe, aelteste zuerst. n=None oder 0 = alle."""
     if not os.path.exists(REIHE):
         return []
+    saetze = []
     with open(REIHE, encoding="utf-8") as f:
-        zeilen = [z for z in (l.strip() for l in f) if z]
-    return [json.loads(z) for z in zeilen[-n:]]
+        for zeile in f:
+            zeile = zeile.strip()
+            if not zeile:
+                continue
+            try:
+                saetze.append(json.loads(zeile))
+            except ValueError:
+                continue                      # eine kaputte Zeile killt nicht alles
+    return saetze if not n else saetze[-n:]
+
+
+def verlauf(n=None):
+    """Die Reihe als VERLAUF: eine Zeile je Kerzentag, mit Veraenderung.
+
+    Reine Rechnung auf den Zeilen der Reihe - kein Netz, damit pruefbar.
+    Rueckgabe (aeltester Kerzentag zuerst), je dict:
+        kerze, breite, n_ueber, n_gesamt, delta, unter, messungen
+    `delta` = Veraenderung gegenueber dem Kerzentag DAVOR, in Punkten (None beim
+    ersten Tag). `messungen` zaehlt die Zeilen, die zu diesem Tag in der Reihe
+    standen - mehr als 1 heisst: es wurde mehrfach gemessen und ersetzt.
+    """
+    tage = {}
+    for s in reihe(None):
+        k = s.get("kerze")
+        if not k:
+            continue                          # ohne Kerze kein Tagesbezug
+        if k not in tage:
+            tage[k] = {"kerze": k, "breite": s.get("breite"),
+                       "n_ueber": s.get("n_ueber"),
+                       "n_gesamt": s.get("n_gesamt"),
+                       "unter": list(s.get("unter") or []), "messungen": 0}
+        tage[k]["messungen"] += 1
+    raus, vorher = [], None
+    for k in sorted(tage):
+        z = tage[k]
+        if vorher is not None and z["breite"] is not None:
+            z["delta"] = round(z["breite"] - vorher, 2)
+        else:
+            z["delta"] = None
+        if z["breite"] is not None:
+            vorher = z["breite"]
+        raus.append(z)
+    return raus[-n:] if n else raus
 
 
 def main(argv):
     if "--reihe" in argv:
-        saetze = reihe()
-        if not saetze:
+        tage = verlauf()
+        if not tage:
             print("Keine Reihe vorhanden - noch nichts gemessen.")
             return 0
-        print("== Breite-Reihe (%d Messungen) ==" % len(saetze))
-        for s in saetze:
-            print("  %s  Kerze %s  %5.1f %%  (%d/%d)%s"
-                  % (s["ts"][:16].replace("T", " "), s["kerze"],
-                     s["breite"] if s["breite"] is not None else -1,
-                     s["n_ueber"], s["n_gesamt"],
-                     "  unter: " + ",".join(s["unter"]) if s["unter"] else ""))
-        if len(saetze) >= 2:
-            print("  Veraenderung gegenueber der Messung davor: %+.1f pp"
-                  % (saetze[-1]["breite"] - saetze[-2]["breite"]))
+        print("== Breite-Reihe: %d Kerzentag(e) ==" % len(tage))
+        for z in tage:
+            print("  %s  %6s %%  (%d/%d)  %s%s"
+                  % (z["kerze"],
+                     ("%.1f" % z["breite"]) if z["breite"] is not None else "-",
+                     z["n_ueber"] if z["n_ueber"] is not None else 0,
+                     z["n_gesamt"] if z["n_gesamt"] is not None else 0,
+                     ("%+.1f pp" % z["delta"]) if z["delta"] is not None
+                     else "   -",
+                     "  unter: " + ",".join(z["unter"]) if z["unter"] else ""))
+        if len(tage) < 2:
+            print("  Ein Kerzentag ist ein Messpunkt, keine Richtung - "
+                  "fuer die Richtung braucht es mindestens zwei.")
         return 0
 
     m = messen()
@@ -203,7 +269,8 @@ def main(argv):
         zeige(m)
     if "--merken" in argv:
         s = merken(m)
-        print("In der Reihe vermerkt: %s (%.1f %%)" % (s["ts"], s["breite"]))
+        print("In der Reihe vermerkt: Kerze %s (%.1f %%)"
+              % (s["kerze"], s["breite"]))
     return 0 if m["n_gesamt"] else 1
 
 
