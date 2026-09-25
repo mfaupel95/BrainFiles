@@ -90,6 +90,15 @@ Die Delegation (die Coding-Subagenten) faehrt seit dem 25.09.2026 auf Bonsai:
 antwortet mit `OK`. Vorher (8k) brach genau dieser Aufruf mit der
 64k-Meldung ab.
 
+**Und die Delegation faehrt wirklich darauf** (25.09.2026): ein Subagent lief mit
+`Model: bonsai` und antwortete richtig — **aber er brauchte 341 s fuer ein Wort**
+(1 API-Aufruf). Das ist kein Decode-Problem (12 t/s), sondern das VORSPIEL: der
+System-Prompt eines Subagenten ist gross, und Bonsai verarbeitet ihn mit ~85 t/s
+- 20k Token Prompt kosten also rund vier Minuten, bevor das erste Wort kommt.
+Fuer echte Coding-Aufgaben (viele Zuege, lange Prompts) ist das zu teuer;
+sinnvoll ist Bonsai deshalb als **Rueckfall hinter** einem schnellen
+Cloud-Modell oder fuer kurze, einzelne Fragen.
+
 ### Achtung: `provider: llamacpp` ist NICHT dieser Dienst
 
 Hermes loest den Alias `llamacpp` **zuerst** auf seinen EIGENEN verwalteten
