@@ -1,9 +1,9 @@
 # Ein Buch-Ergebnis prüfen, bevor es als Gewinn gelesen wird
 
 Ausloeser: „Das heisst, wir haetten X gewonnen?" oder eine Bilanz, die gut
-aussieht. Ein Papierbuch ist eine MESSUNG, kein Kontostand - jede Zahl hat
-fuenf Fragen, bevor sie eine Antwort ist. Reihenfolge einhalten: erst rechnen,
-dann reden (Beleg: Spiegel-Buch, 13.09.2026: +518 USD, die keiner sind).
+aussieht. Ein Papierbuch ist eine MESSUNG, kein Kontostand - jede Zahl hat ihre
+Fragen, bevor sie eine Antwort ist (die Reihenfolge unten einhalten): erst
+rechnen, dann reden (Beleg: Spiegel-Buch, 13.09.2026: +518 USD, die keiner sind).
 
 ## 1. Papier oder Geld?
 
@@ -72,3 +72,29 @@ ueberhaupt tragbar ist (Spitzenbindung + Drawdown), nicht die Rendite.
   Eroeffnen) - ohne Join ueber den Token ist die wichtigste Frage ("traegt
   Nachahmen in kleinen Buechern?") nicht nach Band stellbar. Vor dem Bauen eine
   echte Zeile jeder Aktion lesen, nicht das Spaltenschema.
+
+## 7. Wer hat gezaehlt? Mit einer EIGENEN Paarung nachzaehlen
+
+Eine Kennzahl, die ein Werkzeug aus demselben Journal rechnet, ist NICHT
+gegengeprueft, wenn man das Werkzeug ein zweites Mal aufruft: derselbe Code
+liefert dieselbe Zahl, auch wenn die Zahl falsch ist. Nachzaehlen heisst, die
+Runden unabhaengig nachzubauen - eigene FIFO-Paarung je Instrument, eigene
+Erloes-minus-Einsatz-Rechnung, ohne die Funktion des Berichts zu importieren -
+und erst dann beide Zahlen nebeneinander zu legen. Immer alle drei Felder
+vergleichen (Rundenzahl, Trefferzahl, Ergebnis): eine Abweichung in der Zahl,
+die man nicht verglichen hat, bleibt sonst stehen.
+
+Weichen die Zahlen ab, ist die Frage nicht „wer hat den Fehler", sondern
+„welche Zeilen zaehlt die eine Seite nicht mit". Die Ausnahmen stehen im
+Auswertungsmodul, nicht im Journal: Zwangsschluss und Buchhaltungs-Korrektur
+fallen aus Rundenzahl und Quote (`stoerungen.ist_stoerung`), waehrend ihre
+Buchungen in der Kapitalkurve bleiben. Erst die Zaehlung der GRUENDE zeigt,
+welche Klasse fehlt (`Counter(grund)` je Runde) - danach steht fest, ob die
+Zahl falsch war oder nur enger definiert als sie gelesen wird. Beides gehoert in
+den Bericht: die Zahl, ihre Ausnahmen und die Aussage, ob das Urteil steht.
+
+Und die Trennschaerfe der Ausnahme pruefen, statt sie anzunehmen: `anpassen`
+und `buch_nachgezogen_boerse` (Mengenabgleich des Buchs) zaehlen weiter als
+Runde, weil `stoerungen.BUCHHALTUNG` nur `buchbereinigung` kennt. Wer die
+Definition erweitert, aendert sie fuer ALLE Buecher - das ist eine Entscheidung
+von Max, kein Fix nebenbei.

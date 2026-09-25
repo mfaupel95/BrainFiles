@@ -50,6 +50,30 @@ selbst lesen:
   `scanner/handeln.py`. Symptom: `AttributeError: module 'handeln' has no attribute
   'pruefe_einstieg'. Did you mean: 'pruefe_einstiege'?` — der Test laeuft, prueft
   aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
+## Ein Fehlschlag aus der vollen Suite: erst zuordnen, dann fixen
+
+Eine Suite ueber hunderte Tests meldet beim ersten Lauf meist mehr rote Punkte,
+als die eigene Aenderung verursacht hat. In DIESER Reihenfolge zuordnen - jeder
+Schritt ist billiger als der naechste:
+
+1. **Die Testdatei ALLEIN fahren**, bevor irgendetwas geaendert wird. Ist der Test
+   im Einzellauf gruen, war der Fehlschlag ein Lade-/Lastartefakt (Reihenfolge der
+   `sys.path`-Eintraege, geteilter Modulzustand zwischen Testdateien), kein
+   Regressionsbefund.
+2. **Den BETREFF des Fehlschlags gegen die eigene Aenderung halten.** Faellt er an
+   einem Modul, das man nicht angefasst hat (doppelter Modulname im Baum, fremde
+   Datei), gehoert er im Bericht als fremd benannt; bei Verdacht auf ein
+   gleichnamiges Modul `modul.__file__` ausgeben lassen.
+3. **Liest der Test ein ERZEUGNIS, das niemand mehr schreibt?** Altersgrenzen
+   („Bericht 34,5 h alt, Grenze 26 h") schlagen zu, wenn der Erzeuger nicht lief -
+   das heilt mit einem frischen Lauf und ist kein Codefehler.
+4. Erst wenn 1-3 den Fall nicht erklaeren: die eigene Aenderung stashen und
+   gegenproben (SKILL.md, Prozedur Schritt 4).
+
+Merksatz: „Suite rot" ist keine Aussage ueber die eigene Aenderung. Zu jedem
+Fehlschlag gehoert im Bericht ein Satz, WARUM er nicht der eigene ist - sonst
+liest der naechste Leser die Zahl als Regression und sucht an der falschen Stelle.
+
 ## Tests gegen echte Laufzeitdateien schuetzen: das Modul patchen, das den Pfad BESITZT
 
 Ein Test, der die Pfad-Konstante des falschen Moduls patcht, liest still die
@@ -143,6 +167,31 @@ Einsatzes). Drei Regeln, die dabei gelten:
   steht die Gebuehr nicht in der `wachen.json`, ist sie 0 und die Spur rechnet
   zu freundlich. Faellt ein Gebuehrenrabatt weg, zuerst diesen Wert zuruecknehmen
   — nicht die Trefferquote neu deuten.
+
+## Eine Anzeigezeile ist ein Pruefgegenstand, kein Formatierungsrest
+
+Jede Zeile, die eine Kennzahl zeigt, gehoert in eine EIGENE Funktion
+(`tagesbericht.livezeile()`, `rundenzeile()`, `stufenzeile()`, `buchzeile()`). Nur
+dann ist sie ohne Netz, ohne Berichtslauf und ohne echten Spurordner pruefbar: der
+Test gibt eine GEFAELSCHTE Lage hinein (`{"buchlage": "belastbar", "schluessel":
+"scanner", "waehrung": "USD", "kennzahlen": {...}}`) und prueft die REGEL, nicht den
+Tageswert. Eine Zeile, die im Inneren einer Schleife entsteht (`_baue`), kann das
+nicht — ihr fehlender Zusatz faellt erst dem Leser am Telefon auf, und der sieht
+dann nur die Haelfte der Wahrheit.
+
+Zwei Tests je Zeile, beide kurz:
+
+1. Regel gegen gefaelschte Lage — je Zweig einer (`belastbar` mit und ohne
+   Ausnahmen, `zu_wenige_runden`, `kein Buch` mit/ohne Datum, kein Schluessel =
+   keine Zeile).
+2. Regel gegen das ECHTE Buch, ohne Tageswert: `k = auswertung_alle.kennzahlen_fuer(spur,
+   von=..., bis=...)` holen und bedingt pruefen (`if k.get("n_stoerung"):
+   assertIn("ohne Handelsentscheidung", z)`). Der Test bleibt gruen, wenn sich die
+   Zahlen bewegen, und wird rot, wenn der Zusatz verschwindet.
+
+Merksatz: eine richtige Rechnung ist kein Schutz gegen eine irrefuehrende Anzeige.
+Wer eine Kennzahl prueft, stellt ZWEI Fragen — rechnet sie richtig, und nennt sie,
+was sie weggelassen hat?
 
 ## „Kein Journal“ ist zuerst ein WARTEN, kein Fehler
 

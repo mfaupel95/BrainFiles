@@ -667,7 +667,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
       Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
       Agenten/Hermes/profiles/.deleted/
-- [ ] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
+- [x] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
+      Erledigt: 2026-09-24. `1b3c650` (api_frei.py + die drei umgestellten
+      Agenten) liegt auf origin/main des Forks mfaupel95/moon-dev-ai-agents -
+      geprueft mit `git branch -r --contains 1b3c650` (origin/main). Der Klon
+      ist NICHT shallow, ein Push braucht kein `fetch --unshallow`.
       Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
       Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im
       Klon Werkstatt/Repos/moon-dev-ai-agents. Der Fork mfaupel95/moon-dev-ai-agents
@@ -878,7 +882,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Doku: MaxHirn/Wiki/Werkzeuge/MoonDev-Freie-Datenquellen.md
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/
-- [ ] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
+- [x] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
+      Erledigt: 2026-09-24. Der Arbeitsbaum ist gesichert und leer: die
+      parallele Sitzung hat ihren Teil selbst committet (a344457), der Rest
+      (moongui.py, backtest_runner.py, backtest_start.py, src/data/rbi/*,
+      src/data/coingecko_results/*) ist als 7a894b3 mit der Kennung
+      "Andere Sitzung <fremd@local>" nachgezogen und nach origin/main gepusht.
+      `.env` blieb draussen (echte Schluessel; sie stand nicht im Status).
       Kontext: Im Klon liegen Änderungen, die nicht aus meiner Sitzung stammen:
       `rbi_agent.py` (36 Einfügungen / 78 Löschungen), `sniper_agent.py`,
       `src/models/ollama_model.py`, `src/nice_funcs.py`, `src/data/rbi/ideas.txt`,

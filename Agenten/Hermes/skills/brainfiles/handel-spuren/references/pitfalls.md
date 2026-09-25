@@ -1094,3 +1094,24 @@ Kurzfassung ersetzt die Begruendung nicht.
   `--papier`-Zyklus (Zustand, Journal, Q:), `spiegelstand.py` byte-gleich,
   `pruefe_ratschen.py` nennt die Spur mit ihrer Schwelle.
 
+- **Eine Anzeige, die ihre Ausnahmen verschweigt, liest sich als fehlerfreier
+  Automat.** Die Trennung richtig zu RECHNEN ist die halbe Arbeit - gelesen wird
+  die Zeile, und die Luecke zwischen Zahl und Aussage fuellt der Leser mit dem
+  guenstigsten Fall. Gemessen beim scanner: `kennzahlen()` nimmt Zwangsschluss und
+  Buchhaltungs-Korrektur aus Rundenzahl und Quote (Regel „Eine Stoerung gehoert
+  aus der KENNZAHL"), die 7-Tage-Zeile nannte aber nur `n` und `treffer` - sie
+  stand als `83 Runden, +1801.08 USD, Treffer 100 %` da, waehrend im selben
+  Fenster 101 Runden mit zwei Verlierern geschlossen wurden (97,9 %, die zwei
+  Verlierer waren `buchbereinigung`). Jede Kennzahl, die eine TEILMENGE zaehlt,
+  nennt ihre Ausnahmen in DERSELBEN Zeile (`+18 Ausstiege ohne
+  Handelsentscheidung, nicht in der Quote`); sie in einer anderen Datei getrennt
+  auszuweisen ist kein Ersatz, sondern die Stelle, an der sie niemand liest.
+  Zwei Handgriffe machen die Regel pruefbar: (1) die Zeile aus dem Ausgabeblock
+  herausloesen in eine eigene Funktion (Muster `tagesbericht.livezeile()` /
+  `rundenzeile(s)`) - eine Regel, die nur in einem `print`-Block steht, kann kein
+  Test halten; (2) im Test BEIDE Faelle behaupten, mit Ausnahmen und ohne, sonst
+  faellt eine Anzeige nicht auf, die den Zusatz immer (oder nie) schreibt.
+  Wer eine gemeldete Zahl nachpruefen soll, zaehlt sie mit einer EIGENEN Paarung
+  nach (`references/buchergebnis-pruefen.md`, Abschnitt 7) - ein zweiter Aufruf
+  desselben Werkzeugs widerlegt nichts.
+

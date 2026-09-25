@@ -62,7 +62,13 @@ Ausloeser → Referenz:
  oder `404 NOT_FOUND` trotz gueltigem Schluessel, Groesse in Kontrakten statt
  Muenzen, Ausstieg braucht `reduceOnly`, Besicherung aus dem Cash-Konto des
  Dienstes): `references/zweite-boerse.md`, Abschnitt "Ein zweiter Dienst sieht aus
- wie eine zweite Boerse".
+ wie eine zweite Boerse". **Und die Kontraktgroesse wird GEMESSEN, nicht aus dem
+ Record gelesen** (`contractSize` ist dort immer 1 und sagt nichts): 1 Kontrakt =
+ 1 Einheit der Basiswaehrung, Einschuss 10 % fuer ein EEA-Konto - Abschnitt "Wie
+ gross ist ein Kontrakt WIRKLICH" derselben Datei, mit der Tabelle, welcher Markt
+ sich mit welchem Guthaben ueberhaupt handeln laesst. Weil es hier keinen
+ `validate`-Schalter gibt, ist der Mini-Round-Trip der Beleg
+ (`nautilus_kraken/futures_probe.py`, Vorschau Standard, Notausstieg per Stop).
 - **Max aendert Positionen von HAND** (in der Boersen-App schliessen,
   verkleinern, aufstocken) - das Buch folgt der Boerse, die handgeschlossene
   Position bekommt ihr ECHTES Ergebnis, Stop/Ziel bleiben der Spur, und der
@@ -105,6 +111,13 @@ Ausloeser → Referenz:
   — Entscheidung bleibt bei der Spur, Einmal-Beleg als Tor, die alten Wege
   werden geschlossen, Ausstiege bleiben frei; die Zuordnung „unser Code,
   der Schluessel oder die Boerse" laeuft in der Reihenfolge der Diagnose-Datei.
+  **Und eine zeitweise Abweisung** (heute da, in einer Stunde ohne Zutun weg)
+  bekommt einen ZEUGEN samt Wache statt einer neuen Sonde: Abschnitt 8 der
+  Diagnose-Datei - vier Wege (offen/signiert x Spot/Futures) trennen Netz von
+  Schluessel, im Fehlerfall Status + Header + Rohantwort festhalten, nach einer
+  Abweisung 60 min Kuehlzeit halten (jeder Versuch setzt den Lockout-Timer
+  zurueck), und die Sonde nimmt ihre Adresse aus dem HAUSMODUL - sonst schickt
+  der Test Aufrufe mit Attrappen-Schluessel an den echten Host.
 - **"hab eingezahlt" und das Guthaben ist nicht da** („wo ist das Geld hin",
   „die Spur kann nicht handeln, weil 0 EUR frei sind", eine Einzahlung steht auf
   `Success` und trotzdem ist der Saldo 0): `references/einzahlung-und-guthaben.md`
@@ -126,18 +139,38 @@ Ausloeser → Referenz:
   bekommt und warum der Spiegel aussen vor bleibt, wie eine Stufe einen eigenen
   Waechter-Task bekommt und warum drei Stufen keine Skalierung derselben
   Geschaefte sind: `references/risikostufen.md`
+  **Eine VARIANTE anzuzeigen ist kein Beleg, sie zu LESEN.** Die Regel gilt fuer
+  Risikostufen, Arme (`HANDEL_BUCH`) und Fassungen gleichermassen und braucht
+  ZWEI Pruefungen: jede Buchdatei muss ueber die Variante gebildet werden
+  (Suffix ZULETZT, `wachen.json` NIE - die Wachen werden skaliert, nicht
+  umbenannt), UND die MODULVARIABLEN der Leser-Werkzeuge muessen gestellt werden
+  (`auswertung_alle.STUFE` ist eine Modulvariable; ohne sie stehen in einer Zeile
+  die Positionen der Variante und die Zahlen der Basis). Im `finally`
+  zurueckstellen - ein Bericht darf den aufrufenden Prozess nicht umstellen.
 - **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
-  `references/live-status-und-buch-trennung.md`
+  `references/live-status-und-buch-trennung.md` — dort auch der Fall "eine
+  Papier-Position belegt den LIVE-Platz": Aufraeumschritt am ANFANG des
+  Live-Laufs, VOR der Platzzählung, und das Einmal-Werkzeug
+  `Handel/papierbuch_schliessen.py` (Vorschau Standard, `--anwenden`,
+  `--spur <name>`; ruft die Funktion DER Spur, fasst keine Zustandsdatei
+  juenger als 300 s an).
 - **Eine live geschaltete Spur kommt nicht ins Handeln** (sie ist scharf, es
   passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
-  oeffnet Fenster ohne Ergebnis) oder **eine Grenze soll erhoeht werden**
+  oeffnet Fenster ohne Ergebnis; die Sperre nennt ein Guthaben ohne BOERSE und
+  Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht werden**
   („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
   der Einsatz wird auf das freie Guthaben gedeckelt BEVOR das Freigabefenster
   ihn zeigt, und nach jeder Erhoehung wird nachgerechnet, welches Limit dann
-  bindet.
+  bindet. Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
+  (`live_einsatz_eur`/`_usd`) - wer nur einen liest, rechnet still mit dem
+  Papier-Einsatz weiter, und ein Einsatz unter der Mindestmenge des Instruments
+  wird gesperrt statt aufgerundet. **Und ein Instrumentenwechsel mit offenem Buch
+  ist ein Buchvorgang**, kein Konfigurationswert: erst das alte Buch zum alten
+  Kurs schliessen und spiegeln, dann das Symbol tauschen
+  (`references/zweite-boerse.md`, Abschnitt "Instrumentenwechsel mit offenem Buch").
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -179,17 +212,38 @@ Ausloeser → Referenz:
   SPUREN-Eintrag `"python": os.path.join(HIER, "<spur>", ".venv", "Scripts",
   "python.exe")` — `zyklus_spur` UND `nur_fenster_fehlt` muessen
   `d.get("python", PYTHON)` respektieren (beide Stellen: die Vorschau-Frage laeuft
-  ueber den zweiten Aufruf).
+  ueber den zweiten Aufruf). **Ein spurenuebergreifendes Werkzeug, das
+  `handeln.py` MEHRERER Spuren importiert, muss den Interpreter je Spur benutzen**
+  oder je Spur getrennt aufgerufen werden: ein nautilus-Arm laedt im scanner-venv
+  nicht (`ModuleNotFoundError: nautilus_trader`), und der Fehler faellt erst beim
+  zweiten Import - nachdem die erste Spur schon gebucht hat. Also je Spur ein
+  eigener Aufruf (`--spur <name>`) statt einer Sammelschleife in einem Prozess.
 
 ## Prozedur
 1. **Lage lesen, nicht erinnern.** `handeln.py --vorschau` mit
    `MAXHIRN_ROUTINE=1` läuft ohne Fenster und nennt jede geschlossene Sperre.
    Sperrliste im Code lesen (`sperren_live`), nicht aus dem Gedächtnis.
+   **Ein genanntes Flag, das das Werkzeug gar nicht kennt** („`tagesbericht.py
+   --alle`"), ist eine ABSICHT und kein Fehler: erst die echten Argumente des
+   Werkzeugs lesen (`--help`, `grep add_argument`), dann die gemeinte Wirkung
+   bauen oder liefern. Nicht mit einer Fehlermeldung antworten und die Absicht
+   nicht als „unklare Anfrage" zurueckgeben - Max tippt kurz, oft halb.
 2. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede Datei, die angefasst wird —
    auch `wachen.json` und `zustand.json`, wenn ein Testlauf sie berühren kann.
 3. **Ändern:** Sperren gehören in `sperren_live()` bzw. die gleichnamige Funktion
    der Spur, nicht verstreut in den Rumpf von `lauf()`.
-4. **Ohne Broker testen.** `cd <spur> && python -m unittest discover -s tests`.
+4. **Ohne Broker testen - mit dem Aufruf, der im TESTKOPF der Spur steht.**
+   Hausregel: aus `<spur>/tests` heraus `python -m unittest discover -s . -t .`.
+   Ein Aufruf aus dem SPURORDNER (`cd <spur> && … discover -s tests -t tests`)
+   setzt das Arbeitsverzeichnis in `sys.path`; die Testkoepfe ziehen ihre eigene
+   Spur aber mit `if p not in sys.path: sys.path.insert(0, p)` nach, und weil
+   die Spur schon drinsteht, bleibt `scanner/` vorn: `import handeln` holt
+   `scanner/handeln.py`. Symptom: `AssertionError: falsches handeln: …\scanner\
+   handeln.py`, `module 'handeln' has no attribute <X>` und ein halbes Dutzend
+   roter Tests an Code, den niemand angefasst hat. Deshalb in Testkoepfen die
+   eigene Spur IMMER vorne einsetzen - Pfad vorher entfernen
+   (`while p in sys.path: sys.path.remove(p)`, dann `insert(0, p)`), sonst wirkt
+   das `if p not in sys.path` als Bremse gegen die eigene Reihenfolge.
    Interpreter **absolut** angeben (z. B.
    `C:/…/Handel/scanner/.venv/Scripts/python.exe`): ein relativer Pfad bricht nach
    dem `cd`, und die leere Ausgabe sieht wie „keine Tests“ aus statt wie ein
@@ -237,6 +291,11 @@ Ausloeser → Referenz:
    - Versionierte Textdateien nie komplett neu schreiben: Fassung aus `HEAD` holen
      (Verlauf LF, Arbeitsbaum gern CRLF), nur die gewollten Stellen ersetzen;
      `git diff --stat` muss die geaenderte Zeilenzahl zeigen, nicht die ganze Datei.
+     **Flippt ein Schreibwerkzeug die Endungen** (ein Patch-Weg gibt die Datei ueber
+     seinen eigenen Editor zurueck: LF rein, CRLF raus), zeigt der Diff plotzlich die
+     GANZE Datei - dann die Endungen aus der Vorversion wiederherstellen
+     (`b.replace(b"\r\n", b"\n")`) und in einem FOLGE-Commit sichern (nie force-push);
+     der Netto-Diff gegen `HEAD~1` muss genau die gewollten Zeilen zeigen.
    - In einem Baum mit mehreren Sitzungen gehoert in den Commit eine **explizite
      Pfadliste**, nie `git add -A <ordner>`: im Handel-Baum lag uncommittete
      Fremdarbeit (`spiegel/spiegel.py`, Ablehnungs-Protokollierung), die so unter
@@ -245,6 +304,16 @@ Ausloeser → Referenz:
      `git restore --staged <fremddatei>`, erneut committen, die Fremdaenderung
      unangetastet lassen und im Abschlussbericht nennen (braucht eine Entscheidung
      von Max, keine stille Mitnahme).
+   - **Fremdes im SELBEN Dokument** (geteilte Dateien wie `MaxHirn/Archiv/TASKS.md`)
+     trennt pfadgenaues Stagen nicht mehr. Dann ist Mitnehmen erlaubt, aber BENANNT:
+     die fremden Eintraege in der Commit-Nachricht nennen. Stilles Mitnehmen ist der
+     Fehler, nicht das Mitnehmen. **Und beim Ersetzen eines Blocks in einer Liste
+     (TASKS-Eintrag, Klassenblock) nie per Lookahead auf ein Merkmal des Nachbarn
+     arbeiten** - ein Muster `- [ ] **T-…` endet am naechsten UNERLEDIGTEN Eintrag,
+     ein erledigter (`- [x]`) faellt mit in den Treffer und ist danach weg. Stattdessen
+     ueber ZEILENINDIZES ersetzen und die Menge der IDs VORHER/NACHHER vergleichen
+     (`set(re.findall(...))`, Differenz = genau die eigene Aenderung); im Zweifel den
+     Block aus `HEAD` zurueckholen.
    - Der gelesene Stand ist eine MOMENTAUFNAHME: vor dem Aendern
      `diff <eigene .bak> <datei>` — nur diese Differenz zeigt, was seit dem Lesen
      dazukam; eine Meldung "Datei wurde von einer anderen Sitzung geaendert" ist
@@ -375,6 +444,33 @@ ersetzt die Begruendung nicht.
 89. **Ein stiller `except`-Zweig behauptet einen Sachverhalt, den er gar nicht geprueft hat.** Faengt eine Funktion wie `zeitfenster_offen()` eine Ausnahme ab und gibt `False` zurueck, meldet sie "kein Zeitfenster" — obwohl das Fenster offen sein kann und der Importfehler die Ursache ist. Ausnahme-Zweige im Live-Pfad: nach `stderr` schreiben, nicht schweigen. Die MELDUNG muss den Fehler nennen (`Zeitfenster nicht lesbar`), nicht den Zustand (`Freigabefenster nicht offen`).
 
 88. **Eine Skip-Wache auf den falschen Teil gesetzt macht die Routine dauerhaft wirkungslos.** Vor dem Einbauen einer Uebersprungs-Bedingung pruefen, was die Routine HEUTE noch tut — nicht was sie mal tat. Belegt: `marktscanner.ps1` sprang bei laufendem Dauerlauf ueber `scan.py` (harmlos, schreibt nur `berichte/*.json`), weil frueher auch `handeln.py` in der Routine stand. Folge: der Ranglisten-Bericht fror auf den Vortag ein, Spuren kauften zu alten Preisen. Alter des ERZEUGNISSES messen (Datei-Mtime von `berichte/neuester.json`), nicht den Exitcode der Routine.
+
+90. **Ein Zwischenlager ist ein Vertrag.** Wer ein Ergebnis weglegt und spaeter
+wieder einliest (Rangliste, Kennzahlenstand, Vorrat im `zustand.json`), muss
+JEDES Feld mitnehmen, das der Verbraucher braucht - nicht nur die Felder der
+Anzeige. Sonst faellt der Verbraucher in seinen Rueckfall, und der zeigt auf den
+Wert, den es vor dem Umbau gab: die Aenderung wirkt dann nur auf den ersten Lauf
+(Beleg: `swap` handelte nach dem Zwilling-Umbau wieder `XAU-USDT-SWAP`, OKX
+50124). Dazu gehoeren zwei Sicherungen: ein Stand aus ALTEM Schema wird
+verworfen und neu geholt statt bis zum Ablauf zu gelten, und der Rueckfall darf
+nie auf den unbrauchbaren Wert zeigen (besser kein Vorschlag als eine Order, die
+nur abgewiesen wird). Gegenprobe: den Verbraucher mit einem Stand aus der DATEI
+fahren, nicht mit einem frisch gebauten Dict - ein Test mit `handels_instr` im
+Speicher war gruen, waehrend die Spur den falschen Markt handelte.
+
+91. **Eine Sperrzeile, die nur im Fehlerfall gedruckt wird, ist von "nicht
+geprueft" nicht zu unterscheiden.** Und der Dauerlauf parst genau diese Zeile:
+`if g: print("Live waere gesperrt durch: …")` laesst bei leerer Liste eine
+Luecke, die wie ein abgebrochener Lauf aussieht. Immer drucken, leere Liste als
+`nichts`. Dazu gehoert die zweite Haelfte: die Vorschau nennt den GEGENSTAND der
+Order (das gehandelte Instrument), nicht den Zwischennamen, aus dem er
+abgeleitet wurde.
+
+92. **Eine Anzeige, die ihre Ausnahmen verschweigt, liest sich als fehlerfreier
+Automat.** Zaehlt eine Kennzahl nur eine Teilmenge (echte Handelsrunden ohne
+Zwangsschluss und Buchhaltungs-Korrektur), gehoert der Zusatz in DIESELBE Zeile -
+sonst fuellt der Leser die Luecke mit dem guenstigsten Fall („Treffer 100 %" bei
+drei Ausstiegen daneben). Vollen Text: `references/pitfalls.md`.
 
 ## Welche Daten eine Sperre liest
 
@@ -771,11 +867,16 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 - `references/buchergebnis-pruefen.md` — Buch-Ergebnis deuten, bevor es als Gewinn
   gelesen wird: Papier vs. Geld, Saldo vs. Umsatz, Abhaengigkeit von den
   Top-Positionen, Mittelwert UND Median, was nicht in der Zahl steckt. Ausloeser:
-  „das heisst, wir haetten X gewonnen?".
+  „das heisst, wir haetten X gewonnen?". Eine gemeldete Kennzahl („Treffer
+  100 %") wird mit einer EIGENEN FIFO-Paarung nachgezaehlt, nicht durch einen
+  zweiten Aufruf desselben Werkzeugs - Abschnitt 7 derselben Datei.
 - `references/spur-haerten.md` — bestehende Spur pruefen, haerten, messbar machen:
-  acht Verdachtsmuster (toter Code mit Docstring-Behauptung, erfundene Feldnamen,
-  zu enge Ausnahmen, fehlende Deckel), Fix-Disziplin, Nachweis-Kette. Ausloeser:
-  „Code optimieren", „Luecken suchen".
+  elf Verdachtsmuster (toter Code mit Docstring-Behauptung, erfundene Feldnamen,
+  zu enge Ausnahmen, fehlende Deckel, ein Routing-Feld das eine Zwischenlagerung
+  nicht ueberlebt, eine Anzeige die den leeren Fall verschweigt),
+  Fix-Disziplin, Nachweis-Kette. Ausloeser:
+  „Code optimieren", „Luecken suchen", „die Spur laeuft wieder in den alten
+  Fehler".
 - `references/spur-bericht.md` — Zustandsbericht ueber eine laufende Spur:
   Quellen in Reihenfolge, Lese-Fallen (Bus-Journal mit BOM, UTC vs. lokale
   Bus-Zeit, 1-s-Vorschau-Lauf je Zyklus als Absicht, kurze Abstaende vs. echte
@@ -810,6 +911,12 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 - `references/test-friert-stand-ein.md` — ein Test gegen einen Commit-Hash oder
   eine feste Anzahl meldet Aenderung, nicht Fehler. Auf die Eigenschaft pruefen,
   die gelten soll; Zeit als Parameter hereingeben.
+- `references/spur-tests-und-auswertung.md` — Tests richtig aufrufen (Testkopf-Form
+  gegen `-t tests`, falsches `handeln`-Modul), vorbestehende Fehlschlaege deuten,
+  **Fehlschlaege der vollen Suite zuordnen** (Datei allein fahren, Betreff gegen
+  die eigene Aenderung halten, Alter des gelesenen Erzeugnisses),
+  Ausstiegsrechnung auf den Nominalwert, Anschluss an `auswertung_alle`,
+  Gebuehren-Grenze `f_max`.
 - `references/schaltername-benennt-die-sperre.md` — ein boolescher Name benennt
   den Zustand, den er schaltet, nicht den Anlass (`wochenende_gesperrt`, nicht
   `we`); `wenn_nicht_X` gehoert nie in einen Namen.

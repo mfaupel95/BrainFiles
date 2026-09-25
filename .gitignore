@@ -805,3 +805,6 @@ kraken-lockout-stand.json
 # trotzdem mit; dafuer ist git nicht noetig.
 !Agenten/Werkzeuge/breite.py
 Agenten/Werkzeuge/breite-reihe.jsonl
+
+# Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/Repos/):
+/kraken-cli/
