@@ -130,6 +130,27 @@ class FensterTest(ReplayTest):
         self.assertLess(mit, ohne)
 
 
+class GebuehrTest(unittest.TestCase):
+    """Die Gebuehr ist der teuerste Fehler eines Backtests - sie muss stimmen."""
+
+    def test_wachen_wert_hat_vorrang(self):
+        self.assertEqual(0.6, replay.gebuehr_fuer("kraken", {"gebuehr_taker": 0.006}))
+        self.assertEqual(0.05, replay.gebuehr_fuer("xperp", {"gebuehr_taker": 0.0005}))
+
+    def test_fehlender_wert_faellt_auf_den_boersensatz_der_spur(self):
+        self.assertEqual(0.1, replay.gebuehr_fuer("squeeze", {}))
+        self.assertEqual(0.05, replay.gebuehr_fuer("liq_wand", {}))
+        self.assertEqual(0.6, replay.gebuehr_fuer("orbk", {}))
+
+    def test_kein_pauschalwert_und_keine_stille_null(self):
+        for spur in replay.SPUREN_TEIL_A:
+            self.assertGreater(replay.gebuehr_fuer(spur, {}), 0.0)
+
+    def test_unbekannte_spur_wird_gemeldet_statt_geraten(self):
+        with self.assertRaises(KeyError):
+            replay.gebuehr_fuer("diegibtesnicht", {})
+
+
 class GegenprobeTest(ReplayTest):
     """Der neue Kern muss dasselbe rechnen wie der alte - sonst luegt er."""
 

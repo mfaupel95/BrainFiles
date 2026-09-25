@@ -297,6 +297,52 @@ def _journal_schreiben(ordner, gesammelt):
     return len(gesammelt)
 
 
+# Boersensatz je Spur, wenn die wachen.json keine Gebuehr traegt. Prozent je
+# Seite. Quelle der Saetze: eigene Fuellungen und Boersenseiten (Kraken SOLEUR
+# am 22.09.2026: 0,30012 EUR auf 50,01954 EUR = 0,6000 % je Seite).
+BOERSENSAETZE = {
+    "okx_spot": 0.10,        # scanner, squeeze, wavetrend, macd_mtf, supertrend
+    "okx_perp": 0.05,        # liq_wand, trendwende_btc, swap, xperp
+    "kraken": 0.60,          # orbk, kraken, mosaic, moondev_marktlage
+}
+
+SPUR_BOERSE = {
+    # OKX Spot (USDC-Paare)
+    "scanner": "okx_spot", "squeeze": "okx_spot", "wavetrend": "okx_spot",
+    "macd_mtf": "okx_spot", "supertrend": "okx_spot", "orb": "okx_spot",
+    # OKX Perp/Swap und Deribit
+    "gitter": "okx_perp", "liq_wand": "okx_perp", "trendwende_btc": "okx_perp",
+    "swap": "okx_perp", "xperp": "okx_perp", "iv_waelle": "okx_perp",
+    "moondev_funding": "okx_perp", "moondev_listingarb": "okx_perp",
+    "moondev_topmovers": "okx_perp", "moondev_sniper": "okx_perp",
+    "moondev_signalwelle": "okx_perp", "moondev_whale": "okx_perp",
+    "moondev_liquidation": "okx_perp", "moondev_sentiment": "okx_perp",
+    # Kraken Spot (EUR)
+    "orbk": "kraken", "kraken": "kraken", "mosaic": "kraken",
+    "moondev_marktlage": "kraken",
+}
+
+
+def gebuehr_fuer(spur, w=None):
+    """Gebuehr je Seite in Prozent.
+
+    Reihenfolge: eigener Wert aus der wachen.json -> Boersensatz der Spur.
+    Einen pauschalen Ersatz gibt es NICHT: fuer eine Perp-Spur waere die oft
+    benutzte 0,10-%-Annahme der zwanzigfache Satz, und jedes Nettoergebnis
+    damit zu schlecht.
+    """
+    if w is None:
+        w = dict(spur_modul(spur).lade_wachen())
+    wert = w.get("gebuehr_taker")
+    if wert is not None:
+        return round(float(wert) * 100.0, 4)
+    satz = SPUR_BOERSE.get(spur)
+    if satz is None:
+        raise KeyError("kein Boersensatz fuer %r - bitte gebuehr_taker in die "
+                       "wachen.json eintragen" % spur)
+    return BOERSENSAETZE[satz]
+
+
 def kennzahlen(journal_pfad):
     """Kennzahlen aus dem Backtest-Journal - EINE Rechnung fuer beide Welten.
 
