@@ -114,6 +114,10 @@ Die acht `provider: llamacpp`-Eintraege der MoA-Presets zeigten deshalb nicht
 auf Bonsai, sondern auf den verwalteten Dienst — ihre Modellnamen
 (`Qwen3.8-27B-UD-Q4_K_M`, `gemma-4-E4B-it-OBLITERATED-Q8_0`) gibt es dort nicht
 mehr. Wer diesen Dienst meint, nennt `provider: bonsai` (Port 8080).
+Die acht Eintraege der Presets (default, Max 2, Vision) stehen seit dem
+25.09.2026 auf `provider: bonsai`; ein echter MoA-Lauf lief danach durch
+(Antwort `OK`).
+
 Der verwaltete Server ist der upgestreamte llama.cpp — er **kann die ternaren
 Gewichte nicht laden**; ihn auf Bonsai umzustellen braucht den PrismML-Fork.
 

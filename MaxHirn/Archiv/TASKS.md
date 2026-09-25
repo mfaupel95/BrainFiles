@@ -1236,7 +1236,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       PrismML-Fork statt des upgestreamten llama.cpp).
       Angelegt: 2026-09-25
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
-      **Erledigt 2026-09-25.** Max: "Moa auf bonsai". Die acht Eintraege der Presets default / Max 2 / Vision (sechs Referenzmodelle, zwei Aggregatoren) stehen jetzt auf `provider: bonsai` und erreichen damit den Dienst auf 8080 statt des verwalteten Servers auf 18434. Byte-genau ersetzt (4 + 2 + 2), CRLF erhalten, YAML geprueft; ein echter MoA-Lauf als Nachweis angestossen.
+      **Erledigt 2026-09-25.** Max: "Moa auf bonsai". Die acht Eintraege der Presets default / Max 2 / Vision (sechs Referenzmodelle, zwei Aggregatoren) stehen jetzt auf `provider: bonsai` und erreichen damit den Dienst auf 8080 statt des verwalteten Servers auf 18434. Byte-genau ersetzt (4 + 2 + 2), CRLF erhalten, YAML geprueft; ein echter MoA-Lauf lief danach durch (Antwort `OK`).
 - [x] **T-073 — Kraken-Futures-Schluessel war stundenweise abgewiesen - der VPN war es**
       Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` mit
       dem echten Stand (availableMargin 141,5963; USD 8,89 + EUR 45,74 + USDC 81,08),
