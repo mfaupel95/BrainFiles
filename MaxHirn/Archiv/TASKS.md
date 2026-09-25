@@ -59,6 +59,46 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-094 — Entscheidung Max: kostenpflichtige Historien (Deribit-Strike-OI, Onchain)**
+      Kontext: `iv_wand`, `iv_waelle` (Strike-OI-Historie), `moondev_whale`
+      (OKX-OI), `moondev_liquidation`, `robinhood_radar` und `kopier` bleiben ohne
+      Backtest, weil ihre Historie frei nicht abrufbar ist (gemessen 2026-09-24,
+      OKX-OI antwortet `50030 Illegal time range`).
+      Naechster Schritt: entscheiden, ob dafuer Geld in die Hand genommen wird
+      (Deribit-Archiv, Onchain-Indexer) oder ob es beim Vermerk "nicht
+      nachrechenbar" bleibt. Empfehlung: beim Vermerk bleiben - die frei
+      nachrechenbaren Spuren liefern erst einmal genug Runden.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/{iv_wand,iv_waelle,moondev_whale,moondev_liquidation,robinhood_radar}
+- [ ] **T-093 — Handelsregeln: Backtest-Runden zaehlen nicht fuer die Freigabe**
+      Kontext: Die Backtest-Fundament-Spezifikation setzt das fest (Abschnitt
+      "Trennung von Live"), aber `Wissen/Handelsregeln.md` sagt es noch nicht.
+      Ohne den Satz koennten die historischen Runden als Freigabe-Runden gelesen
+      werden - genau die Vermischung, die Max am 2026-09-24 ausgeschlossen hat.
+      Naechster Schritt: Absatz in Bedingung 1 ergaenzen: "Runden aus dem
+      Backtest (`Agenten/Handel/daten/backtest/`) zaehlen NICHT fuer die Runden-
+      und die netto-positiv-Bedingung; sie sind Messung, keine Live-Erfahrung."
+      Angelegt: 2026-09-25
+      Betrifft: MaxHirn/Wissen/Handelsregeln.md
+- [ ] **T-092 — xperps Tageszweig ist nachrechenbar, aber noch nicht angeschlossen**
+      Kontext: `xperp/bot.py` traegt bereits die Naht `tages_kerzen_quelle`, und
+      die Tageskerzen liegen als `Agenten/Handel/daten/*.csv` (yfinance, mehrere
+      Jahre). Damit ist der Aktien-/Rohstoff-Zweig backtestbar, waehrend der
+      Perp-Zweig es nicht ist (siehe T-091).
+      Naechster Schritt: eigene Aufgabe nach dem Backtest-Plan - Kerzen aus
+      `daten/*.csv` ueber dieselbe Naht, kein neuer Datenweg.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/xperp/bot.py, Agenten/Handel/daten/
+- [ ] **T-091 — Vier Kern-Spuren ohne Kerzen-Naht sind nicht backtestbar**
+      Kontext: `scanner`, `xperp` (Perp-Zweig), `swap` und `kraken` rufen den
+      Kerzenweg DIREKT (kein `kerzen_quelle`) und lesen Kontostand und
+      Ranglisten. Der Replay-Kern aus
+      `Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md` kann sie
+      deshalb nicht fahren - und genau dort laeuft das echte Geld.
+      Naechster Schritt: eigener Design-Zyklus, Datenzugriff kapseln wie in den
+      uebrigen 18 Spuren, Live-Pfad vollstaendig draussen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/{scanner,xperp,swap,kraken}/
 - [ ] **T-090 — RBI-Schleife laeuft unbeaufsichtigt und wird nicht gewacht**
       Kontext: Seit 25.09.2026 laeuft die Research-Backtest-Implement-Schleife
       des moon-dev-Klons (rbi_agent) echt durch: Idee -> Strategie -> Backtest-
