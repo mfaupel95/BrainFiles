@@ -98,6 +98,46 @@ den Stop; die tatsaechliche Verteilung (viele kleine Ausstiege) liegt darunter.
    `sys.path`; ein alphabetisch vorgezogenes `import ereignis` faellt mit
    `ModuleNotFoundError` um, obwohl das Modul existiert.
 
+## Erste Parametersuche (2026-09-25, 24 Monate, vier Halbjahres-Fenster)
+
+Gesucht wurde ueber `pflicht_stop_prozent_min` und `ziel_r_vielfaches`; der
+Deckel `pflicht_stop_prozent_max` flog raus (8 und 12 lieferten Runde fuer Runde
+identische Zahlen - der ATR-Stop bleibt darunter, ein totes Rasterfeld).
+
+**Kein Kandidat gewinnt alle vier Fenster** - bei beiden Spuren nicht. In JEDER
+Spur ist eines der vier Halbjahre fuer JEDEN Parameter negativ (supertrend
+F1/F3, squeeze F3). Das ist ein Marktregime, kein Parameterproblem.
+
+Der eigentliche Befund ist eine **monotone Beziehung** (squeeze, netto je Runde):
+
+| Stop-Breite | schlechtestes Fenster | bestes Fenster |
+|---|---|---|
+| 3 % | **−1,13 %** | +0,51 % |
+| 5 % | −3,39 % | +2,57 % |
+| 7 % | −5,04 % | +3,24 % |
+
+Die Stop-Breite steuert nicht den Gewinn, sondern wie tief das schlechte Fenster
+schneidet. Die Frage ist damit keine Optimierungsfrage mehr ("welcher Parameter
+ist der beste?"), sondern eine Risikofrage ("welches Profil will ich?") - und
+die entscheidet Max, nicht der Optimierer.
+
+**Vier Fehler des Optimierers, alle am 2026-09-25 gefunden und mit Tests
+festgenagelt** (jeder haette eine falsche Empfehlung erzeugt):
+
+1. Vergleich **brutto** statt netto → empfiehlt die Einstellung mit den meisten
+   Runden, weil jede Runde 2 x Gebuehr kostet.
+2. Vergleich gegen die **eigene Suchhaelfte** statt gegen die heutige Einstellung
+   → mass den Regimewechsel zwischen den Haelften und liess **18 von 18**
+   Kandidaten durch (supertrend) bzw. 14 von 18 (squeeze).
+3. Mindestrundenzahl **8** war zu lasch (bei ~0,5 % Vorsprung und ~5 % Streuung
+   braucht es Groessenordnung 100) → jetzt 30 plus Mindestvorsprung 0,10 %.
+4. Bei mehreren Fenstern war **"erstes gegen letztes"** willkuerlich → jetzt muss
+   ein Kandidat JEDES auswertbare Fenster gewinnen (`urteil_walkforward`).
+
+**Merksatz:** Ein Backtest liefert erst dann eine Zahl, wenn Uhr, Fensterteilung,
+Vergleichsmass und Gebuehr nachgerechnet sind. Alle vier waren in dieser Sitzung
+zuerst falsch - und jede Fassung sah wie ein Ergebnis aus.
+
 ## Offen
 
 - **T-095:** `runden_aus_journal` paart je **Instrument**, nicht je Position —
