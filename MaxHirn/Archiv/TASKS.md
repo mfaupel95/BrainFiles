@@ -59,17 +59,7 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-- [ ] **T-112 — scanner: „Treffer 100 %" bei 83 Runden und Ruecklauf 0.00 USD nachpruefen**
-      Kontext: Der Tagesbericht weist fuer OKX Spot (scanner) „7 Tage: 83 Runden,
-      +1801.08 USD, Treffer 100 %" aus, waehrend derselbe Block „Ruecklauf 0.00 USD"
-      nennt und die Spur 5 offene Positionen fuehrt. 100 % Treffer ueber 83
-      geschlossene Runden ist entweder ein extrem einseitiger Markt oder ein
-      Zaehlfehler (z.B. nur Gewinner gezaehlt, Stop-Runden fehlen in der Quote).
-      Naechster Schritt: die ersten 20 Runden von hand aus dem handelsjournal.csv
-      paaren und gegen kennzahlen_fuer stellen; dabei pruefen, ob Ausstiege mit
-      grund=stop ueberhaupt in die Quote eingehen. Ohne Beleg keine Zahl aendern.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/auswertung_alle.py, scanner/handelsjournal.csv
+
 - [ ] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
       Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
       "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
@@ -771,7 +761,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
 
-
 - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
       Kontext: Die Futures-Variante (PF_XBTUSD, USD, Hebel) laeuft Papier. Die
       Gebuehr 0,05% ist eine Annahme, nicht gemessen. Vor dem Scharfschalten
@@ -1457,7 +1446,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
-- [x] **T-108 — Legacy-Gateway-Starter entfernt (die Aufgabe war schon weg)**
+- [x] **T-112 — scanner: Treffer 100 % war kein Zaehlfehler, sondern eine Anzeigeluecke (behoben)**
+      Kontext: Auftrag Max 25.09.2026 (t-112). Der Bericht nennt fuer OKX Spot 7 Tage: 83
+      Runden, +1801.08 USD, Treffer 100 % neben Ruecklauf 0.00 USD - das liest sich wie ein
+      fehlerfreier Automat.
+      Nachgezaehlt (eigene FIFO-Paarung je Instrument, unabhaengig von auswertung_alle): im
+      selben Fenster schlossen 101 Runden, 99 Gewinner, 2 Verlierer (beide grund=buchbereinigung,
+      -1.51 und -2.91 USD) -> echte Trefferquote 97.9 %. KEIN Zaehlfehler: kennzahlen() trennt
+      seit 15.09.2026 Ausstiege ohne Handelsentscheidung (stoerungen.ist_stoerung: herzschlag/
+      zwangsschluss/notaus + buchbereinigung) aus Rundenzahl UND Quote und weist sie separat aus
+      (n_stoerung 18, stoerung_ergebnis +210.14). Der Fehler war die ANZEIGE: die 7-Tage-Zeile
+      nannte nur n/treffer.
+      Behoben: tagesbericht.rundenzeile(s) aus der _baue-Schleife herausgeloest (Muster
+      livezeile(): eine Zeile, eine Funktion, eine Regel im Test) und um den Zusatz erweitert;
+      die Zeile lautet jetzt: 7 Tage: 83 Runden, +1801.08 USD, Treffer 100% | +18 Ausstiege ohne
+      Handelsentscheidung (+210.14 USD, nicht in der Quote).
+      Offen geblieben: anpassen/buch_nachgezogen_boerse (Mengenabgleich, 22.09.2026) zaehlen
+      weiter als Runde - stoerungen.BUCHHALTUNG kennt nur buchbereinigung; das zu aendern wirkt
+      auf ALLE Buecher und braucht eine eigene Entscheidung.
+      Beleg: tagesbericht.py --ohne-xperp zeigt den Zusatz; tests/test_tagesbericht_rundenzeile.py
+      (8) plus die acht Berichtstestsuiten (70 Tests) gruen.
+      Angelegt: 2026-09-25 (erledigt am 25.09.2026)
+      Betrifft: Agenten/Handel/tagesbericht.py, Agenten/Handel/tests/test_tagesbericht_rundenzeile.py- [x] **T-108 — Legacy-Gateway-Starter entfernt (die Aufgabe war schon weg)**
       Kontext: Auftrag Max 25.09.2026 ("t-108"). Gemessen nach dem Update: die Aufgabe
       `Hermes_Gateway` EXISTIERT NICHT mehr - `Get-ScheduledTask` findet nur
       `Hermes-Update-20260921`, `Hermes_Dashboard` und `Hermes_Gateway_2ef9d0b7`, und
@@ -1688,7 +1698,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       zielt inzwischen auf `Q:` statt `E:` (siehe [[Routinen]]).
       Betrifft: `Agenten/sichern.ps1`, `Agenten/sichern-ausser-haus.ps1`,
       Aufgabe `MaxHirn-Sicherung`
-
 
 - [x] **T-041 — Drei Spuren startet der Dauerlauf, ohne dass sie den Bus melden**
       **Erledigt 2026-09-13.** `swap/handeln.py`, `spiegel/spiegel.py` und

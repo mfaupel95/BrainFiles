@@ -58,6 +58,16 @@ Befund geht in den Bericht, der Fix erst nach Max' Wort).
 - **Eine Nullrunde ist ein Alarm, kein Rauschen.** Die Kennzahl je Zyklus
   (Quotes, Kerzen, Kandidaten) muss > 0 sein; 0 heisst "Pfad tot", nicht
   "ruhig am Markt".
+- **Eine Kennzahl ohne ihre Ausnahmen ist eine halbe Zahl.** Die Zeile
+  `7 Tage: N Runden, +X, Treffer Y %` zaehlt nur HANDELSRUNDEN:
+  `stoerungen.ist_stoerung` nimmt Zwangsschluss (herzschlag/zwangsschluss/notaus)
+  und Buchhaltungs-Korrektur (buchbereinigung) heraus und weist sie getrennt aus
+  (`n_stoerung`, `stoerung_ergebnis`). Seit dem 25.09.2026 nennt die Zeile sie im
+  Klartext (`| +18 Ausstiege ohne Handelsentscheidung (+210.14 USD, nicht in der
+  Quote)`); fehlt der Zusatz, ist „Treffer 100 %" nicht die Quote des Buchs - der
+  scanner hatte 101 Runden, 2 Verlierer (beide `buchbereinigung`, 97,9 %).
+  Gegenprobe: `auswertung_alle.kennzahlen()` liefert `n`, `n_stoerung` und
+  `runden_gesamt`; `n + n_stoerung == runden_gesamt` muss aufgehen.
 - **Reihenfolge der Zeitzonen in der Ausgabe pruefen**: eine Ausgabezeile ohne
   Datum/Zone liest sich als abgelaufene Frist (Pitfall in SKILL.md).
 

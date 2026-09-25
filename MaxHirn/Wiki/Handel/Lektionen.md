@@ -601,3 +601,39 @@ Werkzeug: `Agenten/Handel/papierbuch_schliessen.py` (Vorschau Standard,
 `--anwenden`, `--spur <name>`), ruft die Funktion DER SPUR, spiegelt nach Q:
 und fasst keine Zustandsdatei an, die juenger als 300 s ist. Interpreter je
 Spur beachten (`nautilus_kraken` im `nautilus/.venv`).
+
+## Eine getrennte Rechnung ist noch keine getrennte Anzeige (25.09.2026)
+
+**Regel.** Wenn eine Auswertung zwei Klassen trennt, muss die Anzeige BEIDE
+nennen. Eine Zahl, die nur die eine Haelfte zeigt, ist keine gekuerzte Wahrheit,
+sondern eine falsche Aussage — der Leser fuellt die Luecke mit dem guenstigsten
+Fall.
+
+**Belegter Fall.** Der Tagesbericht nennt fuer den scanner „7 Tage: 83 Runden,
++1801.08 USD, **Treffer 100 %**", direkt daneben „Ruecklauf 0.00 USD", waehrend
+dieselbe Spur fünf offene Positionen fuehrt. Die Rechnung stimmte: `kennzahlen()`
+nimmt seit dem 15.09.2026 alles heraus, was keine Handelsentscheidung ist
+(`stoerungen.ist_stoerung`: herzschlag/zwangsschluss/notaus + buchbereinigung)
+und weist es separat aus (`n_stoerung`, `stoerung_ergebnis`). Nachgezaehlt im
+selben Fenster: **101 Runden, 99 Gewinner, 2 Verlierer** (beide
+`grund=buchbereinigung`, −1,51 und −2,91 USD) → echte Trefferquote **97,9 %**.
+Nur die Zeile nannte `n`/`treffer` und schwieg ueber die 18 daneben.
+
+**Fix.** Die Zeile ist aus `_baue` herausgeloest (`tagesbericht.rundenzeile(s)`,
+gleiches Muster wie `livezeile()` — eine Zeile, eine Funktion, eine Regel im
+Test) und traegt den Zusatz:
+
+`7 Tage: 83 Runden, +1801.08 USD, Treffer 100% | +18 Ausstiege ohne
+Handelsentscheidung (+210.14 USD, nicht in der Quote)`
+
+**Merksatz.** Eine korrekte Trennung im Rechenweg ist kein Schutz gegen eine
+irrefuehrende Anzeige. Beim Pruefen einer Kennzahl zwei Fragen stellen: rechnet
+sie richtig — UND nennt sie, was sie weggelassen hat? Die zweite Frage hat in
+diesem Fall 1,5 Stunden gekostet, nicht die erste.
+
+**Offen.** `anpassen` und `buch_nachgezogen_boerse` (Mengenabgleich des Buchs,
+22.09.2026) zaehlen weiter als Runde, weil `stoerungen.BUCHHALTUNG` nur
+`buchbereinigung` kennt. Sie liegen im Ergebnis nahe null; wer sie ebenfalls
+herausnehmen will, aendert die Definition fuer ALLE Spuren.
+
+Tests: `Agenten/Handel/tests/test_tagesbericht_rundenzeile.py` (8).

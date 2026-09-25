@@ -453,17 +453,9 @@ def _block(s, d):
         t.append("  Live: %s" % ("GESPERRT - " + "; ".join(auf) if auf
                                  else "offen"))
 
-    if s["buchlage"] == "belastbar":
-        k = s["kennzahlen"]
-        t.append("  7 Tage: %d Runden, %+.2f %s, Treffer %d%%"
-                 % (k["n"], k["ergebnis"], s["waehrung"],
-                    round(100.0 * k["treffer"] / k["n"])))
-    elif s["buchlage"] == "zu_wenige_runden":
-        t.append("  7 Tage: zu wenige Runden (%d)"
-                 % (s["kennzahlen"] or {}).get("n", 0))
-    elif s["schluessel"]:
-        seit = s["buch_seit"]
-        t.append("  kein Buch%s" % (" (seit %s)" % seit if seit else ""))
+    z = rundenzeile(s)
+    if z:
+        t.append(z)
 
     teile = []
     if d.get("position_neu"):
@@ -479,6 +471,35 @@ def _block(s, d):
     if teile:
         t.append("  seit gestern: " + " | ".join(teile))
     return "\n".join(t)
+
+
+def rundenzeile(s):
+    """Die Zeile '7 Tage: ...' einer Spur.
+
+    Ein Zwangsschluss (Waechter) und eine Buchhaltungs-Korrektur sind KEINE
+    Handelsentscheidung: `stoerungen.ist_stoerung` nimmt sie aus Rundenzahl
+    und Quote. Sie werden hier ausdruecklich NEBEN die Quote gestellt - ohne
+    den Zusatz liest sich "Treffer 100 %" wie ein fehlerfreier Automat,
+    waehrend daneben weitere Ausstiege stehen (scanner 25.09.2026: 83 in der
+    Quote, 18 daneben, zwei davon im Minus).
+    """
+    if s.get("buchlage") == "belastbar":
+        k = s["kennzahlen"]
+        z = ("  7 Tage: %d Runden, %+.2f %s, Treffer %d%%"
+             % (k["n"], k["ergebnis"], s["waehrung"],
+                round(100.0 * k["treffer"] / k["n"])))
+        if k.get("n_stoerung"):
+            z += (" | +%d Ausstiege ohne Handelsentscheidung (%+.2f %s,"
+                  " nicht in der Quote)"
+                  % (k["n_stoerung"], k["stoerung_ergebnis"], s["waehrung"]))
+        return z
+    if s.get("buchlage") == "zu_wenige_runden":
+        return ("  7 Tage: zu wenige Runden (%d)"
+                % ((s.get("kennzahlen") or {}).get("n", 0)))
+    if s.get("schluessel"):
+        seit = s.get("buch_seit")
+        return "  kein Buch%s" % (" (seit %s)" % seit if seit else "")
+    return None
 
 
 def livezeile():
