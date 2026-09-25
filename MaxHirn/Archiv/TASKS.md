@@ -59,6 +59,23 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-098 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+      Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
+      (2026-09-25) zeigt: KEIN Kandidat gewinnt alle vier Fenster, weil in jeder
+      Spur ein Halbjahr fuer JEDEN Parameter negativ ist (supertrend F1/F3,
+      squeeze F3). Die Stop-Breite wirkt monoton, aber nur auf die TIEFE des
+      schlechten Fensters (Stop 3 % -> -1,13 %, 5 % -> -3,39 %, 7 % -> -5,04 %)
+      und auf die Hoehe der guten - sie ist eine Risikoeinstellung, kein Hebel.
+      Wenn es einen Hebel gibt, dann die Frage: laesst sich das schlechte Regime
+      VORHER erkennen?
+      Naechster Schritt: mit demselben Fundament (replay.py + optimieren.py) je
+      Spur pruefen, ob ein Marktzustand das negative Fenster ankuendigt -
+      Marktbreite (breite.py gibt es schon), Volatilitaet, Trendlage gegen den
+      200er. Disziplin wie beim Gitter: Suchfenster -> ungesehenes Prueffenster,
+      "kein Filter haelt" ist ein vollwertiges Ergebnis (der Gitter-Befund vom
+      15.09.2026: KEIN Seitwaerts-Filter hielt out-of-sample).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/optimieren.py, Agenten/Handel/breite.py, Wiki/Handel/Backtest-Fundament.md
 - [ ] **T-101 — Kraken-EUR: 0,71 EUR frei blockieren `kraken` UND `nautilus_kraken` live**
       Kontext: Am 25.09.2026 waren in beiden Spuren die Papier-Positionen ausgebucht
       (siehe T-103 und Wiki/Handel/Lektionen.md) - damit ist das Buch frei, aber das
