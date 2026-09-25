@@ -59,7 +59,7 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-- [ ] **T-098 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+- [ ] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
       Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
       (2026-09-25) zeigt: KEIN Kandidat gewinnt alle vier Fenster, weil in jeder
       Spur ein Halbjahr fuer JEDEN Parameter negativ ist (supertrend F1/F3,
