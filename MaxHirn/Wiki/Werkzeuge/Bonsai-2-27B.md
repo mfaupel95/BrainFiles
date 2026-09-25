@@ -85,6 +85,11 @@ Die Delegation (die Coding-Subagenten) faehrt seit dem 25.09.2026 auf Bonsai:
 `delegation.provider: bonsai`, `model: bonsai`, dahinter als Rueckfall
 `nous/deepseek-v4-flash-0731` und `anthropic/claude-opus-5`.
 
+**Nachweis, dass der Agent darauf laeuft** (nicht nur der Endpunkt antwortet):
+`HERMES_HOME=<leeres Verzeichnis> hermes -z "Antworte mit genau einem Wort: OK"`
+antwortet mit `OK`. Vorher (8k) brach genau dieser Aufruf mit der
+64k-Meldung ab.
+
 ### Achtung: `provider: llamacpp` ist NICHT dieser Dienst
 
 Hermes loest den Alias `llamacpp` **zuerst** auf seinen EIGENEN verwalteten

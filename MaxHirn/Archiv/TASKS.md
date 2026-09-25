@@ -59,6 +59,21 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-086 — MoA-Presets und der verwaltete llama-Server: Bonsai oder nicht**
+      Kontext: Bonsai laeuft seit 25.09.2026 mit 64k (`-Kontext 65536`, VRAM
+      7.772/253 MiB, 12,1 t/s) und wird von Hermes als Agent-Modell angenommen
+      (Nachweis: `hermes -z` in leerem HERMES_HOME antwortet `OK`); die Delegation
+      faehrt darauf. Offen ist der llama.cpp-Weg IN HERMES: der Alias
+      `provider: llamacpp` loest ZUERST auf den EIGENEN verwalteten llama-server
+      auf (Port 18434), nicht auf Bonsai (8080) - die acht MoA-Eintraege (Presets
+      default / Max 2 / Vision, Referenzmodelle und Aggregatoren) zeigen deshalb
+      nicht auf Bonsai, obwohl ihr Modellname jetzt `bonsai` lautet.
+      Naechster Schritt: entscheiden, ob diese acht Eintraege auf
+      `provider: bonsai` umgestellt werden (dann wirklich Bonsai, 12 t/s, GPU
+      voll) ODER ob der verwaltete Server Bonsai servieren soll (braucht den
+      PrismML-Fork statt des upgestreamten llama.cpp).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
 - [ ] **T-096 — Fristwaechter fuer die Ausser-Haus-Kopie (sie wird still alt)**
       Kontext: `sichern-ausser-haus.ps1` hat ABSICHTLICH keine geplante Aufgabe -
       sie braucht die angesteckte Q:-SSD. Folge: am 25.09.2026 war die Kopie
