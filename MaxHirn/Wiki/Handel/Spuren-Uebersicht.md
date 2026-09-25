@@ -31,6 +31,20 @@ eigene Sperrdatei, ein eigenes Log und ein eigener Waechter-Task:
 | mittel | `dauerlauf.mittel.pid` | `dauerlauf.mittel.log` | `...-Mittel-Waechter` |
 | hoch | `dauerlauf.hoch.pid` | `dauerlauf.hoch.log` | `...-Hoch-Waechter` |
 
+**Den Stand einer Stufe LESEN** (statt zu schaetzen): `tagesbericht.py --risiko mittel`
+(oder `hoch`) baut den Bericht aus `zustand.mittel.json` und
+`handelsjournal.mittel.csv`; `--risiko alle` gibt Basis, mittel und hoch untereinander
+aus (die XPERP-Rangliste wird dabei EINMAL geholt, nicht je Stufe). Ohne Angabe bleibt
+es beim Basisbericht - der nennt die Stufen nur in seiner Summenzeile.
+
+Die Stufe wirkt ueber `HANDEL_RISIKO` (genau wie beim Dauerlauf), und `lage._buch()`
+haengt das Suffix an `zustand*` und `handelsjournal*` - **nicht** an `wachen.json`: die
+Wachen werden beim Laden skaliert (`risikostufe.skaliere`), die Datei behaelt ihren
+Namen. Mit Suffix gelesen waere die Wachenlage eines Stufenberichts leer und damit jede
+Sperre darin falsch. Bis 25.09.2026 kündigte der Bericht die Stufe nur AN und las
+trotzdem die Basisdateien - ein Kopf "Faktor 4" ueber den Zahlen der Basis. Wer eine
+weitere Datei eines Buchs anfasst (Zustand, Journal), geht durch `_buch`.
+
 Stand 24.09.2026: alle drei laufen. `hoch` wurde an diesem Tag gestartet (Wrapper
 `Routinen/handel-dauerlauf.ps1 -Risiko hoch`), sein Waechter ist ein Klon des Mittel-Waechters
 mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt (derzeit leer).

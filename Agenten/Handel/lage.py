@@ -11,6 +11,7 @@ import os
 import sys
 
 import auswertung_alle
+import risikostufe
 import zeitfenster
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -30,9 +31,28 @@ _UNGESETZT = object()
 FENSTER_TAGE = 7
 
 
+def _buch(pfad):
+    """Pfad eines Buchs: Zustand und Journal mit Stufensuffix, sonst unveraendert.
+
+    Gesetzt wird das Suffix ueber `HANDEL_RISIKO` (Handel/risikostufe.py): eine
+    Risikostufe schreibt `zustand.mittel.json` und `handelsjournal.mittel.csv`.
+    Ein Bericht, der die Stufe zeigen soll, muss DIESE Dateien lesen - sonst
+    zeigt er mit dem Kopf "Faktor 4" die Zahlen der Basis.
+
+    `wachen.json` ausdruecklich NICHT: die Wachen werden beim Laden skaliert
+    (`risikostufe.skaliere`), die Datei behaelt ihren Namen. Mit Suffix gelesen
+    waere die Wachenlage jedes Stufenberichts leer - und damit jede Sperre
+    falsch.
+    """
+    name = os.path.basename(os.fspath(pfad))
+    if name.startswith("zustand") or name.startswith("handelsjournal"):
+        return risikostufe.datei(pfad)
+    return pfad
+
+
 def _lies(pfad, vorgabe=None):
     try:
-        with open(pfad, encoding="utf-8") as f:
+        with open(_buch(pfad), encoding="utf-8") as f:
             return json.load(f)
     except (OSError, ValueError):
         return vorgabe
@@ -75,7 +95,7 @@ def spur_scanner():
     return {
         "name": "Spur 1  OKX Spot", "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 
@@ -110,7 +130,7 @@ def spur_kraken():
         "name": "Spur 3  Kraken", "waehrung": "EUR", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_kraken",
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 
@@ -169,7 +189,7 @@ def spur_swap():
         "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_xperp",
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 
@@ -223,7 +243,7 @@ def spur_orbk():
         "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_orb",
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 def spur_orb():
@@ -275,7 +295,7 @@ def spur_orb():
         "waehrung": "USDT", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_orb",
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 
@@ -364,10 +384,10 @@ def _spur_spiegel_arm(suffix):
         # schreiben.
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, _arm("handelsjournal.csv")),
+        "journal": _buch(os.path.join(ordner, _arm("handelsjournal.csv"))),
         "bilanz": _bilanz("spiegel" + (".%s" % suffix if suffix else ""),
                           ordner=ordner,
-                          journal=os.path.join(ordner, _arm("handelsjournal.csv"))),
+                          journal=_buch(os.path.join(ordner, _arm("handelsjournal.csv")))),
     }
 
 
@@ -416,7 +436,7 @@ def spur_kopier():
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
         "bilanz": _bilanz("kopier"),
     }
 
@@ -511,7 +531,7 @@ def spur_kopier1zu1():
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
         "bilanz": _bilanz("kopier1zu1"),
     }
 
@@ -533,7 +553,7 @@ def _bilanz(spur, ordner=None, journal=None):
     Ordner von spiegel, lesen aber ihr eigenes Journal (handelsjournal.knapp.csv).
     """
     ordner = ordner or os.path.join(HIER, spur)
-    journal = journal or os.path.join(ordner, "handelsjournal.csv")
+    journal = journal or _buch(os.path.join(ordner, "handelsjournal.csv"))
     # Ein Bericht LIEST. Python legt beim Laden eines Moduls aus einer Datei
     # einen Bytecode-Cache an - im Spurordner, also neben dem Journal. Das
     # schaltet der Import fuer die Dauer des Ladens ab (der Test
@@ -684,7 +704,7 @@ def _spur_indikator(ordner, name, live_faehig=False):
         "name": name, "waehrung": w.get("waehrung", "USD"), "w": w, "z": z,
         "positionen": zeilen, "ordner": pfad, "pruefmodul": None,
         "papierfest": not live_faehig,
-        "journal": os.path.join(pfad, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(pfad, "handelsjournal.csv")),
     }
 
 
@@ -844,9 +864,9 @@ def spur_omniquant(arm=""):
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal%s.csv" % suf),
+        "journal": _buch(os.path.join(ordner, "handelsjournal%s.csv" % suf)),
         "bilanz": _bilanz("omniquant", ordner,
-                          os.path.join(ordner, "handelsjournal%s.csv" % suf)),
+                          _buch(os.path.join(ordner, "handelsjournal%s.csv" % suf))),
     }
 
 
@@ -909,7 +929,7 @@ def spur_gitter():
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
         "bilanz": _bilanz("gitter"),
     }
 
@@ -940,7 +960,7 @@ def spur_nautilus():
         "positionen": [], "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
         "bilanz": zeile,
     }
 
@@ -969,7 +989,7 @@ def _spur_nautilus_kraken_arm(suffix, name, waehrung):
         "positionen": [], "ordner": ordner,
         "pruefmodul": None,
         "papierfest": True,
-        "journal": os.path.join(ordner, "handelsjournal%s.csv" % suffix),
+        "journal": _buch(os.path.join(ordner, "handelsjournal%s.csv" % suffix)),
         "bilanz": zeile,
     }
 
@@ -1038,7 +1058,7 @@ def spur_xperp_positionen():
         "name": "Spur 2  XPERP", "waehrung": "USD", "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_xperp",
-        "journal": os.path.join(ordner, "handelsjournal.csv"),
+        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
     }
 
 

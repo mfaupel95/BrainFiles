@@ -180,6 +180,34 @@ koennen - sonst sammelt die Variante Daten, die niemand sieht:
 - Gegenprobe in beide Richtungen: ohne Variante muss jede Ausgabe unveraendert
   sein (Basisnamen, keine Zusatzzeile, kein leerer Absatz).
 
+### Der Bericht einer Stufe (25.09.2026)
+
+`tagesbericht.py --risiko mittel|hoch` baut den GANZEN Bericht aus den Dateien
+dieser Stufe; `--risiko alle` gibt Basis, mittel und hoch untereinander aus (die
+XPERP-Rangliste ist eine Marktgroesse und wird EINMAL geholt, nicht je Stufe).
+`baue(stufe_=...)` setzt `HANDEL_RISIKO` nur fuer die Dauer des Aufbaus und stellt
+die Umgebung danach zurueck - ein Bericht darf den aufrufenden Prozess (den
+Dauerlauf!) nicht umstellen.
+
+Bis dahin kuendigte der Bericht die Stufe nur AN (`stufenzeile`) und las trotzdem
+`zustand.json` und `handelsjournal.csv` der Basis - ein Kopf „Faktor 4" ueber den
+Zahlen der Basis. Die Stufe wirkt jetzt ueber `lage._buch()`:
+
+- Suffix an `zustand*` und `handelsjournal*`, auch an Arm- und Fassungsnamen
+  (`zustand.knapp.json`, `handelsjournal.weit.csv`) - das Stufensuffix steht
+  ZULETZT.
+- **`wachen.json` bekommt NIE ein Suffix.** Die Wachen werden beim Laden skaliert
+  (`risikostufe.skaliere`), die Datei behaelt ihren Namen. Mit Suffix gelesen
+  waere die Wachenlage jedes Stufenberichts leer und jede Sperre darin falsch.
+- Jede weitere Datei eines Buchs gehoert durch `_buch`, sonst zeigt der Bericht
+  sie wieder aus der Basis. `_lies()` ist der eine Weg zu Zustandsdateien - dort
+  ist der Aufruf eingebaut, die Journalpfade in den Spur-Rueckgaben tragen ihn
+  ebenfalls.
+- Pruefen: `tests/test_bericht_stufen.py` (22) haelt die Regel - Suffix ja/nein,
+  `_lies` trifft die Stufendatei, eine echte Spur liest im Stufenlauf ihren
+  Zustand aus der Stufe UND ihre Wachen aus der Basis, `--risiko alle` baut drei
+  Berichte, Umgebung danach zurueckgestellt.
+
 ## Die Stufen gegen einander lesen
 
 Drei Laeufe sind **kein Skalierungsexperiment**: jede Stufe fuehrt ihr EIGENES
@@ -198,9 +226,13 @@ misst am Ende Glueck mit.
   Zeitfenster die Runden einander zuordnen. Ohne diese Paarung ist der Vergleich
   eine Behauptung.
 - **Erst ab der Mindest-Rundenzahl je Stufe** (die Grenze aus
-  `auswertung_alle.py` nehmen, nicht selbst setzen) — eine frisch gestartete Stufe
-  hat 0 Runden und liefert bis dahin ueberhaupt keine Zahl. Das im Bericht sagen,
-  statt eine Null als Ergebnis zu lesen.
+  `auswertung_alle.py` nehmen, nicht selbst setzen). Eine frisch gestartete Stufe
+  beginnt bei 0 Runden, fuellt ihre ersten aber schon in den ersten Minuten - ihr
+  erster Zyklus eroeffnet selbst Positionen, und ein enger Stop schliesst sie
+  sofort wieder. Der Massstab ist deshalb die RUNDENZAHL, nicht das Startdatum:
+  „die Stufe ist neu" begruendet keine Aussage, „die Stufe hat 4 Runden"
+  schon gar nicht. Das im Bericht sagen, statt eine Null - oder eine
+  Ein-Runden-Zahl mit Vorzeichen - als Ergebnis zu lesen.
 - **Vor dem Start der dritten Stufe die Last messen** (freier Commit): jede Stufe
   faehrt alle Objekte ein weiteres Mal. Rezept fuer den Waechter-Task der neuen
   Stufe (aus dem XML der Geschwisterstufe klonen): `dauerprozess-bewachen`,

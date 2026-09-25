@@ -18,6 +18,8 @@ nichts, wenn es darauf ankommt.
 Aufruf:
     python tagesbericht.py            # Bericht auf die Konsole
     python tagesbericht.py --senden   # zusaetzlich per Telegram
+    python tagesbericht.py --risiko mittel   # der Bericht der Stufe mittel
+    python tagesbericht.py --risiko alle     # Basis, mittel und hoch untereinander
 """
 
 import argparse
@@ -115,6 +117,9 @@ def spiegelzeile():
 # zeigt die Basis; hier geht es um die zweiten Laeufe, die mit groesseren
 # Betraegen Daten sammeln - ohne diese Zeile waeren sie unsichtbar.
 STUFEN = ("mittel", "hoch")
+# Reihenfolge des Gesamtberichts (`--risiko alle`): Basis zuerst, dann die
+# Stufen in ihrer Reihenfolge - nicht alphabetisch, sonst stuende "hoch" oben.
+STUFEN_ALLE = (risikostufe.STANDARD,) + STUFEN
 
 
 def _stufenbuecher(stufe):
@@ -138,6 +143,20 @@ def _stufenbuecher(stufe):
         if isinstance(z, dict):
             aus.append((name, z))
     return aus
+
+
+def buchzeile():
+    """Herkunft der Zahlen eines Stufenberichts: welche Dateien er gelesen hat.
+
+    Ohne diese Zeile sieht ein Bericht mit vierfachen Betraegen genauso aus wie
+    die Basis - die Stufe muss am Buch erkennbar sein, nicht nur am Kopf.
+    """
+    s = risikostufe.suffix()
+    if not s:
+        return ""
+    return ("Buch: zustand%s.json / handelsjournal%s.csv (Faktor %.0f) - "
+            "die Basis laeuft daneben unveraendert weiter."
+            % (s, s, risikostufe.faktor()))
 
 
 def stufenzeile():
@@ -549,25 +568,47 @@ def guthaben_zeile():
         budget_text, "  ".join(teile))
 
 
-def baue(mit_xperp=True):
+def baue(mit_xperp=True, stufe_=None, xperp_daten=None):
     """Der ganze Bericht als Text. Kein Netz noetig fuer den Rahmen.
 
     Die Erhebung wohnt in lage.py und liest ihre Ordner ueber `lage.HIER`.
     Wer `tagesbericht.HIER` auf einen Datenordner umbiegt - die Tests tun
     genau das -, meint auch die Erhebung. Dieselbe Bindung wie bei
     `auswertung_alle.HIER` in `_stufenzahlen()`.
+
+    `stufe_` waehlt die Risikostufe; None nimmt die dieses Prozesses. Gesetzt
+    wird sie ueber `HANDEL_RISIKO` - derselbe Weg, den der Dauerlauf fuer seine
+    Kindprozesse nimmt - und danach wieder zurueckgestellt: ein Bericht darf
+    den aufrufenden Prozess nicht umstellen.
     """
     alt = lage.HIER
     lage.HIER = HIER
+    alt_env = os.environ.get("HANDEL_RISIKO")
+    if stufe_ is not None:
+        os.environ["HANDEL_RISIKO"] = stufe_
+    ist_basis = stufe_ in (None, risikostufe.STANDARD)
     try:
-        return _baue(mit_xperp)
+        return _baue(mit_xperp, stufen_titel=(None if ist_basis else stufe_),
+                     mit_stufenzeile=ist_basis, xperp_daten=xperp_daten)
     finally:
         lage.HIER = alt
+        if alt_env is None:
+            os.environ.pop("HANDEL_RISIKO", None)
+        else:
+            os.environ["HANDEL_RISIKO"] = alt_env
 
 
-def _baue(mit_xperp=True):
+def _baue(mit_xperp=True, stufen_titel=None, mit_stufenzeile=True,
+          xperp_daten=None):
     heute = dt.datetime.now()
-    t = ["<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")]
+    kopf = "<b>Handel  %s</b>" % heute.strftime("%d.%m.%Y %H:%M")
+    if stufen_titel:
+        # Ein Bericht einer Stufe muss am Kopf sagen, welche - sonst liest man
+        # die vierfachen Betraege fuer die Basis. FAKTOREN liefert den Faktor.
+        kopf = "<b>Handel  %s · Risikostufe %s (Faktor %.0f)</b>" % (
+            heute.strftime("%d.%m.%Y %H:%M"), stufen_titel,
+            risikostufe.FAKTOREN.get(stufen_titel, 1.0))
+    t = [kopf]
 
     # Der Schnappschuss entsteht hier nur im Speicher, fuer den Vergleich mit
     # gestern - geschrieben wird er an genau einer Stelle, im Dauerlauf nach
@@ -604,7 +645,11 @@ def _baue(mit_xperp=True):
 
     if mit_xperp:
         try:
-            x = spur_xperp()
+            # Die Rangliste ist eine MARKTgroesse - sie ist in jeder Stufe
+            # dieselbe. Bei `--risiko alle` wird sie deshalb EINMAL geholt und
+            # weitergereicht: dreimal scannen kostet das Dreifache an Zeit fuer
+            # dieselbe Zeile.
+            x = xperp_daten if xperp_daten is not None else spur_xperp()
             t.append("\n<b>%s</b>  (legt vor, handelt nicht)" % x["name"])
             if "fehler" in x["spitzen"]:
                 t.append("  Rangliste nicht erreichbar: %s"
@@ -631,7 +676,9 @@ def _baue(mit_xperp=True):
     t.append("")
     t.append(spiegelzeile())
     t.append(livezeile())
-    stufe = stufenzeile()
+    # In einem Stufenbericht ist die Stufenuebersicht doppelt - dort steht
+    # stattdessen, aus welcher Datei die Zahlen kommen.
+    stufe = stufenzeile() if mit_stufenzeile else buchzeile()
     if stufe:
         t.append(stufe)
     try:
@@ -651,33 +698,58 @@ def main():
                    help="zusaetzlich per Telegram schicken")
     p.add_argument("--ohne-xperp", action="store_true",
                    help="die Rangliste weglassen (schneller, kein Vollscan)")
+    p.add_argument("--risiko", choices=list(STUFEN_ALLE) + ["alle"],
+                   default=risikostufe.STANDARD,
+                   help="Risikostufe des Berichts (%s) oder 'alle' fuer alle "
+                        "drei untereinander; Vorgabe %s"
+                        % (", ".join(STUFEN_ALLE), risikostufe.STANDARD))
     a = p.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    try:
-        text = baue(mit_xperp=not a.ohne_xperp)
-    except Exception:                                    # noqa: BLE001
-        # Auch ein kaputter Bericht wird gemeldet. Stille ist die
-        # schlechteste Meldung.
-        text = ("<b>Handel</b>\nDer Tagesbericht ist gescheitert:\n<pre>%s</pre>"
-                % traceback.format_exc()[-800:])
-        print(text)
-        if a.senden:
-            melder.sende(text)
-        return 1
+    stufen = STUFEN_ALLE if a.risiko == "alle" else (a.risiko,)
+    # Die Rangliste EINMAL holen, wenn mehrere Stufen anstehen (sie ist eine
+    # Marktgroesse, in jeder Stufe dieselbe). Ohne das kostet `--risiko alle`
+    # drei volle Marktscans fuer dieselbe Zeile.
+    vorrat = None
+    if not a.ohne_xperp and len(stufen) > 1:
+        try:
+            vorrat = spur_xperp()
+        except Exception:                                # noqa: BLE001
+            vorrat = None        # _baue meldet den Fehler dann selbst je Stufe
+    texte, fehler = [], 0
+    for s in stufen:
+        try:
+            texte.append(baue(mit_xperp=not a.ohne_xperp, stufe_=s,
+                              xperp_daten=vorrat))
+        except Exception:                                # noqa: BLE001
+            # Auch ein kaputter Bericht wird gemeldet. Stille ist die
+            # schlechteste Meldung. Eine ausgefallene STUFE nimmt die uebrigen
+            # nicht mit - bei 'alle' kommen die anderen trotzdem.
+            fehler += 1
+            texte.append(
+                "<b>Handel - Risikostufe %s</b>\nDer Tagesbericht ist "
+                "gescheitert:\n<pre>%s</pre>" % (s, traceback.format_exc()[-800:]))
 
     # Fuer die Konsole die HTML-Marken wieder heraus.
-    print(text.replace("<b>", "").replace("</b>", ""))
+    print("\n\n".join(t.replace("<b>", "").replace("</b>", "")
+                      for t in texte))
 
     if a.senden:
-        if melder.sende(text):
-            print("\n-> per Telegram gesendet")
+        # Je Stufe eine eigene Nachricht: drei Berichte zusammen sprengen die
+        # Telegram-Grenze, und der Melder teilt dann mitten im Bericht.
+        gesendet = sum(1 for t in texte if melder.sende(t))
+        if gesendet == len(texte):
+            print("\n-> per Telegram gesendet (%d Nachricht(en))" % gesendet)
+        elif gesendet:
+            print("\n-> nur %d von %d Nachrichten gesendet"
+                  % (gesendet, len(texte)))
+            return 1
         else:
             print("\n-> nicht gesendet: %s fehlt" % melder.fehlt())
             return 1
-    return 0
+    return 1 if fehler else 0
 
 
 if __name__ == "__main__":
