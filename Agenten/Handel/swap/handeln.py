@@ -20,9 +20,13 @@ Vorrat:      swap/kandidaten.py - dieselbe Kandidatenform wie xperp/auswahl.py,
 
 DREI DINGE, DIE ANDERS SIND ALS BEI XPERP
 -----------------------------------------
-1. Das Instrument wird ueber den VOLLEN instId aufgeloest. okxf.instrument()
-   findet fuer einen Basiswert den XPERP-Kontrakt; ohne die Endung -SWAP
-   handelte diese Spur still den falschen Kontrakt.
+1. Gehandelt wird der XPERP-Kontrakt, nicht der gewoehnliche Perpetual. Auf
+   diesem Konto ist nur der XPERP-Zweig handelbar: XAU-USDT-SWAP antwortet auf
+   eine Order mit OKX 50124 'does not have trading permission for the market'
+   (gemessen am 25.09.2026), waehrend XAU-USD_UM_XPERP-310502 am 24.09.2026 mit
+   93 Kontrakten gefuellt wurde. Die Reihen des Vorrats tragen ihren Zwilling
+   als handels_instr mit (kandidaten.handels_kontrakte); fehlt er, faellt die
+   Reihe aus der Liste.
 2. Die Wachen kommen aus swap/wachen.json. bot.wachen() liest die Datei aus
    dem xperp-Ordner - wer sie hier benutzt, handelt nach fremden Grenzen.
 3. Der Sperrgrund fuer das Fenster lautet wie in xperp: "kein offenes
@@ -225,11 +229,12 @@ def kandidaten_aus(werte, w, anzahl=6):
 def anlauf(w, kandidat):
     """Ein vollstaendiger Vorschlag samt Pflichtzahlen - oder None.
 
-    Das Instrument kommt ueber den vollen instId: okxf.instrument("CHIP") findet
-    den XPERP, gemeint ist hier CHIP-USDT-SWAP. Das Signal kommt vom gehandelten
-    Kontrakt selbst, nicht aus der Rangliste.
+    Gehandelt wird der Kontrakt aus dem Vorrat (handels_instr = der XPERP-
+    Zwilling derselben Familie, siehe kandidaten.handels_kontrakte). Nur wenn
+    der fehlt, wird der volle instId aufgeloest. Das Signal kommt vom
+    gehandelten Kontrakt selbst, nicht aus der Rangliste.
     """
-    instr = okxf.instrument(kandidat["instId"])
+    instr = kandidat.get("handels_instr") or okxf.instrument(kandidat["instId"])
     if not instr:
         return None
     k = okxf.kerzen(instr["instId"], bot.BAR, 300)
@@ -266,11 +271,26 @@ def anlauf(w, kandidat):
 
 # --- Sperren ----------------------------------------------------------------
 
+def marge_frei_usd():
+    """Freie Margin in der Kontowaehrung (USDC) - None, wenn die Abfrage scheitert.
+
+    Anlass (25.09.2026): geplant sind 50 USD Margin je Anlauf, das OKX-Konto
+    trug aber 0,15 USDC frei - die uebrigen 757 USDC sind die Besicherung
+    laufender XPERP-Positionen. Ohne diese Frage geht der Auftrag an die Boerse
+    und kommt als 51008 zurueck; jede Runde waere ein Fehlerprotokolleintrag
+    ohne Entscheidung. Eine gescheiterte Abfrage sperrt NICHT (None).
+    """
+    try:
+        return float(okxf.guthaben_usdc())
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
 def sperren_live(w, s):
     """Alles, was --live gerade verschliesst. Leere Liste = frei.
 
-    Dieselben sieben Gruende wie xperp. Der letzte traegt das Wort
-    Freigabefenster - daran haengt dauerlauf.nur_fenster_fehlt.
+    Dieselben Gruende wie xperp, dazu die freie Margin. Der letzte traegt das
+    Wort Freigabefenster - daran haengt dauerlauf.nur_fenster_fehlt.
     """
     g = []
     if not risikostufe.live_erlaubt():
@@ -295,6 +315,17 @@ def sperren_live(w, s):
                  % s["rollierender_ev"])
     if w.get("journal_zweitziel") is None:
         g.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+
+    # Freie Margin. Das ist keine Bedingung, sondern fehlendes Geld - der Grund
+    # gehoert trotzdem in diese Liste: sonst oeffnet AUTO_FREIGABE ein Fenster
+    # fuer einen Lauf, der nicht handeln kann (Muster mosaic: erst den Einsatz
+    # deckeln, dann das Freigabefenster zeigen). Er traegt bewusst NICHT das
+    # Wort Freigabefenster.
+    frei = marge_frei_usd()
+    noetig = float(w.get("max_margin_je_anlauf_usd") or 0)
+    if frei is not None and noetig and frei < noetig:
+        g.append("nur %.2f USDC frei, noetig %.2f (max_margin_je_anlauf_usd)"
+                 % (frei, noetig))
 
     # Punkt 3 der Handelsregeln, in der Fassung fuer den Dauerbetrieb: Ohne
     # offenes Zeitfenster ist nichts scharf. Ein Zeitplan legt den Schalter

@@ -95,14 +95,24 @@ def lage_zu(freigabe=True, herzschlag=True, ev=1.0, wochenende=False):
 
 
 class Sperren(unittest.TestCase):
-    """Die sieben Gruende von sperren_live() - Schnittstelle zum Dauerlauf."""
+    """Die Sperrgruende von sperren_live() - Schnittstelle zum Dauerlauf.
+
+    Sieben Bedingungen plus die freie Margin; sind alle Bedingungen offen und
+    ist Geld da, bleibt genau der Fenster-Grund uebrig.
+    """
 
     def setUp(self):
-        self.alt = (okxf.schluessel_vorhanden, freigabefenster.lade)
+        self.alt = (okxf.schluessel_vorhanden, freigabefenster.lade,
+                    okxf.guthaben_usdc)
         okxf.schluessel_vorhanden = lambda: True
+        # Freie Margin reichlich: hier sollen die Bedingungen geprueft werden,
+        # nicht das Guthaben - dafuer gibt es test_handels_kontrakt.py. Ohne
+        # diese Attrappe liefe eine echte Kontoabfrage.
+        okxf.guthaben_usdc = lambda: 1000.0
 
     def tearDown(self):
-        okxf.schluessel_vorhanden, freigabefenster.lade = self.alt
+        (okxf.schluessel_vorhanden, freigabefenster.lade,
+         okxf.guthaben_usdc) = self.alt
 
     def test_alles_zu_ergibt_sieben_gruende(self):
         okxf.schluessel_vorhanden = lambda: False

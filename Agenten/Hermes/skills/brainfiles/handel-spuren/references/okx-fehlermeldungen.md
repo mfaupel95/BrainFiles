@@ -153,3 +153,53 @@ Alle conditional Stops eines Kontos liegen in EINEM Aufruf
 "welche Schutz-Orders liegen am Markt, und deckt jede eine Position?" — und
 `reduceOnly: true` ist der Grund, warum eine Order groesser als ihre Position
 dort harmlos ist (siehe SKILL.md, "Waisen").
+
+## 7. `50124` = falscher MARKT-NAMENSRAUM, nicht fehlende Berechtigung
+
+Befund 25.09.2026, Spur `swap`: `Eroeffnen XAU-USDT-SWAP fehlgeschlagen:
+OKX 50124: This API Key does not have trading permission for the market`.
+
+Der Schluessel war in Ordnung: `/api/v5/account/config` meldete
+`perm: read_only,trade`, `acctLv: 2`. Der Fehler kam vom NAMEN des Marktes. Auf
+diesem EEA-Konto ist der Markt nur unter dem **XPERP-Kontrakt** handelbar
+(`instType=FUTURES`, `instId` `XAU-USD_UM_XPERP-310502`), nicht unter dem
+gleichnamigen gewoehnlichen Perpetual (`instType=SWAP`, `XAU-USDT-SWAP`). Der
+oeffentliche Instrumentenabruf listet BEIDE - sichtbar heisst nicht handelbar.
+
+Zeugen (beide lesend, ohne Order):
+
+```python
+okxf.instrumente(okxf.ROHSTOFF)          # liefert nur die XPERP-Kontrakte
+okxf.swap_instrument("XAU-USDT-SWAP")    # liefert den gewoehnlichen Perpetual
+okxf._roh("/api/v5/account/positions?instType=SWAP", signiert=True)     # []
+okxf._roh("/api/v5/account/positions?instType=FUTURES", signiert=True)  # die echten
+okxf._roh("/api/v5/trade/orders-history-archive?instType=FUTURES"
+          "&instId=XAU-USD_UM_XPERP-310502", signiert=True)             # gefuellt
+```
+
+**Regel: erst den Namensraum, dann die Rechte.** Ein `50124` bei einem Markt,
+der oeffentlich gelistet ist, heisst: die Spur handelt die falsche Kennung
+desselben Marktes. Gegenprobe ist die ORDERHISTORIE des vermuteten Zwillings
+(`instType` passend waehlen - der XPERP-Kontrakt ist `FUTURES`, nicht `SWAP`,
+sonst kommt `51015 Instrument ID doesn't match instrument type`) und die
+Positionsliste je `instType`. Nie eine Testorder zur Diagnose.
+
+Umsetzung im Haus: `swap/kandidaten.handels_kontrakte()` liefert je Basiswert
+den XPERP-Zwilling (EINE Abfrage), die Reihen des Vorrats tragen ihn als
+`handels_instr`/`handels_instId`, `handeln.anlauf()` nimmt ihn; eine Reihe ohne
+Zwilling faellt aus der Liste statt in einen Fehler zu laufen.
+
+## 8. Eine Sperre muss sagen, WELCHE Boerse gefragt wurde
+
+Befund 25.09.2026, Spur `mosaic` (zwei Boersen in der wachen.json): Der
+Sperrgrund lautete `nur 0.71 EUR frei, noetig 60.00`. Max las das als OKX -
+dort liegen USDC, und die Zahl stand ohne Namen da. Gefragt war Kraken (EUR);
+OKX hatte ebenfalls kein Geld (0,15 USDC frei). Die Meldung war richtig und
+trotzdem irrefuehrend.
+
+**Regel: der Grund nennt die Boerse UND ihre Waehrung** (`kraken: nur 0.71 EUR
+frei, noetig 60.00 - dazu okx: nur 0.15 USDC frei, noetig 60.00`). Bei mehreren
+Boersen in der Liste gehoeren die uebrigen Gruende daneben, sonst sieht eine
+geprueft-leere Boerse wie eine ungeprueft uebersprungene aus.
+`mosaic/handeln.live_sperren()` macht das seit dem 25.09.2026; Test in
+`mosaic/tests/test_boersenwahl.py`.

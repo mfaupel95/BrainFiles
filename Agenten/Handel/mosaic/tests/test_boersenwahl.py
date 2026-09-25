@@ -166,5 +166,69 @@ class BoersenWahlTest(unittest.TestCase):
             handeln.venue_fuer_position({"inst": "X", "boerse": "bitfinex"}, QW)
 
 
+class SperrgrundNenntDieBoerse(unittest.TestCase):
+    """Der Guthaben-Sperrgrund nennt die Boerse - und die uebrigen mit.
+
+    Anlass (25.09.2026): Die Meldung "nur 0.71 EUR frei, noetig 60.00" liest
+    sich wie OKX, denn dort liegen USDC; gefragt war aber Kraken (EUR). Beide
+    Boersen hatten kein Geld. Wer den Grund liest, soll das sehen.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._saved = (handeln.BOERSEN, handeln.VENUE_NAME, handeln.VENUE,
+                       handeln.GUTHABEN_WAEHRUNG, handeln.MINDEST_GUTHABEN,
+                       handeln._guthaben_roh, handeln.risikostufe.live_erlaubt,
+                       handeln.sitzung_da, handeln.zeitfenster_offen)
+        handeln.BOERSEN = {"kraken": _boerse_attrappe("kraken"),
+                           "okx": _boerse_attrappe("okx")}
+        handeln.risikostufe.live_erlaubt = lambda: True
+        handeln.sitzung_da = lambda: False
+        # Zeitfenster offen: sonst stuende der Fenster-Grund daneben und der
+        # Test prueft die Liste statt der Meldung.
+        handeln.zeitfenster_offen = lambda: True
+
+    def tearDown(self):
+        (handeln.BOERSEN, handeln.VENUE_NAME, handeln.VENUE,
+         handeln.GUTHABEN_WAEHRUNG, handeln.MINDEST_GUTHABEN,
+         handeln._guthaben_roh, handeln.risikostufe.live_erlaubt,
+         handeln.sitzung_da, handeln.zeitfenster_offen) = self._saved
+        handeln.venue_binden({"boersen": ["kraken"]}, "kraken")
+        self._tmp.cleanup()
+
+    def _guthaben(self, werte):
+        handeln._guthaben_roh = lambda name, ccy: werte.get(name, 0.0)
+
+    def _boersen(self, kraken, okx):
+        """Beide Boersen mit einem freien Betrag belegen.
+
+        Zwei Stellen sind zu fuellen: die gebundene Boerse fragt ueber die Naht
+        op_guthaben (Modulattrappe), die Nachbarbseite ueber _guthaben_roh.
+        """
+        handeln.BOERSEN = {"kraken": _boerse_attrappe("kraken", frei=kraken),
+                           "okx": _boerse_attrappe("okx", frei=okx)}
+        self._guthaben({"kraken": kraken, "okx": okx})
+
+    def _w(self):
+        return dict(QW, handel_erlaubt=True, journal_zweitziel="Q:\\Test")
+
+    def _lage(self):
+        return {"freigabe_erfuellt": True, "herzschlag_frisch": True,
+                "ev_negativ": False, "rollierender_ev": 1.0}
+
+    def test_grund_nennt_boerse_waehrung_und_die_zweite(self):
+        self._boersen(0.71, 0.03)
+        handeln.venue_binden(QW)
+        g = handeln.live_sperren(self._w(), self._lage())
+        self.assertEqual(len(g), 1)
+        self.assertIn("kraken: nur 0.71 EUR frei, noetig 60.00", g[0])
+        self.assertIn("okx: nur 0.03 USDC frei, noetig 60.00", g[0])
+
+    def test_genug_guthaben_ergibt_keinen_grund(self):
+        self._boersen(100.0, 100.0)
+        handeln.venue_binden(QW)
+        self.assertEqual(handeln.live_sperren(self._w(), self._lage()), [])
+
+
 if __name__ == "__main__":
     unittest.main()

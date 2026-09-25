@@ -59,6 +59,46 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-089 — Kein freies Guthaben fuer neue Live-Einstiege (Kraken 0,71 EUR / OKX 0,15 USDC)**
+      Kontext: `mosaic` und `swap` nennen ihre Sperre seit 25.09.2026 mit Boerse
+      und Waehrung. Der Fakt dahinter: Kraken traegt **0,71 EUR** frei, waehrend
+      ~196 EUR in drei offenen Live-Positionen liegen (BTC/ETH/SOL, alle mit
+      Boersen-Stop); OKX traegt **0,15 USDC** frei, die uebrigen 757 USDC sind
+      die Besicherung laufender XPERP-Positionen (FIL/MON/MSTR/CRCL + die
+      manuelle FIL-Position). Kein Dateischalter loest das - es fehlt Geld, keine
+      Bedingung.
+      Naechster Schritt: Entscheidung von Max - Guthaben aufstocken, eine
+      Position schliessen oder die Spuren im Papier lassen. Nichts davon
+      automatisch tun.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/mosaic, Agenten/Handel/swap, Kraken- und OKX-Konto
+- [ ] **T-088 — Kraken: rund 0,98 SOL frei, die in keinem Buch stehen**
+      Kontext: Am 25.09.2026 gemessen: Kraken traegt 1,4620084165 SOL frei,
+      mosaics Buch kennt 0,48058439 SOL (Live-Position vom 23.09.). Die Differenz
+      (rund 100 EUR) gehoert keiner Spur; die Buecher von `kraken` (Papier) und
+      `moondev_marktlage` (XBT/USD) erklaeren sie nicht. Die Kraken-Ledger-Abfrage
+      laeuft wegen des Derivate-Verkehrs (rollover/flexconversion, 45 Zeilen in
+      4,5 h) nicht bis zum Kauf zurueck.
+      Naechster Schritt: bei Max nachfragen, ob das eigener Bestand ist. Wenn
+      nicht: `Ledgers` mit `start` vor dem 23.09.2026 und `asset=SOL` eingrenzen.
+      Angelegt: 2026-09-25
+      Betrifft: Kraken-Konto (Spot), Agenten/Handel/mosaic
+- [ ] **T-087 — swap handelt jetzt den XPERP-Kontrakt; der Geld-Blocker bleibt**
+      Kontext: Der Fehler `OKX 50124` (25.09.2026, jede Runde) kam vom falschen
+      Markt-Namensraum: swap handelte `XAU-USDT-SWAP` (instType=SWAP), handelbar
+      ist auf diesem Konto nur der XPERP-Zwilling (`XAU-USD_UM_XPERP-310502`,
+      instType=FUTURES, belegt mit 93 gefuellten Kontrakten am 24.09.).
+      Behoben: `kandidaten.handels_kontrakte()` bildet je Basiswert auf den
+      Zwilling ab, `handeln.anlauf()` handelt ihn, und die Sperrliste nennt die
+      freie Margin (`nur 0.15 USDC frei, noetig 50.00`), damit AUTO_FREIGABE
+      kein Fenster fuer einen Lauf oeffnet, der nicht handeln kann.
+      OFFEN: swap kann damit weiterhin NICHT live handeln - es fehlt die freie
+      Margin (siehe T-089). Und die Papierposition im Buch traegt noch die alte
+      Kennung `XAU-USDT-SWAP`; neue Positionen laufen unter dem XPERP-Namen.
+      Naechster Schritt: beobachten, ob der naechste Live-Zyklus mit offenem
+      Fenster eine Order versucht; bei freier Margin zuerst `--vorschau` lesen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/swap (handeln.py, kandidaten.py, tests/)
 - [ ] **T-086 — moon-dev-ai-agents: RBI-Schleife laeuft, aber die Kursdatei ist die des Autors**
       Kontext: Die vier RBI-Laeufer des GUI starten seit 25.09.2026 (UTF-8 +
       Wurzel-.env im Kind, conda durch den venv-Interpreter ersetzt, Prompt-

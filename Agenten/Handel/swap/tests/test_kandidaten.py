@@ -75,6 +75,7 @@ class Sammlung(unittest.TestCase):
         self.k4h = kerzen(1.0)
         self.k1d = kerzen(1.0)
         self.alt = (okxf.kerzen, okxf.tickers, k.instrumente)
+        self.alt_hk = k.handels_kontrakte
 
         okxf.kerzen = lambda inst, bar="1H", anzahl=300: (
             self.k1d if bar == "1D" else self.k4h)
@@ -86,9 +87,16 @@ class Sammlung(unittest.TestCase):
             {"instId": "CHIP-USDT-SWAP", "lever": "20", "instCategory": "1"},
             {"instId": "KLEIN-USDT-SWAP", "lever": "5", "instCategory": "1"},
         ]
+        # Der handelbare Zwilling je Reihe. Ohne ihn faellt die Reihe aus der
+        # Liste - nur der XPERP-Zweig ist auf diesem Konto handelbar.
+        k.handels_kontrakte = lambda: {
+            "CHIP": {"instId": "CHIP-USD_UM_XPERP-310822", "lever": "20"},
+            "KLEIN": {"instId": "KLEIN-USD_UM_XPERP-310999", "lever": "5"},
+        }
 
     def tearDown(self):
         okxf.kerzen, okxf.tickers, k.instrumente = self.alt
+        k.handels_kontrakte = self.alt_hk
 
     def test_kandidatenform_ist_dieselbe_wie_in_der_xperp_auswahl(self):
         d = k.sammle(still=True, vorsortiert=None)

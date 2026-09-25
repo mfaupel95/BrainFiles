@@ -14,6 +14,15 @@ die okxf.instrumente() fuer FUTURES nutzt). Sobald diese Spur mehr als Papier
 ist, gehoert dieselbe Abfrage als oeffentliche Funktion instrumente_swap() nach
 okxf.py - nicht als zweite Fassung hier.
 
+Auf diesem Konto ist nur der XPERP-Zweig handelbar (gemessen am 25.09.2026: der
+gewoehnliche XAU-USDT-SWAP antwortet auf eine Order mit OKX 50124 'does not have
+trading permission for the market', waehrend XAU-USD_UM_XPERP-310502 am
+24.09.2026 mit 93 Kontrakten gefuellt wurde). Die Rangliste bleibt deshalb beim
+umsatzstaerkeren gewoehnlichen Perpetual - er ist die oeffentliche
+Kennzahlenquelle und hat die laengere Kerzenhistorie -, gehandelt wird der
+XPERP-Kontrakt derselben Familie (handels_kontrakte). Eine Reihe ohne Zwilling
+faellt aus der Liste.
+
 Diese Datei liest nur. Sie importiert keine Order-Funktion, und kein Test darf
 je eine Order erreichen.
 
@@ -59,6 +68,24 @@ QUOTE = "-USDT-SWAP"
 VORSORTIERT = 60
 
 
+def handels_kontrakte():
+    """{Basiswert: XPERP-Kontrakt} - der handelbare Zwilling je Reihe.
+
+    EINE Abfrage fuer alle Reihen statt einer je Kandidat. Nur ruleType=xperp
+    unter instType=FUTURES: der gewoehnliche Perpetual desselben Basiswerts ist
+    auf diesem Konto nicht handelbar (OKX 50124, siehe Kopf dieser Datei).
+    Der volle Datensatz wird mitgegeben, damit handeln.anlauf() ctVal, tickSz
+    und Hebel-Deckel des GEHANDELTEN Kontrakts nimmt.
+    """
+    d = okxf._mit_wiederholung("/api/v5/public/instruments?instType=FUTURES")
+    m = {}
+    for x in d:
+        if x.get("ruleType") != "xperp" or x.get("state") != "live":
+            continue
+        m.setdefault(basiswert(x["instId"]), x)
+    return m
+
+
 def instrumente():
     """Alle lebenden linearen USDT-Perpetuals, nach instId sortiert."""
     d = okxf._mit_wiederholung(
@@ -101,6 +128,7 @@ def sammle(werte=None, still=False, familien=None, vorsortiert=VORSORTIERT):
     """
     tick = okxf.tickers("SWAP")
     umsatz24 = umsatz_je_reihe(tick)
+    kontrakte = handels_kontrakte()
 
     instr, familie_je_basis = {}, {}
     for x in instrumente():
@@ -121,6 +149,7 @@ def sammle(werte=None, still=False, familien=None, vorsortiert=VORSORTIERT):
         instr = {i: instr[i] for i in geordnet[:vorsortiert]}
 
     ergebnis = []
+    ohne_kontrakt = 0
     for i, (iid, x) in enumerate(sorted(instr.items()), 1):
         if not still:
             print("  %3d/%d %-10s" % (i, len(instr), basiswert(iid)), end="\r",
@@ -148,14 +177,28 @@ def sammle(werte=None, still=False, familien=None, vorsortiert=VORSORTIERT):
         fam = familie_je_basis[iid]
         kat = auswahl.KATEGORIEN[fam]
         umsatz = umsatz24.get(iid, 0.0)
-        z.update(basis=basiswert(iid), instId=iid, umsatz=umsatz,
-                 kategorie=fam, vola_tor=kat["vola_tor"],
-                 max_lever=float(x.get("lever") or 0),
+
+        # Gehandelt wird der XPERP-Zwilling, nicht der gewoehnliche Perpetual:
+        # nur der XPERP-Zweig ist auf diesem Konto handelbar. Ohne Zwilling
+        # faellt die Reihe aus der Liste - ein Vorschlag, den die Boerse mit
+        # 50124 abweist, ist kein Vorschlag. Die Kennzahlen bleiben am
+        # umsatzstaerkeren Perpetual gemessen (laengere Kerzenhistorie).
+        twin = kontrakte.get(basiswert(iid))
+        if not twin:
+            ohne_kontrakt += 1
+            continue
+        z.update(basis=basiswert(iid), instId=iid,
+                 handels_instId=twin["instId"], handels_instr=twin,
+                 umsatz=umsatz, kategorie=fam, vola_tor=kat["vola_tor"],
+                 max_lever=float(twin.get("lever") or 0),
                  punkte=auswahl.bewerte(z, umsatz, kat["umsatz_bezug"]))
         ergebnis.append(z)
         time.sleep(0.06)
     if not still:
         print(" " * 30, end="\r", file=sys.stderr)
+        if ohne_kontrakt:
+            print("  %d Reihe(n) ohne XPERP-Zwilling uebersprungen"
+                  % ohne_kontrakt, file=sys.stderr)
     return ergebnis
 
 

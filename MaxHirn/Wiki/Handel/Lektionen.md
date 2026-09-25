@@ -487,3 +487,34 @@ und Bandbreite trennten Gewinner und Verlierer messbar nicht). Die zwei
 Vorzeige-Bots des Kontos waren genau deshalb erfolgreich: PUMP (+109,53) zu 96 %
 aus Richtung und mit automatischem Stop, ZEC (+46,76) zu 75 % aus Oszillation -
 beide im Plus gestoppt, keiner auslaufen gelassen.
+
+## Ein Markt hat zwei Namen — und eine Sperre muss ihre Boerse nennen (25.09.2026)
+
+**Fall 1 — `swap` handelte den falschen Kontrakt.** Jede Runde meldete
+`Eroeffnen XAU-USDT-SWAP fehlgeschlagen: OKX 50124: This API Key does not have
+trading permission for the market`. Der Schluessel war einwandfrei
+(`/account/config`: `perm: read_only,trade`, `acctLv: 2`). Die Ursache war der
+NAMENSRAUM: derselbe Markt liegt auf diesem EEA-Konto handelbar nur als
+XPERP-Kontrakt (`instType=FUTURES`, `XAU-USD_UM_XPERP-310502`), nicht als
+gewoehnlicher Perpetual (`instType=SWAP`). Der oeffentliche Instrumentenabruf
+listet beide — **sichtbar heisst nicht handelbar**. Beleg ohne Order: die
+Orderhistorie des Zwillings (93 Kontrakte, gefuellt am 24.09.2026) und
+`/account/positions?instType=SWAP` = leer gegen `instType=FUTURES` = die echten
+Positionen. `swap/kandidaten.handels_kontrakte()` bildet jetzt je Basiswert auf
+den Zwilling ab (eine Abfrage), `handeln.anlauf()` handelt ihn, eine Reihe ohne
+Zwilling faellt aus der Liste. **Regel: erst den Namensraum pruefen, dann die
+Rechte — ein `50124` bei einem oeffentlich gelisteten Markt ist eine falsche
+Kennung, kein toter Schluessel.**
+
+**Fall 2 — die Sperre verschwieg, wen sie fragte.** `mosaic` meldete
+`nur 0.71 EUR frei, noetig 60.00`; gelesen wurde das als OKX (dort liegen USDC),
+gemeint war Kraken (EUR) — und OKX hatte ebenfalls kein Geld (0,15 USDC frei).
+Die Meldung war richtig und trotzdem irrefuehrend. **Regel: der Guthaben-Grund
+nennt Boerse und Waehrung, und bei mehreren Boersen in der Liste stehen die
+uebrigen Gruende daneben** (`kraken: nur 0.71 EUR frei, noetig 60.00 - dazu okx:
+nur 0.15 USDC frei, noetig 60.00`). Sonst sieht eine geprueft-leere Boerse wie
+eine uebersprungene aus.
+
+**Was beide Faelle verbindet:** eine Fehlermeldung der Boerse beschreibt ihren
+Namensraum, nicht unsere Absicht. Wer sie deutet, bevor er die eigene Kennung
+und die eigene Frage geprueft hat, baut am falschen Ende.

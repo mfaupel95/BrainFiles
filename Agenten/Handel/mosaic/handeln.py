@@ -841,8 +841,21 @@ def live_sperren(w, s):
         try:
             frei = op_guthaben(GUTHABEN_WAEHRUNG)
             if frei < noetig:
-                g.append("nur %.2f %s frei, noetig %.2f"
-                         % (frei, GUTHABEN_WAEHRUNG, noetig))
+                # Die BOERSE NENNEN und die uebrigen der Liste mitnennen.
+                # "nur 0,71 EUR frei, noetig 60.00" allein liest sich wie die
+                # andere Boerse der Liste (Kraken notiert in EUR, OKX in USDC) -
+                # genau daran ist die Meldung am 25.09.2026 missverstanden
+                # worden, obwohl Kraken gefragt war und OKX ebenfalls leer.
+                text = "%s: nur %.2f %s frei, noetig %.2f" % (
+                    VENUE_NAME, frei, GUTHABEN_WAEHRUNG, noetig)
+                weitere = [n for n in boersen_liste(w) if n != VENUE_NAME]
+                if weitere:
+                    teile = []
+                    for n in weitere:
+                        _bereit, grund = boerse_bereit(n, w)
+                        teile.append(grund or ("%s einsatzbereit" % n))
+                    text += " - dazu " + " und ".join(teile)
+                g.append(text)
         except Exception as e:  # noqa: BLE001
             g.append("Guthaben nicht abrufbar (%s)" % e)
     return g
