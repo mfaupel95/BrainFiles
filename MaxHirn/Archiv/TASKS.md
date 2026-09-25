@@ -59,6 +59,18 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
+      Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
+      "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
+      dazu "(kein Kurs)". Betrifft Spuren, deren Positionsschluessel Token/Mint ist (kopier,
+      moondev_sniper, robinhood_radar); Verdacht in `lage.py`: fehlt ein Symbol, faellt die
+      Namensspalte auf den Kurs zurueck.
+      Naechster Schritt: in lage.py die Namensermittlung fuer token-gefuehrte Positionen pruefen und
+      entweder ein Symbol aus dem Token holen oder klar "Token 0x48f4..." anzeigen; Test in der
+      Handelszentrale-Suite. KEIN Handelseingriff - reine Anzeige.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/lage.py, Handelszentrale
+
 - [ ] **T-107 — Doctor meldet 18 Photon-Doppelkennungen (Fehlalarm oder echte Kollision?)**
       Kontext: `hermes doctor` und `hermes gateway status` melden seit dem 25.09.2026 in
       JEDEM Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon credential
