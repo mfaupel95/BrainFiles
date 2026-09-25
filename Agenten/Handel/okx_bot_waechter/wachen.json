@@ -22,7 +22,12 @@
       "scharf": false,
       "vermerk": "ARB - Entscheidung Max 23.09.2026: NICHT stoppen (Wochenchart aufwaerts, Kurs 2,0x ueber dem 30-Wochen-Durchschnitt)."
     },
-    "_hinweis": "scharf:false nimmt einen Bot von der Stopp-Regel aus. Bei stop_erlaubt=false stoppt ohnehin nichts - dieser Block haelt die Entscheidung FEST, damit sie nicht bei der naechsten Freigabe still umkippt."
+    "_hinweis": "scharf:false nimmt einen Bot von der Stopp-Regel aus. Bei stop_erlaubt=false stoppt ohnehin nichts - dieser Block haelt die Entscheidung FEST, damit sie nicht bei der naechsten Freigabe still umkippt.",
+    "3951805062334382080": {
+      "scharf": false,
+      "vermerk": "ZEC - Entscheidung Max 25.09.2026 (\"Stop setzen\"): Schutz-Stop bei 1354 gesetzt, ueber /tradingBot/grid/amend-order-algo, Gegenprobe gelesen (sCode 0, slTriggerPx 1354, Leiter unveraendert 1480-1680/20 Netze). Zahl gerechnet, nicht geraten: Kurs 1552,3 - 1,5 x ATR14 132,18 = 1354,03; unter dem Bandboden 1480 und 22 % ueber der Liquidation 1110,77. Der Bandboden selbst waere nur 0,5 ATR entfernt und wuerde das Gitter bei normalem Lauf toeten.",
+      "schutz_stop_px": 1354
+    }
   },
   "_vorschlag": {
     "_zweck": "Vorgaben fuer vorschlag.py - neue Bots werden aus diesen Zahlen und dem Kursverlauf gerechnet.",
@@ -43,5 +48,6 @@
   "dca_atr_vielfaches": 3.0,
   "_dca_atr_vielfaches": "Wie oft die Tagesspanne (ATR 14) der Plan reichen muss. Gemessen 23.09.2026: die fuenf laufenden Bots hatten Leitern von 4-8 % Tiefe, waehrend ihre Instrumente 8-13 % pro Tag laufen - nach 1-2 Tagen war die Munition weg. 3x ATR ist die Untergrenze, der beobachtete Rueckgang der letzten 90/180/365 Tage schlaegt sie, wenn er groesser ist.",
   "anpassen_erlaubt": false,
-  "_anpassen_erlaubt": "Tor fuer anpassen.py (POST dca/amend-order-algo). Aendert einen LAUFENDEN Bot: Leiter (maxSafetyOrds, pxSteps) und Stop (slPct/tpPct). Beweis der Existenz 23.09.2026 ohne Aenderung: Amend mit unbekannter algoId -> OKX 51291 'The bot doesn't exist or has already stopped'."
+  "_anpassen_erlaubt": "Tor fuer anpassen.py (POST dca/amend-order-algo). Aendert einen LAUFENDEN Bot: Leiter (maxSafetyOrds, pxSteps) und Stop (slPct/tpPct). Beweis der Existenz 23.09.2026 ohne Aenderung: Amend mit unbekannter algoId -> OKX 51291 'The bot doesn't exist or has already stopped'.",
+  "_grid_schutz": "Grid-Schutz: ein Grid kennt kein slPct, sondern eine PREIS-Schwelle (slTriggerPx). Gesetzt wird sie mit Agenten/Handel/okx_bot_waechter/grid_schutz.py (Trockenlauf ohne --anwenden). Der Endpunkt heisst /api/v5/tradingBot/grid/amend-order-algo (das naheliegende /grid/amend-algo antwortet HTTP 404). Ein Schutz-Stop ist der GEGENWEG einer Leiteraenderung und haengt deshalb nicht an anpassen_erlaubt."
 }

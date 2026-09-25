@@ -108,17 +108,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (Screenshot) durchschicken und Geschwindigkeit notieren.
       Angelegt: 2026-09-25
       Betrifft: Modelle/GGUF/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf (fehlt noch)
-- [ ] **T-084 — Sprachmodell-Spuren koennten auf Bonsai umziehen (braucht OpenAI-Weg)**
-      Kontext: `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` holen ihr
-      Urteil ueber `Agenten/Handel/llm_lokal.py` aus Ollamas EIGENER Schnittstelle
-      (127.0.0.1:11434, `/api/...`). Der Bonsai-Server bietet diesen Weg nicht
-      (gemessen 25.09.2026: `/api/chat` -> 404, nur OpenAI unter `/v1`). Ein Umzug
-      waere inhaltlich reizvoll (27B statt 8B beurteilt die Lage), kostet aber eine
-      zweite Schnittstelle im llm_lokal-Modul - Entscheidung von Max.
-      Naechster Schritt: Angebot vorlegen (Aufwand: kleine Erweiterung in
-      llm_lokal.py, Wahl des Wegs ueber die wachen.json je Spur), erst danach bauen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/llm_lokal.py, Agenten/Handel/moondev_*/wachen.json
 - [ ] **T-078 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
       Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
       Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am
@@ -179,19 +168,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bericht aufnehmen; rein lesend, wie der uebrige Bericht.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/okx_bot_waechter/, MaxHirn/Wiki/Werkzeuge/okx-bot-waechter.md
-- [ ] **T-077 — Das laufende ZEC-Grid hat keinen Stop**
-      Kontext: `3951805062334382080`, ZEC-USD_UM_XPERP-310530, long, 90,12 USDC,
-      Hebel 5 (tatsaechlich 2,43), Band 1480-1680, 20 Netze, liqPx 1111,64,
-      `slTriggerPx` LEER (Stand 25.09.2026 01:30). Von den 62 geschlossenen Grids
-      war der groesste Einzelverlust (-304,33 USDC, BICO) ein Grid ohne Stop, das
-      lief, waehrend der Markt -19,3 % machte.
-      Naechster Schritt: entscheiden, ob der Stop an die untere Netzkante (1480)
-      bzw. unter den 90-Tage-Boden gesetzt wird - `anpassen.py` kann das mit
-      `--nur-schutz`; danach die Entscheidung als `bots.<algoId>.vermerk` mit
-      Datum in `wachen.json` festhalten.
-      Angelegt: 2026-09-25
-      Wartet auf: Entscheidung Max
-      Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3951805062334382080
 - [ ] **T-076 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
       Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
       Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am
@@ -1049,6 +1025,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-084 — Sprachmodell-Spuren koennten auf Bonsai umziehen (braucht OpenAI-Weg)**
+      Kontext: `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` holen ihr
+      Urteil ueber `Agenten/Handel/llm_lokal.py` aus Ollamas EIGENER Schnittstelle
+      (127.0.0.1:11434, `/api/...`). Der Bonsai-Server bietet diesen Weg nicht
+      (gemessen 25.09.2026: `/api/chat` -> 404, nur OpenAI unter `/v1`). Ein Umzug
+      waere inhaltlich reizvoll (27B statt 8B beurteilt die Lage), kostet aber eine
+      zweite Schnittstelle im llm_lokal-Modul - Entscheidung von Max.
+      Naechster Schritt: Angebot vorlegen (Aufwand: kleine Erweiterung in
+      llm_lokal.py, Wahl des Wegs ueber die wachen.json je Spur), erst danach bauen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/llm_lokal.py, Agenten/Handel/moondev_*/wachen.json
+      **Erledigt 2026-09-25.** Max: "T-084 ja besser bonsai". `llm_lokal.py` hat den zweiten Weg (OpenAI unter /v1), gewaehlt per `llm_weg` in der wachen.json; die drei Spuren stehen auf `bonsai`. Kein stiller Rueckfall: schweigt der Dienst, faellt das Urteil aus. Gemessen mit `llm_probe.py --modelle bonsai`: 3/3 im Vertrag, im Mittel 2,9 s. Die Sonde selbst rief frueher immer Ollama und meldete Bonsai als "(leer)" - behoben. Tests: `Agenten/Handel/tests/test_llm_lokal_wege.py` (16 gruen). Wiki: Werkzeuge/Bonsai-2-27B.md.
+- [x] **T-077 — Das laufende ZEC-Grid hat keinen Stop**
+      Kontext: `3951805062334382080`, ZEC-USD_UM_XPERP-310530, long, 90,12 USDC,
+      Hebel 5 (tatsaechlich 2,43), Band 1480-1680, 20 Netze, liqPx 1111,64,
+      `slTriggerPx` LEER (Stand 25.09.2026 01:30). Von den 62 geschlossenen Grids
+      war der groesste Einzelverlust (-304,33 USDC, BICO) ein Grid ohne Stop, das
+      lief, waehrend der Markt -19,3 % machte.
+      Naechster Schritt: entscheiden, ob der Stop an die untere Netzkante (1480)
+      bzw. unter den 90-Tage-Boden gesetzt wird - `anpassen.py` kann das mit
+      `--nur-schutz`; danach die Entscheidung als `bots.<algoId>.vermerk` mit
+      Datum in `wachen.json` festhalten.
+      Angelegt: 2026-09-25
+      Wartet auf: Entscheidung Max
+      Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3951805062334382080
+      **Erledigt 2026-09-25.** Max: "Stop setzen". Gesetzt ist slTriggerPx 1354 (Kurs - 1,5 x ATR14 132,18), also unter dem Bandboden 1480 und 22 % ueber der Liquidation 1110,77; Gegenprobe nach dem Amend gelesen (sCode 0, Leiter unveraendert). Zahl und Weg: `Agenten/Handel/okx_bot_waechter/grid_schutz.py` (Trockenlauf ohne --anwenden); der Endpunkt ist `/grid/amend-order-algo`, nicht `/grid/amend-algo` (404). Entscheidung steht als Vermerk in `okx_bot_waechter/wachen.json`.
 - [x] **T-070 — Waisen-Wächter für Kraken-Schutz-Orders (meldend)**
       Gebaut 24.09.2026: Agenten/Hermes/scripts/waisen-wache.py (no_agent,
       Cron waisen-wache 909126bc2102, alle 30 min, Telegram). Rechnet über
