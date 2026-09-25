@@ -11,7 +11,7 @@ fallback_providers:
     base_url: http://127.0.0.1:11434/v1
 plugins:
   enabled: []
-_config_version: 45
+_config_version: 46
 agent: {}
 onboarding:
   seen:

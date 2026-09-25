@@ -2176,7 +2176,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: true
-_config_version: 45
+_config_version: 46
 a2a_agents:
   omniroute:
     auth:
@@ -2287,15 +2287,13 @@ mcp_servers:
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv
   blender:
     args:
       - -c
       - from blmcp import main; main()
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.blender.blender-mcp\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.blender.blender-mcp\.venv\Scripts\python.exe
     enabled: false
   desktop-commander:
     args:
@@ -2304,19 +2302,16 @@ mcp_servers:
     env:
       MCP_DXT: "true"
       NODE_ENV: production
-    cwd: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -2331,21 +2326,17 @@ mcp_servers:
   tooluniverse:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src\run_stdio.py
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\.venv\Scripts\python.exe
     env:
       PYTHONIOENCODING: utf-8
-      PYTHONPATH: 
-        C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
+      PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
-    cwd: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
   windows-mcp:
     args:
       - -c
       - from windows_mcp.__main__ import main; main()
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
     env:
       ANONYMIZED_TELEMETRY: "false"
       MODE: local
@@ -2353,8 +2344,7 @@ mcp_servers:
       WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
-    command: 
-      C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
     args:
       - --require-version
       - 0.4.5

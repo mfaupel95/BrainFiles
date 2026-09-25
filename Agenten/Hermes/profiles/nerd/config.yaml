@@ -5,7 +5,7 @@ model:
   api_mode: chat_completions
 plugins:
   enabled: []
-_config_version: 45
+_config_version: 46
 agent: {}
 terminal:
   backend: local
