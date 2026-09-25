@@ -59,6 +59,46 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-101 — Kraken-EUR: 0,71 EUR frei blockieren `kraken` UND `nautilus_kraken` live**
+      Kontext: Am 25.09.2026 waren in beiden Spuren die Papier-Positionen ausgebucht
+      (siehe T-103 und Wiki/Handel/Lektionen.md) - damit ist das Buch frei, aber das
+      Geld ist der naechste Grund: `kraken/verifiziere_guthaben.py` misst ZEUR = 0,7059,
+      noetig sind 60,00 EUR (`mindest_guthaben_eur`); `nautilus_kraken` braucht fuer den
+      ~1-EUR-Round-Trip 1,00 EUR (`live_einsatz_eur` 1.0, `mindest_guthaben_eur` 2).
+      Das Kraken-EUR haengt in mosaics Live-Positionen (SOL + BTC, rund 96 EUR Nominal)
+      und wird erst beim Ausstieg wieder frei. Kraken ist ausserdem `handel_erlaubt=false`
+      und ordert ueber den Freigabe-Beleg (`order_ueber: mcp`), nautilus_kraken hat
+      `handel_erlaubt=true` und den REST-Orderweg gebaut.
+      Naechster Schritt: entscheiden - (a) auf mosaics Ausstieg warten (dann wird EUR frei
+      und nautilus_kraken kann den 1-EUR-Test fahren), (b) EUR einlegen, oder (c)
+      `mindest_guthaben_eur`/`live_einsatz_eur` senken. Nicht getan: nichts davon ohne
+      Entscheidung, kein Geld umgeschichtet.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/kraken/wachen.json, nautilus_kraken/wachen.json, Kraken-Konto
+- [ ] **T-102 — `Handel/historie.py` und `xperp/historie.py`: gleicher Modulname, Test rot**
+      Kontext: `Agenten/Handel/tests/test_handelszentrale_bindung.py`
+      (`NamensfalleTest`) verlangt, dass kein Modulname am Handel-Kopf auch in einem
+      Spurenordner liegt - sonst faengt ein Import mit `Handel/` auf `sys.path` das
+      falsche Modul (Befund 13.09.2026 mit `gui.py`). Gemessen am 25.09.2026 ist die
+      Dopplung `historie` (Backtest-Fundament, Commit e9e28f3, aus einer parallelen
+      Sitzung) gegen `xperp/historie.py` - die Handel-Suite ist dadurch rot
+      (698 Tests, 1 Fehler). FREMDARBEIT: nicht von mir angefasst.
+      Naechster Schritt: eines der beiden umbenennen (`Handel/backtest_historie.py`)
+      und die Importe in `replay.py`/`optimieren.py`/Tests mitziehen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/historie.py, Agenten/Handel/xperp/historie.py, tests/
+- [ ] **T-103 — Bus-Suite rot: Routine `moondev-dauerlauf` hat keine Bus-Anbindung**
+      Kontext: `Agenten/Bus/tests/test_ende_zu_ende.py` bricht in
+      `test_anbindung_routinen` ab mit "ohne Bus-Anbindung: ['moondev-dauerlauf']".
+      `Agenten/Handel/moondev_dauerlauf.py` und `Agenten/Routinen/moondev-dauerlauf.ps1`
+      sind unveraendert (git status sauber) - der Befund ist vorbestehend, nicht aus der
+      Papierbuch-Arbeit vom 25.09.2026. Der Treiber meldet sich nicht wie die uebrigen
+      Spuren ueber `ereignis.lauf("handel/<spur>")`.
+      Naechster Schritt: pruefen, ob der Treiber eine eigene Bus-Kennung bekommen soll
+      (`handel/moondev_dauerlauf`) oder ob die Pruefung ihn ausnehmen muss - beides ist
+      eine Entscheidung, keine Reparatur.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Bus/tests/test_anbindung_routinen.py, Agenten/Handel/moondev_dauerlauf.py
 - [ ] **T-088 — OKX-Contract-DCA laesst sich nicht mit einem Stop versehen - nur der Bot selbst**
       Kontext: Auftrag Max 25.09.2026 ("Okx-bot-wache stop setzen"). Zwei Wege geprueft,
       beide zu: (a) `POST /api/v5/tradingBot/dca/amend-order-algo` heisst in der OKX-Doku

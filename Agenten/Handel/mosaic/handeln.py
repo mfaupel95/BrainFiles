@@ -587,6 +587,59 @@ def nur_papier_verwerfen(z):
                        if p.get("modus") == "live"]
 
 
+def bueche_papier_altlasten_aus(z, w=None):
+    """Papier-Positionen aus dem Buch buchen, die einen Live-Platz belegen.
+
+    Anlass (25.09.2026): Das Buch fuehrt Live UND Papier in einer Liste; die
+    Platzzahl von `live_einstiege` zaehlt beide. Eine Papier-Position, die
+    keine Live-Order hat, nimmt damit einem echten Kauf den Platz weg - genau
+    wie scanner/xperp am 21.09.2026.
+
+    Sie wird als PAPIER-Verkauf mit Grund "buchbereinigung" gebucht (Kurs von
+    der Boerse, deren Kerzen den Einstieg gebildet haben: der Papierzweig
+    rechnet auf OKX) - an der Boerse gibt es nichts zu verkaufen, weil nie
+    eine Order lief. Positionen mit modus=live und die drei live gefuehrten
+    Kraken-Positionen bleiben unangetastet. Idempotent.
+    """
+    positionen = z.get("positionen") or []
+    if not [p for p in positionen if p.get("modus") != "live"]:
+        return 0
+    behalten = []
+    gebucht = 0
+    for p in positionen:
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
+        kurs = None
+        try:
+            import okx
+            kurs = okx.letzter_kurs(p["inst"])
+        except Exception as e:                                 # noqa: BLE001
+            print("  Buchbereinigung %s: kein Kurs (%s)" % (p.get("inst"), e))
+        if not kurs:
+            print("  Buchbereinigung %s: kein Kurs - bleibt liegen"
+                  % p.get("inst"), file=sys.stderr)
+            behalten.append(p)
+            continue
+        einstieg = float(p.get("einstieg") or kurs)
+        nominal = float(p.get("nominal") or 0.0)
+        vz = 1 if p.get("seite") == "long" else -1
+        gv = nominal * (float(kurs) - einstieg) / einstieg * vz
+        erloes = nominal + gv
+        print("  Buchbereinigung: %s %s (ohne Order) @ %.6f  G/V %+.2f USD"
+              % (p.get("seite"), p.get("inst"), kurs, gv))
+        journal(zeit=_jetzt(), modus="papier", aktion="verkauf",
+                inst=p["inst"], seite=p.get("seite", "long"),
+                preis="%.6f" % kurs, einsatz_usd="%.2f" % erloes,
+                stop="%.6f" % p.get("stop", 0.0),
+                ziel="%.6f" % p.get("ziel", 0.0),
+                stop_pct="%.2f" % p.get("stop_pct", 0.0),
+                grund="buchbereinigung")
+        gebucht += 1
+    z["positionen"] = behalten
+    return gebucht
+
+
 def pruefe_ausstiege(z, k5, w, nur=None):
     """Bestehende Positionen auf Stop/Ziel pruefen.
 
@@ -1181,6 +1234,11 @@ def lauf(modus):
         return
 
     if live:
+        # Erst aufraeumen, dann handeln (Muster kraken/scanner): eine
+        # Papier-Position im Buch belegt sonst einen der Live-Plaetze.
+        n_alt = bueche_papier_altlasten_aus(z, w)
+        if n_alt:
+            print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
         # Echte Orders. Ausstiege zuerst (ein Stop muss greifen, auch wenn
         # niemand davorsitzt), dann Einstiege mit Freigabefenster je Stueck.
         live_ausstiege(z, w)

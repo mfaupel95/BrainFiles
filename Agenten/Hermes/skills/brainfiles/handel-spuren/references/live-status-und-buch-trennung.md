@@ -75,6 +75,40 @@ Fallen:
   Papier-Ausstiegspfad dieser Spur eine Modus-Pruefung je Position hat (die eine Spur
   mischt Papier und Live in einem Buch, die andere trennt ueber das Positionsfeld).
 
+### Wer eine Spur ohne diese Funktion vorfindet (25.09.2026)
+
+Drei Spuren handeln auf Kraken und fuehren Papier und Live in EINEM Buch; die
+Plaetze sind knapp (kraken 4, nautilus_kraken 4, mosaic 5 live). Gemessen an
+diesem Tag:
+
+- `kraken`: 4 Papier-Positionen ohne `kauf_txid` belegten alle vier Plaetze.
+- `nautilus_kraken`: 4 Papier-Positionen, Spur ARMIERT (`handel_erlaubt=true`,
+  `freigabe.erfuellt=true`) - jeder Live-Zyklus lief in "Buch voll", eine echte
+  Order kam nie zustande. Diese Spur hatte die Aufraeumfunktion GAR NICHT; sie
+  wurde nachgezogen (`handeln.bueche_papier_altlasten_aus`, Marker `modus !=`
+  `live`, Aufruf VOR `sammle_quoten` - die Platzzahl wird dort geprueft).
+- `mosaic`: eine Papier-Position unter vier; `live_einstiege` zaehlt Positionen
+  ohne `modus=live` mit, sie nimmt also einem echten Kauf einen Platz weg.
+- `moondev_marktlage`: NICHT betroffen - sein Live-Zweig fuehrt eine eigene
+  Zustandsdatei (`zustand.live.json`), das Papierbuch blockiert dort nichts.
+  Vor dem Aufraeumen pruefen, wer mit wem dasselbe Buch teilt.
+
+Werkzeug `Agenten/Handel/papierbuch_schliessen.py` (Vorschau ist Standard,
+`--anwenden` schreibt, `--spur <name>`): es ruft die Funktion DER SPUR, bucht
+und spiegelt nach Q:. Es fasst keine Zustandsdatei an, die juenger als 300 s ist
+(dort laeuft ein Zyklus). Interpreter beachten: `nautilus_kraken` laeuft im
+`nautilus/.venv`, die anderen im `scanner/.venv`.
+
+Zwei Nachwirkungen, die man kennen muss:
+
+- Der Papierzweig fuellt die Plaetze im naechsten Zyklus wieder (Signale der
+  Kopier-Spur). Die Einmal-Bereinigung wirkt deshalb nur bis dahin - der
+  dauerhafte Fix ist der Aufraeumschritt im Live-Lauf, der das Buch erst beim
+  Scharfschalten leert. Genau dafuer laeuft er dort.
+- Nach dem Aufraeumen bleibt oft nur noch das GELD als Sperre (25.09.2026:
+  Kraken-EUR frei 0,71 EUR, `mindest_guthaben_eur` 60 bzw. 1,00 EUR). Das ist
+  die ehrliche Lage - nicht die Papierposition war der letzte Grund.
+
 ## 5. Buchbereinigung ist keine Handelsrunde
 
 Zeilen mit dem Grund `buchbereinigung` gehoeren in dieselbe Klasse wie

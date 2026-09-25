@@ -460,6 +460,61 @@ def sperren_zeile(w):
     return "; ".join(sperren) if sperren else None
 
 
+def bueche_papier_altlasten_aus(z, w):
+    """Positionen OHNE modus=live aus dem Live-Buch buchen.
+
+    Anlass (25.09.2026, gemessen): Vier Papier-Positionen aus der
+    Kopier-Signalphase belegten alle vier Plaetze (max_offene_positionen 4).
+    Die Spur ist armiert (handel_erlaubt=true, freigabe.erfuellt=true) - jeder
+    Live-Zyklus lief aber in "Buch voll", eine echte Order kam nie zustande.
+    Dieselbe Klasse wie scanner/xperp/kraken am 21.09.2026.
+
+    Deshalb zu Beginn JEDES Live-Laufs ausbuchen, als PAPIER-Verkauf mit Grund
+    "buchbereinigung": die Positionen hat nie eine Order gekauft, an der Boerse
+    gibt es nichts zu verkaufen. Positionen mit modus=live (echte Bestaende,
+    txid) bleiben unangetastet. Idempotent.
+    """
+    positionen = z.get("positionen") or []
+    if not [p for p in positionen if p.get("modus") != "live"]:
+        return 0
+    waehrung = (w.get("waehrung") or "eur").lower()
+    einsatz_feld = "einsatz_%s" % waehrung
+    wert_feld = "wert_%s" % waehrung
+    paar = w.get("paar", "BTC/EUR")
+    behalten = []
+    gebucht = 0
+    for p in positionen:
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
+        kurs = None
+        try:
+            kurs = kraken_rest.letzter_kurs(p.get("token") or paar)
+        except Exception as e:                                 # noqa: BLE001
+            print("  Buchbereinigung %s: kein Kurs (%s)" % (p.get("token"), e))
+        kurs = kurs or p.get("letzter_kurs")
+        if not kurs:
+            print("  Buchbereinigung %s: kein Kurs - bleibt liegen"
+                  % p.get("token"), file=sys.stderr)
+            behalten.append(p)
+            continue
+        einstieg = float(p.get("preis_einstieg") or kurs)
+        einsatz = float(p.get(einsatz_feld) or 0.0)
+        erloes = einsatz * (float(kurs) / einstieg)
+        print("  Buchbereinigung: %s %s (ohne Live-Order) @ %.10g  "
+              "G/V %+.2f %s" % (p.get("symbol", "?"), p.get("token"), kurs,
+                                erloes - einsatz, waehrung.upper()))
+        journal(w, zeit=_jetzt(), modus="papier", aktion="schliessen",
+                inst=p.get("token") or paar, grund="buchbereinigung",
+                symbol=p.get("symbol", ""), token=p.get("token", ""),
+                preis="%.10g" % kurs, menge="%.6f" % p.get("menge", 0.0),
+                **{einsatz_feld: "%.2f" % einsatz,
+                   wert_feld: "%.2f" % erloes})
+        gebucht += 1
+    z["positionen"] = behalten
+    return gebucht
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -478,8 +533,13 @@ def lauf(modus):
         zeige_wachen(w)
         return 0
 
+    # EINMAL je Zyklus fragen und das Ergebnis weiterverwenden: sperren_zeile
+    # liest das Guthaben ueber die Boerse - zweimal fragen kostet eine
+    # ueberfluessige Runde und kann zwischen den Aufrufen kippen.
+    live_vorab = False
     if modus == "live":
         sperren = sperren_zeile(w)
+        live_vorab = not sperren
         if sperren:
             print("--live angefordert, aber gesperrt: %s" % sperren)
             print("-> es wird Papier gefahren.")
@@ -504,6 +564,15 @@ def lauf(modus):
     seit = z.get("kopier_signale_seit") or z.get("letzter_lauf") or ""
     signale = lies_kopier_signale(seit)
     positionen = z.get("positionen") or []
+    # Ein Live-Lauf uebernimmt kein Papierbuch (Muster kraken/scanner/xperp):
+    # die Papier-Positionen belegen sonst die Plaetze und live wird nie
+    # gekauft. VOR sammle_quoten - die Platzzahl wird dort geprueft.
+    if live_vorab:
+        n_alt = bueche_papier_altlasten_aus(z, w)
+        if n_alt:
+            print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
+            positionen = z["positionen"]
+            schreibe_zustand(z)
     # Papierstand im gemeinsamen Buch: Positionen ohne modus=live stammen aus
     # dem Papierlauf. Ein Live-Lauf darf sie NICHT anfassen - sonst verkauft
     # der erste echte Zyklus BTC, das nie gekauft wurde (scanner/xperp hatten
@@ -585,7 +654,7 @@ def lauf(modus):
             "ask": str(letzte.ask_price),
             "zeit": str(letzte.ts_event),
         }
-    live = (modus == "live" and not sperren_zeile(w))
+    live = live_vorab
     z["modus"] = "live" if live else "papier"
     # Buchungen der Strategie (Kaeufe und Schluesse) ins Journal.
     for b in buchungen:

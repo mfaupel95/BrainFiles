@@ -558,3 +558,46 @@ Zwei Sicherungen, die aus demselben Grund dazugehoeren:
   holt sich den Zwilling notfalls frisch aus der Tabelle des Boersenzugs; gibt
   es keinen, entsteht KEIN Vorschlag (`kein XPERP-Zwilling, kein Anlauf`)
   statt einer Order, die nur abgewiesen wird.
+
+## Eine Papier-Position blockiert den Live-Platz (25.09.2026)
+
+Drei Spuren handeln auf Kraken und fuehren Papier und Live in EINEM Buch
+(`kraken`, `nautilus_kraken`, `mosaic`). Eine Papier-Position ohne Order belegt
+darin einen Platz — bei `max_offene_positionen 4` sind dann alle vier weg.
+
+Gemessener Stand an diesem Tag:
+
+| Spur | Papier | Plaetze | Wirkung |
+|---|---|---|---|
+| `kraken` | 4 | 4 | kein Neukauf moeglich |
+| `nautilus_kraken` | 4 | 4 | **armiert** (handel_erlaubt/freigabe true), jeder Live-Zyklus lief in "Buch voll" — die Spur hatte die Aufraeumfunktion GAR NICHT |
+| `mosaic` | 1 | 5 live | ein Live-Platz dauerhaft weg |
+| `moondev_marktlage` | 1 | 1 | **nicht betroffen** — eigener Live-Zustand (`zustand.live.json`) |
+
+**Regel: wer Papier und Live in einem Buch fuehrt, raeumt am ANFANG jedes
+Live-Laufs die Positionen ohne echte Order aus** (Papier-Verkauf, Grund
+`buchbereinigung`) — und zwar VOR der Stelle, die die Plaetze zaehlt
+(`sammle_quoten` bzw. `live_einstiege`). Dahinter waere die Bereinigung fuer
+diesen Zyklus wirkungslos.
+
+Was man dabei falsch machen kann:
+
+- **Den Live-Zustand nicht mit dem Papierzustand verwechseln.** Vor dem
+  Aufraeumen pruefen, WER mit WEM dasselbe Buch teilt: `moondev_marktlage`
+  fuehrt zwei Dateien, dort blockiert nichts.
+- **Den Marker der Spur nehmen, nicht einen erfundenen.** `kraken` erkennt
+  Altbestand an fehlendem `kauf_txid`, `nautilus_kraken`/`mosaic` an
+  `modus != live`. Eine Position MIT Order (txid/ord_id) ist Bestand und bleibt.
+- **Ohne Kurs wird nicht gebucht** — die Position bleibt stehen und wird
+  gemeldet; lieber ein belegter Platz als eine Buchung ohne Preis.
+- **Der Papierzweig fuellt die Plaetze im naechsten Zyklus wieder** (Signale
+  der Kopier-Spur). Die Einmal-Bereinigung wirkt nur bis dahin; der dauerhafte
+  Fix ist der Aufraeumschritt im Live-Lauf.
+- **Nach dem Aufraeumen bleibt oft nur das Geld als Sperre** (Kraken-EUR frei
+  0,71 EUR gegen `mindest_guthaben_eur` 60 bzw. 1,00). Das ist die ehrliche
+  Lage — nicht die Papierposition war der letzte Grund.
+
+Werkzeug: `Agenten/Handel/papierbuch_schliessen.py` (Vorschau Standard,
+`--anwenden`, `--spur <name>`), ruft die Funktion DER SPUR, spiegelt nach Q:
+und fasst keine Zustandsdatei an, die juenger als 300 s ist. Interpreter je
+Spur beachten (`nautilus_kraken` im `nautilus/.venv`).
