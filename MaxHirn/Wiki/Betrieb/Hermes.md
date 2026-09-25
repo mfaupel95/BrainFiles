@@ -114,6 +114,13 @@ Hauptmodell traegt 786k. Mit einem groesseren Kompressionsmodell darf die Schwel
   `EOVERRIDE ... conflicts with direct dependency` abbrechen; beide auf dieselbe Fassung
   (4.3.2), danach `npm audit --json --workspaces=false` = 0. Der Fix liegt nur im Arbeitsbaum
   des Checkouts und wird bei jedem Update mitgestasht/zurueckerstattet.
+- **Neu im Lauf vom 25.09.2026: Hermes bringt eine eigene Werkzeugkette mit.** Nach dem Lauf
+  liegt `Agenten/Hermes/tools/` mit `python-3.14.7+…`, `git-2.53.0+3`, `node-26.7.0`,
+  `npm-12.0.2`, `ripgrep-15.2.0`, `uv-0.12.3`, ffmpeg, chromium und agent-browser, und der
+  aktualisierte Launcher `gateway-service/Hermes_Gateway_2ef9d0b7.vbs` startet den Gateway aus
+  `tools\python-3.14.7+…\python.exe` mit `VIRTUAL_ENV=<HERMES_HOME>\tools`. Der **Gateway laeuft
+  damit nicht mehr aus dem Checkout-venv**; das venv traegt weiter die Desktop-/Dashboard-Backends.
+  Halter-Listen also am `ExecutablePath` pruefen, nicht am venv-Pfad festmachen.
 - **Doctor-Stand nach dem 25.09.2026:** Python 3.14.7 (Launcher) / SQLite 3.53.1 = **kein**
   WAL-Reset-Bug, Browser-Tools "no known vulnerabilities", `web`/`ui-tui` je 3 moderate
   Advisories (nur zur Kenntnis). Die 18 Restmeldungen sind die Photon-Doppelkennungen aus dem

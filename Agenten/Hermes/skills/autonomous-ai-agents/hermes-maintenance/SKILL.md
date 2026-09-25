@@ -147,6 +147,16 @@ gegenpruefen — bei laufendem Dashboard muss die Probe dessen PID-Paar sehen. K
 `hermes_cli/update_cmd_windows.py`; eine eigene Prozessliste per Kommandozeilen-Teilstring ist
 genau die Falle, die der Gateway-Waechter schon zweimal getroffen hat.
 
+**Die Laufzeit liegt seit dem 25.09.2026 NICHT mehr im Checkout-venv.** Der Lauf legt
+`<HERMES_HOME>/tools/` an (python-3.14.7, git-2.53.0, node-26.7.0, npm-12.0.2, ripgrep-15.2.0,
+uv-0.12.3, ffmpeg, chromium, agent-browser) und der neu geschriebene Launcher
+`gateway-service/Hermes_Gateway_<suffix>.vbs` startet den Gateway aus
+`tools\python-3.14.7+…\python.exe` (dort kein `VIRTUAL_ENV` mehr), waehrend
+`venv\Scripts\python.exe` weiter die Desktop-/Dashboard-Backends traegt. Halter-Pruefungen
+deshalb am `ExecutablePath` festmachen und beim Bewerten von "Haltern" beide Baeume kennen
+(`<checkout>/venv`, `<checkout>/.hermes-runtime`, `<HERMES_HOME>/tools`) — ein Launcher, der
+nur auf das venv schaut, sieht den Gateway nicht mehr.
+
 ## npm-Audit im Checkout: doppelte Pins brechen `npm install`
 
 `js-yaml` steht im Checkout **zweimal** — als direkte Abhaengigkeit (`"js-yaml": "4.3.1"`) und
