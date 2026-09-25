@@ -64,6 +64,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Kosten-und-Bedingungen.md](Handel/Kosten-und-Bedingungen.md) | Gebuehren, Bedingungen 1-5, f_max-Merksatz |
 | [Handel/Boersen-und-Schluessel.md](Handel/Boersen-und-Schluessel.md) | OKX EEA/Kraken, Margin-Waehrung, welche Variable welche Spur liest |
 | [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus |
+| [Handel/Backtest-Fundament.md](Handel/Backtest-Fundament.md) | Historische Daten 2021-2026, die ersten Zahlen je Spur, vier Fallen des Replays |
 
 ### Werkzeuge und Offenes
 
