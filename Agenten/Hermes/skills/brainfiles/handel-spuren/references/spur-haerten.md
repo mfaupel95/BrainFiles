@@ -87,6 +87,29 @@ Einzelfall ist austauschbar.
    ueber eine GUI-Zeile. Angezeigte Werte brauchen einen eigenen Test als
    reine Funktion (`fuss_texte(z, w)`) plus einen Quelltext-Test, der
    erfundene Feldnamen im Anzeigecode verbietet.
+10. **Ein Routing-Feld, das eine ZWISCHENLAGERUNG nicht ueberlebt.** Die Spur
+   holt beim Sammeln ein Feld, das den gehandelten Gegenstand bestimmt (hier:
+   den handelbaren Kontrakt `handels_instId`/`handels_instr` je Reihe), legt das
+   Ergebnis aber schlank ab - nur die Felder der Anzeige. Nach dem Einlesen
+   greift der Rueckfall im Verbraucher, und der zeigt auf den Wert von VOR dem
+   Umbau: der Fix wirkt nur auf den ersten Lauf, die Spur laeuft still wieder in
+   den alten Fehler (Messfehler an der Boerse inklusive). Pruefung: die
+   schreibende und die lesende Stelle des Zwischenlagers nebeneinander halten -
+   jedes Feld, das der Verbraucher liest, muss im Schreibpfad stehen. Der Test
+   dazu faehrt den Verbraucher mit einem Stand aus der DATEI, nicht mit einem im
+   Speicher gebauten Dict; ein Test mit dem Feld direkt im Argument bleibt gruen.
+   Zwei Sicherungen gehoeren dazu: ein Stand aus altem Schema wird VERWORFEN
+   statt bis zum Ablauf zu gelten (sonst schleppt er den Fehler zwei Stunden
+   weiter), und der Rueckfall darf nie auf den unbrauchbaren Wert zeigen - ohne
+   den richtigen Gegenstand entsteht KEIN Vorschlag, mit Begruendung im Log.
+11. **Eine Anzeige, die den leeren Fall verschweigt.** Eine Sperrliste, die nur
+   im Fehlerfall gedruckt wird (`if g: print("gesperrt durch: …")`), sieht bei
+   leerer Liste wie ein abgebrochener Lauf aus - und der Dauerlauf parst genau
+   diese Zeile. Immer drucken, leer als `nichts`. Zweite Haelfte desselben
+   Musters: die Anzeige nennt den Gegenstand, auf den gehandelt wird (das
+   gehandelte Instrument, den gehandelten Kontrakt), nicht den Zwischennamen,
+   aus dem er abgeleitet wurde - sonst liest sich die Vorschau, als wuerde der
+   unbrauchbare Wert gehandelt.
 
 ### 4. Fix-Disziplin
 

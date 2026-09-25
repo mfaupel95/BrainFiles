@@ -61,13 +61,54 @@ Herausgebers — dann wird der Dienst dieser Laufzeit bemessen und gestartet
   177 MiB Rest → 44 t/s Prompt und 10 statt 32 t/s Erzeugung). Bei knappem
   Speicher den KLEINEREN Kontext nehmen und begruenden — „passt noch" ist kein
   Ziel, „rechnet noch schnell" ist eines.
+- **Ein lokales Modell als Agent-/Delegations-Modell ist meist teuer, nicht gratis.**
+  Die 64k-Grenze ist nur die erste Huerde; die zweite ist das VORSPIEL. Ein
+  Subagent schickt einen grossen System-Prompt, und ein Modell mit ~85 t/s
+  Prompt-Verarbeitung braucht dafuer Minuten, bevor das erste Wort kommt:
+  derselbe Ein-Wort-Auftrag kostete auf einem lokalen 27B **343 s** gegen
+  **13,9 s** auf dem Cloud-Modell — Faktor 25, und der Kontext waechst im Lauf
+  weiter. Solche Modelle taugen fuer kurze, einzelne Fragen und Skripte, nicht
+  fuer Zuege mit Werkzeugen. Der traegbare Aufbau ist: schnelles Modell VORN,
+  lokales Modell als ERSTER RUECKFALL (`delegation.fallback_providers`), damit
+  die Arbeit lokal weiterlaeuft, wenn die Cloud klemmt.
+  **Gemessen wird das mit einem ECHTEN Subagenten-Lauf**, nicht mit einem
+  Chat-Aufruf gegen den Dienst — nur der Lauf zeigt das Vorspiel. Die Reihenfolge
+  belegt man mit zwei Laeufen desselben Auftrags und nennt beide Zeiten.
 - **Hermes verlangt mindestens 64k Kontext je Modell.** Ein Modell darunter
   ist als **Dienst** nutzbar (Skripte, Einzelfragen, API), aber nie als
-  Agent-Modell: `hermes -z … -m <modell>` bricht mit klarer Meldung ab. Vor
-  jedem Anschluss-Vorschlag pruefen, ob Gewichte + 64k-KV in den freien VRAM
-  passen — auf einer 8-GB-Karte scheitert das fuer alles ab ~5 GB Gewichten,
-  und dann gehoert die Empfehlung auf den Dienst-Weg, nicht auf den
-  Provider-Weg.
+  Agent-Modell: `hermes -z … -m <modell>` bricht mit klarer Meldung ab.
+  **„Auf 8 GB geht kein 64k" ist eine ANNAHME, keine Messung** — die KV-Groesse
+  haengt an der ARCHITEKTUR, nicht nur an der Gewichtsmenge: ein
+  Hybrid-Attention-Modell (nur ein Teil der Schichten voll aufmerksam) traegt
+  64k neben 5,5 GB Gewichten auf einer 8-GB-Karte. Gemessen (27B ternar,
+  `-c 65536 -fa on`): VRAM 7.772/253 MiB **frei**, 12 t/s Erzeugung, 85 t/s
+  Prompt — gegen 32 t/s bei 8k Kontext. Vor der Empfehlung „nur als Dienst"
+  deshalb den 64k-Lauf WIRKLICH starten und VRAM + Tempo messen; erst wenn er
+  nicht hochkommt, ist der Dienst-Weg die Antwort.
+  **Die Kontextangabe gehoert danach als VORGABE in den Starter** (`-c 65536`),
+  sonst faellt der Agent-Weg beim naechsten Start still auf 8k zurueck und
+  Hermes lehnt das Modell wieder ab — und fuer reine Chat-Aufrufe den kleineren
+  Wert als Schalter daneben stehen lassen (dort ist 8k schneller).
+- **Den Agent-Weg in einem FRISCHEN `HERMES_HOME` nachweisen.** Ein Lauf gegen
+  das laufende Profil beweist nichts: `hermes -z` nimmt dort die letzte Sitzung
+  mit auf, und ein langer Verlauf meldet „This conversation has grown too long
+  for <modell> to read" — das ist die SITZUNG, nicht das Modell. Rezept: ein
+  leeres Verzeichnis mit einer `config.yaml`, die NUR den Provider-Block des
+  Dienstes und `model: {default, provider}` traegt, dann
+  `HERMES_HOME=<verzeichnis> hermes -z "Antworte mit genau einem Wort: OK"`.
+  Fehlt der `providers:`-Block, antwortet die CLI `Unknown provider '<name>'`
+  — das ist der fehlende Block, kein Modellfehler. Erst wenn dieser Lauf
+  antwortet, ist der Agent-Weg belegt (und der Nachweis gehoert in die
+  Wiki-Seite des Modells).
+- **Die 64k-Grenze laesst sich nicht ueber den Router umgehen.** Ein kleines
+  lokales Modell als Ziel einer Router-Kennung (`auto/best-coding` o. ae.)
+  einzutragen liefert es den CLIENTS aus — und die pruefen weiterhin selbst,
+  bevor sie ein Modell benutzen. Jeder Client auf dieser Kennung (Bots,
+  Delegation) stirbt dann mit derselben Kontext-Meldung, statt das Modell zu
+  nutzen. Richtig: eine EIGENE, ausdruecklich waehlbare Kennung fuer das kleine
+  Modell, und die Coding-Kombos bleiben auf Modellen mit >=64k. Vor jeder
+  Router-Umstellung fragen, WER die Kennung zieht — "Standard-Coding-Modell"
+  heisst in diesem Haus eine Kennung, die viele Clients teilen.
 
 ## Pitfalls
 - **Dienstaufrufe mit Zeitgrenze fahren, nie blank.** `ollama list` bzw. `curl` gegen
@@ -98,7 +139,22 @@ Modellnamen führen, ohne dass es auffällt.
 - **Der Import eines vorhandenen GGUF als Ollama-Modell ist billig** (Kopie im
   Store, kein Download) und der schnellste Weg zu einer belastbaren Messung.
   Aufräumen danach mit `ollama rm <name>`.
-- **MoE: ALLE Gewichte muessen resident sein, nicht nur die aktiven.** Bei
+- **Den eigenen llama.cpp-Dienst NICHT ueber `provider: llamacpp` anschliessen.**
+Hermes loest diesen Alias ZUERST auf seinen eigenen verwalteten llama-server
+auf (State-Datei, eigener Port, upgestreamte Bauart) und erst danach auf einen
+gefundenen fremden llama-server (Probelauf u. a. auf 8080). Ein Eintrag
+`provider: llamacpp` mit dem Namen des eigenen Modells landet also bei einem
+ANDEREN Dienst, der dieses Modell nicht fuehrt — und ein Fork-Build, der die
+Gewichte gar nicht laden kann, liefert dort still etwas anderes. Fuer den
+eigenen Dienst einen EIGENEN Provider-Block anlegen (`providers.<name>` mit
+`api`/`base_url` auf Host und Port, `default_model`) und den ueberall nennen;
+vor der Aussage "laueft ueber llamacpp" den aufgeloesten Endpunkt ausgeben
+lassen, statt es aus der Config zu schliessen.
+- **`/v1/models` zeigt den Dateipfad als Modellnamen, wenn kein Alias gesetzt ist.**
+Ein Starter ohne `--alias` laesst Clients den ganzen GGUF-Pfad anfragen; mit
+`--alias <kurzname>` meldet der Dienst den kurzen Namen. llama.cpp nimmt zwar
+jeden Namen an, aber ein falscher Name in einer Config ist eine zweite Wahrheit,
+die niemand nachzieht. Bei
   einem MoE (z.B. GLM-5.3-Flash: 320B gesamt / 18B aktiv je Token) muessen
   saemtliche Experten-Gewichte in RAM/VRAM liegen, obwohl nur ein Bruchteil je
   Token rechnet — die „18B aktiv“-Angabe ist KEIN Speicherbedarf. Vor dem

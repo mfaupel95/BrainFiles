@@ -191,6 +191,35 @@ def live_grenze(w, name, ersatz):
     return float(w.get("live_" + name, w.get(name, ersatz)) or ersatz)
 
 
+# Luft, die beim Deckeln auf das freie Guthaben zusaetzlich zur Gebuehr bleibt
+# (Rundung der Menge, Kursrutsch zwischen Abruf und Order).
+GUTHABEN_PUFFER = 0.002
+
+
+def einsatz_gedeckelt(weg, w, betrag):
+    """Der Live-Einsatz, der in das FREIE Guthaben passt.
+
+    WARUM DAS HIER STEHT (25.09.2026): `mindest_guthaben` ist eine Schwelle
+    ("darf ich ueberhaupt anfangen"), KEINE Aussage darueber, dass der GEPLANTE
+    Betrag bezahlbar ist. An diesem Tag stand das Tor von moondev_listingarb
+    auf 5 USDC, der geplante Einsatz aber bei bis zu 50 (und 71,43 aus der
+    Risikorechnung) - eine Order waere an der Boerse gescheitert (OKX:
+    insufficient balance), und zwar erst NACH dem Kaufversuch. Das Tor haette
+    also offen gestanden und trotzdem nicht gehandelt.
+
+    Gedeckelt wird auf `frei * (1 - Gebuehr - Puffer)`; ein kleinerer Einsatz
+    senkt nur das Risiko, nie das Schutzniveau (die Positionsgroesse haengt an
+    `risiko_je_position_usd / stop_pct`, und die bleibt unveraendert). ACHTUNG:
+    Was hier fehlt, muss der Aufrufer SICHTBAR melden - ein Filter, der still
+    drosselt, sieht aus wie ein Fehler. Dasselbe Muster wie
+    mosaic.betrag_gedeckelt() und moondev_marktlage/live_kraken.einsatz_gedeckelt().
+    """
+    frei = float(weg.guthaben_waehrung(w.get("guthaben_waehrung", "USDC")) or 0.0)
+    gebuehr = float(w.get("gebuehr_taker", 0.006) or 0.0)
+    luft = frei * max(0.0, 1.0 - gebuehr - GUTHABEN_PUFFER)
+    return max(0.0, min(float(betrag), luft))
+
+
 def sperren_live(w, s, spur):
     """Alles, was --live gerade verschliesst. Leere Liste = frei.
 
@@ -300,7 +329,6 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
         # Zustand, den xperp am 21.09.2026 hatte.
         if weg is None:
             return None
-        betrag = min(nominel, live_grenze(w, "max_pro_trade_usd", nominel))
         vinst = venue_inst(inst, w)
         # Im Live-Lauf den BOERSEN-Kurs verwenden, nicht den aus quelle().
         # Zwei Grunde: (1) CoinGecko liefert USD, Kraken-Stop-Loss braucht EUR
@@ -335,6 +363,36 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
                 print("  Boersen-Kurs %s nicht abrufbar (%s) - Einstieg uebersprungen"
                       % (inst, e), file=sys.stderr)
                 return None
+        # Der Einsatz steht hier, NICHT oben: der Boersen-Kurs hat die Nominale
+        # gerade neu gerechnet, und der Betrag haengt an der Nominale. Gedeckelt
+        # wird zuletzt, auf das FREIE Guthaben: eine Order, die groesser ist als
+        # das Konto, scheitert erst an der Boerse - und ein Buch, das sie schon
+        # gebucht haette, behauptet eine Position, die es nie gab (xperp,
+        # 21.09.2026).
+        betrag = min(nominel, live_grenze(w, "max_pro_trade_usd", nominel))
+        try:
+            betrag = einsatz_gedeckelt(weg, w, betrag)
+        except Exception as e:                                 # noqa: BLE001
+            # Ohne Guthabenzahl wird NICHT geordert - blind zu kaufen ist die
+            # eine Sache, die dieser Deckel verhindern soll.
+            print("  Live-Einstieg %s uebersprungen (Guthaben nicht abrufbar: %s)"
+                  % (inst, e), file=sys.stderr)
+            return None
+        if betrag <= 0:
+            print("  Live-Einstieg %s uebersprungen: kein freies Guthaben in %s"
+                  % (inst, w.get("guthaben_waehrung", "USDC")))
+            return None
+        if betrag < nominel:
+            # Sichtbar drosseln, nicht still: ein gedeckelter Einsatz ist eine
+            # Auskunft ueber das Konto, kein Fehler.
+            print("  Einsatz %s auf %.2f gedeckelt (geplant %.2f)"
+                  % (inst, betrag, nominel))
+        # Das BUCH fuehrt, was WIRKLICH geordert wurde. Vorher stand hier die
+        # ungedeckelte Nominale: bei moondev_listingarb (Risiko 5 USD, Stop 7 %
+        # = 71,43 Nominale, Live-Grenze 50) haette das Buch 71,43 gefuehrt und
+        # die Boerse 50 bekommen - jeder Ausstieg haette den G/V auf einen
+        # Einsatz gerechnet, den es nicht gab.
+        p["nominal"] = betrag
         try:
             menge, fehler = weg.menge_fuer(vinst, betrag, kurs)
         except Exception as e:                                 # noqa: BLE001

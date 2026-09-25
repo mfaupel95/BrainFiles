@@ -60,10 +60,21 @@ PowerShell-History (`ConsoleHost_history.txt`) steht die letzte `setx`-Zeile, al
 Wert, mit dem es funktioniert hat. Die Registry-Werte dagegen HASHEN (oder nur die
 Laenge vergleichen) und das Ergebnis ausgeben: gleich oder anders, nie der Wert.
 
+**Vor diesem Urteil die AUSGANGS-IP pruefen.** Ein Zugang mit IP-Bindung scheitert von
+einer anderen Adresse, und ein laufendes VPN wechselt genau die. Zwei Aufrufe genuegen:
+`curl -s https://api.ipify.org` und `Get-NetAdapter | Where-Object Status -eq 'Up'` —
+steht dort ein `NordLynx`/`OpenVPN …`-Tunnel, kommt die Abfrage NICHT von der
+Anschluss-IP, sondern von einem Knoten des Anbieters. Symptom, das dazugehoert: EIN
+Zugang desselben Kontos arbeitet weiter (der ohne Bindung), der andere nicht — und die
+Ablehnung kommt und geht, ohne dass jemand etwas geaendert hat. Die Adresse NENNEN
+statt raten, den Nutzer die Bindung im Portal anpassen lassen; **die VPN-Verbindung
+selbst schaltet der Agent nicht um** (Netzeingriff, und ein Kill-Switch macht daraus
+mehr als eine Diagnose).
+
 Gemessenes Muster: Werte identisch, Uhr sauber, Boerse online, jeder
-Genauigkeitsgrad der nonce abgelehnt → die Ursache liegt beim Konto/Schluessel und ist
-die EINE Sache, die der Nutzer im Portal erledigen muss. Dann NICHT am eigenen
-funktionierenden Orderweg "reparieren".
+Genauigkeitsgrad der nonce abgelehnt → die Ursache liegt beim Konto/Schluessel (Wert,
+Rechte oder IP-Bindung) und ist die EINE Sache, die der Nutzer im Portal erledigen muss.
+Dann NICHT am eigenen funktionierenden Orderweg "reparieren".
 
 ## 5. Nonce und Format systematisch ausschliessen
 
@@ -100,6 +111,57 @@ eine Klartextausgabe aller Schluessel. Mehrbuchstabige Namen (`Get-HashWert`).
 - Regel: die Fehlermeldung nennt die Variable, die der Code AUCH liest. Bei
   jedem Zugangsfehler zuerst diese Zuordnung pruefen (Programm -> Name), statt
   den Wert zu verdaechtigen.
+## 8. Zeitweise Abweisung: erst einen ZEUGEN bauen, dann deuten
+
+Ein Zugang, der eine Stunde lang JEDEN signierten Aufruf abweist und danach ohne
+Zutun wieder geht, ist mit den Schritten 1-6 nicht zu klaeren - dort fehlt im
+Fehlerfall JEDE Aufzeichnung (Status, `content-type`, Header, Rohantwort). Ohne
+diese vier Angaben ist "Schluessel kaputt" von "Konto-Lockout" von "cloudflare"
+nicht zu unterscheiden, und die Spuren schreiben derweil `(papier) ok`, weil der
+Papierzweig keine signierte Abfrage braucht. **Ein Nachweis ist keine Wache:**
+er muss von selbst laufen (Cron), sonst fragt niemand nach.
+
+**Ebene trennen statt Symptom lesen** - vier Wege je Lauf, und die Regel ist:
+faellt ein OEFFENTLICHER Weg, kann es kein Schluesselproblem sein (ohne Schluessel
+gibt es nichts zu authentifizieren) → Netz, IP oder cloudflare. Fallen nur die
+SIGNIERTEN Wege → Schluessel-, Rechte- oder Konto-Ebene.
+
+| Weg | Aufruf | Schluessel |
+|---|---|---|
+| offen Spot | `api.kraken.com/0/public/Time` | nein |
+| signiert Spot | `/0/private/Balance` ueber Haus-`kraken.py` | ja |
+| signiert Futures | `futures.kraken.com/.../accounts` ueber `kraken_futures.py` | ja |
+| offen Futures | `futures.kraken.com/.../tickers` | nein |
+
+**Im Fehlerfall EIN Zeuge-Aufruf**: HTTP-Status, `content-type`, `cf-ray`,
+`cf-mitigated`, `retry-after`, `ratelimit-*` und die ersten ~600 Zeichen der
+Rohantwort. Kraken liefert im cloudflare-Fall `5xx`/`1020` OHNE JSON; ein
+JSON-`error`-Feld heisst Auth-Ebene. Die Zeugenzeile ist das, was beim naechsten
+Auftreten gelesen wird - nicht eine neue Sonde.
+
+**Nach einer Abweisung NICHT weiterklopfen.** Kraken sperrt ein KONTO zeitweise
+(`EGeneral:Temporary lockout`, ~15 Minuten), wenn zu viele fehlgeschlagene
+Aufrufe kamen, und **jeder weitere Versuch setzt den Timer zurueck**. Ein
+Waechter mit 15-Minuten-Takt haelt die Sperre damit selbst am Leben: nach einer
+Abweisung Kuehlzeit halten (60 min belegt), und die Erholung als "wieder offen
+nach X min" melden - das ist der Beleg, den eine Zeitangabe sonst nicht hat.
+
+**Der teure Fehler: eine Sonde mit EIGENER Adresse.** Bringt eine Sonde ihre
+eigenen Basis-URLs mit, biegen Tests nur diese um, waehrend `kraken.guthaben()`
+weiter an den echten Host geht - sechs Aufrufe mit Attrappen-Schluessel landeten
+so bei Kraken, und jeder davon zaehlt dort als Fehlversuch (er kann genau den
+Lockout ausloesen, den die Sonde untersuchen soll). Regel: die Basis aus dem
+HAUSMODUL nehmen (`kraken.BASIS` / `kraken_futures.BASIS`), den Test die Module
+ueber eine Naht hereinreichen lassen (`lauf(module=...)`), und einen Test
+schreiben, der beweist, dass die Sonde KEINE eigene Kraken-Adresse kennt. Ein
+Test, der nur Konstanten umbiegt, prueft die Konstante, nicht die Adresse.
+
+Umsetzung im Haus: `Agenten/Handel/kraken_abweisungs_sonde.py` (+ Tests gegen
+eine Kraken-Attrappe im Testprozess, Modulwaechter auf den echten `cache`-Ordner)
+mit Cron `kraken-abweisung-wache` (leere Ausgabe = nichts senden); Wiki
+`Werkzeuge/kraken-abweisungs-sonde.md`. Fuer andere Boersen gilt dasselbe: zwei
+Wege, einer ohne Schluessel.
+
 ## Merksatz
 
 Ein Fehlertext ist kein Befund. Erst die unabhaengige Umsetzung entscheidet, ob unser

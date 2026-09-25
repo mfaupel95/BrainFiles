@@ -203,3 +203,41 @@ Boersen in der Liste gehoeren die uebrigen Gruende daneben, sonst sieht eine
 geprueft-leere Boerse wie eine ungeprueft uebersprungene aus.
 `mosaic/handeln.live_sperren()` macht das seit dem 25.09.2026; Test in
 `mosaic/tests/test_boersenwahl.py`.
+
+## 9. `51291` am Amend-Weg = die Bot-ART passt nicht — vor jedem Stop klaeren, WAS man stoppen will
+
+Symptom: `POST /api/v5/tradingBot/dca/amend-order-algo` weist einen laufenden Bot
+mit `OKX 51291: The bot doesn't exist or has already stopped` ab — auch mit
+vollstaendigem Koerper (alle Felder der Doku) und obwohl `dca/ongoing-list` und
+`dca/position-details` denselben Bot als `running` zeigen. Das liest sich wie eine
+tote Kennung und ist keine.
+
+Mechanismus: bei Bots ist die **Doku-Ueberschrift** die Auskunft.
+`dca/amend-order-algo` heisst dort **"Amend SPOT dca basic param"** und ist nur
+fuer SPOT-DCA. Fuer `algoOrdType: contract_dca` gibt es keinen Amend; OKX sucht
+eine SPOT-DCA mit dieser Kennung, findet keine und meldet "existiert nicht".
+GRID-Bots haben dagegen `grid/amend-order-algo` (das naheliegende
+`grid/amend-algo` antwortet HTTP 404) — damit liess sich ein Schutzstop setzen
+(`sCode: 0`, danach gegenlesen: `slTriggerPx` steht).
+
+Regel: **vor jedem Bot-Amend die Bot-ART und die Ueberschrift des Endpunkts
+pruefen.** SPOT-DCA, Contract-DCA und Grid sind drei verschiedene Wege; ein
+51291 auf einen nachweislich laufenden Bot heisst "falscher Weg", nicht "Bot
+weg".
+
+Damit bleibt als Schutz fuer eine Contract-DCA nur der Bot selbst (`dca/stop`,
+Tor `stop_erlaubt`) - und ein Stop auf die POSITION geht aus zwei Gruenden nicht:
+
+* **Der Bot-Name traegt eine Lieferkennung, die Position nicht.** Bot:
+  `LTC-USD_UM_XPERP-310404`, Position: `LTC-USD_UM_XPERP`. Wer mit dem Bot-Namen
+  sucht, findet nie eine Position; mit dem Bot-Namen abgefragt kommt eine Zeile
+  mit `pos=0` zurueck.
+* **Ein Bot haelt seine Marge intern.** `/api/v5/account/positions` liefert fuer
+dieses Konto 0 Eintraege - auch mit `instType=FUTURES`. Draussen liegt also
+  nichts, was eine bedingte `order-algo` mit `reduceOnly` schuetzen koennte.
+
+Werkzeuge, die daraus entstanden sind: `okx_bot_waechter/grid_schutz.py` (Grid:
+Stop = Kurs − 1,5 × ATR, gedeckelt unter den Bandboden und ueber die Liquidation)
+und `okx_bot_waechter/positions_schutz.py` (Position; **ueberspringt still, wenn
+keine Position sichtbar ist** - genau der Fall oben, und das ist der Befund, nicht
+ein Fehler).

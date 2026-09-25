@@ -49,3 +49,32 @@ synchronisieren, dort mit `py_compile` und einem echten Kurzlauf pruefen
 laufen lassen, `Get-Process` bestaetigt den Start, danach
 `Stop-Process -Force`; das Log muss leer/fehlerfrei bleiben — ein
 erfolgreicher Prozessstart allein beweist nichts).
+
+## Warum die Startknoepfe eines fremden GUI still sterben
+
+„▶ <mod> gestartet (PID …)" in der Statuszeile ist nur der SPAWN. Ein Kind, das
+in der ersten Sekunde stirbt, sieht im Fenster wie ein laufender Agent aus.
+Reihenfolge beim Debuggen: erst die Logdateien je Knopf LESEN (`moongui_logs/*.log`
+bzw. das Log des Starters), dann den Code. Drei Ursachen, die regelmaessig
+zusammen auftreten:
+
+- **Kein UTF-8 fuer die Kinder.** Diese Agenten drucken Emojis; ohne
+  `PYTHONIOENCODING=utf-8` und `PYTHONUTF8=1` stirbt jeder Start mit
+  `UnicodeEncodeError: 'charmap' codec`. Aus einer interaktiven Shell lief es
+  trotzdem, weil MSYS UTF-8 setzt — der Fehler tritt nur beim Start aus dem
+  Fenster heraus auf.
+- **Die .env der Wurzel erreicht die Kinder nicht.** `load_dotenv()` im Kind
+  sucht vom MODUL aus aufwaerts und findet `src/.env` VOR der Wurzel-`.env`; ein
+  dort fehlender Schluessel bleibt leer (`OpenAIError: Missing credentials`),
+  obwohl er in der Wurzel steht. Der Starter liest die Wurzel-`.env` deshalb
+  SELBST und legt die Werte per `setdefault` in die Kind-Umgebung — nur, wo sonst
+  nichts steht.
+- **Vorgabe-URL auf den falschen Adapter.** Ein hart gesetzter Provider-Endpunkt
+  im Starter (z. B. Ollamas eigenes `/v1`) ueberschreibt den guten Weg der `.env`.
+  Hier gehoert die Haus-Bruecke hinein (Haupt-Skill, Punkt 3).
+
+Pflichtmuster fuer den Starthelfer: EINE Funktion `kind_umgebung()`, die
+`os.environ` kopiert und UTF-8, Modellzugang (`OLLAMA_MODEL`/`OLLAMA_BASE_URL`)
+und die Wurzel-`.env` ergaenzt; JEDER Start ruft sie, kein Start baut seine
+Umgebung selbst. Nach jeder Aenderung am GUI-Code das FENSTER neu starten — es
+haelt den alten Code im Speicher, die Knoepfe verhalten sich sonst unveraendert.

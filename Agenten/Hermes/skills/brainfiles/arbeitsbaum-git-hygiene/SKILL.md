@@ -43,6 +43,16 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    abbrechen (`git reset -- <fremder-pfad>` nimmt einen fremden Eintrag zurueck, ohne
    den Arbeitsbaum anzufassen) - der Index kann von einer anderen Sitzung gefuellt
    sein, und ein `git commit` ohne Pfadangabe nimmt alles mit, was darin steht.
+   **Diese Pruefung ist eine Momentaufnahme.** Die Routine
+   `fremdarbeit-einziehen.ps1` laeuft zu festen Zeiten und baut dabei eigene
+   Indizes um; kurz danach trug der geteilte Index einen fremden
+   **Loesch**-Eintrag, den diese Sitzung nie angefasst hatte, und er ging mit dem
+   eigenen Commit mit. Deshalb Index-Pruefung (`git diff --cached --name-only`)
+   und `git commit` in EINER Ausfuehrung verketten (`&&`), nie in zwei
+   Werkzeugaufrufen - und nach dem Commit `git show --stat HEAD` JE DATEI lesen:
+   eine fremde Zeile mit Loeschungen ohne Einfuegungen heisst, dort ist ein
+   fremder Zwischenstand mitgegangen (Regel 3 nennt den Rueckweg: Folge-Commit mit
+   dem Arbeitsbaum-Stand, keine Historie umschreiben).
 3. **Gemischte Datei = nur die eigene Aenderung in den Index, nicht die Datei opfern
    und nicht die Fremdarbeit mitnehmen.** Zuerst `git diff --numstat -- <datei>` lesen:
    mehrere Hunks unterschiedlicher Groesse heissen "hier steckt fremde Arbeit drin".
@@ -88,11 +98,33 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    dann `git commit` ohne Pfade. Ist es doch passiert: `git reset --soft HEAD~1`, Index
    deterministisch neu bauen, ohne Pfadangabe erneut committen — und `git show --stat`
    gegen die Absicht halten (je Datei 2/1, nicht 39 Zeilen). `git commit -- <pfad>`
-   ist auch dann kein Ersatz, wenn nur EINE Datei betroffen ist.
+   `git commit -- <pfad>` ist auch dann kein Ersatz, wenn nur EINE Datei betroffen ist.
+      **Den `--stat` nach dem Commit VOLLSTAENDIG lesen, nicht abschneiden** — die
+      Einfuegungs- UND Loeschungszahlen JE DATEI sind das Signal: eine fremde Datei
+      mit `65 --------` und ohne `+` heisst, dort ist etwas VERSCHWUNDEN (ein
+      Zwischenstand), nicht nur geaendert. Wer die Ausgabe kuerzt, schneidet genau
+      diese Zeile weg und der gemischte Commit faellt nicht auf.
+      **Ist es doch passiert, weil der Fremdteil ein ZWISCHENSTAND war** (der Autor
+      hat ihn im Arbeitsbaum inzwischen zurueckgenommen), NICHT die Historie
+      umschreiben: einen normalen Folge-Commit mit dem Arbeitsbaum-Stand dieses Pfades
+      setzen und im Text sagen, dass ein fremder Zwischenstand versehentlich mitging
+      und hier in Deckung gebracht wird. Vorher belegen, dass es wirklich die Umkehr
+      ist: `git diff HEAD~1 -- <pfad>` und `git diff HEAD -- <pfad>` muessen exakt
+      gegeneinander laufen und `git show HEAD~1:<pfad>` byte-gleich zum Arbeitsbaum
+      sein. Danach `git diff HEAD -- <pfad>` leer und `git show --stat HEAD` lesen.
+      Nur wenn der Fremdteil noch im Arbeitsbaum steht, ist `reset --soft` richtig.
    `git add -p` bleibt der Notweg fuer zwei klar getrennte kleine Hunks; dort die
    Antwortfolge nicht raten, sondern `git diff --cached -- <datei>` nachlesen und bei
    Abweichung mit `git restore --staged <datei>` neu beginnen — die Zahl der Hunks ist
    vorher nicht sicher bekannt.
+   **Fuer eine GEMEINSAME Registerdatei** (z. B. `TASKS.md`, in die jede Sitzung oben
+   eintraegt) ist der kuerzere Weg gleichwertig: aus `git show HEAD:<datei>` eine Fassung
+   "HEAD + eigener Block" bauen, schreiben, `git add -- <datei>`, dann den vollstaendigen
+   Arbeitsbaum-Text wiederherstellen — der Index traegt nur den eigenen Block, die
+   Fremdarbeit steht weiterhin als `M` im Baum. Nur anwenden, wenn in dem Moment keine
+   andere Sitzung in diese Datei schreibt, und danach `git diff --numstat -- <datei>`
+   gegenpruefen: Arbeitsbaum gegen Index zeigt die fremden Zeilen, Index gegen HEAD nur
+   die eigenen.
 4. **Fremde Aenderungen bleiben als `M` im Arbeitsbaum** und werden im Commit-Text als
    NICHT enthalten benannt, nicht stillschweigend mitgenommen und nicht verworfen.
    Fremd Gestagetes nie mitcommitten. **Liegen bleiben heisst aber nicht fuer immer:**
@@ -108,8 +140,19 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Ausfuehrung, ohne Zeitfenster dazwischen — und danach `git show --stat HEAD` lesen:
    traegt der neueste Commit eine fremde Nachricht und die eigene Datei, ist die
    Aenderung inhaltlich da, aber falsch beschriftet; das im Bericht sagen, statt sie
-   ein zweites Mal zu committen (ein zweiter Commit derselben Zeile ist ein leerer
-   Diff und verwirrt mehr, als er klaert).
+   zweiten Mal committen (ein zweiter Commit derselben Zeile ist ein leerer
+   Diff und verwirrt mehr, als er klaert). **Auch eine UNGESTAGTE eigene Aenderung
+   kann so verschwinden:** eine Fremdsitzung stagt eine GEMEINSAME Registerdatei
+   (`TASKS.md`, `INDEX.md`, `Dashboard.md`) als GANZE Datei und committet sie -
+   die eigene, eben erst geschriebene Zeile faehrt darin mit. Erkennbar an
+   `git status --porcelain -- <datei>` (leer) bei gleichzeitig fehlendem
+   `git diff -- <datei>`; der Inhalt ist NICHT weg, sondern in einem fremden
+   Commit mit fremder Beschriftung. Nicht neu schreiben (der zweite Commit
+   derselben Zeile ist ein leerer Diff): `git show HEAD:<datei> | grep -n
+   '<eigene Kennung>'` als Beleg lesen, das im Bericht als "in fremdem Commit
+   mitgegangen" benennen — und in so einer Registerdatei die eigene Aenderung
+   ZUERST und in EINER Ausfuehrung mit `git add` + `git commit` erledigen, statt
+   sie zwischen zwei Rechercheschritten liegen zu lassen.
 6. **Eine fremde Aenderung, die einen Absturz oder Testfehlschlag verursacht, wird
    wie ein eigener Bug behandelt — nicht nur liegen gelassen.** Eine plausibel
    klingende Begruendung im Fremd-Commit ('X sollte nicht wie Y zaehlen') ist kein
@@ -218,6 +261,26 @@ ungetrackten Dateien. Reihenfolge:
 5. **Was eine laufende Sitzung gerade schreibt, wird nur benannt.** Der Stand aendert
    sich zwischen zwei Werkzeugaufrufen (Regel 7): vor dem Uebernahme-Commit frisch
    `git status --porcelain` lesen, sonst zieht man halb fertige Arbeit hinein.
+   - **Laeuft die Sitzung noch, ist es KEINE Alles-oder-nichts-Frage: nimm den ruhenden
+     Teil.** Aktivitaet MESSEN, nicht schaetzen: `git log -3 --format='%h %ci %s'`
+     (HEAD-Commit vor wenigen Minuten = sie committet gerade selbst) und je offenem
+     Pfad das Alter in Minuten in EINEM Lauf —
+     `scripts/offene-pfade-alter.ps1` gibt genau das aus (sortiert, und fuer ` D`-Eintraege
+     die Zeit des ELTERNORDNERS, weil eine geloeschte Datei keine mtime hat).
+     Alles ueber ~30 min unberuehrt gilt als ruhend; nur diese Pfade stagen und den Rest
+     im Bericht nennen („13 Pfade, juengste 2 Minuten, ihre eigenen Commits laufen").
+     Ein Teil-Commit ist besser als keiner — was liegen bleibt, holt die Routine.
+   - **Vor dem Fremd-Commit die uebernommenen Dateien PRUEFEN, nicht nur stagen:**
+     `ast.parse` ueber jede `.py` und die BETROFFENEN Testmodule wirklich laufen lassen
+     (`python -m unittest test_x` aus ihrem Verzeichnis), die Testzahl in den Commit-Text.
+     Gruene Fremdarbeit darf als ruhend gelten, rote wird wie ein eigener Fehler
+     behandelt (Regel 6) — nicht "nur liegen gelassen".
+   - **Der Teil-Commit braucht die volle Zeremonie aus Regel 3:** `git reset` (Index
+     leeren), `git add -- <pfade>` namentlich, `git diff --cached --name-only` muss GENAU
+     diese Pfade nennen, dann `git commit` OHNE Pfadangabe mit
+     `--author="Andere Sitzung <fremd@local>"` (Herkunft und Inhalt im Text), danach
+     `git show --stat HEAD` gegen die Index-Zahlen halten. Der eigene Rest (z. B. ein
+     TASKS.md-Eintrag) wird ein ZWEITER Commit mit eigenem Autor — nie derselbe.
 
 ## Datei soll aus dem Verlauf verschwinden
 
@@ -328,12 +391,13 @@ ungetrackten Dateien. Reihenfolge:
   den unklaren Fall. Gegenprobe nach dem Umbenennen: `Test-Path` auf Quell- UND
   Zielpfad, dann den Commit wiederholen und `git log -1` lesen — erst der
   durchgelaufene Commit beweist, dass die Sperre wirklich weg war. **Unter
-  Windows mit `[System.IO.File]::Move($quell, $ziel)` (**ZWEI** Argumente) umbenennen, NICHT mit
-  `Move-Item`:** bei der versteckten Datei `.git\index.lock` tat `Move-Item` still
-  NICHTS (keine Fehlermeldung, die Sperre stand danach unveraendert mit altem
-  Zeitstempel da, waehrend die Ausgabe wie Erfolg aussah). Danach mit `Test-Path`
-  auf BEIDE Pfade nachsehen - sonst arbeitet man weiter gegen eine Sperre, die man
-  fuer weg haelt. **Die Ueberladung mit DREI Argumenten gibt es in Windows
+  Windows mit `Move-Item -LiteralPath <quell> -Destination <ziel> -Force` umbenennen (der
+    Schalter ist der Unterschied), alternativ `[System.IO.File]::Move($quell, $ziel)` mit **ZWEI**
+    Argumenten:** die Sperre ist eine VERSTECKTE Datei — ein `Move-Item` OHNE `-Force` tat daran still
+    NICHTS (keine Fehlermeldung, die Sperre stand danach unveraendert mit altem
+    Zeitstempel da, waehrend die Ausgabe wie Erfolg aussah). Danach mit `Test-Path`
+    auf BEIDE Pfade nachsehen - sonst arbeitet man weiter gegen eine Sperre, die man
+    fuer weg haelt. **Die Ueberladung mit DREI Argumenten gibt es in Windows
  PowerShell 5.1 nicht:** `[System.IO.File]::Move($quell, $ziel, $true)` bricht mit
  „Es kann keine Ueberladung gefunden werden: 3" ab und die Sperre bleibt liegen —
  der Zielname muss also selbst frei sein (Zeitstempel im Namen), sonst die
@@ -410,6 +474,14 @@ ungetrackten Dateien. Reihenfolge:
   `git show HEAD:<pfad>` LEER, ohne Fehlermeldung: Rueckgriff auf `git -C <unterrepo> show
   HEAD:<datei>` und den Commit auch dort machen. Leerer Treffer immer als Verdacht lesen,
   nicht als "Datei ist leer".
+- **Fortlaufende Nummern (`T-0NN`) werden von mehreren Sitzungen gleichzeitig vergeben.**
+  „hoechste + 1" stammt aus einer Datei, die parallel fortgeschrieben wird — zweimal am
+  selben Abend entstanden zwei inhaltlich verschiedene Eintraege mit derselben Nummer.
+  Die hoechste Nummer FRISCH lesen, nach dem Schreiben die eigenen gegenpruefen
+  (`grep -c '\*\*T-0NN' <datei>` muss je eigener ID `1` sein); bei einer Kollision NUR die
+  eigenen Eintraege umnummerieren (am eigenen TITEL erkennbar, nie am Zeitstempel) und die
+  fremden unberuehrt lassen. Gegenprobe nach dem Schreiben: `git diff --numstat` zeigt
+  reine Einfuegungen, die Umnummerierung nur die eigene Zeile.
 - **Beim Einfuegen in JSON/YAML nach dem Schreiben parsen lassen, und die Kommas mitdenken.**
   Eine eingefuegte Zeile, deren Wert ein doppeltes Anfuehrungszeichen enthaelt, zerbricht die
   Datei (`Expecting ',' delimiter` an der Folgezeile) — im Textwert einfache Anfuehrungszeichen
@@ -451,6 +523,16 @@ ungetrackten Dateien. Reihenfolge:
   `Agenten/Hermes/scripts/`: ein Skript, das nicht kompiliert, nimmt seinen
   Cron-Job mit, und das faellt nur an `last_status: failed` in `cron/jobs.json`
   auf — nie in einer Meldung.
+  **Denselben Helfer NIE als `python -c "…"` in die Shell legen:** Backticks im Text
+  (Markdown-`code`-Marken) liest die bash als Kommando-Substitution — die Zielzeile landete
+  danach in Einzelzeichen zerlegt in der Datei. Text mit Backticks ausschliesslich per
+  `write_file` als Datei schreiben und mit `python <datei>` starten.
+  **Und den Schreibaufruf nie mit einem rechenbaren Argument bauen:**
+  `open(pfad, "wb").write(neu_bauen())` wertet `open()` ZUERST aus — die Zieldatei ist in
+  diesem Moment schon leer — und stirbt erst an der Argument-Auswertung. Gemessen: eine
+  versionierte Wiki-Datei lag danach mit 0 Byte Inhalt da (Rueckweg nur ueber
+  `git show HEAD:<pfad>`). Erst rechnen, Ergebnis `assert`en, dann in zwei Schritten
+  `open(pfad, "wb").write(bytes)`.
 - **`patch` auf `Agenten/Hermes/config.yaml` ist gesperrt** („Refusing to write to Hermes
   config file"); dafuer `hermes config set`. Siehe `hermes-config-ops`.
 - **Ein `.bak-JJJJMMTT` ist nicht nur Sicherung, sondern der einzige Rueckweg**, wenn ein
@@ -502,6 +584,39 @@ ungetrackten Dateien. Reihenfolge:
   <datei>` fragen und den ungetrackten Stand nennen (der Klon ist shallow: vor
   einem Push `git fetch --unshallow <upstream>`).
 
+- **Die Uhr im Terminal-Container laeuft hinter dem Rechner her — eine mtime aus dem
+  Terminal-Werkzeug beweist kein „ruht".** `date` im Terminal liefert die Zeit des
+  Docker-Backends, nicht die des Hosts (gemessen: 7,5 h Rueckstand nach Ruhezustand,
+  Terminal 17:06 gegen Host 00:46). Folge: jede eben erst geschriebene Datei traegt
+  einen Stunden alten Zeitstempel, gilt sofort als ruhend (>30 min) und wird von
+  `fremdarbeit-einziehen.ps1` als `Andere Sitzung <fremd@local>` committet — die
+  eigene, gerade fertige Arbeit steht dann in einem Fremd-Commit, obwohl kein
+  Mensch sie angefasst hat. Wer das sieht, sucht NICHT die fremde Sitzung: erst die
+  Host-Zeit holen (windows-mcp `Get-Date`, oder `git log -1 --format=%ci`) und den
+  Rueckstand benennen, statt eine Sibling-Sitzung zu vermuten. Gilt auch fuer den
+  Rueckstands-Bericht: jede mtime aus dem Terminal-Werkzeug gegen die Host-Uhr lesen.
+- **Eine von einer Fremdsitzung GELOESCHTE getrackte Datei ist kein Verlust - ihr
+  Rueckweg ist aber eng.** Zeigt `git status --porcelain` ein ` D <pfad>` an einer
+  Datei, die niemand bewusst entfernen wollte (eigene Testdatei, eigene Werkzeugdatei),
+  holt `git checkout HEAD -- <pfad>` sie zurueck: verworfen wird nur die LOESCHUNG, der
+  Inhalt kommt aus dem letzten Commit. Vorher pruefen, ob die Datei uncommittete Arbeit
+  trug (`git diff --numstat -- <pfad>` vor der Loeschung ist weg - also aus dem
+  Sitzungsverlauf oder der letzten Sicherung belegen): trug sie welche, wird NICHT
+  wiederhergestellt, sondern im Bericht als moeglicher Verlust benannt. Eine Loeschung
+  in einem verschachtelten eigenen Repo (`nautilus/`) holt `git -C <unterrepo>
+  checkout -- <pfad>`, nicht der BrainFiles-Aufruf.
+- **Ein `D` in der EIGENEN Pfadliste wandert in den eigenen Commit.** `git add <pfad>`
+  stagt auch eine LOESCHUNG: fehlt die Datei auf der Platte, nimmt der Commit sie mit,
+  und `git show --stat HEAD` zeigt sie als `125 ----------` — die eigene Aenderung an
+  derselben Datei ist dann mit weg, ohne dass irgendetwas fehlschlaegt. Deshalb VOR
+  jedem Commit `git status --porcelain -- <pfade>` **LESEN**, nicht nur abschicken, und
+  jedes `D` oder `M` an einer Datei, die man nicht angefasst hat, als Befund behandeln:
+  erst `git checkout <letzter-guter-commit> -- <pfad>`, Inhalt zurueckholen, dann
+  committen. Beleg nach dem Commit: `git cat-file -e HEAD:<pfad>` (Exit 0 = liegt in
+  HEAD) — `git show --stat` nennt nur Zahlen und sieht bei einem Loesch-Commit wie ein
+  normaler Commit aus. Die URSACHE einer solchen Loeschung darf offen bleiben (kein
+  Defender-Fund, kein Cron, kein `reset`/`clean` im Reflog gemessen): die Regel haengt
+  nicht daran, sondern an der Pflichtlektuere vor dem Commit.
 - **`git status` luegt unter `Werkstatt/`.** Bei laufendem `core.fsmonitor` (BrainFiles hatte ihn an) meldet git fuer Pfade unter der Junction `Werkstatt` -> `O:\Werkstatt` „nichts geaendert“, obwohl die Datei neu geschrieben ist: `git diff` bleibt leer, `git add <pfad>` ist still wirkungslos, `git hash-object <pfad>` zeigt dagegen den neuen Inhalt. Wer dem `git status` dort glaubt, committet nichts und merkt es erst beim naechsten Mal. Gegenprobe: `git rev-parse :<pfad>` gegen `git hash-object <pfad>` halten. Fix: `git -c core.fsmonitor=false add <pfad>` - oder fsmonitor im Repo ganz aus, seit 21.09.2026 gesetzt (`git config core.fsmonitor false`). Trifft jeden Pfad unterhalb einer Junction, auch `Modelle`.
 ## Verification
 
@@ -563,3 +678,13 @@ ungetrackten Dateien. Reihenfolge:
   wiederholen - sonst widerspricht sich der eigene Bericht.
 - `git log --oneline -1` nennt nur die eigenen Pfade, `git show --stat` passt zur Absicht,
   und der Push ist gegen `origin/master` gehalten (siehe oben, nicht blind vergleichen).
+- **Jede Datei, die die Commit-Nachricht NENNT, muss im gestagten Diff stehen - und
+  jede Datei, die man stagen will, muss vorher WIRKLICH geschrieben sein.** Ein
+  Schreibwerkzeug, das den Vorgang verweigert (z. B. weil die Zieldatei vorher nicht
+  gelesen wurde), meldet das nicht zwingend als Fehler: es schreibt nichts und liefert
+  auch keine Bytezahl. Die Datei fehlt dann still im `git add`-Aufruf,
+  `git diff --cached --numstat` nennt sie nicht, und der Commit traegt eine Nachricht
+  ueber eine Aenderung, die gar nicht darin ist. Gegenprobe in EINEM Aufruf:
+  `git add <pfade> && git diff --cached --numstat` - die Zahl der genannten Pfade muss
+  der Absicht entsprechen; danach `git show --stat HEAD` gegen die Nachricht lesen und
+  fehlende Pfade in einem Folge-Commit nachziehen (nicht die Historie umschreiben).

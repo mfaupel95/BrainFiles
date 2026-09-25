@@ -24,7 +24,7 @@ fuer die Auswertung der Buecher (`handel-spuren`).
 ## When to Use
 
 - „scanner: Verkauf X fehlgeschlagen: OKX 51000 …" / „Kauf X fehlgeschlagen" / „Stop … fehlgeschlagen"
-- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50119, 50101)
+- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50119, 50101, 50124)
 - eine echte Position scheint zu fehlen, oder das Buch und das Konto passen nicht zusammen
 - eine Order soll gesetzt/verkauft werden und der Live-Pfad ist unklar
 
@@ -153,6 +153,21 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   Probe ohne Netz: `env -u OKX_BASE <venv>/python.exe -c "import okx; print(okx._live_basis())"`
   muss die Kontakt-Basis liefern. Vor dem Umbau pruefen, was die Nachbarspuren tun
   (`xperp/okxf.py`, `mosaic/okx_spot.py`) — dort steht die richtige Form meist schon.
+- **`50124` heisst FALSCHER MARKT-NAMENSRAUM, nicht fehlende Berechtigung.** Ein
+  Markt kann oeffentlich gelistet und trotzdem nicht handelbar sein: auf einem
+  EEA-Konto liegt er nur als XPERP-Kontrakt (`instType=FUTURES`,
+  `XAU-USD_UM_XPERP-…`), waehrend die Spur den gleichnamigen gewoehnlichen
+  Perpetual (`instType=SWAP`, `XAU-USDT-SWAP`) schickt. `/account/config` zeigt
+  dann `perm: read_only,trade` und `acctLv: 2` — die Rechte sind in Ordnung.
+  **Reihenfolge: erst den Namensraum, dann die Rechte.** Beleg ist die
+  ORDERHISTORIE des vermuteten Zwillings mit passendem `instType` (der falsche
+  Typ gibt `51015 Instrument ID doesn't match instrument type`) plus
+  `/account/positions` je `instType`; nie eine Testorder zur Diagnose. Fix an der
+  Aufrufstelle: je Basiswert EINMAL auf den handelbaren Zwilling aufloesen (nicht
+  je Kandidat), den vollen Kontaktdatensatz mitgeben (ctVal/tickSz/Hebel des
+  GEHANDELTEN Kontrakts) und eine Reihe ohne Zwilling aus der Liste fallen lassen
+  statt in einen Fehler laufen. Codes und Sonden:
+  `references/okx-fehler-und-nachweis.md`.
 - **Ein fehlgeschlagener Ausstieg hinterlaesst einen halben Zustand.** Der Verkauf
   bestellt ZUERST den Notausstieg ab (sonst blockiert er den Bestand). Scheitert der
   Verkauf DANACH, steht die Position ohne Stop an der Boerse, bis der naechste Zyklus

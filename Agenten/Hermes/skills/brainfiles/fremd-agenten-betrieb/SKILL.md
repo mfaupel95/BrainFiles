@@ -130,6 +130,23 @@ ist hier keine Antwort. Tabelle, die traegt:
           Kuerzung ins Bruecken-Protokoll schreiben (nur Zahlen, kein Inhalt).
           Messwert: 150k Zeichen (~60k Token) liefen als EIN Aufruf durch, das
           Fenster wurde selbsttaetig angehoben.
+   - **Die Bruecke muss BEIDE Formen sprechen, und der Client muss auf SIE
+     zeigen.** Fremde Agenten pruefen ihre Verbindung gern ueber die NATIVE
+     Ollama-API (`GET /api/tags`, `POST /api/chat`) und melden ohne diese Wege
+     `Model type 'ollama' not available`, obwohl die Bruecke gesund ist
+     (`/gesundheit` antwortet) — das `OllamaModel` dieses Repos baut seine Basis
+     aus `OLLAMA_BASE_URL`, entfernt `/v1` und ruft dann `/api/tags`. Zeigt
+     `OLLAMA_BASE_URL` ausserdem auf Ollamas EIGENES `.../v1` statt auf die
+     Bruecke, laeuft der Agent bis zum ersten langen Prompt und meldet dort
+     „Phase failed", ohne etwas zu schreiben. Beides ist EIN Fehlerbild: die
+     Bruecke um `/api/tags` (durchreichen) und `/api/chat` (dieselbe
+     Denk-Abschaltung, Antwort in der nativen Feldform `message.content`, `done`,
+     `eval_count`) erweitern und die Repo-`.env` auf die Bruecke stellen.
+     Gegenprobe je Weg, und die ZEICHENZAHL ist der Beleg (gemessen: 0 Zeichen
+     ueber Ollamas `/v1`, `finish_reason: length`; 3603 Zeichen ueber die Bruecke,
+     `stop`):
+     `curl -s http://127.0.0.1:11499/api/tags | head -c 200` und ein echter
+     `/api/chat`-Aufruf mit `think`-Modell.
    - **Der env-Leser gehoert an den AUFRUFORT, nicht in die Konstante.** In
      mehreren Agenten steht `import os` erst NACH der Konstantenzeile
      (`DEEPSEEK_BASE_URL = "https://api.deepseek.com"` ganz oben) - ein
@@ -380,6 +397,56 @@ ist hier keine Antwort. Tabelle, die traegt:
      Warteschlange messen (`https://aihorde.net/api/v2/status/models?type=image`
      listet je Modell die Arbeiterzahl), nicht den Modellkatalog.
 
+## Schleifen, die selbst Backtests starten (conda, Autorenpfade, Beleg)
+
+Research-Automaten dieser Repos („Idee -> Strategie -> Backtest -> Debug ->
+Paket") bringen eigene Ausfuehrungswege mit, die hier NICHT tragen. Reihenfolge,
+die Zeit spart:
+
+- **`conda run -n <env>` ist auf diesem Rechner kein Weg.** Ohne conda stirbt die
+  Schleife beim Ausfuehren des ERZEUGTEN Backtests — und zwar erst NACH der
+  Textgenerierung, weshalb sie von aussen „laeuft" aussieht. Vorher messen, was
+  ein Backtest ueberhaupt importiert (`grep -h "^import \|^from " *_BT.py | sort -u`):
+  sind es nur pandas/numpy/backtesting, ist der venv-Interpreter des Repos der
+  richtige Ersatz. EIN Modul mit `interpreter(datei) -> [sys.executable, "-u",
+  str(datei)]` neben die Agenten legen und ALLE Aufrufstellen darauf zeigen lassen
+  — Sammelstelle, nicht jede Datei einzeln patchen.
+- **Die Vorlagen tragen die Pfade des AUTORS** (`/Users/md/Dropbox/.../BTC-USD-15m.csv`).
+  Ein erzeugtes Skript mit fremdem Pfad faellt beim Laden um, und der Prompt
+  schreibt ihn immer wieder neu. Zwei Stellen: die VORHANDENEN Skripte auf einen
+  Pfad relativ zur eigenen Datei umstellen
+  (`Path(__file__).resolve().parents[1] / "<datei>"`), und die PROMPT-Vorlage zur
+  Laufzeit ersetzen (`PROMPT = PROMPT.replace(<fremder Pfad>, daten_pfad())`).
+  Der Laufzeit-Ersatz gehoert NACH die Importe — steht die Zuweisung oberhalb der
+  Importe (in diesen Dateien liegen die Prompt-Konstanten VOR dem Importblock),
+  faellt das Modul beim Laden mit `NameError` um.
+- **Der Beleg ist der Ordner, nicht die Statuszeile.** Nach den ersten Minuten
+  muessen im Tagesordner Dateien liegen (`research/<Name>_strategy.txt`,
+  `backtests/<Name>_BT.py`). Bleibt er leer, ist die TEXTphase gescheitert — dann
+  den Prompt einmal einzeln durch beide Wege schicken (siehe Bruecken-Regel oben)
+  und die Zeichenzahl vergleichen, statt am Repo zu schrauben.
+
+## Kennzahlen aus Fremd-Dokumenten sind Prosa, keine Messung
+
+Ein Dokument, das ein Modell geschrieben hat, das auch die Strategie und den
+Backtest geschrieben hat, ist kein Ergebnis — auch dann nicht, wenn es wie ein
+Bericht aussieht (`FINAL_RESULTS.md`, `RESULTS_10_STRATEGIES.md`, Tabellen mit
+Sharpe-Werten). Gegenprobe, die zwei Minuten kostet und den ganzen Ordner
+entwertet oder belegt:
+
+1. Ein fertiges `*_BT.py` mit dem venv-Interpreter des Repos starten (`-u`, Log in
+   eine Datei, im Hintergrund — ein Durchlauf auf 15m-Kerzen dauert Minuten).
+2. Die GEDRUCKTEN Kennzahlen gegen die Doku stellen. Gemessen wichen sie in JEDER
+   Zahl ab: andere Tradezahl (3 gegen „834"), Sharpe mit umgekehrtem Vorzeichen,
+   ein als „funktionierend" bezeichnetes Skript lief gar nicht (Indicator-Fehler).
+3. Immer das Buy-&-Hold-Ergebnis derselben Datei danebenstellen — es steht im
+   selben Ausdruck. Ein Verlust von 95 % bei +128 % Buy & Hold ist die Aussage,
+   nicht der Verlust allein.
+
+Ergebnis als Befund melden, nie als Strategiebestand uebernehmen. Dasselbe gilt
+fuer die Ideenlisten solcher Repos (tausende Modellzeilen, ungeprueft): Steinbruch
+fuer Formulierungen, kein Vorrat.
+
 ## Harter Absturz: erst den Zeugen holen, dann nichts neu installieren
 
 Ein Fremd-Repo, das den Prozess mit `Segmentation fault` bzw. `0xC0000005`
@@ -457,7 +524,8 @@ Aufgabe:
 ## Weiterfuehrend
 
 - Ein GUI-Kontrollzentrum (Tkinter) fuer so ein Repo bauen (Boersendaten,
-  Agenten-Start/Stop, Wallet, Doku-Browser): `references/gui-kontrollzentrum.md`.
+  Agenten-Start/Stop, Wallet, Doku-Browser) — und warum die Startknoepfe eines
+  fremden GUI still sterben: `references/gui-kontrollzentrum.md`.
 - Bilder ohne Cloud-Schluessel erzeugen (Anbieter-Triage, CUDA-Wheel, Aufruf
   ueber das Werkzeug des Repos, Sonde sauber halten):
   `references/lokale-bildkette.md`.

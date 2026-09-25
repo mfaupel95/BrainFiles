@@ -866,7 +866,13 @@ Nutzung bewiesen.
   **Der Skript-Weg selbst, damit keine Escape-Sequenz als echter Umbruch landet:**
   den Text erst auf LF normalisieren (`raw.replace(b"\r\n", b"\n")`), das
   Zeilenende der ANKERZEILE bestimmen (endet sie auf `\r\n`, dann dieses, sonst `\n`)
-  und beim Schreiben die neuen Zeilen mit genau diesem Ende setzen. Mehrere Zeilen
+  und beim Schreiben die neuen Zeilen mit genau diesem Ende setzen.
+  **Der Suchtext braucht dasselbe Zeilenende wie die DATEI** - ein mehrzeiliger
+  Suchblock, im Skript mit `\n` geschrieben, trifft eine CRLF-Datei **null** mal;
+  das Symptom ist `count == 0` bzw. der Abbruch "Anker trifft 0 mal", und der
+  naechste Verdacht (falscher Wortlaut, Wert anders geschrieben) ist dann falsch.
+  Vor dem Suchen einmal `nl` aus den Rohbytes ableiten und den Suchtext damit
+  erzeugen (`alt = ALT.replace("\n", nl)`), statt den Treffer zu bedauern. Mehrere Zeilen
   hinter einer Ankerzeile einhaengen heisst: Index der Marke suchen, dann das naechste
   `\n` — den Anker NICHT mit einem Zeilenumbruch im Suchmuster schreiben (trifft sonst
   nicht, und in der Datei selbst kein `\n` in einem String-Literal bilden, das als
@@ -1022,9 +1028,19 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   `Agenten\Hermes\.<name>-test\home\`. Zwei Gründe: `HERMES_WRITE_SAFE_ROOT` verweigert
   Schreibzugriffe außerhalb von `BrainFiles`, und ein Junction-Pfad (`Werkstatt` → `O:`)
   wird auf sein echtes Ziel aufgelöst und deshalb ebenfalls verweigert — `%LOCALAPPDATA%\Temp`
-  und `Werkstatt` fallen damit beide aus. Nach dem Lauf löschen: hält ein `sqlite3`-Handle
-  aus der execute_code-Sitzung die Test-`state.db`(-wal), scheitert jedes `rm -rf` mit
-  „Device or resource busy" — Kernel zurücksetzen (`execute_code(reset=True)`), dann löschen.
+ und `Werkstatt` fallen damit beide aus. Nach dem Lauf löschen: hält ein `sqlite3`-Handle
+ aus der execute_code-Sitzung die Test-`state.db`(-wal), scheitert jedes `rm -rf` mit
+ „Device or resource busy" — Kernel zurücksetzen (`execute_code(reset=True)`), dann löschen.
+ **Ein `hermes -z`-Beweis gegen das Haupt-Home ist kein Modellbeweis.** Der Aufruf
+ nimmt die letzte Sitzung des Profils wieder auf und stirbt bei einem langen Verlauf
+ an "This conversation has grown too long for <modell> to read" — das liest sich wie
+ ein Modellproblem, ist aber die Sitzungslaenge. Fuer den Nachweis "Modell X ist als
+ Agent-Modell nutzbar" ein leeres `HERMES_HOME` mit einer MINIMAL-Config nehmen
+ (`model.default`, `model.provider` und der `providers.<name>`-Block mit
+ `api`/`base_url`/`default_model` - mehr nicht; ohne den Block meldet Hermes
+ `Unknown provider '<name>'`) und darin `hermes -z "Antworte mit genau einem Wort: OK"`
+ laufen lassen. Ein `OK` aus DIESEM Lauf belegt Modell, Provider und Kontextfenster;
+ der Lauf gegen das Haupt-Home belegt nur, dass die Sitzung zu lang war.
 - PowerShell-Helfer nie `H` nennen (Alias von `Get-History`) — der Fehler gibt dann
   Argumente im Klartext aus. Umlaute und mehrzeilige Blöcke nicht über die Kommandozeile
   transportieren: mehrzeiligen Text als Datei schreiben oder als Array mit

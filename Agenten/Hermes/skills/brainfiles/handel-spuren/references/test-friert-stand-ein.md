@@ -163,6 +163,58 @@ Ein Modul, das einen Schalter selbst beim IMPORT setzt, braucht zusaetzlich eine
 Klasse, die den Import isoliert. Und die Reihenfolge nicht als Schutz benutzen:
 eine Suite, die nur in EINER Reihenfolge gruen ist, ist eine Zeitbombe.
 
+**Und die eigene NEUE Testdatei setzt einen Schalter nie modulweit (Importzeit).**
+`handeln.SCHREIBEN = False` auf Modulebene legt die Journale der NACHBARdateien
+derselben Suite still: der eigene Test ist gruen, ein FREMDER faellt mit
+`0 != 1`. Setzen und zuruecklegen gehoert in `setUp`/`tearDown`. Kennzeichen fuer
+die Ursachensuche: wird eine Suite rot an einem Test, den man nicht angefasst hat,
+zuerst die neu hinzugefuegte Testdatei auf Importzeit-Nebenwirkungen pruefen -
+nicht den fremden Test "reparieren".
+
+## Fuenfte Familie: der Test schreibt einen LIVE-Wert in die Behauptung
+
+Dieselbe Falle in klein: eine Zusicherung auf einen **gerechneten Text**, der aus
+einem Kurs entsteht. Eine Meldung wie `handelbar()` nennt Einschuss und freies
+Guthaben - beide werden ohne Argument aus dem LEBENDEN Konto gelesen, der Text
+kippt also mit jedem Kurs. Der Test darf dann nicht gegen eine ausgedachte Zahl
+pruefen ("8451"), sondern muss die QUELLE stilllegen und den Text aus den
+stillgelegten Werten erwarten:
+
+```python
+with patch.object(kf, "instrument", return_value=MARGENPLAN), \
+     patch.object(kf, "letzter_kurs", return_value=84485.0):
+    self.assertEqual(kf.handelbar("PF_XBTUSD", 1, frei=141.58),
+                     "1 Kontrakt PF_XBTUSD braucht 8448.50 USD Einschuss, "
+                     "frei sind 141.58 USD")
+```
+
+Regel: **jede Funktion, die ihre Eingaben selbst beschafft (Kurs, Guthaben,
+Instrument), wird im Test entweder mit dem Wert AUFGERUFEN oder an ihrer Quelle
+gepatcht - nie mit einem Literal verglichen.** Ein Literal gegen einen
+Live-Abruf meldet Kursbewegung, nicht Codefehler (und faellt in einer Woche
+zufaellig wieder gruen aus). Wer dabei ein Instrument fuer ALLE Symbole patcht,
+muss beachten, dass auch die Gegenprobe denselben Wert sieht - die
+"geht-durch"-Zeile braucht groesseres `frei`, nicht einen anderen Kurs.
+
+## Quelltext-Pruefer: den AUFRUF ankern, nicht die Definition
+
+Ein Test, der eine Regel im Quelltext nachweist (`assertLess(aufraeumen, kaufen)`),
+sucht zwei Stellen per `quelle.index(...)`. Ein kurzer Anker trifft zuerst die
+`def`-Zeile derselben Funktion:
+
+```python
+# falsch - "live_ausstiege(z, w)" steht in der Definition, lange vor dem Aufruf
+kaufen = quelle.index("live_ausstiege(z, w)")
+
+# richtig - ab der Funktion suchen, in der der Aufruf stehen soll
+kaufen = quelle.index("live_ausstiege(z, w)", quelle.index("def lauf(modus)"))
+```
+
+Dasselbe fuer die Reihenfolge zweier Aufrufe: den Anker MIT Klammern und
+Argumenten waehlen (nie den blossen Funktionsnamen), und den Test einmal mit
+vertauschter Reihenfolge gegenproben - ein Quelltext-Test, der auch bei falscher
+Reihenfolge gruen bleibt, prueft nichts.
+
 ## Wann ein eingefrorener Stand DOCH richtig ist
 
 Wenn die Unveraenderlichkeit selbst der Vertrag ist und es keine formulierbare

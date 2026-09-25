@@ -252,6 +252,20 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   und dessen `teile()`/`ist_stoerung()` aufrufen. Faellt der eigene Zaehler
   daneben, ist zuerst der Zaehler falsch — nicht die Komponente.
 
+- **Ein Messwerkzeug, das am Betrieb vorbei misst, liefert ein praezise aussehendes
+  falsches Urteil.** Gibt es fuer dieselbe Sache ZWEI Wege (zwei Schnittstellen,
+  zwei Adapter, zwei Dateiformate), dann muss die Sonde den Weg ueber DIESELBE
+  Auswahlfunktion nehmen, die der Betrieb benutzt; ein direkter Aufruf der
+  Transportfunktion fixiert still den ersten Zweig. Belegt: eine Modellsonde rief
+  den Transport direkt und meldete das zweite Modell als "(leer) 0/6, 0,0 s" —
+  befragt hatte sie es nie; die Schuld lag am Werkzeug, nicht am Modell. Nach dem
+  Umbau auf die Wegewahl des Betriebs hielt dasselbe Modell 6/6. **Vor dem Bau
+  einer Sonde nachsehen, welchen Pfad der Betrieb nimmt, und die Sonde durch
+  dieselbe Entscheidung schicken.** Dazu gehoert die Stueckzahl: ein Messwert
+  ohne die Zahl der Wiederholungen ist eine Stichprobe (dieselbe Sonde: 3/3 bei
+  2,9 s mit einer Wiederholung, 6/6 bei 1,3 s mit zweien) — die belastbare Zahl
+  mit Wiederholungen nehmen und beide mit ihrer Stueckzahl nennen.
+
 ## Verification
 
 Ein Nachweis ist vollstaendig, wenn Statuszeile UND Wirkung im selben Lauf

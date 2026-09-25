@@ -216,6 +216,22 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
   nummerierte Landkarte behalten (ein Satz je Punkt, gleiche Nummer wie im Volltext)
   plus References-Eintrag. Danach mit einer kleinen Testaenderung belegen, dass
   Schreiben wieder geht, und die Testaenderung zuruecknehmen.
+  **Die Grenze kommt frueher, als die Zahl vermuten laesst:** der Skill-Linter meldet
+  schon bei ~41.000 Zeichen `oversized-body` (~10.400 Tokens je `skill_view`); Zielmarke
+  sind ~200 Zeilen. Wer die Meldung sieht, teilt sofort auf, nicht erst bei 100.000.
+  **Geteilt wird mit EINEM Skript, nicht mit einer Kette von `patch`-Aufrufen:** auf einer
+  40-kB-Datei zerlegt ein einziger fuzzy-Treffer einen Abschnitt, und der Diff zeigt es
+  nicht. Das Skript liest Bytes (`open(pfad,'rb')`), leitet das Zeilenende aus dem
+  Rohtext ab, findet jeden Abschnitt ueber seine EXAKTE `## `-Kopfzeile und `assert`et
+  die erwartete Reihenfolge; jeder extrahierte Block wird durch einen Zeiger ersetzt,
+  der die ORIGINAL-Kopfzeile behaelt (sonst greifen die Ausloeser nicht mehr) plus
+  einen Satz der immer gueltigen Regel plus `references/<thema>.md`.
+  *Fertig, wenn* `wc -l` und `grep -c '^## '` vorher/nachher dieselbe Abschnittszahl
+  zeigen, `git diff --numstat` eine echte Aenderung nennt (z. B. `127 256`, nicht die
+  Dateilaenge) und `file <pfad>` weiter denselben Zeilenendtyp meldet.
+  **Reihenfolge: erst die Referenzdatei, dann der Zeiger.** Ein Zeiger auf eine noch nicht
+  geschriebene Datei ist eine Linter-Meldung (`dangling-reference`); wer Datei und Zeiger
+  im selben Aufruf erledigt, hat sie gar nicht.
 - **Eine `references/`-Datei ohne Eintrag in der SKILL.md ist toter Text.** Der Loader
   zeigt beim `skill_view` nur, was die SKILL.md selbst nennt; eine Referenz, die dort
   nicht auftaucht, wird nur durch Zufall gefunden (Ordner durchsuchen, Stichwort greppen)
@@ -256,6 +272,13 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
   Textbloecke als eigene Datei schreiben und mit `read_text` einsetzen. Nach jeder
   Textersetzung `git diff --numstat` lesen: wenige Zeilen = gewollt, ganze Datei =
   Zeilenenden oder Kodierung verstellt (dann `git checkout HEAD -- <datei>` und neu).
+  **Auch `skill_manage(action='patch')` kann die ganze Datei umdrehen** (auf einer
+  LF-SKILL.md gemessen: `115 115` statt `8 0`) - nach JEDEM Skill-Schreibvorgang
+  `git diff --numstat` lesen, unabhaengig vom Werkzeug. Ist die Aenderung inhaltlich
+  richtig und nur die Enden verstellt, NICHT `checkout HEAD` (das wirft die gewollte
+  Aenderung mit weg): die Enden aus der Vorversion zurueckholen (`b.replace(b'\r\n', b'\n')`
+  bzw. umgekehrt) und die Netto-Aenderung als Folge-Commit sichern -
+  `git diff --numstat HEAD~1 -- <datei>` muss danach nur die gewollten Zeilen zeigen.
 - **Ein kopierter Skill ist noch keine Funktion.** Kopien, die auf Vault-Pfade per
   Kommandozeile zugreifen, arbeiten nur, wenn das Terminal-Arbeitsverzeichnis im Vault
   liegt; ein Docker-Backend sieht außer den Skills nichts vom Vault. Nach dem Kopieren

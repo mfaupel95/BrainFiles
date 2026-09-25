@@ -109,11 +109,57 @@ Aussage. Diese vier Schritte statt einer erfundenen Kennzahl:
 
 ## Nicht rueckwirkend pruefbar
 
-- **Ausstiegsgeometrie** (Stop-Hoehe, Trailing-Aktivierung): braucht die
-  Preispfade je Position, die nicht journaliert werden. Weg: Schattenbuch mit den
-  Alternativeinstellungen, mindestens 4 Wochen bzw. bis 30 Ausstiege je Zweig.
+Seit dem Backtest-Fundament (s. unten) ist die Liste kurz. Was uebrig bleibt,
+bleibt wirklich uebrig:
+
+- **Alles, was im Betrieb passiert und nicht im Kurs steht:** Orderannahme, Teilmengen,
+  Ablehnungen, Slippage in der eigenen Ordergroesse, Kontostand-Grenzen,
+  Quote-Ticks. Der Backtest rechnet auf Kerzen - er zeigt die Signalqualitaet,
+  nicht die Ausfuehrung.
 - **Vorbild-/Wallet-Auswahl:** ohne Zeithalbierung und Mindestzahl Runden je
   Wallet ist es Nachschau-Auswahl (der Gewinner von gestern ist kein Kriterium).
+- **Daten, deren Historie es frei nicht gibt** (Open Interest, Liquidationen,
+  archivierte Schlagzeilen, Onchain nur wenige Tage, Options-Strike-OI). Dann
+  bleibt nur der prospektive Weg: Schattenbuch mit den Alternativeinstellungen,
+  mindestens 4 Wochen bzw. bis 30 Ausstiege je Zweig.
+
+## Historisch nachrechnen (Backtest)
+
+**Die Ausstiegsgeometrie IST rueckwirkend pruefbar** - ueber Kerzen, nicht ueber
+das Journal. Das war frueher als unmoeglich vermerkt, weil die Preispfade nicht
+journaliert werden; der Backtest braucht sie nicht, er fuehrt die Spur ueber
+historische Kerzen neu.
+
+```bash
+cd Agenten/Handel
+python historie.py --auffuellen --instrumente BTC-USDC,ETH-USDC --takte 1H,4H
+python replay.py --spur <spur> --lauf ganz        # ganze Historie
+python replay.py --spur <spur> --gegenprobe       # Kern gegen backtest_prognose.py
+python optimieren.py --spur <spur> --trocken      # Plan, rechnet nichts
+```
+
+Fuenf Regeln, ohne die jede Zahl wertlos ist (Einzelheiten, Werkzeugfallen und
+die Nachweisprozedur: `references/backtest-fundament.md`):
+
+1. **Die Spur selbst fahren, nie nachbauen.** Modul ueber den PFAD laden und
+   seine eigenen `pruefe_*`/`signal`-Funktionen rufen; eine zweite Umsetzung
+   waere eine zweite Wahrheit, und optimiert waere dann die Nachbildung.
+2. **Nichts nach aussen lassen.** `ereignis.lauf` (Bus-Meldungen aus dem
+   Backtest), die `Q:`-Spiegelung, die Risikostufe und der Schreibpfad muessen
+   stillgelegt sein; das mit einem Inventarvergleich vor/nach belegen.
+3. **Die Uhr der Spur setzen** (`zeit_quelle`) und zu jeder Zeile den
+   Kerzenstempel schreiben - sonst traegt das Journal die Wanduhr des Laufs und
+   jede Zeitrechnung darauf ist still falsch.
+4. **Ein rollierendes Fenster, das die `mindest_kerzen` der Spur respektiert.**
+   Ein zu kleines Fenster laesst die Spur nie ein Signal bilden; der Lauf meldet
+   dann "0 Runden", was wie ein Messergebnis aussieht.
+5. **Gegenprobe gegen den bestehenden Rechner** (`backtest_prognose.py`) auf
+   denselben Kerzen: der neue Kern muss Runde fuer Runde dasselbe liefern.
+
+Merksatz: der Normalfall eines Backtest-Fehlers ist ein Ergebnis, das wie eine
+Messung aussieht. "0 Runden" und "kein Hebel" sind zwei verschiedene Dinge -
+vor dem Bericht die fuenf Gegenproben fahren, die in
+`references/backtest-fundament.md` stehen.
 
 ## Fallen
 
@@ -202,6 +248,35 @@ Vorlage (nachbaubar, nicht importieren):
 im Fremd-Klon nach der Messung wieder entfernen, die nachrechenbare Fassung im
 Cache behalten und im Wiki verlinken.
 
+## Mehrere Buecher vergleichen (Risikostufen, Arme)
+
+Ausloeser: "Stufe A gegen Stufe B", "alle drei gegeneinander". Der naheliegende
+Weg — die Summen nebeneinanderstellen — misst ZWEI Ursachen in einer Zahl.
+
+- **Die Stufen sind unabhaengige Buecher, keine Skalierung derselben Trades.**
+  Jede Stufe eroeffnet in ihren EIGENEN Zyklen; gemessen hatte die Basis bei
+  einer Spur 20 geschlossene Runden, die groessere Stufe 11, bei einer anderen
+  123 gegen 229. Eine groessere Summe kann deshalb aus "mehr je Runde" ODER aus
+  "andere Trades" kommen. Vor jeder Gegenueberstellung sagen, dass zwei Buecher
+  verglichen werden.
+- **Auf die RUNDE normalisieren, nicht auf die Summe.** G/V je Runde (oder je
+  Position in Prozent) ist die einzige Zahl, die den Groesseneffekt
+  herausrechnet; die Summe gehoert daneben, mit dem Hinweis, dass sie den Einsatz
+  mitzaehlt.
+- **Paaren, wenn es um den Effekt geht.** Fuer "bringt die groessere Stufe
+  mehr?" Runden nach Instrument und ueberlappendem Zeitfenster paaren — gleiche
+  Bewegung, zwei Groessen. Ein Summenvergleich ist nur zulaessig, wenn beide
+  Buecher dieselben Instrumente im selben Zeitraum gehalten haben.
+- **Rauschen skaliert mit.** Ein Ein-Runden-Ergebnis ist auf jeder Stufe
+  Rauschen, bei dreifacher Groesse dreifaches Rauschen: gemessen stand dieselbe
+  Spur auf zwei Stufen mit je EINER Runde bei +254 und −103. Gegensaetzliche
+  Vorzeichen auf je einer Runde beweisen, dass die Stufen nicht dieselben Trades
+  machen — nicht, dass eine Stufe besser ist.
+- **Erst ab 8 Runden je Buch** (dieselbe Schwelle wie ueberall) ist ein
+  Stufenvergleich ein Befund, keine Messung. Eine frisch gestartete Stufe hat im
+  ersten Zyklus schon Ausstiege: das sind ihre ersten Datenpunkte, nicht ihr
+  Ergebnis.
+
 ## Hauswerkzeug
 
 - `Agenten/Handel/filter_studie.py` (`--spur NAME`, mehrfach; `--json`), Ergebnis
@@ -209,3 +284,6 @@ Cache behalten und im Wiki verlinken.
   laufen aus dem `tests`-Ordner mit dem Spur-venv.
 - Rezept (Regeln, Testfixture, Befehle, Whitelist):
   `references/filter-studie-rezept.md`.
+- Historische Nachrechnung ueber Jahre statt Wochen, samt Parametersuche:
+  `references/backtest-fundament.md` (`historie.py`, `replay.py`, `optimieren.py`,
+  Ausgabe in `auswertung_alle.py` unter "Backtest (historisch)").

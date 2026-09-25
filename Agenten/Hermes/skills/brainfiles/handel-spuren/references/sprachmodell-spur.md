@@ -4,9 +4,10 @@ Beweis: die drei Papierspuren `moondev_whale`, `moondev_liquidation`,
 `moondev_sentiment` vom 17.09.2026 (Vorbilder: `whale_agent`,
 `liquidation_agent`, `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents`).
 
-Achtung: `SKILL.md` steht am Groessenlimit (100.000 Zeichen) - diese Datei ist
-deshalb noch nicht in der Ausloeser-Liste oben eingetragen. Wer SKILL.md
-kuerzt, traegt sie dort nach.
+Hinweis: `SKILL.md` ist gross, aber NICHT am Zeichenlimit (gemessen ~53 kB
+gegen 100.000) - ein Eintrag dieser Datei in die Ausloeser-Liste oben ist
+moeglich und nur noch nicht gemacht. Vor jeder Aussage "das Skill ist voll"
+die Datei messen, nicht der alten Notiz glauben.
 
 ## Wann
 Max sagt „die restlichen Moon-Dev-Agenten mit LLM auch einbinden" o.ae.: die
@@ -32,15 +33,31 @@ Arbeitsteilung:
 - **`think: false` ist Pflicht.** Mit Denken verbraucht das Modell das
   Token-Kontingent im Denken: `content` kam LEER zurueck (num_predict 80).
   Symptom: die Spur handelt nie, ohne Fehlermeldung.
-- **Der OpenAI-kompatible `/v1/chat/completions`-Weg ist trotzdem eine
-  Falle**: gegen dasselbe Modell liefert er IMMER leeren `content` (die
-  Antwort steht im `reasoning`-Feld), auch mit `think: false` oben im
-  Koerper. Nur die native `/api/chat` mit `think: false` und `stream: false`
-  antwortet zuverlaessig. Wer einen Fremd-Agenten ueber das openai-SDK
-  anbindet, muss den Aufruf auf `/api/chat` umschreiben (urllib reicht),
-  sonst laeuft der Agent und faellt still auf den DO-NOTHING-Default
-  zurueck - Symptom einer stummen Modellstrecke ist eine lange Folge
-  identischer DO-NOTHING-Urteile ohne Fehlermeldung.
+- **Ollamas EIGENER `/v1`-Adapter ist eine Falle**: gegen dasselbe Modell
+  liefert er IMMER leeren `content` (die Antwort steht im `reasoning`-Feld),
+  auch mit `think: false` oben im Koerper. Nur die native `/api/chat` mit
+  `think: false` und `stream: false` antwortet zuverlaessig. Wer einen
+  Fremd-Agenten ueber das openai-SDK anbindet, muss den Aufruf auf `/api/chat`
+  umschreiben (urllib reicht), sonst laeuft der Agent und faellt still auf den
+  DO-NOTHING-Default zurueck - Symptom einer stummen Modellstrecke ist eine
+  lange Folge identischer DO-NOTHING-Urteile ohne Fehlermeldung. **Die Regel
+  gilt fuer OLLAMA, nicht fuer `/v1` an sich** - siehe den zweiten Dienst unten.
+- **Ein ZWEITER Dienst laeuft NUR unter `/v1`** (llama.cpp/Prism-Fork, z. B.
+  Bonsai 2 27B auf `127.0.0.1:8080`, Starter
+  `Agenten/Werkzeuge/bonsai-27b.ps1`): `/api/chat` gibt es dort nicht (HTTP 404).
+  `llm_lokal.py` kennt deshalb zwei Wege; gewaehlt wird der Weg je Spur in der
+  `wachen.json` (`llm_weg: "bonsai"` / `"ollama"`), ohne das Feld entscheidet
+  der Modellname (`bonsai...` oder ein `.gguf`-Pfad = zweiter Dienst). **Kein
+  stiller Rueckfall:** schweigt der Dienst, faellt das Urteil aus und die Spur
+  handelt nicht, statt heimlich auf ein kleineres Modell zu wechseln.
+- **Denken ausschalten, aber in der Sprache DIESES Dienstes.** `think: false`
+  ist ein Ollama-Feld und wird unter `/v1` ignoriert; bei einem Denk-Modell
+  gehoert `reasoning_effort: "none"` in den Koerper - und `max_tokens`
+  grosszuegig (512), weil das Denken gegen das Kontingent zaehlt (mit 250 kam
+  eine LEERE Antwort zurueck, `finish_reason: length`). Am selben Prompt
+  gemessen: mit `none` 1,5 s / 25 Token, ohne die Angabe 8,7 s / 236 Token.
+  Ein Denk-Modell, das den Vertrag haelt, ist damit bezahlbar - der Vertrag
+  selbst bleibt unveraendert streng gelesen.
 - **Ollama hat auf dieser Maschine keinen Windows-Dienst.** Der Daemon
   stirbt mit der Sitzung, die `ollama serve` gestartet hat; dann antwortet
   Port 11434 nicht mehr und ALLE LLM-Urteile kippen still auf den
@@ -60,13 +77,27 @@ Arbeitsteilung:
   Handel.
 
 ## 2. Modellwahl messen, nicht annehmen: `Handel/llm_probe.py`
-`--wiederholungen 2` fragt jedes Ollama-Modell mit denselben drei Marktbildern
+
+**Die Sonde muss den Weg des BETRIEBS nehmen.** Sie rief frueher
+`llm._echte_anfrage` direkt und damit immer Ollama; ein Modell auf dem zweiten
+Weg wurde als "(leer) 0/6, 0,0 s" gemeldet, obwohl es antwortete - und die
+Sonde empfahl daraufhin das falsche Modell. Richtig ist die gemeinsame
+Aufloesung (`llm.weg_aus(modell)`), und der Denk-Schalter wird je Weg
+uebersetzt (Ollama `num_predict`, zweiter Dienst `reasoning_effort`). Merksatz:
+wer eine Modellwahl messen will, misst den Pfad, den die Spur wirklich geht -
+sonst misst er die Sonde.
+
+`--wiederholungen 2` fragt jedes Modell mit denselben drei Marktbildern
 und zaehlt Vertragstreue erste Antwort / nach Nachfassen, Richtung, Dauer.
 Gemessen 17.09.2026 (je 6 Aufrufe):
 
 - qwen35-8k: 6/6 im Vertrag, kalt 7,4 s, warm 1,5 s
 - qwen36-35b-a3b: 6/6, kalt 38,6 s, warm 7,5 s
 - gemma-e4b-8k: 2/6 (nach Nachfassen 4/6 - antwortete "BS" statt SELL)
+- bonsai (27B, ueber `/v1`, `reasoning_effort: none`): 6/6 im Vertrag (drei
+  Marktbilder, je zweimal gefragt), kalt 1,3 s, im Mittel 1,3 s - und damit
+  das einzige Modell hier, das den Vertrag genauso sicher haelt wie qwen35-8k,
+  dabei aber 27B statt 4,3B beurteilt
 
 Die Zeit steckt im LADEN, nicht im Urteilen. Vorgabe ist das schnellste Modell,
 das den Vertrag vollstaendig haelt. `llm_modell` steht je Spur in der

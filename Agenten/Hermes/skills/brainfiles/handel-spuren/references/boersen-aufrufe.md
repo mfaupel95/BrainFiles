@@ -102,8 +102,26 @@ margin   True
 | `EOrder:Invalid price:...can only be specified up to N decimals` | roher Rechenwert | `preis_gerundet(paar, preis, "auf")` |
 | `EAPI:Invalid nonce` | ein anderes Werkzeug (z.B. kraken-cli) hat den Schluessel-Nonce hochgesetzt | `nonce_pool.vorwaerts()`; `_roh_privat` wiederholt bis zu dreimal |
 | `EAPI:Invalid key` | falscher VARIABLENNAME gelesen (`KRAKEN_API_KEY` statt `KRAKEN_SPOT_API_KEY`) | das SPOT-Paar benutzen |
-| `EGeneral:Permission denied` (Spot) / `authenticationError` (Futures) | Schluessel-, Rechte- ODER Konto-Ebene - Kraken sperrt ein Konto zeitweise (`EGeneral:Temporary lockout`, ~15 min), wenn zu viele Fehlversuche kamen | NICHT weiterklopfen (jeder Versuch setzt den Timer zurueck); Lage messen mit `Agenten/Handel/kraken_abweisungs_sonde.py`, dann 60 min warten |
+| `EGeneral:Permission denied` (Spot) / `authenticationError` (Futures) | **zuerst die HERKUNFT** (VPN/Proxy aktiv? IP gewechselt?), danach Schluessel/Rechte, zuletzt eine zeitweise Konto-Sperre | Reihenfolge unten abarbeiten - **einen neuen Schluessel zu erzeugen hilft hier fast nie** |
 | `5xx`/`1020` OHNE JSON | cloudflare/Netz, kein Kraken-Fehler | kurze Pause, dann wiederholen - `content-type` im Zeugen zeigt es |
+
+**Reihenfolge beim Deuten einer Abweisung** (gemessen: derselbe Futures-Aufruf
+wurde mit laufendem NordLynx-Tunnel als `authenticationError` abgewiesen und ging
+ohne Tunnel sofort wieder; der Spot-Weg lief waehrenddessen durch):
+
+1. **Herkunft pruefen** - `Get-NetAdapter` auf den VPN-Adapter und die
+   oeffentliche IP. Ein VPN-Ausgang ist eine ANDERE IP, und Kraken-Derivatives
+   ist herkunftsempfindlich, waehrend der Spot-Weg es nicht ist. Ein
+   `authenticationError` ist KEIN Beweis fuer einen falschen Schluessel.
+2. **Belegen, dass die eigenen Werte unveraendert sind** - Hash der Registry-Werte
+   gegen den letzten bekannten Stand (PowerShell-History), Laenge, keine
+   Rand-Leerzeichen. Nicht den Wert ausgeben.
+3. **Zweite Umsetzung gegenhalten** - die offizielle kraken-cli oder ein
+   Einzelaufruf; erst wenn BEIDE abweisen, ist es der Schluessel.
+4. **Erst dann** Rechte/Konto-Lockout annehmen: nach vielen Fehlversuchen sperrt
+   Kraken ein Konto zeitweise (`EGeneral:Temporary lockout`, ~15 min) und jeder
+   weitere Versuch setzt den Timer zurueck - dann NICHT weiterklopfen, sondern
+   die Lage mit `Agenten/Handel/kraken_abweisungs_sonde.py` messen und warten.
 
 **Abweisung ohne Zeugen ist keine Messung.** Ein Nachweis ueber die Lage (Status,
 Header, Rohantwort) laeuft als Sonde + Cron `kraken-abweisung-wache`; sie misst

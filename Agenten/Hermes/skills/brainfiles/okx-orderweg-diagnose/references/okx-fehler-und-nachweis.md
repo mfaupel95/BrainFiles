@@ -9,6 +9,8 @@
 | `51008` | zu wenig Guthaben | Quote-Waehrung des Paares ist leer (0 USDT bei gefuelltem USDC). |
 | `50119` | Key existiert nicht (in dieser Umgebung) | **Haeufigster Grund ist der falsche HOST**, nicht ein toter Schluessel: der Schluessel kam ueber den Registry-Rueckfall, der Host aber nicht (nur `os.environ`) — ein EEA-Schluessel gegen `www.okx.com` gibt genau diesen Code. Erst die Basis pruefen, dann den Schluessel. |
 | `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
+| `50124` | keine Handelsberechtigung FUER DIESEN MARKT | Meist der falsche NAMENSRAUM desselben Marktes: die Spur schickt `XAU-USDT-SWAP` (`instType=SWAP`), handelbar ist nur der XPERP-Kontrakt (`instType=FUTURES`, `XAU-USD_UM_XPERP-…`). `perm`/`acctLv` sind dabei in Ordnung. |
+| `51015` | `instId` passt nicht zu `instType` | Falscher `instType` beim Nachweis — der XPERP-Kontrakt ist `FUTURES`, nicht `SWAP`. |
 
 Merksatz: `51000` ist ein FORMfehler (der Wert selbst), `51603` ein
 EXISTENZfehler. Wer beides verwechselt, sucht am falschen Ende.
@@ -67,6 +69,11 @@ Weg ueber den PFAD, nicht ueber `sys.path`-Eintraege in den Spuren.
   Fenster (Historie reicht nur wenige Tage zurueck).
 - Quote pruefen: `ccy=USDT` gegen `ccy=USDC`. Die `availBal` der Quote-Waehrung ist
   die einzige Grundlage fuer „dieser Kauf haette klappen koennen".
+- Bei `50124` zuerst den Namensraum belegen, dann die Rechte: Orderhistorie des
+  Zwillings (`/trade/orders-history-archive?instType=FUTURES&instId=…`, wenn das
+  kurze Fenster leer ist) und `/account/positions?instType=SWAP` gegen
+  `?instType=FUTURES`. Sind die SWAP-Positionen leer und die FUTURES-Positionen
+  gefuellt, handelt die Spur den falschen Namen desselben Marktes.
 
 ## Was ein Leseaufruf NICHT ersetzt
 

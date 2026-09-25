@@ -148,6 +148,52 @@ ist derselbe Cron `no_agent`, nur das Kriterium ist eine Datei.
    nichts geaendert hat). Denselben Zustand deshalb nach einer Frist erneut
    melden (z. B. 6 h), gute Lagen aber nur einmal beim Wechsel.
 
+**Alle Melde-Bedingungen gehoeren in EINE Entscheidung — was hinter dem
+Stille-Ausstieg steht, wird nie ausgewertet.** Baut die Wache ihren fruehen
+Ausstieg („nichts geaendert") VOR die weiteren Kriterien, ist jede spaetere
+Bedingung toter Code: gemessen war eine ausdrueckliche Meldeschwelle
+wirkungslos, weil der Ausstieg vor ihr lag — ein dauerhaft zu niedriger Wert
+waere nie gemeldet worden, und die Wache sah dabei gesund aus. Form:
+`melden = stufenwechsel or neu_darunter or messfehler or schwelle_neu` als EINE
+Zeile, und den Zustand einer Schwelle mitmerken (`schwelle_aktiv`), damit der
+Uebergang einmal kommt und nicht taeglich.
+**Und vergleiche gegen den zuletzt GEMELDETEN Wert, nicht gegen den letzten
+Messwert.** Ein Rueckgang in Haeppchen von 2-3 Punkten am Tag ist sonst nie
+sichtbar: jede einzelne Messung liegt knapp unter der Schwelle, die Stufe bleibt
+dieselbe, und die Wache schweigt fuer immer — obwohl genau das die Lage ist, die
+man wissen will. Den Bezugswert erst NACH einer Meldung nachziehen, damit ein
+langsamer Rueckgang EINE Nachricht kostet statt einer je Tag (oder keiner).
+
+**Die Tests einer Wache pruefen die REGELN, nicht den Tageswert.** Ein Test, der
+die gemessene Zahl erwartet, ist jeden Tag anders rot oder gruen, ohne dass sich
+etwas geaendert hat. Stattdessen erfundene Messungen in die Melde-Funktion geben
+und die Faelle abdecken: erste Messung (wird gemeldet), keine Aenderung (still),
+Stufe faellt, Stufe erholt sich, neues Element unter der Schwelle, dasselbe
+Element bleibt darunter (still), unvollstaendige Messung (wird gemeldet).
+**Die Attrappe muss die Vorbedingung der Wache erfuellen:** liefert der
+Testdatensatz nur zwei Elemente, waehrend die Wache eine Mindestdeckung verlangt,
+meldet sie „unvollstaendig" und JEDER Regeltest wird rot — das sieht wie ein
+Fehler der Wache aus und ist einer der Testdaten. Die Vorbedingung im Helfer
+standardmaessig erfuellen und den Verletzungsfall ausdruecklich bestellen.
+
+**Ein Ergebnis, das nur bei angestecktem Ziel laeuft, altert still — und der
+Befund ist sein ALTER, nicht ein Prozess.** Eine Kopie auf ein Wechselmedium kann
+keinen Zeitplan haben (ohne das Medium findet sie nichts), also gibt es keinen
+fehlgeschlagenen Lauf, der auffiele: die Kopie ist einfach alt, und das faellt
+niemandem auf, bis jemand sie braucht. Eine Wache vergleicht deshalb das Alter des
+Ziels (oder seinen letzten Zyklusvermerk) gegen eine Frist und meldet nur die
+Ueberschreitung — nicht den Prozess.
+
+Reihenfolge beim Nachholen: **erst Trockenlauf** (das Skript hat meist einen
+`-NurPruefen`-Schalter bzw. robocopy `/L`), damit Umfang und Ziel vor dem Schreiben
+feststehen — **dann abgekoppelt starten** (ein Massenlauf ueber sechsstellige
+Dateizahlen sprengt jedes Anfrage-Zeitfenster) und den Fortschritt ueber die
+Prozessliste lesen, nicht ueber die Rueckkehr des Aufrufs. **Das Ziel nie rekursiv
+nachzaehlen, waehrend kopiert wird**: eine Verzeichnis-Rekursion ueber
+hunderttausend Dateien auf einem Wechselmedium laeuft selbst in den Timeout — die
+Zahlen des Kopierwerkzeugs (Fehler, verglichen, kopiert) sind der Beleg, und
+`robocopy`-Codes 0-3 heissen Erfolg, erst ab 8 ist es ein Fehler.
+
 **Der Herzschlag muss aus JEDEM Ausgang kommen, auch aus dem leeren.** Ist das
 Kriterium der Wache `letzter_lauf` im Zustand des Objekts, dann darf kein Pfad
 zurueckkehren, BEVOR der Zustand geschrieben (und gespiegelt) ist — auch der

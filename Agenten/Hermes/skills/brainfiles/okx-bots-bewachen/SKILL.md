@@ -45,7 +45,14 @@ laeuft ohne Stop in die Liquidation. Deshalb fuer jeden NEUEN Bot:
 - **Barriere**: der Planboden soll unter dem 90-Tage-Tief liegen — liegt er
   darueber, wird das GEMELDET, nicht verschwiegen.
 - **Ein Stop gehoert dazu**: die tiefste Stufe ist der Stop (DCA `slPct`), beim
-  Grid die untere Netzkante (`slTriggerPx = minPx`).
+  Grid eine Preis-Schwelle (`slTriggerPx`). Die Schwelle wird GERECHNET, nicht
+  auf die Netzkante gelegt: `Kurs - 1,5 x ATR14(Tag)`, nach oben begrenzt auf
+  `0,99 x minPx` (ein Stop IM Band toetet das Gitter bei normalem Lauf) und nach
+  unten begrenzt auf `1,15 x liqPx` (naeher an der Liquidation schuetzt nichts
+  mehr). Bei einem Instrument mit 8-9 % Tagesrange liegt die untere Netzkante
+  oft nur ~0,5 ATR entfernt - ein Stop dort feuert am Rauschen, nicht am
+  Bruch. Am lebenden Beispiel gerechnet: Kurs 1552, ATR 132, Bandboden 1480,
+  Liquidation 1111 -> Stop 1354.
 
 **Engpass ist die STUFENZAHL, nicht die Tiefe.** 12 Stufen bei 2,5 % Abstand
 decken nur 30 % — fuer 3 x ATR braucht es oft 20 und mehr Stufen. Die Analyse
@@ -101,8 +108,8 @@ Mittel vergleichen, (5) Ergebnis als Wiki-Seite und offene Punkte nach
    Ein Grid-Vorschlag kann am OKX-Mindestinvestment scheitern — das ist eine
    Eigenschaft des Instruments, kein Defekt.
 4. **Stoppen, umstellen oder bauen nur hinter zwei Toren** (siehe unten).
-   Laufende Bots SIND umstellbar (eigener Abschnitt unten), neue bekommen die
-   Regel aus Schritt 3 von Anfang an. Ob gestoppt, umgestellt oder ausgesessen
+   Laufende SPOT-DCA sind umstellbar, laufende CONTRACT-DCA NICHT (eigener
+   Abschnitt unten), neue bekommen die Regel aus Schritt 3 von Anfang an. Ob gestoppt, umgestellt oder ausgesessen
    wird, entscheidet der Nutzer — die Messung liefert nur die Zahlen dafuer.
 5. **Wache als Hermes-Cron** (`no_agent`, leere Ausgabe = nichts senden), nur
    Standardbibliothek, Fachmodule per Pfad laden (`dauerprozess-bewachen`).
@@ -131,19 +138,51 @@ Ein Werkzeug, das echte Positionen bewegt, ist ein Werkzeug — kein Schalter:
 - **Nie aus einem Zeitplan eingreifen.** Ein Cron darf melden, nicht stoppen; das
   gilt auch fuer den eigenen Waechter.
 
-## Laufende Bots umstellen (`anpassen.py`)
+## Laufende Bots umstellen - nur SPOT-DCA nehmen einen Amend an
 
-Ein laufender DCA-Bot kann umgestellt werden: `POST /api/v5/tradingBot/
-dca/amend-order-algo` schreibt die ganze Leiter plus Stop und Ziel neu, die Werte
-gelten sofort UND fuer den naechsten Zyklus (die Parameter haengen am Bot, nicht
-am Zyklus). Weitere Wege am selben Bot: `dca/margin/add` (Liquidation nach unten
-druecken), `dca/orders/manual-buy` (von Hand in den Zyklus kaufen).
+**Erst die Bot-Art aus der Detailantwort lesen, dann handeln.**
+`POST /api/v5/tradingBot/dca/amend-order-algo` heisst in der OKX-Doku woertlich
+„Amend **spot** dca basic param". Eine laufende CONTRACT-DCA
+(`algoOrdType: contract_dca`, alle unsere Future-Bots) wird mit
+`OKX 51291: The bot doesn't exist or has already stopped` abgewiesen — fuer jede
+Kennung, mit vollstaendigem Koerper aus dem Ist-Zustand und mit korrektem
+Schluessel. Die Meldung nennt den Bot, gemeint ist die BOT-ART: sie ist kein
+Hinweis auf einen falschen Koerper, ein falsches Feld oder einen toten Bot.
+Folge: `anpassen.py --sl-pct/--nur-schutz` kann an einer laufendenContract-DCA
+nichts aendern, das Tor `anpassen_erlaubt` bleibt fuer sie wirkungslos.
+
+Was an einer laufenden CONTRACT-DCA erreichbar ist:
+
+- `dca/margin/add` — Liquidation nach unten druecken,
+- `dca/orders/manual-buy` — von Hand in den laufenden Zyklus kaufen,
+- `dca/stop` (`stopType 1` schliesst die Positionen am Markt) — das EINZIGE
+  Schutzmittel einer laufenden Contract-DCA; Tor ist `stop_erlaubt`.
+
+**Ein Stop auf die POSITION ersetzt den Bot-Stop nicht.** Fuer diese Bots
+liefert `/api/v5/account/positions` **null Eintraege** (auch mit
+`instType=FUTURES`/`SWAP`); mit dem Bot-Instrument gefragt kommt eine Zeile mit
+`pos=0`. Die Marge liegt im Bot, nicht im Konto — es gibt keine Position, die
+eine bedingte `reduceOnly`-Order absichern koennte (Werkzeug und Befund:
+`okx_bot_waechter/positions_schutz.py`).
+
+### Fuer die SPOT-DCA, bei der der Amend greift
+
+Der Amend schreibt die ganze Leiter plus Stop und Ziel neu; die Werte gelten
+sofort UND fuer den naechsten Zyklus (die Parameter haengen am Bot, nicht am
+Zyklus).
 
 - **Nichts erfinden.** Der Koerper verlangt ALLE Felder — jedes aus dem
   Ist-Zustand nehmen, `tpPct` notfalls aus `tpPx / avgPx` herleiten (nicht mit
   einem runden Wert annehmen). Ohne ausdrueckliche Wahl (`--stufen`, `--schritt`,
   `--sl-pct`, `--nur-schutz`) sendet `--anwenden` gar nichts; Tor ist
   `anpassen_erlaubt`.
+- **`slPct` ist ein ANTEIL des Einstands**, nicht ein Preis:
+  `slPct = 1 - stop / avgPx` (0.1254 = 12,54 % unter `avgPx`). Den Stop-Preis
+  zuerst rechnen, dann umrechnen — nicht umgekehrt. Hausregel fuer den Preis:
+  5 % UNTER die tiefste Kaufstufe (die Leiter muss fuellen koennen), bei schon
+  ausgelaufener Leiter (Kurs unter dem Boden) 1,5 % unter den Kurs als
+  Reissleine, in jedem Fall mindestens 2 % ueber `liqPx`; liegt der Stop danach
+  ueber dem Kurs, ist er sofort faellig und gehoert so benannt.
 - **Zwei Grenzen mitnennen, sonst ist die Umstellung Kosmetik**: (a) neue Stufen
   brauchen FREIES Guthaben — Bedarf (`zusaetzliche Stufen x safetyOrdAmt`) gegen
   den freien Bestand stellen und beides nennen, (b) bei einer voll gefuellten
@@ -154,8 +193,31 @@ druecken), `dca/orders/manual-buy` (von Hand in den Zyklus kaufen).
   aus `liqPx` — der Rest ist damit GEMESSEN, daraus folgt der Margin-Bedarf
   `(Zielabstand - Abstand) x Notional`. Erst diese Zahl macht die Antwort
   vollstaendig: „Leiter tiefer legen“ kostet bei einer gefuellten Position Geld.
-- **Der Weg ohne neues Geld** ist `--nur-schutz` (nur den Boersen-Stop setzen).
-  Was ein Amend nicht kann: die bereits gefuellte Position aendern.
+- Was ein Amend nicht kann: die bereits gefuellte Position aendern.
+
+## Einem laufenden GRID einen Stop setzen (`grid_schutz.py`)
+
+Ein Grid kennt kein `slPct` - es kennt eine PREIS-Schwelle. `anpassen.py` deckt
+nur DCA ab; fuer Grids gibt es `okx_bot_waechter/grid_schutz.py` (Trockenlauf
+ohne `--anwenden`, `--preis` fuer eine Handentscheidung, `--nur <algoId>`).
+
+- **Der Endpunkt ist `/api/v5/tradingBot/grid/amend-order-algo`** - das
+  naheliegende `/grid/amend-algo` antwortet `HTTP 404 Not Found`. Koerper:
+  `{algoId, instId, slTriggerPx, slOrdPx: "-1"}` (`-1` = Ausstieg am Markt).
+  Vorher mit einer erfundenen `algoId` proben: `OKX 51291: The bot doesn't exist
+  or has already stopped` beweist Endpunkt, Signatur und Host, ohne etwas zu
+  beruehren.
+- **Der Schutz-Stop ist der GEGENWEG einer Leiteraenderung** und haengt deshalb
+  nicht an `anpassen_erlaubt`: er senkt das Risiko. Umgekehrt gilt weiter, dass
+  ein Amend die bereits gefuellte Position NICHT aendert - Band und Netzzahl
+  bleiben, nur die Schwelle kommt dazu.
+- **Nach dem Amend LESEN, nicht glauben:** `sCode: "0"` und danach
+  `grid_details()` nachziehen (`slTriggerPx` gefuellt, `state: running`,
+  `minPx`/`maxPx`/`gridNum` unveraendert). `slOrdPx` erscheint in der
+  Detailantwort als `None`, obwohl der Ausstieg greift - nicht als Fehler lesen.
+- **Die Entscheidung datiert in `wachen.json`** (`bots.<algoId>.vermerk`), sonst
+  kippt sie beim naechsten Griff. Ein Stop, den niemand mehr erklaeren kann,
+  wird beim naechsten Aufraeumen entfernt.
 
 ## Pitfalls
 
@@ -172,6 +234,11 @@ druecken), `dca/orders/manual-buy` (von Hand in den Zyklus kaufen).
   (`UNI-USDT`), sonst ist jede Trendaussage geraten.
 - **Nicht annehmen, dass ein Stop existiert.** Bei OKX-DCA ist „kein Stop“ der
   Normalfall: `slPx`/`slTriggerPx` je Bot LESEN und fehlend melden.
+- **Bot-Kennung und Positions-Kennung sind nicht dieselbe Zeichenkette.** Der
+  Bot traegt eine Lieferkennung (`LTC-USD_UM_XPERP-310404`), die Position nicht
+  (`LTC-USD_UM_XPERP`). `/account/positions?instId=<ohne Suffix>` antwortet
+  `OKX 51001: Instrument ID ... doesn't exist` — das ist ein Suchfehler, kein
+  fehlendes Instrument; mit dem Bot-Namen kommt eine Zeile (ggf. `pos=0`).
 - **Hebel und Stufen sind gekoppelt** (`liqPx`). Ein zu hoher Hebel macht die
   letzte Stufe unerreichbar, weil die Liquidation davor liegt.
 - **Ein Kurs unter dem Planboden heisst nicht „fertig“**, sondern „der Bot kann

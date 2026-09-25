@@ -51,9 +51,16 @@ KEINE zweite Spur, sondern das Feld `boersen: ["kraken", "okx"]` in der
   (`guthaben_waehrung_je_boerse`: Kraken EUR, OKX USDC). Ein einzelnes
   `guthaben_waehrung: "EUR"` fragt OKX nach EUR und sperrt es dauerhaft. Der
   Mindestbetrag darf je Boerse gesetzt werden, sonst gilt einer in beiden
-  Waehrungen. **Margin-Guthaben ist kein Spot-Guthaben:** `availEq` in USDC aus
+  Boerse der Spur). **Margin-Guthaben ist kein Spot-Guthaben:** `availEq` in USDC aus
   der Kontoansicht kann voll aussehen, waehrend fuer einen Spot-Kauf fast nichts
-  frei ist - die Boerse fragt man mit der Waehrung des Kaufpfads.
+  frei ist - die Boerse fragt man mit der Waehrung des Kaufpfads. Bei OKX stehen
+  die drei Zahlen nebeneinander und erzaehlen die Geschichte: `eq` (Gesamt),
+  `frozenBal` (reserviert) und `availEq = availBal = cashBal` (wirklich frei).
+  Gemessen: `eq 730,42` / `frozenBal 730,42` / `frei 0,0021` - die Stop-Orders der
+  eigenen offenen Positionen reservieren das Guthaben, und die Sperre SCHWANKT
+  mit ihnen (kurz zuvor waren 227,39 frei). Vor dem Satz "das Geld ist da" also
+  `frozenBal` lesen und den Grund benennen, sonst verspricht man einen Einsatz,
+  den die Boerse ablehnt.
 - **Einzelboerse bleibt eine signierte Abfrage aermer:** die
   Bereitschaftspruefung nur bei mehr als einer Boerse laufen lassen, sonst wird
   jeder Zyklus teurer, ohne dass sich etwas entscheiden kann.
@@ -127,6 +134,30 @@ wirft `paar_fuer()` `ValueError` — der Einstieg wird lautlos uebersprungen
 (Exception in spur_buch faengt das ab). Vor dem Anbinden einer neuen Spur an Kraken
 die Paare live validieren: `GET /0/public/AssetPairs` und die EUR-Paarnamen je Signal
 in die `PAARE`-Dict eintragen.
+
+**Bei Signalen aus einer Liste (CoinGecko/Ranglisten) reicht eine feste
+Paar-Tabelle NICHT — die Spur muss VOR dem Einstieg pruefen, ob es das Paar
+tatsaechlich gibt.** Ein `spur_buch`-Spur bildet jedes Signal blind auf
+`<SYM>-<Waehrung>` ab; welcher Symbolname aus den Daten kommt, weiss die Config
+nicht. Gemessen beim Wechsel einer Feed-Spur auf OKX: von drei Signalen desselben
+Tages hatte nur EINES ueberhaupt ein OKX-Paar, und das nur als `-USDT` statt
+`-USDC` — zwei von drei Einstiegen waeren auf ein Paar gegangen, das die Boerse
+nicht kennt (`ValueError`, lautlos uebersprungen, ohne dass jemand den Grund
+sieht). Muster:
+
+1. In `quelle()` die handelbare Instrumentenliste EINMAL je Zyklus holen
+   (oeffentlich, kein Schluessel: OKX `/api/v5/public/instruments?instType=SPOT`)
+   und je Coin ein Feld `okx_usdc: bool` setzen; ein Fehler beim Abruf ist ein
+   `fehler`-Eintrag, kein stilles Weiterlaufen.
+2. In `signal()` ein Tor: falscher Weg (`boerse: okx`) und Paar fehlt -> `None`,
+   mit einem Kommentar, WARUM (der Orderweg wuerde sonst ins Leere schicken).
+   Bei der anderen Boerse bleibt das Tor aus.
+3. Eine Test-Naht fuer die Instrumentenliste (`instrumente_override`) und Tests
+   fuer alle drei Faelle: Paar da, Paar fehlt, andere Boerse.
+
+Merksatz: **eine feste Paar-Tabelle ist eine Behauptung ueber die Datenquelle,
+keine Pruefung.** Wo die Symbole aus einer API kommen, gehoert die Pruefung in
+den Zyklus.
 
 
 
@@ -215,11 +246,13 @@ Ein `Invalid key` eines fremden Werkzeugs ist deshalb zuerst ein Namensverdacht.
   nur beim Senden (`post=True` an den Order- und Storno-Stellen), statt es aus
   "es gibt Werte" abzuleiten. Test: bei einem Leseaufruf muss `request.data`
   `None` sein; beim Orderaufruf `get_method() == "POST"`.
-- **Die Order nimmt KONTRAKTE, nicht Muenzen.** `contractSize` und `tickSize`
-  stehen in der Instrumentenliste (`/instruments`); bei `PF_XBTUSD` ist
-  contractSize 1 = 1 USD Nominal, die Kontraktzahl also `menge * kurs` (mindestens
-  1, ganzzahlig), der Preis auf `tickSize` gerundet (dieselbe `preis_gerundet`-
-  Regel wie oben, nur aus dem anderen Feld).
+- **Die Order nimmt KONTRAKTE, und die Kontraktgroesse steht NICHT im Instrumentenrecord.**
+  `contractSize` ist bei allen `PF_`-Maerkten `1` und sagt nichts ueber den Nennwert -
+  die Regel steht unten unter "Wie gross ist ein Kontrakt WIRKLICH": **1 Kontrakt = 1
+  Einheit der BASISwaehrung** (`base`, Einschuss 10 % fuer ein EEA-Konto). Nicht
+  `menge * kurs` rechnen: aus 0,0001 BTC werden so "8 Kontrakte", also 8 BTC -
+  eine Order, die nie durchgeht. Der Preis wird auf `tickSize` gerundet (dieselbe
+  `preis_gerundet`-Regel wie oben, nur aus dem anderen Feld).
 - **Ausstieg und Schutz-Stop brauchen `reduceOnly`** (Stop als `orderType: stp`
   mit `stopPrice`): ohne das Kennzeichen eroeffnet ein "Verkauf" auf der
   Gegenseite eine neue Position. Eine Ausstiegsorder ist nie eine Eroeffnung.
@@ -248,11 +281,17 @@ Ein `Invalid key` eines fremden Werkzeugs ist deshalb zuerst ein Namensverdacht.
   der Antwort faellt spaeter um. Pro Pfad eine Antwort hinterlegen (Senden ->
   Erfolgsantwort mit Orderkennung, Lesen -> Datenliste) und zusaetzlich die
   HTTP-Methode und `data` asserten.
-- **Die "Probe ohne Geld" aus dem Spotweg gibt es hier nicht.** Ohne `validate`-
-  Schalter bleibt als Beleg nur der Trockenlauf: der Sendeweg ueber eine
-  Transport-Attrappe, die die erwartete Erfolgsform liefert (Kennung, Status),
-  plus die echten lesenden Aufrufe gegen das Konto. Keinen Sendeweg "mit einer
-  Minimalmenge" ausprobieren, solange Saldo oder Kennung unklar sind.
+- **Die "Probe ohne Geld" aus dem Spotweg gibt es hier nicht** - der Mini-Round-Trip
+  ist der Ersatz, sobald Saldo UND Mindestgroesse geklaert sind. Vorher `handelbar()`
+  fragen (Mindestmarge des Instruments gegen freies Guthaben); passt der kleinste
+  Satz ins Konto, dann: Vorschau als Standard, `--anwenden` fuehrt aus, Kauf `mkt`,
+  Fuellung ueber `/fills` abwarten, Verkauf `mkt` + `reduceOnly`, danach Positionen
+  und Orders LEER zeigen. Notausstieg: scheitert der Verkauf, sofort einen
+  Schutz-Stop 1,5 % unter dem Einstieg setzen und laut melden - eine offene Position
+  ohne Stop waere das eigentliche Risiko. Kosten und Messaufloesung vorher nennen
+  (Nennwert x Gebuehr, Equity-Aufloesung 0,0001 USD); bei einem Nennwert von wenigen
+  USD ist die Gebuehr damit NICHT belastbar bestimmbar, das gehoert in den Bericht.
+  Erst nach dem Ja von Max handeln, und nie mehr als den kleinsten Satz.
 
 ## Pruefen
 
@@ -308,3 +347,39 @@ Folgen, die man vorher nicht sieht:
 - **Werkzeug:** `Agenten/Handel/nautilus_kraken/futures_probe.py` - echter
   Mini-Round-Trip mit Vorschau, `--symbol`, `--kontrakte`, Notausstieg per Stop
   falls der Verkauf scheitert. Es bucht in kein Buch und oeffnet kein Fenster.
+
+## Instrumentenwechsel mit offenem Buch
+
+Ein Instrumentenwechsel ist kein Konfigurationswert, sondern ein BUCHVORGANG.
+Die Strategie bewertet JEDE Position mit dem Kurs des EINEN konfigurierten
+Symbols: nach einem Wechsel liegen Positionen mit Einstiegen um 81.500 im Buch,
+waehrend der Kurs jetzt 117 ist - der erste Zyklus liest das als gerissenen Stop
+und bucht alle Positionen aus. Das ist ein Buchhaltungsunfall, kein Handel, und
+er faellt nur auf, wenn man das Buch vorher ansieht.
+
+Reihenfolge (Papier, kein Geld):
+
+1. Kurs des ALTEN Instruments holen (`letzter_kurs(alt)`) - geschlossen wird zum
+   echten Kurs, nicht zu einem erfundenen.
+2. Jede offene Position mit den Funktionen der STRATEGIE selbst schliessen
+   (`verkaeuflich(menge, kurs, w)` fuer den Erloes, `grund=symbolwechsel`) und
+   als Journalzeile schreiben. Keine eigene G/V-Formel bauen - sie waere eine
+   zweite Wahrheit neben der Strategie und driftet beim naechsten Umbau.
+3. Zustand mit leerem `positionen` schreiben.
+4. Spiegeln (Bedingung 4): der Wechsel ist ein Zustandswechsel wie jeder andere.
+5. ERST JETZT `symbol`/`paar` in der `wachen.json` tauschen.
+6. Gegenprobe ueber den Zustand, nicht ueber die Absicht: `letzte_quote` muss den
+   Kurs des NEUEN Instruments tragen (117 statt 84.000), und die Vorschau mit
+   `MAXHIRN_ROUTINE=1` muss den neuen Namen in der "Waere"-Zeile nennen.
+
+Welches Instrument in Frage kommt, entscheidet die MINDESTMENGE gegen das freie
+Guthaben (`handelbar()`/`einschuss()`), nicht das Nominal des Signals: auf einem
+Markt mit ganzen Kontrakten ist der kleinste Handel ueberall der groesste Posten
+der Rechnung.
+
+**Und was nicht passieren darf: stilles Aufrunden.** Ein Sendeweg, der eine zu
+kleine Menge auf die Mindestgroesse rundet (`max(1, round(menge))`), macht aus
+einem gedachten 1-USD-Einsatz eine Position von 118 USD - die Wache hat eine
+andere Zahl erlaubt, als die Boerse fuellt. Die Kette sperrt das ausdruecklich und
+nennt die Zahl ("Einsatz 1.00 kleiner als 1 Kontrakt PF_SOLUSD (11.75 USD
+Einschuss) - Mindestgroesse der Boerse").

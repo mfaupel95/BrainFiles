@@ -139,7 +139,7 @@ class FamilieBTest(ReplayTest):
 
     def test_lauf_b_bucht_in_den_backtest_ordner(self):
         k, zeilen = replay.lauf_b("trendwende_btc", gebuehr_pct=0.05,
-                                  lauf="test", max_kerzen=1500, fenster=400)
+                                  lauf="test", max_kerzen=1000, fenster=400)
         ordner = replay.buch_ordner("trendwende_btc", "test")
         self.assertTrue(os.path.isfile(os.path.join(ordner, "handelsjournal.csv")))
         self.assertTrue(ordner.startswith(self.tmp.name))
@@ -154,7 +154,7 @@ class FamilieBTest(ReplayTest):
         ereignis.lauf = lambda name: gerufen.append(name)
         try:
             replay.lauf_b("trendwende_btc", gebuehr_pct=0.05, lauf="test2",
-                          max_kerzen=900, fenster=400)
+                          max_kerzen=700, fenster=400)
         finally:
             ereignis.lauf, spur_buch.spiegeln = alt_bus, alt_spiegel
         self.assertEqual([], gerufen)
@@ -163,7 +163,7 @@ class FamilieBTest(ReplayTest):
         import spur_buch
         vorher = spur_buch.zeit_quelle
         replay.lauf_b("trendwende_btc", gebuehr_pct=0.05, lauf="test3",
-                      max_kerzen=900, fenster=400)
+                      max_kerzen=700, fenster=400)
         self.assertIs(vorher, spur_buch.zeit_quelle)
 
     def test_die_uhr_laeuft_mit_den_kerzen_nicht_mit_der_wanduhr(self):

@@ -27,10 +27,14 @@ an Spuren.
    `handelsjournal.csv` traegt: zeit, modus, aktion, kette, wallet, token,
    symbol, preis, menge, einsatz_usd, wert_usd, marktkap_usd, slippage_pct,
    gebuehr_pct, grund. Rueckwirkend pruefbar sind damit Marktkapitalisierung,
-   Kette, Wallet, Zeitpunkt. NICHT pruefbar: das Signalalter (steht nur in
-   `ablehnungen.csv`, und dort nur fuer ABGELEHNTE Signale ohne Ergebnis) und
-   jede Ausstiegsgeometrie (die Preispfade stehen nirgends). Ausstiegsfragen
-   sind nur prospektiv zu beantworten (eigenes Buch, s. unten).
+   Kette, Wallet, Zeitpunkt. NICHT aus dem JOURNAL pruefbar: das Signalalter
+   (steht nur in `ablehnungen.csv`, und dort nur fuer ABGELEHNTE Signale ohne
+   Ergebnis).
+
+   **Die Ausstiegsgeometrie haengt NICHT mehr am Journal:** Kerzen aus der
+   Historie sind die Preispfade. Stop-Hoehe, Ziel-Vielfaches und Trailing sind
+   damit rueckwirkend pruefbar geworden (Backtest, s. unten) - wer sie weiter
+   fuer unpruefbar haelt, laesst den billigsten Hebel liegen.
 3. **Eine Buchhaltung, nie zwei.** Paarung und Kennzahlen kommen aus der Spur
    selbst: `<spur>/auswertung.py` per `importlib.util.spec_from_file_location`
    mit EINDEUTIGEM Modulnamen laden (alle Spuren besitzen ein Modul
@@ -70,6 +74,18 @@ an Spuren.
    Plan nach `Agenten/Handel/docs/plans/` -> TDD-Umsetzung. Kein Code vor der
    Freigabe. Vorgemerkte Stufen bekommen einen eigenen Abschnitt in der
    Spezifikation, nicht einen Nebensatz.
+   Beim Schreiben des Plans drei Selbstpruefungen, die Zeit sparen:
+   **jeden geratenen Bezeichner am Code nachlesen** (Parameternamen, Schluessel,
+   Signaturen - ein erfundener Name wirkt spaeter nicht, das Programm laeuft und
+   veraendert nichts) und **jeden Codeblock kompilieren** (alle ```python-Bloecke
+   extrahieren und `compile()`; ein Plan mit ungueltigem Code laesst den
+   Ausfuehrenden den Plan debuggen). Einheiten ausdruecklich nennen - Index oder
+   Zeitstempel, Prozent oder Anteil -, denn die falsche Einheit ergibt kein
+   Fehlerbild, sondern ein still falsches Ergebnis. Dazu die **Laufzeit der
+   geplanten Tests** ueberschlagen: ein Test, der je Aufruf eine grosse
+   Datenreihe durchrechnet, macht die Suite unbrauchbar - Fenster oder
+   Reihenlaenge als Parameter vorsehen. Ein Plan, dessen Tests Stunden dauern,
+   wird umgangen statt ausgefuehrt.
 9. **Aendern (Stufe 1).** Sicherung `<datei>.bak-JJJJMMTT` -> byte-genauer
    Ersatz (Rohbytes lesen, Zeilenende erhalten, `wb` schreiben) -> Beleg:
    `git diff --numstat` zeigt `1 1` bzw. `2 2`; zeigt es die ganze Datei,
@@ -82,8 +98,16 @@ an Spuren.
     Wirkung — dafuer braucht es Tage neuer Positionen. Das sagen, statt eine
     Zahl zu deuten.
 
-## Zweites Buch (Ausstiegsgeometrie, nur prospektiv)
-Vorlage ist der Risikostufen-Lauf: derselbe Code, eigene Dateien je Ausfertigung
+## Ausstiegsgeometrie: erst nachrechnen, dann ein zweites Buch
+
+**Reihenfolge.** Zuerst der Backtest - Rezept und Werkzeugfallen stehen im Skill
+`handel-spur-studie` unter `references/backtest-fundament.md`. Er beantwortet
+Stop-Hoehe, Ziel-Vielfaches
+und Trailing ueber Monate bis Jahre in Minuten bis Stunden, mit Walk-Forward und
+ungesehenem Prueffenster. Das Schattenbuch ist danach fuer das zustaendig, was
+Kerzen NICHT zeigen: Ausfuehrung, Quote-Ticks, Daten ohne freie Historie.
+
+Vorlage fuer das Schattenbuch ist der Risikostufen-Lauf: derselbe Code, eigene Dateien je Ausfertigung
 (`*.mittel.json`, eigenes Journal, eigene PID/Log), Eintrag in `SPUREN` UND in
 `NUR_BASIS` (sonst laeuft die Spur doppelt). Fuer eine Ausstiegsvariante:
 Startskript, das eine Kennung setzt; die Spur erweitert nur die Dateinamen; das
@@ -98,7 +122,70 @@ je Arm ehrlich „nicht entschieden" sagen (n=1-Token-Falle bedenken), dann
 Waechter-Cron bis zur Schwele — vollstaendiger Ablauf in
 `references/schattenbuch-auswertung.md`.
 
+## Tor-Regeln optimieren: erst den BINDENDEN Grund messen
+
+„Erlaubte Volatilitaet erhoehen" heisst nicht, die Zahl zu erhoehen - es heisst,
+den Grund zu finden, der die Spur schliesst. Reihenfolge:
+
+1. **Die Sperrgruende aller Spuren sammeln** (`Handel/sperrgruende.py`, sonst
+   `spuren_stand.py`): je Spur die Woerter der eigenen `--vorschau`-Sperrzeile.
+   Erst das trennt „haengt am Guthaben" von „haengt am Fenster" von „haengt am
+   Signal" von „hat gar keinen Live-Pfad".
+2. **Den Kandidaten-Kegel messen.** Beim Scanner ist das `scanner/scan.py`: es
+   druckt je Markt Score, Chance/Risiko, Volatilitaet und ob alle Tore bestehen.
+   Die Verteilung der fraglichen Spalte zeigt, ob dieses Tor ueberhaupt greift -
+   und wo die Grenze wirklich liegt.
+3. **Zaehlen, was die Lockerung NETTO bringt**: Kandidaten im neu erlaubten Band
+   UND ob sie die uebrigen Tore bestehen. Gemessen: 60 Maerkte bewertet, 3 im
+   neu erlaubten Band, 0 davon ueber der Score-Schwelle. Die Lockerung war
+   richtig (das Tor ist fuer spaeter offen), bringt heute aber keinen Trade -
+   genau so berichten, statt „Tor erhoeht" als Wirkung zu verkaufen.
+4. **Die Grenze an die Ausstiegsgeometrie koppeln.** Eine Volatilitaets- oder
+   Range-Grenze ist nur relativ zum Stop sinnvoll: liegt die Tagesspanne ueber
+   dem Stop-Abstand, wird der Stop zum Rauschen. Den Deckel deshalb aus dem Stop
+   ableiten (hier 2,0 Tagesspannen, weil der Stop der Spur 7 % betraegt) und die
+   Kopplung im Vermerk nennen - sonst ist die naechste Erhoehung wieder ein
+   Griff ohne Rechnung. Wer mehr will, muss den Stop mitwachsen lassen (Stop als
+   Vielfaches der Tagesspanne) - das aendert die Geometrie und braucht eine
+   eigene Messung.
+5. **Alle Stellen finden, die DASSELBE Tor sind.** Dieselbe Zahl steht oft in
+   der `wachen.json` der Spur UND im Marktscanner (`prognose.json`) UND in
+   einer Geschwister-Spur (z. B. `scanner` und `kraken`); ein Tor an zwei
+   Stellen mit zwei Zahlen ist zwei Wahrheiten. Jede Stelle nennen und
+   mitziehen, je Stelle ein datierter Vermerk.
+
 ## Pitfalls
+- **Nur Schluessel tunen, die die Spur WIRKLICH liest.** Vor dem Bau einer
+  Suchtabelle messen, welche Namen in `<spur>/handeln.py` als `w.get("...")`
+  vorkommen und welche davon in der `wachen.json` stehen. Ein geratener Name
+  wirkt nicht: alle Kandidaten sind identisch und die Suche meldet "kein Hebel",
+  obwohl nie etwas veraendert wurde. Der Optimierer prueft deshalb jeden
+  Suchschluessel gegen die `wachen.json` und bricht mit Namensliste ab.
+- **Walk-Forward: EIN Lauf je Kandidat, danach aufteilen** - nicht ein Lauf je
+  Fenster. Vergleichsmass ist das Ergebnis je Runde aus der Hausfunktion
+  (`kosten_wendepunkt.wendepunkt()` liefert `R, C, p, f_max, ev_ohne,
+  ergebnis_summe` - **kein** `netto_pct_mittel`, das stammt aus
+  `backtest_prognose.kennzahlen`), **netto nach Gebuehren**.
+- **Das Urteil lautet "besser als die HEUTIGE Einstellung", nicht "besser als
+  die eigene Suchhaelfte".** Der Vergleich innerhalb eines Kandidaten misst den
+  Regimewechsel zwischen den Haelften - gemessen liess er 18 von 18 Kandidaten
+  durch und war damit kein Filter. Erst die Grundlinie im selben Zeitraum messen
+  (heutige Wachen-Werte), dann jedes auswertbare Fenster gegen sie pruefen,
+  mindestens zwei, Mindestvorsprung 0,10 % je Runde.
+- **Mindestens 30 Runden je Fenster**, nicht 8: bei ~0,5 % Vorsprung gegen ~5 %
+  Streuung ist alles darunter Rauschen. Ein Fenster unter der Schwelle zaehlt als
+  "nicht auswertbar", nicht als gewonnen, und die Periode gehoert in den Bericht
+  - dieselbe Spur steht ueber 5,7 Jahre bei +0,08 % je Runde netto und im
+  12-Monats-Fenster bei -0,99 %.
+- **Backtest-Runden sind Messung, keine Freigabe.** Sie zaehlen NICHT fuer die
+  Bedingungen in `Wissen/Handelsregeln.md` und gehoeren getrennt ausgewiesen -
+  ein historischer Lauf ist keine Live-Erfahrung.
+- **Ein Gate-Schluessel kann VERSCHACHTELT liegen.** In `prognose.json` steht
+  die Volatilitaetsgrenze unter `tore.max_volatilitaet_pa`, nicht auf der
+  obersten Ebene; in der `wachen.json` derselben Spur auf der obersten. Ein
+  Ersatz auf der falschen Ebene findet nichts, meldet keinen Fehler und die
+  Datei gilt als geaendert. Vor dem Schreiben `count(alt) == 1` asserten,
+  danach `json.loads` fahren und die Zahl zuruecklesen.
 - **In-Sample-Falle.** Alle Regeln stammen aus derselben Stichprobe; die
   Zeithalbierung mildert das, hebt es nicht auf. Ergebnis als Vorschlag
   ausweisen, nie als Beweis.
