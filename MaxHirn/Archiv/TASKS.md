@@ -59,6 +59,20 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-085 — Repos-Zentrale: fuer die meisten Repos fehlen Anleitung und Befehle**
+      Kontext: Das Fenster zeigt seit 25.09.2026 zu jedem Projekt einen Bereich
+      "Was dieses Projekt kann" (Ablauf in Worten + anklickbare Befehle). Hinterlegt
+      ist das fuer intelligent-trading-bot, moon-dev-ai-agents, openmontage,
+      kraken-cli und fomo-robinhood-radar (Befehle) sowie Kronos, laya und
+      robinhood-fomo-kronos-arena (nur Anleitung). Die uebrigen rund 27 Eintraege
+      zeigen nur die allgemeinen Handgriffe (Terminal, Ordner, Doku, Bot).
+      Es fehlt WISSEN ueber das Repo, nicht Code: ein Befehl darf erst ins
+      Manifest, wenn er einmal wirklich gelaufen ist (Hausregel).
+      Naechster Schritt: bei Bedarf ein Repo nach dem anderen - einmal den Weg
+      gehen, dann "anleitung" und "befehle" in repos-zentrale.json ergaenzen
+      (Rezept in Agenten/Werkzeuge/repos-zentrale/README.md).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json
 - [ ] **T-082 — Bonsai 2 27B: PQ2_0-Packung ist ungemessen**
       Kontext: Auf dem Rechner liegen 5,95 GB als PTQ1_0; erzeugt 32 t/s bei 8k
       Kontext (gemessen 25.09.2026). Die PrismML-Karte nennt fuer Ampere-Karten

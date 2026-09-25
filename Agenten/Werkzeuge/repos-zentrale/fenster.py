@@ -16,6 +16,7 @@ import tkinter as tk
 from tkinter import ttk
 
 import aktionen
+import befehle
 import manifest
 import scan
 
@@ -100,7 +101,7 @@ class Fenster:
 
         self.root = tk.Tk()
         self.root.title("Repos-Zentrale - Werkstatt/Repos")
-        self.root.geometry("1180x720")
+        self.root.geometry("1280x880")
         self._bauen()
         self.aktualisieren()
 
@@ -149,6 +150,8 @@ class Fenster:
         self.baum.configure(yscrollcommand=rollbalken.set)
         self.baum.bind("<<TreeviewSelect>>", lambda _: self._auswahl_geaendert())
         self.baum.bind("<Double-Button-1>", lambda _: self._log_oeffnen())
+
+        self._bauen_details()
 
         unten = ttk.Frame(self.root)
         unten.pack(fill="x", padx=8, pady=8)
@@ -208,6 +211,7 @@ class Fenster:
         self.zusammenfassung.configure(
             text=f"{len(sichtbar)} von {len(self.zeilen)} Zeilen"
         )
+        self._details_fuellen(None)
 
     def _letzter_start(self, ordner: str) -> str:
         """Der letzte Startbeleg: neueste Logdatei dieses Repos, sonst leer."""
@@ -227,9 +231,155 @@ class Fenster:
             return None
         return self.kinder.get(auswahl[0])
 
+    # ------------------------------------------------------------- Detailbereich
+    def _bauen_details(self) -> None:
+        """Der Bereich unter der Tabelle: Ablauf in Worten + anklickbare Befehle."""
+        rahmen = ttk.LabelFrame(self.root, text="Was dieses Projekt kann")
+        rahmen.pack(fill="both", expand=False, padx=8, pady=(6, 0))
+
+        links = ttk.Frame(rahmen)
+        links.pack(side="left", fill="both", expand=True, padx=(6, 3), pady=6)
+        self.anleitung_text = tk.Text(
+            links, height=9, width=58, wrap="word", relief="flat", background="#f4f6f9"
+        )
+        self.anleitung_text.pack(side="left", fill="both", expand=True)
+        self.anleitung_text.configure(state="disabled")
+        leiste = ttk.Scrollbar(links, orient="vertical", command=self.anleitung_text.yview)
+        leiste.pack(side="right", fill="y")
+        self.anleitung_text.configure(yscrollcommand=leiste.set)
+
+        rechts = ttk.Frame(rahmen)
+        rechts.pack(side="left", fill="both", expand=True, padx=(3, 6), pady=6)
+        self.befehlsbaum = ttk.Treeview(
+            rechts, columns=("was", "befehl", "hinweis"), show="headings", selectmode="browse"
+        )
+        for spalte, titel, breite in (
+            ("was", "Was", 190),
+            ("befehl", "Befehl", 300),
+            ("hinweis", "Hinweis", 190),
+        ):
+            self.befehlsbaum.heading(spalte, text=titel)
+            self.befehlsbaum.column(spalte, width=breite, anchor="w")
+        self.befehlsbaum.pack(side="left", fill="both", expand=True)
+        self.befehlsbaum.bind("<Double-Button-1>", lambda _: self.befehl_ausfuehren())
+        self.befehlsbaum.bind("<<TreeviewSelect>>", lambda _: self._befehl_gewaehlt())
+        rollbalken = ttk.Scrollbar(rechts, orient="vertical", command=self.befehlsbaum.yview)
+        rollbalken.pack(side="right", fill="y")
+        self.befehlsbaum.configure(yscrollcommand=rollbalken.set)
+
+        leiste2 = ttk.Frame(rahmen)
+        leiste2.pack(side="left", fill="y", padx=(0, 6), pady=6)
+        self.befehl_knoepfe = {}
+        for name, text, befehl in (
+            ("ausfuehren", "Befehl ausfuehren", self.befehl_ausfuehren),
+            ("kopieren", "Befehl kopieren", self.befehl_kopieren),
+            ("bot", "Bot damit beauftragen", self.befehl_an_bot),
+        ):
+            b = ttk.Button(leiste2, text=text, command=befehl, state="disabled")
+            b.pack(side="top", fill="x", pady=2)
+            self.befehl_knoepfe[name] = b
+        self.befehl_kinder: dict[str, befehle.Kommando] = {}
+
+    def _details_fuellen(self, z: manifest.Zeile | None) -> None:
+        """Text und Befehlsliste auf die gewaehlte Zeile umstellen."""
+        self.anleitung_text.configure(state="normal")
+        self.anleitung_text.delete("1.0", "end")
+        self.befehlsbaum.delete(*self.befehlsbaum.get_children())
+        self.befehl_kinder.clear()
+        if z is None:
+            self.anleitung_text.insert("1.0", "Links ein Projekt waehlen.")
+        else:
+            self.anleitung_text.insert("1.0", befehle.anleitung(z))
+            for k in befehle.kommandos(z):
+                item = self.befehlsbaum.insert(
+                    "", "end", values=(k.was, befehle.befehl_text(k.cmd), k.hinweis)
+                )
+                self.befehl_kinder[item] = k
+        self.anleitung_text.configure(state="disabled")
+        self._befehl_gewaehlt()
+
+    def _gewaehlter_befehl(self) -> befehle.Kommando | None:
+        auswahl = self.befehlsbaum.selection()
+        if not auswahl:
+            return None
+        return self.befehl_kinder.get(auswahl[0])
+
+    def _befehl_gewaehlt(self) -> None:
+        k = self._gewaehlter_befehl()
+        z = self._gewaehlt()
+        zustand = "normal" if k is not None else "disabled"
+        self.befehl_knoepfe["ausfuehren"].configure(state=zustand)
+        self.befehl_knoepfe["kopieren"].configure(
+            state="normal" if k is not None and k.cmd else "disabled"
+        )
+        self.befehl_knoepfe["bot"].configure(
+            state="normal" if k is not None and z is not None and z.bot_da else "disabled"
+        )
+        if k is not None and k.hinweis:
+            self.status.configure(text=f"{k.was}: {k.hinweis}")
+
+    def befehl_ausfuehren(self) -> None:
+        """Den gewaehlten Befehl in einem sichtbaren Terminal im Repo starten."""
+        k = self._gewaehlter_befehl()
+        z = self._gewaehlt()
+        if k is None or z is None or z.repo is None:
+            return
+        if k.art == "ordner":
+            self.ordner()
+            return
+        if k.art == "doku":
+            self.doku()
+            return
+        if k.art == "terminal":
+            self.terminal()
+            return
+        if k.art == "bot":
+            self.bot_chat()
+            return
+        if k.art == "start":
+            self.starten()
+            return
+        self._ruf(
+            aktionen.argv_befehl_im_terminal(z.repo.pfad, k.cmd),
+            f"{k.was}: {befehle.befehl_text(k.cmd)}",
+        )
+
+    def befehl_kopieren(self) -> None:
+        """Den Befehl in die Zwischenablage legen - zum Einfuegen von Hand."""
+        k = self._gewaehlter_befehl()
+        if k is None or not k.cmd:
+            return
+        text = befehle.befehl_text(k.cmd)
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.root.update()
+        self.status.configure(text=f"Kopiert: {text}")
+
+    def befehl_an_bot(self) -> None:
+        """Den Befehl als Auftrag an den Repo-Bot geben - er fuehrt aus und erklaert."""
+        k = self._gewaehlter_befehl()
+        z = self._gewaehlt()
+        if k is None or z is None or z.repo is None or not (z.bot_da and z.bot):
+            return
+        if k.art in ("ordner", "doku", "terminal", "bot"):
+            auftrag = (
+                f"Im Ordner {z.ordner}: {k.was}. Erklaere mir in drei Saetzen, "
+                f"was hier zu tun ist und was dabei herauskommt."
+            )
+        else:
+            auftrag = (
+                f"Im Ordner {z.ordner} den Befehl `{befehle.befehl_text(k.cmd)}` ausfuehren "
+                f"und mir in drei Saetzen sagen, was herauskam."
+            )
+        self._ruf(
+            aktionen.argv_bot_auftrag(z.bot, z.repo.pfad, auftrag),
+            f"Bot {z.bot} beauftragt: {k.was}",
+        )
+
     # ------------------------------------------------------------- Knoepfe
     def _auswahl_geaendert(self) -> None:
         z = self._gewaehlt()
+        self._details_fuellen(z)
         if z is None or z.repo is None:
             for b in self.knoepfe.values():
                 b.configure(state="disabled")

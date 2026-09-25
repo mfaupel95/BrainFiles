@@ -53,6 +53,16 @@ class FensterBauTest(unittest.TestCase):
                     "venv_pflicht": True,
                     "bot": "moon-dev-agents",
                     "notiz": "Herzstueck",
+                    "anleitung": "Erst X, dann Y.",
+                    "befehle": [
+                        {
+                            "was": "Pruefstand zeigen",
+                            "cmd": [".venv\\Scripts\\python.exe", "pruefstand.py"],
+                            "hinweis": "zwei Sekunden",
+                        },
+                        {"was": "Zweiter", "cmd": ["python", "-c", "print(1)"]},
+                        {"was": "Kaputt", "cmd": []},
+                    ],
                 }],
             }, ensure_ascii=False),
             encoding="utf-8",
@@ -136,6 +146,117 @@ class FensterBauTest(unittest.TestCase):
             f.starten()
             self.assertEqual(gerufen, [])
             self.assertIn("Kein Startbefehl", str(f.status["text"]))
+        finally:
+            f.root.destroy()
+
+    # --------------------------------------------------------- Detailbereich
+    def _startbar_waehlen(self, f):
+        kopf = f.baum.get_children()[0]
+        item = f.baum.get_children(kopf)[0]
+        f.baum.selection_set(item)
+        f._auswahl_geaendert()
+        f.root.update()
+        return item
+
+    def _befehl_waehlen(self, f, was: str):
+        for item in f.befehlsbaum.get_children():
+            if f.befehlsbaum.item(item)["values"][0] == was:
+                f.befehlsbaum.selection_set(item)
+                f._befehl_gewaehlt()
+                return item
+        raise AssertionError(f"Befehl '{was}' steht nicht in der Liste")
+
+    def test_detailbereich_zeigt_anleitung_und_befehle(self):
+        f, _ = self._bauen()
+        try:
+            self._startbar_waehlen(f)
+            text = f.anleitung_text.get("1.0", "end")
+            self.assertIn("Wozu: Herzstueck", text)
+            self.assertIn("Erst X, dann Y.", text)
+            namen = [f.befehlsbaum.item(i)["values"][0] for i in f.befehlsbaum.get_children()]
+            for erwartet in ("Starten", "Terminal hier oeffnen", "Ordner im Explorer",
+                             "Doku (README) oeffnen", "Bot moon-dev-agents fragen",
+                             "Pruefstand zeigen", "Zweiter"):
+                self.assertIn(erwartet, namen)
+            # Ein Befehl ohne argv (hier "Kaputt") darf keine Zeile bekommen.
+            self.assertNotIn("Kaputt", namen)
+        finally:
+            f.root.destroy()
+
+    def test_befehlsknoepfe_sind_ohne_auswahl_aus(self):
+        f, _ = self._bauen()
+        try:
+            self._startbar_waehlen(f)
+            f.befehlsbaum.selection_remove(*f.befehlsbaum.selection())
+            f._befehl_gewaehlt()
+            for name in ("ausfuehren", "kopieren"):
+                self.assertEqual(str(f.befehl_knoepfe[name]["state"]), "disabled")
+        finally:
+            f.root.destroy()
+
+    def test_befehl_kopieren_legt_den_text_in_die_zwischenablage(self):
+        f, _ = self._bauen()
+        try:
+            self._startbar_waehlen(f)
+            self._befehl_waehlen(f, "Pruefstand zeigen")
+            f.befehl_kopieren()
+            self.assertEqual(
+                f.root.clipboard_get(), ".venv\\Scripts\\python.exe pruefstand.py"
+            )
+            self.assertTrue(str(f.status["text"]).startswith("Kopiert:"))
+        finally:
+            f.root.destroy()
+
+    def test_befehl_ausfuehren_oeffnet_ein_terminal_im_repo(self):
+        f, gerufen = self._bauen()
+        try:
+            item = self._startbar_waehlen(f)
+            pfad = f.kinder[item].repo.pfad
+            self._befehl_waehlen(f, "Pruefstand zeigen")
+            f.befehl_ausfuehren()
+            self.assertEqual(gerufen[-1][0], "wt.exe")
+            self.assertIn("cmd.exe", gerufen[-1])
+            self.assertIn(str(pfad), gerufen[-1])
+            self.assertEqual(gerufen[-1][-2:], [".venv\\Scripts\\python.exe", "pruefstand.py"])
+        finally:
+            f.root.destroy()
+
+    def test_ordnerzeile_im_detail_geht_ueber_explorer(self):
+        f, gerufen = self._bauen()
+        try:
+            self._startbar_waehlen(f)
+            self._befehl_waehlen(f, "Ordner im Explorer")
+            f.befehl_ausfuehren()
+            self.assertEqual(gerufen[-1][0], "explorer")
+        finally:
+            f.root.destroy()
+
+    def test_bot_beauftragen_geht_nur_mit_profil(self):
+        f, gerufen = self._bauen()
+        try:
+            self._startbar_waehlen(f)
+            self._befehl_waehlen(f, "Pruefstand zeigen")
+            self.assertEqual(str(f.befehl_knoepfe["bot"]["state"]), "normal")
+            f.befehl_an_bot()
+            argv = gerufen[-1]
+            self.assertEqual(argv[0], "wt.exe")
+            self.assertIn("hermes", argv)
+            self.assertIn("-q", argv)
+            self.assertIn("pruefstand.py", argv[-1])
+        finally:
+            f.root.destroy()
+
+    def test_neue_zeile_ohne_manifest_hat_keine_eigenen_befehle(self):
+        f, _ = self._bauen()
+        try:
+            kopf_neu = f.baum.get_children()[1]
+            item = f.baum.get_children(kopf_neu)[0]
+            f.baum.selection_set(item)
+            f._auswahl_geaendert()
+            namen = [f.befehlsbaum.item(i)["values"][0] for i in f.befehlsbaum.get_children()]
+            self.assertIn("Ordner im Explorer", namen)
+            self.assertNotIn("Starten", namen)
+            self.assertIn("noch kein Ablauf hinterlegt", f.anleitung_text.get("1.0", "end"))
         finally:
             f.root.destroy()
 

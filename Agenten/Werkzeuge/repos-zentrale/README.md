@@ -46,6 +46,30 @@ Dazu **Log oeffnen** (oder Doppelklick auf eine Zeile): zeigt die neueste
 Logdatei dieses Repos. Oben ein Suchfeld (trifft Name, Bot, Notiz, Art) und
 „Aktualisieren" (liest Platte und Manifest neu).
 
+## Der Bereich „Was dieses Projekt kann"
+
+Unter der Tabelle steht fuer das **ausgewaehlte** Projekt:
+
+- **links ein Textblock**: wozu das Repo da ist (`notiz`), wo es liegt, ob eine
+  venv da ist, was noch fehlt („Zu tun: …") und — wenn im Manifest hinterlegt —
+  der Ablauf in Worten (`anleitung`). Fehlt er, sagt der Text das ausdruecklich,
+  statt etwas zu erfinden.
+- **rechts die Befehlsliste**: je Zeile `Was | Befehl | Hinweis`. Die ersten
+  Eintraege sind fuer jedes Repo dieselben (Starten, Terminal, Ordner, Doku,
+  Bot), danach kommen die Befehle aus dem Manifest (`befehle`).
+
+Drei Knoepfe, alle auf die gewaehlte Zeile bezogen:
+
+| Knopf | Was passiert |
+|---|---|
+| **Befehl ausfuehren** | oeffnet ein sichtbares Windows-Terminal im Repo-Ordner und fuehrt den Befehl aus (`cmd /k`, damit die Ausgabe stehen bleibt). Zeilen wie „Ordner im Explorer" loesen den gleichnamigen Knopf aus. |
+| **Befehl kopieren** | legt die Befehlszeile in die Zwischenablage — zum Einfuegen in ein eigenes Terminal. So lernt man den Weg von Hand. |
+| **Bot damit beauftragen** | gibt den Befehl als Auftrag an den Repo-Bot (`hermes -p <bot> chat -q …`): er fuehrt aus und erklaert in drei Saetzen, was herauskam. Nur aktiv, wenn das Profil existiert. |
+
+Das ist der gedachte Weg fuer „ich kenne mich in der Kommandozeile nicht aus":
+Projekt waehlen, Befehlszeile lesen, **Bot damit beauftragen** — oder
+**Befehl kopieren** und selbst einfuegen.
+
 ## Das Manifest
 
 `repos-zentrale.json` ist die **einzige** Stelle, an der ein Startbefehl steht.
@@ -62,7 +86,12 @@ Felder je Repo:
       "node_modules_pflicht": true,        // Start nur, wenn node_modules da ist
       "pfad_pflicht": "target\\release\\x.exe",   // Datei, ohne die der Start nicht geht
       "bot": "moon-dev-agents",            // Hermes-Profil (klein geschrieben)
-      "notiz": "Herzstueck"
+      "notiz": "Herzstueck",
+      "anleitung": "Erst X, dann Y.",       // Klartext-Ablauf fuer den Detailbereich
+      "befehle": [                          // anklickbare Befehle, je {was, cmd, hinweis}
+        {"was": "Pruefstand zeigen", "cmd": [".venv\\Scripts\\python.exe", "pruefstand.py"],
+         "hinweis": "zwei Sekunden"}
+      ]
     }
 
 Regeln, die der Code durchsetzt:
@@ -87,6 +116,34 @@ Regeln, die der Code durchsetzt:
    Gruppen auftauchen, nicht verschwinden.
 3. Erst wenn der Startbefehl einmal echt gelaufen ist, ihn als `start`
    eintragen (die Logdatei entsteht dabei von selbst).
+
+## Befehle und Anleitung nachtragen
+
+Fuer die Anzeige braucht ein Repo **keinen** Eintrag — die allgemeinen Zeilen
+(Starten, Terminal, Ordner, Doku, Bot) entstehen aus Platte und Manifest von
+selbst. Eigenes kommt dazu, sobald man den Weg einmal gegangen ist:
+
+1. Befehl **einmal wirklich laufen lassen** (Hausregel: kein Befehl ins
+   Manifest, der nie lief). Die Zeile notieren, die funktioniert hat.
+2. In `repos-zentrale.json` beim Eintrag ergaenzen:
+
+       "anleitung": "Was das Repo tut und in welcher Reihenfolge man es anfasst.",
+       "befehle": [
+         {"was": "Kanalbericht", "cmd": [".venv\\Scripts\\agent-reach.exe", "doctor"],
+          "hinweis": "dauert 20 s"}
+       ]
+
+   `cmd` ist eine **argv-Liste** wie `start` — keine Shell-Zeichenkette, keine
+   Pipes. Der Titel `was` erscheint in der Liste, `hinweis` daneben.
+3. Fenster neu oeffnen (das Manifest wird beim Aufbau gelesen).
+
+Ein Befehl ohne `cmd` wird still uebergangen — ein Tippfehler nimmt also nicht
+die ganze Liste mit, er fehlt nur. Fehlerhafte `befehle` stehen als Hinweis in
+der Zeile, sie machen das Repo **nicht** un-startbar.
+
+Wer nichts eintragen will: Der Knopf **Bot damit beauftragen** erledigt denselben
+Zweck — der Repo-Bot kennt sein Repository und kann einen Befehl ausfuehren und
+erklaeren.
 
 ## Was die Zentrale absichtlich nicht tut
 

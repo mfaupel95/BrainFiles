@@ -69,6 +69,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
+| [Werkzeuge/repos-zentrale.md](Werkzeuge/repos-zentrale.md) | Startfenster fuer alle Repos: Gruppen, Startbelege, und der Bereich "Was dieses Projekt kann" mit anklickbaren Befehlen, Kopieren und Bot-Auftrag |
 | [Werkzeuge/Fundus-Skills-Bots.md](Werkzeuge/Fundus-Skills-Bots.md) | Skill-Fundus, Hermes-Bibliothek, Repo-Bots, Katalog |
 | [Werkzeuge/Claude-Red-und-nerd-Bot.md](Werkzeuge/Claude-Red-und-nerd-Bot.md) | Offensive-Security-Sammlung claude-red als Fundus-Faehigkeit, der Bot `nerd`, Defender sperrt vier Skill-Dateien |
 | [Werkzeuge/SkillSpector.md](Werkzeuge/SkillSpector.md) | Sicherheitsscan der Skills (NVIDIA SkillSpector): Aufruf, Falschmeldungen, Risikowert lesen |

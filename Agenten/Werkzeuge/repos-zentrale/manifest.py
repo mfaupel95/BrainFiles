@@ -30,6 +30,9 @@ class Eintrag:
     bauen: list[str] | None = None
     bot: str | None = None
     notiz: str = ""
+    anleitung: str = ""                 # Klartext-Ablauf fuer das Fenster
+    befehle: list[dict] | None = None   # anklickbare Befehle (was/cmd/hinweis)
+    warnungen: list[str] = field(default_factory=list)   # stoert den Start NICHT
     venv_pflicht: bool = False
     node_modules_pflicht: bool = False
     pfad_pflicht: str | None = None   # Datei/Ordner im Repo, ohne den der Start nicht geht
@@ -51,6 +54,8 @@ class Zeile:
     bot: str | None = None
     bot_da: bool = False
     notiz: str = ""
+    anleitung: str = ""
+    befehle: list[dict] = field(default_factory=list)
     gruende: list[str] = field(default_factory=list)
 
     @property
@@ -69,6 +74,36 @@ def _argv(wert, feld: str, fehler: list[str]) -> list[str] | None:
         f"gefunden: {type(wert).__name__}"
     )
     return None
+
+
+def _befehle(wert, fehler: list[str]) -> list[dict] | None:
+    """Die Befehlsliste: je Eintrag ein Titel und ein argv (keine Shell-Zeile).
+
+    Ein kaputter Eintrag faellt EINZELN raus (mit Grund), die uebrigen bleiben -
+    eine falsch geschriebene Zeile darf die ganze Liste nicht wegnehmen.
+    """
+    if wert is None:
+        return None
+    if not isinstance(wert, list):
+        fehler.append(f"befehle muss eine Liste sein, gefunden: {type(wert).__name__}")
+        return None
+    sauber = []
+    for i, roh in enumerate(wert, 1):
+        if not isinstance(roh, dict):
+            fehler.append(f"befehle[{i}] ist kein Objekt")
+            continue
+        cmd = _argv(roh.get("cmd"), f"befehle[{i}].cmd", fehler)
+        if not cmd:
+            continue
+        sauber.append(
+            {
+                "was": str(roh.get("was") or ""),
+                "cmd": cmd,
+                "hinweis": str(roh.get("hinweis") or ""),
+                "start": bool(roh.get("start")),
+            }
+        )
+    return sauber
 
 
 def _ordner_erlaubt(name) -> bool:
@@ -97,6 +132,7 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             continue
         ordner = roh.get("ordner") or ""
         fehler: list[str] = []
+        warnungen: list[str] = []
         eintrag = Eintrag(
             ordner=ordner,
             art=str(roh.get("art") or ""),
@@ -106,6 +142,9 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             bauen=_argv(roh.get("bauen"), "bauen", fehler),
             bot=str(roh["bot"]).lower() if roh.get("bot") else None,
             notiz=str(roh.get("notiz") or ""),
+            anleitung=str(roh.get("anleitung") or ""),
+            befehle=_befehle(roh.get("befehle"), warnungen),
+            warnungen=warnungen,
             venv_pflicht=bool(roh.get("venv_pflicht")),
             node_modules_pflicht=bool(roh.get("node_modules_pflicht")),
             pfad_pflicht=(
@@ -146,6 +185,7 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
     # Der Bot ist ein Hinweis, kein Startkriterium: ein fehlendes Profil darf ein
     # lauffaehiges Repo nicht in eine andere Gruppe schieben.
     gruende = list(startgruende)
+    gruende += list(e.warnungen)
     if e.bot and not bot_da:
         gruende.append(f"Bot-Profil fehlt: {e.bot}")
 
@@ -159,6 +199,8 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         bot=e.bot,
         bot_da=bot_da,
         notiz=e.notiz,
+        anleitung=e.anleitung,
+        befehle=list(e.befehle or []),
         gruende=gruende,
     )
 

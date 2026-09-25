@@ -105,6 +105,20 @@ def start_ausfuehren(
     return StartErgebnis(getattr(prozess, "pid", None), log, argv, None, prozess)
 
 
+def argv_befehl_im_terminal(pfad: Path, cmd: list[str]) -> list[str]:
+    """Einen Befehl in einem SICHTBAREN Terminal im Repo ausfuehren.
+
+    `cmd.exe /k` haelt das Fenster offen - sonst ist die Ausgabe weg, bevor man
+    sie gelesen hat. Der Befehl selbst bleibt eine argv-Liste.
+    """
+    return ["wt.exe", "-d", str(pfad), "cmd.exe", "/k", *[str(t) for t in cmd]]
+
+
+def argv_bot_auftrag(bot: str, pfad: Path, auftrag: str) -> list[str]:
+    """Den Repo-Bot mit einem fertigen Auftrag starten (Einzelauftrag, kein Chat)."""
+    return ["wt.exe", "-d", str(pfad), "hermes", "-p", str(bot).lower(), "chat", "-q", str(auftrag)]
+
+
 def doku_oeffnen(datei: Path, *, starter=None) -> str | None:
     """Die erste README im Standardprogramm oeffnen. Gibt den Fehlertext zurueck."""
     starter = starter or os.startfile  # type: ignore[attr-defined]

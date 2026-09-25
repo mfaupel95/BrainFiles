@@ -13,6 +13,13 @@
       "venv_pflicht": true
     },
     {
+      "ordner": "agent-trade-kit",
+      "art": "doku",
+      "bot": "agent-trade-kit",
+      "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)",
+      "gruppe": "doku"
+    },
+    {
       "ordner": "awesome-systematic-trading",
       "art": "doku",
       "bot": "awesome-systematic-trading",
@@ -84,6 +91,49 @@
       "gruppe": "doku"
     },
     {
+      "ordner": "fomo-robinhood-radar",
+      "art": "python",
+      "bot": "fomo-radar",
+      "notiz": "Robinhood Chain beobachten (Chain 4663) - schluesselfrei lauffaehig, speist die Papierspur robinhood_radar",
+      "anleitung": "Sammelt Wallets und Fuellungen von fomo.family ueber die Kette und bewertet sie. Schluesselfrei nutzbar: init, discover --trenches, track --show, report. Die Sammlung laeuft schon als Cron (radar-sammeln, 20 min) und schreibt fomo_agent.db; die Haus-Spur robinhood_radar liest NUR aus dieser Datei. Bewertung mit einem Sprachmodell laeuft NICHT ueber die API (dafuer fehlt Guthaben), sondern ueber --export/--import aufs lokale Ollama. Windows: PYTHONIOENCODING=utf-8 setzen.",
+      "befehle": [
+        {
+          "was": "Datenbank anlegen",
+          "cmd": [
+            ".venv\\Scripts\\fomo-radar.exe",
+            "init"
+          ],
+          "hinweis": "einmalig"
+        },
+        {
+          "was": "Trader finden (Trenches-Liste)",
+          "cmd": [
+            ".venv\\Scripts\\fomo-radar.exe",
+            "discover",
+            "--trenches"
+          ],
+          "hinweis": "147 Wallets, ein bis zwei Minuten"
+        },
+        {
+          "was": "Fuellungen einlesen",
+          "cmd": [
+            ".venv\\Scripts\\fomo-radar.exe",
+            "track",
+            "--show"
+          ],
+          "hinweis": "65 echte Fuellungen von 25 Wallets (gemessen 22.09.2026)"
+        },
+        {
+          "was": "Bericht",
+          "cmd": [
+            ".venv\\Scripts\\fomo-radar.exe",
+            "report"
+          ],
+          "hinweis": "kurze Zusammenfassung"
+        }
+      ]
+    },
+    {
       "ordner": "gbrain",
       "art": "node",
       "bot": "gbrain",
@@ -110,7 +160,113 @@
         ".venv\\Scripts\\python.exe",
         "itb_pruefstand.py"
       ],
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "anleitung": "Zwei Laeufe stehen bereit: der in-sample-Lauf (train und predict auf denselben Zeilen) und der Walk-Forward-Lauf (vier Schritte, je neu trainiert). Der Start zeigt beide Ergebnisse nebeneinander; der Abstand dazwischen ist das Ergebnis, nicht die obere Zahl. Kurse kommen oeffentlich von Binance, ein Schluessel ist nicht noetig. Reihenfolge beim Nachrechnen: download, merge, features, labels, predict_rolling, signals, simulate. Die Ergebnisdateien werden ANGEHAENGT - der letzte Block ist der laufende Stand.",
+      "befehle": [
+        {
+          "was": "Walk-Forward rechnen (4 Schritte, ~2 min)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-m",
+            "scripts.predict_rolling",
+            "-c",
+            "configs/config-hermes-walk-forward.json"
+          ],
+          "hinweis": "schreibt predictions.csv mit ungesehenen Zeilen"
+        },
+        {
+          "was": "Handelsergebnis rechnen (100 Schwellenpaare)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-m",
+            "scripts.simulate",
+            "-c",
+            "configs/config-hermes-walk-forward.json"
+          ],
+          "hinweis": "haengt einen Block an signal_models.txt"
+        },
+        {
+          "was": "Kursdaten holen (Binance 1 h, ~60 s)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-m",
+            "scripts.download",
+            "-c",
+            "configs/config-hermes-walk-forward.json"
+          ],
+          "hinweis": "nur noetig, wenn DATA/ fehlt"
+        },
+        {
+          "was": "In-sample-Lauf zum Vergleich",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-m",
+            "scripts.predict",
+            "-c",
+            "configs/config-hermes-in-sample.json"
+          ],
+          "hinweis": "zeigt, wie sehr in-sample luegt"
+        }
+      ]
+    },
+    {
+      "ordner": "kraken-cli",
+      "art": "rust",
+      "notiz": "Offizielles Kraken-Terminal (Rust), hier selbst gebaut - es gibt keine Windows-Binaries",
+      "anleitung": "Eine Binary, keine Laufzeitabhaengigkeiten. Oeffentliche Marktdaten brauchen KEINEN Schluessel; Konto und Order lesen KRAKEN_API_KEY/KRAKEN_API_SECRET. Die Haus-Schluessel liegen als KRAKEN_SPOT_API_KEY/_SECRET in den Windows-Benutzervariablen - der Wrapper Agenten/Werkzeuge/kraken.ps1 setzt sie auf die Namen, die die CLI erwartet. Ohne den Wrapper meldet sie 'Invalid key'. Der Wrapper liegt unter Agenten/Werkzeuge/kraken.ps1 und wird aus dem BrainFiles-Ordner aufgerufen, nicht von hier. Papiermodus mit Livekursen: 'workspace create sandbox --capital 10000 --mode paper'.",
+      "befehle": [
+        {
+          "was": "Kurs abfragen (oeffentlich, ohne Schluessel)",
+          "cmd": [
+            "target\\release\\kraken.exe",
+            "ticker",
+            "BTCUSD",
+            "-o",
+            "json"
+          ],
+          "hinweis": "braucht kein Konto"
+        },
+        {
+          "was": "Papierkonto anlegen (Livekurse, kein Geld)",
+          "cmd": [
+            "target\\release\\kraken.exe",
+            "workspace",
+            "create",
+            "sandbox",
+            "--capital",
+            "10000",
+            "--mode",
+            "paper",
+            "-o",
+            "json"
+          ],
+          "hinweis": "danach 'paper buy BTCUSD 0.01'"
+        }
+      ]
+    },
+    {
+      "ordner": "Kronos",
+      "art": "python",
+      "notiz": "Kerzen-Foundation-Modell (MIT) - sagt die naechsten Kerzen voraus; gemessen 22.09.2026: schlaegt die Nullinie NICHT",
+      "anleitung": "Kronos sagt Kerzen voraus (Predictor aus model/, Gewichte von HuggingFace). Gemessen am 22.09.2026 auf BTC 1h, Horizont 24 h, 100 nicht ueberlappende Fenster, Kronos-small: Richtung 47/100, Fehler 2,059 % gegen Nullinie 0,875 % - als Handelssignal wertlos. Die Messung steht im Wiki (Werkzeuge/Kronos.md). FALLE: requirements.txt pinnt pandas 2.2.2; damit reisst pd.date_range den Prozess ab (Segmentation Fault) - erst 'pip install -U pandas numpy'.",
+      "befehle": [
+        {
+          "was": "Beispiele des Repos zeigen",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-c",
+            "import pathlib;print(chr(10).join(str(p) for p in sorted(pathlib.Path('examples').glob('*.py'))))"
+          ],
+          "hinweis": "Vorlagen fuer eigene Vorhersagen"
+        }
+      ]
+    },
+    {
+      "ordner": "laya",
+      "art": "python",
+      "notiz": "Sprachmodell fuer typisierte Fragen (Zustand + Frage -> Antwort mit Wahrscheinlichkeit); gemessen 22.09.2026: zero-shot unbrauchbar fuer feine Urteile",
+      "anleitung": "laya ist KEIN Generator: es bekommt einen Zustand und typisierte Fragen (choice/score/noul) und gibt in EINEM Vorwaertsdurchlauf Antworten mit Wahrscheinlichkeit zurueck. Gemessen: Laden 60 s einmalig, danach 57 ms je Frage auf der CPU. WARNUNG: die noul-Felder lagen daneben (Kuendigungsdrohung -> churn_risk 0,00) - nur als Basis zum Nachtrainieren brauchbar. HF_HOME=O:\\Modelle mitgeben, sonst wird das Modell neu geladen. Die Sonde (Agenten/Hermes/cache/laya_probe.py) ist ein Wegwerfskript im Hermes-Cache und wird dort nach 24 h Ruhe geloescht - fuer dauerhafte Nutzung ein eigenes Skript ins Repo legen.",
+      "befehle": []
     },
     {
       "ordner": "moon-dev-ai-agents",
@@ -121,7 +277,28 @@
         ".venv\\Scripts\\pythonw.exe",
         "moongui.py"
       ],
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "anleitung": "47 Agenten unter src/agents, dazu die GUI (Start) mit Boersen- und Orderflaeche. Die Agenten laufen als eigene Prozesse im venv dieses Repos; LLM-Teile brauchen Schluessel aus der .env (nie committen). Der Haus-Dauerlauf startet zwei davon (new_or_top, kraken_agent) - einzeln starten ist zum Ausprobieren da.",
+      "befehle": [
+        {
+          "was": "Agenten auflisten",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-c",
+            "import pathlib;print(chr(10).join(p.stem for p in sorted(pathlib.Path('src/agents').glob('*.py'))))"
+          ],
+          "hinweis": "Dateiname = Agentenname, startbar ueber diese Datei"
+        },
+        {
+          "was": "GUI oeffnen (Startbefehl)",
+          "cmd": [
+            ".venv\\Scripts\\pythonw.exe",
+            "moongui.py"
+          ],
+          "start": true,
+          "hinweis": "Ordner, Boersen, Orderflaeche"
+        }
+      ]
     },
     {
       "ordner": "Moon-Dev-Code",
@@ -160,7 +337,28 @@
         "-c",
         "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.provider_menu(), indent=2))"
       ],
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "anleitung": "Agentisches Video- und Bildsystem. Videos rendert Remotion (node/npx/ffmpeg muessen im PATH liegen); Bilder laufen LOKAL auf der RTX 3060 Ti (sd-turbo im HF-Cache, 4 Schritte, ~29 s je Bild, keine Kosten). Cloud-Bilddienste sind alle tot (OpenAI kein Guthaben, Google 429, OpenRouter Monatslimit) - deshalb steht der lokale Weg im Vordergrund.",
+      "befehle": [
+        {
+          "was": "Demo-Videos rendern (3 MP4)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "render_demo.py"
+          ],
+          "hinweis": "braucht node/npx/ffmpeg"
+        },
+        {
+          "was": "Werkzeugregister zeigen (Startbefehl)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-c",
+            "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.provider_menu(), indent=2))"
+          ],
+          "start": true,
+          "hinweis": "sein eigener Statusbefehl"
+        }
+      ]
     },
     {
       "ordner": "OpenTerminal",
@@ -178,6 +376,12 @@
         "--help"
       ],
       "pfad_pflicht": "target\\release\\projectatlas.exe"
+    },
+    {
+      "ordner": "robinhood-fomo-kronos-arena",
+      "art": "doku",
+      "notiz": "LEERER RAHMEN: fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile, verlangt Schluessel, die es nicht gibt",
+      "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird."
     },
     {
       "ordner": "santiment",
@@ -217,13 +421,6 @@
       "art": "doku",
       "bot": "winget-cli",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
-    },
-    {
-      "ordner": "agent-trade-kit",
-      "art": "doku",
-      "bot": "agent-trade-kit",
-      "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)",
       "gruppe": "doku"
     }
   ]
