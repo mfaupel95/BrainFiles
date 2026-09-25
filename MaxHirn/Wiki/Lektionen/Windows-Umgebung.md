@@ -140,3 +140,25 @@ Commit `db2293f`).
 **Regel.** Ein Datum fuer eine Notiz, ein Wiki-Kapitel oder einen Commit-Text NIE aus `date`
 im Terminal nehmen. Zeugen sind der Host (`Get-Date` ueber windows-mcp-PowerShell) und
 `git log -1 --format=%ci`.
+
+## 9. `$home` ist in PowerShell schreibgeschuetzt (25.09.2026)
+
+Ein Skript, das `$home = 'C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes'` setzt,
+bricht mit
+
+    Die Variable "HOME" kann nicht ueberschrieben werden, da sie konstant oder schreibgeschuetzt ist.
+
+ab - `$HOME` ist eine **automatische Variable** von PowerShell. Die Zuweisung scheitert, `$home`
+bleibt `C:\Users\faupe`, und jeder daraus gebaute Pfad zeigt woanders hin: das Log landete unter
+`C:\Users\faupe\logs\...`, `New-Item` legte nichts an, `Move-Item` verschob nichts.
+
+**Tueckisch daran:** mit `-ErrorActionPreference 'Continue'` laeuft das Skript bis zum Ende durch
+und endet mit **Exitcode 0**, obwohl es nichts getan hat; ein erhoeht gestarteter Lauf
+(`Start-Process -Verb RunAs`) meldet dann "gestartet und beendet, ExitCode: 0". Der Beleg fehlte
+nur, weil danach niemand die Zieldatei angesehen hat.
+
+Merksatz: eigene Pfadvariablen nicht `$home`, `$pid`, `$host`, `$error`, `$profile` nennen -
+nehmen `$hermesHome`, `$basis`, `$wurzel`. Und nach jedem Skriptlauf pruefen, dass die Zieldatei
+wirklich existiert (`Test-Path`) und einen Zeitstempel von jetzt traegt, statt dem Exitcode zu
+glauben.
+

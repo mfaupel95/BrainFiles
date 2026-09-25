@@ -68,25 +68,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `Agenten/Hermes/auth.json`, der Photon-Eintrag im Pool ist also physisch EINE Kennung,
       die der Doctor je Profil neu zaehlt. Die Bots fahren ohnehin als Einzelauftraege
       (`hermes -p <name> chat -q`), nicht als Multiplex-Adapter.
-      Naechster Schritt: pruefen, ob die Profile in ihrer eigenen `config.yaml` Photon
-      ueberhaupt aktivieren (dann ist es ein Fehlalarm und der Doctor-Ratgeber "Kennung
-      entfernen" waere falsch) - und entweder den Befund im Wiki festhalten oder jedem Bot
-      eine eigene Kennung geben.
+      Messergebnis 25.09.2026: PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET, PHOTON_ALLOWED_USERS
+      und PHOTON_HOME_CHANNEL stehen AUSSCHLIESSLICH in der Haupt-`.env` (`Agenten/Hermes/.env`);
+      KEIN Bot-Profil hat eigene Photon-Werte. Die Meldung entsteht also allein aus dem
+      geteilten Credential-Store (auth.json-Symlink) - fuer die 25 Bot-Profile ein FEHLALARM,
+      weil sie als Einzelauftraege fahren und kein Plattform-Token beanspruchen.
+      Ein echter Fall bleibt: `profiles/awesome-systematic-trading/config.yaml` traegt einen
+      eigenen `photon:`-Block (dieses Profil hat auch eine eigene auth.json statt des Symlinks).
+      Naechster Schritt: pruefen, ob dieser Block dieselbe Kennung wie die Haupt-.env benutzt -
+      dann entfernen oder dem Profil ein eigenes Token geben. Den Fehlalarm fuer die uebrigen
+      Profile im Wiki unter Betrieb/Hermes.md festhalten und T-107 schliessen.
       Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/auth.json
-- [ ] **T-108 — Legacy-Gateway-Task `Hermes_Gateway` und seine Skripte liegen noch auf der Platte**
-      Kontext: `hermes gateway status` warnt nach jedem Update: "legacy pre-suffix task launcher
-      still installed: gateway-service/Hermes_Gateway.vbs", ".../Hermes_Gateway.cmd" und
-      "legacy pre-suffix Scheduled Task still installed: Hermes_Gateway - these predate
-      per-profile launcher names and also start the gateway at logon". Der Task ist seit dem
-      16.09.2026 deaktiviert, das VBS entschaerft; die Dateien selbst sind die Doppelstart-Quelle,
-      die der Skill als Ausfallursache beschreibt.
-      Naechster Schritt: `hermes gateway uninstall` + `hermes gateway install` in einer erhoehten
-      Sitzung (Max bestaetigt den UAC-Prompt), danach `Get-ScheduledTask Hermes_Gateway*` und
-      `gateway-state.json` als Beleg - NICHT vorher, weil der laufende Launcher `Hermes_Gateway_2ef9d0b7`
-      dabei ersetzt wird.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/gateway-service/, geplante Aufgaben `Hermes_Gateway`, `Hermes_Gateway_2ef9d0b7`
+      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/.env, Agenten/Hermes/auth.json
 - [ ] **T-109 — Die Update-Warteprobe `tmp/venv_halter.py` bricht beim Import ab**
       Kontext: Die Aufgabe `Hermes-Update-20260921` (Einmal-Trigger, PRUEFEN alle 20 s, faehrt
       `hermes update --yes --keep-stash` bei 0 Haltern) ruft `tmp/venv_halter.py` mit dem
@@ -1441,6 +1434,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-108 — Legacy-Gateway-Starter entfernt (die Aufgabe war schon weg)**
+      Kontext: Auftrag Max 25.09.2026 ("t-108"). Gemessen nach dem Update: die Aufgabe
+      `Hermes_Gateway` EXISTIERT NICHT mehr - `Get-ScheduledTask` findet nur
+      `Hermes-Update-20260921`, `Hermes_Dashboard` und `Hermes_Gateway_2ef9d0b7`, und
+      `Unregister-ScheduledTask -TaskName Hermes_Gateway` meldet "keine MSFT_ScheduledTask-
+      Objekte mit TaskName Hermes_Gateway". Geblieben waren nur die Dateien:
+      `Hermes_Gateway.cmd` zeigte noch auf das stillgelegte `C:\Hermes\venv`,
+      `Hermes_Gateway.vbs` war schon entschaerft (WScript.Quit 0).
+      Erledigt: alle drei Legacy-Dateien liegen in
+      `.sicherung\gateway-service-legacy-20260925\` (nichts geloescht); `gateway-service/`
+      enthaelt nur noch die gueltigen Starter (Gateway + Dashboard).
+      Beleg: `logs/gateway-legacy-entfernen-20260925.log`; Gateway danach unveraendert
+      (pid 64192, Port 9900 offen, laeuft aus `tools\python-3.14.7`).
+      Angelegt: 2026-09-25 (erledigt am 25.09.2026)
+      Betrifft: Agenten/Hermes/gateway-service/, Agenten/Hermes/.sicherung/
 - [x] **T-088 — OKX-Contract-DCA laesst sich nicht mit einem Stop versehen - nur der Bot selbst**
       Kontext: Auftrag Max 25.09.2026 ("Okx-bot-wache stop setzen"). Zwei Wege geprueft,
       beide zu: (a) `POST /api/v5/tradingBot/dca/amend-order-algo` heisst in der OKX-Doku

@@ -126,3 +126,41 @@ Hauptmodell traegt 786k. Mit einem groesseren Kompressionsmodell darf die Schwel
   Advisories (nur zur Kenntnis). Die 18 Restmeldungen sind die Photon-Doppelkennungen aus dem
   gemeinsamen Credential-Store (`profiles/<bot>/auth.json` ist ein Symlink auf
   `Agenten/Hermes/auth.json`) - siehe T-107, T-108, T-109 in `Archiv/TASKS.md`.
+
+### Legacy-Gateway-Starter (T-108, erledigt 25.09.2026)
+
+`hermes gateway status` warnt nach einem Update, wenn noch Starter aus der Zeit VOR den
+Pro-Profil-Namen liegen: `gateway-service/Hermes_Gateway.vbs`, `Hermes_Gateway.cmd` und die
+gleichnamige geplante Aufgabe. Am 25.09.2026 gemessen:
+
+- Die **Aufgabe `Hermes_Gateway` existierte nicht mehr** - `Get-ScheduledTask` kennt nur
+  `Hermes-Update-20260921`, `Hermes_Dashboard` und `Hermes_Gateway_2ef9d0b7`; ein
+  `Unregister-ScheduledTask -TaskName Hermes_Gateway` meldet woertlich "keine
+  MSFT_ScheduledTask-Objekte mit TaskName Hermes_Gateway". Wer die Warnung liest, also erst
+  messen, dann handeln.
+- Geblieben waren nur die **Dateien**: `Hermes_Gateway.cmd` zeigte noch auf das stillgelegte
+  `C:\Hermes\venv` (Doppelstart-Quelle, falls sie je ausgefuehrt wird), das VBS war schon
+  entschaerft. Beide plus die `.alt-20260916`-Kopie liegen jetzt in
+  `.sicherung\gateway-service-legacy-20260925\` - nichts geloescht.
+- Werkzeug: `Agenten/Hermes/cache/scratch/t108_legacy_gateway.ps1` (verschiebt, meldet ab,
+  schreibt jeden Schritt nach `logs/gateway-legacy-entfernen-20260925.log`).
+- **Nicht** noetig war der vom Doctor vorgeschlagene Weg `hermes gateway uninstall` +
+  `install`: der haette den LAUFENDEN Launcher `Hermes_Gateway_2ef9d0b7` mit ersetzt. Das
+  Hausmittel "Datei verschieben, Aufgabe pruefen, laufenden Starter in Ruhe lassen" ist
+  kleiner und nachweisbar.
+- Danach: Gateway unveraendert (pid 64192, Port 9900, aus `tools\python-3.14.7`),
+  `hermes doctor` meldet keine Legacy-Sachen mehr.
+
+### Photon-Doppelkennungen im Doctor sind (fuer die Bots) ein Fehlalarm (25.09.2026)
+
+`hermes doctor` meldet je Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon
+credential ... gateway is STANDALONE: profiles NOT served". Gemessen: `PHOTON_PROJECT_ID`,
+`PHOTON_PROJECT_SECRET`, `PHOTON_ALLOWED_USERS` und `PHOTON_HOME_CHANNEL` stehen **nur** in der
+Haupt-`.env`; kein Bot-Profil hat eigene Photon-Werte. Die Meldung entsteht allein daraus, dass
+die `profiles/<bot>/auth.json` **Symlinks** auf `Agenten/Hermes/auth.json` sind - dieselbe
+Kennung, je Profil gezaehlt. Die Bots fahren als Einzelauftraege (`hermes -p <name> chat -q`),
+nicht als Multiplex-Adapter; es geht dabei nichts verloren. **Nicht** in Versuchung geraten, die
+Kennung aus den Profilen zu loeschen - dort steht sie nicht.
+Ein echter Fall bleibt zu pruefen: `profiles/awesome-systematic-trading/config.yaml` traegt
+einen eigenen `photon:`-Block (dieses Profil hat auch eine eigene `auth.json`) - siehe T-107.
+
