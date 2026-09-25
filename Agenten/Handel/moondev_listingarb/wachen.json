@@ -9,7 +9,8 @@
     "erfuellt": true,
     "_erfuellt_vermerk": "true auf Auftrag Max 21.09.2026 ('moondev_listingarb scharf'). Zahlenlage: 1 geschlossene Runde im Buch (Kursgrenze: mindestens 1 Mrd Marktkapitalisierung und 30 Mio Volumen) - wenig Daten, bewusst entschieden. Live-Grenzen bewusst klein (20 USD je Trade, 100 USD gesamt), Boerse okx/Spot gegen USDC, Tor 30 USDC frei. Der Erlags-Haken ist die von Hand gesetzte Endabnahme - hier datiert.",
     "_papierlauf_min_wochen_entfaellt": "21.09.2026 Max: die Wartezeit ist mit dem Auftrag abgenommen, nicht berechnet.",
-    "netto_positiv_nach_gebuehren_und_funding": false
+    "netto_positiv_nach_gebuehren_und_funding": false,
+    "_boerse_vermerk": "Boerse am 25.09.2026 von kraken/EUR auf OKX/USDC umgestellt (Auftrag Max: \"handel erlaubt auf okx\"): OKX hat 227,39 USDC frei, Kraken nur 0,71 EUR (dort war die Sperre 'nur 0,71 EUR frei, noetig 50'). Die Spur prueft jetzt vor dem Einstieg, ob es das Paar <SYM>-USDC auf OKX wirklich gibt - von den drei Signalen des Tages hatte nur VVV ein OKX-Paar (und das nur -USDT). Schalter unveraendert: handel_erlaubt true, freigabe.erfuellt true."
   },
   "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "herzschlag_max_minuten": 180,
@@ -43,8 +44,8 @@
   "drawdown_halbierung_usd": 15.0,
   "_grund": "Der Grund, der im Journal steht.",
   "grund": "moondev_listingarb",
-  "boerse": "kraken",
-  "guthaben_waehrung": "EUR",
+  "boerse": "okx",
+  "guthaben_waehrung": "USDC",
   "mindest_guthaben": 50.0,
   "live_max_pro_trade_usd": 50.0,
   "_live_grenzen_vermerk": "50 USD je Trade auf Auftrag Max 21.09.2026 (vorher 20). Mit 3 Plaetzen sind das hoechstens 150; der Gesamtdeckel steht deshalb auf 150, damit nicht der Deckel bindet, sondern die Plaetze. Papierwerte unveraendert (100/300). Gedeckt: OKX USDC frei 610.74.",

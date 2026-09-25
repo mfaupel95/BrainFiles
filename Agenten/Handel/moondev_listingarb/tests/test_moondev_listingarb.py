@@ -31,6 +31,10 @@ WACHEN = {
     "kill_switch_gesamt_usd": 45.0, "stop_prozent": 7.0,
     "pflicht_stop_prozent_min": 5.0, "pflicht_stop_prozent_max": 12.0,
     "ziel_r_vielfaches": 2.0, "drawdown_halbierung_usd": 15.0,
+    # Fuer die REGEL-Tests ausdruecklich Kraken (EUR): auf OKX (USDC) prueft
+    # signal() zusaetzlich, ob das Paar <SYM>-USDC existiert - das ist ein
+    # eigener Fall und steht in OkxPaarTest.
+    "boerse": "kraken",
 }
 
 
@@ -116,6 +120,53 @@ class BuchTest(unittest.TestCase):
         buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "papier", "test")
         self.assertFalse(os.path.exists(os.path.join(self.tmp.name,
                                                     "handelsjournal.csv")))
+
+
+class OkxPaarTest(unittest.TestCase):
+    """Auf OKX wird nur gehandelt, was dort als <SYM>-USDC existiert.
+
+    Gemessen 25.09.2026: von den drei Signalen des Tages (VVV, WBT, XMR) hatte
+    nur VVV ueberhaupt ein OKX-Paar - und das nur als -USDT. Ohne diese Pruefung
+    schickte der Orderweg ein Paar, das die Boerse nicht kennt.
+    """
+
+    def setUp(self):
+        self.alt = h.instrumente_override
+        h.instrumente_override = lambda: {"HYPE-USDC", "JUP-USDC"}
+
+    def tearDown(self):
+        h.instrumente_override = self.alt
+
+    @staticmethod
+    def _coin(**abweichend):
+        d = {"marktkap": 2e9, "volumen_24h": 5e7, "auf_binance": False}
+        d.update(abweichend)
+        return d
+
+    def test_ohne_okx_paar_kein_einstieg(self):
+        w = dict(WACHEN, boerse="okx")
+        self.assertIsNone(h.signal(self._coin(okx_usdc=False), w))
+
+    def test_mit_okx_paar_einstieg(self):
+        w = dict(WACHEN, boerse="okx")
+        self.assertEqual(h.signal(self._coin(okx_usdc=True), w), "long")
+
+    def test_kraken_boerse_ignoriert_das_okx_paar(self):
+        self.assertEqual(h.signal(self._coin(okx_usdc=False), dict(WACHEN)), "long")
+
+    def test_quelle_markiert_das_paar(self):
+        maerkte = [{"symbol": "hype", "name": "Hyperliquid", "market_cap": 2e9,
+                    "total_volume": 1e8, "market_cap_rank": 10, "current_price": 5.0},
+                   {"symbol": "wbt", "name": "WhiteBIT", "market_cap": 3e9,
+                    "total_volume": 2e8, "market_cap_rank": 11, "current_price": 1.0}]
+        from unittest.mock import patch
+        with patch.object(h.daten, "maerkte", lambda anzahl=100: maerkte), \
+                patch.object(h.daten, "binance_paare", lambda: set()):
+            aus, kurse, fehler = h.quelle(dict(WACHEN, boerse="okx"))
+        self.assertEqual(fehler, [])
+        self.assertTrue(aus["HYPE"]["okx_usdc"])
+        self.assertFalse(aus["WBT"]["okx_usdc"])
+        self.assertEqual(kurse["HYPE"], 5.0)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,26 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-087 — moondev_listingarb auf OKX: das Spot-Guthaben ist durch die Scanner-Stops gesperrt**
+      Kontext: Auf Auftrag Max 25.09.2026 auf OKX/USDC umgestellt (vorher kraken/EUR,
+      dort nur 0,71 EUR frei). Der Orderweg bindet jetzt `mosaic/okx_spot`
+      (Gegenprobe: `venue_inst('LINK')` = `LINK-USDC`), und die Spur prueft vor dem
+      Einstieg, ob es `<SYM>-USDC` auf OKX ueberhaupt gibt - von den drei Signalen
+      des Tages (VVV, WBT, XMR) hatte nur VVV ein OKX-Paar, und das nur als -USDT.
+      OFFEN ist Geld: gemessen 25.09. 08:1x ist das USDC des OKX-Kontos
+      `eq 730,42` / `frozenBal 730,42` / `availEq = availBal = cashBal 0,0021` -
+      die 730 USDC sind vollstaendig durch die Stop-Orders der fuenf offenen
+      scanner-Positionen reserviert. Das Guthaben-Tor der Spur (mindest_guthaben 50)
+      haelt sie deshalb zu, und weil der Grund nicht ALLEIN das Freigabefenster ist,
+      oeffnet der Dauerlauf auch kein Fenster von selbst (gewollt).
+      Frueher am Morgen standen dort noch 227,39 verfuegbar - die Sperre schwankt
+      mit den Scanner-Positionen.
+      Naechster Schritt: entscheiden - (a) auf einen Scanner-Ausstieg warten (dann
+      wird USDC frei und die Spur handelt von allein), (b) USDC im OKX-Portal in die
+      Spot-Brieftasche legen, oder (c) `mindest_guthaben` senken (dann handelt sie
+      mit Kleinstbetraegen). Nicht getan: nichts davon ohne Entscheidung.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/moondev_listingarb/wachen.json, OKX-Konto, scanner/
 - [ ] **T-100 — Ungeklaerte Loeschung: test_breite_wache.py verschwand zweimal aus dem Arbeitsbaum**
       Kontext: Am 25.09.2026 war die Datei committet (`ad081ef`) und lag zweimal
       nicht mehr auf der Platte; beim zweiten Mal nahm mein eigener Commit das
@@ -172,6 +192,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: in etwa zwei Wochen `python Agenten/Werkzeuge/breite.py
       --reihe` ansehen und entscheiden (a) Reihe behalten oder verwerfen,
       (b) ob eine Spur ein Breiten-Tor bekommt.
+      NACHTRAG 25.09.2026: Die Reihe fuehrte zuerst eine Zeile je MESSUNG - sechs
+      Laeufe am ersten Tag ergaben sechs Zeilen fuer DENSELBEN Kerzentag, also
+      genau den einen Messpunkt, den sie aufloesen soll. Jetzt ersetzt eine
+      Messung derselben Kerze ihre Zeile (Tageskerze wechselt 16:00 UTC), und
+      `--reihe` rechnet den Verlauf in Punkten je Tag. Fuer die Auswertung
+      zaehlen daher KERZENTAGE, nicht Zeilen; der erste echte zweite Punkt kommt
+      aus dem Cron am 26.09.2026 um 19:00.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py,
       Agenten/Handel/moondev_marktlage
@@ -254,11 +281,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Kraken-Konto (Spot), Agenten/Handel/mosaic
 - [ ] **T-087 — swap handelt jetzt den XPERP-Kontrakt; der Geld-Blocker bleibt**
       Kontext: Der Fehler `OKX 50124` (25.09.2026, jede Runde) kam vom falschen
-      Markt-Namensraum: swap handelte `XAU-USDT-SWAP` (instType=SWAP), handelbar
-      ist auf diesem Konto nur der XPERP-Zwilling (`XAU-USD_UM_XPERP-310502`,
-      instType=FUTURES, belegt mit 93 gefuellten Kontrakten am 24.09.).
-      Behoben: `kandidaten.handels_kontrakte()` bildet je Basiswert auf den
-      Zwilling ab, `handeln.anlauf()` handelt ihn, und die Sperrliste nennt die
+      NACHGETRAGEN (25.09.2026, gleiche Spur): Der Umbau wirkte nur auf den
+      ERSTEN Lauf. `handeln.rangliste()` lagerte die Kennzahlen ohne den
+      Zwilling zwischen - jeder Zyklus innerhalb der zwei Stunden Gueltigkeit
+      fiel in `anlauf()` auf den gewoehnlichen Perpetual zurueck. Belegt: die
+      gespeicherte Rangliste (05:37 UTC, nach dem Umbau) hatte kein
+      Zuletzt: 2026-09-25
+      XPERP-Kontrakts. Behoben: die Zeile traegt `handels_instId`/
+      `handels_instr`, ein Stand aus altem Schema wird verworfen statt bis zum
+      Ablauf zu gelten, ohne Zwilling entsteht kein Vorschlag mehr, und
+      `anlauf()` loest nie auf den Reihennamen auf (frische Zwillingstabelle
+      als Rueckfall). Vorschau nennt jetzt je Kandidat den gehandelten
+      Kontrakt; 57 Tests gruen (11 neue, Gegenprobe ohne Fix: 9 rot).
+      OFFEN: swap kann weiterhin NICHT live handeln - es fehlt die freie
+      Margin, gemessen 0.00 USDC frei (siehe T-089). Und die Papierposition im
+      Buch traegt noch die alte Kennung `XAU-USDT-SWAP`.
+      Naechster Schritt: bei freier Margin zuerst `handeln.py --vorschau`
+      lesen - dort muss je Kandidat der XPERP-Zwilling stehen.
       freie Margin (`nur 0.15 USDC frei, noetig 50.00`), damit AUTO_FREIGABE
       kein Fenster fuer einen Lauf oeffnet, der nicht handeln kann.
       OFFEN: swap kann damit weiterhin NICHT live handeln - es fehlt die freie

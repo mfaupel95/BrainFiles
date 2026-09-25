@@ -13,8 +13,9 @@ hier nicht sauber nachbilden, deshalb:
   * **Buch** ein Haus-Buch (`Handel/spur_buch.py`): Zustand, Journal, Kopie
     nach `Q:\\Handel_Journal\\moondev_listingarb` (Bedingung 4), Ratsche, Stop/Ziel.
 
-Kein Live-Zweig: die Fremd-Agenten handeln mit echten Schluesseln, diese Spur
-bucht Papier. Ein `--live` verweigert.
+LIVE: `--live` laeuft seit dem 21.09.2026 ueber den GEMEINSAMEN Orderweg in
+`spur_buch` (Boerse und Grenzen aus der `wachen.json`, hier OKX-Spot gegen USDC).
+Jede Sperre, die noch steht, laesst den Zyklus Papier handeln und nennt den Grund.
 
 Aufruf:
   python handeln.py --vorschau | --papier | --wachen
@@ -35,6 +36,25 @@ import moondev_daten as daten  # noqa: E402
 
 # Test-Seam: None -> echter Abruf. Tests setzen ein Lambda.
 quelle_override = None
+# Test-Seam fuer die handelbaren OKX-Paare (siehe okx_instrumente()).
+instrumente_override = None
+
+
+def okx_instrumente():
+    """Die handelbaren OKX-Spot-Paare - oeffentlich, ohne Schluessel.
+
+    WARUM DAS HIER STEHT (25.09.2026): diese Spur handelte auf KRAKEN (EUR).
+    Auf OKX (USDC) heisst das Paar `<SYM>-USDC`, und NICHT jede grosse Muenze
+    gibt es dort: von den drei Signalen des Tages (VVV, WBT, XMR) hatte nur VVV
+    ueberhaupt ein OKX-Paar, und das nur als -USDT. Ohne diese Pruefung schickte
+    der Orderweg ein Paar, das die Boerse nicht kennt.
+    """
+    if instrumente_override:
+        return instrumente_override()
+    import okx                                       # liegt in scanner/ am Pfad
+    liste = okx._roh("/api/v5/public/instruments?instType=SPOT",
+                     signiert=False) or []
+    return {i.get("instId") for i in liste if i.get("instId")}
 
 
 def signal(d, w):
@@ -49,6 +69,10 @@ def signal(d, w):
     if (d.get("marktkap") or 0) < w.get("mindest_marktkap_usd", 1e9):
         return None
     if (d.get("volumen_24h") or 0) < w.get("mindest_volumen_usd", 3e7):
+        return None
+    if str(w.get("boerse") or "okx").strip().lower() == "okx" and not d.get("okx_usdc"):
+        # Das OKX-Paar fehlt (oder der Abruf der Paarliste ging schief): kein
+        # Handel. Der Orderweg wuerde sonst ein Paar schicken, das es nicht gibt.
         return None
     return "long"
 
@@ -78,6 +102,14 @@ def quelle(w):
             "kurs": daten.zahl(m.get("current_price")),
             "auf_binance": symbol in paare,
         }
+    if str(w.get("boerse") or "okx").strip().lower() == "okx":
+        try:
+            paare = okx_instrumente()
+        except Exception as e:                                 # noqa: BLE001
+            fehler.append("OKX-Instrumente: %s" % str(e)[:120])
+            paare = set()
+        for symbol, eintrag in aus.items():
+            eintrag["okx_usdc"] = ("%s-USDC" % symbol) in paare
     kurse = {s: v["kurs"] for s, v in aus.items() if v["kurs"]}
     return aus, kurse, fehler
 
