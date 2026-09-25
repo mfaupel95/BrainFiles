@@ -27,6 +27,7 @@ import datetime as dt
 import importlib.util
 import json
 import os
+import sys
 
 import historie
 
@@ -162,6 +163,20 @@ def _takt(w):
                  vorgabe="1H")
 
 
+def fenster_vorgabe(w):
+    """Kerzen je Schritt, wenn keine Zahl angegeben wurde.
+
+    Die Vorgabe MUSS die eigene Anforderung der Spur respektieren: ein Fenster
+    unter `mindest_kerzen` laesst die Spur nie ein Signal bilden und der Lauf
+    meldet "0 Runden" - das sieht wie ein Messergebnis aus, ist aber ein
+    abgeschnittenes Fenster. Genau so gemessen am 2026-09-25: macd_mtf braucht
+    fuer seinen 16er-Rahmen ~560 Basiskerzen, mit Fenster 400 kam kein einziger
+    Handel zustande.
+    """
+    anzahl = int(_feld(w, "kerzen_anzahl", "anzahl_kerzen", vorgabe=400))
+    return max(anzahl, int(w.get("mindest_kerzen", 300)) + 40)
+
+
 def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None):
     """{inst: [kerzen]} aus der eigenen Historie, aufsteigend.
 
@@ -221,6 +236,8 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     if not kerzen:
         raise RuntimeError("keine Historie fuer %s - erst "
                            "'python historie.py --auffuellen'" % spur)
+    if fenster is None:
+        fenster = fenster_vorgabe(w)
 
     runden, offen, gesammelt = [], {}, []
     # Die Spur schreibt ihre Journalzeilen selbst (kauf/verkauf mit stop und
@@ -343,6 +360,118 @@ def gebuehr_fuer(spur, w=None):
     return BOERSENSAETZE[satz]
 
 
+def historische_quelle(modul, spur, zugriff):
+    """Eine `quelle(w)`-Funktion, die aus der Historie speist statt zu laden.
+
+    `zugriff` traegt den Stand des Walks: {"bis_ms", "fenster"}.
+
+    Die Funktion wird bei JEDEM Schritt gerufen und schneidet die Kerzen auf den
+    aktuellen Stand - die Spur sieht also nie die Zukunft, genau wie im Betrieb.
+
+    Spuren mit reicheren Daten (Funding, Top-Mover, Volumen) brauchen je eigene
+    Felder. Wer hier ein falsches Dict liefert, laesst die Spur STILL ohne
+    Signal laufen und erzeugt ein Ergebnis, das wie ein Messwert aussieht -
+    deshalb steht in NICHT_NACHRECHENBAR, was sich nicht bauen laesst, und
+    `lauf_b` verweigert diese Spuren, statt zu raten.
+    """
+    def quelle(w):
+        daten, kurse, fehler = {}, {}, []
+        for inst in _instrumente(w):
+            reihen = [r for r in historie.lade(inst, _takt(w))
+                      if r[0] <= zugriff["bis_ms"]]
+            if zugriff.get("fenster"):
+                reihen = reihen[-int(zugriff["fenster"]):]
+            if not reihen:
+                fehler.append("%s: keine Historie" % inst)
+                continue
+            daten[inst] = {"kerzen": reihen, "bar": _takt(w)}
+            kurse[inst] = float(reihen[-1][4])
+        return daten, kurse, fehler
+
+    return quelle
+
+
+def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
+           still=True):
+    """Familie B ueber die Historie: ein `spur_buch.zyklus` je Kerze.
+
+    Drei Dinge werden waehrend des Laufs stillgelegt, jedes aus einem konkreten
+    Grund:
+
+      * `ereignis.lauf` - jeder Zyklus oeffnet eine Bus-Meldung. Ueber 50.000
+        Schritte waere das eine Flut im Bus-Journal und Telegram-Nachrichten aus
+        einem Backtest.
+      * `spur_buch.spiegeln` - Bedingung 4 spiegelt nach Q:. Der Backtest hat
+        dort nichts zu suchen (die Wachen-Kopie zeigt ohnehin nach innen).
+      * die Risikostufe - ein Backtest laeuft immer auf der Basis
+        (`risikostufe.datei()` wuerde sonst `.mittel`-Dateien anlegen).
+
+    `fenster` ist die Zahl der Kerzen, die die Spur je Schritt sieht (siehe
+    `lauf_a`); im Betrieb fordert sie eine feste Anzahl an, nie die ganze
+    Geschichte.
+    """
+    import contextlib
+    import io
+
+    # REIHENFOLGE IST PFLICHT: `spur_buch` legt beim Import den Bus-Ordner
+    # (Agenten/Bus) in sys.path - dort liegt `ereignis.py`. Ein `import ereignis`
+    # davor faellt mit ModuleNotFoundError um, obwohl das Modul existiert.
+    import spur_buch
+    import ereignis
+
+    if spur in NICHT_NACHRECHENBAR:
+        raise RuntimeError("%s ist nicht nachrechenbar: %s"
+                           % (spur, NICHT_NACHRECHENBAR[spur]))
+
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf)
+    with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
+        w = json.load(f)
+    takt = _takt(w)
+    alle = {i: historie.lade(i, takt) for i in _instrumente(w)
+            if historie.lade(i, takt)}
+    if not alle:
+        raise RuntimeError("keine Historie fuer %s - erst "
+                           "'python historie.py --auffuellen'" % spur)
+    if bis_ms:
+        alle = {i: [r for r in k if r[0] <= bis_ms] for i, k in alle.items()}
+    if max_kerzen:
+        alle = {i: k[-int(max_kerzen):] for i, k in alle.items()}
+
+    alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
+    alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
+    alt_risiko = os.environ.pop("HANDEL_RISIKO", None)
+    zugriff = {"bis_ms": 0, "fenster": fenster}
+    quelle = historische_quelle(modul, spur, zugriff)
+    puffer = io.StringIO()
+    laenge = min(len(k) for k in alle.values())
+    try:
+        spur_buch.SCHREIBEN = True      # ins BACKTEST-Journal, nicht ins echte
+        spur_buch.spiegeln = lambda *a, **k: None
+        ereignis.lauf = _kein_bus
+        with contextlib.redirect_stdout(puffer if still else sys.stdout):
+            for i in range(int(w.get("mindest_kerzen", 300)), laenge):
+                ts = max(k[i][0] for k in alle.values())
+                zugriff["bis_ms"] = ts
+                spur_buch.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
+                    _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+                spur_buch.zyklus(ordner, quelle, modul.signal, "papier",
+                                 "handel/" + spur)
+    finally:
+        spur_buch.SCHREIBEN, spur_buch.zeit_quelle = alt_schreiben, alt_zeit
+        spur_buch.spiegeln, ereignis.lauf = alt_spiegeln, alt_lauf
+        if alt_risiko is not None:
+            os.environ["HANDEL_RISIKO"] = alt_risiko
+    journal = os.path.join(ordner, "handelsjournal.csv")
+    return kennzahlen(journal), len(puffer.getvalue().splitlines())
+
+
+def _kein_bus(*a, **k):
+    """Ersatz fuer `ereignis.lauf` im Backtest: tut nichts, meldet nichts."""
+    import contextlib as _c
+    return _c.nullcontext()
+
+
 def kennzahlen(journal_pfad):
     """Kennzahlen aus dem Backtest-Journal - EINE Rechnung fuer beide Welten.
 
@@ -410,7 +539,7 @@ def main():
     fenster = None if a.ganz else a.fenster
     if fenster is None and not a.ganz:
         w = dict(spur_modul(a.spur).lade_wachen())
-        fenster = int(_feld(w, "kerzen_anzahl", "anzahl_kerzen", vorgabe=400))
+        fenster = fenster_vorgabe(w)
     if a.gegenprobe:
         print(json.dumps(gegenprobe(a.spur, a.gebuehr, a.lauf, mk),
                          indent=2, ensure_ascii=False))

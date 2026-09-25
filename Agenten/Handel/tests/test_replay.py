@@ -130,6 +130,65 @@ class FensterTest(ReplayTest):
         self.assertLess(mit, ohne)
 
 
+class FamilieBTest(ReplayTest):
+    """Familie B laeuft ueber `spur_buch.zyklus` - und darf nichts nach aussen.
+
+    Drei Dinge muessen nach dem Lauf unveraendert sein: der Bus (kein Eintrag),
+    die Zeituhr von `spur_buch` und das echte Q:-Ziel.
+    """
+
+    def test_lauf_b_bucht_in_den_backtest_ordner(self):
+        k, zeilen = replay.lauf_b("trendwende_btc", gebuehr_pct=0.05,
+                                  lauf="test", max_kerzen=1500, fenster=400)
+        ordner = replay.buch_ordner("trendwende_btc", "test")
+        self.assertTrue(os.path.isfile(os.path.join(ordner, "handelsjournal.csv")))
+        self.assertTrue(ordner.startswith(self.tmp.name))
+        self.assertIn("runden", k)
+
+    def test_lauf_b_oeffnet_keine_bus_meldung(self):
+        # spur_buch zuerst: es legt den Bus-Ordner in sys.path (ereignis.py).
+        import spur_buch
+        import ereignis
+        gerufen = []
+        alt_bus, alt_spiegel = ereignis.lauf, spur_buch.spiegeln
+        ereignis.lauf = lambda name: gerufen.append(name)
+        try:
+            replay.lauf_b("trendwende_btc", gebuehr_pct=0.05, lauf="test2",
+                          max_kerzen=900, fenster=400)
+        finally:
+            ereignis.lauf, spur_buch.spiegeln = alt_bus, alt_spiegel
+        self.assertEqual([], gerufen)
+
+    def test_lauf_b_stellt_die_zeituhr_wieder_her(self):
+        import spur_buch
+        vorher = spur_buch.zeit_quelle
+        replay.lauf_b("trendwende_btc", gebuehr_pct=0.05, lauf="test3",
+                      max_kerzen=900, fenster=400)
+        self.assertIs(vorher, spur_buch.zeit_quelle)
+
+    def test_die_uhr_laeuft_mit_den_kerzen_nicht_mit_der_wanduhr(self):
+        """Beweis, dass die Zeituhr gesetzt wird: die Journalzeiten spannen
+        den historischen Zeitraum ab, nicht die Minuten des Laufs."""
+        import csv
+        replay.lauf_b("trendwende_btc", gebuehr_pct=0.05, lauf="test4",
+                      max_kerzen=1500, fenster=400)
+        pfad = os.path.join(replay.buch_ordner("trendwende_btc", "test4"),
+                            "handelsjournal.csv")
+        with open(pfad, encoding="utf-8", newline="") as f:
+            zeiten = sorted(r["zeit"] for r in csv.DictReader(f) if r.get("zeit"))
+        self.assertGreater(len(zeiten), 0)
+        import datetime as dt
+        erste = dt.datetime.fromisoformat(zeiten[0])
+        letzte = dt.datetime.fromisoformat(zeiten[-1])
+        self.assertGreater((letzte - erste).days, 20)
+
+    def test_nicht_nachrechenbare_spur_wird_verweigert_statt_geraten(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            replay.lauf_b("moondev_whale", gebuehr_pct=0.05, lauf="test5")
+        self.assertIn("nicht nachrechenbar", str(ctx.exception))
+        self.assertIn("50030", str(ctx.exception))
+
+
 class GebuehrTest(unittest.TestCase):
     """Die Gebuehr ist der teuerste Fehler eines Backtests - sie muss stimmen."""
 
