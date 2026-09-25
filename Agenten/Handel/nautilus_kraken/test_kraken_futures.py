@@ -114,13 +114,55 @@ class TransportTest(unittest.TestCase):
 class RechnenTest(unittest.TestCase):
     """BTC-Menge -> Kontrakte, tickSize-Rundung."""
 
-    def test_kontrakte_ist_usd_nennwert(self):
-        # 0.0001 BTC bei 84.000 USD = 8,4 USD -> 8 Kontrakte
-        self.assertEqual(kf.kontrakte("PF_XBTUSD", 0.0001, kurs=84000), 8)
-        self.assertEqual(kf.kontrakte("PF_XBTUSD", 0.001, kurs=84000), 84)
+    def test_kontrakt_ist_eine_basis_einheit(self):
+        """GEMESSEN 25.09.2026: 1 Kontrakt = 1 Einheit der BASIS, nicht 1 USD.
+
+        Belegte Gegenprobe am echten Konto: 1 Kontrakt PF_NEARUSD bei 4,5517 USD
+        belegte 0,4548 USD Marge (10 % Einschuss) - waere 1 Kontrakt = 1 USD,
+        haetten es 0,10 USD sein muessen. Und PF_XBTUSD wurde mit 141,59 USD
+        frei abgelehnt: 1 Kontrakt = 1 BTC = rund 8.450 USD Einschuss.
+        Die frueher hier behauptete Formel (menge x kurs) war falsch - sie
+        haette aus einem Kopiersignal von 0,0001 BTC eine 0,001-BTC-Order
+        gemacht, die an der Boerse nie durchgeht.
+        """
+        self.assertEqual(kf.kontrakte("PF_NEARUSD", 3), 3)
+        self.assertEqual(kf.kontrakte("PF_XBTUSD", 0.5), 1)      # gerundet, mind. 1
 
     def test_kontrakte_nie_null(self):
-        self.assertEqual(kf.kontrakte("PF_XBTUSD", 0.0000001, kurs=84000), 1)
+        self.assertEqual(kf.kontrakte("PF_XBTUSD", 0.0000001), 1)
+        self.assertEqual(kf.kontrakte("PF_NEARUSD", 0), 1)
+
+    def test_einschuss_rechnet_den_gemessenen_fall_nach(self):
+        """10 % Einschuss (Europa, retail) - die Zahl, die am Konto stand."""
+        with patch.object(kf, "instrument", return_value={
+                "marginSchedules": {"europa": {"retail": [
+                    {"numNonContractUnits": 0.0, "initialMargin": 0.1,
+                     "maintenanceMargin": 0.05}]}}}):
+            self.assertAlmostEqual(kf.einschuss("PF_NEARUSD", 1, kurs=4.5517), 0.45517,
+                                   places=5)
+            self.assertAlmostEqual(kf.einschuss("PF_XBTUSD", 1, kurs=84485.0), 8448.5,
+                                   places=1)
+
+    def test_einschuss_ohne_plan_nimmt_den_hoechsten_satz(self):
+        """Kein Margenplan im Record (aeltere Form): konservativ rechnen."""
+        with patch.object(kf, "instrument", return_value={
+                "retailMarginLevels": [{"numNonContractUnits": 0.0,
+                                        "initialMargin": 0.01},
+                                       {"numNonContractUnits": 1000.0,
+                                        "initialMargin": 0.5}]}):
+            self.assertAlmostEqual(kf.einschuss("PF_XBTUSD", 1, kurs=100.0), 1.0,
+                                   places=6)
+
+    def test_handelbar_nennt_den_grund(self):
+        """Der Kurs wird gepatcht: sonst haengt der Text am LIVE-Kurs und der Test
+        kippt bei jeder Bewegung - ein Test gegen einen Zustand statt eine Regel."""
+        with patch.object(kf, "instrument", return_value={
+                "marginSchedules": {"europa": {"retail": [
+                    {"numNonContractUnits": 0.0, "initialMargin": 0.1}]}}}),              patch.object(kf, "letzter_kurs", return_value=84485.0):
+            grund = kf.handelbar("PF_XBTUSD", 1, frei=141.58)
+            self.assertEqual(grund, "1 Kontrakt PF_XBTUSD braucht 8448.50 USD "
+                                    "Einschuss, frei sind 141.58 USD")
+            self.assertIsNone(kf.handelbar("PF_XBTUSD", 1, frei=9000.0))
 
     def test_preis_gerundet_auf_tick(self):
         with patch.object(kf, "instrument", return_value={"tickSize": 1}):

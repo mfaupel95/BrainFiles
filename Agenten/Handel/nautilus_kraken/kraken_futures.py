@@ -156,15 +156,64 @@ def preis_gerundet(symbol, preis, richtung="auf"):
 
 
 def kontrakte(symbol, menge, kurs=None):
-    """BTC-Menge -> Kontraktzahl (1 Kontrakt = 1 USD Nominal bei PF_...).
+    """Menge in BASIS-Einheiten -> Kontraktzahl.
 
-    Mindestens 1 Kontrakt: eine 0 waere keine Order. Bei PF_XBTUSD ist die
-    Kontraktzahl damit der USD-Nennwert der Position.
+    GEMESSEN 25.09.2026 (nicht aus der Doku geschlossen): **1 Kontrakt ist EINE
+    Einheit der Basiswaehrung.** Belege aus einem echten Handel:
+      * 1 Kontrakt PF_NEARUSD gefuellt bei 4,5517 USD belegte 0,4548 USD Marge
+        (10 % Einschuss nach `marginSchedules.europa.retail`, also 10 % von
+        4,5517) - nicht 1 USD Nennwert.
+      * 1 Kontrakt PF_XBTUSD wurde mit 141,59 USD freiem Guthaben abgelehnt
+        (`insufficientAvailableFunds`): 1 Kontrakt = 1 BTC = rund 84.500 USD,
+        Einschuss 10 % = rund 8.450 USD.
+    `contractSize` im Instrumentenrecod ist bei ALLEN PF_-Maerkten 1 und sagt
+    ueber die Groesse nichts - die Margenstufe (`marginSchedules`) und die
+    Basiswaehrung (`base`) sind die Quelle.
+
+    Folge fuer die Spuren: der kleinste handelbare Satz ist 1 Kontrakt, und der
+    kostet bei PF_XBTUSD rund 1 BTC. Eine BTC-Menge aus einem Kopiersignal
+    (0,0001 BTC) ist damit NICHT abbildbar - wer BTC handeln will, braucht ein
+    Konto in der Groessenordnung der Mindestmarge (siehe `einschuss()`).
+
+    Mindestens 1 Kontrakt: eine 0 waere keine Order.
+    """
+    del kurs                                     # nur aus Vertraeglichkeit
+    return max(1, int(round(float(menge))))
+
+
+def einschuss(symbol, kontrakte, kurs=None):
+    """Einschuss (USD) fuer N Kontrakte - aus dem Margenplan des Marktes.
+
+    Reihenfolge: `marginSchedules.europa.retail` (unser Konto ist EEA), erster
+    Abschnitt mit `numNonContractUnits` 0; fehlt der Plan, wird der hoechste
+    Satz genommen (konservativ). Nennwert = kontrakte x kurs (1 Kontrakt = 1
+    Einheit der Basiswaehrung).
     """
     if kurs is None:
         kurs = letzter_kurs(symbol)
-    zahl = int(round(float(menge) * float(kurs)))
-    return max(1, zahl)
+    daten = instrument(symbol)
+    plan = ((daten.get("marginSchedules") or {}).get("europa") or {}).get("retail")
+    if not plan:                                  # anderer Markt / aeltere Form
+        plan = daten.get("retailMarginLevels") or daten.get("marginLevels") or []
+    satz = None
+    for stufe in plan:
+        if float(stufe.get("numNonContractUnits") or 0.0) == 0.0:
+            satz = float(stufe.get("initialMargin") or 0.0)
+            break
+    if satz is None:
+        satz = max((float(s.get("initialMargin") or 0.0) for s in plan), default=0.0)
+    return kontrakte * float(kurs) * satz
+
+
+def handelbar(symbol, kontrakte=1, frei=None):
+    """Reicht das freie Guthaben fuer den kleinsten Satz? (Grund oder None)"""
+    if frei is None:
+        frei = guthaben("usd")
+    noetig = einschuss(symbol, kontrakte)
+    if frei < noetig:
+        return ("1 Kontrakt %s braucht %.2f USD Einschuss, frei sind %.2f USD"
+                % (symbol, noetig, frei))
+    return None
 
 
 # --- signiert ---------------------------------------------------------------

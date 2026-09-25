@@ -264,3 +264,47 @@ Die Zeile `Live waere gesperrt durch: ...` nennt bei gesetzter `boerse: kraken`
 die Sperren der KRAKEN-Seite (Guthaben in EUR). Genau ein Grund, und dieser
 Grund heisst "Freigabefenster" -> die Auto-Freigabe oeffnet selbst; jeder andere
 Grund (z. B. Guthaben) ist eine Sache fuer Max, kein Dateischalter.
+
+## Wie gross ist ein Kontrakt WIRKLICH (gemessen 25.09.2026, EEA-Konto)
+
+`contractSize` im Instrumentenrecord ist bei ALLEN `PF_`-Maerkten `1` und sagt
+ueber die Groesse NICHTS. Die Wahrheit kommt aus zwei Messungen:
+
+1. **1 Kontrakt ist EINE Einheit der BASISWaehrung** (Feld `base`). Beleg:
+   1 Kontrakt `PF_NEARUSD` wurde bei 4,5517 USD gefuellt und belegte 0,4548 USD
+   Marge - das sind 10 % von 4,5517, also der Nennwert EINES NEAR. Waere 1
+   Kontrakt = 1 USD Nennwert, waeren es 0,10 USD gewesen.
+2. **Einschuss 10 %** fuer ein Europa-/EEA-Konto (`marginSchedules.europa.retail`,
+   `initialMargin` 0.1). Der alte Plan `retailMarginLevels` zeigt 1 % - er gilt
+   NICHT fuer dieses Konto. Die Ableitung steht als `einschuss()` im Modul und
+   rechnet den gemessenen Fall nach (0,4553 gegen 0,4548 gemessen).
+
+Folgen, die man vorher nicht sieht:
+
+| Markt | 1 Kontrakt | Einschuss (10 %) | Mit 141,59 USD? |
+|---|---|---|---|
+| `PF_XBTUSD` | 1 BTC (~84.500 USD) | ~8.450 USD | nein |
+| `PF_ETHUSD` | 1 ETH (~2.688 USD) | ~269 USD | nein |
+| `PF_SOLUSD` | 1 SOL (~117 USD) | ~11,75 USD | ja |
+| `PF_NEARUSD` | 1 NEAR (~4,55 USD) | ~0,46 USD | ja (bewiesen) |
+
+- **Der kleinste Handel ist damit 1 Basis-Einheit, nicht 1 USD.** Ein
+  Kopiersignal in BTC (0,0001 BTC) laesst sich auf einem Kraken-Futures-Konto
+  dieser Groesse NICHT abbilden - die Begruendung gehoert in die Sperrenkette,
+  nicht in einen stillen Rundungsfehler. `handelbar()` nennt genau diesen Grund.
+- **`insufficientAvailableFunds` ist keine Kennungs- oder Rechtefrage.** Es heisst:
+  die Mindestmarge des Instruments ist groesser als das freie Guthaben (bei
+  `PF_XBTUSD` um den Faktor 60). Gegenprobe in zwei Zeilen: dasselbe Konto, dasselbe
+  Kommando mit `PF_NEARUSD` wird angenommen.
+- **Ein `CONTRACT_ACCESS_FORBIDDEN` (HTTP 403, code 95) ist eine Produktsperre des
+  Kontos, kein Schluesselproblem.** Gemessen: `PI_XBTUSD` (inverse) ist fuer dieses
+  EEA-Konto gesperrt, `PF_XBTUSD` (flexible futures) nicht.
+- **Manche Endpunkte sind mit dem Handelsschluessel nicht lesbar:** `/fills` und
+  `/accountlogcsv` antworten `authenticationError` bzw. HTTP 401 - die
+  Gebuehrenmessung ueber das Journal faellt damit aus. Ersatz: die Kontoequity
+  unmittelbar vor und nach der Ausfuehrung lesen (`collateralValue` im `flex`-Konto);
+  die Differenz ist Gebuehr + Spread (Aufloesung 0,0001 USD - bei 4,55 USD Nennwert
+  ist das grob, fuer eine belastbare Gebuehr braucht es ein groesseres Instrument).
+- **Werkzeug:** `Agenten/Handel/nautilus_kraken/futures_probe.py` - echter
+  Mini-Round-Trip mit Vorschau, `--symbol`, `--kontrakte`, Notausstieg per Stop
+  falls der Verkauf scheitert. Es bucht in kein Buch und oeffnet kein Fenster.

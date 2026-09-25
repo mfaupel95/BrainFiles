@@ -347,30 +347,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (api_frei.py + die drei Agenten) und pushen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Branch main, Commit 1b3c650)
-- [ ] **T-067 — Kraken-Futures-Orderweg (PF_XBTUSD): gebaut, Konto hat 0 USD**
+- [ ] **T-067 — Kraken-Futures-Orderweg LIVE bewiesen; PF_XBTUSD ist mit 141 USD nicht handelbar**
       Kontext: `nautilus_kraken/kraken_futures.py` spricht die Futures-REST an
-      (eigener Dienst, eigene Signatur: base64(HMAC-SHA512(secret, SHA256(
-      postData + nonce + "/api/v3" + pfad))), Kopf APIKey/Nonce/Authent,
-      Schluessel KRAKEN_FUTURE_API_KEY/SECRET aus HKCU. Der Live-Zweig ruft
-      weiter `kraken_rest`; KRAKEN_PRODUKT=futures laedt dort das Futures-
-      Modul, sonst unveraendert die Spot-Datei. BTC-Menge -> Kontrakte
-      (1 Kontrakt = 1 USD), Preis auf tickSize gerundet, Ausstieg und Stop
-      als reduceOnly. Sperrenkette nennt jetzt "kein freies USD im
-      Futures-Konto".
-      Beleg 24.09.2026: signierte Leseaufrufe gruen (/accounts, /tickers,
-      /openorders, /openpositions, /instruments), PF_XBTUSD 84385, tickSize 1,
-      Stop 78000.4 -> 78001, 24 Tests gruen. Freies USD: 0.00.
-      Beleg 25.09.2026 (nach Max' Einzahlung): 81,08378700 USDC kamen 24.09. 23:31
-      auf dem SPOT-Konto an (Status Success), gingen 23:53 als interne Umbuchung
-      (type=transfer, refid LAI5VMG-FO6F6-6AKSSS) wieder ab - auf der Futures-Seite
-      steht NICHTS (/transfers kennt keinen Vorgang nach dem 11.09., alle 11 Konten
-      0), und in keinem ueber die API lesbaren Spot-Wallet liegt es. Die manuelle
-      PF_NEARUSD-Short (56 Kontrakte) ist inzwischen geschlossen, die Besicherung
-      damit ebenfalls 0. Nachweis-Kette: Skill handel-spuren,
-      references/einzahlung-und-guthaben.md.
-      Naechster Schritt: USD auf das Futures-Konto einzahlen (oder Besicherung
-      klaeren); danach einen kleinen echten Round-Trip fahren und die
-      Fill-Lesung (/fills) pruefen - das ist zugleich die Messung fuer T-066.
+      (eigener Dienst, eigene Signatur, Kopf APIKey/Nonce/Authent, Schluessel
+      KRAKEN_FUTURE_API_KEY/SECRET). Der Live-Zweig ruft weiter `kraken_rest`;
+      KRAKEN_PRODUKT=futures laedt dort das Futures-Modul.
+      KORREKTUR 25.09.2026 (die frueher hier behauptete Regel war FALSCH):
+      1 Kontrakt ist NICHT 1 USD Nennwert, sondern EINE Einheit der Basiswaehrung,
+      und der Einschuss fuer ein EEA-Konto ist 10 % (`marginSchedules.europa`).
+      Gemessen: 1 Kontrakt PF_NEARUSD bei 4,5517 USD belegte 0,4548 USD Marge
+      (= 10 % von 4,5517). Damit gilt: PF_XBTUSD 1 Kontrakt = 1 BTC = rund
+      84.500 USD, Einschuss rund 8.450 USD - mit 141,59 USD frei um den Faktor 60
+      zu gross (Boerse: insufficientAvailableFunds, auch fuer size 1).
+      PF_ETHUSD braucht ~269 USD, PF_SOLUSD ~11,75 USD, PF_NEARUSD ~0,46 USD.
+      `kontrakte()` ist entsprechend korrigiert, `einschuss()` und `handelbar()`
+      sind neu; Tests nautilus_kraken 30 gruen.
+      Beleg 25.09.2026, ECHTER Round-Trip (futures_probe.py --anwenden): Kauf
+      1 Kontrakt PF_NEARUSD @ 4,5517 (01:46:15, Fuellung gelesen), Verkauf
+      reduceOnly @ 4,5508, Position danach geschlossen (Positionen [], Orders []).
+      Kosten der Runde: 0,0029 USD auf 4,55 USD Nennwert, davon 0,0009 USD
+      Kursunterschied (Spread) -> Gebuehr je Seite im Bereich 0,04-0,05 %.
+      /fills und /accountlogcsv sind mit diesem Schluessel nicht lesbar (401) -
+      die Equity vor/nach der Ausfuehrung war der Messpunkt.
       STAND 24.09.2026 abends: die Freigabekette ist fertig eingerichtet -
       herzschlag_max_minuten zurueck auf 180 (Hausregel 19.09.2026, T-004:
       eine 45er-Grenze stellt nach einem Rechner-Ausfall echte Positionen ohne
@@ -389,9 +387,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       das Wort Freigabefenster). Der Round-Trip selbst wartet auf das /ja von
       Max im Dauerlauf; freies Guthaben 4,10 EUR liegt ueber dem Einsatz 1,00.
       Tests: nautilus_kraken 38 gruen inkl. test_live_orderweg.py (5).
-      Kontext (T-068): `nautilus_kraken/wachen.json` traegt seit 24.09.2026      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, kraken_rest.py,
-      handeln.py (Guthaben-Sperre), wachen.futures.json
+      OFFEN (Entscheidung Max): das Symbol der Futures-Spur. Mit diesem Guthaben
+      sind nur PF_SOLUSD und kleinere Maerkte handelbar; BTC ist es nicht.
+      Naechster Schritt: Symbol waehlen (Vorschlag PF_SOLUSD) oder die Spur
+      Papier lassen - bis dahin keine Aenderung an wachen.futures.json.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py, futures_probe.py,
+      test_kraken_futures.py, wachen.futures.json (Symbol, offen)
 
 - [x] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
       Kontext: `nautilus_kraken/wachen.json` traegt seit 24.09.2026
@@ -411,6 +413,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       test_sperrenkette 7, test_live_orderweg 5, test_trailing_stop 14).
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
+
+
 - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
       Kontext: Die Futures-Variante (PF_XBTUSD, USD, Hebel) laeuft Papier. Die
       Gebuehr 0,05% ist eine Annahme, nicht gemessen. Vor dem Scharfschalten
@@ -419,6 +423,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       messen, in wachen.futures.json eintragen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
       Betrifft: Agenten/Handel/nautilus_kraken/wachen.futures.json
+
+      BELEG 25.09.2026 (echte Fuellung, 1 Kontrakt PF_NEARUSD): Kosten der Runde
+      0,0029 USD auf 4,55 USD Nennwert, davon 0,0009 USD Spread -> Gebuehr je
+      Seite 0,04-0,05 % des Nennwerts. Die Annahme 0,05 % ist damit NICHT
+      widerlegt, aber wegen der groben Aufloesung (0,0001 USD) auch nicht eng
+      bestaetigt. Fuer eine belastbare Zahl eine groessere Fuellung fahren
+      (PF_ETHUSD, ~2.688 USD Nennwert, Einschuss ~269 USD - braucht Guthaben
+      und eine Entscheidung von Max). Messweg: Equity vor/nach der Ausfuehrung,
+      weil /fills und /accountlogcsv mit diesem Schluessel 401 liefern.
 
 - [ ] **T-065 — nautilus_kraken: echter ~1-EUR-Spot-Live-Test (Freigabekette)**
       Kontext: Der REST-Orderweg (kraken_rest.py) ist committed (de433da) und
