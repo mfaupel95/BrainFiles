@@ -106,9 +106,18 @@ trotzdem mit.
 Wache: `Agenten/Hermes/scripts/breite-wache.py`, Hermes-Cron `breite-wache`
 (taeglich 19:00, `no_agent`, Telegram, leere Ausgabe = nichts senden). Sie misst,
 haengt an und meldet nur: Stufenwechsel (ok ab 80 % / achtung ab 60 % / warnung),
-ein Paar, das **neu** unter seine EMA200 faellt, oder eine unvollstaendige
-Messung. Tests `Agenten/Hermes/scripts/test_breite_wache.py` (10, ohne Netz) —
-sie pruefen die **Regeln** (wann geschwiegen wird), nicht die Tageszahl.
+ein Paar, das **neu** unter seine EMA200 faellt, einen **Rueckgang um 10 Punkte
+oder mehr** gegenueber der letzten Meldung, oder eine unvollstaendige Messung.
+Tests `Agenten/Hermes/scripts/test_breite_wache.py` (13, ohne Netz) — sie pruefen
+die **Regeln** (wann geschwiegen wird), nicht die Tageszahl.
+
+**Der Rueckgang war zuerst nicht gemeldet** (gefunden am 25.09.2026 beim
+Nachlesen des eigenen Entwurfs): gemeldet wurden nur Stufenwechsel und neue
+Abwaertskreuze — innerhalb der Stufe `ok` war die Wache damit **blind**. Ein
+Rueckgang von 100 % auf 81 % haette keine Nachricht erzeugt, obwohl genau das
+"die Breite schrumpft" ist. Der Vergleich laeuft gegen den letzten **gemeldeten**
+Wert, nicht gegen den letzten Messwert: 3 Punkte am Tag sind nach vier Tagen
+EINE Nachricht statt vier. Nach jeder Meldung setzt der Bezug neu auf.
 
 **Erste Messung (25.09.2026, 01:52): 29 von 29 = 100,0 %** — jedes gemessene
 Paar ueber seiner EMA200. Das ist eine **spaete Signatur, kein Kaufsignal**: es

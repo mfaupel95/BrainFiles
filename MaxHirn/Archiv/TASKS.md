@@ -59,6 +59,27 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-099 — Breite-Wache justieren: sind 10 Punkte Rueckgang richtig?**
+      Kontext: Die Wache meldet seit 25.09.2026 einen Rueckgang erst ab **10
+      Punkten** gegenueber der letzten Meldung - vorher war sie innerhalb der
+      Stufe "ok" ganz **blind** (100 % auf 81 % haette keine Nachricht erzeugt).
+      10 ist eine SETZUNG, keine Messung: zu klein = Tagesalarm, zu gross = ein
+      echtes Schrumpfen bleibt still.
+      Naechster Schritt: nach den ersten 2-3 echten Meldungen `breite.py --reihe`
+      ansehen und entscheiden, ob 10 bleibt oder auf 5-8 sinkt. Die Zahl steht
+      als `RUCKGANGS_PP` in `Agenten/Hermes/scripts/breite-wache.py`.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/scripts/breite-wache.py
+- [ ] **T-098 — Breite-Reihe am 02.10.2026 erstmals auswerten**
+      Kontext: Die Reihe laeuft seit 25.09.2026 (erste Messung 29 von 29 = 100 %).
+      Aus EINEM Messpunkt folgt keine Richtung; erst mehrere Tage zeigen, ob
+      100 % ein Plateau war oder der Gipfel. Erste Probe 02.10.2026 (dann sind
+      sieben Messungen da).
+      Naechster Schritt: `python Agenten/Werkzeuge/breite.py --reihe` laufen lassen
+      und in einem Satz festhalten, was die Reihe zeigt (steigt/faellt/seitwaerts)
+      - danach T-095 entscheiden.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/breite-reihe.jsonl
 - [ ] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
       Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
       Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus

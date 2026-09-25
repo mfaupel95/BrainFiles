@@ -41,6 +41,10 @@ MERKDATEI = WURZEL / "Agenten" / "Hermes" / "cache" / "breite-wache.json"
 
 STUFEN = ((80.0, "ok"), (60.0, "achtung"), (0.0, "warnung"))
 DECKUNG_MIN = 0.90                            # weniger = Messung unbrauchbar
+# Punkte, um die die Breite gegenueber der letzten MELDUNG fallen muss. 10 ist
+# bewusst groesser als das Tagesrauschen: ein Rueckgang in Haeppchen von 2-3
+# Punkten pro Tag wird so nach wenigen Tagen EINE Nachricht statt jeden Tag eine.
+RUCKGANGS_PP = 10.0
 
 
 def lade_werkzeug():
@@ -107,8 +111,21 @@ def zeilen(m, merker, schwelle=None):
     unter_schwelle = (schwelle is not None and m["breite"] is not None
                       and m["breite"] < schwelle)
     neu_schwelle = unter_schwelle and not merker.get("schwelle_aktiv")
-    if not stufenwechsel and not neu_unter and not raus and not neu_schwelle:
+    # RUCKGANGSMELDUNG (25.09.2026): innerhalb der Stufe "ok" (>= 80 %) war die
+    # Wache BLIND - 100 % auf 81 % haette keine Nachricht erzeugt, obwohl genau
+    # das "die Breite schrumpft" ist. Verglichen wird gegen den letzten
+    # GEMELDETEN Wert, nicht gegen den letzten Messwert: sonst waeren
+    # Rueckgaenge in Haeppchen von 2-3 Punkten am Tag nie sichtbar. Nach einer
+    # Meldung setzt der Bezug neu auf - so kostet ein Rueckgang EINE Nachricht.
+    bezug = merker.get("gemeldet_breite")
+    if bezug is None:
+        bezug = b
+    rueckgang = (bezug is not None and m["breite"] is not None
+                 and (bezug - m["breite"]) >= RUCKGANGS_PP)
+    if (not stufenwechsel and not neu_unter and not raus and not neu_schwelle
+            and not rueckgang):
         return [], {"breite": m["breite"], "stufe": s_neu, "unter": unter,
+                    "gemeldet_breite": bezug,
                     "schwelle_aktiv": unter_schwelle, "ts": m["ts"]}
 
     if stufenwechsel:
@@ -124,8 +141,13 @@ def zeilen(m, merker, schwelle=None):
                         % (richtung, m["breite"],
                            "%.1f %%" % b if b is not None else "unbekannt"))
     else:
-        raus.insert(0, "Krypto-Breite %.1f %% - Stufe unveraendert (%s), aber neue Abwaertskreuze:"
-                    % (m["breite"], s_neu))
+        grund = "Breite faellt" if rueckgang else "aber neue Abwaertskreuze"
+        raus.insert(0, "Krypto-Breite %.1f %% - Stufe unveraendert (%s), %s:"
+                    % (m["breite"], s_neu, grund))
+    if rueckgang:
+        raus.append("Rueckgang um %.1f Punkte seit der letzten Meldung "
+                    "(%.1f %% -> %.1f %%)"
+                    % (bezug - m["breite"], bezug, m["breite"]))
     if neu_schwelle:
         raus.append("unter der Pruefschwelle von %.0f %% (%.1f %%)"
                     % (schwelle, m["breite"]))
@@ -141,6 +163,7 @@ def zeilen(m, merker, schwelle=None):
     raus.append("%d von %d Paaren ueber der EMA200, Kerze %s, gemessen %s"
                 % (m["n_ueber"], m["n_gesamt"], m["kerze"], m["ts"]))
     return raus, {"breite": m["breite"], "stufe": s_neu, "unter": unter,
+                  "gemeldet_breite": m["breite"],
                   "schwelle_aktiv": unter_schwelle, "ts": m["ts"]}
 
 
