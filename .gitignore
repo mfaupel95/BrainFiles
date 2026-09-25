@@ -796,3 +796,11 @@ kraken-lockout-stand.json
 !Agenten/Handel/bt_opt/
 !Agenten/Handel/bt_opt/*.py
 !Agenten/Handel/bt_opt/*.json
+# MARKTBREITE (25.09.2026, Auftrag Max "Breite als Reihe"): das Werkzeug ist
+# ein Hauswerkzeug wie marktdaten.py, dazu Wache und Test unter
+# Agenten/Hermes/scripts (dort ist **/*.py schon freigegeben). Die REIHE
+# (breite-reihe.jsonl) bleibt ausdruecklich gesperrt - sie waechst taeglich und
+# ist Laufzeitstand wie die Handelsjournale. Die Sicherung nach G:/Q: nimmt sie
+# trotzdem mit; dafuer ist git nicht noetig.
+!Agenten/Werkzeuge/breite.py
+Agenten/Werkzeuge/breite-reihe.jsonl

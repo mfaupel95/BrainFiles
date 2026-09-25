@@ -59,6 +59,34 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-096 — Fristwaechter fuer die Ausser-Haus-Kopie (sie wird still alt)**
+      Kontext: `sichern-ausser-haus.ps1` hat ABSICHTLICH keine geplante Aufgabe -
+      sie braucht die angesteckte Q:-SSD. Folge: am 25.09.2026 war die Kopie
+      **13 Tage alt** (gemessen: 89.421 Dateien / 18,31 GB fehlten), ohne dass
+      irgendwo eine Meldung entstand. Es gibt einen Nachweis (`spiegelstand.py`
+      fuer Q:\\Handel_Journal) und den Tagesbericht, aber **keine Wache** auf das
+      Alter der Ausser-Haus-Kopie selbst.
+      Naechster Schritt: Wache nach dem Muster `spiegelfrist-wache.py` bauen -
+      meldet nur, wenn die Kopie aelter als N Tage (Vorschlag 7) ist, leere
+      Ausgabe sonst. Sie darf NICHT selbst kopieren.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/sichern-ausser-haus.ps1, Q:\\MaxHirn-AusserHaus
+- [ ] **T-095 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
+      Kontext: `Agenten/Werkzeuge/breite.py` misst seit 25.09.2026 taeglich den
+      Anteil der 30 Top-Paare ueber ihrer EMA200 und schreibt die Reihe
+      (`Agenten/Werkzeuge/breite-reihe.jsonl`); Cron `breite-wache` (taeglich
+      19:00, no_agent) meldet nur Aenderungen. Die erste Messung war 29 von 29 =
+      100 % - aus EINEM Punkt folgt keine Richtung, "die Breite schrumpft" ist
+      erst mit einer Reihe belegbar. Offen ist ausserdem, ob eine Handelsspur die
+      EMA200-Breite als Tor nutzen soll: bisher rechnet nur
+      `moondev_marktlage` eine Breite, und das ist eine ANDERE Groesse (Anteil
+      mit positivem 24-h-Vorzeichen, aus CoinGecko).
+      Naechster Schritt: in etwa zwei Wochen `python Agenten/Werkzeuge/breite.py
+      --reihe` ansehen und entscheiden (a) Reihe behalten oder verwerfen,
+      (b) ob eine Spur ein Breiten-Tor bekommt.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py,
+      Agenten/Handel/moondev_marktlage
 - [ ] **T-094 — Entscheidung Max: kostenpflichtige Historien (Deribit-Strike-OI, Onchain)**
       Kontext: `iv_wand`, `iv_waelle` (Strike-OI-Historie), `moondev_whale`
       (OKX-OI), `moondev_liquidation`, `robinhood_radar` und `kopier` bleiben ohne

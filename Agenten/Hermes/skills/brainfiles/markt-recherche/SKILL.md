@@ -38,6 +38,20 @@ Anlageberatung, oder eine Spur live schalten.
     python marktdaten.py news --anzahl 10          # Markt- und Krypto-Feeds
     python marktdaten.py selbsttest                # Parser ohne Netz
 
+Dazu die **Marktbreite** — der Anteil der Top-Paare ueber ihrer **EMA200**
+(Tageskerzen, letzte geschlossene Kerze). Ein Messpunkt ist keine Richtung:
+`--merken` schreibt die Reihe fort, `--reihe` zeigt den Verlauf. Wer eine
+Richtung behauptet ("die Breite schrumpft"), braucht mindestens zwei Messungen.
+
+    python Agenten/Werkzeuge/breite.py              # messen und zeigen
+    python Agenten/Werkzeuge/breite.py --merken     # an die Reihe anhaengen
+    python Agenten/Werkzeuge/breite.py --reihe      # Verlauf
+
+Die Wache dazu (`Agenten/Hermes/scripts/breite-wache.py`, Cron `breite-wache`,
+taeglich 19:00) meldet nur Aenderungen — Stufenwechsel, ein Paar, das neu unter
+seine EMA200 faellt, eine unvollstaendige Messung. Details und Fallen:
+[[Marktdaten-und-Bot-markt-recherche]]
+
 Aus dem Arbeitsbereich `Agenten\Handel` heraus (dort steht der Bot) heisst
 derselbe Aufruf `python ..\Werkzeuge\marktdaten.py kurs ...` - der Pfad ist
 relativ zur Repo-Wurzel angegeben.
@@ -99,6 +113,10 @@ zweite Zeuge (`/account/positions`, Balance).
 
 ## Fallen
 
+- **OKX blockt `urllib` ohne User-Agent mit HTTP 403.** Ein eigenes Skript, das
+  den Kopf nicht mitgibt, bekommt fuer JEDES Paar einen Fehler — und "0 von 0
+  Paaren" waere eine glatte Falschaussage. Deshalb gehoert die **Deckung** neben
+  jede Zahl (wie viele von wie vielen gemessen, welche nicht messbar sind).
 - **`DAX` ist kein Yahoo-Symbol.** Indizes brauchen das Caret (`^GDAXI`), ETF
   und Auslandswerte die Endung (`.DE`), Rohstoffe die Futures-Form (`XAU=F`).
   Ein leerer Kurs heisst meist falsches Symbol, nicht fehlende Daten.

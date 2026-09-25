@@ -15,7 +15,7 @@ summary: 'Zwei Scheduler (Windows-Aufgabenplanung und Hermes-Cron), das Wachen-M
 | Scheduler | Wofuer | Beispiel |
 |---|---|---|
 | Windows-Aufgabenplanung (`MaxHirn-*`) | Dauerlaeufe, Sicherungen, Fensteraufgaben | `MaxHirn-Handel-Dauerlauf`, `MaxHirn-OmniRoute`, `MaxHirn-Handelszentrale` |
-| Hermes-Cron (`no_agent`) | Wachhunde, die eine Nachricht schicken sollen | `bus-waechter` (15 min), `moondev-agenten-wache` (15 min), `nautilus-runden-wache` (30 min), `one-wache` (10 min) |
+| Hermes-Cron (`no_agent`) | Wachhunde, die eine Nachricht schicken sollen | `bus-waechter` (15 min), `moondev-agenten-wache` (15 min), `nautilus-runden-wache` (30 min), `one-wache` (10 min), `breite-wache` (taeglich 19:00) |
 
 Hermes-Cron laeuft **am Bus vorbei** und liefert direkt nach Telegram — genau deshalb
 darf eine Wache nicht ueber den Weg melden, den sie ueberwacht.

@@ -1,6 +1,6 @@
 ---
 titel: Marktdaten ohne Schluessel und der Bot markt-recherche
-aktualisiert: 2026-09-23
+aktualisiert: 2026-09-25
 tags: [werkzeug, recherce, krypto, aktien, bots, marktdaten]
 ---
 
@@ -83,9 +83,51 @@ Unterscheidung live/letzter Schluss gehoert in den Bericht.
 - **Kein Orderweg.** Dieses Werkzeug und der Bot sind rein lesend; Order und
   Freigabe laufen ausschliesslich ueber die Freigabekette der Spuren.
 
+## Marktbreite (EMA200) als Reihe
+
+> **Merksatz:** Ein Messpunkt ist keine Richtung. `breite.py --merken` schreibt
+> den Wert fort — erst zwei Messungen erlauben "schrumpft" oder "erholt sich".
+
+`Agenten/Werkzeuge/breite.py` (25.09.2026, Auftrag Max "Breite als Reihe") misst
+ueber 30 liquide USDT-Paare den Anteil, der ueber seiner **EMA200** liegt:
+Tageskerzen, letzte **geschlossene** Kerze, OKX oeffentlich, nur
+Standardbibliothek, kein Schluessel.
+
+```
+python Agenten/Werkzeuge/breite.py              # messen und zeigen (schreibt nichts)
+python Agenten/Werkzeuge/breite.py --merken     # an die Reihe anhaengen
+python Agenten/Werkzeuge/breite.py --reihe      # die letzten 30 Messungen
+```
+
+Reihe: `Agenten/Werkzeuge/breite-reihe.jsonl` — Laufzeitstand wie die
+Handelsjournale, **nicht versioniert**; die Sicherung nach G:/Q: nimmt sie
+trotzdem mit.
+
+Wache: `Agenten/Hermes/scripts/breite-wache.py`, Hermes-Cron `breite-wache`
+(taeglich 19:00, `no_agent`, Telegram, leere Ausgabe = nichts senden). Sie misst,
+haengt an und meldet nur: Stufenwechsel (ok ab 80 % / achtung ab 60 % / warnung),
+ein Paar, das **neu** unter seine EMA200 faellt, oder eine unvollstaendige
+Messung. Tests `Agenten/Hermes/scripts/test_breite_wache.py` (10, ohne Netz) —
+sie pruefen die **Regeln** (wann geschwiegen wird), nicht die Tageszahl.
+
+**Erste Messung (25.09.2026, 01:52): 29 von 29 = 100,0 %** — jedes gemessene
+Paar ueber seiner EMA200. Das ist eine **spaete Signatur, kein Kaufsignal**: es
+gibt keinen Nachzuegler mehr, in den Geld rotieren koennte. Die Fruehwarnzeichen
+sind die Paare **knapp** ueber der Linie (APT +0,43 %, OP +1,96 %, SEI +2,46 %,
+DOT +3,26 %, ATOM +3,70 %) — sie fallen zuerst.
+
+**Falle (gemessen):** OKX beantwortet `urllib` ohne User-Agent mit **HTTP 403**.
+Ohne den Kopf liefern ALLE Paare einen Fehler und die Breite waere "0 von 0 =
+0,0 %" — eine glatte Falschaussage. Deshalb nennt jede Ausgabe die **Deckung**
+(wie viele von wie vielen gemessen, plus die Namen der nicht messbaren Paare);
+`TON-USDT` existiert auf dem EEA-Host nicht (`OKX 51001`).
+
 ## Abgrenzung
 
 - Verfahren und Trigger: Skill `markt-recherche`
+- Breite als Einzelwert (24-h-Momentum, CoinGecko): `Handel/moondev_marktlage`
+  fuehrt `breite` als Teil seines Regimes — das ist eine **andere** Groesse als
+  der EMA200-Anteil hier
 - Spuren auswerten und deuten: `handel-spur-studie`, [[../Handel/Lektionen.md]]
 - Bot-Zugang per Telegram: `/bots` und `/bot NAME` im SkillsBot,
   [../Werkzeuge/Fundus-Skills-Bots.md](Fundus-Skills-Bots.md)
