@@ -59,6 +59,26 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
+      Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
+      Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus
+      ihrer `wachen.json` NUR die Ausstiegs-Geometrie
+      (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
+      `ziel_r_vielfaches`, `max_offene_positionen`). Ihre eigentlichen
+      Indikatorschwellen stehen als Konstanten im Code - `squeeze.signal()` ist
+      eine feste Regel ueber `ti.squeeze_momentum(k)`, und `supertrend` holt
+      sich `supertrend_n`/`supertrend_faktor` NICHT aus den Wachen (im
+      Gegensatz zu trendwende_btc, das beide liest). Das verstoesst gegen die
+      Hausregel "Zahlen gehoeren in die wachen.json, nicht in den Code" und
+      hat eine harte Folge: diese Parameter lassen sich nicht tunen, ohne Code
+      zu aendern - der Optimierer kann sie nicht anfassen.
+      Naechster Schritt: je Spur die Konstanten als Schluessel in die
+      wachen.json aufnehmen (Wert = der heutige Code-Default, damit sich NICHTS
+      verhaelt), die Spur lesend umstellen und mit einem Beleglauf zeigen, dass
+      die Ergebnisse vorher/nachher gleich sind. Danach in `spur_opt.json`
+      aufnehmen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
 - [ ] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
       Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
       1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur
