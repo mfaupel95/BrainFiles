@@ -51,7 +51,12 @@ Datenlage und Grenzen (gemessen, nicht geschätzt):
 
 - **Binance public klines, kein Schlüssel:** BTCUSDT 1H hat Kerzen ab
   **2017-08-17** (`1502942400000`). **18.000 Kerzen** (2 Jahre 1H) in **10,4 s**.
-  Hochrechnung: 20 Instrumente × (1H + 4H) ≈ **4 Minuten, ~51 MB**.
+- **Erster echter Abruf, gemessen 2026-09-25:** 3 Instrumente × (1H + 4H + 1D)
+  = **194.628 Kerzen in 3 min 12 s** (≈ **1.000 Kerzen/s**), 12 MB auf Platte,
+  Zeitraum **2021-01-01 bis 2026-09-25**. Daraus folgt für alle Instrumente:
+  20 × (1H + 4H) ≈ **21 Minuten**, ~100 MB. Die frühere Schätzung „4 Minuten"
+  war um den Faktor 5 zu optimistisch — die Abrufgeschwindigkeit hängt an der
+  Netzlatenz je Seite (1000 Kerzen), nicht an der Kerzenzahl allein.
 - **Funding-Historie** (`/fapi/v1/fundingRate`) frei ab **2020-08-01**.
 - **Binance-Paar-Abdeckung: 19 von 20** geprüften Instrumenten. Fehlt: **MATIC**
   (heute POL) — für MATIC bleibt nur der lokale Altbestand.

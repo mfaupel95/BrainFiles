@@ -1546,14 +1546,13 @@ if __name__ == "__main__":
 
 - [ ] **Schritt 1: Freigabe in `.gitignore`** — neben den bestehenden Handels-Zeilen
 
+**Gemessen 2026-09-25 (Aufgabe 1+2 gebaut):** `.py`-Dateien brauchen **keine**
+eigenen Zeilen — die generischen Muster `!Agenten/Handel/*.py` (Zeile 75) und
+`!Agenten/Handel/tests/*.py` (Zeile 87) decken `historie.py`, `replay.py`,
+`optimieren.py` und alle Tests schon ab. Zu prüfen bleibt nur `spur_opt.json`.
+
 ```
-!Agenten/Handel/historie.py
-!Agenten/Handel/replay.py
-!Agenten/Handel/optimieren.py
-!Agenten/Handel/spur_opt.json
-!Agenten/Handel/tests/test_historie.py
-!Agenten/Handel/tests/test_replay.py
-!Agenten/Handel/tests/test_optimieren.py
+!Agenten/Handel/spur_opt.json    # gemessen: git check-ignore meldet ihn, die Zeile IST noetig
 ```
   **Gegenprobe (Hausregel, drei Fälle sind am 15.–17.09. schiefgegangen):**
 ```bash
