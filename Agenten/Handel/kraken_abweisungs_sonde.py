@@ -273,9 +273,17 @@ def einordnung(wege):
                   if privat_rot else "")
         return "netz", ("ein OEFFENTLICHER Weg faellt ohne Schluessel (%s) - Netz, "
                         "IP oder cloudflare%s" % (", ".join(offen_rot), zusatz))
+    # Nur die signierten Wege rot: erst die Herkunft (IP/VPN), dann Rechte.
+    # GEMESSEN 25.09.2026: mit laufendem NordLynx-Tunnel (Ausgang 45.150.x.x, ein
+    # NordVPN-Knoten) wurde der FUTURES-Weg mit `authenticationError` abgewiesen,
+    # waehrend der SPOT-Weg durchlief; OHNE Tunnel (Ausgang 92.208.x.x, eigener
+    # Anschluss) ging derselbe Aufruf sofort wieder (guthaben 141,5876 USD).
+    # Ein `authenticationError` ist deshalb KEIN Beweis fuer einen falschen
+    # Schluessel - die Herkunft gehoert zuerst geprueft.
     return "schluessel", ("nur die SIGNIERTEN Wege fallen (%s), die oeffentlichen "
-                          "gehen - Schluessel-, Rechte- oder Konto-Ebene (Lockout)"
-                          % ", ".join(privat_rot))
+                          "gehen - erst die HERKUNFT pruefen (VPN/Proxy aktiv? "
+                          "IP-Wechsel?), dann Schluessel-, Rechte- oder "
+                          "Konto-Ebene (Lockout)" % ", ".join(privat_rot))
 
 
 def _kuehlzeit_laeuft(stand, jetzt_ts):

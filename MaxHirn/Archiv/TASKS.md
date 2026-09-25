@@ -272,38 +272,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
       `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
       Angelegt: 2026-09-25
-- [ ] **T-073 — Kraken-Futures-Schluessel war ~1 h lang abgewiesen (Grund offen)**
-      Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` mit
-      dem echten Stand (availableMargin 141,5963; USD 8,89 + EUR 45,74 + USDC 81,08),
-      ab etwa 00:29 nur noch `authenticationError` - fuer JEDE nonce (ms/us/ns/1,8e18/
-      9e18) und mit ZWEI unabhaengigen Umsetzungen (unser `kraken_futures.py` UND die
-      offizielle kraken-cli `futures accounts`). Am Haus lag es nicht: die Werte in
-      HKCU\Environment waren unveraendert (Hash gegen die PowerShell-History vom
-      24.09. 21:22 verglichen), Uhr 1,3 s, Kraken online. Um 01:33 ging es OHNE Zutun
-      wieder (Zeuge: guthaben 141,5949 USD).
-      Erledigt am 25.09.2026: `kraken_futures.guthaben()` las nur `cash.balances`
-      (alles 0,0) statt des flex-Kontos - die Spur sah deshalb 0 USD, obwohl 141,59
-      verfuegbar waren. Jetzt flex zuerst, cash als Rueckfall; Tests 27 gruen.
-      Erledigt am 25.09.2026 (zweiter Teil, Werkzeug): Der Ausfall blieb offen, weil
-      im Haus NICHTS aufgezeichnet wurde - kein Log, kein Journal, keine Zeile mit
-      Statuscode, Header oder Rohantwort; die Spuren liefen im Papier weiter und
-      schrieben `(papier) ok`. Neu: `Agenten/Handel/kraken_abweisungs_sonde.py`
-      misst je Lauf vier Wege (oeffentlich/signiert x Spot/Futures), unterscheidet
-      damit `netz` von `schluessel`, schreibt im Fehlerfall den ZEUGEN (Status,
-      content-type, cloudflare-Header, Rohkoerper) nach
-      `Agenten/Handel/cache/kraken-abweisungen.jsonl` und wartet nach einer
-      Abweisung 60 min (bei einem Konto-Lockout setzt jeder Versuch den Timer
-      zurueck). Wache: Cron `kraken-abweisung-wache` (30 min, no_agent, Telegram).
-      Test-Nachweis: 10 Tests mit Kraken-Attrappe, echter Lauf gesund (03:16), Wache
-      schweigt. Wiki: Werkzeuge/kraken-abweisungs-sonde.md, Lektion 3 in
-      Lektionen/Boersen-und-Schluessel.md.
-      Naechster Schritt: Beim naechsten Auftreten die Protokollzeile lesen
-      (`lage` sagt die Ebene, `zeuge.roh_*` Rechte gegen Lockout gegen cloudflare)
-      und Max fragen, ob er in dem Fenster im Kraken-Portal war (Schluessel
-      bearbeiten/erzeugen).
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py,
-      Agenten/Handel/kraken_abweisungs_sonde.py
 - [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
       Kontext: Der Arm ist scharf (handel_erlaubt=true, freigabe.erfuellt=true,
       live_einsatz_eur 1.0), kauft aber nur bei einem FRISCHEN Kauf der kopier-Spur.
@@ -1104,6 +1072,39 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-073 — Kraken-Futures-Schluessel war stundenweise abgewiesen - der VPN war es**
+      Kontext: Um 00:24 am 25.09.2026 antwortete `/derivatives/api/v3/accounts` mit
+      dem echten Stand (availableMargin 141,5963; USD 8,89 + EUR 45,74 + USDC 81,08),
+      ab etwa 00:29 nur noch `authenticationError` - fuer JEDE nonce (ms/us/ns/1,8e18/
+      9e18) und mit ZWEI unabhaengigen Umsetzungen (unser `kraken_futures.py` UND die
+      offizielle kraken-cli `futures accounts`). Am Haus lag es nicht: die Werte in
+      HKCU\Environment waren unveraendert (Hash gegen die PowerShell-History vom
+      24.09. 21:22 verglichen), Uhr 1,3 s, Kraken online. Um 01:33 ging es OHNE Zutun
+      wieder (Zeuge: guthaben 141,5949 USD).
+      Erledigt am 25.09.2026: `kraken_futures.guthaben()` las nur `cash.balances`
+      (alles 0,0) statt des flex-Kontos - die Spur sah deshalb 0 USD, obwohl 141,59
+      verfuegbar waren. Jetzt flex zuerst, cash als Rueckfall; Tests 27 gruen.
+      Erledigt am 25.09.2026 (zweiter Teil, Werkzeug): Der Ausfall blieb offen, weil
+      im Haus NICHTS aufgezeichnet wurde - kein Log, kein Journal, keine Zeile mit
+      Statuscode, Header oder Rohantwort; die Spuren liefen im Papier weiter und
+      schrieben `(papier) ok`. Neu: `Agenten/Handel/kraken_abweisungs_sonde.py`
+      misst je Lauf vier Wege (oeffentlich/signiert x Spot/Futures), unterscheidet
+      damit `netz` von `schluessel`, schreibt im Fehlerfall den ZEUGEN (Status,
+      content-type, cloudflare-Header, Rohkoerper) nach
+      `Agenten/Handel/cache/kraken-abweisungen.jsonl` und wartet nach einer
+      Abweisung 60 min (bei einem Konto-Lockout setzt jeder Versuch den Timer
+      zurueck). Wache: Cron `kraken-abweisung-wache` (30 min, no_agent, Telegram).
+      Test-Nachweis: 10 Tests mit Kraken-Attrappe, echter Lauf gesund (03:16), Wache
+      schweigt. Wiki: Werkzeuge/kraken-abweisungs-sonde.md, Lektion 3 in
+      Lektionen/Boersen-und-Schluessel.md.
+      Naechster Schritt: Beim naechsten Auftreten die Protokollzeile lesen
+      (`lage` sagt die Ebene, `zeuge.roh_*` Rechte gegen Lockout gegen cloudflare)
+      und Max fragen, ob er in dem Fenster im Kraken-Portal war (Schluessel
+      bearbeiten/erzeugen).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py,
+      Agenten/Handel/kraken_abweisungs_sonde.py
+      **Erledigt 2026-09-25 - Ursache war NORDVPN, kein Schluessel.** Gemessen: mit verbundenem NordLynx-Tunnel (Ausgang 45.150.x.x, ein NordVPN-Knoten) antwortet der Futures-Weg `authenticationError`, waehrend der Spot-Weg durchlaeuft; nach dem Trennen des Tunnels (Ausgang 92.208.x.x, eigener Anschluss) geht derselbe Aufruf sofort wieder (guthaben 141,5876 USD, 0 Positionen). Die Werte in HKCU\Environment waren die ganze Zeit unveraendert (Hash gegen die PowerShell-History vom 24.09. 21:22). Betriebsregel: vor einer Futures-Order muss der VPN aus sein (oder der Key im Portal fuer die VPN-IP freigegeben werden). Zeuge/Diagnose: `Agenten/Handel/kraken_abweisungs_sonde.py` (fuenf Wege, Rohantwort im Fehlerfall; die Einordnung nennt jetzt die Herkunft VOR dem Schluessel). Wiki: Handel/Boersen-und-Schluessel.md.
 - [x] **T-084 — Sprachmodell-Spuren koennten auf Bonsai umziehen (braucht OpenAI-Weg)**
       Kontext: `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` holen ihr
       Urteil ueber `Agenten/Handel/llm_lokal.py` aus Ollamas EIGENER Schnittstelle

@@ -335,11 +335,21 @@ fuer reine Cash-Konten.
 Wer ein Guthaben-Tor baut, haelt die ROHE Antwort der Boerse einmal daneben und
 prueft, ob das gelesene Feld ueberhaupt gefuellt ist.
 
-Nebenbefund derselben Stunde: derselbe Aufruf antwortete etwa von 00:29 bis 01:33
-mit `authenticationError` - fuer jede nonce und mit zwei unabhaengigen Umsetzungen
-(unser Modul und die offizielle kraken-cli), waehrend die Werte in
-`HKCU\Environment` unveraendert waren; danach ging es ohne Zutun wieder. Ein
-`authenticationError` ist also kein Beweis fuer einen falschen Schluessel: erst mit
-einer ZWEITEN Umsetzung gegenpruefen, die eigenen Werte belegen (Hash gegen die
-PowerShell-History), die Uhr stellen - und nach Minuten erneut messen, statt einen
-neuen Schluessel zu erzeugen.
+### Die Ursache war der VPN (25.09.2026, gemessen)
+
+Derselbe Aufruf antwortete stundenweise mit `authenticationError` - fuer jede nonce
+und mit zwei unabhaengigen Umsetzungen (unser Modul und die offizielle kraken-cli),
+waehrend die Werte in `HKCU\Environment` unveraendert waren. **Es war NordVPN:**
+
+| Zustand | Ausgangs-IP | Futures-Weg | Spot-Weg |
+|---|---|---|---|
+| NordLynx-Tunnel verbunden | `45.150.x.x` (NordVPN-Knoten) | `authenticationError` | laeuft (0,7059 EUR) |
+| Tunnel getrennt | `92.208.x.x` (eigener Anschluss) | **laeuft** (141,5876 USD) | laeuft |
+
+Der Futures-Weg ist also herkunftsempfindlich, der Spot-Weg nicht. Wer eine
+Abweisung deutet, prueft deshalb ZUERST die eigene Herkunft (`Get-NetAdapter`
+auf `NordLynx`, die oeffentliche IP) und erst danach Schluessel, Rechte oder
+Konto-Lockout. **Ein `authenticationError` ist kein Beweis fuer einen falschen
+Schluessel** - die eigene IP war es hier, und ein neu erzeugter Schluessel haette
+nichts geholfen. Werkzeug fuer den Zeugen (Status, Header, Rohkoerper je Weg):
+`Agenten/Handel/kraken_abweisungs_sonde.py`.
