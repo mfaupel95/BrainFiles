@@ -1351,6 +1351,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `HKCU\Environment` PATH
       Angelegt: 2026-09-16
 - [?] **T-047 — Santiment-MCP braucht Max' Browser-Anmeldung (OAuth)**
+- [ ] **T-104 — splits: Modellwahl-Diskussion aufnehmen**
+      Kontext: Projekt existiert hier nicht — Voraussetzung ist, dass splits als Repo/Ordner hier vorliegt. Die Frage nach Splits lautete im Gespräch: „Als task abspeichern um weiter zu machen mit splits, huruf, dmcsystem … aufgabe weitermachen". Die Diskussion reicht bisher bis zur Empfehlung, nicht zu Max' Betrieb zu passen — `docs/tasks/offene-aufgaben-splits-huruf-dmc.md` (lokal) ist der Platzhalter bis maximale Aufnahme.
+      Naechster Schritt: Projekt aufnehmen (Klon in Werkstatt/Repos/<name>, Bot-Profil, Doku), dann Modellwahl-Diskussion fortsetzen.
+      Angelegt: 2026-09-25 · Zuletzt: 2026-09-25
+      Betrifft: splits (noch nicht vorhanden)
+- [ ] **T-105 — huruf: Modellwahl-Diskussion aufnehmen**
+      Kontext: Projekt existiert hier nicht. Selbes Muster wie T-104 — Diskussion pausiert, bis das Projekt vorliegt. Lokaler Platzhalter in `docs/tasks/offene-aufgaben-splits-huruf-dmc.md`.
+      Naechster Schritt: Projekt aufnehmen → Diskussion fortsetzen.
+      Angelegt: 2026-09-25 · Zuletzt: 2026-09-25
+      Betrifft: huruf (noch nicht vorhanden)
+- [ ] **T-106 — dmcsystem: Modellwahl-Diskussion aufnehmen**
+      Kontext: Projekt existiert hier nicht. Selbes Muster.
+      Naechster Schritt: Projekt aufnehmen → Diskussion fortsetzen.
+      Angelegt: 2026-09-25 · Zuletzt: 2026-09-25
+      Betrifft: dmcsystem (noch nicht vorhanden)
       Kontext: Der offizielle Santiment-MCP-Connector
       (`https://api.santiment.net/mcp`, Streamable HTTP, acht Werkzeuge) nennt
       seine Werkzeugliste anonym, verlangt fuer jeden `tools/call` aber OAuth 2.0
