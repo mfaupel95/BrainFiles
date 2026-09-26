@@ -8,6 +8,9 @@ inline behoben: Vorgabe von `top` (Wachen-Zahl der Spur, nicht „alles"),
 erster Tag einer Reihe ohne Vortagesschliessung, Familie C als neu
 gekennzeichnet, HYPE faellt aus dem Lauf (kuerzeste Reihe wuerde den
 Zeitraum auf vier Monate kappen).
+**Nachfreigabe Max:** 26.09.2026 — `moondev_signalwelle` soll die
+1H-Kerzen der Top 40 bekommen und ist damit die vierte nachrechenbare Spur;
+ihr kleineres Universum (40 statt 250) steht als Grenze 6 in Abschnitt 6.
 
 ## 1. Zweck
 
@@ -17,7 +20,7 @@ dem 16.09.2026 **ein- bis zweistellig viele** geschlossene Runden. Eine
 Trefferquote aus acht Runden ist ein Befund, keine Messung
 (`buchauswertung.MIN_AUSSTIEGE`, `auswertung_alle.MIN_RUNDEN` = 8).
 
-Dieses Design macht **drei** dieser Spuren auf 2021–2026 nachrechenbar und
+Dieses Design macht **vier** dieser Spuren auf 2021–2026 nachrechenbar und
 vervielfacht damit ihre Stichprobe um Groessenordnungen. Es baut auf dem
 bestehenden Kern auf und aendert ihn nicht.
 
@@ -78,7 +81,21 @@ Gemessen am 26.09.2026, alle Endpunkte oeffentlich und ohne Schluessel.
   naechsten — die Spur sieht immer den letzten Satz **davor** (kein Blick in
   die Zukunft).
 
-### 3.3 Warum die Kerzenform nicht gemischt wird
+### 3.3 Stundendaten fuer die Signalwelle
+
+* Gegenstand: die **Top 40** nach dem Volumen (dieselbe Rangliste wie 3.1).
+* Quelle: `/api/v3/klines` mit `interval=1h`, seit 2021 paginiert (1.000 je
+  Aufruf, ~50 Aufrufe je Symbol). Gemessen: ~1.000 Kerzen/s → **~33 min,
+  ~250 MB** (40 × 50.223 Stundenkerzen).
+* Ablage: `daten/historie/feed/<SYMBOL>_1H.json`, Kerzenform wie 3.1.
+* Grund: `moondev_signalwelle` entscheidet auf `aenderung_1h`; aus
+  Tageskerzen laesst sich eine Stundenbewegung nicht ehrlich bilden.
+* **Der Schritt dieser Spur ist eine Stunde**, nicht ein Tag. Ihre uebrigen
+  Groessen kommen aus derselben Reihe: `aenderung_24h` = Schluss gegen
+  Schluss vor 24 Kerzen, `volumen_24h` = Summe der Quote-Volumina der letzten
+  24 Kerzen.
+
+### 3.4 Warum die Kerzenform nicht gemischt wird
 
 `historie.py` speichert als sechstes Feld das **Basis**-Volumen (gemessen:
 01.01.2021 = 54.182,93 BTC). Die Movers-Spur prueft ihr Volumen aber gegen
@@ -103,6 +120,11 @@ dicts mit **genau den Feldern, die `quelle()` der Spuren von CoinGecko holt**:
 Der **erste Tag** einer Reihe hat keine Vortagesschliessung und damit keine
 `aenderung_24h`: er erscheint nicht in der Tafel (kein geschaetzter Wert, kein
 `null` in einem Feld, das die Regel als Zahl liest).
+
+Fuer die Signalwelle gibt es dieselbe Tafel **auf Stundenbasis**
+(`tafel_stunde(ts_ms, top=None)`) mit `aenderung_1h` anstelle von `rang` —
+dieselben vier Felder, die ihre `quelle()` von CoinGecko holt
+(`aenderung_1h`, `aenderung_24h`, `volumen_24h`, `kurs`).
 
 Dazu `breite(ts_ms, top=None)`: der Anteil der Symbole mit
 `aenderung_24h > 0` unter den Top `top` nach dem Volumen dieses Tages — die
@@ -134,6 +156,7 @@ keine Nachbildung, kein Patch der Regel:
 |---|---|---|---|---|
 | `moondev_topmovers` | B | `quelle(w)` → Tafel | 1 Tag | 0,05 % (`okx_perp`) |
 | `moondev_marktlage` | B | `quelle(w)` → Tafel + `breite` | 1 Tag | 0,60 % (`kraken`, eigener `gebuehr_taker`) |
+| `moondev_signalwelle` | B | `quelle(w)` → Stundentafel | 1 Stunde | 0,05 % (`okx_perp`) |
 | `moondev_funding` | C | `funding_quelle(sym)` + `zeit_quelle()` | 8 h | 0,05 % (`okx_perp`) |
 
 * **Familie B** laeuft ueber `spur_buch.zyklus(ordner, quelle, signal, ...)` —
@@ -175,6 +198,13 @@ die Felder liefert, die `signal()` bzw. `pruefe_einstieg()` liest.
    Kraken-Preis; die Herkunft steht als `kerzenquelle: binance` im Journal und
    in jeder Ausgabe.
 5. **Backtest-Runden fuellen keine Freigabe-Bedingung.** Unveraendert.
+6. **Die Signalwelle sieht 40 Symbole statt 250.** Ihre `wachen.json` setzt
+   `anzahl_coins: 250`; die Stundendaten decken die Top 40 ab. Eine
+   1h-Bewegung von +3 % ist bei kleinen Coins haeufiger als bei den
+   liquidesten — der Backtest findet also **weniger** Signale als die Regel
+   im Betrieb, nie mehr. Die Abweichung wird als
+   `universum: "top40_nach_volumen"` ausgewiesen; wer mehr will, laesst 1H
+   fuer weitere Symbole nachladen (je 100 Symbole ~80 min, ~600 MB).
 
 ## 7. Was nicht nachrechenbar ist
 
@@ -184,7 +214,6 @@ Backtest-Zeile.
 
 | Spur | Grund |
 |---|---|
-| `moondev_signalwelle` | braucht eine **1h**-Aenderung; Tageskerzen geben sie nicht (nachruestbar: 1H fuer die Top 40, ~35 min Abruf, ~250 MB) |
 | `moondev_sniper` | pump.fun-Neulaunches mit Alter in Minuten — nur live vorhanden |
 | `moondev_listingarb` | Marktkapitalisierung fehlt frei (die Binance-Paarliste waere baubar) |
 | `moondev_whale` | OKX-OI-Historie verweigert (`50030 Illegal time range`) |
@@ -218,9 +247,11 @@ Backtest-Zeile.
 
 | Schritt | Aufwand |
 |---|---|
-| `moondev_historie.py` + Tests | ~2 h, davon 13 min Abruf (300 Symbole) und ~15 min Funding |
+| `moondev_historie.py` + Tests | ~2 h, davon 13 min Abruf (300 Symbole 1D) und ~15 min Funding |
+| Stundendaten Top 40 (in derselben Datenschicht) | ~33 min Abruf, ~250 MB |
 | Adapter `moondev_topmovers` + Tests | ~1 h |
 | Adapter `moondev_marktlage` + Tests | ~1 h |
+| Adapter `moondev_signalwelle` + Tests (Stundenschritt) | ~1 h |
 | Familie C `moondev_funding` + Tests | ~1,5 h |
 | Gegenprobe, Auswertungszeile, Wiki, Aufgabe T-096 schliessen | ~1 h |
 
