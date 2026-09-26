@@ -40,7 +40,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
-| [Lektionen/Git-und-Textdateien.md](Lektionen/Git-und-Textdateien.md) | Zeilenenden, .gitignore-Whitelist, index.lock, Fremdarbeit im Baum |
+| [Lektionen/Git-und-Textdateien.md](Lektionen/Git-und-Textdateien.md) | Zeilenenden, .gitignore-Whitelist, index.lock, Fremdarbeit im Baum, Zugangsdaten im Arbeitsbaum |
 | [Lektionen/Tests.md](Lektionen/Tests.md) | Tests, die in echte Datenordner schreiben; Modulwaechter; sys.path-Reihenfolge |
 | [Lektionen/Windows-Umgebung.md](Lektionen/Windows-Umgebung.md) | PYTHONHOME, Pfadaufloesung, Umgebungsvariablen, Auslagerungsdatei/Commit-Limit |
 | [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig" |

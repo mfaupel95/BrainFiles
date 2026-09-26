@@ -3,7 +3,7 @@ id: 20260921-git-und-textdateien
 title: 'Lektionen — Git und Textdateien'
 tags: [lektion, git]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-26
 related: ['[[Lektionen/Tests]]', '[[Wissen/Schutzregeln]]']
 summary: 'Zeilenenden, Whitelist-Falle, index.lock, Fremdarbeit im Arbeitsbaum — die vier Fallen, die am haeufigsten zugeschlagen haben.'
 ---
@@ -113,3 +113,37 @@ hat, ist das ein Befund: erst `git checkout <letzter-guter-commit> -- <pfad>`,
 den Inhalt zurueckholen, dann committen. Eine Pfadliste macht einen Commit nicht
 sicher - nur ihr Inhalt tut es.
 Gegenprobe danach: `git cat-file -e HEAD:<pfad>` (Exitcode 0 = liegt in HEAD).
+
+## Zugangsdaten im Arbeitsbaum sind kein Leak - HEAD pruefen
+
+Beim Sichern von Fremdarbeit am 26.09.2026 standen in zwei VORLAGENDATEIEN
+(`.env.example`, beide versioniert) echte Kennungen im Klartext: `ANTHROPIC_API_KEY`
+und `TELEGRAM_BOT_TOKEN` im Klon `fomo-robinhood-radar`, ein `OPENAI_API_KEY` im
+Klon `skillspector`.
+
+Die Reihenfolge, die den Alarm richtig stellt:
+
+1. **`git status` sagt nur „geaendert", nicht „veroeffentlicht".** Ein Wert im
+   Arbeitsbaum ist eine Sitzung, die lokal gearbeitet hat; erst ein Commit macht
+   daraus Geschichte.
+2. **Den HEAD-Stand der Zeile pruefen**, nicht die Arbeitsbaum-Datei:
+   `git show HEAD:.env.example` und dort die Zeile ansehen. In beiden Faellen war
+   der Wert dort LEER - es ist nichts gepusht worden, Fork und Upstream trugen
+   leere Werte. Damit ist die Reparatur ein `git checkout -- <datei>`
+   (HEAD-Stand zurueck) und keine Notfallaktion.
+3. **Erst danach ueber Rotation reden.** Wer sofort „Kennung neu ausstellen"
+   ruft, ohne den HEAD geprueft zu haben, verwechselt Arbeitsbaum mit
+   Veroeffentlichung.
+
+Zwei Regeln fuer den Umgang mit solchen Funden:
+
+- **Nichts committen, was wie ein Wert aussieht.** Beim Sichern der Fremdarbeit
+  wurde die Datei bewusst ausgelassen; ein `git add -A` haette sie erfasst.
+- **Werte nie ausgeben, auch nicht zum Beweisen.** Gemessen wird ueber Laenge und
+  `sha256[:12]`, verglichen wird per Hash - dann steht der Nachweis im Protokoll,
+  ohne dass ein Geheimnis im Protokoll steht.
+
+Werkzeug fuer den Scan (liest `*.env`, `.env.example/.template/.sample` in Wurzel
+und `Werkstatt/Repos`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
+`Agenten/Hermes/cache/scratch/keys_bereinigen.py`. Ausgenommen bleiben
+`Wissen/Zugaenge.md` (Stufe 0) und die per `.gitignore` gesperrten `.env`-Dateien.
