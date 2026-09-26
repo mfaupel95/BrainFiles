@@ -74,8 +74,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Anthropic-Key neu ausstellen, Telegram-Bot-Token bei BotFather neu holen.
       Vorher pruefen, in welcher .env die echten Werte noch stehen (die Datei
       selbst ist Stufe 0 und wird nicht geblaettert).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Werkstatt/Repos/fomo-robinhood-radar/.env.example
+      STAND 26.09.2026: Die zwei Dateien sind bereinigt (jede auf ihren
+      HEAD-Stand zurueckgesetzt, in dem die Werte LEER sind), die
+      Arbeitsbaeume sind sauber. Beide waren nur im Arbeitsbaum veraendert -
+      HEAD und Fork/Upstream trugen leere Werte, es ist also NICHTS geleakt.
+      Der Fund war doppelt: neben fomo-robinhood-radar/.env.example trug auch
+      Werkstatt/skillspector/.env.example einen echten OPENAI_API_KEY (Klon von
+      nvidia/skillspector, Remote zeigt auf NVIDIA - ein Push dorthin waere gar
+      nicht moeglich gewesen).
+      Geprueft und unauffaellig: 41 .env-Dateien in Wurzel und Werkstatt/Repos -
+      die zwei .env mit echten Werten (Agenten/Hermes/.env,
+      moon-dev-ai-agents/.env) sind per .gitignore gesperrt und nie versioniert
+      worden; die .env.template-Artefakte in mehreren Klonen sind die Vorlage
+      von ToolUniverse ("fill in your actual API keys"), kein Wert.
+      OFFEN (nur Max): die drei Kennungen (Anthropic, Telegram-Bot, OpenAI) als
+      kompromittiert behandeln und neu ausstellen. Kein Leak nach aussen, aber
+      die Werte lagen in Klon-Arbeitsbaeumen, die von Sicherungen und
+      Sitzungsablagen nicht erfasst werden - Rotation ist die saubere Antwort.
+      Werkzeug: Agenten/Hermes/cache/scratch/keys_bereinigen.py (liest und
+      meldet nur Laengen/Hashes, gibt nie Werte aus).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-26
+      Betrifft: Werkstatt/Repos/fomo-robinhood-radar/.env.example,
+      Werkstatt/skillspector/.env.example
 - [ ] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
       Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
       "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
