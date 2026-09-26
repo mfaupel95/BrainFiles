@@ -29,7 +29,7 @@
   "_einfall_herzschlag": "Faellt der Kraken-Quote-Feed aus, haelt die Spur ihren Herzschlag ueber die Kopier-Daten am Leben, statt still totzugehen. Nur Frist-Ausstiege werden im Fallback gerechnet - ohne Kurse ruhen Stop und Trailing.",
   "einfall_herzschlag_kopier": true,
   "herzschlag_max_minuten": 180,
-  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Papier-Spur; auf 45, sobald handel_erlaubt true wird.",
+  "_herzschlag_regel": "REGEL 19.09.2026 (Vorgabe Max): 180 Minuten, fuer Papier- UND fuer Live-Spuren. Die frueher hier genannte 45er-Grenze ist aufgehoben - ein Rechner-Ausfall haette sonst echte Positionen ohne Handelsentscheidung flachgestellt (der Waechter startet einen toten Dauerlauf im 30-Minuten-Takt neu, eine Stoerung heilt also von selbst). steht seit 25.09.2026 auf 180, obwohl handel_erlaubt true ist.",
   "freigabe": {
     "erfuellt": true,
     "papierlauf_min_wochen": 6,

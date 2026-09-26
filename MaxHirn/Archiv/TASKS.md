@@ -774,7 +774,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Boerse') statt still aufgerundet - das war der eigentliche Fallstrick:
       bei live_einsatz_eur 1.00 haette die Boerse 1 Kontrakt = 118 USD
       gefuellt. Tests nautilus_kraken 73 gruen (test_futures_grenzen 5 neu).
-      WARTET AUF MAX: handel_erlaubt steht weiter false - die Spur armt nicht.
+      ARMIERT 25.09.2026 (eine parallele Sitzung, Auftrag Max 'Strategie hoch
+      fahren!'): handel_erlaubt und freigabe.erfuellt stehen true, das Fenster
+      oeffnet die Auto-Freigabe selbst (Spur steht in dauerlauf.AUTO_FREIGABE).
+      Stand 26.09. 02:42 lokal: Modus live seit rund 23:00 UTC, 74 live-Zeilen,
+      NOCH KEIN Einstieg (0 Positionen) - es fehlt ein frischer Kopier-Kauf als
+      Signal. BINDEND: der Futures-Schluessel wird abgewiesen, solange ein VPN
+      laeuft (NordLynx -> authenticationError); ohne Tunnel sind 141,59 USD frei.
+      Kleiner Nachtrag von mir: der Vermerk _herzschlag_regel behauptete noch
+      'auf 45, sobald handel_erlaubt true wird' - richtig ist 180 (Hausregel
+      19.09.2026, gilt fuer Papier UND Live); der Wert stand schon auf 180.
+      OFFEN: der erste echte SOL-Kauf (1 Kontrakt, rund 122 USD Nennwert,
+      Schutz-Stop 19,8 % darunter) - der Dauerlauf meldet ihn ueber den Bus.
       Vor dem Arming ist zu entscheiden, ob eine Mindestposition von 118 USD
       (Risiko am 19,8-%-Stop rund 23 USD) gewollt ist. Kleiner geht auf Kraken
       Futures nicht: die Boerse kennt keine Kontraktbruchteile.
