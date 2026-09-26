@@ -59,7 +59,23 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-
+- [ ] **T-070 — echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example`**
+      Kontext: Beim Sichern der Fremdarbeit am 24.09.2026 gefunden - in einer
+      VERSIONIERTEN Vorlagendatei stehen zwei echte Kennungen im Klartext
+      (ANTHROPIC_API_KEY und TELEGRAM_BOT_TOKEN, Werte hier absichtlich nicht
+      wiederholt). Die Aenderung liegt nur im Arbeitsbaum (Status " M"), der
+      Kopf des Klons ist unveraendert auf origin/main - es ist also noch NICHTS
+      gepusht und nichts geleakt.
+      RISIKO: Die Datei wird von jedem `git add -A` in diesem Klon erfasst; ein
+      Push in den Fork mfaupel95/fomo-robinhood-radar legt beide Kennungen
+      offen. Deshalb wurde sie beim Sichern bewusst NICHT committet.
+      Naechster Schritt (Entscheidung Max): beide Werte in der Datei wieder auf
+      Platzhalter setzen und die zwei Kennungen als kompromittiert behandeln -
+      Anthropic-Key neu ausstellen, Telegram-Bot-Token bei BotFather neu holen.
+      Vorher pruefen, in welcher .env die echten Werte noch stehen (die Datei
+      selbst ist Stufe 0 und wird nicht geblaettert).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/fomo-robinhood-radar/.env.example
 - [ ] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
       Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
       "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
