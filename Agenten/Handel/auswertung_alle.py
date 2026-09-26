@@ -545,10 +545,16 @@ def backtest_stand(spur):
         if pfad.is_file():
             with pfad.open(encoding="utf-8", newline="") as f:
                 zeilen = sum(1 for _ in csv.reader(f)) - 1      # ohne Kopf
-            laeufe.append((zeilen, name, pfad))
+            # Bei GLEICHER Zeilenzahl gewinnt der Lauf MIT Kerzenuhr. Sonst
+            # entscheidet der Name, und ein alter Lauf ohne Zeitraum kann einen
+            # datierten verdecken - am 2026-09-26 lagen zwei Laeufe mit je 2180
+            # Zeilen nebeneinander, der aeltere hiess 'ganz' und gewann; die
+            # Zeile sagte 'Zeitraum unbekannt', obwohl daneben ein datierter
+            # Lauf lag.
+            laeufe.append((zeilen, 1 if _hat_kerzenuhr(pfad) else 0, name, pfad))
     if not laeufe:
         return "kein Lauf mit Journal"
-    zeilen_zahl, name, pfad = max(laeufe)
+    zeilen_zahl, _uhr, name, pfad = max(laeufe)
     try:
         k = replay.kennzahlen(pfad)
     except Exception as e:                                       # noqa: BLE001
@@ -560,6 +566,16 @@ def backtest_stand(spur):
             % (k["runden"], 100 * k.get("p", 0.0),
                k.get("ergebnis_summe", 0.0) / k["runden"],
                _backtest_zeitraum(pfad), zeilen_zahl, name))
+
+
+def _hat_kerzenuhr(pfad):
+    """Traegt das Journal die Spalte `_kerzen_ts`? Nur der Kopf wird gelesen."""
+    try:
+        with pfad.open(encoding="utf-8", newline="") as f:
+            kopf = f.readline()
+    except OSError:
+        return False
+    return "_kerzen_ts" in kopf
 
 
 def _backtest_zeitraum(pfad):

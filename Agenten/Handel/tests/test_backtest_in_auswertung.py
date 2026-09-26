@@ -92,6 +92,36 @@ class StandTest(unittest.TestCase):
         self.assertIn("vor der Kerzenuhr",
                       auswertung_alle.backtest_stand("squeeze"))
 
+    def test_gleichstand_geht_an_den_lauf_mit_kerzenuhr(self):
+        """Bei GLEICHER Zeilenzahl darf kein alter Lauf den datierten verdecken.
+
+        Am 2026-09-26 lagen zwei Laeufe mit je 2180 Zeilen nebeneinander: der
+        alte ohne Kerzenuhr (Name 'ganz') und der neu gefahrene datierte
+        (Name 'ganz.…'). Entschieden hat der NAME - und der alte gewann. Die
+        Zeile sagte 'Zeitraum unbekannt', obwohl ein datierter Lauf daneben lag.
+
+        Der datierte Lauf heisst hier ABSICHTLICH alphabetisch kleiner: ohne
+        die Regel gewaenne der Name, nicht die Kerzenuhr.
+        """
+        alt = Path(self.tmp.name) / "squeeze" / "z_alt" / "handelsjournal.csv"
+        neu = Path(self.tmp.name) / "squeeze" / "a_dat" / "handelsjournal.csv"
+        _journal(alt, 3)
+        _journal(neu, 3)
+        with alt.open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=SPALTEN)
+            w.writeheader()
+            for _ in range(3):
+                for akt, preis in (("kauf", 100.0), ("verkauf", 105.0)):
+                    w.writerow({"zeit": "2024-01-01T00:00:00+00:00", "modus": "papier",
+                                "aktion": akt, "inst": "BTC-USDC", "seite": "long",
+                                "preis": preis, "einsatz_usd": "100.00",
+                                "stop": "95.0", "ziel": "110.0", "stop_pct": "5.0",
+                                "grund": "backtest"})
+        text = auswertung_alle.backtest_stand("squeeze")
+        self.assertIn("Lauf 'a_dat'", text)
+        self.assertIn("2023-11", text)
+        self.assertNotIn("vor der Kerzenuhr", text)
+
 
 if __name__ == "__main__":
     unittest.main()
