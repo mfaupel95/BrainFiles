@@ -2140,7 +2140,7 @@ code_execution:
   max_tool_calls: 50
   timeout: 300
 gateway:
-  multiplex_profiles: false
+  multiplex_profiles: true
   profile_routes:
     - name: telegram-max
       platform: telegram
