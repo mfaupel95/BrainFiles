@@ -31,15 +31,16 @@
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 19.09.2026 (Vorgabe Max): 180 Minuten, fuer Papier- UND fuer Live-Spuren. Die frueher hier genannte 45er-Grenze ist aufgehoben - ein Rechner-Ausfall haette sonst echte Positionen ohne Handelsentscheidung flachgestellt (der Waechter startet einen toten Dauerlauf im 30-Minuten-Takt neu, eine Stoerung heilt also von selbst). steht seit 25.09.2026 auf 180, obwohl handel_erlaubt true ist.",
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "papierlauf_min_wochen": 6,
     "netto_positiv": false,
     "groesster_ruecklauf_papierlauf": null,
     "geprueft_am": null,
-    "_vermerk_scharf": "Scharf gestellt am 25.09.2026 auf Auftrag Max (\"Strategie hoch fahren!\"): handel_erlaubt=true, freigabe.erfuellt=true. Der Orderweg ist kraken_rest ueber KRAKEN_PRODUKT=futures (kraken_futures.py, Kontrakte, PF_-Paare). BINDEND: der Futures-Schluessel wird abgewiesen, solange ein VPN laeuft (gemessen 25.09.2026: mit NordLynx authenticationError, ohne Tunnel 141,5876 USD abrufbar) - vor dem Handeln muss der Tunnel aus sein. Groesse und Deckel sind unveraendert geblieben."
+    "_vermerk_scharf": "Scharf gestellt am 25.09.2026 auf Auftrag Max (\"Strategie hoch fahren!\"): handel_erlaubt=true, freigabe.erfuellt=true. Der Orderweg ist kraken_rest ueber KRAKEN_PRODUKT=futures (kraken_futures.py, Kontrakte, PF_-Paare). BINDEND: der Futures-Schluessel wird abgewiesen, solange ein VPN laeuft (gemessen 25.09.2026: mit NordLynx authenticationError, ohne Tunnel 141,5876 USD abrufbar) - vor dem Handeln muss der Tunnel aus sein. Groesse und Deckel sind unveraendert geblieben.",
+    "_erfuellt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck)."
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\nautilus_kraken_futures",
-  "handel_erlaubt": true,
+  "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "true seit 21.09.2026 (Auftrag Max: 'kraken spuren handel_erlaubt=true'). Wirkung: die Spur gilt als handelserlaubt - handeln kann sie trotzdem nicht, ihr Code hat KEINEN Orderpfad (kein markt_kauf/order_aufgeben; sie ist eine NautilusTrader-Papierspur). Ein Live-Pfad muesste erst gebaut werden; bis dahin bleibt sie Papier, egal welcher Schalter.",
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter)."
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026: Nautilus-Arme auf Papier, 0 geschlossene Runden, keine belastbare Statistik. Live erst nach >=8 Runden und Freigabekette."
 }

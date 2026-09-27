@@ -31,7 +31,7 @@
   "herzschlag_max_minuten": 180,
   "_herzschlag_regel": "REGEL 19.09.2026 (T-004): 180 Minuten, auch LIVE. Die alte 45-Minuten-Grenze fuer Live-Spuren ist aufgehoben - nach einem Rechner-Ausfall wuerde sie die Position OHNE Handelsentscheidung flachstellen und eine Runde buchen, die keine war. Der Waechter startet den Dauerlauf neu, eine Stoerung heilt in rund 32 Minuten von selbst. systempruefung.ps1 Block 11b prueft 180 fuer alle Spuren.",
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "papierlauf_min_runden": 50,
     "_vermerk": "Haken gesetzt auf Auftrag Max 24.09.2026 (Freigabe einrichten) - die von Hand gesetzte Endabnahme, der Code rechnet nichts nach. ECHTER STAND zur Endabnahme: 4 Einstiege, 0 geschlossene Runden (Fristen 26./27.09.2026) - weit unter papierlauf_min_runden 50, kein netto-positiv-Nachweis. Die Kriterien bleiben als Massstab stehen. Der Schadensdeckel ist fuer den Test auf live_max_risiko_gesamt_eur 20 EUR gezogen.",
     "_ruecknahme": "erfuellt zurueck auf false, wenn der ~1-EUR-Test scheitert (Order nicht gefuellt, Fuellung ohne Stop, Buch und Boerse laufen auseinander) oder die ersten echten Runden netto negativ schliessen.",
@@ -39,13 +39,14 @@
     "netto_positiv": false,
     "groesster_ruecklauf_papierlauf": null,
     "geprueft_am": "24.09.2026",
-    "_entfaellt_kontext": "T-065: ~1-EUR-Round-Trip als Endabnahme des REST-Orderwegs (24.09.2026); die quantitativen Kriterien (6 Wochen, netto_positiv) koennen fuer diesen Verifikationstest nicht angewandt werden (Spur ist seit 22.09. Papier)."
+    "_entfaellt_kontext": "T-065: ~1-EUR-Round-Trip als Endabnahme des REST-Orderwegs (24.09.2026); die quantitativen Kriterien (6 Wochen, netto_positiv) koennen fuer diesen Verifikationstest nicht angewandt werden (Spur ist seit 22.09. Papier).",
+    "_erfuellt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck)."
   },
   "guthaben_waehrung": "EUR",
   "mindest_guthaben_eur": 2,
   "_mindest_guthaben": "Freies EUR, das ueber dem Live-Einsatz liegen muss (1,00 EUR + Gebuehren/Slippage + Puffer). Kraken reserviert die Menge erst bei der Order; ohne freies Guthaben scheitert jede Order mit EOrder Insufficient funds, und die Spur saehe trotzdem ok aus. Das Tor nennt die Zahl im Sperrtext (Muster kraken/mosaic). Beim Anheben von live_einsatz_eur mit anheben.",
   "journal_zweitziel": "Q:\\Handel_Journal\\nautilus_kraken",
-  "handel_erlaubt": true,
-  "_handel_erlaubt_vermerk": "true auf Auftrag Max 24.09.2026 (T-065, ~1-EUR-Spot-Round-Trip verifiziert den echten REST-Orderweg). Die Vorbedingungen sind erfuellt: freigabe.erfuellt true, journal_zweitziel gesetzt (Q: byte-gleich), Kraken-Schluessel mit Trade-Recht (REST-Weg am 24.09.2026 mit validate=true belegt), Live-Zweig gebaut (kraken_rest.py). Der Schalter allein schaltet nichts scharf - es fehlen weiter ein OFFENES FREIGABEFENSTER (stellt der Dauerlauf, bestaetigt /ja oder der Bildschirm) UND freies EUR-Guthaben (mindest_guthaben_eur). Nur der ~1-EUR-Test - die Spur bleibt bis zur naechsten Entscheidung im Wesentlichen Papier.",
+  "handel_erlaubt": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026: Nautilus-Arme auf Papier, 0 geschlossene Runden, keine belastbare Statistik. Live erst nach >=8 Runden und Freigabekette.",
   "_handel_erlaubt_hinweis": "Massgeblich ist handeln.sperren_zeile(): sie nennt handel_erlaubt, freigabe.erfuellt, Guthaben und Freigabefenster im Klartext. Geordert wird nur ueber kraken_rest (der Nautilus-Exec-Client ist tot - EGeneral Permission denied am WSS-Token, Entscheidung Max 24.09.2026)."
 }
