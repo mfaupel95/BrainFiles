@@ -2,7 +2,7 @@
   "_zweck": "Gegen den Liquidations-Cluster handeln: die Wand ist der Preis, an dem sich Zwangsschluesse haeufen.",
   "_quelle": "OKX oeffentlich, /api/v5/public/liquidation-orders (kein Schluessel) ueber moondev_daten.okx_liquidationen - dieselbe Quelle wie die Spur moondev_liquidation. Gemessen 21.09.2026: 100 Eintraege je Abruf, Fenster rund 78 Minuten.",
   "_richtung": "Eine Liquidationswand ist ein BESCHLEUNIGER, kein Widerstand. Zwangsgeschlossene Shorts (posSide short) sind Kaufdruck -> long; zwangsgeschlossene Longs sind Verkaufsdruck -> short. Die Spur geht MIT dem Cluster.",
-  "_handel_erlaubt_vermerk": "Wirkungslos, solange diese Spur keinen Orderaufruf hat - sie ist Papier. Wer sie live nimmt, braucht zuerst einen Orderweg und die Sperrenkette.",
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck, kein Live-Orderweg gewollt).",
   "instrument": "BTC-USDT-SWAP",
   "inst_familie": "BTC-USDT",
   "liq_grenze": 100,
@@ -29,13 +29,13 @@
   "gebuehr_taker": 0.0005,
   "risikovorfilter": true,
   "herzschlag_max_minuten": 180,
-  "handel_erlaubt": true,
+  "handel_erlaubt": false,
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "papierlauf_min_runden": 50,
     "netto_positiv": true,
     "groesster_ruecklauf_usd": 30.0,
-    "_erfuellt_vermerk": "true auf Auftrag Max 22.09.2026 (stille Spuren einschalten). Stand: 0 eigene Runden (liq_wand angelegt 21.09.2026). Papier-Beobachtung laeuft, Live-Weg ueber spur_buch.zyklus. AUTO_FREIGABE oeffnet Fenster beim naechsten Signal wenn nur das Fenster fehlt."
+    "_erfuellt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck)."
   },
   "grund": "liq_wand",
   "journal_zweitziel": "Q:\\Handel_Journal\\liq_wand",

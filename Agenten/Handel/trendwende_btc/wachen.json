@@ -13,14 +13,14 @@
   "supertrend_n": 10,
   "supertrend_faktor": 3.0,
   "ema_filter_n": 200,
-  "handel_erlaubt": true,
+  "handel_erlaubt": false,
   "herzschlag_max_minuten": 180,
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "papierlauf_min_wochen": 6,
     "netto_positiv_nach_gebuehren_und_funding": null,
     "_stand": "NEU am 21.09.2026 angelegt. Keine Runde gemessen - der Haken wird von Hand gesetzt (Handelsregeln Punkt 3), nicht von der Spur.",
-    "_erfuellt_vermerk": "true auf Auftrag Max 22.09.2026 (stille Spuren einschalten). Stand: 0 eigene Runden (trendwende_btc angelegt 21.09.2026). Papier-Beobachtung laeuft, Live-Weg ueber spur_buch.zyklus. AUTO_FREIGABE oeffnet Fenster beim naechsten Signal wenn nur das Fenster fehlt."
+    "_erfuellt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck)."
   },
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 1,
@@ -44,5 +44,6 @@
   "_drawdown_halbierung": "1.0 x Buchrisiko: risiko_je_position_usd 5.0 x max_offene_positionen 1 = 5.00. Ausdruecklicher Betrag, damit er sich nicht mitverschiebt, wenn jemand den Einsatz aendert.",
   "kill_switch_gesamt_usd": 20.0,
   "journal_zweitziel": "Q:\\Handel_Journal\\trendwende_btc",
-  "wochenende": false
+  "wochenende": false,
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026 (Papier zurueck, kein Live-Orderweg gewollt)."
 }

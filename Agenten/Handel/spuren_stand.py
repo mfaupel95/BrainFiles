@@ -97,6 +97,25 @@ def orderweg(ordner: Path, nur_dateien: bool = True):
     bucht. Ausgeschlossen sind deshalb `test_*.py` und alles unter `tests/`.
     """
     treffer, arten = [], set()
+    # spur_buch-Nutzer: Die Orderfunktionen liegen im GEMEINSAMEN Kern
+    # (spur_buch.py -> orderweg() -> mosaic/okx_spot oder kraken_spot), nicht im
+    # Spurordner. Eine Spur, die spur_buch importiert UND eine `boerse` in der
+    # wachen.json traegt, hat einen echten Live-Pfad - auch wenn im Ordner keine
+    # Orderfunktion steht. Ohne diese Erkennung meldet spuren_stand.py solche
+    # Spuren faelschlich als "keiner" (moondev_listingarb/-topmovers, 27.09.).
+    wachen = ordner / "wachen.json"
+    if wachen.is_file():
+        try:
+            w = json.loads(wachen.read_text(encoding="utf-8"))
+            if w.get("boerse") and any(
+                ("import spur_buch" in f.read_text(encoding="utf-8", errors="ignore")
+                 or "spur_buch.py" in f.read_text(encoding="utf-8", errors="ignore"))
+                for f in ordner.glob("handeln.py")
+            ):
+                treffer.append("spur_buch")
+                arten.add("haus")
+        except Exception:
+            pass
     for f in sorted(ordner.rglob("*.py")):
         p = str(f).replace("\\", "/")
         if "test" in f.name or "/tests/" in p or "/.venv/" in p:
