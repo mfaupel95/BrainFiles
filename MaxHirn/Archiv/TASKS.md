@@ -59,6 +59,10 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-101 — Nautilus-Arme erst nach belastbarer Statistik live**
+      Kontext: 27.09.2026 auf Papier gesetzt (handel_erlaubt=false, freigabe.erfuellt=false) - nautilus, nautilus_kraken, nautilus_kraken_futures haben 0 geschlossene Runden, keine belastbare Messung. nautilus_kraken (Spot) war von einer parallelen Sitzung scharf gestellt (T-065, ~1-EUR-Round-Trip), Auftrag Max hat das ueberschrieben.
+      Naechster Schritt: erst nach >=8 geschlossenen Runden je Arm und Freigabekette live.
+      Angelegt 27.09.2026 · Zuletzt 27.09.2026 · Betrifft Agenten/Handel/nautilus*
 - [ ] **T-100 — xperp kill_switch schliesst gewinnende Positionen (zu aggressiver Schutz)**
       Kontext: Auswertung 27.09.2026 - alle 5 kill_switch-Ausgaenge (21.09. BZ/CRCL/HBAR, 25.09. CRCL/MSTR) waren POSITIV (+0,4 bis +2,4 %). Der Kill feuert nicht wegen der aktuellen Position, sondern weil der kumulierte Ruecklauf vom Peak den Deckel erreicht - er schuetzt den realisierten Gewinn, schliesst dabei aber Positionen im Plus. Deckel jetzt 250 USD (21.09. von 40 erhoeht), max. je erreichter Ruecklauf 31 USD -> de facto entschaerft.
       Naechster Schritt: Entscheidung, ob der Kill auf echte Verluste umgestellt oder der Deckel als Gewinnschutz beibehalten wird.
