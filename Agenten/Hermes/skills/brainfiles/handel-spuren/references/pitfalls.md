@@ -1094,6 +1094,20 @@ Kurzfassung ersetzt die Begruendung nicht.
   `--papier`-Zyklus (Zustand, Journal, Q:), `spiegelstand.py` byte-gleich,
   `pruefe_ratschen.py` nennt die Spur mit ihrer Schwelle.
 
+- **Der Kill-Switch schliesst GEWINNENDE Positionen - er feuert auf den
+  kumulierten Ruecklauf vom realisierten Peak, nicht auf die aktuelle Position.**
+  Ein `kill_switch`-Ausstieg im Journal ist deshalb KEIN Beleg fuer eine
+  Verlustposition: gemessen 27.09.2026 bei xperp waren alle fuenf
+  Kill-Ausgaenge positiv (+0,4 bis +2,4 %), weil der Deckel den Ruecklauf vom
+  Hoechststand der realisierten Gewinnkurve schuetzt und dabei Positionen
+  schliesst, die gerade im Plus stehen. Vor jeder Deutung eines
+  Kill-Ausstiegs die Drawdown-Kurve FIFO-gepaart nachrechnen (Einstieg/Ausstieg
+  je Instrument, kumuliertes Ergebnis, Peak, Ruecklauf) und den Deckel gegen den
+  je erreichten Ruecklauf halten - ein Deckel weit ueber dem je erreichten
+  Ruecklauf ist de facto entschaerft, kein Fehler. Die Frage ist nicht "warum
+  schliesst er Gewinner", sondern "schuetzt er realisierten Gewinn oder begrenzt
+  er echte Verluste" - beides ist eine bewusste Entscheidung, keine Stoerung.
+
 - **Eine Anzeige, die ihre Ausnahmen verschweigt, liest sich als fehlerfreier
   Automat.** Die Trennung richtig zu RECHNEN ist die halbe Arbeit - gelesen wird
   die Zeile, und die Luecke zwischen Zahl und Aussage fuellt der Leser mit dem

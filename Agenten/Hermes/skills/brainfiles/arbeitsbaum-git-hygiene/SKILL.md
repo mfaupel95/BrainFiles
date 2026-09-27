@@ -177,7 +177,17 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  Sitzungen), erst (a) nach Kennungen suchen
  (`grep -rInE 'sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20}|rt_[A-Za-z0-9]{20}|<eigene Token-Praefixe>' <pfad>`)
  und jeden Treffer einzeln lesen — Platzhalter wie `ghp_xx...xxxx` in einer Doku sind
- harmlos, echte Werte nicht; (b) je `SKILL.md` das Frontmatter pruefen (beginnt mit
+ harmlos, echte Werte nicht. **Auch eine VORLAGENDATEI kann echte Kennungen tragen:
+   `.env` ist ignoriert, `.env.example`/`.env.template` sind VERSIONIERT.** Gemessen:
+   in der getrackten `.env.example` eines Fremd-Klons standen echte Werte
+   (`ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`) — ein `git add -A` in diesem Klon und
+   ein Push haetten beide in den Fork veroeffentlicht; der Klon-Kopf war noch sauber,
+   die Aenderung lag nur im Arbeitsbaum. Wer einen Fremd-Klon mit `git add -A`
+   sichern will, macht zuerst `git status --porcelain | grep -i env` und liest jede
+   getrackte Vorlage: echte Werte NICHT committen, den Zustand liegen lassen und als
+   eigenen Task melden (Kennungen neu ausstellen, Werte auf Platzhalter). **Ist der Baum eines FREMDEN Klons vollstaendig fremd (kein eigener Pfad darin), ist `git add -A` DORT vertretbar** — aber erst nach dem env-Blick oben UND nach LESEN der Liste: nimmt es eine eigene Datei oder eine `.env`/Schluesseldatei mit, gilt Regel 1 (namentlich stagen). Regel 1 schuetzt BrainFiles' Mehrsitzungs-Baum, nicht den Klon eines Fremd-Repos. **Und beim
+   Berichten die Werte maskieren** (`sed -E 's/=(.{0,4}).*/=\1…/'`) — ein Diff im
+   Sitzungsprotokoll ist derselbe Leak wie ein Commit; (b) je `SKILL.md` das Frontmatter pruefen (beginnt mit
  `---`, `name` und `description` gesetzt), sonst geht eine halb geschriebene Datei mit;
  (c) im Commit-Text sagen, dass der Stapel aus frueheren Sitzungen stammt und was davon
  heute dazukam. Fremde Arbeit in einem Rueckstand ist kein Grund, sie liegen zu lassen,
@@ -409,7 +419,20 @@ ungetrackten Dateien. Reihenfolge:
  Commit lief erst nach dem Umbenennen durch).
  **Prozesse ansehen,
  nicht nur die Uhr:** `git fsmonitor--daemon` laeuft dauerhaft und ist KEIN Commit —
- eine `git.exe`-Liste voller fsmonitor-Zeilen beweist keine parallele Sitzung. Ein
+ eine `git.exe`-Liste voller fsmonitor-Zeilen beweist keine parallele Sitzung.
+ **Und die Liste muss erst beweisen, dass sie ueberhaupt laeuft:**
+ `tasklist //FI "IMAGENAME eq git.exe"` scheitert unter MSYS mit
+ „Argument/Option ungueltig - `//FI`" und gibt dabei eine LEERE Liste aus - man
+ liest „kein git.exe", haelt eine lebende Sperre fuer verwaist und raeumt sie weg.
+ Richtig ist `MSYS_NO_PATHCONV=1 tasklist /FI "IMAGENAME eq git.exe" /FO CSV`,
+ und die Gegenprobe auf einen Prozess, den es SICHER gibt (`bash.exe`), gehoert
+ zu jedem solchen Nachweis: erst wenn die Sonde dort Treffer zeigt, ist ein
+ leeres Ergebnis eine Aussage. `wmic` gibt es auf Windows 11 26200 nicht mehr
+ („command not found") - die Kommandozeile kommt aus
+ `Get-CimInstance Win32_Process -Filter "name='git.exe'"`, und die schreibt man
+ als `.ps1` nach `Agenten/Hermes/cache/scratch/` und startet sie mit
+ `powershell -NoProfile -ExecutionPolicy Bypass -File <datei>`; verschachtelte
+ Anfuehrungszeichen in einer bash-`-Command`-Zeile gehen sonst kaputt. Ein
  echte Committer hat eine CreationDate in den letzten Sekunden und `add`/`commit`
  in der Kommandozeile; fehlt beides und ist die Sperre 0 Byte und aelter als ein paar
  Minuten, ist sie verwaist.
@@ -688,3 +711,14 @@ ungetrackten Dateien. Reihenfolge:
   `git add <pfade> && git diff --cached --numstat` - die Zahl der genannten Pfade muss
   der Absicht entsprechen; danach `git show --stat HEAD` gegen die Nachricht lesen und
   fehlende Pfade in einem Folge-Commit nachziehen (nicht die Historie umschreiben).
+- **Beim Durchgehen MEHRERER Repos ist ein leeres `@{u}` kein „nichts zu pushen".**
+  `git rev-parse --abbrev-ref '@{u}'` scheitert in einem Klon ohne gesetzten Upstream;
+  eine Schleife, die nur `git log '@{u}..HEAD'` zaehlt, meldet dann „0 unpushed" fuer
+  JEDES solche Repo — man hoert auf zu pruefen und meldet „alles gepusht", obwohl nur
+  die Messung leer war. Zwei Messungen je Repo statt einer: `git branch -r --contains
+  HEAD` (kennt der Remote den Commit?) und `git status --porcelain | wc -l` (liegt noch
+  Arbeit im Baum?). Reihenfolge beim Auftrag „alles pushen": erst die EIGENEN Repos
+  (BrainFiles und die verschachtelten eigenen wie `Agenten/Handel/nautilus`), dann die
+  Fork-Klone, an denen in dieser Sitzung wirklich gearbeitet wurde — NICHT alle Klone
+  unter `Werkstatt/Repos/`; ein Fork, den diese Sitzung nie angefasst hat, bleibt
+  unberuehrt und wird nur benannt.

@@ -12,7 +12,17 @@ fallback_providers:
 plugins:
   enabled: []
 _config_version: 46
-agent: {}
 onboarding:
   seen:
     tool_progress_prompt: true
+web:
+  backend: nous
+browser:
+  cloud_provider: nous
+tts:
+  provider: nous
+image_gen:
+  provider: nous
+delegation:
+  reasoning_effort: medium
+  model: ''

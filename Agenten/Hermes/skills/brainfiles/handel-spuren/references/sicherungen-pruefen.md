@@ -54,6 +54,21 @@ ueberlebt jede spaetere Korrektur des Textes.
 Die Grenze haengt NUR am Hoechststand, nie am aktuellen Ruecklauf. Sonst steht die
 Warnung neben 'Faktor 0.50' und widerspricht sich selbst.
 
+## Ein Kill-Switch kann GEWINNENDE Positionen schliessen
+
+Der Kill-Switch feuert auf den KUMULIERTEN Ruecklauf vom realisierten
+Hoechststand, nicht auf die aktuelle Position. Deshalb kann er Positionen
+schliessen, die gerade IM PLUS stehen: er schuetzt den realisierten Gewinn, nicht
+den aktuellen Stand. Belegt (xperp, 21./25.09.2026): alle fuenf
+kill_switch-Ausstiege waren +0,4 % bis +2,4 % — der Kill realisierte Gewinne,
+weil der Ruecklauf vom Peak den Deckel erreicht hatte.
+
+Bei der Diagnose 'warum hat der Kill gefeuert' also die KUMULIERTE
+Drawdown-Kurve (FIFO-gepaart, `hoch - kum`) ansehen, nicht die einzelne
+Position. Ein Kill, der Gewinner schliesst, ist kein Fehler, sondern ein zu
+aggressiver Schutz — der Deckel ist dann die Stellschraube, nicht der Code. Ein
+hoher Deckel (weit ueber dem je erreichten Ruecklauf) entschaerft ihn de facto.
+
 ## Sicherungen sichtbar machen
 
 Eine Sicherung, die man in der Ausgabe nicht sieht, kann man nicht pruefen. Der

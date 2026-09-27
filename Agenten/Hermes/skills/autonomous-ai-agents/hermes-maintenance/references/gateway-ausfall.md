@@ -118,6 +118,38 @@ zeigt `running`, `updated_at` altert nie ueber ~60 s, keine neue CRITICAL-Zeile 
 Test-Nachricht vorher `status: fehler`, nachher `status: ok` — er haengt ueber den
 a2a-Port 9900 am Gateway).
 
+**Update bricht ab mit „active gateway lock has no PID metadata" / „Could not inspect
+gateway PID for profile default".** Das ist KEIN Gateway-Ausfall, sondern ein
+Update-Vorlauf-Fehler: der laufende Gateway haelt `gateway.lock`, aber `gateway.pid`
+fehlt (oder traegt keine PID-Metadaten), und `hermes update` kann den Prozess nicht
+pausieren, weil es die PID nicht zuordnen kann. Ursache meist ein frueherer
+fehlgeschlagener Update-Lauf, dessen Cleanup die pid-Datei entfernte, ohne den
+Gateway zu stoppen. Diagnose: `cat gateway.pid` — fehlt die Datei oder ist sie leer,
+waerend der Gateway laeuft (Port 9900 hat einen Listener), ist das der Fall. Der
+Gateway selbst ist gesund; das Update muss nur die pid-Datei wiederherstellen
+(Neustart des Gateways schreibt sie neu) oder mit `--replace` laufen. Nicht den
+Gateway als „kaputt" behandeln — nur der Update-Vorlauf scheitert.
+
+**Post-Update-Kaskade: `StdioServerParameters` + `pydantic_core` fehlen = kaputte
+Installation, nicht MCP-Fehler.** Nach einem Update, das Code und venv inkonsistent
+hinterlaesst, parken ALLE MCP-Server mit `AttributeError: module 'tools.mcp_tool'
+has no attribute 'StdioServerParameters'` und der `hosted_room_worker` stirbt
+5× mit `ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'`
+(„giving up restarts"). Das ist die Signatur eines Code/venv-Mismatch nach dem
+Update — der neue Code erwartet Dinge, die die Installation nicht hat. Nicht die
+einzelnen MCP-Server reparieren; die Installation konsistent machen (venv neu
+bauen / Update sauber zu Ende fahren), dann Gateway neu starten. Ein Waechter, der
+einen toten Gateway neu startet, startet bei kaputter Installation einen kaputten
+Gateway neu — der Waechter heilt einen Code/venv-Mismatch nicht.
+
+**`exited UNCLEANLY (no exit path ran — SIGKILL / OOM / VM death, or a process kill
+issued by the agent or one of its descendants)`** in `gateway-stdio.log` ist die
+lifecycle_ledger-Signatur eines HARTEN Kills (kein sauberer Exit-Pfad). Mehrere
+solcher Eintraege am selben Tag mit `last_heartbeat_at` deutlich vor dem Exit = der
+Gateway wurde von aussen beendet (taskkill/pkill des Host-Interpreters, OOM, VM-
+Tod), nicht ein Code-Crash. Beim Zaehlen der Ausfaelle diese Zeile als Crash werten,
+`SystemExit`-75-Eintraege dagegen als Neustart-Verbleib.
+
 **Vorsorge: ein Gateway-Waechter.** Kleines Skript (Ablage `Agenten/Routinen/`),
 das alle 2 Minuten prueft, ob ein Prozess mit `hermes_cli.main gateway` in der
 Kommandozeile lebt, und wenn keiner lebt, den offiziellen Launcher-VBS aus

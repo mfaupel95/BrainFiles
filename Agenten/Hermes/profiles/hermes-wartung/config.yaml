@@ -1765,6 +1765,9 @@ plugins:
   enabled: []
 _config_version: 46
 agent: {}
+onboarding:
+  seen:
+    tool_progress_prompt: true
 
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,

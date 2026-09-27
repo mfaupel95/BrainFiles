@@ -187,6 +187,45 @@ deshalb am `ExecutablePath` festmachen und beim Bewerten von "Haltern" beide Bae
 (`<checkout>/venv`, `<checkout>/.hermes-runtime`, `<HERMES_HOME>/tools`) — ein Launcher, der
 nur auf das venv schaut, sieht den Gateway nicht mehr.
 
+## Tools-Runtime ohne Deps: der stille degradierte Gateway
+
+Der `tools/python-3.14.7…` ist ein **nackter Python** (site-packages enthaelt nur `pip`), bis
+`pip install -e hermes-agent` die Deps hineinlegt. Bricht ein Update ab, BEVOR es die Deps in
+den tools-Python installiert (z.B. weil es beim Pausieren des Gateways scheitert), laeuft der
+Gateway danach aus einem Python ohne `pydantic`/`pydantic_core`/`openai` — und zwar **weiter**,
+nur degradiert. Die Signatur ist eindeutig und haengt zusammen:
+
+- **Alle MCP-Server parken** mit `AttributeError: module 'tools.mcp_tool' has no attribute
+  'StdioServerParameters'` — das ist pydantic, das nicht geladen ist (der MCP-Client laeuft
+  unter dem Launcher-Interpreter, nicht unter einem Server-venv).
+- **`hosted_room_worker` stirbt 5×** mit `ModuleNotFoundError: No module named
+  'pydantic_core._pydantic_core'`, dann "giving up restarts".
+- **`hermes update` scheitert** mit `Could not inspect gateway PID for profile default` /
+  `active gateway lock has no PID metadata` — der Gateway laeuft in halb-kaputtem Zustand.
+
+Diagnose in zwei Zeilen: `Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'` zeigt den
+`ExecutablePath` des Gateways; dann `tools/python-3.14.7…/python.exe -c "import pydantic_core"`
+— `ModuleNotFoundError` = die Ursache. Die gesunden Laufzeiten existieren parallel
+(`<checkout>/venv` und die staged venvs unter `<HERMES_HOME>/installs/<hash>/environments/*/venv/`
+tragen `pydantic_core 2.46.4`); der Gateway nutzt sie nur nicht.
+
+Fix: `tools/python-3.14.7…/python.exe -m pip install -e hermes-agent` (aus `<HERMES_HOME>`),
+dann den Gateway neu starten, damit er die MCP-Server wieder verbindet. Der Launcher-VBS setzt
+`VIRTUAL_ENV=<HERMES_HOME>/tools` und `PYTHONPATH=<checkout>` — das allein installiert nichts;
+die Deps muessen explizit in den tools-Python. Ein `hermes update`-Lauf, der bis zur
+Dep-Installation durchlaeuft, erledigt das von selbst — der abgebrochene Lauf ist der
+Regelfall, der es nicht tut.
+
+**Nachweis nach dem Neustart:** der neue Gateway schreibt in `logs/gateway.log`, NICHT in
+`gateway-stdio.log` (das bleibt auf dem alten Prozess stehen und sieht "tot" aus, obwohl der
+neue laeuft). Der Beweis, dass der Deps-Fix gewirkt hat, sind die Zeilen
+`✓ a2a connected / ✓ webhook connected / ✓ telegram connected / ✓ photon connected` im frischen
+`gateway.log` PLUS ein echter MCP-Tool-Aufruf (z.B. `kraken_status` oder `archiv_statistik`
+liefert Daten statt "parked"). Port 9900 kann beim frischen Start kurz ohne LISTEN sein, waehrend
+der Gateway noch hochfaehrt — die `✓ … connected`-Zeilen sind der fruehere und eindeutigere
+Beleg. Dashboard nachziehen: `Start-ScheduledTask -TaskName 'Hermes_Dashboard'` + HTTP 200 auf
+Port 9119 (der Update-Lauf stoppt es und bringt es nicht immer zurueck).
+
 ## npm-Audit im Checkout: doppelte Pins brechen `npm install`
 
 `js-yaml` steht im Checkout **zweimal** — als direkte Abhaengigkeit (`"js-yaml": "4.3.1"`) und
@@ -208,6 +247,14 @@ STANDALONE … Profiles NOT served (their bots stay silent)" ab. Ursache: die
 die je Profil neu gezaehlt wird. Die Bots laufen als Einzelauftraege (`hermes -p <name> chat -q`),
 nicht als Multiplex-Adapter. **Nicht** reflexhaft die Kennung aus den Profilen loeschen; die
 Meldung ist ein Befund der Konto-Zaehlung, kein Ausfall.
+
+Die richtige Diagnose statt des Loeschens: `hermes gateway migrate --dry-run`. Sagt das Tool
+"No secondary profile runs its own gateway; the only step is turning the flag on", ist der
+einzige echte Schritt `hermes config set gateway.multiplex_profiles true` (danach Gateway neu
+starten, damit es greift). Das stellt den Host auf den modernen One-Gateway-Modus, ohne die
+geteilte Kennung anzutasten. Achtung beim `hermes config set`: danach `git diff config.yaml`
+PRUEFEN (Zeilenende CRLF koennen umgebrochen werden) und die diff zeigt evtl. fremde
+nebenlaeufige Aenderungen mit — nur die eigene Zeile stagen.
 
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 

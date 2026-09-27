@@ -40,6 +40,15 @@ AUSSERHALB von `tests/` und `.venv/`?
   Absicherung aus.
 - Eine Spur, deren Orderaufruf nur in einer `*_test.py` steht, hat ebenfalls keinen
   Live-Pfad im Betrieb.
+- **spur_buch-Nutzer haben ihren Orderweg im GEMEINSAMEN Kern, nicht im Spurordner.**
+  `spuren_stand.orderweg()` sucht nur im Spurordner nach Orderfunktionen — eine Spur,
+  die `spur_buch.zyklus()` aufruft (moondev_listingarb, moondev_topmovers,
+  trendwende_btc), meldet darum faelschlich "keiner", obwohl `spur_buch.orderweg()`
+  ueber `boerse` aus der wachen.json ein echtes Modul liefert (mosaic/okx_spot oder
+  kraken_spot). Erkennung erweitern: `import spur_buch` ODER `spur_buch.py` in
+  `handeln.py` UND ein `boerse`-Feld in der wachen.json = Live-Pfad. Ohne diese
+  Erkennung zeigt `/live` und der Tagesbericht eine scharfe Spur als Papier — ein
+  Anzeigefehler, kein Codefehler.
 - **Die Sperre im CODE muss am ORDERWEG haengen, nicht am Schalter.** Seit dem
   Sammelauftrag stehen `handel_erlaubt` UND `freigabe.erfuellt` in JEDER `wachen.json`
   auf true; eine `_live_erlaubt()`, die nur diese zwei Felder liest, laesst `--live`

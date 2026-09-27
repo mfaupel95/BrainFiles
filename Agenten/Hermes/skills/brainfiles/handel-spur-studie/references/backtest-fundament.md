@@ -209,6 +209,59 @@ blockieren. Lange Testsuiten ebenso: ein `execute_code`-Aufruf hat eine feste
 Zellgrenze, die einen laengeren inneren Aufruf kappt - lange Laeufe ueber das
 Terminal-Werkzeug (eigene Frist) oder im Hintergrund fahren.
 
+## Marktquerschnitt statt Kerzenreihe (Feed-Spuren)
+
+Nicht jede Spur entscheidet ueber EINE Reihe. Die Feed-Spuren (Top-Movers,
+Marktbreite, 1h-Signalwelle, Funding) entscheiden ueber einen
+**Marktquerschnitt**: wer hat in 24 h am meisten zugelegt, wie viele Coins
+stehen ueberhaupt im Plus. Ihre `quelle(w)` holt das von einem Datenanbieter;
+historisch wird derselbe Querschnitt aus Kerzen vieler Paare gebaut (eigener
+Ordner, eigener Kerzenform — s. unten). Fuenf Regeln, sonst wird die Zahl falsch
+statt leer:
+
+1. **Den Rang JE ZEITPUNKT aus dem Volumen DIESES Zeitpunkts bilden, nie aus
+   einer fest einmal gewaehlten Liste.** Eine feste Liste traegt den heutigen
+   Markt in die Vergangenheit: das Universum von 2026 haette 2021 gehandelt.
+   Gegenprobe: derselbe Tag muss einen anderen Ersten haben als sein Vormonat.
+2. **`kurse` traegt ALLE geladenen Symbole, `daten` nur die Kandidaten.**
+   `spur_buch.pruefe_ausstiege` arbeitet ueber `kurse` — fehlt dort ein Symbol
+   (weil es aus den Top N gefallen ist), schliesst diese Position NIE und der
+   Lauf meldet weniger Runden, als es gab. Das ist der gefaehrlichste Fehler
+   dieses Zuschnitts, weil das Ergebnis plausibel aussieht.
+3. **Das sechste Kerzenfeld ist das QUOTE-Volumen** (USD), nicht das
+   Basisvolumen. Eine Schwelle wie "mindestens 20 Mio USD" ist mit
+   Basisvolumen um den Faktor Kurs verfehlt — die Spur haette nie gehandelt.
+   Feed-Kerzen deshalb in einem EIGENEN Ordner und Namensschema ablegen, sonst
+   verwechselt sie jemand mit der gewoehnlichen Kerze.
+4. **Der Adapter muss GENAU die Felder liefern, die die Entscheidung liest**
+   (`name`, `aenderung_24h`, `volumen_24h`, `kurs` bzw. `breite` bzw.
+   `aenderung_1h`). Ein Adapter mit erfundenen Feldnamen laesst die Spur still
+   ohne Signal laufen und erzeugt eine Zahl, die wie ein Messwert aussieht.
+   Gegenprobe, die nicht veraltet: den Quelltext der `quelle()` der Spur nach
+   den Feldnamen durchsuchen (`inspect.getsource`) — wer die Spur umbaut, bekommt
+   einen roten Test, statt eine stille Null.
+5. **Der erste Tag einer Reihe hat keine Vortagesschliessung — er wird
+   AUSGELASSEN, nicht geschaetzt.** Und: nur Ueberlebende sind ladbar (vor heute
+   delistete Paare fehlen), was die Marktbreite nach oben verzerrt. Diesen Satz
+   gehoert in jede Antwort, die eine Breitenzahl nennt.
+
+**Eine Spur mit eigenem `lauf(modus)` ist eine eigene Familie (C).** Sie fuehrt
+kein Kerzenbuch: sie liest ihren eigenen Datensatz, haelt ihren Zustand selbst
+und schreibt ihr Journal selbst. Dann NICHT das Journal abfangen (`SCHREIBEN`
+aus), sondern die DREI PFADE in den Backtest-Ordner biegen und die Nahten
+setzen, die die Spur fuer ihre eigenen Tests schon benutzt (`funding_quelle`,
+`zeit_quelle`); nur `spiegeln` laeuft ins Leere. So liest die Hausfunktion
+`runden_aus_journal()` dieselbe Zeilenform wie im Betrieb, und es entsteht keine
+zweite Journalform. Sie gehoert NICHT in die Familie der Kerzen-Walks — dort
+fehlt ihr die Reihe und der Lauf meldet still null.
+
+**Instrumentnamen statt Symbole beachten:** die Spuren sprechen die Namen ihres
+Datenanbieters (`BTC`, nicht `BTCUSDT`). Fehlt eine Zuordnung, faellt die Spur
+mit `KeyError` um — die Namensliste also VOR dem Datenholen pruefen und fehlende
+Zuordnungen ergaenzen, statt sie im Lauf zu entdecken. Kurse fuer den
+Zuschnitt kommen aus DERSELBEN Ablage wie der Rest (eine Quelle, ein Stand); ein
+zweiter Datenweg fuer den Mark-Preis waere ein zweiter Stand.
+
 ## Nicht nachrechenbar (mit Grund vermerken, nie schaetzen)
 
 Die Datenquelle entscheidet, nicht die Naht. Ohne frei abrufbare Historie bleibt
@@ -234,3 +287,16 @@ Zeilen, nicht der neueste: die Parametersuche schreibt viele kurze Fensterlaeufe
 deren Zahlen neben einem Lauf ueber die ganze Historie irrefuehrend klein sind.
 Der abgedeckte Zeitraum kommt aus den Kerzenstempeln; fehlen sie (alte Laeufe),
 das sagen statt die Wanduhr als Zeitraum auszugeben.
+
+**Die Regel hat eine Folge, die man kennen muss: ein ABGELOESTER Lauf gewinnt weiter.**
+Wird ein Zeitraum nach einem Fix neu gefahren, laesst die Anzeige den alten,
+laengeren Ordner stehen — die neue Zahl ist gerechnet und trotzdem unsichtbar.
+Gemessen: ein Lauf vor der Kerzenuhr hatte 2180 Zeilen, der datierte Neulauf 591;
+ueber Wochen stand deshalb "759 Runden ... Zeitraum unbekannt" in der Ausgabe,
+waehrend 26 datierte Laeufe daneben lagen. Diagnose in EINEM Blick: die Kopfzeile
+der Journale lesen — traegt sie `_kerzen_ts`, ist der Lauf datiert; fehlt die
+Spalte, ist er von vor der Kerzenuhr. Konsequenz beim Neufahren: den alten Ordner
+NICHT ueberschreiben, sondern beiseite legen (`mv <lauf> <lauf>.voruhr-<JJJJMMTT>`),
+dann neu fahren. Das erhaelt den alten Beleg und macht den neuen sichtbar.
+Eine Backtest-Zeile OHNE Zeitraum ist keine Messung, sondern eine Zahl mit
+fehlendem Beleg — sie so lesen und den Neulauf veranlassen, statt sie zu zitieren.

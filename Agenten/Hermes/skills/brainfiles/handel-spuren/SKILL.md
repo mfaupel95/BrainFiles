@@ -472,6 +472,14 @@ Zwangsschluss und Buchhaltungs-Korrektur), gehoert der Zusatz in DIESELBE Zeile 
 sonst fuellt der Leser die Luecke mit dem guenstigsten Fall („Treffer 100 %" bei
 drei Ausstiegen daneben). Vollen Text: `references/pitfalls.md`.
 
+93. **Ein Kill-Switch-Ausstieg ist kein Beleg fuer eine Verlustposition.** Er
+feuert auf den kumulierten Ruecklauf vom realisierten Peak, nicht auf die
+aktuelle Position - gemessen 27.09.2026 bei xperp waren alle fuenf
+Kill-Ausgaenge positiv (+0,4 bis +2,4 %). Vor der Deutung die Drawdown-Kurve
+FIFO-gepaart nachrechnen und den Deckel gegen den je erreichten Ruecklauf
+halten; ein Deckel weit darueber ist entschaerft, kein Fehler. Vollen Text:
+`references/pitfalls.md`.
+
 ## Welche Daten eine Sperre liest
 
 Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdrücklich fest,

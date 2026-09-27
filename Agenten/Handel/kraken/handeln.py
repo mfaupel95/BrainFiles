@@ -797,9 +797,15 @@ def lauf(modus):
     if live and vs:
         vs = [dict(v, eur=round(v["eur"] * faktor, 2), cr=2.0) for v in vs]
         faktor = 1.0
-        vs = hole_freigabe(vs, z, s)
-        if not vs:
-            print("  Freigabe abgelehnt - kein Einstieg in diesem Lauf.")
+        # order_ueber=mcp: der Beleg-Weg prueft das Freigabefenster selbst
+        # (freigabebeleg.schreibe verweigert ohne offenes Fenster). Die
+        # Bildschirm-Freigabe hier wuerde die Kandidatenliste leeren, weil im
+        # Dauerlauf niemand am Bildschirm sitzt (MAXHIRN_ROUTINE=1) - damit
+        # waere der Beleg-Weg unerreichbar (Befund 27.09.2026).
+        if str(w.get("order_ueber", "spur")).lower() != "mcp":
+            vs = hole_freigabe(vs, z, s)
+            if not vs:
+                print("  Freigabe abgelehnt - kein Einstieg in diesem Lauf.")
     pruefe_einstiege(z, vs, w, live, faktor)
 
     eing = sum(p["eur"] for p in z["positionen"])

@@ -159,7 +159,10 @@ die Nachweisprozedur: `references/backtest-fundament.md`):
 Merksatz: der Normalfall eines Backtest-Fehlers ist ein Ergebnis, das wie eine
 Messung aussieht. "0 Runden" und "kein Hebel" sind zwei verschiedene Dinge -
 vor dem Bericht die fuenf Gegenproben fahren, die in
-`references/backtest-fundament.md` stehen.
+`references/backtest-fundament.md` stehen. **Und die ZAHL, die die Anzeige zeigt,
+ist nicht automatisch die gueltige:** die Ausgabe waehlt den Ordner mit den
+meisten Zeilen, ein abgeloester Lauf gewinnt also weiter. Eine Zeile ohne
+Zeitraum ist keine Messung — den Neulauf veranlassen, statt sie zu zitieren.
 
 ## Fallen
 
@@ -286,4 +289,7 @@ Weg — die Summen nebeneinanderstellen — misst ZWEI Ursachen in einer Zahl.
   `references/filter-studie-rezept.md`.
 - Historische Nachrechnung ueber Jahre statt Wochen, samt Parametersuche:
   `references/backtest-fundament.md` (`historie.py`, `replay.py`, `optimieren.py`,
-  Ausgabe in `auswertung_alle.py` unter "Backtest (historisch)").
+  Ausgabe in `auswertung_alle.py` unter "Backtest (historisch)"). Dort auch der
+  Zuschnitt fuer **Spuren ohne Kerzenreihe** (Marktquerschnitt: Top-Movers,
+  Marktbreite, 1h-Welle, Funding) — mit den Fallen, die dort anders sind als im
+  Kerzen-Walk (`kurse` gegen `daten`, Quote- gegen Basisvolumen, eigene Familie).
