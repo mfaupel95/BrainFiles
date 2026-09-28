@@ -60,7 +60,9 @@ gerade stagt, geht mit dem eigenen Commit mit. Deshalb die Zweiteilung.
 | Codearbeit: Umbau, Review, Planausführung | eigener Worktree | braucht nur Code und Tests — beides versioniert |
 | Lesen, Befunde, Analysen | hier, aber mit festgehaltenem Stand | sonst altern Zeilenangaben unbemerkt |
 
-Worktree anlegen und wieder entfernen:
+Ein Worktree bildet das **ganze** Repo ab, nicht nur diesen Ordner. Er gehört
+deshalb neben `BrainFiles/`, nicht hinein — anlegen und entfernen aus der
+Repowurzel:
 
 ```bash
 git worktree add ../Handel-<kuerzel> -b arbeit/<kuerzel> master
@@ -71,8 +73,13 @@ git worktree remove ../Handel-<kuerzel>
 ```
 
 Der Worktree hat **kein `.venv`** — das ist ungetrackt und bleibt hier. Tests
-laufen über den Interpreter des Hauptbaums, aus dem Worktree heraus als
-`../Handel/.venv/Scripts/python -m unittest discover -s tests -p "test_*.py"`.
+laufen über den Interpreter des Hauptbaums; aus `<worktree>/Agenten/Handel`
+heraus ist das
+
+```bash
+../../../BrainFiles/Agenten/Handel/.venv/Scripts/python -m unittest discover -s tests -p "test_*.py"
+```
+
 Ebenso fehlen `daten/` und die Journale; wer sie braucht, arbeitet nicht im
 Worktree, sondern hier.
 
