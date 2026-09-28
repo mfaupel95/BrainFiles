@@ -436,6 +436,49 @@ Messung weiterlaufen.
   Im Schreib-/Lesepfad zuerst `pfad = Path(pfad)` normalisieren, und die Probe
   ueber genau diesen Weg fahren.
 
+## Wache auf WIEDERHOLTE Fehler (Ereignisprotokoll des ueberwachten Prozesses)
+
+Manche Fehler sind einzeln harmlos und erst im Wiederholen ein Befund (ein
+Kontraktwechsel, der einmal fehlschlaegt und sich heilt, vs. ein Orderweg, der
+jeden Zyklus scheitert). Der Dauerlauf meldet "fehlgeschlagen"-Zeilen zwar als
+Zyklus-Meldung, speichert sie aber nirgends — ein einzelner transienter Fehler
+ist deshalb nicht von einem wiederholten zu unterscheiden. Der Aufbau:
+
+1. **Der ueberwachte Prozess protokolliert seine Fehlerzeilen DAUERHAFT in eine
+   Datei** (`cache/ereignis-fehler.jsonl`), nicht nur in die Zyklus-Meldung.
+   Der Dauerlauf haengt jede NEUE "fehlgeschlagen"-Zeile an (nur die neuen —
+   dieselbe Zeile wird sonst mit jedem Zyklus erneut angehaengt). Nur
+   Fehlschlag-Zeilen, keine Ausstiegs-/Sperr-Zeilen (die sind normal und
+   haeufig). Die Datei ist git-ignoriert (Laufzeitstand).
+2. **Die Wache liest diese Datei und gruppiert nach Spur + Basiswert** (den
+   Basiswert aus der Zeile ziehen: das Token nach "Eroeffnen"/"Schliessen"/
+   "Storno"/"Notausstieg", Rueckfall erstes instrument-artiges Wort).
+3. **Meldeschwelle = Wiederholung:** nur wenn derselbe Basiswert >= N mal im
+   Fenster fehlschlug (z. B. >= 2 in 24 h), wird gemeldet. Ein Einzelfall
+   bleibt still. Leere Ausgabe = nichts senden (Watchdog-Muster).
+4. **Dedupe ueber eine Merke-Datei** (`cache/<wache>.json`): einmal gemeldete
+   (spur, basis) erst nach einer Beruhigungsfrist wieder melden, wenn sie
+   weiter auftritt. Lauf 2 nach einer Meldung muss leer sein.
+5. **Gegenprobe mit erfundener Testdatei:** 2x derselbe Basiswert + 1x
+   Einzelfall -> nur der wiederholte wird gemeldet; Lauf 2 leer (Dedupe);
+   danach die Testdatei entfernen.
+
+**Der Pfad ist die haeufigste Falle.** Das Wachenskript liegt unter
+`Agenten/Hermes/scripts/`; von dort sind es DREI `dirname()`-Stufen bis zur
+Repo-Wurzel (`scripts` -> `Hermes` -> `Agenten` -> Wurzel), dann in den
+Handels-Ordner. Mit zwei Stufen landet man auf `Agenten/` und der Pfad wird
+`Agenten/Agenten/Handel/...` — die Wache liest eine Datei, die der Dauerlauf
+nie schreibt, und meldet ewig "keine Fehler". Nach jeder Pfadherleitung den
+Pfad ausgeben und gegen die echte Datei pruefen, statt zu zaehlen. Der
+Dauerlauf schreibt nach `Agenten/Handel/cache/` (sein HIER = Agenten/Handel),
+die Wache muss DIESELBE Datei lesen.
+
+**`json.dump` braucht das Datei-Objekt als zweites Argument**
+(`json.dump(daten, f, ensure_ascii=False, indent=1)`) — ein dump ohne `f`
+wirft `TypeError: dump() missing 1 required positional argument: 'fp'`, und
+ein Variablenname, der beim Laden `franken` und beim Schreiben `gemeldet`
+heisst, wirft `NameError`. Beide Namen auf EINEN bringen.
+
 ## Pitfalls
 
 - **`Start-Process -RedirectStandardOutput` blockiert bei einem Dauerprozess** —
