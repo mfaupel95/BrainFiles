@@ -353,3 +353,29 @@ Konto-Lockout. **Ein `authenticationError` ist kein Beweis fuer einen falschen
 Schluessel** - die eigene IP war es hier, und ein neu erzeugter Schluessel haette
 nichts geholfen. Werkzeug fuer den Zeugen (Status, Header, Rohkoerper je Weg):
 `Agenten/Handel/kraken_abweisungs_sonde.py`.
+
+### EURC ist kein ZEUR — und Kraken hat eine stille Ordergroessen-Grenze (27.09.2026, gemessen)
+
+Die kraken-Spur sperrte mit "nur ~52 EUR frei, noetig 60", obwohl das Konto laut
+Dashboard ~350 "EUR" zeigte. Der Grund: das Guthaben lag als **EURC**
+(Euro-Referenz-Stablecoin, `298.27`), nicht als ZEUR (`51.64`). Der Code prüft
+ausschliesslich `kraken.guthaben("ZEUR")` (`mindest_guthaben_eur`), und
+`BalanceEx` zeigt fuer EURC `hold_trade=0.0`, also "frei" — aber EURC zaehlt
+nicht fuer den Fiat-Spot-Orderweg. USDC lag fast bei 0 (`0.0096`). Merksatz:
+**ein EUR-Stablecoin ist kein EUR-Guthaben**, wer eine Finanzierungsaussage
+trifft, liest die Handelswaehrung des Orderwegs, nicht die Anzeige im Konto.
+
+Der Umtausch EURC→EUR (`EURCEUR`, Kurs `0.9998`, online) war in Tranchen noetig:
+`10`, `100` und `150` gingen durch, `200` und `298.27` gaben `EOrder:Insufficient
+funds`, obwohl die Balance frei war. Das ist eine **stille Ordergroessen-Grenze
+je Order** (genauer Schwellwert unbestimmt, irgendwo <200 EURC). Wer grosse
+Betraege umschichtet, teilt sie in Tranchen unterhalb der Grenze auf, statt
+gegen die Ablehnung zu pruefen und rate-limits zu fressen. Nach Abzug der
+Tranchen stand `ZEUR 349.30`, die kraken-Spur meldete "Live waere gesperrt
+durch: nichts". Beleg der Grenze: txids OLZBYR/OODG5H/OMQXSL/OA6H5F, BalanceDiff
+298.27-288.27-38.27.
+
+Hinweis: Nur 3 Paare haben EURC als Quote (`ETHEURC`, `SOLEURC`, `XBTEURC`) —
+eine Spur "direkt auf EURC" umzustellen beschneidet die rund 30 Instrumente der
+Watchlist auf BTC/ETH/SOL, es gibt also keinen Grund, die Spur von ZEUR
+wegzubewegen, wenn das Konto EURC traegt.
