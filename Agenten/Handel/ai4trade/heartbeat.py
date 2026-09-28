@@ -59,6 +59,19 @@ def _env(pfad=ENV):
     return d
 
 
+def zugang(pfad=ENV):
+    """Zugangsdaten. Die Umgebung hat Vorrang, die .env ist nur der Rueckfall.
+
+    Damit laeuft der Heartbeat auch dann, wenn keine Datei mit Geheimnissen
+    im Projektordner liegt. Werte werden NIE ausgegeben.
+    """
+    d = _env(pfad)
+    for k, v in os.environ.items():
+        if k.startswith("AI4TRADE_") and v:
+            d[k] = v
+    return d
+
+
 def _post(pfad, koerper, kopf, url=BASIS):
     r = urllib.request.Request(url + pfad,
                                data=json.dumps(koerper).encode("utf-8"))
@@ -90,11 +103,11 @@ def hole(tok, agent_id, kopf_name="Authorization", wert=None):
 
 def heartbeat(env=None):
     """Heartbeat mit beiden Auth-Wegen. Rueckgabe (status, antwort, weg)."""
-    env = _env() if env is None else env
+    env = zugang() if env is None else env
     tok = env.get("AI4TRADE_TOKEN")
     aid = env.get("AI4TRADE_AGENT_ID") or 25973   # HermesMax2 seit 29.09.2026
     if not tok:
-        return None, {"fehler": "AI4TRADE_TOKEN fehlt in der .env"}, None
+        return None, {"fehler": "AI4TRADE_TOKEN fehlt (weder Umgebung noch .env)"}, None
     s, a = hole(tok, int(aid))
     if s == 200:
         return s, a, "Bearer"
@@ -175,7 +188,7 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    env = _env(a.env)
+    env = zugang(a.env)
     s, antwort, weg = heartbeat(env)
     if a.pruefen:
         print("Heartbeat: HTTP %s ueber %s" % (s, weg))
