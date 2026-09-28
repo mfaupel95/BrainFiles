@@ -155,12 +155,54 @@ def spanne_und_signal(d, w) -> dict:
                 "spot": spot, "lagen": {}}
     spanne = k.spanne(basis, jahres_iv, k=float(w.get("grenz_k", k.K_90)))
     waende = k.waende(d["kette"], spot)
-    return k.signal(
+    sig = k.signal(
         spot, waende, spanne,
         naehe_prozent=float(w.get("naehe_prozent", 0.5)),
         stop_puffer_prozent=float(w.get("stop_puffer_prozent", 0.25)),
         ziel="mitte", ziel_anteil=float(w.get("ziel_anteil", 0.5)),
         nur_handelbare_wand=bool(w.get("nur_handelbare_wand", True)))
+    if sig["richtung"] != "kein_signal":
+        return sig
+
+    # ZWEITER WEG: die Wand war nicht in Reichweite (oder keine da). Der
+    # gemessene Handel dieser Spur ist der Fade an der SPANNENGRENZE - siehe
+    # k.signal_an_der_spanne(). Der Wandgrund bleibt im Feld 'grund' erhalten,
+    # damit im Journal steht, warum kein Wandgeschaeft zustande kam.
+    if not w.get("einstieg_an_der_spanne", True):
+        return sig
+    spanne_sig = k.signal_an_der_spanne(
+        spot, spanne, stop_sigma=float(w.get("stop_sigma", 0.5)),
+        ziel_anteil=float(w.get("ziel_anteil", 0.5)))
+    spanne_sig["ohne_wand"] = sig.get("grund")
+    return spanne_sig
+
+
+def _tag_utc(iso) -> str | None:
+    """Der UTC-Tag eines Zeitstempels; None, wenn er nicht lesbar ist."""
+    try:
+        jetzt = datetime.fromisoformat(str(iso))
+    except (TypeError, ValueError):
+        return None
+    if jetzt.utcoffset() is None:
+        jetzt = jetzt.replace(tzinfo=timezone.utc)
+    return jetzt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+def tagesende(p, w) -> str | None:
+    """Ausstieg am Tagesende - so rechnet auch der Backtest.
+
+    Die Spanne, gegen die gefadet wird, gehoert zu EINEM UTC-Tag (sie wird aus
+    dem Eroeffnungskurs dieses Tages gebaut). Eine Position, die in den naechsten
+    Tag laeuft, handelt gegen eine Spanne, die es nicht mehr gibt - im
+    Backtest kam das nicht vor, weil dort jede Runde im selben Tag endet.
+    Ein unlesbarer Eroeffnungszeitpunkt gilt als Tagesende: lieber schliessen
+    und es im Journal zeigen, als eine Position ohne Zeitbezug stehen lassen.
+    """
+    if not w.get("ausstieg_am_tagesende", True):
+        return None
+    if _tag_utc(p.get("eroeffnet_zeit")) == _tag_utc(_jetzt()):
+        return None
+    return "tagesende"
 
 
 # --- Einstieg ---------------------------------------------------------------
@@ -205,16 +247,25 @@ def einstieg(z, inst, d, sig, w, faktor, journal_pfad):
          "stop": stop, "ziel": ziel, "stop_pct": round(stop_pct, 2),
          "nominal": nominal, "eroeffnet_zeit": _jetzt(),
          "wand": sig.get("wand"),
+         # Woher das Geschaeft kommt: 'wand' (Wand in Reichweite) oder 'spanne'
+         # (Fade an der Tagesspannengrenze, das gemessene Feld). Ohne dieses
+         # Feld sieht im Journal jedes Geschaeft gleich aus, obwohl die zwei
+         # Wege verschiedene Regeln sind - und ein Gewinn waere dem falschen
+         # Weg zugeschrieben.
+         "ausloeser": sig.get("ausloeser") or ("wand" if sig.get("wand")
+                                               else "unbekannt"),
          "grund": (w.get("_grund") or w.get("grund") or "iv_waelle")}
     z["positionen"].append(p)
-    print("EINSTIEG %s %s @ %.6f  Stop %.6f  Ziel %.6f  Nominal %.2f USD"
-          % (seite.upper(), inst, einstieg_p, stop, ziel, nominal))
+    print("EINSTIEG %s %s @ %.6f  Stop %.6f  Ziel %.6f  Nominal %.2f USD  "
+          "(%s)" % (seite.upper(), inst, einstieg_p, stop, ziel, nominal,
+                    p["ausloeser"]))
     buch.journal(journal_pfad, zeit=_jetzt(), modus="papier",
                  aktion="kauf", inst=inst, seite=seite,
                  preis="%.6f" % einstieg_p, einsatz_usd="%.2f" % nominal,
                  stop="%.6f" % stop, ziel="%.6f" % ziel,
                  stop_pct="%.2f" % stop_pct,
-                 grund=(w.get("_grund") or w.get("grund") or "iv_waelle"))
+                 grund="%s:%s" % (w.get("_grund") or w.get("grund") or
+                                  "iv_waelle", p["ausloeser"]))
     return p
 
 
@@ -275,7 +326,7 @@ def lauf(modus):
         buch.spiegeln(zustand_pfad, journal_pfad, z, w)
         return 0
 
-    buch.pruefe_ausstiege(z, kurse, w, journal_pfad)
+    buch.pruefe_ausstiege(z, kurse, w, journal_pfad, zusatz=tagesende)
     for inst in sorted(daten):
         sig = spanne_und_signal(daten[inst], w)
         if sig["richtung"] == "kein_signal":

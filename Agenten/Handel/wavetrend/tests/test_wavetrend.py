@@ -276,12 +276,14 @@ class TestWachenDatei(unittest.TestCase):
             self.w = json.load(f)
 
     def test_papier_und_pflichtfelder(self):
-                # handel_erlaubt steht seit dem 21.09.2026 auf True (Auftrag Max:
-        # "alle weiteren spuren live offen und handel erlaubt"). Die Spur
-        # hat aber KEINEN Orderaufruf im Code - der Schalter allein handelt
-        # nicht. Der Test prueft weiter, dass der Wert gesetzt ist und
-        # niemand ihn still auf None/Text umstellt.
-        self.assertTrue(self.w["handel_erlaubt"])
+        # handel_erlaubt ist ein SCHALTER, kein Zustand der Strategie: Max hat
+        # ihn am 21.09.2026 auf die Spuren mit Orderweg begrenzt (Commit
+        # f8f269d) - diese Spur hat keinen. Der Test prueft deshalb die REGEL
+        # statt eines Tageswerts; ein Test gegen den Tageswert ist bei jeder
+        # Umstellung rot, ohne dass etwas kaputt ist (Befund 29.09.2026).
+        self.assertIsInstance(self.w["handel_erlaubt"], bool)
+        if not self.w["handel_erlaubt"]:
+            self.assertIn("_handel_erlaubt_vermerk", self.w)
         self.assertEqual(self.w["waehrung"], "USD")
         self.assertEqual(self.w["herzschlag_max_minuten"], 180)
         self.assertEqual(self.w["ziel_r_vielfaches"], 2.0)

@@ -251,3 +251,86 @@ def signal(spot: float, waende_: dict, spannweite: dict,
 
 def tag_in_utc(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def signal_an_der_spanne(spot: float, spannweite: dict,
+                         stop_sigma: float = 0.5,
+                         ziel_anteil: float = 0.5) -> dict:
+    """Fade an der erwarteten Spannengrenze - das GEMESSENE Feld.
+
+    WARUM ES DIESE FUNKTION GIBT (29.09.2026)
+    -----------------------------------------
+    `signal()` verlangt zweierlei: eine Wand innerhalb von 0,5 % des Kurses UND
+    die Wand im Band zwischen der Grenze und 3 Sigma. An den echten Deribit-
+    Ketten liegt keine Wand je dort. Gemessen mit der eigenen Sonde
+    (29.09.2026): BTC 83.107, Tagesbasis 84.470, Sigma 1.765 -> Call-Wand
+    90.000 = 3,13 Sigma, Put-Wand 60.000 = 13,9 Sigma. Beide "zu weit". Weil
+    OI-Waende an runden Zahlen sitzen (80.000/90.000/100.000) und die
+    Tagesspanne nur wenige Prozent breit ist, ist der geforderte Abstand ein
+    Vielfaches des Moeglichen. Folge: die Spur hat seit dem 19.09.2026 KEIN
+    Geschaeft gemacht und deshalb kein Journal - nicht weil sie versagt,
+    sondern weil ihr Tor nie aufgeht.
+
+    Die Wandregel ist nie gemessen worden (0 Zeilen), die Spannengrenze ist
+    ueber 400 Tage gemessen: k=1,0 / Stop 0,5 Sigma / halber Rueckweg zur Mitte
+    = +0,276 % je Runde bei 204 von 400 Tagen mit Signal, beide Haelften und
+    beide Seiten positiv (backtest_iv_waelle.py, iv_waelle/NOTIZ.md).
+    Deshalb handelt die Spur ab jetzt an der Spannengrenze; die Wand bleibt
+    als Zusatzweg erhalten (signal()) und ist weiterhin in den Wachen
+    abschaltbar.
+
+    Regel: Kurs >= obere Grenze -> short, Kurs <= untere Grenze -> long.
+    Stop `stop_sigma` Sigma HINTER die Grenze, Ziel der `ziel_anteil`-te
+    Rueckweg zur Tagesmitte. Ein Kurs, der so weit ueber die Grenze gelaufen
+    ist, dass der Stop VOR dem Einstieg laege, ist kein Geschaeft.
+    """
+    oben = spannweite["oben"]
+    unten = spannweite["unten"]
+    mitte = spannweite["mitte"]
+    sigma = spannweite["sigma"] or 0.0
+    aus = {"richtung": "kein_signal", "ausloeser": "spanne", "spot": spot,
+           "grund": "Kurs innerhalb der Tagesspanne (%.2f - %.2f)" % (unten, oben)}
+    if sigma <= 0:
+        aus["grund"] = "kein Sigma (IV und HV fehlen)"
+        return aus
+
+    if spot >= oben:
+        einstieg = spot
+        stop = oben + stop_sigma * sigma
+        ziel = einstieg - ziel_anteil * (einstieg - mitte)
+        if stop <= einstieg:
+            aus["grund"] = ("Kurs %.2f zu weit ueber der Grenze %.2f - der Stop "
+                            "laege vor dem Einstieg" % (spot, oben))
+            return aus
+        aus.update({
+            "richtung": "short",
+            "grund": "Kurs %.2f ueber der oberen Grenze %.2f (%.2f Sigma)"
+                     % (spot, oben, (spot - mitte) / sigma),
+            "einstieg": einstieg, "stop": stop, "ziel": ziel,
+            "grenze": oben, "ziel_anteil": ziel_anteil,
+            "risiko_prozent": (stop - einstieg) / einstieg * 100.0,
+            "chance_prozent": (einstieg - ziel) / einstieg * 100.0,
+        })
+        return aus
+
+    if spot <= unten:
+        einstieg = spot
+        stop = unten - stop_sigma * sigma
+        ziel = einstieg + ziel_anteil * (mitte - einstieg)
+        if stop >= einstieg:
+            aus["grund"] = ("Kurs %.2f zu weit unter der Grenze %.2f - der Stop "
+                            "laege vor dem Einstieg" % (spot, unten))
+            return aus
+        aus.update({
+            "richtung": "long",
+            "grund": "Kurs %.2f unter der unteren Grenze %.2f (%.2f Sigma)"
+                     % (spot, unten, (mitte - spot) / sigma),
+            "einstieg": einstieg, "stop": stop, "ziel": ziel,
+            "grenze": unten, "ziel_anteil": ziel_anteil,
+            "risiko_prozent": (einstieg - stop) / einstieg * 100.0,
+            "chance_prozent": (ziel - einstieg) / einstieg * 100.0,
+        })
+        return aus
+
+    aus["ausserhalb_spanne"] = False
+    return aus

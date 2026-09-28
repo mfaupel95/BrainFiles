@@ -93,6 +93,52 @@ gibt es nach dieser Lehre **kein Geschaeft**, und das Werkzeug sagt das auch
 (`kein_signal`). Genau dieser Filter folgt aus dem Video und war im Backtest
 nicht messbar.
 
+## 29.09.2026 - Zweiter Einstiegsweg: der Fade an der Spannengrenze
+
+Max: *"journal fuer IV_waelle bauen, andere journale ueberpruefen - viele haben
+0 runden, da stimmt doch etwas nicht."* Fuer diese Spur war die Ursache genau
+das, was oben unter "Was NICHT gemessen werden kann" steht.
+
+**Befund.** Die Spur machte seit dem 19.09.2026 (Eintrag in `dauerlauf.SPUREN`)
+kein einziges Geschaeft - deshalb gab es kein Journal. Gemessen mit der eigenen
+Sonde am 29.09.2026: BTC 83.107, Tagesbasis 84.470, Tagessigma 1.765. Call-Wand
+90.000 = **3,13 Sigma**, Put-Wand 60.000 = **13,9 Sigma**. Das Tor verlangt eine
+Wand im Band Grenze..3 Sigma UND hoechstens 0,5 % Abstand zum Kurs. OI-Waende
+sitzen an runden Zahlen (80.000/90.000/100.000), die Tagesspanne ist wenige
+Prozent breit - der geforderte Abstand ist ein Vielfaches des Moeglichen. Das
+Tor geht also praktisch nie auf, und die Wandregel ist bis heute nicht messbar.
+
+**Was gebaut wurde.** `iv_waelle.signal_an_der_spanne()`: Kurs >= obere Grenze
+-> short, Kurs <= untere Grenze -> long, Stop 0,5 Sigma **hinter** die Grenze,
+Ziel der halbe Rueckweg zur Tagesmitte. Das ist genau das Feld, das in Tabelle B
+ueber 400 Tage gemessen ist (k=1,0 / Stop 0,5 Sigma / halber Rueckweg:
+**+0,276 % je Runde**, 204 von 400 Tagen mit Signal, beide Haelften und beide
+Seiten positiv). Der Wandweg bleibt **erster** Weg und hat Vorrang; der
+Spannenweg greift nur, wenn er kein Signal liefert (`einstieg_an_der_spanne` in
+`wachen.json`, abschaltbar).
+
+Dazu der **Ausstieg am Tagesende** (`handeln.tagesende`): die Tagesspanne gehoert
+zu einem UTC-Tag (sie kommt aus dessen Eroeffnungskurs), und im Backtest endet
+jede Runde im selben Tag. Ohne diesen Ausstieg laeuft eine Position gegen eine
+Spanne, die es nicht mehr gibt. Stop und Ziel bleiben vorrangig.
+
+Jede Position traegt jetzt `ausloeser` (`wand` oder `spanne`) und das Journal
+den Grund `iv_waelle:wand` bzw. `iv_waelle:spanne` - sonst waere ein Gewinn dem
+falschen Weg zugeschrieben.
+
+**Nachweis.** `tests/test_spanne_weg.py` (16 Tests, ohne Netz), darunter ein
+**voller Papierzyklus in einen Temp-Ordner**: das Journal entsteht mit
+Kopfzeile, bekommt die kauf-Zeile und im naechsten Zyklus die verkauf-Zeile mit
+Grund `ziel` - also eine echte Runde, die `auswertung_alle` zaehlen kann.
+Das echte Journal liegt als `handelsjournal.csv` mit Kopfzeile bereit; die erste
+Zeile kommt mit dem ersten Geschaeft. Am 29.09. lag der Kurs mit 83.107 nur
+**0,48 %** ueber der unteren Grenze (82.705) - der Ausloeser ist also nah.
+
+**Offen geblieben.** Der Wandfilter selbst bleibt ungemessen (keine OI-Historie
+bei Deribit) - jetzt laeuft er wenigstens mit und wird im Journal als `wand`
+sichtbar, wenn er einmal greift. Nur BTC, nur ein Regime; Deribit-Finanzierung
+(Perpetual-Funding) fehlt weiter.
+
 ## Aufbau
 
 - `daten.py` - Deribit oeffentlich (Index, DVOL, Kerzen, Optionskette), mit

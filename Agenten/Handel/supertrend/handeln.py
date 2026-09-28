@@ -343,7 +343,16 @@ def lauf(modus):
         print("Vorschau: keine Dateien geschrieben.")
         return
 
-    for inst in w.get("instrumente", []):
+    # Ausstiege ueber ALLE Instrumente mit offener Position, Einstiege nur
+    # ueber die des Plans. Eine Position auf einem entfernten Instrument wurde
+    # sonst nie geprueft und belegte ihren Platz dauerhaft (Befund 28.09.2026;
+    # Begruendung in wachen_pruefung.pruef_instrumente).
+    plan = wp.plan_instrumente(w)
+    verwaist = wp.verwaiste_instrumente(w, z)
+    if verwaist:
+        print("Verwaiste Instrumente (nicht mehr im Plan, Ausstieg laeuft "
+              "weiter): %s" % ", ".join(verwaist), file=sys.stderr)
+    for inst in wp.pruef_instrumente(w, z):
         intervall = w.get("kerzen_takt", "4H")
         anzahl = w.get("mindest_kerzen", 300)
         try:
@@ -361,7 +370,8 @@ def lauf(modus):
             z["positionen"].extend(bestehend)
             pruefe_ausstiege(z, k, w, nur=inst)
 
-        pruefe_einstieg(inst, k, z, w, faktor)
+        if inst in plan:
+            pruefe_einstieg(inst, k, z, w, faktor)
 
     schreibe_zustand(z)
     spiegeln(z, w)

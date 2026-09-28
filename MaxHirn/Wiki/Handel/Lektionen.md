@@ -637,3 +637,61 @@ diesem Fall 1,5 Stunden gekostet, nicht die erste.
 herausnehmen will, aendert die Definition fuer ALLE Spuren.
 
 Tests: `Agenten/Handel/tests/test_tagesbericht_rundenzeile.py` (8).
+
+## Eine Position ausserhalb des Plans wird nie wieder angesehen (29.09.2026)
+
+**Anlass.** Max: *"journal fuer IV_waelle bauen, andere journale ueberpruefen -
+viele haben 0 runden, da stimmt doch etwas nicht. So verbessert sich das ganze
+ja nicht."* Er hatte recht, und es war kein Rechenfehler der Auswertung.
+
+**Befund.** Vier Indikatorspuren (macd_mtf, squeeze, wavetrend, supertrend)
+prueften ihre Ausstiege ueber `w["instrumente"]`. Als die Wachen am 21.09.2026
+von USDT- auf **USDC**-Paare umgestellt wurden (Commit ee647d5), lagen die
+offenen Positionen noch auf `ETH-USDT`/`SOL-USDT`/`BTC-USDT`. Diese Instrumente
+standen nicht mehr in der Liste - sie wurden also **nie wieder geprueft**, nie
+geschlossen, und belegten alle Plaetze. Folge: kein Neuzugang, das Journal fror
+ein (letzte Eintraege 20./21.09.), die Auswertung meldete "keine geschlossene
+Runde". Eine Umstellung des Plans ist eine stille Loeschung des Ausstiegs.
+
+**Fix.** Die Frage "wer wird geprueft" steht jetzt an EINER Stelle
+(`scanner/wachen_pruefung.pruef_instrumente`: erst der Plan, dann die
+**verwaisten** Instrumente aus `zustand["positionen"]`). Der **Einstieg** bleibt
+auf den Plan begrenzt (`if inst in plan:`) - sonst handelt die Spur auf einem
+Instrument, das sie nicht mehr fuehren soll. Verwaiste Instrumente werden
+gemeldet. Nachweis: squeeze schloss im naechsten Zyklus zwei SOL-USDT-Positionen
+am Stop (`verkauf`, grund `stop`) - die erste Journalzeile seit acht Tagen.
+
+**Merksatz.** Wer ein Instrument aus dem Plan nimmt, muss sagen, was mit den
+offenen Positionen darauf passiert. Zwei Listen sind noetig und duerfen sich
+nicht verdecken: **pruefen** (Plan + Bestand) und **einsteigen** (nur Plan).
+
+Tests: `Agenten/Handel/tests/test_verwaiste_instrumente.py` (9, Regel-Test auf
+den Quelltext) + die vier Spuren-Suiten.
+
+## Ein Tor, das kein Messfeld hat, ist kein Tor (29.09.2026)
+
+**Befund.** `iv_waelle` hatte seit dem 19.09.2026 kein einziges Geschaeft - und
+deshalb kein Journal. Gemessen mit der eigenen Sonde (29.09.2026, echte
+Deribit-Kette): BTC 83.467, Tagesbasis 84.470, Tagessigma 1.765. Call-Wand
+90.000 = **3,13 Sigma** (7,8 % weg), Put-Wand 60.000 = **13,9 Sigma** (28 % weg).
+Das Tor verlangt eine Wand hoechstens **0,5 %** neben dem Kurs und im Band
+Grenze..3 Sigma. OI-Waende sitzen an runden Zahlen (80.000/90.000/100.000), die
+Tagesspanne ist wenige Prozent breit - der geforderte Abstand ist ein Vielfaches
+des Moeglichen. Das Tor konnte nie aufgehen, und weil es nie aufging, hat es
+auch nie jemand gemessen.
+
+**Was daraus folgt.** Nicht die Spur abschalten und nicht das Tor aufweichen,
+sondern den **gemessenen** Weg einbauen: der Fade an der Spannengrenze
+(`signal_an_der_spanne`, k=1,0 / Stop 0,5 Sigma / Ziel halber Rueckweg zur
+Tagesmitte) ist ueber 400 Tage gemessen - **+0,276 % je Runde**, 204 von 400
+Tagen mit Signal, beide Haelften und beide Seiten positiv. Der ungemessene
+Wandweg bleibt erster Weg (er hat Vorrang, wenn er greift), der gemessene
+Spannenweg ist der zweite. Jede Position traegt ihren `ausloeser`
+(`wand`/`spanne`), sonst waere ein Gewinn dem falschen Weg zugeschrieben.
+
+**Merksatz.** Eine Spur mit 0 Runden nach Tagen ist ein Befund, kein Zufall:
+dann gehoert gemessen, wie weit der Kurs vom Tor entfernt ist (eigene Sonde,
+echte Daten) - nicht der Schalter umgelegt.
+
+Tests: `Agenten/Handel/iv_waelle/tests/test_spanne_weg.py` (16, mit einem vollen
+Papierzyklus in einen Temp-Ordner: Journal entsteht, Runde wird zaehlbar).

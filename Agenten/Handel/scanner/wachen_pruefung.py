@@ -301,3 +301,38 @@ def lage(w, journal_pfad, zustand):
         "rollierender_ev": ev,
         "ev_negativ": ev is not None and ev < 0,
     }
+
+
+# --- Instrumente eines Zyklus ----------------------------------------------
+#
+# EINE Stelle fuer die Frage "wer wird geprueft, wer darf neu einsteigen".
+# Befund 28.09.2026: macd_mtf, squeeze und wavetrend prueften ihre Ausstiege
+# nur ueber w["instrumente"]. Als die Liste von USDT- auf USDC-Paare umgestellt
+# wurde, blieben je Spur vier Positionen auf ETH-USDT/SOL-USDT/BTC-USDT im Buch:
+# sie wurden nie wieder geprueft, nie geschlossen und belegten alle vier
+# Plaetze. Folge: das Journal fror ein (letzte Zeile 20./21.09.), die Spur
+# konnte nicht mehr einsteigen und stand in der Auswertung mit "keine
+# geschlossene Runde" - nicht weil die Strategie versagt, sondern weil niemand
+# mehr hinsah.
+
+def plan_instrumente(w):
+    """Die Instrumente, auf denen der Zyklus NEU einsteigen darf."""
+    return [i for i in (w.get("instrumente") or []) if i]
+
+
+def verwaiste_instrumente(w, z):
+    """Instrumente OFFENER Positionen, die nicht mehr im Plan stehen."""
+    offen = {p.get("inst") for p in (z.get("positionen") or []) if p.get("inst")}
+    return sorted(offen - set(plan_instrumente(w)))
+
+
+def pruef_instrumente(w, z):
+    """Instrumente, die auf AUSSTIEGE geprueft werden MUESSEN.
+
+    Das sind die Instrumente der Wachen UND die der offenen Positionen.
+    Reihenfolge: Plan zuerst (in seiner Reihenfolge), danach die verwaisten
+    alphabetisch - so sieht der Aufrufer sofort, wer nicht mehr im Plan steht.
+    Ein Aufrufer, der nur einsteigen will, nimmt plan_instrumente();
+    Ausstiege nehmen IMMER diese Liste.
+    """
+    return plan_instrumente(w) + verwaiste_instrumente(w, z)

@@ -76,12 +76,51 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Kontext: Gemessen am 29.09.2026 liefert `auswertung_alle.runden_fuer`
       ('nautilus_kraken') 4 Runden und 801 Journal-Zeilen, aber
       `kennzahlen(runden, 'EUR')` gibt None zurueck (ebenso kennzahlen_fuer).
-      Die Runden tragen kein Feld `ergebnis` in der erwarteten Form - dann
-      verschwindet die Spur in jeder Auswertung, ohne dass etwas rot wird.
-      Naechster Schritt: die 4 Runden ansehen (Felder), entscheiden ob die
-      Paarung `runden_nautilus` oder `kennzahlen` sie verwerfen darf, und den
-      Fall im Test festnageln.
-      Angelegt 2026-09-29. Betrifft Agenten/Handel/auswertung_alle.py.
+      URSACHE GEFUNDEN (29.09.2026, nachgeprueft): die vier Zeilen sind
+      `buchbereinigung`-Ausbuecher (Papier-Altlasten, die am 25.09. nach dem
+      Umschalten auf `modus` ausgebucht wurden) - `kennzahlen()` nimmt alles
+      heraus, was `stoerungen.ist_stoerung` kennt, und hat danach keine echte
+      Runde mehr: `if not echt: return None`. Die Zahl ist also RICHTIG, nur die
+      ANZEIGE ist irrefuehrend (sie sagt "keine geschlossene Runde" und
+      verschweigt die vier Ausstiege daneben). Die Arme haben bis heute keinen
+      echten Ausstieg (Frist 48/72/96 h noch nicht abgelaufen).
+      Naechster Schritt: die Anzeige in `auswertung_alle.py` um den Fall
+      "0 echte Runden, aber N Ausstiege ohne Handelsentscheidung" ergaenzen
+      (Vorbild: `tagesbericht.rundenzeile`); VORSICHT, die Datei wurde am
+      29.09.2026 parallel bearbeitet (`strategie_metrics`/`strategie_kennzahlen`
+      einer zweiten Sitzung).
+      Angelegt 2026-09-29, Ursache praezisiert 2026-09-29.
+      Betrifft Agenten/Handel/auswertung_alle.py.
+- [ ] **T-121 - Dasselbe Loch wie bei den vier Indikatorspuren in weiteren Spuren suchen**
+      Kontext: Eine Spur prueft ihre Ausstiege ueber ihre PLAN-Instrumente
+      (`w["instrumente"]`). Wird der Plan umgestellt, sind offene Positionen
+      darauf unsichtbar: sie werden nie geprueft, nie geschlossen, belegen die
+      Plaetze, und das Journal friert ein (Befund 29.09.2026: macd_mtf, squeeze,
+      wavetrend, supertrend, acht Tage ohne Zeile). Behoben fuer diese vier
+      (`scanner/wachen_pruefung.pruef_instrumente` = Plan + Bestand; Einstieg
+      bleibt auf den Plan begrenzt; Test
+      `Agenten/Handel/tests/test_verwaiste_instrumente.py`). Andere Spuren mit
+      Instrumentenliste im Plan sind NICHT geprueft.
+      Naechster Schritt: alle Spuren mit `instrumente` in der wachen auflisten
+      (`git grep -l '"instrumente"' Agenten/Handel/*/wachen*.json`), je Spur die
+      Ausstiegsschleife ansehen und die Regel nachziehen, wo sie fehlt.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/*/handeln.py.
+- [ ] **T-122 - iv_waelle: der Wandweg bleibt ungemessen, nur der Spannenweg ist belegt**
+      Kontext: Die Spur hatte seit dem 19.09.2026 kein Geschaeft, weil ihr Tor
+      (Wand hoechstens 0,5 % neben dem Kurs, im Band Grenze..3 Sigma) an echten
+      Deribit-Ketten nie aufgeht - gemessen 29.09.2026: Call-Wand 90.000 =
+      3,13 Sigma, Put-Wand 60.000 = 13,9 Sigma (Basis 84.470, Sigma 1.765). Seit
+      dem 29.09.2026 gibt es den zweiten, GEMESSENEN Weg (`signal_an_der_spanne`,
+      k=1,0 / Stop 0,5 Sigma / halber Rueckweg = +0,276 % je Runde, 204/400 Tage)
+      plus Ausstieg am Tagesende; das Journal liegt mit Kopfzeile bereit.
+      Offen bleibt: (a) der Wandfilter ist weiter nicht messbar - es gibt bei
+      Deribit keine Open-Interest-HISTORIE (nur den aktuellen Stand), deshalb
+      kann niemand sagen, ob eine Wand damals ein Signal war; (b) nur BTC und nur
+      das eine Regime der 400 Tage; (c) Perpetual-Funding fehlt in der Rechnung.
+      Naechster Schritt: entscheiden, ob (a) als dauerhaft ungemessen im Code
+      vermerkt bleibt (Vorschlag) und (b) mit einem zweiten Instrument
+      (ETH-PERPETUAL) gegengeprueft wird.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/iv_waelle/.
 - [ ] **T-115 - Kraken-USDC: Umstellung vorbereitet, es fehlt das USDC-Guthaben**
       Kontext: Auftrag Max 28.09.2026 ("Welche Spuren koennen live auf Kraken USDC
       geschaltet werden?"). Kraken listet 45 USDC-Paare, darunter XBTUSDC, ETHUSDC,

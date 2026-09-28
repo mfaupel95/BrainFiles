@@ -449,6 +449,15 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
             continue
         kurs = kurse.get(p["inst"])
         if not kurs:
+            # Kein Kurs heisst NICHT "nichts passiert": die Position wird
+            # uebersprungen und kann so beliebig lange stehen bleiben. Bis zum
+            # 28.09.2026 schwieg dieser Zweig - bei den Indikator-Spuren
+            # verhinderten vier Positionen ohne Kurs wochenlang jeden
+            # Journalzuwachs, ohne dass es irgendwo stand. Deshalb jetzt laut
+            # nach stderr, mit Instrument und Einstiegszeit.
+            print("  %s: kein Kurs - Position wird NICHT geprueft (seit %s)"
+                  % (p.get("inst"), p.get("eroeffnet_zeit") or "?"),
+                  file=sys.stderr)
             behalten.append(p)
             continue
         grund = None
