@@ -603,6 +603,34 @@ def neue_ereignisse(ausgabe, vorher=()):
     return [z for z in alle if z not in alt], alle
 
 
+# Fehlerzeilen dauerhaft ablegen (fuer den Waechter-Cron, 28.09.2026): die
+# "fehlgeschlagen"-Zeilen schickt der Dauerlauf zwar als Zyklus-Meldung, aber
+# er speichert sie nirgends - ein einzelner transienter Fehler (z.B. der
+# XAG-Kontraktwechsel am 20.09.) ist nicht von einem wiederholten zu
+# unterscheiden. Der Waechter liest diese Datei und meldet nur, wenn derselbe
+# Basiswert mehrfach fehlschlaegt. Nur "fehlgeschlagen"-Zeilen (nicht
+# "gesperrt"/"kill-switch", die sind normal und haeufig).
+FEHLER_DATEI = os.path.join(HIER, "cache", "ereignis-fehler.jsonl")
+
+
+def protokolliere_fehler(spur, zeile):
+    """Hängt eine Fehlschlag-Zeile einer Spur dauerhaft an (watchdog-Quelle)."""
+    if "fehlgeschlagen" not in zeile.lower():
+        return
+    try:
+        os.makedirs(os.path.dirname(FEHLER_DATEI), exist_ok=True)
+        eintrag = {
+            "zeit": jetzt().isoformat(timespec="seconds"),
+            "spur": spur,
+            "zeile": zeile[:300],
+        }
+        with open(FEHLER_DATEI, "a", encoding="utf-8") as f:
+            f.write(json.dumps(eintrag, ensure_ascii=False) + "\n")
+    except OSError:
+        # Ein Fehlschlag beim Protokollieren darf den Zyklus nicht stoppen.
+        pass
+
+
 class Lauf:
     def __init__(self, takt, trocken=False):
         self.takt = takt
@@ -725,6 +753,11 @@ class Lauf:
             neu, alle = neue_ereignisse(ausgabe, self.gemeldet.get(spur))
             for zeile in neu:
                 auffaellig.append("%s: %s" % (spur, zeile))
+            # Fehlschlag dauerhaft ablegen (Waechter-Quelle, 28.09.2026): nur
+            # die NEUEN Zeilen - dieselbe Zeile wird sonst mit jedem Zyklus
+            # erneut angehaengt.
+            for zeile in neu:
+                protokolliere_fehler(spur, zeile)
             self.gemeldet[spur] = alle
 
         if auffaellig:
