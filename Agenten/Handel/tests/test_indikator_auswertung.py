@@ -85,14 +85,21 @@ class TestIndikatorRunden(unittest.TestCase):
         self.assertEqual(runden, [])
 
     def test_alle_vier_spuren_sind_angeschlossen(self):
-        """Der Weg in kennzahlen_fuer() ist der eigentliche Anschluss - eine
-        Spur in SPUREN ohne Zweig dort faellt in den leeren else-Zweig."""
+        """Die Zuordnung Spur -> Rechenweg ist der eigentliche Anschluss - eine
+        Spur in SPUREN ohne eigenen Zweig faellt in den leeren else-Zweig.
+
+        Sie steht seit dem 29.09.2026 in `runden_fuer()` (vorher in
+        `kennzahlen_fuer`, das sie jetzt aufruft). Der Test prueft deshalb die
+        REGEL und nicht eine Quelltextzeile der einen Funktion: sonst meldet er
+        die Verlagerung als Fehler, ohne dass sich am Verhalten etwas geaendert
+        hat (Befund 29.09.2026).
+        """
         import inspect
-        quelle = inspect.getsource(aa.kennzahlen_fuer)
         for spur in ("squeeze", "wavetrend", "macd_mtf", "supertrend"):
             self.assertIn(spur, aa.SPUREN)
             self.assertIn(spur, aa.INDIKATOR_SPUREN)
-        self.assertIn("INDIKATOR_SPUREN", quelle)
+        self.assertIn("INDIKATOR_SPUREN", inspect.getsource(aa.runden_fuer))
+        self.assertIn("runden_fuer(spur", inspect.getsource(aa.kennzahlen_fuer))
 
 
 if __name__ == "__main__":

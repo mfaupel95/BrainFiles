@@ -695,3 +695,41 @@ echte Daten) - nicht der Schalter umgelegt.
 
 Tests: `Agenten/Handel/iv_waelle/tests/test_spanne_weg.py` (16, mit einem vollen
 Papierzyklus in einen Temp-Ordner: Journal entsteht, Runde wird zaehlbar).
+
+## Die Zeile muss sagen, WELCHE Null sie meint (29.09.2026)
+
+**Anlass.** Dieselbe Beschwerde wie oben, andere Haelfte: "viele haben 0
+runden". Fuer **drei** verschiedene Lagen stand derselbe Satz in der Auswertung:
+"keine geschlossenen Runden im Journal".
+
+**Befund.** Am 29.09.2026 gleichzeitig im Bestand: `macd_mtf` und `supertrend`
+mit je vier **offenen Positionen** (die Spur arbeitet, ihr Stop ist nur noch
+nicht erreicht), `nautilus_kraken` mit vier **Ausbuechern**
+(`buchbereinigung` - keine Handelsrunde, aber auch kein leeres Journal),
+`iv_waelle` mit einem **leeren** Journal (wartet auf das erste Signal) und
+`robinhood_radar` mit einem Journal, das noch nie etwas gesehen hat. Wer liest
+"keine geschlossene Runde", kann diese vier Faelle nicht unterscheiden - und
+sucht an einem Fehler, der keiner ist.
+
+**Fix.** `auswertung_alle.offene_positionen(spur)` liest `zustand.json`
+(tolerant: fehlende Datei, kaputtes JSON und fehlendes `positionen`-Feld geben
+`None`) und `zeige()` nennt die Lage im Klartext: "aber 4 offene Position(en) im
+Buch - die Spur arbeitet, Stop/Ziel ist noch nicht erreicht." / "daneben 4
+Ausstiege ohne Handelsentscheidung (Buchhaltung/Zwang)" / "wartet auf ihr erstes
+Signal".
+
+**Merksatz.** Eine Null ist erst dann eine Aussage, wenn dabeisteht, was sie
+zaehlt. Beim Bauen einer Kennzahl die Gegenfrage stellen: welche Zustaende
+fallen alle auf denselben Text?
+
+Tests: `Agenten/Handel/tests/test_auswertung_offene_positionen.py` (9).
+
+## Ein Test gegen die Quelltextzeile meldet Umbauten, keine Fehler (29.09.2026)
+
+`tests/test_indikator_auswertung.py` prueft `inspect.getsource(kennzahlen_fuer)`
+darauf, dass die Zuordnung Spur -> Rechenweg dort steht. Am 29.09.2026 wurde
+diese Zuordnung nach `runden_fuer()` verlagert (eine Stelle fuer beide Aufrufer,
+`kennzahlen_fuer` ruft sie jetzt) - der Test wurde rot, ohne dass sich am
+Verhalten etwas geaendert hatte. Er prueft die Regel jetzt so, wie sie gelten
+soll: die Zuordnung steht in `runden_fuer`, und `kennzahlen_fuer` benutzt sie.
+Merksatz: pruefe die Eigenschaft, nicht die Zeile, in der sie gerade steht.

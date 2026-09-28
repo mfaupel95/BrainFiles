@@ -72,25 +72,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Journalen fuellen; danach den Stop-Vorschlag je Spur gegen den gefahrenen
       Stop stellen.
       Angelegt 2026-09-29. Betrifft Agenten/Handel/<spur>/handeln.py, Journale.
-- [ ] **T-120 - kennzahlen() gibt None fuer nautilus_kraken trotz 4 Runden**
-      Kontext: Gemessen am 29.09.2026 liefert `auswertung_alle.runden_fuer`
-      ('nautilus_kraken') 4 Runden und 801 Journal-Zeilen, aber
-      `kennzahlen(runden, 'EUR')` gibt None zurueck (ebenso kennzahlen_fuer).
-      URSACHE GEFUNDEN (29.09.2026, nachgeprueft): die vier Zeilen sind
-      `buchbereinigung`-Ausbuecher (Papier-Altlasten, die am 25.09. nach dem
-      Umschalten auf `modus` ausgebucht wurden) - `kennzahlen()` nimmt alles
-      heraus, was `stoerungen.ist_stoerung` kennt, und hat danach keine echte
-      Runde mehr: `if not echt: return None`. Die Zahl ist also RICHTIG, nur die
-      ANZEIGE ist irrefuehrend (sie sagt "keine geschlossene Runde" und
-      verschweigt die vier Ausstiege daneben). Die Arme haben bis heute keinen
-      echten Ausstieg (Frist 48/72/96 h noch nicht abgelaufen).
-      Naechster Schritt: die Anzeige in `auswertung_alle.py` um den Fall
-      "0 echte Runden, aber N Ausstiege ohne Handelsentscheidung" ergaenzen
-      (Vorbild: `tagesbericht.rundenzeile`); VORSICHT, die Datei wurde am
-      29.09.2026 parallel bearbeitet (`strategie_metrics`/`strategie_kennzahlen`
-      einer zweiten Sitzung).
-      Angelegt 2026-09-29, Ursache praezisiert 2026-09-29.
-      Betrifft Agenten/Handel/auswertung_alle.py.
 - [ ] **T-121 - Dasselbe Loch wie bei den vier Indikatorspuren in weiteren Spuren suchen**
       Kontext: Eine Spur prueft ihre Ausstiege ueber ihre PLAN-Instrumente
       (`w["instrumente"]`). Wird der Plan umgestellt, sind offene Positionen
@@ -1646,6 +1627,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-120 - kennzahlen() gibt None fuer nautilus_kraken trotz 4 Runden**
+      Kontext: `auswertung_alle.runden_fuer('nautilus_kraken')` liefert 4 Runden,
+      `kennzahlen()` gab trotzdem None - die Spur verschwand aus der Auswertung.
+      Ursache (29.09.2026): die vier Zeilen sind `buchbereinigung`-Ausbuecher
+      (Papier-Altlasten); `kennzahlen()` nimmt alles heraus, was
+      `stoerungen.ist_stoerung` kennt, und hatte danach keine echte Runde
+      (`if not echt: return None`). Die Zahl war richtig, die ANZEIGE nicht:
+      derselbe Satz "keine geschlossene Runde" stand fuer drei verschiedene
+      Lagen (tote Spur, wartender Stop, Ausbuchung). Geloest 29.09.2026:
+      `auswertung_alle.offene_positionen(spur)` und die erweiterte Ausgabe in
+      `zeige()` nennen jetzt die Lage - "aber 4 offene Position(en) im Buch"
+      (macd_mtf, supertrend) bzw. "daneben 4 Ausstiege ohne Handelsentscheidung"
+      (nautilus_kraken) bzw. "wartet auf ihr erstes Signal" (iv_waelle).
+      Tests `Agenten/Handel/tests/test_auswertung_offene_positionen.py` (9).
 - [x] **T-113 - ai4trade.ai: Heartbeat wird nicht gepollt**
       Kontext: Der Agent `HermesMax` (ID 25970) ist am 28.09.2026 auf
       https://ai4trade.ai angemeldet; Antworten, Erwaehnungen und neue Follower

@@ -226,6 +226,29 @@ def lage_der_spur(spur, k):
     return "belastbar"
 
 
+def offene_positionen(spur):
+    """Wie viele Positionen im Buch stehen, obwohl keine Runde geschlossen ist.
+
+    Warum (29.09.2026): "keine geschlossene Runde" liest sich wie "diese Spur
+    tut nichts". Am selben Tag standen bei macd_mtf vier und bei supertrend vier
+    Positionen im Buch - beide Spuren ARBEITEN, ihr Stop wurde nur noch nicht
+    erreicht. Und bei nautilus_kraken standen vier AUSBUCHUNGEN (buchbereinigung)
+    im Journal: auch die sind keine Handelsrunde, aber sie sind etwas anderes als
+    ein leeres Journal. Ohne diese Zahl sind wartender Stop, Ausbuchung und tote
+    Spur nicht zu unterscheiden.
+    """
+    p = HIER / spur / "zustand.json"
+    try:
+        with open(p, encoding="utf-8") as f:
+            z = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(z, dict):
+        return None
+    pos = z.get("positionen")
+    return len(pos) if isinstance(pos, list) else None
+
+
 def anzeige_fuer(spur, k):
     """Der Text der Lage-Spalte in der Uebersicht - eine von vier
     Kategorien, an genau dieser Stelle entschieden.
@@ -543,6 +566,25 @@ def zeige(spur, k):
     if k is None:
         print("\n=== %s ===" % spur.upper())
         print("  keine geschlossenen Runden im Journal")
+        offen = offene_positionen(spur)
+        if offen:
+            print("  aber %d offene Position(en) im Buch - die Spur arbeitet, "
+                  "Stop/Ziel ist noch nicht erreicht." % offen)
+        elif offen == 0:
+            print("  und keine offene Position - die Spur wartet auf ihr "
+                  "erstes Signal.")
+        # Ausbuecher sind keine Runden, aber etwas anderes als ein leeres
+        # Journal (nautilus_kraken, 29.09.2026: vier buchbereinigung-Zeilen).
+        # kennzahlen() nimmt sie heraus, deshalb faellt die Spur hierher - die
+        # Zeile sagt jetzt, dass daneben etwas passiert ist.
+        try:
+            daneben = sum(1 for r in runden_fuer(spur)
+                          if stoerungen.ist_stoerung(r.get("grund")))
+        except Exception:      # eine Anzeigezeile darf den Lauf nicht kippen
+            daneben = 0
+        if daneben:
+            print("  daneben %d Ausstiege ohne Handelsentscheidung "
+                  "(Buchhaltung/Zwang) - nicht in der Quote." % daneben)
         return
     p = prozent
     print("\n=== %s ===" % spur.upper())
