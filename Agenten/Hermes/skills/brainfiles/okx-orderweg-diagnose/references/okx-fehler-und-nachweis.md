@@ -11,6 +11,7 @@
 | `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
 | `50124` | keine Handelsberechtigung FUER DIESEN MARKT | Meist der falsche NAMENSRAUM desselben Marktes: die Spur schickt `XAU-USDT-SWAP` (`instType=SWAP`), handelbar ist nur der XPERP-Kontrakt (`instType=FUTURES`, `XAU-USD_UM_XPERP-…`). `perm`/`acctLv` sind dabei in Ordnung. |
 | `51015` | `instId` passt nicht zu `instType` | Falscher `instType` beim Nachweis — der XPERP-Kontrakt ist `FUTURES`, nicht `SWAP`. |
+| `1` | generisch „All operations failed" | **Meist KEIN freies Guthaben**: `availEq` der Margin-Waehrung ist 0, obwohl die Spur in ihrem eigenen Modell Platz sieht. Eine CROSS-Margin-Position frisst das GESAMTE Konto, nicht nur ihre eigene Margin — das eigene `max_margin_gesamt_usd` zaehlt nur das eigene Buch und sieht eine fremde Cross-Position nicht. |
 
 Merksatz: `51000` ist ein FORMfehler (der Wert selbst), `51603` ein
 EXISTENZfehler. Wer beides verwechselt, sucht am falschen Ende.
@@ -74,6 +75,15 @@ Weg ueber den PFAD, nicht ueber `sys.path`-Eintraege in den Spuren.
   kurze Fenster leer ist) und `/account/positions?instType=SWAP` gegen
   `?instType=FUTURES`. Sind die SWAP-Positionen leer und die FUTURES-Positionen
   gefuellt, handelt die Spur den falschen Namen desselben Marktes.
+- Bei generischem `1 All operations failed` zuerst die MARGIN pruefen, nicht den
+  Schluessel: `/account/balance?ccy=<margin-waehrung>` — `availEq` 0 bei gefuelltem
+  `eq`/`frozenBal` heisst: das Konto ist voll belegt, jede neue Order scheitert.
+  Dann `/account/positions?instType=FUTURES` auf `mgnMode` ansehen: eine
+  `cross`-Position (oft eine uebernommene Fremdposition, `fremdposition_uebernommen`
+  im Journal) bindet das GESAMTE Konto, waehrend die Spur `isolated` eroeffnet und
+  in ihrem eigenen `max_margin_gesamt_usd` Platz sieht. Die Spur muss vor dem
+  Eroeffnen das freie `availEq` der Boerse lesen und bei 0 ueberspringen statt
+  blind eine Order zu schicken, die gar nicht fuellen kann.
 
 ## Was ein Leseaufruf NICHT ersetzt
 

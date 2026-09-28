@@ -143,6 +143,15 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
 - **Kein Schalter fuer eine Diagnose.** Ein Fehlercode ist kein Grund, `--live` zu
   fahren, eine Testorder zu setzen oder Guthaben zu verschieben. Beweis ist der
   LESEaufruf.
+- **`OKX 1: All operations failed` ist meist KEIN freies Guthaben, nicht ein toter
+  Schluessel.** `availEq` der Margin-Waehrung ist 0, obwohl die Spur in ihrem
+  eigenen Modell Platz sieht. Eine CROSS-Margin-Position (oft eine uebernommene
+  Fremdposition, `fremdposition_uebernommen` im Journal) bindet das GESAMTE Konto,
+  waehrend die Spur `isolated` eroeffnet und ihr `max_margin_gesamt_usd` nur das
+  eigene Buch zaehlt. Beleg: `/account/balance?ccy=<margin>` (`availEq` 0 bei
+  gefuelltem `eq`/`frozenBal`) + `/account/positions` auf `mgnMode=cross`. Die Spur
+  muss vor dem Eroeffnen das freie `availEq` der Boerse lesen und bei 0
+  ueberspringen statt blind eine Order zu schicken, die gar nicht fuellen kann.
 - **`50119`/`50101` heisst meistens FALSCHER HOST, nicht toter Schluessel.** Ein
   Prozess, der die Windows-Benutzervariablen nicht geerbt hat (aus einem MCP-Server
   oder einer geplanten Aufgabe gestartet), findet den Schluessel ueber den

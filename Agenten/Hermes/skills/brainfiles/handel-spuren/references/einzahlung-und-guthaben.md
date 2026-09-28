@@ -103,6 +103,33 @@ voll aussehendes `eq` kann bei `availEq` fast nichts bedeuten.
   Sperrgrund der Spur kann sich dadurch aendern. Handbuchungen sind von den
   Hausspuren nicht verursacht; sie gehoeren in den Bericht, nicht in eine stille
   Buchkorrektur.
+- **Ein Guthaben in der FALSCHEN Waehrung sieht aus wie "genug Geld" und
+  haelt das Tor trotzdem zu.** Eine Spur mit `mindest_guthaben_eur` handelt
+  ausschliesslich aus dem EUR-Fiat-Topf (`guthaben("ZEUR")`); ein
+  Euro-Stablecoin (EURC) oder ein anderer Stablecoin auf dem Konto zaehlt nicht
+  dazu - ein ansehnlicher Stablecoin-Bestand laesst den Sperrgrund still bestehen
+  ("300+ vorhanden, warum wird nicht gehandelt?" = 298 EURC liegen, gesucht
+  sind 60 ZEUR). Vor der Diagnose klaeren, welche WAEHRUNG der Tor-Schluessel
+  liest und dass der Konto-Bestand in GENAU dieser Waehrung steht - nicht nur
+  "es ist Geld da".
+- **Kraken hat eine STILLE Ordergroessen-Grenze je Order: darunter ok, darueber
+  `EOrder:Insufficient funds`, trotz freien Guthabens und `hold_trade=0`.**
+  Gemessen beim EURC-Verkauf: 10/100/150 gingen durch, 200 und mehr wurden
+  abgewiesen, `validate=true` akzeptierte jeden Betrag. Symptom ist eine
+  Kontoseite, die "Insufficient funds" sagt, waehrend Balance die Menge frei
+  zeigt und keine Reserve erkennbar ist (validate ok, hold_trade 0). Dann in
+  TRANCHEN unter der Grenze verkaufen, statt weiter zu experimentieren - und die
+  Grenze im Wiki festhalten; das System dokumentiert sie nicht.
+- **`kraken.guthaben()` hat keinen `fake`-Parameter** - wer live pruefen will,
+  fragt die Balance direkt (`_mit_wiederholung(kraken._roh_privat,
+  "Balance")`). Und der MCP-Paarsucher filtert nicht: `kraken_paare_suchen`
+  liefert immer dieselbe ungefilterte Liste, die API-Abfrage
+  (`_roh_oeffentlich("AssetPairs", pair=...)`) ist der zuverlaessige Weg.
+- **Ein ansehnlicher Stablecoin-Vorrat + nur wenige quotierte Paare = kein
+  Umbau der Spur auf den Stablecoin.** "Auf X umstellen" heisst die Watchlist
+  auf die wenigen Paare reduzieren, die der Stablecoin quotiert - ein massiver
+  Strategieeingriff, kein kleiner Umbau. Praktische Loesung bleibt der Tausch
+  in die Handelswaehrung (die Spur unveraendert lassen).
 
 ## Was ein brauchbarer Bericht enthaelt
 

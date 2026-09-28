@@ -843,7 +843,23 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   `cronjob_manage action=run` -> den frischen Lauf als `ok` lesen -> erst dann
   "behoben" berichten. Ein Befund, der nur aus einem alten Status stammt, ist
   kein Befund.
-- **Ein Syntaxfehler im Cron-Skript ist ein Dauerausfall, kein Einzelfehler.**
+- **Ein `Script exited with code 15` (SIGTERM) ist eine EXTERNE Beendigung des
+  Prozesses, kein Fehler des Skripts.** Ein no_agent-Skript, das nur 0/1
+  zurueckgibt, kann einen 15er nie selbst erzeugen - der Prozess wurde waehrend
+  des Laufs von aussen gekillt. Diagnoseweg: (1) `cron/executions.db`
+  (`sqlite3`) abfragen und die fehlgeschlagenen Laufe NACH JOB und UHRZEIT
+  gruppieren: mehrere code-15 an EINEM Tag ueber verschiedene Jobs weisen auf
+  einen gemeinsamen externen Killer (Speicherdruck, MoonDev-Leak, ein
+  Aufraeumer mit `taskkill`) statt auf die Jobs; (2) Laufzeit des geplatzten
+  Laufs gegen die gesunden vergleichen - ein viel kuerzerer Lauf wurde
+  abgebrochen, nicht abgestuerzt; (3) Gateway-Restarts zum Zeitpunkt
+  ausschliessen (`gateway.log`); (4) freien Commit pruefen
+  (`Win32_OperatingSystem.FreeVirtualMemory`) - knapper Commit ist die
+  haeufigste Quelle solcher Killings, mit `WinError 1455` als Vorbote.
+  Ein code-15 ist ein ALARM, kein echter Ausfall: der Job heilt von selbst
+  (naechster Takt laeuft wieder), und das ueberwachte Objekt lief nie ohne
+  Daten. Das Skript nur anfassen, wenn danach wirklich etwas reproducible
+  scheitert; den 15er allein nicht als Skriptbug behandeln.
   Jeder Lauf stirbt an derselben Stelle mit demselben Traceback, waehrend der
   Schaden woanders sitzt: Berichte und Merker, die dieses Skript schreiben
   sollen, frieren ein, und die Objekte sehen danach "seit Tagen alt" aus. Beim

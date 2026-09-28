@@ -201,6 +201,27 @@ fehlgedeutet.
   deutschen Windows stillschweigend nichts. Dann nicht „keine Last“
   hinschreiben, sondern die Kennzahl ueber `Win32_PerfFormattedData_*` holen
   oder ausdruecklich als „nicht messbar“ melden.
+- **Commit-Druck ist keine niedrige physikalische-Zahl.** Ein Rechner kann 30+ GB physisch
+  frei haben und trotzdem an Commit (virtuell, `FreeVirtualMemory`) ersticken — das Seitenfile
+  (50,2 GB benutzt bei 5,5 GB Commit frei) ist der Treiber. Angezeigtes Symptom sind dann
+  regellose Cron-/SIGTERM/Exit-15-Fehler und `WinError 1455 Auslagerungsdatei zu klein`.
+  Fuer Commit-Messung je Prozess `PagefileUsage`/`PrivateMemorySize64` nehmen, NICHT
+  `WorkingSetSize` — angefangene 947 MB Commit je `windows-mcp`-Zombie bei nur ~49 MB physisch
+  sieht in der WorkingSet-Tabelle wie 0 aus. Gruppieren nach Alter: laufen viele Prozesse einer
+  Kommandozeile (36 Stueck, aeltester >24 h, kein einziger juenger als 1 h), sind es **Waisen** —
+  der Gateway/Gast startet Kindpaare und gibt alte nicht frei. Die ueber der Altersgrenze
+  beenden (`Stop-Process -Force`, nativer Befehl; taskkill aus windows-mcp tut still nichts),
+  Commit danach messen — 5,5 → 15 GB frei war der Beleg, und die SIGTERM-Welle hoerte auf.
+
+- **Ein Cron „Script exited with code 15“ ist ein SIGTERM von aussen, kein Skriptfehler.**
+  Gibt das Skript selbst nur 0/1 zurueck, wird der Prozess mitten im Lauf beendet — sehr zum
+  Auslesen der Ereigniszeit (Lauf in 12 s statt der ueblichen 20–50 s). Nicht den Quelltext des
+  Skripts verdaechtigen: in `cron/executions.db` das historische Muster pruefen (kommt code 15
+der erste Mal heute bei MEHREREN Jobs? = gemeinsame aussenstehende Ursache wie Speicherdruck,
+  kein Zufall), den Gateway-Neustart als Ursache ausschliessen (letzter „Press Ctrl+C"-Start),
+  und erst dann Ressourcen parallel zum Tatzeitpunkt messen. Erst nachdem Commit-Luft da ist,
+  erkennen, dass der Radar selbst gesund war und nur Kollateralschaden unter Druck erlit.
+
 - **Ein traeger Rechner hat selten einen CPU-Fresser.** Gemessene 18 % CPU,
   25 GB freier RAM und leere Disk-Queue passen zu einer Kiste, die sich
   trotzdem kriechend anfuehlt — dann zuerst nach **Vielfachheit** (Duplikate
