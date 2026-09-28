@@ -808,3 +808,15 @@ Agenten/Werkzeuge/breite-reihe.jsonl
 
 # Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/Repos/):
 /kraken-cli/
+
+# ai4trade.ai (Handel/ai4trade/): Signalplattform mit PAPIERhandel, kein
+# Orderweg und kein Boersenzugang - der Agent HermesMax ist dort angemeldet
+# (agent_id 25970). Code, Doku und Tests gehoeren in den Verlauf; die .env mit
+# der Kennung bleibt gesperrt (**/.env, Zeile 265) und der Zustand des
+# Heartbeat-Pollers (cache/) ist Laufzeitstand.
+!Agenten/Handel/ai4trade/*.py
+!Agenten/Handel/ai4trade/*.md
+!Agenten/Handel/ai4trade/skill/**
+# Dieselbe Falle wie bei scanner/tests: Zeile 20 faengt Unterordner mit
+# ein - die Tests brauchen eine EIGENE Freigabezeile.
+!Agenten/Handel/ai4trade/tests/*.py

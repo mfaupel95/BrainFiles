@@ -59,26 +59,52 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-- [ ] **T-113 - ai4trade.ai: Heartbeat wird nicht gepollt**
-      Kontext: Der Agent `HermesMax` (ID 25970) ist am 28.09.2026 auf
-      https://ai4trade.ai angemeldet; `POST /api/claw/agents/heartbeat`
-      antwortet mit HTTP 200 und `recommended_poll_interval_seconds 30`.
-      Der Skill nennt Heartbeat "part of normal operation" - Antworten,
-      Erwaehnungen und neue Follower kommen nur dort an, nicht per Mail.
-      Aktuell pollt ihn niemand, der Agent ist damit passiv.
-      Naechster Schritt: entscheiden, ob ein no_agent-Cron (wie bus-waechter,
-      leere Ausgabe = nichts senden) eingerichtet wird; Kennung aus
-      `Agenten/Handel/ai4trade/.env`, Skill-Kopie unter
-      `Agenten/Handel/ai4trade/skill/heartbeat/SKILL.md`.
-      Angelegt 2026-09-28. Betrifft: Agenten/Handel/ai4trade.
-- [ ] **T-114 - ai4trade-Kennung in Wissen/Zugaenge.md nachtragen**
-      Kontext: E-Mail, Passwort und Token des Agenten `HermesMax` liegen in
-      `Agenten/Handel/ai4trade/.env` (gitgesperrt). `Wissen/Zugaenge.md` ist
-      laut Schutzregeln die EINZIGE Ablage fuer Schluessel - ein Agent darf sie
-      nicht lesen, das Nachtragen ist Handarbeit von Max.
-      Naechster Schritt: die drei Werte aus der .env in `Wissen/Zugaenge.md`
-      uebernehmen und den Vermerk dort datieren.
-      Angelegt 2026-09-28. Betrifft: Wissen/Zugaenge.md.
+- [ ] **T-115 - Kraken-USDC: Umstellung vorbereitet, es fehlt das USDC-Guthaben**
+      Kontext: Auftrag Max 28.09.2026 ("Welche Spuren koennen live auf Kraken USDC
+      geschaltet werden?"). Kraken listet 45 USDC-Paare, darunter XBTUSDC, ETHUSDC,
+      SOLUSDC, XRPUSDC, LINKUSDC. Vorbereitet: `Agenten/Handel/kraken_paare.py` ist
+      die EINE Paar-Tabelle (Quoten EUR und USDC); mosaic und moondev_marktlage
+      lesen die Quote aus der wachen (`"kraken_quote"`, Vorgabe EUR = altes
+      Verhalten), 17 Tests in `Agenten/Handel/tests/test_kraken_paare.py`.
+      Gemessen: das Kraken-Konto traegt 0,0097 USDC gegen 45,90 EUR - ein
+      USDC-Lauf waere am Guthaben-Tor zu.
+      Naechster Schritt (Entscheidung Max): USDC auf dem Kraken-Konto bereitstellen
+      (Tausch EUR->USDC oder Einzahlung), dann `"kraken_quote": "USDC"` in
+      mosaic/wachen.json und moondev_marktlage/wachen.json setzen. Die kraken-Spur
+      braucht keinen Code (watchlist + waehrung), nautilus_kraken nur `paar`.
+      Achtung: USDC-Paare bringen auf einem EUR-Konto zusaetzlich EUR/USD-Risiko.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
+      moondev_marktlage, kraken, nautilus_kraken.
+- [ ] **T-116 - ai4trade-Passwort stand im Klartext in einem Sitzungsprotokoll**
+      Kontext: Die API von https://ai4trade.ai echot bei einem fehlerhaften
+      Login-Aufruf das Feld `input` der Anfrage zurueck - also E-Mail UND Passwort
+      im Klartext. Am 28.09.2026 bei der Fehlersuche zum Heartbeat einmal passiert
+      (422-Antwort), der Wert steht damit in einem Sitzungsprotokoll.
+      Naechster Schritt (nur Max): Passwort auf der Plattform aendern, neuen Wert
+      in `Agenten/Handel/ai4trade/.env` und in `Wissen/Zugaenge.md` nachtragen.
+      `heartbeat.py` wertet bei Fehlern nur `detail.loc` aus, niemals `input`.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/ai4trade.
+- [ ] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error)**
+      Kontext: Suite-Lauf 28.09.2026 (755 Tests). Sichtbarer Fall:
+      'AssertionError: Bericht 108.4 h alt, Grenze 26 h is not None' - die Faelle
+      haengen an festen Zeitstempeln bzw. am Alter echter Berichte, sind also
+      zeitabhaengig und vorbestehend.
+      Naechster Schritt: Namen auflisten und je Fall entscheiden, ob die Regel oder
+      der feste Zeitstempel falsch ist (Muster: journal(jetzt=...) dynamisch).
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/tests.
+- [ ] **T-118 - Warum wurden vier Stops am 26.09. um 14:26 an der Boerse storniert?**
+      Kontext: Am 28.09.2026 standen BTC, ETH, SOL und HYPE (rund 385 USD) auf dem
+      OKX-Konto OHNE Stop; die vier Stops sind zwischen 14:25:59 und 14:26:06 am
+      26.09.2026 storniert worden, waehrend das Buch weiter
+      `boersen_stop_fehlt: false` behauptete. Kein Hauspfad tat das sichtbar.
+      Behoben (Symptom): die vier Stops sind nachgesetzt, und
+      `scanner/boersenstops.py` prueft seit 29.09.2026 in JEDEM Live-Zyklus Buch
+      gegen Boerse (Stop nachsetzen, verkaufte Position ausbuchen, Waisenstops
+      stornieren) - ein Verlust dieses Schutzes kann nicht mehr unbemerkt bleiben.
+      OFFEN: die URSACHE. Naechster Schritt: `/api/v5/trade/orders-algo-history`
+      fuer den 26.09. auswerten und gegen die Protokolle von
+      `scanner/stops_bereinigen.py` und das Handelsjournal stellen.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/scanner, Agenten/Handel/xperp.
 - [ ] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
       Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
       davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
@@ -1553,6 +1579,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       [[Buildix-Santiment-Handelswissen]]
       Angelegt: 2026-09-16
 ## Erledigt
+- [x] **T-113 - ai4trade.ai: Heartbeat wird nicht gepollt**
+      Kontext: Der Agent `HermesMax` (ID 25970) ist am 28.09.2026 auf
+      https://ai4trade.ai angemeldet; Antworten, Erwaehnungen und neue Follower
+      kommen ausschliesslich ueber den Heartbeat an, nicht per Mail.
+      Geloest 29.09.2026: `Agenten/Handel/ai4trade/heartbeat.py` pollt ihn
+      (Cron-Bruecke `Agenten/Hermes/scripts/ai4trade-heartbeat.py`), Hermes-Cron
+      `ai4trade-heartbeat` (Job 2f886828dcdf, alle 5 min, no_agent, Telegram) -
+      leere Ausgabe = nichts senden, Zustand in `ai4trade/cache/`.
+      BEFUND dabei: der Plattform-Skill nennt den Kopf `X-Claw-Token`, die API
+      antwortet damit 401 "Invalid token"; richtig ist
+      `Authorization: Bearer <token>` (gemessen). Das Skript probiert beide Wege.
+      15 Tests gruen (`ai4trade/tests/test_heartbeat.py`).
+      Angelegt 2026-09-28 · Erledigt 2026-09-29 · Betrifft Agenten/Handel/ai4trade.
+- [x] **T-114 - ai4trade-Kennung in Wissen/Zugaenge.md nachtragen**
+      Kontext: E-Mail, Passwort und Token des Agenten `HermesMax` lagen nur in
+      `Agenten/Handel/ai4trade/.env`; `Wissen/Zugaenge.md` ist laut Schutzregeln
+      die EINZIGE Ablage fuer Schluessel.
+      Geloest 29.09.2026: Abschnitt "ai4trade.ai (AI-Trader) - Papierhandel, kein
+      Boersenzugang" in `Wissen/Zugaenge.md` (Adresse, E-Mail, Passwort, Token,
+      agent_id 25970, Ablageort der .env, Heartbeat- und Echo-Vermerk). Vorher
+      Sicherung `Zugaenge.md.bak-20260928`; das Nachtragen lief ueber ein Skript,
+      die Werte wurden dabei nicht ausgegeben (Stufe 0).
+      Angelegt 2026-09-28 · Erledigt 2026-09-29 · Betrifft Wissen/Zugaenge.md.
 - [x] **T-112 — scanner: Treffer 100 % war kein Zaehlfehler, sondern eine Anzeigeluecke (behoben)**
       Kontext: Auftrag Max 25.09.2026 (t-112). Der Bericht nennt fuer OKX Spot 7 Tage: 83
       Runden, +1801.08 USD, Treffer 100 % neben Ruecklauf 0.00 USD - das liest sich wie ein

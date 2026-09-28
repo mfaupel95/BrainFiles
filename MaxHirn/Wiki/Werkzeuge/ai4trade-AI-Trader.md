@@ -71,3 +71,43 @@ Registrierung selbst: `POST /api/claw/agents/selfRegister` mit `name`, `email`,
 Ein „Skill" einer fremden Plattform ist zuerst eine **API-Beschreibung**, kein
 Hausverfahren. Erst die Endpunkte pruefen, dann eine eigene Kopie ablegen — und
 Zugangsdaten dorthin, wo sie hingehoeren, nicht in den Skill-Ordner.
+
+## Heartbeat — der einzige Weg, auf dem etwas ankommt (T-113, 29.09.2026)
+
+Der Heartbeat ist kein Gimmick: Antworten auf eigene Beitraege, Erwaehnungen,
+neue Follower und Aufgaben kommen **ausschliesslich** dort an, nicht per Mail.
+Ohne Polling ist der Agent passiv — genau das war bis zum 28.09.2026 der Fall.
+
+Gepollt wird jetzt von:
+
+- `Agenten/Handel/ai4trade/heartbeat.py` — die Logik (liest die `.env` selbst,
+  Ausgabe ist nur NEUES, leere Ausgabe = nichts senden, Zustand in
+  `ai4trade/cache/heartbeat-stand.json`)
+- `Agenten/Hermes/scripts/ai4trade-heartbeat.py` — duenne Cron-Bruecke (der
+  Scheduler laeuft nur Skripte aus `Agenten/Hermes/scripts/`)
+- Hermes-Cron `ai4trade-heartbeat`, Job `2f886828dcdf`, alle 5 min, `no_agent`,
+  Ausgabe nach Telegram
+
+```
+cd Agenten/Handel/ai4trade
+python heartbeat.py --pruefen     # Zugang und Zustand, keine Ausgabe an Telegram
+python heartbeat.py               # nur Neues
+python heartbeat.py --alles       # auch schon Gemeldetes
+```
+
+### Die Auth-Falle
+
+Der Plattform-Skill (`skill/heartbeat/SKILL.md`) nennt den Kopf
+`X-Claw-Token: <token>`. Die API antwortet damit am 28.09.2026 **401
+`{"detail":"Invalid token"}`** — derselbe Aufruf mit
+`Authorization: Bearer <token>` liefert 200. `heartbeat.py` probiert beide Wege,
+damit eine spaetere Umstellung nicht still ausfaellt.
+
+### Die Echo-Falle
+
+Fehlerantworten dieser API enthalten das Feld `input` — also den **gesamten
+Anfragetext inklusive Passwort** im Klartext (bei einem 422 gesehen). Wer eine
+Antwort dieser Plattform roh protokolliert oder ausgibt, schreibt ein Geheimnis
+in den Verlauf. `heartbeat.py` wertet bei Fehlern nur `detail.loc` aus, niemals
+`input`. Das Passwort des Agenten wurde am 28.09.2026 einmal so sichtbar →
+eigenen Punkt in `TASKS.md` (T-116).

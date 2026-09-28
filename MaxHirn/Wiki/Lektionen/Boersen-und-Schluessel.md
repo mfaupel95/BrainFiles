@@ -90,3 +90,22 @@ Hausmodul und wird im Test durch ein Attrappen-Ziel ersetzt.
 Ebene, `zeuge.roh_*` zeigt Status, `content-type` und Rohkoerper. Kraken liefert
 im cloudflare-Fall `5xx`/`1020` **ohne** JSON; ein JSON-`error`-Feld heisst
 dagegen Auth-Ebene.
+
+## Lektion: der Auth-Kopf steht in der Doku, die Wahrheit an der API (28.09.2026)
+
+Ein Skill oder eine Anleitung nennt einen Header — das ist eine Behauptung, kein
+Beweis. Beim ai4trade-Heartbeat stand `X-Claw-Token` in der Skill-Datei und
+lieferte **401 Invalid token**, waehrend `Authorization: Bearer <token>` mit
+demselben Token 200 lieferte. Vorgehen bei jedem neuen Zugang: **denselben
+Aufruf mit mehreren Kopf-Varianten messen** (`Authorization: Bearer`,
+`<X-Spezifisch>`, Query-Token) und die Messung dokumentieren. Ein Programm, das
+nur den dokumentierten Weg kennt, faellt bei der ersten Umstellung still aus —
+und Stille sieht aus wie Ruhe. Deshalb probieren die Haus-Werkzeuge den zweiten
+Weg mit und melden den benutzten.
+
+**Zweiter Teil derselben Lektion:** Fehlerantworten sind ein Leck. Die
+ai4trade-API echot bei 422 das Feld `input` zurueck — also die ganze Anfrage
+samt Passwort im Klartext. Regel: von einer fremden API niemals die rohe Antwort
+protokollieren; erwartete Felder auswaehlen (`success`, `agent_id`, `detail.loc`)
+und Geheimnis-Felder verwerfen. Gemessen heisst das: ein einziger Tippfehler im
+Login-Aufruf kann ein Passwort in ein Protokoll schreiben.
