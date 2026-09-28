@@ -59,6 +59,26 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-113 - ai4trade.ai: Heartbeat wird nicht gepollt**
+      Kontext: Der Agent `HermesMax` (ID 25970) ist am 28.09.2026 auf
+      https://ai4trade.ai angemeldet; `POST /api/claw/agents/heartbeat`
+      antwortet mit HTTP 200 und `recommended_poll_interval_seconds 30`.
+      Der Skill nennt Heartbeat "part of normal operation" - Antworten,
+      Erwaehnungen und neue Follower kommen nur dort an, nicht per Mail.
+      Aktuell pollt ihn niemand, der Agent ist damit passiv.
+      Naechster Schritt: entscheiden, ob ein no_agent-Cron (wie bus-waechter,
+      leere Ausgabe = nichts senden) eingerichtet wird; Kennung aus
+      `Agenten/Handel/ai4trade/.env`, Skill-Kopie unter
+      `Agenten/Handel/ai4trade/skill/heartbeat/SKILL.md`.
+      Angelegt 2026-09-28. Betrifft: Agenten/Handel/ai4trade.
+- [ ] **T-114 - ai4trade-Kennung in Wissen/Zugaenge.md nachtragen**
+      Kontext: E-Mail, Passwort und Token des Agenten `HermesMax` liegen in
+      `Agenten/Handel/ai4trade/.env` (gitgesperrt). `Wissen/Zugaenge.md` ist
+      laut Schutzregeln die EINZIGE Ablage fuer Schluessel - ein Agent darf sie
+      nicht lesen, das Nachtragen ist Handarbeit von Max.
+      Naechster Schritt: die drei Werte aus der .env in `Wissen/Zugaenge.md`
+      uebernehmen und den Vermerk dort datieren.
+      Angelegt 2026-09-28. Betrifft: Wissen/Zugaenge.md.
 - [ ] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
       Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
       davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
