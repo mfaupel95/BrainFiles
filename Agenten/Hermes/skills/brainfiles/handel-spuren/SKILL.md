@@ -51,6 +51,15 @@ Ausloeser → Referenz:
   Live fuellt die LIVE-Plaetze (der Deckel greift, bevor ein Kaufversuch
   entsteht), Positionen ohne Orderkennung sind Papier-Altlasten; der Abgleich prueft die
   GROESSE, und eine Ausbuchung darf keinen Verlust erfinden.
+- **„Tagesbericht auswerten"**, ein Bericht liegt vor und die Zahlen sollen ein
+  Urteil tragen (ein Posten mit unpassender Groesse, "Stop gerissen", ein
+  negativer Zuwachs seit gestern, dieselbe Spur in zwei Stufen mit
+  gegensaetzlichem Vorzeichen): `references/buch-und-boerse-abgleichen.md` -
+  der Bericht ist ein Verdachtsgenerator, die Wahrheit kommt aus der
+  Boersenabfrage; dort auch die Namensfalle beim Bestand (`ALGO` gegen `ZALGO`)
+  und die Zuordnung "wer hat das gekauft". Dazu `references/beleg-und-hand.md`:
+  die Fuellung wird ABGEWARTET, sonst stellt die Spur denselben Beleg neu und
+  die Hand kauft denselben Wert erneut.
 - **Ein Orderpreis wird abgelehnt** („price can only be specified up to N
   decimals“, `tickSz`, der Notausstieg kommt nicht zustande und die eben
   gekaufte Position wird zurueckverkauft): `references/zweite-boerse.md` —

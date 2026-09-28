@@ -348,6 +348,43 @@ Folgen, die man vorher nicht sieht:
   Mini-Round-Trip mit Vorschau, `--symbol`, `--kontrakte`, Notausstieg per Stop
   falls der Verkauf scheitert. Es bucht in kein Buch und oeffnet kein Fenster.
 
+## Kraken gegen USDC: die Paare gibt es, die Waehrung ist die Huerde
+
+Kraken fuehrt USDC-Quotepaare — dieselben Instrumente, die der Haus-Spot handelt
+(`XBTUSDC`, `ETHUSDC`, `SOLUSDC`, `XRPUSDC`, dazu ADA/LINK/AVAX/DOT/LTC/BNB, gut
+vier Dutzend). Mindestmengen: BTC 0,00005 / ETH 0,001 / SOL 0,06 / XRP 1,65.
+Pruefen laesst sich das oeffentlich und ohne Schluessel:
+`GET /0/public/AssetPairs`, dann auf `quote == "USDC"` filtern — **die
+Waehrungsspalte ist die Wahrheit, nicht der Paarname.**
+
+Die Haus-Spuren sind auf EUR-Paare verdrahtet: `PAARE` in
+`mosaic/kraken_spot.py`, `PAAR` in `moondev_marktlage/live_kraken.py`, `paar` in
+`nautilus_kraken/wachen.json`, `waehrung`/`guthaben_waehrung` in
+`kraken/wachen.json`. Die Umstellung ist je Spur EINE Tabelle — aber sie ist ein
+**Buchvorgang, kein Schalter** (ein Waehrungswechsel ist derselbe Fall wie der
+Instrumentenwechsel weiter unten: offene Positionen mit EUR-Einstiegen werden
+vom ersten Zyklus gegen USDC-Kurse gerechnet und alle flachgestellt).
+
+- **Erst den ORDERWEG zaehlen, dann die Boerse waehlen.** Einen Kraken-Orderweg
+  haben `kraken`, `mosaic`, `moondev_marktlage`, `nautilus_kraken` (und
+  `moondev_listingarb` als vorhandener Pfad); `nautilus_kraken_futures` ist
+  USD-Margin, kein USDC-Spot; Spuren ohne Orderaufruf sind nicht "auf Kraken
+  schaltbar", sondern gar nicht handelbar — eine Spur, die Kraken nur fuer
+  Kerzen liest (`orbk`), hat damit keinen Orderweg.
+- **Vorbedingung ist Guthaben in der Quotewaehrung**, nicht Code: ein Konto kann
+  EUR halten und 0,01 USDC. Kraken-Codes lesen (`kraken._roh_privat('Balance')`):
+  Fiat traegt ein `Z`-Praefix (`ZEUR`, `ZUSD`), Krypto nicht (`USDC`, `XXBT`,
+  `XETH`, `SOL`).
+- **Falle bei der Kontolesung:** die Balance alphabetisch ausgeben und mit `head`
+  abschneiden schneidet genau `ZEUR`/`ZUSD` ab (sie stehen am ENDE) — daraus wird
+  schnell der Fehlschluss "kein Fiat auf dem Konto". `head`/`tail` nie als
+  Beweismittel fuer eine Kontolesung; gezielt filtern (`guthaben('ZEUR')`) oder
+  die Ausgabe vollstaendig zeigen.
+- **Waehrungsrisiko nennen:** ein EUR-Konto, das USDC-Paare handelt, traegt
+  zusaetzlich EUR/USD. Fuer dieselbe Bewegung in EUR ist das kein
+  Genauigkeitsgewinn, sondern ein neues Risiko — die Umstellung nur bauen, wenn
+  die Rechnung in USDC gewollt ist.
+
 ## Instrumentenwechsel mit offenem Buch
 
 Ein Instrumentenwechsel ist kein Konfigurationswert, sondern ein BUCHVORGANG.

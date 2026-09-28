@@ -152,8 +152,10 @@ Ergebnis: echte Position ohne Buch.
 `attachAlgoOrds` werden beim Fuellen aktiv - greift das nicht (z. B. weil die
 Order erst spaeter fuellte oder ein Storno dazwischenkam), liegt die Position
 **ohne boersenseitigen Stop**. Pruefen mit
-`/api/v5/trade/orders-algo-pending?instType=FUTURES&ordType=conditional`.
-Ist die Liste leer, den Stop mit den Werten der Eroeffnungszeile nachsetzen
+`/api/v5/trade/orders-algo-pending?instType=FUTURES` fuer **jede** `ordType`
+(`conditional` UND `oco` - der Anlageweg entscheidet die Liste; eine leere
+`conditional`-Antwort ist bei einer `oco`-Position ein FALSCHES "kein Stop",
+siehe 5c). Ist die Liste leer, den Stop mit den Werten der Eroeffnungszeile nachsetzen
 (`/api/v5/trade/order-algo`, `ordType=conditional`, `slTriggerPx`, `slOrdPx=-1`,
 `reduceOnly=true`, Gegenrichtung der Position). Eine gehebelte Position ohne Stop
 laeuft bis zur Liquidation, wenn der Rechner ausfaellt.
@@ -209,6 +211,48 @@ anfassen - der laufende Zyklus ueberschreibt die Aenderung ohnehin und man verli
 Buchung. Nachweis: Buch gegen Boerse zaehlen
 (`/api/v5/trade/orders-algo-pending?ordType=conditional`), beide Richtungen muessen
 leer sein.
+
+### 5c. Der Stop-Zustand ist Teil des Abgleichs — und ein Buchfeld luegt
+
+Die Stop-Pruefung aus 5 gehoert in **jeden Live-Zyklus**, nicht an die
+Eroeffnung. Ein Buchfeld, das nur beim Kauf gesetzt wird (`boersen_stop_fehlt`),
+behauptet danach dauerhaft "Stop ist da" — auch wenn ein Storno von Hand, ein
+abgebrochener Verkauf oder eine von Hand reduzierte Stueckzahl die Position
+laengst ungeschuetzt gelassen hat. Der Befund ist stumm: die Spur meldet "ok",
+das Buch sieht vollstaendig aus, und es gibt keinen Notausstieg.
+
+- **Ein Feld, das nur in einem Zweig geschrieben wird, ist keine Wache.** Wer
+  den Zustand behaupten will, muss ihn in JEDEM Zyklus an der Boerse lesen —
+  derselbe Abgleich wie die Geisterpruefung, nur mit Stop statt Groesse.
+- **Alle Algo-Typen fragen, nicht einen:** OKX legt Stops je nach Anlageweg als
+  `conditional` ODER `oco` ab. Eine Abfrage nur auf `conditional` liest sich bei
+  einer `oco`-Position wie "kein Stop" — und wer darauf hin nachsetzt, hat einen
+  Doppelstop (zwei Verkaufsorders auf denselben Bestand).
+- **Vor dem Nachsetzen nach dem INSTRUMENT fragen, nicht nach der gemerkten
+  Kennung.** Die im Buch stehende Stop-Kennung kann veraltet sein, waehrend an der
+  Boerse ein lebender Stop existiert: die Pruefung "ist DIESE id noch wirksam?"
+  beantwortet dann "nein" und setzt einen zweiten Stop. Richtig ist "hat dieses
+  Instrument ueberhaupt einen offenen Stop dieser Seite?".
+- **Den Ausstieg am BESTAND erkennen, nicht am Algo-Zustand.** OKX laesst die
+  Algo-Antwort nach dem Ausloesen auf `state=effective` und `accFillSz=0` stehen,
+  obwohl der Stop gefeuert und eine echte Market-Sell-Fuellung entstanden ist
+  (ein `cancel-algos` darauf antwortet `51400`, also "erledigt"). Reihenfolge:
+  **erst den Bestand der Basiswaehrung lesen** (`/account/balance?ccy=<coin>`);
+  ist er auf null, ist die Position an der Boerse weg — dann den echten Preis aus
+  der juengsten gefuellten Order der Verkaufsseite holen und mit dem Ergebnis
+  buchen. Ohne belegten Preis wird NICHT gebucht: laut melden, Buch unberuehrt.
+- **Was hier passiert, gehoert gemeldet.** Ein nachgesetzter Stop und eine
+  boersenseitig verkaufte Position sind Ereignisse, nicht Buchhaltung — ohne
+  Meldung erfaehrt niemand, dass eine Position ungeschuetzt stand.
+- **Werkzeug als Muster:** `scanner/boersenstops.py` (Vorschau Standard,
+  `--anwenden`) liest je Position Bestand UND Stop-Zustand, setzt fehlende Stops
+  nach, bucht boersenseitige Ausstiege mit echtem Preis aus und raeumt Waisenstops
+  ab; die Buchdatei wird nur geschrieben, wenn sie nicht juenger als ein Zyklus
+  ist. Direkt aus dem Live-Zweig aufrufbar.
+- **Testform:** Boersenmodul als Attrappe (Antworten je Fall), Journal in eine
+  Temp-Datei, vier Faelle — Stop wirksam (nichts tun), Stop fehlt (setzen, mit
+  Menge = Bestand), Bestand weg (buchen mit Fuellungspreis), Bestand weg ohne
+  ermittelbaren Preis (nicht buchen, melden).
 
 ## 6. Sperre aufloesen heisst: die Ursache mit aufloesen
 

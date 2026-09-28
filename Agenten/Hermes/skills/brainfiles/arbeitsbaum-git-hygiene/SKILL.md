@@ -90,6 +90,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Commit mit Fremd-Autor -> erst danach die eigene Pfadliste stagen und committen.
    Ist es doch passiert: `git reset --soft HEAD~1`, dann `git reset` (Index leeren),
    Fremd-Teil neu bauen und committen, danach den eigenen.
+   **Sind stattdessen FREMDE Eintraege vorgemerkt** (erste Spalte `M `/`A ` in
+   `git status --porcelain`) und die eigenen Dateien seit dem Schreiben unveraendert, ist
+   der pfadbeschraenkte Commit das RICHTIGE Werkzeug, kein Notbehelf:
+   `git add -- <eigene pfade>` und `git commit -m "..." -- <eigene pfade>` committen den
+   Arbeitsbaum genau dieser Pfade; die fremde Vormerkung bleibt liegen (nachgemessen: sie
+   stand danach unveraendert weiter im Index). Hier ist `git reset` (Index leeren) die
+   falsche Antwort — es fasst die Vormerkung einer anderen Sitzung an. Das Verbot gilt
+   ausschliesslich dem eigenen, per `hash-object` GEBauten Index-Eintrag (siehe unten).
    **Der so gebaute Index wirkt nur bei `git commit` OHNE Pfadangabe.**
    `git commit -- <pfad>` committet den ARBEITSBAUM dieser Pfade (wie `git add <pfad>`
    plus Commit) und wirft den eigenen Index-Eintrag weg: die fremden Zeilen gehen mit

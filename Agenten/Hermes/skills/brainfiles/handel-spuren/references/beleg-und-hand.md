@@ -69,6 +69,41 @@ Zyklus entscheidet neu.
 gibt ab, und niemand nimmt. Ein Beleg, den nur eine Sitzung ausfuehren kann, ist
 fuer einen Dauerprozess kein Weg.
 
+## Die Fuellung wird abgewartet, nicht sofort abgefragt
+
+`gefuellte_menge(txid)` DIREKT nach `AddOrder` zu lesen ist eine Aussage ueber
+einen Zeitpunkt, nicht ueber den Auftrag: eine Market-Order ist einen Moment
+spaeter gefuellt als sie angenommen wurde. Kommt dabei 0 zurueck, meldet die Hand
+"Kauf ohne Fuellung" - und die Spur bucht keine Position.
+
+**Eine falsche "keine Fuellung" ist teurer als eine falsche "gefuellt".** Ohne
+gebuchte Position sieht der naechste Zyklus denselben Wunsch wieder offen und
+stellt denselben Beleg erneut; die Hand kauft erneut. Gemessen: derselbe Wert
+vier mal in einer Stunde gekauft (~200 EUR statt 50 EUR), waehrend das Buch EINEN
+Kauf fuehrte - und die Auftragsliste der Boerse zeigte den Fill 53 s VOR der
+Fehlermeldung im Journal.
+
+- **Warten statt einmal lesen:** nach `AddOrder` Orderzustand/Fuellmenge
+  wiederholt abfragen (Sekundentakt, ~10 s Frist, wie die
+  wartende-Auftraege-Logik in `xperp`) und erst danach "ohne Fuellung" melden.
+  Ein Zwischenstand ist ein eigener Ausgang (`order_offen`), kein Fehler.
+- **Ein Beleg darf nicht neu gestellt werden, solange eine Order zum selben
+  Instrument offen oder ungeklaert ist.** Sonst wird der Beleg zum Verstaerker:
+  jede Wiederholung ist ein zweiter echter Kauf.
+- **Gegenprobe an der Boerse, nicht am Journal:** geschlossene Auftraege je
+  Instrument zaehlen und die Menge gegen das Buch halten. Vier Kaeufe zu ~50 EUR
+  gegen eine Buchmenge von einem Kauf ist der Befund; die Fehlermeldung im
+  Journal ist nur das Symptom.
+- **Ein Buchposten, der nur `paar` + `menge` traegt, ist keine Position.** Ohne
+  Einstiegspreis, Einsatz und Stop erkennt die Spur ihren eigenen Bestand nicht
+  wieder (sie kauft nach) und jeder Leser zeigt Unsinn - der Tagesbericht fuehrte
+  drei 50-EUR-Positionen als "1 EUR"/"2 EUR". Was die Hand bucht, muss die
+  Felder tragen, die die Spur selbst beim Einstieg schreibt.
+- **Ein Wiederholkauf endet meist nicht durch Einsicht, sondern durch leeres
+  Guthaben.** Danach kommt statt des Doppelkaufs eine Ablehnung wegen fehlender
+  Deckung - das ist der Nachhall, nicht die Ursache. Wer den Fehler sucht, findet
+  ihn in den geschlossenen Auftraegen der vergangenen Stunden.
+
 ## Fallen
 
 - **Hochwertige Attrappen verdecken den Boersenkontakt im Test.** Die Attrappe

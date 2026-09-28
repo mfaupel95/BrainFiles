@@ -184,8 +184,32 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   sieht. Nach einem fehlgeschlagenen Verkauf den Stop mit der ECHTEN Fuellungsmenge
   (`accFillSz` der Kauforder) neu setzen; einen alten, nicht stornierbaren Stop
   unberuehrt lassen (er schuetzt schon) und ohne Stop-Preis melden statt raten.
-  Gegenprobe: `/api/v5/trade/orders-algo-pending?ordType=conditional` muss fuer JEDE
-  Live-Position eine Verkaufsorder zeigen.
+  Gegenprobe: `/api/v5/trade/orders-algo-pending` fuer **JEDE** `ordType`
+  (`conditional` UND `oco`; je nach Anlageweg liegt der Stop in der einen oder
+  anderen Liste) muss fuer JEDE Live-Position eine Verkaufsorder zeigen. Ein
+  leeres `conditional` allein ist KEIN Beleg fuer "kein Stop" — und wer darauf
+  hin nachsetzt, erzeugt einen Doppelstop (zwei Verkaufsorders auf denselben
+  Bestand).
+- **Ein gefeuerter Boersen-Stop ist am BESTAND zu erkennen, nicht am Algo-Zustand.**
+  OKX laesst die Algo-Antwort nach dem Ausloesen auf `state=effective` und
+  `accFillSz=0` stehen (gemessen: der Stop hatte eine echte Market-Sell-Fuellung
+  erzeugt, der Algo meldete weiter "wirksam"; auch `cancel-algos` darauf gibt dann
+  `51400`, also erledigt). Wer den Algo-Zustand als Wahrheit nimmt, haelt eine
+  verkaufte Position fuer geschuetzt und beschriftet den Ausstieg mit dem falschen
+  Grund. Reihenfolge: **erst den Bestand der Basiswaehrung lesen**
+  (`/account/balance?ccy=<coin>`), ist er auf null -> die Position ist an der Boerse
+  weg; dann den echten Ausstiegspreis aus der juengsten gefuellten Order
+  (`/trade/orders-history` der Verkaufsseite) holen. Ohne belegten Fuellungspreis
+  wird NICHT gebucht — lieber laut melden als einen Kurs erfinden.
+- **Ein Buchfeld, das nur beim KAUF gesetzt wird, ist keine Wache.** Ein Merker wie
+  `boersen_stop_fehlt` wird beim Eroeffnen geschrieben und danach nie wieder
+  geprueft: er behauptet dauerhaft "Stop ist da", waehrend die Position laengst
+  ungeschuetzt offen liegt (Stornos von Hand, fehlgeschlagene Wiederanlage nach
+  einem abgebrochenen Verkauf, von Hand reduzierte Stueckzahl). Der Stop-Zustand
+  gehoert in JEDEN Live-Zyklus, nicht in die Eroeffnung. Fertiges Muster:
+  `scanner/boersenstops.py` (liest je Position Bestand + Stop, setzt fehlende
+  Stops nach, bucht boersenseitige Ausstiege mit echtem Preis aus; Vorschau ist
+  Standard) — Details in `handel-spuren`, Blatt `live-order-und-buchpflege` im Skill `handel-spuren` (Abschnitt 5c).
 - **Modul-Attrappen: das Modulattribut patchen, nicht `sys.modules`.** Wird ein
   Helfer ueber den PFAD geladen und als Attribut gehalten, laeuft eine Attrappe, die
   nur `sys.modules["<name>"]` umbiegt, ins Leere — der Test ist dann gruen oder rot

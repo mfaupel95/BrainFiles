@@ -19,6 +19,10 @@ metadata:
   `SKILL.md`-Dateien sind.
 - "Warum ist Skill Y nicht verfuegbar?" nach einem Importversuch.
 - Nachfragen zur Bauart: Fundus, geladene Bibliothek oder eigenes Bot-Profil.
+- **"Lies <URL> und melde dich dort an"** — eine einzelne Plattform, die ihre
+  Anleitung als `SKILL.md` ausliefert (Bootstrap-/Routing-Skill mit
+  `selfRegister`/`login`, Kind-Skills je Faehigkeit). Siehe Abschnitt
+  "Einzelne Plattform mit eigener SKILL.md".
 
 **Tragende Regel:** Ein ganzer Skill-Baum kommt **nie** in die geladene
 Hauptbibliothek. Namen und Beschreibungen kosten bei JEDER Anfrage, nur der
@@ -33,6 +37,34 @@ wird dreistufig:
 | benutzen | eigenes Bot-Profil (`/bot <name> ...`) | zahlt nur im eigenen Kontext |
 
 Format, Messzahlen und die Konverter-Nahtstellen: `references/claude-format-konverter.md`.
+
+## Einzelne Plattform mit eigener SKILL.md
+
+Liefert eine Webseite ihre Anleitung als `SKILL.md` aus (eine Bootstrap-URL plus
+Kind-Skills), ist das eine **API-Beschreibung, kein Hausverfahren**:
+
+1. **Erst die Bootstrap-Regeln der Hauptdatei lesen** (register/login -> Kennung ->
+   Basis-Endpunkte), dann je Faehigkeit den Kind-Skill holen. Keine Endpunkte raten,
+   die dort nicht stehen.
+2. **Die Skill-Dateien in den WERKZEUGORDNER kopieren**
+   (`Agenten/Handel/<plattform>/skill/...`), nicht in die geladene Bibliothek: die
+   Pfade aus der Anleitung (`~/.claude`, `~/.openclaw`) gelten fuer fremde Agenten und
+   kosten hier nur Ladepreis. Rezept und Ablageform: `references/plattform-bootstrap.md`.
+3. **Kennung als eigene `.env` neben den Skill-Dateien** (von `**/.env` gesperrt) —
+   nie im Skill-Ordner, nie in einer Notiz, nie im Chat. `Wissen/Zugaenge.md` ist die
+   Ablage von Max: ein Agent liest sie nicht, das Nachtragen ist Handarbeit.
+4. **Antworten von Anmelde-/Verifikations-Endpunkten NIE roh ausgeben.** Nur die
+   Felder parsen, die gebraucht werden: ein `GET .../me` kann das Token im Klartext
+   zurueckgeben, und eine Zeile wie `print(json.dumps(d)[:500])` schreibt es dann ins
+   Sitzungsprotokoll. Ausgeben: Adresse, Status, Name, Kontostand — nie die Kennung.
+5. **Nachweis sind zwei echte Aufrufe:** ein lesender Aufruf, der die Kennung annimmt
+   (Name/Konto), und der vorgesehene Aktivitaets-Endpunkt (z. B. Heartbeat).
+   "Registriert" ohne diese zwei ist eine Behauptung.
+6. **Was der Plattform-Skill als "part of normal operation" bezeichnet, ist mit der
+   Registrierung NICHT erledigt** — Heartbeat-/Polling-Pflichten als offenen Punkt in
+   `Archiv/TASKS.md` eintragen und Max entscheiden lassen, statt sie stillschweigend zu
+   lassen. Dazu die Wiki-Seite unter `Werkzeuge/` mit Endpunkten, Ablage der Kennung und
+   dem, was NICHT angeschlossen ist (`wiki-pflege`).
 
 ## Vorgehen
 
