@@ -96,6 +96,57 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 
+# Die drei nautilus-Arme buchen eroeffnen/schliessen (Betrag in
+# einsatz_usd/wert_usd bzw. einsatz_eur/wert_eur). Bis zum 28.09.2026 hatten
+# sie KEINEN Rechenweg in kennzahlen_fuer() und fielen in den else-Zweig:
+# "keine geschlossene Runde", obwohl im Journal sieben (nautilus) bzw. vier
+# (nautilus_kraken) geschlossene Runden standen.
+NAUTILUS_SPUREN = ("nautilus", "nautilus_kraken", "nautilus_kraken_futures")
+
+# Waehrung der Anzeige je Spur - der Kraken-Arm fuehrt EUR, die anderen USD.
+EINHEIT = {"kraken": "EUR", "nautilus_kraken": "EUR"}
+
+
+def runden_fuer(spur, z=None, gebuehr=None):
+    """Die GESCHLOSSENEN Runden einer Spur als Liste - die Zuordnung Spur ->
+    Rechenweg steht hier und NUR hier (bis 29.09.2026 stand sie in
+    `kennzahlen_fuer`; ein zweiter Aufrufer haette sie abschreiben muessen).
+
+    Rueckgabe: Liste von dicts mit `ergebnis`, `einsatz`, `grund` usw. - die
+    Form, die die `runden_*`-Funktionen liefern. `kennzahlen()` rechnet daraus
+    die Aggregate, `kennzahlen_strategie.py` die Verteilung (t-Statistik,
+    Stop aus der MAE der Gewinner).
+    """
+    if z is None:
+        z = zeilen(spur)
+    if gebuehr is None:
+        gebuehr = 0.0
+        wp = HIER / spur / "wachen.json"
+        if wp.exists():
+            try:
+                gebuehr = (json.loads(wp.read_text("utf-8")).get("gebuehr_taker")
+                           or 0.0)
+            except (OSError, ValueError):
+                gebuehr = 0.0
+    if not z:
+        return []
+    if spur in ("xperp", "swap"):
+        return runden_xperp(z)
+    if spur == "scanner":
+        return runden_spot(z, 0.0005)
+    if spur == "kraken":
+        return runden_spot(z, gebuehr, einsatz_feld="eur")
+    if spur == "orbk":
+        return runden_orbk(z)
+    if spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
+        return runden_indikator(z)
+    if spur in NAUTILUS_SPUREN:
+        return runden_nautilus(z)
+    if spur == "gitter":
+        return gitter_zyklen(z)
+    return []
+
+
 def kennzahlen_fuer(spur, von=None, bis=None):
     """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
 
@@ -122,30 +173,9 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     z = zeilen(spur)
     if not z:
         return None
-    gebuehr = 0.0
-    wp = HIER / spur / "wachen.json"
-    if wp.exists():
-        try:
-            gebuehr = (json.loads(wp.read_text("utf-8")).get("gebuehr_taker")
-                       or 0.0)
-        except (OSError, ValueError):
-            gebuehr = 0.0
-    if spur in ("xperp", "swap"):
-        runden = runden_xperp(z)
-    elif spur == "scanner":
-        runden = runden_spot(z, 0.0005)
-    elif spur == "kraken":
-        runden = runden_spot(z, gebuehr, einsatz_feld="eur")
-    elif spur == "orbk":
-        runden = runden_orbk(z)
-    elif spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
-        runden = runden_indikator(z)
-    elif spur == "gitter":
-        runden = gitter_zyklen(z)
-    else:
-        runden = []
+    runden = runden_fuer(spur, z)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
-    return kennzahlen(runden, "USD")
+    return kennzahlen(runden, EINHEIT.get(spur, "USD"))
 
 
 def belastbar(k, min_runden=None):
@@ -347,7 +377,14 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
         if not kette:
             continue                      # Ausstieg ohne Einstieg: ignorieren
         ein = kette.pop(0)
-        einsatz = zahl(ein.get(einsatz_feld))
+        if isinstance(einsatz_feld, tuple):
+            # Mehrere Schreibweisen desselben Betrags: der OKX-Arm der
+            # Nautilus-Gruppe fuehrt `einsatz_usd`, der Kraken-Arm
+            # `einsatz_eur`. Der erste gefuellte Name gewinnt.
+            einsatz = next((zahl(ein.get(f)) for f in einsatz_feld
+                            if zahl(ein.get(f))), None)
+        else:
+            einsatz = zahl(ein.get(einsatz_feld))
         if not einsatz:
             continue
         ergebnis, kosten = ergebnis_fn(ein, r)
@@ -421,6 +458,36 @@ def runden_indikator(zeilen_):
         return erloes - einsatz, 0.0
 
     return _paare(zeilen_, {"kauf"}, {"verkauf"}, "einsatz_usd", ergebnis, "USD")
+
+
+def runden_nautilus(zeilen_):
+    """Die drei Papier-Arme der Nautilus-Gruppe: eroeffnen/schliessen.
+
+    Einsatz und Erloes stehen als BETRAG in der Zeile - `einsatz_usd`/`wert_usd`
+    beim OKX- und beim Futures-Arm, `einsatz_eur`/`wert_eur` beim Kraken-Spot-Arm.
+    Der G/V ist die Differenz, dieselbe Rechnung wie bei den Indikator-Spuren.
+
+    WARUM ES DIESE FUNKTION GIBT (28.09.2026): die drei Arme standen in SPUREN,
+    hatten aber keinen Zweig in kennzahlen_fuer() und fielen in den else-Zweig -
+    sie meldeten "keine geschlossene Runde", obwohl im Journal sieben (nautilus)
+    bzw. vier (nautilus_kraken) geschlossene Runden standen. Eine Auswertung,
+    die eine ganze Spurgruppe still auf null setzt, ist der Grund, warum eine
+    Verbesserung nicht sichtbar wird: niemand kann eine Zahl beurteilen, die
+    nie gerechnet wurde.
+    """
+    def ergebnis(ein, aus):
+        einsatz = zahl(ein.get("einsatz_usd"))
+        if einsatz is None:
+            einsatz = zahl(ein.get("einsatz_eur"))
+        erloes = zahl(aus.get("wert_usd"))
+        if erloes is None:
+            erloes = zahl(aus.get("wert_eur"))
+        if not einsatz or erloes is None:
+            return None, None
+        return erloes - einsatz, 0.0
+
+    return _paare(zeilen_, {"eroeffnen"}, {"schliessen"},
+                  ("einsatz_usd", "einsatz_eur"), ergebnis, "USD")
 
 
 def runden_orbk(zeilen_):

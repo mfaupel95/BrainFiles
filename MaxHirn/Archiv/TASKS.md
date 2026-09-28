@@ -59,6 +59,29 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-119 - MAE/MFE je Position vollstaendig fuehren (sonst kein Stop aus Daten)**
+      Kontext: Der Stop-Vorschlag aus `stop_from_mae` (90-%-Quantil der MAE der
+      Gewinner) braucht echte Werte. Gemessen am 29.09.2026: der scanner schreibt
+      bei Ausstiegen mit Grund `ziel` durchweg `mae_pct = 0.0000`; echte Werte
+      stehen nur bei stop (13), herzschlag_alt (18), buchbereinigung (2) und
+      handverkauf_boerse (2). kraken und die uebrigen Spuren haben die Spalte
+      gar nicht. `strategie_kennzahlen.py` schreibt deshalb 'MAE ungefuehrt',
+      statt eine Null als Messwert auszugeben.
+      Naechster Schritt: in den Spuren beim Schliessen/Trail den
+      Zwischenverlust mitschreiben (Hoch/Tief seit Einstieg), Spalte in allen
+      Journalen fuellen; danach den Stop-Vorschlag je Spur gegen den gefahrenen
+      Stop stellen.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/<spur>/handeln.py, Journale.
+- [ ] **T-120 - kennzahlen() gibt None fuer nautilus_kraken trotz 4 Runden**
+      Kontext: Gemessen am 29.09.2026 liefert `auswertung_alle.runden_fuer`
+      ('nautilus_kraken') 4 Runden und 801 Journal-Zeilen, aber
+      `kennzahlen(runden, 'EUR')` gibt None zurueck (ebenso kennzahlen_fuer).
+      Die Runden tragen kein Feld `ergebnis` in der erwarteten Form - dann
+      verschwindet die Spur in jeder Auswertung, ohne dass etwas rot wird.
+      Naechster Schritt: die 4 Runden ansehen (Felder), entscheiden ob die
+      Paarung `runden_nautilus` oder `kennzahlen` sie verwerfen darf, und den
+      Fall im Test festnageln.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/auswertung_alle.py.
 - [ ] **T-115 - Kraken-USDC: Umstellung vorbereitet, es fehlt das USDC-Guthaben**
       Kontext: Auftrag Max 28.09.2026 ("Welche Spuren koennen live auf Kraken USDC
       geschaltet werden?"). Kraken listet 45 USDC-Paare, darunter XBTUSDC, ETHUSDC,
