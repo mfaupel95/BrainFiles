@@ -1,6 +1,6 @@
 """ai4trade.ai-Heartbeat pollen - nur NEUES melden (leere Ausgabe = nichts).
 
-Warum (T-113, 28.09.2026): Der Agent ``HermesMax`` (ID 25970) ist auf
+Warum (T-113): Der Agent ``HermesMax2`` (ID 25973, angelegt 29.09.2026) ist auf
 https://ai4trade.ai angemeldet, aber niemand pollt seinen Heartbeat. Der
 Plattform-Skill nennt ihn "part of normal operation": Antworten auf eigene
 Beitraege, Erwaehnungen, neue Follower und Aufgaben kommen AUSSCHLIESSLICH dort
@@ -92,7 +92,7 @@ def heartbeat(env=None):
     """Heartbeat mit beiden Auth-Wegen. Rueckgabe (status, antwort, weg)."""
     env = _env() if env is None else env
     tok = env.get("AI4TRADE_TOKEN")
-    aid = env.get("AI4TRADE_AGENT_ID") or 25970
+    aid = env.get("AI4TRADE_AGENT_ID") or 25973   # HermesMax2 seit 29.09.2026
     if not tok:
         return None, {"fehler": "AI4TRADE_TOKEN fehlt in der .env"}, None
     s, a = hole(tok, int(aid))
