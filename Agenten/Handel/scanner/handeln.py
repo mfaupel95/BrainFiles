@@ -71,6 +71,7 @@ import ereignis                                            # noqa: E402
 import okx
 import scan
 import wachen_pruefung as wp
+import boersenstops
 
 HIER = Path(__file__).resolve().parent
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
@@ -1068,6 +1069,26 @@ def lauf(modus):
         n_alt = bueche_papier_altlasten_aus(z)
         if n_alt:
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
+
+    # Buch gegen BOERSE, vor jeder Handelsentscheidung: hat jede Live-Position
+    # ihren Notausstieg noch - und ist sie ueberhaupt noch da? Am 26.09.2026
+    # standen vier Live-Positionen ohne Stop (die Stops waren an der Boerse
+    # storniert worden) und eine am 24.09. vom eigenen Stop verkaufte Position
+    # stand als Geist im Buch. Das Buch kann das nicht wissen: es prueft nur
+    # den eigenen Kurs gegen den eigenen Stop. Also fragt der Zyklus die
+    # Boerse. Faellt die Abfrage aus, bleibt das Buch unangetastet.
+    if live and SCHREIBEN:
+        try:
+            _bs = boersenstops.pruefe(z, okx, anwenden=True, journal=journal)
+            if _bs["nachgesetzt"] or _bs["ausgebucht"] or _bs["waisen"]:
+                print("  Boersen-Abgleich: %d Stop(s) nachgesetzt, %d Position(en) "
+                      "nach Boersenstand ausgebucht, %d Waisenstop(s)"
+                      % (_bs["nachgesetzt"], _bs["ausgebucht"], _bs["waisen"]))
+            if _bs["unklar"] or _bs["fehlt_weiter"]:
+                print("  Boersen-Abgleich: %d unklar, %d ohne wirksamen Stop - "
+                      "bitte nachsehen" % (_bs["unklar"], _bs["fehlt_weiter"]))
+        except Exception as e:                                 # noqa: BLE001
+            print("  Boersen-Abgleich nicht moeglich (%s) - Buch unveraendert" % e)
 
     if modus == "vorschau":
         for v in vs:

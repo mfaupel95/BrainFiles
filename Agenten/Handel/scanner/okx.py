@@ -266,6 +266,66 @@ def guthaben_usdt():
     return float(d[0]["details"][0].get("availBal") or 0.0)
 
 
+def bestand(inst):
+    """(eq, frei) des BESTANDS in der Basiswaehrung eines Paares.
+
+    Fuer den Abgleich Buch <-> Boerse und fuer die Groesse eines Notausstiegs:
+    eine conditional-Verkaufsorder darf nur ueber den wirklich gehaltenen
+    Bestand laufen. Gelesen wird die Basiswaehrung aus dem Instrumentennamen
+    ('BTC-USDC' -> 'BTC'); ein Fehler beim Lesen wirft - der Aufrufer
+    entscheidet, ob er ohne die Zahl weitermacht. Am 26.09.2026 standen vier
+    Live-Positionen ohne Stop, weil niemand den Bestand je nachgelesen hat.
+    """
+    ccy = inst.split("-")[0]
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=" + ccy, signiert=True)
+    if not d or not d[0].get("details"):
+        return 0.0, 0.0
+    det = d[0]["details"][0]
+    return (float(det.get("eq") or 0.0), float(det.get("availBal") or 0.0))
+
+
+_REGELN = {}
+
+
+def instrument_regeln(inst):
+    """lotSz/tickSz/minSz eines Instruments (einmal je Lauf geholt)."""
+    if inst not in _REGELN:
+        typ = "SPOT" if "-" in inst and inst.count("-") == 1 else "SWAP"
+        d = _mit_wiederholung("/api/v5/public/instruments?instType=%s&instId=%s"
+                              % (typ, inst))
+        _REGELN[inst] = d[0] if d else {}
+    return _REGELN[inst]
+
+
+def menge_gerundet(inst, menge):
+    """Menge auf lotSz ABgerundet - eine Order ueber mehr als den Bestand
+    lehnt OKX ab."""
+    r = instrument_regeln(inst)
+    lot = float(r.get("lotSz") or 0.0)
+    if not lot:
+        return round(menge, 8)
+    stellen = max(0, len(("%.10f" % lot).rstrip("0").split(".")[-1]))
+    return round(int(menge / lot) * lot, stellen)
+
+
+def letzte_fuellung(inst, seite="sell"):
+    """Juengste GEFUELLTE Order einer Seite ('buy'/'sell') oder None.
+
+    Quelle fuer den ECHTEN Ausstiegspreis, wenn der Boersen-Stop ausgeloest
+    hat oder von Hand verkauft wurde. Ohne diese Zahl wird nichts gebucht -
+    ein geratener Kurs waere ein erfundenes Ergebnis.
+    """
+    d = _mit_wiederholung("/api/v5/trade/orders-history?instType=SPOT&instId=%s"
+                          "&limit=50" % inst, signiert=True)
+    treffer = [o for o in (d or [])
+               if o.get("side") == seite
+               and float(o.get("accFillSz") or 0) > 0]
+    if not treffer:
+        return None
+    treffer.sort(key=lambda o: int(o.get("cTime") or 0), reverse=True)
+    return treffer[0]
+
+
 def markt_kauf(inst, usdt):
     """Market-Kauf ueber einen festen USDT-Betrag. Gibt ordId zurueck."""
     body = {"instId": inst, "tdMode": "cash", "side": "buy",
