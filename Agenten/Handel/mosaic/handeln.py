@@ -113,6 +113,13 @@ live_menge_fuer = okx_spot.menge_fuer
 # (siehe Test-Seams oben) und keine echte Order wird je gestellt.
 import kraken_spot  # noqa: E402
 
+# EINE Paar-Tabelle fuer alle Kraken-Nutzer im Haus (EUR-Vorgabe, USDC waehlbar).
+KRAKEN_PAARE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, "kraken_paare.py")
+_kp_spec = spec_from_file_location("kraken_paare", KRAKEN_PAARE)
+kraken_paare = module_from_spec(_kp_spec)
+_kp_spec.loader.exec_module(kraken_paare)
+
 # Modul je Boersenname. Beide stellen dieselben Funktionsnamen bereit.
 BOERSEN = {"okx": okx_spot, "kraken": kraken_spot}
 # Kontowaehrung je Boerse, wenn die wachen.json keine nennt: Kraken handelt in
@@ -222,6 +229,11 @@ def venue_binden(w, name=None):
     VENUE_NAME = gewaehlt
     GUTHABEN_WAEHRUNG = _waehrung_fuer(w, gewaehlt)
     MINDEST_GUTHABEN = _mindest_fuer(w, gewaehlt)
+    # Kraken-Quote aus der wachen: EUR ist Vorgabe, USDC waehlt man mit
+    # "kraken_quote": "USDC" (kraken_paare.quote_aus_wachen). Ein unbekannter
+    # Wert ist ein Fehler - ein Tippfehler darf nicht still in EUR ordern.
+    if gewaehlt == "kraken" and hasattr(modul, "setze_quote"):
+        modul.setze_quote(kraken_paare.quote_aus_wachen(w))
     op_kauf = modul.markt_kauf
     op_verkauf = modul.markt_verkauf
     op_stop = modul.algo_stop_setzen

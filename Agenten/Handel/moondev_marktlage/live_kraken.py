@@ -76,6 +76,9 @@ def _lade(name, pfad):
 
 _ereignis = _lade("ereignis", os.path.join(BUS, "ereignis.py"))
 _freigabe = _lade("freigabe", os.path.join(HANDEL, "freigabe.py"))
+# EINE Kraken-Paar-Tabelle fuer alle Spuren im Haus (EUR-Vorgabe, USDC
+# waehlbar ueber die wachen). Ueber den PFAD geladen wie die anderen.
+kraken_paare = _lade("kraken_paare", os.path.join(HANDEL, "kraken_paare.py"))
 # Das Zeitfenster wird ueber den PFAD geladen, nicht ueber 'import': die Spur
 # startet mit ihrem eigenen Ordner als sys.path[0], und ein blanker Import
 # scheitert dort mit ModuleNotFoundError - im except-Zweig sah das dann aus wie
@@ -246,9 +249,34 @@ def einsatz_gedeckelt(eur, w):
 
 
 def lade_wachen():
+    w = None
     with open(risikostufe.datei(os.path.join(HIER, "wachen.json")),
               encoding="utf-8") as f:
-        return json.load(f)
+        w = json.load(f)
+    _paar_und_waehrung(w)
+    return w
+
+
+def _paar_und_waehrung(w):
+    """Kraken-Paar und Kontowaehrung aus der wachen uebernehmen.
+
+    Vorgabe bleibt XXBTZEUR/EUR (das Konto rechnet in EUR). Mit
+    ``"kraken_quote": "USDC"`` wird daraus XBTUSDC/USDC - die Waehrung des
+    Paares MUSS die Waehrung des Guthabens sein, sonst ist die Guthaben-Sperre
+    gruen und die Order faellt trotzdem um (Lehre vom 22.09.2026). Das Paar
+    laesst sich mit ``"paar"`` auch direkt setzen.
+    """
+    global PAAR, WAEHRUNG
+    quote = kraken_paare.quote_aus_wachen(w, WAEHRUNG)
+    fest = str(w.get("paar") or "").strip().upper()
+    if fest:
+        PAAR = fest
+        aus_paar = kraken_paare.quote_von_paar(fest)
+        WAEHRUNG = aus_paar or quote
+    else:
+        PAAR = kraken_paare.paar_fuer("XBT-" + quote, quote)
+        WAEHRUNG = quote
+    return PAAR, WAEHRUNG
 
 
 # --- Sperrenkette -----------------------------------------------------------

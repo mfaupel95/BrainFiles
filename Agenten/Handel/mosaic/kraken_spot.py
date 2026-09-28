@@ -51,6 +51,24 @@ _spec = importlib.util.spec_from_file_location("mosaic_kraken", _PFAD)
 kraken = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(kraken)
 
+# EINE Paar-Tabelle fuer alle Kraken-Nutzer im Haus. Die Quote ist eine
+# Konfigurationsfrage (wachen: "kraken_quote", EUR ist Vorgabe) - EUR und USDC
+# sind beide geprueft. Ohne setze_quote() bleibt es bei EUR, also beim alten
+# Verhalten.
+_kp_spec = importlib.util.spec_from_file_location(
+    "kraken_paare", HANDEL / "kraken_paare.py")
+kraken_paare = importlib.util.module_from_spec(_kp_spec)
+_kp_spec.loader.exec_module(kraken_paare)
+
+QUOTE = "EUR"
+
+
+def setze_quote(quote):
+    """Quote dieser Spur setzen ('EUR'/'USDC'). Unbekannt = ValueError."""
+    global QUOTE
+    QUOTE = kraken_paare.quote_aus_wachen({"kraken_quote": quote})
+    return QUOTE
+
 
 # --- Paar-Abbildung ---------------------------------------------------------
 #
@@ -83,12 +101,24 @@ PAARE = {
 
 
 def paar_fuer(inst):
-    """Kraken-Paar zu einem OKX-Instrument. Unbekannt = klarer Fehler."""
-    name = PAARE.get(str(inst).strip().upper())
-    if not name:
+    """Kraken-Paar zu einem OKX-Instrument. Unbekannt = klarer Fehler.
+
+    Mit der Quote EUR (Vorgabe) gilt zuerst die Tabelle unten - sie traegt die
+    Listing-Arb-Sonderfaelle - und danach die gemeinsame Tabelle. Mit einer
+    anderen Quote (USDC) gilt NUR die gemeinsame Tabelle: ein USDC-Lauf darf
+    nie still in einem EUR-Markt landen.
+    """
+    schluessel = str(inst).strip().upper()
+    if QUOTE != "EUR":
+        return kraken_paare.paar_fuer(schluessel, QUOTE)
+    name = PAARE.get(schluessel)
+    if name:
+        return name
+    try:
+        return kraken_paare.paar_fuer(schluessel, QUOTE)
+    except ValueError:
         raise ValueError("kein Kraken-Paar fuer %s hinterlegt (PAARE in "
-                         "mosaic/kraken_spot.py)" % inst)
-    return name
+                         "mosaic/kraken_spot.py, kraken_paare.PAARE)" % inst)
 
 
 # --- Schluessel und Modus ---------------------------------------------------

@@ -54,5 +54,7 @@
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 * buch_risiko.",
   "drawdown_halbierung_usd": 9.0,
   "_grund": "Der Grund, der im Journal steht.",
-  "grund": "moondev_marktlage"
+  "grund": "moondev_marktlage",
+  "kraken_quote": "EUR",
+  "_kraken_quote_vermerk": "Kraken-Quote des Orderwegs: EUR ist Vorgabe, USDC waehlbar. Siehe Agenten/Handel/kraken_paare.py."
 }
