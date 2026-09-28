@@ -84,13 +84,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       in `Agenten/Handel/ai4trade/.env` und in `Wissen/Zugaenge.md` nachtragen.
       `heartbeat.py` wertet bei Fehlern nur `detail.loc` aus, niemals `input`.
       Angelegt 2026-09-29. Betrifft Agenten/Handel/ai4trade.
-- [ ] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error)**
-      Kontext: Suite-Lauf 28.09.2026 (755 Tests). Sichtbarer Fall:
-      'AssertionError: Bericht 108.4 h alt, Grenze 26 h is not None' - die Faelle
-      haengen an festen Zeitstempeln bzw. am Alter echter Berichte, sind also
-      zeitabhaengig und vorbestehend.
-      Naechster Schritt: Namen auflisten und je Fall entscheiden, ob die Regel oder
-      der feste Zeitstempel falsch ist (Muster: journal(jetzt=...) dynamisch).
+- [ ] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error), vorbestehend**
+      Kontext: Suite-Lauf 29.09.2026 (755 Tests, 799 s). Die vier Namen sind
+      bekannt und die Testdateien stammen vom 23.-25.09.2026, also NICHT aus
+      dieser Arbeit:
+      - test_handelszentrale_bindung.NamensfalleTest.test_kein_modulname_einer_spur_doppelt_am_handel_kopf
+      - test_omniquant_fassung.LadeBerichtTest.test_streng_liest_die_strenge_datei
+      - test_omniquant_fassung.LadeBerichtTest.test_weit_liest_die_weit_datei
+      - test_replay.FensterTest.test_fenster_ist_schneller_als_das_praefix
+      Dazu eine Fehlermeldung aus dem Tagesbericht-Umfeld: 'Bericht 108.4 h alt,
+      Grenze 26 h' - zeitabhaengig (echte Berichtsdateien).
+      Naechster Schritt: je Fall pruefen, ob die Regel oder der feste Zeitstempel
+      falsch ist (Muster: journal(jetzt=...) dynamisch setzen).
       Angelegt 2026-09-29. Betrifft Agenten/Handel/tests.
 - [ ] **T-118 - Warum wurden vier Stops am 26.09. um 14:26 an der Boerse storniert?**
       Kontext: Am 28.09.2026 standen BTC, ETH, SOL und HYPE (rund 385 USD) auf dem
