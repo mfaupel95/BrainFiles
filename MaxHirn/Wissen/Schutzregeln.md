@@ -3,7 +3,7 @@ id: 20260830-schutzregeln
 title: 'Schutzregeln'
 tags: [sicherheit, betrieb]
 created: 2026-08-27
-updated: 2026-09-07
+updated: 2026-09-29
 related: [20260902-handelsregeln]
 summary: 'Welche Dateien unter BrainFiles ein Agent nicht anfassen darf und warum.'
 ---
@@ -318,6 +318,19 @@ Vier Regeln, für Claude und Hermes gleichermaßen:
 Sitzungen dieselbe Datei nacheinander überschreiben. Dagegen hilft nur,
 verschiedenen Sitzungen verschiedene Bereiche zu geben — oder nachzufragen,
 bevor man eine Datei anfasst, an der erkennbar eine andere Sitzung arbeitet.
+
+**Getrennte Arbeitsbäume statt getrennter Disziplin** (29.09.2026). Für
+`Agenten/Handel` ist genau das eingerichtet: Codearbeit läuft dort in einem
+eigenen `git worktree`, der Hauptbaum bleibt dem Betrieb vorbehalten. Ein
+Worktree hat eigenen Index und eigenen HEAD — die Lücke, die die vier Regeln
+oben nur verkleinern, ist dort geschlossen, weil es nichts Fremdes mehr zu
+treffen gibt. Für jeden Commit im Hauptbaum gelten sie unverändert weiter.
+Einzelheiten in `Agenten/Handel/AGENTS.md`, Abschnitt *Ein Arbeitsbaum je
+Aufgabe*.
+
+Anlass war eine Sitzung am 28./29.09.2026, die `master` dreimal unter sich
+weiterwandern sah, zwei rote Tests aus fremden Commits zugerechnet bekam und
+ihren Arbeitszweig mitten im Testlauf an einen Merge von außen verlor.
 
 ## Was diese Regeln nicht leisten
 

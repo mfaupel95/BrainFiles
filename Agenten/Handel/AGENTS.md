@@ -46,3 +46,39 @@ Jede Spur spiegelt Journal und Zustand nach `Q:\Handel_Journal\<spur>`.
 einen Schreibpfad anfasst, muss danach `spiegelstand.py` laufen lassen — und
 darf in Tests **nie** in ein echtes Ziel schreiben (eigene `journal_zweitziel`
 auf einen Temp-Ordner umbiegen).
+
+## Ein Arbeitsbaum je Aufgabe
+
+Dieses Verzeichnis ist **zugleich Betriebsverzeichnis und Coderepo**, und
+mehrere Sitzungen schreiben parallel hinein (Desktop, CLI, Hermes, Bots).
+`.git/index` gehört dem Verzeichnis, nicht der Sitzung: was eine andere Sitzung
+gerade stagt, geht mit dem eigenen Commit mit. Deshalb die Zweiteilung.
+
+| Arbeit | Wo | Warum |
+|---|---|---|
+| Betrieb: Dauerlauf, Journale, Orders | **nur hier**, höchstens eine Sitzung | `zustand.json`, `handelsjournal.csv` und `daten/` vertragen keinen zweiten Schreiber |
+| Codearbeit: Umbau, Review, Planausführung | eigener Worktree | braucht nur Code und Tests — beides versioniert |
+| Lesen, Befunde, Analysen | hier, aber mit festgehaltenem Stand | sonst altern Zeilenangaben unbemerkt |
+
+Worktree anlegen und wieder entfernen:
+
+```bash
+git worktree add ../Handel-<kuerzel> -b arbeit/<kuerzel> master
+```
+
+```bash
+git worktree remove ../Handel-<kuerzel>
+```
+
+Der Worktree hat **kein `.venv`** — das ist ungetrackt und bleibt hier. Tests
+laufen über den Interpreter des Hauptbaums, aus dem Worktree heraus als
+`../Handel/.venv/Scripts/python -m unittest discover -s tests -p "test_*.py"`.
+Ebenso fehlen `daten/` und die Journale; wer sie braucht, arbeitet nicht im
+Worktree, sondern hier.
+
+Ein **Befunddokument** trägt im Kopf die Zeile `Stand: <commit> vom <datum>`
+(`git rev-parse --short HEAD`). Ohne sie ist später nicht entscheidbar, ob eine
+Zeilenangabe falsch war oder nur veraltet ist.
+
+Was im Hauptbaum trotzdem gilt, wenn dort committet wird, steht in
+`MaxHirn/Wissen/Schutzregeln.md`, Abschnitt *Mehrere Sitzungen gleichzeitig*.
