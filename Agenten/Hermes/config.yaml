@@ -1991,7 +1991,7 @@ moa:
           enabled: false
         - provider: bonsai
           model: bonsai
-          enabled: true
+          enabled: false
         - provider: anthropic
           model: claude-opus-4-8
           enabled: false
@@ -2034,13 +2034,13 @@ moa:
           enabled: true
         - provider: bonsai
           model: bonsai
-          enabled: true
+          enabled: false
         - provider: anthropic
           model: claude-opus-5
           enabled: true
       aggregator:
-        provider: bonsai
-        model: bonsai
+        provider: ollama-launch
+        model: gemma-e4b-8k:latest
       degraded_reference_policy: loud
       fanout: user_turn
     Vision:
@@ -2062,8 +2062,8 @@ moa:
           model: deepseek/deepseek-v4-pro-0813
           enabled: true
       aggregator:
-        provider: bonsai
-        model: bonsai
+        provider: ollama-launch
+        model: gemma-e4b-8k:latest
       degraded_reference_policy: loud
       fanout: user_turn
   aggregator:
@@ -2085,7 +2085,7 @@ moa:
       enabled: false
     - provider: bonsai
       model: bonsai
-      enabled: true
+      enabled: false
     - provider: anthropic
       model: claude-opus-4-8
       enabled: false

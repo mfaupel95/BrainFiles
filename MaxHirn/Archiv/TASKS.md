@@ -231,14 +231,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 2026-09-29. Betrifft Agenten/Handel/{moondev_*,robinhood_radar}/handeln.py.
 
 
-- [ ] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
+- [x] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
       Kontext: `hermes moa list` zeigt fuer die Presets "Max 2" und "Vision" den Aggregator `bonsai` - dort
       laeuft die ganze Werkzeugschleife, nicht nur eine Beratung. `delegation.fallback_providers` hat bonsai
       an Stelle 2 (vor ollama-launch gesetzt, s. u.). Der Dienst antwortet nicht: Port 8081 zu, gemessen mit
       `scripts/config-gegenprobe.py`. Config und Starter nennen inzwischen denselben Port (8081).
-      Naechster Schritt: entscheiden - Bonsai starten (`Agenten/Werkzeuge/bonsai-27b.ps1 -Aktion start`;
-      entlaedt die Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren gerade brauchen) ODER die beiden
-      Presets auf `ollama-launch/gemma-e4b-8k:latest` umstellen.
+      **Erledigt 29.09.2026 - umgestellt, nicht Bonsai gestartet.** Aggregator der Presets `Max 2` und
+      `Vision` ist jetzt `ollama-launch/gemma-e4b-8k:latest`; die drei toten `bonsai`-Referenzen (Preset
+      `default`, Preset `Max 2`, Top-Level-Block) stehen auf `enabled: false`. Werkzeug
+      `cache/scratch/moa-umstellen.py`: zaehlt die Vorkommen, prueft `yaml.safe_load` VOR dem Schreiben,
+      Sicherung `config.yaml.bak-moa-20260929_234442`.
+      Warum gemma: `/api/show` meldet 131072 Kontext bei 7,52 B Parametern (der Name traegt "8k", der
+      Kontext ist es nicht) und ueber den OpenAI-Weg kommt sauberer `content` ohne Denkanteil - 19 s fuer
+      einen echten Aggregationsauftrag.
+      Nachweis: `hermes moa list` nennt fuer beide Presets `ollama-launch:gemma-e4b-8k:latest`,
+      `hermes config check` exit 0, `git diff --numstat` 7/7 (CR == LF).
+      Offen: `delegation.fallback_providers` fuehrt `bonsai` weiter an Stelle 2 - ein Eintrag, der
+      durchfaellt und wieder greift, sobald der Dienst laeuft. Bonsai bleibt aus (entlaedt sonst die
+      Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren brauchen).
       Angelegt 29.09.2026 · Zuletzt 29.09.2026
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
 

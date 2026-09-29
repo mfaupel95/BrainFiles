@@ -89,6 +89,15 @@ nicht gegen die Nachbardatei.
   Vor dem Entfernen in `hermes_cli/config_defaults.py` nachsehen, welche Schluessel die
   laufende Version liest; ein Preset, das einen toten Aggregator nennt, ist ein echtes
   Risiko (die ganze Werkzeugschleife laeuft dort).
+- **Ein zu kleines `max_tokens` macht ein Denkmodell stumm - und den Pruefer blind.**
+  Am 29.09.2026 lieferten `gemma-e4b-8k:latest`, `gemma-e4b-8k:cpu` und `deepseek-chat:latest`
+  ueber Ollamas `/v1` bei `max_tokens: 90` einen LEEREN `content` mit `finish_reason: length`
+  und dem Text im Feld `reasoning`. Mit `max_tokens: 2000` kam bei allen dreien sauberer
+  `content` mit `finish_reason: stop` (gemma ganz ohne Denkanteil). Der Befund war ein
+  **Artefakt meiner eigenen Sonde**, nicht ein Defekt der Konfiguration - haette ich ihn
+  gemeldet, waere daraus eine Massenreparatur an 20 Profilen geworden. Regel: einen Aufruf
+  immer mit realistischen Parametern messen (`max_tokens` wie im Betrieb), und eine
+  Auffaelligkeit erst nach der Gegenprobe mit anderen Parametern als Befund ausgeben.
 - **Eine lebende Adresse kann durch eine irrefuehrende Antwort tot aussehen.**
   `auto/best-free` antwortete ohne Authorization mit 403 ("OpenCode free tier only"),
   mit dem Hausschluessel mit 200 (bedient von claude-haiku-4-5). Vor "der Weg ist tot"
