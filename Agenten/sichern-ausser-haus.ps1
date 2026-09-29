@@ -66,7 +66,7 @@ $fluechtig = @(
   (Join-Path $quelle 'Agenten\Hermes\cron\output')
 )
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11 - dasselbe gilt fuer die zwei Pfade in $fluechtig
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig /XF *.pid *.db-shm *.db-wal   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); *.db-shm/*.db-wal sind die Begleitdateien einer LAUFENDEN SQLite-Datenbank (Agenten\Hermes\shared-state.db) - sie entstehen und verschwinden im Betrieb und eine Rohkopie waere ohnehin kein gueltiger Datenbankstand. robocopy meldete fuer beide Klassen Code 11; dasselbe gilt fuer die zwei Pfade in $fluechtig
 $code = $LASTEXITCODE
 
 # Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter
