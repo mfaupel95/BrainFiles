@@ -59,6 +59,25 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-184 — Aufgabe 'MaxHirn-Ausserhaus-Kopie' ist nicht registriert (Doku sagt taeglich 21:30)**
+      Kontext: Commit 12f3433 (30.09.2026, T-182) sagt, die Ausser-Haus-Kopie
+      erneuere sich taeglich 21:30 ueber `Routinen/ausserhaus-kopie.ps1`. Der
+      Aufgabenplaner kennt sie NICHT: `schtasks /query /tn "MaxHirn-Ausserhaus-Kopie"`
+      endet mit „Das System kann die angegebene Datei nicht finden", und die
+      vollstaendige Liste der MaxHirn-Aufgaben (25 Eintraege, 30.09.2026 01:30)
+      enthaelt keinen Ausserhaus-Eintrag. Das Log
+      `Agenten/Routinen/logs/ausserhaus-kopie-letzter-lauf.log` von 01:12 stammt
+      daher von einem Handlauf. Der Registrierer dokumentiert selbst, dass
+      `Register-ScheduledTask` "Ready" samt naechstem Lauf meldete, ohne dass die
+      Aufgabe blieb - er legt darum per `schtasks /create` an und prueft per
+      `schtasks /query`. Bis zur Klaerung ist die Doku-Aussage unbelegt.
+      Naechster Schritt: `Agenten/Routinen/ausserhaus-kopie-aufgabe.ps1`
+      ausfuehren (legt an und prueft selbst; wirft, wenn die Probe scheitert),
+      danach unabhaengig per `schtasks /query` gegenpruefen.
+      Angelegt 2026-09-30 · Zuletzt 2026-09-30
+      Betrifft: Agenten/Routinen/ausserhaus-kopie.ps1, ausserhaus-kopie-aufgabe.ps1,
+      Agenten/sichern-ausser-haus.ps1, Aufgabe MaxHirn-Ausserhaus-Kopie
+
 - [ ] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
       Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
       starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`

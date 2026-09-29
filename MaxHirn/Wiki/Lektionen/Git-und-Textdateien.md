@@ -114,6 +114,37 @@ den Inhalt zurueckholen, dann committen. Eine Pfadliste macht einen Commit nicht
 sicher - nur ihr Inhalt tut es.
 Gegenprobe danach: `git cat-file -e HEAD:<pfad>` (Exitcode 0 = liegt in HEAD).
 
+## 7. Ein eigener Index muss vom committeten Baum starten
+
+Eine Routine, die mit `GIT_INDEX_FILE` einen **frischen** Index baut, verliert
+jede Datei, die von `.gitignore` verdeckt ist - auch wenn sie in `HEAD` liegt.
+`git add -A` nimmt ignorierte Pfade grundsaetzlich nicht auf; ein frischer Index
+kennt den versionierten Bestand nicht und kann die Ausnahme nicht herstellen.
+
+Gemessen am 30.09.2026 an `Agenten/Routinen/zwischenstand.ps1`: der Zweig
+`zwischenstand` trug 1591 Dateien gegen 1929 in `master`, es fehlten 338
+versionierte Pfade (337 davon ignoriert) - darunter `Agenten/Hermes/config.yaml`.
+Der Lauf meldete trotzdem `ENDE ok` nach 4 s. Eine Wiederherstellung aus diesem
+Zweig waere unvollstaendig gewesen.
+
+**Regel:** vor `git add -A` in einem eigenen Index `git read-tree HEAD` setzen
+(danach ergaenzt `add -A` nur noch Neues), oder ganz auf den eigenen Index
+verzichten. `git read-tree HEAD` ist billig und macht die Sicherung erst zu einer.
+
+**Gegenprobe nach jeder Aenderung an einer Sicherungsroutine** - beide Zahlen
+gehoeren in dieselbe Meldung wie das `ok`:
+
+```
+git ls-tree -r <zweig> --name-only | wc -l        # muss ~ master entsprechen
+git diff --name-status master <zweig> | grep -c '^D'   # muss 0 sein
+```
+
+**Warum das lange unsichtbar blieb:** `git check-ignore -v <pfad>` meldet nichts
+fuer einen Pfad, der im **echten** Index steht - `check-ignore` ueberspringt
+verfolgte Dateien und erklaert sie nie fuer ignoriert. Die Probe muss
+`git check-ignore -v --no-index <pfad>` heissen, sonst prueft sie nichts
+(vier Stichproben meldeten faelschlich „nicht ignoriert").
+
 ## Zugangsdaten im Arbeitsbaum sind kein Leak - HEAD pruefen
 
 Beim Sichern von Fremdarbeit am 26.09.2026 standen in zwei VORLAGENDATEIEN
