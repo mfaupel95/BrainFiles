@@ -105,6 +105,21 @@ def spur_modul(spur):
     return m
 
 
+def wachen_von(spur):
+    """Die Wachen einer Spur aus ihrer DATEI.
+
+    Nicht ueber `modul.lade_wachen()`: das gibt es nur bei Familie A. Fuer die
+    Feed-Spuren riss der Aufruf den Lauf mit AttributeError ab, bevor ein
+    einziger Schritt gerechnet war (29.09.2026) - die Kostenrechnung haengt
+    nicht an einer Spurenfamilie.
+    """
+    pfad = os.path.join(HIER, spur, "wachen.json")
+    if not os.path.isfile(pfad):
+        return {}
+    with open(pfad, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def buch_ordner(spur, lauf):
     """Der Backtest-Ordner einer Spur: Kopie der Wachen, sonst nichts.
 
@@ -391,7 +406,7 @@ def gebuehr_fuer(spur, w=None):
     damit zu schlecht.
     """
     if w is None:
-        w = dict(spur_modul(spur).lade_wachen())
+        w = wachen_von(spur)
     wert = w.get("gebuehr_taker")
     if wert is not None:
         return round(float(wert) * 100.0, 4)
@@ -540,9 +555,12 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
     import contextlib
     import io
 
+    # REIHENFOLGE IST PFLICHT: spur_buch legt beim Import Agenten/Bus auf den
+    # Suchpfad - andersherum faellt "import ereignis" mit ModuleNotFoundError
+    # um, und der Lauf stirbt vor dem ersten Schritt.
+    import spur_buch
     import ereignis
     import moondev_historie
-    import spur_buch
 
     if spur in NICHT_NACHRECHENBAR:
         raise RuntimeError("%s ist nicht nachrechenbar: %s"
@@ -697,7 +715,7 @@ def kerzenlaenge(spur, w=None):
     Instrument ausserhalb der Reihe.
     """
     if w is None:
-        w = dict(spur_modul(spur).lade_wachen())
+        w = wachen_von(spur)
     takt = _takt(w)
     return min((len(historie_binance.lade(i, takt)) for i in _instrumente(w)), default=0)
 
@@ -752,6 +770,13 @@ def gegenprobe(spur, gebuehr_pct, lauf="gegenprobe", max_kerzen=None):
 
 
 def main():
+    """Nur EIN Weg je Aufruf: die Familien brauchen verschiedene Daten.
+
+    Familie A rechnet Kerzen (und braucht die Fensterbreite), Familie B den
+    Marktquerschnitt, Familie C die Funding-Reihen. Ein gemeinsamer Vorlauf
+    waere der Fehler - `lade_wachen()` gibt es nur bei A und riss die beiden
+    anderen mit (29.09.2026 geschehen).
+    """
     import argparse
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -773,10 +798,6 @@ def main():
                     help="ab so vielen Reihen zaehlt ein Zeitpunkt als Schritt")
     a = ap.parse_args()
     mk = a.max_kerzen
-    fenster = None if a.ganz else a.fenster
-    if fenster is None and not a.ganz:
-        w = dict(spur_modul(a.spur).lade_wachen())
-        fenster = fenster_vorgabe(w)
     if a.gegenprobe:
         print(json.dumps(gegenprobe(a.spur, a.gebuehr, a.lauf, mk),
                          indent=2, ensure_ascii=False))
@@ -792,6 +813,11 @@ def main():
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
         return
+    # Erst hier: `lade_wachen` gibt es nur bei den Kerzen-Spuren (Familie A).
+    fenster = None if a.ganz else a.fenster
+    if fenster is None and not a.ganz:
+        w = dict(spur_modul(a.spur).lade_wachen())
+        fenster = fenster_vorgabe(w)
     runden, offen = lauf_a(a.spur, a.gebuehr, a.lauf, max_kerzen=mk,
                            fenster=fenster)
     print(json.dumps({"spur": a.spur, "runden": len(runden),

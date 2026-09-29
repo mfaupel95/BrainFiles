@@ -8,6 +8,7 @@ umbaut, soll hier einen roten Test bekommen statt einen stillen Nullauf.
 Kein Test dieses Moduls geht ins Netz: alles laeuft ueber Attrappen-Kerzen.
 """
 
+import ast
 import inspect
 import os
 import sys
@@ -141,7 +142,50 @@ class SignalwelleTest(unittest.TestCase):
         self.assertEqual({}, daten)
 
 
+class MainReihenfolgeTest(unittest.TestCase):
+    def test_familien_zweige_stehen_vor_dem_familie_a_vorlauf(self):
+        """`lade_wachen()` gibt es nur bei Familie A.
+
+        Stand der Vorlauf davor, riss er die beiden anderen Familien mit:
+        am 29.09.2026 starben beide Feed-Laeufe mit AttributeError, bevor ein
+        einziger Schritt gerechnet war. Der Test prueft die REIHENFOLGE, nicht
+        das Ergebnis - die Ursache lag in der Reihenfolge.
+        """
+        quelle = inspect.getsource(replay.main)
+        self.assertIn("if a.feed:", quelle)
+        self.assertIn("if a.familie_c:", quelle)
+        # Auf den AUFRUF ankern, nicht auf den Namen: "lade_wachen" steht auch
+        # in dieser Begruendung und im Docstring - ein Test, der Prosa mitliest,
+        # findet den Namen dort zuerst und meldet falsch (29.09.2026 passiert).
+        aufruf = quelle.index(".lade_wachen()")
+        # spur_buch legt Agenten/Bus auf den Suchpfad - andersherum faellt der
+        # ereignis-Import mit ModuleNotFoundError um (29.09.2026).
+        #
+        # Geparst statt gesucht: eine Textsuche nach dem Importnamen findet ihn
+        # zuerst im KOMMENTAR, der ihn begruendet - derselbe Fehlschluss ist an
+        # diesem Tag zweimal passiert. Der Baum kennt nur echten Code.
+        baum = ast.parse(inspect.getsource(replay.lauf_feed))
+        reihenfolge = [n.names[0].name for n in ast.walk(baum)
+                       if isinstance(n, ast.Import)]
+        self.assertIn("spur_buch", reihenfolge)
+        self.assertIn("ereignis", reihenfolge)
+        self.assertLess(reihenfolge.index("spur_buch"),
+                        reihenfolge.index("ereignis"))
+        self.assertLess(quelle.index("if a.feed:"), aufruf)
+        self.assertLess(quelle.index("if a.familie_c:"), aufruf)
+
+
 class GebuehrTest(unittest.TestCase):
+    def test_gebuehr_kommt_ohne_lade_wachen_aus(self):
+        """Die Kostenrechnung darf nicht an einer Spurenfamilie haengen.
+
+        `lade_wachen()` gibt es nur bei Familie A; die Feed-Spuren haben es
+        nicht. Der Aufruf riss am 29.09.2026 beide Laeufe ab, bevor ein Schritt
+        gerechnet war - die Wachen kommen jetzt aus der DATEI.
+        """
+        for spur in ("moondev_topmovers", "moondev_marktlage", "moondev_funding"):
+            self.assertGreater(replay.gebuehr_fuer(spur), 0.0)
+
     def test_jede_spur_hat_einen_boersensatz(self):
         """Ohne Satz waere die Kostenrechnung still null."""
         for spur in replay.SPUREN_TEIL_A + replay.SPUREN_TEIL_C:
