@@ -15,7 +15,7 @@ summary: 'Zwei Scheduler (Windows-Aufgabenplanung und Hermes-Cron), das Wachen-M
 | Scheduler | Wofuer | Beispiel |
 |---|---|---|
 | Windows-Aufgabenplanung (`MaxHirn-*`) | Dauerlaeufe, Sicherungen, Fensteraufgaben | `MaxHirn-Handel-Dauerlauf`, `MaxHirn-OmniRoute`, `MaxHirn-Handelszentrale` |
-| Hermes-Cron (`no_agent`) | Wachhunde, die eine Nachricht schicken sollen | `bus-waechter` (15 min), `moondev-agenten-wache` (15 min), `nautilus-runden-wache` (30 min), `one-wache` (10 min), `breite-wache` (taeglich 19:00) |
+| Hermes-Cron (`no_agent`) | Wachhunde, die eine Nachricht schicken sollen | `bus-waechter` (15 min), `moondev-agenten-wache` (15 min), `nautilus-runden-wache` (30 min), `one-wache` (10 min), `breite-wache` (taeglich 19:00), `ausserhaus-aufgabe-sichern` (taeglich 08:30) |
 
 Hermes-Cron laeuft **am Bus vorbei** und liefert direkt nach Telegram — genau deshalb
 darf eine Wache nicht ueber den Weg melden, den sie ueberwacht.
@@ -48,6 +48,18 @@ darf eine Wache nicht ueber den Weg melden, den sie ueberwacht.
   (`Start-Process -Verb RunAs -Wait`), danach **Zustand verifizieren** und ein Beleg-Log
   schreiben. Der Task `Hermes_Gateway` liess sich so nicht deaktivieren
   (HRESULT 0x80070005) — Zustand nachlesen, nicht annehmen.
+- **Eine Aufgabe NICHT aus der Sandbox anlegen** (30.09.2026): `Register-ScheduledTask`
+  meldete dort zweimal „Ready" samt naechstem Lauf — im naechsten Aufruf war die Aufgabe
+  weg. Die Sandbox hat eine eigene Sicht auf `C:\Windows\System32\Tasks` (dort standen
+  keine `MaxHirn-*`-Dateien, waehrend `schtasks /query` die 25 Host-Aufgaben zeigte).
+  Anlegen deshalb **aus dem Gateway heraus** (Hermes-Cron, `no_agent`) und mit
+  `schtasks /create /xml` (XML in UTF-16LE); pruefen mit `schtasks /query`, starten mit
+  `schtasks /run`. Vorbild: `Agenten/Hermes/scripts/ausserhaus-aufgabe-sichern.py`.
+- **`Get-ScheduledTask -TaskName <name>` ist kein Beleg** — es findet in dieser Umgebung
+  auch **vorhandene** Aufgaben nicht (`HRESULT 0x80070002`). Verlaesslich sind die
+  Aufzaehlung (`Get-ScheduledTask | Where-Object TaskName -like 'MaxHirn-*'`) und
+  `schtasks /query /tn <name>`. Also: eine Aufgabe erst im **zweiten** Aufruf als
+  angelegt betrachten, nie in dem, der sie angelegt hat.
 
 ## Dauerprozess-Muster
 

@@ -23,7 +23,7 @@ from pathlib import Path
 
 NAME = "MaxHirn-Ausserhaus-Kopie"
 HIER = Path(__file__).resolve()
-WURZEL = HIER.parents[2]                      # .../BrainFiles
+WURZEL = HIER.parents[3]                      # .../BrainFiles (Agenten/Hermes/scripts/<datei>)
 REGISTRAR = WURZEL / "Agenten" / "Routinen" / "ausserhaus-kopie-aufgabe.ps1"
 
 

@@ -75,18 +75,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       sie faerbt JEDEN Dev-Server, den ein Agent startet, nicht nur diesen einen.
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
-- [ ] **T-182 — Ausser-Haus-Kopie: Frist festschreiben und Fahrweise entscheiden**
-      Kontext: Die Kopie unter Q:\MaxHirn-AusserHaus ist die einzige Sicherung
-      ausserhalb dieses Rechners (G: und O: haengen am selben Netzteil). Sie
-      laeuft von Hand - bewusst ohne geplante Aufgabe, weil das Ziel eine
-      USB-Platte ist, die meist nicht angesteckt ist. Der neue Waechter
-      (Hermes-Cron ausserhaus-frist-wache, 27a16c73cf03) meldet taeglich um
-      08:00 erst, wenn die juengste Spur im Ziel aelter als 14 Tage ist
-      (Merkdatei: hoechstens alle 72 h). Gemessen 29.09.2026: 5,1 Tage alt.
-      Naechster Schritt: entscheiden - 14 Tage als blosse Erinnerung belassen,
-      oder eine geplante Aufgabe, die bei angesteckter Platte selbst sichert.
-      Angelegt · 2026-09-29
-      Betrifft: Agenten/Hermes/scripts/ausserhaus-frist-wache.py, Agenten/sichern-ausser-haus.ps1
 
 - [ ] **T-179 — Handels-Dauerlauf fiel 20:59 aus (0xC0000142), Ursache offen**
       Kontext: Alle drei Stufen (Basis/mittel/hoch) starben am 29.09. ~20:59: die Kindprozesse kamen nicht hoch (Rueckgabe 3221225794 = 0xC0000142, DLL-/Speicher-Initialisierung). Die Waechter starteten neu (23:05/23:07/23:08/23:20), aber die Neustarts starben ebenfalls. Belegt: 87 verwaiste node-Prozesse aus Hermes	ools (abgebrochener Build, alle seit 21:13:59, Eltern = Gateway 73852 mit 70 Kindern) + Commit frei 0 GB. Behoben 29.09. 23:23-23:34: 87 node-Waisen beendet, alle drei Stufen manuell neu gestartet - laufen wieder stabil (Zyklen 23:35). Die eigentliche Ursache des Todes um 20:59 (vor dem node-Waisen-Start 21:13) ist NICHT geklaert.
@@ -2063,6 +2051,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-182 — Ausser-Haus-Kopie: Frist festschreiben und Fahrweise entscheiden**
+      Kontext: Die Kopie unter Q:\MaxHirn-AusserHaus ist die einzige Sicherung
+      ausserhalb dieses Rechners (G: und O: haengen am selben Netzteil). Sie
+      laeuft von Hand - bewusst ohne geplante Aufgabe, weil das Ziel eine
+      USB-Platte ist, die meist nicht angesteckt ist. Der neue Waechter
+      (Hermes-Cron ausserhaus-frist-wache, 27a16c73cf03) meldet taeglich um
+      08:00 erst, wenn die juengste Spur im Ziel aelter als 14 Tage ist
+      (Merkdatei: hoechstens alle 72 h). Gemessen 29.09.2026: 5,1 Tage alt.
+      Naechster Schritt: entscheiden - 14 Tage als blosse Erinnerung belassen,
+      oder eine geplante Aufgabe, die bei angesteckter Platte selbst sichert.
+      Angelegt · 2026-09-29
+      Betrifft: Agenten/Hermes/scripts/ausserhaus-frist-wache.py, Agenten/sichern-ausser-haus.ps1
+      **Erledigt 2026-09-30.** Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30, versteckt, Zeitlimit 6 h) wird aus dem Gateway heraus angelegt (Hermes-Cron `ausserhaus-aufgabe-sichern`, 08:30) und faellt bei fehlender SSD mit Exitcode 2 still aus. Wrapper `Routinen/ausserhaus-kopie.ps1`; echter Lauf endet `ENDE ok` (robocopy-Code 3), nachdem `Agenten\Hermes\cache`, `cron\output`, `*.pid`, `*.db-shm`, `*.db-wal` ausgenommen wurden (Code 11 = Exit 1 vorher). Kopie war 5,1 Tage alt, jetzt frisch. Fristwache 14 Tage bleibt zweite Absicherung.
 - [x] **T-180 — Zweitkopie bricht ab - Ziel J: ist die fehlerhafte Platte**
       Kontext: Die Zweitkopie (Ziel J:\MaxHirn-Zweitkopie) schlug am 28.09. (Code 1) und 29.09. (21:10, 0xC000013A abgebrochen) fehl. Direkt davor (21:06-21:07) 8x NTFS-Event 98 (Volume als schreibgeschuetzt eingebunden) auf J:. J: ist die WD My Book mit 479 unkorrigierten Lesefehlern (Memory) und so langsam, dass ein rekursives Auflisten 300 s ueberschreitet. Jetzt wieder schreibbar, aber die Platte ist der Schwachpunkt. Memory-Vorgabe war 'Zweitkopie auf O: (Disk 1)'.
       Naechster Schritt: Entscheiden, ob die Zweitkopie auf O: umzieht (gesunde Platte) oder J: ersetzt wird; dann sichern-zweitkopie.ps1 anpassen und einen Lauf pruefen.
