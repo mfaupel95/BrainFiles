@@ -59,6 +59,19 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-182 — Ausser-Haus-Kopie: Frist festschreiben und Fahrweise entscheiden**
+      Kontext: Die Kopie unter Q:\MaxHirn-AusserHaus ist die einzige Sicherung
+      ausserhalb dieses Rechners (G: und O: haengen am selben Netzteil). Sie
+      laeuft von Hand - bewusst ohne geplante Aufgabe, weil das Ziel eine
+      USB-Platte ist, die meist nicht angesteckt ist. Der neue Waechter
+      (Hermes-Cron ausserhaus-frist-wache, 27a16c73cf03) meldet taeglich um
+      08:00 erst, wenn die juengste Spur im Ziel aelter als 14 Tage ist
+      (Merkdatei: hoechstens alle 72 h). Gemessen 29.09.2026: 5,1 Tage alt.
+      Naechster Schritt: entscheiden - 14 Tage als blosse Erinnerung belassen,
+      oder eine geplante Aufgabe, die bei angesteckter Platte selbst sichert.
+      Angelegt · 2026-09-29
+      Betrifft: Agenten/Hermes/scripts/ausserhaus-frist-wache.py, Agenten/sichern-ausser-haus.ps1
+
 - [ ] **T-179 — Handels-Dauerlauf fiel 20:59 aus (0xC0000142), Ursache offen**
       Kontext: Alle drei Stufen (Basis/mittel/hoch) starben am 29.09. ~20:59: die Kindprozesse kamen nicht hoch (Rueckgabe 3221225794 = 0xC0000142, DLL-/Speicher-Initialisierung). Die Waechter starteten neu (23:05/23:07/23:08/23:20), aber die Neustarts starben ebenfalls. Belegt: 87 verwaiste node-Prozesse aus Hermes	ools (abgebrochener Build, alle seit 21:13:59, Eltern = Gateway 73852 mit 70 Kindern) + Commit frei 0 GB. Behoben 29.09. 23:23-23:34: 87 node-Waisen beendet, alle drei Stufen manuell neu gestartet - laufen wieder stabil (Zyklen 23:35). Die eigentliche Ursache des Todes um 20:59 (vor dem node-Waisen-Start 21:13) ist NICHT geklaert.
       Naechster Schritt: Beobachten, ob der Dauerlauf stabil bleibt; wenn er wieder mit 0xC0000142 stirbt, Commit/Seitenfile zum Tatzeitpunkt messen und die Waisen-Quelle (Gateway-Build) identifizieren.
@@ -578,18 +591,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/kraken/wachen.json, nautilus_kraken/wachen.json, Kraken-Konto
 
 
-- [ ] **T-129 — Fristwaechter fuer die Ausser-Haus-Kopie (sie wird still alt)**
-      Kontext: `sichern-ausser-haus.ps1` hat ABSICHTLICH keine geplante Aufgabe -
-      sie braucht die angesteckte Q:-SSD. Folge: am 25.09.2026 war die Kopie
-      **13 Tage alt** (gemessen: 89.421 Dateien / 18,31 GB fehlten), ohne dass
-      irgendwo eine Meldung entstand. Es gibt einen Nachweis (`spiegelstand.py`
-      fuer Q:\\Handel_Journal) und den Tagesbericht, aber **keine Wache** auf das
-      Alter der Ausser-Haus-Kopie selbst.
-      Naechster Schritt: Wache nach dem Muster `spiegelfrist-wache.py` bauen -
-      meldet nur, wenn die Kopie aelter als N Tage (Vorschlag 7) ist, leere
-      Ausgabe sonst. Sie darf NICHT selbst kopieren.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/sichern-ausser-haus.ps1, Q:\\MaxHirn-AusserHaus
 
 
 - [ ] **T-128 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
@@ -2041,6 +2042,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-129 — Fristwaechter fuer die Ausser-Haus-Kopie (sie wird still alt)**
+      Kontext: `sichern-ausser-haus.ps1` hat ABSICHTLICH keine geplante Aufgabe -
+      sie braucht die angesteckte Q:-SSD. Folge: am 25.09.2026 war die Kopie
+      **13 Tage alt** (gemessen: 89.421 Dateien / 18,31 GB fehlten), ohne dass
+      irgendwo eine Meldung entstand. Es gibt einen Nachweis (`spiegelstand.py`
+      fuer Q:\\Handel_Journal) und den Tagesbericht, aber **keine Wache** auf das
+      Alter der Ausser-Haus-Kopie selbst.
+      Naechster Schritt: Wache nach dem Muster `spiegelfrist-wache.py` bauen -
+      meldet nur, wenn die Kopie aelter als N Tage (Vorschlag 7) ist, leere
+      Ausgabe sonst. Sie darf NICHT selbst kopieren.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/sichern-ausser-haus.ps1, Q:\\MaxHirn-AusserHaus
+      **Erledigt 2026-09-29.** Agenten/Hermes/scripts/ausserhaus-frist-wache.py meldet nur, was eine Frist reisst (Kopie aelter als 14 Tage, Laufwerk nicht angeschlossen, Ziel fehlt/leer/nicht lesbar); Hermes-Cron 27a16c73cf03 taeglich 08:00, Probelauf 'succeeded'; 11 Tests gruen; gemessen: Kopie 5,1 Tage alt = gruen.
 - [x] **T-138 — Docker-Engine aus: Container `nautilus-demo` fehlt, OKX-Arm ohne Quoten**
       Kontext: `docker ps -a` antwortet 29.09.2026 mit `failed to connect to the docker API at
       npipe:////./pipe/dockerDesktopLinuxEngine ... daemon is running`; die Systempruefung meldete
