@@ -344,6 +344,7 @@ class BacktestReiter(ttk.Frame):
         self.steuerung = steuerung or ll.Steuerung()
         self._fertig = None
         self._liste = []
+        self._takt_id = None
 
         ttk.Label(self, text=HINWEIS_FREIGABE, foreground="#b35c00").pack(
             anchor="w", pady=(0, 4))
@@ -392,7 +393,7 @@ class BacktestReiter(ttk.Frame):
 
         self._lauf_wechsel(self.steuerung.laeuft())
         self.refresh()
-        self.after(TAKT_MS, self._takt)
+        self._takt_id = self.after(TAKT_MS, self._takt)
 
     # Reiter-Schnittstelle
     def refresh(self):
@@ -441,6 +442,15 @@ class BacktestReiter(ttk.Frame):
         self.w_ausgabe.configure(state="disabled")
 
     # Ablauf
+    def destroy(self):
+        if self._takt_id is not None:
+            try:
+                self.after_cancel(self._takt_id)
+            except tk.TclError:
+                pass
+            self._takt_id = None
+        super().destroy()
+
     def _takt(self):
         try:
             neu, ende = self.steuerung.takt()
@@ -451,7 +461,7 @@ class BacktestReiter(ttk.Frame):
             self.w_lauf.config(text=self.steuerung.status() or "kein Lauf")
         finally:
             try:
-                self.after(TAKT_MS, self._takt)
+                self._takt_id = self.after(TAKT_MS, self._takt)
             except tk.TclError:
                 pass                       # Fenster ist zu
 

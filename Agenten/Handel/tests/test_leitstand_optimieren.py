@@ -194,18 +194,47 @@ class Lesepruefung(unittest.TestCase):
         self.assertEqual(lesepruefung.schreibstellen(lo.__file__), [])
         self.assertFalse(lesepruefung.importiert(lo.__file__, "subprocess"))
 
-    def test_die_pruefung_findet_schreibstellen(self):
+    FORMEN = [
+        "open('x', 'w')", "open('x', 'a')", "open('x', 'r+')", "open('x', mode='wb')",
+        "open('x', 'xb')", "open('x', modus)", "io.open('x', 'w')",
+        "codecs.open('x', 'w')", "io.open('x', mode='a')", "jd(1, f)",
+        "json.dump(1, f)", "os.remove('x')", "os.unlink('x')", "os.rename('a', 'b')",
+        "os.replace('a', 'b')", "os.makedirs('x')", "os.mkdir('x')", "os.rmdir('x')",
+        "os.open('x', os.O_WRONLY)", "shutil.move('a', 'b')", "shutil.copy('a', 'b')",
+        "shutil.copy2('a', 'b')", "shutil.copyfile('a', 'b')",
+        "shutil.copytree('a', 'b')", "shutil.rmtree('a')", "sh_move('a', 'b')",
+        "Path('x').write_text('')", "Path('x').write_bytes(b'')",
+        "Path('x').rename('y')", "Path('x').replace('y')", "Path('x').mkdir()",
+        "Path('x').unlink()", "Path('x').touch()", "Path('x').rmdir()",
+        "Path('x').open('a')", "csv.writer(f)", "csv.DictWriter(f, [])",
+        "tempfile.NamedTemporaryFile()", "tempfile.mkstemp()", "tempfile.mkdtemp()",
+        "f.write('x')", "obj.writelines([])", "osr('a', 'b')", "cw(f)",
+    ]
+
+    def test_die_pruefung_findet_jede_schreibform(self):
+        kopf = ["import io, codecs, csv, os, shutil, tempfile", "import json",
+                "from json import dump as jd", "from shutil import move as sh_move",
+                "from os import replace as osr", "from csv import writer as cw",
+                "from pathlib import Path"]
+        with tempfile.TemporaryDirectory() as tmp:
+            quelle = Path(tmp) / "probe.py"
+            quelle.write_text("\n".join(kopf + self.FORMEN) + "\n", encoding="utf-8")
+            funde = lesepruefung.schreibstellen(quelle)
+            erste = len(kopf) + 1
+            zeilen = sorted(int(f.split(":")[0][3:]) for f in funde)
+            self.assertEqual(zeilen, list(range(erste, erste + len(self.FORMEN))),
+                             "\n".join(funde))
+
+    def test_die_pruefung_laesst_lesen_durch(self):
         with tempfile.TemporaryDirectory() as tmp:
             quelle = Path(tmp) / "probe.py"
             quelle.write_text(
-                "import json, os\nfrom pathlib import Path\nopen('x', 'w')\n"
-                "open('x')\njson.dumps({})\nos.replace('a', 'b')\n"
-                "Path('x').write_text('')\nPath('x').open('a')\n"
-                "import subprocess\n", encoding="utf-8")
-            self.assertEqual(lesepruefung.schreibstellen(quelle),
-                             ["Z. 3: open(..., 'w')", "Z. 5: json.dumps",
-                              "Z. 6: os.replace", "Z. 7: .write_text",
-                              "Z. 8: .open('a')"])
+                "\n".join(["import json", "from pathlib import Path", "p = 'x'",
+                           "json.dumps({})", "open(p)", "open(p, 'r')",
+                           "open(p, 'rb')", "open('wax.txt')",
+                           "'a'.replace('a', 'b')", "Path(p).read_text()",
+                           "import subprocess"]) + "\n", encoding="utf-8")
+            self.assertEqual(lesepruefung.schreibstellen(quelle), [])
             self.assertTrue(lesepruefung.importiert(quelle, "subprocess"))
             self.assertFalse(lesepruefung.importiert(quelle, "shutil"))
 
@@ -319,6 +348,31 @@ class Bereich(TkBasis):
             self.ls.zustand.daten["werte"] = falsch
             b = self.reiter([self.fabrik]).bereiche[0]
             self.assertEqual(b.vars["monate"].get(), "6")
+
+    def test_direkter_aufruf_bricht_den_timer_ab(self):
+        r = self.reiter([self.fabrik])
+        b = r.bereiche[0]
+        b.vars["monate"].set("12")
+        timer = b._entprell
+        self.assertIsNotNone(timer)
+        abgebrochen, orig = [], b.after_cancel
+        b.after_cancel = lambda i: (abgebrochen.append(i), orig(i))
+        b._wenn_sichtbar()
+        self.assertEqual(abgebrochen, [timer])
+        self.assertIsNone(b._entprell)
+        r.destroy()
+        self.root.update()
+
+    def test_start_nicht_moeglich(self):
+        r = self.reiter([self.fabrik])
+        b = r.bereiche[0]
+        self._trocken_fertig(r)
+        r.starte = lambda *a, **k: False
+        b.vars["monate"].set("12")
+        b._wenn_sichtbar()
+        self.assertEqual(b.w_plan.cget("text"), "Start nicht möglich")
+        self.assertIsNone(b._versucht)
+        self.assertEqual(b.tip.text, "erst Trockenlauf")
 
     def test_unsichtbar_startet_nichts(self):
         r = self.reiter([lbt.ReplayBereich, self.fabrik])

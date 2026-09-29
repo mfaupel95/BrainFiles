@@ -325,14 +325,23 @@ class OptimierenBereich(ttk.Frame):
         self._knopf()
         if self._entprell is not None:
             self.after_cancel(self._entprell)
-        self._entprell = self.after(ENTPRELL_MS, self._wenn_sichtbar)
+        self._entprell = self.after(ENTPRELL_MS, self._entprell_feuert)
 
     # Trockenlauf automatisch, aber nur sichtbar
     def sichtbar(self):
         return str(self.reiter.arten.select()) == str(self)
 
+    def _entprell_feuert(self):
+        self._entprell = None                       # der Timer ist verbraucht
+        self._wenn_sichtbar()
+
     def _wenn_sichtbar(self, _e=None):
-        self._entprell = None
+        if self._entprell is not None:              # direkter Aufruf: Timer weg
+            try:
+                self.after_cancel(self._entprell)
+            except tk.TclError:
+                pass
+            self._entprell = None
         try:
             if not self.sichtbar():
                 return
@@ -355,9 +364,13 @@ class OptimierenBereich(ttk.Frame):
         self._versucht = w
         self.pruefung.vergiss()
         self.w_plan.config(text="Trockenlauf läuft …")
-        self.reiter.starte("optimieren-trocken-%s" % w["spur"],
-                           optimieren_befehl(w, trocken=True),
-                           fertig=lambda _p, d: self._trocken_fertig(w, d))
+        gestartet = self.reiter.starte(
+            "optimieren-trocken-%s" % w["spur"],
+            optimieren_befehl(w, trocken=True),
+            fertig=lambda _p, d: self._trocken_fertig(w, d))
+        if gestartet is False:
+            self._versucht = None
+            self.w_plan.config(text="Start nicht möglich")
         self._knopf()
 
     def _trocken_fertig(self, w, daten):
