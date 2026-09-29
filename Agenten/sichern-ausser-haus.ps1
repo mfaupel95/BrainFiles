@@ -8,9 +8,12 @@
 # ausser Haus bringen.
 #
 # ANDERS ALS DIE BEIDEN ANDEREN
-# 1. Sie laeuft NICHT als geplante Aufgabe. Eine Kopie, die dauerhaft am
-#    Rechner haengt, ist keine Kopie ausser Haus. Aufruf von Hand, wenn die
-#    SSD angesteckt ist.
+# 1. Sie wird seit 29.09.2026 taeglich um 21:30 von der Aufgabe
+#    'MaxHirn-Ausserhaus-Kopie' (Routinen/ausserhaus-kopie.ps1) erneuert,
+#    SOLANGE die SSD angesteckt ist; sonst endet der Lauf nach Sekunden mit
+#    Exitcode 2 (uebersprungen, kein Fehlschlag). Das eigentliche "ausser Haus"
+#    bleibt Handarbeit: abmelden und die Platte woanders hinbringen - eine
+#    Kopie, die dauerhaft am Rechner haengt, ist keine Kopie ausser Haus.
 # 2. Sie nimmt ALLES mit (ausser dem aus Git Reproduzierbaren), nicht nur den
 #    Kern - Platz ist genug.
 #
@@ -48,8 +51,22 @@ Write-Host "Ziel: $ziel  ($($vol.FileSystemLabel), $($vol.FileSystem), frei $([m
 $modus = if ($NurPruefen) { '/L' } else { '' }
 $start = Get-Date
 
+# Zwei Pfade sind im Betrieb fluechtig und ergaben am 30.09.2026 robocopy-Code 11:
+# `Agenten\Hermes\cache` - Wegwerfbereich: uv-Bau-Cache (die .whl ist waehrend
+#               eines Baus GESPERRT, E5), die Scratch-Ablage (TMPDIR, wird nach
+#               24 h geleert) und ein Browser-Profil, dessen `Network\Cookies`
+#               ein LAUFENDER Prozess haelt (E32) - dazu ein Rest des
+#               abgebrochenen Update-Versuchs (.previous-python-*, E3: Pfad
+#               nicht gefunden, ~150 Dateien). Alles wiederherstellbar bzw.
+#               wandert taeglich durch; in eine Sicherung gehoert es nicht.
+# `cron\output` - Cron-Berichte; sie entstehen und verschwinden WAEHREND des
+#               Laufs (E2, Datei nicht gefunden). Berichte, keine Daten.
+$fluechtig = @(
+  (Join-Path $quelle 'Agenten\Hermes\cache'),
+  (Join-Path $quelle 'Agenten\Hermes\cron\output')
+)
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11 - dasselbe gilt fuer die zwei Pfade in $fluechtig
 $code = $LASTEXITCODE
 
 # Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter

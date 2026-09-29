@@ -162,3 +162,24 @@ nehmen `$hermesHome`, `$basis`, `$wurzel`. Und nach jedem Skriptlauf pruefen, da
 wirklich existiert (`Test-Path`) und einen Zeitstempel von jetzt traegt, statt dem Exitcode zu
 glauben.
 
+## 10. Eine geplante Aufgabe erst im NAECHSTEN Aufruf als angelegt betrachten (30.09.2026)
+
+`Register-ScheduledTask` meldete **Erfolg** - `State Ready`, naechster Lauf
+`30.09.2026 21:30` -, und im naechsten Aufruf war die Aufgabe **nicht mehr da**:
+`Get-ScheduledTask: Es wurden keine MSFT_ScheduledTask-Objekte gefunden, bei denen die
+TaskName-Eigenschaft gleich "MaxHirn-Ausserhaus-Kopie" ist.` Zweimal reproduziert, jeweils
+innerhalb von Minuten. Ueber `schtasks /create` angelegt, hielt dieselbe Aufgabe (im
+getrennten Aufruf nachgewiesen).
+
+Zweiter Befund derselben Messung: `Get-ScheduledTask -TaskName '<name>'` findet auch
+**vorhandene** Aufgaben nicht (`HRESULT 0x80070002`), waehrend die Aufzaehlung
+`Get-ScheduledTask | Where-Object TaskName -like 'MaxHirn-*'` und `schtasks /query /tn <name>`
+sie zeigen. Der Name-Lookup ist in dieser Umgebung also kein Beleg - weder fuer "da" noch
+fuer "weg".
+
+Merksatz: eine Aufgabe **anlegen per `schtasks /create /xml`** (XML in UTF-16LE, darin das
+volle Modell: `IgnoreNew`, `StartWhenAvailable`, `Hidden`, `ExecutionTimeLimit`) und
+**pruefen per `schtasks /query`** - und der Beleg ist der **zweite** Aufruf, nicht der, der
+sie angelegt hat. Starten ebenfalls klassisch: `schtasks /run /tn <name>`. Vorlage:
+`Agenten/Routinen/ausserhaus-kopie-aufgabe.ps1`.
+

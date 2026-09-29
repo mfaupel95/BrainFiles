@@ -34,6 +34,7 @@ vorhandener Skill plus ein Zeitplan.
 | montags 09:35 | Skill-Nutzung NUR okx-*/handel-* Skills | `Agenten/Hermes/scripts/okx-skill-nutzung.py` | **eingeplant** 19.09.2026 - Hermes-Cron `okx-skill-nutzung`, **kein Windows-Task** (`no_agent`). Wrapper um `skill-usage-report.py --nur okx,handel` - der Filter lebt im bestehenden Skript, hier steht nur der Aufruf.
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
+| täglich 21:30 | Außer-Haus-Kopie auf `Q:` erneuern, **wenn** die Platte angesteckt ist; sonst nach Sekunden „übersprungen" (Exitcode 2, kein Fehlschlag) | `Routinen/ausserhaus-kopie.ps1` | **eingeplant** 29.09.2026 — `MaxHirn-Ausserhaus-Kopie`. Ruft `sichern-ausser-haus.ps1`. Steht hier, weil die Aufgabe läuft; das **außer Haus bringen** bleibt Handarbeit (Abschnitt unten). Zweiter Wächter: Hermes-Cron `ausserhaus-frist-wache` (08:00) meldet, wenn die Kopie 14 Tage alt wird. |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
 | stündlich, zur vollen Stunde | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, im Umfeld des System-Umzugs auf täglich 20:00 reduziert, am 29.09.2026 wieder auf stündlich gestellt (Max: „verliere andauernd Arbeit“ — der Umzug ist abgeschlossen, der Grund für die Reduzierung entfällt). Damit sinkt das ungesicherte Fenster von einem Tag auf höchstens eine Stunde. |
 | stündlich, :20 nach der vollen Stunde | Fremdarbeit beendeter Sitzungen in die Hauptarbeit (`master`) übernehmen | `Routinen/fremdarbeit-einziehen.ps1` | **eingeplant** 21.09.2026 — `MaxHirn-Fremdarbeit-Einziehen`, am 29.09.2026 mit dem Zwischenstand auf stündlich umgestellt. Läuft **nach** dem jeweiligen Zwischenstand: der sichert die Arbeit erst auf den Branch `zwischenstand`, diese Aufgabe holt dieselbe Arbeit ein zweites Mal ab und schreibt sie in **einem** Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Ruhend heißt weiterhin: länger als 30 Minuten unberührt. Details im Abschnitt „Fremdarbeit übernehmen“ unten. |
@@ -58,6 +59,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 |---|---|---|
 | `MaxHirn-Sicherung` | `Routinen/sicherung.ps1` | `Routinen/logs/sicherung-letzter-lauf.log` |
 | `MaxHirn-Zweitkopie` | `Routinen/zweitkopie.ps1` | `Routinen/logs/zweitkopie-letzter-lauf.log` |
+| `MaxHirn-Ausserhaus-Kopie` | `Routinen/ausserhaus-kopie.ps1` | `Routinen/logs/ausserhaus-kopie-letzter-lauf.log` |
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
 | `MaxHirn-Marktscanner` | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
@@ -101,17 +103,29 @@ Fehler: Das Skript lief zum ersten Mal gegen das J:-Ziel und räumte dort
 | Warum nicht O: | O: ist seit 06.09.2026 durch Archiv-Junctions belegt |
 | Achtung | J: (WD My Book) hat 479 unkorrigierte Lesefehler — siehe [[Hardware]]. Die Zweitkopie liegt damit auf einer angeschlagenen Platte. |
 
-## Die dritte Kopie: außer Haus, von Hand
+## Die dritte Kopie: außer Haus
 
-`sichern-ausser-haus.ps1` → `E:\MaxHirn-AusserHaus` (Netac MobileDataStar,
-Disk 4, 466 GB). **Sie steht bewusst nicht in der Tabelle oben und ist keine
-geplante Aufgabe.** Eine Kopie, die dauerhaft am Rechner hängt, ist keine Kopie
-außer Haus — genau der Fall, gegen den sie schützt, ist der Netzteilschaden,
-der 2026 mehrere Platten gleichzeitig getötet hat.
+`sichern-ausser-haus.ps1` → `Q:\MaxHirn-AusserHaus` (SanDisk Portable SSD,
+Disk 3, exFAT, 1,86 TB, Label `musik_lib`). Das Ziel war bis 12.09.2026 `E:`
+(Netac MobileDataStar) — Platte gewechselt, das Skript folgt seitdem `Q:`.
+Bestand und Dauer stehen im Protokoll
+`Routinen/logs/ausserhaus-kopie-letzter-lauf.log`.
 
-Ablauf: SSD anstecken → Skript aufrufen → „Hardware sicher entfernen" →
-außer Haus bringen. Sie nimmt **alles** mit (46,2 GB, 91.400 Dateien), nicht
-nur den Kern; Platz ist genug.
+**Seit 29.09.2026 wird sie erneuert, sobald die Platte angesteckt ist**
+(Aufgabe `MaxHirn-Ausserhaus-Kopie`, täglich 21:30 über
+`Routinen/ausserhaus-kopie.ps1`): angesteckt → Kopie läuft; nicht angesteckt →
+nach Sekunden Exitcode 2 „übersprungen", keine Meldung, kein Fehlschlag.
+Zweiter Wächter: `Agenten/Hermes/scripts/ausserhaus-frist-wache.py`
+(Hermes-Cron `ausserhaus-frist-wache`, täglich 08:00) meldet, wenn die jüngste
+Spur im Ziel **älter als 14 Tage** ist — dann wurde die Platte lange nicht
+angesteckt.
+
+Handarbeit bleibt das Eigentliche: Platte anstecken → kopieren lassen (oder von
+Hand starten) → „Hardware sicher entfernen" → **außer Haus bringen**. Eine
+Kopie, die dauerhaft am Rechner hängt, ist keine Kopie außer Haus — genau der
+Fall, gegen den sie schützt, ist der Netzteilschaden, der 2026 mehrere Platten
+gleichzeitig getötet hat. Sie nimmt **alles** mit, nicht nur den Kern; Platz ist
+genug.
 
 **exFAT braucht `/FFT`.** `E:` ist exFAT formatiert, und exFAT speichert
 Zeitstempel in 2-Sekunden-Schritten, NTFS in 100-Nanosekunden-Schritten. Ohne
