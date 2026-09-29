@@ -177,6 +177,16 @@ class Reiter(TkBasis):
         self.assertNotIn("disabled", r.bereiche[0].k_start.state())
         self.assertIn("fertig", r.w_ausgabe.get("1.0", "end"))
 
+    def test_ablagefehler_wird_als_letzte_meldung_gezeigt(self):
+        r = self.reiter([lbt.ReplayBereich])
+        r.starte("replay-squeeze", ["x"])
+        daten = {"name": "replay-squeeze", "exit_code": 0, "abgebrochen": False,
+                 "ablage_fehler": "Zugriff verweigert"}
+        self.st.naechstes = ([], (self.ablage / "x.json", daten))
+        r._takt()
+        self.assertTrue(self.ls.meldungen[-1].startswith(
+            "replay-squeeze: Ergebnis NICHT abgelegt"))
+
     def test_abgebrochen_und_exit_code_werden_gemeldet(self):
         r = self.reiter([])
         r.starte("a", ["x"])

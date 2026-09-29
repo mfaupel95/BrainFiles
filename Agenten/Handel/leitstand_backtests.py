@@ -264,6 +264,9 @@ class BacktestReiter(ttk.Frame):
             self.ls.melde("%s fertig" % name)
         else:
             self.ls.melde("%s endete mit Exit %s" % (name, daten.get("exit_code")))
+        if "ablage_fehler" in daten:
+            self.ls.melde("%s: Ergebnis NICHT abgelegt — %s"
+                          % (name, daten["ablage_fehler"]))
         if "ergebnis" in daten:
             self.ergebnis.setze(ll.ergebnis_zeilen(daten))
         self._lauf_wechsel(False)
