@@ -165,3 +165,21 @@ also want the perf harness.
   (`.result.result.value`). Use the wrapper.
 - **`import.meta.env.DEV` is `true` under `vite dev`** in this repo. The note in
   `apps/desktop/scripts/profile-typing-lag.md` claiming otherwise is stale.
+- **Launch the dev server with `NODE_ENV` UNSET.** An inherited
+  `NODE_ENV=production` makes `@vitejs/plugin-react` emit the Fast Refresh call
+  sites WITHOUT the runtime, so the renderer dies in the first module holding a
+  component: `ReferenceError: $RefreshSig$ is not defined` at
+  `src/i18n/context.tsx`, `#root` stays empty and that one error is all the
+  console shows. The repo's own rehearsal command says `env -u NODE_ENV` — apply
+  it to BOTH the vite process and the electron process, and verify by fetching
+  `/src/i18n/context.tsx` over HTTP: the served text must contain
+  `import * as RefreshRuntime from "/@react-refresh"`.
+- **Check which process owns the port before believing your restart.** A vite
+  already listening on 5174 keeps serving; the new one exits on `EADDRINUSE` and
+  you read a stale transform while thinking you fixed it. Launch with
+  `--strictPort` and compare `Get-NetTCPConnection -LocalPort 5174 -State Listen`
+  (OwningProcess) against the PID you just started.
+- **Waiting for the mount is tens of seconds, not "a second or two".** Poll
+  `document.getElementById('root').childElementCount > 0` (a healthy mount lands
+  around 350 nodes / ~79 `[data-slot]` nodes); an isolated BOOT_FAKE instance
+  took ~32 s from launch to mounted.
