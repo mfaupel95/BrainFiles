@@ -622,6 +622,17 @@ def freqtrade_zu_zeilen(antwort, anzahl=20):
             for t in zu[:anzahl]]
 
 
+def freqtrade_tagesbalken(antwort):
+    """[(TT.MM., G/V absolut, Trades)] aus `/daily`, aeltester Tag zuerst."""
+    liste = (antwort.get("data") if isinstance(antwort, dict) else None) or []
+    tage = sorted((t for t in liste
+                   if isinstance(t, dict) and len(str(t.get("date", ""))) >= 10),
+                  key=lambda t: str(t["date"]))
+    return [("%s.%s." % (str(t["date"])[8:10], str(t["date"])[5:7]),
+             _zahl(t.get("abs_profit")) or 0.0,
+             int(_zahl(t.get("trade_count")) or 0)) for t in tage]
+
+
 def _gv_marke(text):
     """Tabellen-Tag aus '+1.23' / '-0.50'."""
     zahl = _zahl(text)
@@ -631,14 +642,15 @@ def _gv_marke(text):
 def _freqtrade_im_thread(ziel):
     """Lage, offene und letzte Trades - im Hintergrund, wirft nie."""
     lage = freqtrade_bridge.lage()
-    offen, zu = [], {}
+    offen, zu, tage = [], {}, {}
     if lage.get("erreichbar"):
         try:
             offen = freqtrade_bridge.offene_trades()
             zu = freqtrade_bridge.trades(100)
+            tage = freqtrade_bridge.tagesbilanz(14)
         except Exception:                                    # noqa: BLE001
             pass      # Lage steht schon; Tabellen bleiben dann leer
-    ziel.put((lage, offen, zu))
+    ziel.put((lage, offen, zu, tage))
 
 
 class Handelszentrale:
@@ -937,6 +949,16 @@ class Handelszentrale:
             baum.tag_configure("schlecht", foreground=FARBEN["rot"])
             baum.tag_configure("gut", foreground=FARBEN["gruen"])
             setattr(self, attr, baum)
+            if attr == "t_ft_offen":
+                t = tk.Label(seite, text="G/V je Tag (14 Tage)", bg=FARBEN["bg"],
+                             fg=FARBEN["akzent"], anchor="w")
+                self._registriere_schrift(t, 0, fett=True)
+                t.pack(fill="x", padx=10, pady=(6, 0))
+                self.c_ft = tk.Canvas(seite, bg=FARBEN["blatt"], height=140,
+                                      highlightthickness=0)
+                self.c_ft.pack(fill="x", padx=10)
+                self.c_ft.bind("<Configure>", lambda _e: self._zeichne_ft_tage())
+        self.ft_tage = []
         t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
                             text="Quelle: FreqTrade-API %s (freqtrade_bridge, "
                                  "nur lesend) — Start: Agenten/Handel/freqtrade/start.sh"
@@ -952,8 +974,10 @@ class Handelszentrale:
         threading.Thread(target=_freqtrade_im_thread, args=(self.q_freqtrade,),
                          daemon=True).start()
 
-    def _zeige_freqtrade(self, lage, offen, zu):
+    def _zeige_freqtrade(self, lage, offen, zu, tage=None):
         self.ft_lage = lage
+        self.ft_tage = freqtrade_tagesbalken(tage)
+        self._zeichne_ft_tage()
         text, marke = freqtrade_kopf(lage)
         self.l_ft.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
         for baum in (self.t_ft_offen, self.t_ft_zu):
@@ -966,6 +990,34 @@ class Handelszentrale:
         for werte in freqtrade_zu_zeilen(zu):
             self.t_ft_zu.insert("", "end", values=werte,
                                 tags=(_gv_marke(werte[3]),))
+
+    def _zeichne_ft_tage(self):
+        """Balken je Tag um die Nulllinie; gruen Gewinn, rot Verlust."""
+        c = self.c_ft
+        c.delete("all")
+        breite, hoehe = max(c.winfo_width(), 420), max(c.winfo_height(), 120)
+        rand_l, rand_r, rand_o, rand_u = 60, 20, 10, 18
+        if not self.ft_tage:
+            c.create_text(breite // 2, hoehe // 2, text="keine Tagesdaten",
+                          fill=FARBEN["matt"], font=schrift())
+            return
+        groesste = max(abs(w) for _, w, _ in self.ft_tage) or 1.0
+        mitte = rand_o + (hoehe - rand_o - rand_u) / 2
+        halb = (hoehe - rand_o - rand_u) / 2
+        c.create_line(rand_l, mitte, breite - rand_r, mitte, fill=FARBEN["gitter"])
+        for ys, wert in ((rand_o, groesste), (mitte, 0.0), (hoehe - rand_u, -groesste)):
+            c.create_text(rand_l - 4, ys, anchor="e", fill=FARBEN["matt"],
+                          font=schrift(TINY), text="%+.2f" % wert)
+        feld = (breite - rand_l - rand_r) / len(self.ft_tage)
+        for i, (tag, wert, _) in enumerate(self.ft_tage):
+            x0 = rand_l + feld * i + feld * 0.2
+            x1 = rand_l + feld * (i + 1) - feld * 0.2
+            yw = mitte - halb * wert / groesste
+            farbe = FARBEN["gruen"] if wert >= 0 else FARBEN["rot"]
+            c.create_rectangle(x0, min(mitte, yw), x1, max(mitte, yw) + (wert == 0),
+                               fill=farbe, outline=farbe)
+            c.create_text((x0 + x1) / 2, hoehe - rand_u + 2, anchor="n",
+                          fill=FARBEN["matt"], font=schrift(TINY), text=tag)
 
     # ---------- Daten ----------
     def refresh(self):

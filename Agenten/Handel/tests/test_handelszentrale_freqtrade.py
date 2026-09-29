@@ -76,6 +76,16 @@ class ZeilenTest(unittest.TestCase):
         for antwort in (None, {}, [], "x"):
             self.assertEqual(hz.freqtrade_zu_zeilen(antwort), [])
 
+    def test_tagesbalken_aeltester_zuerst(self):
+        antwort = {"data": [
+            {"date": "2026-09-29", "abs_profit": 1.5, "trade_count": 2},
+            {"date": "2026-09-28", "abs_profit": -0.5, "trade_count": 1},
+            {"date": "kaputt"}]}
+        self.assertEqual(hz.freqtrade_tagesbalken(antwort),
+                         [("28.09.", -0.5, 1), ("29.09.", 1.5, 2)])
+        for antwort in (None, {}, {"data": None}, "x"):
+            self.assertEqual(hz.freqtrade_tagesbalken(antwort or {}), [])
+
     def test_gv_marke(self):
         self.assertEqual(hz._gv_marke("+1.00"), "gut")
         self.assertEqual(hz._gv_marke("-0.50"), "schlecht")
@@ -91,7 +101,7 @@ class ThreadTest(unittest.TestCase):
                 mock.patch.object(hz.freqtrade_bridge, "offene_trades") as offen:
             hz._freqtrade_im_thread(ziel)
         offen.assert_not_called()
-        self.assertEqual(ziel.get_nowait(), ({"erreichbar": False, "fehler": "x"}, [], {}))
+        self.assertEqual(ziel.get_nowait(), ({"erreichbar": False, "fehler": "x"}, [], {}, {}))
 
     def test_fehler_bei_trades_wirft_nicht(self):
         ziel = queue.Queue()
@@ -120,8 +130,11 @@ class ReiterTest(unittest.TestCase):
             offen = [{"pair": "BTC/USDT", "profit_pct": -0.5}]
             zu = {"trades": [{"pair": "ETH/USDT", "is_open": False,
                               "close_date": "2026-09-29 10:00:00", "profit_pct": 1}]}
-            app._zeige_freqtrade(LAGE, offen, zu)
+            tage = {"data": [{"date": "2026-09-29", "abs_profit": -1}]}
+            app._zeige_freqtrade(LAGE, offen, zu, tage)
             root.update()
+            self.assertTrue(app.c_ft.find_all())
+            self.assertEqual(app.ft_tage, [("29.09.", -1.0, 0)])
             self.assertEqual(len(app.t_ft_offen.get_children()), 1)
             self.assertEqual(len(app.t_ft_zu.get_children()), 1)
             self.assertIn("Probebetrieb", app.l_ft.cget("text"))
