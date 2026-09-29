@@ -655,10 +655,16 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True):
                            "'python moondev_historie.py --funding %s'"
                            % (spur, ",".join(instrumente)))
 
-    # Der Lauf geht so weit, wie die KUERZESTE Reihe traegt. Ein Instrument mit
-    # kurzer Historie (HYPE ab 2025-05-30) wuerde den ganzen Lauf verkuerzen -
-    # deshalb wird es benannt und ausgelassen, nicht still mitgerechnet.
-    lang = {i: r for i, r in reihen.items() if len(r) >= 1000}
+    # Das laengste Instrument gibt den Zeitraum vor; kurze Reihen fallen raus.
+    # Der Grund gehoert in die Antwort: ein stillschweigend gekuerzter Lauf
+    # sieht aus wie ein langer.
+    # Nicht "irgendwie lang genug", sondern: so lang wie der laengste Lauf
+    # hergibt. HYPE liefert erst ab 2025-05-30 (2924 Saetze gegen 6294) und
+    # wuerde den ganzen Lauf auf 2,7 Jahre kuerzen. Solche Reihen fallen raus
+    # und werden BENANNT - eine stillschweigend gekuerzte Messung sieht wie
+    # eine lange aus.
+    lang_grenze = 0.8 * max(len(r) for r in reihen.values())
+    lang = {i: r for i, r in reihen.items() if len(r) >= lang_grenze}
     zu_kurz = sorted(set(reihen) - set(lang))
     if not lang:
         raise RuntimeError("keine Funding-Reihe mit ausreichender Laenge")
