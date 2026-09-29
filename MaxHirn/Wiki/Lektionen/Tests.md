@@ -113,8 +113,44 @@ sie einzeln. Nachweis: `pythonw.exe`-Prozesse danach **10** (Treiberpaar + 8 Age
 
 ## 7. Laufender Stand
 
-Agenten/Handel, `discover -s tests -t tests`: **418 Tests, 2 vorbestehende rote**
-(21.09.2026) — `test_risikovorfilter.EinbauTest` (festes Datum, s. o.) und
-`test_telegram_freigabe.WiedervorlageImLaufTest` (rechnet mit einer offenen ANFRAGE,
-bekommt seit AUTO_FREIGABE aber eine offene FREIGABE). Vor jeder Aussage
-„durch die Aenderung rot" per A/B gegen `HEAD` gegenpruefen.
+Agenten/Handel, `discover -s tests -t tests`: **890 Tests, 1 roter** (29.09.2026,
+nach dem Umbau unten wieder gruen) — die vier roten vom 29.09. waren alle
+**kaputte Pruefungen, keine Codeprobleme**:
+
+| Test | Fehler | Ursache |
+|---|---|---|
+| `test_handelszentrale_bindung.NamensfalleTest` | Modulname doppelt | `historie` lag zweimal im Suchraum → `historie_binance.py` |
+| `test_omniquant_fassung.LadeBerichtTest` (2) | Uhrzeitbombe | festes Datum im Fixture, „Alter < 26 h" kippte nach 26 h |
+| `test_replay.FensterTest` | Laufzeitvergleich | 0,97 / 0,93 auf zwei Durchgaengen — misst Maschinenlast, nicht die Regel |
+| `test_moondev_dauerlauf.StartStoppTest` | Agent tot nach 6 s | Rate-Limit des Datenanbieters, kein Treiberfehler (s. § 8) |
+
+Vor jeder Aussage „durch die Aenderung rot" per A/B gegen `HEAD` gegenpruefen.
+
+## 8. Den Start pruefen, nicht das Ueberleben
+
+Ein Test, der von einem **fremden Dienst** abhaengt, meldet dessen Ausfaelle als
+Codeproblem. `test_moondev_dauerlauf` verlangte „der Agent laeuft nach 6 Sekunden
+noch"; in der vollen Suite (drei Dauerlauf-Stufen parallel) fiel er um, einzeln
+lief er gruen. Die Agenten sterben im Normalfall an der Gratis-Grenze ihres
+Datenanbieters (CoinGecko HTTP 429, gemessen 21.09.2026) — das ist erwartetes
+Verhalten, kein Fehler des Treibers.
+
+Muster: **die Entscheidung als reine Funktion herausziehen** und vier Faelle
+unterscheiden, statt „lebt / lebt nicht" zu einer Ja-Nein-Frage zu machen:
+
+```python
+def starturteil(self, name, code, log):
+    if code is None:              return "laeuft"
+    if code in self.STARTERFEHLER: return "startfehler"    # 0xC0000135 u. a.
+    if not (log.exists() and log.stat().st_size > 0):
+        return "startproblem"     # tot und kein Log-Byte: Aufruf stimmt nicht
+    return "laufzeitende"         # gestorben, hat aber gearbeitet: Normalfall
+```
+
+Nur `startfehler` und `startproblem` lassen den Test fehlschlagen. Dazu gehoert
+die **Gegenprobe** auf die reine Funktion — ohne sie ist nicht belegt, dass der
+Test ueberhaupt rot werden kann. Und: Warten auf ein Merkmal (Prozess lebt ODER
+Log hat Inhalt, bis 15 s) statt auf eine feste Sekundenzahl.
+
+Dasselbe gilt fuer den Aufraeumteil: er gehoert ins `finally`, sonst bleiben nach
+einem fehlgeschlagenen Test Waisen stehen (Leak-Muster vom 21.09.2026, § 6).
