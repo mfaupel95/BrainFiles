@@ -49,6 +49,9 @@ def lade_vorschau(pfad):
     if (not isinstance(d, dict) or d.get("art") != "urteile-vorschau"
             or not isinstance(d.get("spuren"), dict)):
         return None
+    for e in d["spuren"].values():
+        if isinstance(e, dict) and not isinstance(e.get("bestanden"), (bool, type(None))):
+            return None
     return d
 
 
@@ -68,7 +71,7 @@ def vorschau_zeilen(daten):
         neu = e.get("bestanden")
         wechsel = "%s → %s" % (_wert(e.get("alt")),
                                "bleibt" if neu is None else _wert(neu))
-        zeilen.append((spur, URTEIL_TEXT.get(neu, "?"), wechsel,
+        zeilen.append((spur, URTEIL_TEXT.get(neu) if isinstance(neu, (bool, type(None))) else "?", wechsel,
                        str(e.get("urteil") or "")))
     return zeilen
 
@@ -144,10 +147,20 @@ class EintragenDialog(ZeitDialog):
                   foreground="#555555").pack(anchor="w", pady=(6, 0))
         knoepfe = ttk.Frame(i)
         knoepfe.pack(anchor="e", pady=(10, 0))
-        ttk.Button(knoepfe, text="Ja, eintragen",
-                   command=lambda: self.fertig("ja")).pack(side="left", padx=4)
-        ttk.Button(knoepfe, text="Abbrechen",
-                   command=lambda: self.fertig("abgebrochen")).pack(side="left", padx=4)
+        # Kein Tab-Fokus auf "Ja": Tab/Leertaste bestaetigen nie, den Anfangsfokus
+        # hat "Abbrechen".
+        self.k_ja = ttk.Button(knoepfe, text="Ja, eintragen", takefocus=0,
+                               command=lambda: self.fertig("ja"))
+        self.k_ja.pack(side="left", padx=4)
+        self.k_abbruch = ttk.Button(knoepfe, text="Abbrechen",
+                                    command=lambda: self.fertig("abgebrochen"))
+        self.k_abbruch.pack(side="left", padx=4)
+
+    def zeige_modal(self):
+        self.grab_set()
+        self.k_abbruch.focus_set()
+        self.wait_window()
+        return self.ergebnis
 
 
 # --- der Bereich -----------------------------------------------------------
@@ -256,7 +269,16 @@ class UrteileBereich(ttk.Frame):
         antwort = self.dialog(self, aenderungen(daten)).zeige_modal()
         # Der Dialog kann bis zu 120 s offen gewesen sein: noch einmal pruefen.
         erlaubt, grund = darf_eintragen(self.datei, self.daten, self.uhr())
-        if antwort != "ja" or not erlaubt or self.datei != datei:
+        if antwort == "ja" and (self.datei != datei
+                                or (erlaubt and lade_vorschau(datei) != self.daten)):
+            # Neue Vorschau oder Datei veraendert: nur eintragen, was die Tabelle zeigt.
+            if self.datei == datei:
+                self.datei, self.daten = None, None
+            self.w_ergebnis.config(
+                text="Vorschau-Datei hat sich geändert — neu rechnen")
+            self._knoepfe()
+            return
+        if antwort != "ja" or not erlaubt:
             text = "Urteile nicht eingetragen — nichts geschrieben"
             if antwort == "ja" and grund:
                 text += " (%s)" % grund
@@ -272,6 +294,10 @@ class UrteileBereich(ttk.Frame):
         self._knoepfe()
 
     def _eintragen_fertig(self, daten):
+        if daten.get("abgebrochen"):
+            self.w_ergebnis.config(text="abgebrochen — Stand der wachen.json prüfen")
+            self._knoepfe()
+            return
         self.w_ergebnis.config(text=ergebnis_zeile(daten.get("exit_code"),
                                                    daten.get("ausgabe", "")))
         self._knoepfe()

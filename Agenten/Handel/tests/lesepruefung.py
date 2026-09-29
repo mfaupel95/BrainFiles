@@ -22,7 +22,7 @@ VERBOTEN = {
 }
 OPEN_MODULE = {"io", "codecs"}
 PFAD_IMMER = {"write_text", "write_bytes", "mkdir", "unlink", "touch", "rmdir"}
-PFAD_EIN_ARGUMENT = {"rename", "replace"}       # str/datetime.replace: nie genau 1 Positionsarg
+PFAD_EIN_ARGUMENT = {"rename", "replace"}       # str/datetime.replace: kein Fund
 OBJEKT_SCHREIBEN = {"write", "writelines"}
 
 
@@ -101,7 +101,8 @@ def schreibstellen(pfad):
         elif mod is None:
             if name in PFAD_IMMER:
                 was = ".%s" % name
-            elif name in PFAD_EIN_ARGUMENT and len(k.args) == 1 and not k.keywords:
+            elif name in PFAD_EIN_ARGUMENT and len(k.args) + len(k.keywords) == 1 and (
+                    k.args or k.keywords[0].arg == "target"):
                 was = ".%s" % name
             elif name == "open" and _modus_schreibt(k, 0):
                 was = ".open(...)"

@@ -111,6 +111,14 @@ class Rein(unittest.TestCase):
             p.write_text(json.dumps(dict(VORSCHAU, art="anderes")), encoding="utf-8")
             self.assertIsNone(lu.lade_vorschau(p))
             self.assertIsNone(lu.lade_vorschau(Path(tmp) / "fehlt.json"))
+            for falsch in ([1], {"a": 1}, "ja", 1):
+                spuren = {"gitter": dict(VORSCHAU["spuren"]["gitter"], bestanden=falsch)}
+                p.write_text(json.dumps(dict(VORSCHAU, spuren=spuren)), encoding="utf-8")
+                self.assertIsNone(lu.lade_vorschau(p), falsch)
+
+    def test_anzeige_mit_fremdem_typ_gibt_fragezeichen(self):
+        spuren = {"gitter": dict(VORSCHAU["spuren"]["gitter"], bestanden=[1])}
+        self.assertEqual(lu.vorschau_zeilen(dict(VORSCHAU, spuren=spuren))[0][1], "?")
 
     def test_zeilen_und_aenderungen(self):
         self.assertEqual(lu.vorschau_zeilen(VORSCHAU), [
@@ -179,8 +187,9 @@ class Lesepruefung(unittest.TestCase):
             q.write_text("x.replace(tzinfo=None)\nx.replace(1, tzinfo=None)\n",
                          encoding="utf-8")
             self.assertEqual(lesepruefung.schreibstellen(q), [])
-            q.write_text("p.replace(q)\np.rename(q)\n", encoding="utf-8")
-            self.assertEqual(len(lesepruefung.schreibstellen(q)), 2)
+            q.write_text("p.replace(q)\np.rename(q)\np.replace(target=q)\n"
+                         "p.rename(target=q)\n", encoding="utf-8")
+            self.assertEqual(len(lesepruefung.schreibstellen(q)), 4)
 
     def test_eingebunden(self):
         self.assertIn(lu.UrteileBereich, lbt.BEREICHE)
@@ -267,6 +276,75 @@ class Bereich(TkBasis):
         self.assertEqual(b.w_ergebnis.cget("text"), "geschrieben: gitter/wachen.json")
         self.assertIn("disabled", b.k_eintragen.state())    # Vorschau verbraucht
         self.assertEqual(b.tip_eintragen.text, "erst Vorschau rechnen")
+
+    def test_abgebrochener_eintragelauf_meldet_pruefen(self):
+        b, _datei = self._mit_vorschau()
+        b.eintragen()
+        name = self.st.gestartet[-1][0]
+        self.st.naechstes = ([], (self.ablage / "x.json", {
+            "name": name, "exit_code": -1, "abgebrochen": True, "ausgabe": ""}))
+        self.r._takt()
+        self.assertEqual(b.w_ergebnis.cget("text"),
+                         "abgebrochen — Stand der wachen.json prüfen")
+
+    def test_ausgetauschte_vorschau_datei_wird_nicht_eingetragen(self):
+        halter = []
+        def tausche():
+            d = json.loads(halter[0].read_text(encoding="utf-8"))
+            d["spuren"]["gitter"]["urteil"] = "untergeschoben"
+            halter[0].write_text(json.dumps(d), encoding="utf-8")
+        self.nebenbei = tausche
+        b, datei = self._mit_vorschau()
+        halter.append(datei)
+        n = len(self.st.gestartet)
+        b.eintragen()
+        self.assertEqual(len(self.st.gestartet), n)
+        self.assertEqual(b.w_ergebnis.cget("text"),
+                         "Vorschau-Datei hat sich geändert — neu rechnen")
+
+    def test_ja_nach_neuer_vorschau_startet_nichts(self):
+        self.nebenbei = lambda: setattr(self.b, "datei", Path("andere-vorschau.json"))
+        self.b, _datei = self._mit_vorschau()
+        n = len(self.st.gestartet)
+        self.b.eintragen()
+        self.assertEqual(len(self.st.gestartet), n)
+        self.assertEqual(self.b.w_ergebnis.cget("text"),
+                         "Vorschau-Datei hat sich geändert — neu rechnen")
+
+    def test_zukunftsstand_waehrend_des_dialogs(self):
+        self.nebenbei = lambda: setattr(self, "jetzt", JETZT - timedelta(minutes=10))
+        b, _datei = self._mit_vorschau()
+        n = len(self.st.gestartet)
+        b.eintragen()
+        self.assertEqual(len(self.st.gestartet), n)
+        self.assertEqual(b.w_ergebnis.cget("text"),
+                         "Urteile nicht eingetragen — nichts geschrieben "
+                         "(Vorschau liegt in der Zukunft)")
+
+    def test_esc_im_echten_dialog_bricht_ab_ohne_start(self):
+        class EscDialog(lu.EintragenDialog):
+            def zeige_modal(self):
+                self.after(30, lambda: self.event_generate("<Escape>", when="now"))
+                self.after(300, lambda: self.fertig("abgebrochen"))   # Netz
+                return super().zeige_modal()
+        self.antwort = None
+        b, _datei = self._mit_vorschau()
+        b.dialog = EscDialog
+        n = len(self.st.gestartet)
+        b.eintragen()
+        self.assertEqual(len(self.st.gestartet), n)
+        self.assertEqual(b.w_ergebnis.cget("text"),
+                         "Urteile nicht eingetragen — nichts geschrieben")
+
+    def test_dialog_ja_ohne_fokus_abbrechen_hat_ihn(self):
+        d = lu.EintragenDialog(self.root, ["gitter/wachen.json: x"])
+        self.assertIn(str(d.k_ja.cget("takefocus")), ("0",))
+        gefragt = []          # ohne Bildschirmfokus: wer bekommt focus_set?
+        d.k_abbruch.focus_set = lambda: gefragt.append("abbruch")
+        d.k_ja.focus_set = lambda: gefragt.append("ja")
+        d.after(30, lambda: d.fertig("abgebrochen"))
+        d.zeige_modal()
+        self.assertEqual(gefragt, ["abbruch"])
 
     def test_abbrechen_schreibt_nichts(self):
         self.antwort = "abgebrochen"
