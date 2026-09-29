@@ -45,7 +45,13 @@ TICKER = [{"symbol": "AAAUSDT", "quoteVolume": "900"},
           {"symbol": "CCCUSDT", "quoteVolume": "500"},
           {"symbol": "DDDETH", "quoteVolume": "9999"}]
 
+# Ein echtes Paar mit chinesischem Namen: Binance fuehrt solche Symbole
+# (29.09.2026 gemessen: 币安人生USDT, 牛来USDT). So eines ist nicht abrufbar.
+CHINESISCH = "币安人生USDT"
+
 INFO = {"symbols": [
+    {"symbol": CHINESISCH, "status": "TRADING", "baseAsset": "币安人生",
+     "quoteAsset": "USDT"},
     {"symbol": "AAAUSDT", "status": "TRADING", "baseAsset": "AAA", "quoteAsset": "USDT"},
     {"symbol": "BBBUSDT", "status": "TRADING", "baseAsset": "BBB", "quoteAsset": "USDT"},
     {"symbol": "CCCUSDT", "status": "BREAK", "baseAsset": "CCC", "quoteAsset": "USDT"},
@@ -87,6 +93,27 @@ class UniversumTest(DatenschichtTest):
         mh.abruf_json = Attrappe({"/ticker/24hr": [], "/exchangeInfo": INFO})
         with self.assertRaises(RuntimeError):
             mh.universum(anzahl=10)
+
+    def test_paare_mit_nicht_abrufbarem_namen_fliegen_raus(self):
+        """Ein einziges solches Paar reisst sonst den GANZEN Abruf mit.
+
+        Binance fuehrt Paare mit chinesischen Namen; urllib kann die Adresse
+        nicht kodieren ("'ascii' codec can't encode characters in position
+        26-27"), und der Fehler trifft dann ein voellig anderes Symbol.
+        """
+        mh.abruf_json = Attrappe({"/ticker/24hr": TICKER,
+                                  "/exchangeInfo": INFO})
+        sym = mh.universum(anzahl=10)
+        self.assertNotIn(CHINESISCH, sym)
+        self.assertNotIn(CHINESISCH, mh._basis)
+        self.assertEqual([CHINESISCH], mh._verworfen)
+
+    def test_das_uebersprungene_paar_steht_im_stand(self):
+        """Nicht still weglassen: der Stand nennt es."""
+        mh.abruf_json = Attrappe({"/ticker/24hr": TICKER,
+                                  "/exchangeInfo": INFO})
+        mh.universum(anzahl=10)
+        self.assertEqual([CHINESISCH], mh.stand()["verworfen"])
 
     def test_basis_kommt_aus_exchangeinfo_nicht_aus_dem_namen(self):
         """Der Basiswert steht in exchangeInfo - abgeschnitten waere geraten."""
@@ -256,6 +283,96 @@ class BestandTest(DatenschichtTest):
     def test_kurs_bleibt_die_letzte_kerze_wenn_der_zeitpunkt_danach_liegt(self):
         """Im Nachlauf ist das die LAUFENDE Kerze, nicht die naechste."""
         self.assertEqual(14.0, self.b.kurs("AAAUSDT", 999999999999))
+
+
+class StundentafelTest(DatenschichtTest):
+    """Der Stundenquerschnitt fuer die Signalwelle.
+
+    26 Kerzen, Kurs steigt je Stunde um 1: damit ist jede Aenderung
+    nachrechenbar und keine Zahl stammt aus dem Code selbst.
+    """
+
+    def setUp(self):
+        super().setUp()
+        k = [[i * 3600000, 100.0 + i, 100.0 + i, 100.0 + i, 100.0 + i, 10.0]
+             for i in range(26)]
+        mh.speichere_feed("AAAUSDT", "1H", k)
+        mh.speichere_feed("BBBUSDT", "1H", k)
+        self.b = mh.Bestand()
+        self.b.laden("1H")
+
+    def test_aenderung_1h_ist_schluss_gegen_vorstunde(self):
+        z = [x for x in self.b.tafel_stunde(25 * 3600000)
+             if x["symbol"] == "AAAUSDT"][0]
+        self.assertAlmostEqual((125.0 / 124.0 - 1.0) * 100.0,
+                               z["aenderung_1h"], places=6)
+
+    def test_aenderung_24h_geht_24_kerzen_zurueck(self):
+        z = [x for x in self.b.tafel_stunde(25 * 3600000)
+             if x["symbol"] == "AAAUSDT"][0]
+        self.assertAlmostEqual((125.0 / 101.0 - 1.0) * 100.0,
+                               z["aenderung_24h"], places=6)
+
+    def test_ohne_24_kerzen_vorlauf_kein_eintrag(self):
+        """Ein Wert aus drei Kerzen waere keine 24h-Aenderung - die Zeile
+        fehlt dann ganz, statt eine 3h-Zahl als 24h auszugeben."""
+        self.assertEqual([], self.b.tafel_stunde(5 * 3600000))
+
+    def test_volumen_24h_ist_die_summe_der_letzten_24_kerzen(self):
+        z = [x for x in self.b.tafel_stunde(25 * 3600000)
+             if x["symbol"] == "AAAUSDT"][0]
+        self.assertAlmostEqual(240.0, z["volumen_24h"], places=6)
+
+    def test_rang_beginnt_bei_eins(self):
+        self.assertEqual([1, 2], [z["rang"] for z in self.b.tafel_stunde(25 * 3600000)])
+
+    def test_top_begrenzt_die_liste(self):
+        self.assertEqual(1, len(self.b.tafel_stunde(25 * 3600000, top=1)))
+
+
+class FundingTest(DatenschichtTest):
+    def test_funding_zu_nimmt_den_letzten_satz_vor_dem_zeitpunkt(self):
+        """Nie den naechsten: das waere ein Blick in die Zukunft."""
+        reihe = [[0, 0.0001], [28800000, 0.0002], [57600000, 0.0003]]
+        self.assertEqual(0.0002, mh.funding_zu(reihe, 40000000))
+
+    def test_der_satz_gilt_ab_seinem_zeitstempel(self):
+        reihe = [[0, 0.0001], [28800000, 0.0002]]
+        self.assertEqual(0.0002, mh.funding_zu(reihe, 28800000))
+
+    def test_vor_dem_ersten_satz_gibt_es_keinen_wert(self):
+        self.assertIsNone(mh.funding_zu([[28800000, 0.0002]], 1000))
+
+    def test_funding_wird_entdoppelt_gespeichert(self):
+        mh.speichere_funding("BTC", [[0, 0.0001]])
+        mh.speichere_funding("BTC", [[0, 0.0001], [28800000, 0.0002]])
+        self.assertEqual(2, len(mh.lade_funding("BTC")))
+
+    def test_funding_steht_unter_dem_symbol_nicht_unter_dem_instrument(self):
+        """Eine Reihe je Symbol - sonst suchte die Funding-Spur im Leeren."""
+        self.assertTrue(mh.funding_datei("BTC").endswith("funding_BTCUSDT.json"))
+
+    def test_mark_preis_kommt_aus_der_stundenkerze(self):
+        mh.speichere_feed("BTCUSDT", "1H", [[0, 1, 1, 1, 50000.0, 10]])
+        self.assertEqual(50000.0, mh.mark_preis("BTCUSDT", 0))
+
+    def test_mark_preis_vor_der_ersten_kerze_ist_None(self):
+        mh.speichere_feed("BTCUSDT", "1H", [[7200000, 1, 1, 1, 50000.0, 10]])
+        self.assertIsNone(mh.mark_preis("BTCUSDT", 0))
+
+    def test_funding_dict_hat_genau_die_form_der_spur(self):
+        mh.speichere_funding("BTC", [[0, 0.0003]])
+        mh.speichere_feed("BTCUSDT", "1H", [[0, 1, 1, 1, 50000.0, 10]])
+        self.assertEqual({"funding_rate": 0.0003, "mark_price": 50000.0},
+                         mh.funding_dict("BTC", 0))
+
+    def test_funding_dict_ohne_satz_ist_None_statt_einer_leeren_form(self):
+        mh.speichere_feed("BTCUSDT", "1H", [[0, 1, 1, 1, 50000.0, 10]])
+        self.assertIsNone(mh.funding_dict("BTC", 0))
+
+    def test_funding_stand_zaehlt_die_saetze(self):
+        mh.speichere_funding("BTC", [[0, 0.0001], [28800000, 0.0002]])
+        self.assertEqual(2, mh.funding_stand()["BTCUSDT"]["saetze"])
 
 
 class NachlaufTest(DatenschichtTest):
