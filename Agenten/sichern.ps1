@@ -163,8 +163,12 @@ $start = Get-Date
 # /XJ ueberspringt Junctions: BrainFiles\Modelle zeigt auf O:\Modelle, und der
 # Vault selbst kann in einem Worktree gespiegelt sein. Das Archiv ist hier keine
 # Junction mehr (echter Umzug 07.09.2026) - unter $quelle liegt davon nichts.
+# Seit 29.09.2026 pfadgenau ausgeschlossen, zusammen rund 14 GB: Hermes\models
+# und Hermes\runtimes (GGUF-Gewichte und Laufzeiten, gehoeren nach Modelle\),
+# Handel\nautilus-rust\target (Rust-Build-Cache, cargo baut ihn neu) und
+# _Backups (Notfallkopien von state.db; das Original geht mit).
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile (Join-Path $quelle 'Agenten\Hermes\cache') (Join-Path $quelle 'Agenten\Hermes\cron\output') /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. Agenten\Hermes\cache ist Wegwerf- und Probebereich (transiente Test-Klone, Wache-Zustaende): Entstehen und Vergehen waehrend des Laufs und liessen robocopy 21.09.2026 mit Code 11 und Exitcode 1 enden, obwohl keine Nutzdatei fehlte. Agenten\Hermes\cron\output ist derselbe Fall (Cron-Ausgaben, alle 6 min neu, alte werden weggeraeumt - gemessen 22.09.2026, 838 Dateien)
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile (Join-Path $quelle 'Agenten\Hermes\cache') (Join-Path $quelle 'Agenten\Hermes\cron\output') (Join-Path $quelle 'Agenten\Hermes\models') (Join-Path $quelle 'Agenten\Hermes\runtimes') (Join-Path $quelle 'Agenten\Handel\nautilus-rust\target') (Join-Path $quelle 'Agenten\_Backups') /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. Agenten\Hermes\cache ist Wegwerf- und Probebereich (transiente Test-Klone, Wache-Zustaende): Entstehen und Vergehen waehrend des Laufs und liessen robocopy 21.09.2026 mit Code 11 und Exitcode 1 enden, obwohl keine Nutzdatei fehlte. Agenten\Hermes\cron\output ist derselbe Fall (Cron-Ausgaben, alle 6 min neu, alte werden weggeraeumt - gemessen 22.09.2026, 838 Dateien)
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: die Archivdaten (Bilder/Dokumente/Musik/Videos/Software/
