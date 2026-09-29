@@ -59,6 +59,39 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-185 — Klon-.env-Kopien veralten ohne Nachweis (Kopien liegen seit 30.09.2026 in .sicherung)**
+      Kontext: Von 47 Klonen unter `Werkstatt/Repos` tragen 7 eine `.env`, keine
+      davon war gesichert (beide Sicherungen klammern `Werkstatt` per `/XD` aus,
+      und die Klartext-Pruefung in `sichern.ps1` sieht sie deshalb ebenfalls
+      nicht). Sechs Kopien liegen jetzt byte-gleich in
+      `Agenten/Hermes/.sicherung/` (`moondev-env.bak-20260930`,
+      `moondev-src-env.bak-20260930`, `openmontage-env.bak-20260930`,
+      `openterminalui-env.bak-20260930`, `omniroute-werkstatt-env.bak-20260930`,
+      `omniroute-home-env.bak-20260930`), Bestandsaufnahme in
+      `.sicherung/klon-envs-20260930.md`, Wiki-Abschnitt in
+      `Wiki/Betrieb/Sicherung-und-Laufwerke.md`. Aendert Max eine dieser
+      `.env`, veraltet die Kopie still - bisher merkt das niemand.
+      Naechster Schritt: entscheiden, ob ein Schritt in `sichern.ps1` (Kopien
+      beim Lauf mitziehen und Abweichung melden) oder eine eigene Wache gebaut
+      wird; bis dahin ist die Kopie ein Stand vom 30.09.2026.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Agenten/sichern.ps1`, `Agenten/Hermes/.sicherung/`, `Werkstatt/Repos/*/.env`
+- [ ] **T-186 — `C:\Users\faupe\.omniroute\` liegt in keiner Sicherungsquelle (1,2 GB)**
+      Kontext: Der OmniRoute-Dienst haelt seinen Zustand unter
+      `C:\Users\faupe\.omniroute\`: `storage.sqlite` (101 MB, Anbieter-
+      Verbindungen und Kosten), `db_backups/`, `logs/`, `plugins/` - und eine
+      `.env` mit `STORAGE_ENCRYPTION_KEY`, `JWT_SECRET`, `API_KEY_SECRET`. Kein
+      Sicherungsskript erfasst diesen Pfad (Quellen sind `MaxHirn/` und
+      `Agenten/`), und der Schluessel entschluesselt die Verbindungen in der
+      Datenbank: ohne ihn ist der Router nach einem Wiederaufbau leer, obwohl
+      die Datei da ist. Die `.env` allein liegt seit 30.09.2026 als Kopie in
+      `Agenten/Hermes/.sicherung/omniroute-home-env.bak-20260930`; die Datenbank
+      (mit laufendem Router nur im WAL-Stand kopierbar) ist NICHT gesichert.
+      Naechster Schritt: entscheiden, ob `storage.sqlite` in die taegliche
+      Sicherung aufgenommen wird (Kopie im laufenden Betrieb, `db_backups/`
+      existiert bereits) oder ob ein Router-Ausfall bewusst hingenommen wird.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `C:\Users\faupe\.omniroute\`, `Agenten/sichern.ps1`
 - [ ] **T-184 — Aufgabe 'MaxHirn-Ausserhaus-Kopie' ist nicht registriert (Doku sagt taeglich 21:30)**
       Kontext: Commit 12f3433 (30.09.2026, T-182) sagt, die Ausser-Haus-Kopie
       erneuere sich taeglich 21:30 ueber `Routinen/ausserhaus-kopie.ps1`. Der

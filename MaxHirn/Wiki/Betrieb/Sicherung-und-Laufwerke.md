@@ -35,6 +35,35 @@ summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junc
 Mediendatei ist um 20:01 auch auf `G:` kaputt. Bei robocopy immer `$LASTEXITCODE` pruefen
 (>= 8 = Fehler). `index.py`, `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt starten.
 
+## Zugangsdateien in Klonen sind nicht mitgesichert (30.09.2026)
+
+Beide Sicherungen klammern `Werkstatt` per `/XD` aus — damit liegt **jede**
+`.env` in einem geklonten Fremd-Repo ausserhalb der Sicherung, und die
+Klartext-Pruefung in `sichern.ps1` sieht sie ebenfalls nicht (dieselbe
+Ausschlussliste). Gemessen am 30.09.2026: von 47 Klonen unter `Werkstatt/Repos`
+tragen 7 eine `.env`, vier davon mit echten Zugangswerten
+(`moon-dev-ai-agents` samt `src/`, `openmontage`, `OpenTerminalUI`).
+
+Ablage der Kopien (in `Agenten/` und damit in beiden Sicherungen, in Git
+gesperrt): `Agenten/Hermes/.sicherung/<repo>-env.bak-JJJJMMTT`. Die
+Bestandsaufnahme mit Namen und Laengen steht in
+`Agenten/Hermes/.sicherung/klon-envs-20260930.md`.
+
+Zwei Merksaetze:
+
+- **Die Sicherung ist nicht die einzige Stelle, die `Werkstatt` ausblendet** —
+  wer "wird das gesichert?" fragt, muss die Ausschlussliste mitlesen, nicht nur
+  das Zielverzeichnis.
+- **Eine alte Kopie ist kein Beleg:** unter `Agenten/_Backups/` lagen aeltere
+  `.env`-Kopien (moondev 24.09., openmontage 22.09.), kleiner als der heutige
+  Stand und in einem Ordner, den die Sicherung ihrerseits ueberspringt.
+
+Ausserdem ausserhalb beider Quellen: `C:\Users\faupe\.omniroute\` (1,2 GB).
+Die `.env` dort traegt `STORAGE_ENCRYPTION_KEY`, `JWT_SECRET` und
+`API_KEY_SECRET`; der Schluessel entschluesselt die Anbieter-Verbindungen in
+`storage.sqlite` — ohne ihn ist der Router nach einem Wiederaufbau leer.
+Eine Kopie liegt seit 30.09.2026 in `.sicherung/omniroute-home-env.bak-20260930`.
+
 ## Junctions
 
 `BrainFiles\Modelle` → `O:\Modelle`, `BrainFiles\Werkstatt` → `O:\Werkstatt`,
