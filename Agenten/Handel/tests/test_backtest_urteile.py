@@ -135,6 +135,22 @@ class Schreiben(Basis):
         d = json.loads(p.read_text("utf-8"))
         self.assertIn("Zitat", d["freigabe"]["backtest_urteil"])
 
+    def test_abbruch_vor_dem_tausch_laesst_die_alte_datei_ganz(self):
+        # Ein Abbruch (taskkill, voller Datentraeger) mitten im Schreiben darf
+        # keine halbe wachen.json hinterlassen: erst .tmp, dann os.replace.
+        p = self._wachen(WACHEN_MIT_BACKTEST)
+        with patch.object(bu.os, "replace", side_effect=OSError("abgebrochen")):
+            with self.assertRaises(OSError):
+                bu.freigabe_schreiben("gitter", True, "bestanden")
+        self.assertEqual(p.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+        self.assertEqual(list(p.parent.glob("*.tmp")), [], "kein .tmp-Rest")
+
+    def test_nach_dem_schreiben_bleibt_kein_tmp_liegen(self):
+        p = self._wachen(WACHEN_MIT_BACKTEST)
+        bu.freigabe_schreiben("gitter", True, "bestanden")
+        self.assertTrue(json.loads(p.read_text("utf-8"))["freigabe"]["backtest_bestanden"])
+        self.assertEqual(list(p.parent.glob("*.tmp")), [])
+
 
 class UrteileLesen(Basis):
     """Die drei Ausgabeformen der Motoren."""
