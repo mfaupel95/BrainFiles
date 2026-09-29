@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4.1-flash
+  default: deepseek/deepseek-v4-flash-0731
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -1794,6 +1794,7 @@ agent:
   personalities: {}
   reasoning_effort: medium
   verbose: false
+  verify_on_stop: true
 terminal:
   backend: local
   cwd: C:\Users\faupe\documents\BrainFiles
@@ -1847,8 +1848,10 @@ terminal:
   container_memory: 5120
   container_disk: 51200
   container_persistent: true
-  docker_mount_cwd_to_workspace: false
+  docker_mount_cwd_to_workspace: true
   lifetime_seconds: 300
+  docker_run_as_host_user: true
+  docker_snap_compat: true
 web:
   backend: nous
 browser:
@@ -1856,7 +1859,7 @@ browser:
   allow_private_urls: true
   use_real_profile: true
   extension_control:
-    enabled: false
+    enabled: true
   cloud_provider: local
 checkpoints:
   enabled: true
@@ -1880,8 +1883,8 @@ tool_loop_guardrails:
 compression:
   enabled: true
   progress_notices: false
-  threshold: 1.6
-  target_ratio: 0.4
+  threshold: 0.6
+  target_ratio: 0.6
   protect_last_n: 6
   min_tail_user_messages: 1
   max_attempts: 3
@@ -1891,8 +1894,9 @@ compression:
   protect_first_n: 3
   codex_gpt55_autoraise: true
   codex_app_server_auto: native
-  codex_responses_native: false
+  codex_responses_native: true
   idle_compact_after_seconds: 0
+  checkpoint_required: false
 prompt_caching:
   cache_ttl: 5m
 auxiliary:
@@ -1901,9 +1905,8 @@ auxiliary:
     provider: auto
     model: ''
   compression:
-    provider: omniroute
-    model: 'auto/best-free'
-    base_url: http://localhost:20128/v1
+    provider: llamacpp
+    model: 'Qwen3.6-35B-A3B-UD-Q4_K_M'
   skills_hub:
     provider: auto
     model: ''
@@ -1933,8 +1936,16 @@ display:
   long_running_notifications: true
   tool_progress: all
   message_reactions: true
+  tui_native: true
+  tui_auto_resume_recent: true
+  bell_on_prompt: true
+  show_cost: true
+  battery: true
+  focus_view: true
+  user_message_preview:
+    last_lines: 20
 dashboard:
-  theme: midnight
+  theme: rose
   font: ibm-plex-mono
 tts:
   provider: gemini
@@ -1963,6 +1974,7 @@ memory:
   user_char_limit: 237500
   nudge_interval: 10
   provider: ''
+  write_approval: true
 delegation:
   model: deepseek/deepseek-v4-flash-0731
   provider: nous
@@ -1973,6 +1985,11 @@ delegation:
       model: claude-opus-5
   max_iterations: 250
   reasoning_effort: medium
+  independent_completions: true
+  max_spawn_depth: 3
+  oneshot_max_children: 5
+  subagent_auto_approve: true
+  surface_child_process_notifications: true
 moa:
   presets:
     default:
@@ -2098,12 +2115,17 @@ moa:
     - provider: anthropic
       model: claude-opus-4-8
       enabled: false
+  save_traces: true
 skills:
   creation_nudge_interval: 15
+  guard_agent_created: true
+  write_approval: true
 curator:
   enabled: true
-  interval_hours: 168
-  consolidate: false
+  interval_hours: 48
+  consolidate: true
+  backup:
+    keep: 5
 timezone: Europe/Berlin
 approvals:
   mode: smart
@@ -2131,6 +2153,7 @@ plugins:
     - one-skill-to-rule-them-all
     - self-hosted
   disabled: []
+  auto_apply: true
 security:
   allow_private_urls: true
 kanban:
@@ -2170,13 +2193,15 @@ updates:
   non_interactive_local_changes: stash
 computer_use:
   backend: cua
+  cua_telemetry: true
+  autostart: true
 proxy:
-  enabled: false
+  enabled: true
 desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: true
-_config_version: 46
+_config_version: 49
 a2a_agents:
   omniroute:
     auth:
@@ -2460,3 +2485,7 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+max_live_sessions: 6
+mcp_single_query_discovery_timeout: 14
+cron:
+  allow_agent_scheduling: true
