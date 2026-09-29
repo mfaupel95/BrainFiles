@@ -58,13 +58,20 @@ git status) und keiner ist zu Ende gefuehrt
    | Fremdarbeit im Baum | Aenderung stammt nicht aus dieser Sitzung | < 10 min: liegen lassen und melden. Sonst eigener Commit, `--author="Andere Sitzung <fremd@local>"` |
    | Doku widerspricht dem System | Notiz/Skill behauptet etwas Pruefbares | Beleg am laufenden System holen, dann die Doku ziehen (nie umgekehrt) |
    | Aufgabenliste | TASKS.md/Routinen.md gegen den Ist-Stand | Erledigtes nach `## Erledigt` mit Belegsatz, Neues sofort eintragen |
+   | **Pruefer-Fehlalarm** | ein Pruefer meldet seit Tagen dasselbe („Herzschlag 204 min alt - laeuft die Spur ueberhaupt?“, „0 statt 180 min“) | ZUERST die gemeldete Zahl SELBST messen. Stimmt sie, ist der Fehler im PRUEFER, nicht im Geprueften - dann den Pruefer ziehen (er liest den falschen Zustandszweig, den falschen Ordner oder eine Zahl, die nie etwas bedeutete) und NIE die Spur „reparieren“. Eine Dauerwarnung ohne Bedeutung ist der Anfang, an dem echte Warnungen ueberlesen werden |
 
 3. **Jeder Fix braucht Vorher/Nachher.** Ein Befund ohne Reproduktion ist ein
    Verdacht. Bei Textdateien danach `git diff --numstat`: wenige Zeilen = gewollt,
    ganze Datei = Zeilenenden oder Kodierung verstellt (dann
    `git checkout HEAD -- <datei>` und neu). Byte-genaue Aenderungen an CRLF-Dateien
-   immer mit `.bak-JJJJMMTT` und Gegenprobe (ohne die neue Zeile byte-identisch
-   zum Backup).
+ immer mit `.bak-JJJJMMTT` und Gegenprobe (ohne die neue Zeile byte-identisch
+ zum Backup).
+ Liegt die Ursache in der UMGEBUNG (geplante Aufgabe vs. Aufruf von Hand),
+ ist das Beweismittel ein PAAR: zweimal derselbe Aufruf in EINEM Prozess,
+ genau eine Variable geaendert - `mit X: exit 128`, `ohne X: exit 0`. Das Paar
+ ist der Beweis; ein einzelner Lauf zeigt nur, dass es gerade scheitert.
+ Geheimnisse dabei nie ausgeben: Wert im Prozess belassen
+ (`[Environment]::GetEnvironmentVariable('NAME','User')`), nur Laenge nennen.
 4. **Admin-Schritte sammeln, nicht einzeln fragen.** `Set-ScheduledTask`,
    `Register-ScheduledTask` und `Disable-ScheduledTask` verweigern aus einer
    normalen Sitzung (`Zugriff verweigert`, HRESULT 0x80070005). Alle faelligen
@@ -94,6 +101,9 @@ git status --porcelain                       # Baum
 powershell -File Agenten/mcp-sync-check.ps1  # MCP-Drift
 python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/sammeln.py
 git diff --numstat <datei>                   # 1/1 = gewollt, ganze Datei = Alarm
+git show HEAD:<pfad>                         # steht die eigene Aenderung schon drin?
+git log --oneline origin/master..master      # unpushed Commits vor dem Bericht
+grep -a -c "FEHLER 5" <robocopy-log>         # Beweislog mit Umlauten lesen
 git fsck --full                              # 0 error nach Baum-Operationen
 git remote set-head origin -a                # origin/HEAD nach Zweig-Loeschung
 powershell -Command "Get-ScheduledTask -TaskName 'MaxHirn-*' | Select TaskName,State"
@@ -128,6 +138,31 @@ hermes.exe curator usage                     # (PYTHONHOME/PYTHONPATH leeren)
   `git remote set-head origin -a` repariert.
 - **Kein `git add -A`.** Im Mehrsitzungsbetrieb zieht das fremde Arbeit mit; die
   Herkunft steht im Autorenfeld, nicht in der Nachricht.
+- **`index.lock` heisst meist „jemand committet gerade“.** Erst Alter UND echte
+  git-Prozesse zaehlen (`git.exe` OHNE `fsmonitor` in der CommandLine). Bei >0
+  WARTEN und denselben Commit wiederholen - die Sperre verschwindet von selbst.
+  Nur bei 0 echten Prozessen ist es ein Wrack, und dann wird sie UMBENANNT
+  (`Move-Item -Force`), nie geloescht.
+- **Sagt `git commit` „no changes added to commit“, obwohl `git add` eben lief**,
+  hat eine andere Sitzung die Datei in der Zwischenzeit committet. Nicht raten:
+  `git show HEAD:<pfad>` zeigt, ob die eigene Aenderung schon drin ist (dann nur
+  die Attribution falsch, der Code sicher). Eigenes, das laenger als 30 min
+  uncommittet liegt, zieht die Routine `fremdarbeit-einziehen` als
+  `fremd@local` nach master - Eigenes darum zuegig committen.
+- **Ein PR verlangt einen Zweig - im Haus gibt es nur `master`.** „Branch pushen
+  und PR oeffnen“ ist hier ohne Regelbruch nicht umsetzbar (`AGENTS.md`: keine
+  weiteren Zweige, privates Repo, kein Reviewer). Statt dessen Conventional
+  Commits auf `master`, pushen, und im Bericht sagen, warum kein PR. Der einzige
+  sinnvolle PR-Kandidat ist ein fremder `arbeit/<kuerzel>`-Worktree.
+- **Beweislogs enden oft als „Binaerdatei“.** robocopy-Ausgaben mit Umlauten
+  lassen den Treffer unlesbar erscheinen: den Auszug als Text erzwingen
+  (`grep -a`). Und einen Trockenlauf NIE an einem Auschnitt beurteilen - die
+  Zahl der betroffenen Zeilen ZAEHLEN (7 gesehen, 144 gewirkt).
+- **Abgeleitete Caches gehoeren in die AUSSCHLUSSLISTE der Sicherung, nicht in
+  die Sicherung.** Ein gesperrtes Build-Artefakt (uv editable-Wheel) kostet sonst
+  jede Nacht einen roten Exitcode (`FEHLER 5`, robocopy-Code 11), ohne dass eine
+  Datei fehlt. Beleg: `FEHLER 5` = 0 im eigenen Log UND der Pfad steht in
+  `Ausgeschl. Verzeichnisse`.
 - **Nicht jeder Nicht-0-Wert ist ein Fehler.** Dauerlaeufe enden beim Herunterfahren
   mit 267014/1073807364, `2147946720` heisst „laeuft schon“. Ein Befund ist das erst
   mit `ENDE FEHLER` im eigenen Protokoll oder ohne Antwort auf den Port.
