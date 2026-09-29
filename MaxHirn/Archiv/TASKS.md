@@ -59,6 +59,66 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-179 — Handels-Dauerlauf fiel 20:59 aus (0xC0000142), Ursache offen**
+      Kontext: Alle drei Stufen (Basis/mittel/hoch) starben am 29.09. ~20:59: die Kindprozesse kamen nicht hoch (Rueckgabe 3221225794 = 0xC0000142, DLL-/Speicher-Initialisierung). Die Waechter starteten neu (23:05/23:07/23:08/23:20), aber die Neustarts starben ebenfalls. Belegt: 87 verwaiste node-Prozesse aus Hermes	ools (abgebrochener Build, alle seit 21:13:59, Eltern = Gateway 73852 mit 70 Kindern) + Commit frei 0 GB. Behoben 29.09. 23:23-23:34: 87 node-Waisen beendet, alle drei Stufen manuell neu gestartet - laufen wieder stabil (Zyklen 23:35). Die eigentliche Ursache des Todes um 20:59 (vor dem node-Waisen-Start 21:13) ist NICHT geklaert.
+      Naechster Schritt: Beobachten, ob der Dauerlauf stabil bleibt; wenn er wieder mit 0xC0000142 stirbt, Commit/Seitenfile zum Tatzeitpunkt messen und die Waisen-Quelle (Gateway-Build) identifizieren.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
+
+- [ ] **T-180 — Zweitkopie bricht ab - Ziel J: ist die fehlerhafte Platte**
+      Kontext: Die Zweitkopie (Ziel J:\MaxHirn-Zweitkopie) schlug am 28.09. (Code 1) und 29.09. (21:10, 0xC000013A abgebrochen) fehl. Direkt davor (21:06-21:07) 8x NTFS-Event 98 (Volume als schreibgeschuetzt eingebunden) auf J:. J: ist die WD My Book mit 479 unkorrigierten Lesefehlern (Memory) und so langsam, dass ein rekursives Auflisten 300 s ueberschreitet. Jetzt wieder schreibbar, aber die Platte ist der Schwachpunkt. Memory-Vorgabe war 'Zweitkopie auf O: (Disk 1)'.
+      Naechster Schritt: Entscheiden, ob die Zweitkopie auf O: umzieht (gesunde Platte) oder J: ersetzt wird; dann sichern-zweitkopie.ps1 anpassen und einen Lauf pruefen.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/sichern-zweitkopie.ps1, Agenten/Routinen/zweitkopie.ps1
+
+- [ ] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
+      Kontext: Eine parallele Sitzung baut Bonsai ein (Agenten/Hermes/scripts/bonsai-provider-einbauen.py) mit Port 8080 - genau der Port, den der Freqtrade-Container belegt (127.0.0.1:8080->8080). Ich habe am 29.09. auf 8081 umgestellt (Starter + Config); das Skript der parallelen Sitzung wuerde 8080 wieder einschreiben.
+      Naechster Schritt: Das Skript der parallelen Sitzung auf 8081 anpassen oder nach dessen Lauf den Port erneut pruefen.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/scripts/bonsai-provider-einbauen.py
+
+
+- [ ] **T-176 - Kill-Schalter geht nie wieder auf (spur_buch)**
+      Kontext: Am 29.09.2026 endete der Backtest-Lauf von moondev_funding nach
+      SECHS TAGEN mit kill_ausgeloest=true, obwohl das Buch im Plus war.
+      Ursache ist der Bauart nach ein Fehler: `spur_buch.zyklus` kehrt bei
+      gesetztem `kill` sofort zurueck (Zeile 571, Positionen werden geleert).
+      Der Kill rechnet aber auf der Kapitalkurve (Ruecklauf vom Hoechststand),
+      und die erholt sich nur durch neue Trades - genau die sperrt der Kill.
+      Betroffen ist JEDE Spur, die ihr Buch ueber spur_buch fuehrt (alle
+      Feed-Spuren), nicht nur funding. Beim Menschen faellt das nicht auf, weil
+      er den Deckel von Hand hebt (xperp 21.09.2026: 40 -> 100).
+      Naechster Schritt: entscheiden, ob der Kill nach einer Frist (z. B. 7
+      Tage) oder nach Erholung der Kurve von selbst wieder aufgeht, oder ob er
+      bewusst eine Handarbeit bleibt. Ohne Entscheidung bleibt es so.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, alle Feed-Spuren
+
+- [ ] **T-177 - Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut**
+      Kontext: Im Replay wird zum SCHLUSS der Kerze ausgestiegen, in der Stop
+      oder Ziel beruehrt wurde - nicht zum Stop- oder Zielkurs. Ein Laeufer
+      ueberschiesst sein Ziel dadurch deutlich: ADA stand mit Ziel +12 % im Buch
+      und wurde mit +48 % geschlossen. Beide Familien (A und B) rechnen so,
+      also sind ihre Zahlen untereinander vergleichbar - aber nicht als
+      Ertragserwartung zu lesen.
+      Naechster Schritt: intrabar-Ausstieg pruefen (Stop/Ziel-Kurs statt
+      Kerzenschluss) und die Differenz an einem Lauf beziffern, bevor Zahlen
+      aus dem Backtest in eine Entscheidung eingehen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/replay.py, backtest_prognose.py
+
+- [ ] **T-178 - Einstiegsgrund im Journal der Buch-Spuren ist ein Platzhalter**
+      Kontext: Jede Einstiegszeile der Feed-Spuren traegt als `grund` den Satz
+      "Der Grund, der im Journal steht." - der Platzhalter steht auch in den
+      ECHTEN Journalen (z. B. moondev_topmovers 15.09.2026), kommt also aus
+      `spur_buch` und nicht aus dem Backtest. Der Ausstiegsgrund (ziel/stop) ist
+      echt; der Einstiegsgrund sagt nichts, und wer ein Buch liest, kann die
+      Einstiegsursache nicht nachvollziehen.
+      Naechster Schritt: in `spur_buch` den echten Grund setzen (z. B. das
+      Signal, das den Einstieg ausgeloest hat) - wirkt auf alle Buecher, daher
+      mit den Spuren-Tests zusammen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, Journale der Feed-Spuren
 
 - [ ] **T-166 - Neun neue Repos haben kein Bot-Profil**
       Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
