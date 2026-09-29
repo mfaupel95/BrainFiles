@@ -59,6 +59,16 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+
+- [ ] **T-190 — Hermes-Update: Orphan-Aliase und Checkout-Reste**
+      Kontext: Nach dem Update vom 29./30.09.2026 meldet `hermes doctor` 14 Orphan-Aliase
+      (`agent-reach.bat`, `coder.bat`, `nous.bat`, `projectatlas.bat`, `superpowers.bat` und neun weitere)
+      fuer Profile, die es nicht mehr gibt — die `.bat` liegen als Leichen im Alias-Ordner.
+      Ausserdem zeigt der Checkout einen lokalen `Dockerfile`-Unterschied.
+      Naechster Schritt: Alias-Ordner auflisten, die 14 Leichen nach `.sicherung/` verschieben,
+      `Dockerfile`-Diff ansehen (eigene Anpassung oder Rest) und dann committen oder verwerfen.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: Agenten/Hermes/alts/, Agenten/Hermes/hermes-agent/Dockerfile
 - [ ] **T-189 — claude-red: vier SKILL.md hat Defender entfernt, der Klon zeigt sie als Loeschung**
       Kontext: Beim Flottenlauf am 30.09.2026 (46 Klone) ist `claude-red` aktuell,
       traegt aber vier `D`-Eintraege im Arbeitsbaum
@@ -3126,15 +3136,3 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Vor dem Auftrag `bot.py` **frisch** laufen lassen, die Zahlen oben sind
       vom 09.09.2026.
 
-## Offen
-
-- [ ] **%s — Hermes-Update: Orphan-Aliase und Checkout-Reste**
-      Kontext: Nach dem Update vom 29./30.09.2026 meldet `hermes doctor` 14 Orphan-Aliase
-      (`agent-reach.bat`, `coder.bat`, `nous.bat`, `projectatlas.bat`, `superpowers.bat` und neun weitere)
-      fuer Profile, die es nicht mehr gibt — die `.bat` liegen als Leichen im Alias-Ordner.
-      Ausserdem zeigt der Checkout einen lokalen `Dockerfile`-Unterschied und einen Rueckstand
-      von 18 Commits gegen `origin/main` (harmlos, faellt beim naechsten Lauf auf).
-      Naechster Schritt: Alias-Ordner auflisten, die 14 Leichen nach `.sicherung/` verschieben,
-      `Dockerfile`-Diff ansehen (eigene Anpassung oder Rest) und dann committen oder verwerfen.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: Agenten/Hermes/alts/, Agenten/Hermes/hermes-agent/Dockerfile
