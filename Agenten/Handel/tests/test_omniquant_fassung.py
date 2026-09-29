@@ -14,6 +14,7 @@ Kein Netz, keine Order; die echte wachen.json wird nur gelesen.
 
 import importlib.util
 import json
+from datetime import datetime, timedelta, timezone
 import os
 import sys
 import tempfile
@@ -80,10 +81,23 @@ class LadeBerichtTest(unittest.TestCase):
         handeln.bericht_quelle = self._quelle_alt
         self._tmp.cleanup()
 
-    def _schreibe_weit(self):
+    @staticmethod
+    def _erzeugt(stunden_alt=1.0):
+        """Zeitstempel RELATIV zu jetzt.
+
+        Vorher stand hier ein festes Datum (2026-09-24) - der Test war damit eine
+        Uhrzeitbombe: nach 26 Stunden kippte er in 'Bericht 123.0 h alt, Grenze
+        26 h' um, ohne dass sich am Code etwas geaendert haette. Geprueft wird
+        die REGEL (frischer Bericht wird gelesen, alter abgelehnt), nicht ein
+        Kalendertag.
+        """
+        jetzt = datetime.now(timezone.utc) - timedelta(hours=stunden_alt)
+        return jetzt.isoformat()
+
+    def _schreibe_weit(self, stunden_alt=1.0):
         with open(os.path.join(self.tmp, "neuester.weit.json"), "w",
                   encoding="utf-8") as f:
-            json.dump({"erzeugt": "2026-09-24T09:01:00+00:00",
+            json.dump({"erzeugt": self._erzeugt(stunden_alt),
                        "treffer": [{"inst": "TEST-USDT", "richtung": "long"}]}, f)
 
     def test_weit_liest_die_weite_datei(self):
@@ -101,12 +115,21 @@ class LadeBerichtTest(unittest.TestCase):
         self.assertIsNone(b)
         self.assertIn("neuester.weit.json", fehler)
 
+    def test_zu_alter_bericht_wird_abgelehnt(self):
+        """Die Gegenprobe zur Grenze: 27 h bei Grenze 26 h muss auffallen."""
+        self._schreibe_weit(stunden_alt=27.0)
+        handeln.lade_wachen = lambda: {"prognose_fassung": "weit",
+                                       "max_bericht_alter_stunden": 26}
+        b, fehler = handeln.lade_bericht()
+        self.assertIsNone(b)
+        self.assertIn("alt", fehler.lower())
+
     def test_streng_liest_die_strenge_datei(self):
         # Der strenge Bericht existiert, der weite nicht - mit fassung=streng
         # muss er trotzdem gefunden werden.
         with open(os.path.join(self.tmp, "neuester.json"), "w",
                   encoding="utf-8") as f:
-            json.dump({"erzeugt": "2026-09-24T09:01:00+00:00", "treffer": []}, f)
+            json.dump({"erzeugt": self._erzeugt(), "treffer": []}, f)
         handeln.lade_wachen = lambda: {"max_bericht_alter_stunden": 26}
         b, fehler = handeln.lade_bericht()
         self.assertIsNone(fehler)

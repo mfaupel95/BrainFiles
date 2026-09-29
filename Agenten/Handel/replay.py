@@ -14,7 +14,7 @@ Geschrieben wird ausschliesslich unter daten/backtest/<spur>/<lauf>/. Der echte
 Spurenordner und Q:\\Handel_Journal werden nie beruehrt; der Test
 `NichtsAusserhalbTest` vergleicht das Inventar vor und nach dem Lauf.
 
-KERZEN sind Binance-Kerzen (Proxy, siehe historie.py) - jedes Ergebnis traegt
+KERZEN sind Binance-Kerzen (Proxy, siehe historie_binance.py) - jedes Ergebnis traegt
 deshalb `kerzenquelle: binance`.
 
 Aufruf:
@@ -29,7 +29,7 @@ import json
 import os
 import sys
 
-import historie
+import historie_binance
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 
@@ -200,7 +200,7 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     takt = _takt(w)
     aus, fehlen = {}, []
     for inst in insts:
-        reihen = historie.lade(inst, takt)
+        reihen = historie_binance.lade(inst, takt)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
         if abschnitt:
@@ -246,7 +246,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen, abschnitt)
     if not kerzen:
         raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie.py --auffuellen'" % spur)
+                           "'python historie_binance.py --auffuellen'" % spur)
     if fenster is None:
         fenster = fenster_vorgabe(w)
 
@@ -407,7 +407,7 @@ def historische_quelle(modul, spur, zugriff):
     def quelle(w):
         daten, kurse, fehler = {}, {}, []
         for inst in _instrumente(w):
-            reihen = [r for r in historie.lade(inst, _takt(w))
+            reihen = [r for r in historie_binance.lade(inst, _takt(w))
                       if r[0] <= zugriff["bis_ms"]]
             if zugriff.get("fenster"):
                 reihen = reihen[-int(zugriff["fenster"]):]
@@ -458,11 +458,11 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
         w = json.load(f)
     takt = _takt(w)
-    alle = {i: historie.lade(i, takt) for i in _instrumente(w)
-            if historie.lade(i, takt)}
+    alle = {i: historie_binance.lade(i, takt) for i in _instrumente(w)
+            if historie_binance.lade(i, takt)}
     if not alle:
         raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie.py --auffuellen'" % spur)
+                           "'python historie_binance.py --auffuellen'" % spur)
     if bis_ms:
         alle = {i: [r for r in k if r[0] <= bis_ms] for i, k in alle.items()}
     if abschnitt:
@@ -515,7 +515,7 @@ def kerzenlaenge(spur, w=None):
     if w is None:
         w = dict(spur_modul(spur).lade_wachen())
     takt = _takt(w)
-    return min((len(historie.lade(i, takt)) for i in _instrumente(w)), default=0)
+    return min((len(historie_binance.lade(i, takt)) for i in _instrumente(w)), default=0)
 
 
 def kennzahlen(journal_pfad):
