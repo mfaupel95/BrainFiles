@@ -3,7 +3,7 @@ id: 20260921-wiki-index
 title: 'Wiki — Index'
 tags: [betrieb, wiki]
 created: 2026-09-21
-updated: 2026-09-25
+updated: 2026-09-29
 related: ['[[LEITFADEN]]', '[[Wissen/INDEX]]']
 summary: 'Einstieg in das Agenten-Wiki: Verzeichnis aller Seiten mit Zweck, plus die Regel, wann hier etwas abgelegt wird.'
 ---
@@ -43,7 +43,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Lektionen/Git-und-Textdateien.md](Lektionen/Git-und-Textdateien.md) | Zeilenenden, .gitignore-Whitelist, index.lock, Fremdarbeit im Baum, Zugangsdaten im Arbeitsbaum |
 | [Lektionen/Tests.md](Lektionen/Tests.md) | Tests, die in echte Datenordner schreiben; Modulwaechter; sys.path-Reihenfolge |
 | [Lektionen/Windows-Umgebung.md](Lektionen/Windows-Umgebung.md) | PYTHONHOME, Pfadaufloesung, Umgebungsvariablen, Auslagerungsdatei/Commit-Limit |
-| [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig" |
+| [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig", deklariert gegen real |
 | [Lektionen/Boersen-und-Schluessel.md](Lektionen/Boersen-und-Schluessel.md) | Zwei Werkzeuge auf einem Schluessel (Nonce-Einheit), zwei Namen fuer ein Programmpaar, eine Abweisung ohne Zeugen ist keine Messung |
 
 ### Betrieb
@@ -86,5 +86,6 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/okx-bot-waechter.md](Werkzeuge/okx-bot-waechter.md) | Waechter ueber die echten OKX-Bots (Future DCA/Grid): letzte kaufbare Grenze, Munition, Liquidation; stoppen, vorschlagen, bauen |
 | [Werkzeuge/Bonsai-2-27B.md](Werkzeuge/Bonsai-2-27B.md) | Ternares 27B-Modell lokal (5,95 GB, PrismML-Fork von llama.cpp): 32 t/s auf der 3060 Ti bei 8k Kontext, kein Hermes-Agent-Modell (64k-Grenze), Ollama kann die Dateien nicht laden |
 | [Werkzeuge/ai4trade-AI-Trader.md](Werkzeuge/ai4trade-AI-Trader.md) | Signalplattform ai4trade.ai: Agent `HermesMax2` (ID 25973), Heartbeat per Cron gepollt |
+| [Werkzeuge/config-gegenprobe.md](Werkzeuge/config-gegenprobe.md) | Jede Behauptung der Hermes-Configs gegen die Wirklichkeit: Programmpfade, lokale Adressen, lokale Modellnamen; Wache montags, Befund 29.09.2026 |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |

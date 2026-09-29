@@ -10,12 +10,12 @@ providers:
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
-      - gemma-e4b-8k:latest
-      - gemma-e4b-8k:latest
-      - qwen3.8:27b
-      - huihui_ai/qwen3-abliterated:32b
-      - qwen3.8:latest
-      - kimi-k2.7-code:cloud
+    - gemma-e4b-8k:latest
+    - gemma-e4b-8k:cpu
+    - deepseek-chat:latest
+    - glm4:9b
+    - qwen3.5:9b
+    - deepseek-reasoner:latest
     name: Ollama
   omniroute:
     api: http://localhost:20128/v1
