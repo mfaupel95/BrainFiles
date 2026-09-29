@@ -132,16 +132,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-29
       Betrifft: Agenten/Handel/spur_buch.py, Journale der Feed-Spuren
 
-- [ ] **T-166 - Neun neue Repos haben kein Bot-Profil**
+- [ ] **T-166 - Zehn neue Repos haben kein Bot-Profil**
       Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
       aufgenommen worden (osiris, jev-trader, deepseek-harness,
       tradememory-protocol, ziplime, foreman, awesome-dsh-plugin,
-      awesome-deepseek-harness-plugins, fast-jev-compaction, jev-chat-jarvis).
+      awesome-deepseek-harness-plugins, fast-jev-compaction, jev-chat-jarvis, OpenTerminalUI).
       Ihre Eintraege tragen bewusst KEIN `bot`-Feld - sonst zeigt die Zeile
       sofort "Bot-Profil fehlt". Das Hausmuster ist ein Profil je Repo
       (26 Repo-Bots, Wiki/Werkzeuge/Repo-Bots.md).
-      Naechster Schritt: entscheiden, ob fuer die fuenf STARTBAREN (osiris,
-      jev-trader, deepseek-harness, tradememory-protocol, ziplime) Profile
+      Naechster Schritt: entscheiden, ob fuer die sechs STARTBAREN (osiris,
+      jev-trader, deepseek-harness, tradememory-protocol, ziplime, OpenTerminalUI) Profile
       angelegt werden - `hermes profile create <name>` OHNE --clone, dann
       providers-/model-Block, terminal.cwd auf den Klon, auth.json als Symlink
       (braucht Admin: Agenten/Hermes/scripts/auth-verknuepfen.ps1).

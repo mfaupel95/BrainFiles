@@ -110,6 +110,39 @@ Jeder Startbefehl wurde **einmal echt gestartet** (Beleg in `logs/`).
 **Voraussetzung, die fehlte:** `bun` war nicht installiert (`npm install -g bun`).
 `foreman` braucht noch ein venv, `ziplime` einen `OPENROUTER_API_KEY`.
 
+### Nachtrag 30.09.2026 — OpenTerminalUI (46. Repo)
+
+Erschien mitten in der Sitzung, war aber schon eingerichtet: `.venv`
+(Python 3.13.15, 295 Pakete), `frontend/dist` gebaut (279 Dateien, 33,8 MB).
+Aufgenommen als **11. STARTBARER** Eintrag — ein Server bedient beides:
+
+```
+.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Belegt im Log: `Application startup complete`, `GET / → 200 OK` nach **57 s**,
+`GET /api/health → 401` (die API ist authentifiziert). Zwei fehlende Dienste
+werden still abgefangen: Redis fehlt (L2-Cache und Quote-Bus fallen auf
+Speicher zurueck), Kite meldet fehlende Zugangsdaten.
+
+**Die Junction-Falle — und warum sie den Start NICHT trifft:**
+
+`scan.repos_scannen()` liefert `O:\Werkstatt\Repos\...`, nicht den C:-Pfad der
+Junction. Die Zentrale startet also aus dem **echten** O:-Pfad. Wer dagegen von
+Hand aus `C:\...\Werkstatt\Repos\OpenTerminalUI\frontend` heraus baut, bekommt
+von vite `fileName darf nicht absolut sein, received O:/Werkstatt/...` — der
+Junction wird aufgeloest und der absolute Eingabepfad abgelehnt. Schlimmer als
+der Fehler: **ein gescheiterter Lauf leert `frontend/dist`** (279 Dateien waren
+danach weg). Deshalb steht im Manifest die Bau-Form ueber den echten Pfad:
+
+```
+cmd /c cd /d O:\Werkstatt\Repos\OpenTerminalUI\frontend && npm run build   (exit 0, 58,9 s)
+```
+
+Merksatz: bei einem Repo unter einer Junction entscheidet das
+**Arbeitsverzeichnis**, ob ein relativer Pfad noch stimmt — und ein fehlgeschlagener
+Build ist kein harmloser Fehlschlag, wenn er das Ausgabeverzeichnis vorher leert.
+
 ## Einen Befehl belegen: der Beleglauf
 
 Die Hausregel „kein Befehl ins Manifest, der nie echt gelaufen ist" laesst sich
