@@ -13,6 +13,8 @@ Was hier belegt wird:
   * dass --vorschau nichts schreibt und die Dateien getrennt liegen.
 """
 
+import contextlib
+import io
 import json
 import os
 import sys
@@ -250,6 +252,134 @@ class DateienTest(unittest.TestCase):
         h.funding_quelle = kaputt
         h.lauf("papier")                                    # darf nicht werfen
         self.assertFalse(os.path.exists(h.JOURNAL))
+
+
+class VerwaisteInstrumenteTest(unittest.TestCase):
+    """Ein Symbol kann aus `instrumente` fallen, waehrend eine Position offen ist.
+
+    Befund 29.09.2026 (T-121): `hole_kurse` fragte NUR die Plan-Liste. Eine
+    Position auf einem gestrichenen Symbol bekam damit keinen Kurs mehr, wurde
+    nie geprueft, nie geschlossen und belegte einen der drei Plaetze - dieselbe
+    Falle wie in den vier Indikatorspuren am selben Tag, nur eine Ebene tiefer.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.alt = (h.SCHREIBEN, h.funding_quelle)
+        h.SCHREIBEN = False
+
+    def tearDown(self):
+        (h.SCHREIBEN, h.funding_quelle) = self.alt
+        self.tmp.cleanup()
+
+    @staticmethod
+    def _position(inst="XYZ", einstieg=10.0, stop=9.0, ziel=12.0):
+        return {"inst": inst, "seite": "long", "einstieg": einstieg,
+                "stop": stop, "ziel": ziel, "stop_pct": 10.0, "nominal": 50.0,
+                "eroeffnet_zeit": "2026-09-20T00:00:00"}
+
+    def test_hole_kurse_fragt_plan_und_bestand(self):
+        gefragt = []
+
+        def quelle(s):
+            gefragt.append(s)
+            return {"funding_rate": 0.0, "mark_price": 100.0}
+
+        h.funding_quelle = quelle
+        w = dict(WACHEN, instrumente=["BTC", "ETH"])
+        daten, kurse_, fehler = h.hole_kurse(w, {"positionen": [self._position()]})
+        # Plan zuerst (in seiner Reihenfolge), danach das verwaiste Symbol.
+        self.assertEqual(gefragt, ["BTC", "ETH", "XYZ"])
+        self.assertIn("XYZ", daten)
+        self.assertEqual(fehler, [])
+        self.assertEqual(kurse_["XYZ"], 100.0)
+
+    def test_verwaiste_werden_gemeldet(self):
+        h.funding_quelle = lambda s: {"funding_rate": 0.0, "mark_price": 100.0}
+        puffer = io.StringIO()
+        with contextlib.redirect_stderr(puffer):
+            h.hole_kurse(dict(WACHEN, instrumente=["BTC"]),
+                         {"positionen": [self._position()]})
+        self.assertIn("Verwaiste Instrumente", puffer.getvalue())
+        self.assertIn("XYZ", puffer.getvalue())
+
+    def test_verwaiste_position_wird_am_stop_geschlossen(self):
+        z = {"positionen": [self._position()]}
+        h.pruefe_ausstiege(z, {"XYZ": 8.0}, WACHEN)
+        self.assertEqual(z["positionen"], [])
+
+    def test_ohne_kurs_wird_gemeldet_statt_geschwiegen(self):
+        z = {"positionen": [self._position()]}
+        puffer = io.StringIO()
+        with contextlib.redirect_stderr(puffer):
+            h.pruefe_ausstiege(z, {}, WACHEN)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertIn("kein Kurs", puffer.getvalue())
+        self.assertIn("XYZ", puffer.getvalue())
+
+    def test_einstieg_nur_auf_plan_instrumenten(self):
+        """Der ganze Zyklus: das Buch fuehrt ein fremdes Symbol, eingestiegen
+        wird trotzdem nur auf der Plan-Liste - und die fremde Position bleibt
+        sichtbar (Stop weit weg)."""
+        wachen = os.path.join(self.tmp.name, "wachen.json")
+        w = dict(WACHEN, instrumente=["BTC"],
+                 journal_zweitziel=os.path.join(self.tmp.name, "zweitziel"))
+        with open(wachen, "w", encoding="utf-8") as f:
+            json.dump(w, f)
+        zustand = os.path.join(self.tmp.name, "zustand.json")
+        with open(zustand, "w", encoding="utf-8") as f:
+            json.dump({"positionen": [self._position(stop=1.0, ziel=999.0)]}, f)
+
+        alt = (h.WACHEN, h.ZUSTAND, h.JOURNAL, h.SCHREIBEN)
+        h.WACHEN = wachen
+        h.ZUSTAND = zustand
+        h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
+        h.SCHREIBEN = True
+        h.funding_quelle = lambda s: {"funding_rate": 300.0 / (24 * 365 * 100),
+                                      "mark_price": 100.0}
+        try:
+            h.lauf("papier")
+            with open(zustand, encoding="utf-8") as f:
+                z = json.load(f)
+        finally:
+            (h.WACHEN, h.ZUSTAND, h.JOURNAL, h.SCHREIBEN) = alt
+
+        self.assertEqual(sorted(p["inst"] for p in z["positionen"]),
+                         ["BTC", "XYZ"])
+
+    def test_zyklus_schliesst_die_verwaiste_position(self):
+        """Die Gegenprobe zum Befund: vorher bekam das fremde Symbol keinen
+        Kurs und die Position blieb fuer immer stehen. Jetzt holt der Zyklus
+        ihren Kurs, der Stop greift und die Zeile steht im Journal."""
+        wachen = os.path.join(self.tmp.name, "wachen.json")
+        w = dict(WACHEN, instrumente=["BTC"],
+                 journal_zweitziel=os.path.join(self.tmp.name, "zweitziel"))
+        with open(wachen, "w", encoding="utf-8") as f:
+            json.dump(w, f)
+        zustand = os.path.join(self.tmp.name, "zustand.json")
+        with open(zustand, "w", encoding="utf-8") as f:
+            json.dump({"positionen": [self._position()]}, f)
+
+        alt = (h.WACHEN, h.ZUSTAND, h.JOURNAL, h.SCHREIBEN)
+        h.WACHEN = wachen
+        h.ZUSTAND = zustand
+        h.JOURNAL = os.path.join(self.tmp.name, "handelsjournal.csv")
+        h.SCHREIBEN = True
+        # Funding unter der Schwelle (kein Neukauf), Kurs unter dem Stop 9.0.
+        h.funding_quelle = lambda s: {"funding_rate": 0.0, "mark_price": 8.0}
+        try:
+            h.lauf("papier")
+            with open(zustand, encoding="utf-8") as f:
+                z = json.load(f)
+            with open(h.JOURNAL, encoding="utf-8") as f:
+                zeilen = f.read()
+        finally:
+            (h.WACHEN, h.ZUSTAND, h.JOURNAL, h.SCHREIBEN) = alt
+
+        self.assertEqual(z["positionen"], [])
+        self.assertIn("verkauf", zeilen)
+        self.assertIn("XYZ", zeilen)
+        self.assertIn("stop", zeilen)
 
 
 if __name__ == "__main__":

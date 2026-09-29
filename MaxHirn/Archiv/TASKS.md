@@ -53,6 +53,32 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 
 ## Offen
 
+- [ ] **T-160 - Acht Feed-Spuren: eine Position verliert ihren Kurs, wenn ihr Symbol aus dem Feed faellt**
+      Kontext: Bei diesen Spuren kommt der Kurs aus dem AKTUELLEN Feed
+      (`quelle()` baut `kurse` aus den heutigen Kandidaten). Faellt ein Symbol
+      aus dem Feed (Top-Movers wechseln taeglich, Token verliert die Bewertung,
+      Liste wird umgestellt), bekommt seine offene Position keinen Kurs mehr.
+      `spur_buch.pruefe_ausstiege` behaelt sie dann (seit 29.09.2026 mit
+      Meldung auf stderr) - sie wird nie geschlossen, belegt einen Platz und
+      das Journal friert ein. Gemessen am 29.09.2026 durch Vergleich aller
+      `quelle()`-Funktionen: betroffen sind moondev_liquidation,
+      moondev_listingarb, moondev_marktlage, moondev_sentiment,
+      moondev_signalwelle, moondev_topmovers, moondev_whale und
+      robinhood_radar. KEIN Thema bei den Ein-Instrument-Spuren
+      (trendwende_btc, liq_wand, iv_wand) - dort kann das Symbol nicht
+      wechseln.
+      VORLAGE im Haus: `moondev_sniper/handeln.py` Zeilen 156-165 holt nach dem
+      Aufbau von `kurse` die Preise der gehaltenen Positionen nach
+      (`pump_letzter_preis`, Fehler werden gemeldet, nicht geworfen).
+      moondev_funding ist am 29.09.2026 behoben (Plan + Bestand ueber
+      `wp.pruef_instrumente`).
+      Naechster Schritt: je Spur die Preisquelle fuer ein EINZELNES Symbol
+      bestimmen (CoinGecko `maerkte()`, OKX `okx.letzter_kurs`, Pump
+      `pump_letzter_preis`, Robinhood-DB) und den Block aus moondev_sniper
+      uebernehmen; je Spur ein Test 'Position ohne Feed-Symbol wird geschlossen'.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/{moondev_*,robinhood_radar}/handeln.py.
+
+
 - [ ] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
       Kontext: `hermes moa list` zeigt fuer die Presets "Max 2" und "Vision" den Aggregator `bonsai` - dort
       laeuft die ganze Werkzeugschleife, nicht nur eine Beratung. `delegation.fallback_providers` hat bonsai

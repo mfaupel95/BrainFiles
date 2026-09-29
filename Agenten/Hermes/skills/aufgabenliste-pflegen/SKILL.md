@@ -129,6 +129,17 @@ text.
 
 ## Fallen
 
+- **Die hoechste Nummer NIE aus dem Gedaechtnis nehmen.** Die eigene
+  Memory-Notiz nennt einen Stand von gestern ("hoechste am 24.09.: T-056");
+  gemessen am 29.09.2026 stand die Datei bei T-159, und die aus dem Kopf
+  gewaehlte Nummer war doppelt vergeben. Immer messen:
+
+```bash
+grep -o "T-1[0-9][0-9]" MaxHirn/Archiv/TASKS.md | sort -u | tail -3
+```
+
+  Danach die gewaehlte Nummer gegen die ganze Datei pruefen
+  (`grep -c "\*\*T-160"`), nicht nur gegen den offenen Abschnitt.
 - **Die Liste waechst zwischen zwei Blicken.** Vor dem Eintragen erneut lesen -
   eine parallele Sitzung haengt zwanzig Eintraege an, und die gewaehlte Nummer ist
   dann doppelt vergeben.
