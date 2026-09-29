@@ -318,6 +318,26 @@ Werkzeuge: `scripts/config-gegenprobe.py`, `scripts/config-gegenprobe-wache.py`,
 Provider-Einstufung = Fehlalarm, HTTP 200 von einer FREMden Anwendung, toter Port der
 harmlos ist, irrefuehrendes 403 ohne Schluessel): `references/config-gegenprobe.md`.
 
+### Eine Einstellung umstellen
+
+Reihenfolge: Zustand LESEN (`hermes moa list`, `config get`) -> das ZIEL gegen die
+Wirklichkeit pruefen (es muss es geben: `/api/show` fuer Kontext und Parameter,
+offener Port) -> Blast radius (`search_files` nach dem alten Wert in Hauptconfig UND
+`profiles/*/config.yaml`) -> byte-sicher aendern (Vorkommen zaehlen, `yaml.safe_load`
+VOR dem Schreiben, `.bak`, danach CR == LF und `git diff --numstat`) -> Nachweis
+(`hermes moa list`, `config check` exit 0) -> Buchhaltung.
+
+Zwei Regeln, die den Unterschied machen:
+
+- **Messen mit betriebsnahen Parametern.** Ein zu kleines `max_tokens` macht ein
+  Denkmodell stumm (leerer `content`, Text in `reasoning`) - am 29.09.2026 sah das nach
+  einem Defekt in 20 Profilen aus und war ein Artefakt der eigenen Sonde.
+- **Eine leere Pipe ist kein Befund.** Fehlt das Messwerkzeug (`/usr/bin/time` gibt es
+  in MSYS nicht), laeuft der Aufruf nie, und der JSON-Fehler sieht wie eine stumme
+  Gegenstelle aus.
+
+Vollstaendig mit Muster und Fallen: `references/einstellung-umstellen.md`.
+
 ## Fallback-Kette und lokale Provider
 
 Hermes wechselt bei 429/529/503/Verbindungsfehlern auf eine Kette. Sie wird **per
@@ -427,7 +447,7 @@ nur so faellt auf, wenn ein Profil gar keine Wurzel-Kette hatte.
 - **Der lokale Rueckfall traegt nur bei freiem Commit.** Ein Profil mit gesetzter Kette ist noch
 kein Nachweis: das Modell muss laden, und ein Modelllader scheitert an einer erschoepften
 Commit-Grenze auch bei reichlich freiem RAM (Symptomkatalog und Messbefehle:
-`dauerprozess-bewachen`, `references/massenprozesse-und-commit-limit.md`). Nach dem Setzen den
+`dauerprozess-bewachen`). Nach dem Setzen den
 Endpunkt einmal wirklich rufen (`POST <base_url>/chat/completions`) — nicht nur die Config lesen.
 - **Eine konfigurierte Kette ist kein Beleg — das Modell muss LADEN.** Nach dem Setzen
 nicht nur `hermes fallback list` lesen, sondern den Endpunkt wirklich rufen
