@@ -141,5 +141,120 @@ class SignalwelleTest(unittest.TestCase):
         self.assertEqual({}, daten)
 
 
+class GebuehrTest(unittest.TestCase):
+    def test_jede_spur_hat_einen_boersensatz(self):
+        """Ohne Satz waere die Kostenrechnung still null."""
+        for spur in replay.SPUREN_TEIL_A + replay.SPUREN_TEIL_C:
+            self.assertGreater(replay.gebuehr_fuer(spur, {}), 0.0)
+
+    def test_funding_ist_eigene_familie_und_nicht_teil_a(self):
+        self.assertIn("moondev_funding", replay.SPUREN_TEIL_C)
+        self.assertNotIn("moondev_funding", replay.SPUREN_TEIL_A)
+
+    def test_schrittweite_ist_der_funding_takt(self):
+        """Acht Stunden - der Takt, in dem sich ein Funding-Satz aendert."""
+        self.assertEqual(8, replay.FUNDING_STUNDEN)
+
+
+class LaufFeedTest(BestandMixin, unittest.TestCase):
+    def test_adapter_sieht_den_stand_des_schritts_nicht_den_letzten(self):
+        """Zwei Zeitpunkte muessen zwei verschiedene Tafeln ergeben.
+
+        Waere der Zeitpunkt fest verdrahtet, saehe jeder Schritt denselben
+        Markt - und der Lauf saehe wie eine Messung aus.
+        """
+        daten, _, _ = mh.QUELLEN["moondev_topmovers"](self.b, 86400000, W)
+        self.assertAlmostEqual(10.0, daten["BTC"]["aenderung_24h"], places=6)
+        self.assertAlmostEqual(-5.0, daten["AAA"]["aenderung_24h"], places=6)
+
+    def test_ohne_vortag_keine_kandidaten_am_ersten_schritt(self):
+        """Der erste Tag hat keine 24h-Aenderung - er zaehlt nicht als Signal."""
+        daten, _, _ = mh.QUELLEN["moondev_topmovers"](self.b, 0, W)
+        self.assertTrue(all(v["aenderung_24h"] is None for v in daten.values()))
+
+    def test_unbekannte_spur_wird_gemeldet(self):
+        with self.assertRaises(KeyError):
+            replay.lauf_feed("diegibtesnicht", 0.05, "t")
+
+    def test_verweigerte_spur_wird_nicht_geraten(self):
+        with self.assertRaises(RuntimeError):
+            replay.lauf_feed("moondev_sniper", 0.05, "t")
+
+    def test_verweigerte_spuren_nennen_einen_grund(self):
+        for spur in ("moondev_sniper", "moondev_listingarb"):
+            self.assertIn(spur, replay.NICHT_NACHRECHENBAR)
+            self.assertGreater(len(replay.NICHT_NACHRECHENBAR[spur]), 20)
+
+
+class LaufFeedEchtTest(unittest.TestCase):
+    """Ein echter Durchlauf ueber Attrappen-Kerzen, Ablage im Temp-Ordner.
+
+    Beweist die Verdrahtung: Adapter -> spur_buch.zyklus -> Journal im
+    BACKTEST-Ordner. Ohne diesen Test waere ein Adapter denkbar, der die Spur
+    still ohne Signal laufen laesst.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="feed_")
+        self.alt = mh.ORDNER
+        mh.ORDNER = self.tmp
+        # Alle drei Symbole springen an Tag 20 von 100 auf 112 (+12 %): das ist
+        # ein Top-Mover-Signal (+8..40 %) bei Volumen ueber 2e7 USD.
+        for sym in ("AAAUSDT", "BBBUSDT", "CCCUSDT"):
+            mh.speichere_feed(sym, "1D", [
+                [i * 86400000, *(100.0 if i < 20 else 112.0,) * 4, 2e7]
+                for i in range(40)])
+        self.bt = tempfile.mkdtemp(prefix="bt_")
+        self.alt_v = replay.verzeichnis
+        replay.verzeichnis = lambda: self.bt
+
+    def tearDown(self):
+        mh.ORDNER = self.alt
+        replay.verzeichnis = self.alt_v
+
+    def test_durchlauf_schreibt_ein_journal_und_zaehlt_die_schritte(self):
+        k, _ = replay.lauf_feed("moondev_topmovers", 0.1, "takt",
+                                mindest_symbole=2)
+        self.assertGreater(k["schritte"], 30)
+        self.assertEqual(3, k["universum"])
+        self.assertEqual("1D", k["takt"])
+        self.assertAlmostEqual(0.1, k["gebuehr_pct"], places=9)
+        journal = os.path.join(self.bt, "moondev_topmovers", "takt",
+                               "handelsjournal.csv")
+        self.assertTrue(os.path.isfile(journal), "kein Journal geschrieben")
+        with open(journal, encoding="utf-8") as f:
+            zeilen = [z for z in f.read().splitlines() if z.strip()]
+        self.assertGreater(len(zeilen), 1, "Journal ohne eine einzige Buchung")
+
+    def test_ein_tag_mit_zu_wenig_reihen_ist_kein_schritt(self):
+        """Drei Reihen sind keine Marktbreite."""
+        b = mh.Bestand()
+        b.laden("1D")
+        self.assertGreaterEqual(len(b.schritte(mindest_symbole=3)), 30)
+        self.assertEqual([], b.schritte(mindest_symbole=4))
+
+    def test_zu_wenig_reihen_wird_gemeldet_statt_gerechnet(self):
+        with self.assertRaises(RuntimeError):
+            replay.lauf_feed("moondev_topmovers", 0.1, "takt",
+                             mindest_symbole=99)
+
+
+class LaufCTest(unittest.TestCase):
+    def test_ohne_funding_reihen_wird_der_befehl_genannt(self):
+        tmp = tempfile.mkdtemp(prefix="feed_")
+        alt = mh.ORDNER
+        mh.ORDNER = tmp
+        bt = tempfile.mkdtemp(prefix="bt_")
+        alt_v = replay.verzeichnis
+        replay.verzeichnis = lambda: bt
+        try:
+            with self.assertRaises(RuntimeError) as c:
+                replay.lauf_c("moondev_funding", 0.04, "takt")
+            self.assertIn("--funding", str(c.exception))
+        finally:
+            mh.ORDNER = alt
+            replay.verzeichnis = alt_v
+
+
 if __name__ == "__main__":
     unittest.main()

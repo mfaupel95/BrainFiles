@@ -385,6 +385,24 @@ class Bestand:
     def symbole(self):
         return sorted(self._reihen)
 
+    def schritte(self, mindest_symbole=30, von_ms=None, bis_ms=None):
+        """Zeitpunkte, an denen mindestens `mindest_symbole` Reihen liegen.
+
+        Ein Tag mit drei Reihen waere keine Marktbreite, sondern ein Zufall.
+        Deshalb faellt ein Zeitpunkt ganz weg, statt mit dem halben Universum
+        in die Messung zu gehen.
+        """
+        zaehler = {}
+        for k in self._reihen.values():
+            for r in k:
+                t = r[0]
+                if von_ms is not None and t < von_ms:
+                    continue
+                if bis_ms is not None and t > bis_ms:
+                    continue
+                zaehler[t] = zaehler.get(t, 0) + 1
+        return sorted(t for t, n in zaehler.items() if n >= int(mindest_symbole))
+
     def reihe(self, sym):
         return self._reihen.get(sym, [])
 
@@ -730,6 +748,20 @@ def speichere_funding(inst, reihen):
     return len(bestand)
 
 
+def funding_instrumente(wert):
+    """'spur' nimmt die Instrumente der Funding-Spur - sonst eine Liste.
+
+    Der Bezug auf die wachen ist Absicht: wer die Instrumente der Spur
+    aendert, soll nicht vergessen koennen, die Reihen nachzuholen.
+    """
+    if str(wert).strip().lower() in ("spur", "moondev_funding"):
+        pfad = os.path.join(HIER, "moondev_funding", "wachen.json")
+        with open(pfad, encoding="utf-8") as f:
+            w = json.load(f)
+        return [str(i).upper() for i in (w.get("instrumente") or [])]
+    return [t.strip().upper() for t in str(wert).split(",") if t.strip()]
+
+
 def hole_funding(inst, von_ms, bis_ms):
     """Funding-Saetze von Binance-Futures (8h-Punkte), paginiert."""
     return [[int(t), float(r)]
@@ -795,6 +827,9 @@ def main():
     p.add_argument("--von", default=VON_TAG)
     p.add_argument("--faeden", type=int, default=4,
                    help="Symbole gleichzeitig holen (Latenz ist der Engpass)")
+    p.add_argument("--funding", default=None,
+                   help="Funding-Reihen holen: 'spur' (Instrumente der "
+                        "Funding-Spur) oder Liste, z. B. BTC,ETH,SOL")
     p.add_argument("--stand", action="store_true")
     a = p.parse_args()
 
@@ -811,6 +846,15 @@ def main():
         fertig = [s for s, b in bericht.items() if b["kerzen"]]
         print("%d Reihen geschrieben, %d ohne Kerzen" % (len(fertig),
                                                          len(bericht) - len(fertig)))
+        return
+    if a.funding:
+        von = _zeitpunkt(a.von)
+        bis = int(time.time() * 1000)
+        aus = {}
+        for inst in funding_instrumente(a.funding):
+            aus[inst] = speichere_funding(inst, hole_funding(inst, von, bis))
+        print("Funding geschrieben: %s"
+              % ", ".join("%s %d" % (i, n) for i, n in sorted(aus.items())))
         return
     if a.stunden:
         sym = _stunden_symbole(a.stunden)
