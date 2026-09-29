@@ -389,7 +389,7 @@ def _urteile_laden():
             d = json.loads(URTEILE.read_text(encoding="utf-8"))
             if isinstance(d, dict):
                 return d
-        except ValueError:
+        except (OSError, ValueError):
             pass
     return {}
 
@@ -401,25 +401,42 @@ def aus_vorschau(pfad):
     except (OSError, ValueError):
         daten = None
     grund = vorschau_pruefen(daten, _jetzt_dt())
+    if not grund and not daten["spuren"]:
+        grund = "Vorschau ohne Spuren"
+    tag = None
     if not grund:
+        tag = datetime.fromisoformat(daten["stand"]).astimezone().strftime("%Y-%m-%d")
         # Erst ALLES pruefen, dann schreiben: keine halbe Uebernahme.
         for spur, e in sorted(daten["spuren"].items()):
             if spur not in MOTOREN or not isinstance(e, dict):
                 grund = "unbekannte Spur in der Vorschau: %s" % spur
                 break
             b = e.get("bestanden")
-            if not (b is None or isinstance(b, bool)):
+            if (not (b is None or isinstance(b, bool))
+                    or not (e.get("urteil") is None or isinstance(e["urteil"], str))
+                    or not isinstance(e.get("kennzahlen", {}), dict)
+                    or not isinstance(e.get("sha256"), str)):
                 grund = "Vorschau unlesbar"
                 break
             sha = _sha256(HIER / spur / "wachen.json")
-            if sha is None or sha != e.get("sha256"):
+            if sha is None or sha != e["sha256"]:
                 grund = "%s/wachen.json hat sich seit der Vorschau geaendert" % spur
+                break
+            if b is None:
+                continue
+            # Trockenlauf: scheitert das Schreiben spaeter, dann schon jetzt.
+            try:
+                h = freigabe_schreiben(spur, b, e.get("urteil"), vorschau=True,
+                                       tag=tag)
+            except Exception as fehler:       # noqa: BLE001
+                h = str(fehler)
+            if h and not h.startswith("VORSCHAU:"):
+                grund = "%s: %s" % (spur, h)
                 break
     if grund:
         print("nichts geschrieben - %s" % grund)
         return 2
 
-    tag = datetime.fromisoformat(daten["stand"]).astimezone().strftime("%Y-%m-%d")
     alt = _urteile_laden()
     aus = {"stand": _jetzt(), "spuren": dict(alt.get("spuren") or {}),
            "ohne_motor": alt.get("ohne_motor") or []}
@@ -432,7 +449,7 @@ def aus_vorschau(pfad):
         try:
             hinweis = freigabe_schreiben(spur, e["bestanden"], e.get("urteil"),
                                          tag=tag)
-        except OSError as fehler:
+        except Exception as fehler:           # noqa: BLE001
             hinweis = str(fehler)
         if hinweis:
             print("nicht geschrieben: %s - %s" % (spur, hinweis))
@@ -446,8 +463,18 @@ def aus_vorschau(pfad):
             "urteil": e.get("urteil"), "kennzahlen": e.get("kennzahlen") or {},
             "geschrieben": not hinweis, "hinweis": hinweis, "aus_vorschau": True,
         }
-    URTEILE.write_text(json.dumps(aus, ensure_ascii=False, indent=2) + "\n",
+    tmp = URTEILE.with_name(URTEILE.name + ".tmp")
+    try:
+        tmp.write_text(json.dumps(aus, ensure_ascii=False, indent=2) + "\n",
                        encoding="utf-8")
+        os.replace(tmp, URTEILE)
+    except OSError as fehler:
+        print("Urteile-Datei nicht geschrieben - %s" % fehler)
+        rc = 1
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
     return rc
 
 

@@ -224,6 +224,7 @@ class Sicherheitsnetz(Basis):
 
 
 JETZT = datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc)
+KEIN = object()
 
 
 class Vorschau(Basis):
@@ -370,6 +371,116 @@ class Vorschau(Basis):
         self.assertTrue(g["aus_vorschau"])
         self.assertTrue(g["bestanden"])
         self.assertTrue(g["geschrieben"])
+
+
+    # --- Nachbesserung (Review): alles vorab pruefen, atomar, Typen ---------
+
+    def _zwei_spuren(self, zweite, urteil2="ok"):
+        """gitter (gueltig) + orbk (Inhalt `zweite`), Vorschau von Hand geschrieben."""
+        p2 = self._wachen(zweite, "orbk")
+        bu.MOTOREN["orbk"] = Mock()
+        self.datei.parent.mkdir(parents=True, exist_ok=True)
+        e = lambda p, u: {"stand": "x", "bestanden": True, "urteil": u,
+                          "kennzahlen": {}, "alt": False,
+                          "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+        self.datei.write_text(json.dumps({
+            "stand": JETZT.isoformat(), "art": "urteile-vorschau",
+            "spuren": {"gitter": e(self.wachen, "Gitter schlaegt Halten"),
+                       "orbk": e(p2, urteil2)}}), encoding="utf-8")
+        return p2
+
+    def test_zweite_spur_ohne_anker_schreibt_gar_nichts(self):
+        p2 = self._zwei_spuren("{ \"handel_erlaubt\": false }\n")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - orbk: ", text)
+        self.assertIn("kein freigabe-Block", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+        self.assertFalse(self.urteile.exists())
+
+    def test_zweite_spur_urteil_mit_backslash_schreibt_gar_nichts(self):
+        self._zwei_spuren(WACHEN_MIT_BACKTEST, "endet auf \\")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - orbk: ", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+
+    def test_zweite_spur_geaendert_laesst_erste_unberuehrt(self):
+        p2 = self._zwei_spuren(WACHEN_MIT_BACKTEST)
+        p2.write_text(WACHEN_MIT_BACKTEST.replace("6", "7"), encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("orbk/wachen.json hat sich seit der Vorschau geaendert", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+
+    def _mit_eintrag(self, **aenderung):
+        self._vorschau()
+        d = json.loads(self.datei.read_text("utf-8"))
+        e = d["spuren"]["gitter"]
+        for k, v in aenderung.items():
+            if v is KEIN:
+                e.pop(k, None)
+            else:
+                e[k] = v
+        self.datei.write_text(json.dumps(d), encoding="utf-8")
+        return self._main("--aus-vorschau", str(self.datei))
+
+    def test_typen_werden_geprueft(self):
+        for aend in ({"bestanden": "true"}, {"bestanden": 1}, {"urteil": {"a": 1}},
+                     {"sha256": KEIN}, {"sha256": 5}, {"kennzahlen": [1]}):
+            with self.subTest(aend=aend):
+                rc, text = self._mit_eintrag(**aend)
+                self.assertEqual(rc, 2)
+                self.assertIn("nichts geschrieben - Vorschau unlesbar", text)
+                self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+
+    def test_spurname_mit_pfad_wird_abgelehnt(self):
+        self.datei.parent.mkdir(parents=True)
+        self.datei.write_text(json.dumps({
+            "stand": JETZT.isoformat(), "art": "urteile-vorschau",
+            "spuren": {"../x": {"bestanden": True, "urteil": "x", "sha256": "0"}}}),
+            encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("unbekannte Spur in der Vorschau: ../x", text)
+
+    def test_ausnahme_beim_schreiben_wird_gemeldet(self):
+        self._vorschau()
+        echt = bu.freigabe_schreiben
+
+        def f(*a, **k):
+            if k.get("vorschau"):
+                return echt(*a, **k)
+            raise ValueError("kaputt")
+        with patch.object(bu, "freigabe_schreiben", side_effect=f):
+            rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 1)
+        self.assertIn("nicht geschrieben: gitter - kaputt", text)
+        self.assertFalse(json.loads(self.urteile.read_text("utf-8"))
+                         ["spuren"]["gitter"]["geschrieben"])
+
+    def test_urteile_datei_wird_atomar_geschrieben(self):
+        self._vorschau()
+        with patch.object(bu.os, "replace", side_effect=OSError("gesperrt")):
+            rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 1)
+        self.assertIn("Urteile-Datei nicht geschrieben - gesperrt", text)
+        self.assertEqual(list(self.urteile.parent.glob("*.tmp")), [])
+        self.assertFalse(self.urteile.exists())
+
+    def test_urteile_laden_faengt_oserror(self):
+        self.urteile.mkdir()                      # Verzeichnis: read_text -> OSError
+        self.assertEqual(bu._urteile_laden(), {})
+
+    def test_leere_vorschau_schreibt_nichts(self):
+        self.datei.parent.mkdir(parents=True)
+        self.datei.write_text(json.dumps({
+            "stand": JETZT.isoformat(), "art": "urteile-vorschau", "spuren": {}}),
+            encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - Vorschau ohne Spuren", text)
+        self.assertFalse(self.urteile.exists())
 
 
 if __name__ == "__main__":
