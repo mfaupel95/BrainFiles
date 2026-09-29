@@ -23,6 +23,7 @@ TREFFER_FELDER = ("inst", "richtung", "preis", "score", "cr", "stop", "ziel",
                   "risiko_prozent", "umsatz_24h_usd")
 TORE_SPALTEN = ("Tor", "Wert", "Erklärung")
 LEER = "—"
+ZUKUNFT_TOLERANZ_H = -0.1     # kleine Uhrabweichung ist kein Fehler
 
 
 # --- rein ------------------------------------------------------------------
@@ -34,7 +35,7 @@ def lade_bericht(pfad):
         return None, "fehlt"
     try:
         d = json.loads(pfad.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return None, "nicht lesbar"
     if not isinstance(d, dict) or not isinstance(d.get("treffer", []), list):
         return None, "nicht lesbar"
@@ -55,6 +56,8 @@ def warnung(bericht, jetzt):
     alter = alter_h(bericht, jetzt)
     if alter is None:
         return "Erzeugungszeit nicht lesbar"
+    if alter < ZUKUNFT_TOLERANZ_H:
+        return "Erzeugungszeit liegt in der Zukunft"
     if alter >= ALTER_WARNUNG_H:
         return ("Bericht ist %d h alt — der Dauerlauf hat keinen neueren geschrieben"
                 % alter)
@@ -65,7 +68,7 @@ def kopfzeile(bericht, jetzt):
     alter = alter_h(bericht, jetzt)
     return "Bericht vom %s · erzeugt vor %s · %s Märkte geprüft · %d Treffer" % (
         bericht.get("datum", LEER),
-        LEER if alter is None else "%.1f h" % alter,
+        LEER if alter is None or alter < ZUKUNFT_TOLERANZ_H else "%.1f h" % alter,
         bericht.get("maerkte_geprueft", LEER),
         len([t for t in bericht.get("treffer", []) if isinstance(t, dict)]))
 
@@ -143,8 +146,9 @@ class MarktReiter(ttk.Frame):
         self.w_kopf.config(text=kopfzeile(bericht, jetzt))
         self._warne(warnung(bericht, jetzt))
         alter = alter_h(bericht, jetzt)
+        hinweis = warnung(bericht, jetzt)
         self._status = ("Marktbericht %d h alt" % alter
-                        if alter is not None and alter >= ALTER_WARNUNG_H else "")
+                        if alter is not None and alter >= ALTER_WARNUNG_H else hinweis)
         self.treffer.setze(treffer_zeilen(bericht))
         self.tore.setze(tore_zeilen(bericht))
 

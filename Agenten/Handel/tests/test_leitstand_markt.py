@@ -59,6 +59,8 @@ class Rein(unittest.TestCase):
             self.assertEqual(lm.lade_bericht(p), (None, "nicht lesbar"))
             p.write_text("[]", encoding="utf-8")
             self.assertEqual(lm.lade_bericht(p), (None, "nicht lesbar"))
+            p.write_text("[" * 200000, encoding="utf-8")
+            self.assertEqual(lm.lade_bericht(p), (None, "nicht lesbar"))
 
     def test_alter_und_warnung(self):
         self.assertEqual(lm.alter_h(BERICHT, ERZEUGT + timedelta(hours=3)), 3.0)
@@ -73,6 +75,14 @@ class Rein(unittest.TestCase):
                          "Erzeugungszeit nicht lesbar")
         ohne_zone = dict(BERICHT, erzeugt="2026-09-29T09:00:00")
         self.assertIsNone(lm.alter_h(ohne_zone, ERZEUGT))
+
+    def test_zukunft(self):
+        frueh = ERZEUGT - timedelta(hours=21)
+        self.assertEqual(lm.warnung(BERICHT, frueh),
+                         "Erzeugungszeit liegt in der Zukunft")
+        self.assertEqual(lm.warnung(BERICHT, ERZEUGT - timedelta(minutes=5)), "")
+        self.assertNotIn("-21", lm.kopfzeile(BERICHT, frueh))
+        self.assertIn("erzeugt vor — · ", lm.kopfzeile(BERICHT, frueh))
 
     def test_kopfzeile(self):
         self.assertEqual(lm.kopfzeile(BERICHT, ERZEUGT + timedelta(hours=3)),
@@ -128,6 +138,16 @@ class Reiter(unittest.TestCase):
         self.assertEqual(len(r.tore.sichtbare()), 2)
         self.assertEqual(r.titel_zusatz(), "")
         self.assertEqual(r.status(), "")
+
+    def test_status_meldet_zukunft_und_unlesbare_zeit(self):
+        self._bericht("neuester.json", BERICHT)
+        r = self._reiter()
+        self.jetzt = ERZEUGT - timedelta(hours=21)
+        r.refresh()
+        self.assertEqual(r.status(), "Erzeugungszeit liegt in der Zukunft")
+        self._bericht("neuester.json", dict(BERICHT, erzeugt="gestern"))
+        r.refresh()
+        self.assertEqual(r.status(), "Erzeugungszeit nicht lesbar")
 
     def test_fehlender_bericht_gibt_hinweis(self):
         r = self._reiter()
