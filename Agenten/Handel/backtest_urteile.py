@@ -40,9 +40,20 @@ Aufrufe (aus dem Handel-Ordner):
     scanner/.venv/Scripts/python.exe backtest_urteile.py               # alles
     scanner/.venv/Scripts/python.exe backtest_urteile.py --spur gitter
     scanner/.venv/Scripts/python.exe backtest_urteile.py --vorschau    # schreibt nichts
+    scanner/.venv/Scripts/python.exe backtest_urteile.py --vorschau --vorschau-datei V.json
+    scanner/.venv/Scripts/python.exe backtest_urteile.py --aus-vorschau V.json
+
+VORSCHAU UEBERNEHMEN (der Weg des Leitstands)
+  --vorschau-datei legt die Vorschau als Datei ab, mit dem SHA-256 jeder
+  gelesenen wachen.json. --aus-vorschau faehrt KEINEN Motor, sondern schreibt
+  genau diese Urteile - nur wenn die Vorschau hoechstens 60 min alt ist und
+  keine wachen.json sich seitdem geaendert hat. Sonst: nichts geschrieben,
+  Exit 2. So landet in der Datei, was Max gesehen und bestaetigt hat, nicht
+  das Ergebnis eines neuen Laufs mit neueren Kerzen.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -57,10 +68,24 @@ PY_SCANNER = HIER / "scanner" / ".venv" / "Scripts" / "python.exe"
 PY_NAUTILUS = HIER / "nautilus" / ".venv" / "Scripts" / "python.exe"
 URTEILE = HIER / "backtest_urteile.json"
 ZEITLIMIT_S = 900
+VORSCHAU_GUELTIG_MIN = 60
+VORSCHAU_ZUKUNFT_MIN = 5      # Uhren zweier Laeufe duerfen so weit auseinander liegen
+
+
+def _jetzt_dt():
+    return datetime.now(timezone.utc)
 
 
 def _jetzt():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return _jetzt_dt().isoformat(timespec="seconds")
+
+
+def _sha256(pfad):
+    """SHA-256 der Datei als Hex, oder None wenn sie nicht lesbar ist."""
+    try:
+        return hashlib.sha256(Path(pfad).read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def wachen_laden(spur):
@@ -326,14 +351,124 @@ def freigabe_schreiben(spur, bestanden, urteil, vorschau=False, tag=None):
     return None
 
 
+# --- Vorschau ablegen und uebernehmen --------------------------------------
+
+def vorschau_ablegen(pfad, eintraege, stand):
+    """Die Vorschau als Datei ablegen (erst .tmp, dann umbenennen)."""
+    pfad = Path(pfad)
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    tmp = pfad.with_name(pfad.name + ".tmp")
+    tmp.write_text(json.dumps({"stand": stand, "art": "urteile-vorschau",
+                               "spuren": eintraege}, ensure_ascii=False, indent=2)
+                   + "\n", encoding="utf-8")
+    os.replace(tmp, pfad)
+
+
+def vorschau_pruefen(daten, jetzt):
+    """"" wenn die Vorschau uebernommen werden darf, sonst der Grund."""
+    if (not isinstance(daten, dict) or daten.get("art") != "urteile-vorschau"
+            or not isinstance(daten.get("spuren"), dict)):
+        return "Vorschau unlesbar"
+    try:
+        stand = datetime.fromisoformat(str(daten.get("stand")))
+    except ValueError:
+        return "Vorschau ohne Stand"
+    if stand.tzinfo is None:
+        return "Vorschau ohne Stand"
+    alter_min = (jetzt - stand).total_seconds() / 60
+    if alter_min < -VORSCHAU_ZUKUNFT_MIN:
+        return "Stand liegt in der Zukunft"
+    if alter_min > VORSCHAU_GUELTIG_MIN:
+        return "Vorschau aelter als %d min" % VORSCHAU_GUELTIG_MIN
+    return ""
+
+
+def _urteile_laden():
+    if URTEILE.exists():
+        try:
+            d = json.loads(URTEILE.read_text(encoding="utf-8"))
+            if isinstance(d, dict):
+                return d
+        except ValueError:
+            pass
+    return {}
+
+
+def aus_vorschau(pfad):
+    """Genau die Urteile der Vorschau schreiben - ohne Motor. Exit-Code."""
+    try:
+        daten = json.loads(Path(pfad).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        daten = None
+    grund = vorschau_pruefen(daten, _jetzt_dt())
+    if not grund:
+        # Erst ALLES pruefen, dann schreiben: keine halbe Uebernahme.
+        for spur, e in sorted(daten["spuren"].items()):
+            if spur not in MOTOREN or not isinstance(e, dict):
+                grund = "unbekannte Spur in der Vorschau: %s" % spur
+                break
+            b = e.get("bestanden")
+            if not (b is None or isinstance(b, bool)):
+                grund = "Vorschau unlesbar"
+                break
+            sha = _sha256(HIER / spur / "wachen.json")
+            if sha is None or sha != e.get("sha256"):
+                grund = "%s/wachen.json hat sich seit der Vorschau geaendert" % spur
+                break
+    if grund:
+        print("nichts geschrieben - %s" % grund)
+        return 2
+
+    tag = datetime.fromisoformat(daten["stand"]).astimezone().strftime("%Y-%m-%d")
+    alt = _urteile_laden()
+    aus = {"stand": _jetzt(), "spuren": dict(alt.get("spuren") or {}),
+           "ohne_motor": alt.get("ohne_motor") or []}
+    rc = 0
+    for spur, e in sorted(daten["spuren"].items()):
+        if e.get("bestanden") is None:
+            print("nicht ermittelbar: %s - nichts zu schreiben" % spur)
+            continue
+        vorher = _sha256(HIER / spur / "wachen.json")
+        try:
+            hinweis = freigabe_schreiben(spur, e["bestanden"], e.get("urteil"),
+                                         tag=tag)
+        except OSError as fehler:
+            hinweis = str(fehler)
+        if hinweis:
+            print("nicht geschrieben: %s - %s" % (spur, hinweis))
+            rc = 1
+        elif _sha256(HIER / spur / "wachen.json") == vorher:
+            print("unveraendert: %s/wachen.json" % spur)
+        else:
+            print("geschrieben: %s/wachen.json" % spur)
+        aus["spuren"][spur] = {
+            "stand": e.get("stand"), "bestanden": e["bestanden"],
+            "urteil": e.get("urteil"), "kennzahlen": e.get("kennzahlen") or {},
+            "geschrieben": not hinweis, "hinweis": hinweis, "aus_vorschau": True,
+        }
+    URTEILE.write_text(json.dumps(aus, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8")
+    return rc
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Backtest-Urteile sammeln")
     ap.add_argument("--spur", action="append", choices=sorted(MOTOREN))
     ap.add_argument("--vorschau", action="store_true", help="nichts schreiben")
+    ap.add_argument("--vorschau-datei", help="Vorschau zusaetzlich als Datei ablegen")
+    ap.add_argument("--aus-vorschau", help="genau diese Vorschau uebernehmen")
     a = ap.parse_args()
+    if a.vorschau_datei and not a.vorschau:
+        ap.error("--vorschau-datei nur zusammen mit --vorschau")
+    if a.aus_vorschau and (a.vorschau or a.spur):
+        ap.error("--aus-vorschau steht allein (die Spuren kommen aus der Datei)")
+    if a.aus_vorschau:
+        return aus_vorschau(a.aus_vorschau)
 
+    beginn = _jetzt()
+    vorschau = {}
     spuren = a.spur or sorted(MOTOREN)
     alt = {}
     if URTEILE.exists():
@@ -352,6 +487,7 @@ def main():
     aus["ohne_motor"] = ohne
 
     for spur in spuren:
+        sha = _sha256(HIER / spur / "wachen.json")   # VOR dem Motor: was Max sieht
         w = wachen_laden(spur)
         try:
             bestanden, urteil, kennzahlen = MOTOREN[spur](w)
@@ -369,6 +505,10 @@ def main():
             "kennzahlen": kennzahlen, "geschrieben": not a.vorschau
             and bestanden is not None, "hinweis": hinweis,
         }
+        vorschau[spur] = {"stand": aus["spuren"][spur]["stand"],
+                          "bestanden": bestanden, "urteil": urteil,
+                          "kennzahlen": kennzahlen, "alt": alt_wert,
+                          "sha256": sha}
         print("%-9s %-18s %s"
               % (spur, {True: "bestanden", False: "nicht bestanden",
                         None: "nicht ermittelbar"}[bestanden], urteil))
@@ -381,6 +521,9 @@ def main():
         print("\nUrteile: %s" % URTEILE.name)
     else:
         print("\n(Vorschau - nichts geschrieben)")
+        if a.vorschau_datei:
+            vorschau_ablegen(a.vorschau_datei, vorschau, beginn)
+            print("Vorschau-Datei: %s" % a.vorschau_datei)
     return 0
 
 

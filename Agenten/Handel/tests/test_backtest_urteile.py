@@ -13,12 +13,16 @@ umgelegten Schalter.
 Direkt ausfuehrbar:  python tests/test_backtest_urteile.py
 """
 
+import hashlib
+import io
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 HIER = Path(__file__).resolve().parent
 sys.path.insert(0, str(HIER.parent))          # Handel/ - backtest_urteile
@@ -217,6 +221,155 @@ class Sicherheitsnetz(Basis):
             hinweis = bu.freigabe_schreiben("gitter", True, "x")
         self.assertIn("kein freigabe-Block", hinweis)
         self.assertEqual(p.read_bytes(), vorher)
+
+
+JETZT = datetime(2026, 9, 29, 12, 0, tzinfo=timezone.utc)
+
+
+class Vorschau(Basis):
+    """--vorschau-datei legt ab, --aus-vorschau uebernimmt genau das - ohne Motor."""
+
+    def setUp(self):
+        super().setUp()
+        self.jetzt = JETZT
+        self.urteile = Path(self.tmp.name) / "backtest_urteile.json"
+        self.datei = Path(self.tmp.name) / "ablage" / "v.json"
+        self.motor = Mock(return_value=(True, "Gitter schlaegt Halten", {"zyklen": 7}))
+        for p in (patch.object(bu, "URTEILE", self.urteile),
+                  patch.dict(bu.MOTOREN, {"gitter": self.motor}, clear=True),
+                  patch.object(bu, "_jetzt_dt", side_effect=lambda: self.jetzt)):
+            p.start()
+            self.addCleanup(p.stop)
+        self.wachen = self._wachen(WACHEN_MIT_BACKTEST)
+
+    def _main(self, *args):
+        aus, fehler = io.StringIO(), io.StringIO()
+        with patch.object(sys, "argv", ["backtest_urteile.py"] + list(args)), \
+                redirect_stdout(aus), redirect_stderr(fehler):
+            rc = bu.main()
+        return rc, aus.getvalue()
+
+    def _vorschau(self):
+        rc, text = self._main("--spur", "gitter", "--vorschau",
+                              "--vorschau-datei", str(self.datei))
+        self.assertEqual(rc, 0)
+        self.motor.reset_mock()
+        return text
+
+    def _tag(self):
+        return JETZT.astimezone().strftime("%Y-%m-%d")
+
+    def test_vorschau_datei_schreibt_keine_wachen(self):
+        text = self._vorschau()
+        self.assertIn("Vorschau-Datei: %s" % self.datei, text)
+        self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+        self.assertFalse(self.urteile.exists())
+        d = json.loads(self.datei.read_text("utf-8"))
+        self.assertEqual(d["art"], "urteile-vorschau")
+        self.assertEqual(d["stand"], "2026-09-29T12:00:00+00:00")
+        e = d["spuren"]["gitter"]
+        self.assertIs(e["bestanden"], True)
+        self.assertIs(e["alt"], False)
+        self.assertEqual(e["urteil"], "Gitter schlaegt Halten")
+        self.assertEqual(e["sha256"],
+                         hashlib.sha256(self.wachen.read_bytes()).hexdigest())
+        self.assertEqual(list(self.datei.parent.glob("*.tmp")), [])
+
+    def test_aus_vorschau_schreibt_genau_die_werte_ohne_motor(self):
+        self._vorschau()
+        self.jetzt = JETZT + timedelta(minutes=10)
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 0)
+        self.motor.assert_not_called()
+        self.assertIn("geschrieben: gitter/wachen.json", text)
+        d = json.loads(self.wachen.read_text("utf-8"))
+        self.assertTrue(d["freigabe"]["backtest_bestanden"])
+        self.assertEqual(d["freigabe"]["backtest_urteil"], "Gitter schlaegt Halten")
+        self.assertEqual(d["freigabe"]["backtest_geprueft_am"], self._tag())
+        self.assertFalse(d["handel_erlaubt"])
+        self.assertFalse(d["freigabe"]["erfuellt"])
+
+    def test_zu_alte_vorschau_schreibt_nichts(self):
+        self._vorschau()
+        self.jetzt = JETZT + timedelta(minutes=61)
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - Vorschau aelter als 60 min", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), WACHEN_MIT_BACKTEST)
+
+    def test_geaenderte_wachen_schreibt_nichts(self):
+        self._vorschau()
+        von_hand = WACHEN_MIT_BACKTEST.replace('"papierlauf_min_wochen": 6',
+                                               '"papierlauf_min_wochen": 7')
+        self.wachen.write_text(von_hand, encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - gitter/wachen.json hat sich seit der "
+                      "Vorschau geaendert", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), von_hand)
+
+    def test_zukunftsstand_wird_abgelehnt(self):
+        self._vorschau()
+        self.jetzt = JETZT - timedelta(minutes=10)
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("Stand liegt in der Zukunft", text)
+
+    def test_unlesbare_vorschau(self):
+        self.datei.parent.mkdir(parents=True)
+        self.datei.write_text("{kaputt", encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("nichts geschrieben - Vorschau unlesbar", text)
+        rc, text = self._main("--aus-vorschau", str(self.datei.with_name("fehlt.json")))
+        self.assertIn("Vorschau unlesbar", text)
+        self.assertEqual(bu.vorschau_pruefen({"art": "urteile-vorschau", "spuren": {},
+                                              "stand": "2026-09-29T12:00:00"}, JETZT),
+                         "Vorschau ohne Stand")
+
+    def test_unbekannte_spur_schreibt_nichts(self):
+        self.datei.parent.mkdir(parents=True)
+        self.datei.write_text(json.dumps({
+            "stand": JETZT.isoformat(), "art": "urteile-vorschau",
+            "spuren": {"squeeze": {"bestanden": True, "urteil": "x", "sha256": "0"}}}),
+            encoding="utf-8")
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 2)
+        self.assertIn("unbekannte Spur in der Vorschau: squeeze", text)
+
+    def test_optionskonflikte(self):
+        for args in (("--vorschau-datei", "x.json"),
+                     ("--aus-vorschau", "x.json", "--vorschau"),
+                     ("--aus-vorschau", "x.json", "--spur", "gitter")):
+            with self.assertRaises(SystemExit):
+                self._main(*args)
+        self.motor.assert_not_called()
+
+    def test_unveraendert_wird_gemeldet(self):
+        schon = WACHEN_MIT_BACKTEST.replace(
+            '"backtest_bestanden": false,',
+            '"backtest_bestanden": true,\n    "backtest_urteil": "Gitter schlaegt '
+            'Halten",\n    "backtest_geprueft_am": "%s",' % self._tag())
+        self.wachen.write_text(schon, encoding="utf-8")
+        self._vorschau()
+        rc, text = self._main("--aus-vorschau", str(self.datei))
+        self.assertEqual(rc, 0)
+        self.assertIn("unveraendert: gitter/wachen.json", text)
+        self.assertEqual(self.wachen.read_text("utf-8"), schon)
+
+    def test_urteile_datei_wird_fortgeschrieben(self):
+        self.urteile.write_text(json.dumps({
+            "stand": "alt", "ohne_motor": ["squeeze"],
+            "spuren": {"orbk": {"bestanden": False}}}), encoding="utf-8")
+        self._vorschau()
+        self._main("--aus-vorschau", str(self.datei))
+        d = json.loads(self.urteile.read_text("utf-8"))
+        self.assertEqual(d["ohne_motor"], ["squeeze"])
+        self.assertEqual(d["spuren"]["orbk"], {"bestanden": False})
+        g = d["spuren"]["gitter"]
+        self.assertTrue(g["aus_vorschau"])
+        self.assertTrue(g["bestanden"])
+        self.assertTrue(g["geschrieben"])
 
 
 if __name__ == "__main__":
