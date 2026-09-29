@@ -325,6 +325,18 @@ eine Wunschliste und darf veralten (dort stand `gemma4:e4b`, lokal hieß das Mod
 `gemma-e4b-8k`). Ein Fallback auf einen nicht existierenden Namen greift nicht, und
 niemand merkt es, bis der Primärpfad wirklich ausfällt. Echte Namen am Dienst holen
 (`curl -s http://127.0.0.1:11434/api/tags`), nicht aus der Config abschreiben.
+  **Gemessen 29.09.2026: es war die GANZE Flotte.** 21 von 22 Profilen trugen
+  `qwen35-8k:cpu` in der Kette und `gemma4:26b`/`gemma4:e4b` im Provider-Block — im
+  Store lagen nur `gemma-e4b-8k:latest` und `gemma-e4b-8k:cpu`. Werkzeug für den
+  Abgleich und die Umstellung: `Agenten/Hermes/scripts/lokale-modellnamen-richten.py`
+  (Trockenlauf ohne Argument, `--anwenden`, `--zuruecknehmen`, `--nur-profile`; fragt
+  `/api/tags` und ersetzt NUR, wenn der Zielname dort steht — kein Raten). Nachweis
+  nach dem Lauf: `git diff --numstat` JE Datei muss 6/6 bzw. 3/3 bzw. 1/1 zeigen,
+  dann `hermes -p <profil> fallback list` UND ein echter Aufruf des Modells.
+  **Byte-Ersetzung, nicht Textmodus:** der erste Anlauf setzte die Zeilenenden ein
+  zweites Mal, aus CRLF wurde CRCRLF und der Diff zeigte die ganze Datei
+  (2248/2248). Ein Modellname ist ASCII — `read_bytes()`/`write_bytes()` kann
+  Kodierung und Zeilenenden nicht anfassen.
 - **Was in der Config steht, ist kein Beleg für das, was gilt** — `hermes fallback list`
 fragen. Und eine Aussage aus einer abgebrochenen Sitzung („die Kette steht doch schon
 drin") nie übernehmen, sondern am lebenden System nachprüfen.
