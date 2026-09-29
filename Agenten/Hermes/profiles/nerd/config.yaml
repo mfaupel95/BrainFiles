@@ -5,7 +5,7 @@ model:
   api_mode: chat_completions
 plugins:
   enabled: []
-_config_version: 46
+_config_version: 49
 agent: {}
 terminal:
   backend: local
@@ -25,3 +25,6 @@ fallback_providers:
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1
+platforms:
+  photon:
+    enabled: false

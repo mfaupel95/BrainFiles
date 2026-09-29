@@ -164,6 +164,23 @@ Kennung aus den Profilen zu loeschen - dort steht sie nicht.
 Ein echter Fall bleibt zu pruefen: `profiles/awesome-systematic-trading/config.yaml` traegt
 einen eigenen `photon:`-Block (dieses Profil hat auch eine eigene `auth.json`) - siehe T-107.
 
+**Erledigt 29.09.2026.** Die Falschmeldung ist stillgelegt: die 18 gemeldeten Profile tragen
+jetzt einen eigenen Block
+
+    platforms:
+      photon:
+        enabled: false
+
+gesetzt mit `hermes -p <profil> config set platforms.photon.enabled false` - das Werkzeug
+waehlt die Stelle selbst und schreibt CRLF (18 Dateien je +3 Zeilen, keine Loeschung ausser der
+`_config_version`-Zeile, die Hermes ohnehin fortschreibt). Es meldet dabei den Vorrang aus:
+"the top-level platforms.photon block outranks gateway.platforms - saved as
+platforms.photon.enabled" - wer den Schalter unter `gateway:` setzt, setzt ihn ins Leere.
+`hermes doctor` meldet danach **1 Befund statt 19** (offen bleibt nur "Browser tools
+(agent-browser) has 1 npm vulnerability"). Der eigene `photon:`-Block von
+`awesome-systematic-trading` blieb unangetastet - dieses Profil stand nie in der Liste, was die
+Wirkung des Schalters belegt.
+
 ### Gateway-Identitaet: warum `hermes update` abbrach - und die Wache dafuer (29.09.2026)
 
 **Symptom.** Jeder Update-Lauf endete nach dem Pre-update-Snapshot mit `exit_code 1` und
@@ -226,6 +243,15 @@ Beleg: die geplanten Laeufe 19:15:13 und 19:15:59 (2-Minuten-Takt) schreiben
 "Gateway laeuft (Pipe: True, Port 9900: True), kein Start"; die Neustartzeile endet 19:13:56.
 Vorfassung gesichert als `Routinen/gateway-waechter.ps1.bak-20260929`.
 
+**Herkunft.** Die Erkennung wurde an diesem Tag zweimal angefasst. Die erste Reparatur (T-139,
+parallele Sitzung) stellte die Pruefung von "Port 9900 ist die Wahrheit" auf die Bedingung um
+(laeuft ein Prozess `hermes_cli.main gateway run` ohne `--profile` UND antwortet er per
+Control-Pipe oder Port?) und brachte den Merker gegen Dauer-Neustarts. Diese Fassung hier macht
+zusaetzlich die **Identitaet** aus `gateway_state.json` zum ersten Zeugen und erweitert den
+Rueckfall auf **beide** Starter-Formen. Beide Aenderungen standen beim Commit 51e233f
+uncommittet im selben Arbeitsbaum und sind gemeinsam hineingegangen; T-139 nennt den ersten
+Teil, dieser Abschnitt den zweiten.
+
 **Merksatz.** Eine Wache, die einen Dienst an der Kommandozeile eines bestimmten Starters
 erkennt, faellt bei jedem Starterwechsel um - und danach im Takt der Wache. Wer den Dienst
 schon selbst eine Zustandsdatei schreiben laesst, fragt die.
@@ -272,4 +298,4 @@ existiert (sie liegen unter `profiles/.deleted/`). Am 29.09.2026 nach
 Photon-Kennung der Haupt-`.env` als eigene - kein Bot-Profil traegt `PHOTON_PROJECT_ID`
 (nachgemessen: 0 von 30 Profil-`.env`), ebenso wenig eine Windows-Benutzervariable. Damit ist
 die bereits am 25.09.2026 notierte Falschmeldung bestaetigt; sie blaeht den Doctor-Bericht auf
-19 Befunde auf und verdeckt die echten. Siehe `Archiv/TASKS.md` T-149.
+19 Befunde auf und verdeckte die echten. **Behoben am 29.09.2026** (Abschnitt "Photon-Doppelkennungen" oben): die 18 Profile tragen jetzt `platforms.photon.enabled: false`, der Doctor meldet 1 statt 19 Befunde.

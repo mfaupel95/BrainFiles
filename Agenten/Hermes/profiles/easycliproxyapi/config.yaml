@@ -1998,7 +1998,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 46
+_config_version: 49
 a2a_agents:
   omniroute:
     auth:
@@ -2249,3 +2249,6 @@ session_reset:
   mode: none
 video_gen:
   provider: nous
+platforms:
+  photon:
+    enabled: false

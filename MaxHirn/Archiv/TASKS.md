@@ -88,18 +88,6 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
       Angelegt: 2026-09-29
       Betrifft: Agenten/Hermes/hermes-agent/web, apps/shared/tsconfig
 
-- [ ] **T-149 — Doctor-Bericht: 18 Photon-Doppelkennungen sind ein Fehlalarm**
-      Kontext: `hermes doctor` meldet fuer 18 Bot-Profile "Profiles 'default' and '<bot>' both
-      hold the same photon credential" und schliesst mit 19 Befunden ab. Nachgemessen am
-      29.09.2026: KEIN Profil-.env traegt `PHOTON_PROJECT_ID`/`_SECRET`, keine
-      Windows-Benutzervariable - die Kennung der Haupt-.env wird je Profil mitgezaehlt. Bereits
-      am 25.09.2026 notiert (`Wiki/Betrieb/Hermes.md`); jetzt wieder aktuell und damit 18 der
-      19 Befunde wertlos.
-      Naechster Schritt: Entscheidung Max - Doctor-Bericht gezielt filtern, oder in den 18
-      Profil-`config.yaml` `gateway.platforms.photon.enabled: false` eintragen (der eine Profil
-      mit eigenem photon-Block verschwindet dadurch aus der Liste).
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Wiki/Betrieb/Hermes.md
 
 - [ ] **T-150 — 18 Commits Rueckstand im Hermes-Checkout, Update nicht wiederholt**
       Kontext: Der Lauf am 29.09.2026 18:46 endete `partial` (Gateway-Restart) und ist 3,5 h
@@ -1773,6 +1761,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
+- [x] **T-149 — Doctor-Bericht: 18 Photon-Doppelkennungen sind ein Fehlalarm**
+      **Erledigt 2026-09-29.** Die 18 gemeldeten Profile tragen jetzt `platforms.photon.enabled: false`
+      (gesetzt mit `hermes -p <profil> config set platforms.photon.enabled false`; der Schalter wirkt nur
+      auf TOP-LEVEL, `gateway.platforms.photon` wird ueberstimmt - so meldet es das Werkzeug selbst).
+      Urspruenglicher Befund: der Doctor zaehlte die Photon-Kennung der Haupt-`.env` jedem Profil zu
+      (0 von 30 Profil-`.env` tragen `PHOTON_PROJECT_ID`). **Nachweis:** `hermes doctor` meldet 1 Befund
+      statt 19 (offen: npm-Hinweis bei agent-browser), 18/18 Profile mit `enabled: false`, CRLF erhalten.
 - [x] **T-139 - Zwei Wachen prueften eine ADRESSE statt der Bedingung (Port 9900)**
       **Erledigt 2026-09-29.** Seit dem Update lauscht der Gateway auf einem Named Pipe; TCP 9900
       bleibt zu, waehrend er gesund laeuft. Folge: `Agenten/Routinen/gateway-waechter.ps1` startete

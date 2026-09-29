@@ -2013,7 +2013,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 46
+_config_version: 49
 a2a_agents:
   omniroute:
     auth:
@@ -2303,3 +2303,6 @@ video_gen:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
 
+platforms:
+  photon:
+    enabled: false
