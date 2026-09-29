@@ -316,6 +316,25 @@ Nachweis: `Get-ScheduledTaskInfo` zeigt für alle drei Wächter einen gefüllten
 mittel) - nichts zu tun" und ließ den Prozess unangetastet — der Auslöser
 greift, ohne den laufenden Handel zu stören.
 
+**Die Sperrdatei trägt jetzt zwei Felder (29.09.2026).** Die wiederbelebte
+Wächteraufgabe hätte an einer zweiten Stelle wieder versagen können:
+`dauerlauf.pid` enthielt nur eine Prozessnummer, und Windows vergibt Nummern
+wieder. Trüge nach einem Neustart irgendein fremder Python-Prozess die alte
+Nummer, meldete der Wächter dauerhaft „laeuft bereits" und startete nie mehr —
+die Lücke hätte genau die Wiederbelebung ausgehebelt, die oben in Gang gebracht
+wurde. Seither steht in der Datei `<PID> <Startzeit>`; eine wiederverwendete
+Nummer hat eine andere Startzeit und fällt auf. Das erste Feld bleibt die nackte
+Nummer, damit eine alte Datei lesbar bleibt.
+
+Zugleich prüft `dauerlauf.py` die Sperre selbst und schreibt sie selbst. Vorher
+tat das nur `handel-dauerlauf.ps1`: ein von Hand gestarteter `python
+dauerlauf.py` ging daran vorbei und war für den Wächter unsichtbar — so entstand
+am 15.09.2026 der Doppellauf auf denselben Dateien. Die Regel dabei lautet **im
+Zweifel starten**: unlesbare Datei, verweigerter Zugriff, jeder Fehler gilt als
+„nicht belegt". Ein Lauf, der fälschlich nicht startet, fällt niemandem auf,
+weil `melder.py` nach Zeitplan sendet und nicht nach Zustand. Begründung im Kopf
+von `Agenten/Handel/sperre.py`, Nachweis in `tests/test_sperre.py`.
+
 ### Der Telegram-Melder — eine Quelle, nicht zwei
 
 Seit 07.09.2026 sind `TELEGRAM_TOKEN` und `TELEGRAM_CHAT_ID` als

@@ -69,15 +69,39 @@ function Schreib($text) {
 # Abrufer mit 409. Deshalb hier abfangen und nicht erst dort. Geprueft wird
 # die Sperre DIESER Stufe: der Basislauf und der Stufenlauf duerfen und sollen
 # gleichzeitig laufen, sie schreiben in verschiedene Dateien.
+# Die Sperrdatei traegt seit 29.09.2026 zwei Felder: "<PID> <Startzeit>". Das
+# erste Feld ist weiterhin die nackte Nummer, damit eine Datei aus einem
+# aelteren Lauf lesbar bleibt. Die Startzeit ist noetig, weil Windows PIDs
+# wiederverwendet: traegt irgendein fremder Python-Prozess nach einem Neustart
+# die alte Nummer, meldete diese Pruefung sonst fuer immer "laeuft bereits" -
+# und der Waechter startete nie wieder. Im Zweifel wird gestartet; dauerlauf.py
+# prueft die Sperre seit demselben Tag selbst und beendet sich, wenn er
+# danebenlaeuft (sperre.py).
 if (Test-Path $sperre) {
-  $pid_alt = Get-Content $sperre -ErrorAction SilentlyContinue
+  # @() ist Pflicht: bei nur EINEM Feld gaebe die Pipeline einen String
+  # zurueck, und $felder[0] waere dann dessen erstes ZEICHEN.
+  $felder = @(((Get-Content $sperre -Raw -ErrorAction SilentlyContinue) -split '\s+') |
+              Where-Object { $_ })
+  $pid_alt = $felder[0]
   $lebt = Get-Process -Id $pid_alt -ErrorAction SilentlyContinue
-  if ($lebt -and $lebt.ProcessName -like 'python*') {
+  $passt = $true
+  if ($lebt -and $felder.Count -gt 1) {
+    try {
+      $soll = [double]::Parse($felder[1], [Globalization.CultureInfo]::InvariantCulture)
+      $ist = ([DateTimeOffset]$lebt.StartTime).ToUnixTimeMilliseconds() / 1000.0
+      $passt = [Math]::Abs($ist - $soll) -le 2.0
+    } catch { $passt = $true }   # unlesbare Zeit: wie frueher entscheiden
+  }
+  if ($lebt -and $passt -and $lebt.ProcessName -like 'python*') {
     Schreib "laeuft bereits (PID $pid_alt, Stufe $Risiko) - nichts zu tun"
     Melde-Ende -Marke $marke -Code 0 -Text 'laeuft bereits'                # neu
     exit 0
   }
-  Schreib "verwaiste Sperre (PID $pid_alt lebt nicht mehr) - wird ersetzt"
+  if ($lebt -and -not $passt) {
+    Schreib "verwaiste Sperre (PID $pid_alt lebt, aber mit anderer Startzeit - Nummer wiederverwendet) - wird ersetzt"
+  } else {
+    Schreib "verwaiste Sperre (PID $pid_alt lebt nicht mehr) - wird ersetzt"
+  }
   Remove-Item $sperre -Force -ErrorAction SilentlyContinue
 }
 

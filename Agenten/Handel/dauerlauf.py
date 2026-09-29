@@ -121,6 +121,7 @@ import lage                                              # noqa: E402
 import melder                                            # noqa: E402
 import risikostufe                                       # noqa: E402
 import schnappschuss                                      # noqa: E402
+import sperre                                            # noqa: E402
 import tagesbericht                                      # noqa: E402
 import wochenbericht                                      # noqa: E402
 
@@ -1125,10 +1126,7 @@ class Lauf:
                 # Basislauf mitten im Handel die Freigabe weg.
                 if not self.stumm:
                     freigabefenster.alles_schliessen("Dauerlauf beendet")
-                try:
-                    os.remove(risikostufe.datei(os.path.join(HIER, "dauerlauf.pid")))
-                except OSError:
-                    pass
+                sperre.freigib(sperre.pfad())
                 return 0
             except Exception:                            # noqa: BLE001
                 self.fehler += 1
@@ -1241,8 +1239,28 @@ def main():
               "unveraendert weiter." % (a.risiko, risikostufe.faktor(),
                                         risikostufe.suffix()))
 
-    with ereignis.lauf("handel/dauerlauf"):
-        return Lauf(a.takt, a.trocken).start()
+    # Die Sperre. Bis zum 29.09.2026 pruefte sie nur handel-dauerlauf.ps1 -
+    # ein von Hand gestarteter `python dauerlauf.py` ging daran vorbei UND war
+    # fuer den Waechter unsichtbar, weil er sie auch nicht schrieb. Genau so
+    # entstand der Vorfall vom 15.09.2026 (Modulkopf): zwei Laeufe, dieselben
+    # Dateien. Im Zweifel startet der Lauf, statt sich auszusperren - die
+    # Begruendung steht im Kopf von sperre.py.
+    sperr_datei = sperre.pfad()
+    if sperre.belegt(sperr_datei):
+        gelesen = sperre.lies(sperr_datei)
+        print("Es laeuft bereits ein Dauerlauf der Stufe %s (PID %s). Zwei "
+              "Laeufe schreiben in dieselben Dateien - dieser beendet sich."
+              % (a.risiko, gelesen[0] if gelesen else "?"))
+        return 0
+    sperre.schreibe(sperr_datei)
+
+    try:
+        with ereignis.lauf("handel/dauerlauf"):
+            return Lauf(a.takt, a.trocken).start()
+    finally:
+        # Auch nach Abbruch oder Ausnahme: eine liegengebliebene Sperre waere
+        # zwar erkennbar tot, aber der Waechter muesste sie erst wegraeumen.
+        sperre.freigib(sperr_datei)
 
 
 if __name__ == "__main__":
