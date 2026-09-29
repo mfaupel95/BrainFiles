@@ -72,60 +72,72 @@
 
 ---
 
-## Workstream 2: Omniportal-Clarification
+## Workstream 2: Omnitrade + OpenTerminal Integration
 
-### Aufgabe 2.1: Lokales Repo recherchieren
-- [ ] `O:\Werkstatt\omnitrade` durchsuchen (auf lokaler Maschine)
-  - README.md lesen
-  - Architektur-Diagramm finden
-  - API-Spezifikation suchen
-- [ ] GitHub-Link oder interne Repo-URL dokumentieren
-- [ ] Version und Lizenz notieren
+### Aufgabe 2.1: Omnitrade-Rust-Workspace analysieren ✅
+- [ ] Workspace-Struktur verstehen:
+  - `omnitrade-risk` — Sizing, Drawdown, Kill-Switch
+  - `quant-strategy` — Strategy Evaluation
+  - `quant-alpha`, `quant-signal`, `quant-planes`
+- [ ] Build-Dependencies prüfen (Rust 1.70+, Cargo)
+- [ ] FFI (Foreign Function Interface) für Python dokumentieren
+- [ ] Test-Build durchführen: `cargo build --release`
 
-**Erfolgs-Kriterium:** Omniportal eindeutig identifiziert
-
-**Verantwortlich:** Nutzer (Max)  
-**Geschätzte Zeit:** 30 Minuten  
-**Status:** ⬜ PENDING INPUT
-
----
-
-### Aufgabe 2.2: API-Spezifikation erfassen
-- [ ] Dokumentation durcharbeiten:
-  - Verfügbare Endpoints
-  - Authentifizierungsmethode
-  - Unterstützte Börsen/Paare
-  - Order-Routing-Logik
-  - Response-Format (JSON, Protobuf?)
-- [ ] Rate-Limits dokumentieren
-- [ ] Error-Codes auflisten
-
-**Erfolgs-Kriterium:** API-Spec in Markdown verfügbar
-
-**Verantwortlich:** Claude Code (nach Input vom Nutzer)  
-**Geschätzte Zeit:** 2-4 Stunden  
-**Status:** ⬜ BLOCKED (warten auf Klarifikation)
-
----
-
-### Aufgabe 2.3: Omniportal-Interface Design
-- [ ] Erste Version: `Agenten/Handel/omniportal_interface.py`
-  ```python
-  class OmniportalClient:
-      def __init__(self, api_url, credentials)
-      def list_exchanges() -> List[Exchange]
-      def create_order(exchange, symbol, side, size) -> Order
-      def get_positions(exchange) -> List[Position]
-      def cancel_order(order_id) -> bool
-      def get_account_balance() -> Dict
-  ```
-- [ ] Dummy-Implementation für Testing
-
-**Erfolgs-Kriterium:** Schnittstellendefinition festgelegt
+**Erfolgs-Kriterium:** Omnitrade-Workspace lädt, Struktur verstanden
 
 **Verantwortlich:** Claude Code  
 **Geschätzte Zeit:** 2 Stunden  
-**Status:** ⬜ BLOCKED
+**Status:** ⬜ TODO
+
+---
+
+### Aufgabe 2.2: OpenTerminalUI Recherche & Integration ✅
+- [ ] GitHub-Repo klonen: https://github.com/Hitheshkaranth/OpenTerminalUI
+  - Oder: existierendes Repo in `Werkstatt/Repos/OpenTerminal` nutzen
+- [ ] MCP-Server-Dokumentation lesen
+  - 45 verfügbare Tools katalogisieren
+  - Read-Only vs Read-Write Tools unterscheiden
+- [ ] Lokales Setup: `npm install`, `npm run dev` (oder `python -m uvicorn`)
+- [ ] REST-API Endpoints dokumentieren (auf `http://localhost:8000/docs`)
+
+**Erfolgs-Kriterium:** OpenTerminal UI läuft lokal, MCP-Tools verfügbar
+
+**Verantwortlich:** Claude Code  
+**Geschätzte Zeit:** 3 Stunden  
+**Status:** ⬜ TODO
+
+---
+
+### Aufgabe 2.3: MCP-Bridge für Handelsystem erstellen
+- [ ] `Agenten/Hermes/skills/brainfiles/openterminal-mcp/SKILL.md`
+  - MCP-Server registrieren (OpenTerminal MCP)
+  - Trading-Tools mappen: `get_watchlist`, `create_alert`, `get_portfolio`
+- [ ] Hermes-Bot-Profil für OpenTerminal erstellen
+  - Terminal-Zugriff für Hermes über MCP
+
+**Erfolgs-Kriterium:** Hermes kann OpenTerminal-Tools aufrufen
+
+**Verantwortlich:** Claude Code  
+**Geschätzte Zeit:** 2 Stunden  
+**Status:** ⬜ TODO
+
+---
+
+### Aufgabe 2.4: Omnitrade-Risk Python-Wrapper (optional)
+- [ ] Rust-Bindings für Python erwägen (PyO3)
+  - Oder: HTTP-API zu Rust-Dienst
+- [ ] Risk-Checks in Python aufrufen:
+  ```python
+  from omnitrade_risk import RiskLimits
+  limits = RiskLimits(max_units=100, drawdown_halbierung=5000)
+  limits.check(OrderRequest(units=50, name="BTC"))
+  ```
+
+**Erfolgs-Kriterium:** Risk-Checks von Python aus aufrufbar
+
+**Verantwortlich:** Claude Code  
+**Geschätzte Zeit:** 3 Stunden  
+**Status:** ⬜ TODO (optional)
 
 ---
 
@@ -187,11 +199,12 @@
 | Workstream | Aufgabe | Status | Blocker |
 |-----------|---------|--------|---------|
 | **1. FreqTrade** | Setup | ⬜ TODO | — |
-| | Backtest | ⬜ TODO | 1. fertig |
+| | Backtest | ⬜ TODO | 1.1 fertig |
 | | Client | ⬜ TODO | — |
-| **2. Omniportal** | Recherche | ⬜ PENDING | Input von Max |
-| | API-Spec | ⬜ BLOCKED | 2.1 fertig |
-| | Interface | ⬜ BLOCKED | 2.2 fertig |
+| **2. Omnitrade + OpenTerminal** | Omnitrade analysieren | ⬜ TODO | — |
+| | OpenTerminal Setup | ⬜ TODO | — |
+| | MCP-Bridge | ⬜ TODO | 2.2 fertig |
+| | Risk-Wrapper | ⬜ TODO (optional) | — |
 | **3. Systeme** | MoonDev | ⬜ TODO | — |
 | | OmniQuant | ⬜ TODO | — |
 | | agent-trade-kit | ⬜ TODO | — |
