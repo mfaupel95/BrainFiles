@@ -143,6 +143,23 @@ Merksatz: bei einem Repo unter einer Junction entscheidet das
 **Arbeitsverzeichnis**, ob ein relativer Pfad noch stimmt — und ein fehlgeschlagener
 Build ist kein harmloser Fehlschlag, wenn er das Ausgabeverzeichnis vorher leert.
 
+### Das Zentrale-Fenster starten
+
+```
+.venv\Scripts\pythonw.exe repos_zentrale.py
+```
+
+**Stolperstein beim Start aus einer Agenten-Sitzung:** `cmd /c start "" … pythonw.exe`
+und PowerShells `Start-Process` liefern beide scheinbar Erfolg (die Prozesse sind
+kurz da, PID und Startzeit stimmen), aber **beim Ende des Terminal-Aufrufs ist das
+Fenster wieder weg** — gemessen zweimal: nach 15 s noch zwei Prozesse, nach 40 s
+null. Über ein `Popen` aus einem Python-Skript gestartet überlebt dasselbe Fenster
+(pythonw und python, je 40 s geprüft, unabhaengig nachgezaehlt). Der Vordergrundlauf
+haelt 90 s durch — die GUI selbst ist gesund, es ist die Startart.
+Merksatz: **ein Prozess, der die Sitzung ueberleben soll, wird per `Popen` gestartet,
+nicht per `start`/`Start-Process`** — und danach in einem ZWEITEN Aufruf nachgezaehlt,
+weil „Erfolg" beim Starten nichts ueber das Ueberleben sagt.
+
 ### Nachtrag 30.09.2026 — Flotte gegen upstream gezogen (gemessen)
 
 `Werkstatt/Repos` traegt **46 Klone** (`copilot-worktrees` ist keine: Worktree-
