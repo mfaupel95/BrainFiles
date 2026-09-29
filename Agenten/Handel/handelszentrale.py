@@ -589,13 +589,17 @@ class Handelszentrale:
         self._kurs_laeuft = False
         self._kerzen_wunsch = None
         self._schrift_widgets = [] # (widget, rel, fett) fuer die Schrift-Option
-        root.title("Handelszentrale — %d Spuren (Papier, nur lesend)"
-                   % len(SPUREN))
-        root.configure(bg=FARBEN["bg"])
-        root.geometry("1280x860")
-        root.minsize(1000, 640)
+        if isinstance(root, tk.Tk):
+            # Allein gestartet gehoert das Fenster der Zentrale; als Reiter
+            # im Leitstand gehoeren Titel, Groesse und Lage dem Leitstand.
+            root.title("Handelszentrale — %d Spuren (Papier, nur lesend)"
+                       % len(SPUREN))
+            root.configure(bg=FARBEN["bg"])
+            root.geometry("1280x860")
+            root.minsize(1000, 640)
         self._baue()
-        self._buero_im_bild()
+        if isinstance(root, tk.Tk):
+            self._buero_im_bild()
         self.refresh()
         root.after(REFRESH_MS, self._planer)
 
