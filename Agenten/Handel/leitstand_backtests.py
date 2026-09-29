@@ -19,6 +19,7 @@ from tkinter import ttk
 import leitstand_laeufe as ll
 import replay
 from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
+from leitstand_optimieren import OptimierenBereich
 
 HIER = Path(__file__).resolve().parent
 HINWEIS_FREIGABE = ("Backtest-Runden zählen nicht für die Freigabe — dafür zählen "
@@ -522,4 +523,4 @@ class BacktestReiter(ttk.Frame):
             self.ls.melde(str(e))
 
 
-BEREICHE = [ReplayBereich, EinzelBereich]
+BEREICHE = [ReplayBereich, EinzelBereich, OptimierenBereich]
