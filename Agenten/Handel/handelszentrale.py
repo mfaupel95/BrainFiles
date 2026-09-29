@@ -59,6 +59,7 @@ import dauerlauf                                            # noqa: E402
 import freigabefenster                                      # noqa: E402
 import risikostufe                                          # noqa: E402
 import freqtrade_bridge                                     # noqa: E402
+import omnitrade_bridge                                     # noqa: E402
 
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
@@ -653,6 +654,52 @@ def _freqtrade_im_thread(ziel):
     ziel.put((lage, offen, zu, tage))
 
 
+# ---------- omnitrade (Reiter) ----------
+def _ms_zeit(ms):
+    """Epoch-Millisekunden -> 'TT.MM. HH:MM:SS' Ortszeit, '' wenn unbrauchbar."""
+    try:
+        return datetime.fromtimestamp(float(ms) / 1000).strftime("%d.%m. %H:%M:%S")
+    except (TypeError, ValueError, OverflowError, OSError):
+        return ""
+
+
+def omnitrade_kopf(lage):
+    """(Text, Marke) der Kopfzeile im omnitrade-Reiter aus `omnitrade_bridge.lage()`."""
+    if not lage:
+        return "omnitrade: wird gelesen …", "matt"
+    if not lage.get("ok"):
+        return "⚠ omnitrade — %s" % (lage.get("fehler") or "?"), "schlecht"
+    netz = str(lage.get("network") or "?")
+    text = ("omnitrade %s · %s · %s · %s   Kerzen %d   Kurs %s   Signal %s   "
+            "netto %+.6g   Orders %d / abgelehnt %d   (vor %ds)"
+            % (lage.get("state"), netz, lage.get("symbol"), lage.get("script"),
+               int(_zahl(lage.get("candles_seen")) or 0),
+               kurs_fmt(_zahl(lage.get("last_close"))), lage.get("last_signal"),
+               _zahl(lage.get("net_quantity")) or 0.0,
+               int(_zahl(lage.get("orders_placed")) or 0),
+               int(_zahl(lage.get("orders_rejected")) or 0),
+               int(lage.get("alter_s") or 0)))
+    if lage.get("last_error"):
+        text += "   letzter Fehler: %s" % lage["last_error"]
+    # Echtgeld ist hier nie der Normalfall; ein Fehlerzustand auch nicht.
+    gut = netz.lower() != "mainnet" and lage.get("state") != "error"
+    return text, "gut" if gut else "schlecht"
+
+
+def omnitrade_order_zeilen(lage):
+    """Letzte Order-Ereignisse, neueste zuerst: (Zeit, Seite, Menge, Preis, Ergebnis, Meldung)."""
+    liste = lage.get("recent_orders") if isinstance(lage, dict) else None
+    zeilen = []
+    for o in reversed(liste if isinstance(liste, list) else []):
+        if not isinstance(o, dict):
+            continue
+        zeilen.append((_ms_zeit(o.get("time_ms")), o.get("side", "?"),
+                       "%.6g" % (_zahl(o.get("quantity")) or 0.0),
+                       kurs_fmt(_zahl(o.get("price"))), o.get("outcome", "?"),
+                       o.get("detail") or ""))
+    return zeilen
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -807,6 +854,7 @@ class Handelszentrale:
         seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
         self.reiter.add(seite, text="Spuren")
         self._baue_freqtrade()
+        self._baue_omnitrade()
 
         # --- Spurtabelle
         t_spur_label = tk.Label(seite, text="Spuren", bg=FARBEN["bg"],
@@ -966,6 +1014,50 @@ class Handelszentrale:
         self._registriere_schrift(t_quelle, KLEIN)
         t_quelle.pack(fill="x", padx=10, pady=(4, 0))
 
+    def _baue_omnitrade(self):
+        """Reiter omnitrade: Kopfzeile und letzte Order-Ereignisse aus der Statusdatei."""
+        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
+        self.reiter.add(seite, text="omnitrade")
+        self.l_omni = tk.Label(seite, bg=FARBEN["bg"], anchor="w", justify="left",
+                               text=omnitrade_kopf(None)[0], fg=FARBEN["matt"])
+        self._registriere_schrift(self.l_omni, 0, fett=True)
+        self.l_omni.pack(fill="x", padx=10, pady=(6, 2))
+        t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
+                     fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t, 0, fett=True)
+        t.pack(fill="x", padx=10, pady=(6, 0))
+        rahmen = tk.Frame(seite, bg=FARBEN["blatt"])
+        rahmen.pack(fill="both", expand=True, padx=10)
+        spalten = ("zeit", "seite", "menge", "preis", "ergebnis", "meldung")
+        kopf = {"zeit": "Zeit", "seite": "Seite", "menge": "Menge", "preis": "Preis",
+                "ergebnis": "Ergebnis", "meldung": "Meldung"}
+        self.t_omni = ttk.Treeview(rahmen, columns=spalten, show="headings", height=20)
+        for sp in spalten:
+            self.t_omni.heading(sp, text=kopf[sp])
+            self.t_omni.column(sp, width=320 if sp == "meldung" else 110,
+                               anchor="e" if sp in ("menge", "preis") else "w")
+        leiste = ttk.Scrollbar(rahmen, orient="vertical", command=self.t_omni.yview)
+        self.t_omni.configure(yscrollcommand=leiste.set)
+        self.t_omni.pack(side="left", fill="both", expand=True)
+        leiste.pack(side="right", fill="y")
+        self.t_omni.tag_configure("schlecht", foreground=FARBEN["rot"])
+        self.t_omni.tag_configure("gut", foreground=FARBEN["gruen"])
+        t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
+                            text="Quelle: %s (omnitrade_bridge, nur lesend) — Start: "
+                                 "omnitrade live --status-file … (Testnet)"
+                                 % omnitrade_bridge.pfad())
+        self._registriere_schrift(t_quelle, KLEIN)
+        t_quelle.pack(fill="x", padx=10, pady=(4, 0))
+
+    def _zeige_omnitrade(self, lage):
+        text, marke = omnitrade_kopf(lage)
+        self.l_omni.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
+        for i in self.t_omni.get_children():
+            self.t_omni.delete(i)
+        for werte in omnitrade_order_zeilen(lage):
+            marke = {"filled": "gut", "rejected": "schlecht"}.get(werte[4], "")
+            self.t_omni.insert("", "end", values=werte, tags=(marke,))
+
     def _starte_freqtrade_worker(self):
         """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads."""
         if self._ft_laeuft:
@@ -1037,6 +1129,7 @@ class Handelszentrale:
         self._zeige(jetzt)
         self._starte_kurs_worker()
         self._starte_freqtrade_worker()
+        self._zeige_omnitrade(omnitrade_bridge.lage())   # kleine lokale Datei, kein Thread noetig
 
     def _pfad(self, spur, name):
         return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur),

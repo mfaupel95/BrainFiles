@@ -126,7 +126,7 @@ class ReiterTest(unittest.TestCase):
             with mock.patch.object(hz.Handelszentrale, "_starte_freqtrade_worker"):
                 app = hz.Handelszentrale(root)
             reiter = [app.reiter.tab(i, "text") for i in app.reiter.tabs()]
-            self.assertEqual(reiter, ["Spuren", "FreqTrade"])
+            self.assertEqual(reiter, ["Spuren", "FreqTrade", "omnitrade"])
             offen = [{"pair": "BTC/USDT", "profit_pct": -0.5}]
             zu = {"trades": [{"pair": "ETH/USDT", "is_open": False,
                               "close_date": "2026-09-29 10:00:00", "profit_pct": 1}]}
