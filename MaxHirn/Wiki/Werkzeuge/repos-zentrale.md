@@ -1,6 +1,6 @@
 ---
 titel: Repos-Zentrale (Startfenster fuer Werkstatt/Repos)
-aktualisiert: 2026-09-25
+aktualisiert: 2026-09-29
 tags: [werkzeug, repos, oberflaeche]
 ---
 
@@ -73,17 +73,61 @@ Regeln (der Code setzt sie durch):
   Hinweis in der Zeile und machen das Repo **nicht** un-startbar (dafuer ist
   allein `start` + Abhaengigkeiten zustaendig).
 
-## Gemessener Stand (25.09.2026)
+## Gemessener Stand (29.09.2026)
 
-- 36 Repos auf der Platte, 36 Manifest-Eintraege, 5 startbar.
+- **45 Repos auf der Platte, 45 Manifest-Eintraege, 10 startbar** — keine Zeile
+  steht mehr auf „NEU".
 - Nachtraeglich dokumentiert: intelligent-trading-bot, moon-dev-ai-agents,
   openmontage, kraken-cli, fomo-robinhood-radar (Befehle), Kronos/laya/
   robinhood-fomo-kronos-arena (nur Anleitung, kein startbarer Weg).
-- Die 5 Klone ohne Manifest-Eintrag (fomo-robinhood-radar, kraken-cli, Kronos,
-  laya, robinhood-fomo-kronos-arena) sind aufgenommen — vorher standen sie als
-  „NEU" und ohne jede Erklaerung im Fenster.
 - Was noch keine eigenen Befehle hat, steht als Task in `Archiv/TASKS.md`
   (T-073): dort fehlt Wissen ueber das Repo, nicht Code.
+
+### Nachtrag 29.09.2026 — neun Repos aus `O:\Werkstatt 2\` aufgenommen
+
+Bestand war schon unter `Werkstatt/Repos/` vorhanden, nur im Manifest gefehlt.
+Jeder Startbefehl wurde **einmal echt gestartet** (Beleg in `logs/`).
+
+| Repo | Art | Start | Beleg im Log |
+|---|---|---|---|
+| `osiris` | node | `npm run dev` | Next.js 16.3.4, `Ready in 7.8s`, Port 3000 |
+| `jev-trader` | node | `bun run start` | Bun-Server, DRY RUN, echte Monad-Bloecke, **Port 3010** |
+| `deepseek-harness` | node | `npx -y @deepseek-ai/dsh web` | `dsh web: http://127.0.0.1:3080/?token=…` |
+| `tradememory-protocol` | python | `.venv\Scripts\tradememory-api.exe` | `Uvicorn running on http://127.0.0.1:8000` |
+| `ziplime` | python | `.venv\Scripts\python.exe -m ai_assistant` | fragt nach `OPENROUTER_API_KEY` |
+| `foreman` | python | — (venv fehlt) | EINRICHTEN |
+| `awesome-dsh-plugin`, `awesome-deepseek-harness-plugins`, `fast-jev-compaction`, `jev-chat-jarvis` | doku | — | kein Startprogramm, nur Anleitung |
+
+**Zwei Korrekturen, die nur der echte Lauf zeigte:**
+
+- `deepseek-harness` stand als „nur Bau, kein Start" im Manifest. Falsch: es hat
+  eine **Web-UI** auf Port 3080. Und `npx` braucht `-y`, weil `aktionen.
+  start_ausfuehren` mit `stdin=DEVNULL` startet — ohne `-y` bleibt npx an der
+  Rueckfrage stehen.
+- `jev-trader` laeuft auf **3010** (`PORT` in der `.env`), nicht auf 3000 wie die
+  README nahelegt.
+
+**Voraussetzung, die fehlte:** `bun` war nicht installiert (`npm install -g bun`).
+`foreman` braucht noch ein venv, `ziplime` einen `OPENROUTER_API_KEY`.
+
+## Einen Befehl belegen: der Beleglauf
+
+Die Hausregel „kein Befehl ins Manifest, der nie echt gelaufen ist" laesst sich
+maschinell nachziehen — `test_manifest_gegenprobe.py` verlangt zu jedem `start`
+eine Logdatei `<ordner>-*.log`. Statt den Start von Hand zu machen:
+
+```python
+import aktionen, manifest, scan          # aus Agenten/Werkzeuge/repos-zentrale
+repos   = scan.repos_scannen(REPOS)
+zeilen  = manifest.zeilen_bauen(repos, manifest.manifest_laden(MANIFEST), PROFILE, REPOS)
+erg     = aktionen.start_ausfuehren(zeile, LOGS)   # schreibt den Logbeleg
+# warten bis Prozess lebt ODER Log Inhalt hat, dann taskkill /T /F /PID <pid>
+aktionen.ereignis_anhaengen(erg.log, f"beendet (Code {code})")
+```
+
+`aktionen` liest nur die Attribute `ordner`, `start`, `repo` — ein kleiner Shim
+genuegt, es muss keine Zeile veraendert werden. Mit `taskkill /T /F` den **ganzen
+Baum** beenden (`npm run dev` laesst sonst `next dev` als Waise zurueck).
 
 ## Fallen
 

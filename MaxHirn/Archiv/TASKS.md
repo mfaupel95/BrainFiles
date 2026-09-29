@@ -53,6 +53,78 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 
 ## Offen
 
+- [ ] **T-166 - Neun neue Repos haben kein Bot-Profil**
+      Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
+      aufgenommen worden (osiris, jev-trader, deepseek-harness,
+      tradememory-protocol, ziplime, foreman, awesome-dsh-plugin,
+      awesome-deepseek-harness-plugins, fast-jev-compaction, jev-chat-jarvis).
+      Ihre Eintraege tragen bewusst KEIN `bot`-Feld - sonst zeigt die Zeile
+      sofort "Bot-Profil fehlt". Das Hausmuster ist ein Profil je Repo
+      (26 Repo-Bots, Wiki/Werkzeuge/Repo-Bots.md).
+      Naechster Schritt: entscheiden, ob fuer die fuenf STARTBAREN (osiris,
+      jev-trader, deepseek-harness, tradememory-protocol, ziplime) Profile
+      angelegt werden - `hermes profile create <name>` OHNE --clone, dann
+      providers-/model-Block, terminal.cwd auf den Klon, auth.json als Symlink
+      (braucht Admin: Agenten/Hermes/scripts/auth-verknuepfen.ps1).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/profiles/, Agenten/Werkzeuge/repos-zentrale/
+
+- [ ] **T-167 - foreman einrichten (venv fehlt)**
+      Kontext: `foreman` steht in der Repos-Zentrale unter EINRICHTEN, weil im
+      Klon kein venv liegt. Ohne venv laesst sich der Startbefehl nicht
+      belegen, und die Gegenprobe (test_manifest_gegenprobe) verlangt zu jedem
+      `start` eine Logdatei.
+      Naechster Schritt: `python -m venv .venv` im Klon,
+      `.venv\Scripts\python.exe -m pip install -e ".[dev]"`, dann
+      `foreman demo --repo .` als Beleglauf starten und den Eintrag auf
+      STARTBAR ziehen.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/foreman/
+
+- [ ] **T-168 - deepseek-harness: Klon ungebaut, UI laeuft nur ueber npx**
+      Kontext: Die Web-UI startet ueber `npx -y @deepseek-ai/dsh web`
+      (Port 3080, belegt am 29.09.2026) - das laedt das VEROEFFENTLICHTE Paket,
+      nicht den eigenen Klon. Der Klon hat kein node_modules; der Weg
+      `pnpm install && pnpm run build && pnpm dsh web` steht im Manifest, ist
+      aber nie gelaufen.
+      Naechster Schritt: nur falls der eigene Klon gebraucht wird (eigene
+      Aenderungen am Harness), pnpm install + build einmal durchlaufen lassen
+      und belegen. Sonst bleibt der npx-Weg der richtige.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/deepseek-harness/
+
+- [ ] **T-169 - tradememory-protocol: Browser-Dashboard nicht gebaut**
+      Kontext: `.venv\Scripts\tradememory-api.exe` liefert auf Port 8000 die
+      REST-API (belegt am 29.09.2026), aber KEIN Dashboard - dafuer fehlt
+      `dashboard/dist`. Die oeffentliche Demo laeuft auf
+      tradememory-dashboard.onrender.com.
+      Naechster Schritt: entscheiden, ob das Dashboard lokal gebaut wird (Node
+      im dashboard/-Ordner, Vite) oder ob der Eintrag dauerhaft "API ohne
+      Dashboard" heisst.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/tradememory-protocol/dashboard/
+
+- [ ] **T-170 - ziplime: OPENROUTER_API_KEY fehlt fuer den Assistenten**
+      Kontext: `python -m ai_assistant` startet und fragt dann nach dem
+      OpenRouter-Schluessel (so im Beleglauf vom 29.09.2026). Ohne ihn laeuft
+      nur die Backtest-CLI; das venv ist vollstaendig.
+      Naechster Schritt: entscheiden, ob ein OpenRouter-Zugang hinterlegt wird
+      (Wissen/Zugaenge.md ist die einzige Ablage) oder ob ziplime ohne
+      Assistent bleibt.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/ziplime/
+
+- [ ] **T-171 - O:\Werkstatt 2\ enthaelt nur noch eine zweite Kopie von deepseek-harness**
+      Kontext: Bestandsaufnahme 29.09.2026 - der Ordner trug zunaechst sieben
+      Repos, davon lagen sechs bereits in `Werkstatt/Repos/` (dorthin
+      aufgenommen). Uebrig ist eine ZWEITE Kopie von `deepseek-harness`.
+      Doppelte Klone kosten Platz und stiften Verwirrung beim Vorspulen.
+      Naechster Schritt: entscheiden, ob die Kopie weggelegt oder geloescht
+      wird. NICHTS geloescht, solange Max nicht zustimmt.
+      Angelegt: 2026-09-29
+      Betrifft: O:\Werkstatt 2\
+
+
 - [ ] **T-160 - Acht Feed-Spuren: eine Position verliert ihren Kurs, wenn ihr Symbol aus dem Feed faellt**
       Kontext: Bei diesen Spuren kommt der Kurs aus dem AKTUELLEN Feed
       (`quelle()` baut `kurse` aus den heutigen Kandidaten). Faellt ein Symbol
