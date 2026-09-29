@@ -1,10 +1,12 @@
 # Leitstand — eine Oberfläche für Überwachen, Freigeben, Backtesten und Markt
 
 **Datum:** 2026-09-29
-**Status:** Entwurf in zwei Abschnitten genehmigt (Max, 2026-09-29), Spezifikation zur Prüfung
+**Status:** Spezifikation genehmigt (Max, 2026-09-29); ergänzt um Optimieren,
+Urteile und Bedienkomfort (Max, 2026-09-29), zur Prüfung
 **Betrifft:** `Agenten/Handel` — neue Dateien `leitstand.py`, `leitstand_freigaben.py`,
-`leitstand_backtests.py`, `leitstand_backtests.json`, `leitstand_markt.py`;
-kleine Änderungen an `handelszentrale.py` und `freigabefenster.py`
+`leitstand_backtests.py`, `leitstand_backtests.json`, `leitstand_markt.py`,
+`leitstand_bedienung.py`; kleine Änderungen an `handelszentrale.py`,
+`freigabefenster.py` und `backtest_urteile.py`
 
 ## Zweck
 
@@ -36,6 +38,10 @@ freqtrade-Backtests, Knöpfe zu fremden Web-Oberflächen.
 4. Ein Backtest lässt sich aus dem Reiter starten, abbrechen und später nachlesen.
 5. `test_handelszentrale_rein_lesend.py` bleibt grün; dieselbe Prüfung gilt neu für `leitstand_markt.py`.
 6. `python handelszentrale.py` funktioniert allein wie bisher.
+7. Eine Parametersuche (`optimieren.py`) lässt sich mit Trockenlauf starten; das
+   Ergebnis erscheint als Tabelle. Übernommen wird nie aus dem Leitstand.
+8. Backtest-Urteile lassen sich als Vorschau rechnen und **genau so, wie in der
+   Vorschau gezeigt**, nach Bestätigung eintragen.
 
 ## Aufbau
 
@@ -149,6 +155,9 @@ Daher zwei Arten von Läufen:
    korrekt fährt.
 2. **Einzelskripte (Zusatz):** Einträge aus `leitstand_backtests.json`, Ausgabe als Text.
 
+Dazu kommen die zwei eigenen Bereiche **Optimieren** und **Urteile** (unten).
+Alle vier teilen sich Prozessführung, „ein Lauf gleichzeitig“ und die Ablage.
+
 Backtest-Runden zählen weiterhin **nicht** für die Freigabe-Bedingungen
 (Design Backtest-Fundament); der Reiter sagt das in einer festen Zeile.
 
@@ -184,8 +193,67 @@ Kandidaten: `gitter/backtest_gitter.py`, `orb/backtest.py`, `orbk/backtest.py`,
 `backtest_prognose.py`, `bt_varianten_fast.py`; `nautilus/backtest.py` und
 `iv_waelle/backtest_iv_waelle.py` nur, wenn ihre `backtest_ergebnis.json` im
 Betrieb nicht gelesen wird.
-**Ausgeschlossen:** `optimieren.py` (schreibt `spur_opt.json`) und
-`backtest_urteile.py` (schreibt `backtest_urteile.json`) — beide wirken in den Betrieb.
+`optimieren.py` und `backtest_urteile.py` stehen **nicht** in der Liste; sie haben
+eigene Bereiche (unten), weil ihr Ablauf mehr als „starten und lesen“ ist.
+
+### Optimieren (`optimieren.py`)
+
+Korrektur gegenüber der ersten Fassung: `optimieren.py` **liest** `spur_opt.json`
+(Suchbereich) und schreibt nur die Vorschlagsdatei
+`daten/backtest/<spur>/optimierung.json`, nie eine `wachen.json`. Kein Betriebsteil
+liest `optimierung.json` (geprüft 2026-09-29). Das Skript darf deshalb voll in den Leitstand.
+
+1. Spur wählen (nur Spuren mit Eintrag in `spur_opt.json`), dazu `--monate`,
+   `--fenster`, `--max-kandidaten`, optional `--gebuehr`.
+2. **Trockenlauf zuerst, automatisch** (`--trocken`): Kandidatenzahl, Zeitraum,
+   Takt und geschätzte Dauer. Erst danach wird „Rechnen“ aktiv; ändert sich ein
+   Wert, ist der Trockenlauf erneut fällig.
+3. Rechnen läuft wie jeder Lauf (niedrige Priorität, einer gleichzeitig, abbrechbar).
+4. Anzeige aus `optimierung.json`: Grundlinie (heutige Einstellung) oben, darunter
+   die Kandidaten mit `netto_je_runde` und Urteil je Fenster, überlebende
+   hervorgehoben; `ohne_wirkung` als eigener Hinweis („Feld X ändert nichts“).
+5. **Übernahme bleibt bei Max.** Für einen überlebenden Kandidaten zeigt der
+   Leitstand die Änderung als Diff „`<spur>/wachen.json`: alt → neu“ mit Knopf
+   „Kopieren“. Der Leitstand schreibt nie in eine `wachen.json` — ein
+   geänderter Stop oder ein anderes Ziel ist eine Entscheidung über Geld.
+
+### Urteile (`backtest_urteile.py`)
+
+`backtest_urteile.py` schreibt in `gitter/`, `orbk/` und `nautilus/wachen.json`
+die Felder `backtest_bestanden`, `backtest_urteil`, `backtest_geprueft_am`
+(mit `.bak`, nie `handel_erlaubt`). `orbk/wachen_orb.py` liest `backtest_bestanden`
+als eine Freigabe-Bedingung — das Eintragen wirkt also in den Betrieb.
+
+Entscheidung Max: **eingetragen wird genau das, was die Vorschau gezeigt hat.**
+
+Änderung an `backtest_urteile.py` (zwei neue Optionen, bestehende Aufrufe unverändert):
+
+- `--vorschau --vorschau-datei <pfad>`: wie bisher nichts in eine `wachen.json`,
+  zusätzlich wird die Vorschau als JSON abgelegt: je Spur `bestanden`, `urteil`,
+  `kennzahlen`, der alte Wert und ein SHA-256 der `wachen.json` zum Zeitpunkt
+  der Vorschau; dazu `stand`.
+- `--aus-vorschau <pfad>`: rechnet **keinen** Motor. Liest die Vorschau, prüft
+  - `stand` höchstens **60 Minuten** alt,
+  - der SHA-256 jeder betroffenen `wachen.json` unverändert,
+
+  und ruft dann für jede Spur mit `bestanden` ≠ `None` die bestehende
+  `freigabe_schreiben(...)` mit genau diesen Werten auf; `backtest_urteile.json`
+  wird wie bei einem normalen Lauf aktualisiert. Schlägt eine Prüfung fehl,
+  wird **nichts** geschrieben und der Grund ausgegeben.
+
+Ablauf im Leitstand:
+
+1. „Vorschau rechnen“ (Spuren wählbar) — Laufzeit bis 15 min je Motor, abbrechbar.
+   Ablage unter `backtest_laeufe/<zeit>-urteile-vorschau.json`.
+2. Tabelle je Spur: Urteil, `backtest_bestanden` alt → neu, Urteilstext.
+3. „Urteile eintragen …“ (nur aktiv, wenn sich etwas ändert und die Vorschau
+   jünger als 60 min ist) öffnet einen Bestätigungsdialog, der **jede** Änderung
+   einzeln auflistet. Ja → `backtest_urteile.py --aus-vorschau <datei>`.
+   Der Dialog schließt sich nach 120 s ohne Bedienung, ohne zu schreiben.
+4. Ergebniszeile: welche Dateien geschrieben wurden, oder warum nicht.
+
+Das Eintragen setzt nur **eine** Bedingung; scharf schaltet weiterhin Max über
+den Freigaben-Reiter.
 
 ### Ablauf eines Laufs
 
@@ -217,6 +285,44 @@ Kennzahlen. Der Ordner wird nicht versioniert und von keinem Betriebsteil gelese
   das bleibt beim Dauerlauf.
 - Holt keine Kurse selbst; Kurse zeigt der Überwachen-Reiter.
 
+## Bedienung
+
+Gemeinsame Bausteine in `leitstand_bedienung.py` (Tooltip, sortierbare Tabelle,
+Zustandsdatei), damit die Reiter sie nicht je einzeln bauen.
+
+**Hinweise und Statusleiste**
+- Wartet eine Freigabe-Anfrage, heißt der Reiter „Freigaben (n)“ und das Fenster
+  blinkt einmal in der Taskleiste (`FlashWindowEx` über `ctypes`, Windows; sonst
+  nur der Reitertitel). Neu blinkt es erst bei der nächsten neuen Anfrage.
+- Statusleiste unten: Dauerlauf läuft ja/nein (aus seinem Herzschlag, wie die
+  Handelszentrale ihn liest), Zeit der letzten Aktualisierung, laufender
+  Backtest mit Name und verstrichener Zeit, letzte Meldung einer Schreibaktion.
+
+**Tastatur**
+- Strg+1 … Strg+4 wechseln die Reiter, F5 aktualisiert den sichtbaren Reiter,
+  Esc schließt einen Dialog (= Abbrechen, schreibt nichts), Strg+Plus/Minus
+  ändern die Schriftgröße.
+- **Notaus, Freigeben, Urteile eintragen haben kein Kürzel** — sie sollen nie
+  aus Versehen per Taste auslösen.
+- Jeder gesperrte Knopf hat einen Tooltip mit dem Grund
+  („keine wartende Anfrage“, „erst Trockenlauf“, „Vorschau älter als 60 min“).
+
+**Tabellen und Vergleich**
+- Alle Tabellen sortieren per Klick auf den Spaltenkopf (nochmal = umgekehrt,
+  Zahlen numerisch) und haben ein Filterfeld über der Tabelle.
+- In der Laufliste lassen sich zwei Replay-Läufe markieren; „Vergleichen“ zeigt
+  ihre Kennzahlen nebeneinander mit Differenzspalte.
+- „Kopieren“ legt die sichtbare Tabelle tabulatorgetrennt in die Zwischenablage;
+  „CSV …“ speichert sie in einen frei gewählten Pfad.
+
+**Zustand merken**
+- `leitstand_zustand.json` (nicht versioniert, von keinem Betriebsteil gelesen):
+  letzter Reiter, Fenstergröße und -lage, Schriftgröße, zuletzt benutzte Werte
+  je Backtest-Art, Sortierung je Tabelle.
+- Geschrieben beim Schließen und nach Wertänderungen (gebündelt, höchstens alle 5 s),
+  atomar über `.tmp` + `os.replace`. Unlesbar oder fehlend → Vorgaben, kein Absturz.
+- Liegt eine gemerkte Fensterlage außerhalb aller Bildschirme, wird sie verworfen.
+
 ## Fehlerbehandlung
 
 - Jede Dateilesung im Leitstand fängt `OSError` und `ValueError` ab und zeigt
@@ -242,6 +348,9 @@ kein echtes `daten/backtest/`, kein Netz.
 | `test_leitstand_backtests_liste.py` | jedes Skript existiert, jedes `flag` steht in dessen `add_argument`, kein `schreibt`-Eintrag wird im Betrieb gelesen, `optimieren.py` und `backtest_urteile.py` stehen nicht drin |
 | `test_leitstand_backtests_lauf.py` | mit einem Mini-Skript: Ausgabe kommt an, nur ein Lauf gleichzeitig, Abbruch wirkt, Ablagedatei ist vollständig |
 | `test_leitstand_markt.py` | Bericht-Fixture wird angezeigt; fehlender Bericht → Hinweis; Alterswarnung ab 26 h |
+| `test_leitstand_optimieren.py` | „Rechnen“ erst nach Trockenlauf; Wertänderung sperrt wieder; Diff-Anzeige aus einer Fixture-`optimierung.json`; keine Schreibstelle auf `wachen.json` (AST) |
+| `test_backtest_urteile.py` (erweitert) | `--vorschau-datei` schreibt keine `wachen.json`; `--aus-vorschau` schreibt genau die Vorschauwerte; > 60 min alt → nichts geschrieben; geänderte `wachen.json` (Hash) → nichts geschrieben; kein Motor wird aufgerufen |
+| `test_leitstand_bedienung.py` | Sortierung numerisch/text; Filter; Zustandsdatei: Rundreise, unlesbar → Vorgaben, Fensterlage außerhalb verworfen; Notaus/Freigeben/Eintragen ohne Tastenkürzel |
 
 ## Arbeitsort
 
@@ -255,3 +364,6 @@ nach Abschluss auf `master` zusammengeführt und gelöscht.
 2. Je Einzelskript: Nachweis der Aufnahmebedingung.
 3. Wird `freigabe_fenster.json` gespiegelt (z. B. per `spiegelstand.py`)? Falls ja,
    dürfen `.lock` und `.tmp` nicht mitlaufen.
+4. `backtest_urteile.py` startet seine Motoren selbst mit `scanner/.venv` bzw.
+   `nautilus/.venv`; der Leitstand ruft es deshalb mit `scanner/.venv` auf
+   (wie im Kopfkommentar), nicht mit `sys.executable`.
