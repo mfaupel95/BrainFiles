@@ -1905,8 +1905,8 @@ auxiliary:
     provider: auto
     model: ''
   compression:
-    provider: llamacpp
-    model: 'Qwen3.6-35B-A3B-UD-Q4_K_M'
+    provider: auto
+    model: ''
   skills_hub:
     provider: auto
     model: ''
