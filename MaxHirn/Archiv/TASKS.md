@@ -51,6 +51,13 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 
 ```
 
+- [ ] **T-0NN — Kurztitel**
+      Kontext: worum es geht, warum es offen ist
+      Nächster Schritt: eine konkrete, ausführbare Handlung
+      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
+```
+Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
+
 ## Offen
 
 - [ ] **T-166 - Neun neue Repos haben kein Bot-Profil**
@@ -191,18 +198,6 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
       Angelegt 29.09.2026 · Zuletzt 29.09.2026
       Betrifft: Agenten/Hermes/config.yaml und die Profile
 
-- [x] **T-153 — compression.threshold 1.6 - greift die Kompression ueberhaupt?**
-      **Erledigt 2026-09-29.** Sie griff nicht: `compression.threshold` ist ein ANTEIL des
-      Kontextfensters (Vorgabe 0.50, `hermes_cli/config_defaults.py`), und der Ausloeser rechnet
-      `(context_length - max_tokens) * threshold`. Mit 1.6 liegt er ueber dem Fenster - der Anbieter
-      lehnt die Anfrage ab, bevor komprimiert wird. Zurueck auf **0.19** gesetzt (Hauswert seit
-      19.09.2026): das Kompressionsmodell `omniroute/auto/best-free` hat nur ~200k Kontext, das
-      Hauptmodell traegt ein Vielfaches davon - bei 0.19 liegt der Ausloeser sicher darunter.
-      **Nachweis:** `hermes config get compression.threshold` = 0.19; der Weg ist nicht tot, sondern
-      laeuft - `curl` auf `http://localhost:20128/v1/chat/completions` mit `auto/best-free` antwortet
-      200 und wird heute von claude-haiku-4-5 bedient (die alte Notiz "best-free ist tot" ist
-      ueberholt; ohne Schluessel antwortet der Router irrefuehrend mit 403 der OpenCode-Free-Gruppe).
-      CRLF erhalten (`git diff --numstat` 14/11).
 
 - [ ] **T-155 — Bonsai-Dienst ist startbar, aber ungeprueft**
       Kontext: Port-Konflikt behoben (8080 gehoerte dem Freqtrade-Container, jetzt 8081 in Starter und Config). Ein echter Start wurde NICHT gefahren: der Dienst ist ein Schwergewicht und entlaedt die Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren im Handel gerade brauchen.
@@ -364,73 +359,14 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
       Zwischenstand) oder bei 08:15 belassen. Vorher keine Aenderung.
       Angelegt 2026-09-29. Betrifft Agenten/Hermes/scripts/gateway-identitaet-wache.py, Cron.
 
-- [ ] **T-138 — Docker-Engine aus: Container `nautilus-demo` fehlt, OKX-Arm ohne Quoten**
-      Kontext: `docker ps -a` antwortet 29.09.2026 mit `failed to connect to the docker API at
-      npipe:////./pipe/dockerDesktopLinuxEngine ... daemon is running`; die Systempruefung meldete
-      dasselbe um 07:00 ("Docker-Engine antwortet nicht (Frist 20 s)"). Ohne den Container bekommt
-      der Nautilus-Arm auf OKX keine Quotes - genau der Befund vom 25.09. (`feed_quelle
-      fallback_kopier`, quotes=0); die uebrigen zwei Arme (Kraken Spot/Futures) laufen ohne Docker.
-      Naechster Schritt: Docker Desktop starten, `docker start nautilus-demo`, Block 14 der
-      Systempruefung nachziehen und pruefen, ob wieder Quotes ankommen.
-      Angelegt 2026-09-29. Betrifft Agenten/Handel/nautilus, Docker-Host.
 
 
-- [ ] **T-137 — Routine `fremdarbeit-einziehen`: Push scheitert mit 403, Commits bleiben liegen**
-      Kontext: Der Lauf vom 28.09.2026 20:40 hat 5 ruhende Dateien uebernommen (Commit 5c80b19),
-      aber nicht gepusht: `remote: Write access to repository not granted ... error: 403`. Von Hand
-      gepusht geht es (`manager` als credential.helper, am 29.09.2026 vier liegengebliebene Commits
-      nachgeschoben). Der Unterschied ist der Kontext der geplanten Aufgabe - dort steht keine
-      interaktive Anmeldung bereit. Folge ohne Fix: die Nachtsicherung laeuft lokal weiter, GitHub
-      bleibt still, und die Sicherung ist genau dann nicht woanders, wenn sie gebraucht wird.
-      Naechster Schritt: Lauf-Log der Aufgabe lesen, credential.helper im Task-Kontext pruefen
-      (GCM-Store vs. gh-Token), danach `git log --oneline origin/master..master` nach dem 20:40-Lauf.
-      Angelegt 2026-09-29. Betrifft Agenten/Routinen/fremdarbeit-einziehen.ps1.
 
 
-- [ ] **T-136 — `okx_bot_waechter` wird als Handels-Spur geprueft, ist aber ein Werkzeug**
-      Kontext: Block 11b der Systempruefung laeuft ueber jeden Ordner unter Agenten/Handel mit
-      wachen.json und verlangt `herzschlag_max_minuten = 180`. `okx_bot_waechter/wachen.json` hat
-      den Schluessel nicht (`None`) und `handel_erlaubt` ebenso wenig - der Ordner haelt nie eine
-      Position, die ein Herzschlag schliessen koennte. Die Zeile steht deshalb jeden Tag unter
-      "Zu entscheiden" und bedeutet nichts.
-      Naechster Schritt: entscheiden - Werkzeuge ohne `handel_erlaubt` aus der Pruefung nehmen
-      (Vorschlag) oder 180 eintragen. Danach Block 11b nachziehen.
-      Angelegt 2026-09-29. Betrifft Agenten/Routinen/systempruefung.ps1, okx_bot_waechter/wachen.json.
 
 
-- [ ] **T-135 — Tagespruefung meldet "Herzschlag alt" fuer eine live-only Spur (Fehlalarm)**
-      Kontext: `spiegelstand.py:190` liest fuer das Alter `zustand.json` (Papierzustand, nur der
-      Risikostufen-Suffix wird angehaengt) und `:193` rechnet daraus `alter`. Eine Spur, die nur
-      live laeuft, schreibt aber `zustand.live.json` - ihr Papierstand friert ein. Gemessen am
-      29.09.2026: `moondev_marktlage` lief im 15-Minuten-Takt (dauerlauf.log 15:18 "(live) ok"),
-      der Papierstand stand auf 03:39, und Block 11 der Systempruefung machte daraus
-      "Herzschlag 204 min alt (> 2 h) - laeuft die Spur ueberhaupt?".
-      Naechster Schritt: in `spiegelstand.py` denselben FRISCHESTEN der beiden Staende nehmen, den
-      `moondev_marktlage._papier_zustand()` schon benutzt; Gegenprobe ueber den Pruefstand der Spur.
-      Angelegt 2026-09-29. Betrifft Agenten/Handel/spiegelstand.py, Routinen/systempruefung.ps1.
 
 
-- [ ] **T-134 — Zweitkopie bricht am uv-Build-Cache ab (Exitcode 1 seit 27.09.)**
-      Kontext: `sichern-zweitkopie.ps1` kopiert die Repo-Wurzel nach J: und schliesst `.venv`,
-      `__pycache__`, `*.pid`, `*.db-wal` aus - `Agenten/Hermes/cache/` aber nicht. Dort liegt der
-      uv-Build-Cache, dessen editable-Wheel waehrend eines Hermes-/uv-Laufs gesperrt ist:
-      Log 28.09.2026 21:02 `FEHLER 5 (0x00000005) ... cache\uv\sdists-v9\editable\...\
-      hermes_agent-0.0.0-0.editable-py3-none-any.whl / Zugriff verweigert`, danach `robocopy-Code 11`
-      und `ENDE FEHLER - Exitcode 1`. Die Aufgabe `MaxHirn-Zweitkopie` steht deshalb auf Code 1,
-      taeglich gemeldet, ohne dass eine Datei fehlt (2936 Dateien uebersprungen, 0 Fehler im
-      Zaehler). Ein Cache gehoert nicht in eine Sicherung - er ist neu baubar.
-      Naechster Schritt: `Hermes\cache` in die /XD-Liste aufnehmen (Stufe 1: erst .bak, dann echter
-      Lauf zeigen), danach `grep -c "FEHLER 5" logs/zweitkopie-letzter-lauf.log` = 0.
-      Angelegt 2026-09-29. Betrifft Agenten/sichern-zweitkopie.ps1, Aufgabe MaxHirn-Zweitkopie.
-
-
-- [ ] **T-001 — Kurztitel**
-      Kontext: worum es geht, warum es offen ist
-      Nächster Schritt: eine konkrete, ausführbare Handlung
-      Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-```
-
-Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 
 
@@ -2045,6 +1981,64 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-138 — Docker-Engine aus: Container `nautilus-demo` fehlt, OKX-Arm ohne Quoten**
+      Kontext: `docker ps -a` antwortet 29.09.2026 mit `failed to connect to the docker API at
+      npipe:////./pipe/dockerDesktopLinuxEngine ... daemon is running`; die Systempruefung meldete
+      dasselbe um 07:00 ("Docker-Engine antwortet nicht (Frist 20 s)"). Ohne den Container bekommt
+      der Nautilus-Arm auf OKX keine Quotes - genau der Befund vom 25.09. (`feed_quelle
+      fallback_kopier`, quotes=0); die uebrigen zwei Arme (Kraken Spot/Futures) laufen ohne Docker.
+      Naechster Schritt: Docker Desktop starten, `docker start nautilus-demo`, Block 14 der
+      Systempruefung nachziehen und pruefen, ob wieder Quotes ankommen.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/nautilus, Docker-Host.
+      **Erledigt 2026-09-29.** Docker Desktop laeuft (Max gestartet); `docker ps`: `nautilus-demo | Up`. Ob am OKX-Arm wieder Quoten ankommen, bleibt am Arm selbst zu beobachten.
+- [x] **T-137 — Routine `fremdarbeit-einziehen`: Push scheitert mit 403, Commits bleiben liegen**
+      Kontext: Der Lauf vom 28.09.2026 20:40 hat 5 ruhende Dateien uebernommen (Commit 5c80b19),
+      aber nicht gepusht: `remote: Write access to repository not granted ... error: 403`. Von Hand
+      gepusht geht es (`manager` als credential.helper, am 29.09.2026 vier liegengebliebene Commits
+      nachgeschoben). Der Unterschied ist der Kontext der geplanten Aufgabe - dort steht keine
+      interaktive Anmeldung bereit. Folge ohne Fix: die Nachtsicherung laeuft lokal weiter, GitHub
+      bleibt still, und die Sicherung ist genau dann nicht woanders, wenn sie gebraucht wird.
+      Naechster Schritt: Lauf-Log der Aufgabe lesen, credential.helper im Task-Kontext pruefen
+      (GCM-Store vs. gh-Token), danach `git log --oneline origin/master..master` nach dem 20:40-Lauf.
+      Angelegt 2026-09-29. Betrifft Agenten/Routinen/fremdarbeit-einziehen.ps1.
+      **Erledigt 2026-09-29.** Ursache gemessen: der `GITHUB_TOKEN` als Benutzervariable (93 Zeichen, scope-arm) verdeckt den verwalteten Zugang im Credential-Manager - mit Token exit 128/403, ohne Token exit 0. Die Routine raeumt beide Variablen vor dem Push (Commit 0f1a6ad).
+- [x] **T-136 — `okx_bot_waechter` wird als Handels-Spur geprueft, ist aber ein Werkzeug**
+      Kontext: Block 11b der Systempruefung laeuft ueber jeden Ordner unter Agenten/Handel mit
+      wachen.json und verlangt `herzschlag_max_minuten = 180`. `okx_bot_waechter/wachen.json` hat
+      den Schluessel nicht (`None`) und `handel_erlaubt` ebenso wenig - der Ordner haelt nie eine
+      Position, die ein Herzschlag schliessen koennte. Die Zeile steht deshalb jeden Tag unter
+      "Zu entscheiden" und bedeutet nichts.
+      Naechster Schritt: entscheiden - Werkzeuge ohne `handel_erlaubt` aus der Pruefung nehmen
+      (Vorschlag) oder 180 eintragen. Danach Block 11b nachziehen.
+      Angelegt 2026-09-29. Betrifft Agenten/Routinen/systempruefung.ps1, okx_bot_waechter/wachen.json.
+      **Erledigt 2026-09-29.** Block 11b trennt Spuren von Werkzeugen; der Lauf meldet "32 von 32 Handels-Spuren folgen der Herzschlag-Regel - ausgenommen als Werkzeug ohne Handelsbuch: okx_bot_waechter".
+- [x] **T-135 — Tagespruefung meldet "Herzschlag alt" fuer eine live-only Spur (Fehlalarm)**
+      Kontext: `spiegelstand.py:190` liest fuer das Alter `zustand.json` (Papierzustand, nur der
+      Risikostufen-Suffix wird angehaengt) und `:193` rechnet daraus `alter`. Eine Spur, die nur
+      live laeuft, schreibt aber `zustand.live.json` - ihr Papierstand friert ein. Gemessen am
+      29.09.2026: `moondev_marktlage` lief im 15-Minuten-Takt (dauerlauf.log 15:18 "(live) ok"),
+      der Papierstand stand auf 03:39, und Block 11 der Systempruefung machte daraus
+      "Herzschlag 204 min alt (> 2 h) - laeuft die Spur ueberhaupt?".
+      Naechster Schritt: in `spiegelstand.py` denselben FRISCHESTEN der beiden Staende nehmen, den
+      `moondev_marktlage._papier_zustand()` schon benutzt; Gegenprobe ueber den Pruefstand der Spur.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/spiegelstand.py, Routinen/systempruefung.ps1.
+      **Erledigt 2026-09-29.** `spiegelstand.frisches_alter()` nimmt den frischsten von `zustand.json`/`zustand.live.json`; `moondev_marktlage` meldet 14 min statt 204 (6 Tests in `Handel/tests/test_spiegelstand_alter.py`, danach 29/29 byte-gleich).
+- [x] **T-134 — Zweitkopie bricht am uv-Build-Cache ab (Exitcode 1 seit 27.09.)**
+      Kontext: `sichern-zweitkopie.ps1` kopiert die Repo-Wurzel nach J: und schliesst `.venv`,
+      `__pycache__`, `*.pid`, `*.db-wal` aus - `Agenten/Hermes/cache/` aber nicht. Dort liegt der
+      uv-Build-Cache, dessen editable-Wheel waehrend eines Hermes-/uv-Laufs gesperrt ist:
+      Log 28.09.2026 21:02 `FEHLER 5 (0x00000005) ... cache\uv\sdists-v9\editable\...\
+      hermes_agent-0.0.0-0.editable-py3-none-any.whl / Zugriff verweigert`, danach `robocopy-Code 11`
+      und `ENDE FEHLER - Exitcode 1`. Die Aufgabe `MaxHirn-Zweitkopie` steht deshalb auf Code 1,
+      taeglich gemeldet, ohne dass eine Datei fehlt (2936 Dateien uebersprungen, 0 Fehler im
+      Zaehler). Ein Cache gehoert nicht in eine Sicherung - er ist neu baubar.
+      Naechster Schritt: `Hermes\cache` in die /XD-Liste aufnehmen (Stufe 1: erst .bak, dann echter
+      Lauf zeigen), danach `grep -c "FEHLER 5" logs/zweitkopie-letzter-lauf.log` = 0.
+      Angelegt 2026-09-29. Betrifft Agenten/sichern-zweitkopie.ps1, Aufgabe MaxHirn-Zweitkopie.
+
+
+
+      **Erledigt 2026-09-29.** `Agenten\Hermes\cache` steht in der Ausschlussliste von `Agenten/sichern-zweitkopie.ps1`; Lauf 23:09: 0 FEHLER, robocopy-Code 3, exit 0 (Commit ac89d01).
 - [x] **T-153 — compression.threshold 1.6 - greift die Kompression ueberhaupt?**
       **Erledigt 2026-09-29.** Sie griff nicht: `compression.threshold` ist ein ANTEIL des
       Kontextfensters (Vorgabe 0.50, `hermes_cli/config_defaults.py`), und der Ausloeser rechnet
@@ -2351,7 +2345,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (pid 64192, Port 9900 offen, laeuft aus `tools\python-3.14.7`).
       Angelegt: 2026-09-25 (erledigt am 25.09.2026)
       Betrifft: Agenten/Hermes/gateway-service/, Agenten/Hermes/.sicherung/
-- [x] **T-088 — OKX-Contract-DCA laesst sich nicht mit einem Stop versehen - nur der Bot selbst**
+- [x] **T-175 — OKX-Contract-DCA laesst sich nicht mit einem Stop versehen - nur der Bot selbst**
+      Umgenummert 2026-09-29: **T-088** ist gleichzeitig fuer eine OFFENE Aufgabe vergeben; dieser erledigte Eintrag bekommt eine eigene Nummer.
       Kontext: Auftrag Max 25.09.2026 ("Okx-bot-wache stop setzen"). Zwei Wege geprueft,
       beide zu: (a) `POST /api/v5/tradingBot/dca/amend-order-algo` heisst in der OKX-Doku
       woertlich "Amend **spot** dca basic param" - acht laufende CONTRACT-DCAs wurden mit
@@ -2369,7 +2364,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3947610369740500992
       **Erledigt 2026-09-25.** Max: "Uni weiterlaufen lassen" - der Bot bleibt an, `stop_erlaubt` bleibt false. Die Entscheidung steht als Vermerk in `okx_bot_waechter/wachen.json` (bots.<algoId>), damit der Waechter sie nicht jede Runde neu als offene Frage meldet.
-- [x] **T-086 — MoA-Presets und der verwaltete llama-Server: Bonsai oder nicht**
+- [x] **T-174 — MoA-Presets und der verwaltete llama-Server: Bonsai oder nicht**
+      Umgenummert 2026-09-29: **T-086** ist gleichzeitig fuer eine OFFENE Aufgabe vergeben; dieser erledigte Eintrag bekommt eine eigene Nummer.
       Kontext: Bonsai laeuft seit 25.09.2026 mit 64k (`-Kontext 65536`, VRAM
       7.772/253 MiB, 12,1 t/s) und wird von Hermes als Agent-Modell angenommen
       (Nachweis: `hermes -z` in leerem HERMES_HOME antwortet `OK`); die Delegation
@@ -2430,7 +2426,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/llm_lokal.py, Agenten/Handel/moondev_*/wachen.json
       **Erledigt 2026-09-25.** Max: "T-084 ja besser bonsai". `llm_lokal.py` hat den zweiten Weg (OpenAI unter /v1), gewaehlt per `llm_weg` in der wachen.json; die drei Spuren stehen auf `bonsai`. Kein stiller Rueckfall: schweigt der Dienst, faellt das Urteil aus. Gemessen mit `llm_probe.py --modelle bonsai --wiederholungen 2`: 6/6 im Vertrag, kalt 1,3 s, im Mittel 1,3 s. Die Sonde selbst rief frueher immer Ollama und meldete Bonsai als "(leer)" - behoben. Tests: `Agenten/Handel/tests/test_llm_lokal_wege.py` (16 gruen). Wiki: Werkzeuge/Bonsai-2-27B.md.
-- [x] **T-077 — Das laufende ZEC-Grid hat keinen Stop**
+- [x] **T-173 — Das laufende ZEC-Grid hat keinen Stop**
+      Umgenummert 2026-09-29: **T-077** ist gleichzeitig fuer eine OFFENE Aufgabe vergeben; dieser erledigte Eintrag bekommt eine eigene Nummer.
       Kontext: `3951805062334382080`, ZEC-USD_UM_XPERP-310530, long, 90,12 USDC,
       Hebel 5 (tatsaechlich 2,43), Band 1480-1680, 20 Netze, liqPx 1111,64,
       `slTriggerPx` LEER (Stand 25.09.2026 01:30). Von den 62 geschlossenen Grids
@@ -2444,7 +2441,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Entscheidung Max
       Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bot 3951805062334382080
       **Erledigt 2026-09-25.** Max: "Stop setzen". Gesetzt ist slTriggerPx 1354 (Kurs - 1,5 x ATR14 132,18), also unter dem Bandboden 1480 und 22 % ueber der Liquidation 1110,77; Gegenprobe nach dem Amend gelesen (sCode 0, Leiter unveraendert). Zahl und Weg: `Agenten/Handel/okx_bot_waechter/grid_schutz.py` (Trockenlauf ohne --anwenden); der Endpunkt ist `/grid/amend-order-algo`, nicht `/grid/amend-algo` (404). Entscheidung steht als Vermerk in `okx_bot_waechter/wachen.json`.
-- [x] **T-070 — Waisen-Wächter für Kraken-Schutz-Orders (meldend)**
+- [x] **T-172 — Waisen-Wächter für Kraken-Schutz-Orders (meldend)**
+      Umgenummert 2026-09-29: **T-070** ist gleichzeitig fuer eine OFFENE Aufgabe vergeben; dieser erledigte Eintrag bekommt eine eigene Nummer.
       Gebaut 24.09.2026: Agenten/Hermes/scripts/waisen-wache.py (no_agent,
       Cron waisen-wache 909126bc2102, alle 30 min, Telegram). Rechnet über
       kraken/waisen_stops.py, meldet neue Waisen sofort, dieselben höchstens
