@@ -52,6 +52,73 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ```
 
 ## Offen
+- [ ] **T-142 — Der Grund im Journal der Feed-Spuren ist ein Platzhalter**
+      Kontext: Bei jedem Einstieg steht "Der Grund, der im Journal steht." in
+      der Spalte `grund`. Der Text kommt aus dem Dummy-Schluessel `_grund` der
+      wachen (moondev_topmovers/-marktlage/-signalwelle, iv_wand, moondev_whale,
+      -liquidation, -sentiment). Gemessen am 29.09.2026: auch das ECHTE Journal
+      vom 15.09.2026 traegt ihn, es ist also kein Fehler der Rueckrechnung,
+      sondern Bestand. Folge: jede Auswertung, die den Grund lesen will, liest
+      Nichts - bei 55 Runden im Ruecklauf ist nicht zu sagen, welches Signal
+      gegriffen hat.
+      Naechster Schritt: `spur_buch` schreibt den echten Grund (Signal/Regel)
+      statt `_grund`. Wirkt auf ALLE Spuren dieser Familie, daher eigene Aufgabe
+      mit Gegenprobe. Entscheidung Max.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, wachen.json der Feed-Spuren
+
+- [ ] **T-143 — Der Funding-Ruecklauf endet an der eigenen Ratsche**
+      Kontext: moondev_funding 2021-2026 liefert 23 Runden, aber
+      `kill_ausgeloest = true`: die Drawdown-Ratsche hat den Lauf beendet. Die
+      23 Runden decken damit NICHT den Zeitraum - die Zahl ist ein Anfang, kein
+      Ergebnis.
+      Naechster Schritt: entscheiden, ob der Ruecklauf die Ratsche stilllegen
+      soll (dann misst er die Strategie) oder ob der Abbruch das Ergebnis IST
+      (dann braucht der Lauf eine eigene Kennzahl "Zeit bis Abbruch"). Nicht
+      selbst entschieden: es aendert die Vergleichbarkeit aller Folgelaeufe.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/replay.py (lauf_c), moondev_historie.py
+
+- [ ] **T-144 — Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum**
+      Kontext: 41 Symbole mit 1H-Kerzen gegen 250 Coins im Betrieb; der Lauf
+      liefert 62 Runden. Die Zahl ist mit dem Betrieb nicht vergleichbar, weil
+      das Tor (Aenderung 1h, Volumen 24h) auf einem kleineren Feld greift.
+      Naechster Schritt: entweder das Universum aufziehen (1H-Kerzen fuer 250
+      Symbole, ~1,5 GB) oder in jeder Aussage dazuschreiben. Entscheidung Max.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/daten/historie/feed, Wiki/Handel/Backtest-Fundament.md
+
+- [ ] **T-145 — CoinGecko antwortet von diesem Rechner mit HTTP 403**
+      Kontext: Der frische Gegenprobe-Abzug (`daten_probe_coingecko.py`) wird
+      von Cloudflare abgewiesen. Die Gegenprobe laeuft deshalb gegen die Preise,
+      die die Spuren sich selbst geholt haben (echte Journals): 40 Preise
+      verglichen, groesste Abweichung 13,5 %.
+      Naechster Schritt: den Abzug einmal aus einem Browser oder einem anderen
+      Netz aufzeichnen und als `daten/historie/coingecko_probe.json` ablegen -
+      der Test prueft ihn dann automatisch statt zu ueberspringen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/daten_probe_coingecko.py, tests/test_replay_feed.py
+
+- [ ] **T-141 - Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe**
+      Kontext: Seit dem Hermes-Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
+      (`\\.\pipe\hermes-gateway-*`, belegt: 1 Pipe im Namensraum) und bedient Webhooks auf 8644;
+      **TCP 9900 bleibt zu, waehrend der Dienst gesund laeuft** (`hermes gateway status` =
+      "Gateway process running", `hermes doctor` = "gateway running", Telegram wurde bedient).
+      Die zwei Haus-Wachen sind umgestellt (siehe T-139). Offen ist, ob ein a2a-Peer oder ein
+      Fremdwerkzeug den Port erwartet - die Peer-Liste steht in der `a2a_agents`-Sektion der
+      Hermes-`config.yaml`.
+      Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
+      gelingt er ohne 9900, ist der Port endgueltig Altweg.
+      Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
+
+- [ ] **T-140 - Gateway-Wache laeuft nur 08:15: ein abends gescheitertes Update faellt erst am Morgen auf**
+      Kontext: Die Wache `gateway-identitaet-wache` (Cron, taeglich 08:15) prueft genau die
+      Bedingung, an der `hermes update` am 26.09.2026 abbrach. Ein Update am Abend (typisch: die
+      Halter-Aufgabe laeuft 21:00) wuerde einen erneuten Identitaetsverlust aber erst am
+      naechsten Morgen melden.
+      Naechster Schritt: Entscheidung von Max - zweiter Lauf am Abend (z.B. 21:45, nach dem
+      Zwischenstand) oder bei 08:15 belassen. Vorher keine Aenderung.
+      Angelegt 2026-09-29. Betrifft Agenten/Hermes/scripts/gateway-identitaet-wache.py, Cron.
 - [ ] **T-138 — Docker-Engine aus: Container `nautilus-demo` fehlt, OKX-Arm ohne Quoten**
       Kontext: `docker ps -a` antwortet 29.09.2026 mit `failed to connect to the docker API at
       npipe:////./pipe/dockerDesktopLinuxEngine ... daemon is running`; die Systempruefung meldete
@@ -490,7 +557,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
 
-- [ ] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
+- [x] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
       Kontext: Fuer 2021-2026 gerechnet und belegt sind bisher vier Spuren
       (squeeze, wavetrend, macd_mtf, supertrend) - je 750 bis 1130 auswertbare
       Runden. Der Kern (`replay.py`) kann Familie A und Familie B; es fehlen die
@@ -500,9 +567,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Nicht nachrechenbar und mit Grund vermerkt: moondev_whale (OKX-OI),
       -liquidation, -sentiment, liq_wand, iv_wand, iv_waelle, robinhood_radar,
       kopier, nautilus-Arme.
-      Naechster Schritt: je Spur eine historische Quelle bauen (Aufgabe 5 des
-      Plans), anfangen mit moondev_funding (Fundingsatz liegt frei vor) und
-      moondev_marktlage (BTC-Kerzen + Breite, beides aus derselben Quelle).
+      **Erledigt 2026-09-29:** Daten- und Adapterschicht stehen
+      (`moondev_historie.py`, `daten/historie/feed/`: 300 Tagesreihen + 41
+      Stundenreihen + 6 Funding-Reihen), die vier Laeufe sind gefahren
+      (topmovers/marktlage/signalwelle/funding), die Lehren stehen im Wiki
+      ([[Backtest-Fundament]]). Verweigerte Spuren nennen ihren Grund in
+      `replay.NICHT_NACHRECHENBAR`. Offen geblieben sind T-142 bis T-145.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/replay.py, Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md
 
@@ -1645,6 +1715,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
+- [x] **T-139 - Zwei Wachen prueften eine ADRESSE statt der Bedingung (Port 9900)**
+      **Erledigt 2026-09-29.** Seit dem Update lauscht der Gateway auf einem Named Pipe; TCP 9900
+      bleibt zu, waehrend er gesund laeuft. Folge: `Agenten/Routinen/gateway-waechter.ps1` startete
+      den Gateway **im 2-Minuten-Takt neu** - 128 Zeilen "Neustart ausgeloest" am 29.09.2026.
+      Umgestellt auf die Bedingung: laeuft ein Prozess `hermes_cli.main gateway run` (ohne
+      `--profile`) UND antwortet er (Control-Pipe `\\.\pipe\hermes-gateway-*` ODER Port)? Nur bei
+      fehlendem Prozess wird gestartet, ein haengender Prozess hoechstens einmal je 30 Minuten
+      (Merker `logs/gateway-waechter.merker`). Die neue Wache
+      `Agenten/Hermes/scripts/gateway-identitaet-wache.py` (Cron taeglich 08:15, no_agent,
+      Telegram, leere Ausgabe = nichts senden) prueft die Updater-Sicht
+      (`find_profile_gateway_processes(strict=True)`), rekonstruiert fehlende PID-Metadaten und
+      startet den Gateway im Blindfall einmal pro Tag klassisch neu - nie waehrend eines Updates.
+      **Nachweis:** 128 Neustart-Zeilen vor dem Lauf, 128 danach (Schleife beendet); Pipe-Probe
+      zeigt genau 1 `hermes-gateway`-Pipe; 12 Tests gruen
+      (`Agenten/Handel/tests/test_gateway_identitaet_wache.py`).
+      Nachgezogen: Wiki/Betrieb/Hermes.md (Abschnitt "Gateway-Identitaet"), Wiki/Betrieb/
+      Wachen-und-Aufgaben.md, Wiki/Lektionen/Wahrheit-pruefen.md Lektion 10.
+      Betrifft: Agenten/Routinen/gateway-waechter.ps1, Agenten/Hermes/scripts/gateway-identitaet-wache.py
 - [x] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error), vorbestehend**
       Kontext: Suite-Lauf 29.09.2026 (755 Tests, 799 s). Die vier Namen sind
       bekannt und die Testdateien stammen vom 23.-25.09.2026, also NICHT aus
