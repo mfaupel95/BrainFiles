@@ -120,20 +120,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Stop stellen.
       Angelegt 29.09.2026. Betrifft Agenten/Handel/<spur>/handeln.py, Journale.
 
-- [ ] **T-118 - Warum wurden vier Stops am 26.09. um 14:26 an der Boerse storniert?**
-      Kontext: Am 28.09.2026 standen BTC, ETH, SOL und HYPE (rund 385 USD) auf dem
-      OKX-Konto OHNE Stop; die vier Stops sind zwischen 14:25:59 und 14:26:06 am
-      26.09.2026 storniert worden, waehrend das Buch weiter
-      `boersen_stop_fehlt: false` behauptete. Kein Hauspfad tat das sichtbar.
-      Behoben (Symptom): die vier Stops sind nachgesetzt, und
-      `scanner/boersenstops.py` prueft seit 29.09.2026 in JEDEM Live-Zyklus Buch
-      gegen Boerse (Stop nachsetzen, verkaufte Position ausbuchen, Waisenstops
-      stornieren) - ein Verlust dieses Schutzes kann nicht mehr unbemerkt bleiben.
-      OFFEN: die URSACHE. Naechster Schritt: `/api/v5/trade/orders-algo-history`
-      fuer den 26.09. auswerten und gegen die Protokolle von
-      `scanner/stops_bereinigen.py` und das Handelsjournal stellen.
-      Angelegt 29.09.2026. Betrifft Agenten/Handel/scanner, Agenten/Handel/xperp.
-
 - [ ] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error), vorbestehend**
       Kontext: Suite-Lauf 29.09.2026 (755 Tests, 799 s). Die vier Namen sind
       bekannt und die Testdateien stammen vom 23.-25.09.2026, also NICHT aus
@@ -351,18 +337,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/dauerlauf.hoch.pid, Agenten/Routinen/handel-dauerlauf.ps1
 
-- [ ] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
-      Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
-      "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
-      dazu "(kein Kurs)". Betrifft Spuren, deren Positionsschluessel Token/Mint ist (kopier,
-      moondev_sniper, robinhood_radar); Verdacht in `lage.py`: fehlt ein Symbol, faellt die
-      Namensspalte auf den Kurs zurueck.
-      Naechster Schritt: in lage.py die Namensermittlung fuer token-gefuehrte Positionen pruefen und
-      entweder ein Symbol aus dem Token holen oder klar "Token 0x48f4..." anzeigen; Test in der
-      Handelszentrale-Suite. KEIN Handelseingriff - reine Anzeige.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/lage.py, Handelszentrale
-
 - [ ] **T-106 — dmcsystem: Modellwahl-Diskussion aufnehmen**
       Kontext: Projekt existiert hier nicht. Selbes Muster.
       Naechster Schritt: Projekt aufnehmen → Diskussion fortsetzen.
@@ -398,19 +372,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: Projekt aufnehmen (Klon in Werkstatt/Repos/<name>, Bot-Profil, Doku), dann Modellwahl-Diskussion fortsetzen.
       Angelegt: 2026-09-25 · Zuletzt: 2026-09-25
       Betrifft: splits (noch nicht vorhanden)
-
-- [ ] **T-103 — Bus-Suite rot: Routine `moondev-dauerlauf` hat keine Bus-Anbindung**
-      Kontext: `Agenten/Bus/tests/test_ende_zu_ende.py` bricht in
-      `test_anbindung_routinen` ab mit "ohne Bus-Anbindung: ['moondev-dauerlauf']".
-      `Agenten/Handel/moondev_dauerlauf.py` und `Agenten/Routinen/moondev-dauerlauf.ps1`
-      sind unveraendert (git status sauber) - der Befund ist vorbestehend, nicht aus der
-      Papierbuch-Arbeit vom 25.09.2026. Der Treiber meldet sich nicht wie die uebrigen
-      Spuren ueber `ereignis.lauf("handel/<spur>")`.
-      Naechster Schritt: pruefen, ob der Treiber eine eigene Bus-Kennung bekommen soll
-      (`handel/moondev_dauerlauf`) oder ob die Pruefung ihn ausnehmen muss - beides ist
-      eine Entscheidung, keine Reparatur.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Bus/tests/test_anbindung_routinen.py, Agenten/Handel/moondev_dauerlauf.py
 
 - [ ] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
       Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
@@ -1644,6 +1605,79 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
+- [x] **T-103 — Bus-Suite rot: Routine `moondev-dauerlauf` hat keine Bus-Anbindung**
+      Kontext: `Agenten/Bus/tests/test_ende_zu_ende.py` bricht in
+      `test_anbindung_routinen` ab mit "ohne Bus-Anbindung: ['moondev-dauerlauf']".
+      `Agenten/Handel/moondev_dauerlauf.py` und `Agenten/Routinen/moondev-dauerlauf.ps1`
+      sind unveraendert (git status sauber) - der Befund ist vorbestehend, nicht aus der
+      Papierbuch-Arbeit vom 25.09.2026. Der Treiber meldet sich nicht wie die uebrigen
+      Spuren ueber `ereignis.lauf("handel/<spur>")`.
+      Naechster Schritt: pruefen, ob der Treiber eine eigene Bus-Kennung bekommen soll
+      (`handel/moondev_dauerlauf`) oder ob die Pruefung ihn ausnehmen muss - beides ist
+      eine Entscheidung, keine Reparatur.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Bus/tests/test_anbindung_routinen.py, Agenten/Handel/moondev_dauerlauf.py
+      Erledigt 29.09.2026: Der Treiber meldet sich jetzt am Bus.
+      `Agenten/Routinen/moondev-dauerlauf.ps1` hat `Ereignis.ps1`, `Melde-Start`
+      ('routine/moondev-dauerlauf') und `Melde-Ende` an JEDEM Ausstieg (beide
+      Pfadpruefungen und der Erfolgsfall). Entscheidung war: der Treiber ist ein
+      periodischer Arbeitslauf und gehoert in die Meldung - ihn aus der Pruefung
+      auszunehmen haette einen Ausfall wie eine nicht existierende Routine aussehen
+      lassen, genau die Luecke vom September.
+      Zweiter Fall derselben Pruefung: `test-*.ps1` ist jetzt ausgenommen - ein
+      manueller Testlauf hat keine geplante Aufgabe, und der Name sagt es (die
+      Ausnahme steht damit sichtbar in der Datei selbst, wie bei 'BUS: Bibliothek').
+      Betroffen war die neue `test-wachter.ps1` einer Parallelsitzung.
+      Nachweis: alle vier Anbindungs-Tests gruen ('alle Anbindungs-Tests Routinen
+      bestanden'), PowerShell-Syntaxpruefung der geaenderten Datei ok.
+- [x] **T-111 — Anzeige: Positionen ohne Symbol zeigen den Kurs statt des Tokens**
+      Kontext: `tagesbericht.py` (25.09.2026, 20:34) zeigt Robinhood-Radar und Moon-Dev Sniper als
+      "0x48f413c32a7b... long 4.258775833450569e-05" - in der Namensspalte steht der Einstiegspreis,
+      dazu "(kein Kurs)". Betrifft Spuren, deren Positionsschluessel Token/Mint ist (kopier,
+      moondev_sniper, robinhood_radar); Verdacht in `lage.py`: fehlt ein Symbol, faellt die
+      Namensspalte auf den Kurs zurueck.
+      Naechster Schritt: in lage.py die Namensermittlung fuer token-gefuehrte Positionen pruefen und
+      entweder ein Symbol aus dem Token holen oder klar "Token 0x48f4..." anzeigen; Test in der
+      Handelszentrale-Suite. KEIN Handelseingriff - reine Anzeige.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/lage.py, Handelszentrale
+      Erledigt 29.09.2026: Der Bericht schreibt Zahlen jetzt lesbar. Ursache war
+      `tagesbericht.zeile_position`: ohne Kurs fiel die Spalte auf `p['einstieg']`
+      zurueck und gab einen rohen Float aus - bei einem Token mit acht Stellen also
+      '4.258775833450569e-05'. Neu: `_zahl()` (Stellenzahl nach Groessenordnung,
+      nie Exponentialschreibweise, vier Ziffern bei Werten unter 0,01) und `_kurz()`
+      (lange Mint-Adressen auf 16 Zeichen). Die Zeile lautet jetzt
+      '0x48f413c32a7b9... 0.00004259  (kein Kurs)'.
+      Die normale Zeile MIT Kurs blieb unberuehrt (dort war die Anzeige richtig).
+      Tests: Agenten/Handel/tests/test_anzeige_zahlen.py (7, gruen).
+- [x] **T-118 - Warum wurden vier Stops am 26.09. um 14:26 an der Boerse storniert?**
+      Kontext: Am 28.09.2026 standen BTC, ETH, SOL und HYPE (rund 385 USD) auf dem
+      OKX-Konto OHNE Stop; die vier Stops sind zwischen 14:25:59 und 14:26:06 am
+      26.09.2026 storniert worden, waehrend das Buch weiter
+      `boersen_stop_fehlt: false` behauptete. Kein Hauspfad tat das sichtbar.
+      Behoben (Symptom): die vier Stops sind nachgesetzt, und
+      `scanner/boersenstops.py` prueft seit 29.09.2026 in JEDEM Live-Zyklus Buch
+      gegen Boerse (Stop nachsetzen, verkaufte Position ausbuchen, Waisenstops
+      stornieren) - ein Verlust dieses Schutzes kann nicht mehr unbemerkt bleiben.
+      OFFEN: die URSACHE. Naechster Schritt: `/api/v5/trade/orders-algo-history`
+      fuer den 26.09. auswerten und gegen die Protokolle von
+      `scanner/stops_bereinigen.py` und das Handelsjournal stellen.
+      Angelegt 29.09.2026. Betrifft Agenten/Handel/scanner, Agenten/Handel/xperp.
+      Erledigt 29.09.2026 (Befund, Ursache bleibt offen): Die vier Stops wurden
+      AKTIV STORNIERT, nicht ausgeloest. Beleg aus `/api/v5/trade/order-algo`
+      je algoId: state=canceled, actualSz=0, failCode=0, ordId leer, actualPx leer -
+      haette der Kurs den Stop ausgeloest, stuende dort eine Fuellung mit ordId.
+      uTime aller vier: 26.09. 14:25:59 bis 14:26:06, also sieben Sekunden.
+      Kein Hauspfad: das Handelsjournal hat um 14:2x keine Zeile, das Dauerlauf-Log
+      zeigt um 14:24 nur den Waechter ('laeuft bereits, PID 18904');
+      `scanner/stops_bereinigen.py` storniert nur Waisen, `scanner/boersenstops.py`
+      entstand erst zwei Tage spaeter. OKX fuehrt kein Feld 'wer/warum', die Ursache
+      ist damit nicht mehr rekonstruierbar - vier Orders in sieben Sekunden sind
+      maschinell (App-Sammelstorno oder Boersenseite).
+      Die WIRKUNG ist abgesichert: `boersenstops.py` vergleicht seit 29.09.2026 in
+      JEDEM Live-Zyklus Buch gegen Boerse (fehlender Stop wird nachgesetzt, verkaufte
+      Position ausgebucht, Waisenstop storniert) - der Zustand vom 26.09. kann nicht
+      mehr unbemerkt entstehen.
 - [x] **T-107 — Doctor meldet 18 Photon-Doppelkennungen (Fehlalarm oder echte Kollision?)**
       Kontext: `hermes doctor` und `hermes gateway status` melden seit dem 25.09.2026 in
       JEDEM Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon credential

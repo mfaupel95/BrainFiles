@@ -13,6 +13,12 @@ def geplante():
         name = os.path.basename(p)
         if name.startswith("einmalig-") or name.endswith("-hook.ps1"):
             continue
+        # Manuelle Testlaeufe sind keine periodischen Arbeitslaeufe: sie werden
+        # von Hand gestartet, um ein Skript zu pruefen, und haben keine geplante
+        # Aufgabe. Der Name sagt es (test-*.ps1), die Ausnahme steht damit
+        # sichtbar in der Datei selbst.
+        if name.startswith("test-"):
+            continue
         with open(p, encoding="utf-8-sig") as f:
             roh = f.read()
         code = "\n".join(z for z in roh.splitlines()

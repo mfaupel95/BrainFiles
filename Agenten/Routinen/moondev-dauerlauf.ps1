@@ -23,12 +23,20 @@ $logs    = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 $log = Join-Path $logs 'moondev-dauerlauf-letzter-lauf.log'
 
-if (-not (Test-Path $py))      { throw "venv-Python fehlt: $py" }
-if (-not (Test-Path $treiber)) { throw "Treiber fehlt: $treiber" }
+# Bus-Anbindung: eine Routine, die nur bei Erfolg meldet, sieht im Journal wie
+# eine nicht existierende aus - genau daran war der Telegram-Bus im September
+# vier Tage unbemerkt aus. Deshalb Melde-Start vor der ersten Pruefung und
+# Melde-Ende an JEDEM Ausstieg.
+. (Join-Path $wurzel 'Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/moondev-dauerlauf' -Text 'MoonDev-Dauerlauf'
+
+if (-not (Test-Path $py))      { Melde-Ende -Marke $marke -Code 1 -Text "venv-Python fehlt: $py"; throw "venv-Python fehlt: $py" }
+if (-not (Test-Path $treiber)) { Melde-Ende -Marke $marke -Code 1 -Text "Treiber fehlt: $treiber"; throw "Treiber fehlt: $treiber" }
 
 $p = Start-Process -FilePath $py -ArgumentList $treiber, '--stumm' `
                    -WorkingDirectory $handel -WindowStyle Hidden -PassThru
 
+Melde-Ende -Marke $marke -Code 0 -Text "gestartet als PID $($p.Id)"
 "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  gestartet als PID $($p.Id)" |
   Add-Content $log -Encoding UTF8
 Write-Output "MoonDev-Dauerlauf gestartet PID $($p.Id)"
