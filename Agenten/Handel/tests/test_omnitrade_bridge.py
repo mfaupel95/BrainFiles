@@ -21,7 +21,7 @@ import omnitrade_bridge as ob  # noqa: E402
 import handelszentrale as hz  # noqa: E402
 
 JETZT = 1_800_000_000_000
-STATUS = {"schema": 1, "state": "running", "symbol": "BTCUSDT", "network": "testnet",
+STATUS = {"schema": 1, "state": "running", "exchange": "okx", "symbol": "BTCUSDT", "network": "testnet",
           "script": "strategien/rsi30_stop2.omni", "initial_capital": 1000.0,
           "pid": 1, "started_ms": JETZT - 60_000, "updated_ms": JETZT - 10_000,
           "candles_seen": 7, "last_close": 64000.5, "last_candle_ms": JETZT - 60_000,
@@ -106,7 +106,7 @@ class ReiterFunktionenTest(unittest.TestCase):
         self.assertIn("weg", text)
         text, marke = hz.omnitrade_kopf(self._lage())
         self.assertEqual(marke, "gut")
-        for teil in ("running", "testnet", "BTCUSDT", "Kerzen 7", "Signal buy",
+        for teil in ("running", "okx testnet", "BTCUSDT", "Kerzen 7", "Signal buy",
                      "abgelehnt 1"):
             self.assertIn(teil, text)
         self.assertEqual(hz.omnitrade_kopf(self._lage(network="mainnet"))[1], "schlecht")
