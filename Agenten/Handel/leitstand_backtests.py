@@ -1,0 +1,323 @@
+"""Backtest-Reiter des Leitstands.
+
+Vier Bereiche teilen sich eine Laufsteuerung (ein Lauf gleichzeitig), ein
+Ausgabefeld und die Laufliste: Replay (Hauptweg), Einzelskripte, Optimieren,
+Urteile. Jeder Bereich ist ein Frame mit TITEL, lauf_wechsel(laeuft) und
+refresh(); er startet ueber reiter.starte(...).
+
+Backtest-Runden zaehlen NICHT fuer die Freigabe (Design Backtest-Fundament);
+der Reiter sagt das in einer festen Zeile.
+"""
+
+import sys
+import tkinter as tk
+from pathlib import Path
+from tkinter import ttk
+
+import leitstand_laeufe as ll
+import replay
+from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
+
+HIER = Path(__file__).resolve().parent
+HINWEIS_FREIGABE = ("Backtest-Runden zählen nicht für die Freigabe — dafür zählen "
+                    "nur Papier-Runden und der Freigaben-Reiter.")
+TAKT_MS = 200
+MAX_TEXT_ZEILEN = 5000
+REPLAY_VORGABEN = {"spur": replay.SPUREN_TEIL_A[0], "max_kerzen": "0",
+                   "gebuehr": "0.1", "gegenprobe": False}
+
+
+# --- Replay: reine Funktionen -----------------------------------------------
+
+def replay_spuren():
+    return list(replay.SPUREN_TEIL_A)
+
+
+def nicht_nachrechenbar():
+    return sorted(replay.NICHT_NACHRECHENBAR.items())
+
+
+def pruefe_replay(werte):
+    """(Argumente ohne Interpreter und --lauf, "") oder (None, Fehlertext)."""
+    spur = werte.get("spur")
+    if spur not in replay.SPUREN_TEIL_A:
+        return None, "Spur %r ist nicht nachrechenbar" % spur
+    try:
+        mk = int(str(werte.get("max_kerzen") or "0").strip())
+    except ValueError:
+        return None, "Max. Kerzen: ganze Zahl erwartet (0 = alle)"
+    try:
+        g = float(str(werte.get("gebuehr", "")).strip().replace(",", "."))
+    except ValueError:
+        return None, "Gebühr: Zahl erwartet (Prozent je Seite)"
+    if not 0 <= mk <= 1_000_000:
+        return None, "Max. Kerzen: 0 bis 1 000 000"
+    if not 0 <= g <= 5:
+        return None, "Gebühr: 0 bis 5 %"
+    teile = ["--spur", spur, "--gebuehr", repr(g)]
+    if mk:
+        teile += ["--max-kerzen", str(mk)]
+    if werte.get("gegenprobe"):
+        teile.append("--gegenprobe")
+    return teile, ""
+
+
+def replay_befehl(teile, stempel):
+    """Eigener Laufname: ein Leitstand-Lauf ueberschreibt keinen anderen."""
+    return [sys.executable, "replay.py"] + list(teile) + ["--lauf",
+                                                         "leitstand-" + stempel]
+
+
+# --- Bereich Replay ---------------------------------------------------------
+
+class ReplayBereich(ttk.Frame):
+    TITEL = "Replay"
+
+    def __init__(self, eltern, reiter):
+        super().__init__(eltern, padding=8)
+        self.reiter = reiter
+        g = dict(REPLAY_VORGABEN,
+                 **((reiter.zustand.get("werte") or {}).get("replay") or {}))
+        if g["spur"] not in replay.SPUREN_TEIL_A:
+            g["spur"] = REPLAY_VORGABEN["spur"]
+        self.w_spur = tk.StringVar(value=g["spur"])
+        self.w_kerzen = tk.StringVar(value=str(g["max_kerzen"]))
+        self.w_gebuehr = tk.StringVar(value=str(g["gebuehr"]))
+        self.w_gegen = tk.BooleanVar(value=bool(g["gegenprobe"]))
+
+        ttk.Label(self, text="Spur").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(self, textvariable=self.w_spur, values=replay_spuren(),
+                     state="readonly", width=18).grid(row=0, column=1, sticky="w")
+        ttk.Label(self, text="Max. Kerzen (0 = alle)").grid(row=1, column=0,
+                                                           sticky="w")
+        ttk.Spinbox(self, textvariable=self.w_kerzen, from_=0, to=1_000_000,
+                    increment=500, width=10).grid(row=1, column=1, sticky="w")
+        ttk.Label(self, text="Gebühr % je Seite").grid(row=2, column=0, sticky="w")
+        ttk.Entry(self, textvariable=self.w_gebuehr, width=10).grid(row=2, column=1,
+                                                                    sticky="w")
+        ttk.Checkbutton(self, text="Gegenprobe (alter gegen neuen Kern)",
+                        variable=self.w_gegen).grid(row=3, column=0, columnspan=2,
+                                                    sticky="w")
+        self.k_start = ttk.Button(self, text="Replay starten", command=self.starten)
+        self.k_start.grid(row=4, column=0, sticky="w", pady=(8, 0))
+        self.tip = Tooltip(self.k_start)
+
+        ttk.Label(self, text="Nicht nachrechenbar:").grid(row=0, column=2,
+                                                          sticky="nw", padx=(24, 4))
+        grau = tk.Text(self, height=6, width=60, foreground="#888888",
+                       relief="flat", wrap="none")
+        grau.insert("1.0", "\n".join("%s — %s" % p for p in nicht_nachrechenbar()))
+        grau.configure(state="disabled")
+        grau.grid(row=0, column=3, rowspan=5, sticky="nsew")
+        self.columnconfigure(3, weight=1)
+
+    def werte(self):
+        return {"spur": self.w_spur.get(),
+                "max_kerzen": self.w_kerzen.get().strip() or "0",
+                "gebuehr": self.w_gebuehr.get().strip(),
+                "gegenprobe": bool(self.w_gegen.get())}
+
+    def starten(self):
+        teile, fehler = pruefe_replay(self.werte())
+        if teile is None:
+            self.reiter.ls.melde(fehler)
+            return
+        self.reiter.zustand.merke_in("werte", "replay", self.werte())
+        stempel = ll.zeitstempel()
+        self.reiter.starte("replay-%s" % self.w_spur.get(),
+                           replay_befehl(teile, stempel),
+                           auswerten=ll.json_aus_ausgabe, stempel=stempel)
+
+    def lauf_wechsel(self, laeuft):
+        setze_knopf(self.k_start, self.tip, not laeuft, "es läuft schon ein Lauf")
+
+    def refresh(self):
+        pass
+
+
+# --- der Reiter -------------------------------------------------------------
+
+class BacktestReiter(ttk.Frame):
+    def __init__(self, eltern, leitstand, steuerung=None, bereiche=None):
+        super().__init__(eltern, padding=6)
+        self.ls, self.zustand = leitstand, leitstand.zustand
+        self.steuerung = steuerung or ll.Steuerung()
+        self._fertig = None
+        self._liste = []
+
+        ttk.Label(self, text=HINWEIS_FREIGABE, foreground="#b35c00").pack(
+            anchor="w", pady=(0, 4))
+        teiler = ttk.PanedWindow(self, orient="vertical")
+        teiler.pack(fill="both", expand=True)
+
+        self.arten = ttk.Notebook(teiler)
+        teiler.add(self.arten, weight=2)
+        self.bereiche = []
+        for klasse in (BEREICHE if bereiche is None else bereiche):
+            b = klasse(self.arten, self)
+            self.arten.add(b, text=b.TITEL)      # Instanz: Fabriken erlaubt
+            self.bereiche.append(b)
+
+        mitte = ttk.Frame(teiler)
+        teiler.add(mitte, weight=2)
+        kopf = ttk.Frame(mitte)
+        kopf.pack(fill="x")
+        self.w_lauf = ttk.Label(kopf, text="kein Lauf")
+        self.w_lauf.pack(side="left")
+        self.k_abbrechen = ttk.Button(kopf, text="Abbrechen", command=self.abbrechen)
+        self.k_abbrechen.pack(side="right")
+        self.tip_abbrechen = Tooltip(self.k_abbrechen)
+        self.w_ausgabe = tk.Text(mitte, height=10, wrap="none", state="disabled",
+                                 font=("Consolas", 9))
+        leiste = ttk.Scrollbar(mitte, orient="vertical", command=self.w_ausgabe.yview)
+        self.w_ausgabe.configure(yscrollcommand=leiste.set)
+        self.w_ausgabe.pack(side="left", fill="both", expand=True)
+        leiste.pack(side="right", fill="y")
+
+        unten = ttk.PanedWindow(teiler, orient="horizontal")
+        teiler.add(unten, weight=1)
+        links = ttk.Frame(unten)
+        unten.add(links, weight=1)
+        self.liste = Tabelle(links, ll.LISTE_SPALTEN, self.zustand, "laeufe",
+                             hoehe=6, auswahl="extended")
+        self.liste.pack(fill="both", expand=True)
+        knoepfe = ttk.Frame(links)
+        knoepfe.pack(fill="x", pady=(4, 0))
+        ttk.Button(knoepfe, text="Anzeigen", command=self.anzeigen).pack(side="left")
+        ttk.Button(knoepfe, text="Vergleichen",
+                   command=self.vergleichen).pack(side="left", padx=4)
+        self.ergebnis = Tabelle(unten, ll.KENNZAHL_SPALTEN, self.zustand,
+                                "kennzahlen", hoehe=6)
+        unten.add(self.ergebnis, weight=1)
+
+        self._lauf_wechsel(self.steuerung.laeuft())
+        self.refresh()
+        self.after(TAKT_MS, self._takt)
+
+    # Reiter-Schnittstelle
+    def refresh(self):
+        self.refresh_liste()
+        for b in self.bereiche:
+            b.refresh()
+
+    def titel_zusatz(self):
+        return " ●" if self.steuerung.laeuft() else ""
+
+    def status(self):
+        return self.steuerung.status()
+
+    # fuer die Bereiche
+    def ablage(self):
+        return Path(self.steuerung.ablage or ll.ABLAGE)
+
+    def starte(self, name, befehl, auswerten=None, fertig=None, stempel=None):
+        try:
+            lauf = self.steuerung.starte(name, befehl, auswerten, stempel)
+        except RuntimeError as e:
+            self.ls.melde(str(e))
+            return False
+        except OSError as e:
+            self.ls.melde("Start fehlgeschlagen: %s" % e)
+            return False
+        self._fertig = fertig
+        self._leeren()
+        self.schreibe("$ %s\n" % " ".join(lauf.befehl[1:]))
+        self._lauf_wechsel(True)
+        return True
+
+    def schreibe(self, text):
+        w = self.w_ausgabe
+        w.configure(state="normal")
+        w.insert("end", text)
+        zeilen = int(w.index("end-1c").split(".")[0])
+        if zeilen > MAX_TEXT_ZEILEN:
+            w.delete("1.0", "%d.0" % (zeilen - MAX_TEXT_ZEILEN))
+        w.see("end")
+        w.configure(state="disabled")
+
+    def _leeren(self):
+        self.w_ausgabe.configure(state="normal")
+        self.w_ausgabe.delete("1.0", "end")
+        self.w_ausgabe.configure(state="disabled")
+
+    # Ablauf
+    def _takt(self):
+        try:
+            neu, ende = self.steuerung.takt()
+            if neu:
+                self.schreibe("".join(neu))
+            if ende:
+                self._lauf_ende(*ende)
+            self.w_lauf.config(text=self.steuerung.status() or "kein Lauf")
+        finally:
+            try:
+                self.after(TAKT_MS, self._takt)
+            except tk.TclError:
+                pass                       # Fenster ist zu
+
+    def _lauf_ende(self, pfad, daten):
+        rueck, self._fertig = self._fertig, None
+        name = daten.get("name", "Lauf")
+        if daten.get("abgebrochen"):
+            self.ls.melde("%s abgebrochen" % name)
+        elif daten.get("exit_code") == 0:
+            self.ls.melde("%s fertig" % name)
+        else:
+            self.ls.melde("%s endete mit Exit %s" % (name, daten.get("exit_code")))
+        if "ergebnis" in daten:
+            self.ergebnis.setze(ll.ergebnis_zeilen(daten))
+        self._lauf_wechsel(False)
+        self.refresh_liste()
+        if rueck:
+            rueck(pfad, daten)
+
+    def _lauf_wechsel(self, laeuft):
+        setze_knopf(self.k_abbrechen, self.tip_abbrechen, laeuft, "kein Lauf")
+        for b in self.bereiche:
+            b.lauf_wechsel(laeuft)
+
+    def abbrechen(self):
+        if self.steuerung.laeuft():
+            self.steuerung.abbrechen()
+            self.ls.melde("Abbruch angefordert")
+
+    # Laufliste
+    def refresh_liste(self):
+        self._liste = ll.laufliste(self.ablage())
+        self.liste.setze(ll.listen_zeilen(self._liste))
+
+    def _gewaehlte_laeufe(self):
+        aus = []
+        for zeile in self.liste.auswahl():
+            d = ll.lade_lauf(self.ablage() / zeile[0])
+            if d is None:
+                self.ls.melde("%s nicht lesbar" % zeile[0])
+                return None
+            aus.append(dict(d, datei=zeile[0]))
+        return aus
+
+    def anzeigen(self):
+        laeufe = self._gewaehlte_laeufe()
+        if not laeufe:
+            return
+        d = laeufe[0]
+        self._leeren()
+        self.schreibe(d.get("ausgabe", ""))
+        self.ergebnis.setze(ll.ergebnis_zeilen(d))
+
+    def vergleichen(self):
+        laeufe = self._gewaehlte_laeufe()
+        if laeufe is None:
+            return
+        if len(laeufe) != 2:
+            self.ls.melde("Vergleichen: genau zwei Läufe markieren")
+            return
+        # aelterer Lauf = A; Dateiname (beginnt mit dem Zeitstempel) als Ersatz
+        a, b = sorted(laeufe, key=lambda d: (d.get("start", ""), d["datei"]))
+        try:
+            self.ergebnis.setze(ll.vergleich(a, b))
+        except ValueError as e:
+            self.ls.melde(str(e))
+
+
+BEREICHE = [ReplayBereich]
