@@ -162,3 +162,45 @@ Berechtigung "Access WebSockets API"; ueber REST arbeitet derselbe Schluessel
 **Merksatz.** Ein Fehlercode ohne Fundstelle ist keine Spur. Die erfundene Diagnose hat
 einen echten, aber ganz anderen Fehler verdeckt - erst die falsche Faehrte erledigen,
 dann den gemessenen Fehler nennen.
+
+## 10. Eine Prozessabfrage traegt ihren Suchtext selbst (29.09.2026)
+
+**Regel.** Wer per Kommandozeilen-Filter nach einem Prozess sucht, muss den Suchtext
+ZUSAMMENSETZEN und den eigenen Prozess ausschliessen - sonst findet die Abfrage sich selbst.
+
+**Belegter Fall.** `update_laeuft()` in `Agenten/Hermes/scripts/gateway-identitaet-wache.py`
+fragte `Where-Object { $_.CommandLine -match 'hermes_cli.main update' }` ab. Die
+PowerShell-Kommandozeile der Abfrage enthaelt diesen Text woertlich - also war das Ergebnis
+**immer** "es laeuft ein Update", und die Wache griff im Blindfall nie ein. Sichtbar wurde es
+erst an einer zweiten Stelle: derselbe Ausdruck in einer Handmessung zeigte genau EINEN
+Treffer, naemlich die Messung selbst.
+
+**Richtig.** Muster aus Teilen bauen (`'hermes_cli.main' + ' ' + 'update'`), `$_.ProcessId -ne $PID`
+setzen, und das Ergebnis einer Prozessabfrage IMMER gegen eine zweite Quelle halten
+(PID-Datei, Port, Log). Verwandt: ein Kommandozeilen-Filter fuer einen DAUERPROZESS darf
+keinen zu breiten Namensteil nennen - `*moondev*` traf die eigene Shell und beendete sie
+(Skill `dauerprozess-bewachen`).
+
+**Merksatz.** Ein Messgeraet, das sich selbst mitmisst, meldet konstant. Vor jeder
+"es laeuft/ist tot"-Aussage die Messung gegen die eigene PID absichern.
+
+## 11. Eine Wache prueft die Sache, nicht eine Startform (29.09.2026)
+
+Der Gateway-Waechter erkannte den Dienst an einer Zeichenfolge in der Kommandozeile
+(`hermes_cli\.main gateway`). Das traf nur die Launcher-Form. Der Update-Weg startet den
+Gateway ueber `runpy.run_module('hermes_cli.main', …)`, wo zwischen Modul und Unterbefehl noch
+`, run_name=` steht - **0 Treffer bei laufendem Gateway**. Der Waechter startete ihn 148-mal an
+einem Tag neu und schrieb dabei jedes Mal "kein Gateway-Prozess".
+
+**Warum das so lange unentdeckt blieb.** Die Zeile las sich richtig ("kein Prozess"), die Wache
+tat ihre Arbeit ("Neustart ausgeloest"), und danach war der Dienst tatsaechlich kurz weg - es
+gab kein Widerspruchssignal. Nur die ZAHL verraet es: 148 Neustarts an einem Tag.
+
+**Richtig.** Den Dienst nach der **Identitaet** fragen, die er selbst schreibt
+(`gateway_state.json`: pid + Zustand), und die Prozessliste nur als Rueckfall benutzen - breit
+genug fuer **alle** bekannten Startformen. Ein Suchmuster, das an einem Starter haengt, ist
+eine Adresse, kein Befund.
+
+**Prueffrage fuer jede Wache.** Erkennt sie den Dienst - oder die Startzeile, die er einmal
+benutzt hat? Und was tut sie im Zweifel: meldet sie Gesundheit oder startet sie neu? Wer im
+Zweifel neu startet, zerlegt den Dienst im Takt seiner eigenen Laufzeit.

@@ -52,6 +52,64 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ```
 
 ## Offen
+- [ ] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
+      Kontext: Am 29.09.2026 startete `Routinen/gateway-waechter.ps1` den Gateway 148-mal neu,
+      weil sein Suchmuster nur die Launcher-Kommandozeile traf, nicht die `runpy`-Form des
+      Update-Wegs. Behoben (Identitaet aus `gateway_state.json` zuerst, Kommandozeile als
+      Rueckfall mit beiden Formen) und belegt: 19:15:13 und 19:15:59 "Gateway laeuft ..., kein
+      Start". Es gibt aber keinen Test, der den Rueckfall prueft.
+      Naechster Schritt: kleine Pruefung (PowerShell oder Python-Test), die beide
+      Kommandozeilenformen gegen die Waechter-Muster haelt, plus eine, die einen falschen
+      Zustand als "Neustart" erwartet.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Routinen/gateway-waechter.ps1
+
+- [ ] **T-147 — Das Dashboard hat keine Wache**
+      Kontext: `hermes update` beendete den Lauf am 29.09.2026 mit `outcome: partial` und
+      `phase_error: "Could not restart every paused Windows gateway"`; der Gateway kam zurueck,
+      das Dashboard nicht (Port 9119 bis zum manuellen `Start-ScheduledTask Hermes_Dashboard`
+      tot). Der Gateway hat Wachen (Gateway-Waechter, gateway-identitaet-wache), das Dashboard
+      keine - ein Ausfall bleibt bis zur naechsten Anmeldung unbemerkt.
+      Naechster Schritt: Wache nach Hausmuster (`no_agent`, leere Ausgabe = nichts senden), die
+      die ANTWORT prueft (`http://127.0.0.1:9119/` = 200) und nur dann startet, wenn 60 s nach
+      dem Ausloesen kein Prozess da ist (der Dienst braucht ~45 s).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/
+
+- [ ] **T-148 — Der Web-Bau des Dashboards bricht an fehlendem `vitest` ab**
+      Kontext: `npm run build` im `hermes-agent/web` scheitert mit `tsc -b`
+      (`apps/shared/src/*.test.ts`: "Cannot find module 'vitest' or its corresponding type
+      declarations", 27 Zeilen im Protokoll vom 19.09.2026); der Dienst startet dann mit
+      "serving stale dist as fallback". Im `apps/shared` stehen Testdateien im Bauprogramm,
+      `vitest` liegt aber nur im Wurzel-`node_modules`.
+      Naechster Schritt: entscheiden - beobachten (upstream) oder lokal `vitest` in
+      `apps/shared/devDependencies` aufnehmen (wirkt bis zum naechsten Update, das die Datei
+      zuruecksetzt). Kein Handlungsdruck: der Dienst laeuft (HTTP 200).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/hermes-agent/web, apps/shared/tsconfig
+
+- [ ] **T-149 — Doctor-Bericht: 18 Photon-Doppelkennungen sind ein Fehlalarm**
+      Kontext: `hermes doctor` meldet fuer 18 Bot-Profile "Profiles 'default' and '<bot>' both
+      hold the same photon credential" und schliesst mit 19 Befunden ab. Nachgemessen am
+      29.09.2026: KEIN Profil-.env traegt `PHOTON_PROJECT_ID`/`_SECRET`, keine
+      Windows-Benutzervariable - die Kennung der Haupt-.env wird je Profil mitgezaehlt. Bereits
+      am 25.09.2026 notiert (`Wiki/Betrieb/Hermes.md`); jetzt wieder aktuell und damit 18 der
+      19 Befunde wertlos.
+      Naechster Schritt: Entscheidung Max - Doctor-Bericht gezielt filtern, oder in den 18
+      Profil-`config.yaml` `gateway.platforms.photon.enabled: false` eintragen (der eine Profil
+      mit eigenem photon-Block verschwindet dadurch aus der Liste).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Wiki/Betrieb/Hermes.md
+
+- [ ] **T-150 — 18 Commits Rueckstand im Hermes-Checkout, Update nicht wiederholt**
+      Kontext: Der Lauf am 29.09.2026 18:46 endete `partial` (Gateway-Restart) und ist 3,5 h
+      spaeter; `origin/main` ist inzwischen 18 Commits weiter (HEAD `ca705dbf7e`, 0.21.5).
+      Arbeitsbaum sauber, leerer Autostash verworfen, `pm_sync_outcome: ok`.
+      Naechster Schritt: `hermes update` erneut fahren, DETACHED (Start-Process ueber eine
+      cmd-Datei, PYTHONHOME/PYTHONPATH darin leeren) - als Kind der Agenten-Shell stirbt der
+      Lauf beim Gateway-Stopp. Danach Dashboard-Start und `hermes doctor` pruefen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/hermes-agent, Agenten/Hermes/logs/update_receipts/
 - [ ] **T-142 — Der Grund im Journal der Feed-Spuren ist ein Platzhalter**
       Kontext: Bei jedem Einstieg steht "Der Grund, der im Journal steht." in
       der Spalte `grund`. Der Text kommt aus dem Dummy-Schluessel `_grund` der
