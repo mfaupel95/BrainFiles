@@ -1,5 +1,4 @@
-# Taeglicher Zwischenstand der Textebene (20:00). Von der Aufgabenplanung
-# aufgerufen.
+# Stuendlicher Zwischenstand der Textebene. Von der Aufgabenplanung aufgerufen.
 #
 # Zweck: Git schuetzt nur, was committet ist. Zwischen dem Schreiben einer Datei
 # und ihrem Commit ist die Arbeit nirgends gesichert. Bei mehreren gleichzeitigen
@@ -9,10 +8,11 @@
 # Wiederherstellungspunkt der gesamten Textebene auf dem Branch "zwischenstand"
 # an.
 #
-# Lief bis 02.09.2026 stuendlich; auf taeglich 20:00 reduziert (im Umfeld des
-# System-Umzugs, weniger Lauefe erwuenscht). Damit ist im schlimmsten Fall ein
-# Tag uncommitteter Arbeit ungesichert - eigenes Committen nach jedem
-# Arbeitsschritt bleibt Pflicht.
+# Lief bis 02.09.2026 stuendlich, im Umfeld des System-Umzugs auf taeglich
+# 20:00 reduziert, am 29.09.2026 wieder auf stuendlich gestellt - der Umzug
+# ist abgeschlossen, der Grund fuer die Reduzierung entfaellt. Im schlimmsten
+# Fall ist jetzt eine Stunde uncommitteter Arbeit ungesichert statt eines
+# Tages - eigenes Committen nach jedem Arbeitsschritt bleibt trotzdem Pflicht.
 #
 # Das Skript kann per Konstruktion nichts kaputtmachen:
 #   - Eigener Index ueber GIT_INDEX_FILE. Der normale Staging-Bereich bleibt

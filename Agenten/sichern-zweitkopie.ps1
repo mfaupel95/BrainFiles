@@ -52,7 +52,17 @@ $ausserhalb = @(
   (Join-Path $quelle 'MaxHirn\Archiv\Videos'),
   (Join-Path $quelle 'MaxHirn\Archiv\Musik'),
   (Join-Path $quelle 'MaxHirn\Archiv\Software'),
-  (Join-Path $quelle 'MaxHirn\Archiv\Posteingang')
+  (Join-Path $quelle 'MaxHirn\Archiv\Posteingang'),
+  # HERMES-CACHE: hier liegt der uv-Build-Cache, dessen editable-Wheel ein
+  # laufender Hermes-/uv-Prozess sperrt. Ein blosses /XD cache wuerde jeden
+  # gleichnamigen Ordner mit ausschliessen, darum der volle Pfad. Folge ohne
+  # Ausschluss: robocopy FEHLER 5 auf hermes_agent-0.0.0-0.editable-py3-none-any.whl,
+  # robocopy-Code 11 und Exitcode 1 (Lauf 28.09.2026 21:02) - die Aufgabe
+  # MaxHirn-Zweitkopie stand deshalb taeglich auf Code 1, ohne dass eine Datei
+  # fehlte (2936 uebersprungen, 0 Fehler im Zaehler). Der Cache ist neu baubar
+  # und gehoert nicht in eine Sicherung; die Dateien des Hermes-Baums
+  # (config.yaml, profiles, skills, SOUL.md) werden weiter mitgesichert.
+  (Join-Path $quelle 'Agenten\Hermes\cache')
 )
 
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `

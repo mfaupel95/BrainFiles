@@ -55,6 +55,7 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
     curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9119/
     hermes doctor
     git -C <checkout> log -1 --oneline
+    python -c "from hermes_cli.gateway import find_profile_gateway_processes as f; print([(x.profile, x.pid) for x in f(strict=True)])"
     Get-NetTCPConnection -LocalPort 9900 -State Listen | Select-Object -ExpandProperty OwningProcess
     npm audit --json --workspaces=false
     Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }
@@ -98,6 +99,29 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 
 Step-by-step detail, log line shapes, exit-code table, the detach-skript skeleton and the
 bookkeeping pattern: load `references/update-run-procedure.md`.
+
+## Stop: `RuntimeError: Could not inspect gateway PID for profile default`
+
+Der Lauf kommt bis "Paused gateway profile(s)" und stirbt dann mit `exit_code 1` und
+`Could not map Windows gateway PIDs to profiles`. Das ist KEIN defektes Update, sondern eine
+**Sichtbarkeitsfrage**: der Gateway laeuft in einer Startform, die der kanonische Matcher
+`gateway.status.looks_like_gateway_runtime_command_line` absichtlich ablehnt (`-c`-Bootstrap,
+Upstream #107002), oder die PID-Metadaten fehlen. Messgroesse ist die Sicht des Updaters:
+
+    python -c "from hermes_cli.gateway import find_profile_gateway_processes as f; print([(x.profile, x.pid) for x in f(strict=True)])"
+
+`RuntimeError` = er sieht ihn nicht (genau der Abbruchgrund); `[('default', <pid>)]` = gut.
+Reparatur: Launcher `gateway-service/Hermes_Gateway_<suffix>.vbs` starten (klassische Form
+`-m hermes_cli.main gateway run`), fehlende PID-Metadaten aus `gateway.lock` rekonstruieren,
+danach erneut messen. Als Wache dafuer laeuft `Agenten/Hermes/scripts/gateway-identitaet-wache.py`
+(Cron, taeglich, `no_agent`, leere Ausgabe = nichts senden; heilt einmal pro Tag, nie waehrend
+eines Updates) - und `Agenten/Routinen/gateway-waechter.ps1` prueft seit dem Umbau die
+**Bedingung** (Prozess + Antwort ueber Control-Pipe ODER Port), nicht mehr Port 9900: TCP 9900
+kann zu bleiben, waehrend der Gateway gesund laeuft - eine Adress-Wache startete ihn deshalb im
+2-Minuten-Takt neu (128 Mal an einem Tag).
+Vor/Nach-Nachweis eines Laufs, die zwei Wachen-Fallen, der Beweislauf mit Belegskript, der
+Aufraeumrest `[WinError 5] … tools/.displaced-*/node.exe` und die Sandbox-Uhr, die eigene Arbeit
+als "ruhend" erscheinen laesst: `references/gateway-identitaet-und-wachen.md`.
 
 ## Egress/iron-proxy: no native Windows binaries (hard blocker)
 
@@ -160,19 +184,40 @@ Erst danach gilt der Lauf als fertig. (Der Plan nennt denselben Dienst vorab:
 `hermes update --plan` listet ihn als „restart: stop before code swap, relaunch with recorded
 launch args" — was der Lauf nicht immer schafft.)
 
+**Der Beleg steht im Receipt, nicht nur im Log.** `logs/update_receipts/latest.json` traegt bei
+so einem Lauf `outcome: "partial"` mit `gateway_restart.incomplete: true`, `phase_error: "Could
+not restart every paused Windows gateway"` und `killed_pids: [...]` — daneben
+`pm_sync_outcome: "ok"` und `pm_exit_code: 0`, also ein gelungener Code-Teil. Das Receipt ist
+die ERSTE Stelle zum Lesen; das Lauf-Log nur, wenn das Receipt fehlt oder mehr Detail braucht.
+
+**Nachziehen mit Wartezeit messen.** Der Dashboard-Prozess entsteht erst ~10-15 s nach dem
+Ausloesen, erreichbar (HTTP 200 auf 9119) ist er nach ~45 s. Ein Port-Check wenige Sekunden nach
+`Start-ScheduledTask` meldet einen Ausfall, den es nicht gibt - und wer daraufhin ein zweites Mal
+startet, legt einen zweiten Dienst neben den ersten.
+
 ## Halter-Probe: stirbt sie beim Import, meldet sie nie "0 Halter"
 
 `tmp/venv_halter.py` (Datei, `sys.path.insert(0, <checkout>)`, danach
 `from hermes_cli.update_cmd_windows import _detect_venv_python_processes`) brach am 25.09.2026
 in **jedem** Lauf mit `ModuleNotFoundError: No module named 'ruamel'` ab, obwohl dieselbe
 Importkette per `venv\Scripts\python.exe -m hermes_cli.main --version` und per `-c` aus
-demselben venv fehlerfrei lief (Ursache nicht geklaert; `import hermes_cli.config` allein
-funktioniert, `update_cmd_windows` nicht). Folge: die Warteaufgabe wartet 45 min auf "0 Halter"
+demselben venv fehlerfrei lief. Folge: die Warteaufgabe wartet 45 min auf "0 Halter"
 und faehrt nichts.
 
-Regel: Die Halter-Probe von aussen aufrufen (`-m` bzw. `-c`, cwd = Checkout), NICHT als
-Datei mit eigenem `sys.path`-Eingriff, und sie **einmal gegen einen bekannten Halter**
-gegenpruefen — bei laufendem Dashboard muss die Probe dessen PID-Paar sehen. Kanonisch sind
+**Ursache (geloest): das venv war unvollstaendig, nicht die Probe.** Ein abgebrochener
+Update-Lauf hatte die Deps nicht nachgezogen (dieselbe Wurzel wie "Tools-Runtime ohne Deps"
+unten: dort der `tools`-Python, hier das Checkout-venv). Nach
+`venv\Scripts\python.exe -m pip install -e hermes-agent` laeuft DIESELBE Datei fehlerfrei und
+findet die Halter im echten Betrieb (`.hermes-runtime`-Python + Dashboard-PID). Der
+Datei-Aufruf mit eigenem `sys.path`-Eingriff ist also NICHT das Problem - die Probe war nur
+der erste Aufrufer, der die Luecke getroffen hat.
+
+Regel: Die Halter-Probe **einmal gegen einen bekannten Halter** gegenpruefen — bei laufendem
+Dashboard muss die Probe dessen PID-Paar sehen (erwartet sind zwei Eintraege: der
+`.hermes-runtime`-Interpreter und das Dashboard, der Gateway ist ausgenommen). Faellt die
+Probe mit `ModuleNotFoundError` um, zuerst das venv pruefen
+(`venv\Scripts\python.exe -c "import ruamel, hermes_cli.update_cmd_windows"`) statt die Probe
+umzubauen. Kanonisch sind
 `_detect_venv_python_processes()` und `_hermes_holder_subcommand()` in
 `hermes_cli/update_cmd_windows.py`; eine eigene Prozessliste per Kommandozeilen-Teilstring ist
 genau die Falle, die der Gateway-Waechter schon zweimal getroffen hat.
@@ -190,7 +235,14 @@ nur auf das venv schaut, sieht den Gateway nicht mehr.
 ## Tools-Runtime ohne Deps: der stille degradierte Gateway
 
 Der `tools/python-3.14.7…` ist ein **nackter Python** (site-packages enthaelt nur `pip`), bis
-`pip install -e hermes-agent` die Deps hineinlegt. Bricht ein Update ab, BEVOR es die Deps in
+`pip install -e hermes-agent` die Deps hineinlegt. **Die leere Paketliste ist allein KEIN
+Befund:** der Launcher setzt `PYTHONPATH=<checkout>`, und der Bootstrap zieht die Fremdpakete
+zusaetzlich aus dem gestagten Umfeld
+(`<HERMES_HOME>/installs/<hash>/environments/<id>/venv/Lib/site-packages`) - ein Gateway kann aus
+diesem Python gesund laufen, waehrend `python.exe -c "import pydantic_core"` darin
+`ModuleNotFoundError` meldet (Handproben stattdessen mit
+`<checkout>/venv/Scripts/python.exe` fahren). Massgeblich ist der Import IM laufenden Prozess
+bzw. das Fehlerbild unten, nicht `ls site-packages`. Bricht ein Update ab, BEVOR es die Deps in
 den tools-Python installiert (z.B. weil es beim Pausieren des Gateways scheitert), laeuft der
 Gateway danach aus einem Python ohne `pydantic`/`pydantic_core`/`openai` — und zwar **weiter**,
 nur degradiert. Die Signatur ist eindeutig und haengt zusammen:
@@ -236,6 +288,22 @@ Beide auf dieselbe Fassung setzen (4.3.2), dann `npm install --workspaces=false`
 `npm audit --json --workspaces=false` = 0 und `hermes doctor`:
 "Browser tools (agent-browser) deps (no known vulnerabilities)". Der Fix liegt nur im
 Arbeitsbaum des Checkouts und wird bei jedem Update mitgestasht und zurueckerstattet.
+
+**Vor dem naechsten Hochziehen erst MESSEN, ob der Fix noch noetig ist** — ein spaeterer
+Upstream-Stand kann die beiden Pins selbst konsistent gesetzt haben. Gegenprobe in einer
+Zeile: `grep -n js-yaml package.json` muss `overrides` UND Direktabhaengigkeit auf DERSELBEN
+Fassung zeigen; sind beide gleich, ist der alte Fix gegenstandslos und ein erneutes Anheben
+waere ein neuer EOVERRIDE. Was `npm audit` dann noch meldet (typisch vitest-Advisories im
+`web/`-Workspace), ist eine eigene Baustelle und kein Zeichen fuer den js-yaml-Pin.
+
+**Verwaiste Autostashes: sichern, dann verwerfen — nie im Checkout committen.** Ein
+abgebrochener Lauf laesst Autostashes liegen (`git stash list`), die bei jedem weiteren Lauf
+als Warnung wieder auftauchen. Der Checkout wird von `hermes update` verwaltet: ein eigener
+Commit dort blockiert den naechsten Pull. Also Inhalt als Patch sichern
+(`git stash show -p "stash@{0}" > <HERMES_HOME>/logs/stash-sicherung/autostash-<datum>.patch`),
+groesse pruefen (ein leerer Patch = Stash identisch mit HEAD) und danach `git stash drop` bis
+die Liste leer ist. `git stash show -p "stash@{0}" -- <pfad>` scheitert mit "Too many
+revisions specified" — den Pfad nicht als zweites Argument anhaengen.
 
 ## Photon-Doppelkennungen: Fehlalarm bei geteiltem Credential-Store
 

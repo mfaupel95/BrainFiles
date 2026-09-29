@@ -20,6 +20,18 @@
 # 'hermes_cli.main gateway' ist der A2A-Gateway; 'tui_gateway' allein zaehlt
 # nie. Port 9900 pruefen, Prozessname nur als Boot-/Stuck-Entscheidung.
 #
+# KORREKTUR (29.09.2026): "Port 9900 ist die Wahrheit" gilt nicht mehr. Seit
+# dem Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
+# (\\.\pipe\hermes-gateway-*) und bedient Webhooks auf 8644; TCP 9900 bleibt
+# zu, waehrend der Dienst gesund laeuft. Folge: dieser Waechter startete den
+# Gateway im 2-Minuten-Takt neu - 128 Zeilen "Neustart ausgeloest" allein am
+# 29.09.2026, jeder Neustart reisst die laufenden Verbindungen mit.
+# Geprueft wird jetzt die BEDINGUNG, nicht ihr frueherer Nebeneffekt: laeuft
+# ein Prozess 'hermes_cli.main gateway run' (ohne --profile) UND antwortet er
+# (Pipe ODER Port)? Prueffrage fuer jede Wache: prueft sie die Sache - oder
+# eine Adresse, die die Sache einmal begleitet hat? Siehe Wiki
+# [[Lektionen/Wahrheit-pruefen]] 8 und 10.
+#
 # Registriert als Aufgabe 'MaxHirn-Gateway-Waechter': bei Anmeldung plus
 # Wiederholung alle 2 Minuten, StartWhenAvailable, IgnoreNew (Muster:
 # skillsbot-Waechter). Braucht keine Admin-Rechte.
@@ -28,6 +40,7 @@ $ErrorActionPreference = 'Continue'
 $wurzel = Split-Path $PSScriptRoot -Parent
 . (Join-Path $wurzel 'Bus\Ereignis.ps1')
 $log = Join-Path $PSScriptRoot 'logs\gateway-waechter.log'
+$merker = Join-Path $PSScriptRoot 'logs\gateway-waechter.merker'
 $marke = Melde-Start -Wer 'routine/gateway-waechter' `
            -Log 'Agenten/Routinen/logs/gateway-waechter.log'
 # Pfad aus dem Skriptort ableiten, nicht verdrahten (Portabilitaet);
@@ -35,42 +48,106 @@ $marke = Melde-Start -Wer 'routine/gateway-waechter' `
 $vbs = Join-Path (Split-Path $PSScriptRoot -Parent) 'Hermes\gateway-service\Hermes_Gateway_2ef9d0b7.vbs'
 $zeit = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
 
-# Erste Wahrheit: Port 9900. Ein offener A2A-Port ist die Sache selbst,
-# der Prozessname kann sich jederzeit aendern (zweimal am 19.09.2026 geschehen).
-$port_offen = Test-NetConnection -ComputerName 127.0.0.1 -Port 9900 `
-    -WarningAction SilentlyContinue -InformationLevel Quiet
-if ($port_offen) {
-    Melde-Ende -Marke $marke -Code 0 -Text 'Port 9900 antwortet, kein Start'
+# ---------------------------------------------------------------------------
+# 1. Laeuft der Gateway-Prozess? Das ist die Bedingung.
+# ---------------------------------------------------------------------------
+# BEFUND/FIX 29.09.2026: Die Erkennung hing an der Kommandozeile EINES
+# Starters ('hermes_cli.main gateway'). Seit dem Update gibt es ZWEI Formen:
+# der Launcher startet '-m hermes_cli.main gateway run', der Update-Weg
+# ('hermes gateway run --replace') startet eine runpy-Form, in der zwischen
+# 'hermes_cli.main' und 'gateway run' noch ', run_name=...' steht. Das alte
+# Muster traf die runpy-Form NICHT: der Waechter sah 0 Prozesse und startete
+# den Gateway im 2-Minuten-Takt neu (148 Neustarts und 19 'exited UNCLEANLY'
+# am 29.09.2026, jede Runde reisst die Verbindungen mit). Kanonisch ist die
+# Identitaet aus gateway_state.json (pid + Zustand = running, so schreibt es
+# der Gateway selbst); die Kommandozeile bleibt Rueckfall fuer Altbestaende.
+$state_datei = Join-Path (Split-Path $PSScriptRoot -Parent) 'Hermes\gateway_state.json'
+$gw = @()
+if (Test-Path $state_datei) {
+    try {
+        $st = (Get-Content $state_datei -Raw -Encoding UTF8 | ConvertFrom-Json)
+        if ($st.pid -and $st.gateway_state -eq 'running') {
+            $pr = Get-Process -Id $st.pid -ErrorAction SilentlyContinue
+            if ($pr -and $pr.ProcessName -eq 'python') {
+                $gw = @(Get-CimInstance Win32_Process -Filter "ProcessId=$($st.pid)")
+            }
+        }
+    } catch { $gw = @() }
+}
+if (-not $gw) {
+    $gw = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway run|run_module\(''hermes_cli\.main''' -and
+                           $_.CommandLine -notmatch '--profile' })
+}
+
+if (-not $gw) {
+    if (-not (Test-Path $vbs)) {
+        "$zeit  FEHLER: Launcher fehlt ($vbs)" | Add-Content $log -Encoding UTF8
+        Melde-Ende -Marke $marke -Code 1 -Text "Launcher fehlt ($vbs)"
+        exit 1
+    }
+    try {
+        Start-Process wscript.exe -ArgumentList '//B', '//Nologo', $vbs -WindowStyle Hidden
+        "$zeit  kein Gateway-Prozess - Neustart ausgeloest ($vbs)" | Add-Content $log -Encoding UTF8
+        Melde-Ende -Marke $marke -Code 0 -Text 'Neustart ausgeloest (kein Prozess)'
+    } catch {
+        "$zeit  FEHLER beim Gateway-Start: $($_.Exception.Message)" | Add-Content $log -Encoding UTF8
+        Melde-Ende -Marke $marke -Code 1 -Text $_.Exception.Message
+        exit 1
+    }
     exit 0
 }
 
-# Port zu, aber vielleicht noch am Binden. Nur ein Prozess mit
-# 'hermes_cli.main gateway' ist der A2A-Gateway - 'tui_gateway.entry' ist das
-# TUI/Desktop-JSON-RPC-Backend und zaehlt NIE (lauscht nicht auf 9900).
-$gw = Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
-      Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway' -and
-                     $_.CommandLine -notmatch '--profile' }
-if ($gw) {
-    # Frisch gestartet = Boot, nicht nachstossen (sonst --replace-Churn wie
-    # am 19.09.). Ein alter, haengender Prozess faellt durch und wird neu
-    # gestartet.
-    $alter = ((Get-Date) - $gw[0].CreationDate).TotalSeconds
-    if ($alter -lt 120) {
-        Melde-Ende -Marke $marke -Code 0 -Text 'Gateway-Prozess bootet (Port noch nicht offen), kein Start'
-        exit 0
-    }
+# Frisch gestartet = Boot, nicht nachstossen (sonst --replace-Churn wie am 19.09.).
+$start = ($gw | Sort-Object CreationDate | Select-Object -First 1).CreationDate
+$alter = [int]((Get-Date) - $start).TotalSeconds
+if ($alter -lt 120) {
+    Melde-Ende -Marke $marke -Code 0 -Text "Gateway-Prozess bootet ($alter s), kein Start"
+    exit 0
 }
 
-if (-not (Test-Path $vbs)) {
-    "$zeit  FEHLER: Launcher fehlt ($vbs)" | Add-Content $log -Encoding UTF8
-    Melde-Ende -Marke $marke -Code 1 -Text "Launcher fehlt ($vbs)"
-    exit 1
+# ---------------------------------------------------------------------------
+# 2. Antwortet er? Control-Pipe (neue Bauart) oder Port (alte Bauart).
+# ---------------------------------------------------------------------------
+$pipe_da = $false
+try {
+    $pipe_da = @([System.IO.Directory]::GetFiles('\\.\pipe\') |
+                 Where-Object { $_ -match 'hermes-gateway' }).Count -gt 0
+} catch {
+    $pipe_da = $false          # Pipe-Namensraum nicht lesbar: der Port entscheidet
+}
+$port_offen = Test-NetConnection -ComputerName 127.0.0.1 -Port 9900 `
+    -WarningAction SilentlyContinue -InformationLevel Quiet
+
+if ($pipe_da -or $port_offen) {
+    Melde-Ende -Marke $marke -Code 0 `
+        -Text ("Gateway laeuft (Pipe: $pipe_da, Port 9900: $port_offen), kein Start")
+    exit 0
+}
+
+# ---------------------------------------------------------------------------
+# 3. Prozess da, antwortet aber nicht = haengender Start. Hoechstens EIN
+#    Neustart je 30 Minuten - sonst entsteht genau die Schleife, die dieser
+#    Umbau am 29.09.2026 beendet hat.
+# ---------------------------------------------------------------------------
+$letzter = 0
+if (Test-Path $merker) {
+    $roh = (Get-Content $merker -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($roh -match '^\d+$') { $letzter = [int]$roh }
+}
+$jetzt_s = [int]((Get-Date) - (Get-Date '1970-01-01')).TotalSeconds
+if (($jetzt_s - $letzter) -lt 1800) {
+    Melde-Ende -Marke $marke -Code 0 `
+        -Text "Gateway-Prozess $alter s alt, antwortet nicht - Neustart unterdrueckt (letzter vor <30 min)"
+    exit 0
 }
 
 try {
     Start-Process wscript.exe -ArgumentList '//B', '//Nologo', $vbs -WindowStyle Hidden
-    "$zeit  Gateway nicht gefunden - Neustart ausgeloest ($vbs)" | Add-Content $log -Encoding UTF8
-    Melde-Ende -Marke $marke -Code 0 -Text 'Neustart ausgeloest'
+    $jetzt_s | Set-Content $merker -Encoding UTF8
+    "$zeit  Gateway-Prozess $alter s alt ohne Antwort - Neustart ausgeloest ($vbs)" |
+        Add-Content $log -Encoding UTF8
+    Melde-Ende -Marke $marke -Code 0 -Text 'Neustart ausgeloest (haengender Prozess)'
 } catch {
     "$zeit  FEHLER beim Gateway-Start: $($_.Exception.Message)" | Add-Content $log -Encoding UTF8
     Melde-Ende -Marke $marke -Code 1 -Text $_.Exception.Message

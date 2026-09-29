@@ -270,6 +270,20 @@ def urteil(text):
             "confidence": confidence, "grund": grund[:200]}
 
 
+def _ausfall(u):
+    """Warum ein Urteil unbrauchbar ist - die zwei Faelle sind verschieden.
+
+    Ein Modell, das "BUY" schreibt und nur die Confidence-Zeile vergisst,
+    hat den Vertrag fast getroffen; eines, das irgendetwas anderes schreibt,
+    gar nicht. Das erste ist ein Prompt-Problem, das zweite ein
+    Modell-Problem - im Log stand bis zum 29.09.2026 fuer beide derselbe
+    Satz, und sie waren nicht auseinanderzuhalten.
+    """
+    if u is not None:
+        return "Antwort ohne Confidence-Zeile"
+    return "Antwort nicht im Vertrag"
+
+
 def entscheide(prompt, w=None):
     """Marktbild -> (seite, info). seite ist 'long', 'short' oder None.
 
@@ -291,13 +305,12 @@ def entscheide(prompt, w=None):
     info = {}
     if u is None or u["confidence"] is None:
         if not w.get("llm_nachfassen", True):
-            return None, {"fehler": "Antwort nicht im Vertrag",
+            return None, {"fehler": _ausfall(u),
                           "roh": roh.replace("\n", " | ")[:150]}
         zweiter = frage(prompt + "\n\n" + NACHFASSEN, modell, zg, weg=weg)
         u2 = urteil(zweiter) if zweiter else None
         if u2 is None or u2["confidence"] is None:
-            return None, {"fehler": "Antwort nicht im Vertrag (auch nach "
-                                    "Nachfassen)",
+            return None, {"fehler": _ausfall(u2) + " (auch nach Nachfassen)",
                           "roh": (zweiter or roh).replace("\n", " | ")[:150]}
         u = u2
         info["nachgefasst"] = True

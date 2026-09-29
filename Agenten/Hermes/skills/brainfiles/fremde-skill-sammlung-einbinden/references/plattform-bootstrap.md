@@ -68,8 +68,32 @@ print('OK name=', d.get('name'), 'id=', d.get('agent_id'), 'token_laenge=', len(
 
 - **Antwort eines Auth-Endpunkts nicht roh ausgeben.** Genau der Verifikationsaufruf
   ist die Falle: er bestaetigt die Kennung, indem er sie zurueckgibt.
+- **Die FEHLERantwort ist die gefaehrlichere Haelfte davon.** Eine Validierungsantwort
+  (422) echot die ganze Anfrage unter `input` zurueck - E-Mail UND Passwort im
+  Klartext. Im Fehlerpfad nur `e.code` und das Feld `detail` lesen, nie den ganzen
+  Koerper; ist es doch passiert, gehoert das Passwort auf der Plattform geaendert
+  (Aufgabe fuer Max eintragen) - das Sitzungsprotokoll ist derselbe Leak wie ein Commit.
+- **Der Auth-Kopf der Anleitung ist ein Vorschlag.** Gemessen: der Plattform-Skill
+  nennt `X-Claw-Token`, die API antwortet damit 401 `Invalid token`; tragfaehig ist
+  `Authorization: Bearer <token>`. Zuerst den dokumentierten Kopf probieren, bei 401
+  den Standardkopf gegentesten und den Befund in die Wiki-Seite schreiben - NICHT die
+  Kennung neu ausstellen, solange nicht beide Formen 401 liefern.
+- **Den Poller als duenne Bruecke in `Agenten/Hermes/scripts/` legen.** Der Scheduler
+  fuehrt nur Skripte aus diesem Ordner aus; ein Cron auf
+  `Agenten/Handel/<plattform>/heartbeat.py` wird beim Anlegen abgewiesen. Die Logik
+  bleibt beim Werkzeug (dort liegt auch die `.env`), die Bruecke laedt `main()` ueber
+  den Pfad und wird selbst wieder still, wenn nichts Neues anliegt.
 - **Plattform-Konto ist kein Boersenkonto.** Solche Seiten arbeiten mit simuliertem
   Guthaben; die Kennung gehoert trotzdem in die gesperrte Ablage, weil sie die Identitaet
   des Agenten ist.
+- **Poller testen, ohne ins Netz zu gehen - der Patch muss zurueckgestellt werden.**
+  Die Aufruffunktionen im Test auf Modulebene ersetzen UND in `tearDown`/`addCleanup`
+  wiederherstellen: ein Patch, der stehen bleibt, laesst die NAECHSTE Testklasse die
+  echten Endpunkte aufrufen - der Test bleibt dabei gruen, und Kennung samt
+  Fehlermeldung wandern ins Protokoll. Zwei kleinere Fallen derselben Art: ein
+  Parameter `env` nur mit `if env is None` auswerten (ein absichtlich leerer Wert
+  faellt bei `env or _env()` still auf die ECHTE Umgebung zurueck), und den Merkordner
+  des Pollers im Test auf ein tmp-Verzeichnis zeigen lassen - ein Test, der in den
+  echten `cache/`-Ordner schreibt, legt dort eine Datei ab, die niemand mehr aufraeumt.
 - **Fremde `install`-Pfade aus der Anleitung nicht ausfuehren** (`~/.claude/skills/...`,
   `~/.openclaw/skills/...`): hier laedt niemand daraus.

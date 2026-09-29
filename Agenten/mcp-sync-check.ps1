@@ -58,7 +58,11 @@ function HoleHermesNamen {
   for ($i = $idx; $i -lt $zeilen.Count; $i++) {
     $ln = $zeilen[$i]
     if ($ln -match '^[A-Za-z0-9_]' -and $ln -notmatch '^mcp_servers:') { break }
-    if ($ln -match '^  ([A-Za-z0-9_.\-]+):\s*$') { $namen += $Matches[1] }
+    if ($ln -match '^  ([A-Za-z0-9_.\-]+):\s*$') { $namen += $Matches[1]; continue }
+    # 'enabled: false' auf Serverebene: eingetragen, aber abgeschaltet - zaehlt
+    # nicht als vorhanden. Ohne das meldete der Abgleich revolut-x und blender
+    # als OK, obwohl Hermes sie gar nicht startet (29.09.2026).
+    if ($ln -match '^    enabled:\s*false\s*$' -and $namen.Count) { $namen = @($namen | Select-Object -SkipLast 1) }
   }
   return $namen
 }

@@ -35,6 +35,9 @@ PAARE = {
     "XBT/USD": "BTCUSDT", "BTC/USD": "BTCUSDT", "BTC_USDT": "BTCUSDT",
     "ETH-USDC": "ETHUSDT", "ETH-USDT": "ETHUSDT", "ETH_USDT": "ETHUSDT",
     "SOL-USDC": "SOLUSDT", "SOL-USDT": "SOLUSDT",
+    # Die bare Form der drei grossen - die Funding-Spur fuehrt "BTC"/"ETH"/"SOL"
+    # so, und ohne diese Zeilen faellt sie beim Laden mit KeyError um.
+    "BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT",
     "HYPE": "HYPEUSDT", "FIL": "FILUSDT", "ZEC": "ZECUSDT", "UNI": "UNIUSDT",
     "ARB": "ARBUSDT", "DOGE": "DOGEUSDT", "XRP": "XRPUSDT", "APT": "APTUSDT",
     "STRK": "STRKUSDT", "DOT": "DOTUSDT", "HBAR": "HBARUSDT",

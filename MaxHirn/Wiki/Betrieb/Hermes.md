@@ -164,3 +164,138 @@ Kennung aus den Profilen zu loeschen - dort steht sie nicht.
 Ein echter Fall bleibt zu pruefen: `profiles/awesome-systematic-trading/config.yaml` traegt
 einen eigenen `photon:`-Block (dieses Profil hat auch eine eigene `auth.json`) - siehe T-107.
 
+**Erledigt 29.09.2026.** Die Falschmeldung ist stillgelegt: die 18 gemeldeten Profile tragen
+jetzt einen eigenen Block
+
+    platforms:
+      photon:
+        enabled: false
+
+gesetzt mit `hermes -p <profil> config set platforms.photon.enabled false` - das Werkzeug
+waehlt die Stelle selbst und schreibt CRLF (18 Dateien je +3 Zeilen, keine Loeschung ausser der
+`_config_version`-Zeile, die Hermes ohnehin fortschreibt). Es meldet dabei den Vorrang aus:
+"the top-level platforms.photon block outranks gateway.platforms - saved as
+platforms.photon.enabled" - wer den Schalter unter `gateway:` setzt, setzt ihn ins Leere.
+`hermes doctor` meldet danach **1 Befund statt 19** (offen bleibt nur "Browser tools
+(agent-browser) has 1 npm vulnerability"). Der eigene `photon:`-Block von
+`awesome-systematic-trading` blieb unangetastet - dieses Profil stand nie in der Liste, was die
+Wirkung des Schalters belegt.
+
+### Gateway-Identitaet: warum `hermes update` abbrach - und die Wache dafuer (29.09.2026)
+
+**Symptom.** Jeder Update-Lauf endete nach dem Pre-update-Snapshot mit `exit_code 1` und
+`stop_reason: RuntimeError: Could not map Windows gateway PIDs to profiles: Could not inspect
+gateway PID for profile default`. Der Code wurde also gepullt, aber nicht gebaut/installiert.
+
+**Zwei Ursachen, beide gemessen:**
+
+1. **Startform.** Der Update-Restart-Watcher startet den Gateway selbst als
+   `python -I -c "<bootstrap>" … gateway run`. `gateway.status.looks_like_gateway_runtime_command_line`
+   verweigert diese `-c`-Form **absichtlich** (#107002) - der laufende Gateway ist fuer den
+   Updater damit unsichtbar. Heilung: den Gateway **klassisch** starten
+   (`-m hermes_cli.main gateway run`, so wie es der Launcher
+   `gateway-service/Hermes_Gateway_2ef9d0b7.vbs` tut).
+2. **Fehlende Identitaetsdatei.** `Agenten/Hermes/gateway.pid` fehlte; die Pruefung brach schon
+   mit "active gateway lock has no PID metadata" ab, obwohl `gateway.lock` den laufenden
+   Gateway beschrieb. Reparatur: die PID-Datei aus dem Lock rekonstruieren
+   (`cache/scratch/gateway-pid-reparieren.py`) - sie ist abgeleitete Angabe, kein Ersatzbeleg.
+
+**Beleg nach der Reparatur.** `find_profile_gateway_processes(strict=True)` ->
+`OK: default pid <n>`, und der naechste `hermes update`-Lauf pausiert den Gateway sauber
+("1 gateway(s) ACKed socket pause") statt abzubrechen.
+
+**Die Wache.** `Agenten/Hermes/scripts/gateway-identitaet-wache.py`, Cron
+`gateway-identitaet-wache` taeglich 08:15 (no_agent, Telegram, **leere Ausgabe = nichts senden**).
+Sie prueft GENAU die Bedingung, an der das Update scheiterte (Discovery des laufenden
+Gateways), rekonstruiert fehlende PID-Metadaten und startet im Blindfall den Gateway EINMAL
+pro Tag klassisch neu - aber nie, solange ein `hermes update` laeuft. Wiederholte gleiche
+Feststellungen unterdrueckt sie 6 h lang; ein Neustart wird immer gemeldet.
+Tests: `Agenten/Handel/tests/test_gateway_identitaet_wache.py`.
+
+**Der Waechter darf NICHT den Port befragen.** `gateway-identitaet-wache.py` nutzt seit dem
+29.09.2026 die Prozessliste (und den Port nur als Rueckfall fuer alte Fassungen): die neue
+Fassung lauscht auf einem Named Pipe (`\\.\pipe\hermes-gateway-*`) und bedient Webhooks auf
+8644 - **TCP 9900 ist offen oder zu, ohne etwas ueber die Gesundheit zu sagen.** Wer ihn
+prueft, haelt einen gesunden Gateway fuer tot (siehe Lektion 10 in
+[[Lektionen/Wahrheit-pruefen]]).
+
+
+### Der Gateway-Waechter hat sich selbst im 2-Minuten-Takt neu gestartet (29.09.2026)
+
+**Symptom.** Nach dem Update startete der Gateway immer wieder neu: `Routinen/logs/gateway-waechter.log`
+trug am 29.09.2026 **148 Zeilen** "kein Gateway-Prozess - Neustart ausgeloest" (eine alle zwei
+Minuten), `errors.log` dazu 19-mal `exited UNCLEANLY`. Jeder Start reisst die laufenden
+Verbindungen mit; Telegram und A2A waren mehrfach kurz weg.
+
+**Ursache (gemessen).** Der Waechter erkannte den Dienst an der Kommandozeile:
+`-match 'hermes_cli\.main gateway'`. Diese Zeichenfolge steht nur in der **Launcher**-Form
+(`-m hermes_cli.main gateway run`). Der Update-Weg startet den Gateway dagegen als
+`-I -c "…runpy.run_module('hermes_cli.main', run_name=…) …" gateway run --replace` - zwischen
+`hermes_cli.main` und `gateway run` steht `, run_name=`, das Muster trifft **nicht**
+(nachgemessen: 0 Treffer, obwohl der Gateway lief). Der Waechter hielt den gesunden Gateway
+fuer tot und startete ihn im Takt seiner eigenen Aufgabe neu.
+
+**Fix.** Zuerst die **Identitaet** aus `Hermes/gateway_state.json` (`pid` + `gateway_state:
+running`, vom Gateway selbst geschrieben; der Prozess muss existieren und `python` sein),
+die Kommandozeile nur als Rueckfall - und die deckt jetzt **beide** Startformen ab
+(`hermes_cli\.main gateway run` ODER `run_module\('hermes_cli\.main'`).
+Beleg: die geplanten Laeufe 19:15:13 und 19:15:59 (2-Minuten-Takt) schreiben
+"Gateway laeuft (Pipe: True, Port 9900: True), kein Start"; die Neustartzeile endet 19:13:56.
+Vorfassung gesichert als `Routinen/gateway-waechter.ps1.bak-20260929`.
+
+**Herkunft.** Die Erkennung wurde an diesem Tag zweimal angefasst. Die erste Reparatur (T-139,
+parallele Sitzung) stellte die Pruefung von "Port 9900 ist die Wahrheit" auf die Bedingung um
+(laeuft ein Prozess `hermes_cli.main gateway run` ohne `--profile` UND antwortet er per
+Control-Pipe oder Port?) und brachte den Merker gegen Dauer-Neustarts. Diese Fassung hier macht
+zusaetzlich die **Identitaet** aus `gateway_state.json` zum ersten Zeugen und erweitert den
+Rueckfall auf **beide** Starter-Formen. Beide Aenderungen standen beim Commit 51e233f
+uncommittet im selben Arbeitsbaum und sind gemeinsam hineingegangen; T-139 nennt den ersten
+Teil, dieser Abschnitt den zweiten.
+
+**Merksatz.** Eine Wache, die einen Dienst an der Kommandozeile eines bestimmten Starters
+erkennt, faellt bei jedem Starterwechsel um - und danach im Takt der Wache. Wer den Dienst
+schon selbst eine Zustandsdatei schreiben laesst, fragt die.
+
+### `hermes update` endet mit `outcome: partial` - und laesst das Dashboard tot (29.09.2026)
+
+Der Lauf um 18:46 war **teilweise** erfolgreich: `logs/update_receipts/latest.json` traegt
+`outcome: "partial"`, `gateway_restart.incomplete: true`, `phase_error: "Could not restart
+every paused Windows gateway"`, `killed_pids: [60532]`. Der Gateway kam zurueck (Launcher),
+das **Dashboard nicht**: Port 9119 war zu, `http://127.0.0.1:9119/` nicht erreichbar - bis
+`Start-ScheduledTask -TaskName 'Hermes_Dashboard'` von Hand lief und HTTP 200 lieferte.
+
+**Falle beim Nachpruefen.** Sekunden nach dem Start ist 9119 noch zu: der Dienstprozess
+entsteht erst ~13 s nach dem Ausloesen, fertig ist er nach ~45 s. Wer zu frueh misst, meldet
+einen Ausfall, den es nicht gibt. Fuer den Dienst selbst ist nichts zu tun (Aufgabe laeuft bei
+Anmeldung, `wscript //B` versteckt, LastTaskResult 0); die **Wache fuer das Dashboard** fehlt
+(der Gateway hat eine, das Dashboard nicht) - siehe `Archiv/TASKS.md` T-147.
+
+**Offener Rueckstand.** `hermes-agent` steht 18 Commits hinter `origin/main` (HEAD
+`ca705dbf7e`, 0.21.5). Der Rest des Update-Wegs ist in Ordnung:
+`pm_sync_outcome: ok`, `pm_exit_code: 0`, Arbeitsbaum sauber.
+
+### Zwei Python-Laufzeiten: die im `tools/` hat absichtlich keine Pakete
+
+`Agenten/Hermes/tools/python-3.14.7…/Lib/site-packages` enthaelt **nur `pip`** - und trotzdem
+fahren Gateway, Dashboard und Update-Laeufe daraus. Die Fremdpakete kommen zur Laufzeit aus dem
+gestagten Umfeld `installs/<hash>/environments/<id>/venv/Lib/site-packages`, das
+`hermes_bootstrap` in `sys.path` setzt (nachgemessen: `httpx` und `ruamel.yaml` liegen dort,
+`hermes_bootstrap` schiebt den Pfad nach vorn). Wer in diesem Python etwas importiert, **ohne**
+den Bootstrap zu laden, sieht `ModuleNotFoundError` und haelt die Installation fuer kaputt -
+sie ist es nicht. Fuer Handproben die Checkout-venv `hermes-agent/venv/Scripts/python.exe`
+nehmen (3.11.16, 303 Pakete, `ruamel.yaml` vorhanden).
+
+### Leichen im Anmeldeordner: 14 Alias-Wrapper ohne Profil (29.09.2026)
+
+`hermes doctor` meldete 14 "Orphan alias" - die Wrapper liegen nicht im Hermes-Baum, sondern in
+`C:\Users\faupe\.local\bin` (`_get_wrapper_dir()`): `agent-reach.bat`, `coder.bat`,
+`graphify.bat`, `max.bat`, `nous.bat`, `projectatlas.bat`, `scrapling.bat`,
+`superpowers.bat`, `tradingview-mcp.bat`, `winget-cli.bat` u.a. - je ein Profil, das nicht mehr
+existiert (sie liegen unter `profiles/.deleted/`). Am 29.09.2026 nach
+`~/.local/bin/.orphan-20260929/` verschoben (nicht geloescht), 19 gueltige Wrapper bleiben.
+
+**Nebenbefund, der 18 "Photon"-Befunde erklaert.** Der Doctor zaehlt bei **jedem** Profil die
+Photon-Kennung der Haupt-`.env` als eigene - kein Bot-Profil traegt `PHOTON_PROJECT_ID`
+(nachgemessen: 0 von 30 Profil-`.env`), ebenso wenig eine Windows-Benutzervariable. Damit ist
+die bereits am 25.09.2026 notierte Falschmeldung bestaetigt; sie blaeht den Doctor-Bericht auf
+19 Befunde auf und verdeckte die echten. **Behoben am 29.09.2026** (Abschnitt "Photon-Doppelkennungen" oben): die 18 Profile tragen jetzt `platforms.photon.enabled: false`, der Doctor meldet 1 statt 19 Befunde.

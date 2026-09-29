@@ -1,7 +1,7 @@
 # MoonDev-Spuren auf historischen Daten — Design
 
 **Datum:** 2026-09-26 · **Status:** freigegeben (Max, 26.09.2026)
-**Vorgaenger:** `2026-09-24-backtest-fundament-design.md` (Kern: `historie.py`,
+**Vorgaenger:** `2026-09-24-backtest-fundament-design.md` (Kern: `historie_binance.py`,
 `replay.py`, `optimieren.py`)
 **Self-Review:** 26.09.2026 — Platzhalter: keine. Vier Mehrdeutigkeiten
 inline behoben: Vorgabe von `top` (Wachen-Zahl der Spur, nicht „alles"),
@@ -37,7 +37,7 @@ eine Aenderung an laufenden Spuren, an `wachen.json`-Werten oder am Q:-Ziel.
 
 | Teil | Stand |
 |---|---|
-| `historie.py` | Binance-Kerzen, oeffentlich und schluesselfrei; BTC/ETH/SOL in 1H/4H/1D seit 2021 (12 MB, 50.223 Stundenkerzen je Instrument) |
+| `historie_binance.py` | Binance-Kerzen, oeffentlich und schluesselfrei; BTC/ETH/SOL in 1H/4H/1D seit 2021 (12 MB, 50.223 Stundenkerzen je Instrument) |
 | `replay.py` | Kern: Familie A (eigenes Buch) und Familie B (`spur_buch.zyklus`); Kerzenuhr, rollierendes Fenster, Gebuehr je Spur, Journal in Hausform, Gegenprobe |
 | `optimieren.py` | Walk-Forward-Suche mit Status-quo-Vergleich, Mindestrunden, toten Feldern |
 | `auswertung_alle.py` | eigene Sektion „Backtest (historisch)" mit immer genanntem Grund |
@@ -57,7 +57,7 @@ Gemessen am 26.09.2026, alle Endpunkte oeffentlich und ohne Schluessel.
   **~13 min, ~70 MB** fuer 300.
 * Ablage: `daten/historie/feed/<SYMBOL>_1D.json` — **eigener Ordner und
   eigenes Namensschema**. Grund: `daten/historie/BTCUSDT_1D.json` gibt es
-  bereits (2.094 Kerzen aus `historie.py`), und beide Kerzenformen sind
+  bereits (2.094 Kerzen aus `historie_binance.py`), und beide Kerzenformen sind
   **nicht** austauschbar (siehe 3.3).
 * Felder je Kerze: `[ts_ms, o, h, l, c, volumen_quote]` — das
   **Quote**-Volumen in USD (Binance-Feld 7).
@@ -97,12 +97,12 @@ Gemessen am 26.09.2026, alle Endpunkte oeffentlich und ohne Schluessel.
 
 ### 3.4 Warum die Kerzenform nicht gemischt wird
 
-`historie.py` speichert als sechstes Feld das **Basis**-Volumen (gemessen:
+`historie_binance.py` speichert als sechstes Feld das **Basis**-Volumen (gemessen:
 01.01.2021 = 54.182,93 BTC). Die Movers-Spur prueft ihr Volumen aber gegen
 `mindest_volumen_usd` (2e7 = **20 Mio USD**) — mit Basisvolumen waere die
 Schwelle um den Faktor Kurs verfehlt und die Spur haette nie gehandelt. Die
 Feed-Kerze traegt deshalb das Quote-Volumen und liegt in einem eigenen Ordner,
-den `historie.lade()` nicht findet.
+den `historie_binance.lade()` nicht findet.
 
 ## 4. Der Marktquerschnitt (Tafel)
 

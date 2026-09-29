@@ -101,6 +101,16 @@ class Basis(unittest.TestCase):
         self.alt = h.JOURNAL
         h.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
         self.addCleanup(setattr, h, "JOURNAL", self.alt)
+        # Auch die BELEGABLAGE zeigt in den Temp-Ordner. Am 29.09.2026
+        # fiel auf, dass test_ohne_beleg_kein_kauf einen ECHTEN Beleg
+        # fuer die Kraken-Spur nach cache/freigabebelege/ geschrieben
+        # hat, weil das Freigabefenster zur Laufzeit zufaellig offen
+        # stand - ein Test hat in einem echten Schreibziel nichts zu
+        # suchen (Bedingung 4 in AGENTS.md).
+        self.alt_cache = h.freigabebeleg.CACHE
+        h.freigabebeleg.CACHE = str(Path(self.tmp.name) / "belege")
+        self.addCleanup(setattr, h.freigabebeleg, "CACHE",
+                        self.alt_cache)
 
     def _lauf(self, fake, fn):
         """fn() mit Attrappe statt kraken, gestelltem Beleg, abgefangener Ausgabe.
@@ -163,7 +173,15 @@ class EinstiegLive(Basis):
         fake = AttrappeKraken()
         z = {"positionen": [], "letzte_stops": {}}
         puffer = io.StringIO()
-        with patch.object(h, "kraken", fake):
+        # Die Verweigerung wird GESTELLT, nicht dem Systemzustand
+        # ueberlassen: ob gerade ein Freigabefenster offen ist, haengt
+        # am laufenden Dauerlauf. Bis zum 29.09.2026 stand hier nichts,
+        # und der Test war immer dann rot, wenn das Fenster zufaellig
+        # offen stand - also genau dann, wenn er gebraucht wird.
+        ohne_beleg = patch.object(
+            h.freigabebeleg, "schreibe",
+            return_value={"ok": False, "grund": "kein Fenster (Test)"})
+        with patch.object(h, "kraken", fake), ohne_beleg:
             with patch("sys.stdout", puffer), patch("sys.stderr", puffer):
                 h.pruefe_einstiege(z, [dict(V)], W, True)
         self.assertEqual(z["positionen"], [])

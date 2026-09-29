@@ -1,0 +1,6 @@
+model:
+  default: deepseek/deepseek-v4.1-flash
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
+_config_version: 49

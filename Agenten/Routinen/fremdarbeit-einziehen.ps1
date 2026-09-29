@@ -294,6 +294,17 @@ try {
 
     $push = 'nicht gepusht'
     if (-not $NichtPushen) {
+        # Der Rechner traegt einen GITHUB_TOKEN als Benutzervariable (93 Zeichen,
+        # scope-arm: er darf in dieses Repo nicht schreiben). Git bevorzugt ihn
+        # gegenueber dem verwalteten Zugang im Credential-Manager, deshalb endete
+        # dieser Push mit "remote: Write access to repository not granted - 403"
+        # (Lauf 28.09.2026 20:40), waehrend derselbe Push von Hand lief - dort
+        # ist die Variable nicht gesetzt. Gemessen 29.09.2026: Push MIT dem
+        # Registry-Token = exit 128/403, ohne ihn = erfolgreich. Darum hier nur
+        # fuer diesen einen Aufruf raeumen; die Variable selbst bleibt stehen
+        # (was sie sonst traegt, entscheidet Max - nicht diese Routine).
+        $env:GITHUB_TOKEN = $null
+        $env:GH_TOKEN = $null
         $pushAus = git push origin master 2>&1
         if ($LASTEXITCODE -eq 0) { $push = 'gepusht' } else { $push = "Push fehlgeschlagen: $pushAus" }
     }

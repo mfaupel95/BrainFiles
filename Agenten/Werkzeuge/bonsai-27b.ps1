@@ -34,7 +34,7 @@ param(
     [string]$Aktion = 'status',
     [int]$Kontext = 65536,
     [int]$GpuLayers = 99,
-    [int]$Port = 8080,
+    [int]$Port = 8081,
     [string]$Reasoning = 'medium',
     [switch]$OllamaBehalten
 )

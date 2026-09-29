@@ -14,7 +14,7 @@ Geschrieben wird ausschliesslich unter daten/backtest/<spur>/<lauf>/. Der echte
 Spurenordner und Q:\\Handel_Journal werden nie beruehrt; der Test
 `NichtsAusserhalbTest` vergleicht das Inventar vor und nach dem Lauf.
 
-KERZEN sind Binance-Kerzen (Proxy, siehe historie.py) - jedes Ergebnis traegt
+KERZEN sind Binance-Kerzen (Proxy, siehe historie_binance.py) - jedes Ergebnis traegt
 deshalb `kerzenquelle: binance`.
 
 Aufruf:
@@ -29,13 +29,21 @@ import json
 import os
 import sys
 
-import historie
+import historie_binance
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 
 # Spuren mit eigenem Buch im Modul (Familie A).
 SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter",
-                 "orb", "orbk", "mosaic", "moondev_funding")
+                 "orb", "orbk", "mosaic")
+
+# Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
+# fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
+# und haelt ihren Zustand selbst.
+SPUREN_TEIL_C = ("moondev_funding",)
+
+# Ein Funding-Satz aendert sich alle acht Stunden - so weit ist ein Schritt.
+FUNDING_STUNDEN = 8
 
 # Spuren ueber spur_buch (Familie B).
 SPUREN_TEIL_B = ("trendwende_btc", "liq_wand", "iv_waelle", "robinhood_radar",
@@ -46,6 +54,10 @@ SPUREN_TEIL_B = ("trendwende_btc", "liq_wand", "iv_waelle", "robinhood_radar",
 # Spuren, deren Datenquelle sich historisch nicht beschaffen laesst. Sie
 # bekommen einen Vermerk statt einer geschaetzten Zahl.
 NICHT_NACHRECHENBAR = {
+    # Feed-Spuren ohne historisch beschaffbare Quelle. Der GRUND gehoert
+    # daneben - eine leere Zeile waere nicht zu deuten.
+    "moondev_sniper": "pump.fun-Neulaunches mit Alter in Minuten - nur live",
+    "moondev_listingarb": "Marktkapitalisierung frei nicht historisch abrufbar",
     "moondev_whale": "OKX-OI-Historie antwortet 50030 Illegal time range",
     "moondev_liquidation": "keine frei abrufbare Liquidationshistorie",
     "moondev_sentiment": "RSS-Titel von damals nicht archiviert",
@@ -93,12 +105,34 @@ def spur_modul(spur):
     return m
 
 
-def buch_ordner(spur, lauf):
+def wachen_von(spur):
+    """Die Wachen einer Spur aus ihrer DATEI.
+
+    Nicht ueber `modul.lade_wachen()`: das gibt es nur bei Familie A. Fuer die
+    Feed-Spuren riss der Aufruf den Lauf mit AttributeError ab, bevor ein
+    einziger Schritt gerechnet war (29.09.2026) - die Kostenrechnung haengt
+    nicht an einer Spurenfamilie.
+    """
+    pfad = os.path.join(HIER, spur, "wachen.json")
+    if not os.path.isfile(pfad):
+        return {}
+    with open(pfad, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def buch_ordner(spur, lauf, setzen=None):
     """Der Backtest-Ordner einer Spur: Kopie der Wachen, sonst nichts.
 
     Die Wachen-KOPIE ist der Punkt: `journal_zweitziel` wird auf den
     Backtest-Ordner gebogen, damit selbst ein vergessener Spiegelungsaufruf
     nach innen kopiert und nie nach Q:.
+
+    `setzen` ueberschreibt EINZELNE Werte in der KOPIE - die Wachen der Spur
+    selbst werden nie angefasst. Wofuer das da ist: eine Spur, deren Kill-
+    Schalter den Lauf nach sechs Tagen abwuergt (moondev_funding, gemessen am
+    29.09.2026), ist sonst ueber den ganzen Zeitraum nicht messbar. Was gesetzt
+    wurde, steht als `_backtest_gesetzt` in der Kopie - wer den Ordner spaeter
+    liest, sieht den Unterschied zur echten Wachen, statt ihn zu ahnen.
     """
     ziel = os.path.join(wurzel(), spur, lauf)
     os.makedirs(ziel, exist_ok=True)
@@ -108,10 +142,31 @@ def buch_ordner(spur, lauf):
             w = json.load(f)
         w["journal_zweitziel"] = ziel
         w["handel_erlaubt"] = False          # im Backtest gibt es kein live
+        if setzen:
+            w["_backtest_gesetzt"] = dict(setzen)
+            w.update(setzen)
         with open(os.path.join(ziel, "wachen.json"), "w", encoding="utf-8") as f:
             json.dump(w, f, indent=2, ensure_ascii=False)
             f.write("\n")
     return ziel
+
+
+def setzen_aus(text):
+    """`name=wert` (mehrfach) in ein Dict - Zahlen und Wahrheitswerte erkannt."""
+    aus = {}
+    for stueck in (text or ()):
+        if "=" not in stueck:
+            raise SystemExit("--setzen braucht name=wert, nicht %r" % stueck)
+        name, wert = stueck.split("=", 1)
+        wert = wert.strip()
+        if wert.lower() in ("true", "false"):
+            aus[name.strip()] = wert.lower() == "true"
+        else:
+            try:
+                aus[name.strip()] = float(wert) if "." in wert else int(wert)
+            except ValueError:
+                aus[name.strip()] = wert
+    return aus
 
 
 def schuetze(modul, ordner):
@@ -200,7 +255,7 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     takt = _takt(w)
     aus, fehlen = {}, []
     for inst in insts:
-        reihen = historie.lade(inst, takt)
+        reihen = historie_binance.lade(inst, takt)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
         if abschnitt:
@@ -246,7 +301,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen, abschnitt)
     if not kerzen:
         raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie.py --auffuellen'" % spur)
+                           "'python historie_binance.py --auffuellen'" % spur)
     if fenster is None:
         fenster = fenster_vorgabe(w)
 
@@ -379,7 +434,7 @@ def gebuehr_fuer(spur, w=None):
     damit zu schlecht.
     """
     if w is None:
-        w = dict(spur_modul(spur).lade_wachen())
+        w = wachen_von(spur)
     wert = w.get("gebuehr_taker")
     if wert is not None:
         return round(float(wert) * 100.0, 4)
@@ -407,7 +462,7 @@ def historische_quelle(modul, spur, zugriff):
     def quelle(w):
         daten, kurse, fehler = {}, {}, []
         for inst in _instrumente(w):
-            reihen = [r for r in historie.lade(inst, _takt(w))
+            reihen = [r for r in historie_binance.lade(inst, _takt(w))
                       if r[0] <= zugriff["bis_ms"]]
             if zugriff.get("fenster"):
                 reihen = reihen[-int(zugriff["fenster"]):]
@@ -458,11 +513,11 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
         w = json.load(f)
     takt = _takt(w)
-    alle = {i: historie.lade(i, takt) for i in _instrumente(w)
-            if historie.lade(i, takt)}
+    alle = {i: historie_binance.lade(i, takt) for i in _instrumente(w)
+            if historie_binance.lade(i, takt)}
     if not alle:
         raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie.py --auffuellen'" % spur)
+                           "'python historie_binance.py --auffuellen'" % spur)
     if bis_ms:
         alle = {i: [r for r in k if r[0] <= bis_ms] for i, k in alle.items()}
     if abschnitt:
@@ -505,6 +560,188 @@ def _kein_bus(*a, **k):
     return _c.nullcontext()
 
 
+def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
+              von_ms=None, bis_ms=None, still=True, setzen=None):
+    """Familie B ueber den Marktquerschnitt: ein `spur_buch.zyklus` je Schritt.
+
+    Der Unterschied zu `lauf_b`: dort ist eine Kerze ein Schritt je Instrument,
+    hier ist ein ZEITPUNKT ein Schritt ueber alle Kandidaten - die Feed-Spuren
+    entscheiden ueber einen Marktquerschnitt, nicht ueber eine Reihe. Die Tafel
+    liefert genau die Felder, die ihre `quelle()` sonst von CoinGecko holt.
+
+    `schritte` kommt aus dem Bestand (Zeitstempel mit mindestens
+    `mindest_symbole` Reihen): ein Tag mit drei Reihen waere keine Marktbreite.
+    Stilllegung wie in `lauf_b` - `ereignis.lauf`, `spur_buch.spiegeln` und die
+    Risikostufe.
+
+    ZUR GEBUEHR: `spur_buch.zyklus` schreibt Preise, keine Kosten - das
+    Journal ist also BRUTTO, genau wie das Journal der Spur im Betrieb.
+    `kennzahlen()` ist damit brutto; netto steht daneben als
+    `netto_je_runde_pct` (zwei Seiten je Runde), damit die Zahl nicht mit der
+    netto gerechneten Familie A verwechselt wird.
+    """
+    import contextlib
+    import io
+
+    # REIHENFOLGE IST PFLICHT: spur_buch legt beim Import Agenten/Bus auf den
+    # Suchpfad - andersherum faellt "import ereignis" mit ModuleNotFoundError
+    # um, und der Lauf stirbt vor dem ersten Schritt.
+    import spur_buch
+    import ereignis
+    import moondev_historie
+
+    if spur in NICHT_NACHRECHENBAR:
+        raise RuntimeError("%s ist nicht nachrechenbar: %s"
+                           % (spur, NICHT_NACHRECHENBAR[spur]))
+    if spur not in moondev_historie.QUELLEN:
+        raise KeyError("kein Quellen-Adapter fuer %r - bekannt: %s"
+                       % (spur, ", ".join(sorted(moondev_historie.QUELLEN))))
+
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf, setzen)
+    with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
+        w = json.load(f)
+    bestand = moondev_historie.Bestand()
+    bestand.laden(takt)
+    schritte = bestand.schritte(mindest_symbole, von_ms, bis_ms)
+    if not schritte:
+        raise RuntimeError("keine Schritte mit mindestens %d Reihen - "
+                           "Universum zu klein oder Zeitraum falsch"
+                           % mindest_symbole)
+
+    quelle_adapter = moondev_historie.QUELLEN[spur]
+    alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
+    alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
+    alt_risiko = os.environ.pop("HANDEL_RISIKO", None)
+    puffer = io.StringIO()
+    leer = 0
+    try:
+        spur_buch.SCHREIBEN = True              # ins BACKTEST-Journal
+        spur_buch.spiegeln = lambda *a, **k: None
+        ereignis.lauf = _kein_bus
+        with contextlib.redirect_stdout(puffer if still else sys.stdout):
+            for ts in schritte:
+                daten, kurse, fehler = quelle_adapter(bestand, ts, w)
+                if not daten:
+                    leer += 1
+                    continue
+                quelle = (lambda _w, _d=daten, _k=kurse, _f=fehler:
+                          (_d, _k, _f))
+                spur_buch.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
+                    _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+                spur_buch.zyklus(ordner, quelle, modul.signal, "papier",
+                                 "handel/" + spur)
+    finally:
+        spur_buch.SCHREIBEN, spur_buch.zeit_quelle = alt_schreiben, alt_zeit
+        spur_buch.spiegeln, ereignis.lauf = alt_spiegeln, alt_lauf
+        if alt_risiko is not None:
+            os.environ["HANDEL_RISIKO"] = alt_risiko
+    journal = os.path.join(ordner, "handelsjournal.csv")
+    k = kennzahlen(journal)
+    runden = int(k.get("runden") or 0)
+    if runden:
+        je_runde = float(k.get("ergebnis_summe") or 0.0) / runden
+        k["ergebnis_je_runde_pct"] = je_runde
+        k["netto_je_runde_pct"] = je_runde - 2.0 * float(gebuehr_pct)
+    k.update({"schritte": len(schritte), "schritte_ohne_kandidaten": leer,
+              "takt": takt, "gebuehr_pct": float(gebuehr_pct),
+              "universum": len(bestand.symbole()), "kerzenquelle": "binance"})
+    return k, len(puffer.getvalue().splitlines())
+
+
+def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
+           setzen=None):
+    """Familie C: eine Spur mit eigenem `lauf(modus)` und eigenem Buch.
+
+    Anders als in Familie A wird hier nichts abgefangen: die Spur schreibt ihr
+    Journal und ihren Zustand SELBST - nur die DREI PFADE zeigen in den
+    Backtest-Ordner. Damit liest `kosten_wendepunkt.runden_aus_journal()`
+    dieselbe Zeilenform wie im Betrieb, und es entsteht keine zweite
+    Journalform.
+
+    `spiegeln` wird stillgelegt (Bedingung 4 hat im Backtest nichts zu suchen),
+    `funding_quelle` und `zeit_quelle` werden gesetzt - genau die Nahten, die
+    die Spur fuer ihre Tests schon benutzt.
+    """
+    import contextlib
+    import io
+
+    import moondev_historie
+
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf, setzen)
+    with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
+        w = json.load(f)
+
+    instrumente = _instrumente(w)
+    reihen = {}
+    for inst in instrumente:
+        r = moondev_historie.lade_funding(inst)
+        if r:
+            reihen[inst] = r
+    if not reihen:
+        raise RuntimeError("keine Funding-Reihen fuer %s - erst "
+                           "'python moondev_historie.py --funding %s'"
+                           % (spur, ",".join(instrumente)))
+
+    # Das laengste Instrument gibt den Zeitraum vor; kurze Reihen fallen raus.
+    # Der Grund gehoert in die Antwort: ein stillschweigend gekuerzter Lauf
+    # sieht aus wie ein langer.
+    # Nicht "irgendwie lang genug", sondern: so lang wie der laengste Lauf
+    # hergibt. HYPE liefert erst ab 2025-05-30 (2924 Saetze gegen 6294) und
+    # wuerde den ganzen Lauf auf 2,7 Jahre kuerzen. Solche Reihen fallen raus
+    # und werden BENANNT - eine stillschweigend gekuerzte Messung sieht wie
+    # eine lange aus.
+    lang_grenze = 0.8 * max(len(r) for r in reihen.values())
+    lang = {i: r for i, r in reihen.items() if len(r) >= lang_grenze}
+    zu_kurz = sorted(set(reihen) - set(lang))
+    if not lang:
+        raise RuntimeError("keine Funding-Reihe mit ausreichender Laenge")
+
+    von = von_ms or min(r[0][0] for r in lang.values())
+    bis = bis_ms or max(r[-1][0] for r in lang.values())
+    schritte = sorted({t for r in lang.values() for t, _ in r if von <= t <= bis})
+
+    box = {"ts": schritte[0]}
+    zustand = os.path.join(ordner, "zustand.json")
+    journal = os.path.join(ordner, "handelsjournal.csv")
+    modul.WACHEN = os.path.join(ordner, "wachen.json")
+    modul.ZUSTAND = zustand
+    modul.JOURNAL = journal
+    namen = ("SCHREIBEN", "spiegeln", "funding_quelle", "zeit_quelle")
+    alt = {n: getattr(modul, n, None) for n in namen}
+    puffer = io.StringIO()
+    kill_gesehen = False
+    try:
+        modul.SCHREIBEN = True                  # ins BACKTEST-Journal
+        modul.spiegeln = lambda *a, **k: None
+        modul.funding_quelle = lambda inst: moondev_historie.funding_dict(
+            inst, box["ts"])
+        with contextlib.redirect_stdout(puffer if still else sys.stdout):
+            for ts in schritte:
+                box["ts"] = ts
+                modul.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
+                    _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+                modul.lauf("papier")
+                if "Kill-Schwelle" in puffer.getvalue():
+                    kill_gesehen = True
+    finally:
+        for n, wert in alt.items():
+            if wert is not None:
+                setattr(modul, n, wert)
+    k = kennzahlen(journal)
+    runden = int(k.get("runden") or 0)
+    if runden:
+        je_runde = float(k.get("ergebnis_summe") or 0.0) / runden
+        k["ergebnis_je_runde_pct"] = je_runde
+        k["netto_je_runde_pct"] = je_runde - 2.0 * float(gebuehr_pct)
+    k.update({"schritte": len(schritte), "takt": "%dh" % FUNDING_STUNDEN,
+              "gebuehr_pct": float(gebuehr_pct),
+              "instrumente": sorted(lang), "symbole_zu_kurz": zu_kurz,
+              "kill_ausgeloest": kill_gesehen, "kerzenquelle": "binance"})
+    return k, len(puffer.getvalue().splitlines())
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -513,9 +750,9 @@ def kerzenlaenge(spur, w=None):
     Instrument ausserhalb der Reihe.
     """
     if w is None:
-        w = dict(spur_modul(spur).lade_wachen())
+        w = wachen_von(spur)
     takt = _takt(w)
-    return min((len(historie.lade(i, takt)) for i in _instrumente(w)), default=0)
+    return min((len(historie_binance.lade(i, takt)) for i in _instrumente(w)), default=0)
 
 
 def kennzahlen(journal_pfad):
@@ -568,6 +805,13 @@ def gegenprobe(spur, gebuehr_pct, lauf="gegenprobe", max_kerzen=None):
 
 
 def main():
+    """Nur EIN Weg je Aufruf: die Familien brauchen verschiedene Daten.
+
+    Familie A rechnet Kerzen (und braucht die Fensterbreite), Familie B den
+    Marktquerschnitt, Familie C die Funding-Reihen. Ein gemeinsamer Vorlauf
+    waere der Fehler - `lade_wachen()` gibt es nur bei A und riss die beiden
+    anderen mit (29.09.2026 geschehen).
+    """
     import argparse
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -580,16 +824,43 @@ def main():
     ap.add_argument("--ganz", action="store_true",
                     help="ganze Praefix-Historie je Schritt (sehr langsam)")
     ap.add_argument("--gegenprobe", action="store_true")
+    ap.add_argument("--feed", action="store_true",
+                    help="Feed-Spur ueber den Marktquerschnitt (Familie B)")
+    ap.add_argument("--familie-c", action="store_true",
+                    help="Spur mit eigenem lauf() (moondev_funding)")
+    ap.add_argument("--takt", default="1D", choices=("1D", "1H"))
+    ap.add_argument("--mindest-symbole", type=int, default=30,
+                    help="ab so vielen Reihen zaehlt ein Zeitpunkt als Schritt")
+    ap.add_argument("--setzen", action="append", default=None,
+                    metavar="NAME=WERT",
+                    help="Wert in der BACKTEST-Kopie der Wachen setzen "
+                         "(mehrfach moeglich); die Wachen der Spur bleiben "
+                         "unberuehrt, das Gesetzte steht als _backtest_gesetzt "
+                         "in der Kopie")
     a = ap.parse_args()
     mk = a.max_kerzen
-    fenster = None if a.ganz else a.fenster
-    if fenster is None and not a.ganz:
-        w = dict(spur_modul(a.spur).lade_wachen())
-        fenster = fenster_vorgabe(w)
     if a.gegenprobe:
         print(json.dumps(gegenprobe(a.spur, a.gebuehr, a.lauf, mk),
                          indent=2, ensure_ascii=False))
         return
+    if a.familie_c:
+        k, zeilen = lauf_c(a.spur, gebuehr_fuer(a.spur), a.lauf,
+                           setzen=setzen_aus(a.setzen))
+        print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
+                         indent=2, ensure_ascii=False))
+        return
+    if a.feed:
+        k, zeilen = lauf_feed(a.spur, gebuehr_fuer(a.spur), a.lauf,
+                              takt=a.takt, mindest_symbole=a.mindest_symbole,
+                              setzen=setzen_aus(a.setzen))
+        print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
+                         indent=2, ensure_ascii=False))
+        return
+    # Erst hier: `lade_wachen` gibt es nur bei den Kerzen-Spuren (Familie A).
+    fenster = None if a.ganz else a.fenster
+    if fenster is None and not a.ganz:
+        w = dict(spur_modul(a.spur).lade_wachen())
+        fenster = fenster_vorgabe(w)
     runden, offen = lauf_a(a.spur, a.gebuehr, a.lauf, max_kerzen=mk,
                            fenster=fenster)
     print(json.dumps({"spur": a.spur, "runden": len(runden),

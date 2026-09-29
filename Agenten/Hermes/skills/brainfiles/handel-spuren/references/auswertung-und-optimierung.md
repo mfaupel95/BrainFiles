@@ -241,6 +241,50 @@ Ergebnis darf der Quelle WIDERSPRECHEN: der Widerspruch gehoert in den Bericht,
 nie weggeglaettet. Traegt eine Haelfte der Fremdstrategie und die andere nicht,
 wird die tragende uebernommen und die andere als unbestaetigt benannt.
 
+## Kennzahlen je Spur: was die eigene Datenlage traegt
+
+Kommt ein Kennzahlen-Formelblatt von aussen (Sharpe, Sortino, Calmar, VaR/CVaR,
+Expectancy, MAE/MFE), wird es NICHT ganz uebernommen. Reihenfolge:
+
+1. **Zeitbasierte Kennzahlen brauchen Tagesrenditen - das Haus fuehrt Runden.**
+   Sharpe, Sortino, Calmar, CAGR, VaR/CVaR und jede Annualisierung setzen eine
+   taegliche Kapitalkurve voraus. Runden auf Tageswerte umzurechnen ist eine
+   ERFINDUNG: nicht einbauen, sondern im Bericht als Luecke benennen („das
+   braucht eine taegliche Reihe, die wir nicht fuehren"). Wer sie will, baut
+   zuerst die Reihe.
+2. **Die t-Statistik der Expectancy ist die Zahl hinter „unter 8 Runden ist es
+   ein Befund".** `t = mean(pnl) / (std(pnl) / sqrt(n))` ueber die ECHTEN Runden
+   (Zwangsschluesse raus, siehe Schritt 5). |t| < 2 heisst: nicht von 0
+   unterscheidbar. Immer n UND t zusammen nennen - ein t ohne Fallzahl ist
+   keine Aussage, und eine grosse Trefferquote mit t um 1 ist Rauschen.
+3. **Eine abgeleitete Kennzahl erst gegen die FUELLQUOTE ihrer Spalte pruefen.**
+   Ein Stop-Vorschlag aus der MAE der Gewinner ist nur so gut wie die Spalte: ein
+   konstanter Platzhalter (bei Ziel-Ausstiegen durchweg `0.0000`) macht daraus
+   0 % - und 0 % sieht wie ein Messwert aus. Also vorher zaehlen, wie viele
+   Zeilen einen echten Wert tragen, und unter der Schwelle „MAE nicht gefuehrt"
+   ausgeben statt eine Null zu drucken. Gilt fuer jede Spalte, aus der eine
+   Kennzahl abgeleitet wird.
+4. **Zwei Regeln, bevor eine Zuordnung wiederverwendet wird.** Wird eine
+   Tabelle (Spur -> Rechenweg) aus einer Funktion herausgezogen, damit ein
+   zweites Werkzeug sie nutzt, muss die ALTE Funktion die neue rufen - sonst
+   stehen zwei Wahrheiten nebeneinander, und die zweite altert still. Und die
+   Gegenprobe muss wissen, was der Verbraucher FILTERT: `kennzahlen()` nimmt
+   Zwangsschluesse heraus, also gilt `n + n_stoerung == len(runden)`, nicht
+   `n == len(runden)` - eine Gegenprobe mit der falschen Gleichung meldet
+   „ABWEICHUNG" auf korrektem Code. Laeuft parallel eine zweite Sitzung im
+   selben Baum, vor dem Schreiben den frischen Stand lesen und ihre Erweiterung
+   (neue Spurenliste, neue Einheit) mitziehen.
+5. **Ein Werkzeug mit numpy/pandas braucht das passende venv - und ein Test in
+   der Suite wird dann uebersprungen statt rot.** Nicht jedes venv im Haus
+   traegt numpy (das scanner-venv nicht). Vor dem Bauen pruefen, welcher
+   Interpreter die Abhaengigkeit hat, und im Test `skipUnless(<import ging>)`
+   mit einer gemeinsamen Basisklasse setzen: sonst faellt die ganze Suite rot,
+   obwohl nur der Interpreter nicht passt.
+
+Werkzeug im Haus: `Agenten/Handel/strategie_kennzahlen.py` (venv `Handel/.venv`)
+rechnet je Spur t-Statistik und Stop-Vorschlag aus der MAE; die Runden kommen
+ueber `auswertung_alle.runden_fuer(spur)`.
+
 ## Was eine duenne Stichprobe NICHT hergibt
 - Parameter auf < 8 Runden (swap 3, kraken 5 echte Runden).
 - Kostensaetze senken.

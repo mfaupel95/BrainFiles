@@ -2,8 +2,8 @@ providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
     base_url: http://127.0.0.1:11434/v1
-    default_model: qwen35-8k:cpu
-    model: qwen35-8k:cpu
+    default_model: gemma-e4b-8k:cpu
+    model: gemma-e4b-8k:cpu
     name: Ollama
     discover_models: true
   omniroute:
@@ -1759,11 +1759,11 @@ model:
   provider: nous
 fallback_providers:
   - provider: ollama-launch
-    model: qwen35-8k:cpu
+    model: gemma-e4b-8k:cpu
     base_url: http://127.0.0.1:11434/v1
 plugins:
   enabled: []
-_config_version: 46
+_config_version: 49
 agent: {}
 onboarding:
   seen:
@@ -1806,3 +1806,6 @@ onboarding:
 # fallback_model:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
+platforms:
+  photon:
+    enabled: false

@@ -286,6 +286,58 @@ dieser Anbieter ueberhaupt, und mit welchem Befehl".
 6. **Erst danach der Manifest-Eintrag**, und als Kandidat mit Begruendung:
    `mcp-sync`.
 
+## Config gegen die Wirklichkeit pruefen (deklariert vs. real)
+
+Trigger: "optimier meine Config", "warum greift die Einstellung nicht", nach einem
+Update oder nach fremder Sitzungsarbeit. Der Befund kommt aus der Sache, nicht aus
+der Datei.
+
+**Kernsatz: eine Config ist eine Sammlung von Behauptungen** (Pfad existiert, Port
+laeuft, Modell liegt im Store). Faellt eine aus, meldet NICHTS einen Fehler - sie wird
+erst gebraucht, wenn der Hauptweg weggebrochen ist. Jede Behauptung einmal gegen die
+Wirklichkeit halten, nie gegen die Erinnerung.
+
+1. Gegenprobe fahren (rein lesend, exit 1 = Befund):
+
+       cd Agenten/Hermes
+       python scripts/config-gegenprobe.py            # Pfade, lokale Adressen, lokale Modellnamen
+
+2. Eindeutiges selbst reparieren (toter Modellname, falscher Port, Wert ausserhalb des
+   Bereichs), Strukturelles vorlegen (Feature abschalten, Presets umbauen, Instanzen
+   zusammenfuehren).
+3. Wache anschliessen - ein Nachweis, den niemand aufruft, ist keine Wache:
+
+       hermes cron create "every monday 7:40am" --name config-gegenprobe \
+         --script config-gegenprobe-wache.py --no-agent --deliver telegram
+
+   Die Wache meldet nur AENDERUNGEN (leere Ausgabe = nichts senden).
+
+Werkzeuge: `scripts/config-gegenprobe.py`, `scripts/config-gegenprobe-wache.py`,
+`scripts/lokale-modellliste-richten.py` (Trockenlauf Standard, `--anwenden`,
+`--zuruecknehmen`). Vollstaendiger Ablauf, Urteilstabelle und die Fallen (geerbte
+Provider-Einstufung = Fehlalarm, HTTP 200 von einer FREMden Anwendung, toter Port der
+harmlos ist, irrefuehrendes 403 ohne Schluessel): `references/config-gegenprobe.md`.
+
+### Eine Einstellung umstellen
+
+Reihenfolge: Zustand LESEN (`hermes moa list`, `config get`) -> das ZIEL gegen die
+Wirklichkeit pruefen (es muss es geben: `/api/show` fuer Kontext und Parameter,
+offener Port) -> Blast radius (`search_files` nach dem alten Wert in Hauptconfig UND
+`profiles/*/config.yaml`) -> byte-sicher aendern (Vorkommen zaehlen, `yaml.safe_load`
+VOR dem Schreiben, `.bak`, danach CR == LF und `git diff --numstat`) -> Nachweis
+(`hermes moa list`, `config check` exit 0) -> Buchhaltung.
+
+Zwei Regeln, die den Unterschied machen:
+
+- **Messen mit betriebsnahen Parametern.** Ein zu kleines `max_tokens` macht ein
+  Denkmodell stumm (leerer `content`, Text in `reasoning`) - am 29.09.2026 sah das nach
+  einem Defekt in 20 Profilen aus und war ein Artefakt der eigenen Sonde.
+- **Eine leere Pipe ist kein Befund.** Fehlt das Messwerkzeug (`/usr/bin/time` gibt es
+  in MSYS nicht), laeuft der Aufruf nie, und der JSON-Fehler sieht wie eine stumme
+  Gegenstelle aus.
+
+Vollstaendig mit Muster und Fallen: `references/einstellung-umstellen.md`.
+
 ## Fallback-Kette und lokale Provider
 
 Hermes wechselt bei 429/529/503/Verbindungsfehlern auf eine Kette. Sie wird **per
@@ -325,6 +377,18 @@ eine Wunschliste und darf veralten (dort stand `gemma4:e4b`, lokal hieß das Mod
 `gemma-e4b-8k`). Ein Fallback auf einen nicht existierenden Namen greift nicht, und
 niemand merkt es, bis der Primärpfad wirklich ausfällt. Echte Namen am Dienst holen
 (`curl -s http://127.0.0.1:11434/api/tags`), nicht aus der Config abschreiben.
+  **Gemessen 29.09.2026: es war die GANZE Flotte.** 21 von 22 Profilen trugen
+  `qwen35-8k:cpu` in der Kette und `gemma4:26b`/`gemma4:e4b` im Provider-Block — im
+  Store lagen nur `gemma-e4b-8k:latest` und `gemma-e4b-8k:cpu`. Werkzeug für den
+  Abgleich und die Umstellung: `Agenten/Hermes/scripts/lokale-modellnamen-richten.py`
+  (Trockenlauf ohne Argument, `--anwenden`, `--zuruecknehmen`, `--nur-profile`; fragt
+  `/api/tags` und ersetzt NUR, wenn der Zielname dort steht — kein Raten). Nachweis
+  nach dem Lauf: `git diff --numstat` JE Datei muss 6/6 bzw. 3/3 bzw. 1/1 zeigen,
+  dann `hermes -p <profil> fallback list` UND ein echter Aufruf des Modells.
+  **Byte-Ersetzung, nicht Textmodus:** der erste Anlauf setzte die Zeilenenden ein
+  zweites Mal, aus CRLF wurde CRCRLF und der Diff zeigte die ganze Datei
+  (2248/2248). Ein Modellname ist ASCII — `read_bytes()`/`write_bytes()` kann
+  Kodierung und Zeilenenden nicht anfassen.
 - **Was in der Config steht, ist kein Beleg für das, was gilt** — `hermes fallback list`
 fragen. Und eine Aussage aus einer abgebrochenen Sitzung („die Kette steht doch schon
 drin") nie übernehmen, sondern am lebenden System nachprüfen.
@@ -383,7 +447,7 @@ nur so faellt auf, wenn ein Profil gar keine Wurzel-Kette hatte.
 - **Der lokale Rueckfall traegt nur bei freiem Commit.** Ein Profil mit gesetzter Kette ist noch
 kein Nachweis: das Modell muss laden, und ein Modelllader scheitert an einer erschoepften
 Commit-Grenze auch bei reichlich freiem RAM (Symptomkatalog und Messbefehle:
-`dauerprozess-bewachen`, `references/massenprozesse-und-commit-limit.md`). Nach dem Setzen den
+`dauerprozess-bewachen`). Nach dem Setzen den
 Endpunkt einmal wirklich rufen (`POST <base_url>/chat/completions`) — nicht nur die Config lesen.
 - **Eine konfigurierte Kette ist kein Beleg — das Modell muss LADEN.** Nach dem Setzen
 nicht nur `hermes fallback list` lesen, sondern den Endpunkt wirklich rufen
@@ -1061,6 +1125,17 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 - **`hermes config edit` oeffnet auf Windows notepad und blockiert den Aufruf, bis das Fenster geschlossen ist.** Intern laeuft ein synchrones `subprocess.run([editor, config_path])` ohne Timeout — aus einer Werkzeugsitzung haengt der Aufruf bis ins Zeitlimit. Der Befehl ist fuer Menschen am Desktop gedacht, nicht fuer Agenten: einzelne Werte gehoeren zu `hermes config set`, nur ein mehrzeiliger Eingriff verdient das Wegwerf-Skript (`Agenten/Hermes/cache/`). Wer `config edit` in einem Agenten-Flow braucht, startet es mit `background=true` und laesst das Fernster dem Nutzer.
 - **Der Auxiliary-Client loest `auxiliary.*.model` ueber den Nous/OpenRouter-Katalog auf — ein lokales GGUF dort ist ein kategorischer 404, kein langsamer Server.** Zeigt `auxiliary.compression.model` (oder `auxiliary.mcp`/`auxiliary.skills_hub`) auf ein Laufzeitmodell (`llamacpp/DeepSeek-...`), wirft das Komprimieren `Failed to generate context summary: 404 - Model '...' not found ... in our configuration or OpenRouter catalog`; Muster davor in `logs/errors.log`/`gateway.log`: `Auxiliary compression: model '...' no longer in Nous catalog`. Der Client hat keinen lokalen llamacpp-Pfad — ein lokales GGUF ist fuer ihn prinzipiell unaufloesbar, und Sessions wachsen stumm auf 100k+ Tokens unkomprimiert, ohne dass die Kompression irgendwo laut scheitert. Fix: `hermes config set auxiliary.compression.provider nous` und `...model deepseek/deepseek-v4-flash-0731` (dasselbe Provider/Modell wie das Hauptmodell, 786k — nachweislich aufloesbar). Nicht zurueck auf den frueher dokumentierten `auto/coding:free`-Router-Weg: der reroutet aktuell auf OpenCode-Free, das ausserhalb von OpenCode 403 liefert — kein zuverlaessiges Kompressionsmodell. **Nach JEDEM `hermes update` alle `auxiliary.*`-Modellpfade (compression, mcp, skills_hub) pruefen**: das Update schreibt die Config neu und setzt Modell/`threshold` zurueck auf einen lokalen GGUF-Stand (gemessen: `threshold` 0.19 → 0.66, compression auf llamacpp). `auxiliary.skills_hub` kann dabei auf ein CLIP-Projektor-GGUF zeigen, das gar nicht als Hauptmodell ladbar ist ("CLIP cannot be used as main model") — ebenfalls ueber den Katalogpfad ersetzen. Beleg: `hermes config check` Exit 0; die laufende Sitzung nutzt die neue Config erst ab `/new`.
 - **Die Kompression-schwellen-Warnung kennt einen dauerhaften Fix, und die Schwelle ist KONTEXT-RELATIV, kein Fixwert.** Hermes meldet per Sitzung, das Kompressionsmodell habe kleineren Kontext als die Schwelle des Hauptmodells (`auxiliary.compression.model` vs. `compression.threshold`), und senkt die Schwelle nur fuer diese Sitzung. Der Trigger in Tokens ist `(model.context_length - max_tokens) * compression.threshold` (min. 64k; Fenster < 512k werden auf 75% angehoben) — `threshold` ist ein PROZENTSATZ des Kontextfensters. Der frueher dokumentierte Wert 0.19 gilt nur, solange das Aux-Kompressionsmodell ~200k hat; ist es dasselbe Modell wie das Hauptmodell (deepseek-v4-flash, 1M), hebt man beides an: `hermes config set model.context_length 1000000` UND `hermes config set compression.threshold 0.60` → komprimiert erst bei 600k statt ~190k. Faustregel: `threshold` so waehlen, dass der Trigger-Tokenwert unter dem Fenster des Aux-Kompressionsmodells bleibt, sonst senkt Hermes die Session-Schwelle beim Start selbst ab (`_lower_threshold_to_aux_context`); ein grosses Aux-Modell erlaubt eine hohe Schwelle = Kompression ruht bis kurz vor dem Fensterende. Nach `hermes config check` (Exit 0 = sauberes YAML); die laufende Sitzung nutzt die neue Schwelle erst nach `/new`.
+  **Nachtrag 29.09.2026 (gemessen): eine Schwelle UEBER 1.0 ist keine Einstellung, sondern
+  ein Aus-Schalter.** Der Ausloeser rechnet `(context_length - max_tokens) * threshold`
+  (`agent/context_compressor.py::_compute_threshold_tokens`); bei `threshold: 1.6` liegt er
+  ueber dem Fenster, der Anbieter lehnt die Anfrage ab, BEVOR komprimiert wird - die Sitzung
+  stirbt am Fensterende statt zu komprimieren, und jede Runde kostet mehr Tokens. Wer die
+  Kompression wirklich aus will, setzt `compression.enabled: false` (ehrlich und sichtbar)
+  statt einer erfundenen Zahl. Rueckkehr auf 0.19, solange das Aux-Kompressionsmodell ~200k
+  traegt - und **den Weg einmal wirklich rufen**, bevor er fuer tot erklaert wird: `auto/best-free`
+  antwortete am 29.09.2026 mit dem Hausschluessel 200 (bedient von claude-haiku-4-5), ohne
+  Schluessel dagegen 403 mit der OpenCode-Free-Meldung. Ein 403 aus einem Aufruf OHNE
+  Schluessel beweist nichts ueber den Weg.
 - **`patch` und `write_file` auf `config.yaml` sind gesperrt** („Refusing to write to Hermes config file", bei der AppData-Config zusaetzlich `HERMES_WRITE_SAFE_ROOT`). Zwei Wege bleiben, und sie sind nicht gleichwertig: `hermes config set …` fuer den EINZELNEN Wert (auch fuer Listen — der Wert wird als YAML/JSON geparst, `'[{"provider":"omniroute","model":"auto/best-coding"}]'` funktioniert), und ein Wegwerf-Skript unter `Agenten/Hermes/cache/`, das die Datei binaer liest, chirurgisch ersetzt und zurueckschreibt — fuer eine Zusammenfuehrung mit mehreren Hunks. Das Skript ist dort das BESSERE Mittel, weil `hermes config set` die Datei neu schreibt und dabei den Kommentar-Schluss abschneidet (naechste Falle). Fuer das Skript gelten dieselben Regeln wie fuer jede Textaenderung: Zeilenenden binaer feststellen (`b"\r\n" in raw`) und erhalten, je Ersetzung `count == 1` asserten, den NEUEN Text vor dem Schreiben mit `yaml.safe_load` pruefen, vorher `.bak-JJJJMMTT`.
 - **`hermes config set` schneidet den Kommentar-Schluss der Datei ab.** Es schreibt die ganze Datei neu; ein Dokumentationsblock am Dateiende (Beispiele fuer `security:`, `fallback_model:`) ist danach weg — funktional harmlos, aber eine stille Aenderung an der Datei des Nutzers. Nach **jedem** `config set` diffen und den Block zurueckholen (`Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`), sonst waechst bei jeder Aenderung eine unsichtbare Differenz. Die Aenderung selbst sieht im Diff wie eine Zeilenersetzung aus — genau pruefen, ob noch mehr fehlt. **Rueckholquelle:** `hermes config set` legt vor dem Schreiben ein Backup unter `backups/config/config.yaml.good.<zeitstempel>` an — den fehlenden Block daraus byte-genau (CRLF erhalten) an die Datei anhaengen, dann `diff` gegen die Sicherung: er darf exakt die eine gewollte Zeile zeigen.
 - **Der Kommentar-Schluss fehlt auch bei PROFIL-Configs** (`profiles/<name>/config.yaml`),

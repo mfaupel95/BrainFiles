@@ -13,7 +13,7 @@ Spuren selbst werden NICHT veraendert — angeschlossen wird an ihren
 vorhandenen Nahten (`quelle(w)` als Argument, `funding_quelle` als Modulnaht).
 
 **Tech-Stack:** Python 3 (Standardbibliothek, `urllib`), `unittest`,
-vorhandenes `historie.py` (Kerzenabruf), `spur_buch.zyklus`,
+vorhandenes `historie_binance.py` (Kerzenabruf), `spur_buch.zyklus`,
 `kosten_wendepunkt.runden_aus_journal`. Keine neuen Abhaengigkeiten.
 
 **Projektweite Anforderungen** (gelten fuer jede Aufgabe implizit):
@@ -38,7 +38,7 @@ vorhandenes `historie.py` (Kerzenabruf), `spur_buch.zyklus`,
 | `tests/test_moondev_historie.py` (neu) | Datenschicht allein, ohne Netz (Attrappe ueber `abruf_json`) |
 | `replay.py` (aendern) | `lauf_feed`, `lauf_c`, erweiterte Verweigerungsliste, `SPUREN_TEIL_C` |
 | `tests/test_replay_feed.py` (neu) | Adapter-Felder, Kandidaten/Kurse-Trennung, kein Schreibzugriff nach aussen |
-| `historie.py` (aendern) | nur `PAARE`: bare Namen `BTC`/`ETH`/`SOL` ergaenzen |
+| `historie_binance.py` (aendern) | nur `PAARE`: bare Namen `BTC`/`ETH`/`SOL` ergaenzen |
 | `auswertung_alle.py` (aendern) | Backtest-Zeile zaehlt die neuen Laeufe mit |
 | `MaxHirn/Wiki/Handel/Backtest-Fundament.md` | Ergebnisse, Grenzen, Lektionen |
 | `MaxHirn/Archiv/TASKS.md` | T-096 schliessen, neue Aufgaben anlegen |
@@ -52,7 +52,7 @@ vorhandenes `historie.py` (Kerzenabruf), `spur_buch.zyklus`,
 - Test: `Agenten/Handel/tests/test_moondev_historie.py`
 
 **Interfaces:**
-- Konsumiert: `historie._hole(url)`, `historie._BASIS`, `historie._GRENZE`
+- Konsumiert: `historie_binance._hole(url)`, `historie_binance._BASIS`, `historie_binance._GRENZE`
 - Produziert: `ORDNER`, `TAKTE`, `universum(anzahl)`, `basis_von(sym)`,
   `normalisiere_feed(roh)`, `lade_feed(sym, takt)`, `speichere_feed(sym, takt, reihen)`,
   `hole_feed(sym, takt, von_ms, bis_ms)`, `auffuellen(symbole, takt, ...)`, `stand()`
@@ -198,7 +198,7 @@ abrufbar - dieser Modul baut DIESELBEN Felder aus Binance-Daten:
 
 ABLAGE: daten/historie/feed/<SYMBOL>_<TAKT>.json, Reihen
 [ts_ms, o, h, l, c, volumen_quote] - das sechste Feld ist das QUOTE-Volumen
-(Binance-Feld 7, USD), NICHT das Basisvolumen wie in historie.py. Wer eine
+(Binance-Feld 7, USD), NICHT das Basisvolumen wie in historie_binance.py. Wer eine
 Feed-Kerze gegen `mindest_volumen_usd` prueft, braucht genau diese Zahl.
 
 Jedes Ergebnis traegt `kerzenquelle: "binance"` - Binance ist ein ausgewiesener
@@ -223,11 +223,11 @@ ORDNER = os.path.join(HIER, "daten", "historie", "feed")
 TAKTE = {"1D": "1d", "1H": "1h"}
 KENNUNG = "feed"
 
-_BASIS = historie._BASIS
-_FUTURES = historie._FUTURES
-_GRENZE = historie._GRENZE          # Binance liefert hoechstens 1000 je Abruf
+_BASIS = historie_binance._BASIS
+_FUTURES = historie_binance._FUTURES
+_GRENZE = historie_binance._GRENZE          # Binance liefert hoechstens 1000 je Abruf
 
-# Naht fuer Tests: None -> echtes Netz (siehe historie._hole).
+# Naht fuer Tests: None -> echtes Netz (siehe historie_binance._hole).
 abruf_json = None
 
 _basis = {}                          # Binance-Symbol -> Basiswert ("AAAUSDT" -> "AAA")
@@ -237,7 +237,7 @@ _universum = []                      # Binance-Symbole in Rangfolge
 def _hole(url):
     if abruf_json is not None:
         return abruf_json(url)
-    return historie._hole(url)
+    return historie_binance._hole(url)
 
 
 def universum(anzahl=300):
@@ -289,7 +289,7 @@ def normalisiere_feed(roh):
     """Binance-JSON -> [[int, float, float, float, float, float], ...].
 
     Felder: [0] Open-Time, [1..4] o/h/l/c, [7] QUOTE-Volumen in USD.
-    Bewusst NICHT `historie.reihen_normalisieren`: das nimmt [1:6] und traegt
+    Bewusst NICHT `historie_binance.reihen_normalisieren`: das nimmt [1:6] und traegt
     damit das Basisvolumen.
     """
     return [[int(r[0])] + [float(r[i]) for i in (1, 2, 3, 4, 7)] for r in roh]
@@ -423,9 +423,9 @@ def stand():
   Run: `python -m unittest tests.test_moondev_historie -v`
   Erwartet: 9 Tests, OK
 
-- [ ] **Schritt 6: `PAARE` in `historie.py` um die bare Namen ergaenzen**
+- [ ] **Schritt 6: `PAARE` in `historie_binance.py` um die bare Namen ergaenzen**
 
-In `Agenten/Handel/historie.py`, im Dict `PAARE` (Zeile 33 ff.) hinter
+In `Agenten/Handel/historie_binance.py`, im Dict `PAARE` (Zeile 33 ff.) hinter
 `"BTC-USDC": "BTCUSDT",`:
 
 ```python
@@ -441,13 +441,13 @@ class PaareTest(unittest.TestCase):
     def test_bare_namen_der_funding_spur(self):
         """Ohne diese Namen faellt die Funding-Spur auf einen KeyError."""
         for inst, sym in (("BTC", "BTCUSDT"), ("ETH", "ETHUSDT"), ("SOL", "SOLUSDT")):
-            self.assertEqual(sym, historie.symbol(inst))
+            self.assertEqual(sym, historie_binance.symbol(inst))
 ```
 
 - [ ] **Schritt 7: Committen**
 
 ```
-git add Agenten/Handel/moondev_historie.py Agenten/Handel/tests/test_moondev_historie.py Agenten/Handel/historie.py
+git add Agenten/Handel/moondev_historie.py Agenten/Handel/tests/test_moondev_historie.py Agenten/Handel/historie_binance.py
 git commit -m "Datenschicht: Universum und Feed-Kerzen mit Quote-Volumen"
 ```
 
@@ -671,7 +671,7 @@ git commit -m "Datenschicht: Bestand und Tafel, Rang je Tag aus dem Tagesvolumen
 - Test: `Agenten/Handel/tests/test_moondev_historie.py`
 
 **Interfaces:**
-- Konsumiert: `Bestand` (Aufgabe 2), `historie.funding`, `historie.symbol`, `historie.lade`
+- Konsumiert: `Bestand` (Aufgabe 2), `historie_binance.funding`, `historie_binance.symbol`, `historie_binance.lade`
 - Produziert: `Bestand.tafel_stunde(ts, top=None)`, `hole_funding(inst, von_ms, bis_ms)`,
   `lade_funding(inst)`, `speichere_funding(inst, reihen)`, `funding_zu(reihe, ts)`,
   `mark_preis(inst, ts)`, `funding_stand()`, `funding_dict(inst, ts)`
@@ -773,7 +773,7 @@ class FundingTest(DatenschichtTest):
 # --- Funding ---------------------------------------------------------------
 
 def funding_datei(inst):
-    return os.path.join(ORDNER, "funding_%s.json" % historie.symbol(inst))
+    return os.path.join(ORDNER, "funding_%s.json" % historie_binance.symbol(inst))
 
 
 def lade_funding(inst):
@@ -798,7 +798,7 @@ def speichere_funding(inst, reihen):
 
 def hole_funding(inst, von_ms, bis_ms):
     """Funding-Saetze von Binance-Futures (8h-Punkte), paginiert."""
-    return [[int(t), float(r)] for t, r in historie.funding(inst, von_ms, bis_ms)]
+    return [[int(t), float(r)] for t, r in historie_binance.funding(inst, von_ms, bis_ms)]
 
 
 def funding_zu(reihe, ts):
@@ -818,7 +818,7 @@ def funding_zu(reihe, ts):
 def mark_preis(sym, ts):
     """Schlusskurs der Stundenkerze zu `ts` - Ersatz fuer den Mark-Preis.
 
-    Aus der FEED-Reihe, nicht aus `historie.lade()`: der ganze Backtest liest
+    Aus der FEED-Reihe, nicht aus `historie_binance.lade()`: der ganze Backtest liest
     aus EINER Ablage, und nur die Feed-Reihe laesst sich im Test umbiegen. Ein
     zweiter Datenweg waere ausserdem ein zweiter Stand.
 
@@ -839,7 +839,7 @@ def funding_dict(inst, ts):
     rate = funding_zu(lade_funding(inst), ts)
     if rate is None:
         return None
-    kurs = mark_preis(historie.symbol(inst), ts)
+    kurs = mark_preis(historie_binance.symbol(inst), ts)
     if not kurs:
         return None
     return {"funding_rate": rate, "mark_price": float(kurs)}
@@ -1579,7 +1579,7 @@ git commit -m "Gegenprobe, Wiki und Aufgaben zu den historischen Feed-Spuren"
 4. **Zwei Fehler beim Review gefunden und inline behoben:**
    (a) `moondev_funding` stand in `SPUREN_TEIL_A`, gehoert aber zu Familie C —
    entfernt (Aufgabe 6, Schritt 3).
-   (b) `historie.PAARE` kannte die bare Namen `BTC`/`ETH`/`SOL` nicht, die die
+   (b) `historie_binance.PAARE` kannte die bare Namen `BTC`/`ETH`/`SOL` nicht, die die
    Funding-Spur als Instrumente fuehrt — ergaenzt (Aufgabe 1, Schritt 6).
 5. **Eine Falle benannt, die sonst still geblieben waere:** `kurse` muss ALLE
    geladenen Symbole tragen, nicht nur die Kandidaten — `pruefe_ausstiege`

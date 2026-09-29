@@ -45,7 +45,13 @@ Kind-Skills), ist das eine **API-Beschreibung, kein Hausverfahren**:
 
 1. **Erst die Bootstrap-Regeln der Hauptdatei lesen** (register/login -> Kennung ->
    Basis-Endpunkte), dann je Faehigkeit den Kind-Skill holen. Keine Endpunkte raten,
-   die dort nicht stehen.
+   die dort nicht stehen. **Der AUTH-KOPF ist davon ausgenommen - den misst man:**
+   nennt die Anleitung einen eigenen Kopf (z. B. `X-Claw-Token`) und antwortet die API
+   darauf `401 Invalid token`, ist nicht die Kennung falsch, sondern die Kopfzeile.
+   Mit `Authorization: Bearer <token>` gegentesten, den tragenden Kopf ins Skript
+   schreiben (beide Formen probieren lassen) und ihn in die Wiki-Seite aufnehmen —
+   sonst kostet ein falscher Kopf eine halbe Sitzung Fehlersuche an einer gesunden
+   Kennung.
 2. **Die Skill-Dateien in den WERKZEUGORDNER kopieren**
    (`Agenten/Handel/<plattform>/skill/...`), nicht in die geladene Bibliothek: die
    Pfade aus der Anleitung (`~/.claude`, `~/.openclaw`) gelten fuer fremde Agenten und

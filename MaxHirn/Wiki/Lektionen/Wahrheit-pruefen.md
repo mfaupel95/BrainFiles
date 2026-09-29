@@ -3,9 +3,9 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-24
+updated: 2026-09-29
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Neun Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer.'
+summary: 'Zwoelf Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real.'
 ---
 
 # Wahrheit pruefen
@@ -162,3 +162,72 @@ Berechtigung "Access WebSockets API"; ueber REST arbeitet derselbe Schluessel
 **Merksatz.** Ein Fehlercode ohne Fundstelle ist keine Spur. Die erfundene Diagnose hat
 einen echten, aber ganz anderen Fehler verdeckt - erst die falsche Faehrte erledigen,
 dann den gemessenen Fehler nennen.
+
+## 10. Eine Prozessabfrage traegt ihren Suchtext selbst (29.09.2026)
+
+**Regel.** Wer per Kommandozeilen-Filter nach einem Prozess sucht, muss den Suchtext
+ZUSAMMENSETZEN und den eigenen Prozess ausschliessen - sonst findet die Abfrage sich selbst.
+
+**Belegter Fall.** `update_laeuft()` in `Agenten/Hermes/scripts/gateway-identitaet-wache.py`
+fragte `Where-Object { $_.CommandLine -match 'hermes_cli.main update' }` ab. Die
+PowerShell-Kommandozeile der Abfrage enthaelt diesen Text woertlich - also war das Ergebnis
+**immer** "es laeuft ein Update", und die Wache griff im Blindfall nie ein. Sichtbar wurde es
+erst an einer zweiten Stelle: derselbe Ausdruck in einer Handmessung zeigte genau EINEN
+Treffer, naemlich die Messung selbst.
+
+**Richtig.** Muster aus Teilen bauen (`'hermes_cli.main' + ' ' + 'update'`), `$_.ProcessId -ne $PID`
+setzen, und das Ergebnis einer Prozessabfrage IMMER gegen eine zweite Quelle halten
+(PID-Datei, Port, Log). Verwandt: ein Kommandozeilen-Filter fuer einen DAUERPROZESS darf
+keinen zu breiten Namensteil nennen - `*moondev*` traf die eigene Shell und beendete sie
+(Skill `dauerprozess-bewachen`).
+
+**Merksatz.** Ein Messgeraet, das sich selbst mitmisst, meldet konstant. Vor jeder
+"es laeuft/ist tot"-Aussage die Messung gegen die eigene PID absichern.
+
+## 11. Eine Wache prueft die Sache, nicht eine Startform (29.09.2026)
+
+Der Gateway-Waechter erkannte den Dienst an einer Zeichenfolge in der Kommandozeile
+(`hermes_cli\.main gateway`). Das traf nur die Launcher-Form. Der Update-Weg startet den
+Gateway ueber `runpy.run_module('hermes_cli.main', …)`, wo zwischen Modul und Unterbefehl noch
+`, run_name=` steht - **0 Treffer bei laufendem Gateway**. Der Waechter startete ihn 148-mal an
+einem Tag neu und schrieb dabei jedes Mal "kein Gateway-Prozess".
+
+**Warum das so lange unentdeckt blieb.** Die Zeile las sich richtig ("kein Prozess"), die Wache
+tat ihre Arbeit ("Neustart ausgeloest"), und danach war der Dienst tatsaechlich kurz weg - es
+gab kein Widerspruchssignal. Nur die ZAHL verraet es: 148 Neustarts an einem Tag.
+
+**Richtig.** Den Dienst nach der **Identitaet** fragen, die er selbst schreibt
+(`gateway_state.json`: pid + Zustand), und die Prozessliste nur als Rueckfall benutzen - breit
+genug fuer **alle** bekannten Startformen. Ein Suchmuster, das an einem Starter haengt, ist
+eine Adresse, kein Befund.
+
+**Prueffrage fuer jede Wache.** Erkennt sie den Dienst - oder die Startzeile, die er einmal
+benutzt hat? Und was tut sie im Zweifel: meldet sie Gesundheit oder startet sie neu? Wer im
+Zweifel neu startet, zerlegt den Dienst im Takt seiner eigenen Laufzeit.
+
+## 12. Deklariert ist nicht real (29.09.2026)
+
+**Regel.** Jede Referenz in einer Config — Pfad, Adresse, Modellname — ist eine **Behauptung**.
+Vor dem Bericht wird sie EINMAL gegen die Wirklichkeit gehalten: laufender Dienst, Store,
+Dateisystem. Nicht gegen die Erinnerung und nicht gegen die Nachbardatei.
+
+**Warum.** Am 29.09.2026 trugen Hauptconfig und 17 Profile in der `models:`-Liste des lokalen
+Providers vier Namen, die im Ollama-Store nicht lagen; `providers.bonsai` zeigte auf Port 8080,
+wo die FreqTrade-Oberflaeche antwortete (der Startbaustein hat 8081 als Vorgabe). Der
+Vorgabewert `model:` war am selben Abend schon gerichtet — **dieselbe Behauptung stand an zwei
+Stellen, eine blieb falsch.** Kein Werkzeug meldet das: der Name wird erst gelesen, wenn der
+lokale Rueckfall gebraucht wird, und dann ist er der letzte Ausweg.
+
+**Prueffrage.** Steht der Name in der Datei — oder auch in der Sache, die die Datei
+beschreibt? Die Wahrheit liefert `/api/tags`, der offene Port, `Test-Path`, nicht die Config.
+
+**Zweiter Teil: der Pruefer braucht eine Gegenprobe.** Der erste Lauf der Config-Gegenprobe
+meldete `auto/coding:free` als „nicht im Store" — ein **Fehlalarm**: ein Block in Spalte 0 erbte
+die Einstufung „lokaler Provider" vom vorigen `providers:`-Block. Ein Pruefer ohne Gegenprobe
+erzeugt Reparaturen an Stellen, die in Ordnung sind. Gegenprobe heisst hier: einen Fall bauen,
+der rot werden MUSS, und einen, der gruen bleiben muss.
+
+**Werkzeug.** `Agenten/Hermes/scripts/config-gegenprobe.py` (rein lesend) und die Wache
+`config-gegenprobe-wache.py` (Cron montags 07:40, leere Ausgabe = nichts senden). Ohne Wache
+waere die Gegenprobe ein Nachweis, den niemand von selbst aufruft. Siehe
+[[Werkzeuge/config-gegenprobe]].

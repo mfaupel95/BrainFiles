@@ -38,6 +38,9 @@ Ausloeser → Referenz:
 - Bilanz deuten, „das heisst, wir haetten X gewonnen?" — ein Papierbuch-Ergebnis
   hat fuenf Fragen, bevor es eine Antwort ist:
   `references/buchergebnis-pruefen.md`
+- **„warum hat die Spur 0 Runden?"** — vier Lagen, die gleich aussehen (wartet /
+  arbeitet / nur Ausbuecher / echter Stall), plus die Stall-Falle „Instrument
+  nicht mehr in der Wachenliste": `references/null-runden.md`
 - „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
@@ -102,10 +105,19 @@ Ausloeser → Referenz:
   Kosten-/Ausstiegsgrund, Befund an mehreren Spuren) — Ausrollweg von Inventar
   bis Commit, inklusive Testaufruf-Falle und versehentlich überschriebener Kopie
   außer Haus: `references/spur-weite-aenderung.md`
-- „werte die Daten aus", „optimiere die Strategien" oder eine Freigabe
-  (Bedingung 1: 50 Runden netto positiv) — Weg von den Journalen zur EINEN
-  belegten Aenderung, mit den Zahlen, die eine Aenderung tragen, und dem, was
-  eine duenne Stichprobe NICHT hergibt: `references/auswertung-und-optimierung.md`
+- „werte die Daten aus", „optimiere die Strategien", **ein mitgeschicktes
+  Kennzahlen-Formelblatt** (Sharpe/Sortino/Calmar/VaR, Expectancy, MAE/MFE) oder
+  eine Freigabe (Bedingung 1: 50 Runden netto positiv) — Weg von den Journalen
+  zur EINEN belegten Aenderung, mit den Zahlen, die eine Aenderung tragen, und
+  dem, was eine duenne Stichprobe NICHT hergibt:
+  `references/auswertung-und-optimierung.md`. Beim Formelblatt gilt: nur
+  uebernehmen, was die eigene Datenlage traegt — Sharpe/Sortino/VaR/CAGR brauchen
+  Tagesrenditen, die das Haus nicht fuehrt (Runden NICHT umrechnen, die Luecke
+  benennen); die t-Statistik der Expectancy ist die Zahl hinter „unter 8 Runden
+  ist es ein Befund"; und eine Kennzahl, die aus einer Journal-Spalte abgeleitet
+  wird, erst gegen deren Fuellquote pruefen (ein Platzhalter wie `mae_pct 0.0000`
+  macht einen Stop-Vorschlag zu 0 % - dann „nicht gefuehrt" ausgeben statt eine
+  Null als Messwert).
 - Eine andere Sitzung laesst Arbeit im Baum liegen („wenn die Session fertig ist,
   mitnehmen", eine geaenderte Datei, die man selbst nicht angefasst hat) —
   Fertig-Erkennung, Waechter-Cron, getrennter Commit und die Frage, was eine
@@ -542,6 +554,16 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   attribute 'fuss_texte'`: nicht kaputt, sondern gegen das falsche Modul gelaufen.
   Dieselbe Falle wie die zwei `auswertung.py`, nur ueber einen Ordner hinweg; ein
   Test haelt den Handel-Kopf frei von doppelten Modulnamen.
+  **Wird dieser Test rot, weicht die JUENGERE Datei** - nicht die Spur: die
+  Spurdatei hat mehr Aufrufer, eigene Tests und steht in Journalen, das
+  Kopf-Werkzeug in zwei oder drei. Beleg: `Handel/historie.py` (Backtest-Daten)
+  lag doppelt mit `xperp/historie.py` (`bot.py` und `stopwahl.py` holen sie per
+  `import historie`); umbenannt wurde das Kopf-Modul zu `historie_binance.py`,
+  mitgezogen in `replay.py`, `optimieren.py` und den Tests - xperp blieb
+  unberuehrt. Nach dem Umbenennen gegenproben: kein Treffer mehr fuer
+  `^import <alter name>` im eigenen Suchraum, und `git check-ignore -v` zeigt
+  die neue Datei als NICHT ignoriert (sonst faellt die Freigabezeile der
+  `historie.py` ins Leere und der Nachfolger ist in git unsichtbar).
 - **Ein zentraler Leser muss ALLE Zustandsformen kennen, sonst zeigt er still
   null.** Je Spur ein Testfall in ihrer echten Schreibweise (`position` statt
   `positionen`, `richtung` statt `seite`, `preis_einstieg`/`stop_preis`,

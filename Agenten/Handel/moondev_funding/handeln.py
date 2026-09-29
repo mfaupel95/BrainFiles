@@ -312,6 +312,13 @@ def pruefe_ausstiege(z, kurse, w, nur=None):
             continue
         kurs = kurse.get(p["inst"])
         if not kurs:
+            # Kein Kurs heisst nicht "nichts passiert": die Position wird
+            # uebersprungen und kann so beliebig lange stehen bleiben. Bis zum
+            # 29.09.2026 schwieg dieser Zweig (spur_buch meldet es seit dem
+            # 28.09.2026 - dieselbe Zeile, dieselbe Bedeutung).
+            print("  %s: kein Kurs - Position wird NICHT geprueft (seit %s)"
+                  % (p.get("inst"), p.get("eroeffnet_zeit") or "?"),
+                  file=sys.stderr)
             behalten.append(p)
             continue
         grund = None
@@ -345,15 +352,27 @@ def pruefe_ausstiege(z, kurse, w, nur=None):
 
 # --- Lauf ------------------------------------------------------------------
 
-def hole_kurse(w):
+def hole_kurse(w, z):
     """Ein Durchgang durch die Instrumente: (daten, kurse, fehler).
 
     Ein Abruf je Symbol, weil die Funktion des Bots genau das anbietet.
     Fehler EINES Symbols brechen den Zyklus nicht ab - sie stehen im
     Rueckgabewert und werden vom Aufrufer gemeldet.
+
+    GEFRAGT WIRD DER PLAN **UND** DAS BUCH (`wp.pruef_instrumente`): ein Symbol
+    kann aus `instrumente` verschwinden (Hyperliquid listet und delistet
+    laufend), waehrend eine Position darauf noch offen ist. Ueber die blosse
+    Plan-Liste bekaeme diese Position keinen Kurs mehr - `pruefe_ausstiege`
+    haette sie stillschweigend behalten, sie waere nie geschlossen worden und
+    haette einen der drei Plaetze dauerhaft belegt (dieselbe Falle wie in den
+    vier Indikatorspuren am 29.09.2026, nur eine Ebene tiefer).
     """
     daten, fehler = {}, []
-    for inst in w.get("instrumente", []):
+    verwaist = wp.verwaiste_instrumente(w, z)
+    if verwaist:
+        print("  Verwaiste Instrumente (nicht mehr im Plan, Position bleibt "
+              "im Buch): %s" % ", ".join(verwaist), file=sys.stderr)
+    for inst in wp.pruef_instrumente(w, z):
         try:
             d = funding_holen(inst)
         except Exception as e:                                # noqa: BLE001
@@ -389,7 +408,7 @@ def lauf(modus):
         spiegeln(z, w)
         return
 
-    daten, kurse, fehler = hole_kurse(w)
+    daten, kurse, fehler = hole_kurse(w, z)
     for f in fehler:
         print("Uebersprungen (%s)" % f, file=sys.stderr)
     if not daten:

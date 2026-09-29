@@ -75,6 +75,10 @@
 !Agenten/Handel/*.py
 !Agenten/Handel/spur_opt.json
 !Agenten/Handel/leitstand_backtests.json
+# Basislinie des Testlaeufers (testlauf.py). Gehoert versioniert: ohne
+# sie weiss kein zweiter Rechner, welcher Stand "unveraendert" heisst,
+# und jeder Lauf meldete entweder alles oder nichts.
+!Agenten/Handel/testlauf_basis.json
 !Agenten/Handel/*.md
 # Laufzeitdaten: der Tagesschnappschuss. Abgeleitet, kein Buch.
 Agenten/Handel/stand/
@@ -809,6 +813,13 @@ Agenten/Werkzeuge/breite-reihe.jsonl
 
 # Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/Repos/):
 /kraken-cli/
+
+# Arbeitsbaeume der Sitzungs-Oberflaeche (Claude Code Desktop) in der Wurzel:
+# .claude/worktrees/<name>/ ist ein VOLLSTAENDIGER Klon mit eigenem .git fuer
+# eine parallele Sitzung - dieselbe Falle wie bei den Fremd-Repos oben
+# (gemessen 29.09.2026: .claude/worktrees/tag-troubleshoot-config-guide-cf780d/).
+# Ein eingebettetes Repo wird nie versioniert.
+.claude/worktrees/
 
 # ai4trade.ai (Handel/ai4trade/): Signalplattform mit PAPIERhandel, kein
 # Orderweg und kein Boersenzugang - der Agent HermesMax ist dort angemeldet

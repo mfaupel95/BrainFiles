@@ -4,7 +4,7 @@ title: 'Handelsregeln'
 tags: [handel, sicherheit]
 created: 2026-09-02
 updated: 2026-09-21
-related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel]
+related: [20260830-schutzregeln, 20260830-handelsbots, 20260831-marktscanner, 20260901-xperp-handel, 20260929-omnitrade]
 summary: 'Was ein Agent im Handel selbst auslösen darf: die drei bewachten Spuren, die Prüfpflicht, die fünf Bedingungen für den unbeaufsichtigten Lauf und seit 03.09.2026 das Zeitfenster als Handy-Fassung des Scharfschaltens.'
 ---
 

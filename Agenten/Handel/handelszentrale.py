@@ -58,6 +58,8 @@ for _p in (HIER, os.path.join(HIER, "scanner"), os.path.join(HIER, "kraken"),
 import dauerlauf                                            # noqa: E402
 import freigabefenster                                      # noqa: E402
 import risikostufe                                          # noqa: E402
+import freqtrade_bridge                                     # noqa: E402
+import omnitrade_bridge                                     # noqa: E402
 
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
@@ -571,6 +573,134 @@ def kraken_konto_lage():
     return _konto_cache["text"], _konto_cache["warnung"]
 
 
+# ---------- FreqTrade (Reiter) ----------
+def _ft_zeit(wert):
+    """'2026-09-29 16:45:00' -> '29.09. 16:45'; FreqTrade-Trades laufen ueber Tage."""
+    w = str(wert or "")
+    if len(w) >= 16 and w[4] == "-" and w[10] in ("T", " "):
+        return "%s.%s. %s" % (w[8:10], w[5:7], w[11:16])
+    return zeit_kurz(w)
+
+
+def freqtrade_kopf(lage):
+    """(Text, Marke) der Kopfzeile im FreqTrade-Reiter aus `freqtrade_bridge.lage()`."""
+    if not lage:
+        return "FreqTrade: wird abgefragt …", "matt"
+    if not lage.get("erreichbar"):
+        return "⚠ FreqTrade nicht erreichbar — %s" % lage.get("fehler", "?"), "schlecht"
+    modus = "Probebetrieb" if lage.get("dry_run") else "LIVE"
+    text = ("FreqTrade %s · %s · %s · %s %s   Guthaben %.2f %s   offen %d   "
+            "Trades %d   G/V geschlossen %+.2f   gesamt %+.2f"
+            % (modus, lage.get("zustand"), lage.get("boerse"),
+               lage.get("strategie"), lage.get("zeitrahmen"),
+               _zahl(lage.get("guthaben")) or 0.0, lage.get("waehrung"),
+               lage.get("offene_trades", 0), lage.get("trades_gesamt", 0),
+               _zahl(lage.get("gewinn_geschlossen")) or 0.0,
+               _zahl(lage.get("gewinn_gesamt")) or 0.0))
+    # Ein Bot, der nicht im Probebetrieb laeuft, ist hier nie der Normalfall.
+    return text, "gut" if lage.get("dry_run") else "schlecht"
+
+
+def freqtrade_offen_zeile(t):
+    """Werte einer offenen FreqTrade-Position fuer die Tabelle."""
+    return (t.get("pair", "?"), "short" if t.get("is_short") else "long",
+            _ft_zeit(t.get("open_date")), kurs_fmt(_zahl(t.get("open_rate"))),
+            kurs_fmt(_zahl(t.get("current_rate"))),
+            "%.2f" % (_zahl(t.get("stake_amount")) or 0.0),
+            "%+.2f" % (_zahl(t.get("profit_pct")) or 0.0))
+
+
+def freqtrade_zu_zeilen(antwort, anzahl=20):
+    """Die letzten geschlossenen Trades aus `/trades`, neueste zuerst."""
+    liste = antwort.get("trades", []) if isinstance(antwort, dict) else []
+    zu = [t for t in liste if not t.get("is_open")]
+    zu.sort(key=lambda t: t.get("close_date") or "", reverse=True)
+    return [(t.get("pair", "?"), _ft_zeit(t.get("open_date")),
+             _ft_zeit(t.get("close_date")),
+             "%+.2f" % (_zahl(t.get("profit_pct")) or 0.0),
+             "%+.2f" % (_zahl(t.get("profit_abs")) or 0.0),
+             t.get("exit_reason") or "")
+            for t in zu[:anzahl]]
+
+
+def freqtrade_tagesbalken(antwort):
+    """[(TT.MM., G/V absolut, Trades)] aus `/daily`, aeltester Tag zuerst."""
+    liste = (antwort.get("data") if isinstance(antwort, dict) else None) or []
+    tage = sorted((t for t in liste
+                   if isinstance(t, dict) and len(str(t.get("date", ""))) >= 10),
+                  key=lambda t: str(t["date"]))
+    return [("%s.%s." % (str(t["date"])[8:10], str(t["date"])[5:7]),
+             _zahl(t.get("abs_profit")) or 0.0,
+             int(_zahl(t.get("trade_count")) or 0)) for t in tage]
+
+
+def _gv_marke(text):
+    """Tabellen-Tag aus '+1.23' / '-0.50'."""
+    zahl = _zahl(text)
+    return "gut" if zahl and zahl > 0 else "schlecht" if zahl and zahl < 0 else ""
+
+
+def _freqtrade_im_thread(ziel):
+    """Lage, offene und letzte Trades - im Hintergrund, wirft nie."""
+    lage = freqtrade_bridge.lage()
+    offen, zu, tage = [], {}, {}
+    if lage.get("erreichbar"):
+        try:
+            offen = freqtrade_bridge.offene_trades()
+            zu = freqtrade_bridge.trades(100)
+            tage = freqtrade_bridge.tagesbilanz(14)
+        except Exception:                                    # noqa: BLE001
+            pass      # Lage steht schon; Tabellen bleiben dann leer
+    ziel.put((lage, offen, zu, tage))
+
+
+# ---------- omnitrade (Reiter) ----------
+def _ms_zeit(ms):
+    """Epoch-Millisekunden -> 'TT.MM. HH:MM:SS' Ortszeit, '' wenn unbrauchbar."""
+    try:
+        return datetime.fromtimestamp(float(ms) / 1000).strftime("%d.%m. %H:%M:%S")
+    except (TypeError, ValueError, OverflowError, OSError):
+        return ""
+
+
+def omnitrade_kopf(lage):
+    """(Text, Marke) der Kopfzeile im omnitrade-Reiter aus `omnitrade_bridge.lage()`."""
+    if not lage:
+        return "omnitrade: wird gelesen …", "matt"
+    if not lage.get("ok"):
+        return "⚠ omnitrade — %s" % (lage.get("fehler") or "?"), "schlecht"
+    netz = str(lage.get("network") or "?")
+    text = ("omnitrade %s · %s %s · %s · %s   Kerzen %d   Kurs %s   Signal %s   "
+            "netto %+.6g   Orders %d / abgelehnt %d   (vor %ds)"
+            % (lage.get("state"), lage.get("exchange") or "binance", netz,
+               lage.get("symbol"), lage.get("script"),
+               int(_zahl(lage.get("candles_seen")) or 0),
+               kurs_fmt(_zahl(lage.get("last_close"))), lage.get("last_signal"),
+               _zahl(lage.get("net_quantity")) or 0.0,
+               int(_zahl(lage.get("orders_placed")) or 0),
+               int(_zahl(lage.get("orders_rejected")) or 0),
+               int(lage.get("alter_s") or 0)))
+    if lage.get("last_error"):
+        text += "   letzter Fehler: %s" % lage["last_error"]
+    # Echtgeld ist hier nie der Normalfall; ein Fehlerzustand auch nicht.
+    gut = netz.lower() != "mainnet" and lage.get("state") != "error"
+    return text, "gut" if gut else "schlecht"
+
+
+def omnitrade_order_zeilen(lage):
+    """Letzte Order-Ereignisse, neueste zuerst: (Zeit, Seite, Menge, Preis, Ergebnis, Meldung)."""
+    liste = lage.get("recent_orders") if isinstance(lage, dict) else None
+    zeilen = []
+    for o in reversed(liste if isinstance(liste, list) else []):
+        if not isinstance(o, dict):
+            continue
+        zeilen.append((_ms_zeit(o.get("time_ms")), o.get("side", "?"),
+                       "%.6g" % (_zahl(o.get("quantity")) or 0.0),
+                       kurs_fmt(_zahl(o.get("price"))), o.get("outcome", "?"),
+                       o.get("detail") or ""))
+    return zeilen
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -589,6 +719,9 @@ class Handelszentrale:
         self._kurs_laeuft = False
         self._kerzen_wunsch = None
         self._schrift_widgets = [] # (widget, rel, fett) fuer die Schrift-Option
+        self.q_freqtrade = queue.Queue()
+        self.ft_lage = None        # letzte freqtrade_bridge.lage(), None = noch nie
+        self._ft_laeuft = False
         if isinstance(root, tk.Tk):
             # Allein gestartet gehoert das Fenster der Zentrale; als Reiter
             # im Leitstand gehoeren Titel, Groesse und Lage dem Leitstand.
@@ -678,6 +811,11 @@ class Handelszentrale:
                      foreground=FARBEN["akzent"], font=schrift(0, fett=True))
         st.configure("TCombobox", font=schrift())
         st.map("Treeview", background=[("selected", "#45475a")])
+        st.configure("TNotebook", background=FARBEN["bg"], borderwidth=0)
+        st.configure("TNotebook.Tab", background="#313244",
+                     foreground=FARBEN["text"], padding=(12, 3))
+        st.map("TNotebook.Tab", background=[("selected", "#45475a")],
+               foreground=[("selected", FARBEN["akzent"])])
 
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
         kopf.pack(fill="x", padx=10, pady=(8, 2))
@@ -714,12 +852,21 @@ class Handelszentrale:
         self._registriere_schrift(self.l_konto)
         self.l_konto.pack(side="left", padx=(16, 0))
 
+        # --- Reiter: "Spuren" traegt die bisherige Ansicht, "FreqTrade" den
+        # lokalen Bot (freqtrade_bridge, nur lesend). Fusszeile bleibt am
+        # Fenster, damit sie in beiden Reitern steht.
+        self.reiter = ttk.Notebook(self.root)
+        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
+        self.reiter.add(seite, text="Spuren")
+        self._baue_freqtrade()
+        self._baue_omnitrade()
+
         # --- Spurtabelle
-        t_spur_label = tk.Label(self.root, text="Spuren", bg=FARBEN["bg"],
+        t_spur_label = tk.Label(seite, text="Spuren", bg=FARBEN["bg"],
                                 fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t_spur_label, 0, fett=True)
         t_spur_label.pack(fill="x", padx=10)
-        r1 = tk.Frame(self.root, bg=FARBEN["blatt"])
+        r1 = tk.Frame(seite, bg=FARBEN["blatt"])
         r1.pack(fill="x", padx=10)
         sp_spur = ("spur", "modus", "fenster", "stand", "pos", "herzschlag",
                    "handel")
@@ -741,12 +888,12 @@ class Handelszentrale:
         self.t_spuren.tag_configure("gut", foreground=FARBEN["gruen"])
 
         # --- Positionstabelle
-        t_pos_label = tk.Label(self.root,
+        t_pos_label = tk.Label(seite,
                                text="Offene Positionen (Zeile anklicken = Chart)",
                                bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t_pos_label, 0, fett=True)
         t_pos_label.pack(fill="x", padx=10, pady=(6, 0))
-        r2 = tk.Frame(self.root, bg=FARBEN["blatt"])
+        r2 = tk.Frame(seite, bg=FARBEN["blatt"])
         r2.pack(fill="x", padx=10)
         sp_pos = ("spur", "instrument", "seite", "einstieg", "kurs", "stop",
                   "ziel", "abstand", "wert", "gv")
@@ -774,22 +921,22 @@ class Handelszentrale:
         self.t_pos.bind("<<TreeviewSelect>>", self._gewaehlt)
 
         # --- Chart
-        self.l_chart = tk.Label(self.root, bg=FARBEN["bg"], fg=FARBEN["akzent"],
+        self.l_chart = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["akzent"],
                                 anchor="w", text="Chart")
         self._registriere_schrift(self.l_chart, 0, fett=True)
         self.l_chart.pack(fill="x", padx=10, pady=(6, 0))
-        self.canvas = tk.Canvas(self.root, bg=FARBEN["blatt"], height=260,
+        self.canvas = tk.Canvas(seite, bg=FARBEN["blatt"], height=260,
                                 highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=10)
         self.canvas.bind("<Configure>", lambda _e: self._zeichne_chart())
 
         # --- Konsole
-        t_konsole_label = tk.Label(self.root,
+        t_konsole_label = tk.Label(seite,
                                    text="Konsole — letzte Buchungen und Dauerlauf",
                                    bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t_konsole_label, 0, fett=True)
         t_konsole_label.pack(fill="x", padx=10, pady=(6, 0))
-        r3 = tk.Frame(self.root, bg=FARBEN["blatt"])
+        r3 = tk.Frame(seite, bg=FARBEN["blatt"])
         r3.pack(fill="x", padx=10)
         self.konsole = tk.Text(r3, height=9, bg=FARBEN["blatt"],
                                fg=FARBEN["text"], font=schrift(KLEIN),
@@ -804,7 +951,7 @@ class Handelszentrale:
         self.konsole.tag_configure("kopf", foreground=FARBEN["akzent"])
 
         fuss = tk.Frame(self.root, bg=FARBEN["bg"])
-        fuss.pack(fill="x", padx=10, pady=(4, 6))
+        fuss.pack(side="bottom", fill="x", padx=10, pady=(4, 6))
         self.l_summe = tk.Label(fuss, bg=FARBEN["bg"])
         self._registriere_schrift(self.l_summe, 0, fett=True)
         self.l_summe.pack(side="left")
@@ -813,6 +960,161 @@ class Handelszentrale:
                           bg=FARBEN["bg"], fg=FARBEN["matt"])
         self._registriere_schrift(t_fuss, KLEIN)
         t_fuss.pack(side="right")
+        self.reiter.pack(fill="both", expand=True)
+
+    def _baue_freqtrade(self):
+        """Reiter FreqTrade: Kopfzeile, offene Positionen, letzte Trades."""
+        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
+        self.reiter.add(seite, text="FreqTrade")
+        self.l_ft = tk.Label(seite, bg=FARBEN["bg"], anchor="w",
+                             text=freqtrade_kopf(None)[0], fg=FARBEN["matt"])
+        self._registriere_schrift(self.l_ft, 0, fett=True)
+        self.l_ft.pack(fill="x", padx=10, pady=(6, 2))
+        tabellen = (
+            ("t_ft_offen", "Offene Positionen",
+             ("paar", "seite", "seit", "einstieg", "kurs", "einsatz", "gv"),
+             {"paar": "Paar", "seite": "Seite", "seit": "Seit",
+              "einstieg": "Einstieg", "kurs": "Kurs", "einsatz": "Einsatz",
+              "gv": "G/V %"}, 8),
+            ("t_ft_zu", "Letzte geschlossene Trades",
+             ("paar", "auf", "zu", "gv", "gv_abs", "grund"),
+             {"paar": "Paar", "auf": "Eröffnet", "zu": "Geschlossen",
+              "gv": "G/V %", "gv_abs": "G/V", "grund": "Ausstieg"}, 14),
+        )
+        for attr, titel, spalten, kopf, hoehe in tabellen:
+            t = tk.Label(seite, text=titel, bg=FARBEN["bg"],
+                         fg=FARBEN["akzent"], anchor="w")
+            self._registriere_schrift(t, 0, fett=True)
+            t.pack(fill="x", padx=10, pady=(6, 0))
+            rahmen = tk.Frame(seite, bg=FARBEN["blatt"])
+            rahmen.pack(fill="both", expand=attr == "t_ft_zu", padx=10)
+            baum = ttk.Treeview(rahmen, columns=spalten, show="headings",
+                                height=hoehe)
+            for sp in spalten:
+                baum.heading(sp, text=kopf[sp])
+                baum.column(sp, width=180 if sp == "grund" else 110,
+                            anchor="w" if sp in ("paar", "seite", "seit", "auf",
+                                                 "zu", "grund") else "e")
+            leiste = ttk.Scrollbar(rahmen, orient="vertical", command=baum.yview)
+            baum.configure(yscrollcommand=leiste.set)
+            baum.pack(side="left", fill="both", expand=True)
+            leiste.pack(side="right", fill="y")
+            baum.tag_configure("schlecht", foreground=FARBEN["rot"])
+            baum.tag_configure("gut", foreground=FARBEN["gruen"])
+            setattr(self, attr, baum)
+            if attr == "t_ft_offen":
+                t = tk.Label(seite, text="G/V je Tag (14 Tage)", bg=FARBEN["bg"],
+                             fg=FARBEN["akzent"], anchor="w")
+                self._registriere_schrift(t, 0, fett=True)
+                t.pack(fill="x", padx=10, pady=(6, 0))
+                self.c_ft = tk.Canvas(seite, bg=FARBEN["blatt"], height=140,
+                                      highlightthickness=0)
+                self.c_ft.pack(fill="x", padx=10)
+                self.c_ft.bind("<Configure>", lambda _e: self._zeichne_ft_tage())
+        self.ft_tage = []
+        t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
+                            text="Quelle: FreqTrade-API %s (freqtrade_bridge, "
+                                 "nur lesend) — Start: Agenten/Handel/freqtrade/start.sh"
+                                 % freqtrade_bridge.URL)
+        self._registriere_schrift(t_quelle, KLEIN)
+        t_quelle.pack(fill="x", padx=10, pady=(4, 0))
+
+    def _baue_omnitrade(self):
+        """Reiter omnitrade: Kopfzeile und letzte Order-Ereignisse aus der Statusdatei."""
+        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
+        self.reiter.add(seite, text="omnitrade")
+        self.l_omni = tk.Label(seite, bg=FARBEN["bg"], anchor="w", justify="left",
+                               text=omnitrade_kopf(None)[0], fg=FARBEN["matt"])
+        self._registriere_schrift(self.l_omni, 0, fett=True)
+        self.l_omni.pack(fill="x", padx=10, pady=(6, 2))
+        t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
+                     fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t, 0, fett=True)
+        t.pack(fill="x", padx=10, pady=(6, 0))
+        rahmen = tk.Frame(seite, bg=FARBEN["blatt"])
+        rahmen.pack(fill="both", expand=True, padx=10)
+        spalten = ("zeit", "seite", "menge", "preis", "ergebnis", "meldung")
+        kopf = {"zeit": "Zeit", "seite": "Seite", "menge": "Menge", "preis": "Preis",
+                "ergebnis": "Ergebnis", "meldung": "Meldung"}
+        self.t_omni = ttk.Treeview(rahmen, columns=spalten, show="headings", height=20)
+        for sp in spalten:
+            self.t_omni.heading(sp, text=kopf[sp])
+            self.t_omni.column(sp, width=320 if sp == "meldung" else 110,
+                               anchor="e" if sp in ("menge", "preis") else "w")
+        leiste = ttk.Scrollbar(rahmen, orient="vertical", command=self.t_omni.yview)
+        self.t_omni.configure(yscrollcommand=leiste.set)
+        self.t_omni.pack(side="left", fill="both", expand=True)
+        leiste.pack(side="right", fill="y")
+        self.t_omni.tag_configure("schlecht", foreground=FARBEN["rot"])
+        self.t_omni.tag_configure("gut", foreground=FARBEN["gruen"])
+        t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
+                            text="Quelle: %s (omnitrade_bridge, nur lesend) — Start: "
+                                 "omnitrade live --status-file … (Testnet)"
+                                 % omnitrade_bridge.pfad())
+        self._registriere_schrift(t_quelle, KLEIN)
+        t_quelle.pack(fill="x", padx=10, pady=(4, 0))
+
+    def _zeige_omnitrade(self, lage):
+        text, marke = omnitrade_kopf(lage)
+        self.l_omni.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
+        for i in self.t_omni.get_children():
+            self.t_omni.delete(i)
+        for werte in omnitrade_order_zeilen(lage):
+            marke = {"filled": "gut", "rejected": "schlecht"}.get(werte[4], "")
+            self.t_omni.insert("", "end", values=werte, tags=(marke,))
+
+    def _starte_freqtrade_worker(self):
+        """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads."""
+        if self._ft_laeuft:
+            return
+        self._ft_laeuft = True
+        threading.Thread(target=_freqtrade_im_thread, args=(self.q_freqtrade,),
+                         daemon=True).start()
+
+    def _zeige_freqtrade(self, lage, offen, zu, tage=None):
+        self.ft_lage = lage
+        self.ft_tage = freqtrade_tagesbalken(tage)
+        self._zeichne_ft_tage()
+        text, marke = freqtrade_kopf(lage)
+        self.l_ft.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
+        for baum in (self.t_ft_offen, self.t_ft_zu):
+            for i in baum.get_children():
+                baum.delete(i)
+        for t in offen if isinstance(offen, list) else []:
+            werte = freqtrade_offen_zeile(t)
+            self.t_ft_offen.insert("", "end", values=werte,
+                                   tags=(_gv_marke(werte[-1]),))
+        for werte in freqtrade_zu_zeilen(zu):
+            self.t_ft_zu.insert("", "end", values=werte,
+                                tags=(_gv_marke(werte[3]),))
+
+    def _zeichne_ft_tage(self):
+        """Balken je Tag um die Nulllinie; gruen Gewinn, rot Verlust."""
+        c = self.c_ft
+        c.delete("all")
+        breite, hoehe = max(c.winfo_width(), 420), max(c.winfo_height(), 120)
+        rand_l, rand_r, rand_o, rand_u = 60, 20, 10, 18
+        if not self.ft_tage:
+            c.create_text(breite // 2, hoehe // 2, text="keine Tagesdaten",
+                          fill=FARBEN["matt"], font=schrift())
+            return
+        groesste = max(abs(w) for _, w, _ in self.ft_tage) or 1.0
+        mitte = rand_o + (hoehe - rand_o - rand_u) / 2
+        halb = (hoehe - rand_o - rand_u) / 2
+        c.create_line(rand_l, mitte, breite - rand_r, mitte, fill=FARBEN["gitter"])
+        for ys, wert in ((rand_o, groesste), (mitte, 0.0), (hoehe - rand_u, -groesste)):
+            c.create_text(rand_l - 4, ys, anchor="e", fill=FARBEN["matt"],
+                          font=schrift(TINY), text="%+.2f" % wert)
+        feld = (breite - rand_l - rand_r) / len(self.ft_tage)
+        for i, (tag, wert, _) in enumerate(self.ft_tage):
+            x0 = rand_l + feld * i + feld * 0.2
+            x1 = rand_l + feld * (i + 1) - feld * 0.2
+            yw = mitte - halb * wert / groesste
+            farbe = FARBEN["gruen"] if wert >= 0 else FARBEN["rot"]
+            c.create_rectangle(x0, min(mitte, yw), x1, max(mitte, yw) + (wert == 0),
+                               fill=farbe, outline=farbe)
+            c.create_text((x0 + x1) / 2, hoehe - rand_u + 2, anchor="n",
+                          fill=FARBEN["matt"], font=schrift(TINY), text=tag)
 
     # ---------- Daten ----------
     def refresh(self):
@@ -831,6 +1133,8 @@ class Handelszentrale:
             self.positionen.extend(positionen_der_spur(spur, z, w))
         self._zeige(jetzt)
         self._starte_kurs_worker()
+        self._starte_freqtrade_worker()
+        self._zeige_omnitrade(omnitrade_bridge.lage())   # kleine lokale Datei, kein Thread noetig
 
     def _pfad(self, spur, name):
         return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur),
@@ -901,6 +1205,12 @@ class Handelszentrale:
                 spur, schluessel, kerzen, grund = self.q_kerzen.get_nowait()
                 self.kerzen[(spur, schluessel)] = (kerzen, grund)
                 self._kerzen_wunsch = None
+        except queue.Empty:
+            pass
+        try:
+            while True:
+                self._zeige_freqtrade(*self.q_freqtrade.get_nowait())
+                self._ft_laeuft = False
         except queue.Empty:
             pass
         self._kurs_laeuft = False

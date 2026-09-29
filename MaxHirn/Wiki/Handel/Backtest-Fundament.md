@@ -10,7 +10,7 @@ summary: 'Wie die Spuren ueber 5,7 Jahre historische Daten nachgerechnet werden,
 
 # Backtest-Fundament
 
-Quelle: `Agenten/Handel/historie.py`, `replay.py`, Spezifikation
+Quelle: `Agenten/Handel/historie_binance.py`, `replay.py`, Spezifikation
 `Agenten/Handel/docs/design/2026-09-24-backtest-fundament-design.md`,
 Plan `docs/plans/2026-09-24-backtest-fundament.md`.
 
@@ -30,7 +30,7 @@ Erwartungswert, `f_max`) und fuer die Parametersuche.
 
 | Datei | Aufgabe |
 |---|---|
-| `historie.py` | Kerzen und Fundingsaetze von Binance holen und in `daten/historie/` ablegen |
+| `historie_binance.py` | Kerzen und Fundingsaetze von Binance holen und in `daten/historie/` ablegen |
 | `replay.py` | eine Spur ueber die Historie fahren, ohne eine echte Datei anzufassen |
 | `optimieren.py` | Parametersuche mit Walk-Forward (noch nicht gebaut) |
 
@@ -138,13 +138,152 @@ festgenagelt** (jeder haette eine falsche Empfehlung erzeugt):
 Vergleichsmass und Gebuehr nachgerechnet sind. Alle vier waren in dieser Sitzung
 zuerst falsch - und jede Fassung sah wie ein Ergebnis aus.
 
+## Feed-Spuren: echte Laeufe ueber 2021-2026 (2026-09-29)
+
+Die vier Feed-Spuren entscheiden ueber einen MARKTQUERSCHNITT, nicht ueber eine
+Kerzenreihe. `replay.lauf_feed()` faehrt sie deshalb ueber den Querschnitt: ein
+Schritt ist ein ZEITPUNKT, kein Instrument. Die Daten kommen aus
+`moondev_historie.py` (Ablage `daten/historie/feed/`), nicht von CoinGecko -
+die Feldnamen uebersetzt ein Adapter, und `tests/test_replay_feed.py` prueft
+sie gegen den QUELLTEXT der Spur: wer die Spur umbaut, soll einen roten Test
+bekommen statt einen stillen Nullauf.
+
+| Spur | Takt | Runden | Treffer | Stop/Ziel | netto je Runde | Schritte | Universum |
+|---|---|---|---|---|---|---|---|
+| moondev_topmovers | 1D | 55 | 60 % | 8 %/12 % | +9.40 % | 2098 | 300 |
+| moondev_marktlage | 1D | 5 | 60 % | 6 %/9 % | -1.12 % | 2098 | 300 |
+| moondev_signalwelle | 1H | 62 | 34 % | 7 %/10,5 % | -1.83 % | 50337 | 41 |
+| moondev_funding | 8h | 23 | 74 % | 6 %/9 % | +5.99 % | 6369 | 6 Instrumente |
+
+**Die Schrittzahl haengt an `--mindest-symbole`** (ab wie vielen Reihen ein
+Zeitpunkt als Schritt zaehlt): die Signalwelle liefert mit der strengen Vorgabe
+30 genau 21.628 Schritte, mit 20 genau 50.337 - und in BEIDEN Laeufen dieselben
+62 Runden. Die duennen Zeitpunkte bringen also kein Signal; wer zwei Laeufe
+vergleicht, muss diese Zahl mitlesen, sonst sieht der Unterschied wie ein
+Datenfehler aus.
+
+ROH, ohne Deutung, mit drei Vorbehalten, die dazugehoeren:
+
+- **moondev_funding ist abgebrochen**: `kill_ausgeloest = true`, die eigene
+  Ratsche hat den Lauf beendet. Die 23 Runden decken NICHT den ganzen Zeitraum
+  - die Zahl ist ein Anfang, kein Ergebnis.
+- **Die Signalwelle rechnet auf einem kleineren Universum als im Betrieb**
+  (Top 41 mit 1H-Kerzen gegen 250 Coins live). 62 Runden sind damit nicht mit
+  dem Betrieb vergleichbar.
+- **Die Marktbreite ist nach oben verzerrt**: nur Ueberlebende. Ein 2023
+  delistetes Paar fehlt, und wer fehlt, kann nicht unter seiner EMA200 liegen.
+  "Breite 100 %" heisst hier "von den HEUTE noch gehandelten Paaren standen
+  alle darueber".
+
+### Nicht nachrechenbar (mit Grund)
+
+| Spur | Grund |
+|---|---|
+| moondev_sniper | pump.fun-Neulaunches mit Alter in Minuten - nur live |
+| moondev_listingarb | Marktkapitalisierung frei nicht historisch abrufbar |
+| moondev_whale | OKX-OI-Historie antwortet 50030 Illegal time range |
+| moondev_liquidation | keine freie Liquidationshistorie |
+| moondev_sentiment | RSS-Titel werden nicht archiviert |
+
+Die Gruende stehen im Code (`replay.NICHT_NACHRECHENBAR`) und werden im Bericht
+genannt - ein leeres Feld waere nicht zu deuten. Ein Lauf ueber eine nicht
+nachrechenbare Spur bricht mit RuntimeError ab, statt zu raten.
+
+### Die Gegenprobe: dieselbe Tageskerze auf zwei Boersen
+
+Ein Adapter, den niemand gegen die Wirklichkeit gehalten hat, ist eine
+Behauptung. `historie_probe.py --okx` holt deshalb die Schlusskurse der groessten
+50 Paare von OKX, und `GegenprobeTest` haelt sie gegen die eigene Tafel:
+**50 Paare, derselbe Zeitpunkt, alle innerhalb 5 %.**
+
+Zwei Fehlversuche auf dem Weg dahin - beide waren Fehler des VERGLEICHS, nicht
+der Daten, und beide haetten fast eine falsche Aussage ergeben:
+
+1. Erst wurden Binances Tageskerze und OKX' Ticker "jetzt" verglichen. Vier
+   Symbole lagen 10-11 % auseinander (CELO/BERA/ONE/HBAR). Kein
+   Boersenunterschied: die Kerze war der Stand des ABRUF-Zeitpunkts am Morgen,
+   der Ticker der Stand am Abend. Der Vergleich prueft die Uhr, nicht die Daten.
+2. Dann Binance-Tageskerze gegen OKX-Tageskerze: **0 von 50** trafen sich. OKX'
+   Tageskerze beginnt um 00:00 **UTC+8**, Binances um 00:00 UTC - dieselbe Zahl
+   "1D" bedeutet dort eine andere Tagesgrenze.
+
+Jetzt wird derselbe ZEITPUNKT verglichen: der Schluss der letzten
+abgeschlossenen Binance-Tageskerze gegen die OKX-Stunde, die auf dieser Grenze
+endet. Die letzte, noch laufende Tageskerze ist ausdruecklich ausgenommen - ihr
+"Schluss" ist der Stand des Abrufs.
+
+CoinGecko, die Quelle der Spuren im Betrieb, ist von diesem Rechner nicht mehr
+zu bekommen (HTTP 403 von Cloudflare, gemessen am 29.09.2026); der Test benennt
+das als SKIP statt still zu bestehen. `daten_probe_coingecko.py` zeichnet einen
+Abzug auf, wenn das Netz mitspielt. Eine zweite Boerse leistet dasselbe.
+
+### Lehre: ein Test, der den Quelltext liest, muss ihn PARSEN
+
+Zweimal an einem Tag zugeschlagen: ein Test suchte `lade_wachen` bzw.
+`import ereignis` per Textsuche im Quelltext und fand den Namen zuerst im
+DOCSTRING/KOMMENTAR, der ihn begruendet - beide Male meldete er falsch. Der
+Importcheck parst jetzt mit `ast` und prueft die Reihenfolge der echten
+Importknoten.
+
+### Der Kill-Schalter ist eine Sackgasse (2026-09-29)
+
+Der Funding-Lauf endete nach **sechs Tagen** - `kill_ausgeloest = true`. Die
+Ursache ist keine Einstellung, sondern der Bauart nach ein Fehler:
+
+`spur_buch.zyklus` kehrt bei gesetztem `kill` SOFORT zurueck und leert die
+Positionen (Zeile 571). Der Kill rechnet aber auf der KAPITALKURVE (Ruecklauf
+vom Hoechststand). Zurueckkommen kann die Kurve nur durch neue Trades - und
+genau die sperrt der Kill. **Ein einmal ausgeloester Kill geht nie wieder auf**,
+in keinem Buch, das ueber `spur_buch` laeuft.
+
+Im Lauf war das Buch zum Kill-Zeitpunkt im PLUS; der Kill feuerte auf den
+Ruecklauf vom eigenen Hoechststand, nicht auf einen Verlust. Fuer den Betrieb
+heisst das: eine Feed-Spur, die einmal 45 USD vom Hoch zurueckfaellt, handelt
+danach fuer immer nicht mehr - bis jemand den Deckel von Hand hebt (bei xperp
+am 21.09.2026 genau so passiert).
+
+Fuer die Messung ueber den ganzen Zeitraum laeuft die Spur deshalb ein zweites
+Mal mit erhoehtem Deckel - in der **Kopie** der Wachen
+(`--setzen kill_switch_gesamt_usd=1000000`, Lauf `ohnekill`), nie an der echten
+Wachen. Was gesetzt wurde, steht als `_backtest_gesetzt` in der Kopie.
+
+### Offen nach diesem Durchgang
+
+- Der Kill-Schalter geht nie wieder auf (oben) - Entscheidung Max, ob
+  `spur_buch` nach einer Frist selbst wieder freigibt.
+- Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut (oben) - intrabar
+  waere die naechste Stufe.
+- Die Einstiegszeile im Journal der Feed-Spuren traegt als Grund den
+  Platzhalter "Der Grund, der im Journal steht." (aus `spur_buch`, auch im
+  ECHTEN Journal). Der Ausstiegsgrund ist echt; der Einstiegsgrund sagt nichts.
+
+### Grenze der Methode: Ausstiege zum Kerzenschluss
+
+Ausgestiegen wird zum SCHLUSS der Kerze, in der Stop oder Ziel beruehrt wurde -
+nicht zum Stop- oder Zielkurs. Ein Laeufer ueberschiesst sein Ziel dadurch
+deutlich: ADA stand mit Ziel +12 % im Buch und wurde mit +48 % geschlossen. Die
+Gewinner werden also zu GUT gerechnet, und zwar in beiden Familien (A und B)
+gleich - die Zahlen sind untereinander vergleichbar, aber nicht als
+Ertragserwartung zu lesen. Ein intrabar-Ausstieg waere die naechste Stufe.
+
+### Drei Fehler, die die echten Laeufe aufgedeckt haben
+
+1. `main()` rechnete die Fensterbreite ueber `lade_wachen()` VOR den neuen
+   Zweigen; das gibt es nur bei Familie A - beide Feed-Laeufe starben mit
+   AttributeError, bevor ein Schritt gerechnet war.
+2. `gebuehr_fuer()` holte die Wachen ebenso; die Kostenrechnung haengt jetzt an
+   keiner Spurenfamilie (`wachen_von()` liest die DATEI).
+3. `lauf_feed` importierte `ereignis` vor `spur_buch`; spur_buch legt beim
+   Import Agenten/Bus auf den Suchpfad - andersherum faellt der Import um.
+
 ## Offen
 
 - **T-095:** `runden_aus_journal` paart je **Instrument**, nicht je Position —
   bei gleichzeitigen Positionen im selben Instrument gehen bis zu 30 % der
   Runden verloren (1088 gegen 759 bei squeeze).
-- **T-096:** per-Spur-Historienquellen fuer die Feed-Spuren
-  (`moondev_funding` kann als erste, dort liegt der Fundingsatz frei vor).
+- **T-096 ist gebaut** (2026-09-29): Marktquerschnitt (`moondev_historie.py`),
+  Adapter, `lauf_feed`, `lauf_c`, Gegenprobe. Offen bleiben die Spuren, deren
+  Quelle es historisch nicht gibt (Tabelle oben).
 - Nicht nachrechenbar und mit Grund vermerkt: `moondev_whale`, `-liquidation`,
   `-sentiment`, `liq_wand`, `iv_wand`, `iv_waelle`, `robinhood_radar`,
   `kopier`, `kopier1zu1`, die Nautilus-Arme — sowie `scanner`, `xperp` (Perp),
@@ -154,11 +293,36 @@ zuerst falsch - und jede Fassung sah wie ein Ergebnis aus.
 
 ```bash
 cd Agenten/Handel
-python historie.py --stand                       # was liegt an Daten
-python historie.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H
+python historie_binance.py --stand                       # was liegt an Daten
+python historie_binance.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H
 python replay.py --spur squeeze --lauf ganz      # ganze Historie
 python replay.py --spur squeeze --gegenprobe     # Kern gegen backtest_prognose pruefen
 ```
+
+Die Feed-Spuren brauchen eigene Daten und einen eigenen Weg:
+
+```bash
+cd Agenten/Handel
+python moondev_historie.py --universum 300 --takt 1D     # Top 300, Tageskerzen
+python moondev_historie.py --stunden 40 --takt 1H        # Top 40 + Funding-Instrumente, stuendlich
+python moondev_historie.py --funding spur                # Funding der Spur-Instrumente
+python moondev_historie.py --stand
+python replay.py --spur moondev_topmovers  --feed --lauf ganz --takt 1D
+python replay.py --spur moondev_marktlage  --feed --lauf ganz --takt 1D
+python replay.py --spur moondev_signalwelle --feed --lauf ganz --takt 1H
+python replay.py --spur moondev_funding    --familie-c --lauf ganz
+python replay.py --spur moondev_signalwelle --feed --lauf ganz --takt 1H --mindest-symbole 20
+python historie_probe.py --okx                   # zweite Boerse als Gegenprobe
+```
+
+`--setzen NAME=WERT` aendert einen Wert in der **Kopie** der Wachen - fuer
+Spuren, deren Kill-Schalter den Lauf sonst abwuergt (siehe unten). Die echten
+Wachen einer Spur werden davon nie beruehrt.
+
+Nicht abrufbare Symbole (Binance fuehrt zwei USDT-Paare mit chinesischen Namen,
+`urllib` kann solche Adressen nicht kodieren und der Fehler reisst den ganzen
+Abruf ab) fliegen aus dem Universum und werden im Stand als `verworfen`
+GENANNT - nie still weggelassen.
 
 `--gegenprobe` ist das Tor: `squeeze` muss ueber den neuen Kern **dieselben
 Runden** liefern wie das seit 21.09.2026 im Betrieb laufende

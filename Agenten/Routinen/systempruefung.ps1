@@ -621,8 +621,21 @@ try {
   Notiz "`n--- 11b) Handel: Herzschlag-Regel ---"
   $handelsSpuren = @(Get-ChildItem (Join-Path $wurzel 'Agenten\Handel') -Directory |
     Where-Object { Test-Path (Join-Path $_.FullName 'wachen.json') })
-  $regelkonform = 0
+  # Ein WERKZEUG traegt kein 'handel_erlaubt' - es haelt nie eine Position, die
+  # ein Herzschlag schliessen koennte. Es wird gezaehlt, aber nicht geprueft:
+  # `okx_bot_waechter` (Bot-Berater, fuehrt kein Buch) meldete sonst jeden Tag
+  # "Herzschlag 0 min statt 180", ohne dass die Zahl etwas bedeutet - und eine
+  # taegliche Zeile ohne Bedeutung ist der Anfang, an dem man echte Warnungen
+  # ueberliest (29.09.2026).
+  $werkzeuge = @()
+  $spuren = @()
   foreach ($hs in $handelsSpuren) {
+    $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
+    if ($null -eq $wj.PSObject.Properties['handel_erlaubt']) { $werkzeuge += $hs.Name }
+    else { $spuren += $hs }
+  }
+  $regelkonform = 0
+  foreach ($hs in $spuren) {
     $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
     $hm = [int]$wj.herzschlag_max_minuten
     $erlaubt = ($wj.handel_erlaubt -eq $true)
@@ -633,7 +646,8 @@ try {
       $regelkonform++
     }
   }
-  Info "$regelkonform von $($handelsSpuren.Count) Handels-Spuren folgen der Herzschlag-Regel (180 fuer alle, Papier UND Live)."
+  $werkzeugText = if ($werkzeuge.Count -gt 0) { " - ausgenommen als Werkzeug ohne Handelsbuch: $(($werkzeuge | Sort-Object) -join ', ')" } else { "" }
+  Info "$regelkonform von $($spuren.Count) Handels-Spuren folgen der Herzschlag-Regel (180 fuer alle, Papier UND Live)$werkzeugText."
 } catch { Notiz "  ! Herzschlag-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------

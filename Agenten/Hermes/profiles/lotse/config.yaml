@@ -7,11 +7,11 @@ terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles
 fallback_providers:
   - provider: ollama-launch
-    model: qwen35-8k:cpu
+    model: gemma-e4b-8k:cpu
     base_url: http://127.0.0.1:11434/v1
 plugins:
   enabled: []
-_config_version: 46
+_config_version: 49
 onboarding:
   seen:
     tool_progress_prompt: true
@@ -26,3 +26,6 @@ image_gen:
 delegation:
   reasoning_effort: medium
   model: ''
+platforms:
+  photon:
+    enabled: false

@@ -5,7 +5,7 @@ model:
   api_mode: chat_completions
 plugins:
   enabled: []
-_config_version: 46
+_config_version: 49
 agent: {}
 terminal:
   backend: local
@@ -14,14 +14,17 @@ providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
     base_url: http://127.0.0.1:11434/v1
-    default_model: qwen35-8k:cpu
+    default_model: gemma-e4b-8k:cpu
     name: Ollama
-    model: qwen35-8k:cpu
+    model: gemma-e4b-8k:cpu
     discover_models: true
 fallback_providers:
   - provider: ollama-launch
-    model: qwen35-8k:cpu
+    model: gemma-e4b-8k:cpu
     base_url: http://127.0.0.1:11434/v1
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1
+platforms:
+  photon:
+    enabled: false

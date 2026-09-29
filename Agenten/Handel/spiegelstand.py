@@ -89,6 +89,28 @@ def alter_minuten(zeitstempel):
     return (datetime.now(timezone.utc) - t).total_seconds() / 60
 
 
+def frisches_alter(spurordner, benenne):
+    """Alter des letzten Laufs - aus dem FRISCHESTEN der beiden Staende.
+
+    `alter_minuten` allein auf zustand.json zu rechnen war ein Fehlalarm: eine
+    Spur, die nur live laeuft, schreibt zustand.live.json, waehrend ihr
+    Papierstand einfriert. Gemessen am 29.09.2026 lief `moondev_marktlage` im
+    15-Minuten-Takt ("(live) ok" im dauerlauf.log), der Papierstand stand
+    seit 03:39 - die Systempruefung machte daraus "Herzschlag 204 min alt
+    (> 2 h) - laeuft die Spur ueberhaupt?" und meldete das jeden Tag.
+
+    Dasselbe Muster wie `moondev_marktlage._papier_zustand()`: der Zustand des
+    Zweigs, der schreibt, zaehlt; nur Papier sperrt eine Spur, die nie live
+    lief. `benenne` biegt den Risikostufen-Suffix in BEIDE Namen.
+    """
+    werte = []
+    for name in (benenne("zustand.json"), benenne("zustand.live.json")):
+        werte.append(alter_minuten((lade(os.path.join(spurordner, name))
+                                    or {}).get("letzter_lauf")))
+    werte = [w for w in werte if w is not None]
+    return min(werte) if werte else None
+
+
 def spuren_im_lauf(handel=HANDEL):
     """Die Schluessel von `SPUREN` aus dauerlauf.py - per ast, nicht per import.
 
@@ -190,7 +212,7 @@ def spur_zeile(handel, spur, risiko=None, ordner=None):
     z = lade(os.path.join(spurordner, benenne("zustand.json"))) or {}
     ziel = w.get("journal_zweitziel")
     ziel = ziel.replace("\\", os.sep) if isinstance(ziel, str) else None
-    alter = alter_minuten(z.get("letzter_lauf"))
+    alter = frisches_alter(spurordner, benenne)
     anzahl = zeilen(os.path.join(spurordner, benenne("handelsjournal.csv")))
 
     if not ziel:

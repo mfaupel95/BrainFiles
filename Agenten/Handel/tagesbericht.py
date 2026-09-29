@@ -52,9 +52,43 @@ from lage import (                                       # noqa: E402
 
 # --- Text -------------------------------------------------------------------
 
+def _zahl(x):
+    """Eine Zahl, wie ein Mensch sie liest - nie in Exponentialschreibweise.
+
+    Befund 25.09.2026: Robinhood-Radar und Moon-Dev Sniper standen im Bericht
+    als '0x48f413c32a7b... long 4.258775833450569e-05'. Die Zahl war richtig
+    (Einstiegspreis eines Token mit acht Nachkommastellen), aber unlesbar.
+    Die Stellenzahl richtet sich nach der Groessenordnung: bei Werten unter
+    0,01 bleiben vier Ziffern sichtbar.
+    """
+    if x is None:
+        return "-"
+    x = float(x)
+    ax = abs(x)
+    if ax == 0:
+        return "0"
+    if ax >= 1000:
+        stellen = 2
+    elif ax >= 1:
+        stellen = 4
+    elif ax >= 0.01:
+        stellen = 6
+    else:
+        import math
+        stellen = min(12, max(6, int(-math.log10(ax)) + 4))
+    s = ("%%.%df" % stellen) % x
+    return s.rstrip("0").rstrip(".") if "." in s else s
+
+
+def _kurz(name, breite=16):
+    """Lange Positionsschluessel kuerzen - ein Token-Mint sprengt sonst die Zeile."""
+    n = str(name or "?")
+    return n if len(n) <= breite else n[:breite - 1] + "\u2026"
+
+
 def zeile_position(p, waehrung):
     if p["kurs"] is None:
-        return "  %-12s %s  (kein Kurs)" % (p["name"], p["einstieg"])
+        return "  %-12s %s  (kein Kurs)" % (_kurz(p["name"]), _zahl(p["einstieg"]))
     pfeil = "+" if p["vh"] >= 0 else ""
     # Stop-Abstand richtungsbewusst: bei long liegt der Stop unter dem Kurs
     # (kurs/stop - 1 positiv = Luft), bei short ueber dem Kurs (kurs/stop - 1

@@ -35,7 +35,7 @@ import itertools
 import json
 import os
 
-import historie
+import historie_binance
 import replay
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -336,7 +336,7 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
     gesamt = replay.kerzenlaenge(spur, w)
     if not gesamt:
         raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie.py --auffuellen'" % spur)
+                           "'python historie_binance.py --auffuellen'" % spur)
     kerzen = min(gesamt, int(monate) * kerzen_je_monat(takt))
     # Ein zu kurzer Zeitraum ist kein Fehler des Aufrufers, sondern eine Rechnung:
     # 6 Monate im 4H-Takt sind 1092 Kerzen und reichen fuer 2 Fenster nicht.
@@ -365,9 +365,9 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
     # die virtuelle Uhr, der Index ist die Kerzenposition im Abschnitt.
     kuerzeste = None
     for i in replay._instrumente(w):
-        reihen = historie.lade(i, takt)[von_index:]
+        reihen = historie_binance.lade(i, takt)[von_index:]
         kuerzeste = reihen if kuerzeste is None else kuerzeste
-    reihen = historie.lade(replay._instrumente(w)[0], takt)[von_index:]
+    reihen = historie_binance.lade(replay._instrumente(w)[0], takt)[von_index:]
     grenzen = []
     for such_i, pruef_i in abschnitte:
         grenzen.append((

@@ -384,12 +384,53 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    Waisen im Zaehlfenster, die in Minuten von allein verschwinden. Wer sie
    mitzaehlt, alarmiert bei jedem Neustart. Also nur Prozesse aelter als die
    Schonfrist als Befund werten — und die Gesamtzahl ebenfalls so filtern.
-3. **Zwei Bedingungen fuer einen Treffer: Kennung UND Prozessname.** Eine
+3. **Die Identitaet des Dienstes kommt aus SEINER Zustandsdatei, nicht aus der
+   Kommandozeile eines Starters.** Ein Suchmuster auf eine bestimmte Startzeile
+   (`-m <paket> gateway run`) trifft nur DIESE Startform. Ein Update kann denselben
+   Dienst ueber `runpy.run_module('<paket>', run_name=...)` starten, wo zwischen
+   Modulnamen und Unterbefehl noch Argumente stehen - das Muster findet dann 0
+   Prozesse, waehrend der Dienst gesund laeuft, und die Wache startet ihn im Takt
+   ihrer eigenen Laufzeit neu (gemessen: 148 Neustarts an einem Tag; jeder Start
+   reisst die offenen Verbindungen mit). Reihenfolge: (a) die Zustandsdatei lesen,
+   die der Dienst SELBST schreibt (`pid` + Zustand = laeuft, Prozess existiert,
+   Programmname passt), (b) nur wenn die fehlt, die Prozessliste - und dann mit
+   einem Muster, das ALLE bekannten Startformen per `|` abdeckt.
+   **Eine Neustart-Schleife verraet nur die ZAHL, nie die einzelne Zeile:**
+   "kein Prozess - Neustart ausgeloest" liest sich richtig, der Dienst war danach
+   kurz weg, es gibt kein Widerspruchssignal. Beim Pruefen einer Prozesswache
+   deshalb die Neustarts JE TAG gegen die Takte im selben Zeitraum zaehlen.
+   **Erfolg meldet die Wache ueber den MELDEWEG, nicht ins eigene Log.** Steht im
+   Log nur der Eingriff, sieht ein gesundes System wie "nichts passiert" aus
+   (dort steht dann wochenlang nichts). Den Nachweis (frischer Meldeeintrag
+   "laeuft, kein Start", Datei unter `cron/output/<job-id>/`) am Meldeweg holen,
+   nicht in der Logdatei suchen.
+4. **Zwei Bedingungen fuer einen Treffer: Kennung UND Prozessname.** Eine
    `CommandLine`-Suche nach dem Modulnamen trifft auch die eigene Abfrage und
    jede Huelle, die den Text enthaelt — in beide Richtungen schaedlich: die
    Wache zaehlt Phantome (kraken=5 statt 2), und ein Aufraeumer, der das fuer ein
    Kind haelt, BEENDET seine eigene Suche per `taskkill /T`. Immer zusaetzlich auf
    `python.exe`/`pythonw.exe` (bzw. den echten Programmnamen) filtern.
+
+5. **Die Bedingung pruefen, nicht eine ADRESSE, die sie einmal begleitet hat.** Ein
+   Port, eine Datei, ein Zaehler kann die Sache ueberleben: `gateway-waechter.ps1`
+   fuehrte "Port 9900 ist die Wahrheit" und startete den Dienst, sobald der Port zu
+   war - seit der Dienst auf einen Named Pipe lauschte (TCP 9900 bleibt zu, waehrend
+   er gesund laeuft), lief die Wache in eine Neustart-Schleife: **128 Neustarts an
+   einem Tag**, jeder riss die offenen Verbindungen mit. Richtig ist die Sache
+   selbst (laeuft der erwartete Prozess UND antwortet er - Pipe ODER Port), plus
+   eine Bremse: ein antwortloser Prozess wird hoechstens einmal je 30 Minuten neu
+   gestartet. Beleg ist die ZAHL der Neustarts gegen die Takte im selben Zeitraum,
+   nicht die einzelne Logzeile ("kein Prozess - Neustart ausgeloest" liest sich
+   richtig).
+   **Und die Abfrage darf sich nicht selbst finden:**
+   `$_.CommandLine -match 'hermes_cli.main update'` trifft die laufende Abfrage -
+   die Wache meldet dann IMMER "es laeuft ein Update" und heilt nie. Muster aus
+   Teilen bauen, eigenen Prozess ausschliessen (`$_.ProcessId -ne $PID`), auf
+   `python.exe` filtern, `-like` statt `-match`, und einen Test dafuer schreiben.
+   Ein Pipe-Namensraum wird aus einer DATEI gelesen, nie als `-Command` (die
+   Bash-Huelle frisst die Backslashes und die Probe meldet faelschlich "kein Pipe").
+   Voller Fall: im Skill `hermes-maintenance` die Datei
+   `gateway-identitaet-und-wachen` (dort unter `references/`).
 
 **`powershell` immer mit absolutem Pfad aufrufen**
 (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der

@@ -43,6 +43,43 @@ class EnvTest(unittest.TestCase):
         self.assertEqual({}, hb._env(os.path.join(HIER, "gibtsnicht.env")))
 
 
+class ZugangTest(unittest.TestCase):
+    """Die Umgebung hat Vorrang vor der .env - sonst bringt das Verlagern
+    der Geheimnisse nichts, solange die alte Datei noch herumliegt."""
+
+    def setUp(self):
+        self._alt = {k: os.environ.get(k)
+                     for k in ("AI4TRADE_TOKEN", "AI4TRADE_AGENT_ID")}
+
+    def tearDown(self):
+        for k, v in self._alt.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_umgebung_schlaegt_datei(self):
+        import tempfile
+        d = tempfile.mkdtemp(prefix="ai4trade-zugang-")
+        p = os.path.join(d, "test-env")
+        with open(p, "w", encoding="utf-8") as f:
+            for zeile in ("AI4TRADE_TOKEN=aus-der-datei",
+                          "AI4TRADE_AGENT_ID=1"):
+                print(zeile, file=f)
+        os.environ["AI4TRADE_TOKEN"] = "aus-der-umgebung"
+        z = hb.zugang(p)
+        self.assertEqual("aus-der-umgebung", z["AI4TRADE_TOKEN"])
+        # Was nur in der Datei steht, bleibt erhalten (Rueckfall).
+        self.assertEqual("1", z["AI4TRADE_AGENT_ID"])
+        os.remove(p)
+        os.rmdir(d)
+
+    def test_ohne_datei_reicht_die_umgebung(self):
+        os.environ["AI4TRADE_TOKEN"] = "nur-umgebung"
+        z = hb.zugang(os.path.join(HIER, "gibtsnicht.env"))
+        self.assertEqual("nur-umgebung", z["AI4TRADE_TOKEN"])
+
+
 class AuthTest(unittest.TestCase):
     def setUp(self):
         # WICHTIG: andere Klassen patchen hb.heartbeat/hb.hole - ohne dieses
