@@ -50,6 +50,8 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ## Eintragsformat
 
 ```
+
+## Offen
 - [ ] **T-001 — Kurztitel**
       Kontext: worum es geht, warum es offen ist
       Nächster Schritt: eine konkrete, ausführbare Handlung
@@ -360,58 +362,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Handelszentrale-Suite. KEIN Handelseingriff - reine Anzeige.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/lage.py, Handelszentrale
-
-- [ ] **T-110 — Verwaiste Update-Autostashes im Checkout**
-      Kontext: Jedes `hermes update` legt einen Autostash an und stellt ihn wieder her; bleibt
-      einer liegen, warnt das Update nach 7 Tagen (`stash@{1}` vom 17.09. besteht weiter, dazu
-      `stash@{0}` = der Lauf vom 25.09.2026 17:06, der nach dem Pull erfolgreich zurueckerstattet
-      wurde). Die Aenderung `js-yaml` 4.3.1 -> 4.3.2 in `package.json` lag am 25.09.2026 nur im
-      Arbeitsbaum (npm-Audit damit 0), sie wird bei jedem Update mitgestasht und
-      zurueckerstattet.
-      Naechster Schritt: Inhalte mit `git stash show -p stash@{n}` ansehen, was noch gebraucht wird
-      als Patch sichern, den Rest bewusst verwerfen (`git stash drop`); entscheiden, ob der
-      js-yaml-Fix upstream gemeldet oder im Checkout committet wird.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/hermes-agent (git stash, package.json)
-
-- [ ] **T-109 — Die Update-Warteprobe `tmp/venv_halter.py` bricht beim Import ab**
-      Kontext: Die Aufgabe `Hermes-Update-20260921` (Einmal-Trigger, PRUEFEN alle 20 s, faehrt
-      `hermes update --yes --keep-stash` bei 0 Haltern) ruft `tmp/venv_halter.py` mit dem
-      venv-Python auf. Am 25.09.2026 brach dieses Skript in JEDEM Lauf mit
-      `ModuleNotFoundError: No module named 'ruamel'` (auch als Kopie in `tmp/`), waehrend
-      derselbe Import per `python -c "..."` und `python -m hermes_cli.main` aus demselben venv
-      fehlerfrei lief - die Ursache ist nicht geklaert, die Probe ist damit unzuverlaessig.
-      Eine Probe, die beim Import stirbt, meldet nie "0 Halter": die Aufgabe wartet 45 min und
-      fahrt nichts.
-      Naechster Schritt: Halter ueber die kanonischen Funktionen zaehlen
-      (`hermes_cli.update_cmd_windows._detect_venv_python_processes` /
-      `_hermes_holder_subcommand`) und von aussen aufrufen, statt eine eigene Prozessliste per
-      Teilstring zu bauen; danach EINMAL gegen den laufenden Dashboard-PID-Paar pruefen, dass die
-      Probe ihn wirklich sieht.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/tmp/venv_halter.py, Task `Hermes-Update-20260921`
-
-- [ ] **T-107 — Doctor meldet 18 Photon-Doppelkennungen (Fehlalarm oder echte Kollision?)**
-      Kontext: `hermes doctor` und `hermes gateway status` melden seit dem 25.09.2026 in
-      JEDEM Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon credential
-      (PHOTON_PROJECT_ID/PHOTON_PROJECT_SECRET)" und schliessen daraus "gateway is STANDALONE:
-      profiles NOT served (their bots stay silent)". Ursache ist mit hoher Wahrscheinlichkeit
-      der gemeinsame Credential-Store: die `profiles/<bot>/auth.json` sind SYMLINKS auf
-      `Agenten/Hermes/auth.json`, der Photon-Eintrag im Pool ist also physisch EINE Kennung,
-      die der Doctor je Profil neu zaehlt. Die Bots fahren ohnehin als Einzelauftraege
-      (`hermes -p <name> chat -q`), nicht als Multiplex-Adapter.
-      Messergebnis 25.09.2026: PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET, PHOTON_ALLOWED_USERS
-      und PHOTON_HOME_CHANNEL stehen AUSSCHLIESSLICH in der Haupt-`.env` (`Agenten/Hermes/.env`);
-      KEIN Bot-Profil hat eigene Photon-Werte. Die Meldung entsteht also allein aus dem
-      geteilten Credential-Store (auth.json-Symlink) - fuer die 25 Bot-Profile ein FEHLALARM,
-      weil sie als Einzelauftraege fahren und kein Plattform-Token beanspruchen.
-      Ein echter Fall bleibt: `profiles/awesome-systematic-trading/config.yaml` traegt einen
-      eigenen `photon:`-Block (dieses Profil hat auch eine eigene auth.json statt des Symlinks).
-      Naechster Schritt: pruefen, ob dieser Block dieselbe Kennung wie die Haupt-.env benutzt -
-      dann entfernen oder dem Profil ein eigenes Token geben. Den Fehlalarm fuer die uebrigen
-      Profile im Wiki unter Betrieb/Hermes.md festhalten und T-107 schliessen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/.env, Agenten/Hermes/auth.json
 
 - [ ] **T-106 — dmcsystem: Modellwahl-Diskussion aufnehmen**
       Kontext: Projekt existiert hier nicht. Selbes Muster.
@@ -1694,6 +1644,73 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
+- [x] **T-107 — Doctor meldet 18 Photon-Doppelkennungen (Fehlalarm oder echte Kollision?)**
+      Kontext: `hermes doctor` und `hermes gateway status` melden seit dem 25.09.2026 in
+      JEDEM Bot-Profil "Profiles 'default' and '<bot>' both hold the same photon credential
+      (PHOTON_PROJECT_ID/PHOTON_PROJECT_SECRET)" und schliessen daraus "gateway is STANDALONE:
+      profiles NOT served (their bots stay silent)". Ursache ist mit hoher Wahrscheinlichkeit
+      der gemeinsame Credential-Store: die `profiles/<bot>/auth.json` sind SYMLINKS auf
+      `Agenten/Hermes/auth.json`, der Photon-Eintrag im Pool ist also physisch EINE Kennung,
+      die der Doctor je Profil neu zaehlt. Die Bots fahren ohnehin als Einzelauftraege
+      (`hermes -p <name> chat -q`), nicht als Multiplex-Adapter.
+      Messergebnis 25.09.2026: PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET, PHOTON_ALLOWED_USERS
+      und PHOTON_HOME_CHANNEL stehen AUSSCHLIESSLICH in der Haupt-`.env` (`Agenten/Hermes/.env`);
+      KEIN Bot-Profil hat eigene Photon-Werte. Die Meldung entsteht also allein aus dem
+      geteilten Credential-Store (auth.json-Symlink) - fuer die 25 Bot-Profile ein FEHLALARM,
+      weil sie als Einzelauftraege fahren und kein Plattform-Token beanspruchen.
+      Ein echter Fall bleibt: `profiles/awesome-systematic-trading/config.yaml` traegt einen
+      eigenen `photon:`-Block (dieses Profil hat auch eine eigene auth.json statt des Symlinks).
+      Naechster Schritt: pruefen, ob dieser Block dieselbe Kennung wie die Haupt-.env benutzt -
+      dann entfernen oder dem Profil ein eigenes Token geben. Den Fehlalarm fuer die uebrigen
+      Profile im Wiki unter Betrieb/Hermes.md festhalten und T-107 schliessen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/.env, Agenten/Hermes/auth.json
+      Erledigt 29.09.2026: FEHLALARM, gemessen. Von 28 Bot-Profilen haben 26
+      `auth.json` als SYMLINK auf `Agenten/Hermes/auth.json` (eigene Datei nur
+      basic-memory und awesome-systematic-trading) - der Photon-Eintrag im geteilten
+      Credential-Store ist physisch EINE Kennung, die der Doctor je Profil neu zaehlt.
+      Kein Bot-Profil traegt eigene PHOTON_*-Werte (nur in der Haupt-.env). Die Profile
+      fahren als Einzelauftraege, kein Plattform-Token wird doppelt beansprucht.
+- [x] **T-109 — Die Update-Warteprobe `tmp/venv_halter.py` bricht beim Import ab**
+      Kontext: Die Aufgabe `Hermes-Update-20260921` (Einmal-Trigger, PRUEFEN alle 20 s, faehrt
+      `hermes update --yes --keep-stash` bei 0 Haltern) ruft `tmp/venv_halter.py` mit dem
+      venv-Python auf. Am 25.09.2026 brach dieses Skript in JEDEM Lauf mit
+      `ModuleNotFoundError: No module named 'ruamel'` (auch als Kopie in `tmp/`), waehrend
+      derselbe Import per `python -c "..."` und `python -m hermes_cli.main` aus demselben venv
+      fehlerfrei lief - die Ursache ist nicht geklaert, die Probe ist damit unzuverlaessig.
+      Eine Probe, die beim Import stirbt, meldet nie "0 Halter": die Aufgabe wartet 45 min und
+      fahrt nichts.
+      Naechster Schritt: Halter ueber die kanonischen Funktionen zaehlen
+      (`hermes_cli.update_cmd_windows._detect_venv_python_processes` /
+      `_hermes_holder_subcommand`) und von aussen aufrufen, statt eine eigene Prozessliste per
+      Teilstring zu bauen; danach EINMAL gegen den laufenden Dashboard-PID-Paar pruefen, dass die
+      Probe ihn wirklich sieht.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/tmp/venv_halter.py, Task `Hermes-Update-20260921`
+      Erledigt 29.09.2026: Die Probe laeuft wieder. `tmp/venv_halter.py` zaehlt die
+      Halter ueber die kanonischen Funktionen (`hermes_cli.update_cmd_windows.
+      _detect_venv_python_processes`, Gateway ausgenommen) und findet im echten Lauf
+      2 Halter (.hermes-runtime-Python 51660, Dashboard 64468). Der fruehere
+      `ModuleNotFoundError: No module named 'ruamel'` kam aus dem unvollstaendigen venv
+      nach dem abgebrochenen Update vom 25.09. und ist mit der Reparatur verschwunden.
+- [x] **T-110 — Verwaiste Update-Autostashes im Checkout**
+      Kontext: Jedes `hermes update` legt einen Autostash an und stellt ihn wieder her; bleibt
+      einer liegen, warnt das Update nach 7 Tagen (`stash@{1}` vom 17.09. besteht weiter, dazu
+      `stash@{0}` = der Lauf vom 25.09.2026 17:06, der nach dem Pull erfolgreich zurueckerstattet
+      wurde). Die Aenderung `js-yaml` 4.3.1 -> 4.3.2 in `package.json` lag am 25.09.2026 nur im
+      Arbeitsbaum (npm-Audit damit 0), sie wird bei jedem Update mitgestasht und
+      zurueckerstattet.
+      Naechster Schritt: Inhalte mit `git stash show -p stash@{n}` ansehen, was noch gebraucht wird
+      als Patch sichern, den Rest bewusst verwerfen (`git stash drop`); entscheiden, ob der
+      js-yaml-Fix upstream gemeldet oder im Checkout committet wird.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Hermes/hermes-agent (git stash, package.json)
+      Erledigt 29.09.2026: Beide Autostashes verworfen, Inhalt vorher gesichert nach
+      `Agenten/Hermes/logs/stash-sicherung/autostash-20260922.patch` (24.792 B; der vom
+      17.09. war leer). Kein Commit im Checkout: er wird von `hermes update` verwaltet,
+      ein eigener Commit blockiert den naechsten Pull. Der js-yaml-Fix ist ausserdem
+      gegenstandslos - `package.json` traegt beide Eintraege (overrides Zeile 58 und
+      Zeile 79) wieder KONSISTENT auf 4.3.1, der EOVERRIDE-Bruch kann nicht auftreten.
 - [x] **T-116 - ai4trade-Passwort stand im Klartext in einem Sitzungsprotokoll**
       Kontext: Die API von https://ai4trade.ai echot bei einem fehlerhaften
       Login-Aufruf das Feld `input` der Anfrage zurueck - also E-Mail UND Passwort
