@@ -670,9 +670,10 @@ def omnitrade_kopf(lage):
     if not lage.get("ok"):
         return "⚠ omnitrade — %s" % (lage.get("fehler") or "?"), "schlecht"
     netz = str(lage.get("network") or "?")
-    text = ("omnitrade %s · %s · %s · %s   Kerzen %d   Kurs %s   Signal %s   "
+    text = ("omnitrade %s · %s %s · %s · %s   Kerzen %d   Kurs %s   Signal %s   "
             "netto %+.6g   Orders %d / abgelehnt %d   (vor %ds)"
-            % (lage.get("state"), netz, lage.get("symbol"), lage.get("script"),
+            % (lage.get("state"), lage.get("exchange") or "binance", netz,
+               lage.get("symbol"), lage.get("script"),
                int(_zahl(lage.get("candles_seen")) or 0),
                kurs_fmt(_zahl(lage.get("last_close"))), lage.get("last_signal"),
                _zahl(lage.get("net_quantity")) or 0.0,
