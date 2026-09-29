@@ -119,15 +119,73 @@ class FensterTest(ReplayTest):
             self.assertLess(abs(r["ausstieg"] / r["einstieg"] - 1.0), 0.5)
             self.assertIn(r["inst"], ("BTC-USDC", "ETH-USDC", "SOL-USDC"))
 
-    def test_fenster_ist_schneller_als_das_praefix(self):
-        import time
-        t0 = time.time()
-        replay.lauf_a("supertrend", 0.1, "schnell", max_kerzen=2000, fenster=400)
-        mit = time.time() - t0
-        t0 = time.time()
-        replay.lauf_a("supertrend", 0.1, "langsam", max_kerzen=2000)
-        ohne = time.time() - t0
-        self.assertLess(mit, ohne)
+    def test_fenster_begrenzt_die_kerzen_je_schritt(self):
+        """Die EIGENSCHAFT, auf die es ankommt - nicht die Wanduhr.
+
+        Vorher verglich dieser Test zwei Laufzeiten (mit Fenster < ohne). Gemessen
+        am 29.09.2026 auf drei Durchgaengen ergab das Verhaeltnis 0.97, also fast
+        nichts: bei 2000 Kerzen dominiert die Ausfuehrungszeit, und der
+        O(n)-gegen-O(n^2)-Unterschied waechst erst mit der Laenge. Ein Test auf
+        die Uhr meldet damit die Maschinenlast (hier laufen drei Risikostufen
+        parallel), nicht die Regel.
+
+        Geprueft wird stattdessen, was das Fenster tut: die Spur sieht je Schritt
+        hoechstens `fenster` Kerzen; ohne Fenster waechst die Zahl mit dem Lauf.
+        """
+        # ACHTUNG: `spur_modul()` laedt das Spurenmodul bei JEDEM Aufruf NEU
+        # (`module_from_spec` auf einen frischen Spec). Ein Patch am zurueck-
+        # gegebenen Objekt trifft deshalb ein anderes als das, mit dem `lauf_a`
+        # arbeitet - der erste Versuch zaehlte genau deshalb nichts. Gepatcht
+        # wird darum `replay.spur_modul` selbst: so bekommt JEDES von `lauf_a`
+        # erzeugte Modul die zaehlende Huelle.
+        echt_spur_modul = replay.spur_modul
+        gesehen = []
+
+        def gefaelscht(spur):
+            m = echt_spur_modul(spur)
+            echt = m.pruefe_ausstiege
+
+            def zaehlend(z, k, w, **kw):
+                gesehen.append(len(k))
+                return echt(z, k, w, **kw)
+
+            m.pruefe_ausstiege = zaehlend
+            return m
+
+        replay.spur_modul = gefaelscht
+        self.addCleanup(setattr, replay, "spur_modul", echt_spur_modul)
+        try:
+            replay.lauf_a("supertrend", 0.1, "fenster", max_kerzen=2000, fenster=400)
+        finally:
+            replay.spur_modul = echt_spur_modul
+        self.assertTrue(gesehen, "pruefe_ausstiege wurde nie gerufen - Aufbau geaendert?")
+        self.assertLessEqual(max(gesehen), 400,
+                             "mit Fenster sah die Spur %d Kerzen" % max(gesehen))
+
+        # Ein "ohne Fenster" gibt es nicht: fehlt die Zahl, setzt `lauf_a` die
+        # Vorgabe der Spur (`fenster_vorgabe`) - der Lauf sieht nie die ganze
+        # Reihe. Die Gegenprobe muss deshalb ein GROSSES Fenster setzen.
+        gesehen.clear()
+        replay.spur_modul = gefaelscht
+        try:
+            replay.lauf_a("supertrend", 0.1, "weit", max_kerzen=2000, fenster=2000)
+        finally:
+            replay.spur_modul = echt_spur_modul
+        self.assertGreater(max(gesehen), 400,
+                           "ein weites Fenster sieht nicht mehr Kerzen - wirkt der Parameter ueberhaupt?")
+
+    def test_vorgabe_respektiert_die_mindestkerzen_der_spur(self):
+        """Die Lehre vom 25.09.2026, als Regel festgenagelt.
+
+        `fenster_vorgabe` darf nicht unter die eigene Anforderung der Spur
+        fallen: macd_mtf braucht fuer seinen 16er-Rahmen ~560 Basiskerzen, mit
+        Fenster 400 kam kein einziger Handel zustande - der Lauf meldete
+        "0 Runden", und das sieht wie ein Messergebnis aus.
+        """
+        self.assertGreaterEqual(replay.fenster_vorgabe({"kerzen_anzahl": 400,
+                                                        "mindest_kerzen": 600}), 640)
+        self.assertEqual(replay.fenster_vorgabe({"kerzen_anzahl": 900,
+                                                  "mindest_kerzen": 300}), 900)
 
 
 class FamilieBTest(ReplayTest):
