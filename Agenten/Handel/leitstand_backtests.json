@@ -20,7 +20,7 @@
         {"flag": "--modell", "typ": "wahl", "vorgabe": "beide", "werte": ["schluss", "naechste_eroeffnung", "beide"]},
         {"flag": "--raster", "typ": "schalter", "vorgabe": false}
       ],
-      "schreibt": [{"muster": "orb/daten/<instrument>_M15.json", "kennung": "_M15"}]
+      "schreibt": [{"muster": "orb/daten/<okx-instId>_M15.json", "kennung": "_M15"}]
     },
     {
       "name": "ORB (Kraken)",
@@ -31,7 +31,7 @@
         {"flag": "--modell", "typ": "wahl", "vorgabe": "beide", "werte": ["schluss", "naechste_eroeffnung", "beide"]},
         {"flag": "--raster", "typ": "schalter", "vorgabe": false}
       ],
-      "schreibt": [{"muster": "orbk/daten/<instrument>_M15.json", "kennung": "_M15"}]
+      "schreibt": [{"muster": "orbk/daten/<kraken-paar mit / als _>_M15.json", "kennung": "_M15"}]
     },
     {
       "name": "Prognose-Spuren",
@@ -48,7 +48,7 @@
       "name": "Varianten (schnell)",
       "skript": "bt_varianten_fast.py",
       "felder": [],
-      "schreibt": []
+      "schreibt": [{"muster": "daten/backtest_kerzen/*.json", "kennung": "backtest_kerzen"}]
     }
   ]
 }

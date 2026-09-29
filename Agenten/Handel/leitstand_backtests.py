@@ -31,7 +31,7 @@ LISTE = HIER / "leitstand_backtests.json"
 VERBOTENE_FLAGS = ("--json", "--cache", "--lokal")
 EIGENE_BEREICHE = ("optimieren.py", "backtest_urteile.py")
 TYPEN = ("float", "int", "text", "wahl", "schalter")
-_TEXT = re.compile(r"^[A-Za-z0-9_./-]{1,40}$")
+_TEXT = re.compile(r"^[A-Za-z0-9](?!.*\.\.)[A-Za-z0-9_./-]{0,39}$")
 
 
 # --- Replay: reine Funktionen -----------------------------------------------
@@ -84,7 +84,7 @@ class ReplayBereich(ttk.Frame):
         super().__init__(eltern, padding=8)
         self.reiter = reiter
         g = dict(REPLAY_VORGABEN,
-                 **((reiter.zustand.get("werte") or {}).get("replay") or {}))
+                 **_als_dict(_als_dict(reiter.zustand.get("werte")).get("replay")))
         if g["spur"] not in replay.SPUREN_TEIL_A:
             g["spur"] = REPLAY_VORGABEN["spur"]
         self.w_spur = tk.StringVar(value=g["spur"])
@@ -150,7 +150,8 @@ def eintrag_fehler(e):
         return "Eintrag ohne Namen"
     name, skript = e["name"], e.get("skript")
     if (not isinstance(skript, str) or Path(skript).is_absolute()
-            or ".." in Path(skript).parts):
+            or ".." in Path(skript).parts
+            or not (HIER / skript).resolve().is_relative_to(HIER.resolve())):
         return "%s: Skriptpfad ungültig" % name
     if Path(skript).name in EIGENE_BEREICHE:
         return "%s: hat einen eigenen Bereich" % name
@@ -163,6 +164,10 @@ def eintrag_fehler(e):
         if (not isinstance(f, dict) or f.get("typ") not in TYPEN
                 or not str(f.get("flag", "")).startswith("--")):
             return "%s: Feld ungültig" % name
+        for grenze in ("min", "max"):
+            if grenze in f and (isinstance(f[grenze], bool)
+                                or not isinstance(f[grenze], (int, float))):
+                return "%s: %s von %s ist keine Zahl" % (name, grenze, f["flag"])
         if f["flag"] in VERBOTENE_FLAGS:
             return "%s: %s ist gesperrt" % (name, f["flag"])
         if f["typ"] == "wahl" and not isinstance(f.get("werte"), list):

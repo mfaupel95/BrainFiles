@@ -276,6 +276,32 @@ class Einzel(unittest.TestCase):
         for name in ("Json", "Opt", "Weg", "Fehlt"):
             self.assertIn(name, fehler)
 
+    def test_text_beginnt_mit_buchstabe_oder_ziffer(self):
+        for wert in ("-x", "--json", ".x", "..", "a..b", "/x", "_x"):
+            befehl, _f = lbt.einzel_befehl(EINTRAG, {"--instrument": wert})
+            self.assertIsNone(befehl, wert)
+        for wert in ("BTC", "XBT/USD", "a-b_c.d", "1"):
+            befehl, _f = lbt.einzel_befehl(EINTRAG, {"--instrument": wert})
+            self.assertIsNotNone(befehl, wert)
+
+    def test_liste_verwirft_laufwerkspfad_und_falsche_grenzen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "liste.json"
+            falsch = [dict(f) for f in EINTRAG["felder"]]
+            falsch[0]["min"] = "1"
+            bool_grenze = [dict(f) for f in EINTRAG["felder"]]
+            bool_grenze[0]["max"] = True
+            p.write_text(json.dumps({"eintraege": [
+                EINTRAG,
+                dict(EINTRAG, name="Laufwerk", skript="C:x.py"),
+                dict(EINTRAG, name="Grenze", felder=falsch),
+                dict(EINTRAG, name="Bool", felder=bool_grenze)]}),
+                encoding="utf-8")
+            gut, fehler = lbt.lade_liste(p)
+        self.assertEqual([e["name"] for e in gut], ["Mini"])
+        for name in ("Laufwerk", "Grenze", "Bool"):
+            self.assertIn(name, fehler)
+
     def test_unlesbare_liste(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "liste.json"
@@ -319,6 +345,18 @@ class EinzelReiter(TkBasis):
             self.assertEqual(self.ls.zustand.get("werte")["einzel"]["Mini"]["--wochen"],
                              "8.0")
             self.st.lauf = None
+
+    def test_replay_und_einzel_bauen_mit_kaputten_werten(self):
+        p = self._liste([EINTRAG])
+        for werte in ("kaputt", {"replay": "kaputt"}, {"replay": ["x"]}):
+            self.ls.zustand.daten["werte"] = werte
+            r = lbt.BacktestReiter(
+                self.root, self.ls, steuerung=self.st,
+                bereiche=[lbt.ReplayBereich,
+                          lambda e, rt: lbt.EinzelBereich(e, rt, p)])
+            self.assertEqual(r.bereiche[0].w_spur.get(),
+                             lbt.REPLAY_VORGABEN["spur"], werte)
+            self.assertEqual(r.bereiche[1].vars["--wochen"].get(), "8.0", werte)
 
 
 if __name__ == "__main__":
