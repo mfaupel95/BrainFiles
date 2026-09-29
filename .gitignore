@@ -74,6 +74,7 @@
 !Agenten/Routinen/moondev-gui-autostart.vbs
 !Agenten/Handel/*.py
 !Agenten/Handel/spur_opt.json
+!Agenten/Handel/leitstand_backtests.json
 !Agenten/Handel/*.md
 # Laufzeitdaten: der Tagesschnappschuss. Abgeleitet, kein Buch.
 Agenten/Handel/stand/

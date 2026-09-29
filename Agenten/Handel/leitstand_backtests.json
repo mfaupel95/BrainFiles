@@ -1,0 +1,54 @@
+{
+  "_zweck": "Welche Einzelskripte der Leitstand starten darf. Aufnahme nur nach Pruefung: keine Order-Funktion, kein Boersen-Client mit Schluessel, keine Datei aus 'schreibt' wird im Betrieb gelesen (docs/plans/2026-09-29-leitstand-plan.md, Befund 2). Nie --json, --cache oder --lokal. optimieren.py und backtest_urteile.py haben eigene Bereiche.",
+  "eintraege": [
+    {
+      "name": "Gitter",
+      "skript": "gitter/backtest_gitter.py",
+      "felder": [
+        {"flag": "--wochen", "typ": "float", "vorgabe": 8.0, "min": 1, "max": 104},
+        {"flag": "--stufen", "typ": "int", "vorgabe": null, "min": 2, "max": 200},
+        {"flag": "--spanne-prozent", "typ": "float", "vorgabe": null, "min": 0.5, "max": 50}
+      ],
+      "schreibt": []
+    },
+    {
+      "name": "ORB (xperp)",
+      "skript": "orb/backtest.py",
+      "felder": [
+        {"flag": "--instrument", "typ": "text", "vorgabe": "alle"},
+        {"flag": "--jahre", "typ": "int", "vorgabe": 2, "min": 1, "max": 5},
+        {"flag": "--modell", "typ": "wahl", "vorgabe": "beide", "werte": ["schluss", "naechste_eroeffnung", "beide"]},
+        {"flag": "--raster", "typ": "schalter", "vorgabe": false}
+      ],
+      "schreibt": [{"muster": "orb/daten/<instrument>_M15.json", "kennung": "_M15"}]
+    },
+    {
+      "name": "ORB (Kraken)",
+      "skript": "orbk/backtest.py",
+      "felder": [
+        {"flag": "--instrument", "typ": "text", "vorgabe": "alle"},
+        {"flag": "--jahre", "typ": "int", "vorgabe": 2, "min": 1, "max": 5},
+        {"flag": "--modell", "typ": "wahl", "vorgabe": "beide", "werte": ["schluss", "naechste_eroeffnung", "beide"]},
+        {"flag": "--raster", "typ": "schalter", "vorgabe": false}
+      ],
+      "schreibt": [{"muster": "orbk/daten/<instrument>_M15.json", "kennung": "_M15"}]
+    },
+    {
+      "name": "Prognose-Spuren",
+      "skript": "backtest_prognose.py",
+      "felder": [
+        {"flag": "--spur", "typ": "wahl", "vorgabe": "", "werte": ["", "squeeze", "wavetrend", "macd_mtf", "supertrend"]},
+        {"flag": "--kerzen", "typ": "int", "vorgabe": 3000, "min": 100, "max": 20000},
+        {"flag": "--gebuehr", "typ": "float", "vorgabe": 0.1, "min": 0, "max": 5},
+        {"flag": "--takt", "typ": "wahl", "vorgabe": "", "werte": ["", "1H", "4H", "1D"]}
+      ],
+      "schreibt": [{"muster": "daten/backtest_kerzen/*.json", "kennung": "backtest_kerzen"}]
+    },
+    {
+      "name": "Varianten (schnell)",
+      "skript": "bt_varianten_fast.py",
+      "felder": [],
+      "schreibt": []
+    }
+  ]
+}

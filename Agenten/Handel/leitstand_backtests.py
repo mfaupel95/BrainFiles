@@ -9,6 +9,8 @@ Backtest-Runden zaehlen NICHT fuer die Freigabe (Design Backtest-Fundament);
 der Reiter sagt das in einer festen Zeile.
 """
 
+import json
+import re
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -25,6 +27,11 @@ TAKT_MS = 200
 MAX_TEXT_ZEILEN = 5000
 REPLAY_VORGABEN = {"spur": replay.SPUREN_TEIL_A[0], "max_kerzen": "0",
                    "gebuehr": "0.1", "gegenprobe": False}
+LISTE = HIER / "leitstand_backtests.json"
+VERBOTENE_FLAGS = ("--json", "--cache", "--lokal")
+EIGENE_BEREICHE = ("optimieren.py", "backtest_urteile.py")
+TYPEN = ("float", "int", "text", "wahl", "schalter")
+_TEXT = re.compile(r"^[A-Za-z0-9_./-]{1,40}$")
 
 
 # --- Replay: reine Funktionen -----------------------------------------------
@@ -130,6 +137,193 @@ class ReplayBereich(ttk.Frame):
 
     def lauf_wechsel(self, laeuft):
         setze_knopf(self.k_start, self.tip, not laeuft, "es läuft schon ein Lauf")
+
+    def refresh(self):
+        pass
+
+
+# --- Einzelskripte ----------------------------------------------------------
+
+def eintrag_fehler(e):
+    """"" oder der Grund, warum der Eintrag nicht startbar ist."""
+    if not isinstance(e, dict) or not isinstance(e.get("name"), str):
+        return "Eintrag ohne Namen"
+    name, skript = e["name"], e.get("skript")
+    if (not isinstance(skript, str) or Path(skript).is_absolute()
+            or ".." in Path(skript).parts):
+        return "%s: Skriptpfad ungültig" % name
+    if Path(skript).name in EIGENE_BEREICHE:
+        return "%s: hat einen eigenen Bereich" % name
+    if not (HIER / skript).is_file():
+        return "%s: %s fehlt" % (name, skript)
+    felder = e.get("felder")
+    if not isinstance(felder, list):
+        return "%s: felder fehlt" % name
+    for f in felder:
+        if (not isinstance(f, dict) or f.get("typ") not in TYPEN
+                or not str(f.get("flag", "")).startswith("--")):
+            return "%s: Feld ungültig" % name
+        if f["flag"] in VERBOTENE_FLAGS:
+            return "%s: %s ist gesperrt" % (name, f["flag"])
+        if f["typ"] == "wahl" and not isinstance(f.get("werte"), list):
+            return "%s: %s ohne werte" % (name, f["flag"])
+    return ""
+
+
+def lade_liste(pfad=None):
+    """(gueltige Eintraege, Fehlertext). Ungueltige fallen weg und werden genannt."""
+    try:
+        roh = json.loads(Path(pfad or LISTE).read_text(encoding="utf-8"))
+        eintraege = roh["eintraege"]
+        if not isinstance(eintraege, list):
+            raise ValueError
+    except (OSError, ValueError, KeyError, TypeError):
+        return [], "leitstand_backtests.json nicht lesbar"
+    gut, fehler = [], []
+    for e in eintraege:
+        grund = eintrag_fehler(e)
+        if grund:
+            fehler.append(grund)
+        else:
+            gut.append(e)
+    return gut, "; ".join(fehler)
+
+
+def pruefe_feld(feld, wert):
+    """(Argumente, "") oder (None, Fehler). Leer oder None: Flag weglassen."""
+    typ, flag = feld["typ"], feld["flag"]
+    if wert is None:
+        return [], ""
+    if typ == "schalter":
+        return ([flag] if wert in (True, 1, "1", "true") else []), ""
+    text = str(wert).strip()
+    if text == "":
+        return [], ""
+    if typ == "wahl":
+        if text not in [str(w) for w in feld["werte"]]:
+            return None, "%s: %r nicht erlaubt" % (flag, text)
+        return [flag, text], ""
+    if typ == "text":
+        if not _TEXT.match(text):
+            return None, "%s: nur Buchstaben, Ziffern und _ . / -" % flag
+        return [flag, text], ""
+    try:
+        zahl = int(text) if typ == "int" else float(text.replace(",", "."))
+    except ValueError:
+        return None, "%s: %s erwartet" % (flag, "ganze Zahl" if typ == "int"
+                                          else "Zahl")
+    lo, hi = feld.get("min"), feld.get("max")
+    if (lo is not None and zahl < lo) or (hi is not None and zahl > hi):
+        return None, "%s: erlaubt %s bis %s" % (flag, lo, hi)
+    return [flag, str(zahl)], ""
+
+
+def einzel_befehl(eintrag, werte):
+    """werte: Flag -> Text/bool. (Befehl, "") oder (None, Fehler)."""
+    args = []
+    for f in eintrag["felder"]:
+        teil, fehler = pruefe_feld(f, werte.get(f["flag"], f.get("vorgabe")))
+        if teil is None:
+            return None, fehler
+        args += teil
+    return [sys.executable, eintrag["skript"]] + args, ""
+
+
+def _als_dict(x):
+    """Gespeicherte Werte koennen falsch typisiert sein: dann leer."""
+    return x if isinstance(x, dict) else {}
+
+
+class EinzelBereich(ttk.Frame):
+    TITEL = "Einzelskripte"
+
+    def __init__(self, eltern, reiter, pfad=None):
+        super().__init__(eltern, padding=8)
+        self.reiter = reiter
+        self.eintraege, fehler = lade_liste(pfad)
+        self.vars = {}
+        oben = ttk.Frame(self)
+        oben.pack(fill="x")
+        ttk.Label(oben, text="Skript").pack(side="left")
+        namen = [e["name"] for e in self.eintraege]
+        gemerkt = self._werte().get("einzel_name")
+        self.w_name = tk.StringVar(value=gemerkt if gemerkt in namen
+                                   else (namen[0] if namen else ""))
+        wahl = ttk.Combobox(oben, textvariable=self.w_name, values=namen,
+                            state="readonly", width=24)
+        wahl.pack(side="left", padx=6)
+        wahl.bind("<<ComboboxSelected>>", lambda _e: self._felder_bauen())
+        self.k_start = ttk.Button(oben, text="Starten", command=self.starten)
+        self.k_start.pack(side="left", padx=6)
+        self.tip = Tooltip(self.k_start)
+        ttk.Label(self, text=fehler, foreground="#c0392b").pack(anchor="w")
+        self.rahmen = ttk.Frame(self)
+        self.rahmen.pack(fill="x", pady=(6, 0))
+        self._felder_bauen()
+        self.lauf_wechsel(False)
+
+    def _werte(self):
+        return _als_dict(self.reiter.zustand.get("werte"))
+
+    def eintrag(self):
+        return next((e for e in self.eintraege if e["name"] == self.w_name.get()),
+                    None)
+
+    def _felder_bauen(self):
+        for k in self.rahmen.winfo_children():
+            k.destroy()
+        self.vars = {}
+        e = self.eintrag()
+        if e is None:
+            return
+        gemerkt = _als_dict(_als_dict(self._werte().get("einzel")).get(e["name"]))
+        for r, f in enumerate(e["felder"]):
+            vorgabe = gemerkt.get(f["flag"], f.get("vorgabe"))
+            if f["typ"] == "schalter":
+                v = tk.BooleanVar(value=bool(vorgabe))
+                ttk.Checkbutton(self.rahmen, text=f["flag"], variable=v).grid(
+                    row=r, column=0, columnspan=2, sticky="w")
+            else:
+                v = tk.StringVar(value="" if vorgabe is None else str(vorgabe))
+                ttk.Label(self.rahmen, text=f["flag"]).grid(row=r, column=0,
+                                                            sticky="w", padx=(0, 8))
+                if f["typ"] == "wahl":
+                    ttk.Combobox(self.rahmen, textvariable=v, state="readonly",
+                                 values=[str(w) for w in f["werte"]],
+                                 width=22).grid(row=r, column=1, sticky="w")
+                else:
+                    ttk.Entry(self.rahmen, textvariable=v, width=24).grid(
+                        row=r, column=1, sticky="w")
+            self.vars[f["flag"]] = v
+        if not e["felder"]:
+            ttk.Label(self.rahmen, text="ohne Einstellungen").grid(row=0, column=0,
+                                                                  sticky="w")
+
+    def werte(self):
+        return {flag: v.get() for flag, v in self.vars.items()}
+
+    def starten(self):
+        e = self.eintrag()
+        if e is None:
+            return
+        befehl, fehler = einzel_befehl(e, self.werte())
+        if befehl is None:
+            self.reiter.ls.melde(fehler)
+            return
+        zustand = self.reiter.zustand
+        if not isinstance(zustand.daten.get("werte"), dict):
+            zustand.daten["werte"] = {}
+        alle = dict(_als_dict(self._werte().get("einzel")))
+        alle[e["name"]] = self.werte()
+        zustand.merke_in("werte", "einzel", alle)
+        zustand.merke_in("werte", "einzel_name", e["name"])
+        self.reiter.starte("einzel-%s" % e["name"], befehl)
+
+    def lauf_wechsel(self, laeuft):
+        if not self.eintraege:
+            setze_knopf(self.k_start, self.tip, False, "keine Einträge in der Liste")
+        else:
+            setze_knopf(self.k_start, self.tip, not laeuft, "es läuft schon ein Lauf")
 
     def refresh(self):
         pass
@@ -323,4 +517,4 @@ class BacktestReiter(ttk.Frame):
             self.ls.melde(str(e))
 
 
-BEREICHE = [ReplayBereich]
+BEREICHE = [ReplayBereich, EinzelBereich]

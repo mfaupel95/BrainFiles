@@ -228,5 +228,98 @@ class Reiter(TkBasis):
         self.assertEqual(r.status(), "Backtest: a läuft seit 0:01")
 
 
+EINTRAG = {"name": "Mini", "skript": "gitter/backtest_gitter.py", "schreibt": [],
+           "felder": [
+               {"flag": "--wochen", "typ": "float", "vorgabe": 8.0, "min": 1, "max": 104},
+               {"flag": "--stufen", "typ": "int", "vorgabe": None, "min": 2, "max": 200},
+               {"flag": "--modell", "typ": "wahl", "vorgabe": "beide",
+                "werte": ["schluss", "beide"]},
+               {"flag": "--instrument", "typ": "text", "vorgabe": "alle"},
+               {"flag": "--raster", "typ": "schalter", "vorgabe": False}]}
+
+
+class Einzel(unittest.TestCase):
+    def test_befehl_aus_vorgaben(self):
+        werte = {f["flag"]: f["vorgabe"] for f in EINTRAG["felder"]}
+        befehl, fehler = lbt.einzel_befehl(EINTRAG, werte)
+        self.assertEqual(fehler, "")
+        self.assertEqual(befehl, [sys.executable, "gitter/backtest_gitter.py",
+                                  "--wochen", "8.0", "--modell", "beide",
+                                  "--instrument", "alle"])
+
+    def test_schalter_und_leere_felder(self):
+        befehl, _f = lbt.einzel_befehl(EINTRAG, {"--wochen": "", "--stufen": "12",
+                                                 "--modell": "", "--instrument": "",
+                                                 "--raster": True})
+        self.assertEqual(befehl[2:], ["--stufen", "12", "--raster"])
+
+    def test_ungueltige_werte(self):
+        for flag, wert in (("--wochen", "200"), ("--wochen", "acht"),
+                           ("--stufen", "1.5"), ("--modell", "alles"),
+                           ("--instrument", "BTC; del *")):
+            befehl, fehler = lbt.einzel_befehl(EINTRAG, {flag: wert})
+            self.assertIsNone(befehl, (flag, wert))
+            self.assertIn(flag, fehler)
+
+    def test_liste_verwirft_gefaehrliche_eintraege(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "liste.json"
+            p.write_text(json.dumps({"eintraege": [
+                EINTRAG,
+                dict(EINTRAG, name="Json", felder=[{"flag": "--json", "typ": "text"}]),
+                dict(EINTRAG, name="Opt", skript="optimieren.py"),
+                dict(EINTRAG, name="Weg", skript="../x.py"),
+                dict(EINTRAG, name="Fehlt", skript="gibtsnicht.py")]}),
+                encoding="utf-8")
+            gut, fehler = lbt.lade_liste(p)
+        self.assertEqual([e["name"] for e in gut], ["Mini"])
+        for name in ("Json", "Opt", "Weg", "Fehlt"):
+            self.assertIn(name, fehler)
+
+    def test_unlesbare_liste(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "liste.json"
+            p.write_text("{kaputt", encoding="utf-8")
+            self.assertEqual(lbt.lade_liste(p),
+                             ([], "leitstand_backtests.json nicht lesbar"))
+
+
+class EinzelReiter(TkBasis):
+    def _liste(self, eintraege):
+        p = Path(self.tmp.name) / "liste.json"
+        p.write_text(json.dumps({"eintraege": eintraege}), encoding="utf-8")
+        return p
+
+    def _reiter(self, p):
+        return lbt.BacktestReiter(self.root, self.ls, steuerung=self.st,
+                                  bereiche=[lambda e, rt: lbt.EinzelBereich(e, rt, p)])
+
+    def test_start_mit_feldern_aus_der_liste(self):
+        r = self._reiter(self._liste([EINTRAG]))
+        b = r.bereiche[0]
+        b.vars["--wochen"].set("4")
+        b.starten()
+        name, befehl, _a, _s = self.st.gestartet[0]
+        self.assertEqual(name, "einzel-Mini")
+        self.assertEqual(befehl[1:4], ["gitter/backtest_gitter.py", "--wochen", "4.0"])
+        self.assertEqual(self.ls.zustand.get("werte")["einzel"]["Mini"]["--wochen"], "4")
+
+    def test_leere_liste_sperrt_start(self):
+        r = self._reiter(self._liste([]))
+        self.assertIn("disabled", r.bereiche[0].k_start.state())
+
+    def test_falsch_typisierter_zustand_faellt_auf_vorgaben_zurueck(self):
+        p = self._liste([EINTRAG])
+        for werte in ({"einzel": "kaputt"}, {"einzel": {"Mini": "kaputt"}},
+                      {"einzel": ["x"]}, "kaputt"):
+            self.ls.zustand.daten["werte"] = werte
+            r = self._reiter(p)
+            self.assertEqual(r.bereiche[0].vars["--wochen"].get(), "8.0", werte)
+            r.bereiche[0].starten()
+            self.assertEqual(self.ls.zustand.get("werte")["einzel"]["Mini"]["--wochen"],
+                             "8.0")
+            self.st.lauf = None
+
+
 if __name__ == "__main__":
     unittest.main()
