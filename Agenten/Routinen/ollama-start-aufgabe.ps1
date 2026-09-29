@@ -1,4 +1,4 @@
-# Legt die Aufgabe 'MaxHirn-Ollama' an: Anmeldung + 2 Minuten, verstecktes
+# Legt die Aufgabe 'MaxHirn-Ollama' an: Anmeldung + 15 Sekunden, verstecktes
 # Fenster, IgnoreNew. Die REGISTRIERUNG braucht Administrator (Elevation);
 # der Betrieb danach laeuft als angemeldeter Benutzer.
 #
@@ -14,7 +14,7 @@ $aktion   = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
   '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $wrapper + '"'
 )
 $trigger  = New-ScheduledTaskTrigger -AtLogOn
-$trigger.Delay = 'PT2M'
+$trigger.Delay = 'PT15S'
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew `
                                          -StartWhenAvailable
 $task = New-ScheduledTask -Action $aktion -Trigger $trigger -Settings $settings `

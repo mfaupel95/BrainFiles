@@ -71,3 +71,39 @@ Aufnahme: `8b3d6a3` (nur zum Wiederfinden, nicht der Stand der Datei).
 - **Punkt 3:** Der Fehlalarm betrifft nur die Anzeige, nicht den Handel. Reparieren
   (Empfehlung: ja, eine Zeile, sonst lernt man, die Tageswarnungen zu ignorieren) oder
   als bekannt stehen lassen?
+## Nachtrag 29.09.2026, 23:30 — Empfehlungen umgesetzt
+
+Vier Punkte sind erledigt, jeder mit echtem Lauf belegt (committet und gepusht
+auf `master`: `0158fba`, `0f1a6ad`, `ac89d01`, der Block-11b-Teil kam ueber den
+Fremdarbeit-Commit `45ad2b5` auf master).
+
+| Punkt | Aenderung | Beleg |
+|---|---|---|
+| 1 (Push 403) | `fremdarbeit-einziehen.ps1` raeumt `GITHUB_TOKEN`/`GH_TOKEN` vor dem Push | Ursache gemessen: mit dem Registry-Token = exit 128/403, ohne ihn = exit 0. Die Variable bleibt stehen |
+| 2 (Zweitkopie) | `Agenten\Hermes\cache` in der Ausschlussliste | Lauf 23:09 mit Fix: **0 FEHLER**, Code 3, exit 0, `Agenten\Hermes\cache` steht in `Ausgeschl. Verzeichnisse` |
+| 3 (Fehlalarm Herzschlag) | `spiegelstand.frisches_alter()` nimmt den frischsten von `zustand.json`/`zustand.live.json` | `moondev_marktlage` meldet 14 min statt 204; 6 neue Tests in `Handel/tests/test_spiegelstand_alter.py`; `spiegelstand` danach 29/29 byte-gleich |
+| 4 (okx_bot_waechter) | Block 11b trennt Spuren von Werkzeugen | Lauf 23:2x: „32 von 32 Handels-Spuren folgen der Herzschlag-Regel — ausgenommen als Werkzeug ohne Handelsbuch: okx_bot_waechter" |
+| T-138 | `nautilus-demo` laeuft (Max gestartet) | `docker ps`: `nautilus-demo | Up 3 minutes` |
+
+### Neuer Befund: die Task-IDs kollidieren wieder
+
+`MaxHirn/Archiv/TASKS.md` traegt doppelte IDs — `T-139`, `T-142`, `T-145`,
+`T-153`, `T-156` je zweimal, hoechste ID `T-171`. Ursache: parallele Sitzungen
+vergeben `max+1` unabhaengig voneinander; am 29.09.2026 kam meine Reihe
+T-134…T-138 dazu, waehrend eine andere Sitzung bei T-160 weiterschrieb. Die
+Datei war beim Schreiben dieses Nachtrags 0,6 min alt, also nicht angefasst.
+
+Naechster Schritt (eine Entscheidung): IDs aus EINER Quelle vergeben — Vorschlag
+`T-<JJJJMMTT>-<nn>` (datumseindeutig, kollisionsfrei) — ODER die bestehenden
+Doppelten einmalig umnummerieren und die Vergabe in die
+Fremdarbeit-Routine legen. Ohne das waechst der Fehler mit jeder parallelen
+Sitzung.
+
+### Nicht angefasst
+
+`MaxHirn/Archiv/TASKS.md` (0,6 min), `Agenten/Handel/replay.py`,
+26 × `Agenten/Hermes/profiles/*/config.yaml`, `Agenten/Hermes/config.yaml`,
+`MaxHirn/Wiki/*` — alles aktive Fremdarbeit der laufenden Sitzung. Ebenso
+unangetastet: `GITHUB_TOKEN` als Benutzervariable (Entscheidung Max), die
+Arbeitsbaum-Sitzung `C:\Users\faupe\Documents\Handel-leitstand` (Zweig
+`arbeit/leitstand`), alle Dauerprozesse.

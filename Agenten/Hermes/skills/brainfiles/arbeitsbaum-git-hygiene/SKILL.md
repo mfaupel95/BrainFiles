@@ -720,6 +720,15 @@ ungetrackten Dateien. Reihenfolge:
   plus `cat .git/HEAD` als Beleg. Auf dem Remote angekommen ist der eigene Commit
   erst mit `git merge-base --is-ancestor <sha> master` UND
   `git branch -r --contains <sha>` - nicht mit „ich habe gepusht".
+  **Wer den Push startet, entscheidet ueber sein Scheitern.** In BrainFiles steht eine
+  Windows-Benutzervariable `GITHUB_TOKEN` (scope-arm - darf in dieses Repo nicht
+  schreiben). Git zieht sie dem Credential-Manager vor: derselbe Push endet aus einer
+  geplanten Aufgabe heraus mit `remote: Write access to repository not granted` und
+  **Exit 128**, waehrend er von Hand durchlaeuft. Fuer den einen Aufruf
+  `$env:GITHUB_TOKEN=$null; $env:GH_TOKEN=$null` setzen (die Variable selbst bleibt
+  stehen - sie gehoert dem Nutzer) und beides messen: „mit Token 128, ohne Token 0" ist
+  der Beleg. Ein Push-Fehlschlag ist also erst dann ein Rechteproblem des Kontos, wenn
+  die Sonde ohne diese beiden Variablen genauso scheitert.
   **Eine Push-Zahl ist eine Momentaufnahme.** Zwischen Messen und Berichten kann die
   andere Sitzung committen: aus „0 unpushed" wurde in Minuten „1". Direkt vor dem
   Bericht erneut `git log --oneline origin/master..HEAD` lesen und die Aenderung
@@ -737,6 +746,15 @@ ungetrackten Dateien. Reihenfolge:
   `git add <pfade> && git diff --cached --numstat` - die Zahl der genannten Pfade muss
   der Absicht entsprechen; danach `git show --stat HEAD` gegen die Nachricht lesen und
   fehlende Pfade in einem Folge-Commit nachziehen (nicht die Historie umschreiben).
+  **Und eine geschriebene Datei kann danach WIEDER VERSCHWINDEN:** ein Werkzeug meldete
+  `bytes_written` samt `verified: true`, Minuten spaeter lag nur noch
+  `__pycache__/<name>.cpython-*.pyc` da, und `git add` antwortete `fatal: pathspec …
+  did not match any files`. Diese Meldung ZUERST als „Datei ist nicht da" lesen
+  (`ls -l <pfad>`), nicht als Ignore-Regel oder Pfadfehler — eine ungetrackte Datei
+  kann keine `.gitignore`-Regel „verschlucken", sie fehlt einfach. Geschriebene Dateien
+  deshalb sofort stagen und committen, statt sie zwischen zwei Rechercheschritten liegen
+  zu lassen; bei mehreren neuen Dateien die Zahl der `??`-Eintraege gegen die Zahl der
+  Schreibvorgaenge halten.
 - **Beim Durchgehen MEHRERER Repos ist ein leeres `@{u}` kein „nichts zu pushen".**
   `git rev-parse --abbrev-ref '@{u}'` scheitert in einem Klon ohne gesetzten Upstream;
   eine Schleife, die nur `git log '@{u}..HEAD'` zaehlt, meldet dann „0 unpushed" fuer

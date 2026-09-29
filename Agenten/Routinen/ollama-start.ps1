@@ -1,6 +1,6 @@
 # Startet Ollama (ollama serve) - die lokale Modell-Laufzeit, an der alle
 # LLM-Urteile haengen (Moon-Dev-Agenten, LLM-Spuren). Von der Aufgabenplanung
-# bei der Anmeldung aufgerufen (+2 Minuten Verzoegerung).
+# bei der Anmeldung aufgerufen (+15 Sekunden Verzoegerung).
 #
 # WARUM: Ollama hat keinen Windows-Dienst (gemessen 16.09.2026: kein
 # ollama-Process, kein Service-Eintrag, Port 11434 zu, nachdem die
@@ -47,6 +47,24 @@ try {
     Melde-Ende -Marke $marke -Code 0 -Text 'laeuft bereits'
     exit 0
   }
+
+  # Der Modell-Store liegt auf O: (Junction BrainFiles\Modelle -> O:\Modelle).
+  # O: ist eine interne NVMe und beim Anmelden schon da (geprueft 29.09.2026:
+  # NTFS-Pruefung aller Volumes um 21:06:5x, kein BitLocker). Die Schleife ist
+  # die Absicherung dafuer, dass die Aufgabe jetzt frueh startet - 15 s statt
+  # 2 Minuten. Ohne erreichbaren Store startet Ollama mit leerer Modell-Liste,
+  # und alle LLM-Aufrufe laufen ins Leere, ohne dass es auffaellt.
+  $store = $env:OLLAMA_MODELS
+  if (-not $store) { $store = Join-Path $env:USERPROFILE '.ollama\models' }
+  $manifeste = Join-Path $store 'manifests'
+  for ($i = 0; $i -lt 60; $i++) {
+    if (Test-Path $manifeste) { break }
+    Start-Sleep -Seconds 1
+  }
+  if (-not (Test-Path $manifeste)) {
+    throw "Modell-Store nicht erreichbar nach 60 s: $store"
+  }
+  Schreib "Modell-Store da: $store"
 
   $ollama = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
   if (-not (Test-Path $ollama)) { throw "ollama.exe fehlt: $ollama" }

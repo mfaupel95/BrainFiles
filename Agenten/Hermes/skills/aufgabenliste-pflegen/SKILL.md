@@ -48,6 +48,10 @@ Dateien) und was noch eine Entscheidung braucht. Danach committen.
    eigenes Merkmal (`- [ ] **T-0NN — ` bzw. der Titel, nicht ein Zeilenindex),
    ersetzt und schreibt zurueck - und druckt den Block danach plus den Anfang des
    folgenden Eintrags zur Kontrolle.
+   Ist die Datei beim Lesen **juenger als eine Minute**, schreibt gerade eine
+   andere Sitzung: Sekunden messen, kurz warten, dann neu einlesen. Ein
+   Sekunden-Blick unterscheidet 'ruhig' von 'mitten im Schreiben' - die
+   Minutenangabe aus einem frueheren Befehl tut das nicht.
 2. **Byte-sicher schreiben** (CRLF erhalten):
 
 ```python
@@ -77,6 +81,16 @@ ids = lambda t: set(re.findall(r"- \[[ x]\] \*\*(T-\d+)", t))
 assert ids(neu) - ids(alt) == set(), sorted(ids(alt) - ids(neu))
 ```
 
+   **Beim VERSCHIEBEN (Offen -> Erledigt) die Mengen sortiert vergleichen,
+   nicht als Folge.** Ein verschobener Block ist derselbe Eintrag an anderer
+   Stelle; `re.findall(...)` liefert ihn in Dokumentreihenfolge, der Vergleich
+   `==` schlaegt also bei einem KORREKTEN Verschieben fehl und verleitet zur
+   'Reparatur' eines richtigen Zustands.
+
+```python
+assert sorted(re.findall(MUSTER, neu)) == sorted(re.findall(MUSTER, alt))
+```
+
    Fehlt etwas: wortgleich aus `git show HEAD:MaxHirn/Archiv/TASKS.md`
    zurueckholen, nicht neu formulieren.
    **Und die Abschnitte gegenpruefen** - die Nummernmenge allein merkt nicht, dass
@@ -96,6 +110,12 @@ assert [z for z in ("## Offen", "## Erledigt") if z in neu] == ["## Offen", "## 
    es ist Fremdtext mitgegangen.
 6. **Committen** mit namentlichem Pfad (`git add -- MaxHirn/Archiv/TASKS.md`),
    zusammen mit der Aenderung, zu der die Aufgabe gehoert.
+   Liegt in DERSELBEN Datei schon fremde, noch nicht committete Arbeit (bei einer
+   geteilten Liste der Normalfall), laesst sich nicht nach Pfad trennen. Dann
+   alles committen und die uebernommenen FREMDEN Eintraege in der Commit-Meldung
+   namentlich nennen ("Mitgenommen, weil in derselben Datei: T-179 ..., T-180
+   ..."). Ohne diesen Satz steht fremde Arbeit spaeter unter dem eigenen Namen,
+   und der naechste Leser sucht einen Autor, den es nicht gibt.
 
 ## Eintragsform
 
@@ -127,6 +147,25 @@ text.
 - Ein Titel verspricht ein ERGEBNIS, kein Vorgehen: "PF_XBTUSD ist mit 141 USD
   nicht handelbar" ist eine Aufgabe, "Kontraktgroesse pruefen" ist eine Notiz.
 
+## Werkzeuge
+
+Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
+
+- `scripts/doppelte_nummern.py` (nur lesend, jederzeit lauffaehig): meldet
+  hoechste Nummer, naechste freie Nummern, doppelte Nummern, fehlende Abschnitte
+  und die Blockzahl. **Rueckgabe 1, sobald eine Nummer doppelt ist** - also als
+  Tor vor dem Committen nutzen, nicht als Blick. Zaun-bewusst: Zeilen innerhalb
+  eines Code-Zauns (die Format-Vorlage) zaehlen nicht als Eintrag.
+  `python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
+- `scripts/erledigen.py`: zieht EINEN Eintrag byte-genau nach `## Erledigt`,
+  hakt ihn ab, haengt den Belegsatz an, legt `TASKS.md.bak-JJJJMMTT` an.
+  Es prueft vor dem Schreiben (Nummer genau einmal, steht in `## Offen`, noch
+  nicht abgehakt, Abschnitte unveraendert, Nummernmenge gleich) und danach die
+  Zeilenenden. `--trocken` nennt nur die Zielzeile, ohne zu schreiben.
+  `python .../scripts/erledigen.py T-0NN "**Erledigt JJJJ-MM-TT.** was gemessen wurde" --trocken`
+
+Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals eine echte Nummer, sonst zaehlt sie als zweiter Eintrag.
+
 ## Fallen
 
 - **Die hoechste Nummer NIE aus dem Gedaechtnis nehmen.** Die eigene
@@ -150,6 +189,37 @@ grep -o "T-1[0-9][0-9]" MaxHirn/Archiv/TASKS.md | sort -u | tail -3
   Nachfolgerblock lesen, bevor ersetzt wird.
 - **Zeilenenden sind CRLF.** `open(..., "w")` dreht die Datei auf LF und erzeugt
   einen Ganzdatei-Diff; Gegenprobe `git diff --numstat`.
+- **Beim Byte-Schreiben NIE pauschal `\n` durch `\r\n` ersetzen.** Die Datei
+  traegt schon `\r\n`; ein `d.replace(b"\n", b"\r\n")` auf diesem Inhalt macht
+  daraus `\r\r\n` und damit JEDE Zeile zu einer Aenderung. Der Diff zeigt dann
+  Insertions in Hoehe der Gesamtzeilenzahl, und der Schaden faellt erst nach dem
+  Schreiben auf. Regel: `nl` EINMAL aus dem Rohinhalt ableiten und nur beim
+  BAUEN neuer Zeilen verwenden; fertigen Text unveraendert kodieren. Direkter
+  Nachweis nach dem Schreiben:
+
+```python
+d = open(PFAD, "rb").read()
+assert d.count(b"\r\r") == 0, "Zeilenenden verdoppelt - sofort reparieren"
+```
+
+  Reparatur ist moeglich ohne Inhaltsverlust: `d.replace(b"\r\r\n", b"\r\n")`
+  schreiben, dann `git diff --numstat` erneut pruefen - es muessen nur die
+  eigenen Zeilen uebrig bleiben.
+- **Eine parallele Sitzung kann NUMMERN UMNUMMERIEREN, nicht nur anhaengen.**
+  Eine Nummer, die vor Minuten frei war, kann inzwischen von einem umbenannten
+  FREMDEN Eintrag belegt sein - die Liste waechst nicht nur, sie wird auch
+  umgeschrieben. Deshalb unmittelbar VOR dem Schreiben die Nummernmenge messen
+  und unmittelbar DANACH auf Doppelungen pruefen:
+
+```bash
+grep -oE '^\s*- \[[ x]\] \*\*T-[0-9]{3}' MaxHirn/Archiv/TASKS.md \
+  | grep -oE 'T-[0-9]{3}' | sort | uniq -d
+```
+
+  Kommt die eigene Nummer doppelt: den eigenen Block auf die naechsten freien
+  Nummern ziehen (der fremde Eintrag bleibt unangetastet), byte-genau ueber den
+  eindeutigen TITEL ersetzt - nicht ueber die Nummer, sonst trifft die Ersetzung
+  den fremden Eintrag mit.
 - **Doppelte Nummern: Einzelfall melden, Haeufung umbauen.** Vereinzelt (eine
   Kollision) den fremden Eintrag NICHT anfassen - er ist gerade in Arbeit -
   sondern melden und die naechste freie Nummer nehmen. Sind es aber viele
@@ -172,11 +242,22 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
 
   Erst dieses Ergebnis entscheidet ueber das Muster; Eintraege ohne erkennbares
   Datum vor dem Schreiben einzeln nachtragen.
+- **Ein offener Code-Zaun versteckt ganze Abschnitte.** Jede Vorlage braucht
+  Oeffner UND Schliesser; die Zahl der Zaun-Zeilen muss gerade sein
+  (`grep -c '^```' MaxHirn/Archiv/TASKS.md`). Ein nie geschlossener Zaun im
+  `## Eintragsformat` hat 380 Zeilen offene Liste als CODE erscheinen lassen -
+  ein Pruefer, der Zaeune beachtet, sah 31 Eintraege nicht und meldete eine
+  Blockzahl, die niemand nachvollziehen konnte. Symptom ist eine ZAHL, die nicht
+  stimmt; die Ursache ist Struktur. Nach jedem Umbau deshalb zaehlen und die
+  Zaun-Zeilen einzeln ansehen, bevor Zahlen diskutiert werden.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
   formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.
 
 ## Nachweis
+
+- `doppelte_nummern.py` gibt 0 zurueck (jede Nummer genau einmal, beide
+  Abschnitte vorhanden) - der Beleg ist der Exit-Code, nicht die Ausgabe.
 
 - Abschnitte vor/nach dem Schreiben gleich (`grep -n "^## "`).
 - Nummernmenge vor/nach dem Schreiben gleich (plus die neuen).

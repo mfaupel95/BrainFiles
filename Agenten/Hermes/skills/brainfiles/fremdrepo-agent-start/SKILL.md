@@ -50,6 +50,46 @@ die Schluesselnamen der `.env.example` LESEN und benennen, wenn sie nach
 echtem Geld rufen (`PRIVATE_KEY`, Boersen-Secrets) — das ist eine Warnung
 wert, nicht nur eine Zeile im Protokoll.
 
+## Startfertig machen: der Beleg zaehlt, nicht die Doku
+
+- **Den dokumentierten Entwicklungsbefehl einmal wirklich fahren, bevor die
+  Einordnung festgelegt wird.** Ein Repo, das als "nur Bau, kein Start" galt,
+  hatte eine Web-UI auf einem eigenen Port, beschrieben unter "Quick Start".
+  "Kein Startprogramm" ist eine Vermutung aus dem Dateibaum, kein Befund — erst
+  nach dem Lauf darf sie als Zustand dastehen.
+- **Den Port aus der Logzeile des laufenden Prozesses ablesen, nicht aus der
+  Doku.** Gemessen: die README nannte 3000, `PORT` in der `.env` galt mit 3010.
+  Die Zeile `Listening on ...` / `Uvicorn running on ...` ist der Zeuge.
+- **Ein Befehl, der nachfragt, startet nicht, wenn stdin geschlossen ist.**
+  Wird der Prozess mit `stdin=DEVNULL` gestartet (Haus-Wrapper und Startfenster
+  tun das), kann `npx <paket>` die Installations-Rueckfrage nicht beantworten
+  und bleibt stehen, statt zu starten. Den Nicht-interaktiv-Schalter IN den
+  Befehl schreiben (`npx -y ...`, `--yes`, `-Force`) — nicht beim Aufrufer
+  nachruesten. Das Symptom ist eindeutig: lebender Prozess, keine Logzeile.
+- **Secrets einer frisch gebrauchten `.env` erzeugen, nie ausgeben.** Viele
+  Repos brauchen `JWT_SECRET_KEY`-artige Werte schon beim ersten Start. Mit
+  `secrets.token_urlsafe(48)` erzeugen, direkt in die Datei schreiben, im
+  Protokoll nur "gesetzt" melden — und danach `git check-ignore -v .env`, damit
+  der Wert nicht versehentlich in einen Commit wandert.
+- **Jede Logdatei LESEN, nicht nur ihre Existenz zaehlen.** Ein Log mit
+  `command not found` erfuellt jede "Beleg vorhanden"-Pruefung und beweist
+  trotzdem nichts. Erst die Zeile, die den Dienst meldet (`Ready in ...`,
+  `Uvicorn running on ...`), macht aus dem Lauf einen Nachweis.
+
+**Nach dem Beleg den GANZEN Baum beenden.** `npm run dev` startet `next dev` als
+Kind; ein Kill auf die Eltern-PID laesst es als Waise stehen, und die haelt den
+Port besetzt. `taskkill /T /F /PID <pid>` — danach die Prozesszahl nachzaehlen.
+Beleg und Aufraeumen gehoeren zusammen: ein Startnachweis, der einen Waisen
+hinterlaesst, ist keiner.
+
+**Ein Klon kann mitten in der Sitzung auftauchen.** Eine parallele Sitzung klont
+waehrend der Arbeit. "Wie viele Repos liegen auf der Platte" ist deshalb am
+ANFANG und am ENDE zu messen, und die Zuordnung programmatisch (Plattenordner
+mit `.git` gegen die Manifest-Menge), nicht per Augenschein. Ein so entstandener
+Baum hat oft `origin` = Original und GAR KEIN `upstream` — vor der Weiterarbeit
+auf Hausmuster ziehen: `git remote rename origin upstream && git remote add
+origin <fork> && git fetch origin`.
+
 ## Vorgehen
 
 1. **Erkunden:** README-Quickstart lesen (Einstiegspunkt, venv-Name —
@@ -252,40 +292,12 @@ wert, nicht nur eine Zeile im Protokoll.
 - **Ein Agent, der stundenlang „laeuft“ aber nichts tut** (Schleife ohne
   Daten, weil die Quelle Pro-gesperrt ist) ist kein Erfolg — die Ausgabe
   muss einen kompletten Zyklus zeigen, bevor er gruen gemeldet wird.
-- **Ein Treiber, der den Agenten per `subprocess.Popen` startet, darf NICHT
-  `sys.executable` als Interpreter nehmen** — das ist der Interpreter des
-  TREIBERS (z.B. ein anderes Haus-venv), nicht der des Fremd-Repos, und dem
-  fehlen dessen Pakete (`ModuleNotFoundError: requests`/`pandas`/`openai`).
-  Den Pfad zum Repo-eigenen `.venv/Scripts/python.exe` fest im Treiber
-  eintragen, nie den Aufrufer-Interpreter durchreichen.
-- **`load_dotenv()` ohne Pfad sucht per `find_dotenv()` AUFWAERTS ab dem
-  Modulordner** (z.B. `src/agents/`) und kann dabei eine NAEHERE, fremde
-  `.env` finden (eigene Zugangsdaten eines anderen Teilsystems im selben
-  Repo) statt der beabsichtigten Root-`.env` — die gesuchte Variable bleibt
-  leer, ohne Fehlermeldung beim Laden selbst, und der Agent scheitert erst
-  spaeter an einer ganz anderen Stelle (z.B. verlangt er einen nie gesetzten
-  Fremd-Schluessel). Ein Treiber darf sich darauf nicht verlassen: die
-  Root-`.env` selbst lesen und die benoetigten Variablen VOR dem Start in
-  die Subprozess-Umgebung setzen — `load_dotenv()` ueberschreibt bereits
-  gesetzte Variablen per Vorgabe nicht (`override=False`).
-- **Ueber `subprocess.PIPE` (kein echtes Konsolenfenster) faellt Python auf
-  die Windows-Codepage zurueck und stirbt am ersten Emoji/Sonderzeichen**
-  (`UnicodeEncodeError`) — gilt genauso, wenn ein PYTHON-Treiber den Agenten
-  startet, nicht nur bei einem PowerShell-Wrapper. `PYTHONIOENCODING=utf-8`
-  in die Subprozess-Umgebung setzen, bevor der Kindprozess startet.
-- **Eine Konsolen-CLI aus einem Hintergrund-/Agent-Prozess oeffnet auf
-  Windows bei JEDEM Aufruf ein sichtbares Fenster**, wenn der
-  `subprocess.run` kein `creationflags=subprocess.CREATE_NO_WINDOW` setzt —
-  `-WindowStyle Hidden` im PowerShell-Wrapper versteckt nur die eigene
-  Shell, NICHT die Kinder; jeder onchainos/agent.exe-Aufruf klappt sonst ein
-  Fenster auf, das der Nutzer als "Popup" meldet. `-WindowStyle Hidden` von
-  aussen versteckt das Kind nicht — das Flag gehoert in den subprocess-Call
-  selbst (`creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0`).
-  Bei einem Fix VOR dem Start des laufenden Treibers pruefen, wann der
-  Treiberprozess gestartet wurde: ein schon laufender Hintergrundprozess
-  nutzt den ALten Code weiter — nur ein Neustart (bei Live-Trading-
-  Prozessen vorher Rueckfrage) oder die naechste getrennte Aufgabe
-  (Scheduled Task/Cron startet frisch) uebernimmt ihn.
+- **Ein Treiber, der einen Fremd-Agenten per `subprocess` startet**, hat vier
+  Windows-Fallen: falscher Interpreter (`sys.executable`), eine fremde `.env`
+  durch `find_dotenv()`, die Codepage ohne `PYTHONIOENCODING=utf-8` und ein
+  sichtbares Fenster ohne `CREATE_NO_WINDOW`. Dazu das Beenden des ganzen Baums
+  und die Frage, ob ein laufender Prozess den alten Code behaelt —
+  `references/windows-kindprozesse.md`.
 - **Ollama bei knappem VRAM:** ein Modell, das nicht in die GPU passt
   (cudaMalloc OOM), als CPU-Variante fest verdrahten statt pro Aufruf
   `num_gpu 0` durchzureichen: `ollama create <name>:cpu` mit einem

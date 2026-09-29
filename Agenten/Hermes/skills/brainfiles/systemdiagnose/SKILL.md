@@ -212,7 +212,26 @@ fehlgedeutet.
   der Gateway/Gast startet Kindpaare und gibt alte nicht frei. Die ueber der Altersgrenze
   beenden (`Stop-Process -Force`, nativer Befehl; taskkill aus windows-mcp tut still nichts),
   Commit danach messen — 5,5 → 15 GB frei war der Beleg, und die SIGTERM-Welle hoerte auf.
+  **Die Umkehrung gilt genauso: `FreeVirtualMemory` = 0 ist KEIN Beweis fuer Commit-Druck.**
+  Gemessen 29.09.2026: Win32_OperatingSystem meldete 0 GB frei, aber das Seitenfile war
+  fast leer (0,2 von 8 GB genutzt) — die Messung war ein Artefakt, kein Druck. Vor jedem
+  Waisen-Kill das Seitenfile gegenpruefen (`Win32_PageFileUsage`: `AllocatedBaseSize` gegen
+  `CurrentUsage`); erst wenn es wirklich voll ist, ist der Commit der Treiber. Und
+  `PagefileUsage`/`PrivateMemorySize64` koennen fuer ALLE Prozesse 0 MB zeigen — dann ist
+  die Messung kein Beleg fuer „kein Fresser", sondern schlicht unbrauchbar; nicht daraus
+  schliessen, dass kein Prozess Commit haelt.
+  **Waisen-Muster: exakt gleiche Startzeit ueber viele Prozesse einer Kommandozeile**
+  (87 Stueck, alle 21:13:59) ist ein EINMALIGER Start, der nie endete = abgebrochener
+  Build, kein laufender Dienst. Ein laufender Build haette juengere Kinder. Solche
+  Waisen beenden und danach pruefen, ob sie wiederkommen (der Gateway startet ein paar
+  neu — das ist normal, nicht das Waisen-Problem).
 
+- **Einen Dauerprozess nie mit `timeout` testen.** `timeout 60 dauerlauf.py` beendet ihn
+  nach Ablauf mit SIGTERM (Rueckgabe 143), und der Dauerlauf beendet dann seine Kinder —
+  das Log zeigt danach „xperp (papier) Rueckgabe 143", als waere die Spur abgestuerzt.
+  Das ist ein Test-Artefakt, kein Befund. Einen Dauerprozess im Hintergrund starten
+  (`background=true`) und in einem SEPARATEN Aufruf pruefen, ob er laeuft und Zyklen
+  schreibt; nie mit einem eigenen Zeitlimit, das ihn killt.
 - **Ein Cron „Script exited with code 15“ ist ein SIGTERM von aussen, kein Skriptfehler.**
   Gibt das Skript selbst nur 0/1 zurueck, wird der Prozess mitten im Lauf beendet — sehr zum
   Auslesen der Ereigniszeit (Lauf in 12 s statt der ueblichen 20–50 s). Nicht den Quelltext des

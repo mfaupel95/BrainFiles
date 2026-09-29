@@ -49,6 +49,54 @@ for inst in wp.pruef_instrumente(w, z):    # Plan + Bestand
 Die drei Helfer liegen in `scanner/wachen_pruefung.py` und gehoeren dorthin, wo
 `wp` schon importiert ist - die Spur selbst wird nicht umgebaut.
 
+## Die Falle eine Ebene tiefer: der Kurs kommt aus der Plan- oder Feed-Liste
+
+Auch eine **Datensammel-Schleife** kann an derselben Verengung leiden. Zwei
+Formen, beide enden gleich: die Position bekommt keinen Kurs mehr, `pruefe_ausstiege`
+behaelt sie, sie wird nie geschlossen und belegt einen Platz.
+
+1. **Kurse ueber die Planliste.** Die Funktion, die `kurse` baut, laeuft ueber
+   `w["instrumente"]` - faellt ein Symbol heraus, verliert seine Position den Kurs.
+   Fix: dieselbe Liste wie beim Ausstieg, also Plan + Bestand:
+
+```python
+def hole_kurse(w, z):
+    verwaist = wp.verwaiste_instrumente(w, z)
+    if verwaist:
+        print("Verwaiste Instrumente ...", file=sys.stderr)
+    for inst in wp.pruef_instrumente(w, z):     # NICHT w["instrumente"]
+        ...
+```
+
+   Den Aufrufer mitziehen: `hole_kurse(w, z)` statt `hole_kurse(w)`.
+
+2. **Kurse aus dem AKTUELLEN Feed.** Bei Feed-Spuren entsteht `kurse` aus den
+   heutigen Kandidaten. Wechseln die Kandidaten taeglich (Top-Movers, Trending,
+   Bewertung faellt unter die Schwelle), verliert die Position ihren Kurs,
+   obwohl ihr Symbol nirgends gestrichen wurde. Nach dem Aufbau von `kurse` die
+   gehaltenen Positionen nachziehen - Vorlage im Haus ist
+   `moondev_sniper/handeln.py`:
+
+```python
+for p in z.get("positionen", []):
+    if p.get("inst") in kurse:
+        continue
+    try:
+        preis = <einzelkurs>(p["inst"])
+    except Exception as e:                     # noqa: BLE001
+        fehler.append("Preis %s: %s" % (p["inst"], str(e)[:80]))
+        continue
+    if preis:
+        kurse[p["inst"]] = preis
+```
+
+   Ein einzelner Kursabruf darf den Zyklus nie kippen (Fehler sammeln, nicht
+   werfen) - ein Verbindungsabbruch hat sonst den ganzen Lauf gekostet.
+
+Eine Position ohne Kurs NIE stillschweigend behalten: melden, mit Symbol und
+Eroeffnungszeit. Melden allein heilt nicht - der naechste Schritt ist immer der
+Einzelkurs-Abruf.
+
 ## Den Stall in allen Spuren finden (Audit-Rezept)
 
     cd BrainFiles
@@ -63,9 +111,12 @@ Fehler:
   begrenzt); eine Spur darf daneben eine solche Schleife behalten.
 - **Schleife ueber die Marktdaten des Zyklus** (`for inst in sorted(daten)`) ist
   sicher.
-- **Datensammel-Schleife ueber die Planliste** ist derselbe Fehler eine Ebene
-  tiefer: eine Position auf einem gestrichenen Symbol bekommt keinen Kurs mehr.
-  `spur_buch` meldet den fehlenden Kurs jetzt, schliesst die Position aber nicht.
+- **Datensammel-Schleife ueber die Planliste oder den Feed** = dieselbe Falle
+  eine Ebene tiefer (siehe oben).
+
+Fuer die zweite Form ist der Vergleich der `quelle()`-Funktionen das schnellste
+Werkzeug: welche Spur zieht die Preise der gehaltenen Positionen nach und welche
+nicht?
 
 ## Buchformat und Rechenweg
 
@@ -78,6 +129,9 @@ Fehler:
   uebersprungen werden - melden, sonst blockiert sie unsichtbar.
 - **Ausbuecher** (`buchbereinigung`, Zwangsschluss) sind zu Recht keine Runden -
   aber dann muss die Anzeige genau das sagen.
+- **Feldname beim Verkauf.** Der Erloes steht im SELBEN Feld wie der Einsatz beim
+  Kauf (`einsatz_usd`) - ein Test, der `erloes_usd` erwartet, prueft eine
+  Annahme, nicht das Journal.
 
 ## Ein Test gegen die Zeile meldet Umbau, keine Fehler
 
@@ -89,6 +143,11 @@ Funktion>)` wird bei jeder Verlagerung rot, ohne dass sich am Verhalten etwas
 geaendert hat; eine verlegte Zuordnung ist kein Fehler. Ebenso: eine feste Zahl
 oder ein Commit-Hash als Erwartung meldet Aenderung, nicht Fehler - pruefe die
 Regel.
+
+Und: den ERZEUGER benutzen, nicht ein handgebautes dict. Ein Test, der die
+Anzeige gegen ein selbst zusammengesetztes Kennzahlen-dict prueft, prueft die
+eigene Annahme - `kennzahlen([...], "USD")` aufrufen und dessen Rueckgabe
+verwenden. Sonst ist der Test gruen, weil Annahme und Nachbau gleich falsch sind.
 
 ## Nachweis
 
