@@ -135,8 +135,9 @@ exFAT ungeeignet (siehe [[Portabilitaet]]), für eine reine Kopie ist es
 unproblematisch — es läuft keine Datenbank darauf.
 
 ⚠️ **Auf der SSD liegen Klartext-Zugangsdaten** (`Wissen/Zugaenge.md`). Eine Platte außer Haus kann verloren gehen oder gestohlen
-werden — anders als eine im Rechner. Ohne BitLocker To Go liest das jeder, der
-sie findet. Siehe [[Zugaenge]] und [[Passwoerter-Quarantaene]].
+werden — anders als eine im Rechner. **Wer sie findet, liest sie: die Kopie bleibt bewusst unverschlüsselt**
+(Entscheidung Max, 30.09.2026 — kein BitLocker To Go). Damit hängt die Vertraulichkeit allein am Ort:
+die SSD gehört außer Haus an einen Platz, an den kein Dritter kommt. Siehe [[Zugaenge]] und [[Passwoerter-Quarantaene]].
 
 `OKX_API.env` steht seit dem 12.09.2026 nicht mehr in dieser Aufzählung: die
 Datei lag im Archiv-Posteingang und wurde bei jedem Lauf mitkopiert, dazu lag

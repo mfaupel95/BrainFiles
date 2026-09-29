@@ -1613,22 +1613,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/kraken/wachen.json (mindest_guthaben_eur)
       Angelegt: 2026-09-22 · Zuletzt: 2026-09-22
 
-- [?] **T-048 — Ausser-Haus-Kopie verschluesseln (BitLocker To Go)**
-      Kontext: Q:\MaxHirn-AusserHaus ist vollstaendig und geprueft
-      (150.732 Dateien / 63,74 GB), aber NICHT verschluesselt und enthaelt
-      Klartext-Zugangsdaten (Wissen/Zugaenge.md, Wissen/OKX_API.env). Ohne
-      angestecktes Q: stecken alle Kopien im selben Rechner; gegen den
-      Netzteilschaden 2026 (mehrere Platten gleichzeitig) hilft nur die
-      Kopie ausser Haus - und die darf ein Fremder nicht lesen koennen, wenn
-      die SSD verloren geht oder gestohlen wird.
-      Naechster Schritt (Max, am Geraet): SSD anstecken, BitLocker To Go
-      aktivieren (Passwort merken/ablegen), Skript sichern-ausser-haus.ps1
-      einmal neu laufen lassen, sicher entfernen, ausser Haus bringen. Vorher
-      ist die Kopie auf Q: unbrauchbar, falls sie jemand findet.
-      Wartet auf: Max - BitLocker To Go auf Q:
-      Betrifft: Q:\MaxHirn-AusserHaus, Wissen/Zugaenge.md (Stufe 0)
-      Angelegt: 2026-09-22 · Zuletzt: 2026-09-22
-
 
 - [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
       **Erledigt 2026-09-19.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
@@ -2123,6 +2107,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-048 — Ausser-Haus-Kopie verschluesseln (BitLocker To Go)**
+      Kontext: Q:\MaxHirn-AusserHaus ist vollstaendig und geprueft, aber
+      NICHT verschluesselt und enthaelt Klartext-Zugangsdaten
+      (Wissen/Zugaenge.md, Wissen/OKX_API.env). Ohne angestecktes Q: stecken
+      alle Kopien im selben Rechner; gegen den Netzteilschaden 2026 hilft nur
+      die Kopie ausser Haus.
+      Erledigt 2026-09-30: Entscheidung Max - bewusst OHNE BitLocker To Go.
+      Die SSD bleibt unverschluesselt; die Vertraulichkeit haengt damit am
+      Aufbewahrungsort (ausser Haus, kein Dritter). Dokumentiert in
+      Wissen/Routinen.md, Abschnitt 'Die dritte Kopie: ausser Haus'.
+      Betrifft: Q:\MaxHirn-AusserHaus, Wissen/Zugaenge.md (Stufe 0)
+      Angelegt: 2026-09-22 · Zuletzt: 2026-09-30
+
 - [x] **T-184 — Aufgabe 'MaxHirn-Ausserhaus-Kopie' ist nicht registriert (Doku sagt taeglich 21:30)**
       Kontext: Commit 12f3433 (30.09.2026, T-182) sagt, die Ausser-Haus-Kopie
       erneuere sich taeglich 21:30 ueber `Routinen/ausserhaus-kopie.ps1`. Der
