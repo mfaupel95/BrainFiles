@@ -120,12 +120,19 @@ def wachen_von(spur):
         return json.load(f)
 
 
-def buch_ordner(spur, lauf):
+def buch_ordner(spur, lauf, setzen=None):
     """Der Backtest-Ordner einer Spur: Kopie der Wachen, sonst nichts.
 
     Die Wachen-KOPIE ist der Punkt: `journal_zweitziel` wird auf den
     Backtest-Ordner gebogen, damit selbst ein vergessener Spiegelungsaufruf
     nach innen kopiert und nie nach Q:.
+
+    `setzen` ueberschreibt EINZELNE Werte in der KOPIE - die Wachen der Spur
+    selbst werden nie angefasst. Wofuer das da ist: eine Spur, deren Kill-
+    Schalter den Lauf nach sechs Tagen abwuergt (moondev_funding, gemessen am
+    29.09.2026), ist sonst ueber den ganzen Zeitraum nicht messbar. Was gesetzt
+    wurde, steht als `_backtest_gesetzt` in der Kopie - wer den Ordner spaeter
+    liest, sieht den Unterschied zur echten Wachen, statt ihn zu ahnen.
     """
     ziel = os.path.join(wurzel(), spur, lauf)
     os.makedirs(ziel, exist_ok=True)
@@ -135,10 +142,31 @@ def buch_ordner(spur, lauf):
             w = json.load(f)
         w["journal_zweitziel"] = ziel
         w["handel_erlaubt"] = False          # im Backtest gibt es kein live
+        if setzen:
+            w["_backtest_gesetzt"] = dict(setzen)
+            w.update(setzen)
         with open(os.path.join(ziel, "wachen.json"), "w", encoding="utf-8") as f:
             json.dump(w, f, indent=2, ensure_ascii=False)
             f.write("\n")
     return ziel
+
+
+def setzen_aus(text):
+    """`name=wert` (mehrfach) in ein Dict - Zahlen und Wahrheitswerte erkannt."""
+    aus = {}
+    for stueck in (text or ()):
+        if "=" not in stueck:
+            raise SystemExit("--setzen braucht name=wert, nicht %r" % stueck)
+        name, wert = stueck.split("=", 1)
+        wert = wert.strip()
+        if wert.lower() in ("true", "false"):
+            aus[name.strip()] = wert.lower() == "true"
+        else:
+            try:
+                aus[name.strip()] = float(wert) if "." in wert else int(wert)
+            except ValueError:
+                aus[name.strip()] = wert
+    return aus
 
 
 def schuetze(modul, ordner):
@@ -533,7 +561,7 @@ def _kein_bus(*a, **k):
 
 
 def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
-              von_ms=None, bis_ms=None, still=True):
+              von_ms=None, bis_ms=None, still=True, setzen=None):
     """Familie B ueber den Marktquerschnitt: ein `spur_buch.zyklus` je Schritt.
 
     Der Unterschied zu `lauf_b`: dort ist eine Kerze ein Schritt je Instrument,
@@ -570,7 +598,7 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
                        % (spur, ", ".join(sorted(moondev_historie.QUELLEN))))
 
     modul = spur_modul(spur)
-    ordner = buch_ordner(spur, lauf)
+    ordner = buch_ordner(spur, lauf, setzen)
     with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
         w = json.load(f)
     bestand = moondev_historie.Bestand()
@@ -621,7 +649,8 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
     return k, len(puffer.getvalue().splitlines())
 
 
-def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True):
+def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
+           setzen=None):
     """Familie C: eine Spur mit eigenem `lauf(modus)` und eigenem Buch.
 
     Anders als in Familie A wird hier nichts abgefangen: die Spur schreibt ihr
@@ -640,7 +669,7 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True):
     import moondev_historie
 
     modul = spur_modul(spur)
-    ordner = buch_ordner(spur, lauf)
+    ordner = buch_ordner(spur, lauf, setzen)
     with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
         w = json.load(f)
 
@@ -802,6 +831,12 @@ def main():
     ap.add_argument("--takt", default="1D", choices=("1D", "1H"))
     ap.add_argument("--mindest-symbole", type=int, default=30,
                     help="ab so vielen Reihen zaehlt ein Zeitpunkt als Schritt")
+    ap.add_argument("--setzen", action="append", default=None,
+                    metavar="NAME=WERT",
+                    help="Wert in der BACKTEST-Kopie der Wachen setzen "
+                         "(mehrfach moeglich); die Wachen der Spur bleiben "
+                         "unberuehrt, das Gesetzte steht als _backtest_gesetzt "
+                         "in der Kopie")
     a = ap.parse_args()
     mk = a.max_kerzen
     if a.gegenprobe:
@@ -809,13 +844,15 @@ def main():
                          indent=2, ensure_ascii=False))
         return
     if a.familie_c:
-        k, zeilen = lauf_c(a.spur, gebuehr_fuer(a.spur), a.lauf)
+        k, zeilen = lauf_c(a.spur, gebuehr_fuer(a.spur), a.lauf,
+                           setzen=setzen_aus(a.setzen))
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
         return
     if a.feed:
         k, zeilen = lauf_feed(a.spur, gebuehr_fuer(a.spur), a.lauf,
-                              takt=a.takt, mindest_symbole=a.mindest_symbole)
+                              takt=a.takt, mindest_symbole=a.mindest_symbole,
+                              setzen=setzen_aus(a.setzen))
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
         return

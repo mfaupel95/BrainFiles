@@ -10,6 +10,7 @@ Kein Test dieses Moduls geht ins Netz: alles laeuft ueber Attrappen-Kerzen.
 
 import ast
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -143,8 +144,13 @@ class SignalwelleTest(unittest.TestCase):
         self.assertEqual({}, daten)
 
 
-class GegenprobeTest(unittest.TestCase):
+class GegenprobeJournalTest(unittest.TestCase):
     """Der Adapter gegen die Wirklichkeit - offline und wiederholbar.
+
+    NAME: hiess bis zum 29.09.2026 `GegenprobeTest`. Eine zweite Sitzung baute
+    am selben Tag eine zweite Gegenprobe unter demselben Namen; die spaetere
+    Definition verdeckt die fruehere still, und eine der beiden Pruefungen lief
+    dann NIE. Beide haben ihren eigenen Namen, beide laufen.
 
     Die Feed-Spuren holen ihre Preise im Betrieb von CoinGecko. Diese Preise
     stehen in ihren ECHTEN Journals (CoinGecko beantwortet Abrufe von diesem
@@ -370,6 +376,166 @@ class LaufCTest(unittest.TestCase):
         finally:
             mh.ORDNER = alt
             replay.verzeichnis = alt_v
+
+
+class SetzenTest(unittest.TestCase):
+    """`--setzen` aendert NUR die Kopie - die Wachen der Spur bleibt unberuehrt.
+
+    Der Grund fuer diesen Test: eine Spur, deren Kill-Schalter den Lauf nach
+    sechs Tagen abwuergt (moondev_funding, gemessen am 29.09.2026), ist sonst
+    nicht ueber den ganzen Zeitraum messbar. Die Verlockung waere, den Deckel
+    einfach in der ECHTEN Wachen zu heben - das waere ein Eingriff in den
+    laufenden Betrieb. Geprueft wird deshalb beides: der Wert landet in der
+    Kopie, und die Quelle bleibt Byte fuer Byte gleich.
+    """
+
+    SPUR = "moondev_topmovers"
+    LAUF = "_test_setzen"
+
+    def setUp(self):
+        self.wachen = os.path.join(HANDEL, self.SPUR, "wachen.json")
+        with open(self.wachen, "rb") as f:
+            self.vorher = f.read()
+        self.ordner = replay.buch_ordner(self.SPUR, self.LAUF,
+                                          setzen={"kill_switch_gesamt_usd": 999999})
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(os.path.join(HANDEL, "daten", "backtest", self.SPUR,
+                                   self.LAUF), ignore_errors=True)
+
+    def test_quelle_bleibt_unberuehrt(self):
+        with open(self.wachen, "rb") as f:
+            self.assertEqual(self.vorher, f.read(),
+                             "die echte Wachen wurde angefasst")
+
+    def test_kopie_traegt_den_wert_und_die_herkunft(self):
+        with open(os.path.join(self.ordner, "wachen.json"), encoding="utf-8") as f:
+            kopie = json.load(f)
+        self.assertEqual(999999, kopie["kill_switch_gesamt_usd"])
+        self.assertEqual({"kill_switch_gesamt_usd": 999999},
+                         kopie["_backtest_gesetzt"],
+                         "was gesetzt wurde, muss in der Kopie nachlesbar sein")
+
+    def test_ohne_setzen_keine_spur(self):
+        ordner = replay.buch_ordner(self.SPUR, self.LAUF)
+        with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
+            kopie = json.load(f)
+        self.assertNotIn("_backtest_gesetzt", kopie)
+
+    def test_setzen_liest_zahlen_und_wahrheitswerte(self):
+        aus = replay.setzen_aus(["a=1", "b=2.5", "c=true", "d=Wort"])
+        self.assertEqual({"a": 1, "b": 2.5, "c": True, "d": "Wort"}, aus)
+
+    def test_setzen_ohne_gleichheitszeichen_bricht_ab(self):
+        with self.assertRaises(SystemExit):
+            replay.setzen_aus(["kaputt"])
+
+
+class GegenprobeBoerseTest(unittest.TestCase):
+    """Die Tafel gegen eine zweite Boerse.
+
+    Ein Adapter, den niemand gegen die Wirklichkeit gehalten hat, ist eine
+    Behauptung. Verglichen wird die GROESSENORDNUNG, nicht die Stelle hinter
+    dem Komma: zwei Boersen sind zwei Preise, und CoinGecko mittelt ueber
+    viele. Ein Vergleich, der Gleichheit verlangt, waere selbst falsch.
+
+    Der Abzug wird EINMAL aufgezeichnet (daten/historie/coingecko_probe.json)
+    und ist damit reproduzierbar. Fehlt er, faellt der Test als SKIP auf -
+    nicht als gruen, denn eine fehlende Probe ist keine bestandene Probe.
+    """
+
+    PROBE = os.path.join(HANDEL, "daten", "historie", "coingecko_probe.json")
+    TOLERANZ = 0.25      # 25 % Abweichung je Feld sind erlaubt
+
+    def test_kurs_gegen_okx_in_der_groessenordnung(self):
+        """Zweite Boerse, engerer Massstab.
+
+        OKX und Binance sind zwei Boersen fuer dieselbe Muenze - fuer den
+        Schlusskurs desselben Tages duerfen sie nur wenig auseinanderliegen.
+        Der Abzug muss ZEITNAH an der letzten Kerze liegen, sonst vergleicht
+        man zwei verschiedene Tage und der Test waere selbst falsch.
+        """
+        pfad = os.path.join(HANDEL, "daten", "historie", "okx_probe.json")
+        if not os.path.isfile(pfad):
+            self.skipTest("kein OKX-Abzug aufgezeichnet: %s" % pfad)
+        with open(pfad, encoding="utf-8") as f:
+            probe = json.load(f)
+        b = mh.Bestand()
+        b.laden("1D")
+        schritte = b.schritte(30)
+        # Der LETZTE abgeschlossene Tag: die heutige Tageskerze laeuft noch,
+        # ihr Schlusskurs ist der Stand des Abrufs und nicht der Tageschluss
+        # (genau daran scheiterte der erste Vergleich am 29.09.2026).
+        fertig = [t for t in schritte if t + 86400000 <= probe["stand_ms"]]
+        if not fertig:
+            self.skipTest("kein abgeschlossener Tag im Bestand")
+        ts = fertig[-1]
+        if probe["stand_ms"] - ts > 5 * 86400000:
+            self.skipTest("Abzug ist %d Tage juenger als der letzte Tag"
+                          % round((probe["stand_ms"] - ts) / 86400000))
+        tafel = {z["basis"]: z for z in b.tafel(ts, top=300).values()}
+        geprueft, abweichungen, ohne_kurs = 0, [], []
+        for m in probe["maerkte"]:
+            sym = (m.get("symbol") or "").upper()
+            if sym not in tafel:
+                continue
+            # DERSELBE Tagesschluss auf beiden Boersen - nicht "letzte Kerze
+            # gegen Ticker jetzt". Genau dieser Vergleich lag am 29.09.2026 bei
+            # vier Symbolen 10 % daneben, ohne dass die Daten falsch waren.
+            # Binances Tageskerze oeffnet um 00:00 UTC und schliesst 24 h
+            # spaeter; die OKX-Stunde, die auf dieser Grenze endet, ist
+            # ts + 24 h. Beide Zahlen sind derselbe Zeitpunkt.
+            grenze = ts + 24 * 3600000
+            kurs = m["schluss"].get(str(grenze)) or m["schluss"].get(grenze)
+            if not kurs:
+                ohne_kurs.append(sym)
+                continue
+            soll, ist = float(kurs), tafel[sym]["kurs"]
+            if soll <= 0 or not ist:
+                continue
+            quote = abs(ist - soll) / soll
+            geprueft += 1
+            if quote >= 0.05:
+                abweichungen.append("%s: Binance %.6f gegen OKX %.6f (%.1f %%)"
+                                    % (sym, ist, soll, quote * 100))
+        self.assertGreater(geprueft, 20,
+                           "zu wenige gemeinsame Stunden (%d), ohne Kurs: %s"
+                           % (geprueft, ",".join(ohne_kurs[:5])))
+        self.assertEqual([], abweichungen,
+                         "ausserhalb der Toleranz: " + "; ".join(abweichungen[:5]))
+
+    def test_kurs_in_der_groessenordnung(self):
+        # Die Pruefung gehoert in DEN Test, nicht in setUp: ein skip in setUp
+        # nimmt die ganze Klasse mit, und der OKX-Test lief dann nie
+        # (gemessen am 29.09.2026: 168 gemeinsame Symbole lagen ungeprueft da).
+        if not os.path.isfile(self.PROBE):
+            self.skipTest("kein CoinGecko-Abzug aufgezeichnet: %s" % self.PROBE)
+        with open(self.PROBE, encoding="utf-8") as f:
+            probe = json.load(f)
+        b = mh.Bestand()
+        b.laden("1D")
+        schritte = b.schritte(30)
+        self.assertTrue(schritte, "kein Zeitpunkt mit genug Reihen")
+        ts = schritte[-1]
+        tafel = {z["basis"]: z for z in b.tafel(ts, top=300).values()}
+        geprueft, abweichungen = 0, []
+        for m in probe["maerkte"]:
+            sym = (m.get("symbol") or "").upper()
+            if sym not in tafel:
+                continue
+            soll, ist = float(m["current_price"]), tafel[sym]["kurs"]
+            if soll <= 0 or not ist:
+                continue
+            quote = abs(ist - soll) / soll
+            geprueft += 1
+            if quote >= self.TOLERANZ:
+                abweichungen.append("%s: Binance %.6f gegen CoinGecko %.6f (%.0f %%)"
+                                    % (sym, ist, soll, quote * 100))
+        self.assertGreater(geprueft, 10,
+                           "zu wenige gemeinsame Symbole (nur %d)" % geprueft)
+        self.assertEqual([], abweichungen,
+                         "ausserhalb der Toleranz: " + "; ".join(abweichungen[:5]))
 
 
 if __name__ == "__main__":
