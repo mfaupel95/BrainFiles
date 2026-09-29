@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import historie_binance
 
@@ -39,6 +40,7 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 ORDNER = os.path.join(HIER, "daten", "historie", "feed")
 
 TAKTE = {"1D": "1d", "1H": "1h"}
+BAR_MS = {"1D": 86400000, "1H": 3600000}        # Laenge einer Kerze in ms
 KENNUNG = "feed"
 VON_TAG = "2021-01-01"
 
@@ -178,14 +180,44 @@ def _zeitpunkt(text):
     return int(time.mktime(time.strptime(text, "%Y-%m-%d"))) * 1000
 
 
-def auffuellen(symbole, takt="1D", von_ms=None, bis_ms=None, pause=0.2):
-    """Feed-Kerzen nachladen. Bericht je Symbol: neu/gesamt."""
+def _startpunkt(sym, takt, von_ms):
+    """Wo der Nachlauf einsetzt.
+
+    Reicht die gespeicherte Reihe bis an den Fensteranfang, wird am letzten
+    Stand fortgesetzt (ein zweiter Lauf holt dann nur das Neue). Fehlt vorn
+    Geschichte - etwa weil das Paar spaeter gelistet wurde - wird das ganze
+    Fenster geholt, sonst bliebe die Luecke fuer immer.
+    """
+    reihe = lade_feed(sym, takt)
+    if not reihe:
+        return int(von_ms)
+    if reihe[0][0] > int(von_ms) + 2 * BAR_MS[takt]:
+        return int(von_ms)
+    return reihe[-1][0] + 1
+
+
+def auffuellen(symbole, takt="1D", von_ms=None, bis_ms=None, pause=0.2, faeden=4):
+    """Feed-Kerzen nachladen. Bericht je Symbol: neu/gesamt.
+
+    `faeden`: mehrere Symbole GLEICHZEITIG holen. Der Engpass ist die Latenz,
+    nicht das Limit - Binance erlaubt rund 600 Kerzenabrufe je Minute, ein
+    einzelner Faden schafft etwa 24. Innerhalb eines Symbols bleibt die
+    Reihenfolge sequenziell und die Datei je Symbol getrennt, damit sich zwei
+    Faeden nie in dieselbe Datei schreiben.
+    """
     von_ms = von_ms if von_ms is not None else _zeitpunkt(VON_TAG)
     bis_ms = bis_ms if bis_ms is not None else int(time.time() * 1000)
-    bericht = {}
-    for sym in symbole:
-        neu = hole_feed(sym, takt, von_ms, bis_ms, pause=pause)
-        bericht[sym] = {"neu": len(neu), "kerzen": speichere_feed(sym, takt, neu)}
+
+    def _eins(sym):
+        start = _startpunkt(sym, takt, von_ms)
+        neu = hole_feed(sym, takt, start, bis_ms, pause=pause)
+        return sym, {"neu": len(neu), "kerzen": speichere_feed(sym, takt, neu)}
+
+    if faeden and int(faeden) > 1 and len(symbole) > 1:
+        with ThreadPoolExecutor(max_workers=int(faeden)) as pool:
+            bericht = dict(pool.map(_eins, symbole))
+    else:
+        bericht = dict(_eins(s) for s in symbole)
     _schreibe_stand()
     return bericht
 
@@ -259,6 +291,159 @@ def stand():
         return {"reihen": {}}
 
 
+def quantil(reihe, anteil):
+    """Der Wert an der Stelle `anteil` (0..1) der SORTIERTEN Reihe.
+
+    Ohne Interpolation: die Zahl ist zum Vergleichen gedacht (Regime, Streuung),
+    nicht als Median. Leere Reihe -> None, nicht 0.
+    """
+    if not reihe:
+        return None
+    s = sorted(reihe)
+    i = int(round(anteil * (len(s) - 1)))
+    i = max(0, min(len(s) - 1, i))
+    return s[i]
+
+
+class Bestand:
+    """Alle Reihen eines Takts im Speicher, Zugriff ueber den Zeitstempel.
+
+    Der Kern jeder Feed-Spur ist ein Marktquerschnitt: welcher Kurs gilt JETZT,
+    wie hat er sich zum Vortag geaendert, welches Volumen hatte er. `tafel`
+    liefert genau das fuer EINEN Zeitpunkt, `rang` die Reihenfolge nach
+    Volumen und `kurse` die Preise ALLER geladenen Symbole.
+
+    `kurse` ist kein Beiwerk: `spur_buch.pruefe_ausstiege` liest die Preise
+    daraus, und ein Symbol, das dort fehlt, schliesst seine Position nie.
+    """
+
+    def __init__(self):
+        self._reihen = {}
+        self._tafel = {}
+        self._kurse = {}
+
+    def laden(self, takt="1D"):
+        """Alle Reihen dieses Takts von der Platte. Rueckgabe: die Symbole."""
+        self._reihen = {}
+        for sym in _symbole_auf_der_platte(takt):
+            r = lade_feed(sym, takt)
+            if r:
+                self._reihen[sym] = r
+        self._tafel.clear()
+        self._kurse.clear()
+        return sorted(self._reihen)
+
+    def symbole(self):
+        return sorted(self._reihen)
+
+    def reihe(self, sym):
+        return self._reihen.get(sym, [])
+
+    def _i(self, sym, ts):
+        """Index der Kerze, die bei `ts` laeuft (letzte mit zeit <= ts).
+
+        Bisektion, weil die Reihen lang sind und je Tag jedes Symbol gefragt
+        wird.
+        """
+        r = self._reihen.get(sym)
+        if not r:
+            return None
+        lo, hi, treffer = 0, len(r) - 1, None
+        while lo <= hi:
+            m = (lo + hi) // 2
+            if r[m][0] <= ts:
+                treffer = m
+                lo = m + 1
+            else:
+                hi = m - 1
+        return treffer
+
+    def kerze(self, sym, ts):
+        i = self._i(sym, ts)
+        return None if i is None else self._reihen[sym][i]
+
+    def kurs(self, sym, ts):
+        k = self.kerze(sym, ts)
+        return None if k is None else k[4]
+
+    def volumen_usd(self, sym, ts):
+        k = self.kerze(sym, ts)
+        return None if k is None else k[5]
+
+    def aenderung_pct(self, sym, ts, zurueck=1):
+        """Aenderung gegen die Kerze `zurueck` Stellen davor, in Prozent.
+
+        Ohne Vorzeile None - eine fehlende Vorzeile ist keine Nullbewegung.
+        """
+        i = self._i(sym, ts)
+        if i is None or i - zurueck < 0:
+            return None
+        alt = self._reihen[sym][i - zurueck][4]
+        neu = self._reihen[sym][i][4]
+        if not alt:
+            return None
+        return (neu / alt - 1.0) * 100.0
+
+    def rang(self, ts, top=None):
+        """Symbole nach Quote-Volumen DIESES Zeitpunkts, groesstes zuerst."""
+        paare = []
+        for sym in self._reihen:
+            v = self.volumen_usd(sym, ts)
+            if v:
+                paare.append((v, sym))
+        paare.sort(key=lambda z: (-z[0], z[1]))
+        namen = [sym for _, sym in paare]
+        return namen[:int(top)] if top else namen
+
+    def tafel(self, ts, top=None):
+        """Marktquerschnitt: {symbol: {kurs, aenderung_pct, ...}}."""
+        if ts in self._tafel:
+            t = self._tafel[ts]
+        else:
+            t = {}
+            for sym in self._reihen:
+                kurs = self.kurs(sym, ts)
+                if kurs is None:
+                    continue
+                t[sym] = {"kurs": kurs,
+                          "aenderung_pct": self.aenderung_pct(sym, ts, 1),
+                          "aenderung_pct_7d": self.aenderung_pct(sym, ts, 7),
+                          "volumen_usd": self.volumen_usd(sym, ts),
+                          "basis": basis_von(sym)}
+            self._tafel[ts] = t
+        if top:
+            erlaubt = set(self.rang(ts, top))
+            return {s: v for s, v in t.items() if s in erlaubt}
+        return t
+
+    def kurse(self, ts):
+        """Preis JEDES geladenen Symbols zu diesem Zeitpunkt.
+
+        Bewusst ALLE, nicht nur die der Tafel: der Kursweg der Buchhaltung
+        braucht jede offene Position, auch eine, die heute kein Volumen hat.
+        """
+        if ts not in self._kurse:
+            self._kurse[ts] = {sym: k for sym in self._reihen
+                               if (k := self.kurs(sym, ts)) is not None}
+        return self._kurse[ts]
+
+    def breite(self, ts, top=None):
+        """Anteil der Symbole mit positiver Tagesaenderung.
+
+        Rueckgabe als Dict, nicht als nackte Zahl: `anteil` allein verschweigt,
+        ob 3 oder 300 Symbole gemessen wurden. `anteil` ist None, wenn kein
+        einziges Symbol eine Kerze hat - 0.0 waere die Aussage 'keiner steigt'.
+        """
+        t = self.tafel(ts, top)
+        gemessen = [v["aenderung_pct"] for v in t.values()
+                    if v["aenderung_pct"] is not None]
+        ohne = len(t) - len(gemessen)
+        return {"anteil": (sum(1 for a in gemessen if a > 0) / len(gemessen))
+                if gemessen else None,
+                "gemessen": len(gemessen),
+                "ohne_kerze": ohne}
+
+
 def _stunden_symbole(anzahl):
     """Top `anzahl` aus dem Tages-Universum PLUS die Funding-Instrumente."""
     u = _lade_universum() or universum(anzahl)
@@ -267,6 +452,14 @@ def _stunden_symbole(anzahl):
         sym = historie_binance.symbol(inst)
         if sym and sym not in aus:
             aus.append(sym)
+    # Fuer die Symbole ausserhalb des Tages-Universums fehlt der Basiswert -
+    # ohne ihn stuende im Marktquerschnitt 'basis: None'.
+    fehlend = [s for s in aus if s not in _basis]
+    if fehlend:
+        info = _hole("%s/api/v3/exchangeInfo" % _BASIS)
+        for s in info.get("symbols", []):
+            if s.get("symbol") in fehlend:
+                _basis[s["symbol"]] = s.get("baseAsset") or s["symbol"][:-4]
     return aus
 
 
@@ -278,6 +471,8 @@ def main():
     p.add_argument("--stunden", type=int, default=None,
                    help="Top-N PLUS Funding-Instrumente stuendlich holen")
     p.add_argument("--von", default=VON_TAG)
+    p.add_argument("--faeden", type=int, default=4,
+                   help="Symbole gleichzeitig holen (Latenz ist der Engpass)")
     p.add_argument("--stand", action="store_true")
     a = p.parse_args()
 
@@ -287,7 +482,7 @@ def main():
     if a.universum:
         sym = universum(a.universum)
         print("%d Symbole im Universum, hole %s ..." % (len(sym), a.takt))
-        bericht = auffuellen(sym, a.takt, _zeitpunkt(a.von))
+        bericht = auffuellen(sym, a.takt, _zeitpunkt(a.von), faeden=a.faeden)
         fertig = [s for s, b in bericht.items() if b["kerzen"]]
         print("%d Reihen geschrieben, %d ohne Kerzen" % (len(fertig),
                                                          len(bericht) - len(fertig)))
@@ -296,7 +491,7 @@ def main():
         sym = _stunden_symbole(a.stunden)
         print("%d Symbole (Top %d + Funding-Instrumente), hole 1H ..."
               % (len(sym), a.stunden))
-        bericht = auffuellen(sym, "1H", _zeitpunkt(a.von))
+        bericht = auffuellen(sym, "1H", _zeitpunkt(a.von), faeden=a.faeden)
         fertig = [s for s, b in bericht.items() if b["kerzen"]]
         print("%d Reihen geschrieben, %d ohne Kerzen" % (len(fertig),
                                                          len(bericht) - len(fertig)))
