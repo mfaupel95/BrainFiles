@@ -101,6 +101,19 @@ class Verhalten(Basis):
         self.assertNotIn("anfrage_bis", d["b"])
         self.assertNotIn("offen_bis", d["a"])
 
+    def test_alles_schliessen_haelt_kaputten_eintrag_aus(self):
+        ff.anfrage_stellen("a", 60)
+        ff.oeffnen("a", 1, wer="test")
+        d = self._inhalt()
+        d["kaputt"] = "kaputt"
+        with open(ff.DATEI, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        self.assertEqual(ff.alles_schliessen("Test"), ["a"])
+        d = self._inhalt()
+        self.assertNotIn("offen_bis", d["a"])
+        self.assertIsInstance(d["kaputt"], dict)
+        self.assertEqual(d["kaputt"]["schliess_grund"], "Test")
+
     def test_alles_schliessen_ohne_datei_schreibt_nichts(self):
         self.assertEqual(ff.alles_schliessen("Test"), [])
         self.assertFalse(os.path.exists(ff.DATEI))

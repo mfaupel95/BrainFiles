@@ -117,6 +117,26 @@ class Aktionen(Basis):
             self.assertFalse(f.anfrage_offen(), s)
             self.assertEqual(f.d["schliess_grund"], "Notaus (Leitstand)")
 
+    def test_notaus_haelt_kaputten_eintrag_aus(self):
+        ff.anfrage_stellen("xperp", 60)
+        ff.oeffnen("xperp", 2, wer="test")
+        d = json.loads(self._roh())
+        d["scanner"] = "kaputt"
+        with open(ff.DATEI, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        self.assertIn("xperp", lf.notaus())
+        self.assertFalse(ff.lade("xperp").offen())
+
+    def test_beliebige_ausnahme_wird_zur_meldung(self):
+        with patch.object(ff, "alles_schliessen", side_effect=OSError("platte")):
+            self.assertTrue(lf.notaus().startswith("Notaus NICHT ausgeführt"))
+        with patch.object(ff, "lade", side_effect=OSError("platte")):
+            self.assertIn("NICHT ausgeführt", lf.ablehnen("xperp"))
+        with patch.object(ff, "schliessen", side_effect=ValueError("x")):
+            self.assertIn("NICHT ausgeführt", lf.schliessen("xperp"))
+        with patch.object(ff, "oeffnen", side_effect=ValueError("x")):
+            self.assertIn("NICHT ausgeführt", lf.freigeben("xperp", 1))
+
     def test_notaus_bei_belegter_sperre_meldet_und_schreibt_nichts(self):
         ff.anfrage_stellen("xperp", 60)
         ff.oeffnen("xperp", 2, wer="test")
@@ -233,6 +253,13 @@ class Reiter(Basis):
         vorher = self._roh()
         self._reiter("abgebrochen", frage=False).notaus_klick()
         self.assertEqual(self._roh(), vorher)
+
+    def test_notaus_rueckfrage_hat_nein_als_vorgabe(self):
+        aufrufe = []
+        r = lf.FreigabenReiter(self.root, self.ls, dialog=attrappe("abgebrochen"),
+                               frage=lambda *a, **k: aufrufe.append(k) or False)
+        r.notaus_klick()
+        self.assertEqual(aufrufe[0].get("default"), "no")
 
     def test_echter_dialog_laeuft_ab(self):
         uhr = [0.0]

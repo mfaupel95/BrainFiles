@@ -64,23 +64,36 @@ def knopf_zustand(f):
             "schliessen": (scharf, "" if scharf else "Spur ist nicht scharf")}
 
 
+def _fehler(was, e):
+    return "%s NICHT ausgeführt: %s: %s — bitte freigabefenster.py prüfen" % (
+        was, type(e).__name__, e)
+
+
 def freigeben(spur, stunden):
     try:
         minuten = ff.oeffnen(spur, stunden, wer="leitstand")
     except TimeoutError:
         return SPERRE_BELEGT
+    except Exception as e:
+        return _fehler("Freigabe", e)
     if minuten is None:
         return "Anfrage war verfallen — nichts geändert"
     return "%s scharf für %d:%02d h" % (spur, minuten // 60, minuten % 60)
 
 
 def ablehnen(spur):
-    if not ff.lade(spur).anfrage_offen():
+    try:
+        wartet = ff.lade(spur).anfrage_offen()
+    except Exception as e:
+        return _fehler("Ablehnen", e)
+    if not wartet:
         return "%s: keine wartende Anfrage — nichts geändert" % spur
     try:
         ff.schliessen(spur, "abgelehnt (Leitstand)")
     except TimeoutError:
         return SPERRE_BELEGT
+    except Exception as e:
+        return _fehler("Ablehnen", e)
     return "%s abgelehnt — Wiedervorlage in %d h" % (
         spur, ff.WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN)
 
@@ -90,6 +103,8 @@ def schliessen(spur):
         war = ff.schliessen(spur, "von Hand (Leitstand)")
     except TimeoutError:
         return SPERRE_BELEGT
+    except Exception as e:
+        return _fehler("Schließen", e)
     return ("%s zurück auf Papier" % spur if war
             else "%s war nicht scharf — Grund vermerkt" % spur)
 
@@ -99,6 +114,8 @@ def notaus():
         spuren = ff.alles_schliessen("Notaus (Leitstand)")
     except TimeoutError:
         return SPERRE_BELEGT
+    except Exception as e:
+        return _fehler("Notaus", e)
     if spuren:
         return "Notaus: %s zurück auf Papier" % ", ".join(sorted(spuren))
     return "Notaus: keine Spur war scharf — Anfragen verworfen"
@@ -228,8 +245,13 @@ class FreigabenReiter(ttk.Frame):
 
     def freigeben_klick(self):
         spur = self.gewaehlt()
-        f = ff.lade(spur) if spur else None
-        if f is None or not f.anfrage_offen():
+        try:
+            f = ff.lade(spur) if spur else None
+            wartet = bool(f and f.anfrage_offen())
+        except Exception as e:
+            self.ls.melde(_fehler("Freigabe", e))
+            return
+        if not wartet:
             self.ls.melde("%s: keine wartende Anfrage — nichts geändert" % spur)
             self.refresh()
             return
@@ -262,6 +284,6 @@ class FreigabenReiter(ttk.Frame):
     def notaus_klick(self):
         if self.frage("NOTAUS", "Alle Spuren sofort zurück auf Papier?\n"
                       "Wartende Anfragen werden verworfen.", icon="warning",
-                      parent=self):
+                      default="no", parent=self):
             self.ls.melde(notaus())
             self.refresh()

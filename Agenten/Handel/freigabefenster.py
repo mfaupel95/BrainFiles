@@ -301,7 +301,9 @@ def oeffnen(spur, stunden=None, wer="telegram"):
 
 def _schliesse_in(d, spur, grund):
     """Eine Spur in d auf Papier setzen. Ohne Sperre, ohne Schreiben."""
-    e = d.setdefault(spur, {})
+    e = d.get(spur)
+    if not isinstance(e, dict):        # kaputter Eintrag: ersetzen, nicht werfen
+        e = d[spur] = {}
     war = Fenster(spur, dict(e)).offen()
     e.pop("offen_bis", None)
     e.pop("anfrage_bis", None)
