@@ -1,10 +1,18 @@
-# Zweitkopie des unersetzlichen Teils nach J:\MaxHirn-Zweitkopie
+# Zweitkopie des unersetzlichen Teils nach O:\MaxHirn-Zweitkopie
 #
 # WARUM ES DIESE ZWEITE SICHERUNG GIBT
 # G:, H: und I: sind dieselbe physische Platte (Disk 2, Seagate Portable,
 # gemessen 23.08.2026 ueber Get-Partition/Get-Disk). Die Hauptsicherung auf G:
 # haette durch eine zweite Kopie auf H: also nichts gewonnen - faellt Disk 2
-# aus, waeren beide gleichzeitig weg. J: ist die externe Sicherungsplatte.
+# aus, waeren beide gleichzeitig weg.
+#
+# ZIEL SEIT 29.09.2026: O: (Disk 1, WDC NVMe) statt J:.
+# Grund: J: (Disk 4, WD My Book) wird seit dem 28.09. wiederholt als
+# schreibgeschuetzt eingebunden (NTFS-Event 98, zuletzt 29.09. 21:06), hat 479
+# unkorrigierte Lesefehler und ist so langsam, dass ein rekursives Auflisten
+# 300 s ueberschreitet. Die Laeufe vom 28.09. (Code 1) und 29.09. (0xC000013A)
+# brachen ab. G: waere die falsche Wahl - G:, H: und I: sind dieselbe Platte
+# (Disk 2) wie die Hauptsicherung.
 # Damit liegen Original, Sicherung (Disk 2) und Zweitkopie auf getrennten
 # Datentraegern.
 #
@@ -33,14 +41,14 @@ if (-not (Test-Path -LiteralPath 'O:\Archiv' -PathType Container)) {
 # Routinen). Vorher stand hier $PSScriptRoot - das sicherte nach dem Umzug nur
 # noch Agenten\.
 $quelle = Split-Path $PSScriptRoot -Parent
-$ziel   = 'J:\MaxHirn-Zweitkopie'
+$ziel   = 'O:\MaxHirn-Zweitkopie'
 
-if (-not (Test-Path 'J:\')) {
-  Write-Host 'J: ist nicht erreichbar - Zweitkopie uebersprungen.' -ForegroundColor Red
+if (-not (Test-Path 'O:\')) {
+  Write-Host 'O: ist nicht erreichbar - Zweitkopie uebersprungen.' -ForegroundColor Red
   exit 2
 }
 
-Write-Host '=== Zweitkopie nach J: ===' -ForegroundColor Cyan
+Write-Host '=== Zweitkopie nach O: ===' -ForegroundColor Cyan
 $start = Get-Date
 
 # Volle Pfade fuer die Medienordner: ein blosses /XD Software wuerde jeden
@@ -70,7 +78,7 @@ robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: der unersetzliche Archivteil liegt seit dem echten Umzug
-# (07.09.2026) physisch auf O:\Archiv, ausserhalb von $quelle. Nach J: kommt
+# (07.09.2026) physisch auf O:\Archiv, ausserhalb von $quelle. Nach O: kommt
 # wie bisher nur Dokumente + Bilder - Videos, Musik, Software, Posteingang
 # bleiben draussen (Medienlast, weiterhin nur in der Hauptsicherung auf G:).
 $archivQuelle = 'O:\Archiv'

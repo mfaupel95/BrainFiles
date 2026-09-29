@@ -78,11 +78,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 29.09.2026 · Zuletzt 29.09.2026
       Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
 
-- [ ] **T-180 — Zweitkopie bricht ab - Ziel J: ist die fehlerhafte Platte**
-      Kontext: Die Zweitkopie (Ziel J:\MaxHirn-Zweitkopie) schlug am 28.09. (Code 1) und 29.09. (21:10, 0xC000013A abgebrochen) fehl. Direkt davor (21:06-21:07) 8x NTFS-Event 98 (Volume als schreibgeschuetzt eingebunden) auf J:. J: ist die WD My Book mit 479 unkorrigierten Lesefehlern (Memory) und so langsam, dass ein rekursives Auflisten 300 s ueberschreitet. Jetzt wieder schreibbar, aber die Platte ist der Schwachpunkt. Memory-Vorgabe war 'Zweitkopie auf O: (Disk 1)'.
-      Naechster Schritt: Entscheiden, ob die Zweitkopie auf O: umzieht (gesunde Platte) oder J: ersetzt wird; dann sichern-zweitkopie.ps1 anpassen und einen Lauf pruefen.
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/sichern-zweitkopie.ps1, Agenten/Routinen/zweitkopie.ps1
 
 - [ ] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
       Kontext: Eine parallele Sitzung baut Bonsai ein (Agenten/Hermes/scripts/bonsai-provider-einbauen.py) mit Port 8080 - genau der Port, den der Freqtrade-Container belegt (127.0.0.1:8080->8080). Ich habe am 29.09. auf 8081 umgestellt (Starter + Config); das Skript der parallelen Sitzung wuerde 8080 wieder einschreiben.
@@ -2052,6 +2047,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-180 — Zweitkopie bricht ab - Ziel J: ist die fehlerhafte Platte**
+      Kontext: Die Zweitkopie (Ziel J:\MaxHirn-Zweitkopie) schlug am 28.09. (Code 1) und 29.09. (21:10, 0xC000013A abgebrochen) fehl. Direkt davor (21:06-21:07) 8x NTFS-Event 98 (Volume als schreibgeschuetzt eingebunden) auf J:. J: ist die WD My Book mit 479 unkorrigierten Lesefehlern (Memory) und so langsam, dass ein rekursives Auflisten 300 s ueberschreitet. Jetzt wieder schreibbar, aber die Platte ist der Schwachpunkt. Memory-Vorgabe war 'Zweitkopie auf O: (Disk 1)'.
+      Naechster Schritt: Entscheiden, ob die Zweitkopie auf O: umzieht (gesunde Platte) oder J: ersetzt wird; dann sichern-zweitkopie.ps1 anpassen und einen Lauf pruefen.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/sichern-zweitkopie.ps1, Agenten/Routinen/zweitkopie.ps1
+      **Erledigt 30.09.2026.** Ziel in sichern-zweitkopie.ps1 auf O:\MaxHirn-Zweitkopie umgestellt (Backup .bak-20260929), echter Lauf 30.09. 00:01-00:06 durchgelaufen: robocopy-Code 1, 200.113 Dateien / ~37 GB, Zielstruktur O:\MaxHirn-Zweitkopie\MaxHirn angelegt, O: frei 160,6 -> 121,1 GB. G: bewusst nicht gewaehlt: G:, H:, I: sind dieselbe Platte (Disk 2) wie die Hauptsicherung. J:-Altbestand bleibt liegen.
 - [x] **T-129 — Fristwaechter fuer die Ausser-Haus-Kopie (sie wird still alt)**
       Kontext: `sichern-ausser-haus.ps1` hat ABSICHTLICH keine geplante Aufgabe -
       sie braucht die angesteckte Q:-SSD. Folge: am 25.09.2026 war die Kopie
