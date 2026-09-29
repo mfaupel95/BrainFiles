@@ -3,9 +3,9 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-24
+updated: 2026-09-29
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Neun Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer.'
+summary: 'Zwoelf Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real.'
 ---
 
 # Wahrheit pruefen
@@ -204,3 +204,30 @@ eine Adresse, kein Befund.
 **Prueffrage fuer jede Wache.** Erkennt sie den Dienst - oder die Startzeile, die er einmal
 benutzt hat? Und was tut sie im Zweifel: meldet sie Gesundheit oder startet sie neu? Wer im
 Zweifel neu startet, zerlegt den Dienst im Takt seiner eigenen Laufzeit.
+
+## 12. Deklariert ist nicht real (29.09.2026)
+
+**Regel.** Jede Referenz in einer Config — Pfad, Adresse, Modellname — ist eine **Behauptung**.
+Vor dem Bericht wird sie EINMAL gegen die Wirklichkeit gehalten: laufender Dienst, Store,
+Dateisystem. Nicht gegen die Erinnerung und nicht gegen die Nachbardatei.
+
+**Warum.** Am 29.09.2026 trugen Hauptconfig und 17 Profile in der `models:`-Liste des lokalen
+Providers vier Namen, die im Ollama-Store nicht lagen; `providers.bonsai` zeigte auf Port 8080,
+wo die FreqTrade-Oberflaeche antwortete (der Startbaustein hat 8081 als Vorgabe). Der
+Vorgabewert `model:` war am selben Abend schon gerichtet — **dieselbe Behauptung stand an zwei
+Stellen, eine blieb falsch.** Kein Werkzeug meldet das: der Name wird erst gelesen, wenn der
+lokale Rueckfall gebraucht wird, und dann ist er der letzte Ausweg.
+
+**Prueffrage.** Steht der Name in der Datei — oder auch in der Sache, die die Datei
+beschreibt? Die Wahrheit liefert `/api/tags`, der offene Port, `Test-Path`, nicht die Config.
+
+**Zweiter Teil: der Pruefer braucht eine Gegenprobe.** Der erste Lauf der Config-Gegenprobe
+meldete `auto/coding:free` als „nicht im Store" — ein **Fehlalarm**: ein Block in Spalte 0 erbte
+die Einstufung „lokaler Provider" vom vorigen `providers:`-Block. Ein Pruefer ohne Gegenprobe
+erzeugt Reparaturen an Stellen, die in Ordnung sind. Gegenprobe heisst hier: einen Fall bauen,
+der rot werden MUSS, und einen, der gruen bleiben muss.
+
+**Werkzeug.** `Agenten/Hermes/scripts/config-gegenprobe.py` (rein lesend) und die Wache
+`config-gegenprobe-wache.py` (Cron montags 07:40, leere Ausgabe = nichts senden). Ohne Wache
+waere die Gegenprobe ein Nachweis, den niemand von selbst aufruft. Siehe
+[[Werkzeuge/config-gegenprobe]].
