@@ -31,7 +31,7 @@ if os.path.join(HANDEL, "scanner") not in sys.path:
 
 import wachen_pruefung as wp  # noqa: E402
 
-SPUREN = ("macd_mtf", "squeeze", "wavetrend", "supertrend")
+SPUREN = ("macd_mtf", "squeeze", "wavetrend", "supertrend", "mosaic")
 
 
 class RegelTest(unittest.TestCase):
@@ -81,16 +81,22 @@ class QuelltextTest(unittest.TestCase):
             self.assertIn("verwaist = wp.verwaiste_instrumente(w, z)", t, spur)
 
     def test_kein_ausstieg_mehr_ueber_die_wachenliste(self):
-        for spur in SPUREN:
+        # Nur fuer die vier Indikatorspuren: bei ihnen war die Liste die
+        # AUSSTIEGS-Schleife. mosaic fuehrt daneben eine Einstiegs-Schleife ueber
+        # den Plan - Einstiege SOLLEN dort begrenzt bleiben.
+        for spur in ("macd_mtf", "squeeze", "wavetrend", "supertrend"):
             self.assertNotIn('for inst in w.get("instrumente", []):',
                              self._quelle(spur), spur)
 
     def test_einstieg_bleibt_auf_die_plan_instrumente_begrenzt(self):
+        # Die Bedingung ist die EIGENSCHAFT, nicht die Zeile: nach
+        # "if inst in plan:" muss der Einstieg kommen, gleich wie er heisst und
+        # wie er eingerueckt ist (mosaic prueft mit vier Kerzenreihen).
+        import re
+        muster = re.compile(r"if inst in plan:\s*\n\s+pruefe_einstieg\(")
         for spur in SPUREN:
             t = self._quelle(spur)
-            self.assertIn("if inst in plan:", t, spur)
-            self.assertIn("            pruefe_einstieg(inst, k, z, w, faktor)",
-                          t, spur)
+            self.assertIsNotNone(muster.search(t), spur)
 
     def test_verwaiste_werden_gemeldet(self):
         # Ohne Meldung sieht niemand, dass eine Position ausserhalb des Plans

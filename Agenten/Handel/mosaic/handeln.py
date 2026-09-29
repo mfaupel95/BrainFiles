@@ -1259,7 +1259,17 @@ def lauf(modus):
         # Papier-Zyklus: Kerzen fuer alle Instrumente laden (drei Zeitrahmen
         # je Instrument), Ausstiege vor Einstiegen.
         uebersprungen = 0
-        for inst in w.get("instrumente", []):
+        # Geprueft wird der PLAN plus alles, was im Buch steht - sonst wird eine
+        # Position unsichtbar, sobald ihr Instrument aus der Liste genommen wird
+        # (dieselbe Falle wie in den vier Indikatorspuren am 29.09.2026: sie
+        # wurden nie wieder angesehen, nie geschlossen und belegten die Plaetze).
+        # Eingestiegen wird weiter NUR auf den Plan-Instrumenten.
+        plan = wp.plan_instrumente(w)
+        verwaist = wp.verwaiste_instrumente(w, z)
+        if verwaist:
+            print("  Verwaiste Instrumente (nicht mehr im Plan, Position bleibt "
+                  "im Buch): %s" % ", ".join(verwaist), file=sys.stderr)
+        for inst in wp.pruef_instrumente(w, z):
             k4 = lade_kerzen(inst, w.get("kerzen_takt_4h", "4H"),
                              w.get("mindest_kerzen", 300))
             k30 = lade_kerzen(inst, w.get("kerzen_takt_30m", "30m"),
@@ -1278,7 +1288,8 @@ def lauf(modus):
                 uebersprungen += pruefe_ausstiege(z, k5, w, nur=inst)
 
             # Neue Einstiege
-            pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)
+            if inst in plan:
+                pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)
 
         if uebersprungen:
             print("  %d Live-Position(en) bleiben stehen - der Papierzweig "

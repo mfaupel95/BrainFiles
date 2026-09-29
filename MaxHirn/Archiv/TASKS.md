@@ -85,6 +85,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: alle Spuren mit `instrumente` in der wachen auflisten
       (`git grep -l '"instrumente"' Agenten/Handel/*/wachen*.json`), je Spur die
       Ausstiegsschleife ansehen und die Regel nachziehen, wo sie fehlt.
+      TEILBEFUND 29.09.2026: es sind neun Wachen mit `instrumente`
+      (iv_waelle, macd_mtf, moondev_funding, mosaic, orb, orbk, squeeze,
+      supertrend, wavetrend). FIX sind die vier Indikatorspuren und seit
+      dem 29.09.2026 auch mosaic (Papierzweig laeuft ueber `pruef_instrumente`,
+      Einstieg bleibt auf den Plan begrenzt, Tests
+      `mosaic/tests` 101 gruen). SICHER ohne Pruefung: iv_waelle (Schleife ueber
+      die Marktdaten des Zyklus), orb/orbk (je eine Konfiguration je Instrument).
+      OFFEN: moondev_funding sammelt seine Kurse ueber die Plan-Liste
+      (handeln.py:356) - eine Position auf einem gestrichenen Symbol bekommt
+      keinen Kurs mehr; spur_buch meldet das inzwischen, schliesst sie aber
+      nicht. Ebenso ungeprueft: Spuren ohne `instrumente`-Liste, die intern
+      ueber eine feste Symboltabelle laufen.
       Angelegt 2026-09-29. Betrifft Agenten/Handel/*/handeln.py.
 - [ ] **T-122 - iv_waelle: der Wandweg bleibt ungemessen, nur der Spannenweg ist belegt**
       Kontext: Die Spur hatte seit dem 19.09.2026 kein Geschaeft, weil ihr Tor
