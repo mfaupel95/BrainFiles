@@ -93,3 +93,24 @@ Nachweis: `python Agenten/Hermes/scripts/scanner-live-wache.py` (leise, Zustand
 `Agenten/Hermes/scripts/test_live_wache_stops.py` (7); Aufraeumer
 `Agenten/Handel/scanner/stops_bereinigen.py`; Details in
 [[Handel/Boersen-und-Schluessel]].
+
+## Eine Wache prueft eine BEDINGUNG, keine Adresse (29.09.2026)
+
+`Agenten/Routinen/gateway-waechter.ps1` fuehrt als "erste Wahrheit" **Port 9900** und startet
+den Gateway neu, wenn der Port zu ist. Bis zum 25.09.2026 war das richtig; seit der neuen
+Hermes-Fassung lauscht der Gateway auf einem Named Pipe (`\\.\pipe\hermes-gateway-*`) und
+bedient Webhooks auf 8644 - **TCP 9900 kann zu bleiben, waehrend der Gateway gesund laeuft**
+(belegt: `hermes gateway status` = "Gateway process running", `hermes doctor` = "gateway
+running", Telegram wurde bedient). Eine Wache, die auf die Adresse prueft, startet in diesem
+Zustand **alle 2 Minuten einen neuen Gateway** - und jeder Neustart reisst die laufenden
+Verbindungen mit.
+
+Richtig ist die Bedingung selbst, nicht ihr frueherer Nebeneffekt: **laeuft ein Prozess mit
+`hermes_cli.main gateway run`, und kann der Updater ihn zuordnen**
+(`find_profile_gateway_processes(strict=True)`)? Das prueft
+`Agenten/Hermes/scripts/gateway-identitaet-wache.py`; der Port bleibt nur Rueckfall fuer alte
+Fassungen.
+
+**Prueffrage bei jeder Wache:** prueft sie die Sache - oder eine Adresse, eine Datei, einen
+Zaehler, der die Sache einmal begleitet hat? Siehe [[Lektionen/Wahrheit-pruefen]] 8 und 10.
+Angelegt als T-139/T-140 in `Archiv/TASKS.md`.

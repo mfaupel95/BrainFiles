@@ -79,6 +79,18 @@ assert ids(neu) - ids(alt) == set(), sorted(ids(alt) - ids(neu))
 
    Fehlt etwas: wortgleich aus `git show HEAD:MaxHirn/Archiv/TASKS.md`
    zurueckholen, nicht neu formulieren.
+   **Und die Abschnitte gegenpruefen** - die Nummernmenge allein merkt nicht, dass
+   eine Ueberschrift weg ist. Ein Umbau-Skript baut die Datei neu zusammen, und
+   wer dabei `kopf + eintraege + "## Erledigt"` schreibt, verliert `## Offen`
+   stillschweigend: die Eintraege sind alle da, die Liste hat nur keinen
+   offenen Abschnitt mehr, und die naechste Sitzung zaehlt alles als erledigt.
+
+```python
+assert [z for z in ("## Offen", "## Erledigt") if z in neu] == ["## Offen", "## Erledigt"]
+```
+
+   Gleich nach dem Schreiben `grep -n "^## "` laufen lassen und mit dem Stand
+   davor vergleichen.
 5. **`git diff --numstat` muss plausibel sein.** Ein ersetzter eigener Block zeigt
    Insertions UND Deletions - mehr Deletions als der neue Block Zeilen hat heisst:
    es ist Fremdtext mitgegangen.
@@ -127,17 +139,35 @@ text.
   Nachfolgerblock lesen, bevor ersetzt wird.
 - **Zeilenenden sind CRLF.** `open(..., "w")` dreht die Datei auf LF und erzeugt
   einen Ganzdatei-Diff; Gegenprobe `git diff --numstat`.
-- **Doppelte Nummern sind ein Befund, kein Aufraeumauftrag.** Eine parallele
-  Sitzung vergibt dieselbe Nummer fuer einen anderen Punkt (zwei `T-087` mit
-  verschiedenen Titeln sind schon vorgekommen). Den fremden Eintrag NICHT
-  umnummerieren - er ist gerade in Arbeit - sondern im Abschlussbericht melden
-  und beim naechsten eigenen Eintrag die Nummer danach nehmen.
+- **Doppelte Nummern: Einzelfall melden, Haeufung umbauen.** Vereinzelt (eine
+  Kollision) den fremden Eintrag NICHT anfassen - er ist gerade in Arbeit -
+  sondern melden und die naechste freie Nummer nehmen. Sind es aber viele
+  (zehn und mehr sind vorgekommen, eine Nummer dreifach belegt, "T-101"
+  bezeichnet drei verschiedene Punkte), ist die Liste nicht mehr benutzbar und
+  der Umbau die richtige Antwort. Dann gilt: der **juengere** Eintrag weicht,
+  der aeltere behaelt seine Nummer, damit Verweise in aelteren Notizen gueltig
+  bleiben; die neuen Nummern fortlaufend ab der hoechsten vergeben; Sicherung
+  (`TASKS.md.bak-JJJJMMTT`) vor dem Schreiben.
+- **Datum zuerst MESSEN, dann sortieren.** Die Eintraege tragen nicht EIN
+  Format: `Angelegt 27.09.2026 · Zuletzt ...`, `Angelegt: 27.09.2026` und
+  `Angelegt 2026-09-29` stehen nebeneinander. Ein Sortier- oder Gruppier-Muster
+  auf nur eines davon (`Angelegt (\d{2})\.(\d{2})\.(\d{4})`) findet die
+  anderen nicht, sie fallen auf einen Platzhalter und rutschen ans ENDE der
+  Liste - die Sortierung sieht danach richtig aus und ist es nicht.
+
+```bash
+grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
+```
+
+  Erst dieses Ergebnis entscheidet ueber das Muster; Eintraege ohne erkennbares
+  Datum vor dem Schreiben einzeln nachtragen.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
   formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.
 
 ## Nachweis
 
+- Abschnitte vor/nach dem Schreiben gleich (`grep -n "^## "`).
 - Nummernmenge vor/nach dem Schreiben gleich (plus die neuen).
 - `git diff --numstat` zeigt nur die gewollten Zeilen der eigenen Bloecke.
 - Nach dem Push: `git show origin/master:MaxHirn/Archiv/TASKS.md | grep -c "T-0NN"`.

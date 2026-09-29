@@ -133,6 +133,19 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    andere Sitzung in diese Datei schreibt, und danach `git diff --numstat -- <datei>`
    gegenpruefen: Arbeitsbaum gegen Index zeigt die fremden Zeilen, Index gegen HEAD nur
    die eigenen.
+   **Den eigenen Block VOR dem Trennen in eine eigene Datei schreiben** (`cache/scratch/
+   mein_block.txt`) und beim Wiederherstellen AUS DIESER Datei einsetzen — nicht aus einem
+   Skript, das den Block im selben Lauf erst entfernt und dann neu berechnet: ist der
+   Block im Speicher schon geloescht, trifft der zweite Schritt nichts mehr, und die
+   eigene Arbeit ist still weg (Arbeitsbaum UND Commit). Reihenfolge deshalb streng:
+   Block herauslesen -> ablegen -> Fremd-Commit -> Block aus der ABLAGE einsetzen ->
+   zaehlen. Nach dem Einsetzen `grep -c '<eigene Kennung>' <datei>` gegen die Zahl der
+   abgelegten Eintraege UND die Zeilenenden binaer zaehlen (`CRLF` vs. `LF-only`), sonst
+   faellt der stille Verlust erst auf, wenn jemand die Eintraege vermisst.
+   **Zeilenende erst auf BYTES umsetzen, dann schreiben:**
+   `text.encode("utf-8").replace(b"\n", nl)` — die umgekehrte Reihenfolge
+   (`text.replace("\n", nl).encode()`) bricht mit `TypeError: replace() argument 2 must be
+   str`, sobald `nl` ein `bytes` ist, und schreibt die Datei nicht.
 4. **Fremde Aenderungen bleiben als `M` im Arbeitsbaum** und werden im Commit-Text als
    NICHT enthalten benannt, nicht stillschweigend mitgenommen und nicht verworfen.
    Fremd Gestagetes nie mitcommitten. **Liegen bleiben heisst aber nicht fuer immer:**
@@ -658,7 +671,12 @@ ungetrackten Dateien. Reihenfolge:
   `git log origin/master..master` die Wahrheit; auf einem eigenen Zweig — auch
   einem, den eine andere Sitzung angelegt hat — ist der Vergleich LEER, obwohl
   nichts auf GitHub liegt, und die Arbeit sieht gepusht aus, weil gegen den
-  falschen Zweig gemessen wurde. Auf fremdem Zweig stattdessen
+  falschen Zweig gemessen wurde. **Das schnellste Fruehwarnzeichen steht in der
+  Push-Antwort selbst: `Everything up-to-date`, obwohl in dieser Sitzung gerade Commits
+  entstanden sind, heisst "falscher Zweig"** (lokal `master` == `origin/master`, weil
+  der eigene Commit auf dem ausgecheckten Nebenast sitzt). Dann NICHT weiterarbeiten
+  und nicht ein zweites Mal committen, sondern sofort `git branch -v` und
+  `git status -sb` lesen - die Commits sind nicht verloren, sie liegen nur woanders. Auf fremdem Zweig stattdessen
   `git log --oneline master..HEAD` (was master fehlt),
   `git rev-list --left-right --count master...HEAD` (`0 <n>` = reiner Vorlauf)
   und `git ls-remote --heads origin` (was GitHub ueberhaupt kennt) lesen.

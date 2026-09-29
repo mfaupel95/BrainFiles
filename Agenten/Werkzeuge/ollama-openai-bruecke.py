@@ -50,19 +50,43 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 STANDARD_PORT = 11499
-STANDARD_MODELL = "qwen35-8k:latest"
+# STANDARD und die Zuordnung zeigen auf Modelle, die im Ollama-Store WIRKLICH
+# liegen. Am 29.09.2026 war das nicht mehr `qwen35-8k:latest` (der Store wurde
+# umbenannt: qwen3.5:9b, deepseek-chat:latest = qwen35 4,3B, deepseek-reasoner
+# = 35B-A3B) - die Bruecke antwortete danach auf JEDEN Aufruf mit 503.
+# Vor jeder Namensaenderung im Store: `lokal_routing.py --pruefen`.
+#
+# WARUM DAS KLEINE MODELL DER STANDARD IST (gemessen 29.09.2026, RTX 3060 Ti
+# 8 GB): qwen3.5:9b belegt mit 8k-Fenster 6,4 GB VRAM (7,36 GB gesamt, 667 MB
+# frei) - es passt nur, solange der Schreibtisch nichts belegt, und JEDES
+# zweite Modell daneben scheitert mit cudaMalloc OOM (HTTP 500, kein 503 -
+# die Hermes-Fallbackkette greift darauf NICHT). deepseek-chat:latest (qwen35
+# 4,3B) belegt 3,1 GB, laeuft mit 88 T/s auch nebenher und ist damit der
+# richtige Weg fuer Massenaufrufer (Fremd-Agenten, Schleifen). Das 9B bleibt
+# ueber seinen echten Namen oder 'deepseek-reasoner' erreichbar.
+STANDARD_MODELL = "deepseek-chat:latest"
+
+SCHNELL = "deepseek-chat:latest"     # qwen35 4,3B, 3,1 GB, ~88 T/s
+QUALITAET = "qwen3.5:9b"             # 9,7B Q4_K_M, 262k, 6,4 GB, ~59 T/s @8k
 
 # Namen, die die Fremd-Agenten im Aufruf nennen -> lokales Modell.
 # Warum eine Zuordnung und kein Umbenennen: `ollama cp` legt eine Kopie an,
 # die bei jedem Modellwechsel mitgezogen werden muesste. Die Zuordnung hier
 # wirkt sofort und steht an EINER Stelle.
 MODELL_ABBILDUNG = {
-    "deepseek-chat": "qwen35-8k:latest",
-    "deepseek-reasoner": "qwen36-35b-a3b:8k",
-    "deepseek-coder": "qwen35-8k:latest",
-    "gpt-4o": "qwen35-8k:latest",
-    "gpt-4o-mini": "qwen35-8k:latest",
-    "gpt-3.5-turbo": "qwen35-8k:latest",
+    "deepseek-chat": SCHNELL,
+    "deepseek-chat-schnell": SCHNELL,
+    "deepseek-coder": SCHNELL,
+    "gpt-4o": SCHNELL,
+    "gpt-4o-mini": SCHNELL,
+    "gpt-3.5-turbo": SCHNELL,
+    # Wo es auf Textverstaendnis ankommt: das 9B (Denken wird hier ohnehin
+    # abgeschaltet - ohne diese Bruecke kaeme ein LEERER content zurueck).
+    "deepseek-reasoner": QUALITAET,
+    "deepseek-9b": QUALITAET,
+    # Ausdruecklicher Wunsch nach dem grossen Modell: 22,7 GB, laeuft nur mit
+    # RAM-Auslagerung (gemessen 2-5 T/s) - NICHT der Standardweg.
+    "deepseek-reasoner-35b": "deepseek-reasoner:latest",
 }
 
 HIER = Path(__file__).resolve().parent

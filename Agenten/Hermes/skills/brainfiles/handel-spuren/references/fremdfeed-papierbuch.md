@@ -347,6 +347,32 @@ und der Pfad stand nirgends dokumentiert. Der Weg, der funktioniert hat:
    liefert `priceUSD`, der v2-Trades-Endpunkt `priceUsd`). Die
    Normalisierung deckt beide ab, aber nur der echte Abruf zeigt, welcher
    Endpunkt welchen Namen nutzt.
+5. **Eine SPA (Vite/React) hat keine literalen `"/api/..."`-Strings.** Die
+   Pfade sind Template-Literale aus einer Basis-Konstante
+   (`${G}/claw/agents/login`, daneben `G="/api"`). Ein grep nach `"/api/`
+   liefert dann nichts und es sieht aus wie „die App hat keine API" - das ist
+   ein Suchfehler, kein Befund. Erst die Basis suchen, dann die Templates:
+   ```
+   grep -oE '[A-Za-z_$]{1,3}="/[a-z]*"' bundle.js            # Basis
+   grep -oE '\$\{[A-Za-z]\}/[a-zA-Z0-9/_{}$.?=&-]+' bundle.js | sed 's/^[^}]*}//' | sort -u
+   grep -oE '.{120}/claw/agents/login.{250}' bundle.js         # Aufrufstelle
+   ```
+   Die Aufrufstelle nennt die Feldnamen der Nutzlast (`{name, email, password}`)
+   - abschreiben statt raten.
+6. **HTTP 200 auf `/docs`, `/openapi.json` oder `/redoc` beweist keine Doku.**
+   Eine SPA liefert fuer JEDE Route ihre index.html; Status und Groesse sehen
+   wie ein Treffer aus. Antwort gegen das HTML der Seite halten (erste Bytes),
+   nicht dem Statuscode glauben.
+7. **Ein fehlender Endpunkt ist ein Befund, kein Fehler.** Steht im Bundle kein
+   Pfad fuer eine Funktion (z. B. Passwort aendern), dann gibt es sie auf dieser
+   Plattform nicht - das ist die gemessene Antwort. Dann den tragfaehigen Weg
+   nehmen (neuen Zugang anlegen, neue Kennung in `.env` und `Zugaenge.md`
+   nachtragen, Werte nie ausgeben) statt weiter zu suchen. **Und die Kennung
+   gehoert aus der Antwort ins Werkzeug, nicht in die Ausgabe:** Fehlerantworten
+   spiegeln gern die gesendete Nutzlast in einem Feld `input`/`detail` zurueck -
+   ein Passwort, das so in ein Protokoll kam, ist verbrannt. Rohe Antworten nie
+   protokollieren, nur Status und Feldnamen; der Anlege-Weg ist ein Skript, das
+   Kennung und Passwort erzeugt, schreibt und NICHTS davon druckt.
 
 ## Ein Signal-Kanal-Screenshot ist kein Feed
 

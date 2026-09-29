@@ -13,6 +13,7 @@ import inspect
 import os
 import sys
 import tempfile
+import time
 import unittest
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -140,6 +141,77 @@ class SignalwelleTest(unittest.TestCase):
     def test_ohne_24_kerzen_keine_kandidaten(self):
         daten, _, _ = mh.quelle_signalwelle(self.b, 5 * 3600000, W)
         self.assertEqual({}, daten)
+
+
+class GegenprobeTest(unittest.TestCase):
+    """Der Adapter gegen die Wirklichkeit - offline und wiederholbar.
+
+    Die Feed-Spuren holen ihre Preise im Betrieb von CoinGecko. Diese Preise
+    stehen in ihren ECHTEN Journals (CoinGecko beantwortet Abrufe von diesem
+    Rechner mit HTTP 403, ein neuer Abzug ist also nicht zu haben). Verglichen
+    wird die Groessenordnung, nicht die Stelle hinter dem Komma: zwei Boersen
+    sind zwei Preise, und CoinGecko mittelt ueber viele Preise. Eine Pruefung
+    auf Gleichheit waere selbst falsch.
+
+    Der Fall ist der gefaehrliche: ein Adapter mit vertauschten Feldern (Kurs
+    und Volumen, 24h gegen 1h) sieht wie eine Messung aus und ist keine.
+    """
+
+    TOLERANZ = 0.25          # 25 % Abweichung sind erlaubt
+    SPUREN = ("moondev_topmovers", "moondev_marktlage", "moondev_signalwelle")
+
+    def _zeilen(self, spur):
+        import csv
+        pfad = os.path.join(HANDEL, spur, "handelsjournal.csv")
+        if not os.path.isfile(pfad):
+            return []
+        with open(pfad, encoding="utf-8", newline="") as f:
+            return [z for z in csv.DictReader(f) if z.get("preis")
+                    and z.get("inst") and z.get("zeit")]
+
+    def test_kurs_gegen_die_eigene_journalzeile(self):
+        b = mh.Bestand()
+        b.laden("1D")
+        zu_basis = {}
+        for sym in b.symbole():
+            zu_basis.setdefault(mh.basis_von(sym) or sym, sym)
+        geprueft, abweichungen = 0, []
+        for spur in self.SPUREN:
+            for z in self._zeilen(spur)[:40]:
+                sym = zu_basis.get(str(z["inst"]).upper())
+                if not sym:
+                    continue
+                ts = z["zeit"][:10]
+                kurs = None
+                for r in b._reihen[sym]:
+                    tag = time.strftime("%Y-%m-%d", time.gmtime(r[0] / 1000.0))
+                    if tag == ts:
+                        kurs = float(r[4])          # Schlusskurs
+                        break
+                if kurs is None:
+                    continue
+                soll = float(z["preis"])
+                if soll <= 0:
+                    continue
+                ab = abs(kurs - soll) / soll
+                geprueft += 1
+                if ab > self.TOLERANZ:
+                    abweichungen.append("%s %s: Binance %.6f gegen CoinGecko "
+                                        "%.6f (%.0f %%)"
+                                        % (spur, z["inst"], kurs, soll, ab * 100))
+        self.assertGreaterEqual(geprueft, 3,
+                               "zu wenige gemeinsame Tage - nichts geprueft")
+        self.assertEqual([], abweichungen)
+
+    def test_probe_ist_als_beleg_da_oder_wird_benannt(self):
+        """Fehlt der Abzug, wird das GEMELDET - nicht stillschweigend geprueft."""
+        probe = os.path.join(HANDEL, "daten", "historie", "coingecko_probe.json")
+        if os.path.isfile(probe):
+            with open(probe, encoding="utf-8") as f:
+                self.assertGreater(len(json.load(f)["maerkte"]), 50)
+        else:
+            self.skipTest("kein CoinGecko-Abzug aufgezeichnet (HTTP 403 vom "
+                          "Netz) - die Journal-Gegenprobe oben traegt den Beweis")
 
 
 class MainReihenfolgeTest(unittest.TestCase):

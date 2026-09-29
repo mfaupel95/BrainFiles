@@ -10,7 +10,7 @@ summary: 'Wie die Spuren ueber 5,7 Jahre historische Daten nachgerechnet werden,
 
 # Backtest-Fundament
 
-Quelle: `Agenten/Handel/historie.py`, `replay.py`, Spezifikation
+Quelle: `Agenten/Handel/historie_binance.py`, `replay.py`, Spezifikation
 `Agenten/Handel/docs/design/2026-09-24-backtest-fundament-design.md`,
 Plan `docs/plans/2026-09-24-backtest-fundament.md`.
 
@@ -30,7 +30,7 @@ Erwartungswert, `f_max`) und fuer die Parametersuche.
 
 | Datei | Aufgabe |
 |---|---|
-| `historie.py` | Kerzen und Fundingsaetze von Binance holen und in `daten/historie/` ablegen |
+| `historie_binance.py` | Kerzen und Fundingsaetze von Binance holen und in `daten/historie/` ablegen |
 | `replay.py` | eine Spur ueber die Historie fahren, ohne eine echte Datei anzufassen |
 | `optimieren.py` | Parametersuche mit Walk-Forward (noch nicht gebaut) |
 
@@ -138,6 +138,80 @@ festgenagelt** (jeder haette eine falsche Empfehlung erzeugt):
 Vergleichsmass und Gebuehr nachgerechnet sind. Alle vier waren in dieser Sitzung
 zuerst falsch - und jede Fassung sah wie ein Ergebnis aus.
 
+## Feed-Spuren: echte Laeufe ueber 2021-2026 (2026-09-29)
+
+Die vier Feed-Spuren entscheiden ueber einen MARKTQUERSCHNITT, nicht ueber eine
+Kerzenreihe. `replay.lauf_feed()` faehrt sie deshalb ueber den Querschnitt: ein
+Schritt ist ein ZEITPUNKT, kein Instrument. Die Daten kommen aus
+`moondev_historie.py` (Ablage `daten/historie/feed/`), nicht von CoinGecko -
+die Feldnamen uebersetzt ein Adapter, und `tests/test_replay_feed.py` prueft
+sie gegen den QUELLTEXT der Spur: wer die Spur umbaut, soll einen roten Test
+bekommen statt einen stillen Nullauf.
+
+| Spur | Takt | Runden | Treffer | Stop/Ziel | netto je Runde | Schritte | Universum |
+|---|---|---|---|---|---|---|---|
+| moondev_topmovers | 1D | 55 | 60 % | 8 %/12 % | +9.40 % | 2098 | 300 |
+| moondev_marktlage | 1D | 5 | 60 % | 6 %/9 % | -1.12 % | 2098 | 300 |
+| moondev_signalwelle | 1H | 62 | 34 % | 7 %/10,5 % | -1.83 % | 21628 | 41 |
+| moondev_funding | 8h | 23 | 74 % | 6 %/9 % | +5.99 % | 7829 | 6 Instrumente |
+
+ROH, ohne Deutung, mit drei Vorbehalten, die dazugehoeren:
+
+- **moondev_funding ist abgebrochen**: `kill_ausgeloest = true`, die eigene
+  Ratsche hat den Lauf beendet. Die 23 Runden decken NICHT den ganzen Zeitraum
+  - die Zahl ist ein Anfang, kein Ergebnis.
+- **Die Signalwelle rechnet auf einem kleineren Universum als im Betrieb**
+  (Top 41 mit 1H-Kerzen gegen 250 Coins live). 62 Runden sind damit nicht mit
+  dem Betrieb vergleichbar.
+- **Die Marktbreite ist nach oben verzerrt**: nur Ueberlebende. Ein 2023
+  delistetes Paar fehlt, und wer fehlt, kann nicht unter seiner EMA200 liegen.
+  "Breite 100 %" heisst hier "von den HEUTE noch gehandelten Paaren standen
+  alle darueber".
+
+### Nicht nachrechenbar (mit Grund)
+
+| Spur | Grund |
+|---|---|
+| moondev_sniper | pump.fun-Neulaunches mit Alter in Minuten - nur live |
+| moondev_listingarb | Marktkapitalisierung frei nicht historisch abrufbar |
+| moondev_whale | OKX-OI-Historie antwortet 50030 Illegal time range |
+| moondev_liquidation | keine freie Liquidationshistorie |
+| moondev_sentiment | RSS-Titel werden nicht archiviert |
+
+Die Gruende stehen im Code (`replay.NICHT_NACHRECHENBAR`) und werden im Bericht
+genannt - ein leeres Feld waere nicht zu deuten. Ein Lauf ueber eine nicht
+nachrechenbare Spur bricht mit RuntimeError ab, statt zu raten.
+
+### Die Gegenprobe
+
+`GegenprobeTest` haelt den Adapter gegen die Wirklichkeit: die Preise, die die
+Spuren sich im Betrieb SELBST geholt haben (ihre echten Journals, Quelle
+CoinGecko) gegen die Binance-Tageskerze desselben Tages. 40 Preise verglichen,
+groesste Abweichung 13,5 % - zwei Boersen sind zwei Preise, geprueft wird die
+Groessenordnung (Toleranz 25 %), nicht die Stelle hinter dem Komma.
+
+Ein frischer CoinGecko-Abzug ist von diesem Rechner nicht zu bekommen (HTTP 403
+von Cloudflare); der Test benennt das als SKIP statt still zu bestehen.
+`daten_probe_coingecko.py` zeichnet ihn auf, wenn das Netz mitspielt.
+
+### Lehre: ein Test, der den Quelltext liest, muss ihn PARSEN
+
+Zweimal an einem Tag zugeschlagen: ein Test suchte `lade_wachen` bzw.
+`import ereignis` per Textsuche im Quelltext und fand den Namen zuerst im
+DOCSTRING/KOMMENTAR, der ihn begruendet - beide Male meldete er falsch. Der
+Importcheck parst jetzt mit `ast` und prueft die Reihenfolge der echten
+Importknoten.
+
+### Drei Fehler, die die echten Laeufe aufgedeckt haben
+
+1. `main()` rechnete die Fensterbreite ueber `lade_wachen()` VOR den neuen
+   Zweigen; das gibt es nur bei Familie A - beide Feed-Laeufe starben mit
+   AttributeError, bevor ein Schritt gerechnet war.
+2. `gebuehr_fuer()` holte die Wachen ebenso; die Kostenrechnung haengt jetzt an
+   keiner Spurenfamilie (`wachen_von()` liest die DATEI).
+3. `lauf_feed` importierte `ereignis` vor `spur_buch`; spur_buch legt beim
+   Import Agenten/Bus auf den Suchpfad - andersherum faellt der Import um.
+
 ## Offen
 
 - **T-095:** `runden_aus_journal` paart je **Instrument**, nicht je Position —
@@ -154,11 +228,30 @@ zuerst falsch - und jede Fassung sah wie ein Ergebnis aus.
 
 ```bash
 cd Agenten/Handel
-python historie.py --stand                       # was liegt an Daten
-python historie.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H
+python historie_binance.py --stand                       # was liegt an Daten
+python historie_binance.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H
 python replay.py --spur squeeze --lauf ganz      # ganze Historie
 python replay.py --spur squeeze --gegenprobe     # Kern gegen backtest_prognose pruefen
 ```
+
+Die Feed-Spuren brauchen eigene Daten und einen eigenen Weg:
+
+```bash
+cd Agenten/Handel
+python moondev_historie.py --universum 300 --takt 1D     # Top 300, Tageskerzen
+python moondev_historie.py --stunden 40 --takt 1H        # Top 40 + Funding-Instrumente, stuendlich
+python moondev_historie.py --funding spur                # Funding der Spur-Instrumente
+python moondev_historie.py --stand
+python replay.py --spur moondev_topmovers  --feed --lauf ganz --takt 1D
+python replay.py --spur moondev_marktlage  --feed --lauf ganz --takt 1D
+python replay.py --spur moondev_signalwelle --feed --lauf ganz --takt 1H
+python replay.py --spur moondev_funding    --familie-c --lauf ganz
+```
+
+Nicht abrufbare Symbole (Binance fuehrt zwei USDT-Paare mit chinesischen Namen,
+`urllib` kann solche Adressen nicht kodieren und der Fehler reisst den ganzen
+Abruf ab) fliegen aus dem Universum und werden im Stand als `verworfen`
+GENANNT - nie still weggelassen.
 
 `--gegenprobe` ist das Tor: `squeeze` muss ueber den neuen Kern **dieselben
 Runden** liefern wie das seit 21.09.2026 im Betrieb laufende

@@ -14,6 +14,7 @@ Drei Faelle aus BrainFiles, alle am selben Tag (21.09.2026):
 | `Bus/tests/test_anbindung_handel.test_melder_bleibt_unveraendert` | `melder.py` byte-genau gegen Commit `3a9b6e5` | Nach der Telegram-400-Reparatur rot, obwohl die Spec unverletzt war |
 | `tests/test_lage.test_holer_sind_vollzaehlig` | genau 28 Holer | Jede neue Spur macht ihn rot |
 | `tests/test_risikovorfilter` | festes JETZT `2026-09-17 12:00` | Wurde mit dem Kalender falsch, nicht mit dem Code |
+| `tests/test_omniquant_fassung` | Fixture-Stempel `erzeugt: 2026-09-24T09:01:00` neben der Regel "Alter < 26 h" | Kippte 26 h spaeter in `Bericht 123.0 h alt, Grenze 26 h` — ein Fixture mit ALTERSGRENZE ist eine Uhrzeitbombe, kein Standbild |
 
 ## Die Regel
 
@@ -54,6 +55,30 @@ eine Konstante im Test stellen.
 self.assertTrue(wx.wochenende_sperrt(W, _zeit(4, 19, 0)))   # Fr 19:00 UTC
 self.assertFalse(wx.wochenende_sperrt(W, _zeit(0, 9)))      # Mo 09:00
 ```
+
+## Der Fixture-Zeitstempel ist derselbe Fehler in klein
+
+Ein Fixture, das einen ZEITSTEMPEL traegt (`erzeugt`, `letzter_lauf`, `stand`)
+und von der geprueften Regel gegen eine ALTERSGRENZE gehalten wird, ist eine
+Uhrzeitbombe: solange das Fixture juenger ist als die Grenze, gruen - danach
+rot, ohne dass sich am Code etwas geaendert hat. Der Fehler faellt nicht beim
+Bau auf, sondern Tage spaeter bei jemand anderem, und die Fehlermeldung zeigt
+auf die FRIST statt auf den Test.
+
+```python
+# falsch - das Datum ist eine Frist, die abgelaufen ist
+json.dump({"erzeugt": "2026-09-24T09:01:00+00:00", "treffer": []}, f)
+
+# richtig - relativ zu jetzt, die Grenze bleibt pruefbar
+jetzt = datetime.now(timezone.utc) - timedelta(hours=1.0)
+json.dump({"erzeugt": jetzt.isoformat(), "treffer": []}, f)
+```
+
+Und **die Gegenprobe gehoert dazu**: ein frisches Fixture belegt nur, dass der
+Bericht genommen wird - nicht, dass die Grenze greift. Zweiter Fall mit
+`stunden_alt=27.0` bei Grenze 26, der abgelehnt werden MUSS. Eine Grenze, die nur
+in eine Richtung geprueft wird, ist zur Haelfte ungeprueft (dasselbe Muster wie
+ein Schwellwert, der nie ausloest).
 
 ## Zweite Familie: der Test legt nur die HALBE Umgebung still
 

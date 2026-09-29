@@ -35,8 +35,8 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 20:00 | Sicherung nach `G:` | `sichern.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Sicherung` |
 | täglich 21:00 | Zweitkopie nach `O:` → **Ziel ist J:**, siehe Abschnitt „Zweitkopie“ unten | `sichern-zweitkopie.ps1` | **eingeplant** 23.08.2026 — `MaxHirn-Zweitkopie` |
 | täglich 22:00 | Posteingang einsortieren | `posteingang` | **eingeplant** 23.08.2026 — `MaxHirn-Posteingang` |
-| täglich 20:00 | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, dann auf täglich 20:00 reduziert; zugleich zwei seit der Ordnertrennung (30.08.2026) fällige Fehler behoben — Repo-Wurzel eine Ebene zu flach, und `git add` brach an einem Fremd-Repo im Baum ab. |
-| täglich 20:40 | Fremdarbeit beendeter Sitzungen in die Hauptarbeit (`master`) übernehmen | `Routinen/fremdarbeit-einziehen.ps1` | **eingeplant** 21.09.2026 — `MaxHirn-Fremdarbeit-Einziehen`. Läuft **nach** dem Zwischenstand (20:00): der sichert die Arbeit erst auf den Branch `zwischenstand`, diese Aufgabe holt dieselbe Arbeit ein zweites Mal ab und schreibt sie in **einem** Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Bis dahin blieb jede Hintergrundsitzung als „Fremdarbeiter“ im Arbeitsbaum stehen — sichtbar, aber nie in der Hauptarbeit. Ruhend heißt: länger als 30 Minuten unberührt. Details im Abschnitt „Fremdarbeit übernehmen“ unten. |
+| stündlich, zur vollen Stunde | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, im Umfeld des System-Umzugs auf täglich 20:00 reduziert, am 29.09.2026 wieder auf stündlich gestellt (Max: „verliere andauernd Arbeit“ — der Umzug ist abgeschlossen, der Grund für die Reduzierung entfällt). Damit sinkt das ungesicherte Fenster von einem Tag auf höchstens eine Stunde. |
+| stündlich, :20 nach der vollen Stunde | Fremdarbeit beendeter Sitzungen in die Hauptarbeit (`master`) übernehmen | `Routinen/fremdarbeit-einziehen.ps1` | **eingeplant** 21.09.2026 — `MaxHirn-Fremdarbeit-Einziehen`, am 29.09.2026 mit dem Zwischenstand auf stündlich umgestellt. Läuft **nach** dem jeweiligen Zwischenstand: der sichert die Arbeit erst auf den Branch `zwischenstand`, diese Aufgabe holt dieselbe Arbeit ein zweites Mal ab und schreibt sie in **einem** Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Ruhend heißt weiterhin: länger als 30 Minuten unberührt. Details im Abschnitt „Fremdarbeit übernehmen“ unten. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
 | bei Systemstart | BrainFiles-Bus | `Agenten/Bus/bus.py` | **eingeplant** 10.09.2026 — `BrainFiles-Bus`, registriert über `Agenten/Routinen/bus.ps1`. Meldet Start und Ende aller geplanten Aufgaben, wertet deren Erfolg aus und sichert Fehler auf dem Handy. Ein toter Bus darf niemals einen Lauf abbrechen — alle Erzeuger schreiben lokal ins Journal zurück. |
 | dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht ab 08:00 | `Handel/dauerlauf.py` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf` (Anmeldung) + Wächter. `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` seit 07.09.2026 gesetzt, siehe Abschnitt „Der Telegram-Melder" |
@@ -428,7 +428,7 @@ Tagesbriefing um 8 Uhr produziert eine leere Seite, solange [[Profil]] Lücken
 hat und Verbindungen aus [[Verbindungen]] nicht authentifiziert sind. Erst
 füllen, dann automatisieren.
 
-## Zwischenstand: warum stündlich und auf einem eigenen Branch
+## Zwischenstand: warum stündlich (wieder, seit 29.09.2026) und auf einem eigenen Branch
 
 Die vier Sicherungen oben halten alle nur den **jetzigen** Stand, und Git hält
 nur, was **committet** ist. Zwischen dem Schreiben einer Datei und ihrem Commit
@@ -480,7 +480,7 @@ Bots, Desktop-, CLI- und Telegram-Sitzungen) schreiben in denselben Baum und
 committen ihre Arbeit oft nicht.
 
 `Routinen/fremdarbeit-einziehen.ps1` (Aufgabe `MaxHirn-Fremdarbeit-Einziehen`,
-täglich 20:40, also **nach** dem Zwischenstand) schließt das:
+stündlich zu :20, also **nach** dem jeweiligen Zwischenstand) schließt das:
 
 - Es nimmt **nur ruhende** Änderungen — länger als 30 Minuten unberührt (dieselbe
   Schwelle wie in [[Schutzregeln]] und `arbeitsbaum-pruefen.ps1`). Was eine

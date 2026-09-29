@@ -45,18 +45,26 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
 
-## Zweige (Stand 16.09.2026)
+## Zweige (Stand 29.09.2026)
 
-- `master` ist der EINZIGE Arbeitszweig: hier wird committet, gepusht und
-  gemergt. Ein Zweig, der getrennt laeuft, kostet Ueberblick, ohne etwas zu
-  sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
+- `master` ist der Arbeitszweig: hier wird committet, gepusht und gemergt. Ein
+  Zweig, der getrennt laeuft und liegen bleibt, kostet Ueberblick, ohne etwas
+  zu sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
   geloescht (lokal und auf GitHub, Standardzweig ist wieder `master`).
-- `zwischenstand` ist keine Arbeit, sondern die automatische Nachtsicherung
-  der Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig). Nie dort
-  committen, nie anfassen; Aufraeumen, wenn er stoert:
-  `git update-ref -d refs/heads/zwischenstand` (Regeln in
+- **Ausnahme, seit 29.09.2026: kurzlebige PR-Zweige.** Verlangt ein Ablauf
+  (z. B. `<create-pr-command>`) ausdruecklich eine PR, darf dafuer ein Zweig
+  angelegt werden - erzeugen, pushen, PR eroeffnen, nach dem Mergen SOFORT
+  loeschen (lokal `git branch -d <zweig>` und `git push origin --delete
+  <zweig>`). Kein PR-Zweig bleibt laenger als bis zum Merge liegen; ohne
+  konkreten PR-Anlass gilt weiter nur `master`. Grund der Lockerung: gefuehlt
+  ging Arbeit verloren - Ursache war aber kein Zweig, sondern uncommittete
+  Arbeit, die zu lange im Baum stand (siehe Zwischenstand-Takt unten).
+- `zwischenstand` ist keine Arbeit, sondern die automatische Sicherung der
+  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, seit 29.09.2026
+  stuendlich statt taeglich). Nie dort committen, nie anfassen; Aufraeumen,
+  wenn er stoert: `git update-ref -d refs/heads/zwischenstand` (Regeln in
   MaxHirn/Wissen/Routinen.md).
-- Keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
+- Sonst keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
   zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
   ist, sonst `git merge`) und loeschen.
 

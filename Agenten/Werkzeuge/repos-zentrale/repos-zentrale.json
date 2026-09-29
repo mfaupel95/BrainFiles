@@ -1,5 +1,5 @@
 {
-  "stand": "2026-09-22",
+  "stand": "2026-09-29",
   "repos": [
     {
       "ordner": "Agent-Reach",
@@ -18,6 +18,20 @@
       "bot": "agent-trade-kit",
       "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)",
       "gruppe": "doku"
+    },
+    {
+      "ordner": "awesome-deepseek-harness-plugins",
+      "art": "doku",
+      "notiz": "Plugin-Katalog fuer DeepSeek Harness (dsh) - kein Startprogramm, der Katalog wird aus einer API erzeugt",
+      "gruppe": "doku",
+      "anleitung": "Kuratiertes Verzeichnis der dsh-Plugins. Kein eigenstaendiges Programm: die README wird aus einer API generiert (npm run readme:build). Als Nachschlagewerk lesen, nicht starten."
+    },
+    {
+      "ordner": "awesome-dsh-plugin",
+      "art": "doku",
+      "notiz": "Kuratierte dsh-Plugin-Liste mit statischem Site-Generator (node scripts/build-site.mjs)",
+      "gruppe": "doku",
+      "anleitung": "Awesome-List der DeepSeek-Harness-Plugins. Kein Server und kein Startprogramm. Wer die Seite bauen will: node scripts/build-site.mjs erzeugt docs/ als statische HTML-Seite (Node noetig)."
     },
     {
       "ordner": "awesome-systematic-trading",
@@ -75,7 +89,35 @@
       "ordner": "deepseek-harness",
       "art": "node",
       "bot": "deepseek-harness",
-      "notiz": "Monorepo, nur Bau (npm run build), kein Start"
+      "notiz": "DeepSeek Harness (dsh) - Agent-Harness, alles ist ein Plugin; Web-UI auf Port 3080",
+      "start": [
+        "npx",
+        "-y",
+        "@deepseek-ai/dsh",
+        "web"
+      ],
+      "port": 3080,
+      "anleitung": "Zwei Wege: aus dem npm-Paket ('npx @deepseek-ai/dsh web' - laedt dsh, keine lokale Installation) oder aus DIESEM Klon (pnpm install, pnpm run build, pnpm dsh web). Beide starten die Web-UI auf http://127.0.0.1:3080 und oeffnen den Browser; --no-open unterdrueckt das. Fuer den Klon-Weg fehlt node_modules (pnpm). Der Developer-Preview bricht die Schnittstellen bewusst - vor dem Betrieb die SAFETY.md lesen.",
+      "befehle": [
+        {
+          "was": "Web-UI aus dem npm-Paket starten (kein Bau noetig)",
+          "cmd": [
+            "npx",
+            "@deepseek-ai/dsh",
+            "web"
+          ],
+          "hinweis": "http://127.0.0.1:3080",
+          "start": true
+        },
+        {
+          "was": "Klon bauen (pnpm, dauert)",
+          "cmd": [
+            "pnpm",
+            "install"
+          ],
+          "hinweis": "danach pnpm run build und pnpm dsh web"
+        }
+      ]
     },
     {
       "ordner": "EasyCLIProxyAPI",
@@ -89,6 +131,13 @@
       "bot": "everything-claude-code",
       "notiz": "nur Dokumentation und Skills",
       "gruppe": "doku"
+    },
+    {
+      "ordner": "fast-jev-compaction",
+      "art": "doku",
+      "notiz": "Claude-Code-Plugin: ersetzt die Kompaktierung durch Jev-Entscheidungen - npm-Bibliothek, kein Startprogramm",
+      "gruppe": "doku",
+      "anleitung": "Kein eigenstaendiges Programm: das Repo ist npm-Paket (src/) UND Claude-Code-Plugin (hooks/, .claude-plugin/). Einbau in Claude Code: 'claude plugin marketplace add tamaratran/fast-jev-compaction' und 'claude plugin install fast-jev-compaction@fast-jev-compaction'. Die Demo braucht einen Schluessel (TYPESAFE_API_KEY)."
     },
     {
       "ordner": "fomo-robinhood-radar",
@@ -132,6 +181,13 @@
           "hinweis": "kurze Zusammenfassung"
         }
       ]
+    },
+    {
+      "ordner": "foreman",
+      "art": "python",
+      "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche, venv fehlt",
+      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf.",
+      "venv_pflicht": true
     },
     {
       "ordner": "gbrain",
@@ -206,6 +262,47 @@
             "configs/config-hermes-in-sample.json"
           ],
           "hinweis": "zeigt, wie sehr in-sample luegt"
+        }
+      ]
+    },
+    {
+      "ordner": "jev-chat-jarvis",
+      "art": "doku",
+      "notiz": "Android-App (Kotlin/Gradle): Chat-Copilot fuer unterstuetzte Messenger - auf Windows nur als APK nutzbar",
+      "gruppe": "doku",
+      "anleitung": "Handy-App (Android 11+, nur arm64-v8a), kein Windows-Programm. Bau: JDK 17 + Android SDK 35, dann ./gradlew assembleDebug. Ein fertiges signiertes APK liegt im Repo: adb install -r apk/jev-assistant-v1.4-release.apk. Ein Release-Build braucht JEV_KEYSTORE_PROPS."
+    },
+    {
+      "ordner": "jev-trader",
+      "art": "node",
+      "notiz": "Monad-Marktmacher auf Kuru (MON-USDC): eine Entscheidung je Block, Bun-Server mit Snapshot und SSE",
+      "start": [
+        "bun",
+        "run",
+        "start"
+      ],
+      "node_modules_pflicht": true,
+      "port": 3010,
+      "anleitung": "Je Monad-Block fragt ein Modell, ob es kauft oder verkauft, und legt eine post-only Limit-Order einen Tick in den Spread - die Spur verdient den Spread, statt ihn zu zahlen. OHNE PRIVATE_KEY laeuft es als Trockenlauf: echtes Orderbuch, echte Entscheidungen, simulierte Fuellungen. Endpunkte auf Port 3010 (aus PORT in der .env): / (Snapshot), /history (letzte 1000 Bloecke), /events (SSE). Voraussetzung ist bun (npm install -g bun). Ein separates web/ im Repo zeigt das Dashboard.",
+      "befehle": [
+        {
+          "was": "Trockenlauf starten (kein Schluessel noetig)",
+          "cmd": [
+            "bun",
+            "run",
+            "start"
+          ],
+          "hinweis": "ohne PRIVATE_KEY: echtes Buch, simulierte Fuellungen",
+          "start": true
+        },
+        {
+          "was": "Orderbuch-Leser bemessen",
+          "cmd": [
+            "bun",
+            "run",
+            "scripts/bench-read.ts"
+          ],
+          "hinweis": "Genauigkeit und Latenz gegen das SDK"
         }
       ]
     },
@@ -367,6 +464,40 @@
       "notiz": "Terminal im Browser (npm install, dann npm start)"
     },
     {
+      "ordner": "osiris",
+      "art": "node",
+      "notiz": "OSINT-Lagedashboard (Next.js 16, MapLibre): Luftfahrt, Seefahrt, Satelliten, Braende, Erdbeben, News, CVEs - laeuft ohne Schluessel",
+      "start": [
+        "npm",
+        "run",
+        "dev"
+      ],
+      "node_modules_pflicht": true,
+      "port": 3000,
+      "anleitung": "Echtes Browser-Dashboard, das oeffentliche Quellen ohne Schluessel buendelt (adsb.lol, celestrak, NASA FIRMS CSV, USGS). Die .env-Vorlage ist bereits als .env angelegt: leer lassen heisst, die optionalen Ebenen (Cloudflare Radar, RECON-Scanner, CHAIN INTEL) bleiben aus, der Rest laeuft. Produktionsweg: npm run build und npm start. Container: docker compose up -d, dann Port aus OSIRIS_PORT.",
+      "befehle": [
+        {
+          "was": "Entwicklungs-Server starten",
+          "cmd": [
+            "npm",
+            "run",
+            "dev"
+          ],
+          "hinweis": "http://localhost:3000",
+          "start": true
+        },
+        {
+          "was": "Produktionsbau",
+          "cmd": [
+            "npm",
+            "run",
+            "build"
+          ],
+          "hinweis": "danach npm start"
+        }
+      ]
+    },
+    {
       "ordner": "ProjectAtlas",
       "art": "rust",
       "bot": "projectatlas",
@@ -411,6 +542,45 @@
       "gruppe": "doku"
     },
     {
+      "ordner": "tradememory-protocol",
+      "art": "python",
+      "notiz": "Handelsgedaechtnis als MCP-Server mit REST-API und Dashboard (Port 8000)",
+      "start": [
+        ".venv\\Scripts\\tradememory-api.exe"
+      ],
+      "venv_pflicht": true,
+      "port": 8000,
+      "anleitung": "Das venv ist eingerichtet (Kern: fastmcp, fastapi, uvicorn, pydantic). 'tradememory-api' liefert REST-API UND Dashboard auf Port 8000 - das Dashboard erscheint aber nur, wenn dashboard/dist gebaut ist (aktuell nicht gebaut); die Demo laeuft auf tradememory-dashboard.onrender.com. Die Datenbank kommt aus docker-compose.yml (TimescaleDB + pgvector, docker compose up -d). Die .env ist aus der Vorlage angelegt; ohne ANTHROPIC_API_KEY bleiben Evolutions-Engine und Reflexionen aus. Optionale Extras fehlen bewusst (postgres, replay, MT5).",
+      "befehle": [
+        {
+          "was": "Datenbank starten (TimescaleDB + pgvector)",
+          "cmd": [
+            "docker",
+            "compose",
+            "up",
+            "-d"
+          ],
+          "hinweis": "Port 5432, Zugang tradememory/tradememory"
+        },
+        {
+          "was": "CLI-Demo ohne Datenbank zeigen",
+          "cmd": [
+            ".venv\\Scripts\\tradememory.exe",
+            "demo",
+            "--fast"
+          ],
+          "hinweis": "schneller Durchlauf"
+        },
+        {
+          "was": "MCP-Server starten",
+          "cmd": [
+            ".venv\\Scripts\\tradememory-protocol.exe"
+          ],
+          "hinweis": "fuer MCP-Clients"
+        }
+      ]
+    },
+    {
       "ordner": "Trading-View-MCP-for-AI-by-Moon-Dev",
       "art": "python",
       "bot": "tradingview-mcp",
@@ -422,6 +592,38 @@
       "bot": "winget-cli",
       "notiz": "nur Dokumentation und Skills",
       "gruppe": "doku"
+    },
+    {
+      "ordner": "ziplime",
+      "art": "python",
+      "notiz": "Backtesting-Framework (Polars) mit interaktivem KI-Assistenten im Terminal",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "-m",
+        "ai_assistant"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Kein Browser-UI, sondern ein interaktives Terminal (rich): der Assistent baut und startet Backtests im Gespraech. Alle Abhaengigkeiten liegen im venv; fuer den Assistenten fehlt nur ein LLM-Zugang - OPENROUTER_API_KEY in der .env (Endpunkt OpenRouter, Modell ueber OPENROUTER_MODEL, Vorgabe x-ai/grok-4.1-fast). Ohne Schluessel laeuft die Backtest-CLI weiterhin: python -m ziplime run -f <strategie.py> --start-date ... --end-date ...",
+      "befehle": [
+        {
+          "was": "KI-Assistent starten",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "-m",
+            "ai_assistant"
+          ],
+          "hinweis": "braucht OPENROUTER_API_KEY",
+          "start": true
+        },
+        {
+          "was": "Backtest-CLI zeigen",
+          "cmd": [
+            ".venv\\Scripts\\ziplime.exe",
+            "--help"
+          ],
+          "hinweis": "Strategiedatei und Zeitraum mitgeben"
+        }
+      ]
     }
   ]
 }
