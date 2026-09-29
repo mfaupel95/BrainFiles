@@ -5,8 +5,8 @@ model:
   api_mode: chat_completions
 providers:
   bonsai:
-    api: http://127.0.0.1:8080/v1
-    base_url: http://127.0.0.1:8080/v1
+    api: http://127.0.0.1:8081/v1
+    base_url: http://127.0.0.1:8081/v1
     default_model: bonsai
     model: bonsai
     name: Bonsai 2 27B (lokal, PrismML-Fork)

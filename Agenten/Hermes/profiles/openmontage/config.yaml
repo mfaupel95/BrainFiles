@@ -6,12 +6,12 @@ providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
     base_url: http://127.0.0.1:11434/v1
-    default_model: gemma4:26b
+    default_model: gemma-e4b-8k:latest
     discover_models: true
-    model: gemma4:e4b
+    model: gemma-e4b-8k:latest
     models:
-      - gemma4:26b
-      - gemma4:e4b
+      - gemma-e4b-8k:latest
+      - gemma-e4b-8k:latest
       - qwen3.8:27b
       - huihui_ai/qwen3-abliterated:32b
       - qwen3.8:latest
@@ -1761,7 +1761,7 @@ providers:
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
   - provider: ollama-launch
-    model: qwen35-8k:cpu
+    model: gemma-e4b-8k:cpu
     base_url: http://127.0.0.1:11434/v1
   - provider: omniroute
     model: auto/coding:free
@@ -1950,7 +1950,7 @@ moa:
           model: auto/best-chat
           enabled: true
         - provider: ollama-launch
-          model: gemma4:e4b
+          model: gemma-e4b-8k:latest
           enabled: true
       aggregator:
         provider: omniroute
