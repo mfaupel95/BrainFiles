@@ -113,8 +113,8 @@ sie einzeln. Nachweis: `pythonw.exe`-Prozesse danach **10** (Treiberpaar + 8 Age
 
 ## 7. Laufender Stand
 
-Agenten/Handel, `discover -s tests -t tests`: **890 Tests, 1 roter** (29.09.2026,
-nach dem Umbau unten wieder gruen) — die vier roten vom 29.09. waren alle
+Agenten/Handel, `discover -s tests -t tests`: **891 Tests, 0 rote** (29.09.2026,
+735 s; erstmals seit Wochen ohne roten Test) — die vier roten vom 29.09. waren alle
 **kaputte Pruefungen, keine Codeprobleme**:
 
 | Test | Fehler | Ursache |
