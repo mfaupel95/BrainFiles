@@ -1,0 +1,118 @@
+# Config gegen die Wirklichkeit pruefen (deklariert vs. real)
+
+Anlass: "optimier meine Config" / "warum greift die Einstellung nicht" / nach einem
+Update oder einer Fremdsitzung. Das Ergebnis ist ein Bericht mit Belegen, keine
+Meinung - und die Reparatur nur an Stellen, die EINDEUTIG sind.
+
+## Kernsatz
+
+**Eine Config ist eine Sammlung von Behauptungen.** Jede Zeile sagt: dieser Pfad
+existiert, dieser Dienst laeuft auf diesem Port, dieses Modell liegt im Store.
+Faellt eine davon aus, meldet **nichts** einen Fehler - die Zeile wird erst
+gebraucht, wenn der Hauptweg schon weggebrochen ist, und dann ist sie der letzte
+Ausweg. Deshalb wird jede Behauptung EINMAL gegen die Wirklichkeit gehalten
+(laufender Dienst, Dateisystem, offener Port), nicht gegen die Erinnerung und
+nicht gegen die Nachbardatei.
+
+## Ablauf
+
+1. **Bestand aufnehmen, nicht raten.** Welche Config liest wer? `hermes config path`
+   (CLI-Sicht), Prozess-Kommandozeile des Dienstes, `HERMES_HOME` als Benutzer- und
+   als Prozessvariable. Bei Profilen: `profiles/*/config.yaml` mitzaehlen.
+2. **Gegenprobe fahren (rein lesend):**
+
+       cd Agenten/Hermes
+       python scripts/config-gegenprobe.py          # Bericht, exit 1 bei Befund
+       python scripts/config-gegenprobe.py --json
+
+   Geprueft werden drei Dinge: `command:`-Pfade der `mcp_servers` gegen das
+   Dateisystem, jede lokale Adresse (`127.0.0.1`/`localhost` mit Port) in Hauptconfig
+   UND Profilen gegen einen echten TCP-Port, und jeder lokale Modellname (Provider
+   `ollama-launch`, samt `models:`-Liste) gegen `/api/tags` des laufenden Ollama.
+3. **Selbstpruefung des Werkzeugs im richtigen Kontext:** `hermes doctor` (Funde
+   gegengliedern, nicht blind uebernehmen - die vorgeschlagenen Fixes zeigen oft auf
+   eine andere Ursache), `hermes config check` (Exit 0 = YAML sauber),
+   `hermes mcp test <name>` je Server, `hermes fallback list` je Profil.
+4. **Eindeutiges selbst reparieren** (Pfad falsch, Wert ausserhalb des Bereichs,
+   Modellname existiert nicht, Variable am falschen Ort) - mit Sicherung und Beleg.
+5. **Strukturelles vorlegen** (Instanzen zusammenfuehren, Feature abschalten,
+   Presets umbauen, Guthaben/Kosten) - als Tabelle Ist-Zustand + Plan + gebuendelte
+   Frage. "Wenn du die Aenderung nicht in einem Satz begruenden kannst, ohne
+   'vermutlich' zu sagen, gehoert sie in die Vorlage."
+6. **Wache anschliessen, sonst ist die Gegenprobe wertlos.** Ein Nachweis, den
+   niemand von selbst aufruft, ist keine Wache:
+
+       python Agenten/Hermes/scripts/config-gegenprobe-wache.py --alle
+       hermes cron create "every monday 7:40am" --name config-gegenprobe \
+         --script config-gegenprobe-wache.py --no-agent --deliver telegram
+
+   Sie meldet **nur Aenderungen** (neuer fehlender Pfad, neu tote Adresse, Modell aus
+   dem Store gefallen), Merker in `cache/config-gegenprobe-wache.json`, leere Ausgabe
+   = nichts senden. Beleg nach dem Anlegen: `hermes cron run <id>` + `hermes cron tick`,
+   dann `hermes cron list` (Status ok).
+7. **Doku nachziehen:** Wiki-Seite `MaxHirn/Wiki/Werkzeuge/config-gegenprobe.md`,
+   Lektion in `Wiki/Lektionen/Wahrheit-pruefen.md`, offene Punkte als Tasks in
+   `MaxHirn/Archiv/TASKS.md` (IDs fortlaufend).
+
+## Was ein Befund ist - und was nicht
+
+| Beobachtung | Urteil |
+|---|---|
+| Modellname im lokalen Provider steht nicht in `/api/tags` | **Befund** (Rueckfall greift nicht) |
+| Adresse im Config-Block, Dienst dahinter tot, aber der zugehoerige Server arbeitet | **kein Befund** - Rest ohne Wirkung, nur aufraeumen |
+| Adresse in `fallback_providers`/`providers` zeigt auf einen toten Port | **Befund** (der Weg wird gebraucht) |
+| Port antwortet mit HTTP 200, aber es ist eine FREMDE Anwendung | **Befund** (falsche Zahl, der Dienst laeuft woanders) |
+| Zwei Stellen behaupten dasselbe (Vorgabe `model:` und `models:`-Liste) | beide pruefen - eine richtig, eine falsch ist der Normalfall |
+
+## Fallen (alle selbst erlebt)
+
+- **Ein top-level Block erbt die Einstufung des vorigen.** Der erste Lauf meldete
+  `auto/coding:free` als "nicht im Store", weil `fallback_providers:` in Spalte 0 die
+  Einstufung "lokaler Provider" vom letzten `providers:`-Block geerbte. Fix im Pruefer:
+  jede Zeile in Spalte 0 setzt die Einstufung zurueck. **Ein Pruefer ohne Gegenprobe
+  erzeugt Reparaturen an gesunden Dateien** - immer einen Fall bauen, der rot werden
+  MUSS, und einen, der gruen bleiben muss.
+- **Der Port stimmt, der Dienst nicht.** `providers.bonsai` zeigte auf 8080; dort
+  antwortete HTTP 200 - aber von der FreqTrade-Oberflaeche. Der Startbaustein hat 8081
+  als Vorgabe. Zwei Zahlen fuer dieselbe Sache: die Zahl aus dem STARTER nehmen und
+  die Antwort identifizieren, nicht nur den Statuscode.
+- **Tote Modellnamen fallen erst im Notfall auf.** Vier Namen (`qwen3.8:27b`,
+  `qwen3.8:latest`, `huihui_ai/qwen3-abliterated:32b`, `kimi-k2.7-code:cloud`) standen
+  in `models:` von Hauptconfig + 17 Profilen; der Vorgabewert war am selben Abend schon
+  gerichtet. Werkzeug: `Agenten/Hermes/scripts/lokale-modellliste-richten.py`
+  (Trockenlauf Standard, `--anwenden`, `--zuruecknehmen`, je Datei `.bak`); es traegt
+  nur Namen ein, die `/api/tags` bestaetigt.
+- **Nicht jeder "unbekannte" Config-Schluessel ist ein Fehler, aber jeder ist eine
+  Behauptung.** `hermes config get moa.enabled` antwortet "is not a recognized config
+  key", `hermes moa list` meldet "Active in config: (off)" - die Top-Level-Schluessel
+  des `moa:`-Blocks sind damit toter Text, gelesen werden `presets`/`default_preset`.
+  Vor dem Entfernen in `hermes_cli/config_defaults.py` nachsehen, welche Schluessel die
+  laufende Version liest; ein Preset, das einen toten Aggregator nennt, ist ein echtes
+  Risiko (die ganze Werkzeugschleife laeuft dort).
+- **Eine lebende Adresse kann durch eine irrefuehrende Antwort tot aussehen.**
+  `auto/best-free` antwortete ohne Authorization mit 403 ("OpenCode free tier only"),
+  mit dem Hausschluessel mit 200 (bedient von claude-haiku-4-5). Vor "der Weg ist tot"
+  den Aufruf MIT dem Schluessel aus der `.env` wiederholen - und den Schluessel nie
+  ausgeben (`grep -E "^NAME=" .env | cut -d= -f2-` in eine Shell-Variable, nicht in
+  die Kommandozeile).
+- **Zeilenenden sind ein Beleg, kein Nebenschauplatz.** Nach jeder Massenaenderung
+  `git diff --numstat` JE DATEI: 6/6 ist die gewollte Ersetzung, hunderte Zeilen heissen
+  gekippte Enden. Fuer die Gegenprobe `read_bytes()`/`write_bytes()` nehmen und zaehlen:
+  `b.count(b'\r') == b.count(b'\n')` in Arbeitsbaum UND `git show HEAD:<pfad>`.
+  (Eine `grep -c $'\r'`-Zaehlung im MSYS-Terminal lieferte hier 0 fuer eine CRLF-Datei -
+  nicht darauf bauen, Bytes zaehlen.)
+- **`hermes config set` kann die Datei nicht zerschiessen, aber den Schwellenwert
+  verstecken.** Nach jedem Set den Wert zuruecklesen UND die betroffene Zeile im
+  Diff pruefen; `config set` schreibt die Datei neu (Kommentar-Schluss-Falle in der
+  Haupt-SKILL.md).
+
+## Beleg (Muster)
+
+- `python scripts/config-gegenprobe.py` exit 0 bzw. 1 mit den offenen Punkten.
+- `git diff --numstat` JE geaenderter Datei gegen die erwartete Zeilenzahl.
+- `hermes fallback list` / `hermes -p <profil> fallback list` fuer jede Kette, die
+  angefasst wurde.
+- Fuer jedes "laeuft": den Endpunkt wirklich rufen (`POST <base_url>/chat/completions`)
+  oder den Port oeffnen - nicht die Config zitieren.
+- Wache: `hermes cron list` zeigt den Job mit Status ok; ein Lauf mit leerer Ausgabe
+  ist der Beweis, dass sie schweigt, wenn nichts ist.
