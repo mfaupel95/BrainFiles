@@ -51,10 +51,12 @@ Ausnahme: sperre_zu von true auf false). Ein Zeitfenster ist Betriebszustand,
 keine Grenze - es gehoert nicht in die Datei, die die Grenzen haelt.
 """
 
+import contextlib
 import datetime as dt
 import json
 import os
 import re
+import time
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 DATEI = os.path.join(HIER, "freigabe_fenster.json")
@@ -83,6 +85,50 @@ WIEDERVORLAGE_NACH_ABLEHNUNG_STUNDEN = 12
 # Handel, "Dauerlauf beendet" ist keine.
 ABLEHNUNGSGRUENDE = ("abgelehnt", "stop")
 
+# Zwei Schreiber (Dauerlauf, Leitstand): jede Lesen-Aendern-Schreiben-Folge
+# laeuft unter einer Dateisperre neben DATEI.
+SPERRE_WARTEN_S = 5.0
+SPERRE_VERWAIST_S = 30.0
+
+
+@contextlib.contextmanager
+def _gesperrt():
+    """Exklusiv lesen-aendern-schreiben. Sperre = DATEI.lock (O_CREAT|O_EXCL).
+
+    Wer sie nicht bekommt, wartet hoechstens SPERRE_WARTEN_S und bekommt dann
+    TimeoutError - geschrieben wird dann nichts. Eine Sperre, die aelter als
+    SPERRE_VERWAIST_S ist, stammt von einem abgestuerzten Prozess und wird
+    entfernt.
+    """
+    sperre = DATEI + ".lock"
+    frist = time.monotonic() + SPERRE_WARTEN_S
+    while True:
+        try:
+            fd = os.open(sperre, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except (FileExistsError, PermissionError):
+            # PermissionError: Windows, die Sperre wird gerade geloescht.
+            try:
+                if time.time() - os.path.getmtime(sperre) > SPERRE_VERWAIST_S:
+                    os.remove(sperre)
+                    continue
+            except OSError:
+                pass
+            if time.monotonic() >= frist:
+                raise TimeoutError("Sperre %s belegt" % sperre)
+            time.sleep(0.02)
+    try:
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+        finally:
+            os.close(fd)
+        yield
+    finally:
+        try:
+            os.remove(sperre)
+        except OSError:
+            pass
+
 
 def _jetzt():
     # Use naive local datetime, not UTC-aware.
@@ -99,9 +145,20 @@ def _lies():
 
 
 def _schreib(d):
-    with open(DATEI, "w", encoding="utf-8") as f:
+    """Atomar: erst DATEI.tmp, dann os.replace - kein Leser sieht eine halbe Datei."""
+    tmp = DATEI + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=2, ensure_ascii=False)
         f.write("\n")
+    for versuch in range(20):
+        try:
+            os.replace(tmp, DATEI)
+            return
+        except PermissionError:
+            # Windows: ein Leser haelt DATEI gerade offen.
+            if versuch == 19:
+                raise
+            time.sleep(0.05)
 
 
 class Fenster:
@@ -203,14 +260,15 @@ def neue_anfrage_erlaubt(spur):
 
 def anfrage_stellen(spur, dauer_minuten):
     """Merkt eine wartende Anfrage vor. Oeffnet noch nichts."""
-    d = _lies()
-    e = d.setdefault(spur, {})
-    e["anfrage_bis"] = (_jetzt() + dt.timedelta(
-        minutes=ANTWORT_FRIST_MINUTEN)).isoformat()
-    e["anfrage_dauer_minuten"] = min(dauer_minuten, MAX_STUNDEN * 60)
-    e["anfrage_gestellt"] = _jetzt().isoformat()
-    _schreib(d)
-    return e["anfrage_dauer_minuten"]
+    with _gesperrt():
+        d = _lies()
+        e = d.setdefault(spur, {})
+        e["anfrage_bis"] = (_jetzt() + dt.timedelta(
+            minutes=ANTWORT_FRIST_MINUTEN)).isoformat()
+        e["anfrage_dauer_minuten"] = min(dauer_minuten, MAX_STUNDEN * 60)
+        e["anfrage_gestellt"] = _jetzt().isoformat()
+        _schreib(d)
+        return e["anfrage_dauer_minuten"]
 
 
 def oeffnen(spur, stunden=None, wer="telegram"):
@@ -220,44 +278,56 @@ def oeffnen(spur, stunden=None, wer="telegram"):
     Telegram-Sitzung nicht aus dem Nichts scharf schalten: Der Anstoss kommt
     immer vom Dauerlauf, der die Lage geprueft hat.
     """
-    d = _lies()
-    e = d.get(spur) or {}
-    s = e.get("anfrage_bis")
-    anfrage_endet = _zeit(s)  # Use _zeit() for safe parsing
-    if not anfrage_endet or _jetzt() >= anfrage_endet:
-        return None
+    with _gesperrt():
+        d = _lies()
+        e = d.get(spur) or {}
+        s = e.get("anfrage_bis")
+        anfrage_endet = _zeit(s)  # Use _zeit() for safe parsing
+        if not anfrage_endet or _jetzt() >= anfrage_endet:
+            return None
 
-    minuten = (stunden * 60 if stunden
-               else e.get("anfrage_dauer_minuten", 60))
-    minuten = min(minuten, MAX_STUNDEN * 60)
+        minuten = (stunden * 60 if stunden
+                   else e.get("anfrage_dauer_minuten", 60))
+        minuten = min(minuten, MAX_STUNDEN * 60)
 
-    e["offen_bis"] = (_jetzt() + dt.timedelta(minutes=minuten)).isoformat()
-    e["freigegeben_von"] = wer
-    e["freigegeben_am"] = _jetzt().isoformat()
-    e.pop("anfrage_bis", None)
-    d[spur] = e
-    _schreib(d)
-    return minuten
+        e["offen_bis"] = (_jetzt() + dt.timedelta(minutes=minuten)).isoformat()
+        e["freigegeben_von"] = wer
+        e["freigegeben_am"] = _jetzt().isoformat()
+        e.pop("anfrage_bis", None)
+        d[spur] = e
+        _schreib(d)
+        return minuten
 
 
-def schliessen(spur, grund="von Hand"):
-    """Sofort zurueck auf Papier. Geht immer, ohne Anfrage, ohne Frist."""
-    d = _lies()
+def _schliesse_in(d, spur, grund):
+    """Eine Spur in d auf Papier setzen. Ohne Sperre, ohne Schreiben."""
     e = d.setdefault(spur, {})
     war = Fenster(spur, dict(e)).offen()
     e.pop("offen_bis", None)
     e.pop("anfrage_bis", None)
     e["zuletzt_geschlossen"] = _jetzt().isoformat()
     e["schliess_grund"] = grund
-    _schreib(d)
+    return war
+
+
+def schliessen(spur, grund="von Hand"):
+    """Sofort zurueck auf Papier. Geht immer, ohne Anfrage, ohne Frist."""
+    with _gesperrt():
+        d = _lies()
+        war = _schliesse_in(d, spur, grund)
+        _schreib(d)
     return war
 
 
 def alles_schliessen(grund="Notaus"):
-    """Jede Spur zurueck auf Papier - der Notaus vom Handy."""
-    # Capture keys first to avoid dict-changed-during-iteration issues
-    spuren = list(_lies().keys())
-    return [s for s in spuren if schliessen(s, grund)]
+    """Jede Spur zurueck auf Papier - eine Sperre, ein Schreiben."""
+    with _gesperrt():
+        d = _lies()
+        if not d:
+            return []
+        offen = [s for s in list(d) if _schliesse_in(d, s, grund)]
+        _schreib(d)
+    return offen
 
 
 def grenzwerte(w, waehrung="USD"):
