@@ -52,6 +52,61 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ```
 
 ## Offen
+- [ ] **T-138 — Docker-Engine aus: Container `nautilus-demo` fehlt, OKX-Arm ohne Quoten**
+      Kontext: `docker ps -a` antwortet 29.09.2026 mit `failed to connect to the docker API at
+      npipe:////./pipe/dockerDesktopLinuxEngine ... daemon is running`; die Systempruefung meldete
+      dasselbe um 07:00 ("Docker-Engine antwortet nicht (Frist 20 s)"). Ohne den Container bekommt
+      der Nautilus-Arm auf OKX keine Quotes - genau der Befund vom 25.09. (`feed_quelle
+      fallback_kopier`, quotes=0); die uebrigen zwei Arme (Kraken Spot/Futures) laufen ohne Docker.
+      Naechster Schritt: Docker Desktop starten, `docker start nautilus-demo`, Block 14 der
+      Systempruefung nachziehen und pruefen, ob wieder Quotes ankommen.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/nautilus, Docker-Host.
+
+- [ ] **T-137 — Routine `fremdarbeit-einziehen`: Push scheitert mit 403, Commits bleiben liegen**
+      Kontext: Der Lauf vom 28.09.2026 20:40 hat 5 ruhende Dateien uebernommen (Commit 5c80b19),
+      aber nicht gepusht: `remote: Write access to repository not granted ... error: 403`. Von Hand
+      gepusht geht es (`manager` als credential.helper, am 29.09.2026 vier liegengebliebene Commits
+      nachgeschoben). Der Unterschied ist der Kontext der geplanten Aufgabe - dort steht keine
+      interaktive Anmeldung bereit. Folge ohne Fix: die Nachtsicherung laeuft lokal weiter, GitHub
+      bleibt still, und die Sicherung ist genau dann nicht woanders, wenn sie gebraucht wird.
+      Naechster Schritt: Lauf-Log der Aufgabe lesen, credential.helper im Task-Kontext pruefen
+      (GCM-Store vs. gh-Token), danach `git log --oneline origin/master..master` nach dem 20:40-Lauf.
+      Angelegt 2026-09-29. Betrifft Agenten/Routinen/fremdarbeit-einziehen.ps1.
+
+- [ ] **T-136 — `okx_bot_waechter` wird als Handels-Spur geprueft, ist aber ein Werkzeug**
+      Kontext: Block 11b der Systempruefung laeuft ueber jeden Ordner unter Agenten/Handel mit
+      wachen.json und verlangt `herzschlag_max_minuten = 180`. `okx_bot_waechter/wachen.json` hat
+      den Schluessel nicht (`None`) und `handel_erlaubt` ebenso wenig - der Ordner haelt nie eine
+      Position, die ein Herzschlag schliessen koennte. Die Zeile steht deshalb jeden Tag unter
+      "Zu entscheiden" und bedeutet nichts.
+      Naechster Schritt: entscheiden - Werkzeuge ohne `handel_erlaubt` aus der Pruefung nehmen
+      (Vorschlag) oder 180 eintragen. Danach Block 11b nachziehen.
+      Angelegt 2026-09-29. Betrifft Agenten/Routinen/systempruefung.ps1, okx_bot_waechter/wachen.json.
+
+- [ ] **T-135 — Tagespruefung meldet "Herzschlag alt" fuer eine live-only Spur (Fehlalarm)**
+      Kontext: `spiegelstand.py:190` liest fuer das Alter `zustand.json` (Papierzustand, nur der
+      Risikostufen-Suffix wird angehaengt) und `:193` rechnet daraus `alter`. Eine Spur, die nur
+      live laeuft, schreibt aber `zustand.live.json` - ihr Papierstand friert ein. Gemessen am
+      29.09.2026: `moondev_marktlage` lief im 15-Minuten-Takt (dauerlauf.log 15:18 "(live) ok"),
+      der Papierstand stand auf 03:39, und Block 11 der Systempruefung machte daraus
+      "Herzschlag 204 min alt (> 2 h) - laeuft die Spur ueberhaupt?".
+      Naechster Schritt: in `spiegelstand.py` denselben FRISCHESTEN der beiden Staende nehmen, den
+      `moondev_marktlage._papier_zustand()` schon benutzt; Gegenprobe ueber den Pruefstand der Spur.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/spiegelstand.py, Routinen/systempruefung.ps1.
+
+- [ ] **T-134 — Zweitkopie bricht am uv-Build-Cache ab (Exitcode 1 seit 27.09.)**
+      Kontext: `sichern-zweitkopie.ps1` kopiert die Repo-Wurzel nach J: und schliesst `.venv`,
+      `__pycache__`, `*.pid`, `*.db-wal` aus - `Agenten/Hermes/cache/` aber nicht. Dort liegt der
+      uv-Build-Cache, dessen editable-Wheel waehrend eines Hermes-/uv-Laufs gesperrt ist:
+      Log 28.09.2026 21:02 `FEHLER 5 (0x00000005) ... cache\uv\sdists-v9\editable\...\
+      hermes_agent-0.0.0-0.editable-py3-none-any.whl / Zugriff verweigert`, danach `robocopy-Code 11`
+      und `ENDE FEHLER - Exitcode 1`. Die Aufgabe `MaxHirn-Zweitkopie` steht deshalb auf Code 1,
+      taeglich gemeldet, ohne dass eine Datei fehlt (2936 Dateien uebersprungen, 0 Fehler im
+      Zaehler). Ein Cache gehoert nicht in eine Sicherung - er ist neu baubar.
+      Naechster Schritt: `Hermes\cache` in die /XD-Liste aufnehmen (Stufe 1: erst .bak, dann echter
+      Lauf zeigen), danach `grep -c "FEHLER 5" logs/zweitkopie-letzter-lauf.log` = 0.
+      Angelegt 2026-09-29. Betrifft Agenten/sichern-zweitkopie.ps1, Aufgabe MaxHirn-Zweitkopie.
+
 - [ ] **T-001 — Kurztitel**
       Kontext: worum es geht, warum es offen ist
       Nächster Schritt: eine konkrete, ausführbare Handlung
