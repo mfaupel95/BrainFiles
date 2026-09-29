@@ -39,6 +39,28 @@ and date.
 - Memory calls are finite CLI processes. A busy database means another command
   is running: retry after it finishes; never remove its lock.
 
+## Fallen beim Speichern (29.09.2026 gemessen)
+
+- **Langtext aus einer DATEI uebergeben, nie inline.** Die Kommandozeile geht durch
+  eine Huelle, in der einfache Anfuehrungszeichen NICHT schuetzen: Backticks,
+  `$`-Ausdruecke und `$(...)` werden ausgewertet, bevor gbrain den Text sieht. Am
+  29.09.2026 landeten dadurch vier Fakten verstuemmelt im Gehirn ("must run as ,",
+  "/usr/bin/bash.ProcessId -ne "). Richtig: Text mit dem Schreibwerkzeug in eine
+  Datei legen, dann
+  `gbrain remember "$(cat <pfad>)" --provenance "<quelle, datum>" --entity <entitaet>`.
+- **Nach jedem remember zuruecklesen** (`gbrain recall --grep '<stichwort>'`):
+  gbrain meldet beim Schreiben keinen Inhaltsverlust, nur `remembered as fact #n`.
+- **`recall <wort>` sucht ZUERST eine ENTITAET.** Ist der Begriff keine, meldet es
+  `no facts for entity '<wort>'; matched N fact(s) by text` und listet sie darunter -
+  die Fundstelle ist also da, nur die Einleitung irrefuehrend. Textsuche erzwingen:
+  `recall --grep <text>`; nach Entitaet: `recall "projects/hermes-agent"`.
+- **`search`/`query` finden KEINE Fakten** (sie gehen ueber Seiten) und laufen ohne
+  Embedding-Anbieter degradiert - nur Stichwortsuche, mit eigenem Hinweis.
+- **`forget <fact-id> --reason <text>`** - die ID ist positionell, `--id` gibt es
+  nicht. Korrektur heisst forget + neues remember; nie Loeschung zusagen.
+- Ein Fakt ohne `--entity` ist fuer die entitaetsbezogene Erinnerung unsichtbar -
+  Entitaet setzen, sobald der Fakt ein Subjekt hat.
+
 ## Setup evidence (2026-09-20)
 
 - Init mode: keyless fact memory (`--pglite --no-embedding`), search mode
