@@ -3,7 +3,7 @@ id: 20260830-routinen
 title: 'Routinen'
 tags: [betrieb]
 created: 2026-08-25
-updated: 2026-09-16
+updated: 2026-09-29
 related: [20260830-wiederholbare-aufgaben, 20260831-marktscanner, 20260902-handelsregeln, 20260916-optimierungen-finden]
 summary: 'Welche Abläufe ohne Aufforderung laufen, mit Zeitplan und Protokollort.'
 ---
@@ -22,6 +22,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 07:45 | Kraken-Spur 3: **nur die Rangliste** | `Handel/kraken/scan.py` | **geändert** 14.09.2026 — `MaxHirn-Kraken-Spur3`. Wie oben; gehandelt wird im Dauerlauf, seit derselbe Tag die Spur wieder führt. |
 | — | XPERP-Spur 2 (läuft im Dauerlauf) | `Handel/xperp/handeln.py` | **Aufgabe gelöscht** 14.09.2026 — `MaxHirn-XPERP-Spur2` fuhr um 07:50 einen zweiten Zyklus (Ziel-Ausstieg FIL, drei Einstiege am 14.09.2026), den der Dauerlauf nicht kannte. `Routinen/xperp-handeln.ps1` bleibt als Notbetrieb von Hand. |
 | alle 30 Min | Dauerlauf-Wächter (Neustart nach Abschaltung) | `handel-dauerlauf.ps1` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf-Waechter` |
+| bei Anmeldung + alle 30 Min | Stufen-Wächter mittel und hoch (Start **und** Neustart in einem) | `handel-dauerlauf.ps1 -Risiko mittel` bzw. `hoch` | **nachgetragen** 29.09.2026 — `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`, `MaxHirn-Handel-Dauerlauf-Hoch-Waechter`. Seit 16.09.2026 in Betrieb, aber hier nie vermerkt. Zeitauslöser am 29.09.2026 ergänzt, siehe unten. |
 | alle 15 Min | Bus-Wächter (Neustart nach Ausfall, Meldung nur bei Befund) | `Agenten/Hermes/scripts/bus-waechter.py` | **eingeplant** 15.09.2026 — Hermes-Cron `bus-waechter`, **kein Windows-Task**: läuft absichtlich am Bus vorbei (`no_agent`, Ausgabe = Meldung), weil eine Wache, die über den Bus meldet, bei totem Bus schweigt. Anlass: der Bus war vom 11.09. 21:13 bis 15.09. 21:02 aus, vier Tage ohne Meldung. |
 | alle 15 Min | Atlas-Wächter (startet den ProjectAtlas-Watcher neu, still bei Befundfreiheit) | `Agenten/Hermes/scripts/atlas-watcher.py` | **eingeplant** 15.09.2026 — Hermes-Cron `atlas-watcher`, ebenfalls **kein Windows-Task** (`no_agent`, leere Ausgabe = nichts senden). Prüft die PID aus `Agenten/Werkzeuge/projectatlas/logs/watch-omnitrade.pid`; der Watcher ist ein Dauerprozess auf `Werkstatt/omnitrade` und zieht den Atlas nach, wenn sich Dateien ändern. Anlass: ohne ihn veraltet die Karte still. |
 | montags 09:15 | Repo-Klone unter `Werkstatt/Repos/` gegen upstream prüfen (Skill-Quellen aktuell halten) | `Agenten/Hermes/scripts/repo-updates-check.py` | **eingeplant** 16.09.2026 — Hermes-Cron `repo-updates-check`, **kein Windows-Task** (`no_agent`, Meldung nur bei Rückstand). Anlass: superpowers-Klon war zwei Monate hinter upstream; ohne Prüfung altern die Skill-Quellen still.
@@ -290,6 +291,30 @@ Der Wächter prüft `dauerlauf.pid` und endet sofort, wenn schon einer läuft;
 nach einem Kernel-Power-41-Neustart ([[Hardware]]) startet er den Dauerlauf
 wieder. Der Dauerlauf selbst läuft seit 06.09.2026 17:37 (PID 55000, Takt
 15 min) und protokolliert in `Routinen/logs/handel-dauerlauf-letzter-lauf.log`.
+
+**Die beiden Stufen-Wächter hingen an der Anmeldung (behoben 29.09.2026).**
+Bei der Basisstufe sind die Rollen getrennt: `MaxHirn-Handel-Dauerlauf` startet
+bei Anmeldung, der Wächter belebt zeitgesteuert wieder. Für mittel und hoch
+gibt es keine eigene Startaufgabe — dort macht die Wächteraufgabe beides und
+trug deshalb nur einen `LogonTrigger`. Die Startrolle war damit erfüllt, die
+Wiederbelebung nicht: „Nächster Lauf" stand bei beiden leer, und
+`StartWhenAvailable` half nicht, weil es nur für **zeitbasierte** Auslöser
+gilt. Folge: nach einem Kernel-Power-41-Neustart ohne Anmeldung ([[Hardware]])
+kam der Basislauf zurück, mittel und hoch blieben still liegen — ohne Meldung,
+weil `melder.py` nach Zeitplan sendet und nicht nach Zustand.
+
+Behoben, indem beide zusätzlich einen Zeitauslöser bekamen (alle 30 Minuten,
+unbegrenzt). Der `LogonTrigger` bleibt: er ist der Anmeldungsstart, nicht
+Beiwerk.
+
+```powershell
+foreach ($n in 'MaxHirn-Handel-Dauerlauf-Mittel-Waechter','MaxHirn-Handel-Dauerlauf-Hoch-Waechter') { $alt = @((Get-ScheduledTask -TaskName $n).Triggers); $neu = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(5) -RepetitionInterval (New-TimeSpan -Minutes 30); Set-ScheduledTask -TaskName $n -Trigger ($alt + $neu) }
+```
+
+Nachweis: `Get-ScheduledTaskInfo` zeigt für alle drei Wächter einen gefüllten
+`NextRunTime`. Ein Probelauf von Hand schrieb „laeuft bereits (PID 8244, Stufe
+mittel) - nichts zu tun" und ließ den Prozess unangetastet — der Auslöser
+greift, ohne den laufenden Handel zu stören.
 
 ### Der Telegram-Melder — eine Quelle, nicht zwei
 
