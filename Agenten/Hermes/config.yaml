@@ -1989,9 +1989,6 @@ moa:
         - provider: bonsai
           model: bonsai
           enabled: true
-        - provider: bonsai
-          model: bonsai
-          enabled: true
         - provider: anthropic
           model: claude-opus-4-8
           enabled: false
@@ -2035,9 +2032,6 @@ moa:
         - provider: bonsai
           model: bonsai
           enabled: true
-        - provider: bonsai
-          model: bonsai
-          enabled: true
         - provider: anthropic
           model: claude-opus-5
           enabled: true
@@ -2064,9 +2058,6 @@ moa:
         - provider: nous
           model: deepseek/deepseek-v4-pro-0813
           enabled: true
-        - provider: anthropic
-          model: claude-opus-5
-          enabled: true
       aggregator:
         provider: bonsai
         model: bonsai
@@ -2089,9 +2080,6 @@ moa:
     - provider: nous
       model: openai/gpt-6-astra
       enabled: false
-    - provider: bonsai
-      model: bonsai
-      enabled: true
     - provider: bonsai
       model: bonsai
       enabled: true
