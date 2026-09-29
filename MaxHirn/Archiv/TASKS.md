@@ -52,6 +52,23 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ```
 
 ## Offen
+- [ ] **T-153 — compression.threshold 1.6 - greift die Kompression ueberhaupt?**
+      Kontext: Die Hermes-Config traegt `compression.threshold: 1.6`. Der Wert ist ein PROZENTSATZ des Kontextfensters; 1.6 heisst 160 Prozent, der Trigger liegt also ueber dem Fenster - es wird nie komprimiert. Gesetzt wurde er von einer parallelen Sitzung (Commit b672f3c 'Kompressor auf auto zurueck'), zusammen mit `auxiliary.compression: omniroute/auto/best-free`. Der Haus-Skill hermes-config-ops nennt auto/best-free ausdruecklich als toten Weg (OpenCode-Free antwortet ausserhalb von OpenCode mit 403). Die Config traegt ausserdem _config_version 46 statt 49, also einen Rueckschritt.
+      Naechster Schritt: Beim Nutzer klaeren, ob das Absicht war (Kompressor bewusst aus). Wenn nicht: threshold auf einen Wert unter dem Fenster des Kompressionsmodells setzen (Hauswert war 0.6) und auxiliary.compression auf nous/deepseek-v4-flash-0731.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/config.yaml
+
+- [ ] **T-154 — providers.ollama-launch.models ist eine Wunschliste ohne Deckung**
+      Kontext: Der Block nennt sechs Modelle (gemma4:26b, gemma4:e4b, qwen3.8:27b, huihui_ai/qwen3-abliterated:32b, qwen3.8:latest, kimi-k2.7-code:cloud); im Ollama-Store liegen zehn ANDERE (gemma-e4b-8k latest/cpu, qwen3.5:9b, glm4:9b, deepseek-chat, deepseek-reasoner, codellama 13b/7b-code, cipher64/darkseek, CarlB/Phi-4-mini). Die Ketten sind am 29.09.2026 auf echte Namen gezogen worden (scripts/lokale-modellnamen-richten.py), die Liste selbst ist noch Wunschdenken und wird von der Modellauswahl gelesen.
+      Naechster Schritt: Liste gegen /api/tags abgleichen und auf die real vorhandenen Modelle setzen - oder entfernen, wenn discover_models sie ohnehin ueberschreibt.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/config.yaml
+
+- [ ] **T-155 — Bonsai-Dienst ist startbar, aber ungeprueft**
+      Kontext: Port-Konflikt behoben (8080 gehoerte dem Freqtrade-Container, jetzt 8081 in Starter und Config). Ein echter Start wurde NICHT gefahren: der Dienst ist ein Schwergewicht und entlaedt die Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren im Handel gerade brauchen.
+      Naechster Schritt: Bonsai in einer ruhigen Minute starten (Werkzeuge/bonsai-27b.ps1 -Aktion start) und pruefen, ob er als Agent-Modell durchgeht (64k Kontext); danach entscheiden, ob delegation.provider auf bonsai zurueckgeht.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Werkzeuge/bonsai-27b.ps1, Agenten/Hermes/config.yaml
 - [ ] **T-151 - Geplanter Neustart des Rechners (Commit/Memory entlasten)**
       Kontext: Am 29.09.2026 war der PC sehr langsam durch Commit-Erschoepfung (~200 Zombie-
       MCP-Prozesse, 29,6 GB Commit); behoben per Kill + Wache mcp-zombie-wache (Cron 15 min,
