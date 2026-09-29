@@ -75,6 +75,18 @@ try {
   # Fehler bleiben ueber den Exitcode sichtbar.
   $eap = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
+  # Der Index ist hier FRISCH (GIT_INDEX_FILE zeigt auf eine neu angelegte
+  # Datei). Ohne den folgenden Schritt kennt er den versionierten Bestand
+  # nicht - und git add -A nimmt dann jeden Pfad NICHT auf, den .gitignore
+  # verdeckt, obwohl er in master liegt (z.B. Agenten/Hermes/config.yaml,
+  # Agenten/Bus/.gitignore). Am 30.09.2026 fehlten so 338 Dateien im
+  # Zwischenstand, waehrend der Lauf 'ENDE ok' meldete. read-tree legt den
+  # committeten Baum in den Index; danach ergaenzt add -A nur noch Neues.
+  # Gegenprobe: git diff --name-status master zwischenstand darf keine
+  # D-Ausgaben mehr zeigen.
+  git read-tree HEAD
+  if ($LASTEXITCODE -ne 0) { throw "git read-tree fehlgeschlagen (Exitcode $LASTEXITCODE)" }
+
   $addAusgabe = git add -A 2>&1
   $ErrorActionPreference = $eap
   if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exitcode $LASTEXITCODE): $addAusgabe" }
