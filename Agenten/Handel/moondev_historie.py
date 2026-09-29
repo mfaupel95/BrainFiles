@@ -123,11 +123,30 @@ def universum(anzahl=300):
     return gewaehlt
 
 
+# Laengste Quote zuerst pruefen (USDT vor USD), sonst bliebe bei "BTCUSDT"
+# nichts uebrig. Reihenfolge in der Liste ist die Pruefreihenfolge.
+QUOTEN = ("USDT", "USDC", "FDUSD", "TUSD", "BUSD", "EUR", "TRY", "BTC", "ETH")
+
+
 def basis_von(sym):
-    """Basiswert eines Binance-Symbols - aus exchangeInfo, nicht abgeschnitten."""
+    """Basiswert eines Binance-Symbols.
+
+    Zuerst aus exchangeInfo: dort steht der ECHTE Basiswert eines Paares.
+    Ohne exchangeInfo - im Test oder in einem Ruecklauf ohne Netz - wird die
+    Quote abgeschnitten. Das ist ausdruecklich der Rueckfall und nicht die
+    Regel: Binance notiert dieselbe Muenze mal als "SHIB", mal als "1000SHIB";
+    exchangeInfo kennt nur die zweite Schreibweise, das Abschneiden erfindet
+    "1000SHIB" als eigenen Basiswert.
+    """
     if not _basis:
         _lade_universum()
-    return _basis.get(sym)
+    if sym in _basis:
+        return _basis[sym]
+    s = str(sym or "").upper()
+    for q in QUOTEN:
+        if s.endswith(q) and len(s) > len(q):
+            return s[:-len(q)]
+    return s or None
 
 
 def normalisiere_feed(roh):
@@ -565,6 +584,108 @@ def _stunden_symbole(anzahl):
             if s.get("symbol") in fehlend:
                 _basis[s["symbol"]] = s.get("baseAsset") or s["symbol"][:-4]
     return aus
+
+
+# --- Quellen je Spur -------------------------------------------------------
+# Jede Funktion liefert GENAU die Form, die `quelle(w)` der Spur zurueckgibt:
+# (daten, kurse, fehler). `daten` sind die Kandidaten, `kurse` traegt ALLE
+# geladenen Symbole - ein offenes Symbol ausserhalb der Top N muss einen Kurs
+# haben, sonst schliesst seine Position nie (spur_buch.pruefe_ausstiege
+# arbeitet ueber `kurse`).
+#
+# Die Spuren sprechen CoinGecko-Namen, die Ablage spricht Binance-Symbole: der
+# Adapter uebersetzt. Die Feldnamen stammen aus den Spuren selbst und stehen in
+# FELDER - tests/test_replay_feed.py prueft sie gegen den Quelltext, damit ein
+# Umbau der Spur hier einen roten Test gibt statt einen stillen Nullauf.
+
+FELDER = {
+    "moondev_topmovers": ("name", "aenderung_24h", "volumen_24h", "kurs"),
+    "moondev_marktlage": ("name", "btc_aenderung_24h", "breite", "kurs"),
+    "moondev_signalwelle": ("name", "aenderung_1h", "aenderung_24h",
+                            "volumen_24h", "kurs"),
+}
+
+
+def _kurse_mit_basis(bestand, ts, fremde=None):
+    """Kurse auf Basiswerte umschluesseln.
+
+    `fremde` traegt Symbole offener Positionen, die im Bestand fehlen (delistet
+    oder ausserhalb des Universums). Sie bekommen keinen erfundenen Kurs: sie
+    fehlen und werden gemeldet.
+
+    Teilen sich zwei Symbole einen Basiswert (SHIB und 1000SHIB), gewinnt der
+    erste Eintrag - der zweite waere derselbe Preis in anderer Skalierung.
+    """
+    kurse, fehlen = {}, []
+    for sym, kurs in bestand.kurse(ts).items():
+        basis = basis_von(sym)
+        if basis and basis not in kurse:
+            kurse[basis] = kurs
+    for s in (fremde or ()):
+        if s not in kurse:
+            fehlen.append("%s: kein Kurs am Zeitpunkt" % s)
+    return kurse, fehlen
+
+
+def quelle_topmovers(bestand, ts, w):
+    """Top-Mover: 24h-Aenderung und Volumen ueber die Top `anzahl_coins`."""
+    top = int(w.get("anzahl_coins", 250) or 250)
+    aus = {}
+    for z in bestand.tafel(ts, top=top).values():
+        if not z["basis"]:
+            continue
+        aus[z["basis"]] = {"name": z["basis"],
+                           "aenderung_24h": z["aenderung_pct"],
+                           "volumen_24h": z["volumen_usd"],
+                           "kurs": z["kurs"]}
+    kurse, fehler = _kurse_mit_basis(bestand, ts)
+    return aus, kurse, fehler
+
+
+def quelle_marktlage(bestand, ts, w):
+    """BTC-Aenderung plus Marktbreite.
+
+    `breite` ist ein ANTEIL (0.60/0.40 in der wachen), kein Prozentwert - die
+    beiden zu vertauschen waere ein stiller Fehlschlag: 0.6 statt 60 faellt
+    immer unter die Schwelle, die Spur handelte nie.
+    """
+    top = int(w.get("anzahl_coins", 100) or 100)
+    b = bestand.breite(ts, top=top)
+    btc = None
+    for z in bestand.tafel(ts, top=top).values():
+        if z["basis"] == "BTC":
+            btc = z
+            break
+    if btc is None or b["anteil"] is None or btc["aenderung_pct"] is None:
+        return {}, {}, ["BTC oder Breite fehlt am Zeitpunkt"]
+    kurse, fehler = _kurse_mit_basis(bestand, ts)
+    return ({"BTC": {"name": "Bitcoin",
+                     "btc_aenderung_24h": btc["aenderung_pct"],
+                     "breite": b["anteil"], "kurs": btc["kurs"]}},
+            kurse, fehler)
+
+
+def quelle_signalwelle(bestand, ts, w):
+    """Signalwelle: 1h-Aenderung und 24h-Volumen aus dem STUNDENbestand."""
+    top = int(w.get("anzahl_coins", 250) or 250)
+    aus = {}
+    for z in bestand.tafel_stunde(ts, top=top):
+        if not z["basis"]:
+            continue
+        aus[z["basis"]] = {"name": z["basis"],
+                           "aenderung_1h": z["aenderung_1h"],
+                           "aenderung_24h": z["aenderung_24h"],
+                           "volumen_24h": z["volumen_24h"],
+                           "kurs": z["kurs"]}
+    kurse, fehler = _kurse_mit_basis(bestand, ts)
+    return aus, kurse, fehler
+
+
+QUELLEN = {
+    "moondev_topmovers": quelle_topmovers,
+    "moondev_marktlage": quelle_marktlage,
+    "moondev_signalwelle": quelle_signalwelle,
+}
 
 
 # --- Funding ---------------------------------------------------------------
