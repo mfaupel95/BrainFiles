@@ -261,8 +261,26 @@ Sitzung mit wiederaufnahmefähigem `end_reason` (`agent_close`, `ws_orphan_reap`
 auch sie nur archivieren. Fremde Sitzungen (Claude/Codex) schließt Hermes nicht;
 sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
 
+- Nach dem naechtlichen `fremdarbeit-einziehen`-Lauf (20:40) lohnt der Blick auf
+  `git log --oneline origin/master..master`: die geplante Aufgabe committet
+  lokal, ihr Push kann aber scheitern (403), waehrend derselbe Push von Hand
+  funktioniert. Unpushed Commits sind eine Sicherung, die es nicht gibt.
+
 ## Pitfalls
 
+- **Den Trockenlauf ZAEHLEN, nicht ansehen.** `archive ... --dry-run` gibt eine
+  Zeile je betroffener Sitzung aus; ein Blick auf die letzten Zeilen (z. B.
+  `tail`) zeigt nur den Rest. Am 29.09.2026 standen so 7 sichtbare Zeilen fuer
+  144 wirkliche Sitzungen — der Ernstlauf versteckte 144 statt der erwarteten 7.
+  Vorher `| wc -l` nehmen und die Zahl nennen, sonst ist die Wirkung ungewollt.
+- **`archive` hat kein Gegenstueck im CLI.** Es gibt `archive`, aber kein
+  `unarchive` (`hermes sessions --help`); umkehrbar heisst hier: in `state.db`
+  `UPDATE sessions SET archived=0` (Spalte existiert, Tabelle `sessions`).
+  Wer 100+ Sitzungen versteckt, muss diesen Rueckweg mitliefern.
+- **`archive --older-than 30d` kann "No sessions match" melden, obwohl 153
+  beendete Sitzungen unarchiviert liegen** — die aeltere Auswahl greift nur
+  einen Teil. Der Bestand kommt aus `beendete_sitzungen.py` (beendet und noch
+  nicht archiviert), nicht aus einem einzelnen Filter.
 - **`Wissen/Routinen.md` ist CRLF mit einzelnen LF-Zeilen.** Weder `write_file`
   noch `patch` darauf ansetzen: beide normalisieren die Zeilenenden und erzeugen
   im Diff Änderungen, die niemand gemacht hat. Sicherung `.bak-JJJJMMTT` anlegen,
