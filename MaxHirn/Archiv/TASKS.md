@@ -120,21 +120,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Stop stellen.
       Angelegt 29.09.2026. Betrifft Agenten/Handel/<spur>/handeln.py, Journale.
 
-- [ ] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error), vorbestehend**
-      Kontext: Suite-Lauf 29.09.2026 (755 Tests, 799 s). Die vier Namen sind
-      bekannt und die Testdateien stammen vom 23.-25.09.2026, also NICHT aus
-      dieser Arbeit:
-      - test_handelszentrale_bindung.NamensfalleTest.test_kein_modulname_einer_spur_doppelt_am_handel_kopf
-      - test_omniquant_fassung.LadeBerichtTest.test_streng_liest_die_strenge_datei
-      - test_omniquant_fassung.LadeBerichtTest.test_weit_liest_die_weit_datei
-      - test_replay.FensterTest.test_fenster_ist_schneller_als_das_praefix
-      Dazu eine Fehlermeldung aus dem Tagesbericht-Umfeld: 'Bericht 108.4 h alt,
-      Grenze 26 h' - zeitabhaengig (echte Berichtsdateien).
-      Naechster Schritt: je Fall pruefen, ob die Regel oder der feste Zeitstempel
-      falsch ist (Muster: journal(jetzt=...) dynamisch setzen).
-      Angelegt 29.09.2026. Betrifft Agenten/Handel/tests.
-
-
 - [ ] **T-115 - Kraken-USDC: Umstellung vorbereitet, es fehlt das USDC-Guthaben**
       Kontext: Auftrag Max 28.09.2026 ("Welche Spuren koennen live auf Kraken USDC
       geschaltet werden?"). Kraken listet 45 USDC-Paare, darunter XBTUSDC, ETHUSDC,
@@ -1605,6 +1590,39 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 ## Erledigt
+- [x] **T-117 - Agenten/Handel/tests: 4 rote Tests (3 failures, 1 error), vorbestehend**
+      Kontext: Suite-Lauf 29.09.2026 (755 Tests, 799 s). Die vier Namen sind
+      bekannt und die Testdateien stammen vom 23.-25.09.2026, also NICHT aus
+      dieser Arbeit:
+      - test_handelszentrale_bindung.NamensfalleTest.test_kein_modulname_einer_spur_doppelt_am_handel_kopf
+      - test_omniquant_fassung.LadeBerichtTest.test_streng_liest_die_strenge_datei
+      - test_omniquant_fassung.LadeBerichtTest.test_weit_liest_die_weit_datei
+      - test_replay.FensterTest.test_fenster_ist_schneller_als_das_praefix
+      Dazu eine Fehlermeldung aus dem Tagesbericht-Umfeld: 'Bericht 108.4 h alt,
+      Grenze 26 h' - zeitabhaengig (echte Berichtsdateien).
+      Naechster Schritt: je Fall pruefen, ob die Regel oder der feste Zeitstempel
+      falsch ist (Muster: journal(jetzt=...) dynamisch setzen).
+      Angelegt 29.09.2026. Betrifft Agenten/Handel/tests.
+      Erledigt 29.09.2026: Alle vier roten Tests der Handel-Suite repariert - keiner
+      war ein Codeproblem, jeder eine kaputte Pruefung.
+      (1) `test_handelszentrale_bindung.NamensfalleTest` hatte recht: `historie`
+      lag zweimal im Suchraum (Backtest-Modul am Handel-Kopf und xperp/historie.py).
+      `Handel/historie.py` heisst jetzt `historie_binance.py` (Commit e8ec32f) -
+      dieselbe Falle, die am 13.09. fuenf Omniquant-Tests gegen das falsche gui.py
+      laufen liess.
+      (2+3) `test_omniquant_fassung.LadeBerichtTest` (zwei Tests) hatte ein FESTES
+      Datum im Fixture und pruefte 'Alter < 26 h' - nach 26 Stunden kippte er um,
+      ohne Codeaenderung. Jetzt relativ zu jetzt, dazu die Gegenprobe (27 h muss
+      abgelehnt werden).
+      (4) `test_replay.FensterTest.test_fenster_ist_schneller_als_das_praefix`
+      verglich zwei LAUFZEITEN - gemessen 0.97 und 0.93 auf zwei Durchgaengen, also
+      kein Signal: bei 2000 Kerzen dominiert die Ausfuehrungszeit. Ein solcher Test
+      meldet die Maschinenlast (drei Risikostufen laufen parallel), nicht die Regel.
+      Umgebaut auf die Eigenschaft: mit Fenster 400 sieht die Spur hoechstens 400
+      Kerzen, mit Fenster 2000 mehr; dazu ein Test auf die Lehre vom 25.09.2026
+      (fenster_vorgabe darf nicht unter mindest_kerzen fallen). Commit 86d85ba.
+      Nachweis: test_replay.FensterTest 3/3 gruen, test_handelszentrale_bindung +
+      test_historie 57/57 gruen, test_omniquant_fassung 11/11 gruen.
 - [x] **T-103 — Bus-Suite rot: Routine `moondev-dauerlauf` hat keine Bus-Anbindung**
       Kontext: `Agenten/Bus/tests/test_ende_zu_ende.py` bricht in
       `test_anbindung_routinen` ab mit "ohne Bus-Anbindung: ['moondev-dauerlauf']".
