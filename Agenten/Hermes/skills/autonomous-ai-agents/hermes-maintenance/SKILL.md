@@ -55,6 +55,7 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
     curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9119/
     hermes doctor
     git -C <checkout> log -1 --oneline
+    python -c "from hermes_cli.gateway import find_profile_gateway_processes as f; print([(x.profile, x.pid) for x in f(strict=True)])"
     Get-NetTCPConnection -LocalPort 9900 -State Listen | Select-Object -ExpandProperty OwningProcess
     npm audit --json --workspaces=false
     Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }
@@ -98,6 +99,29 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 
 Step-by-step detail, log line shapes, exit-code table, the detach-skript skeleton and the
 bookkeeping pattern: load `references/update-run-procedure.md`.
+
+## Stop: `RuntimeError: Could not inspect gateway PID for profile default`
+
+Der Lauf kommt bis "Paused gateway profile(s)" und stirbt dann mit `exit_code 1` und
+`Could not map Windows gateway PIDs to profiles`. Das ist KEIN defektes Update, sondern eine
+**Sichtbarkeitsfrage**: der Gateway laeuft in einer Startform, die der kanonische Matcher
+`gateway.status.looks_like_gateway_runtime_command_line` absichtlich ablehnt (`-c`-Bootstrap,
+Upstream #107002), oder die PID-Metadaten fehlen. Messgroesse ist die Sicht des Updaters:
+
+    python -c "from hermes_cli.gateway import find_profile_gateway_processes as f; print([(x.profile, x.pid) for x in f(strict=True)])"
+
+`RuntimeError` = er sieht ihn nicht (genau der Abbruchgrund); `[('default', <pid>)]` = gut.
+Reparatur: Launcher `gateway-service/Hermes_Gateway_<suffix>.vbs` starten (klassische Form
+`-m hermes_cli.main gateway run`), fehlende PID-Metadaten aus `gateway.lock` rekonstruieren,
+danach erneut messen. Als Wache dafuer laeuft `Agenten/Hermes/scripts/gateway-identitaet-wache.py`
+(Cron, taeglich, `no_agent`, leere Ausgabe = nichts senden; heilt einmal pro Tag, nie waehrend
+eines Updates) - und `Agenten/Routinen/gateway-waechter.ps1` prueft seit dem Umbau die
+**Bedingung** (Prozess + Antwort ueber Control-Pipe ODER Port), nicht mehr Port 9900: TCP 9900
+kann zu bleiben, waehrend der Gateway gesund laeuft - eine Adress-Wache startete ihn deshalb im
+2-Minuten-Takt neu (128 Mal an einem Tag).
+Vor/Nach-Nachweis eines Laufs, die zwei Wachen-Fallen, der Beweislauf mit Belegskript, der
+Aufraeumrest `[WinError 5] … tools/.displaced-*/node.exe` und die Sandbox-Uhr, die eigene Arbeit
+als "ruhend" erscheinen laesst: `references/gateway-identitaet-und-wachen.md`.
 
 ## Egress/iron-proxy: no native Windows binaries (hard blocker)
 

@@ -411,6 +411,27 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    Kind haelt, BEENDET seine eigene Suche per `taskkill /T`. Immer zusaetzlich auf
    `python.exe`/`pythonw.exe` (bzw. den echten Programmnamen) filtern.
 
+5. **Die Bedingung pruefen, nicht eine ADRESSE, die sie einmal begleitet hat.** Ein
+   Port, eine Datei, ein Zaehler kann die Sache ueberleben: `gateway-waechter.ps1`
+   fuehrte "Port 9900 ist die Wahrheit" und startete den Dienst, sobald der Port zu
+   war - seit der Dienst auf einen Named Pipe lauschte (TCP 9900 bleibt zu, waehrend
+   er gesund laeuft), lief die Wache in eine Neustart-Schleife: **128 Neustarts an
+   einem Tag**, jeder riss die offenen Verbindungen mit. Richtig ist die Sache
+   selbst (laeuft der erwartete Prozess UND antwortet er - Pipe ODER Port), plus
+   eine Bremse: ein antwortloser Prozess wird hoechstens einmal je 30 Minuten neu
+   gestartet. Beleg ist die ZAHL der Neustarts gegen die Takte im selben Zeitraum,
+   nicht die einzelne Logzeile ("kein Prozess - Neustart ausgeloest" liest sich
+   richtig).
+   **Und die Abfrage darf sich nicht selbst finden:**
+   `$_.CommandLine -match 'hermes_cli.main update'` trifft die laufende Abfrage -
+   die Wache meldet dann IMMER "es laeuft ein Update" und heilt nie. Muster aus
+   Teilen bauen, eigenen Prozess ausschliessen (`$_.ProcessId -ne $PID`), auf
+   `python.exe` filtern, `-like` statt `-match`, und einen Test dafuer schreiben.
+   Ein Pipe-Namensraum wird aus einer DATEI gelesen, nie als `-Command` (die
+   Bash-Huelle frisst die Backslashes und die Probe meldet faelschlich "kein Pipe").
+   Voller Fall: im Skill `hermes-maintenance` die Datei
+   `gateway-identitaet-und-wachen` (dort unter `references/`).
+
 **`powershell` immer mit absolutem Pfad aufrufen**
 (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der
 Aufgabenplanung ist der PATH ein anderer als in einer Sitzung. Symptom einer
