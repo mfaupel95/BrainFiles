@@ -260,16 +260,12 @@ def alles_schliessen(grund="Notaus"):
     return [s for s in spuren if schliessen(s, grund)]
 
 
-def anfrage_text(spur, w, dauer_minuten, waehrung="USD"):
-    """Was in der Anfrage steht: dieselben Werte, die freigabe.py zeigt.
+def grenzwerte(w, waehrung="USD"):
+    """Die Grenzen aus wachen.json als (Bezeichnung, Wert mit Einheit).
 
-    Ohne diese Werte waere die Freigabe eine Blankounterschrift. Das
-    Bildschirmfenster zeigt sie, also zeigt die Handy-Fassung sie auch.
+    anfrage_text() (Telegram) und der Freigabe-Dialog des Leitstands zeigen
+    dieselbe Liste - eine zweite Fassung waere eine zweite Wahrheit.
     """
-    z = ["<b>Freigabe %s?</b>" % spur,
-         "Dauer: %d:%02d h" % (dauer_minuten // 60, dauer_minuten % 60),
-         "", "Es gelten die Grenzen aus wachen.json:"]
-
     def w_(*namen):
         for n in namen:
             if n in w:
@@ -286,9 +282,22 @@ def anfrage_text(spur, w, dauer_minuten, waehrung="USD"):
         ("Risiko je Anlauf", w_("risiko_je_anlauf_usd"), waehrung),
         ("Kill-Switch", w_("kill_switch_gesamt_usd"), waehrung),
     ]
-    for name, wert, einheit in paare:
-        if wert is not None:
-            z.append("  %-18s %s %s" % (name, wert, einheit))
+    return [(name, "%s %s" % (wert, einheit))
+            for name, wert, einheit in paare if wert is not None]
+
+
+def anfrage_text(spur, w, dauer_minuten, waehrung="USD"):
+    """Was in der Anfrage steht: dieselben Werte, die freigabe.py zeigt.
+
+    Ohne diese Werte waere die Freigabe eine Blankounterschrift. Das
+    Bildschirmfenster zeigt sie, also zeigt die Handy-Fassung sie auch.
+    """
+    z = ["<b>Freigabe %s?</b>" % spur,
+         "Dauer: %d:%02d h" % (dauer_minuten // 60, dauer_minuten % 60),
+         "", "Es gelten die Grenzen aus wachen.json:"]
+
+    for name, wert in grenzwerte(w, waehrung):
+        z.append("  %-18s %s" % (name, wert))
 
     z += ["",
           "/ja        freigeben fuer %d:%02d h" % (dauer_minuten // 60,
