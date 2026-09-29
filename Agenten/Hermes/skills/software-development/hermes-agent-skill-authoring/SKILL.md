@@ -197,6 +197,34 @@ A skill exists to make the agent's process more predictable — the agent reliab
 - **Supporting files:** `write_file` to `references/`, `templates/`, or `scripts/` under the skill dir.
 - **Always commit** — in-repo skills are source, not runtime state. Re-run the docs generator when frontmatter changed.
 
+### After EVERY change: endings check, then pointer reconcile
+
+Two checks, both one command, both skip-able only if you enjoy rework:
+
+1. **Line endings.** `skill_manage(action='patch')` normalizes a file's endings, so a targeted
+   edit can land as a whole-file diff (LF file returned as CRLF, or vice versa). Check
+   `git diff --numstat <SKILL.md>` immediately: an inserted block must read `N 0` (or `N M` for a
+   replacement), never a few hundred lines each side. If it is a whole-file diff, restore the
+   endings from the previous revision and commit that in a follow-up commit — never force-push a
+   shared branch to hide it.
+2. **Pointer reconcile.** The skill's own `references/`, `templates/`, `scripts/` files and the
+   paths its body mentions must match EXACTLY in both directions:
+   - every `references/<name>.md` mentioned in the body exists (a dangling pointer sends the next
+     reader chasing a file that is not there — a real one sat in a house skill for days until the
+     skill linter flagged `dangling-reference`),
+   - every file under `references/` is mentioned at least once (an unmentioned file is invisible:
+     nobody loads what the index never names).
+
+   After adding a reference file, add its pointer in the same breath; after deleting one, delete
+   the pointer. Read the linter output on every `skill_manage` call and treat
+   `dangling-reference` as a defect to fix now, not as advice.
+
+   One command (invoke through the `terminal` tool from the skill directory):
+
+   ```bash
+   python -c "import re,pathlib as P; s=P.Path('SKILL.md').read_text(encoding='utf-8'); f=sorted(p.name for p in P.Path('references').glob('*.md')); m=sorted(set(re.findall(r'references/([A-Za-z0-9_.-]+\\.md)', s))); print('Datei ohne Verweis:', [x for x in f if x not in m] or 'keine'); print('Verweis ohne Datei:', [x for x in m if x not in f] or 'keine')"
+   ```
+
 ## Common Pitfalls
 
 1. **Using `skill_manage(action='create')` for an in-repo skill.** It writes to `~/.hermes/skills/`, not the repo tree. Use `write_file`.
@@ -209,6 +237,12 @@ A skill exists to make the agent's process more predictable — the agent reliab
 8. **Skipping the docs generator or pushing its unrelated drift.** Both directions are wrong: no regen = orphan skill with no docs page; blind regen = a ballooned diff full of other skills' drift.
 9. **Expecting the current session to see the new skill.** The loader is initialized at session start.
 10. **Letting skills accumulate sediment.** When adding a rule, remove the old wording it replaces.
+11. **A pointer to a reference file that does not exist.** The body names a `references/` file the
+    directory does not have — the reader chases a ghost, and the skill looks complete because the
+    path renders fine. Reconcile pointers against the directory in BOTH directions after every edit
+    (a file nobody mentions is just as invisible as a pointer that resolves nowhere).
+12. **Leaving a `skill_manage` patch unverified.** Patch, then `git diff --numstat` — a normalized
+    skill file returns a whole-file diff that buries the one real change and makes review impossible.
 
 ## Verification Checklist
 
