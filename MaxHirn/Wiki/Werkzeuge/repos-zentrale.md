@@ -1,6 +1,6 @@
 ---
 titel: Repos-Zentrale (Startfenster fuer Werkstatt/Repos)
-aktualisiert: 2026-09-29
+aktualisiert: 2026-09-30
 tags: [werkzeug, repos, oberflaeche]
 ---
 
@@ -142,6 +142,45 @@ cmd /c cd /d O:\Werkstatt\Repos\OpenTerminalUI\frontend && npm run build   (exit
 Merksatz: bei einem Repo unter einer Junction entscheidet das
 **Arbeitsverzeichnis**, ob ein relativer Pfad noch stimmt — und ein fehlgeschlagener
 Build ist kein harmloser Fehlschlag, wenn er das Ausgabeverzeichnis vorher leert.
+
+### Nachtrag 30.09.2026 — Flotte gegen upstream gezogen (gemessen)
+
+`Werkstatt/Repos` traegt **46 Klone** (`copilot-worktrees` ist keine: Worktree-
+Sammlung ohne `.git`, wird vom Werkzeug richtig uebergangen). Drei Laeufe von
+`Agenten/Werkzeuge/repos-updaten.py`:
+
+| Lauf | Ergebnis |
+|---|---|
+| 1 · `--trocken` | 28 Klone hinterher, zusammen **4512 Commits** |
+| 2 · anwenden | **26 vorgespult**, 15 waren schon aktuell |
+| 3 · Gegenprobe | **41 aktuell**; die 4 anderen sind Regel, nicht Rueckstand |
+
+Groesste Rueckstaende (Commits): `deepseek-harness` 2411, `laya` 887, `codex` 523,
+`graphify` 143, `awesome-dsh-plugin` 110, `claudian` 86, `EasyCLIProxyAPI` 63,
+`claude-plugins-official` 58, `one-skill-to-rule-them-all` 53.
+
+**Was der Lauf NICHT anfasst — vier Faelle, jeder mit Grund im Bericht:**
+
+- `moon-dev-ai-agents` — **ausgenommen** (`AUSGENOMMEN` im Skript): dort laeuft der
+  kraken_agent. Wird gemessen (die 6 Aenderungen an verfolgten Dateien bleiben),
+  nie gespult.
+- `OpenTerminal` (`package.json`/`-lock`, 4 hinter) und `osiris`
+  (`package-lock.json`, 5 hinter) — **schmutzig**: eine Aenderung an einer
+  verfolgten Datei sperrt den Klon. Verwerfen ist verboten, also entscheidet Max.
+- `jev-chat-jarvis` (Zweig `JEV`, 84 hinter) und `tradememory-protocol` (Zweig
+  `Werkstatt`, 91 hinter) — **anderer Zweig**: das Skript raet den Quellzweig
+  nicht und schaltet nicht um. Nachgemessen, nicht angefasst.
+- `claude-red` ist aktuell, hat aber 4 von Defender entfernte `SKILL.md` als
+  Loeschung im Baum (`Skills/…/offensive-{sqli,rce,file-upload,shellcode}`).
+
+**Beobachtung zur Historie:** zwei der neun shallow-Klone wurden beim Vorspulen
+**unshallowed** (`OpenTerminalUI`, `awesome-systematic-trading`) — ein
+Shallow-Klon kann nicht `--ff-only`, weil der gemeinsame Vorfahr fehlt; das
+Skript holt die Historie dann einmal nach. Sieben bleiben shallow.
+
+Umgestellt im Werkzeug: `AUSGENOMMEN` (Liste der Nur-Messen-Klone) und `--ausser`
+fuer weitere, ausserdem meldet der Bericht jetzt den Rueckstand in Commits je
+Zeile. Wirkung sofort, ohne Neustart — es ist ein Handwerkzeug, keine Routine.
 
 ## Einen Befehl belegen: der Beleglauf
 

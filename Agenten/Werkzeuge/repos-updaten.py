@@ -17,16 +17,21 @@ WAS ES TUT (je Repo, in dieser Reihenfolge)
      spaeter nicht mehr auseinanderzuhalten.
   6. Ist der Arbeitsbaum schmutzig: NICHT anfassen, nur melden (die Klone
      tragen .env, .venv, lokale Anpassungen).
+  7. Steht das Repo auf AUSGENOMMEN: nur MESSEN (fetch + Rueckstand zaehlen),
+     nie vorspulen - dort laufen Prozesse, die einen Stand mitten im Betrieb
+     nicht vertragen (moon-dev-ai-agents: kraken_agent laeuft).
 
 WAS ES NICHT TUT
   - keine eigenen Commits, kein Push, kein Rebase, kein Aufloesen von Konflikten,
   - keine Datei im Arbeitsbaum aendern, die nicht Git selbst schreibt,
-  - nicht `--unshallow` (das ist ein eigener, gezielter Eingriff fuer Pushes).
+  - nicht `--unshallow` (das ist ein eigener, gezielter Eingriff fuer Pushes),
+  - keine Datei in AUSGENOMMEN anfassen (auch nicht mit --anwenden).
 
 Aufruf (aus der Repo-Wurzel oder von ueberall):
     python Agenten/Werkzeuge/repos-updaten.py --trocken     # nur zeigen
     python Agenten/Werkzeuge/repos-updaten.py               # vorspulen
     python Agenten/Werkzeuge/repos-updaten.py --nur ProjectAtlas OpenTerminal
+    python Agenten/Werkzeuge/repos-updaten.py --ausser Winget-cli
 """
 
 from __future__ import annotations
@@ -40,6 +45,10 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[2]
 REPOS = WURZEL / "Werkstatt" / "Repos"
 STAND = WURZEL / "Agenten" / "Hermes" / "cache" / "repos-update.json"
+
+# Nur messen, nie vorspulen: in diesen Klonen laeuft ein Prozess, der an
+# verfolgten Dateien haengt (moon-dev-ai-agents: kraken_agent, Dauerlauf).
+AUSGENOMMEN = {"moon-dev-ai-agents"}
 
 
 def git(verz: Path, *args: str, t: int = 180):
@@ -64,7 +73,7 @@ def quelle(verz: Path):
     return remote, zweig
 
 
-def eins(v: Path, trocken: bool):
+def eins(v: Path, trocken: bool, ausser: set[str] = frozenset()):
     name = v.name
     e = {"repo": name, "stand": ""}
     _, branch, _ = git(v, "rev-parse", "--abbrev-ref", "HEAD")
@@ -95,6 +104,12 @@ def eins(v: Path, trocken: bool):
         return e
     rc, hinter, _ = git(v, "rev-list", "--count", "HEAD..FETCH_HEAD")
     e["hinter"] = int(hinter or 0)
+    if name.lower() in {a.lower() for a in ausser}:
+        # Gemessen wird auch hier (der Rueckstand gehoert in den Bericht),
+        # gespult wird nie - im Klon laeuft ein Prozess.
+        e["stand"] = ("ausgenommen (laeuft), aktuell" if not e["hinter"]
+                      else "ausgenommen (laeuft), %d Commits Rueckstand" % e["hinter"])
+        return e
     if e["hinter"] == 0:
         e["stand"] = "aktuell"
         return e
@@ -124,8 +139,14 @@ def eins(v: Path, trocken: bool):
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--trocken", action="store_true", help="nur zeigen, nicht vorspulen")
+    p.add_argument("--anwenden", action="store_true",
+                   help="vorspulen (Standard; --trocken ist das Gegenteil)")
     p.add_argument("--nur", nargs="*", help="nur diese Repos")
+    p.add_argument("--ausser", nargs="*", default=[],
+                   help="diese Repos nur messen, nie vorspulen")
     a = p.parse_args()
+    trocken = a.trocken and not a.anwenden
+    ausser = set(AUSGENOMMEN) | {n for n in (a.ausser or [])}
 
     if not REPOS.is_dir():
         print("Repos-Ordner fehlt: %s" % REPOS)
@@ -135,21 +156,25 @@ def main() -> int:
         wollen = {n.lower() for n in a.nur}
         ordner = [d for d in ordner if d.name.lower() in wollen]
 
-    ergebnisse = [eins(d, a.trocken) for d in ordner]
+    ergebnisse = [eins(d, trocken, ausser) for d in ordner]
     STAND.parent.mkdir(parents=True, exist_ok=True)
     STAND.write_text(json.dumps(ergebnisse, indent=1, ensure_ascii=False),
                      encoding="utf-8")
 
     zaehler = {}
     for e in ergebnisse:
-        zaehler[e["stand"]] = zaehler.get(e["stand"], 0) + 1
+        zaehler[e["stand"].split(",")[0]] = zaehler.get(e["stand"].split(",")[0], 0) + 1
+    print("Geprueft: %d Klone%s" % (len(ergebnisse),
+                                    "  (Trockenlauf)" if trocken else ""))
     for name, n in sorted(zaehler.items(), key=lambda kv: -kv[1]):
-        print("%-38s %d" % (name, n))
+        print("  %-40s %d" % (name, n))
     print()
     for e in ergebnisse:
-        if e["stand"] not in ("aktuell",):
-            print("%-26s %-34s %s%s" % (e["repo"], e["stand"], e.get("quelle", ""),
-                                        ("  " + e.get("fehler", "")) if e.get("fehler") else ""))
+        if e["stand"] == "aktuell":
+            continue
+        print("%-30s %-42s %-28s %s%s" % (e["repo"], e["stand"], e.get("quelle", ""),
+                                          ("Rueckstand %s" % e["hinter"]) if e.get("hinter") else "",
+                                          ("  " + e.get("fehler", "")) if e.get("fehler") else ""))
     print("\nStand geschrieben: %s" % STAND.name)
     return 0
 

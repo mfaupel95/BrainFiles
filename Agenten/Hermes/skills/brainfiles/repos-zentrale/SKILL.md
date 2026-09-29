@@ -37,6 +37,7 @@ seinen Startbefehl und markiert Auffaelligkeiten (NEU/FEHLT).
 python Agenten/Werkzeuge/repos-updaten.py --trocken            # nur zeigen
 python Agenten/Werkzeuge/repos-updaten.py                      # vorspulen
 python Agenten/Werkzeuge/repos-updaten.py --nur ProjectAtlas   # einzelne
+python Agenten/Werkzeuge/repos-updaten.py --ausser <repo>      # nur messen
 ```
 
 Je Klon: Quelle bestimmen (**upstream hat Vorrang vor origin**), deren
@@ -45,6 +46,15 @@ fetchen und **nur vorspulen** (`--ff-only`). Nie Merge, nie Rebase, nie Push.
 Schmutzig heisst nur: eine Aenderung an einer **verfolgten** Datei. Ein untracked
 `.env.template` — das tragen fast alle Klone — sperrt nicht.
 Zustand: `Agenten/Hermes/cache/repos-update.json`.
+
+Vier Faelle, in denen der Lauf **nichts** tut (alle stehen im Bericht):
+
+| Stand | Grund |
+|---|---|
+| `ausgenommen (laeuft)` | Repo steht in `AUSGENOMMEN` im Skript (`moon-dev-ai-agents`) — dort laeuft ein Prozess; wird gemessen, nie gespult |
+| `uebersprungen (lokale Aenderungen)` | Aenderung an einer verfolgten Datei — erst Max fragen, nichts verwerfen |
+| `anderer Zweig` | lokaler Zweigname weicht vom Quell-Standardzweig ab (`JEV`, `Werkstatt`) — das Skript raet nicht |
+| `fetch fehlgeschlagen` / `Vorspulen fehlgeschlagen` | Netz oder shallow; shallow-Klone holt das Skript einmal mit `--unshallow` |
 
 ## Die fuenf Gruppen
 
