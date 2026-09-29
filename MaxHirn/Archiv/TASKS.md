@@ -59,6 +59,44 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-189 — claude-red: vier SKILL.md hat Defender entfernt, der Klon zeigt sie als Loeschung**
+      Kontext: Beim Flottenlauf am 30.09.2026 (46 Klone) ist `claude-red` aktuell,
+      traegt aber vier `D`-Eintraege im Arbeitsbaum
+      (`Skills/infrastructure/offensive-shellcode`, `Skills/web/offensive-file-upload`,
+      `Skills/web/offensive-rce`, `Skills/web/offensive-sqli`). Ursache ist Windows
+      Defender (Fundort `Get-MpThreatDetection`), nicht der Klon; der Fundus deckt
+      deshalb 75 von 79 Skills. `git checkout` holt die Dateien zurueck, der
+      LESEZUGRIFF bleibt aber gesperrt ("Datei enthaelt einen Virus").
+      Naechster Schritt: entscheiden, ob eine Defender-Ordnerausnahme fuer
+      `Werkstatt/Repos/claude-red/Skills/` gesetzt wird (dann alle 79 lesbar) oder
+      ob die vier gesperrt bleiben — der Stand ist so oder so zu dokumentieren.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/claude-red/Skills/`, Fundus-Index
+- [ ] **T-188 — OpenTerminal und osiris: lokale Aenderungen sperren das Vorspulen**
+      Kontext: Beim Flottenlauf am 30.09.2026 waren beide hinter ihrem Original,
+      wurden aber nicht gespult, weil sie Aenderungen an VERFOLGTEN Dateien tragen:
+      `OpenTerminal` `package.json` + `package-lock.json` (4 Commits Rueckstand),
+      `osiris` `package-lock.json` (5). Ein `.env.template` (untracked) sperrt
+      nicht — nur verfolgte Dateien. Verwerfen ist laut Hausregel verboten, also
+      bleibt der Klon stehen und die Aenderung entscheidet Max.
+      Naechster Schritt: sagen, ob die beiden Sperren bleiben sollen (dann bleibt
+      der Klon dauerhaft alt) oder ob die lokalen Aenderungen weg duerfen; danach
+      `repos-updaten.py --nur OpenTerminal osiris`.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/OpenTerminal/package.json`, `Werkstatt/Repos/osiris/package-lock.json`, `Agenten/Werkzeuge/repos-updaten.py`
+- [ ] **T-187 — Zwei Klone stehen auf eigenem Zweignamen (84 und 91 Commits Rueckstand)**
+      Kontext: `jev-chat-jarvis` liegt lokal auf Zweig `JEV`, `tradememory-protocol`
+      auf `Werkstatt` — beide zeigen auf denselben Commit wie ihr Remote-Zweig
+      (`origin/main` bzw. `origin/master`), nur der Name weicht vom Quell-
+      Standardzweig ab (`upstream/main` bzw. `upstream/master`). Das Werkzeug raet
+      den Zweig nicht und schaltet nicht um, deshalb steht bei beiden
+      "anderer Zweig" im Bericht. Nachgemessen am 30.09.2026: 84 bzw. 91 Commits
+      Rueckstand, gemessen ohne Umschalten.
+      Naechster Schritt: entscheiden, ob die Namen bleiben (dann werden die beiden
+      nie vorgespult) oder ob ein sauberes Umschalten auf main/master erlaubt ist;
+      `repos-updaten.py --ausser` deckt sie bis dahin ab.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/jev-chat-jarvis`, `Werkstatt/Repos/tradememory-protocol`
 - [ ] **T-185 — Klon-.env-Kopien veralten ohne Nachweis (Kopien liegen seit 30.09.2026 in .sicherung)**
       Kontext: Von 47 Klonen unter `Werkstatt/Repos` tragen 7 eine `.env`, keine
       davon war gesichert (beide Sicherungen klammern `Werkstatt` per `/XD` aus,
