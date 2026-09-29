@@ -52,6 +52,32 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 ```
 
 ## Offen
+- [ ] **T-151 - Geplanter Neustart des Rechners (Commit/Memory entlasten)**
+      Kontext: Am 29.09.2026 war der PC sehr langsam durch Commit-Erschoepfung (~200 Zombie-
+      MCP-Prozesse, 29,6 GB Commit); behoben per Kill + Wache mcp-zombie-wache (Cron 15 min,
+      Telegram). Seit 100 h Uptime steht Memory Compression bei 7,5 GB. Max hat am 29.09.2026
+      entschieden: Option 4 (nichts weiter bauen), aber Reboot einplanen. Design-Doc:
+      MaxHirn/Wiki/Betrieb/Systemleistung-2026-09-29.md.
+      Naechster Schritt: ruhiges Zeitfenster AUSSERHALB 20:00-22:30 (Nachtsicherungen) waehlen,
+      offene Live-Positionen + freigabefenster pruefen, Restart-Computer -Force, danach Dauerlauf-
+      Stufen, Gateway, Dashboard, mcp-zombie-wache und Commit-Lage pruefen. Zeitpunkt braucht
+      Max' Freigabe.
+      Angelegt: 2026-09-29
+      Betrifft: Rechner/Host, alle Dauerlauf-Stufen, Gateway, Dashboard
+
+- [ ] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
+      Kontext: Die Wache mcp-zombie-wache (Cron 15 min) haelt die MCP-Gruppen bei 3 Prozessen,
+      behebt aber nur das SYMPTOM. Die Ursache - etwas startet die MCP-Server im Kreis (mail/
+      windows-mcp/kraken/archiv/tooluniverse/blender wuchsen seit dem Boot auf bis zu 44 Kopien)
+      - ist noch nicht gefunden. Das MCP-Manifest selbst ist sauber (je Server ein Eintrag,
+      keiner ruft den anderen); Fundort der Spawn-Kette ist der Startweg in
+      claude_desktop_config.json bzw. Agenten/Hermes/config.yaml gegen die Server-venv-Autostarts.
+      Max hat 29.09.2026 Option 4 gewaehlt: jetzt NICHT anfassen, Wache beobachten.
+      Naechster Schritt (eigener abgestimmter Eingriff): die Start-Konfiguration beider Apps
+      gegen die Server-Starts pruefen, Kreis schliessen, Wache auf dauerhaft 0 Meldungen stellen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/MCP-Manifest.json, claude_desktop_config.json, Agenten/Hermes/config.yaml
+
 - [ ] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
       Kontext: Am 29.09.2026 startete `Routinen/gateway-waechter.ps1` den Gateway 148-mal neu,
       weil sein Suchmuster nur die Launcher-Kommandozeile traf, nicht die `runpy`-Form des
