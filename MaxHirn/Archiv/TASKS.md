@@ -60,6 +60,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
+      Kontext: Mit T-095 traegt jede Einstiegszeile eine Kennung `pos_id`, die
+      die Ausstiegszeile uebernimmt; 77 von 94 Journalen sind mit
+      `journal_pos_id_nachziehen.py` nachgezogen. Offen sind 17 Dateien in fuenf
+      Ordnern, und zwar aus verschiedenen Gruenden: `orb`/`orbk` schreiben EINE
+      Zeile je Runde (es gibt kein Paar zu bilden), `gitter` fuehrt Lose je
+      Leiterstufe statt Positionen, `kopier` hat einen eigenen Schreiber,
+      `spiegel` (drei Arme) ist seit 21.09.2026 aus dem Dauerlauf genommen und
+      dient als Vergleichsbuch, und `nautilus`/`nautilus_kraken` liegen in einem
+      EIGENEN Git-Repo mit eigener Buchhaltung.
+      Naechster Schritt: entscheiden, ob die fuenf eine Kennung ueberhaupt
+      brauchen (bei orb/orbk und gitter strukturell nein) - sonst `kopier` und
+      `spiegel` anschliessen wie die uebrigen Spuren und die Kennung nachziehen.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/{kopier,spiegel,nautilus,orb,orbk,gitter}/handeln.py,
+      Agenten/Handel/journal_pos_id_nachziehen.py
+
 - [ ] **T-225 — Handstart des Dauerlaufs nimmt die echte Sperre und das echte Protokoll**
       Kontext: Am 30.09.2026 sind zwei Dauerlauf-Instanzen an **Rueckgabe 143**
       gestorben, weil eine Hermes-Sitzung sie zur Ansicht mit
