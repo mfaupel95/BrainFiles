@@ -28,7 +28,8 @@ from leitstand_markt import MarktReiter
 TAKT_MS = 5000
 SCHRIFT_MIN, SCHRIFT_MAX = 8, 16
 HERZ_MAX_MIN = 30                  # wie die Handelszentrale: aelter = rot
-GEOMETRIE_VORGABE = "1280x900"
+MIN_B, MIN_H = 1000, 640
+START_ANTEIL = 0.85                # Erststart: 85 % des Bildschirms, mittig
 
 # Abschliessend: was hier nicht steht, hat kein Kuerzel.
 KUERZEL = {
@@ -89,6 +90,13 @@ def herzschlag(jetzt=None):
     return "Dauerlauf läuft nicht"
 
 
+def start_lage(schirm_b, schirm_h):
+    b = max(MIN_B, round(schirm_b * START_ANTEIL))
+    h = max(MIN_H, round(schirm_h * START_ANTEIL))
+    return "%dx%d+%d+%d" % (b, h, max(0, (schirm_b - b) // 2),
+                            max(0, (schirm_h - h) // 2))
+
+
 class Leitstand:
     def __init__(self, root, zustand=None, reiter=None, uhr=None, herz=herzschlag):
         self.root = root
@@ -101,13 +109,14 @@ class Leitstand:
         self._takt_id = None
 
         root.title("Leitstand — Papier, handelt nie live")
-        root.minsize(1000, 640)
+        root.minsize(MIN_B, MIN_H)
         stil.anwenden(root, hz.SCHRIFT_GROESSE)   # vor den Reitern: Optionsdatenbank
         geo = self.zustand.get("geometrie")
         if geo and lage_gueltig(geo, virtueller_schirm(root)):
             root.geometry(geo)
         else:
-            root.geometry(GEOMETRIE_VORGABE)
+            root.geometry(start_lage(root.winfo_screenwidth(),
+                                     root.winfo_screenheight()))
 
         # Statusleiste zuerst packen, sonst draengt das Notebook sie hinaus.
         self.w_status = ttk.Label(root, anchor="w", padding=(6, 2))

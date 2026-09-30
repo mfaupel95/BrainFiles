@@ -213,7 +213,12 @@ class Rahmen(Basis):
         with patch.object(self.root, "geometry") as g:
             self.leitstand({"geometrie": geo})
         self.assertNotIn(geo, [c.args[0] for c in g.call_args_list if c.args])
-        g.assert_any_call(lst.GEOMETRIE_VORGABE)
+        g.assert_any_call(lst.start_lage(self.root.winfo_screenwidth(),
+                                         self.root.winfo_screenheight()))
+
+    def test_startlage_85_prozent_zentriert_nie_unter_minsize(self):
+        self.assertEqual(lst.start_lage(2000, 1000), "1700x850+150+75")
+        self.assertEqual(lst.start_lage(1024, 700), "1000x640+12+30")
 
     def test_schliessen_speichert_sofort_und_zerstoert(self):
         ls = self.leitstand()
