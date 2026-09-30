@@ -60,6 +60,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
+      Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
+      an interrupted source update" liegen. Am 30.09.2026 las der Dashboard-Start diesen Vermerk und
+      baute VOR dem Bereitstellen alles neu - Node-Abhaengigkeiten, TUI, Web-UI, Desktop-App,
+      gemessen 6 Minuten (Beleg: Log des Handstarts), waehrend Port 9119 zu blieb. Ein Neustart in
+      dieser Zeit hilft nicht: die neue Instanz faengt denselben Bau an. Die neue Dashboard-Wache
+      fasst deshalb nichts an, solange die CPU-Zeit der Prozesskette steigt.
+      Naechster Schritt: pruefen, ob der Wartungslauf den Zustand selbst aufraeumen kann (bzw. ob
+      der Starter einen abgebrochenen Bau sauber beenden soll), damit der naechste Start wieder
+      Sekunden statt Minuten braucht.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/dashboard-wache.py
+
+
+- [ ] **T-196 — Wer schreibt `logs/dashboard-restart.log`?**
+      Kontext: Die Datei `Agenten/Hermes/logs/dashboard-restart.log` waechst, aber kein Skript in
+      `Agenten/` nennt den Namen (Suche ueber py/ps1/vbs: 0 Treffer, auch `search_files` findet
+      nichts). Die neue Dashboard-Wache nennt den Pfad als Hinweis in ihrer Meldung - wenn die Datei
+      verwaist ist, schickt sie den Nutzer zu einem toten Protokoll.
+      Naechster Schritt: Schreiber suchen (Aufgaben-Action, VBS, Hermes-Seite) - oder den Pfad in
+      der Wache auf die Datei umstellen, die es wirklich gibt (z.B. `logs/agent.log`).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/logs/, Agenten/Hermes/scripts/dashboard-wache.py
+
+
 - [ ] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
       Kontext: Die Wache vom 30.09.2026 (`Agenten/Hermes/scripts/dateischwund-wache.py`,
       Cron `dateischwund-wache`) bewacht NUR `Agenten/Hermes/scripts/` - dort sind die
