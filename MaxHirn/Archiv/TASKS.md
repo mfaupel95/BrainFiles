@@ -87,20 +87,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
       moondev_marktlage. Verwandt: T-115.
 
-- [ ] **T-214 — Die neue Waehrung ist erst sichtbar, wenn ein Platz frei wird (Buch 4/4, EURC 0,00)**
+- [ ] **T-214 — Gemessen: der Umtausch in EURC/USDC lohnt nicht — nichts umtauschen**
       Kontext: Die Erweiterung vom 30.09.2026 schaltet nichts scharf - das
       Guthaben-Tor vergleicht weiter gegen `mindest_guthaben_je_quote` 60, und
-      gemessen liegen 46,81 EUR / 25,08 USDC / 0,00 EURC frei. Zwei weitere
-      Gruende, warum trotzdem nichts passiert: das kraken-Buch ist mit 4 von 4
-      Plaetzen VOLL (vier echte Kraken-Positionen, zusammen 3,90 EUR - so viel
-      war frei, als gekauft wurde), und EURC-Guthaben gibt es gar nicht.
-      `handel_erlaubt` und `freigabe.erfuellt` sind unangetastet false.
-      Naechster Schritt (Entscheidung Max): EURC am Konto bereitstellen, wenn
-      das EURC-Paar genutzt werden soll - und beobachten, ob die Spur beim
-      ersten freien Platz eine USDC-Position bucht; der Tagesbericht nennt
-      seit 30.09. die Waehrung des Buchs.
+      gemessen liegen 46,81 EUR / 25,08 USDC / 0,00 EURC frei. Die Frage "soll
+      ich EUR in EURC oder USDC tauschen, um das Tor zu oeffnen" ist am
+      30.09.2026 mit `Agenten/Handel/kraken/quoten_vergleich.py` gemessen
+      worden - Antwort NEIN, aus zwei unabhaengigen Gruenden: (1) kein
+      Instrument der Watchlist ist nur in USDC oder EURC erreichbar (alle 17
+      haben ein EUR-Paar; Kraken fuehrt 546 EUR-Paare gegen 47 USDC und 3
+      EURC), der Umtausch erschliesst also nichts; (2) die USDC-Paare sind im
+      Mittel 6,6 bp WEITER als die EUR-Paare (EURC 3,7 bp, Median aus drei
+      Abrufen, 13 Instrumente), waehrend der Umtausch einmalig 60 bp kostet -
+      es gibt keinen Break-even. Das kraken-Buch ist ausserdem 4/4 voll.
+      Naechster Schritt: NICHTS tun (Empfehlung). Der Umtausch wird nur wieder
+      ein Thema, wenn das Guthaben ohnehin in USDC/EURC liegt - dann handelt
+      die Spur ohne Tausch. Erneut messen mit `quoten_vergleich.py --quote X`,
+      nie schaetzen.
       Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken/wachen.json,
-      zustand.json, MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md.
+      Agenten/Handel/kraken/quoten_vergleich.py,
+      MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md.
 
 - [ ] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
       Kontext: Der Demo-Lauf (Werkstatt/omnitrade, OKX-Demo, BTCUSDC) hat keine

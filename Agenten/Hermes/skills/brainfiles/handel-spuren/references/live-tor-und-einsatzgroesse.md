@@ -233,6 +233,31 @@ Nachweis vor dem Commit: Scan ueber die neue Watchlist ohne Fehler, `--vorschau`
 nennt die Waehrung je Vorschlag und das Guthaben JE Waehrung, und der Papierlauf
 laeuft mit leerer `lage` (Test: `lage={}` kauft trotzdem).
 
+**Vor jedem Umtausch erst messen, ob er sich lohnt** (Werkzeug
+`kraken/quoten_vergleich.py`). Eine andere Quotewaehrung ist kein Marktplatz,
+sondern eine Waehrung; sie lohnt nur, wenn (1) sie ein Instrument erschliesst
+oder (2) ihr Markt enger ist. Beides wird gemessen:
+
+1. **Deckung.** Gibt es ein Instrument, das NUR in der anderen Quote
+   erreichbar ist? Gemessen 30.09.2026: keines von 17 — alle haben ein
+   EUR-Paar, EURC ist Quote auf 3 Paaren (XBT/ETH/SOL, alle auch in EUR).
+   Erschliesst der Umtausch kein Instrument, faellt Grund (1) weg.
+2. **Spread.** Ein Rundlauf zahlt rund EINEN Spread; der Umtausch kostet
+   einmalig die Taker-Gebuehr (60 bp). Gemessen 30.09.2026: die USDC-Paare
+   sind im Mittel 6,6 bp WEITER als die EUR-Paare (EURC 3,7 bp) — es gibt
+   keinen Break-even, der Umtausch kostet nur.
+
+Ein EINZELNER Spread-Abruf traegt keine Empfehlung: bei duennen Buechern
+schwankte dasselbe Paar zwischen 0,7 und 4,8 bp (LINK/EUR) und zwischen 23,5
+und 55,0 bp (ALGO/USDC), Minuten auseinander. Median aus mehreren Abrufen, und
+je Instrument genau EIN Paar pro Waehrung (sonst steht XBT zweimal in der
+Tabelle, einmal EUR, einmal EURC).
+
+Die Erweiterung bleibt trotzdem stehen: sie ist eine **Versicherung**, keine
+Ertragsquelle. Liegt das Guthaben in einer anderen Waehrung, handelt die Spur
+ohne Umtausch; laege es nur in der einen und die waere leer, muesste sie erst
+tauschen — im laufenden Zyklus unmoeglich.
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

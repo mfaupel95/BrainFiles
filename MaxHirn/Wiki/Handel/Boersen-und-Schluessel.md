@@ -419,3 +419,43 @@ gegen `mindest_guthaben_je_quote` 60 je Waehrung. Die Erweiterung nimmt die
 Sperre weg, die aus der festen EUR-Annahme kam — sie schaltet nichts scharf.
 Wer das EURC-Paar nutzen will, muss EURC halten; das ist eine Handlung von Max,
 kein Dateischalter.
+
+#### Gemessen 30.09.2026: der Umtausch lohnt NICHT (Werkzeug `kraken/quoten_vergleich.py`)
+
+Die Frage "soll ich EUR in EURC/USDC tauschen, um das Tor zu oeffnen" ist
+messbar, und die Antwort ist nein — aus zwei unabhaengigen Gruenden:
+
+1. **Der Umtausch erschliesst kein Instrument.** Kein Instrument der
+   Watchlist ist nur in USDC oder EURC erreichbar; alle 17 haben ein EUR-Paar.
+   Kraken fuehrt 546 Paare mit Quote EUR gegen 47 mit USDC und **3** mit EURC
+   (XBT, ETH, SOL — alle drei auch in EUR).
+2. **Der Markt ist dort nicht besser, sondern schlechter.** Median aus drei
+   Abrufen je Paar, 13 Instrumente: die USDC-Paare sind im Mittel **6,6 bp
+   weiter** als die EUR-Paare (EURC: 3,7 bp weiter). Ein Rundlauf zahlt rund
+   einen Spread, der Umtausch kostet einmalig **60 bp** (Taker 0,60 %) — es
+   gibt **keinen Break-even**.
+
+| Instrument | EUR-Spread | USDC-Spread | Vorteil USDC |
+|---|---|---|---|
+| XBT | 0,0 bp | 0,0 bp | ±0,0 |
+| ETH | 0,5 | 2,3 | −1,9 |
+| SOL | 1,0 | 3,4 | −2,4 |
+| LINK | 2,5 | 9,1 | −6,6 |
+| LTC | 1,7 | 15,8 | −14,1 |
+| ATOM | 9,9 | 29,7 | −19,8 |
+| ALGO | 11,0 | 26,8 | −15,7 |
+| BCH | 6,3 | 16,9 | −10,6 |
+
+**Merksatz:** eine Quotewaehrung ist kein Marktplatz, sondern eine Waehrung.
+Ob sie sich lohnt, entscheidet nicht "habe ich Guthaben darin", sondern
+(1) erschliesst sie ein Instrument, und (2) ist ihr Markt enger. Beides wird
+gemessen, nicht angenommen. Der Umtauschweg selbst existiert
+(`EURCEUR` ordermin 4, costmin 0,45; `USDCEUR` ordermin 5, costmin 0,45;
+EURC/EUR notiert bei 1,0001) — er ist nur nicht sinnvoll.
+
+**Was die Erweiterung trotzdem wert ist:** sie ist eine Versicherung, keine
+Ertragsquelle. Liegt das Guthaben einmal in USDC oder EURC, kann die Spur ohne
+Umtausch handeln; laege es nur in EUR und EUR waere leer, muesste sie sonst
+erst tauschen (60 bp) und dabei auf ein Fenster warten. Deshalb bleiben die
+Gates und die Watchlist stehen — nur eben bei 0,00 EURC und 25,08 USDC
+unbenutzt.
