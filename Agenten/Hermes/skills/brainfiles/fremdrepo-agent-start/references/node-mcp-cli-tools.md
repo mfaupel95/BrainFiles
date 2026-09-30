@@ -41,3 +41,73 @@ und im Bericht nennen.
   aus ohne Auth nutzbar.
 - **MCP-Server ist ein stdio-Prozess** — er wartet auf stdin; ein Test muss den
   Handshake per Pipe senden und mit timeout begrenzen, sonst haengt er.
+
+## Ein veroeffentlichtes CLI-Paket installieren (nicht den Klon bauen)
+
+Nennt die README den npm-Weg, ist das PAKET die Wahrheit, nicht der Klon. Zwei
+Manifest-Eigenheiten des Autors entscheiden ueber Erfolg oder Abbruch:
+
+- **`"os": ["darwin","linux"]` im Paket** laesst `npm install -g` mit
+  `EBADPLATFORM` abbrechen. `--force` umgeht die Pruefung, und reine JS/WASM-
+  Pakete laufen danach unter Windows. Vor der Aussage "laeuft" drei Belege
+  fahren: `--version`, `--help` und einen Lauf, der echte Arbeit tut.
+- **`devDependencies` mit `workspace:*` in der veroeffentlichten
+  package.json** (Monorepo-Artefakt) laesst die Installation als PROJEKTWURZEL
+  mit `EUNSUPPORTEDPROTOCOL` scheitern. Als ABHAENGIGKEIT installiert npm
+  dasselbe Paket problemlos — npm liest devDependencies fremder Pakete nicht.
+
+**Nicht global installieren.** Das globale Prefix ist hier der Hermes-eigene
+`tools/node-*`-Baum, den ein `hermes update` ersetzt — das Binary verschwindet
+dann still. Hausform: eigener Ordner `Agenten/Werkzeuge/<name>/` mit gepinnter
+Version (`npm install <paket>@<version> --force`), dazu ein Aufrufer
+`<name>.cmd` (CRLF, ruft nur `node` aus dem PATH und meldet klar, wenn Node
+fehlt) und ein Wurzel-Aufrufer `/<name>.cmd` nach dem Muster `omnitrade.cmd`.
+In `.gitignore` die eigenen Dateien freigeben (Aufrufer, README, Test,
+package.json/-lock) und `node_modules` sperren; je Pfad mit
+`git check-ignore -v` gegenproben.
+
+**Den Aufrufer aus der MSYS-Bash mit NATIVEM Pfad testen:**
+`cmd /c "C:/.../jevgrep.cmd --version"` und den Exitcode pruefen. Die
+MSYS-Schreibweise `cmd //c "name.cmd --version"` gibt nur den cmd-Banner aus,
+OHNE den Befehl auszufuehren — das sieht wie ein kaputter Aufrufer aus, ist aber
+nur die Aufrufweise. Nach dem Bau ausserdem die Datei auf CRLF bringen
+(`write_file` schreibt LF; ohne CRLF brechen Sprungmarken und Bloecke).
+
+## Ohne Schluessel verifizieren: den Dienst attrappieren
+
+Ein Werkzeug, das ein fremdes Modell/einen fremden Dienst befragt, ist ohne
+Kauf vollstaendig nachweisbar — Attrappe lokal starten, Werkzeug dagegen
+zeigen, echte Ausgabe lesen:
+
+1. Protokoll aus dem Code lesen (Endpunkt-Pfad, Koerperform, erwartete Antwort)
+   und einen stdlib-HTTP-Server bauen, der jede Anfrage beantwortet und
+   mitprotokolliert (Pfad, Modell, Fragezahl, Groesse der Nutzlast, Auth-Kopf).
+2. **Die Konfigurationsablage des Werkzeugs umbiegen** (`XDG_CONFIG_HOME` auf
+   einen Tempordner), sonst schreibt der Test seine Attrappen-Anmeldung in die
+   ECHTE Ablage des Nutzers; danach pruefen, dass die echte unberuehrt ist.
+3. Die Attrappe braucht einen Testfall, der ohne sie ROT wird: Anfragen
+   ZAEHLEN und Inhalt pruefen (Pfad, Bearer-Kopf, mitgeschickte Nutzlast) —
+   sonst belegt der gruene Lauf nur, dass nichts abstuerzt.
+4. Attrappen-Anmeldung und Cache nach dem Nachweis LOESCHEN, damit kein
+   Scheinzustand liegenbleibt.
+
+## Kosten und Anbieter VOR der Empfehlung pruefen
+
+- **Den vorgegebenen Anbieter gegen den echten Katalog stellen.** Ein Preset
+  kann auf ein Modell zeigen, das der Anbieter nicht fuehrt. Der Modellkatalog
+  ist oeffentlich lesbar — vor jeder Kaufempfehlung nachsehen.
+- **Preis je Lauf aus dem EIGENEN Probelauf rechnen**, nicht aus dem Datenblatt:
+  Anfragen x Nutzlast-Token x Listenpreis. Die Wurzel ist die Stellschraube,
+  nicht die Frage.
+- **Ein lokales Modell als Ersatz vorher durchrechnen**, statt es zu bauen:
+  Prompt-Token je Lauf / Prompt-Durchsatz (t/s) = Laufzeit. Ergibt das Stunden,
+  ist der Gratisweg keine Option; ein Klassifikator mit kleinem Kontext passt
+  schon von der Laenge nicht. Die Rechnung ersetzt den Bauversuch.
+- **Datenschutz-Tor vor dem ersten echten Lauf:** bei einem Werkzeug, das
+  Quelltext an einen Dienst schickt, zuerst dessen eigene Zaehlfunktion laufen
+  lassen (kostenlos, kein Netz), Ausschlussmuster setzen, Wurzel bewusst
+  waehlen. Vault und Schluesselordner gehoeren nicht hinein — die Filter des
+  Herstellers sind keine Garantie.
+- **Fremde SKILL.md nicht in die Hermes-Bibliothek importieren.** Ein
+  mitgeliefertes Installationskommando dafuer NICHT ausfuehren; den Text im
+  Paket benennen und das Wissen in einer Wiki-Seite ablegen.

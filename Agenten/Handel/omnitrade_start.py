@@ -1,9 +1,17 @@
 """Startet omnitrade-Testnet-Laeufe - je Lauf eine Statusdatei, Doppelstart-Schutz.
 
 Aufruf (ueber omnitrade-laeufe.cmd in der Wurzel oder direkt):
-  python omnitrade_start.py liste                  Tabelle: Lauf, Strategie, Zustand
-  python omnitrade_start.py start <name>|alle      fehlende Laeufe starten
-  python omnitrade_start.py start <name> --trocken nur anzeigen, nichts starten
+  python omnitrade_start.py liste                       Tabelle: Lauf, Strategie, Zustand
+  python omnitrade_start.py start <name>|alle           fehlende Laeufe starten
+  python omnitrade_start.py start <name> --trocken      nur anzeigen, nichts starten
+  python omnitrade_start.py start <name> --symbol ETHUSDC
+  python omnitrade_start.py start <name> --intervall 1d
+
+`<name>` ist ENTWEDER ein benannter Lauf aus LAEUFE (mit festem Symbol) ODER
+der Name einer Datei in `Werkstatt/omnitrade/strategien/` ohne `.omni`. Damit ist
+jede der 41 Strategien startbar, ohne dass hier eine zweite Liste gepflegt wird
+(die Datei auf der Platte ist die Wahrheit). Benanntes Symbol und Vorgabe
+BTCUSDC - der Lauf schreibt dann `status/live_<strategie>_<symbol>.json`.
 
 Ein Lauf gilt als laufend, wenn Statusdatei UND PID es bestaetigen
 (omnitrade_lauf.beurteile). Nur dann wird NICHT gestartet - ein toter oder
@@ -44,15 +52,39 @@ LAEUFE = {
     "pine_donchian_btc": ("pine_donchian_20_10", "BTCUSDC"),
 }
 INTERVALL = "1h"
+STANDARD_SYMBOL = "BTCUSDC"
 
 # Programme in der Reihenfolge der Vorliebe: eigener Build zuerst (laufende
 # Laeufe sperren target/release, ein Neubau dort scheitert mit "Zugriff verweigert").
 EXE_KANDIDATEN = ("target-live/release", "target/release", "target/debug")
 
 
-def statusdatei(name):
-    strategie, symbol = LAEUFE[name]
-    return os.path.join(OMNI, "status", "live_%s_%s.json" % (strategie, symbol))
+def strategien():
+    """Namen aller Strategiedateien in `strategien/` (ohne Endung), sortiert."""
+    ordner = os.path.join(OMNI, "strategien")
+    try:
+        return sorted(n[:-5] for n in os.listdir(ordner) if n.endswith(".omni"))
+    except OSError:
+        return []
+
+
+def aufloesen(name, symbol=None):
+    """(Strategie, Symbol) zu einem Namen - benannter Lauf zuerst, sonst jede
+    Strategiedatei auf der Platte. None, wenn beides nicht passt."""
+    if name in LAEUFE:
+        strategie, sym = LAEUFE[name]
+        return strategie, (symbol or sym)
+    if name in strategien():
+        return name, (symbol or STANDARD_SYMBOL)
+    return None
+
+
+def statusdatei(name, symbol=None):
+    paar = aufloesen(name, symbol)
+    if paar is None:
+        return None
+    strategie, sym = paar
+    return os.path.join(OMNI, "status", "live_%s_%s.json" % (strategie, sym))
 
 
 def programm():
@@ -79,42 +111,47 @@ def kommandozeilen():
     return (aus.stdout or b"").decode("utf-8", "replace").splitlines()
 
 
-def zustand(name):
+def zustand(name, symbol=None):
     """(laeuft, Grund) - an zwei Zeugen entschieden, nie werfen. Das Alter der
     Statusdatei zaehlt hier NICHT: bei 1h-Kerzen ist sie bis zu einer Stunde alt,
     und ein lebender Prozess darf nie ein zweites Mal gestartet werden
     (30.09.2026: Testlauf startete so ein Duplikat, sofort beendet)."""
+    datei = statusdatei(name, symbol)
+    if datei is None:
+        return False, "unbekannter Name: %s" % name
     zeilen = kommandozeilen()
     if zeilen is None:
         return True, "Prozessliste nicht lesbar - sicherheitshalber nicht starten"
-    marke = "status/" + os.path.basename(statusdatei(name))
+    marke = "status/" + os.path.basename(datei)
     if any(" live " in z and marke in z.replace("\\", "/") for z in zeilen):
         return True, "Prozess mit --status-file %s laeuft" % marke
     try:
-        u = lauf.beurteile(bruecke.lage(statusdatei(name), veraltet_s=float("inf")),
+        u = lauf.beurteile(bruecke.lage(datei, veraltet_s=float("inf")),
                          alt_grenze_s=float("inf"))
         return u["laeuft"], u["grund"]
     except Exception as e:  # pragma: no cover
         return False, "Pruefung fehlgeschlagen: %s" % e
 
 
-def befehl(name, exe):
-    strategie, symbol = LAEUFE[name]
+def befehl(name, exe, symbol=None, intervall=None):
+    strategie, sym = aufloesen(name, symbol)
     return [
         exe, "live", "--exchange", "okx", "--network", "testnet",
-        "--symbol", symbol, "--script", "strategien/%s.omni" % strategie,
-        "--interval", INTERVALL, "--initial-capital", str(KAPITAL_USD),
-        "--status-file", "status/live_%s_%s.json" % (strategie, symbol),
+        "--symbol", sym, "--script", "strategien/%s.omni" % strategie,
+        "--interval", intervall or INTERVALL, "--initial-capital", str(KAPITAL_USD),
+        "--status-file", "status/live_%s_%s.json" % (strategie, sym),
     ]
 
 
-def starte(name, trocken=False):
-    if name not in LAEUFE:
-        return "unbekannt: %s (verfuegbar: %s)" % (name, ", ".join(LAEUFE))
-    laeuft, grund = zustand(name)
+def starte(name, trocken=False, symbol=None, intervall=None):
+    paar = aufloesen(name, symbol)
+    if paar is None:
+        return "unbekannt: %s (benannte Laeufe: %s; sonst jede Datei in strategien/)" % (
+            name, ", ".join(LAEUFE))
+    strategie, sym = paar
+    laeuft, grund = zustand(name, sym)
     if laeuft:
         return "%s: laeuft schon - %s" % (name, grund)
-    strategie, _ = LAEUFE[name]
     if not os.path.isfile(os.path.join(OMNI, "strategien", strategie + ".omni")):
         return "%s: Strategiedatei fehlt" % name
     exe = programm()
@@ -123,12 +160,12 @@ def starte(name, trocken=False):
     for v in ("OKX_DEMO_API_KEY", "OKX_DEMO_API_SECRET", "OKX_DEMO_API_PASSPHRASE"):
         if not os.environ.get(v):
             return "%s: Umgebungsvariable %s fehlt" % (name, v)
-    cmd = befehl(name, exe)
+    cmd = befehl(name, exe, sym, intervall)
     if trocken:
         return "%s: wuerde starten: %s" % (name, " ".join(cmd))
     os.makedirs(os.path.join(OMNI, "logs"), exist_ok=True)
     log = os.path.join(OMNI, "logs", "live-%s-%s-%s.log" % (
-        LAEUFE[name][0], LAEUFE[name][1], time.strftime("%Y%m%d-%H%M")))
+        strategie, sym, time.strftime("%Y%m%d-%H%M")))
     with open(log, "ab") as f:
         proc = subprocess.Popen(
             cmd, cwd=OMNI, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
@@ -140,7 +177,9 @@ def starte(name, trocken=False):
 def liste():
     for n, (s, sym) in LAEUFE.items():
         laeuft, grund = zustand(n)
-        print("%-22s %-24s %-8s %s %s" % (n, s, sym, "LAEUFT" if laeuft else "steht  ", "" if laeuft else "- " + grund))
+        print("%-22s %-24s %-8s %s %s" % (n, s, sym, "LAEUFT" if laeuft else "steht  ",
+                                          "" if laeuft else "- " + grund))
+    print("Weitere startbar (jede Datei in strategien/): %d Strategien" % len(strategien()))
     print("Programm: %s" % (programm() or "KEINS"))
 
 
@@ -150,12 +189,22 @@ def main(argv):
         return 0
     if argv[0] == "start" and len(argv) >= 2:
         trocken = "--trocken" in argv
+        symbol = _wert(argv, "--symbol")
+        intervall = _wert(argv, "--intervall")
         namen = list(LAEUFE) if argv[1] == "alle" else [argv[1]]
         for n in namen:
-            print(starte(n, trocken))
+            print(starte(n, trocken, symbol, intervall))
         return 0
     print(__doc__)
     return 2
+
+
+def _wert(argv, schalter):
+    if schalter in argv:
+        i = argv.index(schalter)
+        if i + 1 < len(argv):
+            return argv[i + 1]
+    return None
 
 
 if __name__ == "__main__":

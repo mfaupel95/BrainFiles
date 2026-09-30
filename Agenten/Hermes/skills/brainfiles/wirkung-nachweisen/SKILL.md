@@ -267,9 +267,25 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   Tagesberichts; danach gehoert der Ausfall bewacht
   (`Agenten/Hermes/scripts/sperren-wache.py`, Cron `sperren-wache`), nicht nur
   repariert.
-- **Der Fahrer meldet jede Spur als `ok`, auch wenn sie intern Papier handelt.**
-  Vor "die Spur handelt live" immer die Journalzeilen mit `modus=live` zaehlen
-  (0 heisst: kein einziger Vorgang).
+- **Eine Lebendpruefung, die nur die PID nachschlaegt, ist kein Zeuge — Windows
+  vergibt PIDs wieder.** Eine Statusdatei mit `state: running` und einer laengst
+  beendeten PID zeigt dann auf ein voellig fremdes Programm: `tasklist /FI "PID
+  eq <n>"` findet es, der Lauf gilt dauerhaft als "laeuft schon" (jeder Start
+  gesperrt) und ein Waechter spiegelt eine Geisterposition. Die IDENTITAET
+  mitpruefen, nicht die Existenz: Prozess-NAME **und** ein Merkmal aus der
+  eigenen Kommandozeile (der Pfad der Statusdatei) — `Get-CimInstance
+  Win32_Process -Filter 'ProcessId=<n>'` liefert Name und CommandLine in einem
+  Aufruf. Die schaerfere Pruefung so einhaengen, dass sie nur auf dem ECHTEN
+  Prozessweg greift: eingespeiste Testnaehte (`lebt=lambda pid: True`) bleiben
+  unberuehrt, sonst schlaegt jede Suite fehl, die den Ablauf ohne echten Prozess
+  prueft.
+- **Ein Launcher, der einen Namen ueber eine gepflegte Liste aufloest, sperrt
+  alles, was nicht in der Liste steht.** Loest er stattdessen ueber die DATEI auf
+  der Platte auf (jede Datei in `strategien/`), ist jeder neue Gegenstand sofort
+  startbar; die benannten Eintraege bleiben die Abkuerzung mit festem Symbol.
+  Nach so einer Erweiterung mit `--trocken` belegen, dass ein benannter Eintrag
+  DIESELBE Zieldatei nennt wie vorher (sonst entstehen zwei Staende fuer einen
+  Lauf).
 - **Tests, die Seams patchen, muessen sie zuruecknehmen.** Echte Funktionen VOR
   dem Patchen sichern und im `tearDown` zurueckholen; sonst prueft der naechste
   Test den Fake des Vorgaengers (`setUp` hatte die echte Funktion schon

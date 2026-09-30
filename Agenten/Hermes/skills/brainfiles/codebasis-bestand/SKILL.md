@@ -88,6 +88,18 @@ die eigene Arbeit.
   eingefrorener Spiegel, den niemand liest und der keine Geheimnisse traegt,
   stoert nur als zweite Wahrheit im Suchweg — dann gehoert er BENANNT (Rolle +
   Herkunft), nicht geloescht.
+- **Neu hinzugekommenes Fremd-Material MUSS eingetragen werden, sonst zaehlt es
+  als eigener Code.** Ein frisch installiertes Fremdpaket (z. B. `node_modules`
+  eines npm-Pakets im eigenen Werkzeugordner) oder ein neuer Klon gehoert in
+  `Agenten/FREMD-Liste.json` UND in die Tabelle `Agenten/FREMD.md` (ein Test
+  vergleicht die Pfadmengen beider — nur eine Seite zu aendern wird rot).
+  Danach `python Agenten/Werkzeuge/fremd.py --pruefen` (muss "gesund" sagen) und
+  die Tests `python -m unittest discover -s Agenten/Werkzeuge/tests -t
+  Agenten/Werkzeuge/tests`. Die Regeln der Liste: Pfad relativ zur Wurzel mit
+  `/`, ohne `..` und Laufwerksbuchstaben, kein Eintrag in einem anderen Eintrag,
+  nie eine eigene Wurzel, und der Ordner muss auf der Platte liegen.
+  Die Grenze gilt NUR fuer den fremden Teil: der eigene Aufrufer, das README und
+  der Test neben dem Paket bleiben eigener Code.
 
 ## Verifikation
 

@@ -251,7 +251,7 @@ compression:
   progress_notices: false
   threshold: 0.5
   target_ratio: 0.2
-  protect_last_n: 20
+  protect_last_n: 8
   min_tail_user_messages: 1
   max_attempts: 3
   proactive_prune_tokens: 0
@@ -492,6 +492,8 @@ security:
   allow_private_urls: true
 kanban:
   review_dispatch: true
+  orchestrator_profile: lokal-first
+  default_assignee: lotse
 code_execution:
   mode: project
   max_tool_calls: 50
@@ -714,7 +716,7 @@ mcp_servers:
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - get_mcp_server_version

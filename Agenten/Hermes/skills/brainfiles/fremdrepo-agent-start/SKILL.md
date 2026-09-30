@@ -34,7 +34,11 @@ Datensaetze, Zeilen, Fehlerquote) macht Aussagen wie "laeuft" zulaessig;
 ein gruener Testlauf allein belegt keine Funktion.
 
 Fuer den Node/TypeScript-Weg (npm-Globalinstall, stdio-MCP-Handshake per
-Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
+Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`. Dort
+steht auch, wie ein VEROEFFENTLICHTES CLI-Paket unter Windows installiert wird
+(`os`-Feld im Manifest, `workspace:*` in den devDependencies, Haus-
+Installationsordner statt Globalinstall, Attrappen-Endpunkt als Nachweis ohne
+Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung).
 
 Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 (transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):

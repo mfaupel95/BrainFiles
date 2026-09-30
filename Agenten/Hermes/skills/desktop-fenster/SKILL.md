@@ -126,6 +126,15 @@ sondern als Datei mit `-File`.
   `cmd /c start` oder `Start-Process`: die melden Erfolg und sind beim Ende des
   Terminalaufrufs wieder weg. Danach in einem ZWEITEN Aufruf die Prozesszahl
   nachzaehlen - "gestartet" sagt nichts ueber "laeuft noch".
+- **Vorher UND nachher zaehlen.** Ein gescheiterter Startversuch kann trotzdem
+  ein Fenster hinterlassen (aus bash bricht `cmd.exe /c '<name>.cmd'` mit einem
+  Syntaxfehler ab und startet das Programm dennoch) - beim naechsten Versuch
+  stehen dann zwei Fenster offen. Gezaehlt wird mit PowerShell
+  (`Get-Process <name>` bzw. `Get-CimInstance Win32_Process`), Duplikate werden
+  nach **PID** beendet, nie nach Prozessname.
+- **In bash keine `%VAR%`-Pfade.** `"%SystemRoot%\System32\tasklist.exe" /FI ...`
+  wird von der Shell nicht expandiert und die Pruefung faellt still aus;
+  `$SYSTEMROOT` benutzen oder gleich PowerShell fragen.
 - Beenden nach PID, nie nach Prozessname: ein Musterfilter auf die eigene
   Kommandozeile trifft den Suchenden selbst.
 
