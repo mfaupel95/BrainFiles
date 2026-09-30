@@ -206,6 +206,15 @@ class Rahmen(Basis):
         with self.assertRaises(tk.TclError):
             self.root.winfo_exists()
 
+    def test_schliessen_waehrend_urteile_eintragen_verweigert(self):
+        ls = self.leitstand()
+        ls.reiter[2].steuerung = lauf = FakeLauf()
+        ls.reiter[2].abbrechbar = lambda: False
+        self.assertFalse(ls.schliessen(frage=lambda *a, **k: self.fail("gefragt")))
+        self.assertEqual(lauf.abgebrochen, 0)
+        self.assertTrue(self.root.winfo_exists())
+        self.assertIn("bitte warten", ls._meldung)
+
     def test_schliessen_bei_laufendem_backtest_fragt_erst(self):
         ls = self.leitstand()
         ls.reiter[2].steuerung = lauf = FakeLauf()

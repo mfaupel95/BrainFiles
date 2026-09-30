@@ -230,6 +230,9 @@ class Leitstand:
     # --- Schliessen ---------------------------------------------------------
 
     def schliessen(self, frage=messagebox.askyesno):
+        if any(not getattr(r, "abbrechbar", lambda: True)() for r in self.reiter):
+            self.melde("Urteile werden gerade eingetragen — bitte warten")
+            return False
         laeufe = [r.steuerung for r in self.reiter
                   if getattr(r, "steuerung", None) is not None
                   and r.steuerung.laeuft()]

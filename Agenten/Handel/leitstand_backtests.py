@@ -30,6 +30,9 @@ MAX_TEXT_ZEILEN = 5000
 REPLAY_VORGABEN = {"spur": replay.SPUREN_TEIL_A[0], "max_kerzen": "0",
                    "gebuehr": "0.1", "gegenprobe": False}
 LISTE = HIER / "leitstand_backtests.json"
+# Laeufe, die wachen.json schreiben: ein Abbruch mittendrin hilft niemandem.
+UNABBRECHBAR = {"urteile-eintragen"}
+NICHT_ABBRECHBAR = "Urteile werden eingetragen — nicht abbrechbar"
 VERBOTENE_FLAGS = ("--json", "--cache", "--lokal")
 EIGENE_BEREICHE = ("optimieren.py", "backtest_urteile.py")
 TYPEN = ("float", "int", "text", "wahl", "schalter")
@@ -344,6 +347,7 @@ class BacktestReiter(ttk.Frame):
         self.ls, self.zustand = leitstand, leitstand.zustand
         self.steuerung = steuerung or ll.Steuerung()
         self._fertig = None
+        self._abbrechbar = True
         self._liste = []
         self._takt_id = None
 
@@ -422,6 +426,7 @@ class BacktestReiter(ttk.Frame):
             self.ls.melde("Start fehlgeschlagen: %s" % e)
             return False
         self._fertig = fertig
+        self._abbrechbar = name not in UNABBRECHBAR
         self._leeren()
         self.schreibe("$ %s\n" % " ".join(lauf.befehl[1:]))
         self._lauf_wechsel(True)
@@ -486,11 +491,20 @@ class BacktestReiter(ttk.Frame):
             rueck(pfad, daten)
 
     def _lauf_wechsel(self, laeuft):
-        setze_knopf(self.k_abbrechen, self.tip_abbrechen, laeuft, "kein Lauf")
+        setze_knopf(self.k_abbrechen, self.tip_abbrechen,
+                    laeuft and self._abbrechbar,
+                    NICHT_ABBRECHBAR if laeuft else "kein Lauf")
         for b in self.bereiche:
             b.lauf_wechsel(laeuft)
 
+    def abbrechbar(self):
+        """False, solange ein Lauf aus UNABBRECHBAR laeuft."""
+        return self._abbrechbar or not self.steuerung.laeuft()
+
     def abbrechen(self):
+        if not self.abbrechbar():
+            self.ls.melde(NICHT_ABBRECHBAR)
+            return
         if self.steuerung.laeuft():
             self.steuerung.abbrechen()
             self.ls.melde("Abbruch angefordert")

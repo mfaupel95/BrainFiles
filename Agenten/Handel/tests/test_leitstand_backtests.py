@@ -156,6 +156,28 @@ class Reiter(TkBasis):
         self.assertEqual(self.st.gestartet, [])
         self.assertIn("Gebühr", self.ls.meldungen[-1])
 
+    def test_urteile_eintragen_ist_nicht_abbrechbar(self):
+        r = self.reiter([lbt.ReplayBereich])
+        abgebrochen = []
+        self.st.abbrechen = lambda: abgebrochen.append(1)
+        self.assertTrue(r.abbrechbar())
+        r.starte("urteile-eintragen", ["x"])
+        self.assertFalse(r.abbrechbar())
+        self.assertIn("disabled", r.k_abbrechen.state())
+        r.abbrechen()
+        self.assertEqual(abgebrochen, [])
+        self.assertIn("nicht abbrechbar", self.ls.meldungen[-1])
+
+    def test_gewoehnlicher_lauf_bleibt_abbrechbar(self):
+        r = self.reiter([lbt.ReplayBereich])
+        abgebrochen = []
+        self.st.abbrechen = lambda: abgebrochen.append(1)
+        r.starte("replay-squeeze", ["x"])
+        self.assertTrue(r.abbrechbar())
+        self.assertNotIn("disabled", r.k_abbrechen.state())
+        r.abbrechen()
+        self.assertEqual(abgebrochen, [1])
+
     def test_zweiter_start_meldet_statt_zu_starten(self):
         r = self.reiter([lbt.ReplayBereich])
         self.assertTrue(r.starte("a", ["x"]))
