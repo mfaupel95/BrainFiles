@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
+      Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
+      `orb` und `orbk`; ihre `handeln.py` haben kein `lade_wachen()`, deshalb bleibt `w` leer,
+      die Instrumentenliste leer und JEDER Replay-Lauf endet in einer Verweigerung. Ihre
+      `wachen.json` traegt die Instrumente ausserdem als DICT mit Boersennamen
+      (`BTC_USDT` -> `BTC-USDT-SWAP`), ohne `kerzen_takt`/`mindest_kerzen`; `orbk` nennt
+      `ETH_USD`/`HYPE_EUR`, wofuer `historie_binance.PAARE` kein Binance-Paar kennt.
+      Aufgefallen am 01.10.2026 beim Nachzaehlen, welcher A-Spur Historie fehlt - allen
+      anderen fehlt sie nicht (BTC/ETH/SOL, 50.223 1H- und 12.559 4H-Kerzen).
+      Naechster Schritt: entscheiden - aus der Replay-Liste nehmen (eigener Backtest liegt in
+      `orbk/backtest.py`) oder fahrbar machen (wachen-Form, Kerzennaht, Binance-Paare).
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, Agenten/Handel/orb, Agenten/Handel/orbk, Agenten/Handel/leitstand_backtests.py
+
 - [ ] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Ursache offen)**
       Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
       zum Neustart 01.10. 00:45 keine einzige Zeile - das Log endete mitten in einer normalen

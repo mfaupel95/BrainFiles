@@ -83,6 +83,44 @@ class Replay(unittest.TestCase):
                                        "gebuehr": "0.1", "gegenprobe": False})
         self.assertEqual(teile, ["--spur", "gitter", "--gebuehr", "0.1"])
 
+    def test_fenster_unter_der_spuranforderung_wird_abgewiesen(self):
+        """Sonst startet der Reiter einen Lauf, der nur scheitern kann, und der
+        Nutzer sieht statt eines Satzes einen Traceback (01.10.2026:
+        supertrend, max_kerzen 200 gegen mindest_kerzen 300)."""
+        teile, fehler = lbt.pruefe_replay({"spur": "supertrend",
+                                           "max_kerzen": "200",
+                                           "gebuehr": "0.1"})
+        self.assertIsNone(teile)
+        self.assertIn("320", fehler)
+        self.assertIn("supertrend", fehler)
+
+    def test_das_mindestmass_der_spur_ist_das_mass(self):
+        """Geprueft wird gegen die ANFORDERUNG der Spur, nicht gegen eine Zahl
+        im Reiter: macd_mtf braucht 600, also 620 Kerzen."""
+        w = json.loads((Path(__file__).resolve().parent.parent
+                        / "macd_mtf" / "wachen.json").read_text(encoding="utf-8"))
+        teile, fehler = lbt.pruefe_replay({"spur": "macd_mtf",
+                                           "max_kerzen": str(replay.bedarf(w) - 1),
+                                           "gebuehr": "0.1"})
+        self.assertIsNone(teile)
+        self.assertIn(str(replay.bedarf(w)), fehler)
+        teile, fehler = lbt.pruefe_replay({"spur": "macd_mtf",
+                                           "max_kerzen": str(replay.bedarf(w)),
+                                           "gebuehr": "0.1"})
+        self.assertEqual(fehler, "")
+        self.assertIn(str(replay.bedarf(w)), teile)
+
+    def test_eine_spur_ohne_wachen_datei_sperrt_den_reiter_nicht(self):
+        """Fail-open: fehlt die Datei, prueft der Replay beim Lauf - der Reiter
+        darf deswegen keinen guten Aufruf verwerfen."""
+        with patch.object(replay, "bedarf_fuer", return_value=None):
+            teile, fehler = lbt.pruefe_replay({"spur": "squeeze",
+                                               "max_kerzen": "50",
+                                               "gebuehr": "0.1"})
+        self.assertEqual(fehler, "")
+        self.assertEqual(teile, ["--spur", "squeeze", "--gebuehr", "0.1",
+                                 "--max-kerzen", "50"])
+
     def test_ungueltige_eingaben(self):
         for werte in ({"spur": "nautilus", "max_kerzen": "0", "gebuehr": "0.1"},
                       {"spur": "squeeze", "max_kerzen": "x", "gebuehr": "0.1"},

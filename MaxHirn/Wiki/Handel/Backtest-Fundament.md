@@ -3,7 +3,7 @@ id: 20260925-backtest-fundament
 title: 'Handel — Backtest-Fundament (historische Daten)'
 tags: [handel, backtest]
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-10-01
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Handel/Kosten-und-Bedingungen]]', '[[Wissen/Handelsregeln]]']
 summary: 'Wie die Spuren ueber 5,7 Jahre historische Daten nachgerechnet werden, was dabei herauskam und welche vier Fallen die Umsetzung aufgedeckt hat.'
 ---
@@ -481,3 +481,57 @@ falschen Einstieg zuzuschlagen. Weniger Runden sind hier die ehrlichere Zahl.
 Gegenprobe im Konstrukt: zwei gleichzeitige Positionen im selben Instrument,
 beide mit Ausstieg — alte Regel 1 Runde, neue Regel 2 Runden
 (`Agenten/Handel/tests/test_journalpaarung.py`, 20 Tests).
+
+## Ein zu kleines Fenster ist keine fehlende Historie (2026-10-01)
+
+Gemeldet aus dem Leitstand-Reiter: `replay.py --spur supertrend --max-kerzen 200`
+brach ab mit
+
+    RuntimeError: keine Historie fuer supertrend - erst
+    'python historie_binance.py --auffuellen'
+
+— obwohl in `daten/historie/` **12.559 4H-Kerzen je Reihe** lagen. Die
+Anweisung war falsch und hätte nichts geändert: Nachfüllen war nie das Problem.
+
+Ursache war die **Reihenfolge** in `kerzen_fuer()`: die Reihe wurde ZUERST auf
+`max_kerzen` geschnitten und DANACH gegen `mindest_kerzen + 20` geprüft. Mit 200
+Kerzen gegen einen Bedarf von 320 fiel jedes Instrument aus dem Lauf — und der
+Text nannte das einzige Übel, das nicht vorlag. `lauf_b` (Familie B) hatte
+dieselbe Form: der Schnitt lag vor der Schleife `range(mindest_kerzen, laenge)`,
+die dann leer lief und **0 Runden** meldete. Eine Zahl, die wie ein Messergebnis
+aussieht und keines ist.
+
+Seit 01.10.2026 werden zwei Gründe getrennt benannt — sie verlangen zwei
+verschiedene Taten:
+
+| Befund | Text | Tat |
+|---|---|---|
+| Historie auf der Platte zu kurz | „Historie fehlt oder ist zu kurz … erst `historie_binance.py --auffuellen`" | nachfüllen |
+| `--max-kerzen` unter dem Bedarf der Spur | „Fenster zu klein … braucht mindestens 320 Kerzen je Reihe (mindest_kerzen 300 + 20). Mit `--max-kerzen 320` oder mehr (0 = alle) wiederholen" | Fenster größer |
+
+Der Bedarf steht an EINER Stelle (`replay.bedarf(w) = mindest_kerzen + 20`,
+Konstante `KERZEN_PUFFER`), weil die Schleife in `lauf_a` von `mindest_kerzen`
+bis ans Ende läuft — mit genau `mindest_kerzen` Kerzen gäbe es keinen einzigen
+Schritt. Die Schleuse sitzt in `kerzen_fuer()` selbst (`HistorieFehlt`), damit
+auch `gegenprobe()` nicht mehr mit leerem Kerzen-Dict durchläuft und zweimal
+null Runden als „gleich: true" meldet — das war ein falscher Freispruch.
+Auf der Kommandozeile: eine Zeile auf stderr statt eines Tracebacks, Exit 2.
+`--fenster` (Kerzen je Schritt) wird genauso geprüft; ein von Hand gesetztes
+Fenster unter dem Bedarf lief vorher ebenfalls still in „0 Runden".
+
+Der Leitstand-Reiter prüft die Grenze VOR dem Start
+(`leitstand_backtests.pruefe_replay` → `replay.bedarf_fuer(spur)`, liest die
+`wachen.json` direkt, ohne das Spurenmodul zu laden) und zeigt den Satz in der
+Meldezeile statt eines Tracebacks im Protokoll.
+
+**Merksatz:** Wird eine Prüfung nach dem Schneiden gemacht, nennt sie das
+falsche Übel — erst messen, was DA ist, dann schneiden, und beide Fälle im Text
+unterscheiden. Und: ein Lauf, der „0 Runden" melden kann, ohne je einen Schritt
+gerechnet zu haben, ist kein Messergebnis, sondern ein stiller Ausfall.
+
+Bedarf je Spur (gemessen 01.10.2026): supertrend 320 (mindest_kerzen 300),
+macd_mtf 620 (600), squeeze/wavetrend/mosaic 320, gitter/orb/orbk 320 (Vorgabe,
+die `wachen.json` trägt kein `mindest_kerzen`). Ein Lauf mit 320 Kerzen im
+4H-Takt rechnet 20 Schritte — genug für einen Rauchtest, nicht für eine Zahl.
+Tests: `Agenten/Handel/tests/test_replay.py` (`FensterOderHistorieTest`, 7) und
+`tests/test_leitstand_backtests.py` (Replay, +3).

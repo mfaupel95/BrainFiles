@@ -65,6 +65,15 @@ def pruefe_replay(werte):
         return None, "Gebühr: Zahl erwartet (Prozent je Seite)"
     if not 0 <= mk <= 1_000_000:
         return None, "Max. Kerzen: 0 bis 1 000 000"
+    # Die Grenze der SPUR: unter `mindest_kerzen + Puffer` kann der Lauf keinen
+    # einzigen Schritt rechnen (die Schleife laeuft von mindest_kerzen bis ans
+    # Ende). Der Replay verweigert das selbst - hier wird der Lauf gar nicht
+    # erst gestartet, sonst sieht der Nutzer statt eines Satzes einen Traceback.
+    if mk:
+        minimum = replay.bedarf_fuer(spur)
+        if minimum and mk < minimum:
+            return None, ("Max. Kerzen: %d ist zu klein — %s braucht mindestens "
+                          "%d Kerzen je Reihe (0 = alle)" % (mk, spur, minimum))
     if not 0 <= g <= 5:
         return None, "Gebühr: 0 bis 5 %"
     teile = ["--spur", spur, "--gebuehr", repr(g)]

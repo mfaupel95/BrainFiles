@@ -1128,4 +1128,22 @@ Kurzfassung ersetzt die Begruendung nicht.
   Wer eine gemeldete Zahl nachpruefen soll, zaehlt sie mit einer EIGENEN Paarung
   nach (`references/buchergebnis-pruefen.md`, Abschnitt 7) - ein zweiter Aufruf
   desselben Werkzeugs widerlegt nichts.
+- **Ein zu kleines Fenster ist keine fehlende Historie.** Meldet ein
+  `replay.py`-Lauf „keine Historie fuer <spur> - erst auffuellen", waehrend in
+  `Agenten/Handel/daten/historie/` Kerzen liegen, dann ist nicht die Historie
+  das Problem, sondern die REIHENFOLGE im Code: `kerzen_fuer()` schnitt die
+  Reihe erst auf `--max-kerzen` und pruefte danach gegen `mindest_kerzen + 20`
+  (gemessen 01.10.2026: supertrend, 12.559 4H-Kerzen auf der Platte,
+  `--max-kerzen 200` gegen einen Bedarf von 320 -> alle drei Reihen fielen
+  heraus, und der Text nannte das falsche Uebel). Seitdem: erst messen, was DA
+  ist, dann schneiden, und die zwei Gruende getrennt benennen (Historie fehlt ->
+  nachfuellen; Fenster zu klein -> `replay.bedarf(w)` = mindest_kerzen + 20,
+  `--max-kerzen 320` oder mehr, 0 = alle). Dieselbe Form hatten `lauf_b`
+  (Schnitt vor `range(mindest_kerzen, laenge)`: leere Schleife, gemeldet wurde
+  „0 Runden" - eine Zahl, die wie ein Messergebnis aussieht) und `--fenster`
+  auf der Kommandozeile. Der Leitstand-Reiter prueft die Grenze VOR dem Start
+  (`pruefe_replay` -> `replay.bedarf_fuer(spur)`, liest die wachen.json, ohne
+  das Spurenmodul zu laden); auf der Kommandozeile eine Zeile auf stderr statt
+  eines Tracebacks, Exit 2. `gegenprobe()` laeuft damit nicht mehr mit leerem
+  Kerzen-Dict durch und meldet nicht mehr zweimal null Runden als „gleich".
 

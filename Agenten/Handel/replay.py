@@ -236,11 +236,84 @@ def fenster_vorgabe(w):
     return max(anzahl, int(w.get("mindest_kerzen", 300)) + 40)
 
 
+# Kerzen, die eine Reihe ZUSAETZLICH zur Anforderung der Spur tragen muss.
+# Der Grund ist die Schleife in `lauf_a`: sie laeuft von `mindest_kerzen` bis
+# ans Ende, mit genau `mindest_kerzen` Kerzen gaebe es also keinen einzigen
+# Schritt - und ein Lauf ohne Schritt meldet "0 Runden", was wie ein
+# Messergebnis aussieht.
+KERZEN_PUFFER = 20
+
+
+def bedarf(w):
+    """Kerzen, die eine Reihe haben MUSS: mindest_kerzen + Puffer."""
+    return int(w.get("mindest_kerzen", 300)) + KERZEN_PUFFER
+
+
+def bedarf_fuer(spur):
+    """`bedarf()` einer Spur - OHNE ihr Modul zu laden, aus ihrer wachen.json.
+
+    Fuer das Leitstand-Fenster gedacht, das die Grenze schon beim Tippen nennen
+    soll: ein Import der Spur (samt Indikatoren) waere dafuer zu schwer und
+    truege Nebenwirkungen in den GUI-Prozess. None, wenn keine wachen.json
+    da ist - dann prueft der Replay beim Lauf, und der verweigert mit Grund.
+    """
+    try:
+        with open(os.path.join(HIER, spur, "wachen.json"), encoding="utf-8") as f:
+            return bedarf(json.load(f))
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+class HistorieFehlt(RuntimeError):
+    """Keine Kerzen fuer den Lauf - mit dem GRUND im Text.
+
+    Zwei Gruende verlangen zwei verschiedene Taten und duerfen nicht denselben
+    Satz bekommen: fehlt die Historie auf der PLATTE, hilft
+    `historie_binance.py --auffuellen`; ist das verlangte FENSTER zu klein
+    (`--max-kerzen` unter dem, was die Spur braucht), hilft nur ein groesseres
+    Fenster - Nachfuellen aendert dort nichts.
+    """
+
+
+def mangel_text(spur, w, fehlen, zu_klein, max_kerzen=None):
+    """Der eine Satz, der sagt, warum der Lauf keine Kerzen hat."""
+    brauch = bedarf(w)
+    quelle = ("die Spur braucht mindestens %d Kerzen je Reihe "
+              "(mindest_kerzen %s + %d)"
+              % (brauch, w.get("mindest_kerzen", 300), KERZEN_PUFFER))
+    if not fehlen and not zu_klein:
+        # Kein Instrument in der Liste: das passiert, wenn das Spurenmodul kein
+        # `lade_wachen()` hat (dann ist `w` leer) oder ihre wachen.json kein
+        # `instrumente`/`instrument` traegt. Nachfuellen hilft hier nicht, und
+        # "0 Runden" waere die dritte Falschaussage.
+        return ("Keine Kerzen fuer %s: die Spur nennt kein Instrument - "
+                "entweder hat ihr handeln.py kein lade_wachen() oder ihre "
+                "wachen.json kein instrumente/instrument. So ist sie nicht "
+                "fahrbar" % spur)
+    if fehlen and not zu_klein:
+        return ("Historie fehlt oder ist zu kurz fuer %s: %s - %s, erst "
+                "'python historie_binance.py --auffuellen'"
+                % (spur, ", ".join(fehlen), quelle))
+    if zu_klein and not fehlen:
+        rat = ("Mit --max-kerzen %d oder mehr (0 = alle) wiederholen" % brauch
+               if max_kerzen else
+               "Der verlangte Abschnitt ist zu kurz - weniger weit einschneiden")
+        return ("Fenster zu klein fuer %s: %s - %s. %s"
+                % (spur, ", ".join(zu_klein), quelle, rat))
+    return ("Keine Kerzen fuer %s - die Historie ist zu kurz (%s) UND das "
+            "Fenster zu klein (%s): %s"
+            % (spur, ", ".join(fehlen) or "-", ", ".join(zu_klein) or "-",
+               quelle))
+
+
 def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     """{inst: [kerzen]} aus der eigenen Historie, aufsteigend.
 
     Fehlt eine Reihe, wird sie GEMELDET und das Instrument faellt aus dem Lauf
-    - nie still durch ein anderes Instrument ersetzt.
+    - nie still durch ein anderes Instrument ersetzt. Bleibt KEINE Reihe
+    uebrig, wirft die Funktion `HistorieFehlt` mit dem Grund im Text (Historie
+    zu kurz ODER verlangtes Fenster zu klein) - ein leerer Rueckgabewert waere
+    ein Lauf mit 0 Runden und damit ein falsches Messergebnis.
 
     `max_kerzen` schneidet die JUENGSTEN N Kerzen heraus. Das ist kein
     Schaetzen, sondern die Laufzeit: die Spuren rechnen ihre Indikatoren je
@@ -257,9 +330,19 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     """
     insts = _instrumente(w)
     takt = _takt(w)
-    aus, fehlen = {}, []
+    brauch = bedarf(w)
+    aus, fehlen, zu_klein = {}, [], []
     for inst in insts:
         reihen = historie_binance.lade(inst, takt)
+        # Die Laenge auf der PLATTE entscheidet, ob die Historie fehlt - erst
+        # danach schneiden `bis_ms`, `abschnitt` und `max_kerzen`. Andersherum
+        # gelesen entsteht ein falscher Befund: mit `--max-kerzen 200` blieben
+        # 200 Kerzen uebrig, die Pruefung schlug an, und der Lauf meldete
+        # "keine Historie fuer supertrend - erst auffuellen", waehrend 12.559
+        # Kerzen auf der Platte lagen und nur das FENSTER zu klein war
+        # (gemessen 01.10.2026). Der Leser folgt sonst einer Anweisung, die
+        # nichts aendert.
+        gehabt = len(reihen)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
         if abschnitt:
@@ -267,12 +350,21 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
             reihen = reihen[int(von):int(bis)]
         if max_kerzen:
             reihen = reihen[-int(max_kerzen):]
-        if len(reihen) < int(w.get("mindest_kerzen", 300)) + 20:
-            fehlen.append("%s (%d Kerzen)" % (inst, len(reihen)))
+        if gehabt < brauch:
+            fehlen.append("%s (%d Kerzen)" % (inst, gehabt))
+            continue
+        if len(reihen) < brauch:
+            zu_klein.append("%s (%d Kerzen)" % (inst, len(reihen)))
             continue
         aus[inst] = reihen
     if fehlen:
         print("  ohne Historie: %s" % ", ".join(fehlen))
+    if zu_klein:
+        print("  Fenster zu klein: %s" % ", ".join(zu_klein))
+    if not aus:
+        # Kein stiller Rueckfall auf ein anderes Instrument und kein leerer
+        # Lauf: wer 0 Runden sieht, haelt es sonst fuer ein Messergebnis.
+        raise HistorieFehlt(mangel_text(spur, w, fehlen, zu_klein, max_kerzen))
     return aus
 
 
@@ -545,10 +637,9 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
     if wachen_patch:
         w.update(wachen_patch)
+    # Der Grund der Verweigerung kommt aus `kerzen_fuer` (Historie fehlt oder
+    # Fenster zu klein) - hier keinen zweiten, schwaecheren Text daneben.
     kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen, abschnitt)
-    if not kerzen:
-        raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie_binance.py --auffuellen'" % spur)
     if fenster is None:
         fenster = fenster_vorgabe(w)
 
@@ -793,6 +884,15 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     if max_kerzen:
         alle = {i: k[-int(max_kerzen):] for i, k in alle.items()}
 
+    # Dieselbe Lehre wie in `kerzen_fuer`, hier fuer Familie B: die Schleife
+    # unten laeuft von `mindest_kerzen` bis ans Ende - ein Fenster unter dem,
+    # was die Spur braucht, laesst sie LEER laufen und der Lauf meldet
+    # "0 Runden". Das sieht wie ein Messergebnis aus und ist keins.
+    laenge = min(len(k) for k in alle.values())
+    if laenge < bedarf(w):
+        zu_klein = ["%s (%d Kerzen)" % (i, len(k)) for i, k in alle.items()]
+        raise HistorieFehlt(mangel_text(spur, w, [], zu_klein, max_kerzen))
+
     alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
     alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
     alt_journal = spur_buch.journal
@@ -800,7 +900,6 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     zugriff = {"bis_ms": 0, "fenster": fenster, "kerzen": {}}
     quelle = historische_quelle(modul, spur, zugriff)
     puffer = io.StringIO()
-    laenge = min(len(k) for k in alle.values())
     try:
         spur_buch.SCHREIBEN = True      # ins BACKTEST-Journal, nicht ins echte
         spur_buch.spiegeln = lambda *a, **k: None
@@ -1169,10 +1268,22 @@ def main():
                          indent=2, ensure_ascii=False))
         return
     # Erst hier: `lade_wachen` gibt es nur bei den Kerzen-Spuren (Familie A).
+    modul = spur_modul(a.spur)
+    w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
     fenster = None if a.ganz else a.fenster
     if fenster is None and not a.ganz:
-        w = dict(spur_modul(a.spur).lade_wachen())
         fenster = fenster_vorgabe(w)
+    if fenster is not None and fenster < bedarf(w):
+        # Dieselbe Regel wie bei `max_kerzen`: ein Fenster unter dem, was die
+        # Spur braucht, ergibt keinen einzigen Schritt. `fenster_vorgabe`
+        # respektiert die Anforderung der Spur, ein von Hand gesetztes
+        # `--fenster` tat es nicht - der Lauf meldete dann still "0 Runden".
+        raise HistorieFehlt(
+            "Fenster zu klein fuer %s: --fenster %d - die Spur braucht "
+            "mindestens %d Kerzen je Reihe (mindest_kerzen %s + %d). "
+            "--fenster weglassen oder auf %d oder mehr setzen"
+            % (a.spur, fenster, bedarf(w), w.get("mindest_kerzen", 300),
+               KERZEN_PUFFER, bedarf(w)))
     runden, offen = lauf_a(a.spur, a.gebuehr, a.lauf, max_kerzen=mk,
                            fenster=fenster)
     print(json.dumps({"spur": a.spur, "runden": len(runden),
@@ -1184,4 +1295,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except HistorieFehlt as e:
+        # Ein Eingabefehler (Fenster zu klein) oder eine fehlende Historie ist
+        # kein Absturz. Eine Zeile statt eines Tracebacks, Exit 2 - der
+        # Leitstand liest stderr mit und zeigt damit denselben Satz.
+        sys.stdout.flush()          # die Meldungszeilen zuerst, dann der Grund
+        print("replay: %s" % e, file=sys.stderr)
+        sys.exit(2)
