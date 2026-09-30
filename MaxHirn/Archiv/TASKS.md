@@ -65,8 +65,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
       +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
       Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
-      betroffen sind `Agenten/Handel/backtest_urteile.py`, die Zeilen von
-      `auswertung_alle.py --backtest` und die Notizen unter MaxHirn/Wiki/Handel/.
+      betroffen sind `Agenten/Handel/backtest_urteile.py`, der Abschnitt
+      '=== Backtest (historisch)' des normalen Berichts (`auswertung_alle.py`,
+      ohne Argumente - ein Flag `--backtest` gibt es NICHT) und die Notizen unter
+      MaxHirn/Wiki/Handel/.
       Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
       (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
       `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
