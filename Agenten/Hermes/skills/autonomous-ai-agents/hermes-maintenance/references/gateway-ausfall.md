@@ -150,6 +150,29 @@ Gateway wurde von aussen beendet (taskkill/pkill des Host-Interpreters, OOM, VM-
 Tod), nicht ein Code-Crash. Beim Zaehlen der Ausfaelle diese Zeile als Crash werten,
 `SystemExit`-75-Eintraege dagegen als Neustart-Verbleib.
 
+**Start-Tot-Schleife durch den eigenen MCP-Faecher.** Startet der Gateway alle paar
+Minuten neu, meldet `gateway_state.json` dabei `running`, waehrend 9900/8644 geschlossen
+sind, und steht im Ledger `exited UNCLEANLY`, dann nicht den Gateway selbst verdaechtigen,
+sondern seine KINDER zaehlen. Messung: alle Prozesse mit `MCP-Server` in der
+Kommandozeile nach `ParentProcessId` gruppieren — eine Gruppe, deren Eltern-PID der
+Gateway ist, nennt den Erzeuger. Den Zustandstext dabei nicht glauben: die ueber mehrere
+Abfragen WECHSELNDE Gateway-PID ist der Beleg fuer die Schleife.
+
+Der Gateway startet seine MCP-Server je bedientem Profil; bei vielen Profilen sind das
+hunderte Prozesse, die den Commit (`FreeVirtualMemory`) leerfressen, bis er bei rund 1 GB
+nicht mehr hochkommt und stirbt — der Waechter startet ihn, die Runde wiederholt sich.
+Zwei Fallen dabei:
+
+- **Beide Interpreten zaehlen.** Eine Zaehlung nur ueber `python.exe`/`pythonw.exe` sieht
+die node-basierten MCP-Server nicht; die Zahl sieht gesund aus, waehrend der Rechner
+  erstickt. Dieselbe Luecke hat die MCP-Wache selbst: sie raeumt nur python-Kinder auf
+  und kann die node-Gruppen nicht bremsen.
+- **Ueberschuss-Killen allein hilft nicht** — der Erzeuger startet in Sekunden nach.
+  Reihenfolge: Prozesszahl UND Commit ueber Minuten im 10–15-s-Takt messen (eine
+  Einzelmessung verpasst den Sturm), den Erzeuger ueber die Eltern-PID belegen, dann
+  MCP-Umfang bzw. bediente Profile reduzieren oder die Wache auf beide Interpreten
+  ausweiten. Erst danach ist die Schleife zu.
+
 **Vorsorge: ein Gateway-Waechter.** Kleines Skript (Ablage `Agenten/Routinen/`),
 das alle 2 Minuten prueft, ob ein Prozess mit `hermes_cli.main gateway` in der
 Kommandozeile lebt, und wenn keiner lebt, den offiziellen Launcher-VBS aus

@@ -63,6 +63,7 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
    |---|---|
    | Handelsspur | Journalzeilen mit der echten Aktion (`kauf`/`verkauf`, `modus=live`), dazu die Boerse (`/account/positions`, Kraken Balance+OpenOrders) |
    | Cron/Aufgabe | was der Job ins Ziel geschrieben hat (Nachricht, Datei, DB-Zeile), plus `Get-ScheduledTaskInfo` fuer den Lauf selbst |
+   | Waechter/Neustarter | der GESTARTETE Prozess bzw. die Zustandsdatei des Dienstes — nie die eigene Logzeile `Neustart ausgeloest` |
    | Feed-/Papierspur | Zeilen mit Handelsaktion, nicht `zyklus`/`funding`/`quotes` (Betriebszeilen sehen wie Betrieb aus) |
    | Agent/Treiber | Ergebnisdatei des Auftrags, nicht der `gestartet/gestoppt`-Zaehler |
 
@@ -161,6 +162,22 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   respond“ - die Behebung liegt beim Empfaenger, nicht im Code); die Gegenprobe
   nach der Behebung ist derselbe Einmal-Auftrag mit leerem
   `last_delivery_error`.
+- **Ein Neustart-Waechter protokolliert seinen VERSUCH, nicht den Erfolg — und darf
+  nicht ueber den Weg melden, den er ueberwacht.** `… kein Gateway-Prozess - Neustart
+  ausgeloest` liest sich wie eine Erfolgsmeldung und ist nur die Absicht: ob der Start
+  gelungen ist, steht nirgends. Gemessen: so eine Zeile lief eine Stunde lang alle zwei
+  Minuten, waehrend der Dienst durchgehend tot war — die Ursache lag im Startweg selbst
+  (der Launcher konnte gar nichts starten), und weil die Wache ihre Meldung ueber den
+  Bus schickte, der an genau diesem Dienst haengt, erfuhr es niemand. Drei Regeln fuer
+  jeden Neustarter: (a) nach dem Start die WIRKUNG nachsehen (Prozess da? Zustandsdatei
+  `running`? Port/Pipe antwortet?) und DAS ins Log schreiben, nicht den Aufruf;
+  (b) melden ueber einen Weg, der vom ueberwachten Gegenstand unabhaengig ist (direkter
+  Telegram-Versand wie bei einer Bus-Wache, Windows-Benachrichtigung) — nie ueber den
+  Dienst, den man gerade vermisst; (c) nach N erfolglosen Versuchen in Folge
+  (drei reichen) eskalieren statt weiter im Takt zu schweigen. Gegenprobe nach der
+  Reparatur: die Wache einmal von Hand laufen lassen und pruefen, dass sie STILL bleibt
+  (Exitcode 0, keine neue Logzeile) — eine Wache, die den gesunden Dienst nicht
+  erkennt, startet ihn im Takt weiter neu.
 - **Ein stiller `except`-Zweig macht aus einem Beweis ein Nichts — und aus
   einem Fehler eine Behauptung.** Zwei Faelle, eine Wurzel. (a) Die
   Protokollierung im `try` zu haben ist gut, aber dann muss die Funktion

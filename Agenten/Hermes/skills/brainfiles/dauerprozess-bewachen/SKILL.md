@@ -686,6 +686,27 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   ein Fenster oeffnen soll, `Popen` mit `stdout`/`stderr` in eine Logdatei nehmen
   statt `start`. Bleibt es danach weg, ist das Log der Ort der Ursache (es ist
   sonst leer, weil ein fensterloses Programm ohne Umleitung nirgends schreibt).
+- **Ein versteckter Start ueber einen Skriptwirt (`.vbs`, `WScript.Shell.Run`) startet
+  ein KONSOLENprogramm ueberhaupt nicht — ohne Fehlermeldung.** `sh.Run "<zeile>", 0,
+  False` (Stil 0 = versteckt) legt fuer `cmd.exe`/`python.exe`/`powershell.exe` KEINEN
+  Prozess an und kehrt trotzdem sauber zurueck; ein Launcher, der so aussieht, kann
+  nie etwas starten, waehrend die Wache im Takt "Neustart ausgeloest" protokolliert.
+  Gemessen: Stil 0 nein / 1 ja / 2 nein / 3 ja / 7 nein / 8 ja (fuer `cmd`),
+  `python.exe` nur ab Stil 1, `pythonw.exe` (GUI-Subsystem) auch mit Stil 0.
+  **Regel: versteckt geht nur mit einem GUI-Programm (`pythonw.exe`) oder mit Stil
+  3/8 — und die zeigen ein Fenster.** Fuer einen Startweg, den man nicht taeglich
+  benutzt, gilt die Probe statt der Annahme: einen Einzeiler schreiben, der eine
+  Datei schreiben laesst, und danach `Test-Path` darauf fragen — **nie** der
+  Rueckgabe des Wirts glauben (sie meldet auch im Nein-Fall Erfolg). Der Beweis
+  fuer einen umgestellten Dienst ist dann der Kindprozess bzw. seine Zustandsdatei,
+  nicht die Startzeile im Log. Voller Fall mit Stiltabelle und Wachen-Falle: im
+  Skill `hermes-maintenance` die Datei `gateway-identitaet-und-wachen.md`.
+- **Nach jedem Update/Neuschreiben eines Launchers die Startzeile nachsehen.**
+  Ein Installationslauf schreibt die Startdatei neu und setzt sie auf den alten
+  Interpreter (`python.exe`) zurueck; der Dienst ist danach still tot, waehrend
+  die Konfiguration unveraendert aussieht. Gehoert in dieselbe Nachmessung wie
+  die Abhaengigkeiten: Launcher-Zeile UND eine Importprobe des Interpreters, den
+  er startet.
 - **Einen langen Start nie in derselben Anfrage abwarten.** Ein Kommando ueber eine
   Werkzeugbruecke hat ein Zeitfenster (hier rund 300 s); ein Lauf, der laenger
   braucht, wird als Timeout gemeldet, obwohl er weiterarbeitet - und wer ihn

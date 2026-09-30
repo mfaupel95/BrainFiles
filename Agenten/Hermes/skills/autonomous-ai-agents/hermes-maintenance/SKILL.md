@@ -332,6 +332,26 @@ Hardware-Ausfall. "Another gateway instance … started" ist ein DOPPELSTART, ke
 zweiten Starter suchen (Aufgabe, Launcher-Datei, `…\Startup\Hermes_Gateway_<profil>.vbs`) und
 VOR dem Entfernen messen - meist ist die Aufgabe laengst weg und nur die Datei liegt da.
 Endzustand: genau EIN Launcher-Task plus Waechter.
+
+**Startet er gar nicht, obwohl der Waechter Neustarts ausloest, ist der LAUNCHER die erste
+Messstelle - nicht der Dienst.** `WScript.Shell.Run <zeile>, 0, False` (Fensterstil 0,
+versteckt) startet ein **Konsolen**programm gar nicht: kein Prozess, keine Fehlermeldung, der
+Aufruf kehrt sauber zurueck. Eine Launcher-VBS, die `python.exe` mit Stil 0 startet, kann
+deshalb nie etwas starten; versteckt geht nur mit `pythonw.exe` (GUI-Subsystem). Beweis fuehrt
+man mit einem VBS-Einzeiler, der eine Datei schreibt, plus `Test-Path` darauf - nie mit der
+Erfolgsmeldung von `sh.Run`. Und: eine Prozesswache, die nur `python.exe` sucht, sieht den
+umgestellten Gateway nicht mehr - immer beide Namen abfragen. `hermes update` schreibt die
+Launcher-VBS neu und setzt sie auf `python.exe` zurueck; nach jedem Lauf nachsehen. Stiltabelle,
+Reparatur und die zugehoerige Wachen-Falle: `references/gateway-identitaet-und-wachen.md`,
+Abschnitte 3 und 5(c).
+**Start-Tot-Schleife: erst die KINDER zaehlen, nicht den Dienst verdaechtigen.** Startet der
+Gateway alle paar Minuten neu, meldet `gateway_state.json` aber `running`, waehrend 9900/8644
+geschlossen sind (die wechselnde PID ueber mehrere Abfragen ist der Beleg), dann die Prozesse
+mit `MCP-Server` in der Kommandozeile nach `ParentProcessId` gruppieren: der Gateway startet
+seine MCP-Server je bedientem Profil, bei vielen Profilen hunderte — die fressen den Commit,
+bis er nicht mehr hochkommt. Node-basierte Server zaehlen mit (`python.exe`/`pythonw.exe`
+allein sieht sie nicht), und Ueberschuss-Killen allein hilft nicht: der Erzeuger startet in
+Sekunden nach. Messreihe im 10–15-s-Takt statt Einzelmessung.
 Vollstaendige Diagnose, Multiplex-Ursache, Exit-75-Schleife und Waechter-Einrichtung:
 `references/gateway-ausfall.md`.
 ## SQLite WAL-reset bug — the real blocker

@@ -43,6 +43,30 @@ Aus dem Checkout heraus mit `hermes-agent/venv/Scripts/python.exe` fahren
 - Der Gateway muss in einer Form laufen, die der Updater kennt:
   `-m hermes_cli.main gateway run`. Genau das tut der Launcher
   `gateway-service/Hermes_Gateway_<suffix>.vbs`; ihn starten ist die Reparatur.
+- **Der Launcher muss `pythonw.exe` nehmen, nicht `python.exe`.** Er startet
+  ueber `WScript.Shell.Run <zeile>, 0, False` (Fensterstil 0 = versteckt) - und
+  Stil 0 startet ein **Konsolen**programm GAR NICHT: kein Prozess, KEINE
+  Fehlermeldung, der Aufruf kehrt sauber zurueck. Gemessen mit zwei
+  `cscript`-Proben, die eine Datei schreiben liessen und danach `Test-Path`
+  darauf fragten:
+
+      Ziel                     Stil 0   Stil 1   Stil 2   Stil 3   Stil 7   Stil 8
+      cmd /c echo ...          nein     ja       nein     ja       nein     ja
+      python.exe (Konsole)     nein     ja        -        -        -        -
+      pythonw.exe (GUI)        JA       ja        -        -        -        -
+
+  `sh.Exec` und das FileSystemObject arbeiten normal - es trifft nur diesen
+  einen Weg. Ein Launcher, der `python.exe` mit Stil 0 startet, kann deshalb
+  NIE etwas starten, und der Waechter protokolliert derweil im Zwei-Minuten-Takt
+  "kein Gateway-Prozess - Neustart ausgeloest". Reparatur: in der VBS auf
+  `tools\python-3.14.7+<stand>-win32-x64\pythonw.exe` umstellen (GUI-Subsystem,
+  laeuft mit Stil 0 versteckt). Wer den Start von Hand nachsehen will, faehrt
+  dieselbe Zeile mit `python.exe` aus einer Konsole. `hermes update` schreibt die
+  VBS neu und setzt sie wieder auf `python.exe` - nach JEDEM Lauf nachsehen.
+- **`sh.Run` nie glauben, immer nachmessen.** Der Beweis ist der Kindprozess
+  bzw. eine Datei, die er geschrieben hat, nicht die Erfolgsmeldung. Ein
+  VBS-Einzeiler, der eine Datei schreibt, plus `Test-Path` darauf, entscheidet
+  in zehn Sekunden, ob ein Startweg ueberhaupt funktioniert.
 - Fehlende PID-Metadaten aus `gateway.lock` rekonstruieren (PID + Zustand
   `running`), nicht aus dem Bauch schreiben.
 - Danach erneut messen: Discovery-Liste, `hermes gateway status`,
@@ -92,6 +116,16 @@ Das aus einer **Datei** ausfuehren (`.ps1`), nie als `-Command`: die Bash-Huelle
 frisst die Backslashes und die Probe wird falsch (leeres Ergebnis, das wie "kein
 Pipe" aussieht). Antwortet ein alter Prozess nicht, ist EIN Neustart je 30
 Minuten erlaubt (Merkerdatei) - sonst entsteht die Schleife wieder.
+
+**(c) Eine Wache, die nur EINEN Programmnamen kennt.**
+`gateway-waechter.ps1` suchte hart `Name='python.exe'` bzw.
+`ProcessName -eq 'python'`. Ein Launcher, der auf `pythonw.exe` umgestellt wird
+(GUI-Subsystem - der einzige Weg, ein Python versteckt zu starten, siehe
+Abschnitt 3), ist fuer so eine Wache unsichtbar: sie sieht einen gesunden
+Gateway nicht und startet im Takt weiter neu. Immer BEIDE Namen suchen -
+`Name='python.exe' or Name='pythonw.exe'` bzw.
+`ProcessName -in @('python','pythonw')` - und die Wache danach einmal von Hand
+laufen lassen: sie muss still bleiben (exit 0, keine neue Logzeile).
 
 **Zaehlen, nicht glauben.** Ob eine Prozesswache in einer Schleife haengt, verraet
 nicht die einzelne Logzeile ("kein Prozess - Neustart ausgeloest" liest sich

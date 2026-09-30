@@ -254,6 +254,21 @@ Pfade nach (sonst meldet `git status` sie gleichzeitig als geloescht und als ung
 Das vollstaendige Rezept - Bauart des Skripts, Ruhekriterium, Index-Nachtrag,
 Testaufbau, Registrierung der Aufgabe - steht in `references/fremdarbeit-routine.md`.
 
+**Die Routine kann eine Reparatur ZURUECKNEHMEN, nicht nur einsammeln.** Sie prueft
+das Alter, nicht den Inhalt: eine Datei, die im Arbeitsbaum nur noch ALT steht (weil
+eine parallele Sitzung sie geaendert und committet hat, waehrend die alte Fassung
+liegen blieb), ist fuer sie von einer neuen Aenderung nicht zu unterscheiden - sie
+committet die alte Fassung und dreht damit eine gewollte Reparatur still um. Genau so
+verschwand der reparierte Gateway-Launcher ueber Nacht, und aufgefallen ist es erst,
+als der Dienst nicht mehr ansprang. Gegenmittel in dieser Reihenfolge: (1) **nach einer
+Reparatur sofort selbst committen** - unter der 30-Minuten-Schwelle bleiben, sonst
+wandert sie in eine fremde Meldung oder wird ueberschrieben; (2) nach einem
+`Fremdarbeit uebernommen`-Commit in `git log` pruefen, ob er Dateien anfasst, an denen
+in den letzten Stunden bewusst gearbeitet wurde (`git show <commit> --stat` gegen die
+eigene Pfadliste halten) - bei einem Rueckschritt den Inhalt sofort wieder herstellen
+und im Commit-Text benennen; (3) dauerhaft gehoert in die Routine eine Inhaltspruefung
+gegen HEAD, nicht nur eine Zeitpruefung.
+
 **Die Routine kann eine ganze Nacht still ausfallen - „uebersprungen" ist nicht
 „erledigt".** Sie endet bei einer liegenden `.git/index.lock` (oder einem anderen
 Arbeitszweig) mit Exitcode **0** und der Zeile `ENDE uebersprungen`; die Aufgabenplanung
