@@ -32,7 +32,23 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
 WURZEL = os.path.dirname(os.path.dirname(HANDEL))
 OMNITRADE = os.path.join(WURZEL, "Werkstatt", "omnitrade")
-BIN = os.path.join(OMNITRADE, "target", "debug", "omnitrade-cli.exe")
+BIN_KANDIDATEN = (os.path.join(OMNITRADE, "target-live", "release", "omnitrade-cli.exe"),
+                  os.path.join(OMNITRADE, "target", "release", "omnitrade-cli.exe"),
+                  os.path.join(OMNITRADE, "target", "debug", "omnitrade-cli.exe"))
+
+
+def binary():
+    """Das JUENGSTE vorhandene Binary - dieselbe Reihenfolge wie
+    omnitrade_start.py. Ein alter Bau kennt neue Sprachfunktionen nicht (der
+    Debug-Bau vom 30.09. 09:31 kannte `adx` nicht und liess adx_macd mit
+    'UndefinedFunction' durchfallen), deshalb entscheidet das Alter, nicht der
+    Pfad."""
+    da = [p for p in BIN_KANDIDATEN if os.path.isfile(p)]
+    if not da:
+        raise SystemExit("kein omnitrade-cli.exe gefunden - bitte `cargo build`")
+    # Reihenfolge wie omnitrade_start.py: der Live-Bau zuerst. Der Debug-Bau
+    # liegt zuletzt - er ist derselbe Code, aber rund zehnmal langsamer.
+    return da[0]
 CACHE = os.path.join(HIER, "cache")
 
 if HANDEL not in sys.path:
@@ -66,7 +82,7 @@ def csv_schreiben(inst, takt, tage, ordner):
 
 def backtest(skript, daten, gebuehr, einsatz, menge=0.1, slippage_bps=5.0):
     """Ein Lauf des ECHTEN Backtests. Rueckgabe: Dict aus der Ausgabe."""
-    befehl = [BIN, "backtest", "--script", skript, "--data", daten,
+    befehl = [binary(), "backtest", "--script", skript, "--data", daten,
               "--initial-balance", str(einsatz), "--quantity", str(menge),
               "--fee-rate", str(gebuehr), "--slippage-bps", str(slippage_bps)]
     umg = dict(os.environ)
