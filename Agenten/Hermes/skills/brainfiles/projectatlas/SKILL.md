@@ -58,6 +58,33 @@ beides zugleich. Fuer einen Bot mit eigenem Arbeitsverzeichnis denselben Eintrag
 
 ## Fallen (gemessen)
 
+- **Ein Projekt INNERHALB eines Repos ist nicht kartierbar.** Ein Unterordner ohne
+  eigenes `.git` (Beispiel: `Agenten/Handel/nautilus-rust`) laesst sich auch mit
+  ausdruecklichem `--db`/`--config` nicht binden: `ok: false`, und der Scan endet
+  mit `verification_incomplete: invalid input: ProjectAtlas config '…/config.toml'
+  resolves project root '…/nautilus-rust' outside selected project root '…/BrainFiles'`.
+  Es entstehen trotzdem `config.toml` und `projectatlas.db` im Unterordner - beides
+  danach wieder entfernen. Ausweg ist nur ein eigenes `.git` (Gitlink-Folgen beachten)
+  oder gezieltes Lesen der wenigen Einstiegsdateien.
+- **Der Projektstamm kommt aus dem NAECHSTEN `.projectatlas` aufwaerts.** Liegt unter
+  der Wurzel ein Streu-Atlas aus einem alten Lauf, traegt er seinen eigenen Stamm und
+  jeder Aufruf aus einem anderen Verzeichnis endet mit `project_mismatch: selected
+  project root '…' does not match index root '…'`. Vor „ProjectAtlas ist kaputt"
+  also `root show` im Zielverzeichnis pruefen - dort stehen `config_path` und
+  `db_project_root` im Klartext.
+- **Cargo-Nebenzielordner fehlen in der Standard-Ausschlussliste.** `exclude_dir_names`
+  kennt `target`, aber nicht `target-live` (o.ae.): der Scan laeuft dann in
+  `verification_incomplete` an `target-live/release/.cargo-build-lock`
+  („anderer Prozess haelt einen Teil der Datei gesperrt", os error 33) - auch wenn
+  gar kein Build mehr laeuft, denn die 0-Byte-Sperrdatei bleibt liegen.
+  Fix: `projectatlas ignore add --kind dir-name target-live`.
+- **Der Watcher loggt Erfolg NICHT.** Eine Logdatei, die seit Stunden unveraendert
+  ist, heisst „nichts hat sich geaendert" - nicht „Prozess tot". Zwei Zeugen: der
+  Prozess (`Get-CimInstance Win32_Process` mit `CommandLine -like '*watch*'`) und die
+  mtime der `.projectatlas/projectatlas.db` nach einem `touch` an einer Quelldatei.
+  Nach einer Config-Aenderung (Ignore/Zwecke) muss der Watcher neu starten -
+  `Agenten/Werkzeuge/projectatlas/watch-start.ps1` sieht einen laufenden Prozess
+  ueber die PID-Datei und tut dann nichts.
 - **Globale Schalter stehen vor dem Unterbefehl.** `projectatlas init --format json`
   scheitert mit "unexpected argument"; richtig ist `projectatlas --format json init`.
 - **Verwaiste Git-Worktrees brechen den Scan.** Meldung:
