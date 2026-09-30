@@ -60,6 +60,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-193 — Dauerlauf stirbt nach rund einem Zyklus an SIGTERM (Rueckgabe 143)**
+      Kontext: Am 30.09.2026 waren zwischen 01:52 und 02:39 **alle drei Dauerlauf-Stufen
+      tot** (Sperrdateien 52312/61436/42504, kein passender Prozess). Die Waechter-Aufgaben
+      arbeiten korrekt - sie erkannten die verwaisten Sperren und starteten neu
+      (`Routinen/logs/handel-dauerlauf-letzter-lauf*.log`: 02:05, 02:07, 02:08, 02:24) -
+      aber jede neue Instanz starb nach etwa einem Zyklus wieder. Kein Rechnerneustart
+      (letzter Start 29.09. 21:06:19), kein Traceback. Die Todesart steht im Log als
+      **`<spur> Rueckgabe 143`** = SIGTERM (128+15): 29.09. 23:22:59 bei `xperp`,
+      30.09. 02:36:55 bei `kraken`. Ein Handstart schaffte 16 Spuren und lief bis zum
+      kraken-Zyklus; in jenem Lauf war mein eigener `timeout` nicht auszuschliessen,
+      der Wert trat aber schon am 29.09. ohne Fremdeinwirkung auf.
+      Verdacht: ein Kindprozess beendet den ganzen Baum mit, statt nur sich selbst -
+      `moondev_dauerlauf.py:417 _stoppe` beendet mit `taskkill /T /F` den GANZEN Baum,
+      und sein Prozessfilter kann die eigene Kommandozeile treffen (Falle vom 24.09.).
+      Die Wrapper starten mit `-WindowStyle Hidden` OHNE Umleitung, deshalb ist der
+      Sterbegrund bisher unsichtbar.
+      Naechster Schritt: (1) die Wrapper leiten stdout/stderr nach
+      `Routinen/logs/dauerlauf-<stufe>-kind.log` um - erst dann ist der Sterbegrund
+      lesbar; (2) pruefen, ob `moondev_dauerlauf._stoppe` fremde Prozesse trifft;
+      (3) Wache auf "kein Zyklus seit >10 min" statt nur "PID tot".
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/handel-dauerlauf.ps1, Agenten/Handel/moondev_dauerlauf.py
+
 - [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
       Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
       `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
@@ -83,6 +106,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
       (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
       (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
+      Fortschritt: (1) erledigt am 30.09.2026 (Commit 7c525cd) - `gebuehr_taker` steht
+      jetzt in orb (0.0005), orbk (0.006), scanner (0.0005), moondev_signalwelle (0.0005)
+      und iv_wand (0.0005), dazu ein Einheitenfehler im Werkzeug behoben: es druckte den
+      Bruch als Prozentwert und verglich ihn direkt mit f_max. Neues Urteil: orbk
+      "1.200 % je Runde (0.600 % je Seite) liegt darueber" - tot. Test
+      `tests/test_kosten_wendepunkt.py` (9). Punkte (2) und (3) bleiben offen.
       Angelegt: 2026-09-30
       Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
                 Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
