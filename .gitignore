@@ -597,6 +597,10 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
+# ANKER-PRUEFUNG (01.10.2026): beweist, dass die Profilfunktion `hermes` die
+# Sitzung in Agenten/Hermes startet (Attrappe statt hermes.exe, echte Funktion).
+# Ohne die Zeile liegt das Werkzeug nur auf der Platte.
+!Agenten/Werkzeuge/anker-pruefen.ps1
 # OLLAMA-BRUECKE, freigelegt am 24.09.2026. Sie ist der EINE Weg, auf dem
 # Fremd-Agenten mit OpenAI-Zweig ohne bezahlten Schluessel ein Urteil vom
 # lokalen Modell bekommen (Ollama-eigener /v1-Adapter liefert bei Denk-Modellen

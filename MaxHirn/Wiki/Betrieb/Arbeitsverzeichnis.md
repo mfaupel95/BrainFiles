@@ -3,16 +3,21 @@ id: 20260930-arbeitsverzeichnis
 title: 'Betrieb — Arbeitsverzeichnis (cwd) der Agenten'
 tags: [betrieb, hermes, pfade, cwd, terminal]
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 related: ['[[Archiv/TASKS]]', '[[Betrieb/Hermes]]', '[[LEITFADEN]]']
-summary: 'Hermes-Werkzeuge starten in Agenten/Hermes, alle Pfade in Skills und Notizen sind relativ zur BrainFiles-Wurzel - der Anker, die gemessene Falle und was davon unberuehrt bleibt.'
+summary: 'Hermes-Sitzungen starten in Agenten/Hermes - terminal.cwd fuer Gateway/Cron, ein hermes-Wrapper im PowerShell-Profil fuer CLI und TUI; alle Pfade in Skills und Notizen sind relativ zur BrainFiles-Wurzel.'
 ---
 
 # Arbeitsverzeichnis (cwd)
 
 Max hat am 30.09.2026 entschieden (T-233): **Hermes' Werkzeuge und Sitzungen starten in
-`Agenten/Hermes`, nicht in der BrainFiles-Wurzel.** Gesetzt ist das in
-`Agenten/Hermes/config.yaml` als `terminal.cwd`.
+`Agenten/Hermes`, nicht in der BrainFiles-Wurzel.** Zwei Mechanismen tragen das - der erste
+allein reichte nicht, das ist am 01.10.2026 gemessen worden:
+
+| Weg | Mechanismus | Gilt fuer |
+|---|---|---|
+| `terminal.cwd` in `Agenten/Hermes/config.yaml` | Umgebungsvariable `TERMINAL_CWD` | Gateway, Cron, entfernte Backends |
+| `hermes`-Wrapper im PowerShell-Profil | `Push-Location` vor dem Aufruf | interaktive **CLI und TUI** |
 
     terminal:
       backend: local
@@ -26,6 +31,57 @@ Damit liegen zwei Bezugssysteme nebeneinander, und das ist die eigentliche Falle
 | **BrainFiles-Wurzel** | **alle** Pfade in Skills, Notizen, Wiki und in diesem Dokument |
 
 `$HERMES_HOME` zeigt auf `Agenten/Hermes` (in jeder Sitzung gesetzt, gemessen).
+
+## Die gemessene Falle: `terminal.cwd` gilt interaktiv nicht
+
+Eine **interaktive** Sitzung uebernimmt das Startverzeichnis der Shell (`os.getcwd()`);
+`terminal.cwd` gilt nur fuer Gateway, Cron und entfernte Backends (so steht es auch im
+Hermes-Code: *"A local interactive session starts where the user launched (or in the
+--worktree), the classic CLI's rule"*, `hermes_cli/main_tui_launch.py`).
+
+Folge bis zum 01.10.2026: von der Wurzel aus gestartet, liefen CLI **und** TUI in der Wurzel,
+waehrend die Desktop-App in `Agenten\Hermes` startete. Zeuge ist `state.db`:
+
+    select id, source, cwd from sessions order by started_at desc;
+    -> alle TUI-/CLI-Sitzungen: cwd = C:\Users\faupe\Documents\BrainFiles
+    -> die Desktop- und Cron-Sitzungen: cwd = ...\Agenten\Hermes
+
+Damit zeigte jede Anweisung `cd "$HERMES_HOME/../.."` (die den Anker `Agenten/Hermes`
+voraussetzt) eine Ebene **ueber** die Wurzel - genau der Fehler, den T-233 beseitigen sollte.
+
+## Der `hermes`-Wrapper
+
+`C:\Users\faupe\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` (Sicherung
+`.bak-20261001`) definiert eine Funktion `hermes`, die den echten `hermes.exe`-Aufruf in
+`Agenten\Hermes` startet und die Shell selbst per `Push-Location`/`Pop-Location` **dort
+laesst, wo sie war** - die Wurzel-Aufrufer (`omnitrade.cmd`, `bestand.cmd`, `jevgrep.cmd`)
+greifen weiter.
+
+| Aufruf | Sitzung startet in |
+|---|---|
+| `hermes` | `Agenten\Hermes` |
+| `hermes -Hier ...` | dem aktuellen Verzeichnis |
+| `hermes -p <bot> ...` | dem Startordner dieses Profils (`profiles\<bot>\config.yaml`, `terminal.cwd`) |
+
+Nachweis (01.10.2026, `Agenten/Werkzeuge/anker-pruefen.ps1` - laedt das echte Profil und
+haengt statt `hermes.exe` eine Attrappe vor den PATH, damit das Kind sein Arbeitsverzeichnis
+meldet):
+
+    hermes (Vorgabe)                   ok         ...\Agenten\Hermes
+    hermes -Hier                       ok         ...\BrainFiles
+    hermes -p gibtsnicht               ok         ...\Agenten\Hermes
+    hermes -p agent-trade-kit          ok         ...\Werkstatt\Repos\agent-trade-kit
+    Shell-cwd danach                   ok         ...\BrainFiles
+
+Zweiter Zeuge: eine ueber den Wrapper gestartete Sitzung traegt in `state.db` erstmals
+`cwd = ...\Agenten\Hermes`.
+
+**Was der Wrapper nicht deckt:** `cmd.exe` und andere Shells (dort bleibt es beim
+Startverzeichnis der Shell - die Windows-Terminal-Profile "Eingabeaufforderung" und
+"BRAINFILES" starten in der Wurzel, absichtlich), und `hermes --resume`/`-c`: eine
+wiederaufgenommene Sitzung kehrt in **ihr aufgezeichnetes** Verzeichnis zurueck
+(`--no-restore-cwd` bzw. `--in DIR` heben das auf). Fuer eine Repo-Bot-Sitzung ist das
+erwuenscht.
 
 ## Der Anker - und die gemessene Falle
 
@@ -47,8 +103,9 @@ Fehlschlag verschluckt und der naechste Befehl scheinbar grundlos scheitert.
 - **Wurzel-Aufrufer** `omnitrade.cmd` und `omnitrade-auswertung.cmd` - arbeiten mit `%~dp0`.
 - **`git -C <repo>`** - Argumente wie `Agenten/Handel/spiegel` loest git gegen den Repo-Root auf,
   nicht gegen das cwd.
-- **Max' eigene Shell** - sein Startverzeichnis ist die Wurzel; `terminal.cwd` betrifft nur die
-  Werkzeuge der Agenten.
+- **Max' eigene Shell** - ihr Startverzeichnis bleibt die Wurzel (Windows-Terminal-Profil
+  "BRAINFILES" und die Profilzeile `Set-Location $BrainFiles`); nur der `hermes`-Aufruf wird
+  durch den Wrapper umgelenkt.
 
 ## Was repariert wurde
 

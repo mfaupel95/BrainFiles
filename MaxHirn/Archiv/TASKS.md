@@ -60,6 +60,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
+      Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
+      „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
+      Completion-Versuch und meldet „source-update completion failed: an update is still
+      running“ (gemessen 01.10. 01:22). Ein laufender Update-Prozess existiert NICHT (nur der
+      Marker), C: hat 77,9 GB frei — die Reparatur ist also machbar.
+      Naechster Schritt: Desktop und TUI schliessen (der laufende Desktop haelt
+      `apps/desktop/release/win-unpacked`, sonst WinError 5 beim Umbenennen), dann
+      `installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u
+      hermes_cli/source_completion.py --source Agenten/Hermes/hermes-agent --finish-update
+      --desktop --prepared` GELOESTERT starten (nie mit eigenem Zeitlimit killen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/installs/bf59c98340a908a8/, Agenten/Hermes/logs/update-*.log
+
+- [ ] **T-266 — cmd.exe und andere Shells umgehen den Hermes-Anker**
+      Kontext: Der `hermes`-Wrapper liegt als PowerShell-Funktion im Profil; in `cmd.exe`
+      (Windows-Terminal-Standardprofil „Eingabeaufforderung“) und in jeder anderen Shell
+      startet `hermes` weiter im Startverzeichnis der Shell. Gemessen 01.10.2026: nur pwsh
+      ist abgedeckt, `Agenten/Werkzeuge/anker-pruefen.ps1` faehrt nur diesen einen Weg.
+      Naechster Schritt: entscheiden — so lassen (Max arbeitet in pwsh) oder ein `hermes.cmd`
+      vor `Agenten\Hermesin\hermes.exe` legen; das geht nur mit PATH-Umbau, weil `.exe` in
+      DEMSELBEN Verzeichnis `.cmd` schlaegt.
+      Angelegt 01.10.2026 · Betrifft Documents/PowerShell/Microsoft.PowerShell_profile.ps1, Agenten/Werkzeuge/anker-pruefen.ps1
+
 - [ ] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
       Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
       gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
