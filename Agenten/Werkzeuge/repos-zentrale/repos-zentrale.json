@@ -1001,7 +1001,11 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Anbindung an ai4trade.ai (Papier-Signalplattform): Agent HermesMax2, Heartbeat-Poller und Anlage-Werkzeug"
+      "gruppe": "kein_start",
+      "notiz": "Anbindung an ai4trade.ai (Papier-Signalplattform): Agent HermesMax2, Heartbeat-Poller und Anlage-Werkzeug",
+      "warnungen": [
+        "kein eigenes Programm: heartbeat.py und neu_anlegen.py stehen einzeln darueber"
+      ]
     },
     {
       "ordner": "analyse.py",
@@ -1198,6 +1202,14 @@
       ]
     },
     {
+      "ordner": "backtest_laeufe",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "daten",
+      "gruppe": "doku",
+      "notiz": "Ergebnisse der Backtest-Laeufe aus dem Leitstand (je Lauf eine JSON)"
+    },
+    {
       "ordner": "backtest_prognose.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -1235,7 +1247,10 @@
         "okx_bot_waechter\\bauen.py",
         "--help"
       ],
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "warnungen": [
+        "legt einen echten OKX-Bot an - nur mit bauen_erlaubt=true UND --anwenden"
+      ]
     },
     {
       "ordner": "beleg_hand.py",
@@ -1284,7 +1299,11 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Gegenprobe der Empfehlungen aus backtest-optimierung-2026-09-21.md"
+      "gruppe": "kein_start",
+      "notiz": "Gegenprobe der Empfehlungen aus backtest-optimierung-2026-09-21.md",
+      "warnungen": [
+        "kein eigenes Programm: die beiden Gegenproben stehen einzeln darueber"
+      ]
     },
     {
       "ordner": "bt_varianten_fast.py",
@@ -1371,7 +1390,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie EMA-Kreuz - walk-forward geprueft; im ungesehenen H2 halten die Hyperopt-Parameter NICHT"
+      "notiz": "Freqtrade-Strategie EMA-Kreuz - walk-forward geprueft; im ungesehenen H2 halten die Hyperopt-Parameter NICHT",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "ema_cross_h1.py",
@@ -1380,7 +1402,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie EMA-Kreuz auf 1 h (eigener Aufsatz)"
+      "notiz": "Freqtrade-Strategie EMA-Kreuz auf 1 h (eigener Aufsatz)",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "filter_studie.py",
@@ -1661,7 +1686,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Werkzeug in Handel/ (in Arbeit - noch kein Startbefehl belegt)"
+      "notiz": "Werkzeug in Handel/ (in Arbeit - noch kein Startbefehl belegt)",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "kerzenschluss_bias.py",
+        "--help"
+      ]
     },
     {
       "ordner": "klassik_bollinger",
@@ -1902,7 +1932,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie: gemeinsame Basis der drei MoonDev-Strategien"
+      "notiz": "Freqtrade-Strategie: gemeinsame Basis der drei MoonDev-Strategien",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "moondev_funding",
@@ -2032,7 +2065,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie Marktregime (BTC-Trend und Marktbreite)"
+      "notiz": "Freqtrade-Strategie Marktregime (BTC-Trend und Marktbreite)",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "MoonDevTopMovers.py",
@@ -2041,7 +2077,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie TopMovers (+8..40 % in 24 h)"
+      "notiz": "Freqtrade-Strategie TopMovers (+8..40 % in 24 h)",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "MoonDevTradingAgent.py",
@@ -2050,7 +2089,10 @@
       "rolle": "Strategie",
       "art": "werkzeug",
       "gruppe": "kein_start",
-      "notiz": "Freqtrade-Strategie des Trading-Agenten (MA20/MA40, RSI 45-70, Volumen) - LONG-ONLY: can_short laedt im Spot-Modus nicht"
+      "notiz": "Freqtrade-Strategie des Trading-Agenten (MA20/MA40, RSI 45-70, Volumen) - LONG-ONLY: can_short laedt im Spot-Modus nicht",
+      "warnungen": [
+        "freqtrade laedt diese Klasse; der Bot-Aufsatz steht in freqtrade/user_data/bots/"
+      ]
     },
     {
       "ordner": "mosaic",
@@ -2082,7 +2124,11 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "rust",
-      "notiz": "Rust-Arm der Nautilus-Reihe (Cargo-Workspace)"
+      "gruppe": "kein_start",
+      "notiz": "Rust-Arm der Nautilus-Reihe (Cargo-Workspace)",
+      "warnungen": [
+        "Cargo-Workspace ohne Startbefehl (cargo build/test)"
+      ]
     },
     {
       "ordner": "nautilus_kraken",
@@ -2101,14 +2147,22 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Rauchproben fuer nautilus_trader 2.0.0rc5 gegen das Kraken-Spotkonto"
+      "gruppe": "kein_start",
+      "notiz": "Rauchproben fuer nautilus_trader 2.0.0rc5 gegen das Kraken-Spotkonto",
+      "warnungen": [
+        "Rauchproben gegen das ECHTE Kraken-Konto - kein Klick-Start"
+      ]
     },
     {
       "ordner": "okx_bot_waechter",
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "spur",
-      "notiz": "Waechter der OKX-Future-Bots: Leiter, Munition, Liquidation, Vorschlag 'letzte kaufbare Grenze' mit Stop (Eingriff nur mit --anwenden)"
+      "notiz": "Waechter der OKX-Future-Bots: Leiter, Munition, Liquidation, Vorschlag 'letzte kaufbare Grenze' mit Stop (Eingriff nur mit --anwenden)",
+      "start": [
+        "..\\.venv\\Scripts\\python.exe",
+        "waechter.py"
+      ]
     },
     {
       "ordner": "okx_waisen.py",
@@ -2550,7 +2604,11 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Selbstverbesserung: Anfragen sammeln und anwenden (der Dauerlauf ruft es)"
+      "gruppe": "kein_start",
+      "notiz": "Selbstverbesserung: Anfragen sammeln und anwenden (der Dauerlauf ruft es)",
+      "warnungen": [
+        "kein eigenes Programm: die Werkzeuge (lauf.py) stehen einzeln darueber"
+      ]
     },
     {
       "ordner": "vergleich.py",

@@ -217,11 +217,47 @@ KURATIERT: dict[tuple[str, str], dict] = {
         "rolle": "Werkzeug",
         "notiz": "Waechter der OKX-Future-Bots: Leiter, Munition, Liquidation, Vorschlag "
                  "'letzte kaufbare Grenze' mit Stop (Eingriff nur mit --anwenden)",
+        # Der Bericht ist der Sinn des Ordners. Ohne --anwenden stoppt er nichts
+        # (zwei Tore davor: stop_erlaubt in wachen.json und der Schalter selbst).
+        "start": ["..\\.venv\\Scripts\\python.exe", "waechter.py"],
     },
     ("handel", "verbesserer"): {
         "rolle": "Werkzeug",
         "notiz": "Selbstverbesserung: Anfragen sammeln und anwenden (der Dauerlauf ruft es)",
+        # Die Werkzeuge dieses Ordners stehen EINZELN darueber (lauf.py). Der
+        # Ordner selbst ist kein Programm - deshalb KEIN EIGENER START statt
+        # EINRICHTEN.
+        "gruppe": "kein_start",
+        "warnungen": ["kein eigenes Programm: die Werkzeuge (lauf.py) stehen einzeln darueber"],
     },
+    ("handel", "ai4trade"): {
+        "rolle": "Werkzeug",
+        "notiz": "ai4trade.ai: Papierhandel auf einer Signalplattform (Agent HermesMax2)",
+        "gruppe": "kein_start",
+        "warnungen": ["kein eigenes Programm: heartbeat.py und neu_anlegen.py stehen einzeln darueber"],
+    },
+    ("handel", "bt_opt"): {
+        "rolle": "Werkzeug",
+        "notiz": "Gegenproben zu den Backtest-Optimierungen (4h_gegenprobe.py, verify_equivalence.py)",
+        "gruppe": "kein_start",
+        "warnungen": ["kein eigenes Programm: die beiden Gegenproben stehen einzeln darueber"],
+    },
+    ("handel", "nautilus-rust"): {
+        "rolle": "Werkzeug",
+        "notiz": "Rust-Arm der Nautilus-Reihe (Cargo-Workspace: omnitrade-risk, quant-alpha, "
+                 "quant-planes, quant-signal, quant-strategy)",
+        "gruppe": "kein_start",
+        "warnungen": ["Cargo-Workspace ohne Startbefehl (cargo build/test)"],
+    },
+    ("handel", "nautilus_rc5"): {
+        "rolle": "Werkzeug",
+        "notiz": "Rauchproben fuer nautilus_trader 2.0.0rc5 gegen das Kraken-Spotkonto",
+        "gruppe": "kein_start",
+        "warnungen": ["Rauchproben gegen das ECHTE Kraken-Konto - kein Klick-Start"],
+    },
+    ("handel", "backtest_laeufe"): dict(
+        ABLAGE, notiz="Ergebnisse der Backtest-Laeufe aus dem Leitstand (je Lauf eine JSON)"
+    ),
     ("handel", "prognose_berichte"): dict(
         ABLAGE, notiz="Taegliche Prognose-Berichte (neuester.json) - Eingang der Spur omniquant"
     ),
@@ -288,7 +324,9 @@ HILFE_VERIFIZIERT = (
     "xperp/fremde_positionen_uebernehmen.py", "kraken/abgleich.py",
     "kraken/einsatz_nachziehen.py", "mosaic/geist_zurueckbuchen.py",
     "mosaic/boersenabgleich.py", "ai4trade/heartbeat.py", "verbesserer/lauf.py",
-    "nautilus/daten_auffrischen.py", "orb/backtest.py", "orbk/backtest.py",
+    "nautilus/daten_auffrischen.py", "nautilus/backtest_grid.py",
+    "kerzenschluss_bias.py",
+    "orb/backtest.py", "orbk/backtest.py",
     "gitter/backtest_gitter.py", "xperp/historie.py",
     "gitter/auswertung.py", "kopier/auswertung.py", "kopier1zu1/auswertung.py",
     "omniquant/auswertung.py", "spiegel/auswertung.py",
@@ -1069,8 +1107,19 @@ def auffrischen(
             e.get("wurzel", "repos"), e.get("pfad") or e["ordner"], e["ordner"]
         )
         if not kuratiert:
+            # Auch ohne kuratierten Eintrag kann ein Start nachzuziehen sein:
+            # die Hilfe-Startbefehle (HILFE_VERIFIZIERT) gelten fuer Dateien,
+            # die kein KURATIERT brauchen.
+            if not e.get("start"):
+                schluessel = e.get("pfad") or e["ordner"]
+                if schluessel in HILFE_VERIFIZIERT:
+                    e["start"] = [
+                        t.format(pfad=schluessel.replace("/", "\\")) for t in HILFE_START
+                    ]
+                    geaendert.append(f"{e['ordner']}.start")
             continue
-        for feld in ("rolle", "notiz", "gruppe", "anleitung", "befehle", "start"):
+        for feld in ("rolle", "notiz", "gruppe", "anleitung", "befehle", "start",
+                     "warnungen"):
             if kuratiert.get(feld) and not e.get(feld):
                 e[feld] = kuratiert[feld]
                 geaendert.append(f"{e['ordner']}.{feld}")
@@ -1078,6 +1127,14 @@ def auffrischen(
                     ordner = _projekt_ordner(brainfiles, e)
                     if ordner is not None and scan._venv(ordner)[0] is not None:
                         e["venv_pflicht"] = True
+        # Bewusst startlose Werkzeuge (OHNE_START): der Grund gehoert in den
+        # Eintrag, sonst stuende die Zeile als "EINRICHTEN" im Fenster - als
+        # fehlte etwas, dabei ist das Fehlen die Absicht.
+        pfad = e.get("pfad") or e["ordner"]
+        if pfad in OHNE_START and not e.get("warnungen"):
+            e["warnungen"] = [OHNE_START[pfad]]
+            e.setdefault("gruppe", "kein_start")
+            geaendert.append(f"{e['ordner']}.warnungen")
     print(f"nachzutragen: {len(geaendert)} Felder")
     if not anwenden:
         for name in geaendert:

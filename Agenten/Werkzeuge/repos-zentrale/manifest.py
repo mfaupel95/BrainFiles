@@ -226,6 +226,20 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             pfad=str(roh.get("pfad") or ""),
             rolle=str(roh.get("rolle") or ""),
         )
+        # Die Vermerke des Eintrags lesen. Das Feld stand seit jeher in der
+        # Datei und wurde nie gelesen - ein Vermerk, den niemand sieht, ist
+        # keiner (gefunden am 30.09.2026, als `kein_start` darauf aufbauen
+        # sollte).
+        rohe_warnungen = roh.get("warnungen")
+        if isinstance(rohe_warnungen, list):
+            eintrag.warnungen.extend(
+                str(w) for w in rohe_warnungen if isinstance(w, str) and w.strip()
+            )
+        elif rohe_warnungen:
+            eintrag.fehler.append(
+                f"warnungen muss eine Liste von Texten sein, "
+                f"gefunden: {type(rohe_warnungen).__name__}"
+            )
         if not _ordner_erlaubt(ordner):
             eintrag.erlaubt = False
             eintrag.fehler.append(f"Ordnername unbrauchbar: {ordner!r}")
