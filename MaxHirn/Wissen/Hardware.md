@@ -976,3 +976,113 @@ laufende Claude-Instanzen — eine Folge der Mehrfachsitzungen-Regel aus
 **Messung:** Fehlercode 3221225786 sollte damit nicht mehr vorkommen. 
 
 **Verwandt:** [[Schutzregeln]] (Mehrfach-Sitzungen), [[Hardware-Checkliste-D5]] (Schrittfolge D5/Kernel-Power 41), `Agenten/sichern.ps1` (Implementierung)
+
+## Nachmessung 30.09.2026 — der gemeinsame Nenner der Abschaltungen
+
+**Kurzfassung:** Die Abschaltungen sind keine Stromausfaelle im engeren Sinn,
+sondern die Folge von **Speichernot**. Windows meldet sie selbst, 296-mal in 14
+Tagen (Ereignis 2004, `Resource-Exhaustion-Detector`). Die beiden Verursacher
+stehen in fast jeder dieser Meldungen an der Spitze: **`llama-server.exe`**
+(LM Studio, bis 18,0 GB) und **`com.docker.sailor.exe`** (Docker Desktop,
+dauerhaft 5,6-15,8 GB).
+
+### Stand von T-004
+
+21-mal Ereignis 41 seit 08.08.2026 (am 30.08. waren es 12), 19-mal mit 6008.
+Die letzte Abschaltung war am **25.09.2026, 16:12**; seit dem Neustart am
+29.09. 21:06 lief der Rechner 13,8 h ohne Abschaltung.
+
+**Alle 18 belegten Abschaltzeiten liegen zwischen 10:45 und 00:30 Uhr** —
+12:31, 14:56, 11:05, 16:13, 16:16, 18:00, 14:16, 10:45, 13:17, 20:59, 16:57,
+22:55, 16:33, 23:40, 16:41, 00:30, 13:12, 16:12. Keine einzige nachts, sechs
+im Fenster 16:00-17:00. **Damit ist "passiert im Leerlauf" endgueltig
+ausgeschlossen** — es passiert unter Last.
+
+### Zwei Abschaltungen mit belegter Kette
+
+| Datum | Letztes Systemschreiben (6008) | Ereignis 2004 | Start danach |
+|---|---|---|---|
+| 24.09.2026 | 13:12:06 | 13:27:23 und 13:27:37 (`svchost.exe` 6,4 GB) | 13:32:24 |
+| 25.09.2026 | 16:12:25 | 16:12:55 (`llama-server.exe` 18,0 GB) | 16:36:48 |
+
+Am 25.09. folgt auf die 2004-Meldung um 16:12:55 der Absturz von
+`llama-server.exe` um **16:12:56** — eine Sekunde spaeter — und der Rechner kam
+erst um 16:36:48 zurueck.
+
+**Die 6008-Zeit ist nicht der Todeszeitpunkt**, sondern das letzte Schreiben ins
+Systemprotokoll. Am 24.09. lief die Maschine danach noch mindestens 15 Minuten
+weiter (2004 um 13:27) — das Protokoll stand still, die Maschine nicht. Wer die
+6008-Zeit als Absturzzeit liest, sucht im falschen Fenster.
+
+### Die llama-server-Abstuerze sind Folge, nicht Ursache
+
+13 von 14 `llama-server.exe`-Abstuerzen der letzten 8 Tage liegen **innerhalb
+von 15 Minuten um ein 2004-Ereignis**. Fehlercode `0xc0000409`
+(`STATUS_STACK_BUFFER_OVERRUN` = `__fastfail`), Modul `ucrtbase.dll`, immer
+derselbe Offset `0xa527e` — auch bei `python.exe`. Das ist kein Fehler in
+llama.cpp, sondern die C-Laufzeit, die bei fehlgeschlagener Anforderung
+abortiert. Betroffen ist der mitgelieferte Server aus
+`C:\Users\faupe\.lmstudio\extensions\backends\llama.cpp-win-x86_64-nvidia-cuda12-avx2-2.47.0`.
+
+### Die harte Grenze: 75,7 GB, und warum sie nicht wachsen konnte
+
+```
+Commit-Grenze        75,7 GB   (63,7 GB RAM + 8 GB C: + 4 GB O:)
+C:\pagefile.sys      8192 / 8192    <- FEST, kann NICHT wachsen
+O:\pagefile.sys      4096 / 16384   <- gewachsen ist sie nie
+Peak-Auslastung      652 MB (C:) und 715 MB (O:)
+```
+
+Die Auslagerungsdateien sind praktisch unbenutzt, **weil sie nicht wachsen
+konnten**. Die Commit-Grenze stand damit bei 75,7 GB fest.
+
+Beleg fuer die Folge: am **30.09.2026 zwischen 10:12 und 10:46** sind in 35
+Minuten **31 Anwendungen abgestuerzt** — `chrome_proxy.exe`, `WerFault.exe` und
+`python.exe` mit `0xc000012d` (`STATUS_COMMITMENT_LIMIT`), dazu PowerShell mit
+`OutOfMemoryException`, `Hermes.exe`, `chrome.exe`, `python.exe` (3x),
+**`dwm.exe`** (der Bildschirm flackert, wenn der Compositor neu startet),
+`Docker Desktop` (10x in 8 Minuten), `claude.exe`, `LogiOverlay`, `es2utility`,
+`WindowsTerminal`. Neun verschiedene, voneinander unabhaengige Programme in
+einer halben Stunde sind kein Softwarefehler.
+
+### Was am 30.09.2026 zusaetzlich messbar war
+
+- **Der Hermes-Gateway ist an derselben Speichernot gestorben.**
+  `gateway_state.json` nennt PID 34732, `gateway_state: starting`,
+  `restart_requested: true`, `updated_at 08:44:02 UTC` (= 10:44 CEST) — der
+  Prozess existiert nicht, kein Prozess mit `gateway`-Kommandozeile, Ports 8644
+  und 9900 sind frei. Der Waechter lief um 10:57:54 mit Ergebnis 0 und **hat ihn
+  nicht geheilt**: er liest `gateway_state: starting` als "laeuft gerade an" und
+  wartet. Eine tote PID im Zustand `starting` ist ein blinder Fleck.
+- **Auch nicht erreichbar:** OmniRoute (20128) und der Bonsai-Server (8080).
+  Ollama (11434) und der Bus (8787) laufen.
+- **Energiesparplan ist "Energiesparmodus"** (`a1841308-...`). Auf einem
+  Arbeitsrechner mit i9-7940X ungewoehnlich — nicht geaendert, nur notiert.
+
+### Laufwerksordnung: die Tabelle oben ist ueberholt
+
+| | 19.08.2026 notiert | 30.09.2026 gemessen |
+|---|---|---|
+| J: WD My Book | Disk 3, frei 270,9 GB | **Disk 4**, frei 174,6 GB |
+| Q: SanDisk | Disk 3 (ausser Haus) | **Disk 3** |
+| E: Netac | Disk 4 | nicht angeschlossen |
+
+J: hat in sechs Wochen rund 96 GB dazubekommen. Die 479 unkorrigierten
+Lesefehler bleiben; **eine neue** `disk`-153-Meldung am 24.09. 15:16:57 auf
+Disk 4 (LBA `0x176635f8` = rund 187 GB) — **nicht LBA 0**, also kein elektrisch
+toter Datentraeger, sondern ein wiederholter E/A-Versuch auf der bekannten
+Platte.
+
+### Negativbefunde (geprueft, war es nicht)
+
+- **0** WHEA-Logger-Ereignisse in 30 Tagen — CPU/RAM/PCIe sauber.
+- **0** Speicherdiagnose-Befunde.
+- **0** Ereignisse 51/7/11/55 (Platten-/Dateisystemfehler) in 30 Tagen.
+- **1** `disk`-153 in 30 Tagen (siehe oben), **0** volmgr.
+- GPU 50 Grad, 54,86 W von 220 W, 0 % Auslastung, 1129 von 8192 MiB belegt.
+  `nvlddmkm` 7x Id 13 und 4x Id 153 in 30 Tagen — beobachtet, kein Muster.
+- Treiber 617.14 (am 22.09. war es 616.92).
+
+**Offen:** die Commit-Grenze ist die einzige Groesse, die sich ohne Hardware
+aendern laesst und die direkt auf beide Abschaltungen wirkt (T-215); der
+Energiesparplan ist ein zweiter, unabhaengiger Verdacht (T-216).
