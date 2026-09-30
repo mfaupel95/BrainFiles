@@ -593,3 +593,127 @@ ausloesen, braucht einen Lauf ueber echte Daten.**
 * `handelszentrale.py` und `leitstand.py` (die anderen Fenster) bleiben, wie sie
   sind; `fenster_design.py` wurde nicht geaendert (die Karten-Stile stehen
   lokal in `fenster.py`, damit die anderen Fenster unberuehrt bleiben).
+
+## Nachtrag 30.09.2026 (spaet) — Spuren startbar, Gruppe „KEIN EIGENER START", Junction-Falle
+
+Auftrag Max: *„brainfiles/werkstatt und O:/werkstatt sind beide mit meinen Repos
+voll. alles auf einer platte lagern? nach duplikaten und missstaenden
+ausschauhalten. an zentrale anbinden was fehlt, uis startbereit machen in der
+zentrale"*.
+
+### Erst die Frage: es sind nicht zwei Orte
+
+`BrainFiles\Werkstatt` **ist** `O:\Werkstatt` — eine Junction, kein zweiter
+Ordner. Beide Listen sind Zeile fuer Zeile identisch, beide zeigen dieselben
+Zeitstempel und dieselbe Groesse. „Beide voll" hiess also: **ein** Ort, 66 GB.
+Zweiter Befund derselben Art: `Werkstatt\Repos\intelligent-trading-bot` ist eine
+Junction auf `Werkstatt\intelligent-trading-bot` (siehe unten).
+
+### Jede Spur ist jetzt aus dem Fenster startbar
+
+Eine Spur ist ein **Ordner**, kein Programm: kein eigenes venv (ausser den
+Nautilus-Armen), und die Datei heisst nicht immer `handeln.py`. Der Start kommt
+deshalb aus derselben Quelle wie im Dauerlauf:
+
+```
+..\scanner\.venv\Scripts\python.exe  handeln.py  --vorschau     # Vorgabe
+..\nautilus\.venv\Scripts\python.exe handeln.py  --vorschau     # die drei Nautilus-Arme
+.venv\Scripts\python.exe             handeln.py  --vorschau     # scanner (eigenes venv)
+```
+
+`SPUREN_START` in `fuellen.py` haelt die Paare (Skript, Interpreter) fuer **37
+Spuren** — dieselben Paare wie `dauerlauf.SPUREN`, aber es bleibt EINE Liste
+dort. Gestartet wird **immer `--vorschau`**: das ist der lesende Blick einer
+Spur, sie schreibt dabei nichts. Ohne den Zusatz liefe ein voller Handelszyklus
+los, und das ist Sache des Dauerlaufs, nicht eines Klicks.
+
+Dazu die beiden Fenster (`handelszentrale.py`, `leitstand.py`) mit
+`pythonw.exe` und der Freqtrade-Betrieb (`bots.py liste` plus fuenf Befehle,
+darunter die drei Web-UIs auf 8081/8082/8083). `leitstand.py` stand vorher
+ausdruecklich OHNE Klick-Start („es hat keine Argumente") — eine UI ohne
+Startknopf ist in einer Startzentrale aber fehl am Platz.
+
+`fuellen.py --belege` hat **43 Startbefehle** einmal echt gefahren; jeder hat
+seinen Logbeleg in `logs/`. Einzige Auffaelligkeit: `leitstand.py` lief in die
+90-s-Frist — es ist ein Fenster, es endet nicht von selbst.
+
+### Die Gruppe „KEIN EIGENER START"
+
+Vorher standen **86 Zeilen** in EINRICHTEN — gelesen als „86 Sachen sind
+kaputt". Die meisten waren es nicht: fremde Klone, die nur gelesen werden, sechs
+Freqtrade-Strategieklassen, die freqtrade laedt, und vier Werkzeuge, die man
+nicht von Hand starten darf (`dauerlauf.py`, `melder.py`,
+`kraken_abweisungs_sonde.py`, `nautilus_rc5`-Rauchproben).
+
+Neu ist deshalb die Gruppe **KEIN EIGENER START** („richtig so: wird geladen
+oder ist nur lesbar"). Die Bedingung ist eng und steht in `manifest._zeile`:
+
+- **kein** anderer Grund darf vorliegen (`startgruende == ["kein Startbefehl
+  belegt"]`) — ein fehlendes venv bleibt EINRICHTEN, sonst waere die Gruppe ein
+  Versteck fuer echte Luecken;
+- der Grund muss **dabeistehen**: als kuratierte Gruppe (`gruppe: kein_start`),
+  als Vermerk (`warnungen`, z. B. aus `fuellen.OHNE_START`) oder in der
+  FREMD-Liste als `nur lesen`.
+
+Ergebnis: EINRICHTEN faellt von 86 auf **2** (REPOS `foreman` — venv fehlt,
+HANDEL `kerzenschluss_bias.py` — kein Startbefehl). Beide sind echte Luecken und
+bleiben stehen.
+
+### Gefunden: das Manifest-Feld `warnungen` wurde nie gelesen
+
+`fuellen.py` schreibt `warnungen` seit jeher in die Datei, `manifest_laden` hat
+es **nie gelesen** — die Liste startete als `[]` und wurde nur von
+Befehls-Fehlern gefuellt. Ein Vermerk, den niemand sieht, ist keiner: die
+„NIE von Hand starten"-Warnung von `dauerlauf.py` war im Fenster unsichtbar.
+Behoben (Typ wird geprueft, ein falscher Typ ist ein Eintragsfehler).
+
+### Die Junction-Falle im Doppel-Scan
+
+Ein Scan ueber alle `.git`-Ordner fand **87 Klone** und sieben „gleiche Herkunft
+an mehreren Orten". Fast alle sind gewollt oder schon weggeraeumt
+(`Ausgemustert\klon-doppel-20260930`). **Eine** war echt: der zweite
+`kraken-cli`-Klon an der BrainFiles-Wurzel (5,5 MB, **ohne** Bau) neben dem
+gebauten in `Werkstatt/Repos` (2,7 GB, `target/release/kraken.exe` — den
+`Agenten/Werkzeuge/kraken.ps1` benutzt).
+
+Und **eine** war keine: `Werkstatt\Repos\intelligent-trading-bot` ist eine
+**Junction** auf `Werkstatt\intelligent-trading-bot`. Ein Inhalts-Fingerabdruck
+ueber beide Pfade liefert denselben Hash — das sieht wie eine Dublette aus und
+ist dieselbe Ablage. Die alte Manifest-Notiz („Zweite Ablage des
+ML-Backtest-Pruefstands") hat den Irrtum noch bestaetigt. Beim Verschieben des
+„Duplikats" wanderte der echte Ordner weg und die Junction zeigte ins Leere; das
+Fenster meldete die Zeile als FEHLT. Beide Zeilen tragen jetzt den Vermerk, der
+Start steht in der Repos-Zeile.
+
+**Merksatz: vor jedem Duplikat-Urteil die Reparse-Punkte pruefen.** Ein
+Inhaltsvergleich ueber zwei Pfade beweist nichts, wenn einer ein Verweis ist.
+`Get-ChildItem -Force | Where-Object { $_.Attributes -band
+[IO.FileAttributes]::ReparsePoint }` kostet eine Sekunde. Unter `O:\Werkstatt`
+gibt es genau **einen** solchen Verweis (diesen); unter `Agenten\Hermes\skills`
+die bekannten sieben `okx-*`.
+
+### Was noch auffiel (nicht angefasst)
+
+- **`MaxHirn\codex`** (0,66 GB) ist als **Gitlink** (Modus 160000) im
+  BrainFiles-Repo eingetragen — ein Klon im Vault, und der Vault sagt selbst
+  „hier liegt nichts, was startet". Ein Gitlink auf einen nicht existierenden
+  Unterbau ist beim Klon kaputt.
+- **`MaxHirn\DockerDesktopWSL`** (4,88 GB) — Docker-Daten im Vault. Der Vault
+  geht nach `G:`, das Volumen wird also mitgesichert.
+- `Werkstatt\handel-stack` (0,03 GB) ist der eingefrorene Spiegel vom 18.09. —
+  gewollt, im Manifest als Rolle „Spiegel (18.09.)" benannt.
+- `Werkstatt\Ausgemustert` 4,86 GB (`c-entlasten` 3,62 = alte Hermes-Anlage,
+  `installer` 0,73, `klon-doppel` 0,51).
+- In `Werkstatt\Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/target/
+  `.git` — wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
+
+### Zahlen
+
+* Zentrale: **201 Zeilen** (REPOS 46 · WERKSTATT 30 · HANDEL 125), 0 NEU,
+  0 FEHLT, 0 auffaellig; HANDEL **106 startbar** (vorher 62).
+* **296 Tests gruen** (vorher 259 in dieser Zaehlung: +37 in dieser Runde).
+* Verschoben (reversibel, nichts geloescht): `kraken-cli`-Wurzelklon →
+  `Ausgemustert\klon-doppel-20260930\kraken-cli-wurzel`; Bionic-1.1.6 (634 MB),
+  OKX Security Assistant (115 MB) und das VSIX-Paket →
+  `Ausgemustert\installer-20260930`. Die Werkstatt-Wurzel hat jetzt 29 statt 32
+  lose Dateien.

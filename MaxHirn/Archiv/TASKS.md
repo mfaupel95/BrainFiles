@@ -64,6 +64,47 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
+- [ ] **T-248 - `MaxHirn/codex` ist ein Gitlink: ein Klon im Vault**
+      Kontext: `git ls-files -s MaxHirn/codex` liefert Modus **160000** (Gitlink) auf
+      `64b482500d` - ein Codex-Klon (0,66 GB, 7.266 Dateien) liegt IM Vault, und der Vault
+      sagt selbst „hier liegt nichts, was startet". Zusaetzlich: `Werkstatt/Repos/codex`
+      steht auf einem anderen Commit (`17a9df60e4`), es sind also zwei Klone. Ein Gitlink
+      ohne echten Unterbau ist beim Klon von BrainFiles kaputt.
+      Naechster Schritt: Entscheidung von Max - Klon nach `Werkstatt/Repos/` verschieben
+      (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
+      Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
+- [ ] **T-249 - `MaxHirn/DockerDesktopWSL` (4,88 GB) liegt im Vault**
+      Kontext: Der Vault wird nach `G:` gesichert (`MaxHirn/` + `Agenten/`), dieses Volumen
+      damit mit - 4,88 GB Docker-Daten in einem Wissensspeicher. Am 30.09.2026 gemessen, nicht
+      angefasst: Docker laeuft (Container `nautilus-demo`, `freqtrade-*`, `openterminalui-*`),
+      ein Verschieben im laufenden Betrieb waere riskant.
+      Naechster Schritt: Entscheidung von Max - im Docker Desktop den Datentraeger-Ort
+      verlegen (dann einmal Docker neu starten) oder bewusst liegen lassen und in
+      `Wissen/Routinen.md` als Ausnahme vermerken.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/DockerDesktopWSL`, Sicherung nach `G:`
+- [ ] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
+      Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
+      (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
+      SSRN-PDFs, `setup-trading-stack.sh` - 29 Dateien. Die drei Installationspakete
+      (749 MB) und der zweite `kraken-cli`-Klon sind am 30.09.2026 nach `Ausgemustert/`
+      geraeumt. In `Werkstatt/Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/
+      `target`/`.git` - wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
+      Naechster Schritt: Entscheidung von Max - (a) lose Dateien nach `Ausgemustert/` oder
+      in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
+      Startbefehl) oder unangetastet lassen.
+      Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
+- [ ] **T-251 - Zwei echte Luecken in der Zentrale: `foreman` und `kerzenschluss_bias.py`**
+      Kontext: Nach der Umstellung am 30.09.2026 stehen genau zwei Zeilen in EINRICHTEN -
+      beide zu Recht. `foreman` (REPOS) hat kein `.venv`, ist aber ein Python-Paket mit
+      `src/foreman/__main__.py` und `pyproject.toml`; `kerzenschluss_bias.py` (HANDEL) hat
+      `argparse`+`__main__`, aber noch keinen echten Lauf (Hausregel „kein geratener
+      Befehl"). `foreman` ist fremd und nur lesend gedacht - ein venv darin waere ein
+      Schreibzugriff, den niemand braucht.
+      Naechster Schritt: `kerzenschluss_bias.py --help` einmal fahren und in
+      `fuellen.HILFE_VERIFIZIERT` aufnehmen; bei `foreman` entscheiden, ob es genutzt wird
+      (dann venv) oder ob es als „kein eigener Start" gefuehrt wird.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/repos-zentrale/fuellen.py`
 - [ ] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
       Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
       nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.

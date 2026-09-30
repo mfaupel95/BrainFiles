@@ -54,7 +54,18 @@ eine Liste, keine Suche: unter `Agenten/Handel/OpenAlice` liegen 130 Dateien
 eines fremden Projekts, die sonst als Zeilen auftauchen. Eine `--help`-Angabe
 bekommt nur, wer einmal gelaufen ist (`fuellen.HILFE_VERIFIZIERT`).
 
-**Nicht als Zeile aufgenommen: die 30 `handeln.py` der Spuren.** Welches Skript
+**Jede Spur ist eine startbare Zeile (30.09.2026).** Eine Spur ist ein Ordner
+ohne eigenes venv, ihre Datei heisst nicht immer `handeln.py`. `SPUREN_START` in
+`fuellen.py` haelt je Spur das Paar (Skript, Interpreter) - dieselben Paare wie
+`dauerlauf.SPUREN`; die zweite Liste dort bleibt die einzige Wahrheit. Der Start
+ist **immer `<interpreter> <skript> --vorschau`** (37 Spuren): der lesende Blick
+einer Spur, sie schreibt nichts. Ohne `--vorschau` liefe ein voller
+Handelszyklus los - das ist Sache des Dauerlaufs, nicht eines Klicks. Der
+Interpreter steht relativ zur Spur (`..\scanner\.venv\Scripts\python.exe`,
+Nautilus-Arme `..\nautilus\.venv\...`), weil das Arbeitsverzeichnis einer Zeile
+ihr eigener Ordner ist.
+
+**Nicht als Zeile aufgenommen: die `handeln.py` der Spuren als DATEI.** Welches Skript
 eine Spur fahrt, steht in `dauerlauf.py` (`SPUREN`) - meist gar kein
 `skript`-Feld (Vorgabe `handeln.py`), aber `nautilus_kraken_futures` teilt sich
 den Ordner `nautilus_kraken` und faehrt `handeln_futures.py`. Diese Liste im
@@ -136,11 +147,25 @@ Vier Faelle, in denen der Lauf **nichts** tut (alle stehen im Bericht):
 | `anderer Zweig` | lokaler Zweigname weicht vom Quell-Standardzweig ab (`JEV`, `Werkstatt`) — das Skript raet nicht |
 | `fetch fehlgeschlagen` / `Vorspulen fehlgeschlagen` | Netz oder shallow; shallow-Klone holt das Skript einmal mit `--unshallow` |
 
-## Die fuenf Gruppen
+## Die sechs Gruppen
 
 STARTBAR (Befehl belegt UND Abhaengigkeiten da) · EINRICHTEN (es fehlt etwas:
-venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · NUR DOKU
-(kein Programm) · FEHLT (Manifest-Eintrag ohne Ordner).
+venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · **KEIN
+EIGENER START** (richtig so: wird geladen oder ist nur lesbar) · NUR DOKU (kein
+Programm, nur Text) · FEHLT (Manifest-Eintrag ohne Ordner).
+
+**KEIN EIGENER START** entstand am 30.09.2026, weil 86 Zeilen in EINRICHTEN
+standen und als „86 Sachen sind kaputt" gelesen wurden. Die Bedingung in
+`manifest._zeile` ist eng: es darf **kein** anderer Grund vorliegen
+(`startgruende == ["kein Startbefehl belegt"]`, ein fehlendes venv bleibt
+also EINRICHTEN), und der Grund muss dabeistehen - als kuratierte Gruppe
+(`gruppe: kein_start`), als Vermerk (`warnungen`, z. B. aus `fuellen.OHNE_START`)
+oder in der FREMD-Liste als `nur lesen`. Wer eine Zeile hierher schiebt, sagt
+damit „das ist fertig", nicht „das ist mir zu viel".
+
+**Das Feld `warnungen` wird jetzt gelesen.** `manifest_laden` hat es bis zum
+30.09.2026 nie aus der Datei geholt - die Liste startete leer und fuellte sich
+nur aus Befehls-Fehlern. Ein Vermerk, den niemand sieht, ist keiner.
 
 ## Ein Repo aufnehmen oder einen Start hinterlegen
 
@@ -174,6 +199,16 @@ venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · NUR DOKU
 
 ## Fallen
 
+- **Ein Duplikat-Scan laeuft ueber Junctions in die Irre.** `Werkstatt/Repos/
+  intelligent-trading-bot` ist eine **Junction** auf `Werkstatt/
+  intelligent-trading-bot`: derselbe Inhalt unter zwei Pfaden, gleicher
+  Fingerabdruck, gleiche Groesse - das sieht wie eine Dublette aus und ist EINE
+  Ablage. Beim Verschieben des „Duplikats" wanderte der echte Ordner weg, die
+  Junction zeigte ins Leere und die Zeile stand als FEHLT im Fenster. Vor jedem
+  Duplikat-Urteil die Reparse-Punkte auflisten:
+  `Get-ChildItem <wurzel> -Force -Recurse -Depth 1 | Where-Object { $_.Attributes
+  -band [IO.FileAttributes]::ReparsePoint }`. Unter `O:\Werkstatt` gibt es genau
+  einen (diesen); unter `Agenten\Hermes\skills` die sieben `okx-*`.
 - **Ein per Pfad geladenes Modul mit `@dataclass` braucht einen
   `sys.modules`-Eintrag.** `importlib.util.module_from_spec` + `exec_module`
   allein laesst `sys.modules[cls.__module__]` leer; dataclasses bricht dann mit
