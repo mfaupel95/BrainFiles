@@ -725,12 +725,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
       der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
       im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
-      8081/8082/8083.
-      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst in
-      `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
+      8081/8082/8083. Nachtrag 30.09.2026: Er macht ausserdem einen Test rot.
+      `test_freqtrade_bridge.LiveTest.test_lage_vom_echten_bot` faellt mit
+      `HTTP 401 bei /show_config`. Gemessen mit DENSELBEN Zugangsdaten aus
+      `user_data/config.json`: Port 8080 antwortet auf ping 200, auf show_config 401;
+      Port 8081 beides 200. Der Altlast-Container traegt also ein anderes Passwort im
+      Speicher als die Datei (gestartet 30.09. 19:51 lokal, config.json vom 29.09.
+      18:43) - die Bridge liest die Datei und wird abgewiesen. Sonst ist die Suite
+      gruen: 1377 Tests, dieser eine Fehler, 9 uebersprungen.
+      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst
+      in `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
       Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/freqtrade/bots_starten.sh
 
 - [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
       Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
