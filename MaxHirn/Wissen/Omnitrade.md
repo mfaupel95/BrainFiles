@@ -34,10 +34,10 @@ setx OKX_DEMO_API_KEY "<key>" && setx OKX_DEMO_API_SECRET "<secret>" && setx OKX
 
 ## Starten
 
-Immer aus dem omnitrade-Ordner, nicht aus `Agenten/Handel`:
+Immer aus dem omnitrade-Ordner, nicht aus `Agenten/Handel`. PowerShell (`cd /d` gibt es dort nicht, `&&` geht in PowerShell 7):
 
 ```
-cd /d %USERPROFILE%\Documents\BrainFiles\Werkstatt\omnitrade && cargo run -q -p omnitrade-cli -- live --exchange okx --network testnet --symbol BTCUSDC --script strategien/ema_cross_20_50.omni --status-file status/live.json
+cd $env:USERPROFILE\Documents\BrainFiles\Werkstatt\omnitrade; cargo run -q -p omnitrade-cli -- live --exchange okx --network testnet --symbol BTCUSDC --script strategien/ema_cross_20_50.omni --status-file status/live.json
 ```
 
 - **Paar BTCUSDC**, nicht BTCUSDT: Das EU-Demo hat USD, USDC, BTC, ETH und XRP,
@@ -64,8 +64,16 @@ Pfad über `OMNITRADE_STATUS`): Zustand, Börse, Netz, Kerzen, letzter Kurs,
 Signal, Orders. Schnellblick ohne Fenster: `python omnitrade_bridge.py`.
 Die Anzeige liest nur und steuert nichts.
 
-`omnitrade-ui` (eigenes egui-Fenster im Repo) ist bisher ein leeres Gerüst
-ohne Datenzufuhr; es zeigt nichts an.
+**Eigenes Fenster `omnitrade-ui`** (egui): links Kerzenchart (letzte 100),
+rechts oben Zustandszusammenfassung, rechts unten die letzten Orders. Liest
+dieselbe Statusdatei einmal pro Sekunde, nur lesend. Aus dem omnitrade-Ordner:
+
+```
+cargo run -q -p omnitrade-ui
+```
+
+Anderer Pfad: als erstes Argument oder über `OMNITRADE_STATUS`. Das Fenster
+zeigt nur, was der Lauf schreibt; ohne Lauf steht dort „feed: no status file“.
 
 ## Beenden
 
