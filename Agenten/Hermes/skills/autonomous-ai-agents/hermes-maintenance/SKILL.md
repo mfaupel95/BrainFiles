@@ -1,6 +1,6 @@
 ---
 name: hermes-maintenance
-description: "Repair a Hermes install: update, venv, SQLite WAL."
+description: "Repair a Hermes install: update, desktop, venv, WAL."
 version: 1.1.0
 author: Hermes
 license: MIT
@@ -430,6 +430,63 @@ den Ausloeser kennt. Beides getrennt messen und getrennt ausweisen: die Gleichze
 in der executions-DB UND die Startzeiten im Dienstlog gegen die Takte im selben Zeitraum.
 Vollstaendige Diagnose, Multiplex-Ursache, Exit-75-Schleife und Waechter-Einrichtung:
 `references/gateway-ausfall.md`.
+## Desktop kommt nicht hoch: erst die vier Zeugen, dann reparieren
+
+Symptom: die Desktop-App haengt bei „Connecting …" bzw. meldet
+`Timed out waiting for Hermes backend port announcement (90000ms)`, `logs/desktop.log`
+wiederholt denselben Block alle paar Minuten, und die Oberflaeche bleibt unbrauchbar,
+obwohl Rechner und Gateway laufen.
+
+Vier Zeugen, in DIESER Reihenfolge lesen - jeder kann allein die Ursache sein:
+
+| Zeuge | Wo | Was es heisst |
+|---|---|---|
+| Update-Obligation | `installs/<hash>/source-completion-pending`, `$HERMES_HOME/.hermes-update-in-progress` | der Launcher faehrt vor JEDEM Start erst den mehrminutigen Schwanz; das 90-s-Fenster der App laeuft dabei ab (Abschnitt unten) |
+| Dateisperre | laeuft noch ein `Hermes.exe`? `Get-CimInstance Win32_Process -Filter "Name='Hermes.exe'"` | der laufende Desktop haelt `apps/desktop/release/win-unpacked` -> `WinError 5` beim Austausch |
+| Plattenplatz | `shutil.disk_usage('C:\\')` | der Desktop-Build braucht rund 20 GB transient -> `No space left on device` mitten im Bau |
+| Anhaengen statt Starten | `spawn-ledger.json` im Hermes-Home | die App haengt sich an einen REGISTRIERTEN Backend (`purpose` `dashboard` oder `serve`, juengster Eintrag) und probt `/api/ws` mit dem veroeffentlichten Token; ein ueberlasteter Backend laesst die Probe auslaufen (`rejected the session token on /api/ws`) |
+
+Die Reihenfolge der Reparatur ist nicht beliebig - sonst scheitert der naechste Versuch an
+demselben Blocker:
+
+1. **Desktop schliessen** (kein `Hermes.exe` mehr im Prozessbaum). Erst danach darf der
+   Austausch der App laufen.
+2. **Reserve herstellen** (Abschnitt unten): `uv cache clean`, `AppData\Local\Temp` leeren,
+   alte Build-Reste (`.dist-build-*`, `release/win-unpacked.bak`) - dann MESSEN, nicht hoffen.
+3. **Den Update-Schwanz zu Ende fahren** (Abschnitt „Abgebrochener Update-Schwanz") und
+   `source-completion-pending` verschwinden sehen.
+4. **Gateway und App starten**: `schtasks /run /tn Hermes_Gateway_<suffix>` und die
+   `win-unpacked\Hermes.exe`; Gateway braucht 50-90 s, der Desktop-Backend ~50 s.
+5. **Belegen**, nicht behaupten: `curl http://127.0.0.1:<port>/api/health` -> `{"ok":true,…}`
+   (Port aus `desktop.log`, Zeile `HERMES_BACKEND_READY port=…`), `gateway_state.json`
+   `running` mit `a2a`/`telegram`/`webhook` connected, und in `desktop.log` die Zeile
+   `[boot] Hermes backend is ready. Finalizing desktop startup`.
+
+Ausfuehrliches Rezept (Log-Zeilen, Befehle, das Anhaenge-Verhalten im Detail, Gegenproben):
+`references/desktop-bootschleife.md`.
+
+## Plattenreserve fuer Builds (~20 GB, sonst bricht der Schwanz ab)
+
+Der Desktop-Build ist der platzhungrigste Schritt eines Updates. Laeuft C: dabei voll, endet
+der Schwanz mit `OSError: [Errno 28] No space left on device` und der Zustand bleibt scharf -
+der Desktop kommt danach nicht mehr hoch.
+
+Hausloesung: eine Wache, die die Reserve SELBST haelt (`Agenten/Hermes/scripts/platz-wache.py`,
+Cron `platz-wache`, taeglich, Telegram, leere Ausgabe = nichts senden). Faellt C: unter die
+Schwelle, raeumt sie nur reproduzierbare Posten: Temp aelter als 24 h, CrashDumps, uv-Cache,
+npm-Cache - **nie** `node_modules` oder `.venv`, und **nichts**, solange ein Bau/Update laeuft
+(Marker `.hermes-update-in-progress`, `installs/*/source-completion-pending`, Kommandozeilen mit
+`source_completion`/`hermes_cli.main update`/`electron-builder`/`npm … run build`/`uv`).
+Vor jedem eigenen Bau/Update messen:
+
+    python Agenten/Hermes/scripts/platz-wache.py --ohne-aufraeumen
+
+Fuer einen einmaligen Engpass von Hand: `uv cache clean` (2026: 9,2 GB) und
+`AppData\Local\Temp` leeren sind die groessten sicheren Posten; `pnpm`-Store, `_Backups` und
+Modellgewichte nur nach Rueckfrage. Die Auslagerungsdatei ist der zweite Hebel (Commit-Grenze,
+Anleitung im Wiki `Betrieb/Sicherung-und-Laufwerke.md`): sie wirkt erst nach einem NEUSTART -
+vorher nicht als erledigt melden.
+
 ## Abgebrochener Update-Schwanz: Desktop-Bootschleife
 
 Ein gekillter Launcher-Lauf (`hermes config set/unset`, `hermes update`, `hermes desktop`, den ein
