@@ -110,3 +110,10 @@ Strg+C im Terminal, oder `taskkill /IM omnitrade-cli.exe /F`.
 - **Nur ein Lauf:** vor dem Start geprueft, dass kein `omnitrade-cli.exe` laeuft
   (Zaehlung = 1, der eigene). Zwei Laeufe ordern doppelt und schreiben in dieselbe
   Statusdatei.
+
+## Indikatoren und Strategien (30.09.2026)
+
+- **Neu in `.omni`:** `macd/macd_signal/macd_hist(schnell, langsam, signal)`, `bb_lower/bb_mid/bb_upper(periode, faktor)`, `stoch_k(n)`, `adx/plus_di/minus_di(n)`. Code: `omnitrade-script/src/extra.rs`. Neue Strategien in `strategien/`: macd_trend, bollinger_pullback, bollinger_meanrev, stoch_pullback, adx_trend, adx_macd.
+- **Messlatte ist Buy-and-Hold**, nicht null. Auf Tageskerzen (BTC, feste Menge 0,1, Gebuehr 0,1 %, Slippage 5 bp) schlagen nur `adx_macd` (9958 gegen 5953) und `ema_cross_50_200` (10106) die volle Reihe; Mean-Reversion (Bollinger, Stochastik) verliert auf ungesehenen Daten.
+- **Walk-forward je Jahr, BTC 1d (PnL-Differenz je Jahr):** `adx_macd` ist in allen 10 Jahren positiv (Minimum +50), verliert aber in starken Bullenjahren gegen Buy-and-Hold (2017, 2020, 2023, 2024) und gewinnt in Baeren-/Seitwaertsjahren (2018, 2022, 2025, 2026). `ema_cross_50_200` schwankt stark (2021 -971, 2024 +5124). Grobe Rechnung (Differenz kumulierter Laeufe), keine Neuoptimierung je Fenster.
+- **MoonDev-Strategien:** die Zahlen dort sind Modellprosa, nachgemessen verlieren sie gegen Buy-and-Hold (siehe `Wiki/Werkzeuge/MoonDev-GUI-und-RBI.md`); nichts uebernommen.
