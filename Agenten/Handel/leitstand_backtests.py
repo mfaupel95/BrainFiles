@@ -361,11 +361,12 @@ class BacktestReiter(ttk.Frame):
         teiler.pack(fill="both", expand=True)
         # Lage im Zustand: gemerkt beim Loslassen, hergestellt bei jeder
         # Groessenaenderung der Anlaufphase (umbrechende Hinweise verschieben
-        # das Layout noch) - bis der Nutzer zieht oder die Sekunde um ist.
-        self._teiler_anlauf = True
+        # das Layout noch) - bis der Nutzer zieht oder eine Sekunde nach dem
+        # ersten Zeigen (der Reiter ist beim Start meist verdeckt).
+        self._teiler_anlauf, self._teiler_gezeigt = True, False
         teiler.bind("<ButtonRelease-1>", self._teiler_merken, add="+")
         teiler.bind("<Configure>", self._teiler_herstellen, add="+")
-        self.after(1000, lambda: setattr(self, "_teiler_anlauf", False))
+        teiler.bind("<Map>", self._teiler_zeigen, add="+")
 
         self.arten = ttk.Notebook(teiler)
         teiler.add(self.arten, weight=1)
@@ -422,6 +423,11 @@ class BacktestReiter(ttk.Frame):
         self._teiler_anlauf = False
         lage = [self.teiler.sashpos(i) for i in range(len(self.teiler.panes()) - 1)]
         self.zustand.merke_in("teiler", "backtests", lage)
+
+    def _teiler_zeigen(self, _event=None):
+        if not self._teiler_gezeigt:
+            self._teiler_gezeigt = True
+            self.after(1000, lambda: setattr(self, "_teiler_anlauf", False))
 
     def _teiler_herstellen(self, _event=None):
         if not self._teiler_anlauf:
