@@ -285,6 +285,70 @@ Werkzeug im Haus: `Agenten/Handel/strategie_kennzahlen.py` (venv `Handel/.venv`)
 rechnet je Spur t-Statistik und Stop-Vorschlag aus der MAE; die Runden kommen
 ueber `auswertung_alle.runden_fuer(spur)`.
 
+## Die Auswertung selbst lesen, bevor man ihr glaubt
+
+Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
+
+1. **Die Summe ist meist EINE Spur.** Vor dem Urteil den Anteil der groessten
+   Spur an der Stufensumme nachrechnen (der Scanner trug 82 % in Basis und
+   96 % in mittel). Steht der Rest bei null oder im Minus, ist die Summe ein
+   Befund ueber eine Spur, nicht ueber das System - so berichten.
+2. **Papierzeilen tragen keine Gebuehr: ihre Summen sind BRUTTO.** Die Spalte
+   „Kosten (aus den Zeilen)" zeigt bei allen Papierbuechern 0,00 %, bei den
+   echten 0,05-0,60 %. Brutto- und Nettosummen nie in dieselbe Rangfolge
+   stellen; fuer ein Papierbuch kommt der Satz aus der `wachen.json` oder aus
+   einer gemessenen Fuellung.
+3. **Fehlt der Gebuehrenschluessel GANZ, rechnet das Werkzeug mit 0 % - und
+   eine tote Spur sieht tragfaehig aus.** Vor jeder Uebernahme eines
+   `f_max`-Urteils (`kosten_wendepunkt.py`) pruefen, ob die `wachen.json` der
+   Spur ueberhaupt ein Gebuehrenfeld traegt (`grep gebuehr <spur>/*.py`), und
+   den Satz gegen die BOERSE der Spur halten, nicht gegen den Namen: `orbk` ist
+   ORB auf Kraken-Spot und braucht dort 1,2 % je Runde (0,600 % je Seite
+   gemessen), waehrend die eigene Rechnung +0,01 bis +0,03 % zeigt. Ein `f_max`
+   unter dem Gebuehrensatz der eigenen Boerse heisst tot, unabhaengig von der
+   Runde. Der Warnsatz des Werkzeugs („haengt an der Gebuehrfreiheit") ist ein
+   Verdacht, kein Lob.
+4. **Nur ein `f_max` unter 0 % ist der harte Todesbeweis** - er gilt ohne jede
+   Gebuehrenannahme. Eine Spur mit -0,6 %/Runde ueber 13-20 Runden ist keine
+   duenne Stichprobe, sondern eine Messung; sie gehoert stillgelegt oder
+   umgebaut, nicht weiter beobachtet.
+5. **Der Gebuehrensatz hat eine EINHEIT, und sie steht nicht im Namen.**
+   `gebuehr_taker` in der `wachen.json` ist ein **Bruch je Seite** (0.0005 =
+   0,05 %, 0.006 = 0,600 %), `f_max` aus `kosten_wendepunkt.py` dagegen
+   **Prozent je Runde**. Wer die beiden Zahlen direkt vergleicht, liegt um
+   Faktor 100 daneben und erklaert jede Spur fuer tragfaehig: gemessen druckte
+   das Werkzeug den Bruch mit Prozentzeichen und stellte ihn dem Rundensatz
+   gegenueber - jede Gebuehrenaussage war um 100 zu klein, und das sah wie ein
+   Messwert aus. Die Umrechnung gehoert an EINE Stelle als reine Funktion
+   (`geb_runde = 2.0 * geb * 100.0`, also Seite mal zwei mal hundert) samt
+   Einheiten-Kommentar im Docstring - nicht an jeder Druckstelle neu, sonst
+   wandert der Faktor wieder aus einer davon heraus. Beleg: eine eigene
+   Testdatei, die die EINHEIT prueft (0.006 -> "0.600 % je Seite" / "1.200 %
+   je Runde") und den alten Faktor-100-Fehler als Gegenprobe festhaelt; danach
+   `orbk` 1,200 %/Runde gegen `f_max` +0,03 % = tot um Faktor 40. **Ein
+   Bruch-Feld und ein Prozent-Feld duerfen nie ohne Umrechnung in dieselbe
+   Zeile.**
+
+Fallen beim Fahren und Deuten:
+- **„alle" heisst: ein Aufruf je Stufe.** `auswertung_alle.py` kennt kein
+  `--alle` (Basis ohne Argument, dann `--risiko mittel|hoch`), dazu
+  `kosten_wendepunkt.py`. Die Laeufe in EINE Datei haengen und je Stufe einen
+  Abschnitt setzen, sonst stehen drei Ergebnisse ohne Etikett untereinander.
+- **Ein Auswerter, der die Ausgabe parst, muss das VOLLE Etikett treffen.** Zwei
+  Zeilen beginnen mit demselben Wort („Ergebnis auf den Einsatz" und
+  „Ergebnis … USD"); ein Praefix-Match zieht die falsche Zeile, und die Summe
+  ist still falsch. Etikett vollstaendig matchen und die Rohzeilen daneben
+  legen, bevor die Zahl in einen Bericht geht.
+- **Eine Uhrzeit im Kopf eines Berichts ist keine Zeitquelle.** Die Berichte
+  stempeln mit der Uhr des ausfuehrenden Prozesses (die Sandbox kann Tage
+  zurueckliegen). Datum fuer Notiz, Commit und Antwort aus
+  `git log -1 --format=%ci` oder vom Host nehmen - sonst wandert ein falsches
+  Datum in den Bericht.
+- **Die Stufen sind getrennte Buecher, kein Maßstab.** Dieselbe Spur kann in
+  Basis und hoch gegenlaeufige Vorzeichen tragen (xperp) - ein Summenvergleich
+  ueber die Stufen ohne Paarung je Instrument und Zeitfenster misst
+  „andere Geschaefte" gegen „mehr Einsatz" (`references/risikostufen.md`).
+
 ## Was eine duenne Stichprobe NICHT hergibt
 - Parameter auf < 8 Runden (swap 3, kraken 5 echte Runden).
 - Kostensaetze senken.

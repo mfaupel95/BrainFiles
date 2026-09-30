@@ -24,10 +24,19 @@ Docker-Stack.
 
 Der Freqtrade-Stack laeuft als Docker-Container `freqtrade` (stable), der die
 Strategien aus `Agenten/Handel/freqtrade/user_data/strategies/` liest (Mount auf
-`/freqtrade/user_data`). Der ganze freqtrade-Ordner ist GITIGNORED (Strategie,
-Daten, `config.json`) — Strategiearbeit wird NICHT committet, und `config.json`
-enthaelt Zugangsdaten (nie ausgeben). Der Bot ist Papier/Trockenlauf: echte
-Schluessel werden nie in den Backtest gezogen.
+`/freqtrade/user_data`). Der Ordner ist GEPERRT, aber **nicht mehr ganz**: die
+HANDARBEIT ist ueber eine Datei-Freigabeliste in der `.gitignore` sichtbar und
+gehoert committet — `user_data/strategies/*.py`, `user_data/bots/*.json`,
+`bots.json`, `bots_starten.sh`. Sonst verliert ein Datentraegerfehler sie still,
+und keine Sitzung merkt es. GESPERRT bleiben `user_data/config.json` (traegt die
+Zugangsdaten der Weboberflaeche, nie ausgeben), `user_data/data/` (Kursreihen,
+neu ladbar) und die `*.sqlite`. Die Bots laufen im Trockenlauf: echte Schluessel
+werden nie in den Backtest gezogen.
+
+Fuer den Betrieb MEHRERER Bots aus diesem einen Stack: `references/mehrere-bots.md`
+(Aufsatz-Muster, Startbefehl, Messreihenfolge) und
+`scripts/backtest_archiv_lesen.py` (Ergebnisarchiv gegen die gedruckte Tabelle
+nachzaehlen).
 
 ## Ablauf
 
@@ -59,6 +68,34 @@ Schluessel werden nie in den Backtest gezogen.
 6. **Nicht angefasst auflisten**: Container, config.json, gitignored
    Strategie/Daten, laufende dry_run-Bots, fremde Sitzungs-Commits.
 
+## Mehrere Bots aus EINEM Stack (Aufsatz-Muster)
+
+Je Bot kommt ein **Aufsatz** in `user_data/bots/<name>.json` dazu, der NUR den
+Unterschied traegt: `strategy`, `timeframe`, `max_open_trades`, `dry_run`,
+`api_server.listen_port`, `exchange.pair_whitelist`. Alles andere (Exchange,
+Schluessel, Risiko) kommt aus `user_data/config.json` — Freqtrade VERSCHMILZT
+verschachtelte Dicts ueber mehrere `--config`-Dateien. Genau deshalb darf ein
+Aufsatz keine Kopie der Basis sein: eine Kopie veraltet still und traegt die
+Zugangsdaten ein zweites Mal.
+
+Je Bot zwingend eigen:
+
+- **eigene Datenbank** (`--db-url sqlite:////freqtrade/user_data/tradesv3-<name>.sqlite`),
+  sonst schreiben alle Bots in dasselbe `tradesv3.sqlite` und die Buecher mischen.
+- **eigener API-Port**, und der Port MUSS an ZWEI Stellen gleich sein: im Aufsatz
+  (`api_server.listen_port`) UND in der Container-Portfreigabe.
+- **`api_server.listen_ip_address: "0.0.0.0"`.** Im Container ist `127.0.0.1`
+  dessen EIGENE Schleife; ein darauf gebundenes UI ist ueber die Portfreigabe
+  nicht erreichbar (Symptom: Connection reset). Nach aussen absichern ueber die
+  Freigabe `-p 127.0.0.1:<port>:<port>`, NICHT ueber die Bind-Adresse.
+
+Reihenfolge, die sich bewaehrt: erst die Strategie backtesten (siehe Ablauf),
+dann den Bot bauen — ein Bot auf einer ungemessenen Strategie laeuft blind.
+Nachweis, dass er wirklich steht: er erscheint in `docker ps` UND
+`curl http://127.0.0.1:<port>/api/v1/ping` antwortet. Der Modus in einem
+Treiberlog (`<spur> (live) ok`) ist KEIN Orderbeleg, und ein laufender Container
+ist kein Beweis fuer einen funktionierenden Orderweg.
+
 ## Fallen, die echte Zeit kosten
 
 - **`load=True` ueberschreibt still die kodierten Defaults.** Die Hyperopt-Parameter
@@ -88,6 +125,30 @@ Schluessel werden nie in den Backtest gezogen.
   Ergebnis ist erst dann ein Nachweis, wenn man es in diesem Lauf greifbar
   hat (`--export trades`, Ergebniszeile mitschneiden). Neue Strategien dazu
   genau eine Zeile.
+- **Im Spot-Modus laedt `can_short = True` NICHT** — eine uebertragene Strategie
+  laeuft still nur long, und die Short-Regeln kommen nie zum Einsatz. Wer das
+  Ergebnis bewertet, muss das wissen, sonst erklaert er eine Zahl, die die halbe
+  Strategie nie gesehen hat. Short braucht `trading_mode: futures` PLUS
+  Futures-Daten (`BTC/USDT:USDT`-Form). Umgekehrt: die fehlende Short-Seite
+  erklaert einen Verlust NICHT, wenn die Long-Seite in einem steigenden Markt
+  verliert und die Gebuehrenlast dieselbe bliebe.
+- **Bei hoher Frequenz ist die Gebuehr der eigentliche Gegner.** Traegt
+  `config.json` keinen `fee`-Schluessel, rechnet Freqtrade mit dem
+  Boersen-Standard (Binance 0,1 % je Seite). Vor jeder Bewertung die
+  GEBUEHRENSUMME gegen das Ergebnis stellen: liegt sie in derselben
+  Groessenordnung, ist der "Verlust" die Gebuehr, und kein Strategieparameter
+  aendert das. Die Jahreslast in Prozent ist `Trades/Tag x 0,2`.
+- **Ein `Fatal exception` im Backtest ist nicht automatisch ein Strategiefehler.**
+  Erst denselben Lauf wiederholen und den Zeitpunkt gegen den Zustand der
+  Docker-Maschine halten — ein sterbender Daemon bricht mitten im Lauf ab.
+  Laeuft er beim zweiten Mal durch, war es die Umgebung, und am Code wird NICHTS
+  geaendert.
+- **Eine zweifelhafte Zeile der Ergebnisse-Tabelle gegen das ARCHIV pruefen,
+  nicht gegen die Tabelle.** Die gedruckte Zusammenfassung kann ein Paar doppelt
+  zeigen (Filter-/Anzeigeartefakt); die Wahrheit steht in
+  `user_data/backtest_results/*.zip` (JSON -> `strategy` -> `trades`, je Trade
+  `pair`). `scripts/backtest_archiv_lesen.py` zaehlt das nach. Eine doppelte
+  Zeile in der Anzeige ist kein Datenfehler — erst nachzaehlen, dann melden.
 
 Die statistischen Regeln fuer die Bewertung (Walk-Forward, Zeithalbierung,
 Nullinie, "eine Zahl, die das Modell gesehen hat, ist keine Messung") stehen in

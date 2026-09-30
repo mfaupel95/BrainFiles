@@ -110,14 +110,22 @@ Ausloeser → Referenz:
   eine Freigabe (Bedingung 1: 50 Runden netto positiv) — Weg von den Journalen
   zur EINEN belegten Aenderung, mit den Zahlen, die eine Aenderung tragen, und
   dem, was eine duenne Stichprobe NICHT hergibt:
-  `references/auswertung-und-optimierung.md`. Beim Formelblatt gilt: nur
+  `references/auswertung-und-optimierung.md`. Dort auch, wie man die Auswertung
+  SELBST liest, bevor man ihr glaubt: der Anteil der groessten Spur an der
+  Summe, Brutto gegen Netto (Papierzeilen tragen keine Gebuehr), ein FEHLENDES
+  Gebuehrenfeld in der `wachen.json`, das eine tote Spur tragfaehig aussehen
+  laesst (Satz gegen die Boerse der Spur halten, nicht gegen ihren Namen), und
+  der harte Todesbeweis `f_max < 0`. Beim Formelblatt gilt: nur
   uebernehmen, was die eigene Datenlage traegt — Sharpe/Sortino/VaR/CAGR brauchen
   Tagesrenditen, die das Haus nicht fuehrt (Runden NICHT umrechnen, die Luecke
   benennen); die t-Statistik der Expectancy ist die Zahl hinter „unter 8 Runden
   ist es ein Befund"; und eine Kennzahl, die aus einer Journal-Spalte abgeleitet
   wird, erst gegen deren Fuellquote pruefen (ein Platzhalter wie `mae_pct 0.0000`
   macht einen Stop-Vorschlag zu 0 % - dann „nicht gefuehrt" ausgeben statt eine
-  Null als Messwert).
+  Null als Messwert). Und die EINHEIT des Gebuehrensatzes wird geprueft, nicht
+  geraten: `gebuehr_taker` ist ein Bruch JE SEITE, `f_max` Prozent JE RUNDE -
+  dazwischen liegt der Faktor 2 x 100, und ohne ihn erklaert jede Spur sich
+  selbst fuer tragfaehig.
 - Eine andere Sitzung laesst Arbeit im Baum liegen („wenn die Session fertig ist,
   mitnehmen", eine geaenderte Datei, die man selbst nicht angefasst hat) —
   Fertig-Erkennung, Waechter-Cron, getrennter Commit und die Frage, was eine
@@ -726,6 +734,18 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   verifizieren (nicht der Diff-Ausgabe glauben) und `json.loads` laufen
   lassen. Bei wiederholtem Vertippen: den Block einmal komplett mit exaktem
   old/new neu schreiben statt weiter zu flicken.
+- **Ein Patch in einem EINGERUECKTEN Block kann die Einrueckung verschieben.**
+  Beim Ersetzen eines mehrzeiligen Blocks innerhalb einer Funktion hat der
+  Matcher den Ersatz um vier Leerzeichen nach rechts gestellt (die alten Zeilen
+  waren ungleichmaessig eingerueckt) - Ergebnis `IndentationError` in einer
+  Datei, die vorher lief, und zwei Reparaturversuche per Patch scheiterten
+  erneut, weil der Anker danach nicht mehr eindeutig war. **Ab dem ersten
+  `IndentationError` nicht weiterpatchen:** die Datei KOMPLETT lesen und den
+  Block byte-genau per Python ersetzen (`text.index(anfang)` bis
+  `text.index(ende)`, Ersatz davor einsetzen, `ast.parse` zur Kontrolle) oder
+  die Datei mit `write_file` neu schreiben. Bei mehrzeiligen Ersetzungen in
+  eingeruecktem Code vorher `repr()` der Zielzeilen ansehen, damit der Anker
+  die echte Einrueckung trifft.
 - Geschriebene `.py`/`.json` pruefen — den NEUEN Text im Speicher VOR dem
   Schreiben, nicht erst die Platte danach: `ast.parse` bzw. `json.loads` (ein
   eingefuegtes Feld ohne abschliessendes Komma faellt sonst erst auf, wenn die

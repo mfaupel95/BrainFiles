@@ -50,6 +50,16 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
    Ausfall, und die Probe wird deshalb nicht gemacht.
 6. **Wirksamkeit der Komponente selbst belegen** (nicht nur den Prozess): eine
    Eingabe erzeugen und nachsehen, dass die Ausgabe nachzieht.
+   Fuer Komponenten, die ueber HTTP oder eine Oberflaeche erreichbar sind, gilt
+   die Beweiskette aus `references/startbeleg.md`: **Bereitschaft statt
+   Liveness** (ein lebender Prozess plus Startzeilen im Log beweisen nichts),
+   **Statuscode ist keine Identitaet** (hat das Frontend eine Catch-all-Route,
+   antwortet JEDER Pfad mit 200 und derselben Datei — die richtige Seite wird
+   nach Inhalt erkannt und die gemessene Adresse weitergegeben), **ein
+   Bau-Befehl wird nie ohne Sicherung des Ausgabeverzeichnisses getestet** (ein
+   Fehlversuch kann es vorher leeren), und **das cwd entscheidet**, ob ein
+   relativer Pfad oder ein Junction-Pfad noch stimmt — erst `repo.pfad`
+   ausgeben, dann urteilen.
 
 ## Zweite Instanz derselben Komponente
 
@@ -81,7 +91,7 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
    Wiederholung, und der Vergleich mit dem Geschwister faellt weg. Danach EINMAL
    feuern: die Logzeile „laeuft bereits (PID …, Variante …)“ plus
    `LastTaskResult 0` und eine unveraenderte Prozesszahl beweisen, dass der Klon
-   greift und nicht ein zweites Mal startet.
+   greift und nicht ein zweites Mal startet. Aus der Sandbox heraus ist auch dieser Weg still unwirksam (siehe "Eine geplante Aufgabe anlegen") — der Beleg ist immer der zweite Aufruf.
    **Vor der DRITTEN Variante die Last messen** (freier Commit): jede Variante
    faehrt alle Objekte ein weiteres Mal, und ein erschoepftes Commit-Limit laesst
    danach fremde Dinge scheitern, die mit der Variante nichts zu tun haben
@@ -183,6 +193,24 @@ fehlgeschlagenen Lauf, der auffiele: die Kopie ist einfach alt, und das faellt
 niemandem auf, bis jemand sie braucht. Eine Wache vergleicht deshalb das Alter des
 Ziels (oder seinen letzten Zyklusvermerk) gegen eine Frist und meldet nur die
 Ueberschreitung — nicht den Prozess.
+
+Drei Dinge, die so eine Fristwache erst brauchbar machen:
+
+- **Der Merker-Schluessel ist die Meldung OHNE Zahlen**
+  (`re.sub(r"\d+", "#", meldung)[:90]`). In dieser Meldung steckt das ALTER, und das
+  waechst jeden Tag — als Schluessel ist die Meldung damit jeden Tag eine andere und
+  dieselbe Feststellung kommt taeglich erneut. Normalisieren, dann deduplizieren.
+- **"Ziel fehlt", "Ziel ist LEER" und "Laufwerk ist nicht angeschlossen" sind drei
+  verschiedene Wahrheiten.** Wer sie zu "nicht erreichbar" zusammenlegt, kann einem
+  halb kopierten Ziel nicht ansehen, was ihm fehlt; wer das leere Ziel als "fehlt"
+  meldet, schickt den Nutzer zum Suchen eines Ordners, der dasteht. Je Lage ein
+  eigener Befund, und "leer" erst nach dem Anlegen des Ziels pruefen, sonst meldet
+  der erste Lauf auf einem frischen Medium falsch.
+- **Das Messen muss billiger sein als die Kopie.** Nie den ganzen Bestand rekursiv
+  nachzaehlen (sechsstellige Dateizahlen laufen selbst in den Timeout) — zwei bis drei
+  Ebenen tief nach dem JUENGSTEN Zeitstempel suchen und nur diese Zahl gegen die Frist
+  halten. Eine Wache, die fuenf Minuten braucht, wird beim naechsten Takt doppelt
+  gestartet und liefert dann zwei Befunde derselben Lage.
 
 Reihenfolge beim Nachholen: **erst Trockenlauf** (das Skript hat meist einen
 `-NurPruefen`-Schalter bzw. robocopy `/L`), damit Umfang und Ziel vor dem Schreiben
@@ -431,6 +459,27 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    Bash-Huelle frisst die Backslashes und die Probe meldet faelschlich "kein Pipe").
    Voller Fall: im Skill `hermes-maintenance` die Datei
    `gateway-identitaet-und-wachen` (dort unter `references/`).
+6. **Ein Aufraeumer gibt zurueck, was er GETAN hat - und der Aufrufer nennt es
+   genauso.** Eine Kill-Funktion, die die noch LEBENDEN zurueckgibt, waehrend die
+   aufrufende Variable `tote` heisst, meldet JEDEN erfolgreichen Kill als "Kill
+   fehlgeschlagen" und die Zahl der Gekillten als 1 statt 130 - und die Wache
+   sieht dabei gesund aus, weil sie ja eine Meldung schickt. Rueckgabe ist die
+   Menge der TATSAECHLICH beendeten Prozesse (nachgezaehlt), und die Variable beim
+   Aufrufer traegt denselben Namen. Zwei Zustaende duerfen davon nicht verschluckt
+   werden: **nicht feststellbar** (die Abfrage ist gescheitert) und **nichts
+   gefunden** sind VERSCHIEDENE Wahrheiten - dieselbe Trennung wie "Ziel fehlt"
+   gegen "Ziel ist leer". Eine Funktion, die im Fehlerfall eine leere Liste
+   liefert, macht aus einem Messfehler eine Entwarnung.
+   Und: `taskkill` aus `subprocess` beendet auf diesem Windows still NICHTS -
+   im Aufraeumpfad natives `Stop-Process -Force` nehmen und die Prozesszahl
+   danach nachzaehlen (die Schleife ist kein Beleg, die gezaehlte Zahl ist es).
+7. **Die Meldung nennt die URSACHE, nicht nur die Zahl.** "24 Prozesse gekillt"
+   laesst den Nutzer raten, was sie erzeugt. Die Ursache steht meist in einer
+   Konfigurationsdatei des ueberwachten Dienstes (ein Eintrag, der bei
+   Nichterreichbarkeit seines Ziels den ganzen Satz Server neu startet) und ist
+   damit ohne weiteres Nachsehen sagbar. Eine Wache, die den Ausloeser mitnennt,
+   macht sich beim naechsten Mal selbst ueberfluessig - eine, die nur zaehlt,
+   lässt denselben Kreis wiederkehren.
 
 **`powershell` immer mit absolutem Pfad aufrufen**
 (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der
@@ -503,6 +552,14 @@ ist deshalb nicht von einem wiederholten zu unterscheiden. Der Aufbau:
 5. **Gegenprobe mit erfundener Testdatei:** 2x derselbe Basiswert + 1x
    Einzelfall -> nur der wiederholte wird gemeldet; Lauf 2 leer (Dedupe);
    danach die Testdatei entfernen.
+6. **Cron anlegen mit `--workdir`** (das Skript liegt unter
+   `Agenten/Hermes/scripts/`, der Cron laeuft im Gateway auf dem Rechner):
+   `hermes cron create "30m" "<prompt>" --name <wache> --deliver telegram
+   --no-agent --script <wache>.py --workdir "C:/Users/faupe/Documents/BrainFiles/Agenten/Hermes"`.
+   Der Prompt beschreibt die Regel (liest die Fehlerdatei, meldet nur
+   Wiederholungen, leere Ausgabe = nichts senden). Danach `hermes cron list`
+   pruefen (Name, Schedule, Deliver, Mode no-agent) und das Skript einmal
+   direkt laufen lassen (leere Fehlerdatei = still, Exit 0).
 
 **Der Pfad ist die haeufigste Falle.** Das Wachenskript liegt unter
 `Agenten/Hermes/scripts/`; von dort sind es DREI `dirname()`-Stufen bis zur
@@ -519,6 +576,33 @@ die Wache muss DIESELBE Datei lesen.
 wirft `TypeError: dump() missing 1 required positional argument: 'fp'`, und
 ein Variablenname, der beim Laden `franken` und beim Schreiben `gemeldet`
 heisst, wirft `NameError`. Beide Namen auf EINEN bringen.
+
+## Eine geplante Aufgabe anlegen — vom HOST aus, nicht aus der Sandbox
+
+Eine Aufgabe, die aus dem Werkzeug-Terminal (Sandbox/Container) angelegt wird,
+meldet **Erfolg und ist im naechsten Aufruf weg**: `Register-ScheduledTask` gab
+zweimal "Ready" samt naechstem Lauf zurueck, dieselbe Aufgabe war danach nicht
+mehr auffindbar — und die Sandbox sieht auch `C:\Windows\System32\Tasks` anders
+(dort liegen die `MaxHirn-*`-Dateien nicht, waehrend `schtasks /query` sie
+listet). Zwei Regeln folgen daraus:
+
+1. **Anlegen laesst man den HOST machen.** Einen Hermes-Cron `no_agent`
+einrichten (er laeuft im Gateway, also auf dem Rechner), dessen Skript die
+Aufgabe prueft und bei Bedarf anlegt; dasselbe Skript ist zugleich die Wache
+(leere Ausgabe, wenn sie steht). Vorlage:
+`Agenten/Hermes/scripts/ausserhaus-aufgabe-sichern.py`.
+2. **Anlegen per `schtasks /create /xml`** (XML in UTF-16LE), **pruefen per
+`schtasks /query`**, starten per `schtasks /run`. `Register-ScheduledTask` und
+`Get-ScheduledTask -TaskName` sind hier keine Belege: der Name-Lookup meldet auch
+VORHANDENE Aufgaben als fehlend (`HRESULT 0x80070002`), waehrend die Aufzaehlung
+(`Get-ScheduledTask | Where-Object TaskName -like 'MaxHirn-*'`) sie zeigt.
+**Eine Aufgabe also erst im ZWEITEN Aufruf als angelegt betrachten**, nie in dem,
+der sie angelegt hat. Beim Auslesen nur ASCII-Marker vergleichen
+(`Aufgabenname`, `Status:`, `Deaktiviert`) — die Konsolen-Codepage zerlegt Umlaute,
+die Marker bleiben lesbar.
+
+Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
+`references/geplante-aufgaben-anlegen.md`.
 
 ## Pitfalls
 
@@ -572,6 +656,26 @@ heisst, wirft `NameError`. Beide Namen auf EINEN bringen.
   Annahme, der Dauerbetrieb sei weg. Deshalb fuehrt der Weg ueber die `.cmd`
   (Schritt 2), und Testprozesse werden danach beendet, damit kein Doppelbetrieb
   bleibt.
+  **Auch das START-SKRIPT faellt mit der Sitzung, nicht nur der Prozess.** Aus
+  einer Werkzeug-Sitzung per `Start-Process powershell -File <starter>`
+  gestartete Instanzen waren nach 2,5 Minuten tot, ohne eine Zeile im eigenen
+  Log, waehrend derselbe Starter ueber `Start-ScheduledTask` gestartete Laeufe
+  ueberlebte. Zum Wiederbeleben eines Dauerprozesses deshalb IMMER
+  `Start-ScheduledTask -TaskName '<aufgabe>'` (der Scheduler besitzt den Baum),
+  nie den Starter aus der eigenen Sitzung - und die WIRKUNG in einem zweiten
+  Aufruf nachzaehlen (Prozess lebt, Logzeile des Zyklus da).
+  **Der Start sieht dabei erfolgreich aus** — das ist die eigentliche Falle.
+  Gemessen an einem GUI-Prozess, der ueber `cmd /c start` und ueber
+  `Start-Process` gestartet wurde: beide meldeten Erfolg, PID und Startzeit
+  stimmten, nach 15 s liefen zwei Prozesse — nach 40 s waren es null. Dasselbe
+  Programm ueber ein `Popen` aus einem Python-Skript gestartet ueberlebte
+  (40 s geprueft, python wie pythonw), im Vordergrund hielt es 90 s durch: die
+  Komponente war gesund, es war die Startart. Folgen: **den Start nie in
+  derselben Anfrage fuer gelungen halten** — die Prozesszahl in einem ZWEITEN
+  Aufruf nachzaehlen (mindestens eine halbe Minute spaeter), und fuer etwas, das
+  ein Fenster oeffnen soll, `Popen` mit `stdout`/`stderr` in eine Logdatei nehmen
+  statt `start`. Bleibt es danach weg, ist das Log der Ort der Ursache (es ist
+  sonst leer, weil ein fensterloses Programm ohne Umleitung nirgends schreibt).
 - **Einen langen Start nie in derselben Anfrage abwarten.** Ein Kommando ueber eine
   Werkzeugbruecke hat ein Zeitfenster (hier rund 300 s); ein Lauf, der laenger
   braucht, wird als Timeout gemeldet, obwohl er weiterarbeitet - und wer ihn
@@ -600,6 +704,18 @@ heisst, wirft `NameError`. Beide Namen auf EINEN bringen.
   Kommandozeilen-Abfrage pruefen, dass KEIN Glied der Kette mehr laeuft, und
   beide PIDs beenden. Umgekehrt gilt: das Paar ist kein Doppellauf (nicht Alarm
   schlagen, bevor ParentProcessId/ExecutablePath geprueft sind).
+  **Dasselbe Paar entscheidet ueber die Sperrdatei.** Der Starter schreibt die
+  PID, die `Start-Process` zurueckgibt - bei einem venv-Startprogramm ist das
+  der ELTERNPROZESS des Interpreters, nicht der Lauf. Prueft der Prozess die
+  Sperre selbst und nimmt nur `os.getpid()` aus, liest er seinen eigenen Starter
+  als fremden Lauf und beendet sich sofort. Symptom: jede neue Instanz ist nach
+  Minuten tot, das eigene Log bekommt keine einzige Zeile, kein Traceback, und
+  der Neustart-Waechter arbeitet dabei KORREKT - er startet in eine Schleife.
+  Fix: die eigene PID UND `os.getppid()` ausnehmen ("mein Starter ist kein
+  fremder Lauf"); danach schreibt der Lauf seine eigene PID in die Sperre,
+  damit sie den laufenden Prozess nennt. Wer eine Sperre um eine Selbstpruefung
+  erweitert, muss diesen Fall mitdenken - die Pruefung kann die Startkette
+  sonst selbst lahmlegen.
 - **Eine Messreihe mit zwei Schreibern ist unbrauchbar.** Hat ein versehentlich
   parallel laufender Test- oder Zweitprozess in dieselben Zustands- und
   Journaldateien geschrieben, sind die Zahlen dieser Minuten Mischwerte:
@@ -766,7 +882,9 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   man entwickelt hat — die Wache muss auch mit dem nackten python.org-Interpreter
   laufen.
 - **Aus `Agenten/Hermes/scripts/` sind es DREI `dirname()`-Stufen bis zur
-  Repo-Wurzel** (`scripts` -> `Hermes` -> `Agenten` -> Wurzel). Mit zwei landet man
+  Repo-Wurzel** (`scripts` -> `Hermes` -> `Agenten` -> Wurzel); in Python ist das
+  `Path(__file__).parents[3]`, und mit `parents[2]` entsteht
+  `Agenten/Agenten/Routinen/...`. Mit zwei landet man
   auf `Agenten/` und der Modulpfad wird zu `Agenten/Agenten/Handel/...` — Symptom
   ist ein `FileNotFoundError` beim Laden des Fachmoduls, obwohl die Datei
   existiert. Nach jeder Pfadherleitung einmal ausgeben und gegen die echte Datei
@@ -848,6 +966,26 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   dem Aufraeumen loeschen.
 - **Nach jedem Deploy des Starters die Routine-Zeile nachziehen**
   (`Wissen/Routinen.md`) — sonst weiss die naechste Sitzung nichts von der Wache.
+- **Ein versteckt gestarteter Dauerprozess ohne Umleitung stirbt UNSICHTBAR.**
+  `Start-Process ... -WindowStyle Hidden` ohne `-RedirectStandardOutput` /
+  `-RedirectStandardError` verwirft stdout UND stderr des Kindes: eine
+  Selbstbeendigung mit klarer Meldung sieht dann wie ein grundloser Absturz aus,
+  und die Fehlersuche raet an der falschen Stelle (im Beispiel: Verdacht auf ein
+  `taskkill` eines Fremdtools, tatsaechlich beendete sich das Kind selbst mit
+  "Es laeuft bereits ein Dauerlauf"). Die Umleitung gehoert in JEDEN
+  Dauerprozess-Starter, je Stufe eigene Dateien (`logs/<name>-<stufe>-kind.log`
+  und `-kind.err.log`) - sie ist auch der schnellste Weg, den Sterbegrund zu
+  finden, statt ihn zu erraten. Mit `-PassThru` und ohne `-Wait` kehrt
+  `Start-Process` auch MIT Umleitung sofort zurueck (gemessen); die Warnung
+  "Umleitung blockiert" gilt fuer den Aufruf ohne `-PassThru`.
+- **Die eigene Abbruchzeit nicht fuer die Todesursache halten.** Wer einen
+  Dauerprozess zum Diagnostizieren im Vordergrund unter einem eigenen `timeout`
+  laufen laesst, bekommt fuer das gekillte Kind dieselbe **143** (SIGTERM,
+  128+15), die ein echter Abbruch erzeugt - im Beispiel feuerte das eigene
+  `timeout` in genau der Sekunde, in der die Logzeile `Rueckgabe 143` entstand,
+  und der Wert trat nur deshalb auch "ohne Fremdeinwirkung" auf. Wer das als
+  Befund nimmt, sucht den Killer im Code statt in der eigenen Messung. Entweder
+  ohne eigenes Zeitlimit messen oder abgekoppelt starten und das Log lesen.
 - **Ein Kind, das mit Exit-Code 0 endet, ist im Supervisor-Log unsichtbar.**
   Ein Supervisor, der nur bei `code != 0` die stderr des Kindes loggt, zeigt bei
   einem Kind, das nach wenigen Sekunden sauber endet, nur „gestartet … gestoppt“
@@ -952,6 +1090,13 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   zerstoert ihn (die Huelle loest die Escapes auf). Und in einer Reparaturschleife
   mit `ast.parse` pruefen: `py_compile.compile(..., doraise=True)` wirft
   `PyCompileError`, das ein `except SyntaxError` NICHT faengt.
+- **Einen Fix an Sperre oder Startkette mit RUECKNAHME belegen.** Ein Test, der
+  nur gruen ist, beweist nicht, dass er den Fix prueft. Reihenfolge: Datei
+  sichern (`cp` in den Scratch-Ordner) -> Aenderung zuruecknehmen
+  (`git checkout -- <datei>`) -> der neue Test MUSS rot werden -> Fix
+  zurueckholen und mit `cmp` gegen die Sicherung pruefen -> wieder gruen. Der
+  laufende Prozess merkt von der Ruecknahme nichts (er hat das Modul beim Start
+  importiert), die Gegenprobe ist also ohne Ausfall zu haben.
 
 ## Verification
 
