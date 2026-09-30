@@ -61,6 +61,7 @@ import freigabefenster                                      # noqa: E402
 import risikostufe                                          # noqa: E402
 import freqtrade_bridge                                     # noqa: E402
 import omnitrade_bridge                                     # noqa: E402
+import omnitrade_auswertung                                 # noqa: E402
 
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
@@ -711,6 +712,26 @@ def omnitrade_order_zeilen(lage):
     return zeilen
 
 
+def omnitrade_laeufe_zeilen(bilanzen):
+    """Zeilen der Laeufe-Tabelle aus `omnitrade_auswertung.alle()`: (Werte, Marke)."""
+    def pct(x):
+        return "-" if x is None else "%+.2f%%" % x
+    zeilen = []
+    for b in bilanzen or []:
+        if "strategie" not in b:
+            zeilen.append(((b.get("datei", "?"), "", "", "", "", "", "", "",
+                            b.get("fehler", "")), "schlecht"))
+            continue
+        zustand = b["state"] if b["ok"] else (b["fehler"] or "?")
+        werte = (b["strategie"], b["symbol"], "%.1f h" % b["laufzeit_h"], b["kerzen"],
+                 "%d / %d" % (b["orders"], b["abgelehnt"]),
+                 "%d / %d" % (b["kaeufe"], b["verkaeufe"]),
+                 "%+.2f (%s)" % (b["gewinn"], pct(b["gewinn_pct"])),
+                 pct(b["buyhold_pct"]), zustand)
+        zeilen.append((werte, "gut" if b["ok"] else "schlecht"))
+    return zeilen
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -1015,6 +1036,23 @@ class Handelszentrale:
                                text=omnitrade_kopf(None)[0], fg=FARBEN["matt"])
         self._registriere_schrift(self.l_omni, 0, fett=True)
         self.l_omni.pack(fill="x", padx=10, pady=(6, 2))
+        tl = tk.Label(seite, text="Laeufe (alle Statusdateien)", bg=FARBEN["bg"],
+                      fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(tl, 0, fett=True)
+        tl.pack(fill="x", padx=10, pady=(6, 0))
+        lspalten = ("strategie", "symbol", "laufzeit", "kerzen", "orders", "kv",
+                    "gewinn", "buyhold", "zustand")
+        lkopf = {"strategie": "Strategie", "symbol": "Symbol", "laufzeit": "Laufzeit",
+                 "kerzen": "Kerzen", "orders": "Orders", "kv": "Kauf/Verk.",
+                 "gewinn": "Gewinn", "buyhold": "Buy&Hold", "zustand": "Zustand"}
+        self.t_laeufe = ttk.Treeview(seite, columns=lspalten, show="headings", height=5)
+        for sp in lspalten:
+            self.t_laeufe.heading(sp, text=lkopf[sp])
+            self.t_laeufe.column(sp, width=150 if sp == "zustand" else 100,
+                                 anchor="w" if sp in ("strategie", "symbol", "zustand") else "e")
+        self.t_laeufe.tag_configure("schlecht", foreground=FARBEN["rot"])
+        self.t_laeufe.tag_configure("gut", foreground=FARBEN["gruen"])
+        self.t_laeufe.pack(fill="x", padx=10)
         t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
                      fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t, 0, fett=True)
@@ -1050,6 +1088,10 @@ class Handelszentrale:
         for werte in omnitrade_order_zeilen(lage):
             marke = {"filled": "gut", "rejected": "schlecht"}.get(werte[4], "")
             self.t_omni.insert("", "end", values=werte, tags=(marke,))
+        for i in self.t_laeufe.get_children():
+            self.t_laeufe.delete(i)
+        for werte, marke in omnitrade_laeufe_zeilen(omnitrade_auswertung.alle()):
+            self.t_laeufe.insert("", "end", values=werte, tags=(marke,))
 
     def _starte_freqtrade_worker(self):
         """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads."""
