@@ -28,7 +28,7 @@ $log = Join-Path $logs 'moondev-dauerlauf-letzter-lauf.log'
 # vier Tage unbemerkt aus. Deshalb Melde-Start vor der ersten Pruefung und
 # Melde-Ende an JEDEM Ausstieg.
 . (Join-Path $wurzel 'Bus\Ereignis.ps1')
-$marke = Melde-Start -Wer 'routine/moondev-dauerlauf' -Text 'MoonDev-Dauerlauf'
+$marke = Melde-Start -Wer 'routine/moondev-dauerlauf'
 
 if (-not (Test-Path $py))      { Melde-Ende -Marke $marke -Code 1 -Text "venv-Python fehlt: $py"; throw "venv-Python fehlt: $py" }
 if (-not (Test-Path $treiber)) { Melde-Ende -Marke $marke -Code 1 -Text "Treiber fehlt: $treiber"; throw "Treiber fehlt: $treiber" }
