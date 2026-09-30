@@ -184,19 +184,22 @@ Vor/Nach-Vergleich derselben Zaehlung ist der Beleg.
 5. `EXIT=1` wegen eines nicht zurueckgeholten Dienstes ist der bekannte Fall
    (Dashboard) - siehe Abschnitt "Nach dem Lauf: Exit 1 …" in SKILL.md.
 
-## 7. Restblocker: `[WinError 5] Zugriff verweigert: <HERMES_HOME>/tools/.displaced-*/node.exe`
+## 7. Restblocker: `[WinError 5] Zugriff verweigert: <HERMES_HOME>/tools/.displaced-*/<datei>`
 
 Der Lauf bricht beim "Source update preparation" ab, weil er ein vom pm-Installer
-zurueckgelassenes `.displaced-<hash>`-Verzeichnis aufraeumen will und an einem
-an einem `node.exe` darin scheitert (Rechte oder noch ein Zugriff). Am 30.09.2026 war die
-Getroffene `DLLs\libcrypto-3-x64.dll` — dieselbe Klasse, anderer Dateiname. Erkennen:
+zurueckgelassenes `.displaced-<hash>`-Verzeichnis aufraeumen will und an einer Datei darin
+scheitert (Rechte oder noch ein Zugriff). Getroffen wurden schon `node.exe` und
+`DLLs\libcrypto-3-x64.dll` - dieselbe Klasse, anderer Dateiname; das Verfahren ist
+dasselbe. Erkennen:
 
     ls -la --time-style=+%d.%m_%H:%M <HERMES_HOME>/tools | grep displaced
     Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '*displaced*' }
 
 Ein `.displaced-*` ohne Prozess darauf ist ein Aufraeumrest und darf weg: nach dem
 Entfernen zieht der naechste Lauf die restlichen Commits nach. Ein `.previous-*`
-gehoert zum Rollback der Tool-Tauschaktion und bleibt unangetastet.
+gehoert zum Rollback der Tool-Tauschaktion und bleibt unangetastet. Achtung: Den
+Blocker zu raeumen schliesst die Obligation NICHT - der Standalone-Tail committet den
+Dependency-Stempel nicht, Abschlussverfahren in `references/update-schwanz-endlosschleife.md`.
 
 ## 8. Zwei Fallen beim Aufschreiben (beide erlebt)
 

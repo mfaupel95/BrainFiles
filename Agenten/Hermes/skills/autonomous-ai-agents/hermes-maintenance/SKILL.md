@@ -525,9 +525,14 @@ Retry, losgeloest gestartet (nie mit eigenem Zeitlimit):
     <HERMES_HOME>/installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u \
       hermes_cli/source_completion.py --source <checkout> --finish-update --desktop --prepared
 
-Erfolg ist die Zeile `✓ Update complete!` UND ein verschwundenes
-`installs/<hash>/source-completion-pending`. Danach Gateway (Aufgabe `Hermes_Gateway_<suffix>`)
-und Desktop starten. Nach sechs Fehlversuchen schweigt die Selbstheilung 15 min
+Erfolg sind DREI Belege, nicht zwei: `✓ Update complete!`, verschwundenes
+`installs/<hash>/source-completion-pending` UND `pm.venv_is_current(project_root=<checkout>)`
+(Wrapper-Weg) = True. **Der Standalone-Tail kann `✓ Update complete!` drucken, ohne Marker
+und Stempel zu loeschen** - den Stamp-Commit uebernimmt nur ein `hermes update`-Lauf selbst
+(`references/update-schwanz-endlosschleife.md` §4); bleibt der Stempel aus, ist der Abschluss
+ein losgeloestes `hermes update --yes`, nicht ein zweiter Tail-Aufruf. Danach Gateway
+(Aufgabe `Hermes_Gateway_<suffix>`) und Desktop starten. Nach sechs Fehlversuchen (Zaehler:
+`source-completion-attempts`) schweigt die Selbstheilung 15 min
 (`COMPLETION_RETRY_BACKOFF_SECONDS`) - dann hilft nur der direkte Aufruf oder `hermes update`
 aus einer Shell.
 
