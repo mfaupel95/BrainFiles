@@ -379,3 +379,43 @@ Hinweis: Nur 3 Paare haben EURC als Quote (`ETHEURC`, `SOLEURC`, `XBTEURC`) —
 eine Spur "direkt auf EURC" umzustellen beschneidet die rund 30 Instrumente der
 Watchlist auf BTC/ETH/SOL, es gibt also keinen Grund, die Spur von ZEUR
 wegzubewegen, wenn das Konto EURC traegt.
+
+#### Nachtrag 30.09.2026: die Spur liest die Quote jetzt JE PAAR (Auftrag Max)
+
+Der Merksatz von oben bleibt in Kraft — **EURC ist weiterhin kein
+ZEUR-Guthaben**. Was sich geaendert hat, ist die Richtung der Antwort: statt das
+Guthaben in die Waehrung der Spur zu zwingen (umtauschen, in Tranchen, siehe
+oben), geht die Spur in die Waehrung des GUTHABENS und ordert EURC- und
+USDC-gequotete **Paare**. Die Aussage "kein Grund, von ZEUR wegzubewegen" galt
+fuer eine Spur, die EINE Waehrung kennt; seit dem 30.09.2026 kennt sie alle
+drei.
+
+`Agenten/Handel/kraken/quote.py` holt die Quote aus `AssetPairs` (Feld `quote`,
+Rueckfall `wsname` "BASIS/QUOTE") — nicht aus einer Liste im Code. Die Falle,
+an **1455 Paaren** gemessen:
+
+| AssetPairs `quote` | Posten im Kontostand |
+|---|---|
+| `ZEUR`, `ZUSD`, `ZCAD` | `ZEUR`, `ZUSD`, `ZCAD` (Fiat traegt das Z) |
+| `EURC`, `USDC` | `EURC`, `USDC` (Stablecoins nicht) |
+| `CHF` (bei EURCHF) | **`ZCHF`** — Ausreisser |
+
+Deshalb wird die Quote nicht in einen Namen uebersetzt, sondern gegen den
+tatsaechlich abgerufenen Kontostand aufgeloest (Code selbst, dann `Z`+Code, dann
+ohne fuehrendes `Z`). Findet sich keiner, ist das Guthaben 0 und die Waehrung
+gilt als nicht vorhanden. Ein unbekanntes Paar ist ein **Fehler**
+(`QuoteUnbekannt`), kein Rueckfall auf EUR — wer die Quote raet, handelt im
+falschen Markt.
+
+Gemessenes Angebot: EURC als Quote auf **3** Paaren (`ETHEURC`, `SOLEURC`,
+`XBTEURC`), USDC auf 13 der 17 Instrumente der Watchlist — FIL, SUI, TRX und XLM
+haben kein USDC-Paar. Historie: EURC 377–378 Tageskerzen, USDC 654 (XBT/ETH
+720), der Scan braucht 120. Watchlist 17 → 33 Paare; Scan am 30.09. ueber alle
+33 ohne Fehler, **12 ueber dem Tor, vier davon in der neuen Waehrung**
+(ALGOUSDC 73,5 / DOTUSDC 73,3 / AVAXUSDC 68,3 / ETHEURC 66,8).
+
+Das Tor ist trotzdem zu: gemessen **46,81 EUR / 25,08 USDC / 0,00 EURC frei**
+gegen `mindest_guthaben_je_quote` 60 je Waehrung. Die Erweiterung nimmt die
+Sperre weg, die aus der festen EUR-Annahme kam — sie schaltet nichts scharf.
+Wer das EURC-Paar nutzen will, muss EURC halten; das ist eine Handlung von Max,
+kein Dateischalter.

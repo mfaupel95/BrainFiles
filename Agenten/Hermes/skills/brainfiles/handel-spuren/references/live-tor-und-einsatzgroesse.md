@@ -178,6 +178,61 @@ das, was Max entscheiden muss.
 
 Merksatz: **eine Sperre, die niemand ausspricht, ist keine.**
 
+## 7. Eine Waehrung je BUCH — die Quote kommt aus der API, nicht aus dem Code
+
+Eine Spot-Spur, die auf EUR festgelegt war (Watchlist in EUR, Tor gegen `ZEUR`),
+kann Kapital in anderen Quotewaehrungen desselben Kontos nicht erreichen.
+Generalisiert wird in DREI Teilen, und alle drei gehoeren dazu:
+
+1. **Die Quote JE PAAR aus der Boersen-API** (`AssetPairs`-Feld `quote`,
+   Rueckfall `wsname` "BASIS/QUOTE"). Kein Uebersetzungsschluessel im Code — der
+   waere die naechste feste Annahme. Ein unbekanntes Paar ist ein FEHLER
+   (`QuoteUnbekannt`) und faellt als Kandidat raus, statt auf EUR
+   zurueckzufallen: wer die Quote raet, handelt im falschen Markt.
+2. **Das Guthaben-Tor in der Waehrung des Paares.** Die Quote eines Paares ist
+   NICHT immer der Name des Postens im Kontostand: an 1455 Kraken-Paaren
+   gemessen traegt Fiat dort ein "Z" (`ZEUR`, `ZCHF`), Stablecoins nicht
+   (`EURC`, `USDC`). Also nicht uebersetzen, sondern gegen den ABGERUFENEN
+   Kontostand aufloesen — und in EINEM Aufruf alle Waehrungen holen, weil zwei
+   Aufrufe zwei Staende liefern koennen.
+3. **Ein Buch fuehrt EINE Waehrung.** Einsatz, Erloes, Ruecklauf und die
+   Drawdown-Ratsche summieren Betraege; eine Summe aus EUR und USDC ist keine
+   Zahl. Steht das Buch, gilt seine Waehrung; ist es leer, entscheidet ein
+   Vorrang aus der Konfiguration. Wer mischen will, braucht zuerst einen
+   Umrechnungskurs je Position — das ist ein eigener Bau.
+
+Der Vorrang darf NICHT das Guthaben befragen, wenn der Lauf Papier ist: ein
+**Papierlauf haengt nie am Kontostand**. Sonst stellt ein Netzausfall oder ein
+fehlender Schluessel ihn still, und in der Rangliste sieht das aus wie "kein
+Signal". Muster `ziel_waehrung(z, w, lage, live)`: Buch schlaegt Vorrang, live
+nimmt die gedeckte Waehrung, Papier nimmt die Konfiguration. Und die Geldsperre
+bindet nur, wenn die Lage wirklich gelesen wurde
+(`if waehrung in lage and lage[waehrung][0] < eur`).
+
+Zwei Nebenwirkungen, die man beim Umbau mitnimmt:
+
+- **Dasselbe Instrument in zwei Waehrungen ist EIN Instrument.** `XXBTZEUR`
+  (Basis `XXBT`) und `XBTEURC` (Basis `XBT`) sind beide BTC; die Basis kommt aus
+  `wsname`, weil nur dort normalisiert steht. Sonst steht dasselbe Instrument
+  zweimal im Buch, und die Abklingzeit nach einem Stop greift nur in einer
+  Waehrung — ein Stop in `SOLEUR` muss auch `SOLUSDC` sperren.
+- **Der Guthaben-Grund bleibt EINER, auch wenn drei Waehrungen zu duenn sind.**
+  `nur_fenster_fehlt` verlangt genau einen Grund und der darf das Wort
+  "Freigabefenster" nicht tragen (Abschnitt 4). Drei Waehrungen duerfen deshalb
+  nicht drei Gruende ergeben; der Grund nennt alle Staende in einer Zeile.
+
+Der Feldname der Betraege bleibt der alte (`eur`), weil die Auswertungen ihn
+lesen; die Waehrung steht zusaetzlich an der Position und im Journal hinter dem
+Grund (`score 65.0 | USDC`). **Und die LESER ziehen mit**: Tagesbericht und
+Kontofenster zeigten die Waehrung fest als EUR — ein Bericht haette eine
+USDC-Position als EUR ausgewiesen, das Fenster "unter 60" gewarnt, waehrend die
+Spur in USDC haette handeln koennen. Eine generalisierte Spur braucht eine
+generalisierte Anzeige, sonst ist die Zahl richtig und ihre Einheit falsch.
+
+Nachweis vor dem Commit: Scan ueber die neue Watchlist ohne Fehler, `--vorschau`
+nennt die Waehrung je Vorschlag und das Guthaben JE Waehrung, und der Papierlauf
+laeuft mit leerer `lage` (Test: `lage={}` kauft trotzdem).
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

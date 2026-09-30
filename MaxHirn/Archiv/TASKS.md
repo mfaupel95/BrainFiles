@@ -60,6 +60,48 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-212 — kraken-Buch in USDC/EURC: die Auswertung nennt die Einheit noch fest als EUR**
+      Kontext: Seit 30.09.2026 kann die kraken-Spur in EUR, USDC und EURC
+      handeln (Quote je Paar aus der API, `Agenten/Handel/kraken/quote.py`;
+      Guthaben-Tor in der Waehrung des Paares; Watchlist 17 -> 33 Paare).
+      Betragsfelder heissen weiter `eur`, weil die Auswertung sie liest - die
+      Waehrung steht zusaetzlich an der Position. Offen ist der LETZTE Leser:
+      `auswertung_alle.EINHEIT` traegt `{"kraken": "EUR", "nautilus_kraken":
+      "EUR"}` fest. Steht das Buch einmal in USDC, sind die Zahlen richtig und
+      ihre Einheit falsch - genau die Klasse Anzeigefehler, die am 23.09. bei
+      mosaic einen BTC-Kurs aus der falschen Boerse zeigte.
+      Naechster Schritt: EINHEIT fuer kraken aus `buch_waehrung(z)` ableiten
+      (Rueckfall EUR fuer den Altbestand) statt aus der Tabelle, Test daneben.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/auswertung_alle.py.
+
+- [ ] **T-213 — EURC fehlt in der gemeinsamen Kraken-Paartabelle (mosaic, moondev_marktlage)**
+      Kontext: Die kraken-Spur liest ihre Quote jetzt selbst aus der API und
+      nutzt damit auch EURC-Paare (ETHEURC, SOLEURC, XBTEURC). Die beiden
+      anderen Kraken-Spuren lesen dagegen `kraken_paare.py` - dort stehen EUR
+      und USDC, kein EURC. Ihr EURC-Kapital bleibt also unerreichbar, obwohl
+      Kraken EURC als Quote auf drei liquiden Paaren fuehrt.
+      Naechster Schritt (Entscheidung Max): EURC in `kraken_paare.py` als
+      dritte Quote aufnehmen (17 Tests dort erweitern) - sinnvoll erst
+      zusammen mit T-115, sonst ist nur die Tabelle groesser und das Tor
+      bleibt zu.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
+      moondev_marktlage. Verwandt: T-115.
+
+- [ ] **T-214 — Die neue Waehrung ist erst sichtbar, wenn ein Platz frei wird (Buch 4/4, EURC 0,00)**
+      Kontext: Die Erweiterung vom 30.09.2026 schaltet nichts scharf - das
+      Guthaben-Tor vergleicht weiter gegen `mindest_guthaben_je_quote` 60, und
+      gemessen liegen 46,81 EUR / 25,08 USDC / 0,00 EURC frei. Zwei weitere
+      Gruende, warum trotzdem nichts passiert: das kraken-Buch ist mit 4 von 4
+      Plaetzen VOLL (vier echte Kraken-Positionen, zusammen 3,90 EUR - so viel
+      war frei, als gekauft wurde), und EURC-Guthaben gibt es gar nicht.
+      `handel_erlaubt` und `freigabe.erfuellt` sind unangetastet false.
+      Naechster Schritt (Entscheidung Max): EURC am Konto bereitstellen, wenn
+      das EURC-Paar genutzt werden soll - und beobachten, ob die Spur beim
+      ersten freien Platz eine USDC-Position bucht; der Tagesbericht nennt
+      seit 30.09. die Waehrung des Buchs.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken/wachen.json,
+      zustand.json, MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md.
+
 - [ ] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
       Kontext: Der Demo-Lauf (Werkstatt/omnitrade, OKX-Demo, BTCUSDC) hat keine
       Wache. Stirbt er hart, bleibt in status/live.json "state: running" mit einer
