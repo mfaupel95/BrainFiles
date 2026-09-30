@@ -1,92 +1,111 @@
 {
-  "stand": "2026-09-29",
+  "stand": "2026-09-30",
   "repos": [
     {
       "ordner": "Agent-Reach",
+      "rolle": "Werkzeug",
       "art": "python",
-      "bot": "agent-reach",
       "notiz": "Internet lesen ohne Gebuehren - doctor prueft die Kanaele (Start = Kanalbericht)",
       "start": [
         ".venv\\Scripts\\agent-reach.exe",
         "doctor"
       ],
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "warnungen": [
+        "Bot-Profil 'agent-reach' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/agent-reach) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "agent-trade-kit",
+      "rolle": "MCP-Server",
       "art": "doku",
       "bot": "agent-trade-kit",
-      "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "OKX Trading-MCP-Server (TypeScript v1.4.7) - Referenz/Klon; noch kein Startbefehl belegt, MCP-Setup offen (node build + OKX-Konfig)"
     },
     {
       "ordner": "awesome-deepseek-harness-plugins",
+      "rolle": "Liste",
       "art": "doku",
-      "notiz": "Plugin-Katalog fuer DeepSeek Harness (dsh) - kein Startprogramm, der Katalog wird aus einer API erzeugt",
       "gruppe": "doku",
+      "notiz": "Plugin-Katalog fuer DeepSeek Harness (dsh) - kein Startprogramm, der Katalog wird aus einer API erzeugt",
       "anleitung": "Kuratiertes Verzeichnis der dsh-Plugins. Kein eigenstaendiges Programm: die README wird aus einer API generiert (npm run readme:build). Als Nachschlagewerk lesen, nicht starten."
     },
     {
       "ordner": "awesome-dsh-plugin",
+      "rolle": "Liste",
       "art": "doku",
-      "notiz": "Kuratierte dsh-Plugin-Liste mit statischem Site-Generator (node scripts/build-site.mjs)",
       "gruppe": "doku",
+      "notiz": "Kuratierte dsh-Plugin-Liste mit statischem Site-Generator (node scripts/build-site.mjs)",
       "anleitung": "Awesome-List der DeepSeek-Harness-Plugins. Kein Server und kein Startprogramm. Wer die Seite bauen will: node scripts/build-site.mjs erzeugt docs/ als statische HTML-Seite (Node noetig)."
     },
     {
       "ordner": "awesome-systematic-trading",
+      "rolle": "Liste",
       "art": "doku",
       "bot": "awesome-systematic-trading",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "basic-memory",
+      "rolle": "Werkzeug",
       "art": "python",
       "bot": "basic-memory",
       "notiz": "Markdown-Wissensspeicher mit MCP-Server (Python, venv fehlt)"
     },
     {
       "ordner": "caveman",
+      "rolle": "Installer",
       "art": "node",
       "bot": "caveman",
       "notiz": "Installer-Skript bin/caveman-install"
     },
     {
       "ordner": "claude-code",
+      "rolle": "Doku",
       "art": "doku",
       "bot": "claude-code",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "claude-plugins-official",
+      "rolle": "Doku",
       "art": "doku",
-      "bot": "claude-plugins-official",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'claude-plugins-official' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/claude-plugins-official) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "claude-red",
+      "rolle": "Skills",
       "art": "doku",
       "bot": "nerd",
-      "notiz": "Offensive-Security-Nachschlagewerk (79 SKILL.md, 23 Kategorien) - kein Startprogramm, der Bot liest die Skills auf Anforderung",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "Offensive-Security-Nachschlagewerk (79 SKILL.md, 23 Kategorien) - kein Startprogramm, der Bot liest die Skills auf Anforderung"
     },
     {
       "ordner": "claudian",
+      "rolle": "Plugin",
       "art": "node",
       "bot": "claudian",
       "notiz": "Obsidian-Erweiterung (npm run dev)"
     },
     {
       "ordner": "codex",
+      "rolle": "Werkzeug",
       "art": "node",
-      "bot": "codex",
-      "notiz": "Monorepo Bau (npm run build), kein Start"
+      "notiz": "Monorepo Bau (npm run build), kein Start",
+      "warnungen": [
+        "Bot-Profil 'codex' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/codex) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "deepseek-harness",
+      "rolle": "Werkzeug",
       "art": "node",
       "bot": "deepseek-harness",
       "notiz": "DeepSeek Harness (dsh) - Agent-Harness, alles ist ein Plugin; Web-UI auf Port 3080",
@@ -121,26 +140,30 @@
     },
     {
       "ordner": "EasyCLIProxyAPI",
+      "rolle": "App",
       "art": "node",
       "bot": "easycliproxyapi",
       "notiz": "Tauri-Desktop-App fuer Proxy-Verwaltung"
     },
     {
       "ordner": "everything-claude-code",
+      "rolle": "Doku",
       "art": "doku",
       "bot": "everything-claude-code",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "fast-jev-compaction",
+      "rolle": "Plugin",
       "art": "doku",
-      "notiz": "Claude-Code-Plugin: ersetzt die Kompaktierung durch Jev-Entscheidungen - npm-Bibliothek, kein Startprogramm",
       "gruppe": "doku",
+      "notiz": "Claude-Code-Plugin: ersetzt die Kompaktierung durch Jev-Entscheidungen - npm-Bibliothek, kein Startprogramm",
       "anleitung": "Kein eigenstaendiges Programm: das Repo ist npm-Paket (src/) UND Claude-Code-Plugin (hooks/, .claude-plugin/). Einbau in Claude Code: 'claude plugin marketplace add tamaratran/fast-jev-compaction' und 'claude plugin install fast-jev-compaction@fast-jev-compaction'. Die Demo braucht einen Schluessel (TYPESAFE_API_KEY)."
     },
     {
       "ordner": "fomo-robinhood-radar",
+      "rolle": "Werkzeug",
       "art": "python",
       "bot": "fomo-radar",
       "notiz": "Robinhood Chain beobachten (Chain 4663) - schluesselfrei lauffaehig, speist die Papierspur robinhood_radar",
@@ -184,32 +207,39 @@
     },
     {
       "ordner": "foreman",
+      "rolle": "Werkzeug",
       "art": "python",
       "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche, venv fehlt",
-      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf.",
-      "venv_pflicht": true
+      "venv_pflicht": true,
+      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf."
     },
     {
       "ordner": "gbrain",
+      "rolle": "Werkzeug",
       "art": "node",
       "bot": "gbrain",
       "notiz": "Wissens-Index (npm run dev, CLI gbrain)"
     },
     {
       "ordner": "graphify",
+      "rolle": "Werkzeug",
       "art": "python",
-      "bot": "graphify",
-      "notiz": "Code-Graph mit CLI und MCP (Python, venv fehlt)"
+      "notiz": "Code-Graph mit CLI und MCP (Python, venv fehlt)",
+      "warnungen": [
+        "Bot-Profil 'graphify' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/graphify) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "Harvard-Algorithmic-Trading-with-AI",
+      "rolle": "Doku",
       "art": "doku",
       "bot": "harvard-trading",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "intelligent-trading-bot",
+      "rolle": "Pruefstand",
       "art": "python",
       "notiz": "ML-Backtest-Pruefstand: Start zeigt Modellguete in-sample gegen Walk-Forward (BTCUSDT 1h, Binance-Kurse oeffentlich, kein Schluessel)",
       "start": [
@@ -267,13 +297,15 @@
     },
     {
       "ordner": "jev-chat-jarvis",
+      "rolle": "App (Android)",
       "art": "doku",
-      "notiz": "Android-App (Kotlin/Gradle): Chat-Copilot fuer unterstuetzte Messenger - auf Windows nur als APK nutzbar",
       "gruppe": "doku",
+      "notiz": "Android-App (Kotlin/Gradle): Chat-Copilot fuer unterstuetzte Messenger - auf Windows nur als APK nutzbar",
       "anleitung": "Handy-App (Android 11+, nur arm64-v8a), kein Windows-Programm. Bau: JDK 17 + Android SDK 35, dann ./gradlew assembleDebug. Ein fertiges signiertes APK liegt im Repo: adb install -r apk/jev-assistant-v1.4-release.apk. Ein Release-Build braucht JEV_KEYSTORE_PROPS."
     },
     {
       "ordner": "jev-trader",
+      "rolle": "Bot",
       "art": "node",
       "notiz": "Monad-Marktmacher auf Kuru (MON-USDC): eine Entscheidung je Block, Bun-Server mit Snapshot und SSE",
       "start": [
@@ -308,6 +340,7 @@
     },
     {
       "ordner": "kraken-cli",
+      "rolle": "Werkzeug",
       "art": "rust",
       "notiz": "Offizielles Kraken-Terminal (Rust), hier selbst gebaut - es gibt keine Windows-Binaries",
       "anleitung": "Eine Binary, keine Laufzeitabhaengigkeiten. Oeffentliche Marktdaten brauchen KEINEN Schluessel; Konto und Order lesen KRAKEN_API_KEY/KRAKEN_API_SECRET. Die Haus-Schluessel liegen als KRAKEN_SPOT_API_KEY/_SECRET in den Windows-Benutzervariablen - der Wrapper Agenten/Werkzeuge/kraken.ps1 setzt sie auf die Namen, die die CLI erwartet. Ohne den Wrapper meldet sie 'Invalid key'. Der Wrapper liegt unter Agenten/Werkzeuge/kraken.ps1 und wird aus dem BrainFiles-Ordner aufgerufen, nicht von hier. Papiermodus mit Livekursen: 'workspace create sandbox --capital 10000 --mode paper'.",
@@ -343,6 +376,7 @@
     },
     {
       "ordner": "Kronos",
+      "rolle": "Modell",
       "art": "python",
       "notiz": "Kerzen-Foundation-Modell (MIT) - sagt die naechsten Kerzen voraus; gemessen 22.09.2026: schlaegt die Nullinie NICHT",
       "anleitung": "Kronos sagt Kerzen voraus (Predictor aus model/, Gewichte von HuggingFace). Gemessen am 22.09.2026 auf BTC 1h, Horizont 24 h, 100 nicht ueberlappende Fenster, Kronos-small: Richtung 47/100, Fehler 2,059 % gegen Nullinie 0,875 % - als Handelssignal wertlos. Die Messung steht im Wiki (Werkzeuge/Kronos.md). FALLE: requirements.txt pinnt pandas 2.2.2; damit reisst pd.date_range den Prozess ab (Segmentation Fault) - erst 'pip install -U pandas numpy'.",
@@ -360,6 +394,7 @@
     },
     {
       "ordner": "laya",
+      "rolle": "Modell",
       "art": "python",
       "notiz": "Sprachmodell fuer typisierte Fragen (Zustand + Frage -> Antwort mit Wahrscheinlichkeit); gemessen 22.09.2026: zero-shot unbrauchbar fuer feine Urteile",
       "anleitung": "laya ist KEIN Generator: es bekommt einen Zustand und typisierte Fragen (choice/score/noul) und gibt in EINEM Vorwaertsdurchlauf Antworten mit Wahrscheinlichkeit zurueck. Gemessen: Laden 60 s einmalig, danach 57 ms je Frage auf der CPU. WARNUNG: die noul-Felder lagen daneben (Kuendigungsdrohung -> churn_risk 0,00) - nur als Basis zum Nachtrainieren brauchbar. HF_HOME=O:\\Modelle mitgeben, sonst wird das Modell neu geladen. Die Sonde (Agenten/Hermes/cache/laya_probe.py) ist ein Wegwerfskript im Hermes-Cache und wird dort nach 24 h Ruhe geloescht - fuer dauerhafte Nutzung ein eigenes Skript ins Repo legen.",
@@ -367,6 +402,7 @@
     },
     {
       "ordner": "moon-dev-ai-agents",
+      "rolle": "Werkzeug",
       "art": "python",
       "bot": "moon-dev-agents",
       "notiz": "Schaltzentrale: Boersen, Orderflaeche, 47 Agenten, RBI-Swarm, LLM, READMEs",
@@ -399,33 +435,42 @@
     },
     {
       "ordner": "Moon-Dev-Code",
+      "rolle": "Doku",
       "art": "doku",
-      "bot": "moon-dev-code",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'moon-dev-code' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/moon-dev-code) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "obsidian-skills",
+      "rolle": "Skills",
       "art": "doku",
       "bot": "obsidian-skills",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "odysseus",
+      "rolle": "Werkzeug",
       "art": "python+node",
-      "bot": "odysseus",
-      "notiz": "Python+Node, kein erklaerter Einstieg in der README"
+      "notiz": "Python+Node, kein erklaerter Einstieg in der README",
+      "warnungen": [
+        "Bot-Profil 'odysseus' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/odysseus) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "one-skill-to-rule-them-all",
+      "rolle": "Skills",
       "art": "doku",
       "bot": "one-skill-to-rule-them-all",
-      "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "gruppe": "doku",
+      "notiz": "nur Dokumentation und Skills"
     },
     {
       "ordner": "openmontage",
+      "rolle": "Werkzeug",
       "art": "python",
       "bot": "openmontage",
       "notiz": "Start = Werkzeugregister des Repos (sein eigener Statusbefehl, kein make noetig)",
@@ -459,12 +504,14 @@
     },
     {
       "ordner": "OpenTerminal",
+      "rolle": "Werkzeug",
       "art": "node",
       "bot": "openterminal",
       "notiz": "Terminal im Browser (npm install, dann npm start)"
     },
     {
       "ordner": "OpenTerminalUI",
+      "rolle": "Terminal",
       "art": "python",
       "notiz": "Finanz-Terminal in einer Oberflaeche: Charting, Paper-Trading, OMS, Modell-Labor und Agenten-Konsole (FastAPI + React, MIT)",
       "start": [
@@ -503,6 +550,7 @@
     },
     {
       "ordner": "osiris",
+      "rolle": "Dashboard",
       "art": "node",
       "notiz": "OSINT-Lagedashboard (Next.js 16, MapLibre): Luftfahrt, Seefahrt, Satelliten, Braende, Erdbeben, News, CVEs - laeuft ohne Schluessel",
       "start": [
@@ -537,50 +585,67 @@
     },
     {
       "ordner": "ProjectAtlas",
+      "rolle": "Werkzeug",
       "art": "rust",
-      "bot": "projectatlas",
       "notiz": "Rust; Gebrauchsanweisung der Binary (Bau: cargo build --release, 2 Min)",
       "start": [
         "target\\release\\projectatlas.exe",
         "--help"
       ],
-      "pfad_pflicht": "target\\release\\projectatlas.exe"
+      "pfad_pflicht": "target\\release\\projectatlas.exe",
+      "warnungen": [
+        "Bot-Profil 'projectatlas' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/projectatlas) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "robinhood-fomo-kronos-arena",
+      "rolle": "Rahmen",
       "art": "doku",
       "notiz": "LEERER RAHMEN: fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile, verlangt Schluessel, die es nicht gibt",
       "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird."
     },
     {
       "ordner": "santiment",
+      "rolle": "Doku",
       "art": "doku",
-      "bot": "santiment",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'santiment' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/santiment) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "Scrapling",
+      "rolle": "Bibliothek",
       "art": "python",
-      "bot": "scrapling",
-      "notiz": "Web-Scraping-Bibliothek mit CLI (Python, venv fehlt)"
+      "notiz": "Web-Scraping-Bibliothek mit CLI (Python, venv fehlt)",
+      "warnungen": [
+        "Bot-Profil 'scrapling' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/scrapling) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "skills",
+      "rolle": "Doku",
       "art": "doku",
-      "bot": "skills",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'skills' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/skills) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "superpowers",
+      "rolle": "Skills",
       "art": "node",
-      "bot": "superpowers",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'superpowers' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/superpowers) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "tradememory-protocol",
+      "rolle": "MCP-Server",
       "art": "python",
       "notiz": "Handelsgedaechtnis als MCP-Server mit REST-API und Dashboard (Port 8000)",
       "start": [
@@ -620,19 +685,26 @@
     },
     {
       "ordner": "Trading-View-MCP-for-AI-by-Moon-Dev",
+      "rolle": "MCP-Server",
       "art": "python",
-      "bot": "tradingview-mcp",
-      "notiz": "MCP-Server fuer TradingView-Daten"
+      "notiz": "MCP-Server fuer TradingView-Daten",
+      "warnungen": [
+        "Bot-Profil 'tradingview-mcp' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/tradingview-mcp) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "winget-cli",
+      "rolle": "Doku",
       "art": "doku",
-      "bot": "winget-cli",
+      "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills",
-      "gruppe": "doku"
+      "warnungen": [
+        "Bot-Profil 'winget-cli' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/winget-cli) - der Bot-Knopf waere ein Knopf ins Leere"
+      ]
     },
     {
       "ordner": "ziplime",
+      "rolle": "Backtest",
       "art": "python",
       "notiz": "Backtesting-Framework (Polars) mit interaktivem KI-Assistenten im Terminal",
       "start": [
@@ -662,6 +734,1105 @@
           "hinweis": "Strategiedatei und Zeitraum mitgeben"
         }
       ]
+    },
+    {
+      "ordner": "Ausgabe",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Ausgaben und Berichte"
+    },
+    {
+      "ordner": "Ausgemustert",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Ausgemusterte Staende"
+    },
+    {
+      "ordner": "Austausch",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "doku",
+      "gruppe": "doku",
+      "notiz": "Durchgangsordner fuer Uebergaben, zuletzt der Systempruefungslauf"
+    },
+    {
+      "ordner": "CryptoPredictions",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Fremd-Klon: Krypto-Vorhersagemodelle (Anhaengsel einer Handelsreihe)"
+    },
+    {
+      "ordner": "CryptoTrade",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Fremd-Klon: LLM-Agent fuer Zero-Shot-Krypto-Handel"
+    },
+    {
+      "ordner": "FinRL",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Fremd-Klon: FinRL - Reinforcement Learning fuer Finanzhandel"
+    },
+    {
+      "ordner": "freqtrade",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Freqtrade-Bot-Suite in Docker, dry_run: Basiscontainer 8080, trading-agent 8081, topmovers 8082, marktlage-regime 8083"
+    },
+    {
+      "ordner": "handel-stack",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "DCA-Simulator und Handels-Skripte (Docker Compose)"
+    },
+    {
+      "ordner": "intelligent-trading-bot",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Zweite Ablage des ML-Backtest-Pruefstands - der laufende Klon liegt unter Werkstatt/Repos/intelligent-trading-bot"
+    },
+    {
+      "ordner": "OmniRoute",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "node",
+      "notiz": "Lokaler Modell-Router (Next.js) auf Port 20128 - traegt Subagenten und die Bot-Profile; faellt er aus, scheitern alle delegate_task"
+    },
+    {
+      "ordner": "omnitrade",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "rust",
+      "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, live, kill - privat gesichert als mfaupel95/omnitrade"
+    },
+    {
+      "ordner": "Protokolle",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Protokolle abgeschlossener Laeufe"
+    },
+    {
+      "ordner": "repos-verschoben-aus-skills",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Fremd-Klone, die aus Agenten/Hermes/skills herausgezogen wurden (unsloth, nautilus_trader, public-apis ...) - nichts geloescht"
+    },
+    {
+      "ordner": "RLTrader",
+      "wurzel": "werkstatt",
+      "rolle": "Projekt",
+      "art": "python",
+      "notiz": "Fremd-Klon: RLTrader, der Vorgaenger von TensorTrade"
+    },
+    {
+      "ordner": "scrapling-wissen",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "python",
+      "gruppe": "doku",
+      "notiz": "Handelswissen-Ernte mit Scrapling - Ablage der Ernte, kein Programm"
+    },
+    {
+      "ordner": "security-skills-claude-code",
+      "wurzel": "werkstatt",
+      "rolle": "Skills",
+      "art": "doku",
+      "gruppe": "doku",
+      "notiz": "Security-Skills fuer Claude Code - Nachschlagewerk, kein Programm"
+    },
+    {
+      "ordner": "Sitzungen",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Aufzeichnungen einzelner Arbeitssitzungen"
+    },
+    {
+      "ordner": "skillspector",
+      "wurzel": "werkstatt",
+      "rolle": "Werkzeug",
+      "art": "python+node",
+      "notiz": "SkillSpector - prueft Skill-Sammlungen (Node + Python + Makefile)"
+    },
+    {
+      "ordner": "trailofbits-skills",
+      "wurzel": "werkstatt",
+      "rolle": "Skills",
+      "art": "doku",
+      "gruppe": "doku",
+      "notiz": "Trail-of-Bits-Skill-Marktplatz - Nachschlagewerk, kein Programm"
+    },
+    {
+      "ordner": "Worktrees",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Arbeitsbaeume fuer parallele Sitzungen"
+    },
+    {
+      "ordner": "zustand-sicherung-20260916-015331",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "daten",
+      "gruppe": "doku",
+      "notiz": "Zustandssicherung vom 16.09.2026 01:53 vor dem Hermes-Umbau"
+    },
+    {
+      "ordner": "Checkpoints",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Trainings-Checkpoints"
+    },
+    {
+      "ordner": "Daten",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Datenfeld der Projekte"
+    },
+    {
+      "ordner": "GGUF",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Quantisierte Modellgewichte (GGUF)"
+    },
+    {
+      "ordner": "HuggingFace",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "HuggingFace-Ablage der Projekte"
+    },
+    {
+      "ordner": "Invest",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "doku",
+      "gruppe": "doku",
+      "notiz": "Anlage-Unterlagen; eigene LIESMICH.md im Ordner"
+    },
+    {
+      "ordner": "NautilusTrader",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "NautilusTrader-Daten und -Laeufe der Handels-Spuren"
+    },
+    {
+      "ordner": "OmniRoute",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "OmniRoute-Projektstand; die laufende Installation liegt unter Werkstatt/OmniRoute"
+    },
+    {
+      "ordner": "skill-automatik",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Skill-Automatik: Zuarbeit und Skripte"
+    },
+    {
+      "ordner": "workflow",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Arbeitsablaeufe der Projekte"
+    },
+    {
+      "ordner": "agent.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "DCA-Agent: verwaltet mehrere Sparplaene und BEREITET Kaeufe vor.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "agent.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "DCA-Agent: verwaltet mehrere Sparplaene und bereitet Kaeufe VOR - der Vorbereitungsschritt ist die Grenze zur Order."
+    },
+    {
+      "ordner": "ai4trade",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "python",
+      "notiz": "Anbindung an ai4trade.ai (Papier-Signalplattform): Agent HermesMax2, Heartbeat-Poller und Anlage-Werkzeug"
+    },
+    {
+      "ordner": "auswertung_alle.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Was die Buecher hergeben - Spur fuer Spur, mit ihrer eigenen Kostenrechnung.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "auswertung_alle.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Wertet die Spuren aus, die keine eigene auswertung.py haben. Rechnet auf ECHTEN Handelsrunden; Zwangsschluesse (Herzschlag, Notaus) stehen getrennt daneben. --risiko waehlt die Stufe."
+    },
+    {
+      "ordner": "auswertung_trading.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Die Empfehlungs-CSV des MoonDev-trading-Agenten auswerten.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "auswertung_trading.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "backtest_prognose.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest der vier Prognose-Spuren auf echten Kerzen - zur Optimierung.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "backtest_prognose.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "backtest_urteile.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest-Urteile sammeln und in die Freigabe der Spur schreiben.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "backtest_urteile.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "beleg_hand.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Die HAND: fuehrt Auftraege aus, die eine Spur mit einem Freigabe-Beleg versehen hat.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "beleg_hand.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Die HAND: fuehrt einen Freigabe-Beleg aus (Kraken-Order ueber das MCP-Tor). Vorschau ist Standard, --anwenden fuehrt wirklich aus. Ein Beleg ist einmalig und laeuft nach 180 s ab."
+    },
+    {
+      "ordner": "bt_opt",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "python",
+      "notiz": "Gegenprobe der Empfehlungen aus backtest-optimierung-2026-09-21.md"
+    },
+    {
+      "ordner": "bt_varianten_fast.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Schneller Varianten-Backtest: Indikatoren einmal je Instrument vorrechnen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "bt_varianten_fast.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "dauerlauf.py",
+      "wurzel": "handel",
+      "rolle": "Betrieb",
+      "art": "werkzeug",
+      "notiz": "Der 24/7-Betrieb: analysieren, rechnen, melden, auf Befehle hoeren.",
+      "anleitung": "Der 24/7-Betrieb: fuehrt alle Spuren, spiegelt nach Q: und meldet an Telegram. Die Wahrheit, welche Spur laeuft, steht im Dict SPUREN (ab Zeile 140).\n\nStart NUR ueber die geplanten Aufgaben (MaxHirn-Handel-Dauerlauf, -Waechter, -Mittel-, -Hoch-Waechter) oder den Wrapper Routinen/handel-dauerlauf.ps1. Ein Handstart nimmt die echte Sperre und schreibt ins echte Protokoll.",
+      "warnungen": [
+        "NIE von Hand starten - ein Handstart nimmt die echte Sperre und schreibt ins echte Protokoll (dafuer gibt es die geplanten Aufgaben und den Dauerlauf-Waechter)"
+      ]
+    },
+    {
+      "ordner": "dca.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "DCA-Simulator - instrumentenneutral.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "dca.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "dca_auswertung.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Bewertet die Einstellungen eines OKX-DCA-Bots gegen echte Kursdaten.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "dca_auswertung.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "filter_studie.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Eingangsfilter-Studie fuer die Kopier-Spuren (spiegel, kopier, kopier1zu1).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "filter_studie.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "freigabe.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Bestaetigungsfenster zum Scharfschalten eines Handelsauftrags.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "freigabe.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Das Bildschirm-Freigabefenster: bestaetigt ein Scharfschalten, das eine Spur anfragt. Live wird NIE aus Chat oder Telegram scharf geschaltet - nur hier oder per /ja_<spur> im Dauerlauf."
+    },
+    {
+      "ordner": "freigabefenster.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Scharfschalten auf Zeit - die Handy-Fassung des Freigabefensters.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "freigabefenster.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "freqtrade",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "python",
+      "notiz": "Die Moon-Dev-Bots in Freqtrade einsetzen, fahren und messen (Strategien, Aufsaetze, Startskript)"
+    },
+    {
+      "ordner": "gesamtbilanz.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Die Summe ueber alle Buecher - getrennt nach Waehrung und nach Papier/Live.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "gesamtbilanz.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "gitter",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Gitter-Spur: kauft auf fallenden Stufen. Befund 15.09.2026 - das Gitter folgt der Marktrichtung (Korrelation +0,78), gewinnt in fallenden Fenstern und verliert in steigenden; die 52-Wochen-Mittel bleibt negativ"
+    },
+    {
+      "ordner": "grid.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Grid-Simulator: kauft auf fallenden Gitterstufen, verkauft auf steigenden.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "grid.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "handelszentrale.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Handelszentrale - eine Ansicht ueber alle Spuren in Handel/.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "handelszentrale.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Das lesende Fenster ueber alle Spuren (Positionen, Kursweg, Konsole, Kopfzeile mit Dauerlauf-PID). Es schreibt NICHTS - dauerlauf.py bleibt der einzige Schreiber.\n\nVon Hand: .venv\\Scripts\\pythonw.exe handelszentrale.py (Fenster) oder handelszentrale.py --pruefen (ohne Fenster). --risiko mittel|hoch zeigt eine Risikostufe, --schrift N stellt die Schriftgroesse ein."
+    },
+    {
+      "ordner": "historie_binance.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Historische Kerzen und Funding-Saetze fuer den Backtest.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "historie_binance.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "iv_waelle",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Wie iv_wand, aber Ausstieg an der Spannengrenze: Stop hinter die Wand, Ziel der halbe Rueckweg (Deribit-IV)"
+    },
+    {
+      "ordner": "iv_wand",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Strike mit dem groessten Open Interest als Wand (OKX-Optionen, Verfall 7-45 Tage); long/short nur, wenn der Spot hoechstens 5 % daneben liegt"
+    },
+    {
+      "ordner": "journal_pos_id_nachziehen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Die Spalte `pos_id` in VORHANDENE Journale nachziehen (T-095).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "journal_pos_id_nachziehen.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Zieht die Spalte pos_id in vorhandene Journale nach - bis alle 94 Journal-Schreiber sie tragen (offener Punkt T-226)."
+    },
+    {
+      "ordner": "kerzenschluss_bias.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Werkzeug in Handel/ (in Arbeit - noch kein Startbefehl belegt)"
+    },
+    {
+      "ordner": "kopier",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Copy-Trading der Pump.fun-Rangliste (Papierbuch); am 24.09.2026 stillgelegt, das Buch bleibt als Vergleichsgrundlage stehen"
+    },
+    {
+      "ordner": "kopier1zu1",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "1:1-Copy-Trade auf Trade-Ereignissen statt auf einem Portfolio-Diff (Papierbuch); am 24.09.2026 stillgelegt"
+    },
+    {
+      "ordner": "kosten_wendepunkt.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Wie viel Gebuehr traegt eine Spur? - die Kosten-Wendepunkte aller Spuren.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "kosten_wendepunkt.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "kraken",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Spur 3 - Kraken-Spot, nur long, Waehrung je Paar (EUR, USDC, EURC); ordert seit 22.09.2026 nicht selbst, sondern stellt einen Freigabe-Beleg aus"
+    },
+    {
+      "ordner": "kraken_abweisungs_sonde.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Kraken-Abweisungs-Sonde: haelt einen ZEUGEN fest, wenn Kraken abweist.",
+      "anleitung": "Sonde: misst vier Wege (offen/signiert x Spot/Futures) und unterscheidet damit 'Netz' von 'Schluessel'. Nach einer Abweisung 60 min Kuehlzeit - jeder weitere Versuch setzt den Kraken-Lockout-Timer zurueck.",
+      "warnungen": [
+        "jeder Aufruf misst ECHT gegen Kraken und setzt den Lockout-Timer zurueck"
+      ]
+    },
+    {
+      "ordner": "leitstand.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Leitstand - ein Fenster fuer Ueberwachen, Freigaben, Backtests und Markt.",
+      "anleitung": "Das grosse Fenster: Ueberwachen, Freigaben, Backtests, Markt und Urteile in einem. Es hat keine Argumente, deshalb KEIN Klick-Start - von Hand:\n\n.venv\\Scripts\\pythonw.exe leitstand.py",
+      "warnungen": [
+        "oeffnet ein Fenster; der Aufruf steht in der Anleitung unten"
+      ]
+    },
+    {
+      "ordner": "liq_wand",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Wand aus Zwangsschluessen (OKX-Liquidationen, groesstes Preisband der letzten ~78 min) - die Spur geht MIT dem Cluster, weil geschlossene Shorts Kaufdruck sind"
+    },
+    {
+      "ordner": "llm_probe.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Pruefstand fuer die lokale Modellwahl der LLM-Spuren - reine Diagnose.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "llm_probe.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "macd_mtf",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "MACD auf zwei Zeitrahmen - Trendfolge nur bei Einigkeit; braucht 600 Basiskerzen, seit der Nachblaetterung am 15.09.2026 vorhanden"
+    },
+    {
+      "ordner": "melder.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Telegram-Anbindung der Handelsspuren - melden und entgegennehmen.",
+      "warnungen": [
+        "verschickt Telegram-Nachrichten - nicht zum Ausprobieren aufrufen"
+      ]
+    },
+    {
+      "ordner": "moondev_funding",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Moon-Dev-Funding-Spur (Papier)"
+    },
+    {
+      "ordner": "moondev_historie.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Marktquerschnitt und Funding fuer die MoonDev-Spuren.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "moondev_historie.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "moondev_liquidation",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_liquidation` (Papier, mit lokalem Sprachmodell)"
+    },
+    {
+      "ordner": "moondev_listingarb",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_listingarb` (Papier)"
+    },
+    {
+      "ordner": "moondev_marktlage",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_marktlage` (Papier)"
+    },
+    {
+      "ordner": "moondev_sentiment",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_sentiment` (Papier, mit lokalem Sprachmodell)"
+    },
+    {
+      "ordner": "moondev_signalwelle",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur signalwelle (Papier): Einbrueche im Marktquerschnitt als Signal"
+    },
+    {
+      "ordner": "moondev_sniper",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur sniper (Papier): Einzelkandidaten des MoonDev-Agenten"
+    },
+    {
+      "ordner": "moondev_topmovers",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_topmovers` (Papier)"
+    },
+    {
+      "ordner": "moondev_whale",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bot-Spur `moondev_whale` (Papier, mit lokalem Sprachmodell)"
+    },
+    {
+      "ordner": "mosaic",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "4H-Bias, 30M-Pullback zur Nachfragezone, 5M-Structure-Shift - die einzige Spur mit zwei Boersen (Kraken EUR und OKX USDC), Ausstieg bindet die Boerse der Position"
+    },
+    {
+      "ordner": "nautilus",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "NautilusTrader-Arm (OKX-Demo): Stop -19,8 %, Trailing ab +10 % mit 6 % Abstand, Frist 48 h; bucht Kopier-Kaeufe als BTC-Proxy"
+    },
+    {
+      "ordner": "nautilus-rust",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "rust",
+      "notiz": "Rust-Arm der Nautilus-Reihe (Cargo-Workspace)"
+    },
+    {
+      "ordner": "nautilus_kraken",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Kraken-Arm der Nautilus-Reihe (EUR); Schwesterarme sind nautilus (OKX) und nautilus_kraken_futures (USD, PF_XBTUSD)"
+    },
+    {
+      "ordner": "nautilus_rc5",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "python",
+      "notiz": "Rauchproben fuer nautilus_trader 2.0.0rc5 gegen das Kraken-Spotkonto"
+    },
+    {
+      "ordner": "okx_bot_waechter",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "spur",
+      "notiz": "Waechter der OKX-Future-Bots: Leiter, Munition, Liquidation, Vorschlag 'letzte kaufbare Grenze' mit Stop (Eingriff nur mit --anwenden)"
+    },
+    {
+      "ordner": "okx_waisen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "OKX: Schutz-Orders finden, deren Position bzw. Bestand es nicht mehr gibt.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "okx_waisen.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "OKX-Wartung: findet Schutz-Orders, deren Position bzw. Bestand es nicht mehr gibt. Vorschau ist Standard."
+    },
+    {
+      "ordner": "omniquant",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Handelt die Treffer des Prognose-Berichts als Papierbuch; Hauptarm liest seit 24.09.2026 die weiche Fassung (prognose_fassung=weit)"
+    },
+    {
+      "ordner": "OpenAlice",
+      "wurzel": "handel",
+      "rolle": "Fremdprojekt",
+      "art": "ablage",
+      "gruppe": "doku",
+      "notiz": "Fremdes Projekt (112 MB, 482 .py) mit eigenem Baum - nur oeffnen, wenn die Aufgabe ausdruecklich OpenAlice betrifft"
+    },
+    {
+      "ordner": "optimieren.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Parametersuche je Spur auf dem Backtest-Fundament (Walk-Forward).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "optimieren.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Walk-Forward-Suche je Spur auf dem Backtest-Fundament; die Suchtabelle steht in spur_opt.json. Ein Optimierlauf ohne Walk-Forward ist keine Messung."
+    },
+    {
+      "ordner": "orb",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Opening Range Breakout auf BTC-/ETH-USDT-SWAP, 00:00-UTC-Grenze - der eigene Backtest ist fuer beide Instrumente negativ, die Spur laeuft nur zur Beobachtung"
+    },
+    {
+      "ordner": "orbk",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Opening Range Breakout auf Kraken (dieselbe Strategie wie orb, andere Boerse); seit 21.09.2026 sind die Schwellen so gesetzt, dass die ETH-Range greift"
+    },
+    {
+      "ordner": "papierbuch_schliessen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Papier-Altlasten aus den Kraken-Buechern buchen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "papierbuch_schliessen.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Bucht Papier-Altlasten aus den Kraken-Buechern aus (Positionen ohne Boersensatz). Vorschau ist Standard, --anwenden schreibt."
+    },
+    {
+      "ordner": "prognose.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Prognose: sucht ueber den ganzen Markt nach guenstigen Einstiegen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "prognose.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "prognose_berichte",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "daten",
+      "gruppe": "doku",
+      "notiz": "Taegliche Prognose-Berichte (neuester.json) - Eingang der Spur omniquant"
+    },
+    {
+      "ordner": "pruefe_ratschen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Erreichbarkeit und Herkunft der Drawdown-Ratsche je Spur.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "pruefe_ratschen.py"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Tafel der Drawdown-Ratsche je Spur. Fragt jede Spur ueber ihr EIGENES lage() - eine nachgebaute Formel wuerde die Formel pruefen, nicht die Spur. Die Spalte '1.0x?' prueft, dass der Betrag nicht davongelaufen ist."
+    },
+    {
+      "ordner": "reinvest.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Reinvestitionsrechner: Welche Mechanik erzeugt wie oft reinvestierbaren Ertrag,",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "reinvest.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "replay.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest-Kern: die Spur entscheidet, der Replay liefert nur Zeit und Daten.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "replay.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Backtest-Kern: die Spur entscheidet, der Replay liefert nur Kerzen und stellt die Uhr. Zwei Familien (A: Buch im Modul, B: spur_buch.zyklus) und der Feed-Querschnitt (lauf_feed, lauf_c)."
+    },
+    {
+      "ordner": "robinhood_radar",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Papierbuch auf bewerteten Wallets der Robinhood Chain - liest NUR die fomo-radar-Datenbank, nie die Rangliste; kein Orderweg"
+    },
+    {
+      "ordner": "santiment_daten.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Santiment SanAPI (GraphQL) - On-Chain-, Social- und Dev-Metriken, lesend.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "santiment_daten.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "scanner",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "python",
+      "notiz": "Marktscanner - die einzige Spur mit belegtem Vorteil (t=15,3 bei 125 echten Runden). Handelt live ueber OKX mit Boersen-Stop, Papier und Live im selben Buch"
+    },
+    {
+      "ordner": "sperrgruende.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Sperrgruende aller Spuren aus ihrer eigenen Vorschau - rein lesend.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "sperrgruende.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Sperrgruende aller Spuren aus ihrer EIGENEN Vorschau - markiert, wo nur das Freigabefenster fehlt (das ist die Bedingung, unter der die Auto-Freigabe greift)."
+    },
+    {
+      "ordner": "spiegel",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Papierbuch fuer Copy-Trading (Pump.fun-Rangliste); am 21.09.2026 abgeschaltet, das Buch bleibt als Vergleichsgrundlage. Wieder einschalten nur mit frischem letzter_lauf, sonst wird alles flachgestellt"
+    },
+    {
+      "ordner": "spiegelstand.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Spiegelstand der Handelsspuren (Bedingung 4) - lesend, ohne Netz.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "spiegelstand.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Bedingung 4: vergleicht jede Handelsspur BYTE-GENAU mit der Kopie unter Q:\\Handel_Journal\\<spur>. Rein lesend. --risiko prueft eine Stufe mit."
+    },
+    {
+      "ordner": "spuren_stand.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Stand aller Handelsspuren: erlaubt, Fenster, Live-Pfad, Buch, Zyklus.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "spuren_stand.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Tafel aller Spuren: erlaubt, Freigabefenster, Live-Pfad, Buch, Runden. Rein lesend - der schnellste Weg zu 'was laeuft und was ist gesperrt'."
+    },
+    {
+      "ordner": "squeeze",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Volatilitaetskompression, die sich loest (Squeeze-Momentum)"
+    },
+    {
+      "ordner": "stand",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "daten",
+      "gruppe": "doku",
+      "notiz": "Tagesstaende des Handels"
+    },
+    {
+      "ordner": "stille_spuren.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Stille Spuren finden - fuer alle Spuren im Dauerlauf, auch kuenftige.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "stille_spuren.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "stoerungen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Stoerungen von Handelsrunden trennen - fuer die Kennzahlen UND die Fehlersuche.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "stoerungen.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "strategie_kennzahlen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Kennzahlen je Handels-Spur aus `strategy_metrics.py` (29.09.2026).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "strategie_kennzahlen.py"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "t-Statistik der Expectancy und Stop-Vorschlag aus der MAE der Gewinner - je Spur. Laeuft im Handel-venv (.venv), weil numpy/pandas gebraucht werden; das scanner-venv hat sie nicht."
+    },
+    {
+      "ordner": "supertrend",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "SuperTrend-Richtungswechsel, die Linie dient als Stop"
+    },
+    {
+      "ordner": "swap",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "SWAP-Spur mit Live-Pfad; am 27.09.2026 auf Papier zurueckgesetzt (4 echte Runden, 0 % Treffer, -8,2 %) - der Schalter war wirkungslos, es gibt keinen Orderaufruf im Code"
+    },
+    {
+      "ordner": "tagesbericht.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Ein Bild aller Spuren - fuer das Handy, einmal am Tag.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "tagesbericht.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Ein Bild aller Spuren fuer das Handy. --risiko mittel|hoch|alle liest eine Risikostufe (Vorgabe: Basis), --senden schickt je Stufe eine eigene Telegram-Nachricht. Ohne --senden passiert nichts nach draussen."
+    },
+    {
+      "ordner": "testlauf.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Faehrt jede Testsuite des Handel-Baums und meldet Abweichungen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "testlauf.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Faehrt jede Testsuite des Handel-Baums und meldet die Abweichungen. Der Hausweg, wenn nach einer Aenderung die Wirkung belegt werden soll."
+    },
+    {
+      "ordner": "trendwende_btc",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "BTC short, sobald der SuperTrend auf 1H dreht - nur unter der EMA200; ein Rueckdreh beendet die Position (erste Spur mit Rueckdreh-Ausstieg)"
+    },
+    {
+      "ordner": "verbesserer",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "python",
+      "notiz": "Selbstverbesserung: Anfragen sammeln und anwenden (der Dauerlauf ruft es)"
+    },
+    {
+      "ordner": "vergleich.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Dieselbe DCA-Mechanik ueber mehrere Titel - der Ehrlichkeitstest.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "vergleich.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "wavetrend",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Wavetrend-Umkehr im ueberzogenen Bereich"
+    },
+    {
+      "ordner": "wochenbericht.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Der Wochenbericht - montags, aus derselben Erhebung wie der Tagesbericht.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "wochenbericht.py",
+        "--help"
+      ],
+      "venv_pflicht": true
+    },
+    {
+      "ordner": "xperp",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "XPERP-Bot: OKX-Perpetuals mit Zonenrechnung und wartenden Limit-Auftraegen (ein Limit hinter dem Markt ist kein Fehler); Live-Grenzen 80 USD je Anlauf, 600 USD gesamt, Hoechststrafe 30 USD Buchrisiko"
+    },
+    {
+      "ordner": "zeitversatz_messen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Zeitversatz messen: was der Kurs in der Wartezeit zwischen Signal und Kauf macht.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "zeitversatz_messen.py",
+        "--help"
+      ],
+      "venv_pflicht": true
     }
   ]
 }

@@ -87,6 +87,21 @@ def vorzeichen_farbe(wert, neutral: str = "matt") -> str:
     return neutral
 
 
+def skalierung(root) -> float:
+    """Der Anzeige-Faktor: 1.0 bei 96 dpi, 1.25 bei 120 dpi, 1.5 bei 144 dpi.
+
+    Ein Fenster mit `dpi_bewusst()` setzt Schrift und Zeilenhoehe in
+    Geraetepixeln; fest eingetragene Breiten (Spalten, Eingabefelder) werden
+    dadurch zu schmal. Wer Pixelmasse setzt, streckt sie mit diesem Faktor.
+    Nie kleiner als 1.0 - ein kleinerer Faktor wuerde Text verkleinern, statt
+    ihn lesbar zu halten.
+    """
+    try:
+        return max(1.0, float(root.winfo_fpixels("1i")) / 96.0)
+    except Exception:                                        # noqa: BLE001
+        return 1.0
+
+
 def dpi_bewusst() -> None:
     """Windows sagen, dass wir selbst skalieren - VOR dem ersten `Tk()`.
 

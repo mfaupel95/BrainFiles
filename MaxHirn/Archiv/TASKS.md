@@ -61,6 +61,43 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-234 - Zentrale: Werkstatt- und Handel-Projekte ohne Startbefehl nachtragen**
+      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 162 Zeilen
+      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL). 50 Eintraege haben einen
+      Startbefehl, der Rest steht ehrlich unter EINRICHTEN ("kein Startbefehl
+      belegt") - vor allem die Werkstatt-Projekte (freqtrade, omnitrade,
+      OmniRoute, handel-stack, skillspector) und die Werkzeug-Ordner in Handel
+      (okx_bot_waechter, freqtrade, bt_opt, nautilus-rust, verbesserer).
+      Hausregel: ein Befehl kommt erst ins Manifest, wenn er einmal echt
+      gelaufen ist (`fuellen.py --belege` fuehrt hinterlegte Staende aus).
+      Naechster Schritt: je Projekt den Startweg einmal von Hand fahren, dann
+      `start` bzw. `befehle` in repos-zentrale.json eintragen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
+
+- [ ] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
+      Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`
+      (jeder Aufruf misst echt gegen Kraken und setzt den Lockout-Timer zurueck),
+      `dauerlauf.py` (Handstart nimmt die echte Sperre) und `melder.py`
+      (verschickt Telegram) haben bewusst KEINEN Startbefehl; ihre Anleitung
+      nennt den Aufruf in Worten, die Zeile traegt den Grund als Warnung.
+      Naechster Schritt: entscheiden, ob leitstand.py trotzdem einen Klick-Start
+      bekommt (Aufruf: .venv\Scripts\pythonw.exe leitstand.py); die drei anderen
+      bleiben ohne.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/repos-zentrale/fuellen.py
+
+- [ ] **T-236 - Zentrale: neue Werkzeugdateien erscheinen ohne Startbefehl**
+      Kontext: Die Datei-Regel (`scan.ist_werkzeug`: eigener Einstieg UND
+      argparse) nimmt jede neue Datei der Handel-Wurzel als Zeile auf - aber nur
+      Dateien in `fuellen.HILFE_VERIFIZIERT` bekommen den `--help`-Start.
+      Beispiel: `kerzenschluss_bias.py` (parallel entstanden) steht ohne Start.
+      Naechster Schritt: soll eine Datei bleiben, ihren Aufruf einmal echt
+      fahren, den Namen in HILFE_VERIFIZIERT aufnehmen und `fuellen.py --belege`
+      laufen lassen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
+
 - [ ] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
       Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
       (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
@@ -1707,19 +1744,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/nautilus_kraken/wachen.json, freigabe_fenster.json
 
 
-- [ ] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
-      Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
-      ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -
-      sie liegen seit 19.09.2026 unter `Agenten/Hermes/profiles/.deleted/`
-      (projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
-      scrapling, santiment, claude-plugins-official, coder, easycliproxyapi,
-      graphify, max, moon-dev-code, odysseus, winget-cli). Der Test ist richtig -
-      das Manifest ist veraltet; unklar ist, ob die Profile zurueckkommen sollen.
-      Naechster Schritt: entscheiden - Profile zurueckholen ODER die bot-Felder im
-      Manifest entfernen bzw. kennzeichnen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
-      Agenten/Hermes/profiles/.deleted/
 
 - [x] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
       Erledigt: 2026-09-24. `1b3c650` (api_frei.py + die drei umgestellten
@@ -2577,6 +2601,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
+      Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
+      ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -
+      sie liegen seit 19.09.2026 unter `Agenten/Hermes/profiles/.deleted/`
+      (projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
+      scrapling, santiment, claude-plugins-official, coder, easycliproxyapi,
+      graphify, max, moon-dev-code, odysseus, winget-cli). Der Test ist richtig -
+      das Manifest ist veraltet; unklar ist, ob die Profile zurueckkommen sollen.
+      Naechster Schritt: entscheiden - Profile zurueckholen ODER die bot-Felder im
+      Manifest entfernen bzw. kennzeichnen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
+      Agenten/Hermes/profiles/.deleted/
+      **Erledigt 2026-09-30.** Die 13 Eintraege ohne Profil tragen jetzt eine `warnungen`-Zeile statt eines Bot-Namens. Grund der Entscheidung: `profiles/.deleted/` enthaelt KEINE Profile, sondern 9-Byte-Vermerke mit dem Wort `deleted` (gemessen mit `ls -la`) - die Profile wurden am 19.09.2026 geloescht, nicht weggelegt; ein Bot-Knopf waere ein Knopf ins Leere. `test_jedes_bot_profil_des_manifests_existiert` ist wieder gruen (118 Tests).
 - [x] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
       Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
       1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur

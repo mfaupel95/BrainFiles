@@ -1,82 +1,110 @@
-# Repos-Zentrale
+# Zentrale — Repos, Werkstatt und Handel
 
-Ein Fenster fuer alle Projekte unter `Werkstatt/Repos/`: Ordner oeffnen,
-Terminal im Repo, starten, Bot-Chat, Doku lesen — plus die Angabe, was fehlt,
-bevor man es vergebens versucht.
+Ein Fenster fuer **alles, was auf diesem Rechner liegt und startet**: die 46
+geklonten Repos unter `Werkstatt/Repos`, die eigenen Projekte und Ablagen unter
+`Werkstatt/` und die Handelsspuren samt Werkzeugen unter `Agenten/Handel`.
+Ordner oeffnen, Terminal, starten, Bot-Chat, Doku lesen — plus die Angabe, was
+fehlt, bevor man es vergebens versucht.
 
-Entstanden am 18.09.2026, weil „ich kann die Repos nicht starten" fuenf
-verschiedene Dinge bedeutete (Fenster, Prozess, Skript, Bau, Doku) und es fuer
-jedes Projekt einen eigenen Weg gab. Spezifikation:
+Entstanden am 18.09.2026 als „Repos-Zentrale" fuer `Werkstatt/Repos`; am
+30.09.2026 auf drei **Bereiche** erweitert. Spezifikation der ersten Fassung:
 `docs/design/2026-09-18-repos-zentrale-design.md`, Plan:
 `docs/plans/2026-09-18-repos-zentrale.md`.
 
 ## Starten
 
     cd Agenten\Werkzeuge\repos-zentrale
-    .venv\Scripts\pythonw.exe repos_zentrale.py        # Fenster
-    .venv\Scripts\python.exe   repos_zentrale.py --pruefen   # nur auflisten, kein Fenster
+    .venv\Scripts\pythonw.exe repos_zentrale.py                    # Fenster
+    .venv\Scripts\python.exe   repos_zentrale.py --pruefen         # auflisten, kein Fenster
+    .venv\Scripts\python.exe   repos_zentrale.py --pruefen --bereich HANDEL
 
 Die venv ist nur fuer dieses Werkzeug (Python 3.13, Standardbibliothek). Sie
 haengt an keiner Repo-venv.
 
+## Die drei Bereiche
+
+| Bereich | Wurzel | Regel, was eine Zeile bekommt |
+|---|---|---|
+| **REPOS** | `Werkstatt/Repos` | nur Klone mit `.git` |
+| **WERKSTATT** | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner (auch Datenfelder und Ablagen) |
+| **HANDEL** | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit eigenem Einstieg |
+
+Die Wurzeln stehen in `quellen.py` (Pfade relativ zur BrainFiles-Wurzel, keine
+absoluten Pfade). Gesperrt sind in **jeder** Wurzel Interpreter, Caches und
+Editorzustand (`.venv`, `node_modules`, `__pycache__`, `.git`, `cache`, ...) -
+als Namensliste, nicht als Muster; sonst traefe eine Sperre ein echtes Projekt.
+
 ## Was das Fenster zeigt
 
-Ein Baum mit Gruppenkoepfen:
+Ein Baum mit **drei Ebenen**:
+
+    BEREICH (REPOS · WERKSTATT · HANDEL)
+      GRUPPE (STARTBAR · EINRICHTEN · NEU · NUR DOKU · FEHLT)
+        Projektzeile
 
 | Gruppe | Bedeutung |
 |---|---|
 | **STARTBAR** | Startbefehl ist belegt *und* die Abhaengigkeiten liegen auf der Platte |
-| **EINRICHTEN** | Einstieg vorhanden, es fehlt noch etwas (venv, `node_modules`, Binary) |
+| **EINRICHTEN** | Einstieg vorhanden, es fehlt noch etwas (venv, `node_modules`, Binary, Startbefehl) |
 | **NEU** | Ordner auf der Platte, aber kein Eintrag im Manifest |
-| **NUR DOKU** | kein Programm, nur Text/PDF — „starten" heisst hier oeffnen |
+| **NUR DOKU** | kein Programm, nur Text oder Daten — „starten" heisst hier oeffnen |
 | **FEHLT** | Manifest-Eintrag ohne Ordner (z. B. nach dem Loeschen eines Klons) |
 
-Spalten: Art, venv, Bot-Profil (mit `(fehlt)`, wenn das Profil nicht existiert),
-letzter Start (aus `logs/`), Hinweis (erst der Grund, sonst die Notiz).
+Spalten: **Projekt · Art · Rolle · Bot · letzter Start · Hinweis**.
+
+- **Rolle** ordnet ein, was das ist (Spur, Werkzeug, Modell, MCP-Server, Ablage).
+- **Bot** zeigt das Hermes-Profil und `(fehlt)`, wenn es keines gibt.
+- **letzter Start** kommt aus dem neuesten Log in `logs/`.
+- **Hinweis** nennt erst den Grund (was fehlt), sonst die Notiz.
+
+Oben: Bereichsauswahl, Suchfeld (trifft Name, Rolle, Bot, Notiz, Pfad)
+und „Aktualisieren". Der Baum faerbt nur nach Zustand — `FEHLT` rot, `NEU`
+und Zeilen mit Grund gelb — und sagt den Zustand zusaetzlich als Text.
+
+Tasten: **F5** aktualisieren, **Strg+F** Suchfeld, **Eingabe** starten,
+**Doppelklick** startet (wenn belegt), sonst oeffnet es den Ordner.
 
 Fuenf Aktionen je Zeile — was nicht geht, ist deaktiviert, nicht kaputt:
 
-1. **Ordner** — Explorer im Repo
-2. **Terminal** — `wt.exe`, Arbeitsverzeichnis = Repo
+1. **Ordner** — Explorer; bei einer Werkzeugdatei wird die Datei markiert
+2. **Terminal** — `wt.exe`, Arbeitsverzeichnis = Projekt
 3. **Starten** — der Befehl aus dem Manifest; Ausgabe geht in `logs/`
-4. **Bot** — `hermes -p <bot> chat`, Arbeitsverzeichnis = Repo
-5. **Doku** — die README des Repos
+4. **Bot** — `hermes -p <bot> chat`, Arbeitsverzeichnis = Projekt
+5. **Doku** — die README des Projekts
 
-Dazu **Log oeffnen** (oder Doppelklick auf eine Zeile): zeigt die neueste
-Logdatei dieses Repos. Oben ein Suchfeld (trifft Name, Bot, Notiz, Art) und
-„Aktualisieren" (liest Platte und Manifest neu).
+Dazu **Log oeffnen** (der Startbeleg) und **Wiki** (die Hausdoku zu diesem
+Werkzeug).
 
 ## Der Bereich „Was dieses Projekt kann"
 
 Unter der Tabelle steht fuer das **ausgewaehlte** Projekt:
 
-- **links ein Textblock**: wozu das Repo da ist (`notiz`), wo es liegt, ob eine
-  venv da ist, was noch fehlt („Zu tun: …") und — wenn im Manifest hinterlegt —
-  der Ablauf in Worten (`anleitung`). Fehlt er, sagt der Text das ausdruecklich,
+- **links ein Textblock**: Bereich und Rolle, wozu es da ist (`notiz`), wo es
+  liegt, ob eine venv da ist, was noch fehlt („Zu tun: …") und — wenn hinterlegt
+  — der Ablauf in Worten (`anleitung`). Fehlt er, sagt der Text das ausdruecklich,
   statt etwas zu erfinden.
 - **rechts die Befehlsliste**: je Zeile `Was | Befehl | Hinweis`. Die ersten
-  Eintraege sind fuer jedes Repo dieselben (Starten, Terminal, Ordner, Doku,
+  Eintraege sind fuer jedes Projekt dieselben (Starten, Terminal, Ordner, Doku,
   Bot), danach kommen die Befehle aus dem Manifest (`befehle`).
 
 Drei Knoepfe, alle auf die gewaehlte Zeile bezogen:
 
 | Knopf | Was passiert |
 |---|---|
-| **Befehl ausfuehren** | oeffnet ein sichtbares Windows-Terminal im Repo-Ordner und fuehrt den Befehl aus (`cmd /k`, damit die Ausgabe stehen bleibt). Zeilen wie „Ordner im Explorer" loesen den gleichnamigen Knopf aus. |
+| **Befehl ausfuehren** | oeffnet ein sichtbares Windows-Terminal im Projektordner und fuehrt den Befehl aus (`cmd /k`, damit die Ausgabe stehen bleibt). Zeilen wie „Ordner im Explorer" loesen den gleichnamigen Knopf aus. |
 | **Befehl kopieren** | legt die Befehlszeile in die Zwischenablage — zum Einfuegen in ein eigenes Terminal. So lernt man den Weg von Hand. |
-| **Bot damit beauftragen** | gibt den Befehl als Auftrag an den Repo-Bot (`hermes -p <bot> chat -q …`): er fuehrt aus und erklaert in drei Saetzen, was herauskam. Nur aktiv, wenn das Profil existiert. |
-
-Das ist der gedachte Weg fuer „ich kenne mich in der Kommandozeile nicht aus":
-Projekt waehlen, Befehlszeile lesen, **Bot damit beauftragen** — oder
-**Befehl kopieren** und selbst einfuegen.
+| **Bot damit beauftragen** | gibt den Befehl als Auftrag an den Bot (`hermes -p <bot> chat -q …`): er fuehrt aus und erklaert in drei Saetzen, was herauskam. Nur aktiv, wenn das Profil existiert. |
 
 ## Das Manifest
 
 `repos-zentrale.json` ist die **einzige** Stelle, an der ein Startbefehl steht.
-Felder je Repo:
+Felder je Projekt:
 
     {
-      "ordner": "moon-dev-ai-agents",     // wie das Verzeichnis heisst
+      "ordner": "moon-dev-ai-agents",     // Anzeigename
+      "wurzel": "repos",                   // "repos" (Vorgabe), "werkstatt", "projekte", "handel"
+      "pfad": "moon-dev-ai-agents",        // Pfad INNERHALB der Wurzel (Vorgabe: ordner)
+      "rolle": "Werkzeug",                 // Klartext-Rolle fuer die Spalte
       "art": "python",                     // nur Anzeige, wird sonst aus der Platte gelesen
       "gruppe": "doku",                    // optional: erzwingt NUR DOKU
       "start": [".venv\\Scripts\\pythonw.exe", "moongui.py"],
@@ -91,69 +119,94 @@ Felder je Repo:
       "befehle": [                          // anklickbare Befehle, je {was, cmd, hinweis}
         {"was": "Pruefstand zeigen", "cmd": [".venv\\Scripts\\python.exe", "pruefstand.py"],
          "hinweis": "zwei Sekunden"}
-      ]
+      ],
+      "warnungen": ["Bot-Profil 'x' wurde am 19.09.2026 entfernt"]
     }
+
+Der **Schluessel eines Eintrags ist das Paar (wurzel, pfad)** — so darf
+`OmniRoute` einmal unter `Werkstatt/` und einmal unter `Werkstatt/Projekte/`
+stehen, ohne dass die beiden sich verdecken.
 
 Regeln, die der Code durchsetzt:
 
 - **`start` und `einrichten` sind argv-Listen**, keine Shell-Zeichenketten
   (kein `shell=True`, keine Zeichenketten-Injektion). Ein relativer
-  Programmname wird gegen den Repo-Ordner aufgeloest — Windows wuerde ihn sonst
+  Programmname wird gegen den Projektordner aufgeloest — Windows wuerde ihn sonst
   gegen das Arbeitsverzeichnis des Aufrufers suchen und nicht finden.
 - Ein **Befehl kommt erst ins Manifest, wenn er einmal echt gelaufen ist**
   (Log in `logs/`). Nennt der Test `tests/test_manifest_gegenprobe.py` einen
   Startbefehl ohne Logbeleg, ist die Regel verletzt.
-- **Kein Eintrag ohne Ordner** heisst nicht „Repos unsichtbar": was auf der
-  Platte liegt und keinen Eintrag hat, erscheint als **NEU**.
+- **Kein Eintrag ohne Ordner** heisst nicht „unsichtbar": was auf der Platte
+  liegt und keinen Eintrag hat, erscheint als **NEU**.
 - Die **Platte schlaegt das Manifest** beim Zustand: venv, `node_modules`,
   README und Pflichtdateien werden live geprueft.
+- Ein **Bot ohne Profil** ist ein Knopf ins Leere: der Test
+  `test_jedes_bot_profil_des_manifests_existiert` laesst keinen stehen.
 
-## Ein neues Repo aufnehmen
+## Fuellen: die Wurzeln aufnehmen
 
-1. Manifest-Eintrag ergaenzen: `ordner`, `art`, `bot`, `notiz`.
-2. Pruefen: `.venv\Scripts\python.exe -m unittest discover -s tests` und
-   `python repos_zentrale.py --pruefen` — der neue Klon muss in einer der
-   Gruppen auftauchen, nicht verschwinden.
-3. Erst wenn der Startbefehl einmal echt gelaufen ist, ihn als `start`
-   eintragen (die Logdatei entsteht dabei von selbst).
+`fuellen.py` traegt ein, was auf der Platte liegt und noch fehlt — Notiz und Art
+kommen aus dem Projekt **selbst** (README-Ueberschrift, sonst Modul-Docstring),
+Rolle und Startbefehle aus der kuratierten Tabelle im Skript.
 
-## Befehle und Anleitung nachtragen
+    .venv\Scripts\python.exe fuellen.py                  # Trockenlauf
+    .venv\Scripts\python.exe fuellen.py --anwenden       # schreiben (Sicherung .bak-JJJJMMTT)
+    .venv\Scripts\python.exe fuellen.py --belege         # jeden Start ohne Beleg einmal ausfuehren
+    .venv\Scripts\python.exe fuellen.py --auffrischen --anwenden   # nur fehlende Felder nachtragen
 
-Fuer die Anzeige braucht ein Repo **keinen** Eintrag — die allgemeinen Zeilen
-(Starten, Terminal, Ordner, Doku, Bot) entstehen aus Platte und Manifest von
-selbst. Eigenes kommt dazu, sobald man den Weg einmal gegangen ist:
+Drei Regeln dabei:
 
-1. Befehl **einmal wirklich laufen lassen** (Hausregel: kein Befehl ins
-   Manifest, der nie lief). Die Zeile notieren, die funktioniert hat.
-2. In `repos-zentrale.json` beim Eintrag ergaenzen:
+1. **Vorhandene Eintraege bleiben unangetastet.** Handarbeit wird nie
+   ueberschrieben; Nachzutragen ist Sache von `--auffrischen` (und auch dort
+   nur, was leer ist).
+2. **Kein geratener Startbefehl.** Der Hilfe-Start (`<datei> --help`) gibt es
+   nur fuer Dateien in `HILFE_VERIFIZIERT` — also fuer die, deren Aufruf einmal
+   wirklich gelaufen ist. Eine neue Datei erscheint als Zeile **ohne**
+   Startbefehl; das ist der ehrliche Zustand.
+3. **Kein Start hinterlaesst einen Prozess.** `--belege` wartet auf jeden Lauf
+   (Frist 90 s) und schreibt den Exit-Code in dasselbe Log.
 
-       "anleitung": "Was das Repo tut und in welcher Reihenfolge man es anfasst.",
-       "befehle": [
-         {"was": "Kanalbericht", "cmd": [".venv\\Scripts\\agent-reach.exe", "doctor"],
-          "hinweis": "dauert 20 s"}
-       ]
+## Ein neues Projekt aufnehmen
 
-   `cmd` ist eine **argv-Liste** wie `start` — keine Shell-Zeichenkette, keine
-   Pipes. Der Titel `was` erscheint in der Liste, `hinweis` daneben.
-3. Fenster neu oeffnen (das Manifest wird beim Aufbau gelesen).
+1. Ordner/Klon anlegen — er erscheint sofort als **NEU** (ohne Eintrag).
+2. `fuellen.py --anwenden` ergaenzen, was fehlt (Notiz, Art, Rolle).
+3. Den Startbefehl **einmal echt laufen lassen**, dann als `start` eintragen;
+   `fuellen.py --belege` legt den Logbeleg dazu.
+4. Pruefen: `.venv\Scripts\python.exe -m unittest discover -s tests` und
+   `python repos_zentrale.py --pruefen`.
 
-Ein Befehl ohne `cmd` wird still uebergangen — ein Tippfehler nimmt also nicht
-die ganze Liste mit, er fehlt nur. Fehlerhafte `befehle` stehen als Hinweis in
-der Zeile, sie machen das Repo **nicht** un-startbar.
+## Messen statt schauen
 
-Wer nichts eintragen will: Der Knopf **Bot damit beauftragen** erledigt denselben
-Zweck — der Repo-Bot kennt sein Repository und kann einen Befehl ausfuehren und
-erklaeren.
+`messprobe.py` baut das Fenster, misst jede Spaltenbreite gegen die Schrift und
+sagt, ob ein Text abgeschnitten wird:
+
+    .venv\Scripts\python.exe messprobe.py
+
+Hintergrund: mit `dpi_bewusst()` setzt Tk Schrift in Geraetepixeln — auf einem
+125-%-Monitor braucht ein 41-Zeichen-Hinweis 410 px. Deshalb sind die
+Spaltenbreiten kein fester Wert, sondern werden aus der **wirklichen**
+Baumbreite und dem DPI-Faktor gerechnet (`fenster.spaltenbreiten`): erst
+schrumpfen die Nebenspalten, dann die Projektspalte, zuletzt der Hinweis; die
+Restbreite bekommt der Hinweis. `stretch=False` auf jeder Spalte ist Pflicht —
+sonst verteilt Tk die Breite selbst und die Rechnung gilt nicht.
+
+Farben, Schrift und Abstaende kommen aus `Agenten/Werkzeuge/fenster_design.py`
+(dieselbe Quelle wie `handelszentrale.py` und `leitstand.py`), beschrieben in
+`Werkstatt/design-system-fenster-2026-09-30.md`.
 
 ## Was die Zentrale absichtlich nicht tut
 
-- Sie schreibt **nicht** in fremde Repos. Ausnahme: der ausdrueckliche
+- Sie schreibt **nicht** in fremde Projekte. Ausnahme: der ausdrueckliche
   Einrichtungsbefehl (`npm install`) auf Klick.
 - Sie liest **keine** `.env`-Dateien und zeigt keine Schluesselwerte.
 - Sie **raet keinen** Startbefehl und meldet **kein** „laeuft" aus
   Prozessnamen — angezeigt werden Exit-Code und Logzeit.
 - Sie beendet **nichts** per Prozessname (nur per gemerkter PID).
 - Sie startet **nichts** automatisch im Hintergrund; ohne Klick passiert nichts.
+- Sie zeigt **keine** Dateien der Wurzeln, die keine Werkzeuge sind: in
+  `Agenten/Handel` liegen 91 `.py`-Dateien, aber nur die mit eigenem Einstieg
+  UND Argumentliste werden eine Zeile. Ein halbfertiges Skript soll das Fenster
+  nicht fluten.
 
 ## Tests
 
@@ -167,8 +220,10 @@ die Oberflaeche wirklich auf, aber unsichtbar (`withdraw`).
 ## Verwandtes
 
 - `Agenten\Werkzeuge\repos-launcher.ps1` — Massenweg: oeffnet alle Repos in
-  Windows Terminal oder VSCode (`-Mode Terminal|Tui|Gui`). Fehlt ein Werkzeug,
-  wird es genannt und der Modus uebersprungen, statt abzubrechen.
-- `Agenten\Hermes\profiles\<bot>\` — ein Hermes-Bot je Repo (28 Stueck).
+  Windows Terminal oder VSCode (`-Mode Terminal|Tui|Gui`).
+- `Agenten\Hermes\profiles\<bot>\` — ein Hermes-Bot je Repo.
+- `Agenten\Handel\handelszentrale.py` — das lesende Fenster ueber die
+  Handelsspuren (Positionen, Kurse, Konsole); `Agenten\Handel\leitstand.py` ist
+  das grosse Ueberwachungs- und Backtest-Fenster.
 - Telegram: `/bots` und `/bot NAME NACHRICHT` (SkillsBot) fuer den Zugriff
   unterwegs.

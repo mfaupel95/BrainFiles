@@ -1,7 +1,7 @@
 ---
-titel: Repos-Zentrale (Startfenster fuer Werkstatt/Repos)
+titel: Repos-Zentrale (Startfenster fuer Repos, Werkstatt und Handel)
 aktualisiert: 2026-09-30
-tags: [werkzeug, repos, oberflaeche]
+tags: [werkzeug, repos, handel, oberflaeche]
 ---
 
 # Repos-Zentrale — ein Fenster fuer alle Repos
@@ -11,6 +11,11 @@ tags: [werkzeug, repos, oberflaeche]
 > bekommt rechts seine Befehle als anklickbare Zeilen — mit einem Knopf, der sie
 > ausfuehrt, einem, der sie in die Zwischenablage legt, und einem, der den
 > Repo-Bot damit beauftragt.
+>
+> **Seit 30.09.2026** ist das Fenster nicht mehr auf `Werkstatt/Repos` begrenzt:
+> es zeigt drei **Bereiche** — REPOS (46 Klone), WERKSTATT (eigene Projekte,
+> Datenfelder, Ablagen) und HANDEL (45 Ordner und 40 Werkzeugdateien unter
+> `Agenten/Handel`). Aufbau, Rollen und Layoutfehler: eigener Abschnitt unten.
 
 Ort: `Agenten/Werkzeuge/repos-zentrale/`. Start:
 
@@ -199,6 +204,93 @@ Umgestellt im Werkzeug: `AUSGENOMMEN` (Liste der Nur-Messen-Klone) und `--ausser
 fuer weitere, ausserdem meldet der Bericht jetzt den Rueckstand in Commits je
 Zeile. Wirkung sofort, ohne Neustart — es ist ein Handwerkzeug, keine Routine.
 
+## Nachtrag 30.09.2026 — drei Bereiche, gefuelltes Manifest, Layout gerechnet
+
+Auftrag Max: „professionell designen und mit allem aus O:/Werkstatt/ und
+Brainfiles/Werkstatt und Brainfiles/Agenten/Handel auffuellen und kombinieren."
+`O:/Werkstatt` und `BrainFiles/Werkstatt` sind **derselbe** Ordner (Junction) —
+es waren also zwei Orte: Werkstatt und `Agenten/Handel`.
+
+### Bereiche statt einer Wurzel
+
+Neu: `quellen.py` haelt die Wurzeln (Pfade **relativ**, keine absoluten) und was
+eine Zeile bekommt:
+
+| Bereich | Wurzel | Regel |
+|---|---|---|
+| REPOS | `Werkstatt/Repos` | nur Ordner mit `.git` (wie vorher) |
+| WERKSTATT | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner |
+| HANDEL | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit Einstieg |
+
+Ein Manifest-Eintrag traegt jetzt `wurzel` und `pfad` — der **Schluessel ist das
+Paar (wurzel, pfad)**. Nur so kann `OmniRoute` einmal unter `Werkstatt/` und
+einmal unter `Werkstatt/Projekte/` stehen, ohne dass eins das andere verdeckt.
+Neu ausserdem die Spalte **Rolle** (Spur, Werkzeug, Modell, MCP-Server, Ablage)
+und `warnungen` fuer Vermerke, die den Start nicht sperren.
+
+Der Baum hat drei Ebenen: **BEREICH → GRUPPE → Projekt**. Die funf Gruppen
+bleiben unveraendert; „EINRICHTEN" heisst weiterhin „es fehlt noch etwas",
+jetzt auch „kein Startbefehl belegt".
+
+### Gefuellt: 46 → 162 Zeilen
+
+`fuellen.py` (neu) traegt ein, was auf der Platte liegt und fehlt. Notiz und Art
+kommen aus dem Projekt **selbst** (README-Ueberschrift, sonst Modul-Docstring),
+Rolle und Startbefehle aus einer kuratierten Tabelle im Skript. Drei Werkzeuge:
+
+| Aufruf | Wirkung |
+|---|---|
+| `fuellen.py` | Trockenlauf: zeigt, was neu entstuende |
+| `fuellen.py --anwenden` | schreibt (Sicherung `.bak-JJJJMMTT`), Feldreihenfolge fest |
+| `fuellen.py --belege` | fuehrt jeden Startbefehl ohne Log EINMAL aus (Frist 90 s) |
+| `fuellen.py --auffrischen --anwenden` | traegt nur FEHLENDE Felder bestehender Eintraege nach |
+
+**Vorhandene Eintraege bleiben unangetastet** — Handarbeit wird nie
+ueberschrieben. Ergebnis: 46 (REPOS) + 30 (WERKSTATT) + 86 (HANDEL) = **162
+Zeilen, 50 mit Startbefehl, 39 davon neu belegt**.
+
+**Die 13 „Bot-Profil fehlt"-Eintraege sind weg.** Gemessen: `profiles/.deleted/`
+enthaelt keine Profile, sondern **9-Byte-Vermerke** mit dem Wort `deleted` — die
+Profile selbst sind am 19.09.2026 geloescht worden (`ls -la` unterscheidet die
+beiden Faelle). Die 13 Eintraege tragen jetzt eine `warnung` statt eines
+Bot-Namens; der Knopf ins Leere ist damit weg und
+`test_jedes_bot_profil_des_manifests_existiert` ist wieder gruen.
+
+### Layout: gerechnet, nicht gesetzt
+
+Zwei echte Layoutfehler, beide durch **Messen** gefunden, nicht durch Hinsehen
+(`messprobe.py` baut das Fenster und vergleicht jede Spaltenbreite mit der
+Schrift):
+
+1. **Skalierte Anzeige, feste Pixelbreiten.** Mit `dpi_bewusst()` setzt Tk
+   Schrift in Geraetepixeln; auf diesem Rechner meldet `winfo_fpixels('1i')`
+   **120** (Faktor 1,25). Ein 41-Zeichen-Hinweis braucht damit 410 px in einer
+   366-px-Spalte — abgeschnitten. Jetzt rechnet `fenster.spaltenbreiten()` aus
+   der WIRKLICHEN Baumbreite und dem Faktor; gekuerzt wird in dieser Reihenfolge:
+   Nebenspalten → Projektspalte → Hinweisspalte (sie traegt den Grund), Rest geht
+   an den Hinweis.
+2. **`stretch=True` ist der stille Verfaelscher.** Tk verteilte die Restbreite
+   selbst, gemessene Werte stimmten nicht mehr (191 statt 125 px). Jede Spalte
+   steht jetzt auf `stretch=False`.
+
+Dazu: die Bereichs-Erklaerung stand versehentlich in der **Rolle**-Spalte und
+wurde dort abgeschnitten — sie gehoert in die Hinweisspalte. Die Summenzeile ist
+von „162 Eintraege · REPOS 46 · WERKSTATT 30 · HANDEL 86" auf das kurze
+„162 von 162 Zeilen" oben geschrumpft; die Bereichszahlen stehen in der
+Statuszeile, wo die ganze Fensterbreite zur Verfuegung steht.
+
+Merksatz: **eine Spaltenbreite ohne die Schrift zu messen ist geraten.** Ein
+Blick auf ein Bild hilft nicht — die Zahlen helfen.
+
+### Ein neuer Ordner erscheint von selbst
+
+Was in einer Wurzel liegt und keinen Eintrag hat, wird **NEU** — auch eine Datei,
+die eine parallele Sitzung gerade angefangen hat (`kerzenschluss_bias.py`,
+mitten in dieser Arbeit aufgetaucht). Sie bekam **keinen** Startbefehl: der
+Hilfe-Start (`<datei> --help`) gibt es nur fuer Dateien in `HILFE_VERIFIZIERT`,
+also fuer die, deren Aufruf einmal wirklich gelaufen ist. Das ist die Hausregel
+„kein geratener Befehl", diesmal als Code.
+
 ## Einen Befehl belegen: der Beleglauf
 
 Die Hausregel „kein Befehl ins Manifest, der nie echt gelaufen ist" laesst sich
@@ -232,10 +324,17 @@ Baum** beenden (`npm run dev` laesst sonst `next dev` als Waise zurueck).
 ## Pruefen
 
 ```
-cd Agenten\Werkzeuge\repos-zentrale\tests
-..\.venv\Scripts\python.exe -m unittest discover -s . -t .
+cd Agenten\Werkzeuge\repos-zentrale
+.\.venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-Bekannt rot (bewusst, nicht durch dieses Werkzeug verursacht): `test_manifest.
-test_jedes_bot_profil_des_manifests_existiert` — das Manifest nennt Bot-Namen,
-deren Profil seit dem 19.09.2026 unter `profiles/.deleted/` liegt (T-072).
+Stand 30.09.2026: **118 Tests, alle gruen** (vorher 78 mit einer bekannten roten
+Stelle). Die rote Stelle `test_jedes_bot_profil_des_manifests_existiert` ist
+behoben — sie war zu Recht rot: das Manifest nannte 13 Bot-Namen, deren Profil
+seit dem 19.09.2026 nicht mehr existiert (T-072 erledigt, siehe Nachtrag oben).
+
+Dazu die Messprobe, die kein Test ersetzt:
+
+```
+.\.venv\Scripts\python.exe messprobe.py
+```

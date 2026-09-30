@@ -1,6 +1,6 @@
 ---
 name: repos-zentrale
-description: "Use when ein Repo aus Werkstatt/Repos gestartet wird."
+description: "Use when ein Repo, Werkstatt-Projekt oder Handelsspur gestartet oder aufgenommen wird."
 license: MIT
 metadata:
   hermes:
@@ -8,28 +8,65 @@ metadata:
     related_skills: [repo-flotte, fremd-agenten-betrieb, fremdrepo-agent-start]
 ---
 
-# Repos-Zentrale: Projekte unter Werkstatt/Repos erreichen
+# Zentrale: Repos, Werkstatt und Handel erreichen
 
-`Agenten/Werkzeuge/repos-zentrale` ist das Startfenster fuer alle Projekte unter
-`Werkstatt/Repos` (28 Repos, ein Hermes-Bot je Repo). Es ersetzt das Suchen nach
-dem "richtigen" Startweg je Repo: die Befehle stehen im Manifest, die Gruppen
-sagen, ob etwas fehlt.
+`Agenten/Werkzeuge/repos-zentrale` ist das Startfenster fuer **drei Bereiche**:
+`Werkstatt/Repos` (46 Klone mit eigenem Bot), `Werkstatt` samt
+`Werkstatt/Projekte` (eigene Projekte, Datenfelder, Ablagen) und
+`Agenten/Handel` (45 Ordner und die Werkzeugdateien der Wurzel). Es ersetzt das
+Suchen nach dem "richtigen" Startweg je Projekt: die Befehle stehen im Manifest,
+die Gruppen sagen, ob etwas fehlt.
 
 ## Wann
-"X starten", "Zugriff auf Projekt Y", ein neues Repo aufnehmen, ein Startbefehl
-soll hinterlegt werden, oder die Frage "warum geht Projekt Z nicht".
+"X starten", "Zugriff auf Projekt Y", "wo liegt nochmal ...", ein neues Repo oder
+Projekt aufnehmen, ein Startbefehl soll hinterlegt werden, oder die Frage "warum
+geht Projekt Z nicht". Auch der schnellste Weg zu einer Handelsspur oder einem
+Handelswerkzeug (`--pruefen --bereich HANDEL`).
 
 ## Aufrufen
 
 ```
 cd Agenten/Werkzeuge/repos-zentrale
-.venv/Scripts/pythonw.exe repos_zentrale.py          # Fenster
-.venv/Scripts/python.exe   repos_zentrale.py --pruefen   # nur auflisten, kein Fenster
-.venv/Scripts/python.exe   -m unittest discover -s tests
+.venv/Scripts/pythonw.exe repos_zentrale.py                   # Fenster
+.venv/Scripts/python.exe   repos_zentrale.py --pruefen        # nur auflisten, kein Fenster
+.venv/Scripts/python.exe   repos_zentrale.py --pruefen --bereich HANDEL
+.venv/Scripts/python.exe   messprobe.py                       # Layout messen (Spaltenbreiten)
 ```
 
-`--pruefen` ist der schnelle Beleg ohne Fenster: nennt je Gruppe jedes Repo und
-seinen Startbefehl und markiert Auffaelligkeiten (NEU/FEHLT).
+`--pruefen` ist der schnelle Beleg ohne Fenster: nennt je Bereich jede Gruppe
+und jeden Startbefehl und markiert Auffaelligkeiten (NEU/FEHLT).
+
+## Die drei Bereiche (seit 30.09.2026)
+
+Die Wurzeln stehen in `quellen.py` - Pfade **relativ**, keine absoluten:
+
+| Bereich | Wurzel | Was eine Zeile bekommt |
+|---|---|---|
+| REPOS | `Werkstatt/Repos` | nur Ordner mit `.git` |
+| WERKSTATT | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner |
+| HANDEL | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit `__main__` UND `argparse` |
+
+In jeder Wurzel gesperrt (Namensliste, kein Muster): `.venv`, `venv`,
+`node_modules`, `__pycache__`, `.git`, `.vscode`, `cache` und Konsorten.
+Ausnahmen von der Datei-Regel stehen in `quellen.WERKZEUG_ZUSATZ` - kurz halten,
+denn eine `--help`-Angabe darf nur bekommen, wer einmal gelaufen ist.
+
+## Das Manifest fuellen
+
+`fuellen.py` traegt ein, was auf der Platte liegt und fehlt. Notiz und Art kommen
+aus dem Projekt SELBST (README-Ueberschrift, sonst Modul-Docstring), Rolle und
+Startbefehle aus der kuratierten Tabelle im Skript.
+
+```
+.venv/Scripts/python.exe fuellen.py                            # Trockenlauf
+.venv/Scripts/python.exe fuellen.py --anwenden                 # schreiben (+ .bak)
+.venv/Scripts/python.exe fuellen.py --belege                    # jeden Start ohne Log einmal ausfuehren
+.venv/Scripts/python.exe fuellen.py --auffrischen --anwenden    # nur FEHLENDE Felder nachtragen
+```
+
+Vorhandene Eintraege bleiben unangetastet - Handarbeit wird nie ueberschrieben.
+Ein neuer Ordner erscheint auch ohne Lauf als NEU; eine neue Datei bekommt
+KEINEN Startbefehl, bis ihr Aufruf einmal belegt ist.
 
 ## Die Klone aktuell halten
 
@@ -77,16 +114,29 @@ venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · NUR DOKU
 ## Manifest-Regeln (der Code setzt sie durch)
 
 - `start`/`einrichten`/`bauen` sind **argv-Listen**, nie Shell-Zeichenketten.
+- Ein Eintrag traegt `wurzel` (Vorgabe `repos`) und `pfad` (Vorgabe = `ordner`);
+  der **Schluessel ist das Paar (wurzel, pfad)**. Zwei Wurzeln duerfen denselben
+  Namen tragen (`OmniRoute` in `Werkstatt` und in `Werkstatt/Projekte`).
+- `rolle` ist Klartext fuer die Spalte (Spur, Werkzeug, Modell, MCP-Server,
+  Ablage); `warnungen` sind Vermerke, die den Start NICHT sperren.
 - **Kein geratener Befehl.** Fehlt er, ist das der Zustand "kein Startbefehl
-  belegt" — kein Fehler, kein Platzhalter.
+  belegt" - kein Fehler, kein Platzhalter.
 - Die **Platte schlaegt das Manifest** beim Zustand (venv, node_modules, README,
-  Pflichtpfad werden live geprueft). Ein Klon ohne Eintrag verschwindet nicht,
+  Pflichtpfad werden live geprueft). Ein Ordner ohne Eintrag verschwindet nicht,
   er wird NEU.
-- Bot-Namen klein; fehlt das Profil, ist der Knopf deaktiviert und nennt den
-  Grund.
+- Bot-Namen klein; **fehlt das Profil, gehoert der Name nicht ins Manifest** -
+  der Bot-Knopf waere ein Knopf ins Leere (Test
+  `test_jedes_bot_profil_des_manifests_existiert`). Weggelegte Profile liegen als
+  9-Byte-Vermerk in `profiles/.deleted/`.
 
 ## Fallen
 
+- **Feste Spaltenbreiten bei skalierter Anzeige.** Mit `dpi_bewusst()` setzt Tk
+  die Schrift in Geraetepixeln; auf 125 % (`winfo_fpixels('1i')` = 120) braucht
+  ein 41-Zeichen-Hinweis 410 px. Breiten also aus der wirklichen Baumbreite und
+  dem DPI-Faktor rechnen (`fenster.spaltenbreiten`), NIE fest eintragen - und
+  jede Spalte auf `stretch=False` setzen, sonst verteilt Tk die Restbreite
+  selbst und die Rechnung gilt nicht. Nachpruefen mit `messprobe.py`.
 - **Relativer Programmpfad scheitert unter Windows.**
   `Popen([".venv\\Scripts\\pythonw.exe"], cwd=<repo>)` wirft FileNotFoundError,
   weil Windows argv[0] gegen das Arbeitsverzeichnis des AUFRUFERS aufloest. Vor
