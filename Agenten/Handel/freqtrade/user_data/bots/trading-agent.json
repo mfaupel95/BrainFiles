@@ -1,0 +1,28 @@
+{
+  "strategy": "MoonDevTradingAgent",
+  "timeframe": "1h",
+  "max_open_trades": 3,
+  "dry_run": true,
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 8081
+  },
+  "exchange": {
+    "pair_whitelist": [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT",
+      "BNB/USDT",
+      "XRP/USDT",
+      "ADA/USDT",
+      "DOGE/USDT",
+      "AVAX/USDT",
+      "LINK/USDT",
+      "DOT/USDT",
+      "LTC/USDT",
+      "ATOM/USDT"
+    ]
+  },
+  "_hinweis": "Aufsatz fuer den Bot 'trading-agent' (freqtrade-trading-agent) - Quelle src/agents/trading_agent.py. Regel: MA20/MA40-Trend, RSI14 im Band 45-70, Volumen zieht an, Kurs ueber dem Stand von vor 24h. Wird zusammen mit user_data/config.json geladen (Freqtrade mischt mehrere --config tief); Zugangsdaten bleiben allein in config.json."
+}

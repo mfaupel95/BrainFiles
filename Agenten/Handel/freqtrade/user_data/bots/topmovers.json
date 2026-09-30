@@ -1,0 +1,40 @@
+{
+  "strategy": "MoonDevTopMovers",
+  "timeframe": "1h",
+  "max_open_trades": 3,
+  "dry_run": true,
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 8082
+  },
+  "exchange": {
+    "pair_whitelist": [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT",
+      "BNB/USDT",
+      "XRP/USDT",
+      "ADA/USDT",
+      "DOGE/USDT",
+      "AVAX/USDT",
+      "LINK/USDT",
+      "DOT/USDT",
+      "LTC/USDT",
+      "ATOM/USDT",
+      "NEAR/USDT",
+      "UNI/USDT",
+      "ARB/USDT",
+      "OP/USDT",
+      "INJ/USDT",
+      "SUI/USDT",
+      "APT/USDT",
+      "FIL/USDT",
+      "SEI/USDT",
+      "TIA/USDT",
+      "PEPE/USDT",
+      "WIF/USDT"
+    ]
+  },
+  "_hinweis": "Aufsatz fuer den Bot 'topmovers' (freqtrade-topmovers) - Quelle src/agents/new_or_top_agent.py. Regel: 24h-Aenderung zwischen +8 % und +40 %, mindestens 20 Mio USD Tagesvolumen. Wird zusammen mit user_data/config.json geladen (Freqtrade mischt mehrere --config tief); Zugangsdaten bleiben allein in config.json."
+}

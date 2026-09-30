@@ -120,6 +120,19 @@ Agenten/Handel/stand/
 # Falle wie bei scanner/tests: die Regel in Zeile 20 faengt sie sonst mit ein.
 !Agenten/Handel/kraken/tests/*.py
 
+# Freqtrade-Bots (Handel/freqtrade/). Der ORDNER bleibt gesperrt:
+# user_data/config.json traegt die Zugangsdaten der Weboberflaeche und
+# user_data/data/ die Kursreihen (viele MB). Freigegeben ist nur, was von Hand
+# geschrieben wurde und weh taete, wenn es still verschwaende - die Strategien
+# (echte Arbeit, lagen bis 30.09.2026 NIRGENDS im Verlauf), die Bot-Definitionen
+# und die Startskripte. Die Aufsaetze in user_data/bots/ tragen keine
+# Zugangsdaten: sie werden zusammen mit config.json geladen (Freqtrade mischt
+# mehrere --config tief ineinander).
+!Agenten/Handel/freqtrade/bots.json
+!Agenten/Handel/freqtrade/bots_starten.sh
+!Agenten/Handel/freqtrade/user_data/strategies/*.py
+!Agenten/Handel/freqtrade/user_data/bots/*.json
+
 # SWAP-Spur (Handel/swap/): eigener Papierpfad mit eigenen Wachen und Tests.
 # Ohne diese Zeilen waeren handeln.py und seine Tests nur lokal vorhanden -
 # genau die Luecke, die diese Datei schliessen soll. Die Datei war am

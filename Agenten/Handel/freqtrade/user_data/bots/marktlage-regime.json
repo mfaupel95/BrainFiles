@@ -1,0 +1,17 @@
+{
+  "strategy": "MoonDevMarketRegime",
+  "timeframe": "1h",
+  "max_open_trades": 1,
+  "dry_run": true,
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 8083
+  },
+  "exchange": {
+    "pair_whitelist": [
+      "BTC/USDT"
+    ]
+  },
+  "_hinweis": "Aufsatz fuer den Bot 'marktlage-regime' (freqtrade-marktlage-regime) - Quelle src/agents/coingecko_agent.py. Regel: BTC 24h mindestens +2 % UND mindestens 60 % der Messlatte im Plus. Wird zusammen mit user_data/config.json geladen (Freqtrade mischt mehrere --config tief); Zugangsdaten bleiben allein in config.json."
+}

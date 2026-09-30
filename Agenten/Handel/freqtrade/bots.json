@@ -1,0 +1,131 @@
+{
+  "_zweck": "Zuordnung der Trading-Agenten aus Werkstatt/Repos/moon-dev-ai-agents zu Freqtrade-Bots. Ein Eintrag unter 'bots' ist ein startbarer Bot; ein Eintrag unter 'nicht_portierbar' ist eine Absage MIT Grund. Diese Tabelle ist die Wahrheit - wer einen Agenten vermisst, findet ihn hier wieder.",
+  "_stand": "2026-09-30",
+  "_regel": "Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares. Portierbar ist genau das, was sich aus der Kerze rechnen laesst. Alles andere braucht eine Fremdquelle, und fuer die hat Freqtrade im Backtest keinen Weg.",
+  "_basis_geometrie": "Stop und Ziel kommen NICHT aus dem Bot-Repo, sondern aus den Haus-Zahlen der Feed-Spuren (Agenten/Handel/moondev_*/wachen.json): stop_prozent 6.0-8.0 und ziel_r_vielfaches 1.5. Ein Bot erbt die Zahlen der Regel, die er abbildet.",
+
+  "bots": [
+    {
+      "name": "trading-agent",
+      "container": "freqtrade-trading-agent",
+      "strategie": "MoonDevTradingAgent",
+      "port": 8081,
+      "zeitrahmen": "1h",
+      "max_open_trades": 3,
+      "stop_prozent": 6.0,
+      "quelle": "src/agents/trading_agent.py",
+      "regel": "MA20/MA40-Trend, RSI14 im Band 45-70, Volumen zieht an, Kurs ueber dem Stand von vor 24h.",
+      "whitelist": [
+        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT",
+        "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT", "LTC/USDT", "ATOM/USDT"
+      ],
+      "beschreibung": "Kern-Agent: die vier Kriterien des Original-Prompts, deterministisch gerechnet. Das Sprachmodell faellt weg, weil es nichts hinzufuegt."
+    },
+    {
+      "name": "topmovers",
+      "container": "freqtrade-topmovers",
+      "strategie": "MoonDevTopMovers",
+      "port": 8082,
+      "zeitrahmen": "1h",
+      "max_open_trades": 3,
+      "stop_prozent": 8.0,
+      "quelle": "src/agents/new_or_top_agent.py",
+      "regel": "24h-Aenderung zwischen +8 % und +40 %, mindestens 20 Mio USD Tagesvolumen.",
+      "whitelist": [
+        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT",
+        "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT", "LTC/USDT", "ATOM/USDT",
+        "NEAR/USDT", "UNI/USDT", "ARB/USDT", "OP/USDT", "INJ/USDT", "SUI/USDT",
+        "APT/USDT", "FIL/USDT", "SEI/USDT", "TIA/USDT", "PEPE/USDT", "WIF/USDT"
+      ],
+      "beschreibung": "Momentum-Jagd im Band. Der Suchraum ist kleiner als beim Original (CoinGecko Top 250) - er ist die liquideste Boersenauswahl, nicht ein Marktranking."
+    },
+    {
+      "name": "marktlage-regime",
+      "container": "freqtrade-marktlage-regime",
+      "strategie": "MoonDevMarketRegime",
+      "port": 8083,
+      "zeitrahmen": "1h",
+      "max_open_trades": 1,
+      "stop_prozent": 6.0,
+      "quelle": "src/agents/coingecko_agent.py",
+      "regel": "BTC 24h mindestens +2 % UND mindestens 60 % der Messlatte im Plus.",
+      "whitelist": ["BTC/USDT"],
+      "breite_paare": [
+        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT",
+        "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT", "LTC/USDT", "ATOM/USDT"
+      ],
+      "beschreibung": "Regime aus Leitkurs und Marktbreite. Die Breite kommt aus Boersenpaaren (informative Paare), nicht aus einem Marktranglisten-Abo. EIN Platz: das Signal ist EINE Marktlage-Wette."
+    }
+  ],
+
+  "als_schutzschicht_portiert": [
+    {
+      "agent": "risk_agent.py",
+      "wo": "moondev_basis.py -> protections()",
+      "grund": "Kein Marktsignal, sondern Tore. Der Agent begrenzt Verlust und Gewinn in einem 12-h-Fenster (+/-25 USD, +/-5 %). Freqtrade hat dafuer StoplossGuard und MaxDrawdown - sie sind mit genau diesen Zahlen gesetzt, statt eine zweite Ratsche zu bauen."
+    }
+  ],
+
+  "nicht_portierbar": [
+    {
+      "agent": "funding_agent.py, fundingarb_agent.py",
+      "hindernis": "Fremddaten: Funding-Rate (Hyperliquid, stuendlich)",
+      "grund": "Freqtrade im Spot-Backtest kennt keine Funding-Rate - sie steht in keiner Kerze. Die Haus-Spur moondev_funding liest sie zur Laufzeit; eine Historie gibt es nicht, also auch nichts zu backtesten."
+    },
+    {
+      "agent": "whale_agent.py",
+      "hindernis": "Fremddaten: offenes Interesse (OKX /public/open-interest, /rubik/stat/contracts)",
+      "grund": "OI ist nicht Teil der Kerze. Die Haus-Spur holt zur Laufzeit 5-Minuten-Punkte; archiviert wird nichts. Ohne OI-Reihe kein Backtest, ohne Backtest kein Bot (Hausregel: erst messen, dann bauen)."
+    },
+    {
+      "agent": "liquidation_agent.py",
+      "hindernis": "Fremddaten: Zwangsschluesse (OKX /public/liquidation-orders, neueste 100)",
+      "grund": "Wie beim OI: nur zur Laufzeit abrufbar, kein Archiv. Dieselbe Absage gilt fuer die Haus-Spur liq_wand."
+    },
+    {
+      "agent": "sentiment_agent.py",
+      "hindernis": "Fremddaten: RSS-Schlagzeilen der Redaktionen",
+      "grund": "Ueberschriften stehen in keiner Kerze. Zusaetzlich sind Titel nicht reproduzierbar - derselbe Backtest haette morgen andere Eingaben."
+    },
+    {
+      "agent": "listingarb_agent.py",
+      "hindernis": "Fremddaten: neu gelistete Coins",
+      "grund": "Eine Neueinfuehrung ist ein Ereignis ausserhalb der Kursreihe. Zudem handelbar erst ab dem ersten Kerzenpaar - der Bot haette nichts zu lesen."
+    },
+    {
+      "agent": "chartanalysis_agent.py",
+      "hindernis": "Eingabe ist ein BILD (gerenderter Chart), kein Kerzensatz",
+      "grund": "Der Agent laesst ein Modell ein gemaltes Chartbild ansehen. Das ist eine Augenaufgabe; aus derselben Kerze gerechnet ergaebe es eine andere Regel, nicht dieselbe."
+    },
+    {
+      "agent": "rbi_agent.py, rbi_agent_v2.py, rbi_batch_backtester.py",
+      "hindernis": "KEIN Agent mit Handelsregel - ein Strategie-GENERATOR",
+      "grund": "RBI heisst Research-Backtest-Implement: ein Modell recherchiert eine Idee, schreibt daraus Strategiecode, laesst ihn laufen und bessert nach. Der Ausgang ist eine Strategie, keine Serie von Signalen. Genau diese Rolle fuellen im Haus Backtest, Hyperopt und Walk-Forward (Skill freqtrade-strategie) - ein RBI-Bot waere ein zweiter Weg zu demselben Ziel, mit einem Sprachmodell als Umweg."
+    },
+    {
+      "agent": "strategy_agent.py",
+      "hindernis": "META-Ebene: entscheidet EXECUTE/REJECT ueber Signale ANDERER Strategien",
+      "grund": "Braucht mehrere Strategien gleichzeitig. Freqtrade faehrt EINEN Bot mit EINER Strategie; ein Buendel waere eine neue, zusammengesetzte Strategie - und die waere erst sinnvoll, wenn die Einzelnen gemessen sind."
+    },
+    {
+      "agent": "sniper_agent.py, solana_agent.py, copybot_agent.py, tx_agent.py",
+      "hindernis": "andere Kette (Solana On-Chain)",
+      "grund": "Diese Agenten handeln Mints und Wallets, nicht Boersenpaare. Freqtrade ist ein Boersen-Bot. Die Haus-Spuren moondev_sniper und kopier decken dieselbe Absicht auf dem eigenen Weg ab."
+    },
+    {
+      "agent": "million_agent.py, chat_agent*.py, research_agent.py, focus_agent.py, compliance_agent.py, clean_ideas.py, code_runner_agent.py, demo_countdown.py, backtest_runner.py, backtest_start.py",
+      "hindernis": "kein Handelsentscheid",
+      "grund": "Werkzeuge, Textarbeit und Gedaechtnis - sie erzeugen keine Order."
+    },
+    {
+      "agent": "phone_agent.py, tiktok_agent.py, clips_agent.py, shortvid_agent.py, stream_agent.py, tweet_agent.py, coingecko_agent.py (Medienteil)",
+      "hindernis": "Medien und Veroeffentlichung",
+      "grund": "Kein Handelsentscheid."
+    }
+  ],
+
+  "_offen": [
+    "Kurze Seite: alle drei Bots sind long-only, weil can_short=True im Spot-Modus nicht laedt (strategy_resolver.py:167). Die Short-Regeln der Agenten (marktlage: -2 % und Breite <= 40 %) brauchen trading_mode futures plus Futures-Daten fuer den Backtest.",
+    "trading_agent, whale_agent, liquidation_agent, sentiment_agent urteilen im Original per Sprachmodell. Hier ist die Regel deterministisch - das ist Absicht (nachrechenbar), aber es ist NICHT dasselbe Verfahren. Ein Vergleich waere eine eigene Messung."
+  ]
+}
