@@ -36,7 +36,20 @@ class GegenprobeTest(unittest.TestCase):
         )
 
     def test_der_beleg_enthaelt_das_repo_und_einen_rueckkehrcode(self):
-        belege = sorted(LOGS.glob("*.log")) if LOGS.is_dir() else []
+        # Ein BELEG ist ein Log, dessen Name mit einem Repo-Ordner beginnt
+        # (`<ordner>-<JJJJMMTT-HHMM>.log`) - dieselbe Kennung wie im Test
+        # darueber. Eine Fremddatei in logs/ ist kein Beleg und darf nicht
+        # gegen die Beleg-Regeln geprueft werden: sie hat keine Startzeile,
+        # weil sie keinen Start belegt. (Befund 30.09.2026: eine Logdatei des
+        # Zentrale-Fensters liess den Test rot werden, ohne dass ein Beleg
+        # fehlte.)
+        if not LOGS.is_dir():
+            self.skipTest(f"keine Logs unter {LOGS}")
+        ordner = [e.ordner for e in manifest.manifest_laden(HIER / "repos-zentrale.json")]
+        belege = sorted(
+            p for p in LOGS.glob("*.log")
+            if any(p.name.startswith(f"{o}-") for o in ordner)
+        )
         if not belege:
             self.skipTest(f"keine Logs unter {LOGS}")
         angefasst = 0
