@@ -60,6 +60,68 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+
+- [ ] **T-218 — `fremdarbeit-einziehen` darf keine veraltete Fassung committen**
+      Kontext: Die Routine holt alles, was laenger als 30 Minuten uncommittet
+      im Arbeitsbaum liegt. Eine Datei, die dort nur noch ALT steht, ist fuer
+      sie nicht von einer neuen Aenderung zu unterscheiden. Am 30.09.2026 um
+      03:20 hat sie so den Gateway-Launcher auf eine aeltere Fassung
+      zurueckgesetzt und die Reparatur vom 29.09. 22:15 stillschweigend
+      aufgehoben; aufgefallen erst, als der Dienst nicht ansprang.
+      Naechster Schritt: in `Routinen/fremdarbeit-einziehen.ps1` den Inhalt
+      gegen HEAD pruefen (ist der Arbeitsbaum-Stand ein Rueckschritt gegenueber
+      der letzten Aenderung dieser Datei?) und solche Pfade ueberspringen und
+      melden. Gegenprobe: ein Temp-Repo, in dem eine alte Fassung liegen bleibt.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/fremdarbeit-einziehen.ps1
+
+- [ ] **T-219 — Ein Waechter, der nur meldet, wenn er starten KONNTE, meldet seinen eigenen Misserfolg nicht**
+      Kontext: `MaxHirn-Gateway-Waechter` lief am 30.09.2026 von 10:33 bis
+      11:32 alle zwei Minuten ins Leere ("kein Gateway-Prozess - Neustart
+      ausgeloest") und niemand erfuhr davon - die Zeile sieht aus wie eine
+      Erfolgsmeldung. Die Meldung geht ueber `Melde-Ende` in den Bus, der Bus
+      haengt aber am Gateway.
+      Naechster Schritt: nach N erfolglosen Neustarts in Folge (z. B. 3) eine
+      Meldung ueber einen Weg schicken, der NICHT der Gateway ist (Telegram
+      direkt wie `bus-waechter`, oder Windows-Benachrichtigung), und im Log
+      statt "Neustart ausgeloest" den Erfolg des Starts nachpruefen
+      (Prozess da? gateway_state running?).
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/gateway-waechter.ps1
+
+- [ ] **T-215 — Auslagerungsdatei vergroessern: die Commit-Grenze steht fest bei 75,7 GB**
+      Kontext: Der gemeinsame Nenner aller Abschaltungen ist Speichernot -
+      Windows meldet sie selbst, 296-mal in 14 Tagen (Ereignis 2004,
+      Resource-Exhaustion-Detector), mit `llama-server.exe` (LM Studio, bis
+      18,0 GB) und `com.docker.sailor.exe` (5,6-15,8 GB) an der Spitze. Am
+      25.09. folgte auf die 2004-Meldung um 16:12:55 der llama-server-Absturz
+      um 16:12:56 und der Rechner kam erst 16:36:48 zurueck. Am 30.09. sind
+      zwischen 10:12 und 10:46 einunddreissig Anwendungen mit `0xc000012d`
+      (`STATUS_COMMITMENT_LIMIT`) gestorben, darunter `dwm.exe` und der
+      Hermes-Gateway.
+      Der Riegel: `C:\pagefile.sys 8192 8192` ist FEST (Maximum = 8192) und
+      `O:\pagefile.sys 4096 16384` ist nie gewachsen (Peak 715 MB) - die
+      Commit-Grenze von 75,7 GB (63,7 GB RAM + 12 GB Auslagerung) konnte also
+      nicht nachgeben. O: hat 110 GB frei.
+      Naechster Schritt: `Routinen/einmalig-20260930-auslagerung.ps1` mit
+      erhoehten Rechten starten (Vorschlag O: 32768/32768, C: unveraendert).
+      Erst -Testlauf, dann scharf; -Rueckgaengig stellt 4096/16384 wieder her.
+      Danach einen Tag beobachten, ob Ereignis 2004 verschwindet.
+      Angelegt 30.09.2026. Betrifft C:\pagefile.sys, O:\pagefile.sys,
+      MaxHirn/Wissen/Hardware.md. Verwandt: T-004, T-151.
+
+- [ ] **T-216 — Energiesparplan steht auf "Energiesparmodus" (a1841308)**
+      Kontext: `powercfg /getactivescheme` meldet am 30.09.2026 den Plan
+      "Energiesparmodus" (`a1841308-3541-4fab-bc81-f71556f20b4a`) auf einem
+      Arbeitsrechner mit i9-7940X. Ungewoehnlich und unabhaengig vom
+      Speicherbefund (T-215): der Plan faehrt aggressive C-States und
+      Prozessorparken, was auf X299 zusammen mit einem gealterten Netzteil
+      ein eigener Verdacht ist. Nicht geaendert, nur notiert.
+      Naechster Schritt: entscheiden, ob auf "Hoechstleistung" oder
+      "Ausgeglichen" umgestellt wird - erst nach T-215, sonst sind zwei
+      Aenderungen gleichzeitig im Feld und keine ist zurechenbar.
+      Angelegt 30.09.2026. Betrifft Energieoptionen, MaxHirn/Wissen/Hardware.md.
+
 - [ ] **T-212 — kraken-Buch in USDC/EURC: die Auswertung nennt die Einheit noch fest als EUR**
       Kontext: Seit 30.09.2026 kann die kraken-Spur in EUR, USDC und EURC
       handeln (Quote je Paar aus der API, `Agenten/Handel/kraken/quote.py`;
@@ -2460,6 +2522,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-217 — Nach jedem `hermes update` den Gateway-Launcher und das tools-Python pruefen**
+      Kontext: `hermes update` schreibt `gateway-service/Hermes_Gateway_2ef9d0b7.vbs`
+      neu und setzt ihn auf `tools\python-3.14.7...\python.exe` mit
+      Fensterstil 0. Ein Konsolenprogramm wird so GAR NICHT gestartet, ohne
+      Fehlermeldung (gemessen 30.09.2026, Tabelle in
+      `Wissen/Hardware.md`). Zugleich fehlten dem tools-Python nach dem
+      Update vom 29.09. alle Abhaengigkeiten. Beides hat den Gateway am
+      30.09. stundenlang stillgelegt.
+      Naechster Schritt: eine Pruefung (Hermes-Cron oder Block in
+      `systempruefung.ps1`) die (a) in der VBS nach `pythonw.exe` sucht und
+      (b) `tools-python -c "import pydantic_core, hermes_cli.main"` aufruft;
+      leise, wenn beides gesund ist.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/gateway-service/, Agenten/Hermes/tools/
+      **Erledigt 2026-09-30.** Wache gebaut: Agenten/Hermes/scripts/gateway-launcher-wache.py + test_gateway_launcher_wache.py (23 Tests gruen), Hermes-Cron gateway-launcher-wache (a0faa7d6286f, taeglich 08:20, no_agent, Telegram, leere Ausgabe = gesund). Sie prueft die URSACHE statt des Symptoms: (a) die Startzeile der Launcher-VBS muss auf pythonw.exe zeigen - Kommentarzeilen zaehlen nicht, weil der reparierte Launcher python.exe im Kommentar nennt; (b) tools/python-3*/python.exe -c "import pydantic_core, hermes_cli.main" mit der Umgebung des Launchers. Gemessen 30.09.2026: echter Lauf leise (Exit 0), Gegenprobe mit absichtlich kaputter VBS nennt Befund und Behebung, 23/23 Tests. Kein Schreiben in den Checkout, kein Start, kein Netz.
 - [x] **T-214 — Gemessen: der Umtausch in EURC/USDC lohnt nicht — nichts umtauschen**
       Kontext: Die Erweiterung vom 30.09.2026 schaltet nichts scharf - das
       Guthaben-Tor vergleicht weiter gegen `mindest_guthaben_je_quote` 60, und
