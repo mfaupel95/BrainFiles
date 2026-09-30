@@ -222,20 +222,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
       Agenten/Handel/moondev_marktlage/wachen.json
 
-- [ ] **T-207 — mosaic prueft seine Boersen-Stops nicht nach (drei Stops waren storniert)**
-      Kontext: Am 30.09.2026 trugen die drei Kraken-Stops von mosaic (BTC/ETH/SOL,
-      rund 258 EUR) den Status `canceled`, waehrend `mosaic/zustand.json` weiter
-      `boersen_stop_fehlt: false` meldete. Gefunden nur ueber
-      `kraken/spot_stops.py` - mosaic hat keinen Abgleich. `scanner/boersenstops.py`
-      laeuft seit 28.09. im Live-Zyklus; mosaic, kraken und die Nautilus-Arme haben
-      nichts dergleichen. Gleiches Muster wie T-118 (26.09.2026, xperp).
-      Naechster Schritt: `scanner/boersenstops.py` auf die uebrigen Boersen-Spuren
-      uebertragen (Position -> `stop_algo_id`/`stop_txid` per `order_details` auf
-      `status == "open"` pruefen, Waisen melden), Vorschau als Standard.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/mosaic/handeln.py, Agenten/Handel/kraken/handeln.py,
-      Agenten/Handel/scanner/boersenstops.py
 
 - [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
       Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
@@ -2509,6 +2495,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-207 — mosaic prueft seine Boersen-Stops nicht nach (drei Stops waren storniert)**
+      Kontext: Am 30.09.2026 trugen die drei Kraken-Stops von mosaic (BTC/ETH/SOL,
+      rund 258 EUR) den Status `canceled`, waehrend `mosaic/zustand.json` weiter
+      `boersen_stop_fehlt: false` meldete. Gefunden nur ueber
+      `kraken/spot_stops.py` - mosaic hat keinen Abgleich. `scanner/boersenstops.py`
+      laeuft seit 28.09. im Live-Zyklus; mosaic, kraken und die Nautilus-Arme haben
+      nichts dergleichen. Gleiches Muster wie T-118 (26.09.2026, xperp).
+      Naechster Schritt: `scanner/boersenstops.py` auf die uebrigen Boersen-Spuren
+      uebertragen (Position -> `stop_algo_id`/`stop_txid` per `order_details` auf
+      `status == "open"` pruefen, Waisen melden), Vorschau als Standard.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/mosaic/handeln.py, Agenten/Handel/kraken/handeln.py,
+      Agenten/Handel/scanner/boersenstops.py
+      30.09.2026: mosaic/boersenabgleich.py eingebaut (jeder Basis-Zyklus, Vorschau Standard), Wache mosaic-stop-wache (Cron 2faf001c30d6, 30 min). Messung: 3 Live-Positionen, 3 wirksame Stops (die drei waren um 07:34 neu gesetzt); Gegenprobe mit der stornierten Kennung meldet 'STOP FEHLT: BTC-USDC'. Tests: mosaic 126, scripts 14 gruen, Gegenprobe 15/3 rot. Commit 3d8b800.
 - [x] **T-208 — kraken-Buch fuehrt eine DOTEUR-Position, die es nicht gibt (und zwei SUIEUR-Waisenstops)**
       Kontext: `kraken/zustand.json` fuehrt DOTEUR mit 45.9896983 DOT, das
       Kraken-Konto hat 0.0000000000 DOT (BalanceEx, 30.09.2026). Umgekehrt liegen
