@@ -65,6 +65,16 @@ der Neustart reißt den Aufrufer ab.
   `git rev-list --count HEAD..origin/main` und `hermes --version`
   („Up to date").
 
+## Wirkung (30.09.2026)
+
+Das Update auf `f42f579cf8` enthielt
+`fix(cli,desktop): hide every console-subsystem child spawn on Windows`.
+Max meldet danach: **das Fenster-Flackern ist momentan nicht da.** Das ist
+eine Momentaufnahme, kein Dauerbeweis — tritt es wieder auf, ist die erste
+Frage, welche Sitzung gerade ein Konsolen-Kind startet, und der zweite Blick
+gilt `HERMES_DESKTOP_CDP_PORT` plus `dev-cdp.ts`: ein **packaged** Build
+öffnet nie einen CDP-Port, dort ist keine Live-DOM zu lesen.
+
 ## Stand
 
 - 29.09.2026 abends: Lauf 1 holte 203 Commits, Lauf 2 holte 1841 Commits
