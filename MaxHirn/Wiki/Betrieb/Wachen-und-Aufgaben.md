@@ -161,3 +161,48 @@ starten, bis 90 s auf die Antwort warten und melden. Kein Eingriff waehrend eine
 Wartungslaufs, Bremse (ein Heilversuch je 30 min), dieselbe Feststellung erst nach 6 h
 wieder. Tests: `Agenten/Hermes/scripts/test_dashboard_wache.py` (18, alles mit Attrappen).
 Beleg-Lauf: `silent (empty output)` im Cron-Ordner, HTTP 200 nach der Heilung.
+
+## Der Demo-Lauf hatte keine Wache (30.09.2026, T-211)
+
+Der omnitrade-Lauf (`Werkstatt/omnitrade`, OKX-Demo, BTCUSDC) hatte als einziger
+Dauerprozess **keine** Wache. Am 30.09.2026 gab es in zwei Stunden **fuenf** PIDs
+(76116, 63732, 64440, 62416, 69800) — nach jedem harten Ende blieb `status/live.json`
+auf `"state": "running"` mit einer **toten PID** stehen. Wer nur die Datei liest, glaubt
+an laufenden Handel.
+
+**Zwei Zeugen, nicht einer.** Die Wache fragt nicht die Datei allein, sondern benutzt
+`Agenten/Handel/omnitrade_lauf.py`: Statusdatei **und** PID in der Prozessliste. Keine der
+beiden Quellen genuegt fuer sich — der Programmname beweist nichts (`omnitrade-cli.exe`
+faehrt auch `backtest`), und die Datei luegt nach einem harten Ende.
+
+**Der haertere Zeuge gewinnt.** Ist die PID tot, heisst es `beendet` — auch wenn die Datei
+zugleich alt ist. Sonst stuende in der Meldung „PID lebt noch", waehrend der Prozess
+laengst weg ist (dieselbe Klasse Fehler wie die Anzeige-Luege selbst). Genau dieser Fall
+hat beim Bau einen Test rot gemacht.
+
+**Die Altersgrenze kommt aus dem Lauf, nicht aus dem Kopf.** Die Statusdatei wird nur
+geschrieben, wenn eine Kerze verarbeitet wird — bei `--interval 1h` also stuendlich. Eine
+feste 5-Minuten-Grenze erklaert einen gesunden Lauf fuer tot (am 30.09. real passiert: der
+Lauf stand 13 Minuten still und galt als tot). Die Grenze steht deshalb in
+`omnitrade_bridge.altersgrenze_s()`: `max(300 s, 2,5 x Kerzenabstand)` aus den
+mitgeschriebenen Kerzen.
+
+**Ein PID-Wechsel ist kein Fehler.** Der Lauf wird auch von Hand neu gestartet, und
+mehrere Laeufe schreiben dieselbe Statusdatei. Die Wache fuehrt keine PID-Historie und
+vergleicht keine Staende; der Merkschluessel ist die Meldung **ohne Zahlen**, damit
+„PID 111 tot" und „PID 222 tot" dieselbe Feststellung bleiben.
+
+**Sie startet nichts.** `omnitrade.cmd start` steht nur als Hinweis in der Meldung — ob
+neu gestartet wird, entscheidet Max. Der Test prueft das an der Quelle (kein
+`subprocess`, kein `Start-Process`, kein `taskkill` im Skript).
+
+`Agenten/Hermes/scripts/omnitrade-lauf-wache.py`, Hermes-Cron **`omnitrade-lauf-wache`
+(Job `804473084f4e`, alle 15 min, `no_agent`, Telegram, leere Ausgabe = nichts senden)**.
+Meldungsform: `omnitrade-Demo-Lauf steht:` / `Lauf beendet: PID … lebt nicht, die
+Statusdatei bleibt auf 'running' stehen …` bzw. `Statusdatei HAENGT: kein Lebenszeichen
+seit …` / `Statusdatei KAPUTT: …` / `keine Statusdatei …`, je mit Symbol, Alter, Netz und
+dem Startbefehl. Dieselbe Feststellung erst nach 6 h wieder (Merkdatei
+`Agenten/Hermes/cache/omnitrade-lauf-wache.json`). Tests:
+`Agenten/Hermes/scripts/test_omnitrade_lauf_wache.py` (17, Temp-Statusdatei, gestellte
+Prozessliste); Gegenprobe: Zeugen-Reihenfolge und Wiederholungsschutz zurueckgenommen →
+4 Tests rot.

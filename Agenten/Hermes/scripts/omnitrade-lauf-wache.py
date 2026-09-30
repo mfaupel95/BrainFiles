@@ -26,8 +26,13 @@ Gemeldet werden vier Lagen:
 
     beendet   PID aus der Statusdatei lebt nicht (Zustand bleibt 'running')
     beendet   Zustand ist nicht mehr 'running' (sauberes Ende)
-    haengt    PID lebt, aber die Datei bekommt kein Lebenszeichen (Alter > 300 s)
+    haengt    PID lebt, aber die Datei bekommt kein Lebenszeichen
+              (Alter ueber der Grenze - 300 s, bei laengeren Kerzen mehr)
     fehlt/kaputt  keine Statusdatei, unlesbares JSON, fremdes Schema
+
+Der haertere Zeuge gewinnt: ist die PID tot, heisst es 'beendet' - auch wenn
+die Datei zugleich alt ist. Sonst stuende in der Meldung 'PID lebt noch',
+waehrend der Prozess laengst weg ist.
 
 WAS ES NICHT TUT
 ----------------
@@ -105,6 +110,13 @@ def _alter_text(alter_s):
     return "%.0f min alt" % (alter_s / 60.0)
 
 
+def _lebt(pid):
+    """Lebt genau diese PID? Ueber die Testnaht LEBT oder den echten zweiten Zeugen."""
+    if LEBT is not None:
+        return bool(LEBT(pid))
+    return LAUF.pid_lebt(pid)
+
+
 def befund(lage=None, grenze_s=None, jetzt=None):
     """Zeilen fuer den Fall, dass der Lauf steht. Leer = er laeuft.
 
@@ -119,8 +131,9 @@ def befund(lage=None, grenze_s=None, jetzt=None):
     state = lage.get("state")
     datei = lage.get("datei")
     vorhanden = bool(datei) and os.path.exists(datei)
+    lebt = _lebt(pid) if pid else False
     kennzahl = {"art": None, "pid": pid, "alter_s": alter, "state": state,
-                "datei": datei}
+                "datei": datei, "pid_lebt": lebt}
 
     if u.get("laeuft"):
         kennzahl["art"] = "laeuft"
@@ -136,11 +149,21 @@ def befund(lage=None, grenze_s=None, jetzt=None):
         kennzahl["art"] = "fehlt"
         zeilen.append("Lauf beendet: es gibt keine Statusdatei mehr (%s) - "
                       "der Demo-Lauf laeuft nicht (%s)" % (grund, datei))
-    elif "veraltet" in fehler:
+    elif lebt and ("veraltet" in fehler or "haengt" in grund):
+        # Die PID lebt, aber es kommt kein Lebenszeichen. Beide Wege zaehlen:
+        # die Grenze aus der Datei (Bruecke) und die von aussen gesetzte
+        # (--grenze-s), die nur im Urteil sichtbar ist.
         kennzahl["art"] = "haengt"
         zeilen.append("Statusdatei HAENGT: kein Lebenszeichen seit %s, PID %s lebt "
                       "noch - der Lauf steht, die Datei steht still (%s)"
                       % (_alter_text(alter), pid, wo))
+    elif "veraltet" in fehler:
+        # Alter UND tote PID: der haertere Zeuge gewinnt, sonst behauptet die
+        # Meldung 'PID lebt noch', waehrend der Prozess weg ist.
+        kennzahl["art"] = "beendet"
+        zeilen.append("Lauf beendet: PID %s lebt nicht, die Statusdatei bleibt auf "
+                      "'running' stehen (letztes Lebenszeichen %s) - es handelt "
+                      "nichts mehr (%s)" % (pid, _alter_text(alter), wo))
     elif not lage.get("ok"):
         kennzahl["art"] = "kaputt"
         zeilen.append("Statusdatei KAPUTT: %s - Lage nicht pruefbar (%s)"
@@ -149,11 +172,14 @@ def befund(lage=None, grenze_s=None, jetzt=None):
         kennzahl["art"] = "beendet"
         zeilen.append("Lauf beendet: Zustand ist %r, nicht 'running' (PID %s, %s)"
                       % (state, pid, wo))
-    else:
+    elif not lebt:
         kennzahl["art"] = "beendet"
         zeilen.append("Lauf beendet: PID %s aus der Statusdatei lebt nicht - die "
                       "Datei bleibt auf 'running' stehen, es handelt nichts (%s)"
                       % (pid, wo))
+    else:
+        kennzahl["art"] = "beendet"
+        zeilen.append("Lauf beendet: %s (%s)" % (grund, wo))
 
     zeilen.append("Starten (nur wenn Max es will): %s   [%s]" % (STARTBEFEHL, datei))
     return zeilen, kennzahl
