@@ -84,8 +84,11 @@ KURATIERT: dict[tuple[str, str], dict] = {
                  "trading-agent 8081, topmovers 8082, marktlage-regime 8083",
     },
     ("werkstatt", "handel-stack"): {
-        "rolle": "Projekt",
-        "notiz": "DCA-Simulator und Handels-Skripte (Docker Compose)",
+        "rolle": "Spiegel (18.09.)",
+        "notiz": "Privater GitHub-Spiegel von Agenten/Handel, Stand 18.09.2026: 33 damals 48 Spuren "
+                 "samt Journalen und Zustand - ein eingefrorener Altstand, NICHT der lebende Baum",
+        "warnungen": ["Altstand 18.09.2026 - nichts liest ihn; der lebende Baum liegt in "
+                      "Agenten/Handel (spuren_stand.py zeigt ihn)"],
     },
     ("werkstatt", "intelligent-trading-bot"): {
         "rolle": "Projekt",
@@ -219,13 +222,18 @@ KURATIERT: dict[tuple[str, str], dict] = {
 # Der Bereich HANDEL hat eine Besonderheit: die wichtigsten Werkzeuge liegen als
 # EINZELDATEIEN in der Wurzel. Sie bekommen einen Startbefehl, der nichts tut
 # ausser die Gebrauchsanweisung zu zeigen - und der vorher wirklich gelaufen ist.
-HILFE_START = [".venv\\Scripts\\python.exe", "{datei}", "--help"]
+# Der Pfad wird mit Backslash eingesetzt (Hausschreibweise im Manifest); Python
+# versteht auf Windows beide Trenner.
+HILFE_START = [".venv\\Scripts\\python.exe", "{pfad}", "--help"]
 
 # NUR diese Dateien bekommen den Hilfe-Start. Der Grund ist die Hausregel
 # "kein geratener Befehl": verifiziert ist, was einmal gelaufen ist. Eine neue
 # Datei in der Wurzel erscheint dadurch als Zeile OHNE Startbefehl - das ist der
 # ehrliche Zustand, und ein Aufruf kommt erst nach einem echten Lauf dazu
 # (`fuellen.py --belege` fuehrt jeden hinterlegten, noch unbelegten Start aus).
+#
+# Schluessel sind die Pfade innerhalb der Wurzel (mit "/"), nicht die Dateinamen:
+# `auswertung.py` gibt es in fuenf Spuren, `backtest.py` in zweien.
 HILFE_VERIFIZIERT = (
     "agent.py", "auswertung_alle.py", "auswertung_trading.py", "backtest_prognose.py",
     "backtest_urteile.py", "beleg_hand.py", "bt_varianten_fast.py", "dca.py",
@@ -237,6 +245,18 @@ HILFE_VERIFIZIERT = (
     "sperrgruende.py", "spiegelstand.py", "spuren_stand.py", "stille_spuren.py",
     "stoerungen.py", "tagesbericht.py", "testlauf.py", "vergleich.py",
     "wochenbericht.py", "zeitversatz_messen.py",
+    # Werkzeuge neben den Spuren (30.09.2026) - alle mit __main__ + argparse,
+    # jede Zeile hier hat einen echten Lauf in logs/.
+    "okx_bot_waechter/analyse.py", "okx_bot_waechter/vorschlag.py",
+    "okx_bot_waechter/bauen.py", "scanner/stops_bereinigen.py",
+    "scanner/boersenstops.py", "xperp/geister_nachziehen.py",
+    "xperp/fremde_positionen_uebernehmen.py", "kraken/abgleich.py",
+    "kraken/einsatz_nachziehen.py", "mosaic/geist_zurueckbuchen.py",
+    "mosaic/boersenabgleich.py", "ai4trade/heartbeat.py", "verbesserer/lauf.py",
+    "nautilus/daten_auffrischen.py", "orb/backtest.py", "orbk/backtest.py",
+    "gitter/backtest_gitter.py", "xperp/historie.py",
+    "gitter/auswertung.py", "kopier/auswertung.py", "kopier1zu1/auswertung.py",
+    "omniquant/auswertung.py", "spiegel/auswertung.py",
 )
 
 # Zweite Runde der Kuratierung: die Spuren, deren README mit einem Halbsatz
@@ -497,6 +517,190 @@ KURATIERT.update({
     },
 })
 
+# Dritte Runde (30.09.2026 abends): die Werkzeuge NEBEN den Spuren und die
+# Freqtrade-Strategien. Schluessel ist hier der PFAD innerhalb der Wurzel, weil
+# `auswertung.py` in fuenf Spuren liegt und `backtest.py` in zweien.
+KURATIERT.update({
+    # ------------------------------------------- Wartung und Betrieb
+    ("handel", "okx_bot_waechter/analyse.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Misst je OKX-Bot die Leiter (Tiefe = Stufen x Abstand) gegen das Instrument "
+                 "und empfiehlt neue Zahlen; --woche nimmt den uebergeordneten Trend dazu",
+    },
+    ("handel", "okx_bot_waechter/vorschlag.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Rechnet einen neuen DCA-Bot durch (Tiefe aus ATR, Stop am Planboden) - "
+                 "--tiefe auto; ein neuer Bot bringt seinen Stop mit",
+    },
+    ("handel", "okx_bot_waechter/bauen.py"): {
+        "rolle": "Werkzeug",
+        "warnungen": ["legt einen echten OKX-Bot an - nur mit bauen_erlaubt=true UND --anwenden"],
+        "notiz": "Legt einen Bot an, wahlweise aus vorschlag.py; ohne --anwenden passiert nichts",
+    },
+    ("handel", "scanner/stops_bereinigen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Raeumt die Stop-Merker der scanner-Zustandsdatei auf (Vorschau Standard, "
+                 "--anwenden schreibt, --stornieren nimmt Waisenstops von der Boerse)",
+    },
+    ("handel", "scanner/boersenstops.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Buch gegen BOERSE: hat jede Live-Position ihren Stop, steht sie ueberhaupt "
+                 "noch, gibt es Waisen-Stops - laeuft im Live-Zyklus mit",
+    },
+    ("handel", "xperp/geister_nachziehen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Zieht Geister-Zeilen (grund buchbereinigung_geist, Erloes genau 0.00) auf den "
+                 "Einsatz zurueck, den die FIFO-Paarung verrechnet - Vorschau Standard",
+    },
+    ("handel", "xperp/fremde_positionen_uebernehmen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Nimmt Positionen ins Buch, die an der Boerse stehen, aber (noch) nicht im Buch",
+    },
+    ("handel", "kraken/abgleich.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Kraken-Buch gegen die Boerse (Arten GEIST/TEILS/WAISE); bucht nur mit BELEGTEM "
+                 "Boersenerloes aus, ohne Zeugen bleibt die Position und heisst 'unklar'",
+    },
+    ("handel", "kraken/einsatz_nachziehen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Stellt den Einsatz in Belegzeilen richtig (Menge x Preis statt Stueckpreis) - "
+                 "vier ueber die Hand ausgefuehrte Belege standen um Faktor 30 zu klein im Buch",
+    },
+    ("handel", "mosaic/geist_zurueckbuchen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Holt eine falsch gebuchte Live-Position zurueck ins Buch (Vorschau Standard); "
+                 "die Falschbuchung wandert nach handelsjournal.verworfen-<datum>.csv",
+    },
+    ("handel", "mosaic/boersenabgleich.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Buch gegen Boerse fuer mosaic (Kraken-Spot und OKX-Spot)",
+    },
+    ("handel", "ai4trade/heartbeat.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Pollt den Heartbeat von ai4trade.ai und meldet nur Neues (leere Ausgabe = "
+                 "nichts zu senden); laeuft als Cron ueber Agenten/Hermes/scripts/",
+    },
+    ("handel", "verbesserer/lauf.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Faehrt die gesammelten Verbesserungs-Anfragen ab - der Dauerlauf ruft es bei "
+                 "Bedarf selbst auf",
+    },
+    ("handel", "nautilus/daten_auffrischen.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Zieht die Kursdaten der Nautilus-Arme nach (die Arme buchen Kopier-Kaeufe als "
+                 "BTC-Proxy)",
+    },
+    # ------------------------------------------- Backtests
+    ("handel", "orb/backtest.py"): {
+        "rolle": "Backtest",
+        "notiz": "Backtest der ORB-Spur auf OKX-Perps - der eigene Befund ist fuer beide "
+                 "Instrumente NEGATIV (EV -45.1 Pkt je Runde bei BTC)",
+    },
+    ("handel", "orbk/backtest.py"): {
+        "rolle": "Backtest",
+        "notiz": "Backtest der ORB-Spur auf Kraken (dieselbe Strategie wie orb)",
+    },
+    ("handel", "gitter/backtest_gitter.py"): {
+        "rolle": "Backtest",
+        "notiz": "Faehrt gitter/handeln.py SELBST (keine Nachbildung) - sonst optimiert man die "
+                 "Nachbildung; die Leiter entsteht nur beim Erstlauf",
+    },
+    ("handel", "nautilus/backtest_grid.py"): {
+        "rolle": "Backtest",
+        "notiz": "Grid-Backtest auf den eigenen Kursdaten (nautilus/daten/)",
+        "warnungen": ["braucht nautilus_trader aus nautilus/.venv, nicht das Handel-venv "
+                      "(der Import scheitert sonst schon bei --help)"],
+    },
+    ("handel", "xperp/historie.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Kurshistorie fuer den xperp-Backtest - spur-eigen, NICHT die gemeinsame "
+                 "historie_binance.py",
+    },
+    # ------------------------------------------- Auswertungen je Spur
+    ("handel", "gitter/auswertung.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Wertet das Gitter-Papierbuch aus (eigenes Journal der Spur)",
+    },
+    ("handel", "kopier/auswertung.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Wertet das kopier-Papierbuch aus",
+    },
+    ("handel", "kopier1zu1/auswertung.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Wertet das kopier1zu1-Papierbuch aus",
+    },
+    ("handel", "omniquant/auswertung.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Wertet das Omniquant-Papierbuch aus (Haupt- und Schattenarm getrennt)",
+    },
+    ("handel", "spiegel/auswertung.py"): {
+        "rolle": "Werkzeug",
+        "notiz": "Wertet das Spiegel-Papierbuch aus",
+    },
+    # ------------------------------------------- Stufen und Stand
+    # Die drei Risikostufen (Basis / mittel / hoch) sind KEIN eigener Eintrag:
+    # es sind dieselben Spuren mit groesseren Betraegen in eigenen Dateien. Die
+    # Befehle hier machen sie sichtbar, ohne eine zweite Wahrheit anzulegen.
+    ("handel", "spuren_stand.py"): {
+        "befehle": [
+            {"was": "Stand aller Spuren (zeigt haupt/.mittel/.hoch je Spur)",
+             "cmd": [".venv\\Scripts\\python.exe", "spuren_stand.py"],
+             "hinweis": "rein lesend"},
+            {"was": "Nur die scharfen Spuren",
+             "cmd": [".venv\\Scripts\\python.exe", "spuren_stand.py", "--nur", "scharf"],
+             "hinweis": "gemessen 30.09.: scanner, mosaic, moondev_listingarb"},
+            {"was": "Stand als JSON",
+             "cmd": [".venv\\Scripts\\python.exe", "spuren_stand.py", "--json"],
+             "hinweis": "fuer Werkzeuge"},
+        ],
+    },
+    ("handel", "auswertung_alle.py"): {
+        "befehle": [
+            {"was": "Auswertung Stufe Basis",
+             "cmd": [".venv\\Scripts\\python.exe", "auswertung_alle.py"],
+             "hinweis": "eigene Journale (handelsjournal.csv)"},
+            {"was": "Auswertung Stufe mittel",
+             "cmd": [".venv\\Scripts\\python.exe", "auswertung_alle.py", "--risiko", "mittel"],
+             "hinweis": "handelsjournal.mittel.csv"},
+            {"was": "Auswertung Stufe hoch",
+             "cmd": [".venv\\Scripts\\python.exe", "auswertung_alle.py", "--risiko", "hoch"],
+             "hinweis": "handelsjournal.hoch.csv"},
+        ],
+    },
+    ("handel", "spiegelstand.py"): {
+        "befehle": [
+            {"was": "Spiegelstand Basis (Bedingung 4)",
+             "cmd": [".venv\\Scripts\\python.exe", "spiegelstand.py"],
+             "hinweis": "byte-genau gegen Q:"},
+            {"was": "Spiegelstand Stufe mittel",
+             "cmd": [".venv\\Scripts\\python.exe", "spiegelstand.py", "--risiko", "mittel"],
+             "hinweis": "gemessen 30.09.: 29 von 29 byte-gleich"},
+            {"was": "Spiegelstand Stufe hoch",
+             "cmd": [".venv\\Scripts\\python.exe", "spiegelstand.py", "--risiko", "hoch"],
+             "hinweis": "byte-genau gegen Q:"},
+        ],
+    },
+    # ------------------------------------------- Freqtrade-Strategien
+    **{
+        ("handel", f"freqtrade/user_data/strategies/{name}.py"): {
+            "rolle": "Strategie",
+            "notiz": notiz,
+            "warnungen": ["freqtrade laedt diese Klasse; der Bot-Aufsatz steht in "
+                          "freqtrade/user_data/bots/"],
+        }
+        for name, notiz in (
+            ("MoonDevTradingAgent", "Freqtrade-Strategie des Trading-Agenten (MA20/MA40, RSI 45-70, "
+                                    "Volumen) - LONG-ONLY: can_short laedt im Spot-Modus nicht"),
+            ("MoonDevTopMovers", "Freqtrade-Strategie TopMovers (+8..40 % in 24 h)"),
+            ("MoonDevMarketRegime", "Freqtrade-Strategie Marktregime (BTC-Trend und Marktbreite)"),
+            ("ema_cross", "Freqtrade-Strategie EMA-Kreuz - walk-forward geprueft; im ungesehenen "
+                          "H2 halten die Hyperopt-Parameter NICHT"),
+            ("ema_cross_h1", "Freqtrade-Strategie EMA-Kreuz auf 1 h (eigener Aufsatz)"),
+            ("moondev_basis", "Freqtrade-Strategie: gemeinsame Basis der drei MoonDev-Strategien"),
+        )
+    },
+})
+
 # Nicht von Hand starten: der Dauerlauf nimmt die echte Sperre, melder.py
 # verschickt Telegram-Nachrichten. Beide bekommen KEINEN Startbefehl.
 OHNE_START = {
@@ -552,9 +756,20 @@ def notiz_aus_platte(repo: scan.Repo) -> str:
     return _docstring(repo.pfad)
 
 
+def _kuratiert(wurzel: str, pfad: str, ordner: str = "") -> dict:
+    """Der kuratierte Eintrag zu einem Projekt - Pfad schlaegt Dateiname.
+
+    `auswertung.py` gibt es in fuenf Spuren, `backtest.py` in zweien: ueber den
+    Dateinamen allein liessen sie sich nicht unterscheiden. Deshalb wird zuerst
+    der Pfad innerhalb der Wurzel gesucht (mit "/"), dann der Anzeigename -
+    damit die aelteren Eintraege (nur Name) weiter greifen.
+    """
+    return KURATIERT.get((wurzel, pfad)) or KURATIERT.get((wurzel, ordner), {})
+
+
 def eintrag_bauen(repo: scan.Repo) -> dict:
     """Aus einem Plattenfund einen Manifest-Eintrag machen - ohne Erfindung."""
-    kuratiert = KURATIERT.get((repo.wurzel, repo.ordner), {})
+    kuratiert = _kuratiert(repo.wurzel, repo.pfad_rel, repo.ordner)
     eintrag: dict = {"ordner": repo.ordner}
     if repo.wurzel != "repos":
         eintrag["wurzel"] = repo.wurzel
@@ -570,13 +785,14 @@ def eintrag_bauen(repo: scan.Repo) -> dict:
     eintrag["notiz"] = kuratiert.get("notiz") or notiz_aus_platte(repo) or repo.art
 
     start = kuratiert.get("start")
-    if start is None and repo.datei is not None and repo.ordner in HILFE_VERIFIZIERT:
-        start = [t.format(datei=repo.ordner) for t in HILFE_START]
+    schluessel = repo.pfad_rel
+    if start is None and repo.datei is not None and schluessel in HILFE_VERIFIZIERT:
+        start = [t.format(pfad=schluessel.replace("/", "\\")) for t in HILFE_START]
     if start:
         eintrag["start"] = start
         eintrag["venv_pflicht"] = bool(repo.venv)
-    elif repo.ordner in OHNE_START and repo.datei is not None:
-        eintrag["warnungen"] = [OHNE_START[repo.ordner]]
+    elif schluessel in OHNE_START and repo.datei is not None:
+        eintrag["warnungen"] = [OHNE_START[schluessel]]
 
     gruppe = kuratiert.get("gruppe")
     if gruppe:
@@ -719,10 +935,12 @@ def auffrischen(manifest_pfad: Path, *, anwenden: bool = False) -> int:
     daten = json.loads(manifest_pfad.read_text(encoding="utf-8"))
     geaendert = []
     for e in daten.get("repos") or []:
-        kuratiert = KURATIERT.get((e.get("wurzel", "repos"), e["ordner"]))
+        kuratiert = _kuratiert(
+            e.get("wurzel", "repos"), e.get("pfad") or e["ordner"], e["ordner"]
+        )
         if not kuratiert:
             continue
-        for feld in ("rolle", "notiz", "gruppe", "anleitung"):
+        for feld in ("rolle", "notiz", "gruppe", "anleitung", "befehle"):
             if kuratiert.get(feld) and not e.get(feld):
                 e[feld] = kuratiert[feld]
                 geaendert.append(f"{e['ordner']}.{feld}")

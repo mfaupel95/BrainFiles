@@ -61,19 +61,34 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
-- [ ] **T-234 - Zentrale: Werkstatt- und Handel-Projekte ohne Startbefehl nachtragen**
-      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 162 Zeilen
-      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL). 50 Eintraege haben einen
-      Startbefehl, der Rest steht ehrlich unter EINRICHTEN ("kein Startbefehl
-      belegt") - vor allem die Werkstatt-Projekte (freqtrade, omnitrade,
-      OmniRoute, handel-stack, skillspector) und die Werkzeug-Ordner in Handel
-      (okx_bot_waechter, freqtrade, bt_opt, nautilus-rust, verbesserer).
+- [ ] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
+      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
+      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL), 73 mit Startbefehl. Offen
+      sind vor allem die **Werkstatt-Projekte** (freqtrade, omnitrade, OmniRoute,
+      handel-stack, skillspector) sowie die Werkzeug-Ordner in Handel
+      (freqtrade, bt_opt, nautilus-rust, verbesserer, OpenAlice). Die Spuren
+      selbst sollen bewusst OHNE Startbefehl bleiben (der Dauerlauf faehrt sie),
+      die sechs Freqtrade-Strategien ebenfalls (Klassen, freqtrade laedt sie).
       Hausregel: ein Befehl kommt erst ins Manifest, wenn er einmal echt
       gelaufen ist (`fuellen.py --belege` fuehrt hinterlegte Staende aus).
       Naechster Schritt: je Projekt den Startweg einmal von Hand fahren, dann
       `start` bzw. `befehle` in repos-zentrale.json eintragen.
-      Angelegt: 2026-09-30
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
+
+- [ ] **T-237 - Werkstatt/handel-stack: Spiegel weiterfuehren, einfrieren oder abloesen? (Entscheidung Max)**
+      Kontext: `Werkstatt/handel-stack` ist ein privates GitHub-Repo
+      (mfaupel95/handel-stack) mit dem Import von `Agenten/Handel` vom
+      18.09.2026: 33 der heute 48 Spuren samt Journalen und Zustand, aeltere
+      Staende (dauerlauf.py 43 statt 64 KB). Gemessen: nichts liest ihn, er
+      enthaelt keine Geheimnisse, `repos-updaten.py` fasst ihn nicht an. Er
+      stoert nur als zweite, aeltere Wahrheit im Suchweg und steht deshalb im
+      Manifest als Rolle "Spiegel (18.09.)" mit Warnung.
+      Naechster Schritt: entscheiden - (a) so lassen (eingefrorener Zeuge),
+      (b) Spiegel gelegentlich auffrischen, (c) durch die vorhandene Sicherung
+      ersetzen und den Ordner aus dem Baum nehmen.
+      Angelegt: 2026-09-30
+      Betrifft: Werkstatt/handel-stack/, mfaupel95/handel-stack
 
 - [ ] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
       Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`

@@ -128,14 +128,21 @@ def _ein_repo(d: Path, *, wurzel: str, pfad_rel: str) -> Repo:
     )
 
 
-def ist_werkzeug(datei: Path) -> bool:
+def ist_werkzeug(datei: Path, rel: str = "") -> bool:
     """Ist diese Datei ein aufrufbares Werkzeug?
 
     Zwei Merkmale muessen zusammenkommen: ein eigener Einstieg (`__main__`) UND
     eine Argumentliste (`argparse`). Eine Moduldatei ohne beides ist kein
     eigenstaendiges Programm - sie als Zeile zu zeigen liesse das Fenster
-    vollaufen (in Agenten/Handel liegen 91 .py-Dateien, davon 57 mit Einstieg).
+    vollaufen (in Agenten/Handel liegen 91 .py-Dateien in der Wurzel, davon 57
+    mit Einstieg).
+
+    `rel` ist der Pfad innerhalb der Wurzel (mit "/"): steht er in
+    `quellen.WERKZEUG_ZUSATZ`, gilt die Datei ohne weitere Pruefung als
+    Werkzeug - so sind auch Dateien in Unterordnern erreichbar.
     """
+    if rel and rel in quellen.WERKZEUG_ZUSATZ:
+        return True
     if datei.suffix.lower() not in quellen.DATEI_ENDUNGEN:
         return False
     if datei.name in quellen.WERKZEUG_ZUSATZ:
@@ -147,21 +154,26 @@ def ist_werkzeug(datei: Path) -> bool:
     return all(merkmal in text for merkmal in quellen.WERKZEUG_MERKMALE)
 
 
-def _datei_repo(datei: Path, *, wurzel: str) -> Repo:
-    """Eine Werkzeugdatei als Zeile: der Ordner bleibt das Arbeitsverzeichnis."""
-    ordner = datei.parent
-    venv, venv_python = _venv(ordner)
+def _datei_repo(datei: Path, *, wurzel: str, wurzel_pfad: Path, rel: str = "") -> Repo:
+    """Eine Werkzeugdatei als Zeile.
+
+    Das Arbeitsverzeichnis ist die WURZEL, nicht der Ordner der Datei: die
+    Haus-Werkzeuge loesen ihre Pfade ueber `__file__` auf (`HIER =
+    os.path.dirname(os.path.abspath(__file__))`), und das venv liegt in der
+    Wurzel - so lautet jeder Aufruf gleich `.venv\\Scripts\\python.exe <pfad>`.
+    """
+    venv, venv_python = _venv(wurzel_pfad)
     return Repo(
         ordner=datei.name,
-        pfad=ordner.resolve(),
+        pfad=Path(wurzel_pfad).resolve(),
         art="werkzeug",
         git=False,
         venv=venv,
         venv_python=venv_python,
-        node_modules=(ordner / "node_modules").is_dir(),
+        node_modules=(Path(wurzel_pfad) / "node_modules").is_dir(),
         readme=None,
         wurzel=wurzel,
-        pfad_rel=datei.name,
+        pfad_rel=rel or datei.name,
         datei=datei.resolve(),
     )
 
@@ -191,8 +203,23 @@ def ordner_scannen(
             if nur_git and not (d / ".git").is_dir():
                 continue
             gefunden.append(_ein_repo(d, wurzel=wurzel, pfad_rel=d.name))
-        elif dateien and ist_werkzeug(d):
-            gefunden.append(_datei_repo(d, wurzel=wurzel))
+        elif dateien and ist_werkzeug(d, d.name):
+            gefunden.append(
+                _datei_repo(d, wurzel=wurzel, wurzel_pfad=basis, rel=d.name)
+            )
+    if dateien:
+        # Werkzeuge in Unterordnern: nur die ausdruecklich genannten
+        # (quellen.WERKZEUG_ZUSATZ). Eine Suche in allen Unterordnern wuerde in
+        # Agenten/Handel das Fremdprojekt OpenAlice mit 130 Dateien einblenden.
+        schon = {(r.wurzel, r.pfad_rel) for r in gefunden}
+        for rel in quellen.WERKZEUG_ZUSATZ:
+            if "/" not in rel or (wurzel, rel) in schon:
+                continue
+            datei = basis / Path(rel)
+            if datei.is_file():
+                gefunden.append(
+                    _datei_repo(datei, wurzel=wurzel, wurzel_pfad=basis, rel=rel)
+                )
     return sorted(gefunden, key=lambda r: r.ordner.lower())
 
 

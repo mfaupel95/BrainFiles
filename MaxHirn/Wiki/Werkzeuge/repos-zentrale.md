@@ -291,6 +291,99 @@ Hilfe-Start (`<datei> --help`) gibt es nur fuer Dateien in `HILFE_VERIFIZIERT`,
 also fuer die, deren Aufruf einmal wirklich gelaufen ist. Das ist die Hausregel
 „kein geratener Befehl", diesmal als Code.
 
+## Nachtrag 30.09.2026 (abends) — Strategien, Stufen, Werkzeuge in Unterordnern
+
+Drei Fragen von Max, drei Antworten mit Messung.
+
+### `Werkstatt/handel-stack` — ein Duplikat, aber ein gewolltes
+
+Gemessen: `mfaupel95/handel-stack` ist ein **privates** GitHub-Repo (6,4 MB,
+`pushedAt` 18.09.2026 20:27) mit der Beschreibung *„Spiegel von Agenten/Handel"*
+und dem ersten Commit *„feat: Handelsstack importiert (Spuren, Dauerlauf,
+Auswertung, Journal und Zustand)"*. Inhalt: **33 Ordner** (heute 48), dieselben
+Dateinamen, aber aelterer Stand (`dauerlauf.py` 43 KB gegen 64 KB,
+`handelszentrale.py` 47 gegen 70, `lage.py` 37 gegen 53) — und die
+**Laufzeitstaende** der Spuren (`handelsjournal.csv`, `zustand.json`, auch die
+`.mittel`-Fassungen).
+
+- **Stoert es den Betrieb?** Nein. Eine Suche ueber `Agenten/` findet den Pfad
+  nur in der Zentrale selbst (`fuellen.py`, `repos-zentrale.json`); keine Spur,
+  kein Skript, keine Routine liest ihn. `repos-updaten.py` fasst ihn nicht an
+  (das Werkzeug liest nur `Werkstatt/Repos`).
+- **Geheimnisse?** Keine. Keine `.env`, keine Bearer-Token; die zwei
+  Schluessel-artigen Zeilen in `nautilus/set-okx-env.ps1` sind Platzhalter
+  („HIER…", byte-gleich auch im lebenden Baum). Das Repo ist privat.
+- **Wo es stoeren KANN:** als zweite, aeltere Wahrheit im Suchweg. Ein `grep`
+  nach `handelsjournal.csv` oder `zustand.json` findet ab jetzt zwei Baeume.
+  Deshalb steht es im Manifest als **Rolle „Spiegel (18.09.)"** mit einer
+  Warnung, die sagt: Altstand, nichts liest ihn, der lebende Baum liegt in
+  `Agenten/Handel`.
+
+Merksatz: **ein eingefrorener Spiegel ist kein Fehler — ein unbenannter ist
+einer.** Eine Zeile im Fenster, die sagt was es ist, kostet nichts; ein Fund im
+falschen Baum kostet eine Sitzung.
+
+### Strategien: drei Dinge heissen so
+
+| Art | Wo | Rolle im Fenster |
+|---|---|---|
+| Spuren | `Agenten/Handel/<spur>/` | `Spur` (32) |
+| Freqtrade-Strategien | `freqtrade/user_data/strategies/*.py` | `Strategie` (6) |
+| Backtests | `orb/backtest.py`, `gitter/backtest_gitter.py`, `nautilus/backtest_grid.py`, ... | `Backtest` |
+
+Die sechs Freqtrade-Strategien sind **Klassen, keine Programme**: freqtrade
+laedt sie, der Bot-Aufsatz steht in `freqtrade/user_data/bots/`. Sie bekommen
+darum keinen Startbefehl, sondern einen Hinweis — und stehen trotzdem als Zeile
+im Fenster, damit man sie findet.
+
+### Stufen: kein eigener Eintrag, sondern drei Befehle
+
+Basis / mittel / hoch sind **dieselben Spuren mit groesseren Betraegen** in
+eigenen Dateien (`zustand.mittel.json`, `handelsjournal.hoch.csv`,
+`dauerlauf.mittel.log`). Drei Zeilen daraus zu machen waere irrefuehrend: es
+gibt nicht drei Laeufe mit verschiedenen Strategien, sondern einen Betrieb mit
+drei Groessen. Sichtbar werden sie ueber die Befehlsliste der drei Leser (alle
+gemessen):
+
+| Zeile | Befehl | Ergebnis 30.09. |
+|---|---|---|
+| `spuren_stand.py` | `--nur scharf` | scanner, mosaic, moondev_listingarb — je mit `haupt/.mittel/.hoch` im Buch |
+| `auswertung_alle.py` | `--risiko mittel` | eigener Kopf „Risikostufe mittel: eigene Journale je Spur (handelsjournal.mittel.csv)" |
+| `spiegelstand.py` | `--risiko mittel` | „29 von 29 Spuren byte-gleich (Q:)" |
+
+### Werkzeuge in Unterordnern: eine Liste, keine Suche
+
+`quellen.WERKZEUG_ZUSATZ` nimmt jetzt auch **Pfade** auf
+(`okx_bot_waechter/analyse.py`, `kraken/abgleich.py`, die fuenf
+`auswertung.py`). Damit stieg das Manifest von 162 auf **192 Zeilen**, 23 neue
+Startbefehle wurden einmal echt gefahren (`fuellen.py --belege`).
+
+Warum keine rekursive Suche: in `Agenten/Handel` liegen unter `OpenAlice/`
+**130 Dateien** eines fremden Projekts (eigener Baum, eigene `AGENTS.md`).
+211 Kandidaten mit `__main__`+`argparse` waeren sonst als Zeilen aufgetaucht.
+Eine Namensliste ist eine Entscheidung, ein Muster ist eine Hoffnung.
+
+**Nicht aufgenommen: die 30 `handeln.py` der Spuren.** Welches Skript eine Spur
+fahrt, steht in `dauerlauf.py` (`SPUREN`) — und dort steht NICHT bei allen
+`handeln.py`: die meisten tragen kein `skript`-Feld (Vorgabe `handeln.py`), aber
+`nautilus_kraken_futures` teilt sich den Ordner `nautilus_kraken` mit dem
+Spot-Arm und faehrt `handeln_futures.py` mit dem `nautilus/.venv`. Diese Liste
+im Manifest nachzubauen waere eine dritte Wahrheit.
+
+### Falle beim Nachbauen: eine Extraktion ist keine Messung
+
+Beim ersten Versuch habe ich `dauerlauf.SPUREN` per Regex gelesen und kam auf
+`swap -> spiegel.py`, `kraken -> spiegel_knapp.py`, `omniquant ->
+omniquant_weit.py`. **Alles drei falsch**: der Ausdruck griff ueber
+auskommentierte Bloecke hinweg und zog deren Werte in den vorigen Eintrag. Die
+Quelle sagt: `swap` und `kraken` tragen gar kein `skript`-Feld, `omniquant`
+faehrt `handeln.py`. Nur der vierte Wert (`nautilus_kraken_futures`) stimmte.
+
+Merksatz: **wer eine Konfiguration nachbaut, liest sie — und prueft jede Zeile
+an der Quelle.** Ein Parser, der plausible Werte liefert, ist gefaehrlicher als
+einer, der abbricht; die falsche Liste stand schon im README, bevor ich sie
+nachgesehen habe.
+
 ## Einen Befehl belegen: der Beleglauf
 
 Die Hausregel „kein Befehl ins Manifest, der nie echt gelaufen ist" laesst sich

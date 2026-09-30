@@ -27,12 +27,68 @@ haengt an keiner Repo-venv.
 |---|---|---|
 | **REPOS** | `Werkstatt/Repos` | nur Klone mit `.git` |
 | **WERKSTATT** | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner (auch Datenfelder und Ablagen) |
-| **HANDEL** | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit eigenem Einstieg |
+| **HANDEL** | `Agenten/Handel` | jeder Ordner, jede Werkzeugdatei der Wurzel mit eigenem Einstieg **und** die ausdruecklich genannten Werkzeuge in Unterordnern |
+
+Stand 30.09.2026: **192 Zeilen** — 46 REPOS, 30 WERKSTATT, 116 HANDEL.
 
 Die Wurzeln stehen in `quellen.py` (Pfade relativ zur BrainFiles-Wurzel, keine
 absoluten Pfade). Gesperrt sind in **jeder** Wurzel Interpreter, Caches und
 Editorzustand (`.venv`, `node_modules`, `__pycache__`, `.git`, `cache`, ...) -
 als Namensliste, nicht als Muster; sonst traefe eine Sperre ein echtes Projekt.
+
+## Was in Unterordnern liegt: `WERKZEUG_ZUSATZ`
+
+Eine Wurzel wird nur an der **Oberflaeche** durchsucht (plus `Werkstatt/Projekte`
+eine Ebene tiefer). Werkzeuge, die neben einer Spur liegen - `okx_bot_waechter/
+analyse.py`, `scanner/boersenstops.py`, `kraken/abgleich.py`, die fuenf
+`auswertung.py` - waeren damit unsichtbar. Sie stehen deshalb **namentlich** in
+`quellen.WERKZEUG_ZUSATZ` (Pfad mit `/`, ohne `..`).
+
+Warum eine Liste und keine Suche: in `Agenten/Handel` liegen unter `OpenAlice/`
+**130 Dateien** eines fremden Projekts. Eine rekursive Suche wuerde das Fenster
+damit fluten; eine Namensliste ist eine Entscheidung, ein Muster ist eine
+Hoffnung.
+
+Was bewusst **nicht** als Zeile erscheint:
+
+- **`OpenAlice/`** - fremdes Projekt mit eigenem Baum (eigene `AGENTS.md` sagt:
+  nur lesen, wenn die Aufgabe ausdruecklich OpenAlice betrifft).
+- **die 30 `handeln.py` der Spuren** - sie werden vom Dauerlauf gefahren
+  (`dauerlauf.py`, Dict `SPUREN`: Ordner, Skript, Interpreter). Was dort steht,
+  ist NICHT ueberall `handeln.py`: die meisten Spuren tragen gar kein
+  `skript`-Feld und laufen ueber die Vorgabe, aber `nautilus_kraken_futures`
+  teilt sich den Ordner `nautilus_kraken` mit dem Spot-Arm und faehrt dort
+  `handeln_futures.py` mit dem `nautilus/.venv`-Interpreter. Diese Liste im
+  Manifest nachzubauen waere eine **dritte Wahrheit** - dafuer gibt es
+  `spuren_stand.py` und `sperrgruende.py`, die jede Spur selbst fragen.
+
+## Strategien und Stufen
+
+Drei Dinge heissen hier "Strategie", und alle drei sind Zeilen im Fenster:
+
+| Art | Wo | Rolle |
+|---|---|---|
+| **Spuren** | `Agenten/Handel/<spur>/` | `Spur` |
+| **Freqtrade-Strategien** | `freqtrade/user_data/strategies/*.py` | `Strategie` |
+| **Backtests** | `orb/backtest.py`, `gitter/backtest_gitter.py`, ... | `Backtest` |
+
+Die sechs Freqtrade-Strategien sind **Klassen, keine Programme** - freqtrade
+laedt sie, der Bot-Aufsatz steht in `freqtrade/user_data/bots/`. Darum haben sie
+keinen Startbefehl, sondern einen Hinweis.
+
+Die **drei Risikostufen** (Basis, mittel, hoch) sind kein eigener Eintrag: es
+sind dieselben Spuren mit groesseren Betraegen in eigenen Dateien
+(`zustand.mittel.json`, `handelsjournal.hoch.csv`, ...). Sichtbar werden sie
+ueber die Befehlsliste der drei Leser:
+
+| Zeile | Befehl | Zeigt |
+|---|---|---|
+| `spuren_stand.py` | `--nur scharf` | je Spur `haupt/.mittel/.hoch` (Buch) und das Alter |
+| `auswertung_alle.py` | `--risiko mittel` \| `hoch` | Kennzahlen der Stufe |
+| `spiegelstand.py` | `--risiko mittel` \| `hoch` | Bedingung 4 je Stufe (byte-genau gegen `Q:`) |
+
+Ein eigener Eintrag je Stufe waere irrefuehrend: es gibt nicht drei Laeufe mit
+verschiedenen Strategien, sondern einen Betrieb mit drei Groessen.
 
 ## Was das Fenster zeigt
 

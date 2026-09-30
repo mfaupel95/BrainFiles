@@ -44,11 +44,54 @@ WERKZEUG_MERKMALE = ("__main__", "argparse")
 # keine Argumente auswerten - und die man trotzdem im Fenster sehen will (ein
 # Fenster, eine Sonde, eine Kennzahlen-Tafel). Bewusst eine kurze, ausdrueckliche
 # Liste: eine .py-Datei ohne Einstieg wird hier NICHT aufgenommen.
+#
+# Seit 30.09.2026 duerfen hier auch PFADE mit Unterordner stehen
+# ("okx_bot_waechter/analyse.py"). Nur so sind die Haus-Werkzeuge erreichbar, die
+# neben einer Spur liegen; die Wurzel selbst wird weiter nur nach Einstieg UND
+# Argumentliste durchsucht, damit die 130 Dateien des Fremdprojekts OpenAlice
+# nicht als Zeilen auftauchen.
+#
+# Pfad-Schreibweise: mit "/", relativ zur Wurzel, ohne "..".
 WERKZEUG_ZUSATZ = (
     "leitstand.py",                 # das grosse Fenster (Ueberwachen/Freigaben/Backtests)
     "pruefe_ratschen.py",           # Tafel: Herkunft der Drawdown-Ratsche je Spur
     "strategie_kennzahlen.py",      # t-Statistik und Stop-Vorschlag je Spur
     "kraken_abweisungs_sonde.py",   # Sonde: haelt eine Kraken-Abweisung als Zeugen fest
+    # --- Wartung, Betrieb und Auswertung neben den Spuren -------------------
+    "okx_bot_waechter/analyse.py",       # Leiter/Munition je OKX-Bot gegen das Instrument
+    "okx_bot_waechter/vorschlag.py",     # neuen DCA-Bot rechnen (mit Stop)
+    "okx_bot_waechter/bauen.py",         # Bot anlegen (nur mit bauen_erlaubt + --anwenden)
+    "scanner/stops_bereinigen.py",       # Stop-Merker aufraeumen (Vorschau Standard)
+    "scanner/boersenstops.py",           # Buch gegen Boerse: hat jede Position ihren Stop?
+    "xperp/geister_nachziehen.py",       # Geister-Zeilen im xperp-Journal begradigen
+    "xperp/fremde_positionen_uebernehmen.py",
+    "kraken/abgleich.py",                # Kraken-Buch gegen die Boerse
+    "kraken/einsatz_nachziehen.py",      # Einsatz in Kraken-Belegzeilen richtigstellen
+    "mosaic/geist_zurueckbuchen.py",     # falsch gebuchte Live-Position zurueckholen
+    "mosaic/boersenabgleich.py",
+    "ai4trade/heartbeat.py",             # ai4trade.ai: Heartbeat pollen
+    "verbesserer/lauf.py",               # Selbstverbesserung: Anfragen anwenden
+    "nautilus/daten_auffrischen.py",     # Kursdaten der Nautilus-Arme nachziehen
+    # --- Backtests ----------------------------------------------------------
+    "orb/backtest.py",
+    "orbk/backtest.py",
+    "gitter/backtest_gitter.py",
+    "nautilus/backtest_grid.py",
+    "xperp/historie.py",                 # Kurshistorie fuer den xperp-Backtest
+    # --- Auswertungen, die je Spur liegen -----------------------------------
+    "gitter/auswertung.py",
+    "kopier/auswertung.py",
+    "kopier1zu1/auswertung.py",
+    "omniquant/auswertung.py",
+    "spiegel/auswertung.py",
+    # --- Freqtrade-Strategien (kein eigenes Programm: eine Klasse, die
+    #     freqtrade laedt - darum KEIN Startbefehl) --------------------------
+    "freqtrade/user_data/strategies/MoonDevTradingAgent.py",
+    "freqtrade/user_data/strategies/MoonDevTopMovers.py",
+    "freqtrade/user_data/strategies/MoonDevMarketRegime.py",
+    "freqtrade/user_data/strategies/ema_cross.py",
+    "freqtrade/user_data/strategies/ema_cross_h1.py",
+    "freqtrade/user_data/strategies/moondev_basis.py",
 )
 
 

@@ -136,16 +136,17 @@ def _ordner_erlaubt(name) -> bool:
 
 
 def _pfad_erlaubt(pfad) -> bool:
-    """Ein Pfad IM Projekt darf hoechstens einen Unterordner nennen.
+    """Ein Pfad IM Projekt darf Unterordner nennen, aber nicht ausbrechen.
 
-    `Projekte/NautilusTrader` ist erlaubt (die Projekte-Wurzel liegt eine Ebene
-    tiefer), `../../etc` nicht.
+    `Projekte/NautilusTrader` und
+    `freqtrade/user_data/strategies/ema_cross.py` sind erlaubt (die Wurzeln
+    liegen unterschiedlich tief); `../../etc`, `C:/x` und Backslashes nicht.
     """
     if not isinstance(pfad, str) or not pfad:
         return False
-    if ".." in pfad or "\\" in pfad:
+    if ".." in pfad or "\\" in pfad or pfad.startswith("/") or ":" in pfad:
         return False
-    return len([t for t in pfad.split("/") if t]) <= 2
+    return len([t for t in pfad.split("/") if t]) <= 8
 
 
 def manifest_laden(pfad: Path | str) -> list[Eintrag]:

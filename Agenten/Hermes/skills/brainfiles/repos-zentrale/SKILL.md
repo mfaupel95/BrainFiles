@@ -48,8 +48,25 @@ Die Wurzeln stehen in `quellen.py` - Pfade **relativ**, keine absoluten:
 
 In jeder Wurzel gesperrt (Namensliste, kein Muster): `.venv`, `venv`,
 `node_modules`, `__pycache__`, `.git`, `.vscode`, `cache` und Konsorten.
-Ausnahmen von der Datei-Regel stehen in `quellen.WERKZEUG_ZUSATZ` - kurz halten,
-denn eine `--help`-Angabe darf nur bekommen, wer einmal gelaufen ist.
+Die Wurzel wird nur an der Oberflaeche durchsucht. Werkzeuge in **Unterordnern**
+stehen darum namentlich in `quellen.WERKZEUG_ZUSATZ` (Pfad mit `/`, ohne `..`) -
+eine Liste, keine Suche: unter `Agenten/Handel/OpenAlice` liegen 130 Dateien
+eines fremden Projekts, die sonst als Zeilen auftauchen. Eine `--help`-Angabe
+bekommt nur, wer einmal gelaufen ist (`fuellen.HILFE_VERIFIZIERT`).
+
+**Nicht als Zeile aufgenommen: die 30 `handeln.py` der Spuren.** Welches Skript
+eine Spur fahrt, steht in `dauerlauf.py` (`SPUREN`) - meist gar kein
+`skript`-Feld (Vorgabe `handeln.py`), aber `nautilus_kraken_futures` teilt sich
+den Ordner `nautilus_kraken` und faehrt `handeln_futures.py`. Diese Liste im
+Manifest nachzubauen waere eine dritte Wahrheit; wer den Stand einer Spur will,
+nimmt `spuren_stand.py` oder `sperrgruende.py` (sie fragen jede Spur selbst).
+
+**Strategien** sind drei Sorten und alle drei sind Zeilen: Spuren (`Spur`),
+Freqtrade-Klassen (`Strategie`, kein Start - freqtrade laedt sie) und Backtests
+(`Backtest`). Die **drei Risikostufen** Basis/mittel/hoch sind kein eigener
+Eintrag: dieselben Spuren mit groesseren Betraegen in eigenen Dateien, sichtbar
+ueber `spuren_stand.py` (Spalte Buch: `haupt/.mittel/.hoch`),
+`auswertung_alle.py --risiko mittel|hoch` und `spiegelstand.py --risiko ...`.
 
 ## Das Manifest fuellen
 
@@ -131,6 +148,11 @@ venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · NUR DOKU
 
 ## Fallen
 
+- **Eine Konfiguration nie per Regex nachbauen.** `dauerlauf.SPUREN` mit einem
+  Suchmuster zu lesen lieferte plausible, aber falsche Werte (der Ausdruck griff
+  ueber auskommentierte Bloecke und zog deren Werte in den vorigen Eintrag:
+  angeblich `swap -> spiegel.py`, tatsaechlich Vorgabe `handeln.py`). Wer eine
+  Liste aus einer anderen Quelle uebernimmt, liest sie Zeile fuer Zeile nach.
 - **Feste Spaltenbreiten bei skalierter Anzeige.** Mit `dpi_bewusst()` setzt Tk
   die Schrift in Geraetepixeln; auf 125 % (`winfo_fpixels('1i')` = 120) braucht
   ein 41-Zeichen-Hinweis 410 px. Breiten also aus der wirklichen Baumbreite und
