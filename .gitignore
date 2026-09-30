@@ -938,3 +938,5 @@ Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 !Agenten/FREMD.md
 !Agenten/Werkzeuge/fremd.py
 !Agenten/Werkzeuge/bestand.py
+# Wurzel-Aufrufer fuer den Bestand (30.09.2026): aus jedem Verzeichnis
+!/bestand.cmd
