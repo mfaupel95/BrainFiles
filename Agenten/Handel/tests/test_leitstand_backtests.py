@@ -156,6 +156,33 @@ class Reiter(TkBasis):
         self.assertEqual(self.st.gestartet, [])
         self.assertIn("Gebühr", self.ls.meldungen[-1])
 
+    def test_ueberschrift_je_block(self):
+        r = self.reiter([])
+        texte = _alle_texte(r)
+        for t in ("Protokoll", "Läufe", "Kennzahlen"):
+            self.assertIn(t, texte)
+
+    def test_teiler_lage_wird_gemerkt_und_wiederhergestellt(self):
+        self.root.deiconify()
+        self.root.geometry("1000x800")
+        r = self.reiter([])
+        r.pack(fill="both", expand=True)
+        self.root.update()
+        r.teiler.sashpos(0, 150)
+        r.teiler.sashpos(1, 420)
+        r._teiler_merken()
+        self.assertEqual(self.ls.zustand.get("teiler")["backtests"], [150, 420])
+        r.destroy()
+        r2 = self.reiter([])
+        r2.pack(fill="both", expand=True)
+        self.root.update()
+        self.assertEqual([r2.teiler.sashpos(0), r2.teiler.sashpos(1)], [150, 420])
+
+    def test_teiler_gewichte_lassen_protokoll_und_tabellen_mehr_platz(self):
+        r = self.reiter([])
+        gewichte = [int(r.teiler.pane(p, "weight")) for p in r.teiler.panes()]
+        self.assertEqual(gewichte, [1, 2, 2])
+
     def test_urteile_eintragen_ist_nicht_abbrechbar(self):
         r = self.reiter([lbt.ReplayBereich])
         abgebrochen = []

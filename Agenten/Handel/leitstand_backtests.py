@@ -354,11 +354,16 @@ class BacktestReiter(ttk.Frame):
 
         ttk.Label(self, text=HINWEIS_FREIGABE, style="Hinweis.TLabel").pack(
             anchor="w", pady=(0, 4))
-        teiler = ttk.PanedWindow(self, orient="vertical")
+        teiler = self.teiler = ttk.PanedWindow(self, orient="vertical")
         teiler.pack(fill="both", expand=True)
+        # Lage im Zustand: gemerkt beim Loslassen, hergestellt nach dem Mappen
+        # (vorher hat der Teiler keine Hoehe, sashpos liefe ins Leere).
+        teiler.bind("<ButtonRelease-1>", self._teiler_merken, add="+")
+        teiler.bind("<Map>", lambda _e: self.after_idle(self._teiler_herstellen),
+                    add="+")
 
         self.arten = ttk.Notebook(teiler)
-        teiler.add(self.arten, weight=2)
+        teiler.add(self.arten, weight=1)
         self.bereiche = []
         for klasse in (BEREICHE if bereiche is None else bereiche):
             b = klasse(self.arten, self)
@@ -368,9 +373,10 @@ class BacktestReiter(ttk.Frame):
         mitte = ttk.Frame(teiler)
         teiler.add(mitte, weight=2)
         kopf = ttk.Frame(mitte)
-        kopf.pack(fill="x")
+        kopf.pack(fill="x", pady=(stil.ABSTAND, 4))
+        ttk.Label(kopf, text="Protokoll", style="Kopf.TLabel").pack(side="left")
         self.w_lauf = ttk.Label(kopf, text="kein Lauf")
-        self.w_lauf.pack(side="left")
+        self.w_lauf.pack(side="left", padx=stil.ABSTAND_GROSS)
         self.k_abbrechen = ttk.Button(kopf, text="Abbrechen", command=self.abbrechen)
         self.k_abbrechen.pack(side="right")
         self.tip_abbrechen = Tooltip(self.k_abbrechen)
@@ -382,24 +388,45 @@ class BacktestReiter(ttk.Frame):
         leiste.pack(side="right", fill="y")
 
         unten = ttk.PanedWindow(teiler, orient="horizontal")
-        teiler.add(unten, weight=1)
-        links = ttk.Frame(unten)
+        teiler.add(unten, weight=2)
+        links = ttk.Frame(unten, padding=(0, stil.ABSTAND, stil.ABSTAND, 0))
         unten.add(links, weight=1)
+        ttk.Label(links, text="Läufe", style="Kopf.TLabel").pack(anchor="w",
+                                                                 pady=(0, 4))
         self.liste = Tabelle(links, ll.LISTE_SPALTEN, self.zustand, "laeufe",
                              hoehe=6, auswahl="extended")
         self.liste.pack(fill="both", expand=True)
         knoepfe = ttk.Frame(links)
-        knoepfe.pack(fill="x", pady=(4, 0))
+        knoepfe.pack(fill="x", pady=(stil.ABSTAND, 0))
         ttk.Button(knoepfe, text="Anzeigen", command=self.anzeigen).pack(side="left")
         ttk.Button(knoepfe, text="Vergleichen",
-                   command=self.vergleichen).pack(side="left", padx=4)
-        self.ergebnis = Tabelle(unten, ll.KENNZAHL_SPALTEN, self.zustand,
+                   command=self.vergleichen).pack(side="left", padx=stil.ABSTAND)
+        rechts = ttk.Frame(unten, padding=(stil.ABSTAND, stil.ABSTAND, 0, 0))
+        unten.add(rechts, weight=1)
+        ttk.Label(rechts, text="Kennzahlen", style="Kopf.TLabel").pack(anchor="w",
+                                                                       pady=(0, 4))
+        self.ergebnis = Tabelle(rechts, ll.KENNZAHL_SPALTEN, self.zustand,
                                 "kennzahlen", hoehe=6)
-        unten.add(self.ergebnis, weight=1)
+        self.ergebnis.pack(fill="both", expand=True)
 
         self._lauf_wechsel(self.steuerung.laeuft())
         self.refresh()
         self._takt_id = self.after(TAKT_MS, self._takt)
+
+    def _teiler_merken(self, _event=None):
+        lage = [self.teiler.sashpos(i) for i in range(len(self.teiler.panes()) - 1)]
+        self.zustand.merke_in("teiler", "backtests", lage)
+
+    def _teiler_herstellen(self):
+        lage = (self.zustand.get("teiler") or {}).get("backtests")
+        if not isinstance(lage, list):
+            return
+        try:
+            for i, pos in enumerate(lage[:len(self.teiler.panes()) - 1]):
+                if isinstance(pos, int) and pos > 0:
+                    self.teiler.sashpos(i, pos)
+        except tk.TclError:
+            pass
 
     # Reiter-Schnittstelle
     def refresh(self):

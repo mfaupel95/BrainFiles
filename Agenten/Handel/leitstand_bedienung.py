@@ -175,7 +175,7 @@ class Zustand:
     """leitstand_zustand.json: gebuendelt, atomar, unlesbar -> Vorgaben."""
 
     VORGABEN = {"reiter": 0, "geometrie": "", "schrift": 0,
-                "werte": {}, "sortierung": {}}
+                "werte": {}, "sortierung": {}, "teiler": {}}
 
     def __init__(self, pfad=ZUSTAND_DATEI, uhr=time.monotonic):
         self.pfad = Path(pfad)
