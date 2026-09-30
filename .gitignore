@@ -731,6 +731,12 @@ Agenten/Handel/robinhood_radar/zustand.json
 Agenten/Handel/robinhood_radar/handelsjournal.csv
 Agenten/Handel/trendwende_btc/zustand.json
 Agenten/Handel/trendwende_btc/handelsjournal.csv
+!Agenten/Handel/omnitrade/*.py
+!Agenten/Handel/omnitrade/*.md
+!Agenten/Handel/omnitrade/wachen.json
+!Agenten/Handel/omnitrade/tests/*.py
+Agenten/Handel/omnitrade/zustand.json
+Agenten/Handel/omnitrade/handelsjournal.csv
 Agenten/Handel/moondev_topmovers/zustand.json
 Agenten/Handel/moondev_topmovers/handelsjournal.csv
 !Agenten/Handel/moondev_signalwelle/*.py
@@ -940,6 +946,21 @@ Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 !Agenten/Werkzeuge/bestand.py
 # Wurzel-Aufrufer fuer den Bestand (30.09.2026): aus jedem Verzeichnis
 !/bestand.cmd
+# --- jevgrep (30.09.2026, Auftrag Max "jevgrep installieren wenn sinnvoll") ---
+# Haus-Installation des Fremd-Werkzeugs (MIT) in Agenten/Werkzeuge/jevgrep:
+# npm-Paket @dzhng/jevgrep 0.7.0 in node_modules, Aufruf ueber jg.cmd bzw. den
+# Wurzel-Aufrufer jevgrep.cmd. Versioniert werden nur die drei eigenen Dateien
+# (README, Aufrufer, Test) - node_modules ist reproduzierbar aus package.json.
+# Die Regel steht NACH der allgemeinen Sperre, sonst greift sie nicht.
+!Agenten/Werkzeuge/jevgrep/README.md
+!Agenten/Werkzeuge/jevgrep/jg.cmd
+!Agenten/Werkzeuge/jevgrep/test_jevgrep.py
+!Agenten/Werkzeuge/jevgrep/package.json
+!Agenten/Werkzeuge/jevgrep/package-lock.json
+!/jevgrep.cmd
+Agenten/Werkzeuge/jevgrep/node_modules/
+Agenten/Werkzeuge/jevgrep/__pycache__/
+
 # --- Laufzeitstand der Zentrale (30.09.2026) --------------------------------
 # `einstellungen.json` merkt Schriftgroesse, Dichte, Fenstergroesse und Filter
 # der Repos-Zentrale. Es aendert sich bei JEDER Bedienung (jeder Klick auf einen

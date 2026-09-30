@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
+      Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
+      Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine
+      echte Suche ueber 171 Dateien kostet rund 4 US-Cent. Es fehlt allein der Anbieter-
+      schluessel: `jg auth` wertet keine Umgebungsvariablen aus, im Haus liegt keiner
+      (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
+      `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
+      `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
+      Naechster Schritt: Entscheidung von Max - Vercel-AI-Gateway-Schluessel besorgen
+      (`jg auth --provider vercel --stdin`, 0,04 USD/1M Eingabe, Neukunden-Guthaben) oder
+      das Werkzeug ruhen lassen. Bei Nutzung zuerst `jg files <wurzel>` und `--exclude`
+      setzen: jede Suche schickt Quelltext an den Dienst.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
 
 
