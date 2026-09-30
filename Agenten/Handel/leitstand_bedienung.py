@@ -16,13 +16,17 @@ import re
 import time
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 import leitstand_stil as stil
 
 HIER = Path(__file__).resolve().parent
 ZUSTAND_DATEI = HIER / "leitstand_zustand.json"
 SPEICHER_ABSTAND_S = 5.0          # Zustand hoechstens alle 5 s schreiben
+# Spaltenbreiten beim ersten Befuellen aus dem Inhalt; Pfad- und SHA-Spalten
+# bleiben schmal (wer sie braucht, zieht sie auf), lange Texte gedeckelt.
+SCHMAL, BREIT_MAX, BREIT_MUSTER = 90, 420, 200
+SCHMALE_SPALTEN = ("datei", "pfad", "sha")
 ZEITLIMIT_S = 120                 # Dialoge: ohne Bedienung zu, nichts geschrieben
 
 _ZAHL = re.compile(r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*([^\d.,:\-]*)$")
@@ -48,6 +52,44 @@ def sortier_schluessel(wert):
     if m:
         return (0, float(m.group(1).replace(",", ".")), "")
     return (1, 0.0, text.lower())
+
+
+# Zelle ist eine Zahl: ganz, ohne Datum/Dauer ("1:30 h" bleibt Text)
+_NUR_ZAHL = re.compile(r"^\s*[+\-−]?\d+(?:[.,]\d+)?\s*%?\s*$")
+_PUNKTZAHL = re.compile(r"^[+\-]?\d+(?:\.(\d+))?$")
+_LEER = {"", "—", "-", "–"}
+MAX_STELLEN = 4
+
+
+def ist_zahl(wert):
+    if isinstance(wert, bool) or wert is None:
+        return False
+    if isinstance(wert, (int, float)):
+        return True
+    return bool(_NUR_ZAHL.match(str(wert)))
+
+
+def zahl_spalten(zeilen, n):
+    """Spalten, in denen jede nicht leere Zelle eine Zahl ist (mindestens eine)."""
+    aus = set()
+    for i in range(n):
+        werte = [z[i] for z in zeilen if i < len(z) and str(z[i]).strip() not in _LEER]
+        if werte and all(ist_zahl(w) for w in werte):
+            aus.add(i)
+    return aus
+
+
+def feste_stellen(werte):
+    """Punktzahlen einer Spalte auf gleich viele Nachkommastellen (hoechstens 4).
+
+    Nur fuer die Anzeige - Kopieren und CSV bleiben roh. Andere Zellen
+    ("12,5 %", Text) bleiben, wie sie sind.
+    """
+    treffer = [_PUNKTZAHL.match(str(w)) for w in werte]
+    stellen = min(MAX_STELLEN, max((len(m.group(1) or "") for m in treffer if m),
+                                   default=0))
+    return ["%.*f" % (stellen, float(w)) if m and stellen else str(w)
+            for w, m in zip(werte, treffer)]
 
 
 def passt(zeile, text):
@@ -231,6 +273,7 @@ class Tabelle(ttk.Frame):
         super().__init__(eltern)
         self.spalten, self.zustand, self.name = tuple(spalten), zustand, name
         self._alle, self._tags, self._sichtbar = [], [], []
+        self._anzeige, self._breiten_da = [], False
         s = (zustand.get("sortierung") or {}).get(name)
         self.sortierung = (tuple(s) if isinstance(s, list) and len(s) == 2
                            and s[0] in self.spalten else None)
@@ -261,21 +304,48 @@ class Tabelle(ttk.Frame):
     def setze(self, zeilen, tags=None):
         self._alle = [tuple(z) for z in zeilen]
         self._tags = [tuple(t) for t in tags] if tags else [()] * len(self._alle)
+        zahlen = zahl_spalten(self._alle, len(self.spalten))
+        spalten = [[z[i] if i < len(z) else "" for z in self._alle]
+                   for i in range(len(self.spalten))]
+        spalten = [feste_stellen(s) if i in zahlen else s
+                   for i, s in enumerate(spalten)]
+        self._anzeige = [tuple(z) for z in zip(*spalten)] if self._alle else []
+        for i, sp in enumerate(self.spalten):
+            self.baum.column(sp, anchor="e" if i in zahlen else "w")
+            self.baum.heading(sp, anchor="e" if i in zahlen else "w")
+        if self._alle and not self._breiten_da:
+            self._breiten()
         self._zeigen()
+
+    def _breiten(self):
+        """Einmal, beim ersten Befuellen: danach gehoeren die Breiten dem Nutzer."""
+        self._breiten_da = True
+        try:
+            f = tkfont.nametofont(stil.TABELLE, self)
+            kopf = tkfont.nametofont(stil.FETT, self)
+        except tk.TclError:                      # ohne stil.anwenden (Tests)
+            f = kopf = tkfont.nametofont("TkDefaultFont", self)
+        muster = self._anzeige[:BREIT_MUSTER]
+        for i, sp in enumerate(self.spalten):
+            inhalt = max((f.measure(str(z[i])) for z in muster), default=0)
+            b = max(kopf.measure(sp + " ▲") + 24, inhalt + 16)
+            schmal = any(s in sp.lower() for s in SCHMALE_SPALTEN)
+            self.baum.column(sp, width=min(b, SCHMAL if schmal else BREIT_MAX),
+                             stretch=not schmal)
 
     def _zeigen(self):
         gewaehlt = {str(z[0]) for z in self.auswahl()}
-        paare = [(z, t) for z, t in zip(self._alle, self._tags)
+        paare = [(z, t, a) for z, t, a in zip(self._alle, self._tags, self._anzeige)
                  if passt(z, self.w_filter.get())]
         if self.sortierung:
             i = self.spalten.index(self.sortierung[0])
             paare.sort(key=lambda p: sortier_schluessel(p[0][i]),
                        reverse=self.sortierung[1])
         self.baum.delete(*self.baum.get_children())
-        self._sichtbar = [z for z, _t in paare]
-        for n, (z, t) in enumerate(paare):
+        self._sichtbar = [z for z, _t, _a in paare]
+        for n, (z, t, a) in enumerate(paare):
             # zebra zuerst: der spaetere Tag (wartet, ueberlebt ...) gewinnt
-            iid = self.baum.insert("", "end", values=z,
+            iid = self.baum.insert("", "end", values=a,
                                    tags=(("zebra",) if n % 2 else ()) + tuple(t))
             if str(z[0]) in gewaehlt:
                 self.baum.selection_add(iid)

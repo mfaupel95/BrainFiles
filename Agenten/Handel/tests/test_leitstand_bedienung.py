@@ -59,6 +59,24 @@ class Filtern(unittest.TestCase):
         self.assertFalse(lb.passt(z, "xperp papier"))
 
 
+class Zahlen(unittest.TestCase):
+    def test_ist_zahl(self):
+        for w in ("3", "-1.25", "12,5 %", "+0.4", 7, 2.5):
+            self.assertTrue(lb.ist_zahl(w), w)
+        for w in ("orb", "1:30 h", "2026-09-29", "", None, True):
+            self.assertFalse(lb.ist_zahl(w), w)
+
+    def test_zahl_spalten_ignoriert_leere_zellen(self):
+        zeilen = [("a", "1", "x"), ("b", "", "2"), ("c", "—", "3")]
+        self.assertEqual(lb.zahl_spalten(zeilen, 3), {1})
+
+    def test_feste_stellen_je_spalte(self):
+        self.assertEqual(lb.feste_stellen(["25.0", "4", "0.125", "", "12,5 %"]),
+                         ["25.000", "4.000", "0.125", "", "12,5 %"])
+        self.assertEqual(lb.feste_stellen(["1", "10"]), ["1", "10"])
+        self.assertEqual(lb.feste_stellen(["0.123456", "1"]), ["0.1235", "1.0000"])
+
+
 class Kopieren(unittest.TestCase):
     def test_tsv_ohne_tab_und_umbruch_in_zellen(self):
         t = lb.als_tsv(("A", "B"), [("x\ty", "z\nw"), (1, 2.5)])
@@ -199,6 +217,30 @@ class TabelleTest(MitTk):
         t = lb.Tabelle(self.root, ("Spur", "Wert"), self.zustand, "probe")
         t.setze([("xperp", "10"), ("orb", "9"), ("gitter", "100")])
         return t
+
+    def test_zahlen_rechtsbuendig_mit_fester_stellenzahl(self):
+        t = lb.Tabelle(self.root, ("Tor", "Wert"), self.zustand, "probe")
+        t.setze([("a", "25.0"), ("b", "4"), ("c", "0.5")])
+        self.assertEqual(str(t.baum.column("Wert", "anchor")), "e")
+        self.assertEqual(str(t.baum.column("Tor", "anchor")), "w")
+        self.assertEqual([t.baum.item(i, "values")[1] for i in t.baum.get_children()],
+                         ["25.0", "4.0", "0.5"])
+        self.assertEqual(t.sichtbare()[1], ("b", "4"), "Kopieren/CSV bleiben roh")
+
+    def test_breiten_nach_inhalt_und_pfadspalte_schmal(self):
+        t = lb.Tabelle(self.root, ("Datei", "Nr", "Text"), self.zustand, "probe")
+        t.setze([("x" * 80, "1", "y" * 80)])
+        self.assertLessEqual(t.baum.column("Datei", "width"), lb.SCHMAL)
+        self.assertLess(t.baum.column("Nr", "width"), t.baum.column("Text", "width"))
+        t.baum.column("Text", width=50)            # vom Nutzer gezogen
+        t.setze([("a", "2", "z" * 200)])
+        self.assertEqual(t.baum.column("Text", "width"), 50)
+
+    def test_zebra_jede_zweite_zeile_andere_tags_bleiben(self):
+        t = self._tabelle()
+        t.setze([("a", "1"), ("b", "2"), ("c", "3")], tags=[(), ("wartet",), ()])
+        tags = [tuple(t.baum.item(i, "tags")) for i in t.baum.get_children()]
+        self.assertEqual(tags, [(), ("zebra", "wartet"), ()])
 
     def test_filter(self):
         t = self._tabelle()
