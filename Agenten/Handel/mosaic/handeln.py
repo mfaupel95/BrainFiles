@@ -43,6 +43,7 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import pos_kennung  # noqa: E402
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
 import okx_spot  # noqa: E402
@@ -76,8 +77,14 @@ WACHEN = os.path.join(HIER, "wachen.json")
 ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 
+# Buch gegen BOERSE (T-207, 30.09.2026): hat jede Live-Position ihren
+# Notausstieg noch, ist sie ueberhaupt noch da? Liegt im eigenen Ordner, ist
+# aber NICHT von diesem Modul abhaengig - kein Ringimport.
+import boersenabgleich  # noqa: E402
+
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund",
+           "pos_id"]
 
 # Schreib-Flag: False in Tests, True im Betrieb.
 SCHREIBEN = True
@@ -573,15 +580,20 @@ def pruefe_einstieg(inst, k4, k30, k5, z, w, faktor):
     if nominel <= 0:
         return
 
-    z["positionen"].append({
+    # Die Kennung dieser Position (T-095): sie entsteht beim Einstieg und
+    # steht in JEDER Zeile dieser Position (Kauf UND Verkauf).
+    _p = {
         "inst": inst, "seite": sig, "einstieg": einstieg,
         "stop": stop, "ziel": ziel, "stop_pct": stop_pct_eff,
         "nominal": nominel, "eroeffnet_zeit": _jetzt(),
-    })
+        "pos_id": pos_kennung.neu(_jetzt()),
+    }
+    z["positionen"].append(_p)
 
     print("EINSTIEG %s %.6f Stop %.2f%% Ziel R=%.1f (%.6f) Nominal %.2f USD" % (
         sig.upper(), einstieg, stop_pct_eff, ziel_r, ziel, nominel))
-    journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst, seite=sig,
+    journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst,
+            pos_id=_p["pos_id"], seite=sig,
             preis="%.6f" % einstieg, einsatz_usd="%.2f" % nominel,
             stop="%.6f" % stop, ziel="%.6f" % ziel,
             stop_pct="%.2f" % stop_pct_eff, grund="mosaic")
@@ -641,7 +653,8 @@ def bueche_papier_altlasten_aus(z, w=None):
         print("  Buchbereinigung: %s %s (ohne Order) @ %.6f  G/V %+.2f USD"
               % (p.get("seite"), p.get("inst"), kurs, gv))
         journal(zeit=_jetzt(), modus="papier", aktion="verkauf",
-                inst=p["inst"], seite=p.get("seite", "long"),
+                inst=p["inst"], pos_id=p.get("pos_id", ""),
+                seite=p.get("seite", "long"),
                 preis="%.6f" % kurs, einsatz_usd="%.2f" % erloes,
                 stop="%.6f" % p.get("stop", 0.0),
                 ziel="%.6f" % p.get("ziel", 0.0),
@@ -709,6 +722,7 @@ def pruefe_ausstiege(z, k5, w, nur=None):
         erloes = p["nominal"] + gv
         print("AUSSTIEG (%s) %.6f G/V %+.2f USD" % (grund, kurs, gv))
         journal(zeit=_jetzt(), modus="papier", aktion="verkauf", inst=p["inst"],
+                pos_id=p.get("pos_id", ""),
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
@@ -993,6 +1007,7 @@ def live_ausstiege(z, w):
         print("  AUSSTIEG (%s): %s @ %.6g  G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
         journal(zeit=_jetzt(), modus="live", aktion="verkauf", inst=p["inst"],
+                pos_id=p.get("pos_id", ""),
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
@@ -1038,6 +1053,7 @@ def flach_stellen_live(z, w, grund):
         print("  NOTAUS (%s): %s @ %.6g  G/V %+.2f USD"
               % (grund, p["inst"], kurs, gv))
         journal(zeit=_jetzt(), modus="live", aktion="verkauf", inst=p["inst"],
+                pos_id=p.get("pos_id", ""),
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
                 stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
@@ -1159,7 +1175,7 @@ def live_einstiege(z, w, s):
                     stop_pct="", grund="kauf fehlgeschlagen: %s" % e)
             continue
         nominal = menge * kurs
-        z["positionen"].append({
+        _p = {
             "inst": inst, "seite": "long", "einstieg": kurs, "stop": stop,
             "ziel": ziel, "stop_pct": stop_pct, "nominal": nominal,
             "menge": menge, "kauf_ord_id": ord_id,
@@ -1167,12 +1183,15 @@ def live_einstiege(z, w, s):
             "boerse": VENUE_NAME,
             "boersen_stop_fehlt": algo_id is None,
             "eroeffnet_zeit": _jetzt(),
-        })
+            "pos_id": pos_kennung.neu(_jetzt()),
+        }
+        z["positionen"].append(_p)
         gebunden += betrag
         print("  AUF %-9s @ %.6g Stop %.6g (-%.1f%%) Ziel %.6g  %.2f USDC%s"
               % (inst, kurs, stop, stop_pct, ziel, betrag,
                  "  [KEIN BOERSEN-STOP - unbewacht]" if algo_id is None else ""))
         journal(zeit=_jetzt(), modus="live", aktion="kauf", inst=inst,
+                pos_id=_p["pos_id"],
                 seite="long", preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % nominal, stop="%.6f" % stop,
                 ziel="%.6f" % ziel, stop_pct="%.2f" % stop_pct,
@@ -1245,6 +1264,47 @@ def lauf(modus):
               % ("; ".join(live_sperren(w, s)) or "nichts"))
         return
 
+    # Buch gegen BOERSE (T-207, 30.09.2026): hat jede Live-Position ihren
+    # Notausstieg noch, ist sie ueberhaupt noch da?
+    #
+    # Der Abgleich steht ABSICHTLICH ausserhalb von `if live:` und laeuft in
+    # JEDEM Zyklus der Basis. Grund (der eigentliche Befund): die drei Kraken-
+    # Stops der Spur standen am 30.09.2026 auf 'canceled', waehrend das Buch
+    # weiter 'boersen_stop_fehlt: false' meldete - und der Live-Zweig laeuft
+    # nur, wenn die ganze Sperrenkette offen ist. Genau dann, wenn eine Sperre
+    # zu ist (kein Guthaben in der Waehrung, kein Fenster, Herzschlag), waeren
+    # die echten Positionen ungeschuetzt und niemand saehe es.
+    #
+    # Angefasst werden ausschliesslich Positionen mit modus == "live": ein
+    # Papierlauf bucht keine echte Position aus (23.09.2026). Und nur die
+    # BASIS handelt auf der Boerse - die Stufen mittel/hoch fuehren Kopien des
+    # Buchs und duerfen keine Order auf dieselben Positionen setzen.
+    if risikostufe.ist_basis():
+        try:
+            _bs = boersenabgleich.pruefe(
+                z, anwenden=True, journal=journal,
+                standard=boersen_liste(w)[0],
+                quote=kraken_paare.quote_aus_wachen(w))
+            # Immer eine Zeile, auch wenn alles in Ordnung ist: ein stiller
+            # Abgleich ist von einem, der gar nicht lief, nicht zu
+            # unterscheiden (Lehre aus der treiberlosen Zeit der Spur-Wachen).
+            print("  Boersen-Abgleich: %d Live-Position(en), Stop wirksam %d, "
+                  "nachgesetzt %d, ausgebucht %d, Waisen %d, unklar %d, "
+                  "ohne Stop %d"
+                  % (_bs["geprueft"], _bs["ok"], _bs["nachgesetzt"],
+                     _bs["ausgebucht"], _bs["waisen"], _bs["unklar"],
+                     _bs["fehlt_weiter"]))
+            if _bs["unklar"] or _bs["fehlt_weiter"] or _bs["weg"] > _bs["ausgebucht"]:
+                print("  Boersen-Abgleich: HANDLUNGSBEDARF - %d ohne wirksamen "
+                      "Stop, %d unklar, %d weggelaufen ohne Buchung"
+                      % (_bs["fehlt_weiter"], _bs["unklar"],
+                         _bs["weg"] - _bs["ausgebucht"]))
+        except Exception as e:                                 # noqa: BLE001
+            # Ein Fehler im Abgleich darf den Zyklus nicht abwuergen: der
+            # Ausstiegspfad danach ist wichtiger als die Buchhaltung.
+            print("  Boersen-Abgleich nicht moeglich (%s) - Buch unveraendert"
+                  % e)
+
     if live:
         # Erst aufraeumen, dann handeln (Muster kraken/scanner): eine
         # Papier-Position im Buch belegt sonst einen der Live-Plaetze.
@@ -1253,6 +1313,8 @@ def lauf(modus):
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
         # Echte Orders. Ausstiege zuerst (ein Stop muss greifen, auch wenn
         # niemand davorsitzt), dann Einstiege mit Freigabefenster je Stueck.
+        # Der Boersen-Abgleich ist oben schon gelaufen - eine Position, die
+        # ihr Boersen-Stop geschlossen hat, steht hier nicht mehr im Buch.
         live_ausstiege(z, w)
         live_einstiege(z, w, s)
     else:

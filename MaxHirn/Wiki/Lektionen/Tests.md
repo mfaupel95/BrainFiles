@@ -3,7 +3,7 @@ id: 20260921-tests
 title: 'Lektionen — Tests'
 tags: [lektion, tests]
 created: 2026-09-21
-updated: 2026-09-23
+updated: 2026-09-30
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Git-und-Textdateien]]']
 summary: 'Tests, die echte Datenordner ODER den laufenden Betrieb anfassen; Modulwaechter und Trockenmodus als Gegenmittel; sys.path-Reihenfolge; Tests, die nichts pruefen.'
 ---
@@ -154,3 +154,20 @@ Log hat Inhalt, bis 15 s) statt auf eine feste Sekundenzahl.
 
 Dasselbe gilt fuer den Aufraeumteil: er gehoert ins `finally`, sonst bleiben nach
 einem fehlgeschlagenen Test Waisen stehen (Leak-Muster vom 21.09.2026, § 6).
+
+## 9. Ein Test kann gruen sein, waehrend der Betrieb ein ANDERES Modul laedt (30.09.2026)
+
+`mosaic/handeln.py` lud `import boersenstops` — und bekam `scanner/boersenstops.py`,
+weil `scanner/` in seinem `sys.path` weiter vorn liegt. Der eigene Test lief gruen:
+er hatte sein Verzeichnis per `sys.path.insert(0, HIER)` **zuletzt** eingefuegt und
+damit nach vorn gestellt. Im echten Zyklus kam der fremde Namensvetter, und der
+Abgleich endete mit `pruefe() got an unexpected keyword argument 'standard'` —
+sichtbar erst im Lauf, nicht in der Suite.
+
+Gegenmittel: ein Modul, dessen Name auch in einem anderen Spurenordner liegt,
+bekommt einen **eigenen** Namen (`mosaic/boersenabgleich.py`). Dann kann keine
+`sys.path`-Reihenfolge mehr entscheiden, welches Modul gemeint ist. Und: die erste
+echte Ausfuehrung nach dem Einbau ansehen, nicht nur die Tests.
+
+**Merksatz:** ein gruener Test belegt, dass das *geladene* Modul stimmt — nicht,
+dass der Betrieb dasselbe laedt.

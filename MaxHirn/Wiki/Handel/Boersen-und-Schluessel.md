@@ -3,7 +3,7 @@ id: 20260921-boersen-und-schluessel
 title: 'Handel — Boersen und Schluessel'
 tags: [handel, zugaenge]
 created: 2026-09-21
-updated: 2026-09-23
+updated: 2026-09-30
 related: ['[[Handel/Gates-und-Freigabe]]', '[[Wissen/Zugaenge]]']
 summary: 'Welcher Schluesselsatz zu welcher Boerse und welcher Spur gehoert, was die OKX-Fehlercodes bedeuten — ohne jeden Schluesselwert.'
 ---
@@ -459,3 +459,33 @@ Umtausch handeln; laege es nur in EUR und EUR waere leer, muesste sie sonst
 erst tauschen (60 bp) und dabei auf ein Fenster warten. Deshalb bleiben die
 Gates und die Watchlist stehen — nur eben bei 0,00 EURC und 25,08 USDC
 unbenutzt.
+
+## Der Stop-Zustand steht an der Boerse, nicht im Buch (30.09.2026, T-207)
+
+Am 30.09.2026 trugen die drei Kraken-Schutz-Stops der Spur `mosaic` (BTC/ETH/SOL,
+zusammen rund 258 EUR) an der Boerse den Status `canceled` — `mosaic/zustand.json`
+meldete weiterhin `boersen_stop_fehlt: false`. Gefunden wurde das nur, weil
+`kraken/spot_stops.py` von Hand nachsah; die Spur selbst hat ihren eigenen Stop nie
+nachgefragt. Dieselbe Klasse wie T-118 (xperp, 26.09.) und T-208 (kraken-Buch).
+
+Werkzeug: `Agenten/Handel/mosaic/boersenabgleich.py` (Vorschau ist Standard,
+`--anwenden` schreibt), eingebaut in `mosaic/handeln.py` in **jedem** Zyklus der
+Basis — nicht nur im Live-Zweig. Der Live-Zweig laeuft namlich genau dann nicht,
+wenn eine Sperre zu ist (Guthaben in der falschen Waehrung, kein Fenster,
+Herzschlag), und genau dann waeren die echten Positionen ungeschuetzt.
+Wache: Hermes-Cron `mosaic-stop-wache` (Job `2faf001c30d6`, alle 30 Minuten,
+`no_agent`, Telegram) — leere Ausgabe = nichts senden; sie liest im Vorschaumodus
+und nennt die betroffene Position, statt die Regeln nachzubauen.
+
+Drei Regeln entscheiden den Fall:
+
+1. Gesichert wird der **Bestand der Boerse**, nicht die Menge im Buch.
+2. Eine verschwundene Position wird nur ausgebucht, wenn der Ausstiegspreis
+   belegbar ist (Kraken `ClosedOrders`, OKX `letzte_fuellung`) — sonst bleibt das
+   Buch stehen und die Position wird gemeldet.
+3. Fremde Stops (Kennung kennt das Buch nicht, etwa von Hand gesetzt) werden
+   **nie** angefasst.
+
+**Merksatz:** ein Feld im Buch ist eine Behauptung, die altert. Ob ein Notausstieg
+wirklich steht, weiss nur die Boerse — und diese Aussage muss in jedem Zyklus
+fallen, nicht nur im Live-Zweig.
