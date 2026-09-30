@@ -540,6 +540,50 @@ geschrieben.
 * Die Handels-Karte liest `spuren_stand.py` **einmal** (gemerkt), nicht bei
   jedem Tastendruck im Suchfeld.
 
+### Pflege: einrichten, bauen, pruefen, reparieren
+
+Zweiter Teil desselben Auftrags: *„mehr fertige automatisierung zur einrichtung /
+implementierung / bearbeitung der projekte. reparatur ueberpruefen etc"*.
+
+Die rechte Karte ist jetzt ein **Notebook** mit zwei Reitern: „Handel · Testen"
+und „Einrichten · Reparatur" (`pflege.py`).
+
+| Knopf | Was er tut |
+|---|---|
+| **Pruefen (F7)** | misst venv (laeuft ihr `python.exe`?), node_modules, Pflichtpfad, Git-Zweig/Aenderungen/Rueckstand, README, Bot-Profil, Port |
+| **Einrichten** | fuehrt `einrichten`/`einrichten_kette` aus dem Manifest aus, sonst die Schritte aus den Dateien des Projekts |
+| **Bauen** | dasselbe fuer `bauen`/`bauen_kette` bzw. Cargo/go/npm/Make |
+| **Alles pruefen** | Bericht ueber alle Zeilen des Filters nach `logs/pruefbericht-*.log` |
+
+Drei Entscheidungen, die den Charakter bestimmen:
+
+1. **Der Vorschlag kommt aus einer Datei, die da ist** — `requirements.txt` ->
+   venv + `pip install -r`, `pyproject.toml` -> `pip install -e .`,
+   `package.json` -> `npm install`, `Cargo.toml` -> `cargo build --release`,
+   `go.mod` -> `go build ./...`. Ohne Anhaltspunkt sagt die Karte das und der
+   Knopf ist aus. Kein Befehl wird erfunden.
+2. **Ein Befehl wird erst nach einem erfolgreichen Lauf belegt.** Exit-Code 0
+   und noch nichts im Manifest -> `pflege.eintragen()` schreibt ihn (Sicherung
+   `.bak-JJJJMMTT`, Notiz `_einrichten_belegt`). Mehrere Schritte landen als
+   **Kette** — `einrichten_kette` ist eine Liste von argv-Listen, ausdruecklich
+   KEINE Shell-Zeile (die Hausregel gilt auch fuer eine Kette). `fuellen.py`
+   kennt die neuen Felder in seiner festen Reihenfolge.
+3. **Ein kaputter Zustand wird benannt, nicht blind repariert.** Eine `.venv`,
+   deren `python.exe` nicht startet, ist kein `pip`-Fall: sie wird gemeldet und
+   der Vorschlag lautet `python -m venv --clear`. Ein schmutziger Git-Baum wird
+   gemeldet, nicht angefasst; der Vorschlag fuer Rueckstand ist der vorhandene
+   Weg (`repos-updaten.py --nur <ordner>`).
+
+Ohne Fenster geht derselbe Lauf als `repos_zentrale.py --pruefbericht`
+(erster echter Lauf: 31 auffaellige Projekte in REPOS, Bericht in `logs/`).
+
+**Was der erste echte Lauf sofort zeigte:** `manifest._zeile` warf bei JEDEM
+Eintrag der FREMD-Liste `UnboundLocalError: gruende` — die Notiz wurde
+angehaengt, bevor die Liste angelegt war. Die 137 Tests sahen das nicht (die
+wenigsten bauen Zeilen aus der echten FREMD-Liste); ein Lauf ueber ALLE Zeilen
+fand es in der ersten Sekunde. Merksatz: **ein Pfad, den nur echte Daten
+ausloesen, braucht einen Lauf ueber echte Daten.**
+
 ### Absichtlich nicht angefasst
 
 * Keine echte `wachen.json` einer Spur: die Schreibprobe lief auf Temp-Dateien,

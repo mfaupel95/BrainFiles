@@ -40,6 +40,7 @@ import befehle
 import einstellungen
 import handelstand
 import manifest
+import pflege
 import quellen
 import rund
 import scan
@@ -73,6 +74,7 @@ GRUPPEN_TITEL = {
     "startbar": "STARTBAR",
     "einrichten": "EINRICHTEN",
     "neu": "NEU",
+    "kein_start": "KEIN EIGENER START",
     "doku": "NUR DOKU",
     "fehlt": "FEHLT",
 }
@@ -80,6 +82,7 @@ ERKLAERUNG = {
     "startbar": "Befehl belegt, alles da",
     "einrichten": "es fehlt noch etwas",
     "neu": "ohne Eintrag im Manifest",
+    "kein_start": "richtig so: wird geladen oder ist nur lesbar",
     "doku": "kein Programm, nur Text",
     "fehlt": "Eintrag ohne Ordner",
 }
@@ -386,6 +389,7 @@ class Fenster:
         self._handel_da: dict | None = None
         self._handel_laeuft = False
         self._vorschau_laeuft = False
+        self._pflege_laeuft = False
         self._spurnamen: dict[str, list[str]] = {}
         self._plan: dict = {}          # dauerlauf.SPUREN, einmal gelesen
         # Aus einem Faden darf man NICHT `root.after` rufen (Tk ist nicht
@@ -428,6 +432,13 @@ class Fenster:
                      rowheight=hoehe, borderwidth=0)
         st.configure("Karte.Treeview.Heading", background=FARBEN["gitter"],
                      foreground=FARBEN["akzent"], font=self.schrift(0, True), relief="flat")
+        st.configure("Karte.TNotebook", background=FARBEN["blatt"], borderwidth=0,
+                     tabmargins=(ABSTAND["s"], ABSTAND["s"], ABSTAND["s"], 0))
+        st.configure("Karte.TNotebook.Tab", background=FARBEN["gitter"],
+                     foreground=FARBEN["text"], font=self.schrift(-1),
+                     padding=(ABSTAND["m"], ABSTAND["xs"]))
+        st.map("Karte.TNotebook.Tab", background=[("selected", FARBEN["blatt"])],
+               foreground=[("selected", FARBEN["akzent"])])
         st.configure("Karte.TCheckbutton", background=FARBEN["blatt"],
                      foreground=FARBEN["text"], font=self.schrift())
         return st
@@ -446,6 +457,7 @@ class Fenster:
         self.root.configure(background=FARBEN["bg"])
         self.knoepfe: dict[str, rund.RunderKnopf] = {}
         self.handel_knoepfe: dict[str, rund.RunderKnopf] = {}
+        self.pflege_knoepfe: dict[str, rund.RunderKnopf] = {}
         self.chip_knoepfe: dict[str, rund.RunderKnopf] = {}
         self._alle_knoepfe: list[rund.RunderKnopf] = []
         self._karten: list[rund.Karte] = []
@@ -461,6 +473,7 @@ class Fenster:
         self.root.bind("<F5>", lambda _: self.aktualisieren())
         self.root.bind("<Control-f>", lambda _: self.suchfeld.focus_set())
         self.root.bind("<Return>", lambda _: self.starten())
+        self.root.bind("<F7>", lambda _: self.pflege_pruefen())
         self.root.bind("<F9>", lambda _: self.handel_testen())
         self.root.bind("<F10>", lambda _: self.scharf_dialog())
         self.root.bind("<Control-plus>", lambda _: self.schrift_groesser())
@@ -636,7 +649,7 @@ class Fenster:
         self.teilung.pack(fill="both", expand=False, padx=ABSTAND["m"],
                           pady=(ABSTAND["s"], 0))
         self._bauen_karte_projekt()
-        self._bauen_karte_handel()
+        self._bauen_karte_rechts()
 
     def _karte(self, titel: str, hoehe: int, breite: int) -> rund.Karte:
         """Eine Karte bauen. `breite` ist die Wunschbreite im PanedWindow.
@@ -705,18 +718,34 @@ class Fenster:
             self.befehl_knoepfe[name] = knopf
         self.befehl_kinder: dict[str, befehle.Kommando] = {}
 
-    def _bauen_karte_handel(self) -> None:
-        """Rechts: der Stand einer Handels-Spur, Testlauf und Scharfschalten."""
-        karte = self._karte("Handel · Testen und Scharfschalten", 205, 700)
-        self.teilung.add(karte, minsize=int(300 * self.s), stretch="always")
+    def _bauen_karte_rechts(self) -> None:
+        """Rechts zwei Reiter: der Handelsteil und die Pflege.
 
+        Ein Notebook, weil beide Teile dasselbe Fensterstueck brauchen und
+        selten gleichzeitig wichtig sind: der Handelsteil gilt nur fuer Spuren,
+        die Pflege (einrichten, bauen, pruefen) fuer jedes Projekt.
+        """
+        karte = self._karte("Handel · Pflege", 205, 700)
+        self.teilung.add(karte, minsize=int(320 * self.s), stretch="always")
+
+        self.reiter = ttk.Notebook(karte.inhalt, style="Karte.TNotebook")
+        self.reiter.pack(fill="both", expand=True)
+        handel = tk.Frame(self.reiter, background=FARBEN["blatt"])
+        pflege_rahmen = tk.Frame(self.reiter, background=FARBEN["blatt"])
+        self.reiter.add(handel, text="Handel · Testen")
+        self.reiter.add(pflege_rahmen, text="Einrichten · Reparatur")
+        self._bauen_reiter_handel(handel)
+        self._bauen_reiter_pflege(pflege_rahmen)
+
+    def _bauen_reiter_handel(self, eltern) -> None:
+        """Der Handelsteil: Stand der Spur, Testlauf, Scharfschalten."""
         self.handel_kopf = tk.Label(
-            karte.inhalt, text="", anchor="w", justify="left",
+            eltern, text="", anchor="w", justify="left",
             background=FARBEN["blatt"], foreground=FARBEN["text"], font=self.schrift(),
         )
         self.handel_kopf.pack(fill="x")
 
-        leiste = tk.Frame(karte.inhalt, background=FARBEN["blatt"])
+        leiste = tk.Frame(eltern, background=FARBEN["blatt"])
         leiste.pack(fill="x", pady=(ABSTAND["xs"], ABSTAND["xs"]))
         for name, text, befehl, variante, hinweis in (
             ("test", "Vorschau testen (F9)", self.handel_testen, "normal",
@@ -734,13 +763,47 @@ class Fenster:
             self.handel_knoepfe[name] = knopf
 
         self.handel_text = tk.Text(
-            karte.inhalt, height=6, wrap="word", relief="flat",
+            eltern, height=6, wrap="word", relief="flat",
             background=FARBEN["blatt"], foreground=FARBEN["matt"],
             insertbackground=FARBEN["text"], selectbackground=FARBEN["auswahl"],
             font=self.schrift(-1), borderwidth=0, highlightthickness=0,
         )
         self.handel_text.pack(fill="both", expand=True)
         self.handel_text.configure(state="disabled")
+
+    def _bauen_reiter_pflege(self, eltern) -> None:
+        """Einrichten, bauen, pruefen und reparieren - je Projekt."""
+        self.pflege_kopf = tk.Label(
+            eltern, text="", anchor="w", justify="left", wraplength=1,
+            background=FARBEN["blatt"], foreground=FARBEN["text"], font=self.schrift(),
+        )
+        self.pflege_kopf.pack(fill="x")
+
+        leiste = tk.Frame(eltern, background=FARBEN["blatt"])
+        leiste.pack(fill="x", pady=(ABSTAND["xs"], ABSTAND["xs"]))
+        for name, text, befehl, variante, hinweis in (
+            ("pruefen", "Pruefen (F7)", self.pflege_pruefen, "normal",
+             "Zustand messen: venv, node_modules, Pflichtpfad, Git, Bot, Port - rein lesend"),
+            ("einrichten", "Einrichten", self.pflege_einrichten, "haupt",
+             "die Einrichtungsschritte ausfuehren (Manifest oder aus package.json/requirements.txt)"),
+            ("bauen", "Bauen", self.pflege_bauen, "haupt",
+             "den Bau-Schritt ausfuehren (Cargo.toml, go.mod, npm run build, Makefile)"),
+            ("alle", "Alles pruefen", self.pflege_alle, "flach",
+             "alle Projekte messen und einen Pruefbericht nach logs/ schreiben"),
+        ):
+            knopf = self._knopf(leiste, f"pflege_{name}", text, befehl,
+                                variante=variante, hinweis=hinweis)
+            knopf.pack(side="left", padx=(0, ABSTAND["xs"]))
+            self.pflege_knoepfe[name] = knopf
+
+        self.pflege_text = tk.Text(
+            eltern, height=6, wrap="word", relief="flat",
+            background=FARBEN["blatt"], foreground=FARBEN["matt"],
+            insertbackground=FARBEN["text"], selectbackground=FARBEN["auswahl"],
+            font=self.schrift(-1), borderwidth=0, highlightthickness=0,
+        )
+        self.pflege_text.pack(fill="both", expand=True)
+        self.pflege_text.configure(state="disabled")
 
     def _bauen_leiste(self) -> None:
         unten = tk.Frame(self.root, background=FARBEN["bg"])
@@ -876,6 +939,7 @@ class Fenster:
             karte.zeichnen()
         self.anleitung_text.configure(font=self.schrift())
         self.handel_text.configure(font=self.schrift(-1))
+        self.pflege_text.configure(font=self.schrift(-1))
         self._schrift_anzeigen()
         self.anzeigen()
         self._handel_anzeigen()
@@ -1017,6 +1081,7 @@ class Fenster:
         )
         self._details_fuellen(None)
         self._handel_anzeigen()
+        self._pflege_anzeigen()
 
     def _farbe(self, z: manifest.Zeile) -> str:
         """Farbmarke einer Zeile - Zustand, nie Dekoration."""
@@ -1316,6 +1381,218 @@ class Fenster:
             ausfuehren=self._schalter_ausfuehren, jetzt=self.jetzt,
         )
 
+    # ------------------------------------------------------------- Pflege
+    def _pflege_text_setzen(self, inhalt: str) -> None:
+        self.pflege_text.configure(state="normal")
+        self.pflege_text.delete("1.0", "end")
+        self.pflege_text.insert("1.0", inhalt)
+        self.pflege_text.configure(state="disabled")
+
+    def _pflege_schritte(self, z: manifest.Zeile, feld: str) -> tuple[list[list[str]], str]:
+        """Die Schritte fuer 'einrichten' oder 'bauen' - und woher sie kommen.
+
+        Reihenfolge: die Kette aus dem Manifest, sonst der einzelne Befehl aus
+        dem Manifest, sonst der Vorschlag aus den Dateien des Projekts. Was
+        nicht belegt und nicht ableitbar ist, bleibt leer - geraten wird nichts.
+        """
+        kette = list(getattr(z, f"{feld}_kette", None) or [])
+        if kette:
+            return kette, "Manifest (Kette)"
+        einzeln = getattr(z, feld, None)
+        if einzeln:
+            return [list(einzeln)], "Manifest"
+        pfad = Path(z.repo.pfad) if z.repo is not None else None
+        if pfad is None or not pfad.is_dir():
+            return [], "kein Ordner"
+        vorschlag = (pflege.vorschlag_einrichten(pfad) if feld == "einrichten"
+                     else pflege.vorschlag_bauen(pfad))
+        grund = (pflege.einrichten_grund(pfad) if feld == "einrichten"
+                 else pflege.bauen_grund(pfad))
+        return list(vorschlag), grund
+
+    def _pflege_anzeigen(self) -> None:
+        """Den Pflegereiter auf die gewaehlte Zeile umstellen."""
+        if not hasattr(self, "pflege_text"):
+            return
+        z = self._gewaehlt()
+        if z is None or z.repo is None:
+            self.pflege_kopf.configure(
+                text="Links ein Projekt waehlen.", foreground=FARBEN["matt"])
+            self._pflege_text_setzen(
+                "Pruefen misst den Zustand: venv (laeuft sie?), node_modules,\n"
+                "Pflichtpfad, Git-Zweig und Rueckstand, README, Bot-Profil, Port.\n\n"
+                "Einrichten und Bauen fuehren die Schritte aus, die im Manifest\n"
+                "stehen oder sich aus den Dateien des Projekts ergeben\n"
+                "(package.json, requirements.txt, pyproject.toml, Cargo.toml).\n\n"
+                "Nach einem erfolgreichen Lauf wird der Befehl im Manifest\n"
+                "belegt - dann steht er beim naechsten Mal als Befehl da.")
+            self._pflege_knoepfe_setzen(None, [], [])
+            return
+        ein, ein_quelle = self._pflege_schritte(z, "einrichten")
+        bau, bau_quelle = self._pflege_schritte(z, "bauen")
+        teile = [f"{z.bereich}/{z.ordner}", z.art or "-"]
+        teile.append("venv" if z.repo.venv else "keine venv")
+        if z.repo.node_modules:
+            teile.append("node_modules")
+        self.pflege_kopf.configure(text=" · ".join(t for t in teile if t),
+                                   foreground=FARBEN["text"])
+        zeilen = []
+        zeilen.append(f"Einrichten: {len(ein)} Schritt(e) - {ein_quelle}"
+                      if ein else f"Einrichten: kein Befehl - {ein_quelle}")
+        for s in ein:
+            zeilen.append("   " + " ".join(s))
+        zeilen.append(f"Bauen: {len(bau)} Schritt(e) - {bau_quelle}"
+                      if bau else f"Bauen: kein Befehl - {bau_quelle}")
+        for s in bau:
+            zeilen.append("   " + " ".join(s))
+        zeilen.append("")
+        zeilen.append("F7 prueft den Zustand. Einrichten/Bauen laufen im Hintergrund,")
+        zeilen.append("die Ausgabe landet zusaetzlich in logs/ und belegt den Befehl.")
+        self._pflege_text_setzen("\n".join(zeilen))
+        self._pflege_knoepfe_setzen(z, ein, bau)
+
+    def _pflege_knoepfe_setzen(self, z, ein=None, bau=None) -> None:
+        """Nur was jetzt etwas bewirken kann, ist an."""
+        da = z is not None and z.repo is not None
+        laeuft = self._pflege_laeuft
+        self.pflege_knoepfe["pruefen"].setze_aktiv(bool(da) and not laeuft)
+        self.pflege_knoepfe["einrichten"].setze_aktiv(bool(da and ein) and not laeuft)
+        self.pflege_knoepfe["bauen"].setze_aktiv(bool(da and bau) and not laeuft)
+        self.pflege_knoepfe["alle"].setze_aktiv(not laeuft)
+
+    def pflege_pruefen(self) -> None:
+        """Den Zustand eines Projekts messen (rein lesend)."""
+        z = self._gewaehlt()
+        if z is None or z.repo is None:
+            self.status.configure(text="Kein Projekt gewaehlt", foreground=FARBEN["gelb"])
+            return
+        if self._pflege_laeuft:
+            self.status.configure(text="Ein Pflege-Lauf laeuft schon",
+                                  foreground=FARBEN["gelb"])
+            return
+        self._pflege_laeuft = True
+        self._pflege_knoepfe_setzen(z)
+        self._pflege_text_setzen(f"Pruefe {z.ordner} ...")
+        self.status.configure(text=f"Pruefe {z.ordner} (venv, Git, Port ...)",
+                              foreground=FARBEN["matt"])
+
+        def arbeit():
+            punkte = pflege.pruefen(z, log_ordner=self.log_ordner, jetzt=self.jetzt())
+            text = pflege.bericht(z, punkte)
+            offen = len(pflege.offene_punkte(punkte))
+            self._nach_main(lambda: self._pflege_fertig(
+                z.ordner, text, f"{z.ordner}: {offen} offene(r) Punkt(e)", offen == 0))
+
+        threading.Thread(target=arbeit, daemon=True).start()
+
+    def pflege_einrichten(self) -> None:
+        """Die Einrichtungsschritte ausfuehren (Manifest oder Vorschlag)."""
+        self._pflege_auftrag("einrichten")
+
+    def pflege_bauen(self) -> None:
+        """Den Bau-Schritt ausfuehren."""
+        self._pflege_auftrag("bauen")
+
+    def _pflege_auftrag(self, feld: str) -> None:
+        z = self._gewaehlt()
+        if z is None or z.repo is None:
+            self.status.configure(text="Kein Projekt gewaehlt", foreground=FARBEN["gelb"])
+            return
+        if self._pflege_laeuft:
+            self.status.configure(text="Ein Pflege-Lauf laeuft schon",
+                                  foreground=FARBEN["gelb"])
+            return
+        schritte, quelle = self._pflege_schritte(z, feld)
+        if not schritte:
+            self.status.configure(
+                text=f"{z.ordner}: kein {feld}-Befehl belegt - {quelle}",
+                foreground=FARBEN["gelb"])
+            return
+        self._pflege_laeuft = True
+        self._pflege_knoepfe_setzen(z)
+        log = aktionen.log_pfad(self.log_ordner, f"{z.ordner}-{feld}", self.jetzt())
+        self._pflege_text_setzen(
+            f"{feld} in {z.ordner} laeuft ...\nQuelle: {quelle}\n\n"
+            + "\n".join(" ".join(s) for s in schritte)
+            + f"\n\nAusgabe: {log.name}")
+        self.status.configure(text=f"{feld} {z.ordner}: {' '.join(schritte[0])} ...",
+                              foreground=FARBEN["matt"])
+
+        def arbeit():
+            ok, text = pflege.ausfuehren(schritte, Path(z.repo.pfad), log=log,
+                                         jetzt=self.jetzt())
+            belegt = False
+            if ok and len(schritte) > 1 and not getattr(z, f"{feld}_kette", None):
+                belegt = pflege.eintragen(self.manifest_pfad, z.ordner,
+                                          f"{feld}_kette", schritte, wurzel=z.wurzel,
+                                          vermerk=quelle, jetzt=self.jetzt())
+                if belegt:
+                    setattr(z, f"{feld}_kette", [list(s) for s in schritte])
+            elif ok and len(schritte) == 1 and not getattr(z, feld, None):
+                belegt = pflege.eintragen(self.manifest_pfad, z.ordner, feld, schritte[0],
+                                          wurzel=z.wurzel, vermerk=quelle, jetzt=self.jetzt())
+                if belegt:
+                    setattr(z, feld, list(schritte[0]))
+            self._nach_main(lambda: self._pflege_fertig(
+                z.ordner, text,
+                f"{feld} {z.ordner} " + ("fertig" if ok else "mit Fehler beendet")
+                + (" - Befehl im Manifest belegt" if belegt else ""), ok))
+
+        threading.Thread(target=arbeit, daemon=True).start()
+
+    def pflege_alle(self) -> None:
+        """Alle gezeigten Projekte messen und einen Pruefbericht schreiben."""
+        if self._pflege_laeuft:
+            self.status.configure(text="Ein Pflege-Lauf laeuft schon",
+                                  foreground=FARBEN["gelb"])
+            return
+        zeilen = [z for z in self.zeilen if z.repo is not None
+                  and auswahl.trifft(z, self._filter())]
+        if not zeilen:
+            self.status.configure(text="Nichts zu pruefen (Filter ist leer)",
+                                  foreground=FARBEN["gelb"])
+            return
+        self._pflege_laeuft = True
+        self._pflege_knoepfe_setzen(None)
+        self._pflege_text_setzen(f"Pruefe {len(zeilen)} Projekte ... (kann Minuten dauern)")
+        self.status.configure(text=f"Pruefbericht ueber {len(zeilen)} Projekte laeuft ...",
+                              foreground=FARBEN["matt"])
+        ziel = aktionen.log_pfad(self.log_ordner, "pruefbericht", self.jetzt())
+
+        def arbeit():
+            text, auffaellig = pflege.sammelbericht(zeilen, log_ordner=self.log_ordner,
+                                                    jetzt=self.jetzt())
+            try:
+                Path(self.log_ordner).mkdir(parents=True, exist_ok=True)
+                with open(ziel, "w", encoding="utf-8", newline="\n") as f:
+                    f.write(text)
+            except OSError:
+                pass
+            kurz = text if len(text) < 4000 else text[:4000] + "\n... (gekuerzt)"
+            self._nach_main(lambda: self._pflege_fertig(
+                None, kurz,
+                f"Pruefbericht: {len(zeilen)} geprueft, {len(auffaellig)} auffaellig "
+                f"-> {ziel.name}", not auffaellig))
+
+        threading.Thread(target=arbeit, daemon=True).start()
+
+    def _pflege_fertig(self, ordner, text: str, meldung: str, gut: bool) -> None:
+        """Ein Pflege-Ergebnis anzeigen - nur, wenn die Zeile noch gewaehlt ist."""
+        self._pflege_laeuft = False
+        z = self._gewaehlt()
+        passt = ordner is None or (z is not None and z.ordner == ordner)
+        if passt:
+            self._pflege_text_setzen(text)
+            ein, bau = ([], [])
+            if z is not None and z.repo is not None:
+                ein = self._pflege_schritte(z, "einrichten")[0]
+                bau = self._pflege_schritte(z, "bauen")[0]
+            self._pflege_knoepfe_setzen(z, ein, bau)
+        else:
+            self._pflege_anzeigen()
+        self.status.configure(text=meldung,
+                              foreground=FARBEN["gruen"] if gut else FARBEN["gelb"])
+
     # ------------------------------------------------------------- Detailbereich
     def _details_fuellen(self, z: manifest.Zeile | None) -> None:
         """Text und Befehlsliste auf die gewaehlte Zeile umstellen."""
@@ -1421,6 +1698,7 @@ class Fenster:
         z = self._gewaehlt()
         self._details_fuellen(z)
         self._handel_anzeigen()
+        self._pflege_anzeigen()
         if getattr(z, "spur", "") and self._handel_da is None:
             self._handel_im_hintergrund()
         if z is None or z.repo is None:

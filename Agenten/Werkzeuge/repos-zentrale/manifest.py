@@ -21,7 +21,7 @@ import quellen
 import scan
 
 # Feste Reihenfolge, damit das Fenster bei jedem Lauf gleich aussieht.
-GRUPPEN_REIHENFOLGE = ("startbar", "einrichten", "neu", "doku", "fehlt")
+GRUPPEN_REIHENFOLGE = ("startbar", "einrichten", "neu", "kein_start", "doku", "fehlt")
 
 
 @dataclass
@@ -34,6 +34,11 @@ class Eintrag:
     start: list[str] | None = None
     einrichten: list[str] | None = None
     bauen: list[str] | None = None
+    # Ketten: mehrere Befehle NACHEINANDER (venv anlegen, dann Abhaengigkeiten).
+    # Bewusst eine Liste von argv-Listen und KEINE Shell-Zeile - die Hausregel
+    # "argv, nie eine Zeichenkette" gilt auch fuer eine Kette.
+    einrichten_kette: list[list[str]] | None = None
+    bauen_kette: list[list[str]] | None = None
     bot: str | None = None
     notiz: str = ""
     anleitung: str = ""                 # Klartext-Ablauf fuer das Fenster
@@ -64,6 +69,13 @@ class Zeile:
     art: str = ""
     start: list[str] | None = None
     einrichten: list[str] | None = None
+    bauen: list[str] | None = None
+    einrichten_kette: list[list[str]] | None = None
+    bauen_kette: list[list[str]] | None = None
+    venv_pflicht: bool = False
+    node_modules_pflicht: bool = False
+    pfad_pflicht: str | None = None
+    port: int | None = None
     bot: str | None = None
     bot_da: bool = False
     notiz: str = ""
@@ -126,6 +138,26 @@ def _befehle(wert, fehler: list[str]) -> list[dict] | None:
     return sauber
 
 
+def _ketten(wert, feld: str, fehler: list[str]) -> list[list[str]] | None:
+    """Eine Kette von Befehlen: je Eintrag ein argv, hoechstens acht Schritte.
+
+    Ein kaputter Schritt faellt EINZELN raus (mit Grund), die uebrigen bleiben -
+    wie bei `befehle`. Eine leere Kette gibt None.
+    """
+    if wert is None:
+        return None
+    if not isinstance(wert, list):
+        fehler.append(f"{feld} muss eine Liste von Befehlen sein, "
+                      f"gefunden: {type(wert).__name__}")
+        return None
+    sauber: list[list[str]] = []
+    for i, roh in enumerate(wert[:8], 1):
+        cmd = _argv(roh, f"{feld}[{i}]", fehler)
+        if cmd:
+            sauber.append(cmd)
+    return sauber or None
+
+
 def _ordner_erlaubt(name) -> bool:
     """Ein Ordnername darf kein Pfad sein - kein Trenner, kein Aufstieg."""
     if not isinstance(name, str) or not name:
@@ -174,6 +206,8 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             start=_argv(roh.get("start"), "start", fehler),
             einrichten=_argv(roh.get("einrichten"), "einrichten", fehler),
             bauen=_argv(roh.get("bauen"), "bauen", fehler),
+            einrichten_kette=_ketten(roh.get("einrichten_kette"), "einrichten_kette", fehler),
+            bauen_kette=_ketten(roh.get("bauen_kette"), "bauen_kette", fehler),
             bot=str(roh["bot"]).lower() if roh.get("bot") else None,
             notiz=str(roh.get("notiz") or ""),
             anleitung=str(roh.get("anleitung") or ""),
@@ -225,13 +259,6 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
     if e.gruppe == "doku":
         gruppe = "doku"
 
-    # Der Bot ist ein Hinweis, kein Startkriterium: ein fehlendes Profil darf ein
-    # lauffaehiges Projekt nicht in eine andere Gruppe schieben.
-    gruende = list(startgruende)
-    gruende += list(e.warnungen)
-    if e.bot and not bot_da:
-        gruende.append(f"Bot-Profil fehlt: {e.bot}")
-
     # Fremd-Material kommt aus EINER Quelle (Agenten/FREMD-Liste.json), nicht aus
     # handgepflegten Manifest-Feldern: die Rolle sagt, was es ist, der Hinweis
     # sagt, was damit zu tun ist. Das Manifest darf die Rolle ueberschreiben -
@@ -245,6 +272,32 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         )
     if fremd_treffer is not None:
         rolle = rolle or fremd_treffer.art
+
+    # KEIN EIGENER START (30.09.2026): eine Zeile ohne Startbefehl ist nicht
+    # automatisch unfertig. Fremdes, das nur gelesen wird, und eine Klasse, die
+    # ein anderes Programm laedt, brauchen gar keinen - sie in EINRICHTEN zu
+    # stellen hiesse "es fehlt noch etwas", und das waere falsch. Was hier
+    # landet, ist eine Aussage ueber den Grund, nicht ueber einen Mangel.
+    #
+    # Die Bedingung ist eng: es darf KEIN anderer Grund vorliegen (ein fehlendes
+    # venv bleibt EINRICHTEN), und der Grund muss dabeistehen - als kuratierte
+    # Gruppe, als Vermerk (`warnungen`, z. B. aus fuellen.OHNE_START) oder in
+    # der Fremd-Liste als "nur lesen".
+    nur_der_befehl = startgruende == ["kein Startbefehl belegt"]
+    if nur_der_befehl and not e.start and (
+        e.gruppe == "kein_start"
+        or e.warnungen
+        or (fremd_treffer is not None and "nur lesen" in fremd_treffer.regel)
+    ):
+        gruppe = "kein_start"
+
+    # Der Bot ist ein Hinweis, kein Startkriterium: ein fehlendes Profil darf ein
+    # lauffaehiges Projekt nicht in eine andere Gruppe schieben.
+    gruende = list(startgruende)
+    gruende += list(e.warnungen)
+    if e.bot and not bot_da:
+        gruende.append(f"Bot-Profil fehlt: {e.bot}")
+    if fremd_treffer is not None:
         gruende.append(f"fremd: {fremd_treffer.regel} ({fremd_treffer.herkunft})")
 
     return Zeile(
@@ -254,6 +307,13 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         art=repo.art,
         start=e.start,
         einrichten=e.einrichten,
+        bauen=e.bauen,
+        einrichten_kette=e.einrichten_kette,
+        bauen_kette=e.bauen_kette,
+        venv_pflicht=e.venv_pflicht,
+        node_modules_pflicht=e.node_modules_pflicht,
+        pfad_pflicht=e.pfad_pflicht,
+        port=e.port,
         bot=e.bot,
         bot_da=bot_da,
         notiz=e.notiz,

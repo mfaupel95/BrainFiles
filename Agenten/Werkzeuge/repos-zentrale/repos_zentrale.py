@@ -141,6 +141,44 @@ def vorschau_test(p: dict[str, Path], spur: str) -> int:
     return 0 if p_.returncode == 0 else 1
 
 
+def pruefbericht(p: dict[str, Path], bereich: str = "", schreiben: bool = True) -> int:
+    """Alle Projekte messen und den Bericht nach logs/ schreiben (rein lesend).
+
+    Derselbe Lauf wie der Knopf "Alles pruefen" im Fenster - nur ohne Fenster,
+    damit er auch aus einer Routine heraus laufen kann. Gemessen wird: venv
+    (laeuft sie?), node_modules, Pflichtpfad, Git-Zustand, README, Bot-Profil,
+    Port. Nichts wird dabei eingerichtet oder geaendert.
+    """
+    import datetime as dt
+
+    import fenster
+    import manifest
+    import pflege
+    import quellen
+    import scan
+
+    plaetze = [(w, scan.tief_scannen(w, pfad)) for w, pfad in quellen.alle(p["brainfiles"])]
+    eintraege = manifest.manifest_laden(p["manifest_pfad"])
+    zeilen = manifest.zeilen_bauen(plaetze, eintraege, p["profile_dir"])
+    fenster.spuren_markieren(zeilen, {}, {})
+    if bereich:
+        zeilen = [z for z in zeilen if z.bereich.upper() == bereich.upper()]
+
+    text, auffaellig = pflege.sammelbericht(zeilen, log_ordner=p["log_ordner"])
+    zeilen_text = text.splitlines()
+    print(zeilen_text[2] if len(zeilen_text) > 2 else text)
+    for ordner, punkte in auffaellig[:15]:
+        print(f"  {ordner:<40} " + "; ".join(f"{x.name}: {x.text}" for x in punkte[:3]))
+    if len(auffaellig) > 15:
+        print(f"  ... {len(auffaellig) - 15} weitere")
+    if schreiben:
+        p["log_ordner"].mkdir(parents=True, exist_ok=True)
+        ziel = p["log_ordner"] / f"pruefbericht-{dt.datetime.now():%Y%m%d-%H%M}.log"
+        ziel.write_text(text, encoding="utf-8", newline="\n")
+        print(f"Bericht: {ziel}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     zerleger = argparse.ArgumentParser(
         description="Zentrale - ein Fenster fuer Repos, Werkstatt und Handel"
@@ -165,12 +203,18 @@ def main(argv: list[str] | None = None) -> int:
         "--test", default="", metavar="SPUR",
         help="--vorschau dieser Spur ausfuehren (rein lesend)",
     )
+    zerleger.add_argument(
+        "--pruefbericht", action="store_true",
+        help="alle Projekte messen (venv, Git, Pflichtpfad ...) und nach logs/ schreiben",
+    )
     args = zerleger.parse_args(argv)
     p = pfade()
     if args.test:
         return vorschau_test(p, args.test)
     if args.handel:
         return handel_tabelle(p, args.nur)
+    if args.pruefbericht:
+        return pruefbericht(p, args.bereich)
     if args.pruefen:
         return pruefen(p, args.bereich)
 

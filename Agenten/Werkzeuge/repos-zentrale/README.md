@@ -27,6 +27,9 @@ haengt an keiner Repo-venv.
 **Scharf geschaltet wird nur im Fenster.** `--handel` und `--test` LESEN nur;
 einen Kommandozeilen-Schalter zum Scharfschalten gibt es absichtlich nicht
 (Handelsregeln Punkt 3 verlangt dafuer ein Fenster mit Bestaetigungsfeld).
+`--pruefbericht` misst alle Projekte (venv, node_modules, Pflichtpfad, Git,
+Bot, Port) und schreibt den Bericht nach `logs/` — derselbe Lauf wie der Knopf
+„Alles pruefen" im Fenster.
 
 ## Die drei Bereiche
 
@@ -387,6 +390,46 @@ Dazu drei Festlegungen:
   `fenster.py` kein `wt.exe` mehr enthaelt: **ein Bauplatz**.
 - **Der Start** (langer Prozess) bleibt ohne Fenster — Ausgabe ins Log.
 
+## Pflege: einrichten, bauen, pruefen, reparieren
+
+Der Reiter **„Einrichten · Reparatur"** der rechten Karte (`pflege.py`) misst den
+Zustand eines Projekts und fuehrt den fehlenden Handgriff aus.
+
+| Knopf | Was passiert |
+|---|---|
+| **Pruefen (F7)** | misst: `venv` (laeuft ihr `python.exe`?), `node_modules`, Pflichtpfad, Git-Zweig/Aenderungen/Rueckstand, README, Bot-Profil, Port. Rein lesend, Ergebnis in der Karte. |
+| **Einrichten** | fuehrt die Schritte aus, die im Manifest stehen (`einrichten` bzw. `einrichten_kette`) — sonst die, die sich aus den Dateien des Projekts ergeben. |
+| **Bauen** | dasselbe fuer `bauen`/`bauen_kette` bzw. `Cargo.toml`, `go.mod`, `npm run build`, `Makefile`. |
+| **Alles pruefen** | misst alle Zeilen des aktuellen Filters und schreibt `logs/pruefbericht-JJJJMMTT-HHMM.log`. |
+
+**Ein Vorschlag ist kein geratener Befehl.** Er entsteht aus einer Datei, die im
+Projekt wirklich liegt:
+
+| Datei im Projekt | Vorschlag |
+|---|---|
+| `requirements.txt` | `python -m venv .venv` (nur wenn sie fehlt), dann `pip install -r` |
+| `pyproject.toml` / `setup.py` | `pip install -e .` |
+| `package.json` | `npm install` / `npm run build` (nur mit `scripts.build`) |
+| `Cargo.toml` | `cargo build --release` |
+| `go.mod` | `go build ./...` |
+| `Makefile` | `make` |
+
+Fehlt jeder Anhaltspunkt, sagt die Karte das — und der Knopf ist aus. Kein
+Befehl wird erfunden.
+
+**Ein Befehl wird erst nach einem erfolgreichen Lauf belegt.** Laeuft
+„Einrichten" mit Exit-Code 0 durch und stand noch nichts im Manifest, traegt
+`pflege.eintragen()` den Befehl ein — mit Sicherung
+`repos-zentrale.bak-JJJJMMTT.json` und datierter Notiz
+`_einrichten_belegt`/`_einrichten_kette_belegt`. Mehrere Schritte landen als
+**Kette** (`einrichten_kette`: Liste von argv-Listen), nie als Shell-Zeile.
+
+**Repariert wird nicht blind.** Eine `.venv`, deren `python.exe` nicht mehr
+startet, wird als solche BENANNT („startet nicht") statt mit `pip install`
+traktiert; der Vorschlag lautet dort `python -m venv --clear`. Ein Projekt mit
+Aenderungen im Baum wird gemeldet, nicht angefasst; der Vorschlag fuer
+Rueckstand ist der vorhandene Weg (`repos-updaten.py --nur <ordner>`).
+
 ## Was die Zentrale absichtlich nicht tut
 
 - Sie schreibt **nicht** in fremde Projekte. Ausnahme: der ausdrueckliche
@@ -396,6 +439,9 @@ Dazu drei Festlegungen:
   Prozessnamen — angezeigt werden Exit-Code und Logzeit.
 - Sie beendet **nichts** per Prozessname (nur per gemerkter PID).
 - Sie startet **nichts** automatisch im Hintergrund; ohne Klick passiert nichts.
+- Sie **loescht nichts** und veroeffentlicht nichts: die Pflege kennt kein
+  `git reset`, kein `git push`, kein `rm`. Ein Projekt mit Aenderungen im Baum
+  wird gemeldet, nicht angefasst.
 - Sie **ordert nichts** und **schaltet live nur im Fenster**: `handel_erlaubt`
   laesst sich ausschliesslich ueber das Scharfschalten-Fenster setzen, nie per
   Kommandozeile, Chat oder A2A. Das Fenster ordert selbst nichts — es aendert
@@ -413,7 +459,7 @@ Dazu drei Festlegungen:
     cd Agenten\Werkzeuge\repos-zentrale
     .venv\Scripts\python.exe -m unittest discover -s tests -v
 
-Stand 30.09.2026: **259 Tests, alle gruen** (vorher 137). Kein Test startet
+Stand 30.09.2026: **296 Tests, alle gruen** (vorher 137). Kein Test startet
 einen echten Prozess: `subprocess.Popen`, `os.startfile` und
 die Starter sind ersetzt, geprueft wird die Kommandozeile. Der Fenstertest baut
 die Oberflaeche wirklich auf, aber unsichtbar (`withdraw`).
