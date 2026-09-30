@@ -242,6 +242,15 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
   Nachfolgerblock lesen, bevor ersetzt wird.
 - **Zeilenenden sind CRLF.** `open(..., "w")` dreht die Datei auf LF und erzeugt
   einen Ganzdatei-Diff; Gegenprobe `git diff --numstat`.
+- **Und der ANKER traegt dieselben Enden.** Ein mehrzeiliger Suchtext, dessen
+  Zeilen mit `\n` verbunden sind, trifft in einer CRLF-Datei NICHTS - der Block
+  bleibt unveraendert stehen, und ohne `assert text.count(anker) == 1` sieht das
+  wie ein geglueckter Lauf aus. Suchtext aus den ZEILEN bauen und mit `nl`
+  verbinden (`nl.join([...])`), nie als dreifaches Anfuehrungszeichen mit LF
+  hineinschreiben. Gelesen wird per `open(PFAD, encoding="utf-8", newline="")`
+  (Enden bleiben erhalten) oder `"rb"` - Textmodus OHNE `newline=""`
+  normalisiert still auf `\n` und macht damit jeden mehrzeiligen Anker
+  unauffindbar.
 - **Beim Byte-Schreiben NIE pauschal `\n` durch `\r\n` ersetzen.** Die Datei
   traegt schon `\r\n`; ein `d.replace(b"\n", b"\r\n")` auf diesem Inhalt macht
   daraus `\r\r\n` und damit JEDE Zeile zu einer Aenderung. Der Diff zeigt dann
@@ -338,6 +347,18 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Blockzahl, die niemand nachvollziehen konnte. Symptom ist eine ZAHL, die nicht
   stimmt; die Ursache ist Struktur. Nach jedem Umbau deshalb zaehlen und die
   Zaun-Zeilen einzeln ansehen, bevor Zahlen diskutiert werden.
+- **Der erste Treffer eines Abschnittsnamens ist nicht die Ueberschrift.**
+  `## Erledigt` kommt in dieser Datei ZWEIMAL vor: einmal als echte Ueberschrift,
+  einmal als Wort im Regeltext weiter oben. Ein Einfuege-Skript, das seine
+  offene Liste mit `text.split("## Erledigt")[0]` bildet, haelt damit den
+  REGELTEXT fuer die Liste, findet 0 offene Eintraege und laesst seine eigene
+  Gegenprobe scheitern (oder, schlimmer, sie geht durch und hat nichts
+  geprueft). Abschnittsgrenzen ueber die Zeilen suchen, die es wirklich gibt:
+  `text.find("\n## Offen")` fuer den Anfang, `text.rfind("\n## Erledigt")` fuer
+  das Ende. Und die offene Liste zusaetzlich ueber die KASTENSTELLUNG zaehlen —
+  `alt.count("- [ ] ")` gegen `neu.count("- [ ] ")` muss um genau die Zahl der
+  eingefuegten Eintraege steigen; diese eine Zeile faengt sowohl ein
+  fehlgeschlagenes Einfuegen als auch einen falsch gefundenen Abschnitt.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
   formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.

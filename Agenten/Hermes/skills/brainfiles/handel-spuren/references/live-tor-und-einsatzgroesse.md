@@ -135,6 +135,49 @@ Testmuster: je einen Fall fuer die EUR-Spur und die USD-Spur, dazu die
 Zusicherung, dass die Papierwerte unberuehrt bleiben (die Funktion gibt eine KOPIE
 zurueck, der Aufrufer schreibt `w` nicht in die Datei).
 
+## 6. Die Sperrzeile muss es GEBEN — auch im gemeinsamen Kern
+
+`dauerlauf.nur_fenster_fehlt()` liest die Ausgabe von `<spur>/handeln.py
+--vorschau` und sucht GENAU EINE Zeile `Live waere gesperrt durch: …`. Fehlt die
+Zeile ganz, gibt die Funktion `None` zurueck — und die Auto-Freigabe beantragt NIE
+ein Fenster. Die Spur ist dann scharf, steht in `AUTO_FREIGABE`, traegt
+`freigabe.erfuellt: true` — und handelt trotzdem nie.
+
+Genau das war bei den Buch-Spuren der Fall: der gemeinsame Kern
+`spur_buch.zyklus()` druckte bei `--vorschau` nur „Vorschau: keine Dateien
+geschrieben." Es gab keinen `vorschau`-Zweig, der die Sperrenkette ueberhaupt
+abfragte. Betroffen waren ALLE Spuren, die ihr Buch ueber `spur_buch` fuehren
+(`moondev_listingarb`, `moondev_topmovers`, `trendwende_btc`, `liq_wand`,
+`iv_wand`, `moondev_funding`) — und der Fehler sieht nirgends wie ein Fehler aus,
+sondern wie eine Spur ohne Signal.
+
+Regel: **Ein gemeinsamer Kern, der mehrere Spuren bedient, muss die Sperrzeile in
+JEDEM Modus drucken, den ein Aufrufer parst** — auch in `--vorschau`, auch wenn
+die Sperrenkette danach nur im Live-Zweig gebraucht wird. Muster:
+
+```python
+elif modus == "vorschau":
+    gruende = sperren_live(w, s, spur_name)
+    print("Live waere gesperrt durch: " + ("; ".join(gruende) if gruende else "nichts"))
+```
+
+Nachweis vor dem Commit, je Buch-Spur eine Zeile:
+
+```
+for s in moondev_listingarb moondev_topmovers trendwende_btc liq_wand iv_wand; do
+  echo -n "$s: "
+  MAXHIRN_ROUTINE=1 python $s/handeln.py --vorschau 2>&1 | grep -m1 "gesperrt durch"
+done
+```
+
+Zweiter Teil derselben Pruefung: nennt die Zeile **mehrere** Gruende, ist die
+Auto-Freigabe ebenfalls still — `nur_fenster_fehlt` verlangt genau einen, und der
+muss „Freigabefenster" heissen. Ein Guthaben-Grund daneben ist RICHTIG (die Order
+waere abgelehnt) und darf nicht wegoptimiert werden; der Bericht nennt ihn als
+das, was Max entscheiden muss.
+
+Merksatz: **eine Sperre, die niemand ausspricht, ist keine.**
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

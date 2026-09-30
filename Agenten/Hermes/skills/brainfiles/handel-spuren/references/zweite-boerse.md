@@ -476,6 +476,18 @@ verschiedenen Zeitpunkten:
   mit `MAXHIRN_ROUTINE=1` - die entzogene Boerse darf in der Zeile
   "Live waere gesperrt durch:" nicht mehr auftauchen, die abgeschaltete Spur
   muss `handel_erlaubt=false` nennen. Danach `spiegelstand.py`.
+- **Vor dem Umschalten AUF eine Boerse erst nachsehen, ob sie gerade entzogen
+  wurde.** `dauerlauf.AUTO_FREIGABE` traegt die datierten Vermerke des Entzugs
+  („nur noch <Programm> auf <Boerse> handel erlaubt"). Eine Spur auf diese Boerse
+  umzustellen ist dann kein Konfigurationswert, sondern ein Widerspruch zu einer
+  stehenden Entscheidung von Max — und der faellt nicht auf, weil die Spur
+  technisch sauber arbeitet. **Und die Liste ist dabei selbst oft unvollstaendig:**
+  eine Spur, die auf der ANDEREN Boerse steht, bleibt zu Recht in
+  `AUTO_FREIGABE` — aus „die Spur steht noch drin" folgt also NICHT „diese Boerse
+  ist erlaubt". Reihenfolge: die Vermerke lesen -> die Boerse DIESER Spur pruefen
+  -> erst dann umstellen. Eine versehentliche Umstellung nimmt man wortlos
+  zurueck und belegt die Ruecknahme mit `git diff --numstat` (0/0 heisst wirklich
+  identisch mit `HEAD`).
 - **Der entzogene Weg bleibt im Code.** Die Sperre ist ein Wachen-Schalter, kein
   Rueckbau: die Orderfunktionen, Tests und das Buch bleiben, damit die Spur ohne
   Neubau wieder scharf gestellt werden kann. Wer den Code entfernt, muss ihn

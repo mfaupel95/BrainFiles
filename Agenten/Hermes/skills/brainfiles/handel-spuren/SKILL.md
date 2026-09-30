@@ -192,7 +192,9 @@ Ausloeser → Referenz:
   juenger als 300 s an).
 - **Eine live geschaltete Spur kommt nicht ins Handeln** (sie ist scharf, es
   passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
-  oeffnet Fenster ohne Ergebnis; die Sperre nennt ein Guthaben ohne BOERSE und
+  oeffnet Fenster ohne Ergebnis; **die Vorschau nennt gar keinen Sperrstand, dann
+  findet `nur_fenster_fehlt` nichts und die Auto-Freigabe ist fuer ALLE Spuren
+  eines gemeinsamen Kerns tot**; die Sperre nennt ein Guthaben ohne BOERSE und
   Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht werden**
   („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
@@ -513,6 +515,14 @@ Kill-Ausgaenge positiv (+0,4 bis +2,4 %). Vor der Deutung die Drawdown-Kurve
 FIFO-gepaart nachrechnen und den Deckel gegen den je erreichten Ruecklauf
 halten; ein Deckel weit darueber ist entschaerft, kein Fehler. Vollen Text:
 `references/pitfalls.md`.
+
+94. **Ein gemeinsamer Kern, der die Sperrzeile nicht druckt, schaltet die
+Auto-Freigabe fuer ALLE seine Spuren ab.** `dauerlauf.nur_fenster_fehlt()` liest
+die `--vorschau`-Ausgabe der Spur; fehlt die Zeile „Live waere gesperrt durch:
+…" ganz, kommt `None` zurueck — kein Fenster, kein Live-Lauf, und die Spur sieht
+nur „still" aus. Die Sperrzeile gehoert in JEDEN Modus, den ein Aufrufer parst
+(auch `--vorschau`), nicht nur in den Live-Zweig. Vollen Text:
+`references/live-tor-und-einsatzgroesse.md`, Abschnitt 6.
 
 ## Welche Daten eine Sperre liest
 

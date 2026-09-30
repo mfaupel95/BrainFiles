@@ -251,6 +251,50 @@ Vorlage (nachbaubar, nicht importieren):
 im Fremd-Klon nach der Messung wieder entfernen, die nachrechenbare Fassung im
 Cache behalten und im Wiki verlinken.
 
+## Eine fremde Strategie pruefen, bevor sie Spur wird
+
+Ausloeser: "schau mal bei <Ideenquelle> nach neuen Strategien", "bauen wir das?".
+Ergebnis ist ein Verdikt (traegt / Kandidat / verworfen) mit Zahlen von den
+EIGENEN Kerzen - nie die Zahl der Quelle.
+
+**Der Paperwert ist nicht der Handelswert.** Jede Strategie-Seite einer
+Ideenquelle traegt neben der Paper-Kennzahl eine Gegenprobe auf fremden Daten,
+und die beiden gehen weit auseinander (gemessen: Paper +7,65 % p.a. gegen
+Gegenprobe CAGR −18,8 % bei 63 % Rueckgang). Immer beide lesen und beide nennen.
+Ein Guete-Etikett wie "Confidence: Strong" gilt der Anomalie, nicht der
+Handelbarkeit.
+
+**Erst die Rundenzahl, dann die Guete.** In dieser Reihenfolge pruefen:
+
+1. Signale pro Jahr aus der Regel AUSRECHNEN, nicht schaetzen.
+2. Kante je Runde gegen die Gebuehr JE RUNDE stellen: die Kante muss groesser
+   sein als der Rundlauf (Kauf + Verkauf).
+3. Zeithalbierung: dasselbe Vorzeichen in beiden Haelften.
+4. Erst danach bauen.
+
+**Die Kosten wachsen mit der Rundenzahl, der Ertrag nicht.** Deshalb dieselbe
+Idee in der traegsten Fassung messen: ein Tagesausbruch mit 4-6 Signalen/Jahr
+ueberlebt die Gebuehr, dieselbe Familie mit einem Tag Haltedauer und 60+
+Signalen stirbt an ihr. Netto p.a. bei drei Saetzen ausweisen (0,05 % / 0,1 % /
+0,6 % je Seite) - der Kraken-Satz entscheidet ueber eine Kraken-Spur.
+
+**Immer gegen Buy & Hold stellen.** Ein Kandidat, der weniger verdient und dafuer
+den Rueckgang halbiert, ist eine Aussage ueber Risiko, nicht ueber Rendite - das
+so sagen, sonst liest der Nutzer eine Renditeaussage, wo eine
+Rueckgangsaussage steht. Und t < 2 bei unter 30 Runden heisst "Kandidat", nie
+"traegt".
+
+**Zeitmuster in zwei Schritten.** Bei Saisonalitaet (Tageszeit, Wochentag, Monat)
+zuerst das PROFIL rechnen (Mittelwert und t je Stunde/Tag): es zeigt, ob die
+Richtung der Quelle ueberhaupt existiert, bevor Zeit in die handelbare Regel
+geht. Das Fenster der Quelle kann um eine Stunde verschoben sein (andere Boerse,
+andere Zeitzone) - die eigene Messung entscheidet. Ein bestaetigtes Profil ist
+noch keine Strategie: die Kante je Tag liegt oft unter dem Rundlauf.
+
+Quellen lesen: `references/fremdstrategie-pruefen.md`.
+Werkzeug: `Agenten/Handel/quantpedia_probe.py` (`stunde|fenster|donchian|vergleich`)
+- rechnet auf `daten/historie/`, ohne Netz, jede Zahl nachvollziehbar.
+
 ## Mehrere Buecher vergleichen (Risikostufen, Arme)
 
 Ausloeser: "Stufe A gegen Stufe B", "alle drei gegeneinander". Der naheliegende

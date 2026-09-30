@@ -1,0 +1,94 @@
+# Reaktionsregeln der Benachrichtigungsschicht (Kanban t_f682e5c1)
+#
+# Diese Datei bestimmt NICHT, was laeuft (das tut registry.example.yaml der
+# Spezifikation t_3d28119b), sondern was nach einem Lauf passiert.
+#
+# Pruefen:  python reaktion.py --konfig-pruefen --konfig reaktionen.yaml
+# Probe:    python reaktion.py --ergebnis <datei> --probe
+#
+# Aufloesung: defaults, von regeln.<regel_id> feldweise ueberschrieben. Genau
+# eine Ebene - keine Vererbungskette, damit im Zweifel zwei Zeilen zu lesen sind.
+
+konfig_version: "1.1.0"
+
+# 1.1.0 (20.09.2026): Die Schicht liest jetzt auch das Feld "ergebnis" der
+# Engine und kennt zwei zusaetzliche Befunde, die hier NICHT einstellbar sind,
+# weil sie keine Wahl lassen:
+#   uebersprungen  (Rate-Limit, Sperre, Bedingung nicht erfuellt) -> nur Log.
+#                  Es ist nichts passiert; eine Meldung je nicht gelaufener
+#                  Regel waere genau das Rauschen, das die echten Meldungen
+#                  unlesbar macht.
+#   wartet         (modus=bestaetigung, Freigabe offen) -> melden ueber "kanal",
+#                  aber niemals eskalieren: sonst blockt das Warten am Ende den
+#                  Task, auf dessen Freigabe es wartet.
+# Beide lassen Fehlerstreak und Versuchszaehler unberuehrt.
+
+defaults:
+  # Voreinstellung ist der leiseste Kanal. Wer eine Regel lauter stellt, schreibt
+  # das hin - dieselbe Haltung wie modus=dry_run in der Registry.
+  kanal: log                       # log | board | telegram | log+board | log+telegram | alle
+  memory_notiz: "automatik/laeufe/{regel_id}"   # Platzhalter: {regel_id}, {skill}
+  melde_erfolg: bei_aenderung      # nie | immer | bei_aenderung
+  eskalation:
+    wiederholungen: 0              # 0..5; die Schicht merkt vor, startet nicht selbst
+    wiederhol_abstand_s: 600       # >= 10
+    danach: melden                 # melden | board_blocken | regel_sperren | still
+
+regeln:
+
+  # --- 1. Inventarlauf nach Skill-Aenderung (Registry-Regel gleichen Namens) ---
+  # Laeuft oft und meldet meist dasselbe: darum Erfolg nur bei geaenderter
+  # Ausgabe. Fehler ist harmlos genug fuer einen zweiten Versuch.
+  inventar-nach-skill-aenderung:
+    kanal: log+telegram
+    melde_erfolg: bei_aenderung
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 300
+      danach: melden
+
+  # --- 2. Board-Ereignis: ein Task wurde blockiert ---------------------------
+  # Hier wartet ein Mensch. Erfolg darf deshalb immer melden, und ein
+  # Fehlschlag wird nicht weggesteckt, sondern am Task selbst sichtbar gemacht.
+  blocked-task-aufbereiten:
+    kanal: alle
+    melde_erfolg: immer
+    eskalation:
+      wiederholungen: 2
+      wiederhol_abstand_s: 120
+      danach: board_blocken
+
+  # --- 3. Wochenbericht ------------------------------------------------------
+  # Ein Bericht ohne Meldung ist eine Datei, die niemand oeffnet: immer melden.
+  # Scheitert er, bringt eine Wiederholung nichts (Wochenrhythmus) - nur melden.
+  skill-usage-report:
+    kanal: log+telegram
+    melde_erfolg: immer
+    memory_notiz: "automatik/berichte/skill-nutzung"
+    eskalation:
+      wiederholungen: 0
+      danach: melden
+
+  # --- 4. Haeufiger Waechter -------------------------------------------------
+  # Watchdog-Muster: still, solange alles laeuft. Drei Fehlversuche in Folge
+  # sind aber ein Befund - danach sperrt sich die Regel selbst, statt alle 15
+  # Minuten dieselbe Meldung zu schicken.
+  automatik-waechter:
+    kanal: log+telegram
+    melde_erfolg: nie
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 900
+      danach: regel_sperren
+
+  # --- 5. Geld/destruktiv: nur Log ------------------------------------------
+  # Beispiel fuer eine bewusst stumme Reaktion: bei bestaetigungspflichtigen
+  # Regeln hat der Mensch den Lauf ohnehin gesehen; eine zweite Meldung waere
+  # Rauschen. Der Eintrag im Wissensspeicher bleibt trotzdem.
+  handel-spuren-pruefen:
+    kanal: log
+    melde_erfolg: nie
+    memory_notiz: "automatik/handel/spuren-pruefung"
+    eskalation:
+      wiederholungen: 0
+      danach: still

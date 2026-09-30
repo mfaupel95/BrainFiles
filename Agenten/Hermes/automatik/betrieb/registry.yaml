@@ -1,0 +1,190 @@
+# Betriebs-Registry der Engine - die Fassung, die in diesem Workspace wirklich
+# laeuft und laufen darf. Geprueft mit:
+#   python spez/scripts/registry_pruefen.py betrieb/registry.yaml
+#
+# Unterschied zu spez/registry.example.yaml (Beispiel der Spezifikation):
+#
+#   - Die Schreibpfade zeigen auf die Kopie der Spez-Dateien IN DIESEM
+#     Workspace. Das Beispiel nennt den Workspace der Spezifikations-Task;
+#     deren Ergebnisse darf die Engine nicht ueberschreiben, und die Wache
+#     bricht auch genau dort ab - sie prueft den Pfad, nicht die Absicht.
+#   - Die Agenten-Regeln (skill_art=skill) stehen hier auf dry_run. Ein
+#     Agentenlauf laesst sich von innen nicht bewachen; scharf gestellt wird er
+#     erst, wenn ein Mensch HERMES_AUTOMATIK_SKILL_START=1 setzt.
+#   - Die Handel-Regel bleibt gesperrt. Unveraendert aus dem Beispiel.
+
+registry_version: "1.0.0"
+beschreibung: >
+  Betriebsfassung im konsolidierten Home (Agenten/Hermes/automatik/).
+  Nur Regeln, deren Wirkung im eigenen Home bleibt, stehen auf auto.
+
+defaults:
+  modus: dry_run
+  timeout_s: 300
+  kanal: log
+  rate_limit:
+    max_laeufe: 6
+    fenster_s: 86400
+    cooldown_s: 600
+
+regeln:
+
+  # --- Datei-Trigger, scharf: Skill-Inventar neu erzeugen -------------------
+  # Wirkung: schreibt zwei Berichtsdateien im eigenen Workspace. Sonst nichts.
+  - id: inventar-nach-skill-aenderung
+    beschreibung: >
+      Sobald eine SKILL.md im Profil angelegt oder geaendert wird, das Inventar
+      neu erzeugen. Faellt auf, wenn ein Skill eine hoehere Nebenwirkungsklasse
+      bekommt als die Registry fuer ihn erlaubt.
+    skill: scripts/inventar.py
+    skill_art: skript
+    trigger:
+      typ: datei
+      prioritaet: 20
+      bedingungen:
+        pfad_muster:
+          - "Agenten/Hermes/profiles/one-skill-to-rule-them-all/skills/**/SKILL.md"
+        aktion: modified
+        mindestabstand_s: 120
+    parameter:
+      print: false
+    erlaubte_aktionen: [lesen, bericht_schreiben, datei_schreiben]
+    schreibpfade:
+      - "Agenten/Hermes/automatik/spez/inventar.json"
+      - "Agenten/Hermes/automatik/spez/inventar.md"
+    modus: auto
+    timeout_s: 180
+    rate_limit:
+      max_laeufe: 12
+      fenster_s: 86400
+      cooldown_s: 120
+    abbruch:
+      bei_fehlerstreak: 3
+      nur_wenn_pfad_existiert:
+        - "Agenten/Hermes/profiles/one-skill-to-rule-them-all/skills"
+      max_gleichzeitig: 1
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 60
+      danach: melden
+
+  # --- Board-Trigger: blockierte Karte melden -------------------------------
+  # Agentenlauf, darum dry_run bis zur ausdruecklichen Freigabe.
+  - id: board-blocker-melden
+    beschreibung: >
+      Eine Karte auf blocked heisst: ein Agent wartet auf einen Menschen. Ohne
+      Meldung liegt sie bis zum naechsten Blick aufs Board still.
+    skill: chat
+    skill_art: skill
+    trigger:
+      typ: board_event
+      prioritaet: 0
+      bedingungen:
+        ereignis: blocked
+        board: default
+    parameter:
+      vorlage: "Karte {id} blockiert ({kind}): {reason}"
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: dry_run
+    timeout_s: 60
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 20
+      fenster_s: 3600
+      cooldown_s: 0
+    eskalation:
+      wiederholungen: 2
+      wiederhol_abstand_s: 30
+      danach: melden
+
+  # --- Zeit-Trigger: MCP-Drift erkennen ------------------------------------
+  - id: mcp-drift-pruefen
+    beschreibung: >
+      Taeglich pruefen, ob Claude- und Hermes-MCP-Konfiguration noch zum
+      Manifest passen. Nur Befund melden, nie schreiben - beide Apps
+      ueberschreiben ihre Config aus eigenem Speicher.
+    skill: brainfiles/mcp-sync
+    skill_art: skill
+    trigger:
+      typ: zeit
+      prioritaet: 40
+      bedingungen:
+        intervall_min: 1440
+        nur_wenn_wach: true
+    parameter:
+      nur_pruefen: true
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: dry_run
+    timeout_s: 240
+    kanal: log
+    rate_limit:
+      max_laeufe: 2
+      fenster_s: 86400
+    abbruch:
+      bei_fehlerstreak: 3
+      nur_wenn_pfad_existiert:
+        - "Agenten/MCP-Manifest.json"
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 300
+      danach: melden
+
+  # --- Verkettung: nach Befund den Arbeitsbaum sichern ---------------------
+  # Nebenwirkungsklasse destruktiv -> Bestaetigung ist Pflicht (S3).
+  - id: sichern-nach-inventaraenderung
+    beschreibung: >
+      Wenn das Inventar sich geaendert hat, den Arbeitsbaum committen.
+      Bestaetigung ist Pflicht, weil der Skill auch Kommandos kennt, die
+      Aenderungen verwerfen.
+    skill: claude-code-imports/sichern
+    skill_art: skill
+    trigger:
+      typ: skill_ergebnis
+      prioritaet: 60
+      bedingungen:
+        regel: inventar-nach-skill-aenderung
+        status: erfolg
+    parameter:
+      nur_eigene_pfade: true
+    erlaubte_aktionen: [lesen, datei_schreiben, git_commit]
+    schreibpfade:
+      - "Agenten/Hermes/automatik/spez"
+    modus: bestaetigung
+    timeout_s: 600
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 3
+      fenster_s: 86400
+      cooldown_s: 3600
+    abbruch:
+      bei_fehlerstreak: 2
+      nicht_wenn_regel_laeuft: [inventar-nach-skill-aenderung]
+      max_gleichzeitig: 1
+    eskalation:
+      wiederholungen: 0
+      danach: board_blocken
+
+  # --- Nachricht-Trigger, absichtlich gesperrt -----------------------------
+  - id: handel-spuren-auf-zuruf
+    beschreibung: >
+      Dokumentierte Grenze: Handel wird NIE durch einen Trigger ausgeloest.
+      Die Regel steht hier, damit die Grenze sichtbar ist und nicht vergessen
+      wird.
+    skill: brainfiles/handel-spuren
+    skill_art: skill
+    trigger:
+      typ: nachricht
+      prioritaet: 90
+      bedingungen:
+        kanal: telegram
+        muster:
+          - "^spuren pruefen$"
+        nur_von:
+          - "7648512088"
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: gesperrt
+    timeout_s: 120
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 1
+      fenster_s: 86400

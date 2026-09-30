@@ -698,6 +698,25 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   Beispiel `projectatlas watch-status`: meldet `active: false` auch bei laufendem
   Watcher, weil es einen Durchgang meint. Wer damit prueft, startet einen zweiten
   Prozess. Maßgeblich ist die PID-Datei plus `Get-Process`.
+  **Gilt auch fuer eine Statusdatei, die die Komponente SELBST schreibt:** stirbt
+  der Lauf hart, bleibt `state: running` mit der toten PID darin stehen, bis
+  jemand die Datei ueberschreibt — der Zustand ist eine Behauptung, die den
+  Prozess ueberlebt. Eine Wache liest deshalb den PID AUS der Datei und prueft
+  den Prozess, statt dem Wort zu glauben, und meldet das Alter der Datei mit.
+  Und der Lauf selbst gehoert so gebaut, dass er sein Ende schreibt (`state`
+  + Grund), damit der Zustand nach einem Fehler nicht auf dem letzten guten
+  Stand stehen bleibt.
+- **Ein unerwartetes Ende eines selbst gestarteten Prozesses ist erst dann ein
+  Absturz, wenn kein Nachfolger laeuft.** In diesem Baum arbeiten mehrere
+  Sitzungen gleichzeitig: eine andere kann denselben Lauf bewusst beendet, den
+  Fehler im Repo repariert und mit derselben Binary neu gestartet haben — dann
+  kommt die Exit-Meldung des eigenen Prozesses, waehrend der Dienst gesund
+  weiterlaeuft. Vor jeder Ursachensuche zwei Blicke: laeuft ein JUENGERER
+  Prozess desselben Programms (Prozessliste mit `CreationDate` gegen die eigene
+  Startzeit) UND gibt es im Repo einen frischen Commit (`git log --oneline -3`)?
+  Beides zusammen heisst „eine fremde Sitzung hat uebernommen": dann nicht neu
+  starten, nicht neu bauen (die laufende Binary ist unter Windows gesperrt) und
+  den Befund als solchen berichten, samt dem, was offen bleibt.
 - **Unter Windows ist ein venv-Prozess ein PAAR** (Launcher-Shim + Kind). Ein
   `Stop-Process` auf die verfolgte PID laesst das Kind weiterlaufen - und das
   schreibt unsichtbar in dieselben Dateien. Vor „beendet“ per

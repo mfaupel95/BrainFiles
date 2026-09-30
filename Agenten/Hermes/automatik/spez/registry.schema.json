@@ -1,0 +1,270 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://brainfiles.local/schema/skill-trigger-registry/1.0.0",
+ "title": "Skill-Trigger-Registry",
+ "description": "Deklarative Registry: welcher Trigger darf welchen Skill mit welchen Parametern und welchen erlaubten Aktionen starten. Version 1.0.0.",
+ "type": "object",
+ "required": ["registry_version", "defaults", "regeln"],
+ "additionalProperties": false,
+ "properties": {
+  "registry_version": {
+   "description": "Semver der Registry-Datei. Die Engine lehnt eine Major-Version ab, die sie nicht kennt.",
+   "type": "string",
+   "pattern": "^\\d+\\.\\d+\\.\\d+$"
+  },
+  "beschreibung": {"type": "string"},
+  "defaults": {
+   "description": "Gilt fuer jede Regel, die das Feld nicht selbst setzt. Absichtlich restriktiv: eine Regel ohne Angaben laeuft als Probelauf ohne Wirkung.",
+   "type": "object",
+   "required": ["modus", "timeout_s", "rate_limit"],
+   "additionalProperties": false,
+   "properties": {
+    "modus": {"$ref": "#/$defs/modus"},
+    "timeout_s": {"type": "integer", "minimum": 5, "maximum": 3600},
+    "rate_limit": {"$ref": "#/$defs/rate_limit"},
+    "kanal": {"$ref": "#/$defs/kanal"},
+    "arbeitsverzeichnis": {"type": "string"}
+   }
+  },
+  "regeln": {
+   "type": "array",
+   "minItems": 1,
+   "items": {"$ref": "#/$defs/regel"}
+  }
+ },
+ "$defs": {
+  "modus": {
+   "description": "dry_run = Engine protokolliert nur, was sie tun wuerde (kein Skill-Start). auto = Skill laeuft ohne Rueckfrage. bestaetigung = Engine fragt ueber den Kanal und startet erst nach Ja. gesperrt = Regel bleibt in der Datei, wird aber nie ausgefuehrt.",
+   "enum": ["dry_run", "auto", "bestaetigung", "gesperrt"]
+  },
+  "kanal": {
+   "description": "Wohin Ergebnis, Rueckfrage und Eskalation gehen.",
+   "enum": ["log", "board", "telegram", "log+board", "log+telegram", "alle"]
+  },
+  "rate_limit": {
+   "type": "object",
+   "required": ["max_laeufe", "fenster_s"],
+   "additionalProperties": false,
+   "properties": {
+    "max_laeufe": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "fenster_s": {"type": "integer", "minimum": 60, "maximum": 604800},
+    "cooldown_s": {
+     "description": "Mindestabstand zwischen zwei Laeufen derselben Regel.",
+     "type": "integer", "minimum": 0, "maximum": 86400
+    }
+   }
+  },
+  "trigger": {
+   "type": "object",
+   "required": ["typ"],
+   "properties": {
+    "typ": {
+     "description": "board_event: Kanban-Statuswechsel. datei: Pfadmuster wurde geaendert. zeit: Intervall oder Cron-Ausdruck. nachricht: eingehende Nachricht auf einem Kanal. skill_ergebnis: ein anderer Regel-Lauf ist fertig (Verkettung).",
+     "enum": ["board_event", "datei", "zeit", "nachricht", "skill_ergebnis"]
+    },
+    "prioritaet": {
+     "description": "0 = hoechste. Bei gleichzeitigen Treffern laeuft die kleinere Zahl zuerst; gleiche Prioritaet wird nach Reihenfolge in der Datei abgearbeitet.",
+     "type": "integer", "minimum": 0, "maximum": 100
+    },
+    "bedingungen": {
+     "description": "Alle Eintraege muessen zutreffen (UND). Schluessel sind trigger-typ-spezifisch, siehe allOf.",
+     "type": "object"
+    }
+   },
+   "allOf": [
+    {
+     "if": {"properties": {"typ": {"const": "board_event"}}, "required": ["typ"]},
+     "then": {
+      "properties": {
+       "bedingungen": {
+        "type": "object",
+        "required": ["ereignis"],
+        "additionalProperties": false,
+        "properties": {
+         "ereignis": {"enum": ["created", "claimed", "blocked", "review", "done", "failed"]},
+         "assignee": {"type": "string"},
+         "titel_enthaelt": {"type": "string"},
+         "board": {"type": "string"}
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {"properties": {"typ": {"const": "datei"}}, "required": ["typ"]},
+     "then": {
+      "properties": {
+       "bedingungen": {
+        "type": "object",
+        "required": ["pfad_muster"],
+        "additionalProperties": false,
+        "properties": {
+         "pfad_muster": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+         "aktion": {"enum": ["created", "modified", "deleted"]},
+         "mindestabstand_s": {"type": "integer", "minimum": 0}
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {"properties": {"typ": {"const": "zeit"}}, "required": ["typ"]},
+     "then": {
+      "properties": {
+       "bedingungen": {
+        "type": "object",
+        "additionalProperties": false,
+        "oneOf": [{"required": ["intervall_min"]}, {"required": ["cron"]}],
+        "properties": {
+         "intervall_min": {"type": "integer", "minimum": 5},
+         "cron": {"type": "string"},
+         "nur_wenn_wach": {
+          "description": "true = Lauf entfaellt, wenn der Rechner zur Startzeit aus war (kein Nachholen).",
+          "type": "boolean"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {"properties": {"typ": {"const": "nachricht"}}, "required": ["typ"]},
+     "then": {
+      "properties": {
+       "bedingungen": {
+        "type": "object",
+        "required": ["kanal", "muster"],
+        "additionalProperties": false,
+        "properties": {
+         "kanal": {"enum": ["telegram", "cli", "a2a", "email"]},
+         "muster": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+         "nur_von": {"type": "array", "items": {"type": "string"}}
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {"properties": {"typ": {"const": "skill_ergebnis"}}, "required": ["typ"]},
+     "then": {
+      "properties": {
+       "bedingungen": {
+        "type": "object",
+        "required": ["regel", "status"],
+        "additionalProperties": false,
+        "properties": {
+         "regel": {"type": "string"},
+         "status": {"enum": ["erfolg", "fehler", "beliebig"]}
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  "regel": {
+   "type": "object",
+   "required": ["id", "skill", "trigger", "erlaubte_aktionen"],
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "description": "Eindeutig, stabil; wird im Log und in skill_ergebnis-Triggern referenziert.",
+     "type": "string",
+     "pattern": "^[a-z0-9][a-z0-9-]{2,48}$"
+    },
+    "beschreibung": {"type": "string"},
+    "skill": {
+     "description": "Skill-Pfad relativ zum Profil-skills-Verzeichnis ODER ein Skript unter Agenten/Hermes/scripts. Die Engine lehnt unbekannte Skills ab.",
+     "type": "string"
+    },
+    "skill_art": {"enum": ["skill", "skript"]},
+    "trigger": {"$ref": "#/$defs/trigger"},
+    "parameter": {
+     "description": "Werte, die an den Skill uebergeben werden. Nur flache Typen, damit das Log vollstaendig bleibt.",
+     "type": "object",
+     "additionalProperties": {"type": ["string", "number", "boolean"]}
+    },
+    "erlaubte_aktionen": {
+     "description": "Obergrenze der Wirkung. Die Engine bricht ab, sobald der Lauf etwas ausserhalb dieser Liste versucht. lesen ist immer implizit erlaubt.",
+     "type": "array",
+     "minItems": 1,
+     "uniqueItems": true,
+     "items": {
+      "enum": [
+       "lesen",
+       "bericht_schreiben",
+       "datei_schreiben",
+       "git_commit",
+       "git_push",
+       "nachricht_senden",
+       "board_schreiben",
+       "prozess_starten",
+       "loeschen",
+       "handel"
+      ]
+     }
+    },
+    "schreibpfade": {
+     "description": "Pflicht, sobald datei_schreiben oder git_commit erlaubt ist: ausschliessliche Whitelist der Zielpfade (Praefix-Vergleich).",
+     "type": "array",
+     "items": {"type": "string"}
+    },
+    "modus": {"$ref": "#/$defs/modus"},
+    "timeout_s": {"type": "integer", "minimum": 5, "maximum": 3600},
+    "rate_limit": {"$ref": "#/$defs/rate_limit"},
+    "kanal": {"$ref": "#/$defs/kanal"},
+    "abbruch": {
+     "description": "Abbruchbedingungen, die VOR dem Start geprueft werden.",
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "bei_fehlerstreak": {
+       "description": "Nach so vielen Fehlerlaeufen in Folge wird die Regel automatisch auf gesperrt gesetzt und gemeldet.",
+       "type": "integer", "minimum": 1, "maximum": 20
+      },
+      "nicht_wenn_regel_laeuft": {"type": "array", "items": {"type": "string"}},
+      "nur_wenn_pfad_existiert": {"type": "array", "items": {"type": "string"}},
+      "max_gleichzeitig": {"type": "integer", "minimum": 1, "maximum": 10}
+     }
+    },
+    "eskalation": {
+     "description": "Was bei Fehler passiert. Reaktionsschicht (Task t_f682e5c1) liest dieses Feld.",
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "wiederholungen": {"type": "integer", "minimum": 0, "maximum": 5},
+      "wiederhol_abstand_s": {"type": "integer", "minimum": 10},
+      "danach": {"enum": ["melden", "board_blocken", "regel_sperren", "still"]}
+     }
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "erlaubte_aktionen": {
+        "type": "array",
+        "contains": {"enum": ["datei_schreiben", "git_commit", "loeschen"]}
+       }
+      }
+     },
+     "then": {"required": ["schreibpfade"]}
+    },
+    {
+     "if": {
+      "properties": {
+       "erlaubte_aktionen": {
+        "type": "array",
+        "contains": {"enum": ["handel", "git_push", "loeschen"]}
+       }
+      }
+     },
+     "then": {
+      "properties": {"modus": {"enum": ["bestaetigung", "gesperrt", "dry_run"]}},
+      "required": ["modus"]
+     }
+    }
+   ]
+  }
+ }
+}

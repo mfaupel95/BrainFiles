@@ -52,7 +52,13 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    schon FREMDE Eintraege im Index stehen - die pfadbeschraenkte Form nehmen
    (`git commit -m "..." -- <eigene pfade>`, siehe Regel 3): sie committet den
    Arbeitsbaum genau dieser Pfade und laesst die fremde Vormerkung liegen. Ein
-   `git add -- <eigene> && git commit` ohne dieses Tor ist genau der Fehler.
+   Ein `git add -- <eigene> && git commit` ohne dieses Tor ist genau der Fehler.
+      Als Einzeiler, der wirklich abbrechen kann (die erwartete Zahl VORHER aus der
+      eigenen Pfadliste zaehlen):
+      `git add -- <eigene pfade> && { n=$(git diff --cached --name-only | wc -l); [ "$n" -eq <erwartet> ] || { echo "ABBRUCH: $n Pfade im Index"; exit 1; }; }`
+      Wird die Zahl nur gedruckt und im naechsten Werkzeugaufruf committet, ist
+      nichts geprueft: die Ausgabe laeuft durch und die fremden Pfade fallen erst
+      in `git show --stat` auf.
    **Diese Pruefung ist eine Momentaufnahme.** Die Routine
    `fremdarbeit-einziehen.ps1` laeuft zu festen Zeiten und baut dabei eigene
    Indizes um; kurz danach trug der geteilte Index einen fremden

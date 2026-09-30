@@ -1,0 +1,87 @@
+# Absichtlich FEHLERHAFTE Registry - Negativtest fuer registry_pruefen.py.
+# Jede Regel verletzt genau eine Sicherheitsregel. Erwartet: scripts/test_registry.py
+# findet alle unten genannten Codes. Diese Datei nie in Betrieb nehmen.
+
+registry_version: "1.0.0"
+beschreibung: Negativtest.
+
+defaults:
+  modus: dry_run
+  timeout_s: 300
+  kanal: log
+  rate_limit:
+    max_laeufe: 6
+    fenster_s: 86400
+
+regeln:
+
+  # S1: Skill existiert nicht.
+  - id: s1-unbekannter-skill
+    skill: brainfiles/gibt-es-nicht
+    skill_art: skill
+    trigger:
+      typ: zeit
+      bedingungen: {intervall_min: 60}
+    erlaubte_aktionen: [lesen]
+    modus: auto
+    rate_limit: {max_laeufe: 2, fenster_s: 86400}
+    eskalation: {wiederholungen: 0, danach: melden}
+
+  # S2: Handel im Modus auto. Faengt zusaetzlich das Schema (allOf) ab.
+  - id: s2-handel-automatisch
+    skill: brainfiles/handel-spuren
+    skill_art: skill
+    trigger:
+      typ: zeit
+      bedingungen: {intervall_min: 60}
+    erlaubte_aktionen: [lesen, handel]
+    modus: auto
+    rate_limit: {max_laeufe: 2, fenster_s: 86400}
+    eskalation: {wiederholungen: 0, danach: melden}
+
+  # S3: destruktiver Skill (sichern kennt 'reset --hard') im Modus auto.
+  - id: s3-destruktiv-automatisch
+    skill: claude-code-imports/sichern
+    skill_art: skill
+    trigger:
+      typ: zeit
+      bedingungen: {intervall_min: 60}
+    erlaubte_aktionen: [lesen, datei_schreiben]
+    schreibpfade: ["Agenten/Hermes/kanban/workspaces/t_3d28119b"]
+    modus: auto
+    rate_limit: {max_laeufe: 2, fenster_s: 86400}
+    eskalation: {wiederholungen: 0, danach: melden}
+
+  # S4: Schreibpfad ist eine Laufwerkswurzel.
+  - id: s4-zu-weiter-schreibpfad
+    skill: note-taking/obsidian
+    skill_art: skill
+    trigger:
+      typ: zeit
+      bedingungen: {intervall_min: 60}
+    erlaubte_aktionen: [lesen, datei_schreiben]
+    schreibpfade: ["C:/"]
+    modus: bestaetigung
+    rate_limit: {max_laeufe: 2, fenster_s: 86400}
+    eskalation: {wiederholungen: 0, danach: melden}
+
+  # S6: Modus auto ohne abbruch und ohne eskalation.
+  - id: s6-auto-ohne-netz
+    skill: brainfiles/mcp-sync
+    skill_art: skill
+    trigger:
+      typ: zeit
+      bedingungen: {intervall_min: 60}
+    erlaubte_aktionen: [lesen]
+    modus: auto
+    rate_limit: {max_laeufe: 2, fenster_s: 86400}
+
+  # Verkettung auf eine Regel, die es nicht gibt.
+  - id: kette-ins-leere
+    skill: brainfiles/mcp-sync
+    skill_art: skill
+    trigger:
+      typ: skill_ergebnis
+      bedingungen: {regel: gibt-es-nicht, status: erfolg}
+    erlaubte_aktionen: [lesen]
+    modus: dry_run

@@ -1,0 +1,220 @@
+# Skill-Trigger-Registry - Beispiel mit sechs echten Regeln
+# Schema: registry.schema.json (Version 1.0.0)
+# Pruefen: python scripts/registry_pruefen.py registry.example.yaml
+#
+# Alle "skill"-Werte existieren im Profil one-skill-to-rule-them-all, alle
+# "skript"-Werte unter Agenten/Hermes/scripts. Der Validator lehnt jeden
+# unbekannten Namen ab - Regeln sind also implementierbar ohne Rueckfrage.
+
+registry_version: "1.0.0"
+beschreibung: >
+  Welche Skills duerfen ohne expliziten Nutzeraufruf laufen und wodurch werden
+  sie ausgeloest. Grundhaltung: nur Regeln mit der Nebenwirkungsklasse none oder
+  local duerfen modus=auto haben; alles darueber braucht Bestaetigung.
+
+defaults:
+  modus: dry_run          # bewusst: eine unvollstaendige Regel wirkt nicht
+  timeout_s: 300
+  kanal: log+telegram
+  rate_limit:
+    max_laeufe: 6
+    fenster_s: 86400
+    cooldown_s: 600
+
+regeln:
+
+  # --- 1. Datei-Trigger: Skill-Bibliothek hat sich geaendert -----------------
+  # Nebenwirkung: local (schreibt nur zwei Berichtsdateien im eigenen Ordner).
+  - id: inventar-nach-skill-aenderung
+    beschreibung: >
+      Sobald eine SKILL.md im Profil angelegt oder geaendert wird, das Inventar
+      neu erzeugen. Liefert die Grundlage fuer jede weitere Registry-Pruefung
+      und faellt auf, wenn ein neuer Skill eine hoehere Nebenwirkungsklasse
+      mitbringt als die Registry fuer ihn erlaubt.
+    skill: scripts/inventar.py
+    skill_art: skript
+    trigger:
+      typ: datei
+      prioritaet: 20
+      bedingungen:
+        pfad_muster:
+          - "Agenten/Hermes/profiles/one-skill-to-rule-them-all/skills/**/SKILL.md"
+        aktion: modified
+        mindestabstand_s: 120   # Sammelaenderungen nicht 30x ausloesen
+    parameter:
+      print: false
+    erlaubte_aktionen: [lesen, bericht_schreiben, datei_schreiben]
+    schreibpfade:
+      - "Agenten/Hermes/kanban/workspaces/t_3d28119b/inventar.json"
+      - "Agenten/Hermes/kanban/workspaces/t_3d28119b/inventar.md"
+    modus: auto
+    timeout_s: 120
+    rate_limit:
+      max_laeufe: 12
+      fenster_s: 86400
+      cooldown_s: 120
+    abbruch:
+      bei_fehlerstreak: 3
+      nur_wenn_pfad_existiert:
+        - "Agenten/Hermes/profiles/one-skill-to-rule-them-all/skills"
+      max_gleichzeitig: 1
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 60
+      danach: melden
+
+  # --- 2. Zeit-Trigger: woechentlicher Nutzungsbericht ----------------------
+  # Nebenwirkung: none (liest 'hermes curator usage', schreibt nichts).
+  # Ersetzt den bestehenden Cron 'skill-usage-report' (Montag 9:30) 1:1.
+  - id: skill-nutzung-woechentlich
+    beschreibung: >
+      Kontextkosten der Bibliothek im Blick halten: Top-10 nach Aktivierung und
+      alle Skills mit use=0. Der Bericht IST die Lieferung; Archivieren bleibt
+      Max' Entscheidung und wird ausdruecklich nicht automatisiert.
+    skill: scripts/skill-usage-report.py
+    skill_art: skript
+    trigger:
+      typ: zeit
+      prioritaet: 50
+      bedingungen:
+        cron: "30 9 * * 1"
+        nur_wenn_wach: true    # kein Nachholen; der Rechner faellt oefter aus
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: auto
+    timeout_s: 180
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 2
+      fenster_s: 604800
+    eskalation:
+      wiederholungen: 0
+      danach: melden
+
+  # --- 3. Board-Trigger: blockierte Karte sofort melden --------------------
+  # Nebenwirkung: extern (Telegram), aber nur Text - kein Schreibzugriff.
+  - id: board-blocker-melden
+    beschreibung: >
+      Eine Karte auf blocked bedeutet: ein Agent wartet auf einen Menschen.
+      Ohne Meldung liegt sie bis zum naechsten Blick aufs Board still. Meldung
+      enthaelt Kartennummer, Titel und Blockgrund, keine Anhaenge.
+    skill: chat
+    skill_art: skill
+    trigger:
+      typ: board_event
+      prioritaet: 0
+      bedingungen:
+        ereignis: blocked
+        board: default
+    parameter:
+      vorlage: "Karte {id} blockiert ({kind}): {reason}"
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: auto
+    timeout_s: 60
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 20
+      fenster_s: 3600
+      cooldown_s: 0
+    eskalation:
+      wiederholungen: 2
+      wiederhol_abstand_s: 30
+      danach: still      # eine fehlgeschlagene Meldung darf nichts blockieren
+
+  # --- 4. Zeit-Trigger: MCP-Drift erkennen ---------------------------------
+  # Nebenwirkung: none laut Inventar; der Skill prueft gegen MCP-Manifest.json.
+  # Reparieren ist NICHT erlaubt: beide Apps ueberschreiben ihre Config aus
+  # eigenem Speicher, ein automatischer Eingriff verliert gegen die App.
+  - id: mcp-drift-pruefen
+    beschreibung: >
+      Taeglich pruefen, ob Claude- und Hermes-MCP-Konfiguration noch zum
+      Manifest passen. Nur Befund melden, nie schreiben.
+    skill: brainfiles/mcp-sync
+    skill_art: skill
+    trigger:
+      typ: zeit
+      prioritaet: 40
+      bedingungen:
+        intervall_min: 1440
+        nur_wenn_wach: true
+    parameter:
+      nur_pruefen: true
+    erlaubte_aktionen: [lesen, nachricht_senden]
+    modus: auto
+    timeout_s: 240
+    kanal: log+telegram
+    rate_limit:
+      max_laeufe: 2
+      fenster_s: 86400
+    abbruch:
+      bei_fehlerstreak: 3
+      nur_wenn_pfad_existiert:
+        - "Agenten/MCP-Manifest.json"
+    eskalation:
+      wiederholungen: 1
+      wiederhol_abstand_s: 300
+      danach: melden
+
+  # --- 5. Verkettung: nach Befund den Arbeitsbaum sichern ------------------
+  # Nebenwirkung: destruktiv laut Inventar (der Skill kennt 'reset --hard').
+  # Darum: Bestaetigung Pflicht, Schreibpfade eng, kein push.
+  - id: sichern-nach-inventaraenderung
+    beschreibung: >
+      Wenn das Inventar sich geaendert hat, den Arbeitsbaum committen, damit
+      Skill-Aenderungen nicht unversioniert liegen bleiben. Bestaetigung ist
+      Pflicht, weil der Skill auch Kommandos kennt, die Aenderungen verwerfen.
+    skill: claude-code-imports/sichern
+    skill_art: skill
+    trigger:
+      typ: skill_ergebnis
+      prioritaet: 60
+      bedingungen:
+        regel: inventar-nach-skill-aenderung
+        status: erfolg
+    parameter:
+      nur_eigene_pfade: true
+    erlaubte_aktionen: [lesen, datei_schreiben, git_commit]
+    schreibpfade:
+      - "Agenten/Hermes/profiles/one-skill-to-rule-them-all/skills"
+      - "Agenten/Hermes/kanban/workspaces/t_3d28119b"
+    modus: bestaetigung
+    timeout_s: 600
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 3
+      fenster_s: 86400
+      cooldown_s: 3600
+    abbruch:
+      bei_fehlerstreak: 2
+      nicht_wenn_regel_laeuft: [inventar-nach-skill-aenderung]
+      max_gleichzeitig: 1
+    eskalation:
+      wiederholungen: 0
+      danach: board_blocken
+
+  # --- 6. Nachricht-Trigger, absichtlich gesperrt --------------------------
+  # Nebenwirkung: geld (der Skill kennt --live). Die Regel steht hier als
+  # dokumentierte Grenze: Handel wird NIE durch einen Trigger ausgeloest.
+  - id: handel-spuren-auf-zuruf
+    beschreibung: >
+      Bleibt gesperrt. Handelsskills laufen nur auf ausdruecklichen Zuruf in
+      einer Sitzung mit anwesendem Nutzer. Der Eintrag existiert, damit die
+      Entscheidung in der Registry sichtbar ist und nicht in einem Kopf.
+    skill: brainfiles/handel-spuren
+    skill_art: skill
+    trigger:
+      typ: nachricht
+      prioritaet: 90
+      bedingungen:
+        kanal: telegram
+        muster: ["^spuren pruefen$"]
+        nur_von: ["7648512088"]
+    erlaubte_aktionen: [lesen, handel]
+    modus: gesperrt
+    timeout_s: 600
+    kanal: telegram
+    rate_limit:
+      max_laeufe: 1
+      fenster_s: 86400
+    eskalation:
+      wiederholungen: 0
+      danach: melden
