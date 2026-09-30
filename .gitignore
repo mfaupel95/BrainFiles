@@ -129,6 +129,7 @@ Agenten/Handel/stand/
 # Zugangsdaten: sie werden zusammen mit config.json geladen (Freqtrade mischt
 # mehrere --config tief ineinander).
 !Agenten/Handel/freqtrade/bots.json
+!Agenten/Handel/freqtrade/bots.py
 !Agenten/Handel/freqtrade/bots_starten.sh
 !Agenten/Handel/freqtrade/user_data/strategies/*.py
 !Agenten/Handel/freqtrade/user_data/bots/*.json
