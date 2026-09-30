@@ -87,26 +87,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
       moondev_marktlage. Verwandt: T-115.
 
-- [ ] **T-214 — Gemessen: der Umtausch in EURC/USDC lohnt nicht — nichts umtauschen**
-      Kontext: Die Erweiterung vom 30.09.2026 schaltet nichts scharf - das
-      Guthaben-Tor vergleicht weiter gegen `mindest_guthaben_je_quote` 60, und
-      gemessen liegen 46,81 EUR / 25,08 USDC / 0,00 EURC frei. Die Frage "soll
-      ich EUR in EURC oder USDC tauschen, um das Tor zu oeffnen" ist am
-      30.09.2026 mit `Agenten/Handel/kraken/quoten_vergleich.py` gemessen
-      worden - Antwort NEIN, aus zwei unabhaengigen Gruenden: (1) kein
-      Instrument der Watchlist ist nur in USDC oder EURC erreichbar (alle 17
-      haben ein EUR-Paar; Kraken fuehrt 546 EUR-Paare gegen 47 USDC und 3
-      EURC), der Umtausch erschliesst also nichts; (2) die USDC-Paare sind im
-      Mittel 6,6 bp WEITER als die EUR-Paare (EURC 3,7 bp, Median aus drei
-      Abrufen, 13 Instrumente), waehrend der Umtausch einmalig 60 bp kostet -
-      es gibt keinen Break-even. Das kraken-Buch ist ausserdem 4/4 voll.
-      Naechster Schritt: NICHTS tun (Empfehlung). Der Umtausch wird nur wieder
-      ein Thema, wenn das Guthaben ohnehin in USDC/EURC liegt - dann handelt
-      die Spur ohne Tausch. Erneut messen mit `quoten_vergleich.py --quote X`,
-      nie schaetzen.
-      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken/wachen.json,
-      Agenten/Handel/kraken/quoten_vergleich.py,
-      MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md.
 
 - [ ] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
       Kontext: Der Demo-Lauf (Werkstatt/omnitrade, OKX-Demo, BTCUSDC) hat keine
@@ -1124,45 +1104,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/swap (handeln.py, kandidaten.py, tests/)
 
 
-- [ ] **T-125 — Fremdarbeit im Arbeitsbaum liegen gelassen (parallele Sitzung)**
-      Kontext: Beim Commit am 25.09.2026 lagen Aenderungen im Arbeitsbaum, die nicht
-      aus dieser Sitzung stammen: geloescht `Agenten/Hermes/scripts/test_waisen_wache.py`,
-      geaendert vier Skill-Dateien (arbeitsbaum-git-hygiene, dauerprozess-bewachen,
-      fremdrepo-agent-start, laufwerk-platz-schaffen) sowie
-      `handel-spuren/references/boersen-aufrufe.md` und `okx-fehlermeldungen.md`, neu
-      `Agenten/Hermes/skills/brainfiles/sicherung-fahren/` und `kraken-cli/` im
-      Wurzelordner. Bewusst NICHT mitgenommen (eigene Pfade stagen).
-      Naechster Schritt: der naechste Lauf von `fremdarbeit-einziehen.ps1` (taeglich
-      20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
-      `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
-      Angelegt: 2026-09-25
 
 
-- [ ] **T-124 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
-      Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
-      angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
-      Zeile kommt einmal statt in jedem Zyklus. Das ist gewollt (Rauschen), laesst
-      aber den Dauerfall offen: eine scharfe Spur, die wochenlang an Guthaben oder
-      einem anderen Tor haengt, faellt nur im Tagesbericht auf.
-      Naechster Schritt: pruefen, ob `sperrgruende.py` oder `spuren_stand.py` von
-      einer Wache taeglich aufgerufen werden soll (Muster stille-spuren-wache).
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
 
 
-- [ ] **T-123 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
-      Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
-      Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am
-      24.09. 18:49 gestartet) neben Basis und Mittel. Stufenlaeufe senden nicht und
-      gehen nie live, ein Doppel kostet also nur Rechenzeit und Netz — es ist aber
-      dieselbe Klasse wie die vier gleichzeitigen Laeufe vom 16.09.2026, die bei
-      offenem Freigabefenster echtes Doppelorder-Risiko trugen. Nicht angefasst
-      (Fremdstart einer anderen Sitzung).
-      Naechster Schritt: pruefen, welcher Ausloeser den zweiten hoch-Lauf startet
-      (Get-ScheduledTask der MaxHirn-Handel-Aufgaben), ein Paar geordnet beenden und
-      IgnoreNew setzen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/dauerlauf.hoch.pid, Agenten/Routinen/handel-dauerlauf.ps1
 
 
 - [ ] **T-106 — dmcsystem: Modellwahl-Diskussion aufnehmen**
@@ -1558,17 +1503,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
 
 
-- [ ] **T-079 — swap: der erste echte Live-Einstieg steht noch aus**
-      Kontext: swap hat seit dem 25.09.2026 einen tragfaehigen Zweig-Trenner (`modus`
-      an jeder Position, Ausstiege und Tore nur im eigenen Zweig, Bereinigung nur
-      fuer Altbestand ohne Feld). Im Journal stehen bis 24.09. AUSSCHLIESSLICH
-      Papierzeilen; der Live-Zweig hat noch nie geordert, obwohl sein Freigabefenster
-      seit dem 24.09. 23:55 offen ist. Belegt ist damit nur, dass eine Papierposition
-      jetzt stehen bleibt (kein `buchbereinigung` mehr im Kreis).
-      Naechster Schritt: beim ersten Live-Kauf pruefen, dass die Zeile `modus=live`
-      traegt und der naechste Papierzweig sie NICHT verkauft.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/swap/
 
 
 - [ ] **T-078 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
@@ -2526,6 +2460,77 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-214 — Gemessen: der Umtausch in EURC/USDC lohnt nicht — nichts umtauschen**
+      Kontext: Die Erweiterung vom 30.09.2026 schaltet nichts scharf - das
+      Guthaben-Tor vergleicht weiter gegen `mindest_guthaben_je_quote` 60, und
+      gemessen liegen 46,81 EUR / 25,08 USDC / 0,00 EURC frei. Die Frage "soll
+      ich EUR in EURC oder USDC tauschen, um das Tor zu oeffnen" ist am
+      30.09.2026 mit `Agenten/Handel/kraken/quoten_vergleich.py` gemessen
+      worden - Antwort NEIN, aus zwei unabhaengigen Gruenden: (1) kein
+      Instrument der Watchlist ist nur in USDC oder EURC erreichbar (alle 17
+      haben ein EUR-Paar; Kraken fuehrt 546 EUR-Paare gegen 47 USDC und 3
+      EURC), der Umtausch erschliesst also nichts; (2) die USDC-Paare sind im
+      Mittel 6,6 bp WEITER als die EUR-Paare (EURC 3,7 bp, Median aus drei
+      Abrufen, 13 Instrumente), waehrend der Umtausch einmalig 60 bp kostet -
+      es gibt keinen Break-even. Das kraken-Buch ist ausserdem 4/4 voll.
+      Naechster Schritt: NICHTS tun (Empfehlung). Der Umtausch wird nur wieder
+      ein Thema, wenn das Guthaben ohnehin in USDC/EURC liegt - dann handelt
+      die Spur ohne Tausch. Erneut messen mit `quoten_vergleich.py --quote X`,
+      nie schaetzen.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken/wachen.json,
+      Agenten/Handel/kraken/quoten_vergleich.py,
+      MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md.
+      Gemessen am 30.09.2026 mit Agenten/Handel/kraken/quoten_vergleich.py: kein Instrument der Watchlist ist nur in USDC/EURC erreichbar, und die USDC-Paare sind im Mittel 6,6 bp weiter als die EUR-Paare - ein Umtausch kostet 60 bp und erschliesst nichts. Antwort: NICHT umtauschen; die Erweiterung bleibt als Versicherung stehen.
+- [x] **T-125 — Fremdarbeit im Arbeitsbaum liegen gelassen (parallele Sitzung)**
+      Kontext: Beim Commit am 25.09.2026 lagen Aenderungen im Arbeitsbaum, die nicht
+      aus dieser Sitzung stammen: geloescht `Agenten/Hermes/scripts/test_waisen_wache.py`,
+      geaendert vier Skill-Dateien (arbeitsbaum-git-hygiene, dauerprozess-bewachen,
+      fremdrepo-agent-start, laufwerk-platz-schaffen) sowie
+      `handel-spuren/references/boersen-aufrufe.md` und `okx-fehlermeldungen.md`, neu
+      `Agenten/Hermes/skills/brainfiles/sicherung-fahren/` und `kraken-cli/` im
+      Wurzelordner. Bewusst NICHT mitgenommen (eigene Pfade stagen).
+      Naechster Schritt: der naechste Lauf von `fremdarbeit-einziehen.ps1` (taeglich
+      20:40) oder eine Sitzung committet sie mit Autor „Andere Sitzung“;
+      `kraken-cli/` in der Wurzel gehoert nach Werkstatt/Repos.
+      Angelegt: 2026-09-25
+      Doppelter Eintrag zu T-081 (derselbe Vorgang vom 25.09.2026); T-081 traegt den spaeteren Stand. Dort bleibt er offen.
+- [x] **T-124 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
+      Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
+      angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
+      Zeile kommt einmal statt in jedem Zyklus. Das ist gewollt (Rauschen), laesst
+      aber den Dauerfall offen: eine scharfe Spur, die wochenlang an Guthaben oder
+      einem anderen Tor haengt, faellt nur im Tagesbericht auf.
+      Naechster Schritt: pruefen, ob `sperrgruende.py` oder `spuren_stand.py` von
+      einer Wache taeglich aufgerufen werden soll (Muster stille-spuren-wache).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
+      Doppelter Eintrag: Inhalt ist byte-gleich mit T-080 (parallele Sitzungen, 25.09.2026). Der Punkt bleibt unter T-080 offen.
+- [x] **T-123 — Zweiter Stufenlauf „hoch“ laeuft doppelt**
+      Kontext: Beim Neustart des Basis-Dauerlaufs am 25.09.2026 standen ZWEI
+      Prozesspaare mit `--risiko hoch` (60536/37924 und 60424/38452, beide am
+      24.09. 18:49 gestartet) neben Basis und Mittel. Stufenlaeufe senden nicht und
+      gehen nie live, ein Doppel kostet also nur Rechenzeit und Netz — es ist aber
+      dieselbe Klasse wie die vier gleichzeitigen Laeufe vom 16.09.2026, die bei
+      offenem Freigabefenster echtes Doppelorder-Risiko trugen. Nicht angefasst
+      (Fremdstart einer anderen Sitzung).
+      Naechster Schritt: pruefen, welcher Ausloeser den zweiten hoch-Lauf startet
+      (Get-ScheduledTask der MaxHirn-Handel-Aufgaben), ein Paar geordnet beenden und
+      IgnoreNew setzen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/dauerlauf.hoch.pid, Agenten/Routinen/handel-dauerlauf.ps1
+      Doppelter Eintrag: Inhalt ist byte-gleich mit T-078 (parallele Sitzungen, 25.09.2026). Der Punkt bleibt unter T-078 offen.
+- [x] **T-079 — swap: der erste echte Live-Einstieg steht noch aus**
+      Kontext: swap hat seit dem 25.09.2026 einen tragfaehigen Zweig-Trenner (`modus`
+      an jeder Position, Ausstiege und Tore nur im eigenen Zweig, Bereinigung nur
+      fuer Altbestand ohne Feld). Im Journal stehen bis 24.09. AUSSCHLIESSLICH
+      Papierzeilen; der Live-Zweig hat noch nie geordert, obwohl sein Freigabefenster
+      seit dem 24.09. 23:55 offen ist. Belegt ist damit nur, dass eine Papierposition
+      jetzt stehen bleibt (kein `buchbereinigung` mehr im Kreis).
+      Naechster Schritt: beim ersten Live-Kauf pruefen, dass die Zeile `modus=live`
+      traegt und der naechste Papierzweig sie NICHT verkauft.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/swap/
+      Doppelter Eintrag: Inhalt ist byte-gleich mit T-077 (parallele Sitzungen haben denselben Punkt zweimal vergeben, 25.09.2026). Der Punkt bleibt unter T-077 offen.
 - [x] **T-098 — Breite-Reihe am 02.10.2026 erstmals auswerten**
       Kontext: Die Reihe laeuft seit 25.09.2026 (erste Messung 29 von 29 = 100 %).
       Aus EINEM Messpunkt folgt keine Richtung; erst mehrere Tage zeigen, ob
