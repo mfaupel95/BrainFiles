@@ -92,8 +92,22 @@ KURATIERT: dict[tuple[str, str], dict] = {
     },
     ("werkstatt", "intelligent-trading-bot"): {
         "rolle": "Projekt",
-        "notiz": "Zweite Ablage des ML-Backtest-Pruefstands - der laufende Klon liegt unter "
-                 "Werkstatt/Repos/intelligent-trading-bot",
+        # KEIN Duplikat: die Wurzel `repos` erreicht DIESEN Ordner ueber eine
+        # Junction (`Werkstatt\Repos\intelligent-trading-bot` -> hierher). Eine
+        # physische Ablage, zwei Zeilen im Fenster. Die alte Notiz ("Zweite
+        # Ablage") war falsch und hat am 30.09.2026 fast dazu gefuehrt, den
+        # Ordner als Duplikat wegzuraeumen - ein Doppel-Scan ueber Junctions
+        # findet sonst denselben Inhalt zweimal.
+        "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/Repos/intelligent-trading-bot: "
+                 "die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
+        "warnungen": ["Junction-Ziel von Werkstatt/Repos/intelligent-trading-bot - eine physische "
+                      "Ablage, kein zweites Exemplar"],
+    },
+    ("repos", "intelligent-trading-bot"): {
+        # Die zweite Zeile DESSELBEN Ordners (siehe oben) - der Start steht
+        # hier, die Herkunft dort.
+        "warnungen": ["Junction auf Werkstatt/intelligent-trading-bot - eine physische "
+                      "Ablage, kein zweites Exemplar (nicht als Duplikat wegraeumen)"],
     },
     ("werkstatt", "CryptoPredictions"): {
         "rolle": "Projekt",

@@ -293,6 +293,9 @@
           ],
           "hinweis": "zeigt, wie sehr in-sample luegt"
         }
+      ],
+      "warnungen": [
+        "Junction auf Werkstatt/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar (nicht als Duplikat wegraeumen)"
       ]
     },
     {
@@ -802,7 +805,10 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "Zweite Ablage des ML-Backtest-Pruefstands - der laufende Klon liegt unter Werkstatt/Repos/intelligent-trading-bot"
+      "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/Repos/intelligent-trading-bot: die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
+      "warnungen": [
+        "Junction-Ziel von Werkstatt/Repos/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar"
+      ]
     },
     {
       "ordner": "OmniRoute",
