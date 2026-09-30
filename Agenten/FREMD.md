@@ -74,6 +74,7 @@ nur die Klonsammlung `Werkstatt/Repos` steht in der Liste).
 | `Werkstatt/freqtrade` | Fremd-Klon | Klon des freqtrade-Frameworks | nur lesen |
 | `Werkstatt/OmniRoute` | Fremd-Klon (in Betrieb) | Quell-Klon von OmniRoute - laeuft als Router auf Port 20128 | nur lesen; Start ueber Agenten/Routinen/omniroute-start.ps1 |
 | `Werkstatt/omnitrade` | Fremd-Klon (unsere Arbeit) | Rust-Workspace omnitrade (Fork mfaupel95/omnitrade, upstream jackby03) | nur lesen; Arbeit ueber das eigene Repo |
+| `Agenten/Werkzeuge/jevgrep/node_modules` | Fremd-Paket | npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter) | nur benutzen, nie aendern |
 
 ## Wie man sie aendert
 
