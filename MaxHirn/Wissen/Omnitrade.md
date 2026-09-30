@@ -81,3 +81,23 @@ Strg+C im Terminal, oder `taskkill /IM omnitrade-cli.exe /F`.
   lehnt der Client ab). Nur OKX benutzen.
 - Nach `setx` wirkt nichts im alten Terminal. Ein Tippfehler im
   Variablennamen (z. B. `OKX_DAMO_…`) führt zu „environment variable not set“.
+
+## Lauf vom 30.09.2026 (ausgefuehrt, Beleg)
+
+- **Vorbedingung erfuellt:** `OKX_DEMO_API_KEY`, `OKX_DEMO_API_SECRET`,
+  `OKX_DEMO_API_PASSPHRASE` und `OKX_REGION=eea` sind als Benutzervariablen gesetzt
+  (nur Existenz und Laenge geprueft, Werte nie ausgegeben). Vorabprobe ohne Handel
+  gruen: `cargo test -q -p omnitrade-exchange --lib live_demo_balance_readable -- --ignored --nocapture`.
+- **Guthaben des Demo-Kontos** (gelesen, nichts gehandelt): USD 100.000, USDC 100.000,
+  BTC 1, ETH 10, XRP 50.000, ETC 5, USDG 100.000 - alle frei, nichts gesperrt.
+- **Lauf gestartet** 30.09.2026 07:00 aus `Werkstatt/omnitrade` mit den Schaltern
+  dieser Anleitung; PID **76116**, Log `Werkstatt/omnitrade/logs/live-20260930-0700.log`.
+- **Anzeige:** Handelszentrale laeuft (aus `Agenten/Handel`) und liest
+  `status/live.json` im Reiter "omnitrade"; Schnellblick ohne Fenster
+  `scanner\.venv\Scripts\python.exe omnitrade_bridge.py` -> `ok: true`,
+  `state: running`, Kerzen wachsen, `orders_placed: 0`.
+- **Einordnung:** `orders_placed: 0` kurz nach dem Start ist der Normalfall -
+  `ema_cross_20_50` braucht rund eine Stunde Kerzen bis zum ersten moeglichen Signal.
+- **Nur ein Lauf:** vor dem Start geprueft, dass kein `omnitrade-cli.exe` laeuft
+  (Zaehlung = 1, der eigene). Zwei Laeufe ordern doppelt und schreiben in dieselbe
+  Statusdatei.
