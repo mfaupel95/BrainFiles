@@ -64,6 +64,43 @@ heilt auch ein Lauf, der ohne den Nachtrag beendet wurde. Idempotent.
 `git update-index` braucht `.git/index.lock`: in einer Schleife wiederholen
 (12 x 5 s), damit die Sperre einer anderen Sitzung nicht den ganzen Lauf kostet.
 
+## Von Hand committen, waehrend FREMDE Dateien vorgemerkt sind
+
+Der Normalfall im Mehrsitzungsbetrieb: `git diff --cached --numstat` zeigt neben den
+eigenen Pfaden fremde (eine Karten-Worker-Sitzung hat ihre Dateien schon `git add`-et).
+Dann ist `git add <eigene>` + `git commit` OHNE Pfadangabe falsch - der Commit nimmt den
+ganzen Index mit und die fremde Arbeit landet unter der eigenen Meldung.
+
+Richtig ist derselbe Griff wie in der Routine, nur von Hand: eigener Index aus HEAD,
+darauf nur die eigenen Pfade, committen.
+
+```bash
+cd <wurzel>
+export GIT_INDEX_FILE="C:/Users/faupe/Documents/BrainFiles/.git/index.eigen-$$"
+git read-tree HEAD
+git add <eigene pfade>
+git diff --cached --numstat      # LESEN: nur die eigenen Pfade
+GIT_INDEX_FILE=$GIT_INDEX_FILE git commit -q -m "..."
+rm -f "$GIT_INDEX_FILE"; unset GIT_INDEX_FILE
+git status --porcelain | head  # die fremde Vormerkung steht unveraendert weiter da
+```
+
+- **`GIT_INDEX_FILE` braucht einen NATIVEN Pfad.** Mit dem MSYS-Pfad aus `$PWD`
+  (`/c/Users/...`) bricht git als natives Programm ab: `fatal: Unable to create
+  '…/index.eigen-<pid>.lock': No such file or directory` - der Index wird gar nicht
+  erst angelegt, und der naechste `git add` schreibt in den normalen Index. Also
+  `C:/Users/...` schreiben (die Wurzel ausgeben lassen, nicht zusammensetzen).
+- **Die eigene Indexdatei danach loeschen** (`rm -f`), sonst bleibt sie im `.git`
+  liegen und die naechste Sitzung sucht darin herum.
+- **Den fremden Eintrag NICHT wegnehmen** (kein `git reset`, kein
+  `git restore --staged`): die andere Sitzung committet gleich selbst, und ihr
+  fehlender Index-Eintrag laesst ihre Datei im Baum liegen - der Commit der anderen
+  Sitzung laeuft leer (`nothing to commit`) oder nimmt etwas anderes mit.
+- Nach dem Commit bleiben die eigenen Pfade im NORMALEN Index vorgemerkt, jetzt aber
+  inhaltsgleich mit HEAD - der fremde Eintrag ist damit der einzige Unterschied, und
+  `git status --porcelain` zeigt genau ihn (`A ` in Spalte 1). Das ist die Gegenprobe,
+  dass der Handgriff nichts Fremdes angefasst hat.
+
 ## Der stille Ausfall: „uebersprungen" heisst nicht „erledigt"
 
 Beide Ausgaenge der Routine, die NICHT uebernehmen, enden mit **Exitcode 0** und

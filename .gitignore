@@ -422,7 +422,20 @@ Agenten/MCP-Server/ant.dir.*/**
 # ausserdem auth.json und .env, also Zugangsdaten. Konfiguration und Gedaechtnis
 # des zweiten Agenten sichert sichern-zweitkopie.ps1 nach O:.
 Agenten/Hermes/**
-#
+# Ausnahme: das automatik/-Verzeichnis und seine versionierten Teile.
+# Muss direkt nach der allgemeinen Regel stehen, sonst wirkt es nicht.
+!Agenten/Hermes/automatik/
+!Agenten/Hermes/automatik/**
+!Agenten/Hermes/automatik/**/*.py
+!Agenten/Hermes/automatik/**/*.md
+!Agenten/Hermes/automatik/**/*.yaml
+!Agenten/Hermes/automatik/**/*.json
+# Davon wieder ausschließen: Laufzeit, Caches, generierte Inventardateien.
+Agenten/Hermes/automatik/betrieb/arbeit/
+Agenten/Hermes/automatik/__pycache__/
+Agenten/Hermes/automatik/**/__pycache__/
+Agenten/Hermes/automatik/spez/inventar.json
+Agenten/Hermes/automatik/spez/inventar.md
 # HERMES, freigelegt am 12.09.2026. Freigegeben ist das von Hand Gemachte:
 # die Konfiguration, das Profilwesen, Notizen und Aufgaben. NICHT dabei:
 #   - Zugangsdaten: .env (26 KB), auth.json, je Profil dieselben
@@ -534,6 +547,26 @@ Agenten/Hermes/skills/unsloth/
 # Symlink an den Root-auth.json-Store - Prozedurwissen, auf das
 # Wissen/Repo-Bots.md verweist.
 !Agenten/Hermes/scripts/auth-verknuepfen.ps1
+#
+# AUTO-AUSFUEHRUNGS-ENGINE, konsolidiert am 30.09.2026 (Kanban t_42a2e275).
+# Dauerhaftes Home der vier Kinder-Tasks (spez/engine/reaktion/automatik).
+# Versioniert: Code, Registry/Konfiguration, Schema und Doku. NICHT
+# versioniert: Laufzeitstand (betrieb/arbeit/: zustand.db, kopplung.json,
+# kopplung-log.jsonl, laeufe.jsonl, nachrichten/), __pycache__ und das
+# generierte Skill-Inventar (spez/inventar.*) - alles erzeugte Ware.
+# Alles aufnehmen, dann nur den Laufzeitstand und generierte Ware schließen.
+!Agenten/Hermes/automatik/
+!Agenten/Hermes/automatik/**
+!Agenten/Hermes/automatik/**/*.py
+!Agenten/Hermes/automatik/**/*.md
+!Agenten/Hermes/automatik/**/*.yaml
+!Agenten/Hermes/automatik/**/*.json
+# Davon wieder ausschließen: Laufzeit, Caches, generierte Inventardateien.
+Agenten/Hermes/automatik/betrieb/arbeit/
+Agenten/Hermes/automatik/__pycache__/
+Agenten/Hermes/automatik/**/__pycache__/
+Agenten/Hermes/automatik/spez/inventar.json
+Agenten/Hermes/automatik/spez/inventar.md
 #
 # PROJECTATLAS-WERKZEUGE, freigelegt am 15.09.2026. Die Skripte, die
 # den Watcher starten und die Repos kartieren - Prozedurwissen, auf das

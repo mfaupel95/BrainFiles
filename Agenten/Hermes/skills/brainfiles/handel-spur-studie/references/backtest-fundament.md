@@ -221,6 +221,25 @@ blockieren. Lange Testsuiten ebenso: ein `execute_code`-Aufruf hat eine feste
 Zellgrenze, die einen laengeren inneren Aufruf kappt - lange Laeufe ueber das
 Terminal-Werkzeug (eigene Frist) oder im Hintergrund fahren.
 
+**Ein Lauf, dessen Ergebnis du erst nach der naechsten Sitzung brauchst, muss
+das Sitzungsende ueberleben** (`persist_on_release=true`). Ohne das raeumt das
+Ende der Sitzung den Prozess ab - und zwar **lautlos**: das Journal bleibt
+mitten im Zeitraum stehen, es gibt keinen Traceback und nie eine
+Abschlussmeldung. Der Abbruch ist von "rechnet noch" nicht zu unterscheiden,
+und die Auswertung arbeitet auf einem halbfertigen Buch. Ein Zwei-Stunden-Lauf
+ist ein Auftrag zum Abgeben, nicht zum Danebensitzen.
+
+- **Tod am ZEITSTEMPEL erkennen, nie am Log-Inhalt.** Letzte Schreibzeit der
+  Logdatei gegen die HOST-Uhr halten (`ls -l --time-style=+%H:%M:%S` gegen
+  `git log -1 --format=%ci` bzw. windows-mcp `Get-Date`): eine Datei, die seit
+  Stunden nicht gewachsen ist, gehoert zu keinem laufenden Prozess. Ein Log
+  voller Fortschrittszeilen beweist nur, dass er einmal gerechnet hat.
+- **Den halben Lauf vor dem Neustart aus dem Weg raeumen** (Ordner beiseite
+  legen oder unter neuem `--lauf` fahren). Die Auswertung waehlt den Ordner mit
+  den meisten Zeilen; Bruchstueck und Neulauf im selben Ordner sind keine
+  saubere Messung. Gibt der Neustart keine Meldung, in einem ZWEITEN Aufruf
+  nachzaehlen, ob der Prozess lebt und das Journal waechst.
+
 ## Marktquerschnitt statt Kerzenreihe (Feed-Spuren)
 
 Nicht jede Spur entscheidet ueber EINE Reihe. Die Feed-Spuren (Top-Movers,

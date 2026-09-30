@@ -656,6 +656,16 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   Annahme, der Dauerbetrieb sei weg. Deshalb fuehrt der Weg ueber die `.cmd`
   (Schritt 2), und Testprozesse werden danach beendet, damit kein Doppelbetrieb
   bleibt.
+  **Auch ein ueber das eigene Hintergrund-Werkzeug gestarteter Lauf stirbt so —
+  nur ohne Exit-Code und ohne Meldung:** das Log bricht ab, es gibt keinen
+  Traceback, und die Benachrichtigung kommt nie; "rechnet noch" und "still
+  abgeraeumt" sehen identisch aus. Fuer einen Lauf, dessen Ergebnis noch
+  gebraucht wird (Stundenmessung, Massenkopie), `persist_on_release` mitgeben —
+  und danach nicht am Log-INHALT pruefen, sondern an der Uhr: letzte Schreibzeit
+  der Logdatei gegen die HOST-Zeit (windows-mcp `Get-Date`, `git log -1
+  --format=%ci`), nicht gegen das `date` des Sandbox-Terminals. Ohne Meldung
+  nach dem Start in einem ZWEITEN Aufruf nachzaehlen, ob der Prozess lebt und
+  die Ausgabedatei waechst.
   **Auch das START-SKRIPT faellt mit der Sitzung, nicht nur der Prozess.** Aus
   einer Werkzeug-Sitzung per `Start-Process powershell -File <starter>`
   gestartete Instanzen waren nach 2,5 Minuten tot, ohne eine Zeile im eigenen
@@ -703,9 +713,27 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   jemand die Datei ueberschreibt — der Zustand ist eine Behauptung, die den
   Prozess ueberlebt. Eine Wache liest deshalb den PID AUS der Datei und prueft
   den Prozess, statt dem Wort zu glauben, und meldet das Alter der Datei mit.
-  Und der Lauf selbst gehoert so gebaut, dass er sein Ende schreibt (`state`
+  Und der Lauf selbst gehoert gebaut, dass er sein Ende schreibt (`state`
   + Grund), damit der Zustand nach einem Fehler nicht auf dem letzten guten
   Stand stehen bleibt.
+  **Die Altersgrenze gehoert aus dem SCHREIBRHYTHMUS des Laufs gerechnet, nicht als
+  feste Zahl.** Eine Statusdatei, die nur bei echter Arbeit fortgeschrieben wird
+  ("beim Verarbeiten einer Kerze"), ist bei einem Stundenlauf eine Stunde alt,
+  waehrend alles gesund ist: gemessen hat eine feste 5-Minuten-Grenze einen
+  laufenden Lauf zum Toten erklaert - die Wache wollte neu starten, und die
+  Oberflaeche zeigte "kein Lebenszeichen", waehrend der Prozess arbeitete. Der
+  Rhythmus steht in den DATEN der Datei selbst (Median der Abstaende zwischen den
+  mitgeschriebenen Zeitstempeln, z. B. `recent_candles`), nicht im Dateinamen und
+  nicht im Intervall-Argument: Grenze = max(Untergrenze, 2,5 x Rhythmus). Rueckfall,
+  wenn die Datei nichts hergibt: das Intervall aus der KOMMANDOZEILE des Prozesses
+  (`--interval 1h`), erst danach die Untergrenze. Und der Rhythmus gehoert in die
+  Ausgabe (`altersgrenze_s`), damit der naechste Leser die Zahl nicht fuer geraten
+  haelt.
+  **Mehrere Laeufe derselben Komponente schreiben oft DIESELBE Statusdatei**
+  (parallele Sitzung startet ihren eigenen Lauf mit anderen Argumenten). Ein
+  PID-WECHSEL darin ist deshalb NORMAL und kein Befund - nur "Zustand laeuft UND
+  diese PID ist tot" und "PID lebt UND Datei aelter als die Grenze" sind Meldungen.
+  Wer den PID-Wechsel als Fehler meldet, baut einen Wecker bei jedem Fremdstart.
 - **Ein unerwartetes Ende eines selbst gestarteten Prozesses ist erst dann ein
   Absturz, wenn kein Nachfolger laeuft.** In diesem Baum arbeiten mehrere
   Sitzungen gleichzeitig: eine andere kann denselben Lauf bewusst beendet, den

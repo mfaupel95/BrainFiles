@@ -207,6 +207,15 @@ Ausloeser → Referenz:
   ist ein Buchvorgang**, kein Konfigurationswert: erst das alte Buch zum alten
   Kurs schliessen und spiegeln, dann das Symbol tauschen
   (`references/zweite-boerse.md`, Abschnitt "Instrumentenwechsel mit offenem Buch").
+  **Und die Quote ist eine Waehrung, kein Marktplatz**: laeuft eine Spur in
+  mehreren Quotewaehrungen (EUR/USDC/EURC), gehoert die Frage „lohnt ein Umtausch
+  fuer das Guthaben-Tor?" GEMESSEN, nicht geschaetzt — `kraken/quoten_vergleich.py`
+  rechnet die zwei Groessen, die die Entscheidung tragen: DECKUNG (erschliesst die
+  andere Waehrung ein Instrument, das es sonst gar nicht gibt?) und SPREAD (Median
+  mehrerer Abrufe, je Instrument EIN Paar pro Waehrung) gegen die Umtauschkosten.
+  Ein Umtausch lohnt nur, wenn er ein Instrument erschliesst ODER der Markt dort
+  enger ist; das Guthaben-Tor in der Paarwaehrung bleibt trotzdem richtig, weil es
+  eine Versicherung ist und kein Ertrag. Abschnitt 7 der Referenz.
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -451,7 +460,7 @@ ersetzt die Begruendung nicht.
 66. **`handeln.py` muss `--papier` als Flag UND als Positional akzeptieren.**
 67. **Datenquelle als Test-Seam austauschbar machen.**
 68. **Erweiterst du die Signatur einer ersetzten Funktion, muessen die Doubles mit.**
-69. **Eine geaenderte Signatur trifft auch die Aufrufer, die kein Test beruehrt.**
+69. **Eine geaenderte Signatur trifft auch die Aufrufer, die kein Test beruehrt** — und ein neuer OPTIONALER Parameter in der MITTE laesst positionelle Aufrufer still in den falschen Slot rutschen: kein Fehler, ein leeres Ergebnis („nicht messbar"). Hinten anhaengen, Aufrufer greppen; Volltext in `references/spur-tests-und-auswertung.md`.
 70. Ein Stummel im Testbaum kann den geaenderten Aufruf verbergen — am echten
 71. **Ein Pruefer, der Quelltext parst, erblindet still, wenn sich die Form aendert.**
 72. **Eine Papier-Position in `zustand.json` ist der zweite Zyklus-Test.**

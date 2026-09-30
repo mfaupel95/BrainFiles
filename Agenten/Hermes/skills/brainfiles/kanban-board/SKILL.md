@@ -88,6 +88,15 @@ Das `--board` steht VOR dem Subkommando:
 - `--assignee` MUSS ein existierendes Profil sein: vorher `kanban assignees`
   lesen (die Liste ist kuerzer als der Profile-Ordner - weggelegte Profile unter
   `profiles/.deleted/` fehlen darin, ein Dispatch dorthin scheitert).
+- **Ohne `--assignee` wird die Karte NICHT ausgefuehrt - und nichts sagt das.**
+  Sie steht dann als `ready (unassigned)` im Board, und der Dispatcher
+  ueberspringt sie lautlos: der Status sieht aus wie Arbeit, es laeuft nichts,
+  und `notify-subscribe` ist gesetzt, also wartet man auf eine Meldung, die nie
+  kommt. Das Signal steht in der LISTE (Assignee-Spalte `-`), nicht im Status.
+  Nachhelfen mit `kanban --board <slug> assign <id> <profil>`; danach ist die
+  Karte binnen ~90 s `running` (Beleg: `list` UND ein Log unter
+  `kanban/logs/<id>.log`). Ein `create` ohne Assignee ist kein Fehler der CLI -
+  die Angabe ist Pflicht, wenn die Karte laufen soll.
 - `--workspace` ist `scratch` (Vorgabe), `dir:<pfad>` (gemeinsamer Baum) oder
   `worktree` (eigener Branch; mit `--project <repo>` an ein Repo gebunden).
 - `--parent <id>` erzeugt die Abhaengigkeit (Kind bleibt `todo`, bis alle Eltern

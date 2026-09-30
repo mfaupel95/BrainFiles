@@ -385,21 +385,32 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
     Zeilen - was nicht in den Zeilen steht, wird nicht erfunden.
     """
     offen = {}
+    kennung_offen = {}
     runden = []
     for r in zeilen_:
         art = (r.get("aktion") or "").strip().lower()
         schluessel = (r.get("inst") or r.get("paar") or "").strip()
         if not schluessel:
             continue
+        kennung = (r.get("pos_id") or "").strip()
         if art in einstieg_namen:
-            offen.setdefault(schluessel, []).append(r)
+            if kennung:
+                kennung_offen[kennung] = r
+            else:
+                offen.setdefault(schluessel, []).append(r)
             continue
         if art not in ausstieg_namen:
             continue
-        kette = offen.get(schluessel) or []
-        if not kette:
-            continue                      # Ausstieg ohne Einstieg: ignorieren
-        ein = kette.pop(0)
+        # KENNUNG ZUERST (T-095): die Reihenfolge im Instrumentenstapel ist
+        # eine Annahme - bei zwei gleichzeitigen Positionen im selben
+        # Instrument kann sie den Ausstieg an den falschen Einstieg haengen.
+        # Mit `pos_id` ist die Zuordnung dagegen die Zeile selbst.
+        ein = kennung_offen.pop(kennung, None) if kennung else None
+        if ein is None:
+            kette = offen.get(schluessel) or []
+            if not kette:
+                continue                  # Ausstieg ohne Einstieg: ignorieren
+            ein = kette.pop(0)
         if isinstance(einsatz_feld, tuple):
             # Mehrere Schreibweisen desselben Betrags: der OKX-Arm der
             # Nautilus-Gruppe fuehrt `einsatz_usd`, der Kraken-Arm

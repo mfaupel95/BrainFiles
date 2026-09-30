@@ -52,21 +52,135 @@ def _zahl(r, *namen):
     return None
 
 
-def runden_aus_journal(pfad: Path):
-    """((R, C, ergebnis_prozent), zwangsschluesse) - aus beiden Journalformen.
+def _kennung(r):
+    return (r.get("pos_id") or "").strip()
 
-    Form A (orbk): eine Zeile je FERTIGER Runde mit einstieg/stop/ziel/ausgang.
-    Form B (Spuren mit spur_buch): je Einstieg eine Zeile mit stop/ziel, je
-    Ausstieg eine Zeile mit preis - gepaart wird je Instrument.
+
+def _gleich(a, b):
+    """Zwei Preise aus dem Journal - Zahl gegen Zahl, nicht Text gegen Text.
+
+    Die Ausstiegszeile fuehrt Stop und Ziel als KOPIE der Einstiegszeile mit;
+    beide stammen aus derselben Zahl und werden gleich formatiert. Der
+    Vergleich laeuft trotzdem ueber den Wert: `%.6f` und `%.8f` desselben
+    Preises sind derselbe Preis.
     """
+    if a is None or b is None:
+        return False
+    return abs(a - b) <= max(abs(a), abs(b)) * 1e-9
+
+
+def _altbestand(offen_alt, offen_id, inst, r):
+    """Der Einstieg zu einer Ausstiegszeile OHNE Kennung (Altjournal).
+
+    Reihenfolge, und jede Stufe ist EINDEUTIG - es wird nie geraten:
+      1. genau EIN offener Einstieg dieses Instruments: die Zuordnung ist
+         klar, egal in welcher Reihenfolge die Zeilen stehen;
+      2. mehrere offene, aber genau EINER traegt denselben Stop und dasselbe
+         Ziel (die Ausstiegszeile fuehrt beide mit);
+      3. gar kein Alt-Eintrag, aber ein Einstieg MIT Kennung: das ist der
+         Code-Wechsel (Einstieg neu, Ausstieg alt) - der aelteste passt.
+    Sonst None: die Zeile zaehlt als unpaarig und wird AUSGEWIESEN.
+    """
+    kette = offen_alt.get(inst) or []
+    s_aus, z_aus = _zahl(r, "stop"), _zahl(r, "ziel")
+    if len(kette) == 1:
+        return kette.pop(0)
+    if len(kette) > 1:
+        treffer = [i for i, e in enumerate(kette)
+                   if _gleich(e[2], s_aus) and _gleich(e[3], z_aus)]
+        if len(treffer) == 1:
+            return kette.pop(treffer[0])
+        return None
+    for kennung, e in list(offen_id.items()):
+        if e[0] == inst:
+            del offen_id[kennung]
+            return e
+    return None
+
+
+def _paarung_form_b(rows):
+    """Form B: Einstieg und Ausstieg zusammenfuehren - KENNUNG zuerst.
+
+    WARUM DIE KENNUNG (T-095, 30.09.2026): bis hierher stand hier
+    `offen[inst] = (preis, stop, ziel)`. Zwei gleichzeitige Positionen im
+    selben Instrument haben einander damit UEBERSCHRIEBEN - der erste
+    Ausstieg paarte mit dem falschen Einstieg oder fiel ganz weg. Gemessen im
+    Backtest ueber 5,7 Jahre (squeeze): 1092 Einstiege, 1088 Ausstiege, aber
+    nur 759 Runden; 330 Einstiege waren ueberschrieben, 329 Ausstiege fanden
+    keinen Partner. Trefferquote und f_max standen damit auf einer nicht
+    zufaelligen Teilmenge - gleichzeitige Positionen im selben Instrument
+    sind eher gleichgerichtet.
+    """
+    offen_id, offen_alt = {}, {}
+    raus, zwang = [], []
+    unpaarig, ohne_kennung = 0, 0
+    for r in rows:
+        akt = (r.get("aktion") or "").strip()
+        inst = (r.get("inst") or r.get("symbol") or "").strip()
+        preis = _zahl(r, "preis")
+        if not inst or not preis:
+            continue
+        kennung = _kennung(r)
+        if akt in EINSTIEG:
+            s, z = _zahl(r, "stop"), _zahl(r, "ziel")
+            if s is None and r.get("stop_pct"):
+                s = preis * (1 - float(r["stop_pct"]) / 100)
+            if not (s and z):
+                continue
+            if kennung:
+                offen_id[kennung] = (inst, preis, s, z)
+            else:
+                ohne_kennung += 1
+                offen_alt.setdefault(inst, []).append((inst, preis, s, z))
+            continue
+        if akt not in AUSSTIEG:
+            continue
+        if kennung:
+            eintrag = offen_id.pop(kennung, None)
+        else:
+            eintrag = _altbestand(offen_alt, offen_id, inst, r)
+        if eintrag is None:
+            # Kein geratener Partner: eine Zeile ohne Gegenstueck ist ein
+            # Befund und wird gezaehlt, nicht verrechnet.
+            unpaarig += 1
+            continue
+        _, e, s, z = eintrag
+        # ZWANGSSCHLUESSE ZAEHLEN NICHT MIT: ein Ausstieg mit "herzschlag"
+        # im Grund ist keine Handelsentscheidung, sondern die Folge eines
+        # Ausfalls. Sie sitzen meist im Verlust - wer sie mitzaehlt, macht
+        # die Trefferquote kuenstlich schlecht (gemessen am 21.09.2026:
+        # omniquant stand mit 8 solcher Zeilen als "25 % Treffer, nicht
+        # tragfaehig" in der Tabelle, obwohl ALLE acht Zwangsschluesse der
+        # Ausfaelle vom 16./17.09. waren).
+        if stoerungen.ist_stoerung(r.get("grund")):
+            zwang.append((inst, (r.get("grund") or "").strip()))
+            continue
+        raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100,
+                     (preis / e - 1) * 100))
+    return {"runden": raus, "zwang": zwang, "unpaarig": unpaarig,
+            "offen": (sum(len(v) for v in offen_alt.values())
+                      + len(offen_id)),
+            "ohne_kennung": ohne_kennung}
+
+
+def paarung(pfad: Path):
+    """Die vollstaendige Paarung EINES Journals (Kennung, sonst Instrument).
+
+    Rueckgabe: {"runden", "zwang", "unpaarig", "offen", "ohne_kennung",
+                "form_a"}. `unpaarig` sind Ausstiegszeilen OHNE Partner - die
+    Zahl, die vorher niemand ausgewiesen hat (sie fehlten still in der
+    Trefferquote). `ohne_kennung` sind Einstiege aus Altjournalen.
+    """
+    leer = {"runden": [], "zwang": [], "unpaarig": 0, "offen": 0,
+            "ohne_kennung": 0, "form_a": False}
     if not pfad.is_file():
-        return [], []
+        return leer
     with pfad.open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
     if not rows:
-        return [], []
-    felder = set(rows[0])
-    if {"einstieg", "stop", "ziel", "ausgang"} <= felder:
+        return leer
+    if {"einstieg", "stop", "ziel", "ausgang"} <= set(rows[0]):
+        # Form A (orbk/orb): eine Zeile je FERTIGER Runde, nichts zu paaren.
         raus = []
         for r in rows:
             e = _zahl(r, "einstieg")
@@ -76,37 +190,26 @@ def runden_aus_journal(pfad: Path):
                 continue
             ergebnis = ((_zahl(r, "ausstieg") or e) / e - 1) * 100
             raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100, ergebnis))
-        return raus, []
+        leer["runden"] = raus
+        leer["form_a"] = True
+        return leer
+    aus = _paarung_form_b(rows)
+    aus["form_a"] = False
+    return aus
 
-    # Form B: paaren
-    offen, raus, zwang = {}, [], []
-    for r in rows:
-        akt = (r.get("aktion") or "").strip()
-        inst = (r.get("inst") or r.get("symbol") or "").strip()
-        preis = _zahl(r, "preis")
-        if not inst or not preis:
-            continue
-        if akt in EINSTIEG:
-            s, z = _zahl(r, "stop"), _zahl(r, "ziel")
-            if s is None and r.get("stop_pct"):
-                s = preis * (1 - float(r["stop_pct"]) / 100)
-            if s and z:
-                offen[inst] = (preis, s, z)
-        elif akt in AUSSTIEG and inst in offen:
-            e, s, z = offen.pop(inst)
-            # ZWANGSSCHLUESSE ZAEHLEN NICHT MIT: ein Ausstieg mit "herzschlag"
-            # im Grund ist keine Handelsentscheidung, sondern die Folge eines
-            # Ausfalls. Sie sitzen meist im Verlust - wer sie mitzaehlt, macht
-            # die Trefferquote kuenstlich schlecht (gemessen am 21.09.2026:
-            # omniquant stand mit 8 solcher Zeilen als "25 % Treffer, nicht
-            # tragfaehig" in der Tabelle, obwohl ALLE acht Zwangsschluesse der
-            # Ausfaelle vom 16./17.09. waren).
-            if stoerungen.ist_stoerung(r.get("grund")):
-                zwang.append((inst, (r.get("grund") or "").strip()))
-                continue
-            raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100,
-                         (preis / e - 1) * 100))
-    return raus, zwang
+
+def runden_aus_journal(pfad: Path):
+    """((R, C, ergebnis_prozent), zwangsschluesse) - aus beiden Journalformen.
+
+    Form A (orbk): eine Zeile je FERTIGER Runde mit einstieg/stop/ziel/ausgang.
+    Form B (Spuren mit spur_buch): je Einstieg eine Zeile mit stop/ziel, je
+    Ausstieg eine Zeile mit preis - gepaart wird ueber `pos_id`, und nur ohne
+    Kennung (Altjournal) ueber das Instrument. Die Einzelheiten stehen in
+    `paarung()`; diese Funktion bleibt die alte Schnittstelle fuer die
+    Aufrufer, die nur Runden und Zwangsschluesse brauchen.
+    """
+    p = paarung(pfad)
+    return p["runden"], p["zwang"]
 
 
 def wendepunkt(runden):
@@ -173,7 +276,8 @@ def main() -> int:
         "Spur", "Runden", "R %", "C %", "Treffer", "Gebuehr, ab der die Spur kippt"))
     zeilen = []
     for name, pfad in dateien:
-        runden, zwang = runden_aus_journal(pfad)
+        p = paarung(pfad)
+        runden, zwang = p["runden"], p["zwang"]
         w = wendepunkt(runden)
         if not w:
             print("%-22s %6s   -      -      -      keine messbare Runde" % (name, 0))
@@ -184,8 +288,19 @@ def main() -> int:
             d = json.loads(wachen.read_text(encoding="utf-8"))
             geb = d.get("gebuehr_taker")
         hinweis = urteil(geb, w["f_max"])
-        zahl = ("  (%d Zwangsschluss-Zeile(n) nicht mitgezaehlt)" % len(zwang)
-                if zwang else "")
+        # Was NICHT in die Quote kam, wird ausgewiesen: ein Zwangsschluss ist
+        # keine Handelsentscheidung, eine Ausstiegszeile ohne Partner ist ein
+        # Befund (Altjournal ohne Kennung) - beides stillschweigend
+        # wegzulassen hiesse, die Trefferquote auf einer kleineren Stichprobe
+        # zu behaupten, als im Journal steht (T-095).
+        teile = []
+        if zwang:
+            teile.append("%d Zwangsschluss-Zeile(n) nicht mitgezaehlt" % len(zwang))
+        if p["unpaarig"]:
+            teile.append("%d Ausstiegszeile(n) OHNE Partner" % p["unpaarig"])
+        if p["ohne_kennung"]:
+            teile.append("%d Einstieg(e) ohne pos_id" % p["ohne_kennung"])
+        zahl = ("  (%s)" % "; ".join(teile)) if teile else ""
         print("%-22s %6d %6.2f %6.2f %5.0f%%   %+.2f %% je Runde%s%s" % (
             name, w["runden"], w["R"], w["C"], w["p"] * 100, w["f_max"], hinweis, zahl))
         zeilen.append((name, w))

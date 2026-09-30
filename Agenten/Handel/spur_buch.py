@@ -39,6 +39,7 @@ from importlib.util import module_from_spec, spec_from_file_location  # noqa: E4
 import wachen_pruefung as wp  # noqa: E402
 import risikostufe  # noqa: E402
 import freigabefenster  # noqa: E402
+import pos_kennung  # noqa: E402
 
 
 def _lade_modul(name):
@@ -53,7 +54,7 @@ risikovorfilter = _lade_modul("risikovorfilter")
 risikostufe = _lade_modul("risikostufe")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id"]
 
 SCHREIBEN = True
 
@@ -120,8 +121,13 @@ def journal(journal_pfad, **felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(journal_pfad)
+    # Die bestehende Datei behaelt ihre Kopfzeile (Altjournal ohne `pos_id`
+    # bleibt lesbar, siehe pos_kennung.spalten) - eine Zeile mit mehr Feldern
+    # als der Kopf waere keine Erweiterung, sondern eine Verschiebung aller
+    # Spalten.
+    spalten = pos_kennung.spalten(journal_pfad, SPALTEN) if not neu else SPALTEN
     with open(journal_pfad, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=SPALTEN)
+        w = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             w.writeheader()
         w.writerow(felder)
@@ -321,6 +327,11 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
     p = {"inst": inst, "seite": seite, "einstieg": kurs, "stop": stop,
          "ziel": ziel, "stop_pct": pct, "nominal": nominel,
          "modus": "live" if live else "papier",
+         # Die Kennung dieser Position (T-095). Sie entsteht HIER, einmal je
+         # Einstieg, steht im Zustand und wird in der Ausstiegszeile
+         # mitgefuehrt - nur so ist die Zuordnung eindeutig, wenn zwei
+         # Positionen im selben Instrument gleichzeitig offen sind.
+         "pos_id": pos_kennung.neu(jetzt()),
          "eroeffnet_zeit": jetzt()}
 
     if live:

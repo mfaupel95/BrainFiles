@@ -45,11 +45,7 @@ selbst lesen:
   Automatismus sofort bestaetigt, ist der Test falsch und nicht der Code. Solche
   Stellen im Bericht als vorbestehend benennen (mit Grund), statt sie zu
   „reparieren" — sie gehoeren der Sitzung, die den Automatismus gebaut hat.
-- `-m unittest tests.test_<spur>` aus dem Spurenordner: der Modulkopf schiebt
-  `scanner/` und `HANDEL` auf `sys.path`, und je nach Reihenfolge gewinnt
-  `scanner/handeln.py`. Symptom: `AttributeError: module 'handeln' has no attribute
-  'pruefe_einstieg'. Did you mean: 'pruefe_einstiege'?` — der Test laeuft, prueft
-  aber ein fremdes Modul. Bei dieser Meldung ZUERST `handeln.__file__` ausgeben
+
 ## Ein Fehlschlag aus der vollen Suite: erst zuordnen, dann fixen
 
 Eine Suite ueber hunderte Tests meldet beim ersten Lauf meist mehr rote Punkte,
@@ -227,3 +223,31 @@ zuruecklegen — sonst prueft der Test eine Lage, die es nicht mehr gibt.
 Regel: einen Test nie an die Wanduhr oder an einen Kalendertag binden, und
 jeden Schalter, den der Test stilllegen muss, ausdruecklich sichern und
 zuruecklegen.
+
+## Ein Messwerkzeug mit Attrappen-Naht: zwei Fallen
+
+Ein Kopf-Werkzeug unter `Agenten/Handel/`, das eine Boersenantwort BRAUCHT
+(Paartabelle, Kursliste, Kontostaende), bekommt einen Seam, damit der Test ohne
+Netz laeuft. Zwei Dinge brechen dabei still:
+
+- **Ist der Seam ein AUFRUFBARES (`abruf()`), faellt ein blankes dict-Fixture um**
+  (`'dict' object is not callable`). Im Werkzeug normalisieren
+  (`return abruf if callable(abruf) else (lambda: abruf)`), dann darf der Test die
+  Antwort direkt hinlegen. Ohne Normalisierung schreibt jeder Test `lambda: ATT`,
+  und wer es vergisst, sieht einen Typfehler statt einer Messung.
+- **Ein neuer OPTIONALER Parameter gehoert ans ENDE der Signatur.** Wird er in der
+  Mitte eingefuegt, rutschen die vorhandenen POSITIONELLEN Aufrufer still in den
+  falschen Slot: die Funktion laeuft durch und liefert ein LEERES Ergebnis — das
+  Werkzeug meldet dann „nicht messbar" statt eines Fehlers, und die Ursache steht
+  nirgends. Hinten anhaengen oder den Aufrufer auf Keyword umstellen und nach
+  jeder Signaturaenderung die Aufrufer greppen (`grep -n "<funktionsname>("`),
+  statt sich auf die Tests zu verlassen — ein Aufrufer ohne Test faellt sonst
+  niemandem auf.
+
+**Und die Attrappe muss den POSITIVEN Fall enthalten.** Ein Fixture, das nur den
+Normalfall abbildet, laesst die Gegenprobe („hier MUSS etwas gefunden werden")
+gruen durchlaufen, ohne etwas zu pruefen: das Instrument, das „nur in der anderen
+Waehrung erreichbar" sein soll, braucht im Fixture wirklich KEIN Paar in der
+eigenen Waehrung — sonst bestaetigt der Test die Regel mit einem Datensatz, der
+sie gar nicht beruehrt. Der Fehlschlag der Gegenprobe zeigt dann nicht den Code,
+sondern das Fixture.
