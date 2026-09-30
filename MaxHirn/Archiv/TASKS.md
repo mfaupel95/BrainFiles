@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
+      Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene
+      Commits und sind sauber; `trading-stack-setup-40ef0d` traegt einen Commit
+      (`aeeac18`, Omnitrade-Indikatoren) und zwei unversionierte Dateien. Geprueft am 01.10.2026:
+      der Commit-Inhalt steht bereits in master (Zeile 118 in `MaxHirn/Wissen/Omnitrade.md`),
+      `omnitrade_auswertung.py` ist byte-gleich, `omnitrade_start.py` ist die ALTE 162-Zeilen-
+      Fassung (master hat 216) — es geht also nichts verloren. Zusammen 137 MB.
+      Naechster Schritt: erst pruefen, dass keine Claude-Sitzung mehr darauf arbeitet (am 01.10.
+      liefen 14 `claude`-Prozesse), dann `git worktree remove <pfad>` (die Branches bleiben) und
+      `git worktree prune`. Regel aus `Agenten/Handel/AGENTS.md`: neue Worktrees NEBEN
+      `BrainFiles/` anlegen, nicht hinein.
+      Angelegt 01.10.2026 · Betrifft .claude/worktrees/, git worktree
+
 - [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
       Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
       „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
