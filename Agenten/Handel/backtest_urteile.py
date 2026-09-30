@@ -256,6 +256,27 @@ def _freigabe_spanne(text):
     return None
 
 
+def _sichern_und_ersetzen(p, text2):
+    """Tagessicherung einmal anlegen, dann wachen.json atomar ersetzen.
+
+    Erst .tmp, dann os.replace: ein Abbruch (taskkill aus dem Leitstand,
+    voller Datentraeger) laesst die alte Datei ganz, nie eine halbe.
+    """
+    bak = p.with_name("wachen.json.bak-%s" % datetime.now().strftime("%Y%m%d"))
+    if not bak.exists():
+        shutil.copy2(p, bak)
+    tmp = p.with_name(p.name + ".tmp")
+    try:
+        tmp.write_bytes(text2.encode("utf-8"))
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def _freigabe_anlegen(spur, text, p, bestanden, urteil_kurz, tag, nl, vorschau):
     """Einen freigabe-Block anlegen, wenn die Datei keinen hat (Gitter-Spur).
 
@@ -281,10 +302,7 @@ def _freigabe_anlegen(spur, text, p, bestanden, urteil_kurz, tag, nl, vorschau):
     if vorschau:
         return ("VORSCHAU: %s/wachen.json bekaeme einen freigabe-Block "
                 "(backtest_bestanden=%s)" % (spur, bestanden))
-    bak = p.with_name("wachen.json.bak-%s" % datetime.now().strftime("%Y%m%d"))
-    if not bak.exists():
-        shutil.copy2(p, bak)
-    p.write_bytes(text2.encode("utf-8"))
+    _sichern_und_ersetzen(p, text2)
     return None
 
 
@@ -344,10 +362,7 @@ def freigabe_schreiben(spur, bestanden, urteil, vorschau=False, tag=None):
     if vorschau:
         return "VORSCHAU: %s/wachen.json wuerde backtest_bestanden=%s bekommen" \
                % (spur, bestanden)
-    bak = p.with_name("wachen.json.bak-%s" % datetime.now().strftime("%Y%m%d"))
-    if not bak.exists():
-        shutil.copy2(p, bak)
-    p.write_bytes(text2.encode("utf-8"))
+    _sichern_und_ersetzen(p, text2)
     return None
 
 
