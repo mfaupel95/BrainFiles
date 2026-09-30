@@ -2212,7 +2212,128 @@
         "handeln.py",
         "--vorschau"
       ],
-      "venv_pflicht": false
+      "venv_pflicht": false,
+      "befehle": [
+        {
+          "was": "Lauf adx_macd_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "adx_macd_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf adx_macd_eth starten (ETHUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "adx_macd_eth"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf rsi30_stop5_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "rsi30_stop5_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf rsi30_stop5_eth starten (ETHUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "rsi30_stop5_eth"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_sma_cross_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_sma_cross_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_ema_cross_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_ema_cross_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_macd_cross_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_macd_cross_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_rsi_meanrev_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_rsi_meanrev_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_bollinger_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_bollinger_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Lauf pine_donchian_btc starten (BTCUSDC)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "start",
+            "pine_donchian_btc"
+          ],
+          "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+          "start": true
+        },
+        {
+          "was": "Alle Laeufe mit Zustand auflisten (rein lesend)",
+          "cmd": [
+            "..\\scanner\\.venv\\Scripts\\python.exe",
+            "..\\omnitrade_start.py",
+            "liste"
+          ],
+          "hinweis": "je Lauf: laeuft oder steht, PID, Alter der Statusdatei"
+        }
+      ]
     },
     {
       "ordner": "OpenAlice",

@@ -863,6 +863,41 @@ for _spur, (_spur_skript, _spur_python) in SPUREN_START.items():
         _spur_python, _spur_skript, "--vorschau",
     ]
 
+# Die zehn omnitrade-LAEUFE (Rust-CLI, OKX-Testnet) sind keine Spuren und haben
+# keinen eigenen Ordner. Eine Zeile je Lauf entstuende deshalb gar nicht - die
+# Zentrale listet nur Pfade, die es auf der Platte gibt (fuellen.fuellen()).
+# Sie haengen darum als ANKLICKBARE BEFEHLE an der Zeile der Haus-Spur: das
+# Fenster zeigt sie in der Karte "Was dieses Projekt kann" und fuehrt sie mit
+# Logbeleg aus (fenster.py, befehle.manifestkommandos).
+#
+# Der Start ist absichtlich der ECHTE Start und nicht `--vorschau`: die drei
+# laufenden Spuren-Zeilen sind lesende Blicke, ein Lauf laesst sich so nicht
+# hochfahren. `omnitrade_start.py start <name>` ist idempotent - laeuft der Lauf
+# schon, meldet es "laeuft schon" und startet nichts doppelt. Die Handelsregeln
+# sind davon nicht beruehrt: die Laeufe fahren OKX-Testnet, kein echtes Geld.
+OMNI_LAEUFE = (
+    ("adx_macd_btc", "BTCUSDC"), ("adx_macd_eth", "ETHUSDC"),
+    ("rsi30_stop5_btc", "BTCUSDC"), ("rsi30_stop5_eth", "ETHUSDC"),
+    ("pine_sma_cross_btc", "BTCUSDC"), ("pine_ema_cross_btc", "BTCUSDC"),
+    ("pine_macd_cross_btc", "BTCUSDC"), ("pine_rsi_meanrev_btc", "BTCUSDC"),
+    ("pine_bollinger_btc", "BTCUSDC"), ("pine_donchian_btc", "BTCUSDC"),
+)
+KURATIERT.setdefault(("handel", "omnitrade"), {})["befehle"] = [
+    {
+        "was": "Lauf %s starten (%s)" % (name, symbol),
+        "cmd": [HANDEL_PYTHON, "..\\omnitrade_start.py", "start", name],
+        "hinweis": "OKX-Testnet, kein echtes Geld; laeuft schon = es passiert nichts",
+        "start": True,
+    }
+    for name, symbol in OMNI_LAEUFE
+] + [
+    {
+        "was": "Alle Laeufe mit Zustand auflisten (rein lesend)",
+        "cmd": [HANDEL_PYTHON, "..\\omnitrade_start.py", "liste"],
+        "hinweis": "je Lauf: laeuft oder steht, PID, Alter der Statusdatei",
+    },
+]
+
 # Nicht von Hand starten: der Dauerlauf nimmt die echte Sperre, melder.py
 # verschickt Telegram-Nachrichten. Beide bekommen KEINEN Startbefehl.
 OHNE_START = {
