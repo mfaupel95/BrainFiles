@@ -187,6 +187,23 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   wirft im String-Fall `AttributeError`; wer einen Block aus einer Spur mit
   `Path` in eine mit String kopiert, bricht den Pfad-Eintrag still. Vor dem
   Kopieren nachsehen, dann `sys.path.insert(0, HANDEL)` schreiben.
+- **Ein Automat, der sein Erzeugnis selbst baut, wird am SOLL-Bestand gemessen — nicht
+  an seiner Meldung und nicht an seinem Alter.** „ok", Exitcode 0 und ein frischer
+  Zeitstempel sagen nur, dass der Lauf stattfand; ob das Erzeugnis vollstaendig ist,
+  sagt allein ein Vergleich gegen die Referenz. Zwei Formen derselben Wurzel, beide
+  mit gruener Meldung: (a) eine SICHERUNG, die ihren Bestand aus einer falschen
+  Quelle aufbaut — die gemeldete Zahl passt dann zur Meldung, nicht zum Soll, und
+  still fehlt ein Teil (Umfang UND Loeschungen gegen die Quelle zaehlen, nicht nur
+  einen der beiden Werte); (b) eine geplante Aufgabe, die es im PLANER gar nicht
+  gibt — Registrierer-Skript, Commit-Text und eine abgehakte Aufgabe behaupten den
+  festen Takt, waehrend die Aufgabe nie angelegt wurde oder nicht haelt (das
+  Registrierer-Skript kann selbst dokumentieren, dass „Ready" samt naechstem Lauf
+  gemeldet wurde, ohne dass die Aufgabe blieb). Beleg ist die Liste ALLER Aufgaben
+  plus die Abfrage nach Namen (`schtasks /query /fo TABLE`, `schtasks /query /tn
+  <name>`), nicht der Registrierer-Log — ein Log mit frischem Zeitstempel belegt
+  nur einen HANDLAUF. Merksatz: **ein Erzeugnis ohne Vollstaendigkeitszahl ist keine
+  Sicherung, und ein Auftrag ohne Eintrag im Planer laeuft nicht** — beide
+  Gegenproben gehoeren in dieselbe Meldung wie das „ok".
 - **Eine Uebersprung-Wache, die fuer einen Teil gebaut wurde, schaltet den Rest
   mit ab.** Eine Routine, die "ueberspringen, solange der Fahrer laeuft" meldet
   und mit Code 0 endet, sieht gesund aus — sie kann aber seit dem Dauerbetrieb
@@ -265,6 +282,40 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   ohne die Zahl der Wiederholungen ist eine Stichprobe (dieselbe Sonde: 3/3 bei
   2,9 s mit einer Wiederholung, 6/6 bei 1,3 s mit zweien) — die belastbare Zahl
   mit Wiederholungen nehmen und beide mit ihrer Stueckzahl nennen.
+
+- **Ein Beleg, der den PROZESS festhaelt, ist kein Beleg — und ein Fehlschlag
+  darin ist schlimmer als keiner.** Wird fuer einen Startvorgang eine Belegdatei
+  angelegt (Startzeile, Endezeile), gehoert die WIRKUNG hinein: die Antwort des
+  Ports oder die Bereitschaftszeile des Programms. Steht dort stattdessen
+  "Prozess lief N Sekunden", sieht die Datei wie ein Nachweis aus und ist keiner
+  — die naechste Sitzung liest sie als "laeuft" und sucht an der falschen Stelle.
+  Am irrefuehrendsten, weil selbstverschuldet: ein zu frueh abgebrochener Probelauf
+  schreibt sein eigenes Scheitern hinein (`HTTP 000`, "keine Verbindung"), und ab
+  da traegt die Belegdatei die FALSCHFESTSTELLUNG. Drei Regeln:
+  (a) auf die WIRKUNG warten, nicht auf eine Sekundenzahl — ein Programm, das nach
+  8 s noch nicht bereit ist, ist nicht widerlegt (gemessen 57 s bis
+  `Application startup complete`); (b) jede Antwort zaehlt, die KOMMT — ein `401`
+  auf einem geschuetzten Endpunkt beweist den laufenden Server genau wie ein
+  `200`, ein `000` beweist nichts; (c) erst nach dem Beweis beenden und den
+  Ausgang mitschreiben. Fuer einen Dienst heisst das: den Port fragen, nicht die
+  Prozessliste.
+- **Zwischen Nachweis und Meldung darf nichts geschehen, was den Nachweis
+  entwertet.** Ein Beleg gilt fuer den Zustand, in dem er erhoben wurde. Wird
+  danach ein Befehl gefahren, der den Gegenstand veraendern kann, ist der Beleg
+  weg, waehrend die Belegdatei weiter "ok" sagt. Der gefaehrlichste Fall ist ein
+  BAU-Befehl: ein fehlgeschlagener Frontend-Build LEERT sein
+  Ausgabeverzeichnis (`dist/`, `.next/`) VOR dem Schreiben — danach liefert der
+  laufende Server eine leere Oberflaeche, und der Fehlversuch hat nicht nur
+  nichts gebaut, sondern das Vorhandene zerstoert. Vor einem solchen Versuch eine
+  Kopie des Ausgabeverzeichnisses anlegen, bei Fehlschlag zurueckholen, und danach
+  den Beleg ERNEUERN statt den alten zu zitieren.
+  **Und das Arbeitsverzeichnis vorher klaeren:** liegt der Gegenstand unter einer
+  Junction (einer Windows-Pfad-Weiterleitung), entscheidet das
+  ARBEITSVERZEICHNIS, ob ein relativer Pfad noch stimmt — derselbe Befehl laeuft
+  aus dem echten Pfad durch und bricht aus dem weitergeleiteten ab, weil das
+  Werkzeug die Junction aufloest und dem nachgelagerten Programm absolute Pfade
+  vorlegt, die es ablehnt. Zu Beginn eines Beleglaufs deshalb ausgeben und
+  ansehen, mit WELCHEM Verzeichnis gestartet wird, statt es anzunehmen.
 
 ## Verification
 

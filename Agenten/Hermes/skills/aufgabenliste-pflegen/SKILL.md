@@ -1,6 +1,6 @@
 ---
 name: aufgabenliste-pflegen
-description: Use when TASKS.md-Eintraege geaendert werden.
+description: Use when TASKS.md geaendert wird oder eine Aufgabe endet.
 version: 0.1.0
 author: Hermes Agent
 license: MIT
@@ -25,6 +25,18 @@ Die Datei ist die EINE offene-punkte-Liste des Hauses,
 CRLF, und waechst zwischen zwei Sitzungen um Dutzende Eintraege. Sie wird oft per
 Skript geaendert - genau dort verschwindet still ein Eintrag, wenn die Ersetzung
 zu grob greift.
+
+## Board oder Liste
+
+Das Haus hat zwei Aufgabenorte, und sie duerfen sich nicht ueberschneiden:
+
+- **Kanban-Board** (Skill `kanban-board`, ein Board je Arbeitsart): Arbeit, die
+  mehrere Profile parallel ausfuehren, die auf Review oder Wiederholung wartet,
+  oder die einen Betriebsprozess startet.
+- **Diese Liste:** was eine ENTSCHEIDUNG von Max braucht, sowie Inhalte der
+  Schutzstufe 0. Kartentexte auf dem Board liegen als Klartext in `kanban.db`
+  (unter `Agenten/`, also in der Sicherung) - Bescheide, Schluessel und
+  Zugangsdaten gehoeren hierher, nicht dorthin.
 
 ## Stehende Regel (Max)
 
@@ -144,6 +156,15 @@ assert [z for z in ("## Offen", "## Erledigt") if z in neu] == ["## Offen", "## 
   Aufgabe selbst gegenstandslos war ("nichts zu tun, weil X schon nicht mehr
   existiert") gehoert genau das mit Beleg hinein, nicht der urspruengliche Auftrag
 text.
+- **Ein Eintrag, der auf eine ENTSCHEIDUNG wartet (`- [?]`), endet MIT der
+  Entscheidung.** Solche Bloecke tragen `Wartet auf: Max - …`. Beim Schliessen den
+  `Naechster Schritt`/`Wartet auf`-Absatz durch die datierte Entscheidung ersetzen
+  (`Entschieden JJJJ-MM-TT (Max): …`), `- [x]` setzen, nach `## Erledigt` ziehen.
+  Fiel sie GEGEN die Aufgabe, steht genau das drin („bewusst ohne X") - bleibt der
+  alte Auftragstext stehen, liest die naechste Sitzung den Punkt als offen und
+  schlaegt ihn erneut vor. Dieselbe Entscheidung gehoert ZUSAETZLICH in die
+  Fachnotiz, an die Stelle, die den Gegenstand beschreibt (mit Datum): dort wird
+  sie gefunden, wo die Sache besprochen wird, nicht in der Aufgabenliste.
 - Ein Titel verspricht ein ERGEBNIS, kein Vorgehen: "PF_XBTUSD ist mit 141 USD
   nicht handelbar" ist eine Aufgabe, "Kontraktgroesse pruefen" ist eine Notiz.
 
@@ -163,6 +184,10 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   nicht abgehakt, Abschnitte unveraendert, Nummernmenge gleich) und danach die
   Zeilenenden. `--trocken` nennt nur die Zielzeile, ohne zu schreiben.
   `python .../scripts/erledigen.py T-0NN "**Erledigt JJJJ-MM-TT.** was gemessen wurde" --trocken`
+  Es nimmt **nur `- [ ]`** an. Ein Eintrag in anderer Kastenstellung - der
+  Wartestatus `- [?]` („Wartet auf: Max") - wird ueber den Byte-Weg nach Schritt 2
+  bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
+  schon abgehakt" und meint „nicht `- [ ]`", nicht „bereits erledigt".
 
 Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals eine echte Nummer, sonst zaehlt sie als zweiter Eintrag.
 
@@ -174,8 +199,15 @@ Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals ein
   gewaehlte Nummer war doppelt vergeben. Immer messen:
 
 ```bash
-grep -o "T-1[0-9][0-9]" MaxHirn/Archiv/TASKS.md | sort -u | tail -3
+grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 ```
+
+  **Kein Muster mit fester Stellenzahl.** Ein `T-1[0-9][0-9]` findet nur
+  dreistellige Nummern mit fuehrender 1 und liefert ab T-200 stillschweigend die
+  falsche hoechste Nummer (und in einem zweistelligen Nummernkreis `T-99` gar
+  keine) - das Ergebnis sieht wie ein Messwert aus und ist ein Artefakt des
+  Musters. Immer `T-[0-9]+` und numerisch sortieren (`sort -t- -k2 -n`), nicht
+  alphabetisch: `T-99` steht sonst hinter `T-100`.
 
   Danach die gewaehlte Nummer gegen die ganze Datei pruefen
   (`grep -c "\*\*T-160"`), nicht nur gegen den offenen Abschnitt.

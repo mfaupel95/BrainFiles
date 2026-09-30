@@ -192,6 +192,21 @@ origin <fork> && git fetch origin`.
   und den Umweg im Bericht nennen, nicht als Werkzeugfehler. Dieselbe Regel
   trifft die `okx-*`-Skill-Junctions: die sind fuer solche Werkzeuge
   strukturell unerreichbar.
+  **Zweite Form derselben Falle, teurer: das Werkzeug verweigert nicht, es
+  LOEST AUF — und der nachgelagerte Schritt lehnt den absoluten Pfad ab.** Ein
+  Frontend-Build aus dem weitergeleiteten Pfad bricht mit `fileName darf nicht
+  absolut sein, received O:/...` ab, waehrend derselbe Befehl aus dem echten
+  Verzeichnis durchlaeuft (der Bau gibt den aufgeloesten Pfad als absoluten
+  Eingabepfad an den Bundler weiter). Merksatz: unter einer Junction entscheidet
+  das ARBEITSVERZEICHNIS, ob ein relativer Pfad noch stimmt — vor jedem Lauf
+  AUSGEBEN, mit welchem Verzeichnis gestartet wird, statt es anzunehmen.
+  Ein Startfenster, das die Repos selbst einsammelt, liefert dabei meist den
+  ECHTEN Pfad (das Aufloesungsziel), ein von Hand gesetzter C:-Pfad nicht.
+  **Vor jedem Versuch mit einem BAU-Befehl das Ausgabeverzeichnis kopieren:**
+  der Fehlversuch LEERT `dist/`/`.next/` VOR dem Schreiben — er baut also nicht
+  nur nichts, sondern zerstoert das Vorhandene, und danach liefert der laufende
+  Server eine leere Oberflaeche, waehrend der alte Beleg weiter „ok“ sagt.
+  Ein Bau-Befehl, der erst leert und dann baut, ist kein harmloser Fehlversuch.
 - **Ein Projekt, das NICHT unter `Werkstatt/Repos` liegt, wird per Junction
   erreichbar gemacht** - nicht verschoben (im venv steht der Pfad absolut,
   `Scripts/python.exe` bricht danach) und nicht kopiert (verdoppelt ein venv von

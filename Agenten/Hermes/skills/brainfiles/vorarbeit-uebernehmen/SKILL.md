@@ -109,6 +109,21 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
   eine gewollte Zeile muss 1 insertion/1 deletion zeigen, nie ein
   Ganzdatei-Diff.
 
+- **Ein `git status` ist ein Schnappschuss, kein Zustand.** In einem Baum, an dem
+  mehrere Sitzungen arbeiten, kann die „unfertige Vorarbeit" zwischen dem Lesen und
+  dem Bericht erledigt sein — die parallele Sitzung committet sie in derselben
+  Minute. Gemessen: `master` bewegte sich waehrend EINER Bestandsaufnahme um drei
+  Commits, und dieselben Dateien, die eben noch `M`/`??` waren, lagen danach in
+  `HEAD`. Deshalb direkt VOR der Meldung erneut `git status --porcelain` und
+  `git log --oneline -3` lesen, den Commit nennen, gegen den gemessen wurde, und
+  jede Zeile der Bestandsaufnahme gegen den Zweig halten
+  (`git log --oneline <basis>..master -- <pfad>`): „liegt uncommittet" ist eine
+  Aussage mit Verfallszeit. Daraus folgt die Reihenfolge bei einem Auftrag ohne
+  benanntes Ziel: zuerst pruefen, ob die Vorarbeit ueberhaupt noch unfertig ist —
+  der Ausloeser dieses Skills kann veraltet sein, und die richtige Antwort ist dann
+  der Befund, der beim Nachmessen auffaellt (z. B. eine Sicherung, die still
+  unvollstaendig ist), nicht das Nachbauen der schon erledigten Arbeit.
+
 ## Abgrenzung
 
 - Arbeitsbaum im Mehrsitzungsbetrieb committen: `sichern` (Claude-Import).

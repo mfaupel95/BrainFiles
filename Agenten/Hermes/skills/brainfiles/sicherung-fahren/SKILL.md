@@ -33,6 +33,20 @@ Die geplanten Aufgaben starten denselben Wrapper. `robocopy` traegt `/XD`-Ausnah
 fuer Ordner, die eine laufende Anwendung sperrt (z. B. `browser-profile`);
 die Fehlermeldungen dazu stehen in `handel-spuren/references/browser-edge-sperre.md`.
 
+**Was das laufende System offen haelt oder selbst neu erzeugt, gehoert NICHT in
+die Kopie — sonst faerbt EINE gesperrte Datei den ganzen Lauf rot.** robocopy
+meldet dann "Code 11" (Dateien fehlten oder waren gesperrt) und der Wrapper endet
+mit Exit 1, obwohl alles Uebrige kopiert wurde. Belegte Klassen, jede mit
+gemessenem Grund: Bau-Caches (`.whl` waehrend eines Baus gesperrt), die
+Berichtsausgabe der Cron-Jobs (entsteht und verschwindet WAEHREND des Laufs),
+`.pid`-Sperrdateien und die Begleitdateien einer laufenden SQLite-Datenbank
+(`*.db-shm`, `*.db-wal` — eine Rohkopie waere ohnehin kein gueltiger
+Datenbankstand). Solche Pfade EINMAL in die `/XD`-Liste bzw. nach `/XF` aufnehmen
+und den GRUND daneben schreiben; sonst raeumt die naechste Sitzung die Ausnahme
+weg, weil sie wie eine Luecke aussieht. Erfolg ist die Zeile "robocopy-Code 0-3 -
+erfolgreich." plus "ENDE ok" im Protokoll — nicht das Ausbleiben einer
+Fehlermeldung.
+
 ## Prozedur
 1. **Stand messen, nicht erinnern.** Die drei Kopien GETRENNT pruefen (Alter und
    Ergebnis je Kopie) aus `Agenten\Routinen\logs\` — der Hauptlauf schreibt
@@ -64,12 +78,26 @@ die Fehlermeldungen dazu stehen in `handel-spuren/references/browser-edge-sperre
   die Kopfzeile und schliesst falsch „haengt". Der Fortschritt steht in der
   **tmp-Datei daneben** (waechst waehrend des Laufs). „Protokoll leer, aber
   robocopy laeuft" heisst also nur „noch nicht fertig".
-- **Die Ausser-Haus-Kopie hat absichtlich keine geplante Aufgabe** — sie braucht
-  die angesteckte SSD, ein zeitgesteuerter Lauf wuerde nur scheitern. Folge: sie
-  wird still alt und niemand merkt es. Belegt: 13 Tage alt, 89.421 Dateien /
-  18 GB Nachholbedarf, waehrend die beiden anderen Kopien stundenaktuell waren.
+- **Die Ausser-Haus-Kopie erneuert sich selbst** — Aufgabe
+  `MaxHirn-Ausserhaus-Kopie`, taeglich 21:30 (nach der Zweitkopie 21:00), Wrapper
+  `Agenten\Routinen\ausserhaus-kopie.ps1`. Fehlt die SSD, endet der Lauf in
+  Sekunden mit **Exitcode 2 = "uebersprungen", und das ist kein Fehlschlag**
+  (dieselbe Regel wie bei der Zweitkopie). Anlegen und Nachziehen uebernimmt der
+  Hermes-Cron `ausserhaus-aufgabe-sichern` (taeglich 08:30): er legt eine
+  fehlende Aufgabe an und schaltet eine abgeschaltete wieder ein. Trotzdem gilt:
+  das Alter DIESER Kopie einzeln messen (Fristwache `ausserhaus-frist-wache`,
+  14 Tage), und **"ausser Haus bringen" bleibt Handarbeit** — eine Kopie auf dem
+  Schreibtisch ist keine Kopie ausser Haus.
   Wer „alles gesichert" meldet, ohne das Alter DIESER Kopie einzeln zu messen,
   meldet einen Zustand, den es nicht gibt.
+- **Die Kopie ausser Haus bleibt bewusst UNVERSCHLUESSELT** (Entscheidung Max,
+  abgeschlossen - kein offener Punkt). Auf ihr liegen Klartext-Zugangsdaten
+  (`Wissen/Zugaenge.md`); die Vertraulichkeit haengt damit am AUFBEWAHRUNGSORT,
+  nicht an einer Verschluesselung. BitLocker oder eine andere Verschluesselung
+  deshalb nicht erneut vorschlagen und nicht als Luecke melden - die Warnung im
+  Abschlusstext des Skripts bleibt stehen und wird als bewusst hingenommen gelesen.
+  Gemessen wird weiter nur, was ohnehin gemessen wird: Alter der Kopie (Fristwache)
+  und dass sie physisch ausser Haus liegt.
 - **Ein Lauf, der 0 Dateien kopiert, ist ein gueltiges Ergebnis.** „0 kopiert /
   N uebersprungen" heisst: der Zielstand ist schon aktuell. Nicht als Fehler
   lesen und nicht in eine Nachkontrolle umdeuten.
