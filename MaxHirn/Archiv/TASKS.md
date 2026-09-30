@@ -910,21 +910,43 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/optimieren.py, Agenten/Handel/breite.py, Wiki/Handel/Backtest-Fundament.md
 
 
-- [ ] **T-100 — Ungeklaerte Loeschung: test_breite_wache.py verschwand zweimal aus dem Arbeitsbaum**
-      Kontext: Am 25.09.2026 war die Datei committet (`ad081ef`) und lag zweimal
-      nicht mehr auf der Platte; beim zweiten Mal nahm mein eigener Commit das
-      Loeschen mit (`c49111f`, 125 Zeilen), wiederhergestellt in `a257c62`.
-      Ausgeschlossen: Defender (kein Fund seit 24.09.), Cron-Jobs (41 geprueft),
-      `git reset`/`checkout`/`clean` (Reflog zeigt nur Commits). Betroffen war
-      NUR diese Datei - `breite.py` und `breite-wache.py` blieben liegen.
-      Naechster Schritt: beim naechsten Auftreten sofort einen Datei-Watcher auf
-      `Agenten/Hermes/scripts/` setzen (FileSystemWatcher) und den Loescher
-      namentlich fassen. Bis dahin gilt die Lehre in
-      `Wiki/Lektionen/Git-und-Textdateien.md` §6: den Arbeitsbaum VOR dem Commit
-      lesen, ein `D` in der eigenen Pfadliste ist ein Befund.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Hermes/scripts/
-
+- [ ] **T-100 — Ungeklaerte Loeschung: sechs Testdateien verschwanden aus Agenten/Hermes/scripts/**
+      Kontext: Am 25.09.2026 verschwand `test_breite_wache.py` zweimal aus dem
+      Arbeitsbaum (`ad081ef` angelegt, `c49111f` nahm die Loeschung mit, `a257c62`
+      holte sie zurueck). Am 30.09.2026 nachgezaehlt: es sind SECHS Dateien, nicht
+      eine, alle `test_*.py` in `Agenten/Hermes/scripts/` - `test_breite_wache.py`
+      (`455e0fe`), `test_waisen_wache.py` (`22e5f7d`), `test_spiegelfrist_wache.py`
+      und `test_spur_wache.py` (`3ef372b`), `test_live_wache_stops.py` (`aae26a9`),
+      `test_hermes_doctor.py` (`cc70977`). Jede lag danach nur noch als Bytecode in
+      `__pycache__`.
+      GEMESSEN und ausgeschlossen (30.09.2026): das Werkzeug-Backend ist kein
+      Container mit eigener Sicht (Terminal nativ auf dem Host, `C: on /c type
+      ntfs`), `write_file` schreibt host-sichtbar (Sonde: 294 B in beiden Sichten,
+      `git status` zeigt `??`); kein Haus-Werkzeug loescht dort (`datensortierung.ps1`
+      verschiebt nur `.bak` mit Schutzpruefung, `systempruefung.ps1` nur
+      Ollama-Reststores, kaputte venvs und eigene Logs ueber 30 Tage,
+      `skills-entdoppeln.py` nur Skill-Baeume), nirgends ein `/MIR`-Spiegel; kein
+      Defender-Fund auf diesem Pfad; OneDrive nicht betroffen (UserFolder
+      `C:\Users\faupe\OneDrive`); die PowerShell-History (1.761 Zeilen) kennt weder
+      die Dateinamen noch `git clean`/`checkout`/`stash`.
+      Der Taeter ist damit WEITER OFFEN. Der Schadensweg ist belegt:
+      `Agenten/Routinen/fremdarbeit-einziehen.ps1` sieht eine fehlende Datei nach 30
+      Minuten als 'ruhende Fremdarbeit' und committet die Loeschung - sie ist der
+      SCHREIBER des Verlusts, nicht sein Urheber, und nennt als Urheber 'Andere
+      Sitzung', was die Suche in die Irre fuehrt.
+      Naechster Schritt: nicht mehr suchen, sondern fangen. Seit 30.09.2026 laeuft
+      die Wache `Agenten/Hermes/scripts/dateischwund-wache.py` (Hermes-Cron
+      `dateischwund-wache`, alle 15 Minuten, no_agent, Telegram, leere Ausgabe = kein
+      Befund, 18 Tests in `test_dateischwund_wache.py`). Sie meldet (a) jede Datei,
+      die in HEAD steht und im Arbeitsbaum fehlt - der T-100-Fall, sichtbar
+      mindestens 30 Minuten BEVOR die Routine ihn festschreibt - und (b) jede Datei,
+      die seit dem letzten Lauf verschwunden ist (auch nie committete) sowie eine auf
+      0 Byte zusammengefallene. Sie aendert nichts. Meldet sie das naechste Mal: den
+      Pfad sofort mit `git checkout HEAD -- <pfad>` zurueckholen und DANN die Uhrzeit
+      mit den laufenden Sitzungen abgleichen (`Agenten/Hermes/logs/`,
+      `Agenten/Hermes/cache/`), um den Loescher zu fassen.
+      Angelegt: 2026-09-25 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/, Agenten/Routinen/fremdarbeit-einziehen.ps1
 
 - [ ] **T-099 — Breite-Wache justieren: sind 10 Punkte Rueckgang richtig?**
       Kontext: Die Wache meldet seit 25.09.2026 einen Rueckgang erst ab **10

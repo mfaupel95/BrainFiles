@@ -3,7 +3,7 @@ id: 20260921-git-und-textdateien
 title: 'Lektionen — Git und Textdateien'
 tags: [lektion, git]
 created: 2026-09-21
-updated: 2026-09-26
+updated: 2026-09-30
 related: ['[[Lektionen/Tests]]', '[[Wissen/Schutzregeln]]']
 summary: 'Zeilenenden, Whitelist-Falle, index.lock, Fremdarbeit im Arbeitsbaum — die vier Fallen, die am haeufigsten zugeschlagen haben.'
 ---
@@ -113,6 +113,48 @@ hat, ist das ein Befund: erst `git checkout <letzter-guter-commit> -- <pfad>`,
 den Inhalt zurueckholen, dann committen. Eine Pfadliste macht einen Commit nicht
 sicher - nur ihr Inhalt tut es.
 Gegenprobe danach: `git cat-file -e HEAD:<pfad>` (Exitcode 0 = liegt in HEAD).
+
+## 6b. Eine Luecke von einer Sekunde wird zur dauerhaften Loeschung
+
+Nachtrag 30.09.2026: es waren nicht eine, sondern **sechs** Dateien — alle
+`test_*.py` in `Agenten/Hermes/scripts/`: `test_breite_wache.py` (`455e0fe`),
+`test_waisen_wache.py` (`22e5f7d`), `test_spiegelfrist_wache.py` und
+`test_spur_wache.py` (`3ef372b`), `test_live_wache_stops.py` (`aae26a9`),
+`test_hermes_doctor.py` (`cc70977`). Jede lag danach nur noch als Bytecode in
+`__pycache__` — Python raeumt einen verwaisten `.pyc` nicht weg, er ist der
+Fingerabdruck des Verlusts (und der einzige Grund, warum die Loeschungen
+ueberhaupt auffielen).
+
+Der **Taeter** ist offen. Gemessen und ausgeschlossen (30.09.2026): das
+Werkzeug-Backend ist kein Container mit eigener Sicht (`C: on /c type ntfs`,
+Terminal nativ auf dem Host), `write_file` schreibt host-sichtbar (Sonde 294 B
+in beiden Sichten, `git status` zeigt `??`), kein Haus-Werkzeug loescht dort
+(`datensortierung.ps1` verschiebt nur `.bak`, `systempruefung.ps1` nur
+Ollama-Reststores/venvs/eigene Logs ueber 30 Tage), nirgends ein `/MIR`-Spiegel,
+kein Defender-Fund auf dem Pfad, OneDrive nicht betroffen, die
+PowerShell-History (1.761 Zeilen) kennt weder die Dateinamen noch
+`git clean`/`checkout`/`stash`.
+
+Der **Schadensweg** ist dagegen belegt: `Agenten/Routinen/fremdarbeit-einziehen.ps1`
+sieht eine fehlende Datei nach 30 Minuten als „ruhende Fremdarbeit" und
+committet die Loeschung. Die Routine ist der **Schreiber des Verlusts**, nicht
+sein Urheber — und ihre Meldung nennt als Urheber „Andere Sitzung", was die
+Suche in die Irre fuehrt.
+
+**Regel.** Wer eine Datei kurz wegnimmt (Umbau, Umbenennen, Kopierversuch), hat
+30 Minuten, bis sie endgueltig aus `master` ist. Und: eine Wache muss die
+Luecke sehen, **bevor** die Routine sie festschreibt — danach ist jeder Befund
+eine Grabsteinmeldung.
+
+**Werkzeug.** `Agenten/Hermes/scripts/dateischwund-wache.py` (Hermes-Cron
+`dateischwund-wache`, alle 15 Minuten, `no_agent`, Telegram, leere Ausgabe =
+kein Befund) prueft zwei Soll-Zustaende: (a) jede Datei, die in `HEAD` steht und
+im Arbeitsbaum fehlt — der T-100-Fall, sichtbar mindestens 30 Minuten vor dem
+Routine-Commit; (b) jede Datei, die seit dem letzten Lauf verschwunden ist
+(faengt auch nie committete Dateien) sowie eine auf 0 Byte zusammengefallene
+Datei. Sie aendert nichts; sie meldet nur, mit dem fertigen
+`git checkout HEAD -- <pfad>`. 18 Tests in
+`Agenten/Hermes/scripts/test_dateischwund_wache.py`.
 
 ## 7. Ein eigener Index muss vom committeten Baum starten
 
