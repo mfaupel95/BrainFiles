@@ -337,6 +337,36 @@ Was daran zu lesen ist:
   steht alphabetisch hinter `nach177`, also zeigte die Uebersicht genau den
   Lauf ohne die Regel (+0,372 % je Runde statt +0,342 %).
 
+### Nachgeprueft am 30.09.2026: die Regel wirkt — und ein Vorzeichenfehler im Paarer
+
+Unabhaengig nachgemessen (`Agenten/Handel/kerzenschluss_bias.py`, je
+Austrittszeile, ohne Paarung): **wavetrend/ganz 0 % der Ausstiege auf der Marke,
+wavetrend/nach177 100 %** — die Regel tut, was sie soll. Der alte Kerzenschluss
+lag netto **492 Prozentpunkte zu schlecht**: auf der Verlustseite 938 Punkte
+tiefer als der Stop, auf der Gewinnseite 445 Punkte ueber dem Ziel. Die
+Verlustseite dominiert, weil ein Stop im Docht weit unter dem Stop schliessen
+kann — die frueher notierte Lesart („die Gewinner sind zu gut") beschreibt nur
+die kleinere Haelfte.
+
+**Dabei kam ein Fehler heraus, der die Tabelle oben mitbetrifft:**
+`kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis OHNE die
+Handelsrichtung. Fuer wavetrend (55 % Shorts) standen damit Trefferquote 54,2 %
+und Summe +679 in der Auswertung; richtig sind **33,2 % und -513**. Betroffen ist
+jede gemischt handelnde Spur — squeeze, macd_mtf, supertrend und wavetrend haben
+rund 50 % Shorts je Buch. Behoben am 30.09.2026 (`seite` aus der
+Einstiegszeile), Test `tests/test_kosten_wendepunkt.RichtungTest`.
+
+Fuer die Tabelle oben heisst das: die RICHTUNG der Aussagen bleibt (die Regel
+verschiebt nur den Ausstiegskurs, nicht den Ausloeser), die ZAHLEN der vier
+Indikator-Spuren sind nachzurechnen — als **T-230** notiert. Supertrend bleibt
+davon unberuehrt in seiner Aussage (492/492 schon vorher): seine eigene
+Ausstiegsrechnung schreibt den Markenpreis.
+
+Merksatz: **drei Wege muessen dasselbe sagen.** Zeilenrechnung,
+Schluessel-Paarung ueber `(inst, stop, ziel)` und `kosten_wendepunkt.paarung`
+gaben +492 / +492 / **-47,7** — der Ausreisser war der Fehler, nicht die
+Mehrheit.
+
 ### Drei Fehler, die die echten Laeufe aufgedeckt haben
 
 1. `main()` rechnete die Fensterbreite ueber `lade_wachen()` VOR den neuen
