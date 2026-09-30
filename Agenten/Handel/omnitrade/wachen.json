@@ -44,5 +44,6 @@
   },
   "_grund": "omnitrade_spiegel",
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",
-  "journal_zweitziel": "Q:\\Handel_Journal\\omnitrade"
+  "journal_zweitziel": "Q:\\Handel_Journal\\omnitrade",
+  "_kursweg": "Anzeige und Papierbewertung holen den Kurs ueber den OKX-Weg der Handelszentrale (Vorgabe) - die Instrumente stehen in OKX-Schreibweise (BTC-USDC), weil die Rust-Laeufe dort rechnen. Der Kurs fuer den Live-Einstieg kommt trotzdem von Kraken (spur_buch.einstieg holt ihn bei gesetztem live=True ueber weg.letzter_kurs und rechnet Stop/Ziel neu)."
 }

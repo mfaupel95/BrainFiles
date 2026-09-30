@@ -432,6 +432,45 @@ Prognose-Bericht (`--live` verweigert, kein Broker-Aufruf). Sagt Max
 ueberhaupt einen Orderaufruf im Code hat (`spuren_stand.py` Spalte
 "Order-Code"), sonst baut man an einer Spur, die gar nicht handeln kann.
 
+### Der gebaute Weg: den FREMDREN Lauf spiegeln, nicht nachbauen (30.09.2026)
+
+Umgesetzt in `Agenten/Handel/omnitrade` (Weg B der Entscheidung von Max, nach
+Auftrag "nur noch omnitrade auf kraken handel erlaubt"). Vier Regeln, die den
+Aufbau tragen und auf JEDE Spur uebertragbar sind, die einen fremden Lauf
+liest:
+
+1. **Den ZUSTAND spiegeln, nicht die Orderliste.** Ein Statusdokument, das
+   `recent_orders` als Ringpuffer fuehrt (dort `MAX_ORDERS = 20`), verliert bei
+   einem Ausfall alles dazwischen — wer daraus Ereignisse nachzaehlt, verpasst
+   sie still. `net_quantity > 0` sagt dagegen zu jedem Zeitpunkt, ob der Lauf
+   eine Position haelt.
+2. **`state: running` ist kein Beweis — zwei Zeugen.** Nach einem harten Ende
+   bleibt die Statusdatei mit einer TOTEN PID auf `running` stehen (gemessen:
+   `live_adx_macd_BTCUSDC.json` lag zwei Stunden so im Statusordner, waehrend
+   `omnitrade_start.py liste` "PID lebt nicht" meldete). Einstieg nur bei
+   frischer Datei UND lebender PID (`omnitrade_lauf.pid_lebt`); der Ausstieg
+   greift auch bei `stopped` (die CLI verkauft beim Beenden), **nie** bei
+   `starting`/`error` — ein Abbruch ist kein Handelssignal.
+3. **Den echten Orderpreis buchen, nicht den letzten Kerzenschluss.** Ein
+   Fremdlauf steigt mit einer echten Order aus; ihr Preis steht in
+   `recent_orders`. `last_close` als Verkaufskurs ins Journal zu schreiben,
+   erfindet einen Kurs. Regel in `quelle()`: Verkaufspreis genau dann, wenn der
+   Lauf NICHT offen ist; `last_close` bleibt die Bewertung der offenen Position.
+4. **Der Fremdlauf ist die Ausstiegslinie, der Stop ist der Notaus.** Der Stop
+   wird WEIT gesetzt (hier 8 %) und das Ziel praktisch unerreichbar (10R) —
+   sonst bucht die Spur Runden, die der fremde Lauf nie genommen haette. Der
+   Ausstieg kommt ueber `spur_buch.zyklus(..., zusatz_ausstieg=...)` mit einem
+   eigenen Grund (`omnitrade flat`).
+
+Dazu die zwei Fallen des Anschlusses: **die Quotewaehrung vor der ersten
+Sperrenpruefung setzen** (`boersen_binden(w)` → `weg.setze_quote(w["kraken_quote"])`),
+sonst findet die Paar-Tabelle ein USDC-Paar nicht — sie faellt ausdruecklich
+nicht auf eine andere Waehrung zurueck, damit keine Order im falschen Markt
+landet. Und: **`spur_buch.zyklus` steigt bei leeren Daten VOR `pruefe_ausstiege`
+aus** — liefert `quelle()` nur laufende Laeufe, kann ein beendeter Lauf die
+Position nie schliessen. Deshalb kommen ALLE lesbaren Laeufe ins `daten`-Dict
+und `signal()` prueft `laeuft` UND `offen`.
+
 ## Instrumentenwechsel mit offenem Buch
 
 Ein Instrumentenwechsel ist kein Konfigurationswert, sondern ein BUCHVORGANG.
