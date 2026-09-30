@@ -1,0 +1,3 @@
+trailing_stop(0.03)
+stop_loss(close() * 0.950); if ema(20) > ema(50) && rsi(14) < 30 { buy() }
+stop_loss(close() * 1.050); if ema(20) < ema(50) && rsi(14) > 70 { sell() }

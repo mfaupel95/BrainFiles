@@ -735,6 +735,7 @@ Agenten/Handel/trendwende_btc/handelsjournal.csv
 !Agenten/Handel/omnitrade/*.md
 !Agenten/Handel/omnitrade/wachen.json
 !Agenten/Handel/omnitrade/tests/*.py
+!Agenten/Handel/omnitrade/strategien/*.omni
 Agenten/Handel/omnitrade/zustand.json
 Agenten/Handel/omnitrade/handelsjournal.csv
 Agenten/Handel/moondev_topmovers/zustand.json

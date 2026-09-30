@@ -25,7 +25,7 @@ import urllib.request
 HIER = os.path.dirname(os.path.abspath(__file__))
 ORDNER = os.path.join(HIER, "daten", "historie")
 
-TAKTE = {"1H": "1h", "4H": "4h", "1D": "1d"}
+TAKTE = {"5M": "5m", "15M": "15m", "30M": "30m", "1H": "1h", "4H": "4h", "1D": "1d"}
 
 # OKX- und Kraken-Namen der Spuren -> Binance-Symbol. EIN Ort, damit nicht
 # jede Spur ihr eigenes Mapping erfindet. Gemessen 2026-09-24: 19 von 20
