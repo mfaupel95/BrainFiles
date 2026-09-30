@@ -35,6 +35,7 @@ from pathlib import Path
 import stoerungen  # gleicher Ordner: trennt Zwangsschluesse von Handelsrunden
 import risikostufe  # gleicher Ordner: Dateinamen der Risikostufen
 import zeitfenster  # gleicher Ordner: Fenstergrenzen und Zeilenfilter
+import journalpaarung as jp  # gleicher Ordner: EINE Paarung fuer alle Auswertungen
 
 # Risikostufe dieser Auswertung: None = Basis. Setzt main() aus --risiko.
 STUFE = None
@@ -159,7 +160,7 @@ def einheit_fuer(spur, z=None):
     return EINHEIT.get(spur, "USD")
 
 
-def runden_fuer(spur, z=None, gebuehr=None):
+def runden_fuer(spur, z=None, gebuehr=None, stand=None):
     """Die GESCHLOSSENEN Runden einer Spur als Liste - die Zuordnung Spur ->
     Rechenweg steht hier und NUR hier (bis 29.09.2026 stand sie in
     `kennzahlen_fuer`; ein zweiter Aufrufer haette sie abschreiben muessen).
@@ -183,17 +184,17 @@ def runden_fuer(spur, z=None, gebuehr=None):
     if not z:
         return []
     if spur in ("xperp", "swap"):
-        return runden_xperp(z)
+        return runden_xperp(z, stand=stand)
     if spur == "scanner":
-        return runden_spot(z, 0.0005)
+        return runden_spot(z, 0.0005, stand=stand)
     if spur == "kraken":
-        return runden_spot(z, gebuehr, einsatz_feld="eur")
+        return runden_spot(z, gebuehr, einsatz_feld="eur", stand=stand)
     if spur == "orbk":
         return runden_orbk(z)
     if spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
-        return runden_indikator(z)
+        return runden_indikator(z, stand=stand)
     if spur in NAUTILUS_SPUREN:
-        return runden_nautilus(z)
+        return runden_nautilus(z, stand=stand)
     if spur == "gitter":
         return gitter_zyklen(z)
     return []
@@ -225,9 +226,17 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     z = zeilen(spur)
     if not z:
         return None
-    runden = runden_fuer(spur, z)
+    stand = {}
+    runden = runden_fuer(spur, z, stand=stand)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
-    return kennzahlen(runden, einheit_fuer(spur))
+    k = kennzahlen(runden, einheit_fuer(spur))
+    # Die Zuordnung wird MITGELIEFERT, nicht verschwiegen: eine Runde, die
+    # keinen Partner fand, fehlt sonst still in der Quote (T-095). `kennzahlen`
+    # gibt None zurueck, wenn nur Zwangsschluesse im Journal stehen - dann gibt
+    # es keine Kennzahl, an die man die Zahlen haengen koennte.
+    if k is not None:
+        k["paarung"] = stand
+    return k
 
 
 def belastbar(k, min_runden=None):
@@ -411,6 +420,24 @@ def kennzahlen(runden, einheit):
     }
 
 
+def paarung_text(p):
+    """Die Paarungszahlen als EINE Zeile - 'was nicht gepaart wurde, wird
+    ausgewiesen' (T-095). Ohne sie sieht ein Journal mit vielen uebersprungenen
+    Zeilen aus wie eine kleine Stichprobe."""
+    teile = []
+    if p.get("unpaarig"):
+        zusatz = ""
+        if p.get("zweideutig"):
+            zusatz = " (davon %d zweideutig - nicht geraten)" % p["zweideutig"]
+        teile.append("%d Ausstieg(e) ohne Partner%s" % (p["unpaarig"], zusatz))
+    if p.get("ohne_kennung"):
+        teile.append("%d Einstieg(e) ohne pos_id (Altjournal)"
+                     % p["ohne_kennung"])
+    if p.get("offen"):
+        teile.append("%d Position(en) offen" % p["offen"])
+    return "; ".join(teile) or "vollstaendig gepaart"
+
+
 def _zaehle(werte):
     aus = {}
     for w in werte:
@@ -430,39 +457,31 @@ def _kosten_anteil(runden):
 
 
 def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
-           einheit, grund_feld="grund"):
-    """Einstiege und Ausstiege je Instrument in der Reihenfolge des Journals
-    zusammenfuehren (wer zuerst kauft, verkauft zuerst), und daraus Runden
-    bauen. Kein Nachrechnen von Kursen: Erloes und Einsatz stehen in den
-    Zeilen - was nicht in den Zeilen steht, wird nicht erfunden.
+           einheit, grund_feld="grund", stand=None):
+    """Einstiege und Ausstiege einander zuordnen und daraus Runden bauen.
+
+    DIE ZUORDNUNG STEHT IN `journalpaarung.Paarung` (Kennung zuerst, sonst nur
+    eindeutige Faelle) - hier bleibt nur, was diese Auswertung rechnet: Einsatz,
+    Erloes, Ergebnis. Kein Nachrechnen von Kursen: Erloes und Einsatz stehen in
+    den Zeilen - was nicht in den Zeilen steht, wird nicht erfunden.
+
+    WARUM NICHT MEHR HIER (T-095, 30.09.2026): bis hierher lag jede offene
+    Position in einem Dict `offen[inst]` - zwei gleichzeitige Positionen im
+    selben Instrument ueberschrieben einander, der erste Ausstieg paarte mit dem
+    falschen Einstieg oder fiel ganz weg. Gemessen im Backtest ueber 5,7 Jahre:
+    squeeze 1092 Einstiege und 1088 Ausstiege, aber nur 759 ausgewertete Runden
+    (macd_mtf 774 von 1209, wavetrend 1128 von 1506). Die Quote stand damit auf
+    einer nicht zufaelligen Teilmenge - gleichzeitige Positionen im selben
+    Instrument sind eher gleichgerichtet.
+
+    `stand` ist ein dict, das die Zahlen der Zuordnung aufnimmt (`unpaarig`,
+    `zweideutig`, `ohne_kennung`, `offen`) - sie werden AUSGEWIESEN, nicht
+    verschwiegen. Ohne `stand` aendert sich am Ergebnis nichts.
     """
-    offen = {}
-    kennung_offen = {}
+    p = jp.Paarung(einstieg=einstieg_namen, ausstieg=ausstieg_namen)
     runden = []
-    for r in zeilen_:
-        art = (r.get("aktion") or "").strip().lower()
-        schluessel = (r.get("inst") or r.get("paar") or "").strip()
-        if not schluessel:
-            continue
-        kennung = (r.get("pos_id") or "").strip()
-        if art in einstieg_namen:
-            if kennung:
-                kennung_offen[kennung] = r
-            else:
-                offen.setdefault(schluessel, []).append(r)
-            continue
-        if art not in ausstieg_namen:
-            continue
-        # KENNUNG ZUERST (T-095): die Reihenfolge im Instrumentenstapel ist
-        # eine Annahme - bei zwei gleichzeitigen Positionen im selben
-        # Instrument kann sie den Ausstieg an den falschen Einstieg haengen.
-        # Mit `pos_id` ist die Zuordnung dagegen die Zeile selbst.
-        ein = kennung_offen.pop(kennung, None) if kennung else None
-        if ein is None:
-            kette = offen.get(schluessel) or []
-            if not kette:
-                continue                  # Ausstieg ohne Einstieg: ignorieren
-            ein = kette.pop(0)
+    for ein, r in p.zuordnen(zeilen_):
+        schluessel = jp.schluessel(ein)
         if isinstance(einsatz_feld, tuple):
             # Mehrere Schreibweisen desselben Betrags: der OKX-Arm der
             # Nautilus-Gruppe fuehrt `einsatz_usd`, der Kraken-Arm
@@ -485,10 +504,12 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
             # zeitfenster.im_fenster() die Runde ohne Sonderfall liest.
             "zeit": r.get("zeit") or "",
         })
+    if stand is not None:
+        stand.update(p.stand())
     return runden
 
 
-def runden_xperp(zeilen_):
+def runden_xperp(zeilen_, stand=None):
     """Hebelspuren: Einsatz ist die Margin, Erloes die Margin beim Ausstieg."""
     def ergebnis(ein, aus):
         margin = zahl(ein.get("margin_usd"))
@@ -503,10 +524,10 @@ def runden_xperp(zeilen_):
         return erloes - margin, kosten
 
     return _paare(zeilen_, {"eroeffnen"}, {"schliessen"}, "margin_usd", ergebnis,
-                  "USD")
+                  "USD", stand=stand)
 
 
-def runden_spot(zeilen_, kosten_pct=0.0, einsatz_feld="usd"):
+def runden_spot(zeilen_, kosten_pct=0.0, einsatz_feld="usd", stand=None):
     """Spot (scanner, kraken): Einsatz und Erloes stehen als Betrag in der Zeile.
     Die Gebuehr ist bei scanner/kraken schon eingerechnet; kosten_pct ist nur
     fuer die Anzeige, wie viel davon Gebuehr war."""
@@ -520,10 +541,10 @@ def runden_spot(zeilen_, kosten_pct=0.0, einsatz_feld="usd"):
         return erloes - einsatz, einsatz * kosten_pct
 
     return _paare(zeilen_, {"kauf"}, {"verkauf"}, einsatz_feld, ergebnis,
-                  "USD")
+                  "USD", stand=stand)
 
 
-def runden_indikator(zeilen_):
+def runden_indikator(zeilen_, stand=None):
     """Indikatorspuren: kauf/verkauf, Betrag in `einsatz_usd`.
 
     Derselbe Feldname traegt beim Kauf den Einsatz und beim Verkauf den Erloes.
@@ -543,10 +564,11 @@ def runden_indikator(zeilen_):
             return None, None
         return erloes - einsatz, 0.0
 
-    return _paare(zeilen_, {"kauf"}, {"verkauf"}, "einsatz_usd", ergebnis, "USD")
+    return _paare(zeilen_, {"kauf"}, {"verkauf"}, "einsatz_usd", ergebnis, "USD",
+                  stand=stand)
 
 
-def runden_nautilus(zeilen_):
+def runden_nautilus(zeilen_, stand=None):
     """Die drei Papier-Arme der Nautilus-Gruppe: eroeffnen/schliessen.
 
     Einsatz und Erloes stehen als BETRAG in der Zeile - `einsatz_usd`/`wert_usd`
@@ -573,7 +595,7 @@ def runden_nautilus(zeilen_):
         return erloes - einsatz, 0.0
 
     return _paare(zeilen_, {"eroeffnen"}, {"schliessen"},
-                  ("einsatz_usd", "einsatz_eur"), ergebnis, "USD")
+                  ("einsatz_usd", "einsatz_eur"), ergebnis, "USD", stand=stand)
 
 
 def runden_orbk(zeilen_):
@@ -677,6 +699,9 @@ def zeige(spur, k):
         print("  %-28s %.1f Tage" % ("Haltedauer (Median)", k["halten_tage"]))
     print("  Ausstiegsgruende: %s"
           % ", ".join("%s %d" % (g, n) for g, n in k["gruende"].items()))
+    p = k.get("paarung") or {}
+    if p.get("unpaarig") or p.get("zweideutig") or p.get("ohne_kennung"):
+        print("  %-28s %s" % ("Paarung", paarung_text(p)))
     if not belastbar(k):
         print("  -> nur %d Runden: das ist ein Befund, keine Messung. "
               "Belastbar wird es ab %d." % (k["n"], MIN_RUNDEN))

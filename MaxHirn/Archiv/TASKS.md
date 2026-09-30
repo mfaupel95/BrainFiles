@@ -1283,24 +1283,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/replay.py, Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md
 
 
-- [ ] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
-      Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
-      1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur
-      759 aus (30 % Verlust); bei macd_mtf 1209 gegen 774, bei wavetrend 1506
-      gegen 1128. Ursache: die Funktion legt offene Positionen in einem Dict
-      `offen[inst]` ab - zwei gleichzeitige Positionen im selben Instrument
-      ueberschreiben einander, die erste Ausstiegszeile paart dann mit dem
-      falschen Einstieg oder faellt weg. Die Spuren erlauben mehrere Plaetze und
-      besetzen denselben Wert mehrfach, das ist also der Normalfall.
-      Auswirkung: Trefferquote und f_max werden auf einer Teilmenge gerechnet,
-      und die uebersprungene Teilmenge ist nicht zufaellig (gleichzeitige
-      Positionen im selben Instrument sind eher gleichgerichtet).
-      Naechster Schritt: Positionskennung ins Journal (Spalte `pos_id` beim
-      Einstieg, von der Ausstiegszeile mitgefuehrt) und `runden_aus_journal`
-      darauf paaren - mit Rueckfall auf die Instrumentenpaarung fuer alte
-      Journale. Betrifft ALLE Auswertungen, nicht nur den Backtest.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/kosten_wendepunkt.py, Agenten/Handel/auswertung_alle.py, spur_buch.py
 
 
 - [ ] **T-094 — Entscheidung Max: kostenpflichtige Historien (Deribit-Strike-OI, Onchain)**
@@ -2476,6 +2458,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
+      Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
+      1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur
+      759 aus (30 % Verlust); bei macd_mtf 1209 gegen 774, bei wavetrend 1506
+      gegen 1128. Ursache: die Funktion legt offene Positionen in einem Dict
+      `offen[inst]` ab - zwei gleichzeitige Positionen im selben Instrument
+      ueberschreiben einander, die erste Ausstiegszeile paart dann mit dem
+      falschen Einstieg oder faellt weg. Die Spuren erlauben mehrere Plaetze und
+      besetzen denselben Wert mehrfach, das ist also der Normalfall.
+      Auswirkung: Trefferquote und f_max werden auf einer Teilmenge gerechnet,
+      und die uebersprungene Teilmenge ist nicht zufaellig (gleichzeitige
+      Positionen im selben Instrument sind eher gleichgerichtet).
+      Naechster Schritt: Positionskennung ins Journal (Spalte `pos_id` beim
+      Einstieg, von der Ausstiegszeile mitgefuehrt) und `runden_aus_journal`
+      darauf paaren - mit Rueckfall auf die Instrumentenpaarung fuer alte
+      Journale. Betrifft ALLE Auswertungen, nicht nur den Backtest.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/kosten_wendepunkt.py, Agenten/Handel/auswertung_alle.py, spur_buch.py
+      **Erledigt 2026-09-30.** Neue Spalte `pos_id` (Einstiegszeile traegt die Kennung, Ausstiegszeile uebernimmt sie) in allen schreibenden Stellen: `spur_buch.py`, die `handeln.py` von squeeze/wavetrend/macd_mtf/supertrend/mosaic/scanner/kraken/xperp/swap/omniquant/kopier1zu1. Die gemeinsame Paarung liegt in `Agenten/Handel/journalpaarung.py` (vier Stufen: Kennung, genau ein offener Einstieg, Positionsmerkmale, sonst unpaarig AUSGEWIESEN statt geraten) und wird von `kosten_wendepunkt` und `auswertung_alle` benutzt. GEMESSEN (`gegenprobe_alt_neu.py`, dieselben Zeilen, nur die Paarung wechselt): squeeze-Backtest 759 -> 1088 Runden, macd_mtf 774 -> 1209, wavetrend 1128 -> 1506, Summe ueber alle Journale 23.999 -> 29.414 (+5.415). Drei Livejournale liefern WENIGER (scanner 167 -> 156, swap 14 -> 11, xperp 77 -> 71): dort hat die alte Regel geraten (zweideutige Altbestaende ohne Kennung), die neue zaehlt sie als unpaarig. Vorhandene Journale mit `journal_pos_id_nachziehen.py` nachgezogen; Altjournale bleiben lesbar (Schreiber richten sich nach dem DATEIKOPF, Warnung einmalig). Tests: `tests/test_journalpaarung.py` 20 gruen, Spurentests gruen (squeeze 20, wavetrend 20, macd_mtf 22, supertrend 25, mosaic 126, scanner 146, kraken 160, xperp 78, swap 57, omniquant 66), kopier1zu1 2 vorbestehende rote (ohne die Aenderung ebenfalls rot). Zahlen in `MaxHirn/Wiki/Handel/Backtest-Fundament.md`.
 - [x] **T-193 — Dauerlauf stirbt nach rund einem Zyklus an SIGTERM (Rueckgabe 143)**
       Kontext: Am 30.09.2026 waren zwischen 01:52 und 02:39 **alle drei Dauerlauf-Stufen
       tot** (Sperrdateien 52312/61436/42504, kein passender Prozess). Die Waechter-Aufgaben

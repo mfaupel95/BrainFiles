@@ -34,6 +34,15 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
 
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung  # noqa: E402  # die Kennung einer Position (T-095)
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt
 # eine Ebene hoeher und heisst wie kein Paket. Ein Import ueber sys.path
@@ -65,7 +74,8 @@ ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund",
+           "pos_id"]
 
 SCHREIBEN = True
 
@@ -109,8 +119,13 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Der Kopf der DATEI entscheidet, was geschrieben wird (T-095): ein
+    # Altjournal ohne `pos_id` behaelt seine Spalten, die Kennung wird dann
+    # NICHT geschrieben - sichtbar als Warnung, statt alle Spalten zu
+    # verschieben (siehe pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=SPALTEN)
+        w = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             w.writeheader()
         w.writerow(felder)
@@ -224,15 +239,22 @@ def pruefe_einstieg(inst, k, z, w, faktor):
     if nominel <= 0:
         return
 
-    z["positionen"].append({
+    # Die Kennung dieser Position (T-095). Sie entsteht beim Einstieg und
+    # steht in JEDER Zeile dieser Position (Kauf UND Verkauf) - sonst
+    # waeren zwei gleichzeitige Positionen im selben Instrument im
+    # Journal nicht auseinanderzuhalten.
+    _p = {
         "inst": inst, "seite": sig, "einstieg": einstieg,
         "stop": stop, "ziel": ziel, "stop_pct": stop_pct_eff,
         "nominal": nominel, "eroeffnet_zeit": _jetzt(),
-    })
+        "pos_id": pos_kennung.neu(_jetzt()),
+    }
+    z["positionen"].append(_p)
 
     print("EINSTIEG %s %.6f Stop %.2f%% Ziel R=2 (%.6f) Nominal %.2f USD" % (
         sig.upper(), einstieg, stop_pct_eff, ziel, nominel))
-    journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst, seite=sig,
+    journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst,
+            pos_id=_p["pos_id"], seite=sig,
             preis="%.6f" % einstieg, einsatz_usd="%.2f" % nominel,
             stop="%.6f" % stop, ziel="%.6f" % ziel,
             stop_pct="%.2f" % stop_pct_eff, grund="macd_mtf")
@@ -281,6 +303,7 @@ def pruefe_ausstiege(z, k, w, nur=None):
         erloes = p["nominal"] + gv
         print("AUSSTIEG (%s) %.6f G/V %+.2f USD" % (grund, kurs, gv))
         journal(zeit=_jetzt(), modus="papier", aktion="verkauf", inst=p["inst"],
+                pos_id=p.get("pos_id", ""),
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"],

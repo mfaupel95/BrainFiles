@@ -39,6 +39,13 @@ from importlib.util import module_from_spec, spec_from_file_location  # noqa: E4
 import wachen_pruefung as wp  # noqa: E402
 import risikostufe  # noqa: E402
 import freigabefenster  # noqa: E402
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(os.path.abspath(__file__))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
 import pos_kennung  # noqa: E402
 
 
@@ -524,6 +531,10 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
         journal(journal_pfad, zeit=jetzt(),
                 modus="live" if ist_live else "papier", aktion="verkauf",
                 inst=p["inst"], seite=p["seite"], preis=pformat(kurs),
+                # Die Kennung der Position, die hier endet (T-095). Ohne sie
+                # waere diese Zeile bei zwei offenen Positionen im selben
+                # Instrument nicht mehr zuzuordnen.
+                pos_id=p.get("pos_id", ""),
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
                 stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                 stop_pct="%.2f" % p["stop_pct"], grund=grund)
@@ -647,6 +658,9 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 journal(journal_pfad, zeit=jetzt(),
                         modus="live" if live else "papier",
                         aktion="kauf", inst=inst, seite=seite,
+                        # Die Kennung entsteht in `einstieg()` und steht in
+                        # JEDER Zeile dieser Position (T-095).
+                        pos_id=p["pos_id"],
                         preis=pformat(p["einstieg"]),
                         einsatz_usd="%.2f" % p["nominal"],
                         stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),

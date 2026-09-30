@@ -399,3 +399,55 @@ GENANNT - nie still weggelassen.
 Runden** liefern wie das seit 21.09.2026 im Betrieb laufende
 `backtest_prognose.py`. Liefert er sie nicht, ist der Kern falsch — nicht der
 alte Rechner.
+
+## Paarung je Position statt je Instrument (T-095, 30.09.2026)
+
+Die Auswertung paarte Einstieg und Ausstieg ueber `offen[inst]` — **je
+Instrument**, nicht je Position. Zwei gleichzeitige Positionen im selben
+Instrument ueberschrieben einander; der ueberschriebene Einstieg war verloren
+und seine Ausstiegszeile fand keinen Partner. Das traf jede Auswertung
+(`kosten_wendepunkt`, `auswertung_alle`, `strategie_kennzahlen`), nicht nur den
+Backtest — und die Teilmenge war nicht zufaellig: gleichzeitige Positionen im
+selben Instrument sind eher gleichgerichtet.
+
+Jetzt traegt jede Einstiegszeile eine Kennung (`pos_id`, Spalte am ENDE), die
+Ausstiegszeile uebernimmt sie. Die gemeinsame Umsetzung ist
+`Agenten/Handel/journalpaarung.py`; sie paart in vier Stufen:
+
+1. **Kennung** — Ausstieg traegt die Kennung seines Einstiegs (Normalfall).
+2. **Genau ein offener Einstieg** dieses Instruments (Altjournal) — eindeutig.
+3. **Mehrere offene Einstiege** — Paarung ueber die kopierten
+   Positionsmerkmale (Stop, Ziel, Kontrakte, Menge, Hebel, Seite). Ein
+   Merkmal, das beide tragen und das sich unterscheidet, trennt sie.
+4. **Sonst zweideutig** — die Zeile wird als unpaarig GEZAEHLT und im
+   `stand()` ausgewiesen. Es wird nicht geraten.
+
+Ein Altjournal ohne die Spalte bleibt lesbar: die Schreiber richten sich nach
+dem **Kopf der Datei** (`pos_kennung.spalten`), ein Feld ohne Spalte wird
+verworfen statt um einen Platz verschoben, und ein Journal ohne `pos_id`
+meldet das einmalig auf stderr. Die vorhandenen Journale sind mit
+`journal_pos_id_nachziehen.py` nachgezogen (Vorschau ist Standard).
+
+### Vorher / Nachher (gemessen am 30.09.2026, `gegenprobe_alt_neu.py`)
+
+Alte Regel und neue Regel ueber DIESELBEN Zeilen, nur die Paarung wechselt:
+
+| Journal | alt (je Instrument) | neu (je Position) | zurueck |
+|---|---|---|---|
+| squeeze, Backtest 5,7 Jahre | 759 | **1088** | +329 |
+| macd_mtf, Backtest | 774 | **1209** | +435 |
+| wavetrend, Backtest | 1128 | **1506** | +378 |
+| spiegel (Basis) | 934 | 1149 | +215 |
+| kraken | 19 | 53 | +34 |
+| kopier1zu1 | 13 | 29 | +16 |
+| **Summe ueber alle Journale** | 23.999 | **29.414** | **+5.415** |
+
+Drei Journale liefern WENIGER Runden: `scanner` 167 -> 156, `swap` 14 -> 11,
+`xperp` 77 -> 71. Dort hat die alte Regel geraten — mehrere offene Einstiege
+ohne Kennung, die kein Merkmal trennt (`zweideutig`: scanner 11, xperp 6,
+swap 3). Die neue Regel zaehlt diese Zeilen als unpaarig, statt sie dem
+falschen Einstieg zuzuschlagen. Weniger Runden sind hier die ehrlichere Zahl.
+
+Gegenprobe im Konstrukt: zwei gleichzeitige Positionen im selben Instrument,
+beide mit Ausstieg — alte Regel 1 Runde, neue Regel 2 Runden
+(`Agenten/Handel/tests/test_journalpaarung.py`, 20 Tests).

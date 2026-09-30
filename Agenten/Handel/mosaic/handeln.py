@@ -43,6 +43,14 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
 import pos_kennung  # noqa: E402
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
@@ -306,8 +314,13 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Der Kopf der DATEI entscheidet, was geschrieben wird (T-095): ein
+    # Altjournal ohne `pos_id` behaelt seine Spalten, die Kennung wird dann
+    # NICHT geschrieben - sichtbar als Warnung, statt alle Spalten zu
+    # verschieben (siehe pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=SPALTEN)
+        w = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             w.writeheader()
         w.writerow(felder)

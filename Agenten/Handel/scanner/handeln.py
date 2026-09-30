@@ -70,6 +70,15 @@ import ereignis                                            # noqa: E402
 
 import okx
 import scan
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung
 import wachen_pruefung as wp
 import boersenstops
 
@@ -134,13 +143,20 @@ def schreibe_zustand(z):
 
 def journal(*felder):
     neu = not JOURNAL.exists()
+    # Der Kopf der DATEI entscheidet (T-095): ein Altjournal ohne `pos_id`
+    # bekommt die Zeile ohne die neue Spalte - sonst wanderten alle Werte um
+    # einen Platz nach links (siehe pos_kennung.zeile).
+    kopf = None if neu else pos_kennung.kopf(JOURNAL)
     with JOURNAL.open("a", newline="", encoding="utf-8") as f:
         s = csv.writer(f)
         if neu:
             s.writerow(["zeit", "modus", "aktion", "inst", "preis", "usd",
                         "stop", "ziel", "grund", "mfe_pct", "mae_pct",
-                        "haltetage"])
-        s.writerow(felder)
+                        "haltetage",
+                        # Die Kennung der Position (T-095) - letzte Spalte,
+                        # damit die alten Zeilen lesbar bleiben.
+                        "pos_id"])
+        s.writerow(pos_kennung.zeile(felder, kopf))
 
 
 # --- Vorschlaege ---------------------------------------------------------------
@@ -637,7 +653,8 @@ def bueche_papier_altlasten_aus(z):
         journal(_jetzt(), "papier", "verkauf", p["inst"], "%.6f" % kurs,
                 "%.2f" % erloes, "", "", "buchbereinigung",
                 "%.4f" % p.get("mfe_pct", 0.0),
-                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p),
+                p.get("pos_id", ""))
     z["positionen"] = behalten
     return len(altlasten)
 
@@ -695,7 +712,8 @@ def pruefe_ausstiege(z, live):
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund,
                 "%.4f" % p.get("mfe_pct", 0.0),
-                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p),
+                p.get("pos_id", ""))
         if grund.startswith("stop"):
             z["letzte_stops"][p["inst"]] = _heute()
         elif grund == "ziel":
@@ -731,7 +749,8 @@ def flach_stellen(z, live, grund):
         journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund,
                 "%.4f" % p.get("mfe_pct", 0.0),
-                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p))
+                "%.4f" % p.get("mae_pct", 0.0), _haltetage(p),
+                p.get("pos_id", ""))
     z["positionen"] = behalten
 
 
@@ -806,13 +825,17 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                     print("  Rueckverkauf ebenfalls fehlgeschlagen: %s" % e2,
                           file=sys.stderr)
                     stop_fehlt = True
-        z["positionen"].append({
+        _pos = {
             "inst": v["inst"], "einstieg": v["einstieg"], "usd": usd,
             "stop": v["stop"], "ziel": v["ziel"], "eroeffnet": _heute(),
             "kauf_ord_id": kauf_id, "stop_ord_id": stop_id,
             "boersen_stop_fehlt": stop_fehlt,
             "mfe_pct": 0.0, "mae_pct": 0.0,
-        })
+            # Die Kennung dieser Position (T-095): sie entsteht beim
+            # Einstieg und steht in JEDER Zeile dieser Position.
+            "pos_id": pos_kennung.neu(_jetzt()),
+        }
+        z["positionen"].append(_pos)
         eingesetzt += usd
         gehalten.add(v["inst"])
         print("  AUF %-10s @ %.6f  Stop %.6f (-%.1f%%)  Ziel %.6f  %.2f USD"
@@ -821,7 +844,8 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
                 "%.6f" % v["einstieg"], "%.2f" % (usd * (1 + GEBUEHR_PCT)),
                 "%.6f" % v["stop"], "%.6f" % v["ziel"],
-                "score %.1f" % v["score"], "", "", "")
+                "score %.1f" % v["score"], "", "", "",
+                _pos["pos_id"])
     protokolliere("bewertet", bewertet)
 
 

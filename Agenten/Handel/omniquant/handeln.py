@@ -54,6 +54,15 @@ for p in (HIER, HANDEL, os.path.join(HANDEL, "scanner"),
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung
 import ereignis                                            # noqa: E402
 import okx                                                 # noqa: E402
 import wachen_pruefung as wp                               # noqa: E402
@@ -116,7 +125,7 @@ def bericht_pfad(w=None):
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
            "einsatz_usd", "wert_usd", "stop", "ziel", "grund",
-           "score", "cr", "mfe_pct", "mae_pct", "haltetage"]
+           "score", "cr", "mfe_pct", "mae_pct", "haltetage", "pos_id"]
 
 # Ob geschrieben wird. Die Vorschau stellt das ab (siehe journal()).
 SCHREIBEN = True
@@ -182,11 +191,14 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Der Kopf der DATEI entscheidet, was geschrieben wird (T-095): ein
+    # Altjournal ohne `pos_id` behaelt seine Spalten (pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        s = csv.DictWriter(f, fieldnames=SPALTEN, extrasaction="ignore")
+        s = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             s.writeheader()
-        s.writerow({k: felder.get(k, "") for k in SPALTEN})
+        s.writerow({k: felder.get(k, "") for k in spalten})
 
 
 # --- Signalquelle -----------------------------------------------------------
@@ -356,6 +368,7 @@ def eroeffne(z, w, kand):
     }
     z.setdefault("positionen", []).append(p)
     journal(zeit=_jetzt(), modus="papier", aktion="EINSTIEG",
+            pos_id=p.setdefault("pos_id", pos_kennung.neu(_jetzt())),
             inst=p["inst"], seite=p["seite"], preis=p["einstieg"],
             einsatz_usd=nominal, stop=p["stop"], ziel=p["ziel"],
             grund="prognose-treffer", score=p["score"], cr=p["cr"])
@@ -425,6 +438,7 @@ def schliesse(z, p, grund, kurs, w):
         {"inst": p["inst"], "seite": p["seite"], "am": _heute(),
          "grund": grund, "wert_usd": round(ergebnis, 2)})
     journal(zeit=_jetzt(), modus="papier", aktion="AUSSTIEG",
+            pos_id=p.get("pos_id", ""),
             inst=p["inst"], seite=p["seite"], preis=kurs,
             einsatz_usd=p["nominal"], wert_usd=round(ergebnis, 2),
             stop=p["stop"], ziel=p["ziel"], grund=grund,

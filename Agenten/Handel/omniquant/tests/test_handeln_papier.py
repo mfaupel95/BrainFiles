@@ -336,7 +336,7 @@ class EinstiegAusstiegTest(Basis):
         w = h.lade_wachen()
         z["positionen"] = [{"inst": "BTC-USDC", "seite": "long",
                             "einstieg": 100.0, "stop": 95.0, "ziel": 110.0,
-                            "nominal": 50.0, "eroeffnet": "2026-09-13"}]
+                            "nominal": 50.0, "eroeffnet": h._heute()}]
         h.pruefe_ausstiege(z, w)
         self.assertEqual(len(z["positionen"]), 1)
 

@@ -58,6 +58,9 @@ erzeuger = None
 # mehr als genug fuer gleichzeitige Positionen, kurz genug fuer ein Journal.
 HEX_ZEICHEN = 6
 
+# Dateien, fuer die schon einmal gewarnt wurde (ein Zyklus schreibt mehrfach).
+_gemeldet = set()
+
 
 def _stempel(zeit=None) -> str:
     """Der Zeitstempel der Kennung - aus einem ISO-Zeitpunkt oder der Uhr."""
@@ -99,6 +102,8 @@ def spalten(pfad, neue, still=False) -> list:
     die Kennung NICHT geschrieben: die Zeile bleibt lesbar und die Auswertung
     nimmt die Instrumentenpaarung. Das ist ein Uebergangszustand, kein Fehler -
     aber er wird gemeldet, weil ein stiller Rueckfall wie ein Erfolg aussieht.
+    Gemeldet wird EINMAL je Datei und Prozess: ein Zyklus schreibt mehrfach, und
+    eine Warnung, die sich wiederholt, liest niemand mehr.
     """
     vorhanden = kopf(pfad)
     if not vorhanden:
@@ -106,9 +111,11 @@ def spalten(pfad, neue, still=False) -> list:
     if list(vorhanden) == list(neue):
         return list(neue)
     if not still and "pos_id" in neue and "pos_id" not in vorhanden:
-        print("WARNUNG %s: Journal-Kopf ohne pos_id - Kennung wird nicht "
-              "geschrieben (Journal-pos-id-Werkzeug nachziehen)"
-              % os.path.basename(str(pfad)), file=sys.stderr)
+        if str(pfad) not in _gemeldet:
+            _gemeldet.add(str(pfad))
+            print("WARNUNG %s: Journal-Kopf ohne pos_id - Kennung wird nicht "
+                  "geschrieben (Journal-pos-id-Werkzeug nachziehen)"
+                  % os.path.basename(str(pfad)), file=sys.stderr)
     return list(vorhanden)
 
 

@@ -62,6 +62,15 @@ for p in (HIER, XPERP, HANDEL, BUS):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung
 import ereignis                                                # noqa: E402
 import auswahl                                                 # noqa: E402
 import bot                                                     # noqa: E402
@@ -93,7 +102,7 @@ JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
            "kontrakte", "nominal_usd", "margin_usd", "hebel", "stop", "ziel",
            "liq", "liq_abstand", "funding_pct", "gebuehr_pct",
-           "quote_noetig", "quote_beob", "grund"]
+           "quote_noetig", "quote_beob", "grund", "pos_id"]
 
 # Wie bei xperp: die Rangliste wird zwischengelagert, weil ein voller Scan
 # Minuten kostet. Sie steht auf 4H-Kerzen und aendert sich nicht im Takt.
@@ -151,11 +160,14 @@ def spiegeln(z, w):
 
 def journal(**felder):
     neu = not os.path.exists(JOURNAL)
+    # Der Kopf der DATEI entscheidet, was geschrieben wird (T-095): ein
+    # Altjournal ohne `pos_id` behaelt seine Spalten (pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        s = csv.DictWriter(f, fieldnames=SPALTEN, extrasaction="ignore")
+        s = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             s.writeheader()
-        s.writerow({k: felder.get(k, "") for k in SPALTEN})
+        s.writerow({k: felder.get(k, "") for k in spalten})
 
 
 # --- Wachen -----------------------------------------------------------------
@@ -449,6 +461,7 @@ def bueche_papier_altlasten_aus(z):
         print("  Buchbereinigung: %s (ohne Live-Order) @ %.6f  G/V %+.2f USD"
               % (p["inst"], kurs or p["einstieg"], gv))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                pos_id=p.get("pos_id", ""),
                 inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""),
                 preis="%.6f" % (kurs or p["einstieg"]),
@@ -520,6 +533,7 @@ def pruefe_ausstiege(z, live, w):
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD auf %.2f Margin"
               % (grund, p["inst"], p["seite"], kurs, gv, p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
+                pos_id=p.get("pos_id", ""),
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
@@ -593,6 +607,7 @@ def flach_stellen(z, live, grund):
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
+                pos_id=p.get("pos_id", ""),
                 aktion="schliessen", inst=p["inst"], seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
@@ -740,6 +755,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                  p["quote_beobachtet"] * 100))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
+                pos_id=pos.setdefault("pos_id", pos_kennung.neu(_jetzt())),
                 aktion="eroeffnen", inst=a["inst"], seite=a["seite"],
                 familie=a["kategorie"], preis="%.6f" % a["einstieg"],
                 kontrakte=kontrakte, nominal_usd="%.2f" % g["nominal"],

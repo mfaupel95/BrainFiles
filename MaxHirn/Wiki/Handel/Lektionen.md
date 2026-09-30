@@ -874,3 +874,46 @@ verhindert `schon_gebucht()`.
 ../.venv/Scripts/python.exe einsatz_nachziehen.py    # Einsatzpruefung
 ../.venv/Scripts/python.exe waisen_stops.py          # Schutzauftraege
 ```
+
+## Lektion: paare je POSITION, nicht je Instrument (T-095, 30.09.2026)
+
+Ein Dict `offen[inst]` als Zuordnung von Einstieg zu Ausstieg ist ein
+stiller Verlust: zwei gleichzeitige Positionen im selben Instrument
+ueberschreiben einander, der ueberschriebene Einstieg ist weg und seine
+Ausstiegszeile findet keinen Partner. Gemessen kostete das im Backtest
+ueber 5,7 Jahre 30 % der Runden (squeeze 759 statt 1088, macd_mtf 774 statt
+1209, wavetrend 1128 statt 1506; ueber alle Journale 23.999 statt 29.414).
+Und der Verlust ist nicht zufaellig - gleichzeitige Positionen im selben
+Instrument sind eher gleichgerichtet, die ausgewertete Teilmenge also
+schoen gerechnet.
+
+Die Zuordnung gehoert EINMAL ins Haus (`journalpaarung.py`), nicht je
+Auswertung neu. Sie braucht eine Kennung in der Zeile (`pos_id`), und der
+Rueckfall auf den Altbestand darf NICHT raten: mehrere offene Einstiege ohne
+Kennung werden ueber die kopierten Positionsmerkmale gepaart, und was
+zweideutig bleibt, wird als unpaarig GEZAEHLT und ausgewiesen. Weniger Runden
+sind dort die ehrlichere Zahl - `scanner` 167 -> 156, `swap` 14 -> 11,
+`xperp` 77 -> 71.
+
+Drei Fallen beim Einbau:
+
+1. **Der Kopf der DATEI entscheidet, nicht die Liste im Code.** Ein
+   `csv.DictWriter` mit `fieldnames=SPALTEN` schreibt positionell: in einem
+   Altjournal ohne die neue Spalte wandert jeder Wert einen Platz nach links.
+   Richtig ist `pos_kennung.spalten(JOURNAL, SPALTEN)` - ein Feld ohne Spalte
+   wird verworfen (`extrasaction="ignore"`) statt verschoben.
+2. **Ein stiller Rueckfall sieht aus wie ein Erfolg.** Ein Journal ohne
+   `pos_id` meldet sich darum einmalig auf stderr, und die Auswertung fuehrt
+   `ohne_kennung`/`zweideutig` im Stand mit.
+3. **Ein Test, der eine Spaltenzahl oder eine feste Anzahl einfriert, meldet
+   Aenderung statt Fehler.** Nach dem Anbau der Spalte mussten zwei
+   Zeilentests angefasst werden (scanner: 12 -> 13 Spalten; omniquant: ein
+   festes Datum im Fixture wurde zur Zeitbombe, jetzt relativ zu `jetzt`).
+
+**Nachrechnen:**
+
+```
+.venv/Scripts/python.exe journal_pos_id_nachziehen.py            # Vorschau
+.venv/Scripts/python.exe journal_pos_id_nachziehen.py --anwenden # nachziehen
+python Agenten/Hermes/cache/scratch/gegenprobe_alt_neu.py        # alt vs. neu
+```

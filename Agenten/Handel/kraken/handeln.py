@@ -118,6 +118,15 @@ import abgleich                                           # noqa: E402
 import kraken                                            # noqa: E402
 import quote                                             # noqa: E402
 import scan                                              # noqa: E402
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung                                        # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
@@ -149,12 +158,18 @@ def schreibe_zustand(z):
 
 def journal(*felder):
     neu = not JOURNAL.exists()
+    # Der Kopf der DATEI entscheidet (T-095): ein Altjournal ohne `pos_id`
+    # bekommt die Zeile ohne die neue Spalte - sonst wanderten alle Werte um
+    # einen Platz nach links (siehe pos_kennung.zeile).
+    kopf = None if neu else pos_kennung.kopf(JOURNAL)
     with JOURNAL.open("a", newline="", encoding="utf-8") as f:
         s = csv.writer(f)
         if neu:
             s.writerow(["zeit", "modus", "aktion", "paar", "preis", "eur",
-                        "menge", "stop", "ziel", "grund"])
-        s.writerow(felder)
+                        "menge", "stop", "ziel", "grund",
+                        # Die Kennung der Position (T-095) - letzte Spalte.
+                        "pos_id"])
+        s.writerow(pos_kennung.zeile(felder, kopf))
 
 
 # --- Vorschlaege ---------------------------------------------------------------
@@ -434,7 +449,8 @@ def _schliesse(p, kurs, w, live, grund, z):
                           % (grund, p["paar"], kurs, erloes - p["eur"]))
                     journal(_jetzt(), "live", "verkauf", p["paar"],
                             "%.8g" % kurs, "%.2f" % erloes,
-                            "%.8f" % p["menge"], "", "", grund)
+                            "%.8f" % p["menge"], "", "", grund,
+                            p.get("pos_id", ""))
                     z["letzte_stops"][p["paar"]] = _heute()
                     return True
                 z.setdefault("offene_stops", []).append(
@@ -450,7 +466,8 @@ def _schliesse(p, kurs, w, live, grund, z):
     print("  AUSSTIEG (%s): %s @ %-12.6g  G/V %+.2f EUR"
           % (grund, p["paar"], kurs, erloes - p["eur"]))
     journal(_jetzt(), "live" if live else "papier", "verkauf", p["paar"],
-            "%.8g" % kurs, "%.2f" % erloes, "%.8f" % p["menge"], "", "", grund)
+            "%.8g" % kurs, "%.2f" % erloes, "%.8f" % p["menge"], "", "", grund,
+            p.get("pos_id", ""))
     if grund == "stop":
         z["letzte_stops"][p["paar"]] = _heute()
     return True
@@ -544,7 +561,7 @@ def bueche_papier_altlasten_aus(z):
               % (p["paar"], kurs, gv))
         journal(_jetzt(), "papier", "verkauf", p["paar"], "%.8g" % kurs,
                 "%.2f" % erloes, "%.8f" % p.get("menge", 0.0), "", "",
-                "buchbereinigung")
+                "buchbereinigung", p.get("pos_id", ""))
     z["positionen"] = behalten
     return len(altlasten)
 
@@ -676,13 +693,17 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
                     stop_fehlt = True
 
         kosten = eur * w["gebuehr_taker"]
-        z["positionen"].append({
+        _pos = {
             "paar": v["inst"], "einstieg": v["einstieg"], "eur": eur,
             "waehrung": waehrung, "basis": v.get("basis"),
             "menge": menge, "stop": v["stop"], "ziel": v["ziel"],
             "eroeffnet": _heute(), "kauf_txid": kauf_txid,
             "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
-        })
+            # Die Kennung dieser Position (T-095): sie entsteht beim
+            # Einstieg und steht in JEDER Zeile dieser Position.
+            "pos_id": pos_kennung.neu(_jetzt()),
+        }
+        z["positionen"].append(_pos)
         eingesetzt += eur
         gehalten.add(v["inst"])
         basen.add(v.get("basis") or _basis_oder_paar(v["inst"]))
@@ -693,7 +714,8 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
                 "%.8g" % v["einstieg"], "%.2f" % (eur + kosten), "%.8f" % menge,
                 "%.8g" % v["stop"], "%.8g" % v["ziel"],
-                "score %.1f | %s" % (v["score"], waehrung))
+                "score %.1f | %s" % (v["score"], waehrung),
+                _pos["pos_id"])
 
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------

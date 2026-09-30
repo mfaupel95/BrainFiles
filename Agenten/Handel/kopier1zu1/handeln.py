@@ -46,6 +46,15 @@ for p in (HIER, KOPIER, BUS):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung
 import ereignis                                                  # noqa: E402
 import lesen                                                     # noqa: E402
 
@@ -89,7 +98,7 @@ SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "wallet_name",
            "token", "symbol", "tx", "trade_zeit",
            "preis_vorbild", "preis_einstieg", "kurs_ausstieg",
            "menge", "einsatz_usd", "wert_usd", "marktkap_usd",
-           "slippage_pct", "gebuehr_pct", "grund"]
+           "slippage_pct", "gebuehr_pct", "grund", "pos_id"]
 
 SPALTEN_ABLEHNUNG = ["zeit", "art", "grund", "anzahl", "kette", "wallet",
                      "token", "symbol", "marktkap_usd", "alter_s", "preis",
@@ -155,11 +164,14 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Der Kopf der DATEI entscheidet, was geschrieben wird (T-095): ein
+    # Altjournal ohne `pos_id` behaelt seine Spalten (pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        s = csv.DictWriter(f, fieldnames=SPALTEN, extrasaction="ignore")
+        s = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             s.writeheader()
-        s.writerow({k: felder.get(k, "") for k in SPALTEN})
+        s.writerow({k: felder.get(k, "") for k in spalten})
 
 
 def journal_ablehnung(**felder):
@@ -393,6 +405,7 @@ def pruefe_verkaeufe(z, trades, w):
               "%.0f USD" % (p["symbol"], p["token"], kurs,
                             erloes - p["einsatz_usd"], p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                pos_id=p.get("pos_id", ""),
                 kette=p["kette"], wallet=p["wallet"],
                 wallet_name=p.get("wallet_name", ""),
                 token=p["token"], symbol=p["symbol"],
@@ -443,6 +456,7 @@ def pruefe_ausstiege(z, w):
                  p["symbol"], p["token"], kurs,
                  erloes - p["einsatz_usd"], p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                pos_id=p.get("pos_id", ""),
                 kette=p["kette"], wallet=p["wallet"],
                 wallet_name=p.get("wallet_name", ""),
                 token=p["token"], symbol=p["symbol"],
@@ -461,8 +475,10 @@ def pruefe_ausstiege(z, w):
 def eroeffne(z, sig, trade, w):
     """Position aus einem Kauf-Trade buchen; None wenn erfolgreich."""
     kopie = _kopie_aus_trade(sig, trade, w)
+    kopie["pos_id"] = pos_kennung.neu(_jetzt())
     z["positionen"].append(kopie)
     journal(zeit=_jetzt(), modus="papier", aktion="eroeffnen",
+            pos_id=kopie.setdefault("pos_id", pos_kennung.neu(_jetzt())),
             kette=kopie["kette"], wallet=kopie["wallet"],
             wallet_name=kopie["wallet_name"],
             token=kopie["token"], symbol=kopie["symbol"],
@@ -508,6 +524,7 @@ def flach_stellen(z, w, grund):
         print("  AUSSTIEG (%s): %s %s  G/V %+.2f USD"
               % (grund, p["symbol"], p["token"], erloes - p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+                pos_id=p.get("pos_id", ""),
                 kette=p["kette"], wallet=p["wallet"],
                 wallet_name=p.get("wallet_name", ""),
                 token=p["token"], symbol=p["symbol"],

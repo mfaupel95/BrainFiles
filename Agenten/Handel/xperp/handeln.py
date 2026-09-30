@@ -57,6 +57,15 @@ sys.path.insert(0, HIER)
 sys.path.insert(0, os.path.join(HIER, os.pardir))
 sys.path.insert(0, os.path.join(HIER, os.pardir, os.pardir, "Bus"))
 import ereignis                                            # noqa: E402
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
+    os.path.dirname(os.path.abspath(__file__)))
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung                                          # noqa: E402
 
 import auswahl
 import bot
@@ -84,7 +93,8 @@ JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
            "kontrakte", "nominal_usd", "margin_usd", "hebel", "stop", "ziel",
            "liq", "liq_abstand", "funding_pct", "gebuehr_pct",
-           "quote_noetig", "quote_beob", "grund"]
+           "quote_noetig", "quote_beob", "grund",
+           "pos_id"]
 
 # Wie oft der Kandidatenscan die Rangliste neu rechnet. Ein voller Lauf ueber
 # 164 Kontrakte dauert rund zwei Minuten - bei einem 15-Minuten-Takt waere
@@ -302,7 +312,8 @@ def bueche_papier_altlasten_aus(z, w, still=False):
                   "@ %.6f  G/V %+.2f USD" % (p.get("inst"), p.get("seite"),
                                              kurs, gv))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
-                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                inst=p.get("inst", ""),
+                pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p.get("kontrakte", ""),
                 nominal_usd="%.2f" % p.get("nominal", 0.0),
@@ -376,6 +387,7 @@ def wartende_auftraege(z, live, w, still=False):
                 "nominal": a.get("nominal", 0.0), "margin": a.get("margin", 0.0),
                 "hebel": a.get("hebel", 0.0), "gebuehr_taker": a.get("gebuehr_taker"),
                 "modus": "live", "ord_id": a["ord_id"],
+                "pos_id": pos_kennung.neu(_jetzt()),
                 "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
                 "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
             }
@@ -385,6 +397,7 @@ def wartende_auftraege(z, live, w, still=False):
                 print("  Wartender Auftrag %s ist GEFUELLT -> Position gebucht "
                       "(%.4f Kontrakte @ %.6f)" % (a["inst"], kontrakte, pos["einstieg"]))
             journal(zeit=_jetzt(), modus="live", aktion="eroeffnen", inst=a["inst"],
+                    pos_id=pos["pos_id"],
                     seite=pos["seite"], familie=pos["familie"],
                     preis="%.6f" % pos["einstieg"], kontrakte=kontrakte,
                     nominal_usd="%.2f" % a.get("nominal", 0.0),
@@ -564,7 +577,8 @@ def bueche_geister_aus(z, w, still=False):
                       "Einsatz %.2f zurueck, kein erfundenes Ergebnis"
                       % erloes)
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
-                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                inst=p.get("inst", ""),
+                pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
                 familie=p.get("familie", ""), preis="%.6f" % (p.get("einstieg") or 0.0),
                 kontrakte=p.get("kontrakte", ""),
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
@@ -796,7 +810,8 @@ def bueche_groessen_abgleichen(z, w, still=False):
                      "  (Handgriff: aufgestockt)"
                      if faktor > 1 else "  (Handgriff: teilweise geschlossen)"))
         journal(zeit=_jetzt(), modus="live", aktion="anpassen",
-                inst=p.get("inst", ""), seite=p.get("seite", ""),
+                inst=p.get("inst", ""),
+                pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
                 familie=p.get("familie", ""),
                 kontrakte="%.4f" % ist,
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
@@ -854,7 +869,8 @@ def pruefe_ausstiege(z, live, w):
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD auf %.2f Margin"
               % (grund, p["inst"], p["seite"], kurs, gv, p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
-                aktion="schliessen", inst=p["inst"], seite=p["seite"],
+                aktion="schliessen", inst=p["inst"],
+                pos_id=p.get("pos_id", ""), seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.2f" % erloes, hebel=p["hebel"], grund=grund)
@@ -942,7 +958,8 @@ def flach_stellen(z, live, grund):
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
         journal(zeit=_jetzt(), modus="live" if live else "papier",
-                aktion="schliessen", inst=p["inst"], seite=p["seite"],
+                aktion="schliessen", inst=p["inst"],
+                pos_id=p.get("pos_id", ""), seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.2f" % erloes, hebel=p["hebel"], grund=grund)
@@ -1155,6 +1172,9 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             # Zustand, den das Aufraeumen unten bereinigt).
             "modus": "live" if live else "papier",
             "ord_id": str(ord_antwort)[:40] if live and ord_antwort else "",
+            # Die Kennung dieser Position (T-095): sie entsteht beim
+            # Einstieg und steht in JEDER Zeile dieser Position.
+            "pos_id": pos_kennung.neu(_jetzt()),
             "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
             "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
         }
@@ -1184,7 +1204,8 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                  p["quote_beobachtet"] * 100))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
-                aktion="eroeffnen", inst=a["inst"], seite=a["seite"],
+                aktion="eroeffnen", inst=a["inst"],
+                pos_id=pos["pos_id"], seite=a["seite"],
                 familie=a["kategorie"], preis="%.6f" % a["einstieg"],
                 kontrakte=kontrakte, nominal_usd="%.2f" % g["nominal"],
                 margin_usd="%.2f" % g["margin"], hebel="%.2f" % g["hebel"],

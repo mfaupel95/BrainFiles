@@ -104,14 +104,20 @@ class HaltetageTest(Basis):
 
 
 class JournalSpaltenTest(Basis):
-    """Jede geschriebene Zeile hat 12 Spalten - sonst legt DictReader die
-    neuen Werte unter None ab und jede Auswertung wird still falsch."""
+    """Jede geschriebene Zeile hat 13 Spalten - sonst legt DictReader die
+    neuen Werte unter None ab und jede Auswertung wird still falsch.
+
+    Die dreizehnte ist `pos_id` (T-095): die Kennung, mit der die Auswertung
+    Einstieg und Ausstieg paart. Sie steht am ENDE, damit ein Altjournal ohne
+    die Spalte seine Werte behaelt.
+    """
 
     KOPF = ["zeit", "modus", "aktion", "inst", "preis", "usd",
-            "stop", "ziel", "grund", "mfe_pct", "mae_pct", "haltetage"]
+            "stop", "ziel", "grund", "mfe_pct", "mae_pct", "haltetage",
+            "pos_id"]
 
-    def test_kopfzeile_hat_zwoelf_spalten(self):
-        h.journal(*([""] * 12))
+    def test_kopfzeile_hat_dreizehn_spalten(self):
+        h.journal(*([""] * 13))
         self.assertEqual(self.zeilen()[0], self.KOPF)
 
     def test_ausstiegszeile_traegt_mfe_und_mae(self):
@@ -127,13 +133,16 @@ class JournalSpaltenTest(Basis):
         zeilen = self.zeilen()
         self.assertEqual(zeilen[0], self.KOPF)
         zeile = zeilen[1]
-        self.assertEqual(len(zeile), 12)
+        self.assertEqual(len(zeile), 13)
         self.assertEqual(zeile[2], "verkauf")
         self.assertEqual(zeile[8], "ziel")
         # Der Kurs 61.0 liegt ueber dem bisherigen MFE -> fortgeschrieben.
         self.assertAlmostEqual(float(zeile[9]), 12.5046, places=3)
         self.assertAlmostEqual(float(zeile[10]), -1.5, places=3)
         self.assertEqual(zeile[11], "0")
+        # Die Kennung der Position steht in der Ausstiegszeile (Stufe 1 der
+        # Paarung) - hier leer, weil die Position von Hand gebaut wurde.
+        self.assertEqual(zeile[12], "")
 
     def test_ausstieg_eines_altbestands_bricht_nicht(self):
         """Position ohne die neuen Felder: Zeile entsteht trotzdem, 12 Spalten."""
@@ -145,13 +154,13 @@ class JournalSpaltenTest(Basis):
         h.pruefe_ausstiege(z, False)
 
         zeile = self.zeilen()[1]
-        self.assertEqual(len(zeile), 12)
+        self.assertEqual(len(zeile), 13)
         self.assertEqual(zeile[8], "stop")
         self.assertEqual(float(zeile[9]), 0.0)          # nie im Plus gewesen
         self.assertLess(float(zeile[10]), 0.0)
         self.assertEqual(z["letzte_stops"]["TRX-USDC"], h._heute())
 
-    def test_kaufzeile_hat_drei_leere_felder(self):
+    def test_kaufzeile_traegt_die_kennung(self):
         h.okx = OkxAttrappe({"BTC-USDC": 78000.0})
         z = {"positionen": [], "letzte_stops": {}}
         w = {"max_offene_positionen": 6, "max_gesamt_usd": 400,
@@ -161,9 +170,13 @@ class JournalSpaltenTest(Basis):
         h.pruefe_einstiege(z, v, w, False)
 
         zeile = self.zeilen()[1]
-        self.assertEqual(len(zeile), 12)
+        self.assertEqual(len(zeile), 13)
         self.assertEqual(zeile[2], "kauf")
-        self.assertEqual(zeile[9:], ["", "", ""])
+        self.assertEqual(zeile[9:12], ["", "", ""])      # mfe/mae/haltetage
+        # Die Kaufzeile traegt die Kennung der Position - die Ausstiegszeile
+        # uebernimmt sie (Stufe 1 der Paarung).
+        self.assertEqual(zeile[12], z["positionen"][0]["pos_id"])
+        self.assertTrue(zeile[12])
 
     def test_neue_position_traegt_die_felder(self):
         h.okx = OkxAttrappe({"BTC-USDC": 78000.0})
@@ -180,7 +193,7 @@ class JournalSpaltenTest(Basis):
 
 
 class FlachStellenTest(Basis):
-    def test_notausstieg_schreibt_ebenfalls_zwoelf_spalten(self):
+    def test_notausstieg_schreibt_ebenfalls_dreizehn_spalten(self):
         """Der Notausstieg (Kill-Switch, Herzschlag) ist der zweite Schreiber."""
         h.okx = OkxAttrappe({"DOT-USDC": 1.10})
         z = {"positionen": [{"inst": "DOT-USDC", "einstieg": 1.0466,
@@ -190,7 +203,7 @@ class FlachStellenTest(Basis):
         h.flach_stellen(z, False, "herzschlag_alt")
 
         zeile = self.zeilen()[1]
-        self.assertEqual(len(zeile), 12)
+        self.assertEqual(len(zeile), 13)
         self.assertEqual(zeile[8], "herzschlag_alt")
         self.assertGreater(float(zeile[9]), 0.0)
         self.assertEqual(z["positionen"], [])
