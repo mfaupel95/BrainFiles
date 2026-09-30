@@ -15,7 +15,7 @@ import tempfile
 import tkinter as tk
 import unittest
 from pathlib import Path
-from tkinter import ttk
+from tkinter import font as tkfont, ttk
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -28,6 +28,7 @@ import leitstand_bedienung as lb                               # noqa: E402
 import leitstand_freigaben as lf                               # noqa: E402
 import leitstand_laeufe as ll                                  # noqa: E402
 import leitstand_markt as lm                                   # noqa: E402
+import leitstand_stil as stil                                  # noqa: E402
 import lesepruefung                                            # noqa: E402
 
 TITEL = ("Überwachen", "Freigaben", "Backtests", "Markt")
@@ -133,6 +134,25 @@ class Rahmen(Basis):
         self.assertEqual(self.z.get("schrift"), 8)
         ls.kuerzel("<Control-KP_Add>")
         self.assertEqual(ls.schrift, 9)
+
+    def test_schriftwechsel_wirkt_ueber_den_stil_in_allen_reitern(self):
+        ls = self.leitstand()
+        schrift = lambda n: tkfont.nametofont(n, self.root).cget("size")
+        self.assertEqual(schrift(stil.TEXT), 11)
+        hoehe = int(ttk.Style(self.root).lookup("Treeview", "rowheight"))
+        ls.setze_schrift(15)
+        self.assertEqual((schrift(stil.TEXT), schrift(stil.TITEL)), (15, 17))
+        self.assertGreater(int(ttk.Style(self.root).lookup("Treeview", "rowheight")), hoehe)
+
+    def test_stil_liegt_ueber_dem_der_reiter(self):
+        # Die Zentrale setzt in _baue ihr eigenes Theme; der Leitstand kommt danach.
+        class Eigensinn(StubReiter):
+            def __init__(self, eltern, leitstand):
+                super().__init__(eltern, leitstand)
+                ttk.Style(self).configure("Treeview", background="#ffffff")
+        self.leitstand(reiter=[(TITEL[0], Eigensinn)] + STUBS[1:])
+        self.assertEqual(ttk.Style(self.root).lookup("Treeview", "background"),
+                         stil.FARBEN["blatt"])
 
     def test_gemerkte_schrift_gilt_nur_in_den_grenzen(self):
         self.assertEqual(self.leitstand({"schrift": 14}).schrift, 14)

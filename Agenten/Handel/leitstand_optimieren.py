@@ -20,6 +20,7 @@ from pathlib import Path
 from tkinter import ttk
 
 import leitstand_laeufe as ll
+import leitstand_stil as stil
 import replay
 from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
 
@@ -270,15 +271,13 @@ class OptimierenBereich(ttk.Frame):
                        side="left", padx=6)
         self.w_plan = ttk.Label(zeile, text="", justify="left")
         self.w_plan.pack(side="left", padx=12)
-        self.w_hinweis = ttk.Label(self, text="", foreground="#b35c00")
+        self.w_hinweis = ttk.Label(self, text="", style="Hinweis.TLabel")
         self.w_hinweis.pack(anchor="w", pady=(4, 0))
 
         teiler = ttk.PanedWindow(self, orient="horizontal")
         teiler.pack(fill="both", expand=True, pady=(4, 0))
         self.tabelle = Tabelle(teiler, KANDIDAT_SPALTEN, reiter.zustand,
                                "optimieren", hoehe=8)
-        self.tabelle.baum.tag_configure("grundlinie", foreground="#888888")
-        self.tabelle.baum.tag_configure("ueberlebt", background="#d5f5e3")
         self.tabelle.baum.bind("<<TreeviewSelect>>", self._auswahl, add="+")
         teiler.add(self.tabelle, weight=3)
         rechts = ttk.Frame(teiler)
@@ -286,7 +285,7 @@ class OptimierenBereich(ttk.Frame):
         ttk.Label(rechts, text="Übernahme von Hand — der Leitstand schreibt "
                                "nie in eine wachen.json").pack(anchor="w")
         self.w_diff = tk.Text(rechts, height=8, width=40, wrap="none",
-                              state="disabled", font=("Consolas", 9))
+                              state="disabled", font=stil.MONO)
         self.w_diff.pack(fill="both", expand=True)
         ttk.Button(rechts, text="Kopieren", command=self.kopieren).pack(
             anchor="e", pady=(4, 0))

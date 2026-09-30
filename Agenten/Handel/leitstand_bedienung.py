@@ -18,6 +18,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+import leitstand_stil as stil
+
 HIER = Path(__file__).resolve().parent
 ZUSTAND_DATEI = HIER / "leitstand_zustand.json"
 SPEICHER_ABSTAND_S = 5.0          # Zustand hoechstens alle 5 s schreiben
@@ -205,8 +207,9 @@ class Tooltip:
         self.fenster = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry("+%d+%d" % (x, y))
-        tk.Label(tw, text=self.text, background="#ffffe0", foreground="#000000",
-                 relief="solid", borderwidth=1, padx=4, pady=2).pack()
+        tk.Label(tw, text=self.text, background=stil.FARBEN["gitter"],
+                 foreground=stil.FARBEN["text"], font=stil.TEXT,
+                 relief="solid", borderwidth=1, padx=6, pady=3).pack()
 
     def _weg(self, _e=None):
         if self.fenster:
@@ -252,6 +255,7 @@ class Tabelle(ttk.Frame):
         self.baum.configure(yscrollcommand=leiste.set)
         self.baum.pack(side="left", fill="both", expand=True)
         leiste.pack(side="right", fill="y")
+        stil.tags(self.baum)
         self._pfeile()
 
     def setze(self, zeilen, tags=None):
@@ -269,8 +273,10 @@ class Tabelle(ttk.Frame):
                        reverse=self.sortierung[1])
         self.baum.delete(*self.baum.get_children())
         self._sichtbar = [z for z, _t in paare]
-        for z, t in paare:
-            iid = self.baum.insert("", "end", values=z, tags=t)
+        for n, (z, t) in enumerate(paare):
+            # zebra zuerst: der spaetere Tag (wartet, ueberlebt ...) gewinnt
+            iid = self.baum.insert("", "end", values=z,
+                                   tags=(("zebra",) if n % 2 else ()) + tuple(t))
             if str(z[0]) in gewaehlt:
                 self.baum.selection_add(iid)
 

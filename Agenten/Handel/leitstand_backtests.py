@@ -18,6 +18,7 @@ from tkinter import ttk
 
 import leitstand_laeufe as ll
 import replay
+import leitstand_stil as stil
 from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
 from leitstand_optimieren import OptimierenBereich
 from leitstand_urteile import UrteileBereich
@@ -116,8 +117,8 @@ class ReplayBereich(ttk.Frame):
 
         ttk.Label(self, text="Nicht nachrechenbar:").grid(row=0, column=2,
                                                           sticky="nw", padx=(24, 4))
-        grau = tk.Text(self, height=6, width=60, foreground="#888888",
-                       relief="flat", wrap="none")
+        grau = tk.Text(self, height=6, width=60, foreground=stil.FARBEN["matt"],
+                       relief="flat", wrap="word")
         grau.insert("1.0", "\n".join("%s — %s" % p for p in nicht_nachrechenbar()))
         grau.configure(state="disabled")
         grau.grid(row=0, column=3, rowspan=5, sticky="nsew")
@@ -266,7 +267,7 @@ class EinzelBereich(ttk.Frame):
         self.k_start = ttk.Button(oben, text="Starten", command=self.starten)
         self.k_start.pack(side="left", padx=6)
         self.tip = Tooltip(self.k_start)
-        ttk.Label(self, text=fehler, foreground="#c0392b").pack(anchor="w")
+        ttk.Label(self, text=fehler, style="Fehler.TLabel").pack(anchor="w")
         self.rahmen = ttk.Frame(self)
         self.rahmen.pack(fill="x", pady=(6, 0))
         self._felder_bauen()
@@ -351,7 +352,7 @@ class BacktestReiter(ttk.Frame):
         self._liste = []
         self._takt_id = None
 
-        ttk.Label(self, text=HINWEIS_FREIGABE, foreground="#b35c00").pack(
+        ttk.Label(self, text=HINWEIS_FREIGABE, style="Hinweis.TLabel").pack(
             anchor="w", pady=(0, 4))
         teiler = ttk.PanedWindow(self, orient="vertical")
         teiler.pack(fill="both", expand=True)
@@ -374,7 +375,7 @@ class BacktestReiter(ttk.Frame):
         self.k_abbrechen.pack(side="right")
         self.tip_abbrechen = Tooltip(self.k_abbrechen)
         self.w_ausgabe = tk.Text(mitte, height=10, wrap="none", state="disabled",
-                                 font=("Consolas", 9))
+                                 font=stil.MONO)
         leiste = ttk.Scrollbar(mitte, orient="vertical", command=self.w_ausgabe.yview)
         self.w_ausgabe.configure(yscrollcommand=leiste.set)
         self.w_ausgabe.pack(side="left", fill="both", expand=True)

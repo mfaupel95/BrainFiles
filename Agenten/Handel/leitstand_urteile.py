@@ -140,11 +140,11 @@ class EintragenDialog(ZeitDialog):
         super().__init__(eltern, "Urteile eintragen", **kw)
         i = self.inhalt
         ttk.Label(i, text="Diese Urteile in die wachen.json schreiben?",
-                  font=("Segoe UI", 12, "bold")).pack(anchor="w")
+                  style="Titel.TLabel").pack(anchor="w")
         for zeile in aenderungen:
             ttk.Label(i, text=zeile).pack(anchor="w", padx=(10, 0))
         ttk.Label(i, text="handel_erlaubt und freigabe.erfuellt bleiben unberührt.",
-                  foreground="#555555").pack(anchor="w", pady=(6, 0))
+                  style="Matt.TLabel").pack(anchor="w", pady=(6, 0))
         knoepfe = ttk.Frame(i)
         knoepfe.pack(anchor="e", pady=(10, 0))
         # Kein Tab-Fokus auf "Ja": Tab/Leertaste bestaetigen nie, den Anfangsfokus
@@ -192,7 +192,7 @@ class UrteileBereich(ttk.Frame):
         self.tip_vorschau = Tooltip(self.k_vorschau)
         ttk.Label(self, text="Die Vorschau schreibt nichts. Eintragen übernimmt genau "
                              "diese Vorschau — kein neuer Lauf.",
-                  foreground="#555555").pack(anchor="w", pady=(4, 0))
+                  style="Matt.TLabel").pack(anchor="w", pady=(4, 0))
 
         self.tabelle = Tabelle(self, SPALTEN, reiter.zustand, "urteile", hoehe=4)
         self.tabelle.pack(fill="both", expand=True, pady=(4, 0))

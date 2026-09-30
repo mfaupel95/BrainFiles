@@ -14,6 +14,7 @@ from tkinter import messagebox, ttk
 
 import dauerlauf
 import freigabefenster as ff
+import leitstand_stil as stil
 from leitstand_bedienung import Tabelle, Tooltip, ZeitDialog, blinken, setze_knopf
 
 HIER = Path(__file__).resolve().parent
@@ -153,8 +154,8 @@ class FreigabeDialog(ZeitDialog):
         super().__init__(eltern, "Freigabe %s" % spur, **kw)
         i = self.inhalt
         ttk.Label(i, text="Freigabe %s?" % spur,
-                  font=("Segoe UI", 12, "bold")).grid(row=0, column=0,
-                                                      columnspan=2, sticky="w")
+                  style="Titel.TLabel").grid(row=0, column=0,
+                                             columnspan=2, sticky="w")
         ttk.Label(i, text="Es gelten die Grenzen aus wachen.json:").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(6, 2))
         for n, (name, wert) in enumerate(grenzen, start=2):
@@ -189,8 +190,6 @@ class FreigabenReiter(ttk.Frame):
         self.tabelle = Tabelle(self, SPALTEN, leitstand.zustand, "freigaben",
                                hoehe=14)
         self.tabelle.pack(fill="both", expand=True)
-        self.tabelle.baum.tag_configure("wartet", background="#f9e2af",
-                                        foreground="#000000")
         self.tabelle.baum.bind("<<TreeviewSelect>>", lambda _e: self._knoepfe())
         leiste = ttk.Frame(self)
         leiste.pack(fill="x", pady=(6, 0))
@@ -207,9 +206,10 @@ class FreigabenReiter(ttk.Frame):
             knopf.pack(side="left", padx=4)
             self.tips[name] = Tooltip(knopf)
         self.k_notaus = tk.Button(leiste, text="NOTAUS", command=self.notaus_klick,
-                                  bg="#c0392b", fg="white",
-                                  activebackground="#e74c3c",
-                                  font=("Segoe UI", 10, "bold"), padx=12)
+                                  bg=stil.FARBEN["notaus"], fg="white",
+                                  activebackground=stil.FARBEN["notaus_aktiv"],
+                                  activeforeground="white", font=stil.FETT,
+                                  padx=12, pady=2)
         self.k_notaus.pack(side="right", padx=4)
         self.refresh()
 

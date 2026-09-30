@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import ttk
 
+import leitstand_stil as stil
 from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
 
 HIER = Path(__file__).resolve().parent
@@ -110,12 +111,11 @@ class MarktReiter(ttk.Frame):
 
         self.w_kopf = ttk.Label(self, text="")
         self.w_kopf.pack(anchor="w", pady=(6, 0))
-        self.w_warnung = tk.Label(self, text="", anchor="w")
-        self.w_warnung.pack(fill="x")
-        self._bg = self.w_warnung.cget("background")
+        # Nur sichtbar, wenn es etwas zu warnen gibt - sonst kein leeres Band.
+        self.w_warnung = ttk.Label(self, text="", anchor="w", style="Warnung.TLabel")
 
-        teiler = ttk.PanedWindow(self, orient="vertical")
-        teiler.pack(fill="both", expand=True, pady=(4, 0))
+        self.teiler = teiler = ttk.PanedWindow(self, orient="vertical")
+        teiler.pack(fill="both", expand=True, pady=(stil.ABSTAND, 0))
         self.treffer = Tabelle(teiler, TREFFER_FELDER, self.zustand, "markt_treffer")
         teiler.add(self.treffer, weight=3)
         self.tore = Tabelle(teiler, TORE_SPALTEN, self.zustand, "markt_tore", hoehe=6)
@@ -153,8 +153,11 @@ class MarktReiter(ttk.Frame):
         self.tore.setze(tore_zeilen(bericht))
 
     def _warne(self, text):
-        self.w_warnung.config(text=text, background="#fff3b0" if text else self._bg)
-        if not text:
+        self.w_warnung.config(text=text)
+        if text:
+            self.w_warnung.pack(fill="x", pady=(stil.ABSTAND, 0), before=self.teiler)
+        else:
+            self.w_warnung.pack_forget()
             self._status = ""
 
     def titel_zusatz(self):

@@ -19,6 +19,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import handelszentrale as hz
+import leitstand_stil as stil
 from leitstand_backtests import BacktestReiter
 from leitstand_bedienung import Zustand, lage_gueltig, virtueller_schirm
 from leitstand_freigaben import FreigabenReiter
@@ -101,7 +102,7 @@ class Leitstand:
 
         root.title("Leitstand — Papier, handelt nie live")
         root.minsize(1000, 640)
-        root.configure(bg=hz.FARBEN["bg"])   # Rahmen-Modus der Zentrale setzt ihn nicht
+        stil.anwenden(root, hz.SCHRIFT_GROESSE)   # vor den Reitern: Optionsdatenbank
         geo = self.zustand.get("geometrie")
         if geo and lage_gueltig(geo, virtueller_schirm(root)):
             root.geometry(geo)
@@ -129,6 +130,7 @@ class Leitstand:
         n = self.zustand.get("schrift")
         if isinstance(n, int) and SCHRIFT_MIN <= n <= SCHRIFT_MAX:
             self.setze_schrift(n, merken=False)
+        stil.anwenden(root, self.schrift)   # nach den Reitern: die Zentrale setzt eigenes
 
         for seq in KUERZEL:
             root.bind(seq, lambda _e, s=seq: self.kuerzel(s))
@@ -191,6 +193,7 @@ class Leitstand:
         if z is not None:
             z.w_schrift.set(str(n))
             z._schrift_gewaehlt()
+        stil.anwenden(self.root, n)
         if merken:
             self.zustand.merke("schrift", n)
 
