@@ -77,7 +77,10 @@ if (Test-Path $state_datei) {
         $st = (Get-Content $state_datei -Raw -Encoding UTF8 | ConvertFrom-Json)
         if ($st.updated_at) {
             $st_alter = [int]((Get-Date).ToUniversalTime() - ([datetime]$st.updated_at).ToUniversalTime()).TotalSeconds
-            $state_frisch = ($st_alter -ge 0 -and $st_alter -lt 600)
+            # 1800 s, nicht 600: der Gateway schreibt seinen Stand gemessen nur alle
+# ~7 min (16:05:13 -> 16:12:36). Mit 600 s galt ein gesunder, aber gerade
+# schreibtraeger Gateway als tot und der Waechter startete einen zweiten.
+            $state_frisch = ($st_alter -ge 0 -and $st_alter -lt 1800)
         }
         if ($state_frisch -and $st.pid -and $st.gateway_state -eq 'running') {
             $pr = Get-Process -Id $st.pid -ErrorAction SilentlyContinue
