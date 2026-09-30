@@ -1166,3 +1166,19 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 - **`Get-ScheduledTask -TaskName <name>` findet vorhandene Aufgaben nicht**
   (erneut bestaetigt); verlaesslich sind `schtasks /query` und die
   Aufzaehlung mit `Get-ScheduledTask | Where-Object TaskName -like '*Gateway*'`.
+
+## 30.09.2026 - node.exe 0xc000012d, Explorer stuerzt ab
+
+- **Ursache: Commit-Limit erschoepft, nicht node.exe.** Ein Amok-`grep.exe`
+  (`grep -o -E (de|ger):\{[^}]{0,4000} i18n-ChK_h4a4.js`, gestartet 14:10 aus
+  `Agenten/Hermes/tools/git-.../usr/bin`) hielt 62,6 GB virtuellen Speicher.
+  Frei: 1,2 von 108 GB. 0xc000012d = STATUS_COMMITMENT_LIMIT; jeder neue
+  Prozess (node, Explorer) scheitert beim Start.
+- **Behebung:** Prozess beendet, danach 43 GB frei. Kein Systemeingriff.
+- **Geprueft, war es nicht:** Auslagerungsdatei (C:\pagefile.sys, 43,5 GB,
+  Spitze 5,8 GB, manuell verwaltet).
+- **Gleiches Muster frueher am Tag:** Ereignis 2004 (virtueller Speicher
+  unzureichend) 09:59-10:15, dreimal; Verursacher `com.docker.sailor.exe`
+  (14,7 GB) und `llama-server.exe` (7 GB). Docker lief bei der Pruefung nicht.
+- **Schnellcheck bei 0xc000012d:** `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory`
+  und `Get-Process | sort PagedMemorySize64 -desc | select -first 5`.

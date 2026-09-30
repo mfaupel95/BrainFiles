@@ -60,6 +60,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
+      Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
+      minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
+      lahm (0xc000012d, siehe Wissen/Hardware.md). Aufrufer finden (Eltern-PID
+      war 53412, nicht mehr vorhanden) und Muster/Zeitgrenze (`timeout`) setzen.
+
 - [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
       Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
       (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
