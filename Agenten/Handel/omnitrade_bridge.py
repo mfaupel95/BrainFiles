@@ -28,17 +28,48 @@ HANDEL = os.path.dirname(os.path.abspath(__file__))
 STANDARD = os.path.join(HANDEL, "..", "..", "Werkstatt", "omnitrade", "status",
                         "live.json")
 SCHEMA = 1
-# Ohne Kerze kommt trotzdem nach jeder Kerze ein Schreibvorgang; bei 1m-Kerzen
-# ist eine Datei, die 5 Minuten stillsteht, verdaechtig.
+# Untergrenze fuer "veraltet". Die Datei wird NUR beim Verarbeiten einer Kerze
+# geschrieben - bei `--interval 1h` also stuendlich. Eine feste 5-Minuten-Grenze
+# hat am 30.09.2026 einen gesunden stuendlichen Lauf fuer tot erklaert (und die
+# Handelszentrale zeigte "kein Lebenszeichen", waehrend er lief). Darum waechst
+# die Grenze mit dem Kerzenabstand aus der Datei selbst.
 VERALTET_S = 300
+VIELFACHES = 2.5  # so oft darf der Kerzenabstand vergehen, bevor es ein Haenger ist
 
 
 def pfad():
     return os.environ.get("OMNITRADE_STATUS") or os.path.normpath(STANDARD)
 
 
-def lage(datei=None, jetzt_ms=None, veraltet_s=VERALTET_S):
-    """Status-Dokument plus `ok`, `alter_s`, `fehler`, `datei`. Wirft nie."""
+def intervall_s(daten):
+    """Kerzenlaenge in Sekunden aus den mitgeschriebenen Kerzen.
+    None, wenn nicht ableitbar (alte Staende, zu wenige Kerzen)."""
+    kerzen = (daten or {}).get("recent_candles") or []
+    zeiten = []
+    for k in kerzen:
+        if isinstance(k, dict) and isinstance(k.get("time_ms"), (int, float)):
+            zeiten.append(float(k["time_ms"]))
+    if len(zeiten) < 2:
+        return None
+    zeiten.sort()
+    abst = sorted(b - a for a, b in zip(zeiten, zeiten[1:]) if b > a)
+    if not abst:
+        return None
+    return abst[len(abst) // 2] / 1000.0  # Median, damit eine Luecke nicht zaehlt
+
+
+def altersgrenze_s(daten, vielfaches=VIELFACHES):
+    """Altersgrenze fuer die Statusdatei: Untergrenze, sonst mit dem
+    Kerzenabstand gewachsen."""
+    i = intervall_s(daten)
+    if i is None:
+        return float(VERALTET_S)
+    return max(float(VERALTET_S), vielfaches * i)
+
+
+def lage(datei=None, jetzt_ms=None, veraltet_s=None):
+    """Status-Dokument plus `ok`, `alter_s`, `fehler`, `datei`. Wirft nie.
+    `veraltet_s=None` heisst: Grenze aus dem Kerzenabstand der Datei."""
     datei = datei or pfad()
     ergebnis = {"ok": False, "datei": datei, "fehler": "", "alter_s": None}
     try:
@@ -64,9 +95,11 @@ def lage(datei=None, jetzt_ms=None, veraltet_s=VERALTET_S):
     except (TypeError, ValueError):
         ergebnis["fehler"] = "Statusdatei ohne updated_ms"
         return ergebnis
-    if daten.get("state") in ("starting", "running") and ergebnis["alter_s"] > veraltet_s:
-        ergebnis["fehler"] = "veraltet: seit %d min kein Lebenszeichen" % (
-            ergebnis["alter_s"] // 60)
+    grenze = altersgrenze_s(daten) if veraltet_s is None else float(veraltet_s)
+    ergebnis["altersgrenze_s"] = grenze
+    if daten.get("state") in ("starting", "running") and ergebnis["alter_s"] > grenze:
+        ergebnis["fehler"] = "veraltet: seit %d min kein Lebenszeichen (Grenze %d s)" % (
+            ergebnis["alter_s"] // 60, grenze)
         return ergebnis
     ergebnis["ok"] = True
     return ergebnis

@@ -75,6 +75,30 @@ class BrueckeTest(unittest.TestCase):
         self._schreibe(dict(STATUS, state="stopped", updated_ms=JETZT - 600_000))
         self.assertTrue(ob.lage(self.datei, jetzt_ms=JETZT)["ok"])
 
+    def test_stuendlicher_lauf_ist_nicht_veraltet(self):
+        """30.09.2026: ein Lauf mit --interval 1h schreibt die Datei nur
+        stuendlich. Die feste 5-Minuten-Grenze hat ihn fuer tot erklaert,
+        waehrend die Handelszentrale zusah. Die Grenze kommt jetzt aus dem
+        Kerzenabstand der Datei selbst."""
+        kerzen = [{"time_ms": JETZT - 3_600_000, "close": 1.0},
+                  {"time_ms": JETZT - 7_200_000, "close": 1.0}]
+        self._schreibe(dict(STATUS, recent_candles=kerzen, updated_ms=JETZT - 1_560_000))
+        lage = ob.lage(self.datei, jetzt_ms=JETZT)
+        self.assertTrue(lage["ok"], lage["fehler"])
+        self.assertEqual(lage["altersgrenze_s"], 9000.0)
+
+    def test_kerzenabstand_aus_der_datei(self):
+        self.assertIsNone(ob.intervall_s({}))
+        self.assertIsNone(ob.intervall_s({"recent_candles": [{"time_ms": 1}]}))
+        self.assertIsNone(ob.intervall_s({"recent_candles": "kaputt"}))
+        self.assertEqual(ob.intervall_s({"recent_candles": [{"time_ms": 0}, {"time_ms": 60_000}]}), 60.0)
+        # Median: eine Luecke (hier 10 min) verschiebt die Grenze nicht
+        self.assertEqual(ob.intervall_s({"recent_candles": [
+            {"time_ms": 0}, {"time_ms": 60_000}, {"time_ms": 120_000}, {"time_ms": 720_000}]}), 60.0)
+        self.assertEqual(ob.altersgrenze_s({"recent_candles": [{"time_ms": 0}, {"time_ms": 60_000}]}),
+                         ob.VERALTET_S)
+        self.assertEqual(ob.altersgrenze_s({}), float(ob.VERALTET_S))
+
     def test_pfad_aus_umgebung(self):
         with mock.patch.dict(os.environ, {"OMNITRADE_STATUS": self.datei}):
             self.assertEqual(ob.pfad(), self.datei)

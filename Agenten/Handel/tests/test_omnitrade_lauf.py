@@ -29,6 +29,57 @@ def lage(state="running", pid=1234, alter=5.0, ok=True, fehler=""):
     return {"ok": ok, "state": state, "pid": pid, "alter_s": alter, "fehler": fehler}
 
 
+GRENZE_FEST = staticmethod(lambda lage, pid: lauf.ALT_GRENZE_S)
+
+
+class IntervallTest(unittest.TestCase):
+    """Die Statusdatei wird NUR beim Verarbeiten einer Kerze geschrieben - bei
+    --interval 1h also stuendlich. Eine feste 5-Minuten-Grenze wuerde einen
+    gesunden stuendlichen Lauf fuer tot erklaeren (30.09.2026 erlebt)."""
+
+    def test_einheiten(self):
+        self.assertEqual(lauf.intervall_s("omnitrade-cli live --interval 1m"), 60.0)
+        self.assertEqual(lauf.intervall_s("--interval 15m"), 900.0)
+        self.assertEqual(lauf.intervall_s("--interval 1h"), 3600.0)
+        self.assertEqual(lauf.intervall_s("--interval 4h"), 14400.0)
+        self.assertEqual(lauf.intervall_s("--interval 1d"), 86400.0)
+        self.assertEqual(lauf.intervall_s("--interval=30s"), 30.0)
+
+    def test_ohne_angabe_gilt_die_vorgabe_der_cli(self):
+        self.assertEqual(lauf.intervall_s("omnitrade-cli live --symbol BTCUSDC"), lauf.INTERVALL_VORGABE_S)
+        self.assertEqual(lauf.intervall_s(""), lauf.INTERVALL_VORGABE_S)
+        self.assertEqual(lauf.intervall_s("--interval"), lauf.INTERVALL_VORGABE_S)
+
+    def test_unlesbares_raet_nicht(self):
+        self.assertEqual(lauf.intervall_s("--interval bald"), lauf.INTERVALL_VORGABE_S)
+
+    def test_grenze_waechst_mit_dem_intervall(self):
+        """Untergrenze bleibt die feste Zahl, oben waechst sie mit."""
+        self.assertEqual(lauf.altersgrenze_s(0, zeile="--interval 1m"), lauf.ALT_GRENZE_S)
+        self.assertEqual(lauf.altersgrenze_s(0, zeile="--interval 1h"), lauf.VIELFACHES * 3600.0)
+
+    def test_stuendlicher_lauf_gilt_als_laufen(self):
+        """Der reale Fall: PID lebt, Datei 13 Minuten alt, Intervall 1h."""
+        u = lauf.beurteile(lage=lage(alter=786.6), lebt=lambda pid: True,
+                           grenze_fuer=lambda lage_daten, pid: lauf.altersgrenze_s(0, zeile="--interval 1h"))
+        self.assertTrue(u["laeuft"], u["grund"])
+
+    def test_haengender_lauf_bei_1m_faellt_auf(self):
+        """Gegenprobe: derselbe Wert bei 1m-Intervall ist ein Haenger."""
+        u = lauf.beurteile(lage=lage(alter=786.6), lebt=lambda pid: True,
+                           grenze_fuer=lambda lage_daten, pid: lauf.altersgrenze_s(0, zeile="--interval 1m"))
+        self.assertFalse(u["laeuft"])
+        self.assertIn("haengt", u["grund"])
+
+    def test_grenze_kommt_zuerst_aus_der_statusdatei(self):
+        """Erste Quelle ist der Kerzenabstand IN der Datei - dieselbe Quelle, die
+        die Handelszentrale liest. Die Kommandozeile ist nur der Rueckfall."""
+        stuendlich = {"recent_candles": [{"time_ms": 0}, {"time_ms": 3_600_000}]}
+        self.assertEqual(lauf.grenze_aus_datei(stuendlich, pid=0), lauf.VIELFACHES * 3600.0)
+        # Datei ohne Kerzen -> Rueckfall; PID 0 hat keine Kommandozeile -> Untergrenze
+        self.assertEqual(lauf.grenze_aus_datei({}, pid=0), lauf.ALT_GRENZE_S)
+
+
 class BeurteilungTest(unittest.TestCase):
     def test_gesunde_lage_laeuft(self):
         u = lauf.beurteile(lage=lage(), lebt=lambda pid: True)
@@ -61,12 +112,14 @@ class BeurteilungTest(unittest.TestCase):
     def test_alte_statusdatei_ist_nicht_laufen(self):
         """Lebt die PID, steht aber die Datei - dann haengt der Lauf, und das
         darf nicht als gesund durchgehen."""
-        u = lauf.beurteile(lage=lage(alter=lauf.ALT_GRENZE_S + 1), lebt=lambda pid: True)
+        u = lauf.beurteile(lage=lage(alter=lauf.ALT_GRENZE_S + 1), lebt=lambda pid: True,
+                           grenze_fuer=GRENZE_FEST)
         self.assertFalse(u["laeuft"])
         self.assertIn("alt", u["grund"])
 
     def test_grenze_ist_nicht_ueberschritten(self):
-        u = lauf.beurteile(lage=lage(alter=lauf.ALT_GRENZE_S), lebt=lambda pid: True)
+        u = lauf.beurteile(lage=lage(alter=lauf.ALT_GRENZE_S), lebt=lambda pid: True,
+                           grenze_fuer=GRENZE_FEST)
         self.assertTrue(u["laeuft"])
 
     def test_pid_lebt_wirft_nie(self):
