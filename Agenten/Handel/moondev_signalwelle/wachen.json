@@ -1,4 +1,6 @@
 {
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp)",
   "_zweck": "Ehrliches Gegenstueck zu VIP-Signal-Kanaelen (Screenshot-Anlass 20.09.2026): 1h-Momentum mit Volumen-Spike, deterministisch, mit Stop/Ziel - kein Kanal-Copytrading, kein Hebel-Fantasie.",
   "_quelle": "CoinGecko /coins/markets mit price_change_percentage=1h,24h (oeffentlich, Handel/moondev_daten.py). Keine Blackbox, keine Gewinnkarte ohne Verlusthistorie.",
   "_regel": "Long bei 1h-Aenderung zwischen mindest_plus_1h_pct und hoechst_plus_1h_pct UND Tagesvolumen ueber mindest_volumen_usd. Kein Hebel (kein Perpetual, kein Future) - Spot-Papier wie alle Haus-Spuren.",

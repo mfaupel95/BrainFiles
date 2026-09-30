@@ -1,4 +1,6 @@
 {
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp)",
   "_zweck": "IV-Wand: der Strike mit dem groessten Open Interest als Magnet. Der Kurs wandert zu dieser Zone - long von unten, short von oben.",
   "_quelle": "OKX oeffentlich: /public/open-interest (Open Interest je Option) und /public/opt-summary (implizite Volatilitaet je Option), Spot von okx.kurs(). Kein Schluessel, ein Abruf je Endpunkt.",
   "_wand": "Strikes mit Verfall in 7 bis 45 Tagen, Open Interest in USD je Strike summiert (Call + Put); der groesste davon ist die Wand. Die IV dieses Strikes steht als Notiz im Zustand.",

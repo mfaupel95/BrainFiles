@@ -1,4 +1,6 @@
 {
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp/liq_wand)",
   "_zweck": "Harte Grenzen der vierten Spur (ORB auf OKX-Perpetuals, USDT). Eine Datei, eine Wahrheit. Gelesen von backtest.py und handeln.py, nie von ihnen geschrieben - einzige Ausnahme ist wachen_orb.sperre_zu, das handel_erlaubt nur von true auf false legt. Umschreibung von OANDA-Index-CFDs auf OKX-Krypto: 00:00-UTC-Tagesgrenze statt Boersen-Open (Spec-Umbau 2026-09-13).",
   "_waehrung": "OKX-Perpetuals rechnen in USDT. Alle Betragsfelder tragen _usdt. Fuer die waehrungsneutrale Rechnung traegt jedes Instrument ein _usd-Aequivalent, Muster Spur 3.",
   "waehrung": "USDT",

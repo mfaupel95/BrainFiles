@@ -122,6 +122,32 @@ def wendepunkt(runden):
             "ergebnis_summe": sum(r[2] for r in runden)}
 
 
+def urteil(geb, f_max):
+    """Der Hinweis zu einer Spur - reine Funktion, damit pruefbar.
+
+    ZWEI EINHEITEN, die nicht verwechselt werden duerfen: `gebuehr_taker` ist
+    ein BRUCH je Seite (0.0005 = 0,05 %, 0.006 = 0,6 %), `f_max` dagegen
+    Prozent JE RUNDE (Kauf + Verkauf). Bis zum 30.09.2026 druckte das Werkzeug
+    den Bruch unveraendert mit Prozentzeichen ("0.001 %" statt "0.050 %") und
+    verglich ihn direkt mit f_max - jede Gebuehrenaussage war damit um Faktor
+    100 zu klein und der Vergleich bedeutungslos.
+    """
+    text = ""
+    if f_max <= 0:
+        text = "  <<< schon bei 0 % Gebuehr nicht tragfaehig"
+    elif f_max < 0.4:
+        # 0,4 % sind die Taker-Gebuehr beider Seiten ohne Abo - wer darunter
+        # liegt, handelt nur, solange die Gebuehr 0 ist.
+        text = "  <<< haengt an der Gebuehrfreiheit (unter 0,4 %)"
+    if not geb or geb <= 0:
+        return text
+    geb_runde = 2.0 * geb * 100.0
+    if geb_runde >= f_max:
+        text += (" UND die gesetzte Gebuehr %.3f %% je Runde (%.3f %% je Seite)"
+                 " liegt darueber" % (geb_runde, geb * 100.0))
+    return text
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--spuren", help="Komma-Liste; sonst alle mit Journal")
@@ -157,15 +183,7 @@ def main() -> int:
         if wachen.is_file():
             d = json.loads(wachen.read_text(encoding="utf-8"))
             geb = d.get("gebuehr_taker")
-        hinweis = ""
-        if w["f_max"] <= 0:
-            hinweis = "  <<< schon bei 0 % Gebuehr nicht tragfaehig"
-        elif w["f_max"] < 0.4:
-            # 0,4 % sind die Taker-Gebuehr beider Seiten ohne Abo - wer darunter
-            # liegt, handelt nur, solange die Gebuehr 0 ist.
-            hinweis = "  <<< haengt an der Gebuehrfreiheit (unter 0,4 %)"
-        if geb is not None and geb > 0 and geb >= w["f_max"]:
-            hinweis += " UND die gesetzte Gebuehr %.3f %% liegt darueber" % geb
+        hinweis = urteil(geb, w["f_max"])
         zahl = ("  (%d Zwangsschluss-Zeile(n) nicht mitgezaehlt)" % len(zwang)
                 if zwang else "")
         print("%-22s %6d %6.2f %6.2f %5.0f%%   %+.2f %% je Runde%s%s" % (
