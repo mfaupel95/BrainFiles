@@ -1,23 +1,31 @@
-"""Das Fenster der Zentrale: Bereiche, Gruppen, Filter, Aktionen je Zeile.
+"""Das Fenster der Zentrale: Bereiche, Filter, Skalierung, Aktionen je Zeile.
 
-Der Baum hat seit 30.09.2026 drei Ebenen:
+Der Baum hat drei Ebenen:
 
     BEREICH (REPOS · WERKSTATT · HANDEL)
       GRUPPE (STARTBAR · EINRICHTEN · NEU · NUR DOKU · FEHLT)
         Projektzeile
 
-Die Anzeigelogik (Filter, Gruppen, Bereichsbaum, Summenzeile) steht bewusst als
-reine Funktionen oben - sie ist ohne Fenster pruefbar. Die Klasse `Fenster` baut
-nur zusammen, was quellen/scan/manifest/aktionen liefern, und rechnet nichts
-selbst.
+Darueber eine Kopfzeile (Titel, Summen, **Skalierung**), darunter die
+Filterzeile (Suchfeld, Bereich, Gruppe, **Filterchips**), unter dem Baum zwei
+Karten: links "Was dieses Projekt kann", rechts **"Handel"** - dort stehen fuer
+eine Handels-Spur ihr Stand, der Testlauf (`--vorschau`) und das Scharfschalten.
+
+Die Anzeigelogik (Gruppen, Bereiche, Filter, Summenzeile, Spaltenbreiten) steht
+bewusst als reine Funktionen oben - sie ist ohne Fenster pruefbar. Die Klasse
+`Fenster` baut nur zusammen, was quellen/scan/manifest/auswahl/handelstand
+liefern, und rechnet nichts selbst.
 
 Farben, Schrift, DPI und ttk-Stile kommen aus `Werkzeuge/fenster_design.py` -
-dieselbe Quelle wie handelszentrale.py und leitstand.py.
+dieselbe Quelle wie handelszentrale.py. Runde Ecken und die Karten kommen aus
+`rund.py`.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import json
+import queue
 import subprocess
 import threading
 from datetime import datetime
@@ -27,9 +35,13 @@ import tkinter as tk
 from tkinter import ttk
 
 import aktionen
+import auswahl
 import befehle
+import einstellungen
+import handelstand
 import manifest
 import quellen
+import rund
 import scan
 
 _spec = importlib.util.spec_from_file_location(
@@ -41,6 +53,12 @@ FARBEN = design.FARBEN
 SCHRIFT_ART = design.SCHRIFT_ART
 SCHRIFT_GROESSE = design.SCHRIFT_GROESSE
 ABSTAND = design.ABSTAND
+
+# Frist fuer einen Vorschau-Testlauf. Grosszuegig: viele Spuren holen Kerzen
+# und Kurse ueber das Netz. Der Dauerlauf bricht seine Zyklen bei 700 s ab -
+# von Hand will man nicht so lange warten, und ein haengender Lauf soll das
+# Fenster nicht blockieren (er laeuft in einem eigenen Faden).
+VORSCHAU_FRIST_S = 240
 
 
 def schrift(rel=0, fett=False):
@@ -69,6 +87,23 @@ ERKLAERUNG = {
 AUFFAELLIGE_GRUPPEN = ("fehlt", "neu")
 ALLE_BEREICHE = "Alle Bereiche"
 
+# Die Filterchips in Anzeige-Reihenfolge. Kurz halten: acht Chips muessen in
+# eine Zeile passen, ohne das Fenster zu sprengen.
+CHIPS = (
+    "auffaellig", "startbar", "mit_start", "mit_bot",
+    "fremd", "handel", "spuren", "scharf",
+)
+
+# Die Knopfreihe unten. Der Name ist der Schluessel in `self.knoepfe` - Tests
+# und Aufrufer haengen daran.
+KNOPF_REIHE = (
+    ("ordner", "Ordner", "ordner", "Explorer im Projektordner"),
+    ("terminal", "Terminal", "terminal", "Terminal im Projektordner"),
+    ("start", "Starten", "starten", "der belegte Startbefehl, Ausgabe ins Log"),
+    ("bot", "Bot", "bot_chat", "hermes -p <bot> chat im Projektordner"),
+    ("doku", "Doku", "doku", "die README des Projekts"),
+)
+
 
 # ------------------------------------------------------------------ Anzeigelogik
 def gruppen_titel(gruppe: str, anzahl: int) -> str:
@@ -81,38 +116,31 @@ def bereich_titel(kennung: str, anzahl: int) -> str:
     return f"{kennung} - {anzahl}"
 
 
-def sichtbare_zeilen(
-    zeilen: list[manifest.Zeile], suchtext: str, bereich: str = ""
-) -> list[manifest.Zeile]:
-    """Filtern ueber Ordnername, Bot, Notiz, Art, Rolle und Pfad.
-
-    `bereich` ist entweder leer/`ALLE_BEREICHE` oder der Name eines Bereichs
-    (REPOS, WERKSTATT, HANDEL) - dann bleiben nur dessen Zeilen.
-    """
-    text = (suchtext or "").strip().lower()
-    gefiltert = zeilen
-    if bereich and bereich != ALLE_BEREICHE:
-        gefiltert = [z for z in gefiltert if z.bereich == bereich]
-    if not text:
-        return list(gefiltert)
-    return [
-        z
-        for z in gefiltert
-        if text in z.ordner.lower()
-        or text in (z.bot or "").lower()
-        or text in (z.notiz or "").lower()
-        or text in (z.anleitung or "").lower()
-        or text in z.art.lower()
-        or text in (z.rolle or "").lower()
-        or text in bereichs_pfad(z).lower()
-    ]
-
-
 def bereichs_pfad(z: manifest.Zeile) -> str:
     """Der Ort einer Zeile, wie er in der Detailspalte steht."""
     if z.repo is not None:
         return str(z.repo.pfad)
     return f"{quellen.bereich(z.wurzel)}/{z.ordner}"
+
+
+def sichtbare_zeilen(
+    zeilen: list[manifest.Zeile], suchtext: str, bereich: str = "", filter_=None
+) -> list[manifest.Zeile]:
+    """Filtern ueber Ordnername, Bot, Notiz, Art, Rolle und Pfad.
+
+    `bereich` ist entweder leer/`ALLE_BEREICHE` oder der Name eines Bereichs
+    (REPOS, WERKSTATT, HANDEL) - dann bleiben nur dessen Zeilen. `filter_` ist
+    ein `auswahl.Filter` mit weiteren Kennzeichen; er wird mit Suchtext und
+    Bereich ZUSAMMENgefuehrt (die alte Zwei-Argument-Form bleibt gueltig).
+    """
+    grund = filter_ or auswahl.Filter()
+    zusammen = auswahl.Filter(
+        text=(suchtext or grund.text),
+        bereich=(bereich or grund.bereich),
+        gruppe=grund.gruppe,
+        kennzeichen=tuple(grund.kennzeichen),
+    )
+    return auswahl.filtern(zeilen, zusammen)
 
 
 def nach_gruppen(zeilen: list[manifest.Zeile]) -> dict[str, list[manifest.Zeile]]:
@@ -148,6 +176,20 @@ def auffaellige(zeilen: list[manifest.Zeile]) -> list[manifest.Zeile]:
     return [z for z in zeilen if z.gruppe in AUFFAELLIGE_GRUPPEN]
 
 
+def fremde_zeilen(zeilen: list[manifest.Zeile]) -> list[manifest.Zeile]:
+    """Zeilen in fremdem Material (Kennzeichen setzt manifest._zeile).
+
+    Sie bleiben sichtbar - sie sollen ja auffindbar sein - aber sie werden
+    gezaehlt ausgewiesen, damit 'unser Code' eine Zahl mit Bedeutung hat.
+    """
+    return [z for z in zeilen if any(g.startswith("fremd:") for g in z.gruende)]
+
+
+def spuren_zeilen(zeilen: list[manifest.Zeile]) -> list[manifest.Zeile]:
+    """Zeilen, die eine Handels-Spur sind (Kennzeichen setzt `_spuren_markieren`)."""
+    return [z for z in zeilen if getattr(z, "spur", "")]
+
+
 def zusammenfassung(zeilen: list[manifest.Zeile]) -> str:
     """Eine Zeile ueber allem: wie viel wo liegt und was auffaellt.
 
@@ -172,13 +214,25 @@ def zusammenfassung(zeilen: list[manifest.Zeile]) -> str:
     return text
 
 
-def fremde_zeilen(zeilen: list[manifest.Zeile]) -> list[manifest.Zeile]:
-    """Zeilen in fremdem Material (Kennzeichen setzt manifest._zeile).
+def spuren_markieren(zeilen: list[manifest.Zeile], plan: dict, stand: dict) -> dict:
+    """Jeder Zeile sagen, ob sie eine Handels-Spur ist (und welche).
 
-    Sie bleiben sichtbar - sie sollen ja auffindbar sein - aber sie werden
-    gezaehlt ausgewiesen, damit 'unser Code' eine Zahl mit Bedeutung hat.
+    Die Namen kommen aus `dauerlauf.SPUREN` - gelesen, nicht geraten. Ein Ordner
+    kann MEHRERE Spuren tragen (`nautilus_kraken` faehrt den Spot-Arm und die
+    Futures-Variante); deshalb ist `spuren` eine Liste und `spur` der erste Name.
+
+    Rueckgabe: die Karte Ordner -> Spurnamen (fuer weitere Leser, z. B.
+    `repos_zentrale.py --pruefen`). Reine Funktion - kein Fenster noetig.
     """
-    return [z for z in zeilen if any(g.startswith("fremd:") for g in z.gruende)]
+    karte: dict[str, list[str]] = {}
+    for name, eintrag in plan.items():
+        karte.setdefault(eintrag.get("ordner") or name, []).append(name)
+    for z in zeilen:
+        namen = karte.get(z.ordner) or [] if z.bereich == "HANDEL" else []
+        z.spuren = list(namen)
+        z.spur = namen[0] if namen else ""
+        z.scharf = bool(namen and any((stand.get(n) or {}).get("scharf") for n in namen))
+    return karte
 
 
 def hinweis(zeile: manifest.Zeile) -> str:
@@ -188,6 +242,13 @@ def hinweis(zeile: manifest.Zeile) -> str:
     if zeile.gruppe in ("doku", "neu", "fehlt"):
         return zeile.notiz
     return ""
+
+
+def spur_kurz(z: manifest.Zeile) -> str:
+    """Die Handels-Kennzeichnung einer Zeile fuer die eigene Spalte (leer, wenn keine Spur)."""
+    if not getattr(z, "spur", ""):
+        return ""
+    return "scharf" if getattr(z, "scharf", False) else "Papier"
 
 
 # Die Spalten der Tabelle. Die Breiten sind in PIXELN bei 100 % Anzeige
@@ -200,7 +261,8 @@ SPALTEN = (
     ("rolle", "Rolle", 108),
     ("bot", "Bot", 130),
     ("lauf", "letzter Start", 104),
-    ("hinweis", "Hinweis", 366),
+    ("handel", "Handel", 88),
+    ("hinweis", "Hinweis", 320),
 )
 BREITE_PROJEKT = 250
 SPALTEN_MINIMUM = 60
@@ -213,8 +275,8 @@ def spaltenbreiten(
 
     `verfuegbar` ist die Breite, die der Baum wirklich hat. Reicht sie nicht,
     wird in DIESER Reihenfolge gekuerzt: erst die Nebenspalten (Art, Rolle, Bot,
-    letzter Start), dann die Projektspalte, zuletzt die Hinweisspalte - sie
-    traegt den Grund und ist die einzige, deren Abschneiden Information
+    letzter Start, Handel), dann die Projektspalte, zuletzt die Hinweisspalte -
+    sie traegt den Grund und ist die einzige, deren Abschneiden Information
     vernichtet. Keine Spalte faellt unter `SPALTEN_MINIMUM`.
     """
     skaliert = int(round(projekt * s))
@@ -262,6 +324,29 @@ def fenstergroesse(root, breite: int = 1400, hoehe: int = 900, s: float = 1.0) -
     return f"{b}x{h}+{max(0, (sw - b) // 2)}+{max(0, (sh - h) // 3)}"
 
 
+def bildschirmmasse(root) -> tuple[int, int]:
+    """Die Bildschirmgroesse in Pixeln (Rueckfall 1920x1080)."""
+    try:
+        return root.winfo_screenwidth(), root.winfo_screenheight()
+    except Exception:                                        # noqa: BLE001
+        return 1920, 1080
+
+
+def groesse_masse(bildschirm: tuple[int, int], name: str, s: float = 1.0) -> tuple[int, int]:
+    """Die Pixelmasse eines Fenster-Presets, auf den Bildschirm begrenzt.
+
+    Reine Rechnung (ohne Fenster pruefbar): Wunschgroesse aus
+    `einstellungen.fenster_masse`, gestreckt mit dem DPI-Faktor, danach auf
+    Bildschirm minus 80 px gedeckelt und nach unten auf 900x560 begrenzt - so
+    liegt das Fenster auch auf einem kleinen Monitor vollstaendig im Bild.
+    """
+    breite, hoehe = einstellungen.fenster_masse(name, bildschirm)
+    sw, sh = bildschirm
+    b = max(int(900 * s), min(int(round(breite * s)), max(int(900 * s), sw - 80)))
+    h = max(int(560 * s), min(int(round(hoehe * s)), max(int(560 * s), sh - 80)))
+    return b, h
+
+
 # ------------------------------------------------------------------ Fenster
 class Fenster:
     """Die Oberflaeche. `lauf` und `jetzt` sind fuer Tests ersetzbar."""
@@ -275,58 +360,220 @@ class Fenster:
         *,
         lauf=None,
         jetzt=None,
+        einstellungen_pfad: Path | str | None = None,
+        handel_zustand_lader=None,
+        vorschau_lauf=None,
     ):
         self.brainfiles = Path(brainfiles)
         self.manifest_pfad = Path(manifest_pfad)
         self.profile_dir = Path(profile_dir)
         self.log_ordner = Path(log_ordner)
+        self.einstellungen_pfad = Path(
+            einstellungen_pfad or (self.manifest_pfad.parent / "einstellungen.json")
+        )
         self.lauf = lauf or self._popen
         self.jetzt = jetzt or datetime.now
+        self.handel_zustand_lader = handel_zustand_lader or (
+            lambda: handelstand.zustand(self.brainfiles)
+        )
+        self.vorschau_lauf = vorschau_lauf or self._vorschau_echt
         self.zeilen: list[manifest.Zeile] = []
         self.kinder: dict[str, manifest.Zeile] = {}   # Item-Id -> Zeile
+
+        self.einst = einstellungen.laden(self.einstellungen_pfad)
+        self.schriftgroesse = int(self.einst["schrift"])
+        self.kennzeichen: set[str] = set(self.einst["filter"])
+        self._handel_da: dict | None = None
+        self._handel_laeuft = False
+        self._vorschau_laeuft = False
+        self._spurnamen: dict[str, list[str]] = {}
+        self._plan: dict = {}          # dauerlauf.SPUREN, einmal gelesen
+        # Aus einem Faden darf man NICHT `root.after` rufen (Tk ist nicht
+        # threadsicher; ohne laufende Hauptschleife bricht es mit "main thread
+        # is not in main loop" ab). Faeden legen ihren Aufruf hier ab, die
+        # Hauptschleife holt ihn ab (`_post_pollen`).
+        self._post: queue.Queue = queue.Queue()
+        self._post_id = None           # der laufende after-Auftrag der Abholschleife
 
         dpi_bewusst()
         self.root = tk.Tk()
         self.s = design.skalierung(self.root)
-        self.root.title("Zentrale - Repos · Werkstatt · Handel")
-        self.root.geometry(fenstergroesse(self.root, s=self.s))
+        self.root.title("Zentrale · Repos · Werkstatt · Handel")
+        rund.fenster_ecken(self.root)
+        self.root.minsize(int(900 * self.s), int(560 * self.s))
+        self._groesse_setzen(self.einst["fenster"], beim_start=True)
         self._bauen()
         self.aktualisieren()
+        # Die Abholschleife fuer Faeden starten (siehe `_post_pollen`) und beim
+        # Zerstoeren des Fensters wieder abbestellen (sonst meckert Tk).
+        self.root.bind("<Destroy>", self._post_stoppen)
+        self._post_id = self.root.after(80, self._post_pollen)
 
     # ------------------------------------------------------------- Aufbau
-    def _bauen(self) -> None:
-        # Schrift und Farben ZENTRAL (fenster_design): alles, was nicht
-        # ausdruecklich gesetzt wird, erbt von "." - die Zeilenhoehe folgt der
-        # Schrift, sonst werden Buchstaben angeschnitten.
-        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
-        self.root.configure(background=FARBEN["bg"])
+    def _stil(self) -> ttk.Style:
+        """Alle Stile setzen - Grundstile aus fenster_design, Karten-Stile hier.
 
-        oben = ttk.Frame(self.root)
-        oben.pack(fill="x", padx=ABSTAND["m"], pady=(ABSTAND["m"], ABSTAND["s"]))
-        ttk.Label(oben, text="Bereich:").pack(side="left")
+        Die Karten haben eine eigene Flaeche (`blatt`). ttk-Widgets darin
+        brauchen einen Stil mit DIESEM Hintergrund, sonst steht ein Rechteck in
+        Fensterfarbe auf der Karte.
+        """
+        st = ttk.Style()
+        design.stil_anwenden(st, self.schriftgroesse)
+        hoehe = self._zeilenhoehe()
+        st.configure("Treeview", rowheight=hoehe)
+        st.configure("Karte.TLabel", background=FARBEN["blatt"], foreground=FARBEN["text"],
+                     font=self.schrift())
+        st.configure("Karte.Treeview", background=FARBEN["blatt"],
+                     fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
+                     rowheight=hoehe, borderwidth=0)
+        st.configure("Karte.Treeview.Heading", background=FARBEN["gitter"],
+                     foreground=FARBEN["akzent"], font=self.schrift(0, True), relief="flat")
+        st.configure("Karte.TCheckbutton", background=FARBEN["blatt"],
+                     foreground=FARBEN["text"], font=self.schrift())
+        return st
+
+    def _zeilenhoehe(self) -> int:
+        """Zeilenhoehe aus Schrift und Dichte (die Dichte aendert nur den Abstand)."""
+        grund = design.zeilenhoehe(self.schriftgroesse)
+        return max(16, int(round(grund * einstellungen.dichte_faktor(self.einst["dichte"]))))
+
+    def schrift(self, rel=0, fett=False):
+        """Die Schrift DIESES Fensters (folgt dem Skalierungsregler)."""
+        return design.schrift(self.schriftgroesse, rel, fett)
+
+    def _bauen(self) -> None:
+        self._stil()
+        self.root.configure(background=FARBEN["bg"])
+        self.knoepfe: dict[str, rund.RunderKnopf] = {}
+        self.handel_knoepfe: dict[str, rund.RunderKnopf] = {}
+        self.chip_knoepfe: dict[str, rund.RunderKnopf] = {}
+        self._alle_knoepfe: list[rund.RunderKnopf] = []
+        self._karten: list[rund.Karte] = []
+
+        self._bauen_kopf()
+        self._bauen_filter()
+        self._bauen_baum()
+        self._bauen_karten()
+        self._bauen_leiste()
+        self.status = ttk.Label(self.root, text="", anchor="w", foreground=FARBEN["matt"])
+        self.status.pack(fill="x", padx=ABSTAND["m"], pady=(0, ABSTAND["m"]))
+
+        self.root.bind("<F5>", lambda _: self.aktualisieren())
+        self.root.bind("<Control-f>", lambda _: self.suchfeld.focus_set())
+        self.root.bind("<Return>", lambda _: self.starten())
+        self.root.bind("<F9>", lambda _: self.handel_testen())
+        self.root.bind("<F10>", lambda _: self.scharf_dialog())
+        self.root.bind("<Control-plus>", lambda _: self.schrift_groesser())
+        self.root.bind("<Control-equal>", lambda _: self.schrift_groesser())
+        self.root.bind("<Control-minus>", lambda _: self.schrift_kleiner())
+        self.root.bind("<Control-Key-0>", lambda _: self.schrift_setzen(SCHRIFT_GROESSE))
+        self.root.bind("<Control-MouseWheel>", self._mausrad)
+        self.root.bind("<Escape>", lambda _: self.suchtext.set(""))
+        self.root.protocol("WM_DELETE_WINDOW", self._schliessen)
+
+    # ------------------------------------------------------------- Kopfzeile
+    def _bauen_kopf(self) -> None:
+        kopf = tk.Frame(self.root, background=FARBEN["bg"])
+        kopf.pack(fill="x", padx=ABSTAND["m"], pady=(ABSTAND["m"], ABSTAND["s"]))
+
+        links = tk.Frame(kopf, background=FARBEN["bg"])
+        links.pack(side="left")
+        ttk.Label(links, text="Zentrale", foreground=FARBEN["akzent"],
+                  font=self.schrift(design.TITEL, True)).pack(side="left")
+        ttk.Label(links, text="  Repos · Werkstatt · Handel", foreground=FARBEN["matt"],
+                  font=self.schrift(-1)).pack(side="left", pady=(6, 0))
+
+        rechts = tk.Frame(kopf, background=FARBEN["bg"])
+        rechts.pack(side="right")
+        self.zusammenfassung = ttk.Label(rechts, text="", foreground=FARBEN["akzent"])
+        self.zusammenfassung.pack(side="right", padx=(ABSTAND["m"], 0))
+        self._bauen_skalierung(rechts)
+
+    def _bauen_skalierung(self, eltern) -> None:
+        """Schrift, Dichte, Fenstergroesse - die Skalierungsoptionen."""
+        rahmen = tk.Frame(eltern, background=FARBEN["bg"])
+        rahmen.pack(side="right")
+
+        self._knopf(rahmen, "schrift_minus", "−", self.schrift_kleiner,
+                    variante="flach", breite=int(30 * self.s),
+                    hinweis="Schrift kleiner (Strg-Minus)").pack(side="left")
+        self.schrift_label = ttk.Label(rahmen, text="", width=6, anchor="center",
+                                       foreground=FARBEN["text"])
+        self.schrift_label.pack(side="left")
+        self._knopf(rahmen, "schrift_plus", "+", self.schrift_groesser,
+                    variante="flach", breite=int(30 * self.s),
+                    hinweis="Schrift groesser (Strg-Plus)").pack(side="left")
+
+        ttk.Label(rahmen, text="Dichte", foreground=FARBEN["matt"]).pack(
+            side="left", padx=(ABSTAND["l"], ABSTAND["xs"]))
+        self.dichte = tk.StringVar(value=self.einst["dichte"])
+        dichte_wahl = ttk.Combobox(rahmen, textvariable=self.dichte, state="readonly",
+                                   width=9, values=tuple(einstellungen.DICHTEN))
+        dichte_wahl.pack(side="left")
+        dichte_wahl.bind("<<ComboboxSelected>>", lambda _: self.dichte_setzen(self.dichte.get()))
+
+        ttk.Label(rahmen, text="Fenster", foreground=FARBEN["matt"]).pack(
+            side="left", padx=(ABSTAND["l"], ABSTAND["xs"]))
+        self.groesse = tk.StringVar(value=self.einst["fenster"])
+        groesse_wahl = ttk.Combobox(rahmen, textvariable=self.groesse, state="readonly",
+                                    width=11, values=tuple(einstellungen.FENSTERGROESSEN))
+        groesse_wahl.pack(side="left")
+        groesse_wahl.bind("<<ComboboxSelected>>", lambda _: self.groesse_setzen(self.groesse.get()))
+        self._schrift_anzeigen()
+
+    # ------------------------------------------------------------- Filterzeile
+    def _bauen_filter(self) -> None:
+        zeile = tk.Frame(self.root, background=FARBEN["bg"])
+        zeile.pack(fill="x", padx=ABSTAND["m"])
+        ttk.Label(zeile, text="Filtern:").pack(side="left")
+        self.suchtext = tk.StringVar(value=self.einst.get("text", ""))
+        self.suchtext.trace_add("write", lambda *_: self.anzeigen())
+        self.suchfeld = ttk.Entry(zeile, textvariable=self.suchtext, width=28)
+        self.suchfeld.pack(side="left", padx=ABSTAND["s"])
+
+        ttk.Label(zeile, text="Bereich:").pack(side="left", padx=(ABSTAND["m"], 0))
         self.bereich = tk.StringVar(value=ALLE_BEREICHE)
-        self.bereich_wahl = ttk.Combobox(
-            oben, textvariable=self.bereich, state="readonly", width=18,
-            values=(ALLE_BEREICHE,),
-        )
-        self.bereich_wahl.pack(side="left", padx=(ABSTAND["s"], ABSTAND["l"]))
+        self.bereich_wahl = ttk.Combobox(zeile, textvariable=self.bereich, state="readonly",
+                                         width=18, values=(ALLE_BEREICHE,))
+        self.bereich_wahl.pack(side="left", padx=ABSTAND["s"])
         self.bereich_wahl.bind("<<ComboboxSelected>>", lambda _: self.anzeigen())
 
-        ttk.Label(oben, text="Filtern:").pack(side="left")
-        self.suchtext = tk.StringVar()
-        self.suchtext.trace_add("write", lambda *_: self.anzeigen())
-        self.suchfeld = ttk.Entry(oben, textvariable=self.suchtext, width=26)
-        self.suchfeld.pack(side="left", padx=ABSTAND["s"])
-        ttk.Button(oben, text="Aktualisieren (F5)", command=self.aktualisieren).pack(
-            side="left", padx=ABSTAND["s"]
-        )
-        self.zusammenfassung = ttk.Label(oben, text="", foreground=FARBEN["akzent"])
-        self.zusammenfassung.pack(side="right")
+        ttk.Label(zeile, text="Gruppe:").pack(side="left", padx=(ABSTAND["m"], 0))
+        self.gruppe = tk.StringVar(value=auswahl.ALLE_GRUPPEN)
+        self.gruppe_wahl = ttk.Combobox(zeile, textvariable=self.gruppe, state="readonly",
+                                        width=16, values=(auswahl.ALLE_GRUPPEN,))
+        self.gruppe_wahl.pack(side="left", padx=ABSTAND["s"])
+        self.gruppe_wahl.bind("<<ComboboxSelected>>", lambda _: self.anzeigen())
+
+        self._knopf(zeile, "aktualisieren", "Aktualisieren (F5)", self.aktualisieren,
+                    hinweis="Platte und Manifest neu lesen").pack(side="left", padx=ABSTAND["s"])
+        self._knopf(zeile, "filter_aus", "Filter aus", self.filter_zuruecksetzen,
+                    variante="flach",
+                    hinweis="Suchtext, Bereich, Gruppe und Chips zuruecksetzen"
+                    ).pack(side="left", padx=ABSTAND["xs"])
+
+        chips = tk.Frame(self.root, background=FARBEN["bg"])
+        chips.pack(fill="x", padx=ABSTAND["m"], pady=(ABSTAND["xs"], ABSTAND["s"]))
+        ttk.Label(chips, text="nur zeigen:", foreground=FARBEN["matt"],
+                  font=self.schrift(-1)).pack(side="left", padx=(0, ABSTAND["s"]))
+        for kennung in CHIPS:
+            knopf = self._knopf(
+                chips, f"chip_{kennung}", auswahl.KENNZEICHEN_TITEL.get(kennung, kennung),
+                lambda k=kennung: self.kennzeichen_umschalten(k),
+                variante="flach",
+                hinweis=f"Filter: {auswahl.KENNZEICHEN_TITEL.get(kennung, kennung)}",
+            )
+            knopf.pack(side="left", padx=ABSTAND["xs"])
+            self.chip_knoepfe[kennung] = knopf
+        self._chips_anzeigen()
+
+    # ------------------------------------------------------------- Baum
+    def _bauen_baum(self) -> None:
         tabelle = ttk.Frame(self.root)
         tabelle.pack(fill="both", expand=True, padx=ABSTAND["m"])
         self.baum = ttk.Treeview(
             tabelle,
-            columns=("art", "rolle", "bot", "lauf", "hinweis"),
+            columns=tuple(k for k, _, _ in SPALTEN),
             show="tree headings",
             selectmode="browse",
         )
@@ -343,6 +590,7 @@ class Fenster:
         self.baum.tag_configure("auffaellig", foreground=FARBEN["gelb"])
         self.baum.tag_configure("fehlt", foreground=FARBEN["rot"])
         self.baum.tag_configure("startbar", foreground=FARBEN["text"])
+        self.baum.tag_configure("spur_scharf", foreground=FARBEN["gruen"])
         self.baum.pack(side="left", fill="both", expand=True)
         rollbalken = ttk.Scrollbar(tabelle, orient="vertical", command=self.baum.yview)
         rollbalken.pack(side="right", fill="y")
@@ -352,33 +600,6 @@ class Fenster:
         # Die Spaltenbreiten folgen der WIRKLICHEN Breite des Baums: nur so
         # passen Schrift (DPI) und Spalten auf jedem Monitor zusammen.
         self.baum.bind("<Configure>", self._spalten_setzen)
-
-        self._bauen_details()
-
-        unten = ttk.Frame(self.root)
-        unten.pack(fill="x", padx=ABSTAND["m"], pady=ABSTAND["m"])
-        self.knoepfe = {}
-        for name, text, befehl in (
-            ("ordner", "Ordner", self.ordner),
-            ("terminal", "Terminal", self.terminal),
-            ("start", "Starten", self.starten),
-            ("bot", "Bot", self.bot_chat),
-            ("doku", "Doku", self.doku),
-        ):
-            b = ttk.Button(unten, text=text, command=befehl, state="disabled")
-            b.pack(side="left", padx=ABSTAND["xs"])
-            self.knoepfe[name] = b
-        ttk.Button(unten, text="Log oeffnen", command=self._log_oeffnen).pack(
-            side="left", padx=ABSTAND["xs"]
-        )
-        ttk.Button(unten, text="Wiki", command=self._wiki).pack(side="left", padx=ABSTAND["xs"])
-
-        self.status = ttk.Label(self.root, text="", anchor="w", foreground=FARBEN["matt"])
-        self.status.pack(fill="x", padx=ABSTAND["m"], pady=(0, ABSTAND["m"]))
-
-        self.root.bind("<F5>", lambda _: self.aktualisieren())
-        self.root.bind("<Control-f>", lambda _: self.suchfeld.focus_set())
-        self.root.bind("<Return>", lambda _: self.starten())
 
     def _spalten_setzen(self, _ereignis=None) -> None:
         """Die Spaltenbreiten an die wirkliche Baumbreite anpassen.
@@ -396,12 +617,319 @@ class Fenster:
         # genau aus, statt rechts eine Luecke zu lassen (gemessen: 376 px frei).
         rest = platz - projekt - sum(b for _, _, b in spalten)
         if rest > 0:
-            spalten = [
-                (k, t, b + rest if k == "hinweis" else b) for k, t, b in spalten
-            ]
+            spalten = [(k, t, b + rest if k == "hinweis" else b) for k, t, b in spalten]
         self.baum.column("#0", width=projekt)
         for kennung, _titel, breite in spalten:
             self.baum.column(kennung, width=breite)
+
+    # ------------------------------------------------------------- Karten
+    def _bauen_karten(self) -> None:
+        """Zwei Karten nebeneinander: das Projekt und der Handelsteil.
+
+        Ein `tk.PanedWindow` (nicht ttk) - nur so lassen sich die Canvas-Karten
+        als Scheiben einsetzen, und die Teilung laesst sich ziehen.
+        """
+        self.teilung = tk.PanedWindow(
+            self.root, orient="horizontal", sashwidth=6, bd=0,
+            background=FARBEN["bg"], sashrelief="flat",
+        )
+        self.teilung.pack(fill="both", expand=False, padx=ABSTAND["m"],
+                          pady=(ABSTAND["s"], 0))
+        self._bauen_karte_projekt()
+        self._bauen_karte_handel()
+
+    def _karte(self, titel: str, hoehe: int, breite: int) -> rund.Karte:
+        """Eine Karte bauen. `breite` ist die Wunschbreite im PanedWindow.
+
+        Ohne eigene Breite nehmen beide Karten die Tk-Vorgabe (378 px) - die
+        Teilung startete dann bei zwei schmalen Scheiben, obwohl das Fenster
+        1750 px breit ist. Die Breite bestimmt hier den ANFANGS-Schnitt; ziehen
+        laesst er sich danach frei.
+        """
+        karte = rund.Karte(self.teilung, titel=titel, farben=FARBEN,
+                           schrift_tupel=self.schrift(), rand=ABSTAND["m"],
+                           hoehe=int(hoehe * self.s), breite=int(breite * self.s))
+        self._karten.append(karte)
+        return karte
+
+    def _bauen_karte_projekt(self) -> None:
+        """Links: Ablauf in Worten + anklickbare Befehle."""
+        karte = self._karte("Was dieses Projekt kann", 205, 1000)
+        self.teilung.add(karte, minsize=int(320 * self.s), stretch="always")
+
+        links = tk.Frame(karte.inhalt, background=FARBEN["blatt"])
+        links.pack(side="left", fill="both", expand=True, padx=(0, 3))
+        self.anleitung_text = tk.Text(
+            links, height=8, width=38, wrap="word", relief="flat",
+            background=FARBEN["blatt"], foreground=FARBEN["text"],
+            insertbackground=FARBEN["text"], selectbackground=FARBEN["auswahl"],
+            font=self.schrift(), borderwidth=0, highlightthickness=0,
+        )
+        self.anleitung_text.pack(side="left", fill="both", expand=True)
+        self.anleitung_text.configure(state="disabled")
+        leiste = ttk.Scrollbar(links, orient="vertical", command=self.anleitung_text.yview)
+        leiste.pack(side="right", fill="y")
+        self.anleitung_text.configure(yscrollcommand=leiste.set)
+
+        rechts = tk.Frame(karte.inhalt, background=FARBEN["blatt"])
+        rechts.pack(side="left", fill="both", expand=True, padx=(3, 0))
+        self.befehlsbaum = ttk.Treeview(
+            rechts, columns=("was", "befehl", "hinweis"), show="headings",
+            selectmode="browse", style="Karte.Treeview",
+        )
+        for spalte, titel, breite in (
+            ("was", "Was", 130), ("befehl", "Befehl", 170), ("hinweis", "Hinweis", 110),
+        ):
+            self.befehlsbaum.heading(spalte, text=titel)
+            self.befehlsbaum.column(spalte, width=breite, anchor="w")
+        self.befehlsbaum.pack(side="left", fill="both", expand=True)
+        self.befehlsbaum.bind("<Double-Button-1>", lambda _: self.befehl_ausfuehren())
+        self.befehlsbaum.bind("<<TreeviewSelect>>", lambda _: self._befehl_gewaehlt())
+        rollbalken = ttk.Scrollbar(rechts, orient="vertical", command=self.befehlsbaum.yview)
+        rollbalken.pack(side="right", fill="y")
+        self.befehlsbaum.configure(yscrollcommand=rollbalken.set)
+
+        leiste2 = tk.Frame(karte.inhalt, background=FARBEN["blatt"])
+        leiste2.pack(side="left", fill="y", padx=(3, 0))
+        self.befehl_knoepfe = {}
+        for name, text, befehl, hinweis in (
+            ("ausfuehren", "Befehl ausfuehren", self.befehl_ausfuehren,
+             "im Terminal im Projektordner, Ausgabe ins Log"),
+            ("kopieren", "Befehl kopieren", self.befehl_kopieren, "in die Zwischenablage"),
+            ("bot", "Bot damit beauftragen", self.befehl_an_bot,
+             "der Repo-Bot fuehrt aus und erklaert"),
+        ):
+            knopf = self._knopf(leiste2, f"befehl_{name}", text, befehl,
+                                variante="flach", hinweis=hinweis)
+            knopf.pack(side="top", fill="x", pady=ABSTAND["xs"])
+            self.befehl_knoepfe[name] = knopf
+        self.befehl_kinder: dict[str, befehle.Kommando] = {}
+
+    def _bauen_karte_handel(self) -> None:
+        """Rechts: der Stand einer Handels-Spur, Testlauf und Scharfschalten."""
+        karte = self._karte("Handel · Testen und Scharfschalten", 205, 700)
+        self.teilung.add(karte, minsize=int(300 * self.s), stretch="always")
+
+        self.handel_kopf = tk.Label(
+            karte.inhalt, text="", anchor="w", justify="left",
+            background=FARBEN["blatt"], foreground=FARBEN["text"], font=self.schrift(),
+        )
+        self.handel_kopf.pack(fill="x")
+
+        leiste = tk.Frame(karte.inhalt, background=FARBEN["blatt"])
+        leiste.pack(fill="x", pady=(ABSTAND["xs"], ABSTAND["xs"]))
+        for name, text, befehl, variante, hinweis in (
+            ("test", "Vorschau testen (F9)", self.handel_testen, "normal",
+             "handeln.py --vorschau mit MAXHIRN_ROUTINE=1 - der einzige Beleg fuer den Modus"),
+            ("stand", "Stand neu lesen", self.handel_neu_laden, "flach",
+             "Buch, Fenster und Schalter der Spuren neu von der Platte lesen"),
+            ("scharf", "Scharf schalten ...", self.scharf_dialog, "warnung",
+             "Fenster mit Checkliste und Bestaetigung (F10)"),
+            ("entschaerfen", "Entschaerfen", self.entschaerfen, "gefahr",
+             "handel_erlaubt auf false - der Haken freigabe.erfuellt bleibt stehen"),
+        ):
+            knopf = self._knopf(leiste, f"handel_{name}", text, befehl,
+                                variante=variante, hinweis=hinweis)
+            knopf.pack(side="left", padx=(0, ABSTAND["xs"]))
+            self.handel_knoepfe[name] = knopf
+
+        self.handel_text = tk.Text(
+            karte.inhalt, height=6, wrap="word", relief="flat",
+            background=FARBEN["blatt"], foreground=FARBEN["matt"],
+            insertbackground=FARBEN["text"], selectbackground=FARBEN["auswahl"],
+            font=self.schrift(-1), borderwidth=0, highlightthickness=0,
+        )
+        self.handel_text.pack(fill="both", expand=True)
+        self.handel_text.configure(state="disabled")
+
+    def _bauen_leiste(self) -> None:
+        unten = tk.Frame(self.root, background=FARBEN["bg"])
+        unten.pack(fill="x", padx=ABSTAND["m"], pady=ABSTAND["m"])
+        for name, text, methode, hinweis in KNOPF_REIHE:
+            knopf = self._knopf(unten, name, text, getattr(self, methode), hinweis=hinweis)
+            knopf.pack(side="left", padx=ABSTAND["xs"])
+            self.knoepfe[name] = knopf
+        self._knopf(unten, "log", "Log", self._log_oeffnen,
+                    variante="flach", hinweis="den letzten Startbeleg oeffnen").pack(
+            side="left", padx=(ABSTAND["l"], ABSTAND["xs"]))
+        self._knopf(unten, "wiki", "Wiki", self._wiki,
+                    variante="flach", hinweis="die Hausdoku dieses Werkzeugs").pack(
+            side="left", padx=ABSTAND["xs"])
+
+    def _knopf(self, eltern, name, text, befehl, *, variante="normal", breite=None,
+               hinweis="") -> rund.RunderKnopf:
+        """Einen runden Knopf bauen und im Register `_alle_knoepfe` merken.
+
+        Gemerkt wird er, damit die Skalierung ihn wiederfindet: aendert sich die
+        Schriftgroesse, muss JEDER Knopf neu gezeichnet werden - ein vergessener
+        bliebe in der alten Groesse stehen.
+        """
+        knopf = rund.RunderKnopf(
+            eltern, text, befehl, variante=variante, farben=FARBEN,
+            schrift_tupel=self.schrift(), breite=breite,
+            padx=int(9 * self.s), pady=int(4 * self.s), radius=int(rund.RADIUS * self.s),
+            hinweis=hinweis,
+        )
+        knopf.bei_hinweis = self._hinweis_zeigen
+        self._alle_knoepfe.append(knopf)
+        return knopf
+
+    def _hinweis_zeigen(self, text: str) -> None:
+        """Beim Zeigen auf einen Knopf seinen Hinweis in die Statuszeile schreiben."""
+        if not hasattr(self, "status"):
+            return
+        if text:
+            self.status.configure(text=text, foreground=FARBEN["matt"])
+
+    # ------------------------------------------------------------- Faden -> Hauptschleife
+    def _nach_main(self, aufruf) -> None:
+        """Einen Aufruf aus einem Faden in die Hauptschleife schieben."""
+        self._post.put(aufruf)
+
+    def _post_pollen(self) -> None:
+        """Alle wartenden Aufrufe aus Faeden abarbeiten (im Hauptfaden).
+
+        Der Takt ist 80 ms - schnell genug, dass ein fertiger Testlauf sofort
+        erscheint, und selten genug, dass er nichts kostet. Beim Schliessen des
+        Fensters wird der Auftrag abbestellt (`_post_stoppen`); sonst ruft Tk
+        ihn nach dem Zerstoeren auf und schreibt "invalid command name" auf die
+        Fehlerausgabe.
+        """
+        while True:
+            try:
+                aufruf = self._post.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                aufruf()
+            except Exception:                                # noqa: BLE001
+                pass
+        try:
+            self._post_id = self.root.after(80, self._post_pollen)
+        except Exception:                                    # noqa: BLE001
+            self._post_id = None
+
+    def _post_stoppen(self, ereignis=None) -> None:
+        """Den Abholauftrag abbestellen - beim Zerstoeren des Fensters."""
+        if ereignis is not None and getattr(ereignis, "widget", None) is not self.root:
+            return
+        if self._post_id is not None:
+            try:
+                self.root.after_cancel(self._post_id)
+            except Exception:                                # noqa: BLE001
+                pass
+            self._post_id = None
+
+    # ------------------------------------------------------------- Skalierung
+    def _schrift_anzeigen(self) -> None:
+        if hasattr(self, "schrift_label"):
+            self.schrift_label.configure(text=f"{self.schriftgroesse} pt")
+
+    def schrift_setzen(self, groesse: int) -> None:
+        """Schriftgroesse setzen (8..16) und alles neu zeichnen."""
+        neu = max(einstellungen.SCHRIFT_MIN, min(einstellungen.SCHRIFT_MAX, int(groesse)))
+        if neu == self.schriftgroesse:
+            return
+        self.schriftgroesse = neu
+        self._ansicht_erneuern()
+
+    def schrift_groesser(self) -> None:
+        self.schrift_setzen(self.schriftgroesse + 1)
+
+    def schrift_kleiner(self) -> None:
+        self.schrift_setzen(self.schriftgroesse - 1)
+
+    def _mausrad(self, ereignis) -> None:
+        """Strg-Mausrad: zoomen (nach oben groesser)."""
+        self.schrift_setzen(self.schriftgroesse + (1 if ereignis.delta > 0 else -1))
+
+    def dichte_setzen(self, name: str) -> None:
+        """Zeilenabstand umstellen (Schrift bleibt)."""
+        self.einst["dichte"] = name if name in einstellungen.DICHTEN else "normal"
+        self.dichte.set(self.einst["dichte"])
+        self._ansicht_erneuern()
+
+    def groesse_setzen(self, name: str) -> None:
+        """Fenstergroesse umstellen (Vorgabe-Presets)."""
+        self.einst["fenster"] = name if name in einstellungen.FENSTERGROESSEN else "mittel"
+        self.groesse.set(self.einst["fenster"])
+        self._groesse_setzen(self.einst["fenster"])
+        self._speichern()
+
+    def _groesse_setzen(self, name: str, *, beim_start: bool = False) -> None:
+        if beim_start:
+            breite, hoehe = einstellungen.fenster_masse(name, bildschirmmasse(self.root))
+            self.root.geometry(fenstergroesse(self.root, breite, hoehe, self.s))
+            return
+        b, h = groesse_masse(bildschirmmasse(self.root), name, self.s)
+        self.root.geometry(f"{b}x{h}")
+
+    def _ansicht_erneuern(self) -> None:
+        """Nach einer Skalierungsaenderung: Stile, Schriften, Breiten, Anzeige."""
+        self._stil()
+        for knopf in self._alle_knoepfe:
+            knopf.schrift_tupel = self.schrift()
+            knopf.radius = int(rund.RADIUS * self.s)
+            knopf.zeichnen()
+        for karte in self._karten:
+            karte.schrift_tupel = self.schrift()
+            karte.zeichnen()
+        self.anleitung_text.configure(font=self.schrift())
+        self.handel_text.configure(font=self.schrift(-1))
+        self._schrift_anzeigen()
+        self.anzeigen()
+        self._handel_anzeigen()
+        self._speichern()
+
+    def _speichern(self) -> None:
+        """Den Stand der Ansicht sichern (Laufzeitstand, nicht versioniert)."""
+        self.einst.update({
+            "schrift": self.schriftgroesse,
+            "dichte": self.dichte.get(),
+            "fenster": self.groesse.get(),
+            "bereich": self.bereich.get(),
+            "gruppe": self.gruppe.get(),
+            "filter": sorted(self.kennzeichen),
+            "text": self.suchtext.get(),
+        })
+        einstellungen.speichern(self.einstellungen_pfad, self.einst)
+
+    def _schliessen(self) -> None:
+        self._speichern()
+        self.root.destroy()
+
+    # ------------------------------------------------------------- Filter
+    def kennzeichen_umschalten(self, kennung: str) -> None:
+        """Einen Filterchip an- oder ausschalten."""
+        if kennung in self.kennzeichen:
+            self.kennzeichen.discard(kennung)
+        else:
+            self.kennzeichen.add(kennung)
+            if kennung in ("scharf", "spuren") and self._handel_da is None:
+                self._handel_im_hintergrund()
+        self._chips_anzeigen()
+        self.anzeigen()
+        self._speichern()
+
+    def _chips_anzeigen(self) -> None:
+        for kennung, knopf in self.chip_knoepfe.items():
+            knopf.setze_variante("haupt" if kennung in self.kennzeichen else "flach")
+
+    def filter_zuruecksetzen(self) -> None:
+        """Suchtext, Bereich, Gruppe und Chips auf Anfang stellen."""
+        self.suchtext.set("")
+        self.bereich.set(ALLE_BEREICHE)
+        self.gruppe.set(auswahl.ALLE_GRUPPEN)
+        self.kennzeichen.clear()
+        self._chips_anzeigen()
+        self.anzeigen()
+        self._speichern()
+
+    def _filter(self) -> auswahl.Filter:
+        return auswahl.Filter(
+            text=self.suchtext.get(), bereich=self.bereich.get(),
+            gruppe=self.gruppe.get(), kennzeichen=tuple(sorted(self.kennzeichen)),
+        )
 
     # ------------------------------------------------------------- Daten
     def aktualisieren(self) -> None:
@@ -412,6 +940,11 @@ class Fenster:
         ]
         eintraege = manifest.manifest_laden(self.manifest_pfad)
         self.zeilen = manifest.zeilen_bauen(plaetze, eintraege, self.profile_dir)
+        # Den Laufplan EINMAL lesen (Datei + ast) und merken: `anzeigen()` laeuft
+        # bei jedem Tastendruck im Suchfeld und darf keine Datei lesen.
+        self._plan = handelstand.laufplan(self.brainfiles)
+        self._spuren_markieren()
+
         namen = [ALLE_BEREICHE] + [
             f"{k} ({sum(len(g) for g in gruppen.values())})"
             for k, gruppen in nach_bereichen(self.zeilen).items()
@@ -419,6 +952,15 @@ class Fenster:
         self.bereich_wahl.configure(values=tuple(namen))
         if self.bereich.get() not in namen:
             self.bereich.set(ALLE_BEREICHE)
+        gruppen = [auswahl.ALLE_GRUPPEN] + [
+            gruppen_titel(g, 0).split(" (")[0]
+            for g in manifest.GRUPPEN_REIHENFOLGE
+            if any(z.gruppe == g for z in self.zeilen)
+        ]
+        self.gruppe_wahl.configure(values=tuple(gruppen))
+        if self.gruppe.get() not in gruppen:
+            self.gruppe.set(auswahl.ALLE_GRUPPEN)
+
         self.anzeigen()
         self.uebersicht = zusammenfassung(self.zeilen)
         self.status.configure(
@@ -427,23 +969,31 @@ class Fenster:
                  f"{self.manifest_pfad}"
         )
 
+    def _spuren_markieren(self) -> None:
+        """Die Spurkennzeichen an die Zeilen schreiben (reine Rechnung in `spuren_markieren`)."""
+        self._spurnamen = spuren_markieren(self.zeilen, self._plan, self._handel_da or {})
+
     def anzeigen(self) -> None:
         """Die gefilterten Zeilen in den Baum schreiben (Bereich -> Gruppe)."""
+        # Erst die Spurkennzeichen auffrischen: seit dem Laden des Handelsstands
+        # kann eine Spur scharf sein, und der Chip 'scharf' und die Farbe der
+        # Zeile haengen daran. Die Rechnung ist billig (gemerkter Laufplan).
+        self._spuren_markieren()
         self.baum.delete(*self.baum.get_children())
         self.kinder.clear()
         wahl = self.bereich.get().split(" (")[0]
-        sichtbar = sichtbare_zeilen(self.zeilen, self.suchtext.get(), wahl)
+        sichtbar = sichtbare_zeilen(self.zeilen, self.suchtext.get(), wahl, self._filter())
         for kennung, gruppen in nach_bereichen(sichtbar).items():
             anzahl = sum(len(g) for g in gruppen.values())
             kopf = self.baum.insert(
                 "", "end", text=bereich_titel(kennung, anzahl), open=True,
-                values=("", "", "", "", quellen.BEREICH_ERKLAERUNG.get(kennung, "")),
+                values=("", "", "", "", "", quellen.BEREICH_ERKLAERUNG.get(kennung, "")),
                 tags=("bereich",),
             )
             for name, zeilen in gruppen.items():
                 gruppe = self.baum.insert(
                     kopf, "end", text=gruppen_titel(name, len(zeilen)), open=name != "doku",
-                    values=("", "", "", "", ERKLAERUNG.get(name, "")),
+                    values=("", "", "", "", "", ERKLAERUNG.get(name, "")),
                     tags=("gruppe",),
                 )
                 for z in zeilen:
@@ -454,18 +1004,26 @@ class Fenster:
                             z.rolle or "-",
                             (f"{z.bot}{'' if z.bot_da else ' (fehlt)'}" if z.bot else "-"),
                             self._letzter_start(z),
+                            spur_kurz(z) or "-",
                             hinweis(z),
                         ),
                         tags=(self._farbe(z),),
                     )
                     self.kinder[item] = z
-        self.zusammenfassung.configure(text=f"{len(sichtbar)} von {len(self.zeilen)} Zeilen")
+        beschreibung = auswahl.beschreibung(self._filter())
+        self.zusammenfassung.configure(
+            text=f"{len(sichtbar)} von {len(self.zeilen)} Zeilen"
+            + (f" · {beschreibung}" if beschreibung else "")
+        )
         self._details_fuellen(None)
+        self._handel_anzeigen()
 
     def _farbe(self, z: manifest.Zeile) -> str:
         """Farbmarke einer Zeile - Zustand, nie Dekoration."""
         if z.gruppe == "fehlt":
             return "fehlt"
+        if getattr(z, "scharf", False):
+            return "spur_scharf"
         if z.gruppe == "neu":
             return "auffaellig"
         if z.gruende:
@@ -489,63 +1047,276 @@ class Fenster:
         return f"{zeit:%d.%m. %H:%M}"
 
     def _gewaehlt(self) -> manifest.Zeile | None:
-        auswahl = self.baum.selection()
-        if not auswahl:
+        auswahl_ = self.baum.selection()
+        if not auswahl_:
             return None
-        return self.kinder.get(auswahl[0])
+        return self.kinder.get(auswahl_[0])
+
+    # ------------------------------------------------------------- Handelsteil
+    def handel_zustand(self, *, neu: bool = False) -> dict:
+        """Der Stand aller Spuren (erst beim ersten Bedarf geladen).
+
+        Das Laden liest `spuren_stand.sammle()` - das laeuft ueber alle
+        Spurordner und braucht ein paar Sekunden. Es passiert deshalb NICHT beim
+        Aufbau des Fensters, sondern wenn jemand den Handelsteil braucht.
+        """
+        if neu:
+            self._handel_da = None
+        if self._handel_da is None:
+            self._handel_da = self.handel_zustand_lader() or {}
+            # Jetzt ist bekannt, welche Spur scharf ist - die Kennzeichen der
+            # Zeilen nachziehen (der Chip 'scharf' und die Zeilenfarbe haengen
+            # daran). Reine Rechnung, kein Dateizugriff.
+            if self.zeilen:
+                self._spuren_markieren()
+        return self._handel_da
+
+    def handel_neu_laden(self) -> None:
+        """Den Stand im Hintergrund neu lesen (Knopf 'Stand neu lesen')."""
+        self._handel_im_hintergrund(neu=True)
+
+    def _handel_im_hintergrund(self, *, neu: bool = False) -> None:
+        if self._handel_laeuft:
+            return
+        self._handel_laeuft = True
+        self.status.configure(text="Handelsstand wird gelesen ...", foreground=FARBEN["matt"])
+
+        def arbeit():
+            daten = {}
+            try:
+                daten = self.handel_zustand(neu=neu)
+            except Exception as e:                           # noqa: BLE001
+                self._nach_main(lambda: self.status.configure(
+                    text=f"Handelsstand nicht lesbar: {type(e).__name__}: {e}",
+                    foreground=FARBEN["rot"]))
+            self._nach_main(lambda: self._handel_fertig(daten))
+
+        threading.Thread(target=arbeit, daemon=True).start()
+
+    def _handel_fertig(self, daten: dict) -> None:
+        self._handel_laeuft = False
+        self._spuren_markieren()
+        self.anzeigen()
+        self.status.configure(
+            text=f"Handelsstand gelesen: {len(daten)} Spuren "
+                 f"({sum(1 for e in daten.values() if e.get('scharf'))} mit Orderweg und Schalter)",
+            foreground=FARBEN["matt"],
+        )
+
+    def _handel_anzeigen(self) -> None:
+        """Die Handels-Karte auf die gewaehlte Zeile umstellen."""
+        if not hasattr(self, "handel_text"):
+            return
+        z = self._gewaehlt()
+        spur = getattr(z, "spur", "") if z is not None else ""
+        self.handel_text.configure(state="normal")
+        self.handel_text.delete("1.0", "end")
+        if z is None:
+            self.handel_kopf.configure(text="Links eine Zeile waehlen.",
+                                       foreground=FARBEN["text"])
+        elif not spur:
+            self.handel_kopf.configure(text="Keine Handels-Spur.", foreground=FARBEN["matt"])
+            self.handel_text.insert(
+                "1.0",
+                "Testen und Scharfschalten gibt es nur fuer Spuren aus dauerlauf.SPUREN "
+                "(Ordner unter Agenten/Handel). Diese Zeile ist etwas anderes: Werkzeug, "
+                "Ausgabe, Ablage oder Projekt.",
+            )
+        else:
+            stand = self.handel_zustand().get(spur) or {}
+            self.handel_kopf.configure(
+                text=self._handel_kopfzeile(spur, stand),
+                foreground=FARBEN["gruen"] if stand.get("scharf") else FARBEN["text"],
+            )
+            self.handel_text.insert("1.0", self._handel_fliesstext(spur, stand))
+        self.handel_text.configure(state="disabled")
+        self._handel_knoepfe_setzen(z, spur)
+
+    def _handel_kopfzeile(self, spur: str, stand: dict) -> str:
+        teile = [f"Spur {spur}"]
+        teile.append("Orderweg " + (stand.get("art") or "keiner"))
+        teile.append("handel_erlaubt=" + ("true" if stand.get("erlaubt") else "false"))
+        teile.append("freigabe.erfuellt=" + ("true" if stand.get("frei") else "false"))
+        if stand.get("fenster"):
+            teile.append(str(stand["fenster"]))
+        if stand.get("buch"):
+            teile.append("Buch " + ", ".join(f"{k} {v}" for k, v in stand["buch"].items()))
+        if stand.get("alter") is not None:
+            teile.append(f"Zyklus vor {stand['alter']} min")
+        if stand.get("auto"):
+            teile.append("AUTO_FREIGABE")
+        return " · ".join(teile)
+
+    def _handel_fliesstext(self, spur: str, stand: dict) -> str:
+        w = self._wachen(spur)
+        punkte = handelstand.pruefpunkte(
+            w, stand, buch=stand.get("buch"), alter=stand.get("alter"))
+        zeilen = [f"{self._punkt_zeichen(p.stand)} {p.name}: {p.text}" for p in punkte]
+        zeilen.append("")
+        zeilen.append("Scharf schalten wuerde: " + handelstand.wirkung(stand, erlaubt=True))
+        zeilen.append("F9 testet die Spur (--vorschau, schreibt nichts). "
+                      "F10 oeffnet das Scharfschalten-Fenster.")
+        return "\n".join(zeilen)
+
+    @staticmethod
+    def _punkt_zeichen(stand: str) -> str:
+        return {"ok": "ok  ", "fehlt": "FEHLT", "warnung": "WARN ", "unbekannt": "?   "}.get(
+            stand, "?   ")
+
+    def _wachen(self, spur: str) -> dict:
+        """Die Wachen-Datei einer Spur lesen (leer, wenn sie fehlt oder kaputt ist)."""
+        pfad = handelstand.wachen_pfad(self.brainfiles, self._ordner_von(spur))
+        try:
+            return json.loads(pfad.read_text(encoding="utf-8"))
+        except Exception:                                    # noqa: BLE001
+            return {}
+
+    def _ordner_von(self, spur: str) -> str:
+        return (self._plan.get(spur) or {}).get("ordner") or spur
+
+    def _handel_knoepfe_setzen(self, z, spur: str) -> None:
+        """Nur was jetzt etwas bewirken kann, ist an."""
+        stand = (self.handel_zustand().get(spur) or {}) if spur else {}
+        hat_spur = bool(spur)
+        self.handel_knoepfe["test"].setze_aktiv(hat_spur)
+        self.handel_knoepfe["stand"].setze_aktiv(True)
+        self.handel_knoepfe["scharf"].setze_aktiv(hat_spur and not stand.get("erlaubt"))
+        self.handel_knoepfe["entschaerfen"].setze_aktiv(hat_spur and bool(stand.get("erlaubt")))
+
+    def handel_testen(self) -> None:
+        """`handeln.py --vorschau` der gewaehlten Spur laufen lassen (schreibt nichts)."""
+        z = self._gewaehlt()
+        spur = getattr(z, "spur", "") if z is not None else ""
+        if not spur:
+            self.status.configure(text="Keine Handels-Spur gewaehlt - nichts getestet",
+                                  foreground=FARBEN["gelb"])
+            return
+        if self._vorschau_laeuft:
+            self.status.configure(text="Ein Testlauf laeuft schon", foreground=FARBEN["gelb"])
+            return
+        self._vorschau_laeuft = True
+        self.handel_text.configure(state="normal")
+        self.handel_text.delete("1.0", "end")
+        self.handel_text.insert(
+            "1.0",
+            f"Vorschau {spur} laeuft ...\n"
+            + " ".join(handelstand.vorschau_argv(self.brainfiles, spur)),
+        )
+        self.handel_text.configure(state="disabled")
+        self.status.configure(text=f"Vorschau {spur} laeuft (Frist {VORSCHAU_FRIST_S} s) ...",
+                              foreground=FARBEN["matt"])
+
+        def arbeit():
+            ok, text = self.vorschau_lauf(spur)
+            self._nach_main(lambda: self._vorschau_fertig(spur, ok, text))
+
+        threading.Thread(target=arbeit, daemon=True).start()
+
+    def _vorschau_echt(self, spur: str) -> tuple[bool, str]:
+        """Der echte Vorschau-Lauf: Ausgabe und Belegdatei, kein Schreibzugriff der Spur."""
+        argv = handelstand.vorschau_argv(self.brainfiles, spur)
+        cwd = handelstand.handel_ordner(self.brainfiles)
+        log = aktionen.log_pfad(self.log_ordner, f"{spur}-vorschau", self.jetzt())
+        Path(self.log_ordner).mkdir(parents=True, exist_ok=True)
+        try:
+            p = subprocess.run(
+                argv, cwd=str(cwd), env=handelstand.vorschau_umgebung(),
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=VORSCHAU_FRIST_S,
+            )
+            text = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
+            code = p.returncode
+        except subprocess.TimeoutExpired:
+            text = f"ABBRUCH nach {VORSCHAU_FRIST_S} s - die Spur hat nicht geantwortet."
+            code = "Zeitfrist"
+        except OSError as e:
+            text = f"{type(e).__name__}: {e}"
+            code = "Startfehler"
+        try:
+            with open(log, "a", encoding="utf-8", newline="\n") as f:
+                f.write(f"# Vorschau {spur} {self.jetzt():%Y-%m-%d %H:%M:%S} "
+                        f"argv={argv} code={code}\n{text}\n")
+        except OSError:
+            pass
+        return code == 0, text
+
+    def _vorschau_fertig(self, spur: str, ok: bool, text: str) -> None:
+        self._vorschau_laeuft = False
+        self.handel_text.configure(state="normal")
+        self.handel_text.delete("1.0", "end")
+        self.handel_text.insert("1.0", text or "(keine Ausgabe)")
+        self.handel_text.configure(state="disabled")
+        self.status.configure(
+            text=f"Vorschau {spur} {'beendet' if ok else 'mit Fehler beendet'} - "
+                 f"Ausgabe in logs/{spur}-vorschau-*.log",
+            foreground=FARBEN["gruen"] if ok else FARBEN["rot"],
+        )
+
+    def scharf_dialog(self) -> None:
+        """Das Scharfschalten-Fenster oeffnen (Checkliste, Bestaetigung, Beleg)."""
+        z = self._gewaehlt()
+        spur = getattr(z, "spur", "") if z is not None else ""
+        if not spur:
+            self.status.configure(text="Keine Handels-Spur gewaehlt", foreground=FARBEN["gelb"])
+            return
+        import schalter
+
+        stand = self.handel_zustand().get(spur) or {}
+        schalter.ScharfFenster(
+            self.root, spur=spur, wachen=self._wachen(spur), stand=stand,
+            farben=FARBEN, schrift_tupel=self.schrift(),
+            radius=int(rund.RADIUS * self.s), s=self.s,
+            ausfuehren=self._schalter_ausfuehren, jetzt=self.jetzt,
+        )
+
+    def _schalter_ausfuehren(self, spur: str, aenderungen: dict, vermerk: str):
+        """Den Schreibvorgang aus dem Dialog ausfuehren und belegen."""
+        pfad = handelstand.wachen_pfad(self.brainfiles, self._ordner_von(spur))
+        ergebnis = handelstand.wachen_setzen(
+            pfad, aenderungen, vermerk=vermerk,
+            notiz_schluessel="_scharfgeschaltet" if aenderungen.get("handel_erlaubt")
+            else "_entschaerft",
+            jetzt=self.jetzt(),
+        )
+        handelstand.beleg(
+            self.log_ordner,
+            f"{'OK' if ergebnis.ok else 'FEHLER'} {spur}: "
+            f"{ergebnis.fehler or '; '.join(ergebnis.geaendert)} ({vermerk})",
+            jetzt=self.jetzt(),
+        )
+        if ergebnis.ok:
+            self.handel_stand_auffrischen(spur, aenderungen)
+        return ergebnis
+
+    def handel_stand_auffrischen(self, spur: str, aenderungen: dict) -> None:
+        """Den gelesenen Stand an die Aenderung anpassen, ohne alles neu zu lesen."""
+        stand = (self._handel_da or {}).get(spur)
+        if not stand:
+            return
+        if "handel_erlaubt" in aenderungen:
+            stand["erlaubt"] = bool(aenderungen["handel_erlaubt"])
+            stand["scharf"] = bool(stand.get("order")) and stand["erlaubt"]
+        if "freigabe.erfuellt" in aenderungen:
+            stand["frei"] = bool(aenderungen["freigabe.erfuellt"])
+        if "herzschlag_max_minuten" in aenderungen:
+            stand["hs"] = aenderungen["herzschlag_max_minuten"]
+
+    def entschaerfen(self) -> None:
+        """`handel_erlaubt` auf false setzen - nach Rueckfrage im eigenen Fenster."""
+        z = self._gewaehlt()
+        spur = getattr(z, "spur", "") if z is not None else ""
+        if not spur:
+            self.status.configure(text="Keine Handels-Spur gewaehlt", foreground=FARBEN["gelb"])
+            return
+        import schalter
+
+        schalter.EntschaerfenFenster(
+            self.root, spur=spur, farben=FARBEN, schrift_tupel=self.schrift(),
+            radius=int(rund.RADIUS * self.s), s=self.s,
+            ausfuehren=self._schalter_ausfuehren, jetzt=self.jetzt,
+        )
 
     # ------------------------------------------------------------- Detailbereich
-    def _bauen_details(self) -> None:
-        """Der Bereich unter der Tabelle: Ablauf in Worten + anklickbare Befehle."""
-        rahmen = ttk.LabelFrame(self.root, text="Was dieses Projekt kann")
-        rahmen.pack(fill="both", expand=False, padx=ABSTAND["m"], pady=(ABSTAND["s"], 0))
-
-        links = ttk.Frame(rahmen)
-        links.pack(side="left", fill="both", expand=True, padx=(ABSTAND["s"], 3), pady=ABSTAND["s"])
-        self.anleitung_text = tk.Text(
-            links, height=9, width=58, wrap="word", relief="flat",
-            background=FARBEN["blatt"], foreground=FARBEN["text"],
-            insertbackground=FARBEN["text"], selectbackground=FARBEN["auswahl"],
-            font=schrift(),
-        )
-        self.anleitung_text.pack(side="left", fill="both", expand=True)
-        self.anleitung_text.configure(state="disabled")
-        leiste = ttk.Scrollbar(links, orient="vertical", command=self.anleitung_text.yview)
-        leiste.pack(side="right", fill="y")
-        self.anleitung_text.configure(yscrollcommand=leiste.set)
-
-        rechts = ttk.Frame(rahmen)
-        rechts.pack(side="left", fill="both", expand=True, padx=(3, ABSTAND["s"]), pady=ABSTAND["s"])
-        self.befehlsbaum = ttk.Treeview(
-            rechts, columns=("was", "befehl", "hinweis"), show="headings", selectmode="browse"
-        )
-        for spalte, titel, breite in (
-            ("was", "Was", 170),
-            ("befehl", "Befehl", 250),
-            ("hinweis", "Hinweis", 150),
-        ):
-            self.befehlsbaum.heading(spalte, text=titel)
-            self.befehlsbaum.column(spalte, width=breite, anchor="w")
-        self.befehlsbaum.pack(side="left", fill="both", expand=True)
-        self.befehlsbaum.bind("<Double-Button-1>", lambda _: self.befehl_ausfuehren())
-        self.befehlsbaum.bind("<<TreeviewSelect>>", lambda _: self._befehl_gewaehlt())
-        rollbalken = ttk.Scrollbar(rechts, orient="vertical", command=self.befehlsbaum.yview)
-        rollbalken.pack(side="right", fill="y")
-        self.befehlsbaum.configure(yscrollcommand=rollbalken.set)
-
-        leiste2 = ttk.Frame(rahmen)
-        leiste2.pack(side="left", fill="y", padx=(0, ABSTAND["s"]), pady=ABSTAND["s"])
-        self.befehl_knoepfe = {}
-        for name, text, befehl in (
-            ("ausfuehren", "Befehl ausfuehren", self.befehl_ausfuehren),
-            ("kopieren", "Befehl kopieren", self.befehl_kopieren),
-            ("bot", "Bot damit beauftragen", self.befehl_an_bot),
-        ):
-            b = ttk.Button(leiste2, text=text, command=befehl, state="disabled")
-            b.pack(side="top", fill="x", pady=ABSTAND["xs"])
-            self.befehl_knoepfe[name] = b
-        self.befehl_kinder: dict[str, befehle.Kommando] = {}
-
     def _details_fuellen(self, z: manifest.Zeile | None) -> None:
         """Text und Befehlsliste auf die gewaehlte Zeile umstellen."""
         self.anleitung_text.configure(state="normal")
@@ -565,10 +1336,10 @@ class Fenster:
         self._befehl_gewaehlt()
 
     def _gewaehlter_befehl(self) -> befehle.Kommando | None:
-        auswahl = self.befehlsbaum.selection()
-        if not auswahl:
+        auswahl_ = self.befehlsbaum.selection()
+        if not auswahl_:
             return None
-        return self.befehl_kinder.get(auswahl[0])
+        return self.befehl_kinder.get(auswahl_[0])
 
     def _befehl_gewaehlt(self) -> None:
         k = self._gewaehlter_befehl()
@@ -585,7 +1356,7 @@ class Fenster:
             self.status.configure(text=f"{k.was}: {k.hinweis}", foreground=FARBEN["matt"])
 
     def befehl_ausfuehren(self) -> None:
-        """Den gewaehlten Befehl in einem sichtbaren Terminal im Projekt starten."""
+        """Den gewaehlten Befehl in einem Terminal-Tab im Projekt starten."""
         k = self._gewaehlter_befehl()
         z = self._gewaehlt()
         if k is None or z is None or z.repo is None:
@@ -649,6 +1420,9 @@ class Fenster:
     def _auswahl_geaendert(self) -> None:
         z = self._gewaehlt()
         self._details_fuellen(z)
+        self._handel_anzeigen()
+        if getattr(z, "spur", "") and self._handel_da is None:
+            self._handel_im_hintergrund()
         if z is None or z.repo is None:
             for b in self.knoepfe.values():
                 b.configure(state="disabled")
@@ -657,12 +1431,12 @@ class Fenster:
         self.knoepfe["terminal"].configure(state="normal")
         self.knoepfe["start"].configure(state="normal" if z.start_da else "disabled")
         self.knoepfe["bot"].configure(state="normal" if z.bot_da else "disabled")
-        self.knoepfe["doku"].configure(
-            state="normal" if z.repo.readme else "disabled"
-        )
+        self.knoepfe["doku"].configure(state="normal" if z.repo.readme else "disabled")
         teile = [z.bereich, z.ordner, z.art]
         if z.rolle:
             teile.append(z.rolle)
+        if getattr(z, "spur", ""):
+            teile.append("Handels-Spur")
         if z.notiz:
             teile.append(z.notiz)
         if z.gruende:
@@ -734,14 +1508,16 @@ class Fenster:
 
     def _wiki(self) -> None:
         """Die Hausdoku dieses Werkzeugs im Wiki oeffnen."""
-        seite = self.brainfiles / "MaxHirn" / "Wiki" / "Werkzeuge" / "Repos-Zentrale.md"
-        if seite.is_file():
-            aktionen.doku_oeffnen(seite)
-            self.status.configure(text=f"Wiki: {seite}", foreground=FARBEN["matt"])
-        else:
-            self.status.configure(
-                text=f"Wiki-Seite fehlt: {seite}", foreground=FARBEN["gelb"]
-            )
+        for name in ("Repos-Zentrale.md", "repos-zentrale.md"):
+            seite = self.brainfiles / "MaxHirn" / "Wiki" / "Werkzeuge" / name
+            if seite.is_file():
+                aktionen.doku_oeffnen(seite)
+                self.status.configure(text=f"Wiki: {seite}", foreground=FARBEN["matt"])
+                return
+        self.status.configure(
+            text="Wiki-Seite fehlt: MaxHirn/Wiki/Werkzeuge/repos-zentrale.md",
+            foreground=FARBEN["gelb"],
+        )
 
     def starten(self) -> None:
         z = self._gewaehlt()
@@ -758,10 +1534,9 @@ class Fenster:
     def _starten_im_hintergrund(self, z: manifest.Zeile) -> None:
         ergebnis = aktionen.start_ausfuehren(z, self.log_ordner, jetzt=self.jetzt())
         if ergebnis.fehler:
-            self.root.after(0, lambda: self._start_fertig(z, ergebnis))
+            self._nach_main(lambda: self._start_fertig(z, ergebnis))
             return
-        self.root.after(
-            0,
+        self._nach_main(
             lambda: self.status.configure(
                 text=f"{z.ordner} gestartet (PID {ergebnis.pid}) - Ausgabe in {ergebnis.log}",
                 foreground=FARBEN["gruen"],
@@ -777,8 +1552,7 @@ class Fenster:
         except OSError as e:  # pragma: no cover - nur bei Prozessverlust
             code = f"unbekannt ({type(e).__name__})"
         aktionen.ereignis_anhaengen(ergebnis.log, f"beendet (Code {code})")
-        self.root.after(
-            0,
+        self._nach_main(
             lambda: (
                 self.anzeigen(),
                 self.status.configure(

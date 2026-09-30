@@ -17,9 +17,16 @@ Entstanden am 18.09.2026 als „Repos-Zentrale" fuer `Werkstatt/Repos`; am
     .venv\Scripts\pythonw.exe repos_zentrale.py                    # Fenster
     .venv\Scripts\python.exe   repos_zentrale.py --pruefen         # auflisten, kein Fenster
     .venv\Scripts\python.exe   repos_zentrale.py --pruefen --bereich HANDEL
+    .venv\Scripts\python.exe   repos_zentrale.py --handel         # Stand aller Spuren
+    .venv\Scripts\python.exe   repos_zentrale.py --handel --nur scharf
+    .venv\Scripts\python.exe   repos_zentrale.py --test scanner   # --vorschau einer Spur
 
 Die venv ist nur fuer dieses Werkzeug (Python 3.13, Standardbibliothek). Sie
 haengt an keiner Repo-venv.
+
+**Scharf geschaltet wird nur im Fenster.** `--handel` und `--test` LESEN nur;
+einen Kommandozeilen-Schalter zum Scharfschalten gibt es absichtlich nicht
+(Handelsregeln Punkt 3 verlangt dafuer ein Fenster mit Bestaetigungsfeld).
 
 ## Die drei Bereiche
 
@@ -106,12 +113,19 @@ Ein Baum mit **drei Ebenen**:
 | **NUR DOKU** | kein Programm, nur Text oder Daten — „starten" heisst hier oeffnen |
 | **FEHLT** | Manifest-Eintrag ohne Ordner (z. B. nach dem Loeschen eines Klons) |
 
-Spalten: **Projekt · Art · Rolle · Bot · letzter Start · Hinweis**.
+Spalten: **Projekt · Art · Rolle · Bot · letzter Start · Handel · Hinweis**.
 
 - **Rolle** ordnet ein, was das ist (Spur, Werkzeug, Modell, MCP-Server, Ablage).
 - **Bot** zeigt das Hermes-Profil und `(fehlt)`, wenn es keines gibt.
 - **letzter Start** kommt aus dem neuesten Log in `logs/`.
+- **Handel** steht nur bei Handels-Spuren: `scharf` (Orderweg vorhanden UND
+  `handel_erlaubt=true`) oder `Papier`.
 - **Hinweis** nennt erst den Grund (was fehlt), sonst die Notiz.
+
+Die **Kopfzeile** traegt Titel, Summenzeile und die Skalierung; darunter liegt
+die **Filterzeile** (Suchfeld, Bereich, Gruppe, „Filter aus") und eine Reihe
+**Filterchips**. Unter dem Baum stehen zwei **Karten**: links „Was dieses
+Projekt kann", rechts der **Handelsteil**.
 
 Oben: Bereichsauswahl, Suchfeld (trifft Name, Rolle, Bot, Notiz, Pfad)
 und „Aktualisieren". Der Baum faerbt nur nach Zustand — `FEHLT` rot, `NEU`
@@ -130,6 +144,81 @@ Fuenf Aktionen je Zeile — was nicht geht, ist deaktiviert, nicht kaputt:
 
 Dazu **Log oeffnen** (der Startbeleg) und **Wiki** (die Hausdoku zu diesem
 Werkzeug).
+
+## Filter
+
+Zwei Arten, beide UND-verknuepft:
+
+- **Suchfeld** — trifft Ordnername, Rolle, Bot, Notiz, Art und Pfad.
+- **Bereich** und **Gruppe** — als Auswahl.
+- **Filterchips** — `auffaellig`, `startbar`, `mit Start`, `mit Bot`, `fremd`,
+  `nur Handel`, `nur Spuren`, `scharf`. Wer zwei Chips anmacht, bekommt die
+  **Schnittmenge** (nicht die Vereinigung): „nur Handel" + „auffaellig" zeigt
+  die auffaelligen Zeilen im Handelsbereich.
+
+„Filter aus" setzt Suchtext, Bereich, Gruppe und alle Chips zurueck.
+
+## Skalierung
+
+Drei Regler in der Kopfzeile, alle gemerkt (siehe `einstellungen.json`):
+
+| Regler | Wirkung | Tasten |
+|---|---|---|
+| **Schrift** | 8–16 pt; skaliert Tabelle, Knoepfe, Karten und Zeilenhoehe gemeinsam | `Strg +` / `Strg -` / `Strg 0`, `Strg-Mausrad` |
+| **Dichte** | `kompakt` / `normal` / `gross` — aendert NUR den Zeilenabstand, nicht die Schrift | — |
+| **Fenster** | `klein` / `mittel` / `gross` / `bildschirm` — Vorgaben, auf den Bildschirm begrenzt | — |
+
+Die gemerkten Werte liegen in `Agenten/Werkzeuge/repos-zentrale/einstellungen.json`
+(**Laufzeitstand, nicht versioniert** — er aendert sich bei jedem Chip-Klick).
+
+## Runde Ecken
+
+Tk/ttk zeichnet Rechtecke. `rund.py` zeichnet die Ecken deshalb selbst:
+`ecken_punkte()` rechnet den Umriss, `RunderKnopf` und `Karte` zeichnen damit
+Knoepfe und Flaechen. Die Karten liegen in einem `tk.PanedWindow` (Teilung
+ziehbar). Das **Fenster selbst** bekommt seine runden Ecken vom System:
+`rund.fenster_ecken()` setzt `DWMWA_WINDOW_CORNER_PREFERENCE` (Windows 11);
+auf Windows 10 bleibt es eckig, und das ist kein Fehler.
+
+## Handelsteil: Testen und Scharfschalten
+
+Sichtbar, sobald eine **Handels-Spur** gewaehlt ist (Ordner aus
+`dauerlauf.SPUREN`). Die Karte zeigt:
+
+- **Kopfzeile** — Spur, Orderweg (`haus`/`fremd`/`keiner`), `handel_erlaubt`,
+  `freigabe.erfuellt`, Zeitfenster, Buch, Zyklusalter, `AUTO_FREIGABE`.
+- **Checkliste** — dieselben Punkte wie `Wiki/Handel/Gates-und-Freigabe.md`.
+  Was die Spur selbst prueft (Guthaben, Schluesselrechte), steht ausdruecklich
+  als `?` darin — eine geratene Aussage waere schlimmer als eine fehlende.
+- **Vorschau testen (F9)** — faehrt `<spur>/handeln.py --vorschau` **mit**
+  `MAXHIRN_ROUTINE=1` (so ruft der Dauerlauf seine Spuren; ohne die Variable
+  haelt sich die Spur fuer eine Sitzung am Bildschirm und wartet auf eine
+  Freigabe, die niemand geben kann). Rein lesend, Ausgabe in die Karte und nach
+  `logs/<spur>-vorschau-*.log`. Frist 240 s, der Lauf blockiert das Fenster nicht.
+- **Stand neu lesen** — liest Buch, Fenster und Schalter der Spuren neu
+  (`spuren_stand.py`, rein lesend, im Hintergrund).
+- **Scharf schalten … (F10)** — oeffnet ein eigenes Fenster (siehe unten).
+- **Entschaerfen** — `handel_erlaubt` auf `false`, nach Rueckfrage.
+
+### Das Scharfschalten-Fenster
+
+Es ordert nicht. Es schaltet einen Schalter — und zwar nach der Hausregel
+(Handelsregeln Punkt 3: *von Hand, in einem Fenster, das die Werte zeigt, sie
+aendern laesst und ein Feld zum Bestaetigen hat*):
+
+1. **Checkliste** mit dem Stand (rein lesend).
+2. **Herzschlag** auf 180 — Pflichtfeld, wenn der Wert darunter steht: wer live
+   geht, muss einen PC-Ausfall ueberleben.
+3. **`freigabe.erfuellt`** — nur auf ausdrueckliches Ankreuzen. Ohne den Haken
+   passiert nichts, auch mit `handel_erlaubt=true`.
+4. **Bestaetigung** — kann die Spur danach wirklich ordern (Orderweg vorhanden
+   UND Haken gesetzt), muss der **Spurname getippt** werden. Sonst genuegt ein
+   Haken „Ich habe die Werte gelesen".
+5. **Geschrieben** wird gezielt im Text (nie per `json.dump`): Sicherung
+   `wachen.json.bak-JJJJMMTT` (nur die erste des Tages), Wertersatz, datierte
+   Notiz `_scharfgeschaltet`, dann Gegenprobe per `json.loads` UND Vergleich
+   jedes Wertes. Stimmt etwas nicht, wird NICHTS geschrieben. Belegzeile in
+   `logs/handel-schalter-JJJJMMTT.log`.
 
 ## Der Bereich „Was dieses Projekt kann"
 
@@ -307,6 +396,13 @@ Dazu drei Festlegungen:
   Prozessnamen — angezeigt werden Exit-Code und Logzeit.
 - Sie beendet **nichts** per Prozessname (nur per gemerkter PID).
 - Sie startet **nichts** automatisch im Hintergrund; ohne Klick passiert nichts.
+- Sie **ordert nichts** und **schaltet live nur im Fenster**: `handel_erlaubt`
+  laesst sich ausschliesslich ueber das Scharfschalten-Fenster setzen, nie per
+  Kommandozeile, Chat oder A2A. Das Fenster ordert selbst nichts — es aendert
+  einen Wert in `wachen.json` und belegt es.
+- Sie **entschaerft** nur `handel_erlaubt`. `freigabe.erfuellt` bleibt stehen —
+  das ist eine Entscheidung von Hand und wird nicht als Nebenwirkung
+  zurueckgenommen.
 - Sie zeigt **keine** Dateien der Wurzeln, die keine Werkzeuge sind: in
   `Agenten/Handel` liegen 91 `.py`-Dateien, aber nur die mit eigenem Einstieg
   UND Argumentliste werden eine Zeile. Ein halbfertiges Skript soll das Fenster
@@ -317,7 +413,8 @@ Dazu drei Festlegungen:
     cd Agenten\Werkzeuge\repos-zentrale
     .venv\Scripts\python.exe -m unittest discover -s tests -v
 
-Kein Test startet einen echten Prozess: `subprocess.Popen`, `os.startfile` und
+Stand 30.09.2026: **259 Tests, alle gruen** (vorher 137). Kein Test startet
+einen echten Prozess: `subprocess.Popen`, `os.startfile` und
 die Starter sind ersetzt, geprueft wird die Kommandozeile. Der Fenstertest baut
 die Oberflaeche wirklich auf, aber unsichtbar (`withdraw`).
 

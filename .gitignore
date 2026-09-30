@@ -940,3 +940,10 @@ Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 !Agenten/Werkzeuge/bestand.py
 # Wurzel-Aufrufer fuer den Bestand (30.09.2026): aus jedem Verzeichnis
 !/bestand.cmd
+# --- Laufzeitstand der Zentrale (30.09.2026) --------------------------------
+# `einstellungen.json` merkt Schriftgroesse, Dichte, Fenstergroesse und Filter
+# der Repos-Zentrale. Es aendert sich bei JEDER Bedienung (jeder Klick auf einen
+# Chip) - ein versionierter Stand waere in jedem Commit eine Phantom-Aenderung.
+# Die Regel steht NACH der Freigabe `!...repos-zentrale/*.json` (Zeile 616):
+# spaetere Regel gewinnt. Gegenprobe: git check-ignore -v <pfad>.
+Agenten/Werkzeuge/repos-zentrale/einstellungen.json

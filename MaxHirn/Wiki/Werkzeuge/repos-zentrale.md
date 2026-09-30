@@ -431,3 +431,121 @@ Dazu die Messprobe, die kein Test ersetzt:
 ```
 .\.venv\Scripts\python.exe messprobe.py
 ```
+
+## Nachtrag 30.09.2026 (Nacht) — runde Ecken, Skalierung, Filter, Handelsteil
+
+Zweiter Auftrag Max am selben Tag: *„professionell designen … mehr
+skalierungsoptionen. filter, knoepfe zum testen und scharfschalten. runde
+ecken?"* — der erste Teil (drei Bereiche, gefuelltes Manifest) steht im
+Abschnitt darueber; hier steht, was danach kam.
+
+### Fuenf neue Dateien statt einer groesseren `fenster.py`
+
+| Datei | Aufgabe |
+|---|---|
+| `rund.py` | runde Ecken: Umriss-Rechnung, `RunderKnopf`, `Karte`, Fensterrand |
+| `einstellungen.py` | gemerkte Ansicht (Schrift, Dichte, Fenster, Filter) |
+| `auswahl.py` | die Filter als reine Rechnung (Text, Bereich, Gruppe, Chips) |
+| `handelstand.py` | Stand je Spur, Checkliste, Vorschau-Befehl, Schreiben in die Wachen |
+| `schalter.py` | die zwei Fenster: Scharfschalten und Entschaerfen |
+
+`fenster.py` baut nur noch zusammen. Die Anzeigelogik liegt weiter als reine
+Funktionen oben — **alle** 137 alten Tests liefen unveraendert weiter.
+
+### Runde Ecken
+
+Tk/ttk zeichnet Rechtecke. `rund.ecken_punkte()` rechnet den Umriss eines
+Rechtecks mit runden Ecken (Radius auf die halbe kurze Seite begrenzt, sonst
+waere es eine Raute), `RunderKnopf` und `Karte` zeichnen damit. Der Knopf
+beantwortet `knopf["state"]` wie ein ttk-Widget (`cget`/`__getitem__`) — ohne
+das waeren die alten Knopf-Tests gebrochen.
+
+Das **Fenster** bekommt seine Ecken vom System:
+`rund.fenster_ecken()` setzt `DWMWA_WINDOW_CORNER_PREFERENCE` (33, Wert 2) auf
+das Top-Level-Fenster hinter `winfo_id()`. Gemessen auf diesem Rechner:
+`DwmSetWindowAttribute` gibt 0, das Ruecklesen liefert 2. Fehlertolerant — auf
+Windows 10 bleibt es eckig, und das ist kein Fehler.
+
+### Skalierung (drei Regler, alle gemerkt)
+
+| Regler | Wirkung |
+|---|---|
+| Schrift 8–16 pt | skaliert Tabelle, Knoepfe, Karten und Zeilenhoehe gemeinsam |
+| Dichte kompakt/normal/gross | aendert NUR den Zeilenabstand (Faktor 0,85/1,0/1,3) |
+| Fenster klein/mittel/gross/bildschirm | Vorgaben, auf Bildschirm minus 80 px begrenzt |
+
+Tasten: `Strg +`, `Strg -`, `Strg 0`, `Strg-Mausrad`. Die Werte liegen in
+`einstellungen.json` — **Laufzeitstand, nicht versioniert** (die Datei aendert
+sich bei jedem Chip-Klick; ein versionierter Stand waere in jedem Commit eine
+Phantom-Aenderung). Die Ausnahme steht in der `.gitignore` NACH der Freigabe
+`!…/repos-zentrale/*.json` — spaetere Regel gewinnt.
+
+### Filter
+
+Acht Chips (`auffaellig`, `startbar`, `mit Start`, `mit Bot`, `fremd`,
+`nur Handel`, `nur Spuren`, `scharf`) plus Suchfeld, Bereich und Gruppe.
+**Die Chips sind UND-verknuepft** — wer zwei anmacht, will die Schnittmenge,
+nicht die Vereinigung.
+
+### Handelsteil: Testen und Scharfschalten
+
+Die rechte Karte erscheint, sobald eine Handels-Spur gewaehlt ist (Ordner aus
+`dauerlauf.SPUREN`). Sie zeigt die Checkliste aus
+[[Handel/Gates-und-Freigabe]] und bietet:
+
+* **Vorschau testen (F9)** — `<spur>/handeln.py --vorschau` **mit**
+  `MAXHIRN_ROUTINE=1`, Ausgabe in die Karte und nach `logs/`. Rein lesend.
+* **Stand neu lesen** — `spuren_stand.py` im Hintergrund (rein lesend).
+* **Scharf schalten … (F10)** — eigenes Fenster mit Checkliste, Pflichtfeld
+  Herzschlag 180, Haken `freigabe.erfuellt` und **Tipp-Bestaetigung**, wenn die
+  Spur danach wirklich ordern kann.
+* **Entschaerfen** — nur `handel_erlaubt=false`; der Haken bleibt stehen.
+
+Geschrieben wird **gezielt im Text**, nie per `json.dump`: die Wachen-Dateien
+sind handformatiert (lange Notizen, CRLF). Der Textersatz ist am
+**Zeilenanfang** verankert (`^\s*"schluessel"\s*:`) — eine Notiz, die den
+Schluesselnamen im Text traegt, wird so nicht zerschnitten. Danach Gegenprobe
+per `json.loads` UND Vergleich jedes Wertes; stimmt etwas nicht, wird nichts
+geschrieben.
+
+### Vier echte Fallen, jede gefunden statt vermutet
+
+1. **Gruppentitel ist nicht der Gruppenschluessel.** Die Auswahl zeigt
+   `NUR DOKU`, gefiltert wurde ueber den Schluessel `doku` — der Gruppenfilter
+   war damit **immer leer**, und am Bildschirm sieht das aus wie „es gibt
+   nichts". Jetzt macht `auswahl.gruppe_schluessel()` daraus den Schluessel;
+   ein Test prueft beide Schreibweisen.
+2. **`root.after` aus einem Faden ist verboten.** Der Vorschau-Lauf meldete
+   `RuntimeError: main thread is not in main loop` (Tk ist nicht threadsicher).
+   Faeden legen ihren Aufruf jetzt in eine `queue`, die Hauptschleife holt ihn
+   alle 80 ms ab. Zweiter Teil derselben Falle: der `after`-Auftrag muss beim
+   Zerstoeren **abbestellt** werden, sonst schreibt Tk danach `invalid command
+   name …_post_pollen` auf die Fehlerausgabe (in der Testsuite sichtbar).
+3. **Karten im PanedWindow brauchen eine Wunschbreite.** Ohne sie startet die
+   Teilung bei zwei Tk-Vorgaben (2 × 378 px) — `messprobe.py` zeigte die
+   Befehlsliste mit 490 px in einem 385-px-Widget. Jetzt 1000/700 px
+   Wunschbreite und schmalere Spalten; die Probe sagt wieder PASST.
+4. **Ein Test darf nie in eine echte Spur schreiben.** Die Wachen-Proben
+   laufen ausschliesslich auf Temp-Dateien; die Lese-Tests
+   (`handelstand.zustand`, `laufplan`) oeffnen nichts und schreiben nichts.
+
+### Zahlen
+
+* **259 Tests, alle gruen** (vorher 137): +122 in `test_rund`,
+  `test_einstellungen`, `test_auswahl`, `test_handelstand`, `test_schalter`,
+  `test_fenster_handel`.
+* `messprobe.py`: Spalten 1679 px in 1697 px Platz → PASST; Hinweisspalte
+  705 px, 63 von 216 Hinweisen bleiben zu lang (das war vorher so und ist der
+  Preis dafuer, dass die Spalte den Grund traegt).
+* Die Handels-Karte liest `spuren_stand.py` **einmal** (gemerkt), nicht bei
+  jedem Tastendruck im Suchfeld.
+
+### Absichtlich nicht angefasst
+
+* Keine echte `wachen.json` einer Spur: die Schreibprobe lief auf Temp-Dateien,
+  und es wurde **kein** Schalter scharf gestellt.
+* Kein Kommandozeilen-Weg zum Scharfschalten — Handelsregeln Punkt 3 verlangt
+  ein Fenster; `--handel` und `--test` lesen nur.
+* `handelszentrale.py` und `leitstand.py` (die anderen Fenster) bleiben, wie sie
+  sind; `fenster_design.py` wurde nicht geaendert (die Karten-Stile stehen
+  lokal in `fenster.py`, damit die anderen Fenster unberuehrt bleiben).

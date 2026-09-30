@@ -61,6 +61,40 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
+      Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
+      EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
+      Danach zeigt sie ihn, bis jemand "Stand neu lesen" drueckt - oeffnet der
+      Dauerlauf in der Zwischenzeit ein Zeitfenster oder wechselt ein Schalter,
+      steht im Fenster ein alter Stand. Bewusst NICHT gebaut, weil ein
+      Dauerlauf-Takt im Fenster eine eigene Entscheidung ist (Last, und die
+      Frage "wie alt darf die Anzeige sein"). Ebenso bewusst: es gibt KEINEN
+      Kommandozeilen-Weg zum Scharfschalten (`--handel` und `--test` lesen nur),
+      weil Handelsregeln Punkt 3 ein Fenster mit Bestaetigungsfeld verlangt;
+      wer von unterwegs scharf stellen will, hat dafuer `/ja_<spur>` im
+      Dauerlauf.
+      Naechster Schritt: Entscheidung Max - entweder ein Takt (z. B. alle 60 s
+      nur bei gewaehlter Spur) oder ein Zeitstempel "gelesen um HH:MM" in der
+      Kopfzeile der Karte, damit der Stand sein Alter nennt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `handelstand.py`
+      Angelegt: 2026-09-30
+- [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
+      Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
+      Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
+      stehen LOKAL in `repos-zentrale/fenster.py`, damit `fenster_design.py` -
+      die gemeinsame Quelle von handelszentrale.py und leitstand.py - unberuehrt
+      bleibt. Wer EINE Designquelle will, muss sie dorthin ziehen; das wirkt auf
+      die anderen Fenster. (b) `messprobe.py` misst 63 von 216 Hinweisen als zu
+      lang (laengster 1940 px bei 705 px Spalte) - der volle Text steht nur in
+      der Statuszeile. Ein Tooltip oder eine breitere Spalte waere moeglich,
+      kostet aber Platz bei Projekt/Art/Rolle.
+      Naechster Schritt: Entscheidung Max, ob (a) die Kartenstile nach
+      `Agenten/Werkzeuge/fenster_design.py` wandern und (b) die Hinweisspalte
+      einen Tooltip bekommt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
+      Angelegt: 2026-09-30
 - [ ] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
       Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
       `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
