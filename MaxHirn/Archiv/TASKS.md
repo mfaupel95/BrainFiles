@@ -60,6 +60,85 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-197 — Freqtrade-Bots: die Frequenz-Bremse fehlt in der Uebertragung**
+      Kontext: Der erste echte Backtest der drei Moon-Dev-Strategien (30.09.2026) ist in
+      allen Fenstern negativ, und der Grund ist nicht die Richtung, sondern die ZAHL der
+      Trades: `MoonDevTradingAgent` macht 3,23 Runden pro Tag, was bei 0,2 % je Runde
+      ueber 240 % Kosten im Jahr ergibt. Im Backtest stehen 8.399 USDT Gebuehren gegen
+      ein Ergebnis von -8.335 USDT - der Verlust IST die Gebuehr.
+      Im Haus gibt es zwei Bremsen, die in der Uebertragung fehlen:
+      `Agenten/Handel/risikovorfilter.py` (Verlust-/Gewinngrenze im 12-h-Fenster,
+      Buchrisiko-Deckel) und `handeln.in_zielsperre` (Sperrfrist nach Ziel-Ausstieg,
+      Spur scanner). Keine davon ist in `user_data/strategies/` angekommen.
+      Naechster Schritt: `populate_entry_trend` um einen Mindestabstand zwischen zwei
+      Einstiegen desselben Paares und um eine Sperrfrist nach Ziel-Ausstieg ergaenzen,
+      dann DENSELBEN Backtest erneut fahren - die Kosten muessen fallen, sonst ist die
+      Strategie unbrauchbar. Erst messen, dann bewerten.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/, Agenten/Handel/freqtrade/bots.json
+
+- [ ] **T-198 — Freqtrade-Bots sind long-only: die Short-Regeln fehlen**
+      Kontext: `bots.json` haelt es unter `_offen` selbst fest - alle drei Bots sind
+      long-only, weil `can_short = True` im Spot-Modus nicht laedt
+      (`strategy_resolver.py:167`). Die Short-Regeln der Agenten (marktlage: -2 % und
+      Breite <= 40 %) kommen also gar nicht zum Einsatz; die Uebertragung ist die halbe
+      Strategie.
+      Wichtig fuer die Bewertung: die Short-Seite erklaert den Verlust NICHT. In H1 war
+      der Markt +76,6 %, waehrend `MoonDevTradingAgent` -62,9 % machte - eine Long-Seite,
+      die in einem steigenden Markt verliert, wird durch Shorts nicht gerettet, und die
+      Gebuehrenlast (T-197) bliebe dieselbe.
+      Naechster Schritt: `trading_mode: futures` plus Futures-Daten fuer die 24 Paare
+      (`BTC/USDT:USDT`-Form) laden und denselben Backtest mit kurzer Seite fahren - als
+      MESSUNG, nicht als Umbau. Wegen T-197 erst nach der Frequenz-Bremse sinnvoll.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/user_data/bots/, Agenten/Handel/freqtrade/bots.json
+
+- [ ] **T-199 — bots.json: zwei Absagen sind durch den Feed-Backtest ueberholt**
+      Kontext: Die Liste `nicht_portierbar` (11 Eintraege) begruendet je Agent, warum
+      keine Uebertragung erfolgt. Zwei Absagen stuetzen sich auf "keine Historie
+      vorhanden" (Funding sowie Open Interest/Liquidationen): ohne Reihe kein Backtest.
+      Seit dem 29.09.2026 gibt es diese Reihe im Haus: `Agenten/Handel/moondev_historie.py`
+      archiviert den Marktquerschnitt UND Funding (6 Instrumente); `replay.lauf_c` faehrt
+      die Funding-Spur nach (23 Runden, 74 %, +5,99 % je Runde).
+      Was bleibt, ist eine Freqtrade-Frage, keine Datenfrage: der Spot-Backtest von
+      Freqtrade sieht keine Funding-Rate, sie steht in keiner Kerze. Wer das will,
+      braucht `informative_pairs` plus eigene Datenquelle - oder nimmt die Haus-Spur,
+      die es schon kann.
+      Naechster Schritt: `bots.json` an dieser Stelle richtigstellen (Grund auf den
+      Datenmodell-Punkt kuerzen statt auf die fehlende Historie) und pruefen, ob OI und
+      Liquidationen genauso nachrechenbar sind - `moondev_historie.py` deckt bisher nur
+      Preise und Funding.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/bots.json, Agenten/Handel/moondev_historie.py
+
+- [ ] **T-200 — MCP_DOCKER-Abgleichkreis: die Wache nennt ihn, verhindert ihn nicht**
+      Kontext: Am 30.09.2026 lief der Rechner eine Stunde mit 1,0 GB freiem Commit, weil
+      der Docker-Daemon tot war und der Gateway-Abgleich trotzdem `MCP_DOCKER` starten
+      wollte - bei JEDEM Versuch startete er daraufhin alle sechs MCP-Gruppen neu
+      (146 Python-Prozesse, WSL-VM tot, Docker tot: ein geschlossener Kreis).
+      Die Wache `mcp-zombie-wache.py` nennt die Ursache jetzt (Commit 19a79a5), aber ihre
+      Kur bleibt Symptombehandlung: sie killt die Ueberzahl, und der Abgleich spawnt
+      weiter, solange Docker tot und MCP_DOCKER eingetragen ist.
+      Naechster Schritt: Entscheidung von Max - `MCP_DOCKER` aus
+      `Agenten/Hermes/config.yaml` austragen (kostet die 17 Docker-MCP-Werkzeuge im
+      Werkzeugkasten der Agenten) oder eintragen lassen und den Ausfallweg hinnehmen.
+      Der Versuch `hermes mcp remove MCP_DOCKER` scheiterte am 30.09. an
+      `pm: worker exited without a result` - damals aus Commit-Mangel; ein zweiter
+      Versuch braucht Luft und vorher eine Sicherung der Config.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/scripts/mcp-zombie-wache.py
+
+- [ ] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
+      Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
+      der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
+      im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
+      8081/8082/8083.
+      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst in
+      `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
+      Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/bots_starten.sh
+
 - [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
       Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
       an interrupted source update" liegen. Am 30.09.2026 las der Dashboard-Start diesen Vermerk und
