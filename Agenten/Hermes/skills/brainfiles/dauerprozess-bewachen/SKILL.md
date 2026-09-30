@@ -776,6 +776,22 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   jemand die Datei ueberschreibt — der Zustand ist eine Behauptung, die den
   Prozess ueberlebt. Eine Wache liest deshalb den PID AUS der Datei und prueft
   den Prozess, statt dem Wort zu glauben, und meldet das Alter der Datei mit.
+  **Und "die PID lebt" ist allein KEIN Beweis — der Programmname gehoert dazu.**
+  Windows vergibt PIDs neu: gemessen trug eine Statusdatei `state: running` mit
+  PID 2024, die inzwischen `csrss.exe` gehoerte; der ueberwachte Lauf war seit
+  4,5 Stunden tot, und das Startwerkzeug meldete "laeuft schon" — es pruefte nur
+  die Existenz der PID und startete deshalb nie neu. Die Prozessabfrage muss den
+  erwarteten Programmnamen mitverlangen (Name aus der `tasklist`-Ausgabe,
+  `pid_lebt(pid, name="<programm>.exe")`), und der Name muss in der Ausgabe
+  stehen: eine Zahl allein trifft auch den Nachfolger eines fremden Programms.
+  Gegenprobe im Test: die eigene PID mit einem FALSCHEN Programmnamen muss
+  `False` ergeben — ohne diesen Fall bleibt die Namenspruefung ungeprueft.
+  **Eine unendliche Altersgrenze schaltet den anderen Zeugen ab.** Ein
+  Start-/Wachwerkzeug, das `beurteile(lage, veraltet_s=float("inf"))` aufruft,
+  prueft nur noch Zustand und PID: eine tagealte Statusdatei gilt dann als
+  laufender Lauf, und der tote Prozess wird nie ersetzt. Die Grenze aus dem
+  Schreibrhythmus der Datei rechnen und NICHT auf `inf` setzen; wer sie aufheben
+  will, nennt den Grund im Code.
   Und der Lauf selbst gehoert gebaut, dass er sein Ende schreibt (`state`
   + Grund), damit der Zustand nach einem Fehler nicht auf dem letzten guten
   Stand stehen bleibt.

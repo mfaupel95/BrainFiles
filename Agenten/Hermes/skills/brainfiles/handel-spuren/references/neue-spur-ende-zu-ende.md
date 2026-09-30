@@ -182,6 +182,40 @@ Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
   Prozess lebt (Datei offen → Aufruf haengt bis Timeout). Erst Leben pruefen;
   Log nur lesen, wenn der Prozess tot ist.
 
+## 7. Die Spur in den BESTEHENDEN Fenstern sichtbar machen
+
+Zwei Fenster, zwei Wege — keiner davon ist ein Neubau:
+
+1. **Handelszentrale (`Handel/handelszentrale.py`).** Ihre Spurliste kommt aus
+   `dauerlauf.SPUREN`, die Spur erscheint dort also von selbst; zu tun ist nur
+   etwas, wenn sie einen EIGENEN Reiter braucht oder einen Namen traegt, den im
+   Fenster schon etwas anderes fuehrt.
+   - **Namensgleichheit ist der gefaehrliche Fall.** Traegt ein Reiter denselben
+     Namen wie die neue Spur, aber eine andere Sache (Reiter „omnitrade“ = der
+     fremde Rust-Lauf aus der Statusdatei, Spur „omnitrade“ = das Haus-Buch),
+     gehoeren beide Seiten GETRENNT und BESCHRIFTET in denselben Reiter. Wer nur
+     eine sieht, haelt die Zahlen der anderen fuer seine.
+   - Reine Funktionen bauen, die ohne Fenster pruefbar sind (`<spur>_kopf`,
+     `<spur>_positionen`, `<spur>_journal`), und den echten Fensteraufbau in die
+     Suite nehmen: `root.withdraw()`, bauen, `root.update()`, dann Reiter-Texte
+     und Tabellenzeilen gegen die gelesenen Daten pruefen. Ein tk-Mock verdeckt
+     genau die Startfehler, die erst beim Bauen auftreten.
+2. **Werkzeug-Zentrale (`Agenten/Werkzeuge/repos-zentrale`).** Dort fehlt die
+   Spur, bis `SPUREN_START` in `fuellen.py` sie nennt; danach `python fuellen.py`
+   (Trockenlauf, zeigt `+ [handel] <spur> ... START ...`) und `--anwenden`.
+   - **Ein Startbefehl ohne Logbeleg ist unzulaessig**
+     (`tests/test_manifest_gegenprobe.py::test_jeder_startbefehl_hat_einen_beleg_im_log`).
+     Den Beleg holt `python fuellen.py --belege` — er fuehrt genau die Befehle
+     OHNE Log einmal aus und schreibt `logs/<spur>-<zeit>.log`. Start ist immer
+     `--vorschau`, nie ein handelnder Modus.
+   - Diese Logs sind Laufzeitstand und NICHT versioniert: der Test ist gruen,
+     solange der Beleg auf DIESEM Rechner liegt. Ein frischer Klon faehrt
+     `--belege` einmal.
+- **Die Zahl der Spuren wird GEMESSEN, nicht gezaehlt:**
+  `python -c "import dauerlauf; print(len(dauerlauf.SPUREN))"`. Von Hand aus einer
+  Liste abzaehlen hat schon eine falsche Zahl in die Wiki-Uebersicht geschrieben;
+  die Handelszentrale zeigt dieselbe Zahl im Fenstertitel.
+
 ## Verifikation des Ganzen
 Drei Belege in einem Atemzug: erster Zyklus im `dauerlauf.log` mit
 „<spur> (papier) ok“, Bus-Journal `start`/`ende` mit `code: 0`, und das

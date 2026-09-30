@@ -50,10 +50,17 @@ Drei Regeln, die daraus folgen:
 1. **Den ZUSTAND spiegeln, nicht die Orderliste.** Ein Ringpuffer verliert bei
    einem Ausfall alles dazwischen; wer daraus Ereignisse nachzaehlt, verpasst
    sie still. `net_quantity > 0` sagt zu jedem Zeitpunkt, ob eine Position steht.
-2. **`state: running` ist kein Beweis - zwei Zeugen.** Nach einem harten Ende
-   bleibt die Datei mit einer TOTEN PID auf `running` stehen (gemessen: eine
-   Statusdatei lag zwei Stunden so im Ordner, waehrend das Startwerkzeug "PID
-   lebt nicht" meldete). Einstieg nur bei frischer Datei UND lebender PID.
+2. **`state: running` ist kein Beweis - zwei Zeugen, und der zweite braucht
+   einen NAMEN.** Nach einem harten Ende bleibt die Datei auf `running` stehen.
+   Einstieg nur bei frischer Datei UND lebender PID - aber **"die PID lebt"
+   allein genuegt NICHT**: Windows vergibt PIDs neu. Gemessen: die Statusdatei
+   trug `running` mit PID 2024, die inzwischen `csrss.exe` gehoerte; der Lauf war
+   4,5 Stunden tot, und das Startwerkzeug meldete "laeuft schon", weil es nur
+   die PID-Existenz prueefte. Die Prozessabfrage muss den PROGRAMMNAMEN
+   mitverlangen (`pid_lebt(pid, name="<fremdprogramm>.exe")`, Name aus der
+   `tasklist`-Ausgabe) - sonst haelt jede Wache eine Wiederverwendung fuer einen
+   lebenden Lauf. Gegenprobe im Test: die eigene PID mit falschem Namen muss
+   `False` ergeben.
 3. **Den echten Orderpreis buchen, nicht den letzten Kerzenschluss.** Der
    Ausstieg des Fremdlaufs ist eine echte Order; ihr Preis steht in
    `recent_orders`. `last_close` als Verkaufskurs ins Journal zu schreiben,
@@ -120,6 +127,12 @@ cd Agenten/Handel && ./scanner/.venv/Scripts/python.exe pruefe_ratschen.py
   Liefert `quelle()` nur laufende Laeufe, kann ein beendeter Lauf die Position
   nie schliessen. Deshalb kommen ALLE lesbaren Laeufe ins `daten`-Dict und
   `signal()` prueft `laeuft` UND `offen`.
+* **Eine unendliche Altersgrenze schaltet den einen Zeugen ab.** Ein Start-/Wach-
+  Werkzeug, das `beurteile(lage, veraltet_s=float("inf"))` aufruft, prueft nur
+  noch Zustand und PID - eine tagealte Statusdatei gilt dann als laufend und der
+  tote Lauf wird nie neu gestartet. Die Altersgrenze gehoert aus dem
+  Kerzenabstand der Datei (`bruecke.altersgrenze_s`) gerechnet, nicht auf `inf`
+  gesetzt; wer sie aufheben will, muss den Grund im Code nennen.
 * **Die Quotewaehrung vor der ersten Sperrenpruefung setzen**
   (`boerse_binden(w)` -> `weg.setze_quote(w["kraken_quote"])`): mit der Vorgabe
   EUR findet die Paar-Tabelle ein USDC-Paar nicht, und sie faellt ausdruecklich

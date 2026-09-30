@@ -83,6 +83,53 @@ Nach ~12 s den Prozess ueber den FENSTERTITEL pruefen (nicht ueber die PID):
 Spurenzahl (`Handelszentrale - N Spuren (Papier, nur lesend)`) - **diese Zahl ist
 der schnellste Gegenbeweis fuer eine falsche Zahl in der Doku.**
 
+## Verknuepfungen auf den Desktop ("die UIs auf den Desktop")
+
+Ein Skript, das die Verknuepfungen erzeugt, statt sie von Hand zu klicken -
+idempotent und mit Gegenprobe: `Agenten/Werkzeuge/desktop-verknuepfungen.ps1`
+(uas `terminal` aufrufen: `powershell -ExecutionPolicy Bypass -File ...`).
+
+Drei Angaben je Verknuepfung, und die dritte ist die, die man vergisst:
+
+```powershell
+$w = New-Object -ComObject WScript.Shell
+$s = $w.CreateShortcut((Join-Path $desktop 'Handelszentrale.lnk'))
+$s.TargetPath = '...\powershell.exe'
+$s.Arguments  = '-ExecutionPolicy Bypass -WindowStyle Hidden -File "...\handelszentrale.ps1"'
+$s.WorkingDirectory = '...\Agenten\Routinen'   # OHNE das startet es im falschen Ordner
+$s.IconLocation = "$env:SystemRoot\System32\imageres.dll,1"
+$s.Save()
+```
+
+* **Ein Wrapper statt des Programms, wo es einen gibt.** Die Handelszentrale
+  laeuft ueber `Routinen/handelszentrale.ps1`: der prueft den Fenstertitel und
+  startet nichts, wenn schon ein Fenster offen ist. Zwei Fenster zeigen dasselbe
+  und lassen sich spaeter nicht von einem Dienst unterscheiden.
+* **Web-UIs als eine Verknuepfung:** `cmd.exe` mit
+  `/c start "" http://127.0.0.1:8081/ & start "" ...` oeffnet alle Tabs in einem
+  Klick; die Ports sind nur lokal gebunden.
+* **Ziel des Arbeitsverzeichnisses pruefen, nicht nur die Existenz:** die
+  Gegenprobe am Skriptende liest jede Verknuepfung zurueck und prueft
+  `Test-Path $s.TargetPath` UND zeigt `$s.WorkingDirectory`. Ein Klick ist kein
+  Nachweis - der FENSTERTITEL ist es.
+
+### Fallen (beide erlebt)
+
+* **`$args` ist in PowerShell eine automatische Variable.** Ein Funktions-
+  parameter dieses Namens laesst `$s.Arguments = $args` mit `System.Object[]
+  kann nicht in string konvertiert werden` abbrechen - Parameter `$argumente`
+  nennen.
+* **Keine Umlaute in einer `.ps1`.** PowerShell 5.1 liest eine Datei ohne BOM als
+  ANSI: `Verknuepfung` mit ue ist im Vergleich ein anderer Name, und ein
+  `Remove-Item -LiteralPath` mit ausgeschriebenem Namen findet nichts - lautlos,
+  die Datei bleibt liegen. Aufraeumen ueber Muster
+  (`Get-ChildItem -LiteralPath $desktop -Filter '*moongui.py*'`), nie ueber
+  ausgeschriebene Namen.
+* **Reste fehlgeschlagener Verknuepfungen sehen wie Textdateien aus:** ihr NAME
+  ist der ganze Befehl (`CUsersfaupeDocuments...pythonw.exe repos_zentrale.py.txt`).
+  Vor dem Loeschen auf den Desktop gehoeren sie angesehen (Groesse/Inhalt), nicht
+  als "0-Byte-Muell" angenommen.
+
 ## Fallen
 
 * **Der Reiter ist gebaut, aber leer:** die Sektion liest `zustand.json` der
