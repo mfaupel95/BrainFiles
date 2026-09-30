@@ -45,13 +45,21 @@ Als Verlust gilt: der Text steht heute nicht mehr in MEMORY.md UND sein Anfang (
 70 Zeichen) auch nicht - sonst wurde der Eintrag nur umgeschrieben (das ist der Normalfall
 und kein Verlust). Absichtliche `remove`-Aufrufe werden getrennt ausgewiesen.
 
-Stand 30.09.2026: 13 belegte Ersetzungen/Entfernungen, 9 davon nicht mehr im Gedaechtnis,
+Stand 30.09.2026: 13 belegte Ersetzungen/Entfernungen, 6 davon nicht mehr im Gedaechtnis,
 davon 1 absichtlich entfernt (STARTREGEL FUER SITZUNGSLOESCHUNG, 19 Sekunden nach dem
 Schreiben vom selben Verfasser geloescht). Echter Verlust: genau der HERMES-CONFIG-Eintrag
 - wiederhergestellt und gegen die Wirklichkeit geprueft (config.yaml: kommentarlos,
 `fallback_providers: []`, threshold 0.5, `local_runtime.enabled: true`).
 
-Tests: `Agenten/Hermes/scripts/test_memory_verlust.py` (6).
+Tests: `Agenten/Hermes/scripts/test_memory_verlust.py` (7).
+
+## Wache
+
+`Agenten/Hermes/scripts/memory-verlust-wache.py` meldet nur, was seit dem letzten Lauf NEU
+verloren ist; Merkdatei `cache/memory-verlust-wache.json`, erster Lauf setzt die Baseline und
+schweigt, ein Messfehler wird gemeldet statt verschwiegen. Hermes-Cron
+`memory-verlust-wache` (Job f6f34ed95e0b, taeglich 20:45, no_agent, Telegram, leere Ausgabe
+= nichts senden). Tests: `scripts/test_memory_verlust_wache.py` (7).
 
 ## Zweiter Befund derselben Sitzung: die Pending-Queue
 

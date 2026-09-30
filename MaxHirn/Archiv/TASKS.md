@@ -75,18 +75,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Hermes/pending/memory/`, `memories/MEMORY.md`
       Angelegt: 2026-09-30
 
-- [ ] **T-246 - Wache fuer Memory-Verluste (Cron)**
-      Kontext: Ein `replace` mit falsch gewaehltem `old_text` loescht einen
-      fremden Eintrag vollstaendig; bemerkt hat es am 30.09.2026 erst eine Suche
-      Stunden spaeter. Das Werkzeug `Agenten/Hermes/scripts/memory-verlust.py`
-      kann den Zustand jederzeit messen, wird aber von niemandem aufgerufen -
-      ein Nachweis ist keine Wache.
-      Naechster Schritt: Hermes-Cron (z. B. taeglich, no_agent, Telegram, leere
-      Ausgabe = nichts senden) auf `memory-verlust.py --json`; melden nur, wenn
-      ein Eintrag neu verloren ist (Merkdatei), nicht bei den 8 bekannten
-      Altfaellen.
-      Betrifft: `Agenten/Hermes/scripts/memory-verlust.py`, Hermes-Cron
-      Angelegt: 2026-09-30
 
 
 - [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
@@ -2719,6 +2707,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-246 - Wache fuer Memory-Verluste (Cron)**
+      Kontext: Ein `replace` mit falsch gewaehltem `old_text` loescht einen
+      fremden Eintrag vollstaendig; bemerkt hat es am 30.09.2026 erst eine Suche
+      Stunden spaeter. Das Werkzeug `Agenten/Hermes/scripts/memory-verlust.py`
+      kann den Zustand jederzeit messen, wird aber von niemandem aufgerufen -
+      ein Nachweis ist keine Wache.
+      Naechster Schritt: Hermes-Cron (z. B. taeglich, no_agent, Telegram, leere
+      Ausgabe = nichts senden) auf `memory-verlust.py --json`; melden nur, wenn
+      ein Eintrag neu verloren ist (Merkdatei), nicht bei den 8 bekannten
+      Altfaellen.
+      Betrifft: `Agenten/Hermes/scripts/memory-verlust.py`, Hermes-Cron
+      Angelegt: 2026-09-30
+      Hermes-Cron f6f34ed95e0b (taeglich 20:45, no_agent, Telegram, leere Ausgabe = nichts senden); Skript Agenten/Hermes/scripts/memory-verlust-wache.py, Tests test_memory_verlust_wache.py 7 + test_memory_verlust.py 7 gruen. Erster Lauf setzt die Baseline und schweigt (6 bekannte Altfaelle).
 - [x] **T-237 - Werkstatt/handel-stack: Spiegel weiterfuehren, einfrieren oder abloesen? (Entscheidung Max)**
       Kontext: `Werkstatt/handel-stack` ist ein privates GitHub-Repo
       (mfaupel95/handel-stack) mit dem Import von `Agenten/Handel` vom
