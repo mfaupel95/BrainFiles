@@ -73,7 +73,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
       ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
       Angelegt · Zuletzt: 30.09.2026
-- [ ] **T-222 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
+- [ ] **T-224 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
       Kontext: auxiliary.compression ist in allen 22 Profilen und im Hauptprofil entfernt
       (30.09.2026) - die Kompression laeuft damit auf dem HAUPTMODELL (bei nous 786k Kontext)
       statt auf einem Gratis-Router-Combo mit 200k. Die Schwelle compression.threshold 0.19
