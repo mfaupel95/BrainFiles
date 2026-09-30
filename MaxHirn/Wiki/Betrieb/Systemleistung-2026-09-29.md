@@ -145,3 +145,38 @@ Gateway (er lief weiter), und die 12 `docker-mcp`-Prozesse. Die
 kind-Kubernetes-Container von Docker Desktop (5 Stück) sind ebenfalls wieder
 hoch und fressen einen Teil des Commits zurück — sie sind ein Kandidat, aber
 noch nicht entschieden.
+
+## 10. Nachtrag 30.09.2026 (2) — derselbe Kreis, diesmal mit Kollateralschäden an Fremdsoftware
+
+Derselbe Docker/MCP-Spawn-Kreis aus Abschnitt 9 trat am Nachmittag erneut auf
+(16:46–17:04) und legte diesmal per Fail-Fast **vier unbeteiligte Prozesse**
+lahm: `KrakenDesktop.exe` (3×), `Telegram.exe` (1×) und Hermes' gebündeltes
+`python.exe` (1×) — belegt über die Ereignisanzeige (Application-Log,
+Event 1000 „Faulting Application"), alle im selben engen Zeitfenster, alle
+mit Exceptioncode `0xC0000409` (Telegram/Kraken) bzw. `0xC00000FD`
+(python.exe, STATUS_STACK_OVERFLOW — verwandter Fail-Fast-Pfad). Parallel
+riss es auch den manuellen `sicherung.ps1`-Testlauf (PID 19444) mit — eine
+zusätzliche WER-`OutOfMemoryException` für `powershell.exe` um 16:50:16 fiel
+in dasselbe Fenster.
+
+**Wichtige Korrektur:** Damit ist die bisherige Vermutung widerlegt, die
+wiederkehrenden `3221225786`-Abbrüche von `MaxHirn-Sicherung`,
+`-Zweitkopie` und `-OmniRoute` lägen an Task-Scheduler-Eigenheiten oder an
+Claude-Desktop-Dateisperren. Es ist derselbe system­weite
+Commit-Erschöpfungskreis wie in Abschnitt 9 — unabhängig davon, ob der
+Aufruf interaktiv oder über die Aufgabenplanung kam. Der irreführende
+Kommentar dazu in `Agenten\sichern.ps1` (Zeile ~199, „STATUS_CONFLICT_WITH_LOCK
+= Claude Desktop war noch offen") wurde am 30.09.2026 korrigiert.
+
+**Kur:** identisch zu Abschnitt 9 — 38 überzählige MCP-Server-Prozesse
+beendet (je Gruppe die 3 jüngsten behalten; RAM frei 15,7 → 21,7 GB, Python
+270 → 62), danach `wsl --shutdown` + Docker Desktop neu gestartet.
+
+**Dritte Lehre:** Der Schaden bleibt nicht auf MCP-Server oder Claude
+beschränkt — jeder Prozess auf demselben Host kann per Fail-Fast sterben,
+sobald der Commit ausgeht. `0xC0000409` in der Ereignisanzeige ist also kein
+Hinweis auf einen Fehler *in* der abgestürzten Anwendung, sondern ein starkes
+Indiz für System-Commit-Erschöpfung, wenn zeitgleich mehrere unabhängige
+Prozesse denselben Code melden — genau danach lohnt sich beim nächsten Mal
+zuerst zu suchen (`Get-WinEvent -FilterHashtable @{LogName='Application';
+Id=1000}`), bevor eine Ursache im einzelnen Skript vermutet wird.

@@ -196,8 +196,11 @@ if ($code -lt 8) {
   Write-Host 'Sicherung Dateien, die in der Quelle geloescht wurden - z. B.'
   Write-Host 'Claude\Posteingang\Maximilianbackup0924 (48,8 GB).'
   Write-Host ''
-  Write-Host 'Fehlercode 3221225786 (STATUS_CONFLICT_WITH_LOCK) = Claude Desktop war noch offen'
-  Write-Host 'und blockierte Dateien. Sicherungsskript beendet Claude jetzt automatisch.'
+  Write-Host 'Hinweis zu Fehlercode 3221225786 (0xC0000409, STATUS_STACK_BUFFER_OVERRUN):'
+  Write-Host 'das ist ein genereller Fail-Fast-Code, KEIN Beleg fuer eine Datei-Sperre durch'
+  Write-Host 'Claude Desktop. Ursache am 29./30.09.2026 war Commit-Erschoepfung durch einen'
+  Write-Host 'MCP-Server-Spawn-Sturm (Docker/WSL haengt) - siehe'
+  Write-Host 'MaxHirn\Wiki\Betrieb\Systemleistung-2026-09-29.md, Abschnitt 9/10.'
   # Fehler muss nach aussen sichtbar sein: ohne eigenen Exitcode meldet die
   # Aufgabenplanung einen misslungenen Lauf als Erfolg.
   exit 1
