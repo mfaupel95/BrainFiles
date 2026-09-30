@@ -33,6 +33,24 @@ $marke = Melde-Start -Wer 'routine/moondev-dauerlauf'
 if (-not (Test-Path $py))      { Melde-Ende -Marke $marke -Code 1 -Text "venv-Python fehlt: $py"; throw "venv-Python fehlt: $py" }
 if (-not (Test-Path $treiber)) { Melde-Ende -Marke $marke -Code 1 -Text "Treiber fehlt: $treiber"; throw "Treiber fehlt: $treiber" }
 
+# Einzelinstanz-Pruefung. Die Aufgabe selbst kann das nicht leisten: sie ist mit
+# IgnoreNew eingestellt, dieser Wrapper kehrt aber sofort zurueck - eine zweite
+# Ausloesung (Handstart, Fremdsitzung, Skriptaufruf) startet also einen ZWEITEN
+# Treiber samt zweitem Agentensatz. Am 30.09.2026 liefen zwei Paare
+# gleichzeitig (15:36 und 16:29). Suchtext aus Teilen bauen, sonst trifft der
+# Filter die eigene Kommandozeile.
+$muster = 'moondev' + '_dauerlauf'
+$laeuft = @(Get-CimInstance Win32_Process -Filter "Name='python.exe' or Name='pythonw.exe'" -EA SilentlyContinue |
+            Where-Object { $_.CommandLine -and $_.CommandLine -match $muster })
+if ($laeuft.Count -gt 0) {
+  $pids = ($laeuft | ForEach-Object ProcessId) -join ', '
+  Melde-Ende -Marke $marke -Code 0 -Text "Treiber laeuft schon (PID $pids), kein zweiter Start"
+  "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  Treiber laeuft schon (PID $pids) - kein zweiter Start" |
+    Add-Content $log -Encoding UTF8
+  Write-Output "MoonDev-Dauerlauf laeuft schon (PID $pids)"
+  exit 0
+}
+
 $p = Start-Process -FilePath $py -ArgumentList $treiber, '--stumm' `
                    -WorkingDirectory $handel -WindowStyle Hidden -PassThru
 

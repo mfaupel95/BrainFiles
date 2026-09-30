@@ -423,6 +423,11 @@ Abhilfe: `hermes config set cron.catch_up_missed false` — ein verpasster Lauf 
 uebersprungen, der Job laeuft zum naechsten regulaeren Termin weiter (richtig fuer Wachen,
 die ohnehin im Takt laufen). Danach den Dienst neu starten, damit die Config gelesen wird,
 und die Zahl in `catch_up_occurrences` gegenpruefen: sie darf nicht mehr steigen.
+**Das ist eine Lastbremse, KEIN Nachweis der Ursache.** Gemessen blieb der Zaehler danach
+bei 328 stehen, waehrend die Neustarts weitergingen (alle 12 Minuten, ausgeloest vom
+Waechter) — wer den Kreislauf damit fuer erklaert haelt, hoert auf zu suchen, bevor er
+den Ausloeser kennt. Beides getrennt messen und getrennt ausweisen: die Gleichzeitigkeit
+in der executions-DB UND die Startzeiten im Dienstlog gegen die Takte im selben Zeitraum.
 Vollstaendige Diagnose, Multiplex-Ursache, Exit-75-Schleife und Waechter-Einrichtung:
 `references/gateway-ausfall.md`.
 ## Abgebrochener Update-Schwanz: Desktop-Bootschleife
@@ -433,6 +438,14 @@ Werkzeug-Timeout oder ein Fensterschluss abbricht) kann
 erst den mehrminutigen Schwanz (Node/TUI/Web/Desktop bauen); der Desktop bricht nach 90 s ohne
 Backend-Port ab und startet neu - Bootschleife, Gateway bleibt aus, `hermes config …` im
 Vordergrund haengt.
+
+Zur Einordnung, damit der Desktop nicht selbst verdaechtigt wird: die App haengt sich an den
+**juengsten** Eintrag in `$HERMES_HOME/spawn-ledger.json` (nur `purpose: dashboard|serve` sind
+anhebbar), probt `/api/ws` mit dem dort veroeffentlichten Token und startet NUR bei Fehlschlag
+einen eigenen Backend (`hermes serve --port 0`). Ein Dashboard, das unter Last 30 s je Anfrage
+braucht, laesst deshalb die Oberflaeche haengen - und der eigene Backend erscheint als neue
+Portnummer. Genau so liest sich "Desktop haengt 30 s je Anfrage": Attach-Versuch, Timeout,
+eigener Backend. Kein Defekt der App.
 
 Symptome: `logs/desktop.log` zeigt `hermes: finishing an interrupted source update...` und
 `Timed out waiting for Hermes backend port announcement (90000ms)`;
@@ -457,6 +470,13 @@ Erfolg ist die Zeile `✓ Update complete!` UND ein verschwundenes
 und Desktop starten. Nach sechs Fehlversuchen schweigt die Selbstheilung 15 min
 (`COMPLETION_RETRY_BACKOFF_SECONDS`) - dann hilft nur der direkte Aufruf oder `hermes update`
 aus einer Shell.
+
+Nachweis der Reparatur (nicht "Fenster ist auf"): der Desktop-Backend antwortet
+`{"ok":true,...}` auf `http://127.0.0.1:<port>/api/health` (Port aus `logs/desktop.log`,
+`HERMES_BACKEND_READY port=`), und `logs/desktop.log` zeigt keine neue
+`finishing an interrupted source update`-Zeile mehr. Fuer den Gateway die zwei Ports
+(`9900`, `8644`) und die `✓ … connected`-Zeilen in `logs/gateway.log` gegenpruefen - er braucht
+nach dem Neustart 50-90 s.
 
 Regel daraus: `hermes config set/unset` NIE mit eigenem Zeitlimit im Vordergrund laufen lassen
 (ein abgebrochener Lauf armt den Schwanz); Config-Aenderungen stattdessen per gezieltem

@@ -306,7 +306,10 @@ try {
   #                      die echten Funde zu.
   #   Hermes\tmp\ und Hermes\.sicherung\ - dasselbe: Wegwerf bzw. Altkopien,
   #                      beide nicht versioniert (22.09.2026, 11 der 37 Zeilen).
-  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\')
+  #   profiles\<bot>\cache\ - der Wegwerf-Ordner JE BOT, dieselbe Sorte wie
+  #                      Hermes\cache\. Am 30.09.2026 meldete der Block zwei
+  #                      Probenskripte aus profiles\agent-trade-kit\cache\scratch.
+  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\', '\\profiles\\[^\\]+\\cache\\')
   $musterAbs = [regex]('C' + ':\\Users\\faupe')
   $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
   $absTreffer = @(); $altTreffer = @()

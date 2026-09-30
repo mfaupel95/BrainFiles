@@ -423,6 +423,17 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    die der Dienst SELBST schreibt (`pid` + Zustand = laeuft, Prozess existiert,
    Programmname passt), (b) nur wenn die fehlt, die Prozessliste - und dann mit
    einem Muster, das ALLE bekannten Startformen per `|` abdeckt.
+   **Jede Alternative eines solchen `|`-Musters muss den UNTERBEFEHL fordern.**
+   Ein Muster, das nur den Modulnamen nennt, trifft jeden Start desselben
+   Programms: gemessen traf `run_module('hermes_cli.main'` auch den
+   DASHBOARD-Prozess (`sys.argv = ['…main.py', 'dashboard', …]`) - und solange
+   der lief, hielt die Wache ihn fuer den Dienst und startete nichts (2,5 h
+   Ausfall ohne eine einzige Neustart-Zeile). Also den Unterbefehl im Muster
+   verlangen (`'gateway'`) und die Geschwister ausdruecklich ausschliessen
+   (`-notmatch "'dashboard'"`). Vor dem Urteil "kein Prozess" den EIGENEN
+   Filter einmal ueber die volle Prozessliste laufen lassen und die Treffer
+   ausgeben: ein zu weites Muster liest sich wie ein echter Ausfall und bleibt
+   deshalb lange unbemerkt, ein zu enges wie ein gesunder Dienst.
    **Eine Neustart-Schleife verraet nur die ZAHL, nie die einzelne Zeile:**
    "kein Prozess - Neustart ausgeloest" liest sich richtig, der Dienst war danach
    kurz weg, es gibt kein Widerspruchssignal. Beim Pruefen einer Prozesswache
@@ -650,6 +661,37 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   das auseinander (Prozess wenige Minuten alt, letzter echter Erfolg Stunden
   zurueck), ist es ein Crash-Loop und kein gesunder Dauerbetrieb, auch wenn
   gerade ein Prozess laeuft.
+  **Die Gegenrichtung ist genauso haeufig: `RestartCount`/`RestartInterval`
+  ERZEUGEN den Neustart-Takt selbst.** Ein Launcher, der den Dienst abgekoppelt
+  startet und sofort zurueckkehrt (VBS `WScript.Shell.Run "<zeile>", 0, False`,
+  `Start-Process` ohne `-Wait`), laesst den Task-Manager einen BEENDETEN Task
+  sehen - er startet ihn nach `RestartInterval` erneut, ohne dass irgendetwas
+  kaputt ist. Gemessen: `RestartCount 999` / `RestartInterval PT1M` auf dem
+  Dienst-Task, dazu ein Waechter, der im selben Rhythmus nachstartete; jeder
+  Start riss die offenen Verbindungen mit (die Client-Sockets brechen ab und
+  verbinden im Sekundentakt neu - das fuellt das Fehlerlog mit
+  Verbindungsabbruechen, die nach einem Netzproblem aussehen). Fix:
+  `RestartCount 0` und kein Intervall (die Wiederbelebung gehoert dem Waechter),
+  `Set-ScheduledTask` dafuer in einer Admin-Sitzung. Beleg ist die ZAHL der
+  Starts im Dienstlog gegen die Takte im selben Zeitraum.
+  **Und die Bremse gehoert in JEDEN Neustartpfad.** Hat der Zweig "kein Prozess
+  gefunden" keine Sperre, waehrend der Zweig "Prozess antwortet nicht" eine hat
+  (30 Minuten), dann startet die Wache im Takt ihrer eigenen Laufzeit neu,
+  sobald ihr Muster den Dienst nicht erkennt - der haeufigere Fall ist der
+  ungebremste.
+- **Ein haeufig neustartender Dienst und nachgeholte Cron-Laeufe schaukeln sich
+  gegenseitig hoch.** Holt der Scheduler verpasste wiederkehrende Laeufe nach
+  (`cron.catch_up_missed`, Zaehler in `cron/catch_up_occurrences`), laeuft nach
+  JEDEM Neustart der ganze Rueckstand auf einmal: gemessen 32 `no_agent`-Jobs in
+  zehn Sekunden (`cron/executions.db`, Spalte `started_at`), waehrend der Zaehler
+  bei 328 stand. Die Lastspitze kann den Dienst erneut mitreissen - und der
+  naechste Start holt wieder alles nach. Bei einer Neustart-Schleife deshalb die
+  Ausfuehrungen im Todesfenster aus der executions-DB ziehen (Job-IDs gegen
+  `cron/jobs.json` aufloesen) und die GLEICHZEITIGKEIT messen, bevor die Ursache
+  im Dienst gesucht wird. `cron.catch_up_missed: false` ueberspringt verpasste
+  Laeufe (der Job laeuft zum naechsten regulaeren Termin weiter) - das ist eine
+  Lastbremse, KEIN Nachweis der Ursache: im gemessenen Fall blieb der Zaehler
+  danach stehen, die Neustarts nicht.
 - **Ein aus der Agentensitzung gestarteter Hintergrundprozess stirbt mit ihr.**
   Symptom: Stunden spaeter endet er mit Exit 127, waehrend der per `.cmd`
   gestartete weiterlaeuft — das ist kein Fehler der Komponente und kein Grund zur

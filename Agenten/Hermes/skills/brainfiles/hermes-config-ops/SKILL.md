@@ -313,6 +313,9 @@ Wirklichkeit halten, nie gegen die Erinnerung.
    Die Wache meldet nur AENDERUNGEN (leere Ausgabe = nichts senden).
 
 Werkzeuge: `scripts/config-gegenprobe.py`, `scripts/config-gegenprobe-wache.py`,
+`scripts/config-abweichungen.py` (rein lesend, mit dem venv-Python: listet jeden Wert, der
+vom Hermes-Standard `DEFAULT_CONFIG` abweicht - die Tabelle, mit der eine "optimier meine
+Config / setz das auf Standard"-Frage beantwortet wird, statt Werte zu raten),
 `scripts/lokale-modellliste-richten.py` (Trockenlauf Standard, `--anwenden`,
 `--zuruecknehmen`). Vollstaendiger Ablauf, Urteilstabelle und die Fallen (geerbte
 Provider-Einstufung = Fehlalarm, HTTP 200 von einer FREMden Anwendung, toter Port der
@@ -1045,6 +1048,8 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 
 ## Fallen
 
+- **`terminal.cwd` ist nicht nur ein Startverzeichnis - es verschiebt den Bezugspunkt jeder Anleitung.** Steht es auf `Agenten/Hermes` (Hausstand), dann sind die Pfade in Skills, Notizen und Wiki (relativ zur BrainFiles-WURZEL) NICHT mehr dasselbe wie das Arbeitsverzeichnis. Der Anker ist `cd "$HERMES_HOME/../.."` - **nicht `$HERMES_HOME/..`**, das landet in `Agenten` (eine Ebene zu hoch) und laesst jeden root-relativen Befehl mit "No such file or directory" scheitern. Wer den Anker in eine Anleitung schreibt, faehrt ihn VORHER einmal (`cd ... && pwd`): ein `cd <x> && <befehl>` verschluckt den Fehlschlag des `cd`, der naechste Befehl scheitert dann scheinbar grundlos. Unberuehrt, weil selbstlokalisierend: `Agenten/Routinen/*.ps1` (`$PSScriptRoot`), die Cron-Wachen (`Path(__file__)`), `omnitrade.cmd` (`%~dp0`), `git -C <repo>`. Nach dem Umstellen alle Anleitungen mit root-relativen BEFEHLEN mitziehen (nicht die Pfadangaben selbst aendern) und einen Nachweis aus dem neuen cwd fahren (z. B. `spiegelstand.py` -> "N von N byte-gleich").
+
 - **`hermes` aus einer windows-mcp-Sitzung stirbt mit `_thread`/`f-string`-Tracebacks**
   (`Fatal Python error: init_import_site`, `module '_thread' has no attribute
   'start_joinable_thread'`)? Der Interpreter ist nicht defekt — in der aufrufenden
@@ -1161,6 +1166,7 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   Schluessel dagegen 403 mit der OpenCode-Free-Meldung. Ein 403 aus einem Aufruf OHNE
   Schluessel beweist nichts ueber den Weg.
 - **`patch` und `write_file` auf `config.yaml` sind gesperrt** („Refusing to write to Hermes config file", bei der AppData-Config zusaetzlich `HERMES_WRITE_SAFE_ROOT`). Zwei Wege bleiben, und sie sind nicht gleichwertig: `hermes config set …` fuer den EINZELNEN Wert (auch fuer Listen — der Wert wird als YAML/JSON geparst, `'[{"provider":"omniroute","model":"auto/best-coding"}]'` funktioniert), und ein Wegwerf-Skript unter `Agenten/Hermes/cache/`, das die Datei binaer liest, chirurgisch ersetzt und zurueckschreibt — fuer eine Zusammenfuehrung mit mehreren Hunks. Das Skript ist dort das BESSERE Mittel, weil `hermes config set` die Datei neu schreibt und dabei den Kommentar-Schluss abschneidet (naechste Falle). Fuer das Skript gelten dieselben Regeln wie fuer jede Textaenderung: Zeilenenden binaer feststellen (`b"\r\n" in raw`) und erhalten, je Ersetzung `count == 1` asserten, den NEUEN Text vor dem Schreiben mit `yaml.safe_load` pruefen, vorher `.bak-JJJJMMTT`.
+- **`hermes config set`/`unset` kann zuerst den mehrminutigen Launcher-Schwanz fahren - nie mit eigenem Zeitlimit im Vordergrund aufrufen.** Ein Aufruf kann Node-Abhaengigkeiten, TUI, Web-UI und Desktop-App bauen (mehrere Minuten), BEVOR er den Wert setzt. Kappt das Werkzeug-Zeitlimit den Lauf, bleibt die Schwanz-Obligation `installs/<hash>/source-completion-pending` scharf: ab da faehrt JEDER `hermes`-Start erst diesen Schwanz, die Desktop-App bekommt in ihrem 90-s-Fenster keinen Backend-Port und laeuft in eine Bootschleife, waehrend der Gateway aus bleibt. Deshalb: den Wert byte-genau per Skript setzen (siehe unten) oder den Aufruf losgeloest starten und im Log nachsehen - nie "schnell noch eben" im Vordergrund mit Timeout. Reparatur des scharfen Schwanzes: `hermes-maintenance`, Abschnitt "Abgebrochener Update-Schwanz".
 - **`hermes config set` schneidet den Kommentar-Schluss der Datei ab.** Es schreibt die ganze Datei neu; ein Dokumentationsblock am Dateiende (Beispiele fuer `security:`, `fallback_model:`) ist danach weg — funktional harmlos, aber eine stille Aenderung an der Datei des Nutzers. Nach **jedem** `config set` diffen und den Block zurueckholen (`Agenten/Hermes/cache/config-schluss-wiederherstellen.py --tun`), sonst waechst bei jeder Aenderung eine unsichtbare Differenz. Die Aenderung selbst sieht im Diff wie eine Zeilenersetzung aus — genau pruefen, ob noch mehr fehlt. **Rueckholquelle:** `hermes config set` legt vor dem Schreiben ein Backup unter `backups/config/config.yaml.good.<zeitstempel>` an — den fehlenden Block daraus byte-genau (CRLF erhalten) an die Datei anhaengen, dann `diff` gegen die Sicherung: er darf exakt die eine gewollte Zeile zeigen.
 - **Der Kommentar-Schluss fehlt auch bei PROFIL-Configs** (`profiles/<name>/config.yaml`),
   nicht nur im Hauptprofil (gemessen: 38 Zeilen in 6 Profilen). Dort ist "Block anhaengen"

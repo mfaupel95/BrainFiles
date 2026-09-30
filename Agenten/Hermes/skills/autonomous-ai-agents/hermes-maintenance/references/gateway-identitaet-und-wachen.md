@@ -127,6 +127,43 @@ Gateway nicht und startet im Takt weiter neu. Immer BEIDE Namen suchen -
 `ProcessName -in @('python','pythonw')` - und die Wache danach einmal von Hand
 laufen lassen: sie muss still bleiben (exit 0, keine neue Logzeile).
 
+**(d) Ein Muster, das nur den MODULNAMEN fordert, trifft jeden Unterbefehl.**
+Die Wache nahm als zweite Startform `run_module\('hermes_cli\.main'` - das trifft
+JEDEN `runpy`-Start des Hauptmoduls, auch den **Dashboard**
+(`sys.argv = ['…main.py', 'dashboard', '--no-open', …]`). Solange der Dashboard
+lief, hielt die Wache ihn fuer den Gateway und startete nichts: **2,5 h Ausfall
+unbemerkt**, waehrend `gateway_state.json` weiter `running` meldete und die
+Control-Pipe fehlte. Das Muster muss den UNTERBEFEHL fordern und den Nachbarn
+ausschliessen:
+
+    if ($c -match 'hermes_cli\.main gateway run') { return $true }
+    if ($c -match 'run_module\(''hermes_cli\.main''' -and $c -match "'gateway'" `
+        -and $c -notmatch "'dashboard'") { return $true }
+
+Gegenprobe VOR dem Einbau: denselben WMI-Filter von Hand fahren und die Treffer
+AUFLISTEN. Steht ein fremder Dienst darin (Dashboard, TUI-Backend, Agent), ist
+das Muster zu breit - und die Wache wird genau in dem Moment blind, in dem sie
+gebraucht wird.
+
+**(e) Das Selbstzeugnis kann luegen - Frische vor PID glauben.**
+`gateway_state.json` meldete `gateway_state: running` mit einer PID, die laengst
+tot war: wird der Prozess hart gekillt (SIGKILL/OOM/Kill durch einen Nachfahren),
+schreibt kein Exit-Pfad den Zustand fort, und die Datei bleibt auf dem letzten
+Stand stehen. Deshalb VOR dem PID-Glauben zwei Zeilen: Alter von `updated_at`
+(Herzschlag, gegen den SCHREIBRHYTHMUS gerechnet) und `Get-Process -Id <pid>`.
+**Die Frische-Grenze nicht raten — der Gateway schreibt seinen Stand gemessen nur alle
+~7 Minuten** (`updated_at` 16:05:13 -> 16:12:36). Eine 600-s-Grenze erklaerte damit einen
+gesunden, nur schreibtraegen Dienst fuer tot, und der Waechter startete im 12-Minuten-Takt
+einen zweiten (Logzeile "kein Gateway-Prozess - Neustart ausgeloest", obwohl er lief);
+mit 1800 s bleibt er still, und die Antwortpruefung (Control-Pipe ODER Port) traegt das
+Urteil ohnehin mit. Wer eine Frische-Pruefung in eine BESTEHENDE Wache einbaut, misst den
+Rhythmus vorher aus den Zeitstempeln der Datei selbst — sonst schliesst der Fix eine
+Luecke und reisst gleich eine neue auf. Ohne sie ist "der Zustand
+sagt running" keine Messung, sondern eine Behauptung. Der harte Kill hinterlaesst
+in `logs/gateway.log` die Zeile `exited UNCLEANLY (no exit path ran - SIGKILL /
+OOM / VM death, or a process kill issued by the agent or one of its descendants)`
+mit `last_heartbeat_at` - das ist der Zeitpunkt, ab dem die Datei nicht mehr gilt.
+
 **Zaehlen, nicht glauben.** Ob eine Prozesswache in einer Schleife haengt, verraet
 nicht die einzelne Logzeile ("kein Prozess - Neustart ausgeloest" liest sich
 richtig), sondern die ZAHL der Neustarts gegen die Takte im selben Zeitraum.
@@ -175,6 +212,18 @@ gehoert zum Rollback der Tool-Tauschaktion und bleibt unangetastet.
   `git diff --cached --numstat` zeigt, was wirklich drin liegt. Bei einem
   `Write`-Fehlschlag (write_file verweigert ohne vorheriges Lesen) meldet `git add`
   sonst still die ALTE Fassung als aktuell.
+- **Eine Datei mit fremden ZEILEN laesst sich nicht per `git add <pfad>` sauber committen.**
+  `hermes config set` schreibt die GANZE `config.yaml` neu und nimmt dabei mit, was eine
+  parallele Sitzung dort schon geaendert hatte (im Diff nicht unterscheidbar von der eigenen
+  Zeile: `git diff --numstat` zeigte 5/2 fuer eine einzige neue Einstellung). Richtig ist ein
+  Blob-Commit: Eigen-Version bauen (HEAD-Fassung + eigene Zeilen, Zeilenende aus dem
+  ROHEN Text ableiten), dann
+  `git hash-object -w --path=<pfad> <eigen-datei>` -> `git update-index --cacheinfo
+  100644,<sha>,<pfad>` -> `git commit` OHNE Pfadangabe. Gegenprobe: `git diff --cached
+  --numstat` muss genau die eigenen Zeilen zeigen (hier 2/0). Der Arbeitsbaum behaelt die
+  fremden Aenderungen und bleibt danach korrekt als ` M` stehen. Gegenprobe vorher:
+  `diff <(git show HEAD:<pfad>) <(tr -d '\r' < <backup von vor dem Eingriff>)` zeigt, was
+  schon vor dem eigenen Schreiben anders war.
 
 ## 9. Abschluss (gehoert zum Auftrag)
 
