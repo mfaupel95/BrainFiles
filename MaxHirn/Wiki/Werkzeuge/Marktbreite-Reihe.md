@@ -52,13 +52,18 @@ gestartet; dieser Startwert klingt mit `(1-k)^Schritte` ab. Gemessen
 | Startwert-Gewicht | Abstand zur EMA200 bei 4 Paaren (alt → gereift) |
 |---|---|
 | 299 Kerzen: ~37 % | BTC **-1,24 → +4,52 %**, APT **-11,52 → -1,24 %**, ETH **-12,18 → -0,57 %**, SEI **-20,53 → -17,95 %** |
-| 600 Kerzen: ~2 % | wie 1200 Kerzen (Mittel 38,5 gegen 38,0 ueber 250 Tage, groesster Wert beide 100 %) |
+| 600 Kerzen: ~2 % | wie 1200 Kerzen: ueber 250 Tage **identisch** (Mittel 12,8, Median 6,9, min 0,0, max 96,5) |
 
 Bei 299 Kerzen dreht der Startwert das **Vorzeichen** einzelner Paare. Die Reihe
-fuehrt deshalb EINE Regel: 600 Kerzen, immer. Gegenprobe, dass 600 reicht:
-`--fuellen --tage 250` und `--fuellen --tage 250 --ueberschreiben` liefern
-dieselben Werte (±1 Punkt, aus Rundung), und die Restabweichung waechst nicht mit
-dem Alter des Tages.
+fuehrt deshalb EINE Regel: 600 Kerzen, immer.
+
+Gegenprobe, dass 600 reicht (`Agenten/Hermes/cache/scratch/probe_breite_gegen.py`,
+Fenster 600 gegen 1200 ueber dieselben 250 Tage): Mittel, Median, kleinster und
+groesster Wert sind **gleich**. Auf einzelnen Tagen kippt trotzdem ein Paar — am
+2026-07-01 steht die Breite mit 600 Kerzen auf 6,9 %, mit 1200 auf 10,3 %, das ist
+1 von 29 Paaren genau an der EMA. Ein laengeres Fenster waere an dieser Stelle
+schaerfer, kostet aber die halbe Geschichte (30 Paare x 1200 Kerzen) und aendert
+die Richtungsaussage nicht.
 
 Beim ersten Nachrechnen (`--ueberschreiben`) wurde keine Live-Messung verworfen:
 der alte Wert bleibt als `live_alt` in der Zeile (plus `live_alt_unter`).
