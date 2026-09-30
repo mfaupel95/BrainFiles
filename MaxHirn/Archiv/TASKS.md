@@ -482,17 +482,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Routinen/gateway-waechter.ps1
 
 
-- [ ] **T-147 — Das Dashboard hat keine Wache**
-      Kontext: `hermes update` beendete den Lauf am 29.09.2026 mit `outcome: partial` und
-      `phase_error: "Could not restart every paused Windows gateway"`; der Gateway kam zurueck,
-      das Dashboard nicht (Port 9119 bis zum manuellen `Start-ScheduledTask Hermes_Dashboard`
-      tot). Der Gateway hat Wachen (Gateway-Waechter, gateway-identitaet-wache), das Dashboard
-      keine - ein Ausfall bleibt bis zur naechsten Anmeldung unbemerkt.
-      Naechster Schritt: Wache nach Hausmuster (`no_agent`, leere Ausgabe = nichts senden), die
-      die ANTWORT prueft (`http://127.0.0.1:9119/` = 200) und nur dann startet, wenn 60 s nach
-      dem Ausloesen kein Prozess da ist (der Dienst braucht ~45 s).
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/
 
 
 - [ ] **T-148 — Der Web-Bau des Dashboards bricht an fehlendem `vitest` ab**
@@ -2217,6 +2206,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-147 — Das Dashboard hat keine Wache**
+      Kontext: `hermes update` beendete den Lauf am 29.09.2026 mit `outcome: partial` und
+      `phase_error: "Could not restart every paused Windows gateway"`; der Gateway kam zurueck,
+      das Dashboard nicht (Port 9119 bis zum manuellen `Start-ScheduledTask Hermes_Dashboard`
+      tot). Der Gateway hat Wachen (Gateway-Waechter, gateway-identitaet-wache), das Dashboard
+      keine - ein Ausfall bleibt bis zur naechsten Anmeldung unbemerkt.
+      Naechster Schritt: Wache nach Hausmuster (`no_agent`, leere Ausgabe = nichts senden), die
+      die ANTWORT prueft (`http://127.0.0.1:9119/` = 200) und nur dann startet, wenn 60 s nach
+      dem Ausloesen kein Prozess da ist (der Dienst braucht ~45 s).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/
+      Erledigt 30.09.2026: Agenten/Hermes/scripts/dashboard-wache.py + Hermes-Cron 'dashboard-wache' (bf375a2ac65f, alle 15 min, no_agent, Telegram, leere Ausgabe = nichts senden). Prueft die ANTWORT (HTTP, jeder Statuscode) statt nur den Port, unterscheidet einen laufenden Bau von einem Haenger ueber zwei CPU-Messungen der Prozesskette (12 s Abstand), heilt per Stop-Process + Start-ScheduledTask, Bremse 30 min. Belege: 18 Tests gruen (test_dashboard_wache.py, mit Attrappen), Gegenprobe mit entferntem Bau-Zweig = 2 Tests rot, Cron-Lauf 'silent (empty output)' bei HTTP 200, Alarmrichtung mit --nicht-heilen an echten Daten gezeigt. Wiki: Betrieb/Wachen-und-Aufgaben.md + Lektionen/Wahrheit-pruefen.md 13.
 - [x] **T-133 — `Handel/historie.py` und `xperp/historie.py`: gleicher Modulname, Test rot**
       Kontext: `Agenten/Handel/tests/test_handelszentrale_bindung.py`
       (`NamensfalleTest`) verlangt, dass kein Modulname am Handel-Kopf auch in einem
