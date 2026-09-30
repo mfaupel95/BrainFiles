@@ -81,7 +81,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (`paperclipai onboard --yes --no-install-service`, danach `paperclipai run` und
       `paperclipai connect`), oder zunaechst nur `paperclipai doctor` als Trockenprobe.
       Angelegt: 2026-09-30 · Betrifft: `~/.paperclip`, Serverport
-- [ ] **T-254 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
+- [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
       Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
       Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
       Sperrgruende, davon zwei, die Max' Hand brauchen: `freigabe.erfuellt=false`
@@ -97,7 +97,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
 
-- [ ] **T-253 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
+- [ ] **T-255 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
       Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
       `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
       ['klassik_sma\\handeln.py', ... acht Eintraege]` ab - und damit auch die
@@ -721,22 +721,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/scripts/mcp-zombie-wache.py
 
-- [ ] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
-      Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
-      der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
-      im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
-      8081/8082/8083. Nachtrag 30.09.2026: Er macht ausserdem einen Test rot.
-      `test_freqtrade_bridge.LiveTest.test_lage_vom_echten_bot` faellt mit
-      `HTTP 401 bei /show_config`. Gemessen mit DENSELBEN Zugangsdaten aus
-      `user_data/config.json`: Port 8080 antwortet auf ping 200, auf show_config 401;
-      Port 8081 beides 200. Der Altlast-Container traegt also ein anderes Passwort im
-      Speicher als die Datei (gestartet 30.09. 19:51 lokal, config.json vom 29.09.
-      18:43) - die Bridge liest die Datei und wird abgewiesen. Sonst ist die Suite
-      gruen: 1377 Tests, dieser eine Fehler, 9 uebersprungen.
-      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst
-      in `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
-      Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
 
 - [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
       Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
@@ -2814,6 +2798,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
+      Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
+      der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
+      im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
+      8081/8082/8083. Nachtrag 30.09.2026: Er macht ausserdem einen Test rot.
+      `test_freqtrade_bridge.LiveTest.test_lage_vom_echten_bot` faellt mit
+      `HTTP 401 bei /show_config`. Gemessen mit DENSELBEN Zugangsdaten aus
+      `user_data/config.json`: Port 8080 antwortet auf ping 200, auf show_config 401;
+      Port 8081 beides 200. Der Altlast-Container traegt also ein anderes Passwort im
+      Speicher als die Datei (gestartet 30.09. 19:51 lokal, config.json vom 29.09.
+      18:43) - die Bridge liest die Datei und wird abgewiesen. Sonst ist die Suite
+      gruen: 1377 Tests, dieser eine Fehler, 9 uebersprungen.
+      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst
+      in `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
+      Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      **Erledigt 2026-09-30.** Max hat den Container gestoppt (`freqtrade`, Port 8080, SampleStrategy): `docker ps -a` zeigt 'Exited (137)' nach 22 Minuten, die drei echten Bots (8081-8083) laufen weiter. Der Live-Test der Bridge ist damit uebersprungen statt rot (`test_freqtrade_bridge`: OK, skipped=1; vorher HTTP 401 bei /show_config). Ursache des Fehlers gemessen: derselbe Zugang aus user_data/config.json antwortete auf Port 8080 mit ping 200 / show_config 401, auf Port 8081 mit beides 200 - der Altlast-Container trug ein anderes Passwort im Speicher. In bots_starten.sh als Altlast vermerkt (er wird dort nicht gestartet). Commits 266a5a6 und der folgende.
 - [x] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
       Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
       handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
@@ -2834,7 +2835,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
       Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
       Agenten/Handel/moondev_marktlage/wachen.json
-      **Erledigt 2026-09-30.** Weg B gebaut (Entscheidung Max): neue Spur Agenten/Handel/omnitrade spiegelt die Position der Rust-Laeufe (Zustand net_quantity statt Orderliste, zwei Zeugen Statusdatei+PID, echter Verkaufspreis aus recent_orders) und fuehrt im Live-Zweig ueber den Haus-Kraken-Weg (boerse kraken, kraken_quote USDC, guthaben_waehrung USDC, mindest_guthaben 60) - omnitrade bleibt der Entscheider, kein Kraken-Adapter in Rust. Verdrahtet in dauerlauf.SPUREN, lage.HOLER (live_faehig), auswertung_alle.BOT_SPUREN, pruefe_ratschen, .gitignore. Beleg: 31 Tests gruen, Vorschau nennt vier Sperrgruende (u.a. 25.08 von 60 USDC frei), erster Zyklus 30.09. 21:26:20 'omnitrade (papier) ok', spiegelstand 38/38 byte-gleich. Commit 6197ac9, Wiki/Handel/omnitrade-Spur.md. Offen bleibt nur das Guthaben (T-253).
+      **Erledigt 2026-09-30.** Weg B gebaut (Entscheidung Max): neue Spur Agenten/Handel/omnitrade spiegelt die Position der Rust-Laeufe (Zustand net_quantity statt Orderliste, zwei Zeugen Statusdatei+PID, echter Verkaufspreis aus recent_orders) und fuehrt im Live-Zweig ueber den Haus-Kraken-Weg (boerse kraken, kraken_quote USDC, guthaben_waehrung USDC, mindest_guthaben 60) - omnitrade bleibt der Entscheider, kein Kraken-Adapter in Rust. Verdrahtet in dauerlauf.SPUREN, lage.HOLER (live_faehig), auswertung_alle.BOT_SPUREN, pruefe_ratschen, .gitignore. Beleg: 31 Tests gruen, Vorschau nennt vier Sperrgruende (u.a. 25.08 von 60 USDC frei), erster Zyklus 30.09. 21:26:20 'omnitrade (papier) ok', spiegelstand 38/38 byte-gleich. Commit 6197ac9, Wiki/Handel/omnitrade-Spur.md. Offen bleibt nur das Guthaben (T-256).
 - [x] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
       Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
       `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).

@@ -16,6 +16,15 @@
 #
 # Zugangsdaten der Weboberflaeche stehen allein in user_data/config.json und
 # werden hier NICHT angefasst.
+#
+# ALTFLAST (30.09.2026): Der Vorgaenger-Container `freqtrade` auf Port 8080
+# (SampleStrategy, kein Bot) ist gestoppt. Er faehrt nicht in diesem Skript und
+# wird hier auch nicht gestartet - der Zweck ist bis heute unbekannt (T-201).
+# Er machte den Live-Test der Bridge rot: mit DENSELBEN Zugangsdaten aus
+# user_data/config.json antwortete er auf ping 200, auf show_config aber 401,
+# waehrend die drei echten Bots (8081-8083) beides mit 200 beantworten - er
+# trug ein anderes Passwort im Speicher. Gestoppt ist der Test uebersprungen
+# statt rot.
 cd "$(dirname "$0")" || exit 1
 export MSYS_NO_PATHCONV=1
 UD="$(pwd -W 2>/dev/null || pwd)/user_data"
