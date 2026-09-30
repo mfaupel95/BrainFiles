@@ -71,3 +71,31 @@ geschrieben, aber KEIN Inhalt aus der Queue steht heute im Gedaechtnis (Stichpro
 Vorschlaege sind tagealt und treffen nicht mehr. Lehre: **ein Konsolidierungsvorschlag
 verfaellt mit seinem Anker.** Wer ihn spaeter freigibt, gibt nichts frei; die Vorschlaege
 muessen inhaltlich nachgezogen oder geloescht werden, nicht "freigegeben".
+
+## Abgearbeitet am 30.09.2026 (T-245)
+
+Alle 25 Vorschlaege (46 Einzeloperationen) wurden einzeln gegen das heutige Gedaechtnis
+geprueft. Ergebnis: **4 Inhalte fehlten wirklich und stimmen noch** - sie wurden von Hand
+nachgezogen, alles Uebrige verworfen (Anker tagealt, wiederholt Vorhandenes oder ein
+Arbeitsprotokoll, das kein Gedaechtnisinhalt ist):
+
+| Vorschlag | Befund | Pruefung |
+|---|---|---|
+| Stoerungen / Bedingung 5 | fehlte und war FALSCH: das Gedaechtnis nannte die Umstellung noch "OFFEN (Entscheidung Max)" | `scanner/wachen_pruefung.py`: `rollierender_ev` rechnet auf `teile_runden` (Handelsrunden), `rollierender_ev_alle` nur Diagnose - umgesetzt |
+| FOMO/Copy-Trading | fehlte | `Werkstatt/fomo-copy-trading-plan.md` liegt (8307 B), nichts gebaut |
+| Plan-Modus | fehlte | `Agenten/Hermes/skills/.archive/plan/SKILL.md` vorhanden |
+| scanner MFE/MAE | fehlte | Kopfzeile `handelsjournal.csv`: `mfe_pct,mae_pct,haltetage` |
+
+MEMORY.md 245.477 -> 247.972 Zeichen, USER.md 5.565 -> 6.266 (Antwortform bei
+"fuehre Skill X aus", Git-Zweige/EIN Arbeitszweig).
+
+Verworfen wurden die 25 Dateien aus `pending/memory/`; ihr Volltext liegt als Digest in
+`Agenten/Hermes/.sicherung/memory-queue-verworfen-20260930.md`. Zwei Vorschlaege waren
+beim Pruefen WIDERLEGT statt nur veraltet: der "Ollama-Store-Pfad"-Fehlalarm steht nicht
+mehr in `systempruefung.ps1`, und die HARDWARE-Vorschlaege nannten `E:`/`J:` als
+Kopieziele (heute `O:` und `Q:`).
+
+**Der Anker ist die Ursache, nicht der Inhalt.** Von 46 Operationen waren 28 `replace` -
+eine `replace`-Operation traegt `old_text`, und ein tagealter `old_text` trifft den
+heutigen Eintrag nicht mehr. Deshalb ist `/memory approve` fuer eine alte Queue
+wirkungslos, ohne einen Fehler zu melden (offen als T-247).

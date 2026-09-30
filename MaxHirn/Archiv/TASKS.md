@@ -64,6 +64,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
+- [ ] **T-247 - `/memory approve` uebernimmt keinen Inhalt aus der Pending-Queue**
+      Kontext: Am 30.09.2026 hat Max `/memory approve all` ausgefuehrt - MEMORY.md wurde
+      neu geschrieben, aber KEIN Vorschlag landete darin. Beleg aus T-245: von 46
+      Einzeloperationen trugen 4 wirklich fehlendes Wissen, keine davon stand danach im
+      Gedaechtnis. Ursache ist der ANKER, nicht der Inhalt - 28 der 46 Operationen waren
+      `replace` und tragen ein `old_text`; ein tagealtes `old_text` trifft den heutigen
+      Eintrag nicht mehr, der Vorschlag verfaellt, und `approve` meldet dabei keinen Fehler.
+      Naechster Schritt: Entscheidung von Max - entweder meldet `approve` verworfene
+      Vorschlaege SICHTBAR (Zahl + Liste der nicht treffenden Anker), oder die Queue wird
+      nie mehr per `approve` abgearbeitet, sondern einzeln geprueft (Vorgehen und Beleg in
+      Wiki/Lektionen/Memory-Verluste.md).
+      Angelegt: 2026-09-30
+      Betrifft: `Agenten/Hermes/pending/memory/`, `Agenten/Hermes/memories/MEMORY.md`
 - [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
       Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
       EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
