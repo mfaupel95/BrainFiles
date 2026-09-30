@@ -90,3 +90,58 @@ vor 07:30 Uhr morgens.
 ## 8. Beschlossen
 
 - **29.09.2026** — Max: Option 4, Reboot einplanen.
+
+## 9. Nachtrag 30.09.2026 — der Kreis kam wieder, diesmal mit Docker
+
+Der Reboot war noch nicht gefahren, da stand dieselbe Erschöpfung erneut da —
+aber mit einer anderen Ursache und einer härteren Folge: **der Docker-Daemon
+starb und nahm alle Container mit.**
+
+**Befund (02:20):** Commit frei 1,0 GB von 86,4 GB; `docker ps` antwortet leer,
+WSL meldet „keine Distributionen ausgeführt", die Auslagerungsdateien sind
+dabei fast leer (Commit ist *vergeben*, nicht *benutzt*). 146 Python-Prozesse
+halten 28,3 GB Commit bei 9 GB echtem RAM. **134 davon waren jünger als eine
+Stunde** — ein Spawn-Sturm, kein Altbestand.
+
+**Ursache (aus dem Gateway-Log, nicht geraten):**
+
+```
+02:19:01 MCP servers reconciled with config (default): added=['MCP_DOCKER']
+02:22:14 MCP servers reconciled with config (default): added=['MCP_DOCKER']
+02:26:31 … 02:31:30 …
+```
+
+Der Gateway gleicht die MCP-Server regelmäßig mit der Config ab. In der Config
+steht `MCP_DOCKER: docker`. Der Docker-Daemon war weg → dieser eine Server
+scheitert → **der Abgleich startet daraufhin jedes Mal ALLE sechs lokalen
+Gruppen neu** (kraken, windows-mcp, tooluniverse, mail, archiv, blender), je
+ein 4-MB-Starter und sein Kind, im Sekundentakt. Das frisst den Commit, und
+ohne Commit kann die WSL-VM nicht hochkommen — **ohne VM kein Docker, ohne
+Docker kein `MCP_DOCKER`: ein geschlossener Kreis.** Der Gateway selbst war
+der Erzeuger: eine PID mit 56 Kindern in zehn Minuten.
+
+**Kur (wirksam, gemessen):** nur die Prozesse mit `MCP-Server` in der
+Kommandozeile beendet — nicht den Gateway, nicht die Handels-Dauerläufe, nicht
+die MoonDev-Agenten. Ergebnis: **130 Prozesse weg, Commit 2,6 → 17 GB.** Danach
+Docker Desktop samt WSL neu gestartet (`wsl --shutdown`, dann die App) →
+`daemon=29.8.1`, Commit 24,3 GB, Python 146 → 23. Der MCP-Abgleich läuft weiter
+alle ~5 Minuten, startet aber nichts mehr nach (0 MCP-Prozesse).
+
+**Zwei Lehren, die über den Einzelfall hinausgehen:**
+
+1. **Eine scheiternde Abhängigkeit kann mehr kosten als die Abhängigkeit
+   selbst.** Ein einziger nicht startbarer MCP-Server hat über den
+   Abgleich-Mechanismus das ganze System in den Abgrund gezogen. Wer einen
+   Server einträgt, trägt auch seinen Ausfallweg mit ein.
+2. **Commit-Erschöpfung sieht nicht wie Speichermangel aus.** 20 GB RAM frei,
+   Auslagerungsdateien fast leer — und trotzdem kann kein Arbeitsprozess mehr
+   starten. `hermes mcp remove` scheiterte in dieser Lage mit
+   `pm: worker exited without a result`: das Werkzeug, das die Ursache beheben
+   sollte, konnte wegen der Ursache nicht laufen. **Der Ausweg ist dann nicht
+   das Werkzeug, sondern das gezielte Beenden.**
+
+**Nicht angefasst:** die drei Handels-Risikostufen, die MoonDev-Agenten, der
+Gateway (er lief weiter), und die 12 `docker-mcp`-Prozesse. Die
+kind-Kubernetes-Container von Docker Desktop (5 Stück) sind ebenfalls wieder
+hoch und fressen einen Teil des Commits zurück — sie sind ein Kandidat, aber
+noch nicht entschieden.

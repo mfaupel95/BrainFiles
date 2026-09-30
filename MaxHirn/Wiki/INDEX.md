@@ -55,6 +55,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |
 | [Betrieb/Docker-und-Sandbox.md](Betrieb/Docker-und-Sandbox.md) | Docker-Terminal, windows-mcp als Rueckfallweg, weitergeleitete Variablen |
+| [Betrieb/Systemleistung-2026-09-29.md](Betrieb/Systemleistung-2026-09-29.md) | Commit-Erschoepfung und MCP-Spawn-Sturm: Befund, Kur, zwei Lehren (30.09.2026 nachgetragen) |
 
 ### Handel
 
@@ -67,6 +68,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus |
 | [Handel/Backtest-Fundament.md](Handel/Backtest-Fundament.md) | Historische Daten 2021-2026, die ersten Zahlen je Spur, vier Fallen des Replays |
 | [Handel/Strategie-Kennzahlen.md](Handel/Strategie-Kennzahlen.md) | Formelblatt von Max: t-Statistik der Expectancy, Stop aus der MAE, was zeitbasiert NICHT geht |
+| [Handel/Freqtrade-Bots.md](Handel/Freqtrade-Bots.md) | Die drei Moon-Dev-Bots: was laeuft, der erste Backtest (alle negativ, Verlust = Gebuehr), die Loopback-Falle |
 
 ### Werkzeuge und Offenes
 
