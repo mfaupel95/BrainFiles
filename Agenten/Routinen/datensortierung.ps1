@@ -171,7 +171,12 @@ try {
         # wurde bis 30.09.2026 als Fund gemeldet (jedes Mal mit >100
         # Referenzen) und war der Ausloeser der langsamen Suche. Echte
         # Schluesseldateien im Arbeitsbaum bleiben gemeldet.
-        if ($f -match '\\site-packages\\|\\\.?venv[^\\]*\\') { continue }
+        # Dieselbe Kategorie taucht noch an drei weiteren, staendigen Orten auf
+        # (30.09.2026, 16 tagtaeglich wiederkehrende Treffer): das gebuendelte
+        # Git-Toolchain-OpenSSL (inkl. seiner .previous-git-*-Leiche nach einem
+        # abgebrochenen Update), der uv-Paketcache (ohnehin fluechtig, siehe
+        # sichern-ausser-haus.ps1) und die Test-Fixtures im fremden codex-rs-Repo.
+        if ($f -match '\\site-packages\\|\\\.?venv[^\\]*\\|\\tools\\\.?previous-git-[^\\]*\\|\\tools\\git-[^\\]*\\|\\cache\\uv\\archive-v0\\|\\codex-rs\\http-client\\tests\\fixtures\\') { continue }
         $kandidaten.Add([PSCustomObject]@{ Bereich = $b.Name; Root = $b.Root; Pfad = $f })
       }
     }
