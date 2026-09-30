@@ -1086,3 +1086,83 @@ Platte.
 **Offen:** die Commit-Grenze ist die einzige Groesse, die sich ohne Hardware
 aendern laesst und die direkt auf beide Abschaltungen wirkt (T-215); der
 Energiesparplan ist ein zweiter, unabhaengiger Verdacht (T-216).
+
+
+## Gateway-Ausfall 30.09.2026 — der Launcher konnte gar nichts starten
+
+Drei Dinge kamen zusammen; das erste ist die Speichernot (Abschnitt oben),
+das zweite ein Fehler im Startweg, das dritte ein Rueckschritt durch eine
+automatische Sammel-Routine.
+
+### Der Gateway starb an der Speichernot
+
+Der Gateway schreibt seinen eigenen Lebenslauf. Der Eintrag beim naechsten
+Start lautet woertlich:
+
+    Previous gateway life (pid=34732, started_at=2026-09-30T08:40:29Z)
+    exited UNCLEANLY (no exit path ran - SIGKILL / OOM / VM death ...)
+    last_heartbeat_at=2026-09-30T08:03:29Z
+
+Ab 10:33 versuchte der Waechter `MaxHirn-Gateway-Waechter` alle zwei Minuten
+einen Neustart ("kein Gateway-Prozess - Neustart ausgeloest") - und es
+passierte nichts. Das ist das eigentliche Raetsel gewesen.
+
+### Der Startweg: `WScript.Shell.Run` mit Fensterstil 0 startet keine Konsolenprogramme
+
+Gemessen mit zwei Proben aus `cscript` heraus (`WScript.Shell.Run`):
+
+| Ziel                    | Fensterstil | Prozess entsteht? |
+|-------------------------|-------------|-------------------|
+| `cmd /c echo ...`       | 0 (versteckt) | **nein**        |
+| `cmd /c echo ...`       | 2           | nein              |
+| `cmd /c echo ...`       | 3           | ja                |
+| `cmd /c echo ...`       | 7           | nein              |
+| `cmd /c echo ...`       | 8           | ja                |
+| `python.exe` (Konsole)  | 0           | **nein**          |
+| `python.exe` (Konsole)  | 1           | ja                |
+| `pythonw.exe` (GUI)     | 0           | **ja**            |
+
+In den Nein-Faellen meldet `sh.Run` **keinen Fehler** - der Aufruf kehrt sauber
+zurueck, der Prozess entsteht nicht. `sh.Exec` und das FileSystemObject
+arbeiten normal, es trifft also nur diesen einen Weg.
+
+Die Launcher-Zeile lautete
+`...\python.exe -m hermes_cli.main gateway run", 0, False` und konnte deshalb
+nie etwas starten. Sie steht jetzt auf `pythonw.exe` (GUI-Programm, laeuft mit
+Stil 0 versteckt). Der Waechter suchte zugleich hart nach `Name='python.exe'`
+und `ProcessName -eq 'python'` - er haette einen gesunden pythonw-Gateway
+nicht gesehen und im Zwei-Minuten-Takt weiter neu gestartet (dieselbe
+Fehlerklasse wie die 148 Neustarts vom 29.09.2026). Beide Stellen sind
+mitgezogen.
+
+Nachweis des Erfolgs: 11:32:35 startete der Launcher, 11:32:42 folgte der
+Kindprozess, 11:33:03 meldet `gateway_state.json` `running` mit allen vier
+Plattformen (a2a, telegram, photon, webhook) und zehn Bot-Peers; ein
+Waechterlauf danach schrieb keine Zeile mehr.
+
+### Warum die Reparatur vom Vortag weg war
+
+Um **22:15 am 29.09.** hatte eine Sitzung den Launcher bewusst auf
+`hermes-agent\venv\Scripts\python.exe` umgestellt, mit der Begruendung
+"tools-Python hat keine Deps als Einstieg". Um **03:20 am 30.09.** hat die
+Routine `fremdarbeit-einziehen` eine **aeltere Fassung derselben Datei** aus
+dem Arbeitsbaum committet (Autor "Andere Sitzung <fremd@local>") und damit die
+Reparatur stillschweigend zurueckgenommen. Die Routine holt bewusst alles, was
+laenger als 30 Minuten uncommittet liegt - eine Datei, die nur noch ALT im
+Arbeitsbaum steht, ist fuer sie von einer neuen Aenderung nicht zu
+unterscheiden.
+
+Zusaetzlich fehlten im `tools`-Python wieder alle Abhaengigkeiten (der
+Update-Lauf vom 29.09. hatte sie entfernt). Nachgeholt mit
+`tools\python-3.14.7...\python.exe -m pip install -e hermes-agent`; danach
+importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
+`hermes-agent\venv`, das ohnehin auf dasselbe Programm zeigt.
+
+### Negativbefunde derselben Pruefung
+
+- **Keine ASR-Regeln** in Windows Defender (`AttackSurfaceReductionRules_Ids`
+  leer), **kein** Controlled Folder Access, Echtzeitschutz an. Defender
+  blockiert den Skriptwirt also nicht - die Ursache liegt allein im Fensterstil.
+- **`Get-ScheduledTask -TaskName <name>` findet vorhandene Aufgaben nicht**
+  (erneut bestaetigt); verlaesslich sind `schtasks /query` und die
+  Aufzaehlung mit `Get-ScheduledTask | Where-Object TaskName -like '*Gateway*'`.

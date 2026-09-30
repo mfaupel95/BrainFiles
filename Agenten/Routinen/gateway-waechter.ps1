@@ -68,14 +68,14 @@ if (Test-Path $state_datei) {
         $st = (Get-Content $state_datei -Raw -Encoding UTF8 | ConvertFrom-Json)
         if ($st.pid -and $st.gateway_state -eq 'running') {
             $pr = Get-Process -Id $st.pid -ErrorAction SilentlyContinue
-            if ($pr -and $pr.ProcessName -eq 'python') {
+            if ($pr -and $pr.ProcessName -in @('python','pythonw')) {
                 $gw = @(Get-CimInstance Win32_Process -Filter "ProcessId=$($st.pid)")
             }
         }
     } catch { $gw = @() }
 }
 if (-not $gw) {
-    $gw = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+    $gw = @(Get-CimInstance Win32_Process -Filter "Name='python.exe' or Name='pythonw.exe'" -ErrorAction SilentlyContinue |
             Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway run|run_module\(''hermes_cli\.main''' -and
                            $_.CommandLine -notmatch '--profile' })
 }

@@ -63,3 +63,30 @@ der Neustart reißt den Aufrufer ab.
   Dashboard auf `200`, `hermes --version` meldet „Up to date".
 - Offen: 14 Orphan-Aliase (`<profil>.bat` für Profile, die nicht mehr
   existieren), ein lokaler `Dockerfile`-Unterschied im Checkout.
+
+
+## Der Launcher: `pythonw.exe`, nicht `python.exe` (30.09.2026)
+
+Der Launcher `gateway-service/Hermes_Gateway_2ef9d0b7.vbs` wird von
+`hermes update` **neu geschrieben** und dabei auf
+`tools\python-3.14.7...\python.exe` gesetzt. Das ist aus zwei Gruenden ein
+Fehler:
+
+1. `WScript.Shell.Run` mit Fensterstil 0 startet ein **Konsolen**programm gar
+   nicht - kein Prozess, keine Fehlermeldung. Der Gateway kann so nie starten
+   (gemessen, siehe Lektion 11 in `Lektionen/Windows-Umgebung.md`). Richtig ist
+   `pythonw.exe`.
+2. Nach jedem Update ist zu pruefen, ob das `tools`-Python seine
+   Abhaengigkeiten noch hat:
+   `tools\python-3.14.7...\python.exe -c "import pydantic_core, hermes_cli.main"`
+   -> `ModuleNotFoundError` heisst, die Installation ist unvollstaendig.
+   Nachziehen: `tools\python-3.14.7...\python.exe -m pip install -e hermes-agent`.
+
+Beides zusammen hat am 30.09.2026 den Gateway stundenlang stillgelegt: er starb
+an der Speichernot und konnte nicht neu starten, waehrend der Waechter alle
+zwei Minuten erfolglos "Neustart ausgeloest" protokollierte.
+
+**Nach jedem Update also zwei Handgriffe:** Launcher-Zeile auf `pythonw.exe`
+pruefen, und die Import-Probe des `tools`-Python. Ein Gateway, der laeuft,
+meldet sich in `Agenten/Hermes/gateway_state.json` mit `gateway_state:
+running` und allen vier Plattformen `connected`.

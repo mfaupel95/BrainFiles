@@ -183,3 +183,47 @@ volle Modell: `IgnoreNew`, `StartWhenAvailable`, `Hidden`, `ExecutionTimeLimit`)
 sie angelegt hat. Starten ebenfalls klassisch: `schtasks /run /tn <name>`. Vorlage:
 `Agenten/Routinen/ausserhaus-kopie-aufgabe.ps1`.
 
+
+
+## 11. `WScript.Shell.Run` mit Fensterstil 0 startet keine Konsolenprogramme (30.09.2026)
+
+Ein Launcher, der den Prozess "versteckt" starten soll, benutzt gern
+`sh.Run "programm argumente", 0, False`. Fuer ein **Konsolen**programm
+(`cmd.exe`, `python.exe`, `powershell.exe`) entsteht dabei **kein Prozess** -
+und `sh.Run` meldet trotzdem keinen Fehler. Der Aufruf kehrt sauber zurueck,
+das Skript laeuft weiter, nichts passiert. Gemessen:
+
+| Ziel | Stil 0 | Stil 1 | Stil 2 | Stil 3 | Stil 7 | Stil 8 |
+|---|---|---|---|---|---|---|
+| `cmd /c ...` | nein | ja | nein | ja | nein | ja |
+| `python.exe` | nein | ja | - | - | - | - |
+| `pythonw.exe` | **ja** | ja | - | - | - | - |
+
+Regel: **versteckt geht nur mit einem GUI-Programm** (`pythonw.exe`,
+`wscript`-freundliche Programme) oder mit einem der Stile 3/8 - und die zeigen
+ein Fenster. Wer ein Konsolenprogramm stumm starten will, nimmt `pythonw.exe`
+oder `sh.Exec` (das arbeitet mit versteckter Konsole und liefert die Ausgabe).
+
+Pruefen statt glauben: einen VBS-Einzeiler schreiben, der eine Datei schreiben
+laesst, und danach `Test-Path` darauf - **nicht** auf die Erfolgsmeldung von
+`sh.Run` vertrauen. Und: wer den gestarteten Prozess spaeter wiederfinden muss,
+muss **alle** Namen suchen - der Waechter des Hermes-Gateways suchte
+`Name='python.exe'`, der umgestellte Launcher startet aber `pythonw.exe`; er
+haette einen gesunden Gateway nicht gesehen und im Zwei-Minuten-Takt neu
+gestartet.
+
+## 12. Eine Sammel-Routine kann eine Reparatur zurueckdrehen (30.09.2026)
+
+`Routinen/fremdarbeit-einziehen.ps1` committet alles, was laenger als 30
+Minuten uncommittet im Arbeitsbaum liegt, unter dem Autor "Andere Sitzung".
+Fuer eine Datei, die im Arbeitsbaum nur noch **alt** ist (weil eine parallele
+Sitzung sie geaendert und committet hat, waehrend die alte Fassung liegen
+blieb), ist das von einer neuen Aenderung nicht zu unterscheiden: die Routine
+hat am 30.09. um 03:20 den Gateway-Launcher auf eine aeltere Fassung
+zurueckgesetzt und damit die Reparatur vom Vorabend (22:15) stillschweigend
+aufgehoben. Aufgefallen ist das erst, als der Dienst nicht mehr ansprang.
+
+Regel: **nach einer Reparatur sofort selbst committen** (unter 30 Minuten),
+sonst wandert sie entweder in eine fremde Meldung oder wird ueberschrieben.
+Und wenn eine Routine Dateien aus dem Arbeitsbaum einzieht, muss sie den
+Inhalt gegen HEAD pruefen, nicht nur die Zeit.
