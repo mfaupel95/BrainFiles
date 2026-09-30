@@ -1182,3 +1182,10 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
   (14,7 GB) und `llama-server.exe` (7 GB). Docker lief bei der Pruefung nicht.
 - **Schnellcheck bei 0xc000012d:** `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory`
   und `Get-Process | sort PagedMemorySize64 -desc | select -first 5`.
+
+## 30.09.2026 - C: entlastet (34 -> 69 GB frei)
+
+- Hermes.alt-20260916 (3,6 GB) nach Werkstatt/Ausgemustert/c-entlasten-20260930; npm-Cache geleert (pnpm-Store-DB defekt, unberuehrt).
+- `.cache/huggingface` (15 GB) und `.docker/models` (6,5 GB) nach O:/Modelle/_von-c, Junctions zurueck. Robocopy /MOVE laesst Symlinks liegen: neu angelegt.
+- Cinebench und PictureGuide (Store) entfernt. Docker lief dabei weiter (Shutdown griff nicht).
+- Rueckweg: Agenten/Routinen/einmalig-20260930-c-entlasten.ps1 -Rueckgaengig. Offen (Admin): Docker-VHD verkleinern, Auslagerung auf O:.
