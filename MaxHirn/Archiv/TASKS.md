@@ -60,6 +60,33 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
+      Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
+      `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
+      (1) **Kein Gebuehrenfeld**: `orb`, `orbk`, `scanner`, `moondev_signalwelle` und
+      `iv_wand` tragen in ihrer `wachen.json` ueberhaupt keinen Gebuehrenschluessel
+      (`grep gebuehr` in orbk/*.py findet nichts). Der Kosten-Wendepunkt rechnet sie
+      deshalb mit 0 % und nennt orb +0,07 %, orbk/mittel +0,01 %, orbk/hoch +0,03 %
+      "tragfaehig, haengt an der Gebuehrfreiheit (unter 0,4 %)". orbk ist aber
+      **ORB auf Kraken-Spot** und die gemessene Kraken-Gebuehr ist **0,600 % je Seite
+      = 1,2 % je Runde** (Fuellung 22.09.2026) - orbk ist damit um rund das 40-fache
+      tot, orb (OKX, ~0,1 %/Runde) in Basis ebenfalls.
+      (2) **orbk-Journal ohne Einsatz**: `orbk/handelsjournal.csv` fuehrt
+      `zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd` -
+      ohne Einsatzspalte sagt der Bericht "Ergebnis in Prozent: kein Einsatz im
+      Journal", 16 Runden lassen sich nicht in Prozent ausdruecken.
+      (3) **Papierzeilen ohne Gebuehr**: alle Papierbuecher melden "Kosten 0.00 %",
+      die echten 0.05 % (scanner), 0.39-0.50 % (xperp/swap) und 0.60 % (kraken) -
+      die Papiersummen sind BRUTTO und mit den Live-Zahlen nicht vergleichbar.
+      Naechster Schritt: (1) Gebuehr in die wachen.json von orb/orbk/scanner/
+      moondev_signalwelle/iv_wand eintragen (Kraken 0.006, OKX 0.0005), dann
+      `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
+      (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
+      (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
+                Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
+
 - [ ] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
       Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
       `0.0.0.0:8644` UND `[::]:8644` (Webhook-Plattform) - also aus dem lokalen Netz
