@@ -60,6 +60,55 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
+      Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
+      handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
+      `moondev_marktlage` auf handel_erlaubt=false, `mosaic` auf boersen ["okx"],
+      alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE`), die Freigabeseite
+      nicht: `omnitrade-exchange/src/` kennt nur `binance` und `okx`, und
+      `omnitrade-cli/src/commands/live.rs:33` weist jedes andere `--exchange` ab
+      ("Use 'binance' or 'okx'"). Bis dahin handelt NIEMAND auf Kraken.
+      Naechster Schritt: entscheiden, welcher Weg gebaut wird - (A) Kraken-Adapter
+      in Rust (`omnitrade-exchange/src/kraken.rs`: ExchangeStream/ExchangeInfo/
+      ExchangeTrading, HMAC-SHA512 + Nonce, Paar- und Preisregeln; braucht einen
+      EIGENEN Kraken-Schluessel, sonst kollidiert der Nonce-Zaehler mit dem
+      Haus-Pool) oder (B) Haus-Spur `omnitrade`, die `Werkstatt/omnitrade/status/
+      live.json` ueber `Agenten/Handel/omnitrade_bridge.py` liest und ueber den
+      bewaehrten `kraken/kraken.py` ordert.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
+      Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
+      Agenten/Handel/moondev_marktlage/wachen.json
+
+- [ ] **T-207 — mosaic prueft seine Boersen-Stops nicht nach (drei Stops waren storniert)**
+      Kontext: Am 30.09.2026 trugen die drei Kraken-Stops von mosaic (BTC/ETH/SOL,
+      rund 258 EUR) den Status `canceled`, waehrend `mosaic/zustand.json` weiter
+      `boersen_stop_fehlt: false` meldete. Gefunden nur ueber
+      `kraken/spot_stops.py` - mosaic hat keinen Abgleich. `scanner/boersenstops.py`
+      laeuft seit 28.09. im Live-Zyklus; mosaic, kraken und die Nautilus-Arme haben
+      nichts dergleichen. Gleiches Muster wie T-118 (26.09.2026, xperp).
+      Naechster Schritt: `scanner/boersenstops.py` auf die uebrigen Boersen-Spuren
+      uebertragen (Position -> `stop_algo_id`/`stop_txid` per `order_details` auf
+      `status == "open"` pruefen, Waisen melden), Vorschau als Standard.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/mosaic/handeln.py, Agenten/Handel/kraken/handeln.py,
+      Agenten/Handel/scanner/boersenstops.py
+
+- [ ] **T-208 — kraken-Buch fuehrt eine DOTEUR-Position, die es nicht gibt (und zwei SUIEUR-Waisenstops)**
+      Kontext: `kraken/zustand.json` fuehrt DOTEUR mit 45.9896983 DOT, das
+      Kraken-Konto hat 0.0000000000 DOT (BalanceEx, 30.09.2026). Umgekehrt liegen
+      an der Boerse zwei SUIEUR-Auftraege (stop-loss 0.9497 ueber 136.77266 und
+      take-profit 3.5266 ueber 137.87217), zu denen es keinen SUI-Bestand gibt
+      (0.00000 SUI) - Waisenauftraege. Aufgefallen ueber `kraken/spot_stops.py`.
+      Naechster Schritt: DOT-Position ueber `okxf.geschlossene_position` /
+      Kraken-Ledger aufklaeren und mit echtem Erloes ausbuchen (Muster:
+      `scanner/boersenstops.py`, `xperp/geister_nachziehen.py`); die zwei
+      SUIEUR-Auftraege vorher stornieren, sonst kann der Verkauf ins Leere laufen.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/kraken/zustand.json, Agenten/Handel/kraken/handeln.py
 - [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
       Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
       Kerzentage nach (`HEIL_TAGE`). War der Rechner laenger aus, bleibt eine
