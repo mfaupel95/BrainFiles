@@ -20,13 +20,32 @@
         powershell -NoProfile -ExecutionPolicy Bypass -File Routinen\einmalig-20260930-auslagerung.ps1
         powershell -NoProfile -ExecutionPolicy Bypass -File Routinen\einmalig-20260930-auslagerung.ps1 -Rueckgaengig
 
+    STAND 30.09.2026 12:29 - der Vorzustand hat sich geaendert:
+    Um 11:59 lief dieses Skript bereits einmal (Sicherung: 8192/8192 auf C:,
+    4096/16384 auf O:). Danach wurde von Hand umgestellt: C: steht auf
+    selbstverwaltet (0/0, aktuell 21 GB belegt), der Eintrag auf O: ist WEG.
+    Die Commit-Grenze liegt damit bei 84,5 GB - aber die 21 GB liegen auf C:,
+    das nur noch 19,3 GB frei hat: eine selbstverwaltete Datei waechst dort
+    unbegrenzt und fuellt das Laufwerk. Deshalb legt -Anlegen den Eintrag auf
+    O: neu an (114 GB frei) und C_FestMB pinnt C: wieder auf einen festen Wert.
+
     Danach ist ein NEUSTART noetig; erst dann greift die groessere Commit-Grenze.
+
+    AUSGEFUEHRT 30.09.2026 12:33: C: auf 8192/8192 festgelegt, O: auf
+    32768/32768 angelegt. Der O:-Eintrag kam ueber den REGISTRY-Weg
+    (HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\
+    PagingFiles = "C:\pagefile.sys 8192 8192" + "O:\pagefile.sys 32768 32768"),
+    weil New-CimInstance am UInt32-Typ scheiterte (siehe Setze_Seite). WMI zeigt
+    beide Eintraege, O: hat 114 GB frei. NEUSTART STEHT AUS - erst danach gilt
+    die Commit-Grenze von rund 103,7 GB statt 84,5 GB.
 #>
 [CmdletBinding()]
 param(
     [switch]$Testlauf,
     [switch]$Rueckgaengig,
-    [int]$ZielMB = 32768
+    [switch]$Anlegen,
+    [int]$ZielMB = 32768,
+    [int]$C_FestMB = 8192
 )
 
 $ErrorActionPreference = 'Stop'
@@ -82,12 +101,19 @@ function Sichere {
 function Setze_Seite($buchstabe, $anfangMB, $maxMB) {
     $vorhanden = Hole_Seite $buchstabe
     if ($vorhanden) {
-        $vorhanden.InitialSize = $anfangMB
-        $vorhanden.MaximumSize = $maxMB
+        $vorhanden.InitialSize = [uint32]$anfangMB
+        $vorhanden.MaximumSize = [uint32]$maxMB
         Set-CimInstance -InputObject $vorhanden
     } else {
+        # [uint32] ist PFLICHT: Win32_PageFileSetting.InitialSize ist UInt32, und
+        # ein Int32 aus der Parameteruebergabe loest "Typenkonflikt fuer die
+        # Eigenschaft InitialSize" aus. Mit $ErrorActionPreference='Stop' stirbt
+        # das Skript dort STILL - der Lauf am 30.09.2026 12:30 setzte deshalb nur
+        # C: und brach vor dem O:-Eintrag ab, ohne eine Zeile ins Log zu schreiben.
         New-CimInstance -ClassName Win32_PageFileSetting -Property @{
-            Name = "$buchstabe`:\pagefile.sys"; InitialSize = $anfangMB; MaximumSize = $maxMB
+            Name = "$buchstabe`:\pagefile.sys"
+            InitialSize = [uint32]$anfangMB
+            MaximumSize = [uint32]$maxMB
         } | Out-Null
     }
 }
@@ -124,19 +150,36 @@ if ($Rueckgaengig) {
 }
 
 $ziel = Hole_Seite 'O'
-if (-not $ziel) {
+if (-not $ziel -and -not $Anlegen) {
     "ABBRUCH: auf O: ist keine Auslagerungsdatei eingerichtet."
     "Dieses Skript vergroessert eine VORHANDENE Datei und legt keine neue an."
     "Erst von Hand eine Auslagerungsdatei auf O: anlegen, dann hier erneut."
+    "ODER mit -Anlegen aufrufen: dann wird der Eintrag auf O: angelegt"
+    "(gemessen 30.09.2026: O: hat 114 GB frei, C: nur 19 GB - die grosse"
+    "Auslagerungsdatei gehoert auf O:)."
     exit 5
 }
 
 Kopf "Was geaendert wird"
-"  O:\pagefile.sys   {0} / {1} MB  ->  {2} / {2} MB" -f $ziel.InitialSize, $ziel.MaximumSize, $ZielMB
-"  C:\pagefile.sys   unveraendert (bleibt fest auf 8192/8192)"
+if ($ziel) {
+    "  O:\pagefile.sys   {0} / {1} MB  ->  {2} / {2} MB" -f $ziel.InitialSize, $ziel.MaximumSize, $ZielMB
+} else {
+    "  O:\pagefile.sys   (kein Eintrag)  ->  NEU angelegt: {0} / {0} MB" -f $ZielMB
+}
+$cjetzt = Hole_Seite 'C'
+if ($C_FestMB -gt 0 -and $cjetzt) {
+    "  C:\pagefile.sys   {0} / {1} MB  ->  FEST {2} / {2} MB" -f `
+        $cjetzt.InitialSize, $cjetzt.MaximumSize, $C_FestMB
+    "                    (C: hat nur wenig Platz; eine selbstverwaltete Datei"
+    "                     waechst dort unbegrenzt und fuellt das Laufwerk)"
+} elseif ($cjetzt) {
+    "  C:\pagefile.sys   unveraendert ({0} / {1} MB)" -f $cjetzt.InitialSize, $cjetzt.MaximumSize
+} else {
+    "  C:\pagefile.sys   (kein Eintrag - bleibt so)"
+}
 "  Commit-Grenze     {0:N1} GB  ->  rund {1:N1} GB" -f `
     ((Get-CimInstance Win32_OperatingSystem).TotalVirtualMemorySize / 1MB), `
-    ((63.7 + 8 + ($ZielMB / 1024)))
+    ((63.7 + ($C_FestMB / 1024) + ($ZielMB / 1024)))
 
 if ($Testlauf) {
     Kopf "Testlauf - es wurde NICHTS geaendert"
@@ -147,6 +190,10 @@ if ($Testlauf) {
 Kopf "Scharf"
 Sichere
 Set-CimInstance -InputObject (Get-CimInstance Win32_ComputerSystem) -Property @{ AutomaticManagedPagefile = $false }
+if ($C_FestMB -gt 0 -and $cjetzt) {
+    Setze_Seite 'C' $C_FestMB $C_FestMB
+    "  C: auf $C_FestMB / $C_FestMB MB festgelegt"
+}
 Setze_Seite 'O' $ZielMB $ZielMB
 "  O: auf $ZielMB / $ZielMB MB gesetzt"
 Zeige_Stand

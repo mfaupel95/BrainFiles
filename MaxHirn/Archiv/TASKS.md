@@ -61,6 +61,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-220 — Commit-Grenze nach dem Neustart pruefen (T-215 wirkt erst dann)**
+      Kontext: Am 30.09.2026 12:33 wurden C:\pagefile.sys auf 8192/8192 fest
+      gesetzt und O:\pagefile.sys auf 32768/32768 neu angelegt (Registry
+      PagingFiles, WMI zeigt beide Eintraege, O: hat 114,1 GB frei). Die
+      Commit-Grenze steht aber weiter bei 84,5 GB, weil Windows die
+      Auslagerungsdateien erst beim Start neu anlegt. Ohne Neustart bleiben die
+      296 Ereignisse 2004 (Resource-Exhaustion) und die Abstuerze 0xc000012d
+      (STATUS_COMMITMENT_LIMIT) vom 30.09. moeglich - Ursache war die feste
+      Grenze, nicht ein einzelnes Programm.
+      Naechster Schritt: nach dem Neustart `Get-CimInstance Win32_OperatingSystem`
+      lesen (TotalVirtualMemorySize muss rund 103,7 GB zeigen) und pruefen, dass
+      O:\pagefile.sys als 32-GB-Datei existiert. Danach den Lauf im Wiki
+      Betrieb/Sicherung-und-Laufwerke.md nachtragen.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/einmalig-20260930-auslagerung.ps1
+
 - [ ] **T-218 — `fremdarbeit-einziehen` darf keine veraltete Fassung committen**
       Kontext: Die Routine holt alles, was laenger als 30 Minuten uncommittet
       im Arbeitsbaum liegt. Eine Datei, die dort nur noch ALT steht, ist fuer
@@ -89,26 +105,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · Zuletzt: 30.09.2026
       Betrifft: Agenten/Routinen/gateway-waechter.ps1
 
-- [ ] **T-215 — Auslagerungsdatei vergroessern: die Commit-Grenze steht fest bei 75,7 GB**
-      Kontext: Der gemeinsame Nenner aller Abschaltungen ist Speichernot -
-      Windows meldet sie selbst, 296-mal in 14 Tagen (Ereignis 2004,
-      Resource-Exhaustion-Detector), mit `llama-server.exe` (LM Studio, bis
-      18,0 GB) und `com.docker.sailor.exe` (5,6-15,8 GB) an der Spitze. Am
-      25.09. folgte auf die 2004-Meldung um 16:12:55 der llama-server-Absturz
-      um 16:12:56 und der Rechner kam erst 16:36:48 zurueck. Am 30.09. sind
-      zwischen 10:12 und 10:46 einunddreissig Anwendungen mit `0xc000012d`
-      (`STATUS_COMMITMENT_LIMIT`) gestorben, darunter `dwm.exe` und der
-      Hermes-Gateway.
-      Der Riegel: `C:\pagefile.sys 8192 8192` ist FEST (Maximum = 8192) und
-      `O:\pagefile.sys 4096 16384` ist nie gewachsen (Peak 715 MB) - die
-      Commit-Grenze von 75,7 GB (63,7 GB RAM + 12 GB Auslagerung) konnte also
-      nicht nachgeben. O: hat 110 GB frei.
-      Naechster Schritt: `Routinen/einmalig-20260930-auslagerung.ps1` mit
-      erhoehten Rechten starten (Vorschlag O: 32768/32768, C: unveraendert).
-      Erst -Testlauf, dann scharf; -Rueckgaengig stellt 4096/16384 wieder her.
-      Danach einen Tag beobachten, ob Ereignis 2004 verschwindet.
-      Angelegt 30.09.2026. Betrifft C:\pagefile.sys, O:\pagefile.sys,
-      MaxHirn/Wissen/Hardware.md. Verwandt: T-004, T-151.
 
 - [ ] **T-216 — Energiesparplan steht auf "Energiesparmodus" (a1841308)**
       Kontext: `powercfg /getactivescheme` meldet am 30.09.2026 den Plan
@@ -2497,6 +2493,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-215 — Auslagerungsdatei vergroessern: die Commit-Grenze steht fest bei 75,7 GB**
+      Kontext: Der gemeinsame Nenner aller Abschaltungen ist Speichernot -
+      Windows meldet sie selbst, 296-mal in 14 Tagen (Ereignis 2004,
+      Resource-Exhaustion-Detector), mit `llama-server.exe` (LM Studio, bis
+      18,0 GB) und `com.docker.sailor.exe` (5,6-15,8 GB) an der Spitze. Am
+      25.09. folgte auf die 2004-Meldung um 16:12:55 der llama-server-Absturz
+      um 16:12:56 und der Rechner kam erst 16:36:48 zurueck. Am 30.09. sind
+      zwischen 10:12 und 10:46 einunddreissig Anwendungen mit `0xc000012d`
+      (`STATUS_COMMITMENT_LIMIT`) gestorben, darunter `dwm.exe` und der
+      Hermes-Gateway.
+      Der Riegel: `C:\pagefile.sys 8192 8192` ist FEST (Maximum = 8192) und
+      `O:\pagefile.sys 4096 16384` ist nie gewachsen (Peak 715 MB) - die
+      Commit-Grenze von 75,7 GB (63,7 GB RAM + 12 GB Auslagerung) konnte also
+      nicht nachgeben. O: hat 110 GB frei.
+      Naechster Schritt: `Routinen/einmalig-20260930-auslagerung.ps1` mit
+      erhoehten Rechten starten (Vorschlag O: 32768/32768, C: unveraendert).
+      Erst -Testlauf, dann scharf; -Rueckgaengig stellt 4096/16384 wieder her.
+      Danach einen Tag beobachten, ob Ereignis 2004 verschwindet.
+      Angelegt 30.09.2026. Betrifft C:\pagefile.sys, O:\pagefile.sys,
+      MaxHirn/Wissen/Hardware.md. Verwandt: T-004, T-151.
+      **Erledigt 2026-09-30 12:33 (Neustart steht noch aus).** Auslagerung neu gesetzt: C:\pagefile.sys FEST 8192/8192 (vorher selbstverwaltet 0/0, aktuell 21 GB belegt auf einem Laufwerk mit nur 19,3 GB frei - eine selbstverwaltete Datei waechst dort unbegrenzt und fuellt C:), O:\pagefile.sys NEU 32768/32768 (114,1 GB frei). Der O:-Eintrag kam ueber den Registry-Weg (HKLM\...\Memory Management\PagingFiles = C:\pagefile.sys 8192 8192 + O:\pagefile.sys 32768 32768), weil New-CimInstance still scheiterte: Win32_PageFileSetting.InitialSize ist UInt32, ein Int32 aus der Parameteruebergabe loest Typenkonflikt aus, und mit ErrorActionPreference=Stop stirbt das Skript dort OHNE Logzeile - der erste erhoehte Lauf setzte deshalb nur C:. Im Skript mit [uint32] repariert (Setze_Seite, mit Vermerk), -Anlegen und C_FestMB als Schalter ergaenzt, weil der Eintrag auf O: seit einer Handumstellung fehlte; Sicherung des Vorzustands unter Routinen/einmalig-20260930-auslagerung.sicherung.json, -Rueckgaengig unveraendert. WMI zeigt beide Eintraege, Testlauf ist jetzt idempotent. WIRKUNG ERST NACH NEUSTART (Commit-Grenze dann rund 103,7 statt 84,5 GB) - Nachpruefung als T-220.
 - [x] **T-213 — EURC fehlt in der gemeinsamen Kraken-Paartabelle (mosaic, moondev_marktlage)**
       Kontext: Die kraken-Spur liest ihre Quote jetzt selbst aus der API und
       nutzt damit auch EURC-Paare (ETHEURC, SOLEURC, XBTEURC). Die beiden

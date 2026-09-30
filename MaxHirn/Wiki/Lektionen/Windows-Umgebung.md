@@ -227,3 +227,28 @@ Regel: **nach einer Reparatur sofort selbst committen** (unter 30 Minuten),
 sonst wandert sie entweder in eine fremde Meldung oder wird ueberschrieben.
 Und wenn eine Routine Dateien aus dem Arbeitsbaum einzieht, muss sie den
 Inhalt gegen HEAD pruefen, nicht nur die Zeit.
+
+## 13. Ein CIM-Typkonflikt toetet ein Skript STILL (30.09.2026)
+
+`New-CimInstance -ClassName Win32_PageFileSetting -Property @{ InitialSize = 32768 }`
+scheitert mit **"Typenkonflikt fuer die Eigenschaft InitialSize"**: die Klasse
+will `UInt32`, die Parameteruebergabe liefert `Int32`. Mit
+`$ErrorActionPreference = 'Stop'` bricht das Skript dort ab - und weil die
+Zeile im erhoehten Fenster lief, dessen Ausgabe erst am Ende geschrieben wird,
+stand danach **keine einzige Fehlerzeile** im Log: der Lauf hatte C: schon
+gesetzt und endete vor dem O:-Eintrag, von aussen sah es aus wie Erfolg.
+
+Zwei Lehren daraus:
+
+- **`[uint32]` casten**, wenn eine CIM-Klasse einen Zahlentyp vorgibt; der
+  Fehler nennt den Typ nur in der Meldung, nicht im Feldnamen.
+- **Bei einer erhoehten Aktion die Ausgabe mitschreiben lassen** (Wrapper mit
+  `Start-Transcript` oder `Tee-Object`) und das Ergebnis danach am ZIEL messen
+  (`Get-CimInstance Win32_PageFileSetting`), nicht am Exitcode. Ein Exitcode 0
+  des Starters sagt nur, dass der UAC-Dialog bestaetigt wurde.
+
+Auslagerungsdateien: der autoritative Weg ist die Registry
+`HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management` ->
+`PagingFiles` (`REG_MULTI_SZ`, je Zeile `<Pfad> <AnfangMB> <MaximumMB>`) - das
+ist genau das, was die Windows-GUI schreibt. `Win32_PageFileSetting` zeigt den
+Stand danach, die Commit-Grenze aendert sich aber **erst nach einem Neustart**.
