@@ -60,6 +60,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
+      Kontext: Der Demo-Lauf (Werkstatt/omnitrade, OKX-Demo, BTCUSDC) hat keine
+      Wache. Stirbt er hart, bleibt in status/live.json "state: running" mit einer
+      toten PID stehen — die Handelszentrale erkennt das erst nach 5 Minuten als
+      "veraltet" (VERALTET_S=300). Genau das ist am 30.09.2026 passiert: der Lauf
+      (PID 76116, 83 Kerzen) endete um 08:22 mit Exit 1, nachdem er fuenfmal
+      0,00000002 BTC nachverkaufen wollte (OKX 51020 Mindestmenge — Restmenge nach
+      dem Verkauf); die Statusdatei behauptete danach weiter "running". Der
+      Rechenfehler selbst ist behoben (Commit 5fabc35, next_position()), die
+      Anzeige-Luege beim Ausstieg nicht. Ein zweiter Lauf darf nie entstehen —
+      zwei Laeufe ordern doppelt und schreiben in dieselbe Statusdatei.
+      Naechster Schritt: no_agent-Cron nach Hausmuster (Agenten/Hermes/scripts/,
+      leere Ausgabe = nichts senden): (a) Alter von status/live.json gegen 300 s,
+      (b) PID gegen die Prozessliste, (c) bei toter PID den Stand "beendet" melden.
+      NICHT selbst neu starten — das entscheidet Max.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/, Werkstatt/omnitrade/status/live.json,
+      Agenten/Handel/handelszentrale.py
+
 - [ ] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
       Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
       #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
