@@ -347,6 +347,19 @@ SPUREN = {
     # Orderweg (Robinhood Chain hat in diesem Haus keinen).
     "robinhood_radar": {"ordner": "robinhood_radar", "waehrung": "USD",
                         "skript": "handeln.py"},
+    # OMNITRADE (30.09.2026, Auftrag Max "nur noch omnitrade auf kraken handel
+    # erlaubt"): spiegelt die POSITION der Rust-Laeufe in Werkstatt/omnitrade
+    # (Statusdatei, gelesen ueber omnitrade_bridge.py) in ein eigenes Buch. Der
+    # Rust-Lauf entscheidet (sein .omni-Skript), diese Spur fuehrt aus - im
+    # Live-Zweig ueber den bewaehrten Kraken-Spot-Weg (boerse kraken,
+    # kraken_quote USDC), weil omnitrade selbst nur binance und okx kennt
+    # (live.rs:33 weist jedes andere --exchange ab). Weg B der Entscheidung
+    # vom 30.09.2026: kein Kraken-Adapter in Rust (zweiter Schluessel, zweiter
+    # Nonce-Zaehler neben dem Haus-Pool). Papier: handel_erlaubt=false.
+    # Einstieg nur, wenn die Statusdatei frisch ist UND die PID lebt (eine
+    # Leiche mit state=running lag am 30.09. zwei Stunden im Statusordner).
+    "omnitrade": {"ordner": "omnitrade", "waehrung": "USD",
+                  "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.

@@ -748,6 +748,15 @@ def spur_robinhood_radar():
                            "Robinhood-Radar (Wallet-Kohorte)")
 
 
+def spur_omnitrade():
+    # live_faehig: die Spur HAT einen Live-Zweig (Kraken-Spot ueber den
+    # gemeinsamen Kern, boerse=kraken in der wachen.json) - ohne dieses Flag
+    # meldet der Bericht "kein Live-Zweig (Papierpfad)" und Max liest eine
+    # Unwahrheit. Scharf ist er nicht: handel_erlaubt=false, freigabe offen.
+    return _spur_indikator("omnitrade",
+                           "omnitrade (Rust-Lauf gespiegelt)", live_faehig=True)
+
+
 # KLASSIK-SPUREN (30.09.2026): acht Kursregeln ueber klassik_regeln.py.
 KLASSIK_SPUREN = (
     ("klassik_sma", "Klassik SMA-Kreuz 20/50"),
@@ -1349,6 +1358,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
+    spur_omnitrade,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
