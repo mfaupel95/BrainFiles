@@ -61,19 +61,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
-- [ ] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
-      Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
-      `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).
-      Am 30.09.2026 um 18:32 hat Max `/memory approve all` ausgefuehrt; MEMORY.md
-      wurde neu geschrieben, aber KEIN Inhalt aus der Queue steht heute im
-      Gedaechtnis (Stichproben "OKX-Schluessel 19.09.2026 erneuert" und
-      "841 Zeilen" fehlen beide). Die Anker der Vorschlaege sind tagealt und
-      treffen nicht mehr - ein Vorschlag verfaellt mit seinem Anker.
-      Naechster Schritt: je Vorschlag pruefen, ob der Inhalt heute noch fehlt
-      und noch stimmt, dann von Hand in MEMORY.md nachziehen; den Rest loeschen
-      (nicht "freigeben").
-      Betrifft: `Agenten/Hermes/pending/memory/`, `memories/MEMORY.md`
-      Angelegt: 2026-09-30
 
 
 
@@ -2707,6 +2694,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
+      Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
+      `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).
+      Am 30.09.2026 um 18:32 hat Max `/memory approve all` ausgefuehrt; MEMORY.md
+      wurde neu geschrieben, aber KEIN Inhalt aus der Queue steht heute im
+      Gedaechtnis (Stichproben "OKX-Schluessel 19.09.2026 erneuert" und
+      "841 Zeilen" fehlen beide). Die Anker der Vorschlaege sind tagealt und
+      treffen nicht mehr - ein Vorschlag verfaellt mit seinem Anker.
+      Naechster Schritt: je Vorschlag pruefen, ob der Inhalt heute noch fehlt
+      und noch stimmt, dann von Hand in MEMORY.md nachziehen; den Rest loeschen
+      (nicht "freigeben").
+      Betrifft: `Agenten/Hermes/pending/memory/`, `memories/MEMORY.md`
+      Angelegt: 2026-09-30
+      **Erledigt 2026-09-30.** 25 Vorschlaege aus background_review (46 Einzeloperationen, 09.-24.09.2026) einzeln geprueft. Nur 4 Inhalte fehlten wirklich und stimmen noch, von Hand nachgezogen: (1) Bedingung 5 rechnet auf HANDELSRUNDEN - in scanner/wachen_pruefung.py nachgemessen (rollierender_ev aus teile_runden, rollierender_ev_alle fuer Diagnose), der alte Memory-Satz 'OFFEN (Entscheidung Max)' war damit falsch; (2) FOMO/Copy-Trading (Plan Werkstatt/fomo-copy-trading-plan.md, 8307 B, nichts gebaut); (3) Plan-Modus (skills/.archive/plan/SKILL.md vorhanden); (4) scanner-Journal fuehrt mfe_pct/mae_pct/haltetage (Kopfzeile gemessen). MEMORY.md 245.477 -> 247.972 Zeichen. Dazu 2 Nutzer-Eintraege in USER.md (5.565 -> 6.266): Antwortform bei 'fuehre Skill X aus', Git-Zweige/EIN Arbeitszweig. Alles Uebrige verworfen (Anker tagealt, wiederholte Vorhandenes, Arbeitsprotokoll); 25 Dateien aus pending/memory/ geloescht, Volltext-Digest Agenten/Hermes/.sicherung/memory-queue-verworfen-20260930.md. Widerlegt beim Pruefen: der 'Ollama-Store-Pfad'-Fehlalarm steht nicht mehr in systempruefung.ps1.
 - [x] **T-246 - Wache fuer Memory-Verluste (Cron)**
       Kontext: Ein `replace` mit falsch gewaehltem `old_text` loescht einen
       fremden Eintrag vollstaendig; bemerkt hat es am 30.09.2026 erst eine Suche
