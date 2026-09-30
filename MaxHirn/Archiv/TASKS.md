@@ -60,6 +60,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
+      Kontext: Die Wache vom 30.09.2026 (`Agenten/Hermes/scripts/dateischwund-wache.py`,
+      Cron `dateischwund-wache`) bewacht NUR `Agenten/Hermes/scripts/` - dort sind die
+      sechs verschwundenen Testdateien beobachtet worden. Dasselbe Muster kann jeden
+      Ordner treffen, in dem kurzlebige Dateien entstehen: `Agenten/Handel/*`
+      (Spur-Tests), `Agenten/Bus/`, `Agenten/Routinen/`.
+      Naechster Schritt: Entscheidung von Max, welche Ordner dazukommen. Technisch ist
+      es ein weiterer Eintrag in der Ordnerliste (je Ordner Git-Soll + eigene
+      Merkliste); Kosten sind nur groessere Merkdateien, keine Laufzeit.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
+
 - [ ] **T-193 — Dauerlauf stirbt nach rund einem Zyklus an SIGTERM (Rueckgabe 143)**
       Kontext: Am 30.09.2026 waren zwischen 01:52 und 02:39 **alle drei Dauerlauf-Stufen
       tot** (Sperrdateien 52312/61436/42504, kein passender Prozess). Die Waechter-Aufgaben
