@@ -95,7 +95,25 @@ beim Pruefen WIDERLEGT statt nur veraltet: der "Ollama-Store-Pfad"-Fehlalarm ste
 mehr in `systempruefung.ps1`, und die HARDWARE-Vorschlaege nannten `E:`/`J:` als
 Kopieziele (heute `O:` und `Q:`).
 
-**Der Anker ist die Ursache, nicht der Inhalt.** Von 46 Operationen waren 28 `replace` -
-eine `replace`-Operation traegt `old_text`, und ein tagealter `old_text` trifft den
-heutigen Eintrag nicht mehr. Deshalb ist `/memory approve` fuer eine alte Queue
-wirkungslos, ohne einen Fehler zu melden (offen als T-247).
+**Der Anker ist die Ursache, nicht der Inhalt** - aber die Wache dagegen ist schon gebaut.
+28 der 46 Operationen waren `replace`, und eine `replace`-Operation traegt `old_text`.
+
+KORREKTUR 30.09.2026 (gemessen, nicht gelesen): die erste Fassung dieses Abschnitts behauptete,
+`/memory approve` melde nichts. Falsch. Beim EINLAGERN pinnt `tools/memory_tool.py:64` die volle
+getroffene Eintragung als `matched_entry`, und `apply_memory_pending` (Zeile 306-308) **verweigert**
+jede destructive Operation ohne Pin:
+
+```
+This destructive pending write predates entry pinning and cannot be verified;
+nothing was applied. Reject it and recreate the change.
+```
+
+`/memory pending` nennt dazu je Eintrag `unpinned legacy target - reject and recreate before
+approving`, und `approve` druckt `Failed:`-Zeilen samt ueberschriebenen Eintraegen. Sonde:
+`Agenten/Hermes/scripts/probe-memory-pinning.py` (baut denselben Store wie `/memory approve`);
+beide alten Formen werden verweigert, MEMORY.md bleibt byte-gleich.
+
+Damit ist der Fall vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit VOR dem Pin
+(09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch seine
+reinen `add`s. `approve all` hat nichts angewandt und das auch gesagt. Was wirklich fehlt, ist
+eine WACHE gegen das Verrotten der Queue (offen als T-247), nicht Code am `approve`.

@@ -64,19 +64,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-247 - `/memory approve` uebernimmt keinen Inhalt aus der Pending-Queue**
-      Kontext: Am 30.09.2026 hat Max `/memory approve all` ausgefuehrt - MEMORY.md wurde
-      neu geschrieben, aber KEIN Vorschlag landete darin. Beleg aus T-245: von 46
-      Einzeloperationen trugen 4 wirklich fehlendes Wissen, keine davon stand danach im
-      Gedaechtnis. Ursache ist der ANKER, nicht der Inhalt - 28 der 46 Operationen waren
-      `replace` und tragen ein `old_text`; ein tagealtes `old_text` trifft den heutigen
-      Eintrag nicht mehr, der Vorschlag verfaellt, und `approve` meldet dabei keinen Fehler.
-      Naechster Schritt: Entscheidung von Max - entweder meldet `approve` verworfene
-      Vorschlaege SICHTBAR (Zahl + Liste der nicht treffenden Anker), oder die Queue wird
-      nie mehr per `approve` abgearbeitet, sondern einzeln geprueft (Vorgehen und Beleg in
-      Wiki/Lektionen/Memory-Verluste.md).
+- [ ] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
+      Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
+      nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.
+      `tools/memory_tool.py:64` pinnt beim Einlagern die volle getroffene Eintragung als
+      `matched_entry`; `apply_memory_pending` (Zeile 306-308) VERWEIGERT jede destructive
+      Operation ohne Pin mit "This destructive pending write predates entry pinning and cannot
+      be verified; nothing was applied. Reject it and recreate the change." Und `/memory
+      pending` nennt je Eintrag "unpinned legacy target - reject and recreate before
+      approving", `_approve` druckt "Failed:"-Zeilen samt ueberschriebenen Eintraegen.
+      Sonde: `Agenten/Hermes/scripts/probe-memory-pinning.py` (baut denselben Store wie
+      `/memory approve`) - beide alten Formen werden verweigert, MEMORY.md danach byte-gleich
+      (247.972 Zeichen, gleiche mtime).
+      Damit ist T-245 vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit VOR dem Pin
+      (09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch
+      seine reinen `add`s. `approve all` hat also nichts angewandt und das auch gesagt.
+      Verbleibende echte Luecke: (a) eine Queue, die niemand liest, verrottet still - drei
+      Wochen lang hat kein Lauf ihren Zustand gemeldet; (b) ein `add` in einem Batch mit einer
+      veralteten `replace`-Operation geht mit ihr verloren (Atomaritaet des Batches).
+      Naechster Schritt: Entscheidung von Max - Queue-Wache bauen (Alter, Zahl, Zahl der
+      ungepinnten Eintraege; leere Ausgabe = nichts senden, an memory-verlust-wache.py
+      angehaengt oder eigener Cron), und/oder (b) als Upstream-PR melden statt lokal flicken
+      (der Checkout wird von `hermes update` zurueckgesetzt).
       Angelegt: 2026-09-30
-      Betrifft: `Agenten/Hermes/pending/memory/`, `Agenten/Hermes/memories/MEMORY.md`
+      Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
 - [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
       Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
       EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
