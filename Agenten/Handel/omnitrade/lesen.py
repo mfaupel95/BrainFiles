@@ -62,7 +62,10 @@ lebt_override = None
 def _lebt(pid):
     if lebt_override is not None:
         return bool(lebt_override(pid))
-    return lauf_modul.pid_lebt(pid)
+    # Mit Programmnamen: Windows vergibt PIDs neu, eine reine Existenzpruefung
+    # haelt einen toten Lauf fuer lebend (30.09.2026: PID 2024 gehoerte
+    # csrss.exe, der omnitrade-Lauf war 4,5 h tot).
+    return lauf_modul.pid_lebt(pid, "omnitrade-cli.exe")
 
 # Statusordner: Umgebungsvariable gewinnt, sonst der Klon in der Werkstatt.
 # Kein absoluter Pfad im Code - die Wurzel ist zwei Ebenen ueber Handel/.

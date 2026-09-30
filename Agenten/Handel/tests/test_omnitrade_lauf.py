@@ -133,6 +133,15 @@ class BeurteilungTest(unittest.TestCase):
         self.assertTrue(lauf.pid_lebt(os.getpid()))
         self.assertFalse(lauf.pid_lebt(999999))
 
+    def test_pid_lebt_verlangt_das_richtige_programm(self):
+        """Windows vergibt PIDs neu: eine lebende PID ist kein Beweis fuer einen
+        lebenden Lauf. Am 30.09.2026 gehoerte die PID aus einer Statusdatei
+        csrss.exe, der omnitrade-Lauf war 4,5 h tot - die Pruefung ohne Namen
+        meldete 'laeuft schon', der tote Lauf wurde nie neu gestartet."""
+        self.assertTrue(lauf.pid_lebt(os.getpid()))
+        self.assertFalse(lauf.pid_lebt(os.getpid(), "omnitrade-cli.exe"))
+        self.assertTrue(lauf.pid_lebt(os.getpid(), "python"))
+
     def test_main_exitcode_folgt_der_lage(self):
         """Exit 0 = laeuft, 1 = nicht - das ist die Schnittstelle fuer die .cmd
         und fuer einen Cron (leere Ausgabe ist hier NICHT das Signal)."""

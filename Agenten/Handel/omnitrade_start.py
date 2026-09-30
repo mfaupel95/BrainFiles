@@ -126,8 +126,14 @@ def zustand(name, symbol=None):
     if any(" live " in z and marke in z.replace("\\", "/") for z in zeilen):
         return True, "Prozess mit --status-file %s laeuft" % marke
     try:
-        u = lauf.beurteile(bruecke.lage(datei, veraltet_s=float("inf")),
-                         alt_grenze_s=float("inf"))
+        # KEIN `veraltet_s=inf` mehr (30.09.2026): mit unendlicher Altersgrenze
+        # galt eine 4,5 Stunden alte Statusdatei als lebender Lauf, und weil
+        # Windows die PID inzwischen neu vergeben hatte (sie gehoerte csrss.exe),
+        # meldete die Pruefung "laeuft schon" - der tote Lauf wurde nie neu
+        # gestartet. Jetzt gilt die Altersgrenze aus dem Kerzenabstand UND die
+        # PID muss zum Programm gehoeren.
+        u = lauf.beurteile(bruecke.lage(datei),
+                           lebt=lambda p: lauf.pid_lebt(p, "omnitrade-cli.exe"))
         return u["laeuft"], u["grund"]
     except Exception as e:  # pragma: no cover
         return False, "Pruefung fehlgeschlagen: %s" % e

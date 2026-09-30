@@ -110,8 +110,16 @@ def grenze_aus_datei(daten, pid=None):
     return altersgrenze_s(pid)
 
 
-def pid_lebt(pid):
-    """True, wenn genau diese PID in der Prozessliste steht. Nie werfen."""
+def pid_lebt(pid, name=None):
+    """True, wenn genau diese PID in der Prozessliste steht. Nie werfen.
+
+    `name` (optional) verlangt zusaetzlich, dass der Prozess dieses Programm
+    ist. WARUM DAS NOETIG IST (30.09.2026 gemessen): Windows vergibt PIDs neu.
+    Eine Statusdatei mit `state: running` und PID 2024 liess das Startwerkzeug
+    "laeuft schon" melden - PID 2024 gehoerte inzwischen `csrss.exe`, der
+    omnitrade-Lauf war seit 4,5 Stunden tot. Eine reine Existenzpruefung haelt
+    einen Wiederverwendungsfall fuer einen lebenden Lauf.
+    """
     try:
         pid = int(pid)
     except (TypeError, ValueError):
@@ -128,7 +136,11 @@ def pid_lebt(pid):
     # tasklist schreibt in der Konsolencodepage (nicht UTF-8) - die PID ist
     # ASCII, deshalb genuegt ein fehlertolerantes Dekodieren.
     text = (aus.stdout or b"").decode("utf-8", "replace")
-    return str(pid) in text
+    if str(pid) not in text:
+        return False
+    if name and str(name).lower() not in text.lower():
+        return False
+    return True
 
 
 def beurteile(lage=None, lebt=pid_lebt, alt_grenze_s=None, grenze_fuer=grenze_aus_datei):
