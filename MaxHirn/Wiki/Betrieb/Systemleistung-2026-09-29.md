@@ -146,18 +146,30 @@ kind-Kubernetes-Container von Docker Desktop (5 Stück) sind ebenfalls wieder
 hoch und fressen einen Teil des Commits zurück — sie sind ein Kandidat, aber
 noch nicht entschieden.
 
-## 10. Nachtrag 30.09.2026 (2) — derselbe Kreis, diesmal mit Kollateralschäden an Fremdsoftware
+## 10. Nachtrag 30.09.2026 (2) — derselbe Kreis, diesmal den ganzen Tag und mit Kollateralschäden an Fremdsoftware
 
-Derselbe Docker/MCP-Spawn-Kreis aus Abschnitt 9 trat am Nachmittag erneut auf
-(16:46–17:04) und legte diesmal per Fail-Fast **vier unbeteiligte Prozesse**
-lahm: `KrakenDesktop.exe` (3×), `Telegram.exe` (1×) und Hermes' gebündeltes
+Derselbe Docker/MCP-Spawn-Kreis aus Abschnitt 9 lief heute **nicht nur einmal
+nachmittags, sondern durchgehend seit 02:05 Uhr** weiter: Der Hermes-Gateway
+selbst ist laut eigenem Lebenszyklus-Protokoll (`Agenten\Hermes\logs\gateway.log`,
+`lifecycle_ledger`) zwischen 02:05 und 17:03 Uhr **26-mal unsauber gestorben**
+(„exited UNCLEANLY … SIGKILL / OOM / VM death") und wurde jedes Mal automatisch
+neu gestartet — im Schnitt alle 20-30 Minuten, den ganzen Arbeitstag über. Nach
+17:03 Uhr keine weiteren unsauberen Neustarts mehr: der Docker/WSL-Neustart
+(unten) hat den Kreis durchbrochen.
+
+Sichtbarster Ausschlag dieses Dauerzyklus war das Fenster 16:46–17:04, das
+diesmal per Fail-Fast **vier unbeteiligte Prozesse** lahmlegte:
+`KrakenDesktop.exe` (3×), `Telegram.exe` (1×) und Hermes' gebündeltes
 `python.exe` (1×) — belegt über die Ereignisanzeige (Application-Log,
 Event 1000 „Faulting Application"), alle im selben engen Zeitfenster, alle
 mit Exceptioncode `0xC0000409` (Telegram/Kraken) bzw. `0xC00000FD`
 (python.exe, STATUS_STACK_OVERFLOW — verwandter Fail-Fast-Pfad). Parallel
 riss es auch den manuellen `sicherung.ps1`-Testlauf (PID 19444) mit — eine
 zusätzliche WER-`OutOfMemoryException` für `powershell.exe` um 16:50:16 fiel
-in dasselbe Fenster.
+in dasselbe Fenster. Ein weiterer manueller Testlauf (Datensortierung, 15:37,
+Hintergrundprozess `bhtif4ert`) brach mitten im Lauf mit Exitcode 255 ab —
+ebenfalls erklärt durch denselben Dauerzyklus (Gateway-Neustart 15:32:58, nur
+5 Minuten vor Testbeginn), keine eigene Ursache im Sortierskript.
 
 **Wichtige Korrektur:** Damit ist die bisherige Vermutung widerlegt, die
 wiederkehrenden `3221225786`-Abbrüche von `MaxHirn-Sicherung`,
