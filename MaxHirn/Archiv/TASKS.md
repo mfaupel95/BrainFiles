@@ -60,6 +60,77 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+
+- [ ] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
+      Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
+      (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
+      Folge: `desktop promotion rename win-unpacked -> win-unpacked.previous`
+      scheiterte mit WinError 5 und `OSError: [Errno 28] No space left on
+      device`, der Update-Schwanz blieb liegen, der Desktop kam in eine
+      Bootschleife und das Gateway war von 14:20 bis 15:33 aus. Sofortmassnahme
+      war Aufraeumen (uv-Cache 9,2 GB, Temp 4,6 GB, Build-Reste 0,5 GB ->
+      35,9 GB frei, danach wieder 32,9 GB).
+      Naechster Schritt: entscheiden, ob eine Dauerreserve von ~30 GB auf C:
+      gehalten wird (Wache oder Aufraeumroutine vor jedem Update) oder ob die
+      Auslagerungsdatei von C: nach O: wandert (Skript
+      `Agenten/Routinen/einmalig-20260930-auslagerung.ps1`, noch nicht
+      ausgefuehrt, braucht Admin).
+      Angelegt: 2026-09-30
+      Betrifft: C:-Laufwerk, Agenten/Hermes/hermes-agent/apps/desktop,
+      Agenten/Routinen/einmalig-20260930-auslagerung.ps1
+
+- [ ] **T-232 - Launcher-Lauf nie mit eigenem Zeitlimit killen (Update-Schwanz-Falle)**
+      Kontext: `hermes config unset fallback_providers` lief am 30.09.2026 in
+      das 180-s-Limit des Werkzeugs und wurde gekillt - mitten in der
+      Selbstheilung des Launchers. Dabei wurde
+      `installs/<hash>/source-completion-pending` scharf gestellt (14:16). Ab
+      da fuhr JEDER Launcher-Start erst den mehrminutigen Update-Schwanz, der
+      Desktop bekam in seinem 90-s-Fenster keinen Backend-Port und lief in eine
+      Bootschleife (Log: "hermes: finishing an interrupted source update...").
+      Die Selbstheilung greift nach 6 Fehlversuchen nicht mehr und schweigt
+      15 min (COMPLETION_RETRY_BACKOFF_SECONDS).
+      Naechster Schritt: in den Skill hermes-maintenance aufnehmen (erledigt am
+      30.09.2026) UND Konfigurationsaenderungen nie ueber `hermes config set`
+      im Vordergrund, sondern per gezieltem Textersatz in config.yaml
+      (Zeilenende pruefen, `git diff --numstat`).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/hermes-agent/hermes_cli/venv_sync.py,
+      source_completion.py, Skill hermes-maintenance
+
+- [ ] **T-233 - terminal.cwd steht auf Agenten\Hermes statt auf der BrainFiles-Wurzel (gewollt?)**
+      Kontext: Beim Setzen der Kompression auf Standard (Commit d4429fb) lag
+      eine fremde Aenderung im Arbeitsbaum: `terminal.cwd` war von
+      `C:\Users\faupe\documents\BrainFiles` auf
+      `C:\Users\faupe\documents\BrainFiles\Agenten\Hermes` geaendert. Sie wurde
+      mitgenommen, weil eine Datei nicht teilbar ist. Werkzeuge und Sitzungen
+      starten damit kuenftig eine Ebene tiefer - der Wurzel-Aufrufer
+      (`omnitrade.cmd`) und die relativen Pfade der Hausregeln gehen von der
+      Wurzel aus.
+      Naechster Schritt: entscheiden, ob das so bleibt (Desktop-Einstellung
+      "Shell-Umgebung" -> Arbeitsverzeichnis) oder zurueck auf die Wurzel.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/config.yaml (terminal.cwd)
+
+- [ ] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
+      Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
+      als `preis/einstieg - 1` OHNE die Handelsrichtung. Bei einem SHORT war das
+      Vorzeichen damit verkehrt: eine Short-Runde, die im Ziel schloss, stand als
+      Verlust im Buch. Behoben am 30.09.2026 (`seite` aus der Einstiegszeile,
+      `vorz = -1` bei short; Test `tests/test_kosten_wendepunkt.RichtungTest`).
+      Gemessen an wavetrend ueber 5,7 Jahre: Trefferquote 54 % -> 33 %, Summe
+      +679 -> -513. Betroffen ist jede gemischt handelnde Spur - squeeze,
+      macd_mtf, supertrend und wavetrend haben rund 50 % Shorts je Buch - und
+      jede Auswertung, die auf diesem Modul aufsetzt.
+      Naechster Schritt: die veroeffentlichten Zahlen dieser Spuren mit dem
+      korrigierten Paarer neu fahren und ersetzen (Backtest-Tabellen in
+      `auswertung_alle.py`, die Kosten-Wendepunkt-Tabelle, die Vorher/Nachher-
+      Tabelle der Beruehrungsregel in Wiki/Handel/Backtest-Fundament.md). Bis
+      dahin gilt: Zahlen dieser Spuren aus der Zeit VOR dem 30.09.2026 sind
+      nach dem Vorzeichen zu pruefen, nicht zu zitieren.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/kosten_wendepunkt.py, auswertung_alle.py,
+      MaxHirn/Wiki/Handel/Backtest-Fundament.md
+
 - [ ] **T-229 — Rueckschau liest nur Claude-Transkripte**
       Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
       `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
