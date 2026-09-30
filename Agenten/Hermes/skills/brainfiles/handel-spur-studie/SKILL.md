@@ -132,11 +132,15 @@ historische Kerzen neu.
 
 ```bash
 cd Agenten/Handel
-python historie.py --auffuellen --instrumente BTC-USDC,ETH-USDC --takte 1H,4H
+python historie_binance.py --auffuellen --instrumente BTC-USDC,ETH-USDC --takte 1H,4H
 python replay.py --spur <spur> --lauf ganz        # ganze Historie
 python replay.py --spur <spur> --gegenprobe       # Kern gegen backtest_prognose.py
 python optimieren.py --spur <spur> --trocken      # Plan, rechnet nichts
+python historie_probe.py --okx                    # zweite Boerse als Gegenprobe
 ```
+
+Feed-Spuren (Marktquerschnitt) fahren mit `--feed` bzw. `--familie-c`, siehe
+`references/backtest-fundament.md`.
 
 Fuenf Regeln, ohne die jede Zahl wertlos ist (Einzelheiten, Werkzeugfallen und
 die Nachweisprozedur: `references/backtest-fundament.md`):
@@ -332,8 +336,12 @@ Weg — die Summen nebeneinanderstellen — misst ZWEI Ursachen in einer Zahl.
 - Rezept (Regeln, Testfixture, Befehle, Whitelist):
   `references/filter-studie-rezept.md`.
 - Historische Nachrechnung ueber Jahre statt Wochen, samt Parametersuche:
-  `references/backtest-fundament.md` (`historie.py`, `replay.py`, `optimieren.py`,
-  Ausgabe in `auswertung_alle.py` unter "Backtest (historisch)"). Dort auch der
-  Zuschnitt fuer **Spuren ohne Kerzenreihe** (Marktquerschnitt: Top-Movers,
-  Marktbreite, 1h-Welle, Funding) — mit den Fallen, die dort anders sind als im
-  Kerzen-Walk (`kurse` gegen `daten`, Quote- gegen Basisvolumen, eigene Familie).
+  `references/backtest-fundament.md` (`historie_binance.py`, `replay.py`,
+  `optimieren.py`, Ausgabe in `auswertung_alle.py` unter "Backtest (historisch)").
+  Dort auch der Zuschnitt fuer **Spuren ohne Kerzenreihe** (Marktquerschnitt:
+  Top-Movers, Marktbreite, 1h-Welle, Funding) — mit den Fallen, die dort anders
+  sind als im Kerzen-Walk (`kurse` gegen `daten`, Quote- gegen Basisvolumen,
+  eigene Familie C). Dazu die drei Befunde des 29.09.2026: der **Kill-Schalter
+  geht nie wieder auf** (Messung nur ueber `--setzen` in der Wachen-KOPIE), die
+  Gegenprobe gegen eine **zweite Boerse** (OKX-Tagesgrenze UTC+8!) und die
+  Grenze, dass **Ausstiege zum Kerzenschluss die Gewinner zu gut rechnen**.

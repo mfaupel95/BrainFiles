@@ -1,7 +1,10 @@
 # Spuren historisch nachrechnen (Backtest-Fundament)
 
-Werkzeuge: `Agenten/Handel/historie.py` (Daten), `replay.py` (Walk),
-`optimieren.py` (Parametersuche). Doku: `MaxHirn/Wiki/Handel/Backtest-Fundament.md`,
+Werkzeuge: `Agenten/Handel/historie_binance.py` (Daten; hiess bis 29.09.2026
+`historie.py`), `replay.py` (Walk, Familien A/B/C), `optimieren.py`
+(Parametersuche), `historie_probe.py --okx` (Gegenprobe gegen eine zweite
+Boerse), `moondev_historie.py` (Marktquerschnitt der Feed-Spuren), `auswertung_alle.py`
+(Abschnitt "Backtest (historisch)"). Doku: `MaxHirn/Wiki/Handel/Backtest-Fundament.md`,
 Spezifikation und Plan unter `Agenten/Handel/docs/{design,plans}/`.
 
 ## Warum es das gibt
@@ -20,11 +23,20 @@ addiert.
 
 ```bash
 cd Agenten/Handel
-python historie.py --stand                    # was liegt an Daten
-python historie.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H,1D
+python historie_binance.py --stand                    # was liegt an Daten
+python historie_binance.py --auffuellen --instrumente BTC-USDC,ETH-USDC,SOL-USDC --takte 1H,4H,1D
 python replay.py --spur squeeze --lauf ganz   # ganze Historie
 python replay.py --spur squeeze --gegenprobe  # Kern gegen backtest_prognose.py
 python optimieren.py --spur squeeze --trocken # Plan + Laufzeitschaetzung, rechnet nichts
+```
+
+Marktquerschnitt (Feed-Spuren, eigener Kerzenvorrat):
+
+```bash
+python moondev_historie.py --stunden 40 --takt 1H --faeden 6 --von 2021-01-01
+python replay.py --spur moondev_topmovers --feed --lauf ganz
+python replay.py --spur moondev_funding --familie-c --lauf ganz
+python historie_probe.py --okx                # zweite Boerse als Gegenprobe
 ```
 
 Datenquelle ist Binance (offen, kein Schluessel, 1H ab 2017). Sie ist ein
@@ -261,6 +273,92 @@ mit `KeyError` um — die Namensliste also VOR dem Datenholen pruefen und fehlen
 Zuordnungen ergaenzen, statt sie im Lauf zu entdecken. Kurse fuer den
 Zuschnitt kommen aus DERSELBEN Ablage wie der Rest (eine Quelle, ein Stand); ein
 zweiter Datenweg fuer den Mark-Preis waere ein zweiter Stand.
+
+## Der Kill-Schalter ist eine Sackgasse — `--setzen` hilft
+
+Gemessen am 29.09.2026: der Funding-Lauf endete nach **sechs Tagen** mit
+`kill_ausgeloest = true`, obwohl das Buch im Plus stand. Kein Einstellungsfehler,
+sondern der Bauart nach eine Sackgasse:
+
+`spur_buch.zyklus` kehrt bei gesetztem `kill` SOFORT zurueck und leert die
+Positionen. Der Kill rechnet aber auf der **Kapitalkurve** (Ruecklauf vom
+Hoechststand), und die erholt sich nur durch neue Trades — genau die sperrt der
+Kill. **Ein einmal ausgeloester Kill geht in keinem `spur_buch`-Buch wieder auf**,
+und betroffen ist jede Feed-Spur, nicht nur Funding. Im Betrieb faellt das nicht
+auf, weil der Mensch den Deckel von Hand hebt (xperp 21.09.2026: 40 -> 100).
+
+Fuer die Messung ueber den ganzen Zeitraum laeuft die Spur deshalb ein zweites
+Mal mit erhoehtem Deckel — **in der Kopie der Wachen**, nie in der echten:
+
+```bash
+python replay.py --spur moondev_funding --familie-c --lauf ohnekill \
+  --setzen kill_switch_gesamt_usd=1000000
+```
+
+`replay.buch_ordner(spur, lauf, setzen={...})` legt die Wachen-Kopie an und
+schreibt hinein, was gesetzt wurde (`_backtest_gesetzt`); die echte
+`<spur>/wachen.json` bleibt Byte fuer Byte gleich (Test `SetzenTest`, vergleicht
+die Quelle vor/nach). Wer den Deckel in der echten Wachen hebt, greift in den
+laufenden Betrieb ein — das ist ein anderer Vorgang und braucht Max' Entscheidung.
+
+## Grenze der Methode: Ausstiege zum Kerzenschluss
+
+Ausgestiegen wird zum SCHLUSS der Kerze, in der Stop oder Ziel beruehrt wurde —
+nicht zum Stop- oder Zielkurs. Ein Laeufer ueberschiesst sein Ziel dadurch
+deutlich (gemessen: ADA stand mit Ziel +12 % im Buch und wurde mit +48 %
+geschlossen). Die Gewinner sind also zu GUT gerechnet, und zwar in beiden
+Familien gleich: die Zahlen sind untereinander vergleichbar, aber nicht als
+Ertragserwartung zu lesen. Das gehoert in jede Antwort, die eine Backtest-Zahl
+nennt. Ein intrabar-Ausstieg waere die naechste Stufe.
+
+## Gegenprobe gegen eine ZWEITE Boerse (nicht gegen die Uhr)
+
+`historie_probe.py --okx` holt die Schlusskurse der groessten 50 Paare von OKX
+(oeffentlich, kein Schluessel) nach `daten/historie/okx_probe.json`;
+`GegenprobeBoerseTest` haelt sie gegen die eigene Tafel. Ergebnis: 50 Paare,
+alle innerhalb 5 %. Zwei Fehlversuche auf dem Weg — beide Fehler des VERGLEICHS,
+nicht der Daten, und beide haetten fast eine falsche Aussage ergeben:
+
+1. **Binance-Tageskerze gegen OKX-Ticker "jetzt":** vier Symbole lagen 10-11 %
+   auseinander (CELO/BERA/ONE/HBAR). Die Kerze war der Stand des Abrufs am
+   MORGEN, der Ticker der Stand am ABEND — der Vergleich prueft die Uhr.
+2. **Binance-1D gegen OKX-1D:** 0 von 50 trafen sich. OKX' Tageskerze beginnt um
+   00:00 **UTC+8**, Binances um 00:00 UTC; dieselbe Zahl "1D" bedeutet dort eine
+   andere Tagesgrenze.
+
+Richtig ist der Vergleich desselben ZEITPUNKTS: der Schluss der letzten
+**abgeschlossenen** Binance-Tageskerze gegen die OKX-STUNDENkerze, die auf
+dieser Grenze endet (`ts + 24 h`). Die laufende Tageskerze ist ausgenommen — ihr
+"Schluss" ist der Stand des Abrufs.
+
+CoinGecko, die Quelle der Spuren im Betrieb, antwortet von diesem Rechner HTTP
+403. Ein Test, der daran haengt, meldet SKIP **mit Grund** statt still zu
+bestehen. `daten/` ist komplett ungetrackt (132 MB), der Abzug also nicht
+versioniert — auf einem frischen Klon ist der Test deshalb ehrlich SKIP.
+
+## Die Schrittzahl haengt an `--mindest-symbole`
+
+Ab wie vielen Reihen ein Zeitpunkt als Schritt zaehlt, entscheidet die
+Schrittzahl: die 1h-Signalwelle liefert mit der Vorgabe 30 genau 21.628
+Schritte, mit 20 genau 50.337 — **und in beiden Laeufen dieselben 62 Runden**.
+Wer zwei Laeufe vergleicht, muss diese Zahl mitlesen; sonst sieht der
+Unterschied wie ein Datenfehler aus.
+
+## Der Einstiegsgrund im Journal ist ein Platzhalter
+
+Jede Einstiegszeile der `spur_buch`-Spuren traegt als `grund` den Satz
+"Der Grund, der im Journal steht." — auch in den ECHTEN Journalen (gemessen
+15.09.2026). Der Ausstiegsgrund (`ziel`/`stop`) ist echt; der Einstiegsgrund
+sagt nichts. Beim Auswerten nicht hineininterpretieren.
+
+## Zwei Sitzungen, eine Datei: Namenskollision
+
+Zwei Sitzungen bauten am selben Tag je eine Pruefklasse `GegenprobeTest` in
+DERSELBEN Testdatei. Die spaetere Definition verdeckt die fruehere **still** —
+eine der beiden Pruefungen lief nie, und die Suite war trotzdem gruen. Vor dem
+Zusammenfuehren zweier Sitzungen in einer Datei nach doppelten Definitionen
+suchen (`search_files` nach `^class ` und die Namen vergleichen) und jeder
+Pruefung ihren eigenen Namen geben. Gilt genauso fuer Funktionsnamen.
 
 ## Nicht nachrechenbar (mit Grund vermerken, nie schaetzen)
 
