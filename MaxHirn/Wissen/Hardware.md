@@ -1189,3 +1189,11 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 - `.cache/huggingface` (15 GB) und `.docker/models` (6,5 GB) nach O:/Modelle/_von-c, Junctions zurueck. Robocopy /MOVE laesst Symlinks liegen: neu angelegt.
 - Cinebench und PictureGuide (Store) entfernt. Docker lief dabei weiter (Shutdown griff nicht).
 - Rueckweg: Agenten/Routinen/einmalig-20260930-c-entlasten.ps1 -Rueckgaengig. Offen (Admin): Docker-VHD verkleinern, Auslagerung auf O:.
+
+## 30.09.2026 - Doppeltes bereinigt
+
+- Gemma-GGUF und Ollama-Blob (7,5 GB): GGUF durch NTFS-Hardlink auf den Blob ersetzt, O: +7,5 GB. Nicht `ollama rm`: drei Modelle teilen den Blob.
+- Wurzel-.bak und nul-Datei nach Werkstatt/Ausgemustert/wurzel-bak-20260930.
+- Sieben saubere Zweitklone aus Documents/GitHub nach Werkstatt/Ausgemustert/klon-doppel-20260930 (Repos/ bleibt fuehrend). Dreckige Klone (EasyCLIProxyAPI) unberuehrt.
+- Offen: Windows11-"(Kopie)"-Ordner (11 identisch, Maximilian und Native Instruments weichen ab, je ~1,3 GB), Repos/kraken-cli 3,4 GB.
+- C: frei aktuell ca. 84 GB.
