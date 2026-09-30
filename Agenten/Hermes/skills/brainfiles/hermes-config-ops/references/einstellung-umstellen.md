@@ -16,6 +16,9 @@ und der Dienst antwortete nicht.
 3. **Blast radius bestimmen.** `search_files` nach dem alten Wert in Hauptconfig UND
    `profiles/*/config.yaml`. Zwei Treffer je Datei sind normal (`api:` und `base_url:`);
    20 Profile heissen 40 Stellen - wer eine uebersieht, laesst eine halbe Umstellung zurueck.
+   Bei einem Aux-Auftrag ist der Radius kleiner als die Flotte: `grep -l '^auxiliary:'
+   profiles/*/config.yaml` zaehlt nur die Profile MIT Block - ein Profil ohne Block hat den
+   Standard schon und darf nicht angefasst werden.
 4. **Byte-sicher aendern** (Muster unten): Vorkommen ZAEHLEN, `yaml.safe_load` VOR dem
    Schreiben, Sicherung anlegen, danach CR == LF und `git diff --numstat` pruefen.
 5. **Nachweis fahren:** der Hermes-Befehl zeigt das Neue (`hermes moa list`),
@@ -28,6 +31,44 @@ und der Dienst antwortete nicht.
    - Kommentare und Presets, die nichts mit der Umstellung zu tun haben.
 7. **Buchhaltung:** offenen Task auf erledigt setzen MIT Nachweis, Fremdarbeit liegen
    lassen, committen, pushen.
+
+## Auf den Standard zuruecknehmen: `unset` statt Wert setzen
+
+Gilt, wenn das Ziel der VORGABEWERT ist ("ueberall auto", "nimm die Uebersteuerung
+raus"). Ein Wert, der den Standard ausspricht, ist eine zweite Wahrheit: er muss in
+jeder Datei gepflegt werden, kann veralten und macht aus einem Default eine
+Einstellung.
+
+    hermes config unset auxiliary.compression            # Hauptprofil
+    hermes -p <profil> config unset auxiliary.compression # je Profil
+
+Danach gilt der Standard aus `config_defaults.py` (`provider: auto`, `model: ""` =
+Hauptmodell). Pruefen, dass die Aufloesung greift - nicht, dass der Block weg ist:
+
+    hermes config get auxiliary.compression   # provider: auto / model: ''
+    hermes config check                       # exit 0
+
+Je Datei dieselbe Leiter wie bei jeder Massenaenderung:
+
+1. `.bak-JJJJMMTT` in `cache/scratch/` (Stufe 1).
+2. Restblock-Suche, die den Block INNERHALB von `auxiliary:` findet - nicht irgendwo:
+   `sed -n '/^auxiliary:/,/^[a-z]/p' <datei> | grep '^  compression:'` muss leer sein.
+   Ein `grep -c compression:` zaehlt sonst den gleichnamigen TOP-LEVEL-Block
+   (`compression: enabled/threshold`) mit und meldet faelschlich Reste.
+3. `git diff --numstat` JE Datei: erwartet sind wenige Zeilen (3/4 bis 6/10 fuer einen
+   entfernten Vier-Zeilen-Block). Der Ueberhang ist die vom Config-Schreiber
+   VEREINHEITLICHTE Einrueckung verschachtelter Listen (die `models:`-Liste eines
+   Providers bekommt zwei Spaces mehr) - inhaltlich nichts, aber es sieht nach mehr aus
+   als der eigenen Aenderung. Hunderte Zeilen heissen dagegen gekippte Zeilenenden.
+4. Kommentarverlust zaehlen: `grep -cE '^-[[:space:]]*#' <diff>` muss 0 sein (bzw. gleich
+   der Zahl der `+`-Kommentarzeilen) - `hermes config set`/`unset` schreibt die ganze
+   Datei neu und kann den Doku-Schluss abschneiden.
+5. Zeilenenden: `b.count(b'\n') == b.count(b'\r\n')` in den ROHEN Bytes (Hausformat CRLF).
+
+**Wirkung nicht ueberversprechen.** Belegt ist die AUFLOESUNG des Standards; ein echter
+Kompressionslauf ist der haertere Beleg und bleibt ein eigener Schritt. Eine LAUFENDE
+Sitzung kann ihren bereits aufgeloesten Aux-Client behalten - die Aenderung greift in
+neuen Sitzungen, nicht mitten in der alten.
 
 ## Byte-sicheres Muster (Konfigdatei)
 
@@ -83,3 +124,14 @@ POST 127.0.0.1:11434/v1/chat/completions  -> finish stop, content 206 Zeichen, 1
 Der Zustand vorher gehoert in den Bericht: `bonsai` als Aggregator, Port 8081 zu.
 Und der verbleibende offene Punkt ebenso (bonsai bleibt an Stelle 2 der
 Delegations-Fallbacks) - eine Umstellung, die ihren Rest verschweigt, ist keine.
+
+## Belegmuster (Ruecknahme auf den Standard, 30.09.2026)
+
+```
+vorher: Hauptprofil omniroute/auto/best-free; 6 Profile auto/best-fast|-free
+9 Dateien beruehrt (Hauptprofil + 8 Profile), 22 Profile + Hauptprofil ohne Block
+je Datei: numstat 3/4 bis 6/10 (Ueberhang = vereinheitlichte Listen-Einrueckung)
+CRLF == Zeilen in allen 9 Dateien, 0 verlorene Kommentarzeilen
+after: hermes config get auxiliary.compression -> provider: auto / model: ''
+       hermes config check -> exit 0
+```

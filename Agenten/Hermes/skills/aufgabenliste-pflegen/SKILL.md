@@ -175,7 +175,11 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
 - `scripts/doppelte_nummern.py` (nur lesend, jederzeit lauffaehig): meldet
   hoechste Nummer, naechste freie Nummern, doppelte Nummern, fehlende Abschnitte
   und die Blockzahl. **Rueckgabe 1, sobald eine Nummer doppelt ist** - also als
-  Tor vor dem Committen nutzen, nicht als Blick. Zaun-bewusst: Zeilen innerhalb
+  Tor vor dem Committen nutzen, nicht als Blick. **Ein Tor wirkt nur in einem
+  EIGENEN Aufruf.** In einer Sammelkette (`gate; git add …; git commit …`) laeuft
+  der Commit trotz Exit 1 weiter - die doppelte Nummer ist dann committet, bevor
+  sie jemand sieht, und es braucht einen Folge-Commit. Also: Gate fahren, `$?`
+  lesen, und erst im NAECHSTEN Aufruf stagen und committen. Zaun-bewusst: Zeilen innerhalb
   eines Code-Zauns (die Format-Vorlage) zaehlen nicht als Eintrag.
   `python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
 - `scripts/erledigen.py`: zieht EINEN Eintrag byte-genau nach `## Erledigt`,
@@ -359,6 +363,11 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   `alt.count("- [ ] ")` gegen `neu.count("- [ ] ")` muss um genau die Zahl der
   eingefuegten Eintraege steigen; diese eine Zeile faengt sowohl ein
   fehlgeschlagenes Einfuegen als auch einen falsch gefundenen Abschnitt.
+- **Eine schon COMMITTETE Doppelnummer wird im Folge-Commit geradegezogen, nie
+  durch Umschreiben der Historie.** Nur die eigene Nummer aendern (Anker = der
+  eindeutige Titel, nicht die Nummer), danach das Gate erneut fahren; die
+  Commit-Meldung nennt die Doppelung und dass nur die Nummer wechselte. Ein
+  `--amend` oder force-push trifft in diesem Baum fremde Arbeit im selben Index.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
   formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.

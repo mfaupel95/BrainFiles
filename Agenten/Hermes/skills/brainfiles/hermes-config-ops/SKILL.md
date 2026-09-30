@@ -564,6 +564,17 @@ kleine Hunks. Die fremden Zeilen werden im Commit-Text als nicht enthalten benan
 fremd Gestagetes nie mitcommitten (Regeln (immer) 7). Rezept und Regeln:
 `arbeitsbaum-git-hygiene`.
 
+**Nach einem Commit aus dem EIGENEN Index den NORMALEN Index fuer dieselben Pfade
+nachziehen.** Er zeigt sonst weiter auf die VORHER-Fassungen: `git status` meldet die
+Dateien als `MM` (gestaged UND geaendert), und ein fremdes `git commit` ohne
+Pfadangabe setzt sie aus seinem Index auf den alten Stand zurueck - der eigene,
+gerade committete Teil waere dann in einem fremden Commit wieder weg. Zwei Wege,
+nach Absicht: `git add -- <pfade>` fuer Dateien, deren Arbeitsbaumstand mitgehoert;
+`git reset -q -- <pfade>` fuer Dateien, die noch fremde uncommittete Zeilen tragen
+(der eigene Teil ist committet, der fremde bleibt unstaged liegen). Danach
+`git diff --cached --name-only` (muss leer sein) und `git status --porcelain --
+<pfade>` lesen - uebrig bleiben darf nur die fremde Zeile.
+
 **Nachweis:** `git diff --stat` muss additiv aussehen (viele Zeilen rein, nur
 die eigene Ersetzung raus). Ein Diff, der mehr loescht als hinzufuegt, hat
 fremde Arbeit verschluckt. Danach `hermes config get` fuer jeden angefassten
@@ -1123,6 +1134,19 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 - **Ein Provider braucht oft keinen Block in `providers:`.** Hermes' eingebaute Model-Provider-Profile (`hermes-agent/plugins/model-providers/<name>/__init__.py`) bringen `base_url`, `api_mode` und `env_vars` selbst mit — fuer Anthropic sind das `https://api.anthropic.com`, `anthropic_messages` und `(ANTHROPIC_API_KEY, ANTHROPIC_TOKEN, CLAUDE_CODE_OAUTH_TOKEN)`. Ist die Variable gesetzt, ist der Provider da; ein zusaetzlicher Eintrag in `config.yaml` ist hoechstens eine zweite Wahrheit.
 - **Fuer Provider-Anmeldedaten braucht das laufende Gateway KEINEN Neustart.** Sie kommen aus dem Credential-Pool (`auth.json`) und der `.env` des Profils, nicht aus der Prozessumgebung: ein `delegate_task`-Kind lief sofort mit `provider=anthropic model=claude-opus-5` (Logzeile `platform=subagent … id=msg_…`). Wer „greift erst nach Neustart" behauptet, muss diesen Unterschied zeigen — er gilt nur fuer `${env:NAME}`-Verweise.
 - **`hermes config edit` oeffnet auf Windows notepad und blockiert den Aufruf, bis das Fenster geschlossen ist.** Intern laeuft ein synchrones `subprocess.run([editor, config_path])` ohne Timeout — aus einer Werkzeugsitzung haengt der Aufruf bis ins Zeitlimit. Der Befehl ist fuer Menschen am Desktop gedacht, nicht fuer Agenten: einzelne Werte gehoeren zu `hermes config set`, nur ein mehrzeiliger Eingriff verdient das Wegwerf-Skript (`Agenten/Hermes/cache/`). Wer `config edit` in einem Agenten-Flow braucht, startet es mit `background=true` und laesst das Fernster dem Nutzer.
+- **`auto` bei einem Aux-Auftrag heisst HAUPTMODELL, nicht Router-Auto.** In
+  `hermes_cli/config_defaults.py::_aux()` ist der Standard `provider: auto` + `model: ""`;
+  `agent/auxiliary_client.py::_try_main_provider_route` schickt den Auftrag genau dann
+  auf den Hauptanbieter des Profils. Der lokale Router kennt kein blankes `auto` (nur
+  `auto/best-*`, `auto/pro-*`, `auto/coding:*`) - ein Router-Eintrag unter `auxiliary.*`
+  ist deshalb immer eine UEBERSTEUERUNG und erbt den Ausfall einer Gratis-Combo. Wer
+  "auto" will, setzt NICHTS: den Block mit `hermes config unset auxiliary.<auftrag>`
+  entfernen, statt einen Wert zu setzen - ein gesetzter Wert muss in jeder Profil-Datei
+  einzeln gepflegt werden und driftet auseinander. Folge des Wechsels: die Kompression
+  laeuft dann auf dem Hauptmodell, also haengt `compression.threshold` am FENSTER DES
+  HAUPTMODELLS (786k bei nous) und nicht mehr am 200k-Deckel eines kleinen Aux-Modells -
+  die alte Herleitung der Schwelle gilt dann nicht mehr. Massenumstellung mit Nachweisen
+  und der Reindent-Nebenwirkung: `references/einstellung-umstellen.md`.
 - **Der Auxiliary-Client loest `auxiliary.*.model` ueber den Nous/OpenRouter-Katalog auf — ein lokales GGUF dort ist ein kategorischer 404, kein langsamer Server.** Zeigt `auxiliary.compression.model` (oder `auxiliary.mcp`/`auxiliary.skills_hub`) auf ein Laufzeitmodell (`llamacpp/DeepSeek-...`), wirft das Komprimieren `Failed to generate context summary: 404 - Model '...' not found ... in our configuration or OpenRouter catalog`; Muster davor in `logs/errors.log`/`gateway.log`: `Auxiliary compression: model '...' no longer in Nous catalog`. Der Client hat keinen lokalen llamacpp-Pfad — ein lokales GGUF ist fuer ihn prinzipiell unaufloesbar, und Sessions wachsen stumm auf 100k+ Tokens unkomprimiert, ohne dass die Kompression irgendwo laut scheitert. Fix: `hermes config set auxiliary.compression.provider nous` und `...model deepseek/deepseek-v4-flash-0731` (dasselbe Provider/Modell wie das Hauptmodell, 786k — nachweislich aufloesbar). Nicht zurueck auf den frueher dokumentierten `auto/coding:free`-Router-Weg: der reroutet aktuell auf OpenCode-Free, das ausserhalb von OpenCode 403 liefert — kein zuverlaessiges Kompressionsmodell. **Nach JEDEM `hermes update` alle `auxiliary.*`-Modellpfade (compression, mcp, skills_hub) pruefen**: das Update schreibt die Config neu und setzt Modell/`threshold` zurueck auf einen lokalen GGUF-Stand (gemessen: `threshold` 0.19 → 0.66, compression auf llamacpp). `auxiliary.skills_hub` kann dabei auf ein CLIP-Projektor-GGUF zeigen, das gar nicht als Hauptmodell ladbar ist ("CLIP cannot be used as main model") — ebenfalls ueber den Katalogpfad ersetzen. Beleg: `hermes config check` Exit 0; die laufende Sitzung nutzt die neue Config erst ab `/new`.
 - **Die Kompression-schwellen-Warnung kennt einen dauerhaften Fix, und die Schwelle ist KONTEXT-RELATIV, kein Fixwert.** Hermes meldet per Sitzung, das Kompressionsmodell habe kleineren Kontext als die Schwelle des Hauptmodells (`auxiliary.compression.model` vs. `compression.threshold`), und senkt die Schwelle nur fuer diese Sitzung. Der Trigger in Tokens ist `(model.context_length - max_tokens) * compression.threshold` (min. 64k; Fenster < 512k werden auf 75% angehoben) — `threshold` ist ein PROZENTSATZ des Kontextfensters. Der frueher dokumentierte Wert 0.19 gilt nur, solange das Aux-Kompressionsmodell ~200k hat; ist es dasselbe Modell wie das Hauptmodell (deepseek-v4-flash, 1M), hebt man beides an: `hermes config set model.context_length 1000000` UND `hermes config set compression.threshold 0.60` → komprimiert erst bei 600k statt ~190k. Faustregel: `threshold` so waehlen, dass der Trigger-Tokenwert unter dem Fenster des Aux-Kompressionsmodells bleibt, sonst senkt Hermes die Session-Schwelle beim Start selbst ab (`_lower_threshold_to_aux_context`); ein grosses Aux-Modell erlaubt eine hohe Schwelle = Kompression ruht bis kurz vor dem Fensterende. Nach `hermes config check` (Exit 0 = sauberes YAML); die laufende Sitzung nutzt die neue Schwelle erst nach `/new`.
   **Nachtrag 29.09.2026 (gemessen): eine Schwelle UEBER 1.0 ist keine Einstellung, sondern
