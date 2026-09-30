@@ -1,10 +1,11 @@
 ---
 name: repos-zentrale
-description: "Use when ein Repo, Werkstatt-Projekt oder Handelsspur gestartet oder aufgenommen wird."
+description: "Use when ein Repo, Projekt oder Spur zu starten ist."
 license: MIT
+platforms: [windows]
 metadata:
   hermes:
-    tags: [werkstatt, repos, starten, manifest, werkzeuge]
+    tags: [Werkstatt, Repos, Starten, Manifest, Bestandsaufnahme]
     related_skills: [repo-flotte, fremd-agenten-betrieb, fremdrepo-agent-start]
 ---
 
@@ -146,6 +147,56 @@ Vier Faelle, in denen der Lauf **nichts** tut (alle stehen im Bericht):
 | `uebersprungen (lokale Aenderungen)` | Aenderung an einer verfolgten Datei — erst Max fragen, nichts verwerfen |
 | `anderer Zweig` | lokaler Zweigname weicht vom Quell-Standardzweig ab (`JEV`, `Werkstatt`) — das Skript raet nicht |
 | `fetch fehlgeschlagen` / `Vorspulen fehlgeschlagen` | Netz oder shallow; shallow-Klone holt das Skript einmal mit `--unshallow` |
+
+## Bestands-Audit: Duplikate, Missstaende, Startbereitschaft
+
+Auftrag der Art *„die Ordner sind voll, alles auf einer Platte? schau nach
+Duplikaten, binde an die Zentrale an, mach die UIs startbereit"*. Reihenfolge
+ist nicht beliebig — jeder Schritt liefert die Eingabe fuer den naechsten.
+
+1. **Zuerst die Frage „ein Ort oder zwei?" beantworten, nicht die Dateien
+   zaehlen.** `Get-ChildItem <wurzel> -Force | Where-Object { $_.Attributes -band
+   [IO.FileAttributes]::ReparsePoint }` — ist einer der genannten Pfade ein
+   Verweis, ist es EIN Speicherort, und jede Mengenrechnung ist eine Rechnung
+   zu viel. Gemessen: `BrainFiles\Werkstatt` -> `O:\Werkstatt`.
+2. **Verweise auflisten, DANN Duplikate suchen.** `scripts/klon-doppel.py`
+   (write_file, dann durch `terminal` aufrufen) macht beides in dieser
+   Reihenfolge: erst die Reparse-Punkte, dann die Klone nach `origin`
+   gruppiert. Ohne Schritt 1 haelt es zwei Pfade derselben Ablage fuer eine
+   Dublette.
+3. **Groessen messen, nicht schaetzen.** Je Ordner eine Zeile (Dateien + GB) —
+   `Get-ChildItem -Recurse -File -Force | Measure-Object Length -Sum` ueber
+   `terminal`. Die zweite Zahl, die zaehlt: wieviel davon venv/node_modules/
+   `target`/`.git` ist (wieder herstellbar).
+4. **Warum steht eine Zeile in EINRICHTEN?** `scripts/warum-einrichten.py`
+   (write_file, durch `terminal` aufrufen) druckt je Zeile Bereich, Gruppe und
+   jeden Grund und zaehlt die Gruppen. Ohne diese Sonde behandelt man 86
+   Zeilen, von denen 84 in Ordnung sind.
+5. **Gruppen ehrlich machen, bevor Startbefehle erfunden werden.** Eine Zeile
+   ohne Startbefehl ist nicht automatisch unfertig (fremd + nur lesen,
+   geladene Strategieklasse, Werkzeug mit Startverbot) — siehe die Gruppe
+   `kein_start` oben. Erst danach fehlende Starts kuratieren.
+6. **Jeden neuen Start einmal echt fahren** (`fuellen.py --belege`), sonst
+   bleibt `test_manifest_gegenprobe.py` rot.
+7. **Verschieben statt loeschen**, wenn etwas weggeraeumt wird: Zielordner
+   `Werkstatt/Ausgemustert/<anlass>-JJJJMMTT/`. Nach dem Verschieben die
+   Gegenprobe (`Test-Path` auf Quelle UND Ziel) und `--pruefen` — ein
+   verschobener Ordner mit Manifest-Eintrag wird sonst FEHLT.
+8. **Was du nicht angefasst hast, in `MaxHirn/Archiv/TASKS.md` eintragen**
+   (Entscheidungen, die Max braucht) — nicht in die Antwort allein.
+
+### Was der Audit typischerweise findet
+
+- **Doppelte Klone:** mehrere Pfade mit derselben `origin`. Zu pruefen ist
+  immer, welcher gebaut/belegt ist (Binary, venv, Logbeleg) — der andere geht
+  nach `Ausgemustert/`.
+- **Ballast in den Klonen:** venv/node_modules/`target`/`.git` sind oft der
+  groesste Teil der Sammlung (gemessen 19,42 von 26,26 GB). Nicht anfassen,
+  solange die STARTBAR-Zeilen darauf stehen.
+- **Fremdes am falschen Ort:** ein Klon im Vault, ein Gitlink ohne Unterbau,
+  Docker-Volumen im gesicherten Ordner. Messen, benennen, als Task eintragen.
+- **Lose Dateien in einer Arbeitswurzel:** Installer, Plaene, Altskripte.
+  Installer gehoeren nach `Ausgemustert/installer-JJJJMMTT/`.
 
 ## Die sechs Gruppen
 
