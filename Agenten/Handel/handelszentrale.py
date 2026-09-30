@@ -38,6 +38,7 @@ Ohne Fenster, als Nachweis der Bindungen:
 import argparse
 import csv
 import ctypes
+import importlib.util
 import json
 import os
 import queue
@@ -101,31 +102,31 @@ QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed",
           "kopier": "feed", "kopier1zu1": "feed"}
 QUELLE_VORGABE = "okx"
 
-# Farben - dasselbe dunkle Blatt wie omniquant/gui.py, damit die Fenster
-# zusammenpassen.
-FARBEN = {
-    "bg": "#1e1e2e", "blatt": "#181825", "gitter": "#313244",
-    "text": "#cdd6f4", "matt": "#a6adc8", "gruen": "#a6e3a1",
-    "rot": "#f38ba8", "gelb": "#f9e2af", "akzent": "#89b4fa",
-    "zellgruen": "#1b4d3e", "zellrot": "#5c1f2b",
-}
+# Farben, Schrift, ttk-Stile: EINE Quelle fuer alle Fenster,
+# Werkzeuge/fenster_design.py (Beschreibung: Werkstatt/design-system-fenster-*).
+# Per Dateipfad geladen, nicht ueber sys.path: Werkzeuge/ enthaelt Module
+# (z. B. marktdaten), die sonst Handel/ verdecken koennten.
+_spec = importlib.util.spec_from_file_location(
+    "fenster_design", os.path.join(HIER, "..", "Werkzeuge", "fenster_design.py"))
+design = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(design)
+
+FARBEN = design.FARBEN
 
 # Schrift: EIN Basiswert, alles andere relativ dazu - so skalieren Titel,
 # Tabellen, Chart und Konsole gemeinsam, wenn der Nutzer die Groesse wechselt.
 # Wird nur im Speicher gehalten (die Zentrale schreibt nichts).
-SCHRIFT_ART = "Consolas"
-SCHRIFT_GROESSE = 11            # Basis; Vorgabe 11 statt 10: zu klein war der Befund
-SCHRIFT_AUSWAHL = tuple(str(g) for g in range(8, 17))
-KLEIN = -1                      # Konsole, Fusszeile
-TINY = -2                       # Chart-Beschriftung
-TITEL = 3                       # Fensterkopf
+SCHRIFT_ART = design.SCHRIFT_ART
+SCHRIFT_GROESSE = design.SCHRIFT_GROESSE
+SCHRIFT_AUSWAHL = design.SCHRIFT_AUSWAHL
+KLEIN = design.KLEIN            # Konsole, Fusszeile
+TINY = design.TINY              # Chart-Beschriftung
+TITEL = design.TITEL            # Fensterkopf
 
 
 def schrift(rel=0, fett=False):
-    """Schriftart dieser Ansicht: Basis + relative Groesse."""
-    if fett:
-        return (SCHRIFT_ART, SCHRIFT_GROESSE + rel, "bold")
-    return (SCHRIFT_ART, SCHRIFT_GROESSE + rel)
+    """Schriftart dieser Ansicht: (veraenderliche) Basis + relative Groesse."""
+    return design.schrift(SCHRIFT_GROESSE, rel, fett)
 
 
 # --------------------------------------------------------------------------
@@ -791,11 +792,7 @@ class Handelszentrale:
 
     def _wende_schrift_an(self):
         """Neue Schriftgroesse an allen gemerkten Widgets anwenden."""
-        st = ttk.Style()
-        st.configure(".", font=schrift())
-        st.configure("Treeview", rowheight=max(18, SCHRIFT_GROESSE * 2))
-        st.configure("Treeview.Heading", font=schrift(0, fett=True))
-        st.configure("TCombobox", font=schrift())
+        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
         for widget, rel, fett in self._schrift_widgets:
             try:
                 widget.configure(font=schrift(rel, fett))
@@ -806,25 +803,7 @@ class Handelszentrale:
 
     # ---------- Aufbau ----------
     def _baue(self):
-        st = ttk.Style()
-        try:
-            st.theme_use("clam")
-        except Exception:                                    # noqa: BLE001
-            pass
-        st.configure(".", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     fieldbackground=FARBEN["blatt"], font=schrift())
-        st.configure("Treeview", background=FARBEN["blatt"],
-                     fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=max(18, SCHRIFT_GROESSE * 2), borderwidth=0)
-        st.configure("Treeview.Heading", background="#313244",
-                     foreground=FARBEN["akzent"], font=schrift(0, fett=True))
-        st.configure("TCombobox", font=schrift())
-        st.map("Treeview", background=[("selected", "#45475a")])
-        st.configure("TNotebook", background=FARBEN["bg"], borderwidth=0)
-        st.configure("TNotebook.Tab", background="#313244",
-                     foreground=FARBEN["text"], padding=(12, 3))
-        st.map("TNotebook.Tab", background=[("selected", "#45475a")],
-               foreground=[("selected", FARBEN["akzent"])])
+        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
 
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
         kopf.pack(fill="x", padx=10, pady=(8, 2))

@@ -593,6 +593,7 @@ Agenten/Hermes/automatik/spez/inventar.md
 # Werkzeug: Fremd-Klone auf den Stand ihrer Quelle spulen (21.09.2026)
 !Agenten/Werkzeuge/repos-updaten.py
 !Agenten/Werkzeuge/marktdaten.py
+!Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
 # OLLAMA-BRUECKE, freigelegt am 24.09.2026. Sie ist der EINE Weg, auf dem
 # Fremd-Agenten mit OpenAI-Zweig ohne bezahlten Schluessel ein Urteil vom
