@@ -149,6 +149,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: pruefen, ob der Wartungslauf den Zustand selbst aufraeumen kann (bzw. ob
       der Starter einen abgebrochenen Bau sauber beenden soll), damit der naechste Start wieder
       Sekunden statt Minuten braucht.
+      BELEG 30.09.2026 (2-Jahres-Laeufe, vollstaendige Paartabellen): Der Verlust
+      sitzt in den KLEINEN Werten, nicht in den grossen. TopMovers 924 Trades,
+      -46,02 %, maxDD 77,4 %, Treffer 37,4 %; je Paar LINK -14,94 %, AVAX -12,41 %,
+      PEPE -8,46 %, NEAR -4,01 %, DOGE -2,05 %, ATOM +1,25 %. MarktRegime 210 Trades,
+      -37,24 %, maxDD 48,5 %. Damit gibt es einen ZWEITEN Hebel neben der Frequenz:
+      die Paarauswahl. Ein Lauf nur auf den grossen Paaren ist billig zu messen und
+      gehoert VOR jeden Umbau der Strategie - sonst optimiert man an der Strategie,
+      waehrend das Geld in einem Drittel der Paarliste verbrennt.
       Angelegt: 2026-09-30
       Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/dashboard-wache.py
 
