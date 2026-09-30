@@ -338,8 +338,9 @@ class Tabelle(ttk.Frame):
             inhalt = max((f.measure(str(z[i])) for z in muster), default=0)
             b = max(kopf.measure(sp + " ▲") + 24, inhalt + 16)
             schmal = any(s in sp.lower() for s in SCHMALE_SPALTEN)
+            # Restplatz nur fuer die letzte Spalte (meist Erklaerung/Ergebnis)
             self.baum.column(sp, width=min(b, SCHMAL if schmal else BREIT_MAX),
-                             stretch=not schmal)
+                             stretch=i == len(self.spalten) - 1)
 
     def _zeigen(self):
         gewaehlt = {str(z[0]) for z in self.auswahl()}

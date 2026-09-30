@@ -178,6 +178,16 @@ class Reiter(TkBasis):
         self.root.update()
         self.assertEqual([r2.teiler.sashpos(0), r2.teiler.sashpos(1)], [150, 420])
 
+    def test_teiler_erststart_laesst_protokoll_und_tabellen_platz(self):
+        self.root.deiconify()
+        self.root.geometry("1000x900")
+        r = self.reiter([])
+        r.pack(fill="both", expand=True)
+        self.root.update()
+        h = r.teiler.winfo_height()
+        self.assertLessEqual(r.teiler.sashpos(0), h * 0.4)
+        self.assertLessEqual(r.teiler.sashpos(1), h * 0.65)
+
     def test_teiler_gewichte_lassen_protokoll_und_tabellen_mehr_platz(self):
         r = self.reiter([])
         gewichte = [int(r.teiler.pane(p, "weight")) for p in r.teiler.panes()]

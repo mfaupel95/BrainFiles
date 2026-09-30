@@ -248,6 +248,12 @@ class TabelleTest(MitTk):
         t.setze([("a", "2", "z" * 200)])
         self.assertEqual(t.baum.column("Text", "width"), 50)
 
+    def test_nur_die_letzte_spalte_nimmt_den_restplatz(self):
+        t = lb.Tabelle(self.root, ("Tor", "Wert", "Erklärung"), self.zustand, "probe")
+        t.setze([("a", "1", "lang " * 30)])
+        dehnt = [bool(int(str(t.baum.column(s, "stretch")))) for s in t.spalten]
+        self.assertEqual(dehnt, [False, False, True])
+
     def test_zebra_jede_zweite_zeile_andere_tags_bleiben(self):
         t = self._tabelle()
         t.setze([("a", "1"), ("b", "2"), ("c", "3")], tags=[(), ("wartet",), ()])

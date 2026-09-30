@@ -342,6 +342,9 @@ class EinzelBereich(ttk.Frame):
 
 # --- der Reiter -------------------------------------------------------------
 
+TEILER_ERSTSTART = (0.36, 0.6)          # Anteile der Hoehe fuer die zwei Teiler
+
+
 class BacktestReiter(ttk.Frame):
     def __init__(self, eltern, leitstand, steuerung=None, bereiche=None):
         super().__init__(eltern, padding=stil.ABSTAND_GROSS)
@@ -421,9 +424,14 @@ class BacktestReiter(ttk.Frame):
         self.zustand.merke_in("teiler", "backtests", lage)
 
     def _teiler_herstellen(self, _event=None):
-        lage = (self.zustand.get("teiler") or {}).get("backtests")
-        if not self._teiler_anlauf or not isinstance(lage, list):
+        if not self._teiler_anlauf:
             return
+        lage = (self.zustand.get("teiler") or {}).get("backtests")
+        if not isinstance(lage, list):
+            # Erststart: die Wunschhoehen der Bereiche wuerden dem Kopf fast
+            # alles geben; Protokoll und Tabellen brauchen den Platz mehr.
+            h = self.teiler.winfo_height()
+            lage = [round(h * a) for a in TEILER_ERSTSTART] if h > 100 else []
         try:
             for i, pos in enumerate(lage[:len(self.teiler.panes()) - 1]):
                 if isinstance(pos, int) and pos > 0:
