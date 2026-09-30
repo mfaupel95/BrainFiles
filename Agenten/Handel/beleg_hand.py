@@ -126,7 +126,13 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
                 handeln.journal(_jetzt(), "live", "fehler", inst, "", "", "", "", "",
                                 "beleg_hand: Stop UND Rueckverkauf fehlgeschlagen (%s)" % e2)
 
-    eur = float(eintrag["preis_max"] or 0.0)
+    # Der Einsatz ist GELD, nicht der Stueckpreis. Hier stand bis zum
+    # 30.09.2026 `eintrag["preis_max"]` - also der Hoechstpreis JE STUECK.
+    # Folge: das Buch fuehrte 1,14 EUR statt 50,05 EUR fuer DOTEUR (und
+    # 0,21/0,95/1,60 fuer XLM/FIL/ATOM). Jede Auswertung, jeder Ruecklauf und
+    # jede Ratsche rechnen damit falsch, und `eingesetzt` war um Faktor 30 zu
+    # klein (Befund T-208). Richtig ist wie im Zyklus-Weg: Menge x Kurs.
+    eur = round(gefuellt * float(kurs if kurs else preis_max or 0.0), 2)
     kosten = eur * w.get("gebuehr_taker", 0.0)
     z.setdefault("positionen", []).append({
         "paar": inst, "einstieg": kurs, "eur": round(eur, 2), "menge": gefuellt,

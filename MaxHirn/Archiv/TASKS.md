@@ -237,19 +237,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/mosaic/handeln.py, Agenten/Handel/kraken/handeln.py,
       Agenten/Handel/scanner/boersenstops.py
 
-- [ ] **T-208 — kraken-Buch fuehrt eine DOTEUR-Position, die es nicht gibt (und zwei SUIEUR-Waisenstops)**
-      Kontext: `kraken/zustand.json` fuehrt DOTEUR mit 45.9896983 DOT, das
-      Kraken-Konto hat 0.0000000000 DOT (BalanceEx, 30.09.2026). Umgekehrt liegen
-      an der Boerse zwei SUIEUR-Auftraege (stop-loss 0.9497 ueber 136.77266 und
-      take-profit 3.5266 ueber 137.87217), zu denen es keinen SUI-Bestand gibt
-      (0.00000 SUI) - Waisenauftraege. Aufgefallen ueber `kraken/spot_stops.py`.
-      Naechster Schritt: DOT-Position ueber `okxf.geschlossene_position` /
-      Kraken-Ledger aufklaeren und mit echtem Erloes ausbuchen (Muster:
-      `scanner/boersenstops.py`, `xperp/geister_nachziehen.py`); die zwei
-      SUIEUR-Auftraege vorher stornieren, sonst kann der Verkauf ins Leere laufen.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/kraken/zustand.json, Agenten/Handel/kraken/handeln.py
 - [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
       Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
       Kerzentage nach (`HEIL_TAGE`). War der Rechner laenger aus, bleibt eine
@@ -2522,6 +2509,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-208 — kraken-Buch fuehrt eine DOTEUR-Position, die es nicht gibt (und zwei SUIEUR-Waisenstops)**
+      Kontext: `kraken/zustand.json` fuehrt DOTEUR mit 45.9896983 DOT, das
+      Kraken-Konto hat 0.0000000000 DOT (BalanceEx, 30.09.2026). Umgekehrt liegen
+      an der Boerse zwei SUIEUR-Auftraege (stop-loss 0.9497 ueber 136.77266 und
+      take-profit 3.5266 ueber 137.87217), zu denen es keinen SUI-Bestand gibt
+      (0.00000 SUI) - Waisenauftraege. Aufgefallen ueber `kraken/spot_stops.py`.
+      Naechster Schritt: DOT-Position ueber `okxf.geschlossene_position` /
+      Kraken-Ledger aufklaeren und mit echtem Erloes ausbuchen (Muster:
+      `scanner/boersenstops.py`, `xperp/geister_nachziehen.py`); die zwei
+      SUIEUR-Auftraege vorher stornieren, sonst kann der Verkauf ins Leere laufen.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/kraken/zustand.json, Agenten/Handel/kraken/handeln.py
+      **Erledigt 2026-09-30.** DOT-Geist mit echtem Boersenerloes ausgebucht (Stop O2YTEL-7R6ZT-ULOXRN, 45,89 EUR nach Gebuehr, Journalzeile buch_nachgezogen_boerse) und der Abgleich dafuer in den Zyklus gehaengt (kraken/abgleich.py, vor pruefe_ausstiege). Die zwei SUIEUR-Auftraege waren KEINE Waisen: 274,64 SUI lagen in vier Margin-Positionen, waisen_stops.lage() las OpenPositions faelschlich mit 'open'-Huelle. Dazu beleg_hand.py: Einsatz war der Stueckpreis statt des Betrags (vier Belege 0,21/0,95/1,15/1,61 -> je ~50 EUR, Buch 3,90 -> 150,00 EUR gebunden).
 - [x] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
       Kontext: Der Demo-Lauf (Werkstatt/omnitrade, OKX-Demo, BTCUSDC) hat keine
       Wache. Stirbt er hart, bleibt in status/live.json "state: running" mit einer

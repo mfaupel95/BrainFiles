@@ -114,6 +114,7 @@ JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 # xperp/handeln.py und swap/handeln.py.
 sys.path.insert(0, str(HIER.parent.parent / "Bus"))
 import ereignis                                          # noqa: E402
+import abgleich                                           # noqa: E402
 import kraken                                            # noqa: E402
 import quote                                             # noqa: E402
 import scan                                              # noqa: E402
@@ -988,6 +989,14 @@ def lauf(modus):
             _spiegeln(w, z)
         return
 
+    # Buch gegen BOERSE (Befund 30.09.2026, T-208): an der Boerse passiert
+    # auch, was diese Spur nicht sieht - ein ausgeloester Stop verkauft, und
+    # `pruefe_ausstiege` merkt es nur, solange der Kurs UNTER dem Stop steht.
+    # Der Abgleich laeuft deshalb VOR den Ausstiegen: sonst verkauft der Lauf
+    # eine Position, die es nicht mehr gibt.
+    print("- Buch gegen Boerse -")
+    _abgleich_runde(z, w)
+
     # Ausstiege laufen nie durch das Fenster: ein Stop muss greifen, auch
     # wenn niemand davorsitzt.
     print("- Ausstiege -")
@@ -1019,6 +1028,42 @@ def lauf(modus):
     # Bedingung 4 - Journal nach jedem Zyklus ausser Haus.
     if w.get("journal_zweitziel"):
         _spiegeln(w, z)
+
+
+def _abgleich_runde(z, w):
+    """Buch gegen BOERSE lesen und Geister ausbuchen - ohne jede Order.
+
+    Ausgebucht wird in JEDEM Modus, nicht nur live: ein Geist ist keine
+    Handelsentscheidung, sondern eine Buchkorrektur mit belegtem
+    Boersenerloes. Ohne sie rechnen Auswertung, Ruecklauf und Ratsche auf einer
+    Position, die es nicht mehr gibt. Ohne belegbaren Erloes bleibt die
+    Position stehen und wird als "unklar" gemeldet - geraten wird nie.
+    """
+    try:
+        bilanz = abgleich.lauf(buch=z.get("positionen") or [], anwenden=True,
+                               schreibe=lambda: schreibe_zustand(z),
+                               journal=journal, journal_pfad=str(JOURNAL))
+    except Exception as e:                                       # noqa: BLE001
+        print("  Abgleich nicht moeglich (%s: %s)" % (type(e).__name__, e))
+        return None
+    if not bilanz.get("gelesen"):
+        print("  Boerse nicht lesbar (%s) - keine Aussage." % bilanz.get("fehler"))
+        return bilanz
+    for f in bilanz["befunde"]:
+        print("  %-6s %s" % (f["art"], f["text"]))
+    if bilanz["ausgebucht"]:
+        print("  %d Geist(er) mit Boersenerloes ausgebucht." % bilanz["ausgebucht"])
+    for t in bilanz["unklar"]:
+        print("  UNKLAR (kein Boersenerloes belegbar, bleibt stehen): %s" % t)
+    if not bilanz["befunde"]:
+        print("  Buch und Boerse stimmen ueberein.")
+    z["buch_abgleich"] = {"zeit": _jetzt(),
+                          "geister": len(bilanz["geister"]),
+                          "waisen": [f.get("txid") for f in bilanz["waisen"]],
+                          "teils": len(bilanz["teils"]),
+                          "ausgebucht": bilanz["ausgebucht"],
+                          "unklar": bilanz["unklar"]}
+    return bilanz
 
 
 def main():

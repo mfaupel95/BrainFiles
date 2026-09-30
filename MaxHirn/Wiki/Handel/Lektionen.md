@@ -827,3 +827,50 @@ Das ist **keine hoehere Rendite, sondern ein halbierter Rueckgang** (Calmar
 .venv/Scripts/python.exe quantpedia_probe.py donchian
 .venv/Scripts/python.exe quantpedia_probe.py vergleich
 ```
+
+## Ein Buch, das der Boerse widerspricht, ist keine Position (30.09.2026)
+
+**Regel.** Was die Boerse weiss, weiss das Buch nicht von selbst. Jede Spur, die
+ihren Bestand selbst fuehrt, braucht einen Abgleich gegen die Boerse - und zwar
+im Zyklus, nicht auf Zuruf. Ein Nachweis, den niemand aufruft, ist keine Wache.
+
+**Der Fall.** `kraken/zustand.json` fuehrte DOTEUR mit 45,9896983 DOT. Am Konto
+lagen 0,0000000000 DOT: der Stop O2YTEL-7R6ZT-ULOXRN hatte die Position am
+29.09. um 01:36 verkauft (45,99 DOT, 46,16 EUR brutto, 45,89 EUR nach Gebuehr).
+Die Spur merkte es nicht, weil `pruefe_ausstiege` Stop und Ziel nur gegen den
+LEBENDEN Kurs prueft - steigt der Kurs nach dem Ausloesen wieder ueber den Stop,
+sieht niemand mehr hin. Der Geist stand zwei Tage im Buch und rechnete in
+Ratsche, Ruecklauf und Auswertung mit.
+
+**Zweiter Befund derselben Pruefung.** Zwei SUIEUR-Auftraege sahen wie Waisen
+aus (Spot-Guthaben 0 SUI), waren aber gedeckt: 274,64 SUI lagen in vier
+MARGIN-Positionen. Ursache war ein Fehler in `waisen_stops.lage()`: es las
+`OpenPositions` als `{...}.get("open")`, waehrend Kraken die Positionen OHNE
+diese Huelle liefert (`OpenOrders` hat sie). Ergebnis: die Funktion sah NIE eine
+Position und hielt jeden Schutzauftrag fuer eine Waise. Ein Guthaben von 0 heisst
+nicht, dass keine Position da ist - Margin zaehlt zum Bestand.
+
+**Dritter Befund.** `beleg_hand.py` schrieb als Einsatz den STUECKPREIS
+(`eintrag["preis_max"]`) statt des Betrags. Vier ueber die Hand ausgefuehrte
+Belege standen deshalb mit 0,21 / 0,95 / 1,15 / 1,61 EUR im Journal, gemeint
+waren je ~50 EUR. `eingesetzt` war um Faktor 30 zu klein, jede dieser Runden
+haette einen Scheingewinn von ~+49 EUR gezeigt, und der Gesamtdeckel konnte nie
+binden. Der Einsatz ist GELD: Menge x Kurs.
+
+**Was den Geist erkennt.** `kraken/abgleich.py` liest Bestand (BalanceEx),
+Margin-Positionen und offene Auftraege und vergleicht sie mit dem Buch:
+GEIST (Position im Buch, an der Boerse nicht mehr da), TEILS (nur ein Rest da),
+WAISE (Schutzauftrag ohne Bestand). Ausgebucht wird nur mit einem ECHTEN
+Boersenerloes (ClosedOrders der Stop-Order, sonst Ledger mit Gegenbuchung) -
+ohne Zeugen bleibt die Position stehen und der Befund heisst "unklar". Der
+Abgleich laeuft im Zyklus VOR den Ausstiegen; eine zweite Ausbuchungszeile
+verhindert `schon_gebucht()`.
+
+**Nachrechnen** (aus `Agenten/Handel/kraken`):
+
+```
+../.venv/Scripts/python.exe abgleich.py              # Vorschau
+../.venv/Scripts/python.exe abgleich.py --anwenden   # ausbuchen
+../.venv/Scripts/python.exe einsatz_nachziehen.py    # Einsatzpruefung
+../.venv/Scripts/python.exe waisen_stops.py          # Schutzauftraege
+```

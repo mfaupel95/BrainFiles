@@ -62,6 +62,64 @@ def stop(txid, paar, vol, preis="1.0"):
                                               "price": str(preis)}}}
 
 
+class FalscherKrakenOhneHuelle(FalscherKraken):
+    """Die ECHTE Antwortform: `OpenPositions` kommt OHNE "open"-Huelle.
+
+    Genau hier lag der Fehler (Befund 30.09.2026, T-208): die Attrappe oben
+    verpackte die Positionen wie `OpenOrders`, das echte Kraken tut das nicht.
+    lage() sah damit NIE eine Position und hielt jeden Schutzauftrag fuer eine
+    Waise - vier SUIEUR-Auftraege sahen so aus, obwohl 274,6 SUI in vier
+    Margin-Positionen lagen.
+    """
+
+    def _roh_privat(self, name, **kw):
+        if name == "OpenPositions":
+            return dict(self._pos)
+        return FalscherKraken._roh_privat(self, name, **kw)
+
+
+class AntwortformTest(unittest.TestCase):
+    """Die Form der Antwort ist Teil der Regel, nicht Zufall des Testdoubles."""
+
+    def setUp(self):
+        self._orig = _s._paare_laden
+        _s._paare_laden = lambda: PAARE
+
+    def tearDown(self):
+        _s._paare_laden = self._orig
+
+    def test_positionen_liest_beide_formen(self):
+        flach = {"p1": {"pair": "SUIEUR", "vol": "1", "vol_closed": "0"}}
+        self.assertEqual(w.positionen(FalscherKrakenOhneHuelle(positionen=flach)),
+                         flach)
+        self.assertEqual(w.positionen(FalscherKraken(positionen=flach)), flach)
+        self.assertEqual(w.positionen(FalscherKraken()), {})
+
+    def test_echte_form_ohne_huelle_schuetzt_die_order(self):
+        # 274,64483 SUI in Margin-Positionen, 0 SUI im Guthaben -> geschuetzt.
+        pos = {}
+        for i, vol in enumerate(("136.77266", "101.30713", "27.85165", "8.71339")):
+            pos["p%d" % i] = {"pair": "SUIEUR", "vol": vol, "vol_closed": "0"}
+        k = FalscherKrakenOhneHuelle(guthaben={}, positionen=pos,
+                                     orders=stop("OJHKPN", "SUIEUR", 136.77266))
+        z = w.lage(k, _s)[0]
+        self.assertFalse(z["waise"], z["lage"])
+        self.assertIn("Position", z["lage"])
+
+    def test_echte_form_ohne_position_ist_weiter_waise(self):
+        k = FalscherKrakenOhneHuelle(guthaben={},
+                                     orders=stop("O1", "SUIEUR", 30.69))
+        self.assertTrue(w.lage(k, _s)[0]["waise"])
+
+    def test_teilposition_ohne_huelle_zaehlt_den_rest(self):
+        k = FalscherKrakenOhneHuelle(
+            guthaben={},
+            positionen={"p1": {"pair": "SUIEUR", "vol": "30.69",
+                               "vol_closed": "30.69"}},
+            orders=stop("O1", "SUIEUR", 30.69))
+        self.assertTrue(w.lage(k, _s)[0]["waise"])
+
+
 class LageTest(unittest.TestCase):
     def setUp(self):
         self._orig = _s._paare_laden

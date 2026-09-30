@@ -34,19 +34,38 @@ kraken = _lade("kraken", os.path.join(HIER, "kraken.py"))
 _stops = _lade("spot_stops", os.path.join(HIER, "spot_stops.py"))
 
 
+def positionen(kraken_modul):
+    """Offene MARGIN-Positionen - in BEIDEN Formen der Antwort.
+
+    Kraken liefert `OpenPositions` als {txid: {...}} OHNE "open"-Huelle
+    (`OpenOrders` hat sie). Wer nur .get("open") liest, sieht NIE eine
+    Position - und haelt dann jeden Schutzauftrag fuer eine Waise.
+
+    Befund 30.09.2026 (T-208): genau das passierte mit vier SUIEUR-Auftraegen,
+    waehrend 274,6 SUI in vier Margin-Positionen lagen. Ein Guthaben von 0
+    heisst NICHT, dass keine Position da ist.
+    """
+    roh = kraken_modul._roh_privat("OpenPositions") or {}
+    if not isinstance(roh, dict):
+        return {}
+    if isinstance(roh.get("open"), dict):
+        return roh["open"]
+    return {k: v for k, v in roh.items() if isinstance(v, dict)}
+
+
 def lage(kraken_modul, stops_modul):
     """Offene Orders, offene Positionen, Guthaben -> Liste mit Bewertung."""
     bal = kraken_modul._roh_privat("BalanceEx") or {}
     guthaben = {stops_modul.norm(k): (float(v.get("balance") or 0),
                                       float(v.get("hold_trade") or 0))
                 for k, v in bal.items()}
-    positionen = (kraken_modul._roh_privat("OpenPositions") or {}).get("open") or {}
+    positionen_roh = positionen(kraken_modul)
     paare = stops_modul._paare_laden()
     offene = list(((kraken_modul._roh_privat("OpenOrders") or {}).get("open")
                    or {}).items())
 
     mpos = {}
-    for p in positionen.values():
+    for p in positionen_roh.values():
         muenze = stops_modul.muenze_aus_paar(p.get("pair"), paare)
         rest = float(p.get("vol") or 0) - float(p.get("vol_closed") or 0)
         mpos[muenze] = mpos.get(muenze, 0.0) + rest
