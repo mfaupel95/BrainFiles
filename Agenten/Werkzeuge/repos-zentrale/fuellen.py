@@ -831,6 +831,8 @@ SPUREN_START = {
         "moondev_whale", "moondev_liquidation", "moondev_sentiment",
         "trendwende_btc", "liq_wand", "robinhood_radar", "kopier1zu1",
         "iv_wand", "iv_waelle",
+        # omnitrade (30.09.2026): die Haus-Spur, die den Rust-Lauf spiegelt.
+        "omnitrade",
         "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
         "klassik_donchian", "klassik_rsi", "klassik_rsi2",
         "klassik_donchian_trend",

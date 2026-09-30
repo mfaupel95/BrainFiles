@@ -732,6 +732,92 @@ def omnitrade_laeufe_zeilen(bilanzen):
     return zeilen
 
 
+# --- Haus-Buch der omnitrade-SPUR (derselbe Reiter) -------------------------
+#
+# Der Reiter trug bis zum 30.09.2026 NUR den Rust-Lauf (Statusdatei). An
+# demselben Tag kam die Haus-Spur dazu, die dessen Position spiegelt - und sie
+# heisst genauso. Ohne diesen Abschnitt liest man im Reiter "omnitrade" eine
+# Zahl und weiss nicht, welche der beiden gemeint ist. Deshalb stehen sie
+# getrennt: oben "Laeufe" (Rust, Testnet), hier "Haus-Buch" (Spur, Papier/Live).
+
+def omnitrade_spur_kopf(zustand, wachen, jetzt=None):
+    """(Text, Marke) der Kopfzeile des Haus-Buchs im omnitrade-Reiter.
+
+    Zeigt dieselben Groessen, die der Sperrtext der Spur nennt: Modus, Plaetze,
+    Alter des letzten Zyklus und den Live-Stand aus der wachen. `jetzt` ist fuer
+    Tests da.
+    """
+    jetzt = jetzt or datetime.now(UTC)
+    z = zustand or {}
+    w = wachen or {}
+    pos = z.get("positionen") or []
+    plaetze = w.get("max_offene_positionen")
+    alter = alter_minuten(z.get("letzter_lauf"), jetzt)
+    teile = ["Haus-Buch (Spiegel-Spur omnitrade)",
+             "%s" % (z.get("modus") or "?"),
+             "%d%s Plaetze belegt" % (len(pos), (" von %d" % plaetze) if plaetze else "")]
+    if alter is None:
+        teile.append("noch kein Zyklus")
+    else:
+        teile.append("letzter Zyklus vor %d min" % int(alter))
+    boerse = w.get("boerse")
+    if boerse:
+        teile.append("Boerse %s%s" % (boerse, ("/" + str(w["kraken_quote"]))
+                                      if w.get("kraken_quote") else ""))
+    if w.get("handel_erlaubt") and (w.get("freigabe") or {}).get("erfuellt"):
+        teile.append("LIVE scharf")
+        marke = "gut"
+    else:
+        teile.append("Papier (handel_erlaubt=%s, freigabe=%s)"
+                     % (bool(w.get("handel_erlaubt")),
+                        bool((w.get("freigabe") or {}).get("erfuellt"))))
+        marke = "matt"
+    # Ein alter Herzschlag heisst: die Spur lief nicht - das ist der einzige
+    # Zustand, der hier eine Warnung verdient.
+    if alter is not None and alter > (w.get("herzschlag_max_minuten") or 180):
+        return "⚠ " + " · ".join(teile), "schlecht"
+    return " · ".join(teile), marke
+
+
+def omnitrade_spur_positionen(spur, zustand, wachen):
+    """(Instrument, Seite, Einstieg, Stop, Ziel, Nominal) je offener Position.
+
+    Gelesen wird die NORMALISIERTE Form aus `positionen_der_spur()` - dort
+    heisst das Instrument `instrument` und der Einsatz `wert_usd`, nicht `inst`
+    und `nominal`. Wer hier `instrument_name(p)` auf das normalisierte Dict
+    anwendet, bekommt ein Fragezeichen: `inst` gibt es nur im ROHEN Dict.
+    """
+    aus = []
+    for p in positionen_der_spur(spur, zustand, wachen):
+        aus.append((p.get("instrument") or "?", (p.get("seite") or "").upper(),
+                    kurs_fmt(p.get("einstieg")), kurs_fmt(p.get("stop")),
+                    kurs_fmt(p.get("ziel")), kurs_fmt(p.get("wert_usd"))))
+    return aus
+
+
+def omnitrade_spur_journal(pfad, grenze=6):
+    """(Zeit, Modus, Aktion, Instrument, Preis, Grund) - neueste zuerst.
+
+    Eigenes Lesen statt `journal_ereignisse()`: dessen Form traegt kein `modus`
+    - und genau das ist hier die interessante Spalte (papier oder live).
+    """
+    try:
+        with open(pfad, encoding="utf-8", newline="") as f:
+            zeilen = list(csv.DictReader(f))
+    except Exception:                                        # noqa: BLE001
+        return []
+    aus = []
+    for z in zeilen:
+        aus.append((str(z.get("zeit") or "").replace("T", " ")[:19],
+                    str(z.get("modus") or ""),
+                    str(z.get("aktion") or z.get("ausgang") or "").upper(),
+                    z.get("inst") or z.get("paar") or "?",
+                    kurs_fmt(_zahl(z.get("preis") or z.get("ausstieg"))),
+                    z.get("grund") or ""))
+    aus.sort(key=lambda r: r[0], reverse=True)
+    return aus[:grenze]
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -1053,6 +1139,37 @@ class Handelszentrale:
         self.t_laeufe.tag_configure("schlecht", foreground=FARBEN["rot"])
         self.t_laeufe.tag_configure("gut", foreground=FARBEN["gruen"])
         self.t_laeufe.pack(fill="x", padx=10)
+        # --- Haus-Buch der SPUR (30.09.2026) --------------------------------
+        # Getrennt von den Rust-Laeufen: sie spiegelt deren Position in ein
+        # eigenes Buch, heisst aber genauso. Wer nur eine der beiden sieht,
+        # haelt die Zahlen der anderen fuer seine.
+        tb = tk.Label(seite, text="Haus-Buch der Spur (Spiegel, Papier/Live)",
+                      bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(tb, 0, fett=True)
+        tb.pack(fill="x", padx=10, pady=(8, 0))
+        self.l_omni_spur = tk.Label(seite, bg=FARBEN["bg"], anchor="w",
+                                    justify="left", text=omnitrade_spur_kopf(None, None)[0],
+                                    fg=FARBEN["matt"])
+        self._registriere_schrift(self.l_omni_spur, 0)
+        self.l_omni_spur.pack(fill="x", padx=10)
+        pspalten = ("instrument", "seite", "einstieg", "stop", "ziel", "nominal")
+        pkopf = {"instrument": "Instrument", "seite": "Seite", "einstieg": "Einstieg",
+                 "stop": "Stop", "ziel": "Ziel", "nominal": "Nominal"}
+        self.t_omni_pos = ttk.Treeview(seite, columns=pspalten, show="headings", height=4)
+        for sp in pspalten:
+            self.t_omni_pos.heading(sp, text=pkopf[sp])
+            self.t_omni_pos.column(sp, width=140, anchor="w" if sp in ("instrument", "seite") else "e")
+        self.t_omni_pos.pack(fill="x", padx=10)
+        jspalten = ("zeit", "modus", "aktion", "instrument", "preis", "grund")
+        jkopf = {"zeit": "Zeit", "modus": "Modus", "aktion": "Aktion",
+                 "instrument": "Instrument", "preis": "Preis", "grund": "Grund"}
+        self.t_omni_journal = ttk.Treeview(seite, columns=jspalten, show="headings", height=6)
+        for sp in jspalten:
+            self.t_omni_journal.heading(sp, text=jkopf[sp])
+            self.t_omni_journal.column(sp, width=260 if sp == "zeit" else 120,
+                                       anchor="w" if sp in ("modus", "aktion", "instrument",
+                                                            "grund") else "e")
+        self.t_omni_journal.pack(fill="x", padx=10, pady=(2, 0))
         t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
                      fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t, 0, fett=True)
@@ -1083,6 +1200,24 @@ class Handelszentrale:
     def _zeige_omnitrade(self, lage):
         text, marke = omnitrade_kopf(lage)
         self.l_omni.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
+        # Haus-Buch der SPUR (30.09.2026): eigene Dateien, eigener Stand - die
+        # Spur schreibt zustand.json und handelsjournal.csv, der Rust-Lauf die
+        # Statusdatei. Beides steht in diesem Reiter, getrennt beschriftet.
+        wachen = lade_json(os.path.join(HIER, "omnitrade", "wachen.json"))
+        zustand = lade_json(os.path.join(HIER, "omnitrade", stufenname("zustand.json")))
+        stext, smarke = omnitrade_spur_kopf(zustand, wachen)
+        self.l_omni_spur.configure(
+            text=stext, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(smarke, smarke)])
+        for i in self.t_omni_pos.get_children():
+            self.t_omni_pos.delete(i)
+        for werte in omnitrade_spur_positionen("omnitrade", zustand, wachen):
+            self.t_omni_pos.insert("", "end", values=werte)
+        for i in self.t_omni_journal.get_children():
+            self.t_omni_journal.delete(i)
+        for werte in omnitrade_spur_journal(
+                os.path.join(HIER, "omnitrade", stufenname("handelsjournal.csv"))):
+            marke_j = "gut" if werte[1] == "live" else ""
+            self.t_omni_journal.insert("", "end", values=werte, tags=(marke_j,))
         for i in self.t_omni.get_children():
             self.t_omni.delete(i)
         for werte in omnitrade_order_zeilen(lage):

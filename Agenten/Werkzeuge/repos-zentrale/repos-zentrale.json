@@ -342,6 +342,11 @@
       ]
     },
     {
+      "ordner": "jevgrep",
+      "art": "node",
+      "notiz": "jevgrep"
+    },
+    {
       "ordner": "kraken-cli",
       "rolle": "Werkzeug",
       "art": "rust",
@@ -2195,6 +2200,19 @@
         "handeln.py",
         "--vorschau"
       ]
+    },
+    {
+      "ordner": "omnitrade",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "omnitrade — Haus-Spur auf den Rust-Laeufen",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ],
+      "venv_pflicht": false
     },
     {
       "ordner": "OpenAlice",
