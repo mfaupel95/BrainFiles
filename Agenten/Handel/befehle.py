@@ -88,6 +88,14 @@ FAMILIE = {
     "squeeze": "Indikator",
     "supertrend": "Indikator",
     "trendwende_btc": "Indikator",
+    "klassik_sma": "Indikator",
+    "klassik_ema": "Indikator",
+    "klassik_macd": "Indikator",
+    "klassik_bollinger": "Indikator",
+    "klassik_donchian": "Indikator",
+    "klassik_rsi": "Indikator",
+    "klassik_rsi2": "Indikator",
+    "klassik_donchian_trend": "Indikator",
     "liq_wand": "Options-Zone",
     "wavetrend": "Indikator",
     # Mosaic ist keine Indikator-Spur: sie handelt Preisaktion (4H-Bias,
@@ -123,7 +131,10 @@ FAMILIE = {
 }
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend",
-               "trendwende_btc")
+               "trendwende_btc",
+               "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
+               "klassik_donchian", "klassik_rsi", "klassik_rsi2",
+               "klassik_donchian_trend")
 
 
 def spuren():

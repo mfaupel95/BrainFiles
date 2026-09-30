@@ -5,13 +5,13 @@ tags: [handel]
 created: 2026-09-21
 updated: 2026-09-22
 related: ['[[Handel/Gates-und-Freigabe]]', '[[Handel/Kosten-und-Bedingungen]]', '[[Wissen/Handelsregeln]]']
-summary: 'Die 31 Spuren des Dauerlaufs, welchen Orderweg sie haben und wer heute wirklich handeln darf oder kann.'
+summary: 'Die 39 Spuren des Dauerlaufs, welchen Orderweg sie haben und wer heute wirklich handeln darf oder kann.'
 ---
 
 # Spuren-Uebersicht
 
 Quelle dieser Seite: `Agenten/Handel/dauerlauf.py` (`SPUREN`, `NUR_BASIS`, `AUTO_FREIGABE`)
-und die `wachen.json` jeder Spur. Stand 22.09.2026 (31 Spuren).
+und die `wachen.json` jeder Spur. Stand 30.09.2026 (39 Spuren).
 
 ## Der Dauerlauf
 
@@ -49,7 +49,7 @@ Stand 24.09.2026: alle drei laufen. `hoch` wurde an diesem Tag gestartet (Wrappe
 `Routinen/handel-dauerlauf.ps1 -Risiko hoch`), sein Waechter ist ein Klon des Mittel-Waechters
 mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt (derzeit leer).
 
-## 31 Spuren im Dauerlauf
+## 39 Spuren im Dauerlauf
 
 | Gruppe | Spuren |
 |---|---|
@@ -60,8 +60,15 @@ mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehr
 | Bot-Signale (MoonDev-Nachbau) | `moondev_funding`, `moondev_listingarb`, `moondev_topmovers`, `moondev_marktlage`, `moondev_sniper`, `moondev_signalwelle` |
 | Optionszonen | `iv_wand`, `iv_waelle` |
 | Sprachmodell-Spuren | `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` |
+| Klassik (Pine-Regeln, 4H, OKX-Perp, Papier) | `klassik_sma`, `klassik_ema`, `klassik_macd`, `klassik_bollinger`, `klassik_donchian`, `klassik_rsi`, `klassik_rsi2`, `klassik_donchian_trend` |
 | Zeitreihen-Experiment | `omniquant` |
 | **aus** seit 21.09.2026 | `spiegel`, `spiegel_knapp`, `spiegel_weit` (Buecher bleiben als Vergleichsgrundlage, wachsen nicht) |
+
+Die acht `klassik_*`-Spuren (30.09.2026) setzen die Pine-Strategien dieses Ordners als Papierbuch um
+(BTC/ETH/SOL, 4H, Long und Short, 5 USD Risiko, 3 Plaetze, Ratsche 15 USD, `--live` verweigert). Gemeinsamer
+Kern: `Agenten/Handel/klassik_regeln.py`. Zwei sind neu erdacht: `klassik_rsi2` (Connors RSI(2) mit SMA200-Filter)
+und `klassik_donchian_trend` (Donchian nur in Richtung der EMA200). Lehre: Die Pine-Donchian-Vorlage
+rechnet den Kanal inklusive laufender Kerze und kann nie ausloesen; der Kanal liegt hier VOR der Kerze.
 
 `moondev_signalwelle` (22.09.2026) ist das ehrliche Gegenstueck zu einem VIP-Signal-Kanal aus
 Max' Screenshot: 1h-Momentum (3-15 %) plus Tagesvolumen >= 20 Mio USD, Long, deterministisch,

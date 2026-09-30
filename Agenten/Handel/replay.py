@@ -50,7 +50,10 @@ FUNDING_STUNDEN = 8
 SPUREN_TEIL_B = ("trendwende_btc", "liq_wand", "iv_waelle", "robinhood_radar",
                  "moondev_listingarb", "moondev_topmovers", "moondev_marktlage",
                  "moondev_sniper", "moondev_signalwelle", "moondev_whale",
-                 "moondev_liquidation", "moondev_sentiment")
+                 "moondev_liquidation", "moondev_sentiment",
+                 "klassik_sma", "klassik_ema", "klassik_macd",
+                 "klassik_bollinger", "klassik_donchian", "klassik_rsi",
+                 "klassik_rsi2", "klassik_donchian_trend")
 
 # Spuren, deren Datenquelle sich historisch nicht beschaffen laesst. Sie
 # bekommen einen Vermerk statt einer geschaetzten Zahl.
@@ -679,6 +682,10 @@ SPUR_BOERSE = {
     "moondev_topmovers": "okx_perp", "moondev_sniper": "okx_perp",
     "moondev_signalwelle": "okx_perp", "moondev_whale": "okx_perp",
     "moondev_liquidation": "okx_perp", "moondev_sentiment": "okx_perp",
+    "klassik_sma": "okx_perp", "klassik_ema": "okx_perp",
+    "klassik_macd": "okx_perp", "klassik_bollinger": "okx_perp",
+    "klassik_donchian": "okx_perp", "klassik_rsi": "okx_perp",
+    "klassik_rsi2": "okx_perp", "klassik_donchian_trend": "okx_perp",
     # Kraken Spot (EUR)
     "orbk": "kraken", "kraken": "kraken", "mosaic": "kraken",
     "moondev_marktlage": "kraken",

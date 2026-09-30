@@ -67,6 +67,16 @@ SPUREN = [
     ("trendwende_btc", "trendwende_btc", "scanner", "wachen_pruefung"),
     ("liq_wand", "liq_wand", "scanner", "wachen_pruefung"),
     ("robinhood_radar", "robinhood_radar", "scanner", "wachen_pruefung"),
+    # Klassik-Spuren (30.09.2026): acht spur_buch-Spuren ueber klassik_regeln.
+    ("klassik_sma", "klassik_sma", "scanner", "wachen_pruefung"),
+    ("klassik_ema", "klassik_ema", "scanner", "wachen_pruefung"),
+    ("klassik_macd", "klassik_macd", "scanner", "wachen_pruefung"),
+    ("klassik_bollinger", "klassik_bollinger", "scanner", "wachen_pruefung"),
+    ("klassik_donchian", "klassik_donchian", "scanner", "wachen_pruefung"),
+    ("klassik_rsi", "klassik_rsi", "scanner", "wachen_pruefung"),
+    ("klassik_rsi2", "klassik_rsi2", "scanner", "wachen_pruefung"),
+    ("klassik_donchian_trend", "klassik_donchian_trend", "scanner",
+     "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

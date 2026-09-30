@@ -748,6 +748,33 @@ def spur_robinhood_radar():
                            "Robinhood-Radar (Wallet-Kohorte)")
 
 
+# KLASSIK-SPUREN (30.09.2026): acht Kursregeln ueber klassik_regeln.py.
+KLASSIK_SPUREN = (
+    ("klassik_sma", "Klassik SMA-Kreuz 20/50"),
+    ("klassik_ema", "Klassik EMA-Kreuz 12/26"),
+    ("klassik_macd", "Klassik MACD-Kreuz"),
+    ("klassik_bollinger", "Klassik Bollinger-Ausbruch"),
+    ("klassik_donchian", "Klassik Donchian 20/10"),
+    ("klassik_rsi", "Klassik RSI-Rueckkehr"),
+    ("klassik_rsi2", "Klassik RSI(2) im Trend"),
+    ("klassik_donchian_trend", "Klassik Donchian + EMA200"),
+)
+
+
+def _klassik_holer(ordner, name):
+    def holer():
+        return _spur_indikator(ordner, name)
+    # befehle.py leitet den Spurnamen aus dem Funktionsnamen ab (spur_<name>).
+    holer.__name__ = "spur_" + ordner
+    return holer
+
+
+HOLER_KLASSIK = tuple(_klassik_holer(o, n) for o, n in KLASSIK_SPUREN)
+# befehle._holer_fuer sucht spur_<name> als Modulattribut.
+for _h in HOLER_KLASSIK:
+    globals()[_h.__name__] = _h
+
+
 def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
@@ -1327,5 +1354,5 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
-    spur_moondev_sniper)
+    spur_moondev_sniper) + HOLER_KLASSIK
 

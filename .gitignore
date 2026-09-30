@@ -884,3 +884,45 @@ Agenten/Werkzeuge/breite-reihe.jsonl
 # Argument den Stand lesen, mit "start" den Demo-Lauf beginnen - mit Pruefung,
 # dass nie zwei Laeufe gleichzeitig gehen (zwei Laeufe ordern doppelt).
 !/omnitrade.cmd
+
+# Klassik-Spuren (30.09.2026)
+!Agenten/Handel/klassik_sma/*.py
+!Agenten/Handel/klassik_sma/*.md
+!Agenten/Handel/klassik_sma/wachen.json
+Agenten/Handel/klassik_sma/zustand.json
+Agenten/Handel/klassik_sma/handelsjournal.csv
+!Agenten/Handel/klassik_ema/*.py
+!Agenten/Handel/klassik_ema/*.md
+!Agenten/Handel/klassik_ema/wachen.json
+Agenten/Handel/klassik_ema/zustand.json
+Agenten/Handel/klassik_ema/handelsjournal.csv
+!Agenten/Handel/klassik_macd/*.py
+!Agenten/Handel/klassik_macd/*.md
+!Agenten/Handel/klassik_macd/wachen.json
+Agenten/Handel/klassik_macd/zustand.json
+Agenten/Handel/klassik_macd/handelsjournal.csv
+!Agenten/Handel/klassik_bollinger/*.py
+!Agenten/Handel/klassik_bollinger/*.md
+!Agenten/Handel/klassik_bollinger/wachen.json
+Agenten/Handel/klassik_bollinger/zustand.json
+Agenten/Handel/klassik_bollinger/handelsjournal.csv
+!Agenten/Handel/klassik_donchian/*.py
+!Agenten/Handel/klassik_donchian/*.md
+!Agenten/Handel/klassik_donchian/wachen.json
+Agenten/Handel/klassik_donchian/zustand.json
+Agenten/Handel/klassik_donchian/handelsjournal.csv
+!Agenten/Handel/klassik_rsi/*.py
+!Agenten/Handel/klassik_rsi/*.md
+!Agenten/Handel/klassik_rsi/wachen.json
+Agenten/Handel/klassik_rsi/zustand.json
+Agenten/Handel/klassik_rsi/handelsjournal.csv
+!Agenten/Handel/klassik_rsi2/*.py
+!Agenten/Handel/klassik_rsi2/*.md
+!Agenten/Handel/klassik_rsi2/wachen.json
+Agenten/Handel/klassik_rsi2/zustand.json
+Agenten/Handel/klassik_rsi2/handelsjournal.csv
+!Agenten/Handel/klassik_donchian_trend/*.py
+!Agenten/Handel/klassik_donchian_trend/*.md
+!Agenten/Handel/klassik_donchian_trend/wachen.json
+Agenten/Handel/klassik_donchian_trend/zustand.json
+Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
