@@ -22,6 +22,7 @@ Aufruf:
     python replay.py --spur squeeze --gegenprobe
 """
 
+import bisect
 import csv
 import datetime as dt
 import importlib.util
@@ -272,6 +273,249 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     return aus
 
 
+# --- Ausstieg am BERUEHRTEN Kurs (Backtest-Regel) ---------------------------
+#
+# Der Replay kannte einen einzigen Ausstiegskurs: den SCHLUSS der Kerze, in der
+# Stop oder Ziel beruehrt wurde. Das ueberschaetzt jeden Laeufer - belegt an
+# ADA, Ziel +12 %, geschlossen +48 % - und damit jede Kennzahl, die auf dem
+# Replay aufbaut.
+#
+# Richtig ist der Kurs der MARKEN selbst: steht die Marke in der Kerze, ist sie
+# der Ausstieg. Gemessen wird am Hoch/Tief der Kerze, nicht am Schluss.
+#
+# Diese Regel liegt HIER und nicht in `spur_buch.pruefe_ausstiege()`: jene
+# Funktion ist der LIVE-Pfad einer Spur. Im Backtest wird die Journalzeile
+# berichtigt, bevor sie ins Backtest-Journal geht (Journal-Huelle unten) - die
+# Spuren selbst bleiben unangetastet.
+#
+# Was diese Regel NICHT aendert: WANN ausgestiegen wird. Der Ausloeser bleibt
+# der Schluss der Kerze, denn so entscheiden die Spuren live. Ein Ausstieg
+# allein wegen eines Dochts ist damit weiterhin nicht abgebildet - das ist eine
+# zweite, eigene Frage und keine Nebenwirkung dieser Regel.
+
+def _zahl(x):
+    """Eine Journalzelle als Zahl - None, wenn sie fehlt oder unlesbar ist."""
+    if x is None or x == "":
+        return None
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def beruehrte_marke(kerze, seite, stop, ziel):
+    """Welche Marke hat diese Kerze beruehrt - "stop", "ziel" oder None?
+
+    Gemessen wird am HOCH und TIEF der Kerze, nicht an ihrem Schluss: der
+    Schluss verraet nicht, ob die Marke ueberhaupt gestreift wurde. Liegen
+    BEIDE Marken in derselben Kerze, gilt die KONSERVATIVE Reihenfolge (erst
+    der Stop) - die guenstige waere genau der Schoenheitsfehler, den diese
+    Regel beseitigt.
+
+    `kerze` ist eine Binance-Reihe [ts, o, h, l, c, v].
+    """
+    if not kerze or len(kerze) < 5:
+        return None
+    seite = str(seite or "").strip().lower()
+    if seite not in ("long", "short"):
+        return None
+    hoch, tief = _zahl(kerze[2]), _zahl(kerze[3])
+    stop, ziel = _zahl(stop), _zahl(ziel)
+    if None in (hoch, tief, stop, ziel):
+        return None
+    if seite == "long":
+        if tief <= stop:
+            return "stop"
+        if hoch >= ziel:
+            return "ziel"
+    else:
+        if hoch >= stop:
+            return "stop"
+        if tief <= ziel:
+            return "ziel"
+    return None
+
+
+def kurs_der_marke(kerze, seite, stop, ziel):
+    """Der Ausstiegskurs EINER Kerze: der Kurs der beruehrten Marke oder None.
+
+    EINE Stelle fuer beide Rechenwege (`lauf_a` und `backtest_prognose.lauf`) -
+    zwei Fassungen derselben Regel waeren zwei Wahrheiten.
+    """
+    marke = beruehrte_marke(kerze, seite, stop, ziel)
+    if marke is None:
+        return None
+    return _zahl(stop) if marke == "stop" else _zahl(ziel)
+
+
+def _preis_text(level, alt):
+    """Den Ausstiegskurs in der SCHREIBWEISE der Zeile halten.
+
+    Die Zeilen der Spuren tragen sechs Nachkommastellen (die Sniper mehr). Wer
+    hier hart formatiert, macht aus einer Zahl einen anderen String - also
+    uebernimmt diese Funktion die Zahl der Stellen vom alten Wert.
+    """
+    txt = str(alt if alt is not None else "")
+    stellen = 0
+    if "." in txt:
+        stellen = len(txt.split(".")[1])
+    # Die Marke selbst kann MEHR Stellen tragen als die alte Zelle
+    # (0.68171040 gegen 0.681710). Wer auf die alte Stellenzahl rundet,
+    # verschiebt den Ausstieg still wieder von der Marke weg - deshalb das
+    # Maximum aus beiden.
+    marke = repr(float(level))
+    if "." in marke:
+        stellen = max(stellen, len(marke.split(".")[1].rstrip("0")))
+    return "%.*f" % (min(int(stellen) if stellen else 6, 12), float(level))
+
+
+class Beruehrungsjournal:
+    """Journal-Huelle: Ausstiege werden auf den BERUEHRTEN Kurs gezogen.
+
+    Sie sitzt VOR dem Journal der Spur (Familie A) bzw. vor `spur_buch.journal`
+    (Familie B) und sieht damit jede Zeile. Berichtigt werden nur Zeilen, die
+    einen Ausstieg an einer MARKE aussprechen (`grund` stop/ziel): sie bekommen
+    den Kurs der Marke und ihr `einsatz_usd` aus dem gemerkten Einstieg.
+    Einstiege und alle uebrigen Ausstiegsgruende (Frist, Rueckdreh, Herzschlag,
+    Buchbereinigung) gehen UNVERAENDERT durch - fuer sie gibt es keinen
+    Markenpreis.
+
+    `kerzen` ist ein VERANDERLICHES Dict {inst: Kerze des aktuellen Schritts};
+    die Familie setzt es je Schritt, bevor sie den Zyklus fahren laesst.
+    """
+
+    def __init__(self, kerzen, weiter=None, kerze_fuer=None):
+        self.kerzen = kerzen
+        self.weiter = weiter       # None = Zeilen nur sammeln (Familie A)
+        # Optional: die Kerze erst holen, wenn eine Markenzeile auftaucht.
+        # Familie C rechnet je Schritt nur einen Preis aus - dort waere ein
+        # Vorrat ueber alle Instrumente zehntausende Dateizugriffe wertlos.
+        self.kerze_fuer = kerze_fuer
+        self.einstiege = {}        # {inst: (einstieg, nominal)}
+        self.berichtigt = 0        # berichtigte Ausstiegszeilen
+        self.ohne_marke = 0        # Zeile ohne Kerze/Marke - BENANNT, nie still
+        # Je Instrument die Kurse der berichtigten Markenzeilen DIESES
+        # Schritts, in der Reihenfolge der Zeilen. Der Prognose-Backtest
+        # baut seine RUNDE daraus (er rechnet sonst mit dem Kerzenschluss
+        # weiter - Journal richtig, Ergebnis falsch). Eine LISTE, nicht ein
+        # Einzelwert: schliesst ein Instrument in einem Schritt zwei
+        # Positionen, braucht jede ihren eigenen Kurs.
+        self.marke_je_inst = {}
+
+    def schritt_anfang(self):
+        """Die Warteschlangen leeren - EINMAL je Kerzenschritt."""
+        self.marke_je_inst.clear()
+
+    def nimm_marke(self, inst):
+        """Kurs der naechsten Markenzeile dieses Instruments, sonst None."""
+        w = self.marke_je_inst.get(inst)
+        return w.pop(0) if w else None
+
+    def __call__(self, *a, **f):
+        f = self._berichtigen(dict(f))
+        self._merken(f)
+        if self.weiter is None:
+            return None
+        return self.weiter(*a, **f)
+
+    def _merken(self, f):
+        if str(f.get("aktion") or "").strip().lower() not in ("kauf", "einstieg",
+                                                              "eroeffnen"):
+            return
+        einstieg, nominal = _zahl(f.get("preis")), _zahl(f.get("einsatz_usd"))
+        if einstieg and nominal:
+            self.einstiege[f.get("inst")] = (einstieg, nominal)
+
+    def _kerze(self, inst):
+        if self.kerze_fuer is not None:
+            return self.kerze_fuer(inst)
+        return (self.kerzen or {}).get(inst)
+
+    def _berichtigen(self, f):
+        grund = str(f.get("grund") or "").strip().lower()
+        if grund not in ("stop", "ziel"):
+            return f
+        kerze = self._kerze(f.get("inst"))
+        seite = str(f.get("seite") or "").strip().lower()
+        marke = beruehrte_marke(kerze, seite, f.get("stop"), f.get("ziel"))
+        if marke is None:
+            # Keine Kerze zur Zeile (oder keine Marke in ihr): die Zeile bleibt
+            # wie sie ist und wird GEZAEHLT - eine stille Nicht-Aenderung waere
+            # von einer Nicht-Pruefung nicht zu unterscheiden.
+            self.ohne_marke += 1
+            return f
+        kurs = _zahl(f.get("stop")) if marke == "stop" else _zahl(f.get("ziel"))
+        neu = dict(f)
+        neu["preis"] = _preis_text(kurs, f.get("preis"))
+        neu["grund"] = marke
+        ein = self.einstiege.get(f.get("inst"))
+        if ein:
+            einstieg, nominal = ein
+            vz = 1.0 if seite == "long" else -1.0
+            gv = nominal * ((kurs - einstieg) / einstieg) * vz
+            if "einsatz_usd" in neu:
+                neu["einsatz_usd"] = "%.2f" % (nominal + gv)
+        self.berichtigt += 1
+        self.marke_je_inst.setdefault(f.get("inst"), []).append(kurs)
+        return neu
+
+
+def _feed_kerze(inst, ts, takt="1H"):
+    """Die Kerze des Schritts fuer eine Spur mit eigenem `lauf()`.
+
+    Diese Spuren pruefen ihren Ausstieg gegen einen MARK-PREIS je Schritt
+    (bei moondev_funding: je Funding-Zeitpunkt). Der Preis wird aus der
+    Stunden-Reihe des Bestands gebildet - also ist genau DIESE Kerze der
+    Massstab. Die uebrigen Stunden des Funding-Fensters (8 h) liefert die
+    Reihe hier nicht mit; die Regel sieht damit nur die Stunde des
+    Ausstiegs. Das ist eine Grenze der DATEN, nicht der Regel, und sie
+    steht im Wiki.
+
+    Kein Fehler, wenn nichts da ist: der Aufrufer zaehlt die Zeile dann als
+    "ohne Marke" und laesst sie stehen.
+    """
+    try:
+        import moondev_historie
+        sym = historie_binance.symbol(inst)
+        reihen = moondev_historie.lade_feed(sym, takt)
+        if not reihen:
+            return None
+        zeiten = moondev_historie._reihen_zeiten(sym, takt)
+        i = bisect.bisect_right(zeiten, int(ts)) - 1
+        return reihen[i] if i >= 0 else None
+    except Exception:                                   # noqa: BLE001
+        return None
+
+
+def auf_der_marke(journal_pfad):
+    """Wie viele Ausstiege sitzen GENAU auf ihrer Marke (Stop bzw. Ziel)?
+
+    Das ist die Gegenprobe zur Regel oben, aus dem Journal selbst gelesen: ein
+    Ausstieg, der die Marke trifft, steht auf ihr; ein Ausstieg auf dem
+    Kerzenschluss (die alte Rechnung) trifft sie so gut wie nie. Die Zahl steht
+    deshalb neben jeder Kennzahl - sonst waere "die Regel wirkt" eine
+    Behauptung.
+    """
+    trifft, ausstiege = 0, 0
+    try:
+        with open(journal_pfad, newline="", encoding="utf-8") as f:
+            for zeile in csv.DictReader(f):
+                grund = str(zeile.get("grund") or "").strip().lower()
+                if grund not in ("stop", "ziel"):
+                    continue
+                ausstiege += 1
+                preis = _zahl(zeile.get("preis"))
+                marke = _zahl(zeile.get("stop") if grund == "stop"
+                              else zeile.get("ziel"))
+                if preis is None or marke is None:
+                    continue
+                if abs(preis - marke) <= 1e-8 * max(1.0, abs(marke)):
+                    trifft += 1
+    except FileNotFoundError:
+        return {"ausstiege_an_marke": 0, "ausstiege": 0}
+    return {"ausstiege_an_marke": trifft, "ausstiege": ausstiege}
+
+
 def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
            max_kerzen=None, fenster=None, abschnitt=None):
     """Familie A ueber die Historie. Rueckgabe wie backtest_prognose.lauf().
@@ -317,7 +561,13 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     # Spalte `zeit` - und die traegt die WANDUHR, wenn die Spur ihre eigene
     # `_jetzt()` benutzt und die Uhr nicht gesetzt wurde (gemessen 2026-09-25:
     # ein 6-Monats-Lauf schrieb alle Zeilen mit der Uhrzeit des Laufs).
-    modul.journal = lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"]))
+    # Der Ausstieg wird auf den BERUEHRTEN Kurs gezogen, BEVOR die Zeile ins
+    # Backtest-Journal geht (Regel oben) - die Spur selbst bleibt unberuehrt.
+    kerzen_jetzt = {}
+    huelle = Beruehrungsjournal(
+        kerzen_jetzt,
+        lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
+    modul.journal = huelle
     alt_zeit = getattr(modul, "zeit_quelle", None)
     hat_zeit = hasattr(modul, "zeit_quelle")
     z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
@@ -337,13 +587,21 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
         for inst, alle in kerzen.items():
             k = (alle[max(0, i + 1 - fenster):i + 1] if fenster
                  else alle[:i + 1])
+            kerzen_jetzt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             modul.pruefe_ausstiege(z, k, w, nur=inst)
             nachher = {id(p) for p in z["positionen"]}
             for pid, p in vorher.items():
                 if pid not in nachher and pid in offen:
                     e = offen.pop(pid)
-                    kurs = k[-1][4]
+                    kerze = k[-1]
+                    # Der Ausstieg geschieht am KURS DER MARKE (Stop bzw.
+                    # Ziel), nicht am Kerzenschluss - siehe Regel oben.
+                    # Ohne Marke in der Kerze bleibt es beim Schluss.
+                    kurs = kurs_der_marke(kerze, e["seite"], e["stop"],
+                                          e["ziel"])
+                    if kurs is None:
+                        kurs = kerze[4]
                     vz = 1 if e["seite"] == "long" else -1
                     roh = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
                     runden.append({
@@ -363,6 +621,8 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
                                     "einstieg": p["einstieg"],
                                     "nominal": p["nominal"],
                                     "stop_pct": p.get("stop_pct", 0.0),
+                                    "stop": p.get("stop"),
+                                    "ziel": p.get("ziel"),
                                     "ts": k[-1][0]}
     if hat_zeit:
         modul.zeit_quelle = alt_zeit
@@ -528,19 +788,24 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
 
     alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
     alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
+    alt_journal = spur_buch.journal
     alt_risiko = os.environ.pop("HANDEL_RISIKO", None)
-    zugriff = {"bis_ms": 0, "fenster": fenster}
+    zugriff = {"bis_ms": 0, "fenster": fenster, "kerzen": {}}
     quelle = historische_quelle(modul, spur, zugriff)
     puffer = io.StringIO()
     laenge = min(len(k) for k in alle.values())
     try:
         spur_buch.SCHREIBEN = True      # ins BACKTEST-Journal, nicht ins echte
         spur_buch.spiegeln = lambda *a, **k: None
+        spur_buch.journal = Beruehrungsjournal(zugriff["kerzen"], alt_journal)
         ereignis.lauf = _kein_bus
         with contextlib.redirect_stdout(puffer if still else sys.stdout):
             for i in range(int(w.get("mindest_kerzen", 300)), laenge):
                 ts = max(k[i][0] for k in alle.values())
                 zugriff["bis_ms"] = ts
+                # Die Kerze des Schritts je Instrument - die Journal-Huelle
+                # zieht den Ausstieg damit auf den beruehrten Kurs.
+                zugriff["kerzen"] = {name: kk[-1] for name, kk in alle.items()}
                 spur_buch.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
                     _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
                 spur_buch.zyklus(ordner, quelle, modul.signal, "papier",
@@ -548,6 +813,7 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     finally:
         spur_buch.SCHREIBEN, spur_buch.zeit_quelle = alt_schreiben, alt_zeit
         spur_buch.spiegeln, ereignis.lauf = alt_spiegeln, alt_lauf
+        spur_buch.journal = alt_journal
         if alt_risiko is not None:
             os.environ["HANDEL_RISIKO"] = alt_risiko
     journal = os.path.join(ordner, "handelsjournal.csv")
@@ -609,15 +875,27 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
                            "Universum zu klein oder Zeitraum falsch"
                            % mindest_symbole)
 
+    # Das Journal fuehrt den BASISWERT (1INCH), die Tafel das Binance-Symbol
+    # (1INCHUSDT). Ohne diese Zuordnung findet `bestand.kerze()` nichts und
+    # die Beruehrungsregel wuerde in dieser Familie still gar nichts tun.
+    basis_zu_sym = {}
+    for _sym in bestand.symbole():
+        _b = moondev_historie.basis_von(_sym)
+        if _b:
+            basis_zu_sym.setdefault(_b, _sym)
     quelle_adapter = moondev_historie.QUELLEN[spur]
     alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
     alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
+    alt_journal = spur_buch.journal
     alt_risiko = os.environ.pop("HANDEL_RISIKO", None)
+    kerzen_jetzt = {}
     puffer = io.StringIO()
     leer = 0
     try:
         spur_buch.SCHREIBEN = True              # ins BACKTEST-Journal
         spur_buch.spiegeln = lambda *a, **k: None
+        huelle = Beruehrungsjournal(kerzen_jetzt, alt_journal)
+        spur_buch.journal = huelle
         ereignis.lauf = _kein_bus
         with contextlib.redirect_stdout(puffer if still else sys.stdout):
             for ts in schritte:
@@ -625,6 +903,15 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
                 if not daten:
                     leer += 1
                     continue
+                # Die Kerze des Schritts je Kandidat - die Journal-Huelle
+                # zieht den Ausstieg damit auf den beruehrten Kurs. Die Tafel
+                # liefert Tagesfelder, die Kerze kommt aus dem Bestand.
+                kerzen_jetzt.clear()
+                for _i in daten:
+                    _sym = basis_zu_sym.get(_i)
+                    _k = bestand.kerze(_sym, ts) if _sym else None
+                    if _k:
+                        kerzen_jetzt[_i] = _k
                 quelle = (lambda _w, _d=daten, _k=kurse, _f=fehler:
                           (_d, _k, _f))
                 spur_buch.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
@@ -634,6 +921,7 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
     finally:
         spur_buch.SCHREIBEN, spur_buch.zeit_quelle = alt_schreiben, alt_zeit
         spur_buch.spiegeln, ereignis.lauf = alt_spiegeln, alt_lauf
+        spur_buch.journal = alt_journal
         if alt_risiko is not None:
             os.environ["HANDEL_RISIKO"] = alt_risiko
     journal = os.path.join(ordner, "handelsjournal.csv")
@@ -645,7 +933,13 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
         k["netto_je_runde_pct"] = je_runde - 2.0 * float(gebuehr_pct)
     k.update({"schritte": len(schritte), "schritte_ohne_kandidaten": leer,
               "takt": takt, "gebuehr_pct": float(gebuehr_pct),
-              "universum": len(bestand.symbole()), "kerzenquelle": "binance"})
+              "universum": len(bestand.symbole()), "kerzenquelle": "binance",
+              # Die Arbeit der Beruehrungsregel, damit ein Lauf nicht nur
+              # nach seiner Zahl, sondern nach seiner Pruefung beurteilt
+              # wird: `ohne_marke` > 0 heisst, dass Ausstiege NICHT
+              # berichtigt werden konnten (Kerze fehlte).
+              "berichtigt": huelle.berichtigt,
+              "ohne_marke": huelle.ohne_marke})
     return k, len(puffer.getvalue().splitlines())
 
 
@@ -708,7 +1002,8 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
     modul.WACHEN = os.path.join(ordner, "wachen.json")
     modul.ZUSTAND = zustand
     modul.JOURNAL = journal
-    namen = ("SCHREIBEN", "spiegeln", "funding_quelle", "zeit_quelle")
+    namen = ("SCHREIBEN", "spiegeln", "funding_quelle", "zeit_quelle",
+             "journal")
     alt = {n: getattr(modul, n, None) for n in namen}
     puffer = io.StringIO()
     kill_gesehen = False
@@ -717,6 +1012,13 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
         modul.spiegeln = lambda *a, **k: None
         modul.funding_quelle = lambda inst: moondev_historie.funding_dict(
             inst, box["ts"])
+        # Ebenso der Ausstieg: die Zeile wird auf den BERUEHRTEN Kurs gezogen
+        # (Regel oben). Die Kerze kommt erst auf Abruf - diese Spur rechnet
+        # je Schritt EINEN Preis aus, ein Vorrat waere hier nur Last.
+        if alt.get("journal"):
+            modul.journal = Beruehrungsjournal(
+                {}, alt["journal"],
+                kerze_fuer=lambda i: _feed_kerze(i, box["ts"]))
         with contextlib.redirect_stdout(puffer if still else sys.stdout):
             for ts in schritte:
                 box["ts"] = ts
@@ -768,6 +1070,9 @@ def kennzahlen(journal_pfad):
         return {"runden": 0, "zwang": len(zwang)}
     k = dict(kosten_wendepunkt.wendepunkt(runden) or {})
     k["zwang"] = len(zwang)
+    # Gegenprobe zur Beruehrungsregel, aus dem Journal gelesen: ein
+    # Ausstieg, der die Marke trifft, steht GENAU auf ihr.
+    k.update(auf_der_marke(journal_pfad))
     return k
 
 

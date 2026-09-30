@@ -251,20 +251,91 @@ Wachen. Was gesetzt wurde, steht als `_backtest_gesetzt` in der Kopie.
 
 - Der Kill-Schalter geht nie wieder auf (oben) - Entscheidung Max, ob
   `spur_buch` nach einer Frist selbst wieder freigibt.
-- Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut (oben) - intrabar
-  waere die naechste Stufe.
+- ~~Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut~~ - **erledigt am
+  30.09.2026** (unten, "Die Beruehrungsregel"): der Ausstieg geschieht jetzt am
+  beruehrten Kurs. Offen bleibt der DOCHT-Ausstieg (eine Beruehrung ohne
+  Schluss jenseits der Marke loest weiterhin nichts aus).
 - Die Einstiegszeile im Journal der Feed-Spuren traegt als Grund den
   Platzhalter "Der Grund, der im Journal steht." (aus `spur_buch`, auch im
   ECHTEN Journal). Der Ausstiegsgrund ist echt; der Einstiegsgrund sagt nichts.
 
-### Grenze der Methode: Ausstiege zum Kerzenschluss
+### Die Beruehrungsregel (2026-09-30, T-177) - der Ausstieg sitzt auf der Marke
 
-Ausgestiegen wird zum SCHLUSS der Kerze, in der Stop oder Ziel beruehrt wurde -
-nicht zum Stop- oder Zielkurs. Ein Laeufer ueberschiesst sein Ziel dadurch
+Ausgestiegen wurde zum SCHLUSS der Kerze, in der Stop oder Ziel beruehrt wurde -
+nicht zu Stop- oder Zielkurs. Ein Laeufer ueberschiesst sein Ziel dadurch
 deutlich: ADA stand mit Ziel +12 % im Buch und wurde mit +48 % geschlossen. Die
-Gewinner werden also zu GUT gerechnet, und zwar in beiden Familien (A und B)
-gleich - die Zahlen sind untereinander vergleichbar, aber nicht als
-Ertragserwartung zu lesen. Ein intrabar-Ausstieg waere die naechste Stufe.
+Gewinner wurden also zu GUT gerechnet, in beiden Familien gleich.
+
+Jetzt gilt: **liegt die Marke in der Kerze, ist sie der Ausstieg** - gemessen am
+Hoch (Long-Ziel) bzw. Tief (Long-Stop).
+
+- **Eine Rechnung, zwei Wege:** `replay.beruehrte_marke(kerze, seite, stop, ziel)`
+  gibt `stop`/`ziel`/`None`, `kurs_der_marke()` den Kurs. `replay.lauf_a`
+  (Familie A) und `backtest_prognose.lauf` rufen dieselbe Funktion - vorher
+  rechneten sie mit 10,0000 % gegen 10,4961 % dieselbe Bewegung zweimal.
+- **Liegen beide Marken in einer Kerze, gilt der STOP.** Die guenstige
+  Reihenfolge waere der Schoenheitsfehler; ein Backtest darf den Zweifel nicht
+  zu seinen Gunsten aufloesen.
+- **Der AUSLOESER bleibt der Schluss** - so entscheiden die Spuren live. Die
+  Regel aendert nur den PREIS, nicht das WANN. Ein reiner Docht-Ausstieg ist
+  bewusst nicht abgebildet.
+- **Berichtigt wird die Journalzeile, nicht die Spur.** `replay.Beruehrungsjournal`
+  sitzt vor `spur_buch.journal` (Familie B/C) bzw. vor dem Modul-Journal
+  (Familie A): Markenpreis, `grund` und `einsatz_usd` (Erloes gerechnet wie die
+  Spur, short spiegelverkehrt). Nur `grund` stop/ziel; Frist, Rueckdreh,
+  Herzschlag und Buchbereinigung gehen unveraendert durch.
+- `spur_buch.pruefe_ausstiege()` (LIVE-Pfad) ist **nicht angefasst**.
+- **Gegenprobe an jeder Kennzahl:** `ausstiege_an_marke` / `ausstiege`, aus dem
+  Journal gezaehlt (`replay.auf_der_marke`). Ein Lauf von vorher zeigt `0/1506`;
+  `auswertung_alle.py` schreibt die Quote in jede Backtest-Zeile.
+- **Die Stellenzahl der Zelle ist das MAXIMUM aus alter Zelle und Marke**
+  (`_preis_text`): AUDIO stand mit Ziel 0,68171040 im Journal, die alte Zelle
+  trug 0,681710 - die erste Fassung schnitt die Marke ab und der Ausstieg lag
+  wieder daneben.
+
+**Vorher/Nachher ueber sechs Spuren** (2021-01 bis 2026-09, Gebuehr 0,1 % je
+Seite; `--lauf vor177` mit unveraendertem Code, `--lauf nach177` mit der Regel):
+
+| Spur | Runden | Treffer | Summe vorher | Summe nachher | Ausstiege auf der Marke |
+|---|---|---|---|---|---|
+| wavetrend | 1128 -> 1128 | 54,3 % -> 54,3 % | +419,66 | +385,88 | 0/1506 -> 1506/1506 |
+| macd_mtf | 774 -> 774 | 53,2 % -> 53,2 % | +299,90 | +285,02 | 0/1209 -> 1209/1209 |
+| squeeze | 759 -> 759 | 51,0 % -> 51,0 % | +61,93 | **-6,34** | 0/1088 -> 1088/1088 |
+| moondev_topmovers | 55 -> 135 | 60,0 % -> 49,6 % | +522,44 | +260,00 | 0/55 -> **134**/135 |
+| moondev_funding | 21 -> 23 | 81,0 % -> 78,3 % | +156,50 | +87,00 | 0/21 -> 23/23 |
+| supertrend | 854 -> 854 | 49,8 % -> 49,8 % | -24,17 | -24,17 | 492/492 -> 492/492 |
+
+Was daran zu lesen ist:
+
+- Bei **wavetrend, macd_mtf, squeeze und supertrend sind Rundenzahl und
+  Trefferquote IDENTISCH** - die Regel verschiebt nur den Ausstiegskurs, nicht
+  den Ausloeser. Das ist der beste Beleg, dass sie tut, was sie soll.
+- **squeeze dreht ins Minus** (+61,93 -> -6,34): der ganze Vorsprung kam aus den
+  zu guten Ausstiegen. Dieselbe Aussage gilt fuer jede Spur, deren Zahlen
+  vorher im Plus lagen.
+- **topmovers: 55 -> 135 Runden.** Das ist KEIN reiner Preisvergleich: der
+  geaenderte Ausstiegskurs aendert den Buchpfad (Ratsche, freie Plaetze), also
+  kommen zu den anderen Ausstiegen auch andere Einstiege. Wer die Zeile als
+  Vorher/Nachher derselben Geschaefte liest, liest sie falsch.
+- **supertrend war schon auf der Marke** (492/492 vorher): seine eigene
+  Ausstiegsrechnung schreibt den Markenpreis - die Regel aendert dort nichts.
+  Eine Regel, die nichts aendert, ist kein Widerspruch, sondern eine Messung.
+- **Nicht abgebildet:** ein reiner Docht-Ausstieg (Beruehrung ohne Schluss
+  jenseits der Marke) und ein Markenausstieg, der nur ueber mehrere Kerzen
+  hinausgeht. Die Regel ist die untere Schranke der Ausstiegsqualitaet, kein
+  Optimalpfad.
+- **Eine Zeile blieb daneben:** 134 von 135 Ausstiegen des Feed-Laufs sitzen auf
+  der Marke. Der eine Ausreisser ist `AUDIO`, 2021-03-06, Ziel 0,68171040 - die
+  Zeile steht auf dem Kerzenschluss 0,681710, weil der Schritt fuer dieses
+  Instrument keine Kerze bereitstellte. Der Zaehler dafuer ist
+  `ohne_marke` in der Journal-Huelle; er steht seit dem 30.09.2026 im Bericht
+  des Laufs neben `berichtigt` - **eine Ausnahme wird gezaehlt, nicht
+  verschwiegen**.
+- **Welcher Lauf gezeigt wird, ist selbst eine Regel:** `auswertung_alle`
+  bevorzugt bei gleichem Umfang den Lauf MIT Kerzenuhr und dann den mit dem
+  hoeheren Anteil Markenausstiege. Vorher entschied der Name - und `vor177`
+  steht alphabetisch hinter `nach177`, also zeigte die Uebersicht genau den
+  Lauf ohne die Regel (+0,372 % je Runde statt +0,342 %).
 
 ### Drei Fehler, die die echten Laeufe aufgedeckt haben
 

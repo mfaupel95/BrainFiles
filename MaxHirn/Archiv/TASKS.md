@@ -60,6 +60,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
+      Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
+      gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
+      +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
+      Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
+      betroffen sind `Agenten/Handel/backtest_urteile.py`, die Zeilen von
+      `auswertung_alle.py --backtest` und die Notizen unter MaxHirn/Wiki/Handel/.
+      Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
+      (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
+      `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/backtest_urteile.py, daten/backtest/**, MaxHirn/Wiki/Handel/
+
+- [ ] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
+      Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
+      Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
+      aber der Kerzenschluss, wie live. Eine Kerze, die eine Marke nur mit dem Docht
+      streift und darueber schliesst, loest weiterhin nichts aus.
+      Naechster Schritt: zaehlen, wie oft das in den vorhandenen Historien vorkommt
+      (Zaehler neben `auf_der_marke`), und erst dann entscheiden - ein Docht-Ausstieg
+      macht die Zahlen strenger, nie besser, und weicht vom Live-Verhalten ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
+
 - [ ] **T-197 — Freqtrade-Bots: die Frequenz-Bremse fehlt in der Uebertragung**
       Kontext: Der erste echte Backtest der drei Moon-Dev-Strategien (30.09.2026) ist in
       allen Fenstern negativ, und der Grund ist nicht die Richtung, sondern die ZAHL der

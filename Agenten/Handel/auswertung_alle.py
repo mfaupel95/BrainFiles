@@ -628,6 +628,26 @@ def zeige(spur, k):
 BACKTEST_WURZEL = Path(__file__).resolve().parent / "daten" / "backtest"
 
 
+def _markenanteil(pfad):
+    """Anteil der Stop-/Ziel-Ausstiege, die GENAU auf ihrer Marke liegen.
+
+    Ein Lauf OHNE die Beruehrungsregel (vor T-177) schreibt dort den
+    Kerzenschluss und kommt auf 0. Das ist der Unterschied, der bei
+    gleicher Zeilenzahl entscheiden MUSS: sonst entscheidet der Name,
+    und 'vor177' gewinnt gegen 'nach177', obwohl es der schlechtere Lauf
+    ist. Ohne Stop-/Ziel-Zeilen gibt es nichts zu vergleichen -> 0.0.
+    """
+    import replay                                                # noqa: PLC0415
+
+    try:
+        z = replay.auf_der_marke(pfad)
+    except Exception:                                            # noqa: BLE001
+        return 0.0
+    if not z.get("ausstiege"):
+        return 0.0
+    return z["ausstiege_an_marke"] / z["ausstiege"]
+
+
 def backtest_stand(spur):
     """Ein Satz je Spur: was der Backtest sagt - oder warum er nichts sagt.
 
@@ -654,27 +674,38 @@ def backtest_stand(spur):
         if pfad.is_file():
             with pfad.open(encoding="utf-8", newline="") as f:
                 zeilen = sum(1 for _ in csv.reader(f)) - 1      # ohne Kopf
-            # Bei GLEICHER Zeilenzahl gewinnt der Lauf MIT Kerzenuhr. Sonst
-            # entscheidet der Name, und ein alter Lauf ohne Zeitraum kann einen
-            # datierten verdecken - am 2026-09-26 lagen zwei Laeufe mit je 2180
-            # Zeilen nebeneinander, der aeltere hiess 'ganz' und gewann; die
-            # Zeile sagte 'Zeitraum unbekannt', obwohl daneben ein datierter
-            # Lauf lag.
-            laeufe.append((zeilen, 1 if _hat_kerzenuhr(pfad) else 0, name, pfad))
+            # Bei GLEICHER Zeilenzahl entscheidet zuerst die Kerzenuhr (ein
+            # alter Lauf ohne Zeitraum kann einen datierten verdecken - am
+            # 2026-09-26 lagen zwei Laeufe mit je 2180 Zeilen nebeneinander,
+            # der aeltere hiess 'ganz' und gewann; die Zeile sagte 'Zeitraum
+            # unbekannt', obwohl daneben ein datierter lag), dann der ANTEIL
+            # der Ausstiege auf der Marke (T-177: der Lauf mit der Regel
+            # gewinnt gegen seinen Vorgaenger - vorher entschied der Name,
+            # und 'vor177' stand hinter 'nach177'), zuletzt der Name.
+            laeufe.append((zeilen, 1 if _hat_kerzenuhr(pfad) else 0,
+                           round(_markenanteil(pfad), 6), name, pfad))
     if not laeufe:
         return "kein Lauf mit Journal"
-    zeilen_zahl, _uhr, name, pfad = max(laeufe)
+    zeilen_zahl, _uhr, _marken, name, pfad = max(laeufe)
     try:
         k = replay.kennzahlen(pfad)
     except Exception as e:                                       # noqa: BLE001
         return "Journal nicht lesbar (%s)" % str(e)[:60]
     if not k.get("runden"):
         return "Lauf '%s' ohne auswertbare Runde" % name
+    # Die Beruehrungsregel (T-177, 2026-09-30): steht die Marke in der Kerze,
+    # ist sie der Ausstieg. Ein ALTER Lauf ohne die Regel schreibt dort den
+    # Kerzenschluss - und ist an den Gewinnern zu gut. Die Quote steht deshalb
+    # in jeder Zeile: `0/1506` verraet den Lauf von vorher.
+    marken = ""
+    if k.get("ausstiege"):
+        marken = ", Ausstiege auf der Marke %d/%d" % (
+            k.get("ausstiege_an_marke", 0), k["ausstiege"])
     return ("%d Runden, %.0f %% Treffer, %+.3f %% je Runde, %s (%d Zeilen, "
-            "Lauf '%s')"
+            "Lauf '%s'%s)"
             % (k["runden"], 100 * k.get("p", 0.0),
                k.get("ergebnis_summe", 0.0) / k["runden"],
-               _backtest_zeitraum(pfad), zeilen_zahl, name))
+               _backtest_zeitraum(pfad), zeilen_zahl, name, marken))
 
 
 def _hat_kerzenuhr(pfad):

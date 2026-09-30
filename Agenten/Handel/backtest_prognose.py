@@ -129,7 +129,17 @@ def lauf(spur, kerzen_je_inst, w, gebuehr_pct, modul=None):
     offen = {}  # id(position) -> Einstiegsdaten
 
     gesammelt = []
-    h.journal = lambda **f: gesammelt.append(f)
+    # Dieselbe Rechnung wie im Kern: der Ausstieg geschieht auf dem
+    # BERUEHRTEN Kurs (replay.Beruehrungsjournal). Eine berichtigte
+    # Journalzeile allein reicht hier NICHT - die Runde unten liest
+    # `k[-1][4]`, den Kerzenschluss. Die Huelle fuehrt deshalb den Kurs
+    # der Marke mit (`marke_je_inst`), damit Journal UND Runde
+    # dieselbe Zahl tragen.
+    import replay
+    kerzen_schritt = {}
+    journal_huelle = replay.Beruehrungsjournal(
+        kerzen_schritt, lambda **f: gesammelt.append(f))
+    h.journal = journal_huelle
 
     z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
          "verluste_usd": 0.0}
@@ -137,15 +147,28 @@ def lauf(spur, kerzen_je_inst, w, gebuehr_pct, modul=None):
     laenge = min(len(k) for k in kerzen_je_inst.values())
 
     for i in range(mindest, laenge):
+        # Die Markenzeilen des VOR-Schritts verwerfen (je Schritt frisch),
+        # damit keine Zeile einer Runde zugeschlagen wird, die nicht in
+        # diesem Schritt geschlossen wurde. Geleert wird am SCHRITTANFANG,
+        # nicht je Instrument: schliesst die Spur beim Durchgang von A eine
+        # Position von B, muss die Zeile fuer B noch da sein.
+        journal_huelle.schritt_anfang()
         for inst, alle in kerzen_je_inst.items():
             k = alle[:i + 1]
+            # Die Kerze DIESES Schritts fuer die Journal-Huelle.
+            kerzen_schritt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             h.pruefe_ausstiege(z, k, w, nur=inst)
             nachher = {id(p) for p in z["positionen"]}
             for pid, p in vorher.items():
                 if pid not in nachher and pid in offen:
                     e = offen.pop(pid)
-                    kurs = k[-1][4]
+                    # Der Ausstiegskurs der Spur steht im Journal: sitzt
+                    # er auf einer Marke, gilt DIESER Kurs (nicht der
+                    # Schluss der Kerze). Je geschlossener Position EINE
+                    # Markenzeile, in der Reihenfolge des Journals.
+                    marke = journal_huelle.nimm_marke(inst)
+                    kurs = k[-1][4] if marke is None else marke
                     vz = 1 if e["seite"] == "long" else -1
                     roh_pct = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
                     runden.append({

@@ -37,6 +37,17 @@ def _journal(pfad, runden, ts_start=1700000000000):
                             "grund": "backtest", "_kerzen_ts": ts})
 
 
+def _markenzeile(pfad, preis, grund, stop="95.000000", ziel="110.000000"):
+    """Eine Ausstiegszeile an einer echten Marke anhaengen (fuer T-177)."""
+    with pfad.open("a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=SPALTEN + ["_kerzen_ts"])
+        w.writerow({"zeit": "2024-02-01T00:00:00+00:00", "modus": "papier",
+                    "aktion": "verkauf", "inst": "BTC-USDC", "seite": "long",
+                    "preis": preis, "einsatz_usd": "100.00", "stop": stop,
+                    "ziel": ziel, "stop_pct": "5.0", "grund": grund,
+                    "_kerzen_ts": 1700001000000})
+
+
 class StandTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -121,6 +132,48 @@ class StandTest(unittest.TestCase):
         self.assertIn("Lauf 'a_dat'", text)
         self.assertIn("2023-11", text)
         self.assertNotIn("vor der Kerzenuhr", text)
+
+
+    def test_markenzeilen_werden_gezaehlt(self):
+        """Die Beruehrungsregel (T-177) ist an jeder Zeile ablesbar."""
+        _journal(Path(self.tmp.name) / "squeeze" / "neu"
+                 / "handelsjournal.csv", 4)
+        pfad = Path(self.tmp.name) / "squeeze" / "neu" / "handelsjournal.csv"
+        _markenzeile(pfad, "95.000000", "stop")
+        text = auswertung_alle.backtest_stand("squeeze")
+        # Gezaehlt werden die Stop-/Ziel-Ausstiege: der eine hier sitzt auf
+        # seiner Marke. Die vier Zeilen mit grund 'backtest' sind keine
+        # Markenausstiege und gehen nicht in den Nenner.
+        self.assertIn("Ausstiege auf der Marke 1/1", text)
+
+    def test_lauf_vor_der_regel_zeigt_die_null(self):
+        """Ohne die Regel steht der Kerzenschluss im Journal: 0 auf der Marke."""
+        _journal(Path(self.tmp.name) / "squeeze" / "alt2"
+                 / "handelsjournal.csv", 3)
+        pfad = Path(self.tmp.name) / "squeeze" / "alt2" / "handelsjournal.csv"
+        _markenzeile(pfad, "104.000000", "ziel")      # Schluss, nicht Marke
+        self.assertIn("Ausstiege auf der Marke 0/1",
+                      auswertung_alle.backtest_stand("squeeze"))
+
+
+    def test_gleichstand_geht_an_den_lauf_mit_der_regel(self):
+        """Bei GLEICHER Zeilenzahl gewinnt der Lauf AUF DER MARKE.
+
+        Zwei Laeufe, gleich viele Zeilen, gleiche Kerzenuhr: der eine schreibt
+        den Kerzenschluss (alte Rechnung, Name 'vor177'), der andere die Marke
+        (Beruehrungsregel, Name 'nach177'). 'vor177' steht alphabetisch HINTER
+        'nach177' - ohne diese Regel zeigte die Auswertung also genau den Lauf
+        ohne die Beruehrungsregel, waehrend daneben der berichtigte lag.
+        """
+        vor = Path(self.tmp.name) / "squeeze" / "vor177" / "handelsjournal.csv"
+        nach = Path(self.tmp.name) / "squeeze" / "nach177" / "handelsjournal.csv"
+        _journal(vor, 3)
+        _journal(nach, 3)
+        _markenzeile(vor, "104.000000", "ziel")         # Schluss, neben der Marke
+        _markenzeile(nach, "110.000000", "ziel")        # genau auf der Marke
+        text = auswertung_alle.backtest_stand("squeeze")
+        self.assertIn("Lauf 'nach177'", text)
+        self.assertIn("Ausstiege auf der Marke 1/1", text)
 
 
 if __name__ == "__main__":
