@@ -99,7 +99,7 @@ def zeilen(m, merker, schwelle=None):
                if m.get("grundgesamtheit") else 0.0)
     if deckung < DECKUNG_MIN:
         raus.append("Messung unvollstaendig: nur %d von %d Paaren messbar"
-                    % (m["n_gesamt"], len(m["grundgesamtheit"])))
+                    % (m["n_gesamt"], len(m.get("grundgesamtheit") or [])))
         for o in m["offen"][:6]:
             raus.append("  %s: %s" % (o["inst"], o["grund"]))
 
@@ -167,6 +167,40 @@ def zeilen(m, merker, schwelle=None):
                   "schwelle_aktiv": unter_schwelle, "ts": m["ts"]}
 
 
+HEIL_TAGE = 5                                 # so weit zurueck wird geheilt
+ABGLEICH_TOLERANZ = 0.5                       # Punkte, ab denen der Abgleich redet
+
+
+def _luecken_schliessen(w, m):
+    """Fehlende Kerzentage nachrechnen - und die zwei Wege gegenpruefen.
+
+    Ein Tag ohne Zeile entsteht, wenn der Rechner aus war. `fuellen` rechnet ihn
+    aus DENSELBEN Kerzen nach, die gerade gemessen wurden (`mit_verlauf`), der
+    zweite Abruf entfaellt also. Gemeldet wird nur, wenn wirklich etwas fehlte
+    oder wenn Live-Weg und Nachrechnung auseinanderlaufen - Letzteres waere der
+    Beweis, dass beide Wege NICHT dieselbe Rechenregel benutzen.
+
+    Geschrieben wird auch dann, wenn nichts gemeldet wird: die Wache heilt
+    still, und leere Ausgabe heisst weiterhin nur "nichts zu sagen".
+    """
+    if not m.get("_verlauf"):
+        return []
+    try:
+        r = w.fuellen(tage=HEIL_TAGE, verlauf_je_inst=m["_verlauf"])
+    except Exception as f:                      # noqa: BLE001
+        return ["Reihe nicht nachgerechnet (%s)" % str(f)[:80]]
+    raus = []
+    if r["gefuellt"]:
+        raus.append("Reihe nachgefuellt: %d Kerzentag(e) aus der vorhandenen "
+                    "Geschichte" % r["gefuellt"])
+    for a in r["abgleich"]:
+        if abs(a["diff"]) > ABGLEICH_TOLERANZ:
+            raus.append("Abgleich %s: gemessen %.1f %%, nachgerechnet %.1f %% "
+                        "(%+.1f pp)"
+                        % (a["kerze"], a["live"], a["nachgerechnet"], a["diff"]))
+    return raus[:4]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--alle", action="store_true",
@@ -187,7 +221,7 @@ def main(argv=None):
         return 0
 
     try:
-        m = w.messen()
+        m = w.messen(mit_verlauf=True)
     except Exception as f:                      # noqa: BLE001
         print("breite-wache: Messung abgebrochen (%s)" % str(f)[:120])
         return 0
@@ -199,8 +233,11 @@ def main(argv=None):
         except OSError as f:
             print("breite-wache: Reihe nicht schreibbar (%s)" % f)
 
+    heil = _luecken_schliessen(w, m)
+
     merker = _merker()
     raus, neu = zeilen(m, merker, a.schwelle)
+    raus += heil
     _merke(neu)
 
     if raus:

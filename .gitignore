@@ -845,3 +845,8 @@ Agenten/Werkzeuge/breite-reihe.jsonl
 # Dieselbe Falle wie bei scanner/tests: Zeile 20 faengt Unterordner mit
 # ein - die Tests brauchen eine EIGENE Freigabezeile.
 !Agenten/Handel/ai4trade/tests/*.py
+
+# Wurzel-Aufrufer fuer omnitrade (funktioniert aus jedem Verzeichnis): ohne
+# Argument den Stand lesen, mit "start" den Demo-Lauf beginnen - mit Pruefung,
+# dass nie zwei Laeufe gleichzeitig gehen (zwei Laeufe ordern doppelt).
+!/omnitrade.cmd
