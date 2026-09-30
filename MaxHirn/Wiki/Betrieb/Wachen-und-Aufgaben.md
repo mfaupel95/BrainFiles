@@ -126,3 +126,38 @@ Fassungen.
 **Prueffrage bei jeder Wache:** prueft sie die Sache - oder eine Adresse, eine Datei, einen
 Zaehler, der die Sache einmal begleitet hat? Siehe [[Lektionen/Wahrheit-pruefen]] 8 und 10.
 Angelegt als T-139/T-140 in `Archiv/TASKS.md`.
+
+## Das Dashboard hatte keine Wache (30.09.2026, T-147)
+
+Das Hermes-Web-Dashboard (`http://127.0.0.1:9119/`) war der letzte Dienst ohne Wache. Beim
+Wartungslauf vom 29.09.2026 endete `hermes update` mit `outcome=partial` (`phase_error:
+Could not restart every paused Windows gateway`) — der Gateway heilte sich ueber
+`gateway-identitaet-wache`, das Dashboard blieb aus und musste von Hand mit
+`Start-ScheduledTask -TaskName 'Hermes_Dashboard'` gestartet werden.
+
+Zwei Messungen vom 30.09.2026 bestimmen die Bauform:
+
+- **Ein offener Port ist keine Wahrheit.** Der Prozess lief, `Get-NetTCPConnection -LocalPort
+  9119` nannte PID 27864 — aber es kam 60 s keine Antwort, waehrend OmniRoute (20128) und der
+  Gateway-Webhook (8644) im selben Moment in Millisekunden antworteten. Die Wache fragt
+  deshalb nach einer echten HTTP-Antwort (jeder Statuscode zaehlt).
+- **Ein Bau ist kein Haenger.** Ein abgebrochener Quell-Update-Lauf laesst den Starter
+  `hermes: finishing an interrupted source update ...` lesen und VOR dem Bereitstellen den
+  ganzen Bau fahren (Node-Abhaengigkeiten, TUI, Web-UI, Desktop-App; gemessen ueber 6
+  Minuten, die `node`-Kinder mit wachsender CPU-Zeit), waehrend Port 9119 noch zu ist. Ein
+  Neustart hilft hier NICHT — die neue Instanz faengt denselben Bau an, und ein Abbruch
+  hinterlaesst ein halb gebautes `dist`. Die Wache misst daher vor jedem Eingriff zweimal die
+  CPU-Zeit der Prozesskette (12 s Abstand, Kinder mitgezaehlt): steigt sie, wird nichts
+  angefasst (erst nach 25 min gemeldet); steht sie still (gemessener Haenger: 1 s CPU in 5
+  Minuten), wird geheilt.
+
+Die Aufgabe `Hermes_Dashboard` traegt `RestartCount 999 / 1 min` — sie faengt einen ABSTURZ
+ab, einen HAENGER nicht: der Prozess laeuft weiter, und niemand merkt es.
+
+`Agenten/Hermes/scripts/dashboard-wache.py`, Hermes-Cron **`dashboard-wache` (Job
+`bf375a2ac65f`, alle 15 min, `no_agent`, Telegram, leere Ausgabe = nichts senden)**:
+gesund → still; sonst Kette per `Stop-Process` beenden (nie `taskkill`) und die Aufgabe
+starten, bis 90 s auf die Antwort warten und melden. Kein Eingriff waehrend eines
+Wartungslaufs, Bremse (ein Heilversuch je 30 min), dieselbe Feststellung erst nach 6 h
+wieder. Tests: `Agenten/Hermes/scripts/test_dashboard_wache.py` (18, alles mit Attrappen).
+Beleg-Lauf: `silent (empty output)` im Cron-Ordner, HTTP 200 nach der Heilung.

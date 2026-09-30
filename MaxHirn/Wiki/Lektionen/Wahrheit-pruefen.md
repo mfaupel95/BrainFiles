@@ -231,3 +231,28 @@ der rot werden MUSS, und einen, der gruen bleiben muss.
 `config-gegenprobe-wache.py` (Cron montags 07:40, leere Ausgabe = nichts senden). Ohne Wache
 waere die Gegenprobe ein Nachweis, den niemand von selbst aufruft. Siehe
 [[Werkzeuge/config-gegenprobe]].
+
+## 13. Ein laufender Prozess ist kein antwortender Dienst — und Arbeit ist kein Haenger (30.09.2026)
+
+**Regel.** Ein Dienst gilt als gesund, wenn er **antwortet** (echte Anfrage, echte Antwort) —
+nicht wenn ein Prozess laeuft und ein Port offen ist. Und bevor ein Dienst neu gestartet wird,
+wird gemessen, ob er gerade **arbeitet**: zwei Abstandsmessungen der CPU-Zeit, Kinder
+mitgezaehlt. Steigt sie, laeuft ein Bau/Start und ein Neustart macht alles schlimmer.
+
+**Warum.** Am 30.09.2026 lief der Dashboard-Prozess und Port 9119 war offen
+(`Get-NetTCPConnection` nannte PID 27864), aber es kam 60 s **keine Antwort** — OmniRoute
+(20128) und der Gateway-Webhook (8644) antworteten im selben Moment in Millisekunden. Dieselbe
+Instanz stand in 5 Minuten mit **1 s CPU** still: ein echter Haenger, den die Aufgabe
+`Hermes_Dashboard` nicht heilt (`RestartCount 999` greift nur bei einem **Absturz**).
+Umgekehrt schrieb die von Hand gestartete Instanz
+`hermes: finishing an interrupted source update ...` und baute ueber **6 Minuten** Node/TUI/
+Web-UI/Desktop-App, bevor Port 9119 aufging — wer das als Haenger deutet und neu startet,
+reisst den Bau ab und hinterlaesst ein halb gebautes `dist`.
+
+**Prueffrage.** „Antwortet er?" statt „laeuft er?" — und bei einem Nein: „arbeitet er gerade,
+oder steht er still?" (die Zahl steht in der CPU-Zeit, nicht im Gefuehl).
+
+**Werkzeug.** `Agenten/Hermes/scripts/dashboard-wache.py` (Cron `dashboard-wache`,
+`bf375a2ac65f`, alle 15 min), Tests `test_dashboard_wache.py` (18, mit Attrappen — kein Netz,
+kein Prozesskill). Verwandt: die Gateway-Wache unter
+[[Betrieb/Wachen-und-Aufgaben]] (Adresse statt Bedingung, 128 Neustarts an einem Tag).
