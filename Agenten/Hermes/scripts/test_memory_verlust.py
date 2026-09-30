@@ -73,6 +73,14 @@ class VerlustTest(unittest.TestCase):
         self.schreibe_ergebnis("replaced_entries", [kopf + "in ALTER Fassung."])
         self.assertEqual(1, len(mv.verluste(self.db, self.mem)))
 
+    def test_wiederhergestellter_eintrag_gilt_als_vorhanden(self):
+        # Mit Vermerk zurueckgeholt: der Kopf (erste 5 Woerter) steht wieder da.
+        alt = "HERMES-CONFIG 30.09.2026 (Stand): config.yaml ist kommentarlos, 841 Zeilen."
+        self.schreibe_memory("HERMES-CONFIG 30.09.2026 (Stand; WIEDERHERGESTELLT): "
+                             "config.yaml ist kommentarlos.")
+        self.schreibe_ergebnis("replaced_entries", [alt])
+        self.assertEqual([], mv.verluste(self.db, self.mem))
+
     def test_absichtliche_entfernung_wird_getrennt_gezaehlt(self):
         self.schreibe_memory("BLEIBT: irgendwas.")
         self.schreibe_ergebnis("removed_entries", ["ABSICHTLICH: per remove geloescht."])

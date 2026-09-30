@@ -63,13 +63,28 @@ def eintraege_aus_db(db=DB):
     return treffer
 
 
+def flachmachen(text):
+    """Alles ausser Wortzeichen/./-/ zu einem Leerzeichen, klein - fuer Kopfvergleiche."""
+    return re.sub(r"\s+", " ", re.sub(r"[^\w./-]+", " ", text.lower())).strip()
+
+
 def noch_da(text, memory_text):
+    """Steht der Eintrag heute noch im Gedaechtnis - ganz, umgeschrieben oder wiederhergestellt?
+
+    Drei Proben, weil ein Eintrag auf drei Weisen weiterleben kann:
+      1. woertlich (normiert),
+      2. umgeschrieben mit gleichem Anfang (erste 70 Zeichen),
+      3. wiederhergestellt mit Vermerk - dann steht die KOPF-SIGNATUR (erste drei
+         Wortzeichen, ohne Satzzeichen) wieder da, z. B. bei
+         'HERMES-CONFIG 30.09.2026 (Stand; am ... WIEDERHERGESTELLT ...)'.
+    """
     flach = re.sub(r"\s+", " ", memory_text)
     if text in flach:
         return True
-    # Ein Eintrag kann in eine groessere Fassung umgeschrieben worden sein:
-    # dann steht sein ANFANG weiterhin im Gedaechtnis.
-    return text[:70] in flach
+    if text[:70] in flach:
+        return True
+    sig = " ".join(re.findall(r"[\w./-]+", text.lower())[:3])
+    return len(sig) >= 15 and sig in flachmachen(memory_text)
 
 
 def verluste(db=DB, memory=MEMORY):
