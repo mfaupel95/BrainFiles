@@ -1900,10 +1900,6 @@ auxiliary:
   vision:
     provider: auto
     model: ''
-  compression:
-    provider: omniroute
-    model: 'auto/best-free'
-    base_url: http://localhost:20128/v1
   skills_hub:
     provider: auto
     model: ''

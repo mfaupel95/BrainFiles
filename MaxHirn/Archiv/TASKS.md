@@ -73,6 +73,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
       ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
       Angelegt · Zuletzt: 30.09.2026
+- [ ] **T-222 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
+      Kontext: auxiliary.compression ist in allen 22 Profilen und im Hauptprofil entfernt
+      (30.09.2026) - die Kompression laeuft damit auf dem HAUPTMODELL (bei nous 786k Kontext)
+      statt auf einem Gratis-Router-Combo mit 200k. Die Schwelle compression.threshold 0.19
+      wurde am 19.09.2026 genau wegen dieses 200k-Deckels gesetzt (0.19 x 200k = 38k).
+      Mit dem Hauptmodell sind 0.19 x 786k rund 149k Token - moeglich, aber die Herleitung
+      stimmt nicht mehr.
+      Naechster Schritt: eine Kompression beobachten (Log 'compacting', Kontextgroesse im
+      Moment des Ausloesens) und dann entscheiden, ob 0.19 bleibt oder auf den Standard 0.50
+      geht. Nicht raten - die Zahl haengt am Hauptmodell, das je Profil verschieden ist.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/config.yaml, profiles/*/config.yaml
+
+- [ ] **T-223 — deepwiki liegt uncommittet im Hauptprofil (fremde Sitzung)**
+      Kontext: In Agenten/Hermes/config.yaml steht unter mcp_servers ein Eintrag deepwiki
+      (url https://mcp.deepwiki.com/mcp, enabled true). Er war schon vor dem Eingriff vom
+      30.09.2026 in der Arbeitsdatei, stammt nicht von mir, ist nicht committet und fehlt
+      im MCP-Manifest - mcp-sync-check.ps1 meldet deshalb Drift, sobald er committet wird.
+      Naechster Schritt: pruefen, ob der Eintrag gewollt ist; wenn ja, in
+      Agenten/MCP-Manifest.json nachtragen und committen, sonst aus der config entfernen.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
+
 - [ ] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
       Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
       generalisiert den Wrapper, mit dem am 30.09.2026 die Auslagerung gesetzt wurde. Sein

@@ -10,12 +10,12 @@ providers:
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
-    - gemma-e4b-8k:latest
-    - gemma-e4b-8k:cpu
-    - deepseek-chat:latest
-    - glm4:9b
-    - qwen3.5:9b
-    - deepseek-reasoner:latest
+      - gemma-e4b-8k:latest
+      - gemma-e4b-8k:cpu
+      - deepseek-chat:latest
+      - glm4:9b
+      - qwen3.5:9b
+      - deepseek-reasoner:latest
     name: Ollama
   omniroute:
     api: http://localhost:20128/v1
@@ -1857,10 +1857,6 @@ auxiliary:
     provider: moa
     model: Vision
     reasoning_effort: medium
-  compression:
-    provider: omniroute
-    model: auto/best-free
-    base_url: http://localhost:20128/v1
   skills_hub:
     provider: llamacpp
     model: Qwen3.8-27B-UD-Q4_K_M

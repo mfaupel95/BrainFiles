@@ -12,12 +12,12 @@ providers:
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
-    - gemma-e4b-8k:latest
-    - gemma-e4b-8k:cpu
-    - deepseek-chat:latest
-    - glm4:9b
-    - qwen3.5:9b
-    - deepseek-reasoner:latest
+      - gemma-e4b-8k:latest
+      - gemma-e4b-8k:cpu
+      - deepseek-chat:latest
+      - glm4:9b
+      - qwen3.5:9b
+      - deepseek-reasoner:latest
     name: Ollama
   omniroute:
     api: http://localhost:20128/v1
@@ -1847,9 +1847,6 @@ prompt_caching:
 auxiliary:
   free_only: false
   vision:
-    provider: auto
-    model: ''
-  compression:
     provider: auto
     model: ''
   skills_hub:
