@@ -77,7 +77,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | Seite | Zweck |
 |---|---|
 | [Werkzeuge/MoonDev-GUI-und-RBI.md](Werkzeuge/MoonDev-GUI-und-RBI.md) | Startfenster des moon-dev-Klons: warum die RBI-Knoepfe starben (UTF-8, src/.env), conda-Ausfuehrung ersetzt, und die nachgemessenen Strategie-Ergebnisse (95-97 % Verlust gegen +128 % Buy & Hold) |
-| [Werkzeuge/repos-zentrale.md](Werkzeuge/repos-zentrale.md) | Startfenster fuer alle Repos: Gruppen, Startbelege, und der Bereich "Was dieses Projekt kann" mit anklickbaren Befehlen, Kopieren und Bot-Auftrag |
+| [Werkzeuge/repos-zentrale.md](Werkzeuge/repos-zentrale.md) | Startfenster fuer REPOS (46 Klone), WERKSTATT (Projekte, Datenfelder, Ablagen) und HANDEL (Spuren und Werkzeuge, 162 Zeilen): Gruppen, Startbelege, der Bereich "Was dieses Projekt kann" mit anklickbaren Befehlen, Kopieren und Bot-Auftrag; dazu die Layout-Lehre (Spaltenbreiten aus Baumbreite und DPI rechnen, `stretch=False`) |
 | [Werkzeuge/Fundus-Skills-Bots.md](Werkzeuge/Fundus-Skills-Bots.md) | Skill-Fundus, Hermes-Bibliothek, Repo-Bots, Katalog |
 | [Werkzeuge/Claude-Red-und-nerd-Bot.md](Werkzeuge/Claude-Red-und-nerd-Bot.md) | Offensive-Security-Sammlung claude-red als Fundus-Faehigkeit, der Bot `nerd`, Defender sperrt vier Skill-Dateien |
 | [Werkzeuge/SkillSpector.md](Werkzeuge/SkillSpector.md) | Sicherheitsscan der Skills (NVIDIA SkillSpector): Aufruf, Falschmeldungen, Risikowert lesen |
