@@ -115,7 +115,7 @@ das der Zaehler im Journal:
   Fall: `tests/test_kosten_wendepunkt.RichtungTest` faehrt eine Long- und eine
   Short-Runde im Ziel; ohne die Vorzeichen-Regel faellt die Short-Runde durch.
 - **Die volle Suite vor dem Commit** - geteilter Code beruehrt viele Aufrufer
-  (`kragen/wachen_kraken`, `orbk/wachen_orbk`, `scanner/wachen_pruefung`,
+  (`kraken/wachen_kraken`, `orbk/wachen_orbk`, `scanner/wachen_pruefung`,
   `stoerungen`). Gemessen: 1329 Tests, OK.
 - **Veroeffentlichte Zahlen werden zu Aufgaben.** Aendert sich eine Kennzahl,
   gehoeren die betroffenen Tabellen (Wiki, Auswertungen, Kosten-Wendepunkt) als
