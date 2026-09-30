@@ -916,4 +916,29 @@ Drei Fallen beim Einbau:
 .venv/Scripts/python.exe journal_pos_id_nachziehen.py            # Vorschau
 .venv/Scripts/python.exe journal_pos_id_nachziehen.py --anwenden # nachziehen
 python Agenten/Hermes/cache/scratch/gegenprobe_alt_neu.py        # alt vs. neu
+
+## Eine stillgelegte Spur kurz wieder anzuschalten wickelt ihre alten Positionen ab
+
+**Befund (01.10.2026, Spiegel-Arme):** Die drei Arme standen seit dem 21.09.
+still, ihre Buecher trugen je 60 offene Papierpositionen (10 Tage alt). Auftrag
+war, sie "zumindest auf Papier" wieder laufen zu lassen - also wurden die
+Eintraege in `dauerlauf.SPUREN` aktiviert UND vorher `letzter_lauf` in allen
+`zustand*.json` auf jetzt gesetzt (ohne das haette der erste Zyklus alles als
+`herzschlag_alt` flachgestellt). Sechs Minuten spaeter kam "spiegel komplett raus".
+
+**Was in diesen sechs Minuten passierte:** Ein Zyklus hat die 10 Tage alten
+Positionen an ihren Stops und Zielen abgewickelt (66 neue Journalzeilen) und
+NEUE eroeffnet. Danach standen 6/3/3 statt 60/60/60 im Buch - und diese neuen
+Positionen konnte niemand mehr schliessen, weil die Arme wieder aus waren.
+
+**Regel:** Das ALTER der Positionen gehoert zur Entscheidung. Wer eine
+stillgelegte Spur wieder anschaltet, muss mit einem Schlag rechnen: alte
+Positionen werden gegen die inzwischen gelaufenen Kurse abgewickelt, nicht gegen
+den Stand vom Stilllegungstag. Ist die Spur nur zum Nachsehen gedacht, gehoert
+sie gar nicht in `SPUREN`.
+
+**Rueckweg-Werkzeug:** `spiegel/buecher_aufloesen.py` traegt offene Karteileichen
+aus (Trockenlauf Standard, `--anwenden` schreibt): je Position eine Journalzeile
+`schliessen / buchbereinigung` mit dem EINSTIEGSPREIS - neutral, damit die
+Bereinigung die Bilanz nicht veraendert.
 ```
