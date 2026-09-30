@@ -142,5 +142,59 @@ class MarktlageTest(unittest.TestCase):
         self.assertEqual("USDC", waehrung)
 
 
+class EurcTest(unittest.TestCase):
+    """EURC ist eine dritte Quote - und sie ist KURZ: Kraken fuehrt gegen EURC
+    nur XBT, ETH und SOL (30.09.2026 gemessen). Genau darum ist der Fehlerfall
+    hier der wichtigere Test: ein Instrument ohne EURC-Markt darf NICHT still in
+    einem EUR-Markt landen."""
+
+    def test_eurc_ist_eine_erlaubte_quote(self):
+        self.assertEqual("EURC", kp.quote_aus_wachen({"kraken_quote": "eurc"}))
+        self.assertIn("EURC", kp.QUOTEN)
+
+    def test_die_drei_maerkte_werden_abgebildet(self):
+        self.assertEqual("XBTEURC", kp.paar_fuer("BTC-USDC", "EURC"))
+        self.assertEqual("ETHEURC", kp.paar_fuer("ETH-USDC", "EURC"))
+        self.assertEqual("SOLEURC", kp.paar_fuer("SOL-USDC", "EURC"))
+        # Dasselbe Instrument, in EURC notiert - mosaic rechnet in OKX-Namen,
+        # die Quote ist eine eigene Wahl.
+        self.assertEqual("XBTEURC", kp.paar_fuer("BTC-EUR", "EURC"))
+
+    def test_ohne_markt_ist_es_ein_fehler(self):
+        with self.assertRaises(ValueError):
+            kp.paar_fuer("DOGE-USDC", "EURC")   # DOGE hat kein EURC-Paar
+        with self.assertRaises(ValueError):
+            kp.paar_fuer("ADA-EUR", "EURC")
+
+    def test_tabelle_erfindet_keine_maerkte(self):
+        """Drei Paare, drei Maerkte - mehr gibt es bei Kraken nicht."""
+        werte = set(kp.PAARE["EURC"].values())
+        self.assertEqual({"XBTEURC", "ETHEURC", "SOLEURC"}, werte)
+
+    def test_quote_von_paar_kennt_eurc(self):
+        """'XBTEURC' endet auf EURC - die EUR-Regel darf hier nicht greifen."""
+        self.assertEqual("EURC", kp.quote_von_paar("XBTEURC"))
+        self.assertEqual("EUR", kp.quote_von_paar("XXBTZEUR"))
+        self.assertEqual("USDC", kp.quote_von_paar("XBTUSDC"))
+
+    def test_marktlage_stellt_paar_und_waehrung_um(self):
+        lk = _lade("marktlage_eurc_test",
+                   os.path.join(HANDEL, "moondev_marktlage", "live_kraken.py"))
+        paar, waehrung = lk._paar_und_waehrung({"kraken_quote": "EURC"})
+        self.assertEqual("XBTEURC", paar)
+        self.assertEqual("EURC", waehrung)
+
+    def test_mosaic_nimmt_eurc_an(self):
+        ks = _lade("mosaic_eurc_test",
+                   os.path.join(HANDEL, "mosaic", "kraken_spot.py"))
+        try:
+            ks.setze_quote("EURC")
+            self.assertEqual("SOLEURC", ks.paar_fuer("SOL-USDC"))
+            with self.assertRaises(ValueError):
+                ks.paar_fuer("HYPE-EUR")     # nur in der EUR-Tabelle
+        finally:
+            ks.setze_quote("EUR")
+
+
 if __name__ == "__main__":
     unittest.main()

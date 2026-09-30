@@ -14,7 +14,8 @@ Das Kraken-Konto rechnet in EUR, deshalb ist **EUR die Vorgabe**; USDC waehlt
 man ueber ``quote``. Am 28.09.2026 gemessen: Kraken listet 45 USDC-Paare, darunter
 XBTUSDC, ETHUSDC, SOLUSDC, XRPUSDC, ADAUSDC, LINKUSDC, AVAXUSDC, DOTUSDC,
 LTCUSDC, BNBUSDC, XMRUSDC, XDGUSDC (Quelle: GET /0/public/AssetPairs, Feld
-``quote`` = USDC, ``status`` = online).
+``quote`` = USDC, ``status`` = online). EURC fuehrt Kraken gegen **nur drei**
+Maerkte - XBTEURC, ETHEURC, SOLEURC (30.09.2026 gemessen).
 
 Was ein Paar NICHT ist: eine Waehrungsempfehlung. Ein USDC-Paar auf einem
 EUR-Konto traegt zusaetzlich das EUR/USD-Risiko - wer in EUR rechnet, will
@@ -90,6 +91,25 @@ PAARE = {
         "XMR-USDC": "XMRUSDC",
         "XRP-USDC": "XRPUSDC",
         "XTZ-USDC": "XTZUSDC",
+    },
+    # EURC (30.09.2026 gemessen gegen GET /0/public/AssetPairs, Feld quote):
+    # Kraken fuehrt gegen EURC NUR drei Maerkte - XBT, ETH, SOL. Alle drei sind
+    # online, pair_decimals 1/2/2, ordermin 0.00005/0.001/0.06. Eine kurze
+    # Tabelle ist hier die Wahrheit, nicht eine Luecke: wer mehr hineinschreibt,
+    # erfindet einen Markt. Und weil es nur drei sind, darf es KEINEN Rueckfall
+    # auf andere Quoten geben - ein "DOGE-EURC" muss ein Fehler sein und nicht
+    # still in einem EUR-Markt landen.
+    "EURC": {
+        "BTC-EURC": "XBTEURC",
+        "BTC-USDC": "XBTEURC",
+        "BTC-EUR": "XBTEURC",
+        "XBT-EURC": "XBTEURC",
+        "ETH-EURC": "ETHEURC",
+        "ETH-USDC": "ETHEURC",
+        "ETH-EUR": "ETHEURC",
+        "SOL-EURC": "SOLEURC",
+        "SOL-USDC": "SOLEURC",
+        "SOL-EUR": "SOLEURC",
     },
 }
 

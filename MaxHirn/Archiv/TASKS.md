@@ -123,18 +123,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 30.09.2026. Betrifft Energieoptionen, MaxHirn/Wissen/Hardware.md.
 
 
-- [ ] **T-213 — EURC fehlt in der gemeinsamen Kraken-Paartabelle (mosaic, moondev_marktlage)**
-      Kontext: Die kraken-Spur liest ihre Quote jetzt selbst aus der API und
-      nutzt damit auch EURC-Paare (ETHEURC, SOLEURC, XBTEURC). Die beiden
-      anderen Kraken-Spuren lesen dagegen `kraken_paare.py` - dort stehen EUR
-      und USDC, kein EURC. Ihr EURC-Kapital bleibt also unerreichbar, obwohl
-      Kraken EURC als Quote auf drei liquiden Paaren fuehrt.
-      Naechster Schritt (Entscheidung Max): EURC in `kraken_paare.py` als
-      dritte Quote aufnehmen (17 Tests dort erweitern) - sinnvoll erst
-      zusammen mit T-115, sonst ist nur die Tabelle groesser und das Tor
-      bleibt zu.
-      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
-      moondev_marktlage. Verwandt: T-115.
 
 
 - [ ] **T-211 — Wache fuer den omnitrade-Demo-Lauf (Statusdatei und PID)**
@@ -2509,6 +2497,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-213 — EURC fehlt in der gemeinsamen Kraken-Paartabelle (mosaic, moondev_marktlage)**
+      Kontext: Die kraken-Spur liest ihre Quote jetzt selbst aus der API und
+      nutzt damit auch EURC-Paare (ETHEURC, SOLEURC, XBTEURC). Die beiden
+      anderen Kraken-Spuren lesen dagegen `kraken_paare.py` - dort stehen EUR
+      und USDC, kein EURC. Ihr EURC-Kapital bleibt also unerreichbar, obwohl
+      Kraken EURC als Quote auf drei liquiden Paaren fuehrt.
+      Naechster Schritt (Entscheidung Max): EURC in `kraken_paare.py` als
+      dritte Quote aufnehmen (17 Tests dort erweitern) - sinnvoll erst
+      zusammen mit T-115, sonst ist nur die Tabelle groesser und das Tor
+      bleibt zu.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/kraken_paare.py, mosaic,
+      moondev_marktlage. Verwandt: T-115.
+      **Erledigt 2026-09-30.** kraken_paare.PAARE hat die Quote EURC: XBTEURC, ETHEURC, SOLEURC (gegen GET /0/public/AssetPairs gemessen - Kraken fuehrt gegen EURC NUR diese drei Maerkte, alle online, pair_decimals 1/2/2, ordermin 0.00005/0.001/0.06). Die Tabelle traegt die Instrumentnamen in Haus-Schreibweise (BTC-USDC/BTC-EUR) auf die drei Kraken-Namen, damit mosaic und moondev_marktlage mit kraken_quote=EURC ohne Codeaenderung fahren. Der Fehlerfall ist der wichtigere: DOGE-USDC und ADA-EUR mit Quote EURC werfen ValueError - kein stiller Rueckfall in einen EUR-Markt. quote_von_paar kennt EURC vor der EUR-Regel (XBTEURC endet auf EURC, nicht auf EUR). Guthaben-Naht geprueft: Kraken fuehrt den EURC-Posten unter dem Namen EURC (nicht ZEUR) - gemessen 0,000000 EURC gegen 46,7487 EUR, die Haus-Aufloesung trifft ihn (T-214 bleibt: Umtausch lohnt nicht). Tests tests/test_kraken_paare.py 24 gruen (7 neue), keine Quote scharf gestellt - die Vorgabe bleibt EUR.
 - [x] **T-212 — kraken-Buch in USDC/EURC: die Auswertung nennt die Einheit noch fest als EUR**
       Kontext: Seit 30.09.2026 kann die kraken-Spur in EUR, USDC und EURC
       handeln (Quote je Paar aus der API, `Agenten/Handel/kraken/quote.py`;
