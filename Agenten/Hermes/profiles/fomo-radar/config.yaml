@@ -9,12 +9,12 @@ providers:
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
-    - gemma-e4b-8k:latest
-    - gemma-e4b-8k:cpu
-    - deepseek-chat:latest
-    - glm4:9b
-    - qwen3.5:9b
-    - deepseek-reasoner:latest
+      - gemma-e4b-8k:latest
+      - gemma-e4b-8k:cpu
+      - deepseek-chat:latest
+      - glm4:9b
+      - qwen3.5:9b
+      - deepseek-reasoner:latest
     name: Ollama
   omniroute:
     api: http://localhost:20128/v1
@@ -1886,8 +1886,8 @@ memory:
   nudge_interval: 10
   provider: ''
 delegation:
-  model: Ollama/gemma4
-  provider: omniroute
+  model: deepseek/deepseek-v4-flash-0731
+  provider: nous
   max_iterations: 250
   reasoning_effort: ''
 moa:

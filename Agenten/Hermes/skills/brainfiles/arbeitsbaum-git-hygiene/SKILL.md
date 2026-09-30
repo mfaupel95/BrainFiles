@@ -148,7 +148,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Fremdarbeit steht weiterhin als `M` im Baum. Nur anwenden, wenn in dem Moment keine
    andere Sitzung in diese Datei schreibt, und danach `git diff --numstat -- <datei>`
    gegenpruefen: Arbeitsbaum gegen Index zeigt die fremden Zeilen, Index gegen HEAD nur
-   die eigenen.
+   die eigenen. **Den eigenen Block danach IM ERGEBNIS nachweisen, nicht nur den
+   Schreibvorgang.** Drei Zahlen lesen: `grep -c '<eigene Kennung>' <datei>` (der
+   Eintrag ist auffindbar), die Zahl der gleichnamigen Abschnitte (eine Registerdatei
+   kann MEHRERE `## Offen` tragen — ein Einfuegen ohne Positionsangabe landet im
+   falschen) und `git diff --numstat` (reine Einfuegungen). Ein nicht angewandtes
+   Format — `'%s'` steht woertlich im Eintrag, weil die ID nie eingesetzt wurde — sieht
+   wie Erfolg aus, der Diff zeigt Einfuegungen, und der Eintrag ist trotzdem nicht da;
+   erst der `grep` findet es.
    **Den eigenen Block VOR dem Trennen in eine eigene Datei schreiben** (`cache/scratch/
    mein_block.txt`) und beim Wiederherstellen AUS DIESER Datei einsetzen — nicht aus einem
    Skript, das den Block im selben Lauf erst entfernt und dann neu berechnet: ist der
@@ -219,7 +226,17 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    in der getrackten `.env.example` eines Fremd-Klons standen echte Werte
    (`ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`) — ein `git add -A` in diesem Klon und
    ein Push haetten beide in den Fork veroeffentlicht; der Klon-Kopf war noch sauber,
-   die Aenderung lag nur im Arbeitsbaum. Wer einen Fremd-Klon mit `git add -A`
+   die Aenderung lag nur im Arbeitsbaum. **Bevor daraus ein Alarm wird, den HEAD-Stand
+   lesen — ein echter Wert im Arbeitsbaum ist noch keine Veroeffentlichung.**
+   `git -C <klon> show HEAD:<datei>` entscheidet, ob er je committet wurde: gemessen
+   standen in zwei getrackten Vorlagen echte Werte, waehrend der HEAD-Stand LEERE Werte
+   trug — nichts war geleakt, die richtige Antwort ist dann `git checkout -- <datei>`
+   (zurueck auf den HEAD-Stand) und NICHT ein selbst erfundener Platzhalter. Die
+   Rotation der Kennungen bleibt ein eigener Task fuer den Nutzer, kein Nebenschritt.
+   **Beim Suchen und Berichten nur PFAD, Schluesselname und Wertlaenge ausgeben, nie den
+   Wert** (`read_bytes`, `len()` zaehlen, Hash kuerzen) — ein Diff im Sitzungsprotokoll
+   ist derselbe Leak wie ein Commit. `Wissen/Zugaenge.md` bleibt dabei ausgenommen
+   (Stufe 0). Wer einen Fremd-Klon mit `git add -A`
    sichern will, macht zuerst `git status --porcelain | grep -i env` und liest jede
    getrackte Vorlage: echte Werte NICHT committen, den Zustand liegen lassen und als
    eigenen Task melden (Kennungen neu ausstellen, Werte auf Platzhalter). **Ist der Baum eines FREMDEN Klons vollstaendig fremd (kein eigener Pfad darin), ist `git add -A` DORT vertretbar** — aber erst nach dem env-Blick oben UND nach LESEN der Liste: nimmt es eine eigene Datei oder eine `.env`/Schluesseldatei mit, gilt Regel 1 (namentlich stagen). Regel 1 schuetzt BrainFiles' Mehrsitzungs-Baum, nicht den Klon eines Fremd-Repos. **Und beim
@@ -412,7 +429,21 @@ ungetrackten Dateien. Reihenfolge:
   muss: eine Loeschung wird fruehestens im naechsten Lauf uebernehmbar und nie,
   solange in demselben Ordner weiter geschrieben wird.
 - **Ein Commit ueber einen EIGENEN Index laesst den normalen Index stale zurueck.**
-  Wer fremde Arbeit committet, ohne den Staging-Bereich anzufassen (`GIT_INDEX_FILE`
+  Die leichteste Form ist ein ALTERNATIVER Index mit einem NORMALEN Commit:
+  `GIT_INDEX_FILE=<scratch>/idx_<thema>` -> `git read-tree HEAD` -> `git add -- <eigene pfade>`
+  -> `git diff --cached --numstat` lesen (nur eigene Pfade) -> `git commit -F <meldung>`.
+  `read-tree` ist Pflicht, sonst startet der Index leer und ignorierte Freigaben
+  fehlen. Danach `unset GIT_INDEX_FILE` UND dieselben Pfade im ECHTEN Index
+  nachziehen (`git add -- <eigene pfade>`), sonst vergleicht der echte Index gegen
+  den neuen HEAD und meldet eine NEUE Datei als `D ` plus `??` und eine geaenderte
+  als `M ` mit dem ALTEN Inhalt - die Fremdarbeit-Routine committet sie dann ein
+  zweites Mal als fremd. Randfaelle des Handgriffs (nativer `C:/…`-Pfad fuer
+  `GIT_INDEX_FILE`, eigene Indexdatei danach loeschen, fremde Vormerkung nicht
+  wegnehmen): `references/fremdarbeit-routine.md`. Eine
+  Datei, die eine andere Sitzung NACH dem eigenen Commit weiterbearbeitet hat,
+  nicht nachziehen (`git reset -q HEAD -- <pfad>`), sonst liegt ihre laufende
+  Arbeit im Index. Gegenprobe: `git status --porcelain` zeigt danach weder `D `
+  noch `??` an den eigenen Pfaden. Wer fremde Arbeit committet, ohne den Staging-Bereich anzufassen (`GIT_INDEX_FILE`
   + `git read-tree <tip>` + `git add -- <pfade>` + `git write-tree` + `git commit-tree`
   + `git update-ref refs/heads/master <neu> <alt>`), hat danach fuer JEDEN uebernommenen
   Pfad einen Index, der den neuen HEAD nicht kennt: eine neue Datei steht gleichzeitig
@@ -434,6 +465,7 @@ ungetrackten Dateien. Reihenfolge:
   direkt in die Betreffzeile des Commits (`git log` zeigt dann ein BOM vor dem
   Betreff). Nachrichtendateien mit `[System.IO.File]::WriteAllText($pfad, $text,
   (New-Object System.Text.UTF8Encoding($false)))` schreiben.
+- **`fatal: cannot lock ref 'HEAD': is at <a> but expected <b>` heisst: eine parallele Sitzung hat HEAD bewegt - kein Schaden.** Der eigene Index ist unversehrt (beim Bau ueber `GIT_INDEX_FILE` + `read-tree` liegt der Blob schon in `objects/`). Den Commit einfach wiederholen, vorher `git diff --cached --numstat` lesen und gegen die eigene Absicht zaehlen. **Reihenfolge beachten:** ein direkt danach abgesetztes `git push` schiebt den FREMden Commit hoch, wenn der eigene noch nicht steht - `git log --oneline -1` lesen, statt anzunehmen, es sei der eigene.
 - **`fatal: Unable to create '…/.git/index.lock': File exists`** heisst fast immer:
   eine andere Sitzung schreibt GERADE in denselben Index. Die Sperre NICHT loeschen -
   warten (Sekunden) und denselben Befehl wiederholen, dann geht er durch. Ist die

@@ -77,6 +77,12 @@ Ausloeser → Referenz:
   die Vorbedingung (offene Positionen und ihre Boersen-Stops), warum eine Sperre
   kein Umzug ist und die Handwerkzeuge scharf bleiben -
   `references/zweite-boerse.md`, Abschnitt "Eine Boerse wieder ENTZIEHEN".
+  **Eine Spur von EINER Quotewaehrung auf MEHRERE generalisieren** (EUR ->
+  EUR/EURC/USDC: Quotewaehrung je Paar aus der API, Guthaben-Tor in der
+  Paarwaehrung, Buch bleibt in der Spurwaehrung) und **omnitrade ist KEINE Spur
+  (rein lesender Rust-Lauf), omniquant hat keinen Orderweg** — "bauen" heisst
+  dort Live-Orderweg anbinden: `references/zweite-boerse.md`, Abschnitte
+  "Eine Spur von EINER Quotewaehrung..." und "omnitrade ist KEINE Spur".
  - **Derselbe Anbieter, ein ANDERES Produkt** (Spot gegen Futures/Terminkontrakt:
  eigener Host, eigene Kopfzeilen, eigene Schluesselnamen, `Authentication error`
  oder `404 NOT_FOUND` trotz gueltigem Schluessel, Groesse in Kontrakten statt
@@ -371,7 +377,17 @@ Ausloeser → Referenz:
      jede uncommittete Notiz mit altem `updated:` als offenen Punkt.
 6. **Abschliessen, nicht nachfragen.** Ein „Ja" oder „Luecken schliessen" auf eine
    Empfehlung heisst: im vollen Umfang umsetzen (Code, Tests, Doku, Commit,
-   Aufraeumen) — nicht nachbestaetigen lassen. Abschlussbericht in zwei Teilen:
+   Aufraeumen) — nicht nachbestaetigen lassen.
+   **Mehrere Spuren, knappes Kapital: die Reihenfolge ist eine Entscheidung von
+   Max, nicht eine technische.** Sagt er "<Spur A> zuerst, andere niedriger
+   priorisieren aber bauen", heisst das: A vollstaendig bauen und scharf machen
+   (sie nutzt das vorhandene Kapital), die uebrigen trotzdem bauen — nur in
+   niedrigerer Reihenfolge, nicht weglassen. Vor dem Bauen den KAPITAL-Bezug je
+   Spur pruefen (welche Waehrung liegt frei, welche Spur kann sie nutzen) und
+   die Prioritaet daran festmachen; eine Spur, deren Quotewaehrung auf dem Konto
+   fehlt, bleibt strukturell gesperrt, bis das Guthaben da ist — das ist kein
+   Grund, sie nicht zu bauen, nur ein Grund, sie spaeter scharf zu schalten.
+   Abschlussbericht in zwei Teilen:
    **was jetzt nachweisbar anders ist** (mit dem Befehl, der es zeigt —
    Systempruefung, `spiegelstand.py`, Testlauf, Logzeile) und **was absichtlich
    NICHT angefasst wurde** — fremde Spuren, laufende Prozesse, Altbestaende ohne

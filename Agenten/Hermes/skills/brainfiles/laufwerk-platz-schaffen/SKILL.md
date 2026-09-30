@@ -82,6 +82,23 @@ lesen. `scripts/caches-leeren.sh` nennt jede Zahl selbst — die Meldung eines
 Reinigungswerkzeugs ist keine Quittung, die Ordnergroesse ist es.
 
 ## Regeln (Standing)
+- **Eine Reserve wird GEHALTEN, nicht nur gemeldet.** Auf `C:` bleiben 30 GB frei
+  (Entscheidung des Nutzers); faellt der Platz darunter, raeumt die Wache selbst auf —
+  aber nur die vier erlaubten, reproduzierbaren Posten: Temp-Dateien aelter als 24 h,
+  CrashDumps, uv-Cache, npm-Cache. Werkzeug `Agenten/Hermes/scripts/platz-wache.py`
+  (Cron `platz-wache`, taeglich, leere Ausgabe = nichts senden); Schalter
+  `--ohne-aufraeumen` (nur messen), `--trocken`, `--immer`, `--json`. Die Reserve muss
+  ueber dem liegen, was ein einzelner Bau transient braucht (Desktop-/Electron-Build:
+  rund 20 GB) — sonst ist sie keine Reserve.
+- **Waehrend eines Baus/Updates wird GAR NICHT geloescht.** Ein Cache-Leeren mitten im
+  Bau zerstoert ihn: bei vollem Laufwerk bricht der App-Tausch mit `WinError 5` ab und
+  der Bau mit `OSError: [Errno 28] No space left on device`; die halbfertige Obligation
+  bleibt im Baum stehen, und JEDER weitere Start versucht sie erneut (Bootschleife statt
+  Fehlermeldung). Vor dem Loeschen die Zeugen pruefen: Marker
+  `$HERMES_HOME/.hermes-update-in-progress` und `installs/*/source-completion-pending`
+  sowie Kommandozeilen (`source_completion`, `hermes_cli.main update`, `electron-builder`,
+  `npm run build`, `vite build`, `uv`). Vor einem eigenen Bau/Update einmal messen:
+  `python Agenten/Hermes/scripts/platz-wache.py --ohne-aufraeumen`.
 - **Routine-Aufräumen fasst nur Temp und Cache an.** `node_modules`, `.venv`,
   virtuelle Umgebungen sind Projektzustand, kein Müll; sie nur löschen, wenn
   es für dieses Projekt ausdrücklich entschieden und der Weg zurück (das

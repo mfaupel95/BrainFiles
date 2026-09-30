@@ -383,7 +383,54 @@ vom ersten Zyklus gegen USDC-Kurse gerechnet und alle flachgestellt).
 - **Waehrungsrisiko nennen:** ein EUR-Konto, das USDC-Paare handelt, traegt
   zusaetzlich EUR/USD. Fuer dieselbe Bewegung in EUR ist das kein
   Genauigkeitsgewinn, sondern ein neues Risiko — die Umstellung nur bauen, wenn
-  die Rechnung in USDC gewollt ist.
+  die Rechnung in USDC gewollt ist. EURC ist der Euro-Stablecoin: EURC-quotierte
+  Paare sind dieselbe Waehrungsfamilie wie EUR (kein neues EUR/USD-Risiko),
+  USDC-quotierte tragen es. Deshalb lassen sich EURC-Paare frei ergaenzen,
+  waehrend USDC-Paare strukturell gesperrt bleiben, bis USDC-Guthaben da ist.
+
+## Eine Spur von EINER Quotewaehrung auf MEHRERE generalisieren (EUR -> EUR/EURC/USDC)
+
+Eine Spur, die hart auf eine Quotewaehrung verdrahtet ist (Watchlist nur
+EUR-Paare, Guthaben-Tor `guthaben("ZEUR")`, alle Betragsfelder `_eur`), kann
+zusätzlich EURC-/USDC-Paare handeln, ohne die Strategie anzufassen. Das Muster
+ist ein BUCHVORGANG wie der Instrumentenwechsel weiter unten, aber die
+Generalisierung selbst ist Code:
+
+1. **Die Quotewaehrung je Paar aus der API ableiten, nicht aus dem Namen.**
+   `AssetPairs[paar].quote` ist die Wahrheit (`ZEUR`/`EURC`/`USDC`), der
+   Paarname nicht. Ein Filter auf `quote == "EURC"`/`"USDC"` findet die Paare;
+   ein Filter auf `ZEURC`/`ZUSDC` (mit Z-Praefix) findet NICHTS, weil
+   Stablecoins kein Z tragen — nur Fiat hat es.
+2. **Das Guthaben-Tor fragt die Quotewaehrung des jeweiligen Paares**, nicht
+   eine hart gesetzte. Eine Spur, die immer `guthaben("ZEUR")` liest, sieht
+   fuer ein EURC-Paar 0 und sperrt es dauerhaft, obwohl EURC frei liegt. Das
+   Tor wird waehrungsbewusst: `guthaben(quotewaehrung(paar))` gegen den
+   Mindestbetrag in DIESER Waehrung.
+3. **Das Buch bleibt in der Waehrung der Spur** (EUR); die Quotewaehrung ist
+   eine Eigenschaft des ORDERWEGS je Paar, nicht des Buchs. Betragsfelder
+   (`max_pro_trade_eur`) bleiben die Nominale; nur das Tor und die Anzeige
+   werden waehrungsbewusst.
+4. **EURC-Paare in die Watchlist aufnehmen, USDC-Paare auch — aber USDC bleibt
+   gesperrt, bis USDC-Guthaben da ist.** Das Guthaben-Tor in der Paarwaehrung
+   ist eine Versicherung, kein Ertrag: es haelt die Spur von einem Kauf fern,
+   den die Boerse ablehnt, und es ist kein Grund, die Faehigkeit nicht zu
+   bauen — nur ein Grund, sie spaeter scharf zu schalten.
+5. **Vor dem Bauen die Konto-Waehrungsbestaende lesen** (`kraken._roh_privat('Balance')`),
+   nicht raten: welches Kapital liegt frei (EURC kann mehr sein als EUR), und
+   welche Waehrung die Spur damit tatsaechlich nutzen kann. Die Prioritaet der
+   Spuren richtet sich danach, welche das vorhandene Kapital nutzen kann.
+
+## omnitrade ist KEINE Spur — und omniquant hat keinen Orderweg
+
+`omnitrade` ist kein Ordner unter `Agenten/Handel`: es ist ein rein lesender
+Rust-Lauf (`Werkstatt/omnitrade`, Statusdatei `status/live.json`, gelesen von
+`omnitrade_bridge.py`/`omnitrade_lauf.py`). Es bewegt kein Kapital und hat
+keinen Orderweg im Haus. `omniquant` ist eine Papier-Spur auf dem
+Prognose-Bericht (`--live` verweigert, kein Broker-Aufruf). Sagt Max
+"omnitrade/omniquant bauen", heisst das: einen LIVE-ORDERWEG anbinden — nicht
+"die Spur ist schon da, nur verdrahten". Vor dem Bauen pruefen, ob die Spur
+ueberhaupt einen Orderaufruf im Code hat (`spuren_stand.py` Spalte
+"Order-Code"), sonst baut man an einer Spur, die gar nicht handeln kann.
 
 ## Instrumentenwechsel mit offenem Buch
 
