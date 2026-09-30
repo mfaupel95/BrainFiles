@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
+      Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
+      (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
+      `nautilus`, `nautilus_kraken` und `nautilus_kraken_futures` haben nichts
+      dergleichen. Sie sind derzeit Papier (`handel_erlaubt=false`,
+      `freigabe.erfuellt=false`), der OKX-Arm ordnet aber im DEMO-Node und
+      `nautilus_kraken` hatte einen Live-Spot-Pfad - sobald einer scharf geht,
+      fehlt der Abgleich, und ein stornierter Stop bliebe unbemerkt.
+      Naechster Schritt: vor dem Scharfstellen EINES Arms pruefen, ob er echte
+      Orders stellt - nur dann `mosaic/boersenabgleich.py` als Vorlage auf den Arm
+      uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
+
 - [ ] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
       Kontext: Mit T-095 traegt jede Einstiegszeile eine Kennung `pos_id`, die
       die Ausstiegszeile uebernimmt; 77 von 94 Journalen sind mit
