@@ -82,6 +82,10 @@ FAMILIE = {
     # Robinhood-Radar (22.09.2026): Buch auf einem fremden Feed -
     # dieselbe Familie wie die Kopier-Spuren.
     "robinhood_radar": "Feed-Kopie",
+    # omnitrade (30.09.2026): spiegelt die Position eines fremden LAUFS
+    # (Rust, Werkstatt/omnitrade) - dieselbe Familie, aber der Fremdlauf
+    # entscheidet, nicht ein Wallet-Feed.
+    "omnitrade": "Feed-Kopie",
     "omniquant": "Prognose-Buch",
     "omniquant_weit": "Prognose-Buch (weit)",
     "macd_mtf": "Indikator",
