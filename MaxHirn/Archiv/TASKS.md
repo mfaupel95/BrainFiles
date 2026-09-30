@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
+      Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
+      `0.0.0.0:8644` UND `[::]:8644` (Webhook-Plattform) - also aus dem lokalen Netz
+      erreichbar, obwohl die Steuerwege auf `127.0.0.1` liegen. Derselbe Befund beim
+      OmniRoute-Router (`node`, PID 15924, `0.0.0.0:20128`). Beides ist bewusst NICHT
+      angefasst worden (laufende Dienste); ohne Firewall-Regel ist jeder Rechner im
+      WLAN ein moeglicher Aufrufer.
+      Naechster Schritt: entscheiden - Bindeadresse auf `127.0.0.1` ziehen (Webhook
+      braucht dann einen Reverse-Proxy fuer Fremdzugriff) ODER eine eingehende
+      Firewall-Regel auf die beiden Ports setzen. Vorher pruefen, ob ein Telefon/
+      ein anderes Geraet den Webhook wirklich aufruft.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: Agenten/Hermes/gateway-service, `C:\Users\faupe\.omniroute\`, Windows-Firewall
 - [ ] **T-190 — Hermes-Update: Orphan-Aliase und Checkout-Reste**
       Kontext: Nach dem Update vom 29./30.09.2026 meldet `hermes doctor` 14 Orphan-Aliase
       (`agent-reach.bat`, `coder.bat`, `nous.bat`, `projectatlas.bat`, `superpowers.bat` und neun weitere)
@@ -372,18 +385,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `bonsai` als AGGREGATOR (`hermes moa list`), dort laeuft die ganze Werkzeugschleife. Solange
       der Dienst aus ist, sind diese beiden Presets nicht benutzbar; siehe T-156.
 
-- [ ] **T-151 - Geplanter Neustart des Rechners (Commit/Memory entlasten)**
-      Kontext: Am 29.09.2026 war der PC sehr langsam durch Commit-Erschoepfung (~200 Zombie-
-      MCP-Prozesse, 29,6 GB Commit); behoben per Kill + Wache mcp-zombie-wache (Cron 15 min,
-      Telegram). Seit 100 h Uptime steht Memory Compression bei 7,5 GB. Max hat am 29.09.2026
-      entschieden: Option 4 (nichts weiter bauen), aber Reboot einplanen. Design-Doc:
-      MaxHirn/Wiki/Betrieb/Systemleistung-2026-09-29.md.
-      Naechster Schritt: ruhiges Zeitfenster AUSSERHALB 20:00-22:30 (Nachtsicherungen) waehlen,
-      offene Live-Positionen + freigabefenster pruefen, Restart-Computer -Force, danach Dauerlauf-
-      Stufen, Gateway, Dashboard, mcp-zombie-wache und Commit-Lage pruefen. Zeitpunkt braucht
-      Max' Freigabe.
-      Angelegt: 2026-09-29
-      Betrifft: Rechner/Host, alle Dauerlauf-Stufen, Gateway, Dashboard
 
 
 - [ ] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
@@ -511,6 +512,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Hermes-`config.yaml`.
       Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
       gelingt er ohne 9900, ist der Port endgueltig Altweg.
+      KORREKTUR 2026-09-30: Die Annahme "TCP 9900 bleibt zu, waehrend er gesund laeuft"
+      ist widerlegt. Gemessen am 30.09.2026 01:52 mit `Get-NetTCPConnection`: der
+      Dienstprozess 73852 haelt **127.0.0.1:9900** (A2A) und **0.0.0.0:8644** (Webhook).
+      Der Gateway laeuft als EINE Kette 73620 (Launcher-venv) -> 36840 (.hermes-runtime)
+      -> 73852 (tools-Python, `runpy`-Form, schreibt `gateway_state.json`). Die
+      Prozesssuche `*gateway run*` findet 73852 NICHT (die runpy-Form traegt den Text
+      nicht) - deshalb lesen die Wachen zuerst `gateway_state.json`. Offen bleibt nur,
+      ob ein Peer den Port BRAUCHT: er ist da, also ist die Frage nach dem Altweg erledigt.
       Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
 
 
@@ -650,18 +659,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 27.09.2026 · Zuletzt 27.09.2026 · Betrifft Agenten/Handel/xperp
 
 
-- [ ] **T-133 — `Handel/historie.py` und `xperp/historie.py`: gleicher Modulname, Test rot**
-      Kontext: `Agenten/Handel/tests/test_handelszentrale_bindung.py`
-      (`NamensfalleTest`) verlangt, dass kein Modulname am Handel-Kopf auch in einem
-      Spurenordner liegt - sonst faengt ein Import mit `Handel/` auf `sys.path` das
-      falsche Modul (Befund 13.09.2026 mit `gui.py`). Gemessen am 25.09.2026 ist die
-      Dopplung `historie` (Backtest-Fundament, Commit e9e28f3, aus einer parallelen
-      Sitzung) gegen `xperp/historie.py` - die Handel-Suite ist dadurch rot
-      (698 Tests, 1 Fehler). FREMDARBEIT: nicht von mir angefasst.
-      Naechster Schritt: eines der beiden umbenennen (`Handel/backtest_historie.py`)
-      und die Importe in `replay.py`/`optimieren.py`/Tests mitziehen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/historie.py, Agenten/Handel/xperp/historie.py, tests/
 
 
 - [ ] **T-131 — Kraken-EUR: 0,71 EUR frei blockieren `kraken` UND `nautilus_kraken` live**
@@ -1875,7 +1872,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       ausfuehren, UAC bestaetigen, danach `hermes -p fomo-radar chat -q "hallo"`
       und den Modellnamen pruefen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Hermes/profiles/fomo-radar/
+      BELEG 2026-09-30: Bestandsaufnahme aus der Kanban-Karte `t_5cf6dbfd` (Board `repos`,
+      Status blocked/needs_input): 18 Profile haben inzwischen einen echten Symlink auf
+      `Agenten/Hermes/auth.json`; **zwei fehlen noch: `fomo-radar` und `lokal-first`**.
+      Ein Versuch aus der headless-Sitzung schlug fehl - `ln -s` bildet ohne das Privileg
+      `SeCreateSymbolicLinkPrivilege` STILL eine Kopie (genau das Insel-Muster, das die
+      Verknuepfung vermeiden soll); die zwei entstandenen Kopien wurden wieder entfernt.
+      Unberuehrt bleiben `awesome-systematic-trading` und `basic-memory` (eigene befuellte
+      Stores - ein Symlink wuerde deren Bot-Zugangsdaten aendern).
+      Betrifft: Agenten/Hermes/profiles/fomo-radar/, Agenten/Hermes/profiles/lokal-first/
 
 
 - [ ] **T-054 — Fremde SKILL.md-Aenderungen unter skills/brainfiles sichern**
@@ -1888,7 +1893,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: Diff je Datei ansehen, dann namentlich stagen
       (kein `git add -A`) und als Fremdarbeit committen.
       Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Hermes/skills/brainfiles/
+      BELEG 2026-09-30: Die Aenderungen liegen unveraendert im Arbeitsbaum (7 SKILL.md,
+      zuletzt angefasst 01:37-01:50, dazu der neue Skill `brainfiles/kanban-board/` und
+      `dauerprozess-bewachen/references/geplante-aufgaben-anlegen.md`). Die schreibende
+      Sitzung laeuft noch; solange gilt die 30-Minuten-Regel, dann zieht
+      `fremdarbeit-einziehen.ps1` (20:40) sie mit Autor `Andere Sitzung <fremd@local>` nach.
+      Betrifft: Agenten/Hermes/skills/brainfiles/, Agenten/Hermes/skills/aufgabenliste-pflegen/
 
 
 - [ ] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
@@ -2117,6 +2127,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-133 — `Handel/historie.py` und `xperp/historie.py`: gleicher Modulname, Test rot**
+      Kontext: `Agenten/Handel/tests/test_handelszentrale_bindung.py`
+      (`NamensfalleTest`) verlangt, dass kein Modulname am Handel-Kopf auch in einem
+      Spurenordner liegt - sonst faengt ein Import mit `Handel/` auf `sys.path` das
+      falsche Modul (Befund 13.09.2026 mit `gui.py`). Gemessen am 25.09.2026 ist die
+      Dopplung `historie` (Backtest-Fundament, Commit e9e28f3, aus einer parallelen
+      Sitzung) gegen `xperp/historie.py` - die Handel-Suite ist dadurch rot
+      (698 Tests, 1 Fehler). FREMDARBEIT: nicht von mir angefasst.
+      Naechster Schritt: eines der beiden umbenennen (`Handel/backtest_historie.py`)
+      und die Importe in `replay.py`/`optimieren.py`/Tests mitziehen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/historie.py, Agenten/Handel/xperp/historie.py, tests/
+      **Erledigt 2026-09-30 (Stand abgeglichen, nicht neu gebaut).** Die Dopplung ist weg: `Agenten/Handel/historie.py` existiert nicht mehr, an seiner Stelle liegt `historie_binance.py` (Umbenennung aus dem Backtest-Fundament); `xperp/historie.py` bleibt Spur-eigen. Nachgemessen am 30.09.2026 02:05: `cd Agenten/Handel/tests && ../.venv/Scripts/python.exe -m unittest test_handelszentrale_bindung.NamensfalleTest -v` -> 1 Test, OK.
+- [x] **T-151 - Geplanter Neustart des Rechners (Commit/Memory entlasten)**
+      Kontext: Am 29.09.2026 war der PC sehr langsam durch Commit-Erschoepfung (~200 Zombie-
+      MCP-Prozesse, 29,6 GB Commit); behoben per Kill + Wache mcp-zombie-wache (Cron 15 min,
+      Telegram). Seit 100 h Uptime steht Memory Compression bei 7,5 GB. Max hat am 29.09.2026
+      entschieden: Option 4 (nichts weiter bauen), aber Reboot einplanen. Design-Doc:
+      MaxHirn/Wiki/Betrieb/Systemleistung-2026-09-29.md.
+      Naechster Schritt: ruhiges Zeitfenster AUSSERHALB 20:00-22:30 (Nachtsicherungen) waehlen,
+      offene Live-Positionen + freigabefenster pruefen, Restart-Computer -Force, danach Dauerlauf-
+      Stufen, Gateway, Dashboard, mcp-zombie-wache und Commit-Lage pruefen. Zeitpunkt braucht
+      Max' Freigabe.
+      Angelegt: 2026-09-29
+      Betrifft: Rechner/Host, alle Dauerlauf-Stufen, Gateway, Dashboard
+      **Erledigt 2026-09-30.** Der Rechner wurde am 29.09.2026 um 21:06 neu gestartet (LastBootUpTime 29.09.2026 21:06:19), danach liefen die drei Dauerlauf-Stufen wieder an. Gemessen 30.09. 02:00: Commit frei 15,6 GB von 87,7 GB (vor dem Neustart 1,9 GB), 33 Python-Prozesse - die Commit-Erschoepfung ist weg. Der zweite Teil (Speicher entlasten) ist nur teilweise erreicht: Memory Compression steht bei 8,32 GB.
 - [x] **T-048 — Ausser-Haus-Kopie verschluesseln (BitLocker To Go)**
       Kontext: Q:\MaxHirn-AusserHaus ist vollstaendig und geprueft, aber
       NICHT verschluesselt und enthaelt Klartext-Zugangsdaten

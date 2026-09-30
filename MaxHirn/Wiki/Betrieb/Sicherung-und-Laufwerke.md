@@ -26,7 +26,12 @@ summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junc
 
 - Taeglich 20:00 nach `G:`: **`MaxHirn/` und `Agenten/`**. `Modelle/` und `Werkstatt/`
   nicht (neu herunterladbar / Durchgangsware) — das spart ~52 GB je Lauf.
-- Taeglich 21:00 Zweitkopie nach `O:`.
+- Taeglich 21:00 Zweitkopie nach `O:\MaxHirn-Zweitkopie` (`Agenten/sichern-zweitkopie.ps1`).
+  Echter Lauf 30.09.2026 00:01-00:06: robocopy-Code **1** (Erfolg), **200.113 Dateien /
+  ~37 GB**, Zielstruktur `...\MaxHirn` mit Archiv und Agenten. `O:` frei 160,6 -> 121,1 GB.
+  Die Zweitkopie laeuft ohne `/MIR` wie die Hauptsicherung - eine falsch ueberschriebene
+  Datei ist auch dort kaputt. Sie ersetzt **nicht** die Ausser-Haus-Kopie: dieselbe Platte
+  im selben Rechner ist kein zweiter Brandabschnitt.
 - Ausser Haus nach `Q:` (`sichern-ausser-haus.ps1`, `Q:\MaxHirn-AusserHaus`,
   150.732 Dateien / 63,74 GB, robocopy 0 Fehler, geprueft).
 - Textstand zusaetzlich als `BrainFiles.bundle` auf `Q:`.

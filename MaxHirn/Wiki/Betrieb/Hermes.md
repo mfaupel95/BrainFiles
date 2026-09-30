@@ -59,6 +59,35 @@ Anfang September noch auf die Altanlage.
   Prozess; 120 s Boot-Gnadenfrist gegen Churn.
 - `Test-NetConnection 127.0.0.1 -Port 9900` als Schnellprobe.
 
+### Gemessener Stand 30.09.2026 (eine Kette, drei PIDs)
+
+Der laufende Gateway ist **eine** Prozesskette, nicht mehrere Dienste:
+
+| PID | Was | Herkunft |
+|---|---|---|
+| 73620 | Launcher | `hermes-agent\venv\Scripts\python.exe -m hermes_cli.main gateway run` |
+| 36840 | Runtime-Kind | `hermes-agent\.hermes-runtime\python\cpython-3.11...\python.exe` |
+| 73852 | der eigentliche Dienst | `tools\python-3.14.7+...\python.exe -I -c "... runpy.run_module('hermes_cli.main')"` |
+
+Der Dienstprozess 73852 haelt **`127.0.0.1:9900`** (A2A) und **`0.0.0.0:8644` plus
+`[::]:8644`** (Webhook-Plattform) und schreibt `gateway_state.json`. Die Identitaet
+steht dort: `pid`, `gateway_state: running`, `code_version`.
+
+Zwei Folgerungen, die beide schon einmal Zeit gekostet haben:
+
+- **Ein Prozessfilter auf `*gateway run*` findet nur 73620 und 36840** - der
+  Dienstprozess 73852 traegt wegen der `runpy`-Form gar kein `gateway run` in der
+  Kommandozeile. Wer die Prozesszahl prueft, muss beide Formen kennen (Waechter
+  lesen deshalb zuerst `gateway_state.json`).
+- **`TCP 9900` ist NICHT dauerhaft zu.** Die Notiz vom 29.09.2026 ("lauscht nur
+  noch auf dem Control-Pipe") war eine Momentaufnahme: am 30.09.2026 hoert 73852
+  wieder auf `127.0.0.1:9900`. Der Port taugt damit weiter als Schnellprobe, aber
+  nicht als Beweis fuer einen Ausfall - massgeblich ist Prozess UND Antwort.
+
+**Vor jeder Freigabe ins LAN pruefen:** der Webhook hoert auf `0.0.0.0:8644`, der
+OmniRoute-Router auf `0.0.0.0:20128` - beide sind im lokalen Netz erreichbar, nicht
+nur auf `127.0.0.1`. Gemessen am 30.09.2026, nicht geaendert.
+
 ## Kompression
 
 `compression.threshold` steht auf **0.19**, weil das Kompressionsmodell
