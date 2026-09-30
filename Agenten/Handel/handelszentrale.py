@@ -38,6 +38,7 @@ Ohne Fenster, als Nachweis der Bindungen:
 import argparse
 import csv
 import ctypes
+import importlib.util
 import json
 import os
 import queue
@@ -60,6 +61,7 @@ import freigabefenster                                      # noqa: E402
 import risikostufe                                          # noqa: E402
 import freqtrade_bridge                                     # noqa: E402
 import omnitrade_bridge                                     # noqa: E402
+import omnitrade_auswertung                                 # noqa: E402
 
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
@@ -101,31 +103,31 @@ QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed",
           "kopier": "feed", "kopier1zu1": "feed"}
 QUELLE_VORGABE = "okx"
 
-# Farben - dasselbe dunkle Blatt wie omniquant/gui.py, damit die Fenster
-# zusammenpassen.
-FARBEN = {
-    "bg": "#1e1e2e", "blatt": "#181825", "gitter": "#313244",
-    "text": "#cdd6f4", "matt": "#a6adc8", "gruen": "#a6e3a1",
-    "rot": "#f38ba8", "gelb": "#f9e2af", "akzent": "#89b4fa",
-    "zellgruen": "#1b4d3e", "zellrot": "#5c1f2b",
-}
+# Farben, Schrift, ttk-Stile: EINE Quelle fuer alle Fenster,
+# Werkzeuge/fenster_design.py (Beschreibung: Werkstatt/design-system-fenster-*).
+# Per Dateipfad geladen, nicht ueber sys.path: Werkzeuge/ enthaelt Module
+# (z. B. marktdaten), die sonst Handel/ verdecken koennten.
+_spec = importlib.util.spec_from_file_location(
+    "fenster_design", os.path.join(HIER, "..", "Werkzeuge", "fenster_design.py"))
+design = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(design)
+
+FARBEN = design.FARBEN
 
 # Schrift: EIN Basiswert, alles andere relativ dazu - so skalieren Titel,
 # Tabellen, Chart und Konsole gemeinsam, wenn der Nutzer die Groesse wechselt.
 # Wird nur im Speicher gehalten (die Zentrale schreibt nichts).
-SCHRIFT_ART = "Consolas"
-SCHRIFT_GROESSE = 11            # Basis; Vorgabe 11 statt 10: zu klein war der Befund
-SCHRIFT_AUSWAHL = tuple(str(g) for g in range(8, 17))
-KLEIN = -1                      # Konsole, Fusszeile
-TINY = -2                       # Chart-Beschriftung
-TITEL = 3                       # Fensterkopf
+SCHRIFT_ART = design.SCHRIFT_ART
+SCHRIFT_GROESSE = design.SCHRIFT_GROESSE
+SCHRIFT_AUSWAHL = design.SCHRIFT_AUSWAHL
+KLEIN = design.KLEIN            # Konsole, Fusszeile
+TINY = design.TINY              # Chart-Beschriftung
+TITEL = design.TITEL            # Fensterkopf
 
 
 def schrift(rel=0, fett=False):
-    """Schriftart dieser Ansicht: Basis + relative Groesse."""
-    if fett:
-        return (SCHRIFT_ART, SCHRIFT_GROESSE + rel, "bold")
-    return (SCHRIFT_ART, SCHRIFT_GROESSE + rel)
+    """Schriftart dieser Ansicht: (veraenderliche) Basis + relative Groesse."""
+    return design.schrift(SCHRIFT_GROESSE, rel, fett)
 
 
 # --------------------------------------------------------------------------
@@ -710,6 +712,26 @@ def omnitrade_order_zeilen(lage):
     return zeilen
 
 
+def omnitrade_laeufe_zeilen(bilanzen):
+    """Zeilen der Laeufe-Tabelle aus `omnitrade_auswertung.alle()`: (Werte, Marke)."""
+    def pct(x):
+        return "-" if x is None else "%+.2f%%" % x
+    zeilen = []
+    for b in bilanzen or []:
+        if "strategie" not in b:
+            zeilen.append(((b.get("datei", "?"), "", "", "", "", "", "", "",
+                            b.get("fehler", "")), "schlecht"))
+            continue
+        zustand = b["state"] if b["ok"] else (b["fehler"] or "?")
+        werte = (b["strategie"], b["symbol"], "%.1f h" % b["laufzeit_h"], b["kerzen"],
+                 "%d / %d" % (b["orders"], b["abgelehnt"]),
+                 "%d / %d" % (b["kaeufe"], b["verkaeufe"]),
+                 "%+.2f (%s)" % (b["gewinn"], pct(b["gewinn_pct"])),
+                 pct(b["buyhold_pct"]), zustand)
+        zeilen.append((werte, "gut" if b["ok"] else "schlecht"))
+    return zeilen
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -791,11 +813,7 @@ class Handelszentrale:
 
     def _wende_schrift_an(self):
         """Neue Schriftgroesse an allen gemerkten Widgets anwenden."""
-        st = ttk.Style()
-        st.configure(".", font=schrift())
-        st.configure("Treeview", rowheight=max(18, SCHRIFT_GROESSE * 2))
-        st.configure("Treeview.Heading", font=schrift(0, fett=True))
-        st.configure("TCombobox", font=schrift())
+        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
         for widget, rel, fett in self._schrift_widgets:
             try:
                 widget.configure(font=schrift(rel, fett))
@@ -806,25 +824,7 @@ class Handelszentrale:
 
     # ---------- Aufbau ----------
     def _baue(self):
-        st = ttk.Style()
-        try:
-            st.theme_use("clam")
-        except Exception:                                    # noqa: BLE001
-            pass
-        st.configure(".", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     fieldbackground=FARBEN["blatt"], font=schrift())
-        st.configure("Treeview", background=FARBEN["blatt"],
-                     fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=max(18, SCHRIFT_GROESSE * 2), borderwidth=0)
-        st.configure("Treeview.Heading", background="#313244",
-                     foreground=FARBEN["akzent"], font=schrift(0, fett=True))
-        st.configure("TCombobox", font=schrift())
-        st.map("Treeview", background=[("selected", "#45475a")])
-        st.configure("TNotebook", background=FARBEN["bg"], borderwidth=0)
-        st.configure("TNotebook.Tab", background="#313244",
-                     foreground=FARBEN["text"], padding=(12, 3))
-        st.map("TNotebook.Tab", background=[("selected", "#45475a")],
-               foreground=[("selected", FARBEN["akzent"])])
+        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
 
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
         kopf.pack(fill="x", padx=10, pady=(8, 2))
@@ -1036,6 +1036,23 @@ class Handelszentrale:
                                text=omnitrade_kopf(None)[0], fg=FARBEN["matt"])
         self._registriere_schrift(self.l_omni, 0, fett=True)
         self.l_omni.pack(fill="x", padx=10, pady=(6, 2))
+        tl = tk.Label(seite, text="Laeufe (alle Statusdateien)", bg=FARBEN["bg"],
+                      fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(tl, 0, fett=True)
+        tl.pack(fill="x", padx=10, pady=(6, 0))
+        lspalten = ("strategie", "symbol", "laufzeit", "kerzen", "orders", "kv",
+                    "gewinn", "buyhold", "zustand")
+        lkopf = {"strategie": "Strategie", "symbol": "Symbol", "laufzeit": "Laufzeit",
+                 "kerzen": "Kerzen", "orders": "Orders", "kv": "Kauf/Verk.",
+                 "gewinn": "Gewinn", "buyhold": "Buy&Hold", "zustand": "Zustand"}
+        self.t_laeufe = ttk.Treeview(seite, columns=lspalten, show="headings", height=5)
+        for sp in lspalten:
+            self.t_laeufe.heading(sp, text=lkopf[sp])
+            self.t_laeufe.column(sp, width=150 if sp == "zustand" else 100,
+                                 anchor="w" if sp in ("strategie", "symbol", "zustand") else "e")
+        self.t_laeufe.tag_configure("schlecht", foreground=FARBEN["rot"])
+        self.t_laeufe.tag_configure("gut", foreground=FARBEN["gruen"])
+        self.t_laeufe.pack(fill="x", padx=10)
         t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
                      fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t, 0, fett=True)
@@ -1071,6 +1088,10 @@ class Handelszentrale:
         for werte in omnitrade_order_zeilen(lage):
             marke = {"filled": "gut", "rejected": "schlecht"}.get(werte[4], "")
             self.t_omni.insert("", "end", values=werte, tags=(marke,))
+        for i in self.t_laeufe.get_children():
+            self.t_laeufe.delete(i)
+        for werte, marke in omnitrade_laeufe_zeilen(omnitrade_auswertung.alle()):
+            self.t_laeufe.insert("", "end", values=werte, tags=(marke,))
 
     def _starte_freqtrade_worker(self):
         """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads."""
