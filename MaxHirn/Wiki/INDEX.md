@@ -74,6 +74,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Strategie-Kennzahlen.md](Handel/Strategie-Kennzahlen.md) | Formelblatt von Max: t-Statistik der Expectancy, Stop aus der MAE, was zeitbasiert NICHT geht |
 | [Handel/Freqtrade-Bots.md](Handel/Freqtrade-Bots.md) | Die drei Moon-Dev-Bots: was laeuft, der erste Backtest (alle negativ, Verlust = Gebuehr), die Loopback-Falle |
 | [Handel/Dauerlauf-Tode.md](Handel/Dauerlauf-Tode.md) | T-193: Rueckgabe 143 = MSYS-timeout (Fingerabdruck-Tabelle), Sperren-Churn, Speicherdruck, die neue Wache |
+| [Handel/omnitrade-Spur.md](Handel/omnitrade-Spur.md) | Weg B: der Rust-Lauf entscheidet, Kraken ordert — zwei Zeugen statt state=running, Zustand statt Orderliste, echter Verkaufspreis |
 
 ### Werkzeuge und Offenes
 
@@ -97,6 +98,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Bonsai-2-27B.md](Werkzeuge/Bonsai-2-27B.md) | Ternares 27B-Modell lokal (5,95 GB, PrismML-Fork von llama.cpp): 32 t/s auf der 3060 Ti bei 8k Kontext, kein Hermes-Agent-Modell (64k-Grenze), Ollama kann die Dateien nicht laden |
 | [Werkzeuge/ai4trade-AI-Trader.md](Werkzeuge/ai4trade-AI-Trader.md) | Signalplattform ai4trade.ai: Agent `HermesMax2` (ID 25973), Heartbeat per Cron gepollt |
 | [Werkzeuge/config-gegenprobe.md](Werkzeuge/config-gegenprobe.md) | Jede Behauptung der Hermes-Configs gegen die Wirklichkeit: Programmpfade, lokale Adressen, lokale Modellnamen; Wache montags, Befund 29.09.2026 |
+| [Werkzeuge/Paperclip.md](Werkzeuge/Paperclip.md) | Paperclip-CLI (`paperclipai`, Node): der verwaltete Install-Weg scheitert unter Windows an Doppelpunkten im Sperr-Dateinamen, deshalb npm in eigenem Prefix plus zwei PATH-Weiterleitungen in `~/.local/bin`; kein `update`/`uninstall`, aktualisiert wird per npm |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
 | [[Hermes-Wartung]] | `hermes update` fahren: Ablauf, EXIT 1, Gateway-Task, blockierte Werkzeuge | Werkzeuge |
