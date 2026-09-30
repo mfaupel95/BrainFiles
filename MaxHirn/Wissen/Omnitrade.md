@@ -125,3 +125,18 @@ Sechs TradingView-Skripte (`MaxHirn/Wiki/handel/*.pine`: SMA 20/50, EMA 12/26, M
 - **Backtest ist Long/Short**, der Live-Lauf Long-only (Spot): `sell()` eroeffnet im Backtest eine Short-Gegenposition. Fuer live-gleiche Zahlen `OMNI_LONG_ONLY=1` setzen. Long/Short-Endstaende sind unzuverlaessig (RSI-Skript: 94.941 aus 10.000 bei 0,05 BTC - Buchungsartefakt der Shorts), Max-Drawdown-Werte ebenfalls (55 % bei 0,05 BTC/10.000 USD unmoeglich). Bislang genannte Backtest-Zahlen fuer `sell()`-Strategien stammen aus dem Long/Short-Modus.
 - **stop_loss/take_profit gehoeren in den if-Block vor `buy()`/`sell()`** - die Auswertung endet beim ersten Signal, spaeter stehende Stops werden nicht gelesen.
 - Ergebnis (Long-only, 0,05 BTC, Start 10.000; Buy-and-Hold 12.980): BTC 1d voll: adx_macd 13.982, Pine-Skripte 9.670-10.548. BTC 1d ungesehen (B&H 11.232): adx_macd 11.311, Pine 10.000-10.474. ETH 1d (B&H 11.469): adx_macd 14.111, Pine 8.183-10.140. BTC 1h 6 Monate (B&H 10.771): adx_macd 10.622, bollinger_breakout 10.422, Rest 9.546-10.214. **Keines der sechs schlaegt adx_macd oder Buy-and-Hold; nichts auf die Live-Spur gelegt.**
+
+## Laeufe starten und live vorbereiten (30.09.2026)
+
+**Start aller Testnet-Laeufe:** `omnitrade-laeufe.cmd liste` zeigt Tabelle, `start <name>|alle [--trocken]` startet fehlende Laeufe (Agenten/Handel/omnitrade_start.py; Namen dort in `LAEUFE`). Je Lauf eine Statusdatei `status/live_<strategie>_<symbol>.json`, 1h, 500 USD, OKX-Demo. Programm-Vorzug: `target-live/release` (eigener Build, ohne Sperre durch laufende Laeufe), dann `target/release`, `target/debug`. Neubau: `CARGO_TARGET_DIR=<omnitrade>/target-live cargo build --release -p omnitrade-cli`.
+
+**Doppelstart-Schutz:** entscheidet die Kommandozeile der laufenden `omnitrade-cli.exe` (`--status-file status/live_X_Y.json`), erst danach Statusdatei+PID. Grund (Fehler beim Bau am 30.09.): ein Duplikat ueberschrieb die Statusdatei, der naechste Start hielt den echten Lauf fuer tot und startete noch eins - beide sofort beendet, keine Order. Das Alter der Datei zaehlt nie (1h-Kerzen: bis 1 h alt).
+
+**Gestartet:** rsi30_stop5 und adx_macd, je BTCUSDC/ETHUSDC. Die sechs `pine_*` sind startklar, laufen aber nicht (Backtest: keine schlaegt adx_macd oder Buy-and-Hold).
+
+**Echtes Konto (OKX mainnet) - Stand: gesperrt.** `live_loop.rs` bricht bei `--network mainnet` mit "requires additional Phase 3 safety gates" ab; der Zweig ist absichtlich zu. Vor einer Freigabe (Max entscheidet, Claude legt keine Order):
+1. Mehrwochen-Testnet mit Ergebnis ueber Buy-and-Hold und Gebuehren (Auswertung: `omnitrade-auswertung`).
+2. Bekannte Schwaechen beheben: Socket-Neuverbindung, harter Abbruch laesst `state: running`, ungeklaert ob `stop_loss()` live als Boersenorder ankommt (sonst kein Schutz bei Ausfall).
+3. Eigener OKX-Live-Key, nur Handel, **keine Abhebung**, IP-Whitelist; Umgebungsvariablen `OKX_LIVE_API_KEY/_SECRET/_PASSPHRASE`, EU-Konto `OKX_REGION=eea`. Nie in Chat oder Datei.
+4. Limits: `RiskGuard::mainnet()` (omnitrade-risk/src/limits.rs) pruefen, Startkapital klein (z. B. 50-100 USD), ein Symbol, eine Strategie; Kill-Switch `omnitrade-cli kill` vorher testen.
+5. Code-Gate bewusst oeffnen (eigene Aenderung + Test), erst dann `--network mainnet`.
