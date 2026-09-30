@@ -258,6 +258,48 @@ Ertragsquelle. Liegt das Guthaben in einer anderen Waehrung, handelt die Spur
 ohne Umtausch; laege es nur in der einen und die waere leer, muesste sie erst
 tauschen — im laufenden Zyklus unmoeglich.
 
+## 8. Die Einheit einer Zahl kommt aus dem BUCH — und die Zuordnung hat EINE Lesestelle
+
+Seit eine Spot-Spur in mehreren Quotewaehrungen handeln kann (Abschnitt 7), ist die
+Waehrung keine Eigenschaft des SPURNAMENS mehr, sondern des BUCHS. Eine feste
+Tabelle `spur -> Einheit` ist nur noch der Rueckfall. Wer sie direkt liest,
+rechnet still die falsche Einheit.
+
+Belegt: ein Kennzahlen-Werkzeug las die Tabelle direkt und wies die Betraege einer
+Spur als EUR aus, waehrend der Tagesbericht fuer dieselben Zahlen die Waehrung aus
+dem Buch holte (USDC). Dieselbe Zahl, zwei Einheiten — und keine der beiden
+Ansichten sah kaputt aus.
+
+Regeln:
+
+- **Genau EINE Funktion loest die Einheit auf** (`einheit_fuer(spur, z=None)`),
+  sie liest den Zustand der aktuellen Risikostufe (`zustand.mittel.json` usw.)
+  und nimmt aus dem Buch, was dort steht. Jeder andere Leser (Bericht, Kennzahlen,
+  Kontofenster) RUFT sie auf, statt die Tabelle oder den Rueckfall nachzubauen —
+  eine zweite Fassung derselben Regel laeuft frueher oder spaeter auseinander.
+- **Ein Altbestand ohne Feld ist EUR, nicht „unbekannt".** Positionen aus der Zeit
+  vor der Erweiterung trugen kein Waehrungsfeld; damals war EUR die einzige
+  Waehrung der Spur. Ein „unbekannt" macht alte Buecher unlesbar und sieht wie
+  ein Datenfehler aus.
+- **Ein Delegieren statt Kopieren gilt auch fuer den Leser in der Anzeige:** die
+  Lage-Funktion ruft die eine Funktion auf, statt dieselbe Rueckfall-Regel noch
+  einmal zu schreiben (sonst faellt bei der naechsten Waehrung nur eine der
+  beiden Stellen mit).
+
+Testmuster, zwei Formen — beide gehoeren dazu:
+
+1. **Die Regel als Verhalten:** Position mit Waehrung -> diese; Position ohne
+   Feld -> EUR; leeres/fehlendes Buch -> Rueckfall. Dazu je ein Fall fuer die
+   Stufe (Suffix am Zustandspfad), weil die Aufloesung den Stufenstand liest.
+2. **Ein Quelltext-Waechter gegen den zweiten Leser:** den Spurenbaum ablaufen
+   (`tests/`, `.venv/`, `daten/`, `__pycache__/` ueberspringen) und verlangen,
+   dass der direkte Tabellenzugriff (`"EINHEIT.get(spur"`) genau EINMAL im Baum
+   vorkommt — ausserhalb des definierenden Moduls. Der erste Test haette den
+   Fehler nicht gefunden (die Tabelle selbst war richtig), erst der zweite.
+
+Merksatz: **eine richtige Zahl mit falscher Einheit ist eine falsche Zahl** — und
+wer die Einheit an zwei Stellen bestimmt, hat zwei Antworten.
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

@@ -767,6 +767,26 @@ ungetrackten Dateien. Reihenfolge:
   Bericht erneut `git log --oneline origin/master..HEAD` lesen und die Aenderung
   benennen („dazu kam danach noch X, nicht meiner"), statt die alte Zahl zu
   wiederholen - sonst widerspricht sich der eigene Bericht.
+  **Ein abgelehnter Push heisst: die andere Sitzung war schneller — erst fetchen und
+  LESEN, was kommt.** `git fetch origin`, dann `git log --oneline HEAD..origin/master`
+  und `git diff --name-only HEAD...origin/master` gegen die EIGENE Pfadliste halten:
+  keine gemeinsame Datei = der Merge ist harmlos. **Kein `git pull --rebase` bei
+  dreckigem Baum** (rebase verweigert bei unstaged Aenderungen, und `--autostash`
+  fasst fremde Arbeit an) — `git merge --no-edit origin/master` geht mit dreckigem
+  Baum durch, solange sich die Pfade nicht ueberschneiden. Danach `git push`
+  wiederholen und `git log --oneline -3` lesen.
+  **Der Merge kann an einer UNGETRACKTEN Datei haengen, die der eingehende Commit
+  hinzufuegt.** Die Fremdsitzung hat sie ueber ihren EIGENEN Index committet — der
+  normale Index hat sie nie gesehen, lokal liegt sie als `??`, und der Merge bricht
+  ab mit `error: The following untracked working tree files would be overwritten by
+  merge` + `Aborting`. Nicht mit `-f` darueberfahren und nicht einfach loeschen:
+  erst `git hash-object <pfad>` gegen `git rev-parse origin/master:<pfad>` halten.
+  Gleich = inhaltsgleich: Kopie nach `cache/scratch/`, Datei entfernen, Merge laufen
+  lassen, Hash danach ERNEUT pruefen (sie ist jetzt versioniert). Verschieden = die
+  lokale Fassung traegt eine eigene Aenderung: wegsichern und im Bericht benennen,
+  nicht wegwerfen. **Die Ursache steht in der ERSTEN Fehlerzeile** — weitere Zeilen
+  im selben Abbruch (z. B. `unable to unlink old '<datei>': Invalid argument`) sind
+  Folgen des abgebrochenen Auscheckens, nicht der Grund.
 - `git log --oneline -1` nennt nur die eigenen Pfade, `git show --stat` passt zur Absicht,
   und der Push ist gegen `origin/master` gehalten (siehe oben, nicht blind vergleichen).
 - **Jede Datei, die die Commit-Nachricht NENNT, muss im gestagten Diff stehen - und

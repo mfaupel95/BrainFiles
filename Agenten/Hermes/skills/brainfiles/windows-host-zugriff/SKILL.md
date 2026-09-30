@@ -89,6 +89,17 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    Fenster ist versteckt) und registriert die Aufgabe fuer den angemeldeten
    Benutzer; der Lauf danach braucht keine Rechte. Danach **lesend** belegen:
    `Get-ScheduledTask`, `Get-ScheduledTaskInfo`, das Log, der Port.
+   **Ein erhoehtes `-File`-Skript schreibt seine Ausgabe ins Nirwana.** Das
+   Fenster ist versteckt und schliesst sich mit dem Lauf: ohne eigenes Log gibt
+   es keine Zeile, und ein terminierender Fehler (`$ErrorActionPreference='Stop'`)
+   hinterlaesst GAR keine - der Lauf sieht wie Erfolg aus, waehrend er in der
+   Mitte stehen blieb. Das Skript selbst in eine Logdatei schreiben lassen
+   (`Start-Transcript`, oder einen Wrapper mit `Tee-Object`), und das Ergebnis am
+   ZIEL messen (`Get-CimInstance …`, `Get-ScheduledTask …`, `Test-Path`), nicht am
+   Exitcode des Starters: **Exitcode 0 heisst nur, dass der UAC-Dialog bestaetigt
+   wurde.** Ein `-Testlauf`/`-Rueckgaengig`-Paar gehoert dazu, und die Idempotenz
+   einmal echt zeigen (zweiter Lauf meldet „schon gesetzt") - sonst geht ein
+   Abbruch beim ersten Mal als Endstand durch.
    Wird der UAC-Dialog abgelehnt, NICHT erneut aufpoppen: die Arbeit
    vorbereitet hinterlassen (Wrapper + Setup-Skript versioniert) und Max die
    Registrierung als Ein-Zeilen-Aufgabe nennen.
@@ -351,6 +362,35 @@ den Speicher nicht mehr *zusagen* (Commit), weil viele Prozesse reserviert haben
 - **Ein abgebrochener `git commit` ist kein Datenverlust.** Erneut versuchen —
   `git status` zeigt danach den echten Stand; ein `index.lock` mit falschem Alter
   stammt aus dem Abbruch und wird umbenannt, nicht geloescht.
+
+### Die Commit-Grenze selbst einstellen (Auslagerungsdatei)
+
+RAM + Auslagerungsdatei = Commit-Grenze. Ist sie zu klein, ist das mit keinem
+Programm zu beheben — die 2004-Ereignisse (Resource-Exhaustion) und
+`0xc000012d` (STATUS_COMMITMENT_LIMIT) sind die FOLGE, nicht die Ursache. Die
+Datei muss groesser werden.
+
+- **Autoritativer Weg ist die Registry**, genau das, was die Windows-GUI
+  schreibt: `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory
+  Management` -> `PagingFiles` (`REG_MULTI_SZ`, je Zeile
+  `<Laufwerk>:\pagefile.sys <AnfangMB> <MaximumMB>`). `Win32_PageFileSetting`
+  zeigt danach den Stand, `Win32_ComputerSystem.AutomaticManagedPagefile` sagt,
+  ob Windows selbst verwaltet.
+- **Die WMI-Klasse hat eine Typfalle:** `New-CimInstance -ClassName
+  Win32_PageFileSetting` scheitert mit „Typenkonflikt fuer die Eigenschaft
+  InitialSize" (die Klasse verlangt `UInt32`, die Parameteruebergabe liefert
+  `Int32`). Mit `$ErrorActionPreference='Stop'` stirbt das Skript dort — und
+  still, wenn die Ausgabe nicht mitgeschrieben wird. `[uint32]` casten.
+- **Fest statt selbstverwaltet, wenn das Laufwerk knapp ist.** Eine
+  selbstverwaltete Datei waechst bis zum Maximum und fuellt das Laufwerk
+  (gemessen: C: mit 19 GB frei, Datei bei 21 GB). Anfang = Maximum setzen und die
+  grosse Datei auf das Laufwerk mit Platz legen.
+- **Die Wirkung kommt erst beim NEUSTART.** Die Dateien werden beim Start
+  angelegt; `TotalVirtualMemorySize`/`FreeVirtualMemory` und die Existenz der
+  Datei aendern sich vorher nicht. Also nicht „erledigt" melden, sondern „gesetzt,
+  wirkt nach dem Neustart" plus eine Nachpruefung als Aufgabe — und vorher sagen,
+  dass ein Neustart die laufenden Dauerprozesse beendet (Boersen-Stops der
+  Live-Positionen liegen bei der Boerse und greifen weiter).
 
 ## Prozess-Befunde: erst die eigene Kette, dann Urteile
 
