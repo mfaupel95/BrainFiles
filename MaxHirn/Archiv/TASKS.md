@@ -134,19 +134,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/hermes-agent/hermes_cli/venv_sync.py,
       source_completion.py, Skill hermes-maintenance
 
-- [ ] **T-233 - terminal.cwd steht auf Agenten\Hermes statt auf der BrainFiles-Wurzel (gewollt?)**
-      Kontext: Beim Setzen der Kompression auf Standard (Commit d4429fb) lag
-      eine fremde Aenderung im Arbeitsbaum: `terminal.cwd` war von
-      `C:\Users\faupe\documents\BrainFiles` auf
-      `C:\Users\faupe\documents\BrainFiles\Agenten\Hermes` geaendert. Sie wurde
-      mitgenommen, weil eine Datei nicht teilbar ist. Werkzeuge und Sitzungen
-      starten damit kuenftig eine Ebene tiefer - der Wurzel-Aufrufer
-      (`omnitrade.cmd`) und die relativen Pfade der Hausregeln gehen von der
-      Wurzel aus.
-      Naechster Schritt: entscheiden, ob das so bleibt (Desktop-Einstellung
-      "Shell-Umgebung" -> Arbeitsverzeichnis) oder zurueck auf die Wurzel.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Hermes/config.yaml (terminal.cwd)
 
 - [ ] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
       Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
@@ -2601,6 +2588,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-233 - terminal.cwd steht auf Agenten\Hermes statt auf der BrainFiles-Wurzel (gewollt?)**
+      Kontext: Beim Setzen der Kompression auf Standard (Commit d4429fb) lag
+      eine fremde Aenderung im Arbeitsbaum: `terminal.cwd` war von
+      `C:\Users\faupe\documents\BrainFiles` auf
+      `C:\Users\faupe\documents\BrainFiles\Agenten\Hermes` geaendert. Sie wurde
+      mitgenommen, weil eine Datei nicht teilbar ist. Werkzeuge und Sitzungen
+      starten damit kuenftig eine Ebene tiefer - der Wurzel-Aufrufer
+      (`omnitrade.cmd`) und die relativen Pfade der Hausregeln gehen von der
+      Wurzel aus.
+      Naechster Schritt: entscheiden, ob das so bleibt (Desktop-Einstellung
+      "Shell-Umgebung" -> Arbeitsverzeichnis) oder zurueck auf die Wurzel.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/config.yaml (terminal.cwd)
+      Entscheidung Max (30.09.2026): cwd bleibt Agenten/Hermes. Abhaengigkeiten repariert: Anker cd "$HERMES_HOME/../.." in 9 Skills/READMEs, tasks-anpassen.py lokalisiert sich selbst, Wurzel-AGENTS.md/CLAUDE.md tragen die Regel. Nachweis: spiegelstand 29/29 byte-gleich und doppelte_nummern OK aus dem Anker. Wiki/Betrieb/Arbeitsverzeichnis.md.
 - [x] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
       Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
       ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -

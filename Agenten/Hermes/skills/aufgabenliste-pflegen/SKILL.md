@@ -181,7 +181,7 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   sie jemand sieht, und es braucht einen Folge-Commit. Also: Gate fahren, `$?`
   lesen, und erst im NAECHSTEN Aufruf stagen und committen. Zaun-bewusst: Zeilen innerhalb
   eines Code-Zauns (die Format-Vorlage) zaehlen nicht als Eintrag.
-  `python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
+  `cd "$HERMES_HOME/../.." && python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
 - `scripts/erledigen.py`: zieht EINEN Eintrag byte-genau nach `## Erledigt`,
   hakt ihn ab, haengt den Belegsatz an, legt `TASKS.md.bak-JJJJMMTT` an.
   Es prueft vor dem Schreiben (Nummer genau einmal, steht in `## Offen`, noch

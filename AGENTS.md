@@ -40,6 +40,7 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 
 ## Arbeit im Repo
 
+- **Arbeitsverzeichnis (seit 30.09.2026):** Hermes' Werkzeuge und Sitzungen starten in `Agenten/Hermes` (`terminal.cwd`), nicht in dieser Wurzel. Alle Pfade in Skills, Notizen und Wiki sind relativ zur **Wurzel** - vor einem solchen Aufruf also `cd "$HERMES_HOME/../.."` (kurz `cd ..`) oder mit absolutem Pfad arbeiten. Skripte unter `Agenten/Routinen` und die Cron-Wachen lokalisieren sich selbst (`$PSScriptRoot`, `__file__`) und sind davon unberuehrt; die Wurzel-Aufrufer `omnitrade.cmd`/`omnitrade-auswertung.cmd` arbeiten mit `%~dp0` und laufen aus jedem Verzeichnis.
 - **Fremd-Repos (Forks):** `Werkstatt/Repos/` haelt einen Klon je Repo - `origin` = `mfaupel95/<name>`, `upstream` = Original (shallow; `git fetch --unshallow` fuer volle Historie).
 - **Bots je Repo:** Hermes-Profile unter `Agenten/Hermes/profiles/<bot>/`, Start-Verzeichnis `Werkstatt/Repos/<repo>`; chat `hermes -p <bot> chat` (oder Bots-Tab im Desktop).
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".

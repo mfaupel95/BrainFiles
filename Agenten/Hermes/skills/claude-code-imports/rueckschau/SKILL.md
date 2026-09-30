@@ -10,7 +10,7 @@ je Nachricht. **Nie von Hand durchlesen** — am 30.09.2026 waren es 390 Dateien
 und 341 MB.
 
 ```
-python Agenten/Hermes/skills/claude-code-imports/rueckschau/sitzungen_auswerten.py
+cd "$HERMES_HOME/../.." && python Agenten/Hermes/skills/claude-code-imports/rueckschau/sitzungen_auswerten.py
 ```
 
 Ausgabe: Zahl der Sitzungen, Anweisungen, Befehle, dazu ein Themen-Cluster mit

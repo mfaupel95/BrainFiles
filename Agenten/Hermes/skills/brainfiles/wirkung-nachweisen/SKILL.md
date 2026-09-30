@@ -90,6 +90,7 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
    jede Spur, aus der Repo-Wurzel:
 
    ```bash
+   cd "$HERMES_HOME/../.."   # Werkzeuge starten in Agenten/Hermes; alles hier ist relativ zur Wurzel
    # a) Was steht WIRKLICH in der Zustandsdatei, die das Tor liest?
    python -c "import json;print(json.load(open('Agenten/Handel/freigabe_fenster.json',encoding='utf-8'))['<spur>'])"
    # b) Was liest die SPUR, wenn sie wie beim Fahrer startet (cwd = Spurenordner)?

@@ -41,14 +41,18 @@ Abhaengigkeiten gibt es nicht: PowerShell 5.1, Stdlib-Python, git.
 
 1. Bericht mit `read_file` oeffnen: `Agenten/Routinen/logs/systempruefung-letzter-lauf.md`.
 2. Erstanweisung des Skripts, wenn der Bericht alt ist:
-   `terminal`: `powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Routinen/systempruefung.ps1`
+   `terminal`: `cd "$HERMES_HOME/../.." && powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Routinen/systempruefung.ps1`
 3. Alterswache von Hand: `terminal`:
-   `Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Hermes/skills/brainfiles/systempruefung-abarbeiten/scripts/berichts-alter.py`
+   `cd "$HERMES_HOME/../.." && Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Hermes/skills/brainfiles/systempruefung-abarbeiten/scripts/berichts-alter.py`
    (jede Python 3.10+ tut es — das Skript nutzt nur die Standardbibliothek)
+
+**Alle Befehle dieses Skills sind relativ zur BrainFiles-Wurzel.** Hermes' Werkzeuge starten in
+`Agenten/Hermes` (`terminal.cwd`) — deshalb der `cd "$HERMES_HOME/../.."` davor.
 
 ## Quick Reference
 
 ```
+Wurzel           cd "$HERMES_HOME/../.."                                   # vor jedem Befehl hier
 Bericht          Agenten/Routinen/logs/systempruefung-letzter-lauf.md
 Vollprotokoll    Agenten/Routinen/logs/systempruefung-<JJJJ-MM-TT>.log  (muss mit einer Ende-Zeile enden)
 Skript           Agenten/Routinen/systempruefung.ps1

@@ -57,6 +57,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |
 | [Betrieb/Docker-und-Sandbox.md](Betrieb/Docker-und-Sandbox.md) | Docker-Terminal, windows-mcp als Rueckfallweg, weitergeleitete Variablen |
 | [Betrieb/Systemleistung-2026-09-29.md](Betrieb/Systemleistung-2026-09-29.md) | Commit-Erschoepfung und MCP-Spawn-Sturm: Befund, Kur, zwei Lehren (30.09.2026 nachgetragen) |
+| [Betrieb/Arbeitsverzeichnis.md](Betrieb/Arbeitsverzeichnis.md) | Hermes startet in `Agenten/Hermes`, Pfade bleiben relativ zur Wurzel: Anker `cd "$HERMES_HOME/../.."`, die gemessene Falle und was unberuehrt bleibt |
 
 ### Handel
 

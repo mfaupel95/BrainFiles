@@ -1,5 +1,8 @@
-# gezielter Ersatz in TASKS.md (CRLF erhalten)
-p = "MaxHirn/Archiv/TASKS.md"
+# Historischer Einmal-Ersatz in TASKS.md (CRLF erhalten), angewandt am 13.09.2026.
+# Der Pfad lokalisiert sich selbst: Hermes-Werkzeuge starten in Agenten/Hermes,
+# ein relatives "MaxHirn/..." traefe von dort aus nichts.
+from pathlib import Path
+p = Path(__file__).resolve().parents[3] / "MaxHirn" / "Archiv" / "TASKS.md"
 raw = open(p, "rb").read()
 
 alt = (
