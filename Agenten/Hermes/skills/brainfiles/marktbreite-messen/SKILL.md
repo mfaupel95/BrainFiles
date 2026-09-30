@@ -48,13 +48,39 @@ Zwei Zahlen heissen hier „Breite" — nicht verwechseln:
 ## Die Reihe (Verlauf statt Einzelwert)
 
 Im Haus gibt es die fortgeschriebene Reihe bereits — nicht neu bauen:
-`Agenten/Werkzeuge/breite.py` (`--merken` schreibt, `--reihe` zeigt den Verlauf in
-Punkten je Kerzentag), Ablage `Agenten/Werkzeuge/breite-reihe.jsonl` (Laufzeitstand,
-**nicht versioniert**), Wache `Agenten/Hermes/scripts/breite-wache.py` als Hermes-Cron
-(taeglich, `no_agent`, leere Ausgabe = nichts senden; meldet Stufenwechsel, neu
-unter die EMA200 gefallene Paare, Rueckgang gegenueber der letzten Meldung,
-unvollstaendige Deckung). `scripts/alt_breite.py` in diesem Skill bleibt der
-Ad-hoc-Messwert fuer einen einzelnen Tag.
+`Agenten/Werkzeuge/breite.py` (Reihe `breite-reihe.jsonl` daneben, Laufzeitstand,
+**nicht versioniert**, geht in die Sicherung), Wache
+`Agenten/Hermes/scripts/breite-wache.py` als Hermes-Cron (`breite-wache`, taeglich
+19:00 = nach dem Kerzenwechsel 16:00 UTC, `no_agent`, leere Ausgabe = nichts
+senden). Stand, Zahlen und Befunde: [[Marktbreite-Reihe]].
+
+    python Agenten/Werkzeuge/breite.py --merken                # messen + fortschreiben
+    python Agenten/Werkzeuge/breite.py --fuellen --tage 250    # rueckwaerts nachrechnen
+    python Agenten/Werkzeuge/breite.py --reihe                 # Verlauf je Kerzentag
+    python Agenten/Werkzeuge/breite.py --statistik              # Verteilung, Folgeverhalten
+
+`scripts/alt_breite.py` in diesem Skill bleibt der Ad-hoc-Messwert fuer einen
+einzelnen Tag.
+
+**Dieselbe Rechenregel fuer jeden Tag.** Das Fenster ist fest (`FENSTER` = 600
+abgeschlossene Kerzen, in Live-Lauf und Nachrechnung derselbe Wert). Ein Fenster,
+das sich nur nach dem richtigen Abstand richtet, misst bei kurzen Reihen den
+EMA-Startwert mit: bei 299 Kerzen traegt der Startwert noch ~37 % Gewicht und
+dreht bei einzelnen Paaren das VORZEICHEN (gemessen: BTC -1,24 % gegen +4,52 %).
+Eine Reihe aus zwei Fenstern ist keine Reihe.
+
+**Ein Nachlauf darf Live-Werte nicht ersetzen.** Vorgabe ist, nur fehlende Tage
+zu ergaenzen; mit `--ueberschreiben` bleibt der alte Messwert als `live_alt` in
+der Zeile stehen statt zu verschwinden. Genauso behaelt eine Live-Messung, die
+eine nachgerechnete Zeile desselben Tages ersetzt, das nachgerechnete Ergebnis als
+`nachgerechnet_alt`.
+
+**Eine Wache darf heilen, ohne zu melden.** `breite-wache.py` rechnet fehlende
+Tage aus den schon geholten Kerzen nach (`messen(mit_verlauf=True)` +
+`fuellen(tage=5)`, kein zweiter Abruf) und meldet nur, wenn wirklich Tage fehlten
+oder Live-Weg und Nachrechnung um mehr als 0,5 Punkte auseinanderlaufen. Leere
+Ausgabe heisst „nichts zu sagen", nicht „nichts getan" — geschrieben wird auch
+dann.
 
 **Die Reihe fuehrt EINE ZEILE JE KERZENTAG, nicht je Messung.** Eine Messung
 derselben Kerze ERSETZT ihre Zeile (letzte des Tages gewinnt); die Tageskerze
@@ -77,11 +103,15 @@ richtige Zahlen fuer einen Widerspruch.
 3. **Deckung nennen, nicht nur die Quote.** „29 von 29 = 100 %" ist eine Messung,
 „0 von 0 = 0 %" ein Fehler. Die Zeile „X von Y gemessen, Z nicht messbar" ist
 das, was einen stillen Ausfall von einem Ergebnis unterscheidet.
-4. **Ein Messpunkt ist keine Richtung.** „Die Breite schrumpft" braucht eine Reihe
+4. **Ein Fenster ist keine Messung.** Wer die Laenge des Durchschnittsfensters
+   aendert, aendert bei einzelnen Paaren das Vorzeichen — die Fensterlaenge gehoert
+   zur Rechnung wie die Quelle, und ein Nachlauf muss DASSELBE Fenster benutzen
+   (siehe „Die Reihe").
+5. **Ein Messpunkt ist keine Richtung.** „Die Breite schrumpft" braucht eine Reihe
 (taeglich festhalten, siehe „Die Reihe" oben). Aus einem Wert folgt der Zustand,
 nicht der Trend — und eine Reihe, die mehrere Zeilen fuer DENSELBEN Tag enthaelt,
 ist weiterhin ein Messpunkt.
-5. **Breite messen, BEVOR gedeutet wird.** „BTC steht, die Alts steigen" ist kein
+6. **Breite messen, BEVOR gedeutet wird.** „BTC steht, die Alts steigen" ist kein
 Beweis fuer eine Rotation — eine Rotation hat einen Verlierer. Erst wenn ein Teil
 des Markts unter seinem langfristigen Durchschnitt liegt, gibt es Nachzuegler, in
 die rotiert werden koennte.
@@ -114,6 +144,13 @@ Wert weit ueber seinem Durchschnitt ist weit gelaufen, nicht automatisch ein Kau
   neu messen. Kurse sind Momentaufnahmen; die Messung traegt Zeitpunkt und Quelle.
 - **CoinGecko als Breitenquelle nur als Notnagel** (HTTP 429 im Haus regelmaessig).
   Wer 429 sieht, hat keine Breite gemessen, sondern eine Grenze erreicht.
+- **Der Nenner wandert.** `n_gesamt` steht in jeder Zeile der Reihe und gehoert
+  mitgelesen: „25 von 29" und „25 von 28" sind verschiedene Prozente. Paare
+  kommen (SEI-USDT erst ab Juni) und gehen (Ausfall).
+- **Ein Rueckgang wird gegen die letzte MELDUNG gerechnet, nicht gegen den
+  Vortag.** Sonst summieren sich „vorgestern −9, gestern −9" nie zu einer
+  Nachricht; innerhalb einer Stufe waere die Wache sonst blind (100 % auf 81 %
+  ohne eine einzige Zeile).
 
 ## Abgrenzung
 

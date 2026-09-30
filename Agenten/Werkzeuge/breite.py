@@ -295,6 +295,15 @@ def merken(m):
         "offen": [o["inst"] for o in m["offen"]],
         "abstand": abstand,
     }
+    # Wurde der Tag vorher NACHGERECHNET, bleibt das Ergebnis als Beleg in der
+    # Zeile stehen: die Messung gilt, aber der Vergleich der zwei Wege ist
+    # spaeter noch nachlesbar (die Wache prueft ihn jeden Tag neu).
+    vorher = {z.get("kerze"): z for z in reihe(None)}.get(satz["kerze"])
+    if vorher is not None and vorher.get("art") == "nachgerechnet":
+        satz["nachgerechnet_alt"] = {"breite": vorher.get("breite"),
+                                     "unter": list(vorher.get("unter") or [])}
+        if vorher.get("nachgerechnet_am"):
+            satz["nachgerechnet_am"] = vorher["nachgerechnet_am"]
     # Reihenfolge bleibt zeitlich: eine aeltere Kerze wird dort ersetzt, wo sie
     # steht (kommt bei einem Nachlauf vor), nicht angehaengt.
     alt = [z for z in reihe(None)

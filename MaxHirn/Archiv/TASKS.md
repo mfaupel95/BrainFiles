@@ -60,6 +60,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
+      Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
+      Kerzentage nach (`HEIL_TAGE`). War der Rechner laenger aus, bleibt eine
+      Luecke in der Reihe stehen - sie faellt nur auf, wenn jemand `--reihe` liest.
+      Naechster Schritt: Luecken zwischen erster und letzter Zeile in `--reihe`
+      namentlich nennen und `HEIL_TAGE` an die Ausfalllaenge koppeln.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py
+
+- [ ] **T-205 — Wachenmeldung bei breitem Absturz begrenzen**
+      Kontext: Faellt die Breite von 96 % auf 20 %, nennt "Neu unter der EMA200"
+      bis zu 29 Paare auf einmal - aus einer Meldung werden viele Telegram-Stuecke.
+      Naechster Schritt: Liste auf die N naechsten am Durchschnitt begrenzen (die
+      sind der Massstab fuer "die Breite kippt") und den Rest als Zahl nennen
+      ("und 12 weitere"); Test in `Agenten/Hermes/scripts/test_breite_wache.py`.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/breite-wache.py
+
+
 - [ ] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
       Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
       gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
@@ -1098,23 +1119,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Stufe "ok" ganz **blind** (100 % auf 81 % haette keine Nachricht erzeugt).
       10 ist eine SETZUNG, keine Messung: zu klein = Tagesalarm, zu gross = ein
       echtes Schrumpfen bleibt still.
-      Naechster Schritt: nach den ersten 2-3 echten Meldungen `breite.py --reihe`
-      ansehen und entscheiden, ob 10 bleibt oder auf 5-8 sinkt. Die Zahl steht
-      als `RUCKGANGS_PP` in `Agenten/Hermes/scripts/breite-wache.py`.
+      Gemessen am 30.09.2026 ueber 250 Kerzentage: nur 16 der 250
+      Tagesaenderungen erreichen 10 Punkte; in Hochphasen (Breite vorher >= 60)
+      fiel die Breite an 3 von 10 Tagen. Diese Stichprobe ist fuer ein Perzentil
+      zu klein - entschieden wird, wenn 30 Hochphasen-Tage vorliegen.
+      Naechster Schritt: Hochphasen-Tage in `breite.py --statistik` mitzaehlen
+      und die Schwelle danach setzen. Die Zahl steht als `RUCKGANGS_PP` in
+      `Agenten/Hermes/scripts/breite-wache.py`.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Hermes/scripts/breite-wache.py
 
 
-- [ ] **T-098 — Breite-Reihe am 02.10.2026 erstmals auswerten**
-      Kontext: Die Reihe laeuft seit 25.09.2026 (erste Messung 29 von 29 = 100 %).
-      Aus EINEM Messpunkt folgt keine Richtung; erst mehrere Tage zeigen, ob
-      100 % ein Plateau war oder der Gipfel. Erste Probe 02.10.2026 (dann sind
-      sieben Messungen da).
-      Naechster Schritt: `python Agenten/Werkzeuge/breite.py --reihe` laufen lassen
-      und in einem Satz festhalten, was die Reihe zeigt (steigt/faellt/seitwaerts)
-      - danach T-095 entscheiden.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Werkzeuge/breite-reihe.jsonl
 
 
 - [ ] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
@@ -2349,6 +2364,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-098 — Breite-Reihe am 02.10.2026 erstmals auswerten**
+      Kontext: Die Reihe laeuft seit 25.09.2026 (erste Messung 29 von 29 = 100 %).
+      Aus EINEM Messpunkt folgt keine Richtung; erst mehrere Tage zeigen, ob
+      100 % ein Plateau war oder der Gipfel. Erste Probe 02.10.2026 (dann sind
+      sieben Messungen da).
+      Naechster Schritt: `python Agenten/Werkzeuge/breite.py --reihe` laufen lassen
+      und in einem Satz festhalten, was die Reihe zeigt (steigt/faellt/seitwaerts)
+      - danach T-095 entscheiden.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/breite-reihe.jsonl
+      **Erledigt 2026-09-30.** Die Reihe umfasst jetzt 250 Kerzentage (22.01.-28.09.2026) und zeigt den Umschwung klar: acht Monate unter 20 % Breite (Februar durchgehend 0 %), September im Mittel 58,5 % mit Gipfel 96,5 %. Fenster auf 600 Kerzen festgelegt - bei 299 drehte der EMA-Startwert (~37 % Gewicht) bei einzelnen Paaren das Vorzeichen (BTC -1,24 % gegen +4,52 %). Befund und Regeln: MaxHirn/Wiki/Werkzeuge/Marktbreite-Reihe.md.
 - [x] **T-177 - Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut**
       Kontext: Im Replay wird zum SCHLUSS der Kerze ausgestiegen, in der Stop
       oder Ziel beruehrt wurde - nicht zum Stop- oder Zielkurs. Ein Laeufer

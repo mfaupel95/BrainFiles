@@ -143,6 +143,24 @@ class ReiheTest(unittest.TestCase):
         self.assertEqual(b.reihe(None), [])
         self.assertEqual(b.verlauf(), [])
 
+    def test_live_messung_behaelt_das_nachgerechnete_ergebnis(self):
+        with open(b.REIHE, "w", encoding="utf-8") as f:
+            f.write(json.dumps({"kerze": "2026-09-25", "breite": 86.21,
+                                "art": "nachgerechnet",
+                                "nachgerechnet_am":
+                                "2026-09-30T05:00:00+00:00"}) + "\n")
+        b.merken(messung(86.21))
+        z = b.reihe(None)[0]
+        self.assertNotIn("art", z, "eine Messung ist keine Nachrechnung")
+        self.assertEqual(z["nachgerechnet_alt"]["breite"], 86.21,
+                         "der nachgerechnete Wert bleibt als Beleg stehen")
+        self.assertEqual(z["nachgerechnet_am"], "2026-09-30T05:00:00+00:00")
+
+    def test_live_ueber_live_traegt_keinen_beleg(self):
+        b.merken(messung(100.0))
+        b.merken(messung(96.5))
+        self.assertNotIn("nachgerechnet_alt", b.reihe(None)[0])
+
     def test_verlauf_n_grenzt_auf_die_letzten_tage(self):
         for i, k in enumerate(("2026-09-21", "2026-09-22", "2026-09-23")):
             b.merken(messung(100.0 - i, kerze=k))
