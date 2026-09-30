@@ -420,3 +420,63 @@ einem gedachten 1-USD-Einsatz eine Position von 118 USD - die Wache hat eine
 andere Zahl erlaubt, als die Boerse fuellt. Die Kette sperrt das ausdruecklich und
 nennt die Zahl ("Einsatz 1.00 kleiner als 1 Kontrakt PF_SOLUSD (11.75 USD
 Einschuss) - Mindestgroesse der Boerse").
+
+## Eine Boerse wieder ENTZIEHEN ("nur noch <Programm> darf auf <Boerse> handeln")
+
+Der Rueckweg zum Abschnitt oben. Drei Schalter, und sie greifen zu
+verschiedenen Zeitpunkten:
+
+| Schalter | Wirkung | greift |
+|---|---|---|
+| `handel_erlaubt: false` (+ `freigabe.erfuellt: false`) in der `wachen.json` | die Spur sperrt sich selbst | sofort, ohne Neustart |
+| Boersenliste (`boersen: ["okx"]`) | die Spur handelt weiter, aber auf der anderen Boerse | sofort |
+| `dauerlauf.AUTO_FREIGABE` | kein selbsttaetiges Freigabefenster mehr | erst nach einem Neustart des Dauerlaufs |
+
+- **Nur der erste Schalter ist die Sperre, die zaehlt.** Eine Spur, die aus
+  `AUTO_FREIGABE` faellt, aber `handel_erlaubt: true` behaelt, handelt weiter,
+  sobald jemand das Fenster von Hand oeffnet. Umgekehrt ist die Auto-Freigabe
+  ohnehin wirkungslos, sobald die Sperrliste MEHRERE Gruende nennt:
+  `dauerlauf.nur_fenster_fehlt` verlangt GENAU EINEN, und er muss
+  "Freigabefenster" heissen. Nach dem Entzug ist die Sperrliste der Spur
+  ohnehin mehrgruendig - deshalb wirkt der Entzug auch ohne Neustart.
+- **Eine Sperre ist kein Umzug - vorher pruefen, ob der Nachfolger die Boerse
+  ueberhaupt kennt.** Belegt: ein Fremdprogramm, das die Boerse uebernehmen
+  sollte, kennt nur `binance` und `okx`, und sein Live-Befehl weist jedes andere
+  `--exchange` mit einer festen Liste ab. Nach dem Abschalten handelte NIEMAND
+  mehr dort. Die Anweisung war als Sperre umgesetzt, nicht als Umzug - genau das
+  gehoert in den Bericht, sonst liest Max "umgestellt" und erwartet Orders.
+- **Erst die OFFENEN Positionen absichern, dann die Spur abschalten.** Eine
+  entzogene Spur hoert auf, ihren Teil zu tun; die Positionen an der Boerse
+  bleiben stehen. Wer abschaltet, ohne vorher zu pruefen, dass die
+  Boersen-Stops liegen, schaltet den Waechter ab, der die Position ohnehin
+  nicht mehr bewacht haette.
+- **Die Pruefung ist NICHT "steht eine Kennung im Buch".**
+  `boersen_stop_fehlt: false` heisst nur "beim Einstieg wurde ein Stop
+  bestellt". Eine Order kann an der Boerse spaeter `canceled` sein, waehrend das
+  Buch unveraendert aussieht - belegt: drei Stops ueber rund 258 EUR standen auf
+  `canceled`, das Buch meldete weiter Schutz. Die Wahrheit kommt aus
+  `order_details(txid)` -> `status == "open"` (Kraken) bzw. der Liste der
+  offenen Algo-Orders (OKX); das Haus-Werkzeug dafuer ist
+  `kraken/spot_stops.py` (Vorschau Standard, `--anwenden`), es liest Bestand UND
+  Orders gegeneinander. **Ein Stop, den niemand nachprueft, ist eine Annahme,
+  kein Schutz** - der scanner hat diesen Abgleich seit dem 28.09. im Live-Zyklus
+  (`scanner/boersenstops.py`), die uebrigen Boersen-Spuren nicht.
+- **Ein Bestand von 0 bei gefuellter Position ist ein Geist, kein Rundungsrest.**
+  Dieselbe Lesung deckt die Gegenrichtung auf: eine Position im Buch, deren Coin
+  an der Boerse 0 steht (Geist), und einen offenen Stop, zu dem es keinen
+  Bestand gibt (Waise). Beides ausbuchen bzw. stornieren, BEVOR die Spur
+  abgeschaltet wird - danach hat niemand mehr einen Grund, in ihr Buch zu sehen.
+- **Handwerkzeuge bleiben scharf.** `kraken/spot_stops.py`,
+  `kraken/waisen_stops.py`, `kraken/margin_stops.py`,
+  `mosaic/stops_nachziehen.py` und das MCP-Werkzeug mit Beleg ordnen weiterhin -
+  sie sind Handwerkzeug, kein Automat, und werden bewusst NICHT gesperrt. Die
+  Sperre gilt den SPUREN. Das gehoert in den Bericht, sonst liest "die Boerse ist
+  gesperrt" wie eine Kontosperre.
+- **Nachweis der Wirkung, nicht der Absicht:** je Spur `handeln.py --vorschau`
+  mit `MAXHIRN_ROUTINE=1` - die entzogene Boerse darf in der Zeile
+  "Live waere gesperrt durch:" nicht mehr auftauchen, die abgeschaltete Spur
+  muss `handel_erlaubt=false` nennen. Danach `spiegelstand.py`.
+- **Der entzogene Weg bleibt im Code.** Die Sperre ist ein Wachen-Schalter, kein
+  Rueckbau: die Orderfunktionen, Tests und das Buch bleiben, damit die Spur ohne
+  Neubau wieder scharf gestellt werden kann. Wer den Code entfernt, muss ihn
+  spaeter neu schreiben - und die Testsuite verliert dabei ihren Gegenstand.

@@ -106,7 +106,16 @@ das, was einen stillen Ausfall von einem Ergebnis unterscheidet.
 4. **Ein Fenster ist keine Messung.** Wer die Laenge des Durchschnittsfensters
    aendert, aendert bei einzelnen Paaren das Vorzeichen — die Fensterlaenge gehoert
    zur Rechnung wie die Quelle, und ein Nachlauf muss DASSELBE Fenster benutzen
-   (siehe „Die Reihe").
+   (siehe „Die Reihe"). **Ein Fenster wird nicht geschaetzt, sondern gegengeprobt:**
+   die Reihe ZWEIMAL rechnen (z. B. 600 gegen 1200 Kerzen ueber dieselben Tage) und
+   beide Ausgaben vergleichen — Mittel, Median, kleinster und groesster Wert UND
+   eine Stichprobe einzelner Tage. Gleiche Summenwerte allein beweisen nichts: im
+   Haus waren sie fuer beide Fenster identisch, waehrend an einem Tag ein einzelnes
+   Paar an der EMA kippte (6,9 % gegen 10,3 % = 1 von 29). Beides in die Doku — die
+   Gleichheit der Summenwerte UND die Restempfindlichkeit mit Tag und Zahl. Die
+   Zahlen aus der EIGENEN Ausgabe lesen (eine gekuerzte Ausgabe ist keine Messung)
+   und das Fenster nur dann kuerzen, wenn die Paar-Vorzeichen stabil bleiben; ein
+   laengeres Fenster kostet Geschichte (Paare x Kerzen je Nachlauf).
 5. **Ein Messpunkt ist keine Richtung.** „Die Breite schrumpft" braucht eine Reihe
 (taeglich festhalten, siehe „Die Reihe" oben). Aus einem Wert folgt der Zustand,
 nicht der Trend — und eine Reihe, die mehrere Zeilen fuer DENSELBEN Tag enthaelt,

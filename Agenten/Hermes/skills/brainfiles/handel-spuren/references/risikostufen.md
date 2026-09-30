@@ -55,6 +55,11 @@ keine Daten.
    Buch der Stufe ist getrennt - live gehandeltes Geld stuende in keiner
    Auswertung, und derselbe Handel mit vierfachem Einsatz bringt keinen
    zusaetzlichen Erkenntnisgewinn.
+   **Die Frage "mittel oder hoch?" ist bei einem Live-Vorhaben deshalb die
+   falsche Frage:** eine Spur, die live handeln soll, gehoert in den BASIS-Lauf.
+   Die Stufen sind ein Messwerkzeug fuer Papiervarianten; wer sie fuer echtes Geld
+   vorsieht, baut einen zweiten Live-Pfad, dessen Buch in keiner Auswertung steht.
+   Auf "welche Stufe fuer live?" ist die Antwort also: keine, sondern Basis.
 2. **Kein Telegram.** Kein Senden, kein Abholen von Befehlen, keine
    Freigabe-Anfrage, kein Schliessen der Fenster beim Beenden. Zwei Dauerlaeufe
    an einem Bot nehmen sich die Nachrichten weg (Telegram: 409), und ein `/ja`

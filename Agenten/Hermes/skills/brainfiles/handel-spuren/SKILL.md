@@ -69,6 +69,11 @@ Ausloeser → Referenz:
  Preisregeln je Paar/Instrument aus der API, Rundungsrichtung, Probe mit
  `validate=true`. Dazu gehoeren die gemessenen Gebuehrensatze: siehe
  `references/tor-kalibrierung.md`, Regel 8.
+- **Eine Boerse wieder ENTZIEHEN** ("nur noch <Programm> darf auf <Boerse>
+  handeln", "Kraken abschalten"): drei Schalter mit verschiedenen Wirkzeiten,
+  die Vorbedingung (offene Positionen und ihre Boersen-Stops), warum eine Sperre
+  kein Umzug ist und die Handwerkzeuge scharf bleiben -
+  `references/zweite-boerse.md`, Abschnitt "Eine Boerse wieder ENTZIEHEN".
  - **Derselbe Anbieter, ein ANDERES Produkt** (Spot gegen Futures/Terminkontrakt:
  eigener Host, eigene Kopfzeilen, eigene Schluesselnamen, `Authentication error`
  oder `404 NOT_FOUND` trotz gueltigem Schluessel, Groesse in Kontrakten statt

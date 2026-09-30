@@ -573,6 +573,42 @@ Vollstaendiger GBrain-Install-/Reparatur-Ablauf: `references/gbrain-install.md`.
   `==> <pfad> <==`-Kopf** — `head -c 4 /pfad/*/bun` zeigt den Kopf, nicht die
   Dateibytes. Fuer echten Inhalt `od`/`file` auf EINEN Pfad.
 
+## Wurzel-Aufrufer fuer Hand-Aufrufe (Max tippt in der Wurzel)
+
+Die Shell des Nutzers startet im Startverzeichnis der Verknuepfung — das ist die
+Repo-Wurzel (`C:\Users\faupe\Documents\BrainFiles`), waehrend die Werkzeuge in
+Unterordnern liegen. Ein nackter Dateiname wird im AKTUELLEN Ordner gesucht, nicht
+im Baum: `python omnitrade_bridge.py` endet dort mit `[Errno 2] No such file or
+_directory`. Das ist kein Fehler, sondern das Startverzeichnis — nicht nach einer
+Ignore-Regel oder einem Pfadproblem suchen.
+
+- **Fuer Werkzeuge, die er oft von Hand aufruft, gehoert ein Wurzel-Aufrufer hin**
+  (Muster `omnitrade.cmd`: ohne Argument den lesenden Stand, mit `start` den Lauf
+  beginnen). Er loest seine Ziele relativ zu `%~dp0` auf und funktioniert damit aus
+  JEDEM Verzeichnis.
+- **Der Aufrufer braucht eine `.gitignore`-Freigabe** (`!/<name>.cmd`), sonst ist er
+  unter der Whitelist unsichtbar und liegt nur auf dieser Platte.
+- Ein Aufrufer, der einen Dauerdienst startet, prueft VORHER, ob schon einer laeuft,
+  und lehnt dann mit Exitcode ungleich 0 ab: zwei Instanzen schreiben dieselbe
+  Statusdatei und ordern doppelt.
+
+## Kurznamen fremder Werkzeuge im PATH: die Pruefung faellt still aus
+
+In einer `.cmd`/`.ps1` NIE `find`, `tasklist`, `sort` oder `time` mit blossem Namen
+aufrufen. Laeuft die Shell mit MSYS/git-bash im PATH, gewinnt deren gleichnamiges
+Werkzeug: `tasklist /FI ... | find /I "<name>"` findet dann nichts, die Pruefung
+„laeuft schon" faellt still aus und der Aufrufer startet eine ZWEITE Instanz. Der
+Fehler sieht wie ein bestandener Test aus.
+
+- Immer den vollen Pfad nehmen: `%SystemRoot%\System32\tasklist.exe`,
+  `%SystemRoot%\System32\findstr.exe` — oder in PowerShell
+  `Get-CimInstance Win32_Process -Filter "Name like '<name>%'"`, ganz ohne Textwerkzeug.
+- **Gegenprobe ist der ABGELEHNTE Fall:** den Guard aufrufen, waehrend der Prozess
+  wirklich laeuft, und Exitcode ungleich 0 verlangen. Ein durchgelaufener „startet"-Fall
+  beweist nichts ueber den Guard.
+- Ein Prozessfilter traegt seinen Suchtext selbst und muss den EIGENEN Aufruf
+  ausschliessen (das Muster aus Teilen bauen) — sonst findet und beendet er die eigene Shell.
+
 ## Abgrenzung
 
 - `BrainFiles\Werkstatt` ist ein Junction auf `O:\Werkstatt`: dasselbe Verzeichnis,

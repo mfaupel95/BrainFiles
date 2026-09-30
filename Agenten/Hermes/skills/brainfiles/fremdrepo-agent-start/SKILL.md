@@ -126,6 +126,14 @@ origin <fork> && git fetch origin`.
    `Agenten/Routinen/logs/<name>.log` umleiten; der Prozess haengt an der
    Sitzung und stirbt mit ihr — fuer Dauerbetrieb eine geplante Aufgabe
    anbieten, nicht stillschweigend so lassen.
+   **Lautet der Auftrag „diese Anleitung ausfuehren"**, gilt ein eigener Ablauf:
+   die richtige Anleitung erkennen (die gross geschriebene Spezifikation neben
+   der Hausnotiz ist NICHT die Anleitung — die echte nennt Dateien und Schalter,
+   die im Baum wirklich existieren), der LESENDE Vorflug vor dem ersten
+   ordnungfaehigen Lauf (Schluessel/Host/Kontostand belegen, ohne eine Order),
+   die Prozesszahl des Zielbinaers vor dem Start messen (zwei Laeufe ordern
+   doppelt), und der Nachweis kommt aus der Statusdatei des Werkzeugs, nicht aus
+   stdout. Vollstaendig: `references/anleitung-ausfuehren-und-vorflug.md`.
 4. **.env wird oft NICHT geladen:** viele Einzel-Agenten rufen load_dotenv() nie auf,
    obwohl main.py es tut. Werte beim Start exportieren, CRLF-sicher:
    `export KEY=$(grep '^KEY=' .env | cut -d= -f2 | tr -d '\r')` — und die

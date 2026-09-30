@@ -43,6 +43,16 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    abbrechen (`git reset -- <fremder-pfad>` nimmt einen fremden Eintrag zurueck, ohne
    den Arbeitsbaum anzufassen) - der Index kann von einer anderen Sitzung gefuellt
    sein, und ein `git commit` ohne Pfadangabe nimmt alles mit, was darin steht.
+   **Die Pruefung muss den Commit ABBRECHEN koennen.** `git diff --cached --numstat`
+   nur DRUCKEN und im selben Aufruf danach weitercommitten ist keine Pruefung: die
+   Ausgabe laeuft durch, der Commit geht durch, und die fremden Zeilen fallen erst
+   auf, wenn jemand `git show --stat` liest. Entweder die Pruefung als TOR bauen, das
+   die Kette beendet (Anzahl bzw. Pfadliste im selben Aufruf gegen die Absicht
+   vergleichen und bei Abweichung mit Exitcode ungleich 0 abbrechen), oder - wenn
+   schon FREMDE Eintraege im Index stehen - die pfadbeschraenkte Form nehmen
+   (`git commit -m "..." -- <eigene pfade>`, siehe Regel 3): sie committet den
+   Arbeitsbaum genau dieser Pfade und laesst die fremde Vormerkung liegen. Ein
+   `git add -- <eigene> && git commit` ohne dieses Tor ist genau der Fehler.
    **Diese Pruefung ist eine Momentaufnahme.** Die Routine
    `fremdarbeit-einziehen.ps1` laeuft zu festen Zeiten und baut dabei eigene
    Indizes um; kurz danach trug der geteilte Index einen fremden

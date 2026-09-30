@@ -77,6 +77,14 @@ Das `--board` steht VOR dem Subkommando:
   --workspace "dir:C:/Users/faupe/Documents/BrainFiles"
 ```
 
+- **Lange Bodies per `--body-file <pfad>` einspielen, nicht per `--body`.** Ein
+  Body mit mehreren Abschnitten (Auftrag, Vorgehen, Verbote, Abnahmekriterien)
+  traegt Zeilenumbrueche und Umlaute; als mehrzeiliges Argument an der Shell
+  zerlegt er sich still. Datei nach `Agenten/Hermes/cache/scratch/` schreiben,
+  den NATIVEN Pfad uebergeben (`C:/Users/...`), dann `list` gegenlesen.
+- `--skill <name>` mehrmals beifuegen, wenn der Worker mehrere Haus-Skills
+  braucht (z. B. den Fach-Skill UND `aufgabenliste-pflegen`).
+
 - `--assignee` MUSS ein existierendes Profil sein: vorher `kanban assignees`
   lesen (die Liste ist kuerzer als der Profile-Ordner - weggelegte Profile unter
   `profiles/.deleted/` fehlen darin, ein Dispatch dorthin scheitert).
@@ -101,6 +109,14 @@ Fuer dieses Haus gehoeren zwei Verbote in jede Karte:
   ueber die Freigabekette (`freigabe.erfuellt`, Freigabefenster, `/ja_<spur>`).
 - **Nur eigene Pfade stagen, nie `git add -A`** - die Bots arbeiten im selben
   Baum wie eine parallele Sitzung, sonst wandert Fremdarbeit in den Commit.
+
+**Die Abnahme muss das Schliessen der Aufgabe enthalten.** Traegt der Punkt eine
+Nummer in `MaxHirn/Archiv/TASKS.md`, nennt der Body sie woertlich (`T-0NN`) und
+macht ihr Schliessen zum letzten Abnahmekriterium (Werkzeug:
+`aufgabenliste-pflegen/scripts/erledigen.py`) - sonst ist die Arbeit erledigt und
+die Liste des Hauses behauptet weiter, sie sei offen. Umgekehrt gehoert in den
+Body, was der Worker NICHT anfassen darf (laufende Dauerlaeufe, fremde Sitzungen,
+Schluessel); ein Verbot ohne Begruendung wird uebergangen.
 
 ## Karten auf Telegram melden lassen
 

@@ -184,6 +184,12 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   nicht abgehakt, Abschnitte unveraendert, Nummernmenge gleich) und danach die
   Zeilenenden. `--trocken` nennt nur die Zielzeile, ohne zu schreiben.
   `python .../scripts/erledigen.py T-0NN "**Erledigt JJJJ-MM-TT.** was gemessen wurde" --trocken`
+  **Seine Sicherung ist TAGES-genau** (`TASKS.md.bak-JJJJMMTT`, nur das Datum):
+  ein zweiter Lauf am selben Tag ueberschreibt die Sicherung des ersten mit dem
+  schon geaenderten Stand. Wer den Zustand VOR der ersten Aenderung des Tages
+  braucht, kopiert ihn vorher selbst weg; der zweite Rueckweg ist
+  `git show HEAD:MaxHirn/Archiv/TASKS.md`. Mehrere Eintraege am selben Tag also
+  in EINEM Aufruf schliessen, nicht in mehreren Laeufen nacheinander.
   Es nimmt **nur `- [ ]`** an. Ein Eintrag in anderer Kastenstellung - der
   Wartestatus `- [?]` („Wartet auf: Max") - wird ueber den Byte-Weg nach Schritt 2
   bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
@@ -218,6 +224,14 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 
   Danach die gewaehlte Nummer gegen die ganze Datei pruefen
   (`grep -c "\*\*T-160"`), nicht nur gegen den offenen Abschnitt.
+- **Dasselbe Misstrauen gilt fuer jeden erinnerten BEFEHL.** Ein Unterbefehl oder
+  ein Flag, das in dieser Sitzung niemand aufgerufen hat, ist eine Vermutung, kein
+  Beleg: `--help` des Werkzeugs einmal laufen lassen, BEVOR der Name in Skill,
+  Notiz, Memory oder in einer Anweisung an Max landet — dort liest er sich wie
+  eine Hausregel und wird geglaubt (belegt: eine Memory-Notiz nannte ein
+  Aufraeumkommando mit zwei erfundenen Schaltern). Steht die falsche Angabe schon
+  irgendwo, korrigieren statt stehen lassen. Gilt genauso fuer Werkzeugnamen,
+  Pfade und Zahlen aus dem Kopf.
 - **Die Liste waechst zwischen zwei Blicken.** Vor dem Eintragen erneut lesen -
   eine parallele Sitzung haengt zwanzig Eintraege an, und die gewaehlte Nummer ist
   dann doppelt vergeben.
@@ -261,9 +275,10 @@ assert lf == 0, "gemischte Zeilenenden: %d LF-only" % lf
   Reparatur ohne Inhaltsverlust, beide Schritte in dieser Reihenfolge:
   `d.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")`.
 - **Die Altersregel ist unbrauchbar, solange eine parallele Sitzung laeuft.**
-  Gemessen am 30.09.2026 wurde die Datei alle 2-3 Minuten angefasst, ein
-  Zehn-Minuten-Fenster war nie erreichbar. Statt zu warten eine
-  KOLLISIONSSPERRE in den Schreibvorgang: `mtime` und Groesse nach dem LESEN
+  Die Datei wird zeitweise alle 2-3 Minuten angefasst; ein Zehn-Minuten-Fenster
+  kann nach einigen Minuten Warten eintreten (beobachtet: 10,5 min Ruhe nach
+  5 min Warten), ist aber kein Verlass und darf nicht als Freibrief gelten.
+  Verlaesslich ist eine KOLLISIONSSPERRE in den Schreibvorgang: `mtime` und Groesse nach dem LESEN
   merken, unmittelbar vor dem Schreiben erneut messen und bei Abweichung NICHT
   schreiben - die Datei wird komplett neu gesetzt, ein gleichzeitiger Schreiber
   waere sonst verloren. Das Fenster schrumpft damit von Minuten auf Millisekunden.

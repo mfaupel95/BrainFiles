@@ -137,6 +137,16 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   `(live)` — die eigene Vorschau allein belegt es nicht.
 - **Eine Statuszeile im Log ist der Modus des Fahrers, kein Orderbeleg.**
   Massstab ist die Zeile mit der Aktion am Gegenstand (Journal/Boerse).
+- **Eine Zahl in der eigenen Doku ist eine Behauptung — sie braucht die Ausgabe,
+  die sie gedruckt hat.** Lange Werkzeug-Ausgaben kommen gekuerzt zurueck
+  (`… 1 lines output`, oder nur Kopf und Fuss); wer danach aus dem Gedaechtnis eine
+  Zahl in Wiki, Notiz oder Bericht schreibt, veroeffentlicht eine Schaetzung im
+  Kleid einer Messung — und sie ueberlebt, weil niemand nachrechnet. Gemessen: in
+  einer frisch geschriebenen Wiki-Seite stand „Mittel 38,5 gegen 38,0", ein
+  spaeterer echter Lauf zeigte fuer beide Fenster exakt gleiche Summenwerte. Bevor
+  eine Zahl in eine Doku geht: die Sonde erneut fahren und die Zahl aus DER Ausgabe
+  lesen — oder sie ausdruecklich als ungemessen kennzeichnen. Gegenprobe fuer eine
+  fertige Doku: zu jeder Zahl den Lauf nennen koennen, der sie gedruckt hat.
 - **Ein Lauf `ok` ist kein Zustellbeleg.** Ein Cron-Auftrag meldet seinen
   Exit-Code; ob die Nachricht ankam, steht woanders - im Job-Satz
   (`last_delivery_error`) und in der Ausgabedatei unter
