@@ -40,6 +40,7 @@ Immer aus dem omnitrade-Ordner, nicht aus `Agenten/Handel`. PowerShell (`cd /d` 
 cd $env:USERPROFILE\Documents\BrainFiles\Werkstatt\omnitrade; cargo run -q -p omnitrade-cli -- live --exchange okx --network testnet --symbol BTCUSDC --script strategien/ema_cross_20_50.omni --status-file status/live.json
 ```
 
+- **Kerzenlänge:** `--interval 1h` (Standard `1m`; auch `15m`, `4h`, `1d`). Auf OKX laden die letzten 300 geschlossenen Kerzen vorab, lange Indikatoren (EMA 200) laufen also sofort. Backtest (Gebühr 0,1 %, `daten/`, 30.09.2026): auf 1h verlieren Trendfolger durchweg, im Plus lagen nur RSI-Varianten (`rsi30_stop5`, `rsi_25`); auf 1d gewinnen Trendfolger (`ema_atr_stop`, `ema_cross_50_200`). 1m ist nicht getestet und mit Gebühren aussichtslos.
 - **Paar BTCUSDC**, nicht BTCUSDT: Das EU-Demo hat USD, USDC, BTC, ETH und XRP,
   aber kein USDT.
 - **Ordergröße:** `--initial-capital` (Standard **500**) je Position, nur
