@@ -7,6 +7,7 @@ zusammen, was scan/manifest/aktionen liefern, und rechnet nichts selbst.
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import threading
 from datetime import datetime
@@ -26,34 +27,25 @@ import scan
 # BEFUND 30.09.2026 ("repo-zentrale unleserlich"): das Fenster setzte WEDER
 # eine Schrift NOCH Farben, und tkinter ist ohne DPI-Erkennung - auf einem
 # 150-%-Monitor streckt Windows das fertige Bild, jede Schrift wird unscharf.
-FARBEN = {
-    "bg": "#1e1e2e", "blatt": "#181825", "gitter": "#313244",
-    "text": "#cdd6f4", "matt": "#a6adc8", "akzent": "#89b4fa",
-    "gruen": "#a6e3a1", "rot": "#f38ba8", "gelb": "#f9e2af",
-}
-SCHRIFT_ART = "Consolas"
-SCHRIFT_GROESSE = 11            # Basis; 11 statt 10, weil "zu klein" der Befund war
+# Farben, Schrift, DPI und ttk-Stile kommen aus Werkzeuge/fenster_design.py -
+# dieselbe Quelle wie handelszentrale.py. Per Dateipfad geladen (kein Paket).
+_spec = importlib.util.spec_from_file_location(
+    "fenster_design", Path(__file__).resolve().parent.parent / "fenster_design.py")
+design = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(design)
+
+FARBEN = design.FARBEN
+SCHRIFT_ART = design.SCHRIFT_ART
+SCHRIFT_GROESSE = design.SCHRIFT_GROESSE
 
 
 def schrift(rel=0, fett=False):
     """Schriftart dieser Ansicht: Basis + relative Groesse."""
-    if fett:
-        return (SCHRIFT_ART, SCHRIFT_GROESSE + rel, "bold")
-    return (SCHRIFT_ART, SCHRIFT_GROESSE + rel)
+    return design.schrift(SCHRIFT_GROESSE, rel, fett)
 
 
-def dpi_bewusst():
-    """Windows sagen, dass wir selbst skalieren.
+dpi_bewusst = design.dpi_bewusst
 
-    Ohne diesen Aufruf liefert Windows ein bitmap-gestrecktes Bild. Die
-    Funktion ist absichtlich fehlertolerant: fehlt shcore (alte Systeme),
-    bleibt es beim Standard.
-    """
-    try:
-        import ctypes
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except Exception:                                        # noqa: BLE001
-        pass
 
 GRUPPEN_TITEL = {
     "startbar": "STARTBAR",
@@ -143,29 +135,10 @@ class Fenster:
 
     # ------------------------------------------------------------- Aufbau
     def _bauen(self) -> None:
-        st = ttk.Style()
-        try:
-            st.theme_use("clam")
-        except tk.TclError:
-            pass
-        # Schrift und Farben ZENTRAL: alles, was nicht ausdruecklich gesetzt
-        # wird, erbt von "." - und die Tabellenzeile muss zur Schrift passen,
-        # sonst schneidet sie Buchstaben an (rowheight = Schrift x 2).
-        st.configure(".", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     fieldbackground=FARBEN["blatt"], font=schrift())
-        st.configure("Treeview", background=FARBEN["blatt"],
-                     fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=max(18, SCHRIFT_GROESSE * 2), borderwidth=0)
-        st.configure("Treeview.Heading", background=FARBEN["gitter"],
-                     foreground=FARBEN["akzent"], font=schrift(0, fett=True))
-        st.configure("TLabel", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     font=schrift())
-        st.configure("TButton", font=schrift())
-        st.configure("TEntry", font=schrift())
-        st.configure("TLabelframe", background=FARBEN["bg"], foreground=FARBEN["akzent"])
-        st.configure("TLabelframe.Label", background=FARBEN["bg"],
-                     foreground=FARBEN["akzent"], font=schrift(0, fett=True))
-        st.map("Treeview", background=[("selected", FARBEN["gitter"])])
+        # Schrift und Farben ZENTRAL (fenster_design): alles, was nicht
+        # ausdruecklich gesetzt wird, erbt von "." - die Zeilenhoehe folgt der
+        # Schrift, sonst werden Buchstaben angeschnitten.
+        design.stil_anwenden(ttk.Style(), SCHRIFT_GROESSE)
         self.root.configure(background=FARBEN["bg"])
 
         oben = ttk.Frame(self.root)

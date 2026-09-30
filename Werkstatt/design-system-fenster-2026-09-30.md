@@ -73,27 +73,36 @@ sonst werden Buchstaben angeschnitten.
 | Chart | Canvas auf `blatt`, Gitter `gitter`, Achsen `matt`, `TINY` |
 | Eingaben | `ttk.Entry/Combobox`, Schrift Basis |
 
-## 5. Abweichungen (Ist -> Soll)
+## 5. Umsetzung (30.09.2026)
 
-| # | Befund | Soll |
+Gemeinsame Quelle: **`Agenten/Werkzeuge/fenster_design.py`** (ohne tkinter,
+pruefbar mit `Agenten/Werkzeuge/tests/test_fenster_design.py`). Inhalt:
+`FARBEN` (jetzt mit Token `auswahl`), Schrift-Stufen, `ABSTAND` (4-Punkt-Raster),
+`schrift()`, `zeilenhoehe()`, `vorzeichen_farbe()`, `dpi_bewusst()`,
+`stil_anwenden(style, basis)` (Label, Frame, Labelframe, Treeview, Notebook,
+Button, Entry, Combobox, Scrollbar).
+
+Geladen per **Dateipfad** (`importlib`), nicht ueber `sys.path`: `Werkzeuge/`
+enthaelt `marktdaten.py`, das sonst in `Handel/` verdeckt oder verdeckt werden
+koennte.
+
+| # | Befund | Stand |
 |---|---|---|
-| 1 | `FARBEN`, `schrift()`, `SCHRIFT_*` in beiden Dateien kopiert (repos-zentrale-Kommentar bestätigt: "dieselbe Schrift wie handelszentrale") | Ein Modul `fenster_design.py` (Tokens, `schrift`, `dpi_bewusst`, `stil_anwenden(style)`); beide importieren |
-| 2 | `#313244` und `#45475a` in handelszentrale roh statt Token (Zeilen ~819-826) | Token `gitter` bzw. neues Token `auswahl = #45475a` |
-| 3 | `dpi_bewusst()` nur in repos-zentrale | In handelszentrale prüfen, ob sie es ebenfalls braucht |
-| 4 | `SCHRIFT_GROESSE` als `global` mutiert | Bei Auslagerung als Zustand der Design-Instanz, nicht Modul-Global |
-| 5 | Schrift-Umschalter (8-16) nur in handelszentrale | Entscheiden, ob repos-zentrale ihn erhält |
+| 1 | Palette/`schrift()` doppelt kopiert | erledigt: beide Fenster importieren `fenster_design` |
+| 2 | rohe `#313244`/`#45475a` in handelszentrale | erledigt: Token `gitter`/`auswahl` |
+| 3 | `dpi_bewusst()` nur in repos-zentrale | bewusst NICHT uebernommen: aendert die Fenstergroesse auf skalierten Monitoren; vor `Tk()` in `main()` einbauen, wenn gewollt |
+| 4 | `SCHRIFT_GROESSE` als `global` | bleibt je Fenster (Schrift-Umschalter, `--schrift`); `design.schrift(basis, ...)` ist zustandslos |
+| 5 | Schrift-Umschalter nur in handelszentrale | offen, Entscheidung |
 
-## 6. Umsetzungsweg (nicht ausgeführt)
+Sichtbare Aenderungen: Auswahlfarbe in repos-zentrale jetzt `auswahl`
+(`#45475a`) statt `gitter`; Buttons, Combobox, Scrollbars und Notebook-Tabs
+sind nun in beiden Fenstern dunkel gestaltet (vorher teils Standard-Optik).
 
-Risikoarm: erst `fenster_design.py` mit **identischen** Werten anlegen, dann
-je Datei den Block ersetzen (gezielter Ersatz, Diff ansehen - Versionierte
-Textdateien nie neu schreiben, LF/CRLF), danach Tests:
-`Agenten/Handel/tests/`, `Agenten/Werkzeuge/repos-zentrale/tests/`. Ablage
-wegen der gemeinsamen Nutzung unter `Agenten/Werkzeuge/`; der Import-Pfad
-(beide Verzeichnisse liegen nicht im selben Paket) ist die eigentliche
-Designfrage und vor dem Umbau zu klären.
+Nicht ausgefuehrt: die GUI selbst (kein tkinter in der Cloud-Session). Geprueft
+mit Stub: `SchriftTest` (handelszentrale) und `test_fensterzeilen`
+(repos-zentrale) bestehen; echte Sichtpruefung steht auf Max' PC aus.
 
 ## Offen
 
 - `leitstelle.py`: Datei bereitstellen, dann Abgleich der Tokens in Abschnitt 1-3.
-- `omniquant/gui.py` (Namensgeber der Palette) liegt ebenfalls nicht im Repo.
+- `omniquant/gui.py` (Namensgeber der Palette, von Max hochgeladen) liegt nicht im Repo; sie nutzt dieselbe Palette und `Consolas 10` (statt 11) mit hart kodierten Schriften und Zeilenhoehe 22 - Kandidat fuer die Umstellung auf `fenster_design`.
