@@ -21,6 +21,9 @@ finish cleanly on its own.
 ## When to Use
 
 - `hermes update` exits non-zero, or the install sits N commits behind `origin/main`.
+- "Der update laeuft endlos und der Gateway antwortet nicht" / every `hermes` call burns
+  minutes in "finishing an interrupted source update": the armed pending marker —
+  `references/update-schwanz-endlosschleife.md`.
 - `hermes doctor` reports the SQLite `WAL-reset bug`, npm advisories, or leftover gateway warnings.
 - Every `hermes` call dies with `Fatal Python error: init_import_site` (PYTHONHOME section below).
 - `mcp_<server>_*` tools silently vanish from sessions.
@@ -538,6 +541,21 @@ nach dem Neustart 50-90 s.
 Regel daraus: `hermes config set/unset` NIE mit eigenem Zeitlimit im Vordergrund laufen lassen
 (ein abgebrochener Lauf armt den Schwanz); Config-Aenderungen stattdessen per gezieltem
 Textersatz in `config.yaml`, danach `git diff --numstat` pruefen.
+
+## Update-Schwanz als Endlosschleife: CLI-Sicht (Gateway "antwortet nicht")
+
+Derselbe Grundfall wie die Desktop-Bootschleife, aber aus der CLI/Sitzung sichtbar: Ein
+abgebrochener Lauf stellt `installs/<hash>/source-completion-pending` scharf; ab dann faehrt
+JEDER Start (Gateway-Task, Dashboard, TUI, CLI) erst den ~4-minuetigen Inline-Schwanz,
+scheitert an konkurrierenden Build-Locks und WAFFT den Marker zurueck. Der
+`Hermes_Dashboard`-Task (RestartCount=999, alle 1 Minute) naehrt die Schleife von der anderen
+Seite. Messgroessen, Sortierung, Fallen bei Prozessfiltern und warum ein Standalone-Tail mit
+`✓ Update complete!` die Obligation NICHT loescht (nur der Updater schreibt den Stamp):
+`references/update-schwanz-endlosschleife.md`. Kurzpfad: Orphan-Tail-Baeume und Dashboard-Baum
+beenden, `tools/.displaced-*` und verwaiste `locks/desktop-build-*.lock` entfernen, Marker +
+`source-completion-attempts` + toten `.hermes-update-in-progress`-Claim loeschen, dann
+`hermes update --yes` losgeloest fahren und am ENDE belegen: bleibt der Marker WEG (ein
+Launch-Versuch re-armt ihn in Sekunden), antwortet der Gateway, Dashboard HTTP 200.
 
 ## SQLite WAL-reset bug — the real blocker
 

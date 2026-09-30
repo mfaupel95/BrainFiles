@@ -188,7 +188,8 @@ Vor/Nach-Vergleich derselben Zaehlung ist der Beleg.
 
 Der Lauf bricht beim "Source update preparation" ab, weil er ein vom pm-Installer
 zurueckgelassenes `.displaced-<hash>`-Verzeichnis aufraeumen will und an einem
-`node.exe` darin scheitert (Rechte oder noch ein Zugriff). Erkennen:
+an einem `node.exe` darin scheitert (Rechte oder noch ein Zugriff). Am 30.09.2026 war die
+Getroffene `DLLs\libcrypto-3-x64.dll` — dieselbe Klasse, anderer Dateiname. Erkennen:
 
     ls -la --time-style=+%d.%m_%H:%M <HERMES_HOME>/tools | grep displaced
     Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '*displaced*' }
