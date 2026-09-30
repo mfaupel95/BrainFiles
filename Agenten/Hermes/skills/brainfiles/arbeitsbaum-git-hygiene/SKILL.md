@@ -460,6 +460,14 @@ ungetrackten Dateien. Reihenfolge:
   weiteren Laufs ueber die Pfade der letzten eigenen Uebernahme-Commits
   (`git log -5 --author=fremd@local --name-only --format=`). Rezept:
   `references/fremdarbeit-routine.md`.
+- **Die Commit-Meldung als Datei braucht einen NATIVEN Pfad.** `git` ist ein
+  Windows-Programm: eine Meldungsdatei unter `$TMPDIR` bzw. `/tmp` findet es nicht
+  (`fatal: could not read log file '/tmp/commitmsg.txt'`) — der Commit unterbleibt, und
+  bei verketteten Aufrufen faellt nur der naechste Schritt auf. Die Datei per
+  `write_file` nach `Agenten/Hermes/cache/scratch/commitmsg_<thema>.txt` schreiben und mit
+  `git commit -F "C:/Users/<user>/Documents/BrainFiles/Agenten/Hermes/cache/scratch/…"`
+  aufrufen. Mehrzeilige `-m "$(cat <<'EOF' …)"`-Heredocs scheitern aus demselben Grund —
+  bei jeder Meldung ueber einer Zeile die Datei nehmen.
 - **`Set-Content -Encoding UTF8` schreibt ein BOM.** Unter PS 5.1 wandert es als
   unsichtbares Zeichen in die erste Zeile - und bei `git commit-tree -F <datei>`
   direkt in die Betreffzeile des Commits (`git log` zeigt dann ein BOM vor dem
