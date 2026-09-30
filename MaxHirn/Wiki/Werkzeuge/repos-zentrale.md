@@ -300,11 +300,11 @@ Drei Fragen von Max, drei Antworten mit Messung.
 Gemessen: `mfaupel95/handel-stack` ist ein **privates** GitHub-Repo (6,4 MB,
 `pushedAt` 18.09.2026 20:27) mit der Beschreibung *„Spiegel von Agenten/Handel"*
 und dem ersten Commit *„feat: Handelsstack importiert (Spuren, Dauerlauf,
-Auswertung, Journal und Zustand)"*. Inhalt: **33 Ordner** (heute 48), dieselben
-Dateinamen, aber aelterer Stand (`dauerlauf.py` 43 KB gegen 64 KB,
-`handelszentrale.py` 47 gegen 70, `lage.py` 37 gegen 53) — und die
-**Laufzeitstaende** der Spuren (`handelsjournal.csv`, `zustand.json`, auch die
-`.mittel`-Fassungen).
+Auswertung, Journal und Zustand)"*. Inhalt nachgezaehlt: **22 Spuren mit
+`handeln.py`** (heute 30), dieselben Dateinamen, aber aelterer Stand
+(`dauerlauf.py` 43 KB gegen 64 KB, `handelszentrale.py` 47 gegen 70, `lage.py`
+37 gegen 53) — und **43 Journal-Dateien** mit den Laufzeitstaenden der Spuren
+(`handelsjournal.csv`, `zustand.json`, auch die `.mittel`-Fassungen).
 
 - **Stoert es den Betrieb?** Nein. Eine Suche ueber `Agenten/` findet den Pfad
   nur in der Zentrale selbst (`fuellen.py`, `repos-zentrale.json`); keine Spur,
