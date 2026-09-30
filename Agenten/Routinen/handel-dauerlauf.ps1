@@ -112,9 +112,17 @@ if (-not (Test-Path $py)) {
 }
 
 Schreib "Start (Stufe $Risiko)"
+# Umleitung seit 30.09.2026: ohne sie stirbt der Dauerlauf UNSICHTBAR. Am
+# 30.09.2026 starben alle drei Stufen binnen Minuten mit Rueckgabe 143 (SIGTERM)
+# und ohne eine einzige Zeile im eigenen Log - der Sterbegrund lag nur im
+# verworfenen stderr des Kindes (T-193).
+$kindlog = Join-Path $logs ('dauerlauf' + $suffix + '-kind.log')
+$kinderr = Join-Path $logs ('dauerlauf' + $suffix + '-kind.err.log')
 $p = Start-Process -FilePath $py `
                    -ArgumentList 'dauerlauf.py','--takt','15','--risiko',$Risiko `
                    -WorkingDirectory $handel `
+                   -RedirectStandardOutput $kindlog `
+                   -RedirectStandardError $kinderr `
                    -WindowStyle Hidden -PassThru
 $p.Id | Set-Content $sperre -Encoding ASCII
 Schreib "gestartet als PID $($p.Id), Takt 15 min, Stufe $Risiko"

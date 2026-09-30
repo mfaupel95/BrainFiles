@@ -196,6 +196,45 @@ class TestDauerlaufAnbindung(unittest.TestCase):
                          "die fremde Sperre wurde ueberschrieben")
 
 
+class TestEigenerStarter(unittest.TestCase):
+    """Die Sperre des EIGENEN Starters blockiert den Lauf nicht.
+
+    Anlass (30.09.2026): handel-dauerlauf.ps1 schreibt die PID des Prozesses,
+    den Start-Process zurueckgibt. Bei einem venv-Startprogramm ist das der
+    ELTERNPROZESS des Interpreters. Der Lauf sah damit eine lebende fremde
+    Python-PID, hielt sie fuer einen zweiten Lauf und beendete sich sofort -
+    alle drei Stufen standen still, ohne einen Zyklus und ohne Traceback.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.mkdtemp(prefix="sperre-test-")
+        self.datei = os.path.join(self.ordner, "dauerlauf.pid")
+
+    def schreib(self, inhalt):
+        with open(self.datei, "w", encoding="ascii") as f:
+            f.write(inhalt)
+
+    def test_sperre_des_eigenen_starters_blockiert_nicht(self):
+        eltern = os.getppid()
+        self.schreib("%d %r\n" % (eltern, psutil.Process(eltern).create_time()))
+        self.assertFalse(sperre.belegt(self.datei),
+                         "der Lauf sperrt sich mit der PID seines Starters selbst aus")
+
+    def test_ein_fremder_lauf_bleibt_belegt(self):
+        """Gegenprobe: die neue Regel darf die Doppelstart-Abwehr nicht aufheben."""
+        fremd = _fremder_python()
+        self.addCleanup(_beende, fremd)
+        self.schreib("%d %r\n" % (fremd.pid, fremd.create_time()))
+        self.assertTrue(sperre.belegt(self.datei))
+
+    def test_ein_fremder_lauf_ohne_startzeit_bleibt_belegt(self):
+        """Auch im alten Einfeldformat - die Regel greift nur beim Starter."""
+        fremd = _fremder_python()
+        self.addCleanup(_beende, fremd)
+        self.schreib("%d\n" % fremd.pid)
+        self.assertTrue(sperre.belegt(self.datei))
+
+
 def _fremder_python():
     """Ein echter, lebender Python-Prozess, der nichts tut und nichts anfasst."""
     p = psutil.Popen([sys.executable, "-c", "import time; time.sleep(30)"],

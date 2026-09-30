@@ -115,6 +115,15 @@ def belegt(p):
     nummer, zeit = gelesen
     if nummer == os.getpid():
         return False
+    # Auch mein eigener STARTER zaehlt nicht als fremd. handel-dauerlauf.ps1
+    # schreibt die PID des Prozesses, den Start-Process zurueckgibt - bei einem
+    # venv-Startprogramm ist das NICHT der Interpreter, sondern sein
+    # Elternteil. Ohne diese Zeile sieht der Lauf die Sperre seines eigenen
+    # Starters, haelt sie fuer einen zweiten Lauf und beendet sich sofort:
+    # am 30.09.2026 standen dadurch alle drei Stufen still (kein Zyklus, kein
+    # Traceback, nur "Es laeuft bereits ein Dauerlauf").
+    if nummer == os.getppid():
+        return False
     try:
         fremd = psutil.Process(nummer)
         if zeit is None:
