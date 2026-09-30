@@ -633,6 +633,12 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   plus eine Formpruefung gegen die echten Dateien: die Zahl der gelesenen
   Positionen muss der in `zustand.json` entsprechen. Ein falscher Feldname sieht
   nicht wie ein Fehler aus, sondern wie "0 Positionen".
+  **Und zwar in der NORMALISIERTEN Form lesen:** `positionen_aus()` liefert
+  `instrument` und `wert_usd`, die Rohfelder der Spur heissen `inst` und
+  `nominal`. Wer `instrument_name(p)` auf das normalisierte Dict anwendet,
+  bekommt eine Spalte voller Fragezeichen — kein Fehler, nur eine falsche
+  Anzeige. Umgekehrt gilt: den Kursweg-Schluessel aus dem ROHEN Datensatz holen
+  (`roh["inst"]`), nicht aus dem normalisierten.
 - **Die Quellenzuordnung ist eine zweite Liste, die still altert.** Die
   Handelszentrale holt ihren Kursweg aus einem eigenen `QUELLE`-Dict (Spur ->
   okx/kraken/feed); fehlt die Spur darin, nimmt sie die VORGABE (okx) — die
@@ -650,7 +656,12 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   als einen Tag in der Zukunft gehoert zum Vorjahr. `strptime("%d.%m.")` warnt
   seit Python 3.13 — von Hand parsen. Nicht jedes Journal hat eine Uhrzeit: die
   ORB-Spur schreibt `2026-09-13`, ein starres `zeit[11:16]` liest dort eine leere
-  Spalte (Datum anzeigen, nicht "--:--").
+  Spalte (Datum anzeigen, nicht "--:--"). **Und der Vergleichswert muss in
+  dieselbe Zeitzonen-Welt gehoeren:** `alter_minuten()` erwartet ein aware
+  `jetzt` (`datetime.now(UTC)`), weil die Spuren ihre Zeitstempel als UTC-ISO
+  schreiben (`...+00:00`); ein naives `datetime.now()` laeuft in `TypeError:
+  can't subtract offset-naive and offset-aware datetimes` — und zwar erst im
+  Fenster, wenn der Test mit naiven Werten arbeitet.
 - **Nebenlaeufigkeit deckeln: ein Kurs-Worker gleichzeitig.** Die Feed-Kurse
   (Spiegel) laufen ueber ein CLI und brauchen Sekunden; ohne Sperre stapeln sich
   die Threads im Viertelminutentakt, das Fenster lebt von Altantworten. Kurse und
@@ -708,6 +719,11 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   `Routinen/logs/handelszentrale-fehler.log`. Regeln fuer Starter-Routinen
   (Bus-Anbindung, Abnahme ueber die Aufgabenplanung, Zeile in
   `Wissen/Routinen.md` erst wenn die Aufgabe steht): Skill `bus-integration`.
+- **Eine neue Spur in den BESTEHENDEN Fenstern** (sie erscheint in der
+  Handelszentrale von selbst, braucht aber einen eigenen Reiter, wenn ein
+  gleichnamiger Fremdlauf schon einen hat; dazu der Startbefehl in der
+  Werkzeug-Zentrale samt Logbeleg): `references/neue-spur-ende-zu-ende.md`,
+  Abschnitt 7.
 
 ## ORB-Grundregel: ein Trade je UTC-Tag, und das Merkzeichen muss den Ausstieg ueberleben
 - **Ein Tagesschutz, der nur die offene Position anschaut, ist keiner.** `_schon_gehandelt_heute` prueft nur `z["position"]["tag"]`; der Ausstieg entfernt die Position, damit war die Sperre im selben Zyklus wieder offen, und derselbe Breakout (gleiche Kerzen, gleiche Range) stieg sofort erneut ein: Endloskreis Ausstieg→Wiedereinstieg. Symptom-Kette (Befund 13.09.2026, orbk): Journal fuellt sich mit byte-identischen Ausstiegszeilen (51 an einem Tag), die Position "haengt" in zustand.json (wird ja nie wirklich geschlossen), und weil der Dauerlauf-Filter `ausstieg` case-insensitiv faengt, geht jede Viertelstunde eine AUSSTIEG-Meldung nach Telegram. Fix: Merkzeichen `zuletzt_gehandelt_tag` im Zustand, beim EINstieg gesetzt (nicht beim Ausstieg: eine gestern eroeffnete, heute geschlossene Position darf heute neu einsteigen), geprueft in `_schon_gehandelt_heute` nach dem Pop. Regressionstest laesst den echten `lauf()`-Zyklus Ende-zu-Ende laufen (Temp-Zustandsdateien, `_jetzt`/`_letzter_kurs`/`_wachen`/`kerzen_quelle` gepatcht) plus Gegenprobe ohne Merkzeichen, die den Fehler reproduziert — ein Test, der den Fix nur mitlaufen laesst, beweist nichts.
@@ -810,6 +826,15 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   die Datei mit `write_file` neu schreiben. Bei mehrzeiligen Ersetzungen in
   eingeruecktem Code vorher `repr()` der Zielzeilen ansehen, damit der Anker
   die echte Einrueckung trifft.
+  **Dieselbe Drift trifft LISTENBLOECKE, und dort verliert sie still eine
+  Zeile:** ein Patch am Kopf eines Eintrags hat die Einrueckung verschoben UND
+  die Anschlusszeile entfernt - ohne Fehlermeldung, sichtbar erst beim Lesen des
+  Blocks. Ein zweiter Patch am selben Block verschlimmert es, weil der Anker
+  danach nicht mehr existiert. Gegenmittel: nach JEDEM Patch an einer Liste den
+  BLOCK lesen (nicht den Diff) und die Zeilen gegen den eigenen Entwurf halten;
+  beim ersten Anzeichen den Block ueber ZEILENINDIZES per Python ersetzen und
+  danach `git diff --numstat` pruefen - dort muessen nur die eigenen Zeilen
+  stehen.
 - Geschriebene `.py`/`.json` pruefen — den NEUEN Text im Speicher VOR dem
   Schreiben, nicht erst die Platte danach: `ast.parse` bzw. `json.loads` (ein
   eingefuegtes Feld ohne abschliessendes Komma faellt sonst erst auf, wenn die
@@ -984,6 +1009,14 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 - `references/tor-kalibrierung.md` — Schwellen und Kostenannahmen kalibrieren,
   ohne dass sie entweder nichts filtern, nie aufgehen oder eine Wunschrechnung
   sind (Tore, Filter, Slippage/Gebühr).
+- `references/fremdlauf-spiegeln.md` — einen FREM DEN Lauf spiegeln (Weg B):
+  Sperrseite gegen Freigabeseite pruefen, Zustand statt Orderliste, zwei Zeugen
+  statt `state: running`, echter Orderpreis, die sechs Verdrahtungslisten und
+  die Fallen (leere Daten, Quotewaehrung, normalisiertes Dict, aware Zeitstempel).
+- `references/spur-in-die-gui.md` — eine Spur in Handelszentrale und
+  Werkzeug-Zentrale bringen: Reiter-Sektion mit reinen Funktionen und echtem
+  Fensteraufbau-Test, Startbefehl plus Beleglauf, die still alternden Listen
+  (Reiter-Zuordnung, `QUELLE`, `SPUREN_START`).
 - `references/fremdfeed-papierbuch.md` — Spur an fremden Signal-Feed haengen
   (Copy-Trading, Spiegelung, Signalstudie): Leser mit Schreibschutz, Auswahlregel
   gegen Zuchtauswahl, Kosten zweimal gerechnet, Tore vor jeder Buchzeile.
