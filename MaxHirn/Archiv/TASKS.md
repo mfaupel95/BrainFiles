@@ -1385,6 +1385,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       wird USDC frei und die Spur handelt von allein), (b) USDC im OKX-Portal in die
       Spot-Brieftasche legen, oder (c) `mindest_guthaben` senken (dann handelt sie
       mit Kleinstbetraegen). Nicht getan: nichts davon ohne Entscheidung.
+      STAND 30.09.2026 (Auftrag Max: "moondev_listingarb live schalten auto Freigabe"):
+      Die Spur ist scharf - `handel_erlaubt=true`, `freigabe.erfuellt=true`, sie steht
+      in `dauerlauf.AUTO_FREIGABE`. Gemessen: OKX USDC `eq 468,36` / `availEq 0,00` /
+      `frozen 473,79` / `isoEq 30,70` - es ist weiterhin KEIN USDC frei.
+      ZUSAETZLICH GEFUNDEN UND BEHOBEN: die Vorschau der Buch-Spuren nannte ihren
+      Sperrstand gar nicht (`spur_buch.zyklus` druckte nur "Vorschau: keine Dateien
+      geschrieben."). Damit fand `dauerlauf.nur_fenster_fehlt()` nie eine Sperrzeile,
+      gab None zurueck, und AUTO_FREIGABE konnte fuer KEINE Buch-Spur greifen - auch mit
+      Guthaben nicht. Die Vorschau ruft jetzt dieselbe `sperren_live()`-Kette wie der
+      Live-Lauf (Commit 32eb2fd, 74 Spurtests gruen). Die Spur handelt also von allein,
+      sobald ein scanner-Ausstieg USDC freigibt.
+      Der zweite Grund (Guthaben) steht bewusst daneben - deshalb oeffnet der Dauerlauf
+      kein Fenster: eine Order ohne Deckung wuerde die Boerse ablehnen.
+      Kraken bleibt verboten (Auftrag Max 30.09.2026: "nur noch omnitrade auf kraken").
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/moondev_listingarb/wachen.json, OKX-Konto, scanner/
 

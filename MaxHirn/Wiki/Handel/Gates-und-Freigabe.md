@@ -3,7 +3,7 @@ id: 20260921-gates-und-freigabe
 title: 'Handel — Gates und Freigabe'
 tags: [handel, sicherheit]
 created: 2026-09-21
-updated: 2026-09-22
+updated: 2026-09-30
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Wissen/Handelsregeln]]']
 summary: 'Die Sperrenkette vor jeder Live-Order, das Freigabefenster und die Armingschritte — in der Reihenfolge, in der sie geprueft werden.'
 ---
@@ -49,6 +49,15 @@ vorkommt — also nur, wenn sonst nichts sperrt.
 **Merksatz.** Wer eine Spur per AUTO_FREIGABE scharf haben will, muss dafuer sorgen, dass die
 `--vorschau`-Zeile „Live waere gesperrt durch:" genau einen Grund nennt. Nennt sie zwei
 (z. B. fehlendes Guthaben UND Fenster), greift die Auto-Freigabe nicht — richtig so.
+
+**Die Zeile muss es auch GEBEN.** Bei den Buch-Spuren (`spur_buch.py`) fehlte sie bis zum
+30.09.2026 vollstaendig: `zyklus()` druckte bei `--vorschau` nur „Vorschau: keine Dateien
+geschrieben." Damit fand `nur_fenster_fehlt()` nie eine Sperrzeile, gab `None` zurueck — und
+AUTO_FREIGABE konnte fuer **keine** Buch-Spur greifen, auch mit vollem Guthaben nicht. Behoben:
+die Vorschau ruft jetzt dieselbe `sperren_live()`-Kette wie der Live-Lauf und nennt sie
+(Commit 32eb2fd). Betroffen waren alle Buch-Spuren (`moondev_listingarb`,
+`moondev_topmovers`, `trendwende_btc`, `liq_wand`, `iv_wand`, `moondev_funding`).
+Merksatz: eine Sperre, die niemand ausspricht, ist keine.
 
 **Beleg.** 21.09.2026: `xperp` 00:02 live, `scanner` 01:52 live, `mosaic` 06:58:40
 Auto-Freigabe, Zyklus 07:11:27 „ok". `kraken` und frueher `mosaic` waren nicht durch das
