@@ -150,6 +150,18 @@ def lade_wachen():
         return risikostufe.skaliere(json.load(f))
 
 
+# Zustand atomar schreiben und laut lesen (atomar.py, 30.09.2026). Ueber den
+# PFAD geladen wie risikostufe.py: die Spur hat ihren eigenen Ordner als
+# sys.path[0]. Defekte Datei -> Sicherung .bak, sonst laute Ausnahme statt
+# leerem Bestand.
+from importlib.util import module_from_spec as _at_mod, \
+    spec_from_file_location as _at_spec
+_at_obj = _at_spec("atomar", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir, "atomar.py"))
+atomar = _at_mod(_at_obj)
+_at_obj.loader.exec_module(atomar)
+
+
 def lade_zustand():
     """Zustand lesen - und fehlende Felder ergaenzen.
 
@@ -159,11 +171,7 @@ def lade_zustand():
     gitter/handeln.py haelt es an derselben Stelle genauso - zwei Spuren mit
     alter Zustandsdatei sollen dasselbe Verhalten zeigen.
     """
-    try:
-        with open(ZUSTAND, encoding="utf-8") as f:
-            z = json.load(f)
-    except (OSError, ValueError):
-        z = {}
+    z = atomar.lade_json(ZUSTAND, dict)
     z.setdefault("positionen", [])
     z.setdefault("modus", "papier")
     z.setdefault("letzter_lauf", None)
@@ -173,9 +181,7 @@ def lade_zustand():
 
 def schreibe_zustand(z):
     z["letzter_lauf"] = _jetzt()
-    with open(ZUSTAND, "w", encoding="utf-8") as f:
-        json.dump(z, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    atomar.schreibe_json(ZUSTAND, z)
 
 
 def journal(**felder):
