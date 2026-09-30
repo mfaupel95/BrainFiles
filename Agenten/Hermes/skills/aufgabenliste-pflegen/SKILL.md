@@ -208,6 +208,13 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
   keine) - das Ergebnis sieht wie ein Messwert aus und ist ein Artefakt des
   Musters. Immer `T-[0-9]+` und numerisch sortieren (`sort -t- -k2 -n`), nicht
   alphabetisch: `T-99` steht sonst hinter `T-100`.
+  **Dieselbe Falle in der Gegenrichtung:** ein zu enges Muster
+  (`grep -o 'T-0[0-9][0-9]'`) blendet alles ab `T-100` aus, und die Antwort
+  "diese Eintraege sind verschwunden" ist dann ein Artefakt der Suche, kein
+  Befund - ein Fehlalarm, der eine Suche nach einem Loeschvorgang ausloest.
+  Vor JEDER Verlustmeldung mit dem weiten Muster nachzaehlen und gegen
+  `git show HEAD:MaxHirn/Archiv/TASKS.md` halten; erst wenn beide dasselbe
+  sagen, fehlt wirklich etwas.
 
   Danach die gewaehlte Nummer gegen die ganze Datei pruefen
   (`grep -c "\*\*T-160"`), nicht nur gegen den offenen Abschnitt.
@@ -237,6 +244,40 @@ assert d.count(b"\r\r") == 0, "Zeilenenden verdoppelt - sofort reparieren"
   Reparatur ist moeglich ohne Inhaltsverlust: `d.replace(b"\r\r\n", b"\r\n")`
   schreiben, dann `git diff --numstat` erneut pruefen - es muessen nur die
   eigenen Zeilen uebrig bleiben.
+- **Der Einfuege-Weg hat dieselbe Falle, nur leiser.** Ein fertiger Block aus
+  einem dreifachen Anfuehrungszeichen (`"""..."""`) traegt LF-Zeilen, waehrend
+  die Datei CRLF hat - das Ergebnis sind gemischte Zeilenenden. Der Diff sieht
+  harmlos aus (79 Insertions), ein Werkzeug, das die Mehrheit zaehlt, arbeitet ab
+  da aber auf der falschen Sorte. Regel: JEDE eingefuegte Zeile mit `nl` bauen
+  (`block.replace("\n", nl)`), nicht nur die Trennzeilen zwischen den Bloecken.
+  Gegenprobe nicht nur auf `\r\r`:
+
+```python
+d = open(PFAD, "rb").read()
+crlf = d.count(b"\r\n"); lf = d.count(b"\n") - crlf
+assert lf == 0, "gemischte Zeilenenden: %d LF-only" % lf
+```
+
+  Reparatur ohne Inhaltsverlust, beide Schritte in dieser Reihenfolge:
+  `d.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")`.
+- **Die Altersregel ist unbrauchbar, solange eine parallele Sitzung laeuft.**
+  Gemessen am 30.09.2026 wurde die Datei alle 2-3 Minuten angefasst, ein
+  Zehn-Minuten-Fenster war nie erreichbar. Statt zu warten eine
+  KOLLISIONSSPERRE in den Schreibvorgang: `mtime` und Groesse nach dem LESEN
+  merken, unmittelbar vor dem Schreiben erneut messen und bei Abweichung NICHT
+  schreiben - die Datei wird komplett neu gesetzt, ein gleichzeitiger Schreiber
+  waere sonst verloren. Das Fenster schrumpft damit von Minuten auf Millisekunden.
+- **Die Nachbarsitzung vergibt Nummern weiter, waehrend man plant.** Aus der
+  geplanten T-195 wurde binnen Minuten eine fremde Nummer. Statt von Hand
+  nachzuziehen die ganze Gruppe beim Schreiben um den Versatz
+  `(hoechste + 1) - geplante_erste` verschieben - und zwar VOR dem Einsetzen,
+  damit auch QUERVERWEISE in den Texten stimmen. Zwei Durchgaenge mit Platzhalter,
+  sonst verschiebt der zweite Lauf die schon verschobenen Nummern erneut:
+
+```python
+for n in range(195, 200): text = text.replace("T-%03d" % n, "\x00%d\x00" % n)
+for n in range(195, 200): text = text.replace("\x00%d\x00" % n, "T-%03d" % (n + versatz))
+```
 - **Eine parallele Sitzung kann NUMMERN UMNUMMERIEREN, nicht nur anhaengen.**
   Eine Nummer, die vor Minuten frei war, kann inzwischen von einem umbenannten
   FREMDEN Eintrag belegt sein - die Liste waechst nicht nur, sie wird auch
