@@ -66,6 +66,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 - `20260830-hardware` — **Hardware** — `Wissen/Hardware.md` — Laufwerke des Arbeitsrechners, Plattendiagnose und der ungeklärte Stromausfall.
 - `20260830-hardware-checkliste-d5` — **Hardware-Checkliste D5** — `Wissen/Hardware-Checkliste-D5.md` — Schrittfolge zur Eingrenzung des D5-RAM-Fehlers und der Kernel-Power-41-Abschaltungen.
+- `20260930-systembild` — **Systembild** — `Wissen/Systembild.md` — Gemessener Stand von C: und O: (Belegung, Schwergewichte, Programme) und die daraus abgeleiteten Aufraeum-Kandidaten.
 - `20260830-benutzerprofil` — **Benutzerprofil** — `Wissen/Benutzerprofil.md` — Was im Windows-Benutzerprofil liegt, was davon zum Betrieb gehört und was Altlast ist.
 - `20260830-ki-ablagen-benutzerordner` — **KI-Ablagen im Benutzerordner** — `Wissen/KI-Ablagen-im-Benutzerordner.md` — Welche KI-Daten außerhalb von `BrainFiles/` liegen, warum sie dort bleiben und was bei einem Neuaufsetzen verlorenginge.
 - `20260830-miniaturansichten` — **Miniaturansichten** — `Wissen/Miniaturansichten.md` — Warum der Explorer keine Vorschaubilder mehr zeigte und was dagegen geholfen hat.
