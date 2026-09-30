@@ -150,11 +150,7 @@ providers:
     default_model: auto/smart
     base_url: http://127.0.0.1:20128/v1
     api_mode: chat_completions
-fallback_providers:
-  - provider: nous
-    model: deepseek/deepseek-v4.1-flash
-  - provider: nous
-    model: upstage/solar-pro4:free
+fallback_providers: []
 toolsets:
   - hermes-cli
 database:
@@ -744,7 +740,7 @@ mcp_servers:
   buildkite:
     url: https://mcp.buildkite.com/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - access_token
@@ -752,7 +748,7 @@ mcp_servers:
   circleci:
     url: https://mcp.circleci.com/v1/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - hello
