@@ -61,6 +61,34 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
+      Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
+      `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).
+      Am 30.09.2026 um 18:32 hat Max `/memory approve all` ausgefuehrt; MEMORY.md
+      wurde neu geschrieben, aber KEIN Inhalt aus der Queue steht heute im
+      Gedaechtnis (Stichproben "OKX-Schluessel 19.09.2026 erneuert" und
+      "841 Zeilen" fehlen beide). Die Anker der Vorschlaege sind tagealt und
+      treffen nicht mehr - ein Vorschlag verfaellt mit seinem Anker.
+      Naechster Schritt: je Vorschlag pruefen, ob der Inhalt heute noch fehlt
+      und noch stimmt, dann von Hand in MEMORY.md nachziehen; den Rest loeschen
+      (nicht "freigeben").
+      Betrifft: `Agenten/Hermes/pending/memory/`, `memories/MEMORY.md`
+      Angelegt: 2026-09-30
+
+- [ ] **T-246 - Wache fuer Memory-Verluste (Cron)**
+      Kontext: Ein `replace` mit falsch gewaehltem `old_text` loescht einen
+      fremden Eintrag vollstaendig; bemerkt hat es am 30.09.2026 erst eine Suche
+      Stunden spaeter. Das Werkzeug `Agenten/Hermes/scripts/memory-verlust.py`
+      kann den Zustand jederzeit messen, wird aber von niemandem aufgerufen -
+      ein Nachweis ist keine Wache.
+      Naechster Schritt: Hermes-Cron (z. B. taeglich, no_agent, Telegram, leere
+      Ausgabe = nichts senden) auf `memory-verlust.py --json`; melden nur, wenn
+      ein Eintrag neu verloren ist (Merkdatei), nicht bei den 8 bekannten
+      Altfaellen.
+      Betrifft: `Agenten/Hermes/scripts/memory-verlust.py`, Hermes-Cron
+      Angelegt: 2026-09-30
+
+
 - [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
       Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
       EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
