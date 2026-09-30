@@ -60,6 +60,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-225 — Handstart des Dauerlaufs nimmt die echte Sperre und das echte Protokoll**
+      Kontext: Am 30.09.2026 sind zwei Dauerlauf-Instanzen an **Rueckgabe 143**
+      gestorben, weil eine Hermes-Sitzung sie zur Ansicht mit
+      `timeout 60 python dauerlauf.py` gestartet hatte (23:21:10 -> Tod 23:22:59;
+      `timeout 150 ... --takt 15 --risiko niedrig` um 02:34:21 -> Tod 02:36:55).
+      Ein solcher Handstart nimmt die PRODUKTIVE Sperrdatei
+      (`dauerlauf[.stufe].pid`) und schreibt ins produktive `dauerlauf.log`; nach
+      dem Abbruch bleibt eine `Rueckgabe 143`-Zeile stehen, die wie ein Diensttod
+      aussieht, und die Sperre bleibt liegen - der Waechter meldet dann
+      "verwaiste Sperre" und startet neu. `--trocken` hilft nicht, es heisst nur
+      "nichts senden".
+      Naechster Schritt: entscheiden, ob `dauerlauf.py` einen ausdruecklichen
+      Probebetrieb bekommt (eigene Sperrdatei `dauerlauf.probe.pid`, Protokoll
+      nach `cache/`, kein Senden, kein Freigabefenster) - oder ob die Regel
+      "Handstart nur ueber `Routinen/handel-dauerlauf.ps1`" genuegt. Bisher gilt
+      nur die Regel (Skill `handel-spuren`, `references/dauerlauf-tode.md`).
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
+
 - [ ] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
       Kontext: Die Wache `Agenten/Hermes/scripts/omnitrade-lauf-wache.py` (T-211, Job
       804473084f4e) prueft GENAU `status/live.json`. Am 30.09.2026 um 13:00 laufen aber
@@ -394,45 +414,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
 
-- [ ] **T-193 — Dauerlauf stirbt nach rund einem Zyklus an SIGTERM (Rueckgabe 143)**
-      Kontext: Am 30.09.2026 waren zwischen 01:52 und 02:39 **alle drei Dauerlauf-Stufen
-      tot** (Sperrdateien 52312/61436/42504, kein passender Prozess). Die Waechter-Aufgaben
-      arbeiten korrekt - sie erkannten die verwaisten Sperren und starteten neu
-      (`Routinen/logs/handel-dauerlauf-letzter-lauf*.log`: 02:05, 02:07, 02:08, 02:24) -
-      aber jede neue Instanz starb nach etwa einem Zyklus wieder. Kein Rechnerneustart
-      (letzter Start 29.09. 21:06:19), kein Traceback. Die Todesart steht im Log als
-      **`<spur> Rueckgabe 143`** = SIGTERM (128+15): 29.09. 23:22:59 bei `xperp`,
-      30.09. 02:36:55 bei `kraken`. Ein Handstart schaffte 16 Spuren und lief bis zum
-      kraken-Zyklus; in jenem Lauf war mein eigener `timeout` nicht auszuschliessen,
-      der Wert trat aber schon am 29.09. ohne Fremdeinwirkung auf.
-      Verdacht: ein Kindprozess beendet den ganzen Baum mit, statt nur sich selbst -
-      `moondev_dauerlauf.py:417 _stoppe` beendet mit `taskkill /T /F` den GANZEN Baum,
-      und sein Prozessfilter kann die eigene Kommandozeile treffen (Falle vom 24.09.).
-      Die Wrapper starten mit `-WindowStyle Hidden` OHNE Umleitung, deshalb ist der
-      Sterbegrund bisher unsichtbar.
-      Naechster Schritt: (1) die Wrapper leiten stdout/stderr nach
-      `Routinen/logs/dauerlauf-<stufe>-kind.log` um - erst dann ist der Sterbegrund
-      lesbar; (2) pruefen, ob `moondev_dauerlauf._stoppe` fremde Prozesse trifft;
-      (3) Wache auf "kein Zyklus seit >10 min" statt nur "PID tot".
-      URSACHE GEFUNDEN UND BEHOBEN (30.09.2026, Commit 41d2ffa): Nicht der
-            Prozessbaum war schuld, sondern die Sperre selbst. `handel-dauerlauf.ps1`
-            schreibt die PID, die `Start-Process` zurueckgibt - bei einem
-            venv-Startprogramm ist das der ELTERNPROZESS des Interpreters, nicht der
-            Lauf. `sperre.belegt()` verglich sie mit `os.getpid()`, sah ein lebendes
-            fremdes Python und liess den Lauf mit "Es laeuft bereits ein Dauerlauf der
-            Stufe niedrig" sofort enden. Die Rueckgabe 143 war eine Verwechslung: in
-            meinem Handstart kam sie von MEINEM eigenen `timeout` (feuerte in derselben
-            Sekunde), nicht vom Lauf. Fix: `belegt()` nimmt auch `os.getppid()` aus -
-            der eigene Starter ist kein fremder Lauf. Gegenprobe ohne den Fix: 1 roter
-            Test, mit Fix 17/17. Punkt (1) erledigt: der Wrapper leitet stdout/stderr
-            nach `Routinen/logs/dauerlauf-<stufe>-kind[.err].log` um - ohne diese
-            Umleitung war der Sterbegrund nicht auffindbar, sie hat ihn gefunden.
-            Punkt (2) entfaellt, kein taskkill im Spiel. OFFEN bleibt (3): eine Wache
-            auf "kein Zyklus seit >10 min" statt nur "PID tot" - sie haette den Ausfall
-            um 01:52 in Minuten statt in 47 gemeldet. Alle drei Stufen laufen seit
-            02:51/02:55 wieder vollstaendig (30 Spuren je Zyklus).
-            Angelegt: 2026-09-30
-            Betrifft: Agenten/Routinen/handel-dauerlauf.ps1, Agenten/Handel/moondev_dauerlauf.py
 
 - [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
       Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
@@ -2495,6 +2476,46 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-193 — Dauerlauf stirbt nach rund einem Zyklus an SIGTERM (Rueckgabe 143)**
+      Kontext: Am 30.09.2026 waren zwischen 01:52 und 02:39 **alle drei Dauerlauf-Stufen
+      tot** (Sperrdateien 52312/61436/42504, kein passender Prozess). Die Waechter-Aufgaben
+      arbeiten korrekt - sie erkannten die verwaisten Sperren und starteten neu
+      (`Routinen/logs/handel-dauerlauf-letzter-lauf*.log`: 02:05, 02:07, 02:08, 02:24) -
+      aber jede neue Instanz starb nach etwa einem Zyklus wieder. Kein Rechnerneustart
+      (letzter Start 29.09. 21:06:19), kein Traceback. Die Todesart steht im Log als
+      **`<spur> Rueckgabe 143`** = SIGTERM (128+15): 29.09. 23:22:59 bei `xperp`,
+      30.09. 02:36:55 bei `kraken`. Ein Handstart schaffte 16 Spuren und lief bis zum
+      kraken-Zyklus; in jenem Lauf war mein eigener `timeout` nicht auszuschliessen,
+      der Wert trat aber schon am 29.09. ohne Fremdeinwirkung auf.
+      Verdacht: ein Kindprozess beendet den ganzen Baum mit, statt nur sich selbst -
+      `moondev_dauerlauf.py:417 _stoppe` beendet mit `taskkill /T /F` den GANZEN Baum,
+      und sein Prozessfilter kann die eigene Kommandozeile treffen (Falle vom 24.09.).
+      Die Wrapper starten mit `-WindowStyle Hidden` OHNE Umleitung, deshalb ist der
+      Sterbegrund bisher unsichtbar.
+      Naechster Schritt: (1) die Wrapper leiten stdout/stderr nach
+      `Routinen/logs/dauerlauf-<stufe>-kind.log` um - erst dann ist der Sterbegrund
+      lesbar; (2) pruefen, ob `moondev_dauerlauf._stoppe` fremde Prozesse trifft;
+      (3) Wache auf "kein Zyklus seit >10 min" statt nur "PID tot".
+      URSACHE GEFUNDEN UND BEHOBEN (30.09.2026, Commit 41d2ffa): Nicht der
+            Prozessbaum war schuld, sondern die Sperre selbst. `handel-dauerlauf.ps1`
+            schreibt die PID, die `Start-Process` zurueckgibt - bei einem
+            venv-Startprogramm ist das der ELTERNPROZESS des Interpreters, nicht der
+            Lauf. `sperre.belegt()` verglich sie mit `os.getpid()`, sah ein lebendes
+            fremdes Python und liess den Lauf mit "Es laeuft bereits ein Dauerlauf der
+            Stufe niedrig" sofort enden. Die Rueckgabe 143 war eine Verwechslung: in
+            meinem Handstart kam sie von MEINEM eigenen `timeout` (feuerte in derselben
+            Sekunde), nicht vom Lauf. Fix: `belegt()` nimmt auch `os.getppid()` aus -
+            der eigene Starter ist kein fremder Lauf. Gegenprobe ohne den Fix: 1 roter
+            Test, mit Fix 17/17. Punkt (1) erledigt: der Wrapper leitet stdout/stderr
+            nach `Routinen/logs/dauerlauf-<stufe>-kind[.err].log` um - ohne diese
+            Umleitung war der Sterbegrund nicht auffindbar, sie hat ihn gefunden.
+            Punkt (2) entfaellt, kein taskkill im Spiel. OFFEN bleibt (3): eine Wache
+            auf "kein Zyklus seit >10 min" statt nur "PID tot" - sie haette den Ausfall
+            um 01:52 in Minuten statt in 47 gemeldet. Alle drei Stufen laufen seit
+            02:51/02:55 wieder vollstaendig (30 Spuren je Zyklus).
+            Angelegt: 2026-09-30
+            Betrifft: Agenten/Routinen/handel-dauerlauf.ps1, Agenten/Handel/moondev_dauerlauf.py
+      ERLEDIGT (30.09.2026): 143 ist ein Fingerabdruck, kein Diensttod - gemessen: MSYS/Git-Bash 'timeout N' liefert 143 (128+15), taskkill 1, Stop-Process 4294967295, os.kill 15; beide Tode sind in state.db als Sitzungsaufruf belegt (23:21:10 timeout 60 -> Tod 23:22:59; 02:34:21 timeout 150 -> Tod 02:36:55), Get-WinEvent zeigt in beiden Fenstern KEIN Ereignis. Punkt (3) erledigt: Agenten/Hermes/scripts/dauerlauf-wache.py (Cron 'dauerlauf-wache', 15 min, Telegram, leere Ausgabe = nichts senden) meldet tot-143 / tot-code / tot-spurlos / haengt (Protokoll aelter als 20 min) / churn (drei verwaiste Sperren je Stunde), 16 Tests gruen. Nachweis: echter Lauf gegen die drei laufenden Stufen ist still, nachgebauter 143-Fall meldet und wiederholt nicht. Siehe Wiki/Handel/Dauerlauf-Tode.md.
 - [x] **T-207 — mosaic prueft seine Boersen-Stops nicht nach (drei Stops waren storniert)**
       Kontext: Am 30.09.2026 trugen die drei Kraken-Stops von mosaic (BTC/ETH/SOL,
       rund 258 EUR) den Status `canceled`, waehrend `mosaic/zustand.json` weiter

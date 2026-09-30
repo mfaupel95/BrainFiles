@@ -69,6 +69,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Backtest-Fundament.md](Handel/Backtest-Fundament.md) | Historische Daten 2021-2026, die ersten Zahlen je Spur, vier Fallen des Replays |
 | [Handel/Strategie-Kennzahlen.md](Handel/Strategie-Kennzahlen.md) | Formelblatt von Max: t-Statistik der Expectancy, Stop aus der MAE, was zeitbasiert NICHT geht |
 | [Handel/Freqtrade-Bots.md](Handel/Freqtrade-Bots.md) | Die drei Moon-Dev-Bots: was laeuft, der erste Backtest (alle negativ, Verlust = Gebuehr), die Loopback-Falle |
+| [Handel/Dauerlauf-Tode.md](Handel/Dauerlauf-Tode.md) | T-193: Rueckgabe 143 = MSYS-timeout (Fingerabdruck-Tabelle), Sperren-Churn, Speicherdruck, die neue Wache |
 
 ### Werkzeuge und Offenes
 

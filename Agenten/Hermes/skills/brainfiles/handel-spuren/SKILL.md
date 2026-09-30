@@ -30,6 +30,9 @@ Ausloeser → Referenz:
   `references/anbindungs-audit.md` — zum Deutbaren gehoert
   `references/betriebsfehler-spuren.md` (Bus-Journal als Ursachenquelle,
   Zaehlung „Rueckgabe N“ je Spur, halber `except` in der Datenschicht).
+- **„Der Dauerlauf ist gestorben / alle drei Stufen stehen“** (Rueckgabe 143,
+  Sperren-Churn, spurloser Tod, die Regel fuer Handstarts und die Wache):
+  `references/dauerlauf-tode.md`
 - **Bestehende Spur nachtraeglich in den Takt haengen** (sie hat `handeln.py` +
   `wachen.json`, laeuft aber nicht im Dauerlauf - auch mehrere auf einmal, mit
   allen fuenf Stellen, dem Vertrag des Tagesberichts, der Nachweis-Kette von der

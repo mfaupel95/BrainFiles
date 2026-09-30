@@ -252,3 +252,32 @@ Auslagerungsdateien: der autoritative Weg ist die Registry
 `PagingFiles` (`REG_MULTI_SZ`, je Zeile `<Pfad> <AnfangMB> <MaximumMB>`) - das
 ist genau das, was die Windows-GUI schreibt. `Win32_PageFileSetting` zeigt den
 Stand danach, die Commit-Grenze aendert sich aber **erst nach einem Neustart**.
+
+## 14. Ein Rueckgabecode ist ein Fingerabdruck — 143 heisst MSYS (30.09.2026)
+
+Ein Prozess, der mit `Rueckgabe 143` endet, wurde **nicht** von Windows
+beendet. `143 = 128 + 15` ist die Cygwin-Uebersetzung von SIGTERM. Gemessen mit
+einem nackten Schlafprozess je Werkzeug:
+
+| Weg | Rueckgabecode |
+|---|---|
+| `taskkill /T /F`, `taskkill /F` | 1 |
+| `Stop-Process -Force` | 4294967295 |
+| `os.kill(pid, 15)` | 15 |
+| **MSYS `timeout N` / Bash-Job-Abbau** | **143** |
+
+- **Der Sender sitzt in derselben Shell, die gestartet hat.** Eine zweite
+  MSYS-Sitzung kann den Prozess eines anderen nicht erreichen (`kill` aus einer
+  anderen Bash: „LEBT NOCH“) — die Suche nach einem fremden Killer ist dann
+  vergeblich. Der Aufruf steht in `Agenten/Hermes/state.db` (`messages`,
+  `tool_calls`), die Todeszeit liegt auf die Sekunde beim Ablauf des Limits.
+- **Erst den Fingerabdruck messen, dann suchen.** Ein `grep` nach `taskkill`
+  kostet Stunden und findet nichts; die Messung sagt in zwei Minuten, welcher
+  Werkzeugtyp ueberhaupt in Frage kommt.
+- **Nie zur Ansicht mit einem Zeitlimit starten.** `timeout 60 python
+  dauerlauf.py` nimmt die echte Sperre und schreibt ins echte Protokoll; nach
+  dem Abbruch sieht die Zeile wie ein Diensttod aus. Fuer einen Blick in einen
+  Zyklus: `python <spur>/handeln.py --vorschau`.
+- **`Get-WinEvent` ist der Zeuge fuer die Gegenseite**: in beiden 143-Fenstern
+  gab es **kein** System- oder Anwendungsereignis, der Tod kam also von aussen;
+  im spurlosen Fall dagegen Ereignis 2004.
