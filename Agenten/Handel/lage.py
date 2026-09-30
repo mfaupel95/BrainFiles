@@ -99,8 +99,22 @@ def spur_scanner():
     }
 
 
+def _kraken_buch_waehrung(z):
+    """Die Waehrung, in der das Kraken-Buch steht - fuer die ANZEIGE.
+
+    Seit 30.09.2026 kann die Spur in EUR, USDC und EURC handeln; jede
+    Position traegt ihre Waehrung. Positionen aus der Zeit davor tragen kein
+    Feld - damals war EUR die einzige Waehrung der Spur, also ist EUR die
+    richtige Antwort und nicht 'unbekannt'."""
+    for p in z.get("positionen") or []:
+        w_ = str(p.get("waehrung") or "").strip().upper()
+        if w_:
+            return w_
+    return "EUR"
+
+
 def spur_kraken():
-    """Spur 3 - Kraken Spot, EUR."""
+    """Spur 3 - Kraken Spot, in der Waehrung des Buchs."""
     ordner = os.path.join(HIER, "kraken")
     w = _lies(os.path.join(ordner, "wachen.json"), {})
     z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
@@ -127,7 +141,8 @@ def spur_kraken():
             "stop": p.get("stop"), "seit": p.get("eroeffnet"),
         })
     return {
-        "name": "Spur 3  Kraken", "waehrung": "EUR", "w": w, "z": z,
+        "name": "Spur 3  Kraken", "waehrung": _kraken_buch_waehrung(z),
+        "w": w, "z": z,
         "positionen": zeilen, "ordner": ordner,
         "pruefmodul": "wachen_kraken",
         "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),

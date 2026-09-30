@@ -546,12 +546,21 @@ def _konto_im_thread():
     Konto nie scheitern und wartet nie darauf."""
     try:
         import kraken                                            # noqa: PLC0415
-        frei = kraken.guthaben("ZEUR")
-        _konto_cache["text"] = "Kraken-Konto: %.2f ZEUR frei" % frei
-        # mindest_guthaben_eur der Kraken-Spur: alles darunter blockiert Live
-        _konto_cache["warnung"] = frei < 60.0
-        if frei < 60.0:
-            _konto_cache["text"] += "   (unter 60 EUR Mindestguthaben)"
+        staende = kraken.kontostaende()
+        frei = {c: float(staende.get(c, 0.0) or 0.0)
+                for c in ("ZEUR", "USDC", "EURC")}
+        _konto_cache["text"] = ("Kraken-Konto: "
+                                + ", ".join("%s %.2f" % (c, v)
+                                            for c, v in frei.items())
+                                + " frei")
+        # mindest_guthaben_je_quote der Kraken-Spur. Die Spur ordert in der
+        # Waehrung des PAARES - EINE gedeckte Waehrung genuegt also. Vorher
+        # stand hier nur ZEUR: das Fenster meldete "unter 60", waehrend die
+        # Spur in USDC haette handeln koennen.
+        gedeckt = [c for c, v in frei.items() if v >= 60.0]
+        _konto_cache["warnung"] = not gedeckt
+        if not gedeckt:
+            _konto_cache["text"] += "   (keine Waehrung ueber 60)"
     except Exception:                                            # noqa: BLE001
         _konto_cache["text"] = "Kraken-Konto: nicht erreichbar"
         _konto_cache["warnung"] = True
