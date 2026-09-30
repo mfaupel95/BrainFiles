@@ -567,6 +567,15 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 print("-> es wird Papier gehandelt.")
             else:
                 live, weg = True, orderweg(w)
+        elif modus == "vorschau":
+            # Die Vorschau nennt ihren Sperrstand - dieselbe Zeile wie scanner,
+            # mosaic und kraken. Ohne sie kann dauerlauf.nur_fenster_fehlt()
+            # nichts finden (es liest diese Zeile) und AUTO_FREIGABE greift
+            # fuer keine Buch-Spur: die Freigabe wird nie beantragt, das
+            # Fenster nie geoeffnet, --live nie gefahren.
+            gruende = sperren_live(w, s, spur_name)
+            print("Live waere gesperrt durch: " + ("; ".join(gruende) if gruende
+                                                  else "nichts"))
 
         if s.get("kill"):
             print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
