@@ -205,6 +205,14 @@ SPUREN = {
     # Herzschlag nach mehr als 180 Minuten als alt und der erste Zyklus stellt
     # alle offenen Papierpositionen flach (spiegel.py, flach_stellen
     # "herzschlag_alt"). Ohne diesen Schritt waeren die Vergleichsbuecher weg.
+    # SPIEGEL KOMPLETT AUS (Max, 01.10.2026: "spiegel spuren komplett raus
+    # nehmen. eh absolut nicht profitabel"). Die drei Buecher bleiben als
+    # Vergleichsgrundlage auf der Platte (60 Positionen je Arm), wachsen aber
+    # nicht weiter. WIEDER ANSCHALTEN: die Zeilen hier und in NUR_BASIS
+    # einkommentieren UND vorher in spiegel/zustand.json, zustand.knapp.json
+    # und zustand.weit.json "letzter_lauf" auf jetzt setzen - sonst haelt der
+    # erste Zyklus den Herzschlag fuer alt und stellt alle offenen
+    # Papierpositionen flach (spiegel.py, flach_stellen "herzschlag_alt").
     # "spiegel": {"ordner": "spiegel", "waehrung": "USD",
     #             "skript": "spiegel.py"},
     # KOPIER (Papierbuch auf der Pump.fun-Rangliste, angelegt 14.09.2026):
@@ -218,16 +226,16 @@ SPUREN = {
     # WIEDER ANSCHALTEN: die Zeilen hier auskommentieren UND vorher
     # in kopier/zustand.json ("letzter_lauf") auf jetzt setzen, sonst
     # stellt der erste Zyklus offene Papierpositionen flach.
-    # "kopier":  {"ordner": "kopier", "waehrung": "USD",
-    #             "skript": "kopier.py"},
+    "kopier":  {"ordner": "kopier", "waehrung": "USD",
+                "skript": "kopier.py"},
     # KOPIER1ZU1 (Papierbuch, angelegt 15.09.2026): zweite Copy-Trade-Spur,
     # die auf TRADE-Ereignissen arbeitet (trades/batch) statt auf einem
     # Portfolio-Diff. Jeder Kauf des Vorbilds oeffnet eine Papier-Position,
     # jeder Verkauf schliesst sie sofort. Kein Live-Zweig - teilt lesen.py
     # mit kopier/ und liest verfolgte.json aus kopier/ (kein zweiter
     # Rangliste-Abruf).
-    # "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
-    #                "skript": "handeln.py"},
+    "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     # ORB AUF OKX-PERPETUALS (angeschlossen 21.09.2026, Auftrag Max: "orb
@@ -303,6 +311,7 @@ SPUREN = {
     # und rufen spiegel.py - alle Buchdateien tragen dann das Suffix .knapp
     # bzw. .weit, das Hauptbuch bleibt unveraendert (Vergleichsgrundlage).
     # SPIEGEL-SCHATTENBUECHER AUS seit 21.09.2026, siehe oben bei "spiegel".
+    # SPIEGEL-SCHATTENBUECHER AUS, siehe oben bei "spiegel" (01.10.2026).
     # "spiegel_knapp": {"ordner": "spiegel", "waehrung": "USD",
     #                   "skript": "spiegel_knapp.py"},
     # "spiegel_weit": {"ordner": "spiegel", "waehrung": "USD",
