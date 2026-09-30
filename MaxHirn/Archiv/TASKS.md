@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
+      Kontext: Die Wache `Agenten/Hermes/scripts/omnitrade-lauf-wache.py` (T-211, Job
+      804473084f4e) prueft GENAU `status/live.json`. Am 30.09.2026 um 13:00 laufen aber
+      VIER omnitrade-Laeufe gleichzeitig, jeder mit eigener Statusdatei: PID 59620
+      (`status/live.json`, BTCUSDC/adx_macd), 29676 (`live_rsi30_stop5_BTCUSDC.json`),
+      51868 (`live_rsi30_stop5_ETHUSDC.json`), 46796 (`live_adx_macd_ETHUSDC.json`) — alle
+      `--interval 1h`. Stirbt einer der drei anderen, merkt es niemand; die Wache sieht
+      weiter einen gesunden Lauf und schweigt.
+      Naechster Schritt: die Wache auf ALLE `status/*.json` erweitern (je Datei ein Urteil
+      ueber `omnitrade_lauf.beurteile`, Meldung mit Dateinamen und Script) — oder in der
+      wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
+      ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
+      Angelegt · Zuletzt: 30.09.2026
 - [ ] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
       Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
       generalisiert den Wrapper, mit dem am 30.09.2026 die Auslagerung gesetzt wurde. Sein
