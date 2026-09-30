@@ -49,7 +49,7 @@ Stand 24.09.2026: alle drei laufen. `hoch` wurde an diesem Tag gestartet (Wrappe
 `Routinen/handel-dauerlauf.ps1 -Risiko hoch`), sein Waechter ist ein Klon des Mittel-Waechters
 mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt (derzeit leer).
 
-## 40 Spuren im Dauerlauf
+## 39 Spuren im Dauerlauf
 
 | Gruppe | Spuren |
 |---|---|
