@@ -122,19 +122,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Aenderungen gleichzeitig im Feld und keine ist zurechenbar.
       Angelegt 30.09.2026. Betrifft Energieoptionen, MaxHirn/Wissen/Hardware.md.
 
-- [ ] **T-212 — kraken-Buch in USDC/EURC: die Auswertung nennt die Einheit noch fest als EUR**
-      Kontext: Seit 30.09.2026 kann die kraken-Spur in EUR, USDC und EURC
-      handeln (Quote je Paar aus der API, `Agenten/Handel/kraken/quote.py`;
-      Guthaben-Tor in der Waehrung des Paares; Watchlist 17 -> 33 Paare).
-      Betragsfelder heissen weiter `eur`, weil die Auswertung sie liest - die
-      Waehrung steht zusaetzlich an der Position. Offen ist der LETZTE Leser:
-      `auswertung_alle.EINHEIT` traegt `{"kraken": "EUR", "nautilus_kraken":
-      "EUR"}` fest. Steht das Buch einmal in USDC, sind die Zahlen richtig und
-      ihre Einheit falsch - genau die Klasse Anzeigefehler, die am 23.09. bei
-      mosaic einen BTC-Kurs aus der falschen Boerse zeigte.
-      Naechster Schritt: EINHEIT fuer kraken aus `buch_waehrung(z)` ableiten
-      (Rueckfall EUR fuer den Altbestand) statt aus der Tabelle, Test daneben.
-      Angelegt 30.09.2026. Betrifft Agenten/Handel/auswertung_alle.py.
 
 - [ ] **T-213 — EURC fehlt in der gemeinsamen Kraken-Paartabelle (mosaic, moondev_marktlage)**
       Kontext: Die kraken-Spur liest ihre Quote jetzt selbst aus der API und
@@ -2522,6 +2509,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-212 — kraken-Buch in USDC/EURC: die Auswertung nennt die Einheit noch fest als EUR**
+      Kontext: Seit 30.09.2026 kann die kraken-Spur in EUR, USDC und EURC
+      handeln (Quote je Paar aus der API, `Agenten/Handel/kraken/quote.py`;
+      Guthaben-Tor in der Waehrung des Paares; Watchlist 17 -> 33 Paare).
+      Betragsfelder heissen weiter `eur`, weil die Auswertung sie liest - die
+      Waehrung steht zusaetzlich an der Position. Offen ist der LETZTE Leser:
+      `auswertung_alle.EINHEIT` traegt `{"kraken": "EUR", "nautilus_kraken":
+      "EUR"}` fest. Steht das Buch einmal in USDC, sind die Zahlen richtig und
+      ihre Einheit falsch - genau die Klasse Anzeigefehler, die am 23.09. bei
+      mosaic einen BTC-Kurs aus der falschen Boerse zeigte.
+      Naechster Schritt: EINHEIT fuer kraken aus `buch_waehrung(z)` ableiten
+      (Rueckfall EUR fuer den Altbestand) statt aus der Tabelle, Test daneben.
+      Angelegt 30.09.2026. Betrifft Agenten/Handel/auswertung_alle.py.
+      **Erledigt 2026-09-30.** Die Einheit der kraken-Zahlen kommt jetzt aus dem BUCH statt aus der Tabelle: auswertung_alle.einheit_fuer(spur) gibt fuer kraken kraken_buch_waehrung() zurueck (Position traegt `waehrung`; Altbestand ohne Feld = EUR, weil EUR damals die einzige Waehrung der Spur war). Die Tabelle EINHEIT bleibt Vorgabe fuer alle anderen Spuren. ZWEITER LESER mitgefunden und behoben: strategie_kennzahlen.py las EINHEIT.get(spur) direkt - zwei Anzeigen derselben Spur haetten verschiedene Einheiten genannt. lage._kraken_buch_waehrung() ruft jetzt dieselbe Funktion auf, statt die Regel ein zweites Mal zu fuehren. Tests tests/test_einheit_kraken.py 11 gruen (Buch->Einheit, Altbestand->EUR, Risikostufen-Dateiname zustand.mittel.json, kein zweiter Leser der Tabelle im ganzen Handel-Baum, lage delegiert); Live: auswertung_alle.py --spur kraken zeigt die Runden in EUR, strategie_kennzahlen.py kraken laeuft, lage-Tests 17 gruen.
 - [x] **T-217 — Nach jedem `hermes update` den Gateway-Launcher und das tools-Python pruefen**
       Kontext: `hermes update` schreibt `gateway-service/Hermes_Gateway_2ef9d0b7.vbs`
       neu und setzt ihn auf `tools\python-3.14.7...\python.exe` mit

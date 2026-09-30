@@ -102,15 +102,13 @@ def spur_scanner():
 def _kraken_buch_waehrung(z):
     """Die Waehrung, in der das Kraken-Buch steht - fuer die ANZEIGE.
 
-    Seit 30.09.2026 kann die Spur in EUR, USDC und EURC handeln; jede
-    Position traegt ihre Waehrung. Positionen aus der Zeit davor tragen kein
-    Feld - damals war EUR die einzige Waehrung der Spur, also ist EUR die
-    richtige Antwort und nicht 'unbekannt'."""
-    for p in z.get("positionen") or []:
-        w_ = str(p.get("waehrung") or "").strip().upper()
-        if w_:
-            return w_
-    return "EUR"
+    Die Regel steht in `auswertung_alle.kraken_buch_waehrung()` und NUR dort:
+    der Tagesbericht rechnet ueber `auswertung_alle.kennzahlen_fuer()` mit
+    derselben Waehrung, und zwei Fassungen derselben Regel laufen auseinander.
+    Seit 30.09.2026 kann die Spur in EUR, USDC und EURC handeln; Positionen aus
+    der Zeit davor tragen kein Feld - damals war EUR die einzige Waehrung der
+    Spur, also ist EUR die richtige Antwort und nicht "unbekannt"."""
+    return auswertung_alle.kraken_buch_waehrung(z)
 
 
 def spur_kraken():

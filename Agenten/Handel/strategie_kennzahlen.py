@@ -123,7 +123,7 @@ def bericht(spur):
             "n_gewinner_mae": len(gewinner_mae),
             "n_stoerung": len(stoer),
             "mae_gefuellt": gefuellt, "mae_gesamt": gesamt,
-            "einheit": a.EINHEIT.get(spur, "USD")}
+            "einheit": a.einheit_fuer(spur)}
 
 
 def main(argv):

@@ -104,7 +104,59 @@ SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 NAUTILUS_SPUREN = ("nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Waehrung der Anzeige je Spur - der Kraken-Arm fuehrt EUR, die anderen USD.
+# Diese Tabelle ist die VORGABE. Fuer die kraken-Spur gilt sie seit dem
+# 30.09.2026 nicht mehr: die Spur kann in EUR, USDC und EURC handeln, und die
+# Einheit ihrer Zahlen steht am BUCH (einheit_fuer()).
 EINHEIT = {"kraken": "EUR", "nautilus_kraken": "EUR"}
+
+
+def _zustand_pfad(spur):
+    """Pfad zu `zustand.json` dieser Spur, in der Risikostufe der Auswertung."""
+    datei = "zustand.json"
+    if STUFE:
+        datei = risikostufe.datei_fuer(datei, STUFE)
+    ordner, datei = _ort(spur, datei)
+    return HIER / ordner / datei
+
+
+def kraken_buch_waehrung(z=None):
+    """Die Waehrung, in der das Kraken-Buch steht - fuer die ANZEIGE.
+
+    Jede Position traegt seit dem 30.09.2026 ihre Waehrung (EUR, USDC oder
+    EURC). Positionen aus der Zeit davor tragen kein Feld - damals war EUR die
+    einzige Waehrung der Spur, also ist EUR die richtige Antwort und nicht
+    "unbekannt". Ohne `z` wird der Zustand DIESER Risikostufe gelesen, nicht
+    geraten.
+
+    Die Regel steht hier, weil `lage.spur_kraken()` fuer den Bericht dieselbe
+    braucht: dort wird sie aufgerufen, nicht ein zweites Mal gefuehrt.
+    """
+    if z is None:
+        try:
+            with open(_zustand_pfad("kraken"), encoding="utf-8") as f:
+                z = json.load(f)
+        except (OSError, ValueError):
+            z = {}
+    if not isinstance(z, dict):
+        z = {}
+    for p in z.get("positionen") or []:
+        w_ = str(p.get("waehrung") or "").strip().upper()
+        if w_:
+            return w_
+    return "EUR"
+
+
+def einheit_fuer(spur, z=None):
+    """Die Waehrung, in der die Zahlen dieser Spur stehen.
+
+    Fuer kraken wird sie aus dem BUCH abgeleitet, nicht aus der Tabelle: steht
+    das Buch einmal in USDC, sind die Betraege richtig und ihre Einheit waere
+    in der Tabelle falsch - genau die Klasse Anzeigefehler, die am 23.09.2026
+    bei mosaic einen BTC-Kurs aus der falschen Boerse zeigte.
+    """
+    if spur == "kraken":
+        return kraken_buch_waehrung(z)
+    return EINHEIT.get(spur, "USD")
 
 
 def runden_fuer(spur, z=None, gebuehr=None):
@@ -175,7 +227,7 @@ def kennzahlen_fuer(spur, von=None, bis=None):
         return None
     runden = runden_fuer(spur, z)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
-    return kennzahlen(runden, EINHEIT.get(spur, "USD"))
+    return kennzahlen(runden, einheit_fuer(spur))
 
 
 def belastbar(k, min_runden=None):
