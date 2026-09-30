@@ -17,7 +17,7 @@ Die Kennung wird beim EROEFFNEN erzeugt, in der Position mitgefuehrt und in
 JEDER Zeile dieser Position geschrieben (Kauf UND Verkauf). Sie ist kurz und
 lesbar:
 
-    <JJJJMMTTHHMMSS>-<6 Hex>          z.B. 20260930153012-a1b2c3
+    <JJJJMMTT>T<HHMMSS>-<6 Hex>       z.B. 20260930T153012-a1b2c3
 
 Der Zufallsteil ist noetig, nicht bequem: zwei Positionen im selben Instrument
 entstehen in derselben Sekunde, wenn ein Zyklus mehrere Instrumente auf einmal

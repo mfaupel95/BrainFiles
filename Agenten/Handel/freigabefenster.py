@@ -211,8 +211,13 @@ def _zeit(wert):
     _jetzt() liefert naive lokale Zeit (Fix vom 17.09.2026 - vorher UTC-
     aware). Alte Eintraege in freigabe_fenster.json koennen noch ein
     "+00:00" tragen (mit der alten _jetzt() geschrieben) - ein aware Wert
-    wird deshalb IMMER auf naive gekappt, sonst crasht jeder Vergleich mit
-    _jetzt() (TypeError: can't compare offset-naive and offset-aware).
+    wird deshalb IMMER auf naive lokale Zeit gebracht, sonst crasht jeder
+    Vergleich mit _jetzt() (TypeError: can't compare offset-naive and
+    offset-aware).
+
+    Gebracht heisst UMGERECHNET (astimezone), nicht abgeschnitten: das blosse
+    Abschneiden las eine UTC-Zeit als Ortszeit - 1 bis 2 Stunden daneben, ein
+    Freigabefenster lief entsprechend zu frueh oder zu spaet ab (30.09.2026).
     """
     if not wert:
         return None
@@ -220,7 +225,7 @@ def _zeit(wert):
         w = dt.datetime.fromisoformat(wert)
     except (TypeError, ValueError):
         return None
-    return w.replace(tzinfo=None) if w.tzinfo is not None else w
+    return w.astimezone().replace(tzinfo=None) if w.tzinfo is not None else w
 
 
 def neue_anfrage_erlaubt(spur):

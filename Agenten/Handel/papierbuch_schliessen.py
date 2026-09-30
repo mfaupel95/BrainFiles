@@ -53,8 +53,8 @@ SPUREN = {
 }
 
 
-def _lade(ordner, datei):
-    pfad = os.path.join(HANDEL, ordner, datei)
+def _lade(ordner, datei, wurzel=None):
+    pfad = os.path.join(wurzel or HANDEL, ordner, datei)
     spec = importlib.util.spec_from_file_location(
         "papierbuch_%s" % ordner, pfad)
     modul = importlib.util.module_from_spec(spec)
@@ -90,7 +90,7 @@ def lauf(spur, anwenden=False, wurzel=None):
     pfad = os.path.join(wurzel or HANDEL, ordner)
     sys.path.insert(0, pfad)
     try:
-        modul = _lade(ordner, "handeln.py")
+        modul = _lade(ordner, "handeln.py", wurzel)
     finally:
         sys.path.pop(0)
 
