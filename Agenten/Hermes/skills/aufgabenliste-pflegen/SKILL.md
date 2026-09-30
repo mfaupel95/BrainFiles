@@ -199,6 +199,10 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
   schon abgehakt" und meint „nicht `- [ ]`", nicht „bereits erledigt".
 
+Die Nummer gehoert MIT Praefix: `erledigen.py 206` meldet „206 kommt 0x vor“ —
+das liest sich wie ein fehlender Eintrag, ist aber die falsche Argumentform
+(`T-206`).
+
 Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals eine echte Nummer, sonst zaehlt sie als zweiter Eintrag.
 
 ## Fallen
@@ -239,6 +243,15 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 - **Die Liste waechst zwischen zwei Blicken.** Vor dem Eintragen erneut lesen -
   eine parallele Sitzung haengt zwanzig Eintraege an, und die gewaehlte Nummer ist
   dann doppelt vergeben.
+- **Das generische `patch`-Werkzeug ist fuer diese Datei der falsche Weg.** Es
+  passt Aenderungen fuzzy an, verschiebt dabei die EINRUECKUNG des Ersatzblocks
+  und frisst in einer Liste die Nachbarzeile (beobachtet: zweimal am selben
+  Block, das zweite Mal schlimmer - erst verrutscht, dann eine Zeile weg und
+  `Angelegt/Zuletzt` mitten im Absatz). Nach dem ERSTEN verrutschten Ergebnis
+  nicht weiterflicken: den Block per Zeilenindex in Python ersetzen
+  (Zeilen lesen, `i`/`j` ueber das Blockmerkmal finden, `zeilen[i:j+1] = neu`),
+  mit CRLF-Zaehler und `git diff --numstat` nachpruefen und den Block danach
+  ausdrucken.
 - **`write_file` verweigert die Datei** (kein vollstaendiger Lesevorgang dieser
   Sitzung) - ueber den Byte-Weg schreiben, nicht die Datei komplett neu setzen.
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe

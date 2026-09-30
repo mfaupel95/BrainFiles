@@ -354,10 +354,44 @@ def order_details(txid):
     return d.get(txid, {})
 
 
-def gefuellte_menge(txid):
+def gefuellte_menge(txid, standard=0.0):
     """Wieviel wurde tatsaechlich ausgefuehrt? vol_exec, nicht vol - eine
-    teilweise gefuellte Order verkauft sonst mehr, als sie gekauft hat."""
-    return float(order_details(txid).get("vol_exec", 0) or 0)
+    teilweise gefuellte Order verkauft sonst mehr, als sie gekauft hat.
+
+    `standard` gilt fuer den Fall, dass Kraken die Kennung (noch) NICHT kennt:
+    QueryOrders antwortet dann ohne Eintrag. Das ist NICHT dasselbe wie
+    "0 ausgefuehrt" - bis zum 30.09.2026 las der Aufrufer beides als 0, buchte
+    eine gefuellte Order deshalb nicht, und die Spur kaufte denselben Wert im
+    naechsten Zyklus erneut (T-102: FILEUR viermal, ~200 EUR fuer EIN Signal).
+    Wer den Unterschied braucht, setzt standard=None.
+    """
+    d = order_details(txid)
+    if not d:
+        return standard
+    return float(d.get("vol_exec", 0) or 0)
+
+
+def fuellung_abwarten(txid, sekunden=30.0, abstand=3.0):
+    """Auf die Fuellung warten. Gibt (menge, bestaetigt) zurueck.
+
+    bestaetigt=False heisst: innerhalb von `sekunden` war keine ausgefuehrte
+    Menge zu sehen - die Boerse kennt die Kennung noch nicht oder die Order ist
+    noch offen. WICHTIG: eine Order MIT Kennung existiert, das Geld ist
+    gebunden. Der Aufrufer darf daraus nicht "kein Kauf" machen; er bucht die
+    BESTELLTE Menge und merkt sie als unbestaetigt.
+    """
+    ende = time.time() + max(0.0, sekunden)
+    while True:
+        try:
+            menge = gefuellte_menge(txid, standard=None)
+        except Exception as e:                                     # noqa: BLE001
+            print("  Fuellungsabfrage fehlgeschlagen: %s" % e, file=sys.stderr)
+            menge = None
+        if menge and menge > 0:
+            return float(menge), True
+        if time.time() >= ende:
+            return float(menge or 0.0), False
+        time.sleep(abstand)
 
 
 if __name__ == "__main__":

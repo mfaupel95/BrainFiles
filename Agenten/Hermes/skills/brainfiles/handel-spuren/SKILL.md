@@ -79,9 +79,11 @@ Ausloeser → Referenz:
   `references/zweite-boerse.md`, Abschnitt "Eine Boerse wieder ENTZIEHEN".
   **Eine Spur von EINER Quotewaehrung auf MEHRERE generalisieren** (EUR ->
   EUR/EURC/USDC: Quotewaehrung je Paar aus der API, Guthaben-Tor in der
-  Paarwaehrung, Buch bleibt in der Spurwaehrung) und **omnitrade ist KEINE Spur
-  (rein lesender Rust-Lauf), omniquant hat keinen Orderweg** — "bauen" heisst
-  dort Live-Orderweg anbinden: `references/zweite-boerse.md`, Abschnitte
+  Paarwaehrung, Buch bleibt in der Spurwaehrung) und **der Rust-Laeufer
+  omnitrade hat SELBST keinen Orderweg** (rein lesender Lauf; die Haus-Spur
+  `Agenten/Handel/omnitrade/` spiegelt seine Position und ordert ueber den
+  Haus-Spot-Weg - Hebel laesst sich dort nicht nachruesten), **omniquant hat
+  keinen Orderweg** — "bauen" heisst dort Live-Orderweg anbinden: `references/zweite-boerse.md`, Abschnitte
   "Eine Spur von EINER Quotewaehrung..." und "omnitrade ist KEINE Spur".
  - **Derselbe Anbieter, ein ANDERES Produkt** (Spot gegen Futures/Terminkontrakt:
  eigener Host, eigene Kopfzeilen, eigene Schluesselnamen, `Authentication error`
@@ -225,6 +227,14 @@ Ausloeser → Referenz:
   Ein Umtausch lohnt nur, wenn er ein Instrument erschliesst ODER der Markt dort
   enger ist; das Guthaben-Tor in der Paarwaehrung bleibt trotzdem richtig, weil es
   eine Versicherung ist und kein Ertrag. Abschnitt 7 der Referenz.
+- **Ein Fremdprogramm soll oefter / mit Hebel / mit Trailing-Stop handeln**
+  („kann das nicht oefter?", „in kurzen Zeitintervallen", „hoehere
+  Trefferchance"): drei Faehigkeiten am CODE feststellen (Takt-Schalter,
+  Boersen-Stop gegen Software-Stop, ist das Leverage-Modul ueberhaupt
+  aufgerufen), dann die Gebuehr aufs NOMINAL gegen die Margin rechnen (Hebel
+  vervielfacht die Gebuehr, nicht die Trefferchance), dann mit dem EIGENEN
+  Backtester des Fremdlaeufers messen statt zu argumentieren:
+  `references/fremdprogramm-frequenz-und-hebel.md`
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -458,7 +468,8 @@ ersetzt die Begruendung nicht.
 45. Vor jeder Deutung eines Journals pruefen, ob die Runden aus eigenen
 46. **Testfallen in den Spuren:.**
 47. Ein Papier-Umfang darf groesser sein als das Muster - das ist kein
-48. **Anbinden heisst: JEDE Liste, die eine Spur nennt, mitziehen.**
+48. **Anbinden heisst: JEDE Liste, die eine Spur nennt, mitziehen** — und die
+Suiten nennen die vergessene (`test_lage`: Holer, `test_befehle`: `FAMILIE`).
 49. Backtest-Urteile: der Sammler ist `Handel/backtest_urteile.py`, die Felder
 50. **Vier Indikator-Spuren sind seit dem 15.09.2026 angeschlossen.**
 51. **Der richtige Testaufruf steht im Testkopf, nicht in der Gewohnheit.**
@@ -730,6 +741,16 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   Disziplin wie bei den doppelten Backslashes, nur fuer den allgemeinen Fall.
   Vor jeder Aussage "das Muster existiert nicht" oder "dieser Commit/Wert ist
   da" erst so gegenpruefen, statt der gedruckten Ausgabe zu glauben.
+- **Ein Leser kann am FALSCHEN Dienst derselben Sorte haengen — Adresse pruefen,
+  bevor der Code verdaechtigt wird.** Laeuft derselbe Dienst mehrfach (Altlast-
+  Container neben dem neuen, Spot neben Futures, Demo neben Live), traegt jede
+  Instanz ihre eigenen Zugangsdaten im SPEICHER: dieselben Zugangsdaten gegen
+  beide Adressen probieren, dann ist die Sache entschieden. Fingerabdruck eines
+  solchen Falls: auf EINEM Port antwortet der oeffentliche Endpunkt (200), der
+  geschuetzte mit 401 — der Dienst lebt also, aber es ist ein anderer. Eine
+  Einschraenkung des Live-Tests (`skipUnless` auf diesen Dienst) verschiebt das
+  Problem nur: sie laeuft ueber dieselbe Adresse und meldet 'laeuft nicht',
+  solange die Altlast antwortet.
 - **Das Host-PowerShell-Werkzeug hat eine harte Zeitgrenze (~300 s).** Eine
   rekursive Größenmessung über einen großen Baum reißt sie. Stattdessen
   vorher/nachher `Win32_LogicalDisk.FreeSpace` messen oder je Ordner einzeln — der
@@ -986,8 +1007,9 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   „wie laeuft <Spur>".
 - `references/neue-spur-ende-zu-ende.md` — Spur von Null bis GUI aufbauen:
   abgebrochene Aufgabe verifizieren (nichts annehmen), Vorbilder lesen, drei
-  Kerndateien bauen, an fuenf Faeden verdrahten, Nachweis-Kette,
-  Dauerlauf-Neustart, GUI-Start und -Verifikation.
+  Kerndateien bauen, **an jede Liste verdrahten** (Tabelle: Stelle -> Eintrag ->
+  der Test, der ihn einfordert), Nachweis-Kette, Dauerlauf-Neustart (alle
+  Stufen), GUI-Start und -Verifikation.
 - `references/auswertung-und-optimierung.md` — Journale in eine belegte Aenderung
   uebersetzen: Runden zaehlen (Testlaeufe aussortieren), Kosten aus der Zeile,
   Geometrie-Gegenprobe, Ausstiegsgruende, Gruppen mit Stichproben-Disziplin, die
@@ -1031,6 +1053,14 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   Grenze in der Kette je Trade → Plaetze → Gesamtdeckel → Guthaben bindet, und
   `mindest_guthaben*` mit dem KLEINSTEN Einsatz begruenden, nicht mit einem alten
   Beispielbetrag.
+- `references/fremdprogramm-frequenz-und-hebel.md` — Frequenz-, Hebel- und
+  Stop-Fragen an einen laufenden FREMDlaeufer: Faehigkeiten am Code pruefen
+  (totes Leverage-Modul, Software-Stop gegen Boersen-Stop, Trailing auf
+  Kerzenschluss gegen Kerzenhoch), Gebuehr aufs Nominal gegen die Margin
+  rechnen, Messraster mit dem eigenen Backtester des Programms (`OMNI_LONG_ONLY`
+  fuer den Spot-Fall, `historie_binance.TAKTE` fuer 5m/15m erweitern), neue
+  Skriptfassungen ins Haus legen statt in den Klon. Ausloeser: „oefter handeln",
+  „mit Hebel", „Trailing-Stop", „kurze Intervalle", „hoehere Trefferchance".
 - `references/meldungen-des-dauerlaufs.md` — was in den Chat gehoert: eine Zeile
   muss ein GESCHEHEN aussprechen UND ihr Subjekt nennen (`EREIGNIS_ANFANG` /
   `EREIGNIS_WORTE`, `ereigniszeilen()` / `neue_ereignisse()`); Ueberschriften,

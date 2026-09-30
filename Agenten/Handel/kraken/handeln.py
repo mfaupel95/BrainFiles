@@ -676,16 +676,25 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
             freigabebeleg.verbrauche(SPUR, beleg["kennung"], ergebnis="spur")
             try:
                 kauf_txid = kraken.markt_kauf(v["inst"], menge, echt=True)
-                gefuellt = kraken.gefuellte_menge(kauf_txid) if kauf_txid else 0.0
             except Exception as e:  # noqa: BLE001
                 print("  Kauf %s fehlgeschlagen: %s" % (v["inst"], e),
                       file=sys.stderr)
                 continue
-            if gefuellt <= 0:
-                print("  Kauf %s ohne Fuellung - kein Eintrag" % v["inst"],
+            if not kauf_txid:
+                print("  Kauf %s ohne Kennung - kein Eintrag" % v["inst"],
                       file=sys.stderr)
                 continue
-            menge = gefuellt
+            # Eine Order MIT Kennung EXISTIERT, das Geld ist gebunden. Aus "noch
+            # keine Fuellung" folgt deshalb NIE "kein Eintrag": ohne Buchung
+            # signalisiert die Spur im naechsten Zyklus erneut und kauft
+            # denselben Wert wieder (T-102, FILEUR viermal). Unbestaetigt wird
+            # die BESTELLTE Menge gebucht und als offen gekennzeichnet.
+            gefuellt, fuellung_bestaetigt = kraken.fuellung_abwarten(kauf_txid)
+            if not fuellung_bestaetigt:
+                print("  Fuellung fuer %s unbestaetigt - %.8f bestellt, gebucht "
+                      "mit offener Fuellung" % (v["inst"], menge), file=sys.stderr)
+            else:
+                menge = gefuellt
             try:
                 stop_txid = kraken.stop_setzen(v["inst"], menge, v["stop"],
                                                echt=True)
@@ -712,6 +721,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
             "menge": menge, "stop": v["stop"], "ziel": v["ziel"],
             "eroeffnet": _heute(), "kauf_txid": kauf_txid,
             "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
+            "fuellung_offen": not fuellung_bestaetigt,
             # Die Kennung dieser Position (T-095): sie entsteht beim
             # Einstieg und steht in JEDER Zeile dieser Position.
             "pos_id": pos_kennung.neu(_jetzt()),

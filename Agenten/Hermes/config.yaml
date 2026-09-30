@@ -1,8 +1,6 @@
 model:
-  default: deepseek/deepseek-v4.1-flash
-  provider: nous
-  base_url: https://inference-api.nousresearch.com/v1
-  api_mode: chat_completions
+  default: deepseek-r1:7b
+  provider: custom:ollama-launch
 providers:
   bonsai:
     api: http://127.0.0.1:8081/v1
@@ -14,7 +12,7 @@ providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
     base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:latest
+    default_model: deepseek-r1:7b
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
@@ -161,7 +159,7 @@ agent:
   api_max_retries: 3
   service_tier: auto
   personalities: {}
-  reasoning_effort: medium
+  reasoning_effort: high
   verbose: false
 terminal:
   backend: local

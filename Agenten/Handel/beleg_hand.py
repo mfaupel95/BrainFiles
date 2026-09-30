@@ -97,16 +97,30 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
 
     try:
         txid = handeln.kraken.markt_kauf(inst, menge, echt=True)
-        gefuellt = handeln.kraken.gefuellte_menge(txid) if txid else 0.0
     except Exception as e:                                        # noqa: BLE001
         handeln.journal(_jetzt(), "live", "fehler", inst, "", "", "", "", "",
                         "beleg_hand: Kauf fehlgeschlagen (%s)" % e)
         return {"spur": spur, "kennung": kennung,
                 "ergebnis": "Kauf fehlgeschlagen: %s" % e}
-    if gefuellt <= 0:
+    if not txid:
+        # AddOrder hat keine Kennung geliefert: es steht nichts an der Boerse.
         handeln.journal(_jetzt(), "live", "fehler", inst, "", "", "", "", "",
-                        "beleg_hand: Kauf ohne Fuellung")
-        return {"spur": spur, "kennung": kennung, "ergebnis": "Kauf ohne Fuellung"}
+                        "beleg_hand: Kauf ohne Kennung")
+        return {"spur": spur, "kennung": kennung, "ergebnis": "Kauf ohne Kennung"}
+
+    # Ab hier EXISTIERT eine Order, das Geld ist gebunden. Die Fuellung wird
+    # abgewartet - aber aus "noch keine Fuellung" folgt NIE "kein Kauf". Genau
+    # diese Verwechslung hat am 28.09.2026 FILEUR viermal gekauft (~200 EUR fuer
+    # EIN Signal, T-102): ohne Buchung signalisierte die Spur im naechsten
+    # Zyklus erneut. Unbestaetigt heisst jetzt: bestellte Menge buchen und die
+    # Fuellung offen lassen - kraken/abgleich.py zieht die Menge auf die Boerse
+    # nach, sobald sie dort steht.
+    gefuellt, bestaetigt = handeln.kraken.fuellung_abwarten(txid)
+    if not bestaetigt:
+        gefuellt = menge
+        handeln.journal(_jetzt(), "live", "warnung", inst, "", "", "", "", "",
+                        "beleg_hand: Fuellung unbestaetigt - %.8f bestellt, "
+                        "Kennung %s" % (menge, txid))
 
     stop_txid, stop_fehlt = None, False
     if stop:
@@ -138,6 +152,7 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
         "paar": inst, "einstieg": kurs, "eur": round(eur, 2), "menge": gefuellt,
         "stop": stop, "ziel": ziel, "eroeffnet": _jetzt()[:10],
         "kauf_txid": txid, "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
+        "fuellung_offen": not bestaetigt,
     })
     handeln.schreibe_zustand(z)
     handeln.journal(_jetzt(), "live", "kauf", inst, "%.8g" % (kurs or 0.0),
@@ -148,9 +163,10 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
         handeln._spiegeln(w, z)                      # Bedingung 4
     except Exception as e:                                        # noqa: BLE001
         print("  Spiegelung fehlgeschlagen: %s" % e, file=sys.stderr)
-    return {"spur": spur, "kennung": kennung, "ergebnis": "ausgefuehrt",
+    return {"spur": spur, "kennung": kennung,
+            "ergebnis": "ausgefuehrt" if bestaetigt else "ausgefuehrt (Fuellung offen)",
             "paar": inst, "menge": gefuellt, "txid": txid, "stop_txid": stop_txid,
-            "stop_fehlt": stop_fehlt}
+            "stop_fehlt": stop_fehlt, "fuellung_offen": not bestaetigt}
 
 
 def lauf(anwenden: bool = False) -> list[dict]:
