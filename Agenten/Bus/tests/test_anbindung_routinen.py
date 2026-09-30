@@ -24,8 +24,11 @@ def geplante():
         code = "\n".join(z for z in roh.splitlines()
                          if not z.lstrip().startswith("#"))
         # Registrierer sind keine periodischen Arbeitslaeufe. Bereits
-        # angebundene Mischskripte bleiben in der Pruefung.
-        if "Register-ScheduledTask" in code and "Melde-Start" not in code:
+        # angebundene Mischskripte bleiben in der Pruefung. Auch 'schtasks
+        # /create' zaehlt als Registrierer (ausserhaus-kopie-aufgabe.ps1 legt
+        # die Aufgabe darueber an, weil das Cmdlet dort nicht hielt).
+        if (("Register-ScheduledTask" in code or "schtasks /create" in code)
+                and "Melde-Start" not in code):
             continue
         # Bibliotheken laufen nicht selbst: sie werden von einer geplanten
         # Routine dot-sourced (safe-file-ops.ps1 in posteingang.ps1 und
