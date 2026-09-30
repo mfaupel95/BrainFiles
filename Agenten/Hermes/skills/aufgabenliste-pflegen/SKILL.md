@@ -287,6 +287,16 @@ assert lf == 0, "gemischte Zeilenenden: %d LF-only" % lf
 
   Reparatur ohne Inhaltsverlust, beide Schritte in dieser Reihenfolge:
   `d.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")`.
+  **Und der EINFUEGEORT ist keine Zeilengrenze.** Wer ihn per
+  `j = text.find("\n## Offen")` bzw. `text.find("\n- [ ] **T-")` sucht, hat den Index
+  des `\n` - das Zeichen DAVOR ist in einer CRLF-Datei das `\r`. Ein
+  `text[:j] + nl + block` setzt damit ein ZWEITES `\r` und erzeugt `\r\r\n` plus eine
+  LF-only-Zeile; die Gegenprobe meldet `CRCR 1 | LF-only 1`, obwohl der Block richtig
+  dasteht und der Diff harmlos aussieht. Richtig ist, HINTER dem `\n` einzusetzen und
+  die Zeilenschuld selbst zu tragen:
+  `neu = text[:j+1] + block.replace("\n", nl) + nl + text[j+1:]` - und die drei Zahlen
+  vor dem Schreiben asserten (`\r\r` == 0, LF-only == 0, Kaesten `- [ ] ` genau +1 je
+  neuem Eintrag), nicht erst danach nachsehen.
 - **Die Altersregel ist unbrauchbar, solange eine parallele Sitzung laeuft.**
   Die Datei wird zeitweise alle 2-3 Minuten angefasst; ein Zehn-Minuten-Fenster
   kann nach einigen Minuten Warten eintreten (beobachtet: 10,5 min Ruhe nach
