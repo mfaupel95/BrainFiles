@@ -1370,6 +1370,7 @@
       "pfad": "freqtrade/user_data/strategies/ema_cross.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie EMA-Kreuz - walk-forward geprueft; im ungesehenen H2 halten die Hyperopt-Parameter NICHT"
     },
     {
@@ -1378,6 +1379,7 @@
       "pfad": "freqtrade/user_data/strategies/ema_cross_h1.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie EMA-Kreuz auf 1 h (eigener Aufsatz)"
     },
     {
@@ -1439,7 +1441,61 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Die Moon-Dev-Bots in Freqtrade einsetzen, fahren und messen (Strategien, Aufsaetze, Startskript)"
+      "notiz": "Die Moon-Dev-Bots in Freqtrade einsetzen, fahren und messen (Strategien, Aufsaetze, Startskript)",
+      "start": [
+        "..\\.venv\\Scripts\\python.exe",
+        "bots.py",
+        "liste"
+      ],
+      "befehle": [
+        {
+          "was": "Web-UI trading-agent (Port 8081)",
+          "cmd": [
+            "cmd",
+            "/c",
+            "start \"\" http://127.0.0.1:8081"
+          ],
+          "hinweis": "Zugang in user_data/config.json"
+        },
+        {
+          "was": "Web-UI topmovers (Port 8082)",
+          "cmd": [
+            "cmd",
+            "/c",
+            "start \"\" http://127.0.0.1:8082"
+          ],
+          "hinweis": "24 Paare, 1 h"
+        },
+        {
+          "was": "Web-UI marktlage-regime (Port 8083)",
+          "cmd": [
+            "cmd",
+            "/c",
+            "start \"\" http://127.0.0.1:8083"
+          ],
+          "hinweis": "1 Paar, 1 h"
+        },
+        {
+          "was": "Bots starten (Docker, drei Container)",
+          "cmd": [
+            "bash",
+            "bots_starten.sh"
+          ],
+          "hinweis": "dry_run=true - kein Geld"
+        },
+        {
+          "was": "Zustand der Container",
+          "cmd": [
+            "docker",
+            "ps",
+            "--filter",
+            "name=freqtrade",
+            "--format",
+            "{{.Names}} {{.Status}} {{.Ports}}"
+          ],
+          "hinweis": "leer = keiner laeuft"
+        }
+      ]
     },
     {
       "ordner": "geist_zurueckbuchen.py",
@@ -1487,7 +1543,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Gitter-Spur: kauft auf fallenden Stufen. Befund 15.09.2026 - das Gitter folgt der Marktrichtung (Korrelation +0,78), gewinnt in fallenden Fenstern und verliert in steigenden; die 52-Wochen-Mittel bleibt negativ"
+      "notiz": "Gitter-Spur: kauft auf fallenden Stufen. Befund 15.09.2026 - das Gitter folgt der Marktrichtung (Korrelation +0,78), gewinnt in fallenden Fenstern und verliert in steigenden; die 52-Wochen-Mittel bleibt negativ",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "grid.py",
@@ -1562,14 +1623,24 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Wie iv_wand, aber Ausstieg an der Spannengrenze: Stop hinter die Wand, Ziel der halbe Rueckweg (Deribit-IV)"
+      "notiz": "Wie iv_wand, aber Ausstieg an der Spannengrenze: Stop hinter die Wand, Ziel der halbe Rueckweg (Deribit-IV)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "iv_wand",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Strike mit dem groessten Open Interest als Wand (OKX-Optionen, Verfall 7-45 Tage); long/short nur, wenn der Spot hoechstens 5 % daneben liegt"
+      "notiz": "Strike mit dem groessten Open Interest als Wand (OKX-Optionen, Verfall 7-45 Tage); long/short nur, wenn der Spot hoechstens 5 % daneben liegt",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "journal_pos_id_nachziehen.py",
@@ -1597,70 +1668,120 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bollinger-Ausbruch (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "Bollinger-Ausbruch (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_donchian",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Donchian-Ausbruch, Kanal vor der Kerze (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "Donchian-Ausbruch, Kanal vor der Kerze (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_donchian_trend",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Donchian nur in Richtung der EMA200 (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "Donchian nur in Richtung der EMA200 (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_ema",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "EMA-Kreuz (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "EMA-Kreuz (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_macd",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "MACD-Signalkreuz (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "MACD-Signalkreuz (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_rsi",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "RSI-Mean-Reversion (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "RSI-Mean-Reversion (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_rsi2",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Connors RSI(2) mit SMA200-Filter, Ausstieg SMA5 (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "Connors RSI(2) mit SMA200-Filter, Ausstieg SMA5 (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "klassik_sma",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "SMA-Kreuz 20/50 (Papier, 4H, BTC/ETH/SOL)"
+      "notiz": "SMA-Kreuz 20/50 (Papier, 4H, BTC/ETH/SOL)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "kopier",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Copy-Trading der Pump.fun-Rangliste (Papierbuch); am 24.09.2026 stillgelegt, das Buch bleibt als Vergleichsgrundlage stehen"
+      "notiz": "Copy-Trading der Pump.fun-Rangliste (Papierbuch); am 24.09.2026 stillgelegt, das Buch bleibt als Vergleichsgrundlage stehen",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "kopier.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "kopier1zu1",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "1:1-Copy-Trade auf Trade-Ereignissen statt auf einem Portfolio-Diff (Papierbuch); am 24.09.2026 stillgelegt"
+      "notiz": "1:1-Copy-Trade auf Trade-Ereignissen statt auf einem Portfolio-Diff (Papierbuch); am 24.09.2026 stillgelegt",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "kosten_wendepunkt.py",
@@ -1680,7 +1801,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Spur 3 - Kraken-Spot, nur long, Waehrung je Paar (EUR, USDC, EURC); ordert seit 22.09.2026 nicht selbst, sondern stellt einen Freigabe-Beleg aus"
+      "notiz": "Spur 3 - Kraken-Spot, nur long, Waehrung je Paar (EUR, USDC, EURC); ordert seit 22.09.2026 nicht selbst, sondern stellt einen Freigabe-Beleg aus",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "kraken_abweisungs_sonde.py",
@@ -1713,6 +1839,10 @@
       "rolle": "Werkzeug",
       "art": "werkzeug",
       "notiz": "Leitstand - ein Fenster fuer Ueberwachen, Freigaben, Backtests und Markt.",
+      "start": [
+        ".venv\\Scripts\\pythonw.exe",
+        "leitstand.py"
+      ],
       "anleitung": "Das grosse Fenster: Ueberwachen, Freigaben, Backtests, Markt und Urteile in einem. Es hat keine Argumente, deshalb KEIN Klick-Start - von Hand:\n\n.venv\\Scripts\\pythonw.exe leitstand.py",
       "warnungen": [
         "oeffnet ein Fenster; der Aufruf steht in der Anleitung unten"
@@ -1723,7 +1853,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Wand aus Zwangsschluessen (OKX-Liquidationen, groesstes Preisband der letzten ~78 min) - die Spur geht MIT dem Cluster, weil geschlossene Shorts Kaufdruck sind"
+      "notiz": "Wand aus Zwangsschluessen (OKX-Liquidationen, groesstes Preisband der letzten ~78 min) - die Spur geht MIT dem Cluster, weil geschlossene Shorts Kaufdruck sind",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "llm_probe.py",
@@ -1743,7 +1878,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "MACD auf zwei Zeitrahmen - Trendfolge nur bei Einigkeit; braucht 600 Basiskerzen, seit der Nachblaetterung am 15.09.2026 vorhanden"
+      "notiz": "MACD auf zwei Zeitrahmen - Trendfolge nur bei Einigkeit; braucht 600 Basiskerzen, seit der Nachblaetterung am 15.09.2026 vorhanden",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "melder.py",
@@ -1761,6 +1901,7 @@
       "pfad": "freqtrade/user_data/strategies/moondev_basis.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie: gemeinsame Basis der drei MoonDev-Strategien"
     },
     {
@@ -1768,7 +1909,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Moon-Dev-Funding-Spur (Papier)"
+      "notiz": "Moon-Dev-Funding-Spur (Papier)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_historie.py",
@@ -1788,56 +1934,96 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_liquidation` (Papier, mit lokalem Sprachmodell)"
+      "notiz": "Bot-Spur `moondev_liquidation` (Papier, mit lokalem Sprachmodell)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_listingarb",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_listingarb` (Papier)"
+      "notiz": "Bot-Spur `moondev_listingarb` (Papier)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_marktlage",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_marktlage` (Papier)"
+      "notiz": "Bot-Spur `moondev_marktlage` (Papier)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_sentiment",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_sentiment` (Papier, mit lokalem Sprachmodell)"
+      "notiz": "Bot-Spur `moondev_sentiment` (Papier, mit lokalem Sprachmodell)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_signalwelle",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur signalwelle (Papier): Einbrueche im Marktquerschnitt als Signal"
+      "notiz": "Bot-Spur signalwelle (Papier): Einbrueche im Marktquerschnitt als Signal",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_sniper",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur sniper (Papier): Einzelkandidaten des MoonDev-Agenten"
+      "notiz": "Bot-Spur sniper (Papier): Einzelkandidaten des MoonDev-Agenten",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_topmovers",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_topmovers` (Papier)"
+      "notiz": "Bot-Spur `moondev_topmovers` (Papier)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "moondev_whale",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Bot-Spur `moondev_whale` (Papier, mit lokalem Sprachmodell)"
+      "notiz": "Bot-Spur `moondev_whale` (Papier, mit lokalem Sprachmodell)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "MoonDevMarketRegime.py",
@@ -1845,6 +2031,7 @@
       "pfad": "freqtrade/user_data/strategies/MoonDevMarketRegime.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie Marktregime (BTC-Trend und Marktbreite)"
     },
     {
@@ -1853,6 +2040,7 @@
       "pfad": "freqtrade/user_data/strategies/MoonDevTopMovers.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie TopMovers (+8..40 % in 24 h)"
     },
     {
@@ -1861,6 +2049,7 @@
       "pfad": "freqtrade/user_data/strategies/MoonDevTradingAgent.py",
       "rolle": "Strategie",
       "art": "werkzeug",
+      "gruppe": "kein_start",
       "notiz": "Freqtrade-Strategie des Trading-Agenten (MA20/MA40, RSI 45-70, Volumen) - LONG-ONLY: can_short laedt im Spot-Modus nicht"
     },
     {
@@ -1868,14 +2057,25 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "4H-Bias, 30M-Pullback zur Nachfragezone, 5M-Structure-Shift - die einzige Spur mit zwei Boersen (Kraken EUR und OKX USDC), Ausstieg bindet die Boerse der Position"
+      "notiz": "4H-Bias, 30M-Pullback zur Nachfragezone, 5M-Structure-Shift - die einzige Spur mit zwei Boersen (Kraken EUR und OKX USDC), Ausstieg bindet die Boerse der Position",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "nautilus",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "NautilusTrader-Arm (OKX-Demo): Stop -19,8 %, Trailing ab +10 % mit 6 % Abstand, Frist 48 h; bucht Kopier-Kaeufe als BTC-Proxy"
+      "notiz": "NautilusTrader-Arm (OKX-Demo): Stop -19,8 %, Trailing ab +10 % mit 6 % Abstand, Frist 48 h; bucht Kopier-Kaeufe als BTC-Proxy",
+      "start": [
+        "..\\nautilus\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ],
+      "venv_pflicht": true
     },
     {
       "ordner": "nautilus-rust",
@@ -1889,7 +2089,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Kraken-Arm der Nautilus-Reihe (EUR); Schwesterarme sind nautilus (OKX) und nautilus_kraken_futures (USD, PF_XBTUSD)"
+      "notiz": "Kraken-Arm der Nautilus-Reihe (EUR); Schwesterarme sind nautilus (OKX) und nautilus_kraken_futures (USD, PF_XBTUSD)",
+      "start": [
+        "..\\nautilus\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "nautilus_rc5",
@@ -1924,7 +2129,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Handelt die Treffer des Prognose-Berichts als Papierbuch; Hauptarm liest seit 24.09.2026 die weiche Fassung (prognose_fassung=weit)"
+      "notiz": "Handelt die Treffer des Prognose-Berichts als Papierbuch; Hauptarm liest seit 24.09.2026 die weiche Fassung (prognose_fassung=weit)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "OpenAlice",
@@ -1953,14 +2163,24 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Opening Range Breakout auf BTC-/ETH-USDT-SWAP, 00:00-UTC-Grenze - der eigene Backtest ist fuer beide Instrumente negativ, die Spur laeuft nur zur Beobachtung"
+      "notiz": "Opening Range Breakout auf BTC-/ETH-USDT-SWAP, 00:00-UTC-Grenze - der eigene Backtest ist fuer beide Instrumente negativ, die Spur laeuft nur zur Beobachtung",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "orbk",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Opening Range Breakout auf Kraken (dieselbe Strategie wie orb, andere Boerse); seit 21.09.2026 sind die Schwellen so gesetzt, dass die ETH-Range greift"
+      "notiz": "Opening Range Breakout auf Kraken (dieselbe Strategie wie orb, andere Boerse); seit 21.09.2026 sind die Schwellen so gesetzt, dass die ETH-Range greift",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "papierbuch_schliessen.py",
@@ -2042,7 +2262,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Papierbuch auf bewerteten Wallets der Robinhood Chain - liest NUR die fomo-radar-Datenbank, nie die Rangliste; kein Orderweg"
+      "notiz": "Papierbuch auf bewerteten Wallets der Robinhood Chain - liest NUR die fomo-radar-Datenbank, nie die Rangliste; kein Orderweg",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "santiment_daten.py",
@@ -2062,7 +2287,13 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "python",
-      "notiz": "Marktscanner - die einzige Spur mit belegtem Vorteil (t=15,3 bei 125 echten Runden). Handelt live ueber OKX mit Boersen-Stop, Papier und Live im selben Buch"
+      "notiz": "Marktscanner - die einzige Spur mit belegtem Vorteil (t=15,3 bei 125 echten Runden). Handelt live ueber OKX mit Boersen-Stop, Papier und Live im selben Buch",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ],
+      "venv_pflicht": true
     },
     {
       "ordner": "sperrgruende.py",
@@ -2083,7 +2314,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Papierbuch fuer Copy-Trading (Pump.fun-Rangliste); am 21.09.2026 abgeschaltet, das Buch bleibt als Vergleichsgrundlage. Wieder einschalten nur mit frischem letzter_lauf, sonst wird alles flachgestellt"
+      "notiz": "Papierbuch fuer Copy-Trading (Pump.fun-Rangliste); am 21.09.2026 abgeschaltet, das Buch bleibt als Vergleichsgrundlage. Wieder einschalten nur mit frischem letzter_lauf, sonst wird alles flachgestellt",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "spiegel.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "spiegelstand.py",
@@ -2177,7 +2413,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Volatilitaetskompression, die sich loest (Squeeze-Momentum)"
+      "notiz": "Volatilitaetskompression, die sich loest (Squeeze-Momentum)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "stand",
@@ -2245,14 +2486,24 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "SuperTrend-Richtungswechsel, die Linie dient als Stop"
+      "notiz": "SuperTrend-Richtungswechsel, die Linie dient als Stop",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "swap",
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "SWAP-Spur mit Live-Pfad; am 27.09.2026 auf Papier zurueckgesetzt (4 echte Runden, 0 % Treffer, -8,2 %) - der Schalter war wirkungslos, es gibt keinen Orderaufruf im Code"
+      "notiz": "SWAP-Spur mit Live-Pfad; am 27.09.2026 auf Papier zurueckgesetzt (4 echte Runden, 0 % Treffer, -8,2 %) - der Schalter war wirkungslos, es gibt keinen Orderaufruf im Code",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "tagesbericht.py",
@@ -2287,7 +2538,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "BTC short, sobald der SuperTrend auf 1H dreht - nur unter der EMA200; ein Rueckdreh beendet die Position (erste Spur mit Rueckdreh-Ausstieg)"
+      "notiz": "BTC short, sobald der SuperTrend auf 1H dreht - nur unter der EMA200; ein Rueckdreh beendet die Position (erste Spur mit Rueckdreh-Ausstieg)",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "verbesserer",
@@ -2328,7 +2584,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "Wavetrend-Umkehr im ueberzogenen Bereich"
+      "notiz": "Wavetrend-Umkehr im ueberzogenen Bereich",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "wochenbericht.py",
@@ -2348,7 +2609,12 @@
       "wurzel": "handel",
       "rolle": "Spur",
       "art": "spur",
-      "notiz": "XPERP-Bot: OKX-Perpetuals mit Zonenrechnung und wartenden Limit-Auftraegen (ein Limit hinter dem Markt ist kein Fehler); Live-Grenzen 80 USD je Anlauf, 600 USD gesamt, Hoechststrafe 30 USD Buchrisiko"
+      "notiz": "XPERP-Bot: OKX-Perpetuals mit Zonenrechnung und wartenden Limit-Auftraegen (ein Limit hinter dem Markt ist kein Fehler); Live-Grenzen 80 USD je Anlauf, 600 USD gesamt, Hoechststrafe 30 USD Buchrisiko",
+      "start": [
+        "..\\scanner\\.venv\\Scripts\\python.exe",
+        "handeln.py",
+        "--vorschau"
+      ]
     },
     {
       "ordner": "zeitversatz_messen.py",

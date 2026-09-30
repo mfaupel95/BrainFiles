@@ -186,6 +186,24 @@ KURATIERT: dict[tuple[str, str], dict] = {
         "rolle": "Werkzeug",
         "notiz": "Die Moon-Dev-Bots in Freqtrade einsetzen, fahren und messen "
                  "(Strategien, Aufsaetze, Startskript)",
+        # Der einzige Bot-Betrieb des Hauses mit einer WEB-OBERFLAECHE. Der
+        # Startknopf zeigt die Zuordnung (welche Strategie auf welchem Port),
+        # die Web-UIs sind eigene Befehle - sie setzen die laufenden Container
+        # voraus und oeffnen nur den Browser.
+        "start": ["..\\.venv\\Scripts\\python.exe", "bots.py", "liste"],
+        "befehle": [
+            {"was": "Web-UI trading-agent (Port 8081)", "cmd": ["cmd", "/c",
+             "start \"\" http://127.0.0.1:8081"], "hinweis": "Zugang in user_data/config.json"},
+            {"was": "Web-UI topmovers (Port 8082)", "cmd": ["cmd", "/c",
+             "start \"\" http://127.0.0.1:8082"], "hinweis": "24 Paare, 1 h"},
+            {"was": "Web-UI marktlage-regime (Port 8083)", "cmd": ["cmd", "/c",
+             "start \"\" http://127.0.0.1:8083"], "hinweis": "1 Paar, 1 h"},
+            {"was": "Bots starten (Docker, drei Container)", "cmd": ["bash",
+             "bots_starten.sh"], "hinweis": "dry_run=true - kein Geld"},
+            {"was": "Zustand der Container", "cmd": ["docker", "ps",
+             "--filter", "name=freqtrade", "--format",
+             "{{.Names}} {{.Status}} {{.Ports}}"], "hinweis": "leer = keiner laeuft"},
+        ],
     },
     ("handel", "nautilus-rust"): {
         "rolle": "Werkzeug",
@@ -408,6 +426,11 @@ KURATIERT.update({
     # ------------------------------------------------- Werkzeugdateien
     ("handel", "handelszentrale.py"): {
         "rolle": "Werkzeug",
+        # Die beiden Fenster des Hauses bekommen einen KLICK-Start: sie sind
+        # UIs, und eine UI ohne Startknopf ist in einer Startzentrale fehl am
+        # Platz. Gestartet wird mit pythonw.exe - sonst steht neben dem Fenster
+        # noch eine schwarze Konsole.
+        "start": [".venv\\Scripts\\pythonw.exe", "handelszentrale.py"],
         "anleitung": "Das lesende Fenster ueber alle Spuren (Positionen, Kursweg, Konsole, "
                      "Kopfzeile mit Dauerlauf-PID). Es schreibt NICHTS - dauerlauf.py bleibt "
                      "der einzige Schreiber.\n\n"
@@ -481,8 +504,9 @@ KURATIERT.update({
     },
     ("handel", "leitstand.py"): {
         "rolle": "Werkzeug",
+        "start": [".venv\\Scripts\\pythonw.exe", "leitstand.py"],
         "anleitung": "Das grosse Fenster: Ueberwachen, Freigaben, Backtests, Markt und Urteile in "
-                     "einem. Es hat keine Argumente, deshalb KEIN Klick-Start - von Hand:\n\n"
+                     "einem. Handelt nie live.\n\n"
                      ".venv\\Scripts\\pythonw.exe leitstand.py",
     },
     ("handel", "testlauf.py"): {
@@ -702,6 +726,10 @@ KURATIERT.update({
         ("handel", f"freqtrade/user_data/strategies/{name}.py"): {
             "rolle": "Strategie",
             "notiz": notiz,
+            # KEIN EIGENER START: freqtrade laedt die Klasse, sie ist kein
+            # Programm. Ohne diese Gruppe stuende sie in EINRICHTEN - als
+            # fehlte etwas, dabei ist sie fertig.
+            "gruppe": "kein_start",
             "warnungen": ["freqtrade laedt diese Klasse; der Bot-Aufsatz steht in "
                           "freqtrade/user_data/bots/"],
         }
@@ -718,6 +746,69 @@ KURATIERT.update({
     },
 })
 
+# ---------------------------------------------------------------------------
+# JEDE SPUR ALS ANKLICKBARE ZEILE (30.09.2026)
+#
+# Eine Spur ist ein ORDNER, kein Programm: sie hat kein eigenes venv (ausser
+# den Nautilus-Armen) und ihre Datei heisst nicht immer `handeln.py`. Damit die
+# Zeile im Fenster startbar wird, braucht sie den Interpreter, mit dem auch der
+# Dauerlauf sie fahrt (`dauerlauf.PYTHON` = scanner-venv) und den Namen ihrer
+# eigenen Datei. Beides steht hier EINMAL; die Paare sind dieselben wie in
+# `dauerlauf.SPUREN` - eine zweite Spurliste gibt es nicht.
+#
+# Gestartet wird IMMER `--vorschau`: das ist der lesende Blick einer Spur
+# (ihre Zeile "Live waere gesperrt durch: ..."), sie schreibt dabei nichts.
+# Ohne den Zusatz liefe ein voller Handelszyklus los - und das ist Sache des
+# Dauerlaufs, nicht eines Klicks im Fenster.
+#
+# Der Interpreter steht RELATIV zur Spur (`..\scanner\...`), weil das
+# Arbeitsverzeichnis einer Zeile ihr eigener Ordner ist; das Fenster loest den
+# Programmnamen gegen genau dieses Verzeichnis auf
+# (`aktionen.start_ausfuehren`). Ein absoluter Pfad waere hier ein zweiter
+# Standort und wuerde einen Umzug auf ein anderes Laufwerk nicht ueberleben.
+HANDEL_PYTHON = "..\\scanner\\.venv\\Scripts\\python.exe"
+NAUTILUS_PYTHON = "..\\nautilus\\.venv\\Scripts\\python.exe"
+
+SPUREN_START = {
+    name: ("handeln.py", HANDEL_PYTHON)
+    for name in (
+        "xperp", "swap", "orbk", "orb", "omniquant", "gitter", "macd_mtf",
+        "squeeze", "supertrend", "wavetrend", "mosaic", "kraken",
+        "moondev_funding", "moondev_listingarb", "moondev_topmovers",
+        "moondev_marktlage", "moondev_signalwelle", "moondev_sniper",
+        "moondev_whale", "moondev_liquidation", "moondev_sentiment",
+        "trendwende_btc", "liq_wand", "robinhood_radar", "kopier1zu1",
+        "iv_wand", "iv_waelle",
+        "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
+        "klassik_donchian", "klassik_rsi", "klassik_rsi2",
+        "klassik_donchian_trend",
+    )
+}
+SPUREN_START.update({
+    # Der scanner fuehrt das gemeinsame venv selbst - von innen ist es sein
+    # eigenes `.venv`, von aussen `..\scanner\.venv`.
+    "scanner": ("handeln.py", ".venv\\Scripts\\python.exe"),
+    # Die Nautilus-Arme brauchen nautilus_trader; das liegt nur im
+    # nautilus-venv. nautilus_kraken hat keines und teilt sich den Ordner mit
+    # dem Futures-Arm (der fahrt handeln_futures.py) - hier steht der
+    # Hauptarm.
+    "nautilus": ("handeln.py", NAUTILUS_PYTHON),
+    "nautilus_kraken": ("handeln.py", NAUTILUS_PYTHON),
+    # Stillgelegte Spuren (spiegel, kopier): sie handeln nicht mehr, ihr Buch
+    # bleibt aber als Vergleichsgrundlage stehen - die Vorschau zeigt genau
+    # diesen Stand.
+    "spiegel": ("spiegel.py", HANDEL_PYTHON),
+    "kopier": ("kopier.py", HANDEL_PYTHON),
+})
+
+# In KURATIERT eintragen, statt 37 Bloecke von Hand zu schreiben. `setdefault`
+# laesst einen vorhandenen Eintrag stehen (Rolle, Notiz, Gruppe) und ergaenzt
+# nur den Start.
+for _spur, (_spur_skript, _spur_python) in SPUREN_START.items():
+    KURATIERT.setdefault(("handel", _spur), {})["start"] = [
+        _spur_python, _spur_skript, "--vorschau",
+    ]
+
 # Nicht von Hand starten: der Dauerlauf nimmt die echte Sperre, melder.py
 # verschickt Telegram-Nachrichten. Beide bekommen KEINEN Startbefehl.
 OHNE_START = {
@@ -725,7 +816,6 @@ OHNE_START = {
                     "ins echte Protokoll (dafuer gibt es die geplanten Aufgaben und den "
                     "Dauerlauf-Waechter)",
     "melder.py": "verschickt Telegram-Nachrichten - nicht zum Ausprobieren aufrufen",
-    "leitstand.py": "oeffnet ein Fenster; der Aufruf steht in der Anleitung unten",
     "kraken_abweisungs_sonde.py": "jeder Aufruf misst ECHT gegen Kraken und setzt den "
                                   "Lockout-Timer zurueck",
 }
@@ -810,6 +900,9 @@ def eintrag_bauen(repo: scan.Repo) -> dict:
         eintrag["venv_pflicht"] = bool(repo.venv)
     elif schluessel in OHNE_START and repo.datei is not None:
         eintrag["warnungen"] = [OHNE_START[schluessel]]
+        # Ein bewusst startloses Werkzeug ist nicht "einzurichten" - der Grund
+        # steht daneben (siehe manifest._zeile, Gruppe KEIN EIGENER START).
+        eintrag["gruppe"] = "kein_start"
 
     gruppe = kuratiert.get("gruppe")
     if gruppe:
@@ -831,7 +924,8 @@ def _sortierschluessel(eintrag: dict, reihenfolge: list[str]) -> tuple:
 # ein Feld, das nachtraeglich hinzukommt, landet nicht achtlos am Ende.
 FELD_REIHENFOLGE = (
     "ordner", "wurzel", "pfad", "rolle", "art", "bot", "gruppe", "notiz",
-    "start", "einrichten", "bauen", "venv_pflicht", "node_modules_pflicht",
+    "start", "einrichten", "einrichten_kette", "bauen", "bauen_kette",
+    "venv_pflicht", "node_modules_pflicht",
     "pfad_pflicht", "port", "anleitung", "befehle", "warnungen",
 )
 
@@ -940,14 +1034,33 @@ def belege_erzeugen(manifest_pfad: Path, brainfiles: Path, log_ordner: Path) -> 
 FRIST_S = 90
 
 
-def auffrischen(manifest_pfad: Path, *, anwenden: bool = False) -> int:
+def _projekt_ordner(brainfiles: Path, eintrag: dict) -> Path | None:
+    """Der Ordner eines Manifest-Eintrags auf der Platte (None, wenn unbekannt).
+
+    Der Schluessel ist das PAAR (wurzel, pfad) - ein Eintrag ohne `wurzel` liegt
+    in `Werkstatt/Repos`, einer ohne `pfad` in seinem Ordner.
+    """
+    for w, basis in quellen.alle(brainfiles):
+        if w.kennung == eintrag.get("wurzel", "repos"):
+            return Path(basis) / (eintrag.get("pfad") or eintrag["ordner"])
+    return None
+
+
+def auffrischen(
+    manifest_pfad: Path, *, anwenden: bool = False, brainfiles: Path | None = None
+) -> int:
     """Fehlende Felder BESTEHENDER Eintraege aus KURATIERT nachtragen.
 
-    Nur was fehlt wird ergaenzt (Rolle, Notiz, Gruppe, Anleitung) - `start`,
-    `pfad` und alles handschriftlich Gepflegte bleiben unangetastet. Gedacht
-    fuer den Fall, dass eine Kuratierung nachgezogen wurde: `fuellen` laesst
-    vorhandene Eintraege bewusst unveraendert, sonst wuerde es Handarbeit
-    ueberschreiben.
+    Nur was fehlt wird ergaenzt (Rolle, Notiz, Gruppe, Anleitung, `start`) -
+    alles handschriftlich Gepflegte bleibt unangetastet, denn geschrieben wird
+    nur, wo das Feld LEER ist. Gedacht fuer den Fall, dass eine Kuratierung
+    nachgezogen wurde (z. B. ein Startbefehl fuer die Handelsspuren am
+    30.09.2026): `fuellen` laesst vorhandene Eintraege bewusst unveraendert,
+    sonst wuerde es Handarbeit ueberschreiben.
+
+    Kommt ein `start` dazu, wird auch `venv_pflicht` gesetzt, wenn das Projekt
+    ein EIGENES venv hat - ein Start ohne Abhaengigkeitspruefung waere eine
+    halbe Aussage.
     """
     daten = json.loads(manifest_pfad.read_text(encoding="utf-8"))
     geaendert = []
@@ -957,10 +1070,14 @@ def auffrischen(manifest_pfad: Path, *, anwenden: bool = False) -> int:
         )
         if not kuratiert:
             continue
-        for feld in ("rolle", "notiz", "gruppe", "anleitung", "befehle"):
+        for feld in ("rolle", "notiz", "gruppe", "anleitung", "befehle", "start"):
             if kuratiert.get(feld) and not e.get(feld):
                 e[feld] = kuratiert[feld]
                 geaendert.append(f"{e['ordner']}.{feld}")
+                if feld == "start" and brainfiles is not None:
+                    ordner = _projekt_ordner(brainfiles, e)
+                    if ordner is not None and scan._venv(ordner)[0] is not None:
+                        e["venv_pflicht"] = True
     print(f"nachzutragen: {len(geaendert)} Felder")
     if not anwenden:
         for name in geaendert:
@@ -996,7 +1113,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.belege:
         return belege_erzeugen(HIER / "repos-zentrale.json", brainfiles, HIER / "logs")
     if args.auffrischen:
-        return auffrischen(HIER / "repos-zentrale.json", anwenden=args.anwenden)
+        return auffrischen(HIER / "repos-zentrale.json", anwenden=args.anwenden,
+                           brainfiles=brainfiles)
     return fuellen(HIER / "repos-zentrale.json", brainfiles, anwenden=args.anwenden)
 
 

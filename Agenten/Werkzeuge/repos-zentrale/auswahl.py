@@ -32,6 +32,7 @@ GRUPPEN_TITEL = {
     "startbar": "STARTBAR",
     "einrichten": "EINRICHTEN",
     "neu": "NEU",
+    "kein_start": "KEIN EIGENER START",
     "doku": "NUR DOKU",
     "fehlt": "FEHLT",
 }
