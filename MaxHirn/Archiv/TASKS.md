@@ -60,6 +60,62 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
+      Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
+      ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
+      und ohne Doppelpunkt im Namen: ohne geht, mit ENOENT. Der Store waere zusaetzlich
+      Unix-gepraegt (`~/.local/bin`, `.bashrc`/`.zshrc`, Symlink `current`). Deshalb liegt die CLI
+      hier als npm-Installation in eigenem Prefix (`C:\Users\faupe\.local\npm`) mit zwei
+      PATH-Weiterleitungen in `~/.local/bin`; `paperclipai update` und `uninstall` gibt es damit
+      NICHT, aktualisiert wird per `npm install -g --prefix ... paperclipai@latest`.
+      Naechster Schritt: entscheiden, ob der Fehler upstream gemeldet wird
+      (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
+      dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
+- [ ] **T-254 - Paperclip: CLI installiert, aber keine Instanz gestartet**
+      Kontext: `paperclipai 2026.916.1` laeuft aus PowerShell, cmd und bash (Nachweis `--version`
+      und `channels`). Bewusst NICHT gestartet: `onboard --yes` legt die eingebettete PostgreSQL
+      an (laedt Binaerdateien nach), `run` haelt einen Port, und das Onboarding kann einen
+      Hintergrunddienst einrichten, der bei der Anmeldung startet.
+      Naechster Schritt: Entscheidung von Max - Quickstart ohne Anmeldedienst
+      (`paperclipai onboard --yes --no-install-service`, danach `paperclipai run` und
+      `paperclipai connect`), oder zunaechst nur `paperclipai doctor` als Trockenprobe.
+      Angelegt: 2026-09-30 · Betrifft: `~/.paperclip`, Serverport
+- [ ] **T-254 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
+      Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
+      Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
+      Sperrgruende, davon zwei, die Max' Hand brauchen: `freigabe.erfuellt=false`
+      und `nur 25.08 USDC frei, noetig 60.00`. Die beiden anderen
+      (`handel_erlaubt=false`, kein Freigabefenster) sind Schalter bzw. laufen
+      ueber die Freigabekette.
+      Naechster Schritt: erst Papierrunden sammeln und die Bedingung 1 belegen
+      (Runden, netto positiv, Ruecklauf), dann `handel_erlaubt=true` +
+      `freigabe.erfuellt=true` und ein `/ja_omnitrade` im Dauerlauf; das Guthaben
+      in USDC auf Kraken muss vorher ueber 60 liegen (T-115). NICHT vorher -
+      eine neue Spur ohne eine einzige Runde scharf zu stellen, waere der
+      Verzicht auf jede Messung.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
+
+- [ ] **T-253 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
+      Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
+      `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
+      ['klassik_sma\\handeln.py', ... acht Eintraege]` ab - und damit auch die
+      Ende-zu-Ende-Suite. Ursache: der Spurname steht bei diesen Spuren in
+      `klassik_regeln.spur_main(name, ordner)` (`ereignis_name="handel/" + name`),
+      waehrend die Pruefung den Namen WORTWOERTLICH in der vom Dauerlauf
+      gestarteten Datei sucht (die ruft nur `spur_main("klassik_sma", HIER)`).
+      Vorbestehend, nicht von der omnitrade-Spur (Gegenprobe: omnitrade steht
+      nicht in der Fehlliste).
+      Naechster Schritt: entweder den Bus-Namen in den acht `handeln.py` als
+      Literal uebergeben (`spur_main("klassik_sma", HIER, bus_name="handel/klassik_sma")`)
+      oder die Pruefung um den Kern-Fall erweitern (gestartete Datei uebergibt
+      ihren eigenen Namen an einen Kern, der `ereignis.lauf` traegt) - dieselbe
+      Regel, die schon fuer `spur_buch.py` gilt.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
+      Agenten/Bus/tests/test_anbindung_handel.py
+
 - [ ] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
       Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
       Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine
@@ -548,26 +604,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
-- [ ] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
-      Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
-      handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
-      `moondev_marktlage` auf handel_erlaubt=false, `mosaic` auf boersen ["okx"],
-      alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE`), die Freigabeseite
-      nicht: `omnitrade-exchange/src/` kennt nur `binance` und `okx`, und
-      `omnitrade-cli/src/commands/live.rs:33` weist jedes andere `--exchange` ab
-      ("Use 'binance' or 'okx'"). Bis dahin handelt NIEMAND auf Kraken.
-      Naechster Schritt: entscheiden, welcher Weg gebaut wird - (A) Kraken-Adapter
-      in Rust (`omnitrade-exchange/src/kraken.rs`: ExchangeStream/ExchangeInfo/
-      ExchangeTrading, HMAC-SHA512 + Nonce, Paar- und Preisregeln; braucht einen
-      EIGENEN Kraken-Schluessel, sonst kollidiert der Nonce-Zaehler mit dem
-      Haus-Pool) oder (B) Haus-Spur `omnitrade`, die `Werkstatt/omnitrade/status/
-      live.json` ueber `Agenten/Handel/omnitrade_bridge.py` liest und ueber den
-      bewaehrten `kraken/kraken.py` ordert.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
-      Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
-      Agenten/Handel/moondev_marktlage/wachen.json
 
 
 - [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
@@ -2772,6 +2808,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
+      Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
+      handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
+      `moondev_marktlage` auf handel_erlaubt=false, `mosaic` auf boersen ["okx"],
+      alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE`), die Freigabeseite
+      nicht: `omnitrade-exchange/src/` kennt nur `binance` und `okx`, und
+      `omnitrade-cli/src/commands/live.rs:33` weist jedes andere `--exchange` ab
+      ("Use 'binance' or 'okx'"). Bis dahin handelt NIEMAND auf Kraken.
+      Naechster Schritt: entscheiden, welcher Weg gebaut wird - (A) Kraken-Adapter
+      in Rust (`omnitrade-exchange/src/kraken.rs`: ExchangeStream/ExchangeInfo/
+      ExchangeTrading, HMAC-SHA512 + Nonce, Paar- und Preisregeln; braucht einen
+      EIGENEN Kraken-Schluessel, sonst kollidiert der Nonce-Zaehler mit dem
+      Haus-Pool) oder (B) Haus-Spur `omnitrade`, die `Werkstatt/omnitrade/status/
+      live.json` ueber `Agenten/Handel/omnitrade_bridge.py` liest und ueber den
+      bewaehrten `kraken/kraken.py` ordert.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
+      Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
+      Agenten/Handel/moondev_marktlage/wachen.json
+      **Erledigt 2026-09-30.** Weg B gebaut (Entscheidung Max): neue Spur Agenten/Handel/omnitrade spiegelt die Position der Rust-Laeufe (Zustand net_quantity statt Orderliste, zwei Zeugen Statusdatei+PID, echter Verkaufspreis aus recent_orders) und fuehrt im Live-Zweig ueber den Haus-Kraken-Weg (boerse kraken, kraken_quote USDC, guthaben_waehrung USDC, mindest_guthaben 60) - omnitrade bleibt der Entscheider, kein Kraken-Adapter in Rust. Verdrahtet in dauerlauf.SPUREN, lage.HOLER (live_faehig), auswertung_alle.BOT_SPUREN, pruefe_ratschen, .gitignore. Beleg: 31 Tests gruen, Vorschau nennt vier Sperrgruende (u.a. 25.08 von 60 USDC frei), erster Zyklus 30.09. 21:26:20 'omnitrade (papier) ok', spiegelstand 38/38 byte-gleich. Commit 6197ac9, Wiki/Handel/omnitrade-Spur.md. Offen bleibt nur das Guthaben (T-253).
 - [x] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
       Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
       `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).

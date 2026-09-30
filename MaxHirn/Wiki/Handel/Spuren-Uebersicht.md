@@ -49,7 +49,7 @@ Stand 24.09.2026: alle drei laufen. `hoch` wurde an diesem Tag gestartet (Wrappe
 `Routinen/handel-dauerlauf.ps1 -Risiko hoch`), sein Waechter ist ein Klon des Mittel-Waechters
 mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehrt (derzeit leer).
 
-## 39 Spuren im Dauerlauf
+## 40 Spuren im Dauerlauf
 
 | Gruppe | Spuren |
 |---|---|
@@ -62,6 +62,7 @@ mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehr
 | Sprachmodell-Spuren | `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` |
 | Klassik (Pine-Regeln, 4H, OKX-Perp, Papier) | `klassik_sma`, `klassik_ema`, `klassik_macd`, `klassik_bollinger`, `klassik_donchian`, `klassik_rsi`, `klassik_rsi2`, `klassik_donchian_trend` |
 | Zeitreihen-Experiment | `omniquant` |
+| Fremd-Lauf gespiegelt (Rust) | `omnitrade` (Position der Laeufe in `Werkstatt/omnitrade`, Live-Zweig Kraken/USDC) |
 | **aus** seit 21.09.2026 | `spiegel`, `spiegel_knapp`, `spiegel_weit` (Buecher bleiben als Vergleichsgrundlage, wachsen nicht) |
 
 Die acht `klassik_*`-Spuren (30.09.2026) setzen die Pine-Strategien dieses Ordners als Papierbuch um
