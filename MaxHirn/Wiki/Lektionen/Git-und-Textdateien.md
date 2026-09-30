@@ -125,6 +125,23 @@ Nachtrag 30.09.2026: es waren nicht eine, sondern **sechs** Dateien — alle
 Fingerabdruck des Verlusts (und der einzige Grund, warum die Loeschungen
 ueberhaupt auffielen).
 
+**Siebter Fall, sekundengenau (30.09.2026, `test_mcp_zombie_wache.py`).** Diesmal
+ist das Fenster kurz und die Umgebung bekannt:
+
+| Zeit | Beobachtung |
+|---|---|
+| 02:42:xx | Datei geschrieben (`write_file`, `verified: true`, 7.977 B), zweimal gepatcht, `python -m unittest` meldet **13 Tests gruen**, `git status` zeigt `??` |
+| 02:42 | `__pycache__/test_mcp_zombie_wache.cpython-314.pyc`, 15.426 B — bleibt liegen |
+| 02:45 | `ls`: **No such file or directory**; Ordnerzeit des Verzeichnisses = 02:45 |
+
+Damit sind zwei Erklaerungen fuer diesen Fall **ausgeschlossen**: eine
+Sammel-Aufraeumung untracked Dateien (im selben Zeitfenster entstanden
+`dashboard-wache.py` um 02:44 und `test_dashboard_wache.py` um 02:45 in
+DERSELBEN Sorte Ordner und lebten weiter) und der Fremdarbeit-Weg (die Datei war
+nie in `HEAD`, es gab nichts festzuschreiben). Neu ist die **Laenge des
+Fensters**: drei Minuten gegenueber den bisher bekannten Faellen, die erst nach
+dem Routine-Commit auffielen.
+
 Der **Taeter** ist offen. Gemessen und ausgeschlossen (30.09.2026): das
 Werkzeug-Backend ist kein Container mit eigener Sicht (`C: on /c type ntfs`,
 Terminal nativ auf dem Host), `write_file` schreibt host-sichtbar (Sonde 294 B
