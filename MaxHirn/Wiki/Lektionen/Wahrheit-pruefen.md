@@ -3,9 +3,9 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-29
+updated: 2026-10-01
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Zwoelf Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real.'
+summary: 'Vierzehn Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real, Einstellung gegen Leser.'
 ---
 
 # Wahrheit pruefen
@@ -256,3 +256,25 @@ oder steht er still?" (die Zahl steht in der CPU-Zeit, nicht im Gefuehl).
 `bf375a2ac65f`, alle 15 min), Tests `test_dashboard_wache.py` (18, mit Attrappen — kein Netz,
 kein Prozesskill). Verwandt: die Gateway-Wache unter
 [[Betrieb/Wachen-und-Aufgaben]] (Adresse statt Bedingung, 128 Neustarts an einem Tag).
+
+## 14. Eine Einstellung gilt nur fuer den Weg, der sie liest (01.10.2026)
+
+**Regel.** Eine Konfigurationsangabe ist kein Zustand des Systems, sondern eine Zusage an
+**einen** Leser. Vor „X ist gesetzt" also fragen: *welcher Code liest X — und laeuft mein Fall
+durch diesen Code?* Wo zwei Wege denselben Anker setzen sollen, muss **jeder** Weg seinen
+eigenen Mechanismus haben.
+
+**Warum.** `terminal.cwd` in `Agenten/Hermes/config.yaml` (gesetzt am 30.09.2026, T-233) galt
+fuer Gateway, Cron und entfernte Backends — **nicht** fuer die interaktive CLI und TUI: die
+uebernehmen das Startverzeichnis der Shell (`os.getcwd()`). Von der Wurzel gestartet, liefen
+beide dort, waehrend die Desktop-App in `Agenten\Hermes` startete. Zwei Anker, und jede
+Anweisung `cd "$HERMES_HOME/../.."` landete eine Ebene **ueber** der Wurzel. Zeuge war nicht
+die Konfiguration, sondern `state.db`: alle TUI-/CLI-Sitzungen trugen `cwd = BrainFiles`.
+Der Merksatz stand schon zweimal im Wiki ([[Betrieb/Arbeitsverzeichnis]], Lektion 12) — die
+Konfigurationsdatei war nur nie der Beleg.
+
+**Prueffrage.** „Wer liest das?" statt „ist das gesetzt?" — und beim Nachweis die **Spur** des
+Lesers nehmen (`state.db`, Journal, Log), nicht die Einstellung selbst.
+
+**Werkzeug.** `Agenten/Werkzeuge/anker-pruefen.ps1` (Exit 0 = die echte Profilfunktion startet
+die Sitzung in `Agenten\Hermes`); die Mechanik steht in [[Betrieb/Arbeitsverzeichnis]].
