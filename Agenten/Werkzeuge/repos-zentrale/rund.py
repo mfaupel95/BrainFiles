@@ -182,6 +182,9 @@ class RunderKnopf(tk.Canvas):
         self.aktiv = True
         self._zeiger_drauf = False
         self._gedrueckt = False
+        self._groesse = (0, 0)       # zuletzt gezeichnete Groesse
+        self._flaeche_items = []     # Kennungen der Flaechen-Elemente
+        self._text_item = None
 
         hoehe = hoehe or (zeilen_hoehe(master, schrift_tupel) + 2 * pady + 2)
         breite = breite or (text_breite(master, schrift_tupel, text) + 2 * padx + 2)
@@ -217,31 +220,58 @@ class RunderKnopf(tk.Canvas):
                 "rand": self._farbe(v["rand"])}
 
     # ------------------------------------------------------------- Zeichnen
-    def zeichnen(self) -> None:
-        """Den Knopf neu zeichnen (Groesse, Zustand, Hover)."""
-        plan = self._plan(hover=self._zeiger_drauf, gedrueckt=self._gedrueckt)
-        self.delete("all")
+    def zeichnen(self, erzwingen: bool = False) -> None:
+        """Den Knopf zeichnen - Geometrie nur bei geaenderter Groesse.
+
+        **Der Grund ist gemessen, nicht geraten:** Ein `delete("all")` unter dem
+        Mauszeiger zerstoert das Element, auf dem der Zeiger steht; Tk schickt
+        daraufhin `<Leave>`, das zeichnet erneut, das erzeugt `<Enter>` - der
+        Knopf flackert, solange der Zeiger auf ihm steht. Hover und Druck
+        tauschen deshalb nur noch die FARBEN der bestehenden Elemente
+        (`itemconfigure`), ohne sie zu loeschen.
+        """
         b = max(1, self.winfo_width() or int(self["width"]))
         h = max(1, self.winfo_height() or int(self["height"]))
+        if not erzwingen and (b, h) == self._groesse and self._text_item is not None:
+            self._farben_setzen()
+            return
+        self._groesse = (b, h)
+        plan = self._plan(hover=self._zeiger_drauf, gedrueckt=self._gedrueckt)
+        self.delete("all")
         rand = int(self.radius)
         flaeche(self, 0, 0, b - 1, h - 1, rand, plan["flaeche"], plan["rand"])
-        self.create_text(
+        self._flaeche_items = self.find_all()
+        self._text_item = self.create_text(
             b // 2, h // 2, text=self.text, fill=plan["schrift"],
             font=self.schrift_tupel,
         )
         self.configure(cursor="hand2" if (self.aktiv and self.command) else "")
 
+    def _farben_setzen(self) -> None:
+        """Nur die Farben der bestehenden Elemente tauschen - loescht nichts."""
+        plan = self._plan(hover=self._zeiger_drauf, gedrueckt=self._gedrueckt)
+        for kennung in self._flaeche_items:
+            self.itemconfigure(kennung, fill=plan["flaeche"], outline=plan["rand"])
+        if self._text_item is not None:
+            self.itemconfigure(self._text_item, fill=plan["schrift"])
+
     # ------------------------------------------------------------- Zustand
     def setze_aktiv(self, aktiv: bool) -> None:
         """Ein- oder ausschalten. Ein ausgeschalteter Knopf nennt seinen Grund."""
-        self.aktiv = bool(aktiv)
+        neu = bool(aktiv)
+        if neu == self.aktiv:
+            return
+        self.aktiv = neu
         self.zeichnen()
+        self.configure(cursor="hand2" if (self.aktiv and self.command) else "")
 
     def setze_text(self, text: str) -> None:
         self.text = text
         self.zeichnen()
 
     def setze_variante(self, variante: str) -> None:
+        if variante == self.variante:
+            return
         self.variante = variante
         self.zeichnen()
 
@@ -274,21 +304,25 @@ class RunderKnopf(tk.Canvas):
 
     # ------------------------------------------------------------- Ereignisse
     def _hinein(self, _e=None) -> None:
+        if self._zeiger_drauf:
+            return
         self._zeiger_drauf = True
-        self.zeichnen()
+        self._farben_setzen()
         if self.bei_hinweis and self.hinweis:
             self.bei_hinweis(self.hinweis)
 
     def _heraus(self, _e=None) -> None:
+        if not self._zeiger_drauf and not self._gedrueckt:
+            return
         self._zeiger_drauf = False
         self._gedrueckt = False
-        self.zeichnen()
+        self._farben_setzen()
 
     def _druck(self, _e=None) -> None:
-        if not self.aktiv:
+        if not self.aktiv or self._gedrueckt:
             return
         self._gedrueckt = True
-        self.zeichnen()
+        self._farben_setzen()
 
     def _loslassen(self, _e=None) -> None:
         war = self._gedrueckt

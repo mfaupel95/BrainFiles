@@ -388,6 +388,10 @@ class Fenster:
         self.kennzeichen: set[str] = set(self.einst["filter"])
         self._handel_da: dict | None = None
         self._handel_laeuft = False
+        self._handel_gelesen = None       # Zeitpunkt des letzten Lesens
+        self._handel_takt_ms = 60000      # Selbst-Nachziehen: 60 s
+        self._handel_takt_an = True
+        self._handel_takt_id = None
         self._vorschau_laeuft = False
         self._pflege_laeuft = False
         self._spurnamen: dict[str, list[str]] = {}
@@ -415,32 +419,17 @@ class Fenster:
 
     # ------------------------------------------------------------- Aufbau
     def _stil(self) -> ttk.Style:
-        """Alle Stile setzen - Grundstile aus fenster_design, Karten-Stile hier.
+        """Alle Stile setzen - Grundstile UND Karten-Stile aus fenster_design.
 
-        Die Karten haben eine eigene Flaeche (`blatt`). ttk-Widgets darin
-        brauchen einen Stil mit DIESEM Hintergrund, sonst steht ein Rechteck in
-        Fensterfarbe auf der Karte.
+        Die Karten haben eine eigene Flaeche (`blatt`); die Stile dafuer stehen
+        seit 30.09.2026 in `fenster_design.karten_stile` (Praefix `Karte.`),
+        damit Repos-Zentrale und Handelszentrale dieselben Karten zeigen.
         """
         st = ttk.Style()
         design.stil_anwenden(st, self.schriftgroesse)
         hoehe = self._zeilenhoehe()
         st.configure("Treeview", rowheight=hoehe)
-        st.configure("Karte.TLabel", background=FARBEN["blatt"], foreground=FARBEN["text"],
-                     font=self.schrift())
-        st.configure("Karte.Treeview", background=FARBEN["blatt"],
-                     fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=hoehe, borderwidth=0)
-        st.configure("Karte.Treeview.Heading", background=FARBEN["gitter"],
-                     foreground=FARBEN["akzent"], font=self.schrift(0, True), relief="flat")
-        st.configure("Karte.TNotebook", background=FARBEN["blatt"], borderwidth=0,
-                     tabmargins=(ABSTAND["s"], ABSTAND["s"], ABSTAND["s"], 0))
-        st.configure("Karte.TNotebook.Tab", background=FARBEN["gitter"],
-                     foreground=FARBEN["text"], font=self.schrift(-1),
-                     padding=(ABSTAND["m"], ABSTAND["xs"]))
-        st.map("Karte.TNotebook.Tab", background=[("selected", FARBEN["blatt"])],
-               foreground=[("selected", FARBEN["akzent"])])
-        st.configure("Karte.TCheckbutton", background=FARBEN["blatt"],
-                     foreground=FARBEN["text"], font=self.schrift())
+        design.karten_stile(st, self.schriftgroesse, zeilenhoehe_px=hoehe)
         return st
 
     def _zeilenhoehe(self) -> int:
@@ -660,7 +649,9 @@ class Fenster:
         laesst er sich danach frei.
         """
         karte = rund.Karte(self.teilung, titel=titel, farben=FARBEN,
-                           schrift_tupel=self.schrift(), rand=ABSTAND["m"],
+                           schrift_tupel=self.schrift(),
+                           radius=design.KARTE["radius"],
+                           rand=design.KARTE["innen"],
                            hoehe=int(hoehe * self.s), breite=int(breite * self.s))
         self._karten.append(karte)
         return karte
@@ -756,6 +747,8 @@ class Fenster:
              "Fenster mit Checkliste und Bestaetigung (F10)"),
             ("entschaerfen", "Entschaerfen", self.entschaerfen, "gefahr",
              "handel_erlaubt auf false - der Haken freigabe.erfuellt bleibt stehen"),
+            ("auto", "Auto: an", self.handel_takt_umschalten, "flach",
+             "den Stand alle 60 s selbst nachziehen (nur solange der Reiter sichtbar ist)"),
         ):
             knopf = self._knopf(leiste, f"handel_{name}", text, befehl,
                                 variante=variante, hinweis=hinweis)
@@ -1140,11 +1133,13 @@ class Fenster:
         """Den Stand im Hintergrund neu lesen (Knopf 'Stand neu lesen')."""
         self._handel_im_hintergrund(neu=True)
 
-    def _handel_im_hintergrund(self, *, neu: bool = False) -> None:
+    def _handel_im_hintergrund(self, *, neu: bool = False, leise: bool = False) -> None:
         if self._handel_laeuft:
             return
         self._handel_laeuft = True
-        self.status.configure(text="Handelsstand wird gelesen ...", foreground=FARBEN["matt"])
+        if not leise:
+            self.status.configure(text="Handelsstand wird gelesen ...",
+                                  foreground=FARBEN["matt"])
 
         def arbeit():
             daten = {}
@@ -1154,19 +1149,81 @@ class Fenster:
                 self._nach_main(lambda: self.status.configure(
                     text=f"Handelsstand nicht lesbar: {type(e).__name__}: {e}",
                     foreground=FARBEN["rot"]))
-            self._nach_main(lambda: self._handel_fertig(daten))
+            self._nach_main(lambda: self._handel_fertig(daten, leise=leise))
 
         threading.Thread(target=arbeit, daemon=True).start()
 
-    def _handel_fertig(self, daten: dict) -> None:
+    def _handel_fertig(self, daten: dict, leise: bool = False) -> None:
         self._handel_laeuft = False
+        self._handel_gelesen = datetime.now()
         self._spuren_markieren()
         self.anzeigen()
-        self.status.configure(
-            text=f"Handelsstand gelesen: {len(daten)} Spuren "
-                 f"({sum(1 for e in daten.values() if e.get('scharf'))} mit Orderweg und Schalter)",
-            foreground=FARBEN["matt"],
-        )
+        if leise:
+            self.status.configure(
+                text=f"Stand im Hintergrund nachgezogen ({self._handel_gelesen:%H:%M:%S})",
+                foreground=FARBEN["matt"])
+        else:
+            self.status.configure(
+                text=f"Handelsstand gelesen: {len(daten)} Spuren "
+                     f"({sum(1 for d in daten.values() if d.get('scharf'))} mit Orderweg und Schalter)",
+                foreground=FARBEN["matt"])
+        self.handel_takt_starten()
+
+    # ------------------------------------------- Selbst-Nachziehen (Takt)
+    def handel_takt_starten(self) -> None:
+        """Das Nachziehen neu aufziehen (nach jedem Lauf, nicht parallel)."""
+        self.handel_takt_stoppen()
+        if not self._handel_takt_an:
+            return
+        try:
+            self._handel_takt_id = self.root.after(self._handel_takt_ms, self._handel_takt)
+        except Exception:                                    # noqa: BLE001
+            self._handel_takt_id = None
+
+    def handel_takt_stoppen(self) -> None:
+        if self._handel_takt_id is not None:
+            try:
+                self.root.after_cancel(self._handel_takt_id)
+            except Exception:                                # noqa: BLE001
+                pass
+            self._handel_takt_id = None
+
+    def _handel_takt(self) -> None:
+        """Ein Takt: nur lesen, wenn die Handels-Karte auch zu sehen ist.
+
+        Sonst kostet der Lauf alle 60 s ein paar Sekunden, ohne dass ihn jemand
+        liest. Der Takt zieht sich danach selbst wieder auf.
+        """
+        self._handel_takt_id = None
+        if self._handel_takt_an and self._handel_sichtbar() and not self._handel_laeuft:
+            self._handel_im_hintergrund(neu=True, leise=True)
+        else:
+            self.handel_takt_starten()
+
+    def _handel_sichtbar(self) -> bool:
+        """Steht die Handels-Karte gerade im Vordergrund?"""
+        try:
+            return self.reiter.index(self.reiter.select()) == 0
+        except Exception:                                    # noqa: BLE001
+            return False
+
+    def handel_takt_umschalten(self) -> None:
+        """Selbst-Nachziehen an- oder abschalten."""
+        self._handel_takt_an = not self._handel_takt_an
+        knopf = self.handel_knoepfe.get("auto")
+        if knopf is not None:
+            knopf.setze_text("Auto: an" if self._handel_takt_an else "Auto: aus")
+        if self._handel_takt_an:
+            self.handel_takt_starten()
+            self.status.configure(
+                text=f"Der Stand wird alle {self._handel_takt_ms // 1000} s selbst "
+                     "nachgezogen, solange dieser Reiter sichtbar ist.",
+                foreground=FARBEN["matt"])
+        else:
+            self.handel_takt_stoppen()
+            self.status.configure(
+                text="Selbst-Nachziehen aus - 'Stand neu lesen' holt ihn von Hand.",
+                foreground=FARBEN["matt"])
 
     def _handel_anzeigen(self) -> None:
         """Die Handels-Karte auf die gewaehlte Zeile umstellen."""
@@ -1210,6 +1267,8 @@ class Fenster:
             teile.append(f"Zyklus vor {stand['alter']} min")
         if stand.get("auto"):
             teile.append("AUTO_FREIGABE")
+        if self._handel_gelesen:
+            teile.append(f"gelesen {self._handel_gelesen:%H:%M:%S}")
         return " · ".join(teile)
 
     def _handel_fliesstext(self, spur: str, stand: dict) -> str:

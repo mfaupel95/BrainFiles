@@ -32,6 +32,7 @@ das Vorgehen beim Aufraeumen, Nachziehen und Retten.
 | Hauptgedaechtnis | `Agenten/Hermes/memories/MEMORY.md` |
 | Nutzerprofil | `Agenten/Hermes/memories/USER.md` |
 | Vorschlaege aus `background_review` | `Agenten/Hermes/pending/memory/*.json` |
+| Sonde: greift das Tor? | `Agenten/Hermes/scripts/probe-memory-pinning.py` (mit dem hermes-agent-venv-Python) |
 | Verlust-Suche / Rettung | `Agenten/Hermes/scripts/memory-verlust.py` (`--alles`, `--retten`, `--json`) |
 | Wache | `Agenten/Hermes/scripts/memory-verlust-wache.py` (Cron, leere Ausgabe = nichts senden) |
 | Archiv aller Ersetzungen | `state.db`, Tabelle `messages`, `tool_name='memory'` |
@@ -41,17 +42,29 @@ das Vorgehen beim Aufraeumen, Nachziehen und Retten.
 KEINEN Git-Rueckweg. Vor jedem groesseren Eingriff eine Kopie daneben legen, und das
 Loeschen einer Vorschlagsdatei ist endgueltig - deshalb der Digest (Ablauf 5).
 
-## Kernregel: eine alte Queue wird nie "freigegeben"
+## Kernregel: was `approve` wirklich tut
 
-`/memory approve` ueber eine Queue, die Tage alt ist, schreibt `MEMORY.md` neu und
-uebernimmt **nichts** - ohne Fehlermeldung. Mechanismus: die meisten Vorschlaege sind
-`replace`-Operationen, und die tragen ein `old_text`. Ein tagealter Anker trifft den
-heutigen Eintrag nicht mehr, die Operation laeuft ins Leere, und der Vorschlag verfaellt
-mit seinem Anker. Ein Vorschlag ist damit **kein wartender Auftrag, sondern eine
-Momentaufnahme**.
+`/memory approve` ist weder ein stiller Blindgaenger noch ein "Freigeben" - es ist eine Kette
+mit einem Tor, und das Tor hat eine Bedingung:
 
-Also: jeden Vorschlag inhaltlich pruefen, das Brauchbare von Hand nachziehen, den Rest
-loeschen. "Freigeben" ist keine Antwort auf die Queue.
+- Beim EINLAGERN haengt `tools/memory_tool.py` an jede `replace`/`remove`-Operation die volle
+  getroffene Eintragung als `matched_entry`. Genehmigt wird genau DIESE Eintragung - der Anker
+  wird beim Genehmigen gar nicht mehr gesucht.
+- Beim GENEHMIGEN verweigert `apply_memory_pending` jede destructive Operation OHNE Pin:
+  "This destructive pending write predates entry pinning and cannot be verified; nothing was
+  applied. Reject it and recreate the change."
+- Ein Vorschlag von VOR dem Pin (Feld fehlt) ist damit nicht "verfallen", sondern **nicht
+  genehmigungsfaehig**. `/memory pending` nennt ihn "unpinned legacy target - reject and
+  recreate before approving", `approve` listet ihn unter `Failed:` - es MELDET also, und wer
+  die Ausgabe liest, sieht es.
+- Ein FRISCHER Vorschlag (mit Pin) ist genehmigungsfaehig; die Queue ist kein Sondermuell.
+- Ein **Batch** wird als GANZES verweigert: enthaelt er eine ungepinnte `replace`, geht auch
+  sein reines `add` verloren. Das ist die eigentliche Luecke der Queue.
+
+Warum die Queue trotzdem von Hand nachgezogen wird: ein tagealter Vorschlag beschreibt seinen
+Gegenstand nicht mehr zuverlaessig (Pfade umgezogen, Schalter laengst umgestellt), und ein `add`
+in einem verweigerten Batch kommt nie an. Ein Vorschlag ist eine Momentaufnahme, kein wartender
+Auftrag - das Brauchbare von Hand nachziehen, den Rest loeschen.
 
 ## Ablauf
 
@@ -105,6 +118,12 @@ loeschen. "Freigeben" ist keine Antwort auf die Queue.
 - **Zeichenbudget im Blick halten.** Das Gedaechtnis wird in JEDEN Turn geladen; beim
   Nachziehen zuerst zusammenfassen und ersetzen statt anhaengen, sonst waechst die
   Dauerlast. Die Ausgabe des Werkzeugs nennt Prozent und Grenze.
+- **Eine Sonde baut denselben Store wie das Tor.** `MemoryStore()` ohne Argumente traegt die
+  CODE-Vorgaben (2200/1375 Zeichen), waehrend `config.yaml` 750000/237500 setzt - die Sonde
+  meldet dann "MEMORY.md exceeds its char limit on load ... further additions are blocked" und
+  man haelt ein gesundes Gedaechtnis fuer gesperrt. Immer
+  `from tools.memory_tool import load_on_disk_store` nehmen (genau der Store, den
+  `/memory approve` baut) und die Sonde mit dem hermes-agent-venv-Python starten.
 - **Zugangsdaten nie ausgeben.** Beim Pruefen nur die EXISTENZ und die Laenge messen,
   niemals den Wert protokollieren - `Wissen/Zugaenge.md` bleibt Stufe 0.
 
@@ -115,3 +134,6 @@ loeschen. "Freigeben" ist keine Antwort auf die Queue.
 - `python Agenten/Hermes/scripts/memory-verlust.py` meldet KEINEN neuen Verlust nach dem
   eigenen Schreiben (der eigene `replace` darf dort nicht auftauchen).
 - `pending/memory/` ist leer und der Digest liegt unter `Agenten/Hermes/.sicherung/`.
+- Die Verweigerung ist belegbar statt behauptet: `Agenten/Hermes/scripts/probe-memory-pinning.py`
+  laesst beide alten Formen (einzelnes `replace`, Batch mit `replace`) durch das ECHTE Tor laufen -
+  erwartet `success: false` samt Meldung, und MEMORY.md danach byte-gleich (Groesse UND mtime).
