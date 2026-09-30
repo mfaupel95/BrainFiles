@@ -890,6 +890,17 @@ Profil ist das der kuerzere Weg als das Skript samt UAC-Prompt. **`-PassThru` un
 RunAs`** (AmbiguousParameterSet); das innere Skript schreibt sein Ergebnis
 selbst per `Start-Transcript` in eine Logdatei.
 
+**`hermes auth` ist NICHT profilbewusst — es zeigt immer den Wurzel-Pool.**
+`hermes auth` (ohne Unterkommando) ist ein interaktives Menue und laeuft ohne
+Terminal in den Pool-Status; `hermes auth list` und `auth status <provider>`
+liefern fuer `default` und fuer jedes `-p <profil>` die IDENTISCHE Ausgabe (am
+30.09.2026 Zeile fuer Zeile verglichen). Wer daraus schliesst, ein Profil sei
+angemeldet, prueft in Wahrheit den Root-Store: die eigene `profiles/<p>/auth.json`
+(z. B. 713 B, nur `openrouter`) sieht man dort nicht. Was ein Profil WIRKLICH
+nutzt, belegt nur ein echter Aufruf plus `session_model_usage` in
+`profiles/<p>/state.db` (Spalten `model`, `billing_provider`, `billing_base_url`)
+— nicht die Pool-Anzeige.
+
 Fallen: Ein Profil mit eigener `auth.json` bleibt unberuehrt (die Datei NICHT
 ueberschreiben). Enthaelt sie nur einen Pool-Eintrag ohne `providers.nous`,
 nutzt sie nichts - vorher sichern und dann ebenfalls verknuepfen. Ein
