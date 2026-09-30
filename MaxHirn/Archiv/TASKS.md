@@ -60,6 +60,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
+      Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
+      #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
+      Kerzen nachgerechnet und fallen durch: die Bitcoin-Nacht-Saisonalitaet (#0753,
+      Blog-Fassung 21:00->23:00 UTC) bringt brutto +3,7 % p.a., bestes Fenster
+      21:00->22:00 +9,8 % p.a. (t +2,13) — ab 0,05 %/Seite ist alles negativ, bei
+      Kraken (0,6 %/Seite) -98,7 %; die MAX(10)-Regel mit einem Tag Halten hat
+      65,7 Signale/Jahr und steht netto bei -6,0 % p.a. Es bleibt der
+      Donchian-Tagesausbruch auf BTC 1D: Donchian(30) 3,9 Signale/Jahr, netto
+      +17,8 % p.a. bei max. -43 % Rueckgang gegen Buy & Hold +20,2 % p.a. bei -77 %
+      (Donchian(20): +15,0 %/-56 %) — weniger Rendite, halbierter Rueckgang,
+      t = 1,25 bei 34 Runden also ein Kandidat, kein Beweis. Werkzeug und Zahlen:
+      `Agenten/Handel/quantpedia_probe.py`, Wiki/Handel/Lektionen.md.
+      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko) — sonst als geprueft-aber-verworfen schliessen.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
+
+- [ ] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
+      Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
+      nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
+      Instrument, Positionsgroesse invers zur Volatilitaet, monatliche
+      Neuverteilung, QuantConnect-Gegenprobe Sharpe 0,3 / CAGR 7,29 %) und die
+      Blog-Studie 'Tactical Asset Rotation Between NASDAQ-100 and Bitcoin'
+      (Donchian-Ausbruch 5-50 Tage, Rotation QQQ/BTC/Cash, Sharpe bis 1,69 ueber
+      2019-2026). Beide sind gebuehrenfreundlich (monatliche bzw. seltene
+      Neuverteilung) und mit dem Backtest-Fundament (historie_binance.py,
+      replay.py) pruefbar — TSMOM sogar auf den 20 vorhandenen Instrumenten.
+      Der zweite Kandidat braucht QQQ-Tageskerzen, die im Haus noch fehlen.
+      Naechster Schritt: TSMOM mit `replay.py` ueber daten/historie/ nachrechnen (12-Monats-Fenster, inverse Volatilitaet, monatliche Neuverteilung, Gebuehr je Seite aus der Wachen-Konvention).
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
+
 - [ ] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
       Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
       handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und

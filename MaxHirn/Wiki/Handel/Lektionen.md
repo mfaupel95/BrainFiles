@@ -776,3 +776,54 @@ Zwei Dinge, die daran haengen und leicht untergehen:
   Neustart des Dauerlaufs.** Weil die Sperrliste dieser Spuren jetzt mehrere
   Gruende nennt, oeffnet die Auto-Freigabe ohnehin kein Fenster mehr
   (`nur_fenster_fehlt` verlangt GENAU einen Grund).
+
+## Quantpedia: die Zahlen der Paper sind keine Handelszahlen (30.09.2026)
+
+**Regel.** Eine fremde Strategie wird erst geglaubt, wenn sie auf den EIGENEN
+Kerzen mit den EIGENEN Gebuehren nachgerechnet ist. Bei kurzen Haltedauern
+entscheidet die Gebuehr, nicht die Guete des Signals — die Kosten wachsen mit
+der Rundenzahl, der Ertrag nicht.
+
+**Ausgangslage.** Quantpedia hat genau ZWEI freie Krypto-Strategien (#0701
+Rebalancing Premium in Cryptocurrencies, #0753 Overnight Seasonality in Bitcoin);
+alles andere Krypto ist Premium. Und der Paperwert ist nicht der Handelswert:
+zu #0701 liefert die mitgelieferte QuantConnect-Gegenprobe Sharpe -0,5,
+CAGR -18,76 %, Rueckgang 63 % gegen 7,65 % im Paper.
+
+**Nachgerechnet (#0753, Binance BTC 1H 2021-01..2026-09, 50.223 Kerzen).** Die
+Richtung stimmt: die UTC-Stunden 21 und 22 sind auch bei uns die staerksten
+(t +2,45 / +2,13; je Stunde hochgerechnet +12,9 % / +10,5 % p.a.).
+
+Die handelbare Regel traegt trotzdem nicht:
+
+| Fenster (UTC) | Mittel/Tag | brutto p.a. | 0,05 %/Seite | 0,6 %/Seite (Kraken) |
+|---|---|---|---|---|
+| 21:00 -> 23:00 (Blog-Fassung) | +0,014 % | +3,7 % | -28,0 % | -98,7 % |
+| 22:00 -> 23:00 (Original) | -0,014 % | -5,5 % | -34,5 % | -98,9 % |
+| 21:00 -> 22:00 (bestes) | +0,027 % | +9,8 % | -23,8 % | -98,6 % |
+
+Ursache: rund 0,03 % Kante je Tag gegen mindestens 0,1 % Rundlauf. Der Befund
+ist stabil ueber beide Haelften (t +1,40 / +1,69) — es fehlt nicht die Datenmenge,
+es fehlt die Groesse.
+
+**Die eine Familie, die unsere Gebuehren ueberlebt** ist der Tagesausbruch
+(Donchian) auf BTC 1D, netto 0,1 %/Seite:
+
+| Variante | Signale/Jahr | netto p.a. | max. Rueckgang | Tage im Markt |
+|---|---|---|---|---|
+| Donchian(20) | 6,3 | +15,0 % | -56 % | 52 % |
+| Donchian(30) | 3,9 | +17,8 % | -43 % | 54 % |
+| Buy & Hold | — | +20,2 % | -77 % | 100 % |
+| MAX(10), 1 Tag Halten | 65,7 | -6,0 % | — | — |
+
+Das ist **keine hoehere Rendite, sondern ein halbierter Rueckgang** (Calmar
+0,41 gegen 0,26) — und mit t = 1,25 bei 34 Runden ein Kandidat, kein Beweis.
+
+**Nachrechnen** (aus `Agenten/Handel`, Daten aus `daten/historie/`):
+
+```
+.venv/Scripts/python.exe quantpedia_probe.py stunde
+.venv/Scripts/python.exe quantpedia_probe.py fenster 21 22
+.venv/Scripts/python.exe quantpedia_probe.py donchian
+.venv/Scripts/python.exe quantpedia_probe.py vergleich
+```
