@@ -14,7 +14,7 @@ from pathlib import Path
 from tkinter import ttk
 
 import leitstand_stil as stil
-from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
+from leitstand_bedienung import Tabelle, Tooltip, setze_knopf, umbrechen
 
 HIER = Path(__file__).resolve().parent
 BERICHTE = HIER / "prognose_berichte"          # wie in prognose.py
@@ -91,7 +91,7 @@ def tore_zeilen(bericht):
 
 class MarktReiter(ttk.Frame):
     def __init__(self, eltern, leitstand, ordner=None, uhr=None):
-        super().__init__(eltern, padding=8)
+        super().__init__(eltern, padding=stil.ABSTAND_GROSS)
         self.ls, self.zustand = leitstand, leitstand.zustand
         self.ordner = Path(ordner) if ordner else BERICHTE
         self.uhr = uhr or (lambda: datetime.now(timezone.utc))
@@ -109,18 +109,27 @@ class MarktReiter(ttk.Frame):
         self.r_weit.pack(side="left", padx=4)
         self.tip_weit = Tooltip(self.r_weit)
 
-        self.w_kopf = ttk.Label(self, text="")
-        self.w_kopf.pack(anchor="w", pady=(6, 0))
+        self.w_kopf = umbrechen(ttk.Label(self, text="", style="Kopf.TLabel"))
+        self.w_kopf.pack(fill="x", pady=(stil.ABSTAND_GROSS, 0))
         # Nur sichtbar, wenn es etwas zu warnen gibt - sonst kein leeres Band.
-        self.w_warnung = ttk.Label(self, text="", anchor="w", style="Warnung.TLabel")
+        self.w_warnung = umbrechen(ttk.Label(self, text="", anchor="w",
+                                             style="Warnung.TLabel"), rand=24)
 
         self.teiler = teiler = ttk.PanedWindow(self, orient="vertical")
         teiler.pack(fill="both", expand=True, pady=(stil.ABSTAND, 0))
-        self.treffer = Tabelle(teiler, TREFFER_FELDER, self.zustand, "markt_treffer")
-        teiler.add(self.treffer, weight=3)
-        self.tore = Tabelle(teiler, TORE_SPALTEN, self.zustand, "markt_tore", hoehe=6)
-        teiler.add(self.tore, weight=1)
+        self.treffer = self._block(teiler, "Treffer", 3, TREFFER_FELDER,
+                                   "markt_treffer")
+        self.tore = self._block(teiler, "Tore", 1, TORE_SPALTEN, "markt_tore", hoehe=6)
         self.refresh()
+
+    def _block(self, teiler, titel, gewicht, spalten, schluessel, **kw):
+        rahmen = ttk.Frame(teiler, padding=(0, stil.ABSTAND, 0, 0))
+        teiler.add(rahmen, weight=gewicht)
+        ttk.Label(rahmen, text=titel, style="Kopf.TLabel").pack(anchor="w",
+                                                                pady=(0, 4))
+        t = Tabelle(rahmen, spalten, self.zustand, schluessel, **kw)
+        t.pack(fill="both", expand=True)
+        return t
 
     def umschalten(self):
         self.zustand.merke_in("werte", "markt_fassung", self.fassung.get())

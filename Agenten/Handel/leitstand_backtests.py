@@ -19,7 +19,7 @@ from tkinter import ttk
 import leitstand_laeufe as ll
 import replay
 import leitstand_stil as stil
-from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
+from leitstand_bedienung import Tabelle, Tooltip, setze_knopf, umbrechen
 from leitstand_optimieren import OptimierenBereich
 from leitstand_urteile import UrteileBereich
 
@@ -262,10 +262,10 @@ class EinzelBereich(ttk.Frame):
                                    else (namen[0] if namen else ""))
         wahl = ttk.Combobox(oben, textvariable=self.w_name, values=namen,
                             state="readonly", width=24)
-        wahl.pack(side="left", padx=6)
+        wahl.pack(side="left", padx=stil.ABSTAND)
         wahl.bind("<<ComboboxSelected>>", lambda _e: self._felder_bauen())
         self.k_start = ttk.Button(oben, text="Starten", command=self.starten)
-        self.k_start.pack(side="left", padx=6)
+        self.k_start.pack(side="left", padx=stil.ABSTAND)
         self.tip = Tooltip(self.k_start)
         ttk.Label(self, text=fehler, style="Fehler.TLabel").pack(anchor="w")
         self.rahmen = ttk.Frame(self)
@@ -344,7 +344,7 @@ class EinzelBereich(ttk.Frame):
 
 class BacktestReiter(ttk.Frame):
     def __init__(self, eltern, leitstand, steuerung=None, bereiche=None):
-        super().__init__(eltern, padding=6)
+        super().__init__(eltern, padding=stil.ABSTAND_GROSS)
         self.ls, self.zustand = leitstand, leitstand.zustand
         self.steuerung = steuerung or ll.Steuerung()
         self._fertig = None
@@ -352,15 +352,17 @@ class BacktestReiter(ttk.Frame):
         self._liste = []
         self._takt_id = None
 
-        ttk.Label(self, text=HINWEIS_FREIGABE, style="Hinweis.TLabel").pack(
-            anchor="w", pady=(0, 4))
+        umbrechen(ttk.Label(self, text=HINWEIS_FREIGABE, style="Hinweis.TLabel")).pack(
+            fill="x", pady=(0, stil.ABSTAND))
         teiler = self.teiler = ttk.PanedWindow(self, orient="vertical")
         teiler.pack(fill="both", expand=True)
-        # Lage im Zustand: gemerkt beim Loslassen, hergestellt nach dem Mappen
-        # (vorher hat der Teiler keine Hoehe, sashpos liefe ins Leere).
+        # Lage im Zustand: gemerkt beim Loslassen, hergestellt bei jeder
+        # Groessenaenderung der Anlaufphase (umbrechende Hinweise verschieben
+        # das Layout noch) - bis der Nutzer zieht oder die Sekunde um ist.
+        self._teiler_anlauf = True
         teiler.bind("<ButtonRelease-1>", self._teiler_merken, add="+")
-        teiler.bind("<Map>", lambda _e: self.after_idle(self._teiler_herstellen),
-                    add="+")
+        teiler.bind("<Configure>", self._teiler_herstellen, add="+")
+        self.after(1000, lambda: setattr(self, "_teiler_anlauf", False))
 
         self.arten = ttk.Notebook(teiler)
         teiler.add(self.arten, weight=1)
@@ -414,12 +416,13 @@ class BacktestReiter(ttk.Frame):
         self._takt_id = self.after(TAKT_MS, self._takt)
 
     def _teiler_merken(self, _event=None):
+        self._teiler_anlauf = False
         lage = [self.teiler.sashpos(i) for i in range(len(self.teiler.panes()) - 1)]
         self.zustand.merke_in("teiler", "backtests", lage)
 
-    def _teiler_herstellen(self):
+    def _teiler_herstellen(self, _event=None):
         lage = (self.zustand.get("teiler") or {}).get("backtests")
-        if not isinstance(lage, list):
+        if not self._teiler_anlauf or not isinstance(lage, list):
             return
         try:
             for i, pos in enumerate(lage[:len(self.teiler.panes()) - 1]):

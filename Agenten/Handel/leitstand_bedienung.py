@@ -232,6 +232,14 @@ class Zustand:
 
 # --- Tk-Bausteine -----------------------------------------------------------
 
+def umbrechen(label, rand=8):
+    """Langer Hinweis bricht an der Breite um, statt abgeschnitten zu werden.
+    Das Label muss mit fill="x" gepackt sein, sonst waechst es nicht mit."""
+    label.bind("<Configure>", lambda e: label.configure(
+        wraplength=max(e.width - rand, 120)), add="+")
+    return label
+
+
 class Tooltip:
     def __init__(self, widget, text=""):
         self.widget, self.text, self.fenster = widget, text, None

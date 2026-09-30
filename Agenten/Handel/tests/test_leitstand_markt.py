@@ -11,6 +11,7 @@ import json
 import sys
 import tempfile
 import tkinter as tk
+from tkinter import ttk
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -104,6 +105,12 @@ class Rein(unittest.TestCase):
         self.assertEqual(lm.tore_zeilen(dict(BERICHT, tore="kaputt")), [])
 
 
+def _alle(w):
+    for k in w.winfo_children():
+        yield k
+        yield from _alle(k)
+
+
 class Reiter(unittest.TestCase):
     def setUp(self):
         try:
@@ -128,6 +135,14 @@ class Reiter(unittest.TestCase):
                            uhr=lambda: self.jetzt)
         self.root.update_idletasks()
         return r
+
+    def test_kopf_warnung_und_tabellen_getrennt(self):
+        self._bericht("neuester.json", BERICHT)
+        r = self._reiter()
+        self.assertEqual(str(r.w_kopf.cget("style")), "Kopf.TLabel")
+        texte = [str(k.cget("text")) for k in _alle(r) if isinstance(k, ttk.Label)]
+        self.assertIn("Treffer", texte)
+        self.assertIn("Tore", texte)
 
     def test_bericht_wird_angezeigt(self):
         self._bericht("neuester.json", BERICHT)

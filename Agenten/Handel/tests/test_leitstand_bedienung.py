@@ -212,6 +212,18 @@ class ZeitDialogTest(MitTk):
         self.assertEqual(d.ergebnis, "abgebrochen")
 
 
+class UmbrechenTest(MitTk):
+    def test_wraplength_folgt_der_breite(self):
+        self.root.deiconify()
+        self.root.geometry("400x200")
+        lbl = lb.umbrechen(tk.Label(self.root, text="lang " * 80))
+        lbl.pack(fill="x")
+        self.root.update()
+        breite = int(str(lbl.cget("wraplength")))
+        self.assertGreater(breite, 300)
+        self.assertLessEqual(breite, 400)
+
+
 class TabelleTest(MitTk):
     def _tabelle(self):
         t = lb.Tabelle(self.root, ("Spur", "Wert"), self.zustand, "probe")

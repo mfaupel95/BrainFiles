@@ -184,7 +184,7 @@ class FreigabeDialog(ZeitDialog):
 class FreigabenReiter(ttk.Frame):
     def __init__(self, eltern, leitstand, dialog=FreigabeDialog,
                  frage=messagebox.askyesno):
-        super().__init__(eltern, padding=6)
+        super().__init__(eltern, padding=stil.ABSTAND_GROSS)
         self.ls, self.dialog, self.frage = leitstand, dialog, frage
         self._fenster, self._gesehen = {}, set()
         self.tabelle = Tabelle(self, SPALTEN, leitstand.zustand, "freigaben",

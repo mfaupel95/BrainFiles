@@ -21,7 +21,8 @@ from tkinter import ttk
 
 import backtest_urteile as bu
 import leitstand_laeufe as ll
-from leitstand_bedienung import Tabelle, Tooltip, ZeitDialog, setze_knopf
+import leitstand_stil as stil
+from leitstand_bedienung import Tabelle, Tooltip, ZeitDialog, setze_knopf, umbrechen
 
 SPALTEN = ("Spur", "Urteil", "backtest_bestanden", "Text")
 URTEIL_TEXT = {True: "bestanden", False: "nicht bestanden", None: "nicht ermittelbar"}
@@ -144,7 +145,7 @@ class EintragenDialog(ZeitDialog):
         for zeile in aenderungen:
             ttk.Label(i, text=zeile).pack(anchor="w", padx=(10, 0))
         ttk.Label(i, text="handel_erlaubt und freigabe.erfuellt bleiben unberührt.",
-                  style="Matt.TLabel").pack(anchor="w", pady=(6, 0))
+                  style="Matt.TLabel").pack(anchor="w", pady=(stil.ABSTAND, 0))
         knoepfe = ttk.Frame(i)
         knoepfe.pack(anchor="e", pady=(10, 0))
         # Kein Tab-Fokus auf "Ja": Tab/Leertaste bestaetigen nie, den Anfangsfokus
@@ -190,9 +191,10 @@ class UrteileBereich(ttk.Frame):
                                      command=self.vorschau)
         self.k_vorschau.pack(side="left", padx=(12, 0))
         self.tip_vorschau = Tooltip(self.k_vorschau)
-        ttk.Label(self, text="Die Vorschau schreibt nichts. Eintragen übernimmt genau "
-                             "diese Vorschau — kein neuer Lauf.",
-                  style="Matt.TLabel").pack(anchor="w", pady=(4, 0))
+        umbrechen(ttk.Label(self, text="Die Vorschau schreibt nichts. Eintragen "
+                                       "übernimmt genau diese Vorschau — kein "
+                                       "neuer Lauf.", style="Matt.TLabel")).pack(
+            fill="x", pady=(stil.ABSTAND, 0))
 
         self.tabelle = Tabelle(self, SPALTEN, reiter.zustand, "urteile", hoehe=4)
         self.tabelle.pack(fill="both", expand=True, pady=(4, 0))

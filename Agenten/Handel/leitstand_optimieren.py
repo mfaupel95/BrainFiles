@@ -22,7 +22,7 @@ from tkinter import ttk
 import leitstand_laeufe as ll
 import leitstand_stil as stil
 import replay
-from leitstand_bedienung import Tabelle, Tooltip, setze_knopf
+from leitstand_bedienung import Tabelle, Tooltip, setze_knopf, umbrechen
 
 HIER = Path(__file__).resolve().parent
 SPUR_OPT = HIER / "spur_opt.json"
@@ -268,14 +268,14 @@ class OptimierenBereich(ttk.Frame):
         self.tip = Tooltip(self.k_rechnen)
         ttk.Button(zeile, text="Ergebnis zeigen",
                    command=lambda: self.zeige(self.w_spur.get())).pack(
-                       side="left", padx=6)
+                       side="left", padx=stil.ABSTAND)
         self.w_plan = ttk.Label(zeile, text="", justify="left")
-        self.w_plan.pack(side="left", padx=12)
-        self.w_hinweis = ttk.Label(self, text="", style="Hinweis.TLabel")
-        self.w_hinweis.pack(anchor="w", pady=(4, 0))
+        self.w_plan.pack(side="left", padx=stil.ABSTAND_GROSS)
+        self.w_hinweis = umbrechen(ttk.Label(self, text="", style="Hinweis.TLabel"))
+        self.w_hinweis.pack(fill="x", pady=(stil.ABSTAND, 0))
 
         teiler = ttk.PanedWindow(self, orient="horizontal")
-        teiler.pack(fill="both", expand=True, pady=(4, 0))
+        teiler.pack(fill="both", expand=True, pady=(stil.ABSTAND, 0))
         self.tabelle = Tabelle(teiler, KANDIDAT_SPALTEN, reiter.zustand,
                                "optimieren", hoehe=8)
         self.tabelle.baum.bind("<<TreeviewSelect>>", self._auswahl, add="+")
