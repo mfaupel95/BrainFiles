@@ -99,6 +99,7 @@ def _paarung_form_b(rows):
     brauchbar = [r for r in rows if jp.schluessel(r) and _zahl(r, "preis")]
     p = jp.Paarung(einstieg_ok=einstieg_ok)
     raus, zwang = [], []
+    ohne_seite = 0
     for ein, r in p.zuordnen(brauchbar):
         inst = jp.schluessel(ein)
         e = _zahl(ein, "preis")
@@ -114,12 +115,26 @@ def _paarung_form_b(rows):
         if stoerungen.ist_stoerung(r.get("grund")):
             zwang.append((inst, (r.get("grund") or "").strip()))
             continue
+        # DIE RICHTUNG GEHOERT DAZU (gefunden am 30.09.2026). Ohne Vorzeichen
+        # war `(preis/e - 1)` bei einem SHORT verkehrt: ein Short, der im Ziel
+        # schliesst, stand als Verlust im Buch. Gemessen an wavetrend
+        # (2021-2026, gemischte Richtungen): Summe der Runden mit Vorzeichen
+        # -513, ohne Vorzeichen +679 - und `f_max`, `p` und jede Summe darauf
+        # waren damit fuer jede gemischt handelnde Spur falsch. Die Seite steht
+        # in der EINSTIEGSzeile (`seite`, Werte long/short); fehlt sie, gilt
+        # long wie bisher, und die Zahl wird als `ohne_seite` ausgewiesen.
+        seite = str(ein.get("seite") or "").strip().lower()
+        if seite not in ("long", "short"):
+            ohne_seite += 1
+            vorz = 1.0
+        else:
+            vorz = -1.0 if seite == "short" else 1.0
         raus.append((abs(e - s) / e * 100, abs(z - e) / e * 100,
-                     (preis / e - 1) * 100))
+                     (preis / e - 1) * 100 * vorz))
     stand = p.stand()
     return {"runden": raus, "zwang": zwang, "unpaarig": stand["unpaarig"],
             "offen": stand["offen"], "ohne_kennung": stand["ohne_kennung"],
-            "zweideutig": stand["zweideutig"]}
+            "zweideutig": stand["zweideutig"], "ohne_seite": ohne_seite}
 
 
 def paarung(pfad: Path):
