@@ -61,6 +61,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
+      Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
+      nachgeprueft (C: 8192/8192 fest, O: 32768/32768, beide Eintraege in
+      `HKLM\...\Memory Management\PagingFiles` und in WMI). Wirksam wird das
+      erst mit einem Neustart: die Commit-Grenze steht weiter bei 84,5 GB und
+      steigt dann auf rund 103,7 GB; ausserdem traegt C: noch eine
+      selbstverwaltete 21 GB grosse Datei, die nach dem Neustart auf 8 GB
+      schrumpft (rund 13 GB frei gewonnen). Anlass: 296 Speichernot-Meldungen
+      (Ereignis 2004) in 14 Tagen und am 30.09.2026 einunddreissig Abstuerze
+      mit 0xc000012d (STATUS_COMMITMENT_LIMIT), darunter dwm.exe und der
+      Gateway.
+      Naechster Schritt: Neustart in einem ruhigen Fenster (Entscheidung Max).
+      Danach nachsehen: `Get-CimInstance Win32_PageFileUsage` nennt beide
+      Dateien, die Commit-Grenze liegt bei rund 103,7 GB, C: hat rund 13 GB
+      mehr frei. Dauerlauf-Stufen, Gateway und Dashboard starten ueber ihre
+      geplanten Aufgaben selbst; offene Boersenpositionen behalten ihre Stops
+      an der Boerse.
+      Angelegt: 2026-09-30
+      Betrifft: C:/O: Auslagerung, Agenten/Routinen/einmalig-20260930-auslagerung.ps1,
+      MaxHirn/Wiki/Betrieb/Sicherung-und-Laufwerke.md
+
 - [ ] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
       Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
       gefuellt (Bereiche REPOS / WERKSTATT / HANDEL), 73 mit Startbefehl. Offen
@@ -113,23 +134,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30
       Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
 
-- [ ] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
-      Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
-      (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
-      Folge: `desktop promotion rename win-unpacked -> win-unpacked.previous`
-      scheiterte mit WinError 5 und `OSError: [Errno 28] No space left on
-      device`, der Update-Schwanz blieb liegen, der Desktop kam in eine
-      Bootschleife und das Gateway war von 14:20 bis 15:33 aus. Sofortmassnahme
-      war Aufraeumen (uv-Cache 9,2 GB, Temp 4,6 GB, Build-Reste 0,5 GB ->
-      35,9 GB frei, danach wieder 32,9 GB).
-      Naechster Schritt: entscheiden, ob eine Dauerreserve von ~30 GB auf C:
-      gehalten wird (Wache oder Aufraeumroutine vor jedem Update) oder ob die
-      Auslagerungsdatei von C: nach O: wandert (Skript
-      `Agenten/Routinen/einmalig-20260930-auslagerung.ps1`, noch nicht
-      ausgefuehrt, braucht Admin).
-      Angelegt: 2026-09-30
-      Betrifft: C:-Laufwerk, Agenten/Hermes/hermes-agent/apps/desktop,
-      Agenten/Routinen/einmalig-20260930-auslagerung.ps1
 
 - [ ] **T-232 - Launcher-Lauf nie mit eigenem Zeitlimit killen (Update-Schwanz-Falle)**
       Kontext: `hermes config unset fallback_providers` lief am 30.09.2026 in
@@ -2603,6 +2607,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
+      Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
+      (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
+      Folge: `desktop promotion rename win-unpacked -> win-unpacked.previous`
+      scheiterte mit WinError 5 und `OSError: [Errno 28] No space left on
+      device`, der Update-Schwanz blieb liegen, der Desktop kam in eine
+      Bootschleife und das Gateway war von 14:20 bis 15:33 aus. Sofortmassnahme
+      war Aufraeumen (uv-Cache 9,2 GB, Temp 4,6 GB, Build-Reste 0,5 GB ->
+      35,9 GB frei, danach wieder 32,9 GB).
+      Naechster Schritt: entscheiden, ob eine Dauerreserve von ~30 GB auf C:
+      gehalten wird (Wache oder Aufraeumroutine vor jedem Update) oder ob die
+      Auslagerungsdatei von C: nach O: wandert (Skript
+      `Agenten/Routinen/einmalig-20260930-auslagerung.ps1`, noch nicht
+      ausgefuehrt, braucht Admin).
+      Angelegt: 2026-09-30
+      Betrifft: C:-Laufwerk, Agenten/Hermes/hermes-agent/apps/desktop,
+      Agenten/Routinen/einmalig-20260930-auslagerung.ps1
+      Entscheidung Max (30.09.2026): Reserve halten UND Auslagerung umziehen. Reserve: platz-wache haelt 30 GB frei (Schwelle 25 -> 30, Cron jetzt taeglich 07:45 statt Montag), raeumt unter der Reserve selbst auf (Temp >24 h, CrashDumps, uv-Cache, npm-Cache; nie node_modules/.venv; nichts bei laufendem Bau), Tests 15 gruen. Auslagerung: C: 8192/8192 fest, O: 32768/32768 in Registry und WMI nachgeprueft - wirksam erst nach Neustart (Commit 84,5 -> rund 103,7 GB). Wiki/Betrieb/Sicherung-und-Laufwerke.md.
 - [x] **T-233 - terminal.cwd steht auf Agenten\Hermes statt auf der BrainFiles-Wurzel (gewollt?)**
       Kontext: Beim Setzen der Kompression auf Standard (Commit d4429fb) lag
       eine fremde Aenderung im Arbeitsbaum: `terminal.cwd` war von

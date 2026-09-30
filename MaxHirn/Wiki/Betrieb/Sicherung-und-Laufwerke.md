@@ -116,6 +116,48 @@ laufender Agent haelt die Datei offen, Windows verweigert dann jedes Umbenennen 
 Merksatz: **Wachstum von Dauerprozessen faellt nicht an RAM oder Prozesszahl auf, sondern nur am
 Plattenplatz** — wer Platz sucht, sieht zuerst Prozesstabellen an und findet dort nichts.
 
+## Reserve auf C: und die Auslagerungsdatei (30.09.2026)
+
+**Entscheidung Max:** auf C: werden **30 GB frei gehalten**, und die Auslagerungsdatei zieht
+von C: nach O:.
+
+Anlass war ein Ausfall am selben Tag: ein Desktop-Build braucht rund **20 GB transient**,
+C: lief dabei auf 0,1 GB, der Update-Schwanz brach mit `No space left on device` ab und der
+Desktop kam in eine Bootschleife (Gateway 73 min aus). Der erste Notausgang war Aufraeumen
+(uv-Cache 9,2 GB, Temp 4,6 GB).
+
+**Die Wache haelt die Reserve selbst.** `Agenten/Hermes/scripts/platz-wache.py` laeuft
+**taeglich 07:45** (Cron `platz-wache`, Telegram, leere Ausgabe = nichts senden). Faellt der
+freie Platz unter 30 GB, raeumt sie auf - aber nur die vier erlaubten, reproduzierbaren
+Posten:
+
+| Posten | Schwelle |
+|---|---|
+| Temp-Dateien | aelter als 24 h |
+| CrashDumps | alle |
+| uv-Cache (`uv cache clean`) | nur ohne laufenden Bau |
+| npm-Cache (`npm cache clean --force`) | nur ohne laufenden Bau |
+
+`node_modules` und `.venv` werden **nie** angefasst. **Waehrend eines laufenden Baus oder
+Updates wird gar nicht geloescht** - Zeugen sind die Marker
+`$HERMES_HOME/.hermes-update-in-progress` und `installs/*/source-completion-pending` sowie
+Kommandozeilen (`source_completion`, `hermes_cli.main update`, `electron-builder`,
+`npm run build`, `vite build`, `uv`). Ein `uv cache clean` mitten im Build zerstoert den Build.
+Schalter: `--ohne-aufraeumen` (nur messen), `--trocken` (nur anzeigen), `--immer` (Tabelle),
+`--json`. Tests: `scripts/test_platz_wache.py`, 15 gruen.
+
+**Vor jedem Bau/Update einmal nachsehen:**
+
+    python Agenten/Hermes/scripts/platz-wache.py --ohne-aufraeumen
+
+**Auslagerungsdatei (Zustand 30.09.2026):** `C:\pagefile.sys` ist auf **8192/8192 fest**
+gesetzt, `O:\pagefile.sys` auf **32768/32768** angelegt - beide Eintraege stehen in
+`HKLM\...\Memory Management\PagingFiles` und in WMI. Die Commit-Grenze steht damit bei
+84,5 GB und **erst nach einem Neustart** bei rund 103,7 GB. Zusaetzlicher Nebeneffekt: C:
+traegt derzeit noch eine selbstverwaltete 21 GB grosse Datei; nach dem Neustart sind es 8 GB,
+das Laufwerk gewinnt also rund 13 GB. Werkzeug (idempotent, mit `-Testlauf` und
+`-Rueckgaengig`): `Agenten/Routinen/einmalig-20260930-auslagerung.ps1`.
+
 ## Was offen bleibt
 
 Eine Kopie ausser Haus existiert, aber **`Q:` ist nicht verschluesselt** und enthaelt
