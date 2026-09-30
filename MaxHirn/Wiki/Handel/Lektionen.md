@@ -733,3 +733,46 @@ diese Zuordnung nach `runden_fuer()` verlagert (eine Stelle fuer beide Aufrufer,
 Verhalten etwas geaendert hatte. Er prueft die Regel jetzt so, wie sie gelten
 soll: die Zuordnung steht in `runden_fuer`, und `kennzahlen_fuer` benutzt sie.
 Merksatz: pruefe die Eigenschaft, nicht die Zeile, in der sie gerade steht.
+
+## Ein Stop, den die Boerse storniert, verschwindet still (30.09.2026)
+
+Drei Live-Positionen von `mosaic` auf Kraken (BTC, ETH, SOL, zusammen rund
+258 EUR) standen am 30.09.2026 ohne Notausstieg an der Boerse: die drei
+Stop-Loss-Auftraege trugen bei Kraken den Status `canceled`, waehrend das Buch
+weiter `boersen_stop_fehlt: false` meldete und die Kennungen
+(`O6WWXX-N5HKS-LYTO7N`, `OSCAY5-JB4KW-LTRGMW`, `OBY2UV-FGFGC-UEAFDK`) fuehrte.
+Gefunden wurde es nur, weil `kraken/spot_stops.py` die Bestaende gegen die
+offenen Orders haelt - **nicht** durch einen Waechter der Spur.
+
+Dasselbe Muster wie am 26.09.2026 (xperp, vier Stops). Zwei Lehren:
+
+1. **Eine Order-Kennung im Buch beweist nichts.** `order_details(txid)` fragen
+   und auf `status == "open"` pruefen. `boersen_stop_fehlt: false` heisst nur:
+   beim Einstieg wurde ein Stop bestellt.
+2. **Jede Spur mit Boersen-Stop braucht den Abgleich, den der scanner hat.**
+   `scanner/boersenstops.py` laeuft seit 28.09. im Live-Zyklus; mosaic, kraken
+   und die Nautilus-Arme haben ihn nicht. Ein Stop, den niemand nachprueft, ist
+   eine Annahme, kein Schutz.
+
+Nachgetragen am selben Tag: die drei Stops neu gesetzt (`OL2N6C-OIVXN-EY43U6`,
+`OJHLDO-QUBRE-HNPCA5`, `O5CFAP-FQD2X-J3ELGS`), Buch nachgezogen. Der Grund der
+Stornierung ist weiter offen.
+
+## Kraken gehoert ab 30.09.2026 omnitrade allein (30.09.2026)
+
+Auftrag Max: *"nur noch omnitrade auf kraken handel erlaubt"*. Umgesetzt:
+`kraken` und `moondev_marktlage` auf `handel_erlaubt=false` +
+`freigabe.erfuellt=false`, `mosaic` auf `boersen: ["okx"]` gekuerzt (OKX bleibt),
+alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE` entfernt.
+
+Zwei Dinge, die daran haengen und leicht untergehen:
+
+* **Der Entzug trifft das Kapital, nicht die Positionen.** Die sieben offenen
+  Kraken-Positionen bleiben stehen; geschuetzt sind sie nur noch durch ihre
+  Boersen-Stops. Wer eine Spur abschaltet, muss vorher pruefen, dass die Stops
+  liegen - sonst schaltet er den Waechter ab, der die Position ohnehin nicht
+  mehr bewacht haette.
+* **`handel_erlaubt=false` wirkt sofort, `AUTO_FREIGABE` erst nach einem
+  Neustart des Dauerlaufs.** Weil die Sperrliste dieser Spuren jetzt mehrere
+  Gruende nennt, oeffnet die Auto-Freigabe ohnehin kein Fenster mehr
+  (`nur_fenster_fehlt` verlangt GENAU einen Grund).

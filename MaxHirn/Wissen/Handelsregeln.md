@@ -1277,3 +1277,30 @@ Zwei Aussagen, die daraus folgen:
 Methodische Grenze: f_max benutzt die eigenen Runden der Spur, also auch deren
 Stichprobengroesse. Bei weniger als 8 Runden ist die Zahl ein Befund, keine
 Messung (dieselbe Schwelle wie in `auswertung_alle.py`).
+
+## Kraken: nur noch omnitrade (30.09.2026, Auftrag Max)
+
+Max hat am 30.09.2026 angeordnet: *"nur noch omnitrade auf kraken handel
+erlaubt"*. Umgesetzt wurde das fuer die Spuren mit vorhandenem Kraken-Orderweg:
+
+| Spur | Kraken vorher | jetzt |
+|---|---|---|
+| `kraken` | live (Spot EUR, Beleg ueber die Hand) | `handel_erlaubt=false`, `freigabe.erfuellt=false` |
+| `moondev_marktlage` | live (`live_kraken.py`) | `handel_erlaubt=false`, `freigabe.erfuellt=false` |
+| `mosaic` | live (Kraken zuerst, OKX als zweite Boerse) | `boersen: ["okx"]` - Kraken entfernt, OKX bleibt |
+| `nautilus_kraken`, `nautilus_kraken_futures` | waren schon aus | aus der Auto-Freigabe entfernt |
+
+`dauerlauf.AUTO_FREIGABE` fuehrt die vier nicht mehr.
+
+**Offen und blockierend:** `omnitrade` hat keinen Kraken-Weg. Sein
+Exchange-Modul kennt nur `binance` und `okx`
+(`omnitrade-exchange/src/`), und `omnitrade-cli/src/commands/live.rs` weist
+jedes andere `--exchange` mit *"Invalid exchange: ... Use 'binance' or 'okx'"*
+ab. Bis ein Kraken-Adapter gebaut ist, handelt **niemand** auf Kraken - die
+Anweisung ist als Sperre umgesetzt, nicht als Umzug.
+
+**Werkzeuge, die weiter auf Kraken ordern koennen** (bewusst nicht gesperrt,
+sie sind Handwerkzeug und kein Automat): `kraken/spot_stops.py`,
+`kraken/waisen_stops.py`, `kraken/margin_stops.py`, `mosaic/stops_nachziehen.py`
+sowie das MCP-Werkzeug `kraken_order_mit_beleg` (verlangt einen Beleg, den nur
+eine Spur ausstellt).
