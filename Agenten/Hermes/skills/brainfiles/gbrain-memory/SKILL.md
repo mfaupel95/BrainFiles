@@ -58,6 +58,11 @@ and date.
   Embedding-Anbieter degradiert - nur Stichwortsuche, mit eigenem Hinweis.
 - **`forget <fact-id> --reason <text>`** - die ID ist positionell, `--id` gibt es
   nicht. Korrektur heisst forget + neues remember; nie Loeschung zusagen.
+- **`recall --grep` mit EINEM praegnanten Stichwort, nicht mit einer Phrase.** Gemessen
+  30.09.2026: `--grep "lauschte wieder auf TCP"` meldete `No matching facts.`, waehrend
+  `--grep 9900` denselben Fakt sofort fand. Ein Satzfragment trifft nicht — die Suche greift
+  wortweise. Bei "nicht gefunden" also erst mit dem auffaelligsten Einzelwort (Zahl, Name,
+  Pfad) gegentreten, bevor man den Fakt fuer verloren haelt.
 - Ein Fakt ohne `--entity` ist fuer die entitaetsbezogene Erinnerung unsichtbar -
   Entitaet setzen, sobald der Fakt ein Subjekt hat.
 
