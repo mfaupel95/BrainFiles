@@ -232,6 +232,21 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
     if e.bot and not bot_da:
         gruende.append(f"Bot-Profil fehlt: {e.bot}")
 
+    # Fremd-Material kommt aus EINER Quelle (Agenten/FREMD-Liste.json), nicht aus
+    # handgepflegten Manifest-Feldern: die Rolle sagt, was es ist, der Hinweis
+    # sagt, was damit zu tun ist. Das Manifest darf die Rolle ueberschreiben -
+    # dann steht sie so im Fenster, und die Liste bleibt die Herkunftsangabe.
+    rolle = e.rolle
+    fremd_treffer = None
+    modul = quellen.fremd_modul()
+    if modul is not None:
+        fremd_treffer = modul.ist_fremd(
+            quellen.pfad_in_wurzel(repo.wurzel, repo.pfad_rel)
+        )
+    if fremd_treffer is not None:
+        rolle = rolle or fremd_treffer.art
+        gruende.append(f"fremd: {fremd_treffer.regel} ({fremd_treffer.herkunft})")
+
     return Zeile(
         ordner=repo.ordner,
         gruppe=gruppe,
@@ -247,7 +262,7 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         gruende=gruende,
         wurzel=repo.wurzel,
         bereich=quellen.bereich(repo.wurzel),
-        rolle=e.rolle,
+        rolle=rolle,
     )
 
 

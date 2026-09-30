@@ -68,6 +68,32 @@ Eintrag: dieselben Spuren mit groesseren Betraegen in eigenen Dateien, sichtbar
 ueber `spuren_stand.py` (Spalte Buch: `haupt/.mittel/.hoch`),
 `auswertung_alle.py --risiko mittel|hoch` und `spiegelstand.py --risiko ...`.
 
+## Fremd-Material: benannt, nicht mitgezaehlt
+
+Fremdes liegt mitten in eigenen Ordnern (`Agenten/Handel/OpenAlice` = 81 % der
+Zeilen in `Agenten/Handel`). Die Grenze steht EINMAL in
+`Agenten/FREMD-Liste.json`, gelesen von `Agenten/Werkzeuge/fremd.py`
+(Python) bzw. `ConvertFrom-Json` (PowerShell); lesbare Fassung `Agenten/FREMD.md`,
+Bestand `Agenten/Werkzeuge/bestand.py`. Ohne sie zaehlt jede Bestandsfrage 4,2
+Mio. Zeilen statt 173.481.
+
+- Die Zentrale zeigt fremde Zeilen mit Herkunft (`fremd: <regel> (<herkunft>)`)
+  und nennt die Zahl in der Kopfzeile - sie **gruppiert sie aber nicht anders**:
+  fremd heisst nicht kaputt.
+- **Nie raten, was fremd ist.** Die acht `klassik_*`-Spuren sahen fremd aus
+  (keine Tests, ungetrackt) und waren unser Code vom selben Tag. Ein Eintrag ist
+  eine Aussage ueber Herkunft.
+- Fremdes wird nicht aufgeraeumt, nur benannt.
+
+## Terminal-Fenster: ein Tab statt vieler Fenster
+
+`wt.exe` oeffnet je Aufruf ein NEUES Fenster - jeder Klick liess eins stehen
+(gemessen: acht sichtbare Fenster). Jeder Aufruf in `aktionen.py` traegt deshalb
+`-w 0` (Tab im vorhandenen Fenster; gemessen Fensterzahl 1 -> 1). **Ein
+Bauplatz**: `fenster.py` enthaelt kein `wt.exe` mehr, ein Test prueft das.
+`cmd /c` statt `/k` schliesst den Tab wieder - die Ausgabe geht dann ins Log
+(`logs/<ordner>-befehl-<zeit>.log`), sonst waere sie weg.
+
 ## Das Manifest fuellen
 
 `fuellen.py` traegt ein, was auf der Platte liegt und fehlt. Notiz und Art kommen
@@ -148,6 +174,17 @@ venv, node_modules, Binary) · NEU (Ordner ohne Manifest-Eintrag) · NUR DOKU
 
 ## Fallen
 
+- **Ein per Pfad geladenes Modul mit `@dataclass` braucht einen
+  `sys.modules`-Eintrag.** `importlib.util.module_from_spec` + `exec_module`
+  allein laesst `sys.modules[cls.__module__]` leer; dataclasses bricht dann mit
+  `AttributeError: 'NoneType' object has no attribute '__dict__'` ab - erst beim
+  Laden. Vor `exec_module` ein `sys.modules[<name>] = modul` setzen (so laedt
+  `quellen.fremd_modul()` das Fremd-Modul).
+- **Die Wurzel nicht verzaehlen.** `Path(__file__).resolve().parents[1]` ist von
+  `Agenten/Werkzeuge/repos-zentrale` aus `Agenten`, nicht BrainFiles - ein Test
+  mit dieser Wurzel findet null Dateien und bleibt gruen, solange er nur
+  "keine Fremden" behauptet. Richtig: `parents[2]` oder der Anker aus
+  `fremd.wurzel()`.
 - **Eine Konfiguration nie per Regex nachbauen.** `dauerlauf.SPUREN` mit einem
   Suchmuster zu lesen lieferte plausible, aber falsche Werte (der Ausdruck griff
   ueber auskommentierte Bloecke und zog deren Werte in den vorigen Eintrag:

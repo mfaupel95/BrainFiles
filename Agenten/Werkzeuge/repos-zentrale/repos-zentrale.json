@@ -1593,6 +1593,62 @@
       "notiz": "Werkzeug in Handel/ (in Arbeit - noch kein Startbefehl belegt)"
     },
     {
+      "ordner": "klassik_bollinger",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Bollinger-Ausbruch (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_donchian",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Donchian-Ausbruch, Kanal vor der Kerze (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_donchian_trend",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Donchian nur in Richtung der EMA200 (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_ema",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "EMA-Kreuz (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_macd",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "MACD-Signalkreuz (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_rsi",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "RSI-Mean-Reversion (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_rsi2",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Connors RSI(2) mit SMA200-Filter, Ausstieg SMA5 (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
+      "ordner": "klassik_sma",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "SMA-Kreuz 20/50 (Papier, 4H, BTC/ETH/SOL)"
+    },
+    {
       "ordner": "kopier",
       "wurzel": "handel",
       "rolle": "Spur",

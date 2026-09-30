@@ -250,6 +250,54 @@ Farben, Schrift und Abstaende kommen aus `Agenten/Werkzeuge/fenster_design.py`
 (dieselbe Quelle wie `handelszentrale.py` und `leitstand.py`), beschrieben in
 `Werkstatt/design-system-fenster-2026-09-30.md`.
 
+## Fremd-Material: benannt und nicht mitgezaehlt
+
+Fremd-Material liegt **mitten in eigenen Ordnern** — allen voran
+`Agenten/Handel/OpenAlice` mit 482 Dateien und 513.266 Zeilen (81 % aller Zeilen
+in `Agenten/Handel`). Damit „unser Code" eine Zahl mit Bedeutung hat, gibt es
+**eine Quelle**: `Agenten/FREMD-Liste.json`, gelesen von
+`Agenten/Werkzeuge/fremd.py` (Python) und per `ConvertFrom-Json` von PowerShell.
+Die lesbare Fassung ist `Agenten/FREMD.md`, das Bestandswerkzeug ist
+`Agenten/Werkzeuge/bestand.py`.
+
+| | Dateien | Zeilen |
+|---|---|---|
+| eigener Code (Vorgabe) | **831** | **173.481** |
+| mit Fremd-Material | 11.489 | 4,2 Mio. |
+
+Die Zentrale macht daraus drei Dinge:
+
+1. Eine fremde Zeile traegt die Rolle aus der Liste (oder die eigene, genauere)
+   und einen Hinweis `fremd: <Regel> (<Herkunft>)` in der Statuszeile.
+2. Die Kopfzeile nennt die Zahl: `200 Zeilen · REPOS 46 · … · 63 fremd`.
+3. **Gruppiert wird sie nicht anders** — fremd heisst nicht kaputt. Eine
+   Papierspur bleibt STARTBAR, ein Klon ohne Startbefehl bleibt EINRICHTEN.
+
+Fremdes wird sichtbar gemacht, nicht weggeraeumt: kein Umbenennen, kein
+Verschieben, kein Loeschen. Pruefen mit
+
+    python Agenten\Werkzeuge\fremd.py --pruefen
+    python Agenten\Werkzeuge\bestand.py --mit-fremd
+
+## Terminal-Fenster: ein Tab statt viele Fenster
+
+`wt.exe` oeffnet je Aufruf ein **neues** Fenster — acht Klicks, acht Fenster
+(gemessen am 30.09.2026: acht sichtbare Fenster, drei davon mit einem
+`scanner\.venv`-python). Deshalb traegt **jeder** Terminal-Aufruf `-w 0`: der
+Aufruf landet als **Tab im vorhandenen Fenster** (Fensterzahl 1 → 1, Probe
+`Agenten\Hermes\cache\scratch\wt_probe.ps1`). Nachgemessen statt geglaubt.
+
+Dazu drei Festlegungen:
+
+- **Befehl ausfuehren** nutzt `cmd /c` (Entscheidung Max): der Tab schliesst sich
+  danach selbst. Damit die Ausgabe trotzdem da ist, wird sie **zusaetzlich ins
+  Log** umgeleitet (`logs\<ordner>-befehl-<zeit>.log`) und der Pfad steht in der
+  Statuszeile.
+- **Bot-Chat** nutzt `argv_bot_chat` in `aktionen.py` — frueher stand der Aufruf
+  inline in `fenster.py`, also ohne Fensterwahl. Ein Test prueft, dass
+  `fenster.py` kein `wt.exe` mehr enthaelt: **ein Bauplatz**.
+- **Der Start** (langer Prozess) bleibt ohne Fenster — Ausgabe ins Log.
+
 ## Was die Zentrale absichtlich nicht tut
 
 - Sie schreibt **nicht** in fremde Projekte. Ausnahme: der ausdrueckliche

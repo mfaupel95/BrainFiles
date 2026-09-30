@@ -297,16 +297,25 @@ class FensterBauTest(unittest.TestCase):
             f.root.destroy()
 
     def test_befehl_ausfuehren_oeffnet_ein_terminal_im_repo(self):
+        """Seit 30.09.2026: Tab im vorhandenen Fenster, `/c` schliesst ihn, die
+        Ausgabe geht zusaetzlich ins Log (sonst waere sie mit dem Tab weg)."""
         f, gerufen = self._bauen()
         try:
             item = self._startbar_waehlen(f)
             pfad = f.kinder[item].repo.pfad
             self._befehl_waehlen(f, "Pruefstand zeigen")
             f.befehl_ausfuehren()
-            self.assertEqual(gerufen[-1][0], "wt.exe")
-            self.assertIn("cmd.exe", gerufen[-1])
-            self.assertIn(str(pfad), gerufen[-1])
-            self.assertEqual(gerufen[-1][-2:], [".venv\\Scripts\\python.exe", "pruefstand.py"])
+            argv = gerufen[-1]
+            self.assertEqual(argv[0], "wt.exe")
+            self.assertEqual(argv[argv.index("-w") + 1], "0")
+            self.assertIn("cmd.exe", argv)
+            self.assertIn("/c", argv)
+            self.assertNotIn("/k", argv)
+            self.assertIn(str(pfad), argv)
+            zeile = argv[-1]
+            self.assertIn(".venv\\Scripts\\python.exe", zeile)
+            self.assertIn("pruefstand.py", zeile)
+            self.assertIn(">", zeile, "die Ausgabe muss ins Log umgeleitet werden")
         finally:
             f.root.destroy()
 

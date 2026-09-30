@@ -184,3 +184,54 @@ def wurzel_von(kennung: str) -> Wurzel | None:
 def bereich(kennung: str) -> str:
     """Die Bereichs-Ueberschrift einer Wurzel-Kennung (unbekannt -> REPOS)."""
     return BEREICHE.get(kennung, "REPOS")
+
+
+# --------------------------------------------------------------------------
+# Die Grenze zu Fremd-Material (Agenten/FREMD-Liste.json)
+#
+# Die Zentrale soll zeigen, WAS fremd ist, ohne es mitzuzaehlen. Die Liste liegt
+# in `Agenten/Werkzeuge/fremd.py` - geladen ueber den PFAD, nicht ueber sys.path
+# (dasselbe Muster wie fenster_design.py): ein Eintrag auf `Agenten/Werkzeuge`
+# koennte gleichnamige Spurenmodule verdecken.
+# --------------------------------------------------------------------------
+
+_FREMD = None
+
+
+def fremd_modul():
+    """Das Modul `Agenten/Werkzeuge/fremd.py` laden (None, wenn es fehlt)."""
+    global _FREMD
+    if _FREMD is None:
+        import importlib.util
+        import sys as _sys
+
+        pfad = Path(__file__).resolve().parent.parent / "fremd.py"
+        if not pfad.is_file():
+            _FREMD = False
+        else:
+            spec = importlib.util.spec_from_file_location("haus_fremd", pfad)
+            modul = importlib.util.module_from_spec(spec)
+            # WICHTIG: vor exec_module in sys.modules eintragen. Sonst findet
+            # `@dataclass` beim Verarbeiten von Fremd das eigene Modul nicht
+            # (`sys.modules[cls.__module__]` ist None) und der Import bricht mit
+            # AttributeError ab - ein Fehler, der erst beim Laden auftritt.
+            _sys.modules["haus_fremd"] = modul
+            spec.loader.exec_module(modul)
+            _FREMD = modul
+    return _FREMD or None
+
+
+def fremde() -> list:
+    """Die Fremd-Eintraege (leer, wenn die Liste fehlt - nie ein Absturz)."""
+    modul = fremd_modul()
+    return modul.laden() if modul else []
+
+
+def pfad_in_wurzel(kennung: str, pfad_im_projekt: str) -> str:
+    """Den vollen Pfad relativ zur BrainFiles-Wurzel bauen.
+
+    Das Manifest nennt den Pfad INNERHALB seiner Wurzel (`kraken/abgleich.py`),
+    die Fremd-Liste den Pfad AB der Wurzel - hier wird beides zusammengefuehrt.
+    """
+    w = wurzel_von(kennung) or PROJEKTE
+    return f"{w.pfad_rel}/{pfad_im_projekt}".strip("/")

@@ -116,7 +116,14 @@ class ZeilenBauenTest(unittest.TestCase):
                             venv_pflicht=True, bot="moon-dev-agents")
         z = self.zeilen([repo("demo")], [e])
         self.assertEqual(z["demo"].gruppe, "startbar")
-        self.assertEqual(z["demo"].gruende, [])
+        # `gruende` traegt Blocker UND Hinweise: seit 30.09.2026 kommt hier der
+        # Fremd-Hinweis dazu (der Demo-Eintrag liegt unter Werkstatt/Repos, also
+        # in der Klonsammlung). Was gelten soll, ist: NICHTS blockiert den Start -
+        # und das sagt die Gruppe. Auf einen leeren Liste zu pruefen hiesse, einen
+        # Zustand einzufrieren statt die Regel.
+        self.assertTrue(z["demo"].start_da)
+        self.assertFalse([g for g in z["demo"].gruende
+                          if "fehlt" in g or "kein Startbefehl" in g])
         self.assertTrue(z["demo"].bot_da)
 
     def test_gruppe_doku_im_manifest_bleibt_doku_trotz_start(self):

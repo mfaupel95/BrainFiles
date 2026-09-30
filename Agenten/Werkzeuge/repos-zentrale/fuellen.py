@@ -165,10 +165,13 @@ KURATIERT: dict[tuple[str, str], dict] = {
     ("projekte", "workflow"): dict(ABLAGE, notiz="Arbeitsablaeufe der Projekte"),
     # ------------------------------------------------------------- HANDEL
     ("handel", "OpenAlice"): {
-        "rolle": "Fremdprojekt",
+        # Die ROLLE kommt aus Agenten/FREMD-Liste.json (eine Quelle) - hier steht
+        # nur, was die Liste nicht weiss: dass es als Ablage in der Doku-Gruppe
+        # steht und was es in einem Satz ist.
         "gruppe": "doku",
-        "notiz": "Fremdes Projekt (112 MB, 482 .py) mit eigenem Baum - nur oeffnen, wenn "
-                 "die Aufgabe ausdruecklich OpenAlice betrifft",
+        "notiz": "Fremdes Quant-Framework mit eigenem Baum (545 MB, 482 .py, 513.266 "
+                 "Zeilen = 81 % der Zeilen in Agenten/Handel) - nur oeffnen, wenn die "
+                 "Aufgabe ausdruecklich OpenAlice betrifft",
     },
     ("handel", "ai4trade"): {
         "rolle": "Werkzeug",
@@ -215,6 +218,20 @@ KURATIERT: dict[tuple[str, str], dict] = {
             "moondev_topmovers", "moondev_whale", "mosaic", "nautilus", "nautilus_kraken",
             "omniquant", "orb", "orbk", "robinhood_radar", "scanner", "spiegel", "squeeze",
             "supertrend", "swap", "trendwende_btc", "wavetrend", "xperp",
+        )
+    },
+    # Klassik-Spuren (30.09.2026): Pine-Regeln als Papierbuch, Kern klassik_regeln.py
+    **{
+        ("handel", name): {"rolle": "Spur", "notiz": notiz + " (Papier, 4H, BTC/ETH/SOL)"}
+        for name, notiz in (
+            ("klassik_sma", "SMA-Kreuz 20/50"),
+            ("klassik_ema", "EMA-Kreuz"),
+            ("klassik_macd", "MACD-Signalkreuz"),
+            ("klassik_bollinger", "Bollinger-Ausbruch"),
+            ("klassik_donchian", "Donchian-Ausbruch, Kanal vor der Kerze"),
+            ("klassik_rsi", "RSI-Mean-Reversion"),
+            ("klassik_rsi2", "Connors RSI(2) mit SMA200-Filter, Ausstieg SMA5"),
+            ("klassik_donchian_trend", "Donchian nur in Richtung der EMA200"),
         )
     },
 }

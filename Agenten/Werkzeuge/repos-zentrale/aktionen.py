@@ -37,9 +37,54 @@ def argv_ordner(pfad: Path, datei: Path | None = None) -> list[str]:
     return ["explorer", str(pfad)]
 
 
+# Windows Terminal oeffnet je Aufruf ein NEUES FENSTER - acht Klicks, acht
+# Fenster. Gemessen am 30.09.2026: mit `-w 0` landet der Aufruf als TAB im
+# vorhandenen Fenster (Fensterzahl 1 -> 1, Probe in Agenten/Hermes/cache/scratch/
+# wt_probe.ps1); ohne vorhandenes Fenster legt `wt` eines an. Deshalb traegt
+# JEDER Aufruf unten diesen Schalter - und nur hier wird er gebaut.
+WT_FENSTER = ("-w", "0")
+
+
 def argv_terminal(pfad: Path) -> list[str]:
-    """Windows Terminal im Ordner oeffnen (wt.exe ist auf diesem Rechner da)."""
-    return ["wt.exe", "-d", str(pfad)]
+    """Windows Terminal im Ordner oeffnen - als Tab im vorhandenen Fenster."""
+    return ["wt.exe", *WT_FENSTER, "-d", str(pfad)]
+
+
+def _cmd_zeile(cmd: list[str], log: Path | None) -> str:
+    """Einen argv zu EINER cmd-Zeile machen (cmd braucht sie als ein Argument).
+
+    Tokens mit Leerzeichen werden gequotet; `>`/`2>&1` versteht cmd selbst. Ist
+    ein Log angegeben, geht die Ausgabe dorthin - der Tab schliesst sich gleich
+    wieder, ohne Log waere die Ausgabe weg.
+    """
+    teile = [f'"{t}"' if " " in str(t) else str(t) for t in cmd]
+    zeile = " ".join(teile)
+    if log is not None:
+        zeile += f' > "{log}" 2>&1'
+    return zeile
+
+
+def argv_befehl_im_terminal(pfad: Path, cmd: list[str], log: Path | None = None) -> list[str]:
+    """Einen Befehl in einem Tab ausfuehren; `/c` schliesst ihn danach wieder.
+
+    `/c` statt `/k` (Entscheidung Max, 30.09.2026): der Tab raeumt sich selbst
+    weg, statt liegen zu bleiben. Damit die Ausgabe trotzdem da ist, wird sie
+    bei angegebenem `log` mitgeschrieben - die Statuszeile nennt den Pfad.
+    """
+    return ["wt.exe", *WT_FENSTER, "-d", str(pfad),
+            "cmd.exe", "/c", _cmd_zeile(cmd, log)]
+
+
+def argv_bot_chat(bot: str, pfad: Path) -> list[str]:
+    """Den Bot-Chat als Tab oeffnen (Chat bleibt offen - das ist eine Sitzung)."""
+    argv, cwd = argv_bot(bot, pfad)
+    return ["wt.exe", *WT_FENSTER, "-d", str(cwd), *argv]
+
+
+def argv_bot_auftrag(bot: str, pfad: Path, auftrag: str) -> list[str]:
+    """Den Repo-Bot mit einem fertigen Auftrag starten (Einzelauftrag, kein Chat)."""
+    return ["wt.exe", *WT_FENSTER, "-d", str(pfad),
+            "hermes", "-p", str(bot).lower(), "chat", "-q", str(auftrag)]
 
 
 def argv_bot(bot: str, pfad: Path) -> tuple[list[str], Path]:
@@ -105,20 +150,6 @@ def start_ausfuehren(
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError) as e:
         return StartErgebnis(None, log, argv, f"{type(e).__name__}: {e}")
     return StartErgebnis(getattr(prozess, "pid", None), log, argv, None, prozess)
-
-
-def argv_befehl_im_terminal(pfad: Path, cmd: list[str]) -> list[str]:
-    """Einen Befehl in einem SICHTBAREN Terminal im Repo ausfuehren.
-
-    `cmd.exe /k` haelt das Fenster offen - sonst ist die Ausgabe weg, bevor man
-    sie gelesen hat. Der Befehl selbst bleibt eine argv-Liste.
-    """
-    return ["wt.exe", "-d", str(pfad), "cmd.exe", "/k", *[str(t) for t in cmd]]
-
-
-def argv_bot_auftrag(bot: str, pfad: Path, auftrag: str) -> list[str]:
-    """Den Repo-Bot mit einem fertigen Auftrag starten (Einzelauftrag, kein Chat)."""
-    return ["wt.exe", "-d", str(pfad), "hermes", "-p", str(bot).lower(), "chat", "-q", str(auftrag)]
 
 
 def doku_oeffnen(datei: Path, *, starter=None) -> str | None:

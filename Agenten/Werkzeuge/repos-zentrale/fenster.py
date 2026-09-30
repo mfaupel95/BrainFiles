@@ -163,10 +163,22 @@ def zusammenfassung(zeilen: list[manifest.Zeile]) -> str:
         for kennung, gruppen in bereiche.items()
     ]
     text = f"{len(zeilen)} Zeilen · " + " · ".join(teile)
+    fremde = fremde_zeilen(zeilen)
+    if fremde:
+        text += f" · {len(fremde)} fremd"
     auffall = len(auffaellige(zeilen))
     if auffall:
         text += f" · {auffall} auffaellig"
     return text
+
+
+def fremde_zeilen(zeilen: list[manifest.Zeile]) -> list[manifest.Zeile]:
+    """Zeilen in fremdem Material (Kennzeichen setzt manifest._zeile).
+
+    Sie bleiben sichtbar - sie sollen ja auffindbar sein - aber sie werden
+    gezaehlt ausgewiesen, damit 'unser Code' eine Zahl mit Bedeutung hat.
+    """
+    return [z for z in zeilen if any(g.startswith("fremd:") for g in z.gruende)]
 
 
 def hinweis(zeile: manifest.Zeile) -> str:
@@ -593,9 +605,12 @@ class Fenster:
         if k.art == "start":
             self.starten()
             return
+        # Befehl ausfuehren: Tab mit `/c` (schliesst sich wieder), Ausgabe
+        # zusaetzlich ins Log - sonst waere sie mit dem Tab weg.
+        log = aktionen.log_pfad(self.log_ordner, f"{z.ordner}-befehl", self.jetzt())
         self._ruf(
-            aktionen.argv_befehl_im_terminal(z.repo.pfad, k.cmd),
-            f"{k.was}: {befehle.befehl_text(k.cmd)}",
+            aktionen.argv_befehl_im_terminal(z.repo.pfad, k.cmd, log),
+            f"{k.was}: {befehle.befehl_text(k.cmd)} - Ausgabe in {log.name}",
         )
 
     def befehl_kopieren(self) -> None:
@@ -684,9 +699,10 @@ class Fenster:
     def bot_chat(self) -> None:
         z = self._gewaehlt()
         if z and z.repo and z.bot_da and z.bot:
-            argv, cwd = aktionen.argv_bot(z.bot, z.repo.pfad)
+            # Ein Bauplatz fuer den Bot im Terminal - der Aufruf liegt in aktionen
+            # (frueher stand er hier inline, und damit ohne Fensterwahl).
             self._ruf(
-                ["wt.exe", "-d", str(cwd)] + argv,
+                aktionen.argv_bot_chat(z.bot, z.repo.pfad),
                 f"Bot-Chat '{z.bot}' im Projektordner",
             )
 

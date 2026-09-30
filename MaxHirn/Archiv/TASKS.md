@@ -61,6 +61,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
+      Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
+      `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
+      (Rolle + Hinweis + Kopfzeile "63 fremd") und `bestand.py`. Offen aus dem
+      Design (docs/design/2026-09-30-grenze-und-popouts-design.md): (a)
+      `Agenten/Werkzeuge/fundus-suche.ps1` soll fremde Baeume getrennt melden
+      statt sie nach eigenem Wissen zu durchsuchen (`ConvertFrom-Json` liest die
+      Liste), (b) ein Block "Grenze" in `Agenten/Routinen/systempruefung.ps1`
+      (Liste lesbar, Eintraege vorhanden, keine Ueberschneidung mit eigenen
+      Wurzeln). Der Block wurde bewusst NICHT gebaut, weil systempruefung.ps1
+      parallel von einer anderen Sitzung geaendert wurde.
+      Naechster Schritt: (a) in fundus-suche.ps1 die Liste lesen und eine Zeile
+      "fremd" je Baum ausgeben, (b) den Block nach dem Muster der anderen
+      Bloecke ergaenzen (`fremd.py --pruefen` aufrufen, Ergebnis melden).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
+
+
 - [ ] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
       Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
       (Block 14 der Systempruefung). Der Motor ist die WSL-Distro
@@ -142,19 +160,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
 
-- [ ] **T-237 - Werkstatt/handel-stack: Spiegel weiterfuehren, einfrieren oder abloesen? (Entscheidung Max)**
-      Kontext: `Werkstatt/handel-stack` ist ein privates GitHub-Repo
-      (mfaupel95/handel-stack) mit dem Import von `Agenten/Handel` vom
-      18.09.2026: 33 der heute 48 Spuren samt Journalen und Zustand, aeltere
-      Staende (dauerlauf.py 43 statt 64 KB). Gemessen: nichts liest ihn, er
-      enthaelt keine Geheimnisse, `repos-updaten.py` fasst ihn nicht an. Er
-      stoert nur als zweite, aeltere Wahrheit im Suchweg und steht deshalb im
-      Manifest als Rolle "Spiegel (18.09.)" mit Warnung.
-      Naechster Schritt: entscheiden - (a) so lassen (eingefrorener Zeuge),
-      (b) Spiegel gelegentlich auffrischen, (c) durch die vorhandene Sicherung
-      ersetzen und den Ordner aus dem Baum nehmen.
-      Angelegt: 2026-09-30
-      Betrifft: Werkstatt/handel-stack/, mfaupel95/handel-stack
 
 - [ ] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
       Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`
@@ -2652,6 +2657,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-237 - Werkstatt/handel-stack: Spiegel weiterfuehren, einfrieren oder abloesen? (Entscheidung Max)**
+      Kontext: `Werkstatt/handel-stack` ist ein privates GitHub-Repo
+      (mfaupel95/handel-stack) mit dem Import von `Agenten/Handel` vom
+      18.09.2026: 33 der heute 48 Spuren samt Journalen und Zustand, aeltere
+      Staende (dauerlauf.py 43 statt 64 KB). Gemessen: nichts liest ihn, er
+      enthaelt keine Geheimnisse, `repos-updaten.py` fasst ihn nicht an. Er
+      stoert nur als zweite, aeltere Wahrheit im Suchweg und steht deshalb im
+      Manifest als Rolle "Spiegel (18.09.)" mit Warnung.
+      Naechster Schritt: entscheiden - (a) so lassen (eingefrorener Zeuge),
+      (b) Spiegel gelegentlich auffrischen, (c) durch die vorhandene Sicherung
+      ersetzen und den Ordner aus dem Baum nehmen.
+      Angelegt: 2026-09-30
+      Betrifft: Werkstatt/handel-stack/, mfaupel95/handel-stack
+      **Erledigt 30.09.2026.** Entscheidung Max: "so lassen". Gemessen: nichts liest den Spiegen, keine Geheimnisse, repos-updaten.py fasst ihn nicht an. Er steht jetzt als 'Altstand (Spiegel 18.09.)' in Agenten/FREMD-Liste.json und zaehlt nicht als lebender Code - er bleibt, weil er die einzige Kopie des Handelsstacks ausser Haus ist.
 - [x] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
       Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
       (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
