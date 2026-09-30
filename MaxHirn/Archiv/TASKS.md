@@ -422,18 +422,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-29
       Betrifft: Agenten/Handel/spur_buch.py, alle Feed-Spuren
 
-- [ ] **T-177 - Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut**
-      Kontext: Im Replay wird zum SCHLUSS der Kerze ausgestiegen, in der Stop
-      oder Ziel beruehrt wurde - nicht zum Stop- oder Zielkurs. Ein Laeufer
-      ueberschiesst sein Ziel dadurch deutlich: ADA stand mit Ziel +12 % im Buch
-      und wurde mit +48 % geschlossen. Beide Familien (A und B) rechnen so,
-      also sind ihre Zahlen untereinander vergleichbar - aber nicht als
-      Ertragserwartung zu lesen.
-      Naechster Schritt: intrabar-Ausstieg pruefen (Stop/Ziel-Kurs statt
-      Kerzenschluss) und die Differenz an einem Lauf beziffern, bevor Zahlen
-      aus dem Backtest in eine Entscheidung eingehen.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Handel/replay.py, backtest_prognose.py
 
 - [ ] **T-178 - Einstiegsgrund im Journal der Buch-Spuren ist ein Platzhalter**
       Kontext: Jede Einstiegszeile der Feed-Spuren traegt als `grund` den Satz
@@ -2359,6 +2347,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-177 - Ausstiege zum Kerzenschluss rechnen die Gewinner zu gut**
+      Kontext: Im Replay wird zum SCHLUSS der Kerze ausgestiegen, in der Stop
+      oder Ziel beruehrt wurde - nicht zum Stop- oder Zielkurs. Ein Laeufer
+      ueberschiesst sein Ziel dadurch deutlich: ADA stand mit Ziel +12 % im Buch
+      und wurde mit +48 % geschlossen. Beide Familien (A und B) rechnen so,
+      also sind ihre Zahlen untereinander vergleichbar - aber nicht als
+      Ertragserwartung zu lesen.
+      Naechster Schritt: intrabar-Ausstieg pruefen (Stop/Ziel-Kurs statt
+      Kerzenschluss) und die Differenz an einem Lauf beziffern, bevor Zahlen
+      aus dem Backtest in eine Entscheidung eingehen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/replay.py, backtest_prognose.py
+      **Erledigt 2026-09-30.** Der Replay schliesst jetzt am Kurs der beruehrten Marke (Hoch/Tief) statt am Kerzenschluss - Ausloeser bleibt der Schluss wie live, nur der Preis ist berichtigt (replay.Beruehrungsjournal, beruehrte_marke/kurs_der_marke; Live-Pfad spur_buch.pruefe_ausstiege unangetastet). Vorher/Nachher ueber sechs Spuren: wavetrend +419,66 -> +385,88, macd_mtf +299,90 -> +285,02, squeeze +61,93 -> -6,34, topmovers +522,44 -> +260,00, funding +156,50 -> +87,00, supertrend -24,17 unveraendert; Rundenzahl und Trefferquote bei wavetrend/macd_mtf/squeeze/supertrend identisch (die Regel verschiebt den Kurs, nicht den Ausloeser). Markenquote je Lauf in auswertung_alle; Gegenprobe mit ausgeschaltetem Fix: 10 von 19 Tests rot. Offen als T-202 (Docht-Ausstieg) und T-203 (Backtest-Zahlen neu lesen).
 - [x] **T-147 — Das Dashboard hat keine Wache**
       Kontext: `hermes update` beendete den Lauf am 29.09.2026 mit `outcome: partial` und
       `phase_error: "Could not restart every paused Windows gateway"`; der Gateway kam zurueck,
