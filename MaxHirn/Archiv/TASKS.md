@@ -196,8 +196,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `Routinen/logs/dauerlauf-<stufe>-kind.log` um - erst dann ist der Sterbegrund
       lesbar; (2) pruefen, ob `moondev_dauerlauf._stoppe` fremde Prozesse trifft;
       (3) Wache auf "kein Zyklus seit >10 min" statt nur "PID tot".
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Routinen/handel-dauerlauf.ps1, Agenten/Handel/moondev_dauerlauf.py
+      URSACHE GEFUNDEN UND BEHOBEN (30.09.2026, Commit 41d2ffa): Nicht der
+            Prozessbaum war schuld, sondern die Sperre selbst. `handel-dauerlauf.ps1`
+            schreibt die PID, die `Start-Process` zurueckgibt - bei einem
+            venv-Startprogramm ist das der ELTERNPROZESS des Interpreters, nicht der
+            Lauf. `sperre.belegt()` verglich sie mit `os.getpid()`, sah ein lebendes
+            fremdes Python und liess den Lauf mit "Es laeuft bereits ein Dauerlauf der
+            Stufe niedrig" sofort enden. Die Rueckgabe 143 war eine Verwechslung: in
+            meinem Handstart kam sie von MEINEM eigenen `timeout` (feuerte in derselben
+            Sekunde), nicht vom Lauf. Fix: `belegt()` nimmt auch `os.getppid()` aus -
+            der eigene Starter ist kein fremder Lauf. Gegenprobe ohne den Fix: 1 roter
+            Test, mit Fix 17/17. Punkt (1) erledigt: der Wrapper leitet stdout/stderr
+            nach `Routinen/logs/dauerlauf-<stufe>-kind[.err].log` um - ohne diese
+            Umleitung war der Sterbegrund nicht auffindbar, sie hat ihn gefunden.
+            Punkt (2) entfaellt, kein taskkill im Spiel. OFFEN bleibt (3): eine Wache
+            auf "kein Zyklus seit >10 min" statt nur "PID tot" - sie haette den Ausfall
+            um 01:52 in Minuten statt in 47 gemeldet. Alle drei Stufen laufen seit
+            02:51/02:55 wieder vollstaendig (30 Spuren je Zyklus).
+            Angelegt: 2026-09-30
+            Betrifft: Agenten/Routinen/handel-dauerlauf.ps1, Agenten/Handel/moondev_dauerlauf.py
 
 - [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
       Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
