@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
+      Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
+      gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
+      wachen.json". Ohne Gebuehr stehen: gitter, kopier, kopier1zu1, macd_mtf, omniquant,
+      squeeze, supertrend, wavetrend, nautilus, nautilus_kraken, nautilus_kraken_futures
+      und die sieben moondev_* (funding, liquidation, listingarb, sentiment, sniper,
+      topmovers, whale). Einen Satz einzusetzen ist eine Entscheidung JE SPUR (Boerse,
+      Kontotyp, Maker/Taker, XPERP oder SWAP) - geraten waere schlimmer als "unbekannt".
+      Naechster Schritt: je Spur die Boerse und den GEMESSENEN Satz nennen (OKX XPERP/SWAP
+      0.0005, Kraken Spot 0.006, Deribit 0.0005), eintragen, `auswertung_alle.py` erneut -
+      das Urteil der Spuren aendert sich damit.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Handel/*/wachen.json, Agenten/Handel/auswertung_alle.py
+
 - [ ] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
       Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
       `orb` und `orbk`; ihre `handeln.py` haben kein `lade_wachen()`, deshalb bleibt `w` leer,
@@ -835,38 +848,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
 
 
-- [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
-      Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
-      `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
-      (1) **Kein Gebuehrenfeld**: `orb`, `orbk`, `scanner`, `moondev_signalwelle` und
-      `iv_wand` tragen in ihrer `wachen.json` ueberhaupt keinen Gebuehrenschluessel
-      (`grep gebuehr` in orbk/*.py findet nichts). Der Kosten-Wendepunkt rechnet sie
-      deshalb mit 0 % und nennt orb +0,07 %, orbk/mittel +0,01 %, orbk/hoch +0,03 %
-      "tragfaehig, haengt an der Gebuehrfreiheit (unter 0,4 %)". orbk ist aber
-      **ORB auf Kraken-Spot** und die gemessene Kraken-Gebuehr ist **0,600 % je Seite
-      = 1,2 % je Runde** (Fuellung 22.09.2026) - orbk ist damit um rund das 40-fache
-      tot, orb (OKX, ~0,1 %/Runde) in Basis ebenfalls.
-      (2) **orbk-Journal ohne Einsatz**: `orbk/handelsjournal.csv` fuehrt
-      `zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd` -
-      ohne Einsatzspalte sagt der Bericht "Ergebnis in Prozent: kein Einsatz im
-      Journal", 16 Runden lassen sich nicht in Prozent ausdruecken.
-      (3) **Papierzeilen ohne Gebuehr**: alle Papierbuecher melden "Kosten 0.00 %",
-      die echten 0.05 % (scanner), 0.39-0.50 % (xperp/swap) und 0.60 % (kraken) -
-      die Papiersummen sind BRUTTO und mit den Live-Zahlen nicht vergleichbar.
-      Naechster Schritt: (1) Gebuehr in die wachen.json von orb/orbk/scanner/
-      moondev_signalwelle/iv_wand eintragen (Kraken 0.006, OKX 0.0005), dann
-      `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
-      (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
-      (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
-      Fortschritt: (1) erledigt am 30.09.2026 (Commit 7c525cd) - `gebuehr_taker` steht
-      jetzt in orb (0.0005), orbk (0.006), scanner (0.0005), moondev_signalwelle (0.0005)
-      und iv_wand (0.0005), dazu ein Einheitenfehler im Werkzeug behoben: es druckte den
-      Bruch als Prozentwert und verglich ihn direkt mit f_max. Neues Urteil: orbk
-      "1.200 % je Runde (0.600 % je Seite) liegt darueber" - tot. Test
-      `tests/test_kosten_wendepunkt.py` (9). Punkte (2) und (3) bleiben offen.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
-                Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
 
 - [ ] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
       Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
@@ -2865,6 +2846,39 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
+      Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
+      `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
+      (1) **Kein Gebuehrenfeld**: `orb`, `orbk`, `scanner`, `moondev_signalwelle` und
+      `iv_wand` tragen in ihrer `wachen.json` ueberhaupt keinen Gebuehrenschluessel
+      (`grep gebuehr` in orbk/*.py findet nichts). Der Kosten-Wendepunkt rechnet sie
+      deshalb mit 0 % und nennt orb +0,07 %, orbk/mittel +0,01 %, orbk/hoch +0,03 %
+      "tragfaehig, haengt an der Gebuehrfreiheit (unter 0,4 %)". orbk ist aber
+      **ORB auf Kraken-Spot** und die gemessene Kraken-Gebuehr ist **0,600 % je Seite
+      = 1,2 % je Runde** (Fuellung 22.09.2026) - orbk ist damit um rund das 40-fache
+      tot, orb (OKX, ~0,1 %/Runde) in Basis ebenfalls.
+      (2) **orbk-Journal ohne Einsatz**: `orbk/handelsjournal.csv` fuehrt
+      `zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd` -
+      ohne Einsatzspalte sagt der Bericht "Ergebnis in Prozent: kein Einsatz im
+      Journal", 16 Runden lassen sich nicht in Prozent ausdruecken.
+      (3) **Papierzeilen ohne Gebuehr**: alle Papierbuecher melden "Kosten 0.00 %",
+      die echten 0.05 % (scanner), 0.39-0.50 % (xperp/swap) und 0.60 % (kraken) -
+      die Papiersummen sind BRUTTO und mit den Live-Zahlen nicht vergleichbar.
+      Naechster Schritt: (1) Gebuehr in die wachen.json von orb/orbk/scanner/
+      moondev_signalwelle/iv_wand eintragen (Kraken 0.006, OKX 0.0005), dann
+      `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
+      (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
+      (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
+      Fortschritt: (1) erledigt am 30.09.2026 (Commit 7c525cd) - `gebuehr_taker` steht
+      jetzt in orb (0.0005), orbk (0.006), scanner (0.0005), moondev_signalwelle (0.0005)
+      und iv_wand (0.0005), dazu ein Einheitenfehler im Werkzeug behoben: es druckte den
+      Bruch als Prozentwert und verglich ihn direkt mit f_max. Neues Urteil: orbk
+      "1.200 % je Runde (0.600 % je Seite) liegt darueber" - tot. Test
+      `tests/test_kosten_wendepunkt.py` (9). Punkte (2) und (3) bleiben offen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
+                Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
+      **Erledigt 2026-10-01.** Punkte (2) und (3) sind gebaut. (3) `auswertung_alle.kennzahlen()` weist brutto UND netto aus (`brutto`/`gebuehr`/`kosten_netto`/`netto`/`netto_pct`), die neue Zeile 'Brutto/Netto' nennt den Satz und die Nettosumme; `GEBUEHR_SCHON_DRIN` (xperp/swap/scanner/kraken) verhindert das ZWEIMALIGE Abziehen. Gemessen: mosaic +10.82 -> +9.62 USD, moondev_marktlage -5.02 -> -6.02, moondev_signalwelle +38.85 -> +37.92, iv_wand +2.30 -> +2.00. (2) KEIN erfundener Einsatz: orb/orbk fuehren ein PUNKTE-Buch, ein Einsatz kaeme aus risiko/stop_abstand und der ORB-Stop ist die Range-Hoehe (bei ETH ~0,4 % -> einige tausend USD Nominal) - das ist eine Design-Entscheidung. Statt dessen steht das Ergebnis in R (`runden_orbk` liefert risiko/r_vielfaches, `r_kennzahlen()` summiert): orbk +2.18 R gesamt, orb -0.46 R - und orb/orbk sind jetzt auch in der Auswertung (orb fehlte ganz), Einheit 'Punkte' statt 'USD'. Tests: tests/test_brutto_netto.py (18) neu, test_einheit_kraken prueft die Eigenschaft statt des Wortlauts. Rest offen als T-264 (18 Spuren ohne Gebuehr).
 - [x] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
       Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
       der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist

@@ -66,7 +66,34 @@ def _ort(spur, datei):
         return ordner, datei
     return spur, datei
 
-SPUREN = ("xperp", "swap", "scanner", "kraken", "orbk", "gitter", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
+
+def gebuehr_fuer(spur):
+    """Gebuehr JE SEITE aus der wachen.json der Spur (0.0, wenn keine steht).
+
+    EINE Stelle fuer diese Frage: `runden_fuer()` braucht sie fuer die Anzeige
+    der Kosten (scanner/kraken) und `kennzahlen_fuer()` fuer den NETTO-Ausweis.
+    Zwei eigene Lesevorgaenge haetten beim naechsten Feld auseinanderlaufen
+    koennen - und dann stuende im Bericht eine andere Gebuehr als im Buch.
+    """
+    ordner, datei = _ort(spur, "wachen.json")
+    try:
+        w = json.loads((HIER / ordner / datei).read_text("utf-8"))
+    except (OSError, ValueError):
+        return 0.0
+    try:
+        return float(w.get("gebuehr_taker") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+# DIESE SPUREN RECHNEN DIE GEBUEHR SCHON IM JOURNAL EIN: scanner/kraken im
+# Betrag der Ausstiegszeile, xperp/swap ueber `gebuehr_pct`/`funding_pct` der
+# Zeile. ALLE ANDEREN Papierbuecher schreiben BRUTTO - ihre Zeilen tragen keine
+# Kosten (siehe `runden_indikator`, `runden_orbk`, `runden_nautilus`).
+# Ohne diese Unterscheidung stuenden brutto und netto in derselben Summe.
+GEBUEHR_SCHON_DRIN = ("xperp", "swap", "scanner", "kraken")
+
+SPUREN = ("xperp", "swap", "scanner", "kraken", "orb", "orbk", "gitter", "nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 
 # Die vier Indikator-Spuren journalisieren kauf/verkauf mit `einsatz_usd`
 # (beim Kauf der Einsatz, beim Verkauf der Erloes). Sie stehen getrennt,
@@ -115,7 +142,12 @@ NAUTILUS_SPUREN = ("nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 # Diese Tabelle ist die VORGABE. Fuer die kraken-Spur gilt sie seit dem
 # 30.09.2026 nicht mehr: die Spur kann in EUR, USDC und EURC handeln, und die
 # Einheit ihrer Zahlen steht am BUCH (einheit_fuer()).
-EINHEIT = {"kraken": "EUR", "nautilus_kraken": "EUR"}
+EINHEIT = {"kraken": "EUR", "nautilus_kraken": "EUR",
+           # ORB-SPUREN (T-192, 01.10.2026): orb und orbk fuehren ein
+           # PUNKTE-Buch - `gv_usd` ist die Kursstrecke mal punkt_wert_usd
+           # (1:1), also der Gewinn JE EINHEIT. "USD" an dieser Stelle war
+           # eine Behauptung: die Summe der Strecken ist kein Geldbetrag.
+           "orb": "Punkte", "orbk": "Punkte"}
 
 
 def _zustand_pfad(spur):
@@ -180,14 +212,7 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
     if z is None:
         z = zeilen(spur)
     if gebuehr is None:
-        gebuehr = 0.0
-        wp = HIER / spur / "wachen.json"
-        if wp.exists():
-            try:
-                gebuehr = (json.loads(wp.read_text("utf-8")).get("gebuehr_taker")
-                           or 0.0)
-            except (OSError, ValueError):
-                gebuehr = 0.0
+        gebuehr = gebuehr_fuer(spur)
     if not z:
         return []
     if spur in ("xperp", "swap"):
@@ -196,7 +221,7 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
         return runden_spot(z, 0.0005, stand=stand)
     if spur == "kraken":
         return runden_spot(z, gebuehr, einsatz_feld="eur", stand=stand)
-    if spur == "orbk":
+    if spur in ("orb", "orbk"):
         return runden_orbk(z)
     if spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
         return runden_indikator(z, stand=stand)
@@ -236,7 +261,9 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     stand = {}
     runden = runden_fuer(spur, z, stand=stand)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
-    k = kennzahlen(runden, einheit_fuer(spur))
+    k = kennzahlen(runden, einheit_fuer(spur),
+                   gebuehr=gebuehr_fuer(spur),
+                   brutto=spur not in GEBUEHR_SCHON_DRIN)
     # Die Zuordnung wird MITGELIEFERT, nicht verschwiegen: eine Runde, die
     # keinen Partner fand, fehlt sonst still in der Quote (T-095). `kennzahlen`
     # gibt None zurueck, wenn nur Zwangsschluesse im Journal stehen - dann gibt
@@ -385,7 +412,7 @@ def tage(von, bis):
     return (b - a).total_seconds() / 86400.0
 
 
-def kennzahlen(runden, einheit):
+def kennzahlen(runden, einheit, gebuehr=None, brutto=None):
     """Die gemeinsame Ausgabe. runden = Liste von dicts mit ergebnis/einsatz.
 
     ZWANGSSCHLUESSE ZAEHLEN NICHT MIT. Ein Ausstieg mit herzschlag im Grund
@@ -395,6 +422,15 @@ def kennzahlen(runden, einheit):
     Rundenzahl waere zu hoch, die Trefferquote zu niedrig, weil die
     Zwangsschluesse meist im Verlust sitzen. Beides wird deshalb getrennt
     ausgewiesen - nicht versteckt, nur nicht vermischt.
+
+    BRUTTO ODER NETTO (T-192, 01.10.2026): Die meisten Papierbuecher schreiben
+    ihre Zeilen OHNE Kosten - die Summe ist dann brutto und mit einer
+    Live-Rechnung nicht vergleichbar. Hier wird die Gebuehr deshalb NICHT
+    stillschweigend abgezogen, sondern als eigene Zahl daneben gestellt:
+    `brutto` sagt, ob das Ergebnis die Gebuehr noch enthaelt, `netto` ist das
+    Ergebnis nach `2 x gebuehr x einsatz` (Kauf und Verkauf). Fuer Spuren, die
+    die Gebuehr schon im Journal tragen (GEBUEHR_SCHON_DRIN), wird NICHT
+    gerechnet - zweimal abziehen waere genauso falsch wie gar nicht.
     """
     echt = [r for r in runden if not stoerungen.ist_stoerung(r.get("grund"))]
     stoer = [r for r in runden if stoerungen.ist_stoerung(r.get("grund"))]
@@ -408,10 +444,31 @@ def kennzahlen(runden, einheit):
             if r["einsatz"]]
     treffer = sum(1 for r in runden if r["ergebnis"] > 0)
     halten = [r["halten"] for r in runden if r.get("halten") is not None]
+    if brutto is None:
+        # VORGABE BRUTTO: diese Funktion zieht NIE etwas von `ergebnis` ab -
+        # die Zahl ist genau die aus dem Journal. Ob darin schon eine Gebuehr
+        # steckt, weiss nur der Aufrufer (`GEBUEHR_SCHON_DRIN`) und sagt es
+        # ueber diesen Parameter. Ohne Angabe ist die ehrliche Antwort
+        # "brutto" (die Gebuehr ist nicht nachweislich enthalten).
+        brutto = True
+    gebuehr = float(gebuehr or 0.0)
+    # Bei brutto=False steckt die Gebuehr schon in der Journalzahl - dann wird
+    # sie NICHT noch einmal abgezogen. Zweimal abziehen waere so falsch wie
+    # gar nicht: dieselbe Rechnung, nur mit dem anderen Vorzeichen.
+    kosten_netto = einsatz * 2.0 * gebuehr if brutto else 0.0
+    ergebnis = erloes - einsatz
     return {
         "n": len(runden), "einheit": einheit, "einsatz": einsatz,
-        "erloes": erloes, "ergebnis": erloes - einsatz,
-        "pct": 100.0 * (erloes - einsatz) / einsatz if einsatz else 0.0,
+        "erloes": erloes, "ergebnis": ergebnis,
+        "pct": 100.0 * ergebnis / einsatz if einsatz else 0.0,
+        # Brutto/Netto: brutto=True heisst, `ergebnis` enthaelt die Gebuehr
+        # noch. `netto` wird nur gerechnet, wenn eine Gebuehr bekannt ist.
+        "brutto": brutto,
+        "gebuehr": gebuehr,
+        "kosten_netto": kosten_netto,
+        "netto": ergebnis - kosten_netto,
+        "netto_pct": (100.0 * (ergebnis - kosten_netto) / einsatz
+                      if einsatz else None),
         "median_pct": statistics.median(pcts) if pcts else None,
         "treffer": treffer,
         "treffer_pct": 100.0 * treffer / len(runden),
@@ -420,6 +477,8 @@ def kennzahlen(runden, einheit):
         "halten_tage": statistics.median(halten) if halten else None,
         "gruende": _zaehle(r["grund"] for r in runden),
         "kosten_anteil": _kosten_anteil(runden),
+        # Ergebnis in R, wenn das Buch KEINEN Einsatz fuehrt (ORB-Spuren).
+        "r": r_kennzahlen(runden),
         # Separat, nicht eingerechnet: die Fehleranalyse.
         "n_stoerung": len(stoer),
         "stoerung_ergebnis": sum(r["ergebnis"] for r in stoer) if stoer else 0.0,
@@ -606,17 +665,53 @@ def runden_nautilus(zeilen_, stand=None):
 
 
 def runden_orbk(zeilen_):
-    """orbk journalisiert die fertige Runde - hier wird nichts gepaart."""
+    """orb/orbk journalisieren die fertige Runde - hier wird nichts gepaart.
+
+    DIESE BUECHER FUEHREN PUNKTE, KEIN GELD (T-192): `gv_usd` ist die
+    Kursdifferenz mal `punkt_wert_usd` (bei den ORB-Instrumenten 1:1), also der
+    Gewinn JE EINHEIT - eine Positionsgroesse gibt es in diesem Buch nicht.
+    Deshalb steht hier `einsatz: 0.0` und KEIN erfundener Einsatz: die
+    Positionsgroesse kaeme aus `risiko_pro_trade / stop_abstand` (SPEC.md), und
+    der ORB-Stop ist die Range-Hoehe - bei ETH oft 0,4 %, das ergaebe ein
+    Nominal von einigen tausend USD. Das ist eine Design-Entscheidung, keine
+    Reparatur. Statt dessen steht das Ergebnis daneben in R:
+    `gv / |einstieg - stop|`, groessenunabhaengig und zwischen beiden
+    ORB-Spuren vergleichbar.
+    """
     runden = []
     for r in zeilen_:
         gv = zahl(r.get("gv_usd"))
         if gv is None:
+            gv = zahl(r.get("gv_punkte"))
+        if gv is None:
             continue
+        einstieg = zahl(r.get("einstieg"))
+        stop = zahl(r.get("stop"))
+        risiko = abs(einstieg - stop) if (einstieg and stop) else None
         runden.append({"inst": r.get("inst", ""), "einsatz": 0.0,
                        "ergebnis": gv, "kosten": 0.0,
+                       "risiko": risiko,
+                       "r_vielfaches": (gv / risiko) if risiko else None,
                        "grund": (r.get("ausgang") or "").strip() or None,
                        "halten": None, "zeit": r.get("zeit") or ""})
     return runden
+
+
+def r_kennzahlen(runden):
+    """Ergebnis in R (Vielfache des Risikos) - fuer Buecher ohne Einsatz.
+
+    Rueckgabe None, wenn keine Zeile eine Risikostrecke traegt (dann wird
+    nichts behauptet). Ein R ist der Gewinn geteilt durch den Abstand
+    Einstieg->Stop, also die Groesse, die ein risikonormiertes Buch ohnehin
+    anstrebt - hier ohne Positionsgroesse gerechnet.
+    """
+    rs = [r["r_vielfaches"] for r in runden
+          if r.get("r_vielfaches") is not None]
+    if not rs:
+        return None
+    return {"n": len(rs), "summe": sum(rs), "mittel": statistics.mean(rs),
+            "best": max(rs), "schlecht": min(rs),
+            "treffer_pct": 100.0 * sum(1 for x in rs if x > 0) / len(rs)}
 
 
 # Die Aktionsnamen, mit denen gitter/handeln.py eine Stufe schliesst.
@@ -654,6 +749,31 @@ def gitter_zyklen(zeilen_):
     return zyklen
 
 
+def _brutto_netto_text(k):
+    """EINE Zeile, die sagt, ob die ausgewiesene Zahl brutto oder netto ist.
+
+    T-192: Die Papierbuecher schreiben ihre Zeilen ohne Kosten, die Live-Spuren
+    rechnen sie ein. Ohne diesen Hinweis liest man zwei Zahlen, die
+    Verschiedenes bedeuten, als waeren sie vergleichbar.
+    """
+    geb = k.get("gebuehr") or 0.0
+    if not k.get("brutto"):
+        return ("Kosten im Journal enthalten - die Zahlen sind NETTO "
+                "(%.3f %% je Seite)" % (100.0 * geb))
+    if not geb:
+        return ("BRUTTO und UNBEKANNT: kein gebuehr_taker in der wachen.json "
+                "- die Zahl ist nicht als netto lesbar")
+    if not k.get("einsatz"):
+        return ("Gebuehr laut wachen.json %.3f %% je Seite - hier NICHT "
+                "abziehbar (das Buch fuehrt keinen Einsatz)" % (100.0 * geb))
+    if k.get("netto_pct") is None:
+        return ("BRUTTO im Journal; netto nach %.3f %% je Seite: %+.2f %s"
+                % (100.0 * geb, k["netto"], k["einheit"]))
+    return ("BRUTTO im Journal; netto nach %.3f %% je Seite (Kauf+Verkauf): "
+            "%+.2f %s (%+.2f %%)"
+            % (100.0 * geb, k["netto"], k["einheit"], k["netto_pct"]))
+
+
 def zeige(spur, k):
     if k is None:
         print("\n=== %s ===" % spur.upper())
@@ -686,8 +806,15 @@ def zeige(spur, k):
               % ("davon Zwangsschluesse", k["n_stoerung"],
                  k["stoerung_ergebnis"], k["einheit"]))
         print("  %-28s %d" % ("Runden mit Stoerungen", k["runden_gesamt"]))
-    print("  %-28s %s" % ("Ergebnis", "%+.2f %s (%+.2f %%)"
-                          % (k["ergebnis"], k["einheit"], k["pct"])))
+    if k["einsatz"]:
+        print("  %-28s %s" % ("Ergebnis", "%+.2f %s (%+.2f %%)"
+                              % (k["ergebnis"], k["einheit"], k["pct"])))
+    else:
+        # OHNE EINSATZ GIBT ES KEINEN PROZENTWERT (T-192). Die Zahl ist die
+        # Summe der Kursstrecken, kein Geldbetrag; "(+0.00 %)" waere eine
+        # Behauptung ueber eine Rechnung, die nie stattfand.
+        print("  %-28s %s" % ("Ergebnis", "%+.2f %s - kein Geldbetrag"
+                              % (k["ergebnis"], k["einheit"])))
     print("  %-28s %.0f %%  (%d von %d)"
           % ("Treffer (Gewinn > 0)", k["treffer_pct"], k["treffer"], k["n"]))
     if k["einsatz"]:
@@ -695,13 +822,27 @@ def zeige(spur, k):
               % ("Ergebnis auf den Einsatz (gesamt)",
                  p(100.0 * k["ergebnis"] / k["einsatz"]),
                  p(k["median_pct"])))
+    elif k.get("r"):
+        r = k["r"]
+        print("  %-28s kein Einsatz im Buch (Punktebuch) - Prozent nicht "
+              "rechenbar" % "Ergebnis in Prozent")
+        print("  %-28s %+.2f R gesamt, %+.3f R je Runde (Treffer %.0f %%, "
+              "%d Runden mit Risikostrecke)"
+              % ("Ergebnis in R", r["summe"], r["mittel"], r["treffer_pct"],
+                 r["n"]))
     else:
         print("  %-28s kein Einsatz im Journal" % "Ergebnis in Prozent")
-    print("  %-28s %s %% / %s %%"
-          % ("beste / schlechteste Runde", p(k["best"]), p(k["schlecht"])))
+    if k["best"] is not None:
+        print("  %-28s %s %% / %s %%"
+              % ("beste / schlechteste Runde", p(k["best"]), p(k["schlecht"])))
+    elif k.get("r"):
+        print("  %-28s %+.2f R / %+.2f R"
+              % ("beste / schlechteste Runde", k["r"]["best"],
+                 k["r"]["schlecht"]))
     if k["kosten_anteil"] is not None:
         print("  %-28s %.2f %% vom Einsatz"
               % ("Kosten (aus den Zeilen)", k["kosten_anteil"]))
+    print("  %-28s %s" % ("Brutto/Netto", _brutto_netto_text(k)))
     if k["halten_tage"] is not None:
         print("  %-28s %.1f Tage" % ("Haltedauer (Median)", k["halten_tage"]))
     print("  Ausstiegsgruende: %s"

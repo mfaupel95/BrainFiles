@@ -917,6 +917,8 @@ Drei Fallen beim Einbau:
 .venv/Scripts/python.exe journal_pos_id_nachziehen.py --anwenden # nachziehen
 python Agenten/Hermes/cache/scratch/gegenprobe_alt_neu.py        # alt vs. neu
 
+```
+
 ## Eine stillgelegte Spur kurz wieder anzuschalten wickelt ihre alten Positionen ab
 
 **Befund (01.10.2026, Spiegel-Arme):** Die drei Arme standen seit dem 21.09.
@@ -941,4 +943,34 @@ sie gar nicht in `SPUREN`.
 aus (Trockenlauf Standard, `--anwenden` schreibt): je Position eine Journalzeile
 `schliessen / buchbereinigung` mit dem EINSTIEGSPREIS - neutral, damit die
 Bereinigung die Bilanz nicht veraendert.
-```
+
+## Brutto und netto gehoeren nicht in dieselbe Summe (01.10.2026)
+
+**Befund (T-192):** Die Live-Spuren rechnen ihre Gebuehr im Journal ein
+(scanner/kraken im Betrag der Ausstiegszeile, xperp/swap ueber
+`gebuehr_pct`/`funding_pct`), die Papierbuecher nicht. Beide standen im Bericht
+unter derselben Zeile, und bei den Papierbuechern stand "Kosten 0.00 %" - eine
+Zahl, die nicht gemessen, sondern nur nicht vorhanden war. Dazu fuehren orb und
+orbk ein PUNKTE-Buch: `gv_usd` ist die Kursstrecke mal `punkt_wert_usd` (1:1),
+also der Gewinn JE EINHEIT. Ohne Einsatz gibt es keinen Prozentwert - die Zeile
+zeigte trotzdem "(+0.00 %)".
+
+**Regel 1 - eine Auswertung sagt, was ihre Zahl bedeutet.**
+`kennzahlen()` liefert `brutto`/`gebuehr`/`kosten_netto`/`netto`/`netto_pct`, die
+Zeile "Brutto/Netto" nennt den Satz und die Nettosumme. `GEBUEHR_SCHON_DRIN`
+(xperp/swap/scanner/kraken) verhindert das ZWEIMALIGE Abziehen - zweimal abziehen
+ist so falsch wie gar nicht. Steht keine Gebuehr in der wachen.json, heisst es
+"BRUTTO und UNBEKANNT" und nicht "0.00 %". Gemessen aendert das Urteile:
+mosaic +10.82 -> +9.62 USD, moondev_marktlage -5.02 -> -6.02,
+moondev_signalwelle +38.85 -> +37.92, iv_wand +2.30 -> +2.00.
+
+**Regel 2 - fuer ein Buch ohne Einsatz gehoert ein groessenunabhaengiges Mass
+daneben, kein erfundenes Nominal.** `runden_orbk` rechnet
+`gv / |einstieg - stop|` (Ergebnis in R). Das ergab die erste ehrliche Zahl
+dieser beiden Spuren: orbk +2.18 R, orb -0.46 R - und die Einheit heisst jetzt
+"Punkte" statt "USD". Ein Einsatz aus `risiko_pro_trade / stop_abstand` (SPEC.md)
+waere bei der Range-Hoehe als Stop ein Nominal von einigen tausend USD: eine
+Design-Entscheidung, keine Reparatur.
+
+**Nebenbei gefunden:** `orb` fehlte in der Auswertung ganz (nur `orbk` stand in
+`SPUREN`); 18 von 41 Spuren haben noch keine Gebuehr (T-264).

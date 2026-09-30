@@ -91,7 +91,11 @@ class QuelleTest(unittest.TestCase):
         # umgeht die Ableitung aus dem Buch.
         self.assertEqual(quelle.count("EINHEIT.get(spur"), 1,
                          "die Tabelle wird an mehr als einer Stelle gelesen")
-        self.assertIn("kennzahlen(runden, einheit_fuer(spur))", quelle)
+        # Geprueft wird die EIGENSCHAFT, nicht der Wortlaut des Aufrufs: T-192
+        # hat `kennzahlen(...)` um Gebuehr und Brutto-Haekchen erweitert, die
+        # alte Zeichenkette stimmte danach nicht mehr, obwohl die Regel galt.
+        rumpf = quelle.split("def kennzahlen_fuer(")[1].split("\ndef ")[0]
+        self.assertIn("einheit_fuer(spur)", rumpf)
 
     def test_kein_zweiter_leser_der_tabelle(self):
         """Wer die Einheit braucht, ruft einheit_fuer().
