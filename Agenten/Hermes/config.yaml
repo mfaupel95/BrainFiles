@@ -835,3 +835,5 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+cron:
+  catch_up_missed: false
