@@ -352,6 +352,26 @@ SPUREN = {
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.
     "moondev_signalwelle": {"ordner": "moondev_signalwelle", "waehrung": "USD",
                             "skript": "handeln.py"},
+    # KLASSIK-SPUREN (30.09.2026, Auftrag Max "neue Strategien und Spuren"):
+    # die sechs Pine-Vorlagen (MaxHirn/Wiki/Handel/*.pine) plus zwei neue
+    # Regeln als Papierspuren auf BTC/ETH/SOL-Perps, 4H. Eine Rechnung fuer
+    # alle: Handel/klassik_regeln.py, Buch spur_buch.py. Kein Live-Zweig.
+    "klassik_sma": {"ordner": "klassik_sma", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_ema": {"ordner": "klassik_ema", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_macd": {"ordner": "klassik_macd", "waehrung": "USD",
+                     "skript": "handeln.py"},
+    "klassik_bollinger": {"ordner": "klassik_bollinger", "waehrung": "USD",
+                          "skript": "handeln.py"},
+    "klassik_donchian": {"ordner": "klassik_donchian", "waehrung": "USD",
+                         "skript": "handeln.py"},
+    "klassik_rsi": {"ordner": "klassik_rsi", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_rsi2": {"ordner": "klassik_rsi2", "waehrung": "USD",
+                     "skript": "handeln.py"},
+    "klassik_donchian_trend": {"ordner": "klassik_donchian_trend",
+                               "waehrung": "USD", "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
