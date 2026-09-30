@@ -155,9 +155,7 @@ def lade(pfad, vorgabe=None):
 
 
 def schreibe(pfad, daten):
-    with open(pfad, "w", encoding="utf-8") as f:
-        json.dump(daten, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    atomar.schreibe_json(pfad, daten)
 
 
 def journal(**felder):
@@ -190,8 +188,20 @@ def protokolliere(grund, anzahl=1):
     journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=grund, anzahl=anzahl)
 
 
+# Zustand atomar schreiben und laut lesen (atomar.py, 30.09.2026). Ueber den
+# PFAD geladen wie risikostufe.py: die Spur hat ihren eigenen Ordner als
+# sys.path[0]. Defekte Datei -> Sicherung .bak, sonst laute Ausnahme statt
+# leerem Bestand.
+from importlib.util import module_from_spec as _at_mod, \
+    spec_from_file_location as _at_spec
+_at_obj = _at_spec("atomar", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir, "atomar.py"))
+atomar = _at_mod(_at_obj)
+_at_obj.loader.exec_module(atomar)
+
+
 def lade_zustand():
-    z = lade(ZUSTAND, None) or {}
+    z = atomar.lade_json(ZUSTAND, lambda: None) or {}
     z.setdefault("positionen", [])
     # gesehene Trades: {wallet: {token: [tx1, tx2, ...]}} - damit ein Trade
     # nicht mehrfach gebucht wird, wenn er ueber mehrere Zyklen im Fenster

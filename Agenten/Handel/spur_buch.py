@@ -38,6 +38,7 @@ from importlib.util import module_from_spec, spec_from_file_location  # noqa: E4
 
 import wachen_pruefung as wp  # noqa: E402
 import risikostufe  # noqa: E402
+import atomar  # noqa: E402  (Zustand atomar schreiben, laut lesen)
 import freigabefenster  # noqa: E402
 # pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
 # Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
@@ -109,19 +110,14 @@ def lade_wachen(wachen_pfad):
 
 
 def lade_zustand(zustand_pfad):
-    try:
-        with open(zustand_pfad, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {"positionen": [], "modus": "papier", "letzter_lauf": None,
-                "verlust_usd": 0.0}
+    return atomar.lade_json(zustand_pfad, lambda: {
+        "positionen": [], "modus": "papier", "letzter_lauf": None,
+        "verlust_usd": 0.0})
 
 
 def schreibe_zustand(zustand_pfad, z):
     z["letzter_lauf"] = jetzt()
-    with open(zustand_pfad, "w", encoding="utf-8") as f:
-        json.dump(z, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    atomar.schreibe_json(zustand_pfad, z)
 
 
 def journal(journal_pfad, **felder):

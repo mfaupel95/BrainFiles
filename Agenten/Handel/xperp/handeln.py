@@ -110,20 +110,26 @@ def _heute():
     return datetime.now(timezone.utc).date().isoformat()
 
 
+# Zustand atomar schreiben und laut lesen (atomar.py, 30.09.2026). Ueber den
+# PFAD geladen wie risikostufe.py: die Spur hat ihren eigenen Ordner als
+# sys.path[0]. Defekte Datei -> Sicherung .bak, sonst laute Ausnahme statt
+# leerem Bestand.
+from importlib.util import module_from_spec as _at_mod, \
+    spec_from_file_location as _at_spec
+_at_obj = _at_spec("atomar", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir, "atomar.py"))
+atomar = _at_mod(_at_obj)
+_at_obj.loader.exec_module(atomar)
+
+
 def lade_zustand():
-    try:
-        with open(ZUSTAND, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {"positionen": [], "letzte_stops": {}, "letzter_lauf": None,
-                "modus": "papier", "rangliste": None}
+    return atomar.lade_json(ZUSTAND, lambda: {"positionen": [], "letzte_stops": {}, "letzter_lauf": None,
+                "modus": "papier", "rangliste": None})
 
 
 def schreibe_zustand(z):
     z["letzter_lauf"] = _jetzt()
-    with open(ZUSTAND, "w", encoding="utf-8") as f:
-        json.dump(z, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    atomar.schreibe_json(ZUSTAND, z)
 
 
 def journal(**felder):
