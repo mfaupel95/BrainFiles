@@ -60,6 +60,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
+      Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
+      generalisiert den Wrapper, mit dem am 30.09.2026 die Auslagerung gesetzt wurde. Sein
+      Selbsttest (pruefe-erhoeht-starten.ps1) laeuft ohne UAC und ist gruen: Syntax unter
+      PowerShell 5.1, verbotene Aufrufe, Log-Mechanik samt Exitcode. Die eine Zeile, die
+      dabei NICHT geprueft wird, ist der Start selbst (Start-Process -Verb RunAs -Wait).
+      Naechster Schritt: beim naechsten echten Admin-Vorgang den Wrapper statt eines
+      Einzel-Wrappers benutzen (z. B. eine harmlose Aufgabe: geplante Aufgabe neu
+      registrieren) und den Log-Schwanz lesen - danach die Zeile im Wiki bestaetigen.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/skills/system/erhoehte-windows-aktion/
 
 - [ ] **T-220 — Commit-Grenze nach dem Neustart pruefen (T-215 wirkt erst dann)**
       Kontext: Am 30.09.2026 12:33 wurden C:\pagefile.sys auf 8192/8192 fest
