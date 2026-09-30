@@ -104,6 +104,19 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
 
 6. **Erst dann melden**, mit beiden Zeugen im selben Lauf zitiert.
 
+7. **Eine ZAHL und ein fremder Fix sind eigene Gegenstaende** — beide werden
+   nachgerechnet, nicht geglaubt. Dieselbe Groesse ueber DREI unabhaengige Wege
+   rechnen (Zeilenrechnung, Schluessel-Paarung, Hausfunktion); weichen sie ab,
+   ist der AUSREISSER der Fehler, nicht die Mehrheit. Belegter Fall: ein Fix
+   einer parallelen Sitzung war echt (Zaehler `0/1506` → `1506/1506`), aber die
+   Hausfunktion lieferte fuer dieselben zwei Journale `-47.7` gegen `+492.26`
+   aus zwei anderen Wegen — sie rechnete das Rundenergebnis ohne die
+   HANDELSRICHTUNG, jede Short-Runde stand mit verkehrtem Vorzeichen im Buch
+   (Trefferquote 54,2 % statt 33,2 %). Vor jedem eigenen Fix in geteiltem Code:
+   erst `git log -- <datei>`, ob er schon da ist. Rezept, die zwei Fallen
+   (fehlende Richtung, einseitige Summe) und die Werkzeugfallen:
+   `references/zahlen-nachrechnen.md`.
+
 ## Pitfalls
 
 - **Zwei Formen derselben Bedingung: eine kann still fehlen.** Eine Freigabe
@@ -367,4 +380,17 @@ Nach einem Absturzfix ist der Nachweis die Rueckgabe des GANZEN Laufs: den
 festen Lauf mit nachgestellter Netzstoerung (Double fuer `urlopen`) gegen einen
 Temp-Ordner fahren und `0` erwarten - dazu den naechsten echten Zyklus im
 Fahrerlog zeigen. Rezept und Fallunterscheidung Netzfehler/Spurenfehler:
-Skill `handel-spuren`, `references/betriebsfehler-spuren.md`.
+Skill `handel-spuren`, `references/betriebsfehler-spuren.md` (dort im
+Skill-Ordner, nicht in diesem).
+
+Fuer eine ZAHL ist der Nachweis der Drei-Wege-Test aus Schritt 7 - alle drei
+Wege im selben Lauf, mit ihren Zahlen:
+
+```bash
+cd Agenten/Handel && python kerzenschluss_bias.py --spur <spur> | tail -6
+```
+
+Erwartet: `netto` stimmt mit der Hausfunktion auf denselben Journalen ueberein
+(auf die Nachkommastelle, wenn beide mit demselben Vorzeichen rechnen). Weicht
+eine Zahl ab, gehoert die Abweichung in die Antwort - nicht die geglaettete
+Fassung.
