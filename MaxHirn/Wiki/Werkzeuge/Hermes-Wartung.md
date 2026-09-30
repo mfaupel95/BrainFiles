@@ -33,9 +33,18 @@ der Neustart reißt den Aufrufer ab.
   `AFTER_HEAD` und den Abstand prüfen, dann den Dienst.
 - **Der Gateway-Task hat einen neuen Namen.** `Hermes_Gateway` gibt es nicht
   mehr; gültig ist **`Hermes_Gateway_2ef9d0b7`** (`Get-ScheduledTask |
-  Where TaskName -like '*ermes*'`). `Start-ScheduledTask` darauf, danach
-  braucht der Port 9900 **50 bis 90 Sekunden**, bis er `200` liefert — vorher
-  antwortet er mit `000`, und das ist noch kein Fehler.
+  Where TaskName -like '*ermes*'`). `Start-ScheduledTask` darauf.
+- **Einen laufenden Gateway erkennt man nicht am Port und nicht am
+  Prozessnamen.** Gemessen am 30.09.2026: Der Start bis `Gateway running
+  with 13 platform(s)` dauert **rund fünf Minuten** (vorher lauscht nichts,
+  `curl` auf 9900 liefert `000` und `Get-NetTCPConnection` findet nichts —
+  alles kein Fehler). Und der Prozess läuft als
+  `tools\python-3.14.7…\python.exe`, seine Kommandozeile enthält **nicht**
+  `gateway run`; ein Filter darauf meldet fälschlich „kein Gateway".
+  Verlässlich ist allein **`hermes gateway status`** (zeigt PID, Ports
+  `9900`/`8644` und die Webhook-URLs je Profil) — und die Gegenprobe
+  `hermes gateway run`, das bei laufendem Gateway mit „✓ The host gateway
+  already serves profile 'default' … PID <n>“ antwortet statt zu starten.
 - **Nach dem Lauf sind ALLE Werkzeuge blockiert.** Die Abhängigkeits-
   Installation für 23 Profile startet über hundert `python.exe` im
   Sekundentakt; `terminal`, `read_file` und die MCP-Werkzeuge laufen in
