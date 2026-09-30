@@ -1,441 +1,146 @@
-# Omnitrade Rust Workspace — Setup & Integration
+# Omnitrade Rust Workspace — Setup & Integration (geprueft und ergaenzt)
 
-**Datum:** 29.09.2026  
-**Location:** `Agenten/Handel/nautilus-rust/`  
-**Workspace Crates:** 5 Module für Quant-Trading
+**Stand:** 30.09.2026, alles nachgemessen in `Agenten/Handel/nautilus-rust`
+**Werkzeuge:** cargo 1.98.1 (797e8a9bc 2026-08-05), rustc 1.98.1
 
----
-
-## Workspace-Struktur
-
-```
-nautilus-rust/
-├── Cargo.toml                    # Workspace-Definition
-├── Cargo.lock                    # Dependency-Locks
-│
-├── omnitrade-risk/               # 🎯 Risk Management (Kernmodul)
-│   ├── src/lib.rs                # Sizing, Drawdown, Kill-Switch
-│   └── Cargo.toml
-│
-├── quant-strategy/               # Strategy Evaluation & Signals
-│   ├── src/lib.rs
-│   └── Cargo.toml
-│
-├── quant-alpha/                  # Alpha Generation
-│   ├── src/lib.rs
-│   └── Cargo.toml
-│
-├── quant-signal/                 # Signal Processing
-│   ├── src/lib.rs
-│   └── Cargo.toml
-│
-└── quant-planes/                 # Quant-Ebenen/Layers
-    ├── src/lib.rs
-    └── Cargo.toml
-```
+> Diese Fassung ersetzt die Vorlage vom 29.09.2026 (Claude Haiku 4.5). Die
+> Crate-Beschreibungen der Vorlage stimmen; die Abschnitte *Python-Binding
+> (PyO3)*, *HTTP-API*, *Docker* und *Integration in Handelszentrale* sind
+> dagegen **Entwuerfe, kein Bestand** — fuer keinen davon gibt es eine Datei im
+> Baum (gemessen: kein Treffer fuer `pyo3|maturin|actix|axum|rocket`, kein
+> Dockerfile, kein `setup.py`/`pyproject.toml`). Alles unten ist mit echtem Lauf
+> belegt; die Ausgaben stehen im Wortlaut.
 
 ---
 
-## Installation & Build
+## Workspace-Struktur (gemessen)
 
-### Voraussetzungen
-```
-- Rust 1.70+ (https://rustup.rs)
-- Cargo (kommt mit Rust)
-- C/C++ Compiler (optional, für native Dependencies)
-```
+Fuenf Crates, 826 Zeilen Rust, ein Workspace ohne `[workspace.dependencies]` —
+jede Crate pinnt ihre Abhaengigkeiten selbst:
 
-### Installation Rust
-```bash
-# Linux/macOS
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
+| Crate | Quellen | Zeilen | Ebene / Aufgabe |
+|---|---|---|---|
+| `quant-signal` | src/lib.rs | 93 | **Neutrale Grenze** zwischen Research und Execution: `RankedBook`, `BookEvidence`, `RankedWeight`, `is_dollar_neutral()`. Haengt nur von `serde` ab — kein `nautilus-*`, kein `candle-*` |
+| `quant-alpha` | src/main.rs, src/cross_panel.rs, src/lib.rs | 186 | **Modell-Ebene** (`candle-core/-nn` 0.11): MLP linear→tanh→linear, AdamW, synthetische Daten; schreibt `ranked_book.json`. `CrossPanel::fingerprint()` (SHA-256) und `required_periods(effekt, se)` |
+| `quant-strategy` | src/main.rs, src/evidence.rs, src/lib.rs | 352 | **Ausfuehrungs-Ebene** (`nautilus-backtest/-model/-trading` 0.64): liest `ranked_book.json`, bildet den t-Wert SELBST, `EvidenceGate::decide()`, Seam-Guards fuer Instrument-IDs und Zielgroessen |
+| `quant-planes` | src/main.rs | 113 | **Grenzpruefer**: liest `Cargo.lock`, verbietet `quant-alpha -> nautilus-*` und `quant-strategy -> candle-*`; Exit 1 bei Verstoss |
+| `omnitrade-risk` | src/lib.rs | 82 | **Risiko**: `RiskLimits::check()`, `groessenfaktor(halbierung, drawdown)`, `kill_switch(Verdict)` |
 
-# Oder: Update bestehende Installation
-rustup update
-```
+`target/` ist Build-Ausgabe (4,8 GB, nicht versioniert). Der Workspace liegt IM
+BrainFiles-Repo (16 verfolgte Dateien) und hat **kein eigenes `.git`**.
 
-### Build durchführen
+---
+
+## Bauen und Testen (echte Laeufe)
+
 ```bash
 cd Agenten/Handel/nautilus-rust
-
-# Development Build (schneller, weniger optimiert)
-cargo build
-
-# Release Build (optimiert, für Production)
-cargo build --release
-
-# Spezifisches Crate bauen
-cargo build -p omnitrade-risk
-cargo build -p quant-strategy
-
-# Tests durchführen
-cargo test
+cargo build --workspace     # Finished `dev` profile in 16.29s
+cargo test  --workspace     # 20 Tests, 6 Test-Binaries, 0 failed
 ```
 
-### Build-Output
-```
-nautilus-rust/
-├── target/
-│   ├── debug/
-│   │   ├── libomnitrade_risk.rlib
-│   │   ├── libquant_strategy.rlib
-│   │   └── ...
-│   └── release/
-│       ├── libomnitrade_risk.rlib  # Optimiert
-│       └── ...
-```
+Testverteilung: `omnitrade-risk` 3, `quant-alpha` 3 (cross_panel), `quant-planes`
+2 (Ebenen-Grenze), `quant-signal` 2 (Dollar-Neutralitaet), `quant-strategy` 3
+(Evidence-Gate) + 7 (Seam-Guards gegen die Fuenf Seam-Defekte). Doc-Tests: 0.
 
 ---
 
-## Module Deep Dive
-
-### 1. omnitrade-risk (Kernmodul)
-
-**Funktion:** Sizing, Drawdown-Management, Kill-Switches
-
-**Haupttypen:**
-```rust
-pub struct OrderRequest {
-    pub units: u64,              // Bestellmenge
-    pub name: String,            // Asset-Name
-}
-
-pub struct RiskLimits {
-    pub max_units_per_name: u64, // Max Units pro Asset
-    pub drawdown_halbierung_usd: f64, // Drawdown-Schwelle
-}
-
-pub struct RiskViolation(pub String); // Error-Typ
-```
-
-**Core-Funktionen:**
-```rust
-// Order gegen Limits prüfen
-limits.check(&order_request) -> Result<(), RiskViolation>
-
-// Größenfaktor bei Drawdown
-groessenfaktor(drawdown_schwelle, current_drawdown) -> f64
-// Faktor < 1.0 → reduzierte Größe bei Drawdown
-// Faktor = 0.0 → Stop bei max Drawdown
-```
-
-**Integration:**
-```python
-# Python-Wrapper (via PyO3 oder HTTP-API)
-from omnitrade_risk import RiskLimits, OrderRequest
-
-limits = RiskLimits(max_units_per_name=100, drawdown_halbierung_usd=5000)
-order = OrderRequest(units=50, name="BTC/USDT")
-
-try:
-    limits.check(order)  # OK, 50 < 100
-except RiskViolation as e:
-    print(f"Risk check failed: {e}")
-    # Order wird nicht platziert
-```
-
----
-
-### 2. quant-strategy
-
-**Funktion:** Strategy Evaluation und Signal-Generierung
-
-**Typische Logik:**
-- Strategie-Parameter auswerten
-- Evidenz-basierte Urteile fällen ("Verdict")
-- Signale generieren (BUY/SELL/HOLD)
-
-**Imports aus omnitrade-risk:**
-```rust
-use omnitrade_risk::{OrderRequest, RiskLimits};
-use quant_strategy::evidence::Verdict;
-```
-
----
-
-### 3. quant-alpha, quant-signal, quant-planes
-
-**Spekulativ basierend auf Namen:**
-- **quant-alpha:** Alpha-Generierung (Überrendite)
-- **quant-signal:** Signal-Processing (technische Indikatoren?)
-- **quant-planes:** Ebenen der Quant-Logik (Pre-Trade, Trade, Post-Trade?)
-
-**Zu erforschen:** Siehe Kommentare in den `lib.rs` Dateien
-
----
-
-## Python-Binding via PyO3 (Optional)
-
-### Rust Seite (omnitrade-risk/src/lib.rs)
-
-```rust
-use pyo3::prelude::*;
-
-#[pyclass]
-pub struct RiskLimitsWrapper {
-    inner: RiskLimits,
-}
-
-#[pymethods]
-impl RiskLimitsWrapper {
-    #[new]
-    fn new(max_units: u64, drawdown_schwelle: f64) -> Self {
-        RiskLimitsWrapper {
-            inner: RiskLimits {
-                max_units_per_name: max_units,
-                drawdown_halbierung_usd: drawdown_schwelle,
-            }
-        }
-    }
-    
-    fn check(&self, units: u64, name: &str) -> PyResult<()> {
-        let order = OrderRequest {
-            units,
-            name: name.to_string(),
-        };
-        self.inner.check(&order)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.0))
-    }
-}
-
-#[pymodule]
-fn omnitrade_risk(py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<RiskLimitsWrapper>()?;
-    Ok(())
-}
-```
-
-### Python Seite
-
-```python
-# setup.py
-from maturin import build
-
-# Build-Befehl
-python setup.py build
-
-# Dann:
-from omnitrade_risk import RiskLimitsWrapper
-
-limits = RiskLimitsWrapper(max_units=100, drawdown_schwelle=5000)
-try:
-    limits.check(50, "BTC/USDT")
-except ValueError as e:
-    print(f"Risk violation: {e}")
-```
-
----
-
-## Alternative: HTTP-API
-
-Wenn PyO3 zu komplex: Rust-Daemon + REST-API
-
-```rust
-// Server
-use actix_web::{web, App, HttpServer, HttpResponse};
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new()
-            .route("/check-risk", web::post().to(check_risk_handler))
-            .route("/get-limits", web::get().to(get_limits_handler))
-    })
-    .bind("127.0.0.1:9001")?
-    .run()
-    .await
-}
-
-async fn check_risk_handler(body: web::Json<OrderRequest>) -> HttpResponse {
-    let limits = RiskLimits { /* ... */ };
-    match limits.check(&body) {
-        Ok(()) => HttpResponse::Ok().finish(),
-        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({"error": e.0}))
-    }
-}
-```
-
-```python
-# Python Client
-import httpx
-
-async def check_risk(units: int, name: str) -> bool:
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "http://localhost:9001/check-risk",
-            json={"units": units, "name": name}
-        )
-        return response.status_code == 200
-```
-
----
-
-## Testing
-
-### Unit Tests (Rust)
+## Die Programme laufen — und das Gate lehnt ab (Ausgabe im Wortlaut)
 
 ```bash
-cargo test                          # Alle Tests
-cargo test -p omnitrade-risk        # Nur omnitrade-risk
-cargo test --test integration       # Integration Tests
+./target/debug/quant-alpha.exe      # schreibt ranked_book.json
+# quant-alpha: Buch geschrieben, 2 Gewichte, dollar-neutral: true
+# quant-alpha: Panel-Fingerprint bcd372116d7d161d..., Perioden-Bedarf Some(1)
+
+./target/debug/quant-strategy.exe   # liest ranked_book.json
+# quant-strategy: Buch gelesen, 2 Gewichte, dollar-neutral: true
+#   evidence: net=3.500 bps, n=2000, se=2.000, folds=5, positive=2
+#   t = 1.75 (Huerde 2.0)
+#   book state   book has no demonstrated skill: t = 1.75 below 2.0 floor
+#   rebalances   0
+#   positions    0 opened at the venue
+
+./target/debug/quant-planes.exe
+# quant-planes: 0 violations (Ebenen-Grenze sauber)
 ```
 
-### Test-Beispiel (omnitrade-risk/tests/)
-
-```rust
-#[test]
-fn test_risk_check_pass() {
-    let limits = RiskLimits {
-        max_units_per_name: 100,
-        drawdown_halbierung_usd: 5000.0,
-    };
-    let order = OrderRequest { units: 50, name: "BTC".to_string() };
-    assert!(limits.check(&order).is_ok());
-}
-
-#[test]
-fn test_risk_check_fail() {
-    let limits = RiskLimits {
-        max_units_per_name: 100,
-        drawdown_halbierung_usd: 5000.0,
-    };
-    let order = OrderRequest { units: 150, name: "BTC".to_string() };
-    assert!(limits.check(&order).is_err());
-}
-
-#[test]
-fn test_groessenfaktor() {
-    let faktor = RiskLimits::groessenfaktor(5000.0, 2500.0);
-    assert_eq!(faktor, 0.5);  // 50% Reduktion bei halbenem Drawdown
-}
-```
+Das ist der interessante Teil: das Demo-Buch wird **abgelehnt**, weil
+`net_bps 3.5 / se_bps 2.0 = t 1.75` die kompilierte Huerde `MIN_EVIDENCE_T = 2.0`
+nicht erreicht. Der Gate arbeitet also im echten Lauf, und die Huerde ist eine
+Konstante, kein Config-Feld (Absicht: eine Strategie, die ihre eigene
+Evidenz-Huerde senken kann, hat keine).
 
 ---
 
-## Integration in Handelszentrale
+## Was NICHT im Baum ist (gegen die Vorlage)
 
-### Workflow
+| Abschnitt der Vorlage | Befund |
+|---|---|
+| Python-Binding via PyO3 | kein `pyo3` in irgendeinem `Cargo.toml`, kein `maturin`, kein `setup.py` |
+| Alternative HTTP-API | kein `actix-web`/`axum`/`rocket`, kein Port, kein Server |
+| Docker | kein `Dockerfile`, kein `docker-compose.yml` |
+| Integration in Handelszentrale | kein Orchestrator, keine Bruecke — die Vorlage beschreibt einen Bauplan |
+| "Build-Output: lib*.rlib" | existiert (`target/debug/deps/libomnitrade_risk-*.rlib`), ist aber Build-Ausgabe, keine Schnittstelle |
 
-```
-1. FreqTrade generiert Buy-Signal
-   ↓
-2. Omnitrade-Risk prüft Order-Größe
-   ├─ OK: Order wird platziert
-   └─ FAIL: Order reduziert oder gecancelt
-   ↓
-3. OpenTerminal UI zeigt Position
-   ↓
-4. Quant-Strategy evaluated Performance
-   ↓
-5. Risk-Management passt Drawdown an
-```
-
-### Python-Integration (Zentrale)
-
-```python
-# handelszentrale_integration.py
-from freqtrade_interface import FreqTradeClient
-from omnitrade_interface import OmnitradeRiskClient  # HTTP oder PyO3
-from openterminal_interface import OpenTerminalClient
-
-class TradeOrchestrator:
-    def __init__(self):
-        self.freqtrade = FreqTradeClient(jwt_token="...")
-        self.omnitrade = OmnitradeRiskClient(api_url="http://localhost:9001")
-        self.terminal = OpenTerminalClient(api_url="http://localhost:8000")
-    
-    async def execute_trade(self, symbol: str, size: int):
-        # 1. Risk-Check
-        risk_ok = await self.omnitrade.check_risk(size, symbol)
-        if not risk_ok:
-            print(f"Risk limit exceeded for {symbol}")
-            return
-        
-        # 2. Trade platzieren (FreqTrade oder direkt)
-        order = await self.freqtrade.place_order(symbol, size)
-        
-        # 3. UI aktualisieren
-        await self.terminal.add_to_watchlist(symbol)
-        
-        # 4. Performance überwachen
-        performance = await self.terminal.get_performance()
-        print(f"Current P&L: {performance}")
-```
+Ebenso: die Evidenzwerte in `quant-alpha` sind **hart eingetragen**
+(`net_bps 3.5, se_bps 2.0, folds 5, positive_folds 2`) und im Code als Demo
+markiert ("In einem echten Build waeren das out-of-sample Folds"). Es gibt kein
+Walk-Forward und keine echten Daten — aus diesem Workspace ist kein Handelssignal
+ableitbar.
 
 ---
 
-## Deployment
+## Bezug zum eigentlichen Projekt
 
-### Debug Build (für Entwicklung)
-```bash
-cargo build
-./target/debug/omnitrade-risk
-```
+Der Workspace ist ein **Lehrstueck** (fuenf kleine Crates, synthetische Daten).
+Das echte Rust-Projekt ist `Werkstatt/omnitrade` — 7 Crates
+(`omnitrade-core/-exchange/-engine/-script/-cli/-ui/-risk`), AGPL-3.0, Fork
+`mfaupel95/omnitrade`, laeuft als Papier-Spur (`Agenten/Handel/omnitrade`).
+Dessen `omnitrade-risk` ist die reife Fassung (limits, kill_switch,
+leverage_guard, guard, error) — die gleichnamige Crate hier ist eine
+eigenstaendige Miniatur mit anderer API (`RiskLimits` statt Guard-Module).
 
-### Release Build (für Production)
-```bash
-cargo build --release
-./target/release/omnitrade-risk
-
-# Größe reduzieren
-cargo build --release -C opt-level=z -C lto
-```
-
-### Docker (optional)
-
-```dockerfile
-FROM rust:latest
-WORKDIR /build
-COPY . .
-RUN cargo build --release
-FROM debian:bookworm-slim
-COPY --from=0 /build/target/release/omnitrade-risk /app/
-ENTRYPOINT ["/app/omnitrade-risk"]
-```
+Verwechslungsgefahr: `Agenten/Handel/nautilus-rust/omnitrade-risk` (dieser
+Workspace) und `Werkstatt/omnitrade/omnitrade-risk` (echter Agent) sind
+verschiedene Crates.
 
 ---
 
-## Troubleshooting
+## Auffinden fuer Agenten (ProjectAtlas)
 
-### Problem: "Failed to compile: linker not found"
-**Lösung:** C-Compiler installieren:
-```bash
-# Ubuntu
-sudo apt-get install build-essential
+Ein eigener ProjectAtlas ist fuer diesen Workspace **nicht moeglich**, und zwar
+nicht aus Bequemlichkeit, sondern per Regel des Werkzeugs: ProjectAtlas bindet
+den Projektstamm an die naechste Git-Wurzel (hier `BrainFiles`) und verweigert
+ein Projekt INNERHALB eines Repos. Gemessene Meldung:
 
-# macOS
-xcode-select --install
+```
+verification_incomplete: invalid input: ProjectAtlas config
+'.../nautilus-rust/.projectatlas/config.toml' resolves project root
+'...\\Agenten\\Handel\\nautilus-rust' outside selected project root
+'...\\BrainFiles'
 ```
 
-### Problem: "PyO3 build fails"
-**Lösung:** Python-Development Headers installieren:
-```bash
-# Ubuntu
-sudo apt-get install python3-dev
-
-# macOS
-brew install python3
-```
-
-### Problem: "Dependency version conflict"
-**Lösung:**
-```bash
-cargo update        # Aktualisiere Dependencies
-cargo clean         # Lösche Build-Cache
-cargo build         # Neu bauen
-```
+Ohne eigenes `.git` bleibt also nur gezieltes Lesen — die fuenf Einstiegspunkte
+stehen in der Tabelle oben, je Crate eine Datei. Der Atlas von
+`Werkstatt/omnitrade` (188 Dateien, 31 Ordner, `scan.status: verified`) ist
+davon unberuehrt.
 
 ---
 
-## Next Steps
+## Was absichtlich nicht angefasst wurde
 
-1. **Build testen:** `cargo build`
-2. **Tests ausführen:** `cargo test`
-3. **Module erforschen:** Code-Review der `lib.rs` Dateien
-4. **Python-Binding:** Evtl. PyO3 oder HTTP-API einrichten
-5. **Integration:** In Zentrale einbinden
+- kein Code geaendert, kein Commit in diesem Workspace
+- `target/` (4,8 GB) und `Cargo.lock` unveraendert
+- `Werkstatt/omnitrade` nicht angefasst (dort nur Atlas-Pflege: `target-live`
+  ausgeschlossen, Zwecke gesetzt)
+- die Entwuerfe der Vorlage (PyO3, HTTP, Docker, Zentrale-Anschluss) wurden
+  NICHT gebaut
 
----
+## Offene Entscheidungen
 
-**Co-Authored-By:** Claude Haiku 4.5 <noreply@anthropic.com>
+1. Soll der Workspace ein eigenes Repo werden (dann ist ein Atlas moeglich) oder
+   Lehrstueck bleiben?
+2. Falls daraus ein Signalweg werden soll: echte Folds statt hart eingetragener
+   Evidenz — Anschluss an `Agenten/Handel/historie_binance.py` und `replay.py`.
+3. Anschluss an den echten `omnitrade-risk` pruefen, statt die Miniatur zu
+   erweitern.

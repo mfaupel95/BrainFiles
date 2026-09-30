@@ -60,6 +60,33 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
+      Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM
+      BrainFiles-Repo; ProjectAtlas bindet den Projektstamm an die naechste Git-Wurzel und verweigert
+      ein Projekt innerhalb eines Repos. Gemessen 30.09.2026: `invalid input: ProjectAtlas config
+      '.../nautilus-rust/.projectatlas/config.toml' resolves project root '...Agenten/Handel/nautilus-rust'
+      outside selected project root '...BrainFiles'` — der angelegte `.projectatlas` wurde wieder entfernt.
+      Naechster Schritt: entscheiden — eigenes Repo (dann Atlas moeglich, aber Gitlink im Vault wie bei
+      MaxHirn/codex) oder Lehrstueck bleiben (dann genuegen die fuenf Einstiegsdateien).
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust`, `MaxHirn/Wiki/Handel/nautilus-rust-Quant-Ebene.md`
+- [ ] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
+      Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
+      folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb
+      mit `t = 1.75 < Huerde 2.0` ab (gemessen, 0 rebalances). Ein Signal ist daraus nicht ableitbar.
+      Naechster Schritt: falls daraus ein Signalweg werden soll — echte Folds ueber
+      `Agenten/Handel/historie_binance.py` und `replay.py` erzeugen und die Werte dort herleiten
+      statt einzutragen.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust/quant-alpha`
+- [ ] **T-259 — Streu-Atlas `BrainFiles/.projectatlas` pinnt den ProjectAtlas-Standard auf omnitrade**
+      Kontext: Unter der BrainFiles-Wurzel liegt ein 15 MB grosser Atlas vom 15.09.2026, der als
+      Projektstamm `O:/Werkstatt/omnitrade` traegt. ProjectAtlas sucht das naechste `.projectatlas`
+      AUFWÄRTS, deshalb endet jeder Aufruf aus einem anderen Verzeichnis (auch der Wurzel) mit
+      `project_mismatch: selected project root '...BrainFiles' does not match index root
+      'O:/Werkstatt/omnitrade'`. Der produktive Atlas (188 Dateien, `scan.status: verified`) liegt
+      in `Werkstatt/omnitrade/.projectatlas` und ist nicht betroffen.
+      Naechster Schritt: entscheiden — Streu-Atlas loeschen (er wird nirgends gelesen) oder stehen
+      lassen und Aufrufe immer mit `--db`/`--config` auf das Ziel zeigen.
+      Angelegt: 2026-09-30 · Betrifft: `BrainFiles/.projectatlas`, `Agenten/Werkzeuge/projectatlas`
 - [ ] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
       Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
       ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
