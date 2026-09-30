@@ -3,6 +3,10 @@
 Ein Test, der nur die reinen Funktionen prueft, wuerde einen Tippfehler in einem
 Widget-Namen nicht finden. Hier laeuft der echte Aufbau einmal durch - unsichtbar
 (`withdraw`), damit keine Sitzung ein Fenster auf den Bildschirm bekommt.
+
+Der Baum hat drei Ebenen (Bereich -> Gruppe -> Projekt). Die Helfer unten
+suchen deshalb ueber den GANZEN Baum, statt sich auf eine Ebene zu verlassen -
+sonst bricht jeder Test, sobald eine Ebene dazukommt.
 """
 
 import json
@@ -29,8 +33,8 @@ except Exception:  # pragma: no cover - nur wenn kein Fenstersystem da ist
 class FensterBauTest(unittest.TestCase):
     def setUp(self):
         self.t = tempfile.TemporaryDirectory()
-        basis = Path(self.t.name)
-        self.repos = basis / "Repos"
+        self.brainfiles = Path(self.t.name)
+        self.repos = self.brainfiles / "Werkstatt" / "Repos"
         (self.repos / "moon-dev-ai-agents" / "src").mkdir(parents=True)
         (self.repos / "moon-dev-ai-agents" / ".git").mkdir()
         (self.repos / "moon-dev-ai-agents" / "README.md").write_text("# x\n", encoding="utf-8")
@@ -38,14 +42,20 @@ class FensterBauTest(unittest.TestCase):
         (self.repos / "moon-dev-ai-agents" / ".venv" / "Scripts" / "python.exe").write_bytes(b"")
         (self.repos / "ein-neuer-klon" / ".git").mkdir(parents=True)
 
-        self.profile = basis / "profiles"
+        # Ein Projekt in der zweiten Wurzel: es muss im Bereich WERKSTATT landen.
+        (self.brainfiles / "Werkstatt" / "eigenes-projekt").mkdir(parents=True)
+        (self.brainfiles / "Werkstatt" / "eigenes-projekt" / "README.md").write_text(
+            "# y\n", encoding="utf-8"
+        )
+
+        self.profile = self.brainfiles / "profiles"
         (self.profile / "moon-dev-agents").mkdir(parents=True)
         (self.profile / "moon-dev-agents" / "config.yaml").write_text("a: 1\n", encoding="utf-8")
 
-        self.manifest = basis / "repos-zentrale.json"
+        self.manifest = self.brainfiles / "repos-zentrale.json"
         self.manifest.write_text(
             json.dumps({
-                "stand": "2026-09-18",
+                "stand": "2026-09-30",
                 "repos": [{
                     "ordner": "moon-dev-ai-agents",
                     "art": "python",
@@ -63,6 +73,12 @@ class FensterBauTest(unittest.TestCase):
                         {"was": "Zweiter", "cmd": ["python", "-c", "print(1)"]},
                         {"was": "Kaputt", "cmd": []},
                     ],
+                }, {
+                    "ordner": "eigenes-projekt",
+                    "wurzel": "werkstatt",
+                    "rolle": "Projekt",
+                    "notiz": "Hausprojekt",
+                    "gruppe": "doku",
                 }],
             }, ensure_ascii=False),
             encoding="utf-8",
@@ -74,36 +90,90 @@ class FensterBauTest(unittest.TestCase):
     def _bauen(self):
         gerufen = []
         f = fenster.Fenster(
-            self.repos, self.manifest, self.profile, Path(self.t.name) / "logs",
+            self.brainfiles, self.manifest, self.profile, self.brainfiles / "logs",
             lauf=gerufen.append,
         )
         f.root.withdraw()
         f.root.update()
         return f, gerufen
 
-    def test_fenster_baut_auf_und_zeigt_beide_gruppen(self):
+    # ------------------------------------------------------------- Baumhelfer
+    def _alle(self, f, eltern=""):
+        """Alle Items unter `eltern` (rekursiv) als Liste (id, text)."""
+        ergebnis = []
+        for item in f.baum.get_children(eltern):
+            ergebnis.append((item, f.baum.item(item)["text"]))
+            ergebnis += self._alle(f, item)
+        return ergebnis
+
+    def _finde(self, f, stichwort: str, *, ebene_text=None) -> str:
+        """Das erste Item, dessen Text das Stichwort enthaelt."""
+        for item, text in self._alle(f):
+            if stichwort in text and (ebene_text is None or ebene_text in text):
+                return item
+        raise AssertionError(f"kein Knoten mit '{stichwort}' im Baum")
+
+    def _gruppe(self, f, name: str) -> str:
+        return self._finde(f, name)
+
+    def _projekt_in(self, f, gruppe: str, ordner: str) -> str:
+        kopf = self._gruppe(f, gruppe)
+        for item, text in self._alle(f, kopf):
+            if text == ordner:
+                return item
+        raise AssertionError(f"{ordner} steht nicht in {gruppe}")
+
+    def _ordner_von(self, f, item: str) -> str:
+        """Der sichtbare Pfad der Zeile (aus den Spaltenwerten des Baumitems)."""
+        return f.baum.item(item)["values"][1]
+
+    def test_baum_hat_bereich_dann_gruppe_dann_projekt(self):
         f, _ = self._bauen()
         try:
-            kopf = {f.baum.item(k)["text"]: k for k in f.baum.get_children()}
-            startbar = next(k for t, k in kopf.items() if "STARTBAR" in t)
-            neu = next(k for t, k in kopf.items() if "NEU" in t)
-            self.assertIn(
-                "moon-dev-ai-agents",
-                [f.baum.item(i)["text"] for i in f.baum.get_children(startbar)],
-            )
-            self.assertIn(
-                "ein-neuer-klon",
-                [f.baum.item(i)["text"] for i in f.baum.get_children(neu)],
-            )
+            bereiche = [t for _, t in self._alle(f) if t.startswith("REPOS") or t.startswith("WERKSTATT")]
+            self.assertTrue(any(t.startswith("REPOS") for t in bereiche), bereiche)
+            kopf = self._finde(f, "REPOS")
+            kinder = [f.baum.item(i)["text"] for i in f.baum.get_children(kopf)]
+            self.assertTrue(any(t.startswith("STARTBAR") for t in kinder), kinder)
+        finally:
+            f.root.destroy()
+
+    def test_neue_und_fehlende_gruppen_zeigen_ihre_zeilen(self):
+        f, _ = self._bauen()
+        try:
+            item = self._projekt_in(f, "NEU", "ein-neuer-klon")
+            self.assertTrue(f.kinder[item].gruende)
+        finally:
+            f.root.destroy()
+
+    def test_hausprojekt_landet_im_bereich_werkstatt(self):
+        f, _ = self._bauen()
+        try:
+            werkstatt = self._finde(f, "WERKSTATT")
+            texte = [t for _, t in self._alle(f, werkstatt)]
+            self.assertIn("eigenes-projekt", texte)
+        finally:
+            f.root.destroy()
+
+    def test_bereichsfilter_blendet_andere_bereiche_aus(self):
+        f, _ = self._bauen()
+        try:
+            f.bereich.set("WERKSTATT (1)")
+            f.anzeigen()
+            texte = [t for _, t in self._alle(f)]
+            self.assertIn("eigenes-projekt", texte)
+            self.assertNotIn("moon-dev-ai-agents", texte)
+            f.bereich.set(fenster.ALLE_BEREICHE)
+            f.anzeigen()
+            self.assertIn("moon-dev-ai-agents", [t for _, t in self._alle(f)])
         finally:
             f.root.destroy()
 
     def test_startknopf_ist_nur_bei_belegtem_befehl_aktiv(self):
         f, _ = self._bauen()
         try:
-            kopf_startbar, kopf_neu = f.baum.get_children()[:2]
-            gut = f.baum.get_children(kopf_startbar)[0]
-            schlecht = f.baum.get_children(kopf_neu)[0]
+            gut = self._projekt_in(f, "STARTBAR", "moon-dev-ai-agents")
+            schlecht = self._projekt_in(f, "NEU", "ein-neuer-klon")
             f.baum.selection_set(gut)
             f._auswahl_geaendert()
             self.assertEqual(str(f.knoepfe["start"]["state"]), "normal")
@@ -122,15 +192,15 @@ class FensterBauTest(unittest.TestCase):
             self.assertEqual(f.baum.get_children(), ())
             f.suchtext.set("")
             f.root.update()
-            self.assertTrue(len(f.baum.get_children()) >= 2)
+            self.assertTrue(len(f.baum.get_children()) >= 1)
+            self.assertIsNotNone(self._finde(f, "moon-dev-ai-agents"))
         finally:
             f.root.destroy()
 
     def test_ordner_und_terminal_gehen_ueber_den_ersetzten_aufruf(self):
         f, gerufen = self._bauen()
         try:
-            kopf = f.baum.get_children()[0]
-            f.baum.selection_set(f.baum.get_children(kopf)[0])
+            f.baum.selection_set(self._projekt_in(f, "STARTBAR", "moon-dev-ai-agents"))
             f.ordner()
             f.terminal()
             self.assertEqual(len(gerufen), 2)
@@ -149,10 +219,18 @@ class FensterBauTest(unittest.TestCase):
         finally:
             f.root.destroy()
 
+    def test_doppelklick_startet_wenn_belegt_sonst_ordner(self):
+        f, gerufen = self._bauen()
+        try:
+            f.baum.selection_set(self._projekt_in(f, "NEU", "ein-neuer-klon"))
+            f.doppelklick()
+            self.assertEqual(gerufen[-1][0], "explorer")
+        finally:
+            f.root.destroy()
+
     # --------------------------------------------------------- Detailbereich
     def _startbar_waehlen(self, f):
-        kopf = f.baum.get_children()[0]
-        item = f.baum.get_children(kopf)[0]
+        item = self._projekt_in(f, "STARTBAR", "moon-dev-ai-agents")
         f.baum.selection_set(item)
         f._auswahl_geaendert()
         f.root.update()
@@ -180,6 +258,17 @@ class FensterBauTest(unittest.TestCase):
                 self.assertIn(erwartet, namen)
             # Ein Befehl ohne argv (hier "Kaputt") darf keine Zeile bekommen.
             self.assertNotIn("Kaputt", namen)
+        finally:
+            f.root.destroy()
+
+    def test_anleitung_nennt_bereich_und_rolle(self):
+        f, _ = self._bauen()
+        try:
+            item = self._projekt_in(f, "NUR DOKU", "eigenes-projekt")
+            f.baum.selection_set(item)
+            f._auswahl_geaendert()
+            text = f.anleitung_text.get("1.0", "end")
+            self.assertIn("WERKSTATT · Projekt", text)
         finally:
             f.root.destroy()
 
@@ -249,14 +338,32 @@ class FensterBauTest(unittest.TestCase):
     def test_neue_zeile_ohne_manifest_hat_keine_eigenen_befehle(self):
         f, _ = self._bauen()
         try:
-            kopf_neu = f.baum.get_children()[1]
-            item = f.baum.get_children(kopf_neu)[0]
+            item = self._projekt_in(f, "NEU", "ein-neuer-klon")
             f.baum.selection_set(item)
             f._auswahl_geaendert()
             namen = [f.befehlsbaum.item(i)["values"][0] for i in f.befehlsbaum.get_children()]
             self.assertIn("Ordner im Explorer", namen)
             self.assertNotIn("Starten", namen)
             self.assertIn("noch kein Ablauf hinterlegt", f.anleitung_text.get("1.0", "end"))
+        finally:
+            f.root.destroy()
+
+    def test_zeile_ohne_ordner_bekommt_keine_handgriffe(self):
+        """Gruppe FEHLT: es gibt nichts zu oeffnen - also auch keinen Knopf."""
+        self.manifest.write_text(
+            json.dumps({"stand": "x", "repos": [
+                {"ordner": "weg", "start": ["x.exe"], "wurzel": "handel", "rolle": "Werkzeug"},
+            ]}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        f, _ = self._bauen()
+        try:
+            item = self._projekt_in(f, "FEHLT", "weg")
+            f.baum.selection_set(item)
+            f._auswahl_geaendert()
+            self.assertEqual(f.befehlsbaum.get_children(), ())
+            for name in ("start", "ordner", "terminal", "doku", "bot"):
+                self.assertEqual(str(f.knoepfe[name]["state"]), "disabled")
         finally:
             f.root.destroy()
 

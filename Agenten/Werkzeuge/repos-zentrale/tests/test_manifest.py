@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import manifest  # noqa: E402
+import quellen  # noqa: E402
 import scan  # noqa: E402
 
 
@@ -87,7 +88,11 @@ class ZeilenBauenTest(unittest.TestCase):
         # eine "fehlt"-Zeile fuer denselben Eintrag (gewolltes Verhalten).
         for r in repos:
             (self.basis / r.ordner).mkdir(parents=True, exist_ok=True)
-        return {z.ordner: z for z in manifest.zeilen_bauen(repos, eintraege, self.profile, self.basis)}
+        plaetze = [(quellen.wurzel_von("repos"), repos)]
+        return {
+            z.ordner: z
+            for z in manifest.zeilen_bauen(plaetze, eintraege, self.profile)
+        }
 
     def test_ordner_ohne_eintrag_ist_neu(self):
         z = self.zeilen([repo("frischer-klon")], [])
@@ -162,17 +167,36 @@ class EchtesManifestTest(unittest.TestCase):
             if e.bot:
                 self.assertEqual(e.bot, e.bot.lower(), "Bot-Namen sind klein")
 
-    def test_jeder_ordner_des_manifests_liegt_auch_auf_der_platte(self):
+    def test_jeder_eintrag_liegt_in_seiner_wurzel_auf_der_platte(self):
         hier = Path(__file__).resolve().parent.parent
-        repos_basis = hier.parents[2] / "Werkstatt" / "Repos"
-        if not repos_basis.is_dir():
-            self.skipTest(f"kein Repo-Bestand unter {repos_basis}")
-        fehlend = [
-            e.ordner
-            for e in manifest.manifest_laden(hier / "repos-zentrale.json")
-            if not (repos_basis / e.ordner).is_dir()
-        ]
+        brainfiles = hier.parents[2]
+        if not (brainfiles / "Werkstatt" / "Repos").is_dir():
+            self.skipTest(f"kein Bestand unter {brainfiles / 'Werkstatt' / 'Repos'}")
+        fehlend = []
+        for e in manifest.manifest_laden(hier / "repos-zentrale.json"):
+            w = quellen.wurzel_von(e.wurzel)
+            if w is None:
+                fehlend.append(f"{e.ordner}: unbekannte Wurzel {e.wurzel}")
+                continue
+            if not (w.pfad(brainfiles) / e.pfad).exists():
+                fehlend.append(f"{e.wurzel}/{e.pfad}")
         self.assertEqual(fehlend, [])
+
+    def test_jede_wurzel_hat_eintraege(self):
+        hier = Path(__file__).resolve().parent.parent
+        eintraege = manifest.manifest_laden(hier / "repos-zentrale.json")
+        belegt = {e.wurzel for e in eintraege}
+        for w in quellen.REIHENFOLGE:
+            self.assertIn(w, belegt, f"kein Eintrag in der Wurzel {w}")
+
+    def test_kein_schluessel_ist_doppelt(self):
+        hier = Path(__file__).resolve().parent.parent
+        schluessel = [
+            (e.wurzel, e.pfad)
+            for e in manifest.manifest_laden(hier / "repos-zentrale.json")
+        ]
+        doppelt = sorted({s for s in schluessel if schluessel.count(s) > 1})
+        self.assertEqual(doppelt, [], "derselbe (Wurzel, Pfad) steht zweimal im Manifest")
 
     def test_jedes_bot_profil_des_manifests_existiert(self):
         hier = Path(__file__).resolve().parent.parent
@@ -184,7 +208,12 @@ class EchtesManifestTest(unittest.TestCase):
             for e in manifest.manifest_laden(hier / "repos-zentrale.json")
             if e.bot and not (profile / e.bot / "config.yaml").is_file()
         ]
-        self.assertEqual(fehlend, [])
+        self.assertEqual(
+            fehlend, [],
+            "ein Bot ohne Profil ist ein Knopf ins Leere - entweder Profil anlegen "
+            "oder den Namen aus dem Manifest nehmen (weggelegte Profile liegen in "
+            "profiles/.deleted)",
+        )
 
 
 if __name__ == "__main__":

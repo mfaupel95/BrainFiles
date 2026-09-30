@@ -30,8 +30,10 @@ class StartErgebnis:
     prozess: object | None = None   # Prozesshandle (Popen), fuer Warten/Beenden
 
 
-def argv_ordner(pfad: Path) -> list[str]:
-    """Ordner im Explorer zeigen."""
+def argv_ordner(pfad: Path, datei: Path | None = None) -> list[str]:
+    """Ordner im Explorer zeigen - bei einer Werkzeugdatei die DATEI markieren."""
+    if datei is not None:
+        return ["explorer", f"/select,{datei}"]
     return ["explorer", str(pfad)]
 
 

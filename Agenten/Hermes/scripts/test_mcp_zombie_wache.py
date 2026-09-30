@@ -31,6 +31,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
+WURZEL = HIER.parents[2]          # BrainFiles - kein fester Benutzerpfad
 SPEC = importlib.util.spec_from_file_location(
     "mcp_zombie_wache", HIER / "mcp-zombie-wache.py")
 w = importlib.util.module_from_spec(SPEC)
@@ -49,8 +50,8 @@ class Fake:
                 pid += 1
                 self.prozesse.append({
                     "ProcessId": pid,
-                    "CommandLine": r"C:\Users\faupe\Documents\BrainFiles\Agenten"
-                                   r"\MCP-Server\%s\.venv\Scripts\python.exe %s" % (g, marker[g]),
+                    "CommandLine": str(WURZEL / "Agenten" / "MCP-Server" / g /
+                                       ".venv" / "Scripts" / "python.exe") + " " + marker[g],
                     "CreationDate": "/Date(1759100000000)/",
                 })
         self.commit_mb = commit_mb

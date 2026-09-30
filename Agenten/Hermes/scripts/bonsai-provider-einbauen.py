@@ -12,7 +12,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-CONFIG = Path(r"C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\config.yaml")
+# Kein fester Benutzerpfad: dieses Skript liegt in Agenten\Hermes\scripts.
+CONFIG = Path(__file__).resolve().parents[1] / "config.yaml"
 MARKER = b"providers:\r\n"
 BLOCK = (
     "  bonsai:\r\n"

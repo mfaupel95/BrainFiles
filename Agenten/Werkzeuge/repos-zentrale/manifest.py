@@ -2,8 +2,13 @@
 
 Das Manifest ist die EINZIGE Stelle, an der ein Startbefehl steht. Es wird
 hier nicht erfunden: fehlt der Befehl, ist das ein Zustand ("kein Startbefehl
-belegt"), kein Fehler. Die Platte schlaegt das Manifest im Zustand - ein Klon
+belegt"), kein Fehler. Die Platte schlaegt das Manifest im Zustand - ein Ordner
 ohne Eintrag verschwindet nicht, er erscheint als "neu".
+
+Seit 30.09.2026 traegt ein Eintrag eine **Wurzel** (`wurzel`, Vorgabe "repos")
+und darin einen **Pfad** (`pfad`, Vorgabe = Ordnername). Damit steht die
+Zentrale auf mehreren Orten gleichzeitig, ohne dass ein Name doppelt sein darf:
+der Schluessel eines Eintrags ist das Paar (wurzel, pfad).
 """
 
 from __future__ import annotations
@@ -12,6 +17,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import quellen
 import scan
 
 # Feste Reihenfolge, damit das Fenster bei jedem Lauf gleich aussieht.
@@ -20,7 +26,7 @@ GRUPPEN_REIHENFOLGE = ("startbar", "einrichten", "neu", "doku", "fehlt")
 
 @dataclass
 class Eintrag:
-    """Ein Repo im Manifest, so wie es in der Datei steht."""
+    """Ein Projekt im Manifest, so wie es in der Datei steht."""
 
     ordner: str
     art: str = ""
@@ -35,10 +41,17 @@ class Eintrag:
     warnungen: list[str] = field(default_factory=list)   # stoert den Start NICHT
     venv_pflicht: bool = False
     node_modules_pflicht: bool = False
-    pfad_pflicht: str | None = None   # Datei/Ordner im Repo, ohne den der Start nicht geht
+    pfad_pflicht: str | None = None   # Datei/Ordner im Projekt, ohne den der Start nicht geht
     port: int | None = None
     fehler: list[str] = field(default_factory=list)
     erlaubt: bool = True
+    wurzel: str = "repos"             # Kennung aus quellen.py
+    pfad: str = ""                    # Pfad innerhalb der Wurzel (Vorgabe: ordner)
+    rolle: str = ""                   # Klartext-Rolle (Spur, Werkzeug, Ausgabe, Ablage)
+
+    def __post_init__(self) -> None:
+        if not self.pfad:
+            self.pfad = self.ordner
 
 
 @dataclass
@@ -57,10 +70,17 @@ class Zeile:
     anleitung: str = ""
     befehle: list[dict] = field(default_factory=list)
     gruende: list[str] = field(default_factory=list)
+    wurzel: str = "repos"
+    bereich: str = "REPOS"
+    rolle: str = ""
 
     @property
     def start_da(self) -> bool:
         return bool(self.start)
+
+    @property
+    def schluessel(self) -> tuple[str, str]:
+        return (self.wurzel, (self.repo.pfad_rel if self.repo is not None else self.ordner))
 
 
 def _argv(wert, feld: str, fehler: list[str]) -> list[str] | None:
@@ -115,6 +135,19 @@ def _ordner_erlaubt(name) -> bool:
     return not any(t in name for t in ("/", "\\"))
 
 
+def _pfad_erlaubt(pfad) -> bool:
+    """Ein Pfad IM Projekt darf hoechstens einen Unterordner nennen.
+
+    `Projekte/NautilusTrader` ist erlaubt (die Projekte-Wurzel liegt eine Ebene
+    tiefer), `../../etc` nicht.
+    """
+    if not isinstance(pfad, str) or not pfad:
+        return False
+    if ".." in pfad or "\\" in pfad:
+        return False
+    return len([t for t in pfad.split("/") if t]) <= 2
+
+
 def manifest_laden(pfad: Path | str) -> list[Eintrag]:
     """Manifest lesen. Eine fehlende oder kaputte Datei gibt eine leere Liste."""
     pfad = Path(pfad)
@@ -154,10 +187,19 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
             ),
             port=roh.get("port") if isinstance(roh.get("port"), int) else None,
             fehler=fehler,
+            wurzel=str(roh.get("wurzel") or "repos"),
+            pfad=str(roh.get("pfad") or ""),
+            rolle=str(roh.get("rolle") or ""),
         )
         if not _ordner_erlaubt(ordner):
             eintrag.erlaubt = False
             eintrag.fehler.append(f"Ordnername unbrauchbar: {ordner!r}")
+        if not _pfad_erlaubt(eintrag.pfad):
+            eintrag.erlaubt = False
+            eintrag.fehler.append(f"Pfad unbrauchbar: {eintrag.pfad!r}")
+        if quellen.wurzel_von(eintrag.wurzel) is None:
+            eintrag.erlaubt = False
+            eintrag.fehler.append(f"unbekannte Wurzel: {eintrag.wurzel!r}")
         eintraege.append(eintrag)
     return eintraege
 
@@ -183,7 +225,7 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         gruppe = "doku"
 
     # Der Bot ist ein Hinweis, kein Startkriterium: ein fehlendes Profil darf ein
-    # lauffaehiges Repo nicht in eine andere Gruppe schieben.
+    # lauffaehiges Projekt nicht in eine andere Gruppe schieben.
     gruende = list(startgruende)
     gruende += list(e.warnungen)
     if e.bot and not bot_da:
@@ -202,38 +244,47 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         anleitung=e.anleitung,
         befehle=list(e.befehle or []),
         gruende=gruende,
+        wurzel=repo.wurzel,
+        bereich=quellen.bereich(repo.wurzel),
+        rolle=e.rolle,
     )
 
 
 def zeilen_bauen(
-    repos: list[scan.Repo],
+    plaetze: list[tuple[quellen.Wurzel, list[scan.Repo]]],
     eintraege: list[Eintrag],
     profile_dir: Path | str | None,
-    repos_basis: Path | str,
 ) -> list[Zeile]:
-    """Platte und Manifest zu Fensterzeilen zusammenfuehren."""
+    """Platte und Manifest zu Fensterzeilen zusammenfuehren.
+
+    `plaetze` ist je Wurzel die Liste der dort gefundenen Ordner. Ein Eintrag
+    ohne Ordner auf der Platte wird "fehlt" - aber nur in SEINER Wurzel; ein
+    gleichnamiger Ordner in einer anderen Wurzel ist ein anderer Eintrag.
+    """
     profile_dir = Path(profile_dir) if profile_dir else None
-    repos_basis = Path(repos_basis)
-    nach_ordner = {e.ordner: e for e in eintraege if e.erlaubt}
+    nach_schluessel = {(e.wurzel, e.pfad): e for e in eintraege if e.erlaubt}
 
     zeilen: list[Zeile] = []
-    for repo in repos:
-        e = nach_ordner.get(repo.ordner)
-        if e is None:
-            zeilen.append(
-                Zeile(
-                    ordner=repo.ordner,
-                    gruppe="neu",
-                    repo=repo,
-                    art=repo.art,
-                    gruende=["kein Eintrag im Manifest"] + list(repo.zurueckhaltung),
+    for wurzel_obj, repos in plaetze:
+        for repo in repos:
+            e = nach_schluessel.get((repo.wurzel, repo.pfad_rel))
+            if e is None:
+                zeilen.append(
+                    Zeile(
+                        ordner=repo.ordner,
+                        gruppe="neu",
+                        repo=repo,
+                        art=repo.art,
+                        gruende=["kein Eintrag im Manifest"] + list(repo.zurueckhaltung),
+                        wurzel=repo.wurzel,
+                        bereich=quellen.bereich(repo.wurzel),
+                    )
                 )
-            )
-            continue
-        zeilen.append(_zeile(repo, e, profile_dir))
+                continue
+            zeilen.append(_zeile(repo, e, profile_dir))
 
     for e in eintraege:
-        if e.erlaubt and not (repos_basis / e.ordner).is_dir():
+        if e.erlaubt and (e.wurzel, e.pfad) not in nach_schluessel_platte(plaetze):
             zeilen.append(
                 Zeile(
                     ordner=e.ordner,
@@ -241,10 +292,20 @@ def zeilen_bauen(
                     art=e.art,
                     bot=e.bot,
                     notiz=e.notiz,
-                    gruende=["Ordner fehlt im Repo-Bestand"],
+                    gruende=["Ordner fehlt in dieser Wurzel"],
+                    wurzel=e.wurzel,
+                    bereich=quellen.bereich(e.wurzel),
+                    rolle=e.rolle,
                 )
             )
     return zeilen
+
+
+def nach_schluessel_platte(
+    plaetze: list[tuple[quellen.Wurzel, list[scan.Repo]]],
+) -> set[tuple[str, str]]:
+    """Die Schluessel aller Ordner, die wirklich auf der Platte liegen."""
+    return {(r.wurzel, r.pfad_rel) for _, repos in plaetze for r in repos}
 
 
 def reihenfolge_index(gruppe: str) -> int:
