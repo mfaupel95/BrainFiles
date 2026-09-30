@@ -51,6 +51,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | Seite | Zweck |
 |---|---|
 | [Betrieb/Hermes.md](Betrieb/Hermes.md) | Installation, Profile, config.yaml-Fallen, Gateway, Kompression, Delegation |
+| [Betrieb/Interpreter-Landkarte.md](Betrieb/Interpreter-Landkarte.md) | Welcher Python gehoert zu welcher Komponente, und wie man den falschen erkennt (Muster: 41 Sitzungen mit `ModuleNotFoundError`) |
 | [Betrieb/Wachen-und-Aufgaben.md](Betrieb/Wachen-und-Aufgaben.md) | Geplante Aufgaben, Cron-Wachen, Muster „leere Ausgabe = nichts senden" |
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |

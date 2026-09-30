@@ -60,6 +60,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-229 — Rueckschau liest nur Claude-Transkripte**
+      Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
+      `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
+      `~/.claude/projects/**/*.jsonl` (390 Dateien, 341 MB, Ende 30.09.2026).
+      Die Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
+      nicht vor; seit 21.09.2026 ist Hermes der Hauptagent, der Blick also blind
+      fuer die Gegenwart (54 Cron-Jobs am 30.09.2026).
+      Naechster Schritt: `state.db` als zweite Quelle an `sitzungen_auswerten.py`
+      haengen (Tabelle `messages`/`tool_calls`, dieselben Auswertungen: Themen,
+      Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
 - [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
       Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
       minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
