@@ -61,6 +61,51 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 ## Offen
 
 
+- [ ] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
+      Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
+      (Block 14 der Systempruefung). Der Motor ist die WSL-Distro
+      `docker-desktop`; Docker Desktop allein bringt sie nicht hoch
+      (Log `returning engine error`, Container-Status veraltet). Um 15:13 half
+      `wsl --shutdown` + Neustart von Docker Desktop (danach liefen
+      `nautilus-demo` und die freqtrade-Container wieder, nachgewiesen mit
+      `docker ps`); um 17:37 war sie erneut weg. Ursache ist der
+      Docker/MCP-Spawn-Kreis (Wiki/Betrieb/Systemleistung-2026-09-29.md,
+      Abschnitt 9/10) - er reisst auch fremde Prozesse mit (0xC0000409).
+      Naechster Schritt: Cron `docker-wache` nach dem Muster `bus-waechter`
+      (no_agent, 15 min, leere Ausgabe = gesund): `docker info` mit
+      Zeitgrenze; antwortet die Engine nicht, selbst `wsl --shutdown` +
+      Docker Desktop starten und das melden. Erst danach den Spawn-Kreis
+      angehen (T-152).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/systempruefung.ps1 Block 14,
+      Agenten/Routinen/nautilus-docker-start.ps1
+
+- [ ] **T-240 - Datensortierung: Einzelinstanz-Schutz fehlt**
+      Kontext: `MaxHirn-Datensortierung` ist mit IgnoreNew eingestellt, das
+      schuetzt aber nur gegen die Aufgabe selbst. Am 30.09.2026 liefen
+      nacheinander drei von Hand gestartete Instanzen aus parallelen
+      Sitzungen (14:30, 15:37, 17:22, 17:26), die sich das Tagesprotokoll
+      gegenseitig ueberschrieben; eine stand ueber eine Stunde im
+      Suchblock. Der Suchblock selbst ist am 30.09.2026 entschaerft
+      (ein Suchlauf statt einem je Kandidat, nur Textendungen, ohne
+      site-packages/.venv*): gemessen 446 s statt Abbruch nach >43 min.
+      Naechster Schritt: Sperrdatei mit PID und Alter am Skriptanfang
+      (Muster `dauerlauf.pid`), Handstart bricht dann mit klarer Meldung ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/datensortierung.ps1
+
+- [ ] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
+      Kontext: Am 30.09.2026 hat eine parallele Sitzung acht Papierspuren
+      angelegt (klassik_bollinger, -donchian, -donchian_trend, -ema, -macd,
+      -rsi, -rsi2, -sma). Bedingung 4 meldet fuer alle acht "Kopie ausser
+      Haus nicht in Ordnung", weil der laufende Dauerlauf sie nicht faehrt
+      und ihre Q:-Ordner fehlen. Kein Fehler in den Spuren selbst.
+      Naechster Schritt: pruefen, ob sie in `dauerlauf.SPUREN` eingetragen
+      sind; wenn ja, den Dauerlauf in einem ruhigen Fenster neu starten
+      (dann zieht die Spiegelung nach), wenn nein, die Eintraege ergaenzen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_*, Agenten/Handel/dauerlauf.py
+
 - [ ] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
       Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
       nachgeprueft (C: 8192/8192 fest, O: 32768/32768, beide Eintraege in

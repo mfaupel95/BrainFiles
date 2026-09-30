@@ -156,30 +156,79 @@ try {
 try {
   Notiz "`n--- 2) Lose Schluesseldateien ---"
   $musterName = '\.(pem|ppk)$|^id_rsa|^id_ed25519'
-  $funde = 0
+  # Erst sammeln, dann EINMAL suchen. Bis 30.09.2026 lief die Referenzsuche je
+  # Kandidat und holte sich die Dateiliste jedes Mal neu per
+  # Get-ChildItem -Recurse -File - OHNE die Ueberspringen-Liste, also inklusive
+  # node_modules, .venv und hermes-agent. Mit fuenf Zertifikaten stand der Lauf
+  # nach 43 Minuten noch in diesem Block; die Aufgabe wurde beim Neustart mit
+  # 267014 abgebrochen. Jetzt: eine Namensliste, ein Suchlauf, dieselbe Auskunft.
+  $kandidaten = [System.Collections.Generic.List[object]]::new()
   foreach ($b in $bereiche) {
-    $dateien = Gehe $b.Root
-    $kandidaten = @($dateien | Where-Object { ([System.IO.Path]::GetFileName($_)) -imatch $musterName })
-    foreach ($f in $kandidaten) {
-      $funde++
-      $rel = $f.Substring($b.Root.Length).TrimStart('\')
-      $name = [System.IO.Path]::GetFileName($f)
-      # Referenzsuche: taucht der Dateiname irgendwo im eigenen Code auf?
-      $refs = @()
-      foreach ($b2 in $bereiche) {
-        $refs += @(Get-ChildItem -LiteralPath $b2.Root -Recurse -File -EA SilentlyContinue |
-          Where-Object { $_.FullName -notmatch '\\(node_modules|\.git|\.venv|__pycache__|\.obsidian|Archiv|_Backups)\\' -and $_.Length -lt 2MB -and $_.FullName -ne $f } |
-          Select-String -Pattern ([regex]::Escape($name)) -EA SilentlyContinue)
-      }
-      $ziel = Join-Path $sshDir $name
-      if ($refs.Count -gt 0) {
-        Entscheiden "$($b.Name): Schluesseldatei $rel ist an $($refs.Count) Stelle(n) referenziert - vor dem Verschieben pruefen, welche."
-      } else {
-        Entscheiden "$($b.Name): lose Schluesseldatei $rel gefunden, keine Referenzen gefunden. Verschieben: Move-Item '$f' '$ziel'"
+    foreach ($f in (Gehe $b.Root)) {
+      if ([System.IO.Path]::GetFileName($f) -imatch $musterName) {
+        # Eine CA-Buendelsammlung in einer Umgebung ist kein loser Schluessel:
+        # certifi/botocore-cacert.pem in site-packages oder in einer .venv-Kopie
+        # wurde bis 30.09.2026 als Fund gemeldet (jedes Mal mit >100
+        # Referenzen) und war der Ausloeser der langsamen Suche. Echte
+        # Schluesseldateien im Arbeitsbaum bleiben gemeldet.
+        if ($f -match '\\site-packages\\|\\\.?venv[^\\]*\\') { continue }
+        $kandidaten.Add([PSCustomObject]@{ Bereich = $b.Name; Root = $b.Root; Pfad = $f })
       }
     }
   }
-  if ($funde -eq 0) { Info "Keine losen Schluesseldateien ausserhalb ~/.ssh gefunden." }
+  if ($kandidaten.Count -eq 0) {
+    Info "Keine losen Schluesseldateien ausserhalb ~/.ssh gefunden."
+  } else {
+    $namen  = @($kandidaten | ForEach-Object { [System.IO.Path]::GetFileName($_.Pfad) } | Sort-Object -Unique)
+    $muster = ($namen | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $selbst = @($kandidaten | ForEach-Object { $_.Pfad })
+    $treffer = @{}
+    foreach ($n in $namen) { $treffer[$n] = 0 }
+
+    # Alle Kandidaten-Dateien in EINEM Suchlauf durchsuchen (in Bloecken, damit
+    # die Kommandozeile nicht ueberlaeuft).
+    # Nur Dateien, in denen ein Dateiname ueberhaupt vorkommen kann, und nie in
+    # Kopien einer Umgebung. Agenten+MaxHirn haben 156.000 Dateien (nach der
+    # Ueberspringen-Liste), allein durch .venv.bak-* und site-packages. Ohne
+    # diese zwei Filter oeffnet die Suche jede einzelne davon - der Lauf vom
+    # 30.09.2026 stand nach ueber 20 Minuten noch in diesem Block.
+    $textEndungen = @('.py','.ps1','.psd1','.md','.json','.jsonl','.csv','.txt',
+                      '.cfg','.ini','.toml','.yaml','.yml','.env','.sh','.cmd',
+                      '.bat','.js','.ts','.tsx','.jsx','.html','.css','.xml',
+                      '.conf','.properties')
+    $uebersprungen = '\\\.?venv[^\\]*\\|\\site-packages\\|\\dist-info\\|\\node_modules\\'
+    $zuSuchen = [System.Collections.Generic.List[string]]::new()
+    foreach ($b2 in $bereiche) {
+      foreach ($datei in (Gehe $b2.Root)) {
+        if ($selbst -contains $datei) { continue }
+        if ($datei -match $uebersprungen) { continue }
+        if ($textEndungen -notcontains [System.IO.Path]::GetExtension($datei).ToLower()) { continue }
+        try { if ([System.IO.FileInfo]::new($datei).Length -ge 2MB) { continue } } catch { continue }
+        $zuSuchen.Add($datei)
+      }
+    }
+    $block = 200
+    for ($i = 0; $i -lt $zuSuchen.Count; $i += $block) {
+      $ende = [Math]::Min($i + $block, $zuSuchen.Count) - 1
+      $stueck = $zuSuchen[$i..$ende]
+      foreach ($m in (Select-String -LiteralPath $stueck -Pattern $muster -EA SilentlyContinue)) {
+        foreach ($n in $namen) {
+          if ($m.Line -match [regex]::Escape($n)) { $treffer[$n]++ }
+        }
+      }
+    }
+
+    foreach ($k in $kandidaten) {
+      $name = [System.IO.Path]::GetFileName($k.Pfad)
+      $rel  = $k.Pfad.Substring($k.Root.Length).TrimStart('\')
+      $ziel = Join-Path $sshDir $name
+      if ($treffer[$name] -gt 0) {
+        Entscheiden "$($k.Bereich): Schluesseldatei $rel ist an $($treffer[$name]) Stelle(n) referenziert - vor dem Verschieben pruefen, welche."
+      } else {
+        Entscheiden "$($k.Bereich): lose Schluesseldatei $rel gefunden, keine Referenzen gefunden. Verschieben: Move-Item '$($k.Pfad)' '$ziel'"
+      }
+    }
+  }
 } catch { Notiz "  ! Schluessel-Suche abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
