@@ -1,4 +1,4 @@
-"""Dritte Spur: Kraken, Spot, nur Long, kein Hebel, in EUR.
+"""Dritte Spur: Kraken, Spot, nur Long, kein Hebel - in der Quotewaehrung des Paares.
 
 Aufruf (aus diesem Ordner):
     ..\\scanner\\.venv\\Scripts\\python.exe handeln.py --vorschau
@@ -21,7 +21,7 @@ Diese Sperren muessen ALLE offen sein, sonst laeuft trotz --live nur Papier:
     5. Herzschlag frisch                            (Bedingung 3)
     6. rollierender Erwartungswert nicht negativ    (Bedingung 5)
     7. journal_zweitziel gesetzt und erreichbar     (Bedingung 4)
-    8. mindestens mindest_guthaben_eur frei auf dem Konto
+    8. mindestens mindest_guthaben_je_quote frei in der WAEHRUNG DES PAARES
     9. eine Sitzung am Bildschirm, die das Freigabefenster bedienen kann
 Fehlt eine, wird Papier gehandelt und es wird gesagt, welche Sperre zu war.
 
@@ -29,6 +29,22 @@ Sperre 7 und 8 hat diese Spur zusaetzlich zu Spur 1. Sperre 8, weil am
 02.09.2026 nur 0,0094 EUR frei auf dem Konto lagen: ein Kauf-Automat ohne
 Fiat kauft nichts, er scheitert nur - und zwar in jedem Lauf, mit einer
 Fehlermeldung, die nach einem Schluesselproblem aussieht.
+
+QUOTEWAEHRUNG (seit 30.09.2026, Auftrag Max 'kraken auch mit eurc/usdc
+handel'): Die Spur war auf EUR festgelegt - Watchlist in EUR, Tor gegen
+"ZEUR". Auf demselben Konto liegt Kapital auch in EURC und USDC. quote.py
+holt die Quote JE PAAR aus der Kraken-API (Feld `quote`, sonst `wsname`);
+daraus entstehen drei Dinge:
+  - das Guthaben-Tor prueft in der Waehrung des Paares, nicht in EUR,
+  - ein Buch fuehrt EINE Waehrung (Einsatz, Erloes, Ruecklauf und Ratsche
+    summieren Betraege - eine Summe aus EUR und USDC waere keine Zahl),
+  - die Basis-Kennung (`wsname`) verhindert, dass dasselbe Instrument
+    zweimal im Buch steht, nur weil es in zwei Waehrungen notiert ist.
+Der Feldname `eur` im Buch und im Journal bleibt trotzdem: auswertung_alle.py
+liest ihn. Eine Position in einer anderen Waehrung traegt zusaetzlich
+`waehrung`, und im Journal steht die Waehrung hinter dem Grund.
+Die Erweiterung allein schaltet NICHTS scharf: das Tor vergleicht weiter
+gegen mindest_guthaben_je_quote, und das Konto liegt in jeder Waehrung darunter.
 
 Der Unterschied zum Kraken-MCP-Server ist der ganze Punkt dieser Spur: Dort
 liegt dieselbe API, aber ohne wachen.json, ohne Journal, ohne Herzschlag -
@@ -99,6 +115,7 @@ JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 sys.path.insert(0, str(HIER.parent.parent / "Bus"))
 import ereignis                                          # noqa: E402
 import kraken                                            # noqa: E402
+import quote                                             # noqa: E402
 import scan                                              # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
@@ -179,11 +196,21 @@ def vorschlaege(bericht, w):
                 and vola <= w["max_volatilitaet_pa"]
                 and z["verhaeltnis"] >= w["mindest_chance_risiko"]):
             continue
+        try:
+            waehrung = quote.quote_von_paar(z["inst"])
+            basis = quote.basis_von_paar(z["inst"])
+        except quote.QuoteUnbekannt as e:
+            # Ohne Quote gibt es keine Waehrung fuer das Buch und kein
+            # Guthaben-Tor - der Kandidat faellt raus, statt in einen
+            # geratenen Markt zu laufen.
+            print("  -- %-10s uebersprungen: %s" % (z["inst"], e))
+            continue
         einstieg = _kurs_jetzt(z["inst"], z["preis"])
         sp = stop_prozent(z, w)
         stop = round(einstieg * (1 - sp / 100.0), 8)
         ziel = round(einstieg + 2.0 * (einstieg - stop), 8)   # Chance/Risiko 2:1
-        aus.append({"inst": z["inst"], "score": z["score"], "einstieg": einstieg,
+        aus.append({"inst": z["inst"], "basis": basis, "waehrung": waehrung,
+                    "score": z["score"], "einstieg": einstieg,
                     "stop": stop, "stop_pct": sp, "ziel": ziel,
                     "eur": w["max_pro_trade_eur"]})
     return aus
@@ -213,14 +240,149 @@ def menge_fuer(paar, eur, kurs):
     return menge, None
 
 
+# --- Quotewaehrung ---------------------------------------------------------
+#
+# Bis 30.09.2026 war die Spur auf EUR festgelegt: Watchlist in EUR, Tor gegen
+# "ZEUR", Journalspalte "eur". Auf demselben Kraken-Konto liegt Kapital auch
+# in anderen Quotewaehrungen (EUR, EURC, USDC). quote.py holt die Quote JE
+# PAAR aus der API - hier wird daraus die Waehrung des BUCHS und die des
+# Guthaben-Tors.
+
+def _basis_oder_paar(paar):
+    """Basis-Kennung des Paares, sonst der Paarname selbst.
+
+    Der Rueckfall auf den Namen ist fuer Altbestaende: steht das Paar nicht
+    mehr in der API, ist sein eigener Name die einzige Kennung, die bleibt."""
+    try:
+        return quote.basis_von_paar(paar)
+    except quote.QuoteUnbekannt:
+        return str(paar or "").strip().upper()
+
+
+def _noetig_je_quote(w):
+    """({lesbare Waehrung: Mindestguthaben}, Vorgabewert).
+
+    Fehlt die Karte mindest_guthaben_je_quote, gilt der alte EUR-Wert
+    mindest_guthaben_eur fuer JEDE Waehrung - eine wachen.json von vor dem
+    30.09.2026 bleibt damit benutzbar, ohne dass das Tor still aufgeht."""
+    try:
+        vorgabe = float(w.get("mindest_guthaben_eur", 0) or 0)
+    except (TypeError, ValueError):
+        vorgabe = 0.0
+    aus = {}
+    for k, v in (w.get("mindest_guthaben_je_quote") or {}).items():
+        try:
+            aus[quote.lesbar(k)] = float(v)
+        except (TypeError, ValueError):
+            continue
+    return aus, vorgabe
+
+
+def guthaben_lage(w):
+    """{lesbare Waehrung: (frei, noetig)} fuer jede Quote der Watchlist.
+
+    EIN Kontostaende-Abruf fuer alle Waehrungen, nicht einer je Waehrung.
+    Nur Waehrungen, die in der Watchlist wirklich vorkommen - eine Waehrung
+    ohne Paar braucht kein Guthaben."""
+    quoten = quote.quoten_der_watchlist(w.get("watchlist") or [])
+    if not quoten:
+        return {}
+    staende = kraken.kontostaende()
+    karte, vorgabe = _noetig_je_quote(w)
+    aus = {}
+    for q in quoten:
+        name = quote.lesbar(q)
+        aus[name] = (quote.frei(staende, q), karte.get(name, vorgabe))
+    return aus
+
+
+def lage_text(lage):
+    if not lage:
+        return "keine Quotewaehrung in der Watchlist"
+    return ", ".join("%s %.2f/%.2f" % (name, frei, noetig)
+                     for name, (frei, noetig) in sorted(lage.items()))
+
+
+def bevorzugte_waehrung(w, lage):
+    """In welcher Waehrung ein LEERES Buch anfangen darf.
+
+    quote_vorrang aus wachen.json entscheidet - Zahlen in der Datei, nicht im
+    Code. Waehrungen ohne Deckung fallen raus. None heisst: keine Waehrung
+    ueber dem Tor, dann wird nicht eingestiegen."""
+    vorrang = [quote.lesbar(x) for x in (w.get("quote_vorrang") or [])]
+    if not vorrang:
+        vorrang = sorted(lage)
+    for name in vorrang:
+        frei, noetig = lage.get(name, (0.0, 0.0))
+        if frei > 0 and frei >= noetig:
+            return name
+    return None
+
+
+def ziel_waehrung(z, w, lage, live):
+    """In welcher Waehrung dieses Buch gefuehrt wird.
+
+    1. Steht das Buch schon, gilt seine Waehrung - sonst waeren Einsatz,
+       Erloes, Ruecklauf und Ratsche eine Summe aus zwei Waehrungen.
+    2. Live: die erste GEDECKTE Waehrung aus quote_vorrang. Das Guthaben-Tor
+       hat das schon geprueft; hier wird es nur angewandt.
+    3. Sonst (Papier, oder das Guthaben war nicht lesbar): die erste Waehrung
+       aus quote_vorrang. Ein PAPIERLAUF darf nie davon abhaengen, ob das
+       Konto lesbar ist - ein Netzausfall oder ein fehlender Schluessel
+       wuerde ihn sonst stillstellen, und niemand saehe den Unterschied."""
+    eigene = buch_waehrung(z)
+    if eigene:
+        return eigene
+    if live:
+        bevorzugt = bevorzugte_waehrung(w, lage)
+        if bevorzugt:
+            return bevorzugt
+    vorrang = [quote.lesbar(x) for x in (w.get("quote_vorrang") or [])]
+    if vorrang:
+        return vorrang[0]
+    return quote.lesbar(w.get("waehrung") or "EUR")
+
+
+def buch_waehrung(z):
+    """Die Waehrung, in der das Buch steht - None, wenn es leer ist.
+
+    Ein Buch fuehrt EINE Waehrung: Einsatz, Erloes, Ruecklauf und die
+    Drawdown-Ratsche summieren Betraege, und eine Summe aus EUR und USDC ist
+    keine Zahl. Wer mischen will, braucht zuerst einen Umrechnungskurs je
+    Position - das ist ein eigener Bau, kein Nebeneffekt."""
+    for p in z.get("positionen") or []:
+        name = quote.lesbar(p.get("waehrung") or "")
+        if name:
+            return name
+    return None
+
+
 # --- Ausstieg / Einstieg ---------------------------------------------------
 
 def in_abklingzeit(paar, z, w):
-    d = z["letzte_stops"].get(paar)
-    if not d:
+    """Abklingzeit nach einem Stop - ueber die BASIS, nicht ueber den Paarnamen.
+
+    Ein Stop in SOLEUR und ein neuer Kauf in SOLUSDC sind dasselbe Instrument;
+    die Sperre muss beide treffen, seit die Spur mehrere Quotewaehrungen
+    fuehrt. Alte Eintraege stehen als Paarname in letzte_stops und werden
+    genauso aufgeloest. Ein unlesbares Datum sperrt NICHT dauerhaft."""
+    eintraege = z.get("letzte_stops") or {}
+    if not eintraege:
         return False
-    tage = (date.fromisoformat(_heute()) - date.fromisoformat(d)).days
-    return tage < w["abklingzeit_tage"]
+    basis = _basis_oder_paar(paar)
+    letzter = None
+    for k, d in eintraege.items():
+        if _basis_oder_paar(k) != basis:
+            continue
+        try:
+            tag = date.fromisoformat(str(d))
+        except (TypeError, ValueError):
+            continue
+        if letzter is None or tag > letzter:
+            letzter = tag
+    if letzter is None:
+        return False
+    return (date.fromisoformat(_heute()) - letzter).days < w["abklingzeit_tage"]
 
 
 def _erloes(p, kurs, w):
@@ -406,7 +568,20 @@ def _beleg_zur_order(inst, menge, kurs, stop, ziel):
     return beleg
 
 
-def pruefe_einstiege(z, vs, w, live, faktor=1.0):
+def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
+    # Das Guthaben wird NUR im Live-Zweig abgerufen: ein Papierlauf darf nicht
+    # davon abhaengen, ob das Konto lesbar ist.
+    if lage is None and live:
+        try:
+            lage = guthaben_lage(w)
+        except Exception as e:                                # noqa: BLE001
+            print("  Guthaben-Lage nicht abrufbar (%s) - kein Einstieg" % e)
+            lage = {}
+    if lage is None:
+        lage = {}
+    # Ein Buch, eine Waehrung (siehe ziel_waehrung).
+    waehrung = ziel_waehrung(z, w, lage, live)
+    basen = {_basis_oder_paar(p["paar"]) for p in z["positionen"]}
     gehalten = {p["paar"] for p in z["positionen"]}
     eingesetzt = sum(p["eur"] for p in z["positionen"])
     if faktor != 1.0:
@@ -414,10 +589,24 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     for v in vs:
         if len(z["positionen"]) >= w["max_offene_positionen"]:
             break
+        v_waehrung = quote.lesbar(v.get("waehrung") or "")
+        # Nur eine BEKANNTE Abweichung ist eine Abweichung: ein Vorschlag
+        # ohne Waehrung (Altbestand, Handaufruf) wird nicht gefiltert.
+        if v_waehrung and v_waehrung != waehrung:
+            print("  -- %-10s uebersprungen: Buch wird in %s gefuehrt, Paar "
+                  "notiert in %s" % (v["inst"], waehrung, v_waehrung))
+            continue
         eur = round(v["eur"] * faktor, 2)
+        # Das Guthaben bindet nur, wenn es wirklich gelesen werden konnte -
+        # im Papierlauf ist lage leer, und dort ist Geld nicht die Grenze.
+        if waehrung in lage and lage[waehrung][0] < eur:
+            print("  -- %-10s uebersprungen: %.2f %s frei, %.2f noetig"
+                  % (v["inst"], lage[waehrung][0], waehrung, eur))
+            continue
         if eingesetzt + eur > w["max_gesamt_eur"]:
             continue
-        if v["inst"] in gehalten or in_abklingzeit(v["inst"], z, w):
+        if v["inst"] in gehalten or v.get("basis") in basen \
+                or in_abklingzeit(v["inst"], z, w):
             continue
 
         menge, fehler = menge_fuer(v["inst"], eur, v["einstieg"])
@@ -443,7 +632,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 journal(_jetzt(), "live", "kauf_beleg", v["inst"],
                         "%.8g" % v["einstieg"], "%.2f" % eur, "%.8f" % menge,
                         "%.8g" % v["stop"], "%.8g" % v["ziel"],
-                        "beleg %s" % beleg["kennung"])
+                        "beleg %s | %s" % (beleg["kennung"], waehrung))
                 continue
             # Eigener Weg: den Beleg SOFORT einloesen. Einmalig heisst einmalig
             # - bliebe er liegen, koennte die Hand dieselbe Order ein zweites
@@ -488,18 +677,22 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
         kosten = eur * w["gebuehr_taker"]
         z["positionen"].append({
             "paar": v["inst"], "einstieg": v["einstieg"], "eur": eur,
+            "waehrung": waehrung, "basis": v.get("basis"),
             "menge": menge, "stop": v["stop"], "ziel": v["ziel"],
             "eroeffnet": _heute(), "kauf_txid": kauf_txid,
             "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
         })
         eingesetzt += eur
         gehalten.add(v["inst"])
-        print("  AUF %-10s @ %-12.6g Stop %-12.6g (-%.1f%%) Ziel %-12.6g %.2f EUR"
+        basen.add(v.get("basis") or _basis_oder_paar(v["inst"]))
+        print("  AUF %-10s @ %-12.6g Stop %-12.6g (-%.1f%%) Ziel %-12.6g "
+              "%.2f %s"
               % (v["inst"], v["einstieg"], v["stop"], v["stop_pct"],
-                 v["ziel"], eur))
+                 v["ziel"], eur, waehrung))
         journal(_jetzt(), "live" if live else "papier", "kauf", v["inst"],
                 "%.8g" % v["einstieg"], "%.2f" % (eur + kosten), "%.8f" % menge,
-                "%.8g" % v["stop"], "%.8g" % v["ziel"], "score %.1f" % v["score"])
+                "%.8g" % v["stop"], "%.8g" % v["ziel"],
+                "score %.1f | %s" % (v["score"], waehrung))
 
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -------------------------------
@@ -624,13 +817,14 @@ def zeige_wachen(w):
 
 
 def _guthaben_text(w):
+    """Jede Quotewaehrung der Watchlist mit freiem Stand und Tor - EIN Abruf."""
     if not kraken.schluessel_vorhanden():
         return "unbekannt (kein Schluessel)"
     try:
-        frei = kraken.guthaben("ZEUR")
+        lage = guthaben_lage(w)
     except Exception as e:  # noqa: BLE001
         return "nicht abrufbar (%s)" % e
-    return "%.2f EUR frei, noetig %.2f" % (frei, w.get("mindest_guthaben_eur", 0))
+    return lage_text(lage)
 
 
 # --- Hauptlauf ---------------------------------------------------------------
@@ -664,14 +858,18 @@ def live_sperren(w, s):
     if not sitzung_da() and not zeitfenster_offen():
         gruende.append("Freigabefenster nicht offen - keine Sitzung am "
                        "Bildschirm und kein Zeitfenster (Handelsregeln Punkt 3)")
-    noetig = w.get("mindest_guthaben_eur", 0)
-    if noetig and kraken.schluessel_vorhanden():
+    if kraken.schluessel_vorhanden():
         try:
-            frei = kraken.guthaben("ZEUR")
-            if frei < noetig:
-                gruende.append("nur %.2f EUR frei, noetig %.2f" % (frei, noetig))
+            lage = guthaben_lage(w)
         except Exception as e:  # noqa: BLE001
             gruende.append("Guthaben nicht abrufbar (%s)" % e)
+        else:
+            if not bevorzugte_waehrung(w, lage):
+                # EIN Grund, auch wenn mehrere Waehrungen zu duenn sind: der
+                # Dauerlauf oeffnet sein Auto-Freigabefenster nur, wenn GENAU
+                # EIN Grund fehlt (dauerlauf.nur_fenster_fehlt).
+                gruende.append("Guthaben-Tor zu in jeder Quotewaehrung (%s)"
+                               % lage_text(lage))
     return gruende
 
 
@@ -754,12 +952,15 @@ def lauf(modus):
 
     if modus == "vorschau":
         for v in vs:
-            print("  %-10s Score %.1f  Einstieg %-12.6g Stop %-12.6g (-%.1f%%)  Ziel %.6g"
-                  % (v["inst"], v["score"], v["einstieg"], v["stop"],
-                     v["stop_pct"], v["ziel"]))
+            print("  %-10s Score %.1f  %-4s  Einstieg %-12.6g Stop %-12.6g "
+                  "(-%.1f%%)  Ziel %.6g"
+                  % (v["inst"], v["score"], quote.lesbar(v.get("waehrung") or "?"),
+                     v["einstieg"], v["stop"], v["stop_pct"], v["ziel"]))
         eing = sum(p["eur"] for p in z["positionen"])
-        print("\nOffener Bestand: %d Positionen, %.2f EUR gebunden"
-              % (len(z["positionen"]), eing))
+        print("\nOffener Bestand: %d Positionen, %.2f %s gebunden"
+              % (len(z["positionen"]), eing,
+                 buch_waehrung(z) or ziel_waehrung(z, w, {}, False)))
+        print("Guthaben: %s" % _guthaben_text(w))
         print("Live waere gesperrt durch: %s"
               % ("; ".join(live_sperren(w, s)) or "nichts"))
         return
@@ -809,9 +1010,10 @@ def lauf(modus):
     pruefe_einstiege(z, vs, w, live, faktor)
 
     eing = sum(p["eur"] for p in z["positionen"])
-    print("\nStand: %d/%d Positionen, %.2f/%d EUR gebunden"
+    print("\nStand: %d/%d Positionen, %.2f/%d %s gebunden"
           % (len(z["positionen"]), w["max_offene_positionen"],
-             eing, w["max_gesamt_eur"]))
+             eing, w["max_gesamt_eur"],
+             buch_waehrung(z) or ziel_waehrung(z, w, {}, False)))
     schreibe_zustand(z)
 
     # Bedingung 4 - Journal nach jedem Zyklus ausser Haus.

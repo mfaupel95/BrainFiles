@@ -217,9 +217,20 @@ def paar_info(paar):
 
 # --- signiert (nur mit Schluessel + --live) --------------------------------
 
+def kontostaende():
+    """Alle Kontostaende in EINEM Abruf - Schluessel sind die Kraken-Codes
+    ('ZEUR', 'USDC', 'XXBT').
+
+    Ein Abruf fuer alle Waehrungen, nicht je Waehrung einer: Kraken kann
+    zwischen zwei Aufrufen anders antworten, und das Guthaben-Tor einer Spur
+    mit drei Quotewaehrungen wuerde sonst drei verschiedene Staende
+    vergleichen. Die Quote aus AssetPairs ist nicht immer derselbe Schluessel
+    - siehe quote.guthaben_asset()."""
+    return _mit_wiederholung(_roh_privat, "Balance") or {}
+
+
 def guthaben(waehrung="ZEUR"):
-    d = _mit_wiederholung(_roh_privat, "Balance")
-    return float(d.get(waehrung, 0.0) or 0.0)
+    return float(kontostaende().get(waehrung, 0.0) or 0.0)
 
 
 def _add_order(paar, seite, menge, ordertyp="market", preis=None, echt=False,
