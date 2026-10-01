@@ -273,18 +273,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bericht so benennen.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 (Perp-Entscheidung eingetragen) · Betrifft Agenten/Handel/kopier, kopier1zu1, robinhood_radar
 
-- [ ] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
-      Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene
-      Commits und sind sauber; `trading-stack-setup-40ef0d` traegt einen Commit
-      (`aeeac18`, Omnitrade-Indikatoren) und zwei unversionierte Dateien. Geprueft am 01.10.2026:
-      der Commit-Inhalt steht bereits in master (Zeile 118 in `MaxHirn/Wissen/Omnitrade.md`),
-      `omnitrade_auswertung.py` ist byte-gleich, `omnitrade_start.py` ist die ALTE 162-Zeilen-
-      Fassung (master hat 216) — es geht also nichts verloren. Zusammen 137 MB.
-      Naechster Schritt: erst pruefen, dass keine Claude-Sitzung mehr darauf arbeitet (am 01.10.
-      liefen 14 `claude`-Prozesse), dann `git worktree remove <pfad>` (die Branches bleiben) und
-      `git worktree prune`. Regel aus `Agenten/Handel/AGENTS.md`: neue Worktrees NEBEN
-      `BrainFiles/` anlegen, nicht hinein.
-      Angelegt 01.10.2026 · Betrifft .claude/worktrees/, git worktree
 
 - [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
       Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
@@ -310,18 +298,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 01.10.2026 · Betrifft Documents/PowerShell/Microsoft.PowerShell_profile.ps1, Agenten/Werkzeuge/anker-pruefen.ps1
 
 
-- [ ] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
-      Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
-      `orb` und `orbk`; ihre `handeln.py` haben kein `lade_wachen()`, deshalb bleibt `w` leer,
-      die Instrumentenliste leer und JEDER Replay-Lauf endet in einer Verweigerung. Ihre
-      `wachen.json` traegt die Instrumente ausserdem als DICT mit Boersennamen
-      (`BTC_USDT` -> `BTC-USDT-SWAP`), ohne `kerzen_takt`/`mindest_kerzen`; `orbk` nennt
-      `ETH_USD`/`HYPE_EUR`, wofuer `historie_binance.PAARE` kein Binance-Paar kennt.
-      Aufgefallen am 01.10.2026 beim Nachzaehlen, welcher A-Spur Historie fehlt - allen
-      anderen fehlt sie nicht (BTC/ETH/SOL, 50.223 1H- und 12.559 4H-Kerzen).
-      Naechster Schritt: entscheiden - aus der Replay-Liste nehmen (eigener Backtest liegt in
-      `orbk/backtest.py`) oder fahrbar machen (wachen-Form, Kerzennaht, Binance-Paare).
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, Agenten/Handel/orb, Agenten/Handel/orbk, Agenten/Handel/leitstand_backtests.py
 
 - [ ] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Ursache offen)**
       Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
@@ -573,19 +549,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Routinen/systempruefung.ps1 Block 14,
       Agenten/Routinen/nautilus-docker-start.ps1
 
-- [ ] **T-240 - Datensortierung: Einzelinstanz-Schutz fehlt**
-      Kontext: `MaxHirn-Datensortierung` ist mit IgnoreNew eingestellt, das
-      schuetzt aber nur gegen die Aufgabe selbst. Am 30.09.2026 liefen
-      nacheinander drei von Hand gestartete Instanzen aus parallelen
-      Sitzungen (14:30, 15:37, 17:22, 17:26), die sich das Tagesprotokoll
-      gegenseitig ueberschrieben; eine stand ueber eine Stunde im
-      Suchblock. Der Suchblock selbst ist am 30.09.2026 entschaerft
-      (ein Suchlauf statt einem je Kandidat, nur Textendungen, ohne
-      site-packages/.venv*): gemessen 446 s statt Abbruch nach >43 min.
-      Naechster Schritt: Sperrdatei mit PID und Alter am Skriptanfang
-      (Muster `dauerlauf.pid`), Handstart bricht dann mit klarer Meldung ab.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Routinen/datensortierung.ps1
 
 - [ ] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
       Kontext: Am 30.09.2026 hat eine parallele Sitzung acht Papierspuren
@@ -3070,6 +3033,46 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-240 - Datensortierung: Einzelinstanz-Schutz fehlt**
+      Kontext: `MaxHirn-Datensortierung` ist mit IgnoreNew eingestellt, das
+      schuetzt aber nur gegen die Aufgabe selbst. Am 30.09.2026 liefen
+      nacheinander drei von Hand gestartete Instanzen aus parallelen
+      Sitzungen (14:30, 15:37, 17:22, 17:26), die sich das Tagesprotokoll
+      gegenseitig ueberschrieben; eine stand ueber eine Stunde im
+      Suchblock. Der Suchblock selbst ist am 30.09.2026 entschaerft
+      (ein Suchlauf statt einem je Kandidat, nur Textendungen, ohne
+      site-packages/.venv*): gemessen 446 s statt Abbruch nach >43 min.
+      Naechster Schritt: Sperrdatei mit PID und Alter am Skriptanfang
+      (Muster `dauerlauf.pid`), Handstart bricht dann mit klarer Meldung ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/datensortierung.ps1
+      01.10.2026 gebaut und gemessen: Sperrdatei logs\datensortierung.pid mit PID + ISO-Startzeit, Pruefung auf ProzessNAME (powershell/pwsh) und Startzeitvergleich (2 min Toleranz) - haelte einer PID-Wiederverwendung stand (Fall 2 im Test: tote PID 999999 wird durchgelassen und neu gesperrt). Handstart bei lebender Fremdsperrung: Exit 3 mit fertiger Raeum-Meldung (Test: 'Es laeuft bereits eine Datensortierung (PID 42156, Sperre von 2026-10-01 14:06, 0 min alt)...'). Freigabe nur fuer den eigenen PID-Wert im finally. Zwei Fallen beim Bauen: Zeitstempel mit Leerzeichen zerbrach das -split-Feldschema (jetzt ISO T-Form), und -f bindet staerker als + (Platzhalter blieben wortwoertlich).
+- [x] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
+      Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
+      `orb` und `orbk`; ihre `handeln.py` haben kein `lade_wachen()`, deshalb bleibt `w` leer,
+      die Instrumentenliste leer und JEDER Replay-Lauf endet in einer Verweigerung. Ihre
+      `wachen.json` traegt die Instrumente ausserdem als DICT mit Boersennamen
+      (`BTC_USDT` -> `BTC-USDT-SWAP`), ohne `kerzen_takt`/`mindest_kerzen`; `orbk` nennt
+      `ETH_USD`/`HYPE_EUR`, wofuer `historie_binance.PAARE` kein Binance-Paar kennt.
+      Aufgefallen am 01.10.2026 beim Nachzaehlen, welcher A-Spur Historie fehlt - allen
+      anderen fehlt sie nicht (BTC/ETH/SOL, 50.223 1H- und 12.559 4H-Kerzen).
+      Naechster Schritt: entscheiden - aus der Replay-Liste nehmen (eigener Backtest liegt in
+      `orbk/backtest.py`) oder fahrbar machen (wachen-Form, Kerzennaht, Binance-Paare).
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, Agenten/Handel/orb, Agenten/Handel/orbk, Agenten/Handel/leitstand_backtests.py
+      01.10.2026 nachgeprueft: geloesft durch b0a451b (02:06, Option 'aus der Replay-Liste') - orb und orbk nicht mehr in SPUREN_TEIL_A, beide unter NICHT_NACHRECHENBAR mit Grund (kein lade_wachen(); orbk zusaetzlich eigener Backtest). Leitstand bietet damit nur noch fahrbare Spuren an. Nicht von dieser Sitzung gebaut.
+- [x] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
+      Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene
+      Commits und sind sauber; `trading-stack-setup-40ef0d` traegt einen Commit
+      (`aeeac18`, Omnitrade-Indikatoren) und zwei unversionierte Dateien. Geprueft am 01.10.2026:
+      der Commit-Inhalt steht bereits in master (Zeile 118 in `MaxHirn/Wissen/Omnitrade.md`),
+      `omnitrade_auswertung.py` ist byte-gleich, `omnitrade_start.py` ist die ALTE 162-Zeilen-
+      Fassung (master hat 216) — es geht also nichts verloren. Zusammen 137 MB.
+      Naechster Schritt: erst pruefen, dass keine Claude-Sitzung mehr darauf arbeitet (am 01.10.
+      liefen 14 `claude`-Prozesse), dann `git worktree remove <pfad>` (die Branches bleiben) und
+      `git worktree prune`. Regel aus `Agenten/Handel/AGENTS.md`: neue Worktrees NEBEN
+      `BrainFiles/` anlegen, nicht hinein.
+      Angelegt 01.10.2026 · Betrifft .claude/worktrees/, git worktree
+      01.10.2026 angewandt: keine Prozess-Kommandozeile referenzierte die Worktrees (die 14 claude.exe waren das Desktop-App-Set ohne Worktree-Bezug); Gegenprobe: alle drei sauber oder Inhalt durch master gedeckt (auswertung identisch bis Zeilenenden, start die alte 162er-Fassung). git worktree remove gefahren (dirty eine mit --force), danach prune. worktree list nennt nur noch die Hauptarbeit; die drei claude/*-Zweige bleiben wie im Auftrag festgehalten. ~137 MB frei auf C:.
 - [x] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
       Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
       EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
