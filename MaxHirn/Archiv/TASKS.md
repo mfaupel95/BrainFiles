@@ -239,7 +239,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       gegenprobe machen, bevor irgendeine Grenze aus dem Drawdown abgeleitet wird.
       Angelegt · 01.10.2026 · Betrifft Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
 
-- [ ] **T-283 - kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
+- [x] **T-283 — kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
       Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
       ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
       zwei verfielen mit der 180-s-Frist (freigabebeleg.GUELTIG_SEKUNDEN). Der Ausfuehrer

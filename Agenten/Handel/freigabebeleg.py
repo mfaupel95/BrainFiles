@@ -41,7 +41,7 @@ CACHE = os.path.join(HIER, "cache", "freigabebelege")
 
 # Frist eines Belegs: kurz. Er ist eine Hand, die einen beschlossenen Auftrag
 # ausfuehrt - kein Dauer-Schluessel.
-GUELTIG_SEKUNDEN = 180
+GUELTIG_SEKUNDEN = 600  # > Cron-Takt (5 min), sonst verfallen Belege vor dem naechsten Handler
 
 # Mengen- und Preistoleranz: die Boerse rundet, die Rechnung der Spur nicht.
 # 0,1 % ist Rundung, nicht Ermessen - eine groessere Order ist eine andere
