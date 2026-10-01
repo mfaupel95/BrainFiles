@@ -114,3 +114,31 @@ def juengster_kauf(con, chain: str = "robinhood") -> float:
         (chain,),
     ).fetchone()
     return float(row["ts"]) if row and row["ts"] is not None else 0.0
+
+
+def alle_fills(con, seit_ts: float = 0.0, chain: str = "robinhood") -> list[dict]:
+    """ALLE beobachteten Fuellungen (Kauf UND Verkauf) im Fenster, nach Zeit.
+
+    Fuer die Nachlauf-Messung (T-268): die Spur bucht hinter dem Vorbild, und
+    wie weit der Kurs in der Zwischenzeit weg ist, laesst sich nur aus der
+    eigenen Sammlung ablesen - naemlich am NAECHSTEN beobachteten Handel
+    desselben Tokens. Rueckgabe je Zeile: mint, wallet, seite, preis, ts.
+    """
+    rows = anweisung(
+        con,
+        """
+        SELECT t.mint AS mint, t.address AS wallet, t.side AS seite,
+               t.usd_value AS usd, t.token_amount AS menge, t.ts AS ts
+          FROM trades t
+         WHERE t.chain = ? AND t.ts >= ?
+               AND t.token_amount > 0 AND t.usd_value > 0
+         ORDER BY t.mint ASC, t.ts ASC
+        """,
+        (chain, seit_ts),
+    )
+    aus = []
+    for r in rows:
+        d = dict(r)
+        d["preis"] = float(d["usd"]) / float(d["menge"])
+        aus.append(d)
+    return aus

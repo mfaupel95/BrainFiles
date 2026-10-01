@@ -595,5 +595,55 @@ class Bilanz(Grundlage):
         self.assertIn("Rang 1", text)
 
 
+class NachlaufMessungTest(unittest.TestCase):
+    """T-268: die Messung selbst - Verteilung und Bestands-Stichprobe.
+
+    Nur reine Funktionen: die echte Messung schreibt daten/messung.json und
+    darf im Test nicht laufen (der Modulwaechter wuerde sie als Schreibzugriff
+    melden - zu Recht).
+    """
+
+    def test_verteilung_ist_eine_verteilung_kein_mittelwert(self):
+        v = kp._verteilung([1.0, 2.0, 3.0, 4.0])
+        self.assertEqual(v["n"], 4)
+        self.assertEqual(v["min"], 1.0)
+        self.assertEqual(v["max"], 4.0)
+        self.assertAlmostEqual(v["median"], 2.5, places=6)
+        self.assertAlmostEqual(v["schnitt"], 2.5, places=6)
+
+    def test_verteilung_ohne_werte_ist_kein_messwert(self):
+        self.assertIsNone(kp._verteilung([]))
+
+    def test_bestand_stichprobe_haelt_sich_an_das_marktkap_band(self):
+        w = {"marketcap_band_usd": [50000, 1000000]}
+        sicht = {"A": {
+            "klein": {"preis": 1.0, "marktkap_usd": 100000, "symbol": "K",
+                      "wert_usd": 10.0},
+            "zu_gross": {"preis": 1.0, "marktkap_usd": 5000000, "symbol": "G",
+                         "wert_usd": 10.0},
+            "zu_klein": {"preis": 1.0, "marktkap_usd": 1000, "symbol": "Z",
+                         "wert_usd": 10.0}}}
+        aus = kp._bestand_als_stichprobe(w, sicht, {}, 10)
+        self.assertEqual([s["token"] for s in aus], ["klein"])
+
+    def test_bestand_stichprobe_nimmt_je_token_nur_eine_wallet(self):
+        """Sonst steht dasselbe Token mehrfach in der Stichprobe und die
+        Verteilung zaehlt eine Position doppelt."""
+        w = {"marketcap_band_usd": [0, 10 ** 12]}
+        sicht = {"A": {"T": {"preis": 1.0, "marktkap_usd": 100000,
+                             "symbol": "X", "wert_usd": 5.0}},
+                 "B": {"T": {"preis": 1.0, "marktkap_usd": 100000,
+                             "symbol": "X", "wert_usd": 50.0}}}
+        aus = kp._bestand_als_stichprobe(w, sicht, {}, 10)
+        self.assertEqual(len(aus), 1)
+        self.assertEqual(aus[0]["wallet"], "B")      # die groessere Position
+
+    def test_bestand_stichprobe_ohne_kurs_zaehlt_nicht(self):
+        w = {"marketcap_band_usd": [0, 10 ** 12]}
+        sicht = {"A": {"T": {"preis": None, "marktkap_usd": 100000,
+                             "symbol": "X", "wert_usd": 5.0}}}
+        self.assertEqual(kp._bestand_als_stichprobe(w, sicht, {}, 10), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -926,7 +926,7 @@ def lade_wachen():
     return risikostufe.skaliere(lade(WACHEN, None))
 
 
-def lauf(modus, stunden=24.0):
+def lauf(modus, stunden=24.0, stichprobe=40, nur_bestand=False):
     global SCHREIBEN, GESEHEN
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -951,7 +951,7 @@ def lauf(modus, stunden=24.0):
     if modus == "ablehnungen":
         return ablehnungsbilanz(stunden)
     if modus == "messen":
-        return messen(w, lade_zustand())
+        return messen(w, lade_zustand(), stichprobe, nur_bestand=nur_bestand)
 
     roh = w
     w = _umfang(w, modus)
@@ -1102,7 +1102,79 @@ def lauf(modus, stunden=24.0):
     return 0
 
 
-def messen(w, z):
+def _bestand_als_stichprobe(w, sicht, z, grenze):
+    """Der Bestand der verfolgten Trader als Messstichprobe.
+
+    Der Diff liefert nur etwas zu messen, wenn ein Vorbild GERADE neu gekauft
+    hat - der Nachlauf ist aber an JEDER gehaltenen Position ablesbar. Ohne
+    diesen Rueckfall ist die Messung nur an manchen Tagen fahrbar und die
+    Annahme bleibt ungeprueft (Regel 8 der Tor-Kalibrierung). Genommen werden
+    die Positionen im Marktkap-Band, je Token nur EINE Wallet (die mit dem
+    groessten Wert - sonst steht dasselbe Token mehrfach in der Stichprobe),
+    hoechstens `grenze` Stueck nach Wert sortiert.
+    """
+    band = w.get("marketcap_band_usd") or [0, 10 ** 12]
+    je_token = {}
+    for wallet, positionen in (sicht or {}).items():
+        for mint, po in positionen.items():
+            if not po.get("preis"):
+                continue
+            kap = po.get("marktkap_usd") or 0
+            if not (band[0] <= kap <= band[1]):
+                continue
+            wert = po.get("wert_usd") or 0
+            alt = je_token.get(mint)
+            if alt is None or wert > alt["wert_usd"]:
+                je_token[mint] = {"wallet": wallet, "token": mint,
+                                  "symbol": po.get("symbol") or "?",
+                                  "preis": po["preis"], "wert_usd": wert}
+    return sorted(je_token.values(), key=lambda s: -s["wert_usd"])[:grenze]
+
+
+def _verteilung(werte):
+    """min, p10, p25, Median, p75, max und Schnitt - die Verteilung, nicht nur
+    ein Mittelwert. Ein Mittelwert allein verdeckt genau das, was hier zaehlt:
+    die wenigen weit weggelaufenen Positionen."""
+    werte = sorted(werte)
+    if not werte:
+        return None
+
+    def q(anteil):
+        # Lineare Interpolation: der Median zweier mittlerer Werte ist ihr
+        # Mittel, nicht der obere von beiden (sonst verschiebt sich die Zahl
+        # bei gerader Anzahl nach oben und die Dokumentation dazu passt nicht).
+        x = anteil * (len(werte) - 1)
+        unten = int(x)
+        oben = min(len(werte) - 1, unten + 1)
+        rest = x - unten
+        return werte[unten] * (1 - rest) + werte[oben] * rest
+    return {"n": len(werte), "min": werte[0], "p10": q(0.10), "p25": q(0.25),
+            "median": q(0.50), "p75": q(0.75), "max": werte[-1],
+            "schnitt": sum(werte) / len(werte)}
+
+
+def _kauf_mit_geduld(s, versuche=3, pause_s=6.0):
+    """trades/batch mit Geduld - die API antwortet bei zu vielen Abrufen 429.
+
+    Die Spur teilt sich diesen Zugang mit dem laufenden Zyklus (10 Wallets,
+    jeder Zyklus ein Abruf je Token). Eine Messung darf ihn nicht zustellen,
+    und ein 429 ist kein Messwert, sondern eine Absage: er wird wiederholt,
+    nicht als Zahl gebucht.
+    """
+    letzter = None
+    for n in range(versuche):
+        try:
+            kaeufe = lesen.letzter_kauf(s["token"], [s["wallet"]])
+            return (kaeufe or {}).get(s["wallet"])
+        except lesen.Lesefehler as e:
+            letzter = e
+            if "429" not in str(e):
+                break
+            time.sleep(pause_s * (n + 1))
+    raise letzter
+
+
+def messen(w, z, stichprobe=40, pause_s=2.0, nur_bestand=False):
     """Den Nachlauf gegen die Slippage-Annahme halten.
 
     Nachlauf = wie weit der Kurs schon weg ist von dem, was der Trader
@@ -1110,6 +1182,17 @@ def messen(w, z):
     Kandidaten des Diff: aktueller Portfoliokurs gegen den letzten Kauf des
     Vorbilds aus trades/batch. Gibt die Verteilung aus und schreibt sie nach
     daten/messung.json - das Buch wird nicht angefasst.
+
+    Hat der Diff nichts Frisches (Normalfall an ruhigen Tagen), wird ueber
+    den BESTAND gemessen (_bestand_als_stichprobe) - sonst waere die Messung
+    nicht wiederholbar und die Annahme bliebe fuer immer ungeprueft.
+    `nur_bestand=True` erzwingt diese breitere Stichprobe.
+
+    GEMESSEN 01.10.2026: Die Kandidaten des Diff tragen haeufig KEINEN
+    sichtbaren Kauf - trades/batch liefert nur die letzten 50 Trades, und bei
+    einem Vorbild, das gerade verkauft, stehen dort nur Verkaeufe. Deshalb ist
+    der Bestand die verlaesslichere Stichprobe und die Zahlen werden gezaehlt
+    statt still uebersprungen.
     """
     gefolgt = _gefolgt(w)
     if not gefolgt:
@@ -1117,20 +1200,44 @@ def messen(w, z):
         return 1
     sicht = sicht_lesen(w, gefolgt, z)
     kandidaten, _ = signale_sammeln(w, sicht, gefolgt, z)
+    herkunft = "frische Kandidaten des Diff"
+    if nur_bestand:
+        kandidaten = []
     if not kandidaten:
-        print("Keine neuen Positionen im Diff - nichts zu messen. "
-              "Der Einlauf des ersten Zyklus zaehlt nicht als Messung.")
-        return 1
+        kandidaten = _bestand_als_stichprobe(w, sicht, z, stichprobe)
+        herkunft = ("Bestand der verfolgten Trader (%s - dieselbe Rechnung, "
+                    "breitere Stichprobe)" % ("erzwungen" if nur_bestand
+                                              else "der Diff hatte nichts Frisches"))
+        if not kandidaten:
+            print("Weder frische Kandidaten noch ein Bestand im Marktkap-Band - "
+                  "nichts zu messen. Der Einlauf des ersten Zyklus zaehlt nicht "
+                  "als Messung.")
+            return 1
+        print("  Gemessen wird ueber den Bestand (%d Positionen im Band)."
+              % len(kandidaten))
 
     zeilen = []
-    for s in kandidaten[:15]:
+    ohne_kauf = 0
+    fehler = 0
+    geprueft = 0
+    # Bis zu dreimal so viele Kandidaten ansehen, wie gebraucht werden: bei
+    # stark gehandelten Tokens stehen in den letzten 50 Trades nur Verkaeufe,
+    # ein Kauf ist dann nicht sichtbar. Das ist ein Ergebnis, keine Stille -
+    # es wird gezaehlt und ausgegeben (Regel 6 der Tor-Kalibrierung).
+    for s in kandidaten[:stichprobe * 3]:
+        if len(zeilen) >= stichprobe:
+            break
+        if geprueft:
+            time.sleep(pause_s)          # Hoeflichkeit gegenueber dem Zyklus
+        geprueft += 1
         try:
-            kaeufe = lesen.letzter_kauf(s["token"], [s["wallet"]])
+            kauf = _kauf_mit_geduld(s)
         except lesen.Lesefehler as e:
+            fehler += 1
             print("  %s: kein Kaufabruf (%s)" % (s["token"][:12], e))
             continue
-        kauf = (kaeufe or {}).get(s["wallet"])
         if not kauf or not kauf.get("preis") or not s["preis"]:
+            ohne_kauf += 1
             continue
         nachlauf = (s["preis"] / kauf["preis"] - 1) * 100
         zeilen.append({"wallet": s["wallet"], "token": s["token"],
@@ -1144,29 +1251,46 @@ def messen(w, z):
                  s["preis"], nachlauf))
     if not zeilen:
         print("  Keine messbare Kandidatenkette - nichts geschrieben.")
+        print("  Geprueft %d Kandidaten: %d ohne sichtbaren Kauf in den letzten "
+              "50 Trades, %d Abrufe gescheitert." % (geprueft, ohne_kauf, fehler))
         return 1
 
-    def schnitt(feld):
-        werte = sorted(x[feld] for x in zeilen if x[feld] is not None)
-        if not werte:
-            return None
-        return (sum(werte) / len(werte), werte[len(werte) // 2], werte[-1])
-
-    m = schnitt("nachlauf_pct")
+    v = _verteilung([x["nachlauf_pct"] for x in zeilen])
     print()
-    print("  Nachlauf (n=%d)  Schnitt %s, Median %s, groesster %s"
-          % (len(zeilen), "?" if not m else "%.2f%%" % m[0],
-             "?" if not m else "%.2f%%" % m[1],
-             "?" if not m else "%.2f%%" % m[2]))
-    print("  Annahme in wachen.json: %.1f%% Slippage + %.1f%% Gebuehr"
+    print("  Stichprobe: %s" % herkunft)
+    print("  Geprueft %d Kandidaten: %d verwertet, %d ohne sichtbaren Kauf in "
+          "den letzten 50 Trades, %d Abrufe gescheitert."
+          % (geprueft, len(zeilen), ohne_kauf, fehler))
+    print("  Nachlauf (n=%d)  min %+.2f%%  p25 %+.2f%%  Median %+.2f%%  "
+          "p75 %+.2f%%  max %+.2f%%  Schnitt %+.2f%%"
+          % (v["n"], v["min"], v["p25"], v["median"], v["p75"], v["max"],
+             v["schnitt"]))
+    print("  Annahme in wachen.json: %.1f%% Slippage + %.1f%% Gebuehr je Seite"
           % (w["slippage_pct"], w["gebuehr_pct"]))
+
+    # Nachlauf waechst mit dem Abstand zwischen Signal und eigenem Kauf - das
+    # ist der Posten, den ein Nachahmer wirklich verliert (Regel 8). Nach
+    # Signalalter getrennt ausweisen, sonst verdeckt der Schnitt den Trend.
+    alter_toepfe = [("<= 5 min", 0, 300), ("5-30 min", 300, 1800),
+                    ("30-120 min", 1800, 7200), ("> 2 h", 7200, 10 ** 9)]
+    print("  Nach Signalalter:")
+    for name, von, bis in alter_toepfe:
+        teil = [x["nachlauf_pct"] for x in zeilen
+                if x["alter_s"] is not None and von <= x["alter_s"] < bis]
+        if teil:
+            print("    %-11s n=%-3d Median %+.2f%%  Schnitt %+.2f%%"
+                  % (name, len(teil), _verteilung(teil)["median"],
+                     _verteilung(teil)["schnitt"]))
+
     ordner = os.path.join(HIER, "daten")
     os.makedirs(ordner, exist_ok=True)
     with open(os.path.join(ordner, "messung.json"), "w",
               encoding="utf-8") as f:
-        json.dump({"zeit": _jetzt(), "annahme_slippage_pct": w["slippage_pct"],
+        json.dump({"zeit": _jetzt(), "stichprobe": herkunft,
+                   "annahme_slippage_pct": w["slippage_pct"],
                    "annahme_gebuehr_pct": w["gebuehr_pct"],
-                   "werte": zeilen}, f, indent=2, ensure_ascii=False)
+                   "verteilung": v, "werte": zeilen}, f, indent=2,
+                  ensure_ascii=False)
     return 0
 
 
@@ -1200,10 +1324,16 @@ def _main():
                    help="Zeitraum der Ablehnungsbilanz in Stunden")
     p.add_argument("--messen", action="store_const", const="messen", dest="modus",
                    help="Nachlauf gegen die Slippage-Annahme messen")
+    p.add_argument("--stichprobe", type=int, default=40,
+                   help="wie viele Positionen die Nachlauf-Messung hoechstens "
+                        "abfragt (je Position ein trades/batch-Abruf)")
+    p.add_argument("--bestand", action="store_true",
+                   help="die Nachlauf-Messung ueber den Bestand der verfolgten "
+                        "Trader fahren statt ueber den Diff (breitere Stichprobe)")
     p.add_argument("--live", action="store_const", const="live", dest="modus")
     p.set_defaults(modus="vorschau")
     a = p.parse_args()
-    return lauf(a.modus, a.stunden)
+    return lauf(a.modus, a.stunden, a.stichprobe, a.bestand)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@
   "_kosten": "Wie kopier: Pump.fun-Buecher sind duenn, 5 % Slippage + 1 % Gebuehr. Jede Buchung rechnet mit diesen Werten.",
   "slippage_pct": 5.0,
   "gebuehr_pct": 1,
-  "_gebuehr_quelle": "MODELLANNAHME, NICHT gemessen: 1,0 % je Seite fuer Onchain-Handel (DEX-Gebuehr plus Slippage). Der Boersensatz waere rund das 20-fache zu niedrig und wurde bewusst nicht gesetzt - offen als T-268 (eigene Messung oder Annahme stehen lassen, aber dann ausdruecklich als Annahme).",
+  "_gebuehr_quelle": "MODELLANNAHME, der Nachlauf dazu ist GEMESSEN (01.10.2026). Gesetzt bleiben 1,0 % Gebuehr + 5,0 % Slippage je Seite (dieselben Kosten wie kopier/). Gemessen wurde der Nachlauf fuer die GEMEINSAME Signalquelle - kopier1zu1 liest dieselben verfolgten Wallets und dieselben Token aus kopier/verfolgte.json, die Messung in kopier/ gilt also auch hier: n=14 gehaltene Positionen im Marktkap-Band, Median -35,64 %, Schnitt -31,48 %, Spanne -87,15 % bis +76,05 % ('kopier.py --messen --bestand'). Der Nachlauf ist NICHT der eigene Abschlag - diese Spur kauft zum beobachteten Kurs + 5 %. Slippage und Gebuehr bleiben Annahmen (keine Pooltiefe in der Pump.fun-Schnittstelle). Neu messen, wenn der Einsatz sich aendert.",
   "_ausstieg": "1:1-Kopie: der VERKAUF des Vorbilds ist das primaere Ausstiegssignal - beobachtet ueber trades/batch (typ=sell). Erkannt: die Position wird sofort im naechsten Zyklus zum letzten beobachteten Kurs geschlossen (grund=verkauft). Die eigene Mathematik ist Sicherheitsnetz: Stop in USD (kein Prozent, siehe kopier), Trailing-Stop (10x/100x laufen lassen), Frist gegen tote Positionen.",
   "stop_usd": 10.0,
   "trail_aktiv_ab_pct": 30.0,

@@ -24,7 +24,7 @@
   "_drawdown_halbierung_usd": "1,0 x Buchrisiko (5,0 USD je Position x 3 Plaetze) - Regel aus Handel/ratschen.py.",
   "kill_switch_gesamt_usd": 45.0,
   "gebuehr_taker": 0.01,
-  "_gebuehr_quelle": "MODELLANNAHME, NICHT gemessen: 1,0 % je Seite fuer Onchain-Handel (DEX-Gebuehr plus Slippage). Der Boersensatz waere rund das 20-fache zu niedrig und wurde bewusst nicht gesetzt - offen als T-268 (eigene Messung oder Annahme stehen lassen, aber dann ausdruecklich als Annahme).",
+  "_gebuehr_quelle": "MODELLANNAHME, vom Nachlauf her GESTUETZT (gemessen 01.10.2026). Gesetzt: 1,0 % Gebuehr je Seite (DEX-Realitaet auf einer frischen Kette) + 2,0 % Nachlauf-Aufschlag. GEMESSEN mit 'handeln.py --messen' ueber die EIGENE Sammlung (3529 Fuellungen, davon 1979 Kaeufe mit naechster Beobachtung): Median des Nachlaufs +1,76 % (p25 -2,63 %, p75 +9,10 %, Schnitt +10,21 %, Ausreisser bis +6930 %). Im SIGNALFALL - Kaeufe, die unsere Regel genommen haette (Kohorte >= 2 bewertete Wallets) - n=19, Median +2,87 %, Schnitt +9,89 %, kleinster +0,14 %: der gesetzte Aufschlag von 2,0 % liegt damit AM Median, nicht darueber. Abstand Signal -> naechste Beobachtung: Median 86 s (der Radar sammelt im Takt, deshalb faellt dieser Posten so klein aus). NICHT messbar in diesen Daten: die Gebuehr selbst - sie steckt im Poolpreis, die Sammlung fuehrt kein Gebuehrenfeld; sie bleibt eine Annahme. Neu messen, wenn die Sammlung deutlich groesser ist oder die Spur live gehen soll.",
   "risikovorfilter": true,
   "herzschlag_max_minuten": 180,
   "handel_erlaubt": false,

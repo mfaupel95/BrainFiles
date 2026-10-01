@@ -184,6 +184,144 @@ def signal(d, w, mint=None):
     return "long"
 
 
+def _verteilung(werte):
+    """min, p25, Median, p75, max, Schnitt - die Verteilung, nicht nur ein
+    Mittelwert (Regel 8 der Tor-Kalibrierung)."""
+    werte = sorted(werte)
+    if not werte:
+        return None
+
+    def q(anteil):
+        # Lineare Interpolation (wie in kopier/_verteilung): bei gerader Anzahl
+        # ist der Median das Mittel der beiden mittleren Werte.
+        x = anteil * (len(werte) - 1)
+        unten = int(x)
+        oben = min(len(werte) - 1, unten + 1)
+        rest = x - unten
+        return werte[unten] * (1 - rest) + werte[oben] * rest
+    return {"n": len(werte), "min": werte[0], "p25": q(0.25),
+            "median": q(0.50), "p75": q(0.75), "max": werte[-1],
+            "schnitt": sum(werte) / len(werte)}
+
+
+def nachlauf_messen(fills, trigger_ts=None):
+    """Nachlauf je Kauf: Kurs des NAECHSTEN beobachteten Handels gegen den Kauf.
+
+    Reine Rechnung auf uebergebenen Zeilen (offline pruefbar). Der Radar
+    sammelt im Takt; die eigene Buchung liegt hinter dem Vorbild. Wie weit der
+    Kurs in dieser Zwischenzeit weg ist, steht NIRGENDS in der Kette - nur in
+    der eigenen Sammlung, naemlich am naechsten beobachteten Handel desselben
+    Tokens. Genau das ist der Posten, den ein Nachahmer verliert.
+    """
+    je_token = {}
+    for f in fills:
+        je_token.setdefault(f["mint"], []).append(f)
+    aus = []
+    for mint, reihe in je_token.items():
+        reihe = sorted(reihe, key=lambda x: x["ts"])
+        for i, f in enumerate(reihe):
+            if f["seite"] != "buy" or f["preis"] <= 0:
+                continue
+            if trigger_ts is not None and mint not in trigger_ts:
+                continue
+            naechste = next((g for g in reihe[i + 1:]
+                             if g["preis"] > 0), None)
+            if naechste is None:
+                continue
+            aus.append({"mint": mint, "wallet": f["wallet"],
+                        "preis_kauf": f["preis"], "preis_naechster": naechste["preis"],
+                        "seite_naechster": naechste["seite"],
+                        "abstand_s": max(0.0, float(naechste["ts"]) - float(f["ts"])),
+                        "nachlauf_pct": (naechste["preis"] / f["preis"] - 1) * 100})
+    return aus
+
+
+def messen(w, con=None):
+    """T-268: die Kostenannahme der Spur gegen die eigene Sammlung halten.
+
+    Gemessen wird der Nachlauf (Kurs des naechsten beobachteten Handels gegen
+    den Kauf). Zwei Stichproben: ALLE Kaeufe der Sammlung und die Kaeufe, die
+    die eigene Regel als Signal genommen haette (Kohorte von bewerteten
+    Wallets). Die Gebuehr selbst (gebuehr_taker) ist in den Daten NICHT
+    sichtbar - sie steckt im Poolpreis; sie bleibt eine Annahme und steht so
+    in wachen.json. Das Buch wird nicht angefasst.
+    """
+    eigene = con is None
+    try:
+        if eigene:
+            con = lesen.verbinde()
+        alle = lesen.alle_fills(con)
+        fenster = float(w.get("signal_fenster_stunden", 6)) * 3600.0
+        juengster = lesen.juengster_kauf(con) if alle else 0.0
+        kaeufe = lesen.kaeufe(con, max(0.0, juengster - fenster)) if alle else []
+    except lesen.DatenbankFehlt as e:
+        print("Radar-Datenbank nicht lesbar: %s" % e)
+        return 1
+    finally:
+        if eigene and con is not None:
+            con.close()
+
+    if not alle:
+        print("Die Sammlung ist leer - der Radar hat noch nichts beobachtet. "
+              "Das ist ein Ergebnis (kein Messwert), kein Fehler.")
+        return 1
+
+    alle_k = nachlauf_messen(alle)
+
+    # Signalfall: je Token der JUENGSTE Kauf der bewerteten Kohorte ist der
+    # Ausloeser unserer Regel (dieselbe Rechnung wie in _kennzahlen).
+    mindest = int(w.get("mindest_kaeufer", 2))
+    mindest_score = float(w.get("mindest_score", 60.0))
+    kohorte = {}
+    for k in kaeufe:
+        if (k.get("score") is None or float(k["score"]) < mindest_score
+                or (k.get("status") or "") == "dropped"):
+            continue
+        kohorte.setdefault(k["mint"], set()).add(k["wallet"])
+    trigger_mints = {m for m, wl in kohorte.items() if len(wl) >= mindest}
+    signal_k = nachlauf_messen(alle, trigger_ts=trigger_mints)
+
+    print("Nachlauf-Messung robinhood_radar (T-268)")
+    print("  Fuellungen in der Sammlung: %d, davon %d Kaeufe mit naechster "
+          "Beobachtung" % (len(alle), len(alle_k)))
+    print("  Signalfall (Kohorte >= %d bewertete Wallets): %d Token, %d Kaeufe "
+          "mit naechster Beobachtung" % (mindest, len(trigger_mints),
+                                         len(signal_k)))
+    for name, werte in (("alle Kaeufe", [x["nachlauf_pct"] for x in alle_k]),
+                        ("Signalfall", [x["nachlauf_pct"] for x in signal_k])):
+        v = _verteilung(werte)
+        if v is None:
+            print("  %-12s keine Messwerte" % name)
+            continue
+        print("  %-12s n=%-3d min %+8.2f%%  p25 %+8.2f%%  Median %+8.2f%%  "
+              "p75 %+8.2f%%  max %+8.2f%%  Schnitt %+8.2f%%"
+              % (name, v["n"], v["min"], v["p25"], v["median"], v["p75"],
+                 v["max"], v["schnitt"]))
+    if alle_k:
+        abst = _verteilung([x["abstand_s"] for x in alle_k])
+        print("  Abstand Signal -> naechste Beobachtung: Median %.0f s, "
+              "groesster %.0f s" % (abst["median"], abst["max"]))
+    print("  Annahme in wachen.json: %.1f %% Nachlauf + %.2f %% Gebuehr je Seite"
+          % (w.get("nachlauf_prozent", 2.0), w.get("gebuehr_taker", 0.01) * 100))
+    print("  Die Gebuehr selbst ist in diesen Daten NICHT messbar (sie steckt "
+          "im Poolpreis) - sie bleibt eine Annahme.")
+
+    ordner = os.path.join(HIER, "daten")
+    os.makedirs(ordner, exist_ok=True)
+    with open(os.path.join(ordner, "messung.json"), "w", encoding="utf-8") as f:
+        json.dump({"zeit": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                   "annahme_nachlauf_prozent": w.get("nachlauf_prozent", 2.0),
+                   "annahme_gebuehr_taker": w.get("gebuehr_taker", 0.01),
+                   "fuellungen": len(alle),
+                   "verteilung_alle": _verteilung([x["nachlauf_pct"]
+                                                    for x in alle_k]),
+                   "verteilung_signal": _verteilung([x["nachlauf_pct"]
+                                                      for x in signal_k]),
+                   "werte_alle": alle_k, "werte_signal": signal_k},
+                  f, indent=2, ensure_ascii=False)
+    return 0
+
+
 def _live_erlaubt() -> bool:
     w = json.loads((Path(HIER) / "wachen.json").read_text(encoding="utf-8"))
     return bool(w.get("handel_erlaubt")) and bool(
@@ -201,8 +339,14 @@ def main():
                    help="verweigert: diese Spur hat keinen Live-Zweig")
     g.add_argument("--wachen", action="store_const", dest="modus",
                    const="wachen", help="nur den Wachenstand zeigen")
+    g.add_argument("--messen", action="store_const", dest="modus",
+                   const="messen",
+                   help="Nachlauf der eigenen Sammlung messen (T-268)")
     a = p.parse_args()
     modus = a.modus or "papier"
+    if modus == "messen":
+        return messen(json.loads((Path(HIER) / "wachen.json").read_text(
+            encoding="utf-8")))
     if modus == "live" and not _live_erlaubt():
         print("--live verweigert: handel_erlaubt ist false und freigabe.erfuellt "
               "ist nicht gesetzt - Handelsregeln Punkt 3 (scharf schalten von "

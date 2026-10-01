@@ -39,6 +39,20 @@ Radar sammelt im Takt, die eigene Buchung liegt hinter dem Vorbild. Dazu
 **1 % Gebühr je Seite** (`gebuehr_taker`). Eine Kopie ohne Kursbewegung ergibt
 damit ein Minus; das ist Absicht, keine Ungenauigkeit.
 
+**Gemessen am 01.10.2026** mit `handeln.py --messen` (rein lesend über die
+eigene Sammlung, Rohwerte in `daten/messung.json`): 3529 Füllungen, davon
+1979 Käufe mit einer nächsten Beobachtung. Nachlauf-Median **+1,76 %**
+(p25 −2,63 %, p75 +9,10 %, Schnitt +10,21 %). Im **Signalfall** — nur die
+Käufe, die unsere Regel genommen hätte (Kohorte ≥ 2 bewertete Wallets) —
+n=19: Median **+2,87 %**, Schnitt +9,89 %, kleinster +0,14 %. Der gesetzte
+Aufschlag von 2,0 % liegt damit **am Median, nicht darüber**. Abstand Signal →
+nächste Beobachtung: Median 86 s.
+
+Die **Gebühr selbst ist in diesen Daten nicht messbar** — sie steckt im
+Poolpreis, die Sammlung führt kein Gebührenfeld. Sie bleibt eine Annahme und
+ist als solche in `wachen.json` benannt. Neu messen, wenn die Sammlung
+deutlich größer ist oder die Spur live gehen soll.
+
 ## Aufruf
 
 ```bash
@@ -46,6 +60,7 @@ cd Agenten/Handel/robinhood_radar
 <Handel>/scanner/.venv/Scripts/python.exe handeln.py --vorschau   # nichts schreiben
 <Handel>/scanner/.venv/Scripts/python.exe handeln.py --papier     # Papierzyklus
 <Handel>/scanner/.venv/Scripts/python.exe handeln.py --wachen     # Grenzen zeigen
+<Handel>/scanner/.venv/Scripts/python.exe handeln.py --messen     # Nachlauf messen
 ```
 
 `--live` verweigert mit Grund: **es gibt keinen Orderweg.** Robinhood Chain

@@ -322,5 +322,56 @@ def tearDownModule():
         % (neu, geaendert))
 
 
+class NachlaufMessungTest(unittest.TestCase):
+    """T-268: der Nachlauf auf der eigenen Sammlung - rein rechnend.
+
+    Nur die reine Funktion: die echte Messung (handeln.messen) schreibt
+    daten/messung.json in den ECHTEN Spurordner und wuerde vom Modulwaechter
+    zu Recht als Schreibzugriff gemeldet.
+    """
+
+    def test_naechster_handel_setzt_den_nachlauf(self):
+        fills = [{"mint": "M", "wallet": "W", "seite": "buy", "preis": 1.0,
+                  "ts": 100.0},
+                 {"mint": "M", "wallet": "V", "seite": "sell", "preis": 1.1,
+                  "ts": 160.0}]
+        aus = handeln.nachlauf_messen(fills)
+        self.assertEqual(len(aus), 1)
+        self.assertAlmostEqual(aus[0]["nachlauf_pct"], 10.0, places=6)
+        self.assertAlmostEqual(aus[0]["abstand_s"], 60.0, places=6)
+
+    def test_kauf_ohne_naechste_beobachtung_zaehlt_nicht(self):
+        fills = [{"mint": "M", "wallet": "W", "seite": "buy", "preis": 1.0,
+                  "ts": 100.0}]
+        self.assertEqual(handeln.nachlauf_messen(fills), [])
+
+    def test_ein_verkauf_ist_kein_ausloeser(self):
+        fills = [{"mint": "M", "wallet": "W", "seite": "sell", "preis": 1.0,
+                  "ts": 1.0},
+                 {"mint": "M", "wallet": "W", "seite": "sell", "preis": 2.0,
+                  "ts": 2.0}]
+        self.assertEqual(handeln.nachlauf_messen(fills), [])
+
+    def test_trigger_filter_nimmt_nur_die_signal_tokens(self):
+        fills = [{"mint": "A", "wallet": "W", "seite": "buy", "preis": 1.0,
+                  "ts": 1.0},
+                 {"mint": "A", "wallet": "W", "seite": "buy", "preis": 1.2,
+                  "ts": 2.0},
+                 {"mint": "B", "wallet": "W", "seite": "buy", "preis": 1.0,
+                  "ts": 1.0},
+                 {"mint": "B", "wallet": "W", "seite": "buy", "preis": 1.2,
+                  "ts": 2.0}]
+        aus = handeln.nachlauf_messen(fills, trigger_ts={"A"})
+        self.assertEqual({x["mint"] for x in aus}, {"A"})
+        # Der letzte Kauf eines Tokens hat keine naechste Beobachtung mehr.
+        self.assertEqual(len(aus), 1)
+
+    def test_verteilung_meldet_die_raender_nicht_nur_den_schnitt(self):
+        v = handeln._verteilung([-80.0, -10.0, 0.0, 30.0])
+        self.assertEqual((v["min"], v["max"]), (-80.0, 30.0))
+        self.assertAlmostEqual(v["median"], -5.0, places=6)
+        self.assertIsNone(handeln._verteilung([]))
+
+
 if __name__ == "__main__":
     unittest.main()
