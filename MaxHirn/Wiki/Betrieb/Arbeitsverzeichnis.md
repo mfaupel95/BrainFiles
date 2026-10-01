@@ -93,6 +93,33 @@ und meldet nur `No such file or directory`. Am 30.09.2026 genau so passiert - de
 Reparaturlauf dokumentierte den falschen Anker, weil die Verkettung `cd ... && <befehl>` den
 Fehlschlag verschluckt und der naechste Befehl scheinbar grundlos scheitert.
 
+## Befehle fuer Max: PowerShell, nicht bash
+
+**Die Werkzeug-Shell der Agenten ist bash (git-bash/MSYS), Max' Shell ist PowerShell.**
+Kopiert Max einen Befehl aus dem Werkzeugprotokoll, scheitert er an Woertern, die es nur
+in bash gibt — gemessen am 01.10.2026: `export : Der Begriff "export" wird nicht als Name
+eines Cmdlets ... erkannt`.
+
+| bash (Werkzeuge) | PowerShell (Max) |
+|---|---|
+| `export NAME=WERT` | `$env:NAME = "WERT"` |
+| `rm -f datei` | `Remove-Item datei -Force` |
+| `$VAR` | `$env:VAR` |
+| `head -20`, `wc -l`, `grep` | `Select-Object -First 20`, `Measure-Object`, `Select-String` |
+| `/c/Users/faupe/...` | `C:\Users\faupe\...` |
+| `python x.py` (im Wurzelverzeichnis) | `.\x.cmd` oder `& 'C:\...\x.cmd'` |
+
+Regeln daraus:
+
+1. **Ein Befehl fuer Max wird als PowerShell-Zeile geschrieben und als solche markiert**
+   („zum Einfuegen"), nie als Kopie eines Werkzeugaufrufs.
+2. **Relative Programme brauchen in PowerShell `.\`** — ohne das sucht PowerShell ein
+   Modul und meldet „Der Begriff ... ist nicht als Name eines Cmdlets ... erkannt".
+3. **Wurzel-Aufrufer (`.cmd`) sind der beste Weg**: `.\jevgrep.cmd`, `.\omnitrade.cmd`,
+   `.\bestand.cmd` laufen aus jedem Verzeichnis und in jeder Shell.
+4. `git`-Befehle ohne Pfadangabe (`git status`) sind in beiden Shells gleich — dort ist
+   nur das Arbeitsverzeichnis zu beachten.
+
 ## Was davon unberuehrt bleibt (gemessen)
 
 - **`Agenten/Routinen/*.ps1`** - 51 von 53 Skripten lokalisieren sich ueber `$PSScriptRoot`
