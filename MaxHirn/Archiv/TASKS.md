@@ -60,6 +60,60 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
+      Kontext: Am 01.10.2026 sind die `models:`-Listen der 19 Bot-Profile auf das gekuerzt, was
+      jedes Profil selbst nennt (33.064 -> 125 Eintraege, Werkzeug
+      `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py`). Die HAUPTconfig traegt weiter
+      die volle omniroute-`auto/*`-Liste (1.739) und die 428 Nous-Modelle - beides ist
+      gewollt bzw. ausdruecklich bestellt (Nous-Liste), aber dieselbe Frage stellt sich:
+      braucht der Hauptwaehler die 1.739 Router-Kombinationen, wenn der Endpunkt sie mit
+      Schluessel ohnehin live liefert?
+      Naechster Schritt: entscheiden, ob die omniroute-Liste der Hauptconfig ebenfalls auf die
+      benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+- [ ] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
+      Kontext: Beim Zentrale-Durchgang am 01.10.2026 aufgefallen: die Spur fuehrt ihre Token
+      als `inst` (0x…), die Zentrale sagte dazu `Quelle okx` und lief damit in einen Weg, der
+      nie antwortet. Richtig ist `keine` - die Robinhood-Kette (4663) kennt kein Haus-Leser
+      (`spiegel/lesen.py`, KETTEN: base, bnb, ethereum, solana, xlayer), ein OKX-Paar gibt es
+      nicht. Die Radar-Datenbank fuehrt je Fuellung nur den EINSTIEGSpreis (`usd_value`),
+      keine laufende Notiz; drei Positionen stehen damit ohne Kurs da (u. a. 0x48f413c3…).
+      Naechster Schritt: entscheiden, ob die Zentrale den letzten bekannten Kurs aus
+      `fomo_agent.db` zeigen darf - dann ausdruecklich als "letzter Kurs, vor N min", nicht
+      als live - oder ob die Zeilen ohne Kurs bleiben, wie es jetzt der Fall ist.
+      Betrifft: Agenten/Handel/handelszentrale.py (QUELLE), Agenten/Handel/robinhood_radar/, Werkstatt/Repos/fomo-robinhood-radar/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+
+- [ ] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
+      Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
+      `user_data/config.<name>.json`, die laufenden Container akzeptieren davon aber nur das
+      Passwort der Basis-`config.json` (gemessen 30.09.2026 in `bots.py::_api_stand`, am
+      01.10.2026 erneut belegt: 8081/8082/8083 antworten mit der Basis-Anmeldung auf
+      show_config/count/profit/status/trades/daily, mit dem Aufsatz-Passwort 401).
+      `freqtrade_bridge.zugang_fuer()` nimmt deshalb den Port vom Bot, die Anmeldung immer von
+      der Basis - die Zentrale haengt an EINEM Zugang, obwohl sie drei Bots zeigt, und dieser
+      eine Zugang ist der Ausfall aller drei.
+      Naechster Schritt: beim naechsten Bot-Neustart (`freqtrade/bots_starten.sh`) messen, ob
+      die Container ihre eigenen Aufsatz-Passwoerter akzeptieren; wenn ja, `zugang_fuer` auf
+      die je-Aufsatz-Anmeldung umstellen und die 401-Ausnahme aus der Bruecke streichen.
+      Betrifft: Agenten/Handel/freqtrade_bridge.py, Agenten/Handel/freqtrade/bots.py, Agenten/Handel/freqtrade/user_data/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+
+- [ ] **T-301 — Leitstand: dieselben Tabellen ohne Leiste nachziehen**
+      Kontext: Die Handelszentrale hat seit 01.10.2026 `tabelle_mit_leiste` (senkrecht +
+      waagerecht + Mausrad) und eine scrollbare Spuren-Seite. Grund war die Spurtabelle mit
+      `height=len(SPUREN)` - hoeher als jedes Fenster, der Rest unerreichbar. Im Leitstand ist
+      dieselbe Suche leer (grep `Scrollbar`/`scrollbar`/`_scroll` in
+      `Agenten/Handel/leitstand.py`: keine Treffer), und er bettet die Zentrale als Reiter
+      ein - seine eigenen Tabellen (Spuren-Holer, Backtests, Freigaben) haben dasselbe Problem
+      von vorgestern.
+      Naechster Schritt: die drei Helfer (`tabelle_mit_leiste`, `scrollbare_seite`,
+      `rad_selbst`) nach `Agenten/Werkzeuge/fenster_design.py` ziehen, damit beide Fenster
+      EINE Quelle haben, und sie im Leitstand anwenden.
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/fenster_design.py, Agenten/Handel/handelszentrale.py
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+
+
 - [ ] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
       Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
       Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt

@@ -64,6 +64,18 @@ Anfang September noch auf die Altanlage.
    Einstellungsaenderung in Desktop/TUI nachzaehlen (`grep -c "claude-opus-4.1:batch"
    Agenten/Hermes/config.yaml` muss 1 sein). Offen als T-297.
 
+**Nachtrag 01.10.2026: die BOT-PROFILE tragen jetzt das Gegenteil.** Auf Auftrag Max
+(„die botprofile brauchen noch weniger") sind die `models:`-Listen der 19 Profile, die je
+~1.739 Eintraege aus der omniroute-Liste mitkopiert hatten, auf das gekuerzt, was das Profil
+selbst nennt (`model.default`, `providers.<p>.model`/`default_model`, `fallback_providers`,
+`delegation.model`, `moa`): **33.064 -> 125 Eintraege**, caveman 2248 -> 514 Zeilen,
+hermes-wartung 1811 -> 79. Der `models:`-Block eines Profils ist eine Anzeigeliste; die Wahl
+bleibt vollstaendig, weil `discover_models: true` bleibt und der Waehler mit gesetztem
+Schluessel die echte Liste live vom Endpunkt holt (`_discover_endpoint_models`). Werkzeug:
+`Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py` (Trockenlauf Standard, `--anwenden`,
+`--zuruecknehmen`), Pruefungen `Agenten/Hermes/scripts/test_profil_modelllisten_kuerzen.py`
+(17, auf Kopien). Offen fuer die HAUPTconfig: T-302.
+
 ## Gateway
 
 - Der A2A-Gateway ist `python.exe -m hermes_cli.main gateway run` (Launcher-venv → Kind
