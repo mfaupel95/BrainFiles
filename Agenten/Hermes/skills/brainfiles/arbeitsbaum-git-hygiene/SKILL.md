@@ -266,6 +266,22 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  gemischte Dateien (eigene + fremde Zeilen) gehen NICHT in diesen Comm
  it — die eigene Zeile behaelt ihren eigenen Commit (Regel 3).
 
+**`--allow-empty` heisst NICHT „nichts im Index".** Ein Commit, der nur eine
+Meldung nachtragen soll (Korrektur, Praezisierung, leerer Marker), committet
+trotzdem JEDEN vorgemerkten Eintrag - auch die fremde Vormerkung einer anderen
+Sitzung. Gemessen: ein `git commit --allow-empty -m "Korrektur: ..."` nahm eine
+fremde vorgemerkte LOESCHUNG mit (eine ganze, in der `.gitignore` ausdruecklich
+freigegebene Datei), die diese Sitzung nie angefasst hatte; sie stand danach
+unter der eigenen Meldung in HEAD. Der Index ist bei `--allow-empty` genauso
+scharf wie bei jedem anderen Commit. **Deshalb: `git diff --cached --numstat`
+LESEN, bevor irgendein Commit laeuft - auch ein leerer.** Fuer einen reinen
+Meldungs-Nachtrag den eigenen Index nehmen
+(`GIT_INDEX_FILE=<scratch>/idx_x` + `git read-tree HEAD`) oder den Nachtrag
+lassen - eine ungenaue Betreffzeile ist billiger als eine fremde Loeschung im
+eigenen Commit. Ist es passiert: normaler Folge-Commit, der den Inhalt aus
+`git show <letzter-guter-commit>:<pfad>` wieder aufnimmt, keine Historie
+umschreiben.
+
 ## Fremde Arbeit aus beendeten Sitzungen einsammeln
 
 **Zuerst nachsehen, was schon geholt wurde, statt es ein zweites Mal zu bauen:**
@@ -841,7 +857,19 @@ ungetrackten Dateien. Reihenfolge:
   jede Datei, die man stagen will, muss vorher WIRKLICH geschrieben sein.** Ein
   Schreibwerkzeug, das den Vorgang verweigert (z. B. weil die Zieldatei vorher nicht
   gelesen wurde), meldet das nicht zwingend als Fehler: es schreibt nichts und liefert
-  auch keine Bytezahl. Die Datei fehlt dann still im `git add`-Aufruf,
+  auch keine Bytezahl. **Inzwischen verweigert es meist ausdruecklich**
+  (`Refusing to overwrite …: this task has not seen its full current content`) - und ein
+  blosses erneutes Lesen hebt die Sperre nicht immer auf: gilt die Datei einmal als
+  „partial view" (weil sie mit `offset`/`limit` gelesen wurde), bleibt sie das auch nach
+  einem vollstaendigen Leseversuch, und der zweite Schreibversuch scheitert identisch.
+  Verlaesslicher Weg fuer eine Datei, die man SELBST in derselben Aufgabe angelegt hat:
+  den neuen Inhalt per `write_file` an einen FRISCHEN Pfad unter
+  `Agenten/Hermes/cache/scratch/` schreiben (eine neue Datei braucht kein Vor-Lesen) und
+  sie mit `cp` ueber das Ziel legen, vorher `.bak-JJJJMMTT` daneben. Danach
+  `git diff --numstat` lesen: der Austausch muss die gewollte Aenderung zeigen, und bei
+  einer selbst neu geschriebenen Datei ist ein Ganzdatei-Diff hier normal (nicht das
+  Zeilenende-Symptom). Nicht in einer Schleife gegen dieselbe Sperre anlaufen - nach
+  dem zweiten identischen Fehlschlag den Weg wechseln. Die Datei fehlt dann still im `git add`-Aufruf,
   `git diff --cached --numstat` nennt sie nicht, und der Commit traegt eine Nachricht
   ueber eine Aenderung, die gar nicht darin ist. Gegenprobe in EINEM Aufruf:
   `git add <pfade> && git diff --cached --numstat` - die Zahl der genannten Pfade muss
