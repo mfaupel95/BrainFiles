@@ -60,6 +60,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
+      Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
+      als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
+      weil 1 Kontrakt 1437 USD Nennwert = Hebel 28,7). Nichts ist scharf:
+      handel_erlaubt=false, freigabe.erfuellt=false, kein Eintrag in
+      AUTO_FREIGABE. Blocker ist allein die Margin - das Kraken-Futures-flex-Konto
+      traegt 85,09 USD, davon sind 83,38 durch drei laufende nautilus-Positionen
+      (SUI/HBAR/HYPE, zusammen +12,63 USD im Plus) gebunden; frei sind 1,31 USD,
+      Stufe 1 braucht 30.
+      Naechster Schritt: Entscheidung Max - (a) eine nautilus-Position schliessen,
+      (b) Guthaben ins flex-Konto legen oder (c) mindest_guthaben_usd senken
+      (erlaubt nur kleinere Positionen, nicht mehr Plaetze). Danach
+      handel_erlaubt UND freigabe.erfuellt - beide Haken, und den Haken setzt Max.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/omniquant, nautilus_kraken
+
 - [ ] **T-279 - OKX: rund 275 USD Krypto liegen ungenutzt, das Guthaben-Tor bleibt bei 30,84 USDC**
       Kontext: Gemessen am 01.10.2026 um 02:20. `availBal` traegt BETH 161,93 / NEIRO 25,30 /
       DOGS 21,81 / OKSOL 20,19 / EURC 18,10 / ACE 15,27 / WAXP 7,94 / CHIP 4,41 = 274,95 USD.
