@@ -85,7 +85,12 @@ Sperren. Zwei Fehlerrichtungen, beide gefährlich:
      Auswertung über einen gemeinsamen Leser läuft (z. B.
      `auswertung_alle.runden_indikator`), rechnen ohne `gebuehr_taker` in
      `wachen.json` **brutto** — dann gehört der Satz als Kommentarfeld in die
-     `wachen.json`, damit niemand das Netto aus der Zahl liest.
+     `wachen.json`, damit niemand das Netto aus der Zahl liest. Für OKX und
+     Deribit steht das Verfahren (zwei Zeugen: `/api/v5/account/trade-fee` und
+     `/api/v5/trade/fills`), die zwei Einheiten (`gebuehr_taker` = Bruch,
+     `gebuehr_pct` = Prozent), das Werkzeug `Agenten/Handel/gebuehren_setzen.py`
+     und die gemessenen Sätze (Spot 0,10 % / Futures 0,05 %) in
+     `references/gebuehren-belegen.md`.
 9. **Dieselbe Zahl in gespiegelter Richtung ist keine Kalibrierung.** Wird eine
    Schwelle auf die Gegenrichtung übertragen (Long-Tor → Short), erst **beide
    Verteilungen messen** (Median, oberes Quartil, Maximum je Richtung) und den

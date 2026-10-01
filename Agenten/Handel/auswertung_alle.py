@@ -56,6 +56,12 @@ FREMDES_BUCH = {
     "nautilus_kraken_futures": ("nautilus_kraken", "handelsjournal.futures.csv"),
 }
 
+# Dasselbe fuer die WACHEN: der Futures-Arm faehrt aus demselben Ordner, seine
+# Grenzen und seine Gebuehr stehen aber in `wachen.futures.json`. Ohne diesen
+# Griff las `gebuehr_fuer()` die SPOT-Wachen und der Bericht meldete fuer ein
+# Buch mit bekannter Gebuehr "BRUTTO und UNBEKANNT" (gemessen 01.10.2026).
+WACHEN_SUFFIX = {"nautilus_kraken_futures": "wachen.futures.json"}
+
 
 def _ort(spur, datei):
     """Ordner und Dateiname des Journals einer Spur."""
@@ -63,6 +69,8 @@ def _ort(spur, datei):
         ordner, eigene = FREMDES_BUCH[spur]
         if datei == "handelsjournal.csv":
             return ordner, eigene
+        if datei == "wachen.json" and spur in WACHEN_SUFFIX:
+            return ordner, WACHEN_SUFFIX[spur]
         return ordner, datei
     return spur, datei
 

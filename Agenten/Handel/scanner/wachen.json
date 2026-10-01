@@ -1,6 +1,6 @@
 {
-  "gebuehr_taker": 0.0005,
-  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert; auswertung_alle.runden_spot rechnet dieselbe Zahl)",
+  "gebuehr_taker": 0.001,
+  "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 taker 0,10 %/Seite und echte Fuellung (HYPE-USDC 0,032 @ 86,642 = 2,77254 USDC Nettowert, Gebuehr 0,002772544 = 0,1000 %). NICHT 0,05 % - das ist der Futures-Satz.",
   "_zweck": "Harte Grenzen des Marktscanners. Eine Datei, eine Wahrheit. Wird von scan.py und handeln.py gelesen, nie von ihnen geschrieben.",
   "watchlist": [
     "BTC-USDC",

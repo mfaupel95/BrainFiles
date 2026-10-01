@@ -60,6 +60,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-268 — Gebuehren der nicht messbaren Spuren entscheiden**
+      Kontext: Am 01.10.2026 sind die Gebuehren aller messbaren Spuren belegt und
+      gesetzt (T-264). OFFEN bleiben fuenf Spuren, deren Markt NICHT belegt ist:
+      `moondev_sniper` (pump.fun-Token, kein Instrument in der wachen.json - meldet
+      weiter "BRUTTO und UNBEKANNT"), `moondev_signalwelle` (traegt 0.0005, ihr
+      Signal ist aber ein 1h-Pump auf Coins - Spot waere 0.001), `kopier` und
+      `kopier1zu1` (1,0 %/Seite, Solana-Onchain) und `robinhood_radar` (1,0 %,
+      Robinhood Chain). Die beiden letzten sind Modellannahmen, kein Marktsatz -
+      eine Zahl aus einem anderen Markt waere geraten.
+      Naechster Schritt: je Spur den Markt benennen (Spot oder Perp) und den Satz
+      setzen; fuer die Onchain-Spuren eine eigene Messung (Slippage + Gebuehr) oder
+      die Annahme ausdruecklich stehen lassen.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/moondev_sniper, moondev_signalwelle, kopier, kopier1zu1, robinhood_radar
+
 - [ ] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
       Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene
       Commits und sind sauber; `trading-stack-setup-40ef0d` traegt einen Commit
@@ -96,18 +110,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       DEMSELBEN Verzeichnis `.cmd` schlaegt.
       Angelegt 01.10.2026 · Betrifft Documents/PowerShell/Microsoft.PowerShell_profile.ps1, Agenten/Werkzeuge/anker-pruefen.ps1
 
-- [ ] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
-      Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
-      gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
-      wachen.json". Ohne Gebuehr stehen: gitter, kopier, kopier1zu1, macd_mtf, omniquant,
-      squeeze, supertrend, wavetrend, nautilus, nautilus_kraken, nautilus_kraken_futures
-      und die sieben moondev_* (funding, liquidation, listingarb, sentiment, sniper,
-      topmovers, whale). Einen Satz einzusetzen ist eine Entscheidung JE SPUR (Boerse,
-      Kontotyp, Maker/Taker, XPERP oder SWAP) - geraten waere schlimmer als "unbekannt".
-      Naechster Schritt: je Spur die Boerse und den GEMESSENEN Satz nennen (OKX XPERP/SWAP
-      0.0005, Kraken Spot 0.006, Deribit 0.0005), eintragen, `auswertung_alle.py` erneut -
-      das Urteil der Spuren aendert sich damit.
-      Angelegt: 2026-10-01 · Betrifft: Agenten/Handel/*/wachen.json, Agenten/Handel/auswertung_alle.py
 
 - [ ] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
       Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
@@ -2882,6 +2884,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
+      Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
+      gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
+      wachen.json". Ohne Gebuehr stehen: gitter, kopier, kopier1zu1, macd_mtf, omniquant,
+      squeeze, supertrend, wavetrend, nautilus, nautilus_kraken, nautilus_kraken_futures
+      und die sieben moondev_* (funding, liquidation, listingarb, sentiment, sniper,
+      topmovers, whale). Einen Satz einzusetzen ist eine Entscheidung JE SPUR (Boerse,
+      Kontotyp, Maker/Taker, XPERP oder SWAP) - geraten waere schlimmer als "unbekannt".
+      Naechster Schritt: je Spur die Boerse und den GEMESSENEN Satz nennen (OKX XPERP/SWAP
+      0.0005, Kraken Spot 0.006, Deribit 0.0005), eintragen, `auswertung_alle.py` erneut -
+      das Urteil der Spuren aendert sich damit.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Handel/*/wachen.json, Agenten/Handel/auswertung_alle.py
+      **Erledigt 2026-10-01 (Gebuehren-Teil).** Am eigenen OKX-Konto gemessen - Tarif Lv1 UND echte Fuellung: Spot 0,10 %/Seite (HYPE-USDC 0,002772544 auf 2,77254 USDC), Futures/XPERP 0,05 %/Seite (ZEC-/ADA-USD_UM_XPERP). Gesetzt mit `Agenten/Handel/gebuehren_setzen.py` (Vorschau Standard, `--messen` fragt den Tarif ab): neun Spuren auf 0.001 (Spot: scanner, squeeze, wavetrend, macd_mtf, supertrend, gitter, iv_wand, moondev_topmovers, moondev_listingarb), fuenf auf 0.0005 (moondev_funding/-whale/-liquidation/-sentiment, nautilus), nautilus_kraken von 0 auf 0.6. Zwei Zuordnungsfehler in `replay.SPUR_BOERSE` behoben (gitter stand als Perp, orb als Spot). Der Kern: scanner rechnete OKX-SPOT mit 0,05 % statt 0,10 % - jede Netto-Zahl war 0,1 Prozentpunkte je Runde zu freundlich. `auswertung_alle.py` meldet nur noch fuer moondev_sniper "BRUTTO und UNBEKANNT"; Rest als T-268.
 - [x] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
       Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
       `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.

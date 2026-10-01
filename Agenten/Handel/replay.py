@@ -35,8 +35,17 @@ import historie_binance
 HIER = os.path.dirname(os.path.abspath(__file__))
 
 # Spuren mit eigenem Buch im Modul (Familie A).
+#
+# `orb` und `orbk` standen hier bis zum 01.10.2026 und waren doch nicht
+# fahrbar: ihre `handeln.py` haben kein `lade_wachen()`, ihre `wachen.json`
+# nennt die Instrumente als DICT mit BOERSENnamen (`BTC_USDT` -> `BTC-USDT-SWAP`)
+# statt als Liste von Spur-Namen, und ohne `kerzen_takt`/`mindest_kerzen`. Ein
+# Replay endet damit in der Verweigerung "die Spur nennt kein Instrument". Sie
+# stehen jetzt unter NICHT_NACHRECHENBAR mit Grund - eine angebotene Taste, die
+# nur scheitern kann, ist schlechter als eine fehlende. orbk hat ausserdem
+# einen eigenen Backtest (`orbk/backtest.py`).
 SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter",
-                 "orb", "orbk", "mosaic")
+                 "mosaic")
 
 # Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
 # fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
@@ -55,8 +64,10 @@ SPUREN_TEIL_B = ("trendwende_btc", "liq_wand", "iv_waelle", "robinhood_radar",
                  "klassik_bollinger", "klassik_donchian", "klassik_rsi",
                  "klassik_rsi2", "klassik_donchian_trend")
 
-# Spuren, deren Datenquelle sich historisch nicht beschaffen laesst. Sie
-# bekommen einen Vermerk statt einer geschaetzten Zahl.
+# Spuren, die der Replay NICHT fahren kann. Zwei Gruende stehen hier, jeder
+# mit seinem Grund daneben (das Leitstand-Fenster zeigt diese Liste im Klartext):
+# eine historisch nicht beschaffbare Datenquelle - oder eine Spur, die gar
+# nicht fahrbar ist (kein `lade_wachen()`, keine Kerzen-Naht).
 NICHT_NACHRECHENBAR = {
     # Feed-Spuren ohne historisch beschaffbare Quelle. Der GRUND gehoert
     # daneben - eine leere Zeile waere nicht zu deuten.
@@ -81,6 +92,9 @@ NICHT_NACHRECHENBAR = {
     "spiegel": "ausser Betrieb seit 21.09.2026",
     "spiegel_knapp": "ausser Betrieb seit 21.09.2026",
     "spiegel_weit": "ausser Betrieb seit 21.09.2026",
+    # Nicht fahrbar (kein Kerzenweg im Modul), nicht "Datenquelle fehlt":
+    "orb": "kein lade_wachen() in orb/handeln.py - so nicht fahrbar (01.10.2026)",
+    "orbk": "kein lade_wachen() in orbk/handeln.py; eigener Backtest: orbk/backtest.py",
 }
 
 # Naht fuer Tests: None -> HIER/daten/backtest.
@@ -765,14 +779,22 @@ BOERSENSAETZE = {
 SPUR_BOERSE = {
     # OKX Spot (USDC-Paare)
     "scanner": "okx_spot", "squeeze": "okx_spot", "wavetrend": "okx_spot",
-    "macd_mtf": "okx_spot", "supertrend": "okx_spot", "orb": "okx_spot",
+    "macd_mtf": "okx_spot", "supertrend": "okx_spot",
+    # gitter stand hier bis 01.10.2026 falsch: es handelt BTC-USDT auf dem
+    # OKX-SPOT (seine eigene wachen.json sagt es, und seine _kosten nennen
+    # 0,1 %), bekam als Perp-Spur aber nur den halben Satz gerechnet.
+    "gitter": "okx_spot", "iv_wand": "okx_spot",
+    "moondev_topmovers": "okx_spot", "moondev_listingarb": "okx_spot",
     # OKX Perp/Swap und Deribit
-    "gitter": "okx_perp", "liq_wand": "okx_perp", "trendwende_btc": "okx_perp",
+    "liq_wand": "okx_perp", "trendwende_btc": "okx_perp",
     "swap": "okx_perp", "xperp": "okx_perp", "iv_waelle": "okx_perp",
-    "moondev_funding": "okx_perp", "moondev_listingarb": "okx_perp",
-    "moondev_topmovers": "okx_perp", "moondev_sniper": "okx_perp",
-    "moondev_signalwelle": "okx_perp", "moondev_whale": "okx_perp",
+    # orb handelt BTC-USDT-SWAP / ETH-USDT-SWAP (Perp), stand hier falsch
+    # unter okx_spot - der eigene Wert (0.0005) hat Vorrang, die Zuordnung
+    # greift nur, wenn kein Feld da ist.
+    "orb": "okx_perp",
+    "moondev_funding": "okx_perp", "moondev_whale": "okx_perp",
     "moondev_liquidation": "okx_perp", "moondev_sentiment": "okx_perp",
+    "moondev_signalwelle": "okx_perp", "moondev_sniper": "okx_perp",
     "klassik_sma": "okx_perp", "klassik_ema": "okx_perp",
     "klassik_macd": "okx_perp", "klassik_bollinger": "okx_perp",
     "klassik_donchian": "okx_perp", "klassik_rsi": "okx_perp",
