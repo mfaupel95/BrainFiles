@@ -180,6 +180,30 @@ Beide finden dieselben Kernstellen (`handeln.py`, `boersenstops.py`,
 `wachen_pruefung.py`). Zurueck zu Zen:
 `python von_opencode_anmelden.py --anwenden`.
 
+## Vorschalter: erst pruefen, dann Geld ausgeben
+
+`jevgrep.cmd` ruft nicht mehr jevgrep direkt, sondern `jg_sicher.py` — Subkommandos
+(`files`, `auth`, `doctor`, `skill`, `--help`, `--version`) laufen ungeprueft durch,
+eine **Suche** bekommt vorher die Vorpruefung:
+
+1. **Anbieter** — laeuft die Bruecke? Wenn nein, wird sie ueber die Wache gestartet.
+   Danach ein Testaufruf mit einer winzigen Frage an denselben Endpunkt (fast kostenlos).
+   Bei 429/402/403/500 wird die Suche **nicht** gestartet, mit dem Grund im Klartext.
+2. **Wurzelgroesse** — `jg files` (kostenlos) nennt Dateien und MiB. Ueber **300 Dateien
+   oder 60 MiB** wird abgelehnt; `--trotzdem` erzwingt den Lauf.
+3. **Kostenschaetzung** — aus der gemessenen Beziehung (1,7 MiB ≈ 447.000 Token ≈
+   1,8 US-Cent) plus die heutige Ausgabe aus dem Bruecken-Protokoll.
+
+```
+Anbieter bruecke ueber http://127.0.0.1:8742/v1 antwortet (0.6 s) | Wurzel Agenten/Handel/scanner: 66 Dateien, 1.7 MiB | grob 0.4 Mio. Token, 0.02 US-Dollar
+  heute schon 211 Anfragen ueber die Bruecke, grob 0.04 US-Dollar
+```
+
+`--leise` schweigt bei Erfolg (fuer Skripte). Nachweis ohne Netz:
+`python test_vorpruefung.py` (8 Tests: Subkommando, fehlende Anmeldung, toter Anbieter,
+gute Suche mit Kosten, zu grosse Wurzel, `--trotzdem`, `--leise`, und dass jevgrep die
+eigenen Schalter nie zu sehen bekommt).
+
 ## Nachweis
 
 `Werkzeuge/jevgrep/test_jevgrep.py` faehrt eine Attrappe eines

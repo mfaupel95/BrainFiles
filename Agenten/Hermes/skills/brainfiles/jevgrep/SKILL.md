@@ -46,7 +46,9 @@ Einzelheiten, Protokoll und Nachweise: `MaxHirn/Wiki/Werkzeuge/jevgrep.md`.
 1. **Nach Verhalten fragen, nicht nach Namen** — ein Satz, keine Aufzaehlung.
 2. **Die Wurzel ist der Kostenhebel**, nicht die Frage: `Agenten/Handel/scanner`
    66 Dateien (6,2 s) gegen `Agenten/Handel` 5.247 Dateien. Immer erst
-   `jg files <ordner>`, dann suchen.
+   `jg files <ordner>`, dann suchen. Der Vorschalter im Wurzel-Aufrufer lehnt ueber
+   300 Dateien oder 60 MiB ab (`--trotzdem` erzwingt) und nennt vorher Kosten und
+   Anbieterzustand - er bricht auch ab, wenn der Anbieter 429/402/403 liefert.
 3. **Jede Suche schickt Quelltext an den Dienst.** Vault, Schluesselordner und
    Personenbezogenes gehoeren nicht in die Wurzel; verengen mit
    `--exclude '**/zustand*.json' --exclude '**/*.csv'`.

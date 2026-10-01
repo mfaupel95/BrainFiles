@@ -992,6 +992,9 @@ Agenten/Handel/prophet_signal/handelsjournal.csv
 !Agenten/Werkzeuge/jevgrep/pruefe_bruecke.py
 !Agenten/Werkzeuge/jevgrep/sonde_mercury.py
 !Agenten/Werkzeuge/jevgrep/bruecke-mercury.cmd
+!Agenten/Werkzeuge/jevgrep/vorpruefung.py
+!Agenten/Werkzeuge/jevgrep/jg_sicher.py
+!Agenten/Werkzeuge/jevgrep/test_vorpruefung.py
 !Agenten/Werkzeuge/jevgrep/package.json
 !Agenten/Werkzeuge/jevgrep/package-lock.json
 !/jevgrep.cmd

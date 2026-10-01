@@ -182,6 +182,19 @@ Eine laufende Bruecke pruefen: `python Agenten/Werkzeuge/jevgrep/pruefe_bruecke.
 6. **Nicht vergessen:** jede Suche schickt Quelltext an den Anbieter. Vault,
    Schluesselordner und Personenbezogenes gehoeren nicht in die Wurzel.
 
+**Der Vorschalter prueft vor jeder Suche** (`jg_sicher.py` + `vorpruefung.py`):
+Anbieter erreichbar (sonst startet er die Bruecke und bricht bei 429/402/403 mit dem
+Grund ab), Wurzelgroesse (ueber **300 Dateien oder 60 MiB** wird abgelehnt, `--trotzdem`
+erzwingt) und die Kostenschaetzung samt heutiger Ausgabe:
+
+```
+Anbieter bruecke ueber http://127.0.0.1:8742/v1 antwortet (0.6 s) | Wurzel Agenten/Handel/scanner: 66 Dateien, 1.7 MiB | grob 0.4 Mio. Token, 0.02 US-Dollar
+  heute schon 211 Anfragen ueber die Bruecke, grob 0.04 US-Dollar
+```
+
+`--leise` schweigt bei Erfolg. Subkommandos (`files`, `auth`, `doctor`) laufen ungeprueft
+durch — `.\jevgrep.cmd files <ordner>` bleibt also der kostenlose erste Blick.
+
 **Die Bruecke laeuft automatisch.** Der Hermes-Cron `jev-bruecke-wache`
 (Job `7a2d058e063e`, alle 15 Minuten, `no_agent`) prueft Port 8742 und startet die
 Bruecke, wenn sie aus ist — leere Ausgabe heisst: alles laeuft. Von Hand:
