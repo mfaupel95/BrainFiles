@@ -324,7 +324,7 @@ HILFE_VERIFIZIERT = (
     "backtest_urteile.py", "beleg_hand.py", "bt_varianten_fast.py", "dca.py",
     "dca_auswertung.py", "filter_studie.py", "freigabe.py", "freigabefenster.py",
     "gesamtbilanz.py", "grid.py", "handelszentrale.py", "historie_binance.py",
-    "journal_pos_id_nachziehen.py", "kosten_wendepunkt.py", "llm_probe.py",
+    "journal_pos_id_nachziehen.py", "kerzenschluss_bias.py", "kosten_wendepunkt.py", "llm_probe.py",
     "moondev_historie.py", "okx_waisen.py", "optimieren.py", "papierbuch_schliessen.py",
     "prognose.py", "reinvest.py", "replay.py", "santiment_daten.py",
     "sperrgruende.py", "spiegelstand.py", "spuren_stand.py", "stille_spuren.py",

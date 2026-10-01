@@ -461,17 +461,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
       Startbefehl) oder unangetastet lassen.
       Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
-- [ ] **T-251 - Zwei echte Luecken in der Zentrale: `foreman` und `kerzenschluss_bias.py`**
-      Kontext: Nach der Umstellung am 30.09.2026 stehen genau zwei Zeilen in EINRICHTEN -
-      beide zu Recht. `foreman` (REPOS) hat kein `.venv`, ist aber ein Python-Paket mit
-      `src/foreman/__main__.py` und `pyproject.toml`; `kerzenschluss_bias.py` (HANDEL) hat
-      `argparse`+`__main__`, aber noch keinen echten Lauf (Hausregel „kein geratener
-      Befehl"). `foreman` ist fremd und nur lesend gedacht - ein venv darin waere ein
-      Schreibzugriff, den niemand braucht.
-      Naechster Schritt: `kerzenschluss_bias.py --help` einmal fahren und in
-      `fuellen.HILFE_VERIFIZIERT` aufnehmen; bei `foreman` entscheiden, ob es genutzt wird
-      (dann venv) oder ob es als „kein eigener Start" gefuehrt wird.
-      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/repos-zentrale/fuellen.py`
 - [ ] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
       Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
       nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.
@@ -3040,6 +3029,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-251 - Zwei echte Luecken in der Zentrale: `foreman` und `kerzenschluss_bias.py`**
+      Kontext: Nach der Umstellung am 30.09.2026 stehen genau zwei Zeilen in EINRICHTEN -
+      beide zu Recht. `foreman` (REPOS) hat kein `.venv`, ist aber ein Python-Paket mit
+      `src/foreman/__main__.py` und `pyproject.toml`; `kerzenschluss_bias.py` (HANDEL) hat
+      `argparse`+`__main__`, aber noch keinen echten Lauf (Hausregel „kein geratener
+      Befehl"). `foreman` ist fremd und nur lesend gedacht - ein venv darin waere ein
+      Schreibzugriff, den niemand braucht.
+      Naechster Schritt: `kerzenschluss_bias.py --help` einmal fahren und in
+      `fuellen.HILFE_VERIFIZIERT` aufnehmen; bei `foreman` entscheiden, ob es genutzt wird
+      (dann venv) oder ob es als „kein eigener Start" gefuehrt wird.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/repos-zentrale/fuellen.py`
+      01.10.2026 beide Luecken geschlossen: kerzenschluss_bias.py - --help mit dem Handel-venv gefahren (Code 0, Beleg-Log vom 30.09. und heutige Wiederholung), in fuellen.HILFE_VERIFIZIERT aufgenommen, Notiz auf belegten Stand gezogen. foreman - Entscheidung im Sinne des Auftrags: Bewusst KEIN venv, KEIN Start (fremder nur-lesen-Klon, kein Verbraucher im Haus); Manifest tragt gruppe kein_start + warnungen + Grund, Anleitung bleibt fuer einen spaeteren Wechsel stehen. Gegenprobe: Zentrale-Suite 296 Tests (der eine Fehlschlag ist T-271/kopier, fremd), --pruefen nennt keine EINRICHTEN-Zeile mehr.
 - [x] **T-240 - Datensortierung: Einzelinstanz-Schutz fehlt**
       Kontext: `MaxHirn-Datensortierung` ist mit IgnoreNew eingestellt, das
       schuetzt aber nur gegen die Aufgabe selbst. Am 30.09.2026 liefen

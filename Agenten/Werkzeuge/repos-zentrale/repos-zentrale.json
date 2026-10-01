@@ -209,8 +209,10 @@
       "ordner": "foreman",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche, venv fehlt",
-      "venv_pflicht": true,
+      "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche. Bewusst ohne venv und ohne Start gefuehrt (T-251, 01.10.2026): fremder Klon, nur lesend, kein Verbraucher im Haus; die Bau- und Start-Anleitung bleibt unten stehen, falls das je gewechselt wird.",
+      "venv_pflicht": false,
+      "gruppe": "kein_start",
+      "warnungen": ["kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"],
       "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf."
     },
     {
@@ -1716,7 +1718,7 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Werkzeug in Handel/ (in Arbeit - noch kein Startbefehl belegt)",
+      "notiz": "Werkzeug in Handel/: misst, wie weit Backtest-Ausstiege neben ihrer Marke liegen (rein lesend). Beleg: logs/kerzenschluss_bias.py-20260930-2004.log (Code 0), --help 01.10.2026 erneut gefahren.",
       "start": [
         ".venv\\Scripts\\python.exe",
         "kerzenschluss_bias.py",
