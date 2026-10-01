@@ -184,15 +184,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       ohne eines von beiden bleibt der Live-Schalter wirkungslos.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
 
-- [ ] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
-      Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
-      Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf
-      notadamking/RLTrader (upstream, ruhend) - ein Push dorthin kommt nicht in
-      Frage, ein Fork fehlt. Werkstatt ist in BEIDEN Sicherungen per /XD
-      ausgenommen; ein Plattendefekt auf O: loeschte den Docker-Bau endgueltig.
-      Naechster Schritt: Entscheidung Max - privater Fork mfaupel95/rltrader wie
-      bei omnitrade, dann origin=Fork / upstream=Original stellen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
 
 - [ ] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
       Kontext: fd40deb (01.10. 01:20, parallele Sitzung) hat kopier und
@@ -3060,6 +3051,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
+      Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
+      Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf
+      notadamking/RLTrader (upstream, ruhend) - ein Push dorthin kommt nicht in
+      Frage, ein Fork fehlt. Werkstatt ist in BEIDEN Sicherungen per /XD
+      ausgenommen; ein Plattendefekt auf O: loeschte den Docker-Bau endgueltig.
+      Naechster Schritt: Entscheidung Max - privater Fork mfaupel95/rltrader wie
+      bei omnitrade, dann origin=Fork / upstream=Original stellen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+      01.10.2026 angewandt: git fetch --unshallow (286 Commits), origin=privates Repo mfaupel95/rltrader (gh api: private true, ls-remote master 25d9ff0 = lokal), upstream=notadamking; Docker-Weg-Commit 25d9ff0 gepusht; Wiki-Seite und FREMD-Eintrag nachgezogen.
 - [x] **T-279 - OKX: rund 275 USD Krypto lagen ungenutzt, das Guthaben-Tor stand bei 30,84 USDC**
       Erledigt 2026-10-01. Sechs Posten in USDC verkauft (NEIRO, DOGS, EURC, ACE, WAXP, CHIP,
       zusammen ~92,56 USD); `availBal` 31,50 -> 144,70. BETH und OKSOL blieben liegen

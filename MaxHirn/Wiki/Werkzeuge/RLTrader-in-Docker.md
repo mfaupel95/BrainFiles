@@ -15,9 +15,13 @@ tags: [werkzeug, handel, docker, ml]
 
 ## Was wo liegt
 
-- Klon: `Werkstatt/RLTrader` (upstream `notadamking/RLTrader`, GPL-3.0,
-  seicht geklont, eigener `.git`; in der Zentrale: Bereich WERKSTATT,
-  STARTBAR). Fremd-Klon mit unserer Arbeit — siehe `Agenten/FREMD-Liste.json`.
+- Klon: `Werkstatt/RLTrader` (eigener `.git`; in der Zentrale: Bereich
+  WERKSTATT, STARTBAR). Fremd-Klon mit unserer Arbeit — siehe
+  `Agenten/FREMD-Liste.json`. Vollhistorie seit 01.10.2026 (`fetch
+  --unshallow`), `upstream` = `notadamking/RLTrader` (GPL-3.0, ruhig),
+  `origin` = **privates Repo `mfaupel95/rltrader`** — unser Docker-Commit
+  `25d9ff0` ist dorthin gepusht und per API nachgeprüft (`master =
+  25d9ff0`, `private: true`).
 - Unser Bauplatz im Klon (Commit `25d9ff0`): `requirements.local.txt`,
   `docker/Dockerfile.local`, `rltrader.cmd`, `--n-envs`-Schalter,
   `warnings`-Patches in `cli.py`/`optimize.py`, `.dockerignore` (hält `.venv`

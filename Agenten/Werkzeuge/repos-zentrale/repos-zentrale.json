@@ -850,7 +850,7 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "Fremd-Klon RLTrader (Vorgaenger von TensorTrade, upstream seit 2019 ruhend). Laeuft in Docker (CPU): erst rltrader.cmd build, dann train. Nur Simulation, kein Orderweg.",
+      "notiz": "Fremd-Klon RLTrader (Vorgaenger von TensorTrade, upstream seit 2019 ruhend; privat gesichert mfaupel95/rltrader). Laeuft in Docker (CPU): erst rltrader.cmd build, dann train. Nur Simulation, kein Orderweg.",
       "venv_pflicht": false,
       "start": [
         "cmd",

@@ -222,7 +222,7 @@
     {
       "pfad": "Werkstatt/RLTrader",
       "art": "Fremd-Klon (unsere Arbeit)",
-      "herkunft": "notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git",
+      "herkunft": "notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git, Fernsicherung als privates Repo mfaupel95/rltrader (01.10.2026)",
       "regel": "nur lesen; Betrieb ueber rltrader.cmd (Docker, CPU)",
       "warum": "Okt 2026 ueber docker/Dockerfile.local zum Laufen gebracht (TF 1.15, optuna 0.19, py37 - passt auf keinen Host-Python >=3.9). Eigene Arbeit im Klon: requirements.local.txt, Dockerfile.local, rltrader.cmd, --n-envs-Schalter (sonst 28 TF-Prozesse = Commit-Erschoepfung), warnings-Patch. Kein Live-Auftrag: data-provider static, lib/env/trade/LiveTradeStrategy.py nie verbunden. Zaehlt nicht als Haus-Code."
     },

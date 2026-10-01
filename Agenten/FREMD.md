@@ -66,7 +66,7 @@ nur die Klonsammlung `Werkstatt/Repos` steht in der Liste).
 | `Werkstatt/CryptoPredictions` | Fremd-Klon | geklontes Fremd-Repo (Kursvorhersage-Toolbox) | nur lesen |
 | `Werkstatt/CryptoTrade` | Fremd-Klon | geklontes Fremd-Repo (LLM-Agent fuer Krypto-Handel) | nur lesen |
 | `Werkstatt/FinRL` | Fremd-Klon | geklontes Fremd-Repo (Financial Reinforcement Learning) | nur lesen |
-| `Werkstatt/RLTrader` | Fremd-Klon (unsere Arbeit) | notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git | nur lesen; Betrieb ueber rltrader.cmd (Docker, CPU) |
+| `Werkstatt/RLTrader` | Fremd-Klon (unsere Arbeit) | notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git, Fernsicherung als privates Repo mfaupel95/rltrader (01.10.2026) | nur lesen; Betrieb ueber rltrader.cmd (Docker, CPU) |
 | `Werkstatt/intelligent-trading-bot` | Fremd-Klon | geklontes Fremd-Repo (Handelsbot) | nur lesen |
 | `Werkstatt/skillspector` | Fremd-Klon | geklontes Fremd-Repo (Sicherheitsscanner fuer Agent-Skills) | nur lesen |
 | `Werkstatt/trailofbits-skills` | Fremd-Klon | geklontes Fremd-Repo (Skill-Marktplatz von Trail of Bits) | nur lesen |
