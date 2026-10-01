@@ -60,6 +60,40 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
+      Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
+      ist aber dauerhaft zu: das flex-Konto traegt nur 1,28 USD frei (25.09.2026 waren
+      es 141,59). 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei Hebel 7.
+      Naechster Schritt: Geld ins Futures-Konto (flex) umschichten oder Spur bewusst
+      im Papier lassen; danach zeigt `handeln.py --vorschau` genau einen Grund.
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/omnitrade_futures/wachen.json
+- [ ] **T-285 - omnitrade_futures: leverage-Parameter an Kraken belegen**
+      Kontext: Hebel 7 geht als leverage-Feld in JEDE /sendorder-Order (weg.py,
+      kraken_futures.markt_kauf), aber gemessen ist nur der Einschussplan EEA retail
+      10 % = 10x. Ohne Beleg weiss niemand, ob Kraken den Parameter annimmt oder
+      still den Maximalhebel setzt. Probe = 1 Kontrakt kaufen + schliessen
+      (~0,12 USD Gebuehr), verfuegbar: /openpositions + availableMargin vorher/nachher.
+      Naechster Schritt: nach T-284 (Guthaben) einen 1-Kontrakt-Test OHNE VPN fahren
+      (mit NordLynx weist Futures ab - authenticationError).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/nautilus_kraken/kraken_futures.py
+- [ ] **T-286 - omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+      Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis)
+      (/editorder) ist gebaut und getestet, aber spur_buch.zyklus kennt keinen
+      "Stop nachziehen"-Schritt - der stp-Stop steht beim Einstieg und wird nie bewegt.
+      Naechster Schritt: im Live-Zweig nach dem Kursabruf je Position den Stop an
+      hoechstkurs x (1 - trailing_pct) ziehen (nur nach oben, Dedupe je Preisstufe,
+      Scheitern des Nachziehens darf die Position NICHT ungeschuetzt lassen).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/spur_buch.py, omnitrade_futures/weg.py
+- [ ] **T-287 - omnitrade-Backtest: Drawdown-Anzeige unplausibel, nachziehen**
+      Kontext: intervalle_messen.py meldete 60-Tage-Runs mit max_drawdown 72-90 % auf
+      Long-only-BTC in einer Phase ohne 60-%-Kurzeinbruch - die Zahl kann nicht
+      stimmen (Veraecht: equity-Rechnung in backtest.rs/AccountState oder
+      update_unrealized_pnl auf beiden Seiten je Kerze). Runden/Trefferquote sind
+      belastbar, der Drawdown nicht.
+      Naechster Schritt: AccountState.total_equity lesen und mit einer Handrechnung
+      gegenprobe machen, bevor irgendeine Grenze aus dem Drawdown abgeleitet wird.
+      Angelegt · 01.10.2026 · Betrifft Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
+
 - [ ] **T-283 - kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
       Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
       ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
