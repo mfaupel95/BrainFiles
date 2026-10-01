@@ -348,6 +348,70 @@ Folgen, die man vorher nicht sieht:
   Mini-Round-Trip mit Vorschau, `--symbol`, `--kontrakte`, Notausstieg per Stop
   falls der Verkauf scheitert. Es bucht in kein Buch und oeffnet kein Fenster.
 
+## Eine Spur auf Kraken Futures umstellen: erst Marktdeckung, dann Sizing
+
+Auftrag "Spur X live auf Kraken, aber mit perp und hebel xN". Zwei Pruefungen
+gehoeren VOR die erste Zeile Code, beide oeffentlich und ohne Schluessel.
+
+**1. Marktdeckung messen - die PF_-Maerkte sind NICHT die Spot-Paare.**
+`GET https://futures.kraken.com/derivatives/api/v3/instruments` (rund 300
+Maerkte), dann je Instrument der Spur pruefen, ob ein `PF_<BASE>USD` mit
+`tradeable: true` existiert. Gemessen an einer Zehn-Instrumenten-Spur: neun
+hatten einen PF_-Markt, nur eines nicht - im SPOT waren es nur acht gewesen.
+Zwei Namen fallen auseinander: **DOGE heisst auf Futures `PF_DOGEUSD`, im Spot
+`XDG`**, und ein Instrument ohne Spot-Paar kann auf Futures trotzdem
+existieren. Die Deckung ist je Boerse EIGEN; "das gibt es bei Kraken nicht"
+nie aus der Spot-Tabelle schliessen. Was fehlt, bekommt einen eigenen,
+amentlich benannten Sperrgrund (`KEIN_MARKT`-Menge + `ValueError`), damit der
+Grund im Bericht steht und nicht als "unbekannt" verschwindet.
+
+**2. "Hebel xN" ist eine SIZING-Regel, kein Orderparameter.** Kraken Futures
+kennt keinen Hebel je Order - der Einschuss ist der Margenplan des Marktes
+(EEA retail 10 %, siehe oben). Die Vorgabe "Hebel 6" heisst deshalb
+`nennwert = einsatz * hebel`, `kontrakte = nennwert / kurs`; die Boerse fordert
+davon nur ihre 10 % an, der Rest des Einsatzes bleibt freie Margin. Das gehoert
+so in den Bericht, sonst liest "Hebel 6" wie eine sechsfache Besicherung. Und:
+**ein Stop von x % kostet bei Hebel 6 rund 6x % des Einsatzes** - der Hebel
+erhoeht den Verlust JE POSITION, nicht die Trefferchance.
+
+**3. Die Mindestmenge kann den Hebel sprengen - dann wird GESPERRT, nicht
+aufgerundet.** 1 Kontrakt ist die kleinste Order und 1 Einheit der
+Basiswaehrung; bei einem teuren Instrument ist schon DER groesser als das
+Hebel-Budget. Gemessen: 1 Kontrakt eines ~1437-USD-Instruments ergibt bei
+50 USD Einsatz **Hebel 28,7 statt 6**. Ohne Sperre waere das die groesste
+Position im Buch gewesen, und am Hebel haette es niemand gesehen.
+
+```python
+HEBEL_TOLERANZ = 1.25          # der Kurs laeuft zwischen Sizing und Fuellung
+
+def hebel_grund(inst, einsatz, kurs, w):
+    k = kontrakte_fuer(inst, einsatz, kurs, w)
+    ist = nennwert_usd(inst, k, kurs) / einsatz
+    if ist > hebel(w) * HEBEL_TOLERANZ:
+        return ("1 Kontrakt %s ist %.2f USD Nennwert (Hebel %.1f bei %.2f USD "
+                "Einsatz) - bei Hebel %g nicht abbildbar" % (...))
+    return None
+```
+
+Der Hebel gehoert in die `wachen.json` und wird zur AUFRUFZEIT gelesen - eine
+Konstante im Modul waere eine zweite Wahrheit.
+
+**4. Das Guthaben-Tor der neuen Boerse ist die freie MARGIN, nicht der Saldo.**
+Ein multiCollateral-Konto (`flex`) traegt `availableMargin` und laesst
+`cash.balances` auf 0 stehen; dasselbe Konto kann 85 USD tragen und davon 83 als
+Einschuss fuer fremde Positionen gebunden haben. Vor jeder Zusage
+`availableMargin` UND `initialMargin` lesen und BEIDE Zahlen nennen - "das Konto
+hat 85 USD" ist ohne die zweite Zahl eine halbe Wahrheit.
+
+**5. Das Tor auf den Betrag stellen, den Max wirklich bewegt.** Ein
+`mindest_guthaben` von 35 USD bei einem beauftragten Transfer von 30 USD ist
+wirkungslos: der Saldo landet bei 31,31 und die Sperre bleibt stehen. Vor dem
+Setzen nachrechnen (`frei_neu = frei_alt + transfer` gegen `mindest_guthaben`),
+sonst baut man einen Automaten, der auf ein Guthaben wartet, das schon da ist.
+Und die Folge aussprechen: **ein aufgeladenes Guthaben IST die Live-Freigabe** -
+faellt der letzte Nicht-Fenster-Grund weg, oeffnet die Auto-Freigabe das Fenster
+selbst.
+
 ## Kraken gegen USDC: die Paare gibt es, die Waehrung ist die Huerde
 
 Kraken fuehrt USDC-Quotepaare — dieselben Instrumente, die der Haus-Spot handelt

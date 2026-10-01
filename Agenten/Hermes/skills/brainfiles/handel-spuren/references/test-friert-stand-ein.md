@@ -196,6 +196,47 @@ die Ursachensuche: wird eine Suite rot an einem Test, den man nicht angefasst ha
 zuerst die neu hinzugefuegte Testdatei auf Importzeit-Nebenwirkungen pruefen -
 nicht den fremden Test "reparieren".
 
+**Und innerhalb EINER Testdatei ist `mod.funktion = stub` ohne Ruecknahme derselbe
+Fehler in klein.** Ein Test, der eine Modulfunktion per blosser Zuweisung ersetzt
+(`gs._feld_setzen = lambda ...`), laesst den Stummel stehen: alle folgenden Tests
+derselben Datei laufen gegen die Attrappe, und das Symptom zeigt auf den CODE statt
+auf den Test (die geprueffte Funktion "setzt den Wert nicht", `KeyError` auf das
+erwartete Feld). Gemessen: nach so einem Stummel meldeten sechs spaetere Tests
+derselben Datei Fehler an einer Funktion, die in Ordnung war - und der erste Blick
+ging auf die Funktion, nicht auf den Test.
+
+```python
+from unittest import mock
+
+# falsch - der Stummel bleibt fuer den Rest der Datei stehen
+gs._feld_setzen = lambda roh, feld, wert, quelle: (roh, None)
+
+# richtig - der Kontextmanager nimmt ihn zurueck
+with mock.patch.object(gs, "_feld_setzen",
+                       lambda roh, feld, wert, quelle: (roh, None)):
+    with self.assertRaises(RuntimeError):
+        gs.anwenden()
+```
+
+Merksatz: **ein Stummel braucht IMMER einen Rueckweg** - `mock.patch.object`,
+`addCleanup` oder `tearDown`. Die blosse Zuweisung ist nur scheinbar harmlos, weil
+sie keinen Fehler wirft; sie faellt erst in den Tests auf, die NACH ihr laufen.
+
+## Den kleinsten Eingabefall nehmen, nicht den realistischen
+
+Ein Test, der eine REALISTISCHE Datei als Eingabe nimmt (echte `wachen.json`, 60
+Zeilen), verdeckt genau die Randbedingungen, an denen Text-Werkzeuge scheitern: ist
+der neue Schluessel der LETZTE vor der schliessenden Klammer (dann gehoert kein Komma
+daran)? steht die Notizzeile schon da, der Wert aber nicht? ist die Zieldatei leer?
+Gemessen: ein Werkzeug, das Felder per Zeilenersatz setzt, schrieb in jeder echten
+Wache gueltiges JSON und erzeugte bei einer DREIZEILIGEN Testdatei
+`Illegal trailing comma before end of object` - in den echten Dateien folgte auf den
+neuen Schluessel immer noch ein weiterer.
+
+Deshalb je Verzweigung des Werkzeugs eine MINIMALE Eingabe bauen (nur Notiz / nur
+Wert / beides / keins / letzter Schluessel) und die echte Datei als zweiten Fall
+nehmen. **Ein Test gegen die echte Datei prueft die Datei, nicht das Werkzeug.**
+
 ## Fuenfte Familie: der Test schreibt einen LIVE-Wert in die Behauptung
 
 Dieselbe Falle in klein: eine Zusicherung auf einen **gerechneten Text**, der aus
@@ -239,6 +280,31 @@ Dasselbe fuer die Reihenfolge zweier Aufrufe: den Anker MIT Klammern und
 Argumenten waehlen (nie den blossen Funktionsnamen), und den Test einmal mit
 vertauschter Reihenfolge gegenproben - ein Quelltext-Test, der auch bei falscher
 Reihenfolge gruen bleibt, prueft nichts.
+
+## Sechste Familie: der Test friert die ABWESENHEIT einer Faehigkeit ein
+
+Die Umkehrung der dritten Familie. Ein Test, der belegt, dass eine Spur etwas
+NICHT kann, prueft oft nur, dass ein WORT nicht vorkommt - und wird rot, sobald
+die Faehigkeit gebaut wird. Gemessen: zwei Tests einer Papier-Spur verlangten
+`assertNotIn("Freigabefenster", ausgabe)` mit der Begruendung "sonst fragt der
+Dauerlauf eine Freigabe an, die nichts oeffnen kann". Als die Spur einen echten
+Orderweg bekam, war genau das Gegenteil richtig: das Wort MUSS dastehen, sonst
+findet `dauerlauf.nur_fenster_fehlt()` nichts und die Auto-Freigabe fragt nie.
+
+**Regel: wer einer Spur eine Faehigkeit anbaut, dreht die Tests mit, die ihre
+ABWESENHEIT festhalten - im selben Commit, mit dem neuen Vertrag als Kommentar.**
+Zwei Fehler sind hier gleich teuer:
+
+- den Test stehen lassen und ihn "gruen machen", indem man die Faehigkeit
+  zurueckdreht (der Rueckbau ist dann der eigentliche Schaden);
+- den Test loeschen statt umdrehen (die Pruefung verschwindet, obwohl die Regel
+  weiter gilt - nur andersherum).
+
+Die Suchform ist immer dieselbe: `assertNotIn(<wort>, <text>)`,
+`assertFalse(<schalter>)`, "kein Orderaufruf im Code" - jede Zusicherung, die
+eine NEGATIVE Aussage ist, ist ein Kandidat. Vor dem Umbau
+`grep -n "assertNotIn\|assertFalse" <spur>/tests/` laufen lassen und die Treffer
+einzeln durchgehen; der neue Vertrag steht danach in derselben Zeile.
 
 ## Wann ein eingefrorener Stand DOCH richtig ist
 

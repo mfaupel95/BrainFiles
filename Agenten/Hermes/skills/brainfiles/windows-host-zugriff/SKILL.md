@@ -276,6 +276,13 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   starten und `<out>` mit `read_file` lesen. Dieselbe Regel gilt fuer jedes
   Fremdwerkzeug mit `$`, Backtick oder `%` in den Argumenten — Datei statt
   Einzeiler, und `2>/dev/null` weglassen, sonst verschluckt sie die Ursache.
+  **Auch ein doppelt-quotierter `-Command "…"`-String ist bash-Land:** bash
+  expandiert `$name` VOR PowerShell, das Skript sieht eine leere Variable und
+  meldet still Erfolg — gemessen blieb ein so gesetzter PATH-Eintrag einfach
+  aus, ohne Fehlermeldung. PowerShell-Variablen also nicht in einen
+  doppelt-quotierten Inline-String schreiben: `.ps1` per `-File` starten (immer
+  die verlaessliche Form), oder mindestens einfach quotieren, damit `$` literal
+  ankommt.
 - **Dasselbe fuer Python-Code: Datei statt Heredoc.** Ein Heredoc
   (`python - <<'PY' … PY`) durch die Terminal-Schicht loest die Fluchtfolgen VOR
   Python auf — aus dem zweibuchstabigen `\n` INNERHALB eines String-Literals wird ein

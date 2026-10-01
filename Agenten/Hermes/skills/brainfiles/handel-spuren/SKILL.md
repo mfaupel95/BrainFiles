@@ -74,6 +74,11 @@ Ausloeser → Referenz:
  `references/tor-kalibrierung.md`, Regel 8; den Satz selbst BELEGEN (Kontotarif
  plus echte Fuellung, `gebuehr_taker` Bruch gegen `gebuehr_pct` Prozent,
  Werkzeug `Handel/gebuehren_setzen.py`): `references/gebuehren-belegen.md`.
+ **Jeder Satz traegt seine QUELLE neben dem Wert** (`_gebuehr_quelle`; ein Wert
+ ohne Notiz ist ein Fund, auch wenn er richtig aussieht), **und ein Widerspruch in
+ der Datei wird BENANNT und mit dem TEUREREN der beiden Saetze gerechnet**
+ (Beispiel: `boerse: kraken_futures` gegen Instrumente, die ueber OKX bewertet
+ werden) - der guenstigere Satz waere geraten und freundlich, beides verboten.
 - **Eine Boerse wieder ENTZIEHEN** ("nur noch <Programm> darf auf <Boerse>
   handeln", "Kraken abschalten"): drei Schalter mit verschiedenen Wirkzeiten,
   die Vorbedingung (offene Positionen und ihre Boersen-Stops), warum eine Sperre
@@ -133,7 +138,7 @@ Ausloeser → Referenz:
   Summe, Brutto gegen Netto (Papierzeilen tragen keine Gebuehr), ein FEHLENDES
   Gebuehrenfeld in der `wachen.json`, das eine tote Spur tragfaehig aussehen
   laesst (Satz gegen die Boerse der Spur halten, nicht gegen ihren Namen), und
-  der harte Todesbeweis `f_max < 0`, und ein Buch OHNE Einsatz (Punktebuch), das weder Prozent noch USD behaupten darf - dafuer Ergebnis in R. Beim Formelblatt gilt: nur
+  der harte Todesbeweis `f_max < 0`, und ein Buch OHNE Einsatz (Punktebuch), das weder Prozent noch USD behaupten darf - dafuer Ergebnis in R. Drei Regeln, die dabei gelten: (a) Die VORGABE eines Aggregators ist BRUTTO - eine Funktion, die nie etwas von ihrem Ergebnis abzieht, darf es nicht als netto ausgeben; wer die Gebuehr schon im Journal traegt, wird ueber eine NAMENSliste ausgenommen (`GEBUEHR_SCHON_DRIN`), sonst wird zweimal abgezogen, was genauso falsch ist wie gar nicht. (b) Ein Punktebuch bekommt KEIN erfundenes Nominal (es kaeme aus `risiko_pro_trade / stop_abstand`, und der Stop ist dort die Range-Hoehe - das waere ein Nominal von einigen tausend USD); es bekommt das Ergebnis in R und die Einheit `Punkte` statt `USD`. (c) **Die Auskunft gehoert in JEDEN Weg, den Max liest.** Eine Aenderung, die nur das CLI-Werkzeug trifft, erreicht ihn nicht: dieselbe Aussage muss in den Telegram-Befehl (`/strategien`) UND in die "7 Tage"-Zeile des Tagesberichts, ueber EINE gemeinsame Funktion, damit die Wege nicht auseinanderlaufen. Beim Formelblatt gilt: nur
   uebernehmen, was die eigene Datenlage traegt — Sharpe/Sortino/VaR/CAGR brauchen
   Tagesrenditen, die das Haus nicht fuehrt (Runden NICHT umrechnen, die Luecke
   benennen); die t-Statistik der Expectancy ist die Zahl hinter „unter 8 Runden
@@ -219,6 +224,13 @@ Ausloeser → Referenz:
   `Handel/papierbuch_schliessen.py` (Vorschau Standard, `--anwenden`,
   `--spur <name>`; ruft die Funktion DER Spur, fasst keine Zustandsdatei
   juenger als 300 s an).
+- **„<spur> scharf schalten", „handel erlaubt auf <Boerse>", „gefechtsbereit
+  machen"**: erst die fuenf Bedingungen LESEN, dann die zwei Schalter schreiben —
+  eine reissende quantitative Bedingung nimmt `handel_erlaubt` innerhalb von
+  Sekunden selbst zurueck (`sperre_zu`, Merker `_sperre_zu_ausgeloest`), und das
+  Aussetzen einer Bedingung bleibt Max' Entscheidung. Dazu das Zeitfenster, der
+  Nachweis und die Nebenwirkung auf die `wachen.json` (Zeilenende):
+  `references/spur-scharf-schalten.md`
 - **Eine live geschaltete Spur kommt nicht ins Handeln** (sie ist scharf, es
   passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
   oeffnet Fenster ohne Ergebnis; **die Vorschau nennt gar keinen Sperrstand, dann
@@ -259,13 +271,19 @@ Ausloeser → Referenz:
   enger ist; das Guthaben-Tor in der Paarwaehrung bleibt trotzdem richtig, weil es
   eine Versicherung ist und kein Ertrag. Abschnitt 7 der Referenz.
 - **Ein Fremdprogramm soll oefter / mit Hebel / mit Trailing-Stop handeln**
-  („kann das nicht oefter?", „in kurzen Zeitintervallen", „hoehere
-  Trefferchance"): drei Faehigkeiten am CODE feststellen (Takt-Schalter,
+  („kann das nicht oefter?“, „in kurzen Zeitintervallen“, „hoehere
+  Trefferchance“): drei Faehigkeiten am CODE feststellen (Takt-Schalter,
   Boersen-Stop gegen Software-Stop, ist das Leverage-Modul ueberhaupt
   aufgerufen), dann die Gebuehr aufs NOMINAL gegen die Margin rechnen (Hebel
   vervielfacht die Gebuehr, nicht die Trefferchance), dann mit dem EIGENEN
-  Backtester des Fremdlaeufers messen statt zu argumentieren:
-  `references/fremdprogramm-frequenz-und-hebel.md`
+  Backtester des Fremdlaeufers messen statt zu argumentieren.
+  **Und der Hebel gehoert auf die Boerse, die ihn hat** (Futures, XPERP) — als
+  EIGENE Spur mit demselben Signal, nicht als zweite Boerse in der Spot-Spur:
+  der neue Boersenname in `spur_buch.orderweg` + der Kontraktnamen-Zweig in
+  `venue_inst` (VOR dem Bindestrich-Rueckfall), ganze Kontrakte, Hebel als
+  wachen-Feld per Adapter-Setter, `stop_nachziehen` per /editorder als
+  Baustein fuer den Trailing an der Boerse:
+  `references/fremdprogramm-frequenz-und-hebel.md`, Abschnitt 8
 - Uebergeordnete Ansicht ueber ALLE Spuren („GUI fuer meine Handelsspuren"):
   Abschnitt „Ein Fenster ueber alle Spuren".
 
@@ -1088,6 +1106,10 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   Disziplin fuer den ERSTEN echten Geldpfad, Instrument-Verfuegbarkeit an der
   Zielboerse vor dem Umbau pruefen, abgetrennter Live-Zweig statt gemeinschaft
   Kern: `references/live-schalten.md`
+- `references/spur-scharf-schalten.md` — eine Spur scharf schalten: die zwei
+  Schalter samt datiertem Vermerk, das Zeitfenster und die Auto-Freigabe, der
+  Nachweis am echten Zyklus — und die Regel, dass eine quantitative Bedingung
+  den Schalter selbst zuruecknimmt, wenn sie reisst.
 - `references/mcp-tor-freigabebeleg.md` — einem Boersen-MCP genau EIN Tor zum
   Ausfuehren geben (Einmal-Beleg der Spur, Felder und Fail-closed-Regeln, die
   alten Wege schliessen, Cache-Schluessel nach Pfad, Nachweis ueber

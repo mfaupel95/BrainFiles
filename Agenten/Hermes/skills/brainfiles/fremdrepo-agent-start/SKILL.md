@@ -40,6 +40,16 @@ steht auch, wie ein VEROEFFENTLICHTES CLI-Paket unter Windows installiert wird
 Installationsordner statt Globalinstall, Attrappen-Endpunkt als Nachweis ohne
 Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung).
 
+**Bringt das Werkzeug einen eigenen `install`-Unterbefehl mit ("managed
+install"), unter Windows zuerst dessen Scheitern pruefen und dann auf npm in
+einen EIGENEN Prefix ausweichen — der Shim darf dabei NICHT auf den Pfad, den
+der Hersteller fuer seine verwaltete Installation reserviert** (die
+tool-eigene Diagnose zaehlt dessen blosse Existenz als Installation und
+blockiert dann den Start). Dazu PATH-Anhaengen ohne `setx`, die
+oft uebersprungene `postinstall`-Freigabe von npm >= 11 und der erste Start mit
+eingebetteter Datenbank (sieht ~3 min wie ein Haenger aus; am Datenordner
+messen, am Port belegen): alles im selben Abschnitt der Referenz.
+
 Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 (transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):
 `references/huggingface-modell-lokal.md` — venv, HF-Cache auf O:, Sonde mit

@@ -36,6 +36,21 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 1. **Nie `git add -A`, nie `git commit -a`.** Nur namentliche Pfade stagen
    (`git add -- <pfad1> <pfad2>`). Der Hinweis „modified by sibling subagent" in einem
    Werkzeug-Ergebnis ist echt, nicht Rauschen.
+   **Ein Platzhalter im `git add` reisst den GANZEN Aufruf ab, sobald ein Treffer ignoriert ist.**
+   Ein Glob ueber einen Ordnerbaum (`git add Agenten/Handel/*/wachen.json`) trifft auch Pfade in
+   einem ignorierten, verschachtelten eigenen Repo (`Agenten/Handel/nautilus/`): git bricht mit
+   `The following paths are ignored by one of your .gitignore files` und Exitcode 1 ab und stagt
+   NICHTS - der naechste `git commit` hat dann einen leeren oder fremden Index, und die Meldung
+   sieht wie ein Hinweis aus, nicht wie ein Fehlschlag. Pfade einzeln aufzaehlen (auch bei vielen
+   Dateien), den Exitcode lesen und `git diff --cached --numstat` dagegen halten. Eine Datei, die
+   in einem ignorierten eigenen Repo liegt, ist im Eltern-Repo grundsaetzlich nicht committbar -
+   sie gehoert in einen Commit DIESES Repos (`git -C <unterrepo> …`), nicht in die Pfadliste oben.
+   **Und der Nachtrag in den ECHTEN Index nach einem Commit ueber `GIT_INDEX_FILE` darf nicht
+   ausfallen.** Scheitert er an einer fremden Sperre, ist er beim naechsten Durchgang nachzuholen
+   (Sperre pruefen, nicht blind wiederholen): solange der echte Index den ALTEN Blob traegt, steht
+   die eigene, eben committete Aenderung als `MM` da, und ein fremdes `git commit` ohne
+   Pfadangabe setzt sie wieder ein - der eigene Commit waere damit rueckgaengig gemacht, ohne dass
+   etwas fehlschlaegt.
 2. **Vor dem Commit zwei Blicke:** `git status --porcelain` (was ist ueberhaupt da) und
    `git diff --cached` (was geht wirklich mit). Danach `git show --stat` gegen die
    Absicht halten. **Und die ZAHL pruefen, nicht nur die Namen:**
@@ -629,6 +644,26 @@ ungetrackten Dateien. Reihenfolge:
   `git show HEAD:<pfad>` LEER, ohne Fehlermeldung: Rueckgriff auf `git -C <unterrepo> show
   HEAD:<datei>` und den Commit auch dort machen. Leerer Treffer immer als Verdacht lesen,
   nicht als "Datei ist leer".
+- **Ein verschachteltes eigenes Repo wird EIGENSTAENDIG festgezogen (sauber UND
+  gepusht).** Eine Aenderung dort liegt sonst nur auf der Platte: das Eltern-Repo
+  klammert den Ordner aus, `git status` zeigt sie nicht, und ein `git add` mit Glob
+  ueber den Baum reisst deshalb ab (Regel 1). Der Handgriff ist derselbe wie bei einer
+  gemischten Datei, nur aus dem Unterordner heraus: `git status --porcelain` LESEN
+  (fremde Zeilen in derselben Datei sind der Normalfall), die eigene Fassung
+  herstellen und committen, danach die vollstaendige Fassung zurueckholen und den
+  FREMDEN Teil als ZWEITEN Commit mit `--author="Andere Sitzung <fremd@local>"`
+  sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
+  Reihenfolge-Vorlage: Datei vorher nach `cache/scratch/` kopieren (die vollstaendige
+  Fassung), die eigene Aenderung aus dem Blob `HEAD:<datei>` rekonstruieren, committen,
+  Kopie zurueckspielen, `git diff --numstat` muss je Commit nur den eigenen bzw. nur
+  den fremden Teil zeigen. Danach `git status --porcelain` leer und `git log --oneline
+  -2` mit beiden Commits. **Und der Push gehoert zum Festziehen:** das Unter-Repo hat
+  ein EIGENES Remote (`origin = mfaupel95/<name>`) - ohne
+  `git -C <unterrepo> push origin <zweig>` liegt die Arbeit weiter nur lokal, und
+  `GITHUB_TOKEN`/`GH_TOKEN` sind auch hier fuer den einen Aufruf zu leeren (die Regel
+  gilt je Repo, nicht je Sitzung). Erfolg am Remote messen, nicht am Exitcode:
+  `git -C <unterrepo> log --oneline -1` gegen die vorher notierte
+  `git ls-remote origin <zweig>`-Zeile halten.
 - **Fortlaufende Nummern (`T-0NN`) werden von mehreren Sitzungen gleichzeitig vergeben.**
   „hoechste + 1" stammt aus einer Datei, die parallel fortgeschrieben wird — zweimal am
   selben Abend entstanden zwei inhaltlich verschiedene Eintraege mit derselben Nummer.

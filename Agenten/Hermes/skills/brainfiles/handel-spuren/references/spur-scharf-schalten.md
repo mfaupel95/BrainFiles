@@ -1,7 +1,7 @@
 # Eine Spur scharf schalten (Live-Weg freigeben)
 
 Auftrag in der Art: „Spur X scharf schalten“, „handel erlaubt auf <Boerse>“,
-„Strategie hoch fahren“. Drei Teile gehoeren zusammen, und nur der erste ist
+„Strategie hoch fahren“. Fuenf Teile gehoeren zusammen, und nur der erste ist
 Dateiarbeit.
 
 ## 1. Die zwei Schalter in der `wachen.json`
@@ -17,6 +17,11 @@ Dateiarbeit.
   zweite Entscheidung getroffen, die niemand beauftragt hat.
 - Die Boerse der Spur steht in `boerse` (+ `guthaben_waehrung`); ein Wechsel der
   Boerse ist ein eigener Auftrag mit eigener Pruefung (`references/zweite-boerse.md`).
+- **Die Schalter sind das LETZTE, nicht das erste.** Erst die fuenf Bedingungen
+  lesen (`MAXHIRN_ROUTINE=1 <venv>/python handeln.py --wachen`), dann schreiben:
+  eine reissende quantitative Bedingung nimmt `handel_erlaubt` innerhalb von
+  Sekunden selbst wieder weg, und der Auftrag ist dann scheinbar erfuellt und
+  trotzdem wirkungslos - Abschnitt 4.
 
 ## 2. Das Zeitfenster (Handelsregeln Punkt 3)
 
@@ -53,7 +58,42 @@ einem VPN-Ausgang abgewiesen, faellt die Order aus, obwohl alles geschaltet ist 
    vor dem Scharfstellen die Herkunft pruefen (`references/boersen-aufrufe.md`,
    Abschnitt „Reihenfolge beim Deuten einer Abweisung“).
 
-## 4. „Scharf“ heisst nicht „handelnd“
+## 4. Eine quantitative Bedingung nimmt den Schalter SELBST zurueck
+
+`handel_erlaubt: true` ist keine Freigabe, sondern nur ein Eingang in die
+Sperrenkette. Reisst eine der fuenf Bedingungen, ruft die Spur
+`wachen_pruefung.sperre_zu()` und schreibt `handel_erlaubt` auf `false` zurueck -
+**innerhalb desselben Aufrufs, der die Lage liest**. Der Merker
+`_sperre_zu_ausgeloest` traegt Zeit und Grund und ist die einzige Spur davon.
+
+Symptom: `handel_erlaubt` steht nach dem Setzen kurz auf `true`, und der
+naechste `--wachen`- oder Zyklus-Aufruf meldet
+`-> Bedingung 5: handel_erlaubt auf false gesetzt.` Die Vorschau nennt danach
+weiter zwei Gruende, die Auto-Freigabe oeffnet kein Fenster, und die Spur sieht
+aus wie eine, die nicht will.
+
+**Regel: vor dem Setzen die Bedingungen einzeln lesen und die reissende benennen.**
+Eine quantitative Bedingung (`rollierender_ev`, Ruecklauf, Runden) laesst sich
+nicht "mitschalten" - sie ist eine eigene Entscheidung mit eigenem Vermerk
+(`_<kriterium>_entfaellt`, datiert), und **das Aussetzen bleibt dem Nutzer**:
+gehoert sie ihm, wird sie vorgelegt und nicht stillschweigend gecleart. Gehoert
+sie nicht dazu, ist der ehrliche Abschluss "Schalter gesetzt, Bedingung X sperrt
+weiter" - nicht ein zweiter Schreibversuch.
+
+Zwei Nebenwirkungen, die man dabei mitnimmt:
+
+- **`sperre_zu()` schreibt die `wachen.json` mit `Path.write_text` neu** - und
+dreht dabei ein LF-Zeilenende auf CRLF. Der Diff zeigt danach die GANZE Datei
+  (gemessen 111/104 statt der gewollten 10/3), obwohl inhaltlich nur die eigenen
+  Schluessel dazukamen. Nach dem Lauf die Endungen aus der Vorversion
+  wiederherstellen (`b.replace(b"\r\n", b"\n")`), sonst wandert eine
+  Format-Aenderung in den Commit, die niemand beauftragt hat.
+- **Eine Aufnahme in `dauerlauf.AUTO_FREIGABE` ist eine Aenderung am Treiber** und
+  wirkt erst nach dessen Neustart (Abschnitt 2). Sie vorzubereiten ist richtig,
+  auch solange die Bedingung noch sperrt - sie greift dann von selbst, sobald die
+  Bedingung faellt.
+
+## 5. „Scharf“ heisst nicht „handelnd“
 
 Jede Spur handelt erst bei ihrem EIGENEN Signal (frischer Kopier-Kauf, Score,
 Gate). Nach dem Scharfstellen kann es Stunden oder Tage dauern, bis die erste

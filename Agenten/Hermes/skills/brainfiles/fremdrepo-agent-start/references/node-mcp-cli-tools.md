@@ -62,6 +62,13 @@ dann still. Hausform: eigener Ordner `Agenten/Werkzeuge/<name>/` mit gepinnter
 Version (`npm install <paket>@<version> --force`), dazu ein Aufrufer
 `<name>.cmd` (CRLF, ruft nur `node` aus dem PATH und meldet klar, wenn Node
 fehlt) und ein Wurzel-Aufrufer `/<name>.cmd` nach dem Muster `omnitrade.cmd`.
+
+**Zweite Hausform fuer ein CLI, das man mit NAMEN aufruft:**
+`npm install -g --prefix "C:/Users/faupe/.local/npm" <paket>@<version>` — npm
+legt seine Shims (`<name>`, `<name>.cmd`, `<name>.ps1`) direkt in den Prefix,
+der Prefix kommt in den Benutzer-PATH (Rezept unten), und es bleibt ein echter
+npm-Baum: `npm install -g --prefix <derselbe> <paket>@latest` aktualisiert ihn.
+Beide Formen sind richtig; falsch ist nur der Hermes-eigene `tools/node-*`-Baum.
 In `.gitignore` die eigenen Dateien freigeben (Aufrufer, README, Test,
 package.json/-lock) und `node_modules` sperren; je Pfad mit
 `git check-ignore -v` gegenproben.
@@ -111,3 +118,60 @@ zeigen, echte Ausgabe lesen:
 - **Fremde SKILL.md nicht in die Hermes-Bibliothek importieren.** Ein
   mitgeliefertes Installationskommando dafuer NICHT ausfuehren; den Text im
   Paket benennen und das Wissen in einer Wiki-Seite ablegen.
+
+## Wenn der Hersteller einen eigenen Installer mitbringt
+
+Manche CLIs haben einen eigenen Unterbefehl `install` ("managed install":
+Payload-Store unter `~/.<name>/cli`, Shim in `~/.local/bin`, Ein-Befehl-Update,
+Rollback, Hintergrunddienst). Unter Windows ist dieser Weg oft **nicht
+benutzbar** — dann ist der npm-Weg nicht der Notausgang, sondern der einzige:
+
+- **Ein Sperr-/Temp-Dateiname aus einem `:`-verbundenen Token ist unter Windows
+  unmoeglich.** Der Installer baut den Namen aus `<pid>:<zeit>:<zufall>`
+  (Unix-legal) und scheitert beim Anlegen mit `ENOENT: no such file or
+  directory, open '...\.install.lock.<pid>:<zeit>:<zufall>.tmp'`. **Nicht
+  Rechte, Pfad oder Virenscanner verdaechtigen** — die Ursache mit einem
+  Zwei-Zeilen-Test beweisen: denselben `fs.writeFileSync` einmal MIT und einmal
+  OHNE Doppelpunkt im Namen schreiben; ohne geht, mit kommt ENOENT. Danach ist
+  die Frage entschieden und der Umweg begruendet.
+- **Solche Stores sind zusaetzlich Unix-gepraegt** (Shim nach `~/.local/bin`,
+  Block in `.bashrc`/`.zshrc`, Symlink `current`). Auch mit gefixtem Dateinamen
+  bliebe es Arbeit — deshalb gar nicht erst dorthin umziehen.
+- **KEINEN selbstgebauten Shim auf den Pfad legen, den der Hersteller fuer seine
+  verwaltete Installation reserviert** (typisch `~/.local/bin/<name>`). Die
+  werkzeug-eigene Diagnose zaehlt die blosse EXISTENZ dieses Pfades (neben
+  `install.json`, `.managed-install`, `current`) als "verwaltete Installation
+  vorhanden"; ein nackter Shim macht daraus eine halbe Installation und
+  **blockiert den Start** ("Managed install artifacts exist but …install.json is
+  missing" -> "Doctor found blocking issues. Not starting server."). Stattdessen
+  den npm-Prefix selbst in den PATH legen.
+- **PATH unter Windows anhaengen: `[Environment]::SetEnvironmentVariable('Path',
+  $neu, 'User')`** — NICHT `setx`, das schneidet bei 1024 Zeichen ab. Den
+  bestehenden Wert lesen, den eigenen Eintrag nur anhaengen, danach zuruecklesen
+  und die Zugehoerigkeit pruefen. **Die laufende bash-Sitzung erbt den ALTEN
+  PATH**: fuer eigene Aufrufe den vollen Pfad nehmen oder
+  `export PATH="$PATH:<prefix>"`, und den Namen mit einem NEUEN Prozess
+  gegenproben (`powershell.exe -NoProfile -Command "<name> --version"`,
+  `cmd /c "<name> --version"`).
+- **npm >= 11 fuehrt `postinstall`-Skripte nicht ohne Freigabe aus**
+  (`allow-scripts`). Vor dem Nachinstallieren pruefen, ob das uebersprungene
+  Skript ueberhaupt etwas taete — im belegten Fall war seine Eingabedatei eine
+  leere Liste, das Skript also wirkungslos. Erst dann ist die Warnung harmlos;
+  sonst einmal mit `--allow-scripts=<paket>` freigeben.
+- **Der erste Start eines Werkzeugs mit eingebetteter Datenbank sieht wie ein
+  Haenger aus** (initdb + Migrationen; gemessen ~3 min, nach "Starting …
+  server…" kommt minutenlang nichts). **Fortschritt am DATENORDNER messen**
+  (`db/PG_VERSION`, `db/pg_wal` entstehen), nicht am Log — und den Start erst
+  als fertig melden, wenn die angekuendigte Adresse antwortet
+  (`curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:<port>/` -> 200).
+  Host, Port, PID und Dashboard-URL stehen in der Laufzeitdatei des Werkzeugs
+  (`runtime-info.json`) — von dort lesen statt raten.
+- **Ein Dienst-Schalter kann auf Windows grundsaetzlich fehlen** ("Service
+  management is not supported on win32"): dann gibt es keinen Autostart, und der
+  Bericht muss sagen, dass der Prozess mit dem Startenden endet — Wrapper plus
+  geplante Aufgabe sind die Hausantwort.
+- **Die Anmeldung ist ein eigener Schritt.** Nach dem Start hat die CLI noch
+  keine Identitaet; die Diagnose darf gruen sein, waehrend jeder Datenbefehl
+  verweigert. Der Weg hinein ist meist die Oberflaeche im Browser (Sign-up
+  erlaubt) oder `connect`, und ein Token-Unterbefehl verlangt VORHER eine
+  bestehende Sitzung. Das im Bericht als offenen Punkt nennen, nicht als Fehler.

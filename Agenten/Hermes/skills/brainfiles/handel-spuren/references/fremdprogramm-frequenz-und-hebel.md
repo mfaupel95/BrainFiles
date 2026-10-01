@@ -80,6 +80,18 @@ Jede der drei Fragen hat eine Stelle im Code, an der sie beantwortet ist:
   Kerzenzahl. Vor dem grossen Raster einen Einzellauf mit kurzem Fenster fahren
   und die Zeit messen; sonst laeuft ein 24-Kombinationen-Raster in die
   Werkzeuggrenze.
+- **Das Binary waehlen wie der Starter es waehlt.** Bei mehreren Bauen
+  (`target-live/release`, `target/release`, `target/debug`) entscheidet die
+  Reihenfolge des Startskripts, nicht das Alter — ein aelterer Bau kennt
+  neuere Sprachfunktionen nicht und liess Strategien mit `UndefinedFunction`
+  durchfallen, die live funktionierten. Release statt Debug, wenn beide da
+  sind: rund zehnmal schneller bei gleichem Code.
+- **Skripte, die fuer einen beidseitigen Motor geschrieben sind, vergiften den
+  Long-only-Modus.** Zwei `stop_loss`-Zeilen (unter dem Kurs fuer Long, ueber
+  dem Kurs fuer Short) ueberschreiben sich: im Long-only-Backtest gewinnt die
+  obere Zeile, der Stop liegt UEBER dem Einstieg und jede Position verlaesst
+  sich sofort — die Zahlen sind Muell, ohne dass ein Fehler kommt. Vor der
+  Messung eine Long-only-Fassung ohne die Short-Zeile bauen.
 
 ## 5. Neue Skriptfassungen ins Haus legen, nicht in den Klon
 - Der Klon liegt unter `Werkstatt/` (Junction auf `O:`) und damit ausserhalb des
@@ -114,3 +126,43 @@ Jede der drei Fragen hat eine Stelle im Code, an der sie beantwortet ist:
 - Am Ende in dieser Form berichten: was am Code belegbar ist (mit Fundstelle),
   welche Zahl die Entscheidung traegt (Gebuehr je Seite gegen Margin), was
   gemessen wurde und was noch eine Entscheidung von Max braucht (die Hebelnzahl).
+
+## 8. Das Hebel-Bein als EIGENE Spur bauen, nicht als zweite Boerse in der Spot-Spur
+
+Ein Buch fuehrt EINE Waehrung: Spot rechnet in USDC/EUR, Futures in USD. Zwei
+Boersen in einem Buch waeren zwei Waehrungen in einer Rechnung — deshalb eine
+eigene Spur mit demselben Signal (die Rechnung `quelle`/`signal`/`ausstieg`
+per importlib ueber den PFAD aus der Spot-Spur laden, nicht abschreiben).
+
+Der Futures-Orderweg ist ein neuer Boersenname in `spur_buch`:
+- `orderweg()` bekommt einen Dict-Eintrag (`"kraken_futures":
+  "<spur>/weg"`), und `venue_inst()` bekommt einen Zweig, der den
+  Spur-Instrumentnamen in den KONTRAKTNAMEN uebersetzt (`PF_<Basis>USD`,
+  nur BTC heisst dort XBT). BEIDES zusammen, mit einem Smoke-Aufruf belegt.
+- **Der Kontraktnamen-Zweig muss VOR dem Bindestrich-Rueckfall stehen.**
+  `if "-" in inst: return inst` kehrt fuer jeden gespiegelten Lauf sofort
+  zurueck — die omnitrade-Laeufe liefern "SOL-USDC", ohne eigenen Zweig haette
+  die Order einen Marktnamen bekommen, den es an der Boerse nicht gibt, und der
+  Fehler waere erst im Live-Einstieg aufgefallen.
+- **Ein fuzzy Patch an einer Funktion kann deren Schlusszeile still loeschen**
+  (belegt: der `return "%s-%s"`-Abschluss von `venue_inst` verschwand, kein
+  Fehler, nur `None` statt Paarname). Nach jedem Patch an einer Funktion das
+  Modul importieren und die Funktion mit Vertretern ALLER Zweige aufrufen —
+  `ast.parse` faengt eine fehlende return-Zeile nicht.
+- Werte, die `spur_buch` den Orderfunktionen NICHT mitreicht (der Hebel),
+  traegt der Adapter als Modulzustand mit einem Setter, den `handeln.py` vor
+  dem Zyklus aus der wachen setzt — Vorgabe 1.0, damit ein vergessener Setter
+  sichere haftet.
+- `menge_fuer` liefert GANZE Kontrakte und rundet AB: ein Einsatz unter dem
+  kleinsten Kontrakt bricht den Einstieg ab (`fehler` statt Menge) — eine
+  gerundete AUF-Rundung wuerde eine Menge ordern, die das Konto nicht traegt.
+  `max_pro_trade_usd` deshalb so setzen, dass genau die gewuenschte
+  Kontraktzahl passt.
+- Der Hebel geht mit JEDER Order als `leverage`-Parameter an die Boerse. Ohne
+  den Parameter setzt die Boerse den hoechstmoeglichen Hebel des Margenplans,
+  nicht 1x. Ob die Boerse den Parameter annimmt, belegt nur ein echter
+  Mini-Round-Trip — Futures hat keinen `validate`-Schalter.
+- Papierspur bleibt Papier: der Live-Zweig haengt an derselben Sperrenkette,
+  `mindest_guthaben` an der Margin des kleinsten Kontrakts plus Puffer — und
+  das Guthaben wird GEMESSEN, nicht aus der Erinnerung behauptet (das
+  Futures-Konto kann seit dem letzten Blick leer sein).
