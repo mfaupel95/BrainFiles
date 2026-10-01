@@ -5,7 +5,7 @@ tags: [handel, boersen, guthaben]
 created: 2026-10-01
 updated: 2026-10-01
 related: ['[[Handel/Boersen-und-Schluessel]]', '[[Handel/Gates-und-Freigabe]]']
-summary: 'Wo Kapital liegt, was davon wirklich frei ist, und die drei Gruende, warum ein Posten nicht verkaufbar ist (Ordermin, costmin, gestakte Form).'
+summary: 'Wo Kapital liegt, was davon wirklich frei ist, und die drei Gruende, warum ein Posten nicht verkaufbar ist (Ordermin, costmin, gestakte Form, Compliance-Sperre).'
 ---
 
 # Guthaben und Umschichtung
@@ -60,6 +60,35 @@ davon waren verkaufbar:
 **ZEUR 53,81 -> 189,42 EUR** (+135,61 netto; die Differenz zu 137,42 brutto ist
 die Taker-Gebuehr). Wirkung sofort messbar: `kraken/handeln.py --vorschau` nennt
 das Guthaben-Tor nicht mehr — `EUR 189.42/60.00`.
+
+### OKX, gleicher Auftrag („okx auch")
+
+`USDC availBal 31,50 -> 144,70 USD`. Sechs von acht Posten verkauft:
+
+| Paar | Menge | Wert |
+|---|---|---|
+| NEIRO-USDC | 272.000 | ~25,12 USD |
+| DOGS-USDC | 447.312 | ~21,73 USD |
+| EURC-USDC | 15,988 | ~18,07 USD |
+| ACE-USDC | 84,2174 | ~15,44 USD |
+| WAXP-USDC | 1.266,513357 | ~7,87 USD |
+| CHIP-USDC | 100,83 | ~4,33 USD |
+
+**Zwei Posten sind gesperrt** — `OKX 51155: You can't trade this pair … due to
+local compliance restrictions`: `BETH-USDT` (160,77 USD) und `OKSOL-USDT`
+(20,00 USD). Beides sind **gestakte Formen** (Beacon-ETH, OKX-Staked-SOL), und
+OKX fuehrt sie auf dem EEA-Konto **nur gegen USDT** — kein USDC-Paar. Der Fehler
+51155 kommt **vor** jeder Mengenpruefung; ein gueltiges Paar und eine Menge ueber
+`minSz` genuegen nicht, wenn die Compliance-Region des Kontos das Instrument
+ausschliesst. Pruefen laesst sich das nur am Orderweg, nicht an `/public/instruments`.
+
+**Folge, die mitgedacht gehoert:** Das Guthaben-Tor war bei `mosaic` die letzte
+Sperre vor dem Freigabefenster. Nach dem Verkauf nennt
+`mosaic/handeln.py --vorschau` nur noch „Freigabefenster nicht offen" — und
+`mosaic` steht in `dauerlauf.AUTO_FREIGABE`, oeffnet sein Fenster also selbst.
+Wer das Guthaben eines scharf gestellten Instruments auffuellt, schaltet es
+damit live. Guthaben und Erlaubnis sind zwei Schalter, aber nur einer davon
+wird beim Umschichten umgelegt.
 
 Nicht angefasst: PEPE, ONDO, ADA.S (Gruende 1 und 2 oben).
 

@@ -75,19 +75,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       handel_erlaubt UND freigabe.erfuellt - beide Haken, und den Haken setzt Max.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/omniquant, nautilus_kraken
 
-- [ ] **T-279 - OKX: rund 275 USD Krypto liegen ungenutzt, das Guthaben-Tor bleibt bei 30,84 USDC**
-      Kontext: Gemessen am 01.10.2026 um 02:20. `availBal` traegt BETH 161,93 / NEIRO 25,30 /
-      DOGS 21,81 / OKSOL 20,19 / EURC 18,10 / ACE 15,27 / WAXP 7,94 / CHIP 4,41 = 274,95 USD.
-      ETH/SOL/BTC (100/95/83 USD) tragen `availBal` 7e-9 — sie stecken in Margin bzw. unter
-      dem Schutz-Stop des scanner und sind NICHT verkaeuflich. Bindend fuer mosaic ist
-      `mindest_guthaben 60` in USDC, frei sind 30,84; die Spur steht seit dem 30.09. auf
-      `boersen: ["okx"]`, der Kraken-Weg ist also zu.
-      Naechster Schritt: Entscheidung Max — BETH/NEIRO/DOGS/OKSOL/EURC/ACE/WAXP/CHIP in USDC
-      verkaufen (OKX-Spot-Gebuehr 0,10 %/Seite) und mosaic damit ueber das Tor bringen, oder
-      liegen lassen. Achtung: BETH und OKSOL sind gestakte Formen.
-      Angelegt 2026-10-01 · Zuletzt 2026-10-01
-      Betrifft: Agenten/Handel/mosaic/wachen.json, OKX-Konto
-
 - [ ] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
       Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
       1.500.000 = 1,58 EUR), ONDO (10,74331 gegen ordermin 15 = 4,84 EUR) und ADA.S liegen.
@@ -97,7 +84,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: PEPE/ONDO sammeln, bis sie ueber dem Ordermin liegen; fuer ADA.S/
       ATOM21.S/HYPE.B entscheiden, ob unstaked wird.
       Angelegt 2026-10-01 · Zuletzt 2026-10-01
-      Betrifft: Kraken-Konto
+      Nachtrag 01.10.2026 (OKX): Dasselbe Muster auf der anderen Boerse — BETH-USDT
+      (160,77 USD) und OKSOL-USDT (20,00 USD) sind gestakte Formen und antworten mit
+      `OKX 51155: You can't trade this pair ... due to local compliance restrictions`.
+      OKX fuehrt sie auf dem EEA-Konto nur gegen USDT, und der Fehler kommt VOR jeder
+      Mengenpruefung — an `/public/instruments` ist die Sperre nicht zu sehen.
+      Betrifft: Kraken-Konto, OKX-Konto
 
 - [ ] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
       Kontext: Nach dem Umschichten meldet `kraken/handeln.py --vorschau` (01.10.2026 02:2x)
@@ -3068,6 +3060,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-279 - OKX: rund 275 USD Krypto lagen ungenutzt, das Guthaben-Tor stand bei 30,84 USDC**
+      Erledigt 2026-10-01. Sechs Posten in USDC verkauft (NEIRO, DOGS, EURC, ACE, WAXP, CHIP,
+      zusammen ~92,56 USD); `availBal` 31,50 -> 144,70. BETH und OKSOL blieben liegen
+      (Compliance-Sperre, jetzt in T-280 vermerkt). mosaic nennt seitdem nur noch das
+      Freigabefenster als Sperre — siehe Wiki/Handel/Guthaben-und-Umschichtung.md.
+      Betrifft: Agenten/Handel/mosaic/wachen.json, OKX-Konto
 - [x] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
       Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
       gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
