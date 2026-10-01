@@ -60,6 +60,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-289 — omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+  Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis) (/editorder) ist gebaut (Commit debc983); der Live-Zyklus der Spur zieht den stp-Stop noch nicht nach.
+  Naechster Schritt: Nachziehen im spur_buch-Live-Zweig verdrahten (Trigger z.B. Kurs +1 % ueber letztem Hoch), Test mit Testnaht weg.stop_nachziehen.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/omnitrade_futures, nautilus_kraken/kraken_futures.py
+- [ ] **T-290 — Beleg: nimmt Kraken Futures den leverage-Parameter an**
+  Kontext: Hebel 7 geht als leverage-Feld mit jeder Order (weg.py); gemessen ist nur der Einschussplan EEA retail 10 % = max 10x. Mit laufendem NordLynx weist Futures ab (authenticationError).
+  Naechster Schritt: 1 Kontrakt PF_SOLUSD mit leverage 7 kaufen und sofort schliessen (~0,12 USD Gebuehr) - braucht Guthaben (T-291) und VPN aus.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
+- [ ] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
+  Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
+  Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
+  Angelegt 2026-10-01 · Betrifft: omnitrade_futures/wachen.json
+- [ ] **T-292 — Backtest-Drawdown 72-90 % ist unplausibel, Auswertung nachziehen**
+  Kontext: intervalle_messen.py (omnitrade-Rust-Backtest, 60 Tage BTC, Long-only) meldet DD 72-90 % vom Einsatz - zu einem Long-only-Lauf passt das nicht; vermutlich misst total_equity/AccountState anders als angenommen.
+  Naechster Schritt: AccountState.total_equity und die DD-Rechnung in omnitrade-cli/src/backtest.rs gegen eine Zeilenrechnung pruefen (Drei-Wege-Muster), bevor Grenzen aus dem DD abgeleitet werden.
+  Angelegt 2026-10-01 · Betrifft: Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
 - [ ] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
       Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
       ist aber dauerhaft zu: das flex-Konto traegt nur 1,28 USD frei (25.09.2026 waren
