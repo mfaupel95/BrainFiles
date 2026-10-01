@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -66,18 +67,35 @@ class MeldungTest(unittest.TestCase):
 class VorwarnungTest(unittest.TestCase):
 
     def test_freitext_sagt_vor_dem_warten_bescheid(self):
+        """T-288: Freitext antwortet SOFORT und laeuft im Hintergrund-Thread.
+
+        Der Bot ist damit nicht mehr bis zu 30 Minuten blockiert: `bearbeite`
+        gibt sofort "Angenommen." zurueck, schickt eine Vorwarnung und der
+        Thread sendet das Ergebnis als eigene Nachricht.
+        """
         gesendet = []
+        gestartet = []
+        original_start = threading.Thread.start
 
         def merke(chat, text):
             gesendet.append(text)
 
+        def starte(self):
+            gestartet.append(self)
+            original_start(self)
+
         with patch.object(s, "sende", merke), \
                 patch.object(s, "frage", lambda t, k: ("Antwort", None)), \
-                patch.object(s, "_lade_json", lambda p, v: {}):
+                patch.object(s, "_lade_json", lambda p, v: {}), \
+                patch.object(threading.Thread, "start", starte):
             antwort, _ = s.bearbeite("mach irgendwas", 42)
-        self.assertEqual(antwort, "Antwort")
+        self.assertEqual(antwort, "Angenommen.")
         self.assertTrue(gesendet, "keine Vorwarnung gesendet")
         self.assertIn("Minuten", gesendet[0])
+        # Der Thread laeuft und sendet das Ergebnis als eigene Nachricht.
+        self.assertEqual(len(gestartet), 1, "kein Hintergrund-Thread gestartet")
+        gestartet[0].join(timeout=5)
+        self.assertIn("Antwort", gesendet)
 
     def test_slash_befehl_schickt_keine_vorwarnung(self):
         """Ein Befehl antwortet in Sekunden - eine Vorwarnung waere Laerm."""

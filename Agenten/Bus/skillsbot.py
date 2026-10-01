@@ -58,6 +58,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -762,6 +763,34 @@ def _run(rest, chat, kontext):
     return (ohne_denken(antwort) or "Keine Antwort vom Agenten."), neuer_kontext
 
 
+def _freitext_im_thread(text, chat, kontext):
+    """Freitext-Auftrag asynchron an den A2A-Agenten geben (T-288).
+
+    Der SkillsBot wartet sonst bis A2A_FRIST_S (30 min) synchron auf den
+    Hauptagenten und kann in der Zeit nichts anderes beantworten - /lage,
+    /strategien und jede weitere Nachricht haengen. Stattdessen laeuft der
+    Auftrag hier in einem Hintergrund-Thread: `sende()` ist thread-fest, die
+    Kontext-ID wird im Thread fortgeschrieben. Das Ergebnis kommt als eigene
+    Nachricht, sobald der Agent fertig ist.
+    """
+    try:
+        antwort, neuer_kontext = frage(text, kontext)
+    except Exception as fehler:                               # noqa: BLE001
+        try:
+            sende(chat, "Freitext gescheitert: %s" % str(fehler)[:150])
+        except Exception:                                     # noqa: BLE001
+            pass
+        return
+    if neuer_kontext:
+        kontexte = _lade_json(KONTEXT_PFAD, {})
+        kontexte[str(chat)] = neuer_kontext
+        _speichere_json(KONTEXT_PFAD, kontexte)
+    try:
+        sende(chat, ohne_denken(antwort) or "Keine Antwort vom Agenten.")
+    except Exception:                                         # noqa: BLE001
+        pass
+
+
 def bearbeite(text, chat):
     """Antwort auf eine Nachricht; (text, neuer_kontext) oder None."""
     kontexte = _lade_json(KONTEXT_PFAD, {})
@@ -843,13 +872,16 @@ def bearbeite(text, chat):
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
     # Erst sagen, dann tun (Muster von /run): der Hauptagent braucht fuer echte
     # Arbeit Minuten. Ohne diese Zeile sieht es aus, als haenge der Bot.
-    sende(chat, "Arbeite daran - der Hauptagent braucht oft 7 bis 25 Minuten. "
-         "Solange kann der Bot nichts anderes beantworten.")
-    antwort, neuer_kontext = frage(t, kontext)
-    if neuer_kontext:
-        kontexte[str(chat)] = neuer_kontext
-        _speichere_json(KONTEXT_PFAD, kontexte)
-    return ohne_denken(antwort), neuer_kontext
+    sende(chat, "Angenommen - der Hauptagent arbeitet daran (oft 7 bis 25 "
+         "Minuten). Das Ergebnis kommt als eigene Nachricht, sobald er fertig "
+         "ist; der Bot bleibt in der Zeit fuer andere Anfragen erreichbar.")
+    # T-288: Freitext in einen Hintergrund-Thread geben, sofort antworten und
+    # das Ergebnis als eigene Nachricht senden. Der Bot ist damit nicht mehr
+    # bis zu 30 Minuten blockiert (Muster: der Dauerlauf meldet asynchron;
+    # sende() ist thread-fest, die Kontext-ID wird im Thread fortgeschrieben).
+    threading.Thread(target=_freitext_im_thread, args=(t, chat, kontext),
+                     daemon=True).start()
+    return "Angenommen.", kontext
 
 
 # --- Schleife ---------------------------------------------------------------
