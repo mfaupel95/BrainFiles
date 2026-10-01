@@ -95,6 +95,41 @@ trotzdem verworfen, siehe unten.
 - Eine Attrappen-Anmeldung in `~/.config/jevgrep/credentials.json` wurde nach dem
   Nachweis **entfernt** — `jg` ist derzeit absichtlich nicht angemeldet.
 
+## Die Anfrage verfeinern
+
+Vier Regeln, die ueber Nutzen und Kosten entscheiden:
+
+1. **Nach Verhalten fragen, nicht nach Namen.** `jg` ist fuer Fragen gebaut, deren
+   Antwort in unbekannten Dateien liegt: „Wie wird entschieden, ob …?", „Wo wird
+   geprueft, bevor …?", „Welche Sperren greifen, wenn …?". Einen bekannten
+   Symbolnamen findet `search_files` schneller und kostenlos.
+2. **Eine Frage, ein Satz.** Keine Aufzaehlung, kein „und ausserdem" — jede
+   Teilfrage kostet eigene Anfragen.
+3. **Die Wurzel ist der Kostenhebel**, nicht die Frage. Gemessen mit
+   `jg files <ordner>` (kostenlos, kein Netz, kein Schluessel):
+
+   | Wurzel | berechtigte Dateien | Groesse |
+   |---|---|---|
+   | `Agenten/Handel/scanner` | 66 | 1,7 MiB |
+   | `Agenten/Hermes/skills/brainfiles` | 213 | 2,2 MiB |
+   | `Agenten/Bus` | 40 | 11,2 MiB |
+   | `Agenten/Handel` | 5.247 | 390,8 MiB |
+
+   Grobe Regel aus der einen Messung: 171 Dateien ≈ 0,93 Mio. Token ≈ 4 US-Cent.
+   `Agenten/Handel` als Wurzel ist damit ein Vielfaches einer Scanner-Suche — und
+   schickt Daten aus dem Handelshaus hinaus.
+4. **Vor jeder Suche verengen**, wenn die Wurzel vertraulich ist:
+   `--exclude '**/zustand*.json' --exclude '**/*.csv' --exclude 'daten/'`.
+
+Beispielanfragen, die zu diesem Haus passen:
+
+```
+jg "Wie wird entschieden, ob eine offene Position geschlossen wird?" Agenten/Handel/scanner
+jg "Wie wird eine Nachricht in Stuecke geteilt und an Telegram zugestellt?" Agenten/Bus
+jg "Wo ist beschrieben, wie eine neue Handelsspur angeschlossen wird?" Agenten/Hermes/skills/brainfiles
+jg "Wie wird ein Freigabebeleg geprueft, bevor eine Order ausgefuehrt wird?" Agenten/Handel
+```
+
 ## Nachweis im Detail
 
 `Agenten/Werkzeuge/jevgrep/test_jevgrep.py` startet eine Attrappe eines

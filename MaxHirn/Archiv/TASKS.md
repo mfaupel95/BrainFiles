@@ -466,10 +466,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
       `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
       `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
-      Naechster Schritt: Entscheidung von Max - Vercel-AI-Gateway-Schluessel besorgen
-      (`jg auth --provider vercel --stdin`, 0,04 USD/1M Eingabe, Neukunden-Guthaben) oder
-      das Werkzeug ruhen lassen. Bei Nutzung zuerst `jg files <wurzel>` und `--exclude`
-      setzen: jede Suche schickt Quelltext an den Dienst.
+      Naechster Schritt (2 Minuten, Zugang macht Max selbst): Schluessel im Vercel AI
+      Gateway anlegen (vercel.com -> AI Gateway -> Create key; 0,04 USD/1M Eingabe,
+      Neukunden-Guthaben), in eine Datei legen und anmelden - der Schluessel laeuft NIE
+      durch den Chat:
+        .\jevgrep.cmd auth --provider vercel --stdin < <datei-mit-schluessel>
+        .\jevgrep.cmd doctor
+      Danach die Wurzel klein waehlen (siehe Wiki, Abschnitt "Die Anfrage verfeinern":
+      scanner 66 Dateien statt Agenten/Handel 5.247) und mit `jg files` + `--exclude`
+      vorher sehen, was hinausgeht. Kein Schluessel gewuenscht: Werkzeug ruht, `files`
+      bleibt kostenlos nutzbar.
       Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
 
