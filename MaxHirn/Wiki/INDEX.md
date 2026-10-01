@@ -3,7 +3,7 @@ id: 20260921-wiki-index
 title: 'Wiki — Index'
 tags: [betrieb, wiki]
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-01
 related: ['[[LEITFADEN]]', '[[Wissen/INDEX]]']
 summary: 'Einstieg in das Agenten-Wiki: Verzeichnis aller Seiten mit Zweck, plus die Regel, wann hier etwas abgelegt wird.'
 ---
@@ -46,6 +46,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig", deklariert gegen real |
 | [Lektionen/Boersen-und-Schluessel.md](Lektionen/Boersen-und-Schluessel.md) | Zwei Werkzeuge auf einem Schluessel (Nonce-Einheit), zwei Namen fuer ein Programmpaar, eine Abweisung ohne Zeugen ist keine Messung |
 | [Lektionen/Memory-Verluste.md](Lektionen/Memory-Verluste.md) | Memory-Eintraege belegbar verloren/ersetzt: falscher `old_text` loescht fremde Eintraege, `replaced_entries` lesen, `memory-verlust.py`, Pending-Queue |
+| [Lektionen/Werkzeug-Fallen.md](Lektionen/Werkzeug-Fallen.md) | grep `{0,N}`-Quantor auf langer Zeile = katastrophales Backtracking (62,6 GB, 0xc000012d); jevgrep Exit 1 "stdin is not a tty" = MSYS-Rauschen, echter Grund ist der Anbieter (429/402) |
 
 ### Betrieb
 
