@@ -135,6 +135,31 @@ Die zwei Testfehler-Quellen waren beide dieselbe Klasse: eine Attrappe, die
 Attrappe nie nachgezogen), und ein Test, der den Stand VOR T-102 einfror
 (`..._wird_nicht_gebucht`).
 
+## Die Kraken-Wache und zwei Fallen im eigenen Zugriff (01.10.2026)
+
+`Agenten/Hermes/scripts/kraken-wache.py` (Hermes-Cron `kraken-wache`, alle
+30 Minuten, no_agent, leere Ausgabe = nichts senden) meldet nur Neues: Live-Kauf,
+Live-Verkauf, `fehler`-Zeile, Live-Position ohne Boersen-Stop, Guthaben-Tor zu,
+Stillstand ab 45 min, Belegverfall ab fuenf Belegen ohne Ausfuehrung.
+
+Die erste Fassung meldete **alle vier Positionen als ungeschuetzt** und
+**EUR 0,00 frei** — beides falsch. Zwei Fallen im Zugriff auf das eigene Modul:
+
+1. **`kraken.kontostaende()` liefert die KRAKEN-Namen** (`ZEUR`, `XXBT`), nicht
+   die lesbaren (`EUR`, `XBT`). Wer `staende["EUR"]` liest, bekommt 0.00 und
+   meldet ein geschlossenes Tor, das weit offen ist. Richtig ist die
+   Haus-Funktion `handeln.guthaben_lage(w)` — sie loest ueber `quote.lesbar` auf.
+2. **`kraken.offene_orders()` gibt FERTIG** `{txid: {paar, seite, art, menge,
+   preis}}` zurueck. Ein zweites `.get("open")` darauf findet nichts, und die
+   Felder heissen `seite`/`menge`, nicht `type`/`vol`. Beides zusammen meldete
+   jeden Schutz-Stop als fehlend.
+
+**Merksatz:** Eine Wache, die den Zugriff selbst nachbaut, prueft ihren
+Nachbau, nicht die Spur. Wo eine Haus-Funktion existiert
+(`guthaben_lage`, `offene_orders`), wird sie aufgerufen — nicht die Rohform
+daneben gestellt. Und ein Fehlalarm ist hier teurer als eine spaete Meldung:
+er schickt Max nachts zu einer Position, die die ganze Zeit geschuetzt war.
+
 ## Falle im eigenen Aufruf
 
 `markt_verkauf(paar, menge, echt=True)` liefert die Kraken-Antwort — **nicht** das
