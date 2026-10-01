@@ -520,24 +520,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (der Checkout wird von `hermes update` zurueckgesetzt).
       Angelegt: 2026-09-30
       Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
-- [ ] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
-      Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
-      EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
-      Danach zeigt sie ihn, bis jemand "Stand neu lesen" drueckt - oeffnet der
-      Dauerlauf in der Zwischenzeit ein Zeitfenster oder wechselt ein Schalter,
-      steht im Fenster ein alter Stand. Bewusst NICHT gebaut, weil ein
-      Dauerlauf-Takt im Fenster eine eigene Entscheidung ist (Last, und die
-      Frage "wie alt darf die Anzeige sein"). Ebenso bewusst: es gibt KEINEN
-      Kommandozeilen-Weg zum Scharfschalten (`--handel` und `--test` lesen nur),
-      weil Handelsregeln Punkt 3 ein Fenster mit Bestaetigungsfeld verlangt;
-      wer von unterwegs scharf stellen will, hat dafuer `/ja_<spur>` im
-      Dauerlauf.
-      Naechster Schritt: Entscheidung Max - entweder ein Takt (z. B. alle 60 s
-      nur bei gewaehlter Spur) oder ein Zeitstempel "gelesen um HH:MM" in der
-      Kopfzeile der Karte, damit der Stand sein Alter nennt.
-      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
-      `handelstand.py`
-      Angelegt: 2026-09-30
 - [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
       Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
       Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
@@ -3088,6 +3070,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
+      Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
+      EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
+      Danach zeigt sie ihn, bis jemand "Stand neu lesen" drueckt - oeffnet der
+      Dauerlauf in der Zwischenzeit ein Zeitfenster oder wechselt ein Schalter,
+      steht im Fenster ein alter Stand. Bewusst NICHT gebaut, weil ein
+      Dauerlauf-Takt im Fenster eine eigene Entscheidung ist (Last, und die
+      Frage "wie alt darf die Anzeige sein"). Ebenso bewusst: es gibt KEINEN
+      Kommandozeilen-Weg zum Scharfschalten (`--handel` und `--test` lesen nur),
+      weil Handelsregeln Punkt 3 ein Fenster mit Bestaetigungsfeld verlangt;
+      wer von unterwegs scharf stellen will, hat dafuer `/ja_<spur>` im
+      Dauerlauf.
+      Naechster Schritt: Entscheidung Max - entweder ein Takt (z. B. alle 60 s
+      nur bei gewaehlter Spur) oder ein Zeitstempel "gelesen um HH:MM" in der
+      Kopfzeile der Karte, damit der Stand sein Alter nennt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `handelstand.py`
+      Angelegt: 2026-09-30
+      01.10.2026 nachgeprueft: die Takt-Loesung ist bereits gebaut und gepusht (bc8041a, uebernommene Fremdarbeit) - 60 s Selbst-Nachziehen, nur wenn die Handels-Karte sichtbar ist, schaltbar per 'Auto: an/aus', Takt neu aufgezogen nach jedem Lauf. Gegengesehen in der Zentrale-Suite (296 Tests, der einzige Fehlschlag ist T-271/Betrifft nicht den Takt).
 - [x] **T-286 - omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
       Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis)
       (/editorder) ist gebaut und getestet, aber spur_buch.zyklus kennt keinen
