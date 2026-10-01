@@ -20,6 +20,7 @@ vorhandener Skill plus ein Zeitplan.
 | täglich 09:00 | DCA-Fälligkeit prüfen | `Handel/agent.py check` | **eingeplant** 23.08.2026 — `MaxHirn-DCA-Pruefung` |
 | täglich 07:30 | Marktscanner: **nur die Rangliste** | `Handel/scanner/scan.py` | **geändert** 14.09.2026 — `MaxHirn-Marktscanner`. `handeln.py --papier` ist aus dem Wrapper entfernt; die Spur handelt im Dauerlauf (alle 15 Min). |
 | täglich 07:45 | Kraken-Spur 3: **nur die Rangliste** | `Handel/kraken/scan.py` | **geändert** 14.09.2026 — `MaxHirn-Kraken-Spur3`. Wie oben; gehandelt wird im Dauerlauf, seit derselbe Tag die Spur wieder führt. |
+| täglich 08:10 | Scanner-Papier-Test v0 gegen v4 (nur Messung, kein Geld) | `Werkstatt/scanner-varianten/papier.py` | **eingeplant** 02.10.2026 — `MaxHirn-Scanner-Papier`, angelegt über `Routinen/scanner-papier-aufgabe.ps1`. Prüft Stops/Ziele offener Papier-Positionen mit frischen OKX-Kerzen und nimmt neue Signale auf. Auswertung erst nach ca. 30 Runden je Variante; Übernahme von v4 in den Live-Scanner nur nach Entscheidung von Max. |
 | — | XPERP-Spur 2 (läuft im Dauerlauf) | `Handel/xperp/handeln.py` | **Aufgabe gelöscht** 14.09.2026 — `MaxHirn-XPERP-Spur2` fuhr um 07:50 einen zweiten Zyklus (Ziel-Ausstieg FIL, drei Einstiege am 14.09.2026), den der Dauerlauf nicht kannte. `Routinen/xperp-handeln.ps1` bleibt als Notbetrieb von Hand. |
 | alle 30 Min | Dauerlauf-Wächter (Neustart nach Abschaltung) | `handel-dauerlauf.ps1` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf-Waechter` |
 | bei Anmeldung + alle 30 Min | Stufen-Wächter mittel und hoch (Start **und** Neustart in einem) | `handel-dauerlauf.ps1 -Risiko mittel` bzw. `hoch` | **nachgetragen** 29.09.2026 — `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`, `MaxHirn-Handel-Dauerlauf-Hoch-Waechter`. Seit 16.09.2026 in Betrieb, aber hier nie vermerkt. Zeitauslöser am 29.09.2026 ergänzt, siehe unten. |
@@ -62,6 +63,7 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-Ausserhaus-Kopie` | `Routinen/ausserhaus-kopie.ps1` | `Routinen/logs/ausserhaus-kopie-letzter-lauf.log` |
 | `MaxHirn-Posteingang` | `Routinen/posteingang.ps1` | `Routinen/logs/posteingang-letzter-lauf.log` |
 | `MaxHirn-DCA-Pruefung` | `Routinen/dca-pruefung.ps1` | `Routinen/logs/dca-letzter-lauf.log` |
+| `MaxHirn-Scanner-Papier` | `Routinen/scanner-papier.ps1` | `Routinen/logs/scanner-papier-letzter-lauf.log` |
 | `MaxHirn-Marktscanner` | `Routinen/marktscanner.ps1` | `Routinen/logs/marktscanner-letzter-lauf.log` |
 | `MaxHirn-Kraken-Spur3` | `Routinen/kraken-scanner.ps1` | `Routinen/logs/kraken-scanner-letzter-lauf.log` |
 | `MaxHirn-Handel-Wachen` | `Routinen/handel-wachen.ps1` | `Routinen/logs/handel-wachen-letzter-lauf.log` |
