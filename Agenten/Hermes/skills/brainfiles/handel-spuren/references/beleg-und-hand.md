@@ -126,3 +126,38 @@ Fehlermeldung im Journal.
 - **Eine neue Spur auf dem MCP-Weg braucht BEIDE Enden:** den Aussteller im
   Spurcode UND die Hand im Betrieb. Nur eines von beiden zu bauen hinterlaesst
   eine Spur, die entweder nichts ausfuehrt oder nichts abgibt.
+
+## Eine Spur hat EINEN Beleg - hoechstens einer je Zyklus (T-283, 01.10.2026)
+
+BEFUND: die kraken-Spur stellte im Zyklus 11:25:51 **neun** Belege in EINEM Lauf aus
+(ALGO/AVAX/LINK/TRX/DOT/SUI/LTC/ADA/SOL, je 50 EUR = 450 EUR Absicht bei
+`max_gesamt_eur` 200) und schrieb neun `kauf_beleg`-Zeilen ins Journal. Ausgefuehrt
+werden konnte nur der LETZTE, weil eine Spur genau EINE Belegdatei hat und jedes neue
+`schreibe()` den vorigen still ueberschrieb. Journal und Belegdatei erzaehlten zwei
+Geschichten. Zweitens war die Frist (180 s) kuerzer als der Takt des Ausfuehrers
+`beleg-hand` (5 Minuten): ein Beleg, der direkt nach einem Lauf entstand, war beim
+naechsten Lauf immer schon verfallen.
+
+Fuenf Regeln, die daraus folgen:
+
+1. **`schreibe()` verweigert, solange ein GUELTIGER, unverbrauchter Beleg liegt** -
+   sie ueberschreibt keinen mehr. Abgelaufene und verbrauchte blockieren nicht
+   (`offener()` laesst sie durchfallen).
+2. **Die Spur stellt hoechstens EINEN Beleg je Zyklus aus** und bricht danach ab.
+   Ohne diesen Abbruch erzwingt Regel 1 nur Fehlerzeilen je Kandidat statt einer
+   Entscheidung. Der naechste Kandidat kommt im naechsten Zyklus.
+3. **Ein offener Beleg ist ein RESERVIERTER Platz und reserviertes Kapital.** Er
+   zaehlt gegen `max_offene_positionen` UND gegen `max_gesamt_eur`; dafuer traegt er
+   den Einsatz in `zusatz["eur"]`. Ohne diese Reservierung prueft `pruefe_einstiege`
+   nur die ausgefuehrten Positionen - ein noch nicht ausgefuehrter Auftrag war
+   unsichtbar, und genau so entstanden neun Belege.
+4. **Frist > Takt des Ausfuehrers.** `GUELTIG_SEKUNDEN` 600 bei 5-Minuten-Cron. Wer
+   die Frist senkt, muss den Takt mitnehmen (oder umgekehrt) - sonst stirbt jeder
+   Beleg, der kurz nach einem Handler-Lauf entsteht, vor dem naechsten Lauf.
+5. **Verfallene Belege werden EINMAL gemeldet** (Zeile + Journalzeile
+   `beleg_verfallen`, Merker `verfallen_gemeldet`). Ein verfallener Beleg ist kein
+   Schaden - er kauft nicht -, aber er ist UNSICHTBAR: `offene()` laesst ihn weg, und
+   ohne Meldung sieht niemand, dass eine beschlossene Order nie ausgefuehrt wurde.
+
+Der Merksatz dazu: **ein Beleg ist eine Erlaubnis, keine Warteschlange.** Was nicht
+sofort ausgefuehrt werden kann, darf gar nicht erst entstehen.

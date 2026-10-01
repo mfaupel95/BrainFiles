@@ -33,7 +33,7 @@ def main() -> int:
         print("beleg-hand: Start fehlgeschlagen: %s" % e)
         return 1
     ausgabe = (p.stdout or "").strip()
-    if "keine offenen Belege" in ausgabe:
+    if "keine offenen Belege" in ausgabe and "VERFALLEN" not in ausgabe:
         return 0                        # leise: nichts zu tun
     if "wuerde kaufen" in ausgabe:
         print("beleg-hand meldet im Vorschau-Modus (sollte nicht vorkommen):\n%s" % ausgabe)
@@ -42,6 +42,12 @@ def main() -> int:
         print("beleg-hand endete mit Code %s:\n%s\n%s"
               % (p.returncode, ausgabe, (p.stderr or "").strip()[:800]))
         return 1
+    if "VERFALLEN" in ausgabe and "ausgefuehrt" not in ausgabe:
+        # Belege, die an der Frist gestorben sind (T-283) - kein Schaden, aber
+        # eine beschlossene Order, die niemand ausgefuehrt hat. Genau einmal
+        # gemeldet (`merke_verfallen`), deshalb hier keine Wiederholung noetig.
+        print("beleg-hand: Beleg(e) verfallen:\n%s" % ausgabe)
+        return 0
     print("beleg-hand hat ausgefuehrt:\n%s" % ausgabe)
     return 0
 

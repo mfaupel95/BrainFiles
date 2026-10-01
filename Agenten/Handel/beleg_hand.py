@@ -169,6 +169,37 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
             "stop_fehlt": stop_fehlt, "fuellung_offen": not bestaetigt}
 
 
+def melde_verfallene() -> list[dict]:
+    """Verfallene Belege EINMAL melden (Zeile + Journalgrund), dann merken.
+
+    Sie sind kein Schaden - ein verfallener Beleg kauft nicht -, aber sie sind
+    unsichtbar: `offene()` laesst sie weg, und niemand sonst sieht nach. Am
+    01.10.2026 starben so acht von neun Belegen eines Zyklus an der Frist,
+    ohne dass irgendwo stand, welche Order nicht ausgefuehrt wurde (T-283).
+    `merke_verfallen` sorgt dafuer, dass dieselbe Feststellung genau EINMAL
+    entsteht (der Cron laeuft alle 5 Minuten).
+    """
+    gemeldet = []
+    for e in beleg.verfallene():
+        spur = e.get("spur") or ""
+        print("%-10s %s VERFALLEN: %s %s, Frist %s, nicht ausgefuehrt (%s)"
+              % (spur, e.get("kennung"), e.get("seite"), e.get("paar"),
+                 e.get("gueltig_bis"), e.get("grund") or "ohne Grund"))
+        if spur == "kraken":
+            try:
+                handeln = _kraken_weg()
+                handeln.journal(_jetzt(), "live", "beleg_verfallen",
+                                e.get("paar") or "", "", "", "", "", "",
+                                "beleg %s bis %s nicht ausgefuehrt | %s"
+                                % (e.get("kennung"), e.get("gueltig_bis"),
+                                   e.get("grund") or "ohne Grund"))
+            except Exception as ex:                               # noqa: BLE001
+                print("  Journalzeile fehlgeschlagen: %s" % ex, file=sys.stderr)
+        beleg.merke_verfallen(spur, grund="Frist abgelaufen")
+        gemeldet.append(e)
+    return gemeldet
+
+
 def lauf(anwenden: bool = False) -> list[dict]:
     berichte = []
     for eintrag in beleg.offene():
@@ -176,6 +207,7 @@ def lauf(anwenden: bool = False) -> list[dict]:
         berichte.append(bericht)
         print("%-10s %s %s" % (bericht["spur"], bericht["kennung"],
                                bericht["ergebnis"]))
+    melde_verfallene()
     if not berichte:
         print("keine offenen Belege - nichts zu tun")
     return berichte

@@ -489,3 +489,80 @@ Drei Regeln entscheiden den Fall:
 **Merksatz:** ein Feld im Buch ist eine Behauptung, die altert. Ob ein Notausstieg
 wirklich steht, weiss nur die Boerse — und diese Aussage muss in jedem Zyklus
 fallen, nicht nur im Live-Zweig.
+
+## Nicht verkaufbare Posten: Ordermin und Sonderformen (01.10.2026, T-280)
+
+Beim Umschichten blieben drei Posten liegen — aus ZWEI verschiedenen Gruenden, die man
+am Betrag nicht unterscheidet. Gemessen mit `kraken/lagerbestand.py` (lesend, neue
+Fassung):
+
+| Code | Menge | Lage | Paar | ordermin | fehlt bis ordermin |
+|---|---|---|---|---|---|
+| PEPE | 409.009,94 | unter_ordermin | PEPEEUR | 1.500.000 | 1.090.990,06 |
+| ONDO | 10,74331 | unter_ordermin | ONDOEUR | 15 | 4,25669 |
+| ADA.S | 50,63776095 | kein_paar | — | — | — |
+
+1. **Ordermin**: Kraken verlangt je Paar eine Mindestmenge (`ordermin` in `AssetPairs`),
+   unabhaengig vom Wert. PEPE und ONDO sind kein Defekt — die Order waere schlicht
+   abgelehnt worden. Weg: sammeln, bis der Bestand ueber dem Ordermin liegt.
+2. **Sonderformen haben GAR KEIN Paar.** `AssetPairs` fuehrt keine einzige Basis mit
+   einem Punkt; gemessen zeigen ADA.S, ATOM21.S, HYPE.B und XPEV.EQ deshalb eine leere
+   Paarliste. `.S` ist die gestakte Form (ADA.S = gestakte Cardano) — der Weg ist
+   Unstaking, nicht eine Order; `.B` und `.EQ` sind ebenfalls reine Kontencodes ohne
+   Markt. Was sie genau sind, ist offen — eine Order ist dort jedenfalls kein Weg.
+3. **Barmittel ist kein Befund.** USDC/ZEUR/ZUSD haben kein Paar mit sich selbst als
+   Basiswert, sie stehen als `quote` im Buch. Das Werkzeug fuehrt sie getrennt
+   (`barmittel`) — sie mit „gestakt“ zu erklaeren waere eine falsche Ursache, und die
+   Ursache ist genau das, wonach man hier sucht.
+
+Der ganze Bestand am 01.10.2026: 22 Posten, davon 13 festliegend — die drei genannten
+plus zehn Staubposten (DOT 0,0016 gegen ordermin 3,9; SUI 0,00003 gegen 5; JUP 0,00009
+gegen 23; YOM 127,96 gegen 300; LAPTOP 8,572 gegen 25; HYPE 1,2e-06 gegen 0,1). Wert
+der drei Sichtbaren: PEPE 1,61 EUR, ONDO 4,70 EUR. **Es lohnt kein Umbau** — aber die
+Ursache muss man kennen, sonst sucht man beim naechsten Mal wieder.
+
+**Dasselbe Muster auf der anderen Boerse:** OKX lehnt `BETH-USDT` (160,77 USD) und
+`OKSOL-USDT` (20,00 USD) mit `51155 ... local compliance restrictions` ab; die Sperre
+ist an `/public/instruments` NICHT zu sehen und kommt VOR jeder Mengenpruefung. Ein
+Fehlercode, der die Ursache nennt, ist die Ausnahme — nachpruefen am Instrumentenrecord
+ist die Regel.
+
+Werkzeug: `Agenten/Handel/kraken/lagerbestand.py` (Vorgabe: nur festliegende Posten,
+`--alle`, `--json`, `--ohne-kurse`). Tests `kraken/tests/test_lagerbestand.py`.
+
+## Der Hebel steht am KONTRAKT, nicht in der Order (01.10.2026, T-285)
+
+`/sendorder` nimmt einen `leverage`-Parameter an — Kraken Futures **ignoriert ihn**.
+Der Hebel dieses Kontos steht in `/leveragepreferences`, und zwar JE KONTRAKT:
+
+```
+PF_SOLUSD 7.0   PF_HBARUSD 10.0   PF_CSPRUSD 3.09   PF_KASUSD 5.0
+PF_XBTUSD 8.0   PF_ZECUSD 9.0     PF_DOGSUSD 4.9    PF_SUIUSD 7.0   ... (18 Eintraege)
+```
+
+Es gibt keine Kontoeinstellung „Hebel“, nur diese Tabelle. Gemessen: **Margin =
+Nennwert / Hebel** — 1 Kontrakt PF_SOLUSD bei 118,03 USD Nominal belegt 16,86 USD
+(7x), nicht die 11,80 USD aus dem Margenplan (EEA retail 10 %). Wer den Plan allein
+liest, plant 5 USD zu wenig ein; bei PF_CSPRUSD (3,09x) unterschaetzt der Plan um
+Faktor 3.
+
+**Behoben:** `kraken_futures.einschuss()` nimmt jetzt das STRENGERE von Plan und
+Hebel-Obergrenze (`max(plan, 1/hebel)`), Tabelle 60 s gecacht (`hebel_je_kontrakt`),
+Grundlage fuer `handelbar()` und damit fuer jede Guthaben-Sperre. Die Order selbst
+bleibt unveraendert: gesetzt wird die Obergrenze mit `PUT /leveragepreferences`
+(Parameter als FORMKOERPER — als Query-String antwortet dieselbe Signatur mit
+`authenticationError`), das macht `omnitrade_futures/weg.hebel_vorbereiten()` vor dem
+Zyklus, sobald `handel_erlaubt` steht.
+
+## Das Futures-Guthaben ist nicht mehr knapp (01.10.2026, T-284)
+
+Die Notiz „1,28 USD frei“ war der Stand vom Vormittag. Gemessen am Abend:
+**availableMargin 83,37 USD** (EUR 62,82 + USDC 83,80 verfuegbar; 83,38 sind als
+initialMargin durch drei laufende nautilus-Positionen gebunden — SUI/HBAR/HYPE).
+Das Tor der Spur `omnitrade_futures` (`mindest_guthaben 25 USD`) ist damit **offen**;
+1 Kontrakt PF_SOLUSD braucht 16,86 USD. `handeln.py --vorschau` nennt dann keinen
+Guthaben-Grund mehr.
+
+**Merksatz:** ein Guthaben ist eine Momentaufnahme, kein Zustand — eine Zahl aus dem
+Vormittag entscheidet am Abend nichts. Und `cash.balances` bleibt bei Kraken Futures
+0,00: das Geld liegt im flex-Konto (`availableMargin`).

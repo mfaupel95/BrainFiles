@@ -579,7 +579,7 @@ def bueche_papier_altlasten_aus(z):
     return len(altlasten)
 
 
-def _beleg_zur_order(inst, menge, kurs, stop, ziel):
+def _beleg_zur_order(inst, menge, kurs, stop, ziel, eur=None):
     """Freigabe-Beleg fuer einen Live-Kauf ausstellen. None = kein Kauf.
 
     Der Beleg entsteht nur, wenn das Freigabefenster offen ist UND
@@ -587,16 +587,41 @@ def _beleg_zur_order(inst, menge, kurs, stop, ziel):
     diese Spur ohnehin kaufen darf. Er macht sie pruefbar und gibt der Hand
     (MCP-Werkzeug `kraken_order_mit_beleg`, Skript beleg_hand.py) dieselbe
     Erlaubnis, ohne die Entscheidung dorthin zu verlagern.
+
+    `eur` wandert als Einsatz in `zusatz`: solange ein Beleg offen liegt, ist
+    er ein RESERVIERTER Platz und reserviertes Kapital (T-283) - ohne diese
+    Zahl wuerde der naechste Zyklus dasselbe Geld ein zweites Mal verplanen.
     """
+    zusatz = {"inst": inst, "stop": stop, "ziel": ziel}
+    if eur is not None:
+        zusatz["eur"] = round(float(eur), 2)
     beleg = freigabebeleg.schreibe(SPUR, "buy", inst, menge,
                                    preis_max=float(kurs) * 1.05,
                                    grund="Einstieg %s" % inst,
-                                   zusatz={"inst": inst, "stop": stop, "ziel": ziel})
+                                   zusatz=zusatz)
     if not beleg.get("kennung"):
         print("  kein Beleg fuer %s: %s" % (inst, beleg.get("grund")),
               file=sys.stderr)
         return None
     return beleg
+
+
+def _offener_beleg():
+    """Der noch GUELTIGE, unverbrauchte Freigabe-Beleg DIESER Spur - sonst None.
+
+    Ein offener Beleg ist eine beschlossene, noch nicht ausgefuehrte
+    Kaufentscheidung (T-283): er belegt einen Platz und bindet Kapital.
+    Ohne diese Abfrage plante der naechste Zyklus dieselbe Erlaubnis erneut -
+    `freigabebeleg.schreibe()` lehnt das inzwischen ab, aber dann stuerzt die
+    Schleife in Fehlerzeilen statt in eine Entscheidung.
+
+    Fehler werden zu None: ein unlesbarer Beleg ist kein Kauffilter, und
+    `schreibe()` verweigert ohnehin, wenn kein Fenster offen ist.
+    """
+    try:
+        return freigabebeleg.offener(SPUR)
+    except Exception:                                             # noqa: BLE001
+        return None
 
 
 def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
@@ -614,11 +639,29 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
     waehrung = ziel_waehrung(z, w, lage, live)
     basen = {_basis_oder_paar(p["paar"]) for p in z["positionen"]}
     gehalten = {p["paar"] for p in z["positionen"]}
-    eingesetzt = sum(p["eur"] for p in z["positionen"])
+    # Ein OFFENER Beleg ist eine beschlossene, noch nicht ausgefuehrte
+    # Kaufentscheidung: er belegt einen Platz und bindet Kapital. Ohne diese
+    # Reservierung plante der Zyklus vom 01.10.2026 11:25:51 neun Kaeufe a 50
+    # EUR (bei max_gesamt_eur 200) und stellte neun Belege aus - ausgefuehrt
+    # werden konnte nur der letzte, weil eine Spur nur EINE Belegdatei hat
+    # (T-283). Gezaehlt wird nur der Beleg DIESER Spur.
+    offener_beleg = _offener_beleg() if live else None
+    reserviert = 0.0
+    if offener_beleg:
+        try:
+            reserviert = float((offener_beleg.get("zusatz") or {}).get("eur") or 0.0)
+        except (TypeError, ValueError):
+            reserviert = 0.0
+        print("  offener Beleg %s fuer %s - %.2f %s reserviert, kein neuer "
+              "Beleg in diesem Zyklus"
+              % (offener_beleg.get("kennung"), offener_beleg.get("paar"),
+                 reserviert, waehrung))
+    plaetze_belegt = len(z["positionen"]) + (1 if offener_beleg else 0)
+    eingesetzt = sum(p["eur"] for p in z["positionen"]) + reserviert
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
     for v in vs:
-        if len(z["positionen"]) >= w["max_offene_positionen"]:
+        if plaetze_belegt >= w["max_offene_positionen"]:
             break
         v_waehrung = quote.lesbar(v.get("waehrung") or "")
         # Nur eine BEKANNTE Abweichung ist eine Abweichung: ein Vorschlag
@@ -656,7 +699,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
         gefuellt, fuellung_bestaetigt = menge, True
         if live:
             beleg = _beleg_zur_order(v["inst"], menge, v["einstieg"],
-                                     v["stop"], v["ziel"])
+                                     v["stop"], v["ziel"], eur=eur)
             if beleg is None:
                 continue
             if str(w.get("order_ueber", "spur")).lower() == "mcp":
@@ -671,7 +714,13 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
                         "%.8g" % v["einstieg"], "%.2f" % eur, "%.8f" % menge,
                         "%.8g" % v["stop"], "%.8g" % v["ziel"],
                         "beleg %s | %s" % (beleg["kennung"], waehrung))
-                continue
+                # HOECHSTENS EIN Beleg je Zyklus (T-283): eine Spur hat genau
+                # EINE Belegdatei. Bis zum 01.10.2026 lief die Schleife weiter
+                # und stellte Beleg auf Beleg aus - der vorige verschwand, das
+                # Journal fuehrte neun Kaeufe, ausgefuehrt wurde einer. Der
+                # naechste Kandidat kommt im naechsten Zyklus dran.
+                plaetze_belegt += 1
+                break
             # Eigener Weg: den Beleg SOFORT einloesen. Einmalig heisst einmalig
             # - bliebe er liegen, koennte die Hand dieselbe Order ein zweites
             # Mal ausfuehren, und das waere ein echter Doppelkauf.

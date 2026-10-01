@@ -38,6 +38,8 @@ KEY_NAME = "KRAKEN_FUTURE_API_KEY"
 SECRET_NAME = "KRAKEN_FUTURE_API_SECRET"
 
 _instrument_cache = {}
+_hebel_cache = {"zeit": None, "werte": None}
+HEBEL_CACHE_SEKUNDEN = 60.0
 
 
 class KrakenFuturesFehler(RuntimeError):
@@ -185,13 +187,23 @@ def kontrakte(symbol, menge, kurs=None):
     return max(1, int(round(float(menge))))
 
 
-def einschuss(symbol, kontrakte, kurs=None):
-    """Einschuss (USD) fuer N Kontrakte - aus dem Margenplan des Marktes.
+def einschuss(symbol, kontrakte, kurs=None, hebel=None):
+    """Einschuss (USD) fuer N Kontrakte - das STRENGERE von Plan und Hebel.
 
     Reihenfolge: `marginSchedules.europa.retail` (unser Konto ist EEA), erster
     Abschnitt mit `numNonContractUnits` 0; fehlt der Plan, wird der hoechste
     Satz genommen (konservativ). Nennwert = kontrakte x kurs (1 Kontrakt = 1
     Einheit der Basiswaehrung).
+
+    Der PLAN allein ist zu wenig (Befund T-285, 01.10.2026): er sagt, was die
+    Boerse ohne eigene Hebel-Obergrenze verlangt (EEA retail 10 %). Der Hebel
+    dieses Kontos steht in `/leveragepreferences` JE KONTRAKT - und dort steht
+    die Margin, die wirklich gebunden wird (Margin = Nennwert / Hebel).
+    Gemessen: PF_SOLUSD laeuft mit 7x, also 16,88 USD je Kontrakt statt der
+    11,81 USD aus dem Plan; PF_CSPRUSD mit 3,09x, also 32 % statt 10 % - der
+    Plan unterschaetzte hier um Faktor 3. Genommen wird deshalb das Maximum:
+    eine zu kleine Reserve scheitert erst am Konto, eine zu grosse kostet nur
+    einen Platz, den die Sperrenkette ohnehin prueft.
     """
     if kurs is None:
         kurs = letzter_kurs(symbol)
@@ -206,6 +218,13 @@ def einschuss(symbol, kontrakte, kurs=None):
             break
     if satz is None:
         satz = max((float(s.get("initialMargin") or 0.0) for s in plan), default=0.0)
+    if hebel is None:
+        hebel = hebel_je_kontrakt(symbol)
+    try:
+        if hebel and float(hebel) > 0:
+            satz = max(satz, 1.0 / float(hebel))
+    except (TypeError, ValueError):
+        pass                                      # unlesbarer Hebel = Plan gilt
     return kontrakte * float(kurs) * satz
 
 
@@ -358,6 +377,36 @@ def hebel_preference_lesen():
         return []
     return [(p.get("symbol"), p.get("maxLeverage"))
             for p in (r.get("leveragePreferences") or []) if p.get("symbol")]
+
+
+def hebel_je_kontrakt(symbol=None, jetzt=None):
+    """Die Hebel-Obergrenze JE KONTRAKT aus /leveragepreferences (lesend).
+
+    Ohne `symbol` kommt das ganze Verzeichnis zurueck, mit `symbol` der Wert
+    dieses Kontrakts oder None. Das Ergebnis wird HEBEL_CACHE_SEKUNDEN lang
+    gehalten: `einschuss()`/`handelbar()` fragen im Zyklus mehrfach, und jede
+    Abfrage ist ein signierter Aufruf an die Boerse.
+
+    GEMESSEN 01.10.2026 am echten Konto: die Preferences sind je Kontrakt
+    verschieden (PF_SOLUSD 7, PF_HBARUSD 10, PF_CSPRUSD 3,09) - es gibt keine
+    Kontoeinstellung "Hebel", sondern nur diese Tabelle. Ein Kontrakt ohne
+    Eintrag laeuft mit dem Margenplan des Marktes.
+    """
+    jetzt = time.monotonic() if jetzt is None else float(jetzt)
+    frisch = (_hebel_cache["werte"] is None
+              or _hebel_cache["zeit"] is None
+              or jetzt - _hebel_cache["zeit"] > HEBEL_CACHE_SEKUNDEN)
+    if frisch:
+        try:
+            werte = {s: float(h) for s, h in hebel_preference_lesen() if h}
+        except Exception:                                         # noqa: BLE001
+            werte = _hebel_cache["werte"] or {}
+        _hebel_cache["werte"] = werte
+        _hebel_cache["zeit"] = jetzt
+    werte = _hebel_cache["werte"] or {}
+    if symbol is None:
+        return dict(werte)
+    return werte.get(symbol)
 
 
 def hebel_preference_setzen(symbol, hebel):

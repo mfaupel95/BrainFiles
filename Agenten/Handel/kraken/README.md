@@ -192,3 +192,21 @@ Wochen zählen ab heute. Das ist Max' Entscheidung, sobald die Zahlen stehen.
   bevor Geld fließt.
 - **`vol_exec`, nicht `vol`:** eine teilweise gefüllte Kauforder verkauft sonst
   mehr, als sie gekauft hat.
+
+## Festliegende Posten — Ordermin und Sonderformen (01.10.2026, T-280)
+
+Drei Posten liessen sich nicht verkaufen, aus ZWEI Gruenden: PEPE (409.009,94) und
+ONDO (10,74331) lagen unter dem `ordermin` ihres Paares (1.500.000 bzw. 15), und
+ADA.S/ATOM21.S/HYPE.B/XPEV.EQ haben **überhaupt kein Paar** — Sonderformen
+(gestakt bzw. tokenisiert), dort ist Unstaking der Weg, nicht eine Order.
+
+- **Nachsehen statt raten:** `python lagerbestand.py` (Vorgabe: nur festliegende
+  Posten; `--alle`, `--json`, `--ohne-kurse`). Es liest `ordermin`/`costmin` aus
+  `AssetPairs` und sagt je Posten, was fehlt bzw. dass kein Markt existiert.
+- Vor jeder Order gilt weiter `menge_fuer()`: es prüft `ordermin`/`costmin`, damit
+  eine zu kleine Order gar nicht erst rausgeht.
+- **Barmittel ist kein Befund:** USDC/ZEUR stehen als `quote` im Buch, nicht als
+  Basiswert, und werden getrennt geführt — sonst erklärt das Werkzeug sie fälschlich
+  als „gestakt“.
+- Zahlen, der ganze Bestand und die OKX-Entsprechung (`BETH-USDT`/`OKSOL-USDT`,
+  Fehler `51155`) stehen im Wiki: `MaxHirn/Wiki/Handel/Boersen-und-Schluessel.md`.
