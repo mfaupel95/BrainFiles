@@ -89,6 +89,11 @@ and date.
   Probe zeigt aber, dass **ein zweiter Aufruf Sekunden spaeter durchging**
   (`remembered as fact #n`). Also wiederholen statt an Locks drehen; `recall`
   funktioniert in derselben Lage (nur lesend).
+- **Entscheidung Max (01.10.2026): KEIN dauerhaftes `gbrain serve`.** Bei einem
+  Ausfall des Owners wird wiederholt, nicht ein Dienst gestartet - die Installation
+  verbietet das ausdruecklich (`instructions/maintenance.md`: "Do not start serve,
+  cron, or a daemon."). Diese Frage nicht erneut stellen; erst wenn Schreiben
+  mehrfach hintereinander scheitert, ist der Dienst die richtige Antwort.
 
 ## Setup evidence (2026-09-20)
 
