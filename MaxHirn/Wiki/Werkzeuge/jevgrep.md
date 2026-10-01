@@ -166,6 +166,28 @@ Nachweis ohne jeden Schluessel: `python Agenten/Werkzeuge/jevgrep/test_jev_bruec
 (8 Tests, inklusive echtem Durchlauf jevgrep -> Bruecke -> Modell -> Trefferliste).
 Eine laufende Bruecke pruefen: `python Agenten/Werkzeuge/jevgrep/pruefe_bruecke.py`.
 
+## So nutzt du es (Bedienung)
+
+1. **Wurzel klein waehlen** — `.\jevgrep.cmd files <ordner>` sagt kostenlos, was eine
+   Suche lesen wuerde. `Agenten\Handel\scanner` (66 Dateien) ist gut, `Agenten\Handel`
+   (5.247 Dateien) ist zu gross.
+2. **Nach Verhalten fragen**, ein Satz, keine Aufzaehlung:
+   `.\jevgrep.cmd 'Wie wird entschieden, ob eine offene Position geschlossen wird?' Agenten\Handel\scanner`
+3. **Treffer nachlesen** — `jg` liefert Lesespuren und Quelltextausschnitte, keine
+   Antwort. Eine Trefferliste ohne nachgelesene Stelle ist kein Befund.
+4. **Im Vordergrund** aufrufen; ein Lauf dauert bei Mercury 1-2 Minuten fuer 66 Dateien.
+5. **Kosten im Blick**: ~1,8 US-Cent je Suche (Mercury, Aktion), 10 Mio. Gratis-Token je
+   Schluessel ≈ 22 Suchen. Antworten liegen in `~/.cache/jevgrep`, ein zweiter Lauf
+   derselben Frage ueber derselben Wurzel kostet nichts.
+6. **Nicht vergessen:** jede Suche schickt Quelltext an den Anbieter. Vault,
+   Schluesselordner und Personenbezogenes gehoeren nicht in die Wurzel.
+
+**Die Bruecke laeuft automatisch.** Der Hermes-Cron `jev-bruecke-wache`
+(Job `7a2d058e063e`, alle 15 Minuten, `no_agent`) prueft Port 8742 und startet die
+Bruecke, wenn sie aus ist — leere Ausgabe heisst: alles laeuft. Von Hand:
+`Agenten\Werkzeuge\jevgrep\bruecke-mercury.cmd`. Ohne laufende Bruecke kann `jg`
+nicht suchen, weil die Anmeldung auf `127.0.0.1:8742` zeigt.
+
 ## Mercury 2.5 laeuft — Kopf an Kopf mit Jev
 
 Seit 01.10.2026 ist die Bruecke mit **Inception Mercury 2.5** verdrahtet
