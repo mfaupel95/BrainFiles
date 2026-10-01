@@ -564,3 +564,23 @@ das Feld leer und zeigt daneben "Satz der Spur: 0.6 %/Seite".
 **Merksatz: eine Vorgabe, die fuer eine Spur richtig ist, ist fuer die naechste
 geraten.** Wo die Zahl eine Eigenschaft der Sache ist (der Markt der Spur), wird sie
 aus der Sache gelesen - nicht in den Aufruf geschrieben.
+
+### Nachgemessen 01.10.2026: die Zahlen von 29.09. sind veraltet (Kerzenschluss-Regel)
+
+Ein Lauf ueber die volle Historie mit der Vorgabe aus der Wachen ergab fuer `squeeze`:
+
+    1088 Runden, 4 offen, Gebuehr 0.1 %/Seite (Quelle: wachen.json der Spur)
+    R 5,00 %   C 10,00 %   p 34,9 %   f_max 0,239 % je Runde   Ergebnis-Summe +260,15
+    Ausstiege an der Marke: 1088 von 1088
+
+Die Zahlen vom 29.09. (squeeze 759 Runden / 51,0 %) sind damit **ueberholt** - nicht wegen
+der Gebuehr, sondern wegen der **Kerzenschluss-Regel vom 30.09.**: der Ausstieg liegt jetzt
+an der beruehrten Marke (sind beide Marken in einer Kerze, gilt der STOP), nicht am Schluss
+der Kerze. Das senkt die Trefferquote spuerbar (51 % -> 34,9 %) und damit den Vorsprung
+gegenueber der Gebuehr: `f_max` 0,239 % je Runde gegen 0,2 % Rundekosten (OKX-Spot) ist
+**nur noch der 1,2-fache Abstand**. Wer die alten Zahlen im Kopf hat, haelt squeeze fuer
+deutlich robuster als es ist.
+
+`mosaic` liess sich in beiden Varianten (0,1 und 0,6 %/Seite) nicht fahren - es bricht beim
+ersten Einstieg ab (siehe oben); der Gebuehrenvergleich ist dort bis zum Adapter
+gegenstandslos.
