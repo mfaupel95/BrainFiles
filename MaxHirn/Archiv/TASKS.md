@@ -60,6 +60,48 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
+      Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
+      bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
+      nur 5 echte Runden mit -13.59. Zwei Zeilen widerlegt die Boersenhistorie:
+      BZ-USD_UM_XPERP-310509 (175 Kontrakte, Buch -107.59 gegen
+      /account/positions-history realizedPnl -3.91) und XAU (Buch -79.70 gegen
+      Boerse +0.45) - zusammen rund 184 USD fiktiv. LIT (-22.03), LTC (-10.96) und
+      IOST (-6.78) stimmen dagegen zeichengenau. geister_nachziehen.py fasst diese
+      Zeilen NICHT an, weil es nur grund=buchbereinigung_geist UND erloes==0.00
+      repariert.
+      Naechster Schritt: das Werkzeug um den zweiten Fall erweitern (Erloes gegen
+      die Boersenhistorie pruefen) oder die zwei Zeilen auf den Boersenwert ziehen;
+      danach faellt die Rueckgabe auf rund 96 USD und der Kill-Switch (250) loest
+      nicht mehr aus - xperp waere armierbar.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/handelsjournal.csv, geister_nachziehen.py
+
+- [ ] **T-277 - xperp XRP: Buch fuehrt 704 Kontrakte, die Boerse 295**
+      Kontext: zustand.json traegt XRP-USD_UM_XPERP-310404 mit kontrakte 704.0 und
+      margin 108.69 (das passt zu 704), /account/positions meldet pos=295
+      (mgnMode cross). Der Schutz ist vorhanden, aber dreifach ueberdeckt: vier
+      OCO-Verkaufsauftraege ueber 81+300+126+278 = 785 Kontrakte stehen fuer eine
+      Position von 295 Kontrakten. Nach dem Muster von bueche_groessen_abgleichen
+      bereinigen (Buch auf die Boersenkontraktzahl, Stop/Ziel/Einstieg
+      unangetastet, keine Order), die ueberzaehligen OCO-Auftraege danach einzeln
+      stornieren.
+      Naechster Schritt: bueche_groessen_abgleichen greift im Live-Zyklus, xperp
+      laeuft aber Papier - von Hand nachziehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/zustand.json
+
+- [ ] **T-278 - fremde_positionen_uebernehmen prueft nur attachAlgoOrds, nicht orders-algo-pending**
+      Kontext: Beim Anwenden am 01.10.2026 meldete das Werkzeug fuer ZEC, VVV und
+      ADA "Stop an der Boerse: fehlt - wuerde gestellt". Es fehlte nur in
+      attachAlgoOrds: /trade/orders-algo-pending?ordType=oco zeigte fuer ZEC schon
+      eine OCO (38 Kontrakte, sl 1316.44) und fuer ADA eine (55, sl 0.2286), dazu je
+      ein move_order_stop auf VVV (217) und ADA (180). Jetzt liegen zwei Stops je
+      Position, der neuere und engere feuert zuerst - der Stop wurde damit
+      unbemerkt von -8.6 % auf -2.7 % gezogen. Die Pruefung muss ALLE ordTypes
+      lesen (conditional, oco, trigger, move_order_stop).
+      Naechster Schritt: Pruefung in fremde_positionen_uebernehmen.py erweitern;
+      die doppelten Auftraege bewusst stehen lassen oder einzeln stornieren.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/fremde_positionen_uebernehmen.py
+
 - [ ] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
       Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
       VVV (217) und ADA (235) als XPERP-Positionen, zusammen rund 226 USD

@@ -136,8 +136,13 @@ Invoke through the `terminal` tool, aus dem Spur-Ordner:
   ohne Stop. Handgriff fuer den Bestand:
   `xperp/fremde_positionen_uebernehmen.py` (Vorschau ist Standard, `--anwenden`
   bucht und stellt den Stop). Vor jedem Live-Schalten pruefen:
-  `/api/v5/account/positions` gegen `<spur>/zustand.json` und `attachAlgoOrds`
-  auf leer.
+  `/api/v5/account/positions` gegen `<spur>/zustand.json` und auf einen
+  Schutzauftrag — **ALLE ordTypes lesen** (`conditional`, `oco`, `trigger`,
+  `move_order_stop`), nicht nur `attachAlgoOrds`. Genau daran ist
+  `fremde_positionen_uebernehmen.py` am 01.10.2026 gescheitert: es sah bei ZEC,
+  VVV und ADA kein `attachAlgoOrds`, uebersah die vorhandenen OCO- und
+  move_order_stop-Auftraege und stellte drei Stops doppelt — der neuere, engere
+  feuert zuerst, der Stop wurde damit unbemerkt von -8.6 % auf -2.7 % gezogen.
 
 ## Verification
 
