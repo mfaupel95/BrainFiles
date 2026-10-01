@@ -84,6 +84,56 @@ class StopImAnderenTypTest(unittest.TestCase):
         self.assertEqual([], [s for s in frueher if str(s.get("slTriggerPx") or "").strip()])
 
 
+class TrailingStopZaehltMitTest(unittest.TestCase):
+    """T-278, zweite Haelfte (gemessen 01.10.2026 an ADA).
+
+    Ein Trailing-Stop (`ordType=move_order_stop`) fuehrt KEIN slTriggerPx,
+    sondern `moveTriggerPx` + `callbackRatio`. Die erste Fassung der
+    Reparatur las nur slTriggerPx - eine Position mit ausschliesslich
+    laufendem Trailing galt damit weiter als ungeschuetzt.
+    """
+
+    # So hat die Boerse am 01.10.2026 fuer ADA geantwortet (Auszug).
+    ADA = "ADA-USD_UM_XPERP-310404"
+    TRAILING = {"algoId": "3969008620142051328", "instId": ADA,
+                "ordType": "move_order_stop", "callbackRatio": "0.05",
+                "moveTriggerPx": "0.241585", "sz": ""}
+
+    def test_move_trigger_px_gilt_als_stop(self):
+        self.assertTrue(okxf.ist_schutz_stop(self.TRAILING))
+
+    def test_sl_trigger_px_gilt_weiterhin(self):
+        self.assertTrue(okxf.ist_schutz_stop({"slTriggerPx": "1316.44"}))
+
+    def test_nackter_trigger_ist_kein_stop(self):
+        self.assertFalse(okxf.ist_schutz_stop({"ordType": "trigger",
+                                               "algoId": "2"}))
+        self.assertFalse(okxf.ist_schutz_stop({}))
+        self.assertFalse(okxf.ist_schutz_stop(None))
+
+    def test_position_mit_trailing_gilt_als_geschuetzt(self):
+        import handeln as h
+        antwort = {"conditional": [], "oco": [], "trigger": [],
+                   "move_order_stop": [dict(self.TRAILING)]}
+
+        def nur_trailing(p, signiert=False, wirft=(), antwort=None):
+            typ = p.split("ordType=")[1].split("&")[0]
+            return [dict(s) for s in antwort.get(typ, [])]
+
+        with patch.object(h.okxf, "_mit_wiederholung",
+                          side_effect=lambda p, signiert=False: nur_trailing(p)):
+            self.assertTrue(h._stop_vorhanden(self.ADA, {"instId": self.ADA}))
+
+    def test_gegenprobe_ohne_trailing_bleibt_es_bei_false(self):
+        import handeln as h
+
+        def leer(p, signiert=False):
+            return []
+
+        with patch.object(h.okxf, "_mit_wiederholung", side_effect=leer):
+            self.assertFalse(h._stop_vorhanden(self.ADA, {"instId": self.ADA}))
+
+
 class FehlerbehandlungTest(unittest.TestCase):
     def test_alles_fehlt_ohne_beweis_wirft(self):
         def kaputt(p, signiert=False):

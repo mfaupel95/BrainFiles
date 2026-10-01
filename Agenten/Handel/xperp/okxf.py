@@ -631,6 +631,26 @@ def schutz_stop_setzen(inst, seite, kontrakte, stop, ziel=None,
 # slTriggerPx gefuellt ist (ein nackter trigger kann auch ein Einstieg sein).
 ALGO_ORDTYPES = ("conditional", "oco", "move_order_stop", "trigger")
 
+# Felder, in denen OKX den Ausloesepreis eines SCHUTZ-Stops fuehrt.
+# ANLASS (T-278, zweite Haelfte, gemessen 01.10.2026): Ein Trailing-Stop
+# (`ordType=move_order_stop`) traegt KEIN slTriggerPx - er fuehrt
+# `moveTriggerPx` + `callbackRatio` (ADA-USD_UM_XPERP-310404: moveTriggerPx
+# 0.241585, callbackRatio 0.05, kein sl-Feld). Wer nur slTriggerPx liest,
+# haelt eine geschuetzte Position fuer nackt und stellt einen zweiten Stop
+# daneben - der engere feuert zuerst, der Schutz zieht sich unbemerkt zu.
+STOP_FELDER = ("slTriggerPx", "moveTriggerPx")
+
+
+def ist_schutz_stop(auftrag):
+    """Traegt dieser Auftrag (oder diese Position) einen STOP-Preis?
+
+    Ueber alle OrdTypen: conditional/oco fuehren slTriggerPx,
+    move_order_stop fuehrt moveTriggerPx. Ein nackter `trigger` (weder noch)
+    zaehlt NICHT - er kann auch ein Einstieg sein.
+    """
+    return any(str((auftrag or {}).get(f) or "").strip()
+               for f in STOP_FELDER)
+
 
 def schutz_stops(inst=None, ordtypes=ALGO_ORDTYPES):
     """Offene Algo-Auftraege an der Boerse - ueber ALLE ordTypes.

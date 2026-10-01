@@ -60,7 +60,8 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
 
 KAPUTT_GRUND = "buchbereinigung_geist"
-SPALTEN_MIN = ("zeit", "modus", "aktion", "inst", "margin_usd", "grund")
+SPALTEN_MIN = ("zeit", "modus", "aktion", "inst", "kontrakte", "margin_usd",
+               "grund")
 # Fall 2 (T-276): Toleranz der Buch-Nettorechnung gegen den Boersenwert.
 # Unter einem Dollar ist keine Geisterbuchung "falsch" - sie ist Rundung.
 ZEUG_TOLERANZ_USD = 1.00
@@ -156,7 +157,15 @@ def _kaputte_zeilen(pfad, zeuge=None):
     namen = next(csv.reader([kopf]))
     fehlend = [s for s in SPALTEN_MIN if s not in namen]
     if fehlend:
-        return kopf, zeilen, namen, [], "Spalten fehlen: %s" % ", ".join(fehlend)
+        # Ein Journal ohne diese Spalten ist nicht reparierbar - und das ist
+        # KEIN Fehler des Werkzeugs, sondern ein fremdes/altes Schema. Vorher
+        # lief die Pruefung hier durch und `namen.index("kontrakte")` fiel
+        # darunter mit ValueError um (gefunden am 01.10.2026 beim Aufraeumen
+        # des xperp-Buchs). Beide Gruende nennen dasselbe Wort, damit ein
+        # Aufrufer nur EINE Form kennen muss.
+        return kopf, zeilen, namen, [], \
+            "kein eroeffnen/schliessen-Schema (Spalten fehlen: %s)" \
+            % ", ".join(fehlend)
     i_zeit, i_akt = namen.index("zeit"), namen.index("aktion")
     i_inst, i_ktr = namen.index("inst"), namen.index("kontrakte")
     i_margin, i_grund = namen.index("margin_usd"), namen.index("grund")

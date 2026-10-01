@@ -142,6 +142,25 @@ def letzter_kurs(symbol):
     raise KrakenFuturesFehler("Symbol %s nicht in /tickers" % symbol)
 
 
+def _stellen_aus_tick(tick):
+    """Nachkommastellen aus dem tickSize - auch bei 1e-05.
+
+    ANLASS (gemessen 02.10.2026, T-282): Die alte Fassung las die Stellen aus
+    `str(tick)` und suchte einen Punkt. Kleine Werte schreibt Python aber in
+    Exponentialschreibweise - `str(1e-05)` ist "1e-05", OHNE Punkt. Ergebnis:
+    0 Stellen, und aus dem HBAR-Stop 0.090693 wurde die Zeichenkette "0". Die
+    Boerse wies die Order mit `invalidArgument` ab; die Spur kaufte und rollte
+    jeden Zyklus zurueck (echte Gebuehren, kein Einstieg).
+    Decimal kennt die Exponentialform und liefert den Exponenten direkt.
+    """
+    try:
+        from decimal import Decimal, InvalidOperation
+        exponent = Decimal(str(tick)).normalize().as_tuple().exponent
+        return max(0, -int(exponent))
+    except (ArithmeticError, InvalidOperation, TypeError, ValueError):
+        return 0
+
+
 def preis_gerundet(symbol, preis, richtung="auf"):
     """Auf tickSize runden und als Text zurueckgeben.
 
@@ -149,16 +168,23 @@ def preis_gerundet(symbol, preis, richtung="auf"):
     Notausstieg ('price can only be specified up to N decimals'). 'auf'
     rundet von der Null weg (Long-Stop nie tiefer als gerechnet), 'ab'
     zur Null hin. tickSize 1 bei PF_XBTUSD.
+
+    Ein gerundeter Preis von 0 ist ein FEHLER, keine Order: er entstuende nur
+    aus einer falsch gelesenen Stellenzahl und waere an der Boerse ungueltig.
+    Lieber laut abbrechen als eine Null senden.
     """
     tick = float(instrument(symbol).get("tickSize") or 1.0)
     if tick <= 0:
         tick = 1.0
     schritte = float(preis) / tick
     ganz = int(schritte) if richtung == "ab" else int(schritte + 0.999999999)
-    if schritte == ganz and richtung == "ab":
-        pass
-    stellen = max(0, len(str(tick).split(".")[1].rstrip("0"))) if "." in str(tick) else 0
-    return ("%%.%df" % stellen) % (ganz * tick)
+    stellen = _stellen_aus_tick(tick)
+    wert = ganz * tick
+    if wert <= 0 and float(preis) > 0:
+        raise KrakenFuturesFehler(
+            "gerundeter Preis ist 0 (Preis %r, tickSize %r) - diese Order "
+            "waere ungueltig" % (preis, tick))
+    return ("%%.%df" % stellen) % wert
 
 
 def kontrakte(symbol, menge, kurs=None):

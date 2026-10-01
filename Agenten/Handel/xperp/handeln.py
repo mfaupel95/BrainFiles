@@ -384,6 +384,7 @@ def wartende_auftraege(z, live, w, still=False):
                 kontrakte = float(stand.get("accFillSz") or a.get("kontrakte") or 0)
             except (TypeError, ValueError):
                 kontrakte = float(a.get("kontrakte") or 0)
+            fuell_zeit = _iso_aus_ms(stand.get("uTime")) or _jetzt()
             pos = {
                 "inst": a["inst"], "basis": a.get("basis", ""),
                 "seite": a.get("seite", "long"), "familie": a.get("familie", ""),
@@ -394,7 +395,13 @@ def wartende_auftraege(z, live, w, still=False):
                 "hebel": a.get("hebel", 0.0), "gebuehr_taker": a.get("gebuehr_taker"),
                 "modus": "live", "ord_id": a["ord_id"],
                 "pos_id": pos_kennung.neu(_jetzt()),
-                "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
+                # EROEFFNET wird mit der FUELLUNG der Order gebucht, nicht mit
+                # dem Moment des Abarbeitens (T-277, 01.10.2026): eine ueber
+                # Nacht gefuellte Order stand danach mit "jetzt" im Buch - die
+                # Haltedauer war zu kurz, und die Geisterpruefung fand kein
+                # Boersenergebnis mehr (sie sucht nur Schliessungen NACH dem
+                # Eroeffnen). Fehlt die Fuellzeit, bleibt es beim alten Weg.
+                "eroeffnet": fuell_zeit[:10], "eroeffnet_zeit": fuell_zeit,
                 "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
             }
             z.setdefault("positionen", []).append(pos)
@@ -435,6 +442,20 @@ def _zeit_ms(iso):
     if t.tzinfo is None:
         t = t.replace(tzinfo=timezone.utc)
     return int(t.timestamp() * 1000)
+
+
+def _iso_aus_ms(ms):
+    """Millisekunden seit Epoche -> ISO-Zeitstempel (None bei Unlesbarem).
+
+    Gegenstueck zu `_zeit_ms`. Wird gebraucht, wenn die BOERSE den Zeitpunkt
+    liefert (Fuellung einer Order, Schliessung einer Position) - die eigene
+    Uhr ist dann die falsche Quelle.
+    """
+    try:
+        return datetime.fromtimestamp(int(ms) / 1000.0,
+                                      timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
 
 
 def _geist_erloes(p):
@@ -496,8 +517,8 @@ def _minuten_seit(iso):
     return (datetime.now(timezone.utc).timestamp() * 1000 - t) / 60000.0
 
 
-def bueche_geister_aus(z, w, still=False):
-    """Positionen aus dem Buch, die an der Boerse NICHT (mehr) existieren.
+def bueche_geister_aus(z, w, still=False, stornieren=True):
+    """Positionen aus dem Buch, die an der BOERSE nicht (mehr) existieren.
 
     Anders als `bueche_papier_altlasten_aus` (die Papier-Positionen ohne
     Live-Herkunft) prueft diese Funktion gegen die BOERSE: /account/positions
@@ -511,6 +532,15 @@ def bueche_geister_aus(z, w, still=False):
 
     Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
     nicht leeren.
+
+    `stornieren=False` (Papierlauf): eine offene Order zu einem Geist wird
+    NICHT storniert. Das waere ein echter Boerseneingriff - und der Grund,
+    warum diese Funktion bis zum 01.10.2026 nur im Live-Zweig lief (T-277).
+    Die BUCHUNG selbst ist auch im Papierlauf richtig: fehlt die Position an
+    der Boerse, ist sie weg - egal, wer sie geschlossen hat. Die Gegenrichtung
+    (ein Papierlauf bucht den Verkauf einer ECHTEN Position) bleibt verboten:
+    darum prueft diese Funktion ausschliesslich gegen die Boerse und niemals
+    gegen die eigene Kursrechnung.
     """
     try:
         an_der_boerse = {p["instId"]: float(p.get("pos") or 0.0)
@@ -560,14 +590,18 @@ def bueche_geister_aus(z, w, still=False):
         # niemand einen Ausstieg im Blick. Sie traegt zwar einen
         # boersenseitigen Stop, aber ein Platz im Buch ist besser.
         if p.get("ord_id"):
-            try:
-                okxf.order_stornieren(p["inst"], p["ord_id"])
-                if not still:
-                    print("  offene Order zu %s storniert (ord_id %s)"
-                          % (p.get("inst"), str(p["ord_id"])[:14]))
-            except Exception as e:                             # noqa: BLE001
-                print("  Storno der offenen Order zu %s fehlgeschlagen: %s"
-                      % (p.get("inst"), e))
+            if stornieren:
+                try:
+                    okxf.order_stornieren(p["inst"], p["ord_id"])
+                    if not still:
+                        print("  offene Order zu %s storniert (ord_id %s)"
+                              % (p.get("inst"), str(p["ord_id"])[:14]))
+                except Exception as e:                         # noqa: BLE001
+                    print("  Storno der offenen Order zu %s fehlgeschlagen: %s"
+                          % (p.get("inst"), e))
+            elif not still:
+                print("  offene Order zu %s bleibt liegen (Papierlauf storniert "
+                      "nichts an der Boerse)" % p.get("inst"))
         erloes, quelle, anteil = _geist_erloes(p)
         if not still:
             print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
@@ -598,13 +632,18 @@ def bueche_geister_aus(z, w, still=False):
 # dieser Schwelle ist es API-Rauschen, kein Handgriff.
 _KONTRAKT_TOLERANZ = 1e-6
 
+# Ab welcher relativen Abweichung Margin/Nennwert als "Handgriff" gelten und
+# dem Boersenwert folgen. Darunter ist es Rundung (die Boersenwerte sind
+# Sekunden aktueller als das Buch).
+_WERT_TOLERANZ = 0.01
+
 # Nur die EIGENE Kontraktfamilie wird uebernommen. Alles andere am Konto
 # (Spot-Bestaende der scanner-Spur, handelsuebliche Fremdkontrakte) gehoert
 # einer anderen Spur und darf hier nicht ins Buch wandern.
 _FREMD_MUSTER = "_UM_XPERP-"
 
 
-def bueche_fremde_positionen_uebernehmen(z, w, still=False):
+def bueche_fremde_positionen_uebernehmen(z, w, still=False, schutz=True):
     """BOERSE -> BUCH: von Hand eroeffnete Positionen ins Buch holen.
 
     ANLASS (24.09.2026, gemessen): Max eroeffnet Positionen in der OKX-App;
@@ -630,6 +669,10 @@ def bueche_fremde_positionen_uebernehmen(z, w, still=False):
       * laesst sich der ATR nicht rechnen, wird NICHT gebucht (lieber ein
         gemeldeter Fremdbestand als ein erfundener Stop)
       * faellt die Boersenfrage aus, bleibt das Buch unberuehrt
+      * `schutz=False` (Papierlauf): die Position wird ins Buch geholt und
+        im Journal vermerkt, aber KEIN Stop gestellt - eine Order ist ein
+        echter Boerseneingriff. Die Zeile sagt dann, dass der Schutz im
+        naechsten Live-Lauf gesetzt wird.
     """
     try:
         roh = okxf.positionen()
@@ -709,8 +752,10 @@ def bueche_fremde_positionen_uebernehmen(z, w, still=False):
                  "-> ins Buch,", stop, ziel, pos["familie"] or "unbekannt"))
         print("    Stop an der Boerse: %s"
               % ("schon vorhanden" if geschuetzt else
-                 ("wird gestellt" if not still else "fehlt - wuerde gestellt")))
-        if not geschuetzt and not still:
+                 ("wird gestellt" if (not still and schutz) else
+                  ("fehlt - Order setzt nur der Live-Lauf (Werkzeug stopdeckung.py)"
+                   if not schutz else "fehlt - wuerde gestellt"))))
+        if not geschuetzt and not still and schutz:
             try:
                 okxf.schutz_stop_setzen(inst, seite, kontrakte, stop, ziel)
                 print("    Schutz-Stop gestellt (%s)" % inst)
@@ -749,15 +794,21 @@ def _stop_vorhanden(inst, roh_pos):
 
     Zwei Wege, weil OKX zwei Bauarten kennt: ein Stop direkt an der Position
     (Feld slTriggerPx in /account/positions) oder ein bedingter Auftrag mit
-    gefuelltem slTriggerPx. Ein angehaengter Stop (attachAlgoOrds einer
+    gefuelltem Stop-Preis. Ein angehaengter Stop (attachAlgoOrds einer
     gefuellten Order) erscheint in KEINER der beiden Listen - deshalb zaehlt
     auch das Positionsfeld.
+
+    WELCHER Preis ein Stop ist, entscheidet `okxf.ist_schutz_stop` - nicht
+    dieses Werkzeug. Grund (T-278, gemessen 01.10.2026): ein Trailing-Stop
+    (`ordType=move_order_stop`) fuehrt `moveTriggerPx` und KEIN slTriggerPx;
+    eine Pruefung nur auf slTriggerPx meldete fuer ADA "Stop fehlt" und
+    stellte einen zweiten Stop neben den laufenden.
     """
-    if str(roh_pos.get("slTriggerPx") or "").strip():
+    if okxf.ist_schutz_stop(roh_pos):
         return True
     try:
         for s in okxf.schutz_stops(inst) or []:
-            if str(s.get("slTriggerPx") or "").strip():
+            if okxf.ist_schutz_stop(s):
                 return True
     except Exception:                                          # noqa: BLE001
         return True                        # im Zweifel keinen zweiten Stop stellen
@@ -790,8 +841,8 @@ def bueche_groessen_abgleichen(z, w, still=False):
     erledigt die Geisterpruefung.
     """
     try:
-        an_der_boerse = {p["instId"]: float(p.get("pos") or 0.0)
-                         for p in okxf.positionen()}
+        roh = {p["instId"]: p for p in okxf.positionen()}
+        an_der_boerse = {k: float(v.get("pos") or 0.0) for k, v in roh.items()}
     except Exception as e:                                     # noqa: BLE001
         print("  Groessenabgleich uebersprungen (%s) - Buch bleibt unberuehrt"
               % e)
@@ -802,28 +853,110 @@ def bueche_groessen_abgleichen(z, w, still=False):
             continue
         soll = abs(float(p.get("kontrakte") or 0.0))
         ist = abs(an_der_boerse[p["inst"]])
-        if soll <= 0 or abs(ist - soll) <= _KONTRAKT_TOLERANZ:
+        grosse = soll > 0 and abs(ist - soll) > _KONTRAKT_TOLERANZ
+        faktor = (ist / soll) if (grosse and soll > 0) else 1.0
+        # Margin und Nennwert nennt die BOERSE SELBST (Felder margin und
+        # notionalUsd der Position). Sie sind genauer als eine Verhaeltnis-
+        # rechnung auf einem Buchwert, der aus einer alten Groesse stammt:
+        # gemessen am 01.10.2026 schrieb die Verhaeltnisrechnung fuer ZEC
+        # 298.02 USD ins Buch, waehrend an der Boerse 238.45 gebunden waren -
+        # und an diesen Zahlen haengt die Anzeige "gebunden von ...".
+        # Deshalb folgen sie der Boerse auch dann, wenn die Kontraktzahl schon
+        # stimmt (eine Hand kann nur nominell geaendert haben). Fehlt das Feld,
+        # bleibt es beim Verhaeltnis (alte Boersenformen).
+        werte = False
+        geaendert = []
+        for feld, schluessel in (("nominal", "notionalUsd"), ("margin", "margin")):
+            if p.get(feld) is None:
+                continue
+            try:
+                wert = float((roh.get(p["inst"]) or {}).get(schluessel) or 0.0)
+            except (TypeError, ValueError):
+                wert = 0.0
+            alt = float(p[feld] or 0.0)
+            if wert > 0:
+                neu = wert
+            elif grosse:
+                neu = alt * faktor
+            else:
+                continue
+            if alt > 0 and abs(neu - alt) / alt <= _WERT_TOLERANZ:
+                continue                     # Rundung, kein Handgriff
+            p[feld] = round(neu, 4)
+            geaendert.append((feld, alt, round(neu, 4)))
+            werte = True
+        if not (grosse or werte):
             continue
-        faktor = ist / soll
-        for feld in ("nominal", "margin"):
-            if p.get(feld) is not None:
-                p[feld] = round(float(p[feld]) * faktor, 4)
-        p["kontrakte"] = ist
-        abweichungen.append({"inst": p["inst"], "buch": soll, "boerse": ist})
+        if grosse:
+            p["kontrakte"] = ist
+            abweichungen.append({"inst": p["inst"], "buch": soll, "boerse": ist})
         if not still:
-            print("  Groessenabgleich %s: Buch %.4f -> Boerse %.4f Kontrakte%s"
-                  % (p["inst"], soll, ist,
-                     "  (Handgriff: aufgestockt)"
-                     if faktor > 1 else "  (Handgriff: teilweise geschlossen)"))
+            if grosse:
+                print("  Groessenabgleich %s: Buch %.4f -> Boerse %.4f Kontrakte%s"
+                      % (p["inst"], soll, ist,
+                         "  (Handgriff: aufgestockt)"
+                         if faktor > 1 else "  (Handgriff: teilweise geschlossen)"))
+            if not grosse and geaendert:
+                print("  Werteabgleich %s: %s (Boersenwerte)"
+                      % (p["inst"], ", ".join(
+                          "%s %.2f -> %.2f" % (f, a, n) for f, a, n in geaendert)))
         journal(zeit=_jetzt(), modus="live", aktion="anpassen",
                 inst=p.get("inst", ""),
                 pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
                 familie=p.get("familie", ""),
-                kontrakte="%.4f" % ist,
+                kontrakte="%.4f" % float(p.get("kontrakte") or 0.0),
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
                 margin_usd="%.2f" % (p.get("margin") or 0.0),
                 hebel=p.get("hebel", ""), grund="handanpassung")
     return abweichungen
+
+
+def buche_abgleich(z, w, live, still=False):
+    """Buch gegen BOERSE - in JEDEM Zyklus, nicht nur im Live-Lauf (T-277).
+
+    ANLASS (gemessen 01.10.2026): xperp lief seit dem 29.09.2026 12:00 Papier.
+    Alle vier Abgleichsfunktionen standen aber im `if live:`-Zweig - ein
+    HANDGRIFF in der App (XRP von 704 auf 0, ADA 235 auf 0, VVV 217 auf 0,
+    ZEC von 38 auf 145) erreichte das Buch nie. Es fuehrte vier Positionen und
+    zwei wartende Auftraege, waehrend an der Boerse EINE Position stand. Der
+    Abgleich ist keine Handelsentscheidung, sondern Buchhaltung - er gehoert
+    in jeden Zyklus. Wer ihn nur live laufen laesst, baut ein Buch, das genau
+    dann veraltet, wenn die Spur pausiert.
+
+    Was hier NICHT passiert (die Grenze, die den Papierlauf sicher macht):
+      * keine Order. `schutz=False` stellt keinen Stop, `stornieren=False`
+        storniert nichts an der Boerse.
+      * kein Ausstieg auf eigene Rechnung: geprueft wird gegen
+        /account/positions, nie gegen die eigene Kursrechnung. Eine Position
+        wird nur ausgebucht, wenn die BOERSE sagt, dass sie weg ist.
+      * faellt eine Abfrage aus, bleibt das Buch unberuehrt (jede der drei
+        Funktionen kehrt bei einem Netzfehler ohne Aenderung zurueck).
+
+    Reihenfolge ist Absicht: erst die wartenden Auftraege (aus einem gefuellten
+    Auftrag wird eine Position), dann die Geister (eine soeben gebuchte
+    Position, die an der Boerse schon wieder weg ist, wird in DEMSELBEN Zyklus
+    mit dem Boersenergebnis ausgebucht), dann die Fremdpositionen, zuletzt die
+    Groesse.
+    """
+    stand = {"wartende": 0, "geister": 0, "fremde": 0, "groessen": 0}
+    stand["wartende"] = wartende_auftraege(z, live, w, still=still)
+    if stand["wartende"] and not still:
+        print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht"
+              % stand["wartende"])
+    stand["geister"] = bueche_geister_aus(z, w, still=still, stornieren=live)
+    if stand["geister"] and not still:
+        print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
+              "der Boerse)" % stand["geister"])
+    stand["fremde"] = bueche_fremde_positionen_uebernehmen(z, w, still=still,
+                                                           schutz=live)
+    if stand["fremde"] and not still:
+        print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
+              % stand["fremde"])
+    stand["groessen"] = len(bueche_groessen_abgleichen(z, w, still=still))
+    if stand["groessen"] and not still:
+        print("  %d Position(en) auf die Boersengroesse gezogen"
+              % stand["groessen"])
+    return stand
 
 
 def pruefe_ausstiege(z, live, w):
@@ -1382,36 +1515,14 @@ def lauf(modus):
         n_alt = bueche_papier_altlasten_aus(z, w, still=False)
         if n_alt:
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
-        # Danach gegen die Boerse pruefen: Papier-Altlasten sind EINE Ursache
-        # fuer ein falsches Buch, eine nie gefuellte Order die andere.
-        # Erst die wartenden Auftraege abarbeiten: ein Auftrag, der ueber
-        # Nacht gefuellt hat, ist eine Position - und die gehoert ins Buch,
-        # BEVOR neue Einstiege geplant werden (sie belegt sonst keinen Platz).
-        n_neu = wartende_auftraege(z, live, w, still=False)
-        if n_neu:
-            print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht" % n_neu)
-        n_geist = bueche_geister_aus(z, w, still=False)
-        if n_geist:
-            print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
-                  "der Boerse)" % n_geist)
-        # Die GEGENrichtung (24.09.2026): Positionen, die in der App von Hand
-        # entstanden sind, fehlen im Buch - sie belegen Margin, haben keinen
-        # Buchplatz und keine Ausstiegslogik. Gemessen am 23.09.2026 mit BZ
-        # (1467 Kontrakte) und CL (133). Muss VOR den Einstiegen laufen, sonst
-        # zaehlt der Platz nicht und der naechste Zyklus legt nach.
-        n_fremd = bueche_fremde_positionen_uebernehmen(z, w, still=False)
-        if n_fremd:
-            print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
-                  % n_fremd)
-        # Dann die GROESSE: ein Handgriff aendert die Kontraktzahl, ohne dass
-        # eine Position verschwindet (Max, 22.09.2026). Muss VOR den Ausstiegen
-        # laufen, sonst schliesst die Spur nur ihren Buchteil und laesst den
-        # Rest unbewacht an der Boerse stehen.
-        n_groesse = bueche_groessen_abgleichen(z, w, still=False)
-        if n_groesse:
-            print("  %d Position(en) auf die Boersengroesse gezogen"
-                  % len(n_groesse))
-
+    # BUCH GEGEN BOERSE - in JEDEM Zyklus (T-277, 01.10.2026).
+    # Vorher standen diese vier Schritte im `if live:`-Zweig. Folge: solange
+    # xperp Papier lief (seit 29.09.2026 12:00), erreichte kein Handgriff aus
+    # der App das Buch - es fuehrte vier Positionen und zwei wartende
+    # Auftraege, waehrend an der Boerse EINE stand. Der Abgleich ist
+    # Buchhaltung, keine Handelsentscheidung; im Papierlauf stellt er keinen
+    # Stop und storniert nichts (siehe buche_abgleich).
+    buche_abgleich(z, w, live, still=False)
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"

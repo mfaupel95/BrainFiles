@@ -235,6 +235,34 @@ class RechnenTest(unittest.TestCase):
         with patch.object(kf, "instrument", return_value={"tickSize": 0.5}):
             self.assertEqual(kf.preis_gerundet("PF_NEARUSD", 4.6), "5.0")
 
+    def test_kleiner_tick_in_exponentialschreibweise(self):
+        """T-282: tickSize 1e-05 wurde als 0 Stellen gelesen -> Stop '0'.
+
+        Gemessen 02.10.2026 an PF_HBARUSD: der Stop 0.090693 kam als "0" bei
+        der Boerse an (invalidArgument), die Spur kaufte und rollte jeden
+        Zyklus zurueck.
+        """
+        with patch.object(kf, "instrument", return_value={"tickSize": 1e-05}):
+            self.assertEqual(kf.preis_gerundet("PF_HBARUSD", 0.090693),
+                             "0.09070")
+            self.assertEqual(kf.preis_gerundet("PF_DOGEUSD", 0.123456, "ab"),
+                             "0.12345")
+        with patch.object(kf, "instrument", return_value={"tickSize": 0.0001}):
+            self.assertEqual(kf.preis_gerundet("PF_ONDOUSD", 0.431904),
+                             "0.4320")
+
+    def test_gerundeter_preis_null_ist_ein_fehler(self):
+        """Lieber laut abbrechen als eine ungueltige Null senden."""
+        with patch.object(kf, "instrument", return_value={"tickSize": 1}):
+            # "ab" rundet zur Null hin - und genau da darf keine Order raus.
+            with self.assertRaises(kf.KrakenFuturesFehler):
+                kf.preis_gerundet("PF_XBTUSD", 0.4, "ab")
+
+    def test_stellen_aus_tick(self):
+        for tick, stellen in ((1, 0), (0.5, 1), (0.01, 2), (0.0001, 4),
+                              (1e-05, 5), (1e-08, 8)):
+            self.assertEqual(kf._stellen_aus_tick(tick), stellen, tick)
+
 
 class OrderformTest(unittest.TestCase):
     """Die FORM der Order - hier entscheidet sich, ob es ein Ausstieg ist."""

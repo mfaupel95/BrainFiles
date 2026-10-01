@@ -269,7 +269,14 @@ class WachenZeigtLiveGrenzenTest(unittest.TestCase):
 
 
 class EchteWachenTest(unittest.TestCase):
-    """Die ausgelieferte wachen.json muss zum Live-Zweig passen."""
+    """Die ausgelieferte wachen.json muss zum Live-Zweig passen.
+
+    Was hier NICHT geprueft wird: OB die beiden Haken gesetzt sind. Das ist
+    Max' Entscheidung (am 01.10.2026: 'auto freigabe erlaubt' -> beide an) und
+    kein Fehler. Ein Test, der den Zustand einfriert, wird bei jeder Entscheidung
+    rot statt bei einem Fehler. Die REGEL - scharf nur mit BEIDEN Haken - prueft
+    `test_scharf_nur_mit_beiden_haken` mit einer Wachen-Kopie.
+    """
 
     def test_hebel_und_live_grenzen_stehen_in_der_datei(self):
         with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
@@ -279,13 +286,36 @@ class EchteWachenTest(unittest.TestCase):
         self.assertEqual(50, w.get("live_einsatz_usd"))
         self.assertEqual(1, w.get("live_max_offene_positionen"))
         self.assertIn("freigabe", w)
-        self.assertIs(False, w["freigabe"]["erfuellt"])
+        # Haken sind Haken: boolesch, und der Code verlangt BEIDE.
+        self.assertIsInstance(w.get("handel_erlaubt"), bool)
+        self.assertIsInstance(w["freigabe"].get("erfuellt"), bool)
 
-    def test_nichts_ist_scharf(self):
+    def test_scharf_nur_mit_beiden_haken(self):
+        """Regel statt Zustand: fehlt EINER der Haken, nennt die Kette ihn."""
         with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as f:
-            w = json.load(f)
-        self.assertIs(False, w.get("handel_erlaubt"))
-        self.assertIs(False, w["freigabe"]["erfuellt"])
+            echt = json.load(f)
+        for schalter, haken in ((False, False), (True, False), (False, True),
+                                (True, True)):
+            kopie = dict(echt, handel_erlaubt=schalter,
+                         freigabe=dict(echt["freigabe"], erfuellt=haken))
+            alt = (lp.sitzung_da, lp.zeitfenster_offen, kp.schluessel_vorhanden,
+                   kp.guthaben_usd, kp.demo_modus)
+            lp.sitzung_da = lambda: False
+            lp.zeitfenster_offen = lambda: True
+            kp.schluessel_vorhanden = lambda: True
+            kp.guthaben_usd = lambda: 1000.0
+            kp.demo_modus = lambda: False
+            try:
+                g = lp.live_sperren(kopie, {})
+            finally:
+                (lp.sitzung_da, lp.zeitfenster_offen, kp.schluessel_vorhanden,
+                 kp.guthaben_usd, kp.demo_modus) = alt
+            if not schalter:
+                self.assertTrue(any("handel_erlaubt=false" in x for x in g), g)
+            if not haken:
+                self.assertTrue(any("freigabe.erfuellt=false" in x for x in g), g)
+            if schalter and haken:
+                self.assertEqual([], g, g)
 
 
 if __name__ == "__main__":
