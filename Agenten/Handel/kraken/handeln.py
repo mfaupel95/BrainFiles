@@ -647,6 +647,13 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
 
         kauf_txid = stop_txid = None
         stop_fehlt = False
+        # Ein Papierkauf hat keine Boersenfuellung - hier gilt die bestellte
+        # Menge als bestaetigt. Ohne diese Vorbelegung wirft der Buchungssatz
+        # unten UnboundLocalError, sobald der Papierzweig laeuft: `gefuellt`
+        # und `fuellung_bestaetigt` entstanden bis zum 01.10.2026 nur im
+        # Live-Zweig (eingeschleppt mit der pos_id-Paarung, c8cc154). Gefunden
+        # von kraken/tests/test_handeln_papier.Gebuehr und test_quote.
+        gefuellt, fuellung_bestaetigt = menge, True
         if live:
             beleg = _beleg_zur_order(v["inst"], menge, v["einstieg"],
                                      v["stop"], v["ziel"])
@@ -849,7 +856,9 @@ def zeige_wachen(w):
     print("  5 Rollierender EV        %s%s"
           % ("n/a (zu wenig Runden)" if s["rollierender_ev"] is None
              else "%+.3f EUR/Runde" % s["rollierender_ev"],
-             "   >>> NEGATIV" if s["ev_negativ"] else ""))
+             "" if not s["ev_negativ"] else
+             ("   >>> NEGATIV" if bedingung_5_gilt(w)
+              else "   >>> NEGATIV, Sperre ausgesetzt (Max 01.10.2026)")))
     print("  + Guthaben               %s"
           % _guthaben_text(w))
     print()
@@ -857,8 +866,9 @@ def zeige_wachen(w):
     if s["kill"] and wp.sperre_zu("Bedingung 2 (Wochenlauf): Ruecklauf %.2f EUR >= Kill-Switch"
                                   % s["ruecklauf_eur"]):
         print("  -> Bedingung 2: handel_erlaubt auf false gesetzt.")
-    if s["ev_negativ"] and wp.sperre_zu("Bedingung 5 (Wochenlauf): rollierender EV %.3f EUR < 0"
-                                        % s["rollierender_ev"]):
+    if s["ev_negativ"] and bedingung_5_gilt(w) and wp.sperre_zu(
+            "Bedingung 5 (Wochenlauf): rollierender EV %.3f EUR < 0"
+            % s["rollierender_ev"]):
         print("  -> Bedingung 5: handel_erlaubt auf false gesetzt.")
 
 
@@ -874,6 +884,18 @@ def _guthaben_text(w):
 
 
 # --- Hauptlauf ---------------------------------------------------------------
+
+def bedingung_5_gilt(w):
+    """Gilt die EV-Sperre (Bedingung 5) fuer diese Spur?
+
+    Vorgabe JA - das Feld muss ausdruecklich auf false stehen, damit die Sperre
+    faellt. Wer sie aussetzt, schreibt das mit Datum und Grund in die
+    wachen.json (`_bedingung_5_entfaellt`); dieses Feld ist nur der Schalter.
+    Ein stillschweigend dauerhaft negatives Kriterium waere schlimmer als
+    keines: es sperrt die Spur, ohne dass jemand die Entscheidung sieht.
+    """
+    return (w or {}).get("bedingung_5_aktiv", True) is not False
+
 
 def live_sperren(w, s):
     """Alle Gruende, die diesen Lauf auf Papier zurueckwerfen. Leere Liste
@@ -896,7 +918,7 @@ def live_sperren(w, s):
         gruende.append("freigabe.erfuellt=false (Bedingung 1)")
     if not s["herzschlag_frisch"]:
         gruende.append("Herzschlag alt (Bedingung 3)")
-    if s["ev_negativ"]:
+    if s["ev_negativ"] and bedingung_5_gilt(w):
         gruende.append("rollierender EV %.3f EUR < 0 (Bedingung 5)"
                        % s["rollierender_ev"])
     if not w.get("journal_zweitziel"):
