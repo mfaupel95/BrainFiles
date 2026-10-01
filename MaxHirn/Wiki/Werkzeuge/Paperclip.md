@@ -117,6 +117,38 @@ nicht am Log. Erst danach `Server startup recovery complete on 127.0.0.1:3100`.
 Es gibt also keinen Autostart und kein `service install` — nach einem Neustart
 läuft der Server erst wieder, wenn `paperclipai run` erneut gestartet wird.
 
+## Umgebungstest: „The environment test failed" (01.10.2026)
+
+Beim Anlegen des ersten Agenten (Adapter `claude_local`, Verbindung „local") scheiterte der
+Umgebungstest. Im Serverlog standen zwei Zeilen:
+
+```
+[paperclip] Claude ACP login probe did not complete { classification: 'nonzero_exit', exitCode: 1 }
+[paperclip] Claude CLI hello probe failed { classification: 'nonzero_exit', exitCode: 1 }
+```
+
+Ursache, gemessen: Paperclip löst den Befehl `claude` mit `PATH`/`PATHEXT` des
+Server-Prozesses auf (`probe-env.resolveTrustedExecutable`) — auf diesem Rechner war das
+`C:\Users\faupe\AppData\Roaming\npm\claude.CMD`, das npm-Shim. Ein `.CMD`/`.BAT` lässt sich
+mit `child_process.spawn` **ohne `shell:true` nicht starten**: Node wirft `EINVAL`, das Kind
+startet nie, und Paperclip deutet das als „nonzero_exit". Gegenprobe in einem eigenen
+Node-Skript: `spawnSync('.../claude.CMD', ['--version'], {shell:false})` → `status=null,
+error=EINVAL`; dieselbe Datei mit `shell:true` → läuft.
+
+Behoben mit der **nativen Fassung**: `claude install stable` legt
+`C:\Users\faupe\.local\bin\claude.exe` ab (243 MB, 2.1.285). `~/.local/bin` steht in der
+PATH **vor** `AppData\Roaming\npm`, und die Auflösung probiert `.EXE` vor `.CMD` — die Sonde
+findet jetzt die .exe. Gegenprobe mit dem Minimal-Env, das Paperclip baut (nur `PATH`):
+`claude.exe --print - --output-format stream-json --verbose --dangerously-skip-permissions`
+mit Eingabe `Respond with hello.` → `status=0`, `result: "Hallo!"`.
+
+**Merksatz:** jedes npm-Shim (`.cmd`) ist für Paperclips Sonden unbrauchbar — das gilt auch
+für die anderen lokalen Adapter (codex, cursor, gemini, grok), wenn deren CLI nur als
+npm-Shim vorliegt. Und: eine Antwort „Hallo!" statt „hello" ist nur eine Warnung
+(`claude_hello_probe_unexpected_output`); blockiert wird ausschließlich bei `status: fail`
+oder bei der Prüfung `adapter_auth_missing` — die UI-Regel ist
+`sH = status==="fail" || checks.some(c => c.code==="adapter_auth_missing")`.
+
 ## Was hier noch offen ist
 
 - **Keine Identität.** Der Server läuft, aber die CLI hat noch keine
