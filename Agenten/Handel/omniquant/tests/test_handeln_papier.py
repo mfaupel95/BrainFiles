@@ -457,14 +457,23 @@ class StatistikTest(Basis):
 
 
 class SperrenTest(Basis):
-    def test_live_verweigert_ohne_freigabefenster_wort(self):
+    def test_live_nennt_das_freigabefenster_als_eigenen_grund(self):
+        """Der Vertrag hat sich am 01.10.2026 umgedreht.
+
+        Frueher galt: das Wort "Freigabefenster" darf NICHT vorkommen - die
+        Spur hatte keinen Orderpfad, eine Anfrage haette nichts oeffnen
+        koennen. Mit dem Orderweg (Kraken Futures) ist das Fenster ein ECHTER
+        Grund. Es muss ein EIGENER Grund sein, sonst findet
+        `dauerlauf.nur_fenster_fehlt()` nichts.
+        """
         z = h.lade_zustand()
         w = h.lade_wachen()
         g = h.sperren_live(w, z)
         self.assertTrue(g)
-        # Das entscheidende Wort darf nicht vorkommen, sonst wuerde der
-        # Dauerlauf eine Freigabe anfragen, die nichts oeffnen kann.
-        self.assertNotIn("Freigabefenster", "; ".join(g))
+        fenster = [x for x in g if "Freigabefenster" in x]
+        self.assertEqual(1, len(fenster), g)
+        # Der Satz nennt nur das Fenster, keine zweite Ursache.
+        self.assertIn("keine Sitzung am Bildschirm", fenster[0])
 
     def test_kill_switch_bei_verlustgrenze(self):
         z = h.lade_zustand()
@@ -510,7 +519,10 @@ class VorschauTest(Basis):
             h.lauf("vorschau")
         out = buf.getvalue()
         self.assertIn("Live waere gesperrt durch:", out)
-        self.assertNotIn("Freigabefenster", out)
+        # Der Fenstergrund darf hier stehen (seit 01.10.2026 ist das der
+        # Vertrag); der Schalter muss aber genannt sein, sonst liest die
+        # naechste Sitzung den Text als "handelbar".
+        self.assertIn("handel_erlaubt=false", out)
 
 
 class ZustandsformTest(Basis):

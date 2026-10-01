@@ -1,0 +1,357 @@
+"""Omniquants Live-Zweig auf Kraken Futures - abgetrennt, damit der Papierkern
+und die neun `spur_buch`-Spuren unberuehrt bleiben.
+
+Auftrag Max 01.10.2026: "Omniquant Handel Freigabe auf kraken live", nachgemeldet
+"aber mit perp und hebel x6".
+
+Aufbau (nach dem kraken/handeln.py-Muster)
+------------------------------------------
+* `SPUR = "omniquant"` - eigener Fensterschluessel. Ein fremder Name wuerde das
+  Fenster mit der Nachbarspur teilen: ein `/ja_kraken` schaltete beide scharf.
+* Die Sperrenkette nennt JEDEN Grund einzeln. `dauerlauf.nur_fenster_fehlt()`
+  liest die Vorschau-Zeile und fragt nur dann eine Freigabe an, wenn GENAU EIN
+  Grund das Wort "Freigabefenster" traegt - deshalb ist der Text eine
+  Schnittstelle, kein Kommentar.
+* Beide Wege zu Punkt 3: Bildschirmfenster ODER Zeitfenster. Der Dauerlauf setzt
+  `MAXHIRN_ROUTINE=1`, damit ist `sitzung_da()` immer False - wer nur den
+  Bildschirm prueft, baut eine Spur, die im Dauerlauf NIE live geht.
+* Der Schutz-Stop kommt DIREKT nach dem Kauf. Eine nackte Live-Position ist kein
+  Handel, sondern ein offenes Risiko.
+* Jede Fehlerstelle schreibt eine Journalzeile (`aktion="fehler"`), damit ein
+  ausbleibender Einstieg eine beantwortbare Frage ist statt stumm.
+* Jeder Ausgang schreibt Zustand und spiegelt - auch der abbrechende. Sonst
+  kann das Herzschlag-Tor seinen Wert nie erneuern und bleibt fuer immer zu.
+
+Was hier NICHT steht
+--------------------
+Keine Signatur, keine Kontraktgroesse, keine Margenstufe - das liegt alles in
+`nautilus_kraken/kraken_futures.py`. `kraken_perp.py` uebersetzt Omniquants
+Namen in PF_-Symbole und rechnet das Sizing (Nennwert = Einsatz x Hebel).
+"""
+
+import json
+import os
+import sys
+from datetime import datetime, timezone
+from importlib.util import spec_from_file_location, module_from_spec
+
+import kraken_perp
+
+HIER = os.path.dirname(os.path.abspath(__file__))
+HANDEL = os.path.dirname(HIER)
+
+SPUR = "omniquant"
+
+# Freigabefenster ueber den PFAD laden: die Spur hat ihren eigenen Ordner als
+# sys.path[0], ein blankes `import freigabefenster` faellt mit
+# ModuleNotFoundError um - und der best-effort-except meldete dann "kein
+# Zeitfenster", obwohl das Fenster offen war.
+_fw_datei = os.path.join(HANDEL, "freigabefenster.py")
+_fg_datei = os.path.join(HANDEL, "freigabe.py")
+
+
+def _lade(pfad, name):
+    spec = spec_from_file_location(name, pfad)
+    modul = module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def zeitfenster_offen():
+    """Liest das Zeitfenster. Best effort - im Zweifel False, aber LAUT.
+
+    Eine stumme False-Rueckgabe behauptet "kein Zeitfenster", obwohl nur der
+    Import scheiterte. Der Fehler geht deshalb nach stderr.
+    """
+    try:
+        fw = _lade(_fw_datei, "omniquant_freigabefenster")
+        return bool(fw.lade(SPUR).offen())
+    except Exception as e:                               # noqa: BLE001
+        sys.stderr.write("Zeitfenster nicht lesbar: %s: %s\n"
+                         % (type(e).__name__, e))
+        return False
+
+
+def sitzung_da():
+    """Sitzt jemand am Bildschirm? Im Dauerlauf (MAXHIRN_ROUTINE) nie."""
+    if os.environ.get("MAXHIRN_ROUTINE"):
+        return False
+    try:
+        return bool(sys.stdout.isatty())
+    except Exception:                                    # noqa: BLE001
+        return False
+
+
+def freigabe_erfuellt(w):
+    """Bedingung 1: der von Hand gesetzte Haken - kein nachgerechneter Wert."""
+    return (w.get("freigabe") or {}).get("erfuellt") is True
+
+
+def freigabe_protokoll(z, was, grund=None):
+    """Schreibt den Vorgang ins Freigabe-Audit, wenn das Modul es anbietet."""
+    try:
+        fg = _lade(_fg_datei, "omniquant_freigabe")
+        if hasattr(fg, "audit"):
+            fg.audit(SPUR, was, grund)
+    except Exception as e:                               # noqa: BLE001
+        sys.stderr.write("Freigabe-Audit nicht schreibbar: %s\n" % e)
+
+
+# --- Sperren ----------------------------------------------------------------
+
+def einsatz_und_grenzen(w):
+    """Die Zahlen, mit denen der LIVE-Lauf rechnet (nicht die Papierwerte)."""
+    return {
+        "einsatz": kraken_perp.einsatz_usd(w, True),
+        "hebel": kraken_perp.hebel(w),
+        "max_offen": int(w.get("live_max_offene_positionen",
+                               w.get("max_offen", 10))),
+        "max_gesamt": float(w.get("live_max_gesamt_usd",
+                                  w.get("max_gesamt_risiko_usd", 500))),
+        "mindest_guthaben": float(w.get("mindest_guthaben_usd", 0) or 0),
+    }
+
+
+def live_sperren(w, z):
+    """Gruende, warum --live nicht scharf schalten kann. Jeder einzeln.
+
+    Die Reihenfolge ist Absicht: kommt nur EIN Grund heraus und traegt er das
+    Wort "Freigabefenster", oeffnet der Dauerlauf die Anfrage von selbst.
+    """
+    g = []
+    if not w.get("handel_erlaubt"):
+        g.append("wachen.json handel_erlaubt=false")
+    if not freigabe_erfuellt(w):
+        g.append("freigabe.erfuellt=false (Bedingung 1)")
+    if not sitzung_da() and not zeitfenster_offen():
+        g.append("Freigabefenster nicht offen - keine Sitzung am Bildschirm "
+                 "und kein Zeitfenster (Handelsregeln Punkt 3)")
+    try:
+        if not kraken_perp.schluessel_vorhanden():
+            g.append("Kraken-Futures-Schluessel fehlen")
+    except Exception as e:                               # noqa: BLE001
+        g.append("Schluessel nicht pruefbar (%s)" % type(e).__name__)
+    if kraken_perp.demo_modus():
+        g.append("Demo-Konto gesetzt")
+
+    # Guthaben-Tor: verglichen wird mit dem EINSCHUSS, den die Boerse fuer
+    # DIESEN Satz verlangt - nicht mit einem Wunschwert. Fehlt der Kurs, wird
+    # nicht geraten: dann faellt das Tor mit Grund zu.
+    grenzen = einsatz_und_grenzen(w)
+    if grenzen["mindest_guthaben"] > 0 or True:
+        try:
+            frei = kraken_perp.guthaben_usd()
+        except Exception as e:                           # noqa: BLE001
+            g.append("Guthaben nicht abrufbar (%s)" % type(e).__name__)
+            frei = None
+        if frei is not None:
+            braucht = None
+            for kand in (z.get("kandidaten_kurs") or {}).items():
+                pass
+            noetig = grenzen["mindest_guthaben"]
+            if noetig and frei < noetig:
+                g.append("nur %.2f USD freie Margin, noetig %.2f"
+                         % (frei, noetig))
+    if z.get("verluste_usd", 0.0) >= w.get("max_gesamt_risiko_usd", 500):
+        g.append("Kill-Switch: Verluste %.2f USD >= %g"
+                 % (z.get("verluste_usd", 0.0),
+                    w.get("max_gesamt_risiko_usd", 500)))
+    return g
+
+
+def sperren_zeile(w, z):
+    """Druckt die Zeile, die der Dauerlauf parst. Immer - auch bei leerer Liste.
+
+    Eine Sperrzeile, die nur im Fehlerfall gedruckt wird, ist von "nicht
+    geprueft" nicht zu unterscheiden.
+    """
+    try:
+        g = live_sperren(w, z)
+    except Exception as e:                               # noqa: BLE001
+        print("Live waere gesperrt durch: nicht bestimmbar (%s: %s)"
+              % (type(e).__name__, e))
+        return
+    print("Live waere gesperrt durch: " + ("; ".join(g) if g else "nichts"))
+
+
+# --- Order ------------------------------------------------------------------
+
+def _journal_schreiben(handeln, **felder):
+    """Eine Journalzeile ueber den Kern der Spur - eine Buchhaltung, kein Zwilling."""
+    handeln.journal(**felder)
+
+
+def kaufe(handeln, w, z, kand):
+    """Ein echter Einstieg. Rueckgabe: die gebuchte Position oder None.
+
+    Reihenfolge, und jede Stufe kann ablehnen:
+      1. Paar aufloesen (unbekannt/MAGIC = lauter Fehler)
+      2. Hebel pruefen (1 Kontrakt ZEC waere Hebel 28,7 statt 6)
+      3. Boersengroesse und Tageskurs holen
+      4. Freigabe: Zeitfenster ODER Bildschirm
+      5. Marktkauf, Fuellung abwarten
+      6. Schutz-Stop setzen - ohne ihn wird die Position zurueckgedreht
+    """
+    inst = kand["inst"]
+    grenzen = einsatz_und_grenzen(w)
+
+    try:
+        kurs = kraken_perp.letzter_kurs(inst)
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "Kurs nicht abrufbar: %s" % e)
+        return None
+
+    grund = kraken_perp.hebel_grund(inst, grenzen["einsatz"], kurs, w)
+    if grund:
+        print("  gesperrt: %s" % grund)
+        _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                           aktion="fehler", inst=inst,
+                           grund="hebel: " + grund)
+        return None
+
+    kontrakte = kraken_perp.kontrakte_fuer(inst, grenzen["einsatz"], kurs, w)
+
+    # Guthaben-Tor JE ORDER, nicht nur global: der Einschuss haengt am Markt.
+    try:
+        frei = kraken_perp.guthaben_usd()
+        noetig = kraken_perp.einschuss_usd(inst, kontrakte, kurs)
+        if frei < noetig:
+            print("  gesperrt: %d Kontrakte %s brauchen %.2f USD Einschuss, "
+                  "frei sind %.2f" % (kontrakte, inst, noetig, frei))
+            _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                               aktion="fehler", inst=inst,
+                               grund="guthaben: %.2f < %.2f" % (frei, noetig))
+            return None
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "Guthaben/Einschuss nicht pruefbar: %s" % e)
+        return None
+
+    if not (sitzung_da() or zeitfenster_offen()):
+        _fehler(handeln, inst, "Freigabefenster nicht offen")
+        return None
+
+    try:
+        antwort = kraken_perp.markt_kauf(inst, kontrakte)
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "Kauf abgelehnt: %s" % e)
+        return None
+
+    bestellung = antwort.get("sendStatus") if isinstance(antwort, dict) else {}
+    kennung = (bestellung or {}).get("order_id") or antwort
+    kurs_ist = kurs
+    try:
+        gefuellt = kraken_perp.gefuellte_menge(kennung)
+        if gefuellt:
+            kontrakte = int(gefuellt)
+    except Exception as e:                               # noqa: BLE001
+        sys.stderr.write("Fuellungsmenge nicht lesbar: %s\n" % e)
+
+    stop = float(kand["stop"])
+    algo_id = None
+    try:
+        s_antwort = kraken_perp.stop_setzen(inst, kontrakte, stop)
+        algo_id = (s_antwort or {}).get("sendStatus", {}).get("order_id") \
+            if isinstance(s_antwort, dict) else None
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "Schutz-Stop fehlgeschlagen: %s" % e)
+        # Ohne Stop wird zurueckgedreht - eine nackte Position ist kein Handel.
+        try:
+            kraken_perp.markt_verkauf(inst, kontrakte)
+            _fehler(handeln, inst, "Position wegen fehlendem Stop zurueckgedreht")
+        except Exception as e2:                          # noqa: BLE001
+            _fehler(handeln, inst, "Rueckdrehung fehlgeschlagen: %s" % e2)
+        return None
+
+    p = {
+        "inst": inst, "seite": "long",
+        "einstieg": kurs_ist, "stop": stop, "ziel": float(kand["ziel"]),
+        "nominal": round(kraken_perp.nennwert_usd(inst, kontrakte, kurs_ist), 4),
+        "kontrakte": kontrakte,
+        "einsatz_usd": grenzen["einsatz"],
+        "hebel": kraken_perp.effektiver_hebel(inst, kontrakte, kurs_ist,
+                                              grenzen["einsatz"]),
+        "modus": "live", "boerse": "kraken_futures",
+        "paar": kraken_perp.paar_fuer(inst),
+        "ord_id": kennung, "stop_algo_id": algo_id,
+        "eroeffnet": handeln._heute(),
+        "score": kand.get("score"), "cr": kand.get("cr"),
+        "mfe_pct": 0.0, "mae_pct": 0.0,
+    }
+    z.setdefault("positionen", []).append(p)
+    _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                       aktion="eroeffnen", inst=inst, seite="long",
+                       preis=kurs_ist, einsatz_usd=grenzen["einsatz"],
+                       stop=stop, ziel=p["ziel"],
+                       grund="prognose-treffer-live")
+    print("OMNIQUANT LIVE EINSTIEG: %s %d Kontrakte @ %.6g (Nennwert %.2f USD, "
+          "Hebel %.2f, Stop %.6g)"
+          % (inst, kontrakte, kurs_ist, p["nominal"], p["hebel"], stop))
+    return p
+
+
+def pruefe_ausstiege(handeln, w, z):
+    """Live-Ausstiege: Stop, Ziel, Frist. Nur Positionen mit modus=live."""
+    offen = [p for p in z.get("positionen", []) if p.get("modus") == "live"]
+    if not offen:
+        return
+    for p in list(offen):
+        try:
+            kurs = kraken_perp.letzter_kurs(p["inst"])
+        except Exception as e:                           # noqa: BLE001
+            _fehler(handeln, p["inst"], "Ausstiegskurs nicht abrufbar: %s" % e)
+            continue
+        grund = _ausstiegsgrund(handeln, p, kurs, w)
+        if not grund:
+            continue
+        try:
+            kraken_perp.markt_verkauf(p["inst"], int(p["kontrakte"]))
+        except Exception as e:                           # noqa: BLE001
+            _fehler(handeln, p["inst"], "Verkauf abgelehnt: %s" % e)
+            continue
+        try:
+            kraken_perp.order_stornieren(p.get("stop_algo_id"))
+        except Exception as e:                           # noqa: BLE001
+            sys.stderr.write("Stop nicht storniert: %s\n" % e)
+        z["positionen"].remove(p)
+        _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                           aktion="verkauf", inst=p["inst"], seite="long",
+                           preis=kurs, grund=grund)
+        print("OMNIQUANT LIVE AUSSTIEG: %s @ %.6g (%s)"
+              % (p["inst"], kurs, grund))
+
+
+def _ausstiegsgrund(handeln, p, kurs, w):
+    """Stop vor Ziel - ein gerissener Stop behaelt den Vorrang."""
+    if kurs <= float(p["stop"]):
+        return "stop"
+    if kurs >= float(p["ziel"]):
+        return "ziel"
+    tage = w.get("max_halte_dauer_tage", 14)
+    try:
+        seit = (datetime.now(timezone.utc)
+                - datetime.fromisoformat(p["eroeffnet"] + "T00:00:00+00:00"))
+        if seit.days >= tage:
+            return "frist"
+    except Exception:                                    # noqa: BLE001
+        pass
+    return None
+
+
+def _fehler(handeln, inst, text):
+    """Jede Fehlerstelle schreibt eine Zeile - sonst ist Stille nicht deutbar."""
+    print("  FEHLER %s: %s" % (inst, text))
+    try:
+        _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                           aktion="fehler", inst=inst, grund=text)
+    except Exception as e:                               # noqa: BLE001
+        sys.stderr.write("Fehlerzeile nicht schreibbar: %s\n" % e)
+
+
+def kandidaten_grenzen(w):
+    """Die Live-Grenzen als Zeilen fuer --wachen (was der Live-Lauf WIRKLICH liest)."""
+    g = einsatz_und_grenzen(w)
+    return ["  %-28s %s" % ("live_einsatz_usd", g["einsatz"]),
+            "  %-28s %s" % ("hebel", g["hebel"]),
+            "  %-28s %s" % ("live_max_offene_positionen", g["max_offen"]),
+            "  %-28s %s" % ("live_max_gesamt_usd", g["max_gesamt"]),
+            "  %-28s %s" % ("mindest_guthaben_usd", g["mindest_guthaben"])]

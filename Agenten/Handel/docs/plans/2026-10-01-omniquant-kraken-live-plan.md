@@ -1,136 +1,158 @@
-# Omniquant auf Kraken live — Plan (01.10.2026)
+# Omniquant live auf Kraken Futures — Plan (01.10.2026, gebaut)
 
-Auftrag Max: „Omniquant Handel Freigabe auf kraken live".
+Auftrag Max: „Omniquant Handel Freigabe auf kraken live", nachgemeldet
+**„aber mit perp und hebel x6"**.
 
-Dieser Plan ist die Hausregel aus `handel-spuren/references/live-schalten.md`:
-**ein neuer echter Geldpfad wird geplant, dann gebaut.** Er wird nicht eingebaut,
-bevor Max ihn freigibt — und ein „ja" auf diesen Plan ist die Freigabe zum
-BAUEN, nicht die Live-Freigabe (die bleibt der Haken `freigabe.erfuellt` plus
-Freigabefenster).
+Damit ist die Zielboerse **Kraken Futures** (Dienst
+`https://futures.kraken.com/derivatives/api/v3`, PF_-Märkte), nicht der
+Spot-Markt. Dieser Plan ist die Hausregel aus
+`handel-spuren/references/live-schalten.md`: ein neuer echter Geldpfad wird
+geplant, dann gebaut. **Gebaut ist er jetzt — scharf ist nichts.**
 
-## 1. Was heute da ist (gemessen, nicht erinnert)
+## 1. Was gebaut ist
 
-- `omniquant/handeln.py` hat **keinen Orderpfad**. Docstring: „Kein Orderpfad.
-  Kein Broker-Aufruf, keine Position am Markt. `--live` verweigert mit genau
-  einem Grund, in dem das Wort Freigabefenster NICHT vorkommt."
-- `wachen.json`: `handel_erlaubt: false`, **kein `freigabe`-Block**,
-  `waehrung: "USD"`, `gebuehr_pct: 0.1`, `slippage_pct: 0.15`.
-- Buch: 10 Papierpositionen (STRK, DOGE, XRP, ORDI, MAGIC, W, FIL, ETC, WLD, ZEC).
-- Signalquelle: `prognose_berichte/neuester.weit.json` (`prognose_fassung: weit`).
-- Grenzen: `max_einsatz_je_position_usd 50`, `max_offen 10`, `max_neu_je_zyklus 5`,
-  `max_gesamt_risiko_usd 500`, `max_halte_dauer_tage 14`, Herzschlag 180.
+| Datei | Aufgabe |
+|---|---|
+| `omniquant/kraken_perp.py` | Instrument-Abbildung (OKX-Name → PF_-Symbol), Sizing (`Nennwert = Einsatz × Hebel`), Hebel-Sperre, Durchreichen an den Haus-Orderweg |
+| `omniquant/live_perp.py` | Sperrenkette, Einstieg (Marktkauf + Schutz-Stop), Live-Ausstiege, Fehlerzeilen |
+| `omniquant/handeln.py` | sechs chirurgische Ersetzungen: Import, `sperren_live` delegiert, `sperren_zeile` (immer gedruckt), Live-Grenzen in `--wachen`, Papier-Ausstiege fassen `modus=live` nie an, live-bewusste Ein-/Ausstiege |
+| `omniquant/wachen.json` | `boerse`, `hebel 6`, `live_einsatz_usd 50`, `live_max_offene_positionen 1`, `live_max_gesamt_usd 50`, `mindest_guthaben_usd 35`, `freigabe`-Block |
+| `omniquant/tests/test_live_perp.py` | 20 Tests + Modulwächter |
 
-## 2. Faehigkeit der Zielboerse — GEMESSEN am 01.10.2026
+Der Orderweg selbst ist **nicht neu gebaut**: Signatur, Nonce, flex-Konto und
+Kontraktgröße liegen in `nautilus_kraken/kraken_futures.py` und waren dort schon
+live bewiesen.
 
-`GET /0/public/AssetPairs`, 1455 Paare, Feld `wsname`/`quote`/`status`:
+## 2. Fähigkeit der Zielboerse — GEMESSEN am 01.10.2026
 
-| Omniquant führt | Kraken-Paar (EUR) | ordermin | costmin | pair_decimals |
-|---|---|---|---|---|
-| STRK-USDT | `STRKEUR` | 200 | 0.45 | 5 |
-| DOGE-USDT | `XDGEUR` | 50 | 0.45 | 7 |
-| XRP-USDC | `XXRPZEUR` | 1.65 | 0.45 | 5 |
-| W-USDT | `WEUR` | 500 | 0.45 | 5 |
-| FIL-USDT | `FILEUR` | 7 | 0.45 | 3 |
-| ETC-USDT | `XETCZEUR` | 0.7 | 0.45 | 3 |
-| WLD-USDT | `WLDEUR` | 11 | 0.45 | 4 |
-| ZEC-USDC | `XZECZEUR` | 0.01 | 0.45 | 3 |
-| **ORDI-USDT** | **kein Paar** | — | — | — |
-| **MAGIC-USDT** | **kein Paar** | — | — | — |
+`GET /derivatives/api/v3/instruments`, 300 Märkte:
 
-**Ergebnis: 8 von 10 handelbar, 2 nicht.** ORDI und MAGIC bleiben Papier —
-nach der Hausregel „nur die vertraeglichen bekommen den echten Orderweg".
-DOGE heisst bei Kraken **XDG**, nicht DOGE.
+| Omniquant führt | PF_-Markt | tradeable |
+|---|---|---|
+| STRK-USDT | `PF_STRKUSD` | ✓ |
+| DOGE-USDT | `PF_DOGEUSD` | ✓ (nicht XDG wie im Spot) |
+| XRP-USDC | `PF_XRPUSD` | ✓ |
+| W-USDT | `PF_WUSD` | ✓ |
+| FIL-USDT | `PF_FILUSD` | ✓ |
+| ETC-USDT | `PF_ETCUSD` | ✓ |
+| WLD-USDT | `PF_WLDUSD` | ✓ |
+| ZEC-USDC | `PF_ZECUSD` | ✓ |
+| ORDI-USDT | `PF_ORDIUSD` | ✓ |
+| **MAGIC-USDT** | **kein Markt** | ✗ |
 
-**Quote ist EUR, nicht USD.** Alle acht gibt es in EUR; USDC nur fuer XRP und
-XDG, EURC fuer keinen. Das Kraken-Konto traegt 53,81 EUR und 25,08 USDC —
-EUR ist damit die einzige Waehrung, in der mehr als eine Position moeglich ist.
-Nebenbefund: `kraken_paare.py` fuehrt keines dieser acht Paare — die Tabelle
-muss dort ergaenzt werden, sonst greift die EINE Paar-Quelle nicht.
+**9 von 10 handelbar.** Nur MAGIC-USDT bleibt Papier; `kraken_perp.paar_fuer`
+wirft dafür einen lauten `ValueError` (nie still ersatzweise handeln).
+Nebenbefund fürs Protokoll: im **Spot** wären es nur 8 von 10 gewesen (dort
+fehlen ORDI und MAGIC), und DOGE heißt dort XDG statt DOGE.
 
-## 3. Was gebaut werden muss
+**Ein Kontrakt ist die kleinste Order und bei jedem PF_-Markt genau 1 Einheit
+der Basiswährung** (gemessen 25.09.2026: 1 Kontrakt PF_NEARUSD bei 4,5517 USD
+belegte 0,4548 USD Marge). `contractSize: 1` im Instrumentenrecord sagt dazu
+nichts.
 
-1. `omniquant/kraken_spot.py` — Order-Modul nach dem Muster
-   `mosaic/kraken_spot.py`, ruft dahinter `kraken/kraken.py`:
-   `PAARE` (die acht aus Abschnitt 2), `paar_fuer(inst)` mit **lautem Fehler**
-   bei Unbekanntem (ORDI/MAGIC/unbekannt — nie still ersatzweise handeln),
-   `letzter_kurs`, `menge_fuer`, `guthaben_waehrung("EUR")`, `markt_kauf`,
-   `markt_verkauf`, `stop_setzen`, `gefuellte_menge`, `schluessel_vorhanden`,
-   `demo_modus`.
-2. `omniquant/handeln.py` — **abgetrennter** Live-Zweig im eigenen Ordner
-   (nicht `spur_buch.py` anfassen, das traegt neun Bot-Spuren):
-   - `SPUR = "omniquant"`, eigener Fensterschluessel.
-   - `zeitfenster_offen()` **ueber den PFAD** laden (`spec_from_file_location`),
-     nicht per blankem `import freigabefenster` — sonst meldet der
-     best-effort-`except` „kein Zeitfenster", obwohl das Fenster offen ist.
-   - Sperrtext mit **beiden** Wegen zu Punkt 3 (Bildschirm ODER Zeitfenster);
-     `sitzung_da()` allein ist im Dauerlauf immer False (`MAXHIRN_ROUTINE=1`).
-   - `sperren_zeile()` auch im `--vorschau`-Weg drucken — sonst liest
-     `dauerlauf.nur_fenster_fehlt()` nichts und die Auto-Freigabe fragt nie.
-   - Schutz-Stop **direkt nach dem Kauf**; eine nackte Live-Position ist kein
-     Handel, sondern ein offenes Risiko.
-   - Positionen tragen `modus`; Papierpositionen werden im Live-Lauf **nie**
-     geordert (sonst verkauft der erste Zyklus, was es nicht gibt).
-   - Jede Fehlerstelle im Live-Pfad schreibt eine Journalzeile
-     (`aktion="fehler"`, `grund=<Meldung>`), damit ein ausbleibender Einstieg
-     eine beantwortbare Frage ist statt stumm.
-   - Jeder Ausgang schreibt Zustand und spiegelt (auch der abbrechende) —
-     sonst bleibt das Herzschlag-Tor fuer immer zu (Deadlock).
-3. `wachen.json`: `boerse: "kraken"`, `kraken_quote: "EUR"`, `freigabe`-Block,
-   `live_einsatz_eur`, `live_max_offene_positionen`, `live_max_gesamt_eur`,
-   `mindest_guthaben_eur`. Der Live-Einsatz traegt den **Waehrungsnamen**.
-4. Verdrahtung: `freigabe.py` (`WACHEN`, `SPOTARTIG`, `BETRAGSFELD`, `TITEL`,
-   `RECHNER`), `dauerlauf.AUTO_FREIGABE`, `spuren_stand`, `sperrgruende`,
-   `.gitignore`-Freigabe je neuer Datei.
-5. Tests: Paar-Abbildung (unbekannt = Fehler), Sperrenkette mit Attrappen,
-   Papier-Position wird im Live-Lauf nicht geordert, Vorschau schreibt nicht.
-   **Keine Suite darf `--live` fahren, sobald die Spur freigegeben ist.**
+## 3. Was „Hebel ×6" hier heißt
 
-## 4. Stufen und Betraege (Entscheidung Max)
+Kraken Futures kennt **keinen Hebel-Schalter je Order** — der Einschuss ist der
+Margenplan des Marktes (EEA retail 10 %). „Hebel 6" ist deshalb eine
+**Sizing-Regel**: `Nennwert = Einsatz × 6`, und die Börse fordert davon nur ihre
+10 % an. Der Rest des Einsatzes bleibt freie Margin.
 
-Frei sind heute **53,81 EUR** (Kraken) — nicht 500 USD wie der Papierrahmen.
+Bei 50 USD Einsatz je Position ergibt das 300 USD Nennwert ≈ 30 USD Einschuss:
 
-- **Stufe 1 — ein Platz, 50 EUR.** `live_einsatz_eur 50`,
-  `live_max_offene_positionen 1`, `live_max_gesamt_eur 50`,
-  `mindest_guthaben_eur 55`. Belegt: ein echter Kauf, ein boersenseitiger Stop,
-  eine Journalzeile `live`. Danach Bilanz gegen die Boerse.
-- **Stufe 2 — drei Plaetze, 3 x 40 EUR** (120 EUR), erst wenn Stufe 1 sauber
-  gebucht und ausgebuht ist.
-- **Stufe 3 — Papierrahmen (10 x 50 USD).** Setzt voraus, dass Kraken-Guthaben
-  in EUR in dieser Groessenordnung liegt — heute nicht der Fall.
+```
+DOGE-USDT  PF_DOGEUSD  kontrakte=3133  nennwert=299.95  einschuss=30.00  hebel_ist=6.00
+XRP-USDC   PF_XRPUSD   kontrakte=199   nennwert=299.93  einschuss=29.99  hebel_ist=6.00
+STRK-USDT  PF_STRKUSD  kontrakte=6846  nennwert=299.99  einschuss=30.00  hebel_ist=6.00
+...
+ZEC-USDC   PF_ZECUSD   kontrakte=1     nennwert=1436.99 einschuss=143.70 hebel_ist=28.74
+```
 
-**Waehrungs-Entscheidung noetig:** Omniquant fuehrt sein Buch in **USD**,
-Kraken-Paare rechnen in **EUR**. Zwei Wege: (a) Buch auf EUR umstellen (dann
-sind die zehn Papierpositionen in USD nicht mehr vergleichbar), oder (b) Buch
-bleibt USD, der Live-Zweig rechnet je Position zum Tageskurs um. Empfehlung:
-**(a) fuer den Live-Zweig ein eigenes Buch in EUR** — zwei Waehrungen in einer
-Zahl sind spaeter nicht mehr auseinanderzuhalten.
+**ZEC fällt heraus.** 1 Kontrakt kostet 1436,99 USD Nennwert — bei 50 USD Einsatz
+also Hebel **28,7**, nicht 6. Das Aufrunden auf ganze Kontrakte darf den Hebel
+nicht sprengen, deshalb sperrt `hebel_grund()` solche Fälle (Toleranz 25 %)
+statt sie zu buchen. Ohne diese Sperre wäre ZEC die größte Position im Buch
+gewesen, und am Hebel hätte es niemand gesehen.
 
-## 5. Nachweis-Kette (vor jedem Scharfstellen abzuarbeiten)
+**Risiko je Position:** ein Stop von x % kostet bei Hebel 6 rund 6x % des
+Einsatzes. Der Hebel erhöht den Verlust je Position, nicht die Trefferchance.
 
-1. Kerzen und Paar-Info je Instrument gegen Kraken (die acht aus Abschnitt 2).
-2. Guthaben: `guthaben_waehrung("EUR")` gegen den echten Kontostand.
-3. Order **ohne echte Ausfuehrung** pruefen — `kraken._add_order(..., echt=False)`
-   rechnet nur durch; Preis auf `pair_decimals` gerundet (ein roher Rechenwert
-   wird abgelehnt, `EOrder:Invalid price`).
-4. `handeln.py --live` mit `MAXHIRN_ROUTINE=1`: die Kette nennt genau die
-   offenen Gruende, ohne eine Order zu stellen.
-5. `--vorschau` nennt GENAU EINEN Grund und darin das Wort „Freigabefenster" —
-   erst dann oeffnet der Dauerlauf die Anfrage.
-6. Erst danach `freigabe.erfuellt` und `handel_erlaubt` — **beide** Haken, und
-   den Haken setzt Max.
+## 4. Der Kontostand ist der Blocker (gemessen)
 
-## 6. Offene Entscheidungen
+Das Kraken-Futures-**flex-Konto** (multiCollateral; `cash.balances` steht dort
+immer auf 0 — wer nur cash liest, sieht 0 USD):
 
-1. **Stufe 1 mit 50 EUR freigeben?** (Empfehlung: ja, ein Platz.)
-2. **Buch in EUR oder USD?** (Empfehlung: eigener EUR-Zweig.)
-3. **ORDI und MAGIC bleiben Papier** — einverstanden?
-4. Sollen die zehn bestehenden Papierpositionen beim ersten Live-Lauf als
-   Altlast ausgebucht werden (`bueche_papier_altlasten_aus`, Journal-Grund
-   `buchbereinigung`)? Das ist gewollt, sieht aber im Journal wie ein
-   Verlusttag aus — vorher sagen.
+```
+balanceValue        85.09     EUR  5.8614  -> available 1.1589
+collateralValue     84.69     USDC 78.4357 -> available 1.3184
+initialMargin       83.38  <- von drei offenen nautilus-Positionen belegt
+availableMargin      1.31  <- frei
+pnl                +12.63
+```
 
-## 7. Was dieser Plan NICHT tut
+Drei Positionen laufen dort bereits (nautilus_kraken_futures: SUI, HBAR, HYPE,
+zusammen +12,63 USD im Plus) und binden **83,38 USD** als Einschuss auf ~799 USD
+Nennwert — rund 9,6x, also praktisch die volle Ausnutzung.
 
-Er schaltet nichts scharf. `handel_erlaubt` bleibt `false`, `freigabe.erfuellt`
-existiert noch nicht, `AUTO_FREIGABE` nennt omniquant nicht. Der Bau der Stufen
-2 und 3 ist nicht Teil der Freigabe zu Stufe 1.
+**Frei sind 1,31 USD.** Stufe 1 braucht 30 USD Einschuss. Das Guthaben-Tor der
+Spur steht deshalb zu — mit einer klaren Zahl, nicht mit einem Gefühl. Nach der
+Hausregel ist das **kein Grund, nicht zu bauen, nur ein Grund, nicht scharf zu
+schalten**.
+
+## 5. Stufen und Beträge (Entscheidung Max)
+
+- **Stufe 1 — ein Platz, 50 USD Einsatz (300 USD Nennwert, ~30 USD Einschuss).**
+  `live_einsatz_usd 50`, `live_max_offene_positionen 1`, `live_max_gesamt_usd 50`,
+  `mindest_guthaben_usd 35`. **Gesetzt.** Belegt wird sie durch einen echten
+  Kauf, einen börsenseitigen Stop, eine Journalzeile `live` — und danach den
+  Abgleich Buch ↔ Börse.
+- **Stufe 2 — drei Plätze (150 USD Einsatz, ~90 USD Einschuss).** Erst wenn
+  Stufe 1 sauber gebucht **und ausgebucht** ist.
+- **Stufe 3 — Papierrahmen (10 × 50 USD).** Braucht ~300 USD freie Margin;
+  heute nicht vorhanden.
+
+**Vor Stufe 1 muss freie Margin her.** Wege, alle eine Entscheidung von Max:
+(a) eine der drei nautilus-Positionen schließen, (b) Guthaben ins flex-Konto
+legen, (c) `mindest_guthaben_usd` senken — was nur kleinere Positionen erlaubt,
+nicht mehr Plätze.
+
+## 6. Nachweis-Kette (vor jedem Scharfstellen)
+
+1. ✅ Paar-Verfügbarkeit gegen `/instruments` — 9 von 10, MAGIC nicht.
+2. ✅ Sizing gegen echte Kurse — 300 USD Nennwert je Position bei Hebel 6.
+3. ✅ Hebel-Sperre — ZEC wird abgewiesen statt gebucht.
+4. ✅ Sperrenkette — die Vorschau nennt JEDEN Grund einzeln.
+5. ✅ Tests — 89 grün, kein Test erreicht `markt_kauf`, Modulwächter an.
+6. ⬜ Freie Margin ≥ 35 USD.
+7. ⬜ `handel_erlaubt` **und** `freigabe.erfuellt` — **beide Haken, und den
+   Haken setzt Max.** Danach nennt die Vorschau nur noch Fenster und Guthaben;
+   sobald nur das Fenster bleibt, öffnet der Dauerlauf die Anfrage selbst.
+
+## 7. Offene Entscheidungen
+
+1. **Welcher Weg schafft freie Margin** (nautilus-Position schließen / Guthaben
+   legen / kleinerer Einsatz)? Empfehlung: Guthaben — die drei laufenden
+   Positionen sind im Plus und tragen ihre eigene Strategie.
+2. **Sollen die zehn Papierpositionen beim ersten Live-Lauf ausgebucht werden?**
+   Nein — `pruefe_ausstiege` lässt `modus=live` stehen, Papierpositionen ohne
+   `modus` werden weiter Papier gebucht. Es entsteht kein „Verlusttag" im
+   Journal.
+3. **ORDI und MAGIC**: ORDI ist auf Futures handelbar, MAGIC bleibt Papier.
+   Einverstanden?
+
+## 8. Was dieser Plan NICHT tut
+
+Er schaltet nichts scharf. `handel_erlaubt` steht auf `false`,
+`freigabe.erfuellt` auf `false`, omniquant steht **nicht** in
+`dauerlauf.AUTO_FREIGABE`. Die Vorschau nennt vier Gründe, nicht einen — die
+Auto-Freigabe fragt also nicht.
+
+## 9. Nachtrag: ein Test hat ins echte Journal geschrieben
+
+Beim ersten Lauf der neuen Tests hat `PapierLaesstLiveStehenTest` die Funktion
+`pruefe_ausstiege` direkt gerufen; die schließt die Papierposition und
+journalisiert sie. Vier Zeilen landeten im **echten** `handelsjournal.csv`
+(01.10. 06:10–06:12 UTC, STRK zu Preis 1.0). Der Modulwächter in
+`tests/test_live_perp.py` hat es gefangen, die Zeilen sind entfernt (Sicherung
+`handelsjournal.csv.bak-20261001-081341`, 45 → 41 Zeilen), und die Testklasse
+setzt jetzt `SCHREIBEN=False`. Das ist genau die Falle vom 16.09.2026 — ein
+Test, der eine journalisierende Funktion direkt prüft, schreibt nach außen.
