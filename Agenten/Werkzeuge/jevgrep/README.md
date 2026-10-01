@@ -109,6 +109,54 @@ Werkzeug nicht gedacht.
   SKILL.md nicht in die Hermes-Bibliothek importiert. Der Skill-Text liegt im Paket
   unter `node_modules/@dzhng/jevgrep/dist/skills/jevgrep/SKILL.md`.
 
+## Ein anderes Modell: die eigene Bruecke (lokaler Betrieb moeglich)
+
+jevgrep fragt kein Chat-Modell, sondern einen **Richter**: es schickt einen Zustand
+(Quelltext) und mehrere typisierte Fragen und erwartet je Frage eine Zahl 0..1. Genau
+das uebersetzt `jev_bruecke.py` auf ein **OpenAI-kompatibles** Modell der Wahl.
+
+**Gefordert sind nur sechs Dinge** (gemessen an jevgrep 0.7.0):
+
+| Anforderung | Wert |
+|---|---|
+| Endpunkt | `POST <basis>/systemone`, JSON rein, JSON raus |
+| Antwortform | `{"answers":{"<kennung>":{"type":"noul","noul":0.0..1.0}}}` fuer **jede** Kennung |
+| Kontext | Zustaende 20.000-54.000 Zeichen (~6.000-15.000 Token) -> **32k Kontext noetig** |
+| Buendelung | 1-8 Fragen je Anfrage (Antworten in einem Durchgang) |
+| Ausgabe | sauberes JSON (Schema-Ausgabe hilft, sonst Nachfassen) |
+| Durchsatz | 60 Anfragen (66 Dateien) bis 396 (171 Dateien) je Suche |
+
+Ein Chat-Modell mit Werkzeugen oder Agent-Faehigkeiten braucht es **nicht** — nur
+Urteil und JSON.
+
+```
+python jev_bruecke.py                 # lokal: Ollama 127.0.0.1:11434, Modell umstellbar
+set JEVCREP_BRUECKE_BASIS=https://api.inceptionlabs.ai/v1
+set JEVCREP_BRUECKE_MODELL=mercury-2.5
+set JEVCREP_BRUECKE_SCHLUESSEL=<key>
+python jev_bruecke.py
+```
+
+Einmalig bei jevgrep anmelden — der Wert darf beliebig sein, der Dienst laeuft lokal
+(`--stdin` verlangt nur einen nicht-leeren Wert):
+
+```powershell
+'lokal' | .\jevgrep.cmd auth --provider custom --base-url http://127.0.0.1:8742/v1 --model bruecke --stdin
+.\jevgrep.cmd doctor
+```
+
+**Gemessen mit dem lokalen Modell `gemma-e4b-8k-64k`** (Zustand 25.000 Zeichen ≈ 7.142
+Token, 3 Fragen): **21,0 s je Anfrage**, saubere Antwort (`0.95 / 0.85 / 0.75`).
+
+| Suche | nacheinander | bei 4 gleichzeitig |
+|---|---|---|
+| 66 Dateien (~60 Anfragen) | 21 min | ~6 min |
+| 171 Dateien (396 Anfragen) | 2,3 h | ~35 min |
+
+Lokal ist damit **fuer kleine Wurzeln brauchbar** (gratis, nichts verlaesst das Haus),
+fuer grosse zu langsam. Ein 27B-Modell waere noch langsamer, kleine 8k-Modelle
+scheitern am Kontext. Nachmessen mit `python messung_lokal.py <modell> [zeichen]`.
+
 ## Nachweis
 
 `Werkzeuge/jevgrep/test_jevgrep.py` faehrt eine Attrappe eines

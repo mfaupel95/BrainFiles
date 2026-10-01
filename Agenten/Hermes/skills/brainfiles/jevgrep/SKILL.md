@@ -56,6 +56,25 @@ Einzelheiten, Protokoll und Nachweise: `MaxHirn/Wiki/Werkzeuge/jevgrep.md`.
    `python Agenten\Werkzeuge\jevgrep\sonde_zen.py` (nennt HTTP-Status und Dauer).
    Die Zeile `stdin is not a tty` ist MSYS-Rauschen und erscheint auch bei Erfolg.
 
+## Wenn der Anbieter nicht kann: die eigene Bruecke (auch lokal)
+
+Der Anbieter ist austauschbar. `Agenten/Werkzeuge/jevgrep/jev_bruecke.py` nimmt die
+jevgrep-Anfragen an und beantwortet sie ueber ein OpenAI-kompatibles Modell — lokal
+(Ollama), Inception Mercury 2.5, Nous, OmniRoute. Gefordert: JSON rein/raus, je Kennung
+`noul` 0..1, **32k Kontext**, 60-400 Anfragen je Suche. Kein Chat-Modell mit Werkzeugen
+noetig.
+
+```powershell
+python Agenten\Werkzeuge\jevgrep\jev_bruecke.py     # laeuft lokal (Ollama)
+'lokal' | .\jevgrep.cmd auth --provider custom --base-url http://127.0.0.1:8742/v1 --model bruecke --stdin
+```
+
+Gemessen (lokales `gemma-e4b-8k-64k`, Zustand 25.000 Zeichen): 21 s je Anfrage — fuer
+kleine Wurzeln brauchbar (66 Dateien ~21 min, gratis, kein Quelltext verlaesst den
+Rechner), fuer grosse zu langsam. **Achtung:** `jg auth` ersetzt die gespeicherte
+Anmeldung; wer zurueck zu OpenCode Zen will, ruft
+`python Agenten\Werkzeuge\jevgrep\von_opencode_anmelden.py --anwenden`.
+
 ## Ergebnisse lesen
 
 Die Ausgabe ist **Belegmaterial, keine Antwort**: Dateien und Rollen sind

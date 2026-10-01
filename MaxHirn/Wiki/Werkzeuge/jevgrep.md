@@ -127,6 +127,31 @@ trotzdem verworfen, siehe unten.
 - Eine Attrappen-Anmeldung in `~/.config/jevgrep/credentials.json` wurde nach dem
   Nachweis **entfernt** — `jg` ist derzeit absichtlich nicht angemeldet.
 
+## Ein anderes Modell: die eigene Bruecke (auch lokal)
+
+Der Anbieter ist austauschbar. `Agenten/Werkzeuge/jevgrep/jev_bruecke.py` nimmt die
+jevgrep-Anfragen an (`POST <basis>/systemone`) und beantwortet sie ueber ein
+**OpenAI-kompatibles** Modell der Wahl — Ollama lokal, Inception Mercury 2.5, Nous,
+OmniRoute. Gefordert sind nur: JSON rein/raus, je Kennung ein `noul` zwischen 0 und 1,
+**32k Kontext** (Zustaende sind 20.000-54.000 Zeichen), sauberes JSON, und Durchsatz
+fuer 60-400 Anfragen je Suche. Ein Chat-Modell mit Werkzeugen braucht es nicht.
+
+```powershell
+python Agenten\Werkzeuge\jevgrep\jev_bruecke.py      # laeuft lokal, Ollama-Standard
+'lokal' | .\jevgrep.cmd auth --provider custom --base-url http://127.0.0.1:8742/v1 --model bruecke --stdin
+.\jevgrep.cmd doctor
+```
+
+**Gemessen** (lokales `gemma-e4b-8k-64k`, Zustand 25.000 Zeichen, 3 Fragen): **21,0 s
+je Anfrage**, saubere Werte. Hochgerechnet: 66 Dateien ≈ 21 min (bei 4 gleichzeitig
+~6 min), 171 Dateien ≈ 2,3 h. Lokal ist damit fuer **kleine Wurzeln** brauchbar —
+gratis, und kein Quelltext verlaesst den Rechner; fuer grosse Wurzeln ist es zu langsam.
+Mercury 2.5 (260k Kontext, 1.107 tok/s, 100 Mio. Gratis-Token, danach 0,04 USD/1M)
+passt als naechster Kandidat hinter dieselbe Bruecke.
+
+Nachweis ohne jeden Schluessel: `python Agenten/Werkzeuge/jevgrep/test_jev_bruecke.py`
+(7 Tests, inklusive echtem Durchlauf jevgrep -> Bruecke -> Modell -> Trefferliste).
+
 ## Wenn nichts geht: zwei Antworten, gemessen
 
 `Agenten/Werkzeuge/jevgrep/sonde_zen.py` fragt den Endpunkt direkt (ohne jevgrep) und
