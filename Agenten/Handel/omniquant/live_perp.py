@@ -134,24 +134,25 @@ def live_sperren(w, z):
     if kraken_perp.demo_modus():
         g.append("Demo-Konto gesetzt")
 
-    # Guthaben-Tor: verglichen wird mit dem EINSCHUSS, den die Boerse fuer
-    # DIESEN Satz verlangt - nicht mit einem Wunschwert. Fehlt der Kurs, wird
-    # nicht geraten: dann faellt das Tor mit Grund zu.
+    # Guthaben-Tor: hier steht die UNTERGRENZE aus der wachen.json. Was die
+    # Boerse fuer den naechsten Satz WIRKLICH verlangt, haengt am Markt und an
+    # der Kontraktzahl - das rechnet `kaufe()` unmittelbar vor der Order nach
+    # (`kraken_perp.einschuss_usd`). Die Vorpruefung soll frueh warnen, nicht
+    # das Sizing nachbauen; ein fest eingetragenes "noetig" waere sonst eine
+    # zweite Wahrheit neben der Boerse. (Die tote Schleife, die einen
+    # Kandidatenkurs aus dem Zustand lesen wollte, ist am 01.10.2026 entfallen -
+    # der Zustand fuehrt keine Kandidatenkurse, T-282.)
     grenzen = einsatz_und_grenzen(w)
-    if grenzen["mindest_guthaben"] > 0 or True:
-        try:
-            frei = kraken_perp.guthaben_usd()
-        except Exception as e:                           # noqa: BLE001
-            g.append("Guthaben nicht abrufbar (%s)" % type(e).__name__)
-            frei = None
-        if frei is not None:
-            braucht = None
-            for kand in (z.get("kandidaten_kurs") or {}).items():
-                pass
-            noetig = grenzen["mindest_guthaben"]
-            if noetig and frei < noetig:
-                g.append("nur %.2f USD freie Margin, noetig %.2f"
-                         % (frei, noetig))
+    try:
+        frei = kraken_perp.guthaben_usd()
+    except Exception as e:                               # noqa: BLE001
+        g.append("Guthaben nicht abrufbar (%s)" % type(e).__name__)
+        frei = None
+    if frei is not None:
+        noetig = grenzen["mindest_guthaben"]
+        if noetig and frei < noetig:
+            g.append("nur %.2f USD freie Margin, noetig %.2f"
+                     % (frei, noetig))
     if z.get("verluste_usd", 0.0) >= w.get("max_gesamt_risiko_usd", 500):
         g.append("Kill-Switch: Verluste %.2f USD >= %g"
                  % (z.get("verluste_usd", 0.0),
@@ -176,6 +177,29 @@ def sperren_zeile(w, z):
 
 # --- Order ------------------------------------------------------------------
 
+def markte_laden():
+    """Die Marktliste der Boerse EINMAL je Lauf holen.
+
+    `kraken_perp.maerkte()` liefert absichtlich nur die bereits geladene
+    Liste (kein Netzzugriff auf dem heissen Pfad). Wird `lade_maerkte()`
+    nicht gerufen, verweigert `pf_markt` JEDEN Einstieg mit "Marktliste nicht
+    geladen" - so geschehen am 01.10.2026: 19 Fehlerzeilen im echten Journal,
+    alle HBAR-USDT, alle im Live-Modus, obwohl PF_HBARUSD existiert.
+
+    Rueckgabe: Anzahl der Maerkte, oder 0 mit Fehler auf stderr. Ein Fehler
+    hier ist kein Absturz - der Lauf geht mit Papier weiter.
+    """
+    lader = getattr(kraken_perp, "lade_maerkte", None)
+    if lader is None:
+        return 0
+    try:
+        return int(lader())
+    except Exception as e:                               # noqa: BLE001
+        sys.stderr.write("Marktliste nicht ladbar: %s: %s\n"
+                         % (type(e).__name__, e))
+        return 0
+
+
 def _journal_schreiben(handeln, **felder):
     """Eine Journalzeile ueber den Kern der Spur - eine Buchhaltung, kein Zwilling."""
     handeln.journal(**felder)
@@ -194,6 +218,28 @@ def kaufe(handeln, w, z, kand):
     """
     inst = kand["inst"]
     grenzen = einsatz_und_grenzen(w)
+
+    # Zielmarkt-Auskunft fuer Instrumente AUSSERHALB der geprueften Tabelle
+    # (T-282, 01.10.2026): die Marktliste wird einmal je Lauf geholt, die
+    # Ableitung nur nach ausdruecklicher Freigabe in den Wachen benutzt. Faellt
+    # die Liste aus, bleiben die eingetragenen Instrumente handelbar - ein
+    # abgeleiteter Name wird dann NICHT gehandelt (nicht nachweisbar = kein
+    # Markt).
+    if not kraken_perp.eingetragen(inst):
+        erlaubt = bool(w.get("live_pf_ableitung"))
+        kraken_perp.setze_ableitung(erlaubt)
+        if not erlaubt:
+            print("  gesperrt: %s steht nicht in der geprueften Tabelle und "
+                  "live_pf_ableitung ist nicht gesetzt" % inst)
+            _journal_schreiben(handeln, zeit=handeln._jetzt(), modus="live",
+                               aktion="fehler", inst=inst,
+                               grund="live_pf_ableitung=false")
+            return None
+        try:
+            kraken_perp.lade_maerkte()
+        except Exception as e:                               # noqa: BLE001
+            sys.stderr.write("Marktliste nicht abrufbar: %s: %s\n"
+                             % (type(e).__name__, e))
 
     try:
         kurs = kraken_perp.letzter_kurs(inst)

@@ -600,6 +600,12 @@ def lauf(modus):
 
     st = {}
     live = False
+    # Die Kraken-Marktliste einmal je Lauf holen - der Instrument-Weg
+    # (kraken_perp.pf_markt) prueft gegen sie, und eine leere Liste wuerde
+    # jeden Einstieg verweigern. Ein Fehler ist kein Absturz.
+    if modus in ("live", "vorschau"):
+        print("  Kraken-Marktliste: %d Maerkte geladen"
+              % live_perp.markte_laden())
     if modus == "live":
         g = sperren_live(w, z)
         if g:

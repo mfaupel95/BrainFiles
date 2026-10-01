@@ -8,7 +8,14 @@ die Futures-REST hat KEINEN Trockenschalter, deshalb dieser winzige echte Handel
 Ablauf (Vorschau ist Standard, `--anwenden` handelt):
     1. Lage lesen: Kurs, freies Guthaben, offene Positionen/Orders. Sind welche
        da, bricht das Werkzeug ab - es prueft seinen eigenen Vorgang.
-    2. Kauf `markt` ueber N Kontrakte (1 Kontrakt PF_XBTUSD = 1 USD Nominal).
+    2. Kauf `markt` ueber N Kontrakte. **1 Kontrakt ist EINE Einheit der
+       Basiswaehrung** (gemessen 25.09.2026): 1 Kontrakt PF_XBTUSD ist 1 BTC
+       und kostet rund 84.600 USD Nennwert, 1 Kontrakt PF_STRKUSD dagegen
+       0,04 USD. Diese Datei behauptete bis 01.10.2026 das Gegenteil und
+       haette mit der Vorgabe 8 Kontrakte einen Kauf ueber 676.816 USD
+       ausgeloest - bei frei verfuegbarer Margin von 83 USD. **Fuer einen
+       Nachweis also immer einen BILLIGEN Markt nehmen:**
+       `--symbol PF_STRKUSD --kontrakte 1`.
     3. Fuellung abwarten (pollt /fills, begrenzt), Kaufpreis und Groesse zeigen.
     4. Verkauf `markt` + `reduceOnly` - dasselbe N.
     5. Gebuehren aus `/accountlogcsv` lesen (das Journal des Kontos) und
@@ -75,9 +82,13 @@ def lage(symbol, kontrakte):
     frei = kf.guthaben("usd")
     positionen = kf.offene_positionen(symbol)
     orders = kf.offene_orders(symbol)
-    nominal = float(kontrakte)
+    # 1 Kontrakt = 1 Einheit der Basiswaehrung. Der Nennwert ist Kontraktzahl
+    # x Kurs, der Einschuss kommt aus dem Margenplan des Marktes - bei
+    # PF_XBTUSD sind das rund 12,5 %, nicht 10 %.
+    nominal = float(kontrakte) * float(kurs)
+    einschuss = kf.einschuss(symbol, kontrakte, kurs)
     return {"kurs": kurs, "frei": frei, "positionen": positionen,
-            "orders": orders, "nominal": nominal}
+            "orders": orders, "nominal": nominal, "einschuss": einschuss}
 
 
 def vorpruefen(l, kontrakte):
@@ -86,8 +97,12 @@ def vorpruefen(l, kontrakte):
         gruende.append("%d offene Position(en) in %s" % (len(l["positionen"]), SYMBOL))
     if l["orders"]:
         gruende.append("%d offene Order(s) in %s" % (len(l["orders"]), SYMBOL))
-    if l["frei"] < 2 * float(kontrakte):
-        gruende.append("nur %.2f USD frei, noetig %.2f" % (l["frei"], 2.0 * kontrakte))
+    noetig = 2 * l["einschuss"]
+    if l["frei"] < noetig:
+        gruende.append("nur %.2f USD frei, noetig %.2f (2 x %.2f Einschuss fuer "
+                       "%s x %.4f USD Nennwert)"
+                       % (l["frei"], noetig, l["einschuss"], l["kurs"],
+                          l["nominal"]))
     return gruende
 
 

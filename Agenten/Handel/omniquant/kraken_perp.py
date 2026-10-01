@@ -40,6 +40,7 @@ Aufruf (immer aus dem omniquant-Ordner):
 
 import json
 import os
+import re
 import sys
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -67,6 +68,78 @@ KEIN_MARKT = {"MAGIC-USDT"}
 
 HEBEL_VORGABE = 6.0
 
+# --- Zielmarkt-Auskunft (T-282, 01.10.2026) ---------------------------------
+# Die Tabelle oben ist der GEPRUEFTE Kern. Sie ist aber nicht vollstaendig -
+# und kann es nicht sein: Omniquants Kandidaten kommen aus dem Prognose-Bericht
+# ueber OKX-Paare und koennen jederzeit ein Instrument nennen, das hier noch
+# nicht steht. GEMESSEN am 01.10.2026: der weite Bericht lieferte HBAR-USDT und
+# ONDO-USDT, BEIDE am Zielmarkt handelbar (PF_HBARUSD, PF_ONDOUSD, gegen
+# /instruments geprueft) - nur nicht eingetragen. Folge: jeder Live-Zyklus
+# schrieb eine Fehlerzeile "unbekanntes Instrument" und konnte nichts
+# eroeffnen, waehrend das Margin-Tor offen war. Dieselbe Klasse wie eine
+# "armlose" Live-Spur.
+#
+# Deshalb wird abgeleitet UND GEPRUEFT: PF_<BASE>USD, nachgeschlagen in der
+# Marktliste der Boerse. Drei Regeln:
+#   * abgeleitet wird nur, wenn der Name wie <BASE>-<QUOTE> aussieht
+#   * ohne Markt in der Liste bleibt es ein lauter Fehler (nie ersatzweise
+#     in einen anderen Markt handeln)
+#   * die Ableitung ist NICHT von selbst scharf: sie kostet echtes Geld bei
+#     einem Instrument, das der Mensch nie gesehen hat. `setze_ableitung()`
+#     gibt sie frei, `live_perp.kaufe()` tut das aus wachen.json
+#     (`live_pf_ableitung`). Ohne Aufruf gilt der sichere Zustand: aus.
+_MARKT_CACHE = None
+ABLEITUNG_ERLAUBT = False
+
+
+def setze_ableitung(erlaubt):
+    """Ableitung fremder Instrumente freigeben (nur live_perp, aus den Wachen)."""
+    global ABLEITUNG_ERLAUBT
+    ABLEITUNG_ERLAUBT = bool(erlaubt)
+
+
+def merke_maerkte(symbole):
+    """Marktliste setzen - die Naht fuer Tests, ohne Netz."""
+    global _MARKT_CACHE
+    _MARKT_CACHE = set(symbole)
+
+
+def maerkte():
+    """Die zuletzt GELADENE Marktliste (leer, solange nichts geladen ist).
+
+    Bewusst ohne eigene Abfrage: `pf_markt` ist der heisse Pfad jeder
+    Instrument-Aufloesung und darf keine Netzfrage ausloesen. Wer die Liste
+    braucht, ruft `lade_maerkte()` - das tut der Live-Zweig einmal je Lauf.
+    """
+    return set(_MARKT_CACHE or ())
+
+
+def lade_maerkte():
+    """Marktliste der Boerse holen und merken. Rueckgabe: Anzahl der Maerkte."""
+    global _MARKT_CACHE
+    daten = _kf()._roh("/instruments")
+    liste = daten.get("instruments") or []
+    _MARKT_CACHE = {str(i.get("symbol")) for i in liste
+                    if str(i.get("symbol") or "").startswith("PF_")
+                    and i.get("tradeable") is not False}
+    return len(_MARKT_CACHE)
+
+
+def ableitung(inst):
+    """PF_-Symbol aus einem Omniquant-Namen - ungeprueft, None wenn unbrauchbar."""
+    teile = [t for t in str(inst or "").split("-") if t]
+    if len(teile) != 2:
+        return None
+    basis = teile[0].strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{1,12}", basis or ""):
+        return None
+    return "PF_%sUSD" % basis
+
+
+def eingetragen(inst):
+    """Steht das Instrument in der geprueften Tabelle (ohne Netzfrage)?"""
+    return str(inst or "").strip().upper() in PAARE
+
 
 def _kf():
     """kraken_futures ueber den PFAD laden - nicht per sys.path-Eintrag."""
@@ -80,22 +153,48 @@ def _kf():
     return modul
 
 
-def paar_fuer(inst):
+def pf_markt(inst):
     """PF_-Symbol zu einem Omniquant-Instrument - oder lauter Fehler.
 
-    Ein unbekanntes Instrument ist ein FEHLER, keine stille Ersatzwahl: sonst
-    landet eine Order im falschen Markt (Hausregel kraken_paare.py).
+    Reihenfolge: gepruefte Tabelle -> kein Markt (namentlich) -> Ableitung mit
+    Pruefung gegen /instruments. Ein Name, der nirgends passt, ist ein FEHLER
+    und keine stille Ersatzwahl (sonst landet eine Order im falschen Markt,
+    Hausregel kraken_paare.py).
     """
     name = (inst or "").strip().upper()
     if name in KEIN_MARKT:
         raise ValueError(
             "Kraken Futures fuehrt keinen Markt fuer %s - dieses Instrument "
             "bleibt Papier (gemessen 01.10.2026 gegen /instruments)" % name)
-    if name not in PAARE:
-        raise ValueError(
-            "unbekanntes Instrument fuer Kraken Futures: %r (bekannt: %s)"
-            % (inst, ", ".join(sorted(PAARE))))
-    return PAARE[name]
+    if name in PAARE:
+        return PAARE[name]
+    kandidat = ableitung(name)
+    if kandidat:
+        if not maerkte():
+            raise ValueError(
+                "unbekanntes Instrument fuer Kraken Futures: %r (Marktliste "
+                "nicht geladen - Ableitung moeglich, aber nicht geprueft; "
+                "geprueft eingetragen: %s)"
+                % (inst, ", ".join(sorted(PAARE))))
+        if kandidat not in maerkte():
+            raise ValueError(
+                "unbekanntes Instrument fuer Kraken Futures: %r (%s gibt es "
+                "am Zielmarkt nicht; geprueft eingetragen: %s)"
+                % (inst, kandidat, ", ".join(sorted(PAARE))))
+        if not ABLEITUNG_ERLAUBT:
+            raise ValueError(
+                "%s ist am Zielmarkt handelbar (%s, gegen /instruments "
+                "geprueft), aber nicht freigegeben: wachen.json "
+                "live_pf_ableitung=false" % (name, kandidat))
+        return kandidat
+    raise ValueError(
+        "unbekanntes Instrument fuer Kraken Futures: %r (kein PF_-Markt, "
+        "geprueft gegen /instruments; geprueft eingetragen: %s)"
+        % (inst, ", ".join(sorted(PAARE))))
+
+
+# Alter Name bleibt - er steht in jedem Aufrufer dieser Spur.
+paar_fuer = pf_markt
 
 
 def hebel(w):
