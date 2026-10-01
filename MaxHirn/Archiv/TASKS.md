@@ -60,6 +60,33 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-306 - docker-wache heilt die Engine nicht, wenn Docker Desktop schon laeuft**
+      Kontext: gemessen am 01.10.2026. Die Wache heilt mit `wsl --shutdown` +
+      Docker Desktop starten. Steht die WSL-Distribution `docker-desktop` aber auf
+      Stopped, waehrend die App seit Stunden laeuft, startet ein zweiter
+      App-Aufruf die VM NICHT neu - `docker info` laeuft in jeden Zeitablauf und
+      alle Container sind tot. Wirkungslos bleibt auch die Meldung: die Wache
+      steigt STILL aus, wenn PowerShell ihr keine Prozessliste liefern kann
+      (`_prozesse_json()` leer -> `return 0` ohne Text) - genau unter dem
+      Commit-Druck, unter dem sie gebraucht wird.
+      Naechster Schritt: in `heilen()` einen zweiten Griff ergaenzen (Desktop-
+      Prozesse per Stop-Process -Force beenden, dann starten - das brachte die
+      Engine nach 23 s zurueck) und den leeren Prozessabruf als eigenen Befund
+      melden statt als Stille. Beleg dieser Sitzung:
+      `Agenten/Hermes/cache/scratch/docker_neustart.py`,
+      `Agenten/Hermes/cache/scratch/docker_neustart.log`,
+      Wiki `Werkzeuge/RLTrader-in-Docker.md`.
+      Angelegt 02.10.2026 - Betrifft Agenten/Hermes/scripts/docker-wache.py
+
+- [ ] **T-307 - RLTrader: update-static-data ist nie gefahren**
+      Kontext: T-272 hat optimize und Report belegt; der dritte Pfad
+      (`cli.py update-static-data`, `download_data_async()` ueber ccxt) blieb
+      ungefahren. Er braucht Netz und zieht neue Kerzen - fuer eine Referenzspur
+      ohne Signalanspruch ohne Nutzen, deshalb bewusst liegen gelassen.
+      Naechster Schritt: nur fahren, wenn RLTrader noch einmal ernsthaft
+      gemessen werden soll (dann mit frischen Daten), sonst schliessen.
+      Angelegt 02.10.2026 - Betrifft Werkstatt/RLTrader
+
 - [ ] **T-305 - rltrader-optimize1 wurde vom Docker-Neustart beendet (Restart-Policy "no")**
       Kontext: Am 01.10.2026 war der Rechner sehr langsam. Gemessen: Commit
       87,8 von 103,7 GB (nur 15,9 frei), 991 Prozesse, davon 90 Python. Der
@@ -77,6 +104,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       eine Restart-Policy umstellen. Die Kreislauf-Ursache selbst (T-152,
       Spawn-Kette der MCP-Server) ist damit NICHT behoben; sie feuert beim
       naechsten Docker- oder Gateway-Neustart erneut.
+      BERICHTIGUNG 02.10.2026 (von der Sitzung, die die Optimierung gefahren hat):
+      Die Optimierung war NICHT verloren - sie war vor dem Neustart FERTIG.
+      Belege: `rltrader-optimize1.log` endet mit 'Finished trials: 553' und den
+      Best-Trial-Parametern; die `params.db` traegt Trial 580 (= optuna Trial 553)
+      mit state PRUNED, value 1.971 und datetime_complete 2026-10-01 21:57:16.
+      Der Container starb erst DANACH (23:57:42, 'error waiting for container:
+      unexpected EOF', EXIT=125 der CLI) - der Lauf war da durch. 'exit 255' ist
+      die Leiche, die der Neustart um 00:01 vorgefunden hat, nicht der Abbruch
+      eines laufenden Versuchs. Ein Neustart der Optimierung ist nicht noetig.
+      ZWEITE BERICHTIGUNG zur toten Engine: es war nicht nur der Spawn-Kreis.
+      Um 22:41 lag das freie Commit bei 1,1 GB (267 Python-Prozesse); nach dem
+      Aufraeumen der MCP-Gruppen (212 Prozesse beendet, 23,4 GB frei) antwortete
+      die Engine IMMER NOCH nicht. Gemessen: `wsl -l -v` zeigte docker-desktop =
+      Stopped, waehrend Docker Desktop seit 00:29 (23 h) lief - der Hausgriff
+      der docker-wache (`wsl --shutdown` + App starten) heilt das NICHT, ein
+      zweiter Start holt nur das Fenster nach vorn. Erst Prozesse beenden und
+      frisch starten brachte die Engine nach 23 s zurueck; die Container mit
+      --restart-Policy waren von selbst wieder da. Siehe T-306.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader, Agenten/MCP-Server
 
 - [ ] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
@@ -390,36 +435,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
 
-- [ ] **T-272 — RLTrader: optimize-Pfad und Report-Pfad sind nie gefahren**
-      Kontext: gemessen und belegt ist nur train+test auf statischem CSV
-      (1 Epoche, -48,32 USD auf den gehaltenen 20 %). Die Suchschleife
-      (cli.py optimize --trials 1) trifft die optuna-0.19-API des Codes
-      (trial.should_prune(step), optuna.structs) - passend gepinnt, aber nie
-      gefahren; Reports bewusst --no-report (quantstats-API file= vs. output=
-      ungeprueft); update-static-data (ccxt-Netzpfad) nie gefahren; das
-      gebuendelte data/params.db traegt 46 FAIL- und 88 RUNNING-Zeilen aus 2019
-      mit sich (nur COMPLETE zaehlen).
-      Naechster Schritt: bei Bedarf optimize --trials 1 im Container fahren
-      (Stunden, CPU) und einen Report mit korrekt pruefbarem Schluesselwort
-      erzeugen; sonst als Referenz stehen lassen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
 
 
-- [ ] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
-      Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
-      Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
-      Die zwei Spuren ohne belegbaren Markt sind ENTSCHIEDEN (Max, 01.10.2026):
-      `moondev_sniper` und `moondev_signalwelle` werden als PERP gefuehrt, Satz 0.0005
-      je Seite (gemessen); der Grund steht als `_gebuehr_quelle` in ihren wachen.json.
-      OFFEN bleiben die drei Onchain-Spuren: `kopier` und `kopier1zu1` (je 1,0 %/Seite)
-      und `robinhood_radar` (1,0 %/Seite). Ihre Werte sind MODELLANNAHMEN (DEX-Gebuehr
-      plus Slippage) und kein Boersensatz - der OKX-Perp-Satz waere dort rund das
-      20-fache zu niedrig, deshalb wurde er bewusst NICHT gesetzt.
-      Naechster Schritt: eigene Messung der echten Kosten (Gebuehr + Nachlauf ueber
-      eine Stichprobe frischer Signale, Muster `references/tor-kalibrierung.md`
-      Regel 8) ODER die Annahme ausdruecklich als Annahme stehen lassen und im
-      Bericht so benennen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (Perp-Entscheidung eingetragen) · Betrifft Agenten/Handel/kopier, kopier1zu1, robinhood_radar
 
 
 - [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
@@ -3160,6 +3177,36 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
+      Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
+      Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
+      Die zwei Spuren ohne belegbaren Markt sind ENTSCHIEDEN (Max, 01.10.2026):
+      `moondev_sniper` und `moondev_signalwelle` werden als PERP gefuehrt, Satz 0.0005
+      je Seite (gemessen); der Grund steht als `_gebuehr_quelle` in ihren wachen.json.
+      OFFEN bleiben die drei Onchain-Spuren: `kopier` und `kopier1zu1` (je 1,0 %/Seite)
+      und `robinhood_radar` (1,0 %/Seite). Ihre Werte sind MODELLANNAHMEN (DEX-Gebuehr
+      plus Slippage) und kein Boersensatz - der OKX-Perp-Satz waere dort rund das
+      20-fache zu niedrig, deshalb wurde er bewusst NICHT gesetzt.
+      Naechster Schritt: eigene Messung der echten Kosten (Gebuehr + Nachlauf ueber
+      eine Stichprobe frischer Signale, Muster `references/tor-kalibrierung.md`
+      Regel 8) ODER die Annahme ausdruecklich als Annahme stehen lassen und im
+      Bericht so benennen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (Perp-Entscheidung eingetragen) · Betrifft Agenten/Handel/kopier, kopier1zu1, robinhood_radar
+      **Erledigt 2026-10-01.** Der Nachlauf ist jetzt gemessen statt angenommen, in allen drei Onchain-Spuren. 'kopier.py --messen --bestand --stichprobe 25' misst ueber den BESTAND (der Diff liefert an ruhigen Tagen nichts - 18 von 18 Kandidaten ohne sichtbaren Kauf), gibt die Verteilung aus statt eines Mittelwerts, trennt nach Signalalter und ZAEHLT die Uebersprungenen (Regel 6 der Tor-Kalibrierung): 25 Kandidaten, 14 verwertet, 11 ohne Kauf in den letzten 50 Trades; Median -35,64 %, Schnitt -31,48 %, Spanne -87,15 % bis +76,05 %. 'robinhood_radar/handeln.py --messen' rechnet rein lesend auf der eigenen Sammlung: 3529 Fuellungen, 1979 Kaeufe mit naechster Beobachtung, Median +1,76 %; im Signalfall (Kohorte >= 2 bewertete Wallets) n=19, Median +2,87 %, kleinster +0,14 % - der Aufschlag von 2,0 % liegt damit AM Median, also richtig gesetzt. kopier1zu1 liest dieselbe Quelle, die Messung gilt mit. WAS ANNAHME BLEIBT: die Gebuehr selbst ist in keinem der beiden Datenwege messbar (sie steckt im Poolpreis; Pump.fun liefert keine Pooltiefe, der Radar-Sammlung fehlt ein Gebuehrenfeld) - sie steht in allen drei wachen.json mit Datum, Methode, Zahlen und Nachmess-Termin ausdruecklich als Annahme. Rohwerte in daten/messung.json (nicht versioniert). 11 neue Tests (kopier 35, robinhood_radar 20 gruen), Commit 066103f5.
+- [x] **T-272 — RLTrader: optimize-Pfad und Report-Pfad sind nie gefahren**
+      Kontext: gemessen und belegt ist nur train+test auf statischem CSV
+      (1 Epoche, -48,32 USD auf den gehaltenen 20 %). Die Suchschleife
+      (cli.py optimize --trials 1) trifft die optuna-0.19-API des Codes
+      (trial.should_prune(step), optuna.structs) - passend gepinnt, aber nie
+      gefahren; Reports bewusst --no-report (quantstats-API file= vs. output=
+      ungeprueft); update-static-data (ccxt-Netzpfad) nie gefahren; das
+      gebuendelte data/params.db traegt 46 FAIL- und 88 RUNNING-Zeilen aus 2019
+      mit sich (nur COMPLETE zaehlen).
+      Naechster Schritt: bei Bedarf optimize --trials 1 im Container fahren
+      (Stunden, CPU) und einen Report mit korrekt pruefbarem Schluesselwort
+      erzeugen; sonst als Referenz stehen lassen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+      **Erledigt 2026-10-01.** Beide Pfade sind gefahren (Container, CPU, 4 Env). optimize --trials 1 --prune-evals 1 --eval-tests 1: 21 min 40 s, Trial 553 angelegt, Ergebnis PRUNED (should_prune(0), Wert 1.971), bestes Trial bleibt -57.91 aus dem Altspeicher - die 0.19-API (trial.should_prune, optuna.structs) und das params.db-Altschema tragen. Report: der Code von 2019 uebergibt 'qs.reports.html(..., file=...)', quantstats 0.0.40 kennt nur 'output=' - der erste Lauf brach mit TypeError ab (belegt in rltrader-report1.log), behoben im Klon (Commit 17ffa38), das Bild NEU GEBAUT (der Code liegt IM Bild - der zweite Lauf gegen das alte Bild scheiterte identisch) und der dritte Lauf schrieb 'daten/reports/PPO2__MlpLnLstmPolicy__IncrementalProfit__0.html' (917 KB, Titel 'RLTrader ... Epoche 0' = pruefbares Schluesselwort; Testzeile $7886.06 = Summe der Schrittbelohnungen). NICHT gefahren: update-static-data (ccxt-Netzpfad) - fuer eine Referenzspur ohne Nutzen. Belege: Agenten/Hermes/cache/rltrader-optimize1.log, -report1.log, -report2.log; Wiki Werkzeuge/RLTrader-in-Docker.md.
 - [x] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
       Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
       Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt
