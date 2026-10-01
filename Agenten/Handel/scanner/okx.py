@@ -182,7 +182,8 @@ def _mit_wiederholung(*a, **kw):
             fehler += 1
             if fehler >= MAX_FEHLER:
                 raise
-            print("  OKX-Transportfehler %d/%d: %s" % (fehler, MAX_FEHLER, e),
+            print("  OKX-Transportfehler %d/%d: %s - wird wiederholt, kein Ausfall"
+                  % (fehler, MAX_FEHLER, e),
                   file=sys.stderr)
             time.sleep(1.5 * fehler)
 
