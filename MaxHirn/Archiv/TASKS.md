@@ -60,6 +60,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-283 - kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
+      Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
+      ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
+      zwei verfielen mit der 180-s-Frist (freigabebeleg.GUELTIG_SEKUNDEN). Der Ausfuehrer
+      `beleg-hand` laeuft als Cron alle 5 MINUTEN - ein Beleg, der direkt nach einem Lauf
+      entsteht, wartet bis zu 5 min und ist damit immer abgelaufen. beleg_hand.lauf()
+      iteriert zwar ueber ALLE offenen Belege, aber die Frist ist kuerzer als der Takt.
+      Schaden bisher: keiner (ein verfallener Beleg kauft nicht). Zu klaeren ist, warum
+      drei Belege entstanden, obwohl `pruefe_einstiege` den Platz VOR dem Beleg prueft
+      (max_offene_positionen 4) - moeglicherweise war das Buch zu dem Zeitpunkt anders
+      besetzt als angenommen.
+      Naechster Schritt: Frist und Takt aufeinander abstimmen (Frist > Takt, z. B. 600 s
+      bei 5-Minuten-Takt) ODER den Beleg-Hand-Takt auf 2 min senken; danach den
+      Platz-Grund je verfallenem Beleg im Journal sichtbar machen.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
+
 - [ ] **T-283 — Freitext blockiert den SkillsBot bis zu 30 Minuten**
       Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
       (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
