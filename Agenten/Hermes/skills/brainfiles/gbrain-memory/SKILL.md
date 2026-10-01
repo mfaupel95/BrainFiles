@@ -48,6 +48,11 @@ and date.
   "/usr/bin/bash.ProcessId -ne "). Richtig: Text mit dem Schreibwerkzeug in eine
   Datei legen, dann
   `gbrain remember "$(cat <pfad>)" --provenance "<quelle, datum>" --entity <entitaet>`.
+  **Die Ersetzung `$(cat ...)` passiert in der AEUSSEREN Shell** (der Bot laeuft auf
+  Windows): dort muss der Pfad in der Form liegen, die DIESE Shell versteht - aus dem
+  Windows-Terminal also `/c/Users/...` (MSYS), nicht `/mnt/c/Users/...` (WSL). Ein
+  WSL-Pfad im `cat` gibt `No such file or directory`, und gbrain meldet dann nur
+  `invalid_params: fact must be a non-empty string` (gemessen 01.10.2026).
 - **Nach jedem remember zuruecklesen** (`gbrain recall --grep '<stichwort>'`):
   gbrain meldet beim Schreiben keinen Inhaltsverlust, nur `remembered as fact #n`.
 - **`recall <wort>` sucht ZUERST eine ENTITAET.** Ist der Begriff keine, meldet es
