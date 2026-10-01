@@ -40,6 +40,34 @@ $werkstatt = Join-Path $stamm 'Werkstatt\Repos'
 $ziel    = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index.md'
 $zielWk  = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index-Werkstatt.md'
 
+# --- Fremd-Grenze (T-242(a), Entwurf 30.09.): die Liste ist die eine Quelle ---
+# Der Fundus meldet je Baum, was Agenten\FREMD-Liste.json ueber ihn sagt, statt
+# es hier zu wissen. Fehlt die Datei oder ihr Eintrag, sagt die Zeile genau das -
+# die Suche selbst ist reine Lesung und laeuft weiter. PS-5.1-Fallen beachtet:
+# Get-Content mit -Encoding UTF8, Zaehlen immer ueber @().
+$fremdEintr = @()
+$fremdJson = Join-Path $stamm 'Agenten\FREMD-Liste.json'
+if (Test-Path $fremdJson) {
+  try {
+    $fremdObj = Get-Content $fremdJson -Raw -Encoding UTF8 | ConvertFrom-Json
+    $fremdEintr = @($fremdObj.eintraege)
+  } catch { $fremdEintr = @() }
+}
+function Get-FremdZeile($relPfad, $label) {
+  if ($fremdEintr.Count -eq 0) {
+    return ('Fremd-Grenze: {0} -> Liste nicht gelesen (Agenten\FREMD-Liste.json fehlt oder unlesbar)' -f $label)
+  }
+  $e = @($fremdEintr | Where-Object { $_.pfad -eq $relPfad })
+  if ($e.Count -eq 0) {
+    return ('Fremd-Grenze: {0} -> kein Eintrag in der Liste' -f $label)
+  }
+  $t = $e[0]
+  $s = ('Fremd-Grenze: {0} -> fremd ({1}): {2}' -f $label, $t.art, $t.regel)
+  $unter = @($fremdEintr | Where-Object { $_.pfad.StartsWith($relPfad + '/') -and $_.pfad -ne $relPfad }).Count
+  if ($unter -gt 0) { $s += (' - dazu {0} Einzel-Eintraege unter diesem Baum' -f $unter) }
+  return $s
+}
+
 function Get-SkillKopf($datei) {
   $t = Get-Content $datei.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
   if ($null -eq $t) { return @{ Name = $datei.Directory.Name; Desc = '' } }
@@ -159,12 +187,15 @@ if ($Index) {
   Schreib-Index $zielWk 'Fundus-Index - Werkstatt/Repos' $eindeutigWerkstatt $werkstattSkills.Count $doppeltW
   $ueberlapp = @($eindeutigWerkstatt | Where-Object { $_.Beide }).Count
   Write-Output ('Ueberlappung: ' + $ueberlapp + ' Werkstatt-Skills liegen byte-identisch auch im Fundus')
+  Write-Output (Get-FremdZeile 'Werkstatt/Repos' 'Werkstatt/Repos')
   return
 }
 
 if (-not $Begriff) {
   Write-Output ('Fundus:        ' + $eindeutigFundus.Count + ' eindeutige Skills in ' + ($eindeutigFundus.Repo | Sort-Object -Unique).Count + ' Repos (' + $fundusSkills.Count + ' Dateien, ' + $doppeltF + ' identische Kopien)')
   Write-Output ('Werkstatt/Repos: ' + $eindeutigWerkstatt.Count + ' eindeutige Skills in ' + ($eindeutigWerkstatt.Repo | Sort-Object -Unique).Count + ' Repos (' + $werkstattSkills.Count + ' Dateien, ' + $doppeltW + ' identische Kopien, ' + @($eindeutigWerkstatt | Where-Object { $_.Beide }).Count + ' auch im Fundus)')
+  Write-Output (Get-FremdZeile 'Werkstatt/Repos' 'Werkstatt/Repos')
+  Write-Output ('Fremd-Grenze: Fundus (Documents\GitHub) -> ausserhalb von BrainFiles, von der Liste nicht erfasst; Inhalt: geklonte Fremd-Repos')
   Write-Output ''
   Write-Output 'Fundus:'
   $eindeutigFundus | Group-Object Repo | Sort-Object Count -Descending | ForEach-Object {
