@@ -70,6 +70,25 @@ and date.
   Pfad) gegentreten, bevor man den Fakt fuer verloren haelt.
 - Ein Fakt ohne `--entity` ist fuer die entitaetsbezogene Erinnerung unsichtbar -
   Entitaet setzen, sobald der Fakt ein Subjekt hat.
+- **Auch im DATEI-Weg wird `$NAME` im INHALT expandiert** (gemessen 01.10.2026):
+  `remember "$(cat datei)"` reicht den Text zwar unversehrt durch die eigene Shell,
+  aber auf dem Weg zur Installation wird `$HERMES_HOME` zu LEER - im Fakt stand
+  danach `jedes cd "/../.."`. Die Anfuehrungszeichen blieben, nur die Variable
+  verschwand. Deshalb im Faktentext **kein `$`** verwenden: Ersatzschreibweise
+  (`<HERMES_HOME>`) nehmen und im Text erklaeren, was gemeint ist.
+- **Nach dem Schreiben den zurueckgelesenen Text GEGEN DIE VORLAGE pruefen**, nicht
+  nur "gefunden" zaehlen - die Verstuemmelung oben fiel erst beim Zeichenvergleich
+  auf. Bei Verlust: `forget <id> --reason <was fehlte>`, Datei korrigieren, neu
+  remember.
+- **`The local persistence owner is unavailable. Fix: Restart the persistence owner,
+  then retry.`** (gemessen 01.10.2026): Der Schreibweg geht per IPC an einen
+  residenten Owner; gebunden wird dieser Socket nur von einem laufenden `gbrain
+  serve` (`core/persistence/ipc.ts`, gestartet in `mcp/resolve-ipc-binding.ts`), und
+  eine Socket-Datei lag nicht auf der Platte. Die Ursache ist NICHT abschliessend
+  geklaert (moeglich: ein paralleler Schreibvorgang war gerade der Owner) - die
+  Probe zeigt aber, dass **ein zweiter Aufruf Sekunden spaeter durchging**
+  (`remembered as fact #n`). Also wiederholen statt an Locks drehen; `recall`
+  funktioniert in derselben Lage (nur lesend).
 
 ## Setup evidence (2026-09-20)
 
