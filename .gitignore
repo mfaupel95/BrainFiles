@@ -982,3 +982,7 @@ Agenten/Werkzeuge/jevgrep/__pycache__/
 # Die Regel steht NACH der Freigabe `!...repos-zentrale/*.json` (Zeile 616):
 # spaetere Regel gewinnt. Gegenprobe: git check-ignore -v <pfad>.
 Agenten/Werkzeuge/repos-zentrale/einstellungen.json
+
+# Wurzel-Aufrufer fuer die Modelllisten der Bot-Profile (CRLF, kein LF):
+# liegt NACH allen Sperrregeln, weil die spaetere Regel gewinnt.
+!/profil-listen.cmd

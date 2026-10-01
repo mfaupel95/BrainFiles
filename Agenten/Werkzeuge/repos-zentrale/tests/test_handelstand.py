@@ -60,10 +60,11 @@ class LaufplanTest(unittest.TestCase):
         self.assertEqual(namen, set(self.plan), "Laufplan und spuren_stand gehen auseinander")
 
     def test_auskommentierte_bloecke_erzeugen_keine_spur(self):
-        """spiegel/kopier/omniquant_weit stehen als Kommentar in dauerlauf.SPUREN."""
-        for tot in ("spiegel", "spiegel_knapp", "kopier", "kopier1zu1", "omniquant_weit"):
+        """spiegel/spiegel_knapp/omniquant_weit stehen als Kommentar in dauerlauf.SPUREN."""
+        for tot in ("spiegel", "spiegel_knapp", "omniquant_weit"):
             self.assertNotIn(tot, self.plan, f"{tot} ist auskommentiert, darf nicht im Plan sein")
-        for lebt in ("xperp", "scanner", "mosaic", "klassik_sma"):
+        for lebt in ("xperp", "scanner", "mosaic", "klassik_sma",
+                     "kopier", "kopier1zu1"):
             self.assertIn(lebt, self.plan)
 
     def test_jede_spur_hat_ordner_und_skript_und_der_ordner_existiert(self):

@@ -73,23 +73,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       ausgibt; bis dahin im Haus als bekanntes Verhalten vermerkt (Wiederholen hilft).
       Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
-- [ ] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
-      Kontext: Die Handel-Suite meldete am 01.10.2026 (1525 Tests) genau einen
-      Fehlschlag: `test_omniquant_fassung.AuftragTest.test_spur_faehrt_weit_und_bleibt_
-      papier` - `AssertionError: True is not false : Omniquant wurde auf PAPIER bestellt`.
-      Grund ist nicht die Suite: Commit `aecd6178 Omniquant scharf: Schalter, Haken und
-      Auto-Freigabe gesetzt` hat `omniquant/wachen.json` auf handel_erlaubt=true gehoben
-      (gemessen 01.10.2026), der Test verlangt aber weiter den Papierstand von damals.
-      KORREKTUR 2026-10-01 (nach dem Eintrag nachgelesen): der Test liest
-      `omniquant/wachen.json`, also die HAUPTspur - die Datei ist richtig, nur die
-      Erwartung ist ueberholt. Der Schattenarm (`wachen.weit.json`) steht weiter auf
-      false; das ist eine eigene, zweite Frage.
-      Naechster Schritt: Entscheidung Max - bleibt Omniquant mit aecd6178 live (dann
-      den Test auf `handel_erlaubt=true` ziehen und die Papier-Behauptung streichen)
-      oder wird die Scharfschaltung zurueckgenommen (dann Schalter zurueck, Test bleibt
-      wie er ist). Fuer den Schattenarm fehlt ein eigener Pruefblock auf
-      `wachen.weit.json` - der ist bisher ungetestet.
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (KORREKTUR)
+- [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
+      **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (erledigt)
       Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
 
 
@@ -383,16 +369,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
 
 
-- [ ] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
-      Kontext: fd40deb (01.10. 01:20, parallele Sitzung) hat kopier und
-      kopier1zu1 als aktive Eintraege in dauerlauf.SPUREN - die Kommentare
-      unmittelbar darueber behaupten weiter "KOPIE AUS seit 24.09.2026 (Max)".
-      Der Zentrale-Test test_handelstand.LaufplanTest (51c8fd6, 30.09.) erwartet
-      beide auskommentiert und ist seither ROT; beide Buecher laufen nachgewiesen
-      (zustand.json frisch). Nicht von dieser Sitzung angefasst (Fremdarbeit).
-      Naechster Schritt: wer die Familie angefasst hat, glueckt die drei Zeugen -
-      entweder Eintrag auskommentieren oder Kommentar + Test auf AN ziehen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
+- [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
+      **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
 
 - [ ] **T-272 — RLTrader: optimize-Pfad und Report-Pfad sind nie gefahren**
       Kontext: gemessen und belegt ist nur train+test auf statischem CSV

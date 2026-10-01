@@ -220,10 +220,9 @@ SPUREN = {
     # Positions-Spiegel, trades/batch als Signal-Bestätigung). Kein Live-Zweig
     # wie spiegel - lesen.py kennt keine Schreibpfade. Reine
     # Standardbibliothek (urllib), laeuft unter dem scanner-venv.
-    # KOPIE AUS seit 24.09.2026 (Max: "kopie Familie stilllegen").
-    # kopier und kopier1zu1 laufen nicht mehr; ihre Buecher bleiben
-    # als Vergleichsgrundlage stehen, wachsen aber nicht weiter.
-    # WIEDER ANSCHALTEN: die Zeilen hier auskommentieren UND vorher
+    # KOPIER AKTIV (seit 30.09.2026, Parallelsitzung hat die Eintraege aktiviert).
+    # Beide laufen als Papierspuren; der Kommentar ist auf den aktuellen Stand
+    # gezogen. AUSSCHALTEN: die Zeilen hier auskommentieren UND vorher
     # in kopier/zustand.json ("letzter_lauf") auf jetzt setzen, sonst
     # stellt der erste Zyklus offene Papierpositionen flach.
     "kopier":  {"ordner": "kopier", "waehrung": "USD",

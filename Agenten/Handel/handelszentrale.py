@@ -2154,6 +2154,20 @@ def pruefe(jetzt=None):
     return aus
 
 
+def _topmost_weg(root):
+    """Topmost-Status sicher zuruecknehmen.
+
+    Das Fenster kann schon geschlossen sein, wenn der Timer auslaeuft - dann
+    ist der Tcl-Interpreter weg und jede Attribute-Abfrage wuerde mit
+    `TclError` scheitern. Der Callback bleibt deshalb rein defensiv.
+    """
+    try:
+        if getattr(root, "winfo_exists", lambda: False)():
+            root.attributes("-topmost", False)
+    except Exception:                                        # noqa: BLE001
+        pass
+
+
 def nach_vorn(root):
     """Das Fenster einmal nach vorn holen.
 
@@ -2168,7 +2182,7 @@ def nach_vorn(root):
         root.deiconify()
         root.lift()
         root.attributes("-topmost", True)
-        root.after(700, lambda: root.attributes("-topmost", False))
+        root.after(700, _topmost_weg, root)
         root.focus_force()
     except Exception:                                        # noqa: BLE001
         pass          # kein Fenstermanager-Recht: unschaedlich

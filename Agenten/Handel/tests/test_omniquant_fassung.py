@@ -137,14 +137,23 @@ class LadeBerichtTest(unittest.TestCase):
 
 
 class AuftragTest(unittest.TestCase):
-    """Der Stand, den Max bestellt hat - in der echten wachen.json."""
+    """Der Stand, den Max bestellt hat - in den echten wachen-Dateien."""
 
-    def test_spur_faehrt_weit_und_bleibt_papier(self):
-        with open(os.path.join(SPUR, "wachen.json"), encoding="utf-8") as f:
+    def test_schattenarm_weit_bleibt_papier(self):
+        """Der Schattenarm (wachen.weit.json) muss Papier bleiben,
+        auch wenn die Hauptspur live geschaltet ist."""
+        with open(os.path.join(SPUR, "wachen.weit.json"), encoding="utf-8") as f:
             w = json.load(f)
         self.assertEqual(w.get("prognose_fassung"), "weit")
         self.assertFalse(w.get("handel_erlaubt"),
-                         "Omniquant wurde auf PAPIER bestellt")
+                         "Omniquant-Weit-Arm wurde auf PAPIER bestellt")
+
+    def test_hauptspur_ist_live_wie_bestellt(self):
+        """Die Hauptspur ist seit aecd6178 live geschaltet (Max' Auftrag)."""
+        with open(os.path.join(SPUR, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+        self.assertTrue(w.get("handel_erlaubt"),
+                        "Omniquant-Hauptspur wurde live bestellt")
 
     def test_weiter_bericht_ist_frischer_als_die_grenze(self):
         # Ohne frischen Bericht faellt die Spur still auf Abstention - der
