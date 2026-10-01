@@ -91,3 +91,66 @@ ueber den Namen raten.
   Konvention stand oft nur in einer ignorierten Notiz oder Sitzungsablage.
 - Ergebnis ehrlich benennen: findet sich kein Leser, ist die Variable bisher nur
   eine Vereinbarung — das sagen, statt einen Verbraucher zu erfinden.
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Dritte Ablage: Windows-Benutzervariablen (`HKCU\Environment`)
+
+
+Ist der Verbraucher **nicht** Hermes, gehoert der Wert in die Benutzervariable und
+nicht in Hermes' `.env`: nur die Benutzervariable wird an jeden danach gestarteten
+Prozess vererbt. Hermes selbst loest `${NAME}` aus seiner `.env` auf und
+`${env:NAME}` aus der Prozessumgebung — beides greift erst in einem **neu
+gestarteten** Hermes-Prozess, ein laufender sieht die Aenderung nie.
+
+Setzen, ohne den Wert in die Kommandozeile zu schreiben:
+
+```powershell
+## Wert vorher in der Quelle kopieren
+[Environment]::SetEnvironmentVariable('NAME', (Get-Clipboard -Raw).Trim(), 'User')
+```
+
+```powershell
+## oder maskiert eintippen
+$s = Read-Host -AsSecureString 'Wert'
+$b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
+[Environment]::SetEnvironmentVariable('NAME', [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b), 'User')
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)
+```
+
+- **`setx NAME "<wert>"` nicht verwenden.** `setx` kennt keinen maskierten Weg, und
+  PowerShell legt die Zeile im Klartext in
+  `%APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt` ab —
+  dort stehen dann Zugangswerte, die niemand mehr rotiert.
+- **Ist-Stand am Registry-Schluessel ablesen, nicht an einer Kandidatenliste.**
+  Namen aufzaehlen und je Name nur Laenge und Praefix zeigen. Ein „FEHLT" aus einer
+  fest verdrahteten Namensliste ist **kein Beweis fuer Abwesenheit** — die Variable
+  kann zwischen zwei Aufrufen gesetzt worden sein, oft von einer zweiten Sitzung
+  des Nutzers. Vor jeder Abwesenheitsmeldung neu aus `HKCU:\Environment` lesen.
+- **In einer MCP-/Dienst-PowerShell kann `HKCU:\` einen ANDEREN Nutzer meinen als den
+  interaktiven.** `Get-ItemProperty HKCU:\Environment` meldete hier faelschlich
+  „keine OKX-Variable", waehrend `[Environment]::GetEnvironmentVariable('OKX_API_KEY','User')`
+  denselben Namen als gesetzt zeigte. Die autoritative Existenz-/Wert-Pruefung fuer die
+  persistente Benutzerumgebung ist deshalb immer dieser .NET-Aufruf — nie die
+  Registry-Lese als einzige Quelle. Wer `setx /M` genutzt haben koennte, prueft zusaetzlich
+  den `'System'`-Scope (`[Environment]::GetEnvironmentVariable('<NAME>','System')`);
+  `setx` (ohne `/M`) schreibt nach `HKCU\Environment` und wird von Anwendern gern
+  gesetzt — eine fehlende Umgebungsvariable heisst also nicht automatisch „nicht
+  vorhanden", wenn ein Nutzer dazwischengekommen ist. Dynamischer Zugriff auf einen
+  Variablennamen aus einer String-Variablen braucht in PowerShell 5.1 ausserdem die
+  `${env:<NAME>}`-Schreibweise; `$env:<NAME>` ist ein Parse-Fehler.
+- **Laufende Prozesse erben neu gesetzte Variablen nicht.** In der Sitzung nachziehen:
+  `$env:NAME = (Get-Item HKCU:\Environment).GetValue('NAME')`.
+- **Belegt wird nicht „steht drin", sondern „wird akzeptiert":** den Wert in eine
+  Shell-Variable lesen (nie als Literal in den Befehl) und den echten Endpunkt damit
+  abfragen — ohne Token 401, mit Token 200 ist der Nachweis. Rezepte, Hash-Vergleich
+  und die OmniRoute-Zugangstrennung: `siehe oben in dieser Datei`.
+- **Wer liest einen Variablennamen? Namen ankern.** `OMNIROUTE_API_KEY` trifft als
+  Teilstring in `HERMES_CUSTOM_OMNIROUTE_API_KEY` — ein ungeankerter Treffer beweist
+  keinen Leser. Und `search_files` meldet Treffer in versteckten/ignorierten Dateien
+  nur als Warnzeile („N matches in hidden or gitignored files"): dieser Zeile
+  nachgehen, dort stand die einzige Notiz zur Variable. Breites `grep -rIn` ueber die
+  Wurzel laeuft ins Zeitlimit (45 GB Archiv, Junctions) — `search_files` mit engem
+  Pfad und `file_glob` nehmen.

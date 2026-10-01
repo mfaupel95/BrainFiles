@@ -88,3 +88,66 @@ jeder `config set` den Kommentar-Schluss abschneidet.
 Ein Massenlauf ueber 25 Profile dauert 7-10 min (zwei `hermes.exe`-Aufrufe je
 Profil, je 5-15 s). Im Hintergrund laufen lassen, den Log am Ende auswerten -
 und die Live-Pruefungen danach einzeln (je 30-60 s).
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Profilflotte: pruefen, bevor geheilt wird
+
+
+Bei "ein Bot antwortet nicht" oder einer Liste von `hermes profile list`-Warnungen
+gilt eine feste Reihenfolge: **(1)** `hermes profile list` zeigt die KANAELE, nicht
+die Antwort-Ursache; **(2)** die Antwort-Ursache ist fast immer die Modellkennung
+(Profile erben nichts vom Startprofil) und wird nur durch einen echten Aufruf belegt
+(`hermes -p NAME chat -q "Antworte nur mit dem einen Wort: fertig" -Q`); **(3)** den
+`fallback_providers`-Block des PROFILS lesen, BEVOR der Provider verdaechtigt wird -
+ein Kleinmodell in der Kette verdeckt den Anmeldefehler mit einem
+Kontextfenster-Fehler.
+
+**Ein Bot, der nach Sekunden MITTEN im Lauf stirbt, ist eine andere Klasse als
+„antwortet nicht".** Im Profil-Log steht dann
+`Non-retryable client error: <provider>/<model>: …` und daneben liegt das volle
+Request-Dump `profiles/<bot>/sessions/request_dump_<sitzung>_*.json` mit
+`reason` und `error.body` — dieselbe Meldung, die der Client gesehen hat; der
+Bot-Name steht im Dateinamen, man braucht keinen Live-Lauf. Eine terminale
+Fremdklasse (Guthaben/Permission, z. B. `403 free tier can only be used from
+within OpenCode`) bricht im Router die ganze `auto/*`-Kombo ab und wird von
+Hermes NICHT wiederholt. Erst ueber alle Profile zaehlen
+(`grep -h "Non-retryable client error" */logs/errors.log`) und nach Fehlertext
+gruppieren: gleicher Text in vielen Profilen = eine gemeinsame Ursache im
+Router, kein kaputter Bot. Der Fix gehoert dann dorthin (`omniroute-betrieb`:
+terminale Kandidaten abschalten, `POST /api/resilience/reset`) — nicht in die
+Bot-Config.
+
+Ein Befehl statt 29 Einzelaufrufe (je 30-60 s Kaltstart):
+`scripts/profilflotte-bericht.py` (venv-Python von `hermes-agent`, `HERMES_HOME`
+gesetzt) zeigt je Profil Modell, hinterlegte Anmeldung, Kanalzeilen, Kette und
+Befund; `--nur-probleme` kuerzt auf die auffaelligen. Es schreibt nichts. Danach
+beheben die drei Werkzeuge unter `Agenten/Hermes/scripts/` je Befund
+(`profil-kanaele-bereinigen.py`, `bot-rueckfallkette-bereinigen.py`,
+`auth-verknuepfen.ps1` = Sitzung, `bot-modell-auf-nous.py` bzw. fuer den
+Router-Weg `bot-modell-auf-router.py`): erst Trockenlauf ohne Argument, dann
+`--anwenden`, `--zuruecknehmen` holt zurueck; je Profil `.bak-JJJJMMTT`; alle drei
+sind idempotent und nennen je uebersprungenem Profil den Grund.
+
+- **Ein Pruefwerkzeug kann den Block an der falschen Stelle suchen - Falschbefund.**
+  Der Flottenbericht las `provider`/`model` per Regex aus den ersten zwoelf Zeilen
+  der `config.yaml`. Bei einem Profil, dessen `providers:`-Block VOR dem
+  `model:`-Block steht (z. B. ein Wartungsprofil), meldete er „kein model-Block;
+  Provider ohne Block und ohne Zugangsdatei" - das Profil war gesund und
+  antwortete. Regel: `yaml.safe_load` zuerst, den `model:`-Block daraus nehmen,
+  das Zeilenmuster nur als Rueckfall fuer unlesbare Dateien. Und: **jeden Befund
+  erst am lebenden System nachstellen, dann „reparieren"** - ein echter Aufruf
+  des Profils kostet eine Minute und trennt einen Werkzeugfehler von einem
+  echten Ausfall. Ein Befund ohne Gegenprobe fuehrt sonst zu Reparaturen an
+  gesunden Dateien.
+
+Der Nachweis ist eine Leiter, keine Behauptung: `hermes profile list` mit 0
+Warnzeilen - Gegenprobe mit `--zuruecknehmen` (die Warnungen kehren zurueck) - ein
+echter Aufruf je Muster (vorher kaputt, wiederhergestellt, Sonderfall) -
+`git diff --numstat` JE Datei (2 Einfuegungen/3 Loeschungen = Modellwechsel,
+0/7 = entfernte Kette) - jede geaenderte `config.yaml` mit `yaml.safe_load`
+geparst und Zielwerte assertiert, LF-only-Zeilen 0. Rezept, Entscheidungstabelle,
+Zeitbudget und die Liste "was nicht angefasst wird":
+`siehe oben in dieser Datei`.

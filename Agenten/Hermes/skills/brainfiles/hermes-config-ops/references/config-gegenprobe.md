@@ -125,3 +125,43 @@ nicht gegen die Nachbardatei.
   oder den Port oeffnen - nicht die Config zitieren.
 - Wache: `hermes cron list` zeigt den Job mit Status ok; ein Lauf mit leerer Ausgabe
   ist der Beweis, dass sie schweigt, wenn nichts ist.
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Config gegen die Wirklichkeit pruefen (deklariert vs. real)
+
+
+Trigger: "optimier meine Config", "warum greift die Einstellung nicht", nach einem
+Update oder nach fremder Sitzungsarbeit. Der Befund kommt aus der Sache, nicht aus
+der Datei.
+
+**Kernsatz: eine Config ist eine Sammlung von Behauptungen** (Pfad existiert, Port
+laeuft, Modell liegt im Store). Faellt eine aus, meldet NICHTS einen Fehler - sie wird
+erst gebraucht, wenn der Hauptweg weggebrochen ist. Jede Behauptung einmal gegen die
+Wirklichkeit halten, nie gegen die Erinnerung.
+
+1. Gegenprobe fahren (rein lesend, exit 1 = Befund):
+
+       cd Agenten/Hermes
+       python scripts/config-gegenprobe.py            # Pfade, lokale Adressen, lokale Modellnamen
+
+2. Eindeutiges selbst reparieren (toter Modellname, falscher Port, Wert ausserhalb des
+   Bereichs), Strukturelles vorlegen (Feature abschalten, Presets umbauen, Instanzen
+   zusammenfuehren).
+3. Wache anschliessen - ein Nachweis, den niemand aufruft, ist keine Wache:
+
+       hermes cron create "every monday 7:40am" --name config-gegenprobe \
+         --script config-gegenprobe-wache.py --no-agent --deliver telegram
+
+   Die Wache meldet nur AENDERUNGEN (leere Ausgabe = nichts senden).
+
+Werkzeuge: `scripts/config-gegenprobe.py`, `scripts/config-gegenprobe-wache.py`,
+`scripts/config-abweichungen.py` (rein lesend, mit dem venv-Python: listet jeden Wert, der
+vom Hermes-Standard `DEFAULT_CONFIG` abweicht - die Tabelle, mit der eine "optimier meine
+Config / setz das auf Standard"-Frage beantwortet wird, statt Werte zu raten),
+`scripts/lokale-modellliste-richten.py` (Trockenlauf Standard, `--anwenden`,
+`--zuruecknehmen`). Vollstaendiger Ablauf, Urteilstabelle und die Fallen (geerbte
+Provider-Einstufung = Fehlalarm, HTTP 200 von einer FREMden Anwendung, toter Port der
+harmlos ist, irrefuehrendes 403 ohne Schluessel): `siehe oben in dieser Datei`.

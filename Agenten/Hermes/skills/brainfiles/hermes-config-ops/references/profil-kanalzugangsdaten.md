@@ -135,3 +135,50 @@ selbst uncommittete Fremdarbeit ist —, ist ein Teil-Commit nicht moeglich: die
 Ergaenzung bleibt im Arbeitsbaum (sie wirkt sofort, Skills werden von der Platte
 geladen) und wird im Bericht als unversioniert benannt, statt fremde Arbeit
 mitzucommitten.
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Kanal-Zugangsdaten gehoeren genau einem Profil (Telegram, Photon, ...)
+
+
+1. **Ein Bot-Token, ein Profil.** Traegt ein Profil dieselbe Verbindungskennung
+   wie `default`, warnt `hermes profile list` je Profil
+   (`hermes_cli/profile_channels.shared_channel_credentials`: Byte-Vergleich der
+   Kennungszeilen aus `.env` und von `platforms.<p>.token|api_key` aus
+   `config.yaml`). Ein zweites Gateway auf demselben Token nimmt dem ersten die
+   Nachrichten weg — beide pollen `getUpdates` —, und
+   `hermes gateway migrate --multiplex` verweigert, solange die Dopplung steht.
+   Die Dopplung ist also nicht kosmetisch: sie kostet Nachrichten.
+2. **Ein Bot-PROFIL braucht keine Kanalzugangsdaten — es braucht eine eigene
+   Modellkennung.** Der `/bot`-Weg des SkillsBot startet
+   `hermes -p NAME chat -q` ohne Gateway. Also die geteilten Kanalzeilen
+   entfernen statt jedem Bot einen eigenen Bot zu geben. Profile sind Inseln:
+   sie lesen nur ihr eigenes `auth.json`/`.env`.
+   Die Modellkennung holt man NICHT, indem man die Konto-Anmeldung des
+   Startprofils in jedes Profil kopiert: das ist dieselbe Kennung in vielen
+   Dateien (dieselbe Fehlerklasse wie beim Kanal) und eine geteilte
+   Refresh-Sitzung kann allen Profilen gleichzeitig ablaufen — im Startprofil
+   stand `Refresh session has been revoked`, waehrend ein anderes Profil
+   dieselbe Kennung benutzte. Die Sitzung holt ein Profil stattdessen ueber
+   einen SYMLINK auf den Root-Store oder eine eigene Anmeldung (Abschnitt
+   „Einem Profil eine Modell-Anmeldung geben"); der lokale Router war nur
+   Zwischenloesung und traegt die Flotte nicht mehr, weil ein toter Kandidat in
+   seiner Combo alle Bots gleichzeitig stilllegt. Rezept und der Weg ueber alle
+   Profile: `siehe oben in dieser Datei`.
+3. **Kein Unterkommando entfernt Kanaele aus einem bestehenden Profil** (nur
+   `--clone` strippt beim Anlegen). Nicht selbst eine Schluesselliste bauen:
+   `ChannelKeyIndex(<startprofil>).platform_for(<ENV_NAME>)` ist dieselbe
+   Zuordnung, mit der `--clone` strippt. Ablauf, Werkzeug und Belege:
+   `siehe oben in dieser Datei`.
+4. **Geheimnisse nicht in den Diff.** Ein `diff` gegen die Sicherung gibt die
+   Werte im Klartext aus — redigieren (`sed -E 's/=.*/=<wert>/'`) oder ueber
+   Hashes und Zeilenzahlen nachweisen.
+5. **Nachweis:** `hermes profile list` ohne eine einzige Warnzeile UND die
+   Gegenprobe (Sicherung zuruecklegen → Warnungen wieder da → erneut strippen →
+   0). Die `.env` des Startprofils bleibt unveraendert (Hash vorher/nachher):
+   dort gehoeren die Zugangsdaten hin.
+6. **Geteilte Zeilen, die keine Warnung ausloesen, nicht mitstrichen** (z. B.
+   `A2A_*`, `SMS_*`): melden und als eigene Entscheidung stellen — ein
+   stillschweigend mitgestrichener Nebeneintrag ist spaeter nicht mehr zuordenbar.

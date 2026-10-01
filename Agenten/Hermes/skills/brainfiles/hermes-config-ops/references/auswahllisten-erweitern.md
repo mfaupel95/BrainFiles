@@ -94,3 +94,136 @@ print('live     ', len(provider_model_ids('nous', force_refresh=True)))"
 - **Die Profil-Configs sind eigene Waehler.** Sie tragen den Block nicht; ob sie ihn
   brauchen, ist eine Entscheidung (T-296) — die Bots lesen ihr Modell aus ihrer
   `config.yaml`, nicht aus dem Waehler.
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Eine unvollstaendige Auswahlliste erweitern (Modellwaehler und Verwandte)
+
+
+**Wann:** „die Modellliste ist unvollstaendig", ein Waehler zeigt weniger
+Eintraege als erwartet, oder ein Anbieter fehlt in der Auswahl. Das Muster gilt
+fuer jede vom Code kuratierte Liste — erst MESSEN, was die Oberflaeche zeigt,
+dann die Stelle suchen, die Hermes zum Erweitern vorsieht, statt am Code zu
+patchen (der Checkout wird aktualisiert, der Patch waere beim naechsten Update
+weg).
+
+**1. Messen, was die Oberflaeche zeigt — mit DERSELBEN Funktion, die sie ruft.**
+Der Waehler zeigt fuer einen Anbieter mit kuratierter Liste NICHT den vollen
+Katalog. Gemessen am 01.10.2026 fuer `nous`: **58 Eintraege sichtbar** (50 aus dem
+Manifest `cache/model_catalog.json` plus die Empfehlungen des Portals), waehrend
+`provider_model_ids("nous")` **428** Modelle kennt. Hermes sagt es selbst:
+`model_switch_providers._nous_picker_model_ids` — „the picker shows ONLY the
+curated agentic list". Der volle Katalog liegt im Disk-Cache
+`provider_models_cache.json`.
+
+```bash
+cd Agenten/Hermes && ./hermes-agent/venv/Scripts/python.exe -c "
+import sys; sys.path.insert(0,'hermes-agent')
+from hermes_cli.config import load_config
+from hermes_cli.model_switch_providers import list_authenticated_providers
+cfg=load_config()
+for r in list_authenticated_providers(for_picker=True, user_providers=cfg.get('providers')):
+    print(r['slug'], len(r['models']), r['source'])"
+```
+
+**Der Parameter ist der halbe Nachweis.** `user_providers=cfg["providers"]` ist
+Pflicht — die Zeilenbauer lesen die eigenen `providers:`-Bloecke nur daraus.
+Ohne ihn zeigt derselbe Aufruf die kuratierte Liste: ein Ergebnis, das wie ein
+Fehlschlag aussieht, aber der falsche Aufruf ist (`user_provs = cfg.get("providers")`
+steht in `gateway/slash_commands_model.py` und `tui_gateway/model_switch.py`).
+
+Die von Hermes vorgesehene Stelle zum Erweitern ist der Config-Block
+
+```yaml
+providers:
+  nous:
+    models:
+      "<modell>": {}
+```
+
+`_lap_overlay_rows` haengt ihn der Waehler-Zeile VORAN („A
+providers.<overlay>.models block extends the row"); die Zeile bleibt
+`source: hermes` und behaelt ihre Anmeldung. Derselbe Mechanismus traegt die
+`models:`-Liste von `ollama-launch` und `omniroute` — er gilt fuer JEDEN Anbieter.
+
+Werkzeug: `Agenten/Hermes/scripts/nous-modellliste-richten.py` (Trockenlauf ist
+Standard, `--anwenden`, `--zuruecknehmen`, `--profile`, `--json`); Pruefungen
+`Agenten/Hermes/scripts/test_nous_modellliste_richten.py` (12, auf einer KOPIE
+der Config — nie auf der echten).
+
+Nachweis: `list_authenticated_providers(for_picker=True, user_providers=cfg["providers"])`
+zaehlt die Modelle der Zeile. **Ohne** `user_providers` zeigt derselbe Aufruf die
+kuratierte Liste — ein Aufruf ohne diesen Parameter sieht wie ein Fehlschlag aus,
+ist aber der falsche Aufruf.
+
+Falle: die Desktop-/Gateway-App schreibt `config.yaml` aus ihrem eigenen Speicher
+zurueck (01.10.2026 um 18:45: Diff 19/26 gegen HEAD, den keine Sitzung geschrieben
+hatte). Ein frisch eingetragener Block kann so wieder verschwinden — nach jeder
+Einstellungsaenderung in der App nachzaehlen (`grep -c "<modell>" Agenten/Hermes/config.yaml`).
+
+**Der Block ist eine ANZEIGELISTE, keine Freigabe.** Er aendert weder das aktive
+Modell noch die Anmeldung des Anbieters; er bestimmt nur, was im Waehler zur Wahl
+steht. Wer ihn eintraegt, hat nichts „scharf geschaltet" — das im Bericht auch so
+sagen, sonst liest die naechste Sitzung eine Modellauswahl als Konfigurationswechsel.
+
+**Beim Entfernen eines eingerueckten Blocks trifft ein `split` auf die Einrueckung
+zu FRUEH.** Ein Blockende zu finden, indem man den Text an `"\r\n  "` teilt, geht
+schief: das ist ein PRAEFIX von `"\r\n      "` (sechs Leerzeichen), die Trennung
+landet also schon auf der ersten Inhaltszeile — die restlichen Zeilen bleiben mit
+ihrer Einrueckung ohne Elternteil stehen und die Datei ist danach ungueltiges YAML.
+Richtig ist ein Muster, das GENAU zwei Leerzeichen verlangt:
+`re.search(rb"\r\n  (?=[^ ])", rest)` — der Treffer ist die erste Folgezeile der
+naechsten Ebene. Und die Gegenprobe gehoert VOR das Schreiben: den neuen Text mit
+`yaml.safe_load` parsen und asserten, dass der entfernte Block weg und der Rest
+unveraendert ist; das Schreiben selbst erst in der letzten Zeile
+(`open(pfad, "wb").write(neu)`). Gilt fuer jeden Block-Schnitt an YAML/JSON,
+nicht nur fuer die Modellliste.
+
+**2. Den Bauplatz im Code finden, bevor etwas geschrieben wird.** Der Checkout
+liegt unter `Agenten/Hermes/hermes-agent` — mit `search_files` nach dem Anbieter-
+oder Listennamen suchen und die Funktion lesen, die die Zeile BAU:
+
+```
+search_files pattern="_nous_picker_model_ids|_lap_overlay_rows" path="Agenten/Hermes/hermes-agent/hermes_cli"
+```
+
+Der Docstring sagt meist selbst, was Absicht ist („shows ONLY the curated list")
+— das ist die Antwort auf „ist das ein Fehler?": nein, eine Design-Entscheidung,
+und gesucht ist ihre vorgesehene Erweiterung. Ein Patch im Checkout ist der
+falsche Weg: `hermes update` holt den Baum neu.
+
+**3. Eintragen, gegenpruefen, belegen** — Trockenlauf zuerst, dann schreiben, dann
+mit demselben Aufruf wie in Schritt 1 nachzaehlen (58 -> 428) und
+`hermes config check` (Exit 0) fahren. Ein `yaml.safe_load` der neuen Fassung
+gehoert VOR das Schreiben.
+
+**4. Abschluss wie im Haus ueblich:** Wiki-Seite (`Wiki/Betrieb/Hermes.md`,
+config.yaml-Fallen) + offener Punkt in `MaxHirn/Archiv/TASKS.md` (stehende Regel)
++ eigener Commit. Fremde Aenderungen in derselben Datei NIE mitnehmen — Verfahren
+im Skill `arbeitsbaum-git-hygiene` (`GIT_INDEX_FILE` + `read-tree HEAD`).
+
+Zahlen, Code-Stellen und die Verallgemeinerung auf andere kuratierte Listen:
+`siehe oben in dieser Datei` — laden, wenn eine ANDERE Liste klemmt.
+
+#### Die Gegenrichtung: Profil-Listen kuerzen (Auftrag Max 01.10.2026)
+
+„Die botprofile brauchen noch weniger" — die 19 Profile, die je ~1.739 Eintraege aus der
+omniroute-`auto/*`-Liste mitkopiert hatten, sind auf das gekuerzt, was das Profil SELBST
+nennt (`model.default`, `providers.<p>.model`/`default_model`, `fallback_providers`,
+`delegation.model`, `moa`): **33.064 -> 125 Eintraege**, caveman 2248 -> 514 Zeilen.
+Der `models:`-Block ist eine ANZEIGELISTE — die Wahl bleibt vollstaendig, weil
+`discover_models: true` bleibt und der Waehler mit gesetztem Schluessel die echte Liste live
+holt. Werkzeug: `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py` (Trockenlauf
+Standard, `--anwenden`, `--zuruecknehmen`), Pruefungen
+`Agenten/Hermes/scripts/test_profil_modelllisten_kuerzen.py` (17, auf Kopien).
+**Nie auf den echten Profilen testen**, und nach dem Lauf pruefen, dass der Diff je Datei
+NUR Loeschungen zeigt (0 Insertions) — eine Insertion heisst, ein fremder Block ist
+mitgewandert. Die Hauptconfig bleibt unangetastet (eigene Entscheidung, T-302).
+
+**Falle in Werkzeugen, die YAML-Bloecke schneiden:** Ein `models:`-Eintrag in Dict-Form kann
+selbst Doppelpunkte tragen (`auto/coding:free: {}`) — der Name ist der Teil vor dem LETZTEN
+Doppelpunkt (`rpartition`), nicht vor dem ersten. Und in Listenform duerfen die Eintraege
+AUF der Hoehe des Schluessels stehen (`models:` / `- x`): ein Blockende-Kriterium
+„Einzug <= Schluesseleinzug" bricht dort sofort ab und liest null Eintraege.
