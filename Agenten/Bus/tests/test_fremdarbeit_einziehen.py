@@ -208,6 +208,37 @@ def test_phantom_eintrag_wird_nachgezogen():
         shutil.rmtree(w, ignore_errors=True)
 
 
+def test_rueckschritt_gegen_head_wird_nicht_uebernommen():
+    # T-218: Eine ruhende Datei, deren Stand gegen HEAD ein RUECKSCHRITT ist
+    # (Arbeitsbaum-Inhalt entspricht einem AELTEREN Commit, HEAD ist neuer),
+    # darf NICHT eingeholt werden. Sonst hebt der Einzug eine Reparatur
+    # stillschweigend wieder auf - gemessen am 30.09.2026 am Gateway-Launcher.
+    w = probe_aufbauen()
+    try:
+        fremdarbeit_anlegen(w)   # HEAD lernt die neue Fassung von datei_a
+        assert lauf(w).returncode == 0
+        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert\n"
+
+        # Zweite, RUECKFAELLIGE Sitzung schreibt die ALTE Fassung zurueck
+        # und laesst sie ruhen - der klassische Rueckschritt-Fall.
+        with open(os.path.join(w, "datei_a.txt"), "w", encoding="utf-8") as f:
+            f.write("a\n")
+        alt_machen(w, "datei_a.txt")
+        vorher = git("rev-parse", "HEAD", cwd=w)
+
+        a = lauf(w)
+        assert a.returncode == 0, a.stderr
+        assert "Rueckschritt" in a.stdout or "Rueckschritt" in a.stderr, \
+            "Routine nennt den Rueckschritt nicht: %r %r" % (a.stdout, a.stderr)
+        assert git("rev-parse", "HEAD", cwd=w) == vorher, \
+            "Rueckschritt wurde committet - Reparatur aufgehoben!"
+        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert\n"
+        # Abgelehnte Datei liegt weiter als Aenderung im Arbeitsbaum
+        assert " datei_a.txt" in git("status", "--porcelain", cwd=w)
+    finally:
+        shutil.rmtree(w, ignore_errors=True)
+
+
 if __name__ == "__main__":
     for name, f in sorted(list(globals().items())):
         if name.startswith("test_"):

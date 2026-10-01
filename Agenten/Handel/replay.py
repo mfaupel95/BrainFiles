@@ -676,6 +676,97 @@ def auf_der_marke(journal_pfad):
     return {"ausstiege_an_marke": trifft, "ausstiege": ausstiege}
 
 
+def docht_beruehrung_ohne_schluss(kerze, seite, stop, ziel):
+    """Zaehlernebennachfrage (T-202): Hat diese Kerze eine Marke NUR mit dem
+    Docht beruehrt und darueber geschlossen - also ohne dass der Schluss
+    jenseits der Marke stand?
+
+    Das ist gerade NICHT der Fall eines Ausstiegs: der Ausloeser bleibt der
+    Kerzenschluss. Eine Kerze, die eine Marke nur mit dem Docht streift (ihr
+    Hoch/Tief die Marke kreuzt) und zurueckschlaegt, loest weiterhin nichts
+    aus. Diese Funktion zaehlt genau diesen Fall als Messung - ein Ausstieg
+    am Docht waere der naechste Schritt, macht die Zahlen aber strenger und
+    weicht vom Live-Verhalten ab (Entscheidung Max, siehe TASKS.md T-202).
+
+    Rueckgabe True, wenn die Kerze eine Marke nur mit dem Docht beruehrt hat
+    (Hoch/Tief), der Schluss aber NICHT jenseits der Marke steht. False sonst
+    (keine Beruehrung, oder die Kerze hat sie mit dem Schluss beruehrt).
+
+    `kerze` ist eine Binance-Reihe [ts, o, h, l, c, v]; `seite` ist
+    "long"/"short"; `stop` und `ziel` die Marken als Zahlen.
+    """
+    if not kerze or len(kerze) < 5:
+        return False
+    seite = str(seite or "").strip().lower()
+    if seite not in ("long", "short"):
+        return False
+    hoch, tief, schluss = (_zahl(kerze[2]), _zahl(kerze[3]),
+                           _zahl(kerze[4]))
+    stop, ziel = _zahl(stop), _zahl(ziel)
+    if None in (hoch, tief, schluss, stop, ziel):
+        return False
+    if seite == "long":
+        # Stop unter dem Einstieg: Docht-Tief streift den Stop, Schluss darueber.
+        if tief <= stop:
+            return schluss > stop
+        if hoch >= ziel:
+            return schluss < ziel
+    else:
+        if hoch >= stop:
+            return schluss < stop
+        if tief <= ziel:
+            return schluss > ziel
+    return False
+
+
+def docht_ausstiege_anwenden(z, kerze, inst, huelle, zeit):
+    """T-202: Positionen schliessen, deren Marke NUR am Docht beruehrt wurde.
+
+    Der Ausloeser der Spuren ist der Kerzenschluss (`pruefe_ausstiege` prueft
+    `k[-1][4]`). Eine Kerze, die eine Marke nur mit dem Docht streift (Hoch/Tief
+    kreuzt die Marke) und darueber schliesst, loest dort nichts aus. Diese
+    Funktion schliesst genau diese Positionen NACH `pruefe_ausstiege` - der
+    Replay bildet damit den Docht-Ausstieg ab, ohne die Spur anzufassen.
+
+    Der Ausstieg geschieht am KURS DER MARKE (wie die Beruehrungsregel T-177),
+    nicht am Kerzenschluss. Die Journalzeile geht durch die Huelle, damit sie
+    dieselbe Berichtigung bekommt wie jeder andere Markenausstieg.
+
+    Rueckgabe: die Zahl der so geschlossenen Positionen.
+    """
+    geschlossen = 0
+    behalten = []
+    for p in z.get("positionen", []):
+        if p.get("inst") != inst:
+            behalten.append(p)
+            continue
+        marke = beruehrte_marke(kerze, p.get("seite"), p.get("stop"),
+                                p.get("ziel"))
+        if marke is None:
+            behalten.append(p)
+            continue
+        # Nur der reine Docht-Fall: die Marke ist beruehrt, aber der Schluss
+        # steht NICHT jenseits der Marke (sonst haette pruefe_ausstiege schon
+        # geschlossen).
+        if not docht_beruehrung_ohne_schluss(kerze, p.get("seite"),
+                                             p.get("stop"), p.get("ziel")):
+            behalten.append(p)
+            continue
+        kurs = round(_zahl(p.get("stop")) if marke == "stop"
+                     else _zahl(p.get("ziel")), 6)
+        vz = 1 if p.get("seite") == "long" else -1
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+        erloes = p["nominal"] + gv
+        huelle(zeit=zeit, modus="papier", aktion="verkauf", inst=inst,
+               seite=p.get("seite"), preis=_preis_text(kurs, "%.6f" % kurs),
+               einsatz_usd="%.2f" % erloes, stop="%.6f" % p.get("stop"),
+               ziel="%.6f" % p.get("ziel"),
+               stop_pct="%.2f" % p.get("stop_pct", 0.0), grund=marke)
+        geschlossen += 1
+    z["positionen"] = behalten
+    return geschlossen
+
+
 def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
            max_kerzen=None, fenster=None, abschnitt=None):
     """Familie A ueber die Historie. Rueckgabe wie backtest_prognose.lauf().
@@ -750,6 +841,11 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
             kerzen_jetzt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             modul.pruefe_ausstiege(z, k, w, nur=inst)
+            docht_ausstiege_anwenden(
+                z, k[-1], inst, huelle,
+                dt.datetime.fromtimestamp(
+                    ts_schritt / 1000.0, dt.timezone.utc)
+                .isoformat(timespec="seconds"))
             _ausstiege_buchen(offen, runden, vorher, z, k[-1],
                               gebuehr_pct, inst)
             vor_ids = {id(p) for p in z["positionen"]}

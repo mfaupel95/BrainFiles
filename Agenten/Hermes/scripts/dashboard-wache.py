@@ -105,6 +105,35 @@ def _schreiben(pfad, stand):
         pass
 
 
+def _rotieren(pfad: Path, *, byte_frist: int = ROTATION_BYTE_FRIST, behalten: int = 1) -> None:
+    """dashboard-restart.log ist ein reines Anhaenge-Protokoll (Schreiber:
+    ``hermes_cli/main_dashboard.py::_respawn_dashboard_processes``, Appends nur,
+    keine Rotation dort - T-196). Damit die Datei nicht unbegrenzt waechst,
+    rotiert die Wache sie hier am eigenen Seam: ueber der Frist wandert die
+    alte Fassung nach ``<name>.1`` (fruehere Generationen fallen weg - die
+    Heilung im Log betrifft nur die Zyklen der letzten Stunden, die CPU-Bremse
+    und die Fristen decken den Rest ab). Still bei Schreibfehlern: die Wache
+    darf nie an einem Protokoll scheitern.
+    """
+    if not pfad.is_file():
+        return
+    try:
+        if pfad.stat().st_size <= byte_frist:
+            return
+    except OSError:
+        return
+    for stufe in range(behalten, 0, -1):
+        alt = pfad.with_name(pfad.name + (\"-%d\" % stufe if stufe > 1 else \".1\"))
+        neuer_alt = pfad.with_name(pfad.name + (\"-%d\" % (stufe + 1) if stufe + 1 > 1 else \".1\"))
+        try:
+            if stufe == 1:
+                pfad.replace(neuer_alt)
+            elif alt.exists():
+                alt.replace(neuer_alt)
+        except OSError:
+            return
+
+
 # ---------------------------------------------------------------- Messen
 
 def antwortet(url=URL, frist=ANTWORT_FRIST_S):
