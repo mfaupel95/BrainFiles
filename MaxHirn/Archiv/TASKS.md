@@ -103,7 +103,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 2026-10-01 · Zuletzt 2026-10-01
       Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
 
-- [ ] **T-283 — Freitext blockiert den SkillsBot bis zu 30 Minuten**
+- [ ] **T-288 — Freitext blockiert den SkillsBot bis zu 30 Minuten (ID-Korrektur 01.10.: T-283 war Doppelvergabe, der aeltere Eintrag mit Commit-Referenz 11992c4 behaelt die Nummer)**
       Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
       (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
       "(Aufgabe FAILED)", obwohl der Hauptagent weiterarbeitete. Der Bot ist in
