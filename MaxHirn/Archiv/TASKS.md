@@ -494,6 +494,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       ungepinnten Eintraege; leere Ausgabe = nichts senden, an memory-verlust-wache.py
       angehaengt oder eigener Cron), und/oder (b) als Upstream-PR melden statt lokal flicken
       (der Checkout wird von `hermes update` zurueckgesetzt).
+      Stand 01.10.2026 (nachgeprueft): (a) ist Gebaut und lebt - `memory-verlust-wache.py`
+      haelt `queue_lage`/`queue_befunde` (Alter ueber 7 Tage, ungepinnt, unlesbar;
+      `bc8041a`), Cron `f6f34ed95e0b` enabled, taeglich 20:45, no_agent, Telegram,
+      last_status ok; 17 Tests inkl. QueueTest. Bei leerer Queue meldet die Wache nichts.
+      OFFEN bleibt allein (b): der Upstream-PR fuer die Batch-Atomaritaet (ein reines `add`
+      in einem Batch mit veralteter `replace` verdirbt den ganzen Batch). Nicht lokal
+      geflickt, da `hermes update` den Checkout zuruecksetzt. Max entscheidet ueber den PR.
       Angelegt: 2026-09-30
       Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
 - [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
