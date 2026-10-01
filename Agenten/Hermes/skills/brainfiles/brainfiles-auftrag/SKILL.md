@@ -151,3 +151,16 @@ nur die benannten Pfade der eigenen Aenderung, und **(b)** der ECHTE Lauf zeigt 
 Wirkung mit Handle -- beim Provider die Logzeile `model=<ziel> provider=<p> ...
 id=msg_...` einer realen Anfrage, bei einer Handelsspur der Eintrag des naechsten
 Dauerlauf-Zyklus in Journal/Ablehnungslog plus `spiegelstand.py` „9 von 9 byte-gleich".
+
+## Befehle fuer Max sind PowerShell (01.10.2026)
+
+Max arbeitet in PowerShell, nicht in bash. Ein mitgegebener Befehl mit `grep`, `ls`,
+`cat` oder einer bash-`for`-Schleife scheitert bei ihm mit "Der Begriff \"grep\" wird
+nicht als Name eines Cmdlets ... erkannt" - und er muss nachfragen, obwohl die Sache
+laengst laeuft. Zwei Regeln daraus:
+
+- Nachweise, die EINE Zeile sind, SELBST fahren und nur das Ergebnis zeigen. Ein Befehl
+  fuer ihn ist nur dann richtig, wenn er ihn wirklich ausfuehren soll.
+- Muss er selbst laufen: PowerShell-Schreibweise (`Select-String`, `Get-ChildItem`,
+  `Get-Content`) und den Befehl VORHER einmal echt in PowerShell ausprobiert - eine
+  ungepruefte Zeile kostet ihn einen Fehlversuch.
