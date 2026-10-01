@@ -76,6 +76,21 @@ Jede der drei Fragen hat eine Stelle im Code, an der sie beantwortet ist:
   fuehrt nur 1H/4H/1D — ein Aufruf mit `5m`/`15m` faellt mit `KeyError: '5m'` um.
   Vor der Messung kurzzeitiger Takte die Tabelle erweitern (`{"5M": "5m", ...}`)
   und die Gross-/Kleinschreibung der Aufrufstelle pruefen.
+- **Die Groesse so wählen, dass das Konto die Gebühr trägt.** Bei kleiner
+  Anfangsbilanz scheitern die Läufe am Gebührensatz (`InsufficientBalance`) —
+  ein Kombinationsraster bekommt dann Löcher, die wie „kein Ergebnis“ gelesen
+  werden. Vor dem Raster die größte Einzelposition (Nominal + Gebühr) gegen
+  die Bilanz rechnen.
+- **Der Drawdown eines fremden Backtesters wird geprüft, bevor er als Zahl
+  zitiert wird.** Buchet der Account einen Kauf als VOLLEN Abzug vom Cash und
+  zählt der Positionswert im Equity NICHT zurück, sieht jede offene Position
+  die große Kurve — die DD-Spalte misst dann nichts (PnL, Runden und
+  Trefferquote sind davon unberührt). Einen offenen Lauf gegen eine
+  Zeilenrechnung halten, bevor aus dem DD eine Grenze abgeleitet wird.
+- **Trailing erzeugt Runden, nicht Vorteile — das ist eine Messung, keine
+  Regel.** Im gemessenen Fenster verdoppelte der Trailing-Stop die Rundenzahl
+  (Ausstieg je Rücksetzer) und senkte den PnL; über die Trendlänge nachdenken,
+  bevor ein Trailing-Skript zum Standard erklärt wird.
 - **Reihenfolge der Laufzeit:** die Indikator-Auswertung ist quadratisch in der
   Kerzenzahl. Vor dem grossen Raster einen Einzellauf mit kurzem Fenster fahren
   und die Zeit messen; sonst laeuft ein 24-Kombinationen-Raster in die
