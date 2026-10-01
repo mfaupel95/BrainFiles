@@ -566,3 +566,26 @@ Guthaben-Grund mehr.
 **Merksatz:** ein Guthaben ist eine Momentaufnahme, kein Zustand — eine Zahl aus dem
 Vormittag entscheidet am Abend nichts. Und `cash.balances` bleibt bei Kraken Futures
 0,00: das Geld liegt im flex-Konto (`availableMargin`).
+
+### Nachtrag 01.10.2026, 23:31: der 1-Kontrakt-Roundtrip lief — `/fills` ist kaputt
+
+Eine parallele Sitzung hat den Roundtrip auf `PF_STRKUSD` gefahren (VPN getrennt):
+Kauf **angenommen und gefuellt**, danach scheiterte das Fill-Polling an
+`authenticationError` auf `/fills`, die Position blieb **ohne Stop** stehen und
+wurde von Hand geschlossen (drei vorherige Positionen wiederhergestellt).
+
+- **Belegt:** Kauf UND Verkauf werden ohne VPN angenommen. Und: eine 1-Kontrakt-
+  Probe gehoert auf einen BILLIGEN Markt — `futures_probe.py` rechnete „1 Kontrakt
+  = 1 USD Nominal“ und haette mit der Vorgabe 8 Kontrakte PF_XBTUSD einen Kauf
+  ueber 676.816 USD Nennwert ausgeloest, der bei 83 USD freier Margin
+  durchgegangen waere.
+- **NICHT belegt:** die Margin-Hoehe. Der Roundtrip hat kein Equity vorher/nachher
+  gemessen — die 16,86 USD oben sind die **Rechnung** aus der Preference (7x),
+  nicht die Messung. Genau dafuer fehlt noch ein Lauf mit
+  `availableMargin` vor und nach der Order.
+- **Offen:** warum `/fills` mit `authenticationError` antwortet, waehrend
+  `/accounts` und `/openpositions` antworten.
+
+**Merksatz:** eine Order, die angenommen wird, belegt nicht die Margin. Und ein
+Fill-Polling, das nicht antwortet, laesst die Position ohne Notausstieg stehen —
+der Stop darf nicht am Polling haengen.
