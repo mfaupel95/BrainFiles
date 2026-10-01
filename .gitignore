@@ -955,6 +955,13 @@ Agenten/Handel/klassik_rsi2/handelsjournal.csv
 Agenten/Handel/klassik_donchian_trend/zustand.json
 Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 
+# Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
+!Agenten/Handel/prophet_signal/*.py
+!Agenten/Handel/prophet_signal/*.md
+!Agenten/Handel/prophet_signal/wachen.json
+Agenten/Handel/prophet_signal/zustand.json
+Agenten/Handel/prophet_signal/handelsjournal.csv
+
 # --- FREMD-GRENZE (30.09.2026, Auftrag Max "code und struktur ueberall optimieren") ---
 # Die eine Quelle (JSON), ihr Leser (fremd.py), das Bestandswerkzeug und die
 # lesbare Anzeige. Zweck: Fremd-Material im eigenen Baum (OpenAlice, Klone,

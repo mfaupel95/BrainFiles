@@ -381,6 +381,14 @@ SPUREN = {
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.
     "moondev_signalwelle": {"ordner": "moondev_signalwelle", "waehrung": "USD",
                             "skript": "handeln.py"},
+    # PROPHET-SIGNAL (02.10.2026, CryptoPredictions-Papier):
+    # Saisonale Zerlegung + Trend-Prognose nach Facebook Prophet.
+    # Das Paper zeigt Prophet als best performer (MAE 83 vs ARIMA 1009).
+    # Diese Spur nutzt die Idee ohne externe Prophet-Installation
+    # (NumPy-Kompatibilitaet): EMA30 Trend + Saisonalitaets-Erkennung.
+    # Papier, kein Live-Zweig.
+    "prophet_signal": {"ordner": "prophet_signal", "waehrung": "USD",
+                        "skript": "handeln.py"},
     # KLASSIK-SPUREN (30.09.2026, Auftrag Max "neue Strategien und Spuren"):
     # die sechs Pine-Vorlagen (MaxHirn/Wiki/Handel/*.pine) plus zwei neue
     # Regeln als Papierspuren auf BTC/ETH/SOL-Perps, 4H. Eine Rechnung fuer
