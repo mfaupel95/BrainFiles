@@ -1212,3 +1212,42 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 - `Compare-Object` Sicherung ↔ Datei: genau eine geänderte Zeile.
 - `hermes gateway status`: Aufgabe registriert, Prozess läuft — ohne Neustart.
 - `Wissen/Hermes.md` nennt Änderung, Prüfweg, Sicherungspfad und Falle; committet.
+
+## Die Modellliste eines Anbieters erweitern (Modellwaehler)
+
+Der Waehler zeigt fuer einen Anbieter mit kuratierter Liste NICHT den vollen
+Katalog. Gemessen am 01.10.2026 fuer `nous`: **58 Eintraege sichtbar** (50 aus dem
+Manifest `cache/model_catalog.json` plus die Empfehlungen des Portals), waehrend
+`provider_model_ids("nous")` **428** Modelle kennt. Hermes sagt es selbst:
+`model_switch_providers._nous_picker_model_ids` — „the picker shows ONLY the
+curated agentic list". Der volle Katalog liegt im Disk-Cache
+`provider_models_cache.json`.
+
+Die von Hermes vorgesehene Stelle zum Erweitern ist der Config-Block
+
+```yaml
+providers:
+  nous:
+    models:
+      "<modell>": {}
+```
+
+`_lap_overlay_rows` haengt ihn der Waehler-Zeile VORAN („A
+providers.<overlay>.models block extends the row"); die Zeile bleibt
+`source: hermes` und behaelt ihre Anmeldung. Derselbe Mechanismus traegt die
+`models:`-Liste von `ollama-launch` und `omniroute` — er gilt fuer JEDEN Anbieter.
+
+Werkzeug: `Agenten/Hermes/scripts/nous-modellliste-richten.py` (Trockenlauf ist
+Standard, `--anwenden`, `--zuruecknehmen`, `--profile`, `--json`); Pruefungen
+`Agenten/Hermes/scripts/test_nous_modellliste_richten.py` (12, auf einer KOPIE
+der Config — nie auf der echten).
+
+Nachweis: `list_authenticated_providers(for_picker=True, user_providers=cfg["providers"])`
+zaehlt die Modelle der Zeile. **Ohne** `user_providers` zeigt derselbe Aufruf die
+kuratierte Liste — ein Aufruf ohne diesen Parameter sieht wie ein Fehlschlag aus,
+ist aber der falsche Aufruf.
+
+Falle: die Desktop-/Gateway-App schreibt `config.yaml` aus ihrem eigenen Speicher
+zurueck (01.10.2026 um 18:45: Diff 19/26 gegen HEAD, den keine Sitzung geschrieben
+hatte). Ein frisch eingetragener Block kann so wieder verschwinden — nach jeder
+Einstellungsaenderung in der App nachzaehlen (`grep -c "<modell>" Agenten/Hermes/config.yaml`).
