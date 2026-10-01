@@ -79,9 +79,11 @@ class Replay(unittest.TestCase):
         self.assertEqual(b[-2:], ["--lauf", "leitstand-20260929-120000"])
 
     def test_null_kerzen_heisst_alle(self):
-        teile, _f = lbt.pruefe_replay({"spur": "gitter", "max_kerzen": "0",
+        # squeeze steht in replay.SPUREN_TEIL_A; gitter tat es bis 01.10.2026
+        # und ist dort heraus (sein handeln.py hat kein pruefe_ausstiege).
+        teile, _f = lbt.pruefe_replay({"spur": "squeeze", "max_kerzen": "0",
                                        "gebuehr": "0.1", "gegenprobe": False})
-        self.assertEqual(teile, ["--spur", "gitter", "--gebuehr", "0.1"])
+        self.assertEqual(teile, ["--spur", "squeeze", "--gebuehr", "0.1"])
 
     def test_fenster_unter_der_spuranforderung_wird_abgewiesen(self):
         """Sonst startet der Reiter einen Lauf, der nur scheitern kann, und der
@@ -462,7 +464,7 @@ if __name__ == "__main__":
 class ReplayGebuehrFeldTest(unittest.TestCase):
     """Das Feld darf LEER bleiben - dann gilt der Satz der Spur."""
 
-    def _werte(self, spur="gitter", gebuehr=""):
+    def _werte(self, spur="squeeze", gebuehr=""):
         return {"spur": spur, "max_kerzen": "0", "gebuehr": gebuehr,
                 "gegenprobe": False}
 

@@ -565,22 +565,33 @@ das Feld leer und zeigt daneben "Satz der Spur: 0.6 %/Seite".
 geraten.** Wo die Zahl eine Eigenschaft der Sache ist (der Markt der Spur), wird sie
 aus der Sache gelesen - nicht in den Aufruf geschrieben.
 
-### Nachgemessen 01.10.2026: die Zahlen von 29.09. sind veraltet (Kerzenschluss-Regel)
+### Nachgemessen 01.10.2026: die Zahlen von 29.09. sind ueberholt (Kerzenschluss-Regel)
 
-Ein Lauf ueber die volle Historie mit der Vorgabe aus der Wachen ergab fuer `squeeze`:
+Vier Spuren ueber die volle Historie, Ausstieg an der Marke, Gebuehr aus der Wachen
+(0,10 %/Seite = 0,20 % je Runde, OKX-Spot):
 
-    1088 Runden, 4 offen, Gebuehr 0.1 %/Seite (Quelle: wachen.json der Spur)
-    R 5,00 %   C 10,00 %   p 34,9 %   f_max 0,239 % je Runde   Ergebnis-Summe +260,15
-    Ausstiege an der Marke: 1088 von 1088
+    Spur         Runden   Treffer   f_max/Runde   Abstand zur Rundengebuehr   Ergebnis-Summe
+    supertrend     854     35,8 %     0,380 %       1,90x                     +134,80
+    squeeze       1088     34,9 %     0,239 %       1,20x                     +260,15
+    macd_mtf      1209     34,7 %     0,200 %       1,00x (genau null)        +207,96
+    wavetrend     1506     33,2 %    -0,020 %      -0,10x (tot)               -20,94
 
-Die Zahlen vom 29.09. (squeeze 759 Runden / 51,0 %) sind damit **ueberholt** - nicht wegen
-der Gebuehr, sondern wegen der **Kerzenschluss-Regel vom 30.09.**: der Ausstieg liegt jetzt
-an der beruehrten Marke (sind beide Marken in einer Kerze, gilt der STOP), nicht am Schluss
-der Kerze. Das senkt die Trefferquote spuerbar (51 % -> 34,9 %) und damit den Vorsprung
-gegenueber der Gebuehr: `f_max` 0,239 % je Runde gegen 0,2 % Rundekosten (OKX-Spot) ist
-**nur noch der 1,2-fache Abstand**. Wer die alten Zahlen im Kopf hat, haelt squeeze fuer
-deutlich robuster als es ist.
+Die Zahlen vom 29.09. (squeeze 759/51,0 %, wavetrend 1128/54,3 %, macd_mtf 774/53,2 %,
+supertrend 854/49,8 %) sind damit **ueberholt** - nicht wegen der Gebuehr, sondern wegen
+der **Kerzenschluss-Regel vom 30.09.**: der Ausstieg liegt jetzt an der beruehrten Marke
+(sind beide Marken in einer Kerze, gilt der STOP), nicht am Schluss der Kerze. Die
+Trefferquote faellt dadurch um 15-20 Punkte (51-54 % -> 33-36 %), und `f_max` rutscht an
+die Rundengebuehr heran:
 
-`mosaic` liess sich in beiden Varianten (0,1 und 0,6 %/Seite) nicht fahren - es bricht beim
-ersten Einstieg ab (siehe oben); der Gebuehrenvergleich ist dort bis zum Adapter
-gegenstandslos.
+- **supertrend** behaelt als einzige Luft (1,90x); nur 492 ihrer 854 Ausstiege liegen an
+  einer Marke, der Rest endet per Frist.
+- **squeeze** hat 20 % Luft, **macd_mtf** liegt EXAKT auf der Nulllinie (0,1997 % gegen
+  0,200 %), **wavetrend** ist negativ - sie verliert schon bei 0 % Gebuehr.
+- Auf Kraken (1,2 %/Runde) waere KEINE der vier tragfaehig.
+
+**Merksatz: eine Trefferquote ohne die Ausstiegsregel daneben ist keine Kennzahl.** Wer die
+51-54 % im Kopf hat, haelt diese vier fuer deutlich robuster als sie sind.
+
+`mosaic` und `gitter` liessen sich gar nicht fahren (mosaic: `TypeError`, gitter:
+`AttributeError`) - beide sind aus der Replay-Liste heraus, der Gebuehrenvergleich ist dort
+gegenstandslos (T-294, T-295).

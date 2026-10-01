@@ -44,14 +44,17 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 # stehen jetzt unter NICHT_NACHRECHENBAR mit Grund - eine angebotene Taste, die
 # nur scheitern kann, ist schlechter als eine fehlende. orbk hat ausserdem
 # einen eigenen Backtest (`orbk/backtest.py`).
-SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter")
-# mosaic stand hier bis 01.10.2026. Sein `pruefe_einstieg` hat eine ANDERE
-# Signatur als der Replay ruft - es braucht drei Kerzenreihen (4H/30M/5M):
-# `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)` gegen
-# `pruefe_einstieg(inst, k, z, w, faktor)` im Replay. Der Lauf brach deshalb
-# beim ERSTEN Einstieg mit `TypeError: missing 2 required positional arguments`
-# ab (gemessen 01.10.2026) - eine angebotene Taste, die nur scheitern kann.
-# Es steht in NICHT_NACHRECHENBAR, bis ein Mehrzeitrahmen-Adapter gebaut ist.
+SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend")
+# mosaic und gitter standen hier bis 01.10.2026 - BEIDE brechen bei jedem Lauf ab
+# und wurden mit je zwei echten Laeufen gemessen (nicht geschaetzt):
+#   mosaic: `pruefe_einstieg` braucht DREI Kerzenreihen (4H/30M/5M) -
+#           `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)` gegen fuenf
+#           Argumente im Replay -> TypeError beim ersten Einstieg.
+#   gitter: sein `handeln.py` hat nur `lade_wachen()`; die Rechnung liegt in
+#           grid.py/backtest_gitter.py -> `AttributeError: module 'bt_gitter'
+#           has no attribute 'pruefe_ausstiege'`.
+# Beide stehen in NICHT_NACHRECHENBAR mit Grund. Eine angebotene Taste, die nur
+# scheitern kann, ist schlechter als eine fehlende (T-294/T-295: Adapter bauen).
 
 # Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
 # fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
@@ -88,6 +91,8 @@ NICHT_NACHRECHENBAR = {
     "robinhood_radar": "fremde SQLite haelt nur den Sammelzeitraum",
     "mosaic": "pruefe_einstieg braucht drei Kerzenreihen (4H/30M/5M) - "
               "Mehrzeitrahmen-Adapter fehlt (01.10.2026)",
+    "gitter": "handeln.py hat kein pruefe_einstieg/-ausstiege; die Rechnung liegt "
+              "in grid.py/backtest_gitter.py - Adapter fehlt (01.10.2026)",
     "kopier": "Solana-Onchain-Historie nur wenige Tage",
     "kopier1zu1": "Solana-Onchain-Historie nur wenige Tage",
     "nautilus": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
