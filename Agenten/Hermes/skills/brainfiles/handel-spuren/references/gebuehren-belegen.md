@@ -85,3 +85,28 @@ ist dann die ehrliche Anzeige (`moondev_sniper`: pump.fun-Token, offen). Saetze
 aus einem anderen Markt (Solana-Onchain 1 % bei `kopier`, Robinhood Chain 1 % bei
 `robinhood_radar`) sind Modellannahmen und brauchen eine Entscheidung, keine
 Messung.
+## Drei Regeln, die aus dem Festziehen vom 01.10.2026 kommen
+
+1. **Wert ohne Quelle ist nicht nachpruefbar.** Neben `gebuehr_taker` gehoert
+   `_gebuehr_quelle` mit Messweg und Datum. Aeltere Wachen fuehren die Quelle unter
+   `_gebuehren` bzw. `_gebuehren_abo_widerlegt` - auch das zaehlt, aber ein Wert
+   ohne JEDE Notiz ist ein Fund (elf Wachen waren so).
+2. **Der Markt bestimmt den Satz, nicht die Bequemlichkeit.** OKX-Spot 0.001,
+   OKX-Perp 0.0005, Kraken-Spot 0.006 (je Seite, Bruch). Ein Test, der feste Werte
+   je Spur einfriert, wird bei der naechsten Messung rot, obwohl der Code stimmt -
+   pruefe die REGEL (Markt -> Satz) plus 'Quelle vorhanden'.
+3. **Widerspricht die Datei sich selbst, wird der WIDERSPRUCH benannt und mit dem
+   TEUREREN der beiden Saetze gerechnet.** Beispiel omniquant: `boerse: kraken_futures`
+   (0,04-0,05 %) gegen Instrumente, die ueber `okx.letzter_kurs` bewertet werden
+   (0,10 %). Der guenstigere Satz waere geraten und freundlich - beides verboten.
+
+## Werkzeug-Fallen beim Setzen (gefunden 01.10.2026, beide mit Test)
+
+- **Notiz da, Wert fehlt** ist ein eigener Fall: wer nur die Notiz auffrischt, setzt den
+  Wert nie - und eine anschliessende Pruefung `float(d.get(feld))` faellt mit einem
+  irrefuehrenden `TypeError: ... not NoneType` um. Erst `is None` pruefen, dann rechnen,
+  und die Meldung muss Feld, Ist-Wert und Erwartung nennen.
+- **Neuer Schluessel hinter dem bisher letzten** erzeugt ungueltiges JSON
+  ('Illegal trailing comma before end of object'). In echten Wachen faellt das nicht auf,
+  solange dort noch ein Schluessel folgt - im Test mit einer MINIMALEN Datei sofort.
+  Nach jedem Einfuegen daher das Komma des letzten Schluessels entfernen.
