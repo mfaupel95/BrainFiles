@@ -72,6 +72,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 3. **Gemischte Datei = nur die eigene Aenderung in den Index, nicht die Datei opfern
    und nicht die Fremdarbeit mitnehmen.** Zuerst `git diff --numstat -- <datei>` lesen:
    mehrere Hunks unterschiedlicher Groesse heissen "hier steckt fremde Arbeit drin".
+   **Derselbe Blick gehoert VOR das Schreiben, nicht nur vor den Commit:** traegt die
+   Zieldatei schon FREMDE uncommittete Aenderungen, die groesser sind als die eigene
+   (gemessen: 28 fremde Zeilen gegen 3 eigene in einer `SKILL.md`), gehoert die eigene
+   Zeile NICHT hinein - sie wandert in eine Datei, die der eigenen Arbeit gehoert
+   (die passende `references/`-Datei, ein eigener Abschnitt), und der Grund steht im
+   Bericht. So wird weder fremde Arbeit mitgenommen noch die eigene spaeter
+   ueberschrieben; ein Schreibwerkzeug, das "modified since you last read" meldet, ist
+   genau dieser Fall und kein Fehler.
    Dann den Index DETERMINISTISCH bauen statt Hunk-Antworten zu raten:
    `git show HEAD:<datei>`, die eigene Aenderung byte-genau im Speicher einsetzen,
    `git hash-object -w --path=<datei> --stdin`, danach

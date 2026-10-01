@@ -71,7 +71,9 @@ Ausloeser → Referenz:
   gekaufte Position wird zurueckverkauft): `references/zweite-boerse.md` —
  Preisregeln je Paar/Instrument aus der API, Rundungsrichtung, Probe mit
  `validate=true`. Dazu gehoeren die gemessenen Gebuehrensatze: siehe
- `references/tor-kalibrierung.md`, Regel 8.
+ `references/tor-kalibrierung.md`, Regel 8; den Satz selbst BELEGEN (Kontotarif
+ plus echte Fuellung, `gebuehr_taker` Bruch gegen `gebuehr_pct` Prozent,
+ Werkzeug `Handel/gebuehren_setzen.py`): `references/gebuehren-belegen.md`.
 - **Eine Boerse wieder ENTZIEHEN** ("nur noch <Programm> darf auf <Boerse>
   handeln", "Kraken abschalten"): drei Schalter mit verschiedenen Wirkzeiten,
   die Vorbedingung (offene Positionen und ihre Boersen-Stops), warum eine Sperre
@@ -131,7 +133,7 @@ Ausloeser → Referenz:
   Summe, Brutto gegen Netto (Papierzeilen tragen keine Gebuehr), ein FEHLENDES
   Gebuehrenfeld in der `wachen.json`, das eine tote Spur tragfaehig aussehen
   laesst (Satz gegen die Boerse der Spur halten, nicht gegen ihren Namen), und
-  der harte Todesbeweis `f_max < 0`. Beim Formelblatt gilt: nur
+  der harte Todesbeweis `f_max < 0`, und ein Buch OHNE Einsatz (Punktebuch), das weder Prozent noch USD behaupten darf - dafuer Ergebnis in R. Beim Formelblatt gilt: nur
   uebernehmen, was die eigene Datenlage traegt — Sharpe/Sortino/VaR/CAGR brauchen
   Tagesrenditen, die das Haus nicht fuehrt (Runden NICHT umrechnen, die Luecke
   benennen); die t-Statistik der Expectancy ist die Zahl hinter „unter 8 Runden
@@ -141,7 +143,23 @@ Ausloeser → Referenz:
   Null als Messwert). Und die EINHEIT des Gebuehrensatzes wird geprueft, nicht
   geraten: `gebuehr_taker` ist ein Bruch JE SEITE, `f_max` Prozent JE RUNDE -
   dazwischen liegt der Faktor 2 x 100, und ohne ihn erklaert jede Spur sich
-  selbst fuer tragfaehig.
+  selbst fuer tragfaehig. **Und der Satz selbst wird GEMESSEN** (Kontotarif plus
+  echte Fuellung am eigenen Konto, je Markt): `references/gebuehren-belegen.md`.
+- **Ein Replay-/Backtest-Lauf verweigert** ("keine Historie fuer <spur>", der
+  Backtest-Reiter bricht mit einem Traceback ab, "0 Runden" ohne einen einzigen
+  gerechneten Schritt, ein angebotener Reiter-Knopf, der nur scheitern kann):
+  `references/pitfalls.md`, Punkt 95 - die Pruefung gehoert VOR das Schneiden,
+  der Bedarf ist `mindest_kerzen + 20` je Reihe, und ein angebotener Weg wird
+  einmal ECHT gefahren, bevor er angeboten wird.
+- **„nach diesem Vorbild weitere Indikatoren zur Marktprognose entwickeln"**
+  (ein mitgeschicktes Tor-Tabellen-Vorbild wie `prognose_berichte/Stanni.csv`,
+  „zieh die neuen Strategien aus <Fremdquelle>", eine Luecke im
+  Indikatorbestand): `references/strategie-aus-fremdquelle.md`, Abschnitte 7 und
+  8 — den Ideenbestand ZAEHLEN statt lesen (die Zahlen der Fremdsammlung sind
+  Prosa, uebernommen werden nur Namen und Rechenregeln), die Luecke per Suche
+  belegen, und ein Merkmal als TOR bauen (Filter auf bestehenden Runden,
+  Zeit-Halbierung beide Haelften positiv), nicht als neue Spur; den Wert aus
+  einem Raster holen, die Tabelle traegt Wert UND Herkunft.
 - Eine andere Sitzung laesst Arbeit im Baum liegen („wenn die Session fertig ist,
   mitnehmen", eine geaenderte Datei, die man selbst nicht angefasst hat) —
   Fertig-Erkennung, Waechter-Cron, getrennter Commit und die Frage, was eine
@@ -211,7 +229,10 @@ Ausloeser → Referenz:
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
   der Einsatz wird auf das freie Guthaben gedeckelt BEVOR das Freigabefenster
   ihn zeigt, und nach jeder Erhoehung wird nachgerechnet, welches Limit dann
-  bindet. Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
+  bindet. **Und „ist dort Geld, das eingesetzt werden kann?" wird GEMESSEN,
+  nicht aus dem Kontostand geschlossen**: je Boerse total / gebunden / frei,
+  `BalanceEx` traegt kein `available`, `availBal ≈ 0` heisst in Margin
+  gebunden, `alle_paare()` liefert Tupel - Abschnitt 9 der Referenz. Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
   (`live_einsatz_eur`/`_usd`) - wer nur einen liest, rechnet still mit dem
   Papier-Einsatz weiter, und ein Einsatz unter der Mindestmenge des Instruments
   wird gesperrt statt aufgerundet. **Und ein Instrumentenwechsel mit offenem Buch
@@ -292,6 +313,15 @@ Ausloeser → Referenz:
    Werkzeugs lesen (`--help`, `grep add_argument`), dann die gemeinte Wirkung
    bauen oder liefern. Nicht mit einer Fehlermeldung antworten und die Absicht
    nicht als „unklare Anfrage" zurueckgeben - Max tippt kurz, oft halb.
+   **Und der Kontext eines TASK-Eintrags ist eine Momentaufnahme.** Wer eine Aufgabe
+   aus `MaxHirn/Archiv/TASKS.md` abarbeitet, messt ZUERST nach, was davon noch offen
+   ist: ein Teil kann seit dem Vortag erledigt sein (dann behauptet der alte Text
+   einen Mangel, den es nicht gibt), und der vorgeschlagene Weg kann FALSCH sein -
+   belegt: ein Eintrag verlangte, ein Gebuehrenfeld in fuenf `wachen.json`
+   einzutragen (war seit dem Vortag erledigt), und wollte im zweiten Teil einen
+   „Einsatz" ins Journal schreiben, den ein Punktebuch bauartbedingt nicht hat
+   (haette eine Positionsgroesse erfunden). Abweichen ist erlaubt und gehoert
+   BENANNT: was schon erledigt war, was anders geloest wird und warum, mit Test.
 2. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede Datei, die angefasst wird —
    auch `wachen.json` und `zustand.json`, wenn ein Testlauf sie berühren kann.
 3. **Ändern:** Sperren gehören in `sperren_live()` bzw. die gleichnamige Funktion
@@ -371,7 +401,30 @@ Ausloeser → Referenz:
    - **Fremdes im SELBEN Dokument** (geteilte Dateien wie `MaxHirn/Archiv/TASKS.md`)
      trennt pfadgenaues Stagen nicht mehr. Dann ist Mitnehmen erlaubt, aber BENANNT:
      die fremden Eintraege in der Commit-Nachricht nennen. Stilles Mitnehmen ist der
-     Fehler, nicht das Mitnehmen. **Und beim Ersetzen eines Blocks in einer Liste
+ Fehler, nicht das Mitnehmen. **Und vor dem Patchen `git diff --numstat
+ <datei>` lesen:** traegt die Datei schon FREMDE uncommittete Aenderungen,
+ die groesser sind als die eigene (gemessen: 28 fremde Zeilen gegen 3
+ eigene), gehoert die eigene Zeile NICHT hinein - sie wandert an einen Ort,
+ der der eigenen Arbeit gehoert (die passende `references/`-Datei, ein
+ eigener Abschnitt), und der Grund steht im Bericht. So wird weder fremde
+ Arbeit mitgenommen noch die eigene verloren.
+   - **Traegt der GETEILTE Index fremde Vormerkungen, mit eigenem Index committen**
+     (`git diff --cached --numstat` zeigt sie): `GIT_INDEX_FILE=<cache>/idx_<thema>`
+     setzen, `git read-tree HEAD`, nur eigene Pfade `git add`, `git commit -F <datei>`
+     (die Meldungsdatei als NATIVEN `C:/…`-Pfad angeben - `git commit -F` findet
+     einen MSYS-Pfad unter `/tmp` nicht und der Commit unterbleibt still). Danach
+     PFLICHT: `unset GIT_INDEX_FILE` und dieselben Pfade im ECHTEN Index nachziehen -
+     sonst steht die Datei als `MM` (Index alt, HEAD neu) und ein fremdes
+     `git commit` ohne Pfadangabe setzt den ALTEN Stand wieder ein. Eine Datei, die
+     die andere Sitzung nach dem eigenen Commit WEITERbearbeitet hat, nicht
+     nachziehen (`git reset -q HEAD -- <pfad>`).
+   - **Eine 0-Byte-`.git/index.lock` ist ein Wrack, kein laufender Commit:** Alter
+     messen und echte `git`-Prozesse zaehlen (`Get-CimInstance Win32_Process`;
+     `fsmonitor`-Daemons laufen immer und beweisen nichts), dann UMBENENNEN
+     (`mv .git/index.lock .git/index.lock.verwaist-JJJJMMTT`), nie loeschen. Eine
+     FRISCHE Sperre heisst warten und denselben Aufruf wiederholen; scheitert das
+     `git add` daran, sind die eigenen Dateien danach `MM` - siehe voriger Punkt.
+   **Und beim Ersetzen eines Blocks in einer Liste
      (TASKS-Eintrag, Klassenblock) nie per Lookahead auf ein Merkmal des Nachbarn
      arbeiten** - ein Muster `- [ ] **T-…` endet am naechsten UNERLEDIGTEN Eintrag,
      ein erledigter (`- [x]`) faellt mit in den Treffer und ist danach weg. Stattdessen
@@ -416,8 +469,9 @@ Ausloeser → Referenz:
    Parameter-Aenderung nachsehen, WANN der Wert gelesen wird, und die Wirkung im
    Bericht auf diesen Zeitpunkt datieren.
 ## Pitfalls
-Die **vollstaendigen** Lektionen stehen in `references/pitfalls.md` (82 Punkte,
-mit Begruendung und Messwerten). Hier nur die Landkarte, ein Satz je Punkt.
+Die **vollstaendigen** Lektionen stehen in `references/pitfalls.md` (alle Punkte
+der Landkarte, gleiche Nummer, mit Begruendung und Messwerten). Hier nur die
+Landkarte, ein Satz je Punkt.
 Vor jeder Aenderung an einer Spur den Punkt lesen, der greift - die Kurzfassung
 ersetzt die Begruendung nicht.
 
@@ -562,6 +616,14 @@ die `--vorschau`-Ausgabe der Spur; fehlt die Zeile „Live waere gesperrt durch:
 nur „still" aus. Die Sperrzeile gehoert in JEDEN Modus, den ein Aufrufer parst
 (auch `--vorschau`), nicht nur in den Live-Zweig. Vollen Text:
 `references/live-tor-und-einsatzgroesse.md`, Abschnitt 6.
+
+95. **Ein zu kleines Fenster ist keine fehlende Historie.** Eine Pruefung, die
+NACH dem Schneiden laeuft, nennt das falsche Uebel: erst die Laenge auf der
+PLATTE messen, dann schneiden, und beide Gruende getrennt benennen (Historie zu
+kurz -> nachfuellen; Fenster zu klein -> Bedarf `mindest_kerzen + 20` nennen).
+Und ein Lauf, der "0 Runden" melden kann, ohne je einen Schritt gerechnet zu
+haben, ist ein stiller Ausfall, kein Messergebnis. Vollen Text:
+`references/pitfalls.md`.
 
 ## Welche Daten eine Sperre liest
 
@@ -771,6 +833,15 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   rekursive Größenmessung über einen großen Baum reißt sie. Stattdessen
   vorher/nachher `Win32_LogicalDisk.FreeSpace` messen oder je Ordner einzeln — der
   Zuwachs ist die belastbare Zahl.
+- **Nicht rekursiv ueber die Repo-Wurzel suchen.** Ein `grep -r`/`find` ab
+  `BrainFiles/` laeuft ueber die Junctions nach `O:` (Modelle, Werkstatt), in
+  jedes `.venv` und durch Millionen Fremdzeilen — der Aufruf reisst die
+  Zeitgrenze, ohne ein Ergebnis zu liefern. Stattdessen: die Zieldatei nennen
+  oder `search_files`/`read_file` auf ein ENGES Verzeichnis zeigen lassen. Beide
+  brauchen ABSOLUTE Pfade: die Sitzung startet in `Agenten/Hermes`, ein relatives
+  `Agenten/Handel` endet in "Path not found" — das liest sich wie ein leeres
+  Ergebnis. Groessen- und Namenszaehlungen ueber einen Baum per `execute_code`
+  rechnen, nicht per Shell.
 - **`Get-FileHash` gibt es in dieser PowerShell nicht** (5.1.26100.9444:
   `Get-Command Get-FileHash` liefert nichts, der Aufruf bricht mit "Die Benennung
   ... wurde nicht als Name eines Cmdlet ... erkannt" ab). Ein Pruefblock, der
@@ -841,6 +912,13 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   Datei unlesbar liegt und jeder Leser der Spur — Systempruefung,
   `spiegelstand.py` — darueber stolpert; Suchmuster ohne Delimiter bauen, ein
   mitkopiertes Anfuehrungszeichen trifft nichts), dazu kein BOM und kein `\r`.
+  **Ein Feld per Zeilentext einzufuegen heisst, das KOMMA zu verwalten:** traegt die
+  Vorzeile schon eines, darf keines dazu (sonst `,,` und `json.loads` bricht erst
+  beim naechsten Leser auf); ein Werkzeug, das ein Feld anlegt, prueft beide Faelle
+  - ist das Feld schon da (dann nur den WERT tauschen, nicht die Zeile doppeln) und
+  endet die Zeile auf ein Komma. Und die BELEGZEILE neben dem Wert wird mitgeaendert:
+  ein alter Quelltext ueber einem neuen Wert ist ein Widerspruch in der Datei selbst,
+  den jeder spaetere Leser glaubt (Muster: `_gebuehr_quelle` neben `gebuehr_taker`).
   Ueber einen PowerShell-Here-String mit `utf-8-sig` einlesen, `\r` entfernen,
   mit `newline=""` schreiben.
 - `search_files`-Regex-Pattern werden intern gewrappt: escaped Klammern (`\(`) in

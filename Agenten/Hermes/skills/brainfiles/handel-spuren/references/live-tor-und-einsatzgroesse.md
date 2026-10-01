@@ -300,6 +300,71 @@ Testmuster, zwei Formen — beide gehoeren dazu:
 Merksatz: **eine richtige Zahl mit falscher Einheit ist eine falsche Zahl** — und
 wer die Einheit an zwei Stellen bestimmt, hat zwei Antworten.
 
+## 9. Bestand aufnehmen: FREI ist nicht der Kontostand
+
+Vor jeder Antwort auf „kann da gehandelt werden" / „ist dort Geld" wird der
+Bestand GEMESSEN, je Boerse in DREI Zahlen: **total / gebunden / frei.** Ein
+Kontostand allein beantwortet die Frage nicht — die Tore lesen das FREIE
+Guthaben, und das ist bei besicherten Konten ein Bruchteil.
+
+| Groesse | OKX | Kraken |
+|---|---|---|
+| alles | `/api/v5/account/balance` (signiert), `totalEq` | `BalanceEx`, Summe je Waehrung |
+| in Margin gebunden | `isoEq` (Konto) bzw. `isoEq` je Posten | `OpenPositions` (eigener Aufruf) |
+| frei | `availBal` je Waehrung in `details[]` | `balance − hold_trade` je Waehrung |
+
+- **`availBal ≈ 0` heisst GEBUNDEN, nicht „weg":** der Posten steht in einer
+  Position oder hinter einem boersenseitigen Stop. Auf demselben Konto liegen
+  Krypto-Bestaende mit `availBal` = voll und andere mit 0 — nur die ersten sind
+  einsetzbar.
+- **Eine Bequemlichkeitsfunktion fuer EINE Waehrung ist keine Auskunft.**
+  `okx.guthaben_usdt()` meldet 0.0, waehrend das Konto 542 USDC traegt — USDT ist
+  dort schlicht nicht die Waehrung. Wer daraus „kein Geld" schliesst, hat die
+  falsche Zeile gelesen; den Bestand immer ueber die Balance-Antwort holen.
+- **`BalanceEx` traegt NUR `balance` und `hold_trade`.** Es gibt dort kein Feld
+  `available`; ein Parser, der eines annimmt, druckt fuer JEDE Waehrung 0.0 und
+  die Ausgabe liest sich wie „alles gebunden". Frei = `balance − hold_trade`
+  (`hold_trade` = in Orders reserviert).
+- **Margin-Positionen sind ein ZWEITER Ort** (`OpenPositions`) und stehen NICHT
+  in der Guthabenliste. Eine Antwort, die nur das Guthaben liest, verliert sie —
+  und eine Position, die mit demselben Guthaben besichert ist, erklaert einen
+  Teil des Unterschieds zwischen total und frei.
+
+### Fallen beim Zaehlen der handelbaren Paare
+
+- **`okx.alle_paare()` liefert eine LISTE VON TUPLEN** `(instId, volumen)`, keine
+  Dicts — `.get()` auf einem Element bricht mit `'tuple' object has no attribute
+  'get'` ab. Das Instrument ist `p[0]`.
+- **Kraken-Paarnamen tragen das „Z" auf Fiat:** ETH/EUR ist `XETHZEUR` (nicht
+  `XETHEUR` → `EQuery:Unknown asset pair`), ebenso `XXBTZEUR`, `XXLMZEUR`. Die
+  Schreibweise kommt aus `AssetPairs` (`wsname`), nicht aus dem Muenzenamen.
+- **Ein tokenisiertes Produkt hat kein Krypto-Paar** (`XPEV.EQ`, `LAPTOP`,
+  `YOM` → `Unknown asset pair`). Das ist strukturell und kein Namensfehler;
+  solche Posten gehoeren als „nicht handelbar" in den Bericht, nicht in die
+  Paarsuche.
+- Die Zahl der gelisteten Paare ist eine LISTE, keine Aussage: 1.455 Paare auf
+  Kraken sind online, aber die Frage ist, welches davon die freie Waehrung des
+  Kontos bedient. Paare zaehlen nur als Beleg fuer „es gibt einen Markt".
+
+### Der schnelle Weg durch die Flotte
+
+- **Uebersicht:** `spuren_stand.py` — eine Tabelle ueber alle Spuren (erlaubt,
+  Herzschlag, Fenster, freier Orderweg, Alter des Buchs).
+- **Grund je Spur:** aus dem Spurordner `MAXHIRN_ROUTINE=1 <venv>/python
+  handeln.py --vorschau` unter `timeout 90`. Das ist die belastbare Quelle; die
+  Zeile „Live waere gesperrt durch:" nennt Boerse, Waehrung und Sollwert.
+- **`sperrgruende.py` ueber die ganze Flotte laeuft NICHT in einen Tool-Aufruf**
+  (41 Spuren, ueber 180 s). Nur benutzen, wenn Minuten zur Verfuegung stehen -
+  sonst die Einzelabfrage je Spur.
+
+### Form der Antwort
+
+Total je Boerse → davon gebunden → frei → der Schwellwert des Tores → **eine**
+Empfehlung. Der Engpass ist fast nie das fehlende Geld, sondern die Aufteilung:
+gebundene Stablecoins im Vergleich zu ungenutzten Krypto-Altbestaenden, die keine
+Spur anfasst. Diese Posten sind der Hebel, und ob sie verkauft werden sollen, ist
+eine Entscheidung von Max — nicht stillschweigend umschichten.
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

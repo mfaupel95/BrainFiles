@@ -314,6 +314,18 @@ Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
    korrigiert, sondern mit der zweiten Zahl daneben gestellt. Gemessen an einer
    Handvoll Spuren verschiebt das die Urteile: +10,82 -> +9,62 USD,
    -5,02 -> -6,02, +38,85 -> +37,92, +2,30 -> +2,00.
+   **Der Ausweis gehoert in JEDE Anzeige, nicht nur in die Konsole.** Die
+   Konsole (`auswertung_alle.py`) liest niemand taeglich; gelesen werden
+   `/strategien` im Telegram-Bot und die „7 Tage"-Zeile des Tagesberichts. Beide
+   brauchen denselben Zusatz aus EINER Funktion (`befehle._brutto_zusatz(k)`:
+   „netto %+.2f" / „(Punkte, brutto)" / „(brutto, Gebuehr unbekannt)", leer
+   wenn die Spur schon netto rechnet), und die Einheit kommt aus der Kennzahl
+   (`k["einheit"]`) statt als „USD" im Formatstring zu stehen - sonst traegt
+   ein Punktebuch wieder eine Waehrung. Zwei Grenzen dabei: der Telegram-Text
+   ist auf 4000 Zeichen begrenzt und ein Zusatz je Zeile summiert sich ueber
+   ~40 Spuren (`len(befehle.strategien())` messen, nicht schaetzen), und nach
+   der Aenderung muss der SkillsBot-Task neu starten - das Modul liegt im
+   laufenden Prozess im Speicher.
 3. **Fehlt der Gebuehrenschluessel GANZ, rechnet das Werkzeug mit 0 % - und
    eine tote Spur sieht tragfaehig aus.** Vor jeder Uebernahme eines
    `f_max`-Urteils (`kosten_wendepunkt.py`) pruefen, ob die `wachen.json` der

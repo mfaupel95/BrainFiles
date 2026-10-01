@@ -254,6 +254,16 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
   ausdrucken.
 - **`write_file` verweigert die Datei** (kein vollstaendiger Lesevorgang dieser
   Sitzung) - ueber den Byte-Weg schreiben, nicht die Datei komplett neu setzen.
+- **Python wertet `open(p, "wb")` aus, BEVOR der Schreibausdruck gebaut ist.**
+  `open(p,'wb').write(b.replace(anker, anker + block))` kuerzt die Datei auf null
+  Bytes, wenn der Ausdruck danach scheitert (typisch: bytes + str, Groessen-
+  assert). Payload ZUERST in eine Variable bauen, `assert neu != b` plus
+  Groessen-Delta pruefen, `open(...,'wb')` erst in der allerletzten Zeile.
+  War die Datei vor dem Fehlversuch sauber gegen HEAD (`git status --porcelain
+  <pfad>` leer), heelt `git checkout HEAD -- <pfad>`; der Pruefer
+  (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT, ist der
+  Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht heimlich
+  ersetzt.
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe
   steht weiter unten: erst `grep -n "T-0NN"` suchen, dann Vorgaenger- und
   Nachfolgerblock lesen, bevor ersetzt wird.

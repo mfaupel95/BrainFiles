@@ -513,6 +513,19 @@ Symptome: `logs/desktop.log` zeigt `hermes: finishing an interrupted source upda
 im Schwanz-Log steht `desktop promotion rename win-unpacked -> win-unpacked.previous hit a file
 lock (attempt 1/5) … [WinError 5]` oder `OSError: [Errno 28] No space left on device`.
 
+**Die Meldung „an update is still running" ist kein Prozessbeweis.** Sie stammt aus der
+Obligation (Marker plus Claim), nicht aus einer laufenden Installation: der Marker kann
+tagealt sein, waehrend gar kein Update-Prozess existiert - der CLI-Start meldet dann
+`source-update completion failed: an update is still running; wait for it to exit, then
+relaunch Hermes; running with the previous dependencies`. Der Marker-INHALT ist dabei die
+Aussage: `source update tail not finished` heisst „Obligation scharf, Lauf nicht offen".
+Vor der Reparatur deshalb zwei Dinge messen, statt der Meldung zu glauben: (a) den Marker
+lesen (`cat installs/<hash>/source-completion-pending` - Text und Alter, kein Prozessbeweis)
+und (b) die Prozessliste - und diese Sonde aus TEILEN bauen
+(`'source'+'_completion'`, `'finish'+'-update'`), sonst trifft der Suchtext die EIGENE
+Kommandozeile und man zaehlt sich selbst als laufenden Updater. Bleibt die gefilterte Liste
+leer, ist der Retry erlaubt.
+
 Zwei Blocker, beide VOR dem Retry beseitigen:
 
 1. Ein laufender Desktop haelt `apps/desktop/release/win-unpacked` -> WinError 5 beim Tausch.

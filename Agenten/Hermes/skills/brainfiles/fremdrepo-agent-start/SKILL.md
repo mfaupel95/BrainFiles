@@ -45,6 +45,13 @@ Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 `references/huggingface-modell-lokal.md` — venv, HF-Cache auf O:, Sonde mit
 eigenen Messwerten, dazu die Falle gepinnter Abhaengigkeiten.
 
+Fuer Repos, deren Epoche auf KEINEM Host-Python mehr laeuft (TensorFlow 1.x
+braucht Python <= 3.7, kein conda auf dem Rechner; die GPU-Generation
+unterstuetzt das CUDA des Frameworks nicht): `references/docker-legacy-python.md`
+— Docker als einziger Baupfad, was Docker Desktop ueberhaupt mounten darf
+(Junctions loesen sich auf), apt-Archive fuer EOL-Distros, era-Pines mit
+Begruendung, und der Nachweislauf ohne Waisen-Container.
+
 **Ein leerer Rahmen ist kein System.** Ein Repo, dessen Dienstordner nur
 `.gitkeep` enthalten und dem die `Dockerfile`s fehlen, die die
 `docker-compose.yml` als Build-Kontext nennt, ist ein Bauplan: `up` bricht
