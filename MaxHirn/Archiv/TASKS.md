@@ -73,8 +73,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
   Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
   Angelegt 2026-10-01 · Betrifft: omnitrade_futures/wachen.json
 - [ ] **T-292 — Backtest-Drawdown 72-90 % ist unplausibel, Auswertung nachziehen**
-  Kontext: intervalle_messen.py (omnitrade-Rust-Backtest, 60 Tage BTC, Long-only) meldet DD 72-90 % vom Einsatz - zu einem Long-only-Lauf passt das nicht; vermutlich misst total_equity/AccountState anders als angenommen.
-  Naechster Schritt: AccountState.total_equity und die DD-Rechnung in omnitrade-cli/src/backtest.rs gegen eine Zeilenrechnung pruefen (Drei-Wege-Muster), bevor Grenzen aus dem DD abgeleitet werden.
+  Kontext: GEFUNDEN (01.10.2026) - es ist ein Buchungsartefakt, kein Risiko: omnitrade-engine/src/account.rs apply_buy_fill zieht Nominal+Gebuehr VOLL vom Cash ab, total_equity = balance + unrealized_pnl zaehlt den Positionswert NICHT zurueck; waehrend einer offenen Long-Position ist das Equity also ~16 % vom Hoechststand, und max_dd sieht sofort die grosse Kurve. PnL/Runden/Trefferquote sind unberuehrt korrekt (die Equity holt sich beim Schliessen zurueck).
+  Naechster Schritt: total_equity um den Positionswert ergaenzen (Long: qty x entry + unrealized) im Fork Werkstatt/omnitrade - erst danach ist max_dd eine Zahl, an der man Grenzen ablesen kann; bis dahin DD-Spalte der Messung ignorieren.
   Angelegt 2026-10-01 · Betrifft: Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
 - [ ] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
       Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
