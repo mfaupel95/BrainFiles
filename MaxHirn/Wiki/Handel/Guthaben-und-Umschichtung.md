@@ -102,6 +102,39 @@ mit Orderkennung im Journal (`live,kauf,ZEC-USDC`, `live,kauf,SUI-USDC`).
 
 Nicht angefasst: PEPE, ONDO, ADA.S (Gruende 1 und 2 oben).
 
+## Was aus dem freigemachten Guthaben wurde (01.10.2026, 13:25)
+
+Max: „kraken scharf". Die Spur war seit dem 30.09. doppelt gesperrt
+(`handel_erlaubt=false`, `freigabe.erfuellt=false`) und dazu durch Bedingung 5
+(EV −0,028 EUR auf 6 Handelsrunden). Nach dem Setzen von `freigabe.erfuellt`
+sperrte sie sich SOFORT selbst wieder: `sperre_zu()` schreibt `handel_erlaubt`
+auf false, sobald Bedingung 5 reisst — der Schalter allein genuegt also nicht.
+
+Max hat Bedingung 5 fuer kraken ausgesetzt. Sie ist **nicht geloescht**, sondern
+ueber `bedingung_5_aktiv: false` in der wachen.json abschaltbar; fehlt das Feld,
+gilt sie wie bisher. Die Entscheidung steht als `_bedingung_5_entfaellt` mit
+Datum und beiden Messungen in derselben Datei.
+
+**Wirkung, gemessen:** `handeln.py --vorschau` meldet um 13:25
+`Live waere gesperrt durch: nichts`. Um 13:25:51 stellte die Spur drei Belege
+aus (XLTCZEUR, ADAEUR, SOLEUR, je 50 EUR); SOLEUR wurde 13:27:22 ueber die Hand
+ausgefuehrt — **0,47998464 SOL @ 104,26 EUR, Stop 97,72 liegt an der Boerse**
+(`OpenOrders`, 11 Auftraege). Kraken-Konto: ZEUR 189,42 -> 139,03, SOL
+1,0796 -> 1,5596.
+
+### Nebenbefund: der Papierzweig konnte gar nicht kaufen
+Beim Nachziehen der Suite fiel ein `UnboundLocalError` in
+`pruefe_einstiege`: `gefuellt` und `fuellung_bestaetigt` entstanden nur im
+Live-Zweig (eingeschleppt mit der `pos_id`-Paarung, c8cc154 vom 30.09.). Jeder
+Papierkauf warf — die Spur lief seit dem 30.09. nur noch live oder gar nicht.
+Behoben durch Vorbelegung `(menge, True)`; ein Papierkauf hat keine
+Boersenfuellung. kraken-Suite 174 Tests, vorher 8 Fehler, jetzt gruen.
+
+Die zwei Testfehler-Quellen waren beide dieselbe Klasse: eine Attrappe, die
+`fuellung_abwarten` nicht kannte (die Funktion kam mit dem T-102-Fix, die
+Attrappe nie nachgezogen), und ein Test, der den Stand VOR T-102 einfror
+(`..._wird_nicht_gebucht`).
+
 ## Falle im eigenen Aufruf
 
 `markt_verkauf(paar, menge, echt=True)` liefert die Kraken-Antwort — **nicht** das

@@ -104,16 +104,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Mengenpruefung — an `/public/instruments` ist die Sperre nicht zu sehen.
       Betrifft: Kraken-Konto, OKX-Konto
 
-- [ ] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
-      Kontext: Nach dem Umschichten meldet `kraken/handeln.py --vorschau` (01.10.2026 02:2x)
-      `Guthaben: EUR 189.42/60.00` — das Guthaben-Tor nennt es nicht mehr. Es bleiben drei
-      Sperren: `handel_erlaubt=false`, `freigabe.erfuellt=false` (beide aus dem Auftrag vom
-      30.09. „nur noch omnitrade auf kraken handel erlaubt") und `rollierender EV -0.028 EUR < 0`
-      (Bedingung 5). Das Buch fuehrt 4 Positionen mit 200 EUR gebunden.
-      Naechster Schritt: Entscheidung Max — kraken wieder scharf stellen (handel_erlaubt +
-      freigabe.erfuellt + Freigabekette) oder im Papier lassen. Der negative EV spricht dagegen.
-      Angelegt 2026-10-01 · Zuletzt 2026-10-01
-      Betrifft: Agenten/Handel/kraken/wachen.json
 
 - [ ] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
       Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
@@ -356,15 +346,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
       dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
       Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
-- [ ] **T-254 - Paperclip: CLI installiert, aber keine Instanz gestartet**
-      Kontext: `paperclipai 2026.916.1` laeuft aus PowerShell, cmd und bash (Nachweis `--version`
-      und `channels`). Bewusst NICHT gestartet: `onboard --yes` legt die eingebettete PostgreSQL
-      an (laedt Binaerdateien nach), `run` haelt einen Port, und das Onboarding kann einen
-      Hintergrunddienst einrichten, der bei der Anmeldung startet.
-      Naechster Schritt: Entscheidung von Max - Quickstart ohne Anmeldedienst
-      (`paperclipai onboard --yes --no-install-service`, danach `paperclipai run` und
-      `paperclipai connect`), oder zunaechst nur `paperclipai doctor` als Trockenprobe.
-      Angelegt: 2026-09-30 · Betrifft: `~/.paperclip`, Serverport
+- [ ] **T-254 - Paperclip: Instanz laeuft, aber ohne Board-Anmeldung und ohne Modell**
+      Kontext: `paperclipai onboard --yes --no-install-service` und `paperclipai run` stehen;
+      Dashboard `http://127.0.0.1:3100` (HTTP 200), PID 80788, eingebettete PostgreSQL auf
+      127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
+      Haenger aus). Unter Windows gibt es KEINEN Hintergrunddienst (`Service management is not
+      supported on win32`) - nach einem Neustart laeuft der Server erst nach erneutem
+      `paperclipai run`. Offen: (a) Identitaet - Dashboard im Browser (Sign-up erlaubt) oder
+      `paperclipai connect --persona board`; `token board create` verlangt vorher eine Sitzung.
+      (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten noetig - OmniRoute/Ollama
+      waeren im Haus da). (c) Kein Start-Wrapper und kein Autostart.
+      Naechster Schritt: Entscheidung von Max - Konto im Dashboard anlegen und
+      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich
+      Wrapper + geplante Aufgabe nach Hausmuster (`Agenten/Routinen/`).
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`
 - [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
       Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
       Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
@@ -3050,6 +3045,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
+      Erledigt 2026-10-01. Max ("kraken scharf", dann "bedingung 5 entfaellt"):
+      freigabe.erfuellt true, AUTO_FREIGABE wieder aufgenommen, Bedingung 5 ueber
+      `bedingung_5_aktiv: false` abschaltbar (Vorgabe bleibt JA). Die Spur hat um
+      13:25:51 drei Belege ausgestellt, SOLEUR wurde 13:27:22 live ausgefuehrt
+      (0,47998464 SOL @ 104,26 EUR, Stop 97,72 an der Boerse). Nebenbefund und
+      behoben: der Papierzweig warf UnboundLocalError (gefuellt/fuellung_bestaetigt
+      nur im Live-Zweig) - kraken/tests 174 gruen. Wiki/Handel/Guthaben-und-Umschichtung.md.
+      Betrifft: Agenten/Handel/kraken/, Agenten/Handel/dauerlauf.py
 - [x] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
       Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
       16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
