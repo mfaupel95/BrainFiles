@@ -77,6 +77,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Dauerlauf-Tode.md](Handel/Dauerlauf-Tode.md) | T-193: Rueckgabe 143 = MSYS-timeout (Fingerabdruck-Tabelle), Sperren-Churn, Speicherdruck, die neue Wache |
 | [Handel/omnitrade-Spur.md](Handel/omnitrade-Spur.md) | Weg B: der Rust-Lauf entscheidet, Kraken ordert — zwei Zeugen statt state=running, Zustand statt Orderliste, echter Verkaufspreis |
 | [Handel/nautilus-rust-Quant-Ebene.md](Handel/nautilus-rust-Quant-Ebene.md) | Die fuenf Rust-Crates als Lehrstueck: harte Ebenen-Grenze, 20 Tests gruen, Gate lehnt das Demo-Buch ab — und warum hier kein Atlas moeglich ist |
+| [Handel/Guthaben-und-Umschichtung.md](Handel/Guthaben-und-Umschichtung.md) | Wo Kapital liegt und was wirklich frei ist (eqUsd != availBal), drei Gruende gegen einen Verkauf (Ordermin, costmin, gestakte Form), der Umschichtungslauf vom 01.10. |
 
 ### Werkzeuge und Offenes
 

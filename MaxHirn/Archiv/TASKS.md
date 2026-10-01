@@ -60,6 +60,41 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-279 - OKX: rund 275 USD Krypto liegen ungenutzt, das Guthaben-Tor bleibt bei 30,84 USDC**
+      Kontext: Gemessen am 01.10.2026 um 02:20. `availBal` traegt BETH 161,93 / NEIRO 25,30 /
+      DOGS 21,81 / OKSOL 20,19 / EURC 18,10 / ACE 15,27 / WAXP 7,94 / CHIP 4,41 = 274,95 USD.
+      ETH/SOL/BTC (100/95/83 USD) tragen `availBal` 7e-9 — sie stecken in Margin bzw. unter
+      dem Schutz-Stop des scanner und sind NICHT verkaeuflich. Bindend fuer mosaic ist
+      `mindest_guthaben 60` in USDC, frei sind 30,84; die Spur steht seit dem 30.09. auf
+      `boersen: ["okx"]`, der Kraken-Weg ist also zu.
+      Naechster Schritt: Entscheidung Max — BETH/NEIRO/DOGS/OKSOL/EURC/ACE/WAXP/CHIP in USDC
+      verkaufen (OKX-Spot-Gebuehr 0,10 %/Seite) und mosaic damit ueber das Tor bringen, oder
+      liegen lassen. Achtung: BETH und OKSOL sind gestakte Formen.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Agenten/Handel/mosaic/wachen.json, OKX-Konto
+
+- [ ] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
+      Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
+      1.500.000 = 1,58 EUR), ONDO (10,74331 gegen ordermin 15 = 4,84 EUR) und ADA.S liegen.
+      ADA.S ist gestakte Cardano — Kraken fuehrt kein Paar mit `base=ADA.S` (AssetPairs
+      liefert eine leere Liste), der Weg ist Unstaking, nicht eine Order. Gleiches Muster:
+      ATOM21.S, HYPE.B, XPEV.EQ.
+      Naechster Schritt: PEPE/ONDO sammeln, bis sie ueber dem Ordermin liegen; fuer ADA.S/
+      ATOM21.S/HYPE.B entscheiden, ob unstaked wird.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Kraken-Konto
+
+- [ ] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
+      Kontext: Nach dem Umschichten meldet `kraken/handeln.py --vorschau` (01.10.2026 02:2x)
+      `Guthaben: EUR 189.42/60.00` — das Guthaben-Tor nennt es nicht mehr. Es bleiben drei
+      Sperren: `handel_erlaubt=false`, `freigabe.erfuellt=false` (beide aus dem Auftrag vom
+      30.09. „nur noch omnitrade auf kraken handel erlaubt") und `rollierender EV -0.028 EUR < 0`
+      (Bedingung 5). Das Buch fuehrt 4 Positionen mit 200 EUR gebunden.
+      Naechster Schritt: Entscheidung Max — kraken wieder scharf stellen (handel_erlaubt +
+      freigabe.erfuellt + Freigabekette) oder im Papier lassen. Der negative EV spricht dagegen.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Agenten/Handel/kraken/wachen.json
+
 - [ ] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
       Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
       bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
