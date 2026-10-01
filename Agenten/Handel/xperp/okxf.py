@@ -619,12 +619,41 @@ def schutz_stop_setzen(inst, seite, kontrakte, stop, ziel=None,
     return d[0] if d else {}
 
 
-def schutz_stops(inst=None):
-    """Offene Stop-/Ziel-Orders an der Boerse (Algo)."""
-    p = "/api/v5/trade/orders-algo-pending?instType=FUTURES&ordType=conditional"
-    if inst:
-        p += "&instId=" + inst
-    return _mit_wiederholung(p, signiert=True)
+# OrdTypen, die OKX als separate Fragen an orders-algo-pending liefert.
+# ANLASS (T-278, 01.10.2026): die Pruefung fragte nur 'conditional'. Beim
+# Uebernehmen von Hand-Positionen standen fuer ZEC und ADA langst OCOs mit
+# slTriggerPx an der Boerse, fuer VVV und ADA move_order_stop - das Werkzeug
+# meldete "Stop fehlt - wuerde gestellt" und stellte den zweiten Stop daneben.
+# Der engere (neuere) feuert zuerst: der Schutz wurde unbemerkt von -8.6 %
+# auf -2.7 % gezogen. Ein Schutz-Pruefer muss ALLE Ausstiegsformen sehen.
+# 'trigger' gehoert mit dazu, wird aber erst gezaehlt, wenn das Feld
+# slTriggerPx gefuellt ist (ein nackter trigger kann auch ein Einstieg sein).
+ALGO_ORDTYPES = ("conditional", "oco", "move_order_stop", "trigger")
+
+
+def schutz_stops(inst=None, ordtypes=ALGO_ORDTYPES):
+    """Offene Algo-Auftraege an der Boerse - ueber ALLE ordTypes.
+
+    Pro Frage darf OKX genau EINEN ordType; die Antwort wird hier zu einer
+    Liste zusammengezogen. Jeder Fund traegt sein ordType-Feld (nachgetragen,
+    wo die Antwort es weggelassen hat), damit Aufrufer die Bauart erkennen.
+    """
+    fund = []
+    fehler = None
+    for typ in ordtypes:
+        p = "/api/v5/trade/orders-algo-pending?instType=FUTURES&ordType=" + typ
+        if inst:
+            p += "&instId=" + inst
+        try:
+            for s in _mit_wiederholung(p, signiert=True) or []:
+                s.setdefault("ordType", typ)
+                fund.append(s)
+        except Exception as e:                                    # noqa: BLE001
+            fehler = fehler or e
+    if not fund and fehler:
+        raise fehler                       # Nichts gefunden, aber nichts bewiesen:
+    return fund                            # der Aufrufer (_stop_vorhanden) muss
+                                           # im Zweifel KEINEN zweiten Stop stellen.
 
 
 def offene_orders(inst=None):
