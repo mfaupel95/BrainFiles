@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
+      Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
+      `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
+      werden aber ueber `okx.letzter_kurs` bewertet - also OKX-Paare. Der
+      Gebuehrensatz ist damit widerspruechlich: Kraken-Futures waeren 0,04-0,05 %
+      je Seite (gemessen 25.09.2026), OKX-Spot 0,10 % (gemessen 01.10.2026).
+      Gesetzt ist der TEURERE (0.1) und der Widerspruch steht als
+      `_gebuehr_quelle` in der Datei - der freundlichere Satz waere geraten.
+      Naechster Schritt: entscheiden, wo omniquant wirklich buchen soll (`boerse`
+      richtigstellen ODER Instrumente auf Kraken-Paare umstellen), dann den Satz
+      nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
+
 - [ ] **T-289 — omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
   Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis) (/editorder) ist gebaut (Commit debc983); der Live-Zyklus der Spur zieht den stp-Stop noch nicht nach.
   Naechster Schritt: Nachziehen im spur_buch-Live-Zweig verdrahten (Trigger z.B. Kurs +1 % ueber letztem Hoch), Test mit Testnaht weg.stop_nachziehen.

@@ -85,6 +85,19 @@ den zu freundlichen Zug aus allen Netto-Zahlen genommen, nicht eine Spur gerette
 beerdigt. `orb` wird dabei sogar BILLIGER gerechnet als vorher — es stand in
 `SPUR_BOERSE` als Spot (0,2 %/Runde), handelt aber Perp (0,1 %/Runde).
 
+**Jeder Satz trägt seine Quelle (01.10.2026).** Beim Festziehen fiel auf, dass **elf
+Wachen eine Gebühr ohne jede Notiz** trugen — ein Wert ohne Quelle ist nicht
+nachprüfbar. Sie haben sie jetzt (ältere Wachen führen sie unter `_gebuehren` bzw.
+`_gebuehren_abo_widerlegt`, neue unter `_gebuehr_quelle`); es gibt keine Lücke mehr.
+Die Quelle wird **mitgesetzt, nie danebengelassen** — eine alte Quelle über einem neuen
+Wert wäre ein Widerspruch in der Datei selbst.
+
+**Ein Widerspruch in der Datei wird benannt, nicht geglättet.** `omniquant` nennt
+`boerse: kraken_futures` (0,04–0,05 %/Seite), bewertet seine Instrumente aber über
+`okx.letzter_kurs` (0,10 %/Seite). Gesetzt ist der **teurere** der beiden Sätze und der
+Widerspruch steht in der Quelle; der günstigere wäre geraten und freundlich — beides
+verboten (offen als T-293).
+
 **GEMESSEN 22.09.2026 — der Kraken-Nullsatz war falsch.** Zwei unabhaengige Zeugen:
 die Fuellungen (`SOLEUR`: Kauf 50,01954 EUR mit 0,30012 EUR Gebuehr, Verkauf 50,01466 EUR mit
 0,30009 EUR) und `/0/private/TradeVolume` (taker 0,6000 % fuer SOLEUR, XXBTZEUR, XETHZEUR,
