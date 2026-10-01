@@ -916,7 +916,14 @@ ungetrackten Dateien. Reihenfolge:
   Verlaesslicher Weg fuer eine Datei, die man SELBST in derselben Aufgabe angelegt hat:
   den neuen Inhalt per `write_file` an einen FRISCHEN Pfad unter
   `Agenten/Hermes/cache/scratch/` schreiben (eine neue Datei braucht kein Vor-Lesen) und
-  sie mit `cp` ueber das Ziel legen, vorher `.bak-JJJJMMTT` daneben. Danach
+  sie mit `cp` ueber das Ziel legen, vorher `.bak-JJJJMMTT` daneben.
+  **„Frischer Pfad" heisst ein Name, den es NOCH NICHT GIBT.** Liegt unter demselben
+  Namen schon eine Datei — typisch eine gleichnamige Ablage aus einer frueheren
+  Sitzung (`commitmsg_skill.txt`, `probe.py`) —, verweigert das Werkzeug aus
+  DEMSElBEN Grund, und ein erneutes Lesen hilft nicht: es ist nicht die eigene
+  Leseschuld, sondern die vorhandene Datei. Dann den Namen wechseln (oder die alte
+  Datei vorher wegnehmen), nicht gegen dieselbe Sperre anlaufen — zwei identische
+  Fehlschläge hintereinander sind das Signal fuer den Namenswechsel. Danach
   `git diff --numstat` lesen: der Austausch muss die gewollte Aenderung zeigen, und bei
   einer selbst neu geschriebenen Datei ist ein Ganzdatei-Diff hier normal (nicht das
   Zeilenende-Symptom). Nicht in einer Schleife gegen dieselbe Sperre anlaufen - nach

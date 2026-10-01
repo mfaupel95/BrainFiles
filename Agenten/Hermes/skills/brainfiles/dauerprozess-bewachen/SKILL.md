@@ -668,6 +668,11 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   der Aufrufer wartet auf das Ende des Kindes, also nie. Symptom: der Startbefehl
   laeuft in den Timeout, obwohl der Prozess danach laeuft. Die Umleitung gehoert in
   die `.cmd`, der Starter kehrt sofort zurueck.
+  **Und der Starter setzt das ARBEITSVERZEICHNIS des Kindes** (`-WorkingDirectory`
+  bzw. `cd` in der `.cmd`): laedt das Kind beim Start eine `.env` aus seinem cwd,
+  erbt seine gesamte Prozessumgebung sie — ein Schluessel darin ueberstimmt dann
+  die Anmeldung des Kindes, waehrend derselbe Befehl aus der eigenen Shell
+  trotzdem durchlaeuft (die Shell laedt keine `.env`).
 - **Den Dauerprozess nie ueber eine Pipe des Aufrufers starten**
   (`& powershell -File <starter> *>&1 | Add-Content $protokoll`). Das Kind haelt die
   Pipe offen, der Starter kehrt also nie zurueck — mit drei Folgen, die zusammen wie

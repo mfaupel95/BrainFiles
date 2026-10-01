@@ -173,10 +173,36 @@ Der Futures-Orderweg ist ein neuer Boersenname in `spur_buch`:
   gerundete AUF-Rundung wuerde eine Menge ordern, die das Konto nicht traegt.
   `max_pro_trade_usd` deshalb so setzen, dass genau die gewuenschte
   Kontraktzahl passt.
-- Der Hebel geht mit JEDER Order als `leverage`-Parameter an die Boerse. Ohne
-  den Parameter setzt die Boerse den hoechstmoeglichen Hebel des Margenplans,
-  nicht 1x. Ob die Boerse den Parameter annimmt, belegt nur ein echter
-  Mini-Round-Trip — Futures hat keinen `validate`-Schalter.
+- **Der Hebel sitzt NICHT in der Order - `/sendorder`-`leverage` wird ignoriert.**
+  Gemessen am echten Konto: mit, ohne und als Zahl geschickt, die Marginreserve
+  blieb immer der 10 %-Plan. Der Hebel gehoert an den KONTRAKT:
+  `PUT /leveragepreferences` mit `{symbol: PF_SOLUSD, maxLeverage: 7}` stellt
+  isolated margin ein, danach reserviert 1 Kontrakt `nennwert / hebel` (belegt:
+  11,79 -> 16,80 USD auf 117,33 Nominal). zwei Regeln dazu:
+  - **PUT mit FORMKOEPRER senden.** Dieselbe Signatur als Query-String
+    (`PUT /leveragepreferences?symbol=...`) antwortet `authenticationError`;
+    dieselben Parameter als `application/x-www-form-urlencoded`-Body mit der
+    Signatur ueber `postData + nonce + pfad` gehen durch. (`_roh(methode="PUT")`)
+  - **Idempotent und nur im Live-Zweig setzen: zuerst GET, nur bei Abweichung
+    PUT, Ruecklesen als Gegenprobe.** Muster: `weg.hebel_vorbereiten()` - ohne
+    Ruecklesen prueft nichts, dass der Hebel steht, und Papier soll die Boerse
+    nicht anfassen.
+- **Der Beleg ist die MARGINRESERVE, nicht die Antwort:** Guthaben vor/nach der
+  Order stellen, das Delta ist die Margin je Kontrakt - `nennwert/7` gegen
+  `nennwert/10` unterscheidet man an einer Zahl.
+- **`authenticationError` in einer Orderantwort beweist NICHT, dass die Order
+  scheiterte.** Gemessen: Antwort mit authenticationError, hinter der die Order
+  GEFUEHLT war (Guthaben fiel um die Margin, `/openpositions` zeigte die
+  Position). Vor dem Neuer-Ordern nach einem geplatzten "Fehler" erst
+  `/openpositions` und das Guthaben lesen, sonst sammelt man Dubletten.
+  Gegenprobe: bei echtem Auth-Fail scheitert auch der LESER - lebt der Leser,
+  ist die Fehlerzeile verdachtig.
+- **Guthaben auf das Futures-Konto kommt von der SPOT-Seite, nicht von der
+  Futures-Seite.** Die Futures-API `/transfer` lehnt `fromAccount: spot` ab,
+  und der Spot-Weg braucht die Withdraw-Berechtigung am Spot-Schluessel
+  (`WithdrawMethods` antwortet sonst `EGeneral:Permission denied`). Ohne die
+  Berechtigung ist der Transfer Handarbeit im Portal - ein Kontofakt, kein
+  Codebug. EUR/USDC sind als Flex-Collateral zugelassen.
 - Papierspur bleibt Papier: der Live-Zweig haengt an derselben Sperrenkette,
   `mindest_guthaben` an der Margin des kleinsten Kontrakts plus Puffer — und
   das Guthaben wird GEMESSEN, nicht aus der Erinnerung behauptet (das

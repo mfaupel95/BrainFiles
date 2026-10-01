@@ -103,6 +103,16 @@ zeigen, echte Ausgabe lesen:
 - **Den vorgegebenen Anbieter gegen den echten Katalog stellen.** Ein Preset
   kann auf ein Modell zeigen, das der Anbieter nicht fuehrt. Der Modellkatalog
   ist oeffentlich lesbar — vor jeder Kaufempfehlung nachsehen.
+- **Erst nach einer GRATIS-Variante DESSELBEN Modells beim Anbieter suchen,
+  bevor „braucht einen bezahlten Schluessel" berichtet wird.** Anbieter fuehren
+  neben der bezahlten ID oft eine kostenlose unter DEMSELBEN Protokollpfad
+  (Muster `<modell>-free`), und der Preset des Werkzeugs zeigt regelmaessig auf
+  die bezahlte. Dann den EIGENEN Endpunkt anmelden statt zu kaufen:
+  `--provider custom --base-url <pfad-des-presets> --model <modell>-free`.
+  Zwei Belege vor der Aussage: der Protokollpfad in der Anbieter-Dokumentation
+  ist derselbe, den der Preset nutzt, und die Preistabelle des Anbieters nennt
+  die freie ID in Ein- UND Ausgabe als frei. Ein Werkzeug, das ohne Schluessel
+  nur seine Zaehlfunktion kann, ist damit trotzdem vollstaendig nutzbar.
 - **Preis je Lauf aus dem EIGENEN Probelauf rechnen**, nicht aus dem Datenblatt:
   Anfragen x Nutzlast-Token x Listenpreis. Die Wurzel ist die Stellschraube,
   nicht die Frage.
@@ -175,3 +185,131 @@ benutzbar** — dann ist der npm-Weg nicht der Notausgang, sondern der einzige:
   verweigert. Der Weg hinein ist meist die Oberflaeche im Browser (Sign-up
   erlaubt) oder `connect`, und ein Token-Unterbefehl verlangt VORHER eine
   bestehende Sitzung. Das im Bericht als offenen Punkt nennen, nicht als Fehler.
+- **Ein Schluessel, der zwischen zwei Werkzeugen wandert, wird nie angezeigt.**
+  Hat das Quell-Werkzeug einen eigenen Login (`<cli> auth login`, Ablage z. B.
+  `~/.local/share/<cli>/auth.json`), den Wert von DORT lesen, per stdin an die
+  Anmeldung des Zielwerkzeugs reichen (`auth ... --stdin`) und nur die LAENGE
+  melden. Ein kleines Hausskript dafuer: Trockenlauf als Standard, `--anwenden`
+  zum Schreiben, `--datei`/`--basis` als Testnaht; ohne Quelle gibt es die
+  Anleitung aus (welcher Befehl den Login anlegt), statt zu raten. Der Test
+  prueft BEIDES — der Wert steht in der Zieldatei des Zielwerkzeugs UND in
+  keiner Ausgabe, auch nicht in einer Fehlermeldung. Die Ablage des Zielwerkzeugs
+  fuer den Test umbiegen (siehe Attrappen-Abschnitt), damit die echte Anmeldung
+  des Nutzers unberuehrt bleibt.
+- **Quelle kann auch eine Windows-BENUTZERVARIABLE sein** (der Nutzer legt den
+  Schluessel als `<ANBIETER>_API_KEY` ab und will ihn von dort genutzt haben).
+  Dann direkt aus der Registry lesen — `winreg.OpenKey(HKEY_CURRENT_USER,
+  "Environment")` bzw. `HKEY_LOCAL_MACHINE`, dann `QueryValueEx`. **Nicht per
+  `reg query`** (gibt den Wert im Klartext aus) und **nicht nur aus der
+  Prozessumgebung**: ein frisch gesetztes `setx` sieht ein laufender Prozess
+  nicht, die Registry-Ablage dagegen sofort. Reihenfolge im Werkzeug:
+  Prozessumgebung -> Registry (HKCU, dann HKLM) -> Anmeldedatei des Quell-CLI.
+- **Ein Quellen-Schalter ist Pflicht, sobald die echte Variable auf der Maschine
+  steht.** Sonst liest jeder Test die ECHTE Variable statt seiner Attrappe und
+  wird still falsch (der Test „keine Quelle vorhanden" scheitert, obwohl der
+  Code stimmt). Form: `--quelle auto|umgebung|datei`; Tests fahren `datei`,
+  und ein eigener Test setzt die Variable im KINDPROZESS und prueft, dass die
+  Quelle „Prozessumgebung" gewinnt UND der Wert in keiner Ausgabe steht.
+
+**Fremdes CLI im VORDERGRUND starten.** Ein Hintergrundlauf kann sofort mit
+`stdin is not a tty` und Exit 1 aussteigen, waehrend derselbe Befehl im
+Vordergrund durchlaeuft (gemessen). Ausgabe trotzdem in eine Datei umleiten und
+die Datei lesen — dann ist der Lauf unabhaengig davon, was die Shell mit stdout
+macht. Fuer die Belegzeile zaehlen Exit-Code UND Inhalt der Datei, nicht die
+Laenge des Logs.
+
+**Die erste echte Suche ist der Nachweis, nicht der gruene Probelauf.** Ein
+Werkzeug, das fremde Urteile einkauft, wird erst durch einen echten Lauf ueber
+eine echte Wurzel bewiesen: Dauer, Exit-Code und die Namen der zurueckgegebenen
+Dateien im Bericht nennen — und pruefen, ob die Treffer die Frage wirklich
+treffen (eine Liste bekannter Dateien ist noch kein Urteil).
+
+## Ein Werkzeug, das ein CLI per NAMEN startet (Adapter, Sonden, Test-Knopf)
+
+Werkzeuge mit Adapter-/Sonden-Konzept (Paperclip, MCP-Clients, Test-Suiten)
+loesen den CLI-Namen selbst auf — ueber `PATH` und `PATHEXT` des EIGENEN
+Prozesses. Unter Windows trifft das **das npm-Shim `<name>.CMD`**, und
+`child_process.spawn` ohne `shell:true` kann `.cmd`/`.bat` nicht starten: Node
+wirft `EINVAL`, das Kind startet nie, und das Werkzeug meldet eine
+nichtssagende Ursache (`nonzero_exit`, „The environment test failed“). **Nicht
+die Logik des Werkzeugs debuggen, sondern den Start nachstellen:**
+
+```js
+const {spawnSync} = require('child_process');
+const r = spawnSync('C:/Users/<user>/AppData/Roaming/npm/<name>.CMD', ['--version'],
+                    {shell: false, env: {PATH: 'C:/Users/<user>/.local/bin;C:/Windows/System32'}});
+console.log(r.status, r.error && r.error.code);   // status=null, error=EINVAL
+```
+
+**Fix: die native Fassung des CLIs installieren**, damit ein `.EXE` existiert
+(`claude install stable` legt `~/.local/bin/claude.exe` ab). Die Aufloesung geht
+die PATH-Verzeichnisse der Reihe nach durch und probiert je Verzeichnis die
+Endungen in PATHEXT-Reihenfolge — ein `.exe` in einem FRUEHEREN Verzeichnis
+gewinnt. Danach beides gegenproben:
+
+- **Die Aufloesung nachbauen** statt die PATH-Reihenfolge anzunehmen: dieselbe
+  Schleife (Verzeichnisse aus `PATH`, Endungen aus `PATHEXT`, `fs.accessSync`)
+  in einem Zehn-Zeilen-Skript laufen lassen und den gefundenen Pfad ausgeben —
+  sie muss die `.exe` liefern.
+- **Die Sonde selbst nachfahren**, mit dem Minimal-Env, das das Werkzeug baut
+  (oft nur `PATH`): dieselben Argumente, dieselbe stdin-Eingabe, Exitcode und
+  das Ergebnis-Feld pruefen. Eine Umgebung, die „sauber“ gebaut wird, reicht nur
+  wenige Variablen durch — eine Gegenprobe mit der eigenen vollen Shell beweist
+  deshalb nichts.
+
+Dieselbe Falle trifft **jeden** lokalen Adapter, dessen CLI nur als npm-Shim
+vorliegt (codex, cursor, gemini, grok). Sagt die Oberflaeche nur
+„fehlgeschlagen“: **den Meldungstext im ausgelieferten UI-Bundle suchen**
+(`grep -rl "<Meldungstext>" --include=*.js .`) und die Bedingung dort lesen —
+so ist belegt, ob eine WARNUNG ueberhaupt blockiert oder nur `status === "fail"`
+beziehungsweise ein bestimmter Pruefcode.
+
+## Das Arbeitsverzeichnis entscheidet ueber die Umgebung
+
+**Symptom:** derselbe Befehl laeuft aus der eigenen Shell durch und im Werkzeug
+scheitert er. **Erste Frage: was steht in der Prozessumgebung des Werkzeugs?**
+Viele Werkzeuge laden beim Start eine `.env` aus ihrem ARBEITSVERZEICHNIS
+(dotenv ohne Pfad) und reichen die Prozessumgebung an jedes Kind weiter (Sonde,
+Adapter, Agent). Liegt im Startverzeichnis eine `.env` mit einem Schluessel, den
+das Kind kennt (typisch `ANTHROPIC_API_KEY`), benutzt das Kind DIESEN statt der
+angemeldeten Sitzung: 401, nichtssagender Exit-Code, „Umgebungstest
+fehlgeschlagen“. Aus der eigenen Shell faellt das nie auf, weil die Shell keine
+`.env` laedt.
+
+- **Der Befund steht in der Meldung des Werkzeugs selbst.** Sonden melden
+erkannte Konkurrenz-Variablen ausdruecklich („…API_KEY is set. … will use
+API-key auth instead of subscription credentials“). Wer das liest, hoert auf zu
+raten; wer nur den Exit-Code sieht, sucht tagelang am falschen Ende.
+- **Ein `unset` vor dem Start hilft NICHT** — die Datei wird beim Start erneut
+geladen. Der Fix ist das Arbeitsverzeichnis: aus einem Ordner ohne fremde
+`.env` starten (`~/.<werkzeug>` bietet sich an), und den Start-Wrapper so bauen,
+dass er dieses Verzeichnis setzt (`-WorkingDirectory` bzw. `cd` in der `.cmd`).
+- **Gegenprobe als MATRIX**, nicht als Einzelmessung: dieselbe Sonde einmal aus
+dem vergifteten Verzeichnis, einmal aus dem sauberen — und zusaetzlich einmal
+mit dem Schluessel in der Rolle, in der er erwartet wird. Erst der Unterschied
+zwischen den Zeilen belegt die Ursache.
+- **Die `.env` im Home nicht anfassen** (sie traegt Schluessel des Nutzers): im
+Bericht als Falle benennen, im Wiki festhalten. Jedes dort gestartete Werkzeug
+erbt sie.
+
+## Die Sonde des Werkzeugs selbst fahren, statt den Nutzer klicken zu lassen
+
+Ein Werkzeug mit Test-Knopf ist ueber seine eigene Schnittstelle reproduzierbar —
+das liefert die vollstaendige Pruefliste und macht jede Aenderung sofort
+nachmessbar:
+
+1. **Die Pruefungen im ausgelieferten Code lesen** (`node_modules/<paket>/…/server/`):
+   dort steht, welchen Befehl, welche Argumente, welches Arbeitsverzeichnis und
+   welche Umgebung die Sonde baut — und welche Pruefcodes als Fehler gelten
+   (Warnungen blockieren meist nicht).
+2. **Den Endpunkt aus der Schleife aufrufen.** Im Modus „nur lokaler Rechner“
+   (`local_trusted`) nimmt so ein Dienst Anfragen von `127.0.0.1` OHNE Anmeldung
+   an. Pfad und Koerperform aus der OpenAPI-Beschreibung des Werkzeugs nehmen
+   (`grep -rn "<route>" --include=*.js`), die IDs (Firma, Umgebung) aus der
+   eingebetteten Datenbank.
+3. **In die eingebettete Datenbank sehen**, wenn die Oberflaeche Werte nicht
+   zeigt — Port und Zugang stehen in der Konfiguration des Werkzeugs. Von einem
+   Geheimnis **nur Laenge und Art ausgeben, nie den Wert**; ein Test-Token im
+   Skript durch eine erkennbar falsche Zeichenkette ersetzen.
+4. **Wegwerf-Sonden, die Geheimnisse lesen, danach LOESCHEN** — und vorher
+   pruefen, dass kein Klartext in einer Datei liegen geblieben ist.

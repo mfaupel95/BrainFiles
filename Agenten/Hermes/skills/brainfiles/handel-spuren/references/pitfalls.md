@@ -1193,3 +1193,20 @@ Kurzfassung ersetzt die Begruendung nicht.
   Die Gegenprobe je Lauf ist `replay.auf_der_marke(journal)` (alle Austritte an
   einer Marke) - und der Vergleich der Trefferquote GEGEN den notierten Stand,
   nicht gegen das Gedaechtnis.
+- **Ein Transportfehler MIT Zaehler ist eine Warnung, kein Ausfall.**
+  „OKX-Transportfehler 1/6: <urlopen error [WinError 10054] …>" heisst: der
+  erste von bis zu sechs Versuchen ist an einer zurueckgesetzten TCP-Verbindung
+  gescheitert, der naechste gelingt (`_mit_wiederholung`, `MAX_FEHLER` 6, Pause
+  1,5 s x Nummer). Erst wenn ALLE sechs scheitern, wird eine Ausnahme daraus.
+  GEMESSEN am 01.10.2026 (nichts war kaputt): OKX antwortete signiert in 0,2 s,
+  `dauerlauf.log` hatte NULL Fehler und NULL Timeouts, der Zyklus um 13:40 lief
+  mit allen Spuren „ok" durch; die Meldung stand 7x in zwei Tagen in den
+  RAND-Logs (`Routinen/logs/dauerlauf-kind.err.log`, `handelszentrale-fehler.log`)
+  - und traf OKX UND Kraken gleichzeitig, also ein lokaler Netz-/Verbindungs-
+  moment, keine Boersensperre. Vor jedem Befund aus einer Log-Zeile den Zaehler
+  und den Rest des Zyklus lesen. Die vier Wiederholer sagen es inzwischen selbst
+  („- wird wiederholt, kein Ausfall" in `scanner/okx.py`, `xperp/okxf.py`,
+  `mosaic/okx_spot.py`, `kraken/kraken.py`; Wache:
+  `tests/test_transport_wiederholung.py`). Eine im Reset verlorene LIVE-Antwort
+  faengt der naechste Zyklus auf - `boersenstops` (Buch gegen Boerse) bzw.
+  `wartende_auftraege`.

@@ -38,7 +38,11 @@ Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`. Dort
 steht auch, wie ein VEROEFFENTLICHTES CLI-Paket unter Windows installiert wird
 (`os`-Feld im Manifest, `workspace:*` in den devDependencies, Haus-
 Installationsordner statt Globalinstall, Attrappen-Endpunkt als Nachweis ohne
-Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung).
+Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung, die
+GRATIS-Variante desselben Modells beim Anbieter bevor „braucht einen bezahlten
+Schluessel" im Bericht steht, das Lesen des Schluessels aus einer
+Windows-Benutzervariable ohne jede Ausgabe (Registry direkt statt `reg query`,
+Quellen-Schalter fuer die Tests) und der Vordergrund-Zwang fuer solche CLIs).
 
 **Bringt das Werkzeug einen eigenen `install`-Unterbefehl mit ("managed
 install"), unter Windows zuerst dessen Scheitern pruefen und dann auf npm in
@@ -49,6 +53,24 @@ blockiert dann den Start). Dazu PATH-Anhaengen ohne `setx`, die
 oft uebersprungene `postinstall`-Freigabe von npm >= 11 und der erste Start mit
 eingebetteter Datenbank (sieht ~3 min wie ein Haenger aus; am Datenordner
 messen, am Port belegen): alles im selben Abschnitt der Referenz.
+
+**Und ein Werkzeug, das ein CLI per NAMEN startet (Adapter, Sonde, Test-Knopf),
+findet unter Windows das npm-Shim `.CMD` — `spawn` ohne `shell:true` kann das
+nicht starten (`EINVAL`), das Kind startet nie, und die Meldung ist
+nichtssagend („Umgebungstest fehlgeschlagen“). Dann die NATIVE Fassung des CLIs
+installieren, damit ein `.EXE` in einem frueheren PATH-Verzeichnis gewinnt, und
+Aufloesung plus Sonde nachstellen — Rezept im selben Abschnitt der Referenz.**
+
+**Und starte ein solches Werkzeug aus einem Verzeichnis OHNE fremde `.env`.** Es
+laedt beim Start die `.env` seines ARBEITSVERZEICHNISSES in die eigene
+Prozessumgebung und reicht sie an jedes Kind weiter (Sonde, Adapter, Agent); ein
+Schluessel darin ueberstimmt dann die Anmeldung, die das Werkzeug nutzen soll —
+und derselbe Befehl laeuft aus der eigenen Shell trotzdem durch, weil die Shell
+keine `.env` laedt. Ein `unset` vor dem Start hilft NICHT (die Datei wird beim
+Start neu geladen); der Fix ist das Arbeitsverzeichnis, und der Start-Wrapper
+setzt es ausdruecklich. Messweg und Gegenprobe:
+`references/node-mcp-cli-tools.md`, Abschnitt „Das Arbeitsverzeichnis entscheidet
+ueber die Umgebung“.
 
 Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 (transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):
