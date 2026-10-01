@@ -60,6 +60,46 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
+      Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
+      VVV (217) und ADA (235) als XPERP-Positionen, zusammen rund 226 USD
+      Margin; das xperp-Buch kennt nur XRP. attachAlgoOrds ist bei ALLEN vier
+      Positionen leer und /trade/orders-algo-pending liefert fuer SWAP und
+      FUTURES nichts - kein Schutzauftrag. xperp laeuft Papier, deshalb hat
+      bueche_fremde_positionen_uebernehmen nie gegriffen (es laeuft nur im
+      Live-Zyklus). Die Vorschau des Hauswerkzeugs zeigt: alle drei wuerden
+      uebernommen und bekaemen einen Stop (ADA 0.2432, VVV 27.221, ZEC
+      1401.06) - rund 2 % unter dem Boersenschnitt, ein Stop dort realisiert
+      den Buchverlust von zusammen -34.85 USD.
+      Naechster Schritt: Entscheidung Max - uebernehmen (dann greift der Stop)
+      oder die Positionen schliessen; ohne Entscheidung bleibt Margin ohne
+      Schutz stehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp
+
+- [ ] **T-274 - xperp-Kill-Switch sperrt die scharfe Spur (Ruecklauf 279.85 >= 250)**
+      Kontext: lage meldet kill=true - die realisierte Kurve stand auf 497.42
+      USD und liegt bei 217.57, der Ruecklauf also 279.85 gegen
+      kill_switch_gesamt_usd 250.0. handel_erlaubt steht deshalb auf false.
+      ACHTUNG, FALLE: der Kill-Switch steht NICHT im --vorschau-Text. Wer nur
+      handel_erlaubt auf true setzt, laesst genau EINEN Sperrgrund uebrig
+      ('kein offenes Freigabefenster'), dauerlauf.nur_fenster_fehlt greift und
+      die AUTO_FREIGABE oeffnet das Fenster von selbst - der naechste Live-Lauf
+      stellt dann flach und verkauft die vier echten Positionen aus T-273.
+      Reihenfolge also: erst Deckel bzw. Kurve entscheiden, dann armieren.
+      Naechster Schritt: Entscheidung Max - Deckel heben (21.09. von 40 auf 100,
+      27.09. auf 250) oder die Kurve pruefen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/wachen.json
+
+- [ ] **T-275 - vier scharfe Spuren laufen live und koennen nicht handeln (Guthaben)**
+      Kontext: scanner, mosaic, moondev_listingarb und moondev_topmovers fahren
+      live (dauerlauf.log 01.10. 02:43-02:46), stehen aber alle vor einem
+      Guthaben-Tor: OKX-Spot-USDC frei 0.00 bei 530.67 eq - die ganze Margin
+      steckt in den vier XPERP-Positionen aus T-273 - und Kraken 53.81 EUR
+      sowie 25.08 USDC gegen die Tore 60 (mosaic) und 70 (moondev_marktlage).
+      Naechster Schritt: Entscheidung Max - Geld umschichten oder Tor senken;
+      ohne eines von beiden bleibt der Live-Schalter wirkungslos.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
+
 - [ ] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
       Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
       Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf

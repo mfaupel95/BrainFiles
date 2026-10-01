@@ -120,6 +120,24 @@ Invoke through the `terminal` tool, aus dem Spur-Ordner:
 - **`freigabe.erfuellt` und Freigabefenster sind ZWEI Sperren**: die Auto-Freigabe
   oeffnet nur das Fenster; ohne `freigabe.erfuellt=true` in wachen.json handelt die
   Spur trotzdem nicht. Beides setzen.
+- **Der Kill-Switch steht NICHT im `--vorschau`-Text — und `handel_erlaubt=true`
+  allein loest ihn aus.** Gemessen am 01.10.2026 an xperp: `lage` meldete
+  `kill=true` (Ruecklauf 279.85 >= `kill_switch_gesamt_usd` 250), die Vorschau
+  nannte aber nur `handel_erlaubt=false; kein offenes Freigabefenster`. Wer nur den
+  Schalter umlegt, laesst genau EINEN Sperrgrund uebrig, der das Wort
+  'Freigabefenster' traegt — `dauerlauf.nur_fenster_fehlt` greift, die
+  AUTO_FREIGABE oeffnet das Fenster selbst, und der naechste Live-Lauf stellt
+  FLACH (verkauft die echten Positionen). **Reihenfolge: erst Kill-Switch bzw.
+  Deckel klaeren, dann `handel_erlaubt` setzen.** Vorher immer `handeln.py
+  --wachen` lesen, nicht nur `--vorschau`.
+- **Eine Papier-Spur schuetzt ihre echten Positionen nicht.** `xperp/handeln.py`
+  ruft `bueche_fremde_positionen_uebernehmen` nur im LIVE-Zyklus — solange die
+  Spur Papier laeuft, bleiben an der Boerse eroeffnete Positionen ohne Buch und
+  ohne Stop. Handgriff fuer den Bestand:
+  `xperp/fremde_positionen_uebernehmen.py` (Vorschau ist Standard, `--anwenden`
+  bucht und stellt den Stop). Vor jedem Live-Schalten pruefen:
+  `/api/v5/account/positions` gegen `<spur>/zustand.json` und `attachAlgoOrds`
+  auf leer.
 
 ## Verification
 
