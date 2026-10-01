@@ -133,6 +133,15 @@ Agenten/Handel/stand/
 !Agenten/Handel/freqtrade/bots_starten.sh
 !Agenten/Handel/freqtrade/user_data/strategies/*.py
 !Agenten/Handel/freqtrade/user_data/bots/*.json
+# Die Messwerkzeuge und Messaufsaetze der Frequenzbremse (T-197) und der
+# kurzen Seite (T-198). Beides ist eigene Arbeit mit Zahlen, die sonst nur im
+# Sitzungsprotokoll stuenden: das Skript, das die Laeufe faehrt, das, das sie
+# auswertet, die Tests, und je ein Aufsatz pro Variante (reine moondev-Bloecke,
+# KEINE Zugangsdaten - sie werden zusammen mit dem Bot-Aufsatz geladen).
+!Agenten/Handel/freqtrade/messung-*.sh
+!Agenten/Handel/freqtrade/messung-*.py
+!Agenten/Handel/freqtrade/tests/*.py
+!Agenten/Handel/freqtrade/user_data/messung/*.json
 
 # SWAP-Spur (Handel/swap/): eigener Papierpfad mit eigenen Wachen und Tests.
 # Ohne diese Zeilen waeren handeln.py und seine Tests nur lokal vorhanden -

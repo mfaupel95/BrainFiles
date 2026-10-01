@@ -1,0 +1,12 @@
+{
+  "_zweck": "Messaufsatz T-197 (Frequenzbremse): NUR die Sperrfrist nach Ziel-Ausstieg (2 h, Haus-Zahl aus scanner/wachen.json). Wird ZUSAMMEN mit config.<bot>.signal-an.json geladen - Freqtrade mischt mehrere --config tief. Der Aufsatz traegt keine Zugangsdaten.",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 2.0,
+      "sperrfrist_stop_stunden": 0,
+      "mindestabstand_einstieg_stunden": 0,
+      "fenster_stunden": 0
+    }
+  }
+}

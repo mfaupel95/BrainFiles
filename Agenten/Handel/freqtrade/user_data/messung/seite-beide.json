@@ -1,0 +1,7 @@
+{
+  "_zweck": "T-198-Messaufsatz: BEIDE Seiten, Frequenzbremse aus.",
+  "moondev": {
+    "bremse": false,
+    "seite": "beide"
+  }
+}

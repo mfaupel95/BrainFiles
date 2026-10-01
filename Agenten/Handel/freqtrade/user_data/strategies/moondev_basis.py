@@ -35,6 +35,9 @@ erfundene zweite Haelfte.
 from datetime import datetime
 from typing import Optional, Union
 
+import json
+import os
+
 import numpy as np
 import pandas as pd
 import talib.abstract as ta
@@ -42,6 +45,8 @@ from pandas import DataFrame
 from technical import qtpylib
 
 from freqtrade.strategy import IStrategy
+
+import frequenzbremse
 
 
 class MoonDevBasis(IStrategy):
@@ -53,6 +58,18 @@ class MoonDevBasis(IStrategy):
     can_short: bool = False
 
     timeframe = "1h"
+
+    # --- Frequenzbremse (T-197, 01.10.2026) -----------------------------------
+    # Der erste Backtest war nicht wegen der Richtung negativ, sondern wegen der
+    # ZAHL der Trades (3,23/Tag = ueber 240 % Kosten im Jahr). Die Regeln und
+    # ihre Herkunft stehen in `frequenzbremse.py`; hier stehen nur die
+    # Schalter. Sie kommen aus der Bot-Konfiguration (`moondev:`-Block),
+    # damit derselbe Code vorher/nachher fahrbar ist.
+    bremse: bool = False
+    bremse_einstellungen: dict = {}
+    # Zaehler der abgelehnten Einstiege je Grund - der Beleg, dass die Bremse
+    # greift (und nicht nur die Zahlen anders aussehen).
+    bremse_zaehler: dict = {}
 
     # --- Geometrie (Haus-Zahlen, nicht geraten) -------------------------------
     # stop_prozent aus der jeweiligen wachen.json; Ziel = 1.5 R.
@@ -99,6 +116,73 @@ class MoonDevBasis(IStrategy):
         if schalter is not None:
             self.signal_ausstieg = bool(schalter)
         self.use_exit_signal = bool(self.signal_ausstieg)
+
+        # Frequenzbremse: Schalter und Grenzen aus dem `moondev`-Block der
+        # Bot-Konfiguration. Fehlt der Block, gelten die Haus-Zahlen aus
+        # frequenzbremse.STANDARD - der Backtest "vorher" setzt sie aus.
+        md = config.get("moondev") or {}
+        bremse_cfg = dict(md.get("bremse_einstellungen") or {})
+        if md.get("bremse") is not None:
+            bremse_cfg["bremse"] = bool(md["bremse"])
+        self.bremse_einstellungen = frequenzbremse.grenzen(bremse_cfg)
+        self.bremse = bool(self.bremse_einstellungen.get("bremse", True))
+
+    # --- Frequenzbremse: Anbindung an Freqtrade ------------------------------
+    def _handelsgeschichte(self) -> list:
+        """Die abgeschlossenen Trades als reine Rechnung fuer frequenzbremse.
+
+        Freqtrade fuehrt sie im Trade-Objekt; hier werden nur die Felder
+        herausgezogen, die die Regel braucht. Kein Journal, keine Datei - im
+        Backtest ist der Trade-Speicher die Wahrheit, live dieselbe Quelle.
+        """
+        from freqtrade.persistence import Trade
+
+        runden = []
+        for t in Trade.get_trades_proxy(is_open=False):
+            runden.append({
+                "paar": t.pair,
+                "auf_zeit": t.open_date_utc or t.open_date,
+                "zu_zeit": t.close_date_utc or t.close_date,
+                "grund": t.exit_reason,
+                "ergebnis_usd": t.close_profit_abs or 0.0,
+                "einsatz_usd": t.stake_amount or 0.0,
+            })
+        return runden
+
+    def _zaehler_schreiben(self) -> None:
+        """Die Ablehnungsgruende ablegen - sonst ist die Bremse unsichtbar."""
+        pfad = os.path.join(self.config.get("user_data_dir", "."),
+                            "backtest_results",
+                            "bremse-%s.json" % self.__class__.__name__)
+        try:
+            os.makedirs(os.path.dirname(pfad), exist_ok=True)
+            with open(pfad, "w", encoding="utf-8", newline="") as f:
+                json.dump({"strategie": self.__class__.__name__,
+                           "einstellungen": self.bremse_einstellungen,
+                           "abgelehnt_je_grund": self.bremse_zaehler},
+                          f, ensure_ascii=False, indent=1, sort_keys=True)
+        except OSError:
+            pass
+
+    def confirm_trade_entry(self, pair: str, order_type: str, amount: float,
+                            rate: float, time_in_force: str, current_time,
+                            entry_tag: Optional[str], side: str, **kwargs) -> bool:
+        """Die Bremse: darf JETZT in DIESES Paar eingestiegen werden?
+
+        Aufgerufen von Freqtrade unmittelbar vor dem Einstieg - im Backtest
+        wie live. Ein `False` verhindert nur den Einstieg; es schliesst keine
+        Position (dieselbe Grenze wie beim Haus-Vorfilter: er schliesst nie,
+        er verhindert nur neue).
+        """
+        if not self.bremse:
+            return True
+        erlaubt, grund, regel = frequenzbremse.urteil(
+            self._handelsgeschichte(), current_time, pair, self.bremse_einstellungen)
+        if not erlaubt:
+            self.bremse_zaehler[regel] = self.bremse_zaehler.get(regel, 0) + 1
+            if sum(self.bremse_zaehler.values()) % 100 == 0:
+                self._zaehler_schreiben()
+        return erlaubt
 
     # --- risk_agent als Freqtrade-Schutzschicht ------------------------------
     @property

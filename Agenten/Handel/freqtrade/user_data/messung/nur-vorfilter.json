@@ -1,0 +1,14 @@
+{
+  "_zweck": "Messaufsatz T-197: NUR der Fenster-Vorfilter des risk_agent (12 h, Verlust-/Gewinngrenze 5 % des eingesetzten Betrags - ohne Sprachmodell).",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 0,
+      "sperrfrist_stop_stunden": 0,
+      "mindestabstand_einstieg_stunden": 0,
+      "fenster_stunden": 12.0,
+      "verlust_max_pct": 5.0,
+      "gewinn_ziel_pct": 5.0
+    }
+  }
+}
