@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-283 — Freitext blockiert den SkillsBot bis zu 30 Minuten**
+      Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
+      (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
+      "(Aufgabe FAILED)", obwohl der Hauptagent weiterarbeitete. Der Bot ist in
+      dieser Zeit EINFADIG: /lage, /strategien und jede andere Nachricht warten,
+      bis der Auftrag fertig ist. Fuer einen einzelnen Auftrag ist das richtig
+      (sonst ist das Ergebnis verloren), fuer einen zweiten Auftrag nicht.
+      Naechster Schritt: den Freitext-Auftrag in einen Hintergrund-Thread geben,
+      sofort "angenommen" antworten und das Ergebnis als eigene Nachricht senden
+      (Muster: der Dauerlauf meldet asynchron; `sende()` ist thread-fest, die
+      Kontext-ID muss im Thread fortgeschrieben werden).
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py
+
 - [ ] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
       Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
       als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
@@ -210,20 +223,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       erzeugen; sonst als Referenz stehen lassen.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
 
-- [ ] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
-      Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
-      16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
-      `(Aufgabe FAILED)` aus `_aufgabe_abholen`). Die A2A-Aufgabe an hermes-maks-pc
-      scheitert also - nicht der Bot. Dieselbe Signatur tragen ALLE frueheren Freitext-
-      Auftraege ("Auswertung" 29.09., "Ja" und "Tagesbericht auswerten" 28.-30.09.:
-      je 300 s und 16 Zeichen). Slash-Befehle sind NICHT betroffen: `/strategien` lief
-      am selben Abend in 2,5 s mit 2642 Zeichen durch (Telegram hat die Sendung
-      angenommen - `sende()` ruft sendMessage direkt, ein Fehlschlag waere als
-      `status: fehler` protokolliert).
-      Naechster Schritt: die A2A-Aufgabe im Gateway nachsehen (Gateway-Log zur Uhrzeit,
-      Profil default/hermes-maks-pc, warum TASK_STATE_FAILED statt COMPLETED) - und bis
-      dahin fuer echte Arbeit `/run <skill>` (Frist 1800 s) oder die Desktop-App nutzen.
-      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py, Agenten/Hermes (Gateway)
 
 - [ ] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
       Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
@@ -3051,6 +3050,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
+      Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
+      16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
+      `(Aufgabe FAILED)` aus `_aufgabe_abholen`). Die A2A-Aufgabe an hermes-maks-pc
+      scheitert also - nicht der Bot. Dieselbe Signatur tragen ALLE frueheren Freitext-
+      Auftraege ("Auswertung" 29.09., "Ja" und "Tagesbericht auswerten" 28.-30.09.:
+      je 300 s und 16 Zeichen). Slash-Befehle sind NICHT betroffen: `/strategien` lief
+      am selben Abend in 2,5 s mit 2642 Zeichen durch (Telegram hat die Sendung
+      angenommen - `sende()` ruft sendMessage direkt, ein Fehlschlag waere als
+      `status: fehler` protokolliert).
+      Naechster Schritt: die A2A-Aufgabe im Gateway nachsehen (Gateway-Log zur Uhrzeit,
+      Profil default/hermes-maks-pc, warum TASK_STATE_FAILED statt COMPLETED) - und bis
+      dahin fuer echte Arbeit `/run <skill>` (Frist 1800 s) oder die Desktop-App nutzen.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py, Agenten/Hermes (Gateway)
+      **Erledigt 2026-10-01.** Ursache gefunden und behoben: NICHT der Agent scheiterte, sondern die Frist war zu kurz. Belege aus dem Gateway-Log derselben Stunde: dieselbe Omniquant-Frage wurde um 07:56:34 nach 401,4 s beantwortet, die Rueckfrage um 08:23:16 nach 1504,6 s - der SkillsBot gab nach 300 s auf und antwortete mit dem 16-Zeichen-'(Aufgabe FAILED)'. Aenderungen: neue Konstante A2A_FRIST_S 1800 (dieselbe Frist wie /bot), die Warteschleife in _aufgabe_abholen benutzt sie statt des HTTP-Limits, frist_meldung() sagt jetzt 'laeuft noch / NICHT gescheitert / so geht es weiter', und Freitext warnt VOR dem Warten (Muster von /run). Tests: tests/test_skillsbot_freitext.py (8). Bot neu gestartet (PID 77696 -> 45916). Die verbleibende Einfaedigkeit steht als neuer Task.
 - [x] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
       Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
       Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf

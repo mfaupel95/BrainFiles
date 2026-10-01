@@ -82,7 +82,15 @@ MAX_ZEICHEN = 4000      # Telegram bricht bei 4096 hart ab
 MAX_FEHLER = 4          # Telegram-Gegenstellenfehler hintereinander -> Pause
 POLL_DAUER = 25         # getUpdates long polling
 A2A_POLL_S = 3          # GetTask-Intervall
-A2A_TIMEOUT_S = 300     # so lange auf eine Antwort des Hauptagenten warten
+A2A_TIMEOUT_S = 300     # Zeitlimit EINES HTTP-Aufrufs zum Gateway
+# SO LANGE DARF EIN FREITEXT-AUFTRAG LAUFEN (01.10.2026): Der Hauptagent braucht
+# fuer echte Arbeit gemessen 400 s bis 25 min (Gateway-Log 01.10.2026: 401,4 s
+# fuer "Omniquant Handel Freigabe auf kraken live", 1504,6 s fuer die Rueckfrage
+# danach). Der SkillsBot gab nach 300 s auf und antwortete mit dem 16 Zeichen
+# langen "(Aufgabe FAILED)" - der Auftrag war nicht gescheitert, die Frist zu
+# kurz. Freitext bekommt deshalb DIESELBE Frist wie /bot: gleiche Arbeit,
+# gleiche Grenze.
+A2A_FRIST_S = 1800
 
 BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
 
@@ -243,11 +251,26 @@ def _a2a_ruf(methode, params, zeit=A2A_TIMEOUT_S + 30):
     return erg.get("result", {})
 
 
+def frist_meldung():
+    """Was nach A2A_FRIST_S gesagt wird - EINE Stelle, damit die Meldung
+    pruefbar ist (ein Text im Funktionsrumpf laesst sich nicht testen).
+
+    Sie sagt drei Dinge: es laeuft noch, es ist NICHT gescheitert, und womit
+    es weitergeht. Das nackte "(Aufgabe FAILED)" (16 Zeichen) hat am
+    01.10.2026 genau das Gegenteil behauptet.
+    """
+    return ("Der lokale Agent arbeitet noch (fuer echte Arbeit braucht er oft "
+            "7 bis 25 Minuten) - hier wurde nach %d Minuten abgebrochen. Der "
+            "Auftrag ist NICHT gescheitert: er laeuft dort weiter. Fuer lange "
+            "Auftraege nimm die Desktop-App oder /bot NAME - beide setzen fort, "
+            "diese Schnittstelle nicht." % (A2A_FRIST_S // 60))
+
+
 def _aufgabe_abholen(aufgabe):
     """Task bis TASK_STATE_COMPLETED verfolgen, Antworttext zurueckgeben."""
     tid = aufgabe.get("id")
     kontext = aufgabe.get("contextId")
-    for _ in range(A2A_TIMEOUT_S // A2A_POLL_S):
+    for _ in range(A2A_FRIST_S // A2A_POLL_S):
         zustand = aufgabe.get("status", {}).get("state", "")
         if zustand == "TASK_STATE_COMPLETED":
             teile = aufgabe.get("status", {}).get("message", {}).get("parts", [])
@@ -262,7 +285,7 @@ def _aufgabe_abholen(aufgabe):
             return ("(Aufgabe " + zustand.replace("TASK_STATE_", "") + ")"), kontext
         time.sleep(A2A_POLL_S)
         aufgabe = _a2a_ruf("GetTask", {"id": tid}).get("task", {})
-    warnung = ("Das Ergebnis des lokalen Agenten kam nicht rechtzeitig an " + "und wurde abgebrochen. Tipp: Lange Auftraege gehen besser an die Desktop-App - die Telegram-Schnittstelle bricht nach " + str(A2A_TIMEOUT_S) + " Sekunden ab und setzt nicht fort. Teile den Auftrag lieber in Teilstuecke.")
+    warnung = frist_meldung()
     return warnung, kontext
 
 
@@ -818,6 +841,10 @@ def bearbeite(text, chat):
                 "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
                 "/nein_xperp, /stop_xperp.\n"
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
+    # Erst sagen, dann tun (Muster von /run): der Hauptagent braucht fuer echte
+    # Arbeit Minuten. Ohne diese Zeile sieht es aus, als haenge der Bot.
+    sende(chat, "Arbeite daran - der Hauptagent braucht oft 7 bis 25 Minuten. "
+         "Solange kann der Bot nichts anderes beantworten.")
     antwort, neuer_kontext = frage(t, kontext)
     if neuer_kontext:
         kontexte[str(chat)] = neuer_kontext
