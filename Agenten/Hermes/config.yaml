@@ -1,6 +1,8 @@
 model:
-  default: deepseek-r1:7b
-  provider: custom:ollama-launch
+  default: deepseek/deepseek-v4.1-flash
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
 providers:
   bonsai:
     api: http://127.0.0.1:8081/v1

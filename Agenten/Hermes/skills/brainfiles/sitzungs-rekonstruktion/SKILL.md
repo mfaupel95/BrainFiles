@@ -34,6 +34,11 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
    Kandidat ist die jüngste Sitzung, die **nicht** die laufende ist. Mit `query` das
    Thema finden, dann die Nutzer-Nachrichten dieser Sitzung lesen: die letzte offene
    Frage ist der Auftrag.
+   - **`session_search` findet nicht alles.** Die eigene `state.db` ist die
+     verlaesslichere Quelle: `SELECT id, title, source, started_at FROM sessions
+     ORDER BY started_at DESC LIMIT 20` — die `title` ist die erste Nutzer-Nachricht
+     und benennt den Strang sofort. Liefert `session_search` nur alte Sitzungen,
+     obwohl gerade etwas passiert ist, direkt in der DB weiterlesen.
    - **Eine nackte Ziffer ist ein Verweis, kein Auftrag.** Sie zeigt auf eine
    nummerierte Liste, die in einer anderen Sitzung stand. Also die letzten
    Assistenten-Nachrichten der zwei juengsten fremden Sitzungen lesen
@@ -84,6 +89,30 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
 5. **Immer eine Liste „nicht angefasst"** anschließen: laufende Prozesse, fremde
    Arbeitsstände, Dateien, generierte Artefakte. Ohne sie ist der wiederhergestellte
    Stand unvollständig.
+
+## Wiederholbefehle: „retry", „nochmal", „Continue"
+
+Ein Auftrag, den Hermes nie ausgefuehrt hat, ist nicht spurlos: die Assistenten-Zeile
+darunter lautet wortgleich **„Your request was not processed. Send it again if you still
+want me to carry it out."** Das ist der Anker — die `role='user'`-Zeile unmittelbar
+darueber ist der Auftrag, den der Wiederholbefehl meint, **nicht** die letzte Zeile der
+Sitzung. Beides gehoert in den Bericht: was der Auftrag war und dass er nie lief.
+
+- **`history=0` in einer frischen Sitzung heisst nicht, dass es keinen Faden gibt.**
+  Ist die Hauptsitzung beschaeftigt, legt der Gateway je Nachricht eine
+  **Hintergrundsitzung** an (`session_id` beginnt mit `bg_<HHMMSS>_<hash>`); mehrere
+  laufen gleichzeitig auf denselben Auftrag. Vor dem Handeln pruefen, ob eine andere
+  Sitzung ihn schon fuehrt.
+- **Wiederholt wird die ANFRAGE, nicht die Wirkung.** Beruehrt der Auftrag Schalter mit
+  echter Wirkung (Live-Handel, Freigaben, Loeschungen), wird er NICHT erneut ausgefuehrt,
+  solange eine andere Sitzung ihn fuehrt — zwei Sitzungen an denselben Schaltern sind
+  das Risiko, nicht die gesparte Zeit. Dann messen, berichten und den einen Schritt
+  benennen, den nur der Nutzer tun kann.
+- **Immer derselbe „not processed"-Takt ist keine offene Aufgabe, sondern eine
+  haengende Schleife** — der Wiederholungsauftrag eines Kanban-/Goal-Workers, dessen
+  Modell nicht antwortet. Sie wird gemeldet und beendet, nicht wiederholt.
+- Abfragen, Protokollzeilen und die Schleifen-Erkennung stehen in
+  `references/verlorene-anfrage-finden.md`.
 
 ## Wenn ein Bot- oder Subagenten-Auftrag abgebrochen ist
 
