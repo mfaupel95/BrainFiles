@@ -59,6 +59,22 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
+      Kontext: Die Handel-Suite meldete am 01.10.2026 (1525 Tests) genau einen
+      Fehlschlag: `test_omniquant_fassung.AuftragTest.test_spur_faehrt_weit_und_bleibt_
+      papier` - `AssertionError: True is not false : Omniquant wurde auf PAPIER bestellt`.
+      Grund ist nicht die Suite: Commit `aecd6178 Omniquant scharf: Schalter, Haken und
+      Auto-Freigabe gesetzt` hat `omniquant/wachen.json` auf handel_erlaubt=true gehoben
+      (gemessen 01.10.2026), der Test verlangt aber weiter den Papierstand von damals.
+      Die FASSUNG (`wachen.weit.json`) steht weiter auf false - der Schattenarm laeuft
+      also Papier, die Hauptspur ist live. Der Test prueft die falsche Datei fuer die
+      falsche Behauptung.
+      Naechster Schritt: den Auftrag auf den neuen Stand ziehen - die Schattenversion
+      muss Papier bleiben (aus `wachen.weit.json` lesen), fuer die Hauptspur
+      ausdruecklich pruefen, was bestellt war, statt den Altwert einzufrieren.
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
+
 
 - [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
       Kontext: Am 01.10.2026 sind die `models:`-Listen der 19 Bot-Profile auf das gekuerzt, was
