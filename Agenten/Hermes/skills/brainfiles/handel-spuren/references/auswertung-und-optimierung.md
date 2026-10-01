@@ -298,6 +298,22 @@ Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
    echten 0,05-0,60 %. Brutto- und Nettosummen nie in dieselbe Rangfolge
    stellen; fuer ein Papierbuch kommt der Satz aus der `wachen.json` oder aus
    einer gemessenen Fuellung.
+   **Der Ausweis gehoert in die Kennzahl selbst, nicht in eine Fussnote.** Die
+   Trennung braucht DREI Teile an EINER Stelle: ein Flag je Spur, ob die
+   Gebuehr schon IM Journal steckt (`GEBUEHR_SCHON_DRIN` = xperp/swap/scanner/
+   kraken; scanner/kraken rechnen sie in den Betrag, xperp/swap ueber
+   `gebuehr_pct`/`funding_pct`), die Gebuehr aus der `wachen.json`
+   (`gebuehr_fuer(spur)` - EIN Leser, nicht zwei) und ein `netto`, das nur
+   gerechnet wird, wenn das Flag es erlaubt. Zwei Fehler, die jede Fassung
+   einmal macht: **zweimal abziehen** (waere so falsch wie gar nicht - der
+   `kosten_netto` gehoert auf 0, wenn die Gebuehr schon drin ist) und die
+   **Vorgabe „netto"** (wer nichts angibt, bekommt die ehrliche Antwort
+   „brutto": die Funktion zieht NIE etwas ab, sie weist nur aus). Ein Bericht
+   ohne bekannten Satz sagt **„BRUTTO und UNBEKANNT"**, nicht „0,00 %" - und
+   eine Zahl, die nur aus der Zeile kommt, wird nicht stillschweigend
+   korrigiert, sondern mit der zweiten Zahl daneben gestellt. Gemessen an einer
+   Handvoll Spuren verschiebt das die Urteile: +10,82 -> +9,62 USD,
+   -5,02 -> -6,02, +38,85 -> +37,92, +2,30 -> +2,00.
 3. **Fehlt der Gebuehrenschluessel GANZ, rechnet das Werkzeug mit 0 % - und
    eine tote Spur sieht tragfaehig aus.** Vor jeder Uebernahme eines
    `f_max`-Urteils (`kosten_wendepunkt.py`) pruefen, ob die `wachen.json` der
@@ -328,6 +344,25 @@ Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
    `orbk` 1,200 %/Runde gegen `f_max` +0,03 % = tot um Faktor 40. **Ein
    Bruch-Feld und ein Prozent-Feld duerfen nie ohne Umrechnung in dieselbe
    Zeile.**
+6. **Ein Buch ohne Einsatz hat keinen Prozentwert - und die Anzeige darf keinen
+   behaupten.** Fuehren Spuren ihre Runde in PUNKTEN (die ORB-Buecher: `gv_usd`
+   ist die Kursstrecke mal `punkt_wert_usd`, bei diesen Instrumenten 1:1 - also
+   der Gewinn JE EINHEIT), gibt es kein „Ergebnis in Prozent": die Zeile
+   zeigte trotzdem `(+0.00 %)` und die Einheit „USD", und die Summe der
+   Kursstrecken las sich wie ein Geldbetrag. Zwei Regeln: (a) ohne Einsatz
+   keinen Prozentwert drucken, sondern den Grund nennen („kein Einsatz im Buch
+   (Punktebuch) - Prozent nicht rechenbar") und die Einheit auf „Punkte"
+   stellen; (b) **KEINEN Einsatz erfinden.** Der naheliegende Weg
+   (`risiko_pro_trade / stop_abstand`, so steht es in der SPEC der Spur) ergibt
+   bei einem Stop, der die Range-Hoehe IST (ORB, bei ETH oft 0,4 %), ein
+   Nominal von einigen tausend USD - das ist eine Design-Entscheidung, keine
+   Reparatur. Statt dessen ein groessenunabhaengiges Maß daneben: **Ergebnis in
+   R** = `gv / |einstieg - stop|`, je Runde und in Summe, mit Trefferquote. Das
+   ergab die erste ehrliche Zahl dieser Spuren (orbk +2,18 R, orb -0,46 R) -
+   vorher stand dort ein positives „USD", das nur eine Punktesumme war.
+   **Und pruefen, ob die Spur ueberhaupt in der Auswertung steht:** `orb` fehlte
+   ganz, weil nur `orbk` in der Liste stand - eine Spurgruppe still auf null zu
+   setzen ist derselbe Fehler wie eine falsche Zahl.
 
 Fallen beim Fahren und Deuten:
 - **„alle" heisst: ein Aufruf je Stufe.** `auswertung_alle.py` kennt kein

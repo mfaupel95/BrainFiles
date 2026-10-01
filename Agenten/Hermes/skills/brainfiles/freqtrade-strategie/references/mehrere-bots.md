@@ -50,7 +50,60 @@ Das Ganze als Skript (`bots_starten.sh`) festhalten: es ist die EINZIGE Stelle, 
 der Port, Datenbankname und Aufsatz zusammenpassen. Nach dem Start pruefen:
 `docker ps` und `curl http://127.0.0.1:<port>/api/v1/ping`.
 
-## 4. Messreihenfolge VOR dem ersten Bot
+## 6. „Die Bots sind weg" — erst die ENGINE pruefen, nicht den Stack
+
+Symptom: alle Web-Oberflaechen leer, `curl http://127.0.0.1:8081/api/v1/ping`
+antwortet nicht mehr (HTTP `000`), waehrend die Konfiguration unveraendert
+aussieht. Die Ursache liegt eine Schicht tiefer:
+
+```bash
+wsl -l -v                      # ist die Distro docker-desktop STOPPED?
+timeout 30 docker ps           # antwortet der Daemon ueberhaupt?
+```
+
+Laeuft `com.docker.backend` als Prozess, die Distro aber auf `Stopped`, hostet
+KEIN Container — Docker Desktop ist gestartet, seine Linux-VM nicht. Reihenfolge:
+Docker Desktop beenden und neu starten (`Stop-Process` auf
+`Docker Desktop`/`com.docker.backend`/`com.docker.build`/`com.docker.sailor`,
+dann die EXE starten), danach in einer Schleife auf die Engine warten
+(`docker info` bis Erfolg, grosszuegig) — nicht auf einen festen `sleep`.
+
+**Die Container kommen von selbst zurueck.** Mit `--restart unless-stopped`
+startet der Daemon sie beim Hochfahren neu; gemessen waren alle drei Bots nach
+wenigen Sekunden `Up`, samt der offenen Position aus der Datenbank ("Found open
+trade: NEAR/USDT"). `bots_starten.sh` ist dann NICHT noetig — es macht
+`docker rm -f` + `docker run` und wuerde nur neu anlegen. Erst starten, wenn die
+Container wirklich fehlen.
+
+Nach dem Hochfahren braucht Freqtrade ein bis zwei Minuten, bis die Ports
+antworten (die Weiterleitung steht nicht sofort) — zu frueh gemessen sieht wie
+ein Startfehler aus. Beleg in dieser Reihenfolge: `docker ps` (Up), dann `ping`,
+dann `docker logs --tail` (Zeile `state='RUNNING'`).
+
+## 7. Der API-Zugang kommt aus der BASIS-config, nicht aus dem Aufsatz
+
+`bots.py status` (und jedes eigene Statuswerkzeug) liest den Zugang meist aus
+der Datei, die es gerade in der Hand hat — dem Aufsatz
+`user_data/config.<name>.json`. Der traegt zwar ebenfalls `api_server.username`
+und `password`, aber mit ANDEREN Werten als die laufenden Container akzeptieren:
+`ping` antwortet (unauthentifiziert), `count`/`profit` liefern dagegen
+`HTTPError` — die Zeile liest sich dann `erreichbar, count=HTTPError`.
+
+Gemessen an einem Port mit beiden Saetzen: das Basis-Passwort liefert fuer
+`ping`/`count`/`profit`/`status` je 200, das Aufsatz-Passwort 401.
+
+- **Zugang aus `user_data/config.json` nehmen, vom Aufsatz nur den Port**
+  (`listen_port`).
+- **Pruefen, welcher Satz wirklich passt — nicht raten:** dieselben Endpunkte
+  einmal mit dem Basis- und einmal mit dem Aufsatz-Zugang abfragen und die
+  Statuscodes vergleichen. Umlaute/Passwoerter nie ausgeben, nur vergleichen
+  (Laenge, Hash).
+- **Der Zugang gehoert nicht in den Aufsatz.** Ein Aufsatz, der Zugangsdaten
+  kopiert, veraltet still und traegt sie ein zweites Mal — genau die Trennung,
+  die `references/mehrere-bots.md` oben beschreibt. Wer ein Statuswerkzeug
+  baut, liest den Zugang an EINER Stelle.
+
+## 8. Messreihenfolge VOR dem ersten Bot
 
 Ein Bot auf einer ungemessenen Strategie laeuft blind. Reihenfolge:
 

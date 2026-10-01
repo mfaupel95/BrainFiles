@@ -138,6 +138,40 @@ sondern als Datei mit `-File`.
 - Beenden nach PID, nie nach Prozessname: ein Musterfilter auf die eigene
   Kommandozeile trifft den Suchenden selbst.
 
+## Desktop-Verknuepfungen (wie der Nutzer das Fenster erreicht)
+
+Die Fenster bekommen je eine Verknuepfung auf dem Desktop - erzeugt von EINEM
+idempotenten Skript (`Agenten/Werkzeuge/desktop-verknuepfungen.ps1`), nicht per
+Hand geklickt. Ueber `WScript.Shell.CreateShortcut(<pfad>)` setzen:
+`TargetPath`, `Arguments`, `WorkingDirectory`, `IconLocation`, dann `Save()` -
+und danach auslesen und **pruefen, dass das Ziel existiert**
+(`Test-Path $s.TargetPath`).
+
+- **`WorkingDirectory` ist das entscheidende Feld.** Ohne es startet das
+  Programm im falschen Ordner und findet seine Dateien nicht - genau daran
+  entstehen die Desktop-Reste, deren NAME der ganze fehlgeschlagene Befehl ist
+  (`CUsersfaupe...pythonw.exe repos_zentrale.py.txt`). Sie gehoeren mit weg,
+  ebenso eine Verknuepfung auf ein DEAKTIVIERTES Ziel
+  (`Startup\.disabled-JJJJMMTT\...`): das ist keine Verknuepfung, sondern eine
+  Falle.
+- **Ein Fenster ueber seinen WRAPPER starten, wenn es einen gibt** - er prueft
+  den Fenstertitel und startet nichts, wenn schon ein Fenster offen ist. Zwei
+  Fenster zeigen dasselbe und sind spaeter nicht von einem Dienst zu
+  unterscheiden.
+- **Zwei PowerShell-Fallen, beide erlebt:** (1) `$args` ist eine automatische
+  Variable - ein Funktionsparameter dieses Namens laesst
+  `$s.Arguments = $args` mit `System.Object[] kann nicht in string konvertiert
+  werden` abbrechen (Parameter `$argumente` nennen). (2) **Keine Umlaute in einer
+  `.ps1`**: PS 5.1 liest eine Datei ohne BOM als ANSI, ein
+  `Remove-Item -LiteralPath` mit ausgeschriebenem Umlautnamen findet dann NICHTS
+  und meldet keinen Fehler. Aufraeumen ueber Muster
+  (`Get-ChildItem -LiteralPath $desktop -Filter '*<stueck>*'`), nie ueber
+  ausgeschriebene Namen - und beim Loeschen Groesse und Pfad notieren.
+- **Der Beweis ist der Fenstertitel, nicht der Klick:**
+  `Get-Process pythonw | Where-Object { $_.MainWindowTitle }` und den Titel gegen
+  die erwartete Zeile halten. Er nennt oft die Zahl der Objekte (`… - 39 Spuren …`)
+  und ist damit zugleich die Gegenprobe fuer jede Zahl in der Doku.
+
 ## Pitfalls
 
 - Farben oder Schrift daneben setzen, statt `fenster_design` zu benutzen.

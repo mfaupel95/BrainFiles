@@ -271,6 +271,39 @@ aassen sieht das wie ein Fehlschlag aus; auf der Platte liegt der Befund laengst
   schneiden, die je unter der Grenze bleiben, und das Ergebnis als DATEI abliefern
   lassen statt als Antwort.
 
+## Ein Kind, das sein Ausgabebudget im Nachdenken verbrennt
+
+Fehlerbild: `status=failed`, `Response remained truncated after 4 continuation
+attempts`, als Teilausgabe nur „No visible answer was produced — the model hit
+its output-token limit on every continuation attempt; its reasoning consumed the
+entire budget each time“. Das Kind hat gelesen, gearbeitet, aber nichts
+geschrieben — auf der Platte ist nichts passiert.
+
+**Das ist ein AUFTRAGSfehler, kein Kettenfehler.** Gegenprobe, die das trennt:
+lief im selben Lauf ein anderer Batch ueber DIESELBE Kette sauber durch, liegt es
+an der Aufgabe, nicht am Ziel. Also nicht die Kette reparieren, sondern den
+Brief.
+
+- **Der Ausloeser ist eine offene ENTSCHEIDUNG im Auftrag.** Ein Goal der Form
+  „baue X so, dass es zu Y passt“ laesst das Kind die Konstruktionsfrage selbst
+  waegen — und ein Modell, das im `think`-Kanal denkt, verbraucht dort sein
+  ganzes Ausgabebudget, bevor eine Zeile Code entsteht. Beleg: zwei Kinder
+  starben so, waehrend ein drittes mit mechanischem Auftrag („messen, auflisten“)
+  durchlief.
+- **Die Entscheidung gehoert in den `context`, nicht ins Kind.** Wer die
+  Konstruktion schon kennt (oder sie in zwei Minuten selbst entscheidet),
+  schreibt sie als Anweisung hin („haenge die Eintraege an die BESTEHENDE Zeile,
+  das Feld heisst `befehle`, Form `{was, cmd, hinweis, start}`“) und laesst das
+  Kind nur noch ausfuehren. Ein Auftrag mit „entscheide, wie“ ist teurer als
+  einer mit „setze um“.
+- **Kein zweiter identischer Dispatch.** Der Lauf wiederholt sich (dasselbe
+  Lesen, dieselbe Entscheidung, dasselbe Ende) und kostet nur Budget. Entweder
+  den Brief um die Entscheidung ergaenzen oder inline selbst machen — die
+  Grenzregel „ein Kind liest von Null“ greift hier fast immer.
+- **Ein so gestorbenes Kind hat nichts angefasst.** Vor dem Urteil trotzdem
+  `git status` lesen: es belegt, dass nur gelesen wurde, und macht den
+  Inline-Weg risikofrei.
+
 ## Ein aufloesender Modellname ist noch kein taugliches Modell
 
 Die Kette kann technisch stehen und trotzdem unbrauchbar sein: ein kleines

@@ -492,6 +492,34 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    macht sich beim naechsten Mal selbst ueberfluessig - eine, die nur zaehlt,
    lässt denselben Kreis wiederkehren.
 
+7. **Ein Objekt, das LEBT und trotzdem nichts tut, ist nur ueber seine Ausgabe
+   zu erkennen - nicht ueber den Prozess.** Ein blockierender Netzaufruf ohne
+   Zeitablauf laesst den Prozess gesund aussehen: er laeuft, verbraucht RAM,
+   steht in der Prozessliste. Gemessen schrieb ein Agent 31 Stunden keine Zeile,
+   sein Log endete mitten in einer normalen Runde ohne Traceback - und weil die
+   Prozesswache nur zaehlte, war das unsichtbar. Wer das prueft, muss das ALTER
+   der letzten Logzeile messen (`os.path.getmtime(<log>)`), nicht den
+   Prozesszustand. Vier Regeln, sonst wird daraus ein Wecker:
+   - **Ein FEHLENDES Log ist kein Befund.** Nicht jedes Kind schreibt eines;
+     nur eine vorhandene und alte Datei ist ein Hang. Wer hier meldet, alarmiert
+     bei jedem Agenten ohne Logdatei.
+   - **Die Schwelle ist grosszuegig** (Stunde, nicht Minuten): ein Agent, der
+     eine lange Runde rechnet, schreibt legitim lange nichts.
+   - **Dedupe ueber einen Merker je Objekt** in `cache/`; dieselbe Feststellung
+     hoechstens alle paar Stunden. Ein Hang heilt nicht durch Wiederholung.
+   - **Der Merker wird bei Erholung GELOESCHET**, sonst ist die naechste
+     Stoerung desselben Objekts fuer Stunden stumm.
+   Das laesst sich in die BESTEHENDE Prozesswache einbauen (die Liste der
+   laufenden Objekte liegt dort schon vor) - ein zweites Wachenskript braucht es
+   nicht. Der Name des Objekts muss dabei zu seinem LOG passen, und der ist oft
+   nicht der Dateiname des Prozesses: der Treiber kuerzt `_agent` weg
+   (`src/agents/new_or_top_agent.py` schreibt `moondev_new_or_top.log`). Wer den
+   vollen Dateinamen nimmt, sucht ein Log, das es nie gibt, findet nichts und
+   meldet nie. Gegenprobe im Test: eigenes Temp-Log frisch (still) und alt
+   (Befund), fehlendes Log (still), zweiter Lauf (still), Erholung loescht den
+   Merker, und ein Fremdprozess mit dem Suchtext in der Kommandozeile zaehlt
+   nicht mit.
+
 **`powershell` immer mit absolutem Pfad aufrufen**
 (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der
 Aufgabenplanung ist der PATH ein anderer als in einer Sitzung. Symptom einer
@@ -1051,6 +1079,18 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   (`.bak`-Kopie behalten), DANN neu starten; der Nachweis ist die erste
   Buchzeile nach dem Neustart (kein `herzschlag`-Ausstieg) und der frische
   Zykluszeitpunkt je Objekt im Log.
+  **Und das Wiederanschalten ist ein Schreibvorgang auf die Buecher, nicht nur
+  ein Listenwechsel.** Schon der frische Zeitstempel verhindert nur den
+  Notausstieg: der erste Zyklus bewertet die alten Posten trotzdem gegen den
+  aktuellen Kurs, schliesst alles, was Stop oder Ziel erreicht hat, und eroeffnet
+  neue. Gemessen wurden aus 60 offenen Posten nach einem Zyklus 6 (daneben 3 und
+  3 in zwei Armen) samt zweistelliger Zahl neuer Journalzeilen - die Buecher
+  waren umgeschlagen, ohne dass ein einziger echter Handel stattfand. Wer ein
+  ruhendes Objekt nur „mal kurz“ aufnimmt, veraendert damit seine Daten: vorher
+  entscheiden, ob das Buch weiterlaufen soll, und dem Nutzer die Folge nennen
+  (Altzahlen sind danach nicht mehr mit den neuen vergleichbar). Soll es nur
+  wieder laufen, ist das gewollt; soll nur geprueft werden, laeuft der lesende
+  Modus (`--vorschau`), nicht der Zyklus.
 - **Ein Neustartskript muss einen bereits toten Prozess vertragen.** Stirbt die
   Wurzel mit ihrem Kind (Windows: venv-Startprogramm + Interpreter), wirft
   `Stop-Process -Id <wurzel>` „kein Prozess mit dieser ID“ — mit

@@ -110,3 +110,64 @@ Seiten trennen. Ein einzelnes positives Feld ist Zufall.
   nicht installiert), bleibt liegen.
 - Belegnotiz: `Wissen/Archiv-Trading-Skills.md`, Skript
   `Agenten/Handel/backtest_archiv_strategie.py`.
+
+## 7. Ideenbruchstelle statt Belegquelle: die moondev-RBI-Bibliothek
+
+Max will "die neuen Strategien aus moondev" nutzen. Dort liegt eine
+LLM-generierte Strategieflut (`Werkstatt/Repos/moon-dev-ai-agents/src/data/rbi/`),
+und sie ist ein STEINBRUCH, kein Bestand.
+
+- **Zaehlen, nicht ueberfliegen.** Der Bestand wird per `execute_code` gezaehlt
+  (Dateinamen einsammeln, Familien per Teilstring zaehlen): 4003 Backtest-Dateien,
+  804 eindeutige Strategienamen, dazu `ideas.txt` und `strategy_ideas.csv`.
+  Die HAEUFIGSTEN Familien sind der Zeiger auf das, was das Modell fuer
+  aussichtsreich hielt: Breakout, Volatility, Band/Bollinger, Squeeze,
+  Divergenz, Momentum, Volume, RSI, Liquidity, VWAP, Fraktal, Channel/Keltner,
+  Stochastik, ADX.
+- **Die Zahlen dieser Sammlungen sind PROSA.** Selbst nachgemessen: die
+dokumentierten Trade-Zahlen widersprechen sich innerhalb derselben Datei, ein
+"Sharpe 2,14" laeuft ueberhaupt nicht (`RuntimeError: Indicator "swing_lows"`),
+und auf den Originaldaten des Repos ergab der eigene Lauf -95 bis -97 % gegen
+Buy & Hold +128 %. Merksatz: ein Modell, das die Strategie, den Backtest UND den
+Ergebnisbericht schreibt, hat nichts gemessen.
+- **Uebernommen werden NUR Namen und Rechenregeln, nie eine Zahl.** Die Ideenliste
+ist ausserdem Verbrauch, kein Vorrat: die Schleife schreibt bei jedem Lauf neue
+Zeilen dazu.
+
+## 8. Neue Merkmale fuer die Marktprognose: als TOR bauen, nicht als Spur
+
+Ausloeser: "nach diesem Vorbild weitere Indikatoren zur Marktprognose
+entwickeln" (Vorbild ist eine Tor-Tabelle wie `prognose_berichte/Stanni.csv`,
+Spalten `Tor;Wert;Erklärung`).
+
+- **Das Vorbild ist die Bauform, nicht nur die Anzeige:** je Tor ein Wert UND
+  seine Herkunft (wo gemessen, welcher Grund). Ein Wert ohne Messung kommt nicht
+  in die Tabelle. Maschinenlesbar als JSON wie `omniquant/prognose.json` +
+  `prognose.weit.json`, daraus die CSV.
+- **Erst die Luecke BELEGEN, dann bauen.** Suche ueber `Agenten/Handel/**/*.py`
+  nach dem Indikatornamen; Treffer in Fremd-Beispieldateien (freqtrade-`Sample
+  Strategy`, `backtest_archiv_strategie.py`) zaehlen NICHT als Hausbestand. So
+  faellt auf, dass ADX, VWAP, Stochastik, OBV/Volumenfluss, Divergenz, Ichimoku
+  und Fibonacci im eigenen Code gar nicht vorkommen (Keltner nur INNERHALB des
+  `squeeze`, CVD nur in `xperp`).
+- **Ein Merkmal ist kein Signal, sondern ein TOR:** geprueft wird es als FILTER
+  auf BESTEHENDEN Runden (Journale unter `daten/backtest/<spur>/`, Historie per
+  `historie_binance.py` + `replay.py`), nicht als neue Spur. Eine neue Spur
+  kostet Buchhaltung, Runden, Spiegelung und Taktzeit - und gemessen hat bisher
+  nur EIN scanner t > 2.
+- **Verfahren wie `filter_studie.py`:** Zeit-Halbierung (alt/jung), die Regel
+  muss in BEIDEN Haelften positiv sein, sonst "verworfen"; dazu Trefferquote,
+  Erwartung, t-Statistik (`strategie_metrics.py`) und `f_max`
+  (`kosten_wendepunkt.py`), Kosten 0,1 % je Seite.
+- **Den WERT aus einem RASTER holen**, nicht aus dem Bauch: jede Schwelle in
+  Stufen fahren (z. B. ADX 15/20/25/30, ATR-Perzentil 20/40/60/80). Eine
+  verworfene Schwelle wird MIT ZAHL dokumentiert - das ist das Ergebnis, nicht
+  ein Fehlschlag.
+- **Rechenwege nur mit der Standardbibliothek** (wie `ti_indikatoren.py`): die
+  Spuren laufen in `scanner/.venv`, das kein numpy/pandas/talib traegt. Die
+  STUDIE darf die Hand-venv benutzen (`Agenten/Handel/.venv` hat numpy/pandas),
+  das Merkmalsmodul nicht.
+- **Nichts schreibt in eine `wachen.json`.** Die Studie schreibt nach `daten/`
+  und in Tests; Tore werden erst nach dem Urteil gesetzt und sind Max' Abnahme.
+  Vor der Abnahme wird KEIN Code gebaut - der Auftrag ist ein Design (Entwurf
+  nach `docs/design/`) mit genau einer offenen Frage.
