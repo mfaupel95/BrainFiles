@@ -60,6 +60,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-294 — mosaic replaybar machen (Mehrzeitrahmen-Adapter)**
+      Kontext: `mosaic` stand in `replay.SPUREN_TEIL_A`, brach aber bei JEDEM Lauf
+      beim ersten Einstieg ab: sein `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)`
+      braucht DREI Kerzenreihen (4H/30M/5M), der Replay ruft fuenf Argumente
+      (`TypeError: missing 2 required positional arguments`, gemessen 01.10.2026).
+      Es steht deshalb in `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet
+      fuenf Spuren an (squeeze, wavetrend, macd_mtf, supertrend, gitter).
+      Naechster Schritt: im Replay eine Naht fuer Spuren mit mehreren Zeitrahmen
+      bauen (drei Reihen je Instrument aus derselben Historie ableiten: 4H direkt,
+      30M/5M aus 5M-Reihen, die die Historie noch nicht holt) - dann mosaic wieder
+      in die Liste und mit dem gemessenen Kraken-Satz 0,60 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, mosaic
+
 - [ ] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
       Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
       `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
