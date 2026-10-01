@@ -443,20 +443,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
       dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
       Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
-- [ ] **T-254 - Paperclip: Instanz laeuft, aber ohne Board-Anmeldung und ohne Modell**
-      Kontext: `paperclipai onboard --yes --no-install-service` und `paperclipai run` stehen;
-      Dashboard `http://127.0.0.1:3100` (HTTP 200), PID 80788, eingebettete PostgreSQL auf
+- [ ] **T-254 - Paperclip: Instanz laeuft und der Umgebungstest ist gruen - offen sind Anmeldung, Modell, Autostart**
+      Kontext: Dashboard `http://127.0.0.1:3100` (HTTP 200), eingebettete PostgreSQL auf
       127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
       Haenger aus). Unter Windows gibt es KEINEN Hintergrunddienst (`Service management is not
-      supported on win32`) - nach einem Neustart laeuft der Server erst nach erneutem
-      `paperclipai run`. Offen: (a) Identitaet - Dashboard im Browser (Sign-up erlaubt) oder
-      `paperclipai connect --persona board`; `token board create` verlangt vorher eine Sitzung.
-      (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten noetig - OmniRoute/Ollama
-      waeren im Haus da). (c) Kein Start-Wrapper und kein Autostart.
+      supported on win32`). Der Umgebungstest scheiterte zunaechst an `ANTHROPIC_API_KEY` aus
+      `C:\Users\faupe\.env` (Arbeitsverzeichnis des Servers!) - behoben, seitdem `status: pass`.
+      Start-Wrapper steht: `Agenten/Routinen/paperclip-start.ps1` (Port-Pruefung, Arbeits-
+      verzeichnis `.paperclip`, entfernt ANTHROPIC_*). Offen: (a) Board-Anmeldung der CLI -
+      Dashboard im Browser oder `paperclipai connect --persona board`; `token board create`
+      verlangt vorher eine Sitzung. (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten
+      noetig - OmniRoute/Ollama waeren im Haus da). (c) Kein Autostart (geplante Aufgabe nach
+      Hausmuster fehlt). (d) Die `.env` im Home bleibt eine Falle fuer dort gestartete Werkzeuge
+      (absichtlich nicht angefasst).
       Naechster Schritt: Entscheidung von Max - Konto im Dashboard anlegen und
-      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich
-      Wrapper + geplante Aufgabe nach Hausmuster (`Agenten/Routinen/`).
-      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`
+      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich die
+      geplante Aufgabe fuer den Wrapper.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`,
+      `Agenten/Routinen/paperclip-start.ps1`
 - [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
       Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
       Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
