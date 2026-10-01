@@ -278,3 +278,25 @@ Lesers nehmen (`state.db`, Journal, Log), nicht die Einstellung selbst.
 
 **Werkzeug.** `Agenten/Werkzeuge/anker-pruefen.ps1` (Exit 0 = die echte Profilfunktion startet
 die Sitzung in `Agenten\Hermes`); die Mechanik steht in [[Betrieb/Arbeitsverzeichnis]].
+
+## 12. Eine Randmeldung ist kein Ausfall (01.10.2026)
+
+`OKX-Transportfehler 1/6: <urlopen error [WinError 10054] ...>` liest sich wie ein
+Ausfall und ist eine **Warnung**: der Wiederholer versucht es bis zu sechsmal (Pause
+1,5 s x Nummer), "1/6" heisst erster Fehlversuch, der naechste gelingt. Bevor daraus
+eine Stoerung wird, wird GEZAEHLT und GEMESSEN:
+
+    Transportfehler in dauerlauf.log                      -> 0
+    Rand-Logs: dauerlauf-kind.err.log 1x (13:44), handelszentrale-fehler.log 6x (00:15)
+    signierter Leseaufruf /api/v5/account/config          -> 0,2 s, perm read_only,trade
+    Zyklus 13:40-13:44                                    -> alle Spuren "ok", 0 Timeouts
+
+Drei Zeugen (Hauptlog, Live-Abruf, Zyklus), alle gruen - die Meldung war folgenlos.
+Dass OKX UND Kraken im selben Moment betroffen waren, zeigt auf den eigenen Anschluss,
+nicht auf die Boerse.
+
+**Regel: eine Meldung, die wie ein Ausfall klingt und nachweislich folgenlos ist, wird
+UMGESCHRIEBEN.** Jetzt enden alle vier Wiederholer auf "- wird wiederholt, kein Ausfall"
+(`tests/test_transport_wiederholung.py` nagelt Meldung UND Wiederholregel fest: zwei
+Fehlversuche dann Erfolg, sechs dann Ausnahme, fachliche Fehler nur einmal). Eine Warnung,
+die den Menschen erschreckt, kostet Vertrauen in jede weitere Warnung.

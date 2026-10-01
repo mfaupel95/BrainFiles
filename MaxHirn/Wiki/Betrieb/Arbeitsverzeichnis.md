@@ -156,3 +156,11 @@ Root-relative **Befehle** in den Anleitungen wurden cwd-fest gemacht (Praefix
 
     cd "$HERMES_HOME/../.." && python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig
     -> OK: jede Nummer genau einmal, beide Abschnitte vorhanden
+
+## Befehle fuer Max sind PowerShell (01.10.2026)
+
+Max' Shell ist PowerShell - `grep`, `ls`, `cat` und bash-`for`-Schleifen gibt es dort
+nicht ("Der Begriff \"grep\" wird nicht als Name eines Cmdlets ... erkannt"). Daraus zwei
+Regeln: einzeilige Nachweise SELBST fahren und nur das Ergebnis zeigen; muss er selbst
+laufen, `Select-String` / `Get-ChildItem` / `Get-Content` verwenden und den Befehl vorher
+einmal echt in PowerShell ausprobieren. Arbeitsregel im Skill `brainfiles-auftrag`.
