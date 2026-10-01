@@ -465,7 +465,13 @@ TAKT_MAX_MINUTEN = 15
 # kraken, moondev_marktlage (live_kraken.py), nautilus_kraken und
 # nautilus_kraken_futures. mosaic bleibt drin, handelt aber nur noch auf OKX
 # (boersen in mosaic/wachen.json auf ["okx"] gekuerzt).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
+# KRAKEN AM 01.10.2026 WIEDER AUFGENOMMEN (Auftrag Max: "kraken scharf").
+# Der Auftrag vom 30.09.2026 ("nur noch omnitrade auf kraken") ist damit
+# aufgehoben. OFFEN: Bedingung 5 sperrt die Spur weiter (rollierender EV
+# -0,028 EUR auf 6 Handelsrunden) - solange nennt ihre --vorschau ZWEI
+# Gruende und nur_fenster_fehlt() verlangt genau einen, es geht also kein
+# Fenster auf. Die Aufnahme hier wirkt, sobald Bedingung 5 faellt.
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand")
 AUTO_FREIGABE_STUNDEN = 12
