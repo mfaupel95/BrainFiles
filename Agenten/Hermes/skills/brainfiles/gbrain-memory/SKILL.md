@@ -95,6 +95,22 @@ and date.
   cron, or a daemon."). Diese Frage nicht erneut stellen; erst wenn Schreiben
   mehrfach hintereinander scheitert, ist der Dienst die richtige Antwort.
 
+## Was ein Fakt wert ist (Handels-/Betriebsfakten, 02.10.2026)
+
+Gemessen an einer Sitzung: GBrain ist das Brain fuer BELEGTE Aussagen, nicht
+fuer Laufzeitstaende. Speichern:
+
+- Messergebnisse mit Datum + Beleg (Commit, Cache-Pfad, Log) - z. B.
+  "rollierender Backtest: 17/22 Fenster positiv, Summe -295 USD".
+- Entscheidungen von Max mit seinem Wortlaut als Anker ("Hebel 7", "auto
+  freigabe erlaubt").
+- Offene Aufgabennummern (T-291, T-292) NUR mit einem Stichwort, nie der
+  ganze Task-Text - TASKS.md ist die Quelle.
+
+NICHT speichern: aktuelle Positions-/Guthaben-Zahlen (aus der wachen.json
+nachlesbar), Zykluslogs, was eine Auswertung jederzeit neu rechnet. Ein Fakt,
+dem in drei Wochen niemand den Beleg mehr zuordnen kann, ist Ballast.
+
 ## Setup evidence (2026-09-20)
 
 - Init mode: keyless fact memory (`--pglite --no-embedding`), search mode
