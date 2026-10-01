@@ -11,6 +11,7 @@ Der Waechter folgt dem Watchdog-Muster: **leere Ausgabe heisst alles gut.**
 Aufruf: python -m unittest test_breite_wache   (aus Agenten/Hermes/scripts)
 """
 import importlib.util
+import json
 import os
 import shutil
 import tempfile
@@ -32,6 +33,9 @@ def lade():
 
 
 w = lade()
+# Das ECHTE Werkzeug (breite.py) fuer die Luecken-Rechnung: die Regel "was ist
+# ein fehlender Kerzentag" soll nicht im Test nachgebaut werden.
+bw = w.lade_werkzeug()
 
 
 def lage(breite=100.0, unter=(), ueber=None, n_gesamt=None, grundgesamtheit=30,
@@ -164,46 +168,145 @@ class MelderegelTest(unittest.TestCase):
 
 
 class HeilTest(unittest.TestCase):
-    """`_luecken_schliessen` heilt still und meldet nur, was neu ist.
+    """`_heil_tage` und `_luecken_schliessen` - Heiltiefe und stille Heilung.
 
-    Die Naht ist der Parameter `w` - ein gefaelschtes Werkzeugmodul genuegt,
-    damit kein Netz und kein Schreibzugriff noetig ist.
+    Die Naht ist der Parameter `w`: ein gefaelschtes Werkzeugmodul genuegt,
+    damit kein Netz noetig ist. Die Luecken-Rechnung selbst ist ECHT (das
+    geladene `breite.py`), nur `fuellen` ist nachgebaut - und zwar so, dass es
+    die fehlenden Tage wie das Original in die (gebogene) Reihe schreibt.
     """
 
-    def _werkzeug(self, gefuellt=0, abgleich=()):
+    def setUp(self):
+        self.ordner = tempfile.mkdtemp(prefix="breite-heil-")
+        self.echt = bw.REIHE
+        bw.REIHE = os.path.join(self.ordner, "breite-reihe.jsonl")
+
+    def tearDown(self):
+        bw.REIHE = self.echt
+        shutil.rmtree(self.ordner, ignore_errors=True)
+
+    def reihe(self, kerzen):
+        """Kerzentage in die (gebogene) Reihe schreiben."""
+        with open(bw.REIHE, "w", encoding="utf-8") as f:
+            for k in kerzen:
+                f.write(json.dumps({"kerze": k, "breite": 90.0}) + "\n")
+
+    def _werkzeug(self, gefuellt=0, abgleich=(), gesehen=None):
+        """Echtes breite.py, nur `fuellen` nachgebaut (schreibt wie das Original)."""
         class Fake:
+            VERLAUF_MIT = bw.VERLAUF_MIT
+            verlauf = staticmethod(bw.verlauf)
+            fehlende_tage = staticmethod(bw.fehlende_tage)
+            luecken_text = staticmethod(bw.luecken_text)
+
             @staticmethod
             def fuellen(tage=None, verlauf_je_inst=None):
-                return {"gefuellt": gefuellt, "abgleich": list(abgleich),
-                        "ohne": [], "kerzen_je_paar": {}, "tage": 1}
+                if gesehen is not None:
+                    gesehen.append({"tage": tage,
+                                    "verlauf_je_inst": verlauf_je_inst})
+                luecken = bw.fehlende_tage(bw.verlauf(None))[0]
+                # Wie das Original: nur die NEUESTEN `tage` fehlenden Tage
+                # werden geheilt, der Rest bleibt stehen.
+                heil = luecken[-int(tage):] if tage else luecken
+                if heil:
+                    self.reihe(sorted(set(
+                        [z["kerze"] for z in bw.verlauf(None)] + heil)))
+                return {"gefuellt": gefuellt if gefuellt else len(heil),
+                        "abgleich": list(abgleich), "ohne": [],
+                        "kerzen_je_paar": {}, "tage": 1}
         return Fake
 
     def test_ohne_verlauf_passiert_nichts(self):
         self.assertEqual(w._luecken_schliessen(self._werkzeug(), {}), [])
 
+    def test_heil_tiefe_ist_mindestens_heil_tage(self):
+        self.reihe(["2026-07-01", "2026-07-02"])
+        tage, luecken = w._heil_tage(bw, {"kerze": "2026-07-02"})
+        self.assertEqual(luecken, [])
+        self.assertEqual(tage, w.HEIL_TAGE,
+                         "ohne Luecke bleibt es bei der Vorgabe")
+
+    def test_heil_tiefe_folgt_der_ausfalllaenge(self):
+        """Ein Monat Ausfall wird einen Monat geheilt - nicht fuenf Tage."""
+        self.reihe(["2026-07-01", "2026-07-31"])
+        tage, luecken = w._heil_tage(bw, {"kerze": "2026-07-31"})
+        self.assertEqual(len(luecken), 29)
+        self.assertEqual(tage, 30,
+                         "29 fehlende Tage + die Randkerze, sonst faellt der "
+                         "aelteste Tag aus dem Fenster")
+        self.assertIn("2026-07-02", luecken)
+        self.assertIn("2026-07-30", luecken)
+
+    def test_heil_tiefe_hat_einen_deckel(self):
+        self.reihe(["2026-01-01", "2026-12-31"])
+        tage, luecken = w._heil_tage(bw, {"kerze": "2026-12-31"})
+        self.assertGreater(len(luecken), w.HEIL_MAX)
+        self.assertEqual(tage, w.HEIL_MAX, "ein Lauf baut nicht die ganze Reihe")
+
+    def test_kurze_luecke_heilt_aus_den_gemessenen_kerzen(self):
+        """Bis VERLAUF_MIT Tage reicht der mitgemessene Verlauf - kein zweiter Abruf."""
+        self.reihe(["2026-07-01", "2026-07-03"])
+        gesehen = []
+        raus = w._luecken_schliessen(
+            self._werkzeug(gesehen=gesehen),
+            {"kerze": "2026-07-03", "_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.assertEqual(gesehen[0]["verlauf_je_inst"], {"A-USDT": [(1, 2.0)]},
+                         "dieselben Kerzen wie die Messung")
+        self.assertIn("Luecke von 1 Tag(en) geschlossen", "\n".join(raus))
+        self.assertEqual(bw.fehlende_tage(bw.verlauf(None))[0], [],
+                         "die Luecke ist zu")
+
+    def test_lange_luecke_holt_die_kerzen_selbst(self):
+        """Ueber VERLAUF_MIT Tage hinaus kann der mitgemessene Verlauf nicht reichen."""
+        self.reihe(["2026-07-01", "2026-07-31"])
+        gesehen = []
+        w._luecken_schliessen(
+            self._werkzeug(gesehen=gesehen),
+            {"kerze": "2026-07-31", "_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.assertIsNone(gesehen[0]["verlauf_je_inst"],
+                          "sonst waeren die aeltesten fehlenden Tage unerreichbar")
+        self.assertEqual(gesehen[0]["tage"], 30)
+
+    def test_bleibende_luecke_wird_gemeldet(self):
+        """Was aelter ist als HEIL_MAX, bleibt stehen - und wird genannt."""
+        self.reihe(["2026-01-01", "2026-12-31"])
+        raus = w._luecken_schliessen(
+            self._werkzeug(), {"kerze": "2026-12-31",
+                               "_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.assertIn("Luecke bleibt:", "\n".join(raus))
+        self.assertIn("2026-01-02", "\n".join(raus))
+
     def test_stille_heilung_ohne_meldung(self):
-        raus = w._luecken_schliessen(self._werkzeug(),
-                                     {"_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.reihe(["2026-07-01", "2026-07-02"])
+        raus = w._luecken_schliessen(self._werkzeug(gefuellt=0),
+                                     {"kerze": "2026-07-02",
+                                      "_verlauf": {"A-USDT": [(1, 2.0)]}})
         self.assertEqual(raus, [], "leere Ausgabe heisst: nichts zu sagen")
 
     def test_nachgefuellte_tage_werden_gemeldet(self):
-        raus = w._luecken_schliessen(self._werkzeug(gefuellt=2),
-                                     {"_verlauf": {"A-USDT": [(1, 2.0)]}})
-        self.assertIn("nachgefuellt: 2", raus[0])
+        self.reihe(["2026-07-01", "2026-07-03"])
+        raus = w._luecken_schliessen(self._werkzeug(),
+                                     {"kerze": "2026-07-03",
+                                      "_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.assertIn("nachgefuellt: 1", raus[0])
 
     def test_abgleich_drift_wird_gemeldet(self):
+        self.reihe(["2026-07-01", "2026-07-02"])
         raus = w._luecken_schliessen(
-            self._werkzeug(abgleich=[{"kerze": "2026-09-25", "live": 100.0,
+            self._werkzeug(gefuellt=0,
+                           abgleich=[{"kerze": "2026-07-02", "live": 100.0,
                                       "nachgerechnet": 96.5, "diff": -3.5}]),
-            {"_verlauf": {"A-USDT": [(1, 2.0)]}})
-        self.assertIn("Abgleich 2026-09-25", raus[0])
+            {"kerze": "2026-07-02", "_verlauf": {"A-USDT": [(1, 2.0)]}})
+        self.assertIn("Abgleich 2026-07-02", raus[0])
         self.assertIn("-3.5 pp", raus[0])
 
     def test_kleine_abweichung_ist_still(self):
+        self.reihe(["2026-07-01", "2026-07-02"])
         raus = w._luecken_schliessen(
-            self._werkzeug(abgleich=[{"kerze": "2026-09-25", "live": 100.0,
+            self._werkzeug(gefuellt=0,
+                           abgleich=[{"kerze": "2026-07-02", "live": 100.0,
                                       "nachgerechnet": 99.8, "diff": -0.2}]),
-            {"_verlauf": {"A-USDT": [(1, 2.0)]}})
+            {"kerze": "2026-07-02", "_verlauf": {"A-USDT": [(1, 2.0)]}})
         self.assertEqual(raus, [], "Rundung ist kein Regelbruch")
 
     def test_fehler_wird_gemeldet_statt_verschluckt(self):
@@ -214,6 +317,48 @@ class HeilTest(unittest.TestCase):
         raus = w._luecken_schliessen(Kaputt, {"_verlauf": {"A": [(1, 2.0)]}})
         self.assertIn("nicht nachgerechnet", raus[0])
         self.assertIn("Platte voll", raus[0])
+
+
+class BegrenzungTest(unittest.TestCase):
+    """Ein breiter Absturz darf keine 29-zeilige Meldung erzeugen (T-205)."""
+
+    def test_neue_abwaertskreuze_werden_begrenzt(self):
+        unter = [{"inst": "PAAR-%02d" % i, "abstand": -(1.0 + i * 0.5)}
+                 for i in range(29)]
+        merker = {"breite": 96.0, "stufe": "ok", "unter": [],
+                  "gemeldet_breite": 96.0}
+        raus, neu = w.zeilen(lage(20.0, unter=unter, n_gesamt=29,
+                                  grundgesamtheit=29), merker)
+        text = "\n".join(raus)
+        self.assertIn("Neu unter der EMA200 (29):", text)
+        gezeigt = [z for z in raus if z.startswith("  ")
+                   and "unter der EMA200" in z]
+        self.assertEqual(len(gezeigt), w.NEU_UNTER_MAX,
+                         "namentlich nur die naechsten Paare")
+        self.assertIn("... und 24 weitere", text)
+        self.assertEqual(len(neu["unter"]), 29,
+                         "gemerkt wird der ganze Stand, nicht die Anzeige")
+
+    def test_genannt_werden_die_naechsten_an_der_ema(self):
+        unter = [{"inst": "PAAR-%02d" % i, "abstand": -(1.0 + i * 0.5)}
+                 for i in range(29)]
+        raus, _neu = w.zeilen(lage(20.0, unter=unter, n_gesamt=29,
+                                   grundgesamtheit=29), {})
+        text = "\n".join(raus)
+        for i in range(w.NEU_UNTER_MAX):
+            self.assertIn("PAAR-%02d" % i, text)
+        self.assertNotIn("PAAR-05", text,
+                         "weiter unten stehende Paare sind keine Neuigkeit")
+
+    def test_wenige_paare_bleiben_vollstaendig(self):
+        raus, _neu = w.zeilen(lage(50.0, unter=[{"inst": "A-USDT",
+                                                 "abstand": -2.0},
+                                                {"inst": "B-USDT",
+                                                 "abstand": -7.0}],
+                                   n_gesamt=29, grundgesamtheit=29), {})
+        text = "\n".join(raus)
+        self.assertIn("Neu unter der EMA200 (2):", text)
+        self.assertNotIn("weitere", text, "ohne Rest kein Zusatz")
 
 
 class MerkdateiTest(unittest.TestCase):

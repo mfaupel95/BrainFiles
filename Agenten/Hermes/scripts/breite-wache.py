@@ -15,6 +15,14 @@ die Reihe; dieser Waechter misst taeglich und meldet nur, was sich AENDERT:
     - ein Paar faellt NEU unter seine EMA200 (die Fruehwarnzeichen)
     - die Messung deckt zu wenig Paare ab (dann ist die Zahl selbst kaputt)
 
+BEGRENZT (01.10.2026)
+---------------------
+Ein Absturz von 96 % auf 20 % laesst fast den ganzen Korb auf einmal unter die
+EMA200 fallen. Namentlich genannt werden deshalb nur die `NEU_UNTER_MAX`
+NAECHSTEN Paare (die stehen fuer "die Breite kippt gerade"), der Rest als Zahl.
+Eine Luecke in der Reihe (Rechner aus) wird nachgerechnet - so weit, wie der
+Ausfall war (`HEIL_MAX` als Deckel).
+
 WAS ES NICHT TUT
 ----------------
 Es handelt nicht, es empfiehlt nicht und es schreibt in keine Spur. Es misst,
@@ -45,6 +53,11 @@ DECKUNG_MIN = 0.90                            # weniger = Messung unbrauchbar
 # bewusst groesser als das Tagesrauschen: ein Rueckgang in Haeppchen von 2-3
 # Punkten pro Tag wird so nach wenigen Tagen EINE Nachricht statt jeden Tag eine.
 RUCKGANGS_PP = 10.0
+# So viele NEUE Abwaertskreuze werden NAMENTLICH genannt. Faellt die Breite von
+# 96 % auf 20 %, kreuzt fast der ganze Korb auf einmal - 29 Zeilen sind dann
+# keine Meldung mehr, sondern ein Datenauszug. Genannt werden die NAECHSTEN an
+# der EMA200 (die stehen fuer "die Breite kippt gerade"), der Rest als Zahl.
+NEU_UNTER_MAX = 5
 
 
 def lade_werkzeug():
@@ -153,10 +166,19 @@ def zeilen(m, merker, schwelle=None):
                     % (schwelle, m["breite"]))
 
     if neu_unter:
-        raus.append("Neu unter der EMA200:")
         abstand = {x["inst"]: x["abstand"] for x in m["unter"]}
-        for i in neu_unter:
+        # Die NAECHSTEN an der EMA200 zuerst: ein Paar, das gerade eben darunter
+        # faellt, ist das Fruehwarnzeichen; ein Paar, das schon weit unter der
+        # EMA200 steht, war auch vorher schon unter ihr. Der Rest wird gezaehlt,
+        # nicht aufgezaehlt - sonst wird aus einer Meldung ein Datenauszug.
+        nah = sorted(neu_unter, key=lambda i: abs(abstand.get(i, 0.0)))
+        gezeigt = nah[:NEU_UNTER_MAX]
+        raus.append("Neu unter der EMA200 (%d):" % len(neu_unter))
+        for i in gezeigt:
             raus.append("  %s  %+.2f %% unter der EMA200" % (i, abstand[i]))
+        if len(neu_unter) > len(gezeigt):
+            raus.append("  ... und %d weitere"
+                        % (len(neu_unter) - len(gezeigt)))
     elif unter:
         raus.append("Weiter unter der EMA200: " + ", ".join(unter))
 
@@ -167,38 +189,88 @@ def zeilen(m, merker, schwelle=None):
                   "schwelle_aktiv": unter_schwelle, "ts": m["ts"]}
 
 
-HEIL_TAGE = 5                                 # so weit zurueck wird geheilt
+HEIL_TAGE = 5                                 # so weit zurueck wird MINDESTENS geheilt
+HEIL_MAX = 120                                # Deckel: laenger heilt die Wache nicht
 ABGLEICH_TOLERANZ = 0.5                       # Punkte, ab denen der Abgleich redet
+
+
+def _heil_tage(w, m):
+    """Wie tief geheilt wird: die AUSFALLLAENGE, nicht eine feste Zahl.
+
+    `HEIL_TAGE` war die einzige Heiltiefe - war der Rechner drei Wochen aus,
+    blieb die Luecke stehen und fiel nur auf, wenn jemand `--reihe` las. Jetzt
+    zaehlt die Wache die fehlenden Kerzentage zwischen der letzten Zeile und
+    der gerade gemessenen Kerze (`fehlende_tage`, reine Rechnung im Werkzeug)
+    und heilt genau so weit zurueck, mindestens `HEIL_TAGE`, hoechstens
+    `HEIL_MAX` (mehr waere ein Nachbau der ganzen Reihe in einem Lauf).
+
+    Rueckgabe: (tage, luecken). `luecken` = die gefundenen fehlenden Tage;
+    ohne Reihe oder ohne Luecke bleibt es bei `HEIL_TAGE`.
+    """
+    try:
+        luecken, _e, _l = w.fehlende_tage(w.verlauf(None), bis=m.get("kerze"))
+    except Exception:                           # noqa: BLE001
+        return HEIL_TAGE, []
+    if not luecken:
+        return HEIL_TAGE, []
+    # +1: `fuellen` stellt die letzten N KERZEN, nicht die letzten N FEHLENDEN
+    # Tage. Gemessen am 01.10.2026: Reihe bis 09-10, Kerze 09-30, 19 fehlende
+    # Tage - mit tage=19 fiel der aelteste (09-11) knapp aus dem Fenster und
+    # blieb als Luecke stehen. Eine Kerze mehr deckt ihn.
+    return min(HEIL_MAX, max(HEIL_TAGE, len(luecken) + 1)), luecken
 
 
 def _luecken_schliessen(w, m):
     """Fehlende Kerzentage nachrechnen - und die zwei Wege gegenpruefen.
 
-    Ein Tag ohne Zeile entsteht, wenn der Rechner aus war. `fuellen` rechnet ihn
-    aus DENSELBEN Kerzen nach, die gerade gemessen wurden (`mit_verlauf`), der
-    zweite Abruf entfaellt also. Gemeldet wird nur, wenn wirklich etwas fehlte
-    oder wenn Live-Weg und Nachrechnung auseinanderlaufen - Letzteres waere der
-    Beweis, dass beide Wege NICHT dieselbe Rechenregel benutzen.
+    Ein Tag ohne Zeile entsteht, wenn der Rechner aus war. Die Tiefe kommt aus
+    `_heil_tage`. Reicht der mitgemessene Verlauf (`mit_verlauf`, FENSTER +
+    VERLAUF_MIT Kerzen), wird er benutzt - dann rechnen beide Wege beweisbar auf
+    DENSELBEN Kerzen und der zweite Abruf entfaellt. Ist die Luecke laenger als
+    dieser Verlauf, holt `fuellen` die Kerzen selbst nach; anders waeren die
+    aeltesten fehlenden Tage gar nicht erreichbar.
+
+    Gemeldet wird nur, wenn wirklich etwas fehlte, wenn Live-Weg und
+    Nachrechnung auseinanderlaufen (Letzteres waere der Beweis, dass beide Wege
+    NICHT dieselbe Rechenregel benutzen) oder wenn eine Luecke bleibt, die
+    aelter ist als `HEIL_MAX`.
 
     Geschrieben wird auch dann, wenn nichts gemeldet wird: die Wache heilt
     still, und leere Ausgabe heisst weiterhin nur "nichts zu sagen".
     """
     if not m.get("_verlauf"):
         return []
+    tage, luecken = _heil_tage(w, m)
+    nah = tage <= int(getattr(w, "VERLAUF_MIT", 10))
     try:
-        r = w.fuellen(tage=HEIL_TAGE, verlauf_je_inst=m["_verlauf"])
+        r = w.fuellen(tage=tage,
+                      verlauf_je_inst=(m["_verlauf"] if nah else None))
     except Exception as f:                      # noqa: BLE001
         return ["Reihe nicht nachgerechnet (%s)" % str(f)[:80]]
     raus = []
     if r["gefuellt"]:
-        raus.append("Reihe nachgefuellt: %d Kerzentag(e) aus der vorhandenen "
-                    "Geschichte" % r["gefuellt"])
+        if luecken:
+            raus.append("Reihe nachgefuellt: %d Kerzentag(e) - Luecke von %d "
+                        "Tag(en) geschlossen"
+                        % (r["gefuellt"], len(luecken)))
+        else:
+            raus.append("Reihe nachgefuellt: %d Kerzentag(e) aus der "
+                        "vorhandenen Geschichte" % r["gefuellt"])
     for a in r["abgleich"]:
         if abs(a["diff"]) > ABGLEICH_TOLERANZ:
             raus.append("Abgleich %s: gemessen %.1f %%, nachgerechnet %.1f %% "
                         "(%+.1f pp)"
                         % (a["kerze"], a["live"], a["nachgerechnet"], a["diff"]))
-    return raus[:4]
+    # Was auch nach dem Heilen fehlt, ist aelter als HEIL_MAX - das gehoert in
+    # die Meldung, sonst sieht die Reihe vollstaendig aus, obwohl sie es nicht ist.
+    try:
+        rest, _e, _l = w.fehlende_tage(w.verlauf(None))
+    except Exception:                           # noqa: BLE001
+        rest = []
+    if rest:
+        raus.append("Luecke bleibt: %d Kerzentag(e) fehlen (%s)"
+                    % (len(rest), "; ".join(w.luecken_text(rest))))
+    return raus[:5]
 
 
 def main(argv=None):

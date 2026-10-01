@@ -1,6 +1,6 @@
 ---
 titel: Die Marktbreite als Reihe
-aktualisiert: 2026-09-30
+aktualisiert: 2026-10-01
 tags: [werkzeug, krypto, markt, breite, regime, reihe, wache]
 ---
 
@@ -30,7 +30,7 @@ python Agenten/Werkzeuge/breite.py                 # messen und zeigen (aendert 
 python Agenten/Werkzeuge/breite.py --merken        # messen und die Reihe fortschreiben
 python Agenten/Werkzeuge/breite.py --fuellen --tage 250   # rueckwaerts nachrechnen
 python Agenten/Werkzeuge/breite.py --fuellen --tage 250 --ueberschreiben
-python Agenten/Werkzeuge/breite.py --reihe         # Verlauf, Veraenderung je Tag
+python Agenten/Werkzeuge/breite.py --reihe         # Verlauf, Veraenderung je Tag, LUECKEN
 python Agenten/Werkzeuge/breite.py --statistik     # Verteilung + Folgeverhalten
 python Agenten/Werkzeuge/breite.py --json          # Maschinenform
 ```
@@ -101,12 +101,21 @@ Normalzustand.
 |---|---|
 | erste Messung | kein Merker vorhanden |
 | Stufenwechsel | `ok` ≥ 80 % / `achtung` ≥ 60 % / `warnung` darunter |
-| neue Abwaertskreuze | Paar steht unter der EMA200, das es vorher nicht tat |
+| neue Abwaertskreuze | Paar steht unter der EMA200, das es vorher nicht tat - namentlich **hoechstens `NEU_UNTER_MAX` (5)**, die NAECHSTEN an der EMA200, der Rest als Zahl (und N weitere) |
 | weiter unter der EMA200 | die namentliche Liste, wenn schon gemeldet wurde |
 | Rueckgang | ≥ `RUCKGANGS_PP` (10) Punkte gegenueber der **letzten Meldung** |
 | unvollstaendige Messung | Deckung < 90 % (`DEKKUNG_MIN`) |
 | Schwelle | einmalig beim Uebergang unter `--schwelle` |
 | Nachfuellung / Abgleich | siehe unten |
+
+**Warum die Liste begrenzt ist (01.10.2026):** faellt die Breite von 96 % auf 20 %,
+kreuzt fast der ganze Korb auf einmal auf — 23 Paare ergaben 27 Zeilen und 1.045
+Zeichen, also einen Datenauszug statt einer Nachricht. Genannt werden die fuenf
+NAECHSTEN an der EMA200 (ein Paar, das gerade eben darunter faellt, ist das
+Fruehwarnzeichen; eines, das schon weit darunter steht, war auch vorher schon
+unter ihr). Gemessen: dieselbe Lage ergibt jetzt 10 Zeilen und 406 Zeichen.
+**Gemeldet wird die Zahl weiter vollstaendig** (Neu unter der EMA200 (23)), und der gemerkte Stand traegt alle 23 Namen - nur die Anzeige ist gekuerzt.
+und der gemerkte Stand traegt alle 23 Namen — nur die Anzeige ist gekuerzt.
 
 **Der Rueckgang rechnet gegen die letzte MELDUNG, nicht gegen den Vortag.** Sonst
 summiert sich „vorgestern −9, gestern −9\" nie zu einer Nachricht. Innerhalb der
@@ -114,12 +123,28 @@ Stufe `ok` war die Wache vorher blind: 100 % auf 81 % haette keine Zeile erzeugt
 diese Regel ist der einzige Grund, warum ein Schrumpfen im gruenen Bereich
 ueberhaupt auffaellt.
 
-**Die Wache heilt still.** Nach dem Fortschreiben laeuft `fuellen(tage=5)` mit den
-gerade geholten Kerzen (`messen(mit_verlauf=True)` — kein zweiter Abruf). Fehlende
-Tage durch einen ausgeschalteten Rechner kommen so von selbst zurueck. Gemeldet
-wird nur, wenn wirklich Tage fehlten **oder** wenn Live-Weg und Nachrechnung um
-mehr als `ABGLEICH_TOLERANZ` (0,5 Punkte) auseinanderlaufen. Geschrieben wird auch
-bei leerer Ausgabe: leere Ausgabe heisst „nichts zu sagen\", nicht „nichts getan\".
+**Die Wache heilt still.** Nach dem Fortschreiben laeuft `fuellen` mit den gerade
+geholten Kerzen (`messen(mit_verlauf=True)` — kein zweiter Abruf), **wenn** die
+Luecke in diesen Verlauf passt. Die Heiltiefe ist seit 01.10.2026 nicht mehr fest:
+`_heil_tage` zaehlt die fehlenden Kerzentage zwischen der letzten Zeile und der
+gerade gemessenen Kerze und heilt genau so weit zurueck (mindestens `HEIL_TAGE` 5,
+hoechstens `HEIL_MAX` 120, plus eine Randkerze). Vorher heilten feste 5 Tage: war
+der Rechner drei Wochen aus, blieb die Luecke stehen und fiel nur auf, wenn jemand
+`--reihe` las. Ist die Luecke laenger als der mitgemessene Verlauf, holt `fuellen`
+die Kerzen selbst nach — anders waeren die aeltesten fehlenden Tage unerreichbar.
+Was auch danach fehlt (aelter als `HEIL_MAX`), wird als `Luecke bleibt: …` gemeldet.
+Gemeldet wird sonst nur, wenn wirklich Tage fehlten **oder** wenn Live-Weg und
+Nachrechnung um mehr als `ABGLEICH_TOLERANZ` (0,5 Punkte) auseinanderlaufen.
+Geschrieben wird auch bei leerer Ausgabe: leere Ausgabe heisst nichts zu sagen,
+nicht nichts getan.
+
+`--reihe` nennt Luecken ausdruecklich (T-204): fehlt ein Kalendertag zwischen der
+aeltesten und der neuesten Zeile, steht dort `LUECKEN: N Kerzentag(e) fehlen
+zwischen …` mit den Bereichen; ohne Luecke sagt die Ausgabe das ebenfalls
+(`Keine Luecke zwischen …`). Nachgemessen am 01.10.2026 an einer kuenstlichen
+Reihe (Reihe bis 10.09., Kerze 30.09., 19 fehlende Tage): Heiltiefe 20, danach
+19 Kerzentage nachgefuellt, 0 Luecken — die echte Reihe ist mit 252 Kerzentagen
+(22.01.–30.09.2026) luecklos.
 
 ## Fallen
 

@@ -14,7 +14,9 @@ Laufzeitstand schreiben.
 
 Aufruf: python -m unittest discover -s tests -t tests   (aus Agenten/Werkzeuge)
 """
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -382,6 +384,82 @@ class MitVerlaufTest(unittest.TestCase):
         zeile = b.reihe(None)[0]
         self.assertNotIn("_verlauf", zeile,
                          "der Verlauf ist Rechenhilfe, nicht Buchhaltung")
+
+
+class LueckenTest(unittest.TestCase):
+    """Fehlende Kerzentage in der Reihe (T-204) - reine Rechnung plus Ausgabe."""
+
+    def setUp(self):
+        self.ordner = tempfile.mkdtemp(prefix="breite-luecken-")
+        self.echt = b.REIHE
+        b.REIHE = os.path.join(self.ordner, "breite-reihe.jsonl")
+
+    def tearDown(self):
+        b.REIHE = self.echt
+        shutil.rmtree(self.ordner, ignore_errors=True)
+
+    def reihe(self, kerzen):
+        with open(b.REIHE, "w", encoding="utf-8") as f:
+            for k in kerzen:
+                f.write(json.dumps({"kerze": k, "breite": 90.0}) + "\n")
+
+    def test_vollstaendige_reihe_hat_keine_luecke(self):
+        self.reihe(["2026-07-01", "2026-07-02", "2026-07-03"])
+        luecken, erster, letzter = b.fehlende_tage(b.verlauf())
+        self.assertEqual(luecken, [])
+        self.assertEqual((erster, letzter), ("2026-07-01", "2026-07-03"))
+
+    def test_luecke_wird_gefunden(self):
+        self.reihe(["2026-07-01", "2026-07-04"])
+        luecken, erster, letzter = b.fehlende_tage(b.verlauf())
+        self.assertEqual(luecken, ["2026-07-02", "2026-07-03"])
+        self.assertEqual((erster, letzter), ("2026-07-01", "2026-07-04"))
+
+    def test_bis_verlaengert_das_ende(self):
+        """Der Waechter kennt die gemessene Kerze, auch vor dem Schreiben."""
+        self.reihe(["2026-07-01"])
+        luecken, _e, letzter = b.fehlende_tage(b.verlauf(), bis="2026-07-03")
+        self.assertEqual(luecken, ["2026-07-02", "2026-07-03"])
+        self.assertEqual(letzter, "2026-07-03")
+
+    def test_bis_vor_dem_ersten_tag_ist_keine_luecke(self):
+        self.reihe(["2026-07-05"])
+        self.assertEqual(b.fehlende_tage(b.verlauf(), bis="2026-07-01")[0], [])
+
+    def test_leere_reihe(self):
+        self.assertEqual(b.fehlende_tage([]), ([], None, None))
+        self.assertEqual(b.fehlende_tage(b.verlauf()), ([], None, None))
+
+    def test_bereiche_fassen_zusammen(self):
+        self.assertEqual(b.luecken_bereiche(["2026-07-01", "2026-07-02",
+                                             "2026-07-05"]),
+                         [("2026-07-01", "2026-07-02"), ("2026-07-05",
+                                                         "2026-07-05")])
+
+    def test_text_nennt_bereich_und_zahl(self):
+        self.assertEqual(b.luecken_text(["2026-07-01", "2026-07-02",
+                                         "2026-07-05"]),
+                         ["2026-07-01 .. 2026-07-02 (2 Kerzentage)",
+                          "2026-07-05 (1 Kerzentag)"])
+
+    def test_reihe_ausgabe_nennt_die_luecke(self):
+        """`--reihe` muss die Luecke nennen - sonst faellt sie nur beim Lesen auf."""
+        self.reihe(["2026-07-01", "2026-07-04"])
+        puffer = io.StringIO()
+        with contextlib.redirect_stdout(puffer):
+            b.main(["--reihe"])
+        text = puffer.getvalue()
+        self.assertIn("LUECKEN: 2 Kerzentag(e) fehlen zwischen 2026-07-01 "
+                      "und 2026-07-04", text)
+        self.assertIn("2026-07-02 .. 2026-07-03 (2 Kerzentage)", text)
+
+    def test_reihe_ausgabe_ohne_luecke_sagt_es(self):
+        self.reihe(["2026-07-01", "2026-07-02"])
+        puffer = io.StringIO()
+        with contextlib.redirect_stdout(puffer):
+            b.main(["--reihe"])
+        self.assertIn("Keine Luecke zwischen 2026-07-01 und 2026-07-02 (2 "
+                      "Kerzentage)", puffer.getvalue())
 
 
 class KennzahlenTest(unittest.TestCase):
