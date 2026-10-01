@@ -26,6 +26,7 @@
   "drawdown_halbierung_usd": 15.0,
   "_kosten": "Kraken-Taker 0,6000 % JE SEITE, gemessen an zwei echten Fuellungen am 22.09.2026 (SOLEUR: 50,01954 EUR Kauf mit 0,30012 EUR Gebuehr). Eine Runde kostet damit 1,2 % - nicht 0 % (das Pro-Abo widerlegt).",
   "gebuehr_taker": 0.006,
+  "_gebuehr_quelle": "GEMESSEN 22.09.2026 an der Kraken-Fuellung und GET /0/private/TradeVolume: 0,6000 %/Seite (das Pro-Abo wirkt auf diesem Konto NICHT). Als gebuehr_taker 0.006 je Seite - ein BRUCH, nicht 0.6: gebuehr_pct rechnet in PROZENT, und die Auswertung liest NUR gebuehr_taker.",
   "boerse": "kraken",
   "_boerse": "Der Orderweg des Hauses (mosaic/kraken_spot -> kraken/kraken.py). Kein Kraken-Adapter in Rust: das waere ein zweiter Schluessel und ein zweiter Nonce-Zaehler neben dem Haus-Pool (Entscheidung Max 30.09.2026, Weg B).",
   "kraken_quote": "USDC",

@@ -71,7 +71,26 @@ QUELLE_PERP_ENTSCHEIDUNG = (
     "moondev_topmovers steht auf SPOT (seine wachen.json nennt USDC-Paare).")
 QUELLE_KRAKEN_SPOT = ("GEMESSEN 22.09.2026 an der Kraken-Fuellung und "
                       "GET /0/private/TradeVolume: 0,6000 %/Seite "
-                      "(das Pro-Abo wirkt auf diesem Konto NICHT).")
+                      "(das Pro-Abo wirkt auf diesem Konto NICHT). Als "
+                      "gebuehr_taker 0.006 je Seite - ein BRUCH, nicht 0.6: "
+                      "gebuehr_pct rechnet in PROZENT, und die Auswertung liest "
+                      "NUR gebuehr_taker.")
+
+QUELLE_OMNIQUANT = ("OKX-SPOT 0,10 % je Seite (gemessen 01.10.2026) - die Instrumente "
+                    "der Spur sind OKX-Paare, der Kurs kommt aus okx.letzter_kurs. "
+                    "WIDERSPRUCH, offen: das Feld `boerse` der wachen.json nennt "
+                    "kraken_futures, das waeren 0,04-0,05 %/Seite. Solange der "
+                    "Widerspruch steht, rechnet die Spur mit dem TEUREREN der beiden "
+                    "Saetze.")
+QUELLE_KRAKEN_FUTURES = ("GEMESSEN 25.09.2026 an der eigenen Kraken-Futures-Rechnung: "
+                        "0,04-0,05 % je Seite (Round-Trip 0,0029 USD auf 4,55 USD). "
+                        "Vorher stand hier 0.1 - doppelt so hoch wie gemessen. Die Spur "
+                        "bucht auf kraken_futures (boerse-Feld ihrer wachen.json).")
+QUELLE_ANNAHME_ONCHAIN = ("MODELLANNAHME, NICHT gemessen: 1,0 % je Seite fuer "
+                          "Onchain-Handel (DEX-Gebuehr plus Slippage). Der Boersensatz "
+                          "waere rund das 20-fache zu niedrig und wurde bewusst nicht "
+                          "gesetzt - offen als T-268 (eigene Messung oder Annahme stehen "
+                          "lassen, aber dann ausdruecklich als Annahme).")
 
 AENDERUNGEN = [
     # OKX SPOT - der falsche Satz war der teuerste Fund: scanner handelt live.
@@ -98,6 +117,8 @@ AENDERUNGEN = [
      QUELLE_PERP_ENTSCHEIDUNG),
     # Kraken-Spot-Arm: stand auf 0 (Abo-Annahme), die ist widerlegt.
     ("nautilus_kraken/wachen.json", "gebuehr_pct", 0.6, QUELLE_KRAKEN_SPOT),
+    # Kraken SPOT, dieselbe Zahl in der Einheit, die die Auswertung liest:
+    ("nautilus_kraken/wachen.json", "gebuehr_taker", 0.006, QUELLE_KRAKEN_SPOT),
     # Diese zwei fuehren den Satz NUR als `gebuehr_pct` (ihr eigener Code) -
     # die AUSWERTUNG liest aber `gebuehr_taker` und meldete deshalb "BRUTTO und
     # UNBEKANNT", obwohl die Zahl bekannt war. Dieselbe Zahl, beide Felder.
@@ -106,6 +127,22 @@ AENDERUNGEN = [
      "GEMESSEN 25.09.2026 an der Kraken-Futures-Rechnung: 0,04-0,05 %/Seite "
      "(Round-Trip 0,0029 USD auf 4,55 USD). Derselbe Satz steht dort schon als "
      "`gebuehr_pct` 0.05 - die Auswertung liest `gebuehr_taker`."),
+    # --- Spuren, deren Satz schon stand, aber OHNE Quelle. Befund 01.10.2026
+    # beim Festziehen: "Wert ohne Quelle ist nicht nachpruefbar".
+    ("liq_wand/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
+    ("trendwende_btc/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
+    ("omnitrade/wachen.json", "gebuehr_taker", 0.006, QUELLE_KRAKEN_SPOT),
+    # WIDERSPRUCH in omniquant selbst: die wachen.json nennt `boerse: kraken_futures`,
+    # die Instrumente sind aber OKX-Paare (der Kurs kommt aus okx.letzter_kurs).
+    # Deshalb der TEURERE der beiden Saetze - nicht der freundlichere.
+    ("omniquant/wachen.json", "gebuehr_pct", 0.1, QUELLE_OMNIQUANT),
+    ("omniquant/wachen.weit.json", "gebuehr_pct", 0.1, QUELLE_OMNIQUANT),
+    ("kopier/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
+    ("kopier1zu1/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
+    ("robinhood_radar/wachen.json", "gebuehr_taker", 0.01, QUELLE_ANNAHME_ONCHAIN),
+    ("spiegel/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
+    ("spiegel/wachen.knapp.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
+    ("spiegel/wachen.weit.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
 ]
 
 
@@ -148,9 +185,20 @@ def _feld_setzen(roh, feld, wert, quelle):
                               + ("," if zeilen[feld_zeile].rstrip().endswith(",")
                                  else ""))
     if notiz_zeile is not None:
+        # ACHTUNG: die Notiz kann OHNE den Wert dastehen (am 01.10.2026 so
+        # gefunden: nautilus_kraken trug eine _gebuehr_quelle aus einem
+        # frueheren Lauf, aber kein gebuehr_taker). Dann wird der WERT hier
+        # eingesetzt - vorher fiel er still unter den Tisch und `anwenden()`
+        # stuerzte danach mit einem irrefuehrenden TypeError ab.
         hat_komma = zeilen[notiz_zeile].rstrip().endswith(",")
         zeilen[notiz_zeile] = ('  "_gebuehr_quelle": %s%s'
                                % (json.dumps(quelle), "," if hat_komma else ""))
+        if feld_zeile is None:
+            if hat_komma:
+                zeilen.insert(notiz_zeile, '  "%s": %s,' % (feld, wert_text))
+            else:
+                zeilen[notiz_zeile] += ","
+                zeilen.insert(notiz_zeile + 1, '  "%s": %s' % (feld, wert_text))
     elif feld_zeile is not None:
         if not zeilen[feld_zeile].rstrip().endswith(","):
             zeilen[feld_zeile] = zeilen[feld_zeile].rstrip() + ","
@@ -171,7 +219,28 @@ def _feld_setzen(roh, feld, wert, quelle):
                 break
         else:
             raise ValueError("keine schliessende Klammer gefunden")
+    _komma_am_ende_weg(zeilen)
     return eol.join(zeilen), alt
+
+
+def _komma_am_ende_weg(zeilen):
+    """Der LETZTE Schluessel vor der schliessenden Klammer traegt kein Komma.
+
+    Ohne diesen Durchgang entsteht ungueltiges JSON, sobald der neue Schluessel
+    hinter dem bisher letzten landet - gefunden am 01.10.2026 durch den Test
+    `test_erfolgsfall_schreibt_und_meldet`: `json.decoder.JSONDecodeError:
+    Illegal trailing comma before end of object`. In den echten Wachen fiel es
+    nicht auf, weil dort nach dem Wert immer noch ein Schluessel stand.
+    """
+    for i in range(len(zeilen) - 1, -1, -1):
+        if zeilen[i].strip() == "}":
+            vor = i - 1
+            while vor > 0 and not zeilen[vor].strip():
+                vor -= 1
+            if zeilen[vor].rstrip().endswith(","):
+                zeilen[vor] = zeilen[vor].rstrip()[:-1]
+            break
+    return zeilen
 
 
 def vorschau():
@@ -212,8 +281,12 @@ def anwenden():
         with open(pfad, "wb") as f:
             f.write(neu_text.encode("utf-8"))
         _roh, neu = _lesen(pfad)
-        if float(neu.get(feld)) != float(wert):
-            raise RuntimeError("%s: %s steht auf %r" % (datei, feld, neu.get(feld)))
+        neu_wert = neu.get(feld)
+        if neu_wert is None or float(neu_wert) != float(wert):
+            raise RuntimeError(
+                "%s: %s steht auf %r (erwartet %g) - das Feld liess sich nicht "
+                "setzen. Datei pruefen, Sicherung <datei>.bak-%s liegt daneben."
+                % (datei, feld, neu_wert, wert, MARKE))
         print("%-38s %s: %s -> %g" % (datei, feld,
                                       "-" if alt is None else alt, wert))
         getan += 1

@@ -16,6 +16,7 @@
   "max_je_basiswert": 1,
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker), Slippage 0,15 % als konservative Annahme fuer ein Paar mit ueber 3 Mio USD Tagesumsatz. Wer diese Zahlen kleiner setzt, baut eine Wunschrechnung.",
   "gebuehr_pct": 0.1,
+  "_gebuehr_quelle": "OKX-SPOT 0,10 % je Seite (gemessen 01.10.2026) - die Instrumente der Spur sind OKX-Paare, der Kurs kommt aus okx.letzter_kurs. WIDERSPRUCH, offen: das Feld `boerse` der wachen.json nennt kraken_futures, das waeren 0,04-0,05 %/Seite. Solange der Widerspruch steht, rechnet die Spur mit dem TEUREREN der beiden Saetze.",
   "slippage_pct": 0.15,
   "_ausstieg": "Stop und Ziel kommen aus dem Prognose-Bericht (gerechnet gegen 20-/60-Tage-Extrema). Zusaetzlich ein Zwangsschluss nach max_halte_dauer_tagen: Ein Signal, das sich in zwei Wochen nicht bewegt hat, ist verfallen - die Position wird zum Marktpreis geschlossen, damit die Auswertung weiss, was die Strategie wirklich gebracht haette.",
   "max_halte_dauer_tage": 14,

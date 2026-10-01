@@ -24,6 +24,7 @@
   "_drawdown_halbierung_usd": "1,0 x Buchrisiko (5,0 USD je Position x 3 Plaetze) - Regel aus Handel/ratschen.py.",
   "kill_switch_gesamt_usd": 45.0,
   "gebuehr_taker": 0.01,
+  "_gebuehr_quelle": "MODELLANNAHME, NICHT gemessen: 1,0 % je Seite fuer Onchain-Handel (DEX-Gebuehr plus Slippage). Der Boersensatz waere rund das 20-fache zu niedrig und wurde bewusst nicht gesetzt - offen als T-268 (eigene Messung oder Annahme stehen lassen, aber dann ausdruecklich als Annahme).",
   "risikovorfilter": true,
   "herzschlag_max_minuten": 180,
   "handel_erlaubt": false,

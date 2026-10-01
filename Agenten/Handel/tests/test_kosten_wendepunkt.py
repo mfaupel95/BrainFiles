@@ -65,21 +65,46 @@ class GrenzenTest(unittest.TestCase):
 
 
 class FelderTest(unittest.TestCase):
-    """Jede Spur, die live ordern kann, muss ihr Gebuehrenfeld tragen."""
+    """Jede Spur, die live ordern kann, muss ihr Gebuehrenfeld tragen.
+
+    Geprueft wird die REGEL, nicht ein eingefrorener Wert: der Markt der Spur
+    bestimmt den Satz. Am 01.10.2026 wurde er gemessen (eigenes OKX-/Kraken-
+    Konto, je Seite) - ein Test mit festen Zahlen war danach rot, obwohl der
+    Code stimmte (er froze den alten, zu freundlichen Satz von 0,05 % fuer
+    OKX-SPOT ein).
+    """
+
+    # Markt je Kernspur - daraus folgt der Satz.
+    MAERKTE = {
+        "scanner": "okx_spot",            # BTC-/...-USDC auf dem OKX-Spot
+        "iv_wand": "okx_spot",            # OKX-Optionszone, Spot-Ausfuehrung
+        "orb": "okx_perp",                # BTC-USDT-SWAP
+        "orbk": "kraken_spot",            # ETHUSD
+        "moondev_signalwelle": "okx_perp",
+        "liq_wand": "okx_perp",
+        "xperp": "okx_perp",
+        "swap": "okx_perp",
+        "kraken": "kraken_spot",
+        "mosaic": "kraken_spot",
+    }
+    SAETZE = {"okx_spot": 0.001, "okx_perp": 0.0005, "kraken_spot": 0.006}
 
     def test_kernspuren_haben_ein_gebuehrenfeld(self):
         import json
         from pathlib import Path
-        for spur, soll in (("scanner", 0.0005), ("orb", 0.0005), ("orbk", 0.006),
-                           ("moondev_signalwelle", 0.0005), ("iv_wand", 0.0005),
-                           ("kraken", 0.006), ("xperp", 0.0005), ("swap", 0.0005),
-                           ("mosaic", 0.006), ("liq_wand", 0.0005)):
+        for spur, markt in self.MAERKTE.items():
             p = Path(HANDEL) / spur / "wachen.json"
             if not p.is_file():
                 self.skipTest("Spur %s fehlt" % spur)
             w = json.loads(p.read_text(encoding="utf-8"))
-            self.assertEqual(soll, w.get("gebuehr_taker"),
-                             "%s: Gebuehrenfeld fehlt oder hat den falschen Wert" % spur)
+            self.assertEqual(self.SAETZE[markt], w.get("gebuehr_taker"),
+                             "%s (%s): Gebuehrenfeld fehlt oder hat den falschen Wert"
+                             % (spur, markt))
+            # Belegt heisst: EINE Notiz zur Gebuehr steht dabei. Der Name darf
+            # verschieden sein - aeltere Wachen fuehren `_gebuehren` bzw.
+            # `_gebuehren_abo_widerlegt`, neue `_gebuehr_quelle`.
+            notizen = [k for k in w if k.startswith("_gebuehr")]
+            self.assertTrue(notizen, "%s: Gebuehr ohne Quelle ist nicht nachpruefbar" % spur)
 
     def test_gebuehr_ist_ein_bruch_kein_prozentwert(self):
         # Ein Wert ueber 0,05 waere ein Prozentwert (5 %) und damit ein
