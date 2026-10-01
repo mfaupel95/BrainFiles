@@ -1319,3 +1319,24 @@ im Skill `arbeitsbaum-git-hygiene` (`GIT_INDEX_FILE` + `read-tree HEAD`).
 
 Zahlen, Code-Stellen und die Verallgemeinerung auf andere kuratierte Listen:
 `references/auswahllisten-erweitern.md` — laden, wenn eine ANDERE Liste klemmt.
+
+### Die Gegenrichtung: Profil-Listen kuerzen (Auftrag Max 01.10.2026)
+
+„Die botprofile brauchen noch weniger" — die 19 Profile, die je ~1.739 Eintraege aus der
+omniroute-`auto/*`-Liste mitkopiert hatten, sind auf das gekuerzt, was das Profil SELBST
+nennt (`model.default`, `providers.<p>.model`/`default_model`, `fallback_providers`,
+`delegation.model`, `moa`): **33.064 -> 125 Eintraege**, caveman 2248 -> 514 Zeilen.
+Der `models:`-Block ist eine ANZEIGELISTE — die Wahl bleibt vollstaendig, weil
+`discover_models: true` bleibt und der Waehler mit gesetztem Schluessel die echte Liste live
+holt. Werkzeug: `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py` (Trockenlauf
+Standard, `--anwenden`, `--zuruecknehmen`), Pruefungen
+`Agenten/Hermes/scripts/test_profil_modelllisten_kuerzen.py` (17, auf Kopien).
+**Nie auf den echten Profilen testen**, und nach dem Lauf pruefen, dass der Diff je Datei
+NUR Loeschungen zeigt (0 Insertions) — eine Insertion heisst, ein fremder Block ist
+mitgewandert. Die Hauptconfig bleibt unangetastet (eigene Entscheidung, T-302).
+
+**Falle in Werkzeugen, die YAML-Bloecke schneiden:** Ein `models:`-Eintrag in Dict-Form kann
+selbst Doppelpunkte tragen (`auto/coding:free: {}`) — der Name ist der Teil vor dem LETZTEN
+Doppelpunkt (`rpartition`), nicht vor dem ersten. Und in Listenform duerfen die Eintraege
+AUF der Hoehe des Schluessels stehen (`models:` / `- x`): ein Blockende-Kriterium
+„Einzug <= Schluesseleinzug" bricht dort sofort ab und liest null Eintraege.
