@@ -61,7 +61,13 @@ def boerse_binden(w):
     global _weg
     import weg
     _weg = weg
-    return weg.setze_hebel(w)
+    hebel = weg.setze_hebel(w)
+    # Der Hebel gehoert am KONTRAKT, nicht in die Order (gemessen 01.10.2026:
+    # Kraken ignoriert den leverage-Parameter von /sendorder). Erst im
+    # Live-Zweig setzen - Papier soll die Boerse nicht anfassen.
+    if w.get("handel_erlaubt"):
+        weg.hebel_vorbereiten(w.get("instrument") or "PF_SOLUSD", hebel)
+    return hebel
 
 
 def main():

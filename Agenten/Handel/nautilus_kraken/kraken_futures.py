@@ -78,13 +78,16 @@ def _signatur(pfad, post_data, nonce):
     return base64.b64encode(mac.digest()).decode()
 
 
-def _roh(pfad, werte=None, signiert=True, post=False):
+def _roh(pfad, werte=None, signiert=True, post=False, methode=None):
     """Ein Aufruf. `werte` als Dict = POST mit Formkoerper (Reihenfolge zaehlt!).
 
     Die Reihenfolge der Felder muss der Signatur entsprechen, deshalb wird der
     Koerper EINMAL gebaut und unveraendert gesendet (nicht neu formatiert).
     Lesende Aufrufe (/accounts, /openpositions) sind GET - ein GET-Koerper
     waere ein POST und lief 24.09.2026 in HTTP 404 NOT_FOUND.
+    `methode` erzwingt ein anderes Verfahren (PUT bei /leveragepreferences,
+    GEMESSEN 01.10.2026: die Parameter muessen dort als FORMKOEPRER rein - als
+    Query-String antwortet dieselbe Signatur mit authenticationError).
     """
     post_data = urllib.parse.urlencode(werte) if werte else ""
     kopf = {"User-Agent": "BrainFiles/1.0"}
@@ -96,11 +99,12 @@ def _roh(pfad, werte=None, signiert=True, post=False):
         nonce = _nonce()
         kopf.update({"APIKey": _env(KEY_NAME), "Nonce": nonce,
                      "Authent": _signatur(pfad, post_data, nonce)})
-        if post:
+        if post or methode:
             kopf["Content-Type"] = "application/x-www-form-urlencoded"
             daten = post_data.encode()
+    verfahren = methode or ("POST" if daten is not None else "GET")
     req = urllib.request.Request(BASIS + pfad, data=daten, headers=kopf,
-                                 method="POST" if daten is not None else "GET")
+                                 method=verfahren)
     try:
         with urllib.request.urlopen(req, timeout=25) as r:
             antwort = json.loads(r.read().decode())
@@ -344,6 +348,36 @@ def stop_setzen(symbol, menge, stop_preis, echt=False, leverage=None):
                             "side": seite, "size": groesse,
                             "stopPrice": preis_gerundet(symbol, stop_preis),
                             "reduceOnly": "true", "triggerSignal": "mark"})
+
+
+def hebel_preference_lesen():
+    """Alle leverage-Preferences je Kontrakt: [(symbol, maxLeverage)]."""
+    try:
+        r = _roh("/leveragepreferences", post=False)
+    except KrakenFuturesFehler:
+        return []
+    return [(p.get("symbol"), p.get("maxLeverage"))
+            for p in (r.get("leveragePreferences") or []) if p.get("symbol")]
+
+
+def hebel_preference_setzen(symbol, hebel):
+    """Hebel-Obergrenze je Kontrakt setzen (isolated margin).
+
+    GEMESSEN 01.10.2026 am echten Konto: der `leverage`-Parameter der
+    /sendorder-Order wird ignoriert - der Hebel steht AUSSERHALB der Order, in
+    /leveragepreferences (PUT, Parameter als FORMKOEPRER; als Query-String
+    antwortet dieselbe Signatur mit authenticationError). Wirkung belegt:
+    Margin je Kontrakt PF_SOLUSD 11,79 USD (10 %) -> 16,80 USD = Nominal/7.
+    """
+    if not (1.0 <= float(hebel)):
+        raise KrakenFuturesFehler("Hebel %r unter 1 - nicht setzen" % hebel)
+    _roh("/leveragepreferences", {"symbol": symbol, "maxLeverage": "%g" % float(hebel)},
+         post=False, methode="PUT")
+    gesetzt = dict(hebel_preference_lesen()).get(symbol)
+    if not gesetzt or float(gesetzt) < float(hebel) - 1e-9:
+        raise KrakenFuturesFehler(
+            "Preference nicht gesetzt: %s = %r (Wunsch %s)" % (symbol, gesetzt, hebel))
+    return float(gesetzt)
 
 
 def stop_nachziehen(order_id, symbol, menge, stop_preis, echt=False):

@@ -54,6 +54,29 @@ def setze_hebel(w):
     return _HEBEL[0]
 
 
+def hebel_vorbereiten(inst, hebel=None):
+    """Die Hebel-Obergrenze am Kontrakt pruefen und notfalls setzen.
+
+    GEMESSEN 01.10.2026: der `leverage`-Parameter der Order wird von Kraken
+    Futures IGNORIERT - der Hebel steht in /leveragepreferences je Kontrakt
+    (isolated margin, Margin = Nominal/Hebel; 7x belegt mit 16,80 USD auf
+    117,33 Nominal). Deshalb gehoert das Setzen hierher, nicht in die Order:
+    eine Order mit falscher Marginreserve scheitert erst am Konto. Idempotent -
+    gelesen wird jedes Mal (ein GET), geschrieben nur bei Abweichung (ein PUT).
+    Fehler laufen nicht unter: ohne Bestaetigung wird MELDEND geworfen, die
+    Sperrenkette bleibt die naechste Station.
+    """
+    hebel = float(hebel if hebel is not None else _HEBEL[0])
+    if hebel <= 1.0:
+        return None
+    # `inst` kommt als KONTRAKTNAME (PF_SOLUSD) - der Kontraktname ist die
+    # Schluesselgroesse der Preference, nicht das Buch-Instrument.
+    gesetzt = dict(kf.hebel_preference_lesen()).get(inst)
+    if gesetzt is not None and abs(float(gesetzt) - hebel) < 1e-9:
+        return hebel
+    return kf.hebel_preference_setzen(inst, hebel)
+
+
 def hebel():
     return _HEBEL[0]
 
