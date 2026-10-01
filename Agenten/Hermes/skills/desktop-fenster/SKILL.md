@@ -83,6 +83,24 @@ gleichnamige in `Handel/` verdecken.
 - Texte, die in eine Spalte sollen, auf die Spalte kuerzen, nicht die Spalte auf
   den Text wachsen lassen.
 
+## Scrollen: die drei Fälle, die immer wieder auftreten
+
+- **`height=<Anzahl Objekte>` ist kein Layout.** Eine Tabelle, die so viele
+  Zeilen anfordert, wie es Daten gibt (gemessen: `height=len(SPUREN)` bei 42
+  Spuren), ist hoeher als jedes Fenster — und mit `fill="x"` gepackt gibt es
+  nichts zu scrollen, also ist der Rest der Seite unerreichbar. Muster
+  `Agenten/Handel/handelszentrale.py`: `tabelle_mit_leiste(rahmen, spalten, kopf,
+  breiten, hoehe=..., anker_w=..., dehnen=..., wahl=...)` baut senkrechte UND
+  waagerechte Leiste und legt das Mausrad aufs Widget; `scrollbare_seite(eltern)`
+  gibt `(wrapper, innen, canvas)` fuer Seiten, die hoeher sind als das Fenster.
+- **`bbox("all")` liefert (0, 0, 1, 1), wenn nichts gemessen ist** — nicht None.
+  Das als `scrollregion` zu setzen sieht nach Erfolg aus und ist ein
+  1-Pixel-Weg; erst ab echter Hoehe setzen (`seite_region_neu`).
+- **Das Rad landet auf dem Widget unter dem Zeiger, nicht auf dem Canvas.** Also
+  an jede Tabelle einzeln binden UND die Nachfahren der Seite mitbinden; die
+  eigenen Handler geben `"break"` zurueck, damit dieselbe Bewegung nicht noch
+  einmal die Seite scrollt.
+
 ## Pruefen: messen, nicht schauen
 
 Den Fensteraufbau in einen Test nehmen, der das Fenster wirklich baut und
@@ -184,6 +202,15 @@ und danach auslesen und **pruefen, dass das Ziel existiert**
   platzieren.
 - Eine ganze Datei neu schreiben, um eine Spalte zu aendern: erst die reine
   Rechenfunktion aendern und mit einem Test festnageln, dann die Klasse anfassen.
+- **`root.withdraw()` hat keine Geometrie.** `yview()` bleibt dort `(0.0, 1.0)`,
+  auch mit 40 Zeilen in einer Fuenf-Zeilen-Tabelle — ein Test, der nach
+  `yview_moveto` eine Bewegung verlangt, beweist Tk, nicht das Fenster. Geprueft
+  wird die Verdrahtung (`yscrollcommand`, `xscrollcommand`, Rad-Bindung) und die
+  gesetzte Scrollregion.
+- Zweimal derselbe Funktionsname in einer Datei: Python laesst die LETZTE
+  Definition gewinnen, die fruehere ist tot und eine Aenderung daran wirkt wie
+  keine. Als AST-Pruefer festhalten (Muster
+  `tests/test_handelszentrale_struktur.py`), nicht als Blick.
 
 ## Verwandtes
 
