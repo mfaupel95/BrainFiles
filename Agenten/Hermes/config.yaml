@@ -739,7 +739,7 @@ mcp_servers:
       ProgramFiles: C:\Program Files
   deepwiki:
     url: https://mcp.deepwiki.com/mcp
-    enabled: true
+    enabled: false
   buildkite:
     url: https://mcp.buildkite.com/mcp
     auth: oauth

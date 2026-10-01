@@ -384,7 +384,12 @@ das Tor liest. Sechs Schritte, in dieser Reihenfolge:
 6. **Gegenprobe:** `--vorschau` erneut — der Geldgrund muss aus der Sperrliste
    fallen. Bleibt er stehen, war die Umschichtung zu klein.
 
-### Drei Gruende, warum ein Posten nicht verkaufbar ist
+7. **Die Wirkung am KONTO nachmessen, nicht nur an der eigenen Vorschau.**
+   `--vorschau` zeigt den eigenen Sperrstand, nicht den Kontostand. Ob das Geld
+   noch da ist, sagen Abschnitt 9 (Bestand) und das Journal der Spur, die
+   zugriff - siehe "Wer zuerst liest, nimmt es".
+
+### Vier Gruende, warum ein Posten nicht verkaufbar ist
 
 1. **Unter dem Ordermin.** Eine Mengenschwelle, kein Rechteproblem — die
    Fehlermeldung der Boerse liest sich aber wie eines: `PEPEEUR` verlangt
@@ -398,6 +403,13 @@ das Tor liest. Sechs Schritte, in dieser Reihenfolge:
    Merkmal, nicht ein Namensfehler.
 3. **Gebunden statt frei** (`availBal` bzw. `balance − hold_trade`, Abschnitt 9).
 
+4. **Compliance-Sperre des Kontos.** Das Instrument ist gelistet, das Paar
+   existiert, die Menge passt - und die Boerse lehnt trotzdem ab, weil die
+   Region des Kontos es ausschliesst (OKX `51155` bei den gestakten Formen
+   `BETH`/`OKSOL`, die dort nur ein USDT-Paar haben und auch das nicht handeln
+   duerfen). Erkennbar NUR am Orderweg: der Instrumentenabruf listet sie als
+   handelbar. Siehe `references/okx-fehlermeldungen.md`, Abschnitt 10.
+
 ### Der Kontostand ist der Zeuge, nicht die Rueckgabe
 
 `kraken.markt_verkauf(paar, menge, echt=True)` gibt die ROHE Kraken-Antwort
@@ -410,6 +422,34 @@ Regel: **nach einem Verkauf nie der Rueckgabe glauben.** `kontostaende()` und
 `ClosedOrders` sind die Zeugen; im Zweifel BEIDE lesen, bevor ein zweiter
 Versuch laeuft. Dieselbe Disziplin wie beim Orderweg: die Antwort ist eine
 Behauptung, der Kontostand ein Befund.
+
+### Wer zuerst liest, nimmt es
+
+Ein freigemachtes Guthaben ist keine Zuweisung. Es gibt kein Reservierungssystem:
+jede Spur liest den Kontostand in ihrem eigenen Zyklus, und **die erste, die ihn
+liest, nimmt ihn.** Gemessen: nach dem Freimachen von 144,70 USDC kaufte der
+live laufende `scanner` (Fenster offen) im selben Zyklus zwei Positionen fuer
+143,92 USDC; die Zielspur hatte danach 0,00 frei.
+
+Drei Regeln daraus:
+
+1. **Vor dem Umschichten wissen, WER gerade scharf ist und ein offenes Fenster
+   hat.** `spuren_stand.py` zeigt "Fenster" und "frei" je Spur; wer dort live mit
+   offenem Fenster steht, greift in der naechsten Viertelstunde zu. Wer Guthaben
+   fuer Spur A freimacht, waehrend Spur B scharf ist, bezahlt B.
+2. **Ein Guthaben-Tor ist die LETZTE Sperre vor dem Freigabefenster.** Faellt es
+   weg und bleibt genau EIN Grund ("Freigabefenster nicht offen"), oeffnet
+   `AUTO_FREIGABE` das Fenster selbst - das Auffuellen eines Kontos ist damit
+   mittelbar ein Scharfschalten. Guthaben und Erlaubnis sind zwei Schalter, aber
+   nur einer davon wird beim Umschichten umgelegt.
+3. **Umgekehrt schuetzt ein ZWEITER Grund.** Kommt nach dem Umschichten ein
+   weiterer Grund dazu (das Guthaben ist inzwischen anderswo gebunden), verlangt
+   `nur_fenster_fehlt` GENAU EINEN und oeffnet gar kein Fenster - die Zielspur
+   handelt dann nicht, obwohl sie scharf ist. Das ist kein Fehler, sondern die
+   Folge davon, dass das Geld nicht mehr bei ihr liegt.
+
+Merksatz: **der eigene Erfolg ist die Verkaufssumme, nicht die Wirkung.** Die
+Wirkung steht am Konto und im Journal der Spur, die zugriff.
 
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),

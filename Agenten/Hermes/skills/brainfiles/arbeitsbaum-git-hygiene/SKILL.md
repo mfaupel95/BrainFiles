@@ -594,6 +594,22 @@ ungetrackten Dateien. Reihenfolge:
   (`assert b.count(anker) == 1`), hinter dem Anker einfuegen, `open(pfad,'wb').write()`
   — nichts normalisieren. Gegenprobe: `git diff --numstat` muss reine Einfuegungen
   zeigen (`55 0`), keine Loeschungen.
+- **Der `patch`-Treffer ist unscharf und verschiebt bei CODE die Einrueckung.**
+  Bei Python/JS kostet ein Treffer, der "aehnlich" passt, die Datei: ein Ersatzblock
+  kam mit vier Leerzeichen zu viel zurueck (`IndentationError`), obwohl der Anker
+  stimmte. Drei Regeln: (a) nach jedem `patch` auf Code `ast.parse` (bzw.
+  `node --check`) laufen lassen - der Syntaxfehler ist das einzige Fruehsignal;
+  (b) die gerenderte Diff-ANSICHT ist kein Massstab: sie zeigt bei CRLF-Dateien an
+  JEDER Zeile ein `\r` und sieht wie ein Ganzdatei-Umbau aus, waehrend
+  `git diff --numstat` 14/11 sagt - immer die Zahl lesen, sonst "repariert" man
+  eine richtige Datei; (c) ab dem ersten `IndentationError` NICHT weiterpatchen:
+  die Region `read_file` lesen, als ZEILENLISTE umbauen (`t.split("\r\n")`,
+  betroffene Zeilen ersetzen, `"\r\n".join(...)`, `open(p,"wb")`), dann `ast.parse`
+  und `git diff --numstat` als Gegenprobe. Neue Zeilen als LISTE einfuegen, nie als
+  einen zusammengesetzten String - sonst ist die Einrueckung wieder geraten.
+  **Den Anker aus der AUSGABE bauen, nicht aus dem Gedaechtnis:** die Region vorher
+  mit `repr()` ausgeben; ein selbst getippter Anker mit Escape-Sequenzen (`\"\\n\"`
+  im Quelltext) trifft nicht, und die Meldung sagt nur "nicht gefunden".
 - **Ein Ganzdatei-Diff kommt nicht immer von den Zeilenenden — der INDEX kann stale sein.**
   `git diff` vergleicht Arbeitsbaum gegen INDEX, nicht gegen HEAD. Liegt im Index noch eine
   frueher gestagte Fassung (typisch nach einem abgebrochenen oder verweigerten Commit),

@@ -43,7 +43,9 @@ JSONL je Nachricht: `zeit, chat, kommando, dauer_s, status, zeichen`.
   `Handel/befehle.py`), ~300 s = Freitext ueber A2A (`A2A_TIMEOUT_S`).
 - **`zeichen` ist die LAENGE der Antwort** - damit laesst sich die Antwort
   identifizieren, ohne sie zu speichern: **16 Zeichen = `(Aufgabe FAILED)`**
-  aus `_aufgabe_abholen` (9+6+1), ~230 Zeichen = der A2A-Zeitlimit-Text.
+  aus `_aufgabe_abholen` (9+6+1), ~230 Zeichen = der A2A-Zeitlimit-Text,
+  **~207 Zeichen = "Kein SkillsBot-Befehl. /hilfe zeigt die Liste."** - die
+  Nachricht war ein Slash-Befehl, den der Bot NICHT kennt.
 - **Lebt der Poller?** `skillsbot.offset` wird bei jedem Umlauf fortgeschrieben
   (Dateizeit = Lebenszeichen). Der INHALT ist die Telegram-`update_id`, keine
   Uhrzeit - nicht als Zeitstempel lesen.
@@ -61,6 +63,23 @@ ist.** Genau das schickt ihn in das kurze Limit, und er sieht nach fuenf Minuten
 eine 16-Zeichen-Antwort - das liest sich wie ein kaputter Bot. Statt dessen den
 Slash-Befehl mit der tragenden Frist nennen ODER die Arbeit selbst machen. Die
 Grenze des Weges VORHER nachsehen, nicht nach dem Ausfall.
+
+## 207 Zeichen: erst die SCHREIBWEISE pruefen, dann den Bot
+
+Der Bot kennt Befehlsnamen WOERTLICH; es gibt keine unscharfe Suche. Die
+Hausbefehle sind mehrzahlig (`/strategien`, `/indikatoren`), am Handy getippt
+wird die Einzahl - `/strategie` bekommt 207 Zeichen, waehrend `/strategien`
+denselben Bericht in Sekunden liefert. Das ist Bedienung, kein Ausfall.
+
+- **Vor jedem "der Bot kann X nicht" die Namensliste nachsehen**
+  (`Agenten/Bus/skillsbot.py`, `_handelsantwort`) und den Namen aus dem
+  Protokoll damit vergleichen - der Log zeigt `kommando` wortwoertlich.
+- **Fix ist ein Alias, nicht eine Belehrung:** Schreibweisen an EINER Stelle
+  buendeln (`HANDELS_ALIASE` in `skillsbot.py`), der kanonische Name bleibt bei
+  `handel_befehle`/`Handel/befehle.py`. Danach ist die Einzahl derselbe Befehl -
+  ein anderer Name darf keine Auskunft kosten. Test: jeder Alias zeigt auf
+  einen Befehl, den `_handelsantwort` wirklich kennt, und ein unbekanntes Wort
+  bleibt unbekannt (sonst wird jeder Tippfehler still ein Befehl).
 
 ## Nach jeder Code-Aenderung an der Bruecke
 

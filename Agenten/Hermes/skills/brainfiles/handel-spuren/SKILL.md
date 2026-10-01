@@ -236,7 +236,12 @@ Ausloeser → Referenz:
   „umschichten" ist ein eigener Ablauf**: Kandidaten gegen die Spurenbuecher
   halten (der Kontostand ist kein freies Kapital), je Paar `ordermin`/`costmin`
   und die gestakte Form pruefen, `validate` vor dem echten Verkauf, danach
-  Kontostand und `ClosedOrders` als Zeugen statt der Rueckgabe - Abschnitt 10.
+  Kontostand und `ClosedOrders` als Zeugen statt der Rueckgabe, dazu die
+  Compliance-Sperre (`OKX 51155`, nur am Orderweg erkennbar, der
+  Instrumentenabruf listet sie als handelbar) - und danach die WIRKUNG am KONTO
+  nachmessen: **ein freigemachtes Guthaben ist keine Zuweisung, ein anderes
+  scharfes Instrument mit offenem Fenster liest es im selben Zyklus** -
+  Abschnitt 10.
   Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
   (`live_einsatz_eur`/`_usd`) - wer nur einen liest, rechnet still mit dem
   Papier-Einsatz weiter, und ein Einsatz unter der Mindestmenge des Instruments

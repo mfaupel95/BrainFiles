@@ -241,3 +241,27 @@ Stop = Kurs − 1,5 × ATR, gedeckelt unter den Bandboden und ueber die Liquidat
 und `okx_bot_waechter/positions_schutz.py` (Position; **ueberspringt still, wenn
 keine Position sichtbar ist** - genau der Fall oben, und das ist der Befund, nicht
 ein Fehler).
+
+## 10. `51155` = Compliance-Sperre des Kontos, nicht Rechte und nicht Menge
+
+Symptom: `OKX 51155: You can't trade this pair or borrow this crypto due to local
+compliance restrictions.` bei einem Instrument, das oeffentlich GELISTET ist,
+dessen Paar existiert und dessen Menge weit ueber `minSz` liegt.
+
+Mechanismus: das EEA-Konto schliesst einzelne Instrumente aus, obwohl
+`/api/v5/public/instruments` sie fuehrt. Der Fehler kommt **vor** jeder
+Mengenpruefung - ein `validate`-Lauf scheitert identisch. Betroffen sind die
+**gestakten Formen**: `BETH` (Beacon-ETH) und `OKSOL` (OKX-Staked-SOL) haben auf
+diesem Konto **nur ein USDT-Paar** (`BETH-USDT`, `OKSOL-USDT`) und kein
+USDC-Paar - und auch das USDT-Paar ist gesperrt.
+
+**Regel: die Handelbarkeit eines Instruments ist nur am ORDERWEG zu erfahren,
+nicht am Instrumentenabruf.** `status=live` in `public/instruments` heisst
+"gelistet", nicht "handelbar" - dieselbe Familie wie `50124` (Abschnitt 7:
+falscher Markt-Namensraum) und `51001` (Abschnitt 5: unbekanntes Instrument).
+Ein `validate`-Lauf vor dem echten Verkauf ist die einzige billige Probe.
+
+Umgang im Bestand: solche Posten gehoeren als "compliance-gesperrt" in den
+Bericht - nicht in einen zweiten Versuch, nicht in eine Paarsuche. Der Kontowert
+bleibt in `eqUsd` sichtbar, einsetzbar ist er nicht; `availBal` bleibt voll, was
+den Posten harmlos aussehen laesst.

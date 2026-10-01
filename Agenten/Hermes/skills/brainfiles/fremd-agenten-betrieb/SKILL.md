@@ -536,6 +536,10 @@ Aufgabe:
 - Eine tote Datenquelle des Fremd-Repos durch oeffentliche Endpunkte ersetzen
   (Ersatzmodul mit identischer Schnittstelle, gemessene Endpunkte je Methode,
   was sich NICHT ersetzen laesst): `references/tote-quelle-ersetzen.md`.
+- Ein Fremd-Repo mit Pins aus der TensorFlow-1.x-Aera (conda/`python=3.6`-
+  Anleitung, `tensorflow.contrib`): auf keinem Host-Python >= 3.9 installierbar —
+  Docker-Bild mit legacy-Pinen, Filesharing-Grenze und Volumen-Regeln:
+  `references/legacy-docker.md`.
 
 ## Abgrenzung
 
