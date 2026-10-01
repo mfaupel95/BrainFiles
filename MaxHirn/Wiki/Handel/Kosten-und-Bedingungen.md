@@ -76,6 +76,15 @@ keinen eigenen Wert traegt — deshalb ist der eigene Wert der bessere Fix.
 `kopier`/`kopier1zu1` 1,0 % je Seite (Solana-Onchain), `robinhood_radar` 1,0 %
 (Robinhood Chain). Sie brauchen eine Entscheidung, keine Zahl aus einem anderen Markt.
 
+**Was die Messung am URTEIL ändert (01.10.2026, `kosten_wendepunkt.py`).** Eine Runde
+kostet jetzt: OKX-Spot 0,2 %, OKX-Perp 0,1 %, Kraken-Spot 1,2 %. Daran gemessen bleiben
+die dünnen Fälle dünn — `orb` +0,23 % je Runde (2,3× die Kosten: überlebt, aber knapp),
+`iv_wand/hoch` +0,33 % (1,65×), `orbk` −0,01 % und `swap` −0,52 % (unter null, wie
+vorher), `moondev_topmovers/hoch` −4,01 %. **Kein Urteil ist gekippt:** die Korrektur hat
+den zu freundlichen Zug aus allen Netto-Zahlen genommen, nicht eine Spur gerettet oder
+beerdigt. `orb` wird dabei sogar BILLIGER gerechnet als vorher — es stand in
+`SPUR_BOERSE` als Spot (0,2 %/Runde), handelt aber Perp (0,1 %/Runde).
+
 **GEMESSEN 22.09.2026 — der Kraken-Nullsatz war falsch.** Zwei unabhaengige Zeugen:
 die Fuellungen (`SOLEUR`: Kauf 50,01954 EUR mit 0,30012 EUR Gebuehr, Verkauf 50,01466 EUR mit
 0,30009 EUR) und `/0/private/TradeVolume` (taker 0,6000 % fuer SOLEUR, XXBTZEUR, XETHZEUR,

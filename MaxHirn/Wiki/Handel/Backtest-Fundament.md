@@ -535,3 +535,18 @@ die `wachen.json` trägt kein `mindest_kerzen`). Ein Lauf mit 320 Kerzen im
 4H-Takt rechnet 20 Schritte — genug für einen Rauchtest, nicht für eine Zahl.
 Tests: `Agenten/Handel/tests/test_replay.py` (`FensterOderHistorieTest`, 7) und
 `tests/test_leitstand_backtests.py` (Replay, +3).
+
+### Was der Replay NICHT fahren kann (01.10.2026)
+
+`orb` und `orbk` standen in `replay.SPUREN_TEIL_A` — und damit in der Spurliste des
+Leitstand-Reiters —, aber JEDER Lauf endete in einer Verweigerung: ihr `handeln.py` hat
+kein `lade_wachen()`, und ihre `wachen.json` nennt die Instrumente als DICT mit
+**Börsennamen** (`BTC_USDT` → `BTC-USDT-SWAP`) statt als Liste von Spur-Namen, dazu ohne
+`kerzen_takt`/`mindest_kerzen`. Sie stehen jetzt in `replay.NICHT_NACHRECHENBAR` mit Grund
+(`orbk` hat einen eigenen Backtest: `orbk/backtest.py`); das Fenster bietet sechs Spuren an
+(squeeze, wavetrend, macd_mtf, supertrend, gitter, mosaic).
+
+**Merksatz: eine angebotene Taste, die nur scheitern kann, ist schlechter als eine
+fehlende.** Die Prüfung ist ein Blick ins Spurenmodul (`lade_wachen()` vorhanden?) und in
+die Wachen (`instrumente` als Liste von Spur-Namen? Takt und `mindest_kerzen` gesetzt?),
+nicht ein Blick auf den Ordnernamen.

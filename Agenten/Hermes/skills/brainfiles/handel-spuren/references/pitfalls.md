@@ -1146,4 +1146,15 @@ Kurzfassung ersetzt die Begruendung nicht.
   das Spurenmodul zu laden); auf der Kommandozeile eine Zeile auf stderr statt
   eines Tracebacks, Exit 2. `gegenprobe()` laeuft damit nicht mehr mit leerem
   Kerzen-Dict durch und meldet nicht mehr zweimal null Runden als „gleich".
+- **Eine angebotene Spur ist nicht automatisch fahrbar.** `orb` und `orbk` standen in
+  `replay.SPUREN_TEIL_A` - und damit in der Spurliste des Leitstand-Reiters -, aber
+  JEDER Replay-Lauf endete in einer Verweigerung: ihr `handeln.py` hat kein
+  `lade_wachen()`, ihre `wachen.json` nennt die Instrumente als DICT mit
+  BOERSENnamen (`BTC_USDT` -> `BTC-USDT-SWAP`) statt als Liste von Spur-Namen, dazu
+  ohne `kerzen_takt`/`mindest_kerzen` (gefunden 01.10.2026). Sie stehen jetzt in
+  `replay.NICHT_NACHRECHENBAR` mit Grund (`orbk` hat einen eigenen Backtest:
+  `orbk/backtest.py`). Eine Taste, die nur scheitern kann, ist schlechter als eine
+  fehlende - vor dem Anbieten einer Spur pruefen: gibt es `lade_wachen()`, ist
+  `instrumente` eine LISTE von Spur-Namen, gibt es eine Historie fuer Takt und
+  Instrumente?
 
