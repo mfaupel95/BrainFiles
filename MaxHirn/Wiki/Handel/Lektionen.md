@@ -828,6 +828,46 @@ Das ist **keine hoehere Rendite, sondern ein halbierter Rueckgang** (Calmar
 .venv/Scripts/python.exe quantpedia_probe.py vergleich
 ```
 
+## TSMOM (#0118) auf eigenen Kerzen: ein Kandidat, aber BTC-only (01.10.2026)
+
+**Regel (T-210).** Der zweite Quantpedia-Kandidat, Time Series Momentum
+(#0118, 12-Monats-Rendite je Instrument, Positionsgroesse invers zur
+Volatilitaet, monatliche Neuverteilung), ist jetzt auf den EIGENEN 1D-Kerzen
+nachgerechnet. Zwei Massstaebe entscheiden, ob eine fremde Strategie Haus-Tauglich
+ist: die Gebuehr (monatliche Neuverteilung = 2 Seiten pro Monat = ~24 Seiten/Jahr)
+und der Rueckgang gegen Buy & Hold.
+
+**Messung (tsmom_probe.py, BTC/ETH/SOL 1D 2021-01..2026-09, 56 Monate):**
+
+| Instrument | Mittel/Monat | Treffer | t-Stat | Sharpe p.a. | brutto p.a. | max. Rueckgang | 0,1 %/Seite |
+|---|---|---|---|---|---|---|---|
+| BTC | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
+| ETH | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
+| SOL | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
+| Buy & Hold BTC | — | — | — | — | +20,2 % | -77 % | — |
+
+**Lesart.** TSMOM auf BTC ist der dritte Kandidat, der unsere Gebuehren
+ueberlebt: netto 0,1 %/Seite noch +9,5 % p.a., und der Rueckgang ist mit -14 %
+gegen -77 % Buy & Hold drastisch kleiner (Calmar 0,68 gegen 0,26 — besser als
+Donchian(30) mit 0,41). Aber das Signal lebt NUR von BTC: ETH und SOL sind
+netto 0,1 %/Seite praktisch Null (t +0,58/+0,74, 25 %/29 % Treffer). Eine
+TSMOM-Papierspur waere also eine BTC-Strategie mit Monats-Rhythmus — kein
+Portfolio. Die QuantConnect-Gegenprobe im Paper (Sharpe 0,3 / CAGR 7,29 %) wird
+von BTC (0,78 / 12,3 %) uebertroffen, von ETH/SOL nicht erreicht — konsistent.
+
+**QQQ/BTC-Rotation (T-210, zweiter Teil):** nicht messbar. Die Blog-Studie
+('Tactical Asset Rotation Between NASDAQ-100 and Bitcoin') braucht QQQ-Tageskerzen
+2019..2026; im feed liegen nur 92 Kerzen ab 2026-06-30 (QQQBUSDT_1D.json). Ohne
+QQQ-Historie bleibt die Rotation eine Datenluecke, kein Messergebnis.
+
+**Nachrechnen** (aus `Agenten/Handel`, Daten aus `daten/historie/feed/`):
+
+```
+.venv/Scripts/python.exe tsmom_probe.py tsmom
+.venv/Scripts/python.exe tsmom_probe.py qqq
+.venv/Scripts/python.exe tsmom_probe.py vergleich
+```
+
 ## Ein Buch, das der Boerse widerspricht, ist keine Position (30.09.2026)
 
 **Regel.** Was die Boerse weiss, weiss das Buch nicht von selbst. Jede Spur, die

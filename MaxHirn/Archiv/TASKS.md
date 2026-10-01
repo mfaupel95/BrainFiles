@@ -936,7 +936,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
+- [?] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
       Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
       #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
       Kerzen nachgerechnet und fallen durch: die Bitcoin-Nacht-Saisonalitaet (#0753,
@@ -949,11 +949,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (Donchian(20): +15,0 %/-56 %) — weniger Rendite, halbierter Rueckgang,
       t = 1,25 bei 34 Runden also ein Kandidat, kein Beweis. Werkzeug und Zahlen:
       `Agenten/Handel/quantpedia_probe.py`, Wiki/Handel/Lektionen.md.
-      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko) — sonst als geprueft-aber-verworfen schliessen.
+      Stand 01.10.2026: die Messung ist abgeschlossen und belegt; der dritte
+      Kandidat (TSMOM BTC, T-210) ist jetzt ebenfalls gemessen (netto +9,5 %
+      p.a., t +1,68, max. Rueckgang -14 % gegen Buy & Hold +20,2 % bei -77 %).
+      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko)  — sonst als geprueft-aber-verworfen schliessen. Wartet auf: Max
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
-- [ ] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
+- [x] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
       Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
       nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
       Instrument, Positionsgroesse invers zur Volatilitaet, monatliche
@@ -964,7 +967,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Neuverteilung) und mit dem Backtest-Fundament (historie_binance.py,
       replay.py) pruefbar — TSMOM sogar auf den 20 vorhandenen Instrumenten.
       Der zweite Kandidat braucht QQQ-Tageskerzen, die im Haus noch fehlen.
-      Naechster Schritt: TSMOM mit `replay.py` ueber daten/historie/ nachrechnen (12-Monats-Fenster, inverse Volatilitaet, monatliche Neuverteilung, Gebuehr je Seite aus der Wachen-Konvention).
+      **Erledigt 2026-10-01 (Messung, nicht Entscheidung).** TSMOM (#0118:
+      12-Monats-Signal, inverse Vol, monatliche Neuverteilung) ist jetzt auf
+      den EIGENEN 1D-Kerzen gemessen (`tsmom_probe.py` BTC/ETH/SOL 1D,
+      2021-01..2026-09, 56 Monate):
+
+      | Instrument | Monate | Mittel/Monat | Treffer | t | Sharpe p.a. | brutto p.a. | max. Rueckgang | netto 0,1 %/Seite |
+      |---|---|---|---|---|---|---|---|---|
+      | BTC | 56 | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
+      | ETH | 56 | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
+      | SOL | 56 | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
+      | Buy & Hold BTC | — | — | — | — | — | +20,2 % | -77 % | — |
+
+      **Lesart.** TSMOM haelt auf BTC netto (+9,5 % p.a. bei -14 % gegen +20,2 %
+      bei -77 %) - die halbe Rendite gegen einen Bruchteil des Rueckgangs. ETH/SOL
+      sind netto Null (t +0,58/+0,74); die QQQ/BTC-Rotation ist eine DATENLUECKE
+      (nur 92 QQQ-1D-Kerzen ab 2026-06-30 statt 2019..2026) und bleibt bis zum
+      Nachladen der QQQ-Tageskerzen offen. Befund und Tabelle:
+      MaxHirn/Wiki/Handel/Lektionen.md Abschnitt 'TSMOM (#0118)'.
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
