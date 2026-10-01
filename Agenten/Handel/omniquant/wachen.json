@@ -35,6 +35,8 @@
   "live_max_offene_positionen": 1,
   "live_max_gesamt_usd": 50,
   "mindest_guthaben_usd": 31.0,
+  "live_pf_ableitung": true,
+  "_live_pf_ableitung_vermerk": "true auf Auftrag Max 01.10.2026. Bis dahin waren nur die elf von Hand geprueften Namen im kraken_perp-Kern freigegeben; ein Kandidat, den der Prognose-Bericht erst spaeter brachte (HBAR-USDT, ONDO-USDT am 01.10. abends), wurde abgewiesen, obwohl der Zielmarkt ihn fuehrt. Diese Ableitung ist GEGEN /instruments geprueft - ein Name ohne Markt dort bleibt ein lauter Fehler und wird nie in einen anderen Markt umgelenkt. Zuruecknehmen: live_pf_ableitung auf false.",
   "freigabe": {
     "erfuellt": true,
     "papierlauf_min_runden": 50,
