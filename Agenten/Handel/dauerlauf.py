@@ -471,9 +471,13 @@ TAKT_MAX_MINUTEN = 15
 # -0,028 EUR auf 6 Handelsrunden) - solange nennt ihre --vorschau ZWEI
 # Gruende und nur_fenster_fehlt() verlangt genau einen, es geht also kein
 # Fenster auf. Die Aufnahme hier wirkt, sobald Bedingung 5 faellt.
+# OMNQUANT AM 01.10.2026 AUFGENOMMEN (Auftrag Max: "auto freigabe erlaubt").
+# Der Orderweg auf Kraken Futures ist gebaut (omniquant/kraken_perp.py +
+# live_perp.py, Hebel 6 als Sizing-Regel). Bindende Grenze ist die freie
+# Margin im flex-Konto (mindest_guthaben_usd 31).
 AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
-                 "trendwende_btc", "liq_wand")
+                 "trendwende_btc", "liq_wand", "omniquant")
 AUTO_FREIGABE_STUNDEN = 12
 
 
