@@ -306,6 +306,39 @@ eine NEGATIVE Aussage ist, ist ein Kandidat. Vor dem Umbau
 `grep -n "assertNotIn\|assertFalse" <spur>/tests/` laufen lassen und die Treffer
 einzeln durchgehen; der neue Vertrag steht danach in derselben Zeile.
 
+## Siebte Familie: der Test friert eine GEMESSENE ZAHL ein
+
+Ein Test, der je Spur einen gemessenen Wert als Paar auflistet
+(`("scanner", 0.0005), ("orbk", 0.006), …`), ist ein Standbild einer Messung:
+sobald jemand genauer misst, wird er rot, ohne dass der Code falsch waere.
+Gemessen am 01.10.2026, als die Gebuehrensatze an echten Fuellungen belegt wurden
+(scanner handelt OKX-SPOT und damit 0,10 %/Seite = `0.001`, nicht `0.0005`) und
+`test_kosten_wendepunkt` genau daran scheiterte — der Test sah wie ein Codefehler
+aus, war aber eine veraltete Messung.
+
+Die Zahl ist nicht das Gesetz, sondern eine FOLGE des Marktes. Also den Markt je
+Spur festhalten und den Satz daraus ableiten:
+
+```python
+MAERKTE = {"scanner": "okx_spot", "orb": "okx_perp", "orbk": "kraken_spot",
+           "mosaic": "kraken_spot", "liq_wand": "okx_perp"}
+SAETZE  = {"okx_spot": 0.001, "okx_perp": 0.0005, "kraken_spot": 0.006}
+
+self.assertEqual(SAETZE[MAERKTE[spur]], w["gebuehr_taker"],
+                 "%s (%s): Gebuehrenfeld fehlt oder hat den falschen Wert"
+                 % (spur, MAERKTE[spur]))
+```
+
+Dazu die zweite Zusicherung, die den Wert ueberhaupt pruefbar macht: **jeder Satz
+traegt seine Quelle** — `[k for k in w if k.startswith("_gebuehr")]` darf nicht
+leer sein (aeltere Wachen fuehren sie unter `_gebuehren` bzw.
+`_gebuehren_abo_widerlegt`, neue unter `_gebuehr_quelle`). Ein Wert ohne Notiz ist
+nicht nachpruefbar, auch wenn er richtig aussieht.
+
+Der Markt ist die Eigenschaft, die zaehlt: wechselt eine Spur die Boerse, MUSS
+der Test das zeigen (der Fehlertext nennt den Markt), waehrend ein neuer Messwert
+allein die Ableitung nicht kippt.
+
 ## Wann ein eingefrorener Stand DOCH richtig ist
 
 Wenn die Unveraenderlichkeit selbst der Vertrag ist und es keine formulierbare

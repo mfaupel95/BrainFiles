@@ -182,6 +182,12 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   lesen, und erst im NAECHSTEN Aufruf stagen und committen. Zaun-bewusst: Zeilen innerhalb
   eines Code-Zauns (die Format-Vorlage) zaehlen nicht als Eintrag.
   `cd "$HERMES_HOME/../.." && python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
+  **Der Pfad ist ein SCHALTER, kein positionales Argument:** `--pfad
+  MaxHirn/Archiv/TASKS.md`. Die Form `doppelte_nummern.py
+  MaxHirn/Archiv/TASKS.md` bricht mit `unrecognized arguments` ab — die Meldung
+  liest sich wie ein fehlendes Argument, nicht wie eine falsche Schreibweise, und
+  wer die Zeile als Ergebnis deutet, haelt das Gate fuer kaputt. Ohne `--pfad`
+  nimmt das Skript die Vorgabe (die Datei des Hauses).
 - `scripts/erledigen.py`: zieht EINEN Eintrag byte-genau nach `## Erledigt`,
   hakt ihn ab, haengt den Belegsatz an, legt `TASKS.md.bak-JJJJMMTT` an.
   Es prueft vor dem Schreiben (Nummer genau einmal, steht in `## Offen`, noch

@@ -203,14 +203,18 @@ def _kaputte_zeilen(pfad, zeuge=None):
     return kopf, zeilen, namen, kaputt, None
 
 
-def korrigiere_datei(pfad, anwenden=True, still=False):
+def korrigiere_datei(pfad, anwenden=True, still=False, zeuge=None):
     """EINE Journaldatei. Rueckgabe: (kaputte_zeilen, geschrieben).
 
     Getrennt von `nachziehen`, damit ein Aufrufer mit einem bekannten Pfad
     (die Hermes-Wache) genau diese Datei behandeln kann - und damit ein Test
     auf einem Temp-Journal laufen kann, ohne die echten Buecher zu suchen.
+    `zeuge=None` haelt das Werkzeug bei Fall 1 (kein Netz, wie die Wache es
+    ruft); ein rufbarer Zeuge (boese_zeug ueber eine positions-history)
+    zusaetzlich die Geister-Zeilen mit Nicht-Null-Erloes gegen die Boerse
+    pruefen (Fall 2, T-276).
     """
-    kopf, zeilen, namen, kaputt, fehler = _kaputte_zeilen(pfad)
+    kopf, zeilen, namen, kaputt, fehler = _kaputte_zeilen(pfad, zeuge=zeuge)
     if fehler or not kaputt:
         return [], False
     if not still:
@@ -233,10 +237,39 @@ def korrigiere_datei(pfad, anwenden=True, still=False):
     return kaputt, True
 
 
-def nachziehen(spur=None, anwenden=False):
+def hol_boersengeschichte(limit=100):
+    """Die zuletzt geschlossenen Positionen bei OKX (xperp-Ebene, nur lesend).
+
+    Over die okxf-Module derselben Spur - Schluessel und Host liegen schon in
+    den Windows-Benutzervariablen, und die Antwort ist die einzige Stelle, an
+    der OKX ein realisiertes Ergebnis je Position fuehrt.
+    """
+    if HIER not in sys.path:
+        sys.path.insert(0, HIER)
+    import okxf
+    return okxf.geschlossene_positionen(limit=limit)
+
+
+def nachziehen(spur=None, anwenden=False, gegen_boerse=False):
+    zeuge = None
+    if gegen_boerse:
+        if spur not in (None, "xperp"):
+            print("Die Boersengegenprobe (Fall 2) kennt nur die xperp-Spur - "
+                  "okxf ist ihre Boerse. Mit --spur %s laeuft nur Fall 1." % spur)
+        try:
+            history = hol_boersengeschichte()
+            import functools
+            zeuge = functools.partial(boese_zeug, history)
+            print("Boersenhistorie geholt: %d geschlossene Positionen als Zeugen."
+                  % len(history or []))
+        except Exception as e:                                       # noqa: BLE001
+            print("BOERSENZEUGEN NICHT HOLBAR (%s: %s) - Fall 2 faellt aus, "
+                  "Fall 1 laeuft wie bisher." % (type(e).__name__, e))
     gesamt = 0
     for p in _journale(spur):
-        kaputt, geschrieben = korrigiere_datei(p, anwenden=anwenden)
+        zeuge_p = zeuge if (zeuge is not None and
+                             (os.sep + "xperp" + os.sep) in p) else None
+        kaputt, geschrieben = korrigiere_datei(p, anwenden=anwenden, zeuge=zeuge_p)
         if kaputt:
             gesamt += len(kaputt)
     if not gesamt:
@@ -255,8 +288,12 @@ def main(argv=None):
     ap.add_argument("--anwenden", action="store_true")
     ap.add_argument("--vorschau", action="store_true",
                     help="nur zeigen (Standard, wenn --anwenden fehlt)")
+    ap.add_argument("--gegen-boerse", action="store_true",
+                    help="Fall 2 (T-276): Geister-Zeilen mit Nicht-Null-Erloes "
+                         "gegen /account/positions-history pruefen (nur xperp, "
+                         "nur lesend, kein Orderweg)")
     a = ap.parse_args(argv)
-    return nachziehen(spur=a.spur, anwenden=a.anwenden)
+    return nachziehen(spur=a.spur, anwenden=a.anwenden, gegen_boerse=a.gegen_boerse)
 
 
 if __name__ == "__main__":

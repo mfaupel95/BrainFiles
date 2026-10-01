@@ -341,6 +341,25 @@ Faelle ueber diese Instanz die Attrappe statt den Code — die eigenen Faelle br
 ein FRISCH geladenes Modul. Und die Namen sind nicht uebertragbar (Modulvariable,
 Hilfsfunktion, Pfadkonstante): geraten (`W`, `HIER`, `JETZT`) reisst die ganze
 Suite mit `NameError` um, obwohl der Testcode fachlich stimmt.
+6. **Der Zugriff geht ueber die Haus-Funktion, nicht ueber die Rohform daneben.**
+   Eine Wache, die den Abruf selbst nachbaut, prueft ihren Nachbau statt der
+   Sache. Gemessen an einem Kontozustand: der Kontostandsabruf liefert die Namen
+   des Handelsplatzes (`ZEUR`, `XXBT`), nicht die lesbaren (`EUR`, `XBT`) - wer
+   `staende["EUR"]` liest, bekommt 0.00 und meldet ein geschlossenes Tor, das
+   weit offen ist; und die Orderlisten-Funktion gab bereits FERTIG
+   `{id: {seite, menge, …}}` zurueck, waehrend die Wache noch eine Huelle
+   darueber (`["open"]`) und andere Feldnamen (`type`/`vol`) erwartete - zusammen
+   meldete die erste Fassung ALLE Schutzauftraege als fehlend. Beide Befunde
+   waren falsch, und ein Fehlalarm ist hier teurer als eine spaete Meldung: er
+   schickt den Nutzer nachts zu Positionen, die die ganze Zeit geschuetzt waren.
+   Also die vorhandene Funktion der Komponente aufrufen (Guthabenlage,
+   Orderliste) und nur die Felder lesen, die sie wirklich liefert - die
+   Feldnamen EINMAL ausgeben und gegen den Aufruf halten, statt sie aus dem
+   Kopf zu schreiben. **Und den Merker der ersten Fassung danach LOESCHEN,
+   nicht erben:** er traegt die Fehlurteile als „schon gemeldet“ und wuerde die
+   korrigierten Befunde verschlucken. Nach der Korrektur den ersten Lauf gegen
+   einen zweiten pruefen - der zweite muss LEER sein, sonst ist die Wache noch
+   falsch (oder es steht wirklich etwas an).
 
 **Der Job-Status `ok` sagt nur, dass der Auftrag gelaufen ist.** Eine Wache, die
 einen Messfehler oder eine echte Fundmenge meldet, ist genauso `ok` wie eine

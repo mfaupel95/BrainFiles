@@ -93,7 +93,45 @@ dreht dabei ein LF-Zeilenende auf CRLF. Der Diff zeigt danach die GANZE Datei
   auch solange die Bedingung noch sperrt - sie greift dann von selbst, sobald die
   Bedingung faellt.
 
-## 5. „Scharf“ heisst nicht „handelnd“
+## 5. Eine quantitative Bedingung AUSSETZEN statt loeschen
+
+Entscheidet der Nutzer, dass eine reissende Bedingung nicht mehr gelten soll
+(„Bedingung 5 entfaellt“), wird sie **abschaltbar gemacht, nicht entfernt**: ein
+Feld in der `wachen.json`, dessen Vorgabe „gilt“ ist.
+
+```json
+"bedingung_5_aktiv": false,
+"_bedingung_5_entfaellt": "<Datum> <wer>: <Grund>, beide Messungen, wie man es zuruecknimmt"
+```
+
+Die Lesefunktion (`bedingung_5_gilt(w)`) gibt bei FEHLENDEM Feld `True` zurueck —
+nur ein ausdrueckliches `false` oeffnet. So bleibt die Bedingung fuer jede andere
+Spur und fuer jede spaetere Fassung derselben Spur in Kraft, und der Weg zurueck
+ist ein Zeichen.
+
+**Die Bedingung wird an JEDER Stelle gelesen, an der sie wirkt — es sind zwei.**
+Wer nur die Sperrliste umstellt, hat die Haelfte gemacht: der Sperrtext nennt den
+Grund nicht mehr, `sperre_zu()` schliesst die Sperre aber weiter. Beide Stellen
+pruefen (Sperrgrund UND Sperr-Schliessung) und die Anzeigezeile den Zustand
+nennen lassen (`NEGATIV, Sperre ausgesetzt`), sonst sieht die Spur gesund aus und
+sperrt sich beim naechsten `--wachen` wieder.
+
+Nach dem Umlegen:
+
+1. `handel_erlaubt` **erneut** auf `true` — `sperre_zu()` hat es beim vorigen
+   Aufruf bereits auf `false` gestellt (Abschnitt 4), das ist kein neuer Fehler.
+2. `--vorschau` muss **genau einen** Grund nennen (das Freigabefenster) oder
+   `nichts`; erst dann greift `nur_fenster_fehlt` und die Auto-Freigabe oeffnet.
+3. **Ein Test, der rot werden kann:** die Lesefunktion voruebergehend auf
+   `return True` stellen, die Suite fahren — die Faelle „Sperre ausgesetzt“
+   muessen fallen — und zuruecknehmen. Ohne diese Gegenprobe ist die Lockerung
+   eine unsichtbare Codeverzweigung.
+4. Das Fenster von Hand oeffnen ist erlaubt und wirkt sofort
+   (`freigabefenster.anfrage_stellen(spur, 12*60)` + `oeffnen(spur, 12, "auto")`,
+   genau der Weg, den der Dauerlauf geht) — die Aufnahme in `AUTO_FREIGABE`
+   wirkt dagegen erst nach dessen Neustart.
+
+## 6. „Scharf“ heisst nicht „handelnd“
 
 Jede Spur handelt erst bei ihrem EIGENEN Signal (frischer Kopier-Kauf, Score,
 Gate). Nach dem Scharfstellen kann es Stunden oder Tage dauern, bis die erste

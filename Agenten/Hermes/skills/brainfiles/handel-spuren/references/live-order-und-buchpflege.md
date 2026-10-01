@@ -147,6 +147,34 @@ Ergebnis: echte Position ohne Buch.
   `zweite-boerse.md`). Ein Ziel, das im Papierzweig "erreicht" war, kann live weit
   entfernt sein - erst nachsehen, dann erwarten.
 
+### 4a. Eine Variable, die nur im LIVE-Zweig entsteht, toetet den PAPIERzweig
+
+Die beiden Zweige teilen sich den Rumpf hinter der Verzweigung. Wird eine
+Variable im `if live:`-Zweig gebunden und danach im gemeinsamen Buchungssatz
+gelesen, wirft der PAPIERzweig `UnboundLocalError` - und der Papierzweig ist der,
+der am haeufigsten laeuft (Fenster zu, `handel_erlaubt=false`, jede Stufe).
+Gemessen: `gefuellt`/`fuellung_bestaetigt` entstanden nur im Live-Zweig (sie kamen
+mit der Fuellungs-Abfrage), der gemeinsame Satz las sie - **jeder Papierkauf warf
+seit Tagen**, waehrend die Spur live normal weiterkaufte und der Treiber den
+Fehler nur als "fehlgeschlagener Zyklus" verbuchte.
+
+- **Gemeinsam genutzte Variablen werden VOR der Verzweigung vorbelegt**, mit dem
+  Wert, der fuer den anderen Zweig gilt - hier: ein Papierkauf hat keine
+  Boersenfuellung, also `gefuellt, fuellung_bestaetigt = menge, True`. Eine
+  Vorbelegung mit `None` waere die naechste Falle (der Buchungssatz schreibt sie
+  in den Zustand).
+- **Jeder Zweig wird einmal echt gefahren.** Ein Test, der nur den Live-Zweig
+  anfasst, ist gruen, waehrend der Papierzweig in jedem Zyklus stirbt; die
+  Testform fuer den Papierzweig steht in Abschnitt 4.
+- **Nach einem roten Lauf nicht aufhoeren beim ersten Fix.** Die acht roten Tests
+  hatten drei Ursachen uebereinander (Zweig-Variable, eine Attrappe ohne die neue
+  Funktion, ein Test mit dem Stand VOR der Regel); nach jedem Fix neu fahren -
+  die naechste Schicht wird erst sichtbar, wenn die vorige weg ist.
+- **Eine Attrappe, die eine aufgerufene Funktion gar nicht kennt, macht den Test
+  ROT** (`AttributeError`) - das ist die gute Richtung und der Grund, warum die
+  Suite den Zweig-Fehler ueberhaupt fand. Wer die Attrappe um die fehlende
+  Funktion erweitert, prueft danach den GANZEN Weg, nicht nur den einen Aufruf.
+
 ## 5. Nach jeder Wiederherstellung: hat die Position einen Stop?
 
 `attachAlgoOrds` werden beim Fuellen aktiv - greift das nicht (z. B. weil die

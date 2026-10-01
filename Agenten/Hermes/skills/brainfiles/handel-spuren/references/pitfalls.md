@@ -1169,4 +1169,27 @@ Kurzfassung ersetzt die Begruendung nicht.
   `pruefe_ausstiege`, die Rechnung liegt in grid.py) heraus - beide mit einem ECHTEN
   Lauf belegt. Der Reiter bietet seither vier Spuren an: squeeze, wavetrend,
   macd_mtf, supertrend.
+- **Ein Backtest-Ergebnis traegt nur mit der Ausstiegsregel, mit der es gemessen
+  wurde.** Wird die Ausstiegsregel geaendert, sind ALLE alten Zahlen ungueltig und
+  werden NEU gemessen - nicht weiterzitiert. Belegt am 01.10.2026: die vier
+  Indikator-Spuren ueber die volle Historie, Ausstieg an der beruehrten Marke
+  (sind beide Marken in einer Kerze, gilt der STOP), Gebuehr aus der Wachen
+  (0,20 % je Runde):
 
+      Spur         Runden   Treffer   f_max/Runde   Abstand zur Rundengebuehr
+      supertrend     854     35,8 %     0,380 %       1,90x
+      squeeze       1088     34,9 %     0,239 %       1,20x
+      macd_mtf      1209     34,7 %     0,200 %       1,00x (genau null)
+      wavetrend     1506     33,2 %    -0,020 %      -0,10x (tot)
+
+  Die im Wiki notierten 51-54 % Treffer stammten von VOR dieser Regel: ein
+  Ausstieg am Kerzenschluss zaehlte auch dann als Gewinn, wenn der Stop im Docht
+  gerissen wurde. Die Regel senkte die Quoten um 15-20 Punkte und rueckte `f_max`
+  an die Rundengebuehr heran - `macd_mtf` liegt exakt auf der Nulllinie,
+  `wavetrend` ist bei 0 % Gebuehr schon negativ. Auf Kraken (1,2 %/Runde) waere
+  keine der vier tragfaehig. **Merksatz: eine Trefferquote ohne die Ausstiegsregel
+  daneben ist keine Kennzahl** - wer die alten Zahlen im Kopf hat, haelt diese
+  Spuren fuer deutlich robuster als sie sind.
+  Die Gegenprobe je Lauf ist `replay.auf_der_marke(journal)` (alle Austritte an
+  einer Marke) - und der Vergleich der Trefferquote GEGEN den notierten Stand,
+  nicht gegen das Gedaechtnis.

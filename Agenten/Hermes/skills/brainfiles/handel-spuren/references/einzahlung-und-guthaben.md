@@ -84,6 +84,22 @@ voll aussehendes `eq` kann bei `availEq` fast nichts bedeuten.
   Geld", nicht wie ein Fehler. Gegenprobe nach dem Fix am echten Konto (nicht
   am Testfixture) und in der `--vorschau` der Spur: der Guthaben-Sperrgrund
   muss VERSCHWINDEN, wenn Geld da ist.
+- **Spot -> Futures-Wallet bewegen geht NICHT ueber die Futures-API.**
+  `/derivatives/api/v3/transfer` nimmt nur `amount`/`fromAccount`/`toAccount`/
+  `unit` und lehnt alles ab, was nicht auf der Futures-Seite liegt
+  (`invalidAccount` = falscher Account-WERT, nicht falscher Schluessel; von
+  `spot` sagt sogar der offizielle Weg: "does not yet support transfers from
+  spot"). Der Weg Richtung Futures-Wallet laeuft ueber die SPOT-Seite
+  (`Withdraw` mit dem Futures-Wallet als Ziel) und braucht die Withdraw-
+  Berechtigung am SPOT-Key - fehlt sie, antwortet `EGeneral:Permission denied`
+  und die Bewegung ist eine Portal-Aktion von Max (Boersen-Oberflaeche oder
+  Key-Editor), kein API-Retry. Ein Probe-Transfer mit `amount: 1.0` ist
+  gefahrlos (er laesst sich sofort zurueckbuchen); erst nach dem Beleg die
+  volle Menge senden. Die offizielle kraken-cli liest
+  `KRAKEN_FUTURES_API_KEY`/`_SECRET` (Mehrzahl), die Haus-Variablen heissen
+  `KRAKEN_FUTURE_*` (Einzahl) - der Wrapper `kraken.ps1` setzt sie, der
+  Raw-Aufruf nicht. Das `flex`-Konto nimmt EUR und USDC als Collateral
+  (Settlement-Liste); EUR dort zaehlt als USD-Aequivalent im availableMargin.
 - **Kein Geld selbst bewegen.** Ein Transfer zwischen Konten ist eine Kontohandlung
   und erst nach ausdruecklichem Ja faellig; bis dahin baut man den Weg (z. B.
   `POST /transfer`) und laesst ihn liegen. Dasselbe gilt fuer Umschichten in eine
