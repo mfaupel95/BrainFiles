@@ -689,6 +689,23 @@ def _gruende(spur):
     return sorted(zaehler.items(), key=lambda kv: -kv[1])
 
 
+def _brutto_zusatz(k):
+    """Der kurze Zusatz, der sagt, ob die Zahl brutto ist (T-192, 01.10.2026).
+
+    EINE Stelle: /strategien und /bericht zeigen dieselbe Zeile, und beide
+    muessen dieselbe Auskunft geben. Ohne den Zusatz liest sich die Zahl auf
+    dem Handy wie ein Nettoergebnis - und zwei Spuren mit Verschiedenem
+    werden vergleichbar. Leer, wenn die Spur schon netto rechnet.
+    """
+    if not k.get("brutto"):
+        return ""
+    if k.get("gebuehr") and k.get("einsatz"):
+        return "  netto %+.2f" % k["netto"]
+    if not k.get("einsatz"):
+        return "  (Punkte, brutto)"
+    return "  (brutto, Gebuehr unbekannt)"
+
+
 def strategien():
     """Die BILANZ aller Spuren nebeneinander - je Spur aus ihrer Quelle.
 
@@ -707,10 +724,12 @@ def strategien():
         for spur in liste:
             k = aa.kennzahlen_fuer(spur)
             if k:
-                text = "%d Runden  %3.0f %% Treffer  %+.2f USD" % (
-                    k["n"], k["treffer_pct"], k["ergebnis"])
+                text = "%d Runden  %3.0f %% Treffer  %+.2f %s" % (
+                    k["n"], k["treffer_pct"], k["ergebnis"],
+                    k.get("einheit") or "USD")
                 if k.get("n_stoerung"):
                     text += "  (+%d Betriebsstoerung)" % k["n_stoerung"]
+                text += _brutto_zusatz(k)
                 if k["n"] < aa.MIN_RUNDEN:
                     text += "  *"
             elif spur in EIGENE_AUSWERTUNG:

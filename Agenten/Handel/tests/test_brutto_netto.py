@@ -168,5 +168,49 @@ class VerdrahtungTest(unittest.TestCase):
         self.assertEqual(auswertung_alle.einheit_fuer("orb"), "Punkte")
 
 
+class AnzeigeTest(unittest.TestCase):
+    """/strategien und der Tagesbericht sagen dasselbe (T-192)."""
+
+    def test_strategien_haengt_netto_an(self):
+        import befehle
+        k = auswertung_alle.kennzahlen([_runde(1000.0, 20.0)], "USD",
+                                       gebuehr=0.006)
+        self.assertIn("netto", befehle._brutto_zusatz(k))
+
+    def test_strategien_schweigt_wenn_schon_netto(self):
+        import befehle
+        k = auswertung_alle.kennzahlen([_runde(1000.0, 20.0)], "USD",
+                                       gebuehr=0.006, brutto=False)
+        self.assertEqual(befehle._brutto_zusatz(k), "")
+
+    def test_strategien_erkennt_das_punktebuch(self):
+        import befehle
+        k = auswertung_alle.kennzahlen([_runde(0.0, 3.95)], "Punkte",
+                                       gebuehr=0.006)
+        self.assertIn("Punkte", befehle._brutto_zusatz(k))
+
+    def test_strategien_sagt_unbekannt_statt_null(self):
+        import befehle
+        k = auswertung_alle.kennzahlen([_runde(1000.0, 20.0)], "USD")
+        self.assertIn("unbekannt", befehle._brutto_zusatz(k))
+
+    def test_tagesbericht_zeile_nennt_brutto_und_netto(self):
+        import tagesbericht
+        k = auswertung_alle.kennzahlen([_runde(1000.0, 20.0)], "USD",
+                                       gebuehr=0.006)
+        s = {"buchlage": "belastbar", "kennzahlen": k, "waehrung": "USD"}
+        zeile = tagesbericht.rundenzeile(s)
+        self.assertIn("7 Tage", zeile)
+        self.assertIn("brutto", zeile)
+        self.assertIn("+8.00", zeile)
+
+    def test_tagesbericht_zeile_bleibt_ohne_zusatz_bei_netto(self):
+        import tagesbericht
+        k = auswertung_alle.kennzahlen([_runde(1000.0, 20.0)], "USD",
+                                       gebuehr=0.006, brutto=False)
+        s = {"buchlage": "belastbar", "kennzahlen": k, "waehrung": "USD"}
+        self.assertNotIn("brutto", tagesbericht.rundenzeile(s))
+
+
 if __name__ == "__main__":
     unittest.main()

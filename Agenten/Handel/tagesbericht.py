@@ -522,6 +522,18 @@ def rundenzeile(s):
         z = ("  7 Tage: %d Runden, %+.2f %s, Treffer %d%%"
              % (k["n"], k["ergebnis"], s["waehrung"],
                 round(100.0 * k["treffer"] / k["n"])))
+        # BRUTTO ODER NETTO (T-192, 01.10.2026): Die Papierbuecher schreiben
+        # ihre Zeilen OHNE Gebuehr - dann ist die Zahl kein Nettoergebnis und
+        # darf nicht so gelesen werden. Steht die Gebuehr in der wachen.json,
+        # wird die Nettosumme daneben gestellt (nicht stillschweigend
+        # abgezogen: die Zeile soll zeigen, was der Satz ausmacht).
+        if k.get("brutto"):
+            einheit = k.get("einheit") or s["waehrung"]
+            if k.get("gebuehr") and k.get("einsatz"):
+                z += (" (brutto, netto nach %.2f %% je Seite %+.2f %s)"
+                      % (100.0 * k["gebuehr"], k["netto"], einheit))
+            elif k.get("einsatz"):
+                z += " (brutto, Gebuehr unbekannt)"
         if k.get("n_stoerung"):
             z += (" | +%d Ausstiege ohne Handelsentscheidung (%+.2f %s,"
                   " nicht in der Quote)"
