@@ -66,13 +66,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Grund ist nicht die Suite: Commit `aecd6178 Omniquant scharf: Schalter, Haken und
       Auto-Freigabe gesetzt` hat `omniquant/wachen.json` auf handel_erlaubt=true gehoben
       (gemessen 01.10.2026), der Test verlangt aber weiter den Papierstand von damals.
-      Die FASSUNG (`wachen.weit.json`) steht weiter auf false - der Schattenarm laeuft
-      also Papier, die Hauptspur ist live. Der Test prueft die falsche Datei fuer die
-      falsche Behauptung.
-      Naechster Schritt: den Auftrag auf den neuen Stand ziehen - die Schattenversion
-      muss Papier bleiben (aus `wachen.weit.json` lesen), fuer die Hauptspur
-      ausdruecklich pruefen, was bestellt war, statt den Altwert einzufrieren.
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      KORREKTUR 2026-10-01 (nach dem Eintrag nachgelesen): der Test liest
+      `omniquant/wachen.json`, also die HAUPTspur - die Datei ist richtig, nur die
+      Erwartung ist ueberholt. Der Schattenarm (`wachen.weit.json`) steht weiter auf
+      false; das ist eine eigene, zweite Frage.
+      Naechster Schritt: Entscheidung Max - bleibt Omniquant mit aecd6178 live (dann
+      den Test auf `handel_erlaubt=true` ziehen und die Papier-Behauptung streichen)
+      oder wird die Scharfschaltung zurueckgenommen (dann Schalter zurueck, Test bleibt
+      wie er ist). Fuer den Schattenarm fehlt ein eigener Pruefblock auf
+      `wachen.weit.json` - der ist bisher ungetestet.
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (KORREKTUR)
       Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
 
 
