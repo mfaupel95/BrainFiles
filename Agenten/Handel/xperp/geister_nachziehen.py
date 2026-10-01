@@ -95,7 +95,7 @@ def boese_zeug(history, inst, kontrakte, zeit):
         if str(e.get("instId") or "") != str(inst):
             continue
         try:
-            if abs(float(e.get("closedPos") or 0.0) - k) > 1e-6:
+            if abs(float(e.get("closeTotalPos") or 0.0) - k) > 1e-6:
                 continue
             t = int(e.get("uTime") or 0)
         except (TypeError, ValueError):
@@ -268,7 +268,7 @@ def nachziehen(spur=None, anwenden=False, gegen_boerse=False):
     gesamt = 0
     for p in _journale(spur):
         zeuge_p = zeuge if (zeuge is not None and
-                             (os.sep + "xperp" + os.sep) in p) else None
+                             "/xperp/" in p.replace("\\", "/")) else None
         kaputt, geschrieben = korrigiere_datei(p, anwenden=anwenden, zeuge=zeuge_p)
         if kaputt:
             gesamt += len(kaputt)

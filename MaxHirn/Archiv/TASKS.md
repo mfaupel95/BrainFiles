@@ -315,21 +315,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Kraken-Konto, OKX-Konto
 
 
-- [ ] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
-      Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
-      bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
-      nur 5 echte Runden mit -13.59. Zwei Zeilen widerlegt die Boersenhistorie:
-      BZ-USD_UM_XPERP-310509 (175 Kontrakte, Buch -107.59 gegen
-      /account/positions-history realizedPnl -3.91) und XAU (Buch -79.70 gegen
-      Boerse +0.45) - zusammen rund 184 USD fiktiv. LIT (-22.03), LTC (-10.96) und
-      IOST (-6.78) stimmen dagegen zeichengenau. geister_nachziehen.py fasst diese
-      Zeilen NICHT an, weil es nur grund=buchbereinigung_geist UND erloes==0.00
-      repariert.
-      Naechster Schritt: das Werkzeug um den zweiten Fall erweitern (Erloes gegen
-      die Boersenhistorie pruefen) oder die zwei Zeilen auf den Boersenwert ziehen;
-      danach faellt die Rueckgabe auf rund 96 USD und der Kill-Switch (250) loest
-      nicht mehr aus - xperp waere armierbar.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/handelsjournal.csv, geister_nachziehen.py
 
 - [ ] **T-277 - xperp XRP: Buch fuehrt 704 Kontrakte, die Boerse 295**
       Kontext: zustand.json traegt XRP-USD_UM_XPERP-310404 mit kontrakte 704.0 und
@@ -3159,6 +3144,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
+      Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
+      bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
+      nur 5 echte Runden mit -13.59. Zwei Zeilen widerlegt die Boersenhistorie:
+      BZ-USD_UM_XPERP-310509 (175 Kontrakte, Buch -107.59 gegen
+      /account/positions-history realizedPnl -3.91) und XAU (Buch -79.70 gegen
+      Boerse +0.45) - zusammen rund 184 USD fiktiv. LIT (-22.03), LTC (-10.96) und
+      IOST (-6.78) stimmen dagegen zeichengenau. geister_nachziehen.py fasst diese
+      Zeilen NICHT an, weil es nur grund=buchbereinigung_geist UND erloes==0.00
+      repariert.
+      Naechster Schritt: das Werkzeug um den zweiten Fall erweitern (Erloes gegen
+      die Boersenhistorie pruefen) oder die zwei Zeilen auf den Boersenwert ziehen;
+      danach faellt die Rueckgabe auf rund 96 USD und der Kill-Switch (250) loest
+      nicht mehr aus - xperp waere armierbar.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/handelsjournal.csv, geister_nachziehen.py
+      01.10.2026 ausgerollt: geister_nachziehen.py Fall 2 (--gegen-boerse) — prueft jede Geister-Zeile mit Nicht-Null-Erloes gegen /account/positions-history (instId + closeTotalPos + Zeitfenster 12 h), korrigiert Abweichungen >1 USD. Ergebnis: 9 Zeilen auf echten Boersenwert gezogen (u.a. XAU 80.07→160.22, BZ 30.46→134.14). Ruecklauf 279.85→91.11, Peak 497.42→395.63. Kill-Kurve jetzt ehrlich; T-274 kann neu bewerten.
 - [x] **T-290 — Beleg: nimmt Kraken Futures den leverage-Parameter an**
   Kontext: Hebel 7 geht als leverage-Feld mit jeder Order (weg.py); gemessen ist nur der Einschussplan EEA retail 10 % = max 10x. Mit laufendem NordLynx weist Futures ab (authenticationError).
   Naechster Schritt: 1 Kontrakt PF_SOLUSD mit leverage 7 kaufen und sofort schliessen (~0,12 USD Gebuehr) - braucht Guthaben (T-291) und VPN aus.
