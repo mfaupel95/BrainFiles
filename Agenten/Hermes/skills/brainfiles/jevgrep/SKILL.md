@@ -65,9 +65,15 @@ jevgrep-Anfragen an und beantwortet sie ueber ein OpenAI-kompatibles Modell — 
 noetig.
 
 ```powershell
-python Agenten\Werkzeuge\jevgrep\jev_bruecke.py     # laeuft lokal (Ollama)
+Agenten\Werkzeuge\jevgrep\bruecke-mercury.cmd          # Mercury 2.5 (laeuft, gemessen)
 'lokal' | .\jevgrep.cmd auth --provider custom --base-url http://127.0.0.1:8742/v1 --model bruecke --stdin
 ```
+
+Mercury 2.5 ist verdrahtet (`INCEPTION_API_KEY` als Benutzervariable, wird aus der
+Registry gelesen): Suche ueber `Agenten/Handel/scanner` 66 Dateien in 56,7 s, 13 Treffer,
+70 Anfragen ~447.000 Token = **1,8 US-Cent** (10 Mio. Gratis-Token je Schluessel ≈ 22
+Suchen). Jev (Zen) war 6,2 s schnell und gratis, aber rate-limitiert. Beide finden
+dieselben Kernstellen.
 
 Gemessen (lokales Ollama, 01.10.2026) - **lokal ist mechanisch moeglich, aber als
 Richter nicht belastbar**: `qwen35-8k` gibt es nicht mehr (`HTTP 404`, alle Dateien

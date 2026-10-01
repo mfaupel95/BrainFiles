@@ -56,6 +56,43 @@ SCHLUESSEL = os.environ.get("JEVCREP_BRUECKE_SCHLUESSEL", "")
 FRIST = float(os.environ.get("JEVCREP_BRUECKE_FRIST", "120"))
 OHNE_DENKEN = os.environ.get("JEVCREP_BRUECKE_MITDENKEN", "0") != "1"
 
+# Welche Windows-Variable gehoert zu welchem Anbieter? Wird gebraucht, damit ein
+# frisch gesetztes `setx` auch ohne neue Anmeldung wirkt und der Wert nie in einer
+# Kommandozeile steht.
+SCHLUESSEL_JE_HOST = (
+    ("inceptionlabs", "INCEPTION_API_KEY"),
+    ("opencode.ai", "OPENCODE_API_KEY"),
+)
+
+
+def _aus_registry(name: str) -> str | None:
+    try:
+        import winreg
+    except ImportError:
+        return None
+    for wurzel in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        try:
+            with winreg.OpenKey(wurzel, "Environment") as k:
+                wert, _ = winreg.QueryValueEx(k, name)
+        except OSError:
+            continue
+        if isinstance(wert, str) and wert.strip():
+            return wert.strip()
+    return None
+
+
+def schluessel_fuer(basis: str) -> str:
+    """Den passenden Schluessel holen: erst Prozessumgebung, dann Registry."""
+    for host, name in SCHLUESSEL_JE_HOST:
+        if host in basis:
+            wert = os.environ.get(name) or _aus_registry(name)
+            if wert:
+                return wert
+    return ""
+
+
+SCHLUESSEL = SCHLUESSEL or schluessel_fuer(BASIS)
+
 ANWEISUNG = (
     "Du bist ein Relevanz-Richter fuer Quelltext. Du bekommst einen ZUSTAND "
     "(Quelltextausschnitte) und mehrere FRAGEN mit Kennungen. Beantworte jede Frage "

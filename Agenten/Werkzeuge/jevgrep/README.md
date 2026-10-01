@@ -162,6 +162,24 @@ hinter derselben Bruecke ist der naechste Kandidat (260k Kontext, 1.107 tok/s,
 100 Mio. Gratis-Token). Nachmessen: `python messung_lokal.py <modell> [zeichen]`,
 laufende Bruecke pruefen: `python pruefe_bruecke.py`.
 
+## Mercury 2.5 (Inception) — verdrahtet und gemessen
+
+`INCEPTION_API_KEY` als Windows-Benutzervariable, Start ueber
+`bruecke-mercury.cmd` (Fenster offen lassen). Gemessener Kopf-an-Kopf-Vergleich,
+Suche ueber `Agenten/Handel/scanner` (66 Dateien):
+
+| | Jev (Zen) | Mercury 2.5 |
+|---|---|---|
+| Dauer | 6,2 s | **56,7 s** |
+| Treffer | 22 | 13 |
+| Anfragen / Token | — | 70 / ~447.000 |
+| Kosten je Suche | 0 im Gratis-Limit, sonst ~4 US-Cent | **1,8 US-Cent** (Promo), 8,9 Cent Liste |
+| Gratis-Kontingent | Limit war nach ~10 Suchen weg | 10 Mio. Token je Schluessel ≈ 22 Suchen |
+
+Beide finden dieselben Kernstellen (`handeln.py`, `boersenstops.py`,
+`wachen_pruefung.py`). Zurueck zu Zen:
+`python von_opencode_anmelden.py --anwenden`.
+
 ## Nachweis
 
 `Werkzeuge/jevgrep/test_jevgrep.py` faehrt eine Attrappe eines

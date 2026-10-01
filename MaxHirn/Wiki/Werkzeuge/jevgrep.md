@@ -166,6 +166,34 @@ Nachweis ohne jeden Schluessel: `python Agenten/Werkzeuge/jevgrep/test_jev_bruec
 (8 Tests, inklusive echtem Durchlauf jevgrep -> Bruecke -> Modell -> Trefferliste).
 Eine laufende Bruecke pruefen: `python Agenten/Werkzeuge/jevgrep/pruefe_bruecke.py`.
 
+## Mercury 2.5 laeuft — Kopf an Kopf mit Jev
+
+Seit 01.10.2026 ist die Bruecke mit **Inception Mercury 2.5** verdrahtet
+(`INCEPTION_API_KEY` als Windows-Benutzervariable, wird aus der Registry gelesen).
+Starten: `Agenten\Werkzeuge\jevgrep\bruecke-mercury.cmd` — Fenster offen lassen,
+solange gesucht wird.
+
+| | Jev (OpenCode Zen) | Mercury 2.5 (ueber die Bruecke) |
+|---|---|---|
+| Suche `Agenten/Handel/scanner` (66 Dateien) | 6,2 s | **56,7 s** |
+| Treffer | 22 | 13 |
+| Anfragen / Token | — | 70 / ~447.000 |
+| Kosten je Suche | 0 im Gratis-Kontingent, sonst ~4 US-Cent | **1,8 US-Cent** (Promo 0,04 USD/1M), 8,9 Cent Listenpreis |
+| Kontingent | Gratis-Limit war nach ~10 Suchen weg | 10 Mio. Gratis-Token je Schluessel ≈ **22 Suchen**, Free-Plan 100 Mio. ≈ 220 |
+| Antwortzeit je Anfrage | — | Median 1,40 s (0,42-7,38 s) |
+
+Beide liefern dieselben Kernstellen (`handeln.py`, `boersenstops.py`,
+`wachen_pruefung.py`). Mercury ist langsamer (jevgrep wartet auf mehr Runden), dafuer
+unabhaengig vom Gratis-Limit. **Das lokale Modell bleibt draussen** — es war 51 s
+langsam und urteilte falsch.
+
+**Zurueck zu Zen** (ersetzt die gespeicherte Anmeldung, die Bruecke braucht dann
+nicht zu laufen):
+
+```powershell
+python Agenten\Werkzeuge\jevgrep\von_opencode_anmelden.py --anwenden
+```
+
 ## Wenn nichts geht: zwei Antworten, gemessen
 
 `Agenten/Werkzeuge/jevgrep/sonde_zen.py` fragt den Endpunkt direkt (ohne jevgrep) und
