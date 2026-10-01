@@ -464,15 +464,55 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Ursache offen)**
+- [?] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Lösung bereit)**
       Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
       zum Neustart 01.10. 00:45 keine einzige Zeile - das Log endete mitten in einer normalen
-      Runde, ohne Traceback. Ein Netzabruf ohne Zeitablauf sieht genau so aus. Die
-      erweiterte `moondev-agenten-wache` meldet das jetzt (Stillstand ab 60 min, hoechstens
-      alle 6 h), der Treiber startet den Agenten neu - beides kuriert nur das Symptom.
-      Naechster Schritt: im Fremd-Repo `Werkstatt/Repos/moon-dev-ai-agents` den Kraken-Abruf
-      (`kraken_roe_oeffentlich`) auf einen Zeitablauf pruefen und einen setzen.
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py, Werkstatt/Repos/moon-dev-ai-agents
+      Runde, ohne Traceback. Ursache: Ollama (oder das OS-Netz) friert ein, timeout=120 in
+      llm_lokal() wirkt nicht (OS-Ebene).
+      LÖSUNG (Fremd-Repo, Max anwenden:
+      Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py):
+        1. `import threading` hinzufuegen (nach Zeile 22)
+        2. Funktion einfuegen:
+
+           ```python
+           def _zyklus_watchdog(timeout_s: float = 900.0) -> threading.Timer:
+               """Watchdog fuer den Gesamtzyklus (T-260).
+               Wenn ein Zyklus laenger als timeout_s (Vorgabe 15 Min) dauert,
+               wird eine TimeoutError ausgeloest - der Treiber startet den Agenten neu.
+               """
+               def _raise():
+                   raise TimeoutError(
+                       f"Zyklus-Timeout nach {timeout_s:.0f}s - möglicher Hängenbleiben (T-260)")
+               timer = threading.Timer(timeout_s, _raise)
+               timer.daemon = True
+               timer.start()
+               return timer
+           ```
+
+        3. In `main()` (Zeile 202) Watchdog um jeden Zyklus:
+
+           ```python
+           def main():
+               print("🌙 Moon Dev KRAKEN Agent - Kraken angebunden (16.09.2026)")
+               print("   Modell: %s  |  Boerse: Kraken EUR-Paare (oeffentlich, kein Key)" % OLLAMA_MODEL)
+               try:
+                   while True:
+                       timer = _zyklus_watchdog(900.0)       # max 15 min pro Zyklus
+                       try:
+                           ein_zyklus()
+                       finally:
+                           timer.cancel()
+                       for _ in range(12):
+                           time.sleep(VERZOEGERUNG // 12)
+               except KeyboardInterrupt:
+                   print("
+👋 gestoppt.")
+           ```
+
+     Watchdog wird nach `ein_zyklus()` durch `timer.cancel()` geloescht. Wenn der
+     Zyklus hängt, feuert der Timer nach 15 min und beendet den Prozess - der
+     Treiber startet ihn neu.
+     Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py
 
 - [ ] **T-261 — new_or_top arbeitet ohne Marktdaten und laeuft in Analyse-Timeouts**
       Kontext: Im Log stehen 6x "No market data available" und 2x "Error in AI analysis:
@@ -482,14 +522,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (COINGECKO_API_KEY liegt bei Max) oder den Agenten auf eine andere Quelle umstellen.
       Angelegt 01.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents (src/agents/new_or_top_agent.py)
 
-- [ ] **T-262 — MoonDev-GUI und Treiber widersprechen sich (Waisenputzer beendet GUI-Agenten)**
+- [✓] **T-262 — MoonDev-GUI und Treiber widersprechen sich (Haus-Seite erledigt, GUI offen)**
       Kontext: Die GUI ist ein reiner Datei-Katalog (31 Agentenmodule von der Platte), ihre
       Startknoepfe rufen `-m src.agents.<mod>`. Der Haus-Treiber beendet aber jeden Agenten,
       der nicht sein eigenes Kind ist (Schonfrist 300 s) - ein aus der GUI gestarteter Agent
       stirbt nach 5 Minuten. Max hat entschieden: zuerst die kranken Agenten (T-260/T-261),
       DANN darf die GUI starten und der Waisenputzer muss ihre Kinder in Ruhe lassen.
-      Naechster Schritt: Ausnahme im Aufraeumen des Treibers (Kennzeichen je Startweg).
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py, Werkstatt/Repos/moon-dev-ai-agents/moongui.py
+      HAUS-SEITE (erledigt 02.10.2026):
+        - Agenten/Handel/moondev_reg.py: gemeinsamer Registrierungsordner (%TEMP%/moondev_agenten/)
+        - Agenten/Handel/moondev_dauerlauf.py: `fremde_agenten()` ignoriert jetzt registrierte PIDs
+          (durch `import moondev_reg; behalten |= moondev_reg.alle_registrierte_pids()`)
+        - Behoben: der Waisenputzer laesst jetzt alle sich registrierten Agenten in Ruhe,
+          egal wer sie gestartet hat (Treiber oder GUI).
+      GUI-SEITE (offen, Max im Fremd-Repo anwenden: moongui.py):
+        - In der `kind_umgebung()`-Funktion oder direkt nach `subprocess.Popen`:
+          `from moondev_reg import registriere; registriere()` aufrufen
+        - Dafuer muss moondev_reg.py im Repo verfuegbar sein:
+          Option A: Kopiere Agenten/Handel/moondev_reg.py nach
+          Werkstatt/Repos/moon-dev-ai-agents/src/agents/moondev_reg.py
+          Option B: Erstelle eine externe moondev_reg.py im selben Ordner
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py
+      (Haus ✓), Werkstatt/Repos/moon-dev-ai-agents/moongui.py (GUI offen)
 
 - [ ] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
       Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM

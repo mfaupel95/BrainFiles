@@ -559,12 +559,25 @@ class MoonDevDauerlauf:
         Sie sind die Waisen aus einem abgestuerzten oder ersetzten Kind. Frische
         Prozesse (juenger als SCHONFRIST_S) bleiben unangetastet - ein Enkel,
         der gerade startet, darf nicht im eigenen Start erschlagen werden.
+
+        ZUSAEZTZICH (T-262): Prozesse, die sich im gemeinsamen Registrierungs-
+        ordner (moondev_reg.py) eingetragen haben, werden NICHT als fremd
+        behandelt - auch wenn sie nicht zu unseren Kindern gehoeren. Das ist
+        z.B. der Fall fuer Agenten, die von der GUI (moongui.py) gestartet
+        wurden: die GUI setzt sich selbst in den Ordner ein, und der Treiber
+        lässt sie in Ruhe.
         """
         alle = _prozesse() if alle is None else alle
         behalten: set = set()
         for kind in self.kinder.values():
             if kind.poll() is None:
                 behalten |= self._baum(kind.pid, alle)
+        # (T-262) Zusätzlich: registrierte PIDs aus dem gemeinsamen Ordner
+        try:
+            import moondev_reg
+            behalten |= moondev_reg.alle_registrierte_pids()
+        except Exception:                                              # noqa: BLE001
+            pass  # moondev_reg nicht verfügbar (z.B. Test) – ohne Registrierung schützen
         ich = os.getpid()
         raus = []
         for e in alle:
