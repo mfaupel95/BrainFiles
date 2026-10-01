@@ -1016,6 +1016,7 @@ FELD_REIHENFOLGE = (
     "start", "einrichten", "einrichten_kette", "bauen", "bauen_kette",
     "venv_pflicht", "node_modules_pflicht",
     "pfad_pflicht", "port", "anleitung", "befehle", "warnungen",
+    "beleg_frist_s",
 )
 
 
@@ -1107,7 +1108,8 @@ def belege_erzeugen(manifest_pfad: Path, brainfiles: Path, log_ordner: Path) -> 
             schlecht.append((z.ordner, ergebnis.fehler))
             continue
         try:
-            code = ergebnis.prozess.wait(timeout=FRIST_S)
+            frist = z.beleg_frist_s or FRIST_S
+            code = ergebnis.prozess.wait(timeout=frist)
         except Exception:                                     # noqa: BLE001
             ergebnis.prozess.kill()
             ergebnis.prozess.wait(timeout=10)

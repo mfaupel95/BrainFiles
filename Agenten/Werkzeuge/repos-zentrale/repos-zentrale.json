@@ -850,7 +850,26 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "Fremd-Klon: RLTrader, der Vorgaenger von TensorTrade"
+      "notiz": "Fremd-Klon RLTrader (Vorgaenger von TensorTrade, upstream seit 2019 ruhend). Laeuft in Docker (CPU): erst rltrader.cmd build, dann train. Nur Simulation, kein Orderweg.",
+      "venv_pflicht": false,
+      "start": [
+        "cmd",
+        "/c",
+        "rltrader.cmd",
+        "--n-envs",
+        "4",
+        "train",
+        "--epochs",
+        "1",
+        "--no-report"
+      ],
+      "bauen": [
+        "cmd",
+        "/c",
+        "rltrader.cmd",
+        "build"
+      ],
+      "beleg_frist_s": 1500
     },
     {
       "ordner": "scrapling-wissen",

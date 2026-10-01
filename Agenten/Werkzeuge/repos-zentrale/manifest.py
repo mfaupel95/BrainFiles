@@ -48,6 +48,9 @@ class Eintrag:
     node_modules_pflicht: bool = False
     pfad_pflicht: str | None = None   # Datei/Ordner im Projekt, ohne den der Start nicht geht
     port: int | None = None
+    # Zeitfenster fuer den Beleg-Lauf (fuellen --belege). Vorgabe FRIST_S (90 s)
+    # reicht fuer schnelle Starts; lange Laeufe (Training) setzen es je Eintrag.
+    beleg_frist_s: int | None = None
     fehler: list[str] = field(default_factory=list)
     erlaubt: bool = True
     wurzel: str = "repos"             # Kennung aus quellen.py
@@ -76,6 +79,7 @@ class Zeile:
     node_modules_pflicht: bool = False
     pfad_pflicht: str | None = None
     port: int | None = None
+    beleg_frist_s: int | None = None
     bot: str | None = None
     bot_da: bool = False
     notiz: str = ""
@@ -221,6 +225,7 @@ def manifest_laden(pfad: Path | str) -> list[Eintrag]:
                 else None
             ),
             port=roh.get("port") if isinstance(roh.get("port"), int) else None,
+            beleg_frist_s=roh.get("beleg_frist_s") if isinstance(roh.get("beleg_frist_s"), int) and roh.get("beleg_frist_s") > 0 else None,
             fehler=fehler,
             wurzel=str(roh.get("wurzel") or "repos"),
             pfad=str(roh.get("pfad") or ""),
@@ -328,6 +333,7 @@ def _zeile(repo: scan.Repo, e: Eintrag, profile_dir: Path | None) -> Zeile:
         node_modules_pflicht=e.node_modules_pflicht,
         pfad_pflicht=e.pfad_pflicht,
         port=e.port,
+        beleg_frist_s=e.beleg_frist_s,
         bot=e.bot,
         bot_da=bot_da,
         notiz=e.notiz,

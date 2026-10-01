@@ -60,6 +60,41 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
+      Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
+      Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf
+      notadamking/RLTrader (upstream, ruhend) - ein Push dorthin kommt nicht in
+      Frage, ein Fork fehlt. Werkstatt ist in BEIDEN Sicherungen per /XD
+      ausgenommen; ein Plattendefekt auf O: loeschte den Docker-Bau endgueltig.
+      Naechster Schritt: Entscheidung Max - privater Fork mfaupel95/rltrader wie
+      bei omnitrade, dann origin=Fork / upstream=Original stellen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+
+- [ ] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
+      Kontext: fd40deb (01.10. 01:20, parallele Sitzung) hat kopier und
+      kopier1zu1 als aktive Eintraege in dauerlauf.SPUREN - die Kommentare
+      unmittelbar darueber behaupten weiter "KOPIE AUS seit 24.09.2026 (Max)".
+      Der Zentrale-Test test_handelstand.LaufplanTest (51c8fd6, 30.09.) erwartet
+      beide auskommentiert und ist seither ROT; beide Buecher laufen nachgewiesen
+      (zustand.json frisch). Nicht von dieser Sitzung angefasst (Fremdarbeit).
+      Naechster Schritt: wer die Familie angefasst hat, glueckt die drei Zeugen -
+      entweder Eintrag auskommentieren oder Kommentar + Test auf AN ziehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
+
+- [ ] **T-272 — RLTrader: optimize-Pfad und Report-Pfad sind nie gefahren**
+      Kontext: gemessen und belegt ist nur train+test auf statischem CSV
+      (1 Epoche, -48,32 USD auf den gehaltenen 20 %). Die Suchschleife
+      (cli.py optimize --trials 1) trifft die optuna-0.19-API des Codes
+      (trial.should_prune(step), optuna.structs) - passend gepinnt, aber nie
+      gefahren; Reports bewusst --no-report (quantstats-API file= vs. output=
+      ungeprueft); update-static-data (ccxt-Netzpfad) nie gefahren; das
+      gebuendelte data/params.db traegt 46 FAIL- und 88 RUNNING-Zeilen aus 2019
+      mit sich (nur COMPLETE zaehlen).
+      Naechster Schritt: bei Bedarf optimize --trials 1 im Container fahren
+      (Stunden, CPU) und einen Report mit korrekt pruefbarem Schluesselwort
+      erzeugen; sonst als Referenz stehen lassen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+
 - [ ] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
       Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
       16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
