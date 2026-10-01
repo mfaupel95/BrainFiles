@@ -9,13 +9,19 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File dauerlauf-neustart.ps1
 param(
   [int]$WarteSekunden = 600,
-  [switch]$NurPruefen
+  [switch]$NurPruefen,
+  [string]$Stufe = 'basis'          # basis | mittel | hoch (eigene PID/Log-Dateien)
 )
 
 $ErrorActionPreference = 'Stop'
 $handel = Split-Path $PSScriptRoot -Parent
 $handel = Join-Path $handel 'Handel'
-$sperre = Join-Path $handel 'dauerlauf.pid'
+# Je Stufe eigene Sperre: dauerlauf.pid (Basis), dauerlauf.mittel.pid, dauerlauf.hoch.pid
+# Der Startbefehl traegt -Risiko, weil dieselben drei Wrapper je Stufe starten.
+$sperreName = 'dauerlauf.pid'
+$risikoArgs = @()
+if ($Stufe -ne 'basis') { $sperreName = 'dauerlauf.%s.pid' -f $Stufe; $risikoArgs = @('-Risiko', $Stufe) }
+$sperre = Join-Path $handel $sperreName
 $log    = Join-Path $handel 'dauerlauf-neustart.log'
 
 function Schreib($t) {
@@ -67,7 +73,7 @@ if ($weg.Count -ne 0) {
 Schreib "alte Prozesse beendet (Loop $loop, Wurzel $root)"
 
 Remove-Item $sperre -Force -ErrorAction SilentlyContinue
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'handel-dauerlauf.ps1')
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'handel-dauerlauf.ps1') @risikoArgs
 Start-Sleep -Seconds 5
 $neu = (Get-Content $sperre -ErrorAction SilentlyContinue | Select-Object -First 1)
 Schreib "neu gestartet, Sperre zeigt PID $neu"
