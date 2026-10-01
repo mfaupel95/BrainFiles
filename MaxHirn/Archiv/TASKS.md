@@ -60,6 +60,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
+      Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
+      Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt
+      ~200 Zeilen im Rumpf mit dem Rest unter `references/`. Der Pruefer meldet es als
+      `oversized-body`, ausserdem fehlt eine `## When to Use`-Ueberschrift (der Skill hat
+      `## Wann`) und `author:` traegt `Hermes` statt `Hermes Agent`.
+      Naechster Schritt: die Themenabschnitte (Profilflotte, Repo-Bot, Modell-Anmeldung,
+      Desktop/multiplex, Kanalzugangsdaten) nach `references/` ziehen und im Rumpf nur die
+      Regeln plus einen Index mit "laden, wenn ..." lassen.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/skills/brainfiles/hermes-config-ops
+
+
 - [ ] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
       Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
       eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
