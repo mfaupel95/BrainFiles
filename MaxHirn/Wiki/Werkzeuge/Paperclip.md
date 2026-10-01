@@ -119,48 +119,77 @@ läuft der Server erst wieder, wenn `paperclipai run` erneut gestartet wird.
 
 ## Umgebungstest: „The environment test failed" (01.10.2026)
 
-Beim Anlegen des ersten Agenten (Adapter `claude_local`, Verbindung „local") scheiterte der
-Umgebungstest. Im Serverlog standen zwei Zeilen:
+Symptom beim Anlegen des ersten Agenten (Adapter `claude_local`, Verbindung „My Claude
+subscription"): `error · Claude hello probe failed. Exit code 1.` und
+`error · The selected account has not completed a provider hello test.` Im Serverlog:
 
 ```
 [paperclip] Claude ACP login probe did not complete { classification: 'nonzero_exit', exitCode: 1 }
 [paperclip] Claude CLI hello probe failed { classification: 'nonzero_exit', exitCode: 1 }
 ```
 
-Ursache, gemessen: Paperclip löst den Befehl `claude` mit `PATH`/`PATHEXT` des
-Server-Prozesses auf (`probe-env.resolveTrustedExecutable`) — auf diesem Rechner war das
-`C:\Users\faupe\AppData\Roaming\npm\claude.CMD`, das npm-Shim. Ein `.CMD`/`.BAT` lässt sich
-mit `child_process.spawn` **ohne `shell:true` nicht starten**: Node wirft `EINVAL`, das Kind
-startet nie, und Paperclip deutet das als „nonzero_exit". Gegenprobe in einem eigenen
-Node-Skript: `spawnSync('.../claude.CMD', ['--version'], {shell:false})` → `status=null,
-error=EINVAL`; dieselbe Datei mit `shell:true` → läuft.
+**Ursache: eine `.env` im ARBEITSVERZEICHNIS des Servers.** `C:\Users\faupe\.env` trägt
+`ANTHROPIC_API_KEY` (Max' Console-Schlüssel ohne Guthaben). Wird `paperclipai run` aus dem
+Home gestartet, lädt der Server diese Datei in seine Prozessumgebung; jede Sonde und jeder
+Agent erbt sie (`runChildProcess` mischt `sanitizeInheritedPaperclipEnv(process.env)`), und
+Claude Code nimmt dann API-Key-Auth statt des Abo-Tokens → 401 → Exit 1. Die Sonde sagt es
+selbst: `warn · claude_anthropic_api_key_overrides_subscription: ANTHROPIC_API_KEY is set`.
+Ein `unset` vor dem Start hilft NICHT — die Datei wird beim Start neu geladen.
 
-Behoben mit der **nativen Fassung**: `claude install stable` legt
-`C:\Users\faupe\.local\bin\claude.exe` ab (243 MB, 2.1.285). `~/.local/bin` steht in der
-PATH **vor** `AppData\Roaming\npm`, und die Auflösung probiert `.EXE` vor `.CMD` — die Sonde
-findet jetzt die .exe. Gegenprobe mit dem Minimal-Env, das Paperclip baut (nur `PATH`):
-`claude.exe --print - --output-format stream-json --verbose --dangerously-skip-permissions`
-mit Eingabe `Respond with hello.` → `status=0`, `result: "Hallo!"`.
+**Behoben:** Server aus `C:\Users\faupe\.paperclip` starten (dort liegt keine `.env`).
+Danach `status: pass`, `claude_hello_probe_passed: Claude hello probe succeeded.`
 
-**Merksatz:** jedes npm-Shim (`.cmd`) ist für Paperclips Sonden unbrauchbar — das gilt auch
-für die anderen lokalen Adapter (codex, cursor, gemini, grok), wenn deren CLI nur als
-npm-Shim vorliegt. Und: eine Antwort „Hallo!" statt „hello" ist nur eine Warnung
-(`claude_hello_probe_unexpected_output`); blockiert wird ausschließlich bei `status: fail`
-oder bei der Prüfung `adapter_auth_missing` — die UI-Regel ist
-`sH = status==="fail" || checks.some(c => c.code==="adapter_auth_missing")`.
+Gegenprobe (dieselbe Sonde über die API, siehe unten):
+
+| Arbeitsverzeichnis des Servers | Umgebung | Ergebnis |
+|---|---|---|
+| `C:\Users\faupe` | Abo-Token gesetzt | **fail** — `ANTHROPIC_API_KEY is set` + Exit 1 |
+| `C:\Users\faupe\.paperclip` | Abo-Token gesetzt | **pass** |
+| `C:\Users\faupe\.paperclip` | nur `ANTHROPIC_API_KEY` = Token | warn — Probe läuft in den Timeout |
+
+**Zwei Dinge, die auf dem Weg geprüft wurden und NICHT die Ursache waren** (damit sie
+niemand erneut sucht): das npm-Shim `claude.CMD` (Node kann `.CMD` ohne `shell:true` nicht
+starten — `EINVAL` —, aber der Server loggte `exitCode: 1`, also lief das Kind; die Auflösung
+traf ohnehin `claude.EXE`, weil `~/.local/bin` in der PATH vor `AppData\Roaming\npm` steht
+und `.EXE` vor `.CMD` probiert wird) und alle Arg-Varianten (`--setting-sources user`,
+`--model`, leerer stdin, das Minimal-Env der Sonde) — jede einzeln grün.
+
+**Nebenbei installiert:** `claude install stable` legt
+`C:\Users\faupe\.local\bin\claude.exe` ab (243 MB, 2.1.285) — die native Fassung statt des
+npm-Shims. Unabhängig von der Ursache sinnvoll (Paperclips Auflösung und die `.CMD`-Falle).
+
+**Werkzeug:** `Agenten/Routinen/paperclip-start.ps1` — startet nur, wenn Port 3100 frei ist,
+im Arbeitsverzeichnis `%USERPROFILE%\.paperclip`, entfernt `ANTHROPIC_*` aus der eigenen
+Umgebung, Log in `Agenten/Routinen/logs/paperclip-*.log`. Aufruf:
+`powershell -File Agenten/Routinen/paperclip-start.ps1`. Kein Autostart: unter Windows gibt
+es keinen Paperclip-Dienst (`Service management is not supported on win32`).
+
+**Die Sonde ohne UI fahren** (spart den Weg über den Browser): im Modus `local_trusted`
+nimmt der Server Anfragen von der Schleife ohne Anmeldung an.
+
+```bash
+curl -s -X POST "http://127.0.0.1:3100/api/companies/<companyId>/adapters/claude_local/test-environment" \
+  -H "content-type: application/json" \
+  -d '{"adapterConfig":{"command":"claude"},"environmentId":"<envId>","aiConnection":{"provider":"anthropic","method":"subscription","mode":"responsible_user"}}'
+```
+
+Company-ID und Environment-ID stehen in der eingebetteten Datenbank
+(`postgres://paperclip:paperclip@127.0.0.1:54329/paperclip`, Tabellen `ai_connection_defaults`
+und `environments`). Blockiert wird nur bei `status: fail` oder der Prüfung
+`adapter_auth_missing` (UI-Regel `sH`); eine Antwort „Hallo!" statt „hello" ist eine Warnung.
 
 ## Was hier noch offen ist
 
-- **Keine Identität.** Der Server läuft, aber die CLI hat noch keine
-  Board-Anmeldung. Weg hinein: Dashboard im Browser öffnen und Konto anlegen
-  (Anmeldung/Sign-up ist erlaubt: `disableSignUp: false`, `local_trusted`,
-  loopback) oder `paperclipai connect --persona board`. `paperclipai token board
-  create` verlangt vorher eine bestehende Board-Sitzung.
-- **Kein LLM-Provider** eingetragen (`LLM provider: No LLM provider configured
-  (optional)`). Für Agenten, die wirklich arbeiten sollen, braucht Paperclip ein
-  Modell — im Haus wären das der lokale Router (OmniRoute) oder Ollama.
-- **Kein Start-Wrapper.** Nach dem Hausmuster (Routine + geplante Aufgabe) wäre
-  das die Ergänzung, die den Server nach einem Neustart zurückbringt.
+- **Keine Identität der CLI.** Der Server läuft und der Umgebungstest ist grün, aber die CLI
+  hat keine Board-Anmeldung. Weg: Dashboard im Browser (Konto anlegen, Sign-up ist erlaubt)
+  oder `paperclipai connect --persona board`; `token board create` verlangt vorher eine
+  bestehende Board-Sitzung.
+- **Kein LLM-Provider** eingetragen (`LLM provider: No LLM provider configured`). Ohne Modell
+  können Paperclip-Agenten nicht arbeiten — im Haus wären OmniRoute (127.0.0.1:20128) oder
+  Ollama die Wege.
+- **Kein Autostart.** Der Start-Wrapper existiert, eine geplante Aufgabe (Hausmuster) fehlt.
+- **`.env` im Home ist eine Falle** für jedes Werkzeug, das dort gestartet wird — sie enthält
+  Schlüssel und überschreibt nichts ahnende Prozesse. Absichtlich nicht angefasst.
 
 ## Aufrufbeispiele
 
