@@ -343,16 +343,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `Agenten/Handel/historie_binance.py` und `replay.py` erzeugen und die Werte dort herleiten
       statt einzutragen.
       Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust/quant-alpha`
-- [ ] **T-259 — Streu-Atlas `BrainFiles/.projectatlas` pinnt den ProjectAtlas-Standard auf omnitrade**
-      Kontext: Unter der BrainFiles-Wurzel liegt ein 15 MB grosser Atlas vom 15.09.2026, der als
-      Projektstamm `O:/Werkstatt/omnitrade` traegt. ProjectAtlas sucht das naechste `.projectatlas`
-      AUFWÄRTS, deshalb endet jeder Aufruf aus einem anderen Verzeichnis (auch der Wurzel) mit
-      `project_mismatch: selected project root '...BrainFiles' does not match index root
-      'O:/Werkstatt/omnitrade'`. Der produktive Atlas (188 Dateien, `scan.status: verified`) liegt
-      in `Werkstatt/omnitrade/.projectatlas` und ist nicht betroffen.
-      Naechster Schritt: entscheiden — Streu-Atlas loeschen (er wird nirgends gelesen) oder stehen
-      lassen und Aufrufe immer mit `--db`/`--config` auf das Ziel zeigen.
-      Angelegt: 2026-09-30 · Betrifft: `BrainFiles/.projectatlas`, `Agenten/Werkzeuge/projectatlas`
 - [ ] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
       Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
       ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
@@ -3029,6 +3019,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-259 — Streu-Atlas `BrainFiles/.projectatlas` pinnt den ProjectAtlas-Standard auf omnitrade**
+      Kontext: Unter der BrainFiles-Wurzel liegt ein 15 MB grosser Atlas vom 15.09.2026, der als
+      Projektstamm `O:/Werkstatt/omnitrade` traegt. ProjectAtlas sucht das naechste `.projectatlas`
+      AUFWÄRTS, deshalb endet jeder Aufruf aus einem anderen Verzeichnis (auch der Wurzel) mit
+      `project_mismatch: selected project root '...BrainFiles' does not match index root
+      'O:/Werkstatt/omnitrade'`. Der produktive Atlas (188 Dateien, `scan.status: verified`) liegt
+      in `Werkstatt/omnitrade/.projectatlas` und ist nicht betroffen.
+      Naechster Schritt: entscheiden — Streu-Atlas loeschen (er wird nirgends gelesen) oder stehen
+      lassen und Aufrufe immer mit `--db`/`--config` auf das Ziel zeigen.
+      Angelegt: 2026-09-30 · Betrifft: `BrainFiles/.projectatlas`, `Agenten/Werkzeuge/projectatlas`
+      01.10.2026 angewandt: Streu-Atlas per shutil.move nach O:\Werkstatt\Ausgemustert\projectatlas-streu-20261001 (nichts geloescht, Gegenprobe db da). Wirkung gemessen: Aufruf aus Werkstatt/omnitrade antwortet unveraendert gesund (overview: 194 Dateien, 31 Ordner); Aufruf aus der Wurzel meldet jetzt 'init_required' statt 'project_mismatch' - die Irrefuehrung ist weg. Keine referenzierende Routine gefunden (Routinen/Werkzeuge grep leer), Atlas war unversioniert.
 - [x] **T-251 - Zwei echte Luecken in der Zentrale: `foreman` und `kerzenschluss_bias.py`**
       Kontext: Nach der Umstellung am 30.09.2026 stehen genau zwei Zeilen in EINRICHTEN -
       beide zu Recht. `foreman` (REPOS) hat kein `.venv`, ist aber ein Python-Paket mit
