@@ -82,9 +82,12 @@ MAX_ZEICHEN = 4000      # Telegram bricht bei 4096 hart ab
 MAX_FEHLER = 4          # Telegram-Gegenstellenfehler hintereinander -> Pause
 POLL_DAUER = 25         # getUpdates long polling
 A2A_POLL_S = 3          # GetTask-Intervall
-A2A_TIMEOUT_S = 300     # so lange auf eine Antwort des Hauptagenten warten
-BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
-
+A2A_TIMEOUT_S = 300     # so lange auf eine Antwort des Hauptagenten warten
+
+BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
+
+
+
 HERMES_EXE = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
 NACHRICHT_VERSUCHE = 3  # Netzfehler erneut versuchen, dann verwerfen
 
@@ -353,6 +356,26 @@ class Sperre:
 
 
 # --- Befehle ----------------------------------------------------------------
+
+# SCHREIBWEISEN (01.10.2026): Max tippt am Handy auch die Einzahl - am 01.10.
+# kam "/strategie" und der Bot antwortete "Kein SkillsBot-Befehl" (207 Zeichen).
+# Ein anderer Name darf keine Auskunft kosten; intern heisst der Befehl
+# weiterhin /strategien, damit /hilfe und handel_befehle EINE Quelle bleiben.
+HANDELS_ALIASE = {"/lage": "/lage", "/live": "/live",
+                  "/bericht": "/bericht", "/spuren": "/spuren",
+                  "/strategien": "/strategien", "/strategie": "/strategien",
+                  "/strat": "/strategien", "/indikatoren": "/indikatoren",
+                  "/indikator": "/indikatoren", "/markt": "/markt"}
+
+
+def _handelsbefehl(wort):
+    """Der kanonische Name eines lesenden Handelsbefehls, oder None.
+
+    Die Schreibweisen stehen hier an EINER Stelle - die Liste der Befehle
+    selbst bleibt in `_handelsantwort` (und damit bei handel_befehle).
+    """
+    return HANDELS_ALIASE.get(wort)
+
 
 def _handelsantwort(wort):
     """Eine lesende Handelsauskunft holen - Text aus `Handel/befehle.py`.
@@ -764,14 +787,14 @@ def bearbeite(text, chat):
                 handel_befehle.spur(" ".join(teile[1:]))), kontext
         except Exception as e:                                # noqa: BLE001
             return "Spur nicht lesbar: %s" % str(e)[:120], kontext
-    if wort in ("/lage", "/live", "/bericht", "/spuren", "/strategien",
-                "/indikatoren", "/markt"):
+    if _handelsbefehl(wort):
         try:
             import handel_befehle
-            return handel_befehle.klartext(_handelsantwort(wort)), kontext
+            return handel_befehle.klartext(
+                _handelsantwort(_handelsbefehl(wort))), kontext
         except Exception as e:                                # noqa: BLE001
             return ("Auskunft nicht lesbar: %s\nIm Handelsbot geht %s weiter."
-                    % (str(e)[:120], wort)), kontext
+                    % (str(e)[:120], _handelsbefehl(wort))), kontext
     if t in ("/hilfe", "/start"):
         return hilfe_text(), kontext
     if wort == "/skills":
