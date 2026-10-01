@@ -365,6 +365,52 @@ gebundene Stablecoins im Vergleich zu ungenutzten Krypto-Altbestaenden, die kein
 Spur anfasst. Diese Posten sind der Hebel, und ob sie verkauft werden sollen, ist
 eine Entscheidung von Max — nicht stillschweigend umschichten.
 
+## 10. Umschichten: was verkaufbar ist — und der Zeuge nach dem Verkauf
+
+Ein Auftrag „umschichten" heisst: ungenutzte Posten in die Waehrung bringen, die
+das Tor liest. Sechs Schritte, in dieser Reihenfolge:
+
+1. **Bestand messen** (Abschnitt 9), frei von gebunden trennen.
+2. **Posten ausschliessen, die eine Spur haelt.** Der Kontostand ist kein freies
+   Kapital: gegen die Buecher der Spuren halten — auch gegen Arme, die dasselbe
+   Konto mitbenutzen (auf Kraken hielten `kraken` und `mosaic` gleichzeitig
+   Posten desselben Kontos). Was eine Spur fuehrt, wird nicht verkauft.
+3. **Je Kandidat drei Fragen an `AssetPairs`:** gibt es ein Paar (nach `base`
+   filtern, `status=online`), ist die Menge >= `ordermin`, ist der Wert >=
+   `costmin` (Kraken 0,45).
+4. **`validate`-Lauf zuerst** (`markt_verkauf(paar, menge, echt=False)`): kostet
+   nichts und sagt vorher, ob die Boerse die Order annimmt.
+5. **Echt verkaufen.**
+6. **Gegenprobe:** `--vorschau` erneut — der Geldgrund muss aus der Sperrliste
+   fallen. Bleibt er stehen, war die Umschichtung zu klein.
+
+### Drei Gruende, warum ein Posten nicht verkaufbar ist
+
+1. **Unter dem Ordermin.** Eine Mengenschwelle, kein Rechteproblem — die
+   Fehlermeldung der Boerse liest sich aber wie eines: `PEPEEUR` verlangt
+   1.500.000 PEPE, im Konto lagen 409.009,94; `ONDOEUR` verlangt 15, es lagen
+   10,74331. Solche Posten bleiben liegen, bis mehr zusammenkommt; sie gehoeren
+   als „unter Ordermin" in den Bericht, nicht in einen zweiten Versuch.
+2. **Gestakte Form ohne eigenes Paar.** Der PUNKT im Namen ist das Kennzeichen
+   (`ADA.S`, `ATOM21.S`, `HYPE.B`); `XPEV.EQ` ist dieselbe Sorte. Kraken fuehrt
+   kein Paar mit `base=ADA.S` — `AssetPairs` liefert dafuer eine LEERE Liste.
+   Der Weg ist Unstaking, nicht eine Order. Eine leere Paarliste ist das
+   Merkmal, nicht ein Namensfehler.
+3. **Gebunden statt frei** (`availBal` bzw. `balance − hold_trade`, Abschnitt 9).
+
+### Der Kontostand ist der Zeuge, nicht die Rueckgabe
+
+`kraken.markt_verkauf(paar, menge, echt=True)` gibt die ROHE Kraken-Antwort
+zurueck, nicht das `{result: {txid: [...]}}`-Dict, das `_roh_privat` liefert. Ein
+`r.get('txid')` darauf wirft `'str' object has no attribute 'get'` — und zwar
+NACH dem Fuellen: fuenf Verkaeufe waren durch, der Aufrufer meldete fuenf
+Fehlschlaege. Wer daraufhin erneut verkauft, verkauft zweimal.
+
+Regel: **nach einem Verkauf nie der Rueckgabe glauben.** `kontostaende()` und
+`ClosedOrders` sind die Zeugen; im Zweifel BEIDE lesen, bevor ein zweiter
+Versuch laeuft. Dieselbe Disziplin wie beim Orderweg: die Antwort ist eine
+Behauptung, der Kontostand ein Befund.
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

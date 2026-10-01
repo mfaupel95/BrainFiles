@@ -232,7 +232,12 @@ Ausloeser → Referenz:
   bindet. **Und „ist dort Geld, das eingesetzt werden kann?" wird GEMESSEN,
   nicht aus dem Kontostand geschlossen**: je Boerse total / gebunden / frei,
   `BalanceEx` traegt kein `available`, `availBal ≈ 0` heisst in Margin
-  gebunden, `alle_paare()` liefert Tupel - Abschnitt 9 der Referenz. Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
+  gebunden, `alle_paare()` liefert Tupel - Abschnitt 9 der Referenz. **Und
+  „umschichten" ist ein eigener Ablauf**: Kandidaten gegen die Spurenbuecher
+  halten (der Kontostand ist kein freies Kapital), je Paar `ordermin`/`costmin`
+  und die gestakte Form pruefen, `validate` vor dem echten Verkauf, danach
+  Kontostand und `ClosedOrders` als Zeugen statt der Rueckgabe - Abschnitt 10.
+  Ein Live-Einsatz-Limit traegt den WAeHRUNGSNAMEN der Spur
   (`live_einsatz_eur`/`_usd`) - wer nur einen liest, rechnet still mit dem
   Papier-Einsatz weiter, und ein Einsatz unter der Mindestmenge des Instruments
   wird gesperrt statt aufgerundet. **Und ein Instrumentenwechsel mit offenem Buch
