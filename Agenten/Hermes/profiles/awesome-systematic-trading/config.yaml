@@ -1,7 +1,8 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: poolside/laguna-xs-2.1:free
   provider: nous
   api_mode: chat_completions
+  base_url: https://inference-api.nousresearch.com/v1
 providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1
@@ -35,20 +36,12 @@ providers:
     models:
       sha256:5f60862074a4c585126288d08555e5ad9ef65044bf490ff3a64855fc84d06823: {}
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
-  - provider: omniroute
-    model: auto/coding:free
-    base_url: http://localhost:20128/v1
-  - provider: llamacpp
-    model: Qwen3.8-27B-UD-Q4_K_M
   - provider: anthropic
     model: claude-sonnet-5
-  - provider: opencode-free
-    model: nemotron-3-ultra-free
   - provider: nous
     model: deepseek/deepseek-v4.1-flash
+  - provider: llamacpp
+    model: Ternary-Bonsai-2-27B-PTQ1_0
 toolsets:
   - hermes-cli
 database:

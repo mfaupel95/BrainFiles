@@ -1,6 +1,8 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: stealth/space-bunny-alpha
   provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
 providers:
   ollama-launch:
     api: http://127.0.0.1:11434/v1

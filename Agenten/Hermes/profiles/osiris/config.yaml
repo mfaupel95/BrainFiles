@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: stepfun/step-3.7-flash:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -461,3 +461,11 @@ _config_version: 49
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\osiris
+web:
+  backend: nous
+browser:
+  cloud_provider: nous
+tts:
+  provider: nous
+image_gen:
+  provider: nous
