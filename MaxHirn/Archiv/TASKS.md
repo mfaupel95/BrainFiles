@@ -60,6 +60,28 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
+      Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
+      eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
+      dort vorher nur die kuratierte Liste (50 + Empfehlungen = 58). Werkzeug:
+      `Agenten/Hermes/scripts/nous-modellliste-richten.py --anwenden --profile`.
+      Die 30 Profil-Configs haben eigene Waehler-Zeilen und tragen den Block NICHT.
+      Naechster Schritt: entscheiden, ob die Bot-Profile die volle Liste brauchen (sie
+      lesen ihr Modell aus ihrer config.yaml, nicht aus dem Waehler) - sonst nichts tun.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/profiles/*/config.yaml
+- [ ] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
+      Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
+      Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
+      (bonsai-/smart-Provider-Block entfernt, `moa.enabled` false -> true, `personality`
+      creative -> helpful, telemetry, `desktop.repo_scan_roots`) - gemessen als
+      Arbeitsbaum-Diff 19/26 gegen HEAD. Derselbe Weg kann den neuen
+      `providers: nous: models:`-Block (430 Zeilen, Commit fc395e3) wieder loeschen.
+      Naechster Schritt: nach der naechsten Einstellungsaenderung in Desktop/TUI pruefen
+      (`grep -c "claude-opus-4.1:batch" Agenten/Hermes/config.yaml` muss 1 sein) und
+      feststellen, welche App-Fassung schreibt.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+
+
 - [ ] **T-295 — gitter replaybar machen (Adapter fuer die Rechnung in grid.py)**
       Kontext: `gitter` stand in `replay.SPUREN_TEIL_A`, bricht aber bei JEDEM Lauf ab:
       sein `gitter/handeln.py` hat nur `lade_wachen()`, die Rechnung liegt in
