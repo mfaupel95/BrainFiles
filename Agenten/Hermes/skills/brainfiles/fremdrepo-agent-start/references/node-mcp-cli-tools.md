@@ -211,12 +211,17 @@ benutzbar** — dann ist der npm-Weg nicht der Notausgang, sondern der einzige:
   und ein eigener Test setzt die Variable im KINDPROZESS und prueft, dass die
   Quelle „Prozessumgebung" gewinnt UND der Wert in keiner Ausgabe steht.
 
-**Fremdes CLI im VORDERGRUND starten.** Ein Hintergrundlauf kann sofort mit
-`stdin is not a tty` und Exit 1 aussteigen, waehrend derselbe Befehl im
-Vordergrund durchlaeuft (gemessen). Ausgabe trotzdem in eine Datei umleiten und
-die Datei lesen — dann ist der Lauf unabhaengig davon, was die Shell mit stdout
-macht. Fuer die Belegzeile zaehlen Exit-Code UND Inhalt der Datei, nicht die
-Laenge des Logs.
+**Ein sofortiger Abbruch (Exit 1, leere Ausgabe) ist nicht an den Vordergrund
+gebunden — wiederholen und die Wurzel verengen.** Gemessen: ein solcher Lauf kann
+schon nach 0,2 s mit Exit 1 enden und als einzige Zeile `stdin is not a tty`
+ausgeben (ein MSYS-Artefakt, das auch bei GELUNGENEN Laeufen erscheint, also nicht
+die Ursache ist) — im Hintergrund, im Vordergrund und mit stdin aus `/dev/null` oder
+einer Datei gleichermassen. Andere Wurzeln liefen im selben Zeitfenster
+reproduzierbar durch, dieselbe Frage ueber eine andere Wurzel ebenfalls. Deshalb:
+Ausgabe in eine Datei umleiten und die DATEI lesen, den Lauf einmal wiederholen und,
+wenn er wieder abbricht, die Wurzel auf Reparse-Punkte pruefen (Junctions loesen sich
+fuer den Dateilauf nicht auf) und auf einen echten Unterordner ausweichen. Fuer die
+Belegzeile zaehlen Exit-Code UND Inhalt der Datei, nicht die Laenge des Logs.
 
 **Die erste echte Suche ist der Nachweis, nicht der gruene Probelauf.** Ein
 Werkzeug, das fremde Urteile einkauft, wird erst durch einen echten Lauf ueber

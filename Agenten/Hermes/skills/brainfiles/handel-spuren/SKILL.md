@@ -79,6 +79,14 @@ Ausloeser → Referenz:
  der Datei wird BENANNT und mit dem TEUREREN der beiden Saetze gerechnet**
  (Beispiel: `boerse: kraken_futures` gegen Instrumente, die ueber OKX bewertet
  werden) - der guenstigere Satz waere geraten und freundlich, beides verboten.
+- **Eine Zeile wie `OKX-Transportfehler 1/6: <urlopen error [WinError 10054]>`**
+  ("ist die Boerse weg?", ein abgebrochener Kauf, dieselbe Meldung von Kraken):
+  sie ist eine WARNUNG - der Wiederholer versucht es bis zu sechsmal mit
+  wachsender Pause, erst der sechste Fehlschlag ist einer. Pruefen statt deuten
+  (signierter Leseaufruf plus die Fehlerzeilen des DAUERLAUF-Logs, nicht der
+  Rand-Logs), und die Meldung selbst so formulieren, dass sie die Wiederholung
+  ausspricht ("- wird wiederholt, kein Ausfall"): `references/okx-fehlermeldungen.md`,
+  Abschnitt 11.
 - **Eine Boerse wieder ENTZIEHEN** ("nur noch <Programm> darf auf <Boerse>
   handeln", "Kraken abschalten"): drei Schalter mit verschiedenen Wirkzeiten,
   die Vorbedingung (offene Positionen und ihre Boersen-Stops), warum eine Sperre
@@ -155,7 +163,24 @@ Ausloeser → Referenz:
   gerechneten Schritt, ein angebotener Reiter-Knopf, der nur scheitern kann):
   `references/pitfalls.md`, Punkt 95 - die Pruefung gehoert VOR das Schneiden,
   der Bedarf ist `mindest_kerzen + 20` je Reihe, und ein angebotener Weg wird
-  einmal ECHT gefahren, bevor er angeboten wird.
+  einmal ECHT gefahren, bevor er angeboten wird. **Drei Regeln dazu:**
+  (a) **Die Vorgabe kommt aus der SPUR, nicht von der Kommandozeile** - ein fest
+  eingetragener Gebuehrensatz ist fuer die eine Spur richtig und fuer die naechste
+  geraten (`replay.gebuehr_aufloesen()` liest `gebuehr_taker` x 100 aus der
+  wachen.json und schreibt seine Herkunft ins Ergebnis; ein ausdruecklicher Wert
+  schlaegt sie, auch `0`).
+  (b) **Die angebotene Liste wird gemessen, nicht gepflegt** - `orb`/`orbk` (kein
+  `lade_wachen`), `mosaic` (braucht drei Kerzenreihen 4H/30M/5M) und `gitter`
+  (kein `pruefe_ausstiege`, die Rechnung liegt in `grid.py`) fielen je mit einem
+  ECHTEN Lauf heraus; der Reiter bietet seither VIER Spuren an (squeeze,
+  wavetrend, macd_mtf, supertrend), die uebrigen stehen mit Grund in
+  `replay.NICHT_NACHRECHENBAR`.
+  (c) **Ein Backtest-Ergebnis traegt nur mit seiner Ausstiegsregel** - nach jeder
+  Aenderung an der Ausstiegsregel sind die alten Zahlen ungueltig und werden NEU
+  gemessen, nicht weiterzitiert (die Kerzenschluss-Regel senkte die Trefferquoten
+  der vier Indikator-Spuren von 51-54 % auf 33-36 %; danach lag `macd_mtf` mit
+  `f_max` 0,1997 % genau auf den Rundekosten von 0,200 %, `wavetrend` negativ).
+  Eine Trefferquote ohne die Ausstiegsregel daneben ist keine Kennzahl.
 - **„nach diesem Vorbild weitere Indikatoren zur Marktprognose entwickeln"**
   (ein mitgeschicktes Tor-Tabellen-Vorbild wie `prognose_berichte/Stanni.csv`,
   „zieh die neuen Strategien aus <Fremdquelle>", eine Luecke im
@@ -228,9 +253,11 @@ Ausloeser → Referenz:
   machen"**: erst die fuenf Bedingungen LESEN, dann die zwei Schalter schreiben —
   eine reissende quantitative Bedingung nimmt `handel_erlaubt` innerhalb von
   Sekunden selbst zurueck (`sperre_zu`, Merker `_sperre_zu_ausgeloest`), und das
-  Aussetzen einer Bedingung bleibt Max' Entscheidung. Dazu das Zeitfenster, der
-  Nachweis und die Nebenwirkung auf die `wachen.json` (Zeilenende):
-  `references/spur-scharf-schalten.md`
+  Aussetzen einer Bedingung bleibt Max' Entscheidung - sie wird dann ABGESCHALTET
+  statt geloescht (`<bedingung>_aktiv: false` in der `wachen.json`, Vorgabe gilt),
+  und der Schalter muss an BEIDEN Stellen gelesen werden: Sperrgrund UND
+  Sperr-Schliessung. Dazu das Zeitfenster, der Nachweis und die Nebenwirkung auf
+  die `wachen.json` (Zeilenende): `references/spur-scharf-schalten.md`
 - **Eine live geschaltete Spur kommt nicht ins Handeln** (sie ist scharf, es
   passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
   oeffnet Fenster ohne Ergebnis; **die Vorschau nennt gar keinen Sperrstand, dann
@@ -870,6 +897,15 @@ Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen 
   `Agenten/Handel` endet in "Path not found" — das liest sich wie ein leeres
   Ergebnis. Groessen- und Namenszaehlungen ueber einen Baum per `execute_code`
   rechnen, nicht per Shell.
+- **Ein Befehl, den MAX ausfuehren soll, muss in SEINER Shell laufen (PowerShell).**
+  `grep`, `ls`, `cat` und bash-`for`-Schleifen gibt es dort nicht — der Aufruf
+  scheitert mit „Der Begriff "grep" wird nicht als Name eines Cmdlets … erkannt",
+  obwohl die geprueften Dateien laengst stimmen; er muss nachfragen, statt das
+  Ergebnis zu sehen. Deshalb: einzeilige Nachweise SELBST fahren und nur das
+  Ergebnis zeigen, und wenn er selbst laufen soll, `Select-String` /
+  `Get-ChildItem` / `Get-Content` nehmen — den Befehl vorher einmal echt in
+  PowerShell ausprobieren. Die Probe aufs Exempel gehoert in die Antwort
+  (`Select-String -Path <datei> -Pattern <wort>`), nicht in bash-Schreibweise.
 - **`Get-FileHash` gibt es in dieser PowerShell nicht** (5.1.26100.9444:
   `Get-Command Get-FileHash` liefert nichts, der Aufruf bricht mit "Die Benennung
   ... wurde nicht als Name eines Cmdlet ... erkannt" ab). Ein Pruefblock, der

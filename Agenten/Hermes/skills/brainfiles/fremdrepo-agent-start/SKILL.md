@@ -42,7 +42,9 @@ Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung, die
 GRATIS-Variante desselben Modells beim Anbieter bevor „braucht einen bezahlten
 Schluessel" im Bericht steht, das Lesen des Schluessels aus einer
 Windows-Benutzervariable ohne jede Ausgabe (Registry direkt statt `reg query`,
-Quellen-Schalter fuer die Tests) und der Vordergrund-Zwang fuer solche CLIs).
+Quellen-Schalter fuer die Tests) und der Umgang mit einem sofortigen Abbruch
+(Exit 1 ohne Suchausgabe — nicht an den Vordergrund gebunden; wiederholen, Ausgabe
+in eine Datei lesen, Wurzel auf Junctions pruefen).
 
 **Bringt das Werkzeug einen eigenen `install`-Unterbefehl mit ("managed
 install"), unter Windows zuerst dessen Scheitern pruefen und dann auf npm in
