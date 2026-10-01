@@ -67,10 +67,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wurzel gelang Sekunden spaeter (Agenten/Handel/scanner 6,2 s / 22 Treffer,
       Agenten/Bus 9 Treffer). Die Zeile selbst ist ein MSYS-Artefakt und erscheint auch bei
       gelungenen Laeufen - die eigentliche Fehlerursache ist UNBEKANNT.
-      Naechster Schritt: den Abbruch mit `--no-cache` und erzwungenem Neulauf reproduzieren
-      und die Ausgabe vollstaendig sichern (auch stderr), danach in
-      `node_modules/@dzhng/jevgrep/dist/bin/index.js` die Stelle suchen, die diese Zeile
-      ausgibt; bis dahin im Haus als bekanntes Verhalten vermerkt (Wiederholen hilft).
+      NACHTRAG 01.10.2026 (gemessen): die Zeile `stdin is not a tty` stammt NICHT aus
+      jevgrep (`grep` im dist findet sie nirgends) - sie ist MSYS-Rauschen. Der echte
+      Grund ist der ANBIETER: die Sonde Agenten/Werkzeuge/jevgrep/sonde_zen.py antwortet
+      `429 FreeUsageLimitError` fuer jev-1.13-free und `402 Insufficient account funds`
+      fuer das bezahlte jev-1.13 - das freie Kontingent war nach rund zehn Suchen des
+      Abends aufgebraucht, das Konto hat kein Guthaben. jevgrep nennt den Grund nicht,
+      es bricht ohne Ausgabe ab oder laeuft in die Zeitueberschreitung.
+      Naechster Schritt: in jevgrep nichts suchen (das ist Anbieterverhalten), sondern im
+      Haus die Sonde vor jede Suche setzen und ihren Befund weitergeben; wer jevgrep
+      dauerhaft nutzen will, laedt Guthaben bei OpenCode Zen auf (0,042 USD/1M Eingabe,
+      rund 4 US-Cent je Suche) oder wartet auf das naechste freie Fenster.
       Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
 - [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
