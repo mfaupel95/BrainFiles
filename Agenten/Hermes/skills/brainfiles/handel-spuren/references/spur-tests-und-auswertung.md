@@ -251,3 +251,33 @@ Waehrung erreichbar" sein soll, braucht im Fixture wirklich KEIN Paar in der
 eigenen Waehrung — sonst bestaetigt der Test die Regel mit einem Datensatz, der
 sie gar nicht beruehrt. Der Fehlschlag der Gegenprobe zeigt dann nicht den Code,
 sondern das Fixture.
+
+## Zwei GEGENPROBEN, die zeigen, dass der Test die Regel trifft
+
+Ein Test, der nur den gewuenschten Pfad beschreibt, beweist, dass der Code laeuft
+— nicht, dass er die Regel erfuellt. Zwei gebaeufige Faelle, in denen die Suite
+gruen ist und der Fix wirkungslos war, lassen sich mit derselben Technik tragen:
+**die Regel im Produktionscode entfernen** (Filter, Sperre, Haken) und dieselben
+Tests erneut fahren. Faellt die Suite nicht, prueft der Test den Zustand oder den
+Aufruf, nicht die Entscheidung.
+
+- **Zwei unabhaengige Regeln = zwei Gegenproben**, auch wenn eine Zeile Code sie
+  enthaelt: dort zwei Tests (Deckungsfilter entfernt -> rot, Preissperre entfernt
+  -> rot) statt einer, weil eine entfernte Zeile beide Treffer verliert und man
+  nicht sieht, welche Regel der zweite Test wirklich deckt.
+- **Vor dem Entfernen die Datei sichern und danach zurueckspielen**, sonst
+  bleibt der gebrochene Stand liegen und der „gruene" Lauf beweist nichts mehr.
+  Der Weg ist eine Kopie neben die Datei (nicht nach `/tmp`, nicht nach einem
+  fremden Repo-Ordner) und `cp` zurueck, danach derselbe Testlauf gruen — beide
+  Laeufe gehoeren in den Bericht.
+- **Nur die Regel entfernen, nicht den Aufruf.** Wird der Aufruf mitentfernt,
+  faellt der Test an einem `AttributeError` statt an der Behauptung — das sieht
+  wie ein Klassenfehler des Tests aus und belegt nichts.
+
+**Und die Attrappen-Form muss zum Leseweg passen.** Produktionscode liest
+Boersenantworten per `.get()`; eine Attrappe aus einem Objekt mit Attributen
+(`self.d`) laesst jeden Test an `AttributeError: … has no attribute 'get'`
+scheitern — an der Attrappe, nicht an der Regel. Solche Fixtures als `dict`
+ableiten. Ebenso gehoert zur Attrappe JEDE Methode, die der gepruefte Weg ruft
+(`schutz_stops` neben `positionen`): eine fehlende Attrappen-Methode macht die
+ganze Datei rot und liest sich wie ein Produktionsfehler.

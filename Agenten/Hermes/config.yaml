@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4.1-flash
+  default: stealth/space-bunny-alpha
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -766,9 +766,6 @@ moa:
     default:
       reference_models:
         - provider: nous
-          model: deepseek/deepseek-v4.1-flash
-          enabled: true
-        - provider: nous
           model: qwen/qwen3-coder-30b-a3b-instruct
           enabled: true
         - provider: nous
@@ -776,6 +773,12 @@ moa:
           enabled: true
         - provider: nous
           model: inception/mercury-2.5
+          enabled: true
+        - provider: nous
+          model: stealth/space-bunny-alpha
+          enabled: true
+        - provider: nous
+          model: deepseek/deepseek-v4-flash
           enabled: true
       aggregator:
         provider: nous
@@ -858,9 +861,6 @@ moa:
   max_tokens: 64096
   reference_models:
     - provider: nous
-      model: deepseek/deepseek-v4.1-flash
-      enabled: true
-    - provider: nous
       model: qwen/qwen3-coder-30b-a3b-instruct
       enabled: true
     - provider: nous
@@ -868,6 +868,12 @@ moa:
       enabled: true
     - provider: nous
       model: inception/mercury-2.5
+      enabled: true
+    - provider: nous
+      model: stealth/space-bunny-alpha
+      enabled: true
+    - provider: nous
+      model: deepseek/deepseek-v4-flash
       enabled: true
 skills:
   creation_nudge_interval: 15

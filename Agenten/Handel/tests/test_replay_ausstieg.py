@@ -407,5 +407,136 @@ class AufDerMarkeTest(unittest.TestCase):
                          {"ausstiege_an_marke": 0, "ausstiege": 0})
 
 
+class DochtZaehlerTest(unittest.TestCase):
+    """T-202: die Messung der Docht-Beruehrung ohne Schluss jenseits der Marke.
+
+    Ein Ausstieg allein wegen eines Dochts ist NICHT abgebildet (der Ausloeser
+    bleibt der Kerzenschluss, wie live). Diese Tests pruefen nur den ZAEHLER,
+    der die Messung fuers Bericht liefert - keine Aenderung des Ausstiegs.
+    """
+
+    def test_docht_streift_stop_und_schliesst_darueber(self):
+        # Long: Stop 95, Tief 94.9 (streift), Schluss 96 (darueber) -> True.
+        k = [0, 100, 100.0, 94.9, 96.0, 1.0]
+        self.assertTrue(
+            replay.docht_beruehrung_ohne_schluss(k, "long", 95.0, 110.0))
+
+    def test_docht_streift_ziel_und_schliesst_darunter(self):
+        # Long: Ziel 110, Hoch 110.1 (streift), Schluss 109 (darunter) -> True.
+        k = [0, 100, 110.1, 99.0, 109.0, 1.0]
+        self.assertTrue(
+            replay.docht_beruehrung_ohne_schluss(k, "long", 95.0, 110.0))
+
+    def test_schluss_jenseits_der_marke_ist_kein_docht_fall(self):
+        # Long: Schluss 111 liegt JENSEITS des Ziels 110 -> kein Docht-Fall.
+        k = [0, 100, 112.0, 99.0, 111.0, 1.0]
+        self.assertFalse(
+            replay.docht_beruehrung_ohne_schluss(k, "long", 95.0, 110.0))
+
+    def test_keine_beruehrung_ist_false(self):
+        k = [0, 100, 105.0, 99.0, 104.0, 1.0]
+        self.assertFalse(
+            replay.docht_beruehrung_ohne_schluss(k, "long", 95.0, 110.0))
+
+    def test_short_gespiegelt(self):
+        # Short: Stop 105, Hoch 105.1 (streift), Schluss 104 (darunter) -> True.
+        k = [0, 100, 105.1, 99.0, 104.0, 1.0]
+        self.assertTrue(
+            replay.docht_beruehrung_ohne_schluss(k, "short", 105.0, 92.0))
+        # Short: Schluss 106 liegt jenseits des Stops -> kein Docht-Fall.
+        k2 = [0, 100, 106.0, 99.0, 106.0, 1.0]
+        self.assertFalse(
+            replay.docht_beruehrung_ohne_schluss(k2, "short", 105.0, 92.0))
+
+    def test_ohne_angaben_kein_docht_fall(self):
+        k = [0, 100, 112.0, 94.9, 96.0, 1.0]
+        self.assertFalse(replay.docht_beruehrung_ohne_schluss(k, None, 95.0, 110.0))
+        self.assertFalse(replay.docht_beruehrung_ohne_schluss(k, "long", None, 110.0))
+        self.assertFalse(replay.docht_beruehrung_ohne_schluss(None, "long", 95.0, 110.0))
+        self.assertFalse(replay.docht_beruehrung_ohne_schluss([0, 1], "long", 95.0, 110.0))
+
+
+class DochtAusstiegTest(unittest.TestCase):
+    """T-202: der Ausstieg wird auch ausgeloest, wenn die Marke NUR am Docht
+    beruehrt wurde (Hoch/Tief kreuzt die Marke, der Schluss liegt zurueck).
+
+    Die Spur prueft nur den Schluss (`pruefe_ausstiege`); der Replay schliesst
+    die Position NACH `pruefe_ausstiege` selbst, wenn die Kerze eine Marke nur
+    am Docht beruehrt hat. Der Ausstieg geschieht am KURS DER MARKE.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="bt_docht_")
+        self.alt = (replay.spur_modul, replay.historie_binance,
+                    replay.buch_ordner)
+        replay.buch_ordner = lambda spur, lauf, setzen=None: self.tmp
+        self.journal = os.path.join(self.tmp, "handelsjournal.csv")
+
+    def tearDown(self):
+        (replay.spur_modul, replay.historie_binance,
+         replay.buch_ordner) = self.alt
+
+    def fahre(self, letzte_kerze, attrappe=None):
+        attrappe = attrappe or Attrappe()
+        replay.spur_modul = lambda spur: attrappe
+        replay.historie_binance = HistorieStub(
+            {"TEST": kerzen(FLACH + [letzte_kerze])})
+        runden, offen = replay.lauf_a("TEST", 0.1, "test")
+        return runden, attrappe
+
+    def zeilen(self):
+        with open(self.journal, newline="", encoding="utf-8") as f:
+            return list(csv.DictReader(f))
+
+    def test_docht_streift_stop_und_schliesst_darueber(self):
+        # Long: Stop 95, Tief 94.9 (streift), Schluss 96 (darueber). Die Spur
+        # schliesst NICHT (Schluss 96 > Stop 95), der Docht-Ausstieg schon.
+        runden, _ = self.fahre((100, 100.0, 94.9, 96.0))
+        aus = [z for z in self.zeilen() if z["aktion"] == "verkauf"]
+        self.assertEqual(len(aus), 1)
+        self.assertEqual(aus[0]["grund"], "stop")
+        self.assertEqual(aus[0]["preis"], "95.000000")
+        self.assertAlmostEqual(runden[0]["ausstieg"], 95.0)
+        self.assertAlmostEqual(runden[0]["brutto_pct"], -5.0)
+
+    def test_docht_streift_ziel_und_schliesst_darunter(self):
+        # Long: Ziel 110, Hoch 110.1 (streift), Schluss 109 (darunter).
+        runden, _ = self.fahre((100, 110.1, 99.0, 109.0))
+        aus = [z for z in self.zeilen() if z["aktion"] == "verkauf"]
+        self.assertEqual(len(aus), 1)
+        self.assertEqual(aus[0]["grund"], "ziel")
+        self.assertEqual(aus[0]["preis"], "110.000000")
+        self.assertAlmostEqual(runden[0]["ausstieg"], 110.0)
+        self.assertAlmostEqual(runden[0]["brutto_pct"], 10.0)
+
+    def test_schluss_jenseits_der_marke_kein_doppelter_ausstieg(self):
+        # Schluss 111 liegt JENSEITS des Ziels 110: pruefe_ausstiege schliesst
+        # schon, der Docht-Ausstieg darf NICHT noch einmal schliessen.
+        runden, _ = self.fahre((100, 112.0, 99.0, 111.0))
+        aus = [z for z in self.zeilen() if z["aktion"] == "verkauf"]
+        self.assertEqual(len(aus), 1)
+        self.assertEqual(aus[0]["grund"], "ziel")
+        self.assertEqual(aus[0]["preis"], "110.000000")
+
+    def test_keine_beruehrung_kein_ausstieg(self):
+        runden, _ = self.fahre((100, 105.0, 99.0, 104.0))
+        aus = [z for z in self.zeilen() if z["aktion"] == "verkauf"]
+        self.assertEqual(len(aus), 0)
+        self.assertEqual(runden, [])
+
+    def test_gegenprobe_ohne_docht_regel_bleibt_offen(self):
+        # Gegenprobe: ohne `docht_ausstiege_anwenden` bleibt die Position
+        # offen - der Docht-Ausstieg ist die Ursache des Ausstiegs.
+        alt = replay.docht_ausstiege_anwenden
+        replay.docht_ausstiege_anwenden = lambda *a, **k: 0
+        try:
+            runden, _ = self.fahre((100, 100.0, 94.9, 96.0))
+        finally:
+            replay.docht_ausstiege_anwenden = alt
+        aus = [z for z in self.zeilen() if z["aktion"] == "verkauf"]
+        self.assertEqual(len(aus), 0)
+        self.assertEqual(runden, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -57,6 +57,15 @@ Ausloeser → Referenz:
   Live fuellt die LIVE-Plaetze (der Deckel greift, bevor ein Kaufversuch
   entsteht), Positionen ohne Orderkennung sind Papier-Altlasten; der Abgleich prueft die
   GROESSE, und eine Ausbuchung darf keinen Verlust erfinden.
+  **Ergaenzend als vierte Stufe: die DECKUNG** - Geister, Groesse und
+  „liegt ein Stop" fragen alle nur OB, nie WIEVIELE Kontrakte geschuetzt sind.
+  Ein boolescher Existenztest gibt `True` zurueck, sobald ein einziger
+  Schutzauftrag liegt, und wirft die Menge weg; gemessen standen so 19 von 145
+  Kontrakten ohne Schutz, ohne dass ein Befund kam. Zwei Preise verweigert ein
+  Nachsetzen statt zu raten: ein long-Stop auf/ueber dem Kurs (verkauft sofort)
+  und ein Stop auf/unter `liqPx` (kommt nach der Liquidation nie). Werkzeug
+  `xperp/stopdeckung.py` (Vorschau Standard, `--anwenden --stop <preis>` ohne
+  Preisschalter stellt NICHTS), Referenz Abschnitt 5d derselben Datei.
 - **„Tagesbericht auswerten"**, ein Bericht liegt vor und die Zahlen sollen ein
   Urteil tragen (ein Posten mit unpassender Groesse, "Stop gerissen", ein
   negativer Zuwachs seit gestern, dieselbe Spur in zwei Stufen mit
@@ -111,7 +120,14 @@ Ausloeser → Referenz:
  gross ist ein Kontrakt WIRKLICH" derselben Datei, mit der Tabelle, welcher Markt
  sich mit welchem Guthaben ueberhaupt handeln laesst. Weil es hier keinen
  `validate`-Schalter gibt, ist der Mini-Round-Trip der Beleg
- (`nautilus_kraken/futures_probe.py`, Vorschau Standard, Notausstieg per Stop).
+ (`nautilus_kraken/futures_probe.py`, Vorschau Standard, Notausstieg per Stop) —
+ **immer auf einem billigen Markt** (`--symbol PF_STRKUSD --kontrakte 1`), denn
+ die Vorgabe des Werkzeugs war ein Markt, dessen 1 Kontrakt rund 84.600 USD
+ kostet, und die Sonde rechnete sie als 1 USD: nach der Korrektur bricht sie im
+ Tor ab, vorher haette sie gekauft. Und **der Einschuss kommt aus dem
+ Margenplan des Marktes, nicht aus einer Pauschale** — gemessen lagen 10 %
+ (EIA-retail) und 12,5 % (BTC) nebeneinander, ein „Hebel x10" ist also je Markt
+ eine Behauptung.
 - **Max aendert Positionen von HAND** (in der Boersen-App schliessen,
   verkleinern, aufstocken) - das Buch folgt der Boerse, die handgeschlossene
   Position bekommt ihr ECHTES Ergebnis, Stop/Ziel bleiben der Spur, und der
@@ -663,6 +679,17 @@ Kill-Ausgaenge positiv (+0,4 bis +2,4 %). Vor der Deutung die Drawdown-Kurve
 FIFO-gepaart nachrechnen und den Deckel gegen den je erreichten Ruecklauf
 halten; ein Deckel weit darueber ist entschaerft, kein Fehler. Vollen Text:
 `references/pitfalls.md`.
+**Und die Kurve selbst zerlegen, bevor ein Deckel angefasst wird.** Die
+Kapitalkurve rechnet auf ALLEN Buchungen, also auch auf
+Buchbereinigungs-zeilen, die keine Handelsrunde sind. Gemessen an einer Spur:
+von 25 Buchungen seit dem Hoch waren 20 Bereinigungen mit −266 USD und nur
+5 echte Runden mit −14 USD — der Deckel stand auf 280, davon waren rund 184
+fiktiv. **Buchbereinigungs-zeilen gegen die realisierte PnL-Historie der
+Boerse stellen (`/account/positions-history`, `closedPos`/`realizedPnl` je
+Instinkt)**: die Belege mit derselben Kontraktzahl sind dieselbe Position, und
+weicht der Erloes der Zeile deutlich ab, ist die Zeile falsch gebucht. Ein
+Deckel, den man ueber eine noch nicht korrigierte Buchung hebt, verschiebt
+nur den Tag, an dem man es merkt — die Korrektur kommt vorher.
 
 94. **Ein gemeinsamer Kern, der die Sperrzeile nicht druckt, schaltet die
 Auto-Freigabe fuer ALLE seine Spuren ab.** `dauerlauf.nur_fenster_fehlt()` liest
@@ -672,13 +699,59 @@ nur „still" aus. Die Sperrzeile gehoert in JEDEN Modus, den ein Aufrufer parst
 (auch `--vorschau`), nicht nur in den Live-Zweig. Vollen Text:
 `references/live-tor-und-einsatzgroesse.md`, Abschnitt 6.
 
-95. **Ein zu kleines Fenster ist keine fehlende Historie.** Eine Pruefung, die
+96. **Ein Cache oder Validator, den niemand laedt, sieht aus wie „unbekannt".**
+Wer eine Marktauflösung um eine Liste erweitert (Instrumentliste der Boerse,
+Pair-Tabelle, Whitelist), muss den LADER aus dem Lauf aufrufen und danach den
+Laufaufruf im Quelltext suchen. Ein `maerkte()`, das absichtlich nur den
+bereits geladenen Stand zurueckgibt (kein Netzzugriff auf dem heissen Pfad),
+liefert ohne Lader leer — und der Aufrufer meldet fuer JEDEN Namen
+„unbekanntes Instrument". Das sieht nicht nach fehlendem Lader aus, sondern
+nach einer falschen Zuordnung, und es kostet den Lauf still: die Spur ist
+scharf, das Tor offen, und jeder Zyklus endet in einer Fehlerzeile. Merksatz:
+**leerer Cache und unbekannter Name sind im Befund nicht unterscheidbar** —
+im Zweifel die Cache-Groesse als eigene Zeile ausgeben, dann sieht man
+sofort, ob geladen wurde.
+
+97. **Ein Belegwerkzeug, das echte Ordern stellt, braucht einen BILLIGEN
+Vorgabemarkt — und seine Groesse wird gerechnet, nicht angenommen.** Am
+Futures-Weg war 1 Kontrakt = 1 Einheit der Basiswaehrung (1 Kontrakt BTC
+rund 84.600 USD), das Werkzeug rechnete aber „1 Kontrakt = 1 USD" und haette
+mit seiner Vorgabe acht Kontrakte fuer ueber 676.000 USD gekauft. Zwei Regeln:
+Nennwert = Kontrakte × Kurs und der benoetigte Einschuss aus dem Margenplan
+des Marktes, im Tor anzeigen (dann bricht die Sonde ab, statt zu kaufen);
+und die Vorgabe auf einen Markt setzen, dessen 1 Kontrakt ein paar Cent
+traegt. Dazu: **sobald die Order gesendet ist, ist der Schutz-Stop der
+naechste Schritt und darf hinter keinem Schritt stehen, der werfen kann** —
+ein Fill-Polling, das nach der Fuellung fehlschlug, liess die Position ohne
+Stop offen. Eine Pruefung, die
 NACH dem Schneiden laeuft, nennt das falsche Uebel: erst die Laenge auf der
 PLATTE messen, dann schneiden, und beide Gruende getrennt benennen (Historie zu
 kurz -> nachfuellen; Fenster zu klein -> Bedarf `mindest_kerzen + 20` nennen).
 Und ein Lauf, der "0 Runden" melden kann, ohne je einen Schritt gerechnet zu
 haben, ist ein stiller Ausfall, kein Messergebnis. Vollen Text:
 `references/pitfalls.md`.
+
+98. **Ein boolescher Existenztest wirft die MENGE weg — und die MENGE ist der
+Schutz.** Die Abgleichstufen einer Live-Spur fragen alle „ob": ob die Position
+da ist, ob die Kontraktzahl stimmt, ob EIN Schutzauftrag liegt. Keine fragt, wie
+viele Kontrakte dieser Schutz abdeckt, und ein Treffer genuegt: `_stop_vorhanden()`
+liefert `True`, sobald irgendein Auftrag gefunden ist. So standen 19 von 145
+Kontrakten ohne Schutz, waehrend Spur, Bericht und Abgleich „ok" sagten. Wer eine
+gehebelte Position schuetzt, misst `sum(sz)` der Schutzauftraege gegen den
+BESTAND AN DER BOERSE (nicht gegen das Buch — ein Handgriff kann das Buch
+verkleinert haben) und stellt nur die Restmenge nach. Als Schutz zaehlt ein
+Auftrag nur mit `reduceOnly`, mit der Seite GEGEN die Position und mit einer
+Ausloesung (`slTriggerPx` oder `tpTriggerPx` — ein Trailing traegt kein
+`slTriggerPx`); der vorhandene Filter ist derselbe wie `okxf.ist_schutz_stop`,
+nur ohne die Menge, und genau das ist der Unterschied. Bestehende Schuetzte
+werden nie storniert und nie nachgezogen (T-278), ein nachgesetzter Stop ist
+ein Vermerk im Zustand und KEINE Journalzeile (sonst entsteht eine Runde, die
+nie stattfand), und ein Stop auf der falschen Seite ist kein Schutz: long-Stop
+auf/ueber dem Kurs verkauft sofort, ein Stop auf/unter `liqPx` kommt nach der
+Liquidation nie — beide verweigern und melden, statt eine scheinbare Deckung zu
+bauen. Werkzeug `xperp/stopdeckung.py`: Vorschau Standard, und `--anwenden` OHNE
+`--stop` stellt nichts — das Werkzeug rät keinen Schutzpreis. Volltext:
+`references/live-order-und-buchpflege.md`, Abschnitt 5d.
 
 ## Welche Daten eine Sperre liest
 

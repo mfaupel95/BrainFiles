@@ -282,6 +282,59 @@ das Buch sieht vollstaendig aus, und es gibt keinen Notausstieg.
   Menge = Bestand), Bestand weg (buchen mit Fuellungspreis), Bestand weg ohne
   ermittelbaren Preis (nicht buchen, melden).
 
+### 5d. DECKUNG ist eine eigene Pruefung - Existenz ist keine Menge
+
+Alle bisherigen Abgleichsstufen fragen OB: die Geisterpruefung, ob die Position
+da ist (3), die Groessenpruefung, ob die Kontraktzahl stimmt (3a), die
+Stop-Pruefung, ob EIN Schutzauftrag liegt (5, 5c). Keine davon fragt, **wie viele
+Kontrakte dieser Schutz abdeckt**. `_stop_vorhanden()` ist ein boolescher
+Existenztest: es gibt `True` zurueck, sobald IRGENDEIN Schutz gefunden ist, und
+wirft die Menge dabei weg. Ein Stop ueber 1 Kontrakt gilt dort wie einer ueber
+145.
+
+Das ist keine Verallgemeinerung, sondern eine gemessene Luecke: Position 145
+Kontrakte an der Boerse, sechs OCO-Stops mit 45+11+1+29+12+28 = 126 - **19
+Kontrakte bis zur Liquidation**, waehrend Spur, Bericht und Abgleich „ok"
+sagten. Dieselbe Blindstelle hatte T-278 gestreift (ein Trailing-Stop ohne
+`slTriggerPx`); dort blieb sie unbeziffert, hier steht die Zahl.
+
+- **GESCHUETZT ist, was die MENGE deckt.** `sum(sz)` ueber die Schutzauftraege
+  gegen die Kontraktzahl an der **Boerse** stellen (nicht gegen das Buch: ein
+  Handgriff kann das Buch verkleinert haben, und was die Boerse haelt, ist
+  ungeschuetzt, egal was das Buch behauptet). Die Restmenge ist die Luecke.
+- **Ein reiner Mengen-Zaehler verwechselt sich mit einem Schutz-Zaehler.** Als
+  Schutz zaehlt ein Auftrag nur, wenn `reduceOnly` gesetzt ist, die Seite
+  GEGEN die Position laeuft und eine Ausloesung traegt (`slTriggerPx` ODER
+  `tpTriggerPx` - ein Trailing traegt kein `slTriggerPx`). Der Filter ist
+  derselbe wie `okxf.ist_schutz_stop`, nur MIT der Menge - genau daran scheitert
+  die Existenzvariante.
+- **Ein Nachsetzen holt nur die LUECKE, nie den Bestand.** Bestehende Schuetzte
+  werden nicht storniert und nicht nachgezogen: bei zwei Stops auf denselben
+  Bestand feuert der engere zuerst und zieht den Schutz unbemerkt enger (T-278).
+- **Zwei Preise, die ein Nachsetzen verweigern muss.** Ein long-Stop AUF oder
+  UEBER dem Kurs verkauft sofort zum Markt - das ist kein Schutz, sondern ein
+  Ausstieg. Ein Stop auf oder unter `liqPx` kommt nach der Liquidation nie zur
+  Ausloesung und ist ebenfalls wertlos. Beide Faelle: **nicht stellen und
+  melden**, statt eine scheinbare Sicherung zu bauen, die im Buch wie Deckung
+  aussieht.
+- **Ein solcher Stop wird als TOT gemeldet, nicht still uebergangen.** Er
+  belegt Kontraktzahl, schuetzt aber nichts - dieselbe Buchzahl, dieselbe
+  Fehlwirkung wie ein toter Vermerk.
+- **Ein Werkzeug, das dafuer keinen Preis erfindet.** Ohne ausdruecklichen
+  Preisschalter stellt `--anwenden` nichts; es zeigt die Luecke und den
+  erlaubten Korridor (unter dem Kurs, ueber der Liquidation) und laesst die
+  Wahl Max. Ein geratener Schutzpreis ist eine Order, die jemand nicht
+  bestellt hat.
+- **Nachgesetzter Schutz ist KEIN Handel:** Vermerk in den ZUSTAND, keine
+  Journalzeile. Eine `anpassen`- oder `schliessen`-Zeile erzeugt eine Runde,
+  die nie stattfand.
+- **Testform:** Filter entfernen -> rot; Preissperre entfernen -> rot. Der
+  Gegenbeweis gehoert in den Aufbau, sonst prueft die Suite nur, dass der Code
+  laeuft. Attrappen-Regel: die Auftrags-Attrappe muss ein **dict** sein, weil der
+  Produktionscode per `.get()` liest - ein Objekt mit Attributen laesst jeden
+  Test an der Kapazitaet der Attrappe scheitern statt an der Regel (bei
+  `okxf.schutz_stops` zusaetzlich die Liste liefern, nicht nur `positionen`).
+
 ## 6. Sperre aufloesen heisst: die Ursache mit aufloesen
 
 Ein Kill-Switch setzt `handel_erlaubt=false` **und** stellt flach. Ein blosses
