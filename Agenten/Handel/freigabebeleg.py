@@ -100,6 +100,71 @@ def _wachen_handel_erlaubt(spur: str):
     return None
 
 
+def offener(spur: str) -> dict | None:
+    """Der noch GUELTIGE, unverbrauchte Beleg einer Spur - sonst None.
+
+    Warum es diese Funktion gibt (Befund T-283, 01.10.2026): Eine Spur hat
+    genau EINE Belegdatei. `schreibe()` hat den alten Beleg bisher STILL
+    ueberschrieben. Im Zyklus vom 01.10.2026 11:25:51 stellte die kraken-Spur
+    deshalb NEUN Belege in einem Lauf aus (ALGO/AVAX/LINK/TRX/DOT/SUI/LTC/ADA/
+    SOL, je 50 EUR = 450 EUR Absicht bei max_gesamt_eur 200) und schrieb neun
+    `kauf_beleg`-Zeilen ins Journal - ausgefuehrt werden konnte aber nur der
+    LETZTE (SOLEUR), weil die vorherigen acht mit dem naechsten `schreibe()`
+    verschwanden. Journal und Belegdatei erzaehlten also zwei Geschichten.
+    """
+    d = lies(spur)
+    if not d or d.get("verbraucht"):
+        return None
+    try:
+        if _jetzt() <= datetime.fromisoformat(str(d.get("gueltig_bis"))):
+            return d
+    except ValueError:
+        return None
+    return None
+
+
+def verfallene() -> list[dict]:
+    """Abgelaufene, NICHT verbrauchte Belege - die verpassten Auftraege.
+
+    Sie sind kein Schaden (ein verfallener Beleg kauft nicht), aber sie sind
+    unsichtbar: `offene()` laesst sie weg, und niemand sonst sieht nach. Der
+    Handler meldet sie einmal (Feld `verfallen_gemeldet`).
+    """
+    ergebnis = []
+    if not os.path.isdir(CACHE):
+        return ergebnis
+    for name in sorted(os.listdir(CACHE)):
+        if not name.endswith(".json"):
+            continue
+        spur = name[:-len(".json")]
+        d = lies(spur)
+        if not d or d.get("verbraucht") or d.get("verfallen_gemeldet"):
+            continue
+        try:
+            if _jetzt() > datetime.fromisoformat(str(d.get("gueltig_bis"))):
+                ergebnis.append(d)
+        except ValueError:
+            continue
+    return ergebnis
+
+
+def merke_verfallen(spur: str, grund: str = "") -> bool:
+    """Einen verfallenen Beleg als gemeldet kennzeichnen (kein zweites Mal)."""
+    d = lies(spur)
+    if not d:
+        return False
+    d["verfallen_gemeldet"] = _jetzt().isoformat(timespec="seconds")
+    if grund:
+        d["verfallen_grund"] = grund
+    try:
+        with open(datei(spur), "w", encoding="utf-8", newline="\n") as f:
+            json.dump(d, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        return True
+    except OSError:
+        return False
+
+
 def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
              grund: str, gueltig_sekunden: int = GUELTIG_SEKUNDEN,
              preis_min: float | None = None, zusatz: dict | None = None) -> dict:
@@ -135,6 +200,20 @@ def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
                 "grund": "handel_erlaubt=%s in %s/wachen.json - kein Beleg"
                          % ("false" if erlaubt is False else "nicht lesbar", spur)}
 
+    # Eine Spur hat hoechstens EINEN offenen Beleg. Der neue ERSETZT den alten
+    # nicht mehr, er wird abgelehnt: ein gueltiger Beleg ist eine offene
+    # Entscheidung, die noch ausgefuehrt werden kann - ihn zu ueberschreiben
+    # hiesse, sie wegzuwerfen, und genau das hat am 01.10.2026 acht von neun
+    # Belegen eines Zyklus verschluckt (T-283). Ein abgelaufener Beleg
+    # blockiert nicht: `offener()` laesst ihn durchfallen.
+    vorher = offener(spur)
+    if vorher:
+        return {"ok": False,
+                "grund": "es liegt schon ein offener Beleg fuer %s (%s %s, "
+                         "gueltig bis %s) - erst ausfuehren oder ablaufen lassen"
+                         % (spur, vorher.get("seite"), vorher.get("paar"),
+                            vorher.get("gueltig_bis"))}
+
     jetzt = _jetzt()
     beleg = {
         "kennung": secrets.token_hex(8),
@@ -151,8 +230,9 @@ def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
         "verbraucht": None,
     }
     os.makedirs(CACHE, exist_ok=True)
-    # Eine Spur hat hoechstens EINEN offenen Beleg: der neue ersetzt den alten
-    # (sonst sammelten sich Erlaubnisse an, die niemand mehr im Blick hat).
+    # Hier steht genau EIN Beleg je Spur (die Datei <spur>.json). Ein noch
+    # gueltiger Beleg wird oben abgelehnt - hier landet nur ein neuer, wenn
+    # keiner offen ist.
     with open(datei(spur), "w", encoding="utf-8", newline="\n") as f:
         json.dump(beleg, f, ensure_ascii=False, indent=2)
         f.write("\n")
