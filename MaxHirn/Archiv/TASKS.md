@@ -516,24 +516,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
 
 
-- [ ] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
-      Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
-      (Block 14 der Systempruefung). Der Motor ist die WSL-Distro
-      `docker-desktop`; Docker Desktop allein bringt sie nicht hoch
-      (Log `returning engine error`, Container-Status veraltet). Um 15:13 half
-      `wsl --shutdown` + Neustart von Docker Desktop (danach liefen
-      `nautilus-demo` und die freqtrade-Container wieder, nachgewiesen mit
-      `docker ps`); um 17:37 war sie erneut weg. Ursache ist der
-      Docker/MCP-Spawn-Kreis (Wiki/Betrieb/Systemleistung-2026-09-29.md,
-      Abschnitt 9/10) - er reisst auch fremde Prozesse mit (0xC0000409).
-      Naechster Schritt: Cron `docker-wache` nach dem Muster `bus-waechter`
-      (no_agent, 15 min, leere Ausgabe = gesund): `docker info` mit
-      Zeitgrenze; antwortet die Engine nicht, selbst `wsl --shutdown` +
-      Docker Desktop starten und das melden. Erst danach den Spawn-Kreis
-      angehen (T-152).
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Routinen/systempruefung.ps1 Block 14,
-      Agenten/Routinen/nautilus-docker-start.ps1
 
 
 - [ ] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
@@ -3019,6 +3001,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
+      Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
+      (Block 14 der Systempruefung). Der Motor ist die WSL-Distro
+      `docker-desktop`; Docker Desktop allein bringt sie nicht hoch
+      (Log `returning engine error`, Container-Status veraltet). Um 15:13 half
+      `wsl --shutdown` + Neustart von Docker Desktop (danach liefen
+      `nautilus-demo` und die freqtrade-Container wieder, nachgewiesen mit
+      `docker ps`); um 17:37 war sie erneut weg. Ursache ist der
+      Docker/MCP-Spawn-Kreis (Wiki/Betrieb/Systemleistung-2026-09-29.md,
+      Abschnitt 9/10) - er reisst auch fremde Prozesse mit (0xC0000409).
+      Naechster Schritt: Cron `docker-wache` nach dem Muster `bus-waechter`
+      (no_agent, 15 min, leere Ausgabe = gesund): `docker info` mit
+      Zeitgrenze; antwortet die Engine nicht, selbst `wsl --shutdown` +
+      Docker Desktop starten und das melden. Erst danach den Spawn-Kreis
+      angehen (T-152).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/systempruefung.ps1 Block 14,
+      Agenten/Routinen/nautilus-docker-start.ps1
+      01.10.2026 gebaut und nachgewiesen: Cron 'docker-wache' (a41ae0df5b47, alle 15 min, no_agent, Telegram) - Script Agenten/Hermes/scripts/docker-wache.py: docker info mit 25 s; Antwortet die Engine nicht, heilt sie den Handgriff vom 30.09. (wsl --shutdown, Docker Desktop starten, bis 180 s warten), meldet Heilung/Misslingen, derselbe Befund hochstens alle 6 h, Erholung immer. Wahrend eines frischen hermes-update (Log < 20 min) heilt sie nicht, meldet nur. 8 Tests (Starten als Naht - kein Test faehrt die echte App hoch). ERSTER CRON-LAUF 14:44:24: status ok, leise (Engine lebt). Der eigentliche Urheber - der MCP-Spawn-Kreis - bleibt T-152.
 - [x] **T-259 — Streu-Atlas `BrainFiles/.projectatlas` pinnt den ProjectAtlas-Standard auf omnitrade**
       Kontext: Unter der BrainFiles-Wurzel liegt ein 15 MB grosser Atlas vom 15.09.2026, der als
       Projektstamm `O:/Werkstatt/omnitrade` traegt. ProjectAtlas sucht das naechste `.projectatlas`
