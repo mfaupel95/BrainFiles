@@ -99,7 +99,7 @@ Portal-Anmeldung hat, und meldet je Profil den Grund.
    Profile sind ein Hintergrundlauf mit Logdatei, kein einzelner Foreground-Aufruf.
    Der Lauf ist idempotent — schon umgestellte Profile werden uebersprungen, ein
    abgebrochener Lauf ist wiederholbar.
-3. **Der Kommentar-Schluss der Profil-Config geht dabei verloren** (SKILL.md, Fallen).
+3. **Der Kommentar-Schluss der Profil-Config geht dabei verloren** (references/fallen.md, Fallen).
    Danach die Ziel-Fassung byte-genau aus `git show HEAD:<pfad>` bauen und nur den
    geaenderten Block ersetzen — das raeumt auch gemischte Zeilenenden aus einem frueheren
    Schreibvorgang weg.
@@ -123,7 +123,7 @@ des Schluessels gleich geblieben ist. Eine EINGERUECKTE Kette (z. B. unter `dele
 bleibt dabei stehen, und `fallback_providers: []` ist schon sauber — die beiden Formen
 nicht verwechseln, `grep '^fallback_providers:'` findet beide. Werkzeug im Haus:
 `Agenten/Hermes/scripts/bot-rueckfallkette-bereinigen.py` (Trockenlauf, `--anwenden`,
-`--zuruecknehmen`). Regeln und Fallen: SKILL.md, Abschnitt „Fallback-Kette und lokale
+`--zuruecknehmen`). Regeln und Fallen: references/fallback-kette.md, Abschnitt „Fallback-Kette und lokale
 Provider".
 
 ## Wenn der Zieltext nur in uncommitteter Fremdarbeit steht

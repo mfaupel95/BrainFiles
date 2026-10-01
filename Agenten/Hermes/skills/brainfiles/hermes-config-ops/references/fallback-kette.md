@@ -88,7 +88,7 @@ verworfener Eintrag sieht sonst wie Erfolg aus. Die Änderung greift ohne Neusta
 ## Dass die Kette wirklich übergibt (Funktionstest)
 
 Ohne Primärausfall läuft die Kette nie. Also den Ausfall erzwingen — in einem **eigenen
-Test-`HERMES_HOME`** (Ablage und Aufräumen: Fallen in SKILL.md), damit die echte Config
+Test-`HERMES_HOME`** (Ablage und Aufräumen: Fallen in references/fallen.md), damit die echte Config
 unberührt bleibt:
 
 1. `home/config.yaml` anlegen: Primär auf einen toten lokalen Endpunkt

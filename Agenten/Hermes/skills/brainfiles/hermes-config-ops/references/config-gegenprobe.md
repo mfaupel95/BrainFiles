@@ -112,8 +112,8 @@ nicht gegen die Nachbardatei.
   nicht darauf bauen, Bytes zaehlen.)
 - **`hermes config set` kann die Datei nicht zerschiessen, aber den Schwellenwert
   verstecken.** Nach jedem Set den Wert zuruecklesen UND die betroffene Zeile im
-  Diff pruefen; `config set` schreibt die Datei neu (Kommentar-Schluss-Falle in der
-  Haupt-SKILL.md).
+  Diff pruefen; `config set` schreibt die Datei neu (Kommentar-Schluss-Falle in
+  references/fallen.md).
 
 ## Beleg (Muster)
 
