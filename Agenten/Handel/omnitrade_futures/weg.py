@@ -119,5 +119,11 @@ def algo_stornieren(inst, order_id):
     return kf.order_stornieren(str(order_id))
 
 
+def stop_nachziehen(order_id, inst, menge, stop_preis):
+    """Den stp-Stop auf einen neuen Preis ziehen (/editorder). Nur nach oben
+    entscheidet der Aufrufer (spur_buch.pruefe_ausstiege); hier geht es 1:1 raus."""
+    return kf.stop_nachziehen(order_id, inst, menge, stop_preis, echt=True)
+
+
 def gefuellte_menge(order_id):
     return kf.gefuellte_menge(order_id)

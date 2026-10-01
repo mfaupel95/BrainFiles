@@ -506,6 +506,36 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                       % (p.get("inst"), e), file=sys.stderr)
                 grund = None
 
+        if not grund and live and weg is not None and p.get("stop_id"):
+            # TRAILING AN DER BOERSE (T-286, 01.10.2026): der stp-Stop wird
+            # NACHGEZOGEN, nicht neu gerechnet im Buch. Nur LONG (die Buch-Spuren
+            # eroeffnen nur long), nur NACH OBEN, und nur wenn der neue Stop
+            # spuerbar ueber dem alten liegt. Scheitert das Nachziehen, bleibt
+            # der ALTE Stop an der Boerse stehen - die Position ist dann
+            # weiter geschuetzt; ein stiller Verlust des Schutzes waere die
+            # ZEC-Lektion vom 26.09.2026.
+            try:
+                pct = float(w.get("trailing_stop_prozent") or 0.0)
+            except (TypeError, ValueError):
+                pct = 0.0
+            if pct > 0.0 and p.get("seite") == "long":
+                hoch = max(float(p.get("hoechstkurs") or kurs), kurs)
+                p["hoechstkurs"] = hoch
+                neu = hoch * (1.0 - pct)
+                if neu > float(p["stop"]):
+                    try:
+                        kennung = weg.stop_nachziehen(
+                            p["stop_id"], p.get("venue_inst") or p["inst"],
+                            p.get("menge") or 0, neu)
+                        if kennung:
+                            p["stop"] = neu
+                            p["stop_id"] = str(kennung)
+                            print("  TRAILING %s Stop -> %.6f (Hoch %.6f)"
+                                  % (p["inst"], neu, hoch))
+                    except Exception as e:                     # noqa: BLE001
+                        print("  Trailing %s nicht nachziehbar (%s) - Stop %.6f bleibt"
+                              % (p["inst"], e, p["stop"]), file=sys.stderr)
+
         if not grund:
             behalten.append(p)
             continue

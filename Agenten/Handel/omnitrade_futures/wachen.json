@@ -16,6 +16,8 @@
   "_kill_switch": "kill_switch_gesamt_usd = 3 x Buchrisiko (2.0) = 6.0. Mit einem einzigen Kontrakt ist das Risiko je Runde ~1,76 USD (1,5 % Stop auf 117 USD Nominal) - der Kill greift also erst nach mehreren Verlustrunden.",
   "kill_switch_gesamt_usd": 6.0,
   "stop_prozent": 1.5,
+  "trailing_stop_prozent": 0.03,
+  "_trailing": "Der stp-Stop an der Boerse wird NUR NACH OBEN gezogen: hoechstkurs x (1 - 0.03). Der Notaus-Stop (1,5 %) bleibt beim Einstieg; der Trailing ersetzt ihn erst, wenn er hoeher liegt. Scheitert das Nachziehen, bleibt der alte Stop stehen. Der Feldname passt zur Skriptsprache der Rust-Laeufe (trailing_stop 0.03).",
   "pflicht_stop_prozent_min": 1.0,
   "pflicht_stop_prozent_max": 5.0,
   "_stop": "Der Stop geht als stp-Order (reduceOnly, triggerSignal mark) an die Boerse und ueberlebt Neustarts. Er ist der NOTAUSSTIEG: fuehrend ist der Ausstieg des Rust-Laufs ('omnitrade flat'). Trailing (Stop nachziehen) folgt als eigene Verdrahtung - kraken_futures.stop_nachziehen ist gebaut.",
