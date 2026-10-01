@@ -30,7 +30,10 @@ function Schreib($t) {
 
 $root = (Get-Content $sperre -ErrorAction SilentlyContinue | Select-Object -First 1)
 if (-not $root) { Schreib 'keine Sperre - kein laufender Basislauf'; exit 1 }
-$root = [int]$root
+# Die Sperre traegt PID und Startzeit ("72484 1790854541.93") - nur das ERSTE
+# Feld ist die PID; ein [int]-Cast auf den ganzen Text bricht mit
+# Formatfehler ab (01.10.2026 erlebt: alle drei Stufen brachen ungeschaltet ab).
+$root = [int]($root -split '\s+')[0]
 $kind = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $root -and $_.Name -like 'python*' })
 if (-not $kind) { Schreib "Wurzel $root hat keinen Loop - nichts zu tauschen"; exit 1 }
 $loop = $kind[0].ProcessId
