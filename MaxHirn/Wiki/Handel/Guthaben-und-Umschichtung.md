@@ -83,12 +83,22 @@ OKX fuehrt sie auf dem EEA-Konto **nur gegen USDT** — kein USDC-Paar. Der Fehl
 ausschliesst. Pruefen laesst sich das nur am Orderweg, nicht an `/public/instruments`.
 
 **Folge, die mitgedacht gehoert:** Das Guthaben-Tor war bei `mosaic` die letzte
-Sperre vor dem Freigabefenster. Nach dem Verkauf nennt
+Sperre vor dem Freigabefenster. Nach dem Verkauf nannte
 `mosaic/handeln.py --vorschau` nur noch „Freigabefenster nicht offen" — und
 `mosaic` steht in `dauerlauf.AUTO_FREIGABE`, oeffnet sein Fenster also selbst.
-Wer das Guthaben eines scharf gestellten Instruments auffuellt, schaltet es
-damit live. Guthaben und Erlaubnis sind zwei Schalter, aber nur einer davon
-wird beim Umschichten umgelegt.
+
+**Eingetreten ist es anders, und das ist die eigentliche Lehre:** Der **scanner**
+war schneller. Er laeuft live mit offenem Fenster (bis 16:36) und sah die
+144,70 USDC im selben Zyklus — um **10:04:13/10:04:16** kaufte er ZEC-USDC
+(65,96 USDC) und SUI-USDC (77,96 USDC), zusammen 143,92. `availBal` USDC stand
+danach wieder auf **0,00**, und `mosaic` hatte zwei Sperrgruende statt einem —
+`nur_fenster_fehlt()` verlangt genau einen, also wurde gar kein Fenster
+geoeffnet. Ein freigemachtes Guthaben ist keine Zuweisung: **wer zuerst liest,
+nimmt es.**
+
+`mosaic` hat im ganzen Vorgang **nicht** gehandelt (Journal unveraendert, letzter
+Eintrag 05:05:40). Beide neuen Positionen sind echte scanner-Kaeufe und stehen
+mit Orderkennung im Journal (`live,kauf,ZEC-USDC`, `live,kauf,SUI-USDC`).
 
 Nicht angefasst: PEPE, ONDO, ADA.S (Gruende 1 und 2 oben).
 
