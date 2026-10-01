@@ -20,12 +20,21 @@ deshalb `kerzenquelle: binance`.
 Aufruf:
     python replay.py --spur squeeze --max-kerzen 1500
     python replay.py --spur squeeze --gegenprobe
+
+Familie D (mehrere Kerzenreihen bzw. eigene Rechnung der Spur):
+    python replay.py --spur mosaic --lauf t294      # 4H/30M/5M aus der 5m-Basis
+    python replay.py --spur gitter --lauf t295      # faehrt gitters walk()
+
+Die Familie erkennt der Replay am SPURNAMEN - kein Schalter, der vergessen
+werden kann. `mosaic` braucht die 5m-Historie (`python 5m_historie_holen.py`,
+120 Tage); `gitter` faehrt auf der 1H-Reihe wie die Indikatorspuren.
 """
 
 import bisect
 import csv
 import datetime as dt
 import importlib.util
+import itertools
 import json
 import os
 import sys
@@ -45,16 +54,13 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 # nur scheitern kann, ist schlechter als eine fehlende. orbk hat ausserdem
 # einen eigenen Backtest (`orbk/backtest.py`).
 SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend")
-# mosaic und gitter standen hier bis 01.10.2026 - BEIDE brechen bei jedem Lauf ab
-# und wurden mit je zwei echten Laeufen gemessen (nicht geschaetzt):
-#   mosaic: `pruefe_einstieg` braucht DREI Kerzenreihen (4H/30M/5M) -
-#           `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)` gegen fuenf
-#           Argumente im Replay -> TypeError beim ersten Einstieg.
-#   gitter: sein `handeln.py` hat nur `lade_wachen()`; die Rechnung liegt in
-#           grid.py/backtest_gitter.py -> `AttributeError: module 'bt_gitter'
-#           has no attribute 'pruefe_ausstiege'`.
-# Beide stehen in NICHT_NACHRECHENBAR mit Grund. Eine angebotene Taste, die nur
-# scheitern kann, ist schlechter als eine fehlende (T-294/T-295: Adapter bauen).
+# mosaic und gitter standen hier bis 01.10.2026 und waren doch nicht fahrbar:
+# ihre Fahrweise passt nicht in den einen Aufruf `pruefe_einstieg(inst, k, z,
+# w, faktor)` / `pruefe_ausstiege(z, k, w)`. mosaic braucht DREI Kerzenreihen,
+# gitter hat gar kein `pruefe_einstieg` (die Rechnung liegt in `walk()`). Seit
+# dem 01.10.2026 fahren beide ueber den Familie-D-Weg weiter unten
+# (MEHRZEITRAHMEN/EIGENE_RECHNUNG) - erkannt am SPURNAMEN, nicht an einem
+# Schalter. `--spur mosaic` und `--spur gitter` laufen damit direkt.
 
 # Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
 # fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
@@ -89,10 +95,6 @@ NICHT_NACHRECHENBAR = {
     "iv_wand": "Strike-OI-Historie (Deribit) nicht abrufbar",
     "iv_waelle": "Strike-OI-Historie (Deribit) nicht abrufbar",
     "robinhood_radar": "fremde SQLite haelt nur den Sammelzeitraum",
-    "mosaic": "pruefe_einstieg braucht drei Kerzenreihen (4H/30M/5M) - "
-              "Mehrzeitrahmen-Adapter fehlt (01.10.2026)",
-    "gitter": "handeln.py hat kein pruefe_einstieg/-ausstiege; die Rechnung liegt "
-              "in grid.py/backtest_gitter.py - Adapter fehlt (01.10.2026)",
     "kopier": "Solana-Onchain-Historie nur wenige Tage",
     "kopier1zu1": "Solana-Onchain-Historie nur wenige Tage",
     "nautilus": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
@@ -222,6 +224,34 @@ def schuetze(modul, ordner):
             setattr(modul, name, os.path.join(ordner, datei))
 
 
+def kennung_fest():
+    """Positionskennungen im Backtest reproduzierbar machen.
+
+    Rueckgabe: eine Funktion, die die Naht wieder zurueckstellt.
+
+    Der Zufallsteil von `pos_kennung` ist im BETRIEB richtig - zwei Positionen
+    im selben Instrument entstehen in derselben Sekunde, die Zeit allein waere
+    kein eindeutiger Schluessel. Im Backtest macht er zwei Laeufe ueber
+    DIESELBEN Kerzen ungleich: das Journal war bis auf `pos_id` Byte fuer Byte
+    identisch (gemessen 01.10.2026 an mosaic). Die Naht dafuer ist
+    ausdruecklich vorgesehen (`pos_kennung.erzeuger`), und der Zaehler macht
+    die Kennung im Lauf weiterhin eindeutig.
+    """
+    import pos_kennung
+    alt = pos_kennung.erzeuger
+    zaehler = itertools.count(1)
+
+    def _neu(zeit=None):
+        return "%s-%06x" % (pos_kennung._stempel(zeit), next(zaehler))
+
+    pos_kennung.erzeuger = _neu
+
+    def _zurueck():
+        pos_kennung.erzeuger = alt
+
+    return _zurueck
+
+
 def _feld(w, *namen, vorgabe=None):
     """Den ERSTEN gesetzten Namen nehmen.
 
@@ -283,12 +313,20 @@ def bedarf_fuer(spur):
     soll: ein Import der Spur (samt Indikatoren) waere dafuer zu schwer und
     truege Nebenwirkungen in den GUI-Prozess. None, wenn keine wachen.json
     da ist - dann prueft der Replay beim Lauf, und der verweigert mit Grund.
+
+    Eine Mehrzeitrahmen-Spur braucht ein Vielfaches: `bedarf()` zaehlt die
+    Kerzen JE REIHE, die 5m-Basis muss sie aber fuer die 4H-Reihe 48-mal
+    tragen. Ohne diese Verzweigung nennte das Fenster eine Grenze, unter der
+    der Lauf trotzdem abbricht.
     """
     try:
         with open(os.path.join(HIER, spur, "wachen.json"), encoding="utf-8") as f:
-            return bedarf(json.load(f))
+            w = json.load(f)
     except (OSError, ValueError, TypeError):
         return None
+    if spur in MEHRZEITRAHMEN:
+        return bedarf_mehrzeitrahmen(MEHRZEITRAHMEN[spur], w)
+    return bedarf(w)
 
 
 class HistorieFehlt(RuntimeError):
@@ -689,6 +727,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
         kerzen_jetzt,
         lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
     modul.journal = huelle
+    zurueck_kennung = kennung_fest()
     alt_zeit = getattr(modul, "zeit_quelle", None)
     hat_zeit = hasattr(modul, "zeit_quelle")
     z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
@@ -711,29 +750,8 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
             kerzen_jetzt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             modul.pruefe_ausstiege(z, k, w, nur=inst)
-            nachher = {id(p) for p in z["positionen"]}
-            for pid, p in vorher.items():
-                if pid not in nachher and pid in offen:
-                    e = offen.pop(pid)
-                    kerze = k[-1]
-                    # Der Ausstieg geschieht am KURS DER MARKE (Stop bzw.
-                    # Ziel), nicht am Kerzenschluss - siehe Regel oben.
-                    # Ohne Marke in der Kerze bleibt es beim Schluss.
-                    kurs = kurs_der_marke(kerze, e["seite"], e["stop"],
-                                          e["ziel"])
-                    if kurs is None:
-                        kurs = kerze[4]
-                    vz = 1 if e["seite"] == "long" else -1
-                    roh = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
-                    runden.append({
-                        "inst": inst, "seite": e["seite"],
-                        "einstieg": e["einstieg"], "ausstieg": kurs,
-                        "nominal": e["nominal"], "stop_pct": e["stop_pct"],
-                        "brutto_pct": roh, "netto_pct": roh - 2 * gebuehr_pct,
-                        "gv_brutto": e["nominal"] * roh / 100.0,
-                        "gv_netto": e["nominal"] * (roh - 2 * gebuehr_pct) / 100.0,
-                        "ein_ts": e["ts"], "aus_ts": k[-1][0],
-                        "stunden": (k[-1][0] - e["ts"]) / 3600000.0})
+            _ausstiege_buchen(offen, runden, vorher, z, k[-1],
+                              gebuehr_pct, inst)
             vor_ids = {id(p) for p in z["positionen"]}
             modul.pruefe_einstieg(inst, k, z, w, 1.0)
             for p in z["positionen"]:
@@ -747,6 +765,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
                                     "ts": k[-1][0]}
     if hat_zeit:
         modul.zeit_quelle = alt_zeit
+    zurueck_kennung()
     _journal_schreiben(ordner, gesammelt)
     return runden, len(z["positionen"])
 
@@ -1185,6 +1204,349 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
     return k, len(puffer.getvalue().splitlines())
 
 
+# --- Familie D: mehrere Kerzenreihen oder eine eigene Rechnung --------------
+#
+# Zwei Spuren liessen sich bis 01.10.2026 nicht nachrechnen - beide aus
+# demselben Grund: ihre Fahrweise passt nicht in den EINEN Aufruf
+# `pruefe_einstieg(inst, k, z, w, faktor)` / `pruefe_ausstiege(z, k, w)`.
+#
+#   mosaic  braucht DREI Kerzenreihen (4H/30M/5M). Mit fuenf Argumenten riss
+#           der Aufruf beim ersten Einstieg mit TypeError ab.
+#   gitter  hat gar kein `pruefe_einstieg`: seine Rechnung liegt in `walk()`
+#           (Leiter, Stufen, Kaeufe/Verkaeufe) - `handeln.py` kennt nur
+#           `lade_wachen()`.
+#
+# Auch hier entscheidet die SPUR; der Replay liefert nur Zeit und Daten.
+# Nichts wird nachgebaut.
+
+# Kerzendauer der Takte, die `historie_binance.TAKTE` kennt.
+MS_JE_TAKT = {"5M": 300_000, "15M": 900_000, "30M": 1_800_000,
+              "1H": 3_600_000, "4H": 14_400_000, "1D": 86_400_000}
+
+# Spuren mit mehreren Kerzenreihen. Die Reihen kommen aus EINER Basisreihe und
+# werden auf dieselbe Zeitachse verdichtet - kein Versatz, keine zweite
+# Datenquelle.
+#
+# Eine groebere Kerze zaehlt erst, wenn sie ABGESCHLOSSEN ist. Waere die
+# laufende 4H-Kerze dabei, saehe der Backtest den Rest der Stunde, den die Spur
+# live noch nicht kennt - ein Blick in die Zukunft, und er entwertet jede
+# Kennzahl darauf.
+MEHRZEITRAHMEN = {
+    "mosaic": {
+        "basis": "5M",
+        "reihen": (("k4", "4H"), ("k30", "30M"), ("k5", "5M")),
+        # Argumentordnung von pruefe_einstieg NACH `inst`
+        # (mosaic/handeln.py: pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)).
+        "einstieg": ("k4", "k30", "k5"),
+        # pruefe_ausstiege bekommt genau EINE Reihe (mosaic/handeln.py).
+        "ausstieg": "k5",
+    },
+}
+
+# Spuren, die ihre Rechnung SELBST mitbringen (`walk()`), aber keine
+# pruefe_einstieg/-ausstiege haben.
+EIGENE_RECHNUNG = ("gitter",)
+
+# Raster der Boerse fuer gitter. Der Replay darf keine Boerse fragen; die
+# Zahlen sind dieselben, die gitter/backtest_gitter.py fuer seinen Lauf
+# benutzt (dort INST, Zeile 29).
+GITTER_RASTER = {"BTC-USDT": {"instId": "BTC-USDT", "tickSz": 0.1,
+                              "lotSz": 0.00000001, "minSz": 0.00001}}
+
+
+def _ausstiege_buchen(offen, runden, vorher, z, kerze, gebuehr_pct, inst):
+    """Ausgestiegene Positionen als Runde buchen - EINE Stelle fuer beide Wege.
+
+    `vorher` ist das Buch VOR dem Ausstiegsaufruf ({id(position): position}),
+    `kerze` die Kerze dieses Schritts. Der Ausstieg geschieht am KURS DER
+    MARKE (Stop bzw. Ziel), nicht am Kerzenschluss - ohne Marke in der Kerze
+    bleibt es beim Schluss.
+    """
+    nachher = {id(p) for p in z["positionen"]}
+    for pid, p in vorher.items():
+        if pid in nachher or pid not in offen:
+            continue
+        e = offen.pop(pid)
+        kurs = kurs_der_marke(kerze, e["seite"], e["stop"], e["ziel"])
+        if kurs is None:
+            kurs = kerze[4]
+        vz = 1 if e["seite"] == "long" else -1
+        roh = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
+        runden.append({
+            "inst": inst, "seite": e["seite"],
+            "einstieg": e["einstieg"], "ausstieg": kurs,
+            "nominal": e["nominal"], "stop_pct": e["stop_pct"],
+            "brutto_pct": roh, "netto_pct": roh - 2 * gebuehr_pct,
+            "gv_brutto": e["nominal"] * roh / 100.0,
+            "gv_netto": e["nominal"] * (roh - 2 * gebuehr_pct) / 100.0,
+            "ein_ts": e["ts"], "aus_ts": kerze[0],
+            "stunden": (kerze[0] - e["ts"]) / 3600000.0})
+
+
+def verdichten(basis, takt):
+    """Groebere Kerzen aus der Basisreihe: [start_ts, o, h, t, c, v]."""
+    dauer = MS_JE_TAKT[takt]
+    aus = []
+    for r in basis:
+        b = (int(r[0]) // dauer) * dauer
+        if aus and aus[-1][0] == b:
+            k = aus[-1]
+            if r[2] > k[2]:
+                k[2] = r[2]
+            if r[3] < k[3]:
+                k[3] = r[3]
+            k[4] = r[4]
+            k[5] = k[5] + r[5]
+        else:
+            aus.append([b, r[1], r[2], r[3], r[4], r[5]])
+    return aus
+
+
+def bedarf_mehrzeitrahmen(spec, w):
+    """Basis-Kerzen, die noetig sind - die groebere Reihe bestimmt sie.
+
+    mosaic sieht je Reihe `mindest_kerzen` Kerzen; fuer 300 4H-Kerzen braucht
+    die 5m-Basis 300 x 48. Wer hier nur `bedarf()` fragt, laesst den Lauf mit
+    halb gefuellten 4H-Reihen starten - und mosaic rechnet dann auf einem
+    Zustand, den es im Betrieb nie gibt.
+    """
+    grund = int(w.get("mindest_kerzen", 300)) + KERZEN_PUFFER
+    faktor = max(MS_JE_TAKT[t] // MS_JE_TAKT[spec["basis"]]
+                 for _n, t in spec["reihen"])
+    return grund * max(1, faktor)
+
+
+def kerzen_mehrzeitrahmen(spur, spec, w, bis_ms=None, max_kerzen=None):
+    """{inst: basisreihe} - dieselbe Pruefung wie `kerzen_fuer`, andere Basis."""
+    insts = _instrumente(w)
+    brauch = bedarf_mehrzeitrahmen(spec, w)
+    aus, fehlen, zu_klein = {}, [], []
+    for inst in insts:
+        reihen = historie_binance.lade(inst, spec["basis"])
+        gehabt = len(reihen)
+        if bis_ms:
+            reihen = [r for r in reihen if r[0] <= bis_ms]
+        if max_kerzen:
+            reihen = reihen[-int(max_kerzen):]
+        if gehabt < brauch:
+            fehlen.append("%s (%d Kerzen)" % (inst, gehabt))
+            continue
+        if len(reihen) < brauch:
+            zu_klein.append("%s (%d Kerzen)" % (inst, len(reihen)))
+            continue
+        aus[inst] = reihen
+    if fehlen:
+        print("  ohne Historie: %s" % ", ".join(fehlen))
+    if zu_klein:
+        print("  Fenster zu klein: %s" % ", ".join(zu_klein))
+    if not aus:
+        raise HistorieFehlt(
+            "Historie fehlt oder ist zu kurz fuer %s: %s - die Spur braucht "
+            "%d Kerzen der %s-Basis (mindest_kerzen %s je Reihe, die groebere "
+            "Reihe bestimmt den Faktor). Erst nachladen: "
+            "'python historie_binance.py --auffuellen --takte %s'"
+            % (spur, ", ".join(fehlen + zu_klein) or "-", brauch,
+               spec["basis"], w.get("mindest_kerzen", 300), spec["basis"]))
+    return aus
+
+
+def lauf_mehrzeitrahmen(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None,
+                        wachen_patch=None, fenster=None):
+    """Familie D, Fall 1: die Spur sieht MEHRERE Kerzenreihen je Schritt.
+
+    Rueckgabe wie `lauf_a`: (runden, Zahl der offenen Positionen).
+    """
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf)
+    schuetze(modul, ordner)
+    spec = MEHRZEITRAHMEN[spur]
+    w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
+    if wachen_patch:
+        w.update(wachen_patch)
+    if fenster is None:
+        fenster = int(w.get("mindest_kerzen", 300))
+    kerzen = kerzen_mehrzeitrahmen(spur, spec, w, bis_ms, max_kerzen)
+
+    verdichtet, starts = {}, {}
+    for _name, takt in spec["reihen"]:
+        if takt == spec["basis"]:
+            continue
+        verdichtet[takt] = {i: verdichten(r, takt) for i, r in kerzen.items()}
+        starts[takt] = {i: [k[0] for k in v]
+                        for i, v in verdichtet[takt].items()}
+
+    runden, offen, gesammelt = [], {}, []
+    zustand_ts = {"ts": None}
+    kerzen_jetzt = {}
+    huelle = Beruehrungsjournal(
+        kerzen_jetzt,
+        lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
+    modul.journal = huelle
+    zurueck_kennung = kennung_fest()
+    alt_zeit = getattr(modul, "zeit_quelle", None)
+    hat_zeit = hasattr(modul, "zeit_quelle")
+    z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
+         "verluste_usd": 0.0}
+
+    for inst, basis in kerzen.items():
+        zeitachse = [b[0] for b in basis]
+        # Erster Schritt: erst wenn JEDE Reihe `fenster` Kerzen hat.
+        beginn = fenster - 1
+        for _name, takt in spec["reihen"]:
+            if takt == spec["basis"]:
+                continue
+            st = starts[takt][inst]
+            if len(st) < fenster:
+                raise HistorieFehlt(
+                    "Reihe %s zu kurz fuer %s: %d statt %d Kerzen - "
+                    "Historie nachladen" % (takt, spur, len(st), fenster))
+            grenze = st[fenster - 1] + MS_JE_TAKT[takt]
+            beginn = max(beginn, bisect.bisect_left(zeitachse, grenze))
+        for i in range(beginn, len(basis)):
+            ts = basis[i][0]
+            zustand_ts["ts"] = ts
+            if hat_zeit:
+                modul.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
+                    _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+            jetzt = {}
+            for name, takt in spec["reihen"]:
+                if takt == spec["basis"]:
+                    jetzt[name] = basis[max(0, i + 1 - fenster):i + 1]
+                else:
+                    n = bisect.bisect_right(starts[takt][inst],
+                                            ts - MS_JE_TAKT[takt])
+                    jetzt[name] = verdichtet[takt][inst][max(0, n - fenster):n]
+            kerzen_jetzt[inst] = jetzt[spec["ausstieg"]][-1]
+            vorher = {id(p): p for p in z["positionen"]}
+            modul.pruefe_ausstiege(z, jetzt[spec["ausstieg"]], w, nur=inst)
+            _ausstiege_buchen(offen, runden, vorher, z,
+                              jetzt[spec["ausstieg"]][-1], gebuehr_pct, inst)
+            vor_ids = {id(p) for p in z["positionen"]}
+            modul.pruefe_einstieg(
+                inst, *[jetzt[n] for n in spec["einstieg"]], z, w, 1.0)
+            for p in z["positionen"]:
+                if id(p) not in vor_ids:
+                    offen[id(p)] = {"seite": p["seite"],
+                                    "einstieg": p["einstieg"],
+                                    "nominal": p["nominal"],
+                                    "stop_pct": p.get("stop_pct", 0.0),
+                                    "stop": p.get("stop"),
+                                    "ziel": p.get("ziel"),
+                                    "ts": jetzt[spec["ausstieg"]][-1][0]}
+    if hat_zeit:
+        modul.zeit_quelle = alt_zeit
+    zurueck_kennung()
+    _journal_schreiben(ordner, gesammelt)
+    return runden, len(z["positionen"])
+
+
+def _gitter_zustand(modul, kurs, w, inst):
+    """Zustand mit gebauter Leiter - die Struktur, die `walk()` erwartet.
+
+    Wortgleich zu gitter/backtest_gitter.py::leiter_zustand; nur das Raster
+    kommt aus GITTER_RASTER statt aus einer festen Konstanten.
+    """
+    raster = dict(GITTER_RASTER.get(inst, GITTER_RASTER["BTC-USDT"]))
+    raster["instId"] = inst
+    leiter = modul.leiter_bauen(kurs, w, raster)
+    einsatz = float(w.get("einsatz_usd", 1000.0))
+    return {
+        "instrument": inst, "modus": "backtest",
+        "kasse_usd": einsatz, "startwert_usd": einsatz,
+        "leiter": {k: leiter[k] for k in ("unten", "oben", "stufen", "preise",
+                                          "mengen", "zustand",
+                                          "schritt_prozent",
+                                          "einsatz_in_orders",
+                                          "stufen_ohne_menge")},
+        "lose": {}, "kaeufe": 0, "verkaeufe": 0, "zyklen": 0,
+        "gw_usd": 0.0, "verluste_usd": 0.0, "bestand": 0.0,
+        "letzte_kerze_ts": -1, "letzter_kurs": None,
+    }
+
+
+def lauf_eigene_rechnung(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None,
+                         wachen_patch=None):
+    """Familie D, Fall 2: die Spur bringt ihr eigenes `walk()` mit (gitter).
+
+    Der Replay liefert Kerzen und Uhr; entschieden und gebucht wird in der
+    Spur. `walk()` laeuft je KERZE einmal (nicht einmal ueber alles): nur so
+    laesst sich die Uhr vor jeden Schritt setzen, und das Journal ist
+    reproduzierbar statt von der Wanduhr abhaengig.
+
+    Rueckgabe: Kennzahlen des Gitters (dieselben Groessen wie
+    gitter/backtest_gitter.py) - `kosten_wendepunkt` kann dieses Journal NICHT
+    auswerten, weil eine Gitterstufe keinen Stop und kein Ziel hat.
+    """
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf)
+    schuetze(modul, ordner)
+    w = wachen_von(spur)
+    if wachen_patch:
+        w.update(wachen_patch)
+    # Der Gebuehrensatz des Replays gilt; die Slippage bleibt die der Spur
+    # (sie ist eine Annahme der Spur, kein Messwert des Replays).
+    w["gebuehr_pct"] = float(gebuehr_pct)
+    kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen)
+
+    gesammelt = []
+    uhr = {"ts": 0}
+    zustand_ts = {"ts": None}
+
+    def _journal(**f):
+        gesammelt.append(dict(f, _kerzen_ts=uhr["ts"]))
+
+    modul.journal = _journal
+    alt_jetzt = modul._jetzt
+    alt_raster = modul.instrument_quelle
+    modul._jetzt = lambda: dt.datetime.fromtimestamp(uhr["ts"] / 1000.0,
+                                                     dt.timezone.utc)
+    modul.instrument_quelle = lambda inst: dict(
+        GITTER_RASTER.get(inst, GITTER_RASTER["BTC-USDT"]))
+    fkauf, _fverkauf = modul.kostenfaktoren(w)
+    takt = _takt(w)
+
+    zahlen = {"kaeufe": 0, "verkaeufe": 0, "zyklen": 0, "gw_usd": 0.0,
+              "kerzen": 0, "verluste_usd": 0.0, "buchwert": 0.0,
+              "einsatz": float(w.get("einsatz_usd", 1000.0)),
+              "start": None, "ende": None, "offen": 0, "stufen": None,
+              "schritt_pct": None}
+    try:
+        for inst, reihen in kerzen.items():
+            z = _gitter_zustand(modul, reihen[0][4], w, inst)
+            for k in reihen:
+                uhr["ts"] = k[0]
+                zustand_ts["ts"] = k[0]
+                _z, za = modul.walk(z, [k], w, takt)
+                for feld in ("kaeufe", "verkaeufe", "zyklen", "kerzen"):
+                    zahlen[feld] += za[feld]
+                zahlen["gw_usd"] += za["gw_usd"]
+            zahlen["offen"] += len(z.get("lose") or {})
+            zahlen["verluste_usd"] += float(z.get("verluste_usd", 0.0))
+            zahlen["buchwert"] += modul.buchwert(z, reihen[-1][4])
+            if zahlen["start"] is None:
+                zahlen["start"] = reihen[0][4]
+                zahlen["stufen"] = z["leiter"]["stufen"]
+                zahlen["schritt_pct"] = z["leiter"]["schritt_prozent"]
+            zahlen["ende"] = reihen[-1][4]
+    finally:
+        modul._jetzt = alt_jetzt
+        modul.instrument_quelle = alt_raster
+    _journal_schreiben(ordner, gesammelt)
+
+    ein = zahlen.pop("einsatz")
+    buch = zahlen["buchwert"]
+    zahlen["runden"] = zahlen["zyklen"]
+    zahlen["ergebnis"] = buch - ein
+    zahlen["rendite_pct"] = (buch / ein - 1) * 100.0 if ein else 0.0
+    zahlen["halten_pct"] = ((zahlen["ende"] / zahlen["start"] - 1) * 100.0
+                            if zahlen["start"] else 0.0)
+    zahlen["gebuehr_pct"] = float(gebuehr_pct)
+    zahlen["slippage_pct"] = float(w.get("slippage_pct", 0.0))
+    zahlen["kerzenquelle"] = "binance"
+    zahlen["journalzeilen"] = len(gesammelt)
+    return zahlen
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -1321,6 +1683,37 @@ def main():
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
         return
+    if a.spur in MEHRZEITRAHMEN or a.spur in EIGENE_RECHNUNG:
+        # Familie D wird am SPURNAMEN erkannt, nicht an einem Schalter: die
+        # Fahrweise ist eine Eigenschaft der Spur. Ein Schalter waere eine
+        # zweite Wahrheit - und `--spur mosaic` ohne ihn liefe genau in den
+        # TypeError, den dieser Abschnitt behebt.
+        #
+        # Zwei Fahrweisen unter einem Weg: Mehrzeitrahmen (mosaic) und eigene
+        # Rechnung (gitter). Ein gemeinsamer Vorlauf waere der Fehler - die
+        # zweite braucht keine Kerzenreihen, die erste keine Leiter.
+        if a.spur in MEHRZEITRAHMEN:
+            runden, offen = lauf_mehrzeitrahmen(a.spur, geb, a.lauf,
+                                                max_kerzen=mk,
+                                                fenster=a.fenster)
+            print(json.dumps(
+                {"spur": a.spur, "runden": len(runden), "offen": offen,
+                 "gebuehr_pct": geb, "gebuehr_quelle": geb_quelle,
+                 # Das WIRKSAME Fenster, nicht das Argument: ohne --fenster
+                 # setzt die Spur ihre eigene Anforderung (mindest_kerzen).
+                 "fenster": (a.fenster if a.fenster is not None
+                             else int(wachen_von(a.spur).get("mindest_kerzen", 300))),
+                 "kerzenquelle": "binance",
+                 "kennzahlen": kennzahlen(os.path.join(
+                     buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},
+                indent=2, ensure_ascii=False))
+            return
+        if a.spur in EIGENE_RECHNUNG:
+            k = lauf_eigene_rechnung(a.spur, geb, a.lauf, max_kerzen=mk)
+            print(json.dumps({"spur": a.spur, "kennzahlen": k,
+                              "gebuehr_quelle": geb_quelle},
+                             indent=2, ensure_ascii=False))
+            return
     # Erst hier: `lade_wachen` gibt es nur bei den Kerzen-Spuren (Familie A).
     modul = spur_modul(a.spur)
     w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}

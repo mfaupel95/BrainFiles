@@ -198,6 +198,11 @@ def _schreibe_stand():
                 d = json.load(f)
         except (OSError, ValueError):
             continue
+        # Nur echte Kerzenreihen: in diesem Ordner liegen auch Berichte
+        # (okx_probe.json, coingecko_probe.json) - ein Dict ist keine Reihe,
+        # und `d[0][0]` brach daran mit KeyError ab (gefunden 01.10.2026).
+        if not isinstance(d, list) or not d or not isinstance(d[0], list):
+            continue
         reihen[name[:-5]] = {"kerzen": len(d),
                              "von": d[0][0] if d else None,
                              "bis": d[-1][0] if d else None,

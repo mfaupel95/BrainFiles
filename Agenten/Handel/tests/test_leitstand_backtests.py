@@ -62,10 +62,28 @@ class FakeSteuerung:
 
 
 class Replay(unittest.TestCase):
-    def test_angeboten_wird_nur_teil_a(self):
-        self.assertEqual(lbt.replay_spuren(), list(replay.SPUREN_TEIL_A))
+    def test_angeboten_wird_alles_fahrbare(self):
+        # Familie A UND D: mosaic und gitter sind seit 01.10.2026 fahrbar
+        # (eigener Weg, am Spurnamen erkannt - T-294/T-295).
+        self.assertEqual(lbt.replay_spuren(),
+                         list(replay.SPUREN_TEIL_A)
+                         + list(replay.MEHRZEITRAHMEN)
+                         + list(replay.EIGENE_RECHNUNG))
+        for spur in ("mosaic", "gitter"):
+            self.assertIn(spur, lbt.replay_spuren())
         for spur, _grund in lbt.nicht_nachrechenbar():
             self.assertNotIn(spur, lbt.replay_spuren())
+
+    def test_gegenprobe_nur_fuer_familie_a(self):
+        """`--gegenprobe` vergleicht gegen `backtest_prognose` - fuer eine Spur
+        mit eigener Rechnung gibt es das nicht."""
+        self.assertTrue(lbt.gegenprobe_moeglich("squeeze"))
+        self.assertFalse(lbt.gegenprobe_moeglich("mosaic"))
+        self.assertFalse(lbt.gegenprobe_moeglich("gitter"))
+        teile, fehler = lbt.pruefe_replay({"spur": "mosaic", "max_kerzen": "0",
+                                           "gebuehr": "", "gegenprobe": True})
+        self.assertIsNone(teile)
+        self.assertIn("Gegenprobe", fehler)
 
     def test_befehl_mit_allen_feldern(self):
         teile, fehler = lbt.pruefe_replay({"spur": "squeeze", "max_kerzen": "2000",
@@ -79,8 +97,8 @@ class Replay(unittest.TestCase):
         self.assertEqual(b[-2:], ["--lauf", "leitstand-20260929-120000"])
 
     def test_null_kerzen_heisst_alle(self):
-        # squeeze steht in replay.SPUREN_TEIL_A; gitter tat es bis 01.10.2026
-        # und ist dort heraus (sein handeln.py hat kein pruefe_ausstiege).
+        # squeeze steht in replay.SPUREN_TEIL_A. (gitter stand dort bis 01.10.2026
+        # und faehrt seit dem einen eigenen Weg - angeboten wird es trotzdem.)
         teile, _f = lbt.pruefe_replay({"spur": "squeeze", "max_kerzen": "0",
                                        "gebuehr": "0.1", "gegenprobe": False})
         self.assertEqual(teile, ["--spur", "squeeze", "--gebuehr", "0.1"])

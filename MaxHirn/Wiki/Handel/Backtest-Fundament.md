@@ -592,6 +592,66 @@ die Rundengebuehr heran:
 **Merksatz: eine Trefferquote ohne die Ausstiegsregel daneben ist keine Kennzahl.** Wer die
 51-54 % im Kopf hat, haelt diese vier fuer deutlich robuster als sie sind.
 
-`mosaic` und `gitter` liessen sich gar nicht fahren (mosaic: `TypeError`, gitter:
-`AttributeError`) - beide sind aus der Replay-Liste heraus, der Gebuehrenvergleich ist dort
-gegenstandslos (T-294, T-295).
+`mosaic` und `gitter` liessen sich zu diesem Zeitpunkt gar nicht fahren (mosaic:
+`TypeError`, gitter: `AttributeError`) - beide standen aus der Replay-Liste heraus. Seit
+dem 01.10.2026 fahren sie ueber den Familie-D-Weg (siehe unten, T-294/T-295).
+
+### Familie D (01.10.2026): mosaic und gitter sind fahrbar (T-294/T-295)
+
+Beide liessen sich bis dahin nicht fahren, und beide aus demselben Grund: ihre Fahrweise
+passt nicht in den EINEN Aufruf `pruefe_einstieg(inst, k, z, w, faktor)` /
+`pruefe_ausstiege(z, k, w)`.
+
+    python replay.py --spur mosaic --lauf t294
+    python replay.py --spur gitter --lauf t295
+
+Einen Schalter gibt es nicht - der Replay erkennt die Familie am SPURNAMEN. Ein Schalter
+waere eine zweite Wahrheit, und `--spur mosaic` ohne ihn liefe genau in den `TypeError`,
+den der Adapter behebt.
+
+- **mosaic** braucht DREI Kerzenreihen (4H/30M/5M). Sie kommen aus EINER 5m-Basis und
+  werden verdichtet; eine groebere Kerze zaehlt erst, wenn sie ABGESCHLOSSEN ist (die
+  laufende 4H-Kerze waere ein Blick in die Zukunft und entwertete jede Kennzahl darauf).
+  120 Tage 5m nachladen: `python 5m_historie_holen.py --tage 120`.
+  Ergebnis 03.06.-01.10.2026: **16 Runden, 4 offen**, Treffer 75 %, `f_max` 6,25 % je
+  Runde, Summe +100 USD auf 100 USD Nominal (Kraken-Satz 0,60 %/Seite, BRUTTO im
+  Journal - die Gebuehr steckt in der Replay-Kennzahl).
+- **gitter** bringt seine Rechnung selbst mit (`walk()`); der Replay liefert Kerzen und
+  Uhr und nimmt seine Journalzeilen ab. Auf der 1H-Historie (50.223 Kerzen, BTC-USDT):
+  **31 Zyklen, +504 USD auf 1000 Einsatz (+50,4 %)** - Halten waere +191 % gewesen.
+  `kosten_wendepunkt` kann dieses Journal nicht auswerten: eine Gitterstufe hat keinen
+  Stop und kein Ziel.
+
+**Determinismus ist geprueft, nicht behauptet**: zwei Laeufe ueber dieselben Kerzen
+ergeben ein byte-gleiches Journal (`tests/test_replay_familie_d.py`). Dafuer musste die
+Positionskennung festgenagelt werden - ihr Zufallsteil ist im BETRIEB richtig (zwei
+Positionen im selben Instrument entstehen in derselben Sekunde, die Zeit allein waere
+kein eindeutiger Schluessel) und machte zwei Backtest-Laeufe ungleich
+(`replay.kennung_fest()`).
+
+## Der Drawdown der omnitrade-Rust-Engine war ein Buchungsartefakt (T-287/T-292)
+
+Der Rust-Backtest (`Werkstatt/omnitrade`) meldete `max_drawdown` 72-90 % auf einer Kurve,
+die nie gefallen ist. Ursache ist die BUCHUNG, nicht das Risiko:
+
+`AccountState::apply_buy_fill` zieht den Nennwert VOLL vom Guthaben ab (der Short bucht
+ihn in `apply_sell_fill` voll zu), `total_equity` rechnete aber nur
+`balance + unrealized_pnl`. Waehrend einer offenen Long-Position stand die Equity damit
+auf Hoehe des unrealisierten PnL - ein Einbruch um die halbe Kontogroesse beim Einstieg
+und sofort die grosse Drawdown-Kurve.
+
+Behoben mit `Position::market_value()` (vorzeichenrichtig: Long `+notional + unrealized`,
+Short `-notional + unrealized` = `+/- quantity * current_price`) und einem
+`total_equity`, das diesen Marktwert summiert. PnL, Rundenzahl und Trefferquote waren
+unberuehrt - die Equity holt sich beim Schliessen zurueck, was sie beim Oeffnen verliert.
+
+    adx_macd, BTC-1h, 10000 Start, 0,05 %/Seite, OMNI_LONG_ONLY=1
+      vorher   PnL 1397,84   Runden 9   Treffer 33,33 %   Max Drawdown 75,18 %
+      nachher  PnL 1397,84   Runden 9   Treffer 33,33 %   Max Drawdown  8,15 %
+
+Gegenprobe: mit der alten Formel faellt der neue Backtest-Test mit `max_drawdown 0.5` -
+er belegt den Fehler, nicht nur die Aenderung. `cargo test --workspace`: 325 gruen.
+
+**Merksatz: eine Equity, die den Positionswert nicht mitzaehlt, macht aus jedem Einstieg
+einen Absturz. Der Drawdown war die einzige falsche Zahl - und genau die, aus der Grenzen
+abgeleitet werden.**
