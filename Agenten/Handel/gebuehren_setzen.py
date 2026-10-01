@@ -62,6 +62,13 @@ QUELLE_OKX_SPOT_SPUR = ("OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker "
 QUELLE_OKX_PERP = ("GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 "
                    "FUTURES taker 0,05 %/Seite, gegengeprueft an echten "
                    "Fuellungen (ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je 0,0500 %).")
+QUELLE_PERP_ENTSCHEIDUNG = (
+    "Entscheidung Max 01.10.2026: als PERP gefuehrt, Satz 0,05 %/Seite "
+    "(GEMESSEN am eigenen OKX-Konto: Tarif Lv1 FUTURES taker -0.0005 und echte "
+    "Fuellungen ZEC-/ADA-USD_UM_XPERP je 0,0500 %). Das Instrument der Spur hat "
+    "keinen eigenen OKX-Markt in der wachen.json - der Perp-Satz ist die "
+    "Buchungsannahme, kein Marktsatz dieser Spur. Zur Abgrenzung: "
+    "moondev_topmovers steht auf SPOT (seine wachen.json nennt USDC-Paare).")
 QUELLE_KRAKEN_SPOT = ("GEMESSEN 22.09.2026 an der Kraken-Fuellung und "
                       "GET /0/private/TradeVolume: 0,6000 %/Seite "
                       "(das Pro-Abo wirkt auf diesem Konto NICHT).")
@@ -84,6 +91,11 @@ AENDERUNGEN = [
     ("moondev_whale/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
     ("moondev_liquidation/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
     ("moondev_sentiment/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
+    # Markt nicht aus der Datei belegbar - Max hat am 01.10.2026 PERP entschieden.
+    ("moondev_sniper/wachen.json", "gebuehr_taker", 0.0005,
+     QUELLE_PERP_ENTSCHEIDUNG),
+    ("moondev_signalwelle/wachen.json", "gebuehr_taker", 0.0005,
+     QUELLE_PERP_ENTSCHEIDUNG),
     # Kraken-Spot-Arm: stand auf 0 (Abo-Annahme), die ist widerlegt.
     ("nautilus_kraken/wachen.json", "gebuehr_pct", 0.6, QUELLE_KRAKEN_SPOT),
     # Diese zwei fuehren den Satz NUR als `gebuehr_pct` (ihr eigener Code) -

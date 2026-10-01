@@ -60,19 +60,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-268 — Gebuehren der nicht messbaren Spuren entscheiden**
-      Kontext: Am 01.10.2026 sind die Gebuehren aller messbaren Spuren belegt und
-      gesetzt (T-264). OFFEN bleiben fuenf Spuren, deren Markt NICHT belegt ist:
-      `moondev_sniper` (pump.fun-Token, kein Instrument in der wachen.json - meldet
-      weiter "BRUTTO und UNBEKANNT"), `moondev_signalwelle` (traegt 0.0005, ihr
-      Signal ist aber ein 1h-Pump auf Coins - Spot waere 0.001), `kopier` und
-      `kopier1zu1` (1,0 %/Seite, Solana-Onchain) und `robinhood_radar` (1,0 %,
-      Robinhood Chain). Die beiden letzten sind Modellannahmen, kein Marktsatz -
-      eine Zahl aus einem anderen Markt waere geraten.
-      Naechster Schritt: je Spur den Markt benennen (Spot oder Perp) und den Satz
-      setzen; fuer die Onchain-Spuren eine eigene Messung (Slippage + Gebuehr) oder
-      die Annahme ausdruecklich stehen lassen.
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/moondev_sniper, moondev_signalwelle, kopier, kopier1zu1, robinhood_radar
+- [ ] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
+      Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
+      Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
+      Die zwei Spuren ohne belegbaren Markt sind ENTSCHIEDEN (Max, 01.10.2026):
+      `moondev_sniper` und `moondev_signalwelle` werden als PERP gefuehrt, Satz 0.0005
+      je Seite (gemessen); der Grund steht als `_gebuehr_quelle` in ihren wachen.json.
+      OFFEN bleiben die drei Onchain-Spuren: `kopier` und `kopier1zu1` (je 1,0 %/Seite)
+      und `robinhood_radar` (1,0 %/Seite). Ihre Werte sind MODELLANNAHMEN (DEX-Gebuehr
+      plus Slippage) und kein Boersensatz - der OKX-Perp-Satz waere dort rund das
+      20-fache zu niedrig, deshalb wurde er bewusst NICHT gesetzt.
+      Naechster Schritt: eigene Messung der echten Kosten (Gebuehr + Nachlauf ueber
+      eine Stichprobe frischer Signale, Muster `references/tor-kalibrierung.md`
+      Regel 8) ODER die Annahme ausdruecklich als Annahme stehen lassen und im
+      Bericht so benennen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (Perp-Entscheidung eingetragen) · Betrifft Agenten/Handel/kopier, kopier1zu1, robinhood_radar
 
 - [ ] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
       Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene

@@ -61,9 +61,11 @@ Standard, `--anwenden` schreibt mit `.bak-JJJJMMTT`, `--messen` fragt den Kontos
 Am 01.10.2026 gesetzt: `scanner`, `squeeze`, `wavetrend`, `macd_mtf`, `supertrend`,
 `gitter`, `iv_wand`, `moondev_topmovers`, `moondev_listingarb` auf **0.001** (Spot);
 `moondev_funding`, `-whale`, `-liquidation`, `-sentiment`, `nautilus` auf **0.0005**;
-`nautilus_kraken` von 0 auf **0.6**. Damit meldet `auswertung_alle.py` nur noch fuer
-`moondev_sniper` „BRUTTO und UNBEKANNT" — dessen Markt ist nicht belegt (pump.fun-Token,
-kein Instrument in der `wachen.json`), und geraten ist schlechter als unbekannt.
+`nautilus_kraken` von 0 auf **0.6**. Damit meldet `auswertung_alle.py` für **keine** Spur
+mehr „BRUTTO und UNBEKANNT". Die zwei Spuren ohne belegbaren Markt sind als **PERP**
+entschieden (`moondev_sniper`, `moondev_signalwelle` — Entscheidung Max 01.10.2026, Grund
+als `_gebuehr_quelle` in ihren `wachen.json`); offen bleiben nur die drei Onchain-Spuren
+(`kopier`, `kopier1zu1`, `robinhood_radar`, je 1,0 % — Modellannahme, T-268).
 
 **Zwei Zuordnungsfehler in `replay.SPUR_BOERSE` (gefunden 01.10.2026):** `gitter` stand
 dort als Perp (halber Satz), handelt aber BTC-USDT auf dem OKX-**Spot**; `orb` stand als
