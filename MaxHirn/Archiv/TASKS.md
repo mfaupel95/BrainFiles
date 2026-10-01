@@ -124,26 +124,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       --restart-Policy waren von selbst wieder da. Siehe T-306.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader, Agenten/MCP-Server
 
-- [ ] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
-      Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
-      Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der
-      Konsole, aus /dev/null oder aus einer Datei kam, und unabhaengig vom Vordergrund
-      (die Annahme "nur im Hintergrund" ist damit widerlegt). Dieselbe Frage ueber dieselbe
-      Wurzel gelang Sekunden spaeter (Agenten/Handel/scanner 6,2 s / 22 Treffer,
-      Agenten/Bus 9 Treffer). Die Zeile selbst ist ein MSYS-Artefakt und erscheint auch bei
-      gelungenen Laeufen - die eigentliche Fehlerursache ist UNBEKANNT.
-      NACHTRAG 01.10.2026 (gemessen): die Zeile `stdin is not a tty` stammt NICHT aus
-      jevgrep (`grep` im dist findet sie nirgends) - sie ist MSYS-Rauschen. Der echte
-      Grund ist der ANBIETER: die Sonde Agenten/Werkzeuge/jevgrep/sonde_zen.py antwortet
-      `429 FreeUsageLimitError` fuer jev-1.13-free und `402 Insufficient account funds`
-      fuer das bezahlte jev-1.13 - das freie Kontingent war nach rund zehn Suchen des
-      Abends aufgebraucht, das Konto hat kein Guthaben. jevgrep nennt den Grund nicht,
-      es bricht ohne Ausgabe ab oder laeuft in die Zeitueberschreitung.
-      Naechster Schritt: in jevgrep nichts suchen (das ist Anbieterverhalten), sondern im
-      Haus die Sonde vor jede Suche setzen und ihren Befund weitergeben; wer jevgrep
-      dauerhaft nutzen will, laedt Guthaben bei OpenCode Zen auf (0,042 USD/1M Eingabe,
-      rund 4 US-Cent je Suche) oder wartet auf das naechste freie Fenster.
-      Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
 - [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
       **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
@@ -3230,6 +3210,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
+      Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
+      Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der
+      Konsole, aus /dev/null oder aus einer Datei kam, und unabhaengig vom Vordergrund
+      (die Annahme "nur im Hintergrund" ist damit widerlegt). Dieselbe Frage ueber dieselbe
+      Wurzel gelang Sekunden spaeter (Agenten/Handel/scanner 6,2 s / 22 Treffer,
+      Agenten/Bus 9 Treffer). Die Zeile selbst ist ein MSYS-Artefakt und erscheint auch bei
+      gelungenen Laeufen - die eigentliche Fehlerursache ist UNBEKANNT.
+      NACHTRAG 01.10.2026 (gemessen): die Zeile `stdin is not a tty` stammt NICHT aus
+      jevgrep (`grep` im dist findet sie nirgends) - sie ist MSYS-Rauschen. Der echte
+      Grund ist der ANBIETER: die Sonde Agenten/Werkzeuge/jevgrep/sonde_zen.py antwortet
+      `429 FreeUsageLimitError` fuer jev-1.13-free und `402 Insufficient account funds`
+      fuer das bezahlte jev-1.13 - das freie Kontingent war nach rund zehn Suchen des
+      Abends aufgebraucht, das Konto hat kein Guthaben. jevgrep nennt den Grund nicht,
+      es bricht ohne Ausgabe ab oder laeuft in die Zeitueberschreitung.
+      Naechster Schritt: in jevgrep nichts suchen (das ist Anbieterverhalten), sondern im
+      Haus die Sonde vor jede Suche setzen und ihren Befund weitergeben; wer jevgrep
+      dauerhaft nutzen will, laedt Guthaben bei OpenCode Zen auf (0,042 USD/1M Eingabe,
+      rund 4 US-Cent je Suche) oder wartet auf das naechste freie Fenster.
+      Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
+      Ursache gemessen: Anbieterabweisung (429 Freies Kontingent, 402 kein Guthaben), nicht stdin/ttys; jevgrep nennt den Grund nicht. Abgefangen durch den neuen Vorschalter (jg_sicher.py/vorpruefung.py): testet den Endpunkt vor jeder Suche mit einer winzigen Frage und bricht mit Grund ab; 8 Tests. Laufweg seit 02.10. Mercury 2.5 ueber die Bruecke, 1,8 US-Cent je Suche.
 - [x] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
       Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
       Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
