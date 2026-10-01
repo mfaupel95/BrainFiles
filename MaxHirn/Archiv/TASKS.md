@@ -76,14 +76,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: nach T-284 (Guthaben) einen 1-Kontrakt-Test OHNE VPN fahren
       (mit NordLynx weist Futures ab - authenticationError).
       Angelegt · 01.10.2026 · Betrifft Agenten/Handel/nautilus_kraken/kraken_futures.py
-- [ ] **T-286 - omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
-      Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis)
-      (/editorder) ist gebaut und getestet, aber spur_buch.zyklus kennt keinen
-      "Stop nachziehen"-Schritt - der stp-Stop steht beim Einstieg und wird nie bewegt.
-      Naechster Schritt: im Live-Zweig nach dem Kursabruf je Position den Stop an
-      hoechstkurs x (1 - trailing_pct) ziehen (nur nach oben, Dedupe je Preisstufe,
-      Scheitern des Nachziehens darf die Position NICHT ungeschuetzt lassen).
-      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/spur_buch.py, omnitrade_futures/weg.py
 - [ ] **T-287 - omnitrade-Backtest: Drawdown-Anzeige unplausibel, nachziehen**
       Kontext: intervalle_messen.py meldete 60-Tage-Runs mit max_drawdown 72-90 % auf
       Long-only-BTC in einer Phase ohne 60-%-Kurzeinbruch - die Zahl kann nicht
@@ -3096,6 +3088,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-286 - omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+      Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis)
+      (/editorder) ist gebaut und getestet, aber spur_buch.zyklus kennt keinen
+      "Stop nachziehen"-Schritt - der stp-Stop steht beim Einstieg und wird nie bewegt.
+      Naechster Schritt: im Live-Zweig nach dem Kursabruf je Position den Stop an
+      hoechstkurs x (1 - trailing_pct) ziehen (nur nach oben, Dedupe je Preisstufe,
+      Scheitern des Nachziehens darf die Position NICHT ungeschuetzt lassen).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/spur_buch.py, omnitrade_futures/weg.py
+      
 - [x] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
       Erledigt 2026-10-01. Max ("kraken scharf", dann "bedingung 5 entfaellt"):
       freigabe.erfuellt true, AUTO_FREIGABE wieder aufgenommen, Bedingung 5 ueber
