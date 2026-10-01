@@ -20,7 +20,7 @@ $handel = Join-Path $handel 'Handel'
 # Der Startbefehl traegt -Risiko, weil dieselben drei Wrapper je Stufe starten.
 $sperreName = 'dauerlauf.pid'
 $risikoArgs = @()
-if ($Stufe -ne 'basis') { $sperreName = 'dauerlauf.%s.pid' -f $Stufe; $risikoArgs = @('-Risiko', $Stufe) }
+if ($Stufe -ne 'basis') { $sperreName = "dauerlauf.$Stufe.pid"; $risikoArgs = @('-Risiko', $Stufe) }
 $sperre = Join-Path $handel $sperreName
 $log    = Join-Path $handel 'dauerlauf-neustart.log'
 

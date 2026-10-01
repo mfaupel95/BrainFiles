@@ -140,16 +140,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
 
 
-- [ ] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
-      Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
-      Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt
-      ~200 Zeilen im Rumpf mit dem Rest unter `references/`. Der Pruefer meldet es als
-      `oversized-body`, ausserdem fehlt eine `## When to Use`-Ueberschrift (der Skill hat
-      `## Wann`) und `author:` traegt `Hermes` statt `Hermes Agent`.
-      Naechster Schritt: die Themenabschnitte (Profilflotte, Repo-Bot, Modell-Anmeldung,
-      Desktop/multiplex, Kanalzugangsdaten) nach `references/` ziehen und im Rumpf nur die
-      Regeln plus einen Index mit "laden, wenn ..." lassen.
-      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/skills/brainfiles/hermes-config-ops
 
 
 - [ ] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
@@ -3150,6 +3140,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
+      Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
+      Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt
+      ~200 Zeilen im Rumpf mit dem Rest unter `references/`. Der Pruefer meldet es als
+      `oversized-body`, ausserdem fehlt eine `## When to Use`-Ueberschrift (der Skill hat
+      `## Wann`) und `author:` traegt `Hermes` statt `Hermes Agent`.
+      Naechster Schritt: die Themenabschnitte (Profilflotte, Repo-Bot, Modell-Anmeldung,
+      Desktop/multiplex, Kanalzugangsdaten) nach `references/` ziehen und im Rumpf nur die
+      Regeln plus einen Index mit "laden, wenn ..." lassen.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/skills/brainfiles/hermes-config-ops
+      **Erledigt 2026-10-01.** Auslagerung verifiziert: 21 Themenabschnitte vollstaendig in references/ (19 Dateien, Index deckt exakt), SKILL.md-Rumpf 87 Zeilen, nur Skill-Pfade geaendert, CRLF erhalten; 4 haengende Querverweise nachgebessert (Commit 18a69ee1, t_f55ec67f).
 - [x] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
       Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
       bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
