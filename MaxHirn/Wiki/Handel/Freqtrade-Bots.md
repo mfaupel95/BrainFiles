@@ -3,7 +3,7 @@ id: 20260930-freqtrade-bots
 title: 'Freqtrade-Bots aus den Moon-Dev-Agenten'
 tags: [handel, freqtrade, bots, backtest]
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-01
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Handel/Backtest-Fundament]]', '[[Handel/Kosten-und-Bedingungen]]', '[[Betrieb/Docker-und-Sandbox]]', '[[Betrieb/Systemleistung-2026-09-29]]']
 summary: 'Wie die drei Moon-Dev-Agenten als Freqtrade-Bots laufen, was der erste echte Backtest ueber sie sagt (alle drei negativ, Kosten = Verlust) und warum sie trotzdem im Probebetrieb laufen.'
 ---
@@ -99,6 +99,31 @@ geschlossener Kreis. Einzelheiten und die Kur stehen in
 
 Die Bots selbst haben das ueberlebt: `--restart unless-stopped` brachte alle
 drei von allein zurueck, sobald Docker wieder lief.
+
+## In der Handelszentrale (01.10.2026)
+
+Der FreqTrade-Reiter der Zentrale (`Agenten/Handel/handelszentrale.py`, Reiter
+"FreqTrade") zeigt die Bots aus `freqtrade/bots.json`: eine Zeile je Bot mit Port,
+Strategie, Rahmen, Modus, Zustand, offen/max, Trades und G/V geschlossen — dazu die
+offenen Positionen, die letzten geschlossenen Trades und G/V je Tag (14 Tage) des
+angewählten Bots.
+
+Wichtig für alle, die den Reiter lesen oder weiterbauen:
+
+* Der Basis-Container auf 8080 gehört nicht zur Liste. Er fährt nur `SampleStrategy`,
+  sein Zweck ist offen (T-199), und er antwortete am 30.09. nicht. Die Brücke zeigte
+  vorher ausschliesslich ihn — der Reiter war taub, während drei Bots liefen.
+* Angemeldet wird mit der Basis-config, der Port kommt vom Bot. Die Aufsatz-Dateien
+  `config.<name>.json` tragen eigene Zufallspasswörter, die die laufenden Container
+  ablehnen (401). Dieselbe Lehre steht in `bots.py::_api_stand`;
+  `freqtrade_bridge.zugang_fuer()` setzt sie um. Dass ein Zugang für drei Bots bleibt,
+  ist offen (T-300).
+* Nur lesend. `freqtrade_bridge.ERLAUBT` ist eine Whitelist von GET-Endpunkten;
+  `forceenter`, `forceexit`, `start`, `stop` gibt es in der Brücke nicht, und
+  `tests/test_freqtrade_bridge.py` prüft das am Quelltext.
+
+Nachprüfen: `cd Agenten/Handel && python freqtrade_bridge.py` (Liste plus Übersicht)
+oder `python handelszentrale.py --pruefen` (letzter Block der Ausgabe).
 
 ## Offen
 

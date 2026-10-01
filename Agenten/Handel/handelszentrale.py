@@ -2,7 +2,9 @@
 
 Das Gegenstueck zur omnitrade-Oberflaeche (omnitrade-ui): dort Chart,
 Orderbuch, Positionen und Konsole in einem Fenster - hier dieselben vier
-Dinge, aber ueber alle sieben Papierspuren statt ueber eine Engine.
+Dinge, aber ueber ALLE Spuren des Dauerlaufs (42 am 01.10.2026) statt ueber
+eine Engine. Dazu zwei Reiter fuer die Systeme ausserhalb der Spuren:
+FreqTrade (die Bot-Container) und omnitrade (die Rust-Laeufe samt Haus-Spur).
 
 Rein lesend
 -----------
@@ -11,11 +13,22 @@ Gelesen werden je Spur `zustand.json`, `wachen.json` und
 `freigabe_fenster.json`. Kurse und Kerzen kommen aus `scanner/okx` (OKX),
 `kraken/kraken.py` (Kraken) bzw. `spiegel/lesen.py` (Onchain-Feed) - alles in
 Hintergrund-Threads, damit das Netz die Oberflaeche nie blockiert. Dazu liest
-die Kopfzeile den echten Kraken-Kontostand (ZEUR, 60-s-Cache, rein lesend)
-und warnt rot, sobald er unter das Mindestguthaben der Spur faellt.
+die Kopfzeile den echten Kraken-Kontostand (alle Waehrungen des Buchs,
+60-s-Cache, rein lesend) und warnt rot, sobald keine Waehrung ueber das
+Mindestguthaben der Spur kommt.
+Der FreqTrade-Reiter fragt die Bot-APIs ab (Liste aus
+`freqtrade/bots.json`, Adressen und Grenzen in `freqtrade_bridge.py`), der
+omnitrade-Reiter liest die Statusdateien der Rust-Laeufe.
 Geschrieben wird NICHTS: der Dauerlauf bleibt der einzige Schreiber.
 `tests/test_handelszentrale_rein_lesend.py` verbietet Schreibzugriffe per
 AST-Pruefung.
+
+Scrollen
+--------
+Die Spuren-Seite ist eine Scrollflaeche und jede Tabelle hat eine Leiste
+(`tabelle_mit_leiste`, `scrollbare_seite`): die Spurtabelle forderte bis
+30.09.2026 so viele Zeilen an, wie es Spuren hat, und war damit hoeher als
+jedes Fenster - der untere Teil der Seite war nicht zu erreichen.
 
 Warum nicht `gui.py`
 --------------------
@@ -59,6 +72,7 @@ for _p in (HIER, os.path.join(HIER, "scanner"), os.path.join(HIER, "kraken"),
 import dauerlauf                                            # noqa: E402
 import freigabefenster                                      # noqa: E402
 import risikostufe                                          # noqa: E402
+import auswertung_alle                                      # noqa: E402
 import freqtrade_bridge                                     # noqa: E402
 import omnitrade_bridge                                     # noqa: E402
 import omnitrade_auswertung                                 # noqa: E402
@@ -77,8 +91,15 @@ STUFEN_AUSWAHL = (BASIS_NAME, "mittel", "hoch")
 
 
 def stufenname(name):
-    """Dateiname in der Stufe dieser Ansicht (Basis: unveraendert)."""
-    if not RISIKO:
+    """Dateiname in der Stufe dieser Ansicht (Basis: unveraendert).
+
+    NUR fuer Zustand und Journal. Die Wachen werden beim Laden skaliert, nicht
+    umbenannt (`risikostufe.py`) - `wachen.mittel.json` gibt es nicht, und eine
+    so gelesene Wache waere leer: jede Sperre der Spur_fiele weg, still. Die
+    Zentrale hat diesen Fall schon einmal falsch gemacht (25.09.2026 im
+    Tagesbericht), also sitzt die Regel hier und nicht nur bei den Aufrufern.
+    """
+    if not RISIKO or name.startswith("wachen"):
         return name
     return risikostufe.datei_fuer(name, RISIKO)
 
@@ -100,8 +121,23 @@ QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed",
           # spiegel: ihr Instrument ist ein Token (kette+token), kein
           # OKX-Paar. Ohne den Eintrag stand dort "Quelle okx" mit der
           # Token-Adresse als Instrument - der Chart lief ins Leere.
-          "kopier": "feed", "kopier1zu1": "feed"}
+          "kopier": "feed", "kopier1zu1": "feed",
+          # moondev_sniper fuehrt seine Solana-Mints als `inst` (ohne
+          # kette/token-Feld) - dieselbe Klasse: "Quelle okx" mit einer
+          # Contract-Adresse, kein Kurs, seit dem 19.09. Gemessen am 01.10.2026
+          # preisert der Feed den Token ueber die Kette solana (3,104e-06).
+          "moondev_sniper": "feed",
+          # robinhood_radar notiert auf der Robinhood-Kette (4663). Die ist im
+          # Feed-Leser nicht gefuehrt (KETTEN: base, bnb, ethereum, solana,
+          # xlayer) und hat auf OKX natuerlich kein Paar. "keine" sagt das,
+          # statt weiter "okx" zu behaupten und ins Leere zu laufen.
+          "robinhood_radar": "keine"}
 QUELLE_VORGABE = "okx"
+
+# Kette, die eine Feed-Spur in ihren Dateien NICHT mitschreibt. Nur ein
+# Nachschlagen fur den Fall, dass die Spur selbst sie nicht fuehrt - Positionen
+# mit eigenem `kette`-Feld brauchen das nicht.
+FEED_KETTE = {"moondev_sniper": "solana"}
 
 # Farben, Schrift, ttk-Stile: EINE Quelle fuer alle Fenster,
 # Werkzeuge/fenster_design.py (Beschreibung: Werkstatt/design-system-fenster-*).
@@ -244,7 +280,14 @@ def positionen_der_spur(spur, zustand, wachen):
             block = (wachen.get("instrumente") or {}).get(p["roh"].get("inst"))
             p["kurs_schluessel"] = (block or {}).get("kraken") or p["schluessel"]
         elif q == "feed":
-            p["kurs_schluessel"] = p.get("token")
+            # Token aus dem eigenen Feld, sonst aus dem generischen Schluessel
+            # (moondev_sniper fuehrt die Contract-Adresse als `inst`). Kette:
+            # was die Spur schreibt, sonst die nachgeschlagene Feed-Kette.
+            p["kurs_schluessel"] = p.get("token") or p["schluessel"] or None
+            p["kette"] = p.get("kette") or FEED_KETTE.get(spur)
+        elif q == "keine":
+            # Kein Kursweg, und das ist die Aussage - nicht ein leerer okx-Weg.
+            p["kurs_schluessel"] = None
         else:
             # `schluessel` ist die generische Lesart aus positionen_aus()
             # (inst ODER paar ODER token). Vorher stand hier roh["inst"] - die
@@ -255,7 +298,14 @@ def positionen_der_spur(spur, zustand, wachen):
 
 
 def kurs_fmt(wert):
-    """Genauigkeit passend zur Preisgroesse: 0.05697 -> 5, 2471 -> 1."""
+    """Genauigkeit passend zur Preisgroesse: 0.05697 -> 5, 2471 -> 1.
+
+    Unter 0,0001 reicht keine Nachkommastell-Zahl mehr: die Memecoin- und
+    Token-Kurse der Spuren liegen bei 1e-6 bis 1e-8. Bis 30.09.2026 endete die
+    Skala bei "%.5f" - ein Einstieg von 3,14e-06 stand als "0.00000" in der
+    Tabelle, Einstieg/Stop/Ziel einer Position also als drei Nullen. Unterhalb
+    der Schwelle gilt die exponentielle Form mit drei gueltigen Ziffern.
+    """
     w = _zahl(wert)
     if w is None:
         return "-"
@@ -265,7 +315,9 @@ def kurs_fmt(wert):
         return "%.2f" % w
     if w >= 1:
         return "%.3f" % w
-    return "%.5f" % w
+    if w >= 0.0001:
+        return "%.5f" % w
+    return "%.3g" % w
 
 
 def vorzeichen(seite):
@@ -292,6 +344,45 @@ def abstand_prozent(seite, kurs, stop):
     if not k or not s:
         return None
     return vorzeichen(seite) * (k / s - 1.0) * 100.0
+
+
+def waehrung_fuer(spur, zustand):
+    """Die Waehrung, in der die Betraege DIESER Spur stehen.
+
+    Die Regel liegt in `auswertung_alle.einheit_fuer()` und damit schon im
+    Tagesbericht - die Zentrale fuehrt sie nicht ein zweites Mal. Der
+    interne Schluessel einer Position heisst aus Altgruenden `wert_usd` und
+    sagt nichts ueber die Waehrung: das Kraken-Buch steht in EUR (seit
+    30.09.2026 moeglich auch USDC/EURC), die Kontraktspuren in USD. Eine
+    EUR-Zahl in einer Spalte "Wert USD" ist dieselbe Klasse Anzeigefehler wie
+    der Kraken-BTC-Kurs aus der OKX-Tabelle am 23.09.2026.
+    """
+    try:
+        return auswertung_alle.einheit_fuer(spur, zustand)
+    except Exception:                                        # noqa: BLE001
+        return "USD"          # Berichtsweg nicht lesbar: Zahlen zeigen, nicht scheitern
+
+
+def nominal_gruppen(positionen, zustaende):
+    """[(Waehrung, Summe, Anzahl)] der offenen Positionen, groesster Betrag zuerst.
+
+    Nach Waehrung GRUPPIERT, weil eine Summe ueber EUR und USD kein Betrag ist,
+    den jemand ausgeben koennte.
+    """
+    gruppen = {}
+    for p in positionen:
+        w = waehrung_fuer(p.get("spur"), (zustaende or {}).get(p.get("spur")))
+        summe, anzahl = gruppen.get(w, (0.0, 0))
+        gruppen[w] = (summe + (p.get("wert_usd") or 0.0), anzahl + 1)
+    return [(w, summe, anzahl) for w, (summe, anzahl) in
+            sorted(gruppen.items(), key=lambda kv: (-kv[1][0], kv[0]))]
+
+
+def wert_anzeige(wert, waehrung):
+    """Der Einsatz mit seiner Waehrung: '150 EUR', nicht '150' in einer USD-Spalte."""
+    if not wert:
+        return "-"
+    return "%.0f %s" % (wert, waehrung)
 
 
 def alter_minuten(wert, jetzt):
@@ -343,21 +434,13 @@ def spur_stand(spur, zustand, wachen, fenster, jetzt):
 
 
 def spur_zeile(stand):
-    """Die Zellen der Spurtabelle, in Spaltenreihenfolge."""
-    erlaubt = stand["handel_erlaubt"]
-    return (
-        stand["spur"],
-        stand["modus"],
-        stand["fenster"],
-        stand["stand"],
-        str(stand["positionen"]),
-        stand["herzschlag"],
-        ("ja" if erlaubt else "nein") if erlaubt is not None else "?",
-    )
+    """Die Zellen der Spurtabelle, in Spaltenreihenfolge.
 
-
-def spur_zeile(stand):
-    """Die Zellen der Spurtabelle, in Spaltenreihenfolge."""
+    Bis 30.09.2026 stand diese Funktion ZWEIMAL in der Datei, wortgleich.
+    Python laesst die LETZTE Definition gewinnen: die erste Fassung war tot.
+    Kein Verhalten war deshalb falsch, aber eine Aenderung nur an der ersten
+    haette gewirkt wie keine. Eine Fassung, ein Ort.
+    """
     erlaubt = stand["handel_erlaubt"]
     return (
         stand["spur"],
@@ -388,6 +471,57 @@ def _log_zeit(text, basis):
     return t
 
 
+LOG_SCHWANZ_BYTES = 65536
+
+
+def log_ende(pfad, zeilen=12, grenze=LOG_SCHWANZ_BYTES):
+    """Die letzten Zeilen einer Logdatei, ohne sie ganz zu lesen.
+
+    Bis 30.09.2026 las die Zentrale bei JEDEM Refresh (alle 15 s) das ganze
+    Dauerlauf-Protokoll zweimal: `dauerlauf_stand` Zeile fuer Zeile bis zum Ende
+    und `_schreibe_konsole` per `readlines()[-12:]` - gemessen 85 KB im laufenden
+    `dauerlauf.log`, 1,0 MB in der rotierten `dauerlauf.log.1`. Der Schwanz
+    reicht fuer alles, was angezeigt wird, und wachst nicht mit dem Log.
+    Eine unlesbare oder fehlende Datei ist kein Fehler: leere Liste.
+    """
+    try:
+        with open(pfad, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            groesse = f.tell()
+            f.seek(max(0, groesse - grenze))
+            anfang = f.tell()
+            roh = f.read()
+    except OSError:
+        return []
+    teile = roh.decode("utf-8", "replace").splitlines()
+    if anfang and teile:
+        teile = teile[1:]          # der angeschnittene Rest der ersten Zeile
+    return teile[-zeilen:] if zeilen else teile
+
+
+# Was in einem Dauerlauf-Protokoll einen Fehler anzeigt. Bewusst Woerter, keine
+# Regel: "Auto-Freigabe scanner" ist eine normale Betriebsmeldung.
+FEHLER_WOERTER = ("fehler", "fehler:", "fehler(", "traceback", "exception",
+                  "timeout", "time-out", "abgestürzt", "abgestuerzt", "absturz",
+                  "nicht erreichbar", "nicht lesbar", "abbruch", "crash",
+                  "exit code", "exitcode", "zurückgewiesen", "zurueckgewiesen")
+
+
+def log_marke(zeile):
+    """Die Farbe einer Protokollzeile in der Konsole: "", "matt" oder "schlecht".
+
+    Die Regel bis 30.09.2026 war: rot, wenn die Zeile NICHT " ok" enthaelt.
+    Damit stand jede Betriebsmeldung in Alarmfarbe - belegt am 01.10.2026 mit
+    der Zeile '01.10. 11:56:06  Auto-Freigabe scanner ...', die rot war, ohne
+    dass etwas fehlschlug. Rot gibt es nur noch fuer ein echtes Fehlermerkmal;
+    " ok" bleibt matt, alles andere bekommt keine Marke (Default-Farbe).
+    """
+    text = str(zeile).lower()
+    if any(w in text for w in FEHLER_WOERTER):
+        return "schlecht"
+    return "matt" if " ok" in text else ""
+
+
 def dauerlauf_stand(pfad, jetzt):
     """Letzter Eintrag im Dauerlauf-Log als (Text, Minuten seitdem).
 
@@ -396,13 +530,10 @@ def dauerlauf_stand(pfad, jetzt):
     Altbestand als Zukunft.
     """
     letzte = None
-    try:
-        with open(pfad, encoding="utf-8", errors="replace") as f:
-            for zeile in f:
-                if len(zeile) >= 15 and zeile[:2].isdigit():
-                    letzte = zeile
-    except Exception:                                        # noqa: BLE001
-        return (None, None)
+    for zeile in reversed(log_ende(pfad, 400)):
+        if len(zeile) >= 15 and zeile[:2].isdigit():
+            letzte = zeile
+            break
     if not letzte:
         return (None, None)
     text = letzte[:15]
@@ -593,12 +724,18 @@ def _ft_zeit(wert):
     return zeit_kurz(w)
 
 
-def freqtrade_kopf(lage):
-    """(Text, Marke) der Kopfzeile im FreqTrade-Reiter aus `freqtrade_bridge.lage()`."""
+def freqtrade_kopf(lage, name=None):
+    """(Text, Marke) der Kopfzeile im FreqTrade-Reiter aus `freqtrade_bridge.lage()`.
+
+    `name` ist der Bot, dessen Lage hier steht - der Reiter zeigt jetzt alle
+    Bots, ohne die Angabe waere nicht beantwortbar, WELCHEN Bot die Zeile
+    beschreibt.
+    """
     if not lage:
         return "FreqTrade: wird abgefragt …", "matt"
     if not lage.get("erreichbar"):
-        return "⚠ FreqTrade nicht erreichbar — %s" % lage.get("fehler", "?"), "schlecht"
+        return "⚠ FreqTrade%s nicht erreichbar — %s" % (
+            " %s" % name if name else "", lage.get("fehler", "?")), "schlecht"
     modus = "Probebetrieb" if lage.get("dry_run") else "LIVE"
     text = ("FreqTrade %s · %s · %s · %s %s   Guthaben %.2f %s   offen %d   "
             "Trades %d   G/V geschlossen %+.2f   gesamt %+.2f"
@@ -608,6 +745,8 @@ def freqtrade_kopf(lage):
                lage.get("offene_trades", 0), lage.get("trades_gesamt", 0),
                _zahl(lage.get("gewinn_geschlossen")) or 0.0,
                _zahl(lage.get("gewinn_gesamt")) or 0.0))
+    if name:
+        text = "%s  —  %s" % (name, text)
     # Ein Bot, der nicht im Probebetrieb laeuft, ist hier nie der Normalfall.
     return text, "gut" if lage.get("dry_run") else "schlecht"
 
@@ -651,18 +790,90 @@ def _gv_marke(text):
     return "gut" if zahl and zahl > 0 else "schlecht" if zahl and zahl < 0 else ""
 
 
-def _freqtrade_im_thread(ziel):
-    """Lage, offene und letzte Trades - im Hintergrund, wirft nie."""
-    lage = freqtrade_bridge.lage()
-    offen, zu, tage = [], {}, {}
-    if lage.get("erreichbar"):
-        try:
-            offen = freqtrade_bridge.offene_trades()
-            zu = freqtrade_bridge.trades(100)
-            tage = freqtrade_bridge.tagesbilanz(14)
-        except Exception:                                    # noqa: BLE001
-            pass      # Lage steht schon; Tabellen bleiben dann leer
-    ziel.put((lage, offen, zu, tage))
+def bot_waehlen(liste, name):
+    """Der Bot mit diesem Namen, sonst der erste; None, wenn die Liste leer ist.
+
+    Die Liste kommt aus `freqtrade_bridge.bots()` (freqtrade/bots.json). Ein
+    name, den die Liste nicht kennt, faellt auf den ersten Bot zurueck - die
+    Zentrale startet nichts und erfindet nichts, sie zeigt nur.
+    """
+    for b in liste or []:
+        if b.get("name") == name:
+            return b
+    return (liste or [None])[0]
+
+
+def freqtrade_uebersicht_zeilen(zeilen):
+    """[(Werte, Marke)] je Bot - die Uebersicht Zeile fuer Zeile.
+
+    Ein nicht erreichbarer Bot bekommt eine Zeile mit seinem Grund statt zu
+    fehlen: "der Bot laeuft nicht" ist eine Aussage, die die Zentrale zeigen
+    muss, nicht eine, die sie verschluckt (derselbe Fall wie die toten
+    Spur-Ordner im Leitstand).
+    """
+    aus = []
+    for z in zeilen or []:
+        if not isinstance(z, dict):
+            continue
+        erreichbar = bool(z.get("erreichbar"))
+        modus = ("Probebetrieb" if z.get("dry_run") else "LIVE") if erreichbar else "-"
+        werte = (z.get("name") or "?", str(z.get("port") or "?"),
+                 z.get("strategie") or "?", z.get("zeitrahmen") or "?",
+                 modus, z.get("zustand") or "?",
+                 "%s / %s" % (z.get("offen"), z.get("max")) if erreichbar else "-",
+                 str(z.get("trades")) if erreichbar and z.get("trades") is not None else "-",
+                 ("%+.2f" % (_zahl(z.get("gewinn")) or 0.0)) if erreichbar else "-",
+                 "" if erreichbar else (z.get("fehler") or "nicht erreichbar"))
+        if not erreichbar:
+            marke = "schlecht"
+        elif not z.get("dry_run"):
+            marke = "schlecht"        # LIVE ist hier nie der Normalfall
+        else:
+            marke = "gut"
+        aus.append((werte, marke))
+    return aus
+
+
+def _freqtrade_im_thread(ziel, name=None):
+    """Uebersicht ALLER Bots plus die Details des gewaehlten - wirft nie.
+
+    Ein Worker fuer beides: zwei Threads haetten zwei Antworten in beliebiger
+    Reihenfolge, und die Uebersicht war manchmal juenger als die Tabelle
+    darunter.
+    Die Details stammen vom GEWAEHLTEN Bot (Port), die Anmeldung immer aus der
+    Basis-config - `freqtrade_bridge.zugang_fuer` erklaert, warum.
+
+    Die Antwort geht auf JEDEM Weg raus, auch bei einer Ueberraschungs-
+    exception: die Zentrale haelt die Sperre `_ft_laeuft`, bis ein Stueck im
+    Korb liegt. Bliebe sie unten, holte das Fenster nie wieder FreqTrade-Daten.
+    """
+    paket = ([], {"erreichbar": False, "fehler": "Abruf fehlgeschlagen"},
+             [], {}, {})
+    try:
+        listen = freqtrade_bridge.bots()
+        uebersicht = freqtrade_bridge.uebersicht(bot_liste=listen)
+        bot = bot_waehlen(listen, name)
+        if bot is None:
+            # bots.json fehlt oder ist kaputt: nur die Basis-Instanz ist dann
+            # beantwortbar - ihre Lage nennt den Grund, die Uebersicht bleibt leer.
+            paket = (uebersicht, freqtrade_bridge.lage(), [], {}, {})
+        else:
+            zd = freqtrade_bridge.zugang_fuer(bot["port"])
+            lage = freqtrade_bridge.lage_fuer(bot)
+            offen, zu, tage = [], {}, {}
+            if lage.get("erreichbar"):
+                try:
+                    offen = freqtrade_bridge.offene_trades(zd)
+                    zu = freqtrade_bridge.trades(100, zd)
+                    tage = freqtrade_bridge.tagesbilanz(14, zd)
+                except Exception:                            # noqa: BLE001
+                    pass        # Lage steht; Tabellen bleiben dann leer
+            paket = (uebersicht, lage, offen, zu, tage)
+    except Exception as e:                                   # noqa: BLE001
+        paket = (paket[0], {"erreichbar": False,
+                            "fehler": "%s: %s" % (type(e).__name__, str(e)[:60])},
+                 [], {}, {})
+    ziel.put(paket)
 
 
 # ---------- omnitrade (Reiter) ----------
@@ -818,6 +1029,153 @@ def omnitrade_spur_journal(pfad, grenze=6):
     return aus[:grenze]
 
 
+# --------------------------------------------------------------------------
+# Scrollen: Tabellen mit Leiste, Seiten, die hoeher sind als das Fenster
+# --------------------------------------------------------------------------
+
+def _rad_schritte(event, zeilen=1):
+    """Zeilen aus dem Mausrad-Ereignis: Windows meldet delta, X11 Buttons 4/5."""
+    knopf = getattr(event, "num", None)
+    if knopf == 4:
+        return -zeilen
+    if knopf == 5:
+        return zeilen
+    schub = int(getattr(event, "delta", 0) or 0)
+    if not schub:
+        return 0
+    stufe = schub // 120 or (1 if schub > 0 else -1)
+    return -stufe * zeilen
+
+
+def rad_selbst(widget, zeilen=1):
+    """Das Mausrad direkt an ein scrollbares Widget haengen.
+
+    Das Widget gibt "break" zurueck, damit ein seitengebundener Rad-Handler
+    (siehe seite_mausrad) dieselbe Bewegung nicht ein zweites Mal ausfuehrt.
+    """
+    def dreh(event):
+        schritte = _rad_schritte(event, zeilen)
+        if schritte:
+            try:
+                widget.yview_scroll(schritte, "units")
+            except Exception:                                # noqa: BLE001
+                pass          # Widget gerade weg: unwesentlich
+        return "break"
+    widget.bind("<MouseWheel>", dreh, add="+")
+    widget.bind("<Button-4>", dreh, add="+")
+    widget.bind("<Button-5>", dreh, add="+")
+    return widget
+
+
+def _nachkommen(widget):
+    for kind in widget.winfo_children():
+        yield kind
+        for tiefer in _nachkommen(kind):
+            yield tiefer
+
+
+def seite_region_neu(c, innen):
+    """Die Scrollregion einer Scrollseite neu setzen; leerer Inhalt bleibt ohne.
+
+    Eigenen Namen, damit der Pfad ohne Fensterereignis pruefbar ist. Zwei
+    Fallen, beide am 01.10.2026 nachgemessen:
+      * `c.bbox("all")` ist None, solange der Canvas gar kein Item hat -
+        `scrollregion=None` wirft einen Tcl-Fehler, der als Hintergrund-Fehler
+        unter dem Fenster verschwindet und die Seite unscrollbar laesst.
+      * Ist der Inhalt noch nicht gemessen, liefert bbox den ARTIFAKT-Rahmen
+        (0, 0, 1, 1) - eine Region von einem Pixel. Die Seite tut dann nichts,
+        obwohl eine Region gesetzt ist; also gilt: erst ab echter Hoehe setzen.
+    """
+    messung = c.bbox("all")
+    if not messung or messung[3] <= 1:
+        return None
+    c.configure(scrollregion=messung)
+    return messung
+
+
+def scrollbare_seite(eltern):
+    """(wrapper, innen, seiten_canvas) - eine Seite, die vertikal scrollt.
+
+    Warum das noetig ist: die Spuren-Seite war am 30.09.2026 hoeher als jedes
+    Fenster. Spurtabelle mit `height=len(SPUREN)` (42 Zeilen), dazu
+    Positionstabelle, Chart und Konsole - der untere Teil war nicht erreichbar,
+    weder durch Vergroessern noch durch Ziehen. Eine scrollbare Flaeche ist die
+    Antwort, nicht ein kleineres Fenster.
+
+    Die Breite folgt dem Canvas (sonst zerfliesst der Inhalt in die
+    Scrollregion), die Scrollregion dem Inhalt.
+    """
+    wrapper = tk.Frame(eltern, bg=FARBEN["bg"])
+    c = tk.Canvas(wrapper, bg=FARBEN["bg"], highlightthickness=0)
+    leiste = ttk.Scrollbar(wrapper, orient="vertical", command=c.yview)
+    innen = tk.Frame(c, bg=FARBEN["bg"])
+    fenster_id = c.create_window((0, 0), window=innen, anchor="nw")
+    c.configure(yscrollcommand=leiste.set)
+    leiste.pack(side="right", fill="y")
+    c.pack(side="left", fill="both", expand=True)
+    innen.bind("<Configure>", lambda _e: seite_region_neu(c, innen))
+    c.bind("<Configure>", lambda e: c.itemconfigure(fenster_id, width=e.width))
+    return wrapper, innen, c
+
+
+def seite_mausrad(c, innen):
+    """Das Mausrad auf der ganzen Scrollseite wirksam machen.
+
+    Ein Radereignis landet auf dem Widget unter dem Zeiger, nicht auf dem
+    Canvas dahinter. Also wird der Handler auf den Canvas UND auf jeden
+    Nachfahren gelegt - mit `add="+"`, damit nichts verloren geht. Widgets, die
+    ihr Rad schon selbst fuehren (`rad_selbst`: Tabellen, Textfelder) werden
+    uebersprungen, sonst verschwaede dieselbe Bewegung Seite UND Tabelle.
+    """
+    def dreh(event):
+        schritte = _rad_schritte(event, 3)
+        if schritte:
+            try:
+                c.yview_scroll(schritte, "units")
+            except Exception:                                # noqa: BLE001
+                pass
+        return "break"
+
+    for widget in [c, innen] + list(_nachkommen(innen)):
+        try:
+            if widget.bind("<MouseWheel>") or widget.bind("<Button-4>"):
+                continue          # hat bereits einen eigenen Rad-Handler
+            widget.bind("<MouseWheel>", dreh, add="+")
+            widget.bind("<Button-4>", dreh, add="+")
+            widget.bind("<Button-5>", dreh, add="+")
+        except Exception:                                    # noqa: BLE001
+            pass          # Widget nimmt keine Bindungen ( selten, z. B. im Aufbau)
+
+
+def tabelle_mit_leiste(rahmen, spalten, kopf, breiten=None, hoehe=8,
+                       anker_w=(), dehnen="", wahl=None):
+    """Eine Treeview MIT vertikaler und horizontaler Leiste und Mausrad.
+
+    Vorher gab es die Leiste nur bei zwei der sieben Tabellen der Zentrale;
+    eine Tabelle ohne Leiste ist bei mehr Zeilen als Platz ein Abschnitt, den
+    man nicht lesen kann. Die Hoehe ist bewusst eine Vorgabe (keine Formel aus
+    der Zeilenzahl): die Seite scrollt, die Tabelle bleibt ein Feld.
+    `wahl` ist die Treeview-Auswahlform ("browse" fuer anklickbare Tabellen).
+    """
+    baum = ttk.Treeview(rahmen, columns=spalten, show="headings", height=hoehe,
+                        **({"selectmode": wahl} if wahl else {}))
+    for sp in spalten:
+        baum.heading(sp, text=kopf.get(sp, sp))
+        baum.column(sp, width=(breiten or {}).get(sp, 110),
+                    stretch=(sp == dehnen),
+                    anchor="w" if sp in anker_w else "e")
+    laenger = ttk.Scrollbar(rahmen, orient="vertical", command=baum.yview)
+    breiter = ttk.Scrollbar(rahmen, orient="horizontal", command=baum.xview)
+    baum.configure(yscrollcommand=laenger.set, xscrollcommand=breiter.set)
+    breiter.pack(side="bottom", fill="x")
+    laenger.pack(side="right", fill="y")
+    baum.pack(side="left", fill="both", expand=True)
+    baum.tag_configure("schlecht", foreground=FARBEN["rot"])
+    baum.tag_configure("gut", foreground=FARBEN["gruen"])
+    rad_selbst(baum)
+    return baum
+
+
 class Handelszentrale:
     """Tk-Fenster ueber alle Spuren. Liest nur, schreibt nichts."""
 
@@ -838,6 +1196,7 @@ class Handelszentrale:
         self._schrift_widgets = [] # (widget, rel, fett) fuer die Schrift-Option
         self.q_freqtrade = queue.Queue()
         self.ft_lage = None        # letzte freqtrade_bridge.lage(), None = noch nie
+        self.ft_bot = None         # Name des Bots, dessen Details gezeigt werden
         self._ft_laeuft = False
         if isinstance(root, tk.Tk):
             # Allein gestartet gehoert das Fenster der Zentrale; als Reiter
@@ -950,9 +1309,14 @@ class Handelszentrale:
         # --- Reiter: "Spuren" traegt die bisherige Ansicht, "FreqTrade" den
         # lokalen Bot (freqtrade_bridge, nur lesend). Fusszeile bleibt am
         # Fenster, damit sie in beiden Reitern steht.
+        #
+        # Die Spuren-Seite ist eine SCROLLFLAECHE: Spurtabelle, Positionstabelle,
+        # Chart und Konsole zusammen sind hoeher als jedes Fenster (die Tabelle
+        # allein hatte 42 Zeilen), und ohne Leiste war der untere Teil des
+        # Fensters nicht zu erreichen.
         self.reiter = ttk.Notebook(self.root)
-        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
-        self.reiter.add(seite, text="Spuren")
+        self.seite_wrapper, seite, self.seite_canvas = scrollbare_seite(self.reiter)
+        self.reiter.add(self.seite_wrapper, text="Spuren")
         self._baue_freqtrade()
         self._baue_omnitrade()
 
@@ -970,17 +1334,14 @@ class Handelszentrale:
                   "handel": "handel_erlaubt"}
         breit_s = {"spur": 110, "modus": 80, "fenster": 190, "stand": 90,
                    "pos": 50, "herzschlag": 130, "handel": 120}
-        self.t_spuren = ttk.Treeview(r1, columns=sp_spur, show="headings",
-                                     height=len(SPUREN))
-        for s in sp_spur:
-            self.t_spuren.heading(s, text=kopf_s[s])
-            self.t_spuren.column(s, width=breit_s[s],
-                                 anchor="w" if s in ("spur", "modus", "fenster",
-                                                     "herzschlag", "handel")
-                                 else "e")
-        self.t_spuren.pack(fill="x")
-        self.t_spuren.tag_configure("schlecht", foreground=FARBEN["rot"])
-        self.t_spuren.tag_configure("gut", foreground=FARBEN["gruen"])
+        # Zeilenweise Vorgabe statt `height=len(SPUREN)`: die Tabelle hatte
+        # 42 Zeilen und damit eine angeforderte Hoehe ueber jedem Fenster -
+        # die letzten Spuren waren unerreichbar. Zwolf Zeilen plus Leiste:
+        # alles bleibt lesbar, die Seite scrolliert.
+        self.t_spuren = tabelle_mit_leiste(r1, sp_spur, kopf_s, breit_s,
+                                           hoehe=min(len(SPUREN), 12),
+                                           anker_w=("spur", "modus", "fenster",
+                                                    "herzschlag", "handel"))
 
         # --- Positionstabelle
         t_pos_label = tk.Label(seite,
@@ -994,25 +1355,14 @@ class Handelszentrale:
                   "ziel", "abstand", "wert", "gv")
         kopf_p = {"spur": "Spur", "instrument": "Instrument", "seite": "Seite",
                   "einstieg": "Einstieg", "kurs": "Kurs", "stop": "Stop",
-                  "ziel": "Ziel", "abstand": "Abstand", "wert": "Wert USD",
+                  "ziel": "Ziel", "abstand": "Abstand", "wert": "Wert",
                   "gv": "G/V %"}
         breit_p = {"spur": 90, "instrument": 210, "seite": 60, "einstieg": 90,
                    "kurs": 90, "stop": 90, "ziel": 90, "abstand": 80,
-                   "wert": 90, "gv": 80}
-        self.t_pos = ttk.Treeview(r2, columns=sp_pos, show="headings",
-                                  height=7, selectmode="browse")
-        for s in sp_pos:
-            self.t_pos.heading(s, text=kopf_p[s])
-            self.t_pos.column(s, width=breit_p[s],
-                              stretch=s == "instrument",
-                              anchor="w" if s in ("spur", "instrument", "seite")
-                              else "e")
-        sb = ttk.Scrollbar(r2, orient="vertical", command=self.t_pos.yview)
-        self.t_pos.configure(yscrollcommand=sb.set)
-        self.t_pos.pack(side="left", fill="both", expand=True)
-        sb.pack(side="right", fill="y")
-        self.t_pos.tag_configure("schlecht", foreground=FARBEN["rot"])
-        self.t_pos.tag_configure("gut", foreground=FARBEN["gruen"])
+                   "wert": 110, "gv": 80}
+        self.t_pos = tabelle_mit_leiste(r2, sp_pos, kopf_p, breit_p, hoehe=7,
+                                        anker_w=("spur", "instrument", "seite"),
+                                        dehnen="instrument", wahl="browse")
         self.t_pos.bind("<<TreeviewSelect>>", self._gewaehlt)
 
         # --- Chart
@@ -1036,10 +1386,17 @@ class Handelszentrale:
         self.konsole = tk.Text(r3, height=9, bg=FARBEN["blatt"],
                                fg=FARBEN["text"], font=schrift(KLEIN),
                                relief="flat", wrap="none")
+        # Die Buchungszeilen sind lang (Spur, Instrument, Preis, Grund) und
+        # `wrap="none"` schneidet sie ab - ohne horizontale Leiste war der
+        # Rest der Zeile nicht zu lesen.
+        sbq = ttk.Scrollbar(r3, orient="horizontal", command=self.konsole.xview)
         sb2 = ttk.Scrollbar(r3, orient="vertical", command=self.konsole.yview)
-        self.konsole.configure(yscrollcommand=sb2.set, state="disabled")
+        self.konsole.configure(yscrollcommand=sb2.set, xscrollcommand=sbq.set,
+                               state="disabled")
+        sbq.pack(side="bottom", fill="x")
         self.konsole.pack(side="left", fill="both", expand=True)
         sb2.pack(side="right", fill="y")
+        rad_selbst(self.konsole, zeilen=2)
         self.konsole.tag_configure("matt", foreground=FARBEN["matt"])
         self.konsole.tag_configure("gut", foreground=FARBEN["gruen"])
         self.konsole.tag_configure("schlecht", foreground=FARBEN["rot"])
@@ -1056,15 +1413,64 @@ class Handelszentrale:
         self._registriere_schrift(t_fuss, KLEIN)
         t_fuss.pack(side="right")
         self.reiter.pack(fill="both", expand=True)
+        # Das Mausrad fuer die Spuren-Seite - erst JETZT angelegt, wenn jeder
+        # Rahmen unter ihr existiert; vorher haette der Rahmen unter dem Zeiger
+        # keine Bindung und das Rad bliebe wirkungslos.
+        self.seite = seite
+        seite_mausrad(self.seite_canvas, seite)
+        # Scrollregion einmal SOFORT: kommt kein Configure-Ereignis (minimiert
+        # gestartet, als Reiter im Leitstand gebaut), waere die Seite trotz
+        # Inhalt nicht scrollbar. after_idle laesst den Aufbau erst fertig werden.
+        self.root.after_idle(lambda: seite_region_neu(self.seite_canvas, seite))
 
     def _baue_freqtrade(self):
-        """Reiter FreqTrade: Kopfzeile, offene Positionen, letzte Trades."""
+        """Reiter FreqTrade: alle Bots, dazu die Details des gewaehlten.
+
+        Der Reiter zeigte bis 30.09.2026 EINEN Bot an der festen Adresse
+        127.0.0.1:8080. Die drei FreqTrade-Bots laufen aber auf 8081-8083 und
+        8080 antwortete nicht (gemessen) - der Reiter war taub, waehrend drei
+        Bots liefen. Die Bot-Liste kommt aus `freqtrade/bots.json`, derselben
+        Tabelle, die `bots.py` zum Starten benutzt.
+        """
         seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
         self.reiter.add(seite, text="FreqTrade")
-        self.l_ft = tk.Label(seite, bg=FARBEN["bg"], anchor="w",
+        self.l_ft = tk.Label(seite, bg=FARBEN["bg"], anchor="w", justify="left",
                              text=freqtrade_kopf(None)[0], fg=FARBEN["matt"])
         self._registriere_schrift(self.l_ft, 0, fett=True)
         self.l_ft.pack(fill="x", padx=10, pady=(6, 2))
+
+        # --- Uebersicht: jeder Bot eine Zeile, auch der tote ---
+        t_ueber = tk.Label(seite, text="Alle Bots (Liste aus freqtrade/bots.json)",
+                           bg=FARBEN["bg"], fg=FARBEN["akzent"], anchor="w")
+        self._registriere_schrift(t_ueber, 0, fett=True)
+        t_ueber.pack(fill="x", padx=10, pady=(6, 0))
+        bs = ("name", "port", "strategie", "rahmen", "modus", "zustand",
+              "offen", "trades", "gv", "meldung")
+        bk = {"name": "Bot", "port": "Port", "strategie": "Strategie",
+              "rahmen": "Rahmen", "modus": "Modus", "zustand": "Zustand",
+              "offen": "offen/max", "trades": "Trades",
+              "gv": "G/V geschlossen", "meldung": "Meldung"}
+        r_ueber = tk.Frame(seite, bg=FARBEN["blatt"])
+        r_ueber.pack(fill="x", padx=10)
+        self.t_ft_bots = tabelle_mit_leiste(
+            r_ueber, bs, bk,
+            {**dict.fromkeys(bs, 95), "strategie": 170, "meldung": 260},
+            hoehe=max(len(freqtrade_bridge.bots()), 3),
+            anker_w=("name", "strategie", "modus", "zustand", "meldung"),
+            wahl="browse")
+        self.t_ft_bots.bind("<<TreeviewSelect>>", self._ft_bot_auswahl)
+
+        # --- Umschalter, falls die Tabelle doch nicht angewählt wurde ---
+        zeile = tk.Frame(seite, bg=FARBEN["bg"])
+        zeile.pack(fill="x", padx=10, pady=(6, 0))
+        t_bot = tk.Label(zeile, text="Details von:", bg=FARBEN["bg"],
+                         fg=FARBEN["matt"], anchor="w")
+        self._registriere_schrift(t_bot, KLEIN)
+        t_bot.pack(side="left")
+        self.w_ft_bot = ttk.Combobox(zeile, values=[], width=22, state="readonly")
+        self.w_ft_bot.pack(side="left", padx=(6, 0))
+        self.w_ft_bot.bind("<<ComboboxSelected>>", self._ft_bot_auswahl)
+
         tabellen = (
             ("t_ft_offen", "Offene Positionen",
              ("paar", "seite", "seit", "einstieg", "kurs", "einsatz", "gv"),
@@ -1083,20 +1489,11 @@ class Handelszentrale:
             t.pack(fill="x", padx=10, pady=(6, 0))
             rahmen = tk.Frame(seite, bg=FARBEN["blatt"])
             rahmen.pack(fill="both", expand=attr == "t_ft_zu", padx=10)
-            baum = ttk.Treeview(rahmen, columns=spalten, show="headings",
-                                height=hoehe)
-            for sp in spalten:
-                baum.heading(sp, text=kopf[sp])
-                baum.column(sp, width=180 if sp == "grund" else 110,
-                            anchor="w" if sp in ("paar", "seite", "seit", "auf",
-                                                 "zu", "grund") else "e")
-            leiste = ttk.Scrollbar(rahmen, orient="vertical", command=baum.yview)
-            baum.configure(yscrollcommand=leiste.set)
-            baum.pack(side="left", fill="both", expand=True)
-            leiste.pack(side="right", fill="y")
-            baum.tag_configure("schlecht", foreground=FARBEN["rot"])
-            baum.tag_configure("gut", foreground=FARBEN["gruen"])
-            setattr(self, attr, baum)
+            setattr(self, attr, tabelle_mit_leiste(
+                rahmen, spalten, kopf,
+                {**dict.fromkeys(spalten, 110), "grund": 180}, hoehe=hoehe,
+                anker_w=("paar", "seite", "seit", "auf", "zu", "grund"),
+                dehnen="grund"))
             if attr == "t_ft_offen":
                 t = tk.Label(seite, text="G/V je Tag (14 Tage)", bg=FARBEN["bg"],
                              fg=FARBEN["akzent"], anchor="w")
@@ -1108,9 +1505,11 @@ class Handelszentrale:
                 self.c_ft.bind("<Configure>", lambda _e: self._zeichne_ft_tage())
         self.ft_tage = []
         t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
-                            text="Quelle: FreqTrade-API %s (freqtrade_bridge, "
-                                 "nur lesend) — Start: Agenten/Handel/freqtrade/start.sh"
-                                 % freqtrade_bridge.URL)
+                            text="Quelle: FreqTrade-API je Bot aus %s "
+                                 "(freqtrade_bridge, nur lesend; Anmeldung aus der "
+                                 "Basis-config) — Start: Agenten/Handel/freqtrade/"
+                                 "bots_starten.sh"
+                                 % freqtrade_bridge.BOTS_KONFIG)
         self._registriere_schrift(t_quelle, KLEIN)
         t_quelle.pack(fill="x", padx=10, pady=(4, 0))
 
@@ -1131,14 +1530,12 @@ class Handelszentrale:
         lkopf = {"strategie": "Strategie", "symbol": "Symbol", "laufzeit": "Laufzeit",
                  "kerzen": "Kerzen", "orders": "Orders", "kv": "Kauf/Verk.",
                  "gewinn": "Gewinn", "buyhold": "Buy&Hold", "zustand": "Zustand"}
-        self.t_laeufe = ttk.Treeview(seite, columns=lspalten, show="headings", height=5)
-        for sp in lspalten:
-            self.t_laeufe.heading(sp, text=lkopf[sp])
-            self.t_laeufe.column(sp, width=150 if sp == "zustand" else 100,
-                                 anchor="w" if sp in ("strategie", "symbol", "zustand") else "e")
-        self.t_laeufe.tag_configure("schlecht", foreground=FARBEN["rot"])
-        self.t_laeufe.tag_configure("gut", foreground=FARBEN["gruen"])
-        self.t_laeufe.pack(fill="x", padx=10)
+        r_laeufe = tk.Frame(seite, bg=FARBEN["blatt"])
+        r_laeufe.pack(fill="x", padx=10)
+        self.t_laeufe = tabelle_mit_leiste(
+            r_laeufe, lspalten, lkopf,
+            {**dict.fromkeys(lspalten, 100), "zustand": 150}, hoehe=6,
+            anker_w=("strategie", "symbol", "zustand"))
         # --- Haus-Buch der SPUR (30.09.2026) --------------------------------
         # Getrennt von den Rust-Laeufen: sie spiegelt deren Position in ein
         # eigenes Buch, heisst aber genauso. Wer nur eine der beiden sieht,
@@ -1155,21 +1552,21 @@ class Handelszentrale:
         pspalten = ("instrument", "seite", "einstieg", "stop", "ziel", "nominal")
         pkopf = {"instrument": "Instrument", "seite": "Seite", "einstieg": "Einstieg",
                  "stop": "Stop", "ziel": "Ziel", "nominal": "Nominal"}
-        self.t_omni_pos = ttk.Treeview(seite, columns=pspalten, show="headings", height=4)
-        for sp in pspalten:
-            self.t_omni_pos.heading(sp, text=pkopf[sp])
-            self.t_omni_pos.column(sp, width=140, anchor="w" if sp in ("instrument", "seite") else "e")
-        self.t_omni_pos.pack(fill="x", padx=10)
+        r_pos = tk.Frame(seite, bg=FARBEN["blatt"])
+        r_pos.pack(fill="x", padx=10)
+        self.t_omni_pos = tabelle_mit_leiste(
+            r_pos, pspalten, pkopf,
+            dict.fromkeys(pspalten, 140), hoehe=4,
+            anker_w=("instrument", "seite"), dehnen="instrument")
         jspalten = ("zeit", "modus", "aktion", "instrument", "preis", "grund")
         jkopf = {"zeit": "Zeit", "modus": "Modus", "aktion": "Aktion",
                  "instrument": "Instrument", "preis": "Preis", "grund": "Grund"}
-        self.t_omni_journal = ttk.Treeview(seite, columns=jspalten, show="headings", height=6)
-        for sp in jspalten:
-            self.t_omni_journal.heading(sp, text=jkopf[sp])
-            self.t_omni_journal.column(sp, width=260 if sp == "zeit" else 120,
-                                       anchor="w" if sp in ("modus", "aktion", "instrument",
-                                                            "grund") else "e")
-        self.t_omni_journal.pack(fill="x", padx=10, pady=(2, 0))
+        r_journal = tk.Frame(seite, bg=FARBEN["blatt"])
+        r_journal.pack(fill="x", padx=10, pady=(2, 0))
+        self.t_omni_journal = tabelle_mit_leiste(
+            r_journal, jspalten, jkopf,
+            {"zeit": 260}, hoehe=6,
+            anker_w=("modus", "aktion", "instrument", "grund"))
         t = tk.Label(seite, text="Letzte Orders", bg=FARBEN["bg"],
                      fg=FARBEN["akzent"], anchor="w")
         self._registriere_schrift(t, 0, fett=True)
@@ -1179,17 +1576,10 @@ class Handelszentrale:
         spalten = ("zeit", "seite", "menge", "preis", "ergebnis", "meldung")
         kopf = {"zeit": "Zeit", "seite": "Seite", "menge": "Menge", "preis": "Preis",
                 "ergebnis": "Ergebnis", "meldung": "Meldung"}
-        self.t_omni = ttk.Treeview(rahmen, columns=spalten, show="headings", height=20)
-        for sp in spalten:
-            self.t_omni.heading(sp, text=kopf[sp])
-            self.t_omni.column(sp, width=320 if sp == "meldung" else 110,
-                               anchor="e" if sp in ("menge", "preis") else "w")
-        leiste = ttk.Scrollbar(rahmen, orient="vertical", command=self.t_omni.yview)
-        self.t_omni.configure(yscrollcommand=leiste.set)
-        self.t_omni.pack(side="left", fill="both", expand=True)
-        leiste.pack(side="right", fill="y")
-        self.t_omni.tag_configure("schlecht", foreground=FARBEN["rot"])
-        self.t_omni.tag_configure("gut", foreground=FARBEN["gruen"])
+        self.t_omni = tabelle_mit_leiste(
+            rahmen, spalten, kopf,
+            {"meldung": 320}, hoehe=20,
+            anker_w=("zeit", "seite", "ergebnis", "meldung"), dehnen="meldung")
         t_quelle = tk.Label(seite, bg=FARBEN["bg"], fg=FARBEN["matt"], anchor="w",
                             text="Quelle: %s (omnitrade_bridge, nur lesend) — Start: "
                                  "omnitrade live --status-file … (Testnet)"
@@ -1229,18 +1619,56 @@ class Handelszentrale:
             self.t_laeufe.insert("", "end", values=werte, tags=(marke,))
 
     def _starte_freqtrade_worker(self):
-        """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads."""
+        """Nur EIN Abruf gleichzeitig; ein haengender Bot stapelt keine Threads.
+
+        Der gewaehlte Botname wird mitgegeben - der worker antwortet immer
+        (auch bei einer exception), damit die Sperre nicht fuer immer bleibt.
+        """
         if self._ft_laeuft:
             return
         self._ft_laeuft = True
-        threading.Thread(target=_freqtrade_im_thread, args=(self.q_freqtrade,),
+        threading.Thread(target=_freqtrade_im_thread,
+                         args=(self.q_freqtrade, self.ft_bot),
                          daemon=True).start()
 
-    def _zeige_freqtrade(self, lage, offen, zu, tage=None):
+    def _ft_bot_auswahl(self, _event=None):
+        """Zeile in der Bots-Tabelle oder Umschalter: Details DIESES Bots holen."""
+        name = None
+        try:
+            sel = self.t_ft_bots.selection()
+            if sel:
+                name = str(self.t_ft_bots.item(sel[0], "values")[0])
+            elif self.w_ft_bot.get():
+                name = str(self.w_ft_bot.get())
+        except Exception:                                    # noqa: BLE001
+            return          # noch nichts gewaehlt: Ansicht bleibt stehen
+        if not name or name == self.ft_bot:
+            return
+        self.ft_bot = name
+        try:
+            self.w_ft_bot.set(name)     # set() loest bewusst KEIN Signal aus
+        except Exception:                # noqa: BLE001
+            pass
+        self._starte_freqtrade_worker()
+
+    def _zeige_freqtrade(self, uebersicht, lage, offen, zu, tage=None):
         self.ft_lage = lage
         self.ft_tage = freqtrade_tagesbalken(tage)
         self._zeichne_ft_tage()
-        text, marke = freqtrade_kopf(lage)
+        # Uebersicht zuerst: sie ist die Wahrheit ueber ALLE Bots, die Kopf-
+        # zeile beschreibt nur den gewaehlten.
+        for i in self.t_ft_bots.get_children():
+            self.t_ft_bots.delete(i)
+        namen = []
+        for werte, marke in freqtrade_uebersicht_zeilen(uebersicht):
+            self.t_ft_bots.insert("", "end", values=werte, tags=(marke,))
+            namen.append(werte[0])
+        if namen:
+            self.w_ft_bot.configure(values=namen)
+            if self.ft_bot not in namen:
+                self.ft_bot = namen[0]     # bots.json geaendert: neu anlehnen
+            self.w_ft_bot.set(self.ft_bot)
+        text, marke = freqtrade_kopf(lage, self.ft_bot)
         self.l_ft.configure(text=text, fg=FARBEN[{"gut": "gruen", "schlecht": "rot"}.get(marke, marke)])
         for baum in (self.t_ft_offen, self.t_ft_zu):
             for i in baum.get_children():
@@ -1287,7 +1715,15 @@ class Handelszentrale:
         self.positionen = []
         for spur in SPUREN:
             ordner = os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur))
-            z = lade_json(os.path.join(ordner, "zustand.json"))
+            # Das Zustandbuch DIESER Stufe, nicht still die Basis: die drei
+            # Dauerlaeufe fahren dieselben Spuren in eigenen Dateien
+            # (zustand.mittel.json, zustand.hoch.json). Bis 30.09.2026 las
+            # refresh() hart "zustand.json" - die Spurtabelle, die
+            # Positionstabelle und die Fuss-Summe zeigten in der Ansicht
+            # "mittel"/"hoch" die Basis-Buecher, waehrend Konsole und
+            # omnitrade-Haus-Buch ueber _pfad()/stufenname() laengst die
+            # richtigen Dateien lasen. Zwei Lesarten, ein Fenster.
+            z = lade_json(os.path.join(ordner, stufenname("zustand.json")))
             w = lade_json(os.path.join(ordner, "wachen.json"))
             self.zustaende[spur] = z
             self.wachen[spur] = w
@@ -1325,8 +1761,10 @@ class Handelszentrale:
         kraken_paare = sorted({p["kurs_schluessel"] for p in positionen
                                if p["quelle"] == "kraken"
                                and p["kurs_schluessel"]})
-        feed_punkte = sorted({(p["kette"], p["token"]) for p in positionen
-                              if p["quelle"] == "feed" and p["token"]})
+        feed_punkte = sorted({(p["kette"], p["kurs_schluessel"])
+                              for p in positionen
+                              if p["quelle"] == "feed" and p["kette"]
+                              and p["kurs_schluessel"]})
         if okx_insts:
             try:
                 import okx
@@ -1357,14 +1795,39 @@ class Handelszentrale:
                         neu[("feed", token)] = kurs
             except Exception:                                # noqa: BLE001
                 pass       # Feed nicht erreichbar -> alte Anzeige behalten
+        # Der Schwung geht IMMER raus - auch wenn oben etwas geworfen haette.
+        # Sonst bleibt die Sperre unten, weil kein Antwortstueck ankommt, und
+        # die Zentrale holt nie wieder Kurse (derselbe Fall wie der
+        # freqtrade-Worker, nur stiller).
         self.q_kurse.put(neu)
 
     def _planer(self):
+        """Der 15-Sekunden-Takt: Antworten einsammeln, neu lesen, weiterplanen.
+
+        Zwei Fallen, beide am 30.09.2026 gemessen bzw. behoben:
+          * Die Kurs-Sperre wurde bisher BEDINGUNGSLOS zurueckgenommen. Ein
+            Worker, der laenger als ein Takt braucht (Feed-CLI, Netzwaende),
+            war damit beim naechsten Tick "fertig" - es startete ein zweiter,
+            waehrend der erste noch lief. Genau das Stapeln von Threads, das
+            `_starte_kurs_worker` laut seiner eigenen Doku verbietet, war
+            also nie abgeschaltet. Jetzt gilt: die Sperre faellt erst mit der
+            Antwort.
+          * Ein Werfen im Einsammeln (ein kaputtes Antwortstueck, ein
+            Ueberraschungsfehler im Anzeigeaufbau) brachte den Takt zum
+            Schweigen - das Fenster lief weiter, aktualisierte aber nie
+            wieder, ohne eine Spur davon zu hinterlassen. Der Neustart des
+            Timers steht deshalb im `finally`.
+        """
         try:
+            antworten = False
             while True:
                 self.kurse.update(self.q_kurse.get_nowait())
+                antworten = True
         except queue.Empty:
             pass
+        finally:
+            if antworten:
+                self._kurs_laeuft = False
         try:
             while True:
                 spur, schluessel, kerzen, grund = self.q_kerzen.get_nowait()
@@ -1372,15 +1835,20 @@ class Handelszentrale:
                 self._kerzen_wunsch = None
         except queue.Empty:
             pass
+        except Exception:                                    # noqa: BLE001
+            self._kerzen_wunsch = None      # kaputtes Stueck: Wunsch freigeben
         try:
             while True:
                 self._zeige_freqtrade(*self.q_freqtrade.get_nowait())
                 self._ft_laeuft = False
         except queue.Empty:
             pass
-        self._kurs_laeuft = False
-        self.refresh()
-        self.root.after(REFRESH_MS, self._planer)
+        try:
+            self.refresh()
+        except Exception:                                    # noqa: BLE001
+            pass          # ein Lesefehler darf den Takt nicht entlassen
+        finally:
+            self.root.after(REFRESH_MS, self._planer)
 
     # ---------- Chart ----------
     def _gewaehlt(self, _event=None):
@@ -1526,6 +1994,11 @@ class Handelszentrale:
         for i in self.t_pos.get_children():
             self.t_pos.delete(i)
         self._pos_id = {}
+        # Waehrung je Spur EINMAL holen (der Berichtsweg liest mit), nicht je
+        # Position - bei 42 Spuren und mehreren hundert Zeilen ist das der
+        # Unterschied zwischen einem Lesevorgang und vielen.
+        waehrungen = {spur: waehrung_fuer(spur, self.zustaende.get(spur))
+                      for spur in self.zustaende}
         for p in sorted(self.positionen,
                         key=lambda x: (x["spur"], x["instrument"], x["seite"])):
             kurs = self.kurse.get((p["quelle"], p["kurs_schluessel"]))
@@ -1545,15 +2018,20 @@ class Handelszentrale:
                 kurs_fmt(kurs) if kurs else "-",
                 kurs_fmt(p["stop"]), kurs_fmt(p["ziel"]),
                 ("%+.1f %%" % abstand) if abstand is not None else "-",
-                ("%.0f" % p["wert_usd"]) if p["wert_usd"] else "-",
+                wert_anzeige(p["wert_usd"], waehrungen.get(p["spur"], "USD")),
                 ("%+.1f" % gv) if gv is not None else "-",
             ))
             self._pos_id[iid] = p
 
-        # Fuss: offene Positionen und ihr Nominal
-        summe = sum(p["wert_usd"] or 0.0 for p in self.positionen)
-        self.l_summe.config(text="%d offene Positionen   |   Nominal %.0f USD"
-                                 % (len(self.positionen), summe))
+        # Fuss: offene Positionen und ihr Nominal - nach Waehrung getrennt,
+        # denn EUR und USD in einer Summe ist kein Betrag, den jemand ausgeben
+        # koennte (und "Nominal 562 USD" fuer ein 150-EUR-Buch war falsch).
+        gruppen = nominal_gruppen(self.positionen, self.zustaende)
+        self.l_summe.config(text="%d offene Positionen   |   Nominal %s"
+                                 % (len(self.positionen),
+                                    "   ".join("%s %.0f (%d)" % (w, s, n)
+                                               for w, s, n in gruppen)
+                                    or "0"))
 
         # Kopf: Dauerlauf DIESER Stufe
         pid_pfad, log_pfad = dauerlauf_dateien()
@@ -1607,18 +2085,17 @@ class Handelszentrale:
 
         k.insert("end", "\n%s\n" % os.path.basename(dauerlauf_dateien()[1]),
                  "kopf")
-        log = dauerlauf_dateien()[1]
-        try:
-            with open(log, encoding="utf-8", errors="replace") as f:
-                zeilen = f.readlines()[-12:]
-        except Exception:                                    # noqa: BLE001
-            zeilen = []
+        # Der Schwanz, nicht die ganze Datei (siehe log_ende).
+        zeilen = log_ende(dauerlauf_dateien()[1], 12)
         if not zeilen:
             k.insert("end", "  nicht lesbar\n", "matt")
         for z in zeilen:
             z = z.rstrip("\r\n")
-            marke = "matt" if " ok" in z else "schlecht"
-            k.insert("end", "  " + z + "\n", marke)
+            marke = log_marke(z)
+            if marke:
+                k.insert("end", "  " + z + "\n", marke)
+            else:
+                k.insert("end", "  " + z + "\n")
 
         k.configure(state="disabled")
 
@@ -1657,10 +2134,23 @@ def pruefe(jetzt=None):
                        " Quelle %s (%s)"
                        % (p["instrument"], p["seite"], kurs_fmt(p["einstieg"]),
                           kurs_fmt(p["stop"]), kurs_fmt(p["ziel"]),
-                          p["quelle"], p["kurs_schluessel"]))
+                          p["quelle"], p["kurs_schluessel"] or "kein Kursweg"))
         for e in journal_ereignisse(spur, os.path.join(
                 ordner, stufenname("handelsjournal.csv")), 2):
             aus.append("      Journal: %s" % ereignis_zeile(e))
+
+    # FreqTrade: der Reiter zeigt die Bots aus bots.json - ohne diese Zeilen
+    # waere die Bindung nur im Fenster nachsehbar. Kurze Zeitgrenze, denn ein
+    # stehender Container antwortet sofort (Verbindung abgelehnt), nur ein
+    # schwarzes Loch wuerde die volle Zeit brauchen.
+    bots_liste = freqtrade_bridge.bots()
+    aus.append("FreqTrade-Bots aus %s: %d"
+               % (freqtrade_bridge.BOTS_KONFIG, len(bots_liste)))
+    for werte, _marke in freqtrade_uebersicht_zeilen(
+            freqtrade_bridge.uebersicht(zeitgrenze=2, bot_liste=bots_liste)):
+        aus.append("  %-18s Port %-6s %-22s %-4s %-13s Zustand %-8s "
+                   "offen %-8s Trades %-4s G/V %-10s %s"
+                   % tuple(list(werte[:9]) + [werte[9] or ""]))
     return aus
 
 
