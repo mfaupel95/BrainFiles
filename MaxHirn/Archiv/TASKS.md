@@ -466,12 +466,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
       `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
       `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
-      Naechster Schritt (2 Minuten, Zugang macht Max selbst): Schluessel im Vercel AI
-      Gateway anlegen (vercel.com -> AI Gateway -> Create key; 0,04 USD/1M Eingabe,
-      Neukunden-Guthaben), in eine Datei legen und anmelden - der Schluessel laeuft NIE
-      durch den Chat:
-        .\jevgrep.cmd auth --provider vercel --stdin < <datei-mit-schluessel>
-        .\jevgrep.cmd doctor
+      Naechster Schritt (2 Minuten, Anmeldung macht Max selbst): GRATIS ueber OpenCode
+      Zen - Zen bedient Jev unter demselben Pfad wie jevgrep und fuehrt ein zeitweise
+      kostenloses `jev-1.13-free` (bezahltes `jev-1.13` 0,042 USD/1M). Also
+      `opencode auth login` (Anbieter OpenCode Zen) und danach
+        python Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py --anwenden --doctor
+      Das Werkzeug liest den Schluessel aus der OpenCode-Anmeldung und gibt ihn nie aus;
+      Trockenlauf ohne --anwenden. Ersatzweg (bezahlt): Vercel AI Gateway, Create key,
+      dann `auth --provider vercel --stdin`. Danach die Wurzel klein waehlen (siehe Wiki,
+      "Die Anfrage verfeinern": scanner 66 Dateien statt Agenten/Handel 5.247).
       Danach die Wurzel klein waehlen (siehe Wiki, Abschnitt "Die Anfrage verfeinern":
       scanner 66 Dateien statt Agenten/Handel 5.247) und mit `jg files` + `--exclude`
       vorher sehen, was hinausgeht. Kein Schluessel gewuenscht: Werkzeug ruht, `files`

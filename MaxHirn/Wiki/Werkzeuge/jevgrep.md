@@ -37,11 +37,29 @@ ausdruecklich **nicht** ausgewertet. Im Haus ist kein solcher Schluessel vorhand
 (weder in `HKCU\Environment` noch in OmniRoute: dort gibt es nur ein OpenRouter-Konto,
 und das ist selbst-deaktiviert).
 
+### Der gratis Weg: OpenCode Zen mit `jev-1.13-free`
+
+Am 01.10.2026 in der Zen-Dokumentation nachgelesen: Zen fuehrt Jev unter **genau dem
+Pfad, den jevgrep benutzt** (`https://opencode.ai/zen/v1/systemone`) und hat neben dem
+bezahlten `jev-1.13` (0,042 USD/1M Eingabe) ein **zeitweise kostenloses
+`jev-1.13-free`** — beide gratis in der Ausgabe. Der Anbieter `opencode` in jevgrep
+zeigt auf das *bezahlte* Modell; deshalb meldet man den EIGENEN Endpunkt an:
+
+```
+.\jevgrep.cmd auth --provider custom --base-url https://opencode.ai/zen/v1 --model jev-1.13-free --stdin
+```
+
+Das Werkzeug dafuer ist `Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py`: es liest
+den Schluessel aus der OpenCode-Anmeldung (`opencode auth login`, Anbieter „OpenCode
+Zen"), reicht ihn per stdin an `jg auth` und **gibt ihn nie aus** (auch nicht in
+Fehlermeldungen). Trockenlauf ohne `--anwenden`.
+
 | Anbieter | Modell | Bemerkung |
 |---|---|---|
+| `custom` + Zen | `jev-1.13-free` | **gratis**, derselbe Endpunkt wie der Preset; der empfohlene Weg |
 | `vercel` (Vercel AI Gateway) | `typesafe-ai/jev` | gemessen: **0,04 USD je 1M Eingabetoken**, 32K Kontext, Neukunden bekommen ein Gateway-Guthaben |
 | `typesafe` | `jev-1.13.0` | Direktanbieter |
-| `opencode` (OpenCode Zen) | `jev-1.13` | Zen-Aufzaehlung nennt Jev nicht in der ueblichen Liste — vor dem Kauf pruefen |
+| `opencode` (OpenCode Zen) | `jev-1.13` | Pfad und Modell bestaetigt; dieser Preset nimmt die **bezahlte** Variante — fuer gratis `custom` mit `jev-1.13-free` (siehe oben) |
 | `openrouter` | `typesafe/jev-1.13` | **vermutlich tot**: OpenRouter kennt nur `typesafe/jev-router`, nicht `jev-1.13` |
 | `custom` | frei | jeder TypeSafe-kompatible Endpunkt (Protokoll unten) |
 

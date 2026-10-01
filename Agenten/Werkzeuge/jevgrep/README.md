@@ -18,9 +18,28 @@ npm ein; die Abhaengigkeiten (`typescript`, `web-tree-sitter`) liegen in
 
 ## Erst einrichten (braucht einen Schluessel)
 
+**Gratis zuerst: OpenCode Zen mit `jev-1.13-free`.** Zen bedient Jev unter genau dem
+Pfad, den jevgrep benutzt (`https://opencode.ai/zen/v1/systemone`), und fuehrt neben
+`jev-1.13` (0,042 USD/1M) ein zeitweise kostenloses `jev-1.13-free`.
+
+1. Anmelden: `opencode auth login` (Anbieter „OpenCode Zen") — oder Schluessel auf
+   opencode.ai/auth holen.
+2. In jevgrep eintragen, ohne dass der Wert im Klartext erscheint:
+
+```
+python von_opencode_anmelden.py              # Trockenlauf: zeigt nur die Laenge
+python von_opencode_anmelden.py --anwenden --doctor
+```
+
+Alternativ der bezahlte Vercel-Weg (0,04 USD/1M Eingabe, Neukunden-Guthaben):
+`vercel.com → AI Gateway → API Keys → Create key`, dann
+
+```
+jg.cmd auth --provider vercel --stdin < datei-mit-schluessel
+```
+
 ```
 jg.cmd auth            # Anbieter waehlen, Schluessel eingeben (interaktiv)
-jg.cmd auth --provider vercel --stdin < schluessel.txt
 jg.cmd doctor          # prueft den Zugang mit einer Testfrage
 ```
 

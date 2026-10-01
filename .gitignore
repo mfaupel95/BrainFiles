@@ -968,6 +968,7 @@ Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 !Agenten/Werkzeuge/jevgrep/README.md
 !Agenten/Werkzeuge/jevgrep/jg.cmd
 !Agenten/Werkzeuge/jevgrep/test_jevgrep.py
+!Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py
 !Agenten/Werkzeuge/jevgrep/package.json
 !Agenten/Werkzeuge/jevgrep/package-lock.json
 !/jevgrep.cmd

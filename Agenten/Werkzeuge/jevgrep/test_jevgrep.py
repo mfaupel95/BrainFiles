@@ -131,5 +131,69 @@ class JevgrepTest(unittest.TestCase):
             self.assertNotIn(str(self.tmp), echt.read_text(encoding="utf-8"))
 
 
+class AnmeldungAusOpenCodeTest(unittest.TestCase):
+    """Das Anmeldewerkzeug: liest die OpenCode-Anmeldung, zeigt den Wert nie an."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp(prefix="jgoauth_")
+        cls.umgebung = dict(os.environ)
+        cls.umgebung["XDG_CONFIG_HOME"] = cls.tmp
+        cls.server = HTTPServer(("127.0.0.1", 0), Attrappe)
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.schluessel = "zen-testwert-1234567890"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def lauf(self, *args, frist: int = 240):
+        return subprocess.run(
+            [sys.executable, str(HIER / "von_opencode_anmelden.py"), *args],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            env=self.umgebung, cwd=str(HIER), timeout=frist,
+        )
+
+    def test_01_ohne_anmeldung_kommt_anleitung(self):
+        fehlt = Path(self.tmp) / "gibtsnicht.json"
+        r = self.lauf("--datei", str(fehlt))
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertIn("opencode auth login", r.stdout)
+        self.assertIn("--provider custom", r.stdout)
+
+    def test_02_trockenlauf_schreibt_nichts(self):
+        datei = Path(self.tmp) / "auth.json"
+        datei.write_text(json.dumps({"opencode": {"type": "api", "key": self.schluessel}}),
+                         encoding="utf-8")
+        r = self.lauf("--datei", str(datei))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Trockenlauf", r.stdout)
+        self.assertIn(str(len(self.schluessel)), r.stdout)
+        self.assertNotIn(self.schluessel, r.stdout)
+        self.assertFalse((Path(self.tmp) / "jevgrep" / "credentials.json").exists())
+
+    def test_03_anwenden_meldet_gegen_den_endpunkt_an(self):
+        datei = Path(self.tmp) / "auth.json"
+        basis = "http://127.0.0.1:%d/v1" % self.port
+        r = self.lauf("--datei", str(datei), "--anwenden", "--basis", basis,
+                      "--modell", "jev-1.13-free")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("127.0.0.1", r.stdout)
+        self.assertNotIn(self.schluessel, r.stdout)
+        ablage = Path(self.tmp) / "jevgrep" / "credentials.json"
+        self.assertTrue(ablage.exists(), "jg auth hat nichts abgelegt")
+        inhalt = ablage.read_text(encoding="utf-8")
+        self.assertIn("jev-1.13-free", inhalt)
+        self.assertIn(self.schluessel, inhalt)   # angekommen, nur nicht ausgegeben
+
+    def test_04_echte_anmeldung_unberuehrt(self):
+        echt = Path(os.path.expanduser("~/.config/jevgrep/credentials.json"))
+        if echt.exists():
+            self.assertNotIn(str(self.tmp), echt.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
