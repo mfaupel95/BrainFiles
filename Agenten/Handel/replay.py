@@ -44,8 +44,14 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 # stehen jetzt unter NICHT_NACHRECHENBAR mit Grund - eine angebotene Taste, die
 # nur scheitern kann, ist schlechter als eine fehlende. orbk hat ausserdem
 # einen eigenen Backtest (`orbk/backtest.py`).
-SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter",
-                 "mosaic")
+SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter")
+# mosaic stand hier bis 01.10.2026. Sein `pruefe_einstieg` hat eine ANDERE
+# Signatur als der Replay ruft - es braucht drei Kerzenreihen (4H/30M/5M):
+# `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)` gegen
+# `pruefe_einstieg(inst, k, z, w, faktor)` im Replay. Der Lauf brach deshalb
+# beim ERSTEN Einstieg mit `TypeError: missing 2 required positional arguments`
+# ab (gemessen 01.10.2026) - eine angebotene Taste, die nur scheitern kann.
+# Es steht in NICHT_NACHRECHENBAR, bis ein Mehrzeitrahmen-Adapter gebaut ist.
 
 # Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
 # fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
@@ -80,6 +86,8 @@ NICHT_NACHRECHENBAR = {
     "iv_wand": "Strike-OI-Historie (Deribit) nicht abrufbar",
     "iv_waelle": "Strike-OI-Historie (Deribit) nicht abrufbar",
     "robinhood_radar": "fremde SQLite haelt nur den Sammelzeitraum",
+    "mosaic": "pruefe_einstieg braucht drei Kerzenreihen (4H/30M/5M) - "
+              "Mehrzeitrahmen-Adapter fehlt (01.10.2026)",
     "kopier": "Solana-Onchain-Historie nur wenige Tage",
     "kopier1zu1": "Solana-Onchain-Historie nur wenige Tage",
     "nautilus": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
@@ -1237,6 +1245,21 @@ def gegenprobe(spur, gebuehr_pct, lauf="gegenprobe", max_kerzen=None):
             "kerzenquelle": "binance"}
 
 
+def gebuehr_aufloesen(gebuehr=None, spur=None):
+    """(Satz in Prozent je Seite, woher er kommt).
+
+    Vorgabe ist der GEMESSENE Satz der Spur (`gebuehr_taker` aus ihrer
+    wachen.json, mal 100) - nicht eine Zahl von der Kommandozeile. Bis
+    01.10.2026 stand hier fest 0.1: fuer die vier Indikator-Spuren (OKX-Spot)
+    war das richtig, fuer `mosaic` (Kraken, 0,60 %/Seite) rechnete jeder
+    Backtest damit sechsmal zu guenstig. Ein ausdrueckliches `--gebuehr`
+    schlaegt die Vorgabe (auch `--gebuehr 0`, um die Kosten wegzulassen).
+    """
+    if gebuehr is not None:
+        return float(gebuehr), "--gebuehr (von Hand gesetzt)"
+    return gebuehr_fuer(spur), "wachen.json der Spur (gebuehr_taker)"
+
+
 def main():
     """Nur EIN Weg je Aufruf: die Familien brauchen verschiedene Daten.
 
@@ -1250,7 +1273,10 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--spur", required=True)
     ap.add_argument("--lauf", default="lauf")
-    ap.add_argument("--gebuehr", type=float, default=0.1)
+    ap.add_argument("--gebuehr", type=float, default=None,
+                    help="Prozent je Seite; Vorgabe: der GEMESSENE Satz aus der "
+                         "wachen.json der Spur (gebuehr_taker). Ein eigener Wert "
+                         "schlaegt die Vorgabe, auch 0.")
     ap.add_argument("--max-kerzen", type=int, default=None)
     ap.add_argument("--fenster", type=int, default=None,
                     help="Kerzen je Schritt; Vorgabe: kerzen_anzahl der Spur")
@@ -1272,8 +1298,9 @@ def main():
                          "in der Kopie")
     a = ap.parse_args()
     mk = a.max_kerzen
+    geb, geb_quelle = gebuehr_aufloesen(a.gebuehr, a.spur)
     if a.gegenprobe:
-        print(json.dumps(gegenprobe(a.spur, a.gebuehr, a.lauf, mk),
+        print(json.dumps(gegenprobe(a.spur, geb, a.lauf, mk),
                          indent=2, ensure_ascii=False))
         return
     if a.familie_c:
@@ -1306,10 +1333,11 @@ def main():
             "--fenster weglassen oder auf %d oder mehr setzen"
             % (a.spur, fenster, bedarf(w), w.get("mindest_kerzen", 300),
                KERZEN_PUFFER, bedarf(w)))
-    runden, offen = lauf_a(a.spur, a.gebuehr, a.lauf, max_kerzen=mk,
+    runden, offen = lauf_a(a.spur, geb, a.lauf, max_kerzen=mk,
                            fenster=fenster)
     print(json.dumps({"spur": a.spur, "runden": len(runden),
-                      "offen": offen, "gebuehr_pct": a.gebuehr,
+                      "offen": offen, "gebuehr_pct": geb,
+                      "gebuehr_quelle": geb_quelle,
                       "fenster": fenster, "kerzenquelle": "binance",
                       "kennzahlen": kennzahlen(os.path.join(
                           buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},

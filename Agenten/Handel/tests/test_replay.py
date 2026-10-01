@@ -384,3 +384,33 @@ class GegenprobeTest(ReplayTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+class GebuehrVorgabeTest(unittest.TestCase):
+    """Die Vorgabe der Gebuehr ist der GEMESSENE Satz der Spur (01.10.2026).
+
+    Vorher stand im Argument `--gebuehr` fest 0.1. Fuer die vier
+    Indikator-Spuren (OKX-Spot, 0,10 %/Seite) war das richtig, fuer `mosaic`
+    (Kraken, 0,60 %/Seite) rechnete jeder Backtest damit SECHSMAL zu guenstig -
+    und niemand sah es, weil die Zahl plausibel aussah.
+    """
+
+    def test_vorgabe_kommt_aus_der_wachen_der_spur(self):
+        for spur, soll in (("mosaic", 0.6), ("supertrend", 0.1),
+                           ("orbk", 0.6), ("liq_wand", 0.05)):
+            satz, quelle = replay.gebuehr_aufloesen(None, spur)
+            self.assertEqual(soll, satz, spur)
+            self.assertIn("wachen.json", quelle, spur)
+
+    def test_eigener_wert_schlaegt_die_vorgabe(self):
+        satz, quelle = replay.gebuehr_aufloesen(0.25, "mosaic")
+        self.assertEqual(0.25, satz)
+        self.assertIn("--gebuehr", quelle)
+
+    def test_null_ist_ein_erlaubter_eigener_wert(self):
+        satz, _ = replay.gebuehr_aufloesen(0.0, "supertrend")
+        self.assertEqual(0.0, satz)
+
+    def test_der_aufruf_ohne_gebuehr_bleibt_moeglich(self):
+        """Kein stiller Rueckfall auf 0: der Satz MUSS aus der Spur kommen."""
+        satz, _ = replay.gebuehr_aufloesen(None, "gitter")
+        self.assertNotEqual(0.0, satz)

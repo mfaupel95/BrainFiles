@@ -29,7 +29,7 @@ HINWEIS_FREIGABE = ("Backtest-Runden zählen nicht für die Freigabe — dafür 
 TAKT_MS = 200
 MAX_TEXT_ZEILEN = 5000
 REPLAY_VORGABEN = {"spur": replay.SPUREN_TEIL_A[0], "max_kerzen": "0",
-                   "gebuehr": "0.1", "gegenprobe": False}
+                   "gebuehr": "", "gegenprobe": False}
 LISTE = HIER / "leitstand_backtests.json"
 # Laeufe, die wachen.json schreiben: ein Abbruch mittendrin hilft niemandem.
 UNABBRECHBAR = {"urteile-eintragen"}
@@ -59,10 +59,17 @@ def pruefe_replay(werte):
         mk = int(str(werte.get("max_kerzen") or "0").strip())
     except ValueError:
         return None, "Max. Kerzen: ganze Zahl erwartet (0 = alle)"
-    try:
-        g = float(str(werte.get("gebuehr", "")).strip().replace(",", "."))
-    except ValueError:
-        return None, "Gebühr: Zahl erwartet (Prozent je Seite)"
+    # Leeres Feld heisst: der GEMESSENE Satz der Spur gilt (replay nimmt ihn
+    # selbst aus der wachen.json). Eine Zahl im Feld schlaegt die Vorgabe.
+    roh_geb = str(werte.get("gebuehr", "")).strip().replace(",", ".")
+    g = None
+    if roh_geb:
+        try:
+            g = float(roh_geb)
+        except ValueError:
+            return None, "Gebühr: Zahl erwartet (Prozent je Seite) - oder leer lassen"
+        if not 0 <= g <= 5:
+            return None, "Gebühr: 0 bis 5 %"
     if not 0 <= mk <= 1_000_000:
         return None, "Max. Kerzen: 0 bis 1 000 000"
     # Die Grenze der SPUR: unter `mindest_kerzen + Puffer` kann der Lauf keinen
@@ -74,9 +81,9 @@ def pruefe_replay(werte):
         if minimum and mk < minimum:
             return None, ("Max. Kerzen: %d ist zu klein — %s braucht mindestens "
                           "%d Kerzen je Reihe (0 = alle)" % (mk, spur, minimum))
-    if not 0 <= g <= 5:
-        return None, "Gebühr: 0 bis 5 %"
-    teile = ["--spur", spur, "--gebuehr", repr(g)]
+    teile = ["--spur", spur]
+    if g is not None:
+        teile += ["--gebuehr", repr(g)]
     if mk:
         teile += ["--max-kerzen", str(mk)]
     if werte.get("gegenprobe"):
@@ -114,9 +121,15 @@ class ReplayBereich(ttk.Frame):
                                                            sticky="w")
         ttk.Spinbox(self, textvariable=self.w_kerzen, from_=0, to=1_000_000,
                     increment=500, width=10).grid(row=1, column=1, sticky="w")
-        ttk.Label(self, text="Gebühr % je Seite").grid(row=2, column=0, sticky="w")
+        ttk.Label(self, text="Gebühr % je Seite (leer = Satz der Spur)").grid(
+            row=2, column=0, sticky="w")
         ttk.Entry(self, textvariable=self.w_gebuehr, width=10).grid(row=2, column=1,
                                                                     sticky="w")
+        self.w_satz = tk.StringVar()
+        self._satz_hinweis_setzen()
+        self.w_spur.trace_add("write", lambda *_: self._satz_hinweis_setzen())
+        ttk.Label(self, textvariable=self.w_satz, foreground=stil.FARBEN["matt"]).grid(
+            row=2, column=2, sticky="w", padx=(12, 0))
         ttk.Checkbutton(self, text="Gegenprobe (alter gegen neuen Kern)",
                         variable=self.w_gegen).grid(row=3, column=0, columnspan=2,
                                                     sticky="w")
@@ -132,6 +145,20 @@ class ReplayBereich(ttk.Frame):
         grau.configure(state="disabled")
         grau.grid(row=0, column=3, rowspan=5, sticky="nsew")
         self.columnconfigure(3, weight=1)
+
+    def _satz_hinweis_setzen(self):
+        """Welcher Satz gilt, wenn das Feld leer bleibt - sichtbar, nicht geraten.
+
+        Ein festes 0.1 im Feld war bis 01.10.2026 der stille Fehler: `mosaic`
+        handelt auf Kraken (0,60 %/Seite), rechnete im Backtest aber mit einem
+        Sechstel der Kosten.
+        """
+        try:
+            satz = replay.gebuehr_fuer(self.w_spur.get())
+        except Exception as e:                                   # noqa: BLE001
+            self.w_satz.set("Satz unbekannt: %s" % str(e)[:60])
+            return
+        self.w_satz.set("Satz der Spur: %g %%/Seite" % satz)
 
     def werte(self):
         return {"spur": self.w_spur.get(),

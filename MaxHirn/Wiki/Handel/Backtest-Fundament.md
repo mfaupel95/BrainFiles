@@ -550,3 +550,17 @@ kein `lade_wachen()`, und ihre `wachen.json` nennt die Instrumente als DICT mit
 fehlende.** Die Prüfung ist ein Blick ins Spurenmodul (`lade_wachen()` vorhanden?) und in
 die Wachen (`instrumente` als Liste von Spur-Namen? Takt und `mindest_kerzen` gesetzt?),
 nicht ein Blick auf den Ordnernamen.
+
+### Die Gebuehr kommt aus der Spur, nicht von der Kommandozeile (01.10.2026)
+
+`replay.py --gebuehr` stand fest auf **0.1 %/Seite**. Fuer die vier Indikator-Spuren
+(OKX-Spot, gemessen 0,10 %) war das richtig - fuer `mosaic` (Kraken, **0,60 %**)
+rechnete damit jeder Backtest SECHSMAL zu guenstig, und die Zahl sah plausibel aus.
+Die Vorgabe ist jetzt der gemessene Satz der Spur (`gebuehr_taker` x 100 aus ihrer
+`wachen.json`); ein ausdrueckliches `--gebuehr` schlaegt sie, auch `0`. Der Lauf
+schreibt beides ins Ergebnis (`gebuehr_pct`, `gebuehr_quelle`), der Leitstand laesst
+das Feld leer und zeigt daneben "Satz der Spur: 0.6 %/Seite".
+
+**Merksatz: eine Vorgabe, die fuer eine Spur richtig ist, ist fuer die naechste
+geraten.** Wo die Zahl eine Eigenschaft der Sache ist (der Markt der Spur), wird sie
+aus der Sache gelesen - nicht in den Aufruf geschrieben.

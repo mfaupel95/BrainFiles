@@ -1146,6 +1146,13 @@ Kurzfassung ersetzt die Begruendung nicht.
   das Spurenmodul zu laden); auf der Kommandozeile eine Zeile auf stderr statt
   eines Tracebacks, Exit 2. `gegenprobe()` laeuft damit nicht mehr mit leerem
   Kerzen-Dict durch und meldet nicht mehr zweimal null Runden als „gleich".
+- **Eine Vorgabe, die fuer eine Spur richtig ist, ist fuer die naechste geraten.**
+  `replay.py --gebuehr` stand fest auf 0.1 %/Seite - richtig fuer die vier
+  Indikator-Spuren (OKX-Spot), fuer `mosaic` (Kraken, 0,60 %) rechnete jeder
+  Backtest damit SECHSMAL zu guenstig (gefunden 01.10.2026). Wo die Zahl eine
+  Eigenschaft der Sache ist (der Markt der Spur), wird sie aus der Sache gelesen
+  (`gebuehr_taker` x 100 aus der wachen.json) und ihre Herkunft mitgeschrieben -
+  ein ausdruecklicher Wert auf der Kommandozeile schlaegt die Vorgabe.
 - **Eine angebotene Spur ist nicht automatisch fahrbar.** `orb` und `orbk` standen in
   `replay.SPUREN_TEIL_A` - und damit in der Spurliste des Leitstand-Reiters -, aber
   JEDER Replay-Lauf endete in einer Verweigerung: ihr `handeln.py` hat kein

@@ -458,3 +458,34 @@ class EinzelReiter(TkBasis):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ReplayGebuehrFeldTest(unittest.TestCase):
+    """Das Feld darf LEER bleiben - dann gilt der Satz der Spur."""
+
+    def _werte(self, spur="gitter", gebuehr=""):
+        return {"spur": spur, "max_kerzen": "0", "gebuehr": gebuehr,
+                "gegenprobe": False}
+
+    def test_leeres_feld_gibt_kein_gebuehr_argument(self):
+        teile, fehler = lbt.pruefe_replay(self._werte())
+        self.assertEqual("", fehler)
+        self.assertNotIn("--gebuehr", teile)
+
+    def test_eigene_gebuehr_steht_im_befehl(self):
+        teile, fehler = lbt.pruefe_replay(self._werte(gebuehr="0.6"))
+        self.assertEqual("", fehler)
+        self.assertIn("--gebuehr", teile)
+        self.assertIn("0.6", teile)
+
+    def test_kaputte_gebuehr_ist_ein_eingabefehler(self):
+        teile, fehler = lbt.pruefe_replay(self._werte(gebuehr="abc"))
+        self.assertIsNone(teile)
+        self.assertIn("Gebühr", fehler)
+
+    def test_gebuehr_ueber_der_grenze_wird_abgewiesen(self):
+        teile, fehler = lbt.pruefe_replay(self._werte(gebuehr="9"))
+        self.assertIsNone(teile)
+        self.assertIn("0 bis 5", fehler)
+
+    def test_vorgabe_ist_leer_und_nicht_null_eins(self):
+        self.assertEqual("", lbt.REPLAY_VORGABEN["gebuehr"])
