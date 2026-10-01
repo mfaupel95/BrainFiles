@@ -173,7 +173,8 @@ def orderweg(w):
         return _ORDER_MODULE[name]
     # _lade_modul haengt ".py" selbst an und sucht unter HANDEL - deshalb der
     # relative Name mit Unterordner, kein absoluter Pfad.
-    pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot"}.get(name)
+    pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot",
+            "kraken_futures": "omnitrade_futures/weg"}.get(name)
     if not pfad or not (Path(HANDEL) / (pfad + ".py")).is_file():
         return None
     _ORDER_MODULE[name] = _lade_modul(pfad)
@@ -189,9 +190,17 @@ def venue_inst(inst, w):
     laeuft der Live-Einstieg in einen OKX-Fehler (Instrument unbekannt) - oder
     schlimmer: in ein anderes Paar mit demselben Namen.
     """
+    boerse = str(w.get("boerse") or "okx").strip().lower()
+    if boerse == "kraken_futures":
+        # Kontraktnamen der Kraken-Futures-Maerkte: PF_<Basis>USD, nur BTC
+        # heisst dort XBT (gemessen 25.09.2026 an PF_XBTUSD/PF_SOLUSD). Der
+        # Check VOR dem Bindestrich-Zweig: die omnitrade-Laeufe liefern
+        # "SOL-USDC" - ein fruehes "return inst" wuerde den Kontraktnamen
+        # nie bauen und die Order in einen Markt schicken, den es nicht gibt.
+        basis = inst.split("-")[0]
+        return "PF_%sUSD" % ("XBT" if basis == "BTC" else basis)
     if "-" in inst:
         return inst
-    boerse = str(w.get("boerse") or "okx").strip().lower()
     return "%s-%s" % (inst, "EUR" if boerse == "kraken" else "USDC")
 
 

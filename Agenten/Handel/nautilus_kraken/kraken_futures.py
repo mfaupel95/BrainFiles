@@ -293,13 +293,20 @@ def _order_aufgeben(werte):
     return kennung
 
 
-def markt_kauf(symbol, menge, echt=False):
-    """Kaufen (long). `menge` ist die BTC-Menge der Kopier-Spur."""
+def markt_kauf(symbol, menge, echt=False, leverage=None):
+    """Kaufen (long). `menge` ist die BTC-Menge der Kopier-Spur.
+
+    `leverage` (optional) geht als leverage-Parameter an /sendorder - ohne ihn
+    setzt die Boerse den hoechstmoeglichen Hebel des Margenplans, nicht 1x.
+    """
     if not echt:
         return "TROCKENLAUF-kauf-%s-%s" % (symbol, menge)
     groesse = kontrakte(symbol, menge)
-    return _order_aufgeben({"orderType": "mkt", "symbol": symbol,
-                            "side": "buy", "size": groesse})
+    werte = {"orderType": "mkt", "symbol": symbol,
+             "side": "buy", "size": groesse}
+    if leverage:
+        werte["leverage"] = "%g" % float(leverage)
+    return _order_aufgeben(werte)
 
 
 def markt_verkauf(symbol, menge, echt=False):
@@ -337,3 +344,19 @@ def stop_setzen(symbol, menge, stop_preis, echt=False, leverage=None):
                             "side": seite, "size": groesse,
                             "stopPrice": preis_gerundet(symbol, stop_preis),
                             "reduceOnly": "true", "triggerSignal": "mark"})
+
+
+def stop_nachziehen(order_id, symbol, menge, stop_preis, echt=False):
+    """Schutz-Stop auf einen neuen Preis ziehen (/editorder).
+
+    Trailing-Stop an der Boerse: der alte Preis bleibt stehen, bis die
+    geaenderte Order angenommen ist - kein Fenster ohne Schutz. `size` geht mit,
+    weil /editorder die Groesse der Order neu setzt und nur orderId Pflicht ist;
+    der Aufrufer reicht die Menge der Position durch.
+    """
+    if not echt:
+        return "TROCKENLAUF-edit-%s-%s" % (order_id, stop_preis)
+    groesse = kontrakte(symbol, menge)
+    return _order_aufgeben({"orderId": str(order_id), "symbol": symbol,
+                            "size": groesse,
+                            "stopPrice": preis_gerundet(symbol, stop_preis)})

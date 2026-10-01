@@ -369,6 +369,14 @@ SPUREN = {
     # Leiche mit state=running lag am 30.09. zwei Stunden im Statusordner).
     "omnitrade": {"ordner": "omnitrade", "waehrung": "USD",
                   "skript": "handeln.py"},
+    # OMNITRADE_FUTURES (30.09.2026, Auftrag Max "hebel x7 fuer den anfang"):
+    # dasselbe Signal wie omnitrade, aber die Ausfuehrung laeuft auf Kraken
+    # FUTURES mit Hebel 7 (wachen-Feld hebel) und ganzen Kontrakten
+    # (PF_SOLUSD, 1 Kontrakt = 1 SOL). Eigene Spur, weil ein Buch EINE
+    # Waehrung fuehrt - Futures rechnet USD, der Spot-Weg USDC. Papier:
+    # handel_erlaubt=false, Hebel geht als leverage-Parameter je Order raus.
+    "omnitrade_futures": {"ordner": "omnitrade_futures", "waehrung": "USD",
+                          "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.

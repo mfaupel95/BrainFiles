@@ -70,6 +70,9 @@ SPUREN = [
     # OMNITRADE (30.09.2026): spur_buch-Spur, Betrag ausdruecklich (15.00 =
     # 1.0x Buchrisiko aus 5 USD x 3 Plaetzen).
     ("omnitrade", "omnitrade", "scanner", "wachen_pruefung"),
+    # OMNITRADE_FUTURES (30.09.2026): Betrag ausdruecklich (2.00 = 1.0x
+    # Buchrisiko aus 2.0 USD Risiko x 1 Platz).
+    ("omnitrade_futures", "omnitrade_futures", "scanner", "wachen_pruefung"),
     # Klassik-Spuren (30.09.2026): acht spur_buch-Spuren ueber klassik_regeln.
     ("klassik_sma", "klassik_sma", "scanner", "wachen_pruefung"),
     ("klassik_ema", "klassik_ema", "scanner", "wachen_pruefung"),

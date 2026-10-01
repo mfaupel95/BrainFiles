@@ -86,6 +86,8 @@ FAMILIE = {
     # (Rust, Werkstatt/omnitrade) - dieselbe Familie, aber der Fremdlauf
     # entscheidet, nicht ein Wallet-Feed.
     "omnitrade": "Feed-Kopie",
+    # Hebel-Bein (30.09.2026): dasselbe Signal, Ausfuehrung auf Kraken Futures.
+    "omnitrade_futures": "Feed-Kopie (Hebel)",
     "omniquant": "Prognose-Buch",
     "omniquant_weit": "Prognose-Buch (weit)",
     "macd_mtf": "Indikator",

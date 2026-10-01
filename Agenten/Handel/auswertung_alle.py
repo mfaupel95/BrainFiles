@@ -132,6 +132,8 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               # OMNITRADE (30.09.2026): Buch ueber Handel/spur_buch.py,
               # Journalform kauf/verkauf mit einsatz_usd - derselbe Rechenweg.
               "omnitrade",
+              # OMNITRADE_FUTURES (30.09.2026): dasselbe Buch, ganze Kontrakte.
+              "omnitrade_futures",
               # KLASSIK-SPUREN (30.09.2026): spur_buch, dieselbe Journalform.
               "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
               "klassik_donchian", "klassik_rsi", "klassik_rsi2",

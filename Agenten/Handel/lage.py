@@ -827,6 +827,13 @@ def spur_iv_waelle():
     return _spur_indikator("iv_waelle", "IV-Waelle (Deribit, Optionszone)")
 
 
+def spur_omnitrade_futures():
+    """Das Hebel-Bein der omnitrade-Spur (Kraken Futures, Hebel 7)."""
+    return _spur_indikator("omnitrade_futures",
+                           "omnitrade-Hebel (Kraken Futures, 7x)",
+                           live_faehig=True)
+
+
 def spur_moondev_whale():
     """Sprachmodell-Spur: Open-Interest-Anomalie. Journalform wie die
     Bot-Spuren (kauf/verkauf mit einsatz_usd) - derselbe Leser."""
@@ -1358,7 +1365,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
-    spur_omnitrade,
+    spur_omnitrade, spur_omnitrade_futures,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
