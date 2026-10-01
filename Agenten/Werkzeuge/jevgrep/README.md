@@ -22,14 +22,26 @@ npm ein; die Abhaengigkeiten (`typescript`, `web-tree-sitter`) liegen in
 Pfad, den jevgrep benutzt (`https://opencode.ai/zen/v1/systemone`), und fuehrt neben
 `jev-1.13` (0,042 USD/1M) ein zeitweise kostenloses `jev-1.13-free`.
 
-1. Anmelden: `opencode auth login` (Anbieter „OpenCode Zen") — oder Schluessel auf
-   opencode.ai/auth holen.
+1. Schluessel als Windows-Benutzervariable ablegen:
+   `setx OPENCODE_API_KEY "<wert>"` (oder `opencode auth login`, Anbieter „OpenCode
+   Zen" — dann steht er in `~/.local/share/opencode/auth.json`).
 2. In jevgrep eintragen, ohne dass der Wert im Klartext erscheint:
 
 ```
-python von_opencode_anmelden.py              # Trockenlauf: zeigt nur die Laenge
+python von_opencode_anmelden.py              # Trockenlauf: zeigt nur die Quelle und die Laenge
 python von_opencode_anmelden.py --anwenden --doctor
 ```
+
+Das Werkzeug liest den Schluessel aus der Prozessumgebung, sonst direkt aus der
+Registry (`OPENCODE_API_KEY`, `OPENCODE_ZEN_API_KEY`, `ZEN_API_KEY` — ein frisch
+gesetztes `setx` sieht ein laufender Prozess nicht), sonst aus der OpenCode-Anmeldung.
+**Nicht** per `reg query` lesen: das gibt den Wert im Klartext aus.
+
+**Im Vordergrund aufrufen.** Ein Hintergrundprozess bricht sofort mit
+`stdin is not a tty` und Exit 1 ab (gemessen 01.10.2026); ausgeben laesst sich die
+Suche trotzdem in eine Datei. Erste echte Suchen: `Agenten/Handel/scanner`
+(66 Dateien) **6,2 s**, 22 relevante Dateien; `Agenten/Bus` (40 Dateien) 9 Treffer.
+Eine Suche ueber dieselbe Wurzel ist beim zweiten Mal 8,7 s (Antworten liegen im Cache).
 
 Alternativ der bezahlte Vercel-Weg (0,04 USD/1M Eingabe, Neukunden-Guthaben):
 `vercel.com → AI Gateway → API Keys → Create key`, dann

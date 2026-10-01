@@ -50,9 +50,23 @@ zeigt auf das *bezahlte* Modell; deshalb meldet man den EIGENEN Endpunkt an:
 ```
 
 Das Werkzeug dafuer ist `Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py`: es liest
-den Schluessel aus der OpenCode-Anmeldung (`opencode auth login`, Anbieter „OpenCode
-Zen"), reicht ihn per stdin an `jg auth` und **gibt ihn nie aus** (auch nicht in
-Fehlermeldungen). Trockenlauf ohne `--anwenden`.
+den Schluessel aus der Prozessumgebung, sonst direkt aus der Registry
+(`OPENCODE_API_KEY`, `OPENCODE_ZEN_API_KEY`, `ZEN_API_KEY` — ein frisch gesetztes
+`setx` sieht ein laufender Prozess nicht), sonst aus der OpenCode-Anmeldung
+(`opencode auth login`, Anbieter „OpenCode Zen"), reicht ihn per stdin an `jg auth`
+und **gibt ihn nie aus** (auch nicht in Fehlermeldungen). Trockenlauf ohne
+`--anwenden`. Nicht per `reg query` lesen — das gibt den Wert im Klartext aus.
+
+**Stand 01.10.2026: `OPENCODE_API_KEY` ist als Windows-Benutzervariable gesetzt
+(51 Zeichen), `jg` ist angemeldet und `jg doctor` antwortet „Jev connection verified
+through Custom endpoint (opencode.ai)".** Kosten: 0 (freies Modell).
+
+**Im Vordergrund aufrufen.** Ein Hintergrundprozess bricht sofort mit
+`stdin is not a tty` und Exit 1 ab (gemessen 01.10.2026); in eine Datei umleiten geht
+trotzdem. Erste echte Suchen: `Agenten/Handel/scanner` (66 Dateien) **6,2 s** und
+22 relevante Dateien (handeln.py, tests/test_zielsperre.py, boersenstops.py — genau die
+Stellen, die die Frage meint); `Agenten/Bus` (40 Dateien) 9 Treffer. Zweiter Lauf
+ueber dieselbe Wurzel 8,7 s, weil die Antworten im Cache liegen (`~/.cache/jevgrep`).
 
 | Anbieter | Modell | Bemerkung |
 |---|---|---|

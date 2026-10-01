@@ -496,28 +496,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
       Agenten/Bus/tests/test_anbindung_handel.py
 
-- [ ] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
-      Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
-      Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine
-      echte Suche ueber 171 Dateien kostet rund 4 US-Cent. Es fehlt allein der Anbieter-
-      schluessel: `jg auth` wertet keine Umgebungsvariablen aus, im Haus liegt keiner
-      (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
-      `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
-      `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
-      Naechster Schritt (2 Minuten, Anmeldung macht Max selbst): GRATIS ueber OpenCode
-      Zen - Zen bedient Jev unter demselben Pfad wie jevgrep und fuehrt ein zeitweise
-      kostenloses `jev-1.13-free` (bezahltes `jev-1.13` 0,042 USD/1M). Also
-      `opencode auth login` (Anbieter OpenCode Zen) und danach
-        python Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py --anwenden --doctor
-      Das Werkzeug liest den Schluessel aus der OpenCode-Anmeldung und gibt ihn nie aus;
-      Trockenlauf ohne --anwenden. Ersatzweg (bezahlt): Vercel AI Gateway, Create key,
-      dann `auth --provider vercel --stdin`. Danach die Wurzel klein waehlen (siehe Wiki,
-      "Die Anfrage verfeinern": scanner 66 Dateien statt Agenten/Handel 5.247).
-      Danach die Wurzel klein waehlen (siehe Wiki, Abschnitt "Die Anfrage verfeinern":
-      scanner 66 Dateien statt Agenten/Handel 5.247) und mit `jg files` + `--exclude`
-      vorher sehen, was hinausgeht. Kein Schluessel gewuenscht: Werkzeug ruht, `files`
-      bleibt kostenlos nutzbar.
-      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
 
 
 
@@ -3102,6 +3080,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
+      Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
+      Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine
+      echte Suche ueber 171 Dateien kostet rund 4 US-Cent. Es fehlt allein der Anbieter-
+      schluessel: `jg auth` wertet keine Umgebungsvariablen aus, im Haus liegt keiner
+      (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
+      `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
+      `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
+      Naechster Schritt (2 Minuten, Anmeldung macht Max selbst): GRATIS ueber OpenCode
+      Zen - Zen bedient Jev unter demselben Pfad wie jevgrep und fuehrt ein zeitweise
+      kostenloses `jev-1.13-free` (bezahltes `jev-1.13` 0,042 USD/1M). Also
+      `opencode auth login` (Anbieter OpenCode Zen) und danach
+        python Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py --anwenden --doctor
+      Das Werkzeug liest den Schluessel aus der OpenCode-Anmeldung und gibt ihn nie aus;
+      Trockenlauf ohne --anwenden. Ersatzweg (bezahlt): Vercel AI Gateway, Create key,
+      dann `auth --provider vercel --stdin`. Danach die Wurzel klein waehlen (siehe Wiki,
+      "Die Anfrage verfeinern": scanner 66 Dateien statt Agenten/Handel 5.247).
+      Danach die Wurzel klein waehlen (siehe Wiki, Abschnitt "Die Anfrage verfeinern":
+      scanner 66 Dateien statt Agenten/Handel 5.247) und mit `jg files` + `--exclude`
+      vorher sehen, was hinausgeht. Kein Schluessel gewuenscht: Werkzeug ruht, `files`
+      bleibt kostenlos nutzbar.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
+      OPENCODE_API_KEY als Windows-Benutzervariable gesetzt; jg auth gegen https://opencode.ai/zen/v1 mit Modell jev-1.13-free, jg doctor 'Jev connection verified'; erste echte Suchen: Agenten/Handel/scanner 66 Dateien in 6,2 s / 22 Treffer, Agenten/Bus 40 Dateien / 9 Treffer; Kosten 0
 - [x] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
       Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
       (Block 14 der Systempruefung). Der Motor ist die WSL-Distro

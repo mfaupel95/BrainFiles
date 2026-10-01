@@ -30,10 +30,53 @@ MODELL = "jev-1.13-free"
 ANMELDUNG = Path(os.path.expanduser("~/.local/share/opencode/auth.json"))
 # Namen, unter denen OpenCode Zen in der Anmeldedatei stehen kann.
 ZEN_NAMEN = ("opencode", "opencode-zen", "zen")
+# Windows-Variablen, aus denen der Schluessel kommen darf (in dieser Reihenfolge).
+UMGEBUNG_NAMEN = ("OPENCODE_API_KEY", "OPENCODE_ZEN_API_KEY", "ZEN_API_KEY")
 
 
-def schluessel_lesen(datei: Path | None = None) -> tuple[str | None, str]:
-    """Den Zen-Schluessel aus der OpenCode-Anmeldung holen. Rueckgabe: (Wert, Name)."""
+def _aus_registry(name: str) -> str | None:
+    """Eine Benutzervariable lesen, OHNE den Wert je in eine Kommandozeile zu geben.
+
+    Direkt aus der Registry, nicht ueber `reg query` und nicht aus der
+    Prozessumgebung: ein frisch gesetztes `setx` sieht ein laufender Prozess nicht,
+    und `reg query` gibt den Wert im Klartext aus.
+    """
+    try:
+        import winreg
+    except ImportError:
+        return None
+    for wurzel in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        try:
+            with winreg.OpenKey(wurzel, "Environment") as k:
+                wert, _ = winreg.QueryValueEx(k, name)
+        except OSError:
+            continue
+        if isinstance(wert, str) and wert.strip():
+            return wert.strip()
+    return None
+
+
+def aus_umgebung() -> tuple[str | None, str]:
+    """Den Schluessel aus der Umgebung holen. Rueckgabe: (Wert, Quelle)."""
+    for name in UMGEBUNG_NAMEN:
+        wert = os.environ.get(name)
+        if isinstance(wert, str) and wert.strip():
+            return wert.strip(), f"Prozessumgebung {name}"
+    for name in UMGEBUNG_NAMEN:
+        wert = _aus_registry(name)
+        if wert:
+            return wert, f"Windows-Benutzervariable {name}"
+    return None, ""
+
+
+def schluessel_lesen(datei: Path | None = None, quelle: str = "auto") -> tuple[str | None, str]:
+    """Den Zen-Schluessel holen: erst Umgebung, dann OpenCode-Anmeldung."""
+    if quelle in ("auto", "umgebung"):
+        wert, herkunft = aus_umgebung()
+        if wert:
+            return wert, herkunft
+        if quelle == "umgebung":
+            return None, ""
     pfad = Path(datei) if datei else ANMELDUNG
     if not pfad.is_file():
         return None, ""
@@ -72,23 +115,27 @@ def main() -> int:
     p.add_argument("--modell", default=MODELL, help=f"Modell-ID (Vorgabe {MODELL})")
     p.add_argument("--doctor", action="store_true", help="nach dem Anmelden jg doctor fahren")
     p.add_argument("--datei", help="abweichende Anmeldedatei (nur fuer Tests)")
+    p.add_argument("--quelle", choices=("auto", "umgebung", "datei"), default="auto",
+                   help="woher der Schluessel kommt (Vorgabe auto: Umgebung, dann Datei)")
     p.add_argument("--basis", default=BASIS, help=f"abweichender Endpunkt (Vorgabe {BASIS})")
     a = p.parse_args()
 
     if not JG.is_file():
         print(f"jg.cmd fehlt: {JG}")
         return 2
-    schluessel, name = schluessel_lesen(a.datei)
+    schluessel, name = schluessel_lesen(a.datei, a.quelle)
     if not schluessel:
-        print("Keine OpenCode-Anmeldung gefunden.")
-        print(f"  erwartet: {a.datei or ANMELDUNG}")
-        print("  anlegen:  opencode auth login   (Anbieter 'OpenCode Zen' waehlen)")
-        print("  oder:     Schluessel auf opencode.ai/auth holen und in eine Datei legen,")
-        print("            dann  .\\jevgrep.cmd auth --provider custom "
+        print("Kein Zen-Schluessel gefunden.")
+        print("  Quelle 1: Windows-Benutzervariable OPENCODE_API_KEY"
+              "  ->  setx OPENCODE_API_KEY \"<wert>\"   (danach neu anmelden oder dieses Werkzeug nutzen)")
+        print(f"  Quelle 2: OpenCode-Anmeldung {a.datei or ANMELDUNG}"
+              "  ->  opencode auth login (Anbieter 'OpenCode Zen')")
+        print("  Quelle 3: Schluessel auf opencode.ai/auth holen und in eine Datei legen, dann")
+        print("            .\\jevgrep.cmd auth --provider custom "
               f"--base-url {a.basis} --model {a.modell} --stdin < <datei>")
         return 3
 
-    print(f"Zen-Anmeldung gefunden: '{name}', Schluessel {len(schluessel)} Zeichen (Wert nicht angezeigt).")
+    print(f"Schluessel gefunden: {name}, {len(schluessel)} Zeichen (Wert nicht angezeigt).")
     print(f"Ziel: {a.basis} | Modell {a.modell}")
     if not a.anwenden:
         print("Trockenlauf - nichts geschrieben. Mit --anwenden ausfuehren.")

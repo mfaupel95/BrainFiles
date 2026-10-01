@@ -159,16 +159,16 @@ class AnmeldungAusOpenCodeTest(unittest.TestCase):
 
     def test_01_ohne_anmeldung_kommt_anleitung(self):
         fehlt = Path(self.tmp) / "gibtsnicht.json"
-        r = self.lauf("--datei", str(fehlt))
+        r = self.lauf("--quelle", "datei", "--datei", str(fehlt))
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
-        self.assertIn("opencode auth login", r.stdout)
+        self.assertIn("OPENCODE_API_KEY", r.stdout)
         self.assertIn("--provider custom", r.stdout)
 
     def test_02_trockenlauf_schreibt_nichts(self):
         datei = Path(self.tmp) / "auth.json"
         datei.write_text(json.dumps({"opencode": {"type": "api", "key": self.schluessel}}),
                          encoding="utf-8")
-        r = self.lauf("--datei", str(datei))
+        r = self.lauf("--quelle", "datei", "--datei", str(datei))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("Trockenlauf", r.stdout)
         self.assertIn(str(len(self.schluessel)), r.stdout)
@@ -178,8 +178,8 @@ class AnmeldungAusOpenCodeTest(unittest.TestCase):
     def test_03_anwenden_meldet_gegen_den_endpunkt_an(self):
         datei = Path(self.tmp) / "auth.json"
         basis = "http://127.0.0.1:%d/v1" % self.port
-        r = self.lauf("--datei", str(datei), "--anwenden", "--basis", basis,
-                      "--modell", "jev-1.13-free")
+        r = self.lauf("--quelle", "datei", "--datei", str(datei), "--anwenden",
+                      "--basis", basis, "--modell", "jev-1.13-free")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("127.0.0.1", r.stdout)
         self.assertNotIn(self.schluessel, r.stdout)
@@ -189,7 +189,23 @@ class AnmeldungAusOpenCodeTest(unittest.TestCase):
         self.assertIn("jev-1.13-free", inhalt)
         self.assertIn(self.schluessel, inhalt)   # angekommen, nur nicht ausgegeben
 
-    def test_04_echte_anmeldung_unberuehrt(self):
+    def test_04_umgebung_hat_vorrang_und_wird_nicht_ausgegeben(self):
+        """Eine gesetzte OPENCODE_API_KEY gewinnt - und der Wert bleibt unsichtbar."""
+        umg = dict(self.umgebung)
+        umg["OPENCODE_API_KEY"] = "env-testwert-0987654321"
+        basis = "http://127.0.0.1:%d/v1" % self.port
+        r = subprocess.run(
+            [sys.executable, str(HIER / "von_opencode_anmelden.py"),
+             "--quelle", "umgebung", "--anwenden", "--basis", basis,
+             "--modell", "jev-1.13-free"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            env=umg, cwd=str(HIER), timeout=240,
+        )
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Prozessumgebung OPENCODE_API_KEY", r.stdout)
+        self.assertNotIn("env-testwert-0987654321", r.stdout)
+
+    def test_05_echte_anmeldung_unberuehrt(self):
         echt = Path(os.path.expanduser("~/.config/jevgrep/credentials.json"))
         if echt.exists():
             self.assertNotIn(str(self.tmp), echt.read_text(encoding="utf-8"))
