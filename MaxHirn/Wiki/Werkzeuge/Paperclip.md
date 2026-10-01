@@ -34,18 +34,22 @@ npm install -g --prefix "C:/Users/faupe/.local/npm" paperclipai@2026.916.1
 ```
 
 npm legt die Shims direkt in den Prefix: `paperclipai.cmd` (Windows),
-`paperclipai.ps1`, `paperclipai` (sh). Damit der Name **im PATH** liegt, gibt es
-zwei Weiterleitungen in `C:\Users\faupe\.local\bin` (dieser Ordner steht in der
-Windows-Benutzer-PATH — geprüft):
+`paperclipai.ps1`, `paperclipai` (sh). Damit der Name **im PATH** liegt, steht
+`C:\Users\faupe\.local\npm` in der Windows-Benutzer-PATH (angehängt am
+01.10.2026, per `[Environment]::SetEnvironmentVariable(...,'User')` — **nicht**
+`setx`, das schneidet bei 1024 Zeichen ab).
 
-| Datei | Für |
-|---|---|
-| `~/.local/bin/paperclipai.cmd` | PowerShell, cmd (CRLF!) |
-| `~/.local/bin/paperclipai` | bash/MSYS |
+> **Keine Weiterleitung in `~/.local/bin` anlegen.** Der erste Versuch legte dort
+> `paperclipai.cmd` und `paperclipai` ab — und **blockierte damit `paperclipai run`**:
+> `doctor` meldete `Managed install manifest: Managed install artifacts exist but
+> C:\Users\faupe\.paperclip\cli\install.json is missing` und der Start brach ab
+> („Doctor found blocking issues. Not starting server."). Ursache im Code:
+> `hasManagedArtifacts()` prüft die Existenz von `install.json`, `.managed-install`,
+> `current` **und dem Shim-Pfad `~/.local/bin/paperclipai`** — der selbstgebaute
+> Shim sieht für die CLI wie eine halbe verwaltete Installation aus. Shim gelöscht,
+> PATH umgestellt → `doctor`: 11 passed, 1 warning.
 
-Sie rufen nur `C:\Users\faupe\.local\npm\paperclipai.cmd` auf und reichen die
-Argumente durch. Nachweis: `paperclipai --version` → `2026.916.1` aus allen drei
-Shells.
+Nachweis: `paperclipai --version` → `2026.916.1` aus PowerShell, cmd und bash.
 
 **Aktualisieren:**
 
@@ -85,14 +89,46 @@ gemeint, nur nicht durchgemessen.
 - `du -sh` über `~/.local/npm` (382 Pakete) läuft in MSYS minutenlang — die
   Größe lieber mit PowerShell messen.
 
-## Was hier noch NICHT passiert ist
+## Erste Instanz (01.10.2026)
 
-Die CLI ist installiert, es läuft aber **keine Instanz**. Der nächste Schritt
-wäre `paperclipai onboard --yes` (schreibt die Konfiguration, legt die
-eingebettete PostgreSQL an) und `paperclipai run` (startet den Server), danach
-`paperclipai connect` für die Anmeldung als Board. Der Server hält einen Port,
-die eingebettete Datenbank lädt Binärdateien nach, und Onboarding kann einen
-Hintergrunddienst einrichten — deshalb nicht ungefragt gestartet.
+```bash
+paperclipai onboard --yes --no-install-service   # Config + .env + Schluessel, dann Startversuch
+paperclipai run                                  # Doctor + Server
+```
+
+Stand danach, gemessen:
+
+| Was | Wert |
+|---|---|
+| Dashboard | `http://127.0.0.1:3100` (HTTP 200) |
+| Instanz-PID | 80788 (`paperclipai run`, Kind der Hermes-Sitzung) |
+| Datenbank | eingebettete PostgreSQL, `127.0.0.1:54329`, 19 Prozesse |
+| Migrationen | 278 beim ersten Start |
+| Daten | `~/.paperclip/instances/default/` (config.json, .env, db, secrets, logs, data) |
+| Sicherung | automatisch, stündlich, 30 Tage Aufbewahrung |
+
+**Der erste Start dauert rund drei Minuten** (initdb + 278 Migrationen) und sieht
+dabei wie ein Hänger aus: nach `◇ Starting Paperclip server...` kommt lange
+nichts. Fortschritt ist am Datenordner zu sehen (`db/PG_VERSION`, `db/pg_wal`),
+nicht am Log. Erst danach `Server startup recovery complete on 127.0.0.1:3100`.
+
+**Kein Hintergrunddienst unter Windows:** `doctor` sagt
+`Background service: Service management is not supported on win32. Use paperclipai run instead.`
+Es gibt also keinen Autostart und kein `service install` — nach einem Neustart
+läuft der Server erst wieder, wenn `paperclipai run` erneut gestartet wird.
+
+## Was hier noch offen ist
+
+- **Keine Identität.** Der Server läuft, aber die CLI hat noch keine
+  Board-Anmeldung. Weg hinein: Dashboard im Browser öffnen und Konto anlegen
+  (Anmeldung/Sign-up ist erlaubt: `disableSignUp: false`, `local_trusted`,
+  loopback) oder `paperclipai connect --persona board`. `paperclipai token board
+  create` verlangt vorher eine bestehende Board-Sitzung.
+- **Kein LLM-Provider** eingetragen (`LLM provider: No LLM provider configured
+  (optional)`). Für Agenten, die wirklich arbeiten sollen, braucht Paperclip ein
+  Modell — im Haus wären das der lokale Router (OmniRoute) oder Ollama.
+- **Kein Start-Wrapper.** Nach dem Hausmuster (Routine + geplante Aufgabe) wäre
+  das die Ergänzung, die den Server nach einem Neustart zurückbringt.
 
 ## Aufrufbeispiele
 
