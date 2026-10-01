@@ -23,6 +23,8 @@
   "_stop": "Der Stop geht als stp-Order (reduceOnly, triggerSignal mark) an die Boerse und ueberlebt Neustarts. Er ist der NOTAUSSTIEG: fuehrend ist der Ausstieg des Rust-Laufs ('omnitrade flat'). Trailing (Stop nachziehen) folgt als eigene Verdrahtung - kraken_futures.stop_nachziehen ist gebaut.",
   "ziel_r_vielfaches": 10.0,
   "_ziel": "10R = 15 % ueber dem Einstieg. Bewusst weit: das Ziel der Strategie ist der Ausstieg des Rust-Laufs, nicht dieses Level.",
+  "trailing_stop_prozent": 3.0,
+  "_trailing": "Prozentsatz unter dem HOECHSTKURS, zu dem der stp-Stop an der Boerse nachgezogen wird (spur_buch, T-286: nur long, nur nach oben, nur wenn spuerbar hoeher; scheitert das Nachziehen, bleibt der alte Stop stehen). 3 % wie die Backtest-Fassung rsi_long_only (trailing_stop(0.03)) - dieselbe Geometrie im Buch und an der Boerse. Bei 7x entspricht das ~21 % auf die Margin.",
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 x Buchrisiko = 2.0.",
   "drawdown_halbierung_usd": 2.0,
   "_kosten": "Kraken Futures Taker, GEMESSEN am echten Round-Trip 25.09.2026: 0,04-0,05 % je Seite (0,0029 USD auf 4,55 USD Nominal). Eine Runde kostet damit ~0,1 % - der Grund, warum kurze Intervalle mit Hebel auf Futures rechnen koennen und auf Kraken-Spot (1,2 %/Runde) nicht.",

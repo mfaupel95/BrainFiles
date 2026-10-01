@@ -186,14 +186,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
       Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
 
-- [ ] **T-289 — omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
-  Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis) (/editorder) ist gebaut (Commit debc983); der Live-Zyklus der Spur zieht den stp-Stop noch nicht nach.
-  Naechster Schritt: Nachziehen im spur_buch-Live-Zweig verdrahten (Trigger z.B. Kurs +1 % ueber letztem Hoch), Test mit Testnaht weg.stop_nachziehen.
-  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/omnitrade_futures, nautilus_kraken/kraken_futures.py
-- [ ] **T-290 — Beleg: nimmt Kraken Futures den leverage-Parameter an**
-  Kontext: Hebel 7 geht als leverage-Feld mit jeder Order (weg.py); gemessen ist nur der Einschussplan EEA retail 10 % = max 10x. Mit laufendem NordLynx weist Futures ab (authenticationError).
-  Naechster Schritt: 1 Kontrakt PF_SOLUSD mit leverage 7 kaufen und sofort schliessen (~0,12 USD Gebuehr) - braucht Guthaben (T-291) und VPN aus.
-  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
 - [ ] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
   Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
   Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
@@ -3134,6 +3126,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-290 — Beleg: nimmt Kraken Futures den leverage-Parameter an**
+  Kontext: Hebel 7 geht als leverage-Feld mit jeder Order (weg.py); gemessen ist nur der Einschussplan EEA retail 10 % = max 10x. Mit laufendem NordLynx weist Futures ab (authenticationError).
+  Naechster Schritt: 1 Kontrakt PF_SOLUSD mit leverage 7 kaufen und sofort schliessen (~0,12 USD Gebuehr) - braucht Guthaben (T-291) und VPN aus.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
+      PUT /leveragepreferences maxLeverage 7 gesetzt (Formkoerper, signiert); Margin je Kontrakt PF_SOLUSD 11,79 -> 16,80 USD gemessen; sendorder-leverage ignoriert Kraken
+- [x] **T-289 — omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+  Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis) (/editorder) ist gebaut (Commit debc983); der Live-Zyklus der Spur zieht den stp-Stop noch nicht nach.
+  Naechster Schritt: Nachziehen im spur_buch-Live-Zweig verdrahten (Trigger z.B. Kurs +1 % ueber letztem Hoch), Test mit Testnaht weg.stop_nachziehen.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/omnitrade_futures, nautilus_kraken/kraken_futures.py
+      weg.stop_nachziehen (immer echt) an das spur_buch-Trailing T-286 angebunden; wachen trailing_stop_prozent 3.0; test_spur_buch/test_lage gruen
 - [x] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
       Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
       Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine

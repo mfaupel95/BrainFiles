@@ -143,8 +143,13 @@ def algo_stornieren(inst, order_id):
 
 
 def stop_nachziehen(order_id, inst, menge, stop_preis):
-    """Den stp-Stop auf einen neuen Preis ziehen (/editorder). Nur nach oben
-    entscheidet der Aufrufer (spur_buch.pruefe_ausstiege); hier geht es 1:1 raus."""
+    """Der stp-Stop wird auf einen neuen Preis gezogen (/editorder) - IMMER echt.
+
+    spur_buch ruft diese Funktion im Live-Zyklus (T-286); nur nach oben
+    entscheidet der Aufrufer. Ein Trockenlauf waere hier gefaehrlich, weil er
+    eine Kennung zurueckgibt, die wie eine echte Order aussieht - der Adapter
+    ist der Live-Weg, echt ist die Vorgabe.
+    """
     return kf.stop_nachziehen(order_id, inst, menge, stop_preis, echt=True)
 
 
