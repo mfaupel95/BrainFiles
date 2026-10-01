@@ -14,4 +14,8 @@ sys.path.insert(0, str(HIER.parent))
 import klassik_regeln  # noqa: E402
 
 if __name__ == "__main__":
-    sys.exit(klassik_regeln.spur_main("klassik_macd", HIER))
+    # Der Bus-Name steht WOERTLICH hier: die Bus-Suite prueft genau diese
+    # Datei, die der Dauerlauf startet, auf ihren eigenen Namen (T-255). Der
+    # Kern reicht ihn an spur_buch.zyklus weiter (dort entsteht ereignis.lauf).
+    sys.exit(klassik_regeln.spur_main("klassik_macd", HIER,
+                                      bus_name="handel/klassik_macd"))

@@ -174,6 +174,21 @@ class Anmeldung(unittest.TestCase):
                 self.assertIn('spur_main("%s"' % s.name, text)
                 self.assertIn('__main__', text)
 
+    def test_handeln_meldet_ihren_bus_namen_woertlich(self):
+        """T-255: der Bus-Name steht als Literal in der gestarteten Datei.
+
+        Der Dauerlauf startet genau diese `handeln.py`; die Bus-Suite
+        (`Bus/tests/test_anbindung_handel.py`) sucht den Journalnamen
+        WORTWOERTLICH dort. Leitet der Kern ihn nur aus dem Ordnernamen ab,
+        findet die Pruefung nichts - und eine Umbenennung des Ordners zoege den
+        Journalnamen still mit. Der Wert muss deshalb der Spurname sein, nicht
+        eine zweite Schreibweise desselben Ordners.
+        """
+        for s in SPUREN:
+            with self.subTest(spur=s.name):
+                text = (s / "handeln.py").read_text(encoding="utf-8")
+                self.assertIn('bus_name="handel/%s"' % s.name, text)
+
     def test_kein_orderweg_in_den_spuren(self):
         """Eine Kursregel ordert nicht - kein Boersenzugriff im Quelltext."""
         verboten = ("okxf", "okx_spot", "kraken.", "markt_kauf", "markt_verkauf",

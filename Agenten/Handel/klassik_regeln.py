@@ -386,8 +386,18 @@ def bauen(name):
     return quelle, signal, ausstieg
 
 
-def spur_main(name, ordner):
-    """Gemeinsamer Startpunkt: `handeln.py` ruft nur noch dies."""
+def spur_main(name, ordner, bus_name=None):
+    """Gemeinsamer Startpunkt: `handeln.py` ruft nur noch dies.
+
+    `bus_name` ist der Name, unter dem die Spur im Bus-Journal steht. Seit
+    01.10.2026 uebergibt ihn jede `handeln.py` WOERTLICH
+    ("handel/klassik_sma", T-255): die Bus-Suite
+    (Bus/tests/test_anbindung_handel.py) prueft genau die Datei, die der
+    Dauerlauf startet, auf ihren eigenen Namen. Ein hier aus `name`
+    abgeleiteter Name waere dort unsichtbar - und eine Umbenennung des Ordners
+    zoege den Journalnamen still mit. Ohne Angabe bleibt das alte Verhalten
+    (Ableitung aus `name`), damit ein Aufruf ohne Bus-Namen nicht bricht.
+    """
     import argparse
     quelle, signal, ausstieg = bauen(name)
     sp = _lade(HANDEL / "spur_buch.py", "spur_buch_" + name)
@@ -406,4 +416,5 @@ def spur_main(name, ordner):
               "(Papier, Kursregel ohne Orderweg).")
         return 0
     return sp.zyklus(str(ordner), quelle, signal, modus,
-                     ereignis_name="handel/" + name, zusatz_ausstieg=ausstieg)
+                     ereignis_name=bus_name or ("handel/" + name),
+                     zusatz_ausstieg=ausstieg)
