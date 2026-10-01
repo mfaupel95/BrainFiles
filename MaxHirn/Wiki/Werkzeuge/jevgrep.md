@@ -127,6 +127,22 @@ trotzdem verworfen, siehe unten.
 - Eine Attrappen-Anmeldung in `~/.config/jevgrep/credentials.json` wurde nach dem
   Nachweis **entfernt** — `jg` ist derzeit absichtlich nicht angemeldet.
 
+## Wenn nichts geht: zwei Antworten, gemessen
+
+`Agenten/Werkzeuge/jevgrep/sonde_zen.py` fragt den Endpunkt direkt (ohne jevgrep) und
+nennt HTTP-Status und Dauer; der Schluessel kommt aus der Benutzervariable und wird nie
+ausgegeben. Damit sind die zwei Faelle auseinanderzuhalten:
+
+| Antwort | Bedeutung | Was hilft |
+|---|---|---|
+| `429 FreeUsageLimitError` | das **freie** Kontingent ist aufgebraucht (01.10.2026 nach rund zehn Suchen an einem Abend) | spaeter erneut versuchen; das Limit ist ein Zeitfenster, kein Verbrauch fuer immer |
+| `402 Insufficient account funds` | das **bezahlte** `jev-1.13` und das Konto hat kein Guthaben | Guthaben bei OpenCode Zen aufladen (0,042 USD/1M Eingabe ≈ 4 US-Cent je Suche) |
+| `403 error code 1010` | Cloudflare weist die Anfrage ab — **nicht** der Schluessel (die Sonde mit Browser-Kennung antwortet dann normal) | nichts am Schluessel aendern |
+| Exit 1 ohne jede Ausgabe | der Anbieter hat die Anfrage abgewiesen; jevgrep nennt den Grund nicht | Sonde laufen lassen, dann erst handeln |
+
+Der Schluessel selbst war nie das Problem: `jg doctor` antwortet „Jev connection
+verified", solange das Kontingent traegt.
+
 ## Die Anfrage verfeinern
 
 Vier Regeln, die ueber Nutzen und Kosten entscheiden:
