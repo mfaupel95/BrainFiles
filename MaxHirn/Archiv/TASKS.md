@@ -59,6 +59,20 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
+      Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
+      Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der
+      Konsole, aus /dev/null oder aus einer Datei kam, und unabhaengig vom Vordergrund
+      (die Annahme "nur im Hintergrund" ist damit widerlegt). Dieselbe Frage ueber dieselbe
+      Wurzel gelang Sekunden spaeter (Agenten/Handel/scanner 6,2 s / 22 Treffer,
+      Agenten/Bus 9 Treffer). Die Zeile selbst ist ein MSYS-Artefakt und erscheint auch bei
+      gelungenen Laeufen - die eigentliche Fehlerursache ist UNBEKANNT.
+      Naechster Schritt: den Abbruch mit `--no-cache` und erzwungenem Neulauf reproduzieren
+      und die Ausgabe vollstaendig sichern (auch stderr), danach in
+      `node_modules/@dzhng/jevgrep/dist/bin/index.js` die Stelle suchen, die diese Zeile
+      ausgibt; bis dahin im Haus als bekanntes Verhalten vermerkt (Wiederholen hilft).
+      Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
+
 - [ ] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
       Kontext: Die Handel-Suite meldete am 01.10.2026 (1525 Tests) genau einen
       Fehlschlag: `test_omniquant_fassung.AuftragTest.test_spur_faehrt_weit_und_bleibt_
