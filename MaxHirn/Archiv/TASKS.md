@@ -60,6 +60,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
+      Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
+      16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
+      `(Aufgabe FAILED)` aus `_aufgabe_abholen`). Die A2A-Aufgabe an hermes-maks-pc
+      scheitert also - nicht der Bot. Dieselbe Signatur tragen ALLE frueheren Freitext-
+      Auftraege ("Auswertung" 29.09., "Ja" und "Tagesbericht auswerten" 28.-30.09.:
+      je 300 s und 16 Zeichen). Slash-Befehle sind NICHT betroffen: `/strategien` lief
+      am selben Abend in 2,5 s mit 2642 Zeichen durch (Telegram hat die Sendung
+      angenommen - `sende()` ruft sendMessage direkt, ein Fehlschlag waere als
+      `status: fehler` protokolliert).
+      Naechster Schritt: die A2A-Aufgabe im Gateway nachsehen (Gateway-Log zur Uhrzeit,
+      Profil default/hermes-maks-pc, warum TASK_STATE_FAILED statt COMPLETED) - und bis
+      dahin fuer echte Arbeit `/run <skill>` (Frist 1800 s) oder die Desktop-App nutzen.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py, Agenten/Hermes (Gateway)
+
 - [ ] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
       Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
       Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
