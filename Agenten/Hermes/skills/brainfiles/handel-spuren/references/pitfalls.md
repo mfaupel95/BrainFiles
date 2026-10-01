@@ -1164,4 +1164,9 @@ Kurzfassung ersetzt die Begruendung nicht.
   fehlende - vor dem Anbieten einer Spur pruefen: gibt es `lade_wachen()`, ist
   `instrumente` eine LISTE von Spur-Namen, gibt es eine Historie fuer Takt und
   Instrumente?
+  Dieselbe Pruefung kam am 01.10.2026 fuer `mosaic` (sein `pruefe_einstieg` braucht
+  DREI Kerzenreihen 4H/30M/5M) und `gitter` (sein `handeln.py` hat kein
+  `pruefe_ausstiege`, die Rechnung liegt in grid.py) heraus - beide mit einem ECHTEN
+  Lauf belegt. Der Reiter bietet seither vier Spuren an: squeeze, wavetrend,
+  macd_mtf, supertrend.
 

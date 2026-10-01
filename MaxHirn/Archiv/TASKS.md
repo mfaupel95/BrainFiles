@@ -60,6 +60,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-295 — gitter replaybar machen (Adapter fuer die Rechnung in grid.py)**
+      Kontext: `gitter` stand in `replay.SPUREN_TEIL_A`, bricht aber bei JEDEM Lauf ab:
+      sein `gitter/handeln.py` hat nur `lade_wachen()`, die Rechnung liegt in
+      `grid.py`/`backtest_gitter.py` -> `AttributeError: module 'bt_gitter' has no
+      attribute 'pruefe_ausstiege'` (gemessen 01.10.2026, echter Lauf). Es steht jetzt in
+      `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet vier Spuren an.
+      Naechster Schritt: im Replay einen Adapter fuer Spuren mit eigener Rechnung bauen
+      (Einstieg/Ausstieg ueber ihre eigenen Funktionen statt ueber
+      pruefe_einstieg/-ausstiege) - `gitter/backtest_gitter.py` faehrt die Spur bereits
+      selbst, es fehlt nur die Naht. Danach mit dem OKX-Spot-Satz 0,10 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, gitter
+
 - [ ] **T-294 — mosaic replaybar machen (Mehrzeitrahmen-Adapter)**
       Kontext: `mosaic` stand in `replay.SPUREN_TEIL_A`, brach aber bei JEDEM Lauf
       beim ersten Einstieg ab: sein `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)`
