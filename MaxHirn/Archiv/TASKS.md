@@ -59,6 +59,26 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+
+- [ ] **T-305 - rltrader-optimize1 wurde vom Docker-Neustart beendet (Restart-Policy "no")**
+      Kontext: Am 01.10.2026 war der Rechner sehr langsam. Gemessen: Commit
+      87,8 von 103,7 GB (nur 15,9 frei), 991 Prozesse, davon 90 Python. Der
+      Ausloeser war ein Docker-/Gateway-Neustart 19 Minuten zuvor - danach
+      liefen die MCP-Gruppen auf 10-18 Stueck je Gruppe statt 3 (ant.dir 18,
+      mail/kraken/archiv je 10): der MCP-Spawn-Kreis aus T-152. Der angeordnete
+      Docker-Neustart hat die Kette getrennt und 13,5 GB Commit sowie 6,2 GB
+      RAM freigemacht (991 auf 880 Prozesse, Python 90 auf 54); danach lagen
+      die Gruppen wieder bei 2-4 Stueck, also innerhalb der Hausregel.
+      NEBENWIRKUNG: der Container rltrader-optimize1 hat Restart-Policy "no"
+      und wurde dabei beendet (exit 255) - eine laufende RLTrader-Optimierung
+      liegt nicht mehr vor. rltrader-report2 war vorher regulaer mit exit 0
+      fertig.
+      Naechster Schritt: Entscheidung Max - Optimierung neu starten oder auf
+      eine Restart-Policy umstellen. Die Kreislauf-Ursache selbst (T-152,
+      Spawn-Kette der MCP-Server) ist damit NICHT behoben; sie feuert beim
+      naechsten Docker- oder Gateway-Neustart erneut.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader, Agenten/MCP-Server
+
 - [ ] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
       Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
       Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der
