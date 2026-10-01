@@ -142,15 +142,29 @@ python Agenten\Werkzeuge\jevgrep\jev_bruecke.py      # laeuft lokal, Ollama-Stan
 .\jevgrep.cmd doctor
 ```
 
-**Gemessen** (lokales `gemma-e4b-8k-64k`, Zustand 25.000 Zeichen, 3 Fragen): **21,0 s
-je Anfrage**, saubere Werte. Hochgerechnet: 66 Dateien ≈ 21 min (bei 4 gleichzeitig
-~6 min), 171 Dateien ≈ 2,3 h. Lokal ist damit fuer **kleine Wurzeln** brauchbar —
-gratis, und kein Quelltext verlaesst den Rechner; fuer grosse Wurzeln ist es zu langsam.
-Mercury 2.5 (260k Kontext, 1.107 tok/s, 100 Mio. Gratis-Token, danach 0,04 USD/1M)
-passt als naechster Kandidat hinter dieselbe Bruecke.
+**Gemessen und ernuechternd** (01.10.2026, lokales Ollama):
+
+| Befund | Messung |
+|---|---|
+| erster Anlauf | `HTTP 404 model 'qwen35-8k:latest' not found` bei **jeder** Frage -> alle Dateien galten als „nicht relevant" |
+| zweiter Anlauf, `gemma-e4b-8k-64k` | `HTTP 500 out-of-memory` (llama-server wollte 3,7 GB) — die bekannte Speichernot des Rechners |
+| direkter Modellaufruf, 20.000 Zeichen `handeln.py`, „zeigt das, wann eine Position geschlossen wird?" | **51 s**, Antwort **0.0** — also FALSCH fuer eine Datei, die genau das tut |
+
+Die Bruecke ist damit **mechanisch fertig, aber ein lokales Modell ist als Richter
+nicht belastbar**: zu langsam, speicherfragil, und bei 20.000+ Zeichen Zustand
+unzuverlaessig (eine Einzelmessung mit anderer Fragestellung hatte noch 0,95/0,85/0,75
+geliefert — genau diese Streuung ist das Problem). Die Bruecke meldet solche Ausfaelle
+jetzt im Protokoll und auf der Konsole (`leere Modellantwort`, `HTTP 404/500`), statt
+sie in `0.0` verschwinden zu lassen.
+
+**Folge:** fuer echte Suchen bleibt der Jev-Weg (OpenCode Zen bezahlt ~4 US-Cent je
+Suche, oder Vercel). Mercury 2.5 hinter derselben Bruecke ist der naechste Kandidat
+(260k Kontext, 1.107 tok/s, Schema-JSON, 100 Mio. Gratis-Token) — dafuer fehlt ein
+Inception-Schluessel und ein Qualitaetsvergleich gegen Jev.
 
 Nachweis ohne jeden Schluessel: `python Agenten/Werkzeuge/jevgrep/test_jev_bruecke.py`
-(7 Tests, inklusive echtem Durchlauf jevgrep -> Bruecke -> Modell -> Trefferliste).
+(8 Tests, inklusive echtem Durchlauf jevgrep -> Bruecke -> Modell -> Trefferliste).
+Eine laufende Bruecke pruefen: `python Agenten/Werkzeuge/jevgrep/pruefe_bruecke.py`.
 
 ## Wenn nichts geht: zwei Antworten, gemessen
 

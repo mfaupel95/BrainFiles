@@ -52,6 +52,8 @@ class ModellAttrappe(BaseHTTPRequestHandler):
             inhalt = json.dumps({"answers": {i: 0.9 for i in ids}})
         elif art == "fliesstext":
             inhalt = "Ich denke: " + ", ".join("%s ist zu 0,85 relevant" % i for i in ids)
+        elif art == "leer":
+            inhalt = ""          # so antwortet ein Modell, dessen Kontext zu klein ist
         else:
             inhalt = "keine Ahnung, vielleicht?"
         daten = json.dumps({"choices": [{"message": {"content": inhalt}}]}).encode()
@@ -189,7 +191,26 @@ class BrueckeTest(unittest.TestCase):
         self.assertIn("zustand_zeichen", letzte)
         self.assertIn("dauer_gesamt_s", letzte)
 
-    def test_07_jevgrep_laeuft_ueber_die_bruecke(self):
+    def test_07_leere_modellantwort_wird_gemeldet(self):
+        """Die stille Falle: zu kleines Kontextfenster -> das Modell antwortet NICHTS.
+
+        Dann waeren alle Dateien 'nicht relevant'. Die Bruecke darf das nicht in
+        0.0 verschwinden lassen, sondern muss es protokollieren.
+        """
+        modus["art"] = "leer"
+        protokoll = Path(self.tmp) / "protokoll.log"
+        vorher = protokoll.read_text(encoding="utf-8").count("\n") if protokoll.is_file() else 0
+        code, d = self.systemone({"k": {"type": "noul", "instructions": "Relevant?"}})
+        self.assertEqual(code, 200)
+        self.assertEqual(d["answers"]["k"]["noul"], 0.0)
+        zeilen = protokoll.read_text(encoding="utf-8").strip().splitlines()
+        self.assertGreater(len(zeilen), vorher)
+        letzte = json.loads(zeilen[-1])
+        self.assertIsNotNone(letzte.get("fehler"), "leere Antwort wurde nicht gemeldet")
+        self.assertIn("leere Modellantwort", letzte["fehler"])
+        modus["art"] = "json"
+
+    def test_08_jevgrep_laeuft_ueber_die_bruecke(self):
         """Der ganze Weg: jevgrep -> Bruecke -> Modell -> Trefferliste."""
         if not (JG.is_file() and SUCHWURZEL.is_dir()):
             self.skipTest("jevgrep oder Suchwurzel fehlt")

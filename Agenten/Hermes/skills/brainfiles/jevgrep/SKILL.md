@@ -69,10 +69,14 @@ python Agenten\Werkzeuge\jevgrep\jev_bruecke.py     # laeuft lokal (Ollama)
 'lokal' | .\jevgrep.cmd auth --provider custom --base-url http://127.0.0.1:8742/v1 --model bruecke --stdin
 ```
 
-Gemessen (lokales `gemma-e4b-8k-64k`, Zustand 25.000 Zeichen): 21 s je Anfrage — fuer
-kleine Wurzeln brauchbar (66 Dateien ~21 min, gratis, kein Quelltext verlaesst den
-Rechner), fuer grosse zu langsam. **Achtung:** `jg auth` ersetzt die gespeicherte
-Anmeldung; wer zurueck zu OpenCode Zen will, ruft
+Gemessen (lokales Ollama, 01.10.2026) - **lokal ist mechanisch moeglich, aber als
+Richter nicht belastbar**: `qwen35-8k` gibt es nicht mehr (`HTTP 404`, alle Dateien
+galten als nicht relevant), `gemma-e4b-8k-64k` lief in `HTTP 500 out-of-memory`, und ein
+direkter Aufruf mit 20.000 Zeichen `handeln.py` antwortete nach 51 s mit **0.0** auf die
+Frage, ob die Datei das Schliessen einer Position zeigt - also falsch. Die Bruecke
+meldet solche Ausfaelle im Protokoll (`fehler`) und auf der Konsole, statt sie in 0.0
+zu verschwinden. **Achtung:** `jg auth` ersetzt die gespeicherte Anmeldung; wer zurueck
+zu OpenCode Zen will, ruft
 `python Agenten\Werkzeuge\jevgrep\von_opencode_anmelden.py --anwenden`.
 
 ## Ergebnisse lesen

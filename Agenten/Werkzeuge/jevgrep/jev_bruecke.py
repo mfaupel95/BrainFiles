@@ -50,7 +50,8 @@ PROTOKOLL = Path(os.environ.get(
 ))
 PORT = int(os.environ.get("JEVCREP_BRUECKE_PORT", "8742"))
 BASIS = os.environ.get("JEVCREP_BRUECKE_BASIS", "http://127.0.0.1:11434/v1").rstrip("/")
-MODELL = os.environ.get("JEVCREP_BRUECKE_MODELL", "qwen35-8k:latest")
+MODELL = os.environ.get("JEVCREP_BRUECKE_MODEL") or os.environ.get(
+    "JEVCREP_BRUECKE_MODELL", "gemma-e4b-8k-64k:latest")
 SCHLUESSEL = os.environ.get("JEVCREP_BRUECKE_SCHLUESSEL", "")
 FRIST = float(os.environ.get("JEVCREP_BRUECKE_FRIST", "120"))
 OHNE_DENKEN = os.environ.get("JEVCREP_BRUECKE_MITDENKEN", "0") != "1"
@@ -236,6 +237,14 @@ class Bruecke(BaseHTTPRequestHandler):
             zweite.pop("_fehler", None)
             zweite.pop("_dauer", None)
             werte.update(zweite)
+
+        # Achtung, stille Falle: ein zu kleines Kontextfenster laesst das Modell
+        # NICHTS antworten - dann waeren alle Dateien "nicht relevant". Das muss
+        # sichtbar sein, nicht in 0.0 verschwinden.
+        if not werte and not fehler:
+            fehler = "leere Modellantwort - passt der Zustand (%d Zeichen) ins Kontextfenster von %s?" % (
+                len(zustand), MODELL)
+            print("WARNUNG: %s" % fehler, flush=True)
 
         antworten = {}
         for k, frage in (fragen or {}).items():

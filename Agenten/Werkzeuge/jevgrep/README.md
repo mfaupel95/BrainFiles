@@ -145,17 +145,22 @@ Einmalig bei jevgrep anmelden — der Wert darf beliebig sein, der Dienst laeuft
 .\jevgrep.cmd doctor
 ```
 
-**Gemessen mit dem lokalen Modell `gemma-e4b-8k-64k`** (Zustand 25.000 Zeichen ≈ 7.142
-Token, 3 Fragen): **21,0 s je Anfrage**, saubere Antwort (`0.95 / 0.85 / 0.75`).
+**Gemessen und ernuechternd** (01.10.2026, lokales Ollama):
 
-| Suche | nacheinander | bei 4 gleichzeitig |
-|---|---|---|
-| 66 Dateien (~60 Anfragen) | 21 min | ~6 min |
-| 171 Dateien (396 Anfragen) | 2,3 h | ~35 min |
+| Befund | Messung |
+|---|---|
+| erster Anlauf | `HTTP 404 model 'qwen35-8k:latest' not found` bei **jeder** Frage -> alle Dateien galten als „nicht relevant" |
+| zweiter Anlauf, `gemma-e4b-8k-64k` | `HTTP 500 out-of-memory` (llama-server wollte 3,7 GB) |
+| direkter Modellaufruf, 20.000 Zeichen `handeln.py`, „zeigt das, wann eine Position geschlossen wird?" | **51 s**, Antwort **0.0** — FALSCH fuer eine Datei, die genau das tut |
 
-Lokal ist damit **fuer kleine Wurzeln brauchbar** (gratis, nichts verlaesst das Haus),
-fuer grosse zu langsam. Ein 27B-Modell waere noch langsamer, kleine 8k-Modelle
-scheitern am Kontext. Nachmessen mit `python messung_lokal.py <modell> [zeichen]`.
+Die Bruecke ist mechanisch fertig, aber ein lokales Modell ist als Richter **nicht
+belastbar** (langsam, speicherfragil, bei 20.000+ Zeichen unzuverlaessig). Ausfaelle
+stehen jetzt im Protokoll und auf der Konsole, statt in `0.0` zu verschwinden.
+
+Fuer echte Suchen bleibt der Jev-Weg (Zen bezahlt ~4 US-Cent je Suche). Mercury 2.5
+hinter derselben Bruecke ist der naechste Kandidat (260k Kontext, 1.107 tok/s,
+100 Mio. Gratis-Token). Nachmessen: `python messung_lokal.py <modell> [zeichen]`,
+laufende Bruecke pruefen: `python pruefe_bruecke.py`.
 
 ## Nachweis
 
