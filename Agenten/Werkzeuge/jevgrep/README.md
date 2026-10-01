@@ -37,11 +37,20 @@ Registry (`OPENCODE_API_KEY`, `OPENCODE_ZEN_API_KEY`, `ZEN_API_KEY` — ein fris
 gesetztes `setx` sieht ein laufender Prozess nicht), sonst aus der OpenCode-Anmeldung.
 **Nicht** per `reg query` lesen: das gibt den Wert im Klartext aus.
 
-**Im Vordergrund aufrufen.** Ein Hintergrundprozess bricht sofort mit
-`stdin is not a tty` und Exit 1 ab (gemessen 01.10.2026); ausgeben laesst sich die
-Suche trotzdem in eine Datei. Erste echte Suchen: `Agenten/Handel/scanner`
+**Bricht ein Lauf sofort mit Exit 1 und ohne Ausgabe ab, ist der Anbieter schuld, nicht
+der Schluessel** — meist ist das freie Kontingent aufgebraucht. Pruefen mit der Sonde
+(ohne jevgrep, ohne den Schluessel auszugeben):
+
+```
+python Agenten\Werkzeuge\jevgrep\sonde_zen.py
+```
+
+`429 FreeUsageLimitError` = freies Kontingent weg (spaeter erneut), `402 Insufficient
+account funds` = bezahltes Modell ohne Guthaben, `403 error code 1010` = Cloudflare
+(nicht der Schluessel). Die Zeile `stdin is not a tty` ist MSYS-Rauschen und erscheint
+auch bei gelungenen Laeufen. Erste echte Suchen (01.10.2026): `Agenten/Handel/scanner`
 (66 Dateien) **6,2 s**, 22 relevante Dateien; `Agenten/Bus` (40 Dateien) 9 Treffer.
-Eine Suche ueber dieselbe Wurzel ist beim zweiten Mal 8,7 s (Antworten liegen im Cache).
+Zweiter Lauf ueber dieselbe Wurzel 8,7 s, weil die Antworten im Cache liegen.
 
 Alternativ der bezahlte Vercel-Weg (0,04 USD/1M Eingabe, Neukunden-Guthaben):
 `vercel.com → AI Gateway → API Keys → Create key`, dann

@@ -50,8 +50,11 @@ Einzelheiten, Protokoll und Nachweise: `MaxHirn/Wiki/Werkzeuge/jevgrep.md`.
 3. **Jede Suche schickt Quelltext an den Dienst.** Vault, Schluesselordner und
    Personenbezogenes gehoeren nicht in die Wurzel; verengen mit
    `--exclude '**/zustand*.json' --exclude '**/*.csv'`.
-4. **Im VORDERGrund aufrufen** — im Hintergrund bricht `jg` sofort mit
-   `stdin is not a tty` und Exit 1 ab. In eine Datei umleiten ist erlaubt.
+4. **Bricht ein Lauf sofort mit Exit 1 und ohne Ausgabe ab, ist der ANBIETER schuld,
+   nicht der Schluessel** — meist ist das freie Kontingent aufgebraucht (`429
+   FreeUsageLimitError`). Nicht jevgrep debuggen, sondern die Sonde rufen:
+   `python Agenten\Werkzeuge\jevgrep\sonde_zen.py` (nennt HTTP-Status und Dauer).
+   Die Zeile `stdin is not a tty` ist MSYS-Rauschen und erscheint auch bei Erfolg.
 
 ## Ergebnisse lesen
 
