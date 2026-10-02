@@ -20,6 +20,43 @@ Ein Text, der alle vier Lagen gleich beschreibt, versteckt genau den einen echte
 Fehler. Beim Bauen einer Kennzahl die Gegenfrage stellen: welche Zustaende fallen
 auf denselben Satz?
 
+## Die fuenfte Lage: die Datei fehlt ueberhaupt
+
+Die Tabelle oben setzt voraus, dass das Journal da ist. Ein im Lauf erzeugtes
+Erzeugnis, das erst beim **ersten Schreibvorgang** angelegt wird, ist aber genau
+dann nicht da, wenn die Spur noch nie gehandelt hat - und **das Fehlen einer Datei
+unterscheidet „noch nie ein Signal" nicht von „das Journal ist kaputt"**. Beide
+Laeufe enden in der Zeile `Handelsjournal.csv fehlt`, und beide sehen harmlos aus.
+
+Gemessen: `spur_buch.journal()` legte die Datei erst beim ersten Eintrag an, also
+hatten 7 von 38 Spuren gar kein Journal - und damit auch nichts ausser Haus
+(Bedingung 4 war fuer sie unerfuellbar, ohne dass irgendwo ein Fehler stand). Der
+Befund fiel nur ueber eine Bestandsaufnahme der Dateien, nicht ueber einen Fehler.
+
+**Regel: eine Spur legt ihre Ergebnisdatei im ersten Zyklus an, nicht im ersten
+Treffer.** Der Aufruf gehoert VOR die Datenpruefung, sonst gilt er nur auf dem
+Weg, der Daten hat:
+
+```python
+if modus in ("papier", "live"):
+    lege_journal_an(journal_pfad)   # legt die Kopfzeile an, schreibt keine Zeile
+```
+
+Drei Bedingungen gehoeren dazu, sonst zieht die Regel den Lesemodus mit:
+
+1. **Leer heisst null Zeilen, nicht null Zeilen ohne Kopfzeile.** Die Datei muss
+   ohne Weiteres lesbar sein; deshalb `writeheader()`, nicht `open(..., "w")`.
+2. **Die lesenden Modi bleiben lesend.** `--vorschau` und `--wachen` legen nichts
+   an — der Dauerlauf fragt jede Spur zusaetzlich mit `--vorschau` ab, und eine
+   Vorschau, die eine Datei anlegt, ist keine Vorschau.
+3. **Der Schreibschalter des Moduls gilt.** Wo `SCHREIBEN=False` ist (Replay,
+   Tests), legt die Funktion nichts an — ein Test darf nie in einen echten
+   Zielpfad schreiben.
+
+Merksatz: **eine leere Datei ist ein antwortbares Zeichen, ein fehlendes File
+nicht.** Wer beides als „kein Journal" liest, hat die Frage schon falsch
+beantwortet, bevor er sie gestellt hat.
+
 Beleg-Nachweis statt Vermutung: `auswertung_alle.offene_positionen(spur)` liest
 den Zustand tolerant (fehlende Datei, kaputtes JSON, fehlendes `positionen`-Feld
 geben `None`) und `zeige()` nennt die Lage im Klartext - „aber N offene

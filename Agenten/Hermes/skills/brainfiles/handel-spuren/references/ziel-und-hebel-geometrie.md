@@ -121,8 +121,8 @@ konkreten Wert.
 **Regel.** Ein Buchtest liest den Erwartungswert aus **derselben Wachen, die der
 Lauf benutzt**, und rechnet die Erwartung unabhaengig nach. Damit ueberlebt er
 jede Parameteraenderung und beweist trotzdem die Funktion. Ein Test, der eine
-Zahl festhaelt, meldet Aenderung, nicht Fehler — siehe auch
-`references/tests-gegen-proben.md`.
+Zahl festhaelt, meldet Aenderung, nicht Fehler — siehe
+`references/test-friert-stand-ein.md`.
 
 **Vollstaendigkeit einer Testwache.** Ein Test, der eine Buchung provoziert,
 braucht ALLE Wachenfelder, die der Einstieg liest. Ein fehlendes
