@@ -10,6 +10,28 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
 - **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
+- [x] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
+      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
+      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
+      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
+      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
+      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
+      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
+      ERLEDIGT 02.10.2026 (Commit 91702aaa): die Ursache war kein Zahlendreher, sondern
+      dass die Tabelle den am 01.10. geklaerten Widerspruch nicht mitgenommen hatte.
+      Neu: BOERSENSAETZE_PCT + satz_pct_fuer() - der Soll-Satz wird aus den Feldern der
+      Wachen abgeleitet (kraken_futures zuerst, dann OKX als Perp, dann der Name).
+      gebuehr_taker kam dazu, weil die Auswertung NUR dieses Feld liest; ohne sie
+      meldete gebuehr_fuer fuer omniquant exakt 0.0 (die Spur wäre als kostenlos
+      ausgewiesen worden). 5 neue Tests mit Gegenprobe, 17/17 gruen. Betrifft
+      Agenten/Handel/gebuehren_setzen.py, Agenten/Handel/omniquant/wachen.json,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
+
+
+
+  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
+
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
       **Erledigt 2026-09-16.** Max hat den UAC-Dialog bestaetigt; das Skript
       `Agenten\Routinen\vorsorge-gateway-admin.ps1` ist in einer Admin-PowerShell
@@ -59,6 +81,17 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+
+- [ ]   **T-315 — `gebuehren_setzen --anwenden` überschreibt eine verbesserte `_gebuehr_quelle`**
+      Kontext: gefunden 02.10.2026 beim T-308-Fix. Der Schreibweg setzt die Notiz
+      auch dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
+      robinhood_radar hat er dadurch zwischenzeitlich verbesserte Notizen (mit
+      gemessenem Nachlauf) auf den aelteren Text zurueckgesetzt. Aus den .bak-20261002
+      zurueckgenommen; der Fehler ist aber nicht behoben.
+      Naechster Schritt: `_feld_setzen` schreibt die Notiz nur, wenn sich der WERT
+      aendert oder die Notiz fehlt. Testbeleg: eine Wachen mit richtigem Wert und
+      eigener Notiz bleibt byte-gleich.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py
 
 - [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
       Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
@@ -137,15 +170,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
       Agenten/Handel/scanner/okx.py
 
-- [ ] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
-      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
-      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
-      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
-      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
-      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
-      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
-      Agenten/Handel/omniquant/wachen.json, Agenten/Handel/tests/test_gebuehren_setzen.py
+
 
 - [ ] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
       Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
