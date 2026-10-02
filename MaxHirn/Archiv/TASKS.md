@@ -60,6 +60,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
+      Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
+      Drei Restpunkte, die die Umstellung (Commit 2a480edd) nicht mit erledigt:
+      (1) `Agenten/Handel/guthaben_abgleich.py` ruft weiter `okx.guthaben_usdt()` und
+      meldet `WAEHRUNG = {"scanner": "USD"}` - der Wochenbericht zeigt damit 0,00 fuer
+      ein Konto mit 438 USDC. Auf `okx.guthaben("USDC")` und Waehrung USDC umstellen.
+      (2) Die Positionen ETH/SOL/BTC/SUI-USDC im Buch tragen keine Angabe, in welcher
+      Quote ihr Einsatz gebunden ist - bei einer spaeteren Quote-Mischung ist der
+      Einsatz nicht mehr je Waehrung teilbar.
+      (3) `okx.markt_kauf(inst, usdt)` heisst der Parameter noch `usdt`, ist aber ein
+      Nominal in der Quote des Paares (tgtCcy quote_ccy).
+      Naechster Schritt: Punkt 1 zuerst - eine Zeile in `guthaben_abgleich.py`, danach
+      `Agenten/Handel/tests` gegenlaufen lassen (der Wochenbericht haengt daran).
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
+      Agenten/Handel/scanner/okx.py
+
 - [ ] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
       Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
       `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
