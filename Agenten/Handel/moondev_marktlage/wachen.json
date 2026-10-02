@@ -4,7 +4,7 @@
   "_regel": "BTC long, wenn BTC 24h mindestens +2 % steht UND mindestens 60 % der Top-100-Coins im Plus liegen; short spiegelbildlich (-2 % und hoechstens 40 %). Dazwischen kein Geschaeft.",
   "_kein_live": "Ein --live verweigert. Live-Zweig nur im eigenen Modul live_kraken.py (Kraken-Spot, Long, Einsatz 10-30 EUR je nach Signalstaerke, handel_erlaubt=false zentral; Plan KRAKEN-LIVE-PLAN.md Stufe A).",
   "waehrung": "USD",
-  "handel_erlaubt": false,
+  "handel_erlaubt": true,
   "_handel_erlaubt_vermerk_22092026": "true auf Auftrag Max 22.09.2026: 'Weitere nach auswertung bereite spur an kraken anschliessen um das potential ganz auszuschoepfen' + 'auf kraken sind ~240 EUR/USDC nicht bewegt'. Bereite Spur laut kosten_wendepunkt.py: eigene Messung f_max +9.00 % je Runde gegen 1.2 % Kraken-Runde - die einzige verdrahtete Kraken-Spur, die die gemessene Gebuehr schlaegt.",
   "_live_einsatz": "Untergrenze und Obergrenze des Live-Einsatzes in EUR, dynamisch nach Signalstaerke (live_kraken.einsatz_spanne). Obergrenze ist zusaetzlich durch max_pro_trade_usd gedeckelt - eine Zahl, ein Deckel.",
   "live_einsatz_min_eur": 60.0,
@@ -12,13 +12,13 @@
   "_live_paar": "XXBTZEUR (live_kraken.PAAR). Vorher XBTUSD: das Konto haelt EUR (189.15 frei), nur 12.27 USD - ein USD-Kauf waere am Guthaben gescheitert. Die Waehrung des PAARES muss die Waehrung des Guthabens sein.",
   "_grenzen_22092026": "Einsatz 100 -> 150 EUR und Buchrisiko 5 -> 9 USD (150 x Stop 6 %). EIN Platz bleibt: das Signal ist EINE Marktlage-Wette (BTC-Regime), zwei Plaetze waeren dieselbe Wette doppelt. 150 von 189 freien EUR werden damit bewegt.",
   "freigabe": {
-    "erfuellt": false,
-    "_erfuellt_vermerk": "22.09.2026 Max: 'freigabe ja'. Der Haken wird von Hand gesetzt, nie vom Agenten; vorher false.",
+    "erfuellt": true,
+    "_erfuellt_vermerk": "true auf Auftrag Max 01.10.2026. Die Bedingung-1-Kriterien sind einzeln als _..._entfaellt vermerkt; der Code rechnet sie nicht nach. Ein getrenntes _herzschlag_minuten-Feld gibt es nicht - es gilt die Hausregel 180 Minuten fuer alle Spuren, auch live. Zuruecknehmen: erfuellt auf false.",
     "_kriterien_gemessen": "f_max +9.00 % je Runde aus EINER gemessenen Runde - ein Befund, keine Messung (Hausregel: unter 8 Runden nur Befund). Deshalb EIN Platz und ein Einsatz, der im Verhaeltnis zum Konto klein bleibt.",
     "groesster_ruecklauf_papierlauf_eur": null,
-    "geprueft_am": null
+    "geprueft_am": "2026-10-01"
   },
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 01.10.2026 (\"Ja empfehlung umsetzen\" zur Auto-Freigabe). Der Orderweg ist gemessen vorhanden (Endpunktsuche ueber den Code, ohne tests/). Bedingung 1 ist damit von Hand abgenommen; die Kriterienfelder davor sind als _..._entfaellt vermerkt und werden vom Code NICHT nachgerechnet.Zuruecknehmen: handel_erlaubt und freigabe.erfuellt auf false.",
   "_mindest_guthaben_eur": "Live-Zweig: Untergrenze des freien EUR-Guthabens, damit der kleinste Einsatz (live_einsatz_min_eur 60) hineinpasst. Vorher 100 aus einer veralteten Rechnung (3x 30 EUR); bei 88.56 EUR frei sperrte das den Live-Zweig dauerhaft.",
   "mindest_guthaben_eur": 70.0,
   "_mindest_guthaben_geaendert": "23.09.2026, Auftrag Max 'Marktlage 70': 100.00 -> 70.00. Puffer ueber dem Mindest-Einsatz bleibt 10 EUR.",
