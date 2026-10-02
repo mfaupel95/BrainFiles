@@ -64,6 +64,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+
+- [ ]   **T-322 — Scanner-Einstieg kam aus dem Vortagesbericht - die 124 Runden waren ein Rechenfehler**
+      Kontext: Der Scanner galt als beste Spur (+17,49 %, 85 % Treffer, t=15,3). vorschlaege() nahm den Einstieg aus dem Tagesbericht (schluss[-1] der 1D-Kerze). Am 19.09. war der Bericht zwei Tage alt: 7,531 gegen Markt 8,53-8,75, der Einstieg lag 12 % unter Markt, das Ziel (Einstieg+2xStop) war beim Kauf erfuellt. 82 Runden an einem Tag (+1866 %), 97 von 105 Ziel-Ausstiegen nach 0,25 h. Die ehrlichen Runden (>=6 h, n=16): +1,99 % Mean bei 38 % Treffer - auf dem Niveau von xperp. Fix gebaut und belegt: handeln.marktkurs() holt den Jetzt-Kurs, kein Rueckfall auf den Berichtspreis, fehlender Kurs = Ablehnung statt Ausnahme; 4 neue Tests + BilligeToreTest umgebaut, Gegenprobe belegt (3 von 4 fallen mit altem Code), Scanner-Suite 181 gruen, Vorschau zeigt Einstieg = Markt (BTC 84530). Befund: Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md
+      Naechster Schritt: Die Freigabe des Scanners stuetzte sich auch auf diese Runden. Bedingung 1 (Netto-positiv) ist seit 19.09. per Auftrag Max entfallen; die Zahl 124 belegt jetzt nichts mehr. Neu bewerten: entweder Freigabe zurueck auf false, bis echte Runden mit korrektem Einstieg vorliegen, oder Max entscheidet bewusst, mit dem korrigierten Code weiterzufahren. Die 5 offenen Positionen stammen teils aus der Fehlerzeit (Einstieg bis -5,4 % unter Markt) - nicht angefasst, Buchbereinigung ist Sache des Live-Laufs.
+      Angelegt 03.10.2026 · Betrifft: scanner, xperp, strategie_kennzahlen, Wiki/Handel.
 - [ ]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus**
       Kontext: OKX 51008 "Your available ZRO balance is insufficient, and your
       available margin (in USD) is too low for borrowing" - gemessen im

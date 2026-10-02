@@ -384,6 +384,38 @@ def nominal_fuer(stop_pct, w):
     return round(min(deckel, risiko / (stop_pct / 100.0)), 2)
 
 
+def marktkurs(inst):
+    """Jetzt-Kurs fuer den Einstieg - die EINE Stelle, die das Netz ruft.
+
+    Anlass (03.10.2026): vorschlaege() nahm den Einstieg aus dem
+    Vortagesbericht. Der Bericht 2026-09-17 trug AVAX-USDT mit 7,531,
+    der Markt am 19.09. lag bei 8,53-8,78 - der Einstieg 12 % unter
+    Markt, das Ziel beim Kauf schon erfuellt, 82 Scheinrunden an einem
+    Tag (+1866 %). Siehe vorschlaege().
+
+    Zwei Regeln, beide aus dem Befund:
+
+    1. KEIN Rueckfall auf einen aelteren Preis. Ein alter Preis als
+       Einstieg IST der Fehler; ihn wieder zuzulassen haette ihn nur
+       unsichtbar gemacht.
+    2. Ein Fehler ist eine Ablehnung, keine Ausnahme. Ein Markt, der
+       nicht antwortet, darf nicht den ganzen Zyklus abbrechen - die
+       uebrigen Kandidaten bleiben kaufbar.
+
+    Die Funktion ist der Testnaht: die Tests biegen sie um, statt das
+    Netz zu fassen (so test_ablehnungen es mit jedem anderen Modulpfad
+    auch tut).
+    """
+    try:
+        k = okx.letzter_kurs(inst)
+    except Exception as e:  # noqa: BLE001
+        print("  Kurs %s nicht abrufbar: %s" % (inst, e), file=sys.stderr)
+        return None
+    if not k or k <= 0:
+        return None
+    return k
+
+
 def vorschlaege(bericht, w):
     """Die Kandidaten, die alle Bewertungstore passiert haben.
 
@@ -406,7 +438,20 @@ def vorschlaege(bericht, w):
         if grund:
             lage[grund] = lage.get(grund, 0) + 1
             continue
-        einstieg = z["preis"]
+        # Einstieg ist der JETZT-KURS, nicht der Bewertungspreis des
+        # Vortagesberichts. Gemessen 03.10.2026: der Bericht 2026-09-17
+        # (Score 64,7) trug AVAX-USDT mit 7,531, der Markt am 19.09. lag
+        # bei 8,53-8,78. Der Einstieg lag 12 % UNTER dem Markt, das Ziel
+        # (Einstieg + 2x Stop) war damit schon beim Kauf erfuellt, und der
+        # naechste Zyklus verkaufte mit 15 % Gewinn - 82mal am 19.09.,
+        # Summe +1866 %. Das war keine Signalstaerke, sondern ein Rechen-
+        # fehler: 97 von 105 Ziel-Ausstiegen kamen nach 0,25 h.
+        # Kein Rueckfall auf den Berichtspreis: ein veralteter Preis als
+        # Einstieg IST der Fehler. Ohne Kurs gibt es keine Position.
+        einstieg = marktkurs(z["inst"])
+        if einstieg is None:
+            lage["Kurs nicht abrufbar"] = lage.get("Kurs nicht abrufbar", 0) + 1
+            continue
         sp = stop_prozent(z, w)
         stop = round(einstieg * (1 - sp / 100.0), 6)
         ziel = round(einstieg + 2.0 * (einstieg - stop), 6)   # Chance/Risiko 2:1

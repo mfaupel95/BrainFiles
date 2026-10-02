@@ -54,7 +54,11 @@ class NominalTest(unittest.TestCase):
 
 
 class VorschlaegeTest(unittest.TestCase):
-    """Am ECHTEN Aufruf: reicht vorschlaege() das Sizing durch?"""
+    """Am ECHTEN Aufruf: reicht vorschlaege() das Sizing durch?
+
+    Naht: vorschlaege() holt den Marktpreis (marktkurs), seit 03.10.2026.
+    Ohne sie ginge der Aufruf ans Netz und OKX 51001 wuerde den Test
+    statt des Sizing-Befunds fehlschlagen lassen."""
 
     def _bericht(self, vola):
         return {"werte": [{"inst": "X-USDT", "score": 70.0, "preis": 100.0,
@@ -64,11 +68,14 @@ class VorschlaegeTest(unittest.TestCase):
     def setUp(self):
         self.abl = h.ABLEHNUNGEN
         self.schreiben = h.SCHREIBEN
+        self.marktkurs = h.marktkurs
+        h.marktkurs = lambda inst: 100.0
         h.SCHREIBEN = False
 
     def tearDown(self):
         h.ABLEHNUNGEN = self.abl
         h.SCHREIBEN = self.schreiben
+        h.marktkurs = self.marktkurs
 
     def test_weiter_stop_kommt_mit_kleinerem_nominal_an(self):
         w = dict(W, mindest_score=60, max_volatilitaet_pa=1.20,
