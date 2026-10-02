@@ -93,7 +93,16 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-
+- [ ] **T-318 — test_fremdarbeit_einziehen.test_rueckschritt_gegen_head ist rot (T-218-Fall)**
+      Kontext: Bus-Ende-zu-Ende-Suite faellt in
+      test_rueckschritt_gegen_head_wird_nicht_uebernommen (Assertion: nach dem Lauf steht
+      HEAD:datei_a.txt nicht auf 'a geaendert'). Der Test laeuft die ECHTE
+      fremdarbeit-einziehen.ps1 im Temp-Repo. Vorbestehend/fremd: die klassik-Spuren und die
+      paperclip-Anbindung (02.10.2026) beruehren den Test nicht - einzeln und in der Suite rot.
+      Naechster Schritt: pruefen, warum die Routine die ruhende datei_a nicht uebernimmt
+      (30-min-Schwelle gegen Ordnermtime, Stichwort T-218/Rueckschritt-Erkennung).
+      Angelegt: 2026-10-02 · Zuletzt: 2026-10-02
+      Betrifft: Agenten/Bus/tests/test_fremdarbeit_einziehen.py, Agenten/Routinen/fremdarbeit-einziehen.ps1
 - [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
       Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
       future, gerne auch Long und Short abwechselnd nach Indikatoren."
