@@ -964,6 +964,11 @@ Agenten/Handel/klassik_sr_breaks/handelsjournal.csv
 !Agenten/Handel/klassik_pmax/wachen.json
 Agenten/Handel/klassik_pmax/zustand.json
 Agenten/Handel/klassik_pmax/handelsjournal.csv
+!Agenten/Handel/klassik_supertrend/*.py
+!Agenten/Handel/klassik_supertrend/*.md
+!Agenten/Handel/klassik_supertrend/wachen.json
+Agenten/Handel/klassik_supertrend/zustand.json
+Agenten/Handel/klassik_supertrend/handelsjournal.csv
 
 # Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
 !Agenten/Handel/prophet_signal/*.py

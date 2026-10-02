@@ -3,8 +3,9 @@
 Herkunft: die sechs Pine-Vorlagen unter MaxHirn/Wiki/Handel/*.pine (Donchian,
 EMA-Kreuz, MACD, RSI-Rueckkehr, SMA-Kreuz, Bollinger) plus zwei neue Regeln
 (rsi2_trend, donchian_trend), die LuxAlgo-Vorlage Support und Resistance
-Levels with Breaks (sr-breaks.pine, 02.10.2026) und der PMax Explorer
-(pmax-explorer.pine, 02.10.2026). Jede Spur ist ein Ordner mit
+Levels with Breaks (sr-breaks.pine, 02.10.2026), der PMax Explorer
+(pmax-explorer.pine, 02.10.2026) und der Supertrend Explorer
+(supertrend-explorer.pine, 02.10.2026). Jede Spur ist ein Ordner mit
 einem Zweizeiler `handeln.py`, der hier `spur_main(NAME)` ruft; Buch, Ratsche,
 Spiegelung und Vorfilter liefert `spur_buch.py`.
 
@@ -548,6 +549,76 @@ def einstieg_pmax(k, w):
     return None
 
 
+# --- Supertrend Explorer (supertrend-explorer.pine, 02.10.2026) -------------
+
+def supertrend_linie(k, w):
+    """Supertrend der Vorlage: (Linie, Trend je Kerze) wie der Hauptblock.
+
+    up verlaengert sich nur, solange der SCHLUSS der Vorkerze darueber lag;
+    dn nur, solange er darunter lag (close[1]-Vergleiche). Der Trend kippt,
+    wenn der Schluss der LAUFENDEN Kerze das Band der Gegenseite durchbricht
+    (close > dn1 bzw. close < up1). Kein sprachlicher Unterschied zum PMax:
+    dieselbe Band-Mechanik, aber gegen die Schluesse statt gegen MAvg.
+    """
+    src = [(float(z[2]) + float(z[3])) / 2.0 for z in k]   # hl2
+    perioden = int(w.get("atr_perioden", 10))
+    mult = float(w.get("atr_multiplier", 3.0))
+    atr = (atr_rm(k, perioden) if w.get("atr_wechsel", True)
+           else atr_sma_weg(k, perioden))
+    n = len(k)
+    up = [None] * n
+    dn = [None] * n
+    for i in range(n):
+        if atr[i] is None:
+            continue
+        roh_up = src[i] - mult * atr[i]
+        roh_dn = src[i] + mult * atr[i]
+        vor_up = up[i - 1] if i and up[i - 1] is not None else roh_up
+        vor_dn = dn[i - 1] if i and dn[i - 1] is not None else roh_dn
+        c1 = float(k[i - 1][4]) if i else float(k[i][4])   # close[1]
+        up[i] = max(roh_up, vor_up) if c1 > vor_up else roh_up
+        dn[i] = min(roh_dn, vor_dn) if c1 < vor_dn else roh_dn
+    trend = [1] * n
+    for i in range(n):
+        if atr[i] is None:
+            trend[i] = trend[i - 1] if i else 1
+            continue
+        vor_t = trend[i - 1] if i else 1
+        vor_up = up[i - 1] if i else None
+        vor_dn = dn[i - 1] if i else None
+        c = float(k[i][4])
+        if vor_up is None or vor_dn is None:
+            trend[i] = vor_t
+        elif vor_t == -1 and c > vor_dn:
+            trend[i] = 1
+        elif vor_t == 1 and c < vor_up:
+            trend[i] = -1
+        else:
+            trend[i] = vor_t
+    linie = [None] * n
+    for i in range(n):
+        if trend[i] == 1 and up[i] is not None:
+            linie[i] = up[i]
+        elif trend[i] == -1 and dn[i] is not None:
+            linie[i] = dn[i]
+    return linie, trend
+
+
+def einstieg_supertrend(k, w):
+    """Buy/Sell der Vorlage: `trend == 1 and trend[1] == -1` (und gespiegelt).
+
+    Die Vorlage zeichnet die Signale auf dem WECHSEL der Trendlinie, nicht
+    auf einem Kreuz - deshalb der direkte Wechsel-Check statt kreuzt_auf.
+    """
+    _linie, trend = supertrend_linie(k, w)
+    i = len(k) - 1
+    if i > 0 and trend[i] == 1 and trend[i - 1] == -1:
+        return "long"
+    if i > 0 and trend[i] == -1 and trend[i - 1] == 1:
+        return "short"
+    return None
+
+
 def _gegen_kreuz(einstieg_fn):
     """Ausstieg = das Gegensignal des Einstiegs (Pine: strategy.close bei Kreuz)."""
     def f(k, seite, w):
@@ -602,6 +673,7 @@ REGELN = {
     "klassik_donchian_trend": (einstieg_donchian_trend, ausstieg_donchian),
     "klassik_sr_breaks": (einstieg_sr_breaks, _gegen_kreuz(einstieg_sr_breaks)),
     "klassik_pmax":      (einstieg_pmax, _gegen_kreuz(einstieg_pmax)),
+    "klassik_supertrend": (einstieg_supertrend, _gegen_kreuz(einstieg_supertrend)),
 }
 
 

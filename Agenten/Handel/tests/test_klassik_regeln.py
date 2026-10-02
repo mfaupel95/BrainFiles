@@ -391,5 +391,49 @@ class PmaxTests(unittest.TestCase):
         self.assertIn("short", gef)
 
 
+class SupertrendTests(unittest.TestCase):
+    """Supertrend Explorer - Band-Mechanik und die Wechsel-Signale.
+
+    Dieselben Rutsche/Wende-Fixtures wie PMax: Die Signale entstehen auf dem
+    WECHSEL der Linie (trend[1] != trend), nicht auf einem Kreuz.
+    """
+
+    W = {}
+
+    def test_konstante_serie_bleibt_long_ohne_signal(self):
+        k = kerzen([100.0] * 40)
+        linie, trend = kr.supertrend_linie(k, self.W)
+        self.assertEqual(trend[-1], 1)
+        self.assertIsNone(kr.einstieg_supertrend(k, self.W))
+        self.assertEqual(linie[-1], 94.0)      # hl2 - 3.0 * ATR(2)
+
+    def test_ruesche_kippt_auf_short_und_wende_auf_long(self):
+        c = ([100.0] * 28 + [100.0 - 3 * i for i in range(1, 11)]
+             + [70.0 + 3 * i for i in range(1, 16)])
+        k = kerzen(c)
+        gef = [kr.einstieg_supertrend(k[:n], self.W) for n in range(30, len(k) + 1)]
+        self.assertIn("short", gef, "close unter up1 laesst den Trend kippen")
+        self.assertIn("long", gef, "close ueber dn1 dreht zurueck")
+
+    def test_wechsel_ist_das_gegensignal(self):
+        c = ([100.0] * 28 + [100.0 - 3 * i for i in range(1, 11)]
+             + [70.0 + 3 * i for i in range(1, 16)])
+        k = kerzen(c)
+        aus = kr.REGELN["klassik_supertrend"][1]
+        # In der Wende-Phase liefert der Einstieg long - das Gegensignal der
+        # short-Position ist genau dieser Wechsel.
+        gef = [aus(k[:n], "short", self.W) for n in range(30, len(k) + 1)]
+        self.assertIn("gegensignal", gef)
+
+    def test_atr_wechsel_als_sma_erlaubt(self):
+        c = ([100.0] * 28 + [100.0 - 3 * i for i in range(1, 11)]
+             + [70.0 + 3 * i for i in range(1, 16)])
+        k = kerzen(c)
+        w = dict(self.W, atr_wechsel=False)
+        gef = [kr.einstieg_supertrend(k[:n], w) for n in range(30, len(k) + 1)]
+        self.assertIn("short", gef)
+        self.assertIn("long", gef)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

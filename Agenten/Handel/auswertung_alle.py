@@ -140,7 +140,8 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               # KLASSIK-SPUREN (30.09.2026): spur_buch, dieselbe Journalform.
               "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
               "klassik_donchian", "klassik_rsi", "klassik_rsi2",
-              "klassik_donchian_trend", "klassik_sr_breaks", "klassik_pmax")
+              "klassik_donchian_trend", "klassik_sr_breaks", "klassik_pmax",
+              "klassik_supertrend")
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 
