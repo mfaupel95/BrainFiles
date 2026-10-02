@@ -103,16 +103,64 @@ def bots(pfad=None):
     return aus
 
 
+def _bot_name_fuer_port(port: int) -> str | None:
+    """Der Bot-Name zu einer Portnummer aus `bots.json` - eine Wahrheit."""
+    for b in bots():
+        if int(b["port"]) == int(port):
+            return str(b["name"])
+    return None
+
+
+def auf_satz_zugang(port: int, pfad: str | None = None):
+    """(url, benutzer, passwort) aus der AUFSATZ-Datei `config.<name>.json`.
+
+    Jeder Bot traegt dort seine EIGENEN Zufallswerte (geschrieben von
+    `bots.py configs`). Seit 01.10.2026 laedt `bots_starten.sh` diesen
+    Aufsatz in den Container, und die Container akzeptieren ihn (gemessen
+    02.10.2026: show_config 200 mit dem Aufsatz-Passwort, 401 mit dem
+    Basis-Passwort auf 8081-8083). Fehlt die Datei oder traegt sie keine
+    Zugangsdaten, ist das Ergebnis None - dann gilt die Basis-config.json.
+    """
+    name = _bot_name_fuer_port(port)
+    if not name:
+        return None
+    basis = os.path.dirname(pfad or os.environ.get("FREQTRADE_CONFIG") or KONFIG)
+    aufsatz = os.path.join(basis, "config.%s.json" % name)
+    if not os.path.exists(aufsatz):
+        return None
+    try:
+        with open(aufsatz, encoding="utf-8") as f:
+            api = json.load(f).get("api_server", {})
+    except (OSError, ValueError):
+        return None
+    if not api.get("username") or not api.get("password"):
+        return None
+    url = os.environ.get("FREQTRADE_URL") or URL
+    return url.rstrip("/"), api["username"], api["password"]
+
+
 def zugang_fuer(port, pfad=None):
     """(url, benutzer, passwort) fuer EINE Portnummer.
 
-    Der Port kommt vom Bot, die Anmeldung IMMER aus der Basis-`config.json`.
-    Grund (gemessen 30.09.2026, dieselbe Lehre steht in `freqtrade/bots.py`
-    `_api_stand`): die Aufsatz-Dateien `config.<name>.json` tragen eigene
-    Zufallspasswoerter, die die laufenden Container nicht akzeptieren - mit
-    ihnen gibt es 401, obwohl der Bot laeuft.
+    Der Port kommt vom Bot, die Anmeldung aus seiner AUFSATZ-Datei
+    `config.<name>.json` (eigene Zufallswerte je Bot, seit 01.10.2026 vom
+    Starter geladen und von den Containern akzeptiert - gemessen 02.10.2026:
+    show_config 200 mit dem Aufsatz-Passwort, 401 mit dem Basis-Passwort auf
+    8081-8083). Faellt der Aufsatz aus (Datei fehlt, keine Zugangsdaten),
+    gilt die Basis-`config.json`.
     """
     url, benutzer, passwort = zugang(pfad)
+    # Reihenfolge (gemessen 01.10.2026, dieselbe Lehre wie `hole`, `zugang`):
+    #   1. Umgebungs-Variablen FREQTRADE_USER/FREQTRADE_PASSWORD - ein Aufrufer
+    #      mit eigenem Zugang hat IMMER recht (der Test `test_umgebung_...`
+    #      setzt genau das).
+    #   2. der AUFSATZ `config.<name>.json` - eigene Zufallswerte je Bot, seit
+    #      01.10.2026 vom Starter tatsaechlich in den Container geladen.
+    #   3. die Basis-`config.json` - die einzige Anmeldung der Alt-Container.
+    if not (os.environ.get("FREQTRADE_USER") or os.environ.get("FREQTRADE_PASSWORD")):
+        aufsatz = auf_satz_zugang(port, pfad)
+        if aufsatz:
+            url, benutzer, passwort = aufsatz
     teile = urllib.parse.urlsplit(url)
     if not teile.scheme or not teile.hostname:
         return url, benutzer, passwort
@@ -121,7 +169,15 @@ def zugang_fuer(port, pfad=None):
 
 
 def hole(endpunkt, zugangsdaten=None, zeitgrenze=ZEITGRENZE, **felder):
-    """GET /api/v1/<endpunkt>. Wirft FreqtradeFehler statt zu raten."""
+    """GET /api/v1/<endpunkt>. Wirft FreqtradeFehler statt zu raten.
+
+    Ein 401 ist seit dem Umbau (01.10.2026) ein echter Fehler, kein Hinweis
+    auf einen Alt-Container: die Container akzeptieren ihre eigenen
+    Aufsatz-Passwoerter (gemessen 02.10.2026: show_config 200 mit dem
+    Aufsatz-Passwort, 401 mit dem Basis-Passwort auf 8081-8083). Der fruehere
+    Rueckfall auf die Basis-config.json ist gestrichen - er wuerde einen
+    echten Anmeldefehler still verschlucken.
+    """
     if endpunkt not in ERLAUBT:
         raise ValueError("Endpunkt %r ist nicht freigegeben (nur lesend)" % endpunkt)
     url, benutzer, passwort = zugangsdaten or zugang()

@@ -213,12 +213,13 @@ class BotsTest(unittest.TestCase):
 
 
 class ZugangFuerTest(unittest.TestCase):
-    """Port vom Bot, Anmeldung von der Basis-config - die 401-Falle.
+    """Port vom Bot, Anmeldung vom AUFSATZ, sonst von der Basis-config.
 
     Die Aufsatz-Dateien config.<name>.json tragen eigene Zufallspasswoerter,
-    die die laufenden Container nicht akzeptieren (gemessen 30.09.2026,
-    dieselbe Lehre in freqtrade/bots.py `_api_stand`). Ein Test, der das
-    zulaesst, zeigt 401 statt eines Fehlers in der Zentrale.
+    die die Container seit dem Umbau akzeptieren (gemessen 02.10.2026:
+    show_config 200 mit dem Aufsatz-Passwort, 401 mit dem Basis-Passwort auf
+    8081-8083). Fehlt der Aufsatz, gilt die Basis-config.json - der Test
+    deckt genau diesen Rueckfall ab.
     """
 
     def test_port_wird_ersetzt_anmeldung_behalten(self):

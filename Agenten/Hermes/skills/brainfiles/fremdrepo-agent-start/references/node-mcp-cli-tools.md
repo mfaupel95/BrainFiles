@@ -129,6 +129,44 @@ zeigen, echte Ausgabe lesen:
   mitgeliefertes Installationskommando dafuer NICHT ausfuehren; den Text im
   Paket benennen und das Wissen in einer Wiki-Seite ablegen.
 
+## Ein Client mit eigenem Modell-Protokoll: die eigene Bruecke
+
+Manche Werkzeuge fragen keinen Chat-Endpunkt, sondern einen **Richter**: sie schicken
+einen Zustand plus typisierte Fragen und erwarten je Frage einen Wert (Muster: `POST
+<basis>/systemone`, `{state, questions:{id:{type:"noul"}}} ->
+{answers:{id:{type:"noul", noul:0..1}}}`). Solch einen Vertrag bedient ein kleiner
+lokaler stdlib-Server, der ihn auf ein beliebiges OpenAI-kompatibles Modell uebersetzt
+(lokal, gekaufter Anbieter, eigener Router). Damit wird der Client unabhaengig vom
+Anbieter, den sein Preset vorsieht.
+
+**Voraussetzungen messen, nicht annehmen** — und zwar an der Nutzlast des Clients:
+Kontextfenster (der Client schickt schnell 20.000-54.000 Zeichen Zustand, also **32k+"),
+Buendelung (mehrere Fragen je Anfrage), sauberes JSON, und die **Latenz gegen den Takt
+des Aufrufers**. Gebuendelte Recherche vertraegt Sekunden je Anfrage; ein Takt von
+Millisekunden (eine Entscheidung je Block) vertraegt sie nicht — dort gehoert der echte
+Anbieter hin, nicht die Bruecke.
+
+Drei Regeln, jede aus einer Messung:
+
+- **Ein leeres Modell-Ergebnis NIE still als Standardwert durchreichen.** Antwortet das
+  Modell nichts (zu kleines Kontextfenster, Abbruch), darf die Bruecke daraus kein
+  „nicht relevant" machen — sonst meldet der Client ein sauberes Ergebnis, waehrend der
+  Anbieter kaputt ist. Fehler je Anfrage protokollieren UND auf der Konsole warnen; dem
+  Client trotzdem eine gueltige Antwortform liefern (er darf nie einen 5xx sehen).
+- **Ein veralteter Modell-Tag ist derselbe Fehler.** Eine Vorgabe, die der Dienst nicht
+  mehr fuehrt, ergibt `HTTP 404` bei JEDER Frage -> alle Ergebnisse fallen auf den
+  Standardwert. Die Modellliste des Dienstes lesen (`GET /v1/models`), nicht dem eigenen
+  Vorgabewert glauben.
+- **Die Anmeldung des Clients ist EINFACH:** ein `auth`-Aufruf ERSETZT die gespeicherte
+  Anmeldung samt Endpunkt, es gibt keine zwei Anbieter nebeneinander. Vor jedem
+  Umstellen den Rueckweg als EINEN Befehl bereithalten (Hausform: ein
+  Anmelde-Werkzeug mit `--anwenden`), sonst ist der alte Zugang weg.
+- **Lokal als Richter vorher bemessen.** Mechanisch laeuft es oft, fachlich nicht:
+  gemessen 51 s fuer 20.000 Zeichen Zustand und die FALSCHE Antwort auf eine Frage, zu
+  deren Antwort die Datei genau passt — waehrend eine Einzelmessung desselben Modells
+  vorher einen plausiblen Wert geliefert hatte. Mit ECHTER Nutzlast und einer Frage
+  messen, deren Antwort man selbst kennt; eine Einzelmessung ist kein Urteil.
+
 ## Wenn der Hersteller einen eigenen Installer mitbringt
 
 Manche CLIs haben einen eigenen Unterbefehl `install` ("managed install":

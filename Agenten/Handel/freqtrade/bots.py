@@ -120,6 +120,25 @@ def einweglauf(fenster: list[str], beschriftung: str) -> int:
 
 # --- Konfiguration je Bot ---------------------------------------------------
 
+def _basis_exchange() -> dict:
+    """Die exchange-Schluessel der Basis-config.json (Schluessel, kein Geheimnis).
+
+    Die Aufsaetze tragen bewusst KEINE eigenen Boersen-Schluessel - die
+    gehoeren der Basis, und ein Aufsatz, der sie leer setzt, wuerde sie beim
+    tiefen Merge der Container zunichte machen (gemessen 01.10.2026: die
+    Container laden config.json + config.<name>.json, ein leeres key/secret
+    im Aufsatz hebelt das echte aus der Basis aus).
+    """
+    pfad = USER_DATA / "config.json"
+    if not pfad.exists():
+        return {}
+    try:
+        with pfad.open(encoding="utf-8") as f:
+            return json.load(f).get("exchange", {}) or {}
+    except (OSError, ValueError):
+        return {}
+
+
 def config_fuer(bot: dict) -> dict:
     """Die Konfiguration EINES Bots.
 
@@ -127,9 +146,13 @@ def config_fuer(bot: dict) -> dict:
     einer anderen Sitzung und einen anderen Port. Jeder Bot bekommt eigene
     Zufallswerte, damit zwei Bots nie denselben Zugang teilen (dieselbe Lehre
     wie bei den Telegram-Kanaelen der Bot-Profile).
+
+    Die Boersen-Schluessel kommen aus der Basis-config.json (siehe
+    `_basis_exchange`), damit ein Aufsatz beim tiefen Merge nichts aushebelt.
     """
     port = int(bot["port"])
     name = bot["name"]
+    basis_exchange = _basis_exchange()
     return {
         "max_open_trades": int(bot.get("max_open_trades", 3)),
         "stake_currency": "USDT",
@@ -143,8 +166,8 @@ def config_fuer(bot: dict) -> dict:
         "strategy": bot["strategie"],
         "exchange": {
             "name": "binance",
-            "key": "",
-            "secret": "",
+            "key": basis_exchange.get("key", ""),
+            "secret": basis_exchange.get("secret", ""),
             "pair_whitelist": list(bot["whitelist"]),
             "pair_blacklist": [],
         },
@@ -341,18 +364,13 @@ def _api_stand(bot: dict) -> str:
         return "keine config"
     with pfad.open(encoding="utf-8") as f:
         cfg = json.load(f)
-    # Der Zugang kommt aus der BASIS-config.json, NICHT aus dem Aufsatz: die
-    # drei Aufsaetze tragen zwar ebenfalls username/password, aber mit ANDEREN
-    # Passwoertern als die laufenden Container akzeptieren. Gemessen am
-    # 30.09.2026: das Basis-Passwort liefert fuer ping/count/profit/status 200,
-    # das Aufsatz-Passwort einen 401 -> HTTPError, obwohl der Bot laeuft. Vom
-    # Aufsatz wird deshalb nur der Port genommen.
+    # Der Zugang kommt aus dem AUFSATZ (config.<name>.json): der traegt die
+    # EIGENEN Zugangsdaten des Bots, und der Starter laedt genau diese Datei
+    # in den Container. Die Container akzeptieren sie (gemessen 02.10.2026:
+    # show_config 200 mit dem Aufsatz-Passwort, 401 mit dem Basis-Passwort auf
+    # 8081-8083) - die Basis-config.json ist hier NICHT mehr die Anmeldung.
     api = cfg.get("api_server", {})
     zugang = api
-    basis = USER_DATA / "config.json"
-    if basis.exists():
-        with basis.open(encoding="utf-8") as f:
-            zugang = json.load(f).get("api_server", {})
     import base64
     roh = f"{zugang.get('username', '')}:{zugang.get('password', '')}".encode()
     kopf = {"Authorization": "Basic " + base64.b64encode(roh).decode()}

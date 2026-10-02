@@ -564,10 +564,12 @@ providers:
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
-  - provider: llamacpp
-    model: Ternary-Bonsai-2-27B-PTQ1_0
+  - provider: nous
+    model: stealth/space-bunny-alpha
   - provider: anthropic
     model: claude-haiku-4-5-20251001
+  - provider: llamacpp
+    model: Ternary-Bonsai-2-27B-PTQ1_0
 toolsets:
   - hermes-cli
 database:
@@ -649,8 +651,8 @@ checkpoints:
   max_snapshots: 30
 file_read_max_chars: 1000000
 tool_output:
-  max_bytes: 500000
-  max_lines: 10000
+  max_bytes: 300000
+  max_lines: 1000
   max_line_length: 10000
 tool_loop_guardrails:
   warnings_enabled: true
@@ -744,12 +746,12 @@ context:
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 750000
-  user_char_limit: 237500
+  memory_char_limit: 450000
+  user_char_limit: 137500
   nudge_interval: 10
   provider: ''
 delegation:
-  model: deepseek/deepseek-v4-flash-0731
+  model: stealth/space-bunny-alpha
   provider: nous
   fallback_providers:
     - provider: ollama-launch
@@ -759,8 +761,10 @@ delegation:
       model: bonsai
     - provider: anthropic
       model: claude-opus-5
-  max_iterations: 250
-  reasoning_effort: medium
+  max_iterations: 100
+  reasoning_effort: xhigh
+  max_concurrent_children: 10
+  child_timeout_seconds: 180
 moa:
   presets:
     default:

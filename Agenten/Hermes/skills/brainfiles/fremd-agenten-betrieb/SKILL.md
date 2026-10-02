@@ -447,7 +447,43 @@ Ergebnis als Befund melden, nie als Strategiebestand uebernehmen. Dasselbe gilt
 fuer die Ideenlisten solcher Repos (tausende Modellzeilen, ungeprueft): Steinbruch
 fuer Formulierungen, kein Vorrat.
 
-## Harter Absturz: erst den Zeugen holen, dann nichts neu installieren
+## Externe Agenten vor dem Haus-Waisenputzer schützen (PID-Registrierung)
+
+Wenn externe GUIs (bzw. andere Treiber) Agenten starten, die derselbe Code sind
+wie die des Haus-Dauerlaufs, kann der Haus-Waisenputzer diese als fremde
+Waisen ansehen und beenden — der Treiber kann nicht unterscheiden, ob ein
+laufender Agent von ihm selbst oder von außen startet, wenn er nur die
+Prozessliste liest. Die Lösung ist ein **gemeinsamer PID-Registrierungsordner**,
+den der externe Agent selbst anlegt:
+
+1. **Registrierungsmodul** (Haus-Code, nicht im Fremd-Repo):
+   `<handel>/moondev_reg.py` mit einem Ordner
+   `%TEMP%/moondev_agenten/<pid>.moon` je registriertem Prozess. Funktionen:
+   `registriere()` (legt die Datei an), `alle_registrierte_pids()` (liest den
+   Ordner), `_pid_datei()` (Pfad berechnet).
+
+2. **Haus-Treiber** (`moondev_dauerlauf.py`): `fremde_agenten()` liest
+   `alle_registrierte_pids()` und schliesst diese von der Liste der zu
+   beendenden Waisen aus — registrierte PIDs koennen also nie beendet werden.
+
+3. **GUI-Agent** (`moongui.py`): nach jedem `subprocess.Popen`-Aufruf (der den
+   Agenten startet) _selbst_ `from moondev_reg import registriere; registriere()`
+   aufrufen. Ohne diesen Aufruf steht die Agenten-PID im Haus-Ordnner nicht
+   und wird vom Waisenputzer beendet.
+
+**Der Treiber muss das HГ¤user-Modul laden**, nicht das GUI-Modul — weil der
+Treiber und die GUI in unterschiedlichen Prozessen laufen und das Haus-Modul
+nur vom Treiber importiert werden muss (das GUI-Modul bleibt im Fremd-Repo,
+das nicht beschrieben wird).
+
+**Gegenprobe**: im Test `_pid_datei()` erstellen und `alle_registrierte_pids()`
+liefert sie; `fremde_agenten()` meldet sie nicht als fremd.
+
+**Die Registrierung ist nur die Haus-Seite.** Wenn das Fremd-Repo keine
+Registrierung durchfuehrt, schuetzt der Ordner niemanden — und der Waisenputzer
+sieht die externen Agenten als Waisen. Entsprechend muss das Fremd-Repo-Patch
+(MOONDEV_STARTWEG=gui nach Popen einen `registriere()`-Aufruf) auch eingetragen
+werden; Haus-Patch allein genuegt nicht.
 
 Ein Fremd-Repo, das den Prozess mit `Segmentation fault` bzw. `0xC0000005`
 (Access Violation) abwirft, verleitet zum Umbau des falschen Teils. Reihenfolge,

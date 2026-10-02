@@ -528,6 +528,58 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
      hoechstens alle paar Stunden. Ein Hang heilt nicht durch Wiederholung.
    - **Der Merker wird bei Erholung GELOESCHET**, sonst ist die naechste
      Stoerung desselben Objekts fuer Stunden stumm.
+
+### Blockierende Zyklus-Schleife im Code selbst absichern (Watchdog-Thread)
+
+Eine Wache, die `os.path.getmtime()` der letzten Logzeile misst, erkennt einen
+hanging Zyklus erst, wenn der Zeitstempel aelter wird — und dann ist der
+Zyklus schon hunderte Sekunden lang blockiert. Fuer Dauerlaufe, die eigene
+Netz-/LLM-Runden druchfuehren und auf keine externe Bedingung warten, ist ein
+**Watchdog-Thread im Zyklus** die erste Verteidigung, nicht nur die Wache:
+
+1. **Timer-Klasse**, die nach `timeout_s` Sekunden eine `TimeoutError` wirft
+   und den Prozess beendet (nicht nur den aktuellen Durchlauf unterbricht,
+   sonst bleibt der Waisenputzer hängen):
+
+   ```python
+   import threading, os, signal
+
+   _watchdog_timer = None
+
+   def _zyklus_watchdog(timeout_s=900.0):
+       def _feuern():
+           raise TimeoutError(f"Zyklus ueberschreitet {timeout_s}s — Prozess beendet")
+       global _watchdog_timer
+       _watchdog_timer = threading.Timer(timeout_s, _feuern)
+       _watchdog_timer.daemon = True
+       _watchdog_timer.start()
+
+   def _watchdog_zuruecksetzen():
+       if _watchdog_timer and _watchdog_timer.is_alive():
+           _watchdog_timer.cancel()
+           _watchdog_timer.join(timeout=1.0)
+       _zyklus_watchdog(900.0)
+   ```
+
+2. **Aufruf**: `_zyklus_watchdog(timeout_s=900.0)` einmal am Zyklus-Anfang,
+   `_watchdog_zuruecksetzen()` in jedem Punkt, an dem ein Zyklus sauber
+   endet (nach Spurenlauf, nach Spiegelung, nach Zustandsschreiben).
+3. **Der Timer muss vor dem Prozessende geloescht werden** — sonst wirft er
+   nach einem sauberen `sys.exit()` noch eine Exception in einem anderem
+   Thread. Deswegen: `_watchdog_timer.cancel()` vor jedem `return`, `break`
+   oder `sys.exit()`.
+
+**Der Timer ist nur die Sicherung, nicht die Diagnose.** Ein Alarm des
+Watchdogs ist Symptom, nicht Ursache: Warum blockiert der Zyklus? Die Frage
+bleibt offen und wird wie bei jedem Absturz anhand des Logs beantwortet.
+
+**Achtung: der Timer schlaegt falsch an, wenn die Zeit begrenzt wird.** Wer
+den Dauerlauf zum Diagnostizieren unter einem eigenen `timeout N` laufen laesst,
+kriegt den 143er (SIGTERM) aus dem eigenen Kommando — nicht den
+Watchdog-Auslöser. Die Test-Messung ohne eigenes Zeitlimit fahren, oder den
+Lauf abgekoppelt starten (`Start-Process -WindowStyle Hidden` + Log lesen).
+Beide Fallen in derselben Sitzung beobachtet; die Regel gilt fuer jede
+Warteschleife, nicht nur Netzaufrufe.
    Das laesst sich in die BESTEHENDE Prozesswache einbauen (die Liste der
    laufenden Objekte liegt dort schon vor) - ein zweites Wachenskript braucht es
    nicht. Der Name des Objekts muss dabei zu seinem LOG passen, und der ist oft

@@ -2,7 +2,7 @@
 name: kanban-board
 description: Use when ein Kanban-Board oder eine Karte angelegt wird.
 version: 0.1.0
-author: Hermes Agent
+author: Hermes
 license: MIT
 category: brainfiles
 platforms: [windows]
@@ -212,6 +212,27 @@ Datenbankstand.
 - **Viele Karten = viele Worker-Prozesse.** Der Dispatcher startet je ready-
   Karte einen eigenen Python-Prozess. Darum buendeln und `--triage` nutzen,
   bis Freigabe erfolgt.
+- **Auto-Decomposer kann `--triage` ignorieren.** Ein installierter
+  Auto-Decomposer zerlegt eine getriagte Karte sofort und aendert dabei
+  Assignee, Workspace und Parents. Nach jedem `create --triage` mit `show`
+  pruefen; `list` allein sagt nicht, ob ein Child-Plan existiert.
+- **Workspace `dir:` muss in `show` bestaetigt werden.** Wird nicht
+  zuverlaessig aus einem vorherigen CLI-Aufruf geerbt. Vor dem Promote
+  `kanban show <id>` auf `workspace_kind: dir` lesen.
+- **Root mit Children ist kein eigener Auftrag.** Sind nach einer
+  Decomposition Child-Tasks vorhanden, die Root nicht noch einmal als
+  eigene Aufgabe promoten. Die Children arbeiten, die Root wartet auf
+  ihre Ergebnisse.
+- **Telegram-Abo gilt je Karte, nicht fuer Children.** Ein Abo auf einer
+  Root-Karte meldet nur deren Events (Zusammenfuehrung), nicht den
+  Fortschritt der einzelnen Child-Tasks.
+- **`list` belegt nur den Datenbankstand.** `show` (Assignee, Events,
+  Workspace), `runs` (Laeufe, Ergebnis) und `log` (Worker-Ausgabe) sind
+  die Lauf-Nachweise. `list` allein beweist keinen laufenden Prozess.
+- **Body-Datei ist Entwurf.** Der vollstaendige Body muss in `show` oder
+  `context` geprueft werden, bevor die Scratch-Datei geloescht wird.
+  Eine falsche `--body-file`-Uebergabe (relativer Pfad, falscher Pfad)
+  zeigt sich nur dort.
 
 ## Einzelkarten-Werkzeuge
 

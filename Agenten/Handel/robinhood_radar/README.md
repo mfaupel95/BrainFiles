@@ -31,6 +31,17 @@ für uns keinen Leerverkauf.
 * Frisch gehalten wird die Datenbank vom Hermes-Cron **`radar-sammler`**
   (Skript `Agenten/Hermes/scripts/radar-sammeln.py`), nicht von der Spur.
 
+## Der laufende Kurs (T-299)
+
+Die Spur bucht den Einstiegspreis aus der eigenen Sammlung; einen **laufenden
+Kurs** liefert die Radar-Datenbank seit dem 02.10.2026: der Sammler
+(`radar-sammeln.py`) ruft jetzt auch `enrich-tokens` auf, und der bepreist
+die gehaltenen Token über **GeckoTerminal** — den einzigen Kursgeber für
+Robinhood Chain 4663 (DexScreener indexiert die Kette nicht). Preise stehen
+in `tokens.price_usd`/`price_at` und werden je `price_max_age_s` (2 h) für
+gehaltene Token erneuert. Tote Token ohne aktiven Pool (keine der drei
+offenen Positionen hat einen) bekommen von keiner Quelle einen Live-Kurs.
+
 ## Kosten, ehrlich gerechnet
 
 Einstiegspreis ist der Preis des **jüngsten beobachteten Kaufs**
