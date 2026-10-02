@@ -591,43 +591,59 @@ def guthaben_zeile():
     """scanner-Guthaben fuer den Bericht: Budget + verfuegbares Guthaben.
 
     Budget kommt aus `scanner/wachen.json` (`budget_usd`, Max 19.09.2026:
-    80 USD total). Verfuegbar liest den Lese-Schluessel der Spur 1
-    (scanner/okx, OKX_LIVE_*) - availBal, Rueckfall totalEq. Ein
-    Guthaben-Ausfall darf den Bericht nie fallen lassen: 'nicht lesbar'.
+    80 USD total). Die WAEHRUNGEN kommen ebenfalls aus der Wachen
+    (`universum.quotes`), nicht aus einer Liste im Skript: das Konto hatte
+    438 USDC und 0,00 USDT, und die fest verdrahtete Liste
+    ('USDT', 'USDC') meldete deshalb bis zur Umstellung am 02.10.2026
+    "USDT 838.81" - ein aus `totalEq` geratener Gesamtkontostand, der wie ein
+    Guthaben in einer Waehrung las, die es gar nicht gibt (T-311).
+
+    Zwei Regeln dazu, beide gemessen:
+    * KEIN Rueckfall auf `totalEq`. `totalEq` ist die Summe ueber ALLE
+      Waehrungen in USD - als Ersatz fuer eine fehlende Waehrung nennt es
+      eine Zahl, die es nicht gibt. Liefert die Boerse fuer eine abgefragte
+      Waehrung kein `details`, ist das eine Waehrung OHNE Bestand: 0.00.
+    * Jede Waehrung einzeln nennen, mit dem Hinweis, wenn sie ganz fehlt -
+      dann ist "USDT fehlt" eine Aussage der Boerse und nicht ein
+      Rundungsfehler im Bericht.
+
+    Ein Guthaben-Ausfall darf den Bericht nie fallen lassen: 'nicht lesbar'.
     """
     budget = None
+    quotes = []
     try:
         import json                                            # noqa: PLC0415
         with open(os.path.join(HIER, "scanner", "wachen.json"),
                   "r", encoding="utf-8") as f:
-            budget = json.load(f).get("budget_usd")
+            wachen = json.load(f)
+        budget = wachen.get("budget_usd")
+        quotes = list((wachen.get("universum") or {}).get("quotes") or [])
     except Exception:                                          # noqa: BLE001
         budget = None
+    if not quotes:
+        quotes = ["USDC"]
     try:
         import okx                                             # noqa: PLC0415
         teile = []
-        for ccy in ("USDT", "USDC"):
+        for ccy in quotes:
             try:
                 d = okx._mit_wiederholung(
                     "/api/v5/account/balance?ccy=" + ccy, signiert=True)
-            except Exception:                                   # noqa: BLE001
-                teile.append("%s n/A" % ccy)
+            except Exception as e:                             # noqa: BLE001
+                teile.append("%s n/A (%s)" % (ccy, str(e)[:40]))
                 continue
-            first = (d or [{}])[0] or {}
+            details = ((d or [{}])[0] or {}).get("details") or []
             verfuegbar = 0.0
-            details = first.get("details") or []
-            if details:
-                for e in details:
-                    try:
-                        verfuegbar += float(e.get("availBal") or 0.0)
-                    except (TypeError, ValueError):
-                        pass
-            else:
+            for e in details:
                 try:
-                    verfuegbar = float(first.get("totalEq") or 0.0)
+                    verfuegbar += float(e.get("availBal") or 0.0)
                 except (TypeError, ValueError):
                     pass
-            teile.append("%s %.2f" % (ccy, verfuegbar))
+            if not details:
+                # Die Boerse fuehrt diese Waehrung nicht: 0.00, KEIN totalEq.
+                teile.append("%s 0.00 (kein Bestand)" % ccy)
+            else:
+                teile.append("%s %.2f" % (ccy, verfuegbar))
     except Exception as e:                                      # noqa: BLE001
         return "Guthaben (scanner): nicht lesbar: %s" % str(e)[:80]
     budget_text = ("Budget $%s" % budget) if budget is not None else "Budget n/A"

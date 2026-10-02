@@ -225,15 +225,28 @@ def journal_ablehnung(**felder):
         s.writerow({k: felder.get(k, "") for k in SPALTEN_ABLEHNUNG})
 
 
-def protokolliere(grund, anzahl=1):
+def protokolliere(grund, anzahl=1, **zahlen):
     """Die Lage EINES Zyklus als Zahl, ohne Kennung.
 
     Der Ort fuer die Massenfaelle: seit dem 14.09.2026 sieht der Scan den
     ganzen Spotmarkt, mehrere hundert Kandidaten je Lauf. Die einzeln mit
     Kennung zu protokollieren waere ein Protokoll, das niemand liest.
+
+    `zahlen` nimmt Messwerte auf (`betrag=`, `noetig=`). Sie sind KEINE Spalten
+    des Protokolls - sie wandern in den Grundtext, damit sie im CSV lesbar
+    bleiben. Grund: ein Aufrufer, der sie als Keyword uebergibt, bekam
+    `TypeError: protokolliere() got an unexpected keyword argument 'betrag'`
+    und RISS DEN GANZEN ZYKLUS ab (17x am 02.10.2026 zwischen 02:23 und 06:26,
+    gemessen im Ereignisprotokoll). Die Regel: eine Hilfsfunktion nimmt die
+    Felder an, die ihre Aufrufer brauchen - oder der Aufrufer darf sie nicht
+    uebergeben. Eine halbe Erweiterung (nur `anzahl`) ist die schlimmere
+    Variante, weil sie erst zur Laufzeit auffaellt.
     """
-    if anzahl:
-        journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=grund,
+    text = grund
+    for k, v in zahlen.items():
+        text += " %s=%s" % (k, v)
+    if anzahl or zahlen:
+        journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=text,
                           anzahl=anzahl)
 
 

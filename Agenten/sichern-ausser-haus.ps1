@@ -65,8 +65,25 @@ $fluechtig = @(
   (Join-Path $quelle 'Agenten\Hermes\cache'),
   (Join-Path $quelle 'Agenten\Hermes\cron\output')
 )
+
+# Derselbe gesperrte Waisen-Rest wie in sichern.ps1 (03.10.2026):
+# state-snapshots\.20260930-204617-pre-update.48588.partial ist leer und
+# GESPERRT (icacls schlaegt selbst fehl). Der Lauf vom 02.10.2026 21:37
+# endete mit FEHLER 6 / Code 11 bei 0 fehlenden Dateien. Wildcards sind in
+# /XD verboten ('Ungueltiger Parameter #11', Code 16, ohne Kopieren), also
+# wird der Pfad aufgeloest.
+$waisen = @()
+foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial')) {
+  $waisen += @(Get-ChildItem -Path (Join-Path $quelle $muster) -Directory `
+                 -Force -ErrorAction SilentlyContinue |
+               ForEach-Object { $_.FullName })
+}
+if ($waisen.Count -gt 0) {
+  Write-Host ("Gesperrte Update-Reste ausgeschlossen: {0}" -f $waisen.Count)
+}
+
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig /XF *.pid *.db-shm *.db-wal   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); *.db-shm/*.db-wal sind die Begleitdateien einer LAUFENDEN SQLite-Datenbank (Agenten\Hermes\shared-state.db) - sie entstehen und verschwinden im Betrieb und eine Rohkopie waere ohnehin kein gueltiger Datenbankstand. robocopy meldete fuer beide Klassen Code 11; dasselbe gilt fuer die zwei Pfade in $fluechtig
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig $waisen /XF *.pid *.db-shm *.db-wal   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); *.db-shm/*.db-wal sind die Begleitdateien einer LAUFENDEN SQLite-Datenbank (Agenten\Hermes\shared-state.db) - sie entstehen und verschwinden im Betrieb und eine Rohkopie waere ohnehin kein gueltiger Datenbankstand. robocopy meldete fuer beide Klassen Code 11; dasselbe gilt fuer die zwei Pfade in $fluechtig. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade
 $code = $LASTEXITCODE
 
 # Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter

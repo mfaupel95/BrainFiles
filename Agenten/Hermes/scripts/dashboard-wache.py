@@ -83,6 +83,14 @@ HEIL_BREMSE_MIN = 30        # hoechstens ein Heilversuch je so vielen Minuten
 BUILD_GRACE_MIN = 25        # ein laufender Bau darf so lange still sein
 UPDATE_GRACE_MIN = 20       # waehrend eines Updates erst ab hier melden
 WIEDERHOLUNG_H = 6          # dieselbe Feststellung hoechstens so oft
+ROTATION_BYTE_FRIST = 4 * 1024 * 1024   # ab wie vielen Bytes
+                                        # dashboard-restart.log wandert
+                                        # nach <name>.1 (T-196). Der Wert
+                                        # stand nie in der Datei, obwohl
+                                        # _rotieren() ihn als Vorgabe las -
+                                        # die Wache brach beim LADEN ab und
+                                        # meldete seitdem nur noch den
+                                        # SyntaxError weiter.
 
 
 # ---------------------------------------------------------------- Zustand
@@ -123,8 +131,8 @@ def _rotieren(pfad: Path, *, byte_frist: int = ROTATION_BYTE_FRIST, behalten: in
     except OSError:
         return
     for stufe in range(behalten, 0, -1):
-        alt = pfad.with_name(pfad.name + (\"-%d\" % stufe if stufe > 1 else \".1\"))
-        neuer_alt = pfad.with_name(pfad.name + (\"-%d\" % (stufe + 1) if stufe + 1 > 1 else \".1\"))
+        alt = pfad.with_name(pfad.name + ("-%d" % stufe if stufe > 1 else ".1"))
+        neuer_alt = pfad.with_name(pfad.name + ("-%d" % (stufe + 1) if stufe + 1 > 1 else ".1"))
         try:
             if stufe == 1:
                 pfad.replace(neuer_alt)

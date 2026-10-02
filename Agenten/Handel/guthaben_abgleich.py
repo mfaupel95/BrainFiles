@@ -14,6 +14,7 @@ Abruf nur beim Wochenbericht, nie beim Tagesbericht: der darf nicht am Netz
 haengen. Das Modul ist strikt lesend - es ruft nur Kontostaende ab, es
 platziert keine Order, storniert nichts und schreibt keinen Kontostand.
 """
+import json
 import os
 import sys
 
@@ -27,6 +28,31 @@ LIVE = ("scanner", "kraken", "xperp")
 WAEHRUNG = {"scanner": "USD", "kraken": "EUR", "xperp": "USD"}
 
 
+def _scanner_quote():
+    """Die Handelswaehrung des Scanners aus seiner Wachen lesen.
+
+    `universum.quotes` ist die EINZIGE Wahrheit darueber, in welcher Waehrung
+    die Spur handelt - dieselbe Quelle, aus der `handeln.py` das Guthaben-Tor
+    speist. Eine eigene Liste hier waere eine zweite Wahrheit, die genau
+    wieder so veraltet wie die fest verdrahtete ('USDT'). Fehlt das Feld,
+    gilt USDC: die Quote mit Guthaben UND Markt auf dem EEA-Konto.
+
+    Anlass (T-311): das Konto hat 438 USDC und 0,00 USDT. `guthaben_usdt()`
+    lieferte deshalb 0.0, der Wochenbericht wies eine Differenz aus und es sah
+    aus wie ein Buch, das nicht zum Konto passt.
+    """
+    pfad = os.path.join(HIER, "scanner", "wachen.json")
+    try:
+        with open(pfad, "r", encoding="utf-8") as f:
+            wachen = json.load(f)
+        quotes = (wachen.get("universum") or {}).get("quotes") or []
+        if quotes:
+            return str(quotes[0])
+    except Exception:                                        # noqa: BLE001
+        pass
+    return "USDC"
+
+
 def _konto_fn(spur):
     """Der Kontostandabruf der Spur. Import erst beim Aufruf - ein fehlendes
     Boersenmodul darf den Bericht nicht am Laden hindern."""
@@ -37,7 +63,11 @@ def _konto_fn(spur):
             return float(kraken.guthaben("ZEUR"))
         if spur == "scanner":
             import okx                                   # noqa: PLC0415
-            return float(okx.guthaben_usdt())
+            # Die WAEHRUNG aus der Wachen, nicht USDT (T-311): das Konto
+            # fuehrt kein USDT, okx.guthaben_usdt() lieferte 0.0 und der
+            # Wochenbericht zeigte eine Differenz aus einer Waehrung, die es
+            # nicht gibt. Das Guthaben-Tor der Spur liest dieselbe Quelle.
+            return float(okx.guthaben(_scanner_quote()))
         import okxf                                      # noqa: PLC0415
         return float(okxf.guthaben_usdt())
     return hole
