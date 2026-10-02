@@ -152,13 +152,111 @@ def quelle(w):
                 seit = jetzt_ts - float(w.get("signal_fenster_stunden", 6)) * 3600.0
                 kaeufe = lesen.kaeufe(con, seit)
                 verkaufsdruck = lesen.verkaufsdruck(con, seit)
+                # T-299: eine OFFENE Position braucht einen Kurs, sonst
+                # prueft `spur_buch.pruefe_ausstiege` gar nichts und die
+                # Position steht ewig. Der letzte beobachtete Handel DIESES
+                # Tokens ist der beste Kurs, den diese Kette hergibt - er
+                # kommt in `kurse`, nicht in `daten`: er darf eine Position
+                # beenden, aber keinen neuen Einstieg ausloesen.
+                for inst in _offene_instanzen():
+                    preis, _ts = lesen.letzte_beobachtung(con, inst)
+                    if preis > 0 and inst not in kurse:
+                        kurse[inst] = preis
             finally:
                 con.close()
     except Exception as e:                                          # noqa: BLE001
         return {}, {}, ["Radar-Datenbank nicht lesbar (%s)" % e]
 
-    daten, kurse = _kennzahlen(w, time.time())
-    return daten, kurse, fehler
+    daten, kurse2 = _kennzahlen(w, time.time())
+    # Die Einstiegspreise der Kandidaten haben Vorrang vor dem blossen
+    # letzten Handel (sie tragen den Nachlauf-Aufschlag).
+    kurse2.update(kurse)
+    return daten, kurse2, fehler
+
+
+def _offene_instanzen(ordner=None):
+    """Die Instrumente, die im Buch OFFEN sind (leer bei fehlendem Zustand)."""
+    ordner = ordner or HIER
+    try:
+        _, zustand_pfad, _ = spur_buch.pfade(ordner)
+        z = spur_buch.lade_zustand(zustand_pfad)
+    except (OSError, ValueError):
+        return []
+    return [p.get("inst") for p in z.get("positionen", []) if p.get("inst")]
+
+
+def raeume_ohne_kurs(w, ordner=None, con=None, jetzt_ts=None):
+    """Positionen schliessen, fuer die die Kette zu lange nichts mehr zeigt.
+
+    T-299, Anlass: drei Papierpositionen vom 22./23.09.2026 standen ohne
+    Kurs im Buch. `spur_buch.pruefe_ausstiege` ueberspringt eine Position
+    ohne Kurs - mit der Absicht, sie stehen zu lassen. Auf dieser Kette
+    bedeutet das: der Token wird nicht mehr gehandelt, und die Position
+    blockiert einen der drei Plaetze fuer immer (gemessen 02.10.2026:
+    `max_offene_positionen` 3, drei Positionen offen, `datenlage.kandidaten`
+    1 - die Spur konnte nichts Neues eroeffnen).
+
+    Regel: liegt die LETZTE beobachtete Fuellung dieses Tokens laenger als
+    `beobachtung_max_alter_stunden` zurueck (Vorgabe 24 h), wird die
+    Position zum letzten bekannten Kurs geschlossen - geschlossen wird zum
+    Beobachtungspreis, nicht zum Einstieg; ist gar keine Fuellung da,
+    neutral zum Einstieg. Der Grund heisst `buchbereinigung_kein_kurs` und
+    faellt damit unter `stoerungen.BUCHHALTUNG`: das ist eine Buchbereinigung,
+    keine Handelsentscheidung, und darf nicht als Runde gezaehlt werden.
+
+    Rueckgabe: (geraeumte_instanzen, [(inst, preis, alter_h)], fehler).
+    """
+    ordner = ordner or HIER
+    jetzt_ts = jetzt_ts or time.time()
+    grenze_h = float(w.get("beobachtung_max_alter_stunden", 24.0))
+    _, zustand_pfad, journal_pfad = spur_buch.pfade(ordner)
+    z = spur_buch.lade_zustand(zustand_pfad)
+    positionen = z.get("positionen") or []
+    if not positionen:
+        return [], [], []
+
+    eigen = con is None
+    if eigen:
+        try:
+            con = lesen.verbinde()
+        except Exception as e:                                      # noqa: BLE001
+            return [], [], ["Radar-Datenbank nicht lesbar (%s)" % e]
+
+    behalten, geraeumt, befund = [], [], []
+    try:
+        for p in positionen:
+            preis, ts = lesen.letzte_beobachtung(con, p["inst"])
+            alter_h = (jetzt_ts - ts) / 3600.0 if ts > 0 else None
+            if alter_h is not None and alter_h <= grenze_h:
+                behalten.append(p)
+                continue
+            # Zu alt oder gar nicht beobachtet: schliessen.
+            kurs = preis if preis > 0 else float(p["einstieg"])
+            vz = 1 if p["seite"] == "long" else -1
+            gv = float(p["nominal"]) * (kurs / float(p["einstieg"]) - 1.0) * vz
+            spur_buch.journal(
+                journal_pfad, zeit=spur_buch.jetzt(), modus="papier",
+                aktion="verkauf", inst=p["inst"], seite=p["seite"],
+                preis=spur_buch.pformat(kurs),
+                einsatz_usd="%.2f" % (float(p["nominal"]) + gv),
+                stop=spur_buch.pformat(p["stop"]), ziel=spur_buch.pformat(p["ziel"]),
+                stop_pct="%.2f" % float(p["stop_pct"]),
+                grund="buchbereinigung_kein_kurs", pos_id=p.get("pos_id", ""))
+            print("GERAEUMT %s: letzte Beobachtung %s -> %.8g, G/V %+.2f USD"
+                  % (p["inst"],
+                     ("vor %.1f h" % alter_h) if alter_h is not None else "nie",
+                     kurs, gv))
+            geraeumt.append(p["inst"])
+            befund.append((p["inst"], kurs, alter_h))
+    finally:
+        if eigen and con is not None:
+            con.close()
+
+    if geraeumt:
+        z["positionen"] = behalten
+        spur_buch.schreibe_zustand(zustand_pfad, z)
+        spur_buch.spiegeln(zustand_pfad, journal_pfad, z, w)
+    return geraeumt, befund, []
 
 
 def signal(d, w, mint=None):
@@ -342,11 +440,51 @@ def main():
     g.add_argument("--messen", action="store_const", dest="modus",
                    const="messen",
                    help="Nachlauf der eigenen Sammlung messen (T-268)")
+    g.add_argument("--raeumen", action="store_const", dest="modus", const="raeumen",
+                   help="Positionen ohne frischen Kurs zeigen, nichts schreiben (T-299)")
+    g.add_argument("--raeumen-anwenden", action="store_const", dest="modus",
+                   const="raeumen_anwenden",
+                   help="Positionen ohne frischen Kurs schliessen und buchen (T-299)")
     a = p.parse_args()
     modus = a.modus or "papier"
     if modus == "messen":
         return messen(json.loads((Path(HIER) / "wachen.json").read_text(
             encoding="utf-8")))
+    if modus in ("raeumen", "raeumen_anwenden"):
+        w = json.loads((Path(HIER) / "wachen.json").read_text(encoding="utf-8"))
+        if modus == "raeumen":
+            _, zustand_pfad, _ = spur_buch.pfade(HIER)
+            z = spur_buch.lade_zustand(zustand_pfad)
+            offen = z.get("positionen") or []
+            if not offen:
+                print("Buch leer - nichts zu raeumen.")
+                return 0
+            try:
+                con = lesen.verbinde()
+            except lesen.DatenbankFehlt as e:
+                print("Radar-Datenbank nicht lesbar: %s" % e)
+                return 1
+            try:
+                grenze = float(w.get("beobachtung_max_alter_stunden", 24.0))
+                jetzt = time.time()
+                print("Raeum-Vorschau (Grenze %.0f h):" % grenze)
+                for p in offen:
+                    preis, ts = lesen.letzte_beobachtung(con, p["inst"])
+                    alter = (jetzt - ts) / 3600.0 if ts > 0 else None
+                    alt = alter is None or alter > grenze
+                    print("  %s  Einstieg %.8g  letzte Beobachtung %s  %s"
+                          % (p["inst"], float(p["einstieg"]),
+                             ("vor %.1f h" % alter) if alter is not None else "nie",
+                             "-> WIRD GERAEUMT" if alt else "bleibt"))
+            finally:
+                con.close()
+            print("Vorschau: keine Dateien geschrieben.")
+            return 0
+        geraeumt, _befund, fehler = raeume_ohne_kurs(w)
+        for f in fehler:
+            print("Uebersprungen (%s)" % f, file=sys.stderr)
+        print("%d Position(en) geraeumt." % len(geraeumt))
+        return 0 if geraeumt or not fehler else 1
     if modus == "live" and not _live_erlaubt():
         print("--live verweigert: handel_erlaubt ist false und freigabe.erfuellt "
               "ist nicht gesetzt - Handelsregeln Punkt 3 (scharf schalten von "

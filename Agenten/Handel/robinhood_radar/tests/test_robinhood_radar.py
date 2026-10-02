@@ -8,6 +8,7 @@ mit Journalaufruf direkt pruefen, schreiben sonst in das echte Buch).
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import shutil
@@ -298,6 +299,120 @@ class ZyklusTest(unittest.TestCase):
         zustand = json.loads(Path(self.dir, "zustand.json").read_text(encoding="utf-8"))
         for p in zustand.get("positionen", []):
             self.assertEqual(p.get("modus"), "papier")
+
+
+class RaeumTest(unittest.TestCase):
+    """T-299: eine Position ohne frischen Kurs darf nicht ewig stehen.
+
+    Die Kette liefert fuer einen Token nur dann einen Preis, wenn er
+    gehandelt wurde. Ohne Rueumung bleibt die Position im Buch, wird von
+    `pruefe_ausstiege` uebersprungen und blockiert einen der drei Plaetze.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp(prefix="radar_raeum_")
+        self.ziel = os.path.join(self.dir, "Q-Ziel")
+        os.makedirs(self.ziel, exist_ok=True)
+        self.db = os.path.join(self.dir, "fomo_agent.db")
+        jetzt = time.time()
+        self.jetzt = jetzt
+        # 0xfrisch: vor 2 h beobachtet -> bleibt. 0xalt: vor 100 h -> wird geraeumt.
+        # 0xnie: gar keine Fuellung -> wird neutral geraeumt.
+        datenbank(
+            self.db,
+            traders=[("0xaaa", "robinhood", 80.0, "active")],
+            trades=[zeile(kauf("0xaaa", "0xfrisch", 400.0, 200.0, jetzt - 7200)),
+                    zeile(kauf("0xaaa", "0xalt", 1000.0, 500.0, jetzt - 100 * 3600))])
+        w = wachen(journal_zweitziel=self.ziel, handel_erlaubt=False,
+                   freigabe={"erfuellt": False},
+                   beobachtung_max_alter_stunden=24.0)
+        Path(self.dir, "wachen.json").write_text(json.dumps(w), encoding="utf-8")
+        Path(self.dir, "zustand.json").write_text(json.dumps({
+            "positionen": [
+                {"inst": "0xfrisch", "seite": "long", "einstieg": 2.0,
+                 "stop": 1.5, "ziel": 3.0, "stop_pct": 25.0, "nominal": 20.0,
+                 "modus": "papier", "eroeffnet_zeit": "2026-10-02T00:00:00+00:00",
+                 "pos_id": "p-frisch"},
+                {"inst": "0xalt", "seite": "long", "einstieg": 2.0,
+                 "stop": 1.5, "ziel": 3.0, "stop_pct": 25.0, "nominal": 20.0,
+                 "modus": "papier", "eroeffnet_zeit": "2026-09-22T00:00:00+00:00",
+                 "pos_id": "p-alt"},
+                {"inst": "0xnie", "seite": "long", "einstieg": 2.0,
+                 "stop": 1.5, "ziel": 3.0, "stop_pct": 25.0, "nominal": 20.0,
+                 "modus": "papier", "eroeffnet_zeit": "2026-09-22T00:00:00+00:00",
+                 "pos_id": "p-nie"},
+            ], "modus": "papier", "letzter_lauf": None, "verlust_usd": 0.0}),
+            encoding="utf-8")
+        os.environ["FOMO_RADAR_DB"] = self.db
+
+    def tearDown(self):
+        os.environ.pop("FOMO_RADAR_DB", None)
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_nur_die_zu_alten_und_die_unbeobachteten_werden_geraeumt(self):
+        w = json.loads(Path(self.dir, "wachen.json").read_text(encoding="utf-8"))
+        geraeumt, befund, fehler = handeln.raeume_ohne_kurs(
+            w, ordner=self.dir, jetzt_ts=self.jetzt)
+        self.assertEqual(fehler, [])
+        self.assertEqual(sorted(geraeumt), ["0xalt", "0xnie"])
+        z = json.loads(Path(self.dir, "zustand.json").read_text(encoding="utf-8"))
+        self.assertEqual([p["inst"] for p in z["positionen"]], ["0xfrisch"])
+        # Der Zustand traegt die Position als GERAEUMT, damit die Zentrale
+        # nicht weiter eine offene Position ohne Kurs zeigt.
+        text = Path(self.dir, "handelsjournal.csv").read_text(encoding="utf-8")
+        self.assertIn("buchbereinigung_kein_kurs", text)
+        self.assertEqual(text.count("buchbereinigung_kein_kurs"), 2)
+
+    def test_die_geraeumten_zaehlen_nicht_als_handelsrunde(self):
+        import stoerungen
+        w = json.loads(Path(self.dir, "wachen.json").read_text(encoding="utf-8"))
+        handeln.raeume_ohne_kurs(w, ordner=self.dir, jetzt_ts=self.jetzt)
+        with open(os.path.join(self.dir, "handelsjournal.csv"), encoding="utf-8") as f:
+            zeilen = list(csv.DictReader(f))
+        ausstiege = [z for z in zeilen if z["aktion"] == "verkauf"]
+        self.assertTrue(ausstiege)
+        echt, stoer = stoerungen.teile_runden(
+            [{"grund": z["grund"]} for z in ausstiege])
+        self.assertEqual(len(echt), 0, "eine Buchbereinigung ist keine Runde")
+        self.assertEqual(len(stoer), len(ausstiege))
+
+    def test_der_geraeumte_preis_ist_der_letzte_beobachtete_handel(self):
+        w = json.loads(Path(self.dir, "wachen.json").read_text(encoding="utf-8"))
+        _geraeumt, befund, _fehler = handeln.raeume_ohne_kurs(
+            w, ordner=self.dir, jetzt_ts=self.jetzt)
+        preis = dict((i, p) for i, p, _a in befund)
+        # 1000 USD / 500 Token = 2.0 - der Kurs, zu dem zuletzt gehandelt wurde.
+        self.assertAlmostEqual(preis["0xalt"], 2.0, places=9)
+        # Ohne jede Fuellung neutral zum Einstieg.
+        self.assertAlmostEqual(preis["0xnie"], 2.0, places=9)
+
+    def test_leeres_buch_ist_ein_fall_fuer_sich(self):
+        Path(self.dir, "zustand.json").write_text('{"positionen": []}',
+                                                  encoding="utf-8")
+        w = json.loads(Path(self.dir, "wachen.json").read_text(encoding="utf-8"))
+        geraeumt, befund, fehler = handeln.raeume_ohne_kurs(
+            w, ordner=self.dir, jetzt_ts=self.jetzt)
+        self.assertEqual((geraeumt, befund, fehler), ([], [], []))
+        self.assertFalse(Path(self.dir, "handelsjournal.csv").exists())
+
+    def test_quelle_liefert_den_kurs_einer_offenen_position(self):
+        """T-299, zweite Haelfte: die laufende Pruefung braucht denselben Preis."""
+        z = json.loads(Path(self.dir, "zustand.json").read_text(encoding="utf-8"))
+        z["positionen"] = [p for p in z["positionen"] if p["inst"] == "0xfrisch"]
+        Path(self.dir, "zustand.json").write_text(json.dumps(z), encoding="utf-8")
+        w = json.loads(Path(self.dir, "wachen.json").read_text(encoding="utf-8"))
+        alt = handeln.HIER
+        handeln.HIER = self.dir
+        try:
+            daten, kurse, fehler = handeln.quelle(w)
+        finally:
+            handeln.HIER = alt
+        self.assertEqual(fehler, [])
+        # 400 USD / 200 Token = 2.0
+        self.assertAlmostEqual(kurse["0xfrisch"], 2.0, places=9)
+        # Der Kurs gehoert in `kurse`, NICHT in `daten` - er darf keinen
+        # neuen Einstieg ausloesen.
+        self.assertNotIn("0xfrisch", daten)
 
 
 def _stand(ordner: str) -> dict:
