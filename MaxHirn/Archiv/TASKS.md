@@ -10,26 +10,8 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
 - **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
-- [x] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
-      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
-      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
-      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
-      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
-      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
-      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
-      ERLEDIGT 02.10.2026 (Commit 91702aaa): die Ursache war kein Zahlendreher, sondern
-      dass die Tabelle den am 01.10. geklaerten Widerspruch nicht mitgenommen hatte.
-      Neu: BOERSENSAETZE_PCT + satz_pct_fuer() - der Soll-Satz wird aus den Feldern der
-      Wachen abgeleitet (kraken_futures zuerst, dann OKX als Perp, dann der Name).
-      gebuehr_taker kam dazu, weil die Auswertung NUR dieses Feld liest; ohne sie
-      meldete gebuehr_fuer fuer omniquant exakt 0.0 (die Spur wäre als kostenlos
-      ausgewiesen worden). 5 neue Tests mit Gegenprobe, 17/17 gruen. Betrifft
-      Agenten/Handel/gebuehren_setzen.py, Agenten/Handel/omniquant/wachen.json,
-      Agenten/Handel/tests/test_gebuehren_setzen.py
-
-
-
   Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
 
 
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
@@ -110,31 +92,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 02.10.2026 · Betrifft: iv_wand, Handelsheter.
 
 
-- [ ]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg**
-      Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler, beide am
-      Schreibweg, beide unabhängig vom Gebührensatz.
 
-      (1) Er überschreibt eine verbesserte Notiz. Er setzt `_gebuehr_quelle` auch
-      dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
-      robinhood_radar hat er dadurch zwischenzeitlich verbesserte Notizen (mit
-      gemessenem Nachlauf) auf den aelteren Text zurueckgesetzt. Aus den
-      .bak-20261002 zurueckgenommen; der Fehler ist nicht behoben.
-      Naechster Schritt: `_feld_setzen` schreibt die Notiz nur, wenn sich der
-      WERT aendert oder die Notiz fehlt. Testbeleg: eine Wachen mit richtigem Wert
-      und eigener Notiz bleibt byte-gleich.
-
-      (2) Er meldet einen relativen Pfad. `anwenden()` nennt den Pfad RELATIV zur
-      Modul-Wurzel. Im Testlauf las sich das als spur/wachen.json gebuehr_taker:
-      0.001 -> 0.002 - ein Schreibzugriff auf eine echte Wache. Tatsaechlich war es
-      der Tempordner des Tests (test_gebuehren_setzen.py:126-131 legt
-      spur/wachen.json in tempfile.mkdtemp() an und setzt gs.HIER darauf).
-      Gegengeprueft: Agenten/Handel/spur/ existiert nicht, git diff auf jede echte
-      Wache ist leer, keine Wache in 10 min geaendert.
-      Naechster Schritt: die Meldung nennt den ABSOLUTEN Pfad, dann ist ein
-      Schreibzugriff von einem Testartefakt am Text unterscheidbar.
-
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
-      Agenten/Handel/tests/test_gebuehren_setzen.py
 
 - [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
       Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
@@ -3374,7 +3332,58 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
-- [x] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
+
+- [x]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg — BEHoben 02.10.2026**
+      Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler am Schreibweg,
+      beide unabhängig vom Gebührensatz.
+      (1) Er überschrieb eine verbesserte Notiz: er setzte `_gebuehr_quelle` auch
+      dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
+      robinhood_radar setzte er dadurch gemessene Notizen (Nachlauf 01.10.2026)
+      auf den aelteren Text zurück.
+      (2) Er meldete einen relativen Pfad. Im Testlauf las sich das als
+      Schreibzugriff auf eine echte Wache (spur/wachen.json gebuehr_taker
+      0.001 -> 0.002) - tatsaechlich der Tempordner des Tests. Gegengeprueft:
+      Agenten/Handel/spur/ existiert nicht, git diff auf jede echte Wache leer.
+      ERLEDIGT 02.10.2026 (Commit 2ecba82e):
+        (1) `_notiz_ist_besser(alt, neu)` laesst die vorhandene Notiz gewinnen, wenn
+            sie einen Belegwort-Beleg UND ein Datum dd.mm.yyyy traegt, den die
+            Tabelle nicht kennt. Absichtlich eng: sonst entscheidet weiter die
+            Tabelle, damit kein Aufruf den Anspruch der Wachen still anhebt.
+            Zwei Fragen, zwei Antworten - ein FALSCHER Wert wird immer ersetzt.
+        (2) anwenden(), vorschau() und der Fehlertext nennen jetzt den ABSOLUTEN
+            Pfad. vorschau() wertet dieselben zwei Regeln aus wie anwenden().
+        10 neue Tests (27 gesamt). Gegenproben: Regel zurueckgenommen -> 1 FAIL,
+            Meldung wieder relativ -> 1 FAIL.
+        Echter Nachweis: anwenden() schreibt 0 Dateien, kopier/kopier1zu1/
+            robinhood_radar byte-gleich und mit ihrer gemessenen Notiz.
+        Fahrprobe: `import re` fehlte - ein Fehler, den nur der echte Lauf findet,
+            weil die Tests den Ausdruck nie ausfuehren.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
+
+
+- [x] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
+      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
+      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
+      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
+      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
+      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
+      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
+      ERLEDIGT 02.10.2026 (Commit 91702aaa): die Ursache war kein Zahlendreher, sondern
+      dass die Tabelle den am 01.10. geklaerten Widerspruch nicht mitgenommen hatte.
+      Neu: BOERSENSAETZE_PCT + satz_pct_fuer() - der Soll-Satz wird aus den Feldern der
+      Wachen abgeleitet (kraken_futures zuerst, dann OKX als Perp, dann der Name).
+      gebuehr_taker kam dazu, weil die Auswertung NUR dieses Feld liest; ohne sie
+      meldete gebuehr_fuer fuer omniquant exakt 0.0 (die Spur wäre als kostenlos
+      ausgewiesen worden). 5 neue Tests mit Gegenprobe, 17/17 gruen. Betrifft
+      Agenten/Handel/gebuehren_setzen.py, Agenten/Handel/omniquant/wachen.json,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
+
+
+
+  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
+ [x] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
       Kontext: Beim Zentrale-Durchgang am 01.10.2026 aufgefallen: die Spur fuehrt ihre Token
       als `inst` (0x…), die Zentrale sagte dazu `Quelle okx` und lief damit in einen Weg, der
       nie antwortet. Richtig ist `keine` - die Robinhood-Kette (4663) kennt kein Haus-Leser
