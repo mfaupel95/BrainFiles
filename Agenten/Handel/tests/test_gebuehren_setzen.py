@@ -152,7 +152,10 @@ class AnwendenMeldetKlarTest(unittest.TestCase):
         """
         from unittest import mock
         with mock.patch.object(gs, "_feld_setzen",
-                               lambda roh, feld, wert, quelle: (roh, None)):
+                               lambda roh, feld, wert, quelle,
+                               notiz_behalten=None: (roh, None)):
+            # `notiz_behalten` ist seit T-315 ein Parameter - ohne ihn
+            # bricht schon der Aufruf ab, nie die Pruefung.
             with self.assertRaises(RuntimeError) as ctx:
                 gs.anwenden()
         text = str(ctx.exception)
@@ -304,6 +307,143 @@ class BoersenfeldTest(unittest.TestCase):
             self.assertGreater(float(taker), 0.0,
                                "%s: gebuehr_taker 0 - die Auswertung rechnet "
                                "kostenlos" % datei)
+
+
+class NotizBleibtTest(unittest.TestCase):
+    """T-315 (1): `--anwenden` setzt eine verbesserte Notiz zurueck.
+
+    Anlass 02.10.2026: bei kopier, kopier1zu1 und robinhood_radar stand der
+    WERT richtig, die Notiz war aber zwischenzeitlich von Hand verbessert
+    worden ("NICHT gemessen" -> "der Nachlauf dazu ist GEMESSEN (01.10.2026)").
+    `anwenden()` verglich nur den WERT und schrieb die Notiz trotzdem neu.
+    """
+
+    GEMESSEN = ("MODELLANNAHME, der Nachlauf dazu ist GEMESSEN (01.10.2026). "
+                "Gesetzt bleiben 1,0 % Gebuehr + 5,0 % Slippage.")
+    TABELLE = gs.QUELLE_ANNAHME_ONCHAIN
+
+    def test_bessere_notiz_gewinnt_gegen_die_tabelle(self):
+        self.assertTrue(gs._notiz_ist_besser(self.GEMESSEN, self.TABELLE))
+
+    def test_gleichwertige_notiz_verliert_gegen_die_tabelle(self):
+        """Ohne den gemessenen Beleg entscheidet weiter die Tabelle - sonst
+        wuerde ein Aufruf den Anspruch der Wachen still anheben."""
+        alt = "MODELLANNAHME fuer Onchain-Handel."
+        self.assertFalse(gs._notiz_ist_besser(alt, self.TABELLE))
+
+    def test_neuere_notiz_mit_datum_gewinnt_nicht(self):
+        """Traegt die Tabelle selbst ein Datum, ist die neue Notiz keine
+        Herabstufung - dann soll sie schreiben duerfen."""
+        neu = gs.QUELLE_ANNAHME_ONCHAIN + " (Stand 02.10.2026)."
+        self.assertFalse(gs._notiz_ist_besser(self.GEMESSEN, neu))
+
+    def test_leere_notiz_gewinnt_nie(self):
+        self.assertFalse(gs._notiz_ist_besser(None, self.TABELLE))
+        self.assertFalse(gs._notiz_ist_besser("", self.TABELLE))
+
+    def test_wert_richtig_notiz_gehalten_ergibt_wortgleiche_datei(self):
+        """Der Kern: bei richtigem Wert und besserer Notiz bleibt die Datei
+        byte-gleich - das ist der Testbeleg aus T-315."""
+        roh = ('{\r\n  "gebuehr_pct": 1,\r\n'
+               '  "_gebuehr_quelle": %s,\r\n'
+               '  "handel_erlaubt": false\r\n}\r\n'
+               % json.dumps(self.GEMESSEN))
+        neu, alt = gs._feld_setzen(roh, "gebuehr_pct", 1, self.TABELLE,
+                                   notiz_behalten=True)
+        self.assertEqual(neu, roh)
+        self.assertEqual(float(alt), 1.0)
+
+    def test_wert_falsch_ueberschreibt_auch_die_bessere_notiz(self):
+        """Zwei Fragen, zwei Antworten: ein FALSCHER Wert wird immer ersetzt -
+        die Regel darf keine Ausrede fuer einen falschen Satz werden."""
+        roh = ('{\r\n  "gebuehr_pct": 1,\r\n'
+               '  "_gebuehr_quelle": %s,\r\n'
+               '  "handel_erlaubt": false\r\n}\r\n'
+               % json.dumps(self.GEMESSEN))
+        neu, _ = gs._feld_setzen(roh, "gebuehr_pct", 0.01, self.TABELLE)
+        d = json.loads(neu)
+        self.assertEqual(d["gebuehr_pct"], 0.01)
+        self.assertEqual(d["_gebuehr_quelle"], self.TABELLE)
+
+
+class MeldungNenntAbsolutenPfadTest(unittest.TestCase):
+    """T-315 (2): eine Meldung ueber einen Schreibvorgang nennt den Pfad.
+
+    Ein RELATIVER Pfad ist von einem Testartefakt am Text nicht
+    unterscheidbar - am 02.10.2026 las sich "spur/wachen.json gebuehr_taker:
+    0.001 -> 0.002" wie ein Zugriff auf eine echte Wache.
+    """
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp(prefix="gebuehren_pfad_"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        (self.tmp / "spur").mkdir()
+        (self.tmp / "spur" / "wachen.json").write_text(
+            '{\r\n  "gebuehr_taker": 0.001\r\n}\r\n', encoding="utf-8")
+        self.alt_hier, self.alt_tab = gs.HIER, gs.AENDERUNGEN
+        gs.HIER = str(self.tmp)
+        gs.AENDERUNGEN = [("spur/wachen.json", "gebuehr_taker", 0.002, "q")]
+        self.addCleanup(self._zurueck)
+
+    def _zurueck(self):
+        gs.HIER, gs.AENDERUNGEN = self.alt_hier, self.alt_tab
+
+    def _fang(self, fn):
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            fn()
+        return buf.getvalue()
+
+    def test_anwenden_nennt_den_absoluten_pfad(self):
+        text = self._fang(gs.anwenden)
+        zeile = [z for z in text.splitlines() if "gebuehr_taker" in z][0]
+        pfad = zeile.split()[0]
+        self.assertTrue(os.path.isabs(pfad),
+                        "Pfad %r ist relativ - ein Testartefakt waere daran "
+                        "nicht erkennbar" % pfad)
+        # os.path.commonpath ueberlebt gemischte Trennzeichen, ein
+        # startswith auf einen String nicht - der erste Versuch war selbst
+        # der Fehler.
+        self.assertEqual(os.path.commonpath([pfad, str(self.tmp)]),
+                         os.path.abspath(str(self.tmp)), pfad)
+
+    def test_vorschau_nennt_den_absoluten_pfad(self):
+        text = self._fang(gs.vorschau)
+        pfad = [z for z in text.splitlines() if "gebuehr_taker" in z][0].split()[0]
+        self.assertTrue(os.path.isabs(pfad), pfad)
+
+    def test_fehlertext_nennt_den_absoluten_pfad(self):
+        """Auch der Abbruchfall: eine Datei, die sich nicht schreiben laesst,
+        muss ihren ABSOLUTEN Pfad nennen, sonst sucht man am falschen Ort."""
+        ziel = self.tmp / "spur" / "wachen.json"
+        gs.AENDERUNGEN = [("spur/wachen.json", "gebuehr_taker", 0.002, "q")]
+        roh = ziel.read_text(encoding="utf-8")
+        # ACHTUNG: den ORIGINALEN Wert merken, nicht den jetzigen - sonst
+        # bleibt der Ersatz nach dem Test stehen und vergift alle folgenden
+        # (das war der Grund fuer drei Fehlschlaege beim ersten Lauf).
+        self.alt_setzen = gs._feld_setzen
+        self.addCleanup(setattr, gs, "_feld_setzen", self.alt_setzen)
+        gs._feld_setzen = lambda *a, **k: ("{\r\n}\r\n", None)  # unbrauchbar
+        with self.assertRaises(RuntimeError) as cm:
+            self._fang(gs.anwenden)
+        self.assertIn(str(self.tmp), str(cm.exception))
+
+    def test_vorschau_sagt_dasselbe_wie_anwenden(self):
+        """Eine Vorschau, die etwas anderes ankündigt als das Schreiben tut,
+        ist schlimmer als keine Vorschau."""
+        roh = '{\r\n  "gebuehr_pct": 1,\r\n  "_gebuehr_quelle": %s\r\n}\r\n' % json.dumps(
+            NotizBleibtTest.GEMESSEN)
+        (self.tmp / "spur" / "wachen.json").write_text(roh, encoding="utf-8")
+        gs.AENDERUNGEN = [("spur/wachen.json", "gebuehr_pct", 1,
+                           gs.QUELLE_ANNAHME_ONCHAIN)]
+        vorher = (self.tmp / "spur" / "wachen.json").read_text(encoding="utf-8")
+        self._fang(gs.anwenden)
+        nachher = (self.tmp / "spur" / "wachen.json").read_text(encoding="utf-8")
+        self.assertEqual(vorher, nachher, "anwenden() hat die bessere Notiz "
+                                          "ueberschrieben - die Vorschau "
+                                          "sagte das Gegenteil")
 
 
 if __name__ == "__main__":

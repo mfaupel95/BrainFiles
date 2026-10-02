@@ -39,6 +39,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -235,7 +236,37 @@ def _lesen(pfad):
     return roh, json.loads(roh)
 
 
-def _feld_setzen(roh, feld, wert, quelle):
+def _notiz_ist_besser(alt_notiz, neu_notiz):
+    """Trägt die vorhandene Notiz einen Beleg, den die neue nicht trägt?
+
+    Der Grund für diese Frage: `_gebuehr_quelle` wird mit dem Wert MITEINANDER
+    gesetzt (eine alte Notiz über einem neuen Wert wäre ein Widerspruch in der
+    Datei selbst). Nur trifft das einen Sonderfall, der am 02.10.2026 real
+    Schaden anrichtete: bei kopier, kopier1zu1 und robinhood_radar stand der
+    WERTE richtig, aber die Notiz war zwischenzeitlich von Hand verbessert
+    worden - aus „NICHT gemessen" in „der Nachlauf dazu ist GEMESSEN
+    (01.10.2026)". `--anwenden` setzte sie trotzdem zurück, weil der
+    Vergleich nur den WERT prüfte, nicht den Erkenntnisstand.
+
+    Die Regel ist bewusst eng und einseitig: die vorhandene Notiz gewinnt
+    NUR, wenn sie eine Begründung mit Tagesdatum trägt, die der neuen fehlt.
+    Sonst entscheidet weiter die Tabelle - ein Aufruf darf nie einen höheren
+    Anspruch an die Wachen verlieren, weil jemand sie angefasst hat.
+    """
+    if not alt_notiz:
+        return False
+    alt_ist, neu_ist = str(alt_notiz), str(neu_notiz)
+    # ein Beleg ist ein Wort wie GEMESSEN/BELEGT plus ein Datum dd.mm.yyyy
+    hat_beleg = re.search(
+        r"\b(GEMESSEN|GEKLAERT|BEL[EGT]|NACHLAUF|BEGRUENDET|ABGLEICH)\b",
+        alt_ist.upper()) is not None
+    hat_datum = re.search(r"\d{2}\.\d{2}\.\d{4}", alt_ist) is not None
+    neu_hat_datum = re.search(r"\d{2}\.\d{2}\.\d{4}", neu_ist) is not None
+    # die neue Notiz ohne jede Zeitangabe ist ohnehin schwächer
+    return bool(hat_beleg and hat_datum and not neu_hat_datum)
+
+
+def _feld_setzen(roh, feld, wert, quelle, notiz_behalten=None):
     """Feld setzen, ohne die Datei neu zu formatieren: Textersatz je Zeile.
 
     Ein `json.dump` waere kuerzer, wuerde aber die Reihenfolge und die
@@ -245,6 +276,10 @@ def _feld_setzen(roh, feld, wert, quelle):
     Die QUELLE wird mitgesetzt, nicht danebengelassen: eine alte
     `_gebuehr_quelle` ueber einem neuen Wert waere ein Widerspruch in der Datei
     selbst (genau der Fehler, den dieses Werkzeug behebt).
+
+    `notiz_behalten` (siehe `_notiz_ist_besser`): True laesst die vorhandene
+    Notiz stehen, weil sie einen Beleg traegt, den `quelle` nicht kennt. Der
+    WERT wird trotzdem geschrieben - das sind zwei verschiedene Fragen.
     """
     eol = _eol(roh)
     zeilen = roh.split(eol)
@@ -269,9 +304,14 @@ def _feld_setzen(roh, feld, wert, quelle):
         # frueheren Lauf, aber kein gebuehr_taker). Dann wird der WERT hier
         # eingesetzt - vorher fiel er still unter den Tisch und `anwenden()`
         # stuerzte danach mit einem irrefuehrenden TypeError ab.
+        #
+        # `notiz_behalten`: die vorhandene Notiz traegt einen gemessenen
+        # Beleg, den die Tabelle nicht kennt - sie bleibt stehen, der WERT
+        # wird trotzdem geschrieben (siehe `_notiz_ist_better`).
         hat_komma = zeilen[notiz_zeile].rstrip().endswith(",")
-        zeilen[notiz_zeile] = ('  "_gebuehr_quelle": %s%s'
-                               % (json.dumps(quelle), "," if hat_komma else ""))
+        if not notiz_behalten:
+            zeilen[notiz_zeile] = ('  "_gebuehr_quelle": %s%s'
+                                   % (json.dumps(quelle), "," if hat_komma else ""))
         if feld_zeile is None:
             if hat_komma:
                 zeilen.insert(notiz_zeile, '  "%s": %s,' % (feld, wert_text))
@@ -330,16 +370,24 @@ def vorschau():
         try:
             _roh, d = _lesen(pfad)
         except (OSError, ValueError) as e:
-            print("%-38s FEHLER %s" % (datei, e))
+            print("%-38s FEHLER %s" % (pfad, e))
             continue
         alt = d.get(feld)
+        notiz_alt = d.get("_gebuehr_quelle")
+        # dieselben zwei Fragen wie in `anwenden()` - eine Vorschau, die etwas
+        # anderes ankündigt als das Schreiben tut, ist schlimmer als keine.
         if (alt is not None and float(alt) == float(wert)
-                and d.get("_gebuehr_quelle") == quelle):
-            print("%-38s %-15s %s" % (datei, feld, "schon richtig"))
+                and notiz_alt == quelle):
+            print("%-38s %-15s %s" % (pfad, feld, "schon richtig"))
+            continue
+        if (alt is not None and float(alt) == float(wert)
+                and _notiz_ist_besser(notiz_alt, quelle)):
+            print("%-38s %-15s %s" % (pfad, feld, "Wert richtig, Notiz bleibt "
+                                                "(gemessener Beleg)"))
             continue
         offen += 1
         print("%-38s %-15s %-10s %s"
-              % (datei, feld, "%s -> %g" % ("-" if alt is None else alt, wert),
+              % (pfad, feld, "%s -> %g" % ("-" if alt is None else alt, wert),
                  quelle.split(".")[0][:60]))
     print("\n%d von %d Aenderung(en) offen." % (offen, len(AENDERUNGEN)))
     return offen
@@ -351,10 +399,22 @@ def anwenden():
         pfad = os.path.join(HIER, datei)
         roh, d = _lesen(pfad)
         alt = d.get(feld)
-        if (alt is not None and float(alt) == float(wert)
-                and d.get("_gebuehr_quelle") == quelle):
+        notiz_alt = d.get("_gebuehr_quelle")
+        # ZWEI Fragen, und sie haben verschiedene Antworten (02.10.2026, T-315):
+        #   1. stimmt der WERT?           -> sonst schreiben, egal was die Notiz sagt
+        #   2. ist die Notiz schlechter?  -> nur dann ersetzen
+        # Sonst setzte ein Aufruf eine zwischenzeitlich von Hand gemessene
+        # Notiz zurueck (kopier, kopier1zu1, robinhood_radar).
+        wert_ok = alt is not None and float(alt) == float(wert)
+        behalten = _notiz_ist_besser(notiz_alt, quelle)
+        if wert_ok and notiz_alt == quelle:
             continue
-        neu_text, _ = _feld_setzen(roh, feld, wert, quelle)
+        if wert_ok and behalten:
+            print("%-38s %s: %s (unveraendert, die Notiz traegt einen "
+                  "gemessenen Beleg)" % (pfad, feld, alt))
+            continue
+        neu_text, _ = _feld_setzen(roh, feld, wert, quelle,
+                                   notiz_behalten=behalten)
         json.loads(neu_text)                       # erst pruefen, DANN schreiben
         shutil.copy2(pfad, pfad + ".bak-" + MARKE)
         with open(pfad, "wb") as f:
@@ -364,12 +424,15 @@ def anwenden():
         if neu_wert is None or float(neu_wert) != float(wert):
             raise RuntimeError(
                 "%s: %s steht auf %r (erwartet %g) - das Feld liess sich nicht "
-                "setzen. Datei pruefen, Sicherung <datei>.bak-%s liegt daneben."
-                % (datei, feld, neu_wert, wert, MARKE))
-        print("%-38s %s: %s -> %g" % (datei, feld,
+                "setzen. Datei pruefen, Sicherung %s.bak-%s liegt daneben."
+                % (pfad, feld, neu_wert, wert, pfad, MARKE))
+        # ABSOLUTER Pfad in der Meldung: ein RELATIVER Pfad ist von einem
+        # Testartefakt am Text nicht unterscheidbar (T-315, Befund 2).
+        print("%-38s %s: %s -> %g" % (pfad, feld,
                                       "-" if alt is None else alt, wert))
         getan += 1
-    print("\n%d Datei(en) geaendert (Sicherung: <datei>.bak-%s)." % (getan, MARKE))
+    print("\n%d Datei(en) geaendert (Sicherung: <datei>.bak-%s neben der Datei)."
+          % (getan, MARKE))
     return getan
 
 
