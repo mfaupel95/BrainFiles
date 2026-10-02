@@ -411,7 +411,9 @@ SPUREN = {
     "klassik_donchian_trend": {"ordner": "klassik_donchian_trend",
                                "waehrung": "USD", "skript": "handeln.py"},
     "klassik_sr_breaks": {"ordner": "klassik_sr_breaks", "waehrung": "USD",
-                          "skript": "handeln.py"},
+                              "skript": "handeln.py"},
+        "klassik_pmax": {"ordner": "klassik_pmax", "waehrung": "USD",
+                         "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im

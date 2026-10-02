@@ -30,7 +30,8 @@ import klassik_regeln  # noqa: E402
 # Der laengste Indikator je Regel braucht so viele Kerzen. Abgeleitet aus den
 # Feldern der Wachen - hier steht nur, WELCHE Felder zaehlen, nicht ihr Wert.
 NOETIGE_FELDER = ("langsam_n", "signal_n", "bb_n", "kanal_ein_n", "kanal_aus_n",
-                  "rsi_n", "aus_sma_n", "volumen_langsam_n")
+                  "rsi_n", "aus_sma_n", "volumen_langsam_n", "ma_laenge",
+                  "atr_perioden")
 VENV = HANDEL / ".venv" / "Scripts" / "python.exe"
 
 
@@ -45,6 +46,9 @@ def mindestens(w: dict) -> int:
         zahlen.append(int(w["trend_n"]) + int(w.get("steigung_n", 0)))
     if isinstance(w.get("pivot_left"), int) and isinstance(w.get("pivot_right"), int):
         zahlen.append(w["pivot_left"] + w["pivot_right"] + 1)
+    if w.get("ma_typ") == "TMA" and isinstance(w.get("ma_laenge"), int):
+        n = w["ma_laenge"]
+        zahlen.append((n + 1) // 2 + n // 2 + 1 - 1)   # sma(sma(...)) braucht h+k-1
     return max(zahlen or [0])
 
 

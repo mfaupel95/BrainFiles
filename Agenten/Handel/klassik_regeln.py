@@ -2,8 +2,9 @@
 
 Herkunft: die sechs Pine-Vorlagen unter MaxHirn/Wiki/Handel/*.pine (Donchian,
 EMA-Kreuz, MACD, RSI-Rueckkehr, SMA-Kreuz, Bollinger) plus zwei neue Regeln
-(rsi2_trend, donchian_trend) und die LuxAlgo-Vorlage Support und Resistance
-Levels with Breaks (sr-breaks.pine, 02.10.2026). Jede Spur ist ein Ordner mit
+(rsi2_trend, donchian_trend), die LuxAlgo-Vorlage Support und Resistance
+Levels with Breaks (sr-breaks.pine, 02.10.2026) und der PMax Explorer
+(pmax-explorer.pine, 02.10.2026). Jede Spur ist ein Ordner mit
 einem Zweizeiler `handeln.py`, der hier `spur_main(NAME)` ruft; Buch, Ratsche,
 Spiegelung und Vorfilter liefert `spur_buch.py`.
 
@@ -336,6 +337,217 @@ def einstieg_sr_breaks(k, w):
     return None
 
 
+# --- PMax Explorer (pmax-explorer.pine, 02.10.2026) --------------------------
+
+def _true_range(k):
+    """True Range je Kerze (Pine: max(high-low, |high-prevClose|, |low-prevClose|))."""
+    out = []
+    for i, z in enumerate(k):
+        h, l = float(z[2]), float(z[3])
+        if i == 0:
+            out.append(h - l)
+        else:
+            pc = float(k[i - 1][4])
+            out.append(max(h - l, abs(h - pc), abs(l - pc)))
+    return out
+
+
+def atr_rm(k, n):
+    """Wilder-ATR (Pine `ta.atr` = RMA des True Range)."""
+    tr = _true_range(k)
+    out = [None] * len(k)
+    if n <= 0 or len(k) < n:
+        return out
+    v = sum(tr[:n]) / n
+    out[n - 1] = v
+    f = 1.0 / n
+    for i in range(n, len(k)):
+        v = tr[i] * f + v * (1 - f)
+        out[i] = v
+    return out
+
+
+def atr_sma_weg(k, n):
+    """Alternative der Vorlage: `sma(tr, Periods)` (changeATR=false)."""
+    return sma(_true_range(k), n)
+
+
+def wma(w, n):
+    """Linear gewichteter MA wie ta.wma: juengster Wert traegt Gewicht n."""
+    out = [None] * len(w)
+    if n <= 0 or len(w) < n:
+        return out
+    gew = n * (n + 1) / 2.0
+    for i in range(n - 1, len(w)):
+        fenster = w[i - n + 1:i + 1]
+        out[i] = sum((j + 1) * fenster[j] for j in range(n)) / gew
+    return out
+
+
+def tma(w, n):
+    """Dreiecks-MA wie Pine: `sma(sma(src, ceil(n/2)), floor(n/2) + 1)`."""
+    h1 = (n + 1) // 2
+    k1 = n // 2 + 1
+    out = [None] * len(w)
+    if len(w) < h1 + k1 - 1:
+        return out
+    for i in range(h1 + k1 - 2, len(w)):
+        inner = []
+        for j in range(i - k1 + 1, i + 1):
+            inner.append(sum(w[j - h1 + 1:j + 1]) / h1)
+        out[i] = sum(inner) / k1
+    return out
+
+
+def wwma(w, n):
+    """Welles-gewichteter MA: `wwalpha*src + (1-wwalpha)*nz(WWMA[1])`, Start 0."""
+    out = [0.0] * len(w)
+    if n <= 0:
+        return out
+    a = 1.0 / n
+    for i in range(len(w)):
+        vor = out[i - 1] if i else 0.0
+        out[i] = a * w[i] + (1 - a) * vor
+    return out
+
+
+def zlema(w, n):
+    """Zero-Lag-EMA der Vorlage: Daten entzerrt um src[zxLag], dann EMA."""
+    zx = n // 2 if n % 2 == 0 else (n - 1) / 2.0
+    zx = int(zx)
+    daten = [None] * len(w)
+    for i in range(len(w)):
+        if i >= zx:
+            daten[i] = 2.0 * w[i] - w[i - zx]
+    start = next((i for i, x in enumerate(daten) if x is not None), None)
+    out = [None] * len(w)
+    if start is None:
+        return out
+    teil = ema([x for x in daten if x is not None], n)
+    for j, x in enumerate(teil):
+        out[start + j] = x
+    return out
+
+
+def var_ma(w, n):
+    """VAR (Chande-Momentum-adaptiv) der Vorlage: CMO(9) steuert das alpha."""
+    valpha = 2.0 / (n + 1)
+    out = [0.0] * len(w)
+    vud = [0.0] * len(w)
+    vdd = [0.0] * len(w)
+    for i in range(1, len(w)):
+        d = w[i] - w[i - 1]
+        vud[i] = d if d > 0 else 0.0
+        vdd[i] = -d if d < 0 else 0.0
+    for i in range(len(w)):
+        u = sum(vud[max(0, i - 8):i + 1])
+        d = sum(vdd[max(0, i - 8):i + 1])
+        cmo = (u - d) / (u + d) if (u + d) else 0.0
+        vor = out[i - 1] if i else 0.0
+        out[i] = valpha * abs(cmo) * w[i] + (1 - valpha * abs(cmo)) * vor
+    return out
+
+
+def tsf(w, n):
+    """Time-Series-Forecast der Vorlage: Regression + Steigung (n + 1. Bar)."""
+    out = [None] * len(w)
+    if n <= 1 or len(w) < n:
+        return out
+    xs = list(range(n))
+    mx = (n - 1) / 2.0
+    sxx = sum(x * x for x in xs) - n * mx * mx
+    for i in range(n - 1, len(w)):
+        fenster = w[i - n + 1:i + 1]
+        my = sum(fenster) / n
+        sxy = sum(xs[j] * fenster[j] for j in range(n)) - n * mx * my
+        b = sxy / sxx if sxx else 0.0
+        out[i] = my + b * (n - mx)          # lrc + (lrc - lrc1)
+    return out
+
+
+def gleitender_mitte(k, w):
+    """MAvg der Vorlage: hl2 ueber den acht MA-Typen (Vorgabe EMA)."""
+    src = [(float(z[2]) + float(z[3])) / 2.0 for z in k]
+    n = int(w.get("ma_laenge", 10))
+    art = w.get("ma_typ", "EMA")
+    if art == "SMA":
+        return sma(src, n)
+    if art == "EMA":
+        return ema(src, n)
+    if art == "WMA":
+        return wma(src, n)
+    if art == "TMA":
+        return tma(src, n)
+    if art == "VAR":
+        return var_ma(src, n)
+    if art == "WWMA":
+        return wwma(src, n)
+    if art == "ZLEMA":
+        return zlema(src, n)
+    if art == "TSF":
+        return tsf(src, n)
+    raise ValueError("unbekannter MA-Typ: %s" % art)
+
+
+def pmax_linie(k, w):
+    """(MAvg, PMax) der Vorlage - SuperTrend-artig um die gleitende Mitte.
+
+    longStop steigt nur (max mit dem Vorwert, solange MAvg darueber liegt),
+    shortStop faellt nur; die Richtung kippt, wenn MAvg den jeweiligen
+    Vorwert durchbricht. Startrichtung 1 (long), Widerstaende wie Pine.
+    """
+    mavg = gleitender_mitte(k, w)
+    mult = float(w.get("atr_multiplier", 3.0))
+    perioden = int(w.get("atr_perioden", 10))
+    atr = (atr_rm(k, perioden) if w.get("atr_wechsel", True)
+           else atr_sma_weg(k, perioden))
+    n = len(k)
+    lang = [None] * n
+    kurz = [None] * n
+    for i in range(n):
+        if mavg[i] is None or atr[i] is None:
+            continue
+        roh_l = mavg[i] - mult * atr[i]
+        roh_s = mavg[i] + mult * atr[i]
+        vor_l = lang[i - 1] if i and lang[i - 1] is not None else roh_l
+        vor_s = kurz[i - 1] if i and kurz[i - 1] is not None else roh_s
+        lang[i] = max(roh_l, vor_l) if mavg[i] > vor_l else roh_l
+        kurz[i] = min(roh_s, vor_s) if mavg[i] < vor_s else roh_s
+    richtung = [1] * n
+    for i in range(1, n):
+        if mavg[i] is None or atr[i] is None:
+            richtung[i] = richtung[i - 1]
+            continue
+        vor_l = lang[i - 1]
+        vor_s = kurz[i - 1]
+        if vor_l is None or vor_s is None:
+            richtung[i] = richtung[i - 1]
+            continue
+        if richtung[i - 1] == -1 and mavg[i] > vor_s:
+            richtung[i] = 1
+        elif richtung[i - 1] == 1 and mavg[i] < vor_l:
+            richtung[i] = -1
+        else:
+            richtung[i] = richtung[i - 1]
+    linie = [None] * n
+    for i in range(n):
+        if richtung[i] == 1 and lang[i] is not None:
+            linie[i] = lang[i]
+        elif richtung[i] == -1 and kurz[i] is not None:
+            linie[i] = kurz[i]
+    return mavg, linie
+
+
+def einstieg_pmax(k, w):
+    """Buy/Sell der Vorlage: `crossover/crossunder(MAvg, PMax)` (strategy.entry)."""
+    mavg, linie = pmax_linie(k, w)
+    if kreuzt_auf(mavg, linie):
+        return "long"
+    if kreuzt_ab(mavg, linie):
+        return "short"
+    return None
+
+
 def _gegen_kreuz(einstieg_fn):
     """Ausstieg = das Gegensignal des Einstiegs (Pine: strategy.close bei Kreuz)."""
     def f(k, seite, w):
@@ -389,6 +601,7 @@ REGELN = {
     "klassik_rsi2":      (einstieg_rsi2_trend, ausstieg_rsi2),
     "klassik_donchian_trend": (einstieg_donchian_trend, ausstieg_donchian),
     "klassik_sr_breaks": (einstieg_sr_breaks, _gegen_kreuz(einstieg_sr_breaks)),
+    "klassik_pmax":      (einstieg_pmax, _gegen_kreuz(einstieg_pmax)),
 }
 
 

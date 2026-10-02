@@ -60,17 +60,18 @@ mit `-Risiko hoch`. `NUR_BASIS` enthaelt die Spuren, die nur der Basislauf fuehr
 | Bot-Signale (MoonDev-Nachbau) | `moondev_funding`, `moondev_listingarb`, `moondev_topmovers`, `moondev_marktlage`, `moondev_sniper`, `moondev_signalwelle` |
 | Optionszonen | `iv_wand`, `iv_waelle` |
 | Sprachmodell-Spuren | `moondev_whale`, `moondev_liquidation`, `moondev_sentiment` |
-| Klassik (Pine-Regeln, 4H, OKX-Perp, Papier) | `klassik_sma`, `klassik_ema`, `klassik_macd`, `klassik_bollinger`, `klassik_donchian`, `klassik_rsi`, `klassik_rsi2`, `klassik_donchian_trend`, `klassik_sr_breaks` |
+| Klassik (Pine-Regeln, 4H, OKX-Perp, Papier) | `klassik_sma`, `klassik_ema`, `klassik_macd`, `klassik_bollinger`, `klassik_donchian`, `klassik_rsi`, `klassik_rsi2`, `klassik_donchian_trend`, `klassik_sr_breaks`, `klassik_pmax` |
 | Zeitreihen-Experiment | `omniquant` |
 | Fremd-Lauf gespiegelt (Rust) | `omnitrade` (Position der Laeufe in `Werkstatt/omnitrade`, Live-Zweig Kraken/USDC) |
 | **aus** seit 21.09.2026 | `spiegel`, `spiegel_knapp`, `spiegel_weit` (Buecher bleiben als Vergleichsgrundlage, wachsen nicht) |
 
-Die `klassik_*`-Spuren (30.09.2026, `klassik_sr_breaks` 02.10.2026) setzen die Pine-Strategien dieses Ordners als Papierbuch um
+Die `klassik_*`-Spuren (30.09.2026, `klassik_sr_breaks` und `klassik_pmax` 02.10.2026) setzen die Pine-Strategien dieses Ordners als Papierbuch um
 (BTC/ETH/SOL, 4H, Long und Short, 5 USD Risiko, 3 Plaetze, Ratsche 15 USD, `--live` verweigert). Gemeinsamer
 Kern: `Agenten/Handel/klassik_regeln.py`. Zwei sind neu erdacht: `klassik_rsi2` (Connors RSI(2) mit SMA200-Filter)
 und `klassik_donchian_trend` (Donchian nur in Richtung der EMA200); `klassik_sr_breaks` bildet die
 LuxAlgo-Vorlage `sr-breaks.pine` ab (Pivot-Resistance/-Support 15/15, Break mit Volumen-OSZ > 20,
-Bull/Bear-Wick ohne Volumenfilter, Ausstieg beim Gegensignal). Lehre: Die Pine-Donchian-Vorlage
+Bull/Bear-Wick ohne Volumenfilter, Ausstieg beim Gegensignal); `klassik_pmax` den PMax Explorer
+(`pmax-explorer.pine`, EMA10 auf hl2 plus ATR-Baender, acht MA-Typen waehlbar). Lehre: Die Pine-Donchian-Vorlage
 rechnet den Kanal inklusive laufender Kerze und kann nie ausloesen; der Kanal liegt hier VOR der Kerze.
 
 `moondev_signalwelle` (22.09.2026) ist das ehrliche Gegenstueck zu einem VIP-Signal-Kanal aus

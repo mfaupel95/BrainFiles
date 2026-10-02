@@ -959,6 +959,11 @@ Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
 !Agenten/Handel/klassik_sr_breaks/wachen.json
 Agenten/Handel/klassik_sr_breaks/zustand.json
 Agenten/Handel/klassik_sr_breaks/handelsjournal.csv
+!Agenten/Handel/klassik_pmax/*.py
+!Agenten/Handel/klassik_pmax/*.md
+!Agenten/Handel/klassik_pmax/wachen.json
+Agenten/Handel/klassik_pmax/zustand.json
+Agenten/Handel/klassik_pmax/handelsjournal.csv
 
 # Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
 !Agenten/Handel/prophet_signal/*.py

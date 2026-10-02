@@ -87,6 +87,7 @@ SPUREN = [
     ("klassik_donchian_trend", "klassik_donchian_trend", "scanner",
      "wachen_pruefung"),
     ("klassik_sr_breaks", "klassik_sr_breaks", "scanner", "wachen_pruefung"),
+    ("klassik_pmax", "klassik_pmax", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

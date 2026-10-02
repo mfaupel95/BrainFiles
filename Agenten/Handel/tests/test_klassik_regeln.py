@@ -324,5 +324,72 @@ class SrBreaks(unittest.TestCase):
                           "die Wachen-Sperre muss wirken, nicht der Code-Stand")
 
 
+class PmaxTests(unittest.TestCase):
+    """PMax Explorer - Bausteine und das Kreuz MAvg/PMax.
+
+    Fixtures ueber den kerzen()-Helfer (hl2 = close, TR = 2 konstant wegen
+    der Spanne). Der Auf-/Abwaerts-Test sucht das Signal ueber Praefixe, weil
+    ein EMA-Start und ein ATR-Start erst nach ~10 Kerzen definiert sind.
+    """
+
+    W = {}
+
+    def test_atr_rm_auf_konstantem_true_range(self):
+        k = kerzen([100.0] * 30)
+        self.assertEqual(kr.atr_rm(k, 10)[-1], 2.0,
+                         "TR = high-low = 2 (Spanne 1) auf jeder Kerze")
+
+    def test_wma_gewichtung(self):
+        self.assertEqual(kr.wma([1.0, 2.0, 3.0], 3)[-1], 14.0 / 6.0,
+                         "Gewichte 1/2/3 auf 1/2/3 -> (1+4+9)/6")
+
+    def test_tsf_projiziert_die_steigung(self):
+        # Lineare Reihe mit Steigung 2: TSF = letzter Punkt + 2.
+        out = kr.tsf([float(2 * i) for i in range(10)], 5)
+        self.assertEqual(out[-1], 20.0)
+
+    def test_zlema_konstante_reihe_bleibt_konstant(self):
+        out = kr.zlema([5.0] * 30, 6)
+        self.assertEqual(out[-1], 5.0)
+        self.assertIsNone(out[0], "vor der Entzerrung nichts definiert")
+
+    def test_var_konstante_reihe_bleibt_null_wie_pine(self):
+        # Pine: nz(VAR[1]) startet bei 0 und CMO ist 0 -> VAR bleibt 0.
+        self.assertEqual(kr.var_ma([5.0] * 30, 10)[-1], 0.0)
+
+    def test_gleitender_mitte_unbekannter_typ_wirft(self):
+        with self.assertRaises(ValueError):
+            kr.gleitender_mitte(kerzen([100.0] * 30), {"ma_typ": "X"})
+
+    def test_pmax_konstante_serie_ohne_kreuz(self):
+        k = kerzen([100.0] * 40)
+        self.assertIsNone(kr.einstieg_pmax(k, self.W))
+        mavg, linie = kr.pmax_linie(k, self.W)
+        self.assertEqual(linie[-1], 94.0)     # MAvg - 3.0 * ATR(2)
+        self.assertEqual(mavg[-1], 100.0)
+
+    def test_pmax_multiplier_null_collapst_auf_die_mitte(self):
+        k = kerzen([100.0] * 40)
+        mavg, linie = kr.pmax_linie(k, {"atr_multiplier": 0.0})
+        self.assertEqual(linie[-1], mavg[-1])
+
+    def test_pmax_kippt_beim_fall_und_kreuzt_beim_anstieg(self):
+        c = ([100.0] * 28 + [100.0 - 3 * i for i in range(1, 11)]
+             + [70.0 + 3 * i for i in range(1, 16)])
+        k = kerzen(c)
+        gef = [kr.einstieg_pmax(k[:n], self.W) for n in range(30, len(k) + 1)]
+        self.assertIn("short", gef, "Rutsche laesst MAvg unter die longStop kippen")
+        self.assertIn("long", gef, "Anstieg kreuzt MAvg ueber die shortStop")
+
+    def test_pmax_atr_wechsel_als_sma_erlaubt(self):
+        c = ([100.0] * 28 + [100.0 - 3 * i for i in range(1, 11)]
+             + [70.0 + 3 * i for i in range(1, 16)])
+        k = kerzen(c)
+        w = dict(self.W, atr_wechsel=False)   # sma(tr, n) wie changeATR=false
+        gef = [kr.einstieg_pmax(k[:n], w) for n in range(30, len(k) + 1)]
+        self.assertIn("long", gef)
+        self.assertIn("short", gef)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

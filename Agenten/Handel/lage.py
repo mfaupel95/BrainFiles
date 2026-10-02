@@ -775,6 +775,7 @@ KLASSIK_SPUREN = (
     ("klassik_rsi2", "Klassik RSI(2) im Trend"),
     ("klassik_donchian_trend", "Klassik Donchian + EMA200"),
     ("klassik_sr_breaks", "Klassik S/R-Breaks"),
+    ("klassik_pmax", "Klassik PMax Explorer"),
 )
 
 
