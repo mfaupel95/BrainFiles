@@ -414,7 +414,31 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   `--amend` oder force-push trifft in diesem Baum fremde Arbeit im selben Index.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
-  formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.
+  formulieren, und nicht einfach der eigene Text vor den Rest gesetzt.
+
+## Block verschieben (Offen -> Erledigt)
+
+Der fehleranfaelligste Vorgang an der Datei. Vier Fehler treten gehaeuft
+miteinander auf, weil der Schnitt ueber ein MERKMAL laeuft, das an mehreren
+Stellen steht:
+
+1. `find("## Erledigt")` trifft die ERWAHNUNG im Vorabentext der `## Regeln`-
+   Liste, nicht die Ueberschrift - Ueberschriften ueber `(?m)^## .*$` suchen.
+2. `rfind("- [ ] **", 0, i)` trifft den FREMDEN Nachbarn - am Zeilenanfang der
+   gesuchten Nummer ansetzen (`t.rfind("\n", 0, i) + 1`).
+3. `-- [x]` statt `- [x]` nimmt den Block aus jedem Zaehlmuster - den
+   eingefuegten Block mit dem Zaehlmuster gegenpruefen, nicht ansehen.
+4. Eine Absatzgrenze auf `- [ ] ` greift nicht, wenn ein ERLEDIGTER Block
+   folgt - am naechsten beliebigen Kasten-Marker schneiden.
+
+**Gemeinsame Regel: nach jedem Verschieben den Block anhand seines
+Kastenmarkers suchen, nicht anhand der Absatzgrenzen, mit denen er
+herausgeschnitten wurde.** Der Schnitt darf eine falsche Grenze liefern, die
+Gegenprobe nicht.
+
+Die Gegenproben-Kette (Abschnitt, Kastenstellung, Fundstelle, Vorabentext,
+Nummernmenge) und der Ablauf bei bereits zerlegtem Vorabentext stehen in
+`references/block-verschieben.md`.
 
 ## Nachweis
 

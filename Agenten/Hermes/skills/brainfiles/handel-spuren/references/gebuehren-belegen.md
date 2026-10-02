@@ -124,24 +124,53 @@ Messung.
   ('Illegal trailing comma before end of object'). In echten Wachen faellt das nicht auf,
   solange dort noch ein Schluessel folgt - im Test mit einer MINIMALEN Datei sofort.
   Nach jedem Einfuegen daher das Komma des letzten Schluessels entfernen.
-- **`--anwenden` ueberschreibt eine Notiz, auch wenn der WERT richtig ist.** Er
-  schreibt die Quelle aus dem eigenen Katalog, sobald eine Aenderung ansteht -
-  und nimmt dabei eine zwischenzeitlich VERBESSERTE Notiz (mit gemessener
-  Rueckrechnung) auf den aelteren Text zurueck. Deshalb nach jedem Lauf, der
-  `.bak-JJJJMMTT` erzeugt, die **Notizen** der getroffenen Wachen gegen den
-  Sicherungsstand halten, nicht nur die Zahlen. Die Abhilfe ist offen: die
-  Notiz nur schreiben, wenn sich der WERT aendert oder die Notiz fehlt.
-- **Die Erfolgsmeldung nennt einen RELATIVEN Pfad** - und ist damit von einem
-  Testartefakt am Text nicht unterscheidbar. Ein Werkzeugtest legt `spur/wachen.json`
-  in einem Tempordner an; seine Meldung liest sich dann wie ein Schreibzugriff
-  auf eine echte Wache (gemessen: `gebuehr_taker: 0.001 -> 0.002`). **Bevor
-  daraus eine Fehlersuche wird:** existiert der genannte Pfad im Repo? Ist `git
-  diff --numstat` auf ihn leer? Hat die Datei eine mtime von weniger als zehn
-  Minuten? Alles dreimal NEIN heisst Testartefakt. Grundregel fuer JEDE
-  Meldung ueber einen Schreibvorgang: sie nennt den **absoluten** Pfad, sonst
-  traegt sie die Aussage nicht.
+- **`--anwenden` ueberschrieb eine Notiz, auch wenn der WERT richtig ist**
+  (behoben, Regel unten). Er schrieb die Quelle aus dem eigenen Katalog, sobald
+  eine Aenderung anstand - und nahm dabei eine zwischenzeitlich VERBESSERTE
+  Notiz (mit gemessener Rueckrechnung) auf den aelteren Text zurueck.
+  **Ein Schreibwerkzeug, das neben dem WERT auch eine BEGRUENDUNG pflegt, muss
+  die beiden Fragen getrennt entscheiden:** ein FALSCHER Wert wird immer
+  ersetzt, eine Notiz nur dann, wenn die vorhandene keinen staerkeren Beleg
+  traegt. Erkennungsregel fuer den Beleg: ein Belegwort (GEMESSEN / GEKLAERT /
+  BELEGT / NACHLAUF) UND ein Datum `dd.mm.yyyy`, das die neue Notiz nicht
+  traegt. Die Regel bleibt absichtlich eng und einseitig - sonst entscheidet
+  weiter der Katalog, damit kein Aufruf den Anspruch der Wachen still anhebt.
+  **Und `vorschau()` wertet dieselben Regeln aus wie `anwenden()`:** eine
+  Vorschau, die etwas anderes ankündigt als das Schreiben tut, ist schlimmer
+  als keine Vorschau. Als Test reicht der Kern: richtigem Wert + besserer Notiz
+  muss die Datei BYTE-GLEICH bleiben.
+- **Die Erfolgsmeldung nannte einen RELATIVEN Pfad** (behoben) - und war damit
+  von einem Testartefakt am Text nicht unterscheidbar. Ein Werkzeugtest legt
+  `spur/wachen.json` in einem Tempordner an; seine Meldung las sich wie ein
+  Schreibzugriff auf eine echte Wache (`gebuehr_taker: 0.001 -> 0.002`).
+  **Bevor daraus eine Fehlersuche wird:** existiert der genannte Pfad im Repo?
+  Ist `git diff --numstat` auf ihn leer? Hat die Datei eine mtime von weniger
+  als zehn Minuten? Alles dreimal NEIN heisst Testartefakt. Grundregel fuer
+  JEDE Meldung ueber einen Schreibvorgang - Erfolgszeile, Vorschau UND
+  Fehlertext: sie nennt den **absoluten** Pfad, sonst traegt sie die Aussage
+  nicht. Im Test ueber `os.path.commonpath` vergleichen, nicht per `startswith`
+  auf einen String - gemischte Trennzeichen (`C:\…\spur/wachen.json`) lassen
+  `startswith` scheitern, obwohl der Pfad stimmt.
 - **Ein Testlauf meldet auch Module, die es nicht gibt.** `python -m unittest
   test_foo` auf einen falsch getippten Namen endet mit `FAILED (errors=1)` und
   sieht damit aus wie ein Fehlschlag des Hauses - es ist ein ImportError. Also
   `errors=1` IMMER mit `ls tests/test_*.py` gegenpruefen, bevor daraus ein
-  Befund wird.
+  Befund wird. **Und unittest schreibt sein Ergebnis nach `stderr`, nicht nach
+  `stdout`:** ein Filter auf `r.stdout` liefert eine leere Liste und sieht aus,
+  als haette der Lauf gar nichts getan.
+- **`addCleanup(setattr, mod, name, mod.name)` sichert den BEREITS ERSETZTEN
+  Wert** - der Ersatz lebt weiter und vergiftet jeden folgenden Test in der
+  Datei (gemessen: drei Fehlschlaege, von denen keiner mit dem getesteten
+  Verhalten zu tun hatte). `self.alt = gs.f` VOR dem Setzen merken und dieses im
+  Cleanup zuruecksetzen.
+- **Eine erweiterte Signatur trifft jeden handgebauten Double.** Wird
+  `_feld_setzen(..., notiz_behalten=None)` um einen Parameter erweitert, bricht
+  ein `lambda roh, feld, wert, quelle: ...` aus einem frueheren Test sofort ab -
+  der Fehler zeigt sich als `TypeError ... got an unexpected keyword
+  argument`, nicht als ein Fehlschlag der Pruefung. Alle Doubles mitziehen und
+  den Bruch als SOLCHEN benennen, sonst repariert man den Test statt des Codes.
+- **Ein fehlender Import faellt nur im ECHTEN Lauf auf.** `re` fehlte, nachdem
+  eine neue Hilfsfunktion eingebaut worden war: die Tests riefen die Funktion
+  mit einfachen Attributen auf und fuehrten den Ausdruck nie aus. Nach jeder
+  neuen Regex oder jedem neuen Modul im Werkzeug den ECHTEN Aufruf fahren
+  (`vorschau()`, im Trockenlauf) - ein gruener Testlauf sagt darueber nichts.
