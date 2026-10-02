@@ -46,7 +46,9 @@ ist.
    eingefroren (siehe `references/test-friert-stand-ein.md`). Traegt die neue
    Regel eigene Indikatorfelder in der wachen, muessen NOETIGE_FELDER und
    `mindestens()` erweitert werden (Pivot-Fenster = pivot_left + pivot_right
-   + 1; sonst prueft der Vertrag die Kerzenzahl der neuen Regel nicht).
+   + 1; MA-/ATR-Spuren: ma_laenge und atr_perioden hinein, Sonderformen wie
+   TMA (h+k-1) als Regel in `mindestens()`; sonst prueft der Vertrag die
+   Kerzenzahl der neuen Regel nicht).
 6. Beleg ohne Buch: `handeln.py --vorschau` (Sperrentext) plus ein rein
    lesendes Signal-Zaehlen ueber echte OKX-Kerzen - je Praefix
    `signal({"kerzen": k[:n]}, w)` zaehlen und die letzten Treffer anzeigen.
@@ -56,6 +58,31 @@ ist.
    dann `<name> (papier) ok` im Log und der Q:-Spiegel der neuen Spur
    (`Q:\Handel_Journal\<name>` mit zustand.json je Stufe). Commit + Push;
    nur eigene Pfade stagen, die Wiki-Uebersicht als Folge-Commit.
+
+## Pine -> Python: die Fallen der Band-Vorlagen (PMax, Supertrend)
+
+- **Band-Mechanik**: `up := close[1] > up1 ? max(up, up1) : up` - der
+  Vergleich laeuft gegen den VORWERT (`up1 = nz(up[1], up)`, der erste Wert
+  ist der rohe), nicht gegen die frisch gerechnete Linie; die Verlaengerung
+  geht nur in EINE Richtung (up steigt nur, dn faellt nur). In Listen:
+  `vor = liste[i-1] if i and liste[i-1] is not None else roh`.
+- **Die Trend-Variable kippt beim Durchbruch, nicht beim Kreuz**: Supertrend
+  meldet `trend == 1 and trend[1] == -1` (WECHSEL) - ein crossover-Check auf
+  der Linie findet das oft nicht, weil die Linie beim Kippen SPRINGT (von
+  unter auf ueber den Kurs). Wechsel direkt pruefen.
+- **Wilder-ATR ist RMA** (`alpha = 1/n`) ueber den True Range (mit
+  prevClose-Glied); die Vorlagen bieten `changeATR=false` -> `sma(tr, n)` als
+  Alternative - als wachen-Schalter `atr_wechsel` abbilden, Standard true.
+- **MA-Typen (PMax, acht Stueck)**: TSF = lineare Regression + Steigung
+  (Projektion EINEN Bar hinaus: `my + b*(n - mx)`); ZLEMA entzerrt die Reihe
+  um `src[zxLag]` VOR dem EMA (Indizes < zxLag sind None und duerfen nicht in
+  den ema-Helfer, der Zahlen summiert); VAR und WWMA sind Pine-rekursiv mit
+  Start 0 - auf einer KONSTANTEN Reihe bleibt VAR 0 (Pine-treu, als Test
+  dokumentieren statt als Bug zu behandeln); TMA braucht
+  `ceil(n/2) + floor(n/2) + 1 - 1` Kerzen.
+- Der zweite `Supertrend(...)`-Block am Ende vieler Vorlagen ist dieselbe
+  Logik wie der Hauptblock (nur anders geschrieben) - EINMAL umsetzen, nicht
+  doppelt.
 
 ## Pine -> Python: die Fallen der Pivot-Vorlage
 
@@ -79,6 +106,12 @@ ist.
 
 ## Test-Fixture-Muster
 
+- Praefix-Suche ("irgendwann"-Muster) ab einem FESTEN Start (z. B. n=30)
+  verpasst Signale, deren Rutsche vor dem Suchfenster liegt (EMA/ATR sind
+  erst ab ~10 Kerzen definiert, die Kippe passiert dann bei Praefix 22-28).
+  Das Plateau VOR der Rutsche verlaengern ([100]*28 statt *20), bis der Fall
+  in den Suchbereich faellt - oder den Suchstart an die Indikatorlaufzeit
+  koppeln.
 - Kleine Pivots im Test (`w = {"pivot_left": 2, "pivot_right": 2}`) halten
   die Serie kurz und deterministisch; die Standardwerte 15/15 brauchen ~31
   Kerzen Vorgeschichte.
@@ -97,3 +130,14 @@ Nach einem `cd` im terminal-Werkzeug relative Pfade an patch/write_file meiden
 (das Tool loest sie gegen das Session-cwd auf - `Agenten/Handel/...` wird zu
 `Agenten/Handel/Agenten/Handel/...` und die Datei ist nicht lesbar): immer
 absolute `C:/Users/...`-Pfade verwenden.
+
+- **patch verschiebt Einrueckung bei CRLF-Dateien mit unregelmaessigen
+  Spaces** (dauerlauf.py, zweimal erlebt): der Ersatzblock landet +4 Spaces
+  versetzt, und ein REPARATUR-patch verschiebt wieder. Ab der ersten
+  Verschiebung nicht weiterpatchen: die betroffenen Zeilen per Python
+  byte-genau ersetzen - `roh = path.read_bytes()`, `assert roh.count(alt) ==
+  1` (Muster mit CRLF bauen), `path.write_bytes(roh.replace(alt, neu))`,
+  danach `ast.parse` und `git diff --stat` (muss die eigenen Zeilen zeigen).
+- Die klassik-Eintraege in `dauerlauf.SPUREN` haben unregelmaessige
+  Einrueckung - beim Ergaenzen die Nachbarzeile exakt nach deren Format
+  kopieren und `git diff` auf den Block pruefen.
