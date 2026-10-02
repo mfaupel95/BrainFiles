@@ -10,10 +10,18 @@ ist.
 
 ## Reihenfolge
 
-1. Vorlage nach `MaxHirn/Wiki/Handel/<name>.pine` (Kopf `//@version=6`
-   ergaenzen). Die .pine-Dateien sind BEWUSST nicht versioniert (nur
-   `MaxHirn/Wiki/**/*.md` ist freigegeben) - sie liegen wie die bestehenden
-   nur lokal, kein .gitignore-Eintrag noetig.
+1. Vorlage nach `MaxHirn/Wiki/Handel/<name>.pine`. VOR dem Schreiben in
+   `Agenten/Hermes/composer-pastes/` nach der ORIGINAL-Datei sehen: der
+   @file-Anhang einer Chat-Nachricht kann eine ANDERE Pine enthalten als der
+   eingebettete Text - der eingebettete Text ist die Wahrheit, die Dateinamen
+   sind nur Benennung. Die Originale tragen oft Lizenzkoepfe (z. B. MPL 2.0,
+   © KivancOzbilgic): dann die Original-Datei KOPIEREN statt aus dem
+   Chat-Text neu zu schreiben, die Herkunft bleibt in der Ablage.
+   Identitaet beweisen: `diff <(grep -v '^//' original) <(grep -v '^//'
+   ablage)` muss leer sein. Die @version-Zeile der Vorlage BEHALTEN (v4
+   bleibt v4); fehlt sie, passend ergaenzen. Die .pine-Dateien sind BEWUSST
+   nicht versioniert (nur `MaxHirn/Wiki/**/*.md` ist freigegeben) - sie
+   liegen wie die bestehenden nur lokal, kein .gitignore-Eintrag noetig.
 2. Regel in `klassik_regeln.py`: `einstieg_<name>(k, w)` -> "long"|"short"|None
    und ein Ausstieg. Kennt die Vorlage keinen eigenen `strategy.close`, ist
    `_gegen_kreuz(einstieg_<name>)` der Ausstieg: der Break auf der Gegenseite

@@ -244,6 +244,42 @@ Weiterverwenden die zitierten Werte gegen die DATEI halten, nicht gegen die
 Erinnerung — Aenderungen der Sitzung sind der zweite Grund, die Gegenprobe zu
 fahren, neben der Fehlbarkeit des Kindes selbst.
 
+## Externe Coding-CLIs als Ausfuehrungsagenten (opencode & Co.)
+
+Ein externer CLI-Agent (`opencode run --model <provider/modell> "<Prompt>"`)
+ist ein eigener Delegationsweg mit derselben Disziplin und eigenen Fallen:
+
+- **Gesundheitstest VOR dem echten Auftrag, mit einem Ein-Wort-Prompt.**
+  Liefert der Testmodell-Weg einen Fehler (z. B. `502` am Router-Zweig) oder
+  `No active credentials for provider: <X>`, kostet der echte Lauf sonst
+  erst Minuten spaeter dieselbe Meldung. Modelle durchprobieren mit kurzen
+  Sonden, nicht mit dem echten Brief — und nach einem Ausfall die NAECHSTE
+  Stufe derselben Familie testen, bevor man den Auftrag abbricht: der Tod
+  eines Modellzweigs sagt nichts ueber die anderen.
+- **Der Brief gehoert in eine DATEI, nicht in die Kommandozeile.** Der Agent
+  bekommt nur den Hinweis „lies <Pfad>, das ist der VOLLSTAENDIGE Auftrag“.
+  Das umgeht Aufrufgrenzen und Zitat-Eskapaden und macht den Brief
+  wiederholbar fuer die Steuerungsrunde.
+- **Hintergrundlauf mit Fruh-Check:** Start mit Benachrichtigung, nach 1-2
+  Minuten die ersten Artefakte ansehen (Logdatei des Agents, `git status`
+  im Zielordner). Erscheint nichts und das Agent-Log zeigt Stream-Fehler,
+  den hängenden Lauf per Kommandozeilen-Muster beenden und das Ersatzmodell
+  starten — nicht minutenlang auf einen toten Lauf warten.
+- **Der Abschlussbericht ist nach zwei Beweisen NICHT Glaubenssache, sondern
+  ein Pruefplan.** Gemessen lief ein Agent „Tests 10/10 gruen“ (real: ein
+  Importfehler, weil ein Paket fehlte), „Datei X angepasst“ (real: `git diff`
+  leer) und rief eine Funktion auf, die es nicht gibt — sein eigener Log
+  zeigte es. Nach jedem Agent-Lauf: die Suite SELBST fahren, die behaupteten
+  Dateiaenderungen per `git status`/`git diff` halten, jede behauptete
+  Integration gegen den Quelltext greppen, und `git log` pruefen (der Agent
+  committet entgegen der Anweisung und nimmt fremde uncommittete Arbeit im
+  Index mit). Erst der eigene Lauf ist der Beleg.
+- **Regeln, die der Agent brechen soll, gehoeren als PRUEFBARER Vertrag in
+  den Brief** („kein Commit“, „keine Netzaufrufe in Tests“, „Sperrenkette
+  unangetastet“) — und als Nachweis in der Review-Liste: `git log` seit dem
+  Start, `git diff --numstat` der behaupteten Dateien, die Suite selbst.
+  Ein Brief allein haelt keinen Agenten an die Regel.
+
 ## Ein fertiges Kind, das nur die Antwortform verfehlt
 
 Ein Kind mit `output_schema` kann die ARBEIT abgeschlossen haben (Datei geschrieben,

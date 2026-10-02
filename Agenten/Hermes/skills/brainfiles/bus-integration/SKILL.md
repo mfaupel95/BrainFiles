@@ -97,6 +97,16 @@ category: brainfiles
   Pfad im Kopf. Der Wrapper dagegen laeuft ohne Admin - beide Zweige lassen sich
   von Hand fahren, waehrend die Aufgabe noch fehlt.
 - **Do not alter routine logic**: Only add the four required lines (`. (Join-Path $wurzel 'Bus\Ereignis.ps1')`, `$marke = Melde-Start ...`, and `Melde-Ende` before each `exit` and in each `catch`). Keep the existing behavior, exit codes, and output unchanged.
+- **`$wurzel` ist neuer als manche Routine.** Routinen aus der Zeit vor dem
+  Anbindungs-Muster kennen `Split-Path $PSScriptRoot -Parent` nicht - eine
+  ergaenzte dot-source-Zeile `. (Join-Path $wurzel 'Bus\Ereignis.ps1')`
+  bricht dann beim Lauf mit leerem Path. Beim Anbinden einer ALTEN Routine
+  `$wurzel` mit definieren und den Parser-Komplettlauf (`ParseFile` mit
+  `$e.Count == 0`) fahren, nicht nur die Suite.
+- **Die Suite verlangt `Melde-Ende` in den vier Zeilen DIREKT vor jedem
+  `exit`** - ein `Melden`/Log-Schritt dazwischen laesst den Anbindungstest
+  (test_melde_ende_steht_an_jedem_ausstieg) fehlschlagen, obwohl die Meldung
+  existiert. `Melde-Ende` direkt ueber die exit-Zeile setzen.
 - **Avoid absolute paths**: All paths must be relative to `$PSScriptRoot` or derived from it; the only absolute path appears in `bus.ps1` where it is constructed at runtime from `$PSScriptRoot`.
 - **Test before committing**: Always run the end‑to‑end test after modifications; a failure indicates a missing `Melde-Ende` or an incorrect `-Wer` value.
 

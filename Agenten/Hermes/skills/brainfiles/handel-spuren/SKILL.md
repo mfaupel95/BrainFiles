@@ -786,6 +786,22 @@ bauen. Werkzeug `xperp/stopdeckung.py`: Vorschau Standard, und `--anwenden` OHNE
 `--stop` stellt nichts — das Werkzeug rät keinen Schutzpreis. Volltext:
 `references/live-order-und-buchpflege.md`, Abschnitt 5d.
 
+99. **Eine neue Journal-Spalte braucht die Kopf-Migration im SELBEN Zug.** Der
+Zeilen-Schreiber schneidet auf die Kopf-Laenge des Altfjournals
+(`pos_kennung.zeile`), also verwirft ein Altjournal ohne die neue Spalte den
+neuen Wert — oder schreibt ihn in den Slot der LETZTEN Spalte, wenn der
+Schreiber die Spalte vor dem Schluss einfügt: gemessen stand der neue
+Herkunft-Wert in der pos_id-Spalte und die echte pos_id war weg, bei einer
+LIVE-Kaufzeile. Vorgehen: Kopf migrieren (csv-Roundtrip, Sicherung
+`.bak-JJJJMMTT` vorher, alle Altzeilen auf die neue Laenge polstern),
+Gegenprobe = Zeilenzahl unveraendert + einheitliche Laengenverteilung, und
+verlorene Werte aus dem ZWEITEN Zeugen holen, bevor man sie als Verlust
+akzeptiert (die pos_id der Position stand noch im Zustand). Zusätzlich:
+einen Reweave-Ablauf NICHT inline in einen Heredoc schreiben — `open('w')`
+kürzt die Datei VOR dem ersten `writerows`-Fehler, eine Ausnahme mitten in
+der Migration hinterlässt eine halbe Datei; Skript in eine Datei legen,
+Restaurierbarkeit (Backup) prüfen, erst dann laufen lassen.
+
 ## Welche Daten eine Sperre liest
 
 Jede Bedingung, die eine Spur sperrt oder entsperrt, legt ausdrücklich fest,

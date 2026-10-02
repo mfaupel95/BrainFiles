@@ -328,6 +328,46 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
   Ausstieg in einen Boersenfehler laufen. Vor jeder Aussage „die Spur haelt N
   Positionen" die Boerse fragen und die Live-Zeilen im Journal zaehlen.
 
+### OKX WebSocket: die Kerzenkanäle liegen auf dem BUSINESS-Feed
+
+Livestream statt Polling (Event-Trigger, Fuehrpreis-Vergleich). Die Reihenfolge
+vor dem Bauen: erst eine 15-Sekunden-Sonde (connect + subscribe + erste Frames
+ausdrucken), dann Code — sie verifiziert URL, Kanalname und Instrument in einem
+Lauf.
+
+- **`candle<bar>`-Kanaele liegen auf `wss://ws.okx.com:8443/ws/v5/business`,
+  nicht auf `/public`.** Auf `/public` wirft JEDE Kerzen-Subscription
+  `"event":"error" ... doesn't exist` — auch fuer BTC-USDT, waehrend `tickers`
+  dort funktioniert. Wer auf `/public` baut, sieht nie Daten und wird nach
+  30 s still getrennt (code 4004).
+- **Die Marktdaten-Hosts sind GLOBAL.** Regions-Hosts wie `ws.eea.okx.com`
+  loesen im DNS NICHT auf; oeffentliche Kerzen sind nicht konto-gebunden —
+  EEA-Instrumente (BTC-USDC) subscriben sauber am globalen Business-Feed.
+  Der Region-Host kommt erst ins Spiel, wenn ein PRIVATER Kanal gebraucht wird.
+- **Business-Kerzen haben 9 Felder**, `[ts, o, h, l, c, vol, volCcy,
+  volCcyQuote, confirm]`; `confirm` ist das LETZTE Feld (Index 8), `"1"` =
+  abgeschlossene Kerze. Das REST-Format (6 Felder) ist es NICHT — ein
+  Laengen-Check auf das alte Format verwirft jede echte Kerze still, der
+  Konsument verhungert ohne Fehlerzeile.
+- **Lebendigkeit: alle <30 s den TEXT `ping` senden** (Antwort `pong`).
+  Kommt `4004 No data received in 30s` TROTZ versendeter Pings, ist der
+  echte Grund fast immer eine GESCHEITERTE Subscription (es kam nie `data`)
+  — dann nach `"event":"error"` in den Frames suchen, nicht den Ping-Loop
+  debuggen. Eine Subscription bestaetigt sich je Instrument mit
+  `"event":"subscribe"`; fehlen die Bestaetigungen nach Sekunden, war sie falsch.
+- `websocket-client`-Fallen: `run_forever(ping_interval=0)` verlangt trotzdem
+  `ping_timeout > 0`, sonst wirft es sofort `WebSocketException` (eigenen
+  Text-Ping-Thread nutzen und den Bibliotheks-Ping abschalten); ein `import sys`
+  INNERHALB eines Zweigs macht `sys` fuer die GANZE Funktion lokal — der erste
+  Zugriff davor bricht mit `UnboundLocalError`.
+- **Ein Ereignis-Trigger, der die Spur-Logik frueher ruft, ist ein ZUSATZ-Prozess,
+  kein Ersatz:** Sperrenkette unangetastet, der Zyklus bleibt Rueckfallebene,
+  jede Trigger-Buchung traegt ihre Herkunft im Journal (`herkunft=trigger` vs
+  `zyklus`), sonst ist der Fuehrpreis-Vergleich zwei Wochen spaeter unlesbar.
+  Ein Papier-Trigger neben einer LIVE-Spur ist sicher, weil
+  `pruefe_ausstiege(z, live=False)` echte Positionen stehen laesst und nur
+  meldet — vorher pruefen, nicht annehmen.
+
 ## Credentials: Stufe-0-Weg (nie Werte durch die Konversation)
 
 Schluesseldateien (`MaxHirn\Wissen\OKX_API.env` und Co.) sind Stufe 0 — nie
