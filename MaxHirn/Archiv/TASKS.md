@@ -64,6 +64,49 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus**
+      Kontext: OKX 51008 "Your available ZRO balance is insufficient, and your
+      available margin (in USD) is too low for borrowing" - gemessen im
+      Ereignisprotokoll (`Handel/cache/ereignis-fehler.jsonl`), 23:05 und 23:32
+      wiederholt. Die Position bleibt im Buch ("bleibt im Buch"), jeder Zyklus
+      versucht denselben Verkauf und scheitert. Das ist eine Kontolage, keine
+      Werkzeugpanne: entweder fehlt ZRO-Bestand oder das Guthaben ist gebunden.
+      Absichtlich nicht angefasst - eine Guthabenfrage kann die Spur nicht
+      entscheiden, und eine Sperre wäre eine stille Deaktivierung.
+      Naechster Schritt: /api/v5/account/balance?ccy=ZRO lesen und mit dem
+      Buchbestand halten (Buchmenge gegen Brokerbestand); bei fehlendem
+      Bestand ist die Position eine GEIST-Position und geht ueber eine
+      Boersenabgleich-Logik raus, nicht ueber weitere Verkaufsversuche.
+      Angelegt 03.10.2026 · Betrifft: moondev_topmovers.
+
+- [ ]   **T-320 — Der gesperrte Update-Waisen laesst sich nicht entfernen**
+      Kontext: `Agenten\Hermes\state-snapshots\.20260930-204617-pre-update.48588.partial`
+      ist leer, aber gesperrt: `icacls` meldet einen Verarbeitungsfehler,
+      `Remove-Item` und `[System.IO.Directory]::Delete` geben "Access denied"
+      (03.10.2026 gemessen, auch ueber den `\\?\`-Pfad). Seit dem 30.09.2026
+      kostet er jede Sicherung Wartezeit und einen Abbruch mit Code 11.
+      Behoben durch Ausschluss in allen drei Sicherungsskripten - die
+      Ursache selbst ist aber nicht weg.
+      Naechster Schritt: nach dem naechsten geplanten Neustart pruefen, ob
+      sich der Ordner dann loeschen laesst (der Update-Schwanz haelt ihn
+      vermutlich); sonst einmalig als Admin. Er ist Stufe 2 (leerer Bau-Rest),
+      ein Datenverlust ist nicht moeglich.
+      Angelegt 03.10.2026 · Betrifft: sichern.ps1, sichern-zweitkopie.ps1,
+      sichern-ausser-haus.ps1.
+
+- [ ]   **T-321 — kopier1zu1 brach am 02.10. mit Errno 22 ab, Ursache offen**
+      Kontext: dreimal hintereinander 02:10:15-02:10:16
+      `OSError: [Errno 22] Invalid argument` (Ereignisprotokoll), danach
+      21 Stunden fehlerfrei. Nicht reproduzierbar, die Spur schreibt seither
+      normal ins Journal. Errno 22 unter Windows heisst meist einen
+      Reparse-Punkt/Junction im Zielpfad oder einen unbrauchbaren
+      Dateinamen - das Journal selbst laeuft ueber Q:\Handel_Journal.
+      Naechster Schritt: erst wiederholen lassen, dann Q: pruefen (die
+      Spiegelfrist-Wache laeuft) und den Ablagepfad auf einen
+      Junction-Loop pruefen; NICHT vorher umbauen, ein nicht
+      reproduzierbarer Fehler traegt keine Aenderung.
+      Angelegt 03.10.2026 · Betrifft: kopier1zu1.
+
 - [ ]   **T-316 — iv_wand braucht Runden, bevor das Schiebetor bewertbar ist**
       Kontext: `ziel_vor_wand_pct` 0.15 % wurde am 02.10.2026 gesetzt, weil der
       Kurs im Journal viermal durch die Ziellinie 86000 reiste (Verkäufe bei
