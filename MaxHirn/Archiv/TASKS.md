@@ -60,6 +60,34 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
+      Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
+      future, gerne auch Long und Short abwechselnd nach Indikatoren."
+      Messung (messung-shortseite.sh, Binance Futures, 24 Paare 1h,
+      2024-09-29 bis 2026-09-29, inklusive Funding-Rate, dieselbe Strategie
+      dreimal, nur die Seite unterscheidet sich):
+          long  -20,68 %  Sharpe -0,35  Profit-Faktor 0,83
+          short -34,50 %  Sharpe -0,52  Profit-Faktor 0,76
+          beide -48,13 %  Sharpe -0,95  Profit-Faktor 0,77
+      Die kurze Seite verliert also MEHR als die lange, und long+short
+      verliert mehr als jede Seite einzeln. Zwei der drei Bots
+      (trading_agent, topmovers) haben darueber hinaus gar keine
+      dokumentierte Short-Regel - der Bot, der eine hat (marktlage), zeigt
+      die schlechteste kurze Seite. Nach der Hausregel wird fuer die
+      beiden anderen keine erfunden.
+      Der Umstieg auf Futures selbst ist trotzdem sinnvoll und gemessen
+      besser als Spot (Regime-Bot: -20,68 % futures gegen -25 % im
+      Spot-Lauf vom 30.09.) - er senkt die Kosten, er erzeugt keine Kante.
+      Die Kante im Haus sitzt in adx_macd 15m auf BTC (+755,71 USD bei 44
+      Runden, 29,6 % Treffer), und die laeuft seit 02.10. ueber
+      omnitrade_futures auf Kraken Futures.
+      Naechster Schritt: Futures-Aufsatz fuer alle drei bauen und messen
+      (Gebuehr 0,05 % statt 0,60 %), Long-only. Die Long/Short-Fassung
+      nur, wenn Max ausdruecklich eine eigene Regel benennt, die jemand
+      beschrieben hat.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/freqtrade
+
+
 - [ ] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
       Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
       VPN getrennt) hat einen echten Fehler im Hauswerkzeug
