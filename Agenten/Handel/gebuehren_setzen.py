@@ -76,12 +76,86 @@ QUELLE_KRAKEN_SPOT = ("GEMESSEN 22.09.2026 an der Kraken-Fuellung und "
                       "gebuehr_pct rechnet in PROZENT, und die Auswertung liest "
                       "NUR gebuehr_taker.")
 
-QUELLE_OMNIQUANT = ("OKX-SPOT 0,10 % je Seite (gemessen 01.10.2026) - die Instrumente "
-                    "der Spur sind OKX-Paare, der Kurs kommt aus okx.letzter_kurs. "
-                    "WIDERSPRUCH, offen: das Feld `boerse` der wachen.json nennt "
-                    "kraken_futures, das waeren 0,04-0,05 %/Seite. Solange der "
-                    "Widerspruch steht, rechnet die Spur mit dem TEUREREN der beiden "
-                    "Saetze.")
+# Die GEMESSENEN Saetze JE BOERSE, in Prozent je Seite. Das `boerse`-Feld einer
+# wachen.json ist die Wahl; diese Tabelle ist die Rechnung dazu. Siehe
+# `test_geboer_setzen.BoersenfeldTest`.
+BOERSENSAETZE_PCT = {
+    "okx_spot": 0.10,
+    "okx_perp": 0.05,
+    "kraken": 0.60,
+    "kraken_futures": 0.05,
+    "deribit": 0.05,
+}
+
+# `boerse: okx` allein sagt nicht, ob SPOT oder FUTURES - das sind zwei
+# verschiedene Saetze (0,10 gegen 0,05 %). Bei OKX entscheidet darum NICHT das
+# Boersenfeld, sondern was die Spur handelt: Perp-Spuren (XPERP, `moeglich:
+# perp`) nehmen BOERSENSAETZE_PCT["okx_perp"], alles andere den Spot-Satz.
+# Genau diese Unterscheidung fehlte omniquant (T-308): es handelt ueber
+# kraken_futures und lasst den OKX-Satz lesen.
+def satz_pct_fuer(w):
+    """Der Satz dieser Wachen in PROZENT je Seite, nach den Feldern der Datei.
+
+    Bewusst kein freies Nachschlagen in `boerse`, sondern eine Ableitung aus den
+    Angaben, die die Wachen selbst traegt. Reihenfolge = Guelle des Ausgleichs:
+    1. `kraken_futures` (der Name nennt Markt UND Produkt),
+    2. OKX als Perp (Markttyp in der Wachen),
+    3. der Börsenname fuer sich allein.
+
+    `None` heisst: die Wachen traegt keine Angabe, aus der sich ein Satz
+    ableiten laesst (Onchain, Paper ohne Boerse). Das ist KEIN Fehler, sondern
+    eine Modellannahme - sie wird nur nicht beurteilt.
+    """
+    boerse = w.get("boerse") or w.get("venue")
+    if boerse == "kraken_futures":
+        return BOERSENSAETZE_PCT["kraken_futures"], "kraken_futures"
+    if boerse == "deribit":
+        return BOERSENSAETZE_PCT["deribit"], "deribit"
+    if boerse == "okx":
+        perp = ("perp" in json.dumps(w).lower()
+                or w.get("moeglich") == "perp"
+                or any("XPERP" in str(i) or "SWAP" in str(i)
+                       for i in (w.get("instrumente") or w.get("instrumente_aktiv") or [])))
+        if perp:
+            return BOERSENSAETZE_PCT["okx_perp"], "okx_perp"
+        return BOERSENSAETZE_PCT["okx_spot"], "okx_spot"
+    if boerse == "kraken":
+        return BOERSENSAETZE_PCT["kraken"], "kraken"
+    return None, None
+
+
+def gebuehr_pct_der_wachen(w):
+    """Was in der Wachen steht, in Prozent - aus BEIDEN Feldern.
+
+    `gebuehr_pct` ist Prozent, `gebuehr_taker` ein Bruch (die Auswertung liest
+    nur dieses). Eine Spur darf nur eines davon fuehren (dann ist es eindeutig),
+    oder beide (dann muessen sie dasselbe sagen). Ohne jedes Feld: `None` - und
+    das ist von 0,0 zu unterscheiden, weil 0,0 eine behauptete Gebuehr waere.
+    """
+    pct = w.get("gebuehr_pct")
+    taker = w.get("gebuehr_taker")
+    if pct is None and taker is None:
+        return None
+    if pct is None:
+        return float(taker) * 100.0
+    return float(pct)
+
+# omniquant (02.10.2026, T-308): der Widerspruch ist GEKLAERT, nicht offen. Am
+# 01.10.2026 trug die wachen.json `boerse: kraken_futures` und `gebuehr_pct: 0.05`
+# richtig, waehrend diese Tabelle noch 0,1 nannte - der Test schlug darum fehl und
+# die Spur rechnete je nach Leser mit zwei verschiedenen Saetzen. Die Gebuehr folgt
+# der BOERSE, auf der GEORDERT wird (so steht es inzwischen auch in mehreren
+# wachen.json-Vermerken); der Kursweg ist davon unabhaengig - omniquant liest den
+# Kurs weiter ueber okx.letzter_kurs, nur der Live-Zweig holt ihn ueber
+# kraken_perp.letzter_kurs. Zu gross gesetzt (nicht zu klein) war die alte
+# Fassung nicht - aber sie war eben auch FALSCH.
+QUELLE_OMNIQUANT = ("GEKLAERT am 01.10.2026 (T-293, Grundlage: `boerse: kraken_futures` "
+                    "und die Messung vom 25.09.2026): Kraken FUTURES 0,05 %/Seite. "
+                    "Vorher stand hier 0,1 (OKX-Spot) mit dem Vermerk 'Widerspruch, "
+                    "offen' - eine Absichtserklaerung fuer einen Widerspruch, den es "
+                    "nicht mehr gab. Die Gebuehr folgt der ORDER-BOERSE, nicht dem "
+                    "Kursweg: der Preis kommt weiter aus okx.letzter_kurs, nur der "
+                    "Live-Zweig holt ihn ueber kraken_perp.")
 QUELLE_KRAKEN_FUTURES = ("GEMESSEN 25.09.2026 an der eigenen Kraken-Futures-Rechnung: "
                         "0,04-0,05 % je Seite (Round-Trip 0,0029 USD auf 4,55 USD). "
                         "Vorher stand hier 0.1 - doppelt so hoch wie gemessen. Die Spur "
@@ -132,11 +206,16 @@ AENDERUNGEN = [
     ("liq_wand/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
     ("trendwende_btc/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OKX_PERP),
     ("omnitrade/wachen.json", "gebuehr_taker", 0.006, QUELLE_KRAKEN_SPOT),
-    # WIDERSPRUCH in omniquant selbst: die wachen.json nennt `boerse: kraken_futures`,
-    # die Instrumente sind aber OKX-Paare (der Kurs kommt aus okx.letzter_kurs).
-    # Deshalb der TEURERE der beiden Saetze - nicht der freundlichere.
-    ("omniquant/wachen.json", "gebuehr_pct", 0.1, QUELLE_OMNIQUANT),
-    ("omniquant/wachen.weit.json", "gebuehr_pct", 0.1, QUELLE_OMNIQUANT),
+    # omniquant + Schattenarm: rechnen auf Kraken FUTURES (`boerse` ihrer
+    # wachen.json), gemessen 0,05 %/Seite. Vorher stand hier 0,1 als
+    # OKX-Spot-Satz mit offengehaltenem Widerspruch - T-308.
+    # `gebuehr_taker` kommt dazu, weil die generische Auswertung
+    # (`auswertung_alle.gebuehr_fuer`) NUR dieses Feld liest; ohne es meldete
+    # jede allgemeine Auswertung 0,0 und damit eine Runde ohne Kosten.
+    ("omniquant/wachen.json", "gebuehr_pct", 0.05, QUELLE_OMNIQUANT),
+    ("omniquant/wachen.json", "gebuehr_taker", 0.0005, QUELLE_OMNIQUANT),
+    ("omniquant/wachen.weit.json", "gebuehr_pct", 0.05, QUELLE_OMNIQUANT),
+    ("omniquant/wachen.weit.json", "gebuehr_taker", 0.0005, QUELLE_OMNIQUANT),
     ("kopier/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("kopier1zu1/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("robinhood_radar/wachen.json", "gebuehr_taker", 0.01, QUELLE_ANNAHME_ONCHAIN),

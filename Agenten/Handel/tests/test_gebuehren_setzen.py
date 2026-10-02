@@ -198,5 +198,113 @@ class TabelleTest(unittest.TestCase):
                             "%s: %s ohne _gebuehr_quelle" % (datei, feld))
 
 
+class BoersenfeldTest(unittest.TestCase):
+    """Die Gebuehr folgt der BOERSE, auf der geordert wird (T-308).
+
+    Der Fehler, den dieser Test verhindert, ist kein Zahlendreher, sondern ein
+    Buechersatz: omniquant trug `boerse: kraken_futures` (gemessen 0,05 % je
+    Seite) und in der Gebuehren-Tabelle 0,1 % mit dem Vermerk 'Widerspruch,
+    offen'. Zwei Leser derselben Spur rechneten dadurch zwei verschiedene
+    Saetze, und der Test `test_jede_gesetzte_wachen_traegt_ihre_quelle`
+    schlug fehl, ohne dass jemand die Ursache benannt haette.
+
+    Die Regel ist damit eine EIGENSCHAFT, keine Zahl: hat eine wachen.json ein
+    `boerse`-Feld, traegt sie den Satz DIESER Boerse. Steht kein `boerse`-Feld
+    da, bleibt die Spalte eine Modellannahme und wird nicht beurteilt
+    (onchain, Paper ohne Börse, Skripte mit eigenem Abrechnungsweg).
+    """
+
+    # Wachen, deren `boerse` einen der gemessenen Saetze aus BOERSENSAETZE_PCT
+    # traegt. Ein nicht genannter Name (etwa ein frei erfundenes "bybit") faellt
+    # hier bewusst NICHT durch - eine neue Boerse braucht eine Messung, keine
+    # erfundene Zahl.
+    def test_keine_wache_traegt_den_satz_einer_anderen_boerse(self):
+        geprueft = 0
+        for datei, _feld, _wert, _q in gs.AENDERUNGEN:
+            w = json.loads((HANDEL / datei).read_text("utf-8"))
+            soll, name = gs.satz_pct_fuer(w)
+            if soll is None:
+                continue
+            geprueft += 1
+            ist = gs.gebuehr_pct_der_wachen(w)
+            self.assertIsNotNone(ist, "%s (boerse=%s) traegt gar keine Gebuehr"
+                                 % (datei, w.get("boerse")))
+            self.assertAlmostEqual(ist, soll, 6,
+                                   msg="%s: %s braucht %s %%, traegt %s"
+                                       % (datei, name, soll, ist))
+        self.assertGreater(geprueft, 0, "kein einziges boerse-Feld geprueft")
+
+    def test_boersenfeld_waere_als_erste_gelesen_worden(self):
+        """Gegenprobe des Befunds: 0.1 % auf einer Futures-Boerse ist 0.05 %.
+
+        Haette der Test nur geprueft, ob die Zahl > 0 ist, waere 0.1 hier
+        durchgegangen - der Fehler ist genau die FALSCHE Boerse, nicht eine
+        fehlende Zahl.
+        """
+        kraken_futures = gs.BOERSENSAETZE_PCT["kraken_futures"]
+        self.assertAlmostEqual(kraken_futures, 0.05, 6)
+        self.assertNotAlmostEqual(kraken_futures,
+                                  gs.BOERSENSAETZE_PCT["okx_spot"], 6)
+
+    def test_omniquant_zaehlt_auf_die_orderboerse_nicht_auf_den_kursweg(self):
+        """Der konkrete Befund als geschlossener Satz (T-308).
+
+        omniquant holt den Kurs von OKX und ordnet auf Kraken Futures. Genau
+        daraus entstand die falsche Gebuehr: wer dem Kursweg folgt, nimmt
+        OKX (0,10 %), wer der Bestellung folgt, Kraken Futures (0,05 %).
+        """
+        w = json.loads((HANDEL / "omniquant/wachen.json").read_text("utf-8"))
+        self.assertEqual(w.get("boerse"), "kraken_futures")
+        satz, name = gs.satz_pct_fuer(w)
+        self.assertEqual(name, "kraken_futures")
+        self.assertAlmostEqual(gs.gebuehr_pct_der_wachen(w), satz, 6)
+        # und ausdruecklich NICHT der Kursweg-Satz
+        self.assertNotAlmostEqual(gs.gebuehr_pct_der_wachen(w),
+                                  gs.BOERSENSAETZE_PCT["okx_spot"], 6)
+
+    def test_tabelle_kennt_jeden_verwendeten_boersennamen(self):
+        """Wer eine Boerse eintraegt, muss ihren Satz mitbringen.
+
+        Sonst bleibt eine neue Boerse ohne Gebuehr - und eine fehlende Gebuehr
+        sieht in der Auswertung wie eine sehr billige Spur aus.
+        """
+        verwendet = set()
+        for datei, _f, _w, _q in gs.AENDERUNGEN:
+            w = json.loads((HANDEL / datei).read_text("utf-8"))
+            b = w.get("boerse") or w.get("venue")
+            if b:
+                verwendet.add(b)
+        bekannt = {"okx", "okx_spot", "okx_perp", "kraken", "kraken_futures",
+                   "deribit"}
+        self.assertTrue(verwendet <= bekannt,
+                        "Boerse ohne gemessenen Satz: %s"
+                        % sorted(verwendet - bekannt))
+
+    def test_jede_gebehrte_wache_hat_auch_einen_fuer_die_auswertung(self):
+        """`gebuehr_taker` ist das Feld, das die Auswertung tatsaechlich liest.
+
+        `auswertung_alle.gebuehr_fuer` liest NUR `gebuehr_taker` und gibt 0.0
+        zurueck, wenn es fehlt - nicht 'unbekannt'. Eine Spur, die ihre Gebuehr
+        nur als `gebuehr_pct` fuehrt, rechnet in der allgemeinen Auswertung
+        darum mit NULL Kosten (das war der Grund, warum die Nautilus-Arme den
+        Satz doppelt bekamen). Wo beide Felder gesetzt werden, muessen sie
+        dasselbe sagen - und die allgemeine Auswertung darf nie 0,0 melden,
+        wo eine Gebuehr behauptet wird.
+        """
+        for datei, _f, _w, _q in gs.AENDERUNGEN:
+            w = json.loads((HANDEL / datei).read_text("utf-8"))
+            pct = w.get("gebuehr_pct")
+            taker = w.get("gebuehr_taker")
+            if pct is None or taker is None:
+                continue
+            self.assertAlmostEqual(float(taker) * 100.0, float(pct), 6,
+                                   msg="%s: pct %s und taker %s sagen nicht dasselbe"
+                                       % (datei, pct, taker))
+            # Der Leser, der nur `gebuehr_taker` kennt, darf nicht 0 herausgeben
+            self.assertGreater(float(taker), 0.0,
+                               "%s: gebuehr_taker 0 - die Auswertung rechnet "
+                               "kostenlos" % datei)
+
+
 if __name__ == "__main__":
     unittest.main()
