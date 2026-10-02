@@ -82,16 +82,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ]   **T-315 — `gebuehren_setzen --anwenden` überschreibt eine verbesserte `_gebuehr_quelle`**
-      Kontext: gefunden 02.10.2026 beim T-308-Fix. Der Schreibweg setzt die Notiz
-      auch dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
+- [ ]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg**
+      Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler, beide am
+      Schreibweg, beide unabhängig vom Gebührensatz.
+
+      (1) Er überschreibt eine verbesserte Notiz. Er setzt `_gebuehr_quelle` auch
+      dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
       robinhood_radar hat er dadurch zwischenzeitlich verbesserte Notizen (mit
-      gemessenem Nachlauf) auf den aelteren Text zurueckgesetzt. Aus den .bak-20261002
-      zurueckgenommen; der Fehler ist aber nicht behoben.
-      Naechster Schritt: `_feld_setzen` schreibt die Notiz nur, wenn sich der WERT
-      aendert oder die Notiz fehlt. Testbeleg: eine Wachen mit richtigem Wert und
-      eigener Notiz bleibt byte-gleich.
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py
+      gemessenem Nachlauf) auf den aelteren Text zurueckgesetzt. Aus den
+      .bak-20261002 zurueckgenommen; der Fehler ist nicht behoben.
+      Naechster Schritt: `_feld_setzen` schreibt die Notiz nur, wenn sich der
+      WERT aendert oder die Notiz fehlt. Testbeleg: eine Wachen mit richtigem Wert
+      und eigener Notiz bleibt byte-gleich.
+
+      (2) Er meldet einen relativen Pfad. `anwenden()` nennt den Pfad RELATIV zur
+      Modul-Wurzel. Im Testlauf las sich das als spur/wachen.json gebuehr_taker:
+      0.001 -> 0.002 - ein Schreibzugriff auf eine echte Wache. Tatsaechlich war es
+      der Tempordner des Tests (test_gebuehren_setzen.py:126-131 legt
+      spur/wachen.json in tempfile.mkdtemp() an und setzt gs.HIER darauf).
+      Gegengeprueft: Agenten/Handel/spur/ existiert nicht, git diff auf jede echte
+      Wache ist leer, keine Wache in 10 min geaendert.
+      Naechster Schritt: die Meldung nennt den ABSOLUTEN Pfad, dann ist ein
+      Schreibzugriff von einem Testartefakt am Text unterscheidbar.
+
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
 
 - [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
       Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
