@@ -34,10 +34,28 @@ ATLAS = WURZEL / "Agenten" / "Werkzeuge" / "projectatlas"
 START = ATLAS / "watch-start.ps1"
 REPO = "O:/Werkstatt/omnitrade"
 PID_DATEI = ATLAS / "logs" / "watch-omnitrade.pid"
+# Der Prozess, den die PID-Datei NAMLICH nennen muss. Ohne diesen Namen
+# zaehlt eine PID-Wiederverwendung als lebender Watcher (03.10.2026).
+ERWARTETER_NAME = "projectatlas.exe"
 
 
 def prozess_laeuft(pid):
-    """tasklist statt psutil: das Hermes-Python hat psutil nicht zwingend.
+    """PID UND PROGRAMMNAME pruefen - die Zahl allein reicht nicht.
+
+    `tasklist /FI "PID eq n" /NH` beantwortet jede noch vergebene PID mit
+    einer Zeile, auch wenn dort inzwischen etwas ANDERES laeuft. Gemessen
+    03.10.2026: die PID-Datei nannte 69928 (ein toter Watcher), die PID
+    war inzwischen an `svchost.exe` vergeben - die Zahl stand in der
+    Antwort, der Waechter glaubte, der Watcher laeuft, und startete
+    bei jedem Lauf einen neuen. Daraus waren 18 haengende Projektions-
+    prozesse mit je ~1 MB geworden (die Leerlaeufer einer Projektion,
+    die nie zurueckkommt), waehrend der ECHTE Watcher (PID 96060, 9705 s
+    CPU) nebenbei Arbeit tat.
+
+    Die Regel: eine PID gilt nur dann als der Watcher, wenn taskslist sie
+    MIT dem erwarteten Prozessnamen nennt. Das ist dieselbe Lehre wie bei
+    `omnitrade_lauf.pid_lebt(pid, name=...)` - Windows vergibt PIDs neu,
+    und eine lebende PID ist kein Beleg fuer einen lebenden Prozess.
 
     errors/encoding: tasklist und powershell schreiben in der Konsolen-
     Codepage (cp1252), nicht in UTF-8 - ohne das stirbt der Lesethread an
@@ -48,7 +66,12 @@ def prozess_laeuft(pid):
     r = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
                        capture_output=True, text=True,
                        encoding="cp1252", errors="replace")
-    return str(pid) in (r.stdout or "")
+    for zeile in (r.stdout or "").splitlines():
+        teile = zeile.split()
+        # Bild: <name> <pid> <sitzung> ...  /  oder KEIN TREFFER-Zeile
+        if len(teile) >= 2 and teile[1] == str(pid):
+            return teile[0].lower().startswith(ERWARTETER_NAME.lower())
+    return False
 
 
 def pid_aus_datei():
