@@ -174,7 +174,12 @@ class Paarung:
         kandidaten = [k for k, e in self._mit_kennung.items()
                       if self._inst_von(e) == inst]
         if len(kandidaten) == 1:
-            return self._mit_kennung.pop(kandidaten[0])
+            # `_mit_kennung` traegt (inst, zeile) - der Aufrufer braucht die
+            # ZEILE. Ohne das [1] kam hier ein Tupel heraus und `schluessel()`
+            # in `_paare` rief `.get()` darauf auf: AttributeError 'tuple' has
+            # no attribute 'get' (gemessen 02.10.2026 an einer scanner-Zeile
+            # mit `pos_id: None` - ein leerer Kennungswert aus dem CSV-Rest).
+            return self._mit_kennung.pop(kandidaten[0])[1]
         return None
 
     @staticmethod

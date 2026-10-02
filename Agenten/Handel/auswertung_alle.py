@@ -107,7 +107,10 @@ SPUREN = ("xperp", "swap", "scanner", "kraken", "orb", "orbk", "gitter", "nautil
 # (beim Kauf der Einsatz, beim Verkauf der Erloes). Sie stehen getrennt,
 # weil IHR JOURNAL anders heisst, nicht weil anders gerechnet wird - der
 # Rechenweg steht in runden_indikator() an einer Stelle.
-INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic")
+INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
+                   # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet als
+                   # Kursregel (prophet_regeln.py), schreibt dieselbe Journalform.
+                   "prophet_signal")
 
 # Bot-Spuren (16.09.2026): Papierbuecher auf den Signalen geklonter Fremd-Bots
 # (Werkstatt/Repos/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das

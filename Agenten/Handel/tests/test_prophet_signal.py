@@ -103,6 +103,81 @@ class VerificationTest(unittest.TestCase):
         except Exception as e:
             self.fail(f"prophet_regeln.py Fehler: {e}")
 
+class VerdrahtungTest(unittest.TestCase):
+    """Die LISTEN, die eine Spur nennen muessen - nicht der Code, der sie liest.
+
+    Eine frische Spur laeuft im Dauerlauf, taucht aber im Bericht, in der
+    Auswertung und in der Ratschenpruefung nicht auf, wenn eine dieser Listen
+    sie vergessen hat. Genau das war der Rest der abgebrochenen Crypto-Sitzung
+    (02.10.2026): `dauerlauf.SPUREN` kannte die Spur, der Rest nicht.
+
+    Geprueft wird die REGEL (die Spur steht in der Liste), nicht eine Zahl -
+    eine Zahl geht bei der naechsten Spur kaputt und sagt nichts aus.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(SPUR.parent))
+        sys.path.insert(0, str(HIER))
+
+    def test_in_dauerlauf_spuren(self):
+        import dauerlauf
+        self.assertIn("prophet_signal", dauerlauf.SPUREN,
+                      "prophet_signal fehlt in dauerlauf.SPUREN")
+
+    def test_lage_holer_liefert_die_pflichtfelder(self):
+        import lage
+        self.assertIn("prophet_signal", [f.__name__.replace("spur_", "")
+                                         for f in lage.HOLER],
+                      "kein Holer fuer prophet_signal in lage.HOLER")
+        bericht = lage.spur_prophet_signal()
+        # Die Form, die `lage.HOLER` liefert (nicht geraten - siehe
+        # `FormTest.test_jeder_holer_liefert_die_pflichtfelder`): Wachen, Name,
+        # Zustand, Positionen, Journal und das Papier-Kennzeichen.
+        for feld in ("name", "w", "z", "positionen", "journal", "papierfest"):
+            self.assertIn(feld, bericht)
+        self.assertEqual(bericht["papierfest"], True,
+                         "prophet_signal hat keinen Live-Zweig - muss papierfest sein")
+        self.assertEqual(bericht["name"], "Prophet-Signal (EMA30+Saisonalitaet)")
+
+    def test_befehle_familie_und_indikatorenliste(self):
+        import befehle
+        self.assertIn("prophet_signal", befehle.FAMILIE,
+                      "keine Strategie-Familie fuer prophet_signal")
+        self.assertIn("prophet_signal", befehle.INDIKATOREN,
+                      "prophet_signal fehlt in befehle.INDIKATOREN")
+
+    def test_auswertung_hat_einen_rechenweg(self):
+        import auswertung_alle as aa
+        self.assertIn("prophet_signal", aa.INDIKATOR_SPUREN,
+                      "prophet_signal fehlt in auswertung_alle.INDIKATOR_SPUREN")
+
+    def test_ratschenbetrag_ist_buchrisiko(self):
+        """Der Betrag muss 1.0x Buchrisiko sein (5.0 USD x 2 Plaetze = 10.0)."""
+        import pruefe_ratschen as pr
+        eintraege = [e for e in pr.SPUREN if e[0] == "prophet_signal"]
+        self.assertEqual(len(eintraege), 1,
+                         "prophet_signal nicht genau einmal in der Ratschenliste")
+        spur, ordner, provider, modul = eintraege[0]
+        self.assertEqual((ordner, provider, modul),
+                         ("prophet_signal", "scanner", "wachen_pruefung"))
+        import json
+        w = json.loads((SPUR / "wachen.json").read_text(encoding="utf-8"))
+        buchrisiko = (float(w["risiko_je_position_usd"])
+                      * int(w["max_offene_positionen"]))
+        self.assertAlmostEqual(float(w["drawdown_halbierung_usd"]), buchrisiko,
+                               places=2,
+                               msg="drawdown_halbierung_usd != Buchrisiko")
+
+    def test_wachen_stellt_papierfest(self):
+        import json
+        w = json.loads((SPUR / "wachen.json").read_text(encoding="utf-8"))
+        self.assertFalse(w["handel_erlaubt"],
+                         "Papierspur darf handel_erlaubt nicht gesetzt haben")
+        self.assertEqual(w["journal_zweitziel"],
+                         r"Q:\Handel_Journal\prophet_signal")
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -757,6 +757,13 @@ def spur_omnitrade():
                            "omnitrade (Rust-Lauf gespiegelt)", live_faehig=True)
 
 
+# PROPHET-SIGNAL (02.10.2026): Prophet-Idee als Kursregel ueber prophet_regeln.py
+# (saisonale Zerlegung + EMA30-Trend, CryptoPredictions-Papier). Gleiche
+# Journalform wie die Indikator-Spuren, deshalb derselbe Leser. Kein Live-Zweig.
+def spur_prophet_signal():
+    return _spur_indikator("prophet_signal", "Prophet-Signal (EMA30+Saisonalitaet)")
+
+
 # KLASSIK-SPUREN (30.09.2026): acht Kursregeln ueber klassik_regeln.py.
 KLASSIK_SPUREN = (
     ("klassik_sma", "Klassik SMA-Kreuz 20/50"),
@@ -1371,5 +1378,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
-    spur_moondev_sniper) + HOLER_KLASSIK
+    spur_moondev_sniper,
+    # Prophet-Signal (02.10.2026), Papierspur ueber prophet_regeln.py.
+    spur_prophet_signal) + HOLER_KLASSIK
 

@@ -94,6 +94,9 @@ FAMILIE = {
     "squeeze": "Indikator",
     "supertrend": "Indikator",
     "trendwende_btc": "Indikator",
+    # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet, ein Signal
+    # je Instrument - gehoert zu den Indikator-Spuren.
+    "prophet_signal": "Indikator",
     "klassik_sma": "Indikator",
     "klassik_ema": "Indikator",
     "klassik_macd": "Indikator",
@@ -138,6 +141,8 @@ FAMILIE = {
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend",
                "trendwende_btc",
+               # Prophet-Signal (02.10.2026).
+               "prophet_signal",
                "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
                "klassik_donchian", "klassik_rsi", "klassik_rsi2",
                "klassik_donchian_trend")

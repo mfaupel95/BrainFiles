@@ -74,6 +74,9 @@ SPUREN = [
     # Buchrisiko aus 2.0 USD Risiko x 1 Platz).
     ("omnitrade_futures", "omnitrade_futures", "scanner", "wachen_pruefung"),
     # Klassik-Spuren (30.09.2026): acht spur_buch-Spuren ueber klassik_regeln.
+    # Prophet-Signal (02.10.2026): spur_buch-Spur ueber prophet_regeln.py,
+    # Betrag ausdruecklich (10.00 = 1.0x Buchrisiko aus 5.0 USD x 2 Plaetzen).
+    ("prophet_signal", "prophet_signal", "scanner", "wachen_pruefung"),
     ("klassik_sma", "klassik_sma", "scanner", "wachen_pruefung"),
     ("klassik_ema", "klassik_ema", "scanner", "wachen_pruefung"),
     ("klassik_macd", "klassik_macd", "scanner", "wachen_pruefung"),
