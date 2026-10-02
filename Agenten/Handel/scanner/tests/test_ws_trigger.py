@@ -279,11 +279,12 @@ class TestWSTrigger(unittest.TestCase):
         h.SCHREIBEN = True
         wt.handeln.SCHREIBEN = True
 
-        # OKX candle frame format (ohne "event": "subscribe")
+        # OKX Business-Kerzenformat: 9 Felder, confirm zuletzt (02.10.2026)
         frame = json.dumps({
             "arg": {"channel": "candle15m", "instId": "BTC-USDC"},
             "data": [[
-                "1727780400000", "50000", "50100", "49900", "50050", "100", "1"
+                "1727780400000", "50000", "50100", "49900", "50050",
+                "100", "100", "100", "1"
             ]]
         })
 
@@ -366,10 +367,11 @@ class TestWSHostAbleitung(unittest.TestCase):
         self.wt.okx._live_basis = self.alt_live_basis
 
     def test_eea_host(self):
+        # Gemessen 02.10.2026: der PUBLIC/BUSINESS-Feed ist global; der alte
+        # Weg "eea -> ws.eea.okx.com" loest im DNS NICHT auf. Auch mit
+        # OKX_BASE=eea bleibt der Host ws.okx.com.
         self.wt.okx._live_basis = lambda: "https://eea.okx.com"
-        import importlib
-        importlib.reload(self.wt)
-        self.assertEqual(self.wt._ws_host(), "ws.eea.okx.com")
+        self.assertEqual(self.wt._ws_host(), "ws.okx.com")
 
     def test_www_host(self):
         self.wt.okx._live_basis = lambda: "https://www.okx.com"

@@ -142,7 +142,7 @@ zum naechsten 15-Minuten-Zyklus entfernt: beim Kerzenschluss (confirm=1) wird
 
 | Datei | Zweck |
 |---|---|
-| `ws_trigger.py` | WebSocket-Client fuer OKX public feed (candle15m). Ruft `handeln.pruefe_ausstiege` / `pruefe_einstiege` bei Kerzenschluss. |
+| `ws_trigger.py` | WebSocket-Client fuer den OKX BUSINESS-Feed (`/ws/v5/business`, Kanal `candle15m`) - die Kerzenkanaele liegen NICHT auf `/public` (gemessen 02.10.2026). Ruft `handeln.pruefe_ausstiege` / `pruefe_einstiege` bei Kerzenschluss; Buchungen tragen `herkunft=trigger`. Benoetigt `websocket-client` im venv. |
 | `tests/test_ws_trigger.py` | Tests mit JSON-Frame-Attrappen, kein echtes Netz. |
 
 ### Aufrufe

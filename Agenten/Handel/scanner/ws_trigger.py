@@ -35,21 +35,19 @@ HIER = Path(__file__).resolve().parent
 PID_DATEI = HIER / "ws_trigger.pid"
 LOG_DATEI = HIER / "ws_trigger.log"
 
-# OKX WebSocket: Host aus OKX_BASE ableiten (www -> ws, eea -> ws.eea)
+# OKX WebSocket: Der PUBLIC-Feed ist global (ws.okx.com) - gemessen 02.10.2026:
+# ws.eea.okx.com loest im DNS NICHT auf, ws.okx.com schon; oeffentliche Kerzen
+# sind nicht konto-gebunden. Nur ein privater Kanal waere regionen-abhaengig.
 def _ws_host() -> str:
-    basis = okx._live_basis()  # z.B. https://eea.okx.com oder https://www.okx.com
-    parsed = urlparse(basis)
-    host = parsed.netloc
-    if host.startswith("www."):
-        return "ws.okx.com"
-    elif host.startswith("eea."):
-        return "ws.eea.okx.com"
-    else:
-        return "ws.okx.com"
+    return "ws.okx.com"
 
 
 def _ws_url() -> str:
-    return f"wss://{_ws_host()}:8443/ws/v5/public"
+    # Die KERZENKANAELE (candle*) liegen auf dem BUSINESS-WebSocket, nicht auf
+    # /public - gemessen 02.10.2026: /public wirft fuer candle15m immer
+    # "doesn't exist" (auch BTC-USDT), /business bestaetigt die Subscription
+    # und liefert Daten - auch fuer die EEA-Instrumente (BTC-USDC).
+    return f"wss://{_ws_host()}:8443/ws/v5/business"
 PING_INTERVAL = 30  # Sekunden
 RECONNECT_BASE = 2  # Sekunden, exponentiell
 
@@ -132,7 +130,10 @@ class WSTrigger:
             on_error=self._on_error,
             on_close=self._on_close,
         )
-        self.ws.run_forever(ping_interval=0, ping_timeout=0)
+        # Bibliotheks-Ping aus (wir senden den OKX-Text-Ping alle 30 s selbst,
+        # siehe _starte_ping); ping_timeout muss trotzdem > 0 sein, sonst
+        # wirft run_forever WebSocketException 'Ensure ping_timeout > 0'.
+        self.ws.run_forever(ping_interval=0, ping_timeout=10)
 
     def _verbinde_nur(self):
         """Erstellt WebSocket ohne zu blockieren (fuer Tests)."""
@@ -161,7 +162,9 @@ class WSTrigger:
                     try:
                         self.ws.send("ping")
                         self.letztes_ping = jetzt
-                    except Exception:
+                        _log("ping gesendet")
+                    except Exception as e:
+                        _log(f"Ping-Fehler: {e!r}")
                         break
         self.ping_thread = threading.Thread(target=ping_loop, daemon=True)
         self.ping_thread.start()
@@ -190,11 +193,12 @@ class WSTrigger:
                     self._verarbeite_kerze(inst, kerze)
 
     def _verarbeite_kerze(self, inst: str, kerze: list):
-        """Kerzendaten: [ts, o, h, l, c, vol, confirm] - confirm=1 = abgeschlossen."""
-        if len(kerze) < 7:
+        """Business-Kerze: [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
+        - confirm ist das LETZTE Feld, 1 = abgeschlossene Kerze."""
+        if len(kerze) < 9:
             return
         ts = int(kerze[0])
-        confirm = kerze[6]
+        confirm = kerze[-1]
         if confirm != "1" and confirm != 1:
             return  # nur abgeschlossene Kerzen
 
@@ -334,7 +338,8 @@ def main():
 
     if a.test:
         # Testmodus: eine Zeile JSON von stdin lesen, als Kerze verarbeiten
-        import sys
+        # (sys ist oben schon importiert - ein import hier drinnen wuerde 'sys'
+        # fuer die GANZE Funktion lokal machen, siehe UnboundLocalError 02.10.)
         zeile = sys.stdin.readline()
         if not zeile:
             return
