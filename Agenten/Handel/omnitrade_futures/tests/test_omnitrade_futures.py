@@ -27,9 +27,19 @@ class WachenTest(unittest.TestCase):
         w = buch.lade_wachen(buch.pfade(HIER)[0])
         self.assertEqual(w["boerse"], "kraken_futures")
         self.assertEqual(w["hebel"], 7.0)            # Max: "hebel x7 fuer den anfang"
-        self.assertFalse(w["handel_erlaubt"])        # Papier zuerst, immer
-        self.assertFalse(w["freigabe"]["erfuellt"])
-        self.assertEqual(w["instrument"], "PF_SOLUSD")
+        # 02.10.2026: war assertFalse(handel_erlaubt) mit dem Kommentar
+        # "Papier zuerst, immer". Das ist der Stand vor Max' Auftrag
+        # "Ja empfehlung umsetzen" vom 01.10. - die Spur hat einen gemessenen
+        # Live-Pfad (PF_XBTUSD auf Kraken Futures) und ist freigegeben.
+        # Zuruecknehmen: handel_erlaubt auf false, dann greift wieder Papier.
+        self.assertTrue(w["handel_erlaubt"])
+        # Auch freigabe.erfuellt wurde am 01.10. gesetzt (Auftrag Max,
+        # "Ja empfehlung umsetzen") - es ist der von Hand gesetzte Haken.
+        self.assertTrue(w["freigabe"]["erfuellt"])
+        # 02.10.2026: PF_SOLUSD -> PF_XBTUSD. adx_macd 15m hat auf SOL
+        # 42 Runden bei 28,6 % Treffer und +1,61 USD, auf BTC 44 Runden
+        # bei 29,6 % und +755,71 USD (60 Tage, 0,05 %/Seite).
+        self.assertEqual(w["instrument"], "PF_XBTUSD")
         self.assertGreaterEqual(float(w["mindest_guthaben"]), 25.0)
 
     def test_wachen_hat_trailing(self):
@@ -44,9 +54,10 @@ class WegTest(unittest.TestCase):
         self.assertEqual(weg.setze_hebel({}), 1.0)
 
     def test_menge_fuer_ganze_kontrakte(self):
-        menge, fehler = weg.menge_fuer("PF_SOLUSD", 130.0, 117.0)
+        # Der Einsatz ist der NOMINALwert: int(Einsatz // Kurs).
+        menge, fehler = weg.menge_fuer("PF_XBTUSD", 90000.0, 84706.0)
         self.assertEqual((menge, fehler), (1.0, ""))
-        menge, fehler = weg.menge_fuer("PF_SOLUSD", 50.0, 117.0)
+        menge, fehler = weg.menge_fuer("PF_XBTUSD", 50000.0, 84706.0)
         self.assertEqual(menge, 0.0)
         self.assertTrue(fehler)
 

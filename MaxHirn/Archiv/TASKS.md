@@ -60,6 +60,39 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
+      Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
+      VPN getrennt) hat einen echten Fehler im Hauswerkzeug
+      Agenten/Handel/nautilus_kraken/futures_probe.py gezeigt: der KAUF
+      wurde angenommen und gefuellt, das anschliessende Fill-Polling auf
+      /fills scheiterte an `authenticationError`, worauf das Skript abbrach -
+      der Notausstieg im except-Zweig liess die Position OHNE Schutz-Stop
+      offen. Von Hand geschlossen, zurueck auf die drei vorherigen
+      Positionen (PF_SUIUSD, PF_HBARUSD, PF_HYPEUSD). Die Landmine daneben
+      ist behoben (die Probe rechnete 1 Kontrakt = 1 USD Nominal und haette
+      bei der Hausvorgabe 676.816 USD gekauft; jetzt bricht sie mit der
+      echten Zahl ab). OFFEN: warum /fills authenticationError sagt, waehrend
+      /accounts und /openpositions antworten - und der Notausstieg muss
+      unabhaengig vom Fill-Polling laufen.
+      Naechster Schritt: /fills getrennt aufrufen und die Antwort
+      protokollieren; der Verkauf darf nicht vom Fill-Polling abhaengen.
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
+
+- [ ] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
+      Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
+      nautilus_kraken, macd_mtf, squeeze, supertrend, wavetrend,
+      moondev_funding und iv_waelle "keine Sperrzeile".
+      `dauerlauf.nur_fenster_fehlt()` liest genau diese Zeile; fehlt sie,
+      bekommt die Funktion None und die Auto-Freigabe oeffnet fuer diese
+      Spuren NIE ein Fenster. Sie sind trotzdem scharf - die Fenster wurden
+      bisher anderswo geoeffnet (z. B. nutilus_kraken am 02.10. 02:17 von der
+      Auto-Freigabe, nachdem ihre Wachen die Haken bekommen hatten).
+      Naechster Schritt: die gemeinsame Vorschauregel muss fuer JEDE Spur
+      dieselbe Zeile drucken, sonst ist die Auto-Freigabe fuer diese neun
+      blind. Geprueft werden sollte die Regel, nicht die Liste.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft dauerlauf.py, lage.py
+
+
 - [ ] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
       Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
       Drei Restpunkte, die die Umstellung (Commit 2a480edd) nicht mit erledigt:
@@ -189,18 +222,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: entscheiden, ob die omniroute-Liste der Hauptconfig ebenfalls auf die
       benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
       Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
-- [ ] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
-      Kontext: Beim Zentrale-Durchgang am 01.10.2026 aufgefallen: die Spur fuehrt ihre Token
-      als `inst` (0x…), die Zentrale sagte dazu `Quelle okx` und lief damit in einen Weg, der
-      nie antwortet. Richtig ist `keine` - die Robinhood-Kette (4663) kennt kein Haus-Leser
-      (`spiegel/lesen.py`, KETTEN: base, bnb, ethereum, solana, xlayer), ein OKX-Paar gibt es
-      nicht. Die Radar-Datenbank fuehrt je Fuellung nur den EINSTIEGSpreis (`usd_value`),
-      keine laufende Notiz; drei Positionen stehen damit ohne Kurs da (u. a. 0x48f413c3…).
-      Naechster Schritt: entscheiden, ob die Zentrale den letzten bekannten Kurs aus
-      `fomo_agent.db` zeigen darf - dann ausdruecklich als "letzter Kurs, vor N min", nicht
-      als live - oder ob die Zeilen ohne Kurs bleiben, wie es jetzt der Fall ist.
-      Betrifft: Agenten/Handel/handelszentrale.py (QUELLE), Agenten/Handel/robinhood_radar/, Werkstatt/Repos/fomo-robinhood-radar/
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
 
 - [ ] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
       Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
@@ -3257,6 +3278,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
+      Kontext: Beim Zentrale-Durchgang am 01.10.2026 aufgefallen: die Spur fuehrt ihre Token
+      als `inst` (0x…), die Zentrale sagte dazu `Quelle okx` und lief damit in einen Weg, der
+      nie antwortet. Richtig ist `keine` - die Robinhood-Kette (4663) kennt kein Haus-Leser
+      (`spiegel/lesen.py`, KETTEN: base, bnb, ethereum, solana, xlayer), ein OKX-Paar gibt es
+      nicht. Die Radar-Datenbank fuehrt je Fuellung nur den EINSTIEGSpreis (`usd_value`),
+      keine laufende Notiz; drei Positionen stehen damit ohne Kurs da (u. a. 0x48f413c3…).
+      Naechster Schritt: entscheiden, ob die Zentrale den letzten bekannten Kurs aus
+      `fomo_agent.db` zeigen darf - dann ausdruecklich als "letzter Kurs, vor N min", nicht
+      als live - oder ob die Zeilen ohne Kurs bleiben, wie es jetzt der Fall ist.
+      Betrifft: Agenten/Handel/handelszentrale.py (QUELLE), Agenten/Handel/robinhood_radar/, Werkstatt/Repos/fomo-robinhood-radar/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      **Erledigt 2026-10-02.** Nicht 'Kurs anzeigen', sondern die Ursache: lesen.letzte_beobachtung() liefert den juengsten on-chain Handel des Tokens, handeln.quelle() legt ihn in `kurse` (nicht in `daten` - er darf eine Position beenden, aber keinen neuen Einstieg eroeffnen), und handeln.raeume_ohne_kurs() schliesst eine Position, deren letzte Beobachtung aelter als beobachtung_max_alter_stunden (24 h) ist, zum letzten bekannten Kurs (ohne jede Fuellung neutral zum Einstieg); Grund buchbereinigung_kein_kurs, faellt damit unter stoerungen.BUCHHALTUNG und zaehlt in keiner Kennzahl als Handelsrunde. CLI: --raeumen (Vorschau), --raeumen-anwenden. Belege: 25 Tests der Spur gruen (5 neue, mit Modulwaechter), echter Lauf in allen drei Risikostufen - 9 Positionen geraeumt (125-222 h ohne Beobachtung), Basis-Buch 3/3 leer, spiegelstand 43/43 byte-gleich. Commit e71f0258.
 - [x] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
       Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
       Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der

@@ -48,6 +48,23 @@ import spur_buch as buch  # noqa: E402
 # und ihre Rechnung WIEDER VERWENDEN - nicht kopieren.
 _omni_spec = importlib.util.spec_from_file_location(
     "omnitrade_handeln", os.path.join(HANDEL, "omnitrade", "handeln.py"))
+# Die Statusdatei GEpinnt lesen (Naht OMNITRADE_STATUS in omnitrade/lesen.py).
+# Ohne das nimmt lesen.dateien() ALLE live_*.json im Statusordner - und im
+# Ordner laeuft adx_macd ausser auf BTC noch auf ETH. Diese Spur ist eine
+# MONOstrategie-Spur: sie spiegelt genau einen Lauf.
+_ordner = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_status_name = ""
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "wachen.json"), encoding="utf-8") as _fh:
+        _status_name = (json.load(_fh) or {}).get("statusdatei") or ""
+except Exception:                                            # noqa: BLE001
+    _status_name = ""
+if _status_name:
+    _status_pfad = os.path.join(_ordner, _ordner, "..", "Werkstatt",
+                                "omnitrade", "status", _status_name)
+    os.environ["OMNITRADE_STATUS"] = os.path.normpath(_status_pfad)
+
 omni = importlib.util.module_from_spec(_omni_spec)
 sys.modules[_omni_spec.name] = omni
 _omni_spec.loader.exec_module(omni)
