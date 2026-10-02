@@ -3,20 +3,54 @@
 Wann: Die Auswertung meldet fuer eine Spur `keine geschlossenen Runden`, oder die
 Frage kommt als „warum hat X 0 Runden, da stimmt doch etwas nicht".
 
+## Der Weg zum Befund: messen, dann einordnen - NIE aus der Rundenzahl schliessen
+
+Der Fehler, der hier am meisten Geld kostet, ist nicht ein falscher Parameter,
+sondern eine vorschnelle Massnahme. Die Auswertung zaehlt **GESCHLOSSENE**
+Runden. Eine Spur, die heute zwei Positionen eroeffnet hat und deren Stop noch
+nicht erreicht ist, steht dort bei null - und sieht in der Tabelle des Berichts
+aus wie eine, die nie funktioniert hat.
+
+**Vor jeder Empfehlung, eine Spur stillzulegen oder zu priorisieren, laeuft der
+Befund-Lauf und die LAGE wird genannt - nicht die Rundenzahl:**
+
+    cd Agenten/Handel
+    scanner/.venv/Scripts/python.exe ../skills/brainfiles/handel-spuren/scripts/null_runden_befund.py
+
+Der Lauf liest nur. Er ordnet jede Spur nach genau dieser Tabelle ein und nennt
+die Begruendung mit ("4 Position(en) ohne Ausstieg - je Position pruefen, ob
+sie einen Kurs bekommt"). `--alle` zeigt jede Spur, `--nur <n>` verengt auf
+weniger geschlossene Runden.
+
+**Die Reihenfolge der Antworten ist fest:**
+
+1. **BUCH VOLL** - es gibt Positionen. Sie sind der Grund fuer alles Weitere;
+   eine Spur mit offenen Positionen wird nie stillgelegt, sondern auf ihre
+   Stopps geprueft.
+2. **ARBEITET** - Positionen im Buch, Stop/Ziel noch nicht erreicht. Das ist
+   Normalbetrieb, kein Befund.
+3. **NUR AUSBUECHER** - das Journal zaehlt Buchhaltung, keine Handel.
+4. **WARTET** - leerer Journal, keine Position, Zustand frisch.
+5. **FEHLT** - keine Ergebnisdatei. Bedingung 4 unerfuellbar, siehe unten.
+
+Merksatz fuer den Bericht: **"0 Runden" ist ohne Lage eine halbe Aussage.**
+Wer sie als "stirbt nie" liest, hat die Frage noch nicht gestellt.
+
 ## Erst trennen, dann suchen
 
-Eine Null hat vier Bedeutungen. In der Auswertung sehen sie gleich aus, es sind
-aber vier verschiedene Lagen - nur eine davon ist ein Fehler:
+Eine Null hat fuenf Bedeutungen. In der Auswertung sehen sie gleich aus, es sind
+aber fuenf verschiedene Lagen - nur zwei davon sind ein Fehler:
 
 | Lage | Kennzeichen | Fehler? |
 |---|---|---|
 | wartet auf das erste Signal | Journal leer, keine Position, Zustand frisch | nein |
 | arbeitet, Stop noch nicht erreicht | Positionen im Buch, Journal ohne Ausstieg | nein |
 | Ausbuecher ohne Handelsentscheidung | Journal nur mit `buchbereinigung`/`herzschlag` | nein (Anzeige!) |
+| **Buch voll bei vorhandenen Kandidaten** | Position ohne Kurs, Platz belegt, kein Einstieg | **ja** |
 | **Stall** | offene Position, deren Instrument nicht mehr geprueft wird | **ja** |
 
 Merksatz: Eine Null ist erst dann eine Aussage, wenn dabeisteht, was sie zaehlt.
-Ein Text, der alle vier Lagen gleich beschreibt, versteckt genau den einen echten
+Ein Text, der alle fuenf Lagen gleich beschreibt, versteckt genau die zwei echten
 Fehler. Beim Bauen einer Kennzahl die Gegenfrage stellen: welche Zustaende fallen
 auf denselben Satz?
 

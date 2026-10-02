@@ -28,6 +28,45 @@ Datum und Grund jeder Runde gegen die eigene Sitzung halten. kraken sah nach
 12.09. und 4 vom Verifikationslauf 14.09. (16:44) - das Buch war fast leer.
 Ein Buch aus eigenen Testrunden ist kein Maß, sondern ein Arbeitsunfall.
 
+## Schritt 2b - Hat die Auswahlregel Edge - oder hat nur die Spur einen Orderpfad?
+
+Zwei Fehler treffen zusammen und ergeben eine Spur, die in jeder Rangliste vorn
+steht.
+
+**1. Eine Auswahlregel wird gegen null gemessen statt gegen die Basislinie.**
+Ein Mittelwert oder eine Trefferquote gegen null sagt nichts darueber, ob die
+REGEL etwas hinzufuegt - sie kann schlicht das Marktniveau abbilden. Edge ist die
+Differenz zur Auswahl OHNE Regel, gemessen an denselben Instrumenten, im selben
+Zeitraum, mit derselben Gebuehr. Vorgehen: je Berichtstag alle bewerteten
+Maerkte nehmen, die Kursentwicklung nach 1/3/7 Tagen je Markt holen, dann die
+Auswahl (z. B. Score >= Schwelle) gegen die Gesamtheit stellen, die Differenz in
+Prozentpunkten nennen und ein t-Test ueber die beiden Gruppen rechnen. Ein
+|t| < 2 heisst: die Regel ist gegen die Basislinie nicht unterscheidbar - auch
+wenn sie gegen null positiv aussieht. Das ist zugleich die Antwort auf „die Spur
+X als Filter an die anderen Spuren haengen?": kein Edge heisst Filter weglassen,
+nicht Filter verstaerken, und ein Filter, der nur das Marktniveau abbildet,
+schneidet Runden weg, ohne bessere zu finden. Zusaetzlich je Score-Band
+ausweisen - steigt der Score und faellt das Ergebnis, ist es kein Signal.
+
+**2. „Die beste Spur" verwechselt Vorhersagequalitaet mit Handvormacht.** Die
+Spur, die vorn steht, ist haeufig die EINZIGE mit echtem Orderpfad - sie hat
+Runden, die die anderen nicht haben. Vor jeder Empfehlung „nimm die beste Spur
+als Vorlage" beide Faehigkeiten getrennt feststellen: kann sie handeln (Orderweg,
+Freigabe, Guthaben) und sagt ihr Signal etwas voraus (Forward-Return gegen die
+Basislinie). Eine Spur ohne Orderpfad kann die bessere Strategie sein und trotzdem
+nie sichtbar werden; eine Spur mit Orderpfad und ohne Edge ist das Gegenteil.
+Beide Zustaende gehoeren in denselben Befund, sonst wird die unsichtbare zur
+besten und die sichtbaren zur geaenderten Loesung.
+
+**Kontrolle, wenn eine Spur ungewoehnlich gut dasteht:** Runden mit einer
+Haltedauer im Takt des Aufrufers herausrechnen - das ist die Zyklusdauer, keine
+Marktbewegung - und BEIDE Kennzahlen nennen; Ergebnis je Instrument ausweisen.
+Ein Ergebnis, das an einem Instrument haengt, ist ein Ergebnis dieses
+Instruments. Warum das je Spur passiert: ein Tagesbericht traegt als `preis` den
+Schlusskurs von gestern, und nimmt der Einstieg daraus, liegt er bei steigendem
+Markt UNTER dem Kurs - das Ziel ist dann schon beim Kauf erfuellt. Die
+herausgerechneten Runden wegzulassen waere Schoenung, nicht Messung.
+
 ## Schritt 3 - Kosten aus der ZEILE, nie aus dem Gefuehl
 Je Spur ein anderes Feld:
 - xperp, swap: `margin_usd` (Einsatz/Erloes), Kosten aus `nominal_usd` x

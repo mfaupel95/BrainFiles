@@ -41,11 +41,17 @@ Ausloeser → Referenz:
 - Bilanz deuten, „das heisst, wir haetten X gewonnen?" — ein Papierbuch-Ergebnis
   hat fuenf Fragen, bevor es eine Antwort ist:
   `references/buchergebnis-pruefen.md`
-- **„warum hat die Spur 0 Runden?"** — vier Lagen, die gleich aussehen (wartet /
-  arbeitet / nur Ausbuecher / echter Stall), plus die Stall-Falle „Instrument
+- **„warum hat die Spur 0 Runden?"**, **„Spuren ohne Runden stillegen"** —
+  „0 Runden" heisst NICHT „stirbt nie": die Auswertung zaehlt GESCHLOSSENE
+  Runden, eine Spur mit heute eroeffneten Positionen steht dort bei null und
+  arbeitet. fuenf Lagen, die gleich aussehen (wartet / arbeitet / nur
+  Ausbuecher / **Buch voll** / Stall), plus die Stall-Falle „Instrument
   nicht mehr in der Wachenliste" **und die dritte Form: es gibt fuer einen
   gehaltenen Token gar KEINEN Kurs** (Onchain-Kette meldet nur Transaktionen) —
-  „Buch voll bei vorhandenen Kandidaten" ist selbst eine Null-Lage: `references/null-runden.md`
+  „Buch voll bei vorhandenen Kandidaten" ist selbst eine Null-Lage.
+  **Vor jeder Stilllege-Empfehlung erst der Befund-Lauf**
+  (`scripts/null_runden_befund.py`, liest nur, nennt die Lage mit) und im
+  Bericht die LAGE nennen statt der Rundenzahl: `references/null-runden.md`
 - „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
@@ -160,7 +166,12 @@ Ausloeser → Referenz:
   eine Freigabe (Bedingung 1: 50 Runden netto positiv) — Weg von den Journalen
   zur EINEN belegten Aenderung, mit den Zahlen, die eine Aenderung tragen, und
   dem, was eine duenne Stichprobe NICHT hergibt:
-  `references/auswertung-und-optimierung.md`. Dort auch, wie man die Auswertung
+  `references/auswertung-und-optimierung.md`. **Und Schritt 2b dort: eine Auswahl-
+  regel wird GEGEN DIE BASISLINIE gemessen, nicht gegen null** (Differenz zu allen
+  vom Scanner gesehenen Maerkten plus t-Test; |t| < 2 = kein Edge) — und „die beste
+  Spur" heisst zwei Fragen, nicht eine: sagt ihr Signal etwas voraus, und kann
+  sie ueberhaupt handeln. Eine Spur ohne Orderpfad kann die bessere Strategie sein
+  und trotzdem nie sichtbar werden. Dort auch, wie man die Auswertung
   SELBST liest, bevor man ihr glaubt: der Anteil der groessten Spur an der
   Summe, Brutto gegen Netto (Papierzeilen tragen keine Gebuehr), ein FEHLENDES
   Gebuehrenfeld in der `wachen.json`, das eine tote Spur tragfaehig aussehen
@@ -543,269 +554,13 @@ Ausloeser → Referenz:
    Parameter-Aenderung nachsehen, WANN der Wert gelesen wird, und die Wirkung im
    Bericht auf diesen Zeitpunkt datieren.
 ## Pitfalls
-Die **vollstaendigen** Lektionen stehen in `references/pitfalls.md` (alle Punkte
-der Landkarte, gleiche Nummer, mit Begruendung und Messwerten). Hier nur die
-Landkarte, ein Satz je Punkt.
-Vor jeder Aenderung an einer Spur den Punkt lesen, der greift - die Kurzfassung
-ersetzt die Begruendung nicht.
-
-1. **Der Sperrtext ist eine Schnittstelle.**
-2. **Diagnose in jedem Modus drucken, den ein Aufrufer parst.**
-3. **Gemeldet wird zeilenweise, nicht im Block.**
-4. **Ein Ausstiegsgrund ausserhalb des Stichwortfilters meldet nichts.**
-5. **Zwei Prozesse mit identischer Kommandozeile sind kein Doppellauf.**
-6. Erst nachsehen, wer den Ausstieg speist, bevor eine Marktart als unsicher
-7. Eine Uhrzeit ohne Datum und ohne Zone liest sich als Frist in der
-8. **Drei Uhren in derselben Pruefung: Journal = UTC, Log und Bus = lokal.**
-9. Ein Test darf in keinen echten Zielpfad schreiben — auch der richtige Aufruf
-10. **Ein Wegwerfskript laedt die Spur ueber den DATEIPFAD, nicht per `import`.**
-11. **Eine Stoerung gehoert aus der KENNZAHL, nicht aus der Kapitalkurve.**
-12. **Zahlen im Quelltext sind Behauptungen.**
-13. **Plan (Stufe 1) fuer jede angefasste Datei.**
-14. **Code-Ersetzungen an Dateien mit `\n` im Quelltext:.**
-15. **Eine Sperre muss auch aufgehen können.**
-16. **Zwei Fassungen derselben Sperre, eine Wahrheit.**
-17. **Zustandsdateien vergiften sich.**
-18. Ein neues Feld je Position bekommt einen Altbestand-Rueckfall, sonst kippt
-19. **Eine Ablehnung darf nicht gleich wieder gefragt werden.**
-20. **Vor jeder Aenderung an `SPUREN` erst nachsehen, was schon laeuft.**
-21. Eine zweite Aufgabe auf derselben Spur ist ein zweiter Schreiber — auch wenn
-22. **Die Herzschlag-Grenze folgt der Selbstheilungszeit, nicht dem Gefuehl.**
-23. **Eine Regel ohne Messung verfaellt.**
-24. **Erst die Geometrie rechnen, dann Parameter drehen.**
-25. **Festes Nominal bei variablem Stop heisst ungleiches Risiko je Platz.**
-26. **Ein erhoehtes Limit kann wirkungslos sein — vorher nachrechnen, WELCHES Limit greift.**
-27. **Der Abnahme-Nachweis laeuft am ECHTEN Zyklus, nicht am Testaufruf.**
-28. **Ein Schwellwert aus einer FREMDEN Groesse ist ein latenter Defekt.**
-29. **Eine Sicherung, die man nicht sieht, kann man nicht pruefen.**
-30. **Ungepruefte Funktionen sind der Ort, an dem solche Defekte ueberleben.**
-31. **Erst der Import-Kette folgen, dann "kein Code liest das" behaupten.**
-32. **Ein Schwellwert aus einer FREMDEN Groesse ist ein latenter Defekt.**
-33. **"Unerreichbar" ist bei einem Drawdown-Schwellwert das falsche Wort.**
-34. **Eine geteilte Umsetzung ueber den PFAD laden, nicht ueber `sys.path`.**
-35. **Ein neuer Konfigurationsschluessel wirkt erst, wenn die ABLEITUNG ihn kennt.**
-36. **Eine Schutzschwelle nimmt den HOECHSTEN Fall, nicht den Mittelwert.**
-37. Eine STRUKTURELLE Grenze ist ein Beleg, keine erfundene Zahl — und der
-38. **Fehlt eine Schwelle, darf nichts erfunden werden.**
-39. Die Zahlen aller Spuren ohne eigene `auswertung.py` liefert
-40. **Zwangsschluesse sind keine Runden.**
-41. **Ein Backtest, der die Spur nachbaut, optimiert die Nachbildung.**
-42. Erst trennen (suchen/pruefen), dann urteilen — sonst ist der Befund
-43. Spannt der ganze Parameterraum fast nichts, ist der Parameter nicht der
-44. **Ein Befund eines Subagenten ist ein Hinweis, keine Tatsache.**
-45. Vor jeder Deutung eines Journals pruefen, ob die Runden aus eigenen
-46. **Testfallen in den Spuren:.**
-47. Ein Papier-Umfang darf groesser sein als das Muster - das ist kein
-48. **Anbinden heisst: JEDE Liste, die eine Spur nennt, mitziehen** — und die
-Suiten nennen die vergessene (`test_lage`: Holer, `test_befehle`: `FAMILIE`).
-49. Backtest-Urteile: der Sammler ist `Handel/backtest_urteile.py`, die Felder
-50. **Vier Indikator-Spuren sind seit dem 15.09.2026 angeschlossen.**
-51. **Der richtige Testaufruf steht im Testkopf, nicht in der Gewohnheit.**
-52. **Vier Indikator-Spuren liegen gebaut, aber unangeschlossen.**
-53. **Keine absoluten Benutzerpfade in Skripten.**
-54. **Nur `dauerlauf.py` selbst braucht einen Neustart.**
-55. **Tests dürfen keinen Konfigurationswert behaupten.**
-56. **`.env`, `Wissen/Zugaenge.md`, `proxy.yaml` sind tabu.**
-57. Ein Buch, das nur Buchungen protokolliert, kann "Tor" und "voller Platz" nicht
-58. Ein volles Buch ist ein Durchsatz-Problem, kein Tor-Problem — und der Umfang
-59. Ein Signal-Feed ist ein FENSTER, kein Stammbuch: die Wallet-Liste altert in
-60. Ein Test, der eine Grenze aus der Datei liest, misst nach einer
-61. **Ein modulweiter Schreibschalter leckt zwischen Testdateien.**
-62. **Eine neue Spur muss in die Meldungen, sonst meldet sie niemand.**
-63. Bus und Tagesbericht lesen feste Feldnamen — eine Spur mit anderer
-64. Ein richtiger Feldname kann die falsche GROESSE tragen — Einheit pruefen, nicht
-65. „Rueckgabe N“ nach Spur-Neueintrag: die Spur selbst crasht, nicht die
-66. **`handeln.py` muss `--papier` als Flag UND als Positional akzeptieren.**
-67. **Datenquelle als Test-Seam austauschbar machen.**
-68. **Erweiterst du die Signatur einer ersetzten Funktion, muessen die Doubles mit.**
-69. **Eine geaenderte Signatur trifft auch die Aufrufer, die kein Test beruehrt** — und ein neuer OPTIONALER Parameter i
-69a. **Der Testseam ist die LADEFunktion, nicht das geladene Modul.** Laedt ein
-Wrapper sein Boersenmodul bei jedem Aufruf ueber den Pfad (`spec_from_file_location`),
-gibt es zwei Instanzen; ein Patch auf der importierten erreicht die von ihm selbst
-geladene nicht — der Test laeuft und die Attrappe wird nie benutzt. Die Ladefunktion
-patchen und Antwort **je Endpunkt** liefern. Bleibt die Aufrufliste der Attrappe
-leer, liegt die Naht falsch, nicht der Test.
-69b. **„Die Suite war schon rot" ist eine Behauptung, keine Messung.** Beide
-Zustaende mit derselben Suite fahren und die Fehlernamen differenzieren. Fuer die
-Gegenprobe `git show HEAD:<pfad>` in die Datei schreiben statt `git checkout` — das
-ueberschreibt uncommittete Fremdarbeit.n der MITTE laesst positionelle Aufrufer still in den falschen Slot rutschen: kein Fehler, ein leeres Ergebnis („nicht messbar"). Hinten anhaengen, Aufrufer greppen; Volltext in `references/spur-tests-und-auswertung.md`.
-70. Ein Stummel im Testbaum kann den geaenderten Aufruf verbergen — am echten
-71. **Ein Pruefer, der Quelltext parst, erblindet still, wenn sich die Form aendert.**
-72. **Eine Papier-Position in `zustand.json` ist der zweite Zyklus-Test.**
-73. **Keine Behauptung ueber eine andere Spur im Code.**
-74. **Wachen-Module liegen nicht immer im eigenen Ordner.**
-75. **Ausstiegsgruende nach Schwere pruefen, nicht nach Naehe.**
-76. **Ausgabe testen, nicht Quelltext.**
-77. „Prognose: Exit-Code 1” ist normal, aber nur der volle Lauf ist ein
-78. Der Boersen-Stop ist eine Order mit eigenem Leben: jeder Ausstieg muss ihn
-79. **Eine Vorschau, die schreibt, ist keine Vorschau.**
-80. Die Befehls-Ebene ist eine eigene Naht - und `/lage` darf nicht `/bericht`
-81. **Ein neuer Spurordner ist in `.gitignore` nur freigegeben, nicht entsorgt.**
-
-82. **Eine Statistik darf auf einer tieferen Reihe rechnen, ein Kurssignal nicht - und nur, wenn beide gleichzeitig enden.**
-
-83. **Eine neue Spur kopiert die Sperrschreibungen des Vorbilds** — `z["modus"]` setzen und `wx.sperre_zu()` in Kill- und EV-Zweig, sonst schliessen die Notbremsen das Wachen-Tor nie.
-
-84. **'Verwaiste Sperre ... wird ersetzt' ohne Zyklus-Zeilen dazwischen ist ein Absturzloop, kein haengender Prozess.**
-
-85. **Eine 'Fixes Applied'-Notiz einer fremden Sitzung ist eine Behauptung, kein Beweis — nach jeder uebernommenen Fremdaenderung die VOLLE Testsuite laufen lassen.**
-
-86. **Eine Whitelist fuer die Subprozess-Umgebung bricht ALLE Spuren** — die Spuren sind vertrauenswuerdiger eigener Code und brauchen die API-Schluessel in ihrer Umgebung; `_env_sicher()` reicht die volle Umgebung durch.
-
-87. **Feste Zaehl-/Sollwert-Tests (`len(HOLER)`, `ERWARTET`-Dicts) sind eine LISTE, die eine Spur nennt** — beim Anschliessen mitziehen, sonst faellt die volle Suite rot, ohne dass etwas kaputt ist.
-
-89. **Ein stiller `except`-Zweig behauptet einen Sachverhalt, den er gar nicht geprueft hat.** Faengt eine Funktion wie `zeitfenster_offen()` eine Ausnahme ab und gibt `False` zurueck, meldet sie "kein Zeitfenster" — obwohl das Fenster offen sein kann und der Importfehler die Ursache ist. Ausnahme-Zweige im Live-Pfad: nach `stderr` schreiben, nicht schweigen. Die MELDUNG muss den Fehler nennen (`Zeitfenster nicht lesbar`), nicht den Zustand (`Freigabefenster nicht offen`).
-
-88. **Eine Skip-Wache auf den falschen Teil gesetzt macht die Routine dauerhaft wirkungslos.** Vor dem Einbauen einer Uebersprungs-Bedingung pruefen, was die Routine HEUTE noch tut — nicht was sie mal tat. Belegt: `marktscanner.ps1` sprang bei laufendem Dauerlauf ueber `scan.py` (harmlos, schreibt nur `berichte/*.json`), weil frueher auch `handeln.py` in der Routine stand. Folge: der Ranglisten-Bericht fror auf den Vortag ein, Spuren kauften zu alten Preisen. Alter des ERZEUGNISSES messen (Datei-Mtime von `berichte/neuester.json`), nicht den Exitcode der Routine.
-
-90. **Ein Zwischenlager ist ein Vertrag.** Wer ein Ergebnis weglegt und spaeter
-wieder einliest (Rangliste, Kennzahlenstand, Vorrat im `zustand.json`), muss
-JEDES Feld mitnehmen, das der Verbraucher braucht - nicht nur die Felder der
-Anzeige. Sonst faellt der Verbraucher in seinen Rueckfall, und der zeigt auf den
-Wert, den es vor dem Umbau gab: die Aenderung wirkt dann nur auf den ersten Lauf
-(Beleg: `swap` handelte nach dem Zwilling-Umbau wieder `XAU-USDT-SWAP`, OKX
-50124). Dazu gehoeren zwei Sicherungen: ein Stand aus ALTEM Schema wird
-verworfen und neu geholt statt bis zum Ablauf zu gelten, und der Rueckfall darf
-nie auf den unbrauchbaren Wert zeigen (besser kein Vorschlag als eine Order, die
-nur abgewiesen wird). Gegenprobe: den Verbraucher mit einem Stand aus der DATEI
-fahren, nicht mit einem frisch gebauten Dict - ein Test mit `handels_instr` im
-Speicher war gruen, waehrend die Spur den falschen Markt handelte.
-
-91. **Eine Sperrzeile, die nur im Fehlerfall gedruckt wird, ist von "nicht
-geprueft" nicht zu unterscheiden.** Und der Dauerlauf parst genau diese Zeile:
-`if g: print("Live waere gesperrt durch: …")` laesst bei leerer Liste eine
-Luecke, die wie ein abgebrochener Lauf aussieht. Immer drucken, leere Liste als
-`nichts`. Dazu gehoert die zweite Haelfte: die Vorschau nennt den GEGENSTAND der
-Order (das gehandelte Instrument), nicht den Zwischennamen, aus dem er
-abgeleitet wurde.
-
-92. **Eine Anzeige, die ihre Ausnahmen verschweigt, liest sich als fehlerfreier
-Automat.** Zaehlt eine Kennzahl nur eine Teilmenge (echte Handelsrunden ohne
-Zwangsschluss und Buchhaltungs-Korrektur), gehoert der Zusatz in DIESELBE Zeile -
-sonst fuellt der Leser die Luecke mit dem guenstigsten Fall („Treffer 100 %" bei
-drei Ausstiegen daneben). Vollen Text: `references/pitfalls.md`.
-
-93. **Ein Kill-Switch-Ausstieg ist kein Beleg fuer eine Verlustposition.** Er
-feuert auf den kumulierten Ruecklauf vom realisierten Peak, nicht auf die
-aktuelle Position - gemessen 27.09.2026 bei xperp waren alle fuenf
-Kill-Ausgaenge positiv (+0,4 bis +2,4 %). Vor der Deutung die Drawdown-Kurve
-FIFO-gepaart nachrechnen und den Deckel gegen den je erreichten Ruecklauf
-halten; ein Deckel weit darueber ist entschaerft, kein Fehler. Vollen Text:
-`references/pitfalls.md`.
-94. **Eine unbestaetigte Fuellung ist keine Null.** Wird die Boersenantwort sofort
-nach dem Kauf gelesen, ist sie leer oder ein Bruchteil; `int(0.4)` = 0 und daraus
-gehen Stop UND Rueckdrehung mit `size: 0` an die Boerse (`invalidArgument: 0`).
-Die Rueckdrehung bleibt wirkungslos und wird als Erfolg protokolliert. Lesefunktion
-warten und `(menge, bestaetigt)` zurueckgeben, nie auf 0 herunterrechnen
-(`max(1, int(round()))`), einen Abfragefehler nie als Nullbefund lesen, und
-unbestaetigt mit der BESTELLTEN Groesse weiterarbeiten. Vollen Text:
-`references/live-order-und-buchpflege.md` Abschnitt 15. Die drei Fehler als KETTE
-(inkl. Buch-gegen-Boerse mit drei Orders und einem Waisen-Stop 0,19 % unter dem
-Kurs) in `references/orderweg-sicherheitskette.md`.
-95. **Eine Rueckdrehung gilt erst, wenn die BOERSE die Position nicht mehr fuehrt.**
-„Verkauf abgeschickt" ist keine Rueckdrehung — die Wirkung wird am Bestand
-gemessen, nicht am Erfolg des eigenen Aufrufs. Bleibt die Position stehen, ist das
-eine Lueckenmeldung und kein weiterer Einstieg. Ein Rueckweg, dessen Wirksamkeit
-nicht gemessen wird, ist eine Annahme.
-96. **Ein Einstiegs-Gate darf den Ausstieg nie sperren.** Eine Freigabe, die einen
-NEUEN Markt eroeffnen soll, gehoert nicht auf den Ausstiegspfad: als modulweite
-Variable, die nur der Einstiegszweig setzt, sperrt sie jeden Kursabruf und haelt
-die Live-Position fest. Loesung: der Aufrufer sagt den Zweck
-(`pf_markt(inst, fuer_ausstieg=True)`) — und JEDER Weg laedt die Vorbedingungen
-(Marktliste, Kennung), die er zum Aufloesen braucht. Der Ausstieg umgeht die
-Freigabepflicht, NIE den Beweis, dass es den Markt gibt. Merksatz: **ein
-Ausstiegspfad ist die einzige Stelle, die IMMER funktionieren muss** — und er ist
-meist die, die am spaetesten gebaut und am seltensten gelaufen ist; er braucht
-keinen Freigabepflicht-Pfad, sondern einen eigenen.
-**Und die Kurve selbst zerlegen, bevor ein Deckel angefasst wird.** Die
-Kapitalkurve rechnet auf ALLEN Buchungen, also auch auf
-Buchbereinigungs-zeilen, die keine Handelsrunde sind. Gemessen an einer Spur:
-von 25 Buchungen seit dem Hoch waren 20 Bereinigungen mit −266 USD und nur
-5 echte Runden mit −14 USD — der Deckel stand auf 280, davon waren rund 184
-fiktiv. **Buchbereinigungs-zeilen gegen die realisierte PnL-Historie der
-Boerse stellen (`/account/positions-history`, `closedPos`/`realizedPnl` je
-Instinkt)**: die Belege mit derselben Kontraktzahl sind dieselbe Position, und
-weicht der Erloes der Zeile deutlich ab, ist die Zeile falsch gebucht. Ein
-Deckel, den man ueber eine noch nicht korrigierte Buchung hebt, verschiebt
-nur den Tag, an dem man es merkt — die Korrektur kommt vorher.
-
-94. **Ein gemeinsamer Kern, der die Sperrzeile nicht druckt, schaltet die
-Auto-Freigabe fuer ALLE seine Spuren ab.** `dauerlauf.nur_fenster_fehlt()` liest
-die `--vorschau`-Ausgabe der Spur; fehlt die Zeile „Live waere gesperrt durch:
-…" ganz, kommt `None` zurueck — kein Fenster, kein Live-Lauf, und die Spur sieht
-nur „still" aus. Die Sperrzeile gehoert in JEDEN Modus, den ein Aufrufer parst
-(auch `--vorschau`), nicht nur in den Live-Zweig. Vollen Text:
-`references/live-tor-und-einsatzgroesse.md`, Abschnitt 6.
-
-96. **Ein Cache oder Validator, den niemand laedt, sieht aus wie „unbekannt".**
-Wer eine Marktauflösung um eine Liste erweitert (Instrumentliste der Boerse,
-Pair-Tabelle, Whitelist), muss den LADER aus dem Lauf aufrufen und danach den
-Laufaufruf im Quelltext suchen. Ein `maerkte()`, das absichtlich nur den
-bereits geladenen Stand zurueckgibt (kein Netzzugriff auf dem heissen Pfad),
-liefert ohne Lader leer — und der Aufrufer meldet fuer JEDEN Namen
-„unbekanntes Instrument". Das sieht nicht nach fehlendem Lader aus, sondern
-nach einer falschen Zuordnung, und es kostet den Lauf still: die Spur ist
-scharf, das Tor offen, und jeder Zyklus endet in einer Fehlerzeile. Merksatz:
-**leerer Cache und unbekannter Name sind im Befund nicht unterscheidbar** —
-im Zweifel die Cache-Groesse als eigene Zeile ausgeben, dann sieht man
-sofort, ob geladen wurde.
-
-97. **Ein Belegwerkzeug, das echte Ordern stellt, braucht einen BILLIGEN
-Vorgabemarkt — und seine Groesse wird gerechnet, nicht angenommen.** Am
-Futures-Weg war 1 Kontrakt = 1 Einheit der Basiswaehrung (1 Kontrakt BTC
-rund 84.600 USD), das Werkzeug rechnete aber „1 Kontrakt = 1 USD" und haette
-mit seiner Vorgabe acht Kontrakte fuer ueber 676.000 USD gekauft. Zwei Regeln:
-Nennwert = Kontrakte × Kurs und der benoetigte Einschuss aus dem Margenplan
-des Marktes, im Tor anzeigen (dann bricht die Sonde ab, statt zu kaufen);
-und die Vorgabe auf einen Markt setzen, dessen 1 Kontrakt ein paar Cent
-traegt. Dazu: **sobald die Order gesendet ist, ist der Schutz-Stop der
-naechste Schritt und darf hinter keinem Schritt stehen, der werfen kann** —
-ein Fill-Polling, das nach der Fuellung fehlschlug, liess die Position ohne
-Stop offen. Eine Pruefung, die
-NACH dem Schneiden laeuft, nennt das falsche Uebel: erst die Laenge auf der
-PLATTE messen, dann schneiden, und beide Gruende getrennt benennen (Historie zu
-kurz -> nachfuellen; Fenster zu klein -> Bedarf `mindest_kerzen + 20` nennen).
-Und ein Lauf, der "0 Runden" melden kann, ohne je einen Schritt gerechnet zu
-haben, ist ein stiller Ausfall, kein Messergebnis. Vollen Text:
-`references/pitfalls.md`.
-
-98. **Ein boolescher Existenztest wirft die MENGE weg — und die MENGE ist der
-Schutz.** Die Abgleichstufen einer Live-Spur fragen alle „ob": ob die Position
-da ist, ob die Kontraktzahl stimmt, ob EIN Schutzauftrag liegt. Keine fragt, wie
-viele Kontrakte dieser Schutz abdeckt, und ein Treffer genuegt: `_stop_vorhanden()`
-liefert `True`, sobald irgendein Auftrag gefunden ist. So standen 19 von 145
-Kontrakten ohne Schutz, waehrend Spur, Bericht und Abgleich „ok" sagten. Wer eine
-gehebelte Position schuetzt, misst `sum(sz)` der Schutzauftraege gegen den
-BESTAND AN DER BOERSE (nicht gegen das Buch — ein Handgriff kann das Buch
-verkleinert haben) und stellt nur die Restmenge nach. Als Schutz zaehlt ein
-Auftrag nur mit `reduceOnly`, mit der Seite GEGEN die Position und mit einer
-Ausloesung (`slTriggerPx` oder `tpTriggerPx` — ein Trailing traegt kein
-`slTriggerPx`); der vorhandene Filter ist derselbe wie `okxf.ist_schutz_stop`,
-nur ohne die Menge, und genau das ist der Unterschied. Bestehende Schuetzte
-werden nie storniert und nie nachgezogen (T-278), ein nachgesetzter Stop ist
-ein Vermerk im Zustand und KEINE Journalzeile (sonst entsteht eine Runde, die
-nie stattfand), und ein Stop auf der falschen Seite ist kein Schutz: long-Stop
-auf/ueber dem Kurs verkauft sofort, ein Stop auf/unter `liqPx` kommt nach der
-Liquidation nie — beide verweigern und melden, statt eine scheinbare Deckung zu
-bauen. Werkzeug `xperp/stopdeckung.py`: Vorschau Standard, und `--anwenden` OHNE
-`--stop` stellt nichts — das Werkzeug rät keinen Schutzpreis. Volltext:
-`references/live-order-und-buchpflege.md`, Abschnitt 5d.
-
-99. **Eine neue Journal-Spalte braucht die Kopf-Migration im SELBEN Zug.** Der
-Zeilen-Schreiber schneidet auf die Kopf-Laenge des Altfjournals
-(`pos_kennung.zeile`), also verwirft ein Altjournal ohne die neue Spalte den
-neuen Wert — oder schreibt ihn in den Slot der LETZTEN Spalte, wenn der
-Schreiber die Spalte vor dem Schluss einfügt: gemessen stand der neue
-Herkunft-Wert in der pos_id-Spalte und die echte pos_id war weg, bei einer
-LIVE-Kaufzeile. Vorgehen: Kopf migrieren (csv-Roundtrip, Sicherung
-`.bak-JJJJMMTT` vorher, alle Altzeilen auf die neue Laenge polstern),
-Gegenprobe = Zeilenzahl unveraendert + einheitliche Laengenverteilung, und
-verlorene Werte aus dem ZWEITEN Zeugen holen, bevor man sie als Verlust
-akzeptiert (die pos_id der Position stand noch im Zustand). Zusätzlich:
-einen Reweave-Ablauf NICHT inline in einen Heredoc schreiben — `open('w')`
-kürzt die Datei VOR dem ersten `writerows`-Fehler, eine Ausnahme mitten in
-der Migration hinterlässt eine halbe Datei; Skript in eine Datei legen,
-Restaurierbarkeit (Backup) prüfen, erst dann laufen lassen.
+Die Landkarte der 103 Punkte steht in
+`references/pitfalls-landkarte.md` (ein Satz je Punkt), die vollstaendigen
+Lektionen mit Begruendung und Messwerten in `references/pitfalls.md` -
+gleiche Nummer. Vor jeder Aenderung an einer Spur den Punkt lesen, der
+greift; die Kurzfassung ersetzt die Begruendung nicht. Beide Dateien
+liegen getrennt, weil die Landkarte (22.889 Zeichen) in dieser Datei nur
+912 Zeichen Luft liess und damit jeden weiteren Patch blockierte.
 
 ## Welche Daten eine Sperre liest
 
@@ -848,7 +603,14 @@ wenn genau diese Spur ansteht.
 
 ## Boersendaten und Orderflow
 
-Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen in `references/boersen-datenzugriff.md`. Kernregeln: `okxf.kerzen()` unbekannte Instrumente leere Liste (len pruefen); Kraken-OHLC max 720 Kerzen ohne Rueckwaerts-Pagination (M15 7,5 Tage); 4h-CVD nur ueber `/rubik/` (nicht aus dem Tape); Host nur `www.okx.com`; Rubik-429 wird nicht wiederholt; Kaufkraft ist `availEq` je Waehrung (nicht `eq`), boersenseitige Stops stehen nur in `orders-algo-pending`. **Vor dem Anbinden einer Spur die Warmlauf-Laenge ihres Indikators gegen die Abrufgrenze rechnen** — ein Indikator, der mehr Historie braucht als der Abruf liefert, ist nicht ungenau, sondern still tot (Details und die OKX-Grenzen: `references/boersen-datenzugriff.md`).
+Detaillierte API-Fallen fuer OKX/Kraken-Kerzen und Orderflow (Rubik/CVD) stehen in `references/boersen-datenzugriff.md`. Kernregeln: `okxf.kerzen()` unbekannte Instrumente leere Liste (len pruefen); Kraken-OHLC max 720 Kerzen ohne Rueckwaerts-Pagination (M15 7,5 Tage); 4h-CVD nur ueber `/rubik/` (nicht aus dem Tape); der Host gehoert zu EINEM
+Zugang — `OKX_BASE` muss die API sein (`https://www.okx.com` beim globalen,
+`https://eea.okx.com` beim EEA-Konto), nie `my.okx.com`; Rubik-429 wird nicht
+wiederholt; Kaufkraft ist `availEq` je Waehrung (nicht `eq`), boersenseitige
+Stops stehen nur in `trade/orders-algo-pending`. **Schluessel UND Host aus
+derselben Quelle lesen** — ein `OKX_BASE` aus der Prozessumgebung neben einem
+Schluessel aus der Registry signiert gegen die falsche Boerse und liefert
+`50119`/`50101`. **Vor dem Anbinden einer Spur die Warmlauf-Laenge ihres Indikators gegen die Abrufgrenze rechnen** — ein Indikator, der mehr Historie braucht als der Abruf liefert, ist nicht ungenau, sondern still tot (Details und die OKX-Grenzen: `references/boersen-datenzugriff.md`).
 
 ## Ein Fenster ueber alle Spuren (Handelszentrale, 13.09.2026)
 Die Regeln liegen in `references/handelszentrale-fenster.md` - dort auch die
@@ -1122,7 +884,8 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   `usd` filtern, Epoch umrechnen, Einzahl- vs. Mehrzahl-Schluesselnamen) und die
   Regel, dass ein Transfer zwischen Konten eine Kontohandlung ist. Ausloeser:
   "hab eingezahlt", "Guthaben fehlt", "wo ist das Geld hin".
-- `references/pitfalls.md` — ALLE Pitfalls im Volltext (82 Punkte, gleiche Nummer wie die Landkarte in SKILL.md):
+- `references/pitfalls-landkarte.md` — die Landkarte aller 103 Punkte, ein Satz je Punkt (aus SKILL.md ausgelagert).
+- `references/pitfalls.md` — ALLE Pitfalls im Volltext, gleiche Nummer:
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,
   Doppellauf und Neustart, Buch und Ablehnungen, Naht und Signatur,
   Auswertung und Backtest. **Vor jeder Spuraenderung lesen.**
@@ -1222,6 +985,12 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   Geometrie-Gegenprobe, Ausstiegsgruende, Gruppen mit Stichproben-Disziplin, die
   eine Aenderung samt drei Ablageorten, und was eine duenne Stichprobe NICHT
   hergibt. Ausloeser: „werte die Daten aus", „optimiere die Strategien".
+  **Dort auch Schritt 2b — die ZWEI Fragen, die vor jedem „nimm die beste Spur":
+  Hat die Auswahlregel Edge (gemessen GEGEN die Basislinie aller gesehenen
+  Maerkte, nicht gegen null) und kann die Spur ueberhaupt handeln?** Vordergrund
+  steht eine Spur fast immer, weil sie die einzige mit echtem Orderpfad ist — das
+  ist Handvormacht, keine Vorhersagequalitaet, und die beiden werden erst zusammen
+  bewertet.
 - `references/fremdarbeit-mitnehmen.md` — uncommittete Arbeit einer anderen
   Sitzung erkennen, liegen lassen, mitnehmen wenn fertig:
   Wachstums-/mtime-Kriterium, `reset --soft` zum Nachtrennen, Waechter als

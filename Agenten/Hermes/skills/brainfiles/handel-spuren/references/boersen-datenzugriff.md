@@ -310,6 +310,13 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
 
 - **`okxf._roh` gibt die Liste DIREKT zurueck** (kein `["data"]`-Mantel). Ein
   `.get('data')` darauf ist ein Attributfehler, kein leeres Ergebnis.
+  **Diese drei Regeln gelten fuer BEIDE Module** — `okxf._roh` in `xperp/` und
+  `okx._roh` in `scanner/` haben dieselbe Signatur und dieselbe Antwortform.
+  Der Unterschied ist nur die Quelle: `okxf` liest FUTURES (`instType=FUTURES`,
+  `XPERP`-Namen), `okx` liest SPOT. Wer die Signatur am einen Modul gelesen hat,
+  traegt sie nicht ungeprueft auf das andere — dort kostet es drei Fehlversuche
+  (ein Dict an erster Stelle, fehlendes `signiert=True`, POST statt GET auf
+  einen Konto-Endpunkt), die alle drei wie „keine Daten" aussehen.
 - **Kaufkraft ist `availEq`, nicht `eq`.** `frozenBal` zerfaellt in `isoEq`
   (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`.
   Gemessen: `eq` 864, `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei

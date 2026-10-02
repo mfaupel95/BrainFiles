@@ -44,6 +44,39 @@ Beleg ist der Vergleich beider Zahlen — und die Aussage lautet dann „Struktu
 nicht „schlecht parametriert". Die Antwort auf eine Backtestfrage gehoert also
 mit dieser Rechnung und nicht mit einem gerundeten Prozentsatz.
 
+## Long und Short: jede Seite EIGEN messen, bevor eine Short-Fassung gebaut wird
+
+Die Anfrage lautet fast immer „long und short abwechselnd nach Indikatoren".
+Die Antwort ist selten die gebaute Variante, sondern eine Messung, und sie geht
+ueberraschend oft gegen die Erwartung:
+
+    long   -20,68 %   Sharpe -0,35   Profit-Faktor 0,83
+    short  -34,50 %   Sharpe -0,52   Profit-Faktor 0,76
+    beide  -48,13 %   Sharpe -0,95   Profit-Faktor 0,77
+
+Drei Laeufe derselben Strategie, nur die Seite unterscheidet sich, Futures-Modus
+mit Funding-Rate. Zwei Regeln daraus:
+
+1. **Die kurze Seite traegt nicht automatisch, und die Kombination ist nicht die
+   Summe der beiden.** Gemessen verliert die kurze Seite MEHR als die lange, und
+   long+short verliert mehr als jede Seite einzeln. Wer nur die lange Seite
+   kennt, schliesst daraus „die kurze Seite holt das Defizit rein" — das ist
+   unbelegt. Also: **erst `long`, `short` und `beide` getrennt fahren**, dann
+   bauen. Das kostet zwei Backtests und spart eine falsche Strategie.
+2. **Eine Short-Regel wird nicht erfunden.** Von drei portierten Agenten hatte
+   genau einer eine dokumentierte Short-Seite (aus dem Fremd-Agenten
+   uebernommen); bei den beiden anderen gab es nichts zu uebertragen. Eine
+   selbst gebaute Gegenseite ist eine NEUE Strategie und traegt nicht den Namen
+   der portierten — das gehoert in den Bericht, nicht in die Klasse. Die
+   Futures-Strategie bleibt long-only und sagt das auch.
+
+Der Umstieg auf Futures selbst ist eine andere Frage und oft die einzige, die
+etwas bringt: er senkt die Kosten (gemessen 0,05 % statt 0,60 % je Seite), er
+erzeugt aber keine Kante. Beide Fragen getrennt beantworten und beide mit der
+Trefferquote UND dem Ergebnis nennen — eine Trefferquote von 28,6 % auf beiden
+Seiten bei einem Unterschied von 27 Prozentpunkten im Ergebnis ist das ganze
+Argument.
+
 ## Zugang und Erreichbarkeit (gemessen)
 
 - **Container, nicht Prozesse.** Ein Bot = ein Container

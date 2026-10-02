@@ -1229,3 +1229,57 @@ Kurzfassung ersetzt die Begruendung nicht.
   `tests/test_transport_wiederholung.py`). Eine im Reset verlorene LIVE-Antwort
   faengt der naechste Zyklus auf - `boersenstops` (Buch gegen Boerse) bzw.
   `wartende_auftraege`.
+
+### 103. Der Einstieg kommt aus dem Markt, den die Spur JETZT sieht - nicht aus
+einem aelteren Bericht
+
+Ein Tagesbericht ist ein Snapshot: sein `preis` ist `schluss[-1]` der 1D-Kerze von
+gestern. Nimmt der Einstieg daraus, ist er automatisch veraltet, und bei steigendem
+Markt liegt er UNTER dem Kurs - das Ziel (`Einstieg + 2 x Stop`) ist dann schon
+beim Kauf erfuellt.
+
+**Gemessen (Scanner, T-322, 03.10.2026):** Der Bericht vom 17.09. trug AVAX-USDT mit
+7,531; der Markt am 19.09. 02:50 lag bei 8,535-8,747. Der Einstieg lag 12 % unter
+Markt, das Ziel war beim Kauf erfuellt, der naechste Zyklus verkaufte 15 min spaeter
+im Ziel mit ~15 %. Folge: 82 Runden an einem einzigen Tag (+1866 % an diesem Tag),
+97 von 105 Ziel-Ausstiegen nach 0,25 h, 81 von 123 Runden auf EIN Instrument. Die
+Spur galt daraufhin als die beste des Hauses: +17,49 % auf den Einsatz, 85 %
+Trefferquote, Median +18,60 %, t = 15,3 - und `strategie_kennzahlen.py` hat diese
+Zahl woertlich gemeldet. Die ehrlichen Runden (Haltedauer >= 6 h, n = 16) brachten
++1,99 % Mean bei 38 % Treffer, also das Niveau von xperp (t = 1,3). Der Scanner war
+nie die beste Spur; er war die Spur mit dem groessten Rechenfehler.
+
+**Drei Muster, an denen sich das in JEDER Auswertung zeigt, ohne den Code zu lesen:**
+
+1. **Die Haltedauer liegt im Takt des Aufrufers.** 0,25 h = der Zyklusabstand des
+   Dauerlaufs, nicht eine Marktbewegung. Ein echter Ausstieg braucht Tage; die
+   Median-Haltedauer der Runden ist der schnellste Alarm.
+2. **Ein Instrument traegt die Mehrheit aller Runden.** 81 von 123 auf AVAX-USDT
+   ist kein Streuportfolio, sondern ein Kandidat, der im Viertelstundentakt
+   gekauft und verkauft wurde, weil das Ziel sofort wieder erfuellt war.
+3. **Hoeherer Score ergibt schlechteres Ergebnis.** Score 60-69 brachte +18,78 %,
+   Score 80+ brachte -0,46 %. Ein Signal, das mit hoeherer Ueberzeugung schlechter
+   wird, ist kein Signal - es ist der Preisfehler, der die schwachen Kandidaten
+   staerker trifft.
+
+**Vor jeder Aussage "diese Spur ist die beste":**
+
+- Einstiegspreis aus dem Journal gegen den Markt zum Kaufzeitpunkt stellen
+  (Kerzen des Instruments zu dem Zeitpunkt abrufen, nicht den heutigen Kurs).
+- Runden mit unrealistisch kurzer Haltedauer herausrechnen und BEIDE Kennzahlen
+  nennen - eine Auswertung, die nur die bereinigte Zahl zeigt, ist ein Befund ohne
+  Gegenprobe.
+- Ergebnis je Score-Band und je Instrument. Ein Ergebnis, das an einem Instrument
+  haengt, ist ein Ergebnis dieses Instruments.
+
+**Regel im Code:** `marktkurs()` (scanner/handeln.py) ist die EINE Funktion, die den
+Kurs holt, und es gibt KEINEN Rueckfall auf den Berichtspreis - ein alter Preis als
+Einstieg IST der Fehler, ihn wieder zuzulassen hiesse ihn nur unsichtbar machen. Ein
+nicht abrufbarer Kurs ist eine Ablehnung (`"Kurs nicht abrufbar"`), keine Ausnahme:
+ein toter Markt darf den Zyklus nicht abbrechen, die uebrigen Kandidanten bleiben
+kaufbar. Tests: `scanner/tests/test_einstieg_ist_marktkurs.py` (4) und
+`test_ablehnungen.BilligeToreTest` (3) - die Tore MUESSEN billig bleiben, ein am
+Score gescheiterter Kandidat darf keinen Kurs holen, sonst waere der ganze Markt
+(500+ Paare) teuer.
+
+**Befund mit allen Zahlen:** `Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md`.
