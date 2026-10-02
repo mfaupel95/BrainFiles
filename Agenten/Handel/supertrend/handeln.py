@@ -224,6 +224,13 @@ def trailing_ausstieg(p, k, linie, richtung):
 # --- Positionen ------------------------------------------------------------
 
 def pruefe_einstieg(inst, k, z, w, faktor):
+    # Skalieren statt doppeln: liegt fuer dieses Signal schon eine Position
+    # mit gleichem Instrument UND gleicher Seite, wird sie vergroessert
+    # (Regel in Handel/skalieren.py, gemessen 03.10.2026). Ein Seiten-
+    # wechsel ist kein Skalieren - das ist ein neues Signal.
+    sys.path.insert(0, HANDEL)
+    import skalieren as skal
+
     if not z.get("positionen"):
         z["positionen"] = []
     if len(z["positionen"]) >= w.get("max_offene_positionen", 4):
@@ -272,6 +279,25 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         "nominal": nominel, "eroeffnet_zeit": _jetzt(),
         "pos_id": pos_kennung.neu(_jetzt()),
     }
+    _offen = skal.finde_offene(z["positionen"], inst, seite)
+    if _offen is not None:
+        _f = skal.skaliere(_offen, einstieg, nominel, stop_pct_eff, r)
+        if _f is not None:
+            print("SKALIERUNG %s %s auf %.2f USD (war %.2f)  Stop %.2f  Ziel %.2f"
+                  % (_offen.get("seite", "long").upper(), inst,
+                     _f["einsatz_usd"], _f["alt_nominal"], _f["stop"],
+                     _f["ziel"]))
+            # KUMULATIVER Einsatz und GEWOGENER Einstieg, gleiche pos_id: die
+            # Zeile ist der Stand dieser Position nach der Vergroesserung.
+            journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst,
+                    pos_id=_offen["pos_id"], seite=seite,
+                    preis="%.6f" % _f["preis"],
+                    einsatz_usd="%.2f" % _f["einsatz_usd"],
+                    stop="%.6f" % _f["stop"], ziel="%.6f" % _f["ziel"],
+                    stop_pct="%.2f" % _f["stop_pct"],
+                    grund="supertrend+skaliert")
+        return
+
     z["positionen"].append(_p)
 
     print("EINSTIEG %s %.6f Stop %.2f%% Ziel R=2 (%.6f) Nominal %.2f USD" % (

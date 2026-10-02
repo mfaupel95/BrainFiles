@@ -644,6 +644,13 @@ def runden_indikator(zeilen_, stand=None):
             return None, None
         return erloes - einsatz, 0.0
 
+    # SKALIERTE POSITIONEN (03.10.2026): dieselbe pos_id kann mehrere
+    # Kaufzeilen tragen - die zweite ist eine Vergroesserung und rechnet den
+    # KUMULATIVEN Einsatz mit dem GEWOGENEN Einstieg. Die Zuordnung in
+    # journalpaarung nimmt dann die LETZTE dieser Zeilen, also den Stand
+    # der Position; gegengeprobt in tests/test_skalieren.py (mit
+    # zurueckgenommener Skalierungsregel wird derselbe Test rot, nicht
+    # dieser Weg - er war nie der Weg, der es richtig machte).
     return _paare(zeilen_, {"kauf"}, {"verkauf"}, "einsatz_usd", ergebnis, "USD",
                   stand=stand)
 
