@@ -234,5 +234,95 @@ class BauenVertrag(unittest.TestCase):
         self.assertEqual(kurse["BTC-USDT-SWAP"], 103.0)   # nicht 104.0
 
 
+class SrBreaks(unittest.TestCase):
+    """Support/Resistance-Breaks - Pivot, Volumen-OSZ und die vier Zeichen.
+
+    Fixtures mit kleinen Pivots (left=right=2): die Kerze 4 ist Pivot-Hoch
+    (Hoch 20) bzw. Pivot-Tief (Tief 5), bestaetigt nach zwei Bars, mit der
+    [1]-Verzoegerung ab Index 7 in der Linie. Die letzte Kerze entscheidet.
+    """
+
+    W = {"pivot_left": 2, "pivot_right": 2}
+
+    @staticmethod
+    def _k(ts, o, h, l, c, v=1.0):
+        return [ts, o, h, l, c, v]
+
+    @classmethod
+    def _hoch_pivot(cls, endkerze=None):
+        k = [cls._k(i, 10, 10.5, 9.5, 10) for i in range(4)]
+        k.append(cls._k(4, 12, 20, 11, 12))          # Pivot-Hoch
+        for ts in range(5, 13):
+            k.append(cls._k(ts, 10, 10.5, 9.5, 10))
+        if endkerze:
+            k.append(endkerze)
+        return k
+
+    @classmethod
+    def _tief_pivot(cls, endkerze=None):
+        k = [cls._k(i, 10, 10.5, 9.5, 10) for i in range(4)]
+        k.append(cls._k(4, 8, 9, 5, 8))              # Pivot-Tief
+        for ts in range(5, 13):
+            k.append(cls._k(ts, 10, 10.5, 9.5, 10))
+        if endkerze:
+            k.append(endkerze)
+        return k
+
+    def test_pivot_wert_erscheint_erst_nach_bestaetigung_und_shift(self):
+        k = self._hoch_pivot()
+        hohe, tiefe = kr.pivot_hoch_tief(k, 2, 2)
+        self.assertIsNone(hohe[6], "bestaetigt erst an Bar 6")
+        self.assertEqual(hohe[7], 20.0, "[1] verschiebt den Wert um einen Bar")
+        self.assertEqual(hohe[-1], 20.0, "fixnan haelt den letzten Wert")
+        self.assertIsNone(tiefe[7], "kein Tief-Pivot in der Serie")
+
+    def test_pivot_gleichstand_ist_kein_pivot(self):
+        k = self._hoch_pivot()
+        k[5] = self._k(5, 20, 20, 20, 20)            # gleiche Hoehe wie der Kandidat
+        hohe, _t = kr.pivot_hoch_tief(k, 2, 2)
+        self.assertIsNone(hohe[7], "Pine: streng hoeher, Gleichstand zaehlt nicht")
+
+    def test_long_break_mit_volumen(self):
+        k = self._hoch_pivot(self._k(13, 21, 22.5, 20.5, 22, 50))
+        self.assertEqual(kr.einstieg_sr_breaks(k, self.W), "long")
+
+    def test_short_break_mit_volumen(self):
+        k = self._tief_pivot(self._k(13, 4, 4.5, 2.5, 3, 50))
+        self.assertEqual(kr.einstieg_sr_breaks(k, self.W), "short")
+
+    def test_break_ohne_volumen_ist_kein_signal(self):
+        k = self._hoch_pivot(self._k(13, 21, 22.5, 20.5, 22, 1))
+        self.assertIsNone(kr.einstieg_sr_breaks(k, self.W),
+                          "Break-Form verlangt den Volumen-OSZ ueber der Schwelle")
+
+    def test_bull_wick_ohne_volumen_ist_long(self):
+        k = self._hoch_pivot(self._k(13, 19, 22.5, 2, 22, 1))
+        self.assertEqual(kr.einstieg_sr_breaks(k, self.W), "long",
+                         "langer unterer Docht zaehlt ohne Volumenfilter")
+
+    def test_bear_wick_ohne_volumen_ist_short(self):
+        k = self._tief_pivot(self._k(13, 4, 18, 2.5, 3, 1))
+        self.assertEqual(kr.einstieg_sr_breaks(k, self.W), "short",
+                         "langer oberer Docht zaehlt ohne Volumenfilter")
+
+    def test_kein_kreuz_kein_signal(self):
+        k = self._hoch_pivot(self._k(13, 14, 16, 13.5, 15, 50))
+        self.assertIsNone(kr.einstieg_sr_breaks(k, self.W),
+                          "15 liegt unter der Resistance 20 - kein Ausbruch")
+
+    def test_ausstieg_ist_das_gegensignal(self):
+        long_k = self._hoch_pivot(self._k(13, 21, 22.5, 20.5, 22, 50))
+        short_k = self._tief_pivot(self._k(13, 4, 4.5, 2.5, 3, 50))
+        aus = kr.REGELN["klassik_sr_breaks"][1]
+        self.assertIsNone(aus(long_k, "long", self.W))
+        self.assertEqual(aus(short_k, "long", self.W), "gegensignal")
+
+    def test_schwelle_aus_der_wachen(self):
+        w = dict(self.W, volumen_schwelle=200.0)
+        k = self._hoch_pivot(self._k(13, 21, 22.5, 20.5, 22, 50))
+        self.assertIsNone(kr.einstieg_sr_breaks(k, w),
+                          "die Wachen-Sperre muss wirken, nicht der Code-Stand")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

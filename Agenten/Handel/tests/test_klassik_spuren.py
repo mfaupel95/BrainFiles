@@ -1,6 +1,6 @@
-"""Vertrag der acht klassischen Papierspuren (klassik_*) - eine Pruefung fuer alle.
+"""Vertrag der klassischen Papierspuren (klassik_*) - eine Pruefung fuer alle.
 
-Warum diese Datei: die acht Spuren bestehen aus je einem 17-Zeilen-`handeln.py`,
+Warum diese Datei: die Spuren bestehen aus je einem 17-Zeilen-`handeln.py`,
 einer `wachen.json` und einem README; die Rechnung liegt gemeinsam in
 `Handel/klassik_regeln.py` (dort liegt auch `tests/test_klassik_regeln.py` fuer
 die Regeln selbst). Was fehlte, war der **Vertrag der Ordner**: dass Name, Wachen
@@ -9,7 +9,8 @@ Orderweg bekommt.
 
 Geprueft wird die REGEL, nicht der Stand: keine festen Zahlen aus dem September,
 sondern Beziehungen (Stop im erlaubten Band, Ratsche = Buchrisiko, Deckel
-passt zu den Plaetzen, genug Kerzen fuer den laengsten Indikator).
+passt zu den Plaetzen, genug Kerzen fuer den laengsten Indikator). Die Zahl der
+Spuren ist keine Eigenschaft - die Mengengleichheit mit `REGELN` ist sie.
 """
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ import klassik_regeln  # noqa: E402
 # Der laengste Indikator je Regel braucht so viele Kerzen. Abgeleitet aus den
 # Feldern der Wachen - hier steht nur, WELCHE Felder zaehlen, nicht ihr Wert.
 NOETIGE_FELDER = ("langsam_n", "signal_n", "bb_n", "kanal_ein_n", "kanal_aus_n",
-                  "rsi_n", "aus_sma_n")
+                  "rsi_n", "aus_sma_n", "volumen_langsam_n")
 VENV = HANDEL / ".venv" / "Scripts" / "python.exe"
 
 
@@ -42,6 +43,8 @@ def mindestens(w: dict) -> int:
     zahlen = [int(w[f]) for f in NOETIGE_FELDER if isinstance(w.get(f), int)]
     if isinstance(w.get("trend_n"), int):
         zahlen.append(int(w["trend_n"]) + int(w.get("steigung_n", 0)))
+    if isinstance(w.get("pivot_left"), int) and isinstance(w.get("pivot_right"), int):
+        zahlen.append(w["pivot_left"] + w["pivot_right"] + 1)
     return max(zahlen or [0])
 
 
@@ -52,9 +55,6 @@ class Bestand(unittest.TestCase):
         auf_der_platte = {p.name for p in SPUREN}
         self.assertEqual(auf_der_platte, set(klassik_regeln.REGELN),
                          "Ordner und REGELN weichen ab (Waisen in beide Richtungen)")
-
-    def test_es_sind_acht(self):
-        self.assertEqual(len(SPUREN), 8)
 
     def test_jede_spur_hat_die_drei_dateien(self):
         for s in SPUREN:

@@ -1,10 +1,11 @@
-"""Klassische Kursregeln als Papierspuren - eine Rechnung fuer alle acht.
+"""Klassische Kursregeln als Papierspuren - eine Rechnung fuer alle Spuren.
 
 Herkunft: die sechs Pine-Vorlagen unter MaxHirn/Wiki/Handel/*.pine (Donchian,
 EMA-Kreuz, MACD, RSI-Rueckkehr, SMA-Kreuz, Bollinger) plus zwei neue Regeln
-(rsi2_trend, donchian_trend). Jede Spur ist ein Ordner mit einem Zweizeiler
-`handeln.py`, der hier `spur_main(NAME)` ruft; Buch, Ratsche, Spiegelung und
-Vorfilter liefert `spur_buch.py`.
+(rsi2_trend, donchian_trend) und die LuxAlgo-Vorlage Support und Resistance
+Levels with Breaks (sr-breaks.pine, 02.10.2026). Jede Spur ist ein Ordner mit
+einem Zweizeiler `handeln.py`, der hier `spur_main(NAME)` ruft; Buch, Ratsche,
+Spiegelung und Vorfilter liefert `spur_buch.py`.
 
 Zwei Abweichungen von den Pine-Dateien, beide mit Absicht:
 
@@ -14,6 +15,14 @@ Zwei Abweichungen von den Pine-Dateien, beide mit Absicht:
    zaehlt der Kanal der 20 Kerzen DAVOR.
 2. **Nur abgeschlossene Kerzen.** OKX liefert die laufende Kerze mit; sie wird
    verworfen, sonst flackert ein Kreuz innerhalb der Stunde.
+
+Die S/R-Regel bildet die vier Zeichen der Vorlage als zwei Einstiege ab: Long
+beim Schluss ueber der letzten bestaetigten Pivot-Resistance, Short beim
+Schluss unter der Pivot-Support. Die Wick-Formen (langer unterer/oberer Docht)
+sind Einstiege ohne Volumenbestimmung, die Break-Formen brauchen den
+Volumen-Oszillator ueber der Schwelle - genau wie die Vorlage zwischen den
+Zeichen unterscheidet. Ausstieg ist das Gegensignal (Break auf der anderen
+Seite), die Vorlage kennt keinen eigenen `strategy.close`.
 
 Regel je Spur: `einstieg(k, w)` -> "long" | "short" | None und
 `ausstieg(k, seite, w)` -> Grund | None (Gegensignal bzw. Kanal/Mittellinie).
@@ -137,7 +146,7 @@ def _kreuz(a, b, i, richtung):
     return a0 >= b0 and a1 < b1
 
 
-# --- Die acht Regeln --------------------------------------------------------
+# --- Die Regeln -------------------------------------------------------------
 
 def _schluesse(k):
     return [float(z[4]) for z in k]
@@ -245,6 +254,88 @@ def einstieg_donchian_trend(k, w):
     return None
 
 
+# --- Support/Resistance-Breaks (LuxAlgo sr-breaks.pine, 02.10.2026) ---------
+
+def pivot_hoch_tief(k, left, right):
+    """Pivot-Hoch/-Tief wie `fixnan(ta.pivothigh/pivotlow(left, right)[1])`.
+
+    Pine: `pivothigh(left, right)` schreibt den Hochwert der Kerze (i-right)
+    am Bar i in die Serie, sobald rechts davon `right` Bars liegen - der Pivot
+    ist dann bestaetigt. `fixnan` haelt den letzten Wert, `[1]` verschiebt die
+    ganze Serie um einen Bar. Zurueck kommen zwei Listen gleicher Laenge mit
+    dem Wert des letzten bestaetigten Pivots bis einschliesslich Bar i-1
+    (None, solange noch keiner bestaetigt ist). Gleichstand zaehlt NICHT als
+    Pivot (Pine: streng hoeher/tiefer).
+    """
+    n = len(k)
+    hoch = [None] * n
+    tief = [None] * n
+    letztes_hoch = None
+    letztes_tief = None
+    for i in range(n):
+        j = i - right                      # Pivot-Kandidat, wird jetzt bestaetigt
+        if j >= left and j + right < n:
+            h = float(k[j][2])
+            l = float(k[j][3])
+            if h > max(float(k[m][2]) for m in range(j - left, j + right + 1)
+                       if m != j):
+                letztes_hoch = h
+            if l < min(float(k[m][3]) for m in range(j - left, j + right + 1)
+                       if m != j):
+                letztes_tief = l
+        hoch[i] = letztes_hoch
+        tief[i] = letztes_tief
+    # [1]: der Wert erscheint erst einen Bar nach seiner Bestaetigung.
+    return [None] + hoch[:-1], [None] + tief[:-1]
+
+
+def volumen_osz(k, kurz_n=5, lang_n=10):
+    """Volumen-Oszillator der Vorlage: 100 * (ema(kurz) - ema(lang)) / ema(lang)."""
+    v = [float(z[5]) for z in k]
+    kurz, lang = ema(v, kurz_n), ema(v, lang_n)
+    out = []
+    for a, b in zip(kurz, lang):
+        if a is None or b is None or b == 0:
+            out.append(None)
+        else:
+            out.append(100.0 * (a - b) / b)
+    return out
+
+
+def einstieg_sr_breaks(k, w):
+    """Vier Zeichen der Vorlage, zwei Einstiege.
+
+    Long: Schluss kreuzt ueber die letzte bestaetigte Pivot-Resistance. Je
+    Kerzenform unterscheidet die Vorlage "Break" (Koerper dominiert, braucht
+    Volumen-OSZ ueber der Schwelle) von "Bull Wick" (langer unterer Docht,
+    kein Volumenfilter) - beide sind hier Long. Short spiegelbildlich beim
+    Schluss unter der Pivot-Support. Der Volumen-Oszillator rechnet wie Pine
+    aus den EMA(5/10) des Handelsvolumens.
+    """
+    left = int(w.get("pivot_left", 15))
+    right = int(w.get("pivot_right", 15))
+    hohe, tiefe = pivot_hoch_tief(k, left, right)
+    osc = volumen_osz(k, int(w.get("volumen_schnell_n", 5)),
+                      int(w.get("volumen_langsam_n", 10)))
+    schwelle = float(w.get("volumen_schwelle", 20.0))
+    i = len(k) - 1
+    if kreuzt_auf(_schluesse(k), hohe):
+        o, h, l, c = (float(k[i][1]), float(k[i][2]),
+                      float(k[i][3]), float(k[i][4]))
+        if o - l > c - o:                  # Bull Wick: unterer Docht dominiert
+            return "long"
+        if osc[i] is not None and osc[i] > schwelle:
+            return "long"
+    if kreuzt_ab(_schluesse(k), tiefe):
+        o, h, l, c = (float(k[i][1]), float(k[i][2]),
+                      float(k[i][3]), float(k[i][4]))
+        if o - c < h - o:                  # Bear Wick: oberer Docht dominiert
+            return "short"
+        if osc[i] is not None and osc[i] > schwelle:
+            return "short"
+    return None
+
+
 def _gegen_kreuz(einstieg_fn):
     """Ausstieg = das Gegensignal des Einstiegs (Pine: strategy.close bei Kreuz)."""
     def f(k, seite, w):
@@ -297,6 +388,7 @@ REGELN = {
     "klassik_rsi":       (einstieg_rsi, ausstieg_rsi),
     "klassik_rsi2":      (einstieg_rsi2_trend, ausstieg_rsi2),
     "klassik_donchian_trend": (einstieg_donchian_trend, ausstieg_donchian),
+    "klassik_sr_breaks": (einstieg_sr_breaks, _gegen_kreuz(einstieg_sr_breaks)),
 }
 
 

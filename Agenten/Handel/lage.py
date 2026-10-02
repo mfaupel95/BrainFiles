@@ -764,7 +764,7 @@ def spur_prophet_signal():
     return _spur_indikator("prophet_signal", "Prophet-Signal (EMA30+Saisonalitaet)")
 
 
-# KLASSIK-SPUREN (30.09.2026): acht Kursregeln ueber klassik_regeln.py.
+# KLASSIK-SPUREN (30.09.2026): alle Kursregeln ueber klassik_regeln.py.
 KLASSIK_SPUREN = (
     ("klassik_sma", "Klassik SMA-Kreuz 20/50"),
     ("klassik_ema", "Klassik EMA-Kreuz 12/26"),
@@ -774,6 +774,7 @@ KLASSIK_SPUREN = (
     ("klassik_rsi", "Klassik RSI-Rueckkehr"),
     ("klassik_rsi2", "Klassik RSI(2) im Trend"),
     ("klassik_donchian_trend", "Klassik Donchian + EMA200"),
+    ("klassik_sr_breaks", "Klassik S/R-Breaks"),
 )
 
 

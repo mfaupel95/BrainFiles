@@ -389,9 +389,10 @@ SPUREN = {
     # Papier, kein Live-Zweig.
     "prophet_signal": {"ordner": "prophet_signal", "waehrung": "USD",
                         "skript": "handeln.py"},
-    # KLASSIK-SPUREN (30.09.2026, Auftrag Max "neue Strategien und Spuren"):
-    # die sechs Pine-Vorlagen (MaxHirn/Wiki/Handel/*.pine) plus zwei neue
-    # Regeln als Papierspuren auf BTC/ETH/SOL-Perps, 4H. Eine Rechnung fuer
+    # KLASSIK-SPUREN (30.09.2026, Auftrag Max "neue Strategien und Spuren"): die
+    # sechs Pine-Vorlagen (MaxHirn/Wiki/Handel/*.pine) plus zwei neue Regeln
+    # und die LuxAlgo-S/R-Vorlage (klassik_sr_breaks, 02.10.2026) als
+    # Papierspuren auf BTC/ETH/SOL-Perps, 4H. Eine Rechnung fuer
     # alle: Handel/klassik_regeln.py, Buch spur_buch.py. Kein Live-Zweig.
     "klassik_sma": {"ordner": "klassik_sma", "waehrung": "USD",
                     "skript": "handeln.py"},
@@ -409,6 +410,8 @@ SPUREN = {
                      "skript": "handeln.py"},
     "klassik_donchian_trend": {"ordner": "klassik_donchian_trend",
                                "waehrung": "USD", "skript": "handeln.py"},
+    "klassik_sr_breaks": {"ordner": "klassik_sr_breaks", "waehrung": "USD",
+                          "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
@@ -492,7 +495,9 @@ TAKT_MAX_MINUTEN = 15
 # Margin im flex-Konto (mindest_guthaben_usd 31).
 AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
-                 "trendwende_btc", "liq_wand", "omniquant")
+                 "trendwende_btc", "liq_wand", "omniquant",
+                 "moondev_marktlage", "nautilus_kraken",
+                 "omnitrade_futures")
 AUTO_FREIGABE_STUNDEN = 12
 
 
