@@ -82,6 +82,34 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ]   **T-316 — iv_wand braucht Runden, bevor das Schiebetor bewertbar ist**
+      Kontext: `ziel_vor_wand_pct` 0.15 % wurde am 02.10.2026 gesetzt, weil der
+      Kurs im Journal viermal durch die Ziellinie 86000 reiste (Verkäufe bei
+      86777 / 86043 / 86024 / 86025). Das ist eine BEGRÜNDUNG aus dem Kurs, keine
+      Messung des Vorwands-Nutzens: dass der Rest der Position weiterläuft und
+      der Stop unberührt bleibt, ist bisher nur behauptet. Der Boden
+      (`min_ziel_abstand_pct` 0.30) dagegen ist aus dem Journal gerechnet und
+      wirkt sofort.
+      Naechster Schritt: ab 30 Runden `handelsjournal.csv` nach Zielabstand
+      gruppieren und die Trefferquote je Gruppe gegen den unveränderten Arm
+      halten — dafür braucht es einen zweiten Arm mit `ziel_vor_wand_pct: 0`,
+      sonst ist „besser" nicht messbar, nur anders.
+      Angelegt 02.10.2026 · Betrifft: iv_wand.
+
+- [ ]   **T-317 — Hebel bei einer Ein-Platz-Spur: die Frage kommt wieder**
+      Kontext: Max fragte „geht das auch mit Hebel?". Die Rechnung sagt nein:
+      bei risikonormierter Größe ist das Nominal unabhängig vom Hebel
+      (N = 5,0 / 0,04 = 125 USD bei Hebel 1 wie bei 10), Gewinn und Verlust sind
+      gleich, nur die Margin fällt auf 1/h — und `max_offene_positionen: 1`
+      lässt das freie Kapital nirgends hin. Dazu: bei 4 % Stop ist bei Hebel 25
+      die Liquidationsdistanz aufgebraucht. Die Rechnung steht als `_kein_hebel`
+      in `iv_wand/wachen.json`.
+      Naechster Schritt: die Frage beantwortet sich künftig aus dem Vermerk, nicht
+      neu. Sollte daraus doch ein Arm werden, braucht er zuerst mehr als einen
+      Platz — sonst wäre es ein Buch, das denselben Handel zweimal führt.
+      Angelegt 02.10.2026 · Betrifft: iv_wand, Handelsheter.
+
+
 - [ ]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg**
       Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler, beide am
       Schreibweg, beide unabhängig vom Gebührensatz.
