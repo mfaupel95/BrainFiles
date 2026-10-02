@@ -136,6 +136,33 @@ def journal(journal_pfad, **felder):
         w.writerow(felder)
 
 
+def lege_journal_an(journal_pfad):
+    """Das Journal anlegen, falls es fehlt - mit Kopfzeile, ohne Buchung.
+
+    WARUM (Auftrag Max 02.10.2026, "alle duerfen auch journal fuehren"):
+    `journal()` legt die Datei beim ersten SCHREIBEN an. Eine Spur, die noch
+    nie ein Signal hatte, hatte deshalb gar kein Journal - und damit auch
+    nichts ausser Haus (Bedingung 4). Am 02.10.2026 waren das 7 von 38 Spuren
+    (klassik_donchian, klassik_donchian_trend, klassik_pmax, klassik_rsi,
+    klassik_rsi2, klassik_sr_breaks, trendwende_btc): lokal wie auf Q: nur
+    zustand.json, kein Journal. Das ist kein Defekt, aber es ist auch nicht
+    beantwortbar - man kann nicht unterscheiden "noch nie ein Signal" von
+    "das Journal ist kaputt".
+
+    Die leere Datei macht genau das unterscheidbar: sie existiert, hat null
+    Zeilen und wird gespiegelt. Ein Leser sieht damit denselben Stand wie
+    bei einer Spur mit Runden, nur eben bei null.
+
+    `SCHREIBEN=False` (Replay, Tests) legt nichts an - ein Test darf nie in
+    einen echten Zielpfad schreiben.
+    """
+    if not SCHREIBEN or os.path.exists(journal_pfad):
+        return False
+    with open(journal_pfad, "a", newline="", encoding="utf-8") as f:
+        csv.DictWriter(f, fieldnames=SPALTEN).writeheader()
+    return True
+
+
 def spiegeln(zustand_pfad, journal_pfad, z, w):
     """Bedingung 4: Journal und Zustand ausser Haus (Muster swap/handeln.py)."""
     ziel = w.get("journal_zweitziel")
@@ -601,6 +628,11 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         w = lade_wachen(wachen_pfad)
         z = lade_zustand(zustand_pfad)
         z.setdefault("positionen", [])
+        # Das Journal existiert ab dem ersten Zyklus, nicht erst ab dem ersten
+        # Kauf (Auftrag Max 02.10.2026). Der Vorschau-Pfad kehrt weiter unten
+        # VOR jedem Schreibvorgang zurueck - hier wird nichts geschrieben.
+        if modus in ("papier", "live"):
+            lege_journal_an(journal_pfad)
 
         if modus == "wachen":
             print(json.dumps(wp.lage(w, journal_pfad, z), indent=2,

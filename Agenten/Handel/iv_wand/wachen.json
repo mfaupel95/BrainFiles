@@ -5,7 +5,7 @@
   "_quelle": "OKX oeffentlich: /public/open-interest (Open Interest je Option) und /public/opt-summary (implizite Volatilitaet je Option), Spot von okx.kurs(). Kein Schluessel, ein Abruf je Endpunkt.",
   "_wand": "Strikes mit Verfall in 7 bis 45 Tagen, Open Interest in USD je Strike summiert (Call + Put); der groesste davon ist die Wand. Die IV dieses Strikes steht als Notiz im Zustand.",
   "_regel": "Spot unter der Wand mit Abstand <= 5 % -> long, Ziel ist die Wand. Spot ueber der Wand mit Abstand <= 5 % -> short, Ziel ist die Wand. Weiter weg oder genau darauf: kein Geschaeft.",
-  "_ziel_ist_marktpunkt": "Das Ziel ist die WAND, kein Vielfaches des Stops - dafuer reicht die Spur ziel() an das gemeinsame Buch durch (spur_buch.einstieg(ziel_preis=...)).",
+  "_ziel_ist_marktpunkt": "Das Ziel ist die WAND, kein Vielfaches des Stops - dafuer reicht die Spur ziel() an das gemeinsame Buch durch (spur_buch.einstieg(ziel_preis=...)). Mit ziel_vor_wand_pct liegt es knapp davor.",
   "_kein_live": "Kein Live-Zweig: gehandelt wird der Spot-Papierpreis, nicht die Option. Ein --live verweigert.",
   "waehrung": "USD",
   "handel_erlaubt": false,
@@ -31,6 +31,8 @@
   "wand_min_tage": 7.0,
   "wand_max_tage": 45.0,
   "max_abstand_pct": 5.0,
+  "_min_ziel_abstand": "GEBUEHRENSCHWELLE, gemessen am eigenen Journal 02.10.2026. Ohne diesen Boden stiegen 5 von 9 Runden mit 0,015 bis 0,051 % Zielabstand ein; OKX-Spot kostet 0,10 % je Seite = 0,20 % je Runde, diese 5 Runden waren netto -0,13 bis -0,16 %. Die 4 Runden mit >= 0,43 % Abstand brachten netto +4,36 % (brutto +5,16 % bei 0,80 % Gebuehr). Der Boden ist die Gebuehr, nicht die Vorsicht: darunter ist der Handel strukturell Verlust. Gegenprobe in tests/test_iv_wand.py.",
+  "min_ziel_abstand_pct": 0.3,
   "_risikovorfilter": "Vorfilter nach den Regeln des Moon-Dev risk_agent (12-h-Fenster, +/-25 USD bzw. +/-5 %): kein NEUER Einstieg nach gerissener Verlustgrenze oder erreichtem Gewinnziel. Schliesst keine Position.",
   "risikovorfilter": true,
   "risiko_fenster_stunden": 12.0,
@@ -43,5 +45,10 @@
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 * buch_risiko = 5.0.",
   "drawdown_halbierung_usd": 5.0,
   "_grund": "Der Grund, der im Journal steht.",
-  "grund": "iv_wand"
+  "grund": "iv_wand",
+  "_kein_hebel": "FRAGE MAX 02.10.2026: 'geht das auch mit hebel?' - NEIN fuer diese Spur, und zwar gerechnet, nicht behauptet. Bei risikonormierter Groesse (risiko / stop_pct) ist das NOMINAL unabhaengig vom Hebel: N = 5,0 / 0,04 = 125 USD bei Hebel 1 wie bei Hebel 10. Gewinn am Ziel (1,62 USD) und Verlust am Stop (5,00 USD) sind bei JEDEM Hebel gleich; nur die Margin faellt von 125 auf 12,50 USD. Der Hebel ist damit eine KapitalERSPARNIS, keine Rendite - und diese Spur hat max_offene_positionen=1: es gibt keinen zweiten Einsatz fuer das freie Kapital. Zusaetzlich die Grenze nach oben: bei 4 % Stop liegt die Liquidation bei Hebel 25 genau auf dem Stop, ab 25 ist er unerreichbar und das Buch wuerde einen anderen Ausstieg protokollieren als die Boerse. Hebel 1 ist hier richtig; wer mehr will, muss die Spur groesser machen (mehr Plaetze, andere Instrumente), nicht den Hebel.",
+  "_hebel_rechnung": "N = risikobetrag / stop_pct = 125 USD unabhaengig vom Hebel. Gewinn und Verlust gleich, nur Margin faellt. Hebel ist bei EINER Position eine Kapitalersparnis ohne Nutzen.",
+  "hebel": 1.0,
+  "_ziel_vor_wand": "Die Wand ist ein PREISSTREIFEN, keine Linie (Strikes in 1000er-Schritten = 1,16 % Abstand bei BTC). Im Journal reisst der Kurs durch Ziel 86000 hindurch (Verkaeufe bei 86777 / 86043 / 86024 / 86025). 0,15 % vor der Wand liegt IN diesem Streifen. Richtung richtet sich nach der Seite (long von unten, short von oben) - sonst kaeme das Short-Ziel unter dem Einstieg und spur_buch wuerde es ablehnen.",
+  "ziel_vor_wand_pct": 0.15
 }
