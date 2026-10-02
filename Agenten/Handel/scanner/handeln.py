@@ -159,16 +159,25 @@ def journal(*felder):
     # bekommt die Zeile ohne die neue Spalte - sonst wanderten alle Werte um
     # einen Platz nach links (siehe pos_kennung.zeile).
     kopf = None if neu else pos_kennung.kopf(JOURNAL)
+    # felder enthaelt: zeit, modus, aktion, inst, preis, usd, stop, ziel,
+    # grund, mfe_pct, mae_pct, haltetage, pos_id
+    # wir fuegen herkunft als vorletzte Spalte ein (vor pos_id)
+    felder_mit_herkunft = list(felder)
+    if len(felder_mit_herkunft) >= 13:
+        felder_mit_herkunft.insert(-1, HERKUNFT)
+    else:
+        felder_mit_herkunft.append(HERKUNFT)
     with JOURNAL.open("a", newline="", encoding="utf-8") as f:
         s = csv.writer(f)
         if neu:
             s.writerow(["zeit", "modus", "aktion", "inst", "preis", "usd",
                         "stop", "ziel", "grund", "mfe_pct", "mae_pct",
                         "haltetage",
+                        "herkunft",
                         # Die Kennung der Position (T-095) - letzte Spalte,
                         # damit die alten Zeilen lesbar bleiben.
                         "pos_id"])
-        s.writerow(pos_kennung.zeile(felder, kopf))
+        s.writerow(pos_kennung.zeile(felder_mit_herkunft, kopf))
 
 
 # --- Vorschlaege ---------------------------------------------------------------
@@ -197,6 +206,10 @@ SPALTEN_ABLEHNUNG = ["zeit", "art", "grund", "anzahl", "inst", "score",
 # Wird in der Vorschau abgeschaltet - eine Vorschau, die schreibt, ist keine
 # Vorschau. Ein Schalter an EINER Stelle statt eines if je Aufrufer.
 SCHREIBEN = True
+
+# Herkunft der Buchung: "zyklus" (Standard, 15-Minuten-Dauerlauf) oder
+# "trigger" (WebSocket-Trigger bei Kerzenschluss). Wird vom Trigger gesetzt.
+HERKUNFT = "zyklus"
 
 
 def journal_ablehnung(**felder):
@@ -771,8 +784,34 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     eingesetzt = sum(p["usd"] for p in z["positionen"])
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
+    # Freies Kontoguthaben je Basiswaehrung - EINmal je Zyklus, nicht je
+    # Kandidat. Ohne dieses Tor pruefte nur der Deckel: der am 02.10.2026 bei
+    # 442 von 444 USDC gebundenen Konto (4 offene Positionen, Rest in Stops)
+    # und 1,76 USDC frei sieht jeden Kandidaten als kaufbar, bis die Boerse
+    # jeden einzelnen mit "insufficient balance" zurueckweist. Die Waehrung
+    # kommt aus dem Instrument, nicht aus einer festen Konstante - sonst
+    # entsteht genau der Fehler, den diese Zeile verhindert.
+    frei = {}
+    # Schwelle aus der Wachen, 0 = aus (alte Regel: nur der Deckel begrenzt).
+    # VOR dem if, weil die Pruefung weiter unten auch im Papierlauf durchlaeuft:
+    # ein NameError, den nur der Papierpfad sieht, waere dort unauffindbar.
+    minq = float(w.get("min_guthaben_quote") or 0.0)
+    if live:
+        for inst in {v["inst"] for v in vs}:
+            q = okx.quote(inst)
+            if q and q not in frei:
+                try:
+                    frei[q] = okx.guthaben(q)
+                except Exception as e:  # noqa: BLE001
+                    print("  Guthaben %s nicht lesbar: %s" % (q, e),
+                          file=sys.stderr)
+                    frei[q] = 0.0
+        for q in sorted(frei):
+            print("  Guthaben %s: %.2f frei%s" % (
+                q, frei[q], "" if minq <= 0 else " (Tor ab %.2f)" % minq))
     bewertet = 0
     deckel_gemeldet = False
+    gemeldet_guthaben = set()
     for i, v in enumerate(vs):
         if len(z["positionen"]) >= w["max_offene_positionen"]:
             # KEIN Tor, sondern Kapazitaet: der Rest der Liste war kaufbar
@@ -792,6 +831,19 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 protokolliere("Gesamtdeckel erreicht")
                 deckel_gemeldet = True
             continue
+        if live and minq > 0:
+            q = okx.quote(v["inst"])
+            if frei.get(q, 0.0) < max(usd, minq):
+                # Kapazitaet wie der Deckel, aber je WAEHRUNG: bei gemischten
+                # Paaren ist das freie USDC kein Guthaben fuer einen EUR-Kauf.
+                # Ein Ereignis je Waehrung und Zyklus, damit ein volles Konto
+                # nicht 18 Zeilen in die Ablehnungen schreibt.
+                if q not in gemeldet_guthaben:
+                    protokolliere("zu wenig %s frei" % q,
+                                  betrag=round(frei.get(q, 0.0), 2),
+                                  noetig=usd)
+                    gemeldet_guthaben.add(q)
+                continue
         if v["inst"] in gehalten:
             protokolliere_kandidat(v["inst"], "schon im Buch",
                                    score=v.get("score"))
