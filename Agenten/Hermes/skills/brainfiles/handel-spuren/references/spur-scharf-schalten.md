@@ -131,7 +131,53 @@ Nach dem Umlegen:
    genau der Weg, den der Dauerlauf geht) — die Aufnahme in `AUTO_FREIGABE`
    wirkt dagegen erst nach dessen Neustart.
 
-## 6. „Scharf“ heisst nicht „handelnd“
+## 6. „Auto-Freigabe optimieren“ heisst messen, nicht die Mechanik bauen
+
+Auftrag in der Art: „Auto-Freigabe optimieren“, „die Spuren sollen von selbst
+live gehen“. **Der Hebel ist fast nie die Auto-Freigabe, sondern die beiden
+Schalter** — und das steht erst nach einer Messung fest.
+
+`nur_fenster_fehlt` verlangt, dass die Vorschau **GENAU EINEN** Sperrgrund
+nennt (Abschnitt 2). Also:
+
+1. **Erst messen, dann bauen:** `Handel/sperrgruende.py` druckt je Spur die
+   Zahl der Sperrgruende und markiert die Faelle „NUR das Fenster“. Kommt
+   dort „Keine Spur haengt allein am Fenster“, ist die Auto-Freigabe nicht der
+   Engpass — sie ist die **Vorbedingung**, nicht der Hebel.
+2. **Der Hebel ist die Schalterzahl:** die typische frisch scharfe Spur hat
+   DREI Gruende (`handel_erlaubt=false` · `freigabe.erfuellt=false` · kein
+   Fenster). Setzt man die beiden Haken, bleibt genau einer übrig — und ab
+   dann arbeitet die Auto-Freigabe von selbst, ohne dass an ihr eine Zeile
+   geändert wurde. Vorher das Sperren zählen, danach den Bestand erneut
+   zählen: derselbe Aufruf ist der Nachweis.
+3. **Vor dem Setzen die reissende Bedingung suchen** (Abschnitt 4). Eine Spur
+   auszunehmen ist Pflicht, wenn das Armieren selbst eine zerstoerende Kette
+   ausloest: eine quantitative Sperre, deren einziger verbleibender Grund
+   das Freigabefenster waere, schaltet beim ersten Live-Lauf durch — und eine
+   Kill-Sperre schliesst dabei echte Positionen. Das ist beim Messen des
+   Bestands zu sehen („2 Grund/Gruende“ bei einer Spur, deren erster Grund
+   `handel_erlaubt=false` lautet) und gehoert als ausgenommene Spur in die
+   Antwort, nicht in die Aktion.
+4. **Ein Name im Werkzeug ist kein Beweis fuer einen Live-Pfad:** vorher per
+   Endpunktsuche ueber `*/handeln.py` (ohne `tests/`) feststellen, welche
+   Spuren ueberhaupt ordern koennen. Werkzeuge ohne Buch (etwa ein
+   Bot-Waechter) fallen heraus, sonst wird eine Halbsache als Spur scharf
+   gemeldet.
+5. **Spuren ohne Sperrzeile sind blind.** Erscheint in der Messung
+   „keine Sperrzeile“, liefert die Vorschau diese Zeile nicht, `nur_fenster_fehlt`
+   bekommt `None`, und fuer diese Spuren wird nie ein Fenster geoeffnet — bei
+   einem gemeinsamen Kern trifft das ALLE Spuren dieses Kerns (Pitfall 94).
+   Geprueft wird die **Regel** (druckt jeder Spur dieser Weg dieselbe Zeile?),
+   nicht die Liste der Namen; die Liste ist das Symptom.
+6. **Abschluss je Spur mit Vermerk**, wie in Abschnitt 1 — inklusive „was
+   unveraendert blieb“: kein Einsatz- und kein Deckelwert wird mitgezogen.
+
+Der Nachweis ist eine Zeile im Betriebslog (`Auto-Freigabe <spur> (720 min)`)
+plus die Fensterdatei mit `freigegeben_von: auto`. Wirkt die Aufnahme in
+`AUTO_FREIGABE` erst nach dem Neustart des Treibers, ist das der Normalfall
+(Abschnitt 2) — kein Fehler der Aenderung.
+
+## 7. „Scharf“ heisst nicht „handelnd“
 
 Jede Spur handelt erst bei ihrem EIGENEN Signal (frischer Kopier-Kauf, Score,
 Gate). Nach dem Scharfstellen kann es Stunden oder Tage dauern, bis die erste

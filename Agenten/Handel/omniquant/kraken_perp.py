@@ -153,7 +153,7 @@ def _kf():
     return modul
 
 
-def pf_markt(inst):
+def pf_markt(inst, fuer_ausstieg=False):
     """PF_-Symbol zu einem Omniquant-Instrument - oder lauter Fehler.
 
     Reihenfolge: gepruefte Tabelle -> kein Markt (namentlich) -> Ableitung mit
@@ -181,7 +181,15 @@ def pf_markt(inst):
                 "unbekanntes Instrument fuer Kraken Futures: %r (%s gibt es "
                 "am Zielmarkt nicht; geprueft eingetragen: %s)"
                 % (inst, kandidat, ", ".join(sorted(PAARE))))
-        if not ABLEITUNG_ERLAUBT:
+        if not (ABLEITUNG_ERLAUBT or fuer_ausstieg):
+            # WICHTIG: `fuer_ausstieg` hebt NUR die Freigabepflicht auf, NICHT
+            # die Pruefung gegen /instruments. Das Gate `live_pf_ableitung`
+            # gilt fuer den EINSTIEG ("die Ableitung kostet echtes Geld bei
+            # einem Instrument, das der Mensch nie gesehen hat"). Eine bereits
+            # OFFENE Position muss sich aber jederzeit schliessen lassen -
+            # am 01.10.2026 stand eine Live-Position 2 Stunden da, weil der
+            # Ausstieg am selben Gate scheiterte, das nur den Einstieg sperren
+            # soll (T-306).
             raise ValueError(
                 "%s ist am Zielmarkt handelbar (%s, gegen /instruments "
                 "geprueft), aber nicht freigegeben: wachen.json "
@@ -275,8 +283,8 @@ def demo_modus():
     return False
 
 
-def letzter_kurs(inst):
-    return _kf().letzter_kurs(paar_fuer(inst))
+def letzter_kurs(inst, fuer_ausstieg=False):
+    return _kf().letzter_kurs(paar_fuer(inst, fuer_ausstieg))
 
 
 def guthaben_usd():
@@ -299,16 +307,20 @@ def markt_kauf(inst, kontrakte):
     return _kf().markt_kauf(paar_fuer(inst), kontrakte, echt=True)
 
 
-def markt_verkauf(inst, kontrakte):
-    return _kf().markt_verkauf(paar_fuer(inst), kontrakte, echt=True)
+def markt_verkauf(inst, kontrakte, fuer_ausstieg=True):
+    """Verkauf. VORGABE: das Gate wird umgangen - ein Ausstieg ist nie eine
+    neue Marktwahl (T-306)."""
+    return _kf().markt_verkauf(paar_fuer(inst, fuer_ausstieg), kontrakte, echt=True)
 
 
 def stop_setzen(inst, kontrakte, stop_preis):
     return _kf().stop_setzen(paar_fuer(inst), kontrakte, stop_preis, echt=True)
 
 
-def offene_positionen(inst=None):
-    return _kf().offene_positionen(paar_fuer(inst) if inst else None)
+def offene_positionen(inst=None, fuer_ausstieg=True):
+    """Was die BOERSE fuehrt. Umgeht das Einstiegs-Gate - Abgleich und
+    Rueckdrehung duerfen nie an einem Ausstieg-Gate scheitern (T-306)."""
+    return _kf().offene_positionen(paar_fuer(inst, fuer_ausstieg) if inst else None)
 
 
 def gefuellte_menge(order_id):

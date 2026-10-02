@@ -43,7 +43,9 @@ Ausloeser → Referenz:
   `references/buchergebnis-pruefen.md`
 - **„warum hat die Spur 0 Runden?"** — vier Lagen, die gleich aussehen (wartet /
   arbeitet / nur Ausbuecher / echter Stall), plus die Stall-Falle „Instrument
-  nicht mehr in der Wachenliste": `references/null-runden.md`
+  nicht mehr in der Wachenliste" **und die dritte Form: es gibt fuer einen
+  gehaltenen Token gar KEINEN Kurs** (Onchain-Kette meldet nur Transaktionen) —
+  „Buch voll bei vorhandenen Kandidaten" ist selbst eine Null-Lage: `references/null-runden.md`
 - „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
@@ -61,9 +63,10 @@ Ausloeser → Referenz:
   „liegt ein Stop" fragen alle nur OB, nie WIEVIELE Kontrakte geschuetzt sind.
   Ein boolescher Existenztest gibt `True` zurueck, sobald ein einziger
   Schutzauftrag liegt, und wirft die Menge weg; gemessen standen so 19 von 145
-  Kontrakten ohne Schutz, ohne dass ein Befund kam. Zwei Preise verweigert ein
-  Nachsetzen statt zu raten: ein long-Stop auf/ueber dem Kurs (verkauft sofort)
-  und ein Stop auf/unter `liqPx` (kommt nach der Liquidation nie). Werkzeug
+  Kontrakten ohne Schutz, ohne dass ein Befund kam — ein boolescher
+  Existenztest gibt `True` zurueck, sobald EIN Schutzauftrag liegt, und wirft
+  die Menge weg. Zwei Preise verweigert ein Nachsetzen statt zu raten (long-Stop
+  auf/ueber dem Kurs, Stop auf/unter `liqPx`). Werkzeug
   `xperp/stopdeckung.py` (Vorschau Standard, `--anwenden --stop <preis>` ohne
   Preisschalter stellt NICHTS), Referenz Abschnitt 5d derselben Datei.
 - **„Tagesbericht auswerten"**, ein Bericht liegt vor und die Zahlen sollen ein
@@ -615,7 +618,17 @@ Suiten nennen die vergessene (`test_lage`: Holer, `test_befehle`: `FAMILIE`).
 66. **`handeln.py` muss `--papier` als Flag UND als Positional akzeptieren.**
 67. **Datenquelle als Test-Seam austauschbar machen.**
 68. **Erweiterst du die Signatur einer ersetzten Funktion, muessen die Doubles mit.**
-69. **Eine geaenderte Signatur trifft auch die Aufrufer, die kein Test beruehrt** — und ein neuer OPTIONALER Parameter in der MITTE laesst positionelle Aufrufer still in den falschen Slot rutschen: kein Fehler, ein leeres Ergebnis („nicht messbar"). Hinten anhaengen, Aufrufer greppen; Volltext in `references/spur-tests-und-auswertung.md`.
+69. **Eine geaenderte Signatur trifft auch die Aufrufer, die kein Test beruehrt** — und ein neuer OPTIONALER Parameter i
+69a. **Der Testseam ist die LADEFunktion, nicht das geladene Modul.** Laedt ein
+Wrapper sein Boersenmodul bei jedem Aufruf ueber den Pfad (`spec_from_file_location`),
+gibt es zwei Instanzen; ein Patch auf der importierten erreicht die von ihm selbst
+geladene nicht — der Test laeuft und die Attrappe wird nie benutzt. Die Ladefunktion
+patchen und Antwort **je Endpunkt** liefern. Bleibt die Aufrufliste der Attrappe
+leer, liegt die Naht falsch, nicht der Test.
+69b. **„Die Suite war schon rot" ist eine Behauptung, keine Messung.** Beide
+Zustaende mit derselben Suite fahren und die Fehlernamen differenzieren. Fuer die
+Gegenprobe `git show HEAD:<pfad>` in die Datei schreiben statt `git checkout` — das
+ueberschreibt uncommittete Fremdarbeit.n der MITTE laesst positionelle Aufrufer still in den falschen Slot rutschen: kein Fehler, ein leeres Ergebnis („nicht messbar"). Hinten anhaengen, Aufrufer greppen; Volltext in `references/spur-tests-und-auswertung.md`.
 70. Ein Stummel im Testbaum kann den geaenderten Aufruf verbergen — am echten
 71. **Ein Pruefer, der Quelltext parst, erblindet still, wenn sich die Form aendert.**
 72. **Eine Papier-Position in `zustand.json` ist der zweite Zyklus-Test.**
@@ -679,6 +692,26 @@ Kill-Ausgaenge positiv (+0,4 bis +2,4 %). Vor der Deutung die Drawdown-Kurve
 FIFO-gepaart nachrechnen und den Deckel gegen den je erreichten Ruecklauf
 halten; ein Deckel weit darueber ist entschaerft, kein Fehler. Vollen Text:
 `references/pitfalls.md`.
+94. **Eine unbestaetigte Fuellung ist keine Null.** Wird die Boersenantwort sofort
+nach dem Kauf gelesen, ist sie leer oder ein Bruchteil; `int(0.4)` = 0 und daraus
+gehen Stop UND Rueckdrehung mit `size: 0` an die Boerse (`invalidArgument: 0`).
+Die Rueckdrehung bleibt wirkungslos und wird als Erfolg protokolliert. Lesefunktion
+warten und `(menge, bestaetigt)` zurueckgeben, nie auf 0 herunterrechnen
+(`max(1, int(round()))`), einen Abfragefehler nie als Nullbefund lesen, und
+unbestaetigt mit der BESTELLTEN Groesse weiterarbeiten. Vollen Text:
+`references/live-order-und-buchpflege.md` Abschnitt 15.
+95. **Eine Rueckdrehung gilt erst, wenn die BOERSE die Position nicht mehr fuehrt.**
+„Verkauf abgeschickt" ist keine Rueckdrehung — die Wirkung wird am Bestand
+gemessen, nicht am Erfolg des eigenen Aufrufs. Bleibt die Position stehen, ist das
+eine Lueckenmeldung und kein weiterer Einstieg. Ein Rueckweg, dessen Wirksamkeit
+nicht gemessen wird, ist eine Annahme.
+96. **Ein Einstiegs-Gate darf den Ausstieg nie sperren.** Eine Freigabe, die einen
+NEUEN Markt eroeffnen soll, gehoert nicht auf den Ausstiegspfad: als modulweite
+Variable, die nur der Einstiegszweig setzt, sperrt sie jeden Kursabruf und haelt
+die Live-Position fest. Loesung: der Aufrufer sagt den Zweck
+(`pf_markt(inst, fuer_ausstieg=True)`) — und JEDER Weg laedt die Vorbedingungen
+(Marktliste, Kennung), die er zum Aufloesen braucht. Der Ausstieg umgeht die
+Freigabepflicht, NIE den Beweis, dass es den Markt gibt.
 **Und die Kurve selbst zerlegen, bevor ein Deckel angefasst wird.** Die
 Kapitalkurve rechnet auf ALLEN Buchungen, also auch auf
 Buchbereinigungs-zeilen, die keine Handelsrunde sind. Gemessen an einer Spur:
@@ -1239,6 +1272,13 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 - `references/fremdfeed-papierbuch.md` — Spur an fremden Signal-Feed haengen
   (Copy-Trading, Spiegelung, Signalstudie): Leser mit Schreibschutz, Auswahlregel
   gegen Zuchtauswahl, Kosten zweimal gerechnet, Tore vor jeder Buchzeile.
+- `references/freqtrade-dryrun.md` — eine FREMDARTIGE Engine als Papierflotte
+  (Freqtrade-Container, nicht `spur_buch`): erst die Form bestimmen (OHLCV plus im
+  Futures-Modus Funding/Markpreis — alles andere nicht portierbar, die Absagen mit
+  Grund in dieselbe Datei), dann der Todesbeweis `avg_profit_pro_trade` gegen
+  `2 * gebuehr_je_seite` — darunter ist der Verlust die Gebuehr und keine
+  Parameteroptimierung hilft; Zugang, die `can_short`-Falle im Spot-Modus,
+  `minimal_roi`/`stoploss` als Klassenattribute.
 - `references/buchergebnis-pruefen.md` — Buch-Ergebnis deuten, bevor es als Gewinn
   gelesen wird: Papier vs. Geld, Saldo vs. Umsatz, Abhaengigkeit von den
   Top-Positionen, Mittelwert UND Median, was nicht in der Zahl steckt. Ausloeser:

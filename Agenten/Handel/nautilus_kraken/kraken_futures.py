@@ -27,6 +27,7 @@ import hashlib
 import hmac
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -310,14 +311,44 @@ def offene_orders(symbol=None):
     return liste
 
 
-def gefuellte_menge(order_id):
-    """Gefuellte Kontrakte zu einer OrderKennung (ueber /fills)."""
-    daten = _roh("/fills?lastFillTime=1970-01-01T00:00:00Z")
-    menge = 0.0
-    for f in daten.get("fills") or []:
-        if f.get("order_id") == order_id:
-            menge += float(f.get("size") or 0.0)
-    return menge
+def gefuellte_menge(order_id, sekunden=30.0, abstand=3.0):
+    """Gefuellte Kontrakte zu einer OrderKennung (ueber /fills), mit Warten.
+
+    Zwei Fehler, beide am 01.10.2026 mit Geldfolge (T-306):
+
+    1. `/fills` ist beim Kauf noch nicht gefuellt. Ein sofortiges Lesen gab 0
+       bzw. einen Bruchteilwert; der Aufrufer rechnete `int(0.4)` = 0 und
+       bestellte einen Stop mit `size: 0`. Kraken antwortete
+       `invalidArgument: 0`, und die "Rueckdrehung" wurde ebenfalls mit
+       Groesse 0 abgeschickt - sie blieb wirkungslos, wurde aber als
+       Erfolg gemeldet. 5706 Kontrakte standen danach ohne Schutz an der
+       Boerse.
+    2. 0 ist hier ein echter Messwert, wird aber als "unbekannt" gelesen.
+       Deshalb: `standard=None` unterscheidet "nicht lesbar" von "0".
+
+    Rueckgabe: (kontrakte, bestaetigt). `bestaetigt=False` heisst: die Boerse
+    hat die Fuellung nicht bestaetigt - der Aufrufer MUSS dann mit der
+    bestellten Groesse weiterarbeiten und die Bestaetigung offen melden, NICHT
+    mit 0.
+    """
+    ende = time.time() + max(0.0, sekunden)
+    while True:
+        try:
+            daten = _roh("/fills?lastFillTime=1970-01-01T00:00:00Z")
+        except KrakenFuturesFehler as e:
+            print("  Fuellungsabfrage nicht lesbar: %s" % e, file=sys.stderr)
+            daten = {}
+        menge = 0.0
+        for f in daten.get("fills") or []:
+            if f.get("order_id") == order_id:
+                menge += float(f.get("size") or 0.0)
+        if menge > 0:
+            # GANZZAHL, und mindestens 1: ein Kontrakt ist die kleinste
+            # handelbare Einheit. `int(0.4)` == 0 war der Ausloeser.
+            return max(1, int(round(menge))), True
+        if time.time() >= ende:
+            return 0, False
+        time.sleep(abstand)
 
 
 def order_stornieren(order_id):

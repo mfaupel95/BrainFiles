@@ -412,6 +412,80 @@ Und die Folge aussprechen: **ein aufgeladenes Guthaben IST die Live-Freigabe** -
 faellt der letzte Nicht-Fenster-Grund weg, oeffnet die Auto-Freigabe das Fenster
 selbst.
 
+## Der Instrumenten-Weg wird ABGELEITET, nicht gepflegt — und nicht von selbst scharf
+
+Die `KEIN_MARKT`-Menge aus dem Abschnitt oben ist der Notaus fuer die Maerkte,
+die es nicht gibt. Sie ist aber nicht die Antwort auf die Frage, wie ein
+Instrument, das der Signalgeber BRINGT und das in keiner Tabelle steht, auf den
+Zielmarkt kommt. Drei Regeln dafuer, jede aus einem echten Ausfall:
+
+1. **Namen werden aus der echten Marktliste GELEITET, nicht nachgetragen.** Die
+   Regel ist einfach (`PF_<BASIS>USD`, mit Ausnahmen wie `BTC -> XBT`) und wird
+   JEDES Mal gegen die Boerse geprueft (ein Name ohne Markt dort bleibt ein
+   lauter Fehler und wird nie in einen anderen Markt umgelenkt). Eine
+   handgepflegte Tabelle kann nicht mit einem Bericht Schritt halten, der ueber
+   zweihundert Instrumente rotiert: gemessen passten elf von etwa zweihundert,
+   und die zwei Kandidaten des Tages wurden abgewiesen, obwohl der Zielmarkt
+   sie fuehrt.
+2. **Die Ableitung ist ein eigener Schalter, der von Hand kommt.** Sie gibt Geld
+   fuer ein Instrument aus, das der Nutzer nie gesehen hat — genau da gehoert
+   sein Ja hin, also `live_pf_ableitung: false` als Vorgabe plus Vermerk. Der
+   gepruefte Kern (die von Hand bestaetigten Namen) laeuft, die Ableitung erst
+   nach Freigabe. Ohne diese Trennung ist die Regel eine stille Erweiterung
+   des Live-Buchs.
+3. **Ein Lader, den niemand aufruft, sieht aus wie ein kaputter Aufrufer.** Wenn
+   die Marktliste absichtlich nur BEIM LADEN gefuellt wird (kein Netzzugriff auf
+   dem heissen Pfad), muss der Lader einmal je Lauf gerufen werden — sonst
+   verweigert der Aufrufer JEDEN Einstieg mit einer Meldung ueber die
+   Instrumentliste, und man sucht den Fehler im falschen Modul. Die
+   Fremdarbeit dabei uebernehmen, nicht ueberschreiben: die Ableitung war richtig,
+   nur unverkettet. Das echte Journal ist der Zeuge (N Fehlerzeilen je
+   Zyklus, alle im Live-Modus, alle mit derselben Begruendung).
+
+**Der Notausstieg darf nicht von dem Schritt abhaengen, der scheitern kann.**
+Ein Mini-Round-Trip kauft, wartet auf die Fuellung und verkauft. Schlaegt das
+Warten auf die Fuellung fehl, bricht der Lauf ab — und der Verkauf, also der
+einzige Schutz, liegt im selben Zweig. Gemessen: Kauf angenommen und gefuellt,
+die Fill-Abfrage mit `authenticationError` abgewiesen, die Position blieb OHNE
+Stop offen. Zwei Regeln: den Notaus unabhaengig vom Fuell-Nachweis ausfuehren
+(er ist ein eigener Schritt, nicht die Fortsetzung), und **nach jedem Probe-Lauf
+Positionen UND offene Orders lesen** — der Ruecklauf auf „0 Kontrakte" ist der
+Nachweis, nicht die Rueckmeldung des Werkzeugs. Gehoert der Endpunkt generell
+nicht zum Handelsschluessel (gemessen: `/fills` ja, `/accounts` nein), dann ist
+die Fill-Bestaetigung zu streichen und durch Position plus Order zu ersetzen.
+
+## Zwei Einsatz-Konventionen im Haus — die Formel des Helfers ist die Wahrheit
+
+Es gibt Spuren, deren Sizing-Helfer rechnet `int(Einsatz // Kurs)` — dort ist
+`live_max_pro_trade_usd` der **NOMINAL** der Position, und die Margin kommt
+erst aus dem Margenplan des Marktes. Andere rechnen `Nennwert = Einsatz x
+Hebel` — dort ist dasselbe Feld die **Margin**. Beide stehen im Haus, und wer
+das falsche liest, baut entweder eine zu kleine Position (Tor verweigert mit
+„Einsatz kleiner als ein Kontrakt") oder eine um den Faktor Hebel zu grosse.
+
+**Vor dem Setzen die Formel des Helfers lesen, nicht die Konvention annehmen.**
+Der Nachweis ist ein Aufruf des Helfers mit dem neuen Wert und dem echten
+Kurs — er muss die beabsichtigte Kontraktzahl liefern, sonst ist der Wert
+falsch (nicht „die Boerse lehnt ab“). Bei einem Instrument ohne Bruchstuecke ist
+der Nominalwert auch das, was die Obergrenze bestimmt: ein Wert knapp ueber dem
+Kurs ergibt genau einen Kontrakt und verweigert bei einem Kurssprung nach oben
+laut, statt auf eine kleinere Groesse auszuweichen.
+
+## Die Kante gehoert zum INSTRUMENT, nicht zur Strategie
+
+Bevor eine gemessene Strategie auf einer neuen Boerse gebaut wird: **die Strategie
+auf dem Instrument messen, das die Boerse ueberhaupt handeln kann** — nicht das
+Instrument aus einem vorhandenen Weg erben. Gemessen am selben Skript, gleicher
+Takt, gleicher Fenster, gleiche Gebuehr: 42 Runden bei 28,6 % Treffer mit einem
+Ergebnis nahe null gegen 44 Runden bei 29,6 % mit einem um zwei Groessenordnungen
+besseren Ergebnis. Die Trefferquote unterscheidet die beiden nicht — sie zu
+vergleichen haette die Entscheidung vertauscht.
+
+Faellt der Weg aus, wird das Instrument gewechselt, NICHT die Strategie
+abgeschwaecht. Vorher die Kerzendaten des neuen Instruments gegensehen (erste,
+letzte, min, max) — ein Skalierungsfehler in der Reihe sieht aus wie ein
+Strategieergebnis und ist die billigste Gegenprobe.
+
 ## Kraken gegen USDC: die Paare gibt es, die Waehrung ist die Huerde
 
 Kraken fuehrt USDC-Quotepaare — dieselben Instrumente, die der Haus-Spot handelt

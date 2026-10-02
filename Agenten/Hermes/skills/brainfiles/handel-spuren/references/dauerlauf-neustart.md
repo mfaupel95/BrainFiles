@@ -44,6 +44,27 @@ Get-CimInstance Win32_Process | Where-Object {
   gestartet wird, kann der Wrapper ohne Laeufer enden (er sieht "laeuft
   schon"). Erst die Instanzen wirklich beenden, dann starten.
 
+## Aus einer Agenten-/MCP-Shell starten (windows-mcp)
+
+- Den Wrapper DIREKT aufrufen: `& 'Agenten\Routinen\handel-dauerlauf.ps1'
+  -Risiko <niedrig|mittel|hoch>` - die Basis ist `-Risiko niedrig`
+  (Parameter-Default, `ValidateSet`). Einen `Start-Process powershell
+  -WindowStyle Hidden` davorzuschalten startete aus einem Kontext ohne
+  interaktiven Desktop NICHTS (kein Prozess, keine Fehlermeldung) - der
+  direkte Aufruf ist der Weg.
+- Der direkte Aufruf kann trotzdem HANGEN (die aufrufende Shell wartet auf
+  das Kind, oder die Bus-Melde-Ende-Meldung des Wrappers blockiert) und in
+  einen Timeout laufen. Der Start passiert VORHER: das Wrapper-Log
+  (Agenten/Routinen/logs/handel-dauerlauf-letzter-lauf[.stufe].log) schreibt
+  "Start (Stufe X)" und "gestartet als PID ...", die Sperrdatei ist danach
+  neu. Wahrheit IMMER in einem SEPARATEN Aufruf messen (Prozesse mit
+  CreationDate, Sperrdateien, Wrapper-Log) - nie aus dem Rueckkehrstatus des
+  Wrapper-Aufrufs schliessen.
+- Vor dem Kill: `freigabe_fenster.json` pruefen und offene Fenster notieren.
+  Sie sind DATEIBASIERT und bleiben ueber den Neustart gueltig - der neue
+  Dauerlauf liest dieselbe Datei; ein Neustart ist deshalb kein
+  Freigabe-Verlust.
+
 ## Nachweis
 
 1. Neue PIDs in den drei Sperrdateien je Stufe (`dauerlauf.pid`,

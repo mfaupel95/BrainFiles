@@ -335,6 +335,87 @@ sagten. Dieselbe Blindstelle hatte T-278 gestreift (ein Trailing-Stop ohne
   Test an der Kapazitaet der Attrappe scheitern statt an der Regel (bei
   `okxf.schutz_stops` zusaetzlich die Liste liefern, nicht nur `positionen`).
 
+## 15. Eine UNBESTAETIGTE Fuellung ist keine Null - und eine Null wird nie zur Order
+
+Der teuerste Einzelfehler dieser Liste: aus einer Boersenantwort, die **noch nicht
+gefüllt** ist, wird eine **bestellte Groesse von 0**. Von dort laeuft eine Kette,
+die jede Station als Erfolg meldet.
+
+Gemessen an einer Live-Position (PF_HBARUSD, Kraken Futures):
+
+    Fuellung sofort nach dem Kauf gelesen  -> Teilwert 0.4 (Boerse noch nicht gefuellt)
+    int(0.4)                                -> 0
+    Schutz-Stop mit size: 0                -> Kraken: "invalidArgument: 0"
+    "Rueckdrehung" mit size: 0              -> wirkungslos, KEIN Fehler
+    Journal                                  -> "Position wegen fehlendem Stop
+                                               zurueckgedreht"      (= falsch)
+    Ergebnis an der Boerse                   -> Position steht, ohne wirksamen Stop
+
+Drei Regeln, jede davon haette allein geholfen:
+
+- **Fuellung bestaetigen, bevor aus ihr eine Groesse wird.** Direkt nach dem Kauf
+  ist die Fuellung normalerweise noch nicht da; die Boersenantwort ist dann leer
+  oder ein Bruchteil. Die Lesefunktion wartet (Zeitfenster + Abstand) und gibt
+  `(menge, bestaetigt)` zurueck. `bestaetigt=False` heisst **"Bestaetigung offen"**,
+  nicht "0 ausgefuehrt" - dieser Unterschied ist der ganze Fix.
+- **Nie auf 0 herunterrechnen.** Ein Kontrakt ist die kleinste handelbare Einheit:
+  `max(1, int(round(menge)))`. Eine Fuellung, die auf 0 rundet, wird als
+  Fehlerbehandlung behandelt, nicht als Groesse.
+- **Ein Abfragefehler ist KEIN Nullbefund.** Faellt `/fills` aus, ist das Ergebnis
+  "unbekannt". Aus "unbekannt" darf nie "0 ausgefuehrt" werden - derselbe Fehler
+  wie ein Kalendersystem, das ein leeres Feld als Zahlenwert liest.
+
+**Unbestaetigt heisst: mit der BESTELLTEN Groesse weiterarbeiten und offen melden.**
+Nicht auf 0 buchen (das erzeugt eine Position, die es nicht gibt), nicht abbrechen
+(das verliert eine Order, die existiert). Die Position traegt ein Kennzeichen
+(`fuellung_offen`), damit ein spaeterer Abgleich sie nachziehen kann.
+
+### 15a. Eine Rueckdrehung gilt erst, wenn die BOERSE die Position nicht mehr fuehrt
+
+"Verkauf abgeschickt" ist keine Rueckdrehung. Sie gilt als gelungen, wenn **danach
+an der Boerse keine Position mehr steht** (`offene_positionen(inst)` leer). Sonst
+gilt sie als Fehlgeschlagene - mit einer lauten Lueckenmeldung, nicht als Erfolg:
+
+    verkauft, Boerse fuehrt weiter  ->  "SICHERHEITSLÜCKE: Stop fehlgeschlagen UND
+                                        Rueckdrehung ohne Wirkung" + kein weiterer Einstieg
+
+Im Fehlerfall wird ein zweites `except` geflogen; das ist richtig, deckt aber nur
+den **Ausnahme**fall. Die Regel gilt fuer die stille Variante: der Aufruf kehrt
+zurueck, die Boerse tut nichts, das Journal meldet Erfolg. Genau das ist der
+gemessene Fall.
+
+Merksatz: **ein Rueckweg, dessen Wirksamkeit nicht gemessen wird, ist eine Annahme.**
+Jede Sicherung, die eine Lage zuruecknehmen soll, wird gegen die Boerse geprueft,
+nicht gegen den Erfolg ihres eigenen Aufrufs.
+
+## 16. Ein Einstiegs-Gate darf den Ausstieg nie sperren
+
+Freigabe-Schalter, die einen NEUEN Markt eroeffnen sollen (z. B. "diesen vom
+Prognose-Bericht gebrachten Namen noch nicht von Hand freigegeben"), sind **Einstiegs-
+Tore**. Sie gehoeren nicht auf den Ausstiegspfad. Zwei Auspraegungen, beide gemessen:
+
+- **Ein modulweiter Schalter, der nur im Einstiegszweig gesetzt wird.** Die
+  Freigabe-Funktion schreibt eine Modulvariable; `pruefe_ausstiege()` laeuft mit
+  dem Vorgabewert `False` und scheitert an **jedem** Kursabruf. Die Live-Position
+  stand zwei Stunden da, waehrend jede Rueckrechnung denselben Fehler bekam - das
+  Journal sah wie ein Datenproblem aus, nicht wie ein gesperrter Ausstieg.
+  Loesung: der Aufrufer sagt, fuer welchen Zweck er aufloest -
+  `pf_markt(inst, fuer_ausstieg=False)`, und der Ausstieg ruft mit `True`.
+- **Eine Vorbedingung, die nur auf einem Weg hergestellt wird.** Gehoert eine
+  Marktliste, Kennung oder Tabelle zum Aufloesen, muss **jeder** Weg sie laden, der
+  sie braucht. Nur im Einstieg geladen heisst: auch ohne jedes Gate bleibt die
+  offene Position unauflösbar ("Marktliste nicht geladen").
+
+**Der Ausstieg umgeht die Freigabepflicht, NIE den Beweis.** Ein Ausstieg trifft
+keine neue Marktwahl - er handelt in einem Markt, in dem bereits Position steht.
+Deshalb darf `fuer_ausstieg` die Freigabe aufheben, aber nicht die Pruefung, ob es
+diesen Markt ueberhaupt gibt (Kapitel 14: Namen normalisieren, nicht raten). Wird
+auch das umgangen, ist ein Ausstieg in einem nicht belegten Markt moeglich.
+
+Merksatz: **ein Gate, das einen Einstieg verhindert, ist ein Schutz; dasselbe Gate
+auf dem Ausstieg ist eine Kette.** Wer eine offene Position nicht schliessen kann,
+traegt sie - mit Margin, Funding und voller Unsicherheit, bis der Kurs laeuft.
+
 ## 6. Sperre aufloesen heisst: die Ursache mit aufloesen
 
 Ein Kill-Switch setzt `handel_erlaubt=false` **und** stellt flach. Ein blosses
@@ -506,4 +587,63 @@ und liest sich wie eine Datenluecke ("Kennung fehlt") statt wie ein Namensproble
 - Ein Abgleich, der weniger Treffer liefert als erwartet, ist zuerst ein
   Namensverdacht, dann erst ein Datenverdacht. Beleg: nach der Normalisierung
   fanden sich alle drei Stop-Kennungen, ohne dass sich an der Boerse etwas
-  geaendert hatte.
+  geaendert hat.
+
+## 17. Unklare Position: die Reihenfolge der Zeugen, und was NICHT angefasst wird
+
+Auftrag der Form „X-Verwirrung klaeren auf <Boerse>“: an der Boerse stehen
+Position und offene Orders, das Haus fuehrt Buch, Journal und Spiegel, und die
+Zahlen sagen nicht dasselbe. Fuenf Regeln, alle aus einem gemessenen Fall
+(Position, deren Groesse im Buch rund 5 % ueber der Boerse lag, zwei
+Order-Saetze mit fremder Menge an derselben Position und ein Stop 1,3 % unter
+dem Kurs).
+
+1. **Boerse zuerst, vollstaendig: Position UND offene Orders.** Eine
+   Orderliste ohne die Position sagt nichts darueber, ob die Orders gehoeren.
+   Dann das Buch, das die Position fuehrt, dann Journal und Spiegel - nur um zu
+   pruefen, ob das Haus sie ueberhaupt kennt. Nie umgekehrt: ein Journal ist
+   eine Behauptung des Hauses. Ein MCP-Werkzeug ist die bequemere Abfrage,
+   ersetzt den Haus-Weg im Spurenbaum aber nicht; liefert es nichts (der
+   Kraken-Server verliert gelegentlich seinen stdio-Kindprozess), ist der
+   Haus-Weg der Zeuge.
+
+2. **Zuordnungsschluessel ist das Tripel (Menge, Kurs, Zeitstempel).** Passt die
+   Menge zu keinem Buch und zu keiner Journalzeile, ist die Order fremd.
+   **Fremde Orders werden nicht angefasst** - sie sind Max' Geld und Max'
+   Order. Erst benennen lassen, dann stornieren, und nie im Rahmen einer
+   „Klaerung“ mitnehmen. Zwei Saetze (Stop + Ziel) an einer Position sind
+   normal; drei oder mehr mit verschiedenen Mengen sind der Befund.
+
+3. **Die Stop-Groesse gehoert an die GEFUELLTE Menge, und `unfilledSize` wird
+   gegen die Positionsgroesse gestellt - nicht als Rundungsrest gelesen.**
+   `reduceOnly` verhindert den Fehlverkauf ueber die Positionsgroesse hinaus,
+   aber es verhindert NICHT, dass der Stop feuert und die ganze Position
+   mitnimmt. Ein Stop mit `unfilledSize` groesser als die Position gehoert zu
+   einem anderen Kauf - dieselbe Luecke wie in 3a, nur an der Order statt am
+   Buch, und dieselbe Konsequenz: Soll gegen Ist je Kontrakt, vor JEDER
+   Order-Aktion.
+
+4. **Die Stop-DISTANZ zum Kurs entscheidet die Reihenfolge, nicht der
+   Stoppreis.** Je Liste `(Kurs - Stop) / Kurs` in Prozent ausgeben, aufsteigend
+   sortiert. Gemessen: der eigene Notaus lag 11 % unter dem Kurs, ein fremder
+   Stop 1,3 % - bei 1,3 % ist die Position weg unabhaengig von allem, was im
+   Buch steht. Ohne diese Distanz nennt man vier Preise und der Leser kann die
+   Dringlichkeit nicht sehen. Ein **Take-Profit, der ein Vielfaches des
+   Einstiegs ist** (gemessen 3,05x), ist ein Befund zum Nennen (Verdacht auf
+   Zahlendreher, Sollwert des Buchs daneben) und **kein Wert, den man
+   repariert**.
+
+5. **`ok` im Dauerlauf-Log ist ein MODUS, kein Beleg.** `(live) ok` heisst: der
+   Kindprozess ist mit dem Modus live beendet worden - nicht, dass die Position
+   behandelt wurde. Ein Beleg ist eine Journalzeile oder eine Aenderung an der
+   Boerse. Ebenso endet eine Fehlerreihe nicht mit dem Zustand: eine Spur, die
+   ihre Live-Position nicht schliessen kann (Abschnitt 16), schreibt dieselbe
+   Zeile im Viertelstundentakt weiter, waehrend der letzte Lauf `ok` meldet.
+   Also die letzten N Fehlerzeilen der Spur lesen, nicht die letzte
+   Protokollzeile.
+
+Ein Symbol in vier Papierbuechern und an der Boerse ist kein Widerspruch,
+sondern Normalfall: alle Fundstellen mit Modus nennen und sagen, dass kein
+Papierbuch etwas an den Boersen-Orders aendert - sonst entsteht der Eindruck,
+man muesse die Buecher „in Uebereinstimmung bringen“, ein Schritt, der nichts
+loest und Papierpositionen zerstoert.

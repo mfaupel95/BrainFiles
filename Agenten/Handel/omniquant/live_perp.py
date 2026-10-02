@@ -178,7 +178,7 @@ def sperren_zeile(w, z):
 # --- Order ------------------------------------------------------------------
 
 def markte_laden():
-    """Die Marktliste der Boerse EINMAL je Lauf holen.
+    """Die Marktliste der Boerse EINMAL je Lauf holen - auf EINSTIEG und AUSSTIEG.
 
     `kraken_perp.maerkte()` liefert absichtlich nur die bereits geladene
     Liste (kein Netzzugriff auf dem heissen Pfad). Wird `lade_maerkte()`
@@ -187,7 +187,9 @@ def markte_laden():
     alle HBAR-USDT, alle im Live-Modus, obwohl PF_HBARUSD existiert.
 
     Rueckgabe: Anzahl der Maerkte, oder 0 mit Fehler auf stderr. Ein Fehler
-    hier ist kein Absturz - der Lauf geht mit Papier weiter.
+    hier ist kein Absturz - der Lauf geht weiter. Fuer den Ausstieg ist das
+    anders: eine offene Position, deren Markt sich nicht auflosen laesst,
+    bleibt liegen. Deshalb meldet `pruefe_ausstiege()` das selbst (T-306).
     """
     lader = getattr(kraken_perp, "lade_maerkte", None)
     if lader is None:
@@ -285,12 +287,26 @@ def kaufe(handeln, w, z, kand):
     bestellung = antwort.get("sendStatus") if isinstance(antwort, dict) else {}
     kennung = (bestellung or {}).get("order_id") or antwort
     kurs_ist = kurs
+
+    # Die Order EXISTIERT ab hier - das Geld ist gebunden. Die Fill wird
+    # abgewartet; bestaetigt=False heisst "Bestaetigung offen", NICHT "0".
+    # Der alte Weg las sofort, bekam 0 und bestellte Stop UND Rueckdrehung
+    # mit Groesse 0: Kraken antwortete invalidArgument: 0, die Rueckdrehung
+    # blieb wirkungslos und wurde als Erfolg gemeldet (T-306).
+    fuellung_bestaetigt = False
     try:
-        gefuellt = kraken_perp.gefuellte_menge(kennung)
+        gefuellt, fuellung_bestaetigt = kraken_perp.gefuellte_menge(kennung)
         if gefuellt:
-            kontrakte = int(gefuellt)
+            kontrakte = gefuellt
     except Exception as e:                               # noqa: BLE001
         sys.stderr.write("Fuellungsmenge nicht lesbar: %s\n" % e)
+    if not fuellung_bestaetigt:
+        print("  Fuellung fuer %s unbestaetigt - %d Kontrakte bestellt, "
+              "mit dieser Groesse gebucht (Kennung %s)"
+              % (inst, kontrakte, kennung), file=sys.stderr)
+    if kontrakte < 1:
+        _fehler(handeln, inst, "Sizing ergab 0 Kontrakte - keine Order")
+        return None
 
     stop = float(kand["stop"])
     algo_id = None
@@ -301,11 +317,24 @@ def kaufe(handeln, w, z, kand):
     except Exception as e:                               # noqa: BLE001
         _fehler(handeln, inst, "Schutz-Stop fehlgeschlagen: %s" % e)
         # Ohne Stop wird zurueckgedreht - eine nackte Position ist kein Handel.
+        # Die Rueckdrehung gilt erst als gelungen, wenn die BOERSE die Position
+        # danach nicht mehr fuehrt. Am 01.10.2026 wurde sie mit Groesse 0
+        # abgeschickt, blieb wirkungslos und wurde trotzdem als Erfolg
+        # protokolliert (T-306): 5706 Kontrakte ohne Schutz.
+        zurueck_ok = False
         try:
             kraken_perp.markt_verkauf(inst, kontrakte)
-            _fehler(handeln, inst, "Position wegen fehlendem Stop zurueckgedreht")
+            offen = kraken_perp.offene_positionen(inst, fuer_ausstieg=True)
+            zurueck_ok = not any(p.get("size") for p in offen)
         except Exception as e2:                          # noqa: BLE001
             _fehler(handeln, inst, "Rueckdrehung fehlgeschlagen: %s" % e2)
+        if zurueck_ok:
+            _fehler(handeln, inst, "Position wegen fehlendem Stop zurueckgedreht")
+        else:
+            _fehler(handeln, inst,
+                    "SICHERHEITSLÜCKE: Stop fehlgeschlagen UND Rueckdrehung "
+                    "ohne Wirkung - die Boerse fuehrt die Position weiter. "
+                    "Kein weiterer Einstieg, bis das von Hand geklaert ist.")
         return None
 
     p = {
@@ -340,9 +369,19 @@ def pruefe_ausstiege(handeln, w, z):
     offen = [p for p in z.get("positionen", []) if p.get("modus") == "live"]
     if not offen:
         return
+    # Die Marktliste wird auf BEIDEN Wegen gebraucht. Sie war nur im
+    # Einstiegszweig geladen - dadurch blieb jede offene Position unauflösbar,
+    # selbst nachdem das Gate sie nicht mehr blockierte (T-306).
+    try:
+        markte_laden()
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, offen[0]["inst"],
+                "Marktliste nicht ladbar, Ausstieg moeglich: %s" % e)
     for p in list(offen):
         try:
-            kurs = kraken_perp.letzter_kurs(p["inst"])
+            # fuer_ausstieg=True: das Einstiegs-Gate (live_pf_ableitung)
+            # darf eine OFFENE Position nicht am Schliessen hindern (T-306).
+            kurs = kraken_perp.letzter_kurs(p["inst"], fuer_ausstieg=True)
         except Exception as e:                           # noqa: BLE001
             _fehler(handeln, p["inst"], "Ausstiegskurs nicht abrufbar: %s" % e)
             continue

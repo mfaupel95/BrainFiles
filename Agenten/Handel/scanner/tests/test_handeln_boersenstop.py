@@ -99,6 +99,12 @@ class AttrappeOKX:
         self.rufe.append(("stopinst", algo_id))
         return "LINK-USDC"
 
+    def quote(self, inst):
+        self.rufe.append(("quote", inst))
+        if not inst or "-" not in inst:
+            return ""
+        return inst.split("-")[-1]
+
     def namen(self):
         return [r[0] for r in self.rufe]
 

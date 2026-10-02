@@ -97,6 +97,53 @@ Eine Position ohne Kurs NIE stillschweigend behalten: melden, mit Symbol und
 Eroeffnungszeit. Melden allein heilt nicht - der naechste Schritt ist immer der
 Einzelkurs-Abruf.
 
+### Die dritte Form: es gibt fuer den gehaltenen Token gar KEINEN Kurs
+
+Die beiden Faelle oben lassen sich durch einen Abruf heilen, weil die Quelle
+den Kurs auch fuer eine Position liefern kann, die nicht mehr im Plan oder im
+Feed-Kandidaten ist. **Es gibt Quellen, fuer die das nicht gilt**: eine Onchain-
+Kette, deren Sammler nur beobachtete TRANSAKTIONEN meldet. Ein Token, den
+niemand mehr handelt, hat dort keinen Preis - nicht einen veralteten, keinen.
+Dann faellt der Einzelkurs-Abruf leer, die Position bleibt, und weil
+`max_offene_positionen` klein ist, ist das kein Ausreisser, sondern ein
+Zustand: **das Buch ist voll, es gibt Kandidaten, und es passiert nichts.**
+Gemessen: drei Plaetze besetzt, drei Positionen 125 bis 222 Stunden ohne
+Beobachtung, ein Kandidat vorhanden, kein Einstieg in Tagen.
+
+Der Einzelkurs-Abruf ist hier die falsche Kur, die meldende Zeile auf stderr
+die unmoegliche. Zwei Schrauben, beide noetig:
+
+1. **Die Quelle beantwortet die Frage nach einer OFFENEN Position, nicht nach
+   einem Kandidaten.** Auch hier gehoert der Preis in `kurse`, nicht in `daten`
+   - ein nachgezogener Kurs darf einen Einstieg ausloesen, den es nie gab.
+   Die Einstiegspreise der Kandidaten (mit Nachlauf-Aufschlag) haben Vorrang vor
+   dem nackten letzten Handel. Der Leser bekommt dafuer eine eigene Funktion
+   mit derselben Form wie die uebrigen: `letzte_beobachtung(con, token)` -
+   juengste Fuellung, Kauf ODER Verkauf, ueber Handelsvolumen in Tokens. Bei
+   dieser Form ist sie eine TABELLE, keine Regel: ohne sie ist das Neuschreiben
+   einer Abfrage, und die landet in `daten`.
+2. **Eine Altersgrenze raeumt, was keine Quelle mehr beantwortet.** Position
+   offen, letzte Beobachtung aelter als `<grenze>` (Vorgabe 24 h) oder nie
+   beobachtet: schliessen. Zum letzten bekannten Kurs, ohne jede Beobachtung
+   neutral zum Einstieg. **Der Grund heisst so, dass er unter
+   `stoerungen.BUCHHALTUNG` faellt** - das ist eine Buchbereinigung, keine
+   Handelsentscheidung, und darf in keiner Kennzahl als Runde mitzaehlen. Ein
+   eigener Grundname ohne Merkmal erhaelt eine erfundene Runde, die dann in der
+   Trefferquote steht.
+
+Vorschau als eigener Schalter, Anwenden als zweiter (`--raeumen` /
+`--raeumen-anwenden`): die Raeumung loest Zeilen im Journal und in allen drei
+Risikostufen aus, das gehoert gesehen, bevor es geschieht. Der Nachweis danach
+ist dreifach - Buch aller drei Stufen leer, `spiegelstand` byte-gleich, und die
+geraeumten Zeilen mit `stoerungen.teile_runden` gegengeprueft (null echte
+Runden).
+
+Merksatz fuer die Fehlersuche: **„Buch voll bei vorhandenen Kandidaten" ist
+selbst eine Null-Lage.** Sie faellt in derselben Auswertung zusammen mit
+wartet / arbeitet / nur Ausbuecher / Stall - und ist die einzige davon, bei der
+der Zustand fortbesteht. Bevor eine Spur als wartend eingestuft wird, `kurse`
+und `positionen` vergleichen: eine Position ohne Kurs ist immer ein Befund.
+
 ## Den Stall in allen Spuren finden (Audit-Rezept)
 
     cd BrainFiles

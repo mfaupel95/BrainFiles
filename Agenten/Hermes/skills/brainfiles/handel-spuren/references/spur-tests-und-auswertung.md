@@ -281,3 +281,49 @@ scheitern — an der Attrappe, nicht an der Regel. Solche Fixtures als `dict`
 ableiten. Ebenso gehoert zur Attrappe JEDE Methode, die der gepruefte Weg ruft
 (`schutz_stops` neben `positionen`): eine fehlende Attrappen-Methode macht die
 ganze Datei rot und liest sich wie ein Produktionsfehler.
+
+## Der Seam ist die LADEFunktion, nicht das geladene Modul
+
+Ein Wrapper, der sein Boersenmodul ueber den **Pfad** laedt
+(`spec_from_file_location` bei **jedem** Aufruf), hat zwei Instanzen im Spiel: die
+importierte (`import kraken_futures`) und die, die der Produktivcode sich selbst
+laedt. Ein Patch auf `_roh` der importierten Instanz erreicht die zweite nicht —
+der Test laeuft, die Attrappe wird nie benutzt, und der Test misst an der echten
+Boerse.
+
+Erkennungszeichen: die Attrappe wird nie aufgerufen, obwohl der Test sie
+offenbar einsetzt (`self.rufe` bleibt leer), oder der Fehler kommt aus einem
+Modulpfad, den der Test gar nicht angefasst hat.
+
+- **Richtig: die Ladefunktion patchen.** `kp._kf = lambda: kf` — dann bekommt der
+  Produktivpfad die Attrappe, und die Antwort je **Pfad** liefern (`/tickers` den
+  Kurs, `/openPositions` den Bestand). Eine flache Antwort pro Testfall reicht
+  nicht: ein Aufruf trifft mehrere Endpunkte nacheinander.
+- **Die Attrappe nimmt `**kwargs`.** `_roh` fuehrt je nach Aufruf `signiert=` und
+  `post=` mit. Eine Attrappe mit fester Signatur scheitert an
+  `TypeError: unexpected keyword argument` — am Testgeruest, nicht an der Regel.
+- **Merksatz:** „meine Attrappe wurde nicht aufgerufen" ist kein Testfehler,
+  sondern die Meldung, dass die Naht falsch liegt. Die Frage lautet immer:
+  **welche Instanz benutzt der Produktivcode?**
+
+## Gegenprobe: die VORBESTEHENDEN roten Punkte zuerst wegrechnen
+
+Bevor eine Fehlermeldung der eigenen Aenderung zugeschrieben wird, beide Zustaende
+mit **derselben** Suite messen und die Fehlernamen differenzieren:
+
+    mit der Aenderung:  FAILED (failures=3, errors=6)
+    mit dem HEAD-Stand:  FAILED (failures=3, errors=6)   <- identische Namen
+    neu durch mich: []        weg durch mich: []
+
+Das ist billiger als Raten und im Bericht belegbar. Zwei Mittel, beide brauchbar:
+
+- **Regel entfernen, Kopien zurueckspielen:** die geaenderten Dateien sichern, die
+  Regel zuruecknehmen, Suite fahren, Kopien zurueckspielen, Suite nochmal fahren.
+  Beide Laeufe gehoeren in den Bericht.
+- **HEAD-Stand laden, ohne den Arbeitsbaum anzufassen:** `git show HEAD:<pfad>` in
+  die Datei schreiben, Suite fahren, dann die eigene Fassung zurueckspielen.
+  **Kein `git checkout`** — das ueberschreibt uncommittete Arbeit einer parallelen
+  Sitzung und liefert eine Fehlermeldung, die wie ein Dateischwund aussieht.
+
+Merksatz: „die Suite war schon rot" ist eine **Behauptung, keine Messung**, bis die
+Fehlernamen beider Laeufe nebeneinander liegen.

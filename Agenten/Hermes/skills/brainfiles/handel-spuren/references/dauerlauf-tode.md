@@ -74,3 +74,31 @@ nichts**; ein Befund wird hoechstens alle 6 h wiederholt.
 
 Pruefen: `python Agenten/Hermes/scripts/dauerlauf-wache.py` (leer = gesund) und
 `python -m unittest test_dauerlauf_wache -v` (aus `Agenten/Hermes/scripts`).
+
+## 5. Der geplante Neustart: „Beenden und starten“ in EINEM Skript ist halb ausgefuehrt
+
+Ein Neustart aller drei Stufen ist kein Kill, sondern zwei Schritte. Fuellt man
+sie in einen Aufruf, kann der erste den zweiten verschlucken — ohne jede
+Fehlermeldung, und mit einem Zustand, den der naechste Blick nicht verraet.
+
+- **Ein Prozessfilter trifft die EIGENE Kommandozeile.** Wer per
+  `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*dauerlauf.py*' }`
+  sammelt und dann `Stop-Process` drauf losgeht, beendet auch die PowerShell, in
+  der das Skript laeuft: ihre Kommandozeile enthaelt das Muster. Die Shell stirbt,
+  die Zeilen danach (`Start-ScheduledTask`) laufen nie — Ergebnis: **alle drei
+  Stufen unten**, die Sperredateien tragen die ALTEN PIDs, und der Aufruf sieht
+  aus, als haette er funktioniert. Deshalb: eigene PID ausschliessen
+  (`$_.ProcessId -ne $PID`), **zusaetzlich** auf den Prozessnamen filtern
+  (`$_.Name -match 'python'`), und im Log niemals auf einen Filter ohne
+  PID-Ausschluss setzen.
+- **Nach dem Beenden NACHZAEHLEN, nicht die Absicht melden.** Prozesszahl je
+  Stufe neu lesen und die drei Sperredateien ansehen. Eine Sperredatei mit
+  einer PID, die es nicht mehr gibt, ist der Befund.
+- **Start in einem EIGENEN Aufruf.** Das Beenden und das Starten gehoeren in
+  getrennte Schritte: was der erste aufloest, darf den zweiten nicht mitnehmen.
+- **Der Start gilt erst mit zwei Zeugen:** neue Prozesse mit einer Startzeit
+  JENSEITS des Beendens, und eine frische Zykluszeile im `dauerlauf.log` der
+  jeweiligen Stufe. Eine Aufgabe im Zustand `Ready` ist kein laufender Lauf.
+
+Merksatz: **ein Neustart, der keine Fehlermeldung hinterlaesst, hat haeufig
+nur die Haelfte gemacht.**

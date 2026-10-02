@@ -2,3 +2,7 @@
 # Er braucht nur die Standardbibliothek - kein Paket ausserhalb davon.
 # Diese Datei steht hier, damit ein neu erzeugtes .venv nach einem Umzug weiss,
 # dass nichts nachzuinstallieren ist.
+#
+# Ausnahme: ws_trigger.py nutzt websocket-client fuer den OKX-Public-Feed.
+# Installation: pip install websocket-client
+websocket-client
