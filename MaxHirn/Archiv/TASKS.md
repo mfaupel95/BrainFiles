@@ -60,6 +60,37 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
+      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
+      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
+      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
+      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
+      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
+      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
+      Agenten/Handel/omniquant/wachen.json, Agenten/Handel/tests/test_gebuehren_setzen.py
+
+- [ ] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
+      Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
+      (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu
+      schalten; damit schreibt der Papierzweig des Schattenarms `omniquant_weit` nichts
+      mehr, und der Test erwartet weiterhin einen Papierstand.
+      Naechster Schritt: der Test prueft eine EIGENSCHAFT, die Max entschieden hat (Haupt -
+      live, Schattenarm - Papier). Nachmessen, was der Schattenarm jetzt fuehrt, und die
+      Erwartung daran binden statt an einen Zustand vom 01.10.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_omniquant_fassung.py,
+      Agenten/Handel/omniquant/
+
+- [ ] **T-310 — `test_replay` schlaegt an der squeeze-Gegenprobe (Rundenzahl 20 vs. 12)**
+      Kontext: gefunden 02.10.2026, `test_replay.GegenprobeTest.test_squeeze_stimmt_mit_backtest_prognose_ueberein`
+      (`Rundenzahl: neu 20, alt 12`). Der Replay zaehlt mehr Runden, als der alte Stand, mit dem
+      der Test gebaut wurde. Ursache nicht gemessen - es kann die Kerzenschluss-Regel sein
+      (30.09.2026) oder die Paarungs-Regel (T-095), nicht der Replay selbst.
+      Naechster Schritt: die Gegenprobe neu rechnen und den ALT-Stand aus dem heutigen Code
+      erzeugen, nicht aus einer aufgezeichneten Zahl. Ein Test, der eine alte Rundenzahl
+      einfriert, meldet Aenderung statt Fehler.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_replay.py
+
 - [ ] **T-306 - docker-wache heilt die Engine nicht, wenn Docker Desktop schon laeuft**
       Kontext: gemessen am 01.10.2026. Die Wache heilt mit `wsl --shutdown` +
       Docker Desktop starten. Steht die WSL-Distribution `docker-desktop` aber auf
