@@ -176,7 +176,43 @@ muss „Freigabefenster" heissen. Ein Guthaben-Grund daneben ist RICHTIG (die Or
 waere abgelehnt) und darf nicht wegoptimiert werden; der Bericht nennt ihn als
 das, was Max entscheiden muss.
 
-Merksatz: **eine Sperre, die niemand ausspricht, ist keine.**
+### Die Werkzeug-Schicht: „keine Sperrzeile" kann auch „keine Ausgabe" heissen
+
+Ein spurenuebergreifendes Werkzeug, das jede Spur als Kindprozess aufruft, kann
+an derselben Stelle scheitern wie der Kern — nur eine Ebene tiefer. Dort, wo der
+Kern die Zeile nicht druckt, liefert ein **falscher Interpreter** gar keine
+Ausgabe: der Aufruf bricht mit `ModuleNotFoundError` ab, und das Werkzeug meldet
+das als „keine Sperrzeile". Beides sieht gleich aus und hat verschiedene Ursachen.
+
+Gemessen: neun Spuren ohne Zeile, verteilt auf genau drei Ursachen —
+
+| Ursache | Befund | Ort des Fixes |
+|---|---|---|
+| `if g: print(...)` in der Spur | Zeile fehlt, OBWOHL die Spur sie im Code hat; `nur_fenster_fehlt` liest `None` | Spur: immer drucken, leere Liste als `nichts` |
+| `--vorschau`-Zweig kehrt vor der Sperrenabfrage zurueck | Zeile fehlt im Code | Spur: Zeile in den Vorschau-Zweig |
+| Kindprozess mit fest verdrahtetem Interpreter | Lauf stuerzt ab, es kam nie eine Zeile | **Werkzeug**: je Spur ihr eigener venv |
+
+Die dritte Ursache ist die teuerste, weil sie sich als „diese Spur ist blind"
+liest statt als Werkzeugfehler. Ein Werkzeug, das Spuren startet, waehlt den
+Interpreter aus derselben Quelle wie der Dauerlauf (Reihenfolge: die Spur
+selbst, dann eine Nachbarspur, dann der Haus-venv) — Spuren mit eigenem venv
+(Nautilus-Arme: `nautilus_trader` liegt nur dort) brechen sonst ab.
+
+**Die Messung kommt VOR dem Umbau.** Erst das Werkzeug ueber die ganze Flotte
+laufen lassen und die Ausgabe als Liste lesen: welche Spuren melden
+`keine Sperrzeile`, welche melden `nichts`, welche nennen genau einen Grund. Die
+Zeile „Keine Spur haengt allein am Fenster" ist die eigentliche Erkenntnis — sie
+sagt, dass die Auto-Freigabe NICHT der Hebel ist. Der Hebel sind dann die zwei
+Schalter: setzen die Spuren `handel_erlaubt` **und** `freigabe.erfuellt`, bleibt
+ueberall nur das Fenster uebrig, und die Auto-Freigabe macht den Rest. Wer
+stattdessen an der Auto-Freigabe selbst dreht, baut an der falschen Stelle.
+
+Gegenprobe ist nicht „Zeile da", sondern die **Wirkung**: nach dem Fix muss eine
+mit Haaken versorgte Spur „kein offenes Freigabefenster" als EINZIGEN Grund
+nennen — dann weiss man auch, dass der Dauerlauf dort anfragt.
+
+Merksatz: **eine Sperre, die niemand ausspricht, ist keine — und ein Werkzeug,
+das abstuerzt, sagt auch nichts.**
 
 ## 7. Eine Waehrung je BUCH — die Quote kommt aus der API, nicht aus dem Code
 

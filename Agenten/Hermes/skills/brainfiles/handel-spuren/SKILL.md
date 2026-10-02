@@ -699,7 +699,9 @@ Die Rueckdrehung bleibt wirkungslos und wird als Erfolg protokolliert. Lesefunkt
 warten und `(menge, bestaetigt)` zurueckgeben, nie auf 0 herunterrechnen
 (`max(1, int(round()))`), einen Abfragefehler nie als Nullbefund lesen, und
 unbestaetigt mit der BESTELLTEN Groesse weiterarbeiten. Vollen Text:
-`references/live-order-und-buchpflege.md` Abschnitt 15.
+`references/live-order-und-buchpflege.md` Abschnitt 15. Die drei Fehler als KETTE
+(inkl. Buch-gegen-Boerse mit drei Orders und einem Waisen-Stop 0,19 % unter dem
+Kurs) in `references/orderweg-sicherheitskette.md`.
 95. **Eine Rueckdrehung gilt erst, wenn die BOERSE die Position nicht mehr fuehrt.**
 „Verkauf abgeschickt" ist keine Rueckdrehung — die Wirkung wird am Bestand
 gemessen, nicht am Erfolg des eigenen Aufrufs. Bleibt die Position stehen, ist das
@@ -711,7 +713,10 @@ Variable, die nur der Einstiegszweig setzt, sperrt sie jeden Kursabruf und haelt
 die Live-Position fest. Loesung: der Aufrufer sagt den Zweck
 (`pf_markt(inst, fuer_ausstieg=True)`) — und JEDER Weg laedt die Vorbedingungen
 (Marktliste, Kennung), die er zum Aufloesen braucht. Der Ausstieg umgeht die
-Freigabepflicht, NIE den Beweis, dass es den Markt gibt.
+Freigabepflicht, NIE den Beweis, dass es den Markt gibt. Merksatz: **ein
+Ausstiegspfad ist die einzige Stelle, die IMMER funktionieren muss** — und er ist
+meist die, die am spaetesten gebaut und am seltensten gelaufen ist; er braucht
+keinen Freigabepflicht-Pfad, sondern einen eigenen.
 **Und die Kurve selbst zerlegen, bevor ein Deckel angefasst wird.** Die
 Kapitalkurve rechnet auf ALLEN Buchungen, also auch auf
 Buchbereinigungs-zeilen, die keine Handelsrunde sind. Gemessen an einer Spur:

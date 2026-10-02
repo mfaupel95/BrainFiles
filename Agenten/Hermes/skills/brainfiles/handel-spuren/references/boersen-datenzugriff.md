@@ -311,14 +311,36 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
 - **`okxf._roh` gibt die Liste DIREKT zurueck** (kein `["data"]`-Mantel). Ein
   `.get('data')` darauf ist ein Attributfehler, kein leeres Ergebnis.
 - **Kaufkraft ist `availEq`, nicht `eq`.** `frozenBal` zerfaellt in `isoEq`
-  (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`
-  (OKX-eigene Reserve, Mechanik nicht dokumentiert). Gemessen: `eq` 864,
-  `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei „Live waere gesperrt
-  durch: nichts" melden, weil ihre eigenen Tore offen sind; die Order scheitert
-  dann erst am freien Betrag. Kaufkraft immer in der Waehrung nennen, in der
-  bezahlt wird (Spot-USDC-Kauf und Perp-Margin liegen im selben Konto,
-  `acctLv=2` rechnet je Waehrung).
-- **Bedingte Stops liegen NICHT in `orders-pending`,** sondern nur in
+  (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`.
+  Gemessen: `eq` 864, `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei
+  „Live waere gesperrt durch: nichts" melden, weil ihre eigenen Tore offen sind;
+  die Order scheitert dann erst am freien Betrag. Kaufkraft immer in der
+  Waehrung nennen, in der bezahlt wird (Spot-USDC-Kauf und Perp-Margin liegen
+  im selben Konto, `acctLv=2` rechnet je Waehrung).
+- **`stgyEq` ist das GEWACHSTE Guthaben (Staking/Earn), nicht eine undokumentierte
+  Reserve** — und es ist damit der Grund, warum ein Konto „viel Geld, aber nichts
+  frei" zeigt. Gemessen: `eq` 406,87 USDC bei `stgyEq` 309,98 und `availEq`
+  0,0047; nach dem Unstaken `availEq` 377,03. Wer den Wert als „Reserve"
+  abtut, erklaert ein Guthaben-Tor zum Wunder. Die Staking-INSTANZEN selbst
+  liefert die API auf dem EEA-Host nicht (die `finance/staking-defi`-Positions-
+  und -Orderpfade geben 404) — **die Sperrfrist und der Zinsverlust sind damit
+  nicht abrufbar**, das bleibt eine Kontohandlung des Benutzers. Ein Freimachen
+  ist keine Zuweisung: die erste scharf geschaltete Spur nimmt es im selben
+  Zyklus.
+- **Der Aufruf: das erste Argument ist der PFAD, kein Body.** Signatur
+  `_roh(pfad, methode="GET", body=None, signiert=False)` — ein Dict an erster
+  Stelle bricht mit `TypeError: can only concatenate str (not "dict") to str` ab,
+  und ohne `signiert=True` antwortet die Boerse `50103: OK-ACCESS-KEY can not be
+  empty`.
+- **GET-Parameter gehoeren in den PFAD, nicht in den Body.** Ein
+  POST-Body auf einen Konto-Endpunkt liefert `50115: Invalid request type
+  (HTTP 405)` — die Frage ist dann nicht „keine Daten", sondern „falsche Methode".
+  Richtig: `'/api/v5/account/positions?instType=FUTURES'` mit `signiert=True`.
+- **Bedingte Stops liegen unter `/api/v5/trade/`, nicht unter `/api/v5/account/`.**
+  `/api/v5/account/orders-algo-pending` gibt **404** — und 404 auf diesem Pfad liest
+  sich wie „keine Schutzauftrage vorhanden". Vor dem Befund den Pfad pruefen:
+  `'/api/v5/trade/orders-algo-pending?ordType=conditional'`.
+- **Bedingende Stops liegen NICHT in `orders-pending`,** sondern nur in
   `orders-algo-pending?ordType=conditional`. „0 offene Auftraege" ist damit
   keine Aussage ueber den Schutz einer Position (siehe
   `references/wartende-auftraege-belegen-platz.md`).
