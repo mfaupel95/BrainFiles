@@ -7,6 +7,11 @@ Code, Verdrahtung, Tests, echter Lauf, Commit, Dauerlauf, GUI).
 > Soll die Spur aus einer FREMDQUELLE entstehen (Video, Reel, Post oder Bild als
 > Vorlage statt einer abgebrochenen Aufgabe), ist der Weg ein anderer und die
 > Pruefregeln sind strenger: `references/strategie-aus-fremdquelle.md`.
+>
+> Ist die Vorlage eine PINE-Strategie (klassik-Familie: gemeinsame Rechnung in
+> `klassik_regeln.py`, Papier, kein Live-Zweig), ist der Weg kuerzer und
+> anders verdrahtet: `references/klassik-papierspur-anlegen.md` (dort auch die
+> Pine->Python-Fallen der Pivot-/Volumen-Umsetzung).
 
 ## 0. Abgebrochene Aufgabe verifizieren — nichts annehmen
 - `search_files("*<suchwort>*", BrainFiles-Wurzel)` → `total_count: 0`
