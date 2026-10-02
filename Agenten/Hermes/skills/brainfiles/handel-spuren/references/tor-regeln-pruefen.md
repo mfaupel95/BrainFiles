@@ -43,6 +43,32 @@ bremst, und meldet eine Verbesserung, die keine ist.
   Freigabefenster und Score binden meist zuerst. Vor jeder Schwellenaenderung die
   Sperrzeilen der Spur lesen (`sperrgruende.py`, die eigene `--vorschau`) und den
   BINDENDEN Grund benennen - sonst wird die falsche Zahl optimiert.
+- **Ein Buchdeckel ist kein Kontodeckel.** `max_gesamt_usd` begrenzt die Summe
+  der OFFENEN Positionen im Buch, nicht das freie Guthaben bei der Boerse. Eine
+  Spur ohne eigenes Guthaben-Tor laeuft bei gebundenem Konto in jeden Kandidaten
+  und bekommt `insufficient balance` zurueck (Scanner 02.10.2026: 442 von 444 USDC
+  gebunden, 1,76 frei, kein Tor vorhanden). Das Tor gehoert in `pruefe_einstiege`,
+  liest das Konto EINmal je Zyklus (nicht je Kandidat) und lehnt mit EINEM
+  Ereignis je Waehrung ab - ein volles Konto schreibt sonst 18 Zeilen, die sich
+  wie 18 verschiedene Ablehnungen lesen.
+- **Die Quote gehoert aus dem INSTRUMENT, nicht aus einer Konstanten.** Ein
+  Abruf, der eine feste Waehrung nennt (`guthaben_usdt()`), liefert 0,0 und sieht
+  wie ein leeres Konto aus, wenn das Konto eine andere Quote fuehrt. `okx.quote(inst)`
+  plus `guthaben(ccy)` haelt beides zusammen; ein Altname bleibt als Altname.
+  Merksatz: ein Abruf, der eine Waehrung nennt, die es nicht gibt, ist kein
+  leeres Konto, sondern ein falscher Abruf.
+- **Eine Waehrung auf dem Kontostand ist noch kein Handelsweg.** Vor jeder
+  Umstellung auf eine andere Quote zuerst zaehlen, ob die Boerse in dieser Quote
+ ueberhaupt Paare fuehrt (`public/instruments`, `quoteCcy` zaehlen). Gemessen
+ 02.10.2026 auf dem OKX-EEA-Konto: 438 USDC, 0,00 USDT, 0,0003 EURC - und NULL
+ EURC-Spotpaare bei 408 USDT- und 298 USDC-Paaren. Ein `universum.quotes`, das
+ beide Waehrungen nennt, laesst die Spur Werte bewerten und vorschlagen, die das
+ Konto nicht bezahlen kann.
+- **Eine Schwelle in einem Universum-Filter zaehlt JE QUOTE.** Senkt man sie
+ nicht, weil "das Feld kleiner wird", sondern weil die Zahl gilt, gilt sie pro
+ Waehrung - ein Feld mit zwei Quotes verliert die Haelflfte seiner Paare, ohne
+ dass jemand die Zeile liest. Nebenher die Zahl Paare je Quote bei 3, 1, 0,5, 0,2
+ Mio messen und die gewaehlte Grenze als Zahl nennen.
 - **Zwei Groessen gehoeren zusammen: Volatilitaetsgrenze und Stop.** Ist die
   Tagesspanne eines Instruments groesser als der Stop der Spur, wird der Stop
   zum Rauschen. Eine Grenze anheben, ohne den Stop mitzuziehen, verschiebt nur,
