@@ -306,12 +306,17 @@ assert d.count(b"\r\r") == 0, "Zeilenenden verdoppelt - sofort reparieren"
   harmlos aus (79 Insertions), ein Werkzeug, das die Mehrheit zaehlt, arbeitet ab
   da aber auf der falschen Sorte. Regel: JEDE eingefuegte Zeile mit `nl` bauen
   (`block.replace("\n", nl)`), nicht nur die Trennzeilen zwischen den Bloecken.
-  Gegenprobe nicht nur auf `\r\r`:
+  Gegenprobe nicht nur auf `\r\r` - und **nicht** `assert lf == 0`: eine
+  parallele Sitzung hat in dieser Datei schon LF-Zeilen hinterlassen, die
+  bleiben duerfen. Richtig ist, dass der eigene Vorgang **keine neuen**
+  einfuegt:
 
 ```python
-d = open(PFAD, "rb").read()
-crlf = d.count(b"\r\n"); lf = d.count(b"\n") - crlf
-assert lf == 0, "gemischte Zeilenenden: %d LF-only" % lf
+vor = open(PFAD, "rb").read()
+lf_vor = vor.count(b"\n") - vor.count(b"\r\n")
+# ... Text bauen, Bytes kodieren ...
+assert nb.count(b"\n") - nb.count(b"\r\n") == lf_vor, "eigene LF-Zeilen eingeschlichen"
+assert nb.count(b"\r\r") == 0
 ```
 
   Reparatur ohne Inhaltsverlust, beide Schritte in dieser Reihenfolge:

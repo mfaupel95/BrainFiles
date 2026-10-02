@@ -567,7 +567,26 @@ Kurzfassung ersetzt die Begruendung nicht.
   `<venv>/python -m unittest discover -s tests -t . -p "test_*.py"` (orbk: 54
   Tests), bei den Indikator-Spuren `cd <spur>/tests && python -m unittest
   test_<spur>`, bei nautilus `test_grid.py` mit dem nautilus-eigenen venv. Vor
-  jeder Meldung "Tests rot" den Aufruf aus dem Testkopf der Datei nehmen.
+  Vor jeder Meldung "Tests rot" den Aufruf aus dem Testkopf der Datei nehmen.
+- **Ein FAILED auf einen Namen, den es nicht gibt, ist kein Befund.**
+  `python -m unittest test_auswertung_alle` endet bei einem falsch getippten
+  Modulnamen mit `FAILED (errors=1)` - derselben Zeile wie ein echter Fehlschlag,
+  denn beides ist ein ImportError bzw. ein Fehler im Aufbau. Also `errors=1` IMMER
+  erst mit `ls tests/test_*.py` gegenpruefen, bevor daraus eine Zahl im Bericht
+  wird. Drei Fehlalarme an einem Tag (02.10.2026) kamen alle aus dieser
+  Verwechslung; die echten Nachbarmodule (test_auswertung_fenster,
+  test_auswertung_offene_positionen, test_auswertung_trading, test_buchauswertung,
+  test_backtest_in_auswertung, test_indikator_auswertung) laufen alle gruen.
+- **Eine Meldung ueber einen Schreibvorgang nennt den ABSOLUTEN Pfad - sonst
+  traegt sie nichts.** Ein Werkzeugtest, der `spur/wachen.json` in einem
+  Tempordner anlegt, meldet `spur/wachen.json gebuehr_taker: 0.001 -> 0.002` und
+  liest sich damit wie ein Zugriff auf eine echte Wache (gemessen 02.10.2026 bei
+  `gebuehren_setzen --anwenden`). Drei Gegenproben, bevor daraus eine
+  Fehlersache wird: existiert der genannte Pfad im Repo? Ist `git diff --numstat`
+  auf ihn leer? Hat die Datei eine mtime von weniger als zehn Minuten? Alles
+  dreimal NEIN = Testartefakt. Umgekehrt ist ein Pfad OHNE Wurzelanker nicht
+  einmal auffindbar (`FileNotFoundError` auf ein Verzeichnis, das es nur im
+  Tempordner gibt) - das ist die zweite Form desselben Fehlers.
 - **Vier Indikator-Spuren liegen gebaut, aber unangeschlossen** (15.09.2026,
   Commit `a3932f1`): `macd_mtf`, `squeeze`, `supertrend`, `wavetrend` - je
   `handeln.py` + `wachen.json` (BTC/ETH/SOL-USDT, `handel_erlaubt: false`), Tests

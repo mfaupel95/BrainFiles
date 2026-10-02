@@ -51,9 +51,14 @@ mit belegtem Vorteil).
 * `gebuehr_pct` = **Prozent je Seite** (`0.1` = 0,10 %) - eigene Arme
   (`gitter`, `omniquant`, `kopier`, `kopier1zu1`, `nautilus*`). Zwei Felder, zwei
   Einheiten: wer eines setzt und das andere liest, aendert nichts.
-* **Die Auswertung liest NUR `gebuehr_taker`.** Ein Arm, der nur `gebuehr_pct`
-  traegt, meldet "BRUTTO und UNBEKANNT", obwohl die Zahl bekannt ist - beide
-  Felder setzen (so geschehen bei `nautilus` und `nautilus_kraken_futures`).
+* **Die Auswertung liest NUR `gebuehr_taker`, und ein fehlendes Feld ergibt 0.0 -
+  nicht "unbekannt".** `auswertung_alle.gebuehr_fuer()` gibt bei fehlendem
+  `gebuehr_taker` exakt `0.0` zurueck; die Spur erscheint damit als KOSTENLOS,
+  nicht als unbestimmt. Ein Arm, der nur `gebuehr_pct` traegt, wird also nicht
+  auffallen, sondern schoen rechnen - das ist der gefaehrlichere Fall als eine
+  leere Anzeige. Beide Felder setzen (so geschehen bei `nautilus`,
+  `nautilus_kraken_futures` und `omniquant`). Gegenprobe: `gebuehr_taker`
+  entfernen und die Auswertung laufen lassen - sie muss dabei 0.0 melden.
 * Der Futures-Arm `nautilus_kraken_futures` faehrt aus dem Ordner
   `nautilus_kraken`, seine Wachen heissen `wachen.futures.json`; ohne
   `auswertung_alle.WACHEN_SUFFIX` liest der Bericht die Spot-Wachen.
@@ -95,12 +100,21 @@ Messung.
    OKX-Perp 0.0005, Kraken-Spot 0.006 (je Seite, Bruch). Ein Test, der feste Werte
    je Spur einfriert, wird bei der naechsten Messung rot, obwohl der Code stimmt -
    pruefe die REGEL (Markt -> Satz) plus 'Quelle vorhanden'.
-3. **Widerspricht die Datei sich selbst, wird der WIDERSPRUCH benannt und mit dem
-   TEUREREN der beiden Saetze gerechnet.** Beispiel omniquant: `boerse: kraken_futures`
-   (0,04-0,05 %) gegen Instrumente, die ueber `okx.letzter_kurs` bewertet werden
-   (0,10 %). Der guenstigere Satz waere geraten und freundlich - beides verboten.
+3. **Die Gebuehr folgt der ORDER-Boerse, nicht dem Kursweg.** Wichtiger noch: dass
+   eine Wache zwei Boersen nennt, ist **kein Widerspruch**, sondern der
+   Normalfall. Kurs und Order kommen selten aus derselben Quelle - eine Spur
+   kann ihren Marktkurs ueber `okx.letzter_kurs` nehmen und auf Kraken Futures
+   bestellen (gemessen: `omniquant`). Der Satz gehoert immer zur BOERSE, bei der
+   die Order liegt; der Kursweg sagt nichts darueber. Wer hier zwei Saetze
+   gegeneinanderstellt und den teureren nimmt, doppelt die Gebuehr einer
+   gemessenen Buchung.
+   **Der echte Widerspruch ist ein anderer Fall:** die Wache behauptet einen
+   Satz, der zur gemessenen Fuellung dieser Orderboerse passt. Dann gilt die
+   Messung, und die Behauptung wird korrigiert - nicht umgekehrt.
+   **Gegenprobe:** bei jeder Gebuehr-Aenderung den Kursweg und die Orderboerse
+   getrennt benennen. Folgen beide aus einem Feld, ist es geraten.
 
-## Werkzeug-Fallen beim Setzen (gefunden 01.10.2026, beide mit Test)
+## Werkzeug-Fallen beim Setzen
 
 - **Notiz da, Wert fehlt** ist ein eigener Fall: wer nur die Notiz auffrischt, setzt den
   Wert nie - und eine anschliessende Pruefung `float(d.get(feld))` faellt mit einem
@@ -110,3 +124,24 @@ Messung.
   ('Illegal trailing comma before end of object'). In echten Wachen faellt das nicht auf,
   solange dort noch ein Schluessel folgt - im Test mit einer MINIMALEN Datei sofort.
   Nach jedem Einfuegen daher das Komma des letzten Schluessels entfernen.
+- **`--anwenden` ueberschreibt eine Notiz, auch wenn der WERT richtig ist.** Er
+  schreibt die Quelle aus dem eigenen Katalog, sobald eine Aenderung ansteht -
+  und nimmt dabei eine zwischenzeitlich VERBESSERTE Notiz (mit gemessener
+  Rueckrechnung) auf den aelteren Text zurueck. Deshalb nach jedem Lauf, der
+  `.bak-JJJJMMTT` erzeugt, die **Notizen** der getroffenen Wachen gegen den
+  Sicherungsstand halten, nicht nur die Zahlen. Die Abhilfe ist offen: die
+  Notiz nur schreiben, wenn sich der WERT aendert oder die Notiz fehlt.
+- **Die Erfolgsmeldung nennt einen RELATIVEN Pfad** - und ist damit von einem
+  Testartefakt am Text nicht unterscheidbar. Ein Werkzeugtest legt `spur/wachen.json`
+  in einem Tempordner an; seine Meldung liest sich dann wie ein Schreibzugriff
+  auf eine echte Wache (gemessen: `gebuehr_taker: 0.001 -> 0.002`). **Bevor
+  daraus eine Fehlersuche wird:** existiert der genannte Pfad im Repo? Ist `git
+  diff --numstat` auf ihn leer? Hat die Datei eine mtime von weniger als zehn
+  Minuten? Alles dreimal NEIN heisst Testartefakt. Grundregel fuer JEDE
+  Meldung ueber einen Schreibvorgang: sie nennt den **absoluten** Pfad, sonst
+  traegt sie die Aussage nicht.
+- **Ein Testlauf meldet auch Module, die es nicht gibt.** `python -m unittest
+  test_foo` auf einen falsch getippten Namen endet mit `FAILED (errors=1)` und
+  sieht damit aus wie ein Fehlschlag des Hauses - es ist ein ImportError. Also
+  `errors=1` IMMER mit `ls tests/test_*.py` gegenpruefen, bevor daraus ein
+  Befund wird.
