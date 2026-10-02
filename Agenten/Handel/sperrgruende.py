@@ -46,7 +46,16 @@ def sperrgrund(spur: str, zeit: int):
     ordner = HIER / spur
     if not (ordner / "handeln.py").is_file():
         return spur, None, "kein handeln.py"
-    python = HIER / "scanner" / ".venv" / "Scripts" / "python.exe"
+    # Je Spur ihr EIGENER Interpreter. Der Scanner-venv traegt nicht
+    # nautilus_trader; mit ihm stuerzt die Vorschau der Nautilus-Arme ab
+    # (ModuleNotFoundError), und ein abgestuerzter Lauf liefert keine
+    # Sperrzeile - so galten nautilus und nautilus_kraken als blind
+    # (T-313, 02.10.2026). Reihenfolge: die Spur selbst, dann Nachbarspuren.
+    kandidaten = [HIER / spur / ".venv" / "Scripts" / "python.exe"]
+    if spur.startswith("nautilus"):
+        kandidaten.append(HIER / "nautilus" / ".venv" / "Scripts" / "python.exe")
+    kandidaten.append(HIER / "scanner" / ".venv" / "Scripts" / "python.exe")
+    python = next((k for k in kandidaten if k.is_file()), kandidaten[-1])
     umg = dict(os.environ, MAXHIRN_ROUTINE="1")
     umg.pop("PYTHONHOME", None); umg.pop("PYTHONPATH", None)
     try:

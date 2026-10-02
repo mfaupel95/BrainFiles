@@ -1190,9 +1190,12 @@ def lauf(modus):
         # dauerlauf.nur_fenster_fehlt liest genau diese Zeile, um zu
         # entscheiden, ob sich eine Freigabe-Anfrage ueberhaupt lohnt.
         # Ohne sie wurde nie gefragt - und ein /ja blieb folgenlos.
+        # IMMER drucken, auch ohne Sperre - dann mit "nichts". Vorher stand
+        # die Zeile nur unter `if g:`, und genau dann, wenn eine Spur start-
+        # klar war, fehlte sie: dauerlauf.nur_fenster_fehlt las None und
+        # fragte nie nach einem Fenster (T-313).
         g = sperren_live(w, s)
-        if g:
-            print("Live waere gesperrt durch: " + "; ".join(g))
+        print("Live waere gesperrt durch: " + ("; ".join(g) or "nichts"))
         # Bedingung 4 gilt AUCH hier: die Vorschau ist der haeufigste Aufruf
         # (der Dauerlauf fragt jede Spur damit ab), und wenn NUR sie laeuft,
         # weil der echte Zyklus in die Zeitgrenze laeuft, muss Q: trotzdem

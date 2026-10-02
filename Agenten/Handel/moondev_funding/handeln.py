@@ -422,12 +422,16 @@ def lauf(modus):
               % ("; ".join(fehler)[:200] if fehler else "keine Instrumente"))
         if modus == "vorschau":
             print("Vorschau: keine Dateien geschrieben.")
+            print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
+                  "(Papier)")
         return
 
     # Ausstiege zuerst: sie brauchen nur den Kurs.
     pruefe_ausstiege(z, kurse, w)
     if modus == "vorschau":
         print("Vorschau: keine Dateien geschrieben.")
+        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
+              "(Papier)")
         return
 
     for inst in w.get("instrumente", []):

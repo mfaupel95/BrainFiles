@@ -149,20 +149,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       protokollieren; der Verkauf darf nicht vom Fill-Polling abhaengen.
       Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
 
-- [ ] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
-      Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
-      nautilus_kraken, macd_mtf, squeeze, supertrend, wavetrend,
-      moondev_funding und iv_waelle "keine Sperrzeile".
-      `dauerlauf.nur_fenster_fehlt()` liest genau diese Zeile; fehlt sie,
-      bekommt die Funktion None und die Auto-Freigabe oeffnet fuer diese
-      Spuren NIE ein Fenster. Sie sind trotzdem scharf - die Fenster wurden
-      bisher anderswo geoeffnet (z. B. nutilus_kraken am 02.10. 02:17 von der
-      Auto-Freigabe, nachdem ihre Wachen die Haken bekommen hatten).
-      Naechster Schritt: die gemeinsame Vorschauregel muss fuer JEDE Spur
-      dieselbe Zeile drucken, sonst ist die Auto-Freigabe fuer diese neun
-      blind. Geprueft werden sollte die Regel, nicht die Liste.
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft dauerlauf.py, lage.py
-
 
 - [ ] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
       Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
@@ -3323,6 +3309,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
+      Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
+      nautilus_kraken, macd_mtf, squeeze, supertrend, wavetrend,
+      moondev_funding und iv_waelle "keine Sperrzeile".
+      `dauerlauf.nur_fenster_fehlt()` liest genau diese Zeile; fehlt sie,
+      bekommt die Funktion None und die Auto-Freigabe oeffnet fuer diese
+      Spuren NIE ein Fenster. Sie sind trotzdem scharf - die Fenster wurden
+      bisher anderswo geoeffnet (z. B. nutilus_kraken am 02.10. 02:17 von der
+      Auto-Freigabe, nachdem ihre Wachen die Haken bekommen hatten).
+      Naechster Schritt: die gemeinsame Vorschauregel muss fuer JEDE Spur
+      dieselbe Zeile drucken, sonst ist die Auto-Freigabe fuer diese neun
+      blind. Geprueft werden sollte die Regel, nicht die Liste.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft dauerlauf.py, lage.py
+
+
+      ERLEDIGT 02.10.2026: alle neun Spuren melden wieder eine
+      Sperrzeile (Gegenprobe mit sperrgruende.py). Ursachen waren
+      drei: scanner druckte nur unter `if g:`; die Vorschau-Zweige
+      von macd_mtf, squeeze, supertrend, wavetrend, moondev_funding
+      und iv_waelle kehrten vor jeder Sperrenangabe zurueck; und
+      sperrgruende.py benutzte fuer ALLE Spuren den Scanner-venv,
+      in dem nautilus_trader fehlt - die Nautilus-Arme stuerzten
+      deshalb ab (ModuleNotFoundError) und galten als blind. Jetzt
+      waehlt das Werkzeug je Spur ihren eigenen venv.
+      335 Tests der sieben beruehrten Spuren gruen.
+
 - [x] **T-255 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
       Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
       `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
