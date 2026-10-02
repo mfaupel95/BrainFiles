@@ -709,24 +709,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
 
-- [ ] **T-255 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
-      Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
-      `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
-      ['klassik_sma\\handeln.py', ... acht Eintraege]` ab - und damit auch die
-      Ende-zu-Ende-Suite. Ursache: der Spurname steht bei diesen Spuren in
-      `klassik_regeln.spur_main(name, ordner)` (`ereignis_name="handel/" + name`),
-      waehrend die Pruefung den Namen WORTWOERTLICH in der vom Dauerlauf
-      gestarteten Datei sucht (die ruft nur `spur_main("klassik_sma", HIER)`).
-      Vorbestehend, nicht von der omnitrade-Spur (Gegenprobe: omnitrade steht
-      nicht in der Fehlliste).
-      Naechster Schritt: entweder den Bus-Namen in den acht `handeln.py` als
-      Literal uebergeben (`spur_main("klassik_sma", HIER, bus_name="handel/klassik_sma")`)
-      oder die Pruefung um den Kern-Fall erweitern (gestartete Datei uebergibt
-      ihren eigenen Namen an einen Kern, der `ereignis.lauf` traegt) - dieselbe
-      Regel, die schon fuer `spur_buch.py` gilt.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
-      Agenten/Bus/tests/test_anbindung_handel.py
 
 
 
@@ -3332,6 +3314,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-255 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
+      Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
+      `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
+      ['klassik_sma\\handeln.py', ... acht Eintraege]` ab - und damit auch die
+      Ende-zu-Ende-Suite. Ursache: der Spurname steht bei diesen Spuren in
+      `klassik_regeln.spur_main(name, ordner)` (`ereignis_name="handel/" + name`),
+      waehrend die Pruefung den Namen WORTWOERTLICH in der vom Dauerlauf
+      gestarteten Datei sucht (die ruft nur `spur_main("klassik_sma", HIER)`).
+      Vorbestehend, nicht von der omnitrade-Spur (Gegenprobe: omnitrade steht
+      nicht in der Fehlliste).
+      Naechster Schritt: entweder den Bus-Namen in den acht `handeln.py` als
+      Literal uebergeben (`spur_main("klassik_sma", HIER, bus_name="handel/klassik_sma")`)
+      oder die Pruefung um den Kern-Fall erweitern (gestartete Datei uebergibt
+      ihren eigenen Namen an einen Kern, der `ereignis.lauf` traegt) - dieselbe
+      Regel, die schon fuer `spur_buch.py` gilt.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
+      Agenten/Bus/tests/test_anbindung_handel.py
+      **Erledigt 2026-10-02.** Die Bus-Suite kennt seit 01.10.2026 den Regelkern-Zweig (klassik_regeln.spur_main reicht bus_name als Literal an spur_buch.zyklus weiter); test_anbindung_handel.py ist gruen, das Bus-Journal zeigt handel/klassik_* - jetzt 11 Spuren (662 Treffer am 02.10.).
 
 - [x]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg — BEHoben 02.10.2026**
       Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler am Schreibweg,
