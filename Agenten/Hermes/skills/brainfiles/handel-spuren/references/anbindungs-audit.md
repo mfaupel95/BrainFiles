@@ -128,6 +128,43 @@ die gar nicht live handeln kann.
   `ereignis.lauf` traegt. Eine solche Spur ohne eigenen Bus-Aufruf ist trotzdem
   angebunden; nicht als „ohne Anbindung“ melden, solange diese Bedingung gilt.
 
+## Die Anbindung VERIFIZIEREN: die Boerse fragen, nicht die Datei
+
+Die Spalten der Bestandstabelle oben sind Aussagen ueber **Dateien**. Die
+Frage „kann diese Spur handeln?" ist eine Frage an die **Boerse**, und sie
+beantwortet andere Dinge:
+
+- `Handel/anbindung_pruefen.py` (rein lesend, **ordnet nichts**) fahrt je Spur
+  genau den Weg, den sie im Betrieb nutzt, und fragt: Schluessel vorhanden,
+  **Demo-Modus aus**, Guthaben in der **Quote der Spur**, Kurs des
+  Instruments. Die Zeile, die man liest, ist damit ein Zustand und keine
+  Behauptung ueber Quelltext.
+
+**Demo-Modus ist eine eigene Spalte und wird nie aus dem Namen abgeleitet.**
+Ein Demo-Schluessel sieht wie ein live aus und ist keiner - genau dieser
+Fehlschluss hat den Roundtrip-Sonden-Vorgang geprägt.
+
+**Die Quote ist Teil der Probe.** Ein Konto kann USDC und EURC fuehren und
+0,00 USDT; wer das Guthaben in einer anderen Waehrung abfragt, sieht ein
+leeres Konto und schliesst „die Boerse ist weg". Die Probe liest die Quote aus
+der `wachen.json`.
+
+**Das Instrument kommt aus der Spur, nie aus dem Prober.** Der erste Wurf
+fragte bei jeder Kraken-Spur nach `BTC-USDT-SWAP` und meldete fuenf Spuren als
+„kein Kurs" - Kraken fuehrt `BTC/EUR` bzw. `XXBTZEUR`, die Futures-Maerkte
+`PF_XBTUSD`. **Eine Pruefung, die ihre eigene Vorgabe fuer einen Befund haelt,
+sieht gesunde Spuren kaputt und echte Ausfaelle als normal** - schlimmer als
+keine Pruefung. Das gilt fuer jedes Werkzeug, das eine Spur **beurteilt**:
+`instrument`/`paar`/`symbol` aus der Wache lesen, mit boersenspezifischem
+Rueckfall.
+
+**Und das Ergebnis ist eine Behauptung ueber die SPUREN, nicht ueber die
+Boerse.** „Alle zwoelf anbindungsbereit" heisst: der Weg ist da und gesund.
+Es sagt **nichts** darueber, ob die Spur freigegeben ist oder freigegeben
+werden sollte - das ist eine getrennte Frage mit einer getrennten Zahl
+(`gebuehren-tor.md`). Beide Antworten in einem Absatz zu vermischen ist der
+Fehler, den ein Freigabegespraech ausloest.
+
 ## Werkzeuge: Stand aller Spuren und Sperrgruende in einem Aufruf
 
 Statt die Verdrahtungsstellen von Hand gegeneinander zu halten (aus

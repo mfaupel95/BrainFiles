@@ -30,6 +30,11 @@ Ausloeser → Referenz:
   `references/anbindungs-audit.md` — zum Deutbaren gehoert
   `references/betriebsfehler-spuren.md` (Bus-Journal als Ursachenquelle,
   Zaehlung „Rueckgabe N“ je Spur, halber `except` in der Datenschicht).
+  **Und die Anbindung selbst VERIFIZIEREN** („kann die Spur handeln?“, „lohnt
+  die Börse?“, „warum ist das Konto leer?“) — `Handel/anbindung_pruefen.py`
+  fragt die Börse (Schlüssel, Demo-Modus, Guthaben in der Quote der Spur,
+  Kurs) und ordnet nichts; die Warnung dort: **die Vorgabe des Prüfers ist
+  kein Befund**, und „anbindungsbereit“ sagt nichts über die Freigabe.
 - **„Der Dauerlauf ist gestorben / alle drei Stufen stehen“** (Rueckgabe 143,
   Sperren-Churn, spurloser Tod, die Regel fuer Handstarts und die Wache):
   `references/dauerlauf-tode.md`
@@ -96,7 +101,27 @@ Ausloeser → Referenz:
   auf/ueber dem Kurs, Stop auf/unter `liqPx`). Werkzeug
   `xperp/stopdeckung.py` (Vorschau Standard, `--anwenden --stop <preis>` ohne
   Preisschalter stellt NICHTS), Referenz Abschnitt 5d derselben Datei.
-- **„Tagesbericht auswerten"**, ein Bericht liegt vor und die Zahlen sollen ein
+- **„weniger handeln", „Ein- und Ausstiege sollen indikatorindiziert und nicht
+  zeitabhaengig laufen", „die Signale sollen ausloesen, nicht die Uhr",
+  „die Spur handelt dieselbe Sache dutzende Male am Tag"**: ein Einstieg nur
+  bei einem **Signalwechsel**, der Dauerlauf legt den Auftrag in eine Queue,
+  ein asynchroner Executor fuehrt aus - und fuer Spuren mit EIGENEM
+  `handeln.py` (xperp, scanner, mosaic, kraken) liegt die Regel einmalig in
+  `Handel/signal_wechsel.py`, weil `spur_buch.trigger_modus` dort
+  stiillschweigend ignoriert wird. Ausloeser ist fast immer der Befund
+  **„Gebuehren-Excess nahe null"**: eine Spur mit 2,44 % Ergebnis und 0,01 %
+  Excess hat keinen Vorteil, die Gebuehr hat ihn aufgefressen, und die Zahl der
+  Runden ist die einzige Groesse, die sich sofort senken laesst:
+  `references/signal-statt-takt.md` - dort auch die drei Fehler, die diese
+  Regel gekostet haben: ein Gatter NACH dem Orderaufruf (bei Live ein Zyklus
+  zu spaet), ein Schluessel auf dem Instrument statt auf der Basis (derselbe
+  Markt als `XBT-USD` und `BTC-USD-um_XPERP` macht die Regel wirkungslos) und
+  ein Gatter, das auf einem Weg `True` und auf dem anderen einen String
+  zurueckgibt (sperrt dann jede Spur OHNE Flag und wirft nie einen Fehler).
+  Und ein Weg ausserhalb des Dauerlaufs traegt **alle** Tore selbst,
+  einschliesslich des Freigabefensters - ein Importfehler bedeutet: keine
+  Order.
+- **Tagesbericht auswerten**, ein Bericht liegt vor und die Zahlen sollen ein
   Urteil tragen (ein Posten mit unpassender Groesse, "Stop gerissen", ein
   negativer Zuwachs seit gestern, dieselbe Spur in zwei Stufen mit
   gegensaetzlichem Vorzeichen): `references/buch-und-boerse-abgleichen.md` -
@@ -300,7 +325,19 @@ Ausloeser → Referenz:
   `Handel/papierbuch_schliessen.py` (Vorschau Standard, `--anwenden`,
   `--spur <name>`; ruft die Funktion DER Spur, fasst keine Zustandsdatei
   juenger als 300 s an).
-- **„<spur> scharf schalten", „handel erlaubt auf <Boerse>", „gefechtsbereit
+- **„Gebuehren-tor“, „ab wann darf eine Spur live?“, „welche Spur hat ueberhaupt
+  Edge?“, „Auswertung und Freigabe“** — ein Tor, das RECHNET statt den
+  Freigabe-Haken zu setzen (`Handel/freigabe_tor.py`, Zahlen aus EINEM
+  `spur_audit.py --json`-Lauf): vier Bedingungen — mindestens 8 Runden,
+  mindestens 8 davon MIT Basislinie, Excess minus der Gebuehr der eigenen
+  Boerse positiv, und **kein Befund im Audit**. Die vierte ist die
+  wichtigste: der scanner haette die anderen drei mit +8,52 % klar
+  bestanden und trotzdem nicht bestanden, weil sein Audit ihn beanstandet.
+  **Eine schoene Zahl mit einem Befund daneben ist keine Freigabe.**
+  Eine Spur ohne Auditrundlage ist *unbewiesen*, nicht abgelehnt — das Tor
+  sperrt sie nicht. Fail-closed: Import- oder Lesefehler bedeutet keine
+  Order. `references/gebuehren-tor.md`
+- **„<spur> scharf schalten“, „handel erlaubt auf <Boerse>“, „gefechtsbereit
   machen"**: erst die fuenf Bedingungen LESEN, dann die zwei Schalter schreiben —
   eine reissende quantitative Bedingung nimmt `handel_erlaubt` innerhalb von
   Sekunden selbst zurueck (`sperre_zu`, Merker `_sperre_zu_ausgeloest`), und das
@@ -380,7 +417,37 @@ Ausloeser → Referenz:
   Datei-Konstanten, Launcher je Arm, Verdrahtung inkl. spiegelstand- und
   Bus-Anbindungs-Falle.
 
-## Landkarte (nur was zum Arbeiten nötig ist)
+- **Ein Prozessfilter, der die EIGENE Kommandozeile trifft, beendet die eigene
+  Shell.** `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like
+  '*dauerlauf*' } | Stop-Process` matcht sich selbst: Rueckgabe 4294967295,
+  kein Prozessoutput, und die eigentliche Arbeit faellt mit um. Das sieht wie
+  ein Werkzeugfehler aus und ist es nicht. **Das Muster aus Teilen bauen**
+  (`$m = 'dauer'+'lauf'`) und `$_.ProcessId -ne $PID` als zweite Bedingung.
+  Danach IMMER die Prozesszahl NACHZAEHLEN, statt auf die Ausgabe zu
+  vertrauen - ein gestoppter Lauf, der weiterlaeuft, kostet mehr als die
+  Pruefung.
+- **`printf` ersetzt nur den ERSTEN `%s`.** `for f in a b; do printf '...%s...%s'
+  "$f" > f_$f; done` erzeugt zwei Dateien mit identischem Inhalt, in denen die
+  zweite Variable fehlt (leerer Modus, leerer Pfad). Bei mehr als einer
+  Stellenhalter-Variable den Wert **so oft** uebergeben, wie Platzhalter daselbe
+  sind. Aus demselben Grund: ein Skript, das per printf geschrieben wird, ist
+  erst fertig, wenn man es gelesen hat - ein leeres Argument sieht in der
+  Ausgabe nach einem Werkzeugfehler aus.
+- **Ein Modulname mit Bindestrich ist nicht importierbar.** `tasks-wache.py`
+  laesst sich mit `import tasks_wache` nie laden, egal was in `sys.path`
+  steht. Der Weg ist der Pfad-Import:
+  `spec = importlib.util.spec_from_file_location("x", <pfad>)`,
+  `module_from_spec`, `exec_module` - und bei einem Modul mit `@dataclass`
+  zusaetzlich `sys.modules[spec.name] = mod` **vor** dem `exec_module`.
+- **Ein Skript unter `Agenten/Hermes/scripts` liegt eine Ebene tiefer als sein
+  Merk-Ordner.** `MERK = os.path.join(HIER, "cache", ...)` legt einen ZWEITEN
+  Cache-Ordner neben den 59 anderen an, verteilt den Stand des Hauses auf zwei
+  Orte und wird beim Aufraeumen mitgenommen. Richtig: `os.path.dirname(HIER)`.
+  Aus demselben Grund zeigt ein Skript direkt in `Agenten/Handel/` mit
+  `HANDEL = os.path.dirname(HIER)` eine Ebene ZU HOCH - die Umkehrung ist
+  dieselbe Falle und beide Richtungen kommen im Baum vor.
+
+## Landkarte (nur was zum Arbeiten noetig ist)
 - `Agenten/Handel/<spur>/` — je Spur `handeln.py`, `wachen.json` (die Grenzen;
   nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
   `handelsjournal.csv`.
@@ -740,6 +807,20 @@ lesen; die Datei ist nicht bei jeder Spur-Runde Pflicht.
   Einschraenkung des Live-Tests (`skipUnless` auf diesen Dienst) verschiebt das
   Problem nur: sie laeuft ueber dieselbe Adresse und meldet 'laeuft nicht',
   solange die Altlast antwortet.
+- **Laufzeit ist Teil der Funktion einer Wache.** Eine Wache, die teurer ist als
+  ihr Nutzen, wird abgeschaltet - und ist damit blind, ohne dass irgendwo ein
+  Fehler steht. Deshalb nach jeder Wache die Laufzeit messen, nicht nur die
+  Ausgabe: eine Datei-Waechter ueber den ganzen Handel-Baum brauchte 4 min 40
+  pro Lauf, weil der gaengige Aufrufer `rglob('*')` nimmt und JEDE Datei liest -
+  bei 15-Minuten-Takt ist das 18 % der Maschinenzeit fuer eine Kontrolle. Ein
+  Endungsfilter im Aufrufer half nicht, gefressen hat das die venv-Bestaende.
+  Der Weg ist ein eigener, schmaler Aufrufer (`os.walk` ueber die Orte, an
+  denen der Schaden tatsaechlich entsteht, mit Ablageordnern in der
+  Ausnahmeliste), der den gleichen Bestand in 0,8 s erfasst. Und **eine
+  Ausnahme in der Ablaufliste kann nur die Sicht verengen, nie eine Datei
+  ausblenden, die vorher gemeldet wurde** - das ist das Argument, wenn eine
+  Liste gewachsen ist. Erschreckend, wenn eine teure Wache als ERFOLG
+  gelesen wird, weil sie fehlerfrei schweigt.
 - **Das Host-PowerShell-Werkzeug hat eine harte Zeitgrenze (~300 s).** Eine
   rekursive Größenmessung über einen großen Baum reißt sie. Stattdessen
   vorher/nachher `Win32_LogicalDisk.FreeSpace` messen oder je Ordner einzeln — der
@@ -1008,6 +1089,11 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   `usd` filtern, Epoch umrechnen, Einzahl- vs. Mehrzahl-Schluesselnamen) und die
   Regel, dass ein Transfer zwischen Konten eine Kontohandlung ist. Ausloeser:
   "hab eingezahlt", "Guthaben fehlt", "wo ist das Geld hin".
+- `references/gebuehren-tor.md` — wann eine Spur live darf: die vier
+  Bedingungen, warum ein BEFUND im Audit die Freigabe sperrt (der scanner
+  haette die drei anderen mit +8,52 % bestanden), warum eine Spur ohne
+  Auditrundlage *unbewiesen* statt *abgelehnt* ist, und das Fail-closed
+  am Weg, der ausserhalb des Dauerlaufs ordert.
 - `references/pitfalls-landkarte.md` — die Landkarte aller 103 Punkte, ein Satz je Punkt (aus SKILL.md ausgelagert).
 - `references/pitfalls.md` — ALLE Pitfalls im Volltext, gleiche Nummer:
   Meldungen und Schnittstellen, Sperren und Schwellen, Testfallen,

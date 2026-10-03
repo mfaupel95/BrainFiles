@@ -115,8 +115,8 @@ prompt_caching:
 auxiliary:
   free_only: false
   vision:
-    provider: moa
-    model: Vision
+    provider: nous
+    model: qwen/qwen3-vl-235b-a22b-instruct
     reasoning_effort: medium
   skills_hub:
     provider: llamacpp

@@ -43,6 +43,72 @@ Code, Verdrahtung, Tests, echter Lauf, Commit, Dauerlauf, GUI).
   still 0 Kandidaten.
 - `.gitignore`: Whitelist-Muster der Nachbarspur nachziehen.
 
+## 1b. Der spur_buch-Vertrag, den eine neue Buch-Spur von Hand treffen muss
+
+Eine Spur, die ihr Buch ueber `spur_buch.zyklus()` fuehrt, liefert drei
+Funktionen mit festen Formen. Der Vertrag wird nicht vertraglich zugesichert —
+trifft man ihn falsch, **rechnet die Spur nie und sieht vollstaendig gesund aus**:
+
+| Funktion | bekommt | typischer Fehler |
+|---|---|---|
+| `quelle(w)` | — | gibt `(daten, kurse, fehler)` zurueck; `daten[inst]` traegt die Rohdaten, `kurse[inst]` den letzten Kurs |
+| `signal(daten, w)` | **`daten[inst]`** — die INNERE Map, nicht das aeussere Dict ueber alle Instrumente | sucht `daten.get(symbol)` in der inneren Map, findet dort nie etwas: 0 Runden, keine Fehlermeldung, gesundes Aussehen |
+| `ziel(daten, w)` / `zusatz_ausstieg` | dieselbe Form | Ausstieg mit Zeitbezug statt Richtungsbezug |
+
+**Also beide Formen annehmen** (`if "kerzen" not in daten and inst in daten:
+daten = daten[inst]`) — dann kann die Funktion nie stumm ins Leere laufen.
+Derselbe Griff gilt fuer jede eigene Funktion, die eine Spur an `spur_buch`
+haengt.
+
+Der Einstieg ist `spur_buch.zyklus(ordner, quelle, signal, modus,
+ereignis_name="handel/<spur>", zusatz_ausstieg=...)` — NICHT ein
+`spur_buch.main(...)`, das es in dieser Form nicht gibt; Vorbild ist
+`klassik_regeln.spur_main`. Ein erfundener Aufruf endet mit leerer Ausgabe,
+nicht mit einer Fehlermeldung.
+
+**Ein Import aus dem Handel-Ordner gehoert HINTER den `sys.path`-Eintrag.**
+Beim Start ist der eigene Spurenordner `sys.path[0]`; ein `import <modul>` bei
+den uebrigen Standardimporten oben bricht mit `ModuleNotFoundError` ab. Der
+Handel-Ordner wird ANGEHAENGT, nicht vorn eingefuegt — sonst verdeckt ein
+gleichnamiges Modul das eigene (`Handel/grid.py` neben `gitter/grid.py`).
+
+`okx.kerzen()` hat die Signatur `kerzen(inst, bar="1D", anzahl=300)` —
+`bar` ist der ZWEITE Parameter. Positional uebergeben lautet es
+`kerzen(inst, anzahl, bar=...)` und bricht mit „got multiple values for
+argument 'bar'“ ab.
+
+## 1c. Die Spur kommt aus einer Fremdquelle: Original holen, Regel zitieren
+
+Soll eine Haus-Spur eine fremde Strategie abbilden, ist die Reihenfolge:
+**Originalquelle finden → Original holen → Regel uebernehmen → Abweichungen
+benennen.**
+
+* **Ein installiertes Rad enthaelt keine Beispiele.** Ein Paket im
+  `site-packages` traegt nur den lauffaehigen Code; Strategien, Tutorials und
+  Beispielskripte liegen ausschliesslich im Repo. Ein vorhandenes `venv` ist
+  also kein Beleg, dass die Beispiele im Haus sind — und eine Wecksuche im
+  Baum beweist nur, dass sie nicht da liegen.
+* **Die Quelle ist der Upstream, nicht die Wheels**: ueber die
+  Contents-/Raw-Schnittstelle des Projekts den Beispielordner auflisten
+  (`examples/backtest/`, `examples/live/`, `docs/tutorials/`). Die Wurzel des
+  Repos ist selten selbst der Beispielordner — `examples/strategies` existiert
+  bei vielen Projekten nicht.
+* **Der Beispielskript verdrahtet oft nur eine Strategie aus `docs/`** — die
+  Regel selbst liegt eine Ebene tiefer und ist das, was zitiert wird.
+* **Der Originaltext geht woertlich in den Docstring und ins README der Spur.**
+  Damit ist der Port pruefbar und nicht behauptet; ein spaeterer Leser kann
+  gegen die Quelle diffen, statt der Absicht zu vertrauen.
+* **Jede Abweichung wird BENANNT und begründet**, mit dem Grund, nicht mit dem
+  Wunsch. Zwei Klassen kommen immer vor: eine technische (das Original hat
+  keinen Schutz-Stop und dreht per Market-Order — bei echter Boerse nicht
+  uebernehmbar, also eigener Stop plus eigener Ausstiegsgrund) und eine
+  datenbezogene (das Original laeuft auf Ticks, das Haus hat Kerzen — das ist
+  eine **andere Strategie**, und die Spur ist damit ausdruecklich KEIN Mass
+  fuer das Original). Eine Abweichung ohne Vermerk macht den Vergleich wertlos.
+* **Der Test prueft die Regel, nicht das Ergebnis.** Die Definitionen des
+  Originals einzeln nachrechnen (Seed der Glättung = Mittel der ersten n
+  Werte, nicht der erste Wert; alpha = 2/(n+1)), nicht einen Tageswert.
+
 ## 2. Bauen — drei Kerndateien
 - `wachen.json`: harte Grenzen — Papierbuch, kein Orderpfad, keine externe
   API. Einzige Quelle von Grenzen; Laufzeitstand NICHT hierher.
