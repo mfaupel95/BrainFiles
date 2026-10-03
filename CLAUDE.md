@@ -47,7 +47,7 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
 - **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, ...) haben eigene `tests/`.
 - **Handel (Wurzel-Wrapper):** `omnitrade.cmd` (Stand; `start` = Live-Lauf im OKX-DEMO, nur einer zur Zeit; `ui` = Fenster) und `omnitrade-auswertung.cmd` (rein lesend). Detailwissen: `Agenten/Handel/README.md`, `MaxHirn/Wissen/Omnitrade.md`.
-- **Regeldatei-Paare:** `MaxHirn/CLAUDE.md`=`MaxHirn/AGENTS.md` und `Werkstatt/CLAUDE.md`=`Werkstatt/AGENTS.md` muessen identisch bleiben (Pruefung: `Agenten/Routinen/wissen-index-pruefen.ps1`). Die Wurzel-`AGENTS.md` weicht ab (Zweig-Abschnitt dort noch Stand 16.09.2026) - massgeblich ist diese Datei.
+- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 
 ## Zweige (Stand 29.09.2026)
 

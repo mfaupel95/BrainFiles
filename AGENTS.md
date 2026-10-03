@@ -45,6 +45,9 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Bots je Repo:** Hermes-Profile unter `Agenten/Hermes/profiles/<bot>/`, Start-Verzeichnis `Werkstatt/Repos/<repo>`; chat `hermes -p <bot> chat` (oder Bots-Tab im Desktop).
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
+- **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, ...) haben eigene `tests/`.
+- **Handel (Wurzel-Wrapper):** `omnitrade.cmd` (Stand; `start` = Live-Lauf im OKX-DEMO, nur einer zur Zeit; `ui` = Fenster) und `omnitrade-auswertung.cmd` (rein lesend). Detailwissen: `Agenten/Handel/README.md`, `MaxHirn/Wissen/Omnitrade.md`.
+- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 
 ## Zweige (Stand 29.09.2026)
 
@@ -68,6 +71,10 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - Sonst keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
   zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
   ist, sonst `git merge`) und loeschen.
+
+## Umgebung
+
+Das System laeuft auf Windows (PowerShell, `.ps1`/`.cmd`, Pfade `G:`/`O:`). `Modelle/` und `Werkstatt/` sind Junctions auf `O:\Modelle` bzw. `O:\Werkstatt` und sind in einem frischen Linux-/Cloud-Checkout leer bzw. fehlen (`Modelle/` gibt es dort gar nicht, von `Werkstatt/` nur die versionierten Dateien). Dort lassen sich nur Textebene und plattformneutrale Python-Tests pruefen; `.ps1`-Laeufe, venvs (`.venv/Scripts/`) und Handels-/Hermes-Betrieb nicht.
 
 ## Portabilität
 
