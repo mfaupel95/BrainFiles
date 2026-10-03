@@ -104,3 +104,55 @@ Beleg ist die neue PID mit frischer Startzeit. **Und die Antwortlaenge messen:**
   der CommandLine), Task-State und Port 8787 geprueft zu haben.
 - Der Fehler kann auf der EIGENEN Seite liegen: ein genannter Weg, der die
   Arbeit nicht tragen kann. Das zuerst ausschliessen, dann den Bot verdaechtigen.
+
+## Zwei Fehler, die am 03.10.2026 zusammen "der Bot antwortet nicht" ergaben
+
+Beide ueber `status: ok` im Log unsichtbar - der Bot SANDTE, nur nicht das
+Richtige. Vor "der Bot ist kaputt" immer beide pruefen:
+
+1. **`/bot NAME` ohne Auftrag kam beim Hauptagenten an.** `/bot NAME` ohne
+   Text ergab eine Syntaxhilfe (71 Zeichen, `zeichen` im Log). Der danach
+   gesendete Auftrag - am Handy meist ein **Bild als eigene Nachricht** -
+   ging an den Hauptagenten. Der Bot war gesund (Port 9900 offen, A2A in
+   10 s, `_bot_fragen` in 43 s PONG). **Abhilfe (Commit 92f2cd52):** `/bot
+   NAME` schaltet den Bot als Adressaten ein (`ZIEL_PFAD`, 30 min), der
+   naechste Freitext nimmt ihn und wird danach abgeschaltet, `/bot aus`
+   schaltet ab. Der Zustand liegt in EINER Datei je Chat.
+
+   **Merksatz: eine Syntaxhilfe ist kein Defekt, aber sie sieht aus wie
+   einer.** Ein Weg, der eine Frage stellt statt sie anzunehmen, verlegt
+   den Auftrag still auf den anderen Adressaten. Immer pruefen, wohin die
+   *naechste* Nachricht geht, nicht nur, ob die aktuelle eine Antwort
+   bekam.
+
+2. **`sende()` fehlte in `schleife()`.** Die Antwort wurde `bearbeite()`-t,
+   protokolliert und der Offset gespeichert - aber nie an Telegram
+   geschickt. Das Log meldet `status: ok`, weil die Verarbeitung erfolgreich
+   war. **Gefunden hat es der Test
+   `test_netzfehler_nachricht_geht_nicht_verloren`:** er erwartete eine
+   gesendete Antwort (`gesendet == [(7, "die antwort")]`) und bekam `[]`.
+
+   **Merksatz: `status: ok` heisst "verarbeitet", nicht "zugestellt".** Ein
+   Test, der die SCHLEIFE end-to-end fahren und die *gesendeten* Nachrichten
+   zaehlen muss, findet einen fehlenden `sende()`; ein Test auf Protokoll
+   und Offset findet ihn nicht.
+
+## Test gegen den echten Subprozess: `run` ist nicht `Popen`
+
+`_bot_fragen` nutzt `subprocess.Popen` + `communicate` (seit 21.09.2026,
+damit der Frist-Abbruch den Bot nicht mitten in der Arbeit toetet). Tests,
+die `subprocess.run` mocken, treffen damit **nichts** und starteten einen
+ECHTEN Bot (Kaltstart 30-60 s je Test). Symptom: die Suite braucht
+minuten und die Assertion schlaegt mit der echten Bot-Antwort fehl. Die
+Attrappe ersetzt `Popen` und liefert ein Objekt mit `communicate()`,
+`returncode` und `kill()`.
+
+## Nach jeder Aenderung: Der Prozess haelt den alten Code
+
+Der SkillsBot laeuft als `pythonw`-Dienst; ohne Neustart des Tasks ist die
+Aenderung unsichtbar. Aber Vorsicht: `Stop-ScheduledTask` + `Start` ist der
+belegte Weg, und die NEUE PID mit frischer Startzeit ist der Nachweis
+(Anweisung aus `a2a-telegram-skills`). Beim End-to-End-Beweis danach die
+echten Wege fahren: `_ziel_setzen(chat, "openmontage")`, dann
+`bearbeite("Antworte nur mit PONG", chat)` - die Antwort muss vom Bot
+kommen, nicht vom Hauptagenten.
