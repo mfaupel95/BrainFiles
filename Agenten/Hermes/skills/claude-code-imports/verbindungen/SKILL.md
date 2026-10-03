@@ -117,7 +117,7 @@ Claude-Konfiguration und alle Hermes-Konfigurationen gegeneinander hält und den
 Exit-Code als Abnahme liefert. Sie läuft in `MaxHirn-Systempruefung` mit:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Agenten/mcp-sync-check.ps1 -Streng
+cd "$HERMES_HOME/../.." && powershell -ExecutionPolicy Bypass -File Agenten/mcp-sync-check.ps1 -Streng
 ```
 
 Exit 0 = kein Widerspruch, Exit 1 = Namensliste der Widersprüche. Der Prüflauf

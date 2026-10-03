@@ -25,6 +25,38 @@ Ein Test haelt das: die Schwelle darf den Gewinnhoechststand nicht
 dauerhaft unterschreiten, ohne dass es gemeldet wird. Faellt er, gehoert das
 Pruefskript mitgelesen.
 
+## Ein Stop in PROZENT kann nicht als fester Betrag eingetragen werden
+
+Eine Ansage wie „Stop 60“ ist eine Prozentangabe. Traegt die Spur nur
+`stop_usd` — einen **festen Betrag** — kann sie nicht treu umgesetzt werden,
+weil der Einsatz je Position schwankt: bei 30 USD Einsatz sind 18 USD genau 60 %,
+bei 90 USD (drei Kaeufe auf denselben Token) sind dieselben 18 USD nur noch 20 %.
+Die Zahl „60“ verschwindet ersatzlos, ohne dass jemand sie angefasst haette.
+
+Gemessen: die Bilanz einer Kopier-Spur wurde von 13 Stop-Runden mit 0 Treffern
+und −537 % dominiert, alle unter der alten Absolutschwelle. Der Auftrag lautete
+„Stop 60 %“; `stop_usd: 18` haette ihn an der groessten Position nicht erfuellt,
+ohne dass eine Meldung das gezeigt haette.
+
+- **Traegt die Wache beide Felder, hat das PROZENT Vorrang**, der feste Betrag
+  ist Rueckfall (`if stop_pct: … elif stop_usd:`). Zwei Wege zur selben Zahl sind
+  die Fremdgroessen-Kopplung von oben — der Betrag darf den Vorrang nie bekommen.
+- **Beim Eintragen die groesste UND die kleinste Position gegenrechnen**, nicht
+  die mittlere. Der groesste Einsatz ist `max_einsatz_je_kauf_usd x
+  max_kaeufe_je_token`; genau dort weicht die Prozentzahl am weitesten vom
+  eingetragenen Betrag ab.
+- **Ein datierter Vermerk neben dem Wert**, der die Einheit nennt („18.00 USD =
+  60 % von max_einsatz_je_kauf_usd 30“) — sonst liest der naechste die Zahl und
+  nimmt die Prozentangabe an.
+- **Gegenprobe vor dem Setzen:** je eine Position mit kleinem und mit
+  grossem Einsatz durch die Ausstiegsrechnung schicken. Feuert der Stop bei
+  beiden gleich, ist die Zahl richtig uebertragen.
+
+Sonderfall Kopier-Spuren: dort ist der Stop in USD absolut, waehrend die Kosten
+(1 % Gebuehr + 5 % Slippage je Seite) im Kurs stecken. Ein Stop bei 60 % Verlust
+auf den ERTRAG feuert deshalb schon bei rund 59 % **Kursverlust**. Beide Zahlen
+nennen, sonst meint der Leser „60 %“ und der Code rechnet 48 %.
+
 ## 'Zu locker' ist nicht 'abgeschaltet' — die Kurve darf ins Minus
 
 Der wichtigste Denkfehler an dieser Stelle, weil er einen ganzen

@@ -59,6 +59,7 @@ class Base(unittest.TestCase):
             "stop_stornieren": staticmethod(lambda oid: oid),
             "stop_details": staticmethod(lambda oid: {"accFillSz": "0"}),
             "guthaben_usdt": staticmethod(lambda: 1000.0),
+            "quote": staticmethod(lambda inst: inst.split("-")[-1] if inst and "-" in inst else ""),
         })()
         self.kurs_je_inst = {}
 

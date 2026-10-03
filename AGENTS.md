@@ -40,23 +40,32 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 
 ## Arbeit im Repo
 
+- **Arbeitsverzeichnis (seit 30.09.2026):** Hermes' Werkzeuge und Sitzungen starten in `Agenten/Hermes`, nicht in dieser Wurzel. Zwei Mechanismen tragen das: `terminal.cwd` in `Agenten/Hermes/config.yaml` fuer Gateway, Cron und entfernte Backends, und ein `hermes`-Wrapper in Max' PowerShell-Profil (`Documents/PowerShell/Microsoft.PowerShell_profile.ps1`) fuer die interaktive CLI/TUI - eine solche Sitzung uebernimmt naemlich das Startverzeichnis der Shell, `terminal.cwd` gilt dort nicht. Alle Pfade in Skills, Notizen und Wiki sind relativ zur **Wurzel** - vor einem solchen Aufruf also `cd "$HERMES_HOME/../.."` (kurz `cd ..`) oder mit absolutem Pfad arbeiten. Skripte unter `Agenten/Routinen` und die Cron-Wachen lokalisieren sich selbst (`$PSScriptRoot`, `__file__`) und sind davon unberuehrt; die Wurzel-Aufrufer `omnitrade.cmd`/`omnitrade-auswertung.cmd` arbeiten mit `%~dp0` und laufen aus jedem Verzeichnis.
 - **Fremd-Repos (Forks):** `Werkstatt/Repos/` haelt einen Klon je Repo - `origin` = `mfaupel95/<name>`, `upstream` = Original (shallow; `git fetch --unshallow` fuer volle Historie).
 - **Bots je Repo:** Hermes-Profile unter `Agenten/Hermes/profiles/<bot>/`, Start-Verzeichnis `Werkstatt/Repos/<repo>`; chat `hermes -p <bot> chat` (oder Bots-Tab im Desktop).
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
 
-## Zweige (Stand 16.09.2026)
+## Zweige (Stand 29.09.2026)
 
-- `master` ist der EINZIGE Arbeitszweig: hier wird committet, gepusht und
-  gemergt. Ein Zweig, der getrennt laeuft, kostet Ueberblick, ohne etwas zu
-  sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
+- `master` ist der Arbeitszweig: hier wird committet, gepusht und gemergt. Ein
+  Zweig, der getrennt laeuft und liegen bleibt, kostet Ueberblick, ohne etwas
+  zu sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
   geloescht (lokal und auf GitHub, Standardzweig ist wieder `master`).
-- `zwischenstand` ist keine Arbeit, sondern die automatische Nachtsicherung
-  der Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig). Nie dort
-  committen, nie anfassen; Aufraeumen, wenn er stoert:
-  `git update-ref -d refs/heads/zwischenstand` (Regeln in
+- **Ausnahme, seit 29.09.2026: kurzlebige PR-Zweige.** Verlangt ein Ablauf
+  (z. B. `<create-pr-command>`) ausdruecklich eine PR, darf dafuer ein Zweig
+  angelegt werden - erzeugen, pushen, PR eroeffnen, nach dem Mergen SOFORT
+  loeschen (lokal `git branch -d <zweig>` und `git push origin --delete
+  <zweig>`). Kein PR-Zweig bleibt laenger als bis zum Merge liegen; ohne
+  konkreten PR-Anlass gilt weiter nur `master`. Grund der Lockerung: gefuehlt
+  ging Arbeit verloren - Ursache war aber kein Zweig, sondern uncommittete
+  Arbeit, die zu lange im Baum stand (siehe Zwischenstand-Takt unten).
+- `zwischenstand` ist keine Arbeit, sondern die automatische Sicherung der
+  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, seit 29.09.2026
+  stuendlich statt taeglich). Nie dort committen, nie anfassen; Aufraeumen,
+  wenn er stoert: `git update-ref -d refs/heads/zwischenstand` (Regeln in
   MaxHirn/Wissen/Routinen.md).
-- Keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
+- Sonst keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
   zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
   ist, sonst `git merge`) und loeschen.
 

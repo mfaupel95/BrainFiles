@@ -41,14 +41,18 @@ Abhaengigkeiten gibt es nicht: PowerShell 5.1, Stdlib-Python, git.
 
 1. Bericht mit `read_file` oeffnen: `Agenten/Routinen/logs/systempruefung-letzter-lauf.md`.
 2. Erstanweisung des Skripts, wenn der Bericht alt ist:
-   `terminal`: `powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Routinen/systempruefung.ps1`
+   `terminal`: `cd "$HERMES_HOME/../.." && powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Routinen/systempruefung.ps1`
 3. Alterswache von Hand: `terminal`:
-   `Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Hermes/skills/brainfiles/systempruefung-abarbeiten/scripts/berichts-alter.py`
+   `cd "$HERMES_HOME/../.." && Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Hermes/skills/brainfiles/systempruefung-abarbeiten/scripts/berichts-alter.py`
    (jede Python 3.10+ tut es — das Skript nutzt nur die Standardbibliothek)
+
+**Alle Befehle dieses Skills sind relativ zur BrainFiles-Wurzel.** Hermes' Werkzeuge starten in
+`Agenten/Hermes` (`terminal.cwd`) — deshalb der `cd "$HERMES_HOME/../.."` davor.
 
 ## Quick Reference
 
 ```
+Wurzel           cd "$HERMES_HOME/../.."                                   # vor jedem Befehl hier
 Bericht          Agenten/Routinen/logs/systempruefung-letzter-lauf.md
 Vollprotokoll    Agenten/Routinen/logs/systempruefung-<JJJJ-MM-TT>.log  (muss mit einer Ende-Zeile enden)
 Skript           Agenten/Routinen/systempruefung.ps1
@@ -133,6 +137,32 @@ zum Befund mit dem eigenen Protokoll daneben.
   samt Image, hilft nur der Neubau: `docker build -t nautilus-demo-node:1.231.0 Agenten/Handel/nautilus`
   dann `docker run -d --name nautilus-demo --restart unless-stopped -e OKX_API_KEY=dummy-node-key -e OKX_API_SECRET=dummy-node-secret -e OKX_API_PASSPHRASE=dummy-node-pass nautilus-demo-node:1.231.0`
   (idempotent auch in `Agenten/Routinen/nautilus-docker-start.ps1`).
+- **Ein Aufgaben-Code ist erst mit seiner Zeitgrenze ein Befund.** `3221225786`
+  (0xC000013A) bei einem Wrapper, der einen Dauerdienst startet, ist fast immer
+  die `ExecutionTimeLimit` der Aufgabe, nicht ein Skriptfehler. Vor dem Beheben
+  `(Get-ScheduledTask <name>).Settings.ExecutionTimeLimit` lesen: ein zu kleines
+  Limit killt eine echte Sicherung MITTEN im Lauf, und ihr Protokoll endet ohne
+  Ende-Zeile. Beleg am 30.09.2026: Sicherung/Zweitkopie standen auf `PT1H` und
+  wurden nach genau einer Stunde abgeraeumt; Zielordner waren trotzdem frisch.
+  `267014` bei einem Stundenlauf ist dagegen der Neustart, kein Skriptfehler.
+- **`IgnoreNew` schuetzt nicht gegen einen zweiten Prozess.** Eine Aufgabe, deren
+  Wrapper sofort zurueckkehrt, startet bei JEDER zweiten Ausloesung (Handstart,
+  Fremdsitzung) ein zweites Kind: am 30.09.2026 liefen zwei MoonDev-Treiber
+  samt doppeltem Agentensatz. Der Einzelinstanz-Schutz gehoert in den Wrapper
+  (Prozessabfrage; Suchtext aus Teilen bauen, sonst trifft der Filter die eigene
+  Kommandozeile), nicht in die Aufgabenplanung.
+- **Ein Volltext-Suchlauf ueber den ganzen Baum ist O(156.000).** Agenten+MaxHirn
+  tragen so viele Dateien (ohne node_modules/.venv/hermes-agent). Eine
+  Referenzsuche je Kandidat mit eigenem `Get-ChildItem -Recurse` stand nach
+  43 Minuten noch im Block. Regel: erst ALLE Kandidaten sammeln, dann EIN
+  Suchlauf, und der nur ueber Textendungen und ohne `site-packages`,
+  `.venv*`/`dist-info`. `.venv.bak-*` faellt durch keine Ausschlussliste, die
+  nur `.venv` kennt.
+- **"Docker-Engine antwortet nicht" heisst: die WSL-Distro steht.** Der Motor
+  ist `docker-desktop`; Docker Desktop allein bringt ihn nicht hoch (Log:
+  `returning engine error`). Was hilft: `wsl --shutdown`, haengende
+  `Docker Desktop`/`com.docker.backend` beenden, Docker Desktop neu starten,
+  ~90 s warten, `docker ps` pruefen - danach laeuft auch `nautilus-demo`.
 - **Robocopy meldet Code 11, wenn Dateien waehrend des Laufs entstehen und
   vergehen** (Cache-, Cron-Ausgabe-, Log-, Sperrordner). Fix ist `/XD` fuer den
   fluessigen Ordner, NICHT `/R` erhoehen.

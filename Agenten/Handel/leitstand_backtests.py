@@ -29,7 +29,7 @@ HINWEIS_FREIGABE = ("Backtest-Runden zählen nicht für die Freigabe — dafür 
 TAKT_MS = 200
 MAX_TEXT_ZEILEN = 5000
 REPLAY_VORGABEN = {"spur": replay.SPUREN_TEIL_A[0], "max_kerzen": "0",
-                   "gebuehr": "0.1", "gegenprobe": False}
+                   "gebuehr": "", "gegenprobe": False}
 LISTE = HIER / "leitstand_backtests.json"
 # Laeufe, die wachen.json schreiben: ein Abbruch mittendrin hilft niemandem.
 UNABBRECHBAR = {"urteile-eintragen"}
@@ -43,31 +43,65 @@ _TEXT = re.compile(r"^[A-Za-z0-9](?!.*\.\.)[A-Za-z0-9_./-]{0,39}$")
 # --- Replay: reine Funktionen -----------------------------------------------
 
 def replay_spuren():
-    return list(replay.SPUREN_TEIL_A)
+    """Alle Spuren, die der Replay fahren kann - Familie A UND D.
+
+    Familie D (mosaic, gitter) braucht KEINEN eigenen Schalter: der Replay
+    erkennt sie am Spurnamen (replay.MEHRZEITRAHMEN/EIGENE_RECHNUNG). Hier
+    steht nur die Liste, damit das Fenster sie anbietet.
+    """
+    return (list(replay.SPUREN_TEIL_A) + list(replay.MEHRZEITRAHMEN)
+            + list(replay.EIGENE_RECHNUNG))
 
 
 def nicht_nachrechenbar():
     return sorted(replay.NICHT_NACHRECHENBAR.items())
 
 
+def gegenprobe_moeglich(spur):
+    """`--gegenprobe` vergleicht gegen `backtest_prognose` - das gibt es nur
+    fuer Familie A. Fuer eine Spur mit eigener Rechnung waere der Aufruf ein
+    Fehler, den der Nutzer erst nach dem Start sieht."""
+    return spur in replay.SPUREN_TEIL_A
+
+
 def pruefe_replay(werte):
     """(Argumente ohne Interpreter und --lauf, "") oder (None, Fehlertext)."""
     spur = werte.get("spur")
-    if spur not in replay.SPUREN_TEIL_A:
+    if spur not in replay_spuren():
         return None, "Spur %r ist nicht nachrechenbar" % spur
     try:
         mk = int(str(werte.get("max_kerzen") or "0").strip())
     except ValueError:
         return None, "Max. Kerzen: ganze Zahl erwartet (0 = alle)"
-    try:
-        g = float(str(werte.get("gebuehr", "")).strip().replace(",", "."))
-    except ValueError:
-        return None, "Gebühr: Zahl erwartet (Prozent je Seite)"
+    # Leeres Feld heisst: der GEMESSENE Satz der Spur gilt (replay nimmt ihn
+    # selbst aus der wachen.json). Eine Zahl im Feld schlaegt die Vorgabe.
+    roh_geb = str(werte.get("gebuehr", "")).strip().replace(",", ".")
+    g = None
+    if roh_geb:
+        try:
+            g = float(roh_geb)
+        except ValueError:
+            return None, "Gebühr: Zahl erwartet (Prozent je Seite) - oder leer lassen"
+        if not 0 <= g <= 5:
+            return None, "Gebühr: 0 bis 5 %"
     if not 0 <= mk <= 1_000_000:
         return None, "Max. Kerzen: 0 bis 1 000 000"
-    if not 0 <= g <= 5:
-        return None, "Gebühr: 0 bis 5 %"
-    teile = ["--spur", spur, "--gebuehr", repr(g)]
+    if werte.get("gegenprobe") and not gegenprobe_moeglich(spur):
+        return None, ("Gegenprobe gibt es nur für die Indikator-Spuren (%s) — "
+                      "%s fährt einen eigenen Weg"
+                      % (", ".join(replay.SPUREN_TEIL_A), spur))
+    # Die Grenze der SPUR: unter `mindest_kerzen + Puffer` kann der Lauf keinen
+    # einzigen Schritt rechnen (die Schleife laeuft von mindest_kerzen bis ans
+    # Ende). Der Replay verweigert das selbst - hier wird der Lauf gar nicht
+    # erst gestartet, sonst sieht der Nutzer statt eines Satzes einen Traceback.
+    if mk:
+        minimum = replay.bedarf_fuer(spur)
+        if minimum and mk < minimum:
+            return None, ("Max. Kerzen: %d ist zu klein — %s braucht mindestens "
+                          "%d Kerzen je Reihe (0 = alle)" % (mk, spur, minimum))
+    teile = ["--spur", spur]
+    if g is not None:
+        teile += ["--gebuehr", repr(g)]
     if mk:
         teile += ["--max-kerzen", str(mk)]
     if werte.get("gegenprobe"):
@@ -105,12 +139,25 @@ class ReplayBereich(ttk.Frame):
                                                            sticky="w")
         ttk.Spinbox(self, textvariable=self.w_kerzen, from_=0, to=1_000_000,
                     increment=500, width=10).grid(row=1, column=1, sticky="w")
-        ttk.Label(self, text="Gebühr % je Seite").grid(row=2, column=0, sticky="w")
+        ttk.Label(self, text="Gebühr % je Seite (leer = Satz der Spur)").grid(
+            row=2, column=0, sticky="w")
         ttk.Entry(self, textvariable=self.w_gebuehr, width=10).grid(row=2, column=1,
                                                                     sticky="w")
-        ttk.Checkbutton(self, text="Gegenprobe (alter gegen neuen Kern)",
-                        variable=self.w_gegen).grid(row=3, column=0, columnspan=2,
-                                                    sticky="w")
+        self.w_satz = tk.StringVar()
+        ttk.Label(self, textvariable=self.w_satz, foreground=stil.FARBEN["matt"]).grid(
+            row=2, column=2, sticky="w", padx=(12, 0))
+        # `--gegenprobe` vergleicht gegen `backtest_prognose` - das gibt es nur
+        # fuer Familie A. Ein Kaestchen, das bei mosaic nur in einen Fehler
+        # laeuft, wird ausgegraut statt angeboten.
+        self.k_gegen = ttk.Checkbutton(
+            self, text="Gegenprobe (alter gegen neuen Kern)",
+            variable=self.w_gegen)
+        self.k_gegen.grid(row=3, column=0, columnspan=2, sticky="w")
+        # ERST hier: `_satz_hinweis_setzen` schaltet auch das Kaestchen um und
+        # braucht es deshalb schon (14 Fehler am 01.10.2026, weil der Aufruf
+        # davor stand).
+        self._satz_hinweis_setzen()
+        self.w_spur.trace_add("write", lambda *_: self._satz_hinweis_setzen())
         self.k_start = ttk.Button(self, text="Replay starten", command=self.starten)
         self.k_start.grid(row=4, column=0, sticky="w", pady=(8, 0))
         self.tip = Tooltip(self.k_start)
@@ -123,6 +170,26 @@ class ReplayBereich(ttk.Frame):
         grau.configure(state="disabled")
         grau.grid(row=0, column=3, rowspan=5, sticky="nsew")
         self.columnconfigure(3, weight=1)
+
+    def _satz_hinweis_setzen(self):
+        """Welcher Satz gilt, wenn das Feld leer bleibt - sichtbar, nicht geraten.
+
+        Ein festes 0.1 im Feld war bis 01.10.2026 der stille Fehler: `mosaic`
+        handelt auf Kraken (0,60 %/Seite), rechnete im Backtest aber mit einem
+        Sechstel der Kosten.
+        """
+        spur = self.w_spur.get()
+        if not gegenprobe_moeglich(spur):
+            self.w_gegen.set(False)
+            self.k_gegen.state(["disabled"])
+        else:
+            self.k_gegen.state(["!disabled"])
+        try:
+            satz = replay.gebuehr_fuer(spur)
+        except Exception as e:                                   # noqa: BLE001
+            self.w_satz.set("Satz unbekannt: %s" % str(e)[:60])
+            return
+        self.w_satz.set("Satz der Spur: %g %%/Seite" % satz)
 
     def werte(self):
         return {"spur": self.w_spur.get(),
@@ -424,10 +491,22 @@ class BacktestReiter(ttk.Frame):
         lage = [self.teiler.sashpos(i) for i in range(len(self.teiler.panes()) - 1)]
         self.zustand.merke_in("teiler", "backtests", lage)
 
+    def _teiler_aus(self):
+        """Aufrollen des Teiler-Starts sicher nachziehen.
+
+        Das Widget kann schon zerstört sein, wenn der Timer eintrifft. Dann
+        darf kein Tcl-Callback mehr auf einer toten Instanz laufen.
+        """
+        try:
+            if getattr(self, "winfo_exists", lambda: False)():
+                self._teiler_anlauf = False
+        except Exception:                                   # noqa: BLE001
+            pass
+
     def _teiler_zeigen(self, _event=None):
         if not self._teiler_gezeigt:
             self._teiler_gezeigt = True
-            self.after(1000, lambda: setattr(self, "_teiler_anlauf", False))
+            self.after(1000, self._teiler_aus)
 
     def _teiler_herstellen(self, _event=None):
         if not self._teiler_anlauf:

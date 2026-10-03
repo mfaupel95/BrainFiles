@@ -281,3 +281,47 @@ einem nackten Schlafprozess je Werkzeug:
 - **`Get-WinEvent` ist der Zeuge fuer die Gegenseite**: in beiden 143-Fenstern
   gab es **kein** System- oder Anwendungsereignis, der Tod kam also von aussen;
   im spurlosen Fall dagegen Ereignis 2004.
+
+## 10. Eine lebende PID ist kein Beleg für einen lebenden Prozess (03.10.2026)
+
+Befund: 19 `projectatlas.exe`-Prozesse, davon 18 hängende Leerläufer mit je ~1 MB.
+Der echte Watcher (PID 96060, 9705 s CPU, seit 01.10. 23:55) lief die ganze Zeit
+daneben — die Karte wurde also gepflegt, und der Wächter alarmierte trotzdem.
+
+### Die Ursache in zwei Zeilen belegt
+
+`tasklist /FI "PID eq n" /NH` antwortet für **jede noch vergebene PID** mit einer
+Zeile — auch wenn dort inzwischen etwas völlig anderes läuft. Windows vergibt PIDs
+neu:
+
+```
+projectatlas.exe   96060 Console    1   29.208 K   <- der echte Watcher
+svchost.exe        69928 Services   0   15.988 K   <- die PID aus der PID-Datei
+```
+
+Die PID-Datei nannte 69928 (ein toter Watcher von vor Tagen). Der Wächter prüfte
+nur, ob `str(pid)` irgendwo in der Antwort stand — und diese Zahl stand da. Als die
+PID-Datei nach einem Neustart nicht neu beschrieben wurde (der Start braucht länger
+als die Wartezeit im Startskript), startete der Wächter **bei jeder Ausführung**
+neu. 18 Waisen waren die Folge.
+
+### Zwei Regeln
+
+1. **Eine PID zählt nur mit dem Programmnamen.** `omnitrade_lauf.pid_lebt(pid, name=)`
+   macht es seit dem 30.09. vor — diese Lehre war da und wurde im Wächter nicht
+   angewandt.
+2. **Die Namensprüfung gehört an *jede* Stelle, die eine PID liest** — Wächter *und*
+   Startskript. Sonst heilt der eine, was der andere schreibt: das Startskript prüft
+   `Get-Process -Id $alt` ohne Namen und liefert die Zahl, die der Wächter wiederum
+   prüft. Beide mussten umgestellt werden.
+
+### Aufräumen mit einem Kriterium statt einer PID-Liste
+
+Beim Aufräumen zählt nicht die PID, sondern das Merkmal: der echte Watcher hatte
+**9705 s CPU**, die Waisen **0,00 s**. Deshalb `CPU < 1 s` als Trennlinie — nicht
+„PIDs 1..18“, die beim nächsten Mal anders belegt sind. Ein Aufräum-Werkzeug, das
+eine PID-Liste abarbeitet, ist beim nächsten Mal falsch.
+
+**Merksatz:** eine Prozess-ID ist ein Name, den Windows weitervergibt — wie eine
+Telefonnummer nach einer Abschaltung. Wer sie prüft, prüft den Namen. Und wer
+aufräumt, trennt nach **Merkmal**, nicht nach Liste.

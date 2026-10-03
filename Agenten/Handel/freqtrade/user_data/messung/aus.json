@@ -1,0 +1,6 @@
+{
+  "_zweck": "Messaufsatz T-197: die Frequenzbremse AUS - der Vergleichslauf 'vorher'. Die Vorgabe in frequenzbremse.py ist ebenfalls aus (Opt-in); dieser Aufsatz steht trotzdem ausdruecklich hier: ein Messlauf soll nicht davon abhaengen, was die Vorgabe gerade ist.",
+  "moondev": {
+    "bremse": false
+  }
+}

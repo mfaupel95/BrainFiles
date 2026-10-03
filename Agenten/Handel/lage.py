@@ -748,6 +748,52 @@ def spur_robinhood_radar():
                            "Robinhood-Radar (Wallet-Kohorte)")
 
 
+def spur_omnitrade():
+    # live_faehig: die Spur HAT einen Live-Zweig (Kraken-Spot ueber den
+    # gemeinsamen Kern, boerse=kraken in der wachen.json) - ohne dieses Flag
+    # meldet der Bericht "kein Live-Zweig (Papierpfad)" und Max liest eine
+    # Unwahrheit. Scharf ist er nicht: handel_erlaubt=false, freigabe offen.
+    return _spur_indikator("omnitrade",
+                           "omnitrade (Rust-Lauf gespiegelt)", live_faehig=True)
+
+
+# PROPHET-SIGNAL (02.10.2026): Prophet-Idee als Kursregel ueber prophet_regeln.py
+# (saisonale Zerlegung + EMA30-Trend, CryptoPredictions-Papier). Gleiche
+# Journalform wie die Indikator-Spuren, deshalb derselbe Leser. Kein Live-Zweig.
+def spur_prophet_signal():
+    return _spur_indikator("prophet_signal", "Prophet-Signal (EMA30+Saisonalitaet)")
+
+
+# KLASSIK-SPUREN (30.09.2026): alle Kursregeln ueber klassik_regeln.py.
+KLASSIK_SPUREN = (
+    ("klassik_sma", "Klassik SMA-Kreuz 20/50"),
+    ("klassik_ema", "Klassik EMA-Kreuz 12/26"),
+    ("klassik_macd", "Klassik MACD-Kreuz"),
+    ("klassik_bollinger", "Klassik Bollinger-Ausbruch"),
+    ("klassik_donchian", "Klassik Donchian 20/10"),
+    ("klassik_rsi", "Klassik RSI-Rueckkehr"),
+    ("klassik_rsi2", "Klassik RSI(2) im Trend"),
+    ("klassik_donchian_trend", "Klassik Donchian + EMA200"),
+    ("klassik_sr_breaks", "Klassik S/R-Breaks"),
+    ("klassik_pmax", "Klassik PMax Explorer"),
+    ("klassik_supertrend", "Klassik Supertrend Explorer"),
+)
+
+
+def _klassik_holer(ordner, name):
+    def holer():
+        return _spur_indikator(ordner, name)
+    # befehle.py leitet den Spurnamen aus dem Funktionsnamen ab (spur_<name>).
+    holer.__name__ = "spur_" + ordner
+    return holer
+
+
+HOLER_KLASSIK = tuple(_klassik_holer(o, n) for o, n in KLASSIK_SPUREN)
+# befehle._holer_fuer sucht spur_<name> als Modulattribut.
+for _h in HOLER_KLASSIK:
+    globals()[_h.__name__] = _h
+
+
 def spur_wavetrend():
     return _spur_indikator("wavetrend", "WaveTrend (Indikator)")
 
@@ -789,6 +835,13 @@ def spur_iv_waelle():
     gegen die Bewegung. Dieselbe Journalform wie die Indikator-Spuren
     (kauf/verkauf mit einsatz_usd) - derselbe Leser."""
     return _spur_indikator("iv_waelle", "IV-Waelle (Deribit, Optionszone)")
+
+
+def spur_omnitrade_futures():
+    """Das Hebel-Bein der omnitrade-Spur (Kraken Futures, Hebel 7)."""
+    return _spur_indikator("omnitrade_futures",
+                           "omnitrade-Hebel (Kraken Futures, 7x)",
+                           live_faehig=True)
 
 
 def spur_moondev_whale():
@@ -1322,10 +1375,13 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
+    spur_omnitrade, spur_omnitrade_futures,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,
     spur_moondev_whale, spur_moondev_liquidation, spur_moondev_sentiment,
-    spur_moondev_sniper)
+    spur_moondev_sniper,
+    # Prophet-Signal (02.10.2026), Papierspur ueber prophet_regeln.py.
+    spur_prophet_signal) + HOLER_KLASSIK
 

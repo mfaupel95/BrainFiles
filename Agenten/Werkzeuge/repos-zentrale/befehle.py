@@ -45,7 +45,14 @@ def befehl_text(cmd: list[str] | None) -> str:
 
 
 def grundkommandos(zeile) -> list[Kommando]:
-    """Die fuenf Handgriffe, die es bei jedem Repo gibt."""
+    """Die Handgriffe, die es bei jedem Projekt gibt.
+
+    Ein Eintrag ohne Ordner auf der Platte (Gruppe FEHLT) bekommt KEINE
+    Handgriffe: es gibt nichts zu oeffnen, und ein Knopf, der ins Leere zeigt,
+    ist schlimmer als keiner.
+    """
+    if getattr(zeile, "repo", None) is None:
+        return []
     liste: list[Kommando] = []
     if getattr(zeile, "start", None):
         liste.append(
@@ -53,11 +60,11 @@ def grundkommandos(zeile) -> list[Kommando]:
         )
     liste.append(Kommando("Terminal hier oeffnen", "terminal", [], "dann von Hand eintippen"))
     liste.append(Kommando("Ordner im Explorer", "ordner", [], ""))
-    if getattr(zeile, "repo", None) is not None and zeile.repo.readme:
+    if zeile.repo.readme:
         liste.append(Kommando("Doku (README) oeffnen", "doku", [], zeile.repo.readme))
     if getattr(zeile, "bot_da", False) and getattr(zeile, "bot", None):
         liste.append(
-            Kommando(f"Bot {zeile.bot} fragen", "bot", [], "Chat im Repo-Ordner")
+            Kommando(f"Bot {zeile.bot} fragen", "bot", [], "Chat im Projektordner")
         )
     return liste
 
@@ -95,8 +102,12 @@ def _venv_zeile(zeile) -> str:
 
 
 def anleitung(zeile) -> str:
-    """Der Textblock neben der Befehlsliste: wozu das Repo da ist und wie man es anfasst."""
+    """Der Textblock neben der Befehlsliste: wozu das Projekt da ist und wie man es anfasst."""
     teile: list[str] = []
+    kopf = [getattr(zeile, "bereich", "") or "", getattr(zeile, "rolle", "") or ""]
+    kopf = [t for t in kopf if t]
+    if kopf:
+        teile.append(" · ".join(kopf))
     if getattr(zeile, "notiz", ""):
         teile.append(f"Wozu: {zeile.notiz}")
     if getattr(zeile, "ordner", ""):

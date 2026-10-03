@@ -1,0 +1,14 @@
+{
+  "_zweck": "Messaufsatz T-197: die VOLLE Frequenzbremse - Sperrfrist nach Ziel (2 h) + Abklingzeit nach Stop (96 h) + Fenster-Vorfilter des risk_agent (12 h, 5 %). Der Mindestabstand bleibt aus, weil es dafuer keine Haus-Zahl gibt; er wird einzeln gemessen (nur-abstand6.json).",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 2.0,
+      "sperrfrist_stop_stunden": 96.0,
+      "mindestabstand_einstieg_stunden": 0,
+      "fenster_stunden": 12.0,
+      "verlust_max_pct": 5.0,
+      "gewinn_ziel_pct": 5.0
+    }
+  }
+}

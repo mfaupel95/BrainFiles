@@ -22,7 +22,9 @@ import urllib.error
 import urllib.request
 
 HIER = os.path.dirname(os.path.abspath(__file__))
-BASIS = r"C:\Users\faupe\Documents\BrainFiles"
+# Kein fester Benutzerpfad: die Wurzel liegt drei Ebenen ueber diesem Skript
+# (Agenten\Handel\ai4trade), damit ein Umzug der Sammlung sie mitzieht.
+BASIS = os.path.dirname(os.path.dirname(os.path.dirname(HIER)))
 ENV = os.path.join(HIER, ".env")
 ZUGAENGE = os.path.join(BASIS, "MaxHirn", "Wissen", "Zugaenge.md")
 API = "https://ai4trade.ai/api"

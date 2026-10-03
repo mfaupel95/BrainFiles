@@ -68,6 +68,17 @@ class AttrappeKraken:
     def gefuellte_menge(self, txid):
         return self.fuellung
 
+    def fuellung_abwarten(self, txid, sekunden=30.0, abstand=3.0):
+        """Ohne Warten: was in der Attrappe gefuellt ist, ist sofort da.
+
+        Die echte Funktion fragt bis zu `sekunden` lang nach - hier waere das
+        nur Verzoegerung ohne Erkenntnis. 0 heisst: die Boerse kennt die
+        Kennung (noch) nicht, die Order ist unbestaetigt.
+        """
+        self.rufe.append(("fuellung_abwarten", txid))
+        menge = self.gefuellte_menge(txid)
+        return (float(menge), True) if menge else (0.0, False)
+
     def markt_verkauf(self, paar, menge, echt=False):
         self.rufe.append(("verkauf", paar, menge))
         if self.verkauf_fehler:
@@ -162,11 +173,27 @@ class EinstiegLive(Basis):
         self.assertTrue(z["positionen"][0]["boersen_stop_fehlt"])
         self.assertIsNone(z["positionen"][0]["stop_txid"])
 
-    def test_kauf_ohne_fuellung_wird_nicht_gebucht(self):
+    def test_kauf_ohne_fuellung_wird_trotzdem_gebucht(self):
+        """Aus "noch keine Fuellung" folgt NIE "kein Eintrag".
+
+        Die Order HAT eine Kennung, das Geld ist gebunden. Wird sie nicht
+        gebucht, signalisiert die Spur im naechsten Zyklus erneut und kauft
+        denselben Wert wieder (T-102, FILEUR viermal). Gebucht wird deshalb die
+        BESTELLTE Menge, gekennzeichnet mit fuellung_offen=True.
+
+        Bis zum 01.10.2026 hiess dieser Test `..._wird_nicht_gebucht` und
+        verlangte eine leere Positionsliste - er fror den Stand VOR der
+        T-102-Regel ein. Die Attrappe kannte `fuellung_abwarten` gar nicht,
+        weil sie nie lief.
+        """
         fake = AttrappeKraken(fuellung=0)
         text, z = self._einstieg(fake)
-        self.assertEqual(z["positionen"], [])
-        self.assertIn("ohne Fuellung", text)
+        self.assertEqual(len(z["positionen"]), 1,
+                         "eine Order mit Kennung muss im Buch stehen")
+        self.assertTrue(z["positionen"][0]["fuellung_offen"])
+        self.assertAlmostEqual(z["positionen"][0]["menge"], 50.0 / 11.8, places=7,
+                               msg="unbestaetigt wird die BESTELLTE Menge gebucht")
+        self.assertIn("unbestaetigt", text)
 
     def test_ohne_beleg_kein_kauf(self):
         """Ohne Beleg gibt es an der Boerse nichts zu tun - kein Kauf, kein Stop."""

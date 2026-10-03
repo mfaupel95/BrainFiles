@@ -15,6 +15,16 @@ Aufruf (immer):
   python platz-wache.py            # nur Posten ueber Schwelle (Cron-Betrieb)
   python platz-wache.py --immer    # vollstaendige Tabelle, auch ohne Schwelle
   python platz-wache.py --json     # Zustand fuer Werkzeuge
+  python platz-wache.py --ohne-aufraeumen   # nur messen, nichts loeschen
+
+RESERVE (Max, 30.09.2026): Auf C: werden 30 GB FREI gehalten. Anlass war der
+Ausfall desselben Tages - ein Desktop-Build braucht rund 20 GB transient, C:
+lief dabei auf 0,1 GB und der Update-Schwanz brach mit "No space left on device"
+ab, der Desktop kam in eine Bootschleife. Faellt der freie Platz unter die
+Reserve, raeumt diese Wache von selbst auf - aber NUR die vier erlaubten,
+reproduzierbaren Posten (Temp aelter als 24 h, CrashDumps, uv-Cache,
+npm-Cache). node_modules und .venv werden NIE angefasst (Hausregel), und
+waehrend eines laufenden Builds/Updates wird gar nicht geloescht.
 """
 from __future__ import annotations
 
@@ -33,7 +43,7 @@ ZUSTAND = HIER.parent / "cache" / "platz-wache.json"
 
 # Posten, Schwelle, Zeitgrenze (s) fuer die Messung
 SCHWELLEN = {
-    "frei_c_gb": 25.0,          # freier Platz C: in GB (kleiner ist schlecht)
+    "frei_c_gb": 30.0,          # Reserve C: in GB (kleiner ist schlecht)
     "frei_q_gb": 30.0,          # freier Platz Q: (Ausser-Haus-Platte)
     "caches_gb": 3.0,           # pip + npm-cache + pnpm + uv zusammen
     "muell_gb": 2.0,            # CrashDumps + Temp zusammen
@@ -119,6 +129,134 @@ def index_lock() -> tuple[float, bool] | None:
     except Exception:
         echte = -1
     return alter_min, echte == 0
+
+
+# --- Reserve: aufraeumen, wenn C: unter die Schwelle faellt -----------------
+
+# Spuren eines laufenden Baus/Updates. Liegt eine vor, wird NICHTS geloescht -
+# ein "uv cache clean" mitten im Build zerstoert ihn (Lehre vom 30.09.2026).
+BAU_WOERTER = (
+    "source_completion", "hermes_cli.main update", "electron-builder",
+    "npm-cli.js run build", "vite build", "uv.exe",
+)
+TEMP_MINDESTALTER_H = 24.0
+
+
+def hermes_home() -> Path:
+    return Path(os.environ.get("HERMES_HOME", str(WURZEL / "Agenten" / "Hermes")))
+
+
+def bau_marker() -> list[Path]:
+    """Dateien, deren blosse Existenz 'hier laeuft ein Update' heisst."""
+    h = hermes_home()
+    return [h / ".hermes-update-in-progress"] + sorted(h.glob("installs/*/source-completion-pending"))
+
+
+def bau_laeuft(marker: list[Path], kommandos: list[str]) -> bool:
+    """Reine Entscheidung - Zeugen werden hereingereicht, damit sie pruefbar ist."""
+    if any(p.exists() for p in marker):
+        return True
+    return any(w in k for k in kommandos for w in BAU_WOERTER)
+
+
+def aufraeum_schritte() -> list[tuple[str, str]]:
+    """Die ERLAUBTEN Posten - eine Stelle, damit die Regel pruefbar bleibt.
+
+    Bewusst NICHT dabei: node_modules, .venv, pnpm-Store, Modelle, Sicherungen.
+    """
+    return [
+        ("temp", "Temp-Dateien aelter als 24 h"),
+        ("crashdumps", "CrashDumps"),
+        ("uv", "uv cache clean"),
+        ("npm", "npm cache clean --force"),
+    ]
+
+
+def _prozess_kommandos() -> list[str]:
+    try:
+        ps = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }"],
+            capture_output=True, text=True, timeout=60)
+        return [z for z in ps.stdout.splitlines() if z.strip()]
+    except Exception:
+        return []
+
+
+def _dateien_loeschen(wurzel: Path, mindestalter_h: float, budget_s: float = 30.0) -> int:
+    """Loescht Dateien unter wurzel, die aelter als mindestalter_h sind."""
+    if not wurzel.exists():
+        return 0
+    grenze = time.time() - mindestalter_h * 3600
+    ende = time.monotonic() + budget_s
+    frei = 0
+    stapel = [wurzel]
+    while stapel and time.monotonic() < ende:
+        jetzt = stapel.pop()
+        try:
+            with os.scandir(jetzt) as it:
+                for e in it:
+                    try:
+                        if e.is_dir(follow_symlinks=False):
+                            if not _ist_verweis(e):
+                                stapel.append(Path(e.path))
+                            continue
+                        st = e.stat(follow_symlinks=False)
+                        if st.st_mtime < grenze:
+                            frei += st.st_size
+                            os.unlink(e.path)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return frei
+
+
+def _schritt_ausfuehren(name: str, basis: Path, darf_loeschen: bool) -> int | None:
+    """Ein erlaubter Posten. Rueckgabe: freigegebene Bytes, None = uebersprungen."""
+    if name == "temp":
+        return _dateien_loeschen(basis / "Temp", TEMP_MINDESTALTER_H)
+    if name == "crashdumps":
+        return _dateien_loeschen(basis / "CrashDumps", 0.0)
+    if not darf_loeschen:
+        return None
+    befehl = (["uv", "cache", "clean"] if name == "uv"
+              else ["npm", "cache", "clean", "--force"])
+    vorher = frei_gb("C:") or 0.0
+    try:
+        subprocess.run(befehl, capture_output=True, text=True, timeout=600, shell=False)
+    except Exception:
+        return None
+    nachher = frei_gb("C:") or 0.0
+    return int(max(0.0, nachher - vorher) * 1024**3)
+
+
+def reserve_aufraeumen(stand: dict, trocken: bool = False) -> list[str]:
+    """Raeumt auf, wenn C: unter der Reserve liegt. Rueckgabe: Meldungszeilen."""
+    frei = stand.get("frei_c_gb")
+    if frei is None or frei >= SCHWELLEN["frei_c_gb"]:
+        return []
+    basis = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local")))
+    laeuft = bau_laeuft(bau_marker(), _prozess_kommandos())
+    zeilen = [f"Reserve verletzt: C: {frei} GB frei (Ziel {SCHWELLEN['frei_c_gb']} GB)"]
+    if laeuft:
+        zeilen.append("  ein Build/Update laeuft - es wird NICHT geloescht")
+        return zeilen
+    gesamt = 0
+    for name, beschreibung in aufraeum_schritte():
+        if trocken:
+            zeilen.append(f"  wuerde: {beschreibung}")
+            continue
+        frei_bytes = _schritt_ausfuehren(name, basis, darf_loeschen=True)
+        if frei_bytes is None:
+            zeilen.append(f"  {beschreibung}: uebersprungen")
+            continue
+        gesamt += frei_bytes
+        zeilen.append(f"  {beschreibung}: {frei_bytes / 1024**3:.2f} GB")
+    if not trocken:
+        danach = frei_gb("C:")
+        zeilen.append(f"  freigegeben: {gesamt / 1024**3:.2f} GB - C: jetzt {danach} GB frei")
+    return zeilen
 
 
 def messen() -> dict:
@@ -211,8 +349,15 @@ def tabelle(stand: dict) -> str:
 def main() -> int:
     immer = "--immer" in sys.argv
     als_json = "--json" in sys.argv
+    ohne_aufraeumen = "--ohne-aufraeumen" in sys.argv
+    trocken = "--trocken" in sys.argv
     stand = messen()
-    zeilen = befund(stand)
+    reserve_zeilen: list[str] = []
+    if not ohne_aufraeumen and not als_json:
+        reserve_zeilen = reserve_aufraeumen(stand, trocken=trocken)
+        if reserve_zeilen and not trocken:
+            stand = messen()          # nach dem Aufraeumen neu messen
+    zeilen = reserve_zeilen + befund(stand)
     try:
         ZUSTAND.parent.mkdir(parents=True, exist_ok=True)
         alt = json.loads(ZUSTAND.read_text(encoding="utf-8")) if ZUSTAND.exists() else {}

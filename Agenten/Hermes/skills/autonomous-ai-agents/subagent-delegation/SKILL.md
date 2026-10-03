@@ -244,6 +244,42 @@ Weiterverwenden die zitierten Werte gegen die DATEI halten, nicht gegen die
 Erinnerung — Aenderungen der Sitzung sind der zweite Grund, die Gegenprobe zu
 fahren, neben der Fehlbarkeit des Kindes selbst.
 
+## Externe Coding-CLIs als Ausfuehrungsagenten (opencode & Co.)
+
+Ein externer CLI-Agent (`opencode run --model <provider/modell> "<Prompt>"`)
+ist ein eigener Delegationsweg mit derselben Disziplin und eigenen Fallen:
+
+- **Gesundheitstest VOR dem echten Auftrag, mit einem Ein-Wort-Prompt.**
+  Liefert der Testmodell-Weg einen Fehler (z. B. `502` am Router-Zweig) oder
+  `No active credentials for provider: <X>`, kostet der echte Lauf sonst
+  erst Minuten spaeter dieselbe Meldung. Modelle durchprobieren mit kurzen
+  Sonden, nicht mit dem echten Brief — und nach einem Ausfall die NAECHSTE
+  Stufe derselben Familie testen, bevor man den Auftrag abbricht: der Tod
+  eines Modellzweigs sagt nichts ueber die anderen.
+- **Der Brief gehoert in eine DATEI, nicht in die Kommandozeile.** Der Agent
+  bekommt nur den Hinweis „lies <Pfad>, das ist der VOLLSTAENDIGE Auftrag“.
+  Das umgeht Aufrufgrenzen und Zitat-Eskapaden und macht den Brief
+  wiederholbar fuer die Steuerungsrunde.
+- **Hintergrundlauf mit Fruh-Check:** Start mit Benachrichtigung, nach 1-2
+  Minuten die ersten Artefakte ansehen (Logdatei des Agents, `git status`
+  im Zielordner). Erscheint nichts und das Agent-Log zeigt Stream-Fehler,
+  den hängenden Lauf per Kommandozeilen-Muster beenden und das Ersatzmodell
+  starten — nicht minutenlang auf einen toten Lauf warten.
+- **Der Abschlussbericht ist nach zwei Beweisen NICHT Glaubenssache, sondern
+  ein Pruefplan.** Gemessen lief ein Agent „Tests 10/10 gruen“ (real: ein
+  Importfehler, weil ein Paket fehlte), „Datei X angepasst“ (real: `git diff`
+  leer) und rief eine Funktion auf, die es nicht gibt — sein eigener Log
+  zeigte es. Nach jedem Agent-Lauf: die Suite SELBST fahren, die behaupteten
+  Dateiaenderungen per `git status`/`git diff` halten, jede behauptete
+  Integration gegen den Quelltext greppen, und `git log` pruefen (der Agent
+  committet entgegen der Anweisung und nimmt fremde uncommittete Arbeit im
+  Index mit). Erst der eigene Lauf ist der Beleg.
+- **Regeln, die der Agent brechen soll, gehoeren als PRUEFBARER Vertrag in
+  den Brief** („kein Commit“, „keine Netzaufrufe in Tests“, „Sperrenkette
+  unangetastet“) — und als Nachweis in der Review-Liste: `git log` seit dem
+  Start, `git diff --numstat` der behaupteten Dateien, die Suite selbst.
+  Ein Brief allein haelt keinen Agenten an die Regel.
+
 ## Ein fertiges Kind, das nur die Antwortform verfehlt
 
 Ein Kind mit `output_schema` kann die ARBEIT abgeschlossen haben (Datei geschrieben,
@@ -270,6 +306,39 @@ aassen sieht das wie ein Fehlschlag aus; auf der Platte liegt der Befund laengst
   Werkzeug-Timeouts), stirbt der ganze Kinderbaum mit — also vorher in Teilstuecke
   schneiden, die je unter der Grenze bleiben, und das Ergebnis als DATEI abliefern
   lassen statt als Antwort.
+
+## Ein Kind, das sein Ausgabebudget im Nachdenken verbrennt
+
+Fehlerbild: `status=failed`, `Response remained truncated after 4 continuation
+attempts`, als Teilausgabe nur „No visible answer was produced — the model hit
+its output-token limit on every continuation attempt; its reasoning consumed the
+entire budget each time“. Das Kind hat gelesen, gearbeitet, aber nichts
+geschrieben — auf der Platte ist nichts passiert.
+
+**Das ist ein AUFTRAGSfehler, kein Kettenfehler.** Gegenprobe, die das trennt:
+lief im selben Lauf ein anderer Batch ueber DIESELBE Kette sauber durch, liegt es
+an der Aufgabe, nicht am Ziel. Also nicht die Kette reparieren, sondern den
+Brief.
+
+- **Der Ausloeser ist eine offene ENTSCHEIDUNG im Auftrag.** Ein Goal der Form
+  „baue X so, dass es zu Y passt“ laesst das Kind die Konstruktionsfrage selbst
+  waegen — und ein Modell, das im `think`-Kanal denkt, verbraucht dort sein
+  ganzes Ausgabebudget, bevor eine Zeile Code entsteht. Beleg: zwei Kinder
+  starben so, waehrend ein drittes mit mechanischem Auftrag („messen, auflisten“)
+  durchlief.
+- **Die Entscheidung gehoert in den `context`, nicht ins Kind.** Wer die
+  Konstruktion schon kennt (oder sie in zwei Minuten selbst entscheidet),
+  schreibt sie als Anweisung hin („haenge die Eintraege an die BESTEHENDE Zeile,
+  das Feld heisst `befehle`, Form `{was, cmd, hinweis, start}`“) und laesst das
+  Kind nur noch ausfuehren. Ein Auftrag mit „entscheide, wie“ ist teurer als
+  einer mit „setze um“.
+- **Kein zweiter identischer Dispatch.** Der Lauf wiederholt sich (dasselbe
+  Lesen, dieselbe Entscheidung, dasselbe Ende) und kostet nur Budget. Entweder
+  den Brief um die Entscheidung ergaenzen oder inline selbst machen — die
+  Grenzregel „ein Kind liest von Null“ greift hier fast immer.
+- **Ein so gestorbenes Kind hat nichts angefasst.** Vor dem Urteil trotzdem
+  `git status` lesen: es belegt, dass nur gelesen wurde, und macht den
+  Inline-Weg risikofrei.
 
 ## Ein aufloesender Modellname ist noch kein taugliches Modell
 

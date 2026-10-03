@@ -171,3 +171,53 @@ echte Ausfuehrung nach dem Einbau ansehen, nicht nur die Tests.
 
 **Merksatz:** ein gruener Test belegt, dass das *geladene* Modul stimmt — nicht,
 dass der Betrieb dasselbe laedt.
+
+## 9. Ein Test, der die Betriebsdatei anfasst, braucht ZWEI Schranken (03.10.2026)
+
+Befund aus der Fehlersuche vom 03.10.2026: `scanner/tests/test_einstieg_ist_marktkurs.py`
+rief `handeln.vorschlaege()` mit `SCHREIBEN=True` und **ungebogenem Pfad**.
+`vorschlaege()` protokolliert je Markt (`bewertete Maerkte`, `Kurs nicht abrufbar`) —
+jede Testausführung landete damit in der **echten** `scanner/ablehnungen.csv`.
+
+Drei unabhängige Belege, keiner davon geraten:
+
+1. Die Zeile `2026-10-02T22:15:57+00:00,zyklus,bewertete Maerkte,1` stand mitten
+   im Betriebsprotokoll — zwischen echten Zykluszeiten.
+2. Der Modulwächter `test_papier_laesst_live_stehen` meldete
+   `geaendert=['ablehnungen.csv']`.
+3. Ein isolierter Lauf ließ die Datei von 3230 B auf 3784 B wachsen.
+
+**Zwei Schranken, weil beide nötig sind.** `SCHREIBEN=False` nimmt *diesem*
+Aufrufer das Schreiben. Der umgebogene Pfad schützt die Datei auch dann, wenn ein
+späterer Test `SCHREIBEN` wieder anstellt. Wer nur eine baut, hat die Hälfte gebaut.
+
+### Der teure Teil: die Reihenfolge im tearDown
+
+Die erste Fassung meines Fixes hatte einen Reihenfolgefehler:
+
+```python
+def tearDown(self):
+    handeln.ABLEHNUNGEN = self._alt_abl        # Pfad ZURÜCK
+    handeln.ABLEHNUNGEN.unlink(missing_ok=True)  # löscht jetzt die ECHTE Datei
+```
+
+Die echte `scanner/ablehnungen.csv` war kurz weg. Sie wurde byte-gleich aus der
+Bedingung-4-Spiegelung `Q:\Handel_Journal\ablehnungen.csv` wiederhergestellt —
+nicht weil es Glück war, sondern weil die Spiegelung genau dafür da ist.
+
+**Richtig:**
+
+```python
+def tearDown(self):
+    handeln.ABLEHNUNGEN.unlink(missing_ok=True)  # löscht die TEMP-Datei
+    handeln.ABLEHNUNGEN = self._alt_abl          # dann zurücksetzen
+```
+
+**Merksatz:** ein Test-Wächter, der die echte Datei löscht, ist teurer als der
+Wächter selbst. Und: die Reihenfolge in einem `tearDown` ist Code, kein Detail —
+`Pfad zurücksetzen` und `Datei löschen` dürfen sich nicht über Kreuz kommen.
+
+### Merksatz
+
+Zwei Schranken, wenn ein Test Betriebsdaten berührt: **Schreibschalter aus und
+Pfad umbiegen**. Und im `tearDown` **erst löschen, dann zurücksetzen**.

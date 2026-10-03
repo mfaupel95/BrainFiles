@@ -3,9 +3,9 @@ id: 20260921-wahrheit-pruefen
 title: 'Lektionen — Wahrheit pruefen'
 tags: [lektion, methode]
 created: 2026-09-21
-updated: 2026-09-29
+updated: 2026-10-01
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Tests]]']
-summary: 'Zwoelf Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real.'
+summary: 'Siebzehn Merksaetze, wie eine Aussage belegt wird, bevor sie rausgeht: zwei Zeugen, Konto statt Buch, Ursache statt Zaehler, Gegenprobe, kein Haenger im Pruefer, deklariert gegen real, Einstellung gegen Leser.'
 ---
 
 # Wahrheit pruefen
@@ -256,3 +256,114 @@ oder steht er still?" (die Zahl steht in der CPU-Zeit, nicht im Gefuehl).
 `bf375a2ac65f`, alle 15 min), Tests `test_dashboard_wache.py` (18, mit Attrappen — kein Netz,
 kein Prozesskill). Verwandt: die Gateway-Wache unter
 [[Betrieb/Wachen-und-Aufgaben]] (Adresse statt Bedingung, 128 Neustarts an einem Tag).
+
+## 14. Eine Einstellung gilt nur fuer den Weg, der sie liest (01.10.2026)
+
+**Regel.** Eine Konfigurationsangabe ist kein Zustand des Systems, sondern eine Zusage an
+**einen** Leser. Vor „X ist gesetzt" also fragen: *welcher Code liest X — und laeuft mein Fall
+durch diesen Code?* Wo zwei Wege denselben Anker setzen sollen, muss **jeder** Weg seinen
+eigenen Mechanismus haben.
+
+**Warum.** `terminal.cwd` in `Agenten/Hermes/config.yaml` (gesetzt am 30.09.2026, T-233) galt
+fuer Gateway, Cron und entfernte Backends — **nicht** fuer die interaktive CLI und TUI: die
+uebernehmen das Startverzeichnis der Shell (`os.getcwd()`). Von der Wurzel gestartet, liefen
+beide dort, waehrend die Desktop-App in `Agenten\Hermes` startete. Zwei Anker, und jede
+Anweisung `cd "$HERMES_HOME/../.."` landete eine Ebene **ueber** der Wurzel. Zeuge war nicht
+die Konfiguration, sondern `state.db`: alle TUI-/CLI-Sitzungen trugen `cwd = BrainFiles`.
+Der Merksatz stand schon zweimal im Wiki ([[Betrieb/Arbeitsverzeichnis]], Lektion 12) — die
+Konfigurationsdatei war nur nie der Beleg.
+
+**Prueffrage.** „Wer liest das?" statt „ist das gesetzt?" — und beim Nachweis die **Spur** des
+Lesers nehmen (`state.db`, Journal, Log), nicht die Einstellung selbst.
+
+**Werkzeug.** `Agenten/Werkzeuge/anker-pruefen.ps1` (Exit 0 = die echte Profilfunktion startet
+die Sitzung in `Agenten\Hermes`); die Mechanik steht in [[Betrieb/Arbeitsverzeichnis]].
+
+## 15. Eine Randmeldung ist kein Ausfall (01.10.2026)
+
+`OKX-Transportfehler 1/6: <urlopen error [WinError 10054] ...>` liest sich wie ein
+Ausfall und ist eine **Warnung**: der Wiederholer versucht es bis zu sechsmal (Pause
+1,5 s x Nummer), "1/6" heisst erster Fehlversuch, der naechste gelingt. Bevor daraus
+eine Stoerung wird, wird GEZAEHLT und GEMESSEN:
+
+    Transportfehler in dauerlauf.log                      -> 0
+    Rand-Logs: dauerlauf-kind.err.log 1x (13:44), handelszentrale-fehler.log 6x (00:15)
+    signierter Leseaufruf /api/v5/account/config          -> 0,2 s, perm read_only,trade
+    Zyklus 13:40-13:44                                    -> alle Spuren "ok", 0 Timeouts
+
+Drei Zeugen (Hauptlog, Live-Abruf, Zyklus), alle gruen - die Meldung war folgenlos.
+Dass OKX UND Kraken im selben Moment betroffen waren, zeigt auf den eigenen Anschluss,
+nicht auf die Boerse.
+
+**Regel: eine Meldung, die wie ein Ausfall klingt und nachweislich folgenlos ist, wird
+UMGESCHRIEBEN.** Jetzt enden alle vier Wiederholer auf "- wird wiederholt, kein Ausfall"
+(`tests/test_transport_wiederholung.py` nagelt Meldung UND Wiederholregel fest: zwei
+Fehlversuche dann Erfolg, sechs dann Ausnahme, fachliche Fehler nur einmal). Eine Warnung,
+die den Menschen erschreckt, kostet Vertrauen in jede weitere Warnung.
+
+## 16. Was eine Ansicht zeigt, ist eine Behauptung — sie wird gemessen (01.10.2026)
+
+In einem Durchgang durch `Agenten/Handel/handelszentrale.py` fielen fünf Sätze auf, die
+das Fenster sagte, ohne sie belegt zu haben. Keiner war ein Rechenfehler; jeder war eine
+Beschriftung, die wie ein Messwert aussah:
+
+* **Ein Reiter zeigte einen Bot, während drei liefen.** Die Brücke kannte nur die feste
+  Adresse `127.0.0.1:8080`; gemessen am 30.09. antwortete die nicht, die Container auf
+  8081/8082/8083 dagegen auf jedem Endpunkt. Die einzige Antwort des Reiters war
+  "nicht erreichbar" — über alle drei Bots. Liste jetzt: `freqtrade/bots.json`
+  (dieselbe, die `bots.py` zum Starten benutzt), eine Zeile je Bot, ein Grund je toten Bot.
+* **"Wert USD" stand über einem EUR-Betrag.** Das Kraken-Buch führt `eur`; die Regel für
+  die Einheit liegt in `auswertung_alle.einheit_fuer()` und wird dort im Tagesbericht
+  längst benutzt — die Zentrale hatte sie nicht abgerufen, sondern eine Spalte benannt.
+  Fusszeile und Zelle nennen jetzt die Waehrung, gruppiert: eine Summe aus EUR und USD
+  ist kein Betrag, den jemand ausgeben könnte.
+* **Ein Einstieg von 3,14e-06 stand als "0.00000" da.** Die Preisskala endete bei
+  "%.5f"; Einstieg, Stop und Ziel derselben Token-Position waren drei Nullen — eine
+  Grenze, die keine mehr ist. Unter 1e-4 gilt jetzt die exponentielle Form.
+* **"Quelle okx" über einer Contract-Adresse.** `moondev_sniper` führt seine Mints als
+  `inst`, `robinhood_radar` notiert auf der Robinhood-Kette (4663). Beides ist kein
+  OKX-Paar. Der erste ist über den Onchain-Feed preisierbar (gemessen 3,104e-06 am
+  01.10.), die zweite Kette kennt kein Haus-Leser. Ein Kursweg, der nie antwortet, ist
+  eine Beschriftung, kein Weg — jetzt heisst er "keine".
+* **Jede Logzeile ohne " ok" war rot.** Damit standen Betriebsmeldungen wie
+  `01.10. 11:56:06  Auto-Freigabe scanner (720 min)` in Alarmfarbe. Rot gibt es nur noch
+  für ein Fehlermerkmal (`log_marke`), neutrale Zeilen bleiben ohne Farbe.
+
+Merksatz: Wer ein Fenster beschriftet, trifft eine Aussage über die Daten. Die Aussage
+ist erst gemacht, wenn die Quelle (Datei, Endpunkt, Feld) an derselben Stelle
+nachgelesen wird — eine Spaltenüberschrift ist kein Nachweis.
+
+Nachprüfen: `cd Agenten/Handel && python handelszentrale.py --pruefen` (nennt die Bots
+samt Port und Grund), `python freqtrade_bridge.py` (Bot-Liste und Übersicht, Exit 0 wenn
+einer antwortet), Tests `tests/test_handelszentrale_anzeigefehler.py` und
+`tests/test_handelszentrale_struktur.py`.
+
+## 17. Eine Strukturregel gehört in den Prüfer, nicht ins Gefühl (01.10.2026)
+
+Zwei Funde aus demselben Durchgang durch `Agenten/Handel/handelszentrale.py`, beide durch
+nichts sichtbar — kein Absturz, keine falsche Zahl, nur tote Stelle:
+
+* **Zwei wortgleiche `spur_zeile`-Funktionen in einer Datei.** Python lässt die LETZTE
+  Definition gewinnen, die erste ist tot. Die Tabelle bauden richtig, also fiel nichts
+  auf — aber eine Änderung nur an der ersten Fassung hätte gewirkt wie keine, und die
+  nächste Sitzung hätte sie erneut versucht.
+* **Tabellen ohne Leiste, eine Seite ohne Scrollfläche.** Die Spurtabelle forderte
+  `height=len(SPUREN)` an (42 Zeilen), ihr Rahmen wurde mit `fill="x"` gepackt — die Seite
+  war damit höher als jedes Fenster und der untere Teil (Chart, Konsole) nicht erreichbar.
+
+Behoben ist beides nicht durch Hinschauen, sondern durch zwei Prüfer in
+`tests/test_handelszentrale_struktur.py`:
+
+* kein Funktions-/Klassename darf in derselben Datei (Modul oder Klasse) zweimal definiert
+  sein — per AST über alle Scopes, nicht als Suche nach einem bestimmten Namen;
+* `ttk.Treeview` darf nur in `tabelle_mit_leiste` gebaut werden (Zeilenbereich des Helfers
+  per AST), und jede Tabelle im gebauten Fenster muss `yscrollcommand`/`xscrollcommand`
+  und eine Mausrad-Bindung tragen.
+
+Merksatz: Eine Regel, die nur im Kopf der Autorin lebt, gilt bis zum nächsten Umbau.
+Was im Prüfer steht, gilt auch für den Abschnitt, den morgen niemand liest.
+
+Zusatzregel beim Prüfen von Tk-Geometrie: ein verstecktes Testfenster (`withdraw()`) hat
+keine Größe — `yview()` bleibt dort `(0.0, 1.0)`, auch mit 40 Zeilen in einer
+Fünf-Zeilen-Tabelle. Geprüft wird die Verdrahtung, nicht Tks Scrollrechnung; sonst
+beweist der Test etwas über die Maschine.

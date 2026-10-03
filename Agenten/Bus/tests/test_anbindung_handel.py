@@ -201,6 +201,20 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
     kern_gebunden = os.path.exists(kern) and "ereignis.lauf" in open(
         kern, encoding="utf-8").read()
 
+    # ZWEITER KERN (01.10.2026, T-255): die acht klassik_*-Spuren bestehen aus
+    # einem kurzen `handeln.py`, das nur `klassik_regeln.spur_main(...)` ruft -
+    # die Meldung entsteht wie bei spur_buch im gemeinsamen Buch-Kern, den
+    # klassik_regeln.py aufruft (sp.zyklus -> ereignis.lauf). Dieselbe Regel wie
+    # oben, nur eine Ebene tiefer: sie gilt NUR, wenn die gestartete Datei ihren
+    # EIGENEN Bus-Namen woertlich uebergibt UND der Regelkern ihn wirklich an
+    # `spur_buch.zyklus(ereignis_name=...)` weiterreicht. Sonst waere
+    # "irgendwo im Ordner steht der Bus" nur eine Ebene tiefer wieder da.
+    regelkern = os.path.join(HANDEL, "klassik_regeln.py")
+    regelkern_quelle = (open(regelkern, encoding="utf-8").read()
+                        if os.path.exists(regelkern) else "")
+    regelkern_gebunden = ("ereignis_name" in regelkern_quelle
+                          and "spur_buch" in regelkern_quelle)
+
     fehlt = []
     for spur, skript in spuren_skripte.items():
         ordner = spuren_ordner.get(spur)
@@ -215,7 +229,9 @@ def test_dauerlauf_subprocess_skripte_haben_bus():
         direkt = "ereignis.lauf" in inhalt and wer in inhalt
         ueber_kern = (kern_gebunden and wer in inhalt
                       and "buch.zyklus" in inhalt)
-        if not (direkt or ueber_kern):
+        ueber_regelkern = (regelkern_gebunden and "spur_main" in inhalt
+                           and ('bus_name="%s"' % wer) in inhalt)
+        if not (direkt or ueber_kern or ueber_regelkern):
             fehlt.append(os.path.join(ordner, skript))
     assert not fehlt, "automatisch gestartet, aber ohne Bus-Anbindung: %s" % fehlt
 

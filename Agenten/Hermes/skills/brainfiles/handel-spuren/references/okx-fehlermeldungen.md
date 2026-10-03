@@ -241,3 +241,78 @@ Stop = Kurs − 1,5 × ATR, gedeckelt unter den Bandboden und ueber die Liquidat
 und `okx_bot_waechter/positions_schutz.py` (Position; **ueberspringt still, wenn
 keine Position sichtbar ist** - genau der Fall oben, und das ist der Befund, nicht
 ein Fehler).
+
+## 10. `51155` = Compliance-Sperre des Kontos, nicht Rechte und nicht Menge
+
+Symptom: `OKX 51155: You can't trade this pair or borrow this crypto due to local
+compliance restrictions.` bei einem Instrument, das oeffentlich GELISTET ist,
+dessen Paar existiert und dessen Menge weit ueber `minSz` liegt.
+
+Mechanismus: das EEA-Konto schliesst einzelne Instrumente aus, obwohl
+`/api/v5/public/instruments` sie fuehrt. Der Fehler kommt **vor** jeder
+Mengenpruefung - ein `validate`-Lauf scheitert identisch. Betroffen sind die
+**gestakten Formen**: `BETH` (Beacon-ETH) und `OKSOL` (OKX-Staked-SOL) haben auf
+diesem Konto **nur ein USDT-Paar** (`BETH-USDT`, `OKSOL-USDT`) und kein
+USDC-Paar - und auch das USDT-Paar ist gesperrt.
+
+**Regel: die Handelbarkeit eines Instruments ist nur am ORDERWEG zu erfahren,
+nicht am Instrumentenabruf.** `status=live` in `public/instruments` heisst
+"gelistet", nicht "handelbar" - dieselbe Familie wie `50124` (Abschnitt 7:
+falscher Markt-Namensraum) und `51001` (Abschnitt 5: unbekanntes Instrument).
+Ein `validate`-Lauf vor dem echten Verkauf ist die einzige billige Probe.
+
+Umgang im Bestand: solche Posten gehoeren als "compliance-gesperrt" in den
+Bericht - nicht in einen zweiten Versuch, nicht in eine Paarsuche. Der Kontowert
+bleibt in `eqUsd` sichtbar, einsetzbar ist er nicht; `availBal` bleibt voll, was
+den Posten harmlos aussehen laesst.
+
+## 11. Ein Transportfehler wird wiederholt - und die Meldung muss das sagen
+
+```
+OKX-Transportfehler 1/6: <urlopen error [WinError 10054] Eine vorhandene
+Verbindung wurde vom Remotehost geschlossen>
+```
+
+Diese Zeile liest sich wie ein Ausfall und ist eine **Warnung**: der Wiederholer
+(`_mit_wiederholung` in `scanner/okx.py`, `xperp/okxf.py`, `mosaic/okx_spot.py`,
+`kraken/kraken.py`) versucht es bis `MAX_FEHLER = 6` mit wachsender Pause
+(`1.5 * fehler` Sekunden) - erst der SECHSTE Fehlschlag ist ein Fehler. Wer sie
+deutet statt prueft, sucht einen Defekt, den es nicht gibt.
+
+**Regel: eine Meldung aus einem Wrapper spricht die Wiederholung aus**
+(`... - wird wiederholt, kein Ausfall`). Sie geht auf `stderr`, wird also nicht
+vom Dauerlauf gefiltert - aber Max liest sie, und eine Zeile, die wie ein
+Ausfall klingt, kostet Vertrauen. Der Praefix bleibt gleich, damit bestehende
+Suchen weiter treffen.
+
+Pruefen, in dieser Reihenfolge (beide Messungen sind billig):
+
+```python
+okx._roh('/api/v5/account/config', signiert=True)   # antwortet? (hier 0,2 s, perm read_only,trade)
+```
+
+```bash
+grep -c Transportfehler Agenten/Handel/dauerlauf.log          # im EIGENEN Log: 0
+grep -rc Transportfehler Agenten/Routinen/logs/               # Rand-Logs: einzelne Zeilen
+grep -n 'TIMEOUT\|Traceback' Agenten/Handel/dauerlauf.log     # kein Befund = Zyklus lief durch
+```
+
+Mechanismus: `WinError 10054` ist ein zurueckgesetztes TCP-Socket. Es traf am
+selben Tag **OKX UND Kraken gleichzeitig** (Handelszentrale-Fehlerlog) - also ein
+lokaler Netz-/Verbindungsmoment, keine Boersensperre. Verteilt ueber zwei Tage:
+7 Vorkommen in den Rand-Logs, NULL im Dauerlauf-Log, und der Zyklus davor/danach
+lief mit allen Spuren `ok`. Kein Grund fuer eine neue Sonde und keiner fuer eine
+Wache.
+
+Zwei Anschluesse, die zusammengehoeren:
+
+* **Fachliche Fehler werden NICHT wiederholt** (Abschnitt 2): `OKXFehler` geht
+direkt raus, sonst geht eine abgelehnte Order mehrfach an die Boerse.
+* **Eine im Reset verlorene ANTWORT ist keine verlorene Order.** Der naechste
+  Zyklus holt den Zustand von der Boerse (`boersenstops`, `wartende_auftraege`,
+  Buchabgleich), deshalb ist ein Transportfehler auf dem Orderweg kein Grund fuer
+  einen Handgriff von Hand.
+
+Test: `tests/test_transport_wiederholung.py` (zwei Fehlversuche dann Antwort,
+sechs dann Ausnahme, fachlicher Fehler nur EIN Versuch, und alle vier Meldungen
+nennen die Wiederholung).

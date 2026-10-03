@@ -90,6 +90,7 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
    jede Spur, aus der Repo-Wurzel:
 
    ```bash
+   cd "$HERMES_HOME/../.."   # Werkzeuge starten in Agenten/Hermes; alles hier ist relativ zur Wurzel
    # a) Was steht WIRKLICH in der Zustandsdatei, die das Tor liest?
    python -c "import json;print(json.load(open('Agenten/Handel/freigabe_fenster.json',encoding='utf-8'))['<spur>'])"
    # b) Was liest die SPUR, wenn sie wie beim Fahrer startet (cwd = Spurenordner)?
@@ -103,6 +104,19 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
    aendert), danach dieselbe Sonde wiederholen: b muss a entsprechen.
 
 6. **Erst dann melden**, mit beiden Zeugen im selben Lauf zitiert.
+
+7. **Eine ZAHL und ein fremder Fix sind eigene Gegenstaende** — beide werden
+   nachgerechnet, nicht geglaubt. Dieselbe Groesse ueber DREI unabhaengige Wege
+   rechnen (Zeilenrechnung, Schluessel-Paarung, Hausfunktion); weichen sie ab,
+   ist der AUSREISSER der Fehler, nicht die Mehrheit. Belegter Fall: ein Fix
+   einer parallelen Sitzung war echt (Zaehler `0/1506` → `1506/1506`), aber die
+   Hausfunktion lieferte fuer dieselben zwei Journale `-47.7` gegen `+492.26`
+   aus zwei anderen Wegen — sie rechnete das Rundenergebnis ohne die
+   HANDELSRICHTUNG, jede Short-Runde stand mit verkehrtem Vorzeichen im Buch
+   (Trefferquote 54,2 % statt 33,2 %). Vor jedem eigenen Fix in geteiltem Code:
+   erst `git log -- <datei>`, ob er schon da ist. Rezept, die zwei Fallen
+   (fehlende Richtung, einseitige Summe) und die Werkzeugfallen:
+   `references/zahlen-nachrechnen.md`.
 
 ## Pitfalls
 
@@ -253,9 +267,25 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   Tagesberichts; danach gehoert der Ausfall bewacht
   (`Agenten/Hermes/scripts/sperren-wache.py`, Cron `sperren-wache`), nicht nur
   repariert.
-- **Der Fahrer meldet jede Spur als `ok`, auch wenn sie intern Papier handelt.**
-  Vor "die Spur handelt live" immer die Journalzeilen mit `modus=live` zaehlen
-  (0 heisst: kein einziger Vorgang).
+- **Eine Lebendpruefung, die nur die PID nachschlaegt, ist kein Zeuge — Windows
+  vergibt PIDs wieder.** Eine Statusdatei mit `state: running` und einer laengst
+  beendeten PID zeigt dann auf ein voellig fremdes Programm: `tasklist /FI "PID
+  eq <n>"` findet es, der Lauf gilt dauerhaft als "laeuft schon" (jeder Start
+  gesperrt) und ein Waechter spiegelt eine Geisterposition. Die IDENTITAET
+  mitpruefen, nicht die Existenz: Prozess-NAME **und** ein Merkmal aus der
+  eigenen Kommandozeile (der Pfad der Statusdatei) — `Get-CimInstance
+  Win32_Process -Filter 'ProcessId=<n>'` liefert Name und CommandLine in einem
+  Aufruf. Die schaerfere Pruefung so einhaengen, dass sie nur auf dem ECHTEN
+  Prozessweg greift: eingespeiste Testnaehte (`lebt=lambda pid: True`) bleiben
+  unberuehrt, sonst schlaegt jede Suite fehl, die den Ablauf ohne echten Prozess
+  prueft.
+- **Ein Launcher, der einen Namen ueber eine gepflegte Liste aufloest, sperrt
+  alles, was nicht in der Liste steht.** Loest er stattdessen ueber die DATEI auf
+  der Platte auf (jede Datei in `strategien/`), ist jeder neue Gegenstand sofort
+  startbar; die benannten Eintraege bleiben die Abkuerzung mit festem Symbol.
+  Nach so einer Erweiterung mit `--trocken` belegen, dass ein benannter Eintrag
+  DIESELBE Zieldatei nennt wie vorher (sonst entstehen zwei Staende fuer einen
+  Lauf).
 - **Tests, die Seams patchen, muessen sie zuruecknehmen.** Echte Funktionen VOR
   dem Patchen sichern und im `tearDown` zurueckholen; sonst prueft der naechste
   Test den Fake des Vorgaengers (`setUp` hatte die echte Funktion schon
@@ -367,4 +397,17 @@ Nach einem Absturzfix ist der Nachweis die Rueckgabe des GANZEN Laufs: den
 festen Lauf mit nachgestellter Netzstoerung (Double fuer `urlopen`) gegen einen
 Temp-Ordner fahren und `0` erwarten - dazu den naechsten echten Zyklus im
 Fahrerlog zeigen. Rezept und Fallunterscheidung Netzfehler/Spurenfehler:
-Skill `handel-spuren`, `references/betriebsfehler-spuren.md`.
+Skill `handel-spuren`, `references/betriebsfehler-spuren.md` (dort im
+Skill-Ordner, nicht in diesem).
+
+Fuer eine ZAHL ist der Nachweis der Drei-Wege-Test aus Schritt 7 - alle drei
+Wege im selben Lauf, mit ihren Zahlen:
+
+```bash
+cd Agenten/Handel && python kerzenschluss_bias.py --spur <spur> | tail -6
+```
+
+Erwartet: `netto` stimmt mit der Hausfunktion auf denselben Journalen ueberein
+(auf die Nachkommastelle, wenn beide mit demselben Vorzeichen rechnen). Weicht
+eine Zahl ab, gehoert die Abweichung in die Antwort - nicht die geglaettete
+Fassung.

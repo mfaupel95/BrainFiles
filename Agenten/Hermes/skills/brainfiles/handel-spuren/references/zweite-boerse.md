@@ -348,6 +348,144 @@ Folgen, die man vorher nicht sieht:
   Mini-Round-Trip mit Vorschau, `--symbol`, `--kontrakte`, Notausstieg per Stop
   falls der Verkauf scheitert. Es bucht in kein Buch und oeffnet kein Fenster.
 
+## Eine Spur auf Kraken Futures umstellen: erst Marktdeckung, dann Sizing
+
+Auftrag "Spur X live auf Kraken, aber mit perp und hebel xN". Zwei Pruefungen
+gehoeren VOR die erste Zeile Code, beide oeffentlich und ohne Schluessel.
+
+**1. Marktdeckung messen - die PF_-Maerkte sind NICHT die Spot-Paare.**
+`GET https://futures.kraken.com/derivatives/api/v3/instruments` (rund 300
+Maerkte), dann je Instrument der Spur pruefen, ob ein `PF_<BASE>USD` mit
+`tradeable: true` existiert. Gemessen an einer Zehn-Instrumenten-Spur: neun
+hatten einen PF_-Markt, nur eines nicht - im SPOT waren es nur acht gewesen.
+Zwei Namen fallen auseinander: **DOGE heisst auf Futures `PF_DOGEUSD`, im Spot
+`XDG`**, und ein Instrument ohne Spot-Paar kann auf Futures trotzdem
+existieren. Die Deckung ist je Boerse EIGEN; "das gibt es bei Kraken nicht"
+nie aus der Spot-Tabelle schliessen. Was fehlt, bekommt einen eigenen,
+amentlich benannten Sperrgrund (`KEIN_MARKT`-Menge + `ValueError`), damit der
+Grund im Bericht steht und nicht als "unbekannt" verschwindet.
+
+**2. "Hebel xN" ist eine SIZING-Regel, kein Orderparameter.** Kraken Futures
+kennt keinen Hebel je Order - der Einschuss ist der Margenplan des Marktes
+(EEA retail 10 %, siehe oben). Die Vorgabe "Hebel 6" heisst deshalb
+`nennwert = einsatz * hebel`, `kontrakte = nennwert / kurs`; die Boerse fordert
+davon nur ihre 10 % an, der Rest des Einsatzes bleibt freie Margin. Das gehoert
+so in den Bericht, sonst liest "Hebel 6" wie eine sechsfache Besicherung. Und:
+**ein Stop von x % kostet bei Hebel 6 rund 6x % des Einsatzes** - der Hebel
+erhoeht den Verlust JE POSITION, nicht die Trefferchance.
+
+**3. Die Mindestmenge kann den Hebel sprengen - dann wird GESPERRT, nicht
+aufgerundet.** 1 Kontrakt ist die kleinste Order und 1 Einheit der
+Basiswaehrung; bei einem teuren Instrument ist schon DER groesser als das
+Hebel-Budget. Gemessen: 1 Kontrakt eines ~1437-USD-Instruments ergibt bei
+50 USD Einsatz **Hebel 28,7 statt 6**. Ohne Sperre waere das die groesste
+Position im Buch gewesen, und am Hebel haette es niemand gesehen.
+
+```python
+HEBEL_TOLERANZ = 1.25          # der Kurs laeuft zwischen Sizing und Fuellung
+
+def hebel_grund(inst, einsatz, kurs, w):
+    k = kontrakte_fuer(inst, einsatz, kurs, w)
+    ist = nennwert_usd(inst, k, kurs) / einsatz
+    if ist > hebel(w) * HEBEL_TOLERANZ:
+        return ("1 Kontrakt %s ist %.2f USD Nennwert (Hebel %.1f bei %.2f USD "
+                "Einsatz) - bei Hebel %g nicht abbildbar" % (...))
+    return None
+```
+
+Der Hebel gehoert in die `wachen.json` und wird zur AUFRUFZEIT gelesen - eine
+Konstante im Modul waere eine zweite Wahrheit.
+
+**4. Das Guthaben-Tor der neuen Boerse ist die freie MARGIN, nicht der Saldo.**
+Ein multiCollateral-Konto (`flex`) traegt `availableMargin` und laesst
+`cash.balances` auf 0 stehen; dasselbe Konto kann 85 USD tragen und davon 83 als
+Einschuss fuer fremde Positionen gebunden haben. Vor jeder Zusage
+`availableMargin` UND `initialMargin` lesen und BEIDE Zahlen nennen - "das Konto
+hat 85 USD" ist ohne die zweite Zahl eine halbe Wahrheit.
+
+**5. Das Tor auf den Betrag stellen, den Max wirklich bewegt.** Ein
+`mindest_guthaben` von 35 USD bei einem beauftragten Transfer von 30 USD ist
+wirkungslos: der Saldo landet bei 31,31 und die Sperre bleibt stehen. Vor dem
+Setzen nachrechnen (`frei_neu = frei_alt + transfer` gegen `mindest_guthaben`),
+sonst baut man einen Automaten, der auf ein Guthaben wartet, das schon da ist.
+Und die Folge aussprechen: **ein aufgeladenes Guthaben IST die Live-Freigabe** -
+faellt der letzte Nicht-Fenster-Grund weg, oeffnet die Auto-Freigabe das Fenster
+selbst.
+
+## Der Instrumenten-Weg wird ABGELEITET, nicht gepflegt — und nicht von selbst scharf
+
+Die `KEIN_MARKT`-Menge aus dem Abschnitt oben ist der Notaus fuer die Maerkte,
+die es nicht gibt. Sie ist aber nicht die Antwort auf die Frage, wie ein
+Instrument, das der Signalgeber BRINGT und das in keiner Tabelle steht, auf den
+Zielmarkt kommt. Drei Regeln dafuer, jede aus einem echten Ausfall:
+
+1. **Namen werden aus der echten Marktliste GELEITET, nicht nachgetragen.** Die
+   Regel ist einfach (`PF_<BASIS>USD`, mit Ausnahmen wie `BTC -> XBT`) und wird
+   JEDES Mal gegen die Boerse geprueft (ein Name ohne Markt dort bleibt ein
+   lauter Fehler und wird nie in einen anderen Markt umgelenkt). Eine
+   handgepflegte Tabelle kann nicht mit einem Bericht Schritt halten, der ueber
+   zweihundert Instrumente rotiert: gemessen passten elf von etwa zweihundert,
+   und die zwei Kandidaten des Tages wurden abgewiesen, obwohl der Zielmarkt
+   sie fuehrt.
+2. **Die Ableitung ist ein eigener Schalter, der von Hand kommt.** Sie gibt Geld
+   fuer ein Instrument aus, das der Nutzer nie gesehen hat — genau da gehoert
+   sein Ja hin, also `live_pf_ableitung: false` als Vorgabe plus Vermerk. Der
+   gepruefte Kern (die von Hand bestaetigten Namen) laeuft, die Ableitung erst
+   nach Freigabe. Ohne diese Trennung ist die Regel eine stille Erweiterung
+   des Live-Buchs.
+3. **Ein Lader, den niemand aufruft, sieht aus wie ein kaputter Aufrufer.** Wenn
+   die Marktliste absichtlich nur BEIM LADEN gefuellt wird (kein Netzzugriff auf
+   dem heissen Pfad), muss der Lader einmal je Lauf gerufen werden — sonst
+   verweigert der Aufrufer JEDEN Einstieg mit einer Meldung ueber die
+   Instrumentliste, und man sucht den Fehler im falschen Modul. Die
+   Fremdarbeit dabei uebernehmen, nicht ueberschreiben: die Ableitung war richtig,
+   nur unverkettet. Das echte Journal ist der Zeuge (N Fehlerzeilen je
+   Zyklus, alle im Live-Modus, alle mit derselben Begruendung).
+
+**Der Notausstieg darf nicht von dem Schritt abhaengen, der scheitern kann.**
+Ein Mini-Round-Trip kauft, wartet auf die Fuellung und verkauft. Schlaegt das
+Warten auf die Fuellung fehl, bricht der Lauf ab — und der Verkauf, also der
+einzige Schutz, liegt im selben Zweig. Gemessen: Kauf angenommen und gefuellt,
+die Fill-Abfrage mit `authenticationError` abgewiesen, die Position blieb OHNE
+Stop offen. Zwei Regeln: den Notaus unabhaengig vom Fuell-Nachweis ausfuehren
+(er ist ein eigener Schritt, nicht die Fortsetzung), und **nach jedem Probe-Lauf
+Positionen UND offene Orders lesen** — der Ruecklauf auf „0 Kontrakte" ist der
+Nachweis, nicht die Rueckmeldung des Werkzeugs. Gehoert der Endpunkt generell
+nicht zum Handelsschluessel (gemessen: `/fills` ja, `/accounts` nein), dann ist
+die Fill-Bestaetigung zu streichen und durch Position plus Order zu ersetzen.
+
+## Zwei Einsatz-Konventionen im Haus — die Formel des Helfers ist die Wahrheit
+
+Es gibt Spuren, deren Sizing-Helfer rechnet `int(Einsatz // Kurs)` — dort ist
+`live_max_pro_trade_usd` der **NOMINAL** der Position, und die Margin kommt
+erst aus dem Margenplan des Marktes. Andere rechnen `Nennwert = Einsatz x
+Hebel` — dort ist dasselbe Feld die **Margin**. Beide stehen im Haus, und wer
+das falsche liest, baut entweder eine zu kleine Position (Tor verweigert mit
+„Einsatz kleiner als ein Kontrakt") oder eine um den Faktor Hebel zu grosse.
+
+**Vor dem Setzen die Formel des Helfers lesen, nicht die Konvention annehmen.**
+Der Nachweis ist ein Aufruf des Helfers mit dem neuen Wert und dem echten
+Kurs — er muss die beabsichtigte Kontraktzahl liefern, sonst ist der Wert
+falsch (nicht „die Boerse lehnt ab“). Bei einem Instrument ohne Bruchstuecke ist
+der Nominalwert auch das, was die Obergrenze bestimmt: ein Wert knapp ueber dem
+Kurs ergibt genau einen Kontrakt und verweigert bei einem Kurssprung nach oben
+laut, statt auf eine kleinere Groesse auszuweichen.
+
+## Die Kante gehoert zum INSTRUMENT, nicht zur Strategie
+
+Bevor eine gemessene Strategie auf einer neuen Boerse gebaut wird: **die Strategie
+auf dem Instrument messen, das die Boerse ueberhaupt handeln kann** — nicht das
+Instrument aus einem vorhandenen Weg erben. Gemessen am selben Skript, gleicher
+Takt, gleicher Fenster, gleiche Gebuehr: 42 Runden bei 28,6 % Treffer mit einem
+Ergebnis nahe null gegen 44 Runden bei 29,6 % mit einem um zwei Groessenordnungen
+besseren Ergebnis. Die Trefferquote unterscheidet die beiden nicht — sie zu
+vergleichen haette die Entscheidung vertauscht.
+
+Faellt der Weg aus, wird das Instrument gewechselt, NICHT die Strategie
+abgeschwaecht. Vorher die Kerzendaten des neuen Instruments gegensehen (erste,
+letzte, min, max) — ein Skalierungsfehler in der Reihe sieht aus wie ein
+Strategieergebnis und ist die billigste Gegenprobe.
+
 ## Kraken gegen USDC: die Paare gibt es, die Waehrung ist die Huerde
 
 Kraken fuehrt USDC-Quotepaare — dieselben Instrumente, die der Haus-Spot handelt
@@ -383,7 +521,93 @@ vom ersten Zyklus gegen USDC-Kurse gerechnet und alle flachgestellt).
 - **Waehrungsrisiko nennen:** ein EUR-Konto, das USDC-Paare handelt, traegt
   zusaetzlich EUR/USD. Fuer dieselbe Bewegung in EUR ist das kein
   Genauigkeitsgewinn, sondern ein neues Risiko — die Umstellung nur bauen, wenn
-  die Rechnung in USDC gewollt ist.
+  die Rechnung in USDC gewollt ist. EURC ist der Euro-Stablecoin: EURC-quotierte
+  Paare sind dieselbe Waehrungsfamilie wie EUR (kein neues EUR/USD-Risiko),
+  USDC-quotierte tragen es. Deshalb lassen sich EURC-Paare frei ergaenzen,
+  waehrend USDC-Paare strukturell gesperrt bleiben, bis USDC-Guthaben da ist.
+
+## Eine Spur von EINER Quotewaehrung auf MEHRERE generalisieren (EUR -> EUR/EURC/USDC)
+
+Eine Spur, die hart auf eine Quotewaehrung verdrahtet ist (Watchlist nur
+EUR-Paare, Guthaben-Tor `guthaben("ZEUR")`, alle Betragsfelder `_eur`), kann
+zusätzlich EURC-/USDC-Paare handeln, ohne die Strategie anzufassen. Das Muster
+ist ein BUCHVORGANG wie der Instrumentenwechsel weiter unten, aber die
+Generalisierung selbst ist Code:
+
+1. **Die Quotewaehrung je Paar aus der API ableiten, nicht aus dem Namen.**
+   `AssetPairs[paar].quote` ist die Wahrheit (`ZEUR`/`EURC`/`USDC`), der
+   Paarname nicht. Ein Filter auf `quote == "EURC"`/`"USDC"` findet die Paare;
+   ein Filter auf `ZEURC`/`ZUSDC` (mit Z-Praefix) findet NICHTS, weil
+   Stablecoins kein Z tragen — nur Fiat hat es.
+2. **Das Guthaben-Tor fragt die Quotewaehrung des jeweiligen Paares**, nicht
+   eine hart gesetzte. Eine Spur, die immer `guthaben("ZEUR")` liest, sieht
+   fuer ein EURC-Paar 0 und sperrt es dauerhaft, obwohl EURC frei liegt. Das
+   Tor wird waehrungsbewusst: `guthaben(quotewaehrung(paar))` gegen den
+   Mindestbetrag in DIESER Waehrung.
+3. **Das Buch bleibt in der Waehrung der Spur** (EUR); die Quotewaehrung ist
+   eine Eigenschaft des ORDERWEGS je Paar, nicht des Buchs. Betragsfelder
+   (`max_pro_trade_eur`) bleiben die Nominale; nur das Tor und die Anzeige
+   werden waehrungsbewusst.
+4. **EURC-Paare in die Watchlist aufnehmen, USDC-Paare auch — aber USDC bleibt
+   gesperrt, bis USDC-Guthaben da ist.** Das Guthaben-Tor in der Paarwaehrung
+   ist eine Versicherung, kein Ertrag: es haelt die Spur von einem Kauf fern,
+   den die Boerse ablehnt, und es ist kein Grund, die Faehigkeit nicht zu
+   bauen — nur ein Grund, sie spaeter scharf zu schalten.
+5. **Vor dem Bauen die Konto-Waehrungsbestaende lesen** (`kraken._roh_privat('Balance')`),
+   nicht raten: welches Kapital liegt frei (EURC kann mehr sein als EUR), und
+   welche Waehrung die Spur damit tatsaechlich nutzen kann. Die Prioritaet der
+   Spuren richtet sich danach, welche das vorhandene Kapital nutzen kann.
+
+## omnitrade ist KEINE Spur — und omniquant hat keinen Orderweg
+
+`omnitrade` ist kein Ordner unter `Agenten/Handel`: es ist ein rein lesender
+Rust-Lauf (`Werkstatt/omnitrade`, Statusdatei `status/live.json`, gelesen von
+`omnitrade_bridge.py`/`omnitrade_lauf.py`). Es bewegt kein Kapital und hat
+keinen Orderweg im Haus. `omniquant` ist eine Papier-Spur auf dem
+Prognose-Bericht (`--live` verweigert, kein Broker-Aufruf). Sagt Max
+"omnitrade/omniquant bauen", heisst das: einen LIVE-ORDERWEG anbinden — nicht
+"die Spur ist schon da, nur verdrahten". Vor dem Bauen pruefen, ob die Spur
+ueberhaupt einen Orderaufruf im Code hat (`spuren_stand.py` Spalte
+"Order-Code"), sonst baut man an einer Spur, die gar nicht handeln kann.
+
+### Der gebaute Weg: den FREMDREN Lauf spiegeln, nicht nachbauen (30.09.2026)
+
+Umgesetzt in `Agenten/Handel/omnitrade` (Weg B der Entscheidung von Max, nach
+Auftrag "nur noch omnitrade auf kraken handel erlaubt"). Vier Regeln, die den
+Aufbau tragen und auf JEDE Spur uebertragbar sind, die einen fremden Lauf
+liest:
+
+1. **Den ZUSTAND spiegeln, nicht die Orderliste.** Ein Statusdokument, das
+   `recent_orders` als Ringpuffer fuehrt (dort `MAX_ORDERS = 20`), verliert bei
+   einem Ausfall alles dazwischen — wer daraus Ereignisse nachzaehlt, verpasst
+   sie still. `net_quantity > 0` sagt dagegen zu jedem Zeitpunkt, ob der Lauf
+   eine Position haelt.
+2. **`state: running` ist kein Beweis — zwei Zeugen.** Nach einem harten Ende
+   bleibt die Statusdatei mit einer TOTEN PID auf `running` stehen (gemessen:
+   `live_adx_macd_BTCUSDC.json` lag zwei Stunden so im Statusordner, waehrend
+   `omnitrade_start.py liste` "PID lebt nicht" meldete). Einstieg nur bei
+   frischer Datei UND lebender PID (`omnitrade_lauf.pid_lebt`); der Ausstieg
+   greift auch bei `stopped` (die CLI verkauft beim Beenden), **nie** bei
+   `starting`/`error` — ein Abbruch ist kein Handelssignal.
+3. **Den echten Orderpreis buchen, nicht den letzten Kerzenschluss.** Ein
+   Fremdlauf steigt mit einer echten Order aus; ihr Preis steht in
+   `recent_orders`. `last_close` als Verkaufskurs ins Journal zu schreiben,
+   erfindet einen Kurs. Regel in `quelle()`: Verkaufspreis genau dann, wenn der
+   Lauf NICHT offen ist; `last_close` bleibt die Bewertung der offenen Position.
+4. **Der Fremdlauf ist die Ausstiegslinie, der Stop ist der Notaus.** Der Stop
+   wird WEIT gesetzt (hier 8 %) und das Ziel praktisch unerreichbar (10R) —
+   sonst bucht die Spur Runden, die der fremde Lauf nie genommen haette. Der
+   Ausstieg kommt ueber `spur_buch.zyklus(..., zusatz_ausstieg=...)` mit einem
+   eigenen Grund (`omnitrade flat`).
+
+Dazu die zwei Fallen des Anschlusses: **die Quotewaehrung vor der ersten
+Sperrenpruefung setzen** (`boersen_binden(w)` → `weg.setze_quote(w["kraken_quote"])`),
+sonst findet die Paar-Tabelle ein USDC-Paar nicht — sie faellt ausdruecklich
+nicht auf eine andere Waehrung zurueck, damit keine Order im falschen Markt
+landet. Und: **`spur_buch.zyklus` steigt bei leeren Daten VOR `pruefe_ausstiege`
+aus** — liefert `quelle()` nur laufende Laeufe, kann ein beendeter Lauf die
+Position nie schliessen. Deshalb kommen ALLE lesbaren Laeufe ins `daten`-Dict
+und `signal()` prueft `laeuft` UND `offen`.
 
 ## Instrumentenwechsel mit offenem Buch
 

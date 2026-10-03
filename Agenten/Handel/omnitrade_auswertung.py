@@ -114,6 +114,8 @@ def zeile(b):
     if "strategie" not in b:
         return "%-34s  %s" % (b.get("datei"), b.get("fehler"))
     marke = "" if b["ok"] else "  [%s]" % (b["fehler"] or "?")
+    if b.get("state") not in (None, "running"):
+        marke += "  [LAEUFT NICHT: %s]" % b["state"]
     return ("%-14s %-8s %5.1fh K%-4d O%d/%d (K%d V%d) netto %+.5g  Gewinn %+8.2f (%s)  B&H %s%s"
             % (b["strategie"], b["symbol"], b["laufzeit_h"], b["kerzen"], b["orders"],
                b["abgelehnt"], b["kaeufe"], b["verkaeufe"], b["netto"], b["gewinn"],

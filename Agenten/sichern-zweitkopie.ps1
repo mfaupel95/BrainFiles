@@ -73,8 +73,25 @@ $ausserhalb = @(
   (Join-Path $quelle 'Agenten\Hermes\cache')
 )
 
+# Derselbe gesperrte Waisen-Rest wie in sichern.ps1 (03.10.2026):
+# state-snapshots\.20260930-204617-pre-update.48588.partial ist leer und
+# gesperrt (icacls schlaegt selbst fehl). robocopy meldete beim Lauf vom
+# 02.10.2026 FEHLER 5 auf dem ZIELverzeichnis O: (der Ordner war schon
+# dorthin kopiert worden und ist dort ebenso gesperrt) und endete mit
+# Code 11 - bei 0 fehlenden Dateien. Wildcards sind in /XD verboten
+# ('Ungueltiger Parameter #11', Code 16, ohne Kopieren), darum aufgeloest.
+$waisen = @()
+foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial')) {
+  $waisen += @(Get-ChildItem -Path (Join-Path $quelle $muster) -Directory `
+                 -Force -ErrorAction SilentlyContinue |
+               ForEach-Object { $_.FullName })
+}
+if ($waisen.Count -gt 0) {
+  Write-Host ("Gesperrte Update-Reste ausgeschlossen: {0}" -f $waisen.Count)
+}
+
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile /XF *.pid *.db-wal *.db-shm   # fluechtige Dateien (Sperrdateien, SQLite-WAL/-SHM): robocopy kann sie nicht lesen und meldet sonst Code 11, obwohl nichts fehlt (skillsbot.pid haelt der Bus); robocopy kann sie nicht lesen und meldet sonst Code 11
+  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile $waisen /XF *.pid *.db-wal *.db-shm   # fluechtige Dateien (Sperrdateien, SQLite-WAL/-SHM): robocopy kann sie nicht lesen und meldet sonst Code 11, obwohl nichts fehlt (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: der unersetzliche Archivteil liegt seit dem echten Umzug

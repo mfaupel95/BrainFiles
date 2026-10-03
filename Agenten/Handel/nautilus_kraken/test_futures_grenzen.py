@@ -1,10 +1,12 @@
 """Die Grenzen der Futures-Spur muessen zum INSTRUMENT passen.
 
 Befund 25.09.2026 (Auftrag Max, Symbolwechsel auf SOL): 1 Kontrakt ist EINE
-Einheit der Basiswaehrung, Einschuss 10 % fuer ein EEA-Konto. PF_XBTUSD kostet
-damit rund 8.450 USD Einschuss je Kontrakt - mit 141,59 USD frei war die Spur
-gebaut, aber nie fahrbar (die Boerse lehnte selbst size 1 ab). PF_SOLUSD kostet
-rund 11,75 USD.
+Einheit der Basiswaehrung. PF_XBTUSD kostet damit rund 8.450 USD Einschuss je
+Kontrakt - mit 141,59 USD frei war die Spur gebaut, aber nie fahrbar (die
+Boerse lehnte selbst size 1 ab). PF_SOLUSD kostet rund 11,75 USD nach dem
+Margenplan - und 16,79 USD nach der HEBEL-Obergrenze des Kontrakts (7x,
+gemessen 01.10.2026, T-285); die groessere der beiden Zahlen ist die, die
+wirklich gebunden wird.
 
 Diese Datei prueft die zwei Dinge, die damals gefehlt haben:
   * Das Symbol in den Wachen passt zum Einschuss, den der Einsatz deckt.
@@ -33,6 +35,14 @@ WACHEN_FUTURES = json.loads((HIER / "wachen.futures.json").read_text(encoding="u
 PLAN = {"marginSchedules": {"europa": {"retail": [
     {"numNonContractUnits": 0.0, "initialMargin": 0.1, "maintenanceMargin": 0.05}]}}}
 KURSE = {"PF_XBTUSD": 84485.0, "PF_SOLUSD": 117.52, "PF_NEARUSD": 4.5517}
+# Am Konto GEMESSENE Hebel-Obergrenzen je Kontrakt (01.10.2026, /leveragepreferences).
+# Sie werden gepatcht, weil einschuss() sie sonst LIVE abfragt: ein Test darf die
+# Boerse nicht anfassen (und ein signierter Aufruf waere einer).
+HEBEL = {"PF_XBTUSD": 8.0, "PF_SOLUSD": 7.0}
+
+
+def _hebel(symbol):
+    return HEBEL.get(symbol)
 
 
 class GrenzenTest(unittest.TestCase):
@@ -61,12 +71,19 @@ class GrenzenTest(unittest.TestCase):
         self.assertEqual(lw["max_risiko_gesamt"], 20)
 
     def test_einsatz_deckt_den_mindestkontrakt(self):
-        """Die Regel, die den XBT-Fall gefunden haette."""
+        """Die Regel, die den XBT-Fall gefunden haette.
+
+        Gerechnet wird mit der GEMESSENEN Hebel-Obergrenze des Kontrakts
+        (PF_SOLUSD 7x): der Einsatz muss die echte Margin decken, nicht die
+        Zahl aus dem Margenplan (T-285).
+        """
         symbol = WACHEN_FUTURES["paar"]
         einsatz = float(WACHEN_FUTURES["live_einsatz_usd"])
-        with patch.object(kf, "instrument", return_value=PLAN), \
+        with patch.object(kf, "hebel_je_kontrakt", side_effect=_hebel), \
+             patch.object(kf, "instrument", return_value=PLAN), \
              patch.object(kf, "letzter_kurs", side_effect=lambda s: KURSE[s]):
             noetig = kf.einschuss(symbol, 1)
+            self.assertAlmostEqual(noetig, KURSE["PF_SOLUSD"] / 7.0, places=4)
             self.assertLess(einsatz, 200.0)                  # kein Kontoblindflug
             self.assertGreaterEqual(einsatz, noetig,
                                     "Einsatz deckt 1 Kontrakt %s nicht" % symbol)
@@ -76,11 +93,18 @@ class GrenzenTest(unittest.TestCase):
             self.assertGreater(alt, float(WACHEN_FUTURES["live_einsatz_usd"]))
 
     def test_kleinster_satz_wird_gesperrt_wenn_er_zu_gross_ist(self):
-        """handelbar() nennt den Grund in Zahlen - die Sperre bleibt lesbar."""
-        with patch.object(kf, "instrument", return_value=PLAN), \
+        """handelbar() nennt den Grund in Zahlen - die Sperre bleibt lesbar.
+
+        Geprueft wird die BEZIEHUNG (der Text traegt die gerechnete Zahl),
+        nicht eine eingefrorene Zahl: diese haengt am Kurs und am Hebel.
+        """
+        with patch.object(kf, "hebel_je_kontrakt", side_effect=_hebel), \
+             patch.object(kf, "instrument", return_value=PLAN), \
              patch.object(kf, "letzter_kurs", side_effect=lambda s: KURSE[s]):
+            noetig = kf.einschuss("PF_XBTUSD", 1)
             grund = kf.handelbar("PF_XBTUSD", 1, frei=141.58)
-            self.assertIn("8448.50", grund)
+            self.assertIn("%.2f" % noetig, grund,
+                          "der Sperrtext muss die gerechnete Margin nennen")
             self.assertIsNone(kf.handelbar("PF_SOLUSD", 1, frei=141.58))
 
 

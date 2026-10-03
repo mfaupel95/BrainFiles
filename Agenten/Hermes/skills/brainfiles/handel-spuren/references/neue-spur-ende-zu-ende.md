@@ -7,6 +7,11 @@ Code, Verdrahtung, Tests, echter Lauf, Commit, Dauerlauf, GUI).
 > Soll die Spur aus einer FREMDQUELLE entstehen (Video, Reel, Post oder Bild als
 > Vorlage statt einer abgebrochenen Aufgabe), ist der Weg ein anderer und die
 > Pruefregeln sind strenger: `references/strategie-aus-fremdquelle.md`.
+>
+> Ist die Vorlage eine PINE-Strategie (klassik-Familie: gemeinsame Rechnung in
+> `klassik_regeln.py`, Papier, kein Live-Zweig), ist der Weg kuerzer und
+> anders verdrahtet: `references/klassik-papierspur-anlegen.md` (dort auch die
+> Pine->Python-Fallen der Pivot-/Volumen-Umsetzung).
 
 ## 0. Abgebrochene Aufgabe verifizieren — nichts annehmen
 - `search_files("*<suchwort>*", BrainFiles-Wurzel)` → `total_count: 0`
@@ -57,28 +62,51 @@ Code, Verdrahtung, Tests, echter Lauf, Commit, Dauerlauf, GUI).
   echter Lauf mit echtem Netz und echtem Q:\Ziel aus einem Unit-Test
   heraus (14.09.2026 passiert: 1283 Einlaufpositionen).
 
-## 3. Verdrahten — fuenf Stellen, alle fuenf
+## 3. Verdrahten — jede Liste, die eine Spur nennt
 
 > Fuer eine BESTEHENDE Spur, die nur noch angeschlossen werden muss (Code steht,
 > keine Zeile neu), ist der eigene Weg kuerzer und nennt die Fallen, die der
 > Neubau nicht hat: `references/spur-nachtraeglich-anschliessen.md`.
-1. `dauerlauf.SPUREN` (mit `skript`-Schluessel, falls noetig; mit
-   `"python"`-Schluessel, falls die Spur ein EIGENES venv braucht -
-   Vorbild `nautilus`: nautilus_trader liegt nicht im scanner-venv)
-2. `Bus/handel_befehle.SPUREN` (fuer `/status`)
-3. `tagesbericht.spur_<name>()` UND der Eintrag im baue()-Tupel
-4. `ereignis.lauf("handel/<spur>")` + `main()`-Wrapper im Spur-Skript
-5. `.gitignore`-Whitelist (Quelldateien frei, `zustand.json`/Journal gesperrt
-   — unten in der Sperrliste nachziehen; bei eigenem .git der Spur in deren
-   EIGENER .gitignore)
-Nach dem SPUREN-Eintrag pruefen, dass `zyklus_spur` UND `nur_fenster_fehlt`
-das `python`-Feld respektieren (`d.get("python", PYTHON)`) - vergisst man
-die zweite Stelle, laeuft der Zyklus zwar, aber die Vorschau-Frage startet
-mit dem falschen Interpreter und die Spur wird nie gefragt.
-Vorher `.bak-JJJJMMTT` fuer JEDE anzufassende Datei (Stufe 1).
-Gegenprobe der Whitelist zweimal: `git check-ignore -v` (nennt die greifende
-Regel) UND `git add --dry-run <ordner>` (zeigt exakt, was in den Commit
-kaeme — Negationsregeln verwirren check-ignore).
+
+Die Listen liegen verstreut und werden von TESTS eingefordert — nicht durch
+Nachsehen, sondern durch Laufen. Diese Tabelle ist die vollstaendige Fassung:
+
+| Stelle | Was hinein gehoert | Wer es einfordert |
+|---|---|---|
+| `dauerlauf.SPUREN` | Ordner, `"waehrung"`, `"skript"` (falls nicht `handeln.py`), `"python"` (eigenes venv, Vorbild `nautilus`) | die Spur fehlt im `dauerlauf.log` |
+| `lage.HOLER` | `spur_<name>()` ueber `_spur_indikator(...)`; `live_faehig=True`, wenn die Spur einen Live-Zweig HAT | `Handel/tests/test_lage.py::FormTest.test_holer_sind_vollzaehlig` |
+| `Handel/befehle.py` → `FAMILIE` | Familienname (z. B. `"Feed-Kopie"`) — ohne ihn gruppiert der Bericht die Spur unter `"?"` | `Handel/tests/test_befehle.py::SpurenTest.test_jede_spur_hat_familie_und_leser` |
+| `auswertung_alle` | `INDIKATOR_SPUREN` oder `BOT_SPUREN` — je nachdem, welche Journalform die Spur schreibt (Buch ueber `spur_buch` → `BOT_SPUREN`) | die Spur fehlt in der Auswertung |
+| `pruefe_ratschen.py` | `("<spur>", "<ordner>", "scanner", "wachen_pruefung")`; der Betrag muss 1.0x Buchrisiko sein | `pruefe_ratschen.py` selbst (Zeile `1.0x?`) |
+| `.gitignore` | Vier `!`-Zeilen (`*.py`, `*.md`, `wachen.json`, `tests/*.py`), dazu `zustand.json` und `handelsjournal.csv` als SPERRE | `git check-ignore -v` UND `git add --dry-run` |
+| Spiegelung | `journal_zweitziel: Q:\\Handel_Journal\\<spur>` in der `wachen.json` | `spiegelstand.py` meldet byte-gleich |
+
+- **Die Suiten sind der Pruefer, nicht das Auge.** Nach dem Verdrahten ZUERST
+  `test_lage` und `test_befehle` fahren: sie nennen genau die vergessene Liste
+  („jede Spur braucht eine Familie“). Der volle `Handel/tests`-Lauf kommt danach.
+- **`Handel/befehle.py` ist der Ort, nicht `Bus/handel_befehle.py`.** Im
+  Handel-Ordner liegen die Leser fuer `/status` und `/bericht`; Bus-Ordner und
+  Handel-Ordner sind zwei Baeume, und ein Eintrag im falschen wird nie gelesen.
+- **`tagesbericht` ist KEIN Pflichtschritt.** Der Bericht zieht die Spuren ueber
+  `lage.HOLER`; einen eigenen `spur_<name>()` samt Baue-Tupel bekommt nur, wer
+  einen eigenen Abschnitt braucht. Nicht annehmen — die neueste Nachbarspur
+  nachsehen (`grep -rn "<nachbarspur>" Handel/tagesbericht.py`).
+- **Eine frische Spur ohne Journal ist kein Betriebsfehler.** `auswertung_alle`
+  unterscheidet „WARTET AUF DAS ERSTE SIGNAL“ (Zustand frisch) von „KEIN BUCH
+  UND LAEUFT NICHT“.
+- **Der Bus-Name steht WOERTLICH im Spur-Skript** (`ereignis.lauf("handel/<spur>")`),
+  nicht abgeleitet: abgeleitet ist er nur so lange richtig, wie Ordner und
+  Spurname gleich heissen. Spuren, die ihr Buch ueber `spur_buch` fuehren,
+  oeffnen ihn dort; die Pruefung akzeptiert eine Kern-Bindung nur, wenn die
+  gestartete Datei ihren EIGENEN Namen uebergibt.
+- Nach dem SPUREN-Eintrag pruefen, dass `zyklus_spur` UND `nur_fenster_fehlt`
+  das `python`-Feld respektieren (`d.get("python", PYTHON)`) - vergisst man
+  die zweite Stelle, laeuft der Zyklus zwar, aber die Vorschau-Frage startet
+  mit dem falschen Interpreter und die Spur wird nie gefragt.
+- Vorher `.bak-JJJJMMTT` fuer JEDE anzufassende Datei (Stufe 1).
+  Gegenprobe der Whitelist zweimal: `git check-ignore -v` (nennt die greifende
+  Regel) UND `git add --dry-run <ordner>` (zeigt exakt, was in den Commit
+  kaeme — Negationsregeln verwirren check-ignore).
 
 ## 4. Beweisen — Nachweis-Kette
 - Alle Suiten: eigene Spur, Nachbarspuren (xperp, swap), `Handel/tests`,
@@ -102,14 +130,38 @@ kaeme — Negationsregeln verwirren check-ignore).
 
 ## 5. Versionieren + Dauerlauf-Start
 - Commit mit Nachweis-Liste in der Message (Testzahlen, echte Laeufe,
-  Positionen), dann push.
+  Positionen), dann push. Eigenes SOFORT committen: was laenger als eine halbe
+  Stunde offen im Baum liegt, zieht die Fremdarbeit-Routine unter fremdem Namen
+  ein - und eine parallel laufende Sitzung kann eine Datei dabei auf einen
+  aelteren Stand zuruecksetzen.
 - Neustart des Dauerlaufs: das laufende venv-Paar beenden (ALLE PIDs der
   Kette, Startzeit/Eltern vorher pruefen — zwei gleiche Kommandozeilen sind
-  ein Lauf), `dauerlauf.pid` entfernen (der Wrapper raeumt nur eine
-  VERWAISTE Sperre selbst auf), dann EINMAL
-  `Agenten/Routinen/handel-dauerlauf.ps1`.
-- Beleg im `dauerlauf.log`: der erste Zyklus muss JEDE Spur als
-  „(papier) ok“ listen — fehlt die neue Spur, lief noch der alte Code.
+  ein Lauf). Beenden mit `Stop-Process -Id <pid> -Force` (nativ, je PID);
+  `taskkill /T /F` aus einer PowerShell-Kette tut hier STILL NICHTS. Danach die
+  Sperrdateien entfernen (`dauerlauf.pid`, `dauerlauf.mittel.pid`,
+  `dauerlauf.hoch.pid` — der Wrapper raeumt nur eine VERWAISTE Sperre selbst auf).
+- **ALLE Stufen neu starten, nicht nur die Basis.** `SPUREN` wird beim Start des
+  Prozesses gelesen: Basis, mittel und hoch fahren dieselbe Liste und kennen die
+  neue Spur sonst nicht. Je Stufe ein eigener Aufruf —
+  `Agenten/Routinen/handel-dauerlauf.ps1`, `... -Risiko mittel`, `... -Risiko hoch`.
+- **Die Wrapper blockieren laenger als ein Werkzeug-Timeout.** Drei Aufrufe
+  hintereinander in EINEM Vordergrund-Aufruf reissen die Zeitgrenze; die
+  ersten zwei Stufen laufen, die dritte startet nie, und der Auftrag sieht
+  fertig aus. Die Stufen als Hintergrund-Aufrufe starten (oder je Stufe einen
+  eigenen) und danach NACHZAEHLEN.
+- Nachzaehlen ueber die Kommandozeile, nicht ueber den Programmnamen: je Stufe
+  ein Paar (Startprogramm + Interpreter).
+
+```
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+  Where-Object { $_.CommandLine -match 'dauerlauf\.py --takt' } |
+  Select-Object ProcessId,@{n='risiko';e={($_.CommandLine -split '--risiko ')[1]}}
+```
+
+- Beleg im `dauerlauf.log` UND je Stufe im eigenen Log (`dauerlauf.mittel.log`,
+  `dauerlauf.hoch.log`): der erste Zyklus muss JEDE Spur als „(papier) ok“
+  listen — fehlt die neue Spur, lief noch der alte Code. (`grep -c "<spur>"`
+  ueber alle drei Logs.)
 
 ## 6. GUI — rein lesend
 - Tkinter, liest `zustand.json` + `neuester.json` + `handelsjournal.csv`;
@@ -134,6 +186,40 @@ kaeme — Negationsregeln verwirren check-ignore).
 - stderr-Umleitung einer GUI nie per `Get-Content -Tail` lesen, solange der
   Prozess lebt (Datei offen → Aufruf haengt bis Timeout). Erst Leben pruefen;
   Log nur lesen, wenn der Prozess tot ist.
+
+## 7. Die Spur in den BESTEHENDEN Fenstern sichtbar machen
+
+Zwei Fenster, zwei Wege — keiner davon ist ein Neubau:
+
+1. **Handelszentrale (`Handel/handelszentrale.py`).** Ihre Spurliste kommt aus
+   `dauerlauf.SPUREN`, die Spur erscheint dort also von selbst; zu tun ist nur
+   etwas, wenn sie einen EIGENEN Reiter braucht oder einen Namen traegt, den im
+   Fenster schon etwas anderes fuehrt.
+   - **Namensgleichheit ist der gefaehrliche Fall.** Traegt ein Reiter denselben
+     Namen wie die neue Spur, aber eine andere Sache (Reiter „omnitrade“ = der
+     fremde Rust-Lauf aus der Statusdatei, Spur „omnitrade“ = das Haus-Buch),
+     gehoeren beide Seiten GETRENNT und BESCHRIFTET in denselben Reiter. Wer nur
+     eine sieht, haelt die Zahlen der anderen fuer seine.
+   - Reine Funktionen bauen, die ohne Fenster pruefbar sind (`<spur>_kopf`,
+     `<spur>_positionen`, `<spur>_journal`), und den echten Fensteraufbau in die
+     Suite nehmen: `root.withdraw()`, bauen, `root.update()`, dann Reiter-Texte
+     und Tabellenzeilen gegen die gelesenen Daten pruefen. Ein tk-Mock verdeckt
+     genau die Startfehler, die erst beim Bauen auftreten.
+2. **Werkzeug-Zentrale (`Agenten/Werkzeuge/repos-zentrale`).** Dort fehlt die
+   Spur, bis `SPUREN_START` in `fuellen.py` sie nennt; danach `python fuellen.py`
+   (Trockenlauf, zeigt `+ [handel] <spur> ... START ...`) und `--anwenden`.
+   - **Ein Startbefehl ohne Logbeleg ist unzulaessig**
+     (`tests/test_manifest_gegenprobe.py::test_jeder_startbefehl_hat_einen_beleg_im_log`).
+     Den Beleg holt `python fuellen.py --belege` — er fuehrt genau die Befehle
+     OHNE Log einmal aus und schreibt `logs/<spur>-<zeit>.log`. Start ist immer
+     `--vorschau`, nie ein handelnder Modus.
+   - Diese Logs sind Laufzeitstand und NICHT versioniert: der Test ist gruen,
+     solange der Beleg auf DIESEM Rechner liegt. Ein frischer Klon faehrt
+     `--belege` einmal.
+- **Die Zahl der Spuren wird GEMESSEN, nicht gezaehlt:**
+  `python -c "import dauerlauf; print(len(dauerlauf.SPUREN))"`. Von Hand aus einer
+  Liste abzaehlen hat schon eine falsche Zahl in die Wiki-Uebersicht geschrieben;
+  die Handelszentrale zeigt dieselbe Zahl im Fenstertitel.
 
 ## Verifikation des Ganzen
 Drei Belege in einem Atemzug: erster Zyklus im `dauerlauf.log` mit

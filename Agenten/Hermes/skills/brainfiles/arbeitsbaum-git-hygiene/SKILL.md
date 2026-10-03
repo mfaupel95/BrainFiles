@@ -36,6 +36,21 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 1. **Nie `git add -A`, nie `git commit -a`.** Nur namentliche Pfade stagen
    (`git add -- <pfad1> <pfad2>`). Der Hinweis „modified by sibling subagent" in einem
    Werkzeug-Ergebnis ist echt, nicht Rauschen.
+   **Ein Platzhalter im `git add` reisst den GANZEN Aufruf ab, sobald ein Treffer ignoriert ist.**
+   Ein Glob ueber einen Ordnerbaum (`git add Agenten/Handel/*/wachen.json`) trifft auch Pfade in
+   einem ignorierten, verschachtelten eigenen Repo (`Agenten/Handel/nautilus/`): git bricht mit
+   `The following paths are ignored by one of your .gitignore files` und Exitcode 1 ab und stagt
+   NICHTS - der naechste `git commit` hat dann einen leeren oder fremden Index, und die Meldung
+   sieht wie ein Hinweis aus, nicht wie ein Fehlschlag. Pfade einzeln aufzaehlen (auch bei vielen
+   Dateien), den Exitcode lesen und `git diff --cached --numstat` dagegen halten. Eine Datei, die
+   in einem ignorierten eigenen Repo liegt, ist im Eltern-Repo grundsaetzlich nicht committbar -
+   sie gehoert in einen Commit DIESES Repos (`git -C <unterrepo> …`), nicht in die Pfadliste oben.
+   **Und der Nachtrag in den ECHTEN Index nach einem Commit ueber `GIT_INDEX_FILE` darf nicht
+   ausfallen.** Scheitert er an einer fremden Sperre, ist er beim naechsten Durchgang nachzuholen
+   (Sperre pruefen, nicht blind wiederholen): solange der echte Index den ALTEN Blob traegt, steht
+   die eigene, eben committete Aenderung als `MM` da, und ein fremdes `git commit` ohne
+   Pfadangabe setzt sie wieder ein - der eigene Commit waere damit rueckgaengig gemacht, ohne dass
+   etwas fehlschlaegt.
 2. **Vor dem Commit zwei Blicke:** `git status --porcelain` (was ist ueberhaupt da) und
    `git diff --cached` (was geht wirklich mit). Danach `git show --stat` gegen die
    Absicht halten. **Und die ZAHL pruefen, nicht nur die Namen:**
@@ -72,6 +87,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 3. **Gemischte Datei = nur die eigene Aenderung in den Index, nicht die Datei opfern
    und nicht die Fremdarbeit mitnehmen.** Zuerst `git diff --numstat -- <datei>` lesen:
    mehrere Hunks unterschiedlicher Groesse heissen "hier steckt fremde Arbeit drin".
+   **Derselbe Blick gehoert VOR das Schreiben, nicht nur vor den Commit:** traegt die
+   Zieldatei schon FREMDE uncommittete Aenderungen, die groesser sind als die eigene
+   (gemessen: 28 fremde Zeilen gegen 3 eigene in einer `SKILL.md`), gehoert die eigene
+   Zeile NICHT hinein - sie wandert in eine Datei, die der eigenen Arbeit gehoert
+   (die passende `references/`-Datei, ein eigener Abschnitt), und der Grund steht im
+   Bericht. So wird weder fremde Arbeit mitgenommen noch die eigene spaeter
+   ueberschrieben; ein Schreibwerkzeug, das "modified since you last read" meldet, ist
+   genau dieser Fall und kein Fehler.
    Dann den Index DETERMINISTISCH bauen statt Hunk-Antworten zu raten:
    `git show HEAD:<datei>`, die eigene Aenderung byte-genau im Speicher einsetzen,
    `git hash-object -w --path=<datei> --stdin`, danach
@@ -148,7 +171,14 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    Fremdarbeit steht weiterhin als `M` im Baum. Nur anwenden, wenn in dem Moment keine
    andere Sitzung in diese Datei schreibt, und danach `git diff --numstat -- <datei>`
    gegenpruefen: Arbeitsbaum gegen Index zeigt die fremden Zeilen, Index gegen HEAD nur
-   die eigenen.
+   die eigenen. **Den eigenen Block danach IM ERGEBNIS nachweisen, nicht nur den
+   Schreibvorgang.** Drei Zahlen lesen: `grep -c '<eigene Kennung>' <datei>` (der
+   Eintrag ist auffindbar), die Zahl der gleichnamigen Abschnitte (eine Registerdatei
+   kann MEHRERE `## Offen` tragen — ein Einfuegen ohne Positionsangabe landet im
+   falschen) und `git diff --numstat` (reine Einfuegungen). Ein nicht angewandtes
+   Format — `'%s'` steht woertlich im Eintrag, weil die ID nie eingesetzt wurde — sieht
+   wie Erfolg aus, der Diff zeigt Einfuegungen, und der Eintrag ist trotzdem nicht da;
+   erst der `grep` findet es.
    **Den eigenen Block VOR dem Trennen in eine eigene Datei schreiben** (`cache/scratch/
    mein_block.txt`) und beim Wiederherstellen AUS DIESER Datei einsetzen — nicht aus einem
    Skript, das den Block im selben Lauf erst entfernt und dann neu berechnet: ist der
@@ -219,7 +249,17 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    in der getrackten `.env.example` eines Fremd-Klons standen echte Werte
    (`ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`) — ein `git add -A` in diesem Klon und
    ein Push haetten beide in den Fork veroeffentlicht; der Klon-Kopf war noch sauber,
-   die Aenderung lag nur im Arbeitsbaum. Wer einen Fremd-Klon mit `git add -A`
+   die Aenderung lag nur im Arbeitsbaum. **Bevor daraus ein Alarm wird, den HEAD-Stand
+   lesen — ein echter Wert im Arbeitsbaum ist noch keine Veroeffentlichung.**
+   `git -C <klon> show HEAD:<datei>` entscheidet, ob er je committet wurde: gemessen
+   standen in zwei getrackten Vorlagen echte Werte, waehrend der HEAD-Stand LEERE Werte
+   trug — nichts war geleakt, die richtige Antwort ist dann `git checkout -- <datei>`
+   (zurueck auf den HEAD-Stand) und NICHT ein selbst erfundener Platzhalter. Die
+   Rotation der Kennungen bleibt ein eigener Task fuer den Nutzer, kein Nebenschritt.
+   **Beim Suchen und Berichten nur PFAD, Schluesselname und Wertlaenge ausgeben, nie den
+   Wert** (`read_bytes`, `len()` zaehlen, Hash kuerzen) — ein Diff im Sitzungsprotokoll
+   ist derselbe Leak wie ein Commit. `Wissen/Zugaenge.md` bleibt dabei ausgenommen
+   (Stufe 0). Wer einen Fremd-Klon mit `git add -A`
    sichern will, macht zuerst `git status --porcelain | grep -i env` und liest jede
    getrackte Vorlage: echte Werte NICHT committen, den Zustand liegen lassen und als
    eigenen Task melden (Kennungen neu ausstellen, Werte auf Platzhalter). **Ist der Baum eines FREMDEN Klons vollstaendig fremd (kein eigener Pfad darin), ist `git add -A` DORT vertretbar** — aber erst nach dem env-Blick oben UND nach LESEN der Liste: nimmt es eine eigene Datei oder eine `.env`/Schluesseldatei mit, gilt Regel 1 (namentlich stagen). Regel 1 schuetzt BrainFiles' Mehrsitzungs-Baum, nicht den Klon eines Fremd-Repos. **Und beim
@@ -240,6 +280,22 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
  („nicht sicher zuzuordnen, mehrere Sitzungen parallel") die richtige Form;
  gemischte Dateien (eigene + fremde Zeilen) gehen NICHT in diesen Comm
  it — die eigene Zeile behaelt ihren eigenen Commit (Regel 3).
+
+**`--allow-empty` heisst NICHT „nichts im Index".** Ein Commit, der nur eine
+Meldung nachtragen soll (Korrektur, Praezisierung, leerer Marker), committet
+trotzdem JEDEN vorgemerkten Eintrag - auch die fremde Vormerkung einer anderen
+Sitzung. Gemessen: ein `git commit --allow-empty -m "Korrektur: ..."` nahm eine
+fremde vorgemerkte LOESCHUNG mit (eine ganze, in der `.gitignore` ausdruecklich
+freigegebene Datei), die diese Sitzung nie angefasst hatte; sie stand danach
+unter der eigenen Meldung in HEAD. Der Index ist bei `--allow-empty` genauso
+scharf wie bei jedem anderen Commit. **Deshalb: `git diff --cached --numstat`
+LESEN, bevor irgendein Commit laeuft - auch ein leerer.** Fuer einen reinen
+Meldungs-Nachtrag den eigenen Index nehmen
+(`GIT_INDEX_FILE=<scratch>/idx_x` + `git read-tree HEAD`) oder den Nachtrag
+lassen - eine ungenaue Betreffzeile ist billiger als eine fremde Loeschung im
+eigenen Commit. Ist es passiert: normaler Folge-Commit, der den Inhalt aus
+`git show <letzter-guter-commit>:<pfad>` wieder aufnimmt, keine Historie
+umschreiben.
 
 ## Fremde Arbeit aus beendeten Sitzungen einsammeln
 
@@ -412,7 +468,21 @@ ungetrackten Dateien. Reihenfolge:
   muss: eine Loeschung wird fruehestens im naechsten Lauf uebernehmbar und nie,
   solange in demselben Ordner weiter geschrieben wird.
 - **Ein Commit ueber einen EIGENEN Index laesst den normalen Index stale zurueck.**
-  Wer fremde Arbeit committet, ohne den Staging-Bereich anzufassen (`GIT_INDEX_FILE`
+  Die leichteste Form ist ein ALTERNATIVER Index mit einem NORMALEN Commit:
+  `GIT_INDEX_FILE=<scratch>/idx_<thema>` -> `git read-tree HEAD` -> `git add -- <eigene pfade>`
+  -> `git diff --cached --numstat` lesen (nur eigene Pfade) -> `git commit -F <meldung>`.
+  `read-tree` ist Pflicht, sonst startet der Index leer und ignorierte Freigaben
+  fehlen. Danach `unset GIT_INDEX_FILE` UND dieselben Pfade im ECHTEN Index
+  nachziehen (`git add -- <eigene pfade>`), sonst vergleicht der echte Index gegen
+  den neuen HEAD und meldet eine NEUE Datei als `D ` plus `??` und eine geaenderte
+  als `M ` mit dem ALTEN Inhalt - die Fremdarbeit-Routine committet sie dann ein
+  zweites Mal als fremd. Randfaelle des Handgriffs (nativer `C:/…`-Pfad fuer
+  `GIT_INDEX_FILE`, eigene Indexdatei danach loeschen, fremde Vormerkung nicht
+  wegnehmen): `references/fremdarbeit-routine.md`. Eine
+  Datei, die eine andere Sitzung NACH dem eigenen Commit weiterbearbeitet hat,
+  nicht nachziehen (`git reset -q HEAD -- <pfad>`), sonst liegt ihre laufende
+  Arbeit im Index. Gegenprobe: `git status --porcelain` zeigt danach weder `D `
+  noch `??` an den eigenen Pfaden. Wer fremde Arbeit committet, ohne den Staging-Bereich anzufassen (`GIT_INDEX_FILE`
   + `git read-tree <tip>` + `git add -- <pfade>` + `git write-tree` + `git commit-tree`
   + `git update-ref refs/heads/master <neu> <alt>`), hat danach fuer JEDEN uebernommenen
   Pfad einen Index, der den neuen HEAD nicht kennt: eine neue Datei steht gleichzeitig
@@ -429,11 +499,20 @@ ungetrackten Dateien. Reihenfolge:
   weiteren Laufs ueber die Pfade der letzten eigenen Uebernahme-Commits
   (`git log -5 --author=fremd@local --name-only --format=`). Rezept:
   `references/fremdarbeit-routine.md`.
+- **Die Commit-Meldung als Datei braucht einen NATIVEN Pfad.** `git` ist ein
+  Windows-Programm: eine Meldungsdatei unter `$TMPDIR` bzw. `/tmp` findet es nicht
+  (`fatal: could not read log file '/tmp/commitmsg.txt'`) — der Commit unterbleibt, und
+  bei verketteten Aufrufen faellt nur der naechste Schritt auf. Die Datei per
+  `write_file` nach `Agenten/Hermes/cache/scratch/commitmsg_<thema>.txt` schreiben und mit
+  `git commit -F "C:/Users/<user>/Documents/BrainFiles/Agenten/Hermes/cache/scratch/…"`
+  aufrufen. Mehrzeilige `-m "$(cat <<'EOF' …)"`-Heredocs scheitern aus demselben Grund —
+  bei jeder Meldung ueber einer Zeile die Datei nehmen.
 - **`Set-Content -Encoding UTF8` schreibt ein BOM.** Unter PS 5.1 wandert es als
   unsichtbares Zeichen in die erste Zeile - und bei `git commit-tree -F <datei>`
   direkt in die Betreffzeile des Commits (`git log` zeigt dann ein BOM vor dem
   Betreff). Nachrichtendateien mit `[System.IO.File]::WriteAllText($pfad, $text,
   (New-Object System.Text.UTF8Encoding($false)))` schreiben.
+- **`fatal: cannot lock ref 'HEAD': is at <a> but expected <b>` heisst: eine parallele Sitzung hat HEAD bewegt - kein Schaden.** Der eigene Index ist unversehrt (beim Bau ueber `GIT_INDEX_FILE` + `read-tree` liegt der Blob schon in `objects/`). Den Commit einfach wiederholen, vorher `git diff --cached --numstat` lesen und gegen die eigene Absicht zaehlen. **Reihenfolge beachten:** ein direkt danach abgesetztes `git push` schiebt den FREMden Commit hoch, wenn der eigene noch nicht steht - `git log --oneline -1` lesen, statt anzunehmen, es sei der eigene.
 - **`fatal: Unable to create '…/.git/index.lock': File exists`** heisst fast immer:
   eine andere Sitzung schreibt GERADE in denselben Index. Die Sperre NICHT loeschen -
   warten (Sekunden) und denselben Befehl wiederholen, dann geht er durch. Ist die
@@ -530,6 +609,22 @@ ungetrackten Dateien. Reihenfolge:
   (`assert b.count(anker) == 1`), hinter dem Anker einfuegen, `open(pfad,'wb').write()`
   — nichts normalisieren. Gegenprobe: `git diff --numstat` muss reine Einfuegungen
   zeigen (`55 0`), keine Loeschungen.
+- **Der `patch`-Treffer ist unscharf und verschiebt bei CODE die Einrueckung.**
+  Bei Python/JS kostet ein Treffer, der "aehnlich" passt, die Datei: ein Ersatzblock
+  kam mit vier Leerzeichen zu viel zurueck (`IndentationError`), obwohl der Anker
+  stimmte. Drei Regeln: (a) nach jedem `patch` auf Code `ast.parse` (bzw.
+  `node --check`) laufen lassen - der Syntaxfehler ist das einzige Fruehsignal;
+  (b) die gerenderte Diff-ANSICHT ist kein Massstab: sie zeigt bei CRLF-Dateien an
+  JEDER Zeile ein `\r` und sieht wie ein Ganzdatei-Umbau aus, waehrend
+  `git diff --numstat` 14/11 sagt - immer die Zahl lesen, sonst "repariert" man
+  eine richtige Datei; (c) ab dem ersten `IndentationError` NICHT weiterpatchen:
+  die Region `read_file` lesen, als ZEILENLISTE umbauen (`t.split("\r\n")`,
+  betroffene Zeilen ersetzen, `"\r\n".join(...)`, `open(p,"wb")`), dann `ast.parse`
+  und `git diff --numstat` als Gegenprobe. Neue Zeilen als LISTE einfuegen, nie als
+  einen zusammengesetzten String - sonst ist die Einrueckung wieder geraten.
+  **Den Anker aus der AUSGABE bauen, nicht aus dem Gedaechtnis:** die Region vorher
+  mit `repr()` ausgeben; ein selbst getippter Anker mit Escape-Sequenzen (`\"\\n\"`
+  im Quelltext) trifft nicht, und die Meldung sagt nur "nicht gefunden".
 - **Ein Ganzdatei-Diff kommt nicht immer von den Zeilenenden — der INDEX kann stale sein.**
   `git diff` vergleicht Arbeitsbaum gegen INDEX, nicht gegen HEAD. Liegt im Index noch eine
   frueher gestagte Fassung (typisch nach einem abgebrochenen oder verweigerten Commit),
@@ -549,6 +644,26 @@ ungetrackten Dateien. Reihenfolge:
   `git show HEAD:<pfad>` LEER, ohne Fehlermeldung: Rueckgriff auf `git -C <unterrepo> show
   HEAD:<datei>` und den Commit auch dort machen. Leerer Treffer immer als Verdacht lesen,
   nicht als "Datei ist leer".
+- **Ein verschachteltes eigenes Repo wird EIGENSTAENDIG festgezogen (sauber UND
+  gepusht).** Eine Aenderung dort liegt sonst nur auf der Platte: das Eltern-Repo
+  klammert den Ordner aus, `git status` zeigt sie nicht, und ein `git add` mit Glob
+  ueber den Baum reisst deshalb ab (Regel 1). Der Handgriff ist derselbe wie bei einer
+  gemischten Datei, nur aus dem Unterordner heraus: `git status --porcelain` LESEN
+  (fremde Zeilen in derselben Datei sind der Normalfall), die eigene Fassung
+  herstellen und committen, danach die vollstaendige Fassung zurueckholen und den
+  FREMDEN Teil als ZWEITEN Commit mit `--author="Andere Sitzung <fremd@local>"`
+  sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
+  Reihenfolge-Vorlage: Datei vorher nach `cache/scratch/` kopieren (die vollstaendige
+  Fassung), die eigene Aenderung aus dem Blob `HEAD:<datei>` rekonstruieren, committen,
+  Kopie zurueckspielen, `git diff --numstat` muss je Commit nur den eigenen bzw. nur
+  den fremden Teil zeigen. Danach `git status --porcelain` leer und `git log --oneline
+  -2` mit beiden Commits. **Und der Push gehoert zum Festziehen:** das Unter-Repo hat
+  ein EIGENES Remote (`origin = mfaupel95/<name>`) - ohne
+  `git -C <unterrepo> push origin <zweig>` liegt die Arbeit weiter nur lokal, und
+  `GITHUB_TOKEN`/`GH_TOKEN` sind auch hier fuer den einen Aufruf zu leeren (die Regel
+  gilt je Repo, nicht je Sitzung). Erfolg am Remote messen, nicht am Exitcode:
+  `git -C <unterrepo> log --oneline -1` gegen die vorher notierte
+  `git ls-remote origin <zweig>`-Zeile halten.
 - **Fortlaufende Nummern (`T-0NN`) werden von mehreren Sitzungen gleichzeitig vergeben.**
   „hoechste + 1" stammt aus einer Datei, die parallel fortgeschrieben wird — zweimal am
   selben Abend entstanden zwei inhaltlich verschiedene Eintraege mit derselben Nummer.
@@ -793,7 +908,26 @@ ungetrackten Dateien. Reihenfolge:
   jede Datei, die man stagen will, muss vorher WIRKLICH geschrieben sein.** Ein
   Schreibwerkzeug, das den Vorgang verweigert (z. B. weil die Zieldatei vorher nicht
   gelesen wurde), meldet das nicht zwingend als Fehler: es schreibt nichts und liefert
-  auch keine Bytezahl. Die Datei fehlt dann still im `git add`-Aufruf,
+  auch keine Bytezahl. **Inzwischen verweigert es meist ausdruecklich**
+  (`Refusing to overwrite …: this task has not seen its full current content`) - und ein
+  blosses erneutes Lesen hebt die Sperre nicht immer auf: gilt die Datei einmal als
+  „partial view" (weil sie mit `offset`/`limit` gelesen wurde), bleibt sie das auch nach
+  einem vollstaendigen Leseversuch, und der zweite Schreibversuch scheitert identisch.
+  Verlaesslicher Weg fuer eine Datei, die man SELBST in derselben Aufgabe angelegt hat:
+  den neuen Inhalt per `write_file` an einen FRISCHEN Pfad unter
+  `Agenten/Hermes/cache/scratch/` schreiben (eine neue Datei braucht kein Vor-Lesen) und
+  sie mit `cp` ueber das Ziel legen, vorher `.bak-JJJJMMTT` daneben.
+  **„Frischer Pfad" heisst ein Name, den es NOCH NICHT GIBT.** Liegt unter demselben
+  Namen schon eine Datei — typisch eine gleichnamige Ablage aus einer frueheren
+  Sitzung (`commitmsg_skill.txt`, `probe.py`) —, verweigert das Werkzeug aus
+  DEMSElBEN Grund, und ein erneutes Lesen hilft nicht: es ist nicht die eigene
+  Leseschuld, sondern die vorhandene Datei. Dann den Namen wechseln (oder die alte
+  Datei vorher wegnehmen), nicht gegen dieselbe Sperre anlaufen — zwei identische
+  Fehlschläge hintereinander sind das Signal fuer den Namenswechsel. Danach
+  `git diff --numstat` lesen: der Austausch muss die gewollte Aenderung zeigen, und bei
+  einer selbst neu geschriebenen Datei ist ein Ganzdatei-Diff hier normal (nicht das
+  Zeilenende-Symptom). Nicht in einer Schleife gegen dieselbe Sperre anlaufen - nach
+  dem zweiten identischen Fehlschlag den Weg wechseln. Die Datei fehlt dann still im `git add`-Aufruf,
   `git diff --cached --numstat` nennt sie nicht, und der Commit traegt eine Nachricht
   ueber eine Aenderung, die gar nicht darin ist. Gegenprobe in EINEM Aufruf:
   `git add <pfade> && git diff --cached --numstat` - die Zahl der genannten Pfade muss

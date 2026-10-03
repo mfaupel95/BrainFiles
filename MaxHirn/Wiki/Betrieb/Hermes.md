@@ -47,6 +47,35 @@ Anfang September noch auf die Altanlage.
    `providers.omniroute` kopieren, `model.provider`/`model.default` setzen, `terminal.cwd`,
    Router-Schluesselnamen in die eigene `.env`, Beschreibung per `hermes profile describe`.
 
+7. **Der Modellwaehler zeigt je Anbieter nicht die volle Liste.** Fuer `nous` zeigt Hermes
+   absichtlich nur die kuratierte Liste des Manifests (`model_switch_providers._nous_picker_model_ids`:
+   „the picker shows ONLY the curated agentic list") - 50 Eintraege plus die Empfehlungen des
+   Portals, waehrend das Portal ueber `/v1/models` **428** Modelle liefert. Die von Hermes
+   vorgesehene Stelle zum Erweitern ist `providers: nous: models:`; die Waehler-Zeile bleibt
+   `source: hermes` und behaelt ihre Anmeldung. Werkzeug:
+   `Agenten/Hermes/scripts/nous-modellliste-richten.py` (Trockenlauf / `--anwenden` /
+   `--zuruecknehmen` / `--profile`), eingetragen am 01.10.2026 (428 Zeilen, Commit `fc395e3`).
+   Derselbe Mechanismus gilt fuer JEDEN Anbieter mit kuratierter Liste.
+8. **Die App schreibt die Config aus ihrem eigenen Speicher zurueck.** Am 01.10.2026 um 18:45
+   stand ein Diff von 19/26 Zeilen gegen HEAD im Arbeitsbaum, den keine Sitzung geschrieben
+   hatte: `bonsai`- und `smart`-Provider-Block entfernt, `moa.enabled` false -> true,
+   `personality` creative -> helpful, telemetry, `desktop.repo_scan_roots`. Ein so
+   zurueckgeschriebener Stand loescht auch frisch eingetragene Bloecke - nach jeder
+   Einstellungsaenderung in Desktop/TUI nachzaehlen (`grep -c "claude-opus-4.1:batch"
+   Agenten/Hermes/config.yaml` muss 1 sein). Offen als T-297.
+
+**Nachtrag 01.10.2026: die BOT-PROFILE tragen jetzt das Gegenteil.** Auf Auftrag Max
+(„die botprofile brauchen noch weniger") sind die `models:`-Listen der 19 Profile, die je
+~1.739 Eintraege aus der omniroute-Liste mitkopiert hatten, auf das gekuerzt, was das Profil
+selbst nennt (`model.default`, `providers.<p>.model`/`default_model`, `fallback_providers`,
+`delegation.model`, `moa`): **33.064 -> 125 Eintraege**, caveman 2248 -> 514 Zeilen,
+hermes-wartung 1811 -> 79. Der `models:`-Block eines Profils ist eine Anzeigeliste; die Wahl
+bleibt vollstaendig, weil `discover_models: true` bleibt und der Waehler mit gesetztem
+Schluessel die echte Liste live vom Endpunkt holt (`_discover_endpoint_models`). Werkzeug:
+`Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py` (Trockenlauf Standard, `--anwenden`,
+`--zuruecknehmen`), Pruefungen `Agenten/Hermes/scripts/test_profil_modelllisten_kuerzen.py`
+(17, auf Kopien). Offen fuer die HAUPTconfig: T-302.
+
 ## Gateway
 
 - Der A2A-Gateway ist `python.exe -m hermes_cli.main gateway run` (Launcher-venv → Kind

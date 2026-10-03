@@ -37,6 +37,48 @@ $logs     = Join-Path $PSScriptRoot 'logs'
 $waechter = Join-Path $PSScriptRoot 'safe-file-ops.ps1'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
+# --- Einzelinstanz-Schutz (T-240, 01.10.2026) ------------------------------
+# Die Aufgabe steht auf IgnoreNew - das haelt nur die Aufgabe selbst. Am
+# 30.09.2026 liefen drei von Hand gestartete Instanzen (14:30, 15:37, 17:22/26)
+# parallel und schrieben sich gegenseitig das Tagesprotokoll platt; eine hing
+# ueber eine Stunde im Suchblock. Sperrdatei mit PID und Startzeit, gemustert
+# an Handel/sperre.py: nur wer Prozess-NAMEN und Startzeit prueft, haelt einer
+# Windows-PID-Wiederverwendung stand (Hausakte 21.09.). Ein Handstart bricht
+# mit klarer Meldung ab; die eigene PID sperrt sich nie selbst.
+$sperre = Join-Path $logs 'datensortierung.pid'
+function Sperre-LebtFremd {
+  if (-not (Test-Path $sperre)) { return $null }
+  $inh = @(((Get-Content $sperre -Raw -Encoding UTF8) -split '\s+') | Where-Object { $_ -ne '' })
+  if ($inh.Count -lt 1) { return $null }
+  $fremd = 0
+  if (-not [int]::TryParse($inh[0], [ref]$fremd)) { return $null }
+  if ($fremd -eq $PID) { return $null }
+  $p = Get-Process -Id $fremd -EA SilentlyContinue
+  if (-not $p) { return $null }
+  if (@('powershell', 'pwsh') -notcontains $p.Name) { return $null }
+  if ($inh.Count -ge 2) {
+    $gesetzt = [datetime]::MinValue
+    if ([datetime]::TryParse($inh[1], [ref]$gesetzt)) {
+      try {
+        if ((($p.StartTime) - $gesetzt).Duration() -gt [timespan]::FromMinutes(2)) { return $null }
+      } catch { return $null }
+    }
+  }
+  return "$fremd"
+}
+$fremdPid = Sperre-LebtFremd
+if ($fremdPid) {
+  $alt = (Get-Item $sperre).LastWriteTime
+  $alter = [int](((Get-Date) - $alt).TotalMinutes)
+  Write-Output ("Es laeuft bereits eine Datensortierung (PID $fremdPid, Sperre von " +
+    ('{0:yyyy-MM-dd HH:mm}' -f $alt) + ", ${alter} min alt). Dieser Start bricht ab - " +
+    'die Aufgabe steht auf IgnoreNew, ein zweiter Handstart gefaehrdet nur das Protokoll. ' +
+    "Ist die Sperre verwaist (Prozess toter Name, Datei juenger als zwei Stunden): " +
+    "Remove-Item '$sperre' und erneut starten.")
+  exit 3
+}
+Set-Content -Path $sperre -Value ("$PID " + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')) -Encoding UTF8
+
 . (Join-Path $agenten 'Bus\Ereignis.ps1')                                # neu
 $marke = Melde-Start -Wer 'routine/datensortierung' `
            -Log 'Agenten/Routinen/logs/datensortierung-letzter-lauf.md' # neu
@@ -156,30 +198,84 @@ try {
 try {
   Notiz "`n--- 2) Lose Schluesseldateien ---"
   $musterName = '\.(pem|ppk)$|^id_rsa|^id_ed25519'
-  $funde = 0
+  # Erst sammeln, dann EINMAL suchen. Bis 30.09.2026 lief die Referenzsuche je
+  # Kandidat und holte sich die Dateiliste jedes Mal neu per
+  # Get-ChildItem -Recurse -File - OHNE die Ueberspringen-Liste, also inklusive
+  # node_modules, .venv und hermes-agent. Mit fuenf Zertifikaten stand der Lauf
+  # nach 43 Minuten noch in diesem Block; die Aufgabe wurde beim Neustart mit
+  # 267014 abgebrochen. Jetzt: eine Namensliste, ein Suchlauf, dieselbe Auskunft.
+  $kandidaten = [System.Collections.Generic.List[object]]::new()
   foreach ($b in $bereiche) {
-    $dateien = Gehe $b.Root
-    $kandidaten = @($dateien | Where-Object { ([System.IO.Path]::GetFileName($_)) -imatch $musterName })
-    foreach ($f in $kandidaten) {
-      $funde++
-      $rel = $f.Substring($b.Root.Length).TrimStart('\')
-      $name = [System.IO.Path]::GetFileName($f)
-      # Referenzsuche: taucht der Dateiname irgendwo im eigenen Code auf?
-      $refs = @()
-      foreach ($b2 in $bereiche) {
-        $refs += @(Get-ChildItem -LiteralPath $b2.Root -Recurse -File -EA SilentlyContinue |
-          Where-Object { $_.FullName -notmatch '\\(node_modules|\.git|\.venv|__pycache__|\.obsidian|Archiv|_Backups)\\' -and $_.Length -lt 2MB -and $_.FullName -ne $f } |
-          Select-String -Pattern ([regex]::Escape($name)) -EA SilentlyContinue)
-      }
-      $ziel = Join-Path $sshDir $name
-      if ($refs.Count -gt 0) {
-        Entscheiden "$($b.Name): Schluesseldatei $rel ist an $($refs.Count) Stelle(n) referenziert - vor dem Verschieben pruefen, welche."
-      } else {
-        Entscheiden "$($b.Name): lose Schluesseldatei $rel gefunden, keine Referenzen gefunden. Verschieben: Move-Item '$f' '$ziel'"
+    foreach ($f in (Gehe $b.Root)) {
+      if ([System.IO.Path]::GetFileName($f) -imatch $musterName) {
+        # Eine CA-Buendelsammlung in einer Umgebung ist kein loser Schluessel:
+        # certifi/botocore-cacert.pem in site-packages oder in einer .venv-Kopie
+        # wurde bis 30.09.2026 als Fund gemeldet (jedes Mal mit >100
+        # Referenzen) und war der Ausloeser der langsamen Suche. Echte
+        # Schluesseldateien im Arbeitsbaum bleiben gemeldet.
+        # Dieselbe Kategorie taucht noch an drei weiteren, staendigen Orten auf
+        # (30.09.2026, 16 tagtaeglich wiederkehrende Treffer): das gebuendelte
+        # Git-Toolchain-OpenSSL (inkl. seiner .previous-git-*-Leiche nach einem
+        # abgebrochenen Update), der uv-Paketcache (ohnehin fluechtig, siehe
+        # sichern-ausser-haus.ps1) und die Test-Fixtures im fremden codex-rs-Repo.
+        if ($f -match '\\site-packages\\|\\\.?venv[^\\]*\\|\\tools\\\.?previous-git-[^\\]*\\|\\tools\\git-[^\\]*\\|\\cache\\uv\\archive-v0\\|\\codex-rs\\http-client\\tests\\fixtures\\') { continue }
+        $kandidaten.Add([PSCustomObject]@{ Bereich = $b.Name; Root = $b.Root; Pfad = $f })
       }
     }
   }
-  if ($funde -eq 0) { Info "Keine losen Schluesseldateien ausserhalb ~/.ssh gefunden." }
+  if ($kandidaten.Count -eq 0) {
+    Info "Keine losen Schluesseldateien ausserhalb ~/.ssh gefunden."
+  } else {
+    $namen  = @($kandidaten | ForEach-Object { [System.IO.Path]::GetFileName($_.Pfad) } | Sort-Object -Unique)
+    $muster = ($namen | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $selbst = @($kandidaten | ForEach-Object { $_.Pfad })
+    $treffer = @{}
+    foreach ($n in $namen) { $treffer[$n] = 0 }
+
+    # Alle Kandidaten-Dateien in EINEM Suchlauf durchsuchen (in Bloecken, damit
+    # die Kommandozeile nicht ueberlaeuft).
+    # Nur Dateien, in denen ein Dateiname ueberhaupt vorkommen kann, und nie in
+    # Kopien einer Umgebung. Agenten+MaxHirn haben 156.000 Dateien (nach der
+    # Ueberspringen-Liste), allein durch .venv.bak-* und site-packages. Ohne
+    # diese zwei Filter oeffnet die Suche jede einzelne davon - der Lauf vom
+    # 30.09.2026 stand nach ueber 20 Minuten noch in diesem Block.
+    $textEndungen = @('.py','.ps1','.psd1','.md','.json','.jsonl','.csv','.txt',
+                      '.cfg','.ini','.toml','.yaml','.yml','.env','.sh','.cmd',
+                      '.bat','.js','.ts','.tsx','.jsx','.html','.css','.xml',
+                      '.conf','.properties')
+    $uebersprungen = '\\\.?venv[^\\]*\\|\\site-packages\\|\\dist-info\\|\\node_modules\\'
+    $zuSuchen = [System.Collections.Generic.List[string]]::new()
+    foreach ($b2 in $bereiche) {
+      foreach ($datei in (Gehe $b2.Root)) {
+        if ($selbst -contains $datei) { continue }
+        if ($datei -match $uebersprungen) { continue }
+        if ($textEndungen -notcontains [System.IO.Path]::GetExtension($datei).ToLower()) { continue }
+        try { if ([System.IO.FileInfo]::new($datei).Length -ge 2MB) { continue } } catch { continue }
+        $zuSuchen.Add($datei)
+      }
+    }
+    $block = 200
+    for ($i = 0; $i -lt $zuSuchen.Count; $i += $block) {
+      $ende = [Math]::Min($i + $block, $zuSuchen.Count) - 1
+      $stueck = $zuSuchen[$i..$ende]
+      foreach ($m in (Select-String -LiteralPath $stueck -Pattern $muster -EA SilentlyContinue)) {
+        foreach ($n in $namen) {
+          if ($m.Line -match [regex]::Escape($n)) { $treffer[$n]++ }
+        }
+      }
+    }
+
+    foreach ($k in $kandidaten) {
+      $name = [System.IO.Path]::GetFileName($k.Pfad)
+      $rel  = $k.Pfad.Substring($k.Root.Length).TrimStart('\')
+      $ziel = Join-Path $sshDir $name
+      if ($treffer[$name] -gt 0) {
+        Entscheiden "$($k.Bereich): Schluesseldatei $rel ist an $($treffer[$name]) Stelle(n) referenziert - vor dem Verschieben pruefen, welche."
+      } else {
+        Entscheiden "$($k.Bereich): lose Schluesseldatei $rel gefunden, keine Referenzen gefunden. Verschieben: Move-Item '$($k.Pfad)' '$ziel'"
+      }
+    }
+  }
 } catch { Notiz "  ! Schluessel-Suche abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
@@ -238,5 +334,12 @@ exit 0
 
 } catch {                                                                # neu
   Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
-  throw                                                                 # neu
+  throw                                                                  # neu
+} finally {                                                              # T-240
+  # Die Sperre nur freigeben, wenn sie dem eigenen Prozess gehoert - ein
+  # ueberlebender Frame darf die Sperre eines juengeren Laufs nicht tilgen.
+  if (Test-Path $sperre) {
+    $eigene = (((Get-Content $sperre -Raw -Encoding UTF8) -split '\s+')[0])
+    if ($eigene -eq "$PID") { Remove-Item $sperre -Force -EA SilentlyContinue }
+  }
 }                                                                        # neu

@@ -182,7 +182,8 @@ def _mit_wiederholung(*a, **kw):
             fehler += 1
             if fehler >= MAX_FEHLER:
                 raise
-            print("  OKX-Transportfehler %d/%d: %s" % (fehler, MAX_FEHLER, e),
+            print("  OKX-Transportfehler %d/%d: %s - wird wiederholt, kein Ausfall"
+                  % (fehler, MAX_FEHLER, e),
                   file=sys.stderr)
             time.sleep(1.5 * fehler)
 
@@ -259,11 +260,40 @@ def letzter_kurs(inst):
 
 # --- signiert (nur mit Schluessel + --live) --------------------------------
 
-def guthaben_usdt():
-    d = _mit_wiederholung("/api/v5/account/balance?ccy=USDT", signiert=True)
+def guthaben(ccy="USDC"):
+    """Frei verfuegbare Quote-Waehrung des Kontos.
+
+    WAEHRUNG ist ein Parameter, weil der Kontostand und der Markt getrennt
+    zu lesen sind: das Konto hatte am 02.10.2026 438 USDC und 0,00 USDT, waehrend
+    die Wachen bis dahin "USDT" abfragten - die Antwort war 0,0 und sah wie
+    ein leeres Konto aus. Ein Abruf, der eine Waehrung nennt, die es nicht
+    gibt, ist kein leeres Konto, sondern ein falscher Abruf.
+
+    Der Standard ist USDC, weil das die Quote ist, in der die Spur handelt
+    (wachen.json: universum.quotes). EURC steht auf dem Konto, hat bei OKX
+    aber keinen einzigen Spotmarkt (gemessen 02.10.2026: 0 Paare) - eine
+    Waehrung ohne Markt ist kein Handelsweg.
+    """
+    d = _mit_wiederholung("/api/v5/account/balance?ccy=" + str(ccy), signiert=True)
     if not d or not d[0].get("details"):
         return 0.0
     return float(d[0]["details"][0].get("availBal") or 0.0)
+
+
+def quote(inst):
+    """Basiswaehrung eines Instruments aus seinem Namen ('BTC-USDC' -> USDC)."""
+    teile = str(inst or "").split("-")
+    return teile[-1] if len(teile) > 1 else ""
+
+
+def guthaben_usdt():
+    """Altnname. Liest USDT - auf Max' Konto 0,0, weil es kein USDT gibt.
+
+    Bleibt erhalten, damit alte Aufrufer (guthaben_abgleich.py, Testattrappen)
+    nicht brechen; wer eine Zahl fuer das echte Handelsguthaben braucht, ruft
+    guthaben() mit der Quote der Wachen.
+    """
+    return guthaben("USDT")
 
 
 def bestand(inst):

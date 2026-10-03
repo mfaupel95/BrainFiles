@@ -135,3 +135,28 @@ CRLF == Zeilen in allen 9 Dateien, 0 verlorene Kommentarzeilen
 after: hermes config get auxiliary.compression -> provider: auto / model: ''
        hermes config check -> exit 0
 ```
+
+---
+
+## Vollstaendiger Abschnitt aus dem SKILL.md-Rumpf
+
+# Eine Einstellung umstellen
+
+
+Reihenfolge: Zustand LESEN (`hermes moa list`, `config get`) -> das ZIEL gegen die
+Wirklichkeit pruefen (es muss es geben: `/api/show` fuer Kontext und Parameter,
+offener Port) -> Blast radius (`search_files` nach dem alten Wert in Hauptconfig UND
+`profiles/*/config.yaml`) -> byte-sicher aendern (Vorkommen zaehlen, `yaml.safe_load`
+VOR dem Schreiben, `.bak`, danach CR == LF und `git diff --numstat`) -> Nachweis
+(`hermes moa list`, `config check` exit 0) -> Buchhaltung.
+
+Zwei Regeln, die den Unterschied machen:
+
+- **Messen mit betriebsnahen Parametern.** Ein zu kleines `max_tokens` macht ein
+  Denkmodell stumm (leerer `content`, Text in `reasoning`) - am 29.09.2026 sah das nach
+  einem Defekt in 20 Profilen aus und war ein Artefakt der eigenen Sonde.
+- **Eine leere Pipe ist kein Befund.** Fehlt das Messwerkzeug (`/usr/bin/time` gibt es
+  in MSYS nicht), laeuft der Aufruf nie, und der JSON-Fehler sieht wie eine stumme
+  Gegenstelle aus.
+
+Vollstaendig mit Muster und Fallen: `siehe oben in dieser Datei`.

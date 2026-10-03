@@ -1,0 +1,7 @@
+{
+  "_zweck": "T-198-Messaufsatz: nur die KURZE Seite, Frequenzbremse aus. Die Regel ist das Spiegelbild der Haus-Regel aus moondev_marktlage/wachen.json (-2 % und hoechstens 40 % der Messlatte im Plus).",
+  "moondev": {
+    "bremse": false,
+    "seite": "short"
+  }
+}

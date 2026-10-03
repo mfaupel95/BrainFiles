@@ -145,6 +145,7 @@ Code behauptet - `/lage` und `/status` zeigen den Stand.
 
 Tests: `python -m unittest discover -s Agenten/Bus/tests -p test_handel_befehle.py`
 und `python -m unittest discover -s Agenten/Handel/tests -t Agenten/Handel/tests`
-aus der Repo-Wurzel. Nach Codeaenderungen muessen die jeweiligen Bot-Prozesse
+aus der Repo-Wurzel - Hermes-Sitzungen starten in `Agenten/Hermes`, also vorher
+`cd "$HERMES_HOME/../.."`. Nach Codeaenderungen muessen die jeweiligen Bot-Prozesse
 neu laden. Einen Handelsprozess mit offenem Live-Fenster nicht unangekuendigt
 neu starten.

@@ -124,6 +124,58 @@ das ist die Regel aus `Wissen/Handelsregeln.md` und gilt weiter.
 5. `wachen.json` -> `handel_erlaubt: true`. Erst danach ergibt `--live` echte
    Orders.
 
+## WebSocket-Trigger (Event-getriebener Ausfuehrungspfad)
+
+Seit 2026-10-02 gibt es einen optionalen Trigger-Prozess, der die Wartezeit bis
+zum naechsten 15-Minuten-Zyklus entfernt: beim Kerzenschluss (confirm=1) wird
+`handeln.py` sofort ausgefuehrt, statt im naechsten Viertelstunden-Zyklus.
+
+**Regeln (nicht verhandelbar):**
+1. **Signal-Logik UNVERAENDERT** -- `handeln.py` wird nur frueher gerufen.
+2. **Sperrenkette UNANGETASTET** -- alle Wachen bleiben wirksam.
+3. **PAPER ZUERST** -- Buchungen laufen ueber denselben Papierweg.
+4. **Zyklus bleibt Rueckfallebene** -- Trigger ist Zusatz, kein Ersatz.
+5. **Fuellpreis-Vergleich** -- `herkunft=trigger` vs `herkunft=zyklus` im Journal.
+6. **Tests ohne Netz** -- WebSocket-Rahmen als Attrappen.
+
+### Datei
+
+| Datei | Zweck |
+|---|---|
+| `ws_trigger.py` | WebSocket-Client fuer den OKX BUSINESS-Feed (`/ws/v5/business`, Kanal `candle15m`) - die Kerzenkanaele liegen NICHT auf `/public` (gemessen 02.10.2026). Ruft `handeln.pruefe_ausstiege` / `pruefe_einstiege` bei Kerzenschluss; Buchungen tragen `herkunft=trigger`. Benoetigt `websocket-client` im venv. |
+| `tests/test_ws_trigger.py` | Tests mit JSON-Frame-Attrappen, kein echtes Netz. |
+
+### Aufrufe
+
+```powershell
+cd Agenten\Handel\scanner
+
+# Papier-Modus (Standard, keine echten Orders)
+.venv\Scripts\python.exe ws_trigger.py --modus papier
+
+# Live-Modus (nur wenn alle Sperren offen)
+.venv\Scripts\python.exe ws_trigger.py --modus live
+
+# Testmodus: eine JSON-Zeile von stdin als Kerze verarbeiten
+echo '{"arg":{"channel":"candle15m","instId":"BTC-USDC"},"data":[["1727780400000","50000","50100","49900","50050","100","1"]]}' | .venv\Scripts\python.exe ws_trigger.py --modus papier --test
+```
+
+### Technische Details
+
+- **WebSocket-Host** wird aus `OKX_BASE` abgeleitet (EEA -> `ws.eea.okx.com`, WWW -> `ws.okx.com`).
+- **Kanal**: `candle15m` fuer alle Instrumente aus `wachen.json` (Watchlist oder ganzes Universum).
+- **Nur `confirm=1`** (abgeschlossene Kerze) loest aus -- identisch zur heutigen Logik.
+- **Reconnect** mit exponentiellem Backoff (2s, 4s, 8s... max 300s).
+- **Ping/Pong** alle 30s (OKX verlangt Text `ping`).
+- **PID-Datei** `ws_trigger.pid` verhindert doppelten Start.
+- **Log** in `ws_trigger.log` mit Zeitstempeln.
+- **Eigene Prozess-ID** -- laeuft parallel zum 15-Minuten-Dauerlauf.
+
+### Journal-Erweiterung
+
+Jede Trigger-Buchung traegt `herkunft=trigger` im Journal (Standard: `herkunft=zyklus`).
+Nach zwei Wochen kann man Fuellpreise je Quelle vergleichen.
+
 ## Grenzen
 
 - Nur Long, nur Spot. Kein Hebel, kein Leerverkauf.

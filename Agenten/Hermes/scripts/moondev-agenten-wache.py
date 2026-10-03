@@ -16,7 +16,18 @@ MELDET NUR BEI AUFFAELLIGKEIT (leere Ausgabe = nichts senden):
   - mehr als MAX_AGENTEN Agentenprozesse,
   - weniger als MIN_COMMIT_MB freies Commit,
   - mehr als MAX_ALTE Agentenprozesse, die aelter als eine Stunde sind
-    (das ist die Signatur des Leaks).
+    (das ist die Signatur des Leaks),
+  - ein Agent, der LAEUFT, aber seit STILL_MIN Minuten keine Zeile mehr in sein
+    Log geschrieben hat (der Hang, siehe unten).
+
+DER HAENGENDE AGENT (31.09./01.10.2026 gemessen): Der kraken_agent lief als
+Prozess weiter, schrieb aber seit dem 29.09. 18:20 keine einzige Zeile - das
+Log endete mitten in einer normalen Runde ("QNTEUR ... DO NOTHING"), kein
+Traceback, kein Fehler. Ein blockierender Netzaufruf ohne Zeitablauf sieht
+genau so aus. Von aussen ist "arbeitet gerade lange" nicht von "haengt" zu
+unterscheiden - deshalb misst diese Wache das ALTER DER LETZTEN ZEILE und nicht
+den Prozesszustand. Ein Neustart durch den Treiber kuriert nur das Symptom;
+dieselbe Feststellung wird darum hoechstens alle MERK_H Stunden wiederholt.
 
 Aufruf (Hermes-Cron, no_agent, alle 15 Minuten):
     python moondev-agenten-wache.py
@@ -25,6 +36,7 @@ Aufruf (Hermes-Cron, no_agent, alle 15 Minuten):
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
@@ -35,7 +47,16 @@ SCHONFRIST_S = 300           # so lange raeumt der Treiber selbst auf (s. Schonf
 #                             alarmiert die Wache bei jedem Agentenneustart, weil
 #                             das alte Prozesspaar noch im Aufraeumfenster steht.
 MIN_COMMIT_MB = 6000         # darunter klemmt der naechste Modellstart
+STILL_MIN = 60               # so lange darf ein LAUFENDER Agent schweigen
+MERK_H = 6                   # dieselbe Stillstands-Feststellung hoechstens alle 6 h
 KENNUNG = ("src.agents", "kraken_agent.py")
+
+# Pfade selbstlokalisierend (keine absoluten Pfade im Skript): scripts liegt
+# unter Agenten/Hermes/scripts, die Wurzel ist drei Ebenen darueber.
+WURZEL = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))))
+LOG_ORDNER = os.path.join(WURZEL, "Agenten", "Handel")
+MERK = os.path.join(WURZEL, "Agenten", "Hermes", "cache", "moondev-agenten-wache.json")
 
 # FALSCHE ALARME DER ERSTEN FASSUNG (21.09.2026, 12:19-13:39 alle 15 Minuten):
 # Sie meldete "8 Prozesse laenger als 1 h" als Leak-Signatur. Falsch - im
@@ -80,6 +101,101 @@ def alter_von(eintrag) -> float:
     except (ValueError, OSError, OverflowError):
         return 1e9
     return max(0.0, (_dt.datetime.now() - stamp).total_seconds())
+
+
+def agenten_namen(prozesse_liste) -> dict:
+    """Name -> Prozess, aus der Kommandozeile. Nur echte Agentenaufrufe.
+
+    Der Name muss zum LOG passen: `src/agents/new_or_top_agent.py` schreibt nach
+    `moondev_new_or_top.log` (der Treiber kuerzt `_agent` weg). Wer hier den
+    vollen Dateinamen nimmt, sucht ein Log, das es nicht gibt - und meldet
+    dann entweder nichts oder alles.
+    """
+    namen = {}
+    for e in prozesse_liste:
+        # Der Prozessname gehoert zur Pruefung: eine tasklist-Abfrage mit
+        # "kraken_agent.py" im Suchtext ist KEIN Agent (dieselbe Falle, die im
+        # Kopf des Skripts steht - der Entdecker darf nicht die eigene Suche
+        # finden). Im echten Lauf filtert main() schon vorher; hier steht es
+        # zusaetzlich, damit die Funktion auch fuer sich allein stimmt.
+        if (e.get("Name") or "").lower() not in ("python.exe", "pythonw.exe"):
+            continue
+        cmd = (e.get("CommandLine") or "").replace("\\", "/")
+        if "kraken_agent.py" in cmd:
+            name = "kraken"
+        elif "src/agents/" in cmd:
+            rest = cmd.split("src/agents/")[-1].split()[0]
+            name = rest.rsplit(".py", 1)[0]
+            if name.endswith("_agent"):
+                name = name[: -len("_agent")]
+        else:
+            continue
+        namen.setdefault(name, e)
+    return namen
+
+
+def log_alter_minuten(name: str):
+    """Alter der letzten Zeile im Agentenlog in Minuten. None = kein Log da.
+
+    Kein Log ist AUSDRUECKLICH kein Befund: nicht jeder Agent schreibt eines,
+    und ein fehlendes Log ist kein Hang.
+    """
+    import os as _os
+    import time as _time
+    pfad = _os.path.join(LOG_ORDNER, "moondev_%s.log" % name)
+    if not _os.path.isfile(pfad):
+        return None
+    return max(0.0, (_time.time() - _os.path.getmtime(pfad)) / 60.0)
+
+
+def _merker_lesen() -> dict:
+    try:
+        with open(MERK, encoding="utf-8") as f:
+            daten = json.load(f)
+        return daten if isinstance(daten, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _merker_schreiben(merker: dict) -> None:
+    import os as _os
+    try:
+        _os.makedirs(_os.path.dirname(MERK), exist_ok=True)
+        with open(MERK, "w", encoding="utf-8") as f:
+            json.dump(merker, f, indent=2)
+    except OSError:
+        pass
+
+
+def stillstand(namen: dict) -> list:
+    """Laufende Agenten, die seit STILL_MIN Minuten nichts geschrieben haben.
+
+    Dieselbe Feststellung hoechstens alle MERK_H Stunden - ein Hang heilt nicht
+    durch Wiederholung, und eine Meldung im 15-Minuten-Takt waere nach zwei
+    Stunden Rauschen. Schreibt der Agent wieder, wird der Merker geloescht
+    (dann darf die naechste Stoerung sofort gemeldet werden).
+    """
+    import time as _time
+    merker = _merker_lesen()
+    jetzt = _time.time()
+    befunde = []
+    for name in sorted(namen):
+        minuten = log_alter_minuten(name)
+        if minuten is None:
+            continue
+        if minuten < STILL_MIN:
+            merker.pop(name, None)
+            continue
+        if jetzt - float(merker.get(name) or 0) < MERK_H * 3600:
+            continue
+        merker[name] = jetzt
+        befunde.append(
+            "Agent %s LAEUFT, schreibt aber seit %.0f min nichts "
+            "(moondev_%s.log) - das sieht nach einem haengenden Netzaufruf aus; "
+            "der Treiber startet ihn neu, die Ursache bleibt offen"
+            % (name, minuten, name))
+    _merker_schreiben(merker)
+    return befunde
 
 
 def main() -> int:
@@ -140,6 +256,14 @@ def main() -> int:
     if commit_frei and commit_frei < MIN_COMMIT_MB:
         grund.append("freies Commit nur %d MB von %d MB - der naechste Modellstart "
                      "(lokaler Modell-Rueckfall) scheitert" % (commit_frei, commit_gesamt))
+    # Der Hang: ein Agent, der laeuft und schweigt. Das ist NICHT die
+    # Leak-Signatur (dafuer ist die Zahl der Prozesse je Agent zustaendig),
+    # sondern eine eigene Stoerung: der Prozess lebt, arbeitet aber nicht.
+    # Die Funktion schreibt ihren Merker auch dann, wenn sie nichts findet -
+    # nur so wird ein Agent, der wieder schreibt, fuer die naechste Stoerung
+    # sofort meldefaehig.
+    grund.extend(stillstand(agenten_namen(agenten)))
+
     if not grund:
         return 0
     print("MoonDev-Wache " + dt.datetime.now().strftime("%d.%m. %H:%M"))

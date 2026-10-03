@@ -293,6 +293,11 @@ def _kopie_aus_trade(sig, trade, w):
         "marktkap_usd": sig.get("marktkap_usd"),
         "tx_einstieg": trade["tx"], "trade_zeit_ms": trade["zeit_ms"],
         "stop_usd": w.get("stop_usd"),
+        # `stop_pct` ist das MASS, `stop_usd` ein fester Betrag. Ohne Prozent
+        # waere "stop 60" bei 30 USD Einsatz 60 %, bei 90 USD aber nur noch 20 %
+        # - die Regel waere von der Positionsgroesse abhaengig. Deshalb hat das
+        # Prozent Vorrang (Auftrag Max 02.10.2026).
+        "stop_pct": w.get("stop_pct"),
         "trail_aktiv_ab_pct": w["trail_aktiv_ab_pct"],
         "trail_abstand_pct": w["trail_abstand_pct"],
         "hoechster_kurs": kaufpreis,
@@ -432,9 +437,15 @@ def pruefe_verkaeufe(z, trades, w):
 
 def _ausstiegsgrund(p, kurs, jetzt, w):
     """Stop (USD), Trailing, Frist - das Sicherheitsnetz."""
-    if p.get("stop_usd") is not None:
-        erloes = _verkaeuflich(p["menge"], kurs, w)
-        if p["einsatz_usd"] - erloes >= p["stop_usd"]:
+    erloes = _verkaeuflich(p["menge"], kurs, w)
+    verlust = p["einsatz_usd"] - erloes
+    if p.get("stop_pct"):
+        # PROZENT des Einsatzes - gilt fuer jede Positionsgroesse.
+        if verlust >= p["einsatz_usd"] * p["stop_pct"] / 100.0:
+            return "stop"
+    elif p.get("stop_usd") is not None:
+        # Fester Betrag - Rueckfall, wenn kein Prozent gesetzt ist.
+        if verlust >= p["stop_usd"]:
             return "stop"
     if p.get("trail_abstand_pct"):
         p["hoechster_kurs"] = max(p.get("hoechster_kurs") or kurs, kurs)

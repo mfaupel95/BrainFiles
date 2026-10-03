@@ -61,12 +61,28 @@ $zeit = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
 # am 29.09.2026, jede Runde reisst die Verbindungen mit). Kanonisch ist die
 # Identitaet aus gateway_state.json (pid + Zustand = running, so schreibt es
 # der Gateway selbst); die Kommandozeile bleibt Rueckfall fuer Altbestaende.
+# FALLE (30.09.2026, 2,5 h unbemerkter Ausfall): Das Muster
+# 'run_module\(''hermes_cli\.main''' traf JEDEN runpy-Start des Hauptmoduls -
+# auch den DASHBOARD-Prozess ('... main.py', 'dashboard', ...). Solange der
+# Dashboard lief, hielt der Waechter ihn fuer den Gateway und startete nichts.
+# Das Muster fordert jetzt den Unterbefehl 'gateway' und schliesst 'dashboard'
+# aus. Zweite Sperre: die Frische von gateway_state.json - der Gateway
+# schreibt seinen Herzschlag selbst; ein alter Stand heisst tot, auch wenn
+# irgendein Prozess noch laeuft.
 $state_datei = Join-Path (Split-Path $PSScriptRoot -Parent) 'Hermes\gateway_state.json'
 $gw = @()
+$state_frisch = $false
 if (Test-Path $state_datei) {
     try {
         $st = (Get-Content $state_datei -Raw -Encoding UTF8 | ConvertFrom-Json)
-        if ($st.pid -and $st.gateway_state -eq 'running') {
+        if ($st.updated_at) {
+            $st_alter = [int]((Get-Date).ToUniversalTime() - ([datetime]$st.updated_at).ToUniversalTime()).TotalSeconds
+            # 1800 s, nicht 600: der Gateway schreibt seinen Stand gemessen nur alle
+# ~7 min (16:05:13 -> 16:12:36). Mit 600 s galt ein gesunder, aber gerade
+# schreibtraeger Gateway als tot und der Waechter startete einen zweiten.
+            $state_frisch = ($st_alter -ge 0 -and $st_alter -lt 1800)
+        }
+        if ($state_frisch -and $st.pid -and $st.gateway_state -eq 'running') {
             $pr = Get-Process -Id $st.pid -ErrorAction SilentlyContinue
             if ($pr -and $pr.ProcessName -in @('python','pythonw')) {
                 $gw = @(Get-CimInstance Win32_Process -Filter "ProcessId=$($st.pid)")
@@ -75,9 +91,18 @@ if (Test-Path $state_datei) {
     } catch { $gw = @() }
 }
 if (-not $gw) {
+    # Rueckfall ueber die Kommandozeile: der Unterbefehl MUSS 'gateway' sein.
+    # Zwei Startformen: '-m hermes_cli.main gateway run' (Launcher) und
+    # "runpy.run_module('hermes_cli.main', ...)" mit sys.argv ['main.py','gateway','run'].
     $gw = @(Get-CimInstance Win32_Process -Filter "Name='python.exe' or Name='pythonw.exe'" -ErrorAction SilentlyContinue |
-            Where-Object { $_.CommandLine -match 'hermes_cli\.main gateway run|run_module\(''hermes_cli\.main''' -and
-                           $_.CommandLine -notmatch '--profile' })
+            Where-Object {
+                $c = $_.CommandLine
+                if (-not $c) { return $false }
+                if ($c -match '--profile') { return $false }
+                if ($c -match 'hermes_cli\.main gateway run') { return $true }
+                if ($c -match 'run_module\(''hermes_cli\.main''' -and $c -match "'gateway'" -and $c -notmatch "'dashboard'") { return $true }
+                return $false
+            })
 }
 
 if (-not $gw) {

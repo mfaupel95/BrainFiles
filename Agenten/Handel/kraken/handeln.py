@@ -579,7 +579,7 @@ def bueche_papier_altlasten_aus(z):
     return len(altlasten)
 
 
-def _beleg_zur_order(inst, menge, kurs, stop, ziel):
+def _beleg_zur_order(inst, menge, kurs, stop, ziel, eur=None):
     """Freigabe-Beleg fuer einen Live-Kauf ausstellen. None = kein Kauf.
 
     Der Beleg entsteht nur, wenn das Freigabefenster offen ist UND
@@ -587,16 +587,41 @@ def _beleg_zur_order(inst, menge, kurs, stop, ziel):
     diese Spur ohnehin kaufen darf. Er macht sie pruefbar und gibt der Hand
     (MCP-Werkzeug `kraken_order_mit_beleg`, Skript beleg_hand.py) dieselbe
     Erlaubnis, ohne die Entscheidung dorthin zu verlagern.
+
+    `eur` wandert als Einsatz in `zusatz`: solange ein Beleg offen liegt, ist
+    er ein RESERVIERTER Platz und reserviertes Kapital (T-283) - ohne diese
+    Zahl wuerde der naechste Zyklus dasselbe Geld ein zweites Mal verplanen.
     """
+    zusatz = {"inst": inst, "stop": stop, "ziel": ziel}
+    if eur is not None:
+        zusatz["eur"] = round(float(eur), 2)
     beleg = freigabebeleg.schreibe(SPUR, "buy", inst, menge,
                                    preis_max=float(kurs) * 1.05,
                                    grund="Einstieg %s" % inst,
-                                   zusatz={"inst": inst, "stop": stop, "ziel": ziel})
+                                   zusatz=zusatz)
     if not beleg.get("kennung"):
         print("  kein Beleg fuer %s: %s" % (inst, beleg.get("grund")),
               file=sys.stderr)
         return None
     return beleg
+
+
+def _offener_beleg():
+    """Der noch GUELTIGE, unverbrauchte Freigabe-Beleg DIESER Spur - sonst None.
+
+    Ein offener Beleg ist eine beschlossene, noch nicht ausgefuehrte
+    Kaufentscheidung (T-283): er belegt einen Platz und bindet Kapital.
+    Ohne diese Abfrage plante der naechste Zyklus dieselbe Erlaubnis erneut -
+    `freigabebeleg.schreibe()` lehnt das inzwischen ab, aber dann stuerzt die
+    Schleife in Fehlerzeilen statt in eine Entscheidung.
+
+    Fehler werden zu None: ein unlesbarer Beleg ist kein Kauffilter, und
+    `schreibe()` verweigert ohnehin, wenn kein Fenster offen ist.
+    """
+    try:
+        return freigabebeleg.offener(SPUR)
+    except Exception:                                             # noqa: BLE001
+        return None
 
 
 def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
@@ -614,11 +639,29 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
     waehrung = ziel_waehrung(z, w, lage, live)
     basen = {_basis_oder_paar(p["paar"]) for p in z["positionen"]}
     gehalten = {p["paar"] for p in z["positionen"]}
-    eingesetzt = sum(p["eur"] for p in z["positionen"])
+    # Ein OFFENER Beleg ist eine beschlossene, noch nicht ausgefuehrte
+    # Kaufentscheidung: er belegt einen Platz und bindet Kapital. Ohne diese
+    # Reservierung plante der Zyklus vom 01.10.2026 11:25:51 neun Kaeufe a 50
+    # EUR (bei max_gesamt_eur 200) und stellte neun Belege aus - ausgefuehrt
+    # werden konnte nur der letzte, weil eine Spur nur EINE Belegdatei hat
+    # (T-283). Gezaehlt wird nur der Beleg DIESER Spur.
+    offener_beleg = _offener_beleg() if live else None
+    reserviert = 0.0
+    if offener_beleg:
+        try:
+            reserviert = float((offener_beleg.get("zusatz") or {}).get("eur") or 0.0)
+        except (TypeError, ValueError):
+            reserviert = 0.0
+        print("  offener Beleg %s fuer %s - %.2f %s reserviert, kein neuer "
+              "Beleg in diesem Zyklus"
+              % (offener_beleg.get("kennung"), offener_beleg.get("paar"),
+                 reserviert, waehrung))
+    plaetze_belegt = len(z["positionen"]) + (1 if offener_beleg else 0)
+    eingesetzt = sum(p["eur"] for p in z["positionen"]) + reserviert
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
     for v in vs:
-        if len(z["positionen"]) >= w["max_offene_positionen"]:
+        if plaetze_belegt >= w["max_offene_positionen"]:
             break
         v_waehrung = quote.lesbar(v.get("waehrung") or "")
         # Nur eine BEKANNTE Abweichung ist eine Abweichung: ein Vorschlag
@@ -647,9 +690,16 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
 
         kauf_txid = stop_txid = None
         stop_fehlt = False
+        # Ein Papierkauf hat keine Boersenfuellung - hier gilt die bestellte
+        # Menge als bestaetigt. Ohne diese Vorbelegung wirft der Buchungssatz
+        # unten UnboundLocalError, sobald der Papierzweig laeuft: `gefuellt`
+        # und `fuellung_bestaetigt` entstanden bis zum 01.10.2026 nur im
+        # Live-Zweig (eingeschleppt mit der pos_id-Paarung, c8cc154). Gefunden
+        # von kraken/tests/test_handeln_papier.Gebuehr und test_quote.
+        gefuellt, fuellung_bestaetigt = menge, True
         if live:
             beleg = _beleg_zur_order(v["inst"], menge, v["einstieg"],
-                                     v["stop"], v["ziel"])
+                                     v["stop"], v["ziel"], eur=eur)
             if beleg is None:
                 continue
             if str(w.get("order_ueber", "spur")).lower() == "mcp":
@@ -664,7 +714,13 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
                         "%.8g" % v["einstieg"], "%.2f" % eur, "%.8f" % menge,
                         "%.8g" % v["stop"], "%.8g" % v["ziel"],
                         "beleg %s | %s" % (beleg["kennung"], waehrung))
-                continue
+                # HOECHSTENS EIN Beleg je Zyklus (T-283): eine Spur hat genau
+                # EINE Belegdatei. Bis zum 01.10.2026 lief die Schleife weiter
+                # und stellte Beleg auf Beleg aus - der vorige verschwand, das
+                # Journal fuehrte neun Kaeufe, ausgefuehrt wurde einer. Der
+                # naechste Kandidat kommt im naechsten Zyklus dran.
+                plaetze_belegt += 1
+                break
             # Eigener Weg: den Beleg SOFORT einloesen. Einmalig heisst einmalig
             # - bliebe er liegen, koennte die Hand dieselbe Order ein zweites
             # Mal ausfuehren, und das waere ein echter Doppelkauf.
@@ -676,16 +732,25 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
             freigabebeleg.verbrauche(SPUR, beleg["kennung"], ergebnis="spur")
             try:
                 kauf_txid = kraken.markt_kauf(v["inst"], menge, echt=True)
-                gefuellt = kraken.gefuellte_menge(kauf_txid) if kauf_txid else 0.0
             except Exception as e:  # noqa: BLE001
                 print("  Kauf %s fehlgeschlagen: %s" % (v["inst"], e),
                       file=sys.stderr)
                 continue
-            if gefuellt <= 0:
-                print("  Kauf %s ohne Fuellung - kein Eintrag" % v["inst"],
+            if not kauf_txid:
+                print("  Kauf %s ohne Kennung - kein Eintrag" % v["inst"],
                       file=sys.stderr)
                 continue
-            menge = gefuellt
+            # Eine Order MIT Kennung EXISTIERT, das Geld ist gebunden. Aus "noch
+            # keine Fuellung" folgt deshalb NIE "kein Eintrag": ohne Buchung
+            # signalisiert die Spur im naechsten Zyklus erneut und kauft
+            # denselben Wert wieder (T-102, FILEUR viermal). Unbestaetigt wird
+            # die BESTELLTE Menge gebucht und als offen gekennzeichnet.
+            gefuellt, fuellung_bestaetigt = kraken.fuellung_abwarten(kauf_txid)
+            if not fuellung_bestaetigt:
+                print("  Fuellung fuer %s unbestaetigt - %.8f bestellt, gebucht "
+                      "mit offener Fuellung" % (v["inst"], menge), file=sys.stderr)
+            else:
+                menge = gefuellt
             try:
                 stop_txid = kraken.stop_setzen(v["inst"], menge, v["stop"],
                                                echt=True)
@@ -712,6 +777,7 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
             "menge": menge, "stop": v["stop"], "ziel": v["ziel"],
             "eroeffnet": _heute(), "kauf_txid": kauf_txid,
             "stop_txid": stop_txid, "boersen_stop_fehlt": stop_fehlt,
+            "fuellung_offen": not fuellung_bestaetigt,
             # Die Kennung dieser Position (T-095): sie entsteht beim
             # Einstieg und steht in JEDER Zeile dieser Position.
             "pos_id": pos_kennung.neu(_jetzt()),
@@ -839,7 +905,9 @@ def zeige_wachen(w):
     print("  5 Rollierender EV        %s%s"
           % ("n/a (zu wenig Runden)" if s["rollierender_ev"] is None
              else "%+.3f EUR/Runde" % s["rollierender_ev"],
-             "   >>> NEGATIV" if s["ev_negativ"] else ""))
+             "" if not s["ev_negativ"] else
+             ("   >>> NEGATIV" if bedingung_5_gilt(w)
+              else "   >>> NEGATIV, Sperre ausgesetzt (Max 01.10.2026)")))
     print("  + Guthaben               %s"
           % _guthaben_text(w))
     print()
@@ -847,8 +915,9 @@ def zeige_wachen(w):
     if s["kill"] and wp.sperre_zu("Bedingung 2 (Wochenlauf): Ruecklauf %.2f EUR >= Kill-Switch"
                                   % s["ruecklauf_eur"]):
         print("  -> Bedingung 2: handel_erlaubt auf false gesetzt.")
-    if s["ev_negativ"] and wp.sperre_zu("Bedingung 5 (Wochenlauf): rollierender EV %.3f EUR < 0"
-                                        % s["rollierender_ev"]):
+    if s["ev_negativ"] and bedingung_5_gilt(w) and wp.sperre_zu(
+            "Bedingung 5 (Wochenlauf): rollierender EV %.3f EUR < 0"
+            % s["rollierender_ev"]):
         print("  -> Bedingung 5: handel_erlaubt auf false gesetzt.")
 
 
@@ -864,6 +933,18 @@ def _guthaben_text(w):
 
 
 # --- Hauptlauf ---------------------------------------------------------------
+
+def bedingung_5_gilt(w):
+    """Gilt die EV-Sperre (Bedingung 5) fuer diese Spur?
+
+    Vorgabe JA - das Feld muss ausdruecklich auf false stehen, damit die Sperre
+    faellt. Wer sie aussetzt, schreibt das mit Datum und Grund in die
+    wachen.json (`_bedingung_5_entfaellt`); dieses Feld ist nur der Schalter.
+    Ein stillschweigend dauerhaft negatives Kriterium waere schlimmer als
+    keines: es sperrt die Spur, ohne dass jemand die Entscheidung sieht.
+    """
+    return (w or {}).get("bedingung_5_aktiv", True) is not False
+
 
 def live_sperren(w, s):
     """Alle Gruende, die diesen Lauf auf Papier zurueckwerfen. Leere Liste
@@ -886,7 +967,7 @@ def live_sperren(w, s):
         gruende.append("freigabe.erfuellt=false (Bedingung 1)")
     if not s["herzschlag_frisch"]:
         gruende.append("Herzschlag alt (Bedingung 3)")
-    if s["ev_negativ"]:
+    if s["ev_negativ"] and bedingung_5_gilt(w):
         gruende.append("rollierender EV %.3f EUR < 0 (Bedingung 5)"
                        % s["rollierender_ev"])
     if not w.get("journal_zweitziel"):

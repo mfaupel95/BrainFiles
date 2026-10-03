@@ -60,6 +60,21 @@ billiger). Konservativer als spiegel (3 %), weil Pump.fun-Buecher duenner
 sind. `--messen` haelt den Nachlauf (Kurs jetzt gegen Kurs des Vorbilds)
 gegen die Annahme.
 
+**Gemessen am 01.10.2026** (`--messen --bestand --stichprobe 25`, das Buch
+wird dabei nicht angefasst, Rohwerte in `daten/messung.json`): 25 Kandidaten
+im Marktkap-Band angefragt, 14 verwertet - 11 hatten in den letzten 50 Trades
+KEINEN sichtbaren Kauf (die API liefert nur 50, bei einem Vorbild, das gerade
+verkauft, stehen dort nur Verkaeufe; das wird gezaehlt, nicht still
+uebersprungen). Nachlauf: Median **-35,64 %**, Schnitt **-31,48 %**, Spanne
+**-87,15 % bis +76,05 %**.
+
+Was das heisst: der Nachlauf auf gehaltenen Positionen ist gross und breit -
+aber er ist **nicht** der eigene Abschlag. Diese Spur kauft zum
+BEOBACHTETEN Kurs + 5 %; die 5 % Slippage und die 1 % Gebuehr bleiben
+Annahmen, weil die Pump.fun-Schnittstelle **keine Pooltiefe** liefert (die
+Untergrenze waere `2 x Einsatz / Liquiditaet`). Neu messen, wenn der Einsatz
+sich aendert oder eine Live-Anbindung ansteht.
+
 ## Aufruf
 
     python kopier.py --waehlen     # verfolgte.json aus der Rangliste bauen
@@ -68,6 +83,7 @@ gegen die Annahme.
     python kopier.py --bilanz      # welche Trader getragen haben
     python kopier.py --ablehnungen # warum Kandidaten NICHT gekauft wurden
     python kopier.py --messen      # Nachlauf gegen die Slippage-Annahme
+    python kopier.py --messen --bestand --stichprobe 25   # ueber den Bestand
     python kopier.py --live        # verweigert (kein Live-Pfad)
 
 Verdrahtet wie spiegel: `dauerlauf.SPUREN`, Bus `/status`, Tagesbericht,

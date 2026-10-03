@@ -3,7 +3,7 @@ id: 20260925-backtest-fundament
 title: 'Handel — Backtest-Fundament (historische Daten)'
 tags: [handel, backtest]
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-10-01
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Handel/Kosten-und-Bedingungen]]', '[[Wissen/Handelsregeln]]']
 summary: 'Wie die Spuren ueber 5,7 Jahre historische Daten nachgerechnet werden, was dabei herauskam und welche vier Fallen die Umsetzung aufgedeckt hat.'
 ---
@@ -337,6 +337,36 @@ Was daran zu lesen ist:
   steht alphabetisch hinter `nach177`, also zeigte die Uebersicht genau den
   Lauf ohne die Regel (+0,372 % je Runde statt +0,342 %).
 
+### Nachgeprueft am 30.09.2026: die Regel wirkt — und ein Vorzeichenfehler im Paarer
+
+Unabhaengig nachgemessen (`Agenten/Handel/kerzenschluss_bias.py`, je
+Austrittszeile, ohne Paarung): **wavetrend/ganz 0 % der Ausstiege auf der Marke,
+wavetrend/nach177 100 %** — die Regel tut, was sie soll. Der alte Kerzenschluss
+lag netto **492 Prozentpunkte zu schlecht**: auf der Verlustseite 938 Punkte
+tiefer als der Stop, auf der Gewinnseite 445 Punkte ueber dem Ziel. Die
+Verlustseite dominiert, weil ein Stop im Docht weit unter dem Stop schliessen
+kann — die frueher notierte Lesart („die Gewinner sind zu gut") beschreibt nur
+die kleinere Haelfte.
+
+**Dabei kam ein Fehler heraus, der die Tabelle oben mitbetrifft:**
+`kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis OHNE die
+Handelsrichtung. Fuer wavetrend (55 % Shorts) standen damit Trefferquote 54,2 %
+und Summe +679 in der Auswertung; richtig sind **33,2 % und -513**. Betroffen ist
+jede gemischt handelnde Spur — squeeze, macd_mtf, supertrend und wavetrend haben
+rund 50 % Shorts je Buch. Behoben am 30.09.2026 (`seite` aus der
+Einstiegszeile), Test `tests/test_kosten_wendepunkt.RichtungTest`.
+
+Fuer die Tabelle oben heisst das: die RICHTUNG der Aussagen bleibt (die Regel
+verschiebt nur den Ausstiegskurs, nicht den Ausloeser), die ZAHLEN der vier
+Indikator-Spuren sind nachzurechnen — als **T-230** notiert. Supertrend bleibt
+davon unberuehrt in seiner Aussage (492/492 schon vorher): seine eigene
+Ausstiegsrechnung schreibt den Markenpreis.
+
+Merksatz: **drei Wege muessen dasselbe sagen.** Zeilenrechnung,
+Schluessel-Paarung ueber `(inst, stop, ziel)` und `kosten_wendepunkt.paarung`
+gaben +492 / +492 / **-47,7** — der Ausreisser war der Fehler, nicht die
+Mehrheit.
+
 ### Drei Fehler, die die echten Laeufe aufgedeckt haben
 
 1. `main()` rechnete die Fensterbreite ueber `lade_wachen()` VOR den neuen
@@ -451,3 +481,177 @@ falschen Einstieg zuzuschlagen. Weniger Runden sind hier die ehrlichere Zahl.
 Gegenprobe im Konstrukt: zwei gleichzeitige Positionen im selben Instrument,
 beide mit Ausstieg — alte Regel 1 Runde, neue Regel 2 Runden
 (`Agenten/Handel/tests/test_journalpaarung.py`, 20 Tests).
+
+## Ein zu kleines Fenster ist keine fehlende Historie (2026-10-01)
+
+Gemeldet aus dem Leitstand-Reiter: `replay.py --spur supertrend --max-kerzen 200`
+brach ab mit
+
+    RuntimeError: keine Historie fuer supertrend - erst
+    'python historie_binance.py --auffuellen'
+
+— obwohl in `daten/historie/` **12.559 4H-Kerzen je Reihe** lagen. Die
+Anweisung war falsch und hätte nichts geändert: Nachfüllen war nie das Problem.
+
+Ursache war die **Reihenfolge** in `kerzen_fuer()`: die Reihe wurde ZUERST auf
+`max_kerzen` geschnitten und DANACH gegen `mindest_kerzen + 20` geprüft. Mit 200
+Kerzen gegen einen Bedarf von 320 fiel jedes Instrument aus dem Lauf — und der
+Text nannte das einzige Übel, das nicht vorlag. `lauf_b` (Familie B) hatte
+dieselbe Form: der Schnitt lag vor der Schleife `range(mindest_kerzen, laenge)`,
+die dann leer lief und **0 Runden** meldete. Eine Zahl, die wie ein Messergebnis
+aussieht und keines ist.
+
+Seit 01.10.2026 werden zwei Gründe getrennt benannt — sie verlangen zwei
+verschiedene Taten:
+
+| Befund | Text | Tat |
+|---|---|---|
+| Historie auf der Platte zu kurz | „Historie fehlt oder ist zu kurz … erst `historie_binance.py --auffuellen`" | nachfüllen |
+| `--max-kerzen` unter dem Bedarf der Spur | „Fenster zu klein … braucht mindestens 320 Kerzen je Reihe (mindest_kerzen 300 + 20). Mit `--max-kerzen 320` oder mehr (0 = alle) wiederholen" | Fenster größer |
+
+Der Bedarf steht an EINER Stelle (`replay.bedarf(w) = mindest_kerzen + 20`,
+Konstante `KERZEN_PUFFER`), weil die Schleife in `lauf_a` von `mindest_kerzen`
+bis ans Ende läuft — mit genau `mindest_kerzen` Kerzen gäbe es keinen einzigen
+Schritt. Die Schleuse sitzt in `kerzen_fuer()` selbst (`HistorieFehlt`), damit
+auch `gegenprobe()` nicht mehr mit leerem Kerzen-Dict durchläuft und zweimal
+null Runden als „gleich: true" meldet — das war ein falscher Freispruch.
+Auf der Kommandozeile: eine Zeile auf stderr statt eines Tracebacks, Exit 2.
+`--fenster` (Kerzen je Schritt) wird genauso geprüft; ein von Hand gesetztes
+Fenster unter dem Bedarf lief vorher ebenfalls still in „0 Runden".
+
+Der Leitstand-Reiter prüft die Grenze VOR dem Start
+(`leitstand_backtests.pruefe_replay` → `replay.bedarf_fuer(spur)`, liest die
+`wachen.json` direkt, ohne das Spurenmodul zu laden) und zeigt den Satz in der
+Meldezeile statt eines Tracebacks im Protokoll.
+
+**Merksatz:** Wird eine Prüfung nach dem Schneiden gemacht, nennt sie das
+falsche Übel — erst messen, was DA ist, dann schneiden, und beide Fälle im Text
+unterscheiden. Und: ein Lauf, der „0 Runden" melden kann, ohne je einen Schritt
+gerechnet zu haben, ist kein Messergebnis, sondern ein stiller Ausfall.
+
+Bedarf je Spur (gemessen 01.10.2026): supertrend 320 (mindest_kerzen 300),
+macd_mtf 620 (600), squeeze/wavetrend/mosaic 320, gitter/orb/orbk 320 (Vorgabe,
+die `wachen.json` trägt kein `mindest_kerzen`). Ein Lauf mit 320 Kerzen im
+4H-Takt rechnet 20 Schritte — genug für einen Rauchtest, nicht für eine Zahl.
+Tests: `Agenten/Handel/tests/test_replay.py` (`FensterOderHistorieTest`, 7) und
+`tests/test_leitstand_backtests.py` (Replay, +3).
+
+### Was der Replay NICHT fahren kann (01.10.2026)
+
+`orb` und `orbk` standen in `replay.SPUREN_TEIL_A` — und damit in der Spurliste des
+Leitstand-Reiters —, aber JEDER Lauf endete in einer Verweigerung: ihr `handeln.py` hat
+kein `lade_wachen()`, und ihre `wachen.json` nennt die Instrumente als DICT mit
+**Börsennamen** (`BTC_USDT` → `BTC-USDT-SWAP`) statt als Liste von Spur-Namen, dazu ohne
+`kerzen_takt`/`mindest_kerzen`. Sie stehen jetzt in `replay.NICHT_NACHRECHENBAR` mit Grund
+(`orbk` hat einen eigenen Backtest: `orbk/backtest.py`); das Fenster bietet sechs Spuren an
+(squeeze, wavetrend, macd_mtf, supertrend, gitter, mosaic).
+
+**Merksatz: eine angebotene Taste, die nur scheitern kann, ist schlechter als eine
+fehlende.** Die Prüfung ist ein Blick ins Spurenmodul (`lade_wachen()` vorhanden?) und in
+die Wachen (`instrumente` als Liste von Spur-Namen? Takt und `mindest_kerzen` gesetzt?),
+nicht ein Blick auf den Ordnernamen.
+
+### Die Gebuehr kommt aus der Spur, nicht von der Kommandozeile (01.10.2026)
+
+`replay.py --gebuehr` stand fest auf **0.1 %/Seite**. Fuer die vier Indikator-Spuren
+(OKX-Spot, gemessen 0,10 %) war das richtig - fuer `mosaic` (Kraken, **0,60 %**)
+rechnete damit jeder Backtest SECHSMAL zu guenstig, und die Zahl sah plausibel aus.
+Die Vorgabe ist jetzt der gemessene Satz der Spur (`gebuehr_taker` x 100 aus ihrer
+`wachen.json`); ein ausdrueckliches `--gebuehr` schlaegt sie, auch `0`. Der Lauf
+schreibt beides ins Ergebnis (`gebuehr_pct`, `gebuehr_quelle`), der Leitstand laesst
+das Feld leer und zeigt daneben "Satz der Spur: 0.6 %/Seite".
+
+**Merksatz: eine Vorgabe, die fuer eine Spur richtig ist, ist fuer die naechste
+geraten.** Wo die Zahl eine Eigenschaft der Sache ist (der Markt der Spur), wird sie
+aus der Sache gelesen - nicht in den Aufruf geschrieben.
+
+### Nachgemessen 01.10.2026: die Zahlen von 29.09. sind ueberholt (Kerzenschluss-Regel)
+
+Vier Spuren ueber die volle Historie, Ausstieg an der Marke, Gebuehr aus der Wachen
+(0,10 %/Seite = 0,20 % je Runde, OKX-Spot):
+
+    Spur         Runden   Treffer   f_max/Runde   Abstand zur Rundengebuehr   Ergebnis-Summe
+    supertrend     854     35,8 %     0,380 %       1,90x                     +134,80
+    squeeze       1088     34,9 %     0,239 %       1,20x                     +260,15
+    macd_mtf      1209     34,7 %     0,200 %       1,00x (genau null)        +207,96
+    wavetrend     1506     33,2 %    -0,020 %      -0,10x (tot)               -20,94
+
+Die Zahlen vom 29.09. (squeeze 759/51,0 %, wavetrend 1128/54,3 %, macd_mtf 774/53,2 %,
+supertrend 854/49,8 %) sind damit **ueberholt** - nicht wegen der Gebuehr, sondern wegen
+der **Kerzenschluss-Regel vom 30.09.**: der Ausstieg liegt jetzt an der beruehrten Marke
+(sind beide Marken in einer Kerze, gilt der STOP), nicht am Schluss der Kerze. Die
+Trefferquote faellt dadurch um 15-20 Punkte (51-54 % -> 33-36 %), und `f_max` rutscht an
+die Rundengebuehr heran:
+
+- **supertrend** behaelt als einzige Luft (1,90x); nur 492 ihrer 854 Ausstiege liegen an
+  einer Marke, der Rest endet per Frist.
+- **squeeze** hat 20 % Luft, **macd_mtf** liegt EXAKT auf der Nulllinie (0,1997 % gegen
+  0,200 %), **wavetrend** ist negativ - sie verliert schon bei 0 % Gebuehr.
+- Auf Kraken (1,2 %/Runde) waere KEINE der vier tragfaehig.
+
+**Merksatz: eine Trefferquote ohne die Ausstiegsregel daneben ist keine Kennzahl.** Wer die
+51-54 % im Kopf hat, haelt diese vier fuer deutlich robuster als sie sind.
+
+`mosaic` und `gitter` liessen sich zu diesem Zeitpunkt gar nicht fahren (mosaic:
+`TypeError`, gitter: `AttributeError`) - beide standen aus der Replay-Liste heraus. Seit
+dem 01.10.2026 fahren sie ueber den Familie-D-Weg (siehe unten, T-294/T-295).
+
+### Familie D (01.10.2026): mosaic und gitter sind fahrbar (T-294/T-295)
+
+Beide liessen sich bis dahin nicht fahren, und beide aus demselben Grund: ihre Fahrweise
+passt nicht in den EINEN Aufruf `pruefe_einstieg(inst, k, z, w, faktor)` /
+`pruefe_ausstiege(z, k, w)`.
+
+    python replay.py --spur mosaic --lauf t294
+    python replay.py --spur gitter --lauf t295
+
+Einen Schalter gibt es nicht - der Replay erkennt die Familie am SPURNAMEN. Ein Schalter
+waere eine zweite Wahrheit, und `--spur mosaic` ohne ihn liefe genau in den `TypeError`,
+den der Adapter behebt.
+
+- **mosaic** braucht DREI Kerzenreihen (4H/30M/5M). Sie kommen aus EINER 5m-Basis und
+  werden verdichtet; eine groebere Kerze zaehlt erst, wenn sie ABGESCHLOSSEN ist (die
+  laufende 4H-Kerze waere ein Blick in die Zukunft und entwertete jede Kennzahl darauf).
+  120 Tage 5m nachladen: `python 5m_historie_holen.py --tage 120`.
+  Ergebnis 03.06.-01.10.2026: **16 Runden, 4 offen**, Treffer 75 %, `f_max` 6,25 % je
+  Runde, Summe +100 USD auf 100 USD Nominal (Kraken-Satz 0,60 %/Seite, BRUTTO im
+  Journal - die Gebuehr steckt in der Replay-Kennzahl).
+- **gitter** bringt seine Rechnung selbst mit (`walk()`); der Replay liefert Kerzen und
+  Uhr und nimmt seine Journalzeilen ab. Auf der 1H-Historie (50.223 Kerzen, BTC-USDT):
+  **31 Zyklen, +504 USD auf 1000 Einsatz (+50,4 %)** - Halten waere +191 % gewesen.
+  `kosten_wendepunkt` kann dieses Journal nicht auswerten: eine Gitterstufe hat keinen
+  Stop und kein Ziel.
+
+**Determinismus ist geprueft, nicht behauptet**: zwei Laeufe ueber dieselben Kerzen
+ergeben ein byte-gleiches Journal (`tests/test_replay_familie_d.py`). Dafuer musste die
+Positionskennung festgenagelt werden - ihr Zufallsteil ist im BETRIEB richtig (zwei
+Positionen im selben Instrument entstehen in derselben Sekunde, die Zeit allein waere
+kein eindeutiger Schluessel) und machte zwei Backtest-Laeufe ungleich
+(`replay.kennung_fest()`).
+
+## Der Drawdown der omnitrade-Rust-Engine war ein Buchungsartefakt (T-287/T-292)
+
+Der Rust-Backtest (`Werkstatt/omnitrade`) meldete `max_drawdown` 72-90 % auf einer Kurve,
+die nie gefallen ist. Ursache ist die BUCHUNG, nicht das Risiko:
+
+`AccountState::apply_buy_fill` zieht den Nennwert VOLL vom Guthaben ab (der Short bucht
+ihn in `apply_sell_fill` voll zu), `total_equity` rechnete aber nur
+`balance + unrealized_pnl`. Waehrend einer offenen Long-Position stand die Equity damit
+auf Hoehe des unrealisierten PnL - ein Einbruch um die halbe Kontogroesse beim Einstieg
+und sofort die grosse Drawdown-Kurve.
+
+Behoben mit `Position::market_value()` (vorzeichenrichtig: Long `+notional + unrealized`,
+Short `-notional + unrealized` = `+/- quantity * current_price`) und einem
+`total_equity`, das diesen Marktwert summiert. PnL, Rundenzahl und Trefferquote waren
+unberuehrt - die Equity holt sich beim Schliessen zurueck, was sie beim Oeffnen verliert.
+
+    adx_macd, BTC-1h, 10000 Start, 0,05 %/Seite, OMNI_LONG_ONLY=1
+      vorher   PnL 1397,84   Runden 9   Treffer 33,33 %   Max Drawdown 75,18 %
+      nachher  PnL 1397,84   Runden 9   Treffer 33,33 %   Max Drawdown  8,15 %
+
+Gegenprobe: mit der alten Formel faellt der neue Backtest-Test mit `max_drawdown 0.5` -
+er belegt den Fehler, nicht nur die Aenderung. `cargo test --workspace`: 325 gruen.
+
+**Merksatz: eine Equity, die den Positionswert nicht mitzaehlt, macht aus jedem Einstieg
+einen Absturz. Der Drawdown war die einzige falsche Zahl - und genau die, aus der Grenzen
+abgeleitet werden.**

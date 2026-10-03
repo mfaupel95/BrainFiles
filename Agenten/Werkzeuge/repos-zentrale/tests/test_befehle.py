@@ -61,10 +61,10 @@ class GrundkommandosTest(unittest.TestCase):
         mit = befehle.grundkommandos(FakeZeile(bot="x", bot_da=True))
         self.assertEqual([k.was for k in mit if k.art == "bot"], ["Bot x fragen"])
 
-    def test_ohne_repo_kein_absturz(self):
+    def test_ohne_repo_gibt_es_keine_handgriffe(self):
+        """Ein Eintrag ohne Ordner auf der Platte (Gruppe FEHLT) hat nichts zu oeffnen."""
         liste = befehle.grundkommandos(FakeZeile(repo=None))
-        namen = [k.was for k in liste]
-        self.assertIn("Terminal hier oeffnen", namen)
+        self.assertEqual(liste, [])
         self.assertEqual([k for k in liste if k.art == "doku"], [])
 
 

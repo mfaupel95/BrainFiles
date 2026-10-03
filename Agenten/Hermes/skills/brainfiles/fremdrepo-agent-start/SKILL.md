@@ -34,12 +34,64 @@ Datensaetze, Zeilen, Fehlerquote) macht Aussagen wie "laeuft" zulaessig;
 ein gruener Testlauf allein belegt keine Funktion.
 
 Fuer den Node/TypeScript-Weg (npm-Globalinstall, stdio-MCP-Handshake per
-Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`.
+Pipe, Key-Verifikation ohne Auth): `references/node-mcp-cli-tools.md`. Dort
+steht auch, wie ein VEROEFFENTLICHTES CLI-Paket unter Windows installiert wird
+(`os`-Feld im Manifest, `workspace:*` in den devDependencies, Haus-
+Installationsordner statt Globalinstall, Attrappen-Endpunkt als Nachweis ohne
+Schluessel, Kosten- und Datenschutzpruefung vor der Empfehlung, die
+GRATIS-Variante desselben Modells beim Anbieter bevor „braucht einen bezahlten
+Schluessel" im Bericht steht, das Lesen des Schluessels aus einer
+Windows-Benutzervariable ohne jede Ausgabe (Registry direkt statt `reg query`,
+Quellen-Schalter fuer die Tests) und der Umgang mit einem sofortigen Abbruch
+(Exit 1 ohne Suchausgabe — nicht an den Vordergrund gebunden; wiederholen, Ausgabe
+in eine Datei lesen, Wurzel auf Junctions pruefen).
+
+**Befragt das Werkzeug ein Modell ueber ein EIGENES Protokoll** (nicht OpenAI-kompatibel),
+gehoert eine kleine Uebersetzungs-Bruecke dazu, damit es nicht an einen einzigen
+Anbieter gebunden ist — Vertrag, Voraussetzungen (Kontextfenster, Buendelung, Latenz
+gegen den Takt des Aufrufers) und die Fallen (leeres Modell-Ergebnis, veralteter
+Modell-Tag, ersetzte Anmeldung) stehen im Abschnitt „Ein Client mit eigenem
+Modell-Protokoll“ derselben Referenz.
+
+**Bringt das Werkzeug einen eigenen `install`-Unterbefehl mit ("managed
+install"), unter Windows zuerst dessen Scheitern pruefen und dann auf npm in
+einen EIGENEN Prefix ausweichen — der Shim darf dabei NICHT auf den Pfad, den
+der Hersteller fuer seine verwaltete Installation reserviert** (die
+tool-eigene Diagnose zaehlt dessen blosse Existenz als Installation und
+blockiert dann den Start). Dazu PATH-Anhaengen ohne `setx`, die
+oft uebersprungene `postinstall`-Freigabe von npm >= 11 und der erste Start mit
+eingebetteter Datenbank (sieht ~3 min wie ein Haenger aus; am Datenordner
+messen, am Port belegen): alles im selben Abschnitt der Referenz.
+
+**Und ein Werkzeug, das ein CLI per NAMEN startet (Adapter, Sonde, Test-Knopf),
+findet unter Windows das npm-Shim `.CMD` — `spawn` ohne `shell:true` kann das
+nicht starten (`EINVAL`), das Kind startet nie, und die Meldung ist
+nichtssagend („Umgebungstest fehlgeschlagen“). Dann die NATIVE Fassung des CLIs
+installieren, damit ein `.EXE` in einem frueheren PATH-Verzeichnis gewinnt, und
+Aufloesung plus Sonde nachstellen — Rezept im selben Abschnitt der Referenz.**
+
+**Und starte ein solches Werkzeug aus einem Verzeichnis OHNE fremde `.env`.** Es
+laedt beim Start die `.env` seines ARBEITSVERZEICHNISSES in die eigene
+Prozessumgebung und reicht sie an jedes Kind weiter (Sonde, Adapter, Agent); ein
+Schluessel darin ueberstimmt dann die Anmeldung, die das Werkzeug nutzen soll —
+und derselbe Befehl laeuft aus der eigenen Shell trotzdem durch, weil die Shell
+keine `.env` laedt. Ein `unset` vor dem Start hilft NICHT (die Datei wird beim
+Start neu geladen); der Fix ist das Arbeitsverzeichnis, und der Start-Wrapper
+setzt es ausdruecklich. Messweg und Gegenprobe:
+`references/node-mcp-cli-tools.md`, Abschnitt „Das Arbeitsverzeichnis entscheidet
+ueber die Umgebung“.
 
 Fuer Repos, die eine Bibliothek um ein HuggingFace-Checkpoint sind
 (transformers/safetensors, Entscheidungs- oder Klassifikationsmodelle):
 `references/huggingface-modell-lokal.md` — venv, HF-Cache auf O:, Sonde mit
 eigenen Messwerten, dazu die Falle gepinnter Abhaengigkeiten.
+
+Fuer Repos, deren Epoche auf KEINEM Host-Python mehr laeuft (TensorFlow 1.x
+braucht Python <= 3.7, kein conda auf dem Rechner; die GPU-Generation
+unterstuetzt das CUDA des Frameworks nicht): `references/docker-legacy-python.md`
+— Docker als einziger Baupfad, was Docker Desktop ueberhaupt mounten darf
+(Junctions loesen sich auf), apt-Archive fuer EOL-Distros, era-Pines mit
+Begruendung, und der Nachweislauf ohne Waisen-Container.
 
 **Ein leerer Rahmen ist kein System.** Ein Repo, dessen Dienstordner nur
 `.gitkeep` enthalten und dem die `Dockerfile`s fehlen, die die
@@ -287,6 +339,16 @@ origin <fork> && git fetch origin`.
   und den Befehlen, die sie erzeugt haben), was absichtlich NICHT angefasst
   wurde (Schluessel, Fremd-Repo-Code, fremde Sitzungsarbeit, Live-Pfade),
   welche Entscheidung offen ist, und genau eine naechste Aktion.
+- **Die naechste Aktion ist eine PowerShell-Zeile, keine Kopie des eigenen
+  Werkzeugaufrufs.** Die Werkzeug-Shell ist bash, Max' Shell ist PowerShell:
+  `export`, `rm -f`, `$VAR`, `head`, `/c/Users/...` scheitern bei ihm mit "Der
+  Begriff ... wird nicht als Name eines Cmdlets ... erkannt". Also die Zeile als
+  "zum Einfuegen" kennzeichnen, das `cd '<wurzel>'` mitgeben, relative Programme
+  mit `.\` schreiben (ohne das sucht PowerShell ein Modul) und KEINE Platzhalter
+  (`<Frage>`) und keinen fuehrenden Schraegstrich im Pfad
+  (`/Agenten/...` gilt als absolut und findet nichts). Die Zeile vorher einmal
+  selbst in PowerShell fahren - eine ungepruefte Zeile kostet ihn einen
+  Fehlversuch.
 - **Mehrzeiligen String in eine CRLF-Datei einsetzen, ohne jede Zeile auf
   die Datei-Newline zu normalisieren, zerlegt die Struktur** (hier: Duplikat
   des Blocks + IndentationError). Der neue Block muss ZEILENWEISE mit

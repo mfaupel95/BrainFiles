@@ -71,7 +71,88 @@ die Mindestmenge des Paares, lehnt die vorhandene Mengenrechnung ab (`menge_fuer
 der Verwendung entspricht (ein Tor „3 x Einsatz 30 = 100“ ist veraltet, wenn der
 Mindesteinsatz laengst 60 ist), dann erst die Zahl senken.
 
-## 4. Nachweis fuer eine Grenzaenderung
+## 4. Ein wiederholtes Signal: die Position vergroessern, nicht verdoppeln
+
+Faellt das NEBEN Signal fuer dasselbe Instrument in derselben Richtung, ist die
+Antwort nicht eine zweite Position. Gemessen: vier Spuren haelten 3-4 Positionen
+auf EINEM Instrument (macd_mtf vier lange ETH, supertrend vier kurze BTC,
+wavetrend drei, kopier1zu1 fuenf auf zwei Memecoins). Der Platzzaehler
+`max_offene_positionen` zaehlt damit die PositionsANZAHL statt des eingesetzten
+Kapitals — vier halbe Positionen sind fuer das Risiko dasselbe wie eine volle,
+aber viermal so teuer im Platz.
+
+Die Regel gehoert an **eine** Stelle (`Handel/skalieren.py`), nicht in jede Spur:
+
+```python
+offen = finde_offene(z["positionen"], inst, seite)   # gleiches Instrument UND Seite
+if offen is not None:
+    f = skaliere(offen, einstieg, nominel, stop_pct, r)
+    # Journal: zweite Kaufzeile, GLEICHE pos_id, KUMULATIVER Einsatz, GEWOGENER Preis
+    return
+z["positionen"].append(_p)
+```
+
+Drei Regeln, alle aus dem Messfall:
+
+1. **Der Einstieg wird der GEWICHTE Mittelpreis** (`(alt_ein*alt_nom + neu*nom)/summe`).
+   Der rohe neue Preis macht aus zwei Signalen eine falsche Basis.
+2. **Stop und Ziel entstehen NEU aus diesem Einstieg** und demselben Prozentsatz.
+   Sonst laufen Stop, Ziel und Groesse auseinander — und ein alter Stop an einem
+   groesseren Einsatz ist genau der Fehler, den die Stopdeckung sucht.
+3. **Ein Seitenwechsel ist KEIN Skalieren.** Er ist ein neues Signal mit eigener
+   Richtung und gehoert als eigene Position ins Buch.
+
+**Die Journalform ist die heikle Stelle.** Die Skalierungszeile traegt den
+KUMULATIVEN Einsatz, nicht ihr eigenes Stueck: bei Erloes 1200 und zwei Kaeufen
+ueber je 500 gibt die Inkrementform +700 statt +200 aus — eine Trefferquote, die
+keine ist.
+
+**GEMESSEN, welche Zeile die Zuordnung nimmt: die LETZTE.** `journalpaarung`
+ordnet nach `pos_id` und nimmt bei mehreren Zeilen derselben Kennung die zuletzt
+geschriebene — also nach dieser Regel genau den kumulativen Stand. **Bau darum
+KEINE eigene Verdichtung in den Rechenweg.** Genau das wurde zuerst gebaut, die
+Gegenprobe blieb gruen (mit stillgelegter Regel meldete derselbe Test weiter
+`+200`), also war der Code toter Code: der Pfad erfuellt die Aufgabe bereits. Ein
+Rechenweg mit toter Logik ist eine Last, kein Beleg — nach jeder Verdachts-
+Ergaenzung in einer Auswertung zuerst die Gegenprobe fahren und dann suchen, wer
+die Aufgabe WIRKLICH erledigt, bevor man den eigenen Teil stehen laesst.
+
+Merksatz: **Skalieren passt zur gemessenen Form einer Strategie** — zu einem
+duennen Signal mit wenigen, grossen Gewinnern. Bei einer Strategie ohne Richtung
+vergroessert es nur das richtungslose Exposure. Vorher die Trefferquote messen.
+
+### 4b. Die ALTEN Stapel aufraeumen (die Regel wirkt erst auf neue Signale)
+
+Die Skalierungsregel aendert nichts an Positionen, die schon offen sind — ein
+Stapel bleibt, bis das naechste Signal auf dieselbe Richtung trifft. Wer ihn
+vorher weghaben will, raeumt ihn ab, und das ist eine **Buchhaltungs-
+Bereinigung**, keine Handelsrunde:
+
+- Die groesste Position der Gruppe bleibt, ihre `pos_id` bleibt. Die uebrigen
+  werden in sie eingerechnet: gewichteter Einstieg, Summe des Nominals, Stop und
+  Ziel neu aus dem gemittelten Einstieg (wie beim Skalieren).
+- Jede weggefallene Position bekommt eine `verkauf`-Zeile mit einem Grund, der
+  `buchbereinigung` enthaelt (`stoerungen.BUCHHALTUNG`). Damit erscheint sie in
+  KEINER Kennzahl als Runde und die Trefferquote bleibt unberuehrt. **Ihr Erloes
+  ist der neue gewogene Einstieg** — der Ausgleich ist exakt null und erfindet
+  weder Gewinn noch Verlust. Ein Ausstieg zum Kurs wuerde eine Phantomrunde
+  erzeugen, die in der Quote steht.
+- Die behaltene Position bekommt eine `kauf`-Zeile mit kumulativem Nominal und
+  gewogenem Einstieg (dieselbe `pos_id`), weil die Zuordnung je `pos_id` die
+  letzte Kaufzeile nimmt.
+- **Vorher das Schema pruefen, nicht danach.** Gruppiert wird nach (Instrument,
+  Seite); fuehrt eine Spur diese Felder nicht (etwa weil sie `symbol`/`token`
+  statt `inst` benutzt), liefert der Schluessel `None`, ALLE Positionen dieser
+  Spur landen in EINER Gruppe, und das Werkzeug verschmilzt das ganze Buch. Dann
+  gehoert die Spur aus dem Lauf, nicht in die Ausgabe (Regel dazu in
+  `anbindungs-audit.md`).
+
+Vorschau ist der Standard; die Summenzeile der Vorschau muss die Summe BEIDER
+Seiten zeigen (`vorher` und `nachher` des Nominals) — ein Werkzeug, das nach dem
+Zusammenfassen ueber die schon veraenderte Liste summiert, meldet eine kleinere
+Zahl und sieht damit harmlos aus.
+
+## 5. Nachweis fuer eine Grenzaenderung
 
 1. **Vorher/nachher am echten Objekt zeigen:**
    `<spur>/handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1` (so ruft der Dauerlauf sie

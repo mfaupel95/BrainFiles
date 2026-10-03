@@ -103,6 +103,39 @@ function IndexMitWiederholung([string[]]$argumente, [int]$versuche = 12) {
     return $false
 }
 
+function Test-Rueckschritt([string]$Pfad) {
+    # (T-218) STALE-CHECK: ist der Arbeitsbaum-Stand dieser Datei ein RUECKSCHRITT
+    # gegenueber der letzten committeten Aenderung? Am 30.09.2026 hat die Routine eine
+    # im Baum liegende ALT-Version des Gateway-Launchers uebernommen und damit eine
+    # Reparatur vom Vortag stillschweigend aufgehoben. Eine ruhende Datei, deren Inhalt
+    # einem FRUEHEREN Commit dieser Datei entspricht (waehrend HEAD neuer ist), ist nicht
+    # 'Fremdarbeit in Arbeit', sondern ein Rueckfall - der wird NICHT uebernommen,
+    # sondern uebersprungen und gemeldet.
+    try {
+        $kopfBlob = (& git ls-tree HEAD -- $Pfad 2>$null)
+    } catch { return $false }
+    if (-not $kopfBlob) { return $false }        # HEAD kennt die Datei nicht -> kein Rueckschritt
+    $kopfTeile = $kopfBlob -split '\s+'
+    if ($kopfTeile.Count -lt 3) { return $false }
+    $kopf = $kopfTeile[2]
+    $wt = (& git hash-object -- $Pfad 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $wt) { return $false }
+    $wt = $wt.Trim()
+    if ($wt -eq $kopf) { return $false }         # identisch mit HEAD => kein 'M', egal
+    $historie = (& git log --format=%H -- $Pfad 2>$null)
+    $headSha = (git rev-parse HEAD 2>$null).Trim()
+    foreach ($c in ($historie -split "`n")) {
+        $c = $c.Trim()
+        if (-not $c -or $c -eq $headSha) { continue }
+        $alt = (& git ls-tree $c -- $Pfad 2>$null)
+        if ($alt) {
+            $t = $alt -split '\s+'
+            if ($t.Count -ge 3 -and $t[2] -eq $wt) { return $true }
+        }
+    }
+    return $false
+}
+
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) (Schwelle $Minuten Min) ===" | Set-Content $log -Encoding UTF8
 
 try {
@@ -175,6 +208,23 @@ try {
         }
 
         if ($alter -ge $Minuten) { $ruhend += $pfad } else { $inArbeit += $pfad }
+    }
+
+    # --- T-218: Rueckschritt-Pfade aussortieren ---------------------------
+    # Eine Datei, deren Arbeitsbaum-Stand ein RUECKSCHRITT gegenueber dem letzten
+    # committeten Stand ist (Inhalt == aelterer Commit, HEAD neuer), ist keine
+    # Fremdarbeit in Arbeit, sondern ein Rueckfall. Sie wird NICHT uebernommen,
+    # sondern uebersprungen und gemeldet - sonst hebt der Lauf stillschweigend
+    # eine Reparatur auf (gemessen 30.09.2026 am Gateway-Launcher).
+    $rueckschritt = @()
+    $neuRuhend = @()
+    foreach ($pfad in $ruhend) {
+        if (Test-Rueckschritt $pfad) { $rueckschritt += $pfad } else { $neuRuhend += $pfad }
+    }
+    $ruhend = $neuRuhend
+    if ($rueckschritt) {
+        Schreib "UEBERSPRUNGEN (Rueckschritt gegen HEAD, nicht uebernommen):"
+        $rueckschritt | Sort-Object | ForEach-Object { Schreib "    $_" }
     }
 
     if (-not $ruhend) {

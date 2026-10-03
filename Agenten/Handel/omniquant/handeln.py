@@ -66,6 +66,7 @@ import pos_kennung
 import ereignis                                            # noqa: E402
 import okx                                                 # noqa: E402
 import wachen_pruefung as wp                               # noqa: E402
+import live_perp                                           # noqa: E402
 
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
 # und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
@@ -457,8 +458,18 @@ def schliesse(z, p, grund, kurs, w):
 
 
 def pruefe_ausstiege(z, w):
+    """Papier-Ausstiege. Live-Positionen fasst diese Funktion NIE an.
+
+    Eine echte Position schliesst nur der Live-Zweig (`live_perp`). Eine
+    Papierbuchung darauf waere ein Geistereintrag: die Position stuende an der
+    Boerse weiter, ohne Stop-Ueberwachung und ohne dass es jemand sieht - der
+    Fehler, den scanner und mosaic am 21./23.09.2026 hatten.
+    """
     behalten = []
     for p in z.get("positionen", []):
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
         try:
             kurs = float((letzter_kurs_quelle or okx.letzter_kurs)(p["inst"]))
         except Exception as e:                           # noqa: BLE001
@@ -525,22 +536,33 @@ def herzschlag_alt(z, w):
 # --- Sperren ----------------------------------------------------------------
 
 def sperren_live(w, z):
-    """Gruende, warum --live nicht scharf schalten kann. Kein Freigabefenster.
+    """Gruende, warum --live nicht scharf schalten kann.
 
-    Das Wort "Freigabefenster" darf hier NICHT vorkommen: dauerlauf.nur_
-    fenster_fehlt() liest die --vorschau-Zeile und fragt nur dann eine
-    Freigabe an, wenn genau ein Grund "Freigabefenster" enthaelt. Diese Spur
-    hat keinen Live-Zweig - also keinen Grund, jemals zu fragen.
+    Seit dem 01.10.2026 hat omniquant einen echten Orderweg (Kraken Futures,
+    `live_perp.py`). Die Sperren stehen deshalb dort und werden hier nur
+    durchgereicht - EINE Fassung, nicht zwei. Der Text ist eine Schnittstelle:
+    `dauerlauf.nur_fenster_fehlt()` liest die --vorschau-Zeile und fragt nur
+    dann eine Freigabe an, wenn GENAU EIN Grund das Wort "Freigabefenster"
+    traegt. Wer hier einen zweiten Grund stillschweigend hinzufuegt, schaltet
+    die Auto-Freigabe fuer diese Spur ab.
     """
-    g = []
-    if not w.get("handel_erlaubt"):
-        g.append("kein Live-Zweig: Omniquant fuehrt ein Papierbuch auf dem "
-                 "Prognose-Bericht (handel_erlaubt=false)")
-    if z.get("verluste_usd", 0.0) >= w.get("max_gesamt_risiko_usd", 500):
-        g.append("Kill-Switch: Verluste %.2f USD >= %g"
-                 % (z.get("verluste_usd", 0.0),
-                    w.get("max_gesamt_risiko_usd", 500)))
-    return g
+    return live_perp.live_sperren(w, z)
+
+
+def sperren_zeile(w, z):
+    """Die Zeile, die der Dauerlauf parst - IMMER, auch bei leerer Liste.
+
+    Eine Sperrzeile, die nur im Fehlerfall gedruckt wird, ist von "nicht
+    geprueft" nicht zu unterscheiden (Pitfall 91), und `nur_fenster_fehlt`
+    findet dann gar nichts.
+    """
+    try:
+        g = sperren_live(w, z)
+    except Exception as e:                               # noqa: BLE001
+        print("Live waere gesperrt durch: nicht bestimmbar (%s: %s)"
+              % (type(e).__name__, e))
+        return
+    print("Live waere gesperrt durch: " + ("; ".join(g) if g else "nichts"))
 
 
 def zeige_wachen(w):
@@ -550,6 +572,8 @@ def zeige_wachen(w):
               "slippage_pct", "max_halte_dauer_tage", "herzschlag_max_minuten",
               "max_bericht_alter_stunden", "max_je_basiswert"):
         print("  %-28s %s" % (k, w.get(k)))
+    for zeile in live_perp.kandidaten_grenzen(w):
+        print(zeile)
     print("  Signalquelle: %s (Fassung %s)"
           % (os.path.relpath(bericht_pfad(w), HANDEL),
              w.get("prognose_fassung") or "streng"))
@@ -576,6 +600,12 @@ def lauf(modus):
 
     st = {}
     live = False
+    # Die Kraken-Marktliste einmal je Lauf holen - der Instrument-Weg
+    # (kraken_perp.pf_markt) prueft gegen sie, und eine leere Liste wuerde
+    # jeden Einstieg verweigern. Ein Fehler ist kein Absturz.
+    if modus in ("live", "vorschau"):
+        print("  Kraken-Marktliste: %d Maerkte geladen"
+              % live_perp.markte_laden())
     if modus == "live":
         g = sperren_live(w, z)
         if g:
@@ -635,18 +665,37 @@ def lauf(modus):
         print("\nOffener Bestand: %d Positionen, %.2f von %g USD Einsatz"
               % (len(z.get("positionen", [])), gebunden,
                  w.get("max_gesamt_risiko_usd", 500)))
-        g = sperren_live(w, z)
-        if g:
-            print("Live waere gesperrt durch: " + "; ".join(g))
+        sperren_zeile(w, z)
         return  # bewusst kein schreibe_zustand: eine Vorschau schreibt nicht
 
     z["modus"] = "live" if live else "papier"
+    if live:
+        live_perp.pruefe_ausstiege(sys.modules[__name__], w, z)
     pruefe_ausstiege(z, w)
 
     if not kill:
-        freie = w.get("max_offen", 10) - len(z.get("positionen", []))
-        for k in kand[:max(0, min(freie, w.get("max_neu_je_zyklus", 5)))]:
-            eroeffne(z, w, k)
+        if live:
+            grenzen = live_perp.einsatz_und_grenzen(w)
+            offen_live = [p for p in z.get("positionen", [])
+                          if p.get("modus") == "live"]
+            plaetze = max(0, grenzen["max_offen"] - len(offen_live))
+            gebunden = sum(float(p.get("einsatz_usd") or 0)
+                           for p in offen_live)
+            for k in kand[:max(0, min(plaetze, w.get("max_neu_je_zyklus", 5)))]:
+                if gebunden + grenzen["einsatz"] > grenzen["max_gesamt"]:
+                    print("  Deckel erreicht: %.2f + %.2f > %.2f USD Einsatz"
+                          % (gebunden, grenzen["einsatz"],
+                             grenzen["max_gesamt"]))
+                    break
+                if live_perp.kaufe(sys.modules[__name__], w, z, k):
+                    gebunden += grenzen["einsatz"]
+            print("  Live-Buch: %d von %d Plaetzen, %.2f von %.2f USD Einsatz"
+                  % (len(z.get("positionen", [])), grenzen["max_offen"],
+                     gebunden, grenzen["max_gesamt"]))
+        else:
+            freie = w.get("max_offen", 10) - len(z.get("positionen", []))
+            for k in kand[:max(0, min(freie, w.get("max_neu_je_zyklus", 5)))]:
+                eroeffne(z, w, k)
 
     gebunden = sum(p.get("nominal", 0) for p in z.get("positionen", []))
     print("\nBestand: %d Positionen, %.2f von %g USD Einsatz, "

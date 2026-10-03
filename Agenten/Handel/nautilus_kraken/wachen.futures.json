@@ -42,5 +42,7 @@
   "journal_zweitziel": "Q:\\Handel_Journal\\nautilus_kraken_futures",
   "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "true seit 21.09.2026 (Auftrag Max: 'kraken spuren handel_erlaubt=true'). Wirkung: die Spur gilt als handelserlaubt - handeln kann sie trotzdem nicht, ihr Code hat KEINEN Orderpfad (kein markt_kauf/order_aufgeben; sie ist eine NautilusTrader-Papierspur). Ein Live-Pfad muesste erst gebaut werden; bis dahin bleibt sie Papier, egal welcher Schalter.",
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026: Nautilus-Arme auf Papier, 0 geschlossene Runden, keine belastbare Statistik. Live erst nach >=8 Runden und Freigabekette."
+  "_handel_erlaubt_vermerk": "false auf Auftrag Max 27.09.2026: Nautilus-Arme auf Papier, 0 geschlossene Runden, keine belastbare Statistik. Live erst nach >=8 Runden und Freigabekette.",
+  "_gebuehr_quelle": "GEMESSEN 25.09.2026 an der Kraken-Futures-Rechnung: 0,04-0,05 %/Seite (Round-Trip 0,0029 USD auf 4,55 USD). Derselbe Satz steht dort schon als `gebuehr_pct` 0.05 - die Auswertung liest `gebuehr_taker`.",
+  "gebuehr_taker": 0.0005
 }

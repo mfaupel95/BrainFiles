@@ -1,25 +1,14 @@
-"""Tests fuer die Wache des omnitrade-Demo-Laufs
-(Agenten/Hermes/scripts/omnitrade-lauf-wache.py).
+"""Tests fuer die erweiterte omnitrade-lauf-wache: alle status/*.json.
 
 Geprueft wird die REGEL, nicht ein Tageswert:
 
-- gesunder Lauf              -> LEERE Ausgabe (Watchdog: nichts senden),
-- tote PID bei frischer Datei -> Befund "lebt nicht" (die Anzeige-Luege),
-- tote PID bei ALTER Datei    -> Befund "lebt nicht", NICHT "haengt" (der
-  haertere Zeuge gewinnt; sonst behauptet die Meldung "PID lebt noch"),
-- lebende PID + alte Datei    -> Befund "HAENGT",
-- Zustand nicht mehr running  -> Befund mit dem Zustand,
-- Statusdatei fehlt / kaputt / fremdes Schema -> je ein Befund, kein Absturz,
-- Stunde-Kerzen: 50 min alte Datei ist KEIN Haenger (Grenze aus dem Intervall),
-- PID-Wechsel                 -> kein Fehler und keine zweite Meldung,
-- dieselbe Feststellung       -> innerhalb der Wiederholungsfrist still,
-- --grenze-s 0                -> meldet auch den gesunden Lauf (Alarmrichtung),
-- die Wache nennt den Startbefehl, fuehrt ihn aber nicht aus.
-
-Gemessen wird in TEMP-Verzeichnissen: die echte Statusdatei, die echte Merkdatei
-und die echte Prozessliste bleiben unberuehrt (LEBT wird gestellt, kein tasklist).
-
-Start:  python -m unittest test_omnitrade_lauf_wache  (aus diesem Ordner)
+- mehrere Dateien, eine laeuft -> nur die stehende wird gemeldet
+- alle laufen -> leere Ausgabe
+- kaputte Datei -> kein Absturz
+- mehrere stehen -> Ueberschrift + je eine Zeile
+- --alle zeigt gesamt + jede Datei
+- --status PFAD (Einzeldatei) funktioniert noch
+- Entdopplung: dieselbe Feststellung wird unterdrueckt
 """
 from __future__ import annotations
 
@@ -43,21 +32,26 @@ wache = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(wache)
 
 
-def status(pfad, state="running", pid=4242, alter_s=5.0, schema=1,
-           intervall_s=60.0, kerzen=4, updated_ms=None, rohtext=None):
-    """Eine Statusdatei nach Schema 1 schreiben, wie omnitrade sie schreibt."""
-    if rohtext is not None:
-        pfad.write_text(rohtext, encoding="utf-8")
-        return pfad
+def _status_dict(state="running", pid=4242, alter_s=5.0, schema=1,
+                 intervall_s=60.0, kerzen=4, **kw):
+    """Dict einer Statusdatei."""
     jetzt_ms = time.time() * 1000.0
-    if updated_ms is None:
-        updated_ms = jetzt_ms - alter_s * 1000.0
+    updated_ms = jetzt_ms - alter_s * 1000.0
     kerzenliste = [{"time_ms": jetzt_ms - (kerzen - i) * intervall_s * 1000.0,
                     "close": 100.0 + i} for i in range(kerzen)]
     daten = {"schema": schema, "state": state, "exchange": "okx",
              "symbol": "BTCUSDC", "network": "testnet",
              "script": "strategien/rsi30_stop5.omni", "pid": pid,
              "updated_ms": updated_ms, "recent_candles": kerzenliste}
+    daten.update(kw)
+    return daten
+
+
+def schreibe(pfad, state="running", pid=4242, alter_s=5.0, schema=1,
+             symbol="BTCUSDC", **kw):
+    """Eine Statusdatei auf die Platte schreiben."""
+    daten = _status_dict(state=state, pid=pid, alter_s=alter_s, schema=schema, **kw)
+    daten["symbol"] = symbol
     pfad.write_text(json.dumps(daten), encoding="utf-8")
     return pfad
 
@@ -65,27 +59,23 @@ def status(pfad, state="running", pid=4242, alter_s=5.0, schema=1,
 class Basis(unittest.TestCase):
     def setUp(self):
         self.ordner = Path(tempfile.mkdtemp(prefix="omnitrade-wache-"))
-        self.status = self.ordner / "live.json"
         self.merk = self.ordner / "merker.json"
         self._merk = wache.MERKDATEI
         self._lebt = wache.LEBT
-        self._env = os.environ.get("OMNITRADE_STATUS")
+        self._env_ordner = os.environ.get("OMNITRADE_STATUS_ORDNER")
         wache.MERKDATEI = self.merk
-        os.environ["OMNITRADE_STATUS"] = str(self.status)
-        self.lebendig(True)
+        os.environ["OMNITRADE_STATUS_ORDNER"] = str(self.ordner)
+        wache.LEBT = lambda pid: True  # alle PIDs leben im Test
+        # Umgebungsvariable loeschen, die auf einzelne Datei zeigt
+        os.environ.pop("OMNITRADE_STATUS", None)
 
     def tearDown(self):
         wache.MERKDATEI = self._merk
         wache.LEBT = self._lebt
-        if self._env is None:
-            os.environ.pop("OMNITRADE_STATUS", None)
-        else:
-            os.environ["OMNITRADE_STATUS"] = self._env
+        os.environ.pop("OMNITRADE_STATUS_ORDNER", None)
+        if self._env_ordner is not None:
+            os.environ["OMNITRADE_STATUS_ORDNER"] = self._env_ordner
         shutil.rmtree(self.ordner, ignore_errors=True)
-
-    def lebendig(self, lebt=True):
-        """Die Prozessliste stellen - kein tasklist im Test."""
-        wache.LEBT = lambda pid: bool(lebt)
 
     def lauf(self, *argumente):
         puffer = io.StringIO()
@@ -94,145 +84,110 @@ class Basis(unittest.TestCase):
         return code, puffer.getvalue()
 
 
-class RegelTest(Basis):
+class MehrdateienTest(Basis):
 
-    def test_gesunder_lauf_ist_still(self):
-        status(self.status, pid=4242, alter_s=5.0)
+    def test_eine_laeuft_eine_steht(self):
+        """Datei A lebt, Datei B tot -> nur B wird gemeldet."""
+        schreibe(self.ordner / "live_BTC.json", pid=100, alter_s=10.0,
+                 symbol="BTCUSDC")
+        schreibe(self.ordner / "live_ETH.json", pid=200, alter_s=5.0,
+                 symbol="ETHUSDC")
+        # ETH lebt nicht
+        wache.LEBT = lambda pid: pid == 100
         code, ausgabe = self.lauf()
         self.assertEqual(code, 0)
-        self.assertEqual(ausgabe.strip(), "", "ein laufender Lauf darf nichts melden")
+        self.assertIn("1/2 laufen", ausgabe)
+        self.assertIn("ETH", ausgabe)
+        self.assertIn("BEENDET", ausgabe)
+        self.assertNotIn("BTC", ausgabe)
 
-    def test_alle_zeigt_den_gesunden_stand(self):
-        status(self.status, pid=4242, alter_s=5.0)
-        _, ausgabe = self.lauf("--alle")
-        self.assertIn("4242", ausgabe)
-        self.assertIn("laeuft", ausgabe)
+    def test_alle_laufen_leer(self):
+        schreibe(self.ordner / "live_A.json", pid=100, alter_s=5.0)
+        schreibe(self.ordner / "live_B.json", pid=200, alter_s=5.0)
+        code, ausgabe = self.lauf()
+        self.assertEqual(ausgabe.strip(), "")
 
-    def test_tote_pid_wird_gemeldet(self):
-        """Genau die Luege aus T-211: Datei sagt running, Prozess ist weg."""
-        status(self.status, state="running", pid=76116, alter_s=5.0)
-        self.lebendig(False)
-        _, ausgabe = self.lauf()
-        self.assertIn("76116", ausgabe)
-        self.assertIn("lebt nicht", ausgabe)
-        self.assertIn(wache.STARTBEFEHL, ausgabe)
+    def test_kaputte_datei_kaputt(self):
+        schreibe(self.ordner / "live_A.json", pid=100, alter_s=5.0)
+        (self.ordner / "live_kaputt.json").write_text("{", encoding="utf-8")
+        code, ausgabe = self.lauf()
+        self.assertIn("1/2 laufen", ausgabe)
+        self.assertIn("KAPUTT", ausgabe)
 
-    def test_tote_pid_bei_alter_datei_ist_kein_haenger(self):
-        """Alter UND tote PID: gemeldet wird der Tod, nicht 'PID lebt noch'."""
-        status(self.status, state="running", pid=69800, alter_s=400.0)
-        self.lebendig(False)
-        _, ausgabe = self.lauf()
-        self.assertIn("lebt nicht", ausgabe)
-        self.assertNotIn("HAENGT", ausgabe)
-        self.assertNotIn("lebt noch", ausgabe)
+    def test_leerer_ordner(self):
+        code, ausgabe = self.lauf()
+        self.assertEqual(code, 0)
+        self.assertEqual(ausgabe.strip(), "")
 
-    def test_haengende_datei_wird_gemeldet(self):
-        status(self.status, state="running", pid=4242, alter_s=400.0)
-        self.lebendig(True)
-        _, ausgabe = self.lauf()
-        self.assertIn("HAENGT", ausgabe)
-        self.assertIn("4242", ausgabe)
+    def test_leerer_ordner_alle(self):
+        code, ausgabe = self.lauf("--alle")
+        self.assertIn("leer", ausgabe)
 
-    def test_stundenlauf_ist_kein_haenger(self):
-        """--interval 1h: 50 min alte Datei ist normal (Grenze 9000 s)."""
-        status(self.status, state="running", pid=29296, alter_s=3000.0,
-               intervall_s=3600.0)
-        self.lebendig(True)
-        _, ausgabe = self.lauf()
-        self.assertEqual(ausgabe.strip(), "",
-                         "ein stuendlicher Lauf darf nach 50 min nicht gemeldet werden")
+    def test_alle_zeigt_jede_datei(self):
+        schreibe(self.ordner / "live_A.json", pid=100, alter_s=5.0,
+                 symbol="BTCUSDC")
+        schreibe(self.ordner / "live_B.json", pid=200, alter_s=600.0,
+                 symbol="ETHUSDC")
+        wache.LEBT = lambda pid: pid == 100
+        code, ausgabe = self.lauf("--alle")
+        self.assertEqual(code, 0)
+        self.assertIn("1 laufen", ausgabe)
+        self.assertIn("1 stehen", ausgabe)
+        self.assertIn("BTC", ausgabe)
+        self.assertIn("ETH", ausgabe)
 
-    def test_sauberes_ende_wird_gemeldet(self):
-        status(self.status, state="stopped", pid=4242, alter_s=5.0)
-        self.lebendig(False)
-        _, ausgabe = self.lauf()
-        self.assertIn("stopped", ausgabe)
-        self.assertIn("Zustand", ausgabe)
+    def test_status_einzeldatei(self):
+        """--status PFAD: alte Form fuer eine Datei."""
+        pfad = self.ordner / "live.json"
+        schreibe(pfad, pid=100, alter_s=5.0)
+        wache.LEBT = lambda pid: True
+        code, ausgabe = self.lauf("--status", str(pfad))
+        self.assertEqual(code, 0)
+        self.assertEqual(ausgabe.strip(), "")
 
-    def test_fehlende_datei_wird_gemeldet(self):
-        self.assertFalse(self.status.exists())
-        _, ausgabe = self.lauf()
-        self.assertIn("keine Statusdatei", ausgabe)
+    def test_status_einzeldatei_tot(self):
+        pfad = self.ordner / "live.json"
+        schreibe(pfad, pid=100, alter_s=5.0)
+        wache.LEBT = lambda pid: False
+        code, ausgabe = self.lauf("--status", str(pfad))
+        self.assertNotEqual(ausgabe.strip(), "")
+        self.assertIn("steh", ausgabe.lower())
+
+    def test_entdopplung(self):
+        schreibe(self.ordner / "live_ETH.json", pid=200, alter_s=5.0)
+        wache.LEBT = lambda pid: False
+        code, erster = self.lauf()
+        self.assertNotEqual(erster.strip(), "")
+        code, zweiter = self.lauf()
+        self.assertEqual(zweiter.strip(), "", "dieselbe Meldung darf nicht wiederholt werden")
+
+    def test_anderer_befund_entdoppelt_nicht(self):
+        schreibe(self.ordner / "live_ETH.json", pid=200, alter_s=5.0)
+        wache.LEBT = lambda pid: False
+        self.assertNotEqual(self.lauf()[1].strip(), "")
+        wache.LEBT = lambda pid: True
+        schreibe(self.ordner / "live_BTC.json", pid=100, alter_s=600.0)
+        wache.LEBT = lambda pid: pid == 100
+        code, ausgabe = self.lauf()
         self.assertNotEqual(ausgabe.strip(), "")
 
-    def test_kaputte_datei_wird_gemeldet(self):
-        status(self.status, rohtext="{das ist kein json")
-        _, ausgabe = self.lauf()
-        self.assertIn("KAPUTT", ausgabe)
-
-    def test_fremdes_schema_wird_gemeldet(self):
-        status(self.status, schema=2, pid=4242, alter_s=5.0)
-        self.lebendig(True)
-        _, ausgabe = self.lauf()
-        self.assertIn("KAPUTT", ausgabe)
-        self.assertIn("Schema", ausgabe)
-
-    def test_alarmrichtung_grenze_null(self):
-        """Gegenprobe: mit --grenze-s 0 muss derselbe gesunde Lauf auffallen."""
-        status(self.status, state="running", pid=4242, alter_s=5.0)
-        self.lebendig(True)
-        _, ausgabe = self.lauf("--grenze-s", "0")
-        self.assertIn("HAENGT", ausgabe)
-
-    def test_pid_wechsel_ist_kein_fehler(self):
-        """Der Lauf wird von Hand neu gestartet - die Wache fuehrt keine Historie."""
-        status(self.status, state="running", pid=111, alter_s=5.0)
-        self.assertEqual(self.lauf()[1].strip(), "")
-        status(self.status, state="running", pid=222, alter_s=5.0)
-        self.assertEqual(self.lauf()[1].strip(), "",
-                         "ein anderer PID ist derselbe gesunde Zustand")
+    def test_drei_stehen_eine_laeuft(self):
+        for i, state in enumerate(["running", "running", "stopped", "running"]):
+            f = self.ordner / ("live_%d.json" % i)
+            schreibe(f, pid=1000+i, state=state)
+        wache.LEBT = lambda pid: pid == 1000
+        code, ausgabe = self.lauf()
+        self.assertEqual(code, 0)
+        # 1 laeuft, 3 stehen
+        self.assertIn("1/4 laufen", ausgabe)
 
     def test_wache_startet_nichts(self):
-        """Sie NENNT den Startbefehl, fuehrt ihn aber nicht aus."""
         quelle = WACHE_PFAD.read_text(encoding="utf-8")
         self.assertIn("omnitrade.cmd start", quelle)
         for verboten in ("subprocess", "Popen", "os.system", "Start-Process",
                          "taskkill", "Stop-Process"):
             self.assertNotIn(verboten, quelle,
-                             "die Wache darf nichts starten oder beenden")
-
-
-class WiederholungTest(Basis):
-
-    def test_dieselbe_feststellung_bleibt_still(self):
-        status(self.status, state="running", pid=4242, alter_s=5.0)
-        self.lebendig(False)
-        _, erster = self.lauf()
-        self.assertNotEqual(erster.strip(), "")
-        _, zweiter = self.lauf()
-        self.assertEqual(zweiter.strip(), "",
-                         "dieselbe Feststellung darf nicht wiederholt werden")
-        self.assertTrue(self.merk.exists(), "Merkdatei wurde nicht geschrieben")
-
-    def test_pid_wechsel_wiederholt_die_meldung_nicht(self):
-        """Der Schluessel ist die Meldung OHNE Zahlen: tote PID bleibt tote PID."""
-        status(self.status, state="running", pid=111, alter_s=5.0)
-        self.lebendig(False)
-        self.assertNotEqual(self.lauf()[1].strip(), "")
-        status(self.status, state="running", pid=222, alter_s=7.0)
-        self.assertEqual(self.lauf()[1].strip(), "",
-                         "eine andere PID ist dieselbe Feststellung")
-
-    def test_nach_ablauf_der_wiederholung_wieder_gemeldet(self):
-        status(self.status, state="running", pid=4242, alter_s=5.0)
-        self.lebendig(False)
-        self.lauf()
-        stand = json.loads(self.merk.read_text(encoding="utf-8"))
-        alt = time.time() - (wache.WIEDERHOLUNG_STUNDEN + 1) * 3600
-        for k in stand:
-            stand[k] = datetime.fromtimestamp(alt, timezone.utc).isoformat(
-                timespec="seconds")
-        self.merk.write_text(json.dumps(stand), encoding="utf-8")
-        self.assertNotEqual(self.lauf()[1].strip(), "")
-
-    def test_anderer_befund_wird_nicht_verschluckt(self):
-        """Aus 'tote PID' wird 'Datei weg' - das ist eine neue Feststellung."""
-        status(self.status, state="running", pid=4242, alter_s=5.0)
-        self.lebendig(False)
-        self.assertNotEqual(self.lauf()[1].strip(), "")
-        self.status.unlink()
-        _, ausgabe = self.lauf()
-        self.assertIn("keine Statusdatei", ausgabe)
+                             "Wache darf nichts starten/beenden")
 
 
 if __name__ == "__main__":

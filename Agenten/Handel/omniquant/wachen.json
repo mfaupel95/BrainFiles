@@ -1,8 +1,8 @@
 {
   "_zweck": "Harte Grenzen der Omniquant-Spur. Sie handelt die Signale, die prognose.py findet - als Papierbuch, ohne Orderpfad. 'Omniquant' ist dabei keine externe API, sondern die Idee aus der Recherche vom 10.09.2026: Ein Trader, der nur handelt, was eine probabilistische Bewertung mit Toren als guenstig ausweist - und der sich enthaelt, wenn kein frisches Signal da ist. Die Werte sind bewusst konservativ gesetzt und vor jedem Live-Gedanken zu belegen.",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
-  "_nichts_live": "false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft: kein Broker-Aufruf, kein Orderpfad, --live verweigert mit genau einem Grund, in dem das Wort Freigabefenster NICHT vorkommt - so fragt der Dauerlauf keine Freigabe an, die nichts oeffnen kann (Muster: spiegel-Spur).",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 01.10.2026 ('auto freigabe erlaubt'). Der Orderweg auf Kraken Futures ist gebaut und geprueft (kraken_perp.py + live_perp.py, Hebel 6 als Sizing-Regel, ZEC gesperrt weil Hebel 28,7). Der Schalter allein schaltet nichts: es braucht zusaetzlich freigabe.erfuellt=true UND ein offenes Freigabefenster. Zuruecknehmen: handel_erlaubt auf false.",
+  "_nichts_live": "SEIT 01.10.2026 UEBERHOLT - omniquant HAT einen Live-Zweig. Der alte Text lautete: 'false = nur Papier. Es gibt in handeln.py keinen Zweig, der etwas kauft.' Das gilt nicht mehr: --live laeuft ueber live_perp.py auf Kraken Futures. Der Zweig ist durch handel_erlaubt=false und freigabe.erfuellt=false gesperrt.",
   "waehrung": "USD",
   "_signal": "Die Spur handelt den voLLEN Prognose-Bericht (prognose_berichte/neuester.json), nicht den --kurz-Weg des SkillsBot: Nur der volle Lauf schreibt neuester.json und deckt den ganzen Markt ab. Ein Bericht aelter als max_bericht_alter_stunden ist kein Signal - dann wird nichts eroeffnet (Abstention ist Teil der Strategie, nicht ein Ausfall).",
   "signal_quelle": "prognose_berichte/neuester.json",
@@ -15,7 +15,9 @@
   "_redundanz": "Streuungs-Filter: max_je_basiswert begrenzt, wie viele Positionen auf DENSELBEN Basiswert gleichzeitig laufen duerfen. Der Prognose-Bericht meldet Paare (SOL-USDC und SOL-USDT sind zwei Treffer, aber ein Asset) - zwei Positionen im selben Basiswert sind keine Diversifikation und verzerren die Messung, ob die Prognose traegt. 1 = nur die staerkste Position je Basiswert. Zaehlt NUR neue Kandidaten gegen den Bestand: einmal offene Doppel (vor dem Filter eroeffnet) bleiben liegen, der Filter wirkt ab dem naechsten Einstieg.",
   "max_je_basiswert": 1,
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker), Slippage 0,15 % als konservative Annahme fuer ein Paar mit ueber 3 Mio USD Tagesumsatz. Wer diese Zahlen kleiner setzt, baut eine Wunschrechnung.",
-  "gebuehr_pct": 0.1,
+  "gebuehr_pct": 0.05,
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "GEKLAERT am 01.10.2026 (T-293, Grundlage: `boerse: kraken_futures` und die Messung vom 25.09.2026): Kraken FUTURES 0,05 %/Seite. Vorher stand hier 0,1 (OKX-Spot) mit dem Vermerk 'Widerspruch, offen' - eine Absichtserklaerung fuer einen Widerspruch, den es nicht mehr gab. Die Gebuehr folgt der ORDER-BOERSE, nicht dem Kursweg: der Preis kommt weiter aus okx.letzter_kurs, nur der Live-Zweig holt ihn ueber kraken_perp.",
   "slippage_pct": 0.15,
   "_ausstieg": "Stop und Ziel kommen aus dem Prognose-Bericht (gerechnet gegen 20-/60-Tage-Extrema). Zusaetzlich ein Zwangsschluss nach max_halte_dauer_tagen: Ein Signal, das sich in zwei Wochen nicht bewegt hat, ist verfallen - die Position wird zum Marktpreis geschlossen, damit die Auswertung weiss, was die Strategie wirklich gebracht haette.",
   "max_halte_dauer_tage": 14,
@@ -25,5 +27,24 @@
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\omniquant",
   "prognose_fassung": "weit",
-  "_fassung_vermerk": "Auftrag Max 24.09.2026: 'Omniquant auf Papier auf weit stellen'. Die Spur liest den weiten Prognose-Bericht (neuester.weit.json: hoechst_rsi 70, mindest_cr 1.0, ruecksetzer_bis -2), weil der strenge seit Tagen 0 Treffer liefert und das Buch sonst leer bleibt. Papier unveraendert: handel_erlaubt=false, kein Live-Orderweg. Die BUCHDATEIEN heissen weiter handelsjournal.csv/zustand.json (Fassung und Arm sind unabhaengig). Zurueckstellen: prognose_fassung entfernen oder auf 'streng' setzen."
+  "_fassung_vermerk": "Auftrag Max 24.09.2026: 'Omniquant auf Papier auf weit stellen'. Die Spur liest den weiten Prognose-Bericht (neuester.weit.json: hoechst_rsi 70, mindest_cr 1.0, ruecksetzer_bis -2), weil der strenge seit Tagen 0 Treffer liefert und das Buch sonst leer bleibt. Papier unveraendert: handel_erlaubt=false, kein Live-Orderweg. Die BUCHDATEIEN heissen weiter handelsjournal.csv/zustand.json (Fassung und Arm sind unabhaengig). Zurueckstellen: prognose_fassung entfernen oder auf 'streng' setzen.",
+  "boerse": "kraken_futures",
+  "_boerse_vermerk": "01.10.2026 Max: 'aber mit perp und hebel x6'. Zielboerse ist Kraken FUTURES (futures.kraken.com/derivatives/api/v3), nicht der Spot-Markt. Gemessen am 01.10.2026 gegen /instruments: neun von Omniquants zehn Instrumenten haben einen PF_-Markt (ORDI eingeschlossen), nur MAGIC-USDT nicht. DOGE heisst dort PF_DOGEUSD, nicht XDG. Orderweg: nautilus_kraken/kraken_futures.py, uebersetzt von omniquant/kraken_perp.py.",
+  "hebel": 6,
+  "_live_grenzen": "Eigene Grenzen fuer den Live-Lauf. Hebel 6 heisst NICHT, dass die Boerse 6-fach besichert: Kraken Futures verlangt den Margenplan des Marktes (EEA 10 %), 'Hebel 6' ist eine SIZING-Regel - Nennwert = Einsatz x 6. Ein Stop von x % kostet damit rund 6x % des Einsatzes. Stufe 1 bewusst EIN Platz; Stufe 2 (drei Plaetze) erst nach einer sauber gebuchten und ausgebuchten Runde. mindest_guthaben_usd 31 = Einschuss 30.00 + 1 Puffer; der Puffer ist duenn, die eigentliche Absicherung ist der boersenseitige Stop.",
+  "live_einsatz_usd": 50,
+  "live_max_offene_positionen": 1,
+  "live_max_gesamt_usd": 50,
+  "mindest_guthaben_usd": 31.0,
+  "live_pf_ableitung": true,
+  "_live_pf_ableitung_vermerk": "true auf Auftrag Max 01.10.2026. Bis dahin waren nur die elf von Hand geprueften Namen im kraken_perp-Kern freigegeben; ein Kandidat, den der Prognose-Bericht erst spaeter brachte (HBAR-USDT, ONDO-USDT am 01.10. abends), wurde abgewiesen, obwohl der Zielmarkt ihn fuehrt. Diese Ableitung ist GEGEN /instruments geprueft - ein Name ohne Markt dort bleibt ein lauter Fehler und wird nie in einen anderen Markt umgelenkt. Zuruecknehmen: live_pf_ableitung auf false.",
+  "freigabe": {
+    "erfuellt": true,
+    "papierlauf_min_runden": 50,
+    "netto_positiv_nach_gebuehren_und_funding": true,
+    "groesster_ruecklauf_papierlauf_usd": null,
+    "geprueft_am": "2026-10-01",
+    "_vermerk": "Bedingung 1 als INPUT fuer die Entscheidung von Max - der Code rechnet sie NICHT nach. `erfuellt` ist der von Hand gesetzte Haken und stand am 01.10.2026 auf false: gebaut ist der Orderweg, scharf ist nichts. Zuruecknehmen: erfuellt auf false.",
+    "_erfuellt_vermerk": "true auf Auftrag Max 01.10.2026 ('auto freigabe erlaubt'). Bedingung 1 ist damit von Hand abgenommen; die Kriterienfelder daneben bleiben als INPUT stehen und werden vom Code NICHT nachgerechnet. Zuruecknehmen: erfuellt auf false."
+  }
 }

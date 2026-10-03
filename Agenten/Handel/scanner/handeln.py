@@ -159,16 +159,25 @@ def journal(*felder):
     # bekommt die Zeile ohne die neue Spalte - sonst wanderten alle Werte um
     # einen Platz nach links (siehe pos_kennung.zeile).
     kopf = None if neu else pos_kennung.kopf(JOURNAL)
+    # felder enthaelt: zeit, modus, aktion, inst, preis, usd, stop, ziel,
+    # grund, mfe_pct, mae_pct, haltetage, pos_id
+    # wir fuegen herkunft als vorletzte Spalte ein (vor pos_id)
+    felder_mit_herkunft = list(felder)
+    if len(felder_mit_herkunft) >= 13:
+        felder_mit_herkunft.insert(-1, HERKUNFT)
+    else:
+        felder_mit_herkunft.append(HERKUNFT)
     with JOURNAL.open("a", newline="", encoding="utf-8") as f:
         s = csv.writer(f)
         if neu:
             s.writerow(["zeit", "modus", "aktion", "inst", "preis", "usd",
                         "stop", "ziel", "grund", "mfe_pct", "mae_pct",
                         "haltetage",
+                        "herkunft",
                         # Die Kennung der Position (T-095) - letzte Spalte,
                         # damit die alten Zeilen lesbar bleiben.
                         "pos_id"])
-        s.writerow(pos_kennung.zeile(felder, kopf))
+        s.writerow(pos_kennung.zeile(felder_mit_herkunft, kopf))
 
 
 # --- Vorschlaege ---------------------------------------------------------------
@@ -198,6 +207,10 @@ SPALTEN_ABLEHNUNG = ["zeit", "art", "grund", "anzahl", "inst", "score",
 # Vorschau. Ein Schalter an EINER Stelle statt eines if je Aufrufer.
 SCHREIBEN = True
 
+# Herkunft der Buchung: "zyklus" (Standard, 15-Minuten-Dauerlauf) oder
+# "trigger" (WebSocket-Trigger bei Kerzenschluss). Wird vom Trigger gesetzt.
+HERKUNFT = "zyklus"
+
 
 def journal_ablehnung(**felder):
     """Eine Zeile ins Ablehnungsprotokoll."""
@@ -212,15 +225,28 @@ def journal_ablehnung(**felder):
         s.writerow({k: felder.get(k, "") for k in SPALTEN_ABLEHNUNG})
 
 
-def protokolliere(grund, anzahl=1):
+def protokolliere(grund, anzahl=1, **zahlen):
     """Die Lage EINES Zyklus als Zahl, ohne Kennung.
 
     Der Ort fuer die Massenfaelle: seit dem 14.09.2026 sieht der Scan den
     ganzen Spotmarkt, mehrere hundert Kandidaten je Lauf. Die einzeln mit
     Kennung zu protokollieren waere ein Protokoll, das niemand liest.
+
+    `zahlen` nimmt Messwerte auf (`betrag=`, `noetig=`). Sie sind KEINE Spalten
+    des Protokolls - sie wandern in den Grundtext, damit sie im CSV lesbar
+    bleiben. Grund: ein Aufrufer, der sie als Keyword uebergibt, bekam
+    `TypeError: protokolliere() got an unexpected keyword argument 'betrag'`
+    und RISS DEN GANZEN ZYKLUS ab (17x am 02.10.2026 zwischen 02:23 und 06:26,
+    gemessen im Ereignisprotokoll). Die Regel: eine Hilfsfunktion nimmt die
+    Felder an, die ihre Aufrufer brauchen - oder der Aufrufer darf sie nicht
+    uebergeben. Eine halbe Erweiterung (nur `anzahl`) ist die schlimmere
+    Variante, weil sie erst zur Laufzeit auffaellt.
     """
-    if anzahl:
-        journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=grund,
+    text = grund
+    for k, v in zahlen.items():
+        text += " %s=%s" % (k, v)
+    if anzahl or zahlen:
+        journal_ablehnung(zeit=_jetzt(), art="zyklus", grund=text,
                           anzahl=anzahl)
 
 
@@ -358,6 +384,38 @@ def nominal_fuer(stop_pct, w):
     return round(min(deckel, risiko / (stop_pct / 100.0)), 2)
 
 
+def marktkurs(inst):
+    """Jetzt-Kurs fuer den Einstieg - die EINE Stelle, die das Netz ruft.
+
+    Anlass (03.10.2026): vorschlaege() nahm den Einstieg aus dem
+    Vortagesbericht. Der Bericht 2026-09-17 trug AVAX-USDT mit 7,531,
+    der Markt am 19.09. lag bei 8,53-8,78 - der Einstieg 12 % unter
+    Markt, das Ziel beim Kauf schon erfuellt, 82 Scheinrunden an einem
+    Tag (+1866 %). Siehe vorschlaege().
+
+    Zwei Regeln, beide aus dem Befund:
+
+    1. KEIN Rueckfall auf einen aelteren Preis. Ein alter Preis als
+       Einstieg IST der Fehler; ihn wieder zuzulassen haette ihn nur
+       unsichtbar gemacht.
+    2. Ein Fehler ist eine Ablehnung, keine Ausnahme. Ein Markt, der
+       nicht antwortet, darf nicht den ganzen Zyklus abbrechen - die
+       uebrigen Kandidaten bleiben kaufbar.
+
+    Die Funktion ist der Testnaht: die Tests biegen sie um, statt das
+    Netz zu fassen (so test_ablehnungen es mit jedem anderen Modulpfad
+    auch tut).
+    """
+    try:
+        k = okx.letzter_kurs(inst)
+    except Exception as e:  # noqa: BLE001
+        print("  Kurs %s nicht abrufbar: %s" % (inst, e), file=sys.stderr)
+        return None
+    if not k or k <= 0:
+        return None
+    return k
+
+
 def vorschlaege(bericht, w):
     """Die Kandidaten, die alle Bewertungstore passiert haben.
 
@@ -380,7 +438,20 @@ def vorschlaege(bericht, w):
         if grund:
             lage[grund] = lage.get(grund, 0) + 1
             continue
-        einstieg = z["preis"]
+        # Einstieg ist der JETZT-KURS, nicht der Bewertungspreis des
+        # Vortagesberichts. Gemessen 03.10.2026: der Bericht 2026-09-17
+        # (Score 64,7) trug AVAX-USDT mit 7,531, der Markt am 19.09. lag
+        # bei 8,53-8,78. Der Einstieg lag 12 % UNTER dem Markt, das Ziel
+        # (Einstieg + 2x Stop) war damit schon beim Kauf erfuellt, und der
+        # naechste Zyklus verkaufte mit 15 % Gewinn - 82mal am 19.09.,
+        # Summe +1866 %. Das war keine Signalstaerke, sondern ein Rechen-
+        # fehler: 97 von 105 Ziel-Ausstiegen kamen nach 0,25 h.
+        # Kein Rueckfall auf den Berichtspreis: ein veralteter Preis als
+        # Einstieg IST der Fehler. Ohne Kurs gibt es keine Position.
+        einstieg = marktkurs(z["inst"])
+        if einstieg is None:
+            lage["Kurs nicht abrufbar"] = lage.get("Kurs nicht abrufbar", 0) + 1
+            continue
         sp = stop_prozent(z, w)
         stop = round(einstieg * (1 - sp / 100.0), 6)
         ziel = round(einstieg + 2.0 * (einstieg - stop), 6)   # Chance/Risiko 2:1
@@ -771,8 +842,34 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
     eingesetzt = sum(p["usd"] for p in z["positionen"])
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
+    # Freies Kontoguthaben je Basiswaehrung - EINmal je Zyklus, nicht je
+    # Kandidat. Ohne dieses Tor pruefte nur der Deckel: der am 02.10.2026 bei
+    # 442 von 444 USDC gebundenen Konto (4 offene Positionen, Rest in Stops)
+    # und 1,76 USDC frei sieht jeden Kandidaten als kaufbar, bis die Boerse
+    # jeden einzelnen mit "insufficient balance" zurueckweist. Die Waehrung
+    # kommt aus dem Instrument, nicht aus einer festen Konstante - sonst
+    # entsteht genau der Fehler, den diese Zeile verhindert.
+    frei = {}
+    # Schwelle aus der Wachen, 0 = aus (alte Regel: nur der Deckel begrenzt).
+    # VOR dem if, weil die Pruefung weiter unten auch im Papierlauf durchlaeuft:
+    # ein NameError, den nur der Papierpfad sieht, waere dort unauffindbar.
+    minq = float(w.get("min_guthaben_quote") or 0.0)
+    if live:
+        for inst in {v["inst"] for v in vs}:
+            q = okx.quote(inst)
+            if q and q not in frei:
+                try:
+                    frei[q] = okx.guthaben(q)
+                except Exception as e:  # noqa: BLE001
+                    print("  Guthaben %s nicht lesbar: %s" % (q, e),
+                          file=sys.stderr)
+                    frei[q] = 0.0
+        for q in sorted(frei):
+            print("  Guthaben %s: %.2f frei%s" % (
+                q, frei[q], "" if minq <= 0 else " (Tor ab %.2f)" % minq))
     bewertet = 0
     deckel_gemeldet = False
+    gemeldet_guthaben = set()
     for i, v in enumerate(vs):
         if len(z["positionen"]) >= w["max_offene_positionen"]:
             # KEIN Tor, sondern Kapazitaet: der Rest der Liste war kaufbar
@@ -792,6 +889,19 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 protokolliere("Gesamtdeckel erreicht")
                 deckel_gemeldet = True
             continue
+        if live and minq > 0:
+            q = okx.quote(v["inst"])
+            if frei.get(q, 0.0) < max(usd, minq):
+                # Kapazitaet wie der Deckel, aber je WAEHRUNG: bei gemischten
+                # Paaren ist das freie USDC kein Guthaben fuer einen EUR-Kauf.
+                # Ein Ereignis je Waehrung und Zyklus, damit ein volles Konto
+                # nicht 18 Zeilen in die Ablehnungen schreibt.
+                if q not in gemeldet_guthaben:
+                    protokolliere("zu wenig %s frei" % q,
+                                  betrag=round(frei.get(q, 0.0), 2),
+                                  noetig=usd)
+                    gemeldet_guthaben.add(q)
+                continue
         if v["inst"] in gehalten:
             protokolliere_kandidat(v["inst"], "schon im Buch",
                                    score=v.get("score"))
@@ -1138,9 +1248,12 @@ def lauf(modus):
         # dauerlauf.nur_fenster_fehlt liest genau diese Zeile, um zu
         # entscheiden, ob sich eine Freigabe-Anfrage ueberhaupt lohnt.
         # Ohne sie wurde nie gefragt - und ein /ja blieb folgenlos.
+        # IMMER drucken, auch ohne Sperre - dann mit "nichts". Vorher stand
+        # die Zeile nur unter `if g:`, und genau dann, wenn eine Spur start-
+        # klar war, fehlte sie: dauerlauf.nur_fenster_fehlt las None und
+        # fragte nie nach einem Fenster (T-313).
         g = sperren_live(w, s)
-        if g:
-            print("Live waere gesperrt durch: " + "; ".join(g))
+        print("Live waere gesperrt durch: " + ("; ".join(g) or "nichts"))
         # Bedingung 4 gilt AUCH hier: die Vorschau ist der haeufigste Aufruf
         # (der Dauerlauf fragt jede Spur damit ab), und wenn NUR sie laeuft,
         # weil der echte Zyklus in die Zeitgrenze laeuft, muss Q: trotzdem

@@ -76,6 +76,26 @@ dort angemeldet.
    Worktree-Sammlung) ist keine Repo und bekommt keinen Bot. Die Zaehlung als
    dauerhafte Notiz ablegen (z. B. Wissen/Repo-Bots.md), mit dem Hinweis, dass
    die Platte die Wahrheit bleibt und die Notiz altert.
+   **Und die Frage „welche Repos sind noch nicht fertig?" ist eine Abfrage des
+   MANIFESTS, kein Blick ins Fenster.** `Agenten/Werkzeuge/repos-zentrale/
+   repos-zentrale.json` je Zeile auszaehlen: `wurzel` (leer = REPOS, sonst
+   `handel`/`werkstatt`/`projekte`), `gruppe` (`doku`/`kein_start`/leer), `start`,
+   `warnungen`. **Drei Zahlen nennen** - Zeilen gesamt, mit Startbefehl, ohne -
+   und die „ohne" aufteilen: der groesste Teil ist Ablage/Doku und in Ordnung,
+   als Luecke zaehlt nur, was startbar sein SOLL und es nicht ist (venv oder
+   Pflichtpfad fehlt, ein Werkzeug mit eigenem Einstieg und ohne belegten
+   Aufruf). Die rohe Zahl liest sich als „85 Sachen sind kaputt", von denen rund
+   77 keine sind. **Zweite Liste:** Ordnernamen der Wurzel gegen die
+   Manifest-Ordner diffen - was fehlt, ist ein FEHLT-Kandidat, und oft ist es
+   keiner (Worktree-Sammlung ohne `.git`, Editor-Ordner). **Dritte Liste:**
+   `warnungen`, die Einzige, die auf einen toten Knopf zeigt („Bot-Profil wurde
+   entfernt" = der Bot-Knopf fuehrt ins Leere). Der Rest der offenen Punkte steht
+   in `MaxHirn/Archiv/TASKS.md`, nicht im Manifest.
+   **Aufraeumkandidaten erst auf EIGENEN Inhalt pruefen, nie auf das Alter:**
+   `git worktree list` und je Zweig
+   `git rev-list --left-right --count master...<zweig>` - `N 0` heisst, der Zweig
+   traegt nichts, was master nicht hat (wegwerfbar), `0 N` traegt eigene Commits
+   und wird gemergt, nicht geloescht.
    **Rest-Ordner eines Anlegevorgangs zaehlen mit — und nach dem Alter beurteilen.**
    `hermes profile create` laesst bei einem Abbruch oder einer Umbenennung einen
    Punkt-Ordner `.<name>.staging-<pid>` in `profiles/` stehen; er traegt eine

@@ -42,19 +42,33 @@ WACHEN = {"mindest_score": 60, "max_volatilitaet_pa": 1.20,
 
 
 class Basis(unittest.TestCase):
+    """Gemeinsame Naht: vorschlaege() fragt seit 03.10.2026 den MARKT-
+    kurs (nicht den Berichtspreis) - das ist der einzige Netzabruf im
+    Bewertungspfad. Die Tore selbst bleiben abruf-frei: ein Kandidat,
+    der am Score scheitert, darf keinen Kurs holen. Deshalb wird hier
+    marktkurs umgebogen und mitgezaehlt."""
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.abl_vorher = h.ABLEHNUNGEN
         self.journal_vorher = h.JOURNAL
         self.schreiben_vorher = h.SCHREIBEN
+        self.marktkurs_vorher = h.marktkurs
+        self.kursabrufe = []
+        self.marktpreis = 100.0
+        h.marktkurs = self._marktkurs
         h.ABLEHNUNGEN = Path(self.tmp.name) / "ablehnungen.csv"
         h.JOURNAL = Path(self.tmp.name) / "handelsjournal.csv"
         h.SCHREIBEN = True
+
+    def _marktkurs(self, inst):
+        self.kursabrufe.append(inst)
+        return self.marktpreis
 
     def tearDown(self):
         h.ABLEHNUNGEN = self.abl_vorher
         h.JOURNAL = self.journal_vorher
         h.SCHREIBEN = self.schreiben_vorher
+        h.marktkurs = self.marktkurs_vorher
         self.tmp.cleanup()
 
     def zeilen(self):
@@ -169,24 +183,35 @@ class KandidatTest(Basis):
 
 
 class BilligeToreTest(Basis):
-    """Regel: ein billiges Tor kostet keinen Netzabruf."""
+    """Regel: ein billiges Tor kostet keinen Netzabruf.
 
-    def test_vorschlaege_ruft_das_netz_nicht(self):
-        gerufen = []
-        okx_vorher = h.okx
+    Seit 03.10.2026 fragt vorschlaege() fuer jeden KAUFBAREN Kandidaten
+    den Marktpreis (das war der Fehler vom 19.09.: Einstieg aus dem
+    Vortagesbericht, Ziel damit schon erfuellt). Ein Kandidat, der an
+    Score, Volatilitaet oder Chance/Risiko scheitert, darf weiterhin
+    keinen einzigen Abruf kosten - die Tore muessen billig bleiben,
+    sonst waere der ganze Markt (500+ Paare) teuer."""
 
-        class Wache:
-            def __getattr__(self, name):
-                gerufen.append(name)
-                raise AssertionError("Netzabruf im Bewertungspfad: %s" % name)
+    def test_gescheiterte_tore_rufen_keinen_kurs(self):
+        h.vorschlaege({"werte": [_markt("A-USDT", score=10.0),
+                                 _markt("B-USDT", score=70.0, vola=9.0),
+                                 _markt("C-USDT", score=70.0, verh=0.5)]},
+                      WACHEN)
+        self.assertEqual(self.kursabrufe, [],
+                         "ein gescheitertes Tor darf keinen Kurs holen")
 
-        h.okx = Wache()
-        try:
-            h.vorschlaege({"werte": [_markt("A-USDT", score=10.0),
-                                     _markt("B-USDT")]}, WACHEN)
-        finally:
-            h.okx = okx_vorher
-        self.assertEqual(gerufen, [])
+    def test_nur_kaufbare_kandidaten_fragen_den_markt(self):
+        vs = h.vorschlaege({"werte": [_markt("A-USDT", score=10.0),
+                                      _markt("B-USDT")]}, WACHEN)
+        self.assertEqual(self.kursabrufe, ["B-USDT"])
+        self.assertEqual(len(vs), 1)
+        self.assertAlmostEqual(vs[0]["einstieg"], self.marktpreis, places=6)
+
+    def test_kein_kurs_ablehnt_statt_zu_raten(self):
+        h.marktkurs = lambda inst: None
+        vs = h.vorschlaege({"werte": [_markt("B-USDT")]}, WACHEN)
+        self.assertEqual(vs, [])
+        self.assertEqual(self.summe("Kurs nicht abrufbar"), 1)
 
 
 class VorschauTest(Basis):

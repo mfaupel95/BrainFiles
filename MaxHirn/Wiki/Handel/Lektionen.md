@@ -828,6 +828,46 @@ Das ist **keine hoehere Rendite, sondern ein halbierter Rueckgang** (Calmar
 .venv/Scripts/python.exe quantpedia_probe.py vergleich
 ```
 
+## TSMOM (#0118) auf eigenen Kerzen: ein Kandidat, aber BTC-only (01.10.2026)
+
+**Regel (T-210).** Der zweite Quantpedia-Kandidat, Time Series Momentum
+(#0118, 12-Monats-Rendite je Instrument, Positionsgroesse invers zur
+Volatilitaet, monatliche Neuverteilung), ist jetzt auf den EIGENEN 1D-Kerzen
+nachgerechnet. Zwei Massstaebe entscheiden, ob eine fremde Strategie Haus-Tauglich
+ist: die Gebuehr (monatliche Neuverteilung = 2 Seiten pro Monat = ~24 Seiten/Jahr)
+und der Rueckgang gegen Buy & Hold.
+
+**Messung (tsmom_probe.py, BTC/ETH/SOL 1D 2021-01..2026-09, 56 Monate):**
+
+| Instrument | Mittel/Monat | Treffer | t-Stat | Sharpe p.a. | brutto p.a. | max. Rueckgang | 0,1 %/Seite |
+|---|---|---|---|---|---|---|---|
+| BTC | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
+| ETH | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
+| SOL | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
+| Buy & Hold BTC | — | — | — | — | +20,2 % | -77 % | — |
+
+**Lesart.** TSMOM auf BTC ist der dritte Kandidat, der unsere Gebuehren
+ueberlebt: netto 0,1 %/Seite noch +9,5 % p.a., und der Rueckgang ist mit -14 %
+gegen -77 % Buy & Hold drastisch kleiner (Calmar 0,68 gegen 0,26 — besser als
+Donchian(30) mit 0,41). Aber das Signal lebt NUR von BTC: ETH und SOL sind
+netto 0,1 %/Seite praktisch Null (t +0,58/+0,74, 25 %/29 % Treffer). Eine
+TSMOM-Papierspur waere also eine BTC-Strategie mit Monats-Rhythmus — kein
+Portfolio. Die QuantConnect-Gegenprobe im Paper (Sharpe 0,3 / CAGR 7,29 %) wird
+von BTC (0,78 / 12,3 %) uebertroffen, von ETH/SOL nicht erreicht — konsistent.
+
+**QQQ/BTC-Rotation (T-210, zweiter Teil):** nicht messbar. Die Blog-Studie
+('Tactical Asset Rotation Between NASDAQ-100 and Bitcoin') braucht QQQ-Tageskerzen
+2019..2026; im feed liegen nur 92 Kerzen ab 2026-06-30 (QQQBUSDT_1D.json). Ohne
+QQQ-Historie bleibt die Rotation eine Datenluecke, kein Messergebnis.
+
+**Nachrechnen** (aus `Agenten/Handel`, Daten aus `daten/historie/feed/`):
+
+```
+.venv/Scripts/python.exe tsmom_probe.py tsmom
+.venv/Scripts/python.exe tsmom_probe.py qqq
+.venv/Scripts/python.exe tsmom_probe.py vergleich
+```
+
 ## Ein Buch, das der Boerse widerspricht, ist keine Position (30.09.2026)
 
 **Regel.** Was die Boerse weiss, weiss das Buch nicht von selbst. Jede Spur, die
@@ -916,4 +956,61 @@ Drei Fallen beim Einbau:
 .venv/Scripts/python.exe journal_pos_id_nachziehen.py            # Vorschau
 .venv/Scripts/python.exe journal_pos_id_nachziehen.py --anwenden # nachziehen
 python Agenten/Hermes/cache/scratch/gegenprobe_alt_neu.py        # alt vs. neu
+
 ```
+
+## Eine stillgelegte Spur kurz wieder anzuschalten wickelt ihre alten Positionen ab
+
+**Befund (01.10.2026, Spiegel-Arme):** Die drei Arme standen seit dem 21.09.
+still, ihre Buecher trugen je 60 offene Papierpositionen (10 Tage alt). Auftrag
+war, sie "zumindest auf Papier" wieder laufen zu lassen - also wurden die
+Eintraege in `dauerlauf.SPUREN` aktiviert UND vorher `letzter_lauf` in allen
+`zustand*.json` auf jetzt gesetzt (ohne das haette der erste Zyklus alles als
+`herzschlag_alt` flachgestellt). Sechs Minuten spaeter kam "spiegel komplett raus".
+
+**Was in diesen sechs Minuten passierte:** Ein Zyklus hat die 10 Tage alten
+Positionen an ihren Stops und Zielen abgewickelt (66 neue Journalzeilen) und
+NEUE eroeffnet. Danach standen 6/3/3 statt 60/60/60 im Buch - und diese neuen
+Positionen konnte niemand mehr schliessen, weil die Arme wieder aus waren.
+
+**Regel:** Das ALTER der Positionen gehoert zur Entscheidung. Wer eine
+stillgelegte Spur wieder anschaltet, muss mit einem Schlag rechnen: alte
+Positionen werden gegen die inzwischen gelaufenen Kurse abgewickelt, nicht gegen
+den Stand vom Stilllegungstag. Ist die Spur nur zum Nachsehen gedacht, gehoert
+sie gar nicht in `SPUREN`.
+
+**Rueckweg-Werkzeug:** `spiegel/buecher_aufloesen.py` traegt offene Karteileichen
+aus (Trockenlauf Standard, `--anwenden` schreibt): je Position eine Journalzeile
+`schliessen / buchbereinigung` mit dem EINSTIEGSPREIS - neutral, damit die
+Bereinigung die Bilanz nicht veraendert.
+
+## Brutto und netto gehoeren nicht in dieselbe Summe (01.10.2026)
+
+**Befund (T-192):** Die Live-Spuren rechnen ihre Gebuehr im Journal ein
+(scanner/kraken im Betrag der Ausstiegszeile, xperp/swap ueber
+`gebuehr_pct`/`funding_pct`), die Papierbuecher nicht. Beide standen im Bericht
+unter derselben Zeile, und bei den Papierbuechern stand "Kosten 0.00 %" - eine
+Zahl, die nicht gemessen, sondern nur nicht vorhanden war. Dazu fuehren orb und
+orbk ein PUNKTE-Buch: `gv_usd` ist die Kursstrecke mal `punkt_wert_usd` (1:1),
+also der Gewinn JE EINHEIT. Ohne Einsatz gibt es keinen Prozentwert - die Zeile
+zeigte trotzdem "(+0.00 %)".
+
+**Regel 1 - eine Auswertung sagt, was ihre Zahl bedeutet.**
+`kennzahlen()` liefert `brutto`/`gebuehr`/`kosten_netto`/`netto`/`netto_pct`, die
+Zeile "Brutto/Netto" nennt den Satz und die Nettosumme. `GEBUEHR_SCHON_DRIN`
+(xperp/swap/scanner/kraken) verhindert das ZWEIMALIGE Abziehen - zweimal abziehen
+ist so falsch wie gar nicht. Steht keine Gebuehr in der wachen.json, heisst es
+"BRUTTO und UNBEKANNT" und nicht "0.00 %". Gemessen aendert das Urteile:
+mosaic +10.82 -> +9.62 USD, moondev_marktlage -5.02 -> -6.02,
+moondev_signalwelle +38.85 -> +37.92, iv_wand +2.30 -> +2.00.
+
+**Regel 2 - fuer ein Buch ohne Einsatz gehoert ein groessenunabhaengiges Mass
+daneben, kein erfundenes Nominal.** `runden_orbk` rechnet
+`gv / |einstieg - stop|` (Ergebnis in R). Das ergab die erste ehrliche Zahl
+dieser beiden Spuren: orbk +2.18 R, orb -0.46 R - und die Einheit heisst jetzt
+"Punkte" statt "USD". Ein Einsatz aus `risiko_pro_trade / stop_abstand` (SPEC.md)
+waere bei der Range-Hoehe als Stop ein Nominal von einigen tausend USD: eine
+Design-Entscheidung, keine Reparatur.
+
+**Nebenbei gefunden:** `orb` fehlte in der Auswertung ganz (nur `orbk` stand in
+`SPUREN`); 18 von 41 Spuren haben noch keine Gebuehr (T-264).

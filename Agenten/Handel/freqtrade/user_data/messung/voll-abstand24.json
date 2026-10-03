@@ -1,0 +1,14 @@
+{
+  "_zweck": "Messaufsatz T-197: die volle Bremse MIT 24-h-Mindestabstand - die Fassung, die als Regel taugen wuerde, wenn die Messung sie traegt.",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 2.0,
+      "sperrfrist_stop_stunden": 96.0,
+      "mindestabstand_einstieg_stunden": 24.0,
+      "fenster_stunden": 12.0,
+      "verlust_max_pct": 5.0,
+      "gewinn_ziel_pct": 5.0
+    }
+  }
+}

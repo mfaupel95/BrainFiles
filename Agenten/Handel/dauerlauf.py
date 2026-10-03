@@ -205,6 +205,14 @@ SPUREN = {
     # Herzschlag nach mehr als 180 Minuten als alt und der erste Zyklus stellt
     # alle offenen Papierpositionen flach (spiegel.py, flach_stellen
     # "herzschlag_alt"). Ohne diesen Schritt waeren die Vergleichsbuecher weg.
+    # SPIEGEL KOMPLETT AUS (Max, 01.10.2026: "spiegel spuren komplett raus
+    # nehmen. eh absolut nicht profitabel"). Die drei Buecher bleiben als
+    # Vergleichsgrundlage auf der Platte (60 Positionen je Arm), wachsen aber
+    # nicht weiter. WIEDER ANSCHALTEN: die Zeilen hier und in NUR_BASIS
+    # einkommentieren UND vorher in spiegel/zustand.json, zustand.knapp.json
+    # und zustand.weit.json "letzter_lauf" auf jetzt setzen - sonst haelt der
+    # erste Zyklus den Herzschlag fuer alt und stellt alle offenen
+    # Papierpositionen flach (spiegel.py, flach_stellen "herzschlag_alt").
     # "spiegel": {"ordner": "spiegel", "waehrung": "USD",
     #             "skript": "spiegel.py"},
     # KOPIER (Papierbuch auf der Pump.fun-Rangliste, angelegt 14.09.2026):
@@ -212,22 +220,21 @@ SPUREN = {
     # Positions-Spiegel, trades/batch als Signal-Bestätigung). Kein Live-Zweig
     # wie spiegel - lesen.py kennt keine Schreibpfade. Reine
     # Standardbibliothek (urllib), laeuft unter dem scanner-venv.
-    # KOPIE AUS seit 24.09.2026 (Max: "kopie Familie stilllegen").
-    # kopier und kopier1zu1 laufen nicht mehr; ihre Buecher bleiben
-    # als Vergleichsgrundlage stehen, wachsen aber nicht weiter.
-    # WIEDER ANSCHALTEN: die Zeilen hier auskommentieren UND vorher
+    # KOPIER AKTIV (seit 30.09.2026, Parallelsitzung hat die Eintraege aktiviert).
+    # Beide laufen als Papierspuren; der Kommentar ist auf den aktuellen Stand
+    # gezogen. AUSSCHALTEN: die Zeilen hier auskommentieren UND vorher
     # in kopier/zustand.json ("letzter_lauf") auf jetzt setzen, sonst
     # stellt der erste Zyklus offene Papierpositionen flach.
-    # "kopier":  {"ordner": "kopier", "waehrung": "USD",
-    #             "skript": "kopier.py"},
+    "kopier":  {"ordner": "kopier", "waehrung": "USD",
+                "skript": "kopier.py"},
     # KOPIER1ZU1 (Papierbuch, angelegt 15.09.2026): zweite Copy-Trade-Spur,
     # die auf TRADE-Ereignissen arbeitet (trades/batch) statt auf einem
     # Portfolio-Diff. Jeder Kauf des Vorbilds oeffnet eine Papier-Position,
     # jeder Verkauf schliesst sie sofort. Kein Live-Zweig - teilt lesen.py
     # mit kopier/ und liest verfolgte.json aus kopier/ (kein zweiter
     # Rangliste-Abruf).
-    # "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
-    #                "skript": "handeln.py"},
+    "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     # ORB AUF OKX-PERPETUALS (angeschlossen 21.09.2026, Auftrag Max: "orb
@@ -303,6 +310,7 @@ SPUREN = {
     # und rufen spiegel.py - alle Buchdateien tragen dann das Suffix .knapp
     # bzw. .weit, das Hauptbuch bleibt unveraendert (Vergleichsgrundlage).
     # SPIEGEL-SCHATTENBUECHER AUS seit 21.09.2026, siehe oben bei "spiegel".
+    # SPIEGEL-SCHATTENBUECHER AUS, siehe oben bei "spiegel" (01.10.2026).
     # "spiegel_knapp": {"ordner": "spiegel", "waehrung": "USD",
     #                   "skript": "spiegel_knapp.py"},
     # "spiegel_weit": {"ordner": "spiegel", "waehrung": "USD",
@@ -347,11 +355,67 @@ SPUREN = {
     # Orderweg (Robinhood Chain hat in diesem Haus keinen).
     "robinhood_radar": {"ordner": "robinhood_radar", "waehrung": "USD",
                         "skript": "handeln.py"},
+    # OMNITRADE (30.09.2026, Auftrag Max "nur noch omnitrade auf kraken handel
+    # erlaubt"): spiegelt die POSITION der Rust-Laeufe in Werkstatt/omnitrade
+    # (Statusdatei, gelesen ueber omnitrade_bridge.py) in ein eigenes Buch. Der
+    # Rust-Lauf entscheidet (sein .omni-Skript), diese Spur fuehrt aus - im
+    # Live-Zweig ueber den bewaehrten Kraken-Spot-Weg (boerse kraken,
+    # kraken_quote USDC), weil omnitrade selbst nur binance und okx kennt
+    # (live.rs:33 weist jedes andere --exchange ab). Weg B der Entscheidung
+    # vom 30.09.2026: kein Kraken-Adapter in Rust (zweiter Schluessel, zweiter
+    # Nonce-Zaehler neben dem Haus-Pool). Papier: handel_erlaubt=false.
+    # Einstieg nur, wenn die Statusdatei frisch ist UND die PID lebt (eine
+    # Leiche mit state=running lag am 30.09. zwei Stunden im Statusordner).
+    "omnitrade": {"ordner": "omnitrade", "waehrung": "USD",
+                  "skript": "handeln.py"},
+    # OMNITRADE_FUTURES (30.09.2026, Auftrag Max "hebel x7 fuer den anfang"):
+    # dasselbe Signal wie omnitrade, aber die Ausfuehrung laeuft auf Kraken
+    # FUTURES mit Hebel 7 (wachen-Feld hebel) und ganzen Kontrakten
+    # (PF_SOLUSD, 1 Kontrakt = 1 SOL). Eigene Spur, weil ein Buch EINE
+    # Waehrung fuehrt - Futures rechnet USD, der Spot-Weg USDC. Papier:
+    # handel_erlaubt=false, Hebel geht als leverage-Parameter je Order raus.
+    "omnitrade_futures": {"ordner": "omnitrade_futures", "waehrung": "USD",
+                          "skript": "handeln.py"},
     # SIGNALWELLE (20.09.2026): ehrliches Gegenstueck zu VIP-Signal-Kanaelen
     # (Anlass Screenshot NVDAUSDT Perpetual 10x) - 1h-Momentum, kein Hebel,
     # kein Live-Zweig. Siehe moondev_signalwelle/README.md.
     "moondev_signalwelle": {"ordner": "moondev_signalwelle", "waehrung": "USD",
                             "skript": "handeln.py"},
+    # PROPHET-SIGNAL (02.10.2026, CryptoPredictions-Papier):
+    # Saisonale Zerlegung + Trend-Prognose nach Facebook Prophet.
+    # Das Paper zeigt Prophet als best performer (MAE 83 vs ARIMA 1009).
+    # Diese Spur nutzt die Idee ohne externe Prophet-Installation
+    # (NumPy-Kompatibilitaet): EMA30 Trend + Saisonalitaets-Erkennung.
+    # Papier, kein Live-Zweig.
+    "prophet_signal": {"ordner": "prophet_signal", "waehrung": "USD",
+                        "skript": "handeln.py"},
+    # KLASSIK-SPUREN (30.09.2026, Auftrag Max "neue Strategien und Spuren"): die
+    # sechs Pine-Vorlagen (MaxHirn/Wiki/Handel/*.pine) plus zwei neue Regeln
+    # und die LuxAlgo-S/R-Vorlage (klassik_sr_breaks, 02.10.2026) als
+    # Papierspuren auf BTC/ETH/SOL-Perps, 4H. Eine Rechnung fuer
+    # alle: Handel/klassik_regeln.py, Buch spur_buch.py. Kein Live-Zweig.
+    "klassik_sma": {"ordner": "klassik_sma", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_ema": {"ordner": "klassik_ema", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_macd": {"ordner": "klassik_macd", "waehrung": "USD",
+                     "skript": "handeln.py"},
+    "klassik_bollinger": {"ordner": "klassik_bollinger", "waehrung": "USD",
+                          "skript": "handeln.py"},
+    "klassik_donchian": {"ordner": "klassik_donchian", "waehrung": "USD",
+                         "skript": "handeln.py"},
+    "klassik_rsi": {"ordner": "klassik_rsi", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    "klassik_rsi2": {"ordner": "klassik_rsi2", "waehrung": "USD",
+                     "skript": "handeln.py"},
+    "klassik_donchian_trend": {"ordner": "klassik_donchian_trend",
+                               "waehrung": "USD", "skript": "handeln.py"},
+    "klassik_sr_breaks": {"ordner": "klassik_sr_breaks", "waehrung": "USD",
+                          "skript": "handeln.py"},
+    "klassik_pmax": {"ordner": "klassik_pmax", "waehrung": "USD",
+                     "skript": "handeln.py"},
+    "klassik_supertrend": {"ordner": "klassik_supertrend", "waehrung": "USD",
+                           "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
@@ -423,9 +487,21 @@ TAKT_MAX_MINUTEN = 15
 # kraken, moondev_marktlage (live_kraken.py), nautilus_kraken und
 # nautilus_kraken_futures. mosaic bleibt drin, handelt aber nur noch auf OKX
 # (boersen in mosaic/wachen.json auf ["okx"] gekuerzt).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap",
+# KRAKEN AM 01.10.2026 WIEDER AUFGENOMMEN (Auftrag Max: "kraken scharf").
+# Der Auftrag vom 30.09.2026 ("nur noch omnitrade auf kraken") ist damit
+# aufgehoben. OFFEN: Bedingung 5 sperrt die Spur weiter (rollierender EV
+# -0,028 EUR auf 6 Handelsrunden) - solange nennt ihre --vorschau ZWEI
+# Gruende und nur_fenster_fehlt() verlangt genau einen, es geht also kein
+# Fenster auf. Die Aufnahme hier wirkt, sobald Bedingung 5 faellt.
+# OMNQUANT AM 01.10.2026 AUFGENOMMEN (Auftrag Max: "auto freigabe erlaubt").
+# Der Orderweg auf Kraken Futures ist gebaut (omniquant/kraken_perp.py +
+# live_perp.py, Hebel 6 als Sizing-Regel). Bindende Grenze ist die freie
+# Margin im flex-Konto (mindest_guthaben_usd 31).
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
-                 "trendwende_btc", "liq_wand")
+                 "trendwende_btc", "liq_wand", "omniquant",
+                 "moondev_marktlage", "nautilus_kraken",
+                 "omnitrade_futures")
 AUTO_FREIGABE_STUNDEN = 12
 
 

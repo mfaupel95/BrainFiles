@@ -1,0 +1,12 @@
+{
+  "_zweck": "Messaufsatz T-197: NUR der Mindestabstand zwischen zwei Einstiegen desselben Paares (6 h). DIESE ZAHL IST NICHT AUS DEM HAUS - sie ist der Suchpunkt der Messung, nicht eine gesetzte Regel.",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 0,
+      "sperrfrist_stop_stunden": 0,
+      "mindestabstand_einstieg_stunden": 6.0,
+      "fenster_stunden": 0
+    }
+  }
+}

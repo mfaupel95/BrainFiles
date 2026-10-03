@@ -76,11 +76,26 @@ eine nachgerechnete Zeile desselben Tages ersetzt, das nachgerechnete Ergebnis a
 `nachgerechnet_alt`.
 
 **Eine Wache darf heilen, ohne zu melden.** `breite-wache.py` rechnet fehlende
-Tage aus den schon geholten Kerzen nach (`messen(mit_verlauf=True)` +
-`fuellen(tage=5)`, kein zweiter Abruf) und meldet nur, wenn wirklich Tage fehlten
-oder Live-Weg und Nachrechnung um mehr als 0,5 Punkte auseinanderlaufen. Leere
-Ausgabe heisst „nichts zu sagen", nicht „nichts getan" — geschrieben wird auch
-dann.
+Tage nach und meldet nur, wenn wirklich Tage fehlten, eine Luecke bleibt oder
+Live-Weg und Nachrechnung um mehr als 0,5 Punkte auseinanderlaufen. Die
+Heiltiefe ist die AUSFALLLAENGE (`_heil_tage`: fehlende Kerzentage zwischen
+letzter Zeile und gemessener Kerze, mindestens 5, hoechstens `HEIL_MAX` 120,
+plus eine Randkerze) — passt die Luecke in den mitgemessenen Verlauf
+(`messen(mit_verlauf=True)`, kein zweiter Abruf), heilt er daraus, sonst holt
+`fuellen` die Kerzen selbst. Feste 5 Tage liessen einen dreiwochen-Ausfall als
+Loch stehen. Leere Ausgabe heisst nichts zu sagen, nicht nichts getan —
+geschrieben wird auch dann.
+
+**Luecken gehoeren genannt, nicht nur gezaehlt.** `breite.py --reihe` sagt
+ausdruecklich, ob zwischen aeltester und neuester Zeile Kalendertage fehlen
+(`fehlende_tage` / `luecken_text`, Bereiche statt Einzeltage); ohne Luecke sagt
+es das ebenfalls. Sonst faellt ein Loch nur dem auf, der die Datei liest.
+
+**Eine Absturz-Meldung wird begrenzt.** Fallen bei einem breiten Einbruch 23
+Paare auf einmal unter die EMA200, nennt die Wache nur die `NEU_UNTER_MAX` (5)
+NAECHSTEN an der EMA200 (ein Paar, das gerade eben darunter faellt, ist das
+Fruehwarnzeichen) und den Rest als Zahl. Gemessen: 27 Zeilen wurden so zu 10.
+Die Zahl in der Ueberschrift und der gemerkte Stand bleiben vollstaendig.
 
 **Die Reihe fuehrt EINE ZEILE JE KERZENTAG, nicht je Messung.** Eine Messung
 derselben Kerze ERSETZT ihre Zeile (letzte des Tages gewinnt); die Tageskerze
@@ -124,6 +139,17 @@ ist weiterhin ein Messpunkt.
 Beweis fuer eine Rotation — eine Rotation hat einen Verlierer. Erst wenn ein Teil
 des Markts unter seinem langfristigen Durchschnitt liegt, gibt es Nachzuegler, in
 die rotiert werden koennte.
+
+## Nicht die Breite: wer bewegt sich (Topmover)
+
+Die Breite zaehlt, WER ueber der EMA200 steht. Sie sieht nicht, dass die Kaeufer
+weggehen - an einem Tag mit 89,7 % Breite kann die Mehrheit der Paare ueber der
+Linie liegen und unter dem Medianvolumen handeln. Die zweite Frage - **was
+bewegt sich, und traegt das Volumen die Bewegung** - beantwortet
+`references/mover-und-lagen.md` mit dem Werkzeug
+`Agenten/Werkzeuge/topmover.py` (oeffentliche OKX-Kerzen, kein Schluessel,
+fuenf Lagen, ATR je Zeile). Merksatz dort: der **Traeger kommt vor dem Kurs**,
+und `1,0x Median` heisst "wie immer", nicht "Traeger da".
 
 ## Die Zahl lesen
 

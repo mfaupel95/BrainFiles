@@ -176,7 +176,43 @@ muss „Freigabefenster" heissen. Ein Guthaben-Grund daneben ist RICHTIG (die Or
 waere abgelehnt) und darf nicht wegoptimiert werden; der Bericht nennt ihn als
 das, was Max entscheiden muss.
 
-Merksatz: **eine Sperre, die niemand ausspricht, ist keine.**
+### Die Werkzeug-Schicht: „keine Sperrzeile" kann auch „keine Ausgabe" heissen
+
+Ein spurenuebergreifendes Werkzeug, das jede Spur als Kindprozess aufruft, kann
+an derselben Stelle scheitern wie der Kern — nur eine Ebene tiefer. Dort, wo der
+Kern die Zeile nicht druckt, liefert ein **falscher Interpreter** gar keine
+Ausgabe: der Aufruf bricht mit `ModuleNotFoundError` ab, und das Werkzeug meldet
+das als „keine Sperrzeile". Beides sieht gleich aus und hat verschiedene Ursachen.
+
+Gemessen: neun Spuren ohne Zeile, verteilt auf genau drei Ursachen —
+
+| Ursache | Befund | Ort des Fixes |
+|---|---|---|
+| `if g: print(...)` in der Spur | Zeile fehlt, OBWOHL die Spur sie im Code hat; `nur_fenster_fehlt` liest `None` | Spur: immer drucken, leere Liste als `nichts` |
+| `--vorschau`-Zweig kehrt vor der Sperrenabfrage zurueck | Zeile fehlt im Code | Spur: Zeile in den Vorschau-Zweig |
+| Kindprozess mit fest verdrahtetem Interpreter | Lauf stuerzt ab, es kam nie eine Zeile | **Werkzeug**: je Spur ihr eigener venv |
+
+Die dritte Ursache ist die teuerste, weil sie sich als „diese Spur ist blind"
+liest statt als Werkzeugfehler. Ein Werkzeug, das Spuren startet, waehlt den
+Interpreter aus derselben Quelle wie der Dauerlauf (Reihenfolge: die Spur
+selbst, dann eine Nachbarspur, dann der Haus-venv) — Spuren mit eigenem venv
+(Nautilus-Arme: `nautilus_trader` liegt nur dort) brechen sonst ab.
+
+**Die Messung kommt VOR dem Umbau.** Erst das Werkzeug ueber die ganze Flotte
+laufen lassen und die Ausgabe als Liste lesen: welche Spuren melden
+`keine Sperrzeile`, welche melden `nichts`, welche nennen genau einen Grund. Die
+Zeile „Keine Spur haengt allein am Fenster" ist die eigentliche Erkenntnis — sie
+sagt, dass die Auto-Freigabe NICHT der Hebel ist. Der Hebel sind dann die zwei
+Schalter: setzen die Spuren `handel_erlaubt` **und** `freigabe.erfuellt`, bleibt
+ueberall nur das Fenster uebrig, und die Auto-Freigabe macht den Rest. Wer
+stattdessen an der Auto-Freigabe selbst dreht, baut an der falschen Stelle.
+
+Gegenprobe ist nicht „Zeile da", sondern die **Wirkung**: nach dem Fix muss eine
+mit Haaken versorgte Spur „kein offenes Freigabefenster" als EINZIGEN Grund
+nennen — dann weiss man auch, dass der Dauerlauf dort anfragt.
+
+Merksatz: **eine Sperre, die niemand ausspricht, ist keine — und ein Werkzeug,
+das abstuerzt, sagt auch nichts.**
 
 ## 7. Eine Waehrung je BUCH — die Quote kommt aus der API, nicht aus dem Code
 
@@ -299,6 +335,157 @@ Testmuster, zwei Formen — beide gehoeren dazu:
 
 Merksatz: **eine richtige Zahl mit falscher Einheit ist eine falsche Zahl** — und
 wer die Einheit an zwei Stellen bestimmt, hat zwei Antworten.
+
+## 9. Bestand aufnehmen: FREI ist nicht der Kontostand
+
+Vor jeder Antwort auf „kann da gehandelt werden" / „ist dort Geld" wird der
+Bestand GEMESSEN, je Boerse in DREI Zahlen: **total / gebunden / frei.** Ein
+Kontostand allein beantwortet die Frage nicht — die Tore lesen das FREIE
+Guthaben, und das ist bei besicherten Konten ein Bruchteil.
+
+| Groesse | OKX | Kraken |
+|---|---|---|
+| alles | `/api/v5/account/balance` (signiert), `totalEq` | `BalanceEx`, Summe je Waehrung |
+| in Margin gebunden | `isoEq` (Konto) bzw. `isoEq` je Posten | `OpenPositions` (eigener Aufruf) |
+| frei | `availBal` je Waehrung in `details[]` | `balance − hold_trade` je Waehrung |
+
+- **`availBal ≈ 0` heisst GEBUNDEN, nicht „weg":** der Posten steht in einer
+  Position oder hinter einem boersenseitigen Stop. Auf demselben Konto liegen
+  Krypto-Bestaende mit `availBal` = voll und andere mit 0 — nur die ersten sind
+  einsetzbar.
+- **Eine Bequemlichkeitsfunktion fuer EINE Waehrung ist keine Auskunft.**
+  `okx.guthaben_usdt()` meldet 0.0, waehrend das Konto 542 USDC traegt — USDT ist
+  dort schlicht nicht die Waehrung. Wer daraus „kein Geld" schliesst, hat die
+  falsche Zeile gelesen; den Bestand immer ueber die Balance-Antwort holen.
+- **`BalanceEx` traegt NUR `balance` und `hold_trade`.** Es gibt dort kein Feld
+  `available`; ein Parser, der eines annimmt, druckt fuer JEDE Waehrung 0.0 und
+  die Ausgabe liest sich wie „alles gebunden". Frei = `balance − hold_trade`
+  (`hold_trade` = in Orders reserviert).
+- **Margin-Positionen sind ein ZWEITER Ort** (`OpenPositions`) und stehen NICHT
+  in der Guthabenliste. Eine Antwort, die nur das Guthaben liest, verliert sie —
+  und eine Position, die mit demselben Guthaben besichert ist, erklaert einen
+  Teil des Unterschieds zwischen total und frei.
+
+### Fallen beim Zaehlen der handelbaren Paare
+
+- **`okx.alle_paare()` liefert eine LISTE VON TUPLEN** `(instId, volumen)`, keine
+  Dicts — `.get()` auf einem Element bricht mit `'tuple' object has no attribute
+  'get'` ab. Das Instrument ist `p[0]`.
+- **Kraken-Paarnamen tragen das „Z" auf Fiat:** ETH/EUR ist `XETHZEUR` (nicht
+  `XETHEUR` → `EQuery:Unknown asset pair`), ebenso `XXBTZEUR`, `XXLMZEUR`. Die
+  Schreibweise kommt aus `AssetPairs` (`wsname`), nicht aus dem Muenzenamen.
+- **Ein tokenisiertes Produkt hat kein Krypto-Paar** (`XPEV.EQ`, `LAPTOP`,
+  `YOM` → `Unknown asset pair`). Das ist strukturell und kein Namensfehler;
+  solche Posten gehoeren als „nicht handelbar" in den Bericht, nicht in die
+  Paarsuche.
+- Die Zahl der gelisteten Paare ist eine LISTE, keine Aussage: 1.455 Paare auf
+  Kraken sind online, aber die Frage ist, welches davon die freie Waehrung des
+  Kontos bedient. Paare zaehlen nur als Beleg fuer „es gibt einen Markt".
+
+### Der schnelle Weg durch die Flotte
+
+- **Uebersicht:** `spuren_stand.py` — eine Tabelle ueber alle Spuren (erlaubt,
+  Herzschlag, Fenster, freier Orderweg, Alter des Buchs).
+- **Grund je Spur:** aus dem Spurordner `MAXHIRN_ROUTINE=1 <venv>/python
+  handeln.py --vorschau` unter `timeout 90`. Das ist die belastbare Quelle; die
+  Zeile „Live waere gesperrt durch:" nennt Boerse, Waehrung und Sollwert.
+- **`sperrgruende.py` ueber die ganze Flotte laeuft NICHT in einen Tool-Aufruf**
+  (41 Spuren, ueber 180 s). Nur benutzen, wenn Minuten zur Verfuegung stehen -
+  sonst die Einzelabfrage je Spur.
+
+### Form der Antwort
+
+Total je Boerse → davon gebunden → frei → der Schwellwert des Tores → **eine**
+Empfehlung. Der Engpass ist fast nie das fehlende Geld, sondern die Aufteilung:
+gebundene Stablecoins im Vergleich zu ungenutzten Krypto-Altbestaenden, die keine
+Spur anfasst. Diese Posten sind der Hebel, und ob sie verkauft werden sollen, ist
+eine Entscheidung von Max — nicht stillschweigend umschichten.
+
+## 10. Umschichten: was verkaufbar ist — und der Zeuge nach dem Verkauf
+
+Ein Auftrag „umschichten" heisst: ungenutzte Posten in die Waehrung bringen, die
+das Tor liest. Sechs Schritte, in dieser Reihenfolge:
+
+1. **Bestand messen** (Abschnitt 9), frei von gebunden trennen.
+2. **Posten ausschliessen, die eine Spur haelt.** Der Kontostand ist kein freies
+   Kapital: gegen die Buecher der Spuren halten — auch gegen Arme, die dasselbe
+   Konto mitbenutzen (auf Kraken hielten `kraken` und `mosaic` gleichzeitig
+   Posten desselben Kontos). Was eine Spur fuehrt, wird nicht verkauft.
+3. **Je Kandidat drei Fragen an `AssetPairs`:** gibt es ein Paar (nach `base`
+   filtern, `status=online`), ist die Menge >= `ordermin`, ist der Wert >=
+   `costmin` (Kraken 0,45).
+4. **`validate`-Lauf zuerst** (`markt_verkauf(paar, menge, echt=False)`): kostet
+   nichts und sagt vorher, ob die Boerse die Order annimmt.
+5. **Echt verkaufen.**
+6. **Gegenprobe:** `--vorschau` erneut — der Geldgrund muss aus der Sperrliste
+   fallen. Bleibt er stehen, war die Umschichtung zu klein.
+
+7. **Die Wirkung am KONTO nachmessen, nicht nur an der eigenen Vorschau.**
+   `--vorschau` zeigt den eigenen Sperrstand, nicht den Kontostand. Ob das Geld
+   noch da ist, sagen Abschnitt 9 (Bestand) und das Journal der Spur, die
+   zugriff - siehe "Wer zuerst liest, nimmt es".
+
+### Vier Gruende, warum ein Posten nicht verkaufbar ist
+
+1. **Unter dem Ordermin.** Eine Mengenschwelle, kein Rechteproblem — die
+   Fehlermeldung der Boerse liest sich aber wie eines: `PEPEEUR` verlangt
+   1.500.000 PEPE, im Konto lagen 409.009,94; `ONDOEUR` verlangt 15, es lagen
+   10,74331. Solche Posten bleiben liegen, bis mehr zusammenkommt; sie gehoeren
+   als „unter Ordermin" in den Bericht, nicht in einen zweiten Versuch.
+2. **Gestakte Form ohne eigenes Paar.** Der PUNKT im Namen ist das Kennzeichen
+   (`ADA.S`, `ATOM21.S`, `HYPE.B`); `XPEV.EQ` ist dieselbe Sorte. Kraken fuehrt
+   kein Paar mit `base=ADA.S` — `AssetPairs` liefert dafuer eine LEERE Liste.
+   Der Weg ist Unstaking, nicht eine Order. Eine leere Paarliste ist das
+   Merkmal, nicht ein Namensfehler.
+3. **Gebunden statt frei** (`availBal` bzw. `balance − hold_trade`, Abschnitt 9).
+
+4. **Compliance-Sperre des Kontos.** Das Instrument ist gelistet, das Paar
+   existiert, die Menge passt - und die Boerse lehnt trotzdem ab, weil die
+   Region des Kontos es ausschliesst (OKX `51155` bei den gestakten Formen
+   `BETH`/`OKSOL`, die dort nur ein USDT-Paar haben und auch das nicht handeln
+   duerfen). Erkennbar NUR am Orderweg: der Instrumentenabruf listet sie als
+   handelbar. Siehe `references/okx-fehlermeldungen.md`, Abschnitt 10.
+
+### Der Kontostand ist der Zeuge, nicht die Rueckgabe
+
+`kraken.markt_verkauf(paar, menge, echt=True)` gibt die ROHE Kraken-Antwort
+zurueck, nicht das `{result: {txid: [...]}}`-Dict, das `_roh_privat` liefert. Ein
+`r.get('txid')` darauf wirft `'str' object has no attribute 'get'` — und zwar
+NACH dem Fuellen: fuenf Verkaeufe waren durch, der Aufrufer meldete fuenf
+Fehlschlaege. Wer daraufhin erneut verkauft, verkauft zweimal.
+
+Regel: **nach einem Verkauf nie der Rueckgabe glauben.** `kontostaende()` und
+`ClosedOrders` sind die Zeugen; im Zweifel BEIDE lesen, bevor ein zweiter
+Versuch laeuft. Dieselbe Disziplin wie beim Orderweg: die Antwort ist eine
+Behauptung, der Kontostand ein Befund.
+
+### Wer zuerst liest, nimmt es
+
+Ein freigemachtes Guthaben ist keine Zuweisung. Es gibt kein Reservierungssystem:
+jede Spur liest den Kontostand in ihrem eigenen Zyklus, und **die erste, die ihn
+liest, nimmt ihn.** Gemessen: nach dem Freimachen von 144,70 USDC kaufte der
+live laufende `scanner` (Fenster offen) im selben Zyklus zwei Positionen fuer
+143,92 USDC; die Zielspur hatte danach 0,00 frei.
+
+Drei Regeln daraus:
+
+1. **Vor dem Umschichten wissen, WER gerade scharf ist und ein offenes Fenster
+   hat.** `spuren_stand.py` zeigt "Fenster" und "frei" je Spur; wer dort live mit
+   offenem Fenster steht, greift in der naechsten Viertelstunde zu. Wer Guthaben
+   fuer Spur A freimacht, waehrend Spur B scharf ist, bezahlt B.
+2. **Ein Guthaben-Tor ist die LETZTE Sperre vor dem Freigabefenster.** Faellt es
+   weg und bleibt genau EIN Grund ("Freigabefenster nicht offen"), oeffnet
+   `AUTO_FREIGABE` das Fenster selbst - das Auffuellen eines Kontos ist damit
+   mittelbar ein Scharfschalten. Guthaben und Erlaubnis sind zwei Schalter, aber
+   nur einer davon wird beim Umschichten umgelegt.
+3. **Umgekehrt schuetzt ein ZWEITER Grund.** Kommt nach dem Umschichten ein
+   weiterer Grund dazu (das Guthaben ist inzwischen anderswo gebunden), verlangt
+   `nur_fenster_fehlt` GENAU EINEN und oeffnet gar kein Fenster - die Zielspur
+   handelt dann nicht, obwohl sie scharf ist. Das ist kein Fehler, sondern die
+   Folge davon, dass das Geld nicht mehr bei ihr liegt.
+
+Merksatz: **der eigene Erfolg ist die Verkaufssumme, nicht die Wirkung.** Die
+Wirkung steht am Konto und im Journal der Spur, die zugriff.
 
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),

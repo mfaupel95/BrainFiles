@@ -28,6 +28,45 @@ Datum und Grund jeder Runde gegen die eigene Sitzung halten. kraken sah nach
 12.09. und 4 vom Verifikationslauf 14.09. (16:44) - das Buch war fast leer.
 Ein Buch aus eigenen Testrunden ist kein Maß, sondern ein Arbeitsunfall.
 
+## Schritt 2b - Hat die Auswahlregel Edge - oder hat nur die Spur einen Orderpfad?
+
+Zwei Fehler treffen zusammen und ergeben eine Spur, die in jeder Rangliste vorn
+steht.
+
+**1. Eine Auswahlregel wird gegen null gemessen statt gegen die Basislinie.**
+Ein Mittelwert oder eine Trefferquote gegen null sagt nichts darueber, ob die
+REGEL etwas hinzufuegt - sie kann schlicht das Marktniveau abbilden. Edge ist die
+Differenz zur Auswahl OHNE Regel, gemessen an denselben Instrumenten, im selben
+Zeitraum, mit derselben Gebuehr. Vorgehen: je Berichtstag alle bewerteten
+Maerkte nehmen, die Kursentwicklung nach 1/3/7 Tagen je Markt holen, dann die
+Auswahl (z. B. Score >= Schwelle) gegen die Gesamtheit stellen, die Differenz in
+Prozentpunkten nennen und ein t-Test ueber die beiden Gruppen rechnen. Ein
+|t| < 2 heisst: die Regel ist gegen die Basislinie nicht unterscheidbar - auch
+wenn sie gegen null positiv aussieht. Das ist zugleich die Antwort auf „die Spur
+X als Filter an die anderen Spuren haengen?": kein Edge heisst Filter weglassen,
+nicht Filter verstaerken, und ein Filter, der nur das Marktniveau abbildet,
+schneidet Runden weg, ohne bessere zu finden. Zusaetzlich je Score-Band
+ausweisen - steigt der Score und faellt das Ergebnis, ist es kein Signal.
+
+**2. „Die beste Spur" verwechselt Vorhersagequalitaet mit Handvormacht.** Die
+Spur, die vorn steht, ist haeufig die EINZIGE mit echtem Orderpfad - sie hat
+Runden, die die anderen nicht haben. Vor jeder Empfehlung „nimm die beste Spur
+als Vorlage" beide Faehigkeiten getrennt feststellen: kann sie handeln (Orderweg,
+Freigabe, Guthaben) und sagt ihr Signal etwas voraus (Forward-Return gegen die
+Basislinie). Eine Spur ohne Orderpfad kann die bessere Strategie sein und trotzdem
+nie sichtbar werden; eine Spur mit Orderpfad und ohne Edge ist das Gegenteil.
+Beide Zustaende gehoeren in denselben Befund, sonst wird die unsichtbare zur
+besten und die sichtbaren zur geaenderten Loesung.
+
+**Kontrolle, wenn eine Spur ungewoehnlich gut dasteht:** Runden mit einer
+Haltedauer im Takt des Aufrufers herausrechnen - das ist die Zyklusdauer, keine
+Marktbewegung - und BEIDE Kennzahlen nennen; Ergebnis je Instrument ausweisen.
+Ein Ergebnis, das an einem Instrument haengt, ist ein Ergebnis dieses
+Instruments. Warum das je Spur passiert: ein Tagesbericht traegt als `preis` den
+Schlusskurs von gestern, und nimmt der Einstieg daraus, liegt er bei steigendem
+Markt UNTER dem Kurs - das Ziel ist dann schon beim Kauf erfuellt. Die
+herausgerechneten Runden wegzulassen waere Schoenung, nicht Messung.
+
 ## Schritt 3 - Kosten aus der ZEILE, nie aus dem Gefuehl
 Je Spur ein anderes Feld:
 - xperp, swap: `margin_usd` (Einsatz/Erloes), Kosten aus `nominal_usd` x
@@ -298,6 +337,34 @@ Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
    echten 0,05-0,60 %. Brutto- und Nettosummen nie in dieselbe Rangfolge
    stellen; fuer ein Papierbuch kommt der Satz aus der `wachen.json` oder aus
    einer gemessenen Fuellung.
+   **Der Ausweis gehoert in die Kennzahl selbst, nicht in eine Fussnote.** Die
+   Trennung braucht DREI Teile an EINER Stelle: ein Flag je Spur, ob die
+   Gebuehr schon IM Journal steckt (`GEBUEHR_SCHON_DRIN` = xperp/swap/scanner/
+   kraken; scanner/kraken rechnen sie in den Betrag, xperp/swap ueber
+   `gebuehr_pct`/`funding_pct`), die Gebuehr aus der `wachen.json`
+   (`gebuehr_fuer(spur)` - EIN Leser, nicht zwei) und ein `netto`, das nur
+   gerechnet wird, wenn das Flag es erlaubt. Zwei Fehler, die jede Fassung
+   einmal macht: **zweimal abziehen** (waere so falsch wie gar nicht - der
+   `kosten_netto` gehoert auf 0, wenn die Gebuehr schon drin ist) und die
+   **Vorgabe „netto"** (wer nichts angibt, bekommt die ehrliche Antwort
+   „brutto": die Funktion zieht NIE etwas ab, sie weist nur aus). Ein Bericht
+   ohne bekannten Satz sagt **„BRUTTO und UNBEKANNT"**, nicht „0,00 %" - und
+   eine Zahl, die nur aus der Zeile kommt, wird nicht stillschweigend
+   korrigiert, sondern mit der zweiten Zahl daneben gestellt. Gemessen an einer
+   Handvoll Spuren verschiebt das die Urteile: +10,82 -> +9,62 USD,
+   -5,02 -> -6,02, +38,85 -> +37,92, +2,30 -> +2,00.
+   **Der Ausweis gehoert in JEDE Anzeige, nicht nur in die Konsole.** Die
+   Konsole (`auswertung_alle.py`) liest niemand taeglich; gelesen werden
+   `/strategien` im Telegram-Bot und die „7 Tage"-Zeile des Tagesberichts. Beide
+   brauchen denselben Zusatz aus EINER Funktion (`befehle._brutto_zusatz(k)`:
+   „netto %+.2f" / „(Punkte, brutto)" / „(brutto, Gebuehr unbekannt)", leer
+   wenn die Spur schon netto rechnet), und die Einheit kommt aus der Kennzahl
+   (`k["einheit"]`) statt als „USD" im Formatstring zu stehen - sonst traegt
+   ein Punktebuch wieder eine Waehrung. Zwei Grenzen dabei: der Telegram-Text
+   ist auf 4000 Zeichen begrenzt und ein Zusatz je Zeile summiert sich ueber
+   ~40 Spuren (`len(befehle.strategien())` messen, nicht schaetzen), und nach
+   der Aenderung muss der SkillsBot-Task neu starten - das Modul liegt im
+   laufenden Prozess im Speicher.
 3. **Fehlt der Gebuehrenschluessel GANZ, rechnet das Werkzeug mit 0 % - und
    eine tote Spur sieht tragfaehig aus.** Vor jeder Uebernahme eines
    `f_max`-Urteils (`kosten_wendepunkt.py`) pruefen, ob die `wachen.json` der
@@ -328,6 +395,25 @@ Vier Dinge, die eine Summe kleiner machen, als sie aussieht:
    `orbk` 1,200 %/Runde gegen `f_max` +0,03 % = tot um Faktor 40. **Ein
    Bruch-Feld und ein Prozent-Feld duerfen nie ohne Umrechnung in dieselbe
    Zeile.**
+6. **Ein Buch ohne Einsatz hat keinen Prozentwert - und die Anzeige darf keinen
+   behaupten.** Fuehren Spuren ihre Runde in PUNKTEN (die ORB-Buecher: `gv_usd`
+   ist die Kursstrecke mal `punkt_wert_usd`, bei diesen Instrumenten 1:1 - also
+   der Gewinn JE EINHEIT), gibt es kein „Ergebnis in Prozent": die Zeile
+   zeigte trotzdem `(+0.00 %)` und die Einheit „USD", und die Summe der
+   Kursstrecken las sich wie ein Geldbetrag. Zwei Regeln: (a) ohne Einsatz
+   keinen Prozentwert drucken, sondern den Grund nennen („kein Einsatz im Buch
+   (Punktebuch) - Prozent nicht rechenbar") und die Einheit auf „Punkte"
+   stellen; (b) **KEINEN Einsatz erfinden.** Der naheliegende Weg
+   (`risiko_pro_trade / stop_abstand`, so steht es in der SPEC der Spur) ergibt
+   bei einem Stop, der die Range-Hoehe IST (ORB, bei ETH oft 0,4 %), ein
+   Nominal von einigen tausend USD - das ist eine Design-Entscheidung, keine
+   Reparatur. Statt dessen ein groessenunabhaengiges Maß daneben: **Ergebnis in
+   R** = `gv / |einstieg - stop|`, je Runde und in Summe, mit Trefferquote. Das
+   ergab die erste ehrliche Zahl dieser Spuren (orbk +2,18 R, orb -0,46 R) -
+   vorher stand dort ein positives „USD", das nur eine Punktesumme war.
+   **Und pruefen, ob die Spur ueberhaupt in der Auswertung steht:** `orb` fehlte
+   ganz, weil nur `orbk` in der Liste stand - eine Spurgruppe still auf null zu
+   setzen ist derselbe Fehler wie eine falsche Zahl.
 
 Fallen beim Fahren und Deuten:
 - **„alle" heisst: ein Aufruf je Stufe.** `auswertung_alle.py` kennt kein

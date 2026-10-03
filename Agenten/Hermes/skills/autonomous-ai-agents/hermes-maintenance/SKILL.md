@@ -1,6 +1,6 @@
 ---
 name: hermes-maintenance
-description: "Repair a Hermes install: update, venv, SQLite WAL."
+description: "Repair a Hermes install: update, desktop, venv, WAL."
 version: 1.1.0
 author: Hermes
 license: MIT
@@ -21,6 +21,9 @@ finish cleanly on its own.
 ## When to Use
 
 - `hermes update` exits non-zero, or the install sits N commits behind `origin/main`.
+- "Der update laeuft endlos und der Gateway antwortet nicht" / every `hermes` call burns
+  minutes in "finishing an interrupted source update": the armed pending marker —
+  `references/update-schwanz-endlosschleife.md`.
 - `hermes doctor` reports the SQLite `WAL-reset bug`, npm advisories, or leftover gateway warnings.
 - Every `hermes` call dies with `Fatal Python error: init_import_site` (PYTHONHOME section below).
 - `mcp_<server>_*` tools silently vanish from sessions.
@@ -50,6 +53,7 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
     hermes update --plan                   # read-only: profiles + services that will restart
     git -C <checkout> fetch origin --quiet; git -C <checkout> rev-list --count HEAD..origin/main
     git -C <checkout> diff --stat HEAD..origin/main -- pyproject.toml requirements*.txt uv.lock
+    git -C <checkout> log --oneline HEAD..origin/main | sed -E 's/^[0-9a-f]+ //' | grep -oE '^[a-z]+\([a-z-]+\)' | sort | uniq -c | sort -rn
     Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',<ps1> -WindowStyle Hidden -PassThru
     Start-ScheduledTask -TaskName 'Hermes_Dashboard'
     curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9119/
@@ -68,6 +72,13 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 2. **Measure the real gap.** `fetch` + `rev-list --count HEAD..origin/main` + `diff --stat` on
    `pyproject.toml`/`requirements*.txt`/`uv.lock`. No dependency changes = the pending commits are
    safe to defer. `hermes update --check`'s number counts from the installed version and lies.
+   **Und die ZUSAMMENSETZUNG ansehen, nicht nur die Zahl.** Der Rueckstand waechst bei diesem
+   Projekt um ~25 Commits je Stunde, eine dreistellige Zahl allein sagt also nichts. Massgeblich
+   ist, was drinsteckt: `git log --oneline HEAD..origin/main | grep -oE '^[a-z]+\([a-z-]+\)' |
+   sort | uniq -c | sort -rn` — waren am 30.09.2026 von 172 Commits **71 `fix(desktop)`**
+   (dazu `hide every console-subsystem child spawn on Windows` gegen das Fenster-Flackern), lohnt
+   der Lauf sofort; sind es nur Relay-/Checkpoint-/Doku-Fixes, ist Warten billiger als 20 Minuten
+   Lauf plus ein bis zwei Stunden zaeher Werkzeuge.
 3. **`hermes update --plan` and show the restart list** to the user before the real run. Note the
    dashboard entry: the plan promises a restart the run does not always deliver (see step 8).
 4. **Handle holders.** Exit 2 is a holder, not a failure; the dashboard's PID pair and the TUI
@@ -96,6 +107,11 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 12. **Write it down:** Wiki page (`Wiki/Betrieb/Hermes.md`, lessons under `Wiki/Lektionen/`),
     every untouched point as a task in `Archiv/TASKS.md`, then commit only your own paths and
     push. A maintenance run without that record repeats itself next month.
+    **Und die WIRKUNG beim Nutzer abfragen.** Ein Lauf wird selten "einfach so" gefahren — er
+    hatte einen Grund (hier: das Fenster-Flackern). Nach dem Lauf fragen, ob genau das weg ist,
+    und die Antwort mit Datum festhalten; "momentan nicht da" ist eine Momentaufnahme, kein
+    Dauerbeweis, und wird auch so geschrieben. Ohne diese Rueckfrage steht im Wiki nur, dass
+    Code gepullt wurde, nicht dass es geholfen hat.
 
 Step-by-step detail, log line shapes, exit-code table, the detach-skript skeleton and the
 bookkeeping pattern: load `references/update-run-procedure.md`.
@@ -194,6 +210,44 @@ die ERSTE Stelle zum Lesen; das Lauf-Log nur, wenn das Receipt fehlt oder mehr D
 Ausloesen, erreichbar (HTTP 200 auf 9119) ist er nach ~45 s. Ein Port-Check wenige Sekunden nach
 `Start-ScheduledTask` meldet einen Ausfall, den es nicht gibt - und wer daraufhin ein zweites Mal
 startet, legt einen zweiten Dienst neben den ersten.
+
+**Zweite Form von Exit 1: der Gateway kam nicht zurueck.** Im Log steht dann
+`RuntimeError: Could not restart every paused Windows gateway`, und der Dienst fehlt danach
+wirklich. Nachziehen ueber die Aufgabe mit Suffix:
+`Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }` und
+`Start-ScheduledTask` darauf.
+
+**Den Gateway NIE ueber Port 9900 oder einen Kommandozeilen-Teilstring pruefen.** Der laufende
+Gateway hat `gateway run` NICHT in seiner Kommandozeile (er laeuft als
+`<HERMES_HOME>/tools/python-3.14.7…/python.exe`), ein Filter darauf meldet „kein Gateway" -
+und bis `Gateway running with 13 platform(s)` im Log steht, dauert es rund FUENF Minuten, in
+denen 9900 geschlossen ist und `curl` `000` liefert. Wer in diesem Fenster erneut startet,
+legt eine zweite Instanz an. Verlaesslich sind zwei Sonden: `hermes gateway status` (PID,
+Ports, Webhook-URLs je Profil) und die Gegenprobe `hermes gateway run`, die bei laufendem
+Gateway mit „✓ The host gateway already serves profile 'default' … PID <n>" antwortet statt
+zu starten.
+
+**Das Lauf-Log ist GEMISCHT kodiert.** Die eigenen `Out-File -Encoding utf8`-Zeilen sind
+UTF-8, alles per `*>>` umgeleitete Programm-Ausgabe ist UTF-16 — weder `decode('utf-8')` noch
+`decode('utf-16')` laufen durch, und ohne Vorbehandlung haelt man ein vollstaendiges Log fuer
+leer. Erst die NUL-Bytes entfernen (`tr -d '\000' < log` bzw.
+`read_bytes().replace(b'\x00', b'').decode('utf-8', 'replace')`), dann lesen.
+
+**Nach dem Lauf sind die Werkzeuge bis zu zwei Stunden unbrauchbar — das ist eine Phase, kein
+Defekt.** Die Abhaengigkeits-Installation fuer alle Profile startet ueber hundert `python.exe`
+im Sekundentakt; `terminal`, `read_file` und die MCP-Werkzeuge laufen dann in
+420-Sekunden-Timeouts, auch bei `echo test`. Weder Rechner noch Hermes neu starten: abwarten
+(danach sind ~30 Prozesse normal) und den Befund als Last benennen, nicht als Ausfall.
+
+**Committete Fremdarbeit nimmt der Lauf aus dem Zweig.** Meldet er „Local history has diverged
+from origin/main — backed up current HEAD to
+`refs/hermes-update-backups/diverged-main-<zeit>-<sha>`", liegen die eigenen Commits dort
+vollstaendig; zurueckholen per `git show <ref>:<pfad> > <pfad>`. **`git restore` im
+Live-Checkout ist gesperrt** („would rewrite Hermes's live source checkout") — einzelne
+Dateien per `git show` herausschreiben ist der Weg. UNGETRACKTE Fremdarbeit wird dagegen
+gestasht und nach dem Pull automatisch zurueckgeholt (`Restoring local changes`); die
+Arbeitsbaum-Datei trotzdem vorher nach `<HERMES_HOME>/.sicherung/<thema>/` kopieren, weil ein
+spaeterer `git checkout -- <datei>` sie sonst auf den HEAD-Stand dreht.
 
 ## Halter-Probe: stirbt sie beim Import, meldet sie nie "0 Halter"
 
@@ -352,8 +406,175 @@ seine MCP-Server je bedientem Profil, bei vielen Profilen hunderte — die fress
 bis er nicht mehr hochkommt. Node-basierte Server zaehlen mit (`python.exe`/`pythonw.exe`
 allein sieht sie nicht), und Ueberschuss-Killen allein hilft nicht: der Erzeuger startet in
 Sekunden nach. Messreihe im 10–15-s-Takt statt Einzelmessung.
+
+**Zweiter Grund fuer Neustart-Schleifen: der Cron-Catch-up-Sturm.** `cron.catch_up_missed`
+steht per Vorgabe auf `true` — jeder Dienst-Neustart holt ALLE verpassten wiederkehrenden
+Laeufe nach. Bei vielen Jobs (54 aktive, 12 davon alle 15 min und 8 alle 10 min) starten sie
+gebuendelt in derselben Sekunde, die Last reisst den Dienst mit (`exited UNCLEANLY` in
+`logs/gateway.log`), der naechste Start holt wieder alles nach — ein Kreislauf, in dem der
+Dienst alle paar Minuten neu anfaengt. Fuer den Nutzer sieht das nicht wie ein
+Serverproblem aus, sondern wie "das Backend macht andauernd Probleme": jede Runde reisst
+die Desktop-/MCP-Verbindungen mit, und im Desktop-Log steht der Reconnect-Sturm
+(`tui_gateway.ws: ws ready frame send failed`, `ws receive failed`).
+
+Belege sind zwei Dateien, keine Vermutung:
+
+    cat cron/catch_up_occurrences          # wachsende Zahl = es wird nachgeholt
+    # cron/executions.db: viele Jobs mit started_at in DERSELBEN Sekunde
+
+Abhilfe: `hermes config set cron.catch_up_missed false` — ein verpasster Lauf wird
+uebersprungen, der Job laeuft zum naechsten regulaeren Termin weiter (richtig fuer Wachen,
+die ohnehin im Takt laufen). Danach den Dienst neu starten, damit die Config gelesen wird,
+und die Zahl in `catch_up_occurrences` gegenpruefen: sie darf nicht mehr steigen.
+**Das ist eine Lastbremse, KEIN Nachweis der Ursache.** Gemessen blieb der Zaehler danach
+bei 328 stehen, waehrend die Neustarts weitergingen (alle 12 Minuten, ausgeloest vom
+Waechter) — wer den Kreislauf damit fuer erklaert haelt, hoert auf zu suchen, bevor er
+den Ausloeser kennt. Beides getrennt messen und getrennt ausweisen: die Gleichzeitigkeit
+in der executions-DB UND die Startzeiten im Dienstlog gegen die Takte im selben Zeitraum.
 Vollstaendige Diagnose, Multiplex-Ursache, Exit-75-Schleife und Waechter-Einrichtung:
 `references/gateway-ausfall.md`.
+## Desktop kommt nicht hoch: erst die vier Zeugen, dann reparieren
+
+Symptom: die Desktop-App haengt bei „Connecting …" bzw. meldet
+`Timed out waiting for Hermes backend port announcement (90000ms)`, `logs/desktop.log`
+wiederholt denselben Block alle paar Minuten, und die Oberflaeche bleibt unbrauchbar,
+obwohl Rechner und Gateway laufen.
+
+Vier Zeugen, in DIESER Reihenfolge lesen - jeder kann allein die Ursache sein:
+
+| Zeuge | Wo | Was es heisst |
+|---|---|---|
+| Update-Obligation | `installs/<hash>/source-completion-pending`, `$HERMES_HOME/.hermes-update-in-progress` | der Launcher faehrt vor JEDEM Start erst den mehrminutigen Schwanz; das 90-s-Fenster der App laeuft dabei ab (Abschnitt unten) |
+| Dateisperre | laeuft noch ein `Hermes.exe`? `Get-CimInstance Win32_Process -Filter "Name='Hermes.exe'"` | der laufende Desktop haelt `apps/desktop/release/win-unpacked` -> `WinError 5` beim Austausch |
+| Plattenplatz | `shutil.disk_usage('C:\\')` | der Desktop-Build braucht rund 20 GB transient -> `No space left on device` mitten im Bau |
+| Anhaengen statt Starten | `spawn-ledger.json` im Hermes-Home | die App haengt sich an einen REGISTRIERTEN Backend (`purpose` `dashboard` oder `serve`, juengster Eintrag) und probt `/api/ws` mit dem veroeffentlichten Token; ein ueberlasteter Backend laesst die Probe auslaufen (`rejected the session token on /api/ws`) |
+
+Die Reihenfolge der Reparatur ist nicht beliebig - sonst scheitert der naechste Versuch an
+demselben Blocker:
+
+1. **Desktop schliessen** (kein `Hermes.exe` mehr im Prozessbaum). Erst danach darf der
+   Austausch der App laufen.
+2. **Reserve herstellen** (Abschnitt unten): `uv cache clean`, `AppData\Local\Temp` leeren,
+   alte Build-Reste (`.dist-build-*`, `release/win-unpacked.bak`) - dann MESSEN, nicht hoffen.
+3. **Den Update-Schwanz zu Ende fahren** (Abschnitt „Abgebrochener Update-Schwanz") und
+   `source-completion-pending` verschwinden sehen.
+4. **Gateway und App starten**: `schtasks /run /tn Hermes_Gateway_<suffix>` und die
+   `win-unpacked\Hermes.exe`; Gateway braucht 50-90 s, der Desktop-Backend ~50 s.
+5. **Belegen**, nicht behaupten: `curl http://127.0.0.1:<port>/api/health` -> `{"ok":true,…}`
+   (Port aus `desktop.log`, Zeile `HERMES_BACKEND_READY port=…`), `gateway_state.json`
+   `running` mit `a2a`/`telegram`/`webhook` connected, und in `desktop.log` die Zeile
+   `[boot] Hermes backend is ready. Finalizing desktop startup`.
+
+Ausfuehrliches Rezept (Log-Zeilen, Befehle, das Anhaenge-Verhalten im Detail, Gegenproben):
+`references/desktop-bootschleife.md`.
+
+## Plattenreserve fuer Builds (~20 GB, sonst bricht der Schwanz ab)
+
+Der Desktop-Build ist der platzhungrigste Schritt eines Updates. Laeuft C: dabei voll, endet
+der Schwanz mit `OSError: [Errno 28] No space left on device` und der Zustand bleibt scharf -
+der Desktop kommt danach nicht mehr hoch.
+
+Hausloesung: eine Wache, die die Reserve SELBST haelt (`Agenten/Hermes/scripts/platz-wache.py`,
+Cron `platz-wache`, taeglich, Telegram, leere Ausgabe = nichts senden). Faellt C: unter die
+Schwelle, raeumt sie nur reproduzierbare Posten: Temp aelter als 24 h, CrashDumps, uv-Cache,
+npm-Cache - **nie** `node_modules` oder `.venv`, und **nichts**, solange ein Bau/Update laeuft
+(Marker `.hermes-update-in-progress`, `installs/*/source-completion-pending`, Kommandozeilen mit
+`source_completion`/`hermes_cli.main update`/`electron-builder`/`npm … run build`/`uv`).
+Vor jedem eigenen Bau/Update messen:
+
+    python Agenten/Hermes/scripts/platz-wache.py --ohne-aufraeumen
+
+Fuer einen einmaligen Engpass von Hand: `uv cache clean` (2026: 9,2 GB) und
+`AppData\Local\Temp` leeren sind die groessten sicheren Posten; `pnpm`-Store, `_Backups` und
+Modellgewichte nur nach Rueckfrage. Die Auslagerungsdatei ist der zweite Hebel (Commit-Grenze,
+Anleitung im Wiki `Betrieb/Sicherung-und-Laufwerke.md`): sie wirkt erst nach einem NEUSTART -
+vorher nicht als erledigt melden.
+
+## Abgebrochener Update-Schwanz: Desktop-Bootschleife
+
+Ein gekillter Launcher-Lauf (`hermes config set/unset`, `hermes update`, `hermes desktop`, den ein
+Werkzeug-Timeout oder ein Fensterschluss abbricht) kann
+`installs/<hash>/source-completion-pending` scharf stellen. Ab dann faehrt JEDER `hermes`-Start
+erst den mehrminutigen Schwanz (Node/TUI/Web/Desktop bauen); der Desktop bricht nach 90 s ohne
+Backend-Port ab und startet neu - Bootschleife, Gateway bleibt aus, `hermes config …` im
+Vordergrund haengt.
+
+Zur Einordnung, damit der Desktop nicht selbst verdaechtigt wird: die App haengt sich an den
+**juengsten** Eintrag in `$HERMES_HOME/spawn-ledger.json` (nur `purpose: dashboard|serve` sind
+anhebbar), probt `/api/ws` mit dem dort veroeffentlichten Token und startet NUR bei Fehlschlag
+einen eigenen Backend (`hermes serve --port 0`). Ein Dashboard, das unter Last 30 s je Anfrage
+braucht, laesst deshalb die Oberflaeche haengen - und der eigene Backend erscheint als neue
+Portnummer. Genau so liest sich "Desktop haengt 30 s je Anfrage": Attach-Versuch, Timeout,
+eigener Backend. Kein Defekt der App.
+
+Symptome: `logs/desktop.log` zeigt `hermes: finishing an interrupted source update...` und
+`Timed out waiting for Hermes backend port announcement (90000ms)`;
+`$HERMES_HOME/.hermes-update-in-progress` traegt eine tote PID;
+im Schwanz-Log steht `desktop promotion rename win-unpacked -> win-unpacked.previous hit a file
+lock (attempt 1/5) … [WinError 5]` oder `OSError: [Errno 28] No space left on device`.
+
+**Die Meldung „an update is still running" ist kein Prozessbeweis.** Sie stammt aus der
+Obligation (Marker plus Claim), nicht aus einer laufenden Installation: der Marker kann
+tagealt sein, waehrend gar kein Update-Prozess existiert - der CLI-Start meldet dann
+`source-update completion failed: an update is still running; wait for it to exit, then
+relaunch Hermes; running with the previous dependencies`. Der Marker-INHALT ist dabei die
+Aussage: `source update tail not finished` heisst „Obligation scharf, Lauf nicht offen".
+Vor der Reparatur deshalb zwei Dinge messen, statt der Meldung zu glauben: (a) den Marker
+lesen (`cat installs/<hash>/source-completion-pending` - Text und Alter, kein Prozessbeweis)
+und (b) die Prozessliste - und diese Sonde aus TEILEN bauen
+(`'source'+'_completion'`, `'finish'+'-update'`), sonst trifft der Suchtext die EIGENE
+Kommandozeile und man zaehlt sich selbst als laufenden Updater. Bleibt die gefilterte Liste
+leer, ist der Retry erlaubt.
+
+Zwei Blocker, beide VOR dem Retry beseitigen:
+
+1. Ein laufender Desktop haelt `apps/desktop/release/win-unpacked` -> WinError 5 beim Tausch.
+   Erst schliessen (kein `Hermes.exe` mehr im Prozessbaum).
+2. Der Desktop-Build braucht ~20 GB transient. Bei 0,1 GB frei bricht der Schwanz mitten im Bau
+   ab - `uv cache clean` (2026: 9,2 GB) und `AppData\Local\Temp` leeren, dann messen.
+
+Retry, losgeloest gestartet (nie mit eigenem Zeitlimit):
+
+    <HERMES_HOME>/installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u \
+      hermes_cli/source_completion.py --source <checkout> --finish-update --desktop --prepared
+
+Erfolg sind DREI Belege, nicht zwei: `✓ Update complete!`, verschwundenes
+`installs/<hash>/source-completion-pending` UND `pm.venv_is_current(project_root=<checkout>)`
+(Wrapper-Weg) = True. **Der Standalone-Tail kann `✓ Update complete!` drucken, ohne Marker
+und Stempel zu loeschen** - den Stamp-Commit uebernimmt nur ein `hermes update`-Lauf selbst
+(`references/update-schwanz-endlosschleife.md` §4); bleibt der Stempel aus, ist der Abschluss
+ein losgeloestes `hermes update --yes`, nicht ein zweiter Tail-Aufruf. Danach Gateway
+(Aufgabe `Hermes_Gateway_<suffix>`) und Desktop starten. Nach sechs Fehlversuchen (Zaehler:
+`source-completion-attempts`) schweigt die Selbstheilung 15 min
+(`COMPLETION_RETRY_BACKOFF_SECONDS`) - dann hilft nur der direkte Aufruf oder `hermes update`
+aus einer Shell.
+
+Nachweis der Reparatur (nicht "Fenster ist auf"): der Desktop-Backend antwortet
+`{"ok":true,...}` auf `http://127.0.0.1:<port>/api/health` (Port aus `logs/desktop.log`,
+`HERMES_BACKEND_READY port=`), und `logs/desktop.log` zeigt keine neue
+`finishing an interrupted source update`-Zeile mehr. Fuer den Gateway die zwei Ports
+(`9900`, `8644`) und die `✓ … connected`-Zeilen in `logs/gateway.log` gegenpruefen - er braucht
+nach dem Neustart 50-90 s.
+
+Regel daraus: `hermes config set/unset` NIE mit eigenem Zeitlimit im Vordergrund laufen lassen
+(ein abgebrochener Lauf armt den Schwanz); Config-Aenderungen stattdessen per gezieltem
+Textersatz in `config.yaml`, danach `git diff --numstat` pruefen.
+
+## Update-Schwanz als Endlosschleife: CLI-Sicht (Gateway "antwortet nicht")
+
+Derselbe Grundfall wie die Desktop-Bootschleife, aber aus der CLI/Sitzung sichtbar: Ein
+abgebrochener Lauf stellt `installs/<hash>/source-completion-pending` scharf; ab dann faehrt
+JEDER Start (Gateway-Task, Dashboard, TUI, CLI) erst den ~4-minuetigen Inline-Schwanz,
+scheitert an konkurrierenden Build-Locks und WAFFT den Marker zurueck. Der
+`Hermes_Dashboard`-Task (RestartCount=999, alle 1 Minute) naehrt die Schleife von der anderen
+Seite. Messgroessen, Sortierung, Fallen bei Prozessfiltern und warum ein Standalone-Tail mit
+`✓ Update complete!` die Obligation NICHT loescht (nur der Updater schreibt den Stamp):
+`references/update-schwanz-endlosschleife.md`. Kurzpfad: Orphan-Tail-Baeume und Dashboard-Baum
+beenden, `tools/.displaced-*` und verwaiste `locks/desktop-build-*.lock` entfernen, Marker +
+`source-completion-attempts` + toten `.hermes-update-in-progress`-Claim loeschen, dann
+`hermes update --yes` losgeloest fahren und am ENDE belegen: bleibt der Marker WEG (ein
+Launch-Versuch re-armt ihn in Sekunden), antwortet der Gateway, Dashboard HTTP 200.
+
 ## SQLite WAL-reset bug — the real blocker
 
 Die Zeile `SQLite X (WAL-reset bug)` (plus `state.db is in WAL mode`) meint die im Interpreter
@@ -372,6 +593,13 @@ GELINKTE SQLite-Fassung, nicht die Python-Version. Die Reparatur
   erneut auditieren.
 - **`proxy.enabled is true but iron-proxy is not configured`:** unter Windows gibt es keine
   nativen iron-proxy-Binaries - schnellster Weg `hermes config set proxy.enabled false`.
+- **`tools.checkpoint_manager: fatal: not a git repository: …/checkpoints/store`:** das bare
+  Hilfs-Repo hat sein `refs/`-Verzeichnis verloren (`objects/`, `HEAD`, `config`, `packed-refs`
+  sind noch da, `refs/` fehlt) - git erkennt es dann gar nicht mehr und JEDE Sicherung des
+  Arbeitsstands scheitert. Reparatur ohne Datenverlust:
+  `mkdir -p checkpoints/store/refs/heads checkpoints/store/refs/tags`, danach meldet
+  `git --git-dir=<pfad> rev-parse --is-bare-repository` wieder `true` und `git add -A` laeuft.
+  Die Refs selbst liegen in `packed-refs` (`refs/hermes/<id>`) und sind unberuehrt.
 - **Sonstige Update-Warnungen** (kranke venv, Lazy-Backend nicht aktualisiert, unbekannte
   Toolset-Namen) sind harmlos.
 Genaue Befehle und Belege: `references/weitere-reparaturen.md`.

@@ -7,6 +7,10 @@ etwas zu lesen hat, muss der Radar selbst sammeln. Das macht dieser Lauf:
      nur wenn die letzte Sammlung aelter als `DISCOVER_STUNDEN` ist.
   2. `track`               - die On-Chain-Spur der verfolgten Wallets
      (oeffentliches RPC auf Chain 4663, kein Schluessel).
+  3. `enrich-tokens`       - die gehaltenen Token benennen und bepreisen
+     (GeckoTerminal, der einzige Kursgeber fuer Chain 4663; DexScreener
+     indexiert sie nicht). Ohne diesen Schritt bliebe `tokens.price_usd`
+     leer und die Positionen stuenden ohne Kurs da (T-299).
 
 Kein Schluessel noetig, keine Kosten. Rueckgabe 0, wenn nichts zu melden ist -
 der Hermes-Cron sendet nur, was hier auf stdout steht (Watchdog-Muster:
@@ -115,6 +119,25 @@ def main() -> int:
         except Exception:                                           # noqa: BLE001
             if a.immer:
                 meldung.append("Radar-Spur: %s" % _kurz(aus))
+
+    # Kurse: die gehaltenen Token benennen und bepreisen. Ohne diesen Schritt
+    # bliebe tokens.price_usd leer (T-299) - GeckoTerminal ist der einzige
+    # Kursgeber fuer Chain 4663, DexScreener indexiert sie nicht.
+    rc, aus = _ruf(["enrich-tokens"])
+    if rc != 0:
+        fehler.append("enrich-tokens: %s" % _kurz(aus))
+    else:
+        try:
+            zeilen = [z for z in aus.strip().splitlines()
+                      if z.strip().startswith("{")]
+            zahlen = json.loads(zeilen[-1])
+            benannt = int(zahlen.get("named", 0))
+            gepreist = int(zahlen.get("priced", 0))
+            if benannt or gepreist or a.immer:
+                meldung.append("Kurse: %s benannt, %s gepreist" % (benannt, gepreist))
+        except Exception:                                           # noqa: BLE001
+            if a.immer:
+                meldung.append("Kurse: %s" % _kurz(aus))
 
     if fehler:
         print("radar-sammeln FEHLER:")

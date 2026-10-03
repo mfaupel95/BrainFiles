@@ -82,6 +82,16 @@ angepasst werden muss (dort den Entfall mit Datum + "Max" vermerken).
   Kraken nicht als handelbares Paar. Je Spur wachen.json lesen, was sie als
   `inst`/`uly`/`ccy` fuehrt, gegen das Sortiment der Zielboerse pruefen - nur
   die vertraeglichen bekommen den echten Orderweg, der Rest bleibt Papier.
+  **Und zwar gegen das Sortiment des ZIELPRODUKTS, nicht gegen das des Hauses:**
+  Spot und Terminmarkt derselben Boerse fuehren VERSCHIEDENE Listen und
+  verschiedene Tickernamen. Gemessen: im Spot fehlten zwei Instrumente, die der
+  Terminmarkt fuehrt, und ein drittes hiess dort anders als im Spot - dieselbe
+  Frage, zwei Antworten. Die Liste immer aus der Instrumenten-Schnittstelle des
+  Zielprodukts holen und je Instrument `tradeable`/`status` mitlesen. Ein
+  Instrument ohne Markt bekommt in der Namensabbildung einen LAUTEN Fehler (nie
+  still ersatzweise handeln, sonst landet die Order im falschen Markt); ein
+  Instrument, dessen kleinster Satz groesser ist als der Hebel-Rahmen, wird
+  gesperrt statt gebucht (siehe „Hebel an einer Terminboerse" unten).
 
 - Boersen-Schluessel: das Konto muss Ordern duerfen (nicht `read_only`) und die
   IP-Whitelist fuer Orders muss stehen - vorher pruefen, sonst scheitert die
@@ -337,6 +347,14 @@ laeuft in einen Fehler, und ein Notausstieg will verkaufen, was nicht da ist.
   Live-Pfad ueberspringt fremde (`if p.get("modus") != "live": continue`).
   (b) allein genuegt, wenn die Spur den Modus immer setzt — ein Altbestand
   ohne Feld gilt dann als Papier und bleibt liegen, was gewollt ist.
+  **Die Umkehrung gehoert dazu und wird leicht vergessen:** der PAPIER-Zweig
+  darf eine Position mit `modus=live` NIE schliessen. Eine Spur mit eigenem
+  `pruefe_ausstiege` braucht dort die erste Zeile der Schleife
+  `if p.get("modus") == "live": behalten.append(p); continue` - sonst bucht ein
+  Papierlauf die echte Position aus dem Buch aus, waehrend sie an der Boerse
+  ohne Ueberwachung weiterlaeuft. Ein Test, der das festhaelt, patcht den
+  Kurs-Seam unter jeden Stop und prueft, dass die Live-Position danach noch im
+  Buch steht.
 - **Test:** Temp-Buch mit je einer Position mit und ohne Order, Fake-Boerse fuer
   den Kurs; geprueft wird: keine Order ausgeloest, genau eine Journalzeile mit
   dem eigenen Grund, die Position MIT Order bleibt. Ohne Test waechst der
@@ -405,6 +423,19 @@ der Test davon ab, ob Max gerade freigegeben hat), die echten Seams VOR dem Patc
 `self._seams_alt` sichern und im `tearDown` zuruecksetzen (Fakes lecken sonst in die
 naechsten Tests), und den Einstiegspfad mit einem `hole_freigabe`, das bei Aufruf wirft,
 gegen die Bildschirm-Fassung absichern.
+
+**Und der Modulwaechter gehoert in die ERSTE Fassung der Testdatei, nicht
+nachgeruestet.** `setUpModule` merkt Dateiliste und Groessen des echten
+Spurenordners, `tearDownModule` vergleicht und wirft. Er ist der einzige
+Mechanismus, der einen Test auffliegen laesst, der eine JOURNALISIERENDE
+Funktion (`pruefe_ausstiege`, `schliesse`, `eroeffne`) DIREKT prueft statt ueber
+den Zyklus: `journal()` respektiert `SCHREIBEN`, aber nur wenn der Test es
+setzt - ohne den Schalter landen echte Zeilen im echten `handelsjournal.csv`,
+und der Waechter ist der einzige, der das meldet (er nennt Datei und Groesse).
+Reihenfolge: Waechter einbauen, dann den Test schreiben, dann `SCHREIBEN=False`
+in jede Klasse, die eine schreibende Funktion ruft - und die eigene Spur in
+`sys.path` ZULETZT vorne einsetzen (`while p in sys.path: remove`, dann
+`insert(0, p)`), sonst laedt der Test das gleichnamige Modul aus `scanner/`.
 
 ## Eine GEBAUTE, aber nie verdrahtete Live-Verzweigung anschliessen
 
@@ -659,6 +690,41 @@ Sibling-Commit ueberschrieben.
   `SCHREIBEN=True` setzen (auf den Temp-JOURNAL-Pfad).** Mit `SCHREIBEN=False`
   entsteht die Datei nie und `open` wirft FileNotFoundError. Temp-Ziel plus
   Modulwaechter schuetzen den echten Spurenordner.
+
+## Hebel an einer Terminboerse: eine SIZING-Regel, kein Schalter
+
+Eine Terminboerse kennt **keinen Hebel je Order**: der Einschuss kommt aus dem
+Margenplan des Marktes (EEA retail 10 %). „Mit Hebel 6" heisst deshalb
+`Nennwert = Einsatz x 6`, und die Boerse fordert davon nur ihre 10 % an - der
+Rest des Einsatzes bleibt freie Margin. Wer den Hebel als Order-Parameter sucht,
+findet ihn nicht.
+
+- **Die kleinste Order kann den Hebel sprengen - dann sperren, nicht aufrunden.**
+  1 Kontrakt ist das Minimum, und bei einem hochpreisigen Instrument ist schon
+  EIN Kontrakt groesser als der ganze Hebel-Rahmen (gemessen: 1 Kontrakt =
+  1437 USD Nennwert, bei 50 USD Einsatz also Hebel 28,7 statt 6). Eine eigene
+  Funktion (`hebel_grund(inst, einsatz, kurs, w)`) rechnet den EFFEKTIVEN Hebel
+  nach dem Aufrunden auf ganze Kontrakte und liefert einen Grund, wenn er ueber
+  `hebel x 1,25` liegt; der Einstiegspfad sperrt dann und schreibt eine
+  Fehlerzeile. Ohne diese Sperre waere das Instrument die groesste Position im
+  Buch - und am Hebel haette es niemand gesehen, weil dort nur der Einsatz steht.
+- **Der Hebel gehoert in die `wachen.json`, nicht als Konstante ins Modul** -
+  sonst ist die Datei eine zweite Wahrheit (`hebel_grund` liest sie zur
+  Aufrufzeit, wie jede andere Zahl des Live-Pfads).
+- **Das Guthaben-Tor vergleicht den EINSCHUSS je Order, nicht den Einsatz.**
+  Die Einschuss-Funktion des Boersenmoduls rechnet die Margin aus dem Marktplan
+  des konkreten Instruments; die globale Guthabenzahl allein reicht nicht, weil
+  der Satz je Markt verschieden ist.
+- **Das Risiko offen aussprechen:** ein Stop von x % kostet bei Hebel 6 rund
+  6x % des Einsatzes. Der Hebel erhoeht den Verlust JE POSITION, nicht die
+  Trefferchance - das gehoert in den Plan und in den Bericht, nicht nur in den
+  Code.
+- **Das Terminkonto ist ein eigenes Konto mit eigenem Guthaben.** Vor jeder
+  Aussage ueber Kapital die Margin-Zahl des FUTURES-Kontos messen und daneben
+  stellen, was schon gebunden ist (laufende Positionen binden den Einschuss,
+  nicht nur das freie Guthaben) - die Zahl, die zaehlt, ist `availableMargin`
+  NACH Abzug der offenen Positionen. Ein Terminkonto kann vollstaendig
+  ausgenutzt sein, waehrend die Spot-Seite derselben Boerse bequem aussieht.
 
 ## Freigabekette einrichten - fuenf Punkte, die jede neue scharfe Spur braucht
 

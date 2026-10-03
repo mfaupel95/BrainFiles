@@ -1,0 +1,279 @@
+{
+  "fassung": 1,
+  "stand": "2026-09-30",
+  "_zweck": "Die eine Quelle fuer die Grenze zwischen eigenem Code und Fremd-Material im Baum. Gelesen von Agenten/Werkzeuge/fremd.py (Python) und von PowerShell-Werkzeugen per ConvertFrom-Json. Die lesbare Fassung ist Agenten/FREMD.md.",
+  "_regeln": [
+    "pfad ist relativ zur BrainFiles-Wurzel, mit '/', ohne '..' und ohne Laufwerksbuchstaben.",
+    "Kein Eintrag darf einen anderen enthalten (kein Baum im Baum).",
+    "Kein Eintrag darf selbst eine eigene Wurzel sein (Agenten/Handel, Agenten/Bus, ...).",
+    "Ein Eintrag ist eine Aussage ueber Herkunft - er wird von Hand gepflegt, nie geraten."
+  ],
+  "eintraege": [
+  {
+    "pfad": "Agenten/Werkzeuge/jevgrep/node_modules",
+    "art": "Fremd-Paket",
+    "herkunft": "npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter)",
+    "regel": "nur benutzen, nie aendern",
+    "warum": "Fremdcode mitten im eigenen Werkzeugordner (rund 15 MB). Unser Teil sind jg.cmd, README.md, test_jevgrep.py und package.json - reproduzierbar mit npm install @dzhng/jevgrep@0.7.0 --force. Wer den eigenen Bestand zaehlt, muss node_modules abziehen."
+  },
+    {
+      "pfad": "Agenten/Handel/OpenAlice",
+      "art": "Fremdprojekt",
+      "herkunft": "Klon eines fremden Quant-Frameworks (eigene workspaces/, runs/, .claude/)",
+      "regel": "nur lesen",
+      "warum": "545 MB, 482 .py, 513.266 Zeilen = 81 % der Zeilen in Agenten/Handel. Eigene AGENTS.md: nur lesen, wenn die Aufgabe ausdruecklich OpenAlice betrifft. Wer 'unser Handelssystem' zaehlt, muss ihn abziehen."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.ant.anthropic.filesystem",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode; gepflegt wird nur der Aufruf in Agenten/MCP-Manifest.json."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.cursortouch.windows-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server (Windows-Zugriff vom Host)",
+      "regel": "nur lesen",
+      "warum": "Fremdcode; liefert die PowerShell-Bruecke zum Host."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.anthropic.pdf-server-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.blender.blender-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.canva.affinity",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.jerichosequitin.metabase",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.mnemoverse.mcp-memory-server",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.oogunbiyi21.stats-compass-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.perseus-computing-llc.perseus-vault",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.revolut-engineering.revolut-x-api",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.socketdev.socket-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.tooluniverse.tooluniverse-mcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode - allein eine Datendatei hat 129.740 Zeilen und verzerrt jede Zaehlung."
+    },
+    {
+      "pfad": "Agenten/MCP-Server/ant.dir.gh.wonderwhy-er.desktopcommandermcp",
+      "art": "Fremd-Klon",
+      "herkunft": "ueber ant installierter MCP-Server",
+      "regel": "nur lesen",
+      "warum": "Fremdcode."
+    },
+    {
+      "pfad": "Agenten/Hermes/tools",
+      "art": "Fremd-Werkzeuge",
+      "herkunft": "von Hermes heruntergeladene Laufzeiten (python, node, git, bun, chromium, ffmpeg, llama.cpp, ripgrep, uv, cua-driver, agent-browser)",
+      "regel": "nur lesen",
+      "warum": "Nachladbar, nicht unser Code. Ohne diesen Eintrag zaehlt jede Bestandsfrage eine ganze Python-Installation mit."
+    },
+    {
+      "pfad": "Agenten/Hermes/skills/OmniRoute",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon; traegt geladene Skills (cli-models, omni-mcp, omni-models)",
+      "regel": "nur lesen",
+      "warum": "Die Skills darin sind in Gebrauch - der Baum selbst wird nicht gepflegt."
+    },
+    {
+      "pfad": "Agenten/Hermes/skills/claude-code",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon; traegt den geladenen Skill plugin-dev/mcp-integration",
+      "regel": "nur lesen",
+      "warum": "Siehe OmniRoute."
+    },
+    {
+      "pfad": "Agenten/Hermes/skills/onchainos-skills",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon; traegt die vier geladenen okx-*-Skills",
+      "regel": "nur lesen",
+      "warum": "Siehe OmniRoute."
+    },
+    {
+      "pfad": "Agenten/Hermes/skills/one-skill-to-rule-them-all",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon; traegt den geladenen Skill task-observer",
+      "regel": "nur lesen",
+      "warum": "Siehe OmniRoute."
+    },
+    {
+      "pfad": "Agenten/Hermes/skills/one-skill-to-rule-them-all-main",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon (Zweitfassung)",
+      "regel": "nur lesen",
+      "warum": "Siehe OmniRoute."
+    },
+    {
+      "pfad": "Werkstatt/Repos",
+      "art": "Klonsammlung",
+      "herkunft": "47 Klone fremder Projekte, je mit origin=Fork und upstream=Original",
+      "regel": "nur lesen; Pflege ausschliesslich ueber Agenten/Werkzeuge/repos-updaten.py",
+      "warum": "Eigene Ablage, aber fremder Inhalt: Bestandszahlen des Hauses gehoeren ohne sie gerechnet."
+    },
+    {
+      "pfad": "Werkstatt/Ausgemustert",
+      "art": "Stillgelegt",
+      "herkunft": "stillgelegte Anlagen (u.a. die alte Hermes-Installation samt eigener Python-Laufzeit)",
+      "regel": "nur lesen",
+      "warum": "Wird nicht mehr betrieben; allein die alte Anlage bringt 5.767 .py-Dateien mit, darunter eine komplette CPython-Standardbibliothek."
+    },
+    {
+      "pfad": "Werkstatt/repos-verschoben-aus-skills",
+      "art": "Fremd-Klone",
+      "herkunft": "am 21.09.2026 aus Agenten/Hermes/skills ausgelagerte Fremd-Klone (unsloth, nautilus_trader, EasyCLIProxyAPI, chromaprint, public-apis, acoustid-index)",
+      "regel": "nur lesen",
+      "warum": "Ausgelagert, nicht geloescht - neu klonbar, aber nicht unser Code (2.173 .py)."
+    },
+    {
+      "pfad": "Werkstatt/Worktrees",
+      "art": "Klonsammlung",
+      "herkunft": "Arbeitskopien (worktrees) der eigenen Forks, u.a. copilot-worktrees",
+      "regel": "nur lesen",
+      "warum": "Worktree-Sammlung auf demselben Commit - zaehlt nicht als eigener Code (417 .py)."
+    },
+    {
+      "pfad": "Werkstatt/zustand-sicherung-20260916-015331",
+      "art": "Altstand",
+      "herkunft": "Zustandssicherung vom 16.09.2026",
+      "regel": "nur lesen",
+      "warum": "Eingefrorener Stand zur Wiederherstellung."
+    },
+    {
+      "pfad": "Werkstatt/handel-stack",
+      "art": "Altstand (Spiegel 18.09.)",
+      "herkunft": "privater GitHub-Spiegel von Agenten/Handel, Stand 18.09.2026 (mfaupel95/handel-stack)",
+      "regel": "nur lesen",
+      "warum": "22 Spuren mit handeln.py gegen heute 30, 43 Journal-Dateien. Nichts liest ihn; er ist die einzige Kopie des Handelsstacks ausser Haus - deshalb bleibt er, aber er zaehlt nicht als lebender Code."
+    },
+    {
+      "pfad": "Werkstatt/CryptoPredictions",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Kursvorhersage-Toolbox)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/CryptoTrade",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (LLM-Agent fuer Krypto-Handel)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/FinRL",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Financial Reinforcement Learning)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/RLTrader",
+      "art": "Fremd-Klon (unsere Arbeit)",
+      "herkunft": "notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git, Fernsicherung als privates Repo mfaupel95/rltrader (01.10.2026)",
+      "regel": "nur lesen; Betrieb ueber rltrader.cmd (Docker, CPU)",
+      "warum": "Okt 2026 ueber docker/Dockerfile.local zum Laufen gebracht (TF 1.15, optuna 0.19, py37 - passt auf keinen Host-Python >=3.9). Eigene Arbeit im Klon: requirements.local.txt, Dockerfile.local, rltrader.cmd, --n-envs-Schalter (sonst 28 TF-Prozesse = Commit-Erschoepfung), warnings-Patch. Kein Live-Auftrag: data-provider static, lib/env/trade/LiveTradeStrategy.py nie verbunden. Zaehlt nicht als Haus-Code."
+    },
+    {
+      "pfad": "Werkstatt/intelligent-trading-bot",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Handelsbot)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/skillspector",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Sicherheitsscanner fuer Agent-Skills)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/trailofbits-skills",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Skill-Marktplatz von Trail of Bits)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/security-skills-claude-code",
+      "art": "Fremd-Klon",
+      "herkunft": "geklontes Fremd-Repo (Security-Skills)",
+      "regel": "nur lesen",
+      "warum": "Klon mit eigenem .git."
+    },
+    {
+      "pfad": "Werkstatt/freqtrade",
+      "art": "Fremd-Klon",
+      "herkunft": "Klon des freqtrade-Frameworks",
+      "regel": "nur lesen",
+      "warum": "Das Framework ist fremd; unsere Strategien und Aufsaetze liegen in Agenten/Handel/freqtrade."
+    },
+    {
+      "pfad": "Werkstatt/OmniRoute",
+      "art": "Fremd-Klon (in Betrieb)",
+      "herkunft": "Quell-Klon von OmniRoute - laeuft als Router auf Port 20128",
+      "regel": "nur lesen; Start ueber Agenten/Routinen/omniroute-start.ps1",
+      "warum": "Fremdes Framework, das wir betreiben. Zaehlt nicht als Haus-Code, ist aber produktiv - nicht anfassen."
+    },
+    {
+      "pfad": "Werkstatt/omnitrade",
+      "art": "Fremd-Klon (unsere Arbeit)",
+      "herkunft": "Rust-Workspace omnitrade (Fork mfaupel95/omnitrade, upstream jackby03)",
+      "regel": "nur lesen; Arbeit ueber das eigene Repo",
+      "warum": "Fremdes Framework mit unserer Portierung (Binance-Adapter, Risiko, Backlog). Zaehlt nicht als Haus-Code."
+    }
+  ]
+}

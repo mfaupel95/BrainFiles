@@ -51,5 +51,7 @@
   "_live_grenzen_vermerk": "50 USD je Trade auf Auftrag Max 21.09.2026 (vorher 20). Mit 3 Plaetzen sind das hoechstens 150; der Gesamtdeckel steht deshalb auf 150, damit nicht der Deckel bindet, sondern die Plaetze. Papierwerte unveraendert (100/300). Gedeckt: OKX USDC frei 610.74.",
   "live_max_gesamt_usd": 150.0,
   "_orderweg_vermerk": "Anbindung 22.09.2026 auf Kraken umgestellt (Auftrag Max). Signal: gross+nicht-auf-Binance. Paare in mosaic/kraken_spot.PAARE (AKE/DAI/HYPE/KAS/LIT/MNT/VVV/WBT/XMR gegen EUR). Stop/Ziel aus Boersen-Kurs EUR, nicht CoinGecko USD (spur_buch.einstieg Boersen-Kurs-Fix).",
-  "_mindest_guthaben_gesenkt": "GESENKT am 25.09.2026 (Auftrag Max: 'Moondev_listingarb mindestguthaben senken'): 50 -> 5 USDC. Das Tor verlangt jetzt nur noch ein Mindestpolster fuer eine echte Order. ACHTUNG: es aendert heute nichts - das OKX-Spot-USDC ist mit 0,0021 frei praktisch leer, weil 730,42 USDC durch die Stop-Orders der fuenf scanner-Positionen eingefroren sind (T-087). Die Spur handelt, sobald ein scanner-Ausstieg Geld freigibt."
+  "_mindest_guthaben_gesenkt": "GESENKT am 25.09.2026 (Auftrag Max: 'Moondev_listingarb mindestguthaben senken'): 50 -> 5 USDC. Das Tor verlangt jetzt nur noch ein Mindestpolster fuer eine echte Order. ACHTUNG: es aendert heute nichts - das OKX-Spot-USDC ist mit 0,0021 frei praktisch leer, weil 730,42 USDC durch die Stop-Orders der fuenf scanner-Positionen eingefroren sind (T-087). Die Spur handelt, sobald ein scanner-Ausstieg Geld freigibt.",
+  "_gebuehr_quelle": "OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker 0,10 %/Seite + echte Fuellung HYPE-USDC 0,1000 %). Die Spur handelt SPOT: ihre wachen.json bzw. ihr Code nennt <SYM>-USDC bzw. BTC-USDT.",
+  "gebuehr_taker": 0.001
 }

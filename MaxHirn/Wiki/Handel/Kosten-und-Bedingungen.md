@@ -39,11 +39,64 @@ Nachzug wieder byte-gleich.
 
 ## Gebuehren
 
-| Boerse | Gebuehr | Besonderheit |
+| Boerse | Gebuehr je Seite | Besonderheit |
 |---|---|---|
-| Kraken (Spot) | `gebuehr_taker: 0.006` | **gemessen** 0,60 % je Seite = **1,2 % je Runde** — das Abo wirkt nicht |
-| OKX | wie in `wachen.json` | Margin ist **USDC**, nicht USDT (siehe [[Handel/Boersen-und-Schluessel]]) |
+| Kraken (Spot) | `gebuehr_taker: 0.006` | **gemessen** 22.09.2026: 0,60 % = **1,2 % je Runde** — das Abo wirkt nicht |
+| OKX Spot | `gebuehr_taker: 0.001` | **gemessen** 01.10.2026: 0,10 % = 0,2 % je Runde (Tarif Lv1 + echte Fuellung) |
+| OKX Futures/XPERP | `gebuehr_taker: 0.0005` | **gemessen** 01.10.2026: 0,05 % = 0,1 % je Runde |
+| Kraken Futures | `gebuehr_pct: 0.05` | gemessen 25.09.2026: 0,04–0,05 % je Seite |
 | Deribit (`iv_waelle`) | 0,05 % | hier NICHT 0 — bewusst eigener Wert |
+
+**GEMESSEN 01.10.2026 — OKX Spot kostet 0,10 % je Seite, nicht 0,05 %.** Zwei Zeugen
+am eigenen Konto (EEA, `https://eea.okx.com`): `/api/v5/account/trade-fee?instType=SPOT`
+nennt `level=Lv1, taker=-0.001`, und eine echte Fuellung rechnet dasselbe
+(`HYPE-USDC`: 0,032 @ 86,642 = 2,77254 USDC Nettowert, Gebuehr 0,002772544 = **0,1000 %**).
+Futures/XPERP steht im Tarif auf `taker=-0.0005` und ist an echten Fuellungen
+gegengeprueft (ZEC-/ADA-`USD_UM_XPERP` je 0,0500 %). Bis dahin rechnete das Haus mit
+**0,05 % fuer OKX-Spot** — der halbe Satz, also jede Netto-Zahl um 0,1 Prozentpunkte je
+Runde zu freundlich. Betroffen war auch `scanner`, die einzige Spur mit belegtem Vorteil.
+
+`Agenten/Handel/gebuehren_setzen.py` traegt die gemessenen Saetze ein (Vorschau ist
+Standard, `--anwenden` schreibt mit `.bak-JJJJMMTT`, `--messen` fragt den Kontostand ab).
+Am 01.10.2026 gesetzt: `scanner`, `squeeze`, `wavetrend`, `macd_mtf`, `supertrend`,
+`gitter`, `iv_wand`, `moondev_topmovers`, `moondev_listingarb` auf **0.001** (Spot);
+`moondev_funding`, `-whale`, `-liquidation`, `-sentiment`, `nautilus` auf **0.0005**;
+`nautilus_kraken` von 0 auf **0.6**. Damit meldet `auswertung_alle.py` für **keine** Spur
+mehr „BRUTTO und UNBEKANNT". Die zwei Spuren ohne belegbaren Markt sind als **PERP**
+entschieden (`moondev_sniper`, `moondev_signalwelle` — Entscheidung Max 01.10.2026, Grund
+als `_gebuehr_quelle` in ihren `wachen.json`); offen bleiben nur die drei Onchain-Spuren
+(`kopier`, `kopier1zu1`, `robinhood_radar`, je 1,0 % — Modellannahme, T-268).
+
+**Zwei Zuordnungsfehler in `replay.SPUR_BOERSE` (gefunden 01.10.2026):** `gitter` stand
+dort als Perp (halber Satz), handelt aber BTC-USDT auf dem OKX-**Spot**; `orb` stand als
+Spot und handelt `BTC-USDT-SWAP` (Perp). Die Zuordnung greift nur, wenn die `wachen.json`
+keinen eigenen Wert traegt — deshalb ist der eigene Wert der bessere Fix.
+
+**Nicht gemessen, bewusst stehen gelassen** (Modellannahme, kein Marktsatz):
+`kopier`/`kopier1zu1` 1,0 % je Seite (Solana-Onchain), `robinhood_radar` 1,0 %
+(Robinhood Chain). Sie brauchen eine Entscheidung, keine Zahl aus einem anderen Markt.
+
+**Was die Messung am URTEIL ändert (01.10.2026, `kosten_wendepunkt.py`).** Eine Runde
+kostet jetzt: OKX-Spot 0,2 %, OKX-Perp 0,1 %, Kraken-Spot 1,2 %. Daran gemessen bleiben
+die dünnen Fälle dünn — `orb` +0,23 % je Runde (2,3× die Kosten: überlebt, aber knapp),
+`iv_wand/hoch` +0,33 % (1,65×), `orbk` −0,01 % und `swap` −0,52 % (unter null, wie
+vorher), `moondev_topmovers/hoch` −4,01 %. **Kein Urteil ist gekippt:** die Korrektur hat
+den zu freundlichen Zug aus allen Netto-Zahlen genommen, nicht eine Spur gerettet oder
+beerdigt. `orb` wird dabei sogar BILLIGER gerechnet als vorher — es stand in
+`SPUR_BOERSE` als Spot (0,2 %/Runde), handelt aber Perp (0,1 %/Runde).
+
+**Jeder Satz trägt seine Quelle (01.10.2026).** Beim Festziehen fiel auf, dass **elf
+Wachen eine Gebühr ohne jede Notiz** trugen — ein Wert ohne Quelle ist nicht
+nachprüfbar. Sie haben sie jetzt (ältere Wachen führen sie unter `_gebuehren` bzw.
+`_gebuehren_abo_widerlegt`, neue unter `_gebuehr_quelle`); es gibt keine Lücke mehr.
+Die Quelle wird **mitgesetzt, nie danebengelassen** — eine alte Quelle über einem neuen
+Wert wäre ein Widerspruch in der Datei selbst.
+
+**Ein Widerspruch in der Datei wird benannt, nicht geglättet.** `omniquant` nennt
+`boerse: kraken_futures` (0,04–0,05 %/Seite), bewertet seine Instrumente aber über
+`okx.letzter_kurs` (0,10 %/Seite). Gesetzt ist der **teurere** der beiden Sätze und der
+Widerspruch steht in der Quelle; der günstigere wäre geraten und freundlich — beides
+verboten (offen als T-293).
 
 **GEMESSEN 22.09.2026 — der Kraken-Nullsatz war falsch.** Zwei unabhaengige Zeugen:
 die Fuellungen (`SOLEUR`: Kauf 50,01954 EUR mit 0,30012 EUR Gebuehr, Verkauf 50,01466 EUR mit
@@ -63,8 +116,9 @@ einer Sekunde (Kauf, gescheiterter Stop, Rueckverkauf).
 **Freivolumen zaehlt auf das HANDELSVOLUMEN** (Kauf + Verkauf), also doppelt je Runde:
 ~250 Runden/Monat bei 20 EUR Nominal, ~50 bei 100 EUR. Diese Angabe stammt aus der
 Abo-Annahme vom 13.09.2026 und ist seit der Messung vom 22.09.2026 **gegenstandslos**: es gibt
-kein Freivolumen auf diesem Konto. `orbk` ist die einzige Spur, deren Kalkulation auf 0 %
-Gebuehr gebaut ist — bei ihm ist der Nullsatz Teil der Rechnung, nicht nur eine Annahme.
+kein Freivolumen auf diesem Konto. `orbk` traegt seit 22.09.2026 den gemessenen Satz
+(`gebuehr_taker: 0.006`) — die alte Formulierung „einzige Spur, deren Kalkulation auf 0 %
+Gebuehr gebaut ist" ist damit ueberholt.
 
 ## `kosten_wendepunkt.py` — f_max je Buch
 

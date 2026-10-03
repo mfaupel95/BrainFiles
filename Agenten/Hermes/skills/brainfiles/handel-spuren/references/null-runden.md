@@ -3,22 +3,93 @@
 Wann: Die Auswertung meldet fuer eine Spur `keine geschlossenen Runden`, oder die
 Frage kommt als „warum hat X 0 Runden, da stimmt doch etwas nicht".
 
+## Der Weg zum Befund: messen, dann einordnen - NIE aus der Rundenzahl schliessen
+
+Der Fehler, der hier am meisten Geld kostet, ist nicht ein falscher Parameter,
+sondern eine vorschnelle Massnahme. Die Auswertung zaehlt **GESCHLOSSENE**
+Runden. Eine Spur, die heute zwei Positionen eroeffnet hat und deren Stop noch
+nicht erreicht ist, steht dort bei null - und sieht in der Tabelle des Berichts
+aus wie eine, die nie funktioniert hat.
+
+**Vor jeder Empfehlung, eine Spur stillzulegen oder zu priorisieren, laeuft der
+Befund-Lauf und die LAGE wird genannt - nicht die Rundenzahl:**
+
+    cd Agenten/Handel
+    scanner/.venv/Scripts/python.exe ../skills/brainfiles/handel-spuren/scripts/null_runden_befund.py
+
+Der Lauf liest nur. Er ordnet jede Spur nach genau dieser Tabelle ein und nennt
+die Begruendung mit ("4 Position(en) ohne Ausstieg - je Position pruefen, ob
+sie einen Kurs bekommt"). `--alle` zeigt jede Spur, `--nur <n>` verengt auf
+weniger geschlossene Runden.
+
+**Die Reihenfolge der Antworten ist fest:**
+
+1. **BUCH VOLL** - es gibt Positionen. Sie sind der Grund fuer alles Weitere;
+   eine Spur mit offenen Positionen wird nie stillgelegt, sondern auf ihre
+   Stopps geprueft.
+2. **ARBEITET** - Positionen im Buch, Stop/Ziel noch nicht erreicht. Das ist
+   Normalbetrieb, kein Befund.
+3. **NUR AUSBUECHER** - das Journal zaehlt Buchhaltung, keine Handel.
+4. **WARTET** - leerer Journal, keine Position, Zustand frisch.
+5. **FEHLT** - keine Ergebnisdatei. Bedingung 4 unerfuellbar, siehe unten.
+
+Merksatz fuer den Bericht: **"0 Runden" ist ohne Lage eine halbe Aussage.**
+Wer sie als "stirbt nie" liest, hat die Frage noch nicht gestellt.
+
 ## Erst trennen, dann suchen
 
-Eine Null hat vier Bedeutungen. In der Auswertung sehen sie gleich aus, es sind
-aber vier verschiedene Lagen - nur eine davon ist ein Fehler:
+Eine Null hat fuenf Bedeutungen. In der Auswertung sehen sie gleich aus, es sind
+aber fuenf verschiedene Lagen - nur zwei davon sind ein Fehler:
 
 | Lage | Kennzeichen | Fehler? |
 |---|---|---|
 | wartet auf das erste Signal | Journal leer, keine Position, Zustand frisch | nein |
 | arbeitet, Stop noch nicht erreicht | Positionen im Buch, Journal ohne Ausstieg | nein |
 | Ausbuecher ohne Handelsentscheidung | Journal nur mit `buchbereinigung`/`herzschlag` | nein (Anzeige!) |
+| **Buch voll bei vorhandenen Kandidaten** | Position ohne Kurs, Platz belegt, kein Einstieg | **ja** |
 | **Stall** | offene Position, deren Instrument nicht mehr geprueft wird | **ja** |
 
 Merksatz: Eine Null ist erst dann eine Aussage, wenn dabeisteht, was sie zaehlt.
-Ein Text, der alle vier Lagen gleich beschreibt, versteckt genau den einen echten
+Ein Text, der alle fuenf Lagen gleich beschreibt, versteckt genau die zwei echten
 Fehler. Beim Bauen einer Kennzahl die Gegenfrage stellen: welche Zustaende fallen
 auf denselben Satz?
+
+## Die fuenfte Lage: die Datei fehlt ueberhaupt
+
+Die Tabelle oben setzt voraus, dass das Journal da ist. Ein im Lauf erzeugtes
+Erzeugnis, das erst beim **ersten Schreibvorgang** angelegt wird, ist aber genau
+dann nicht da, wenn die Spur noch nie gehandelt hat - und **das Fehlen einer Datei
+unterscheidet „noch nie ein Signal" nicht von „das Journal ist kaputt"**. Beide
+Laeufe enden in der Zeile `Handelsjournal.csv fehlt`, und beide sehen harmlos aus.
+
+Gemessen: `spur_buch.journal()` legte die Datei erst beim ersten Eintrag an, also
+hatten 7 von 38 Spuren gar kein Journal - und damit auch nichts ausser Haus
+(Bedingung 4 war fuer sie unerfuellbar, ohne dass irgendwo ein Fehler stand). Der
+Befund fiel nur ueber eine Bestandsaufnahme der Dateien, nicht ueber einen Fehler.
+
+**Regel: eine Spur legt ihre Ergebnisdatei im ersten Zyklus an, nicht im ersten
+Treffer.** Der Aufruf gehoert VOR die Datenpruefung, sonst gilt er nur auf dem
+Weg, der Daten hat:
+
+```python
+if modus in ("papier", "live"):
+    lege_journal_an(journal_pfad)   # legt die Kopfzeile an, schreibt keine Zeile
+```
+
+Drei Bedingungen gehoeren dazu, sonst zieht die Regel den Lesemodus mit:
+
+1. **Leer heisst null Zeilen, nicht null Zeilen ohne Kopfzeile.** Die Datei muss
+   ohne Weiteres lesbar sein; deshalb `writeheader()`, nicht `open(..., "w")`.
+2. **Die lesenden Modi bleiben lesend.** `--vorschau` und `--wachen` legen nichts
+   an — der Dauerlauf fragt jede Spur zusaetzlich mit `--vorschau` ab, und eine
+   Vorschau, die eine Datei anlegt, ist keine Vorschau.
+3. **Der Schreibschalter des Moduls gilt.** Wo `SCHREIBEN=False` ist (Replay,
+   Tests), legt die Funktion nichts an — ein Test darf nie in einen echten
+   Zielpfad schreiben.
+
+Merksatz: **eine leere Datei ist ein antwortbares Zeichen, ein fehlendes File
+nicht.** Wer beides als „kein Journal" liest, hat die Frage schon falsch
+beantwortet, bevor er sie gestellt hat.
 
 Beleg-Nachweis statt Vermutung: `auswertung_alle.offene_positionen(spur)` liest
 den Zustand tolerant (fehlende Datei, kaputtes JSON, fehlendes `positionen`-Feld
@@ -96,6 +167,53 @@ for p in z.get("positionen", []):
 Eine Position ohne Kurs NIE stillschweigend behalten: melden, mit Symbol und
 Eroeffnungszeit. Melden allein heilt nicht - der naechste Schritt ist immer der
 Einzelkurs-Abruf.
+
+### Die dritte Form: es gibt fuer den gehaltenen Token gar KEINEN Kurs
+
+Die beiden Faelle oben lassen sich durch einen Abruf heilen, weil die Quelle
+den Kurs auch fuer eine Position liefern kann, die nicht mehr im Plan oder im
+Feed-Kandidaten ist. **Es gibt Quellen, fuer die das nicht gilt**: eine Onchain-
+Kette, deren Sammler nur beobachtete TRANSAKTIONEN meldet. Ein Token, den
+niemand mehr handelt, hat dort keinen Preis - nicht einen veralteten, keinen.
+Dann faellt der Einzelkurs-Abruf leer, die Position bleibt, und weil
+`max_offene_positionen` klein ist, ist das kein Ausreisser, sondern ein
+Zustand: **das Buch ist voll, es gibt Kandidaten, und es passiert nichts.**
+Gemessen: drei Plaetze besetzt, drei Positionen 125 bis 222 Stunden ohne
+Beobachtung, ein Kandidat vorhanden, kein Einstieg in Tagen.
+
+Der Einzelkurs-Abruf ist hier die falsche Kur, die meldende Zeile auf stderr
+die unmoegliche. Zwei Schrauben, beide noetig:
+
+1. **Die Quelle beantwortet die Frage nach einer OFFENEN Position, nicht nach
+   einem Kandidaten.** Auch hier gehoert der Preis in `kurse`, nicht in `daten`
+   - ein nachgezogener Kurs darf einen Einstieg ausloesen, den es nie gab.
+   Die Einstiegspreise der Kandidaten (mit Nachlauf-Aufschlag) haben Vorrang vor
+   dem nackten letzten Handel. Der Leser bekommt dafuer eine eigene Funktion
+   mit derselben Form wie die uebrigen: `letzte_beobachtung(con, token)` -
+   juengste Fuellung, Kauf ODER Verkauf, ueber Handelsvolumen in Tokens. Bei
+   dieser Form ist sie eine TABELLE, keine Regel: ohne sie ist das Neuschreiben
+   einer Abfrage, und die landet in `daten`.
+2. **Eine Altersgrenze raeumt, was keine Quelle mehr beantwortet.** Position
+   offen, letzte Beobachtung aelter als `<grenze>` (Vorgabe 24 h) oder nie
+   beobachtet: schliessen. Zum letzten bekannten Kurs, ohne jede Beobachtung
+   neutral zum Einstieg. **Der Grund heisst so, dass er unter
+   `stoerungen.BUCHHALTUNG` faellt** - das ist eine Buchbereinigung, keine
+   Handelsentscheidung, und darf in keiner Kennzahl als Runde mitzaehlen. Ein
+   eigener Grundname ohne Merkmal erhaelt eine erfundene Runde, die dann in der
+   Trefferquote steht.
+
+Vorschau als eigener Schalter, Anwenden als zweiter (`--raeumen` /
+`--raeumen-anwenden`): die Raeumung loest Zeilen im Journal und in allen drei
+Risikostufen aus, das gehoert gesehen, bevor es geschieht. Der Nachweis danach
+ist dreifach - Buch aller drei Stufen leer, `spiegelstand` byte-gleich, und die
+geraeumten Zeilen mit `stoerungen.teile_runden` gegengeprueft (null echte
+Runden).
+
+Merksatz fuer die Fehlersuche: **„Buch voll bei vorhandenen Kandidaten" ist
+selbst eine Null-Lage.** Sie faellt in derselben Auswertung zusammen mit
+wartet / arbeitet / nur Ausbuecher / Stall - und ist die einzige davon, bei der
+der Zustand fortbesteht. Bevor eine Spur als wartend eingestuft wird, `kurse`
+und `positionen` vergleichen: eine Position ohne Kurs ist immer ein Befund.
 
 ## Den Stall in allen Spuren finden (Audit-Rezept)
 

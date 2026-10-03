@@ -320,15 +320,50 @@ schreibt hinein, was gesetzt wurde (`_backtest_gesetzt`); die echte
 die Quelle vor/nach). Wer den Deckel in der echten Wachen hebt, greift in den
 laufenden Betrieb ein — das ist ein anderer Vorgang und braucht Max' Entscheidung.
 
-## Grenze der Methode: Ausstiege zum Kerzenschluss
+## Ausstiege am Kerzenschluss - behoben, und was das Verifizieren zutage brachte
 
-Ausgestiegen wird zum SCHLUSS der Kerze, in der Stop oder Ziel beruehrt wurde —
-nicht zum Stop- oder Zielkurs. Ein Laeufer ueberschiesst sein Ziel dadurch
-deutlich (gemessen: ADA stand mit Ziel +12 % im Buch und wurde mit +48 %
-geschlossen). Die Gewinner sind also zu GUT gerechnet, und zwar in beiden
-Familien gleich: die Zahlen sind untereinander vergleichbar, aber nicht als
-Ertragserwartung zu lesen. Das gehoert in jede Antwort, die eine Backtest-Zahl
-nennt. Ein intrabar-Ausstieg waere die naechste Stufe.
+Bis zum 30.09.2026 stieg der Replay zum SCHLUSS der Kerze aus, in der Stop oder
+Ziel beruehrt wurde — nicht zum Stop- oder Zielkurs. Ein Laeufer ueberschiesst
+sein Ziel dadurch (ADA stand mit Ziel +12 % im Buch und wurde mit +48 %
+geschlossen). **Behoben** mit `replay.beruehrte_marke()`/`kurs_der_marke()`
+(T-177): liegt die Marke in der Kerze, ist SIE der Ausstieg; liegen beide Marken
+darin, gilt der STOP (der Zweifel wird nicht zu Gunsten des Backtests
+aufgeloest). Der AUSLOESER bleibt der Kerzenschluss — so entscheiden die Spuren
+live. Gegenprobe je Lauf: `replay.auf_der_marke(journal)`; ein Lauf von vorher
+zeigt `0/1506`, danach `1506/1506`.
+
+**Werkzeug zum Beziffern: `Agenten/Handel/kerzenschluss_bias.py`** (rein lesend,
+je Austrittszeile, ohne Paarung): `zuviel Gewinn`/`zuviel Verlust` in
+Prozentpunkten der Marke, `netto` als vorzeichenrichtige Summe, Spalte `Marke%`
+(100 % heisst: der Lauf stammt von nach dem Fix). Gemessen an wavetrend ueber
+5,7 Jahre: der alte Kurs lag auf der Verlustseite 938 Punkte schlechter und auf
+der Gewinnseite 445 Punkte besser als die Marke — **netto war das Ergebnis um
+~492 Punkte zu SCHLECHT gerechnet**. Die Verlustseite dominiert, weil ein Stop
+im Docht weit unter dem Stop schliessen kann.
+
+### Zwei Fallen beim Nachrechnen (beide fast als falscher Befund gemeldet)
+
+1. **Die Richtung fehlte im Haus-Paarer.** `kosten_wendepunkt._paarung_form_b`
+   rechnete `(preis/einstieg - 1)` OHNE die Seite: ein Short, der im Ziel
+   schliesst, stand als VERLUST im Buch. Gemessen an wavetrend (55 % Shorts):
+   Summe +679 ohne Vorzeichen gegen -513 mit Vorzeichen, Trefferquote 54 %
+   gegen 33 % — und das betraf jede gemischt handelnde Spur (squeeze, macd_mtf,
+   supertrend, wavetrend haben rund 50 % Shorts je Buch). Behoben am 30.09.2026
+   (`seite` aus der Einstiegszeile, `vorz = -1` bei short; fehlende Seite gilt
+   als long und wird als `ohne_seite` ausgewiesen). Test:
+   `tests/test_kosten_wendepunkt.RichtungTest`.
+2. **Eine einseitige Summe ist keine Nettozahl.** Die erste Fassung von
+   `kerzenschluss_bias.py` zaehlte nur die Ausstiege JENSEITS der Marke und
+   liess die auf der guten Seite weg; die Summe war damit einseitig und ergab
+   +493 statt -48. Vorzeichenrichtig rechnen: fuer einen Long ist ein hoeherer
+   Ausstieg IMMER besser (egal ob Stop oder Ziel), fuer einen Short immer
+   schlechter — EIN Vorzeichen je Richtung, nicht je Marke.
+
+Nachweis vor dem Bericht: die drei Wege muessen dasselbe sagen — die
+Zeilenrechnung (`kerzenschluss_bias`), eine Schluessel-Paarung ueber
+`(inst, stop, ziel)` und `kosten_wendepunkt.paarung` auf denselben zwei
+Journalen. Vor dem Fix taten sie das nicht, und genau das war der Hinweis auf
+Falle 1.
 
 ## Gegenprobe gegen eine ZWEITE Boerse (nicht gegen die Uhr)
 

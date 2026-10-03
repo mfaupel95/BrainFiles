@@ -1,0 +1,3 @@
+trailing_stop(0.03)
+if adx(14) > 20 && ema(20) > ema(50) && macd_hist(12, 26, 9) > 0 { buy() }
+if ema(20) < ema(50) { sell() }

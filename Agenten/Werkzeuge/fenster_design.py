@@ -87,6 +87,21 @@ def vorzeichen_farbe(wert, neutral: str = "matt") -> str:
     return neutral
 
 
+def skalierung(root) -> float:
+    """Der Anzeige-Faktor: 1.0 bei 96 dpi, 1.25 bei 120 dpi, 1.5 bei 144 dpi.
+
+    Ein Fenster mit `dpi_bewusst()` setzt Schrift und Zeilenhoehe in
+    Geraetepixeln; fest eingetragene Breiten (Spalten, Eingabefelder) werden
+    dadurch zu schmal. Wer Pixelmasse setzt, streckt sie mit diesem Faktor.
+    Nie kleiner als 1.0 - ein kleinerer Faktor wuerde Text verkleinern, statt
+    ihn lesbar zu halten.
+    """
+    try:
+        return max(1.0, float(root.winfo_fpixels("1i")) / 96.0)
+    except Exception:                                        # noqa: BLE001
+        return 1.0
+
+
 def dpi_bewusst() -> None:
     """Windows sagen, dass wir selbst skalieren - VOR dem ersten `Tk()`.
 
@@ -160,3 +175,63 @@ def stil_anwenden(st, basis: int = SCHRIFT_GROESSE) -> None:
         st.configure(name, background=f["gitter"], arrowcolor=f["matt"],
                      bordercolor=f["bg"], troughcolor=f["blatt"])
         st.map(name, background=[("active", f["auswahl"])])
+
+# ------------------------------------------------------------------ Karte
+# Die Karte ist der gemeinsame Baustein aller Fenster: eine abgerundete Flaeche
+# mit Titel, darin ein Reiter oder eine Tabelle. Radien und Innenabstand stehen
+# HIER - vorher lagen sie in `repos-zentrale/fenster.py`, die Handelszentrale
+# hatte eigene Werte.
+KARTE = {
+    "radius": 12,             # Ecken der Kartenflaeche
+    "radius_knopf": 8,        # Ecken der Knoepfe darauf
+    "rand": 1,                # Rahmenstaerke in Pixeln
+    "innen": ABSTAND["m"],    # Abstand zwischen Kartenrand und Inhalt
+}
+STIL_PRAEFIX = "Karte"
+
+
+def karten_stile(st, basis: int = SCHRIFT_GROESSE, zeilenhoehe_px: int | None = None) -> str:
+    """ttk-Stile fuer den Inhalt einer Karte (Praefix `Karte.`).
+
+    Die Karte hat eine eigene Flaeche (`blatt`, dunkler als das Fenster). Ein
+    ttk-Widget darin braucht einen Stil mit DIESEM Hintergrund - sonst steht ein
+    Rechteck in Fensterfarbe auf der Karte. Gibt das Praefix zurueck, damit der
+    Aufrufer `style=f"{p}.Treeview"` schreiben kann statt den Namen zu raten.
+    """
+    f = FARBEN
+    p = STIL_PRAEFIX
+    hoehe = zeilenhoehe_px or zeilenhoehe(basis)
+    st.configure(f"{p}.TFrame", background=f["blatt"])
+    st.configure(f"{p}.TLabel", background=f["blatt"], foreground=f["text"],
+                 font=schrift(basis))
+    st.configure(f"{p}Titel.TLabel", background=f["blatt"], foreground=f["akzent"],
+                 font=schrift(basis, 0, True))
+    st.configure(f"{p}.Treeview", background=f["blatt"], fieldbackground=f["blatt"],
+                 foreground=f["text"], rowheight=hoehe, borderwidth=0)
+    st.configure(f"{p}.Treeview.Heading", background=f["gitter"],
+                 foreground=f["akzent"], font=schrift(basis, 0, True), relief="flat")
+    st.map(f"{p}.Treeview", background=[("selected", f["auswahl"])],
+           foreground=[("selected", f["text"])])
+    st.configure(f"{p}.TNotebook", background=f["blatt"], borderwidth=0,
+                 tabmargins=(ABSTAND["s"], ABSTAND["s"], ABSTAND["s"], 0))
+    st.configure(f"{p}.TNotebook.Tab", background=f["gitter"], foreground=f["text"],
+                 font=schrift(basis, KLEIN), padding=(ABSTAND["m"], ABSTAND["xs"]))
+    st.map(f"{p}.TNotebook.Tab", background=[("selected", f["blatt"])],
+           foreground=[("selected", f["akzent"])])
+    st.configure(f"{p}.TCheckbutton", background=f["blatt"], foreground=f["text"],
+                 font=schrift(basis))
+    st.map(f"{p}.TCheckbutton", background=[("active", f["blatt"])],
+           foreground=[("disabled", f["matt"])])
+    st.configure(f"{p}.TButton", background=f["gitter"], foreground=f["text"],
+                 font=schrift(basis), padding=(ABSTAND["m"], ABSTAND["s"]),
+                 borderwidth=0)
+    st.map(f"{p}.TButton", background=[("active", f["auswahl"])],
+           foreground=[("disabled", f["matt"])])
+    st.configure(f"{p}.TEntry", fieldbackground=f["blatt"], foreground=f["text"],
+                 insertcolor=f["text"], font=schrift(basis))
+    for name in ("Vertical", "Horizontal"):
+        st.configure(f"{p}.{name}.TScrollbar", background=f["gitter"],
+                     arrowcolor=f["matt"], bordercolor=f["blatt"],
+                     troughcolor=f["blatt"])
+        st.map(f"{p}.{name}.TScrollbar", background=[("active", f["auswahl"])])
+    return p

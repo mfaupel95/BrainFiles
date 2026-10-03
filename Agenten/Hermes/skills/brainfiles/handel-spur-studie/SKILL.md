@@ -276,6 +276,38 @@ Handelbarkeit.
 3. Zeithalbierung: dasselbe Vorzeichen in beiden Haelften.
 4. Erst danach bauen.
 
+**Die Kante ist INSTRUMENTGEBUNDEN — und das Messinstrument ist der Aufbaugrund.**
+Dieselbe Regel auf demselben Takt kann auf einem Instrument Geld verdienen und
+auf einem anderen exakt nichts, bei praktisch gleicher Trefferquote. Gemessen an
+adx_macd 15 min ueber 60 Tage bei 0,05 % je Seite: BTC 44 Runden / 29,6 %
+Treffer / **+755,71 USD**, SOL 42 Runden / 28,6 % / **+1,61 USD**. Die Quote
+unterscheidet sich um ein Prozentpunkt, das Ergebnis um das 470-fache.
+
+Deshalb **vor dem Bau auf dem Instrument messen, das die Zielboerse
+ueberhaupt handeln kann** — nicht auf dem, auf dem die Quelle gemessen hat. Das
+ist keine Feinheit: der Aufbaugrund ist meist die Verfuegbarkeit (Kontraktgroesse,
+Mindestmenge, Margin), und ein Instrument, das die Boerse nicht fuehrt, ist kein
+Gegenstand einer Sparentscheidung. Widerspricht die Messung dem vorgeschlagenen
+Instrument, wird das Instrument gewechselt und die Abweichung **benannt** — nicht
+stillschweigend die Zahl des Auftraggebers uebernommen. Wer stattdessen beide
+Instrumente nennt, schiebt die Entscheidung auf, statt sie zu treffen.
+
+**Eine zweite Seite wird GEMESSEN, nicht angenommen.** „Long und Short
+abwechselnd" ist eine eigene Regel mit eigenem Vorzeichen, und sie kann die
+erste verschlechtern. Derselbe Bot auf Futures (mit Funding-Rate), dreimal
+gefahren, nur die Seite unterschieden: long **-20,68 %**, short **-34,50 %**,
+beides **-48,13 %**. Die kurze Seite verliert mehr als die lange, die Kombination
+mehr als jede Seite einzeln — also wurde sie nicht gebaut, obwohl sie plausibel
+klang. Und fuer zwei der drei Bots gab es darueber hinaus gar keine dokumentierte
+Short-Regel: eine zu erfinden waere eine neue Strategie und keine Uebertragung.
+
+**Wenn nur EINE Seite belegt ist**, wird sie so benannt und die zweite als offene
+Entscheidung stehengelassen (Wortlaut: „trägt nur, wenn jemand die Regel
+beschrieben hat — eine erfundene wäre eine andere Strategie"). Der Umstieg auf
+Futures selbst bleibt trotzdem richtig, wenn er die Kosten senkt: er erzeugt
+keine Kante, aber er macht eine vorhandene weniger untragfaehig — beides
+getrennt ausweisen.
+
 **Die Kosten wachsen mit der Rundenzahl, der Ertrag nicht.** Deshalb dieselbe
 Idee in der traegsten Fassung messen: ein Tagesausbruch mit 4-6 Signalen/Jahr
 ueberlebt die Gebuehr, dieselbe Familie mit einem Tag Haltedauer und 60+

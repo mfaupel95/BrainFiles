@@ -40,6 +40,16 @@ Spuren. Die Spur liefert nur Daten und ein Signal. Nur wer davon abweicht
 (Eigene Buchhaltung, mehrere Buecher, Boersen-Node), baut eigenes — dann aber mit
 denselben Feldnamen im Journal.
 
+**Spurfamilie mit EINEM Kern** ist die dritte Bauform: mehrere Regeln, die sich
+nur in der Rechnung unterscheiden (klassische Kursregeln aus Vorlagen, Varianten
+derselben Idee). Dann liegt die Rechnung in EINEM Modul im Handel-Ordner —
+Indikatoren, je Regel `einstieg(k, w)` und `ausstieg(k, seite, w)` als REINE
+Funktionen, ein `REGELN`-Dict und ein gemeinsames `spur_main(name, ordner)` —
+und jede Spur ist ein Zweizeiler, der `spur_main("<name>", HIER)` ruft. Buch,
+Ratsche, Spiegelung und Vorfilter bleiben in `spur_buch.py`; der Kern ersetzt
+nur das Signal. Warum: acht Kopien derselben Buchhaltung sind acht Stellen fuer
+denselben Fehler. Die reinen Funktionen machen die Familie offline pruefbar.
+
 ## 2. Der Vertrag einer Buch-Spur (drei Funktionen, sonst nichts)
 
 ```python
@@ -100,6 +110,16 @@ Indikatorgroessen), `handel_erlaubt: false`, `freigabe: {erfuellt: false}`,
   und `--live` verweigert mit einem Grund, der NICHT das Wort "Freigabefenster"
   traegt — sonst liest der Dauerlauf ihn als Freigabebitte.
 
+- **Die Position muss beim EIGENEN Stop baubar sein:**
+  `risiko_je_position_usd / (stop_prozent / 100) <= max_pro_trade_usd`. Liegt
+  `max_pro_trade_usd` unter `risiko / pflicht_stop_prozent_min`, deckelt ein Stop
+  am unteren Rand das Risiko still — das ist ein Befund zum Melden, nicht ein
+  stiller Zustand.
+- `mindest_kerzen` deckt den **laengsten** Indikator der Regel, abgeleitet aus den
+  Feldern selbst: `max(langsam_n, signal_n, bb_n, kanal_ein_n, rsi_n,
+  trend_n + steigung_n)`. Wer die Zahl fest eintraegt, bricht sie beim naechsten
+  Parameterwechsel.
+
 ## 5. Verdrahten (in dieser Reihenfolge)
 
 1. **`dauerlauf.SPUREN`** — der einzige Ort, der sagt, was laeuft:
@@ -112,6 +132,13 @@ Indikatorgroessen), `handel_erlaubt: false`, `freigabe: {erfuellt: false}`,
    `git ls-files 'Agenten/Handel/*/zustand*.json'` **muss leer** sein.
 3. **`README.md`** der Spur: Regel, Groessen, Buch/Ausstieg, Aufrufe, und was
    bewusst noch fehlt.
+4. **Sofort committen, auch wenn die Spur noch nie gehandelt hat.** Eine neue
+   Spur ist eine Handvoll ungetrackter Dateien; die Routine
+   `fremdarbeit-einziehen.ps1` greift alles, was laenger als ~30 min unberuehrt im
+   Baum liegt, und committet es als `Andere Sitzung <fremd@local>` — inhaltlich
+   richtig, aber falsch beschriftet und von der eigenen Arbeit nicht mehr zu
+   trennen. Erst stagen (namentlich, nie `git add -A`), dann committen, dann
+   `git show --stat` gegen die eigene Pfadliste lesen.
 
 Fuer eine Spur, die auf den BUS meldet oder in Auswertung/Tagesbericht auftauchen
 soll, danach die Verdrahtungsstellen aus `handel-spuren` abarbeiten (Bus-Familie,
@@ -152,6 +179,26 @@ Herkunft. Eine willkuerliche Reihe prueft die Laune der Reihe, nicht die Regel.
   teuer (Netz, Bericht, Zeit) UND wuerde den neuen Ausgang uebersehen; der
   Quellen-Test faellt genau darauf. Muster: `scanner/tests/test_spiegelung_jeder_zyklus.py`.
 
+- **Eine Spurfamilie bekommt EINEN Vertragstest, nicht acht Einzeltests.** Liegt
+  eine Familie mit gemeinsamem Kern vor, wandert der Test nach
+  `Agenten/Handel/tests/test_<familie>_spuren.py` (Aufruf dort:
+  `python -m unittest test_<datei>`), iteriert die Ordner per `glob` und prueft je
+  Ordnername, `_grund`, `journal_zweitziel` auf `Q:`,
+  `handel_erlaubt`/`freigabe.erfuellt` False, Herzschlag 180, `gebuehr_taker > 0`,
+  Stop innerhalb `pflicht_stop_prozent_min/max`, Ratsche == Buchrisiko,
+  Kill > Ratsche, Gesamtdeckel passt zu den Plaetzen, `mindest_kerzen` >= laengster
+  Indikator, Anmeldung in `dauerlauf.SPUREN`, kein Orderweg im Quelltext — und
+  `--live` verweigert im ECHTEN Kindprozess (Exit 0 plus Klartext). Ordnermenge
+  und `REGELN`-Schluessel in BEIDE Richtungen vergleichen, sonst bleibt eine Waise
+  unbemerkt.
+- **Beim ersten roten Lauf zuerst rechnen, ob die eigene Fixture falsch ist.**
+  Ein neuer Test schlaegt entweder wegen des Codes oder wegen der Reihe fehl; die
+  Arithmetik entscheidet, nicht das Gefuehl. Zwei Faelle, die so auffielen: ein
+  Band-Kreuz entsteht nur mit EINER Sprungkerze (bei drei steht der Schluss schon
+  vorher ueber dem Band — Zustand statt Kreuz), und ein Signal, das der EMA einer
+  Linie ist, beginnt konstruktiv `signal_n - 1` Werte NACH ihr. Wer die Reihe
+  geradezieht, ohne das nachzurechnen, verbiegt den Code.
+
 ## 7. Nachweis (erst dann "fertig")
 
 Ein Schattenarm wird GENAU SO nachgewiesen wie eine neue Spur — plus eine
@@ -171,6 +218,14 @@ aussen (`Q:\Handel_Journal\<spur>` enthaelt `zustand.json`). Eine neue Spur in
 Start gelesen) — ein Fix in `<spur>/handeln.py` dagegen im naechsten Zyklus.
 
 ## Pitfalls
+
+- **Eine Vorlage nicht woertlich nachbauen.** Pine rechnet
+  `ta.highest(high, 20)` INKLUSIVE der laufenden Kerze — der Schluss kann nie
+  ueber dem Hoch der eigenen Kerze liegen, `crossover(close, high20)` wird damit
+  nie wahr und die Regel handelt nie. Der Kanal muss die Kerzen DAVOR nehmen.
+  Jede Abweichung von der Vorlage im Modulkopf begruenden (welche Zeile, warum),
+  und die laufende Kerze immer verwerfen — sonst flackert ein Signal innerhalb
+  der Stunde.
 
 - **Nur den WECHSEL handeln, nicht den ZUSTAND.** "Short, sobald der Trend dreht"
   heisst: Richtung vorher +1, jetzt -1. Wer den Zustand abfragt, eroeffnet in
@@ -197,6 +252,16 @@ Start gelesen) — ein Fix in `<spur>/handeln.py` dagegen im naechsten Zyklus.
   ein Kadenz-Problem (kein fehlendes Signal), und eine Kennzahl aus
   `herzschlag`-Zwangsschluessen ist keine Handelsmessung. Zahlenbeispiele:
   `references/schattenarm.md`.
+- **Zahlen ueber `Agenten/Handel` nie roh zaehlen - erst die Fremd-Grenze anwenden.**
+  Fremd-Material liegt mitten im eigenen Ordner (`OpenAlice` allein sind 81 % der
+  Zeilen in `Agenten/Handel`, 482 Dateien / 513.266 Zeilen). Eine Bestandsfrage
+  ohne die Grenze liefert 634.815 Zeilen statt 121.509 und macht jede Aussage
+  darueber falsch. Quelle ist `Agenten/FREMD-Liste.json`, Leser
+  `Agenten/Werkzeuge/fremd.py`, Messung `Agenten/Werkzeuge/bestand.py` (Vorgabe
+  ohne Fremdes, `--mit-fremd` zum Vergleich). Fremdes wird BENANNT und nicht
+  mitgezaehlt - und nie aufgeraeumt. Ein Eintrag ist eine Aussage ueber Herkunft
+  und wird nie geraten: was wie ein Fremdbaum aussieht (Spur ohne Tests,
+  ungetrackt), kann eigener Code vom selben Tag sein.
 - **Antwortform an Max:** zuerst was jetzt laeuft (mit dem Beleg des ersten
   Zyklus), dann die Regel in einem Satz mit den ZAHLEN dieser Maschine, dann was
   absichtlich NICHT gebaut wurde (Live-Pfad, Signal-Ausstieg) und was dafuer fehlt.

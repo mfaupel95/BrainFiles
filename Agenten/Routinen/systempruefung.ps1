@@ -306,7 +306,10 @@ try {
   #                      die echten Funde zu.
   #   Hermes\tmp\ und Hermes\.sicherung\ - dasselbe: Wegwerf bzw. Altkopien,
   #                      beide nicht versioniert (22.09.2026, 11 der 37 Zeilen).
-  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\')
+  #   profiles\<bot>\cache\ - der Wegwerf-Ordner JE BOT, dieselbe Sorte wie
+  #                      Hermes\cache\. Am 30.09.2026 meldete der Block zwei
+  #                      Probenskripte aus profiles\agent-trade-kit\cache\scratch.
+  $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\', '\\profiles\\[^\\]+\\cache\\')
   $musterAbs = [regex]('C' + ':\\Users\\faupe')
   $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
   $absTreffer = @(); $altTreffer = @()
@@ -814,6 +817,32 @@ try {
     }
   }
 } catch { Notiz "  ! Docker-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
+# 15) Fremd-Grenze: die eine Quelle (Agenten/FREMD-Liste.json) auf sich selbst
+# pruefen. fremd.py --pruefen meldet Befunde zur Liste selbst (fehlender Ordner,
+# leere Felder, Ueberschneidung mit eigenen Wurzeln, Dopplung) - leer bzw.
+# "gesund:" heisst in Ordnung. Angeschlossen nach Entwurf 30.09., T-242(b).
+try {
+  Notiz "`n--- 15) Fremd-Grenze ---"
+  $fremdSkript = Join-Path $agenten 'Werkzeuge\fremd.py'
+  $fremdPy = Join-Path $agenten 'Handel\scanner\.venv\Scripts\python.exe'
+  if (-not (Test-Path $fremdPy)) { $fremdPy = (Get-Command python -EA SilentlyContinue).Source }
+  if (-not (Test-Path $fremdSkript)) {
+    Entscheiden "Fremd-Grenze nicht geprueft: Agenten\Werkzeuge\fremd.py fehlt."
+  } elseif (-not $fremdPy -or -not (Test-Path $fremdPy)) {
+    Info "Fremd-Grenze nicht geprueft - kein Python gefunden."
+  } else {
+    $fAus = @(& $fremdPy $fremdSkript --pruefen 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -ne '' })
+    $gesund = @($fAus | Where-Object { $_ -match '^gesund: (\d+) Eintraege' })
+    if ($gesund.Count -gt 0) {
+      $n = ($gesund[0] -replace '^gesund: ', '' -replace ' Eintraege.*$', '')
+      Info "Fremd-Grenze gesund: $n Eintraege (Liste = eine Quelle fuer Zentrale, Bestand und fundus-suche)."
+    } else {
+      foreach ($fz in $fAus) { Entscheiden "Fremd-Grenze: $fz" }
+    }
+  }
+} catch { Notiz "  ! Fremd-Grenze-Pruefung abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
 # Bericht schreiben

@@ -74,6 +74,9 @@ ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
+           # MFE/MAE seit 03.10.2026 - Grundlage jedes
+           # datengetriebenen Stop-Vorschlags (T-119).
+           "mfe_pct", "mae_pct", "haltetage",
            "einsatz_usd", "stop", "ziel", "stop_pct", "grund",
            "pos_id"]
 
@@ -224,6 +227,13 @@ def groessenfaktor(ruecklauf, w):
 
 
 def pruefe_einstieg(inst, k, z, w, faktor):
+    # Skalieren statt doppeln: liegt fuer dieses Signal schon eine Position
+    # mit gleichem Instrument UND gleicher Seite, wird sie vergroessert
+    # (Regel in Handel/skalieren.py, gemessen 03.10.2026). Ein Seiten-
+    # wechsel ist kein Skalieren - das ist ein neues Signal.
+    sys.path.insert(0, HANDEL)
+    import skalieren as skal
+
     """Prueft, ob eine neue Position eroeffnet werden soll."""
     if not z.get("positionen"):
         z["positionen"] = []
@@ -272,6 +282,25 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         "nominal": nominel, "eroeffnet_zeit": _jetzt(),
         "pos_id": pos_kennung.neu(_jetzt()),
     }
+    _offen = skal.finde_offene(z["positionen"], inst, sig)
+    if _offen is not None:
+        _f = skal.skaliere(_offen, einstieg, nominel, stop_pct_eff, r)
+        if _f is not None:
+            print("SKALIERUNG %s %s auf %.2f USD (war %.2f)  Stop %.2f  Ziel %.2f"
+                  % (_offen.get("seite", "long").upper(), inst,
+                     _f["einsatz_usd"], _f["alt_nominal"], _f["stop"],
+                     _f["ziel"]))
+            # KUMULATIVER Einsatz und GEWOGENER Einstieg, gleiche pos_id: die
+            # Zeile ist der Stand dieser Position nach der Vergroesserung.
+            journal(zeit=_jetzt(), modus="papier", aktion="kauf", inst=inst,
+                    pos_id=_offen["pos_id"], seite=sig,
+                    preis="%.6f" % _f["preis"],
+                    einsatz_usd="%.2f" % _f["einsatz_usd"],
+                    stop="%.6f" % _f["stop"], ziel="%.6f" % _f["ziel"],
+                    stop_pct="%.2f" % _f["stop_pct"],
+                    grund="squeeze+skaliert")
+        return
+
     z["positionen"].append(_p)
 
     print("EINSTIEG %s %.6f Stop %.2f%% Ziel R=2 (%.6f) Nominal %.2f USD" % (
@@ -299,6 +328,12 @@ def pruefe_ausstiege(z, k, w, nur=None):
         if not kurs:
             behalten.append(p)
             continue
+
+        # MAE/MFE ueber die LEBENSDAUER messen, nicht erst beim Ausstieg -
+        # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
+        sys.path.insert(0, HANDEL)
+        import mae
+        mae.merke_extrem(p, kurs)
 
         grund = None
         vz = 1 if p["seite"] == "long" else -1
@@ -329,7 +364,8 @@ def pruefe_ausstiege(z, k, w, nur=None):
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"],
-                stop_pct="%.2f" % p["stop_pct"], grund=grund)
+                stop_pct="%.2f" % p["stop_pct"], grund=grund,
+                **mae.felder(p))
 
     z["positionen"] = behalten
 
@@ -360,6 +396,11 @@ def lauf(modus):
 
     if modus == "vorschau":
         print("Vorschau: keine Dateien geschrieben.")
+        # Die Sperrenzeile gehoert in JEDE Vorschau. dauerlauf.nur_fenster_
+        # fehlt liest genau sie; fehlt sie, wird diese Spur nie nach einem
+        # Freigabefenster gefragt (T-313, 02.10.2026).
+        print("Live waere gesperrt durch: kein Live-Zweig in dieser "
+              "Spur (Papier)")
         return
 
     # Kerzen fuer alle Instrumente laden

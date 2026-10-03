@@ -150,3 +150,34 @@ UEBERSIEHT Spuren, deren Orderweg in einem Boersenmodul liegt (`okxf.py`,
 `kraken.py`, ein Adapter wie `kraken_spot.py`) — live-faehige Spuren standen so
 als „keiner" in der Tabelle. Fuer die Wahrheit `sperren_live()` der Spur lesen
 oder nach dem Aufruf greppen; nie anhand der Spalte entscheiden.
+
+## Ein Bestandslauf ueber den GANZEN Baum meldet SCHEMA-BRUECHE als Befund
+
+Das ist die teuerste Fehlerquelle einer Inventur: das Werkzeug liest die Felder
+EINER Spurenfamilie und meldet jede andere Familie als defekt. Vier gemessene
+Faelle, alle aus einem Lauf ueber 45 Spuren:
+
+- **Feldnamen je Spurfamilie aufloesen, bevor ein Befund faellt.** Ein Stop-Audit
+  ueber alle `zustand.json` las `inst`/`einstieg`/`stop` und meldete sieben
+  Positionen einer Spur als „kein Einstieg" — die fuehrt `symbol`/`token`/
+  `einsatz_usd` und war in Ordnung. Ein feldfehlender Wert ist zuerst ein
+  **Schema-Bruch**, kein Positionsfehler: pro Familie den echten Feldnamen
+  ermitteln und im Befund MITSPURIG ausweisen, welche Spur welches Schema traegt.
+- **Ein Gruppierungsschluessel, den ALLE Positionen einer Spur nicht fuehren,
+  ist kein Schluessel.** Dasselbe Werkzeug wollte gestapelte Positionen je
+  (Instrument, Seite) zusammenfassen und las bei zwei Spuren `inst` als `None` —
+  dort sind ALLE Positionen EINE Gruppe, es haette das komplette Buch zu einer
+  Position verschmolzen. **Vor dem Zusammenfassen pruefen, dass der Schluessel
+  bei mindestens einer Position belegt ist**; fehlt er, gehoert die Spur aus dem
+  Lauf heraus, nicht in die Ausgabe.
+- **`lage.HOLER` ist ein Tupel aus FUNKTIONSNAMEN** (`spur_squeeze`,
+  `spur_omniquant_weit`), nicht aus Spurennamen. Eine Mitgliedschaftspruefung
+  `name in lage.HOLER` meldet fuer jede Spur „FEHLT", obwohl sie drin ist.
+  Richtig: je Eintrag `startswith('spur_')` und den NAMEN ANHANG pruefen.
+- **Nicht jeder Testsatz des Hauses ist unittest.** `Bus/tests/
+  test_anbindung_handel.py` schreibt nackte `def test_*`-Funktionen (pytest),
+  keine Klassen — `unittest discover` meldet dafuer `Ran 0 tests` und
+  `NO TESTS RAN`, was wie ein gruener Lauf aussieht. Der Scanner-venv hat kein
+  pytest, also die Funktionen ueber `importlib.util.spec_from_file_location`
+  laden und direkt aufrufen, jede Ausnahme als Fehler zaehlen. „0 Tests" ist
+  nie ein Beleg.

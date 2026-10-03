@@ -47,6 +47,7 @@ import freigabefenster  # noqa: E402
 _handel_ordner = os.path.dirname(os.path.abspath(__file__))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
+import mae
 import pos_kennung  # noqa: E402
 
 
@@ -62,7 +63,10 @@ risikovorfilter = _lade_modul("risikovorfilter")
 risikostufe = _lade_modul("risikostufe")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id",
+           # MFE/MAE seit 03.10.2026 - hier wirkt die Zeile auf alle 27
+           # Spuren, die dieses Buch benutzen (T-119).
+           "mfe_pct", "mae_pct", "haltetage"]
 
 SCHREIBEN = True
 
@@ -136,6 +140,33 @@ def journal(journal_pfad, **felder):
         w.writerow(felder)
 
 
+def lege_journal_an(journal_pfad):
+    """Das Journal anlegen, falls es fehlt - mit Kopfzeile, ohne Buchung.
+
+    WARUM (Auftrag Max 02.10.2026, "alle duerfen auch journal fuehren"):
+    `journal()` legt die Datei beim ersten SCHREIBEN an. Eine Spur, die noch
+    nie ein Signal hatte, hatte deshalb gar kein Journal - und damit auch
+    nichts ausser Haus (Bedingung 4). Am 02.10.2026 waren das 7 von 38 Spuren
+    (klassik_donchian, klassik_donchian_trend, klassik_pmax, klassik_rsi,
+    klassik_rsi2, klassik_sr_breaks, trendwende_btc): lokal wie auf Q: nur
+    zustand.json, kein Journal. Das ist kein Defekt, aber es ist auch nicht
+    beantwortbar - man kann nicht unterscheiden "noch nie ein Signal" von
+    "das Journal ist kaputt".
+
+    Die leere Datei macht genau das unterscheidbar: sie existiert, hat null
+    Zeilen und wird gespiegelt. Ein Leser sieht damit denselben Stand wie
+    bei einer Spur mit Runden, nur eben bei null.
+
+    `SCHREIBEN=False` (Replay, Tests) legt nichts an - ein Test darf nie in
+    einen echten Zielpfad schreiben.
+    """
+    if not SCHREIBEN or os.path.exists(journal_pfad):
+        return False
+    with open(journal_pfad, "a", newline="", encoding="utf-8") as f:
+        csv.DictWriter(f, fieldnames=SPALTEN).writeheader()
+    return True
+
+
 def spiegeln(zustand_pfad, journal_pfad, z, w):
     """Bedingung 4: Journal und Zustand ausser Haus (Muster swap/handeln.py)."""
     ziel = w.get("journal_zweitziel")
@@ -173,7 +204,8 @@ def orderweg(w):
         return _ORDER_MODULE[name]
     # _lade_modul haengt ".py" selbst an und sucht unter HANDEL - deshalb der
     # relative Name mit Unterordner, kein absoluter Pfad.
-    pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot"}.get(name)
+    pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot",
+            "kraken_futures": "omnitrade_futures/weg"}.get(name)
     if not pfad or not (Path(HANDEL) / (pfad + ".py")).is_file():
         return None
     _ORDER_MODULE[name] = _lade_modul(pfad)
@@ -189,9 +221,17 @@ def venue_inst(inst, w):
     laeuft der Live-Einstieg in einen OKX-Fehler (Instrument unbekannt) - oder
     schlimmer: in ein anderes Paar mit demselben Namen.
     """
+    boerse = str(w.get("boerse") or "okx").strip().lower()
+    if boerse == "kraken_futures":
+        # Kontraktnamen der Kraken-Futures-Maerkte: PF_<Basis>USD, nur BTC
+        # heisst dort XBT (gemessen 25.09.2026 an PF_XBTUSD/PF_SOLUSD). Der
+        # Check VOR dem Bindestrich-Zweig: die omnitrade-Laeufe liefern
+        # "SOL-USDC" - ein fruehes "return inst" wuerde den Kontraktnamen
+        # nie bauen und die Order in einen Markt schicken, den es nicht gibt.
+        basis = inst.split("-")[0]
+        return "PF_%sUSD" % ("XBT" if basis == "BTC" else basis)
     if "-" in inst:
         return inst
-    boerse = str(w.get("boerse") or "okx").strip().lower()
     return "%s-%s" % (inst, "EUR" if boerse == "kraken" else "USDC")
 
 
@@ -462,6 +502,10 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
             behalten.append(p)
             continue
         kurs = kurse.get(p["inst"])
+        if kurs:
+            # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim
+            # Ausstieg - sonst waere die Zahl der Ausstiegskurs selbst.
+            mae.merke_extrem(p, kurs)
         if not kurs:
             # Kein Kurs heisst NICHT "nichts passiert": die Position wird
             # uebersprungen und kann so beliebig lange stehen bleiben. Bis zum
@@ -496,6 +540,36 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                 print("  %s: Zusatz-Ausstieg nicht rechenbar (%s)"
                       % (p.get("inst"), e), file=sys.stderr)
                 grund = None
+
+        if not grund and live and weg is not None and p.get("stop_id"):
+            # TRAILING AN DER BOERSE (T-286, 01.10.2026): der stp-Stop wird
+            # NACHGEZOGEN, nicht neu gerechnet im Buch. Nur LONG (die Buch-Spuren
+            # eroeffnen nur long), nur NACH OBEN, und nur wenn der neue Stop
+            # spuerbar ueber dem alten liegt. Scheitert das Nachziehen, bleibt
+            # der ALTE Stop an der Boerse stehen - die Position ist dann
+            # weiter geschuetzt; ein stiller Verlust des Schutzes waere die
+            # ZEC-Lektion vom 26.09.2026.
+            try:
+                pct = float(w.get("trailing_stop_prozent") or 0.0)
+            except (TypeError, ValueError):
+                pct = 0.0
+            if pct > 0.0 and p.get("seite") == "long":
+                hoch = max(float(p.get("hoechstkurs") or kurs), kurs)
+                p["hoechstkurs"] = hoch
+                neu = hoch * (1.0 - pct)
+                if neu > float(p["stop"]):
+                    try:
+                        kennung = weg.stop_nachziehen(
+                            p["stop_id"], p.get("venue_inst") or p["inst"],
+                            p.get("menge") or 0, neu)
+                        if kennung:
+                            p["stop"] = neu
+                            p["stop_id"] = str(kennung)
+                            print("  TRAILING %s Stop -> %.6f (Hoch %.6f)"
+                                  % (p["inst"], neu, hoch))
+                    except Exception as e:                     # noqa: BLE001
+                        print("  Trailing %s nicht nachziehbar (%s) - Stop %.6f bleibt"
+                              % (p["inst"], e, p["stop"]), file=sys.stderr)
 
         if not grund:
             behalten.append(p)
@@ -533,7 +607,8 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                 pos_id=p.get("pos_id", ""),
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
                 stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
-                stop_pct="%.2f" % p["stop_pct"], grund=grund)
+                stop_pct="%.2f" % p["stop_pct"], grund=grund,
+                **mae.felder(p))
 
     z["positionen"] = behalten
 
@@ -562,6 +637,11 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         w = lade_wachen(wachen_pfad)
         z = lade_zustand(zustand_pfad)
         z.setdefault("positionen", [])
+        # Das Journal existiert ab dem ersten Zyklus, nicht erst ab dem ersten
+        # Kauf (Auftrag Max 02.10.2026). Der Vorschau-Pfad kehrt weiter unten
+        # VOR jedem Schreibvorgang zurueck - hier wird nichts geschrieben.
+        if modus in ("papier", "live"):
+            lege_journal_an(journal_pfad)
 
         if modus == "wachen":
             print(json.dumps(wp.lage(w, journal_pfad, z), indent=2,

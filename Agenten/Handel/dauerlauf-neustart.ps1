@@ -9,13 +9,19 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File dauerlauf-neustart.ps1
 param(
   [int]$WarteSekunden = 600,
-  [switch]$NurPruefen
+  [switch]$NurPruefen,
+  [string]$Stufe = 'basis'          # basis | mittel | hoch (eigene PID/Log-Dateien)
 )
 
 $ErrorActionPreference = 'Stop'
 $handel = Split-Path $PSScriptRoot -Parent
 $handel = Join-Path $handel 'Handel'
-$sperre = Join-Path $handel 'dauerlauf.pid'
+# Je Stufe eigene Sperre: dauerlauf.pid (Basis), dauerlauf.mittel.pid, dauerlauf.hoch.pid
+# Der Startbefehl traegt -Risiko, weil dieselben drei Wrapper je Stufe starten.
+$sperreName = 'dauerlauf.pid'
+$risikoArgs = @()
+if ($Stufe -ne 'basis') { $sperreName = "dauerlauf.$Stufe.pid"; $risikoArgs = @('-Risiko', $Stufe) }
+$sperre = Join-Path $handel $sperreName
 $log    = Join-Path $handel 'dauerlauf-neustart.log'
 
 function Schreib($t) {
@@ -24,7 +30,10 @@ function Schreib($t) {
 
 $root = (Get-Content $sperre -ErrorAction SilentlyContinue | Select-Object -First 1)
 if (-not $root) { Schreib 'keine Sperre - kein laufender Basislauf'; exit 1 }
-$root = [int]$root
+# Die Sperre traegt PID und Startzeit ("72484 1790854541.93") - nur das ERSTE
+# Feld ist die PID; ein [int]-Cast auf den ganzen Text bricht mit
+# Formatfehler ab (01.10.2026 erlebt: alle drei Stufen brachen ungeschaltet ab).
+$root = [int]($root -split '\s+')[0]
 $kind = @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $root -and $_.Name -like 'python*' })
 if (-not $kind) { Schreib "Wurzel $root hat keinen Loop - nichts zu tauschen"; exit 1 }
 $loop = $kind[0].ProcessId
@@ -67,7 +76,7 @@ if ($weg.Count -ne 0) {
 Schreib "alte Prozesse beendet (Loop $loop, Wurzel $root)"
 
 Remove-Item $sperre -Force -ErrorAction SilentlyContinue
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'handel-dauerlauf.ps1')
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'handel-dauerlauf.ps1') @risikoArgs
 Start-Sleep -Seconds 5
 $neu = (Get-Content $sperre -ErrorAction SilentlyContinue | Select-Object -First 1)
 Schreib "neu gestartet, Sperre zeigt PID $neu"

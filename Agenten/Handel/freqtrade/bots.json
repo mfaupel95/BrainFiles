@@ -1,7 +1,7 @@
 {
   "_zweck": "Zuordnung der Trading-Agenten aus Werkstatt/Repos/moon-dev-ai-agents zu Freqtrade-Bots. Ein Eintrag unter 'bots' ist ein startbarer Bot; ein Eintrag unter 'nicht_portierbar' ist eine Absage MIT Grund. Diese Tabelle ist die Wahrheit - wer einen Agenten vermisst, findet ihn hier wieder.",
-  "_stand": "2026-09-30",
-  "_regel": "Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares. Portierbar ist genau das, was sich aus der Kerze rechnen laesst. Alles andere braucht eine Fremdquelle, und fuer die hat Freqtrade im Backtest keinen Weg.",
+  "_stand": "2026-10-01",
+  "_regel": "Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares - plus, im Futures-Modus, die Funding-Rate und den Mark-Preis (beide laedt `download-data --trading-mode futures` als eigene Reihen mit). Portierbar ist deshalb genau das, was sich aus der Kerze ODER aus diesen beiden Reihen rechnen laesst. Alles andere braucht eine Fremdquelle, die im Haus archiviert sein muss - was nicht archiviert wurde, ist fuer einen Ruecklauf verloren (Zwangsschluesse zum Beispiel).",
   "_basis_geometrie": "Stop und Ziel kommen NICHT aus dem Bot-Repo, sondern aus den Haus-Zahlen der Feed-Spuren (Agenten/Handel/moondev_*/wachen.json): stop_prozent 6.0-8.0 und ziel_r_vielfaches 1.5. Ein Bot erbt die Zahlen der Regel, die er abbildet.",
 
   "bots": [
@@ -70,17 +70,17 @@
     {
       "agent": "funding_agent.py, fundingarb_agent.py",
       "hindernis": "Fremddaten: Funding-Rate (Hyperliquid, stuendlich)",
-      "grund": "Freqtrade im Spot-Backtest kennt keine Funding-Rate - sie steht in keiner Kerze. Die Haus-Spur moondev_funding liest sie zur Laufzeit; eine Historie gibt es nicht, also auch nichts zu backtesten."
+      "grund": "KEINE Datenfrage mehr, sondern eine Modusfrage (richtiggestellt 01.10.2026): der SPOT-Backtest von Freqtrade kennt keine Funding-Rate - sie steht in keiner Kerze. Im FUTURES-Backtest rechnet Freqtrade sie dagegen mit: `download-data --trading-mode futures` legt je Paar drei Reihen ab (OHLCV, `mark`, `funding_rate`), und jeder Trade traegt im Export ein Feld `funding_fees` (gemessen am 01.10.2026 an BTC/USDT:USDT: 2199 Funding-Ereignisse in zwei Jahren, Summe +10,56 %). Auch das Haus hat die Reihe seit dem 29.09.2026 (moondev_historie.py, sechs Instrumente; replay.lauf_c faehrt die Funding-Spur nach: 23 Runden, 74 % Treffer). Portierbar ist der Agent also - aber nur als Futures-Bot und nur auf Instrumenten, fuer die es eine Reihe gibt. Nicht portiert, weil nicht gemessen."
     },
     {
       "agent": "whale_agent.py",
       "hindernis": "Fremddaten: offenes Interesse (OKX /public/open-interest, /rubik/stat/contracts)",
-      "grund": "OI ist nicht Teil der Kerze. Die Haus-Spur holt zur Laufzeit 5-Minuten-Punkte; archiviert wird nichts. Ohne OI-Reihe kein Backtest, ohne Backtest kein Bot (Hausregel: erst messen, dann bauen)."
+      "grund": "OI steht in keiner Kerze - aber eine HISTORIE gibt es (richtiggestellt 01.10.2026): OKX liefert sie oeffentlich unter /api/v5/rubik/stat/contracts/open-interest-volume mit ccy und period (1D und 1H gemessen; 180 Tageswerte, zurueck bis 05.04.2026). Sie ist AGGREGIERT je Coin, nicht je Kontrakt. Im Haus wird sie nur nicht archiviert: moondev_historie.py legt Preise und Funding ab, kein OI - deshalb fehlt die Reihe fuer einen Ruecklauf. Damit ist die Absage keine Datenfrage mehr, sondern ein Nachladen; die Haus-Spur moondev_whale liest dieselbe Kennzahl bereits zur Laufzeit."
     },
     {
       "agent": "liquidation_agent.py",
       "hindernis": "Fremddaten: Zwangsschluesse (OKX /public/liquidation-orders, neueste 100)",
-      "grund": "Wie beim OI: nur zur Laufzeit abrufbar, kein Archiv. Dieselbe Absage gilt fuer die Haus-Spur liq_wand."
+      "grund": "Die Absage BLEIBT, aber aus dem richtigen Grund (nachgemessen 01.10.2026): es gibt keine Historie. Der oeffentliche Endpunkt liefert nur das LAUFENDE Fenster - gemessen 100 Eintraege ueber 2,6 Stunden. Was nicht archiviert wurde, ist verloren; eine Reihe laesst sich nicht nachtraeglich beschaffen, ein Ruecklauf also nicht rechnen. Dieselbe Absage gilt fuer die Haus-Spur liq_wand (sie liest denselben Endpunkt zur Laufzeit)."
     },
     {
       "agent": "sentiment_agent.py",
@@ -125,7 +125,10 @@
   ],
 
   "_offen": [
-    "Kurze Seite: alle drei Bots sind long-only, weil can_short=True im Spot-Modus nicht laedt (strategy_resolver.py:167). Die Short-Regeln der Agenten (marktlage: -2 % und Breite <= 40 %) brauchen trading_mode futures plus Futures-Daten fuer den Backtest.",
-    "trading_agent, whale_agent, liquidation_agent, sentiment_agent urteilen im Original per Sprachmodell. Hier ist die Regel deterministisch - das ist Absicht (nachrechenbar), aber es ist NICHT dasselbe Verfahren. Ein Vergleich waere eine eigene Messung."
+    "Kurze Seite: GEMESSEN am 01.10.2026 (T-198), nicht mehr nur festgestellt. Der Regime-Bot faehrt jetzt als MoonDevMarketRegimeFutures mit der belegten Short-Regel (-2 % und hoechstens 40 % der Messlatte, Spiegel der Haus-Regel); trading_agent und new_or_top_agent haben keine Short-Regel und bekommen auch keine. Zahlen 2 Jahre, Futures-Daten BTC/ETH/SOL/BNB/XRP/ADA/DOGE/AVAX/LINK/DOT/LTC/ATOM 1h, Gebuehr 0,05 % je Seite (Futures-Satz): nur lang 210 Runden -20,68 %, nur kurz 215 Runden -34,50 %, beide 425 Runden -48,13 %. Die kurze Seite erklaert den Verlust ALSO nicht - sie verdoppelt die Zahl der gebuehrenzahlenden Runden und macht das Ergebnis schlechter. Die Regel selbst ist spiegelbildlich uebertragen, nicht erfunden.",
+    "Frequenzbremse: GEBAUT und GEMESSEN am 01.10.2026 (T-197), aber ABSICHTLICH AUS (Vorgabe in frequenzbremse.py, wie beim Haus-Vorfilter). Sie senkt die Rundenzahl (2 Jahre, trading-agent: 2954 -> 2877 mit der vollen Bremse, 1942 bei 48 h Mindestabstand), aber NICHT den Verlust je Runde (-0,16 bis -0,21 % in JEDER Einstellung). Der Verlust ist die Gebuehr, und die Gebuehr haengt an der Zahl der Runden - eine Bremse kann eine Regel ohne Vorteil nicht tragfaehig machen, sie verkleinert nur den Schaden. Bei topmovers und marktlage-regime wurde das Ergebnis mit Bremse sogar schlechter (-46,0 -> -55,4 %; -37,2 -> -39,2 %). Wer sie einschalten will, setzt `moondev.bremse: true` in seiner Bot-Konfiguration; die Aufsaetze liegen in user_data/messung/.",
+    "trading_agent, whale_agent, liquidation_agent, sentiment_agent urteilen im Original per Sprachmodell. Hier ist die Regel deterministisch - das ist Absicht (nachrechenbar), aber es ist NICHT dasselbe Verfahren. Ein Vergleich waere eine eigene Messung.",
+    "Der SIGNAL-Ausstieg ist die eigentliche Frequenzquelle, nicht der Einstieg: mit signal_ausstieg=false fallen die Runden von 2954 auf 389 und der Verlust von -83,35 % auf -25,99 % (30.09.2026, 2 Jahre). Keine der beiden Fassungen ist positiv - aber wer an der Frequenz drehen will, muss dort ansetzen, nicht bei einer Einstiegssperre.",
+    "Futures halbiert die Gebuehr (0,05 % statt 0,10 % je Seite): derselbe Regime-Bot, dieselbe lange Seite, dieselben 210 Runden - Spot -37,24 %, Futures -20,68 %. Der groesste gemessene Hebel an diesen Bots ist der Kostensatz, nicht die Regel."
   ]
 }

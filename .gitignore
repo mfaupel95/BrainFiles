@@ -129,9 +129,19 @@ Agenten/Handel/stand/
 # Zugangsdaten: sie werden zusammen mit config.json geladen (Freqtrade mischt
 # mehrere --config tief ineinander).
 !Agenten/Handel/freqtrade/bots.json
+!Agenten/Handel/freqtrade/bots.py
 !Agenten/Handel/freqtrade/bots_starten.sh
 !Agenten/Handel/freqtrade/user_data/strategies/*.py
 !Agenten/Handel/freqtrade/user_data/bots/*.json
+# Die Messwerkzeuge und Messaufsaetze der Frequenzbremse (T-197) und der
+# kurzen Seite (T-198). Beides ist eigene Arbeit mit Zahlen, die sonst nur im
+# Sitzungsprotokoll stuenden: das Skript, das die Laeufe faehrt, das, das sie
+# auswertet, die Tests, und je ein Aufsatz pro Variante (reine moondev-Bloecke,
+# KEINE Zugangsdaten - sie werden zusammen mit dem Bot-Aufsatz geladen).
+!Agenten/Handel/freqtrade/messung-*.sh
+!Agenten/Handel/freqtrade/messung-*.py
+!Agenten/Handel/freqtrade/tests/*.py
+!Agenten/Handel/freqtrade/user_data/messung/*.json
 
 # SWAP-Spur (Handel/swap/): eigener Papierpfad mit eigenen Wachen und Tests.
 # Ohne diese Zeilen waeren handeln.py und seine Tests nur lokal vorhanden -
@@ -590,11 +600,16 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Werkzeuge/fundus-suche.ps1
 !Agenten/Werkzeuge/bonsai-27b.ps1
 !Agenten/Werkzeuge/kraken.ps1
+!Agenten/Werkzeuge/desktop-verknuepfungen.ps1
 # Werkzeug: Fremd-Klone auf den Stand ihrer Quelle spulen (21.09.2026)
 !Agenten/Werkzeuge/repos-updaten.py
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
+# ANKER-PRUEFUNG (01.10.2026): beweist, dass die Profilfunktion `hermes` die
+# Sitzung in Agenten/Hermes startet (Attrappe statt hermes.exe, echte Funktion).
+# Ohne die Zeile liegt das Werkzeug nur auf der Platte.
+!Agenten/Werkzeuge/anker-pruefen.ps1
 # OLLAMA-BRUECKE, freigelegt am 24.09.2026. Sie ist der EINE Weg, auf dem
 # Fremd-Agenten mit OpenAI-Zweig ohne bezahlten Schluessel ein Urteil vom
 # lokalen Modell bekommen (Ollama-eigener /v1-Adapter liefert bei Denk-Modellen
@@ -731,6 +746,19 @@ Agenten/Handel/robinhood_radar/zustand.json
 Agenten/Handel/robinhood_radar/handelsjournal.csv
 Agenten/Handel/trendwende_btc/zustand.json
 Agenten/Handel/trendwende_btc/handelsjournal.csv
+!Agenten/Handel/omnitrade/*.py
+!Agenten/Handel/omnitrade/*.md
+!Agenten/Handel/omnitrade/wachen.json
+!Agenten/Handel/omnitrade/tests/*.py
+!Agenten/Handel/omnitrade/strategien/*.omni
+!Agenten/Handel/omnitrade_futures/*.py
+!Agenten/Handel/omnitrade_futures/*.md
+!Agenten/Handel/omnitrade_futures/wachen.json
+!Agenten/Handel/omnitrade_futures/tests/*.py
+Agenten/Handel/omnitrade_futures/zustand.json
+Agenten/Handel/omnitrade_futures/handelsjournal.csv
+Agenten/Handel/omnitrade/zustand.json
+Agenten/Handel/omnitrade/handelsjournal.csv
 Agenten/Handel/moondev_topmovers/zustand.json
 Agenten/Handel/moondev_topmovers/handelsjournal.csv
 !Agenten/Handel/moondev_signalwelle/*.py
@@ -884,3 +912,118 @@ Agenten/Werkzeuge/breite-reihe.jsonl
 # Argument den Stand lesen, mit "start" den Demo-Lauf beginnen - mit Pruefung,
 # dass nie zwei Laeufe gleichzeitig gehen (zwei Laeufe ordern doppelt).
 !/omnitrade.cmd
+
+# Klassik-Spuren (30.09.2026)
+!Agenten/Handel/klassik_sma/*.py
+!Agenten/Handel/klassik_sma/*.md
+!Agenten/Handel/klassik_sma/wachen.json
+Agenten/Handel/klassik_sma/zustand.json
+Agenten/Handel/klassik_sma/handelsjournal.csv
+!Agenten/Handel/klassik_ema/*.py
+!Agenten/Handel/klassik_ema/*.md
+!Agenten/Handel/klassik_ema/wachen.json
+Agenten/Handel/klassik_ema/zustand.json
+Agenten/Handel/klassik_ema/handelsjournal.csv
+!Agenten/Handel/klassik_macd/*.py
+!Agenten/Handel/klassik_macd/*.md
+!Agenten/Handel/klassik_macd/wachen.json
+Agenten/Handel/klassik_macd/zustand.json
+Agenten/Handel/klassik_macd/handelsjournal.csv
+!Agenten/Handel/klassik_bollinger/*.py
+!Agenten/Handel/klassik_bollinger/*.md
+!Agenten/Handel/klassik_bollinger/wachen.json
+Agenten/Handel/klassik_bollinger/zustand.json
+Agenten/Handel/klassik_bollinger/handelsjournal.csv
+!Agenten/Handel/klassik_donchian/*.py
+!Agenten/Handel/klassik_donchian/*.md
+!Agenten/Handel/klassik_donchian/wachen.json
+Agenten/Handel/klassik_donchian/zustand.json
+Agenten/Handel/klassik_donchian/handelsjournal.csv
+!Agenten/Handel/klassik_rsi/*.py
+!Agenten/Handel/klassik_rsi/*.md
+!Agenten/Handel/klassik_rsi/wachen.json
+Agenten/Handel/klassik_rsi/zustand.json
+Agenten/Handel/klassik_rsi/handelsjournal.csv
+!Agenten/Handel/klassik_rsi2/*.py
+!Agenten/Handel/klassik_rsi2/*.md
+!Agenten/Handel/klassik_rsi2/wachen.json
+Agenten/Handel/klassik_rsi2/zustand.json
+Agenten/Handel/klassik_rsi2/handelsjournal.csv
+!Agenten/Handel/klassik_donchian_trend/*.py
+!Agenten/Handel/klassik_donchian_trend/*.md
+!Agenten/Handel/klassik_donchian_trend/wachen.json
+Agenten/Handel/klassik_donchian_trend/zustand.json
+Agenten/Handel/klassik_donchian_trend/handelsjournal.csv
+!Agenten/Handel/klassik_sr_breaks/*.py
+!Agenten/Handel/klassik_sr_breaks/*.md
+!Agenten/Handel/klassik_sr_breaks/wachen.json
+Agenten/Handel/klassik_sr_breaks/zustand.json
+Agenten/Handel/klassik_sr_breaks/handelsjournal.csv
+!Agenten/Handel/klassik_pmax/*.py
+!Agenten/Handel/klassik_pmax/*.md
+!Agenten/Handel/klassik_pmax/wachen.json
+Agenten/Handel/klassik_pmax/zustand.json
+Agenten/Handel/klassik_pmax/handelsjournal.csv
+!Agenten/Handel/klassik_supertrend/*.py
+!Agenten/Handel/klassik_supertrend/*.md
+!Agenten/Handel/klassik_supertrend/wachen.json
+Agenten/Handel/klassik_supertrend/zustand.json
+Agenten/Handel/klassik_supertrend/handelsjournal.csv
+
+# Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
+!Agenten/Handel/prophet_signal/*.py
+!Agenten/Handel/prophet_signal/*.md
+!Agenten/Handel/prophet_signal/wachen.json
+Agenten/Handel/prophet_signal/zustand.json
+Agenten/Handel/prophet_signal/handelsjournal.csv
+
+# --- FREMD-GRENZE (30.09.2026, Auftrag Max "code und struktur ueberall optimieren") ---
+# Die eine Quelle (JSON), ihr Leser (fremd.py), das Bestandswerkzeug und die
+# lesbare Anzeige. Zweck: Fremd-Material im eigenen Baum (OpenAlice, Klone,
+# stillgelegte Anlagen) wird BENANNT und nicht mitgezaehlt - eigener Code sind
+# 831 Dateien / 173.481 Zeilen, mit Fremdem 11.489 Dateien / 4,2 Mio. Zeilen.
+# Die Tests dazu liegen unter Agenten/Werkzeuge/tests und
+# Agenten/Werkzeuge/repos-zentrale/tests (dort schon freigegeben).
+!Agenten/FREMD-Liste.json
+!Agenten/FREMD.md
+!Agenten/Werkzeuge/fremd.py
+!Agenten/Werkzeuge/bestand.py
+# Wurzel-Aufrufer fuer den Bestand (30.09.2026): aus jedem Verzeichnis
+!/bestand.cmd
+# --- jevgrep (30.09.2026, Auftrag Max "jevgrep installieren wenn sinnvoll") ---
+# Haus-Installation des Fremd-Werkzeugs (MIT) in Agenten/Werkzeuge/jevgrep:
+# npm-Paket @dzhng/jevgrep 0.7.0 in node_modules, Aufruf ueber jg.cmd bzw. den
+# Wurzel-Aufrufer jevgrep.cmd. Versioniert werden nur die drei eigenen Dateien
+# (README, Aufrufer, Test) - node_modules ist reproduzierbar aus package.json.
+# Die Regel steht NACH der allgemeinen Sperre, sonst greift sie nicht.
+!Agenten/Werkzeuge/jevgrep/README.md
+!Agenten/Werkzeuge/jevgrep/jg.cmd
+!Agenten/Werkzeuge/jevgrep/test_jevgrep.py
+!Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py
+!Agenten/Werkzeuge/jevgrep/sonde_zen.py
+!Agenten/Werkzeuge/jevgrep/jev_bruecke.py
+!Agenten/Werkzeuge/jevgrep/test_jev_bruecke.py
+!Agenten/Werkzeuge/jevgrep/messung_lokal.py
+!Agenten/Werkzeuge/jevgrep/pruefe_bruecke.py
+!Agenten/Werkzeuge/jevgrep/sonde_mercury.py
+!Agenten/Werkzeuge/jevgrep/bruecke-mercury.cmd
+!Agenten/Werkzeuge/jevgrep/vorpruefung.py
+!Agenten/Werkzeuge/jevgrep/jg_sicher.py
+!Agenten/Werkzeuge/jevgrep/test_vorpruefung.py
+!Agenten/Werkzeuge/jevgrep/package.json
+!Agenten/Werkzeuge/jevgrep/package-lock.json
+!/jevgrep.cmd
+Agenten/Werkzeuge/jevgrep/node_modules/
+Agenten/Werkzeuge/jevgrep/__pycache__/
+
+# --- Laufzeitstand der Zentrale (30.09.2026) --------------------------------
+# `einstellungen.json` merkt Schriftgroesse, Dichte, Fenstergroesse und Filter
+# der Repos-Zentrale. Es aendert sich bei JEDER Bedienung (jeder Klick auf einen
+# Chip) - ein versionierter Stand waere in jedem Commit eine Phantom-Aenderung.
+# Die Regel steht NACH der Freigabe `!...repos-zentrale/*.json` (Zeile 616):
+# spaetere Regel gewinnt. Gegenprobe: git check-ignore -v <pfad>.
+Agenten/Werkzeuge/repos-zentrale/einstellungen.json
+
+# Wurzel-Aufrufer fuer die Modelllisten der Bot-Profile (CRLF, kein LF):
+# liegt NACH allen Sperrregeln, weil die spaetere Regel gewinnt.
+!/profil-listen.cmd

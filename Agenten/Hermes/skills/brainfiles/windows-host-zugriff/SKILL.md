@@ -276,6 +276,13 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   starten und `<out>` mit `read_file` lesen. Dieselbe Regel gilt fuer jedes
   Fremdwerkzeug mit `$`, Backtick oder `%` in den Argumenten — Datei statt
   Einzeiler, und `2>/dev/null` weglassen, sonst verschluckt sie die Ursache.
+  **Auch ein doppelt-quotierter `-Command "…"`-String ist bash-Land:** bash
+  expandiert `$name` VOR PowerShell, das Skript sieht eine leere Variable und
+  meldet still Erfolg — gemessen blieb ein so gesetzter PATH-Eintrag einfach
+  aus, ohne Fehlermeldung. PowerShell-Variablen also nicht in einen
+  doppelt-quotierten Inline-String schreiben: `.ps1` per `-File` starten (immer
+  die verlaessliche Form), oder mindestens einfach quotieren, damit `$` literal
+  ankommt.
 - **Dasselbe fuer Python-Code: Datei statt Heredoc.** Ein Heredoc
   (`python - <<'PY' … PY`) durch die Terminal-Schicht loest die Fluchtfolgen VOR
   Python auf — aus dem zweibuchstabigen `\n` INNERHALB eines String-Literals wird ein
@@ -516,6 +523,51 @@ einen DAEMON ohne eigenes Fenster ist der Wechsel gefahrlos; eine sichtbare
 GUI (Tk-Hauptfenster) hat den eigenen Konflikt oben (`-WindowStyle Hidden`
 versteckt auch das Fenster) — dort die Konsole getrennt regeln statt das
 Fenster zu verstecken.
+
+## Eine Datei erscheint immer wieder (Desktop, Arbeitsverzeichnis): den SCHREIBER belegen
+
+Dieselbe Fehlerklasse wie das aufblitzende Fenster: ein Artefakt, das „zu oft
+aufploppt" (eine Datei auf dem Desktop, ein wiederkehrender Logname), wird
+nicht am Artefakt erklaert, sondern am Prozess, der es erzeugt.
+
+- **Der NAME ist der erste Zeuge.** Sieht ein Dateiname aus wie ein Pfad ohne
+  seine Trennzeichen (`CUsersfaupe…Hermestoolspython-3.14.7…python.exe.txt`),
+  wurde ein Pfad als DATEINAME benutzt: die Trennzeichen hat der Schreibende
+  verloren, und die Datei liegt dort, wo sein ARBEITSVERZEICHNIS war. Aus dem
+  Fundort folgt also der CWD des Schreibers, nicht ein Zielort.
+- **Eine Verknuepfung ohne „Ausfuehren in" setzt den CWD auf ihren eigenen
+  Ordner.** Ein Desktop-`.lnk` auf eine GUI-Anwendung startet den Prozess damit
+  im Desktop-Ordner — ein relativer Logname landet genau dort. Ziel und
+  Arbeitsverzeichnis aus den `.lnk`-Bytes lesen, nicht raten (Rezept in
+  `references/herkunft-belegen.md`).
+- **Erst pruefen, ob die Datei noch GEHALTEN wird**, bevor Prozesse verdaechtigt
+  werden: exklusiv oeffnen. Geht es auf, ist der Schreiber fertig und aus der
+  Prozessliste verschwunden — ein Schnappschuss Minuten spaeter ist wertlos, und
+  die Frage muss beim NAECHSTEN Auftauchen beantwortet werden (Wache unten).
+- **Eine leere Kommandozeilen-Suche beweist nichts.** Ein Redirect (`… > datei`)
+  steht in der Kommandozeile des ELTERNprozesses, nicht des Kindes; ein
+  `cmd /c … > datei`-Elternteil kann laengst beendet sein, waehrend das Kind
+  weiterlaeuft. Kein Treffer heisst nur: der Starter ist weg.
+- **Die eigene Herkunft ausschliessen statt vermuten.** Hermes' eigener
+  Dateinamen-Reiniger (`hermes_cli/gateway_windows._sanitize_filename`) ERSETZT
+  verbotene Zeichen durch `_` — ein Name, in dem sie einfach FEHLEN, stammt
+  nicht von dort. Solche Diskriminatoren sparen ganze Suchlaeufe.
+- **Die Aufgabenplanung zuerst abfragen, nicht zuletzt:** alle `MaxHirn-*`-
+  Aufgaben mit `Execute` + `Arguments` + `WorkingDirectory` ausgeben. Ein
+  Redirect dort ist damit in einem Aufruf ausgeschlossen.
+- **Wenn nur die Stoerung weg soll:** den CWD des Starters geradeziehen
+  (Verknuepfung → Eigenschaften → „Ausfuehren in": Startverzeichnis des
+  Dienstes). Der Mechanismus (CWD) ist damit belegt, der Schreiber selbst
+  nicht — beides so benennen, statt einen Fix zu behaupten.
+- **Einen ungeklaerten Schreiber nicht als geloest ausgeben.** Ist der Prozess
+  beim Nachsehen schon tot, heisst die ehrliche Antwort: Mechanismus belegt,
+  Erzeuger offen, naechster Schritt ist die Wache. Die vergeblichen Suchlaeufe
+  (Quellbaum, Bundle, Prozessliste) gehoeren dann NICHT als Rezept in die
+  Antwort.
+
+Die Sonden im Detail (`.lnk`-Bytes, Halte-Test, Prozess-Schnappschuss,
+Aufgaben-Dump, `FileSystemWatcher`, begrenztes Grep):
+`references/herkunft-belegen.md`.
 
 ## "Keine Verbindung" zu einem Dienst: erst lokal von global trennen
 

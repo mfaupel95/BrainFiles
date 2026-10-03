@@ -97,6 +97,7 @@ git status) und keiner ist zu Ende gefuehrt
 ## Kurzreferenz
 
 ```
+cd "$HERMES_HOME/../.."                         # Wurzel - alle Pfade hier sind relativ dazu
 git status --porcelain                       # Baum
 powershell -File Agenten/mcp-sync-check.ps1  # MCP-Drift
 python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/sammeln.py

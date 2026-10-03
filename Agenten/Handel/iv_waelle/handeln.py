@@ -311,6 +311,10 @@ def lauf(modus):
             print("Vorschau: keine Marktdaten (%s)"
                   % ("; ".join(fehler)[:200] if fehler else "keine Instrumente"))
         print("Vorschau: keine Dateien geschrieben.")
+        # Die Sperrenzeile gehoert in JEDE Vorschau: dauerlauf.nur_fenster_
+        # fehlt liest genau sie (T-313, 02.10.2026).
+        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
+              "(Papier)")
         return 0
 
     if not daten:

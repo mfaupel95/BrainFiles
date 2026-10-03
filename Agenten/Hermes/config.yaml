@@ -1,20 +1,443 @@
 model:
-  default: deepseek/deepseek-v4.1-flash
+  default: stealth/space-bunny-alpha
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
 providers:
-  bonsai:
-    api: http://127.0.0.1:8081/v1
-    base_url: http://127.0.0.1:8081/v1
-    default_model: bonsai
-    model: bonsai
-    name: Bonsai 2 27B (lokal, PrismML-Fork)
-    discover_models: true
+  nous:
+    models:
+      anthropic/claude-opus-4.1: {}
+      anthropic/claude-opus-4.1:batch: {}
+      anthropic/claude-opus-4.5: {}
+      anthropic/claude-opus-4.5:batch: {}
+      anthropic/claude-opus-4.6: {}
+      anthropic/claude-opus-4.6:batch: {}
+      anthropic/claude-opus-4.7: {}
+      anthropic/claude-opus-4.7:batch: {}
+      anthropic/claude-opus-4.8: {}
+      anthropic/claude-opus-4.8:batch: {}
+      anthropic/claude-opus-5: {}
+      anthropic/claude-opus-5.5: {}
+      anthropic/claude-opus-5.5:batch: {}
+      anthropic/claude-opus-5:batch: {}
+      ~anthropic/claude-opus-latest: {}
+      amazon/nova-pro-v1: {}
+      deepseek/deepseek-v4-pro: {}
+      deepseek/deepseek-v4-pro-0813: {}
+      google/gemini-2.5-pro: {}
+      google/gemini-2.5-pro-preview: {}
+      google/gemini-2.5-pro:batch: {}
+      google/gemini-3.1-pro-preview: {}
+      google/gemini-3.1-pro-preview-customtools: {}
+      google/gemini-3.1-pro-preview:batch: {}
+      kwaipilot/kat-coder-pro-v2.5: {}
+      nex-agi/nex-n2.5-pro: {}
+      openai/gpt-5-pro: {}
+      openai/gpt-5-pro:batch: {}
+      openai/gpt-5.2-pro: {}
+      openai/gpt-5.2-pro:batch: {}
+      openai/gpt-5.4-pro: {}
+      openai/gpt-5.4-pro:batch: {}
+      openai/gpt-5.5-pro: {}
+      openai/gpt-5.5-pro:batch: {}
+      openai/gpt-5.6-luna-pro: {}
+      openai/gpt-5.6-luna-pro:batch: {}
+      openai/gpt-5.6-sol-pro: {}
+      openai/gpt-5.6-sol-pro:batch: {}
+      openai/gpt-5.6-terra-pro: {}
+      openai/gpt-5.6-terra-pro:batch: {}
+      openai/gpt-6-astra-pro: {}
+      openai/gpt-6-astra-pro-fast: {}
+      openai/gpt-6-astra-pro-flex: {}
+      openai/gpt-6-astra-pro:batch: {}
+      openai/gpt-6-luna-pro: {}
+      openai/gpt-6-luna-pro:batch: {}
+      openai/gpt-6-sol-pro: {}
+      openai/gpt-6-sol-pro:batch: {}
+      openai/gpt-6.1-sol-pro: {}
+      openai/gpt-6.1-sol-pro:batch: {}
+      openai/o3-pro: {}
+      upstage/solar-pro-3: {}
+      upstage/solar-pro4: {}
+      upstage/solar-pro4:free: {}
+      xiaomi/mimo-v2.5-pro: {}
+      xiaomi/mimo-v2.6-pro: {}
+      xiaomi/mimo-v2.6-pro-ultraspeed: {}
+      ~deepseek/deepseek-pro-latest: {}
+      ~google/gemini-pro-latest: {}
+      aion-labs/aion-2.0: {}
+      aion-labs/aion-3.0: {}
+      aion-labs/aion-3.0-mini: {}
+      aion-labs/aion-3.5: {}
+      aion-labs/aion-3.5-mini: {}
+      amazon/nova-2-lite-v1: {}
+      amazon/nova-lite-v1: {}
+      amazon/nova-micro-v1: {}
+      amazon/nova-premier-v1: {}
+      anthropic/claude-fable-5: {}
+      anthropic/claude-fable-5.1: {}
+      anthropic/claude-fable-5.1:batch: {}
+      anthropic/claude-fable-5:batch: {}
+      anthropic/claude-haiku-4.5: {}
+      anthropic/claude-haiku-4.5:batch: {}
+      arcee-ai/trinity-large-thinking: {}
+      baai/bge-base-en-v1.5: {}
+      baai/bge-large-en-v1.5: {}
+      baai/bge-m3: {}
+      bytedance-seed/seed-1.6: {}
+      bytedance-seed/seed-1.6-flash: {}
+      bytedance-seed/seed-2-1-turbo: {}
+      bytedance-seed/seed-2.0-code: {}
+      bytedance-seed/seed-2.0-lite: {}
+      bytedance-seed/seed-2.0-mini: {}
+      cohere/command-a-plus: {}
+      cohere/command-r-08-2024: {}
+      cohere/command-r-plus-08-2024: {}
+      deepseek/deepseek-chat: {}
+      deepseek/deepseek-chat-v3-0324: {}
+      deepseek/deepseek-chat-v3.1: {}
+      deepseek/deepseek-r1: {}
+      deepseek/deepseek-r1-0528: {}
+      deepseek/deepseek-v3.1-terminus: {}
+      deepseek/deepseek-v3.2: {}
+      deepseek/deepseek-v3.2-exp: {}
+      deepseek/deepseek-v4-flash: {}
+      deepseek/deepseek-v4-flash-0731: {}
+      deepseek/deepseek-v4-flash-0731:US: {}
+      deepseek/deepseek-v4-flash-vision-exp: {}
+      deepseek/deepseek-v4.1-flash: {}
+      deepseek/deepseek-v4.1-flash:US: {}
+      deepseek/deepseek-v4.1-flash:batch: {}
+      fireworks/ember-1: {}
+      google/gemini-2.5-flash: {}
+      google/gemini-2.5-flash-lite: {}
+      google/gemini-2.5-flash-lite:batch: {}
+      google/gemini-2.5-flash:batch: {}
+      google/gemini-3-flash-preview: {}
+      google/gemini-3-flash-preview:batch: {}
+      google/gemini-3.1-flash-lite: {}
+      google/gemini-3.1-flash-lite-preview: {}
+      google/gemini-3.1-flash-lite:batch: {}
+      google/gemini-3.5-flash: {}
+      google/gemini-3.5-flash-lite: {}
+      google/gemini-3.5-flash-lite:batch: {}
+      google/gemini-3.5-flash:batch: {}
+      google/gemini-3.6-flash: {}
+      google/gemini-3.6-flash:batch: {}
+      google/gemini-3.7-flash: {}
+      google/gemini-3.7-flash:batch: {}
+      google/gemini-3.8-flash: {}
+      google/gemini-3.8-flash:batch: {}
+      google/gemini-embedding-001: {}
+      google/gemini-embedding-2: {}
+      google/gemini-embedding-2-preview: {}
+      google/gemini-embedding-2:batch: {}
+      google/gemma-3-12b-it: {}
+      google/gemma-3-27b-it: {}
+      google/gemma-4-26b-a4b-it: {}
+      google/gemma-4-31b-it: {}
+      ibm-granite/granite-4.2-8b: {}
+      inception/mercury-2: {}
+      inception/mercury-2.5: {}
+      inclusionai/ling-3.0-flash: {}
+      inclusionai/ling-3.0-flash-fin: {}
+      inclusionai/ling-3.0-flash-fin:free: {}
+      inclusionai/ling-3.0-flash-sante:free: {}
+      inclusionai/ling-3.0-flash-vl: {}
+      intfloat/e5-base-v2: {}
+      intfloat/e5-large-v2: {}
+      intfloat/multilingual-e5-large: {}
+      meituan/longcat-2.0: {}
+      meituan/longcat-2.0:free: {}
+      meituan/longcat-2.5-preview:free: {}
+      meta-llama/llama-3.1-70b-instruct: {}
+      meta-llama/llama-3.1-8b-instruct: {}
+      meta-llama/llama-3.3-70b-instruct: {}
+      meta-llama/llama-4-maverick: {}
+      meta-llama/llama-4-scout: {}
+      meta/muse-glimmer-30b: {}
+      meta/muse-spark-1.1: {}
+      meta/muse-spark-1.2: {}
+      meta/muse-spark-1.2-contributor: {}
+      meta/muse-spark-1.3: {}
+      meta/muse-spark-1.3-contributor: {}
+      minimax/minimax-m1: {}
+      minimax/minimax-m2: {}
+      minimax/minimax-m2.1: {}
+      minimax/minimax-m2.5: {}
+      minimax/minimax-m2.7: {}
+      minimax/minimax-m3: {}
+      mistralai/codestral-2508: {}
+      mistralai/codestral-2508:batch: {}
+      mistralai/codestral-embed-2505: {}
+      mistralai/devstral-2512: {}
+      mistralai/ministral-14b-2512: {}
+      mistralai/ministral-3b-2512: {}
+      mistralai/ministral-8b-2512: {}
+      mistralai/ministral-8b-2512:batch: {}
+      mistralai/mistral-embed-2312: {}
+      mistralai/mistral-large: {}
+      mistralai/mistral-large-2407: {}
+      mistralai/mistral-large-2512: {}
+      mistralai/mistral-large-2512:batch: {}
+      mistralai/mistral-medium-3: {}
+      mistralai/mistral-medium-3-5: {}
+      mistralai/mistral-medium-3-5:batch: {}
+      mistralai/mistral-medium-3.1: {}
+      mistralai/mistral-medium-3.1:batch: {}
+      mistralai/mistral-nemo: {}
+      mistralai/mistral-saba: {}
+      mistralai/mistral-small-2603: {}
+      mistralai/mistral-small-2603:batch: {}
+      mistralai/mistral-small-3.1-24b-instruct: {}
+      mistralai/mistral-small-3.2-24b-instruct: {}
+      mistralai/mixtral-8x22b-instruct: {}
+      mistralai/voxtral-small-24b-2507: {}
+      moonshotai/kimi-k2: {}
+      moonshotai/kimi-k2-0905: {}
+      moonshotai/kimi-k2-thinking: {}
+      moonshotai/kimi-k2.5: {}
+      moonshotai/kimi-k2.6: {}
+      moonshotai/kimi-k2.7-code: {}
+      moonshotai/kimi-k3: {}
+      moonshotai/kimi-k3:US: {}
+      moonshotai/kimi-k3:batch: {}
+      nvidia/nemotron-3-nano-30b-a3b: {}
+      nvidia/nemotron-3-super-120b-a12b: {}
+      nvidia/nemotron-3-ultra-550b-a55b: {}
+      nvidia/nemotron-3.5-lightning: {}
+      openai/gpt-3.5-turbo: {}
+      openai/gpt-3.5-turbo-0613: {}
+      openai/gpt-3.5-turbo-16k: {}
+      openai/gpt-3.5-turbo:batch: {}
+      openai/gpt-4: {}
+      openai/gpt-4-turbo: {}
+      openai/gpt-4-turbo:batch: {}
+      openai/gpt-4.1: {}
+      openai/gpt-4.1-mini: {}
+      openai/gpt-4.1-mini:batch: {}
+      openai/gpt-4.1-nano: {}
+      openai/gpt-4.1-nano:batch: {}
+      openai/gpt-4.1:batch: {}
+      openai/gpt-4o: {}
+      openai/gpt-4o-2024-05-13: {}
+      openai/gpt-4o-2024-08-06: {}
+      openai/gpt-4o-2024-11-20: {}
+      openai/gpt-4o-mini: {}
+      openai/gpt-4o-mini-2024-07-18: {}
+      openai/gpt-4o-mini:batch: {}
+      openai/gpt-4o:batch: {}
+      openai/gpt-5: {}
+      openai/gpt-5-mini: {}
+      openai/gpt-5-mini:batch: {}
+      openai/gpt-5-nano: {}
+      openai/gpt-5-nano:batch: {}
+      openai/gpt-5.1: {}
+      openai/gpt-5.1-codex: {}
+      openai/gpt-5.1-codex-max: {}
+      openai/gpt-5.1-codex-mini: {}
+      openai/gpt-5.1:batch: {}
+      openai/gpt-5.2: {}
+      openai/gpt-5.2-chat: {}
+      openai/gpt-5.2-codex: {}
+      openai/gpt-5.2:batch: {}
+      openai/gpt-5.3-codex: {}
+      openai/gpt-5.4: {}
+      openai/gpt-5.4-mini: {}
+      openai/gpt-5.4-mini:batch: {}
+      openai/gpt-5.4-nano: {}
+      openai/gpt-5.4-nano:batch: {}
+      openai/gpt-5.4:batch: {}
+      openai/gpt-5.5: {}
+      openai/gpt-5.5:batch: {}
+      openai/gpt-5.6-luna: {}
+      openai/gpt-5.6-luna:batch: {}
+      openai/gpt-5.6-sol: {}
+      openai/gpt-5.6-sol:batch: {}
+      openai/gpt-5.6-terra: {}
+      openai/gpt-5.6-terra:batch: {}
+      openai/gpt-5:batch: {}
+      openai/gpt-6-astra: {}
+      openai/gpt-6-astra-fast: {}
+      openai/gpt-6-astra-flex: {}
+      openai/gpt-6-astra:batch: {}
+      openai/gpt-6-luna: {}
+      openai/gpt-6-luna:batch: {}
+      openai/gpt-6-sol: {}
+      openai/gpt-6-sol:batch: {}
+      openai/gpt-6.1-sol: {}
+      openai/gpt-6.1-sol:batch: {}
+      openai/gpt-audio: {}
+      openai/gpt-audio-mini: {}
+      openai/gpt-chat-latest: {}
+      openai/gpt-oss-120b: {}
+      openai/gpt-oss-120b:batch: {}
+      openai/gpt-oss-20b: {}
+      openai/gpt-oss-20b:batch: {}
+      openai/gpt-oss-safeguard-20b: {}
+      openai/o1: {}
+      openai/o3: {}
+      openai/o3-mini: {}
+      openai/o3-mini-high: {}
+      openai/o3-mini:batch: {}
+      openai/o3:batch: {}
+      openai/o4-mini: {}
+      openai/o4-mini-high: {}
+      openai/o4-mini:batch: {}
+      openai/text-embedding-3-large: {}
+      openai/text-embedding-3-large:batch: {}
+      openai/text-embedding-3-small: {}
+      openai/text-embedding-3-small:batch: {}
+      openai/text-embedding-ada-002: {}
+      openai/text-embedding-ada-002:batch: {}
+      perceptron/perceptron-mk1.5: {}
+      perplexity/pplx-embed-v1-0.6b: {}
+      perplexity/pplx-embed-v1-4b: {}
+      poolside/laguna-s-2.1: {}
+      poolside/laguna-s-2.1:free: {}
+      poolside/laguna-xs-2.1: {}
+      poolside/laguna-xs-2.1:free: {}
+      prism-ml/ternary-bonsai-2-27b: {}
+      qwen/qwen-2.5-72b-instruct: {}
+      qwen/qwen-2.5-7b-instruct: {}
+      qwen/qwen-plus: {}
+      qwen/qwen-plus-2025-07-28: {}
+      qwen/qwen3-14b: {}
+      qwen/qwen3-235b-a22b: {}
+      qwen/qwen3-235b-a22b-2507: {}
+      qwen/qwen3-235b-a22b-thinking-2507: {}
+      qwen/qwen3-30b-a3b: {}
+      qwen/qwen3-30b-a3b-instruct-2507: {}
+      qwen/qwen3-30b-a3b-thinking-2507: {}
+      qwen/qwen3-32b: {}
+      qwen/qwen3-8b: {}
+      qwen/qwen3-coder: {}
+      qwen/qwen3-coder-30b-a3b-instruct: {}
+      qwen/qwen3-coder-flash: {}
+      qwen/qwen3-coder-next: {}
+      qwen/qwen3-coder-plus: {}
+      qwen/qwen3-embedding-4b: {}
+      qwen/qwen3-embedding-8b: {}
+      qwen/qwen3-max: {}
+      qwen/qwen3-max-thinking: {}
+      qwen/qwen3-next-80b-a3b-instruct: {}
+      qwen/qwen3-next-80b-a3b-thinking: {}
+      qwen/qwen3-vl-235b-a22b-instruct: {}
+      qwen/qwen3-vl-235b-a22b-thinking: {}
+      qwen/qwen3-vl-30b-a3b-instruct: {}
+      qwen/qwen3-vl-30b-a3b-thinking: {}
+      qwen/qwen3-vl-32b-instruct: {}
+      qwen/qwen3-vl-8b-instruct: {}
+      qwen/qwen3-vl-8b-thinking: {}
+      qwen/qwen3.5-122b-a10b: {}
+      qwen/qwen3.5-27b: {}
+      qwen/qwen3.5-35b-a3b: {}
+      qwen/qwen3.5-397b-a17b: {}
+      qwen/qwen3.5-9b: {}
+      qwen/qwen3.5-flash-02-23: {}
+      qwen/qwen3.5-plus-02-15: {}
+      qwen/qwen3.5-plus-20260420: {}
+      qwen/qwen3.6-27b: {}
+      qwen/qwen3.6-35b-a3b: {}
+      qwen/qwen3.6-flash: {}
+      qwen/qwen3.6-max-preview: {}
+      qwen/qwen3.6-plus: {}
+      qwen/qwen3.7-flash: {}
+      qwen/qwen3.7-max: {}
+      qwen/qwen3.7-plus: {}
+      qwen/qwen3.8-2.4t-a95b: {}
+      qwen/qwen3.8-27b: {}
+      qwen/qwen3.8-flash: {}
+      qwen/qwen3.8-max-0902: {}
+      qwen/qwen3.8-max-prime: {}
+      qwen/qwen3.8-omni-flash: {}
+      rekaai/reka-edge: {}
+      relace/relace-search: {}
+      sakana/fugu-max: {}
+      sakana/fugu-ultra: {}
+      sakana/fugu-ultra-v2: {}
+      sakana/sakana-namazu: {}
+      sao10k/l3.1-euryale-70b: {}
+      sentence-transformers/all-minilm-l12-v2: {}
+      sentence-transformers/all-minilm-l6-v2: {}
+      sentence-transformers/all-mpnet-base-v2: {}
+      sentence-transformers/multi-qa-mpnet-base-dot-v1: {}
+      sentence-transformers/paraphrase-minilm-l6-v2: {}
+      stealth/space-bunny-alpha: {}
+      stepfun/step-3.5-flash: {}
+      stepfun/step-3.7-flash: {}
+      stepfun/step-3.7-flash:free: {}
+      tencent/hy3: {}
+      tencent/hy3-preview: {}
+      tencent/hy4-preview: {}
+      thenlper/gte-base: {}
+      thenlper/gte-large: {}
+      thinkingmachines/inkling: {}
+      thinkingmachines/inkling-small: {}
+      unbiased/pareto: {}
+      upstage/solar-mini4: {}
+      voyageai/voyage-4: {}
+      voyageai/voyage-4-large: {}
+      voyageai/voyage-4-lite: {}
+      voyageai/voyage-code-4: {}
+      voyageai/voyage-multimodal-3.5: {}
+      x-ai/grok-4.20: {}
+      x-ai/grok-4.3: {}
+      x-ai/grok-4.3:batch: {}
+      x-ai/grok-4.5: {}
+      x-ai/grok-4.6: {}
+      x-ai/grok-4.7: {}
+      x-ai/grok-build-0.1: {}
+      xiaomi/mimo-v2.5: {}
+      xiaomi/mimo-v2.6-flash: {}
+      z-ai/glm-4.5: {}
+      z-ai/glm-4.5-air: {}
+      z-ai/glm-4.5v: {}
+      z-ai/glm-4.6: {}
+      z-ai/glm-4.6v: {}
+      z-ai/glm-4.7: {}
+      z-ai/glm-4.7-flash: {}
+      z-ai/glm-5: {}
+      z-ai/glm-5-turbo: {}
+      z-ai/glm-5.1: {}
+      z-ai/glm-5.2: {}
+      z-ai/glm-5.3: {}
+      z-ai/glm-5.3-flash: {}
+      z-ai/glm-5.3-flash:US: {}
+      z-ai/glm-5.3-flash:batch: {}
+      z-ai/glm-5.3-flashx: {}
+      z-ai/glm-5.3-prime: {}
+      z-ai/glm-5.3:US: {}
+      z-ai/glm-5.3:batch: {}
+      z-ai/glm-5v-turbo: {}
+      ~anthropic/claude-fable-latest: {}
+      ~anthropic/claude-haiku-latest: {}
+      ~deepseek/deepseek-flash-latest: {}
+      ~deepseek/deepseek-v4-flash-latest: {}
+      ~google/gemini-flash-latest: {}
+      ~moonshotai/kimi-latest: {}
+      ~openai/gpt-astra-latest: {}
+      ~openai/gpt-luna-latest: {}
+      ~openai/gpt-mini-latest: {}
+      ~openai/gpt-sol-latest: {}
+      ~openai/gpt-terra-latest: {}
+      ~x-ai/grok-latest: {}
+      ~z-ai/glm-flash-latest: {}
+      ~z-ai/glm-latest: {}
+      anthropic/claude-sonnet-4: {}
+      anthropic/claude-sonnet-4.5: {}
+      anthropic/claude-sonnet-4.5:batch: {}
+      anthropic/claude-sonnet-4.6: {}
+      anthropic/claude-sonnet-4.6:batch: {}
+      anthropic/claude-sonnet-5: {}
+      anthropic/claude-sonnet-5.5: {}
+      anthropic/claude-sonnet-5.5:batch: {}
+      anthropic/claude-sonnet-5:batch: {}
+      ~anthropic/claude-sonnet-latest: {}
   ollama-launch:
     api: http://127.0.0.1:11434/v1
     base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:latest
+    default_model: deepseek-r1:7b
     discover_models: true
     model: gemma-e4b-8k:latest
     models:
@@ -140,21 +563,13 @@ providers:
       ollama-local/bge-m3: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
-  smart:
-    api: http://127.0.0.1:20128/v1
-    name: smart
-    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
-    models:
-      auto/smart:
-        context_length: 400000
-    default_model: auto/smart
-    base_url: http://127.0.0.1:20128/v1
-    api_mode: chat_completions
 fallback_providers:
   - provider: nous
-    model: deepseek/deepseek-v4.1-flash
-  - provider: nous
-    model: upstage/solar-pro4:free
+    model: stealth/space-bunny-alpha
+  - provider: anthropic
+    model: claude-haiku-4-5-20251001
+  - provider: llamacpp
+    model: Ternary-Bonsai-2-27B-PTQ1_0
 toolsets:
   - hermes-cli
 database:
@@ -165,12 +580,12 @@ agent:
   api_max_retries: 3
   service_tier: auto
   personalities: {}
-  reasoning_effort: medium
+  reasoning_effort: high
   verbose: false
 terminal:
   backend: local
-  cwd: C:\Users\faupe\documents\BrainFiles
-  font_family: ''
+  cwd: C:\Users\faupe\documents\BrainFiles\Agenten\Hermes
+  font_family: 'FiraCode Nerd Font'
   timeout: 180
   home_mode: auto
   docker_forward_env:
@@ -236,8 +651,8 @@ checkpoints:
   max_snapshots: 30
 file_read_max_chars: 1000000
 tool_output:
-  max_bytes: 500000
-  max_lines: 10000
+  max_bytes: 300000
+  max_lines: 1000
   max_line_length: 10000
 tool_loop_guardrails:
   warnings_enabled: true
@@ -253,9 +668,9 @@ tool_loop_guardrails:
 compression:
   enabled: true
   progress_notices: false
-  threshold: 0.6
-  target_ratio: 0.5
-  protect_last_n: 6
+  threshold: 0.5
+  target_ratio: 0.2
+  protect_last_n: 8
   min_tail_user_messages: 1
   max_attempts: 3
   proactive_prune_tokens: 0
@@ -271,8 +686,8 @@ prompt_caching:
 auxiliary:
   free_only: false
   vision:
-    provider: auto
-    model: ''
+    provider: nous
+    model: 'qwen/qwen3-vl-235b-a22b-instruct'
   skills_hub:
     provider: auto
     model: ''
@@ -282,9 +697,12 @@ auxiliary:
   curator:
     provider: auto
     model: ''
+  triage_specifier:
+    provider: nous
+    model: inception/mercury-2.5
 display:
   compact: false
-  personality: creative
+  personality: helpful
   busy_input_mode: steer
   bell_on_complete: true
   show_reasoning: true
@@ -328,12 +746,12 @@ context:
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 750000
-  user_char_limit: 237500
+  memory_char_limit: 450000
+  user_char_limit: 137500
   nudge_interval: 10
   provider: ''
 delegation:
-  model: deepseek/deepseek-v4-flash-0731
+  model: stealth/space-bunny-alpha
   provider: nous
   fallback_providers:
     - provider: ollama-launch
@@ -343,32 +761,35 @@ delegation:
       model: bonsai
     - provider: anthropic
       model: claude-opus-5
-  max_iterations: 250
-  reasoning_effort: medium
+  max_iterations: 100
+  reasoning_effort: xhigh
+  max_concurrent_children: 10
+  child_timeout_seconds: 180
 moa:
   presets:
     default:
       reference_models:
         - provider: nous
-          model: deepseek/deepseek-v4.1-flash
+          model: qwen/qwen3-coder-30b-a3b-instruct
           enabled: true
         - provider: nous
-          model: openai/gpt-5.6-sol
-          enabled: false
+          model: mistralai/mistral-nemo
+          enabled: true
         - provider: nous
-          model: openai/gpt-6-astra
-          enabled: false
-        - provider: bonsai
-          model: bonsai
-          enabled: false
-        - provider: anthropic
-          model: claude-opus-4-8
-          enabled: false
+          model: inception/mercury-2.5
+          enabled: true
+        - provider: nous
+          model: stealth/space-bunny-alpha
+          enabled: true
+        - provider: nous
+          model: deepseek/deepseek-v4-flash
+          enabled: true
       aggregator:
         provider: nous
-        model: deepseek/deepseek-v4-flash-0731
+        model: deepseek/deepseek-v4-flash
       degraded_reference_policy: loud
       fanout: user_turn
+      enabled: true
     Max:
       enabled: false
       reference_models:
@@ -437,27 +858,27 @@ moa:
       fanout: user_turn
   aggregator:
     provider: nous
-    model: deepseek/deepseek-v4-flash-0731
+    model: deepseek/deepseek-v4-flash
   degraded_reference_policy: loud
   enabled: true
   fanout: user_turn
   max_tokens: 64096
   reference_models:
     - provider: nous
-      model: deepseek/deepseek-v4.1-flash
+      model: qwen/qwen3-coder-30b-a3b-instruct
       enabled: true
     - provider: nous
-      model: openai/gpt-5.6-sol
-      enabled: false
+      model: mistralai/mistral-nemo
+      enabled: true
     - provider: nous
-      model: openai/gpt-6-astra
-      enabled: false
-    - provider: bonsai
-      model: bonsai
-      enabled: false
-    - provider: anthropic
-      model: claude-opus-4-8
-      enabled: false
+      model: inception/mercury-2.5
+      enabled: true
+    - provider: nous
+      model: stealth/space-bunny-alpha
+      enabled: true
+    - provider: nous
+      model: deepseek/deepseek-v4-flash
+      enabled: true
 skills:
   creation_nudge_interval: 15
 curator:
@@ -495,6 +916,8 @@ security:
   allow_private_urls: true
 kanban:
   review_dispatch: true
+  orchestrator_profile: lokal-first
+  default_assignee: lotse
 code_execution:
   mode: project
   max_tool_calls: 50
@@ -523,7 +946,8 @@ onboarding:
     tool_progress_prompt: true
 telemetry:
   shared_metrics:
-    enabled: false
+    enabled: true
+    send: false
 updates:
   pre_update_backup: quick
   backup_keep: 5
@@ -533,7 +957,12 @@ computer_use:
 proxy:
   enabled: false
 desktop:
-  repo_scan_roots: []
+  repo_scan_roots:
+    - 'C:\Users\faupe\documents\BrainFiles\Werkstatt'
+    - O:\Werkstatt
+  repo_scan_exclude_paths:
+    - C:\Users\faupe\documents\Github
+  font_family: IBM Plex Sans
 local_runtime:
   enabled: true
 _config_version: 49
@@ -717,7 +1146,7 @@ mcp_servers:
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - get_mcp_server_version
@@ -740,11 +1169,11 @@ mcp_servers:
       ProgramFiles: C:\Program Files
   deepwiki:
     url: https://mcp.deepwiki.com/mcp
-    enabled: true
+    enabled: false
   buildkite:
     url: https://mcp.buildkite.com/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - access_token
@@ -752,7 +1181,7 @@ mcp_servers:
   circleci:
     url: https://mcp.circleci.com/v1/mcp
     auth: oauth
-    enabled: true
+    enabled: false
     tools:
       exclude:
         - hello
@@ -839,3 +1268,5 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+cron:
+  catch_up_missed: false

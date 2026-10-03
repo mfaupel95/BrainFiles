@@ -188,12 +188,116 @@ class FensterTest(ReplayTest):
                                                   "mindest_kerzen": 300}), 900)
 
 
+class FensterOderHistorieTest(ReplayTest):
+    """Ein zu kleines Fenster ist KEINE fehlende Historie (01.10.2026).
+
+    Gemessen: `--max-kerzen 200` bei mindest_kerzen 300 schnitt die Reihe VOR
+    der Pruefung auf 200 Kerzen; die Pruefung schlug an und der Lauf meldete
+    "keine Historie fuer supertrend - erst auffuellen", obwohl 12.559 Kerzen
+    auf der Platte lagen. Genau diese Anweisung aendert in diesem Fall nichts -
+    der Grund gehoert in den Text, sonst folgt der Leser einer Sackgasse.
+    """
+
+    def _wachen(self, spur):
+        with open(os.path.join(HANDEL, spur, "wachen.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def _kerzen_fuer(self, spur, w, max_kerzen):
+        """kerzen_fuer ohne die Meldungszeilen auf stdout."""
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            return replay.kerzen_fuer(spur, w, None, max_kerzen)
+
+    def test_fenster_unter_dem_bedarf_nennt_das_fenster(self):
+        w = self._wachen("supertrend")
+        with self.assertRaises(replay.HistorieFehlt) as ctx:
+            self._kerzen_fuer("supertrend", w, 200)
+        text = str(ctx.exception)
+        self.assertIn("Fenster zu klein", text)
+        self.assertIn(str(replay.bedarf(w)), text)
+        self.assertNotIn("auffuellen", text)      # Nachfuellen hilft hier NICHT
+
+    def test_zu_kleines_fenster_kommt_nicht_bis_zum_lauf(self):
+        import contextlib
+        import io
+        with self.assertRaises(replay.HistorieFehlt), \
+                contextlib.redirect_stdout(io.StringIO()):
+            replay.lauf_a("supertrend", 0.1, "test", max_kerzen=200)
+
+    def test_fehlende_historie_behaelt_die_auffuell_anweisung(self):
+        """Der ANDERE Grund - hier ist Nachfuellen wirklich die Tat."""
+        w = dict(self._wachen("supertrend"), instrumente=["BNB"],
+                 kerzen_takt="1H")
+        with self.assertRaises(replay.HistorieFehlt) as ctx:
+            self._kerzen_fuer("supertrend", w, None)
+        text = str(ctx.exception)
+        self.assertIn("auffuellen", text)
+        self.assertNotIn("Fenster zu klein", text)
+
+    def test_gegenprobe_meldet_bei_leeren_kerzen_nicht_mehr_gleich(self):
+        """Vorher lief `gegenprobe` mit leerem Kerzen-Dict durch und meldete
+        zweimal null Runden als "gleich: true" - ein falscher Freispruch."""
+        import contextlib
+        import io
+        with self.assertRaises(replay.HistorieFehlt), \
+                contextlib.redirect_stdout(io.StringIO()):
+            replay.gegenprobe("supertrend", 0.1, "test", max_kerzen=200)
+
+    def test_kleines_fenster_auf_der_kommandozeile_ist_ein_eingabefehler(self):
+        """`--fenster 100` kann keinen Schritt rechnen. Vorher lief das durch
+        und meldete still "0 Runden"; jetzt eine Zeile und Exit 2 statt eines
+        Tracebacks."""
+        import subprocess
+        r = subprocess.run([sys.executable, os.path.join(HANDEL, "replay.py"),
+                            "--spur", "supertrend", "--gebuehr", "0.1",
+                            "--fenster", "100", "--lauf", "test_fenster"],
+                           cwd=HANDEL, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("Fenster zu klein", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_eine_spur_ohne_instrumente_sagt_das(self):
+        """orb und orbk stehen in der Replay-Liste des Leitstands, ihr
+        handeln.py hat aber kein `lade_wachen` - die Verweigerung muss den
+        Grund nennen, statt ihn zu raten („Historie zu kurz UND Fenster zu
+        klein" war zweimal falsch)."""
+        import subprocess
+        r = subprocess.run([sys.executable, os.path.join(HANDEL, "replay.py"),
+                            "--spur", "orb", "--gebuehr", "0.1", "--lauf", "x"],
+                           cwd=HANDEL, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("nennt kein Instrument", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_bedarf_ist_mindestkerzen_plus_puffer(self):
+        self.assertEqual(replay.bedarf({"mindest_kerzen": 600}), 620)
+        self.assertEqual(replay.bedarf({}), 320)          # Vorgabe 300 + 20
+
+    def test_bedarf_fuer_liest_die_wachen_ohne_das_modul_zu_laden(self):
+        self.assertEqual(replay.bedarf_fuer("supertrend"),
+                         replay.bedarf(self._wachen("supertrend")))
+        self.assertIsNone(replay.bedarf_fuer("gibt-es-nicht"))
+
+
 class FamilieBTest(ReplayTest):
     """Familie B laeuft ueber `spur_buch.zyklus` - und darf nichts nach aussen.
 
     Drei Dinge muessen nach dem Lauf unveraendert sein: der Bus (kein Eintrag),
     die Zeituhr von `spur_buch` und das echte Q:-Ziel.
     """
+
+    def test_zu_kleines_fenster_ist_kein_stilles_null_runden(self):
+        """Familie B hatte dieselbe Luecke wie Familie A: `max_kerzen` schnitt
+        VOR der Schleife, die Schleife lief leer und der Lauf meldete
+        "0 Runden" - eine Zahl, die wie ein Messergebnis aussieht."""
+        import contextlib
+        import io
+        with self.assertRaises(replay.HistorieFehlt) as ctx, \
+                contextlib.redirect_stdout(io.StringIO()):
+            replay.lauf_b("trendwende_btc", gebuehr_pct=0.05,
+                          lauf="test_kurz", max_kerzen=100, fenster=100)
+        self.assertIn("Fenster zu klein", str(ctx.exception))
 
     def test_lauf_b_bucht_in_den_backtest_ordner(self):
         k, zeilen = replay.lauf_b("trendwende_btc", gebuehr_pct=0.05,
@@ -280,3 +384,33 @@ class GegenprobeTest(ReplayTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+class GebuehrVorgabeTest(unittest.TestCase):
+    """Die Vorgabe der Gebuehr ist der GEMESSENE Satz der Spur (01.10.2026).
+
+    Vorher stand im Argument `--gebuehr` fest 0.1. Fuer die vier
+    Indikator-Spuren (OKX-Spot, 0,10 %/Seite) war das richtig, fuer `mosaic`
+    (Kraken, 0,60 %/Seite) rechnete jeder Backtest damit SECHSMAL zu guenstig -
+    und niemand sah es, weil die Zahl plausibel aussah.
+    """
+
+    def test_vorgabe_kommt_aus_der_wachen_der_spur(self):
+        for spur, soll in (("mosaic", 0.6), ("supertrend", 0.1),
+                           ("orbk", 0.6), ("liq_wand", 0.05)):
+            satz, quelle = replay.gebuehr_aufloesen(None, spur)
+            self.assertEqual(soll, satz, spur)
+            self.assertIn("wachen.json", quelle, spur)
+
+    def test_eigener_wert_schlaegt_die_vorgabe(self):
+        satz, quelle = replay.gebuehr_aufloesen(0.25, "mosaic")
+        self.assertEqual(0.25, satz)
+        self.assertIn("--gebuehr", quelle)
+
+    def test_null_ist_ein_erlaubter_eigener_wert(self):
+        satz, _ = replay.gebuehr_aufloesen(0.0, "supertrend")
+        self.assertEqual(0.0, satz)
+
+    def test_der_aufruf_ohne_gebuehr_bleibt_moeglich(self):
+        """Kein stiller Rueckfall auf 0: der Satz MUSS aus der Spur kommen."""
+        satz, _ = replay.gebuehr_aufloesen(None, "gitter")
+        self.assertNotEqual(0.0, satz)

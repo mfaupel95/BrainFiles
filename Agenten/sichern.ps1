@@ -167,8 +167,32 @@ $start = Get-Date
 # und Hermes\runtimes (GGUF-Gewichte und Laufzeiten, gehoeren nach Modelle\),
 # Handel\nautilus-rust\target (Rust-Build-Cache, cargo baut ihn neu) und
 # _Backups (Notfallkopien von state.db; das Original geht mit).
+# Waisen-Reste abgebrochener Updates. NUR der gesperrte .partial-Ordner wird
+# ausgeschlossen: leer, aber GESPERRT (icacls schlaegt selbst fehl, Remove-Item
+# 'Access denied'). robocopy versuchte zweimal, brach nach 1 s Wartezeit ab und
+# beendete den Lauf mit FEHLER 5 / Code 11, obwohl 0 Nutzdateien fehlten. Ein
+# gesperrter Bau-Rest gehoert nicht in die Sicherung: er ist nicht kopierbar
+# und nicht wiederherstellbar.
+# NICHT ausgeschlossen: tools\.previous-python-* (346 MB) und die
+# MCP-Server\*.venv.bak-20260918 (~45 MB je). Sie sind NICHT gesperrt, werden
+# sauber kopiert und liegen als Reserve neben dem funktionierenden Original -
+# ihr Ausschluss waere eine stillschweigende Datenverlagerung, keine Fehlerbehebung.
+# WICHTIG - Wildcards sind in /XD nicht erlaubt: robocopy wertet
+# '...\*.partial' als Ordnernamen, meldet 'Ungueltiger Parameter #11' und
+# endet mit Code 16, OHNE zu kopieren (gemessen 03.10.2026). Deshalb wird
+# der Pfad hier aufgeloest und als Liste uebergeben.
+$waisen = @()
+foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial')) {
+  $waisen += @(Get-ChildItem -Path (Join-Path $quelle $muster) -Directory `
+                 -Force -ErrorAction SilentlyContinue |
+               ForEach-Object { $_.FullName })
+}
+if ($waisen.Count -gt 0) {
+  Write-Host ("Gesperrte Update-Reste ausgeschlossen: {0}" -f $waisen.Count)
+}
+
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile (Join-Path $quelle 'Agenten\Hermes\cache') (Join-Path $quelle 'Agenten\Hermes\cron\output') (Join-Path $quelle 'Agenten\Hermes\models') (Join-Path $quelle 'Agenten\Hermes\runtimes') (Join-Path $quelle 'Agenten\Handel\nautilus-rust\target') (Join-Path $quelle 'Agenten\_Backups') /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. Agenten\Hermes\cache ist Wegwerf- und Probebereich (transiente Test-Klone, Wache-Zustaende): Entstehen und Vergehen waehrend des Laufs und liessen robocopy 21.09.2026 mit Code 11 und Exitcode 1 enden, obwohl keine Nutzdatei fehlte. Agenten\Hermes\cron\output ist derselbe Fall (Cron-Ausgaben, alle 6 min neu, alte werden weggeraeumt - gemessen 22.09.2026, 838 Dateien)
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile (Join-Path $quelle 'Agenten\Hermes\cache') (Join-Path $quelle 'Agenten\Hermes\cron\output') (Join-Path $quelle 'Agenten\Hermes\models') (Join-Path $quelle 'Agenten\Hermes\runtimes') (Join-Path $quelle 'Agenten\Handel\nautilus-rust\target') (Join-Path $quelle 'Agenten\_Backups') $waisen /XF *.pid   # *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. Agenten\Hermes\cache ist Wegwerf- und Probebereich (transiente Test-Klone, Wache-Zustaende): Entstehen und Vergehen waehrend des Laufs und liessen robocopy 21.09.2026 mit Code 11 und Exitcode 1 enden, obwohl keine Nutzdatei fehlte. Agenten\Hermes\cron\output ist derselbe Fall (Cron-Ausgaben, alle 6 min neu, alte werden weggeraeumt - gemessen 22.09.2026, 838 Dateien). $waisen traegt die gesperrten Update-Reste als AUFGELOESTE Vollpfade (siehe oben).
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: die Archivdaten (Bilder/Dokumente/Musik/Videos/Software/
@@ -196,8 +220,11 @@ if ($code -lt 8) {
   Write-Host 'Sicherung Dateien, die in der Quelle geloescht wurden - z. B.'
   Write-Host 'Claude\Posteingang\Maximilianbackup0924 (48,8 GB).'
   Write-Host ''
-  Write-Host 'Fehlercode 3221225786 (STATUS_CONFLICT_WITH_LOCK) = Claude Desktop war noch offen'
-  Write-Host 'und blockierte Dateien. Sicherungsskript beendet Claude jetzt automatisch.'
+  Write-Host 'Hinweis zu Fehlercode 3221225786 (0xC0000409, STATUS_STACK_BUFFER_OVERRUN):'
+  Write-Host 'das ist ein genereller Fail-Fast-Code, KEIN Beleg fuer eine Datei-Sperre durch'
+  Write-Host 'Claude Desktop. Ursache am 29./30.09.2026 war Commit-Erschoepfung durch einen'
+  Write-Host 'MCP-Server-Spawn-Sturm (Docker/WSL haengt) - siehe'
+  Write-Host 'MaxHirn\Wiki\Betrieb\Systemleistung-2026-09-29.md, Abschnitt 9/10.'
   # Fehler muss nach aussen sichtbar sein: ohne eigenen Exitcode meldet die
   # Aufgabenplanung einen misslungenen Lauf als Erfolg.
   exit 1

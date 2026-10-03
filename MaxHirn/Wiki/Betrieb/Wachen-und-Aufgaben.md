@@ -206,3 +206,36 @@ dem Startbefehl. Dieselbe Feststellung erst nach 6 h wieder (Merkdatei
 `Agenten/Hermes/scripts/test_omnitrade_lauf_wache.py` (17, Temp-Statusdatei, gestellte
 Prozessliste); Gegenprobe: Zeugen-Reihenfolge und Wiederholungsschutz zurueckgenommen →
 4 Tests rot.
+
+## Zeitgrenze und Einzelinstanz: zwei Fallen der Aufgabenplanung (30.09.2026)
+
+**Ein Nicht-0-Code ist erst mit seiner Zeitgrenze ein Befund.** `3221225786`
+(0xC000013A, STATUS_CONTROL_C_EXIT) sieht wie ein Skriptabsturz aus, ist bei einem
+Wrapper, der einen Dauerdienst startet, aber meistens die `ExecutionTimeLimit` der
+Aufgabe: `MaxHirn-Sicherung` und `-Zweitkopie` standen auf `PT1H` und wurden nach genau
+einer Stunde mitten im Lauf abgeraeumt — erkennbar daran, dass ihr Protokoll nur die
+Startzeile enthaelt und keine Ende-Zeile. Beide stehen jetzt auf `PT3H`,
+`MaxHirn-OmniRoute` (startet `npm run start`, kehrt erst nach dem Hochfahren zurueck) von
+`PT15M` auf `PT1H`. Vor jeder Deutung eines Codes also
+`(Get-ScheduledTask <name>).Settings.ExecutionTimeLimit` mitlesen. Umgekehrt ist
+`267014` bei einem Stundenlauf kein Skriptfehler, sondern der Neustart.
+
+**`IgnoreNew` schuetzt nur gegen die Aufgabe selbst.** Ein Wrapper, der sein Kind startet
+und sofort zurueckkehrt, laeuft bei jeder zweiten Ausloesung erneut — Handstart,
+Fremdsitzung oder ein Skriptaufruf erzeugen dann ein ZWEITES Kind. Am 30.09.2026 liefen
+so zwei MoonDev-Treiber samt doppeltem Agentensatz (15:36 und 16:29). Der
+Einzelinstanz-Schutz gehoert in den Wrapper (Prozessabfrage; den Suchtext aus Teilen
+bauen, sonst trifft der Filter die eigene Kommandozeile und der Wrapper beendet sich
+selbst). Dieselbe Luecke hat die Datensortierung: drei Handstarts an einem Tag haben sich
+das Tagesprotokoll gegenseitig ueberschrieben (T-240).
+
+**Ein Volltext-Suchlauf ueber den eigenen Baum ist O(156.000).** `Agenten` und `MaxHirn`
+tragen zusammen so viele Dateien, auch nach Abzug von `node_modules`, `.venv` und
+`hermes-agent`. Der Suchblock der Datensortierung holte sich je Kandidat die Dateiliste
+NEU per `Get-ChildItem -Recurse` (ohne die Ausschlussliste, also inklusive der
+Umgebungen) — mit fuenf Zertifikaten stand der Lauf nach 43 Minuten noch darin und wurde
+beim Neustart abgebrochen. Richtig ist: erst alle Kandidaten sammeln, dann EIN Suchlauf,
+und der nur ueber Textendungen und ohne `site-packages`, `.venv*` und `dist-info`
+(`.venv.bak-*` faellt durch keine Liste, die nur `.venv` kennt). Gemessen danach: 446 s,
+Ende ok. Umgebungs-CA-Buendel (`certifi/cacert.pem`) sind keine losen Schluesseldateien
+und werden nicht mehr gemeldet.

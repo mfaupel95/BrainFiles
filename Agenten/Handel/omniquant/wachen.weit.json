@@ -15,7 +15,9 @@
   "_redundanz": "Streuungs-Filter: max_je_basiswert begrenzt, wie viele Positionen auf DENSELBEN Basiswert gleichzeitig laufen duerfen. Der Prognose-Bericht meldet Paare (SOL-USDC und SOL-USDT sind zwei Treffer, aber ein Asset) - zwei Positionen im selben Basiswert sind keine Diversifikation und verzerren die Messung, ob die Prognose traegt. 1 = nur die staerkste Position je Basiswert. Zaehlt NUR neue Kandidaten gegen den Bestand: einmal offene Doppel (vor dem Filter eroeffnet) bleiben liegen, der Filter wirkt ab dem naechsten Einstieg.",
   "max_je_basiswert": 1,
   "_kosten": "Der ehrliche Teil des Papierbuchs. OKX-Spot-Gebuehr 0,1 % (Taker), Slippage 0,15 % als konservative Annahme fuer ein Paar mit ueber 3 Mio USD Tagesumsatz. Wer diese Zahlen kleiner setzt, baut eine Wunschrechnung.",
-  "gebuehr_pct": 0.1,
+  "gebuehr_pct": 0.05,
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "GEKLAERT am 01.10.2026 (T-293, Grundlage: `boerse: kraken_futures` und die Messung vom 25.09.2026): Kraken FUTURES 0,05 %/Seite. Vorher stand hier 0,1 (OKX-Spot) mit dem Vermerk 'Widerspruch, offen' - eine Absichtserklaerung fuer einen Widerspruch, den es nicht mehr gab. Die Gebuehr folgt der ORDER-BOERSE, nicht dem Kursweg: der Preis kommt weiter aus okx.letzter_kurs, nur der Live-Zweig holt ihn ueber kraken_perp.",
   "slippage_pct": 0.15,
   "_ausstieg": "Stop und Ziel kommen aus dem Prognose-Bericht (gerechnet gegen 20-/60-Tage-Extrema). Zusaetzlich ein Zwangsschluss nach max_halte_dauer_tagen: Ein Signal, das sich in zwei Wochen nicht bewegt hat, ist verfallen - die Position wird zum Marktpreis geschlossen, damit die Auswertung weiss, was die Strategie wirklich gebracht haette.",
   "max_halte_dauer_tage": 14,
@@ -24,5 +26,7 @@
   "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Papier-Spur; vorher 90 aus der Anlaufzeit.",
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null -> Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\omniquant_weit",
-  "_fassung": "WEIT (24.09.2026): Schattenarm zum Hauptarm. Gleiche Groessen, gleiches Risiko, gleiche Kosten - nur die Prognose-Tore sind weiter (prognose.weit.json, hoechst_rsi 70 / mindest_cr 1.0 / ruecksetzer_bis -2). Der Vergleich misst damit die TORE, nicht die Dimensionierung. Eigenes Buch (zustand.weit.json, handelsjournal.weit.csv) und eigene Spiegelung nach Q:\\Handel_Journal\\omniquant_weit."
+  "_fassung": "WEIT (24.09.2026): Schattenarm zum Hauptarm. Gleiche Groessen, gleiches Risiko, gleiche Kosten - nur die Prognose-Tore sind weiter (prognose.weit.json, hoechst_rsi 70 / mindest_cr 1.0 / ruecksetzer_bis -2). Der Vergleich misst damit die TORE, nicht die Dimensionierung. Eigenes Buch (zustand.weit.json, handelsjournal.weit.csv) und eigene Spiegelung nach Q:\\Handel_Journal\\omniquant_weit.",
+  "boerse": "kraken_futures",
+  "_boerse_vermerk": "Zielboerse der Order ist Kraken FUTURES (PF_-Maerkte), wie im Hauptarm. Das Feld ist reine Dokumentation - der Live-Zweig live_perp.py ist auf Kraken Futures festgelegt. Es fehlte bis zum 01.10.2026 in dieser Datei; ohne es war am Schattenarm nicht zu sehen, welcher Gebuehrensatz gilt."
 }

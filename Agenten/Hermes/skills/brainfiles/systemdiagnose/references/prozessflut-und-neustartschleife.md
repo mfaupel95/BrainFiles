@@ -70,6 +70,41 @@ anderen.** Wer eine Prozesswache prueft, prueft ihren Filter mit.
    laenger zum Hochkommen als der Neustart-Takt, kommt er nie fertig — dann
    Takt oder Gnadenfrist anpassen, nicht den Dienst neu starten.
 
+## Der Ausloeser ist oft ein NEUSTART, und die Abhilfe ist der Docker-Neustart
+
+Wenn die Flut **kurz nach einem Docker- oder Gateway-Neustart** einsetzt und
+der RAM in Ordnung ist, ist es nicht ein Fresser, sondern eine Kettenreaktion:
+die MCP-Server starten nach dem Neustart mehrfach, statt je Gruppe bei drei zu
+bleiben (gemessen: 10 bis 18 je Gruppe). Der RAM sagt dazu nichts — die
+**Prozesszahl** und der **Commit** sind die Messgroessen, nicht der freie
+Arbeitsspeicher.
+
+Vorher und nachher dieselben vier Zahlen nehmen, sonst ist die Abhilfe eine
+Behauptung: Prozesse gesamt, `python`/`pyw` gesamt, Commit belegt und frei,
+RAM frei. Zwei Schwellen genuegen als Befund — **mehr als 50 Python-Prozesse
+oder weniger als 8 GB Commit frei**.
+
+Der gepruefte, schnellste Hebel ist ein sauberer Docker-Neustart:
+
+1. Docker-Desktop-Prozesse beenden, `wsl --shutdown`, Docker Desktop starten.
+2. **Bereitschaft abwarten** (`docker info` in Schleife, bis sie antwortet, mit
+   Obergrenze) — der Start dauert zweistellig bis dreistellig Sekunden, und
+   „gestartet“ ist kein „bereit“.
+3. Danach die vier Zahlen erneut nehmen **und** die Container zaehlen. Gemessen
+   ueber einen Neustart hinweg: Prozesse 991 auf 880, Python 90 auf 54, RAM
+   frei 12,0 auf 18,2 GB, Commit belegt 87,8 auf 74,3 GB — und die MCP-Gruppen
+   lagen wieder bei zwei bis vier Stueck je Gruppe, also innerhalb der Regel.
+
+**Nebenwirkung vor dem Neustart pruefen:** Container mit
+`RestartPolicy = "no"` werden mit beendet und kommen nicht zurueck. Vorher
+`docker ps --format "{{.Names}}\t{{.Status}}"` sichern und die Namen mit
+`"Up"` merken — im Bericht steht, was man mit beendet hat, sonst glaubt der
+naechste Blick, es laufe noch.
+
+**Und derRestart loest die Ursache nicht:** er macht die Flut nur billiger.
+Jeder weitere Docker- oder Gateway-Neustart zueendet erneut — das ist der offene
+Punkt, nicht der Messwert.
+
 ## Fallen
 
 - **Die eigene Abfrage traegt den Suchtext.** `CommandLine -match 'gateway'`

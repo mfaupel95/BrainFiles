@@ -67,6 +67,28 @@ SPUREN = [
     ("trendwende_btc", "trendwende_btc", "scanner", "wachen_pruefung"),
     ("liq_wand", "liq_wand", "scanner", "wachen_pruefung"),
     ("robinhood_radar", "robinhood_radar", "scanner", "wachen_pruefung"),
+    # OMNITRADE (30.09.2026): spur_buch-Spur, Betrag ausdruecklich (15.00 =
+    # 1.0x Buchrisiko aus 5 USD x 3 Plaetzen).
+    ("omnitrade", "omnitrade", "scanner", "wachen_pruefung"),
+    # OMNITRADE_FUTURES (30.09.2026): Betrag ausdruecklich (2.00 = 1.0x
+    # Buchrisiko aus 2.0 USD Risiko x 1 Platz).
+    ("omnitrade_futures", "omnitrade_futures", "scanner", "wachen_pruefung"),
+    # Klassik-Spuren (30.09.2026): spur_buch-Spuren ueber klassik_regeln.
+    # Prophet-Signal (02.10.2026): spur_buch-Spur ueber prophet_regeln.py,
+    # Betrag ausdruecklich (10.00 = 1.0x Buchrisiko aus 5.0 USD x 2 Plaetzen).
+    ("prophet_signal", "prophet_signal", "scanner", "wachen_pruefung"),
+    ("klassik_sma", "klassik_sma", "scanner", "wachen_pruefung"),
+    ("klassik_ema", "klassik_ema", "scanner", "wachen_pruefung"),
+    ("klassik_macd", "klassik_macd", "scanner", "wachen_pruefung"),
+    ("klassik_bollinger", "klassik_bollinger", "scanner", "wachen_pruefung"),
+    ("klassik_donchian", "klassik_donchian", "scanner", "wachen_pruefung"),
+    ("klassik_rsi", "klassik_rsi", "scanner", "wachen_pruefung"),
+    ("klassik_rsi2", "klassik_rsi2", "scanner", "wachen_pruefung"),
+    ("klassik_donchian_trend", "klassik_donchian_trend", "scanner",
+     "wachen_pruefung"),
+    ("klassik_sr_breaks", "klassik_sr_breaks", "scanner", "wachen_pruefung"),
+    ("klassik_pmax", "klassik_pmax", "scanner", "wachen_pruefung"),
+    ("klassik_supertrend", "klassik_supertrend", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

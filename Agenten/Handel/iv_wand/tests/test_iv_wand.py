@@ -101,6 +101,79 @@ class RegelTest(unittest.TestCase):
     def test_ziel_ist_die_wand(self):
         self.assertEqual(h.ziel(self._d(70000.0, 72000.0), {}), 72000.0)
 
+    def test_ziel_vor_wand_long_unter_der_wand(self):
+        # Long kommt von unten: das Ziel muss UNTER der Wand liegen, sonst
+        # waere es hinter dem Einstieg und spur_buch wuerde es ablehnen.
+        z = h.ziel(self._d(70000.0, 72000.0), {"ziel_vor_wand_pct": 0.15})
+        self.assertAlmostEqual(z, 72000.0 * 0.9985, places=6)
+        self.assertLess(z, 72000.0)
+        self.assertGreater(z, 70000.0)
+
+    def test_ziel_vor_wand_short_ueber_der_wand(self):
+        z = h.ziel(self._d(74000.0, 72000.0), {"ziel_vor_wand_pct": 0.15})
+        self.assertAlmostEqual(z, 72000.0 * 1.0015, places=6)
+        self.assertGreater(z, 72000.0)
+        self.assertLess(z, 74000.0)
+
+    def test_ziel_vor_wand_null_ist_die_wand(self):
+        self.assertEqual(h.ziel(self._d(70000.0, 72000.0),
+                                {"ziel_vor_wand_pct": 0.0}), 72000.0)
+
+
+class BodenTest(unittest.TestCase):
+    """Der Zielabstands-Boden: nicht gegen die Gebuehr handeln.
+
+    GEMESSEN am Journal 02.10.2026 (OKX-Spot 0,10 % je Seite = 0,20 % je
+    Runde): 5 von 9 Runden mit 0,015 bis 0,051 % Zielabstand waren netto
+    -0,13 bis -0,16 %, die 4 mit >= 0,43 % netto +4,36 %. Der Boden 0,30 %
+    ist damit die Gebuehr selbst, nicht eine willkuerliche Huerde.
+
+    Die Gegenprobe steht am Ende: mit `min_ziel_abstand_pct: 0` MUESSEN diese
+    Faelle wieder ein Signal liefern - sonst prueft der Test seinen eigenen
+    Aufbau statt der Regel.
+    """
+
+    W = {"max_abstand_pct": 5.0, "min_ziel_abstand_pct": 0.3}
+
+    def _d(self, spot, wand):
+        return {"spot": spot, "wand": {"strike": wand}}
+
+    def test_zu_knapp_an_der_wand_kein_signal(self):
+        # Spot 85987, Wand 86000: 0,015 % Abstand - unter der Gebuehrenschwelle.
+        self.assertIsNone(h.signal(self._d(85987.0, 86000.0), self.W))
+
+    def test_knapp_ueber_dem_boden_long(self):
+        # 70000 -> 72000 ist 2,86 % Abstand, klar ueber dem Boden.
+        self.assertEqual(h.signal(self._d(70000.0, 72000.0), self.W), "long")
+
+    def test_boden_gleich_ist_kein_signal(self):
+        # Genau auf dem Boden: nicht handeln. Der Vergleich ist streng (`boden < abstand`),
+        # 0,30 % Abstand faellt also durch.
+        wand, abstand = 72000.0, 0.30
+        spot = wand / (1.0 + abstand / 100.0)
+        self.assertIsNone(h.signal(self._d(spot, wand), self.W))
+
+    def test_boden_gilt_fuer_beide_seiten(self):
+        wand, abstand = 72000.0, 0.30
+        spot = wand / (1.0 + abstand / 100.0)
+        w = self.W
+        self.assertIsNone(h.signal(self._d(spot, wand), w))
+        # Und mit einem Boden knapp darunter kommt die Seite zurueck.
+        w2 = dict(w, min_ziel_abstand_pct=0.29)
+        self.assertEqual(h.signal(self._d(spot, wand), w2), "long")
+
+    def test_gegenprobe_ohne_boden_wieder_signal(self):
+        """Ohne den Boden waere derselbe Fall ein Signal - der Test kann rot."""
+        ohne = {"max_abstand_pct": 5.0}
+        self.assertEqual(h.signal(self._d(85987.0, 86000.0), ohne), "long")
+        self.assertIsNone(h.signal(self._d(85987.0, 86000.0), self.W))
+
+    def test_oberer_rand_unveraendert(self):
+        # Zu weit weg bleibt draussen, mit und ohne Boden.
+        spot = wand = 60000.0
+        self.assertIsNone(h.signal(self._d(spot, 72000.0), self.W))
+        self.assertIsNone(h.signal(self._d(spot, 72000.0), {"max_abstand_pct": 5.0}))
+
 
 class BuchTest(unittest.TestCase):
     """Der Buchweg mit einem Marktziel - gegen einen Temp-Ordner."""
@@ -124,14 +197,33 @@ class BuchTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_ziel_ist_der_wandstrike_nicht_das_vielfache(self):
+        """Ziel = Wand, verschoben um `ziel_vor_wand_pct` aus der WACHEN.
+
+        Bis 02.10.2026 stand hier `72000.0` fest - ein Stand, keine Regel.
+        Mit dem Schiebetor waere der Test bei jeder Aenderung an der Wachen rot
+        geworden, ohne dass sich etwas an der Regel geaendert haette. Jetzt
+        wird der Erwartungswert aus derselben Wachen gelesen, die der Lauf
+        benutzt - damit prueft der Test die Regel und nicht den Stand.
+
+        Gegenprobe: die Rechnung unten ist unabhaengig von `h.ziel()`
+        nachgebaut (Wand x (1 - 0,15 %)), faellt also bei einem Fehler in der
+        Funktion um.
+        """
+        with open(os.path.join(self.tmp.name, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+        erwartet = 72000.0 * (1.0 - float(w.get("ziel_vor_wand_pct", 0.0)) / 100.0)
         buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "papier",
                     "test", ziel=h.ziel)
         with open(os.path.join(self.tmp.name, "zustand.json"), encoding="utf-8") as f:
             z = json.load(f)
         (p,) = z["positionen"]
         self.assertEqual(p["seite"], "long")
-        self.assertAlmostEqual(p["ziel"], 72000.0, places=6)
+        self.assertAlmostEqual(p["ziel"], erwartet, places=6)
         self.assertAlmostEqual(p["einstieg"], 70000.0, places=6)
+        # Das Ziel muss zwischen Einstieg und Wand liegen - sonst waere es kein
+        # Ziel, sondern hinter dem Einstieg.
+        self.assertLess(p["ziel"], 72000.0)
+        self.assertGreater(p["ziel"], p["einstieg"])
 
     def test_vorschau_schreibt_nichts(self):
         buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "vorschau",

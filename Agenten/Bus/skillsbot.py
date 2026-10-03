@@ -58,6 +58,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -82,9 +83,20 @@ MAX_ZEICHEN = 4000      # Telegram bricht bei 4096 hart ab
 MAX_FEHLER = 4          # Telegram-Gegenstellenfehler hintereinander -> Pause
 POLL_DAUER = 25         # getUpdates long polling
 A2A_POLL_S = 3          # GetTask-Intervall
-A2A_TIMEOUT_S = 300     # so lange auf eine Antwort des Hauptagenten warten
-BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
-
+A2A_TIMEOUT_S = 300     # Zeitlimit EINES HTTP-Aufrufs zum Gateway
+# SO LANGE DARF EIN FREITEXT-AUFTRAG LAUFEN (01.10.2026): Der Hauptagent braucht
+# fuer echte Arbeit gemessen 400 s bis 25 min (Gateway-Log 01.10.2026: 401,4 s
+# fuer "Omniquant Handel Freigabe auf kraken live", 1504,6 s fuer die Rueckfrage
+# danach). Der SkillsBot gab nach 300 s auf und antwortete mit dem 16 Zeichen
+# langen "(Aufgabe FAILED)" - der Auftrag war nicht gescheitert, die Frist zu
+# kurz. Freitext bekommt deshalb DIESELBE Frist wie /bot: gleiche Arbeit,
+# gleiche Grenze.
+A2A_FRIST_S = 1800
+
+BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
+
+
+
 HERMES_EXE = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
 NACHRICHT_VERSUCHE = 3  # Netzfehler erneut versuchen, dann verwerfen
 
@@ -240,11 +252,26 @@ def _a2a_ruf(methode, params, zeit=A2A_TIMEOUT_S + 30):
     return erg.get("result", {})
 
 
+def frist_meldung():
+    """Was nach A2A_FRIST_S gesagt wird - EINE Stelle, damit die Meldung
+    pruefbar ist (ein Text im Funktionsrumpf laesst sich nicht testen).
+
+    Sie sagt drei Dinge: es laeuft noch, es ist NICHT gescheitert, und womit
+    es weitergeht. Das nackte "(Aufgabe FAILED)" (16 Zeichen) hat am
+    01.10.2026 genau das Gegenteil behauptet.
+    """
+    return ("Der lokale Agent arbeitet noch (fuer echte Arbeit braucht er oft "
+            "7 bis 25 Minuten) - hier wurde nach %d Minuten abgebrochen. Der "
+            "Auftrag ist NICHT gescheitert: er laeuft dort weiter. Fuer lange "
+            "Auftraege nimm die Desktop-App oder /bot NAME - beide setzen fort, "
+            "diese Schnittstelle nicht." % (A2A_FRIST_S // 60))
+
+
 def _aufgabe_abholen(aufgabe):
     """Task bis TASK_STATE_COMPLETED verfolgen, Antworttext zurueckgeben."""
     tid = aufgabe.get("id")
     kontext = aufgabe.get("contextId")
-    for _ in range(A2A_TIMEOUT_S // A2A_POLL_S):
+    for _ in range(A2A_FRIST_S // A2A_POLL_S):
         zustand = aufgabe.get("status", {}).get("state", "")
         if zustand == "TASK_STATE_COMPLETED":
             teile = aufgabe.get("status", {}).get("message", {}).get("parts", [])
@@ -259,7 +286,7 @@ def _aufgabe_abholen(aufgabe):
             return ("(Aufgabe " + zustand.replace("TASK_STATE_", "") + ")"), kontext
         time.sleep(A2A_POLL_S)
         aufgabe = _a2a_ruf("GetTask", {"id": tid}).get("task", {})
-    warnung = ("Das Ergebnis des lokalen Agenten kam nicht rechtzeitig an " + "und wurde abgebrochen. Tipp: Lange Auftraege gehen besser an die Desktop-App - die Telegram-Schnittstelle bricht nach " + str(A2A_TIMEOUT_S) + " Sekunden ab und setzt nicht fort. Teile den Auftrag lieber in Teilstuecke.")
+    warnung = frist_meldung()
     return warnung, kontext
 
 
@@ -353,6 +380,26 @@ class Sperre:
 
 
 # --- Befehle ----------------------------------------------------------------
+
+# SCHREIBWEISEN (01.10.2026): Max tippt am Handy auch die Einzahl - am 01.10.
+# kam "/strategie" und der Bot antwortete "Kein SkillsBot-Befehl" (207 Zeichen).
+# Ein anderer Name darf keine Auskunft kosten; intern heisst der Befehl
+# weiterhin /strategien, damit /hilfe und handel_befehle EINE Quelle bleiben.
+HANDELS_ALIASE = {"/lage": "/lage", "/live": "/live",
+                  "/bericht": "/bericht", "/spuren": "/spuren",
+                  "/strategien": "/strategien", "/strategie": "/strategien",
+                  "/strat": "/strategien", "/indikatoren": "/indikatoren",
+                  "/indikator": "/indikatoren", "/markt": "/markt"}
+
+
+def _handelsbefehl(wort):
+    """Der kanonische Name eines lesenden Handelsbefehls, oder None.
+
+    Die Schreibweisen stehen hier an EINER Stelle - die Liste der Befehle
+    selbst bleibt in `_handelsantwort` (und damit bei handel_befehle).
+    """
+    return HANDELS_ALIASE.get(wort)
+
 
 def _handelsantwort(wort):
     """Eine lesende Handelsauskunft holen - Text aus `Handel/befehle.py`.
@@ -716,6 +763,34 @@ def _run(rest, chat, kontext):
     return (ohne_denken(antwort) or "Keine Antwort vom Agenten."), neuer_kontext
 
 
+def _freitext_im_thread(text, chat, kontext):
+    """Freitext-Auftrag asynchron an den A2A-Agenten geben (T-288).
+
+    Der SkillsBot wartet sonst bis A2A_FRIST_S (30 min) synchron auf den
+    Hauptagenten und kann in der Zeit nichts anderes beantworten - /lage,
+    /strategien und jede weitere Nachricht haengen. Stattdessen laeuft der
+    Auftrag hier in einem Hintergrund-Thread: `sende()` ist thread-fest, die
+    Kontext-ID wird im Thread fortgeschrieben. Das Ergebnis kommt als eigene
+    Nachricht, sobald der Agent fertig ist.
+    """
+    try:
+        antwort, neuer_kontext = frage(text, kontext)
+    except Exception as fehler:                               # noqa: BLE001
+        try:
+            sende(chat, "Freitext gescheitert: %s" % str(fehler)[:150])
+        except Exception:                                     # noqa: BLE001
+            pass
+        return
+    if neuer_kontext:
+        kontexte = _lade_json(KONTEXT_PFAD, {})
+        kontexte[str(chat)] = neuer_kontext
+        _speichere_json(KONTEXT_PFAD, kontexte)
+    try:
+        sende(chat, ohne_denken(antwort) or "Keine Antwort vom Agenten.")
+    except Exception:                                         # noqa: BLE001
+        pass
+
+
 def bearbeite(text, chat):
     """Antwort auf eine Nachricht; (text, neuer_kontext) oder None."""
     kontexte = _lade_json(KONTEXT_PFAD, {})
@@ -764,14 +839,14 @@ def bearbeite(text, chat):
                 handel_befehle.spur(" ".join(teile[1:]))), kontext
         except Exception as e:                                # noqa: BLE001
             return "Spur nicht lesbar: %s" % str(e)[:120], kontext
-    if wort in ("/lage", "/live", "/bericht", "/spuren", "/strategien",
-                "/indikatoren", "/markt"):
+    if _handelsbefehl(wort):
         try:
             import handel_befehle
-            return handel_befehle.klartext(_handelsantwort(wort)), kontext
+            return handel_befehle.klartext(
+                _handelsantwort(_handelsbefehl(wort))), kontext
         except Exception as e:                                # noqa: BLE001
             return ("Auskunft nicht lesbar: %s\nIm Handelsbot geht %s weiter."
-                    % (str(e)[:120], wort)), kontext
+                    % (str(e)[:120], _handelsbefehl(wort))), kontext
     if t in ("/hilfe", "/start"):
         return hilfe_text(), kontext
     if wort == "/skills":
@@ -795,11 +870,18 @@ def bearbeite(text, chat):
                 "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
                 "/nein_xperp, /stop_xperp.\n"
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
-    antwort, neuer_kontext = frage(t, kontext)
-    if neuer_kontext:
-        kontexte[str(chat)] = neuer_kontext
-        _speichere_json(KONTEXT_PFAD, kontexte)
-    return ohne_denken(antwort), neuer_kontext
+    # Erst sagen, dann tun (Muster von /run): der Hauptagent braucht fuer echte
+    # Arbeit Minuten. Ohne diese Zeile sieht es aus, als haenge der Bot.
+    sende(chat, "Angenommen - der Hauptagent arbeitet daran (oft 7 bis 25 "
+         "Minuten). Das Ergebnis kommt als eigene Nachricht, sobald er fertig "
+         "ist; der Bot bleibt in der Zeit fuer andere Anfragen erreichbar.")
+    # T-288: Freitext in einen Hintergrund-Thread geben, sofort antworten und
+    # das Ergebnis als eigene Nachricht senden. Der Bot ist damit nicht mehr
+    # bis zu 30 Minuten blockiert (Muster: der Dauerlauf meldet asynchron;
+    # sende() ist thread-fest, die Kontext-ID wird im Thread fortgeschrieben).
+    threading.Thread(target=_freitext_im_thread, args=(t, chat, kontext),
+                     daemon=True).start()
+    return "Angenommen.", kontext
 
 
 # --- Schleife ---------------------------------------------------------------

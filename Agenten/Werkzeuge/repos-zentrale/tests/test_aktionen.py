@@ -170,5 +170,77 @@ class DokuTest(unittest.TestCase):
         self.assertIn("OSError", fehler)
 
 
+class FensterwahlTest(unittest.TestCase):
+    """Jeder Terminal-Aufruf landet als TAB im vorhandenen Fenster.
+
+    Anlass (30.09.2026): `wt.exe` oeffnete je Klick ein neues Fenster - acht
+    Klicks, acht Fenster. Gemessen: mit `-w 0` bleibt die Fensterzahl gleich
+    (Probe `Agenten/Hermes/cache/scratch/wt_probe.ps1`). Geprueft wird die Regel,
+    nicht die Zahl: KEIN wt-Aufruf ohne Fensterwahl, und nur EIN Bauplatz.
+    """
+
+    HIER = Path(__file__).resolve().parent.parent
+
+    def test_jeder_aufruf_waehlt_das_fenster(self):
+        aufrufe = {
+            "terminal": aktionen.argv_terminal(Path("C:/x/demo")),
+            "befehl": aktionen.argv_befehl_im_terminal(Path("C:/x/demo"), ["x.py", "--help"]),
+            "bot_chat": aktionen.argv_bot_chat("lotse", Path("C:/x/demo")),
+            "bot_auftrag": aktionen.argv_bot_auftrag("lotse", Path("C:/x/demo"), "mach was"),
+        }
+        for name, argv in aufrufe.items():
+            with self.subTest(aufruf=name):
+                self.assertEqual(argv[0], "wt.exe")
+                self.assertIn("-w", argv)
+                self.assertEqual(argv[argv.index("-w") + 1], "0")
+                self.assertIn("-d", argv)
+
+    def test_kein_wt_aufruf_ohne_die_konstante(self):
+        """Ein vierter Bauplatz faellt hier auf - nicht erst als neues Fenster."""
+        for datei in ("aktionen.py",):
+            for nr, zeile in enumerate(
+                (self.HIER / datei).read_text(encoding="utf-8").splitlines(), 1
+            ):
+                if '"wt.exe"' in zeile:
+                    with self.subTest(datei=datei, zeile=nr):
+                        self.assertIn("*WT_FENSTER", zeile)
+
+    def test_das_fenster_baut_keinen_wt_aufruf_selbst(self):
+        text = (self.HIER / "fenster.py").read_text(encoding="utf-8")
+        self.assertNotIn("wt.exe", text, "der Bauplatz gehoert nach aktionen.py")
+
+    def test_befehl_schliesst_den_tab_wieder(self):
+        """`/c` statt `/k` (Entscheidung Max): der Tab raeumt sich selbst weg."""
+        argv = aktionen.argv_befehl_im_terminal(Path("C:/x/demo"), ["x.py", "--help"])
+        self.assertIn("/c", argv)
+        self.assertNotIn("/k", argv)
+
+    def test_befehl_ausgabe_geht_zusaetzlich_ins_log(self):
+        """Mit /c ist die Ausgabe sonst weg, bevor man sie liest."""
+        log = Path("C:/logs/demo-befehl-20260930-1800.log")
+        argv = aktionen.argv_befehl_im_terminal(Path("C:/x/demo"), ["x.py", "--help"], log)
+        zeile = argv[-1]
+        self.assertIn(str(log), zeile)
+        self.assertIn(">", zeile)
+
+    def test_log_ist_freiwillig(self):
+        argv = aktionen.argv_befehl_im_terminal(Path("C:/x/demo"), ["x.py"])
+        self.assertNotIn(">", argv[-1])
+
+    def test_tokens_mit_leerzeichen_werden_gequotet(self):
+        argv = aktionen.argv_befehl_im_terminal(
+            Path("C:/x/demo"), ["C:/Program Files/x/y.exe", "--nur", "scharf"]
+        )
+        self.assertIn('"C:/Program Files/x/y.exe"', argv[-1])
+        self.assertIn("--nur scharf", argv[-1])
+
+    def test_bot_chat_und_auftrag_sind_unterscheidbar(self):
+        chat = aktionen.argv_bot_chat("Lotse", Path("C:/x/demo"))
+        auftrag = aktionen.argv_bot_auftrag("Lotse", Path("C:/x/demo"), "pruef das")
+        self.assertNotIn("-q", chat)
+        self.assertEqual(auftrag[-2:], ["-q", "pruef das"])
+        self.assertIn("lotse", chat)
+
+
 if __name__ == "__main__":
     unittest.main()

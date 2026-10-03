@@ -27,6 +27,7 @@
   "_drawdown_halbierung_usd": "1,0 x Buchrisiko (5,0 USD je Position x 2 Plaetze) - Regel aus Handel/ratschen.py.",
   "kill_switch_gesamt_usd": 30.0,
   "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 FUTURES taker 0,05 %/Seite, gegengeprueft an echten Fuellungen (ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je 0,0500 %).",
   "risikovorfilter": true,
   "herzschlag_max_minuten": 180,
   "handel_erlaubt": false,

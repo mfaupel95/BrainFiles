@@ -12,6 +12,13 @@ desselben Tages ersetzen einander. `--reihe` zeigt den VERLAUF mit der
 Veraenderung in Punkten je Tag, `--statistik` die Verteilung und die Frage,
 was auf eine hohe Breite folgte.
 
+LUECKEN: fehlt ein Kalendertag zwischen der aeltesten und der neuesten Zeile,
+war der Rechner aus - die Reihe hat dann ein Loch, das nur auffaellt, wenn
+jemand sie liest. `--reihe` nennt die Luecken deshalb ausdruecklich
+(`fehlende_tage`/`luecken_text`), und `breite-wache.py` heilt sie taeglich
+nach: die Heiltiefe richtet sich nach der Ausfalllaenge, nicht nach einer
+festen Zahl von Tagen.
+
 FENSTER (geaendert 30.09.2026)
 ------------------------------
 Gerechnet wird auf den letzten FENSTER **abgeschlossenen** Kerzen bis
@@ -52,7 +59,7 @@ import os
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 REIHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "breite-reihe.jsonl")
 
@@ -368,6 +375,76 @@ def verlauf(n=None):
     return raus[-n:] if n else raus
 
 
+# ---------------------------------------------------------------- Luecken
+
+def fehlende_tage(tage, bis=None):
+    """Kerzentage, die zwischen erster und letzter Zeile FEHLEN - reine Rechnung.
+
+    Der Kerzentag ist ein Kalendertag (UTC), die Reihe fuehrt EINE Zeile je Tag.
+    Ein Kalendertag zwischen der aeltesten und der neuesten Zeile ohne Zeile ist
+    deshalb eine Luecke - der Rechner war aus oder der Lauf ist ausgefallen
+    (`--merken` schreibt nur, wenn wirklich gemessen wurde).
+
+    `bis` verschiebt das Ende: der Waechter kennt die gerade gemessene Kerze,
+    auch wenn `merken` noch nicht geschrieben hat. `bis` wird nie gekuerzt -
+    liegt es VOR dem ersten Tag, gibt es keine Luecke.
+
+    Rueckgabe: (luecken, erster, letzter). `luecken` = Liste von YYYY-MM-DD,
+    aelteste zuerst. Eine leere Reihe gibt ([], None, None).
+    """
+    tage_geordnet = sorted({z["kerze"] for z in tage if z.get("kerze")})
+    if not tage_geordnet:
+        return [], None, None
+    erster = tage_geordnet[0]
+    letzter = tage_geordnet[-1]
+    if bis and bis > letzter:
+        letzter = bis
+    if letzter < erster:
+        return [], erster, letzter
+    vorhanden = set(tage_geordnet)
+    luecken, d = [], datetime.strptime(erster, "%Y-%m-%d").date()
+    ende = datetime.strptime(letzter, "%Y-%m-%d").date()
+    while d <= ende:
+        k = d.isoformat()
+        if k not in vorhanden:
+            luecken.append(k)
+        d += timedelta(days=1)
+    return luecken, erster, letzter
+
+
+def luecken_bereiche(luecken):
+    """Zusammenhaengende Luecken als Bereiche: [('2026-07-02','2026-07-03'), ...].
+
+    Eine Liste einzelner Tage ist bei einem langen Ausfall unlesbar; gemeldet
+    wird ein Bereich. Reine Rechnung auf den Tagen aus `fehlende_tage`.
+    """
+    raus, lauf = [], []
+    for k in sorted(luecken):
+        if lauf and (datetime.strptime(k, "%Y-%m-%d").date()
+                     - datetime.strptime(lauf[-1], "%Y-%m-%d").date()) \
+                != timedelta(days=1):
+            raus.append((lauf[0], lauf[-1]))
+            lauf = []
+        lauf.append(k)
+    if lauf:
+        raus.append((lauf[0], lauf[-1]))
+    return raus
+
+
+def luecken_text(luecken):
+    """Ein Satz je Luecke: '2026-07-02 .. 2026-07-03 (2 Kerzentage)'."""
+    raus = []
+    for von, bis in luecken_bereiche(luecken):
+        if von == bis:
+            raus.append("%s (1 Kerzentag)" % von)
+        else:
+            raus.append("%s .. %s (%d Kerzentage)"
+                        % (von, bis, (datetime.strptime(bis, "%Y-%m-%d").date()
+                                      - datetime.strptime(von, "%Y-%m-%d").date()
+                                      ).days + 1))
+    return raus
+
+
 # ---------------------------------------------------------------- Nachrechnen
 
 def reihe_rechnen(verlauf_je_inst, tage, fenster=FENSTER):
@@ -608,6 +685,15 @@ def main(argv):
                      "  unter: " + ",".join(z["unter"]) if z["unter"] else "",
                      "  [nachgerechnet]" if z.get("art") == "nachgerechnet"
                      else ""))
+        luecken, erster, letzter = fehlende_tage(tage)
+        if luecken:
+            print("  LUECKEN: %d Kerzentag(e) fehlen zwischen %s und %s:"
+                  % (len(luecken), erster, letzter))
+            for z in luecken_text(luecken):
+                print("    " + z)
+        elif erster:
+            print("  Keine Luecke zwischen %s und %s (%d Kerzentage)."
+                  % (erster, letzter, len(tage)))
         if len(tage) < 2:
             print("  Ein Kerzentag ist ein Messpunkt, keine Richtung - "
                   "fuer die Richtung braucht es mindestens zwei.")

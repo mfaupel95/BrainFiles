@@ -1,0 +1,12 @@
+{
+  "_zweck": "Messaufsatz T-197: NUR die Abklingzeit nach einem Stop (4 Tage = 96 h, Haus-Zahl scanner/wachen.json abklingzeit_tage 4).",
+  "moondev": {
+    "bremse": true,
+    "bremse_einstellungen": {
+      "sperrfrist_ziel_stunden": 0,
+      "sperrfrist_stop_stunden": 96.0,
+      "mindestabstand_einstieg_stunden": 0,
+      "fenster_stunden": 0
+    }
+  }
+}

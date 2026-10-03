@@ -42,5 +42,7 @@
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",
   "journal_zweitziel": "Q:\\Handel_Journal\\moondev_sniper",
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 * buch_risiko = 15.0.",
-  "drawdown_halbierung_usd": 15.0
+  "drawdown_halbierung_usd": 15.0,
+  "_gebuehr_quelle": "Entscheidung Max 01.10.2026: als PERP gefuehrt, Satz 0,05 %/Seite (GEMESSEN am eigenen OKX-Konto: Tarif Lv1 FUTURES taker -0.0005 und echte Fuellungen ZEC-/ADA-USD_UM_XPERP je 0,0500 %). Das Instrument der Spur hat keinen eigenen OKX-Markt in der wachen.json - der Perp-Satz ist die Buchungsannahme, kein Marktsatz dieser Spur. Zur Abgrenzung: moondev_topmovers steht auf SPOT (seine wachen.json nennt USDC-Paare).",
+  "gebuehr_taker": 0.0005
 }

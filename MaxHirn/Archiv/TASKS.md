@@ -10,6 +10,10 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
 - **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
+  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
+
+
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
       **Erledigt 2026-09-16.** Max hat den UAC-Dialog bestaetigt; das Skript
       `Agenten\Routinen\vorsorge-gateway-admin.ps1` ist in einer Admin-PowerShell
@@ -59,6 +63,929 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+
+- [ ]   **T-323 — Welche Spur hat ueberhaupt Edge: Feed-Spuren gegen die Scanner-Basislinie messen**
+      Kontext: Nach dem Scanner-Befund (T-322) ist die Frage offen, welche Spur wirklich trägt. Der Scanner-Score selbst hat nachweislich KEINEN Edge: seine Kaufauswahl (Score >= 60) liegt nach 7 Tagen mit -2,16 % MEAN unter der Basislinie aller vom Scanner gesehenen Märkte (-1,11 %), t = -1,03. Als Indikator an andere Spuren gehängt brächte er also nichts. Die besseren Zahlen im Haus stehen woanders: moondev_topmovers (27 Runden, 56 % Treffer, +48,12 im Journal; Backtest 135 Runden, 50 %, +1,926 % je Runde), moondev_signalwelle (16/56 %, +35,72), die Prognose-Spuren macd_mtf und supertrend (+0,172 %/+0,158 % je Runde über 1209/854 Runden) - alle NIE live geschaltet, weil nur der Scanner einen Orderweg hat.
+      Naechster Schritt: topmovers und signalwelle über denselben Zeitraum und dieselbe Gebuehr gegen eine Marktbasislinie messen (nicht gegen die Scanner-Basislinie - die ist selbst ein Marktdurchschnitt). Reihenfolge laut aufgabenliste-pflegen: erst die Freigabe des Scanners klaeren (T-322), dann topmovers, dann die Prognose-Spuren.
+      Angelegt 03.10.2026 · Betrifft: moondev_topmovers, moondev_signalwelle, macd_mtf, supertrend, scanner.
+
+- [ ]   **T-322 — Scanner-Einstieg kam aus dem Vortagesbericht - die 124 Runden waren ein Rechenfehler**
+      Kontext: Der Scanner galt als beste Spur (+17,49 %, 85 % Treffer, t=15,3). vorschlaege() nahm den Einstieg aus dem Tagesbericht (schluss[-1] der 1D-Kerze). Am 19.09. war der Bericht zwei Tage alt: 7,531 gegen Markt 8,53-8,75, der Einstieg lag 12 % unter Markt, das Ziel (Einstieg+2xStop) war beim Kauf erfuellt. 82 Runden an einem Tag (+1866 %), 97 von 105 Ziel-Ausstiegen nach 0,25 h. Die ehrlichen Runden (>=6 h, n=16): +1,99 % Mean bei 38 % Treffer - auf dem Niveau von xperp. Fix gebaut und belegt: handeln.marktkurs() holt den Jetzt-Kurs, kein Rueckfall auf den Berichtspreis, fehlender Kurs = Ablehnung statt Ausnahme; 4 neue Tests + BilligeToreTest umgebaut, Gegenprobe belegt (3 von 4 fallen mit altem Code), Scanner-Suite 181 gruen, Vorschau zeigt Einstieg = Markt (BTC 84530). Befund: Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md
+      Naechster Schritt: Die Freigabe des Scanners stuetzte sich auch auf diese Runden. Bedingung 1 (Netto-positiv) ist seit 19.09. per Auftrag Max entfallen; die Zahl 124 belegt jetzt nichts mehr. Neu bewerten: entweder Freigabe zurueck auf false, bis echte Runden mit korrektem Einstieg vorliegen, oder Max entscheidet bewusst, mit dem korrigierten Code weiterzufahren. Die 5 offenen Positionen stammen teils aus der Fehlerzeit (Einstieg bis -5,4 % unter Markt) - nicht angefasst, Buchbereinigung ist Sache des Live-Laufs.
+      Angelegt 03.10.2026 · Betrifft: scanner, xperp, strategie_kennzahlen, Wiki/Handel.
+- [ ]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus**
+      Kontext: OKX 51008 "Your available ZRO balance is insufficient, and your
+      available margin (in USD) is too low for borrowing" - gemessen im
+      Ereignisprotokoll (`Handel/cache/ereignis-fehler.jsonl`), 23:05 und 23:32
+      wiederholt. Die Position bleibt im Buch ("bleibt im Buch"), jeder Zyklus
+      versucht denselben Verkauf und scheitert. Das ist eine Kontolage, keine
+      Werkzeugpanne: entweder fehlt ZRO-Bestand oder das Guthaben ist gebunden.
+      Absichtlich nicht angefasst - eine Guthabenfrage kann die Spur nicht
+      entscheiden, und eine Sperre wäre eine stille Deaktivierung.
+      Naechster Schritt: /api/v5/account/balance?ccy=ZRO lesen und mit dem
+      Buchbestand halten (Buchmenge gegen Brokerbestand); bei fehlendem
+      Bestand ist die Position eine GEIST-Position und geht ueber eine
+      Boersenabgleich-Logik raus, nicht ueber weitere Verkaufsversuche.
+      Angelegt 03.10.2026 · Betrifft: moondev_topmovers.
+
+- [ ]   **T-320 — Der gesperrte Update-Waisen laesst sich nicht entfernen**
+      Kontext: `Agenten\Hermes\state-snapshots\.20260930-204617-pre-update.48588.partial`
+      ist leer, aber gesperrt: `icacls` meldet einen Verarbeitungsfehler,
+      `Remove-Item` und `[System.IO.Directory]::Delete` geben "Access denied"
+      (03.10.2026 gemessen, auch ueber den `\\?\`-Pfad). Seit dem 30.09.2026
+      kostet er jede Sicherung Wartezeit und einen Abbruch mit Code 11.
+      Behoben durch Ausschluss in allen drei Sicherungsskripten - die
+      Ursache selbst ist aber nicht weg.
+      Naechster Schritt: nach dem naechsten geplanten Neustart pruefen, ob
+      sich der Ordner dann loeschen laesst (der Update-Schwanz haelt ihn
+      vermutlich); sonst einmalig als Admin. Er ist Stufe 2 (leerer Bau-Rest),
+      ein Datenverlust ist nicht moeglich.
+      Angelegt 03.10.2026 · Betrifft: sichern.ps1, sichern-zweitkopie.ps1,
+      sichern-ausser-haus.ps1.
+
+- [ ]   **T-321 — kopier1zu1 brach am 02.10. mit Errno 22 ab, Ursache offen**
+      Kontext: dreimal hintereinander 02:10:15-02:10:16
+      `OSError: [Errno 22] Invalid argument` (Ereignisprotokoll), danach
+      21 Stunden fehlerfrei. Nicht reproduzierbar, die Spur schreibt seither
+      normal ins Journal. Errno 22 unter Windows heisst meist einen
+      Reparse-Punkt/Junction im Zielpfad oder einen unbrauchbaren
+      Dateinamen - das Journal selbst laeuft ueber Q:\Handel_Journal.
+      Naechster Schritt: erst wiederholen lassen, dann Q: pruefen (die
+      Spiegelfrist-Wache laeuft) und den Ablagepfad auf einen
+      Junction-Loop pruefen; NICHT vorher umbauen, ein nicht
+      reproduzierbarer Fehler traegt keine Aenderung.
+      Angelegt 03.10.2026 · Betrifft: kopier1zu1.
+
+- [ ]   **T-316 — iv_wand braucht Runden, bevor das Schiebetor bewertbar ist**
+      Kontext: `ziel_vor_wand_pct` 0.15 % wurde am 02.10.2026 gesetzt, weil der
+      Kurs im Journal viermal durch die Ziellinie 86000 reiste (Verkäufe bei
+      86777 / 86043 / 86024 / 86025). Das ist eine BEGRÜNDUNG aus dem Kurs, keine
+      Messung des Vorwands-Nutzens: dass der Rest der Position weiterläuft und
+      der Stop unberührt bleibt, ist bisher nur behauptet. Der Boden
+      (`min_ziel_abstand_pct` 0.30) dagegen ist aus dem Journal gerechnet und
+      wirkt sofort.
+      Naechster Schritt: ab 30 Runden `handelsjournal.csv` nach Zielabstand
+      gruppieren und die Trefferquote je Gruppe gegen den unveränderten Arm
+      halten — dafür braucht es einen zweiten Arm mit `ziel_vor_wand_pct: 0`,
+      sonst ist „besser" nicht messbar, nur anders.
+      Angelegt 02.10.2026 · Betrifft: iv_wand.
+
+- [ ]   **T-317 — Hebel bei einer Ein-Platz-Spur: die Frage kommt wieder**
+      Kontext: Max fragte „geht das auch mit Hebel?". Die Rechnung sagt nein:
+      bei risikonormierter Größe ist das Nominal unabhängig vom Hebel
+      (N = 5,0 / 0,04 = 125 USD bei Hebel 1 wie bei 10), Gewinn und Verlust sind
+      gleich, nur die Margin fällt auf 1/h — und `max_offene_positionen: 1`
+      lässt das freie Kapital nirgends hin. Dazu: bei 4 % Stop ist bei Hebel 25
+      die Liquidationsdistanz aufgebraucht. Die Rechnung steht als `_kein_hebel`
+      in `iv_wand/wachen.json`.
+      Naechster Schritt: die Frage beantwortet sich künftig aus dem Vermerk, nicht
+      neu. Sollte daraus doch ein Arm werden, braucht er zuerst mehr als einen
+      Platz — sonst wäre es ein Buch, das denselben Handel zweimal führt.
+      Angelegt 02.10.2026 · Betrifft: iv_wand, Handelsheter.
+
+
+
+- [ ] **T-318 — test_fremdarbeit_einziehen.test_rueckschritt_gegen_head ist rot (T-218-Fall)**
+      Kontext: Bus-Ende-zu-Ende-Suite faellt in
+      test_rueckschritt_gegen_head_wird_nicht_uebernommen (Assertion: nach dem Lauf steht
+      HEAD:datei_a.txt nicht auf 'a geaendert'). Der Test laeuft die ECHTE
+      fremdarbeit-einziehen.ps1 im Temp-Repo. Vorbestehend/fremd: die klassik-Spuren und die
+      paperclip-Anbindung (02.10.2026) beruehren den Test nicht - einzeln und in der Suite rot.
+      Naechster Schritt: pruefen, warum die Routine die ruhende datei_a nicht uebernimmt
+      (30-min-Schwelle gegen Ordnermtime, Stichwort T-218/Rueckschritt-Erkennung).
+      Angelegt: 2026-10-02 · Zuletzt: 2026-10-02
+      Betrifft: Agenten/Bus/tests/test_fremdarbeit_einziehen.py, Agenten/Routinen/fremdarbeit-einziehen.ps1
+- [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
+      Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
+      future, gerne auch Long und Short abwechselnd nach Indikatoren."
+      Messung (messung-shortseite.sh, Binance Futures, 24 Paare 1h,
+      2024-09-29 bis 2026-09-29, inklusive Funding-Rate, dieselbe Strategie
+      dreimal, nur die Seite unterscheidet sich):
+          long  -20,68 %  Sharpe -0,35  Profit-Faktor 0,83
+          short -34,50 %  Sharpe -0,52  Profit-Faktor 0,76
+          beide -48,13 %  Sharpe -0,95  Profit-Faktor 0,77
+      Die kurze Seite verliert also MEHR als die lange, und long+short
+      verliert mehr als jede Seite einzeln. Zwei der drei Bots
+      (trading_agent, topmovers) haben darueber hinaus gar keine
+      dokumentierte Short-Regel - der Bot, der eine hat (marktlage), zeigt
+      die schlechteste kurze Seite. Nach der Hausregel wird fuer die
+      beiden anderen keine erfunden.
+      Der Umstieg auf Futures selbst ist trotzdem sinnvoll und gemessen
+      besser als Spot (Regime-Bot: -20,68 % futures gegen -25 % im
+      Spot-Lauf vom 30.09.) - er senkt die Kosten, er erzeugt keine Kante.
+      Die Kante im Haus sitzt in adx_macd 15m auf BTC (+755,71 USD bei 44
+      Runden, 29,6 % Treffer), und die laeuft seit 02.10. ueber
+      omnitrade_futures auf Kraken Futures.
+      Naechster Schritt: Futures-Aufsatz fuer alle drei bauen und messen
+      (Gebuehr 0,05 % statt 0,60 %), Long-only. Die Long/Short-Fassung
+      nur, wenn Max ausdruecklich eine eigene Regel benennt, die jemand
+      beschrieben hat.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/freqtrade
+
+
+- [ ] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
+      Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
+      VPN getrennt) hat einen echten Fehler im Hauswerkzeug
+      Agenten/Handel/nautilus_kraken/futures_probe.py gezeigt: der KAUF
+      wurde angenommen und gefuellt, das anschliessende Fill-Polling auf
+      /fills scheiterte an `authenticationError`, worauf das Skript abbrach -
+      der Notausstieg im except-Zweig liess die Position OHNE Schutz-Stop
+      offen. Von Hand geschlossen, zurueck auf die drei vorherigen
+      Positionen (PF_SUIUSD, PF_HBARUSD, PF_HYPEUSD). Die Landmine daneben
+      ist behoben (die Probe rechnete 1 Kontrakt = 1 USD Nominal und haette
+      bei der Hausvorgabe 676.816 USD gekauft; jetzt bricht sie mit der
+      echten Zahl ab). OFFEN: warum /fills authenticationError sagt, waehrend
+      /accounts und /openpositions antworten - und der Notausstieg muss
+      unabhaengig vom Fill-Polling laufen.
+      Naechster Schritt: /fills getrennt aufrufen und die Antwort
+      protokollieren; der Verkauf darf nicht vom Fill-Polling abhaengen.
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
+
+
+- [ ] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
+      Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
+      Drei Restpunkte, die die Umstellung (Commit 2a480edd) nicht mit erledigt:
+      (1) `Agenten/Handel/guthaben_abgleich.py` ruft weiter `okx.guthaben_usdt()` und
+      meldet `WAEHRUNG = {"scanner": "USD"}` - der Wochenbericht zeigt damit 0,00 fuer
+      ein Konto mit 438 USDC. Auf `okx.guthaben("USDC")` und Waehrung USDC umstellen.
+      (2) Die Positionen ETH/SOL/BTC/SUI-USDC im Buch tragen keine Angabe, in welcher
+      Quote ihr Einsatz gebunden ist - bei einer spaeteren Quote-Mischung ist der
+      Einsatz nicht mehr je Waehrung teilbar.
+      (3) `okx.markt_kauf(inst, usdt)` heisst der Parameter noch `usdt`, ist aber ein
+      Nominal in der Quote des Paares (tgtCcy quote_ccy).
+      Naechster Schritt: Punkt 1 zuerst - eine Zeile in `guthaben_abgleich.py`, danach
+      `Agenten/Handel/tests` gegenlaufen lassen (der Wochenbericht haengt daran).
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
+      Agenten/Handel/scanner/okx.py
+
+
+
+- [ ] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
+      Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
+      (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu
+      schalten; damit schreibt der Papierzweig des Schattenarms `omniquant_weit` nichts
+      mehr, und der Test erwartet weiterhin einen Papierstand.
+      Naechster Schritt: der Test prueft eine EIGENSCHAFT, die Max entschieden hat (Haupt -
+      live, Schattenarm - Papier). Nachmessen, was der Schattenarm jetzt fuehrt, und die
+      Erwartung daran binden statt an einen Zustand vom 01.10.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_omniquant_fassung.py,
+      Agenten/Handel/omniquant/
+
+- [ ] **T-310 — `test_replay` schlaegt an der squeeze-Gegenprobe (Rundenzahl 20 vs. 12)**
+      Kontext: gefunden 02.10.2026, `test_replay.GegenprobeTest.test_squeeze_stimmt_mit_backtest_prognose_ueberein`
+      (`Rundenzahl: neu 20, alt 12`). Der Replay zaehlt mehr Runden, als der alte Stand, mit dem
+      der Test gebaut wurde. Ursache nicht gemessen - es kann die Kerzenschluss-Regel sein
+      (30.09.2026) oder die Paarungs-Regel (T-095), nicht der Replay selbst.
+      Naechster Schritt: die Gegenprobe neu rechnen und den ALT-Stand aus dem heutigen Code
+      erzeugen, nicht aus einer aufgezeichneten Zahl. Ein Test, der eine alte Rundenzahl
+      einfriert, meldet Aenderung statt Fehler.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_replay.py
+
+- [ ] **T-306 - docker-wache heilt die Engine nicht, wenn Docker Desktop schon laeuft**
+      Kontext: gemessen am 01.10.2026. Die Wache heilt mit `wsl --shutdown` +
+      Docker Desktop starten. Steht die WSL-Distribution `docker-desktop` aber auf
+      Stopped, waehrend die App seit Stunden laeuft, startet ein zweiter
+      App-Aufruf die VM NICHT neu - `docker info` laeuft in jeden Zeitablauf und
+      alle Container sind tot. Wirkungslos bleibt auch die Meldung: die Wache
+      steigt STILL aus, wenn PowerShell ihr keine Prozessliste liefern kann
+      (`_prozesse_json()` leer -> `return 0` ohne Text) - genau unter dem
+      Commit-Druck, unter dem sie gebraucht wird.
+      Naechster Schritt: in `heilen()` einen zweiten Griff ergaenzen (Desktop-
+      Prozesse per Stop-Process -Force beenden, dann starten - das brachte die
+      Engine nach 23 s zurueck) und den leeren Prozessabruf als eigenen Befund
+      melden statt als Stille. Beleg dieser Sitzung:
+      `Agenten/Hermes/cache/scratch/docker_neustart.py`,
+      `Agenten/Hermes/cache/scratch/docker_neustart.log`,
+      Wiki `Werkzeuge/RLTrader-in-Docker.md`.
+      Angelegt 02.10.2026 - Betrifft Agenten/Hermes/scripts/docker-wache.py
+
+- [ ] **T-307 - RLTrader: update-static-data ist nie gefahren**
+      Kontext: T-272 hat optimize und Report belegt; der dritte Pfad
+      (`cli.py update-static-data`, `download_data_async()` ueber ccxt) blieb
+      ungefahren. Er braucht Netz und zieht neue Kerzen - fuer eine Referenzspur
+      ohne Signalanspruch ohne Nutzen, deshalb bewusst liegen gelassen.
+      Naechster Schritt: nur fahren, wenn RLTrader noch einmal ernsthaft
+      gemessen werden soll (dann mit frischen Daten), sonst schliessen.
+      Angelegt 02.10.2026 - Betrifft Werkstatt/RLTrader
+
+- [ ] **T-305 - rltrader-optimize1 wurde vom Docker-Neustart beendet (Restart-Policy "no")**
+      Kontext: Am 01.10.2026 war der Rechner sehr langsam. Gemessen: Commit
+      87,8 von 103,7 GB (nur 15,9 frei), 991 Prozesse, davon 90 Python. Der
+      Ausloeser war ein Docker-/Gateway-Neustart 19 Minuten zuvor - danach
+      liefen die MCP-Gruppen auf 10-18 Stueck je Gruppe statt 3 (ant.dir 18,
+      mail/kraken/archiv je 10): der MCP-Spawn-Kreis aus T-152. Der angeordnete
+      Docker-Neustart hat die Kette getrennt und 13,5 GB Commit sowie 6,2 GB
+      RAM freigemacht (991 auf 880 Prozesse, Python 90 auf 54); danach lagen
+      die Gruppen wieder bei 2-4 Stueck, also innerhalb der Hausregel.
+      NEBENWIRKUNG: der Container rltrader-optimize1 hat Restart-Policy "no"
+      und wurde dabei beendet (exit 255) - eine laufende RLTrader-Optimierung
+      liegt nicht mehr vor. rltrader-report2 war vorher regulaer mit exit 0
+      fertig.
+      Naechster Schritt: Entscheidung Max - Optimierung neu starten oder auf
+      eine Restart-Policy umstellen. Die Kreislauf-Ursache selbst (T-152,
+      Spawn-Kette der MCP-Server) ist damit NICHT behoben; sie feuert beim
+      naechsten Docker- oder Gateway-Neustart erneut.
+      BERICHTIGUNG 02.10.2026 (von der Sitzung, die die Optimierung gefahren hat):
+      Die Optimierung war NICHT verloren - sie war vor dem Neustart FERTIG.
+      Belege: `rltrader-optimize1.log` endet mit 'Finished trials: 553' und den
+      Best-Trial-Parametern; die `params.db` traegt Trial 580 (= optuna Trial 553)
+      mit state PRUNED, value 1.971 und datetime_complete 2026-10-01 21:57:16.
+      Der Container starb erst DANACH (23:57:42, 'error waiting for container:
+      unexpected EOF', EXIT=125 der CLI) - der Lauf war da durch. 'exit 255' ist
+      die Leiche, die der Neustart um 00:01 vorgefunden hat, nicht der Abbruch
+      eines laufenden Versuchs. Ein Neustart der Optimierung ist nicht noetig.
+      ZWEITE BERICHTIGUNG zur toten Engine: es war nicht nur der Spawn-Kreis.
+      Um 22:41 lag das freie Commit bei 1,1 GB (267 Python-Prozesse); nach dem
+      Aufraeumen der MCP-Gruppen (212 Prozesse beendet, 23,4 GB frei) antwortete
+      die Engine IMMER NOCH nicht. Gemessen: `wsl -l -v` zeigte docker-desktop =
+      Stopped, waehrend Docker Desktop seit 00:29 (23 h) lief - der Hausgriff
+      der docker-wache (`wsl --shutdown` + App starten) heilt das NICHT, ein
+      zweiter Start holt nur das Fenster nach vorn. Erst Prozesse beenden und
+      frisch starten brachte die Engine nach 23 s zurueck; die Container mit
+      --restart-Policy waren von selbst wieder da. Siehe T-306.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader, Agenten/MCP-Server
+
+
+- [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
+      **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (erledigt)
+      Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
+
+
+- [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
+      Kontext: Am 01.10.2026 sind die `models:`-Listen der 19 Bot-Profile auf das gekuerzt, was
+      jedes Profil selbst nennt (33.064 -> 125 Eintraege, Werkzeug
+      `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py`). Die HAUPTconfig traegt weiter
+      die volle omniroute-`auto/*`-Liste (1.739) und die 428 Nous-Modelle - beides ist
+      gewollt bzw. ausdruecklich bestellt (Nous-Liste), aber dieselbe Frage stellt sich:
+      braucht der Hauptwaehler die 1.739 Router-Kombinationen, wenn der Endpunkt sie mit
+      Schluessel ohnehin live liefert?
+      Naechster Schritt: entscheiden, ob die omniroute-Liste der Hauptconfig ebenfalls auf die
+      benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+
+- [ ] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
+      Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
+      `user_data/config.<name>.json`, die laufenden Container akzeptieren davon aber nur das
+      Passwort der Basis-`config.json` (gemessen 30.09.2026 in `bots.py::_api_stand`, am
+      01.10.2026 erneut belegt: 8081/8082/8083 antworten mit der Basis-Anmeldung auf
+      show_config/count/profit/status/trades/daily, mit dem Aufsatz-Passwort 401).
+      `freqtrade_bridge.zugang_fuer()` nimmt deshalb den Port vom Bot, die Anmeldung immer von
+      der Basis - die Zentrale haengt an EINEM Zugang, obwohl sie drei Bots zeigt, und dieser
+      eine Zugang ist der Ausfall aller drei.
+      Naechster Schritt: beim naechsten Bot-Neustart (`freqtrade/bots_starten.sh`) messen, ob
+      die Container ihre eigenen Aufsatz-Passwoerter akzeptieren; wenn ja, `zugang_fuer` auf
+      die je-Aufsatz-Anmeldung umstellen und die 401-Ausnahme aus der Bruecke streichen.
+      Betrifft: Agenten/Handel/freqtrade_bridge.py, Agenten/Handel/freqtrade/bots.py, Agenten/Handel/freqtrade/user_data/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+
+- [ ] **T-301 — Leitstand: dieselben Tabellen ohne Leiste nachziehen**
+      Kontext: Die Handelszentrale hat seit 01.10.2026 `tabelle_mit_leiste` (senkrecht +
+      waagerecht + Mausrad) und eine scrollbare Spuren-Seite. Grund war die Spurtabelle mit
+      `height=len(SPUREN)` - hoeher als jedes Fenster, der Rest unerreichbar. Im Leitstand ist
+      dieselbe Suche leer (grep `Scrollbar`/`scrollbar`/`_scroll` in
+      `Agenten/Handel/leitstand.py`: keine Treffer), und er bettet die Zentrale als Reiter
+      ein - seine eigenen Tabellen (Spuren-Holer, Backtests, Freigaben) haben dasselbe Problem
+      von vorgestern.
+      Naechster Schritt: die drei Helfer (`tabelle_mit_leiste`, `scrollbare_seite`,
+      `rad_selbst`) nach `Agenten/Werkzeuge/fenster_design.py` ziehen, damit beide Fenster
+      EINE Quelle haben, und sie im Leitstand anwenden.
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/fenster_design.py, Agenten/Handel/handelszentrale.py
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+
+
+
+
+- [ ] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
+      Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
+      eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
+      dort vorher nur die kuratierte Liste (50 + Empfehlungen = 58). Werkzeug:
+      `Agenten/Hermes/scripts/nous-modellliste-richten.py --anwenden --profile`.
+      Die 30 Profil-Configs haben eigene Waehler-Zeilen und tragen den Block NICHT.
+      Naechster Schritt: entscheiden, ob die Bot-Profile die volle Liste brauchen (sie
+      lesen ihr Modell aus ihrer config.yaml, nicht aus dem Waehler) - sonst nichts tun.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/profiles/*/config.yaml
+- [ ] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
+      Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
+      Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
+      (bonsai-/smart-Provider-Block entfernt, `moa.enabled` false -> true, `personality`
+      creative -> helpful, telemetry, `desktop.repo_scan_roots`) - gemessen als
+      Arbeitsbaum-Diff 19/26 gegen HEAD. Derselbe Weg kann den neuen
+      `providers: nous: models:`-Block (430 Zeilen, Commit fc395e3) wieder loeschen.
+      Naechster Schritt: nach der naechsten Einstellungsaenderung in Desktop/TUI pruefen
+      (`grep -c "claude-opus-4.1:batch" Agenten/Hermes/config.yaml` muss 1 sein) und
+      feststellen, welche App-Fassung schreibt.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+
+
+- [ ] **T-295 — gitter replaybar machen (Adapter fuer die Rechnung in grid.py)**
+      Kontext: `gitter` stand in `replay.SPUREN_TEIL_A`, bricht aber bei JEDEM Lauf ab:
+      sein `gitter/handeln.py` hat nur `lade_wachen()`, die Rechnung liegt in
+      `grid.py`/`backtest_gitter.py` -> `AttributeError: module 'bt_gitter' has no
+      attribute 'pruefe_ausstiege'` (gemessen 01.10.2026, echter Lauf). Es steht jetzt in
+      `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet vier Spuren an.
+      Naechster Schritt: im Replay einen Adapter fuer Spuren mit eigener Rechnung bauen
+      (Einstieg/Ausstieg ueber ihre eigenen Funktionen statt ueber
+      pruefe_einstieg/-ausstiege) - `gitter/backtest_gitter.py` faehrt die Spur bereits
+      selbst, es fehlt nur die Naht. Danach mit dem OKX-Spot-Satz 0,10 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, gitter
+
+- [ ] **T-294 — mosaic replaybar machen (Mehrzeitrahmen-Adapter)**
+      Kontext: `mosaic` stand in `replay.SPUREN_TEIL_A`, brach aber bei JEDEM Lauf
+      beim ersten Einstieg ab: sein `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)`
+      braucht DREI Kerzenreihen (4H/30M/5M), der Replay ruft fuenf Argumente
+      (`TypeError: missing 2 required positional arguments`, gemessen 01.10.2026).
+      Es steht deshalb in `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet
+      fuenf Spuren an (squeeze, wavetrend, macd_mtf, supertrend, gitter).
+      Naechster Schritt: im Replay eine Naht fuer Spuren mit mehreren Zeitrahmen
+      bauen (drei Reihen je Instrument aus derselben Historie ableiten: 4H direkt,
+      30M/5M aus 5M-Reihen, die die Historie noch nicht holt) - dann mosaic wieder
+      in die Liste und mit dem gemessenen Kraken-Satz 0,60 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, mosaic
+
+- [ ] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
+      Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
+      `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
+      werden aber ueber `okx.letzter_kurs` bewertet - also OKX-Paare. Der
+      Gebuehrensatz ist damit widerspruechlich: Kraken-Futures waeren 0,04-0,05 %
+      je Seite (gemessen 25.09.2026), OKX-Spot 0,10 % (gemessen 01.10.2026).
+      Gesetzt ist der TEURERE (0.1) und der Widerspruch steht als
+      `_gebuehr_quelle` in der Datei - der freundlichere Satz waere geraten.
+      Naechster Schritt: entscheiden, wo omniquant wirklich buchen soll (`boerse`
+      richtigstellen ODER Instrumente auf Kraken-Paare umstellen), dann den Satz
+      nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
+
+- [ ] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
+  Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
+  Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
+  Angelegt 2026-10-01 · Betrifft: omnitrade_futures/wachen.json
+- [ ] **T-292 — Backtest-Drawdown 72-90 % ist unplausibel, Auswertung nachziehen**
+  Kontext: GEFUNDEN (01.10.2026) - es ist ein Buchungsartefakt, kein Risiko: omnitrade-engine/src/account.rs apply_buy_fill zieht Nominal+Gebuehr VOLL vom Cash ab, total_equity = balance + unrealized_pnl zaehlt den Positionswert NICHT zurueck; waehrend einer offenen Long-Position ist das Equity also ~16 % vom Hoechststand, und max_dd sieht sofort die grosse Kurve. PnL/Runden/Trefferquote sind unberuehrt korrekt (die Equity holt sich beim Schliessen zurueck).
+  Naechster Schritt: total_equity um den Positionswert ergaenzen (Long: qty x entry + unrealized) im Fork Werkstatt/omnitrade - erst danach ist max_dd eine Zahl, an der man Grenzen ablesen kann; bis dahin DD-Spalte der Messung ignorieren.
+  Angelegt 2026-10-01 · Betrifft: Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
+- [ ] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
+      Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
+      ist aber dauerhaft zu: das flex-Konto traegt nur 1,28 USD frei (25.09.2026 waren
+      es 141,59). 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei Hebel 7.
+      Naechster Schritt: Geld ins Futures-Konto (flex) umschichten oder Spur bewusst
+      im Papier lassen; danach zeigt `handeln.py --vorschau` genau einen Grund.
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/omnitrade_futures/wachen.json
+- [ ] **T-285 - omnitrade_futures: leverage-Parameter an Kraken belegen**
+      Kontext: Hebel 7 geht als leverage-Feld in JEDE /sendorder-Order (weg.py,
+      kraken_futures.markt_kauf), aber gemessen ist nur der Einschussplan EEA retail
+      10 % = 10x. Ohne Beleg weiss niemand, ob Kraken den Parameter annimmt oder
+      still den Maximalhebel setzt. Probe = 1 Kontrakt kaufen + schliessen
+      (~0,12 USD Gebuehr), verfuegbar: /openpositions + availableMargin vorher/nachher.
+      Naechster Schritt: nach T-284 (Guthaben) einen 1-Kontrakt-Test OHNE VPN fahren
+      (mit NordLynx weist Futures ab - authenticationError).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/nautilus_kraken/kraken_futures.py
+- [ ] **T-287 - omnitrade-Backtest: Drawdown-Anzeige unplausibel, nachziehen**
+      Kontext: intervalle_messen.py meldete 60-Tage-Runs mit max_drawdown 72-90 % auf
+      Long-only-BTC in einer Phase ohne 60-%-Kurzeinbruch - die Zahl kann nicht
+      stimmen (Veraecht: equity-Rechnung in backtest.rs/AccountState oder
+      update_unrealized_pnl auf beiden Seiten je Kerze). Runden/Trefferquote sind
+      belastbar, der Drawdown nicht.
+      Naechster Schritt: AccountState.total_equity lesen und mit einer Handrechnung
+      gegenprobe machen, bevor irgendeine Grenze aus dem Drawdown abgeleitet wird.
+      Angelegt · 01.10.2026 · Betrifft Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
+
+- [x] **T-283 — kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
+      Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
+      ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
+      zwei verfielen mit der 180-s-Frist (freigabebeleg.GUELTIG_SEKUNDEN). Der Ausfuehrer
+      `beleg-hand` laeuft als Cron alle 5 MINUTEN - ein Beleg, der direkt nach einem Lauf
+      entsteht, wartet bis zu 5 min und ist damit immer abgelaufen. beleg_hand.lauf()
+      iteriert zwar ueber ALLE offenen Belege, aber die Frist ist kuerzer als der Takt.
+      Schaden bisher: keiner (ein verfallener Beleg kauft nicht). Zu klaeren ist, warum
+      drei Belege entstanden, obwohl `pruefe_einstiege` den Platz VOR dem Beleg prueft
+      (max_offene_positionen 4) - moeglicherweise war das Buch zu dem Zeitpunkt anders
+      besetzt als angenommen.
+      Naechster Schritt: Frist und Takt aufeinander abstimmen (Frist > Takt, z. B. 600 s
+      bei 5-Minuten-Takt) ODER den Beleg-Hand-Takt auf 2 min senken; danach den
+      Platz-Grund je verfallenem Beleg im Journal sichtbar machen.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
+
+- [ ] **T-288 — Freitext blockiert den SkillsBot bis zu 30 Minuten (ID-Korrektur 01.10.: T-283 war Doppelvergabe, der aeltere Eintrag mit Commit-Referenz 11992c4 behaelt die Nummer)**
+      Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
+      (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
+      "(Aufgabe FAILED)", obwohl der Hauptagent weiterarbeitete. Der Bot ist in
+      dieser Zeit EINFADIG: /lage, /strategien und jede andere Nachricht warten,
+      bis der Auftrag fertig ist. Fuer einen einzelnen Auftrag ist das richtig
+      (sonst ist das Ergebnis verloren), fuer einen zweiten Auftrag nicht.
+      Naechster Schritt: den Freitext-Auftrag in einen Hintergrund-Thread geben,
+      sofort "angenommen" antworten und das Ergebnis als eigene Nachricht senden
+      (Muster: der Dauerlauf meldet asynchron; `sende()` ist thread-fest, die
+      Kontext-ID muss im Thread fortgeschrieben werden).
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py
+
+- [ ] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
+      Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
+      als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
+      weil 1 Kontrakt 1437 USD Nennwert = Hebel 28,7). Nichts ist scharf:
+      handel_erlaubt=false, freigabe.erfuellt=false, kein Eintrag in
+      AUTO_FREIGABE. Blocker ist allein die Margin - das Kraken-Futures-flex-Konto
+      traegt 85,09 USD, davon sind 83,38 durch drei laufende nautilus-Positionen
+      (SUI/HBAR/HYPE, zusammen +12,63 USD im Plus) gebunden; frei sind 1,31 USD,
+      Stufe 1 braucht 30.
+      Naechster Schritt: Entscheidung Max - (a) eine nautilus-Position schliessen,
+      (b) Guthaben ins flex-Konto legen oder (c) mindest_guthaben_usd senken
+      (erlaubt nur kleinere Positionen, nicht mehr Plaetze). Danach
+      handel_erlaubt UND freigabe.erfuellt - beide Haken, und den Haken setzt Max.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/omniquant, nautilus_kraken
+
+- [ ] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
+      Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
+      1.500.000 = 1,58 EUR), ONDO (10,74331 gegen ordermin 15 = 4,84 EUR) und ADA.S liegen.
+      ADA.S ist gestakte Cardano — Kraken fuehrt kein Paar mit `base=ADA.S` (AssetPairs
+      liefert eine leere Liste), der Weg ist Unstaking, nicht eine Order. Gleiches Muster:
+      ATOM21.S, HYPE.B, XPEV.EQ.
+      Naechster Schritt: PEPE/ONDO sammeln, bis sie ueber dem Ordermin liegen; fuer ADA.S/
+      ATOM21.S/HYPE.B entscheiden, ob unstaked wird.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Nachtrag 01.10.2026 (OKX): Dasselbe Muster auf der anderen Boerse — BETH-USDT
+      (160,77 USD) und OKSOL-USDT (20,00 USD) sind gestakte Formen und antworten mit
+      `OKX 51155: You can't trade this pair ... due to local compliance restrictions`.
+      OKX fuehrt sie auf dem EEA-Konto nur gegen USDT, und der Fehler kommt VOR jeder
+      Mengenpruefung — an `/public/instruments` ist die Sperre nicht zu sehen.
+      Betrifft: Kraken-Konto, OKX-Konto
+
+
+
+- [ ] **T-277 - xperp XRP: Buch fuehrt 704 Kontrakte, die Boerse 295**
+      Kontext: zustand.json traegt XRP-USD_UM_XPERP-310404 mit kontrakte 704.0 und
+      margin 108.69 (das passt zu 704), /account/positions meldet pos=295
+      (mgnMode cross). Der Schutz ist vorhanden, aber dreifach ueberdeckt: vier
+      OCO-Verkaufsauftraege ueber 81+300+126+278 = 785 Kontrakte stehen fuer eine
+      Position von 295 Kontrakten. Nach dem Muster von bueche_groessen_abgleichen
+      bereinigen (Buch auf die Boersenkontraktzahl, Stop/Ziel/Einstieg
+      unangetastet, keine Order), die ueberzaehligen OCO-Auftraege danach einzeln
+      stornieren.
+      Naechster Schritt: bueche_groessen_abgleichen greift im Live-Zyklus, xperp
+      laeuft aber Papier - von Hand nachziehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/zustand.json
+
+- [ ] **T-278 - fremde_positionen_uebernehmen prueft nur attachAlgoOrds, nicht orders-algo-pending**
+      Kontext: Beim Anwenden am 01.10.2026 meldete das Werkzeug fuer ZEC, VVV und
+      ADA "Stop an der Boerse: fehlt - wuerde gestellt". Es fehlte nur in
+      attachAlgoOrds: /trade/orders-algo-pending?ordType=oco zeigte fuer ZEC schon
+      eine OCO (38 Kontrakte, sl 1316.44) und fuer ADA eine (55, sl 0.2286), dazu je
+      ein move_order_stop auf VVV (217) und ADA (180). Jetzt liegen zwei Stops je
+      Position, der neuere und engere feuert zuerst - der Stop wurde damit
+      unbemerkt von -8.6 % auf -2.7 % gezogen. Die Pruefung muss ALLE ordTypes
+      lesen (conditional, oco, trigger, move_order_stop).
+      Naechster Schritt: Pruefung in fremde_positionen_uebernehmen.py erweitern;
+      die doppelten Auftraege bewusst stehen lassen oder einzeln stornieren.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/fremde_positionen_uebernehmen.py
+
+- [ ] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
+      Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
+      VVV (217) und ADA (235) als XPERP-Positionen, zusammen rund 226 USD
+      Margin; das xperp-Buch kennt nur XRP. attachAlgoOrds ist bei ALLEN vier
+      Positionen leer und /trade/orders-algo-pending liefert fuer SWAP und
+      FUTURES nichts - kein Schutzauftrag. xperp laeuft Papier, deshalb hat
+      bueche_fremde_positionen_uebernehmen nie gegriffen (es laeuft nur im
+      Live-Zyklus). Die Vorschau des Hauswerkzeugs zeigt: alle drei wuerden
+      uebernommen und bekaemen einen Stop (ADA 0.2432, VVV 27.221, ZEC
+      1401.06) - rund 2 % unter dem Boersenschnitt, ein Stop dort realisiert
+      den Buchverlust von zusammen -34.85 USD.
+      Naechster Schritt: Entscheidung Max - uebernehmen (dann greift der Stop)
+      oder die Positionen schliessen; ohne Entscheidung bleibt Margin ohne
+      Schutz stehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp
+
+- [ ] **T-274 - xperp-Kill-Switch sperrt die scharfe Spur (Ruecklauf 279.85 >= 250)**
+      Kontext: lage meldet kill=true - die realisierte Kurve stand auf 497.42
+      USD und liegt bei 217.57, der Ruecklauf also 279.85 gegen
+      kill_switch_gesamt_usd 250.0. handel_erlaubt steht deshalb auf false.
+      ACHTUNG, FALLE: der Kill-Switch steht NICHT im --vorschau-Text. Wer nur
+      handel_erlaubt auf true setzt, laesst genau EINEN Sperrgrund uebrig
+      ('kein offenes Freigabefenster'), dauerlauf.nur_fenster_fehlt greift und
+      die AUTO_FREIGABE oeffnet das Fenster von selbst - der naechste Live-Lauf
+      stellt dann flach und verkauft die vier echten Positionen aus T-273.
+      Reihenfolge also: erst Deckel bzw. Kurve entscheiden, dann armieren.
+      Naechster Schritt: Entscheidung Max - Deckel heben (21.09. von 40 auf 100,
+      27.09. auf 250) oder die Kurve pruefen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/wachen.json
+
+- [ ] **T-275 - vier scharfe Spuren laufen live und koennen nicht handeln (Guthaben)**
+      Kontext: scanner, mosaic, moondev_listingarb und moondev_topmovers fahren
+      live (dauerlauf.log 01.10. 02:43-02:46), stehen aber alle vor einem
+      Guthaben-Tor: OKX-Spot-USDC frei 0.00 bei 530.67 eq - die ganze Margin
+      steckt in den vier XPERP-Positionen aus T-273 - und Kraken 53.81 EUR
+      sowie 25.08 USDC gegen die Tore 60 (mosaic) und 70 (moondev_marktlage).
+      Naechster Schritt: Entscheidung Max - Geld umschichten oder Tor senken;
+      ohne eines von beiden bleibt der Live-Schalter wirkungslos.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
+
+
+- [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
+      **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
+
+
+
+
+
+- [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
+      Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
+      „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
+      Completion-Versuch und meldet „source-update completion failed: an update is still
+      running“ (gemessen 01.10. 01:22). Ein laufender Update-Prozess existiert NICHT (nur der
+      Marker), C: hat 77,9 GB frei — die Reparatur ist also machbar.
+      Naechster Schritt: Desktop und TUI schliessen (der laufende Desktop haelt
+      `apps/desktop/release/win-unpacked`, sonst WinError 5 beim Umbenennen), dann
+      `installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u
+      hermes_cli/source_completion.py --source Agenten/Hermes/hermes-agent --finish-update
+      --desktop --prepared` GELOESTERT starten (nie mit eigenem Zeitlimit killen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/installs/bf59c98340a908a8/, Agenten/Hermes/logs/update-*.log
+
+- [ ] **T-266 — cmd.exe und andere Shells umgehen den Hermes-Anker**
+      Kontext: Der `hermes`-Wrapper liegt als PowerShell-Funktion im Profil; in `cmd.exe`
+      (Windows-Terminal-Standardprofil „Eingabeaufforderung“) und in jeder anderen Shell
+      startet `hermes` weiter im Startverzeichnis der Shell. Gemessen 01.10.2026: nur pwsh
+      ist abgedeckt, `Agenten/Werkzeuge/anker-pruefen.ps1` faehrt nur diesen einen Weg.
+      Naechster Schritt: entscheiden — so lassen (Max arbeitet in pwsh) oder ein `hermes.cmd`
+      vor `Agenten\Hermesin\hermes.exe` legen; das geht nur mit PATH-Umbau, weil `.exe` in
+      DEMSELBEN Verzeichnis `.cmd` schlaegt.
+      Angelegt 01.10.2026 · Betrifft Documents/PowerShell/Microsoft.PowerShell_profile.ps1, Agenten/Werkzeuge/anker-pruefen.ps1
+
+
+
+- [?] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Lösung bereit)**
+      Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
+      zum Neustart 01.10. 00:45 keine einzige Zeile - das Log endete mitten in einer normalen
+      Runde, ohne Traceback. Ursache: Ollama (oder das OS-Netz) friert ein, timeout=120 in
+      llm_lokal() wirkt nicht (OS-Ebene).
+      LÖSUNG (Fremd-Repo, Max anwenden:
+      Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py):
+        1. `import threading` hinzufuegen (nach Zeile 22)
+        2. Funktion einfuegen:
+
+           ```python
+           def _zyklus_watchdog(timeout_s: float = 900.0) -> threading.Timer:
+               """Watchdog fuer den Gesamtzyklus (T-260).
+               Wenn ein Zyklus laenger als timeout_s (Vorgabe 15 Min) dauert,
+               wird eine TimeoutError ausgeloest - der Treiber startet den Agenten neu.
+               """
+               def _raise():
+                   raise TimeoutError(
+                       f"Zyklus-Timeout nach {timeout_s:.0f}s - möglicher Hängenbleiben (T-260)")
+               timer = threading.Timer(timeout_s, _raise)
+               timer.daemon = True
+               timer.start()
+               return timer
+           ```
+
+        3. In `main()` (Zeile 202) Watchdog um jeden Zyklus:
+
+           ```python
+           def main():
+               print("🌙 Moon Dev KRAKEN Agent - Kraken angebunden (16.09.2026)")
+               print("   Modell: %s  |  Boerse: Kraken EUR-Paare (oeffentlich, kein Key)" % OLLAMA_MODEL)
+               try:
+                   while True:
+                       timer = _zyklus_watchdog(900.0)       # max 15 min pro Zyklus
+                       try:
+                           ein_zyklus()
+                       finally:
+                           timer.cancel()
+                       for _ in range(12):
+                           time.sleep(VERZOEGERUNG // 12)
+               except KeyboardInterrupt:
+                   print("
+👋 gestoppt.")
+           ```
+
+     Watchdog wird nach `ein_zyklus()` durch `timer.cancel()` geloescht. Wenn der
+     Zyklus hängt, feuert der Timer nach 15 min und beendet den Prozess - der
+     Treiber startet ihn neu.
+     Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py
+
+- [ ] **T-261 — new_or_top arbeitet ohne Marktdaten und laeuft in Analyse-Timeouts**
+      Kontext: Im Log stehen 6x "No market data available" und 2x "Error in AI analysis:
+      timed out"; gespeicherte Analysen (Namecoin, Primecoin) entstanden ohne echte Daten.
+      Ursache ist das Rate-Limit des Datenanbieters (CoinGecko HTTP 429) plus die zu langsame
+      lokale Analyse. Naechster Schritt: entscheiden - Datenquelle mit Schluessel anbinden
+      (COINGECKO_API_KEY liegt bei Max) oder den Agenten auf eine andere Quelle umstellen.
+      Angelegt 01.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents (src/agents/new_or_top_agent.py)
+
+- [✓] **T-262 — MoonDev-GUI und Treiber widersprechen sich (Haus-Seite erledigt, GUI offen)**
+      Kontext: Die GUI ist ein reiner Datei-Katalog (31 Agentenmodule von der Platte), ihre
+      Startknoepfe rufen `-m src.agents.<mod>`. Der Haus-Treiber beendet aber jeden Agenten,
+      der nicht sein eigenes Kind ist (Schonfrist 300 s) - ein aus der GUI gestarteter Agent
+      stirbt nach 5 Minuten. Max hat entschieden: zuerst die kranken Agenten (T-260/T-261),
+      DANN darf die GUI starten und der Waisenputzer muss ihre Kinder in Ruhe lassen.
+      HAUS-SEITE (erledigt 02.10.2026):
+        - Agenten/Handel/moondev_reg.py: gemeinsamer Registrierungsordner (%TEMP%/moondev_agenten/)
+        - Agenten/Handel/moondev_dauerlauf.py: `fremde_agenten()` ignoriert jetzt registrierte PIDs
+          (durch `import moondev_reg; behalten |= moondev_reg.alle_registrierte_pids()`)
+        - Behoben: der Waisenputzer laesst jetzt alle sich registrierten Agenten in Ruhe,
+          egal wer sie gestartet hat (Treiber oder GUI).
+      GUI-SEITE (offen, Max im Fremd-Repo anwenden: moongui.py):
+        - In der `kind_umgebung()`-Funktion oder direkt nach `subprocess.Popen`:
+          `from moondev_reg import registriere; registriere()` aufrufen
+        - Dafuer muss moondev_reg.py im Repo verfuegbar sein:
+          Option A: Kopiere Agenten/Handel/moondev_reg.py nach
+          Werkstatt/Repos/moon-dev-ai-agents/src/agents/moondev_reg.py
+          Option B: Erstelle eine externe moondev_reg.py im selben Ordner
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py
+      (Haus ✓), Werkstatt/Repos/moon-dev-ai-agents/moongui.py (GUI offen)
+
+- [ ] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
+      Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM
+      BrainFiles-Repo; ProjectAtlas bindet den Projektstamm an die naechste Git-Wurzel und verweigert
+      ein Projekt innerhalb eines Repos. Gemessen 30.09.2026: `invalid input: ProjectAtlas config
+      '.../nautilus-rust/.projectatlas/config.toml' resolves project root '...Agenten/Handel/nautilus-rust'
+      outside selected project root '...BrainFiles'` — der angelegte `.projectatlas` wurde wieder entfernt.
+      Naechster Schritt: entscheiden — eigenes Repo (dann Atlas moeglich, aber Gitlink im Vault wie bei
+      MaxHirn/codex) oder Lehrstueck bleiben (dann genuegen die fuenf Einstiegsdateien).
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust`, `MaxHirn/Wiki/Handel/nautilus-rust-Quant-Ebene.md`
+- [ ] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
+      Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
+      folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb
+      mit `t = 1.75 < Huerde 2.0` ab (gemessen, 0 rebalances). Ein Signal ist daraus nicht ableitbar.
+      Naechster Schritt: falls daraus ein Signalweg werden soll — echte Folds ueber
+      `Agenten/Handel/historie_binance.py` und `replay.py` erzeugen und die Werte dort herleiten
+      statt einzutragen.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust/quant-alpha`
+- [ ] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
+      Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
+      ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
+      und ohne Doppelpunkt im Namen: ohne geht, mit ENOENT. Der Store waere zusaetzlich
+      Unix-gepraegt (`~/.local/bin`, `.bashrc`/`.zshrc`, Symlink `current`). Deshalb liegt die CLI
+      hier als npm-Installation in eigenem Prefix (`C:\Users\faupe\.local\npm`) mit zwei
+      PATH-Weiterleitungen in `~/.local/bin`; `paperclipai update` und `uninstall` gibt es damit
+      NICHT, aktualisiert wird per `npm install -g --prefix ... paperclipai@latest`.
+      Naechster Schritt: entscheiden, ob der Fehler upstream gemeldet wird
+      (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
+      dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
+- [ ] **T-254 - Paperclip: Instanz laeuft und der Umgebungstest ist gruen - offen sind Anmeldung, Modell, Autostart**
+      Kontext: Dashboard `http://127.0.0.1:3100` (HTTP 200), eingebettete PostgreSQL auf
+      127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
+      Haenger aus). Unter Windows gibt es KEINEN Hintergrunddienst (`Service management is not
+      supported on win32`). Der Umgebungstest scheiterte zunaechst an `ANTHROPIC_API_KEY` aus
+      `C:\Users\faupe\.env` (Arbeitsverzeichnis des Servers!) - behoben, seitdem `status: pass`.
+      Start-Wrapper steht: `Agenten/Routinen/paperclip-start.ps1` (Port-Pruefung, Arbeits-
+      verzeichnis `.paperclip`, entfernt ANTHROPIC_*). Offen: (a) Board-Anmeldung der CLI -
+      Dashboard im Browser oder `paperclipai connect --persona board`; `token board create`
+      verlangt vorher eine Sitzung. (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten
+      noetig - OmniRoute/Ollama waeren im Haus da). (c) Kein Autostart (geplante Aufgabe nach
+      Hausmuster fehlt). (d) Die `.env` im Home bleibt eine Falle fuer dort gestartete Werkzeuge
+      (absichtlich nicht angefasst).
+      Naechster Schritt: Entscheidung von Max - Konto im Dashboard anlegen und
+      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich die
+      geplante Aufgabe fuer den Wrapper.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`,
+      `Agenten/Routinen/paperclip-start.ps1`
+- [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
+      Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
+      Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
+      Sperrgruende, davon zwei, die Max' Hand brauchen: `freigabe.erfuellt=false`
+      und `nur 25.08 USDC frei, noetig 60.00`. Die beiden anderen
+      (`handel_erlaubt=false`, kein Freigabefenster) sind Schalter bzw. laufen
+      ueber die Freigabekette.
+      Naechster Schritt: erst Papierrunden sammeln und die Bedingung 1 belegen
+      (Runden, netto positiv, Ruecklauf), dann `handel_erlaubt=true` +
+      `freigabe.erfuellt=true` und ein `/ja_omnitrade` im Dauerlauf; das Guthaben
+      in USDC auf Kraken muss vorher ueber 60 liegen (T-115). NICHT vorher -
+      eine neue Spur ohne eine einzige Runde scharf zu stellen, waere der
+      Verzicht auf jede Messung.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
+
+
+
+
+
+
+- [ ] **T-248 - `MaxHirn/codex` ist ein Gitlink: ein Klon im Vault**
+      Kontext: `git ls-files -s MaxHirn/codex` liefert Modus **160000** (Gitlink) auf
+      `64b482500d` - ein Codex-Klon (0,66 GB, 7.266 Dateien) liegt IM Vault, und der Vault
+      sagt selbst „hier liegt nichts, was startet". Zusaetzlich: `Werkstatt/Repos/codex`
+      steht auf einem anderen Commit (`17a9df60e4`), es sind also zwei Klone. Ein Gitlink
+      ohne echten Unterbau ist beim Klon von BrainFiles kaputt.
+      Naechster Schritt: Entscheidung von Max - Klon nach `Werkstatt/Repos/` verschieben
+      (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
+      Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
+- [ ] **T-249 - `MaxHirn/DockerDesktopWSL` (4,88 GB) liegt im Vault**
+      Kontext: Der Vault wird nach `G:` gesichert (`MaxHirn/` + `Agenten/`), dieses Volumen
+      damit mit - 4,88 GB Docker-Daten in einem Wissensspeicher. Am 30.09.2026 gemessen, nicht
+      angefasst: Docker laeuft (Container `nautilus-demo`, `freqtrade-*`, `openterminalui-*`),
+      ein Verschieben im laufenden Betrieb waere riskant.
+      Naechster Schritt: Entscheidung von Max - im Docker Desktop den Datentraeger-Ort
+      verlegen (dann einmal Docker neu starten) oder bewusst liegen lassen und in
+      `Wissen/Routinen.md` als Ausnahme vermerken.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/DockerDesktopWSL`, Sicherung nach `G:`
+- [ ] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
+      Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
+      (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
+      SSRN-PDFs, `setup-trading-stack.sh` - 29 Dateien. Die drei Installationspakete
+      (749 MB) und der zweite `kraken-cli`-Klon sind am 30.09.2026 nach `Ausgemustert/`
+      geraeumt. In `Werkstatt/Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/
+      `target`/`.git` - wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
+      Naechster Schritt: Entscheidung von Max - (a) lose Dateien nach `Ausgemustert/` oder
+      in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
+      Startbefehl) oder unangetastet lassen.
+      Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
+- [ ] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
+      Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
+      nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.
+      `tools/memory_tool.py:64` pinnt beim Einlagern die volle getroffene Eintragung als
+      `matched_entry`; `apply_memory_pending` (Zeile 306-308) VERWEIGERT jede destructive
+      Operation ohne Pin mit "This destructive pending write predates entry pinning and cannot
+      be verified; nothing was applied. Reject it and recreate the change." Und `/memory
+      pending` nennt je Eintrag "unpinned legacy target - reject and recreate before
+      approving", `_approve` druckt "Failed:"-Zeilen samt ueberschriebenen Eintraegen.
+      Sonde: `Agenten/Hermes/scripts/probe-memory-pinning.py` (baut denselben Store wie
+      `/memory approve`) - beide alten Formen werden verweigert, MEMORY.md danach byte-gleich
+      (247.972 Zeichen, gleiche mtime).
+      Damit ist T-245 vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit VOR dem Pin
+      (09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch
+      seine reinen `add`s. `approve all` hat also nichts angewandt und das auch gesagt.
+      Verbleibende echte Luecke: (a) eine Queue, die niemand liest, verrottet still - drei
+      Wochen lang hat kein Lauf ihren Zustand gemeldet; (b) ein `add` in einem Batch mit einer
+      veralteten `replace`-Operation geht mit ihr verloren (Atomaritaet des Batches).
+      Naechster Schritt: Entscheidung von Max - Queue-Wache bauen (Alter, Zahl, Zahl der
+      ungepinnten Eintraege; leere Ausgabe = nichts senden, an memory-verlust-wache.py
+      angehaengt oder eigener Cron), und/oder (b) als Upstream-PR melden statt lokal flicken
+      (der Checkout wird von `hermes update` zurueckgesetzt).
+      Stand 01.10.2026 (nachgeprueft): (a) ist Gebaut und lebt - `memory-verlust-wache.py`
+      haelt `queue_lage`/`queue_befunde` (Alter ueber 7 Tage, ungepinnt, unlesbar;
+      `bc8041a`), Cron `f6f34ed95e0b` enabled, taeglich 20:45, no_agent, Telegram,
+      last_status ok; 17 Tests inkl. QueueTest. Bei leerer Queue meldet die Wache nichts.
+      OFFEN bleibt allein (b): der Upstream-PR fuer die Batch-Atomaritaet (ein reines `add`
+      in einem Batch mit veralteter `replace` verdirbt den ganzen Batch). Nicht lokal
+      geflickt, da `hermes update` den Checkout zuruecksetzt. Max entscheidet ueber den PR.
+      Angelegt: 2026-09-30
+      Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
+- [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
+      Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
+      Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
+      stehen LOKAL in `repos-zentrale/fenster.py`, damit `fenster_design.py` -
+      die gemeinsame Quelle von handelszentrale.py und leitstand.py - unberuehrt
+      bleibt. Wer EINE Designquelle will, muss sie dorthin ziehen; das wirkt auf
+      die anderen Fenster. (b) `messprobe.py` misst 63 von 216 Hinweisen als zu
+      lang (laengster 1940 px bei 705 px Spalte) - der volle Text steht nur in
+      der Statuszeile. Ein Tooltip oder eine breitere Spalte waere moeglich,
+      kostet aber Platz bei Projekt/Art/Rolle.
+      Naechster Schritt: Entscheidung Max, ob (a) die Kartenstile nach
+      `Agenten/Werkzeuge/fenster_design.py` wandern und (b) die Hinweisspalte
+      einen Tooltip bekommt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
+      Angelegt: 2026-09-30
+- [ ] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
+      Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
+      `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
+      (Rolle + Hinweis + Kopfzeile "63 fremd") und `bestand.py`. Offen aus dem
+      Design (docs/design/2026-09-30-grenze-und-popouts-design.md): (a)
+      `Agenten/Werkzeuge/fundus-suche.ps1` soll fremde Baeume getrennt melden
+      statt sie nach eigenem Wissen zu durchsuchen (`ConvertFrom-Json` liest die
+      Liste), (b) ein Block "Grenze" in `Agenten/Routinen/systempruefung.ps1`
+      (Liste lesbar, Eintraege vorhanden, keine Ueberschneidung mit eigenen
+      Wurzeln). Der Block wurde bewusst NICHT gebaut, weil systempruefung.ps1
+      parallel von einer anderen Sitzung geaendert wurde.
+      Naechster Schritt: (a) in fundus-suche.ps1 die Liste lesen und eine Zeile
+      "fremd" je Baum ausgeben, (b) den Block nach dem Muster der anderen
+      Bloecke ergaenzen (`fremd.py --pruefen` aufrufen, Ergebnis melden).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
+
+
+
+
+- [ ] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
+      Kontext: Am 30.09.2026 hat eine parallele Sitzung acht Papierspuren
+      angelegt (klassik_bollinger, -donchian, -donchian_trend, -ema, -macd,
+      -rsi, -rsi2, -sma). Bedingung 4 meldet fuer alle acht "Kopie ausser
+      Haus nicht in Ordnung", weil der laufende Dauerlauf sie nicht faehrt
+      und ihre Q:-Ordner fehlen. Kein Fehler in den Spuren selbst.
+      Naechster Schritt: pruefen, ob sie in `dauerlauf.SPUREN` eingetragen
+      sind; wenn ja, den Dauerlauf in einem ruhigen Fenster neu starten
+      (dann zieht die Spiegelung nach), wenn nein, die Eintraege ergaenzen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_*, Agenten/Handel/dauerlauf.py
+
+- [ ] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
+      Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
+      nachgeprueft (C: 8192/8192 fest, O: 32768/32768, beide Eintraege in
+      `HKLM\...\Memory Management\PagingFiles` und in WMI). Wirksam wird das
+      erst mit einem Neustart: die Commit-Grenze steht weiter bei 84,5 GB und
+      steigt dann auf rund 103,7 GB; ausserdem traegt C: noch eine
+      selbstverwaltete 21 GB grosse Datei, die nach dem Neustart auf 8 GB
+      schrumpft (rund 13 GB frei gewonnen). Anlass: 296 Speichernot-Meldungen
+      (Ereignis 2004) in 14 Tagen und am 30.09.2026 einunddreissig Abstuerze
+      mit 0xc000012d (STATUS_COMMITMENT_LIMIT), darunter dwm.exe und der
+      Gateway.
+      Naechster Schritt: Neustart in einem ruhigen Fenster (Entscheidung Max).
+      Danach nachsehen: `Get-CimInstance Win32_PageFileUsage` nennt beide
+      Dateien, die Commit-Grenze liegt bei rund 103,7 GB, C: hat rund 13 GB
+      mehr frei. Dauerlauf-Stufen, Gateway und Dashboard starten ueber ihre
+      geplanten Aufgaben selbst; offene Boersenpositionen behalten ihre Stops
+      an der Boerse.
+      Angelegt: 2026-09-30
+      Betrifft: C:/O: Auslagerung, Agenten/Routinen/einmalig-20260930-auslagerung.ps1,
+      MaxHirn/Wiki/Betrieb/Sicherung-und-Laufwerke.md
+
+- [ ] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
+      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
+      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL), 73 mit Startbefehl. Offen
+      sind vor allem die **Werkstatt-Projekte** (freqtrade, omnitrade, OmniRoute,
+      handel-stack, skillspector) sowie die Werkzeug-Ordner in Handel
+      (freqtrade, bt_opt, nautilus-rust, verbesserer, OpenAlice). Die Spuren
+      selbst sollen bewusst OHNE Startbefehl bleiben (der Dauerlauf faehrt sie),
+      die sechs Freqtrade-Strategien ebenfalls (Klassen, freqtrade laedt sie).
+      Hausregel: ein Befehl kommt erst ins Manifest, wenn er einmal echt
+      gelaufen ist (`fuellen.py --belege` fuehrt hinterlegte Staende aus).
+      Naechster Schritt: je Projekt den Startweg einmal von Hand fahren, dann
+      `start` bzw. `befehle` in repos-zentrale.json eintragen.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
+
+
+- [ ] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
+      Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`
+      (jeder Aufruf misst echt gegen Kraken und setzt den Lockout-Timer zurueck),
+      `dauerlauf.py` (Handstart nimmt die echte Sperre) und `melder.py`
+      (verschickt Telegram) haben bewusst KEINEN Startbefehl; ihre Anleitung
+      nennt den Aufruf in Worten, die Zeile traegt den Grund als Warnung.
+      Naechster Schritt: entscheiden, ob leitstand.py trotzdem einen Klick-Start
+      bekommt (Aufruf: .venv\Scripts\pythonw.exe leitstand.py); die drei anderen
+      bleiben ohne.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/repos-zentrale/fuellen.py
+
+- [ ] **T-236 - Zentrale: neue Werkzeugdateien erscheinen ohne Startbefehl**
+      Kontext: Die Datei-Regel (`scan.ist_werkzeug`: eigener Einstieg UND
+      argparse) nimmt jede neue Datei der Handel-Wurzel als Zeile auf - aber nur
+      Dateien in `fuellen.HILFE_VERIFIZIERT` bekommen den `--help`-Start.
+      Beispiel: `kerzenschluss_bias.py` (parallel entstanden) steht ohne Start.
+      Naechster Schritt: soll eine Datei bleiben, ihren Aufruf einmal echt
+      fahren, den Namen in HILFE_VERIFIZIERT aufnehmen und `fuellen.py --belege`
+      laufen lassen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
+
+
+- [ ] **T-232 - Launcher-Lauf nie mit eigenem Zeitlimit killen (Update-Schwanz-Falle)**
+      Kontext: `hermes config unset fallback_providers` lief am 30.09.2026 in
+      das 180-s-Limit des Werkzeugs und wurde gekillt - mitten in der
+      Selbstheilung des Launchers. Dabei wurde
+      `installs/<hash>/source-completion-pending` scharf gestellt (14:16). Ab
+      da fuhr JEDER Launcher-Start erst den mehrminutigen Update-Schwanz, der
+      Desktop bekam in seinem 90-s-Fenster keinen Backend-Port und lief in eine
+      Bootschleife (Log: "hermes: finishing an interrupted source update...").
+      Die Selbstheilung greift nach 6 Fehlversuchen nicht mehr und schweigt
+      15 min (COMPLETION_RETRY_BACKOFF_SECONDS).
+      Naechster Schritt: in den Skill hermes-maintenance aufnehmen (erledigt am
+      30.09.2026) UND Konfigurationsaenderungen nie ueber `hermes config set`
+      im Vordergrund, sondern per gezieltem Textersatz in config.yaml
+      (Zeilenende pruefen, `git diff --numstat`).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/hermes-agent/hermes_cli/venv_sync.py,
+      source_completion.py, Skill hermes-maintenance
+
+
+- [ ] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
+      Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
+      als `preis/einstieg - 1` OHNE die Handelsrichtung. Bei einem SHORT war das
+      Vorzeichen damit verkehrt: eine Short-Runde, die im Ziel schloss, stand als
+      Verlust im Buch. Behoben am 30.09.2026 (`seite` aus der Einstiegszeile,
+      `vorz = -1` bei short; Test `tests/test_kosten_wendepunkt.RichtungTest`).
+      Gemessen an wavetrend ueber 5,7 Jahre: Trefferquote 54 % -> 33 %, Summe
+      +679 -> -513. Betroffen ist jede gemischt handelnde Spur - squeeze,
+      macd_mtf, supertrend und wavetrend haben rund 50 % Shorts je Buch - und
+      jede Auswertung, die auf diesem Modul aufsetzt.
+      Naechster Schritt: die veroeffentlichten Zahlen dieser Spuren mit dem
+      korrigierten Paarer neu fahren und ersetzen (Backtest-Tabellen in
+      `auswertung_alle.py`, die Kosten-Wendepunkt-Tabelle, die Vorher/Nachher-
+      Tabelle der Beruehrungsregel in Wiki/Handel/Backtest-Fundament.md). Bis
+      dahin gilt: Zahlen dieser Spuren aus der Zeit VOR dem 30.09.2026 sind
+      nach dem Vorzeichen zu pruefen, nicht zu zitieren.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/kosten_wendepunkt.py, auswertung_alle.py,
+      MaxHirn/Wiki/Handel/Backtest-Fundament.md
+
+- [ ] **T-229 — Rueckschau liest nur Claude-Transkripte**
+      Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
+      `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
+      `~/.claude/projects/**/*.jsonl` (390 Dateien, 341 MB, Ende 30.09.2026).
+      Die Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
+      nicht vor; seit 21.09.2026 ist Hermes der Hauptagent, der Blick also blind
+      fuer die Gegenwart (54 Cron-Jobs am 30.09.2026).
+      Naechster Schritt: `state.db` als zweite Quelle an `sitzungen_auswerten.py`
+      haengen (Tabelle `messages`/`tool_calls`, dieselben Auswertungen: Themen,
+      Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
+- [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
+      Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
+      minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
+      lahm (0xc000012d, siehe Wissen/Hardware.md). Aufrufer finden (Eltern-PID
+      war 53412, nicht mehr vorhanden) und Muster/Zeitgrenze (`timeout`) setzen.
 
 - [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
       Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
@@ -220,7 +1147,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
+- [?] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
       Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
       #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
       Kerzen nachgerechnet und fallen durch: die Bitcoin-Nacht-Saisonalitaet (#0753,
@@ -233,11 +1160,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (Donchian(20): +15,0 %/-56 %) — weniger Rendite, halbierter Rueckgang,
       t = 1,25 bei 34 Runden also ein Kandidat, kein Beweis. Werkzeug und Zahlen:
       `Agenten/Handel/quantpedia_probe.py`, Wiki/Handel/Lektionen.md.
-      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko) — sonst als geprueft-aber-verworfen schliessen.
+      Stand 01.10.2026: die Messung ist abgeschlossen und belegt; der dritte
+      Kandidat (TSMOM BTC, T-210) ist jetzt ebenfalls gemessen (netto +9,5 %
+      p.a., t +1,68, max. Rueckgang -14 % gegen Buy & Hold +20,2 % bei -77 %).
+      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko)  — sonst als geprueft-aber-verworfen schliessen. Wartet auf: Max
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
-- [ ] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
+- [x] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
       Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
       nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
       Instrument, Positionsgroesse invers zur Volatilitaet, monatliche
@@ -248,30 +1178,27 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Neuverteilung) und mit dem Backtest-Fundament (historie_binance.py,
       replay.py) pruefbar — TSMOM sogar auf den 20 vorhandenen Instrumenten.
       Der zweite Kandidat braucht QQQ-Tageskerzen, die im Haus noch fehlen.
-      Naechster Schritt: TSMOM mit `replay.py` ueber daten/historie/ nachrechnen (12-Monats-Fenster, inverse Volatilitaet, monatliche Neuverteilung, Gebuehr je Seite aus der Wachen-Konvention).
+      **Erledigt 2026-10-01 (Messung, nicht Entscheidung).** TSMOM (#0118:
+      12-Monats-Signal, inverse Vol, monatliche Neuverteilung) ist jetzt auf
+      den EIGENEN 1D-Kerzen gemessen (`tsmom_probe.py` BTC/ETH/SOL 1D,
+      2021-01..2026-09, 56 Monate):
+
+      | Instrument | Monate | Mittel/Monat | Treffer | t | Sharpe p.a. | brutto p.a. | max. Rueckgang | netto 0,1 %/Seite |
+      |---|---|---|---|---|---|---|---|---|
+      | BTC | 56 | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
+      | ETH | 56 | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
+      | SOL | 56 | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
+      | Buy & Hold BTC | — | — | — | — | — | +20,2 % | -77 % | — |
+
+      **Lesart.** TSMOM haelt auf BTC netto (+9,5 % p.a. bei -14 % gegen +20,2 %
+      bei -77 %) - die halbe Rendite gegen einen Bruchteil des Rueckgangs. ETH/SOL
+      sind netto Null (t +0,58/+0,74); die QQQ/BTC-Rotation ist eine DATENLUECKE
+      (nur 92 QQQ-1D-Kerzen ab 2026-06-30 statt 2019..2026) und bleibt bis zum
+      Nachladen der QQQ-Tageskerzen offen. Befund und Tabelle:
+      MaxHirn/Wiki/Handel/Lektionen.md Abschnitt 'TSMOM (#0118)'.
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
-- [ ] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
-      Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
-      handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
-      `moondev_marktlage` auf handel_erlaubt=false, `mosaic` auf boersen ["okx"],
-      alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE`), die Freigabeseite
-      nicht: `omnitrade-exchange/src/` kennt nur `binance` und `okx`, und
-      `omnitrade-cli/src/commands/live.rs:33` weist jedes andere `--exchange` ab
-      ("Use 'binance' or 'okx'"). Bis dahin handelt NIEMAND auf Kraken.
-      Naechster Schritt: entscheiden, welcher Weg gebaut wird - (A) Kraken-Adapter
-      in Rust (`omnitrade-exchange/src/kraken.rs`: ExchangeStream/ExchangeInfo/
-      ExchangeTrading, HMAC-SHA512 + Nonce, Paar- und Preisregeln; braucht einen
-      EIGENEN Kraken-Schluessel, sonst kollidiert der Nonce-Zaehler mit dem
-      Haus-Pool) oder (B) Haus-Spur `omnitrade`, die `Werkstatt/omnitrade/status/
-      live.json` ueber `Agenten/Handel/omnitrade_bridge.py` liest und ueber den
-      bewaehrten `kraken/kraken.py` ordert.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
-      Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
-      Agenten/Handel/moondev_marktlage/wachen.json
 
 
 - [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
@@ -389,16 +1316,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/scripts/mcp-zombie-wache.py
 
-- [ ] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
-      Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
-      der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
-      im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
-      8081/8082/8083.
-      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst in
-      `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
-      Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/freqtrade/bots_starten.sh
 
 - [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
       Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
@@ -446,38 +1363,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
 
 
-- [ ] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
-      Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
-      `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
-      (1) **Kein Gebuehrenfeld**: `orb`, `orbk`, `scanner`, `moondev_signalwelle` und
-      `iv_wand` tragen in ihrer `wachen.json` ueberhaupt keinen Gebuehrenschluessel
-      (`grep gebuehr` in orbk/*.py findet nichts). Der Kosten-Wendepunkt rechnet sie
-      deshalb mit 0 % und nennt orb +0,07 %, orbk/mittel +0,01 %, orbk/hoch +0,03 %
-      "tragfaehig, haengt an der Gebuehrfreiheit (unter 0,4 %)". orbk ist aber
-      **ORB auf Kraken-Spot** und die gemessene Kraken-Gebuehr ist **0,600 % je Seite
-      = 1,2 % je Runde** (Fuellung 22.09.2026) - orbk ist damit um rund das 40-fache
-      tot, orb (OKX, ~0,1 %/Runde) in Basis ebenfalls.
-      (2) **orbk-Journal ohne Einsatz**: `orbk/handelsjournal.csv` fuehrt
-      `zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd` -
-      ohne Einsatzspalte sagt der Bericht "Ergebnis in Prozent: kein Einsatz im
-      Journal", 16 Runden lassen sich nicht in Prozent ausdruecken.
-      (3) **Papierzeilen ohne Gebuehr**: alle Papierbuecher melden "Kosten 0.00 %",
-      die echten 0.05 % (scanner), 0.39-0.50 % (xperp/swap) und 0.60 % (kraken) -
-      die Papiersummen sind BRUTTO und mit den Live-Zahlen nicht vergleichbar.
-      Naechster Schritt: (1) Gebuehr in die wachen.json von orb/orbk/scanner/
-      moondev_signalwelle/iv_wand eintragen (Kraken 0.006, OKX 0.0005), dann
-      `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
-      (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
-      (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
-      Fortschritt: (1) erledigt am 30.09.2026 (Commit 7c525cd) - `gebuehr_taker` steht
-      jetzt in orb (0.0005), orbk (0.006), scanner (0.0005), moondev_signalwelle (0.0005)
-      und iv_wand (0.0005), dazu ein Einheitenfehler im Werkzeug behoben: es druckte den
-      Bruch als Prozentwert und verglich ihn direkt mit f_max. Neues Urteil: orbk
-      "1.200 % je Runde (0.600 % je Seite) liegt darueber" - tot. Test
-      `tests/test_kosten_wendepunkt.py` (9). Punkte (2) und (3) bleiben offen.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
-                Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
 
 - [ ] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
       Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
@@ -1619,19 +2504,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/nautilus_kraken/wachen.json, freigabe_fenster.json
 
 
-- [ ] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
-      Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
-      ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -
-      sie liegen seit 19.09.2026 unter `Agenten/Hermes/profiles/.deleted/`
-      (projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
-      scrapling, santiment, claude-plugins-official, coder, easycliproxyapi,
-      graphify, max, moon-dev-code, odysseus, winget-cli). Der Test ist richtig -
-      das Manifest ist veraltet; unklar ist, ob die Profile zurueckkommen sollen.
-      Naechster Schritt: entscheiden - Profile zurueckholen ODER die bot-Felder im
-      Manifest entfernen bzw. kennzeichnen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
-      Agenten/Hermes/profiles/.deleted/
 
 - [x] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
       Erledigt: 2026-09-24. `1b3c650` (api_frei.py + die drei umgestellten
@@ -2489,6 +3361,547 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
+      Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
+      nautilus_kraken, macd_mtf, squeeze, supertrend, wavetrend,
+      moondev_funding und iv_waelle "keine Sperrzeile".
+      `dauerlauf.nur_fenster_fehlt()` liest genau diese Zeile; fehlt sie,
+      bekommt die Funktion None und die Auto-Freigabe oeffnet fuer diese
+      Spuren NIE ein Fenster. Sie sind trotzdem scharf - die Fenster wurden
+      bisher anderswo geoeffnet (z. B. nutilus_kraken am 02.10. 02:17 von der
+      Auto-Freigabe, nachdem ihre Wachen die Haken bekommen hatten).
+      Naechster Schritt: die gemeinsame Vorschauregel muss fuer JEDE Spur
+      dieselbe Zeile drucken, sonst ist die Auto-Freigabe fuer diese neun
+      blind. Geprueft werden sollte die Regel, nicht die Liste.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft dauerlauf.py, lage.py
+
+
+      ERLEDIGT 02.10.2026: alle neun Spuren melden wieder eine
+      Sperrzeile (Gegenprobe mit sperrgruende.py). Ursachen waren
+      drei: scanner druckte nur unter `if g:`; die Vorschau-Zweige
+      von macd_mtf, squeeze, supertrend, wavetrend, moondev_funding
+      und iv_waelle kehrten vor jeder Sperrenangabe zurueck; und
+      sperrgruende.py benutzte fuer ALLE Spuren den Scanner-venv,
+      in dem nautilus_trader fehlt - die Nautilus-Arme stuerzten
+      deshalb ab (ModuleNotFoundError) und galten als blind. Jetzt
+      waehlt das Werkzeug je Spur ihren eigenen venv.
+      335 Tests der sieben beruehrten Spuren gruen.
+
+- [x] **T-255 — Die acht klassik_*-Spuren haben keine Bus-Anbindung (Bus-Suite rot)**
+      Kontext: `Agenten/Bus/tests/test_anbindung_handel.py` bricht mit
+      `AssertionError: automatisch gestartet, aber ohne Bus-Anbindung:
+      ['klassik_sma\\handeln.py', ... acht Eintraege]` ab - und damit auch die
+      Ende-zu-Ende-Suite. Ursache: der Spurname steht bei diesen Spuren in
+      `klassik_regeln.spur_main(name, ordner)` (`ereignis_name="handel/" + name`),
+      waehrend die Pruefung den Namen WORTWOERTLICH in der vom Dauerlauf
+      gestarteten Datei sucht (die ruft nur `spur_main("klassik_sma", HIER)`).
+      Vorbestehend, nicht von der omnitrade-Spur (Gegenprobe: omnitrade steht
+      nicht in der Fehlliste).
+      Naechster Schritt: entweder den Bus-Namen in den acht `handeln.py` als
+      Literal uebergeben (`spur_main("klassik_sma", HIER, bus_name="handel/klassik_sma")`)
+      oder die Pruefung um den Kern-Fall erweitern (gestartete Datei uebergibt
+      ihren eigenen Namen an einen Kern, der `ereignis.lauf` traegt) - dieselbe
+      Regel, die schon fuer `spur_buch.py` gilt.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
+      Agenten/Bus/tests/test_anbindung_handel.py
+      **Erledigt 2026-10-02.** Die Bus-Suite kennt seit 01.10.2026 den Regelkern-Zweig (klassik_regeln.spur_main reicht bus_name als Literal an spur_buch.zyklus weiter); test_anbindung_handel.py ist gruen, das Bus-Journal zeigt handel/klassik_* - jetzt 11 Spuren (662 Treffer am 02.10.).
+
+- [x]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg — BEHoben 02.10.2026**
+      Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler am Schreibweg,
+      beide unabhängig vom Gebührensatz.
+      (1) Er überschrieb eine verbesserte Notiz: er setzte `_gebuehr_quelle` auch
+      dann neu, wenn der WERT schon richtig ist. Bei kopier, kopier1zu1 und
+      robinhood_radar setzte er dadurch gemessene Notizen (Nachlauf 01.10.2026)
+      auf den aelteren Text zurück.
+      (2) Er meldete einen relativen Pfad. Im Testlauf las sich das als
+      Schreibzugriff auf eine echte Wache (spur/wachen.json gebuehr_taker
+      0.001 -> 0.002) - tatsaechlich der Tempordner des Tests. Gegengeprueft:
+      Agenten/Handel/spur/ existiert nicht, git diff auf jede echte Wache leer.
+      ERLEDIGT 02.10.2026 (Commit 2ecba82e):
+        (1) `_notiz_ist_besser(alt, neu)` laesst die vorhandene Notiz gewinnen, wenn
+            sie einen Belegwort-Beleg UND ein Datum dd.mm.yyyy traegt, den die
+            Tabelle nicht kennt. Absichtlich eng: sonst entscheidet weiter die
+            Tabelle, damit kein Aufruf den Anspruch der Wachen still anhebt.
+            Zwei Fragen, zwei Antworten - ein FALSCHER Wert wird immer ersetzt.
+        (2) anwenden(), vorschau() und der Fehlertext nennen jetzt den ABSOLUTEN
+            Pfad. vorschau() wertet dieselben zwei Regeln aus wie anwenden().
+        10 neue Tests (27 gesamt). Gegenproben: Regel zurueckgenommen -> 1 FAIL,
+            Meldung wieder relativ -> 1 FAIL.
+        Echter Nachweis: anwenden() schreibt 0 Dateien, kopier/kopier1zu1/
+            robinhood_radar byte-gleich und mit ihrer gemessenen Notiz.
+        Fahrprobe: `import re` fehlte - ein Fehler, den nur der echte Lauf findet,
+            weil die Tests den Ausdruck nie ausfuehren.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/gebuehren_setzen.py,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
+
+
+- [x] **T-308 — `test_gebuehren_setzen` schlaegt bei omniquant fehl (0.05 != 0.1)**
+      Kontext: gefunden 02.10.2026, `test_gebuehren_setzen.TabelleTest.test_jede_gesetzte_wachen_traegt_ihre_quelle`.
+      `Agenten/Handel/omniquant/wachen.json` traegt 0.05 (= Kraken-Futures je Seite), die
+      Gebuehren-Tabelle verlangt 0.1 (OKX-Spot). Die Spur handelt inzwischen ueber
+      Kraken FUTURES (Commit aecd6178), die Tabelle kennt den Wechsel nicht.
+      Naechster Schritt: Gebuehrenquelle je Spur aus der wachen lesen (z. B. ein Feld
+      wie `gebuehr_quelle` wie bei prophet_signal) statt eine Tabelle je Spur zu pflegen.
+      ERLEDIGT 02.10.2026 (Commit 91702aaa): die Ursache war kein Zahlendreher, sondern
+      dass die Tabelle den am 01.10. geklaerten Widerspruch nicht mitgenommen hatte.
+      Neu: BOERSENSAETZE_PCT + satz_pct_fuer() - der Soll-Satz wird aus den Feldern der
+      Wachen abgeleitet (kraken_futures zuerst, dann OKX als Perp, dann der Name).
+      gebuehr_taker kam dazu, weil die Auswertung NUR dieses Feld liest; ohne sie
+      meldete gebuehr_fuer fuer omniquant exakt 0.0 (die Spur wäre als kostenlos
+      ausgewiesen worden). 5 neue Tests mit Gegenprobe, 17/17 gruen. Betrifft
+      Agenten/Handel/gebuehren_setzen.py, Agenten/Handel/omniquant/wachen.json,
+      Agenten/Handel/tests/test_gebuehren_setzen.py
+
+
+
+  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
+ [x] **T-299 — robinhood_radar: die Positionen haben keinen laufenden Kurs**
+      Kontext: Beim Zentrale-Durchgang am 01.10.2026 aufgefallen: die Spur fuehrt ihre Token
+      als `inst` (0x…), die Zentrale sagte dazu `Quelle okx` und lief damit in einen Weg, der
+      nie antwortet. Richtig ist `keine` - die Robinhood-Kette (4663) kennt kein Haus-Leser
+      (`spiegel/lesen.py`, KETTEN: base, bnb, ethereum, solana, xlayer), ein OKX-Paar gibt es
+      nicht. Die Radar-Datenbank fuehrt je Fuellung nur den EINSTIEGSpreis (`usd_value`),
+      keine laufende Notiz; drei Positionen stehen damit ohne Kurs da (u. a. 0x48f413c3…).
+      Naechster Schritt: entscheiden, ob die Zentrale den letzten bekannten Kurs aus
+      `fomo_agent.db` zeigen darf - dann ausdruecklich als "letzter Kurs, vor N min", nicht
+      als live - oder ob die Zeilen ohne Kurs bleiben, wie es jetzt der Fall ist.
+      Betrifft: Agenten/Handel/handelszentrale.py (QUELLE), Agenten/Handel/robinhood_radar/, Werkstatt/Repos/fomo-robinhood-radar/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      **Erledigt 2026-10-02.** Nicht 'Kurs anzeigen', sondern die Ursache: lesen.letzte_beobachtung() liefert den juengsten on-chain Handel des Tokens, handeln.quelle() legt ihn in `kurse` (nicht in `daten` - er darf eine Position beenden, aber keinen neuen Einstieg eroeffnen), und handeln.raeume_ohne_kurs() schliesst eine Position, deren letzte Beobachtung aelter als beobachtung_max_alter_stunden (24 h) ist, zum letzten bekannten Kurs (ohne jede Fuellung neutral zum Einstieg); Grund buchbereinigung_kein_kurs, faellt damit unter stoerungen.BUCHHALTUNG und zaehlt in keiner Kennzahl als Handelsrunde. CLI: --raeumen (Vorschau), --raeumen-anwenden. Belege: 25 Tests der Spur gruen (5 neue, mit Modulwaechter), echter Lauf in allen drei Risikostufen - 9 Positionen geraeumt (125-222 h ohne Beobachtung), Basis-Buch 3/3 leer, spiegelstand 43/43 byte-gleich. Commit e71f0258.
+- [x] **T-304 - jevgrep bricht sporadisch mit Exit 1 ab ("stdin is not a tty")**
+      Kontext: Von neun Laeufen am 01.10.2026 endeten vier sofort (0,2-0,7 s, Exit 1) mit der
+      Zeile `stdin is not a tty` und ohne Suchausgabe - unabhaengig davon, ob stdin aus der
+      Konsole, aus /dev/null oder aus einer Datei kam, und unabhaengig vom Vordergrund
+      (die Annahme "nur im Hintergrund" ist damit widerlegt). Dieselbe Frage ueber dieselbe
+      Wurzel gelang Sekunden spaeter (Agenten/Handel/scanner 6,2 s / 22 Treffer,
+      Agenten/Bus 9 Treffer). Die Zeile selbst ist ein MSYS-Artefakt und erscheint auch bei
+      gelungenen Laeufen - die eigentliche Fehlerursache ist UNBEKANNT.
+      NACHTRAG 01.10.2026 (gemessen): die Zeile `stdin is not a tty` stammt NICHT aus
+      jevgrep (`grep` im dist findet sie nirgends) - sie ist MSYS-Rauschen. Der echte
+      Grund ist der ANBIETER: die Sonde Agenten/Werkzeuge/jevgrep/sonde_zen.py antwortet
+      `429 FreeUsageLimitError` fuer jev-1.13-free und `402 Insufficient account funds`
+      fuer das bezahlte jev-1.13 - das freie Kontingent war nach rund zehn Suchen des
+      Abends aufgebraucht, das Konto hat kein Guthaben. jevgrep nennt den Grund nicht,
+      es bricht ohne Ausgabe ab oder laeuft in die Zeitueberschreitung.
+      Naechster Schritt: in jevgrep nichts suchen (das ist Anbieterverhalten), sondern im
+      Haus die Sonde vor jede Suche setzen und ihren Befund weitergeben; wer jevgrep
+      dauerhaft nutzen will, laedt Guthaben bei OpenCode Zen auf (0,042 USD/1M Eingabe,
+      rund 4 US-Cent je Suche) oder wartet auf das naechste freie Fenster.
+      Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
+      Ursache gemessen: Anbieterabweisung (429 Freies Kontingent, 402 kein Guthaben), nicht stdin/ttys; jevgrep nennt den Grund nicht. Abgefangen durch den neuen Vorschalter (jg_sicher.py/vorpruefung.py): testet den Endpunkt vor jeder Suche mit einer winzigen Frage und bricht mit Grund ab; 8 Tests. Laufweg seit 02.10. Mercury 2.5 ueber die Bruecke, 1,8 US-Cent je Suche.
+- [x] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
+      Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
+      Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
+      Die zwei Spuren ohne belegbaren Markt sind ENTSCHIEDEN (Max, 01.10.2026):
+      `moondev_sniper` und `moondev_signalwelle` werden als PERP gefuehrt, Satz 0.0005
+      je Seite (gemessen); der Grund steht als `_gebuehr_quelle` in ihren wachen.json.
+      OFFEN bleiben die drei Onchain-Spuren: `kopier` und `kopier1zu1` (je 1,0 %/Seite)
+      und `robinhood_radar` (1,0 %/Seite). Ihre Werte sind MODELLANNAHMEN (DEX-Gebuehr
+      plus Slippage) und kein Boersensatz - der OKX-Perp-Satz waere dort rund das
+      20-fache zu niedrig, deshalb wurde er bewusst NICHT gesetzt.
+      Naechster Schritt: eigene Messung der echten Kosten (Gebuehr + Nachlauf ueber
+      eine Stichprobe frischer Signale, Muster `references/tor-kalibrierung.md`
+      Regel 8) ODER die Annahme ausdruecklich als Annahme stehen lassen und im
+      Bericht so benennen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (Perp-Entscheidung eingetragen) · Betrifft Agenten/Handel/kopier, kopier1zu1, robinhood_radar
+      **Erledigt 2026-10-01.** Der Nachlauf ist jetzt gemessen statt angenommen, in allen drei Onchain-Spuren. 'kopier.py --messen --bestand --stichprobe 25' misst ueber den BESTAND (der Diff liefert an ruhigen Tagen nichts - 18 von 18 Kandidaten ohne sichtbaren Kauf), gibt die Verteilung aus statt eines Mittelwerts, trennt nach Signalalter und ZAEHLT die Uebersprungenen (Regel 6 der Tor-Kalibrierung): 25 Kandidaten, 14 verwertet, 11 ohne Kauf in den letzten 50 Trades; Median -35,64 %, Schnitt -31,48 %, Spanne -87,15 % bis +76,05 %. 'robinhood_radar/handeln.py --messen' rechnet rein lesend auf der eigenen Sammlung: 3529 Fuellungen, 1979 Kaeufe mit naechster Beobachtung, Median +1,76 %; im Signalfall (Kohorte >= 2 bewertete Wallets) n=19, Median +2,87 %, kleinster +0,14 % - der Aufschlag von 2,0 % liegt damit AM Median, also richtig gesetzt. kopier1zu1 liest dieselbe Quelle, die Messung gilt mit. WAS ANNAHME BLEIBT: die Gebuehr selbst ist in keinem der beiden Datenwege messbar (sie steckt im Poolpreis; Pump.fun liefert keine Pooltiefe, der Radar-Sammlung fehlt ein Gebuehrenfeld) - sie steht in allen drei wachen.json mit Datum, Methode, Zahlen und Nachmess-Termin ausdruecklich als Annahme. Rohwerte in daten/messung.json (nicht versioniert). 11 neue Tests (kopier 35, robinhood_radar 20 gruen), Commit 066103f5.
+- [x] **T-272 — RLTrader: optimize-Pfad und Report-Pfad sind nie gefahren**
+      Kontext: gemessen und belegt ist nur train+test auf statischem CSV
+      (1 Epoche, -48,32 USD auf den gehaltenen 20 %). Die Suchschleife
+      (cli.py optimize --trials 1) trifft die optuna-0.19-API des Codes
+      (trial.should_prune(step), optuna.structs) - passend gepinnt, aber nie
+      gefahren; Reports bewusst --no-report (quantstats-API file= vs. output=
+      ungeprueft); update-static-data (ccxt-Netzpfad) nie gefahren; das
+      gebuendelte data/params.db traegt 46 FAIL- und 88 RUNNING-Zeilen aus 2019
+      mit sich (nur COMPLETE zaehlen).
+      Naechster Schritt: bei Bedarf optimize --trials 1 im Container fahren
+      (Stunden, CPU) und einen Report mit korrekt pruefbarem Schluesselwort
+      erzeugen; sonst als Referenz stehen lassen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+      **Erledigt 2026-10-01.** Beide Pfade sind gefahren (Container, CPU, 4 Env). optimize --trials 1 --prune-evals 1 --eval-tests 1: 21 min 40 s, Trial 553 angelegt, Ergebnis PRUNED (should_prune(0), Wert 1.971), bestes Trial bleibt -57.91 aus dem Altspeicher - die 0.19-API (trial.should_prune, optuna.structs) und das params.db-Altschema tragen. Report: der Code von 2019 uebergibt 'qs.reports.html(..., file=...)', quantstats 0.0.40 kennt nur 'output=' - der erste Lauf brach mit TypeError ab (belegt in rltrader-report1.log), behoben im Klon (Commit 17ffa38), das Bild NEU GEBAUT (der Code liegt IM Bild - der zweite Lauf gegen das alte Bild scheiterte identisch) und der dritte Lauf schrieb 'daten/reports/PPO2__MlpLnLstmPolicy__IncrementalProfit__0.html' (917 KB, Titel 'RLTrader ... Epoche 0' = pruefbares Schluesselwort; Testzeile $7886.06 = Summe der Schrittbelohnungen). NICHT gefahren: update-static-data (ccxt-Netzpfad) - fuer eine Referenzspur ohne Nutzen. Belege: Agenten/Hermes/cache/rltrader-optimize1.log, -report1.log, -report2.log; Wiki Werkzeuge/RLTrader-in-Docker.md.
+- [x] **T-298 — Skill hermes-config-ops auslagern (100 KB in jedem Kontext)**
+      Kontext: Am 01.10.2026 ist der Skill auf 100.080 Bytes / 1321 Zeilen gewachsen (~24.000
+      Token); `skill_view` laedt ihn vollstaendig, und die Autor-Regel des Hauses verlangt
+      ~200 Zeilen im Rumpf mit dem Rest unter `references/`. Der Pruefer meldet es als
+      `oversized-body`, ausserdem fehlt eine `## When to Use`-Ueberschrift (der Skill hat
+      `## Wann`) und `author:` traegt `Hermes` statt `Hermes Agent`.
+      Naechster Schritt: die Themenabschnitte (Profilflotte, Repo-Bot, Modell-Anmeldung,
+      Desktop/multiplex, Kanalzugangsdaten) nach `references/` ziehen und im Rumpf nur die
+      Regeln plus einen Index mit "laden, wenn ..." lassen.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/skills/brainfiles/hermes-config-ops
+      **Erledigt 2026-10-01.** Auslagerung verifiziert: 21 Themenabschnitte vollstaendig in references/ (19 Dateien, Index deckt exakt), SKILL.md-Rumpf 87 Zeilen, nur Skill-Pfade geaendert, CRLF erhalten; 4 haengende Querverweise nachgebessert (Commit 18a69ee1, t_f55ec67f).
+- [x] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
+      Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
+      bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
+      nur 5 echte Runden mit -13.59. Zwei Zeilen widerlegt die Boersenhistorie:
+      BZ-USD_UM_XPERP-310509 (175 Kontrakte, Buch -107.59 gegen
+      /account/positions-history realizedPnl -3.91) und XAU (Buch -79.70 gegen
+      Boerse +0.45) - zusammen rund 184 USD fiktiv. LIT (-22.03), LTC (-10.96) und
+      IOST (-6.78) stimmen dagegen zeichengenau. geister_nachziehen.py fasst diese
+      Zeilen NICHT an, weil es nur grund=buchbereinigung_geist UND erloes==0.00
+      repariert.
+      Naechster Schritt: das Werkzeug um den zweiten Fall erweitern (Erloes gegen
+      die Boersenhistorie pruefen) oder die zwei Zeilen auf den Boersenwert ziehen;
+      danach faellt die Rueckgabe auf rund 96 USD und der Kill-Switch (250) loest
+      nicht mehr aus - xperp waere armierbar.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/handelsjournal.csv, geister_nachziehen.py
+      01.10.2026 ausgerollt: geister_nachziehen.py Fall 2 (--gegen-boerse) — prueft jede Geister-Zeile mit Nicht-Null-Erloes gegen /account/positions-history (instId + closeTotalPos + Zeitfenster 12 h), korrigiert Abweichungen >1 USD. Ergebnis: 9 Zeilen auf echten Boersenwert gezogen (u.a. XAU 80.07→160.22, BZ 30.46→134.14). Ruecklauf 279.85→91.11, Peak 497.42→395.63. Kill-Kurve jetzt ehrlich; T-274 kann neu bewerten.
+- [x] **T-290 — Beleg: nimmt Kraken Futures den leverage-Parameter an**
+  Kontext: Hebel 7 geht als leverage-Feld mit jeder Order (weg.py); gemessen ist nur der Einschussplan EEA retail 10 % = max 10x. Mit laufendem NordLynx weist Futures ab (authenticationError).
+  Naechster Schritt: 1 Kontrakt PF_SOLUSD mit leverage 7 kaufen und sofort schliessen (~0,12 USD Gebuehr) - braucht Guthaben (T-291) und VPN aus.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/nautilus_kraken/kraken_futures.py
+      PUT /leveragepreferences maxLeverage 7 gesetzt (Formkoerper, signiert); Margin je Kontrakt PF_SOLUSD 11,79 -> 16,80 USD gemessen; sendorder-leverage ignoriert Kraken
+- [x] **T-289 — omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+  Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis) (/editorder) ist gebaut (Commit debc983); der Live-Zyklus der Spur zieht den stp-Stop noch nicht nach.
+  Naechster Schritt: Nachziehen im spur_buch-Live-Zweig verdrahten (Trigger z.B. Kurs +1 % ueber letztem Hoch), Test mit Testnaht weg.stop_nachziehen.
+  Angelegt 2026-10-01 · Betrifft: Agenten/Handel/omnitrade_futures, nautilus_kraken/kraken_futures.py
+      weg.stop_nachziehen (immer echt) an das spur_buch-Trailing T-286 angebunden; wachen trailing_stop_prozent 3.0; test_spur_buch/test_lage gruen
+- [x] **T-252 - jevgrep installiert, aber ohne Jev-Schluessel nicht benutzbar**
+      Kontext: `Agenten/Werkzeuge/jevgrep` (npm-Paket `@dzhng/jevgrep` 0.7.0) laeuft unter
+      Windows und ist mit Attrappen-Endpunkt end-to-end nachgewiesen (6 Tests, 6,7 s); eine
+      echte Suche ueber 171 Dateien kostet rund 4 US-Cent. Es fehlt allein der Anbieter-
+      schluessel: `jg auth` wertet keine Umgebungsvariablen aus, im Haus liegt keiner
+      (OmniRoute hat nur ein selbst-deaktiviertes OpenRouter-Konto), und der Anbieter
+      `openrouter` zeigt auf `typesafe/jev-1.13`, das OpenRouter nicht fuehrt (nur
+      `typesafe/jev-router`). Damit ist `jg` derzeit absichtlich NICHT angemeldet.
+      Naechster Schritt (2 Minuten, Anmeldung macht Max selbst): GRATIS ueber OpenCode
+      Zen - Zen bedient Jev unter demselben Pfad wie jevgrep und fuehrt ein zeitweise
+      kostenloses `jev-1.13-free` (bezahltes `jev-1.13` 0,042 USD/1M). Also
+      `opencode auth login` (Anbieter OpenCode Zen) und danach
+        python Agenten/Werkzeuge/jevgrep/von_opencode_anmelden.py --anwenden --doctor
+      Das Werkzeug liest den Schluessel aus der OpenCode-Anmeldung und gibt ihn nie aus;
+      Trockenlauf ohne --anwenden. Ersatzweg (bezahlt): Vercel AI Gateway, Create key,
+      dann `auth --provider vercel --stdin`. Danach die Wurzel klein waehlen (siehe Wiki,
+      "Die Anfrage verfeinern": scanner 66 Dateien statt Agenten/Handel 5.247).
+      Danach die Wurzel klein waehlen (siehe Wiki, Abschnitt "Die Anfrage verfeinern":
+      scanner 66 Dateien statt Agenten/Handel 5.247) und mit `jg files` + `--exclude`
+      vorher sehen, was hinausgeht. Kein Schluessel gewuenscht: Werkzeug ruht, `files`
+      bleibt kostenlos nutzbar.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
+      OPENCODE_API_KEY als Windows-Benutzervariable gesetzt; jg auth gegen https://opencode.ai/zen/v1 mit Modell jev-1.13-free, jg doctor 'Jev connection verified'; erste echte Suchen: Agenten/Handel/scanner 66 Dateien in 6,2 s / 22 Treffer, Agenten/Bus 40 Dateien / 9 Treffer; Kosten 0
+- [x] **T-239 - Docker-Engine faellt ohne Wache aus (2x an einem Tag)**
+      Kontext: Am 30.09.2026 antwortete die Docker-Engine zweimal nicht
+      (Block 14 der Systempruefung). Der Motor ist die WSL-Distro
+      `docker-desktop`; Docker Desktop allein bringt sie nicht hoch
+      (Log `returning engine error`, Container-Status veraltet). Um 15:13 half
+      `wsl --shutdown` + Neustart von Docker Desktop (danach liefen
+      `nautilus-demo` und die freqtrade-Container wieder, nachgewiesen mit
+      `docker ps`); um 17:37 war sie erneut weg. Ursache ist der
+      Docker/MCP-Spawn-Kreis (Wiki/Betrieb/Systemleistung-2026-09-29.md,
+      Abschnitt 9/10) - er reisst auch fremde Prozesse mit (0xC0000409).
+      Naechster Schritt: Cron `docker-wache` nach dem Muster `bus-waechter`
+      (no_agent, 15 min, leere Ausgabe = gesund): `docker info` mit
+      Zeitgrenze; antwortet die Engine nicht, selbst `wsl --shutdown` +
+      Docker Desktop starten und das melden. Erst danach den Spawn-Kreis
+      angehen (T-152).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/systempruefung.ps1 Block 14,
+      Agenten/Routinen/nautilus-docker-start.ps1
+      01.10.2026 gebaut und nachgewiesen: Cron 'docker-wache' (a41ae0df5b47, alle 15 min, no_agent, Telegram) - Script Agenten/Hermes/scripts/docker-wache.py: docker info mit 25 s; Antwortet die Engine nicht, heilt sie den Handgriff vom 30.09. (wsl --shutdown, Docker Desktop starten, bis 180 s warten), meldet Heilung/Misslingen, derselbe Befund hochstens alle 6 h, Erholung immer. Wahrend eines frischen hermes-update (Log < 20 min) heilt sie nicht, meldet nur. 8 Tests (Starten als Naht - kein Test faehrt die echte App hoch). ERSTER CRON-LAUF 14:44:24: status ok, leise (Engine lebt). Der eigentliche Urheber - der MCP-Spawn-Kreis - bleibt T-152.
+- [x] **T-259 — Streu-Atlas `BrainFiles/.projectatlas` pinnt den ProjectAtlas-Standard auf omnitrade**
+      Kontext: Unter der BrainFiles-Wurzel liegt ein 15 MB grosser Atlas vom 15.09.2026, der als
+      Projektstamm `O:/Werkstatt/omnitrade` traegt. ProjectAtlas sucht das naechste `.projectatlas`
+      AUFWÄRTS, deshalb endet jeder Aufruf aus einem anderen Verzeichnis (auch der Wurzel) mit
+      `project_mismatch: selected project root '...BrainFiles' does not match index root
+      'O:/Werkstatt/omnitrade'`. Der produktive Atlas (188 Dateien, `scan.status: verified`) liegt
+      in `Werkstatt/omnitrade/.projectatlas` und ist nicht betroffen.
+      Naechster Schritt: entscheiden — Streu-Atlas loeschen (er wird nirgends gelesen) oder stehen
+      lassen und Aufrufe immer mit `--db`/`--config` auf das Ziel zeigen.
+      Angelegt: 2026-09-30 · Betrifft: `BrainFiles/.projectatlas`, `Agenten/Werkzeuge/projectatlas`
+      01.10.2026 angewandt: Streu-Atlas per shutil.move nach O:\Werkstatt\Ausgemustert\projectatlas-streu-20261001 (nichts geloescht, Gegenprobe db da). Wirkung gemessen: Aufruf aus Werkstatt/omnitrade antwortet unveraendert gesund (overview: 194 Dateien, 31 Ordner); Aufruf aus der Wurzel meldet jetzt 'init_required' statt 'project_mismatch' - die Irrefuehrung ist weg. Keine referenzierende Routine gefunden (Routinen/Werkzeuge grep leer), Atlas war unversioniert.
+- [x] **T-251 - Zwei echte Luecken in der Zentrale: `foreman` und `kerzenschluss_bias.py`**
+      Kontext: Nach der Umstellung am 30.09.2026 stehen genau zwei Zeilen in EINRICHTEN -
+      beide zu Recht. `foreman` (REPOS) hat kein `.venv`, ist aber ein Python-Paket mit
+      `src/foreman/__main__.py` und `pyproject.toml`; `kerzenschluss_bias.py` (HANDEL) hat
+      `argparse`+`__main__`, aber noch keinen echten Lauf (Hausregel „kein geratener
+      Befehl"). `foreman` ist fremd und nur lesend gedacht - ein venv darin waere ein
+      Schreibzugriff, den niemand braucht.
+      Naechster Schritt: `kerzenschluss_bias.py --help` einmal fahren und in
+      `fuellen.HILFE_VERIFIZIERT` aufnehmen; bei `foreman` entscheiden, ob es genutzt wird
+      (dann venv) oder ob es als „kein eigener Start" gefuehrt wird.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Werkzeuge/repos-zentrale/fuellen.py`
+      01.10.2026 beide Luecken geschlossen: kerzenschluss_bias.py - --help mit dem Handel-venv gefahren (Code 0, Beleg-Log vom 30.09. und heutige Wiederholung), in fuellen.HILFE_VERIFIZIERT aufgenommen, Notiz auf belegten Stand gezogen. foreman - Entscheidung im Sinne des Auftrags: Bewusst KEIN venv, KEIN Start (fremder nur-lesen-Klon, kein Verbraucher im Haus); Manifest tragt gruppe kein_start + warnungen + Grund, Anleitung bleibt fuer einen spaeteren Wechsel stehen. Gegenprobe: Zentrale-Suite 296 Tests (der eine Fehlschlag ist T-271/kopier, fremd), --pruefen nennt keine EINRICHTEN-Zeile mehr.
+- [x] **T-240 - Datensortierung: Einzelinstanz-Schutz fehlt**
+      Kontext: `MaxHirn-Datensortierung` ist mit IgnoreNew eingestellt, das
+      schuetzt aber nur gegen die Aufgabe selbst. Am 30.09.2026 liefen
+      nacheinander drei von Hand gestartete Instanzen aus parallelen
+      Sitzungen (14:30, 15:37, 17:22, 17:26), die sich das Tagesprotokoll
+      gegenseitig ueberschrieben; eine stand ueber eine Stunde im
+      Suchblock. Der Suchblock selbst ist am 30.09.2026 entschaerft
+      (ein Suchlauf statt einem je Kandidat, nur Textendungen, ohne
+      site-packages/.venv*): gemessen 446 s statt Abbruch nach >43 min.
+      Naechster Schritt: Sperrdatei mit PID und Alter am Skriptanfang
+      (Muster `dauerlauf.pid`), Handstart bricht dann mit klarer Meldung ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Routinen/datensortierung.ps1
+      01.10.2026 gebaut und gemessen: Sperrdatei logs\datensortierung.pid mit PID + ISO-Startzeit, Pruefung auf ProzessNAME (powershell/pwsh) und Startzeitvergleich (2 min Toleranz) - haelte einer PID-Wiederverwendung stand (Fall 2 im Test: tote PID 999999 wird durchgelassen und neu gesperrt). Handstart bei lebender Fremdsperrung: Exit 3 mit fertiger Raeum-Meldung (Test: 'Es laeuft bereits eine Datensortierung (PID 42156, Sperre von 2026-10-01 14:06, 0 min alt)...'). Freigabe nur fuer den eigenen PID-Wert im finally. Zwei Fallen beim Bauen: Zeitstempel mit Leerzeichen zerbrach das -split-Feldschema (jetzt ISO T-Form), und -f bindet staerker als + (Platzhalter blieben wortwoertlich).
+- [x] **T-263 — orb und orbk stehen in der Replay-Liste, sind aber nicht fahrbar**
+      Kontext: `replay.SPUREN_TEIL_A` (und damit die Spurliste des Leitstand-Reiters) fuehrt
+      `orb` und `orbk`; ihre `handeln.py` haben kein `lade_wachen()`, deshalb bleibt `w` leer,
+      die Instrumentenliste leer und JEDER Replay-Lauf endet in einer Verweigerung. Ihre
+      `wachen.json` traegt die Instrumente ausserdem als DICT mit Boersennamen
+      (`BTC_USDT` -> `BTC-USDT-SWAP`), ohne `kerzen_takt`/`mindest_kerzen`; `orbk` nennt
+      `ETH_USD`/`HYPE_EUR`, wofuer `historie_binance.PAARE` kein Binance-Paar kennt.
+      Aufgefallen am 01.10.2026 beim Nachzaehlen, welcher A-Spur Historie fehlt - allen
+      anderen fehlt sie nicht (BTC/ETH/SOL, 50.223 1H- und 12.559 4H-Kerzen).
+      Naechster Schritt: entscheiden - aus der Replay-Liste nehmen (eigener Backtest liegt in
+      `orbk/backtest.py`) oder fahrbar machen (wachen-Form, Kerzennaht, Binance-Paare).
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, Agenten/Handel/orb, Agenten/Handel/orbk, Agenten/Handel/leitstand_backtests.py
+      01.10.2026 nachgeprueft: geloesft durch b0a451b (02:06, Option 'aus der Replay-Liste') - orb und orbk nicht mehr in SPUREN_TEIL_A, beide unter NICHT_NACHRECHENBAR mit Grund (kein lade_wachen(); orbk zusaetzlich eigener Backtest). Leitstand bietet damit nur noch fahrbare Spuren an. Nicht von dieser Sitzung gebaut.
+- [x] **T-267 — drei Claude-Worktrees unter `.claude/worktrees/` liegen seit dem 30.09. herum**
+      Kontext: `festive-hertz-7ab82c` und `tag-troubleshoot-config-guide-cf780d` haben 0 eigene
+      Commits und sind sauber; `trading-stack-setup-40ef0d` traegt einen Commit
+      (`aeeac18`, Omnitrade-Indikatoren) und zwei unversionierte Dateien. Geprueft am 01.10.2026:
+      der Commit-Inhalt steht bereits in master (Zeile 118 in `MaxHirn/Wissen/Omnitrade.md`),
+      `omnitrade_auswertung.py` ist byte-gleich, `omnitrade_start.py` ist die ALTE 162-Zeilen-
+      Fassung (master hat 216) — es geht also nichts verloren. Zusammen 137 MB.
+      Naechster Schritt: erst pruefen, dass keine Claude-Sitzung mehr darauf arbeitet (am 01.10.
+      liefen 14 `claude`-Prozesse), dann `git worktree remove <pfad>` (die Branches bleiben) und
+      `git worktree prune`. Regel aus `Agenten/Handel/AGENTS.md`: neue Worktrees NEBEN
+      `BrainFiles/` anlegen, nicht hinein.
+      Angelegt 01.10.2026 · Betrifft .claude/worktrees/, git worktree
+      01.10.2026 angewandt: keine Prozess-Kommandozeile referenzierte die Worktrees (die 14 claude.exe waren das Desktop-App-Set ohne Worktree-Bezug); Gegenprobe: alle drei sauber oder Inhalt durch master gedeckt (auswertung identisch bis Zeilenenden, start die alte 162er-Fassung). git worktree remove gefahren (dirty eine mit --force), danach prune. worktree list nennt nur noch die Hauptarbeit; die drei claude/*-Zweige bleiben wie im Auftrag festgehalten. ~137 MB frei auf C:.
+- [x] **T-243 - Zentrale: Handelsstand selbst nachziehen statt nur auf Klick**
+      Kontext: Die Handels-Karte der Repos-Zentrale liest `spuren_stand.py`
+      EINMAL und merkt sich den Stand (`fenster.Fenster.handel_zustand`).
+      Danach zeigt sie ihn, bis jemand "Stand neu lesen" drueckt - oeffnet der
+      Dauerlauf in der Zwischenzeit ein Zeitfenster oder wechselt ein Schalter,
+      steht im Fenster ein alter Stand. Bewusst NICHT gebaut, weil ein
+      Dauerlauf-Takt im Fenster eine eigene Entscheidung ist (Last, und die
+      Frage "wie alt darf die Anzeige sein"). Ebenso bewusst: es gibt KEINEN
+      Kommandozeilen-Weg zum Scharfschalten (`--handel` und `--test` lesen nur),
+      weil Handelsregeln Punkt 3 ein Fenster mit Bestaetigungsfeld verlangt;
+      wer von unterwegs scharf stellen will, hat dafuer `/ja_<spur>` im
+      Dauerlauf.
+      Naechster Schritt: Entscheidung Max - entweder ein Takt (z. B. alle 60 s
+      nur bei gewaehlter Spur) oder ein Zeitstempel "gelesen um HH:MM" in der
+      Kopfzeile der Karte, damit der Stand sein Alter nennt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `handelstand.py`
+      Angelegt: 2026-09-30
+      01.10.2026 nachgeprueft: die Takt-Loesung ist bereits gebaut und gepusht (bc8041a, uebernommene Fremdarbeit) - 60 s Selbst-Nachziehen, nur wenn die Handels-Karte sichtbar ist, schaltbar per 'Auto: an/aus', Takt neu aufgezogen nach jedem Lauf. Gegengesehen in der Zentrale-Suite (296 Tests, der einzige Fehlschlag ist T-271/Betrifft nicht den Takt).
+- [x] **T-286 - omnitrade_futures: Trailing-Stop in den Live-Zyklus einhaengen**
+      Kontext: kraken_futures.stop_nachziehen(order_id, symbol, menge, stop_preis)
+      (/editorder) ist gebaut und getestet, aber spur_buch.zyklus kennt keinen
+      "Stop nachziehen"-Schritt - der stp-Stop steht beim Einstieg und wird nie bewegt.
+      Naechster Schritt: im Live-Zweig nach dem Kursabruf je Position den Stop an
+      hoechstkurs x (1 - trailing_pct) ziehen (nur nach oben, Dedupe je Preisstufe,
+      Scheitern des Nachziehens darf die Position NICHT ungeschuetzt lassen).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/spur_buch.py, omnitrade_futures/weg.py
+      
+- [x] **T-281 - kraken-Spur: Guthaben-Tor offen, aber handel_erlaubt=false und EV negativ**
+      Erledigt 2026-10-01. Max ("kraken scharf", dann "bedingung 5 entfaellt"):
+      freigabe.erfuellt true, AUTO_FREIGABE wieder aufgenommen, Bedingung 5 ueber
+      `bedingung_5_aktiv: false` abschaltbar (Vorgabe bleibt JA). Die Spur hat um
+      13:25:51 drei Belege ausgestellt, SOLEUR wurde 13:27:22 live ausgefuehrt
+      (0,47998464 SOL @ 104,26 EUR, Stop 97,72 an der Boerse). Nebenbefund und
+      behoben: der Papierzweig warf UnboundLocalError (gefuellt/fuellung_bestaetigt
+      nur im Live-Zweig) - kraken/tests 174 gruen. Wiki/Handel/Guthaben-und-Umschichtung.md.
+      Betrifft: Agenten/Handel/kraken/, Agenten/Handel/dauerlauf.py
+- [x] **T-269 — Freitext im SkillsBot endet in '(Aufgabe FAILED)'**
+      Kontext: Am 01.10.2026 um 01:57:02 kam auf "Netto in den Bericht" nach 300,4 s die
+      16-Zeichen-Antwort `(Aufgabe FAILED)` zurueck (skillsbot.log; 16 Zeichen = genau
+      `(Aufgabe FAILED)` aus `_aufgabe_abholen`). Die A2A-Aufgabe an hermes-maks-pc
+      scheitert also - nicht der Bot. Dieselbe Signatur tragen ALLE frueheren Freitext-
+      Auftraege ("Auswertung" 29.09., "Ja" und "Tagesbericht auswerten" 28.-30.09.:
+      je 300 s und 16 Zeichen). Slash-Befehle sind NICHT betroffen: `/strategien` lief
+      am selben Abend in 2,5 s mit 2642 Zeichen durch (Telegram hat die Sendung
+      angenommen - `sende()` ruft sendMessage direkt, ein Fehlschlag waere als
+      `status: fehler` protokolliert).
+      Naechster Schritt: die A2A-Aufgabe im Gateway nachsehen (Gateway-Log zur Uhrzeit,
+      Profil default/hermes-maks-pc, warum TASK_STATE_FAILED statt COMPLETED) - und bis
+      dahin fuer echte Arbeit `/run <skill>` (Frist 1800 s) oder die Desktop-App nutzen.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py, Agenten/Hermes (Gateway)
+      **Erledigt 2026-10-01.** Ursache gefunden und behoben: NICHT der Agent scheiterte, sondern die Frist war zu kurz. Belege aus dem Gateway-Log derselben Stunde: dieselbe Omniquant-Frage wurde um 07:56:34 nach 401,4 s beantwortet, die Rueckfrage um 08:23:16 nach 1504,6 s - der SkillsBot gab nach 300 s auf und antwortete mit dem 16-Zeichen-'(Aufgabe FAILED)'. Aenderungen: neue Konstante A2A_FRIST_S 1800 (dieselbe Frist wie /bot), die Warteschleife in _aufgabe_abholen benutzt sie statt des HTTP-Limits, frist_meldung() sagt jetzt 'laeuft noch / NICHT gescheitert / so geht es weiter', und Freitext warnt VOR dem Warten (Muster von /run). Tests: tests/test_skillsbot_freitext.py (8). Bot neu gestartet (PID 77696 -> 45916). Die verbleibende Einfaedigkeit steht als neuer Task.
+- [x] **T-270 — RLTrader-Klon ist die einzige Kopie seiner Arbeit (kein Remote, keine Sicherung)**
+      Kontext: Werkstatt/RLTrader traegt zwei lokale Commits (9e3090d Pine der
+      Altsitzung, 25d9ff0 Docker-Weg vom 01.10.2026). origin zeigt auf
+      notadamking/RLTrader (upstream, ruhend) - ein Push dorthin kommt nicht in
+      Frage, ein Fork fehlt. Werkstatt ist in BEIDEN Sicherungen per /XD
+      ausgenommen; ein Plattendefekt auf O: loeschte den Docker-Bau endgueltig.
+      Naechster Schritt: Entscheidung Max - privater Fork mfaupel95/rltrader wie
+      bei omnitrade, dann origin=Fork / upstream=Original stellen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader
+      01.10.2026 angewandt: git fetch --unshallow (286 Commits), origin=privates Repo mfaupel95/rltrader (gh api: private true, ls-remote master 25d9ff0 = lokal), upstream=notadamking; Docker-Weg-Commit 25d9ff0 gepusht; Wiki-Seite und FREMD-Eintrag nachgezogen.
+- [x] **T-279 - OKX: rund 275 USD Krypto lagen ungenutzt, das Guthaben-Tor stand bei 30,84 USDC**
+      Erledigt 2026-10-01. Sechs Posten in USDC verkauft (NEIRO, DOGS, EURC, ACE, WAXP, CHIP,
+      zusammen ~92,56 USD); `availBal` 31,50 -> 144,70. BETH und OKSOL blieben liegen
+      (Compliance-Sperre, jetzt in T-280 vermerkt). mosaic nennt seitdem nur noch das
+      Freigabefenster als Sperre — siehe Wiki/Handel/Guthaben-und-Umschichtung.md.
+      Betrifft: Agenten/Handel/mosaic/wachen.json, OKX-Konto
+- [x] **T-264 — 18 von 41 Spuren haben keine Gebuehr in der wachen.json**
+      Kontext: T-192 hat brutto und netto getrennt und den Mangel damit SICHTBAR
+      gemacht - der Bericht sagt jetzt "BRUTTO und UNBEKANNT: kein gebuehr_taker in der
+      wachen.json". Ohne Gebuehr stehen: gitter, kopier, kopier1zu1, macd_mtf, omniquant,
+      squeeze, supertrend, wavetrend, nautilus, nautilus_kraken, nautilus_kraken_futures
+      und die sieben moondev_* (funding, liquidation, listingarb, sentiment, sniper,
+      topmovers, whale). Einen Satz einzusetzen ist eine Entscheidung JE SPUR (Boerse,
+      Kontotyp, Maker/Taker, XPERP oder SWAP) - geraten waere schlimmer als "unbekannt".
+      Naechster Schritt: je Spur die Boerse und den GEMESSENEN Satz nennen (OKX XPERP/SWAP
+      0.0005, Kraken Spot 0.006, Deribit 0.0005), eintragen, `auswertung_alle.py` erneut -
+      das Urteil der Spuren aendert sich damit.
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Handel/*/wachen.json, Agenten/Handel/auswertung_alle.py
+      **Erledigt 2026-10-01 (Gebuehren-Teil).** Am eigenen OKX-Konto gemessen - Tarif Lv1 UND echte Fuellung: Spot 0,10 %/Seite (HYPE-USDC 0,002772544 auf 2,77254 USDC), Futures/XPERP 0,05 %/Seite (ZEC-/ADA-USD_UM_XPERP). Gesetzt mit `Agenten/Handel/gebuehren_setzen.py` (Vorschau Standard, `--messen` fragt den Tarif ab): neun Spuren auf 0.001 (Spot: scanner, squeeze, wavetrend, macd_mtf, supertrend, gitter, iv_wand, moondev_topmovers, moondev_listingarb), fuenf auf 0.0005 (moondev_funding/-whale/-liquidation/-sentiment, nautilus), nautilus_kraken von 0 auf 0.6. Zwei Zuordnungsfehler in `replay.SPUR_BOERSE` behoben (gitter stand als Perp, orb als Spot). Der Kern: scanner rechnete OKX-SPOT mit 0,05 % statt 0,10 % - jede Netto-Zahl war 0,1 Prozentpunkte je Runde zu freundlich. `auswertung_alle.py` meldet nur noch fuer moondev_sniper "BRUTTO und UNBEKANNT"; Rest als T-268.
+- [x] **T-192 — Auswertung: drei Messluecken lassen tote Spuren lebendig aussehen**
+      Kontext: Die Auswertung vom 30.09.2026 (`auswertung_alle.py` alle drei Stufen +
+      `kosten_wendepunkt.py`) zeigt drei Luecken, die jede Zahl verzerren.
+      (1) **Kein Gebuehrenfeld**: `orb`, `orbk`, `scanner`, `moondev_signalwelle` und
+      `iv_wand` tragen in ihrer `wachen.json` ueberhaupt keinen Gebuehrenschluessel
+      (`grep gebuehr` in orbk/*.py findet nichts). Der Kosten-Wendepunkt rechnet sie
+      deshalb mit 0 % und nennt orb +0,07 %, orbk/mittel +0,01 %, orbk/hoch +0,03 %
+      "tragfaehig, haengt an der Gebuehrfreiheit (unter 0,4 %)". orbk ist aber
+      **ORB auf Kraken-Spot** und die gemessene Kraken-Gebuehr ist **0,600 % je Seite
+      = 1,2 % je Runde** (Fuellung 22.09.2026) - orbk ist damit um rund das 40-fache
+      tot, orb (OKX, ~0,1 %/Runde) in Basis ebenfalls.
+      (2) **orbk-Journal ohne Einsatz**: `orbk/handelsjournal.csv` fuehrt
+      `zeit,inst,richtung,einstieg,stop,ziel,ausgang,ausstieg,gv_punkte,gv_usd` -
+      ohne Einsatzspalte sagt der Bericht "Ergebnis in Prozent: kein Einsatz im
+      Journal", 16 Runden lassen sich nicht in Prozent ausdruecken.
+      (3) **Papierzeilen ohne Gebuehr**: alle Papierbuecher melden "Kosten 0.00 %",
+      die echten 0.05 % (scanner), 0.39-0.50 % (xperp/swap) und 0.60 % (kraken) -
+      die Papiersummen sind BRUTTO und mit den Live-Zahlen nicht vergleichbar.
+      Naechster Schritt: (1) Gebuehr in die wachen.json von orb/orbk/scanner/
+      moondev_signalwelle/iv_wand eintragen (Kraken 0.006, OKX 0.0005), dann
+      `kosten_wendepunkt.py` erneut - das Urteil der Spuren aendert sich damit;
+      (2) orbk schreibt den Einsatz je Runde mit (Muster scanner);
+      (3) `auswertung_alle.py` weist brutto UND netto aus und markiert Bruttozeilen.
+      Fortschritt: (1) erledigt am 30.09.2026 (Commit 7c525cd) - `gebuehr_taker` steht
+      jetzt in orb (0.0005), orbk (0.006), scanner (0.0005), moondev_signalwelle (0.0005)
+      und iv_wand (0.0005), dazu ein Einheitenfehler im Werkzeug behoben: es druckte den
+      Bruch als Prozentwert und verglich ihn direkt mit f_max. Neues Urteil: orbk
+      "1.200 % je Runde (0.600 % je Seite) liegt darueber" - tot. Test
+      `tests/test_kosten_wendepunkt.py` (9). Punkte (2) und (3) bleiben offen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/{orb,orbk,scanner,moondev_signalwelle,iv_wand}/wachen.json,
+                Agenten/Handel/auswertung_alle.py, Agenten/Handel/kosten_wendepunkt.py
+      **Erledigt 2026-10-01.** Punkte (2) und (3) sind gebaut. (3) `auswertung_alle.kennzahlen()` weist brutto UND netto aus (`brutto`/`gebuehr`/`kosten_netto`/`netto`/`netto_pct`), die neue Zeile 'Brutto/Netto' nennt den Satz und die Nettosumme; `GEBUEHR_SCHON_DRIN` (xperp/swap/scanner/kraken) verhindert das ZWEIMALIGE Abziehen. Gemessen: mosaic +10.82 -> +9.62 USD, moondev_marktlage -5.02 -> -6.02, moondev_signalwelle +38.85 -> +37.92, iv_wand +2.30 -> +2.00. (2) KEIN erfundener Einsatz: orb/orbk fuehren ein PUNKTE-Buch, ein Einsatz kaeme aus risiko/stop_abstand und der ORB-Stop ist die Range-Hoehe (bei ETH ~0,4 % -> einige tausend USD Nominal) - das ist eine Design-Entscheidung. Statt dessen steht das Ergebnis in R (`runden_orbk` liefert risiko/r_vielfaches, `r_kennzahlen()` summiert): orbk +2.18 R gesamt, orb -0.46 R - und orb/orbk sind jetzt auch in der Auswertung (orb fehlte ganz), Einheit 'Punkte' statt 'USD'. Tests: tests/test_brutto_netto.py (18) neu, test_einheit_kraken prueft die Eigenschaft statt des Wortlauts. Rest offen als T-264 (18 Spuren ohne Gebuehr).
+- [x] **T-201 — Container `freqtrade` (Port 8080) hat keinen Zweck mehr**
+      Kontext: Der Vorgaenger-Container faehrt `SampleStrategy` und laeuft seit dem Aufbau
+      der drei Bot-Container weiter mit. Er belegt Port 8080, verbraucht Commit und ist
+      im Ablauf eine Verwechslungsquelle - die drei echten Bots liegen auf
+      8081/8082/8083. Nachtrag 30.09.2026: Er macht ausserdem einen Test rot.
+      `test_freqtrade_bridge.LiveTest.test_lage_vom_echten_bot` faellt mit
+      `HTTP 401 bei /show_config`. Gemessen mit DENSELBEN Zugangsdaten aus
+      `user_data/config.json`: Port 8080 antwortet auf ping 200, auf show_config 401;
+      Port 8081 beides 200. Der Altlast-Container traegt also ein anderes Passwort im
+      Speicher als die Datei (gestartet 30.09. 19:51 lokal, config.json vom 29.09.
+      18:43) - die Bridge liest die Datei und wird abgewiesen. Sonst ist die Suite
+      gruen: 1377 Tests, dieser eine Fehler, 9 uebersprungen.
+      Naechster Schritt: pruefen, ob Max ihn von Hand nutzt (dann Kennzeichnung), sonst
+      in `bots_starten.sh` als Altlast vermerken und den Container stoppen. NICHT ohne
+      Rueckmeldung loeschen - es ist der einzige Container, dessen Zweck ich nicht kenne.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      **Erledigt 2026-09-30.** Max hat den Container gestoppt (`freqtrade`, Port 8080, SampleStrategy): `docker ps -a` zeigt 'Exited (137)' nach 22 Minuten, die drei echten Bots (8081-8083) laufen weiter. Der Live-Test der Bridge ist damit uebersprungen statt rot (`test_freqtrade_bridge`: OK, skipped=1; vorher HTTP 401 bei /show_config). Ursache des Fehlers gemessen: derselbe Zugang aus user_data/config.json antwortete auf Port 8080 mit ping 200 / show_config 401, auf Port 8081 mit beides 200 - der Altlast-Container trug ein anderes Passwort im Speicher. In bots_starten.sh als Altlast vermerkt (er wird dort nicht gestartet). Commits 266a5a6 und der folgende.
+- [x] **T-206 — omnitrade hat keinen Kraken-Weg: der Auftrag "Kraken nur omnitrade" ist bisher eine Sperre**
+      Kontext: Max hat am 30.09.2026 angeordnet, nur noch omnitrade auf Kraken
+      handeln zu lassen. Die Sperrseite ist umgesetzt (`kraken` und
+      `moondev_marktlage` auf handel_erlaubt=false, `mosaic` auf boersen ["okx"],
+      alle vier Kraken-Spuren aus `dauerlauf.AUTO_FREIGABE`), die Freigabeseite
+      nicht: `omnitrade-exchange/src/` kennt nur `binance` und `okx`, und
+      `omnitrade-cli/src/commands/live.rs:33` weist jedes andere `--exchange` ab
+      ("Use 'binance' or 'okx'"). Bis dahin handelt NIEMAND auf Kraken.
+      Naechster Schritt: entscheiden, welcher Weg gebaut wird - (A) Kraken-Adapter
+      in Rust (`omnitrade-exchange/src/kraken.rs`: ExchangeStream/ExchangeInfo/
+      ExchangeTrading, HMAC-SHA512 + Nonce, Paar- und Preisregeln; braucht einen
+      EIGENEN Kraken-Schluessel, sonst kollidiert der Nonce-Zaehler mit dem
+      Haus-Pool) oder (B) Haus-Spur `omnitrade`, die `Werkstatt/omnitrade/status/
+      live.json` ueber `Agenten/Handel/omnitrade_bridge.py` liest und ueber den
+      bewaehrten `kraken/kraken.py` ordert.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Werkstatt/omnitrade, Agenten/Handel/dauerlauf.py,
+      Agenten/Handel/kraken/wachen.json, Agenten/Handel/mosaic/wachen.json,
+      Agenten/Handel/moondev_marktlage/wachen.json
+      **Erledigt 2026-09-30.** Weg B gebaut (Entscheidung Max): neue Spur Agenten/Handel/omnitrade spiegelt die Position der Rust-Laeufe (Zustand net_quantity statt Orderliste, zwei Zeugen Statusdatei+PID, echter Verkaufspreis aus recent_orders) und fuehrt im Live-Zweig ueber den Haus-Kraken-Weg (boerse kraken, kraken_quote USDC, guthaben_waehrung USDC, mindest_guthaben 60) - omnitrade bleibt der Entscheider, kein Kraken-Adapter in Rust. Verdrahtet in dauerlauf.SPUREN, lage.HOLER (live_faehig), auswertung_alle.BOT_SPUREN, pruefe_ratschen, .gitignore. Beleg: 31 Tests gruen, Vorschau nennt vier Sperrgruende (u.a. 25.08 von 60 USDC frei), erster Zyklus 30.09. 21:26:20 'omnitrade (papier) ok', spiegelstand 38/38 byte-gleich. Commit 6197ac9, Wiki/Handel/omnitrade-Spur.md. Offen bleibt nur das Guthaben (T-256).
+- [x] **T-245 - Pending-Memory-Queue: 25 Konsolidierungsvorschlaege inhaltlich nachziehen oder loeschen**
+      Kontext: `Agenten/Hermes/pending/memory/` traegt 25 Vorschlaege aus
+      `background_review` (aeltester 09.09.2026, neuester 24.09.2026, ~60 KB).
+      Am 30.09.2026 um 18:32 hat Max `/memory approve all` ausgefuehrt; MEMORY.md
+      wurde neu geschrieben, aber KEIN Inhalt aus der Queue steht heute im
+      Gedaechtnis (Stichproben "OKX-Schluessel 19.09.2026 erneuert" und
+      "841 Zeilen" fehlen beide). Die Anker der Vorschlaege sind tagealt und
+      treffen nicht mehr - ein Vorschlag verfaellt mit seinem Anker.
+      Naechster Schritt: je Vorschlag pruefen, ob der Inhalt heute noch fehlt
+      und noch stimmt, dann von Hand in MEMORY.md nachziehen; den Rest loeschen
+      (nicht "freigeben").
+      Betrifft: `Agenten/Hermes/pending/memory/`, `memories/MEMORY.md`
+      Angelegt: 2026-09-30
+      **Erledigt 2026-09-30.** 25 Vorschlaege aus background_review (46 Einzeloperationen, 09.-24.09.2026) einzeln geprueft. Nur 4 Inhalte fehlten wirklich und stimmen noch, von Hand nachgezogen: (1) Bedingung 5 rechnet auf HANDELSRUNDEN - in scanner/wachen_pruefung.py nachgemessen (rollierender_ev aus teile_runden, rollierender_ev_alle fuer Diagnose), der alte Memory-Satz 'OFFEN (Entscheidung Max)' war damit falsch; (2) FOMO/Copy-Trading (Plan Werkstatt/fomo-copy-trading-plan.md, 8307 B, nichts gebaut); (3) Plan-Modus (skills/.archive/plan/SKILL.md vorhanden); (4) scanner-Journal fuehrt mfe_pct/mae_pct/haltetage (Kopfzeile gemessen). MEMORY.md 245.477 -> 247.972 Zeichen. Dazu 2 Nutzer-Eintraege in USER.md (5.565 -> 6.266): Antwortform bei 'fuehre Skill X aus', Git-Zweige/EIN Arbeitszweig. Alles Uebrige verworfen (Anker tagealt, wiederholte Vorhandenes, Arbeitsprotokoll); 25 Dateien aus pending/memory/ geloescht, Volltext-Digest Agenten/Hermes/.sicherung/memory-queue-verworfen-20260930.md. Widerlegt beim Pruefen: der 'Ollama-Store-Pfad'-Fehlalarm steht nicht mehr in systempruefung.ps1.
+- [x] **T-246 - Wache fuer Memory-Verluste (Cron)**
+      Kontext: Ein `replace` mit falsch gewaehltem `old_text` loescht einen
+      fremden Eintrag vollstaendig; bemerkt hat es am 30.09.2026 erst eine Suche
+      Stunden spaeter. Das Werkzeug `Agenten/Hermes/scripts/memory-verlust.py`
+      kann den Zustand jederzeit messen, wird aber von niemandem aufgerufen -
+      ein Nachweis ist keine Wache.
+      Naechster Schritt: Hermes-Cron (z. B. taeglich, no_agent, Telegram, leere
+      Ausgabe = nichts senden) auf `memory-verlust.py --json`; melden nur, wenn
+      ein Eintrag neu verloren ist (Merkdatei), nicht bei den 8 bekannten
+      Altfaellen.
+      Betrifft: `Agenten/Hermes/scripts/memory-verlust.py`, Hermes-Cron
+      Angelegt: 2026-09-30
+      Hermes-Cron f6f34ed95e0b (taeglich 20:45, no_agent, Telegram, leere Ausgabe = nichts senden); Skript Agenten/Hermes/scripts/memory-verlust-wache.py, Tests test_memory_verlust_wache.py 7 + test_memory_verlust.py 7 gruen. Erster Lauf setzt die Baseline und schweigt (6 bekannte Altfaelle).
+- [x] **T-237 - Werkstatt/handel-stack: Spiegel weiterfuehren, einfrieren oder abloesen? (Entscheidung Max)**
+      Kontext: `Werkstatt/handel-stack` ist ein privates GitHub-Repo
+      (mfaupel95/handel-stack) mit dem Import von `Agenten/Handel` vom
+      18.09.2026: 33 der heute 48 Spuren samt Journalen und Zustand, aeltere
+      Staende (dauerlauf.py 43 statt 64 KB). Gemessen: nichts liest ihn, er
+      enthaelt keine Geheimnisse, `repos-updaten.py` fasst ihn nicht an. Er
+      stoert nur als zweite, aeltere Wahrheit im Suchweg und steht deshalb im
+      Manifest als Rolle "Spiegel (18.09.)" mit Warnung.
+      Naechster Schritt: entscheiden - (a) so lassen (eingefrorener Zeuge),
+      (b) Spiegel gelegentlich auffrischen, (c) durch die vorhandene Sicherung
+      ersetzen und den Ordner aus dem Baum nehmen.
+      Angelegt: 2026-09-30
+      Betrifft: Werkstatt/handel-stack/, mfaupel95/handel-stack
+      **Erledigt 30.09.2026.** Entscheidung Max: "so lassen". Gemessen: nichts liest den Spiegen, keine Geheimnisse, repos-updaten.py fasst ihn nicht an. Er steht jetzt als 'Altstand (Spiegel 18.09.)' in Agenten/FREMD-Liste.json und zaehlt nicht als lebender Code - er bleibt, weil er die einzige Kopie des Handelsstacks ausser Haus ist.
+- [x] **T-231 - C: hat keine Reserve fuer Desktop-Builds (Entscheidung Max)**
+      Kontext: Am 30.09.2026 lief C: waehrend des Desktop-Baus auf 0,1 GB frei
+      (475 GB Platte, 93 % belegt) - der Build braucht rund 20 GB transient.
+      Folge: `desktop promotion rename win-unpacked -> win-unpacked.previous`
+      scheiterte mit WinError 5 und `OSError: [Errno 28] No space left on
+      device`, der Update-Schwanz blieb liegen, der Desktop kam in eine
+      Bootschleife und das Gateway war von 14:20 bis 15:33 aus. Sofortmassnahme
+      war Aufraeumen (uv-Cache 9,2 GB, Temp 4,6 GB, Build-Reste 0,5 GB ->
+      35,9 GB frei, danach wieder 32,9 GB).
+      Naechster Schritt: entscheiden, ob eine Dauerreserve von ~30 GB auf C:
+      gehalten wird (Wache oder Aufraeumroutine vor jedem Update) oder ob die
+      Auslagerungsdatei von C: nach O: wandert (Skript
+      `Agenten/Routinen/einmalig-20260930-auslagerung.ps1`, noch nicht
+      ausgefuehrt, braucht Admin).
+      Angelegt: 2026-09-30
+      Betrifft: C:-Laufwerk, Agenten/Hermes/hermes-agent/apps/desktop,
+      Agenten/Routinen/einmalig-20260930-auslagerung.ps1
+      Entscheidung Max (30.09.2026): Reserve halten UND Auslagerung umziehen. Reserve: platz-wache haelt 30 GB frei (Schwelle 25 -> 30, Cron jetzt taeglich 07:45 statt Montag), raeumt unter der Reserve selbst auf (Temp >24 h, CrashDumps, uv-Cache, npm-Cache; nie node_modules/.venv; nichts bei laufendem Bau), Tests 15 gruen. Auslagerung: C: 8192/8192 fest, O: 32768/32768 in Registry und WMI nachgeprueft - wirksam erst nach Neustart (Commit 84,5 -> rund 103,7 GB). Wiki/Betrieb/Sicherung-und-Laufwerke.md.
+- [x] **T-233 - terminal.cwd steht auf Agenten\Hermes statt auf der BrainFiles-Wurzel (gewollt?)**
+      Kontext: Beim Setzen der Kompression auf Standard (Commit d4429fb) lag
+      eine fremde Aenderung im Arbeitsbaum: `terminal.cwd` war von
+      `C:\Users\faupe\documents\BrainFiles` auf
+      `C:\Users\faupe\documents\BrainFiles\Agenten\Hermes` geaendert. Sie wurde
+      mitgenommen, weil eine Datei nicht teilbar ist. Werkzeuge und Sitzungen
+      starten damit kuenftig eine Ebene tiefer - der Wurzel-Aufrufer
+      (`omnitrade.cmd`) und die relativen Pfade der Hausregeln gehen von der
+      Wurzel aus.
+      Naechster Schritt: entscheiden, ob das so bleibt (Desktop-Einstellung
+      "Shell-Umgebung" -> Arbeitsverzeichnis) oder zurueck auf die Wurzel.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/config.yaml (terminal.cwd)
+      Entscheidung Max (30.09.2026): cwd bleibt Agenten/Hermes. Abhaengigkeiten repariert: Anker cd "$HERMES_HOME/../.." in 9 Skills/READMEs, tasks-anpassen.py lokalisiert sich selbst, Wurzel-AGENTS.md/CLAUDE.md tragen die Regel. Nachweis: spiegelstand 29/29 byte-gleich und doppelte_nummern OK aus dem Anker. Wiki/Betrieb/Arbeitsverzeichnis.md.
+- [x] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
+      Kontext: `tests/test_manifest.EchtesManifestTest.test_jedes_bot_profil_des_manifests_existiert`
+      ist rot (1 von 56 Tests): 17 Bot-Namen im Manifest haben kein Profil mehr -
+      sie liegen seit 19.09.2026 unter `Agenten/Hermes/profiles/.deleted/`
+      (projectatlas, skills, superpowers, tradingview-mcp, agent-reach, nous, codex,
+      scrapling, santiment, claude-plugins-official, coder, easycliproxyapi,
+      graphify, max, moon-dev-code, odysseus, winget-cli). Der Test ist richtig -
+      das Manifest ist veraltet; unklar ist, ob die Profile zurueckkommen sollen.
+      Naechster Schritt: entscheiden - Profile zurueckholen ODER die bot-Felder im
+      Manifest entfernen bzw. kennzeichnen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json,
+      Agenten/Hermes/profiles/.deleted/
+      **Erledigt 2026-09-30.** Die 13 Eintraege ohne Profil tragen jetzt eine `warnungen`-Zeile statt eines Bot-Namens. Grund der Entscheidung: `profiles/.deleted/` enthaelt KEINE Profile, sondern 9-Byte-Vermerke mit dem Wort `deleted` (gemessen mit `ls -la`) - die Profile wurden am 19.09.2026 geloescht, nicht weggelegt; ein Bot-Knopf waere ein Knopf ins Leere. `test_jedes_bot_profil_des_manifests_existiert` ist wieder gruen (118 Tests).
 - [x] **T-095 — `runden_aus_journal` paart je INSTRUMENT, nicht je Position**
       Kontext: Der Backtest ueber 5,7 Jahre deckt es auf. Bei squeeze standen
       1088 geschlossene Runden im Buch, `runden_aus_journal()` wertete aber nur

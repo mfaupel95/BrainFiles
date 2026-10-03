@@ -4,3 +4,6 @@ model:
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
 _config_version: 49
+onboarding:
+  seen:
+    tool_progress_prompt: true

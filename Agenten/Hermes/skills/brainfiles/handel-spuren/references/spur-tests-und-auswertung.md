@@ -251,3 +251,130 @@ Waehrung erreichbar" sein soll, braucht im Fixture wirklich KEIN Paar in der
 eigenen Waehrung — sonst bestaetigt der Test die Regel mit einem Datensatz, der
 sie gar nicht beruehrt. Der Fehlschlag der Gegenprobe zeigt dann nicht den Code,
 sondern das Fixture.
+
+## Zwei GEGENPROBEN, die zeigen, dass der Test die Regel trifft
+
+Ein Test, der nur den gewuenschten Pfad beschreibt, beweist, dass der Code laeuft
+— nicht, dass er die Regel erfuellt. Zwei gebaeufige Faelle, in denen die Suite
+gruen ist und der Fix wirkungslos war, lassen sich mit derselben Technik tragen:
+**die Regel im Produktionscode entfernen** (Filter, Sperre, Haken) und dieselben
+Tests erneut fahren. Faellt die Suite nicht, prueft der Test den Zustand oder den
+Aufruf, nicht die Entscheidung.
+
+- **Zwei unabhaengige Regeln = zwei Gegenproben**, auch wenn eine Zeile Code sie
+  enthaelt: dort zwei Tests (Deckungsfilter entfernt -> rot, Preissperre entfernt
+  -> rot) statt einer, weil eine entfernte Zeile beide Treffer verliert und man
+  nicht sieht, welche Regel der zweite Test wirklich deckt.
+- **Vor dem Entfernen die Datei sichern und danach zurueckspielen**, sonst
+  bleibt der gebrochene Stand liegen und der „gruene" Lauf beweist nichts mehr.
+  Der Weg ist eine Kopie neben die Datei (nicht nach `/tmp`, nicht nach einem
+  fremden Repo-Ordner) und `cp` zurueck, danach derselbe Testlauf gruen — beide
+  Laeufe gehoeren in den Bericht.
+- **Nur die Regel entfernen, nicht den Aufruf.** Wird der Aufruf mitentfernt,
+  faellt der Test an einem `AttributeError` statt an der Behauptung — das sieht
+  wie ein Klassenfehler des Tests aus und belegt nichts.
+
+**Und die Attrappen-Form muss zum Leseweg passen.** Produktionscode liest
+Boersenantworten per `.get()`; eine Attrappe aus einem Objekt mit Attributen
+(`self.d`) laesst jeden Test an `AttributeError: … has no attribute 'get'`
+scheitern — an der Attrappe, nicht an der Regel. Solche Fixtures als `dict`
+ableiten. Ebenso gehoert zur Attrappe JEDE Methode, die der gepruefte Weg ruft
+(`schutz_stops` neben `positionen`): eine fehlende Attrappen-Methode macht die
+ganze Datei rot und liest sich wie ein Produktionsfehler.
+
+## Der Seam ist die LADEFunktion, nicht das geladene Modul
+
+Ein Wrapper, der sein Boersenmodul ueber den **Pfad** laedt
+(`spec_from_file_location` bei **jedem** Aufruf), hat zwei Instanzen im Spiel: die
+importierte (`import kraken_futures`) und die, die der Produktivcode sich selbst
+laedt. Ein Patch auf `_roh` der importierten Instanz erreicht die zweite nicht —
+der Test laeuft, die Attrappe wird nie benutzt, und der Test misst an der echten
+Boerse.
+
+Erkennungszeichen: die Attrappe wird nie aufgerufen, obwohl der Test sie
+offenbar einsetzt (`self.rufe` bleibt leer), oder der Fehler kommt aus einem
+Modulpfad, den der Test gar nicht angefasst hat.
+
+- **Richtig: die Ladefunktion patchen.** `kp._kf = lambda: kf` — dann bekommt der
+  Produktivpfad die Attrappe, und die Antwort je **Pfad** liefern (`/tickers` den
+  Kurs, `/openPositions` den Bestand). Eine flache Antwort pro Testfall reicht
+  nicht: ein Aufruf trifft mehrere Endpunkte nacheinander.
+- **Die Attrappe nimmt `**kwargs`.** `_roh` fuehrt je nach Aufruf `signiert=` und
+  `post=` mit. Eine Attrappe mit fester Signatur scheitert an
+  `TypeError: unexpected keyword argument` — am Testgeruest, nicht an der Regel.
+- **Merksatz:** „meine Attrappe wurde nicht aufgerufen" ist kein Testfehler,
+  sondern die Meldung, dass die Naht falsch liegt. Die Frage lautet immer:
+  **welche Instanz benutzt der Produktivcode?**
+
+## Gegenprobe: die VORBESTEHENDEN roten Punkte zuerst wegrechnen
+
+Bevor eine Fehlermeldung der eigenen Aenderung zugeschrieben wird, beide Zustaende
+mit **derselben** Suite messen und die Fehlernamen differenzieren:
+
+    mit der Aenderung:  FAILED (failures=3, errors=6)
+    mit dem HEAD-Stand:  FAILED (failures=3, errors=6)   <- identische Namen
+    neu durch mich: []        weg durch mich: []
+
+Das ist billiger als Raten und im Bericht belegbar. Zwei Mittel, beide brauchbar:
+
+- **Regel entfernen, Kopien zurueckspielen:** die geaenderten Dateien sichern, die
+  Regel zuruecknehmen, Suite fahren, Kopien zurueckspielen, Suite nochmal fahren.
+  Beide Laeufe gehoeren in den Bericht.
+- **HEAD-Stand laden, ohne den Arbeitsbaum anzufassen:** `git show HEAD:<pfad>` in
+  die Datei schreiben, Suite fahren, dann die eigene Fassung zurueckspielen.
+  **Kein `git checkout`** — das ueberschreibt uncommittete Arbeit einer parallelen
+  Sitzung und liefert eine Fehlermeldung, die wie ein Dateischwund aussieht.
+
+Merksatz: „die Suite war schon rot" ist eine **Behauptung, keine Messung**, bis die
+Fehlernamen beider Laeufe nebeneinander liegen.
+
+## Den Vertrag der Funktion MESSEN, bevor du zusagst
+
+Ein Test, der eine Annahme ueber die gepruefte Funktion trifft, liefert bei
+falscher Annahme ein GRUENES Ergebnis ueber eine falsche Behauptung. Drei
+Annahmen fielen in einem einzigen Testsatz, alle drei aus dem Kopf statt aus
+dem Aufruf:
+
+- **Der Rueckgabewert ist nicht der, den der Name verspricht.** Eine
+  Richtungsfunktion liefert `1 / -1`, nicht `"long" / "short"` - der Name der
+  Variablen im Aufrufer (`sig`, `seite`) sagt nichts ueber den Typ.
+- **Eine Reihenfunktion liefert eine REIHE, keine Zahl.** `sma`/`ema` geben
+  eine Liste mit `None` am Anfang zurueck; `reihe[-1]` ist der Wert, die
+  Funktion selbst ist keiner.
+- **Die Prämisse kann mathematisch falsch sein.** Auf einer linearen Reihe
+  laeuft die EMA in die SMA (beide liefern denselben Wert); die Behauptung
+  „EMA liegt ueber der SMA" ist dort falsch. Eine faelschliche Praemisse faellt
+  nicht als Fehlschlag auf, sie wird zur Behauptung des Tests.
+
+Faustregel: **bevor die erste Erwartung geschrieben wird, die Funktion einmal
+mit Beispieldaten aufrufen und Rueckgabetyp und Werte ansehen.** Was der Name
+und die Benutzung nahelegen, ist kein Beleg - und im Testkommentar festhalten,
+was gemessen wurde (`GEMESSEN: liefert 1 / -1`), damit der naechste Leser die
+Annahme nicht erneut macht.
+
+Zwei Faelle derselben Klasse: ein Signalkanal, den die eine Spur als Tupel
+entpackt (`seite, _linie = sig`) und die andere als String vergleicht - die
+Attrappe muss den gemessenen Vertrag je Spur tragen; und eine **Schwelle aus
+der Wachen lesen statt eine feste Zahl setzen** (`mindest_kerzen` unterscheidet
+sich je Spur um das Doppelte), weil eine feste Zahl bei der einen Spur den
+Weg gar nicht durchlaeuft und der Test dort nichts prueft.
+
+## Ein Pruefskript, das EIN Buchschema annimmt, erzeugt Fehlbefunde
+
+Ein Werkzeug, das ueber alle Spuren laeuft, kann nicht annehmen, dass sie
+dasselbe Format fuehren. Zwei gemessene Fehlbefunde:
+
+- **Positionsfelder:** eine Bestandspruefung las `inst`/`einstieg` und meldete
+  fuer sieben Positionen „kein Einstieg" - die Spur fuehrt `symbol`/`token`
+  und `einsatz_usd`. Der Befund sah aus wie ein Datenverlust und war einer.
+  Also: eine Spufe, deren Felder `None` liefert, ist **zuerst ein
+  Schemafehler**, bis der Quelltext gelesen ist.
+- **Namenslisten sind nicht Spur-Namen:** `lage.HOLER` ist ein Tupel von
+  FUNKTIONsnamen (`spur_macd_mtf`), nicht von Spurennamen. Eine Mitgliedschaft
+  mit dem Spurennamen meldet fuer jede Spur „FEHLT" und sieht wie ein
+  Verdrahtungsloch aus. Vor jeder „fehlt"-Aussage den Container ansehen:
+  Tuple, Funktion oder Liste von Funktionsnamen, und die Form der Elemente.
+
+Merksatz: **ein Befund, der ALLE Spuren oder eine ganze Gruppe gleich
+verdächtigt, ist fast immer der Befund des Werkzeugs, nicht der Spuren.** Ein
+Befund, der eine Spur nennt, pruefen; ein Befund, der alle nennt, das Skript.

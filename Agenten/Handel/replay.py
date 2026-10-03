@@ -20,12 +20,21 @@ deshalb `kerzenquelle: binance`.
 Aufruf:
     python replay.py --spur squeeze --max-kerzen 1500
     python replay.py --spur squeeze --gegenprobe
+
+Familie D (mehrere Kerzenreihen bzw. eigene Rechnung der Spur):
+    python replay.py --spur mosaic --lauf t294      # 4H/30M/5M aus der 5m-Basis
+    python replay.py --spur gitter --lauf t295      # faehrt gitters walk()
+
+Die Familie erkennt der Replay am SPURNAMEN - kein Schalter, der vergessen
+werden kann. `mosaic` braucht die 5m-Historie (`python 5m_historie_holen.py`,
+120 Tage); `gitter` faehrt auf der 1H-Reihe wie die Indikatorspuren.
 """
 
 import bisect
 import csv
 import datetime as dt
 import importlib.util
+import itertools
 import json
 import os
 import sys
@@ -35,8 +44,23 @@ import historie_binance
 HIER = os.path.dirname(os.path.abspath(__file__))
 
 # Spuren mit eigenem Buch im Modul (Familie A).
-SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "gitter",
-                 "orb", "orbk", "mosaic")
+#
+# `orb` und `orbk` standen hier bis zum 01.10.2026 und waren doch nicht
+# fahrbar: ihre `handeln.py` haben kein `lade_wachen()`, ihre `wachen.json`
+# nennt die Instrumente als DICT mit BOERSENnamen (`BTC_USDT` -> `BTC-USDT-SWAP`)
+# statt als Liste von Spur-Namen, und ohne `kerzen_takt`/`mindest_kerzen`. Ein
+# Replay endet damit in der Verweigerung "die Spur nennt kein Instrument". Sie
+# stehen jetzt unter NICHT_NACHRECHENBAR mit Grund - eine angebotene Taste, die
+# nur scheitern kann, ist schlechter als eine fehlende. orbk hat ausserdem
+# einen eigenen Backtest (`orbk/backtest.py`).
+SPUREN_TEIL_A = ("squeeze", "wavetrend", "macd_mtf", "supertrend")
+# mosaic und gitter standen hier bis 01.10.2026 und waren doch nicht fahrbar:
+# ihre Fahrweise passt nicht in den einen Aufruf `pruefe_einstieg(inst, k, z,
+# w, faktor)` / `pruefe_ausstiege(z, k, w)`. mosaic braucht DREI Kerzenreihen,
+# gitter hat gar kein `pruefe_einstieg` (die Rechnung liegt in `walk()`). Seit
+# dem 01.10.2026 fahren beide ueber den Familie-D-Weg weiter unten
+# (MEHRZEITRAHMEN/EIGENE_RECHNUNG) - erkannt am SPURNAMEN, nicht an einem
+# Schalter. `--spur mosaic` und `--spur gitter` laufen damit direkt.
 
 # Spuren mit eigenem `lauf(modus)` und eigenen Nahtnamen (Familie C). Sie
 # fuehren kein Kerzenbuch: `moondev_funding` liest einen Funding-Satz je Symbol
@@ -50,10 +74,15 @@ FUNDING_STUNDEN = 8
 SPUREN_TEIL_B = ("trendwende_btc", "liq_wand", "iv_waelle", "robinhood_radar",
                  "moondev_listingarb", "moondev_topmovers", "moondev_marktlage",
                  "moondev_sniper", "moondev_signalwelle", "moondev_whale",
-                 "moondev_liquidation", "moondev_sentiment")
+                 "moondev_liquidation", "moondev_sentiment",
+                 "klassik_sma", "klassik_ema", "klassik_macd",
+                 "klassik_bollinger", "klassik_donchian", "klassik_rsi",
+                 "klassik_rsi2", "klassik_donchian_trend")
 
-# Spuren, deren Datenquelle sich historisch nicht beschaffen laesst. Sie
-# bekommen einen Vermerk statt einer geschaetzten Zahl.
+# Spuren, die der Replay NICHT fahren kann. Zwei Gruende stehen hier, jeder
+# mit seinem Grund daneben (das Leitstand-Fenster zeigt diese Liste im Klartext):
+# eine historisch nicht beschaffbare Datenquelle - oder eine Spur, die gar
+# nicht fahrbar ist (kein `lade_wachen()`, keine Kerzen-Naht).
 NICHT_NACHRECHENBAR = {
     # Feed-Spuren ohne historisch beschaffbare Quelle. Der GRUND gehoert
     # daneben - eine leere Zeile waere nicht zu deuten.
@@ -78,6 +107,9 @@ NICHT_NACHRECHENBAR = {
     "spiegel": "ausser Betrieb seit 21.09.2026",
     "spiegel_knapp": "ausser Betrieb seit 21.09.2026",
     "spiegel_weit": "ausser Betrieb seit 21.09.2026",
+    # Nicht fahrbar (kein Kerzenweg im Modul), nicht "Datenquelle fehlt":
+    "orb": "kein lade_wachen() in orb/handeln.py - so nicht fahrbar (01.10.2026)",
+    "orbk": "kein lade_wachen() in orbk/handeln.py; eigener Backtest: orbk/backtest.py",
 }
 
 # Naht fuer Tests: None -> HIER/daten/backtest.
@@ -192,6 +224,34 @@ def schuetze(modul, ordner):
             setattr(modul, name, os.path.join(ordner, datei))
 
 
+def kennung_fest():
+    """Positionskennungen im Backtest reproduzierbar machen.
+
+    Rueckgabe: eine Funktion, die die Naht wieder zurueckstellt.
+
+    Der Zufallsteil von `pos_kennung` ist im BETRIEB richtig - zwei Positionen
+    im selben Instrument entstehen in derselben Sekunde, die Zeit allein waere
+    kein eindeutiger Schluessel. Im Backtest macht er zwei Laeufe ueber
+    DIESELBEN Kerzen ungleich: das Journal war bis auf `pos_id` Byte fuer Byte
+    identisch (gemessen 01.10.2026 an mosaic). Die Naht dafuer ist
+    ausdruecklich vorgesehen (`pos_kennung.erzeuger`), und der Zaehler macht
+    die Kennung im Lauf weiterhin eindeutig.
+    """
+    import pos_kennung
+    alt = pos_kennung.erzeuger
+    zaehler = itertools.count(1)
+
+    def _neu(zeit=None):
+        return "%s-%06x" % (pos_kennung._stempel(zeit), next(zaehler))
+
+    pos_kennung.erzeuger = _neu
+
+    def _zurueck():
+        pos_kennung.erzeuger = alt
+
+    return _zurueck
+
+
 def _feld(w, *namen, vorgabe=None):
     """Den ERSTEN gesetzten Namen nehmen.
 
@@ -233,11 +293,92 @@ def fenster_vorgabe(w):
     return max(anzahl, int(w.get("mindest_kerzen", 300)) + 40)
 
 
+# Kerzen, die eine Reihe ZUSAETZLICH zur Anforderung der Spur tragen muss.
+# Der Grund ist die Schleife in `lauf_a`: sie laeuft von `mindest_kerzen` bis
+# ans Ende, mit genau `mindest_kerzen` Kerzen gaebe es also keinen einzigen
+# Schritt - und ein Lauf ohne Schritt meldet "0 Runden", was wie ein
+# Messergebnis aussieht.
+KERZEN_PUFFER = 20
+
+
+def bedarf(w):
+    """Kerzen, die eine Reihe haben MUSS: mindest_kerzen + Puffer."""
+    return int(w.get("mindest_kerzen", 300)) + KERZEN_PUFFER
+
+
+def bedarf_fuer(spur):
+    """`bedarf()` einer Spur - OHNE ihr Modul zu laden, aus ihrer wachen.json.
+
+    Fuer das Leitstand-Fenster gedacht, das die Grenze schon beim Tippen nennen
+    soll: ein Import der Spur (samt Indikatoren) waere dafuer zu schwer und
+    truege Nebenwirkungen in den GUI-Prozess. None, wenn keine wachen.json
+    da ist - dann prueft der Replay beim Lauf, und der verweigert mit Grund.
+
+    Eine Mehrzeitrahmen-Spur braucht ein Vielfaches: `bedarf()` zaehlt die
+    Kerzen JE REIHE, die 5m-Basis muss sie aber fuer die 4H-Reihe 48-mal
+    tragen. Ohne diese Verzweigung nennte das Fenster eine Grenze, unter der
+    der Lauf trotzdem abbricht.
+    """
+    try:
+        with open(os.path.join(HIER, spur, "wachen.json"), encoding="utf-8") as f:
+            w = json.load(f)
+    except (OSError, ValueError, TypeError):
+        return None
+    if spur in MEHRZEITRAHMEN:
+        return bedarf_mehrzeitrahmen(MEHRZEITRAHMEN[spur], w)
+    return bedarf(w)
+
+
+class HistorieFehlt(RuntimeError):
+    """Keine Kerzen fuer den Lauf - mit dem GRUND im Text.
+
+    Zwei Gruende verlangen zwei verschiedene Taten und duerfen nicht denselben
+    Satz bekommen: fehlt die Historie auf der PLATTE, hilft
+    `historie_binance.py --auffuellen`; ist das verlangte FENSTER zu klein
+    (`--max-kerzen` unter dem, was die Spur braucht), hilft nur ein groesseres
+    Fenster - Nachfuellen aendert dort nichts.
+    """
+
+
+def mangel_text(spur, w, fehlen, zu_klein, max_kerzen=None):
+    """Der eine Satz, der sagt, warum der Lauf keine Kerzen hat."""
+    brauch = bedarf(w)
+    quelle = ("die Spur braucht mindestens %d Kerzen je Reihe "
+              "(mindest_kerzen %s + %d)"
+              % (brauch, w.get("mindest_kerzen", 300), KERZEN_PUFFER))
+    if not fehlen and not zu_klein:
+        # Kein Instrument in der Liste: das passiert, wenn das Spurenmodul kein
+        # `lade_wachen()` hat (dann ist `w` leer) oder ihre wachen.json kein
+        # `instrumente`/`instrument` traegt. Nachfuellen hilft hier nicht, und
+        # "0 Runden" waere die dritte Falschaussage.
+        return ("Keine Kerzen fuer %s: die Spur nennt kein Instrument - "
+                "entweder hat ihr handeln.py kein lade_wachen() oder ihre "
+                "wachen.json kein instrumente/instrument. So ist sie nicht "
+                "fahrbar" % spur)
+    if fehlen and not zu_klein:
+        return ("Historie fehlt oder ist zu kurz fuer %s: %s - %s, erst "
+                "'python historie_binance.py --auffuellen'"
+                % (spur, ", ".join(fehlen), quelle))
+    if zu_klein and not fehlen:
+        rat = ("Mit --max-kerzen %d oder mehr (0 = alle) wiederholen" % brauch
+               if max_kerzen else
+               "Der verlangte Abschnitt ist zu kurz - weniger weit einschneiden")
+        return ("Fenster zu klein fuer %s: %s - %s. %s"
+                % (spur, ", ".join(zu_klein), quelle, rat))
+    return ("Keine Kerzen fuer %s - die Historie ist zu kurz (%s) UND das "
+            "Fenster zu klein (%s): %s"
+            % (spur, ", ".join(fehlen) or "-", ", ".join(zu_klein) or "-",
+               quelle))
+
+
 def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     """{inst: [kerzen]} aus der eigenen Historie, aufsteigend.
 
     Fehlt eine Reihe, wird sie GEMELDET und das Instrument faellt aus dem Lauf
-    - nie still durch ein anderes Instrument ersetzt.
+    - nie still durch ein anderes Instrument ersetzt. Bleibt KEINE Reihe
+    uebrig, wirft die Funktion `HistorieFehlt` mit dem Grund im Text (Historie
+    zu kurz ODER verlangtes Fenster zu klein) - ein leerer Rueckgabewert waere
+    ein Lauf mit 0 Runden und damit ein falsches Messergebnis.
 
     `max_kerzen` schneidet die JUENGSTEN N Kerzen heraus. Das ist kein
     Schaetzen, sondern die Laufzeit: die Spuren rechnen ihre Indikatoren je
@@ -254,9 +395,19 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     """
     insts = _instrumente(w)
     takt = _takt(w)
-    aus, fehlen = {}, []
+    brauch = bedarf(w)
+    aus, fehlen, zu_klein = {}, [], []
     for inst in insts:
         reihen = historie_binance.lade(inst, takt)
+        # Die Laenge auf der PLATTE entscheidet, ob die Historie fehlt - erst
+        # danach schneiden `bis_ms`, `abschnitt` und `max_kerzen`. Andersherum
+        # gelesen entsteht ein falscher Befund: mit `--max-kerzen 200` blieben
+        # 200 Kerzen uebrig, die Pruefung schlug an, und der Lauf meldete
+        # "keine Historie fuer supertrend - erst auffuellen", waehrend 12.559
+        # Kerzen auf der Platte lagen und nur das FENSTER zu klein war
+        # (gemessen 01.10.2026). Der Leser folgt sonst einer Anweisung, die
+        # nichts aendert.
+        gehabt = len(reihen)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
         if abschnitt:
@@ -264,12 +415,21 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
             reihen = reihen[int(von):int(bis)]
         if max_kerzen:
             reihen = reihen[-int(max_kerzen):]
-        if len(reihen) < int(w.get("mindest_kerzen", 300)) + 20:
-            fehlen.append("%s (%d Kerzen)" % (inst, len(reihen)))
+        if gehabt < brauch:
+            fehlen.append("%s (%d Kerzen)" % (inst, gehabt))
+            continue
+        if len(reihen) < brauch:
+            zu_klein.append("%s (%d Kerzen)" % (inst, len(reihen)))
             continue
         aus[inst] = reihen
     if fehlen:
         print("  ohne Historie: %s" % ", ".join(fehlen))
+    if zu_klein:
+        print("  Fenster zu klein: %s" % ", ".join(zu_klein))
+    if not aus:
+        # Kein stiller Rueckfall auf ein anderes Instrument und kein leerer
+        # Lauf: wer 0 Runden sieht, haelt es sonst fuer ein Messergebnis.
+        raise HistorieFehlt(mangel_text(spur, w, fehlen, zu_klein, max_kerzen))
     return aus
 
 
@@ -516,6 +676,97 @@ def auf_der_marke(journal_pfad):
     return {"ausstiege_an_marke": trifft, "ausstiege": ausstiege}
 
 
+def docht_beruehrung_ohne_schluss(kerze, seite, stop, ziel):
+    """Zaehlernebennachfrage (T-202): Hat diese Kerze eine Marke NUR mit dem
+    Docht beruehrt und darueber geschlossen - also ohne dass der Schluss
+    jenseits der Marke stand?
+
+    Das ist gerade NICHT der Fall eines Ausstiegs: der Ausloeser bleibt der
+    Kerzenschluss. Eine Kerze, die eine Marke nur mit dem Docht streift (ihr
+    Hoch/Tief die Marke kreuzt) und zurueckschlaegt, loest weiterhin nichts
+    aus. Diese Funktion zaehlt genau diesen Fall als Messung - ein Ausstieg
+    am Docht waere der naechste Schritt, macht die Zahlen aber strenger und
+    weicht vom Live-Verhalten ab (Entscheidung Max, siehe TASKS.md T-202).
+
+    Rueckgabe True, wenn die Kerze eine Marke nur mit dem Docht beruehrt hat
+    (Hoch/Tief), der Schluss aber NICHT jenseits der Marke steht. False sonst
+    (keine Beruehrung, oder die Kerze hat sie mit dem Schluss beruehrt).
+
+    `kerze` ist eine Binance-Reihe [ts, o, h, l, c, v]; `seite` ist
+    "long"/"short"; `stop` und `ziel` die Marken als Zahlen.
+    """
+    if not kerze or len(kerze) < 5:
+        return False
+    seite = str(seite or "").strip().lower()
+    if seite not in ("long", "short"):
+        return False
+    hoch, tief, schluss = (_zahl(kerze[2]), _zahl(kerze[3]),
+                           _zahl(kerze[4]))
+    stop, ziel = _zahl(stop), _zahl(ziel)
+    if None in (hoch, tief, schluss, stop, ziel):
+        return False
+    if seite == "long":
+        # Stop unter dem Einstieg: Docht-Tief streift den Stop, Schluss darueber.
+        if tief <= stop:
+            return schluss > stop
+        if hoch >= ziel:
+            return schluss < ziel
+    else:
+        if hoch >= stop:
+            return schluss < stop
+        if tief <= ziel:
+            return schluss > ziel
+    return False
+
+
+def docht_ausstiege_anwenden(z, kerze, inst, huelle, zeit):
+    """T-202: Positionen schliessen, deren Marke NUR am Docht beruehrt wurde.
+
+    Der Ausloeser der Spuren ist der Kerzenschluss (`pruefe_ausstiege` prueft
+    `k[-1][4]`). Eine Kerze, die eine Marke nur mit dem Docht streift (Hoch/Tief
+    kreuzt die Marke) und darueber schliesst, loest dort nichts aus. Diese
+    Funktion schliesst genau diese Positionen NACH `pruefe_ausstiege` - der
+    Replay bildet damit den Docht-Ausstieg ab, ohne die Spur anzufassen.
+
+    Der Ausstieg geschieht am KURS DER MARKE (wie die Beruehrungsregel T-177),
+    nicht am Kerzenschluss. Die Journalzeile geht durch die Huelle, damit sie
+    dieselbe Berichtigung bekommt wie jeder andere Markenausstieg.
+
+    Rueckgabe: die Zahl der so geschlossenen Positionen.
+    """
+    geschlossen = 0
+    behalten = []
+    for p in z.get("positionen", []):
+        if p.get("inst") != inst:
+            behalten.append(p)
+            continue
+        marke = beruehrte_marke(kerze, p.get("seite"), p.get("stop"),
+                                p.get("ziel"))
+        if marke is None:
+            behalten.append(p)
+            continue
+        # Nur der reine Docht-Fall: die Marke ist beruehrt, aber der Schluss
+        # steht NICHT jenseits der Marke (sonst haette pruefe_ausstiege schon
+        # geschlossen).
+        if not docht_beruehrung_ohne_schluss(kerze, p.get("seite"),
+                                             p.get("stop"), p.get("ziel")):
+            behalten.append(p)
+            continue
+        kurs = round(_zahl(p.get("stop")) if marke == "stop"
+                     else _zahl(p.get("ziel")), 6)
+        vz = 1 if p.get("seite") == "long" else -1
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+        erloes = p["nominal"] + gv
+        huelle(zeit=zeit, modus="papier", aktion="verkauf", inst=inst,
+               seite=p.get("seite"), preis=_preis_text(kurs, "%.6f" % kurs),
+               einsatz_usd="%.2f" % erloes, stop="%.6f" % p.get("stop"),
+               ziel="%.6f" % p.get("ziel"),
+               stop_pct="%.2f" % p.get("stop_pct", 0.0), grund=marke)
+        geschlossen += 1
+    z["positionen"] = behalten
+    return geschlossen
+
+
 def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
            max_kerzen=None, fenster=None, abschnitt=None):
     """Familie A ueber die Historie. Rueckgabe wie backtest_prognose.lauf().
@@ -542,10 +793,9 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
     w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
     if wachen_patch:
         w.update(wachen_patch)
+    # Der Grund der Verweigerung kommt aus `kerzen_fuer` (Historie fehlt oder
+    # Fenster zu klein) - hier keinen zweiten, schwaecheren Text daneben.
     kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen, abschnitt)
-    if not kerzen:
-        raise RuntimeError("keine Historie fuer %s - erst "
-                           "'python historie_binance.py --auffuellen'" % spur)
     if fenster is None:
         fenster = fenster_vorgabe(w)
 
@@ -568,6 +818,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
         kerzen_jetzt,
         lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
     modul.journal = huelle
+    zurueck_kennung = kennung_fest()
     alt_zeit = getattr(modul, "zeit_quelle", None)
     hat_zeit = hasattr(modul, "zeit_quelle")
     z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
@@ -590,29 +841,13 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
             kerzen_jetzt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             modul.pruefe_ausstiege(z, k, w, nur=inst)
-            nachher = {id(p) for p in z["positionen"]}
-            for pid, p in vorher.items():
-                if pid not in nachher and pid in offen:
-                    e = offen.pop(pid)
-                    kerze = k[-1]
-                    # Der Ausstieg geschieht am KURS DER MARKE (Stop bzw.
-                    # Ziel), nicht am Kerzenschluss - siehe Regel oben.
-                    # Ohne Marke in der Kerze bleibt es beim Schluss.
-                    kurs = kurs_der_marke(kerze, e["seite"], e["stop"],
-                                          e["ziel"])
-                    if kurs is None:
-                        kurs = kerze[4]
-                    vz = 1 if e["seite"] == "long" else -1
-                    roh = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
-                    runden.append({
-                        "inst": inst, "seite": e["seite"],
-                        "einstieg": e["einstieg"], "ausstieg": kurs,
-                        "nominal": e["nominal"], "stop_pct": e["stop_pct"],
-                        "brutto_pct": roh, "netto_pct": roh - 2 * gebuehr_pct,
-                        "gv_brutto": e["nominal"] * roh / 100.0,
-                        "gv_netto": e["nominal"] * (roh - 2 * gebuehr_pct) / 100.0,
-                        "ein_ts": e["ts"], "aus_ts": k[-1][0],
-                        "stunden": (k[-1][0] - e["ts"]) / 3600000.0})
+            docht_ausstiege_anwenden(
+                z, k[-1], inst, huelle,
+                dt.datetime.fromtimestamp(
+                    ts_schritt / 1000.0, dt.timezone.utc)
+                .isoformat(timespec="seconds"))
+            _ausstiege_buchen(offen, runden, vorher, z, k[-1],
+                              gebuehr_pct, inst)
             vor_ids = {id(p) for p in z["positionen"]}
             modul.pruefe_einstieg(inst, k, z, w, 1.0)
             for p in z["positionen"]:
@@ -626,6 +861,7 @@ def lauf_a(spur, gebuehr_pct, lauf, bis_ms=None, wachen_patch=None,
                                     "ts": k[-1][0]}
     if hat_zeit:
         modul.zeit_quelle = alt_zeit
+    zurueck_kennung()
     _journal_schreiben(ordner, gesammelt)
     return runden, len(z["positionen"])
 
@@ -671,14 +907,26 @@ BOERSENSAETZE = {
 SPUR_BOERSE = {
     # OKX Spot (USDC-Paare)
     "scanner": "okx_spot", "squeeze": "okx_spot", "wavetrend": "okx_spot",
-    "macd_mtf": "okx_spot", "supertrend": "okx_spot", "orb": "okx_spot",
+    "macd_mtf": "okx_spot", "supertrend": "okx_spot",
+    # gitter stand hier bis 01.10.2026 falsch: es handelt BTC-USDT auf dem
+    # OKX-SPOT (seine eigene wachen.json sagt es, und seine _kosten nennen
+    # 0,1 %), bekam als Perp-Spur aber nur den halben Satz gerechnet.
+    "gitter": "okx_spot", "iv_wand": "okx_spot",
+    "moondev_topmovers": "okx_spot", "moondev_listingarb": "okx_spot",
     # OKX Perp/Swap und Deribit
-    "gitter": "okx_perp", "liq_wand": "okx_perp", "trendwende_btc": "okx_perp",
+    "liq_wand": "okx_perp", "trendwende_btc": "okx_perp",
     "swap": "okx_perp", "xperp": "okx_perp", "iv_waelle": "okx_perp",
-    "moondev_funding": "okx_perp", "moondev_listingarb": "okx_perp",
-    "moondev_topmovers": "okx_perp", "moondev_sniper": "okx_perp",
-    "moondev_signalwelle": "okx_perp", "moondev_whale": "okx_perp",
+    # orb handelt BTC-USDT-SWAP / ETH-USDT-SWAP (Perp), stand hier falsch
+    # unter okx_spot - der eigene Wert (0.0005) hat Vorrang, die Zuordnung
+    # greift nur, wenn kein Feld da ist.
+    "orb": "okx_perp",
+    "moondev_funding": "okx_perp", "moondev_whale": "okx_perp",
     "moondev_liquidation": "okx_perp", "moondev_sentiment": "okx_perp",
+    "moondev_signalwelle": "okx_perp", "moondev_sniper": "okx_perp",
+    "klassik_sma": "okx_perp", "klassik_ema": "okx_perp",
+    "klassik_macd": "okx_perp", "klassik_bollinger": "okx_perp",
+    "klassik_donchian": "okx_perp", "klassik_rsi": "okx_perp",
+    "klassik_rsi2": "okx_perp", "klassik_donchian_trend": "okx_perp",
     # Kraken Spot (EUR)
     "orbk": "kraken", "kraken": "kraken", "mosaic": "kraken",
     "moondev_marktlage": "kraken",
@@ -786,6 +1034,15 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     if max_kerzen:
         alle = {i: k[-int(max_kerzen):] for i, k in alle.items()}
 
+    # Dieselbe Lehre wie in `kerzen_fuer`, hier fuer Familie B: die Schleife
+    # unten laeuft von `mindest_kerzen` bis ans Ende - ein Fenster unter dem,
+    # was die Spur braucht, laesst sie LEER laufen und der Lauf meldet
+    # "0 Runden". Das sieht wie ein Messergebnis aus und ist keins.
+    laenge = min(len(k) for k in alle.values())
+    if laenge < bedarf(w):
+        zu_klein = ["%s (%d Kerzen)" % (i, len(k)) for i, k in alle.items()]
+        raise HistorieFehlt(mangel_text(spur, w, [], zu_klein, max_kerzen))
+
     alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
     alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
     alt_journal = spur_buch.journal
@@ -793,7 +1050,6 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     zugriff = {"bis_ms": 0, "fenster": fenster, "kerzen": {}}
     quelle = historische_quelle(modul, spur, zugriff)
     puffer = io.StringIO()
-    laenge = min(len(k) for k in alle.values())
     try:
         spur_buch.SCHREIBEN = True      # ins BACKTEST-Journal, nicht ins echte
         spur_buch.spiegeln = lambda *a, **k: None
@@ -1044,6 +1300,349 @@ def lauf_c(spur, gebuehr_pct, lauf, von_ms=None, bis_ms=None, still=True,
     return k, len(puffer.getvalue().splitlines())
 
 
+# --- Familie D: mehrere Kerzenreihen oder eine eigene Rechnung --------------
+#
+# Zwei Spuren liessen sich bis 01.10.2026 nicht nachrechnen - beide aus
+# demselben Grund: ihre Fahrweise passt nicht in den EINEN Aufruf
+# `pruefe_einstieg(inst, k, z, w, faktor)` / `pruefe_ausstiege(z, k, w)`.
+#
+#   mosaic  braucht DREI Kerzenreihen (4H/30M/5M). Mit fuenf Argumenten riss
+#           der Aufruf beim ersten Einstieg mit TypeError ab.
+#   gitter  hat gar kein `pruefe_einstieg`: seine Rechnung liegt in `walk()`
+#           (Leiter, Stufen, Kaeufe/Verkaeufe) - `handeln.py` kennt nur
+#           `lade_wachen()`.
+#
+# Auch hier entscheidet die SPUR; der Replay liefert nur Zeit und Daten.
+# Nichts wird nachgebaut.
+
+# Kerzendauer der Takte, die `historie_binance.TAKTE` kennt.
+MS_JE_TAKT = {"5M": 300_000, "15M": 900_000, "30M": 1_800_000,
+              "1H": 3_600_000, "4H": 14_400_000, "1D": 86_400_000}
+
+# Spuren mit mehreren Kerzenreihen. Die Reihen kommen aus EINER Basisreihe und
+# werden auf dieselbe Zeitachse verdichtet - kein Versatz, keine zweite
+# Datenquelle.
+#
+# Eine groebere Kerze zaehlt erst, wenn sie ABGESCHLOSSEN ist. Waere die
+# laufende 4H-Kerze dabei, saehe der Backtest den Rest der Stunde, den die Spur
+# live noch nicht kennt - ein Blick in die Zukunft, und er entwertet jede
+# Kennzahl darauf.
+MEHRZEITRAHMEN = {
+    "mosaic": {
+        "basis": "5M",
+        "reihen": (("k4", "4H"), ("k30", "30M"), ("k5", "5M")),
+        # Argumentordnung von pruefe_einstieg NACH `inst`
+        # (mosaic/handeln.py: pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)).
+        "einstieg": ("k4", "k30", "k5"),
+        # pruefe_ausstiege bekommt genau EINE Reihe (mosaic/handeln.py).
+        "ausstieg": "k5",
+    },
+}
+
+# Spuren, die ihre Rechnung SELBST mitbringen (`walk()`), aber keine
+# pruefe_einstieg/-ausstiege haben.
+EIGENE_RECHNUNG = ("gitter",)
+
+# Raster der Boerse fuer gitter. Der Replay darf keine Boerse fragen; die
+# Zahlen sind dieselben, die gitter/backtest_gitter.py fuer seinen Lauf
+# benutzt (dort INST, Zeile 29).
+GITTER_RASTER = {"BTC-USDT": {"instId": "BTC-USDT", "tickSz": 0.1,
+                              "lotSz": 0.00000001, "minSz": 0.00001}}
+
+
+def _ausstiege_buchen(offen, runden, vorher, z, kerze, gebuehr_pct, inst):
+    """Ausgestiegene Positionen als Runde buchen - EINE Stelle fuer beide Wege.
+
+    `vorher` ist das Buch VOR dem Ausstiegsaufruf ({id(position): position}),
+    `kerze` die Kerze dieses Schritts. Der Ausstieg geschieht am KURS DER
+    MARKE (Stop bzw. Ziel), nicht am Kerzenschluss - ohne Marke in der Kerze
+    bleibt es beim Schluss.
+    """
+    nachher = {id(p) for p in z["positionen"]}
+    for pid, p in vorher.items():
+        if pid in nachher or pid not in offen:
+            continue
+        e = offen.pop(pid)
+        kurs = kurs_der_marke(kerze, e["seite"], e["stop"], e["ziel"])
+        if kurs is None:
+            kurs = kerze[4]
+        vz = 1 if e["seite"] == "long" else -1
+        roh = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz
+        runden.append({
+            "inst": inst, "seite": e["seite"],
+            "einstieg": e["einstieg"], "ausstieg": kurs,
+            "nominal": e["nominal"], "stop_pct": e["stop_pct"],
+            "brutto_pct": roh, "netto_pct": roh - 2 * gebuehr_pct,
+            "gv_brutto": e["nominal"] * roh / 100.0,
+            "gv_netto": e["nominal"] * (roh - 2 * gebuehr_pct) / 100.0,
+            "ein_ts": e["ts"], "aus_ts": kerze[0],
+            "stunden": (kerze[0] - e["ts"]) / 3600000.0})
+
+
+def verdichten(basis, takt):
+    """Groebere Kerzen aus der Basisreihe: [start_ts, o, h, t, c, v]."""
+    dauer = MS_JE_TAKT[takt]
+    aus = []
+    for r in basis:
+        b = (int(r[0]) // dauer) * dauer
+        if aus and aus[-1][0] == b:
+            k = aus[-1]
+            if r[2] > k[2]:
+                k[2] = r[2]
+            if r[3] < k[3]:
+                k[3] = r[3]
+            k[4] = r[4]
+            k[5] = k[5] + r[5]
+        else:
+            aus.append([b, r[1], r[2], r[3], r[4], r[5]])
+    return aus
+
+
+def bedarf_mehrzeitrahmen(spec, w):
+    """Basis-Kerzen, die noetig sind - die groebere Reihe bestimmt sie.
+
+    mosaic sieht je Reihe `mindest_kerzen` Kerzen; fuer 300 4H-Kerzen braucht
+    die 5m-Basis 300 x 48. Wer hier nur `bedarf()` fragt, laesst den Lauf mit
+    halb gefuellten 4H-Reihen starten - und mosaic rechnet dann auf einem
+    Zustand, den es im Betrieb nie gibt.
+    """
+    grund = int(w.get("mindest_kerzen", 300)) + KERZEN_PUFFER
+    faktor = max(MS_JE_TAKT[t] // MS_JE_TAKT[spec["basis"]]
+                 for _n, t in spec["reihen"])
+    return grund * max(1, faktor)
+
+
+def kerzen_mehrzeitrahmen(spur, spec, w, bis_ms=None, max_kerzen=None):
+    """{inst: basisreihe} - dieselbe Pruefung wie `kerzen_fuer`, andere Basis."""
+    insts = _instrumente(w)
+    brauch = bedarf_mehrzeitrahmen(spec, w)
+    aus, fehlen, zu_klein = {}, [], []
+    for inst in insts:
+        reihen = historie_binance.lade(inst, spec["basis"])
+        gehabt = len(reihen)
+        if bis_ms:
+            reihen = [r for r in reihen if r[0] <= bis_ms]
+        if max_kerzen:
+            reihen = reihen[-int(max_kerzen):]
+        if gehabt < brauch:
+            fehlen.append("%s (%d Kerzen)" % (inst, gehabt))
+            continue
+        if len(reihen) < brauch:
+            zu_klein.append("%s (%d Kerzen)" % (inst, len(reihen)))
+            continue
+        aus[inst] = reihen
+    if fehlen:
+        print("  ohne Historie: %s" % ", ".join(fehlen))
+    if zu_klein:
+        print("  Fenster zu klein: %s" % ", ".join(zu_klein))
+    if not aus:
+        raise HistorieFehlt(
+            "Historie fehlt oder ist zu kurz fuer %s: %s - die Spur braucht "
+            "%d Kerzen der %s-Basis (mindest_kerzen %s je Reihe, die groebere "
+            "Reihe bestimmt den Faktor). Erst nachladen: "
+            "'python historie_binance.py --auffuellen --takte %s'"
+            % (spur, ", ".join(fehlen + zu_klein) or "-", brauch,
+               spec["basis"], w.get("mindest_kerzen", 300), spec["basis"]))
+    return aus
+
+
+def lauf_mehrzeitrahmen(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None,
+                        wachen_patch=None, fenster=None):
+    """Familie D, Fall 1: die Spur sieht MEHRERE Kerzenreihen je Schritt.
+
+    Rueckgabe wie `lauf_a`: (runden, Zahl der offenen Positionen).
+    """
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf)
+    schuetze(modul, ordner)
+    spec = MEHRZEITRAHMEN[spur]
+    w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
+    if wachen_patch:
+        w.update(wachen_patch)
+    if fenster is None:
+        fenster = int(w.get("mindest_kerzen", 300))
+    kerzen = kerzen_mehrzeitrahmen(spur, spec, w, bis_ms, max_kerzen)
+
+    verdichtet, starts = {}, {}
+    for _name, takt in spec["reihen"]:
+        if takt == spec["basis"]:
+            continue
+        verdichtet[takt] = {i: verdichten(r, takt) for i, r in kerzen.items()}
+        starts[takt] = {i: [k[0] for k in v]
+                        for i, v in verdichtet[takt].items()}
+
+    runden, offen, gesammelt = [], {}, []
+    zustand_ts = {"ts": None}
+    kerzen_jetzt = {}
+    huelle = Beruehrungsjournal(
+        kerzen_jetzt,
+        lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
+    modul.journal = huelle
+    zurueck_kennung = kennung_fest()
+    alt_zeit = getattr(modul, "zeit_quelle", None)
+    hat_zeit = hasattr(modul, "zeit_quelle")
+    z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
+         "verluste_usd": 0.0}
+
+    for inst, basis in kerzen.items():
+        zeitachse = [b[0] for b in basis]
+        # Erster Schritt: erst wenn JEDE Reihe `fenster` Kerzen hat.
+        beginn = fenster - 1
+        for _name, takt in spec["reihen"]:
+            if takt == spec["basis"]:
+                continue
+            st = starts[takt][inst]
+            if len(st) < fenster:
+                raise HistorieFehlt(
+                    "Reihe %s zu kurz fuer %s: %d statt %d Kerzen - "
+                    "Historie nachladen" % (takt, spur, len(st), fenster))
+            grenze = st[fenster - 1] + MS_JE_TAKT[takt]
+            beginn = max(beginn, bisect.bisect_left(zeitachse, grenze))
+        for i in range(beginn, len(basis)):
+            ts = basis[i][0]
+            zustand_ts["ts"] = ts
+            if hat_zeit:
+                modul.zeit_quelle = lambda _t=ts: dt.datetime.fromtimestamp(
+                    _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+            jetzt = {}
+            for name, takt in spec["reihen"]:
+                if takt == spec["basis"]:
+                    jetzt[name] = basis[max(0, i + 1 - fenster):i + 1]
+                else:
+                    n = bisect.bisect_right(starts[takt][inst],
+                                            ts - MS_JE_TAKT[takt])
+                    jetzt[name] = verdichtet[takt][inst][max(0, n - fenster):n]
+            kerzen_jetzt[inst] = jetzt[spec["ausstieg"]][-1]
+            vorher = {id(p): p for p in z["positionen"]}
+            modul.pruefe_ausstiege(z, jetzt[spec["ausstieg"]], w, nur=inst)
+            _ausstiege_buchen(offen, runden, vorher, z,
+                              jetzt[spec["ausstieg"]][-1], gebuehr_pct, inst)
+            vor_ids = {id(p) for p in z["positionen"]}
+            modul.pruefe_einstieg(
+                inst, *[jetzt[n] for n in spec["einstieg"]], z, w, 1.0)
+            for p in z["positionen"]:
+                if id(p) not in vor_ids:
+                    offen[id(p)] = {"seite": p["seite"],
+                                    "einstieg": p["einstieg"],
+                                    "nominal": p["nominal"],
+                                    "stop_pct": p.get("stop_pct", 0.0),
+                                    "stop": p.get("stop"),
+                                    "ziel": p.get("ziel"),
+                                    "ts": jetzt[spec["ausstieg"]][-1][0]}
+    if hat_zeit:
+        modul.zeit_quelle = alt_zeit
+    zurueck_kennung()
+    _journal_schreiben(ordner, gesammelt)
+    return runden, len(z["positionen"])
+
+
+def _gitter_zustand(modul, kurs, w, inst):
+    """Zustand mit gebauter Leiter - die Struktur, die `walk()` erwartet.
+
+    Wortgleich zu gitter/backtest_gitter.py::leiter_zustand; nur das Raster
+    kommt aus GITTER_RASTER statt aus einer festen Konstanten.
+    """
+    raster = dict(GITTER_RASTER.get(inst, GITTER_RASTER["BTC-USDT"]))
+    raster["instId"] = inst
+    leiter = modul.leiter_bauen(kurs, w, raster)
+    einsatz = float(w.get("einsatz_usd", 1000.0))
+    return {
+        "instrument": inst, "modus": "backtest",
+        "kasse_usd": einsatz, "startwert_usd": einsatz,
+        "leiter": {k: leiter[k] for k in ("unten", "oben", "stufen", "preise",
+                                          "mengen", "zustand",
+                                          "schritt_prozent",
+                                          "einsatz_in_orders",
+                                          "stufen_ohne_menge")},
+        "lose": {}, "kaeufe": 0, "verkaeufe": 0, "zyklen": 0,
+        "gw_usd": 0.0, "verluste_usd": 0.0, "bestand": 0.0,
+        "letzte_kerze_ts": -1, "letzter_kurs": None,
+    }
+
+
+def lauf_eigene_rechnung(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None,
+                         wachen_patch=None):
+    """Familie D, Fall 2: die Spur bringt ihr eigenes `walk()` mit (gitter).
+
+    Der Replay liefert Kerzen und Uhr; entschieden und gebucht wird in der
+    Spur. `walk()` laeuft je KERZE einmal (nicht einmal ueber alles): nur so
+    laesst sich die Uhr vor jeden Schritt setzen, und das Journal ist
+    reproduzierbar statt von der Wanduhr abhaengig.
+
+    Rueckgabe: Kennzahlen des Gitters (dieselben Groessen wie
+    gitter/backtest_gitter.py) - `kosten_wendepunkt` kann dieses Journal NICHT
+    auswerten, weil eine Gitterstufe keinen Stop und kein Ziel hat.
+    """
+    modul = spur_modul(spur)
+    ordner = buch_ordner(spur, lauf)
+    schuetze(modul, ordner)
+    w = wachen_von(spur)
+    if wachen_patch:
+        w.update(wachen_patch)
+    # Der Gebuehrensatz des Replays gilt; die Slippage bleibt die der Spur
+    # (sie ist eine Annahme der Spur, kein Messwert des Replays).
+    w["gebuehr_pct"] = float(gebuehr_pct)
+    kerzen = kerzen_fuer(spur, w, bis_ms, max_kerzen)
+
+    gesammelt = []
+    uhr = {"ts": 0}
+    zustand_ts = {"ts": None}
+
+    def _journal(**f):
+        gesammelt.append(dict(f, _kerzen_ts=uhr["ts"]))
+
+    modul.journal = _journal
+    alt_jetzt = modul._jetzt
+    alt_raster = modul.instrument_quelle
+    modul._jetzt = lambda: dt.datetime.fromtimestamp(uhr["ts"] / 1000.0,
+                                                     dt.timezone.utc)
+    modul.instrument_quelle = lambda inst: dict(
+        GITTER_RASTER.get(inst, GITTER_RASTER["BTC-USDT"]))
+    fkauf, _fverkauf = modul.kostenfaktoren(w)
+    takt = _takt(w)
+
+    zahlen = {"kaeufe": 0, "verkaeufe": 0, "zyklen": 0, "gw_usd": 0.0,
+              "kerzen": 0, "verluste_usd": 0.0, "buchwert": 0.0,
+              "einsatz": float(w.get("einsatz_usd", 1000.0)),
+              "start": None, "ende": None, "offen": 0, "stufen": None,
+              "schritt_pct": None}
+    try:
+        for inst, reihen in kerzen.items():
+            z = _gitter_zustand(modul, reihen[0][4], w, inst)
+            for k in reihen:
+                uhr["ts"] = k[0]
+                zustand_ts["ts"] = k[0]
+                _z, za = modul.walk(z, [k], w, takt)
+                for feld in ("kaeufe", "verkaeufe", "zyklen", "kerzen"):
+                    zahlen[feld] += za[feld]
+                zahlen["gw_usd"] += za["gw_usd"]
+            zahlen["offen"] += len(z.get("lose") or {})
+            zahlen["verluste_usd"] += float(z.get("verluste_usd", 0.0))
+            zahlen["buchwert"] += modul.buchwert(z, reihen[-1][4])
+            if zahlen["start"] is None:
+                zahlen["start"] = reihen[0][4]
+                zahlen["stufen"] = z["leiter"]["stufen"]
+                zahlen["schritt_pct"] = z["leiter"]["schritt_prozent"]
+            zahlen["ende"] = reihen[-1][4]
+    finally:
+        modul._jetzt = alt_jetzt
+        modul.instrument_quelle = alt_raster
+    _journal_schreiben(ordner, gesammelt)
+
+    ein = zahlen.pop("einsatz")
+    buch = zahlen["buchwert"]
+    zahlen["runden"] = zahlen["zyklen"]
+    zahlen["ergebnis"] = buch - ein
+    zahlen["rendite_pct"] = (buch / ein - 1) * 100.0 if ein else 0.0
+    zahlen["halten_pct"] = ((zahlen["ende"] / zahlen["start"] - 1) * 100.0
+                            if zahlen["start"] else 0.0)
+    zahlen["gebuehr_pct"] = float(gebuehr_pct)
+    zahlen["slippage_pct"] = float(w.get("slippage_pct", 0.0))
+    zahlen["kerzenquelle"] = "binance"
+    zahlen["journalzeilen"] = len(gesammelt)
+    return zahlen
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -1109,6 +1708,21 @@ def gegenprobe(spur, gebuehr_pct, lauf="gegenprobe", max_kerzen=None):
             "kerzenquelle": "binance"}
 
 
+def gebuehr_aufloesen(gebuehr=None, spur=None):
+    """(Satz in Prozent je Seite, woher er kommt).
+
+    Vorgabe ist der GEMESSENE Satz der Spur (`gebuehr_taker` aus ihrer
+    wachen.json, mal 100) - nicht eine Zahl von der Kommandozeile. Bis
+    01.10.2026 stand hier fest 0.1: fuer die vier Indikator-Spuren (OKX-Spot)
+    war das richtig, fuer `mosaic` (Kraken, 0,60 %/Seite) rechnete jeder
+    Backtest damit sechsmal zu guenstig. Ein ausdrueckliches `--gebuehr`
+    schlaegt die Vorgabe (auch `--gebuehr 0`, um die Kosten wegzulassen).
+    """
+    if gebuehr is not None:
+        return float(gebuehr), "--gebuehr (von Hand gesetzt)"
+    return gebuehr_fuer(spur), "wachen.json der Spur (gebuehr_taker)"
+
+
 def main():
     """Nur EIN Weg je Aufruf: die Familien brauchen verschiedene Daten.
 
@@ -1122,7 +1736,10 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--spur", required=True)
     ap.add_argument("--lauf", default="lauf")
-    ap.add_argument("--gebuehr", type=float, default=0.1)
+    ap.add_argument("--gebuehr", type=float, default=None,
+                    help="Prozent je Seite; Vorgabe: der GEMESSENE Satz aus der "
+                         "wachen.json der Spur (gebuehr_taker). Ein eigener Wert "
+                         "schlaegt die Vorgabe, auch 0.")
     ap.add_argument("--max-kerzen", type=int, default=None)
     ap.add_argument("--fenster", type=int, default=None,
                     help="Kerzen je Schritt; Vorgabe: kerzen_anzahl der Spur")
@@ -1144,8 +1761,9 @@ def main():
                          "in der Kopie")
     a = ap.parse_args()
     mk = a.max_kerzen
+    geb, geb_quelle = gebuehr_aufloesen(a.gebuehr, a.spur)
     if a.gegenprobe:
-        print(json.dumps(gegenprobe(a.spur, a.gebuehr, a.lauf, mk),
+        print(json.dumps(gegenprobe(a.spur, geb, a.lauf, mk),
                          indent=2, ensure_ascii=False))
         return
     if a.familie_c:
@@ -1161,15 +1779,59 @@ def main():
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
         return
+    if a.spur in MEHRZEITRAHMEN or a.spur in EIGENE_RECHNUNG:
+        # Familie D wird am SPURNAMEN erkannt, nicht an einem Schalter: die
+        # Fahrweise ist eine Eigenschaft der Spur. Ein Schalter waere eine
+        # zweite Wahrheit - und `--spur mosaic` ohne ihn liefe genau in den
+        # TypeError, den dieser Abschnitt behebt.
+        #
+        # Zwei Fahrweisen unter einem Weg: Mehrzeitrahmen (mosaic) und eigene
+        # Rechnung (gitter). Ein gemeinsamer Vorlauf waere der Fehler - die
+        # zweite braucht keine Kerzenreihen, die erste keine Leiter.
+        if a.spur in MEHRZEITRAHMEN:
+            runden, offen = lauf_mehrzeitrahmen(a.spur, geb, a.lauf,
+                                                max_kerzen=mk,
+                                                fenster=a.fenster)
+            print(json.dumps(
+                {"spur": a.spur, "runden": len(runden), "offen": offen,
+                 "gebuehr_pct": geb, "gebuehr_quelle": geb_quelle,
+                 # Das WIRKSAME Fenster, nicht das Argument: ohne --fenster
+                 # setzt die Spur ihre eigene Anforderung (mindest_kerzen).
+                 "fenster": (a.fenster if a.fenster is not None
+                             else int(wachen_von(a.spur).get("mindest_kerzen", 300))),
+                 "kerzenquelle": "binance",
+                 "kennzahlen": kennzahlen(os.path.join(
+                     buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},
+                indent=2, ensure_ascii=False))
+            return
+        if a.spur in EIGENE_RECHNUNG:
+            k = lauf_eigene_rechnung(a.spur, geb, a.lauf, max_kerzen=mk)
+            print(json.dumps({"spur": a.spur, "kennzahlen": k,
+                              "gebuehr_quelle": geb_quelle},
+                             indent=2, ensure_ascii=False))
+            return
     # Erst hier: `lade_wachen` gibt es nur bei den Kerzen-Spuren (Familie A).
+    modul = spur_modul(a.spur)
+    w = dict(modul.lade_wachen()) if hasattr(modul, "lade_wachen") else {}
     fenster = None if a.ganz else a.fenster
     if fenster is None and not a.ganz:
-        w = dict(spur_modul(a.spur).lade_wachen())
         fenster = fenster_vorgabe(w)
-    runden, offen = lauf_a(a.spur, a.gebuehr, a.lauf, max_kerzen=mk,
+    if fenster is not None and fenster < bedarf(w):
+        # Dieselbe Regel wie bei `max_kerzen`: ein Fenster unter dem, was die
+        # Spur braucht, ergibt keinen einzigen Schritt. `fenster_vorgabe`
+        # respektiert die Anforderung der Spur, ein von Hand gesetztes
+        # `--fenster` tat es nicht - der Lauf meldete dann still "0 Runden".
+        raise HistorieFehlt(
+            "Fenster zu klein fuer %s: --fenster %d - die Spur braucht "
+            "mindestens %d Kerzen je Reihe (mindest_kerzen %s + %d). "
+            "--fenster weglassen oder auf %d oder mehr setzen"
+            % (a.spur, fenster, bedarf(w), w.get("mindest_kerzen", 300),
+               KERZEN_PUFFER, bedarf(w)))
+    runden, offen = lauf_a(a.spur, geb, a.lauf, max_kerzen=mk,
                            fenster=fenster)
     print(json.dumps({"spur": a.spur, "runden": len(runden),
-                      "offen": offen, "gebuehr_pct": a.gebuehr,
+                      "offen": offen, "gebuehr_pct": geb,
+                      "gebuehr_quelle": geb_quelle,
                       "fenster": fenster, "kerzenquelle": "binance",
                       "kennzahlen": kennzahlen(os.path.join(
                           buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},
@@ -1177,4 +1839,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except HistorieFehlt as e:
+        # Ein Eingabefehler (Fenster zu klein) oder eine fehlende Historie ist
+        # kein Absturz. Eine Zeile statt eines Tracebacks, Exit 2 - der
+        # Leitstand liest stderr mit und zeigt damit denselben Satz.
+        sys.stdout.flush()          # die Meldungszeilen zuerst, dann der Grund
+        print("replay: %s" % e, file=sys.stderr)
+        sys.exit(2)

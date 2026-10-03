@@ -206,23 +206,68 @@ def quelle(w):
 
 
 def signal(d, w):
-    """Long unter der Wand, short darueber - nur innerhalb des Abstands."""
+    """Long unter der Wand, short darueber - zwischen beiden Grenzen.
+
+    Der UNTERE Rand (`min_ziel_abstand_pct`, Vorgabe 0) ist die Gebuehren-
+    schwelle und kam am 02.10.2026 dazu. Gemessen am eigenen Journal:
+    ohne ihn stiegen 5 von 9 Runden mit 0,015 bis 0,051 % Zielabstand ein -
+    bei OKX-Spot 0,10 % je Seite kostet die Runde allein an Gebuehr 0,20 %.
+    Diese 5 Runden waren netto Verlust (-0,13 bis -0,16 % je Runde), waehrend
+    die 4 mit >= 0,43 % Abstand netto +4,36 % brachten. Der Boden macht die
+    Regel nicht strenger im Sinne "seltener", sondern im Sinne "nicht gegen
+    die Gebuehr handeln".
+
+    Der obere Rand bleibt `max_abstand_pct`: weiter weg als 5 % zieht die Wand
+    nicht mehr, das waere eine Wette auf die Zonen-Anziehung, nicht deren
+    Messung.
+    """
     wand = (d.get("wand") or {}).get("strike")
     spot = d.get("spot")
     if not wand or not spot:
         return None
     abstand = (float(wand) - float(spot)) / float(spot) * 100.0
     grenze = float(w.get("max_abstand_pct", 5.0))
-    if 0 < abstand <= grenze:
+    boden = float(w.get("min_ziel_abstand_pct", 0.0) or 0.0)
+    if boden < abstand <= grenze:
         return "long"
-    if -grenze <= abstand < 0:
+    if -grenze <= abstand < -boden:
         return "short"
     return None
 
 
 def ziel(d, w):
-    """Das Ziel ist die Wand selbst - ein Marktpunkt, kein Vielfaches."""
-    return (d.get("wand") or {}).get("strike")
+    """Das Ziel ist die Wand selbst - ein Marktpunkt, kein Vielfaches.
+
+    `ziel_vor_wand_pct` (Vorgabe 0) setzt das Ziel um diesen Prozentsatz VOR
+    die Wand. Gemessen am Journal 02.10.2026: der Kurs reisst durch die Wand
+    hindurch (Ziel 86000, Verkaeufe bei 86777 / 86043 / 86024 / 86025), weil
+    eine Linie kein Ort ist - an 86000 liegt ein Streifen Preis, in dem
+    Marktabsicherungen und Limiten stehen. Ein Ziel 0,15 % vor der Wand liegt
+    IN diesem Streifen statt auf seiner Kante: derselbe Streffer, aber der
+    Rest der Position laeuft weiter und der Stop bleibt unberuehrt, falls die
+    Wand nicht haelt.
+
+    Der Wert gehoert in die Wachen, nicht in den Code - 0,15 % ist eine
+    WAND-EIGENE Groesse (Strikes liegen bei BTC in 1000er-Schritten, das
+    sind 1,16 % Abstand), bei einer anderen WandGroesse waere derselbe Wert
+    falsch.
+
+    RICHTUNG: "vor der Wand" heisst vor dem Kurs in Laufrichtung. Long kommt
+    von unten, das Ziel muss UNTER der Wand liegen; short kommt von oben,
+    dort muss es UEBER der Wand liegen. Ohne diese Unterscheidung kaeme das
+    Short-Ziel unter dem Einstieg - und `spur_buch.einstieg` wuerde es als
+    Rechenfehler ablehnen (Ziel hinter dem Einstieg).
+    """
+    wand = (d.get("wand") or {}).get("strike")
+    spot = d.get("spot")
+    if not wand or not spot:
+        return None
+    vor = float(w.get("ziel_vor_wand_pct", 0.0) or 0.0)
+    if not vor:
+        return float(wand)
+    # Long: Kurs unter der Wand -> Ziel knapp unter ihr. Short: umgekehrt.
+    richtung = -1.0 if float(spot) < float(wand) else 1.0
+    return float(wand) * (1.0 + richtung * vor / 100.0)
 
 
 # --- Main -------------------------------------------------------------------

@@ -41,21 +41,26 @@ V = {"inst": "XETHZEUR", "einstieg": 3000.0, "eur": 50.0, "stop": 2790.0,
 class BelegStub:
     """Steht fuer freigabebeleg: zeichnet auf, was die Spur verlangt."""
 
-    def __init__(self, erlaubt=True):
+    def __init__(self, erlaubt=True, offen=None):
         self.erlaubt = erlaubt
+        self.offen = offen                # der noch gueltige Beleg (oder None)
         self.ausgestellt = []
         self.geprueft = []
         self.verbraucht = []
 
+    def offener(self, spur):
+        return self.offen
+
     def schreibe(self, spur, seite, paar, menge, preis_max, grund,
-                 gueltig_sekunden=180, preis_min=None, zusatz=None):
+                 gueltig_sekunden=600, preis_min=None, zusatz=None):
         if not self.erlaubt:
             return {"ok": False, "grund": "kein offenes Freigabefenster fuer %s" % spur}
         self.ausgestellt.append({"spur": spur, "seite": seite, "paar": paar,
                                  "menge": menge, "preis_max": preis_max,
                                  "zusatz": zusatz})
-        return {"kennung": "B-1", "spur": spur, "paar": paar, "seite": seite,
-                "menge": menge, "preis_max": preis_max, "zusatz": zusatz or {}}
+        return {"kennung": "B-%d" % len(self.ausgestellt), "spur": spur,
+                "paar": paar, "seite": seite, "menge": menge,
+                "preis_max": preis_max, "zusatz": zusatz or {}}
 
     def pruefe(self, kennung, spur, seite, paar, menge, preis=None):
         self.geprueft.append((kennung, spur, seite, paar, menge, preis))
@@ -148,6 +153,78 @@ class TorTest(unittest.TestCase):
         self.assertAlmostEqual(a["preis_max"], 3150.0)   # 5 % Luft ueber dem Einstieg
         self.assertEqual(a["zusatz"], {"inst": "XETHZEUR", "stop": 2790.0,
                                        "ziel": 3420.0})
+
+    def test_beleg_traegt_den_einsatz(self):
+        """Der Einsatz gehoert in den Beleg (T-283): er reserviert Kapital."""
+        h._beleg_zur_order("XETHZEUR", 0.0166, 3000.0, 2790.0, 3420.0, eur=50.0)
+        self.assertAlmostEqual(self.stub.ausgestellt[-1]["zusatz"]["eur"], 50.0)
+
+
+class NurEinBelegJeZyklusTest(TorTest):
+    """T-283: die kraken-Spur stellt HOECHSTENS EINEN Beleg je Zyklus aus.
+
+    Am 01.10.2026 11:25:51 entstanden neun Belege in einem Lauf (ALGO/AVAX/
+    LINK/TRX/DOT/SUI/LTC/ADA/SOL, je 50 EUR = 450 EUR bei max_gesamt_eur 200);
+    acht davon verschwanden mit dem naechsten `schreibe()`, weil eine Spur nur
+    EINE Belegdatei hat. Das Journal fuehrte neun Kaeufe, ausgefuehrt wurde
+    einer. Ein offener Beleg ist eine beschlossene, noch nicht ausgefuehrte
+    Kaufentscheidung - er belegt einen Platz und bindet Kapital.
+    """
+
+    V2 = {"inst": "XXBTZEUR", "einstieg": 50000.0, "eur": 50.0, "stop": 46000.0,
+          "ziel": 60000.0, "stop_pct": 8.0, "score": 75.0}
+
+    def test_nur_ein_beleg_je_zyklus(self):
+        w = dict(W, order_ueber="mcp")
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V), dict(self.V2)], w, live=True)
+        self.assertEqual(len(self.stub.ausgestellt), 1,
+                         "ein Zyklus darf nur EINEN Beleg ausstellen: %s"
+                         % [a["paar"] for a in self.stub.ausgestellt])
+        self.assertEqual(self.stub.ausgestellt[0]["paar"], "XETHZEUR")
+
+    def test_offener_beleg_belegt_einen_platz(self):
+        """Ein offener Beleg zaehlt als belegter Platz - auch ohne Position."""
+        self.stub.offen = {"kennung": "ALT", "paar": "ETHEUR", "seite": "buy",
+                           "erstellt": "2026-10-01T11:25:51+00:00",
+                           "gueltig_bis": "2026-10-01T11:35:51+00:00",
+                           "zusatz": {"eur": 50.0}}
+        w = dict(W, order_ueber="mcp", max_offene_positionen=1)
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V), dict(self.V2)], w, live=True)
+        self.assertEqual(self.stub.ausgestellt, [],
+                         "ein reservierter Platz darf nicht doppelt verplant werden")
+
+    def test_offener_beleg_reserviert_kapital(self):
+        """Der reservierte Einsatz zaehlt gegen max_gesamt_eur."""
+        self.stub.offen = {"kennung": "ALT", "paar": "ETHEUR", "seite": "buy",
+                           "erstellt": "2026-10-01T11:25:51+00:00",
+                           "gueltig_bis": "2026-10-01T11:35:51+00:00",
+                           "zusatz": {"eur": 50.0}}
+        w = dict(W, order_ueber="mcp", max_gesamt_eur=50)
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V)], w, live=True)
+        self.assertEqual(self.stub.ausgestellt, [],
+                         "50 reserviert + 50 neu > max_gesamt_eur 50")
+
+    def test_verfallener_beleg_blockiert_nicht(self):
+        """Ein abgelaufener/verbrauchter Beleg ist keine Reservierung."""
+        self.stub.offen = None            # freigabebeleg.offener() liefert nur Gueltige
+        w = dict(W, order_ueber="mcp", max_offene_positionen=1)
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V)], w, live=True)
+        self.assertEqual(len(self.stub.ausgestellt), 1,
+                         "nach dem Verfall muss wieder ein Beleg entstehen")
+
+    def test_im_papierlauf_wird_kein_beleg_gezaehlt(self):
+        """Papier kennt keine Belege: die Reservierung gilt nur im Live-Zweig."""
+        self.stub.offen = {"kennung": "ALT", "paar": "ETHEUR", "seite": "buy",
+                           "zusatz": {"eur": 50.0}}
+        w = dict(W, order_ueber="mcp", max_offene_positionen=1)
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V)], w, live=False)
+        self.assertEqual(len(z["positionen"]), 1,
+                         "der Papierlauf darf vom Belegzustand nicht abhaengen")
 
 
 if __name__ == "__main__":

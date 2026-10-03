@@ -73,6 +73,27 @@ class Basis(unittest.TestCase):
         h.bericht_quelle = None
         self.tmp.cleanup()
 
+    def _fenster_zu(self):
+        """Das Zeitfenster stumm schliessen, Guthaben gross (Sperrenkette).
+
+        Der Zustand von `handel_erlaubt`/`freigabe.erfuellt` wird dabei NICHT
+        angefasst: er ist Max' Entscheidung. Wer einen Test gegen ihn baut,
+        meldet jede Entscheidung als Fehler.
+        """
+        import live_perp as lp
+        alt = (lp.sitzung_da, lp.zeitfenster_offen,
+               lp.kraken_perp.schluessel_vorhanden, lp.kraken_perp.guthaben_usd)
+        self.addCleanup(lambda: self._setze(lp, alt))
+        lp.sitzung_da = lambda: False
+        lp.zeitfenster_offen = lambda: False
+        lp.kraken_perp.schluessel_vorhanden = lambda: True
+        lp.kraken_perp.guthaben_usd = lambda: 1000.0
+
+    @staticmethod
+    def _setze(lp, werte):
+        (lp.sitzung_da, lp.zeitfenster_offen,
+         lp.kraken_perp.schluessel_vorhanden, lp.kraken_perp.guthaben_usd) = werte
+
 
 class KandidatenTest(Basis):
     def test_uebernimmt_treffer_mit_richtung(self):
@@ -457,14 +478,28 @@ class StatistikTest(Basis):
 
 
 class SperrenTest(Basis):
-    def test_live_verweigert_ohne_freigabefenster_wort(self):
+    def test_live_nennt_das_freigabefenster_als_eigenen_grund(self):
+        """Der Vertrag hat sich am 01.10.2026 umgedreht.
+
+        Frueher galt: das Wort "Freigabefenster" darf NICHT vorkommen - die
+        Spur hatte keinen Orderpfad, eine Anfrage haette nichts oeffnen
+        koennen. Mit dem Orderweg (Kraken Futures) ist das Fenster ein ECHTER
+        Grund. Es muss ein EIGENER Grund sein, sonst findet
+        `dauerlauf.nur_fenster_fehlt()` nichts.
+
+        NICHT geprueft wird, ob die beiden Haken gesetzt sind: das ist Max'
+        Entscheidung und stand am 01.10.2026 auf true ('auto freigabe erlaubt').
+        Ein Test, der diesen Zustand einfriert, wird bei jeder Entscheidung rot
+        statt bei einem Fehler.
+        """
+        self._fenster_zu()
         z = h.lade_zustand()
         w = h.lade_wachen()
         g = h.sperren_live(w, z)
-        self.assertTrue(g)
-        # Das entscheidende Wort darf nicht vorkommen, sonst wuerde der
-        # Dauerlauf eine Freigabe anfragen, die nichts oeffnen kann.
-        self.assertNotIn("Freigabefenster", "; ".join(g))
+        fenster = [x for x in g if "Freigabefenster" in x]
+        self.assertEqual(1, len(fenster), g)
+        # Der Satz nennt nur das Fenster, keine zweite Ursache.
+        self.assertIn("keine Sitzung am Bildschirm", fenster[0])
 
     def test_kill_switch_bei_verlustgrenze(self):
         z = h.lade_zustand()
@@ -474,14 +509,25 @@ class SperrenTest(Basis):
         self.assertTrue(any("Kill-Switch" in x for x in g))
 
     def test_live_modus_handelt_papier(self):
-        # --live auf einer papierfesten Spur: es wird Papier gehandelt und
-        # der Modus im Zustand bleibt papier - kein Orderpfad erreichbar.
+        """--live ohne offenes Zeitfenster: es wird Papier gehandelt.
+
+        Der Test hiess frueher: '--live auf einer papierfesten Spur' und
+        stuetzte sich darauf, dass handel_erlaubt=false ist. Seit dem
+        01.10.2026 sind beide Haken gesetzt - der Papierzweig kommt jetzt aus
+        dem GESCHLOSSENEN Zeitfenster. Geprueft wird die Wirkung: kein
+        Live-Einstieg und 'papier' im Zustand.
+        """
+        import live_perp as lp
+        self._fenster_zu()
         h.letzter_kurs_quelle = lambda inst: 94.0
-        h.bericht_quelle = _bericht([])
-        z = h.lade_zustand()
-        w = h.lade_wachen()
-        g = h.sperren_live(w, z)
-        self.assertTrue(g)   # Grund ist immer da (handel_erlaubt=false)
+        h.bericht_quelle = _bericht([
+            _treffer("BTC-USDC", "long", 100.0, 95.0, 110.0)])
+        gerufen = []
+        alt_kaufe, lp.kaufe = lp.kaufe, lambda *a, **k: gerufen.append(a)
+        self.addCleanup(setattr, lp, "kaufe", alt_kaufe)
+        h.lauf("live")
+        self.assertEqual([], gerufen, "es darf kein Live-Einstieg versucht werden")
+        self.assertEqual("papier", h.lade_zustand().get("modus"))
 
 
 class VorschauTest(Basis):
@@ -500,17 +546,19 @@ class VorschauTest(Basis):
         h.bericht_quelle = _bericht([])
         h.letzter_kurs_quelle = lambda inst: 101.0
         # Die --vorschau-Zeile ist die Schnittstelle zu dauerlauf.
-        # nur_fenster_fehlt() liest sie - ohne "Freigabefenster" fragt der
-        # Lauf nie. Das prueft der Quelltext-Test in dauerlauf-naehe nicht,
-        # deshalb hier die gedruckte Zeichenkette.
-        import io
+        # nur_fenster_fehlt() liest sie - ohne das Wort "Freigabefenster"
+        # fragt der Lauf nie, obwohl genau das der einzige Grund waere.
+        # Geprueft wird also der VERTRAG (Zeile da, und sie nennt das Fenster,
+        # wenn das Fenster der Grund ist), nicht ob Max' Haken gesetzt sind.
+        self._fenster_zu()
         import contextlib
+        import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             h.lauf("vorschau")
         out = buf.getvalue()
         self.assertIn("Live waere gesperrt durch:", out)
-        self.assertNotIn("Freigabefenster", out)
+        self.assertIn("Freigabefenster", out)
 
 
 class ZustandsformTest(Basis):

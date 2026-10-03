@@ -2,7 +2,7 @@
 name: kanban-board
 description: Use when ein Kanban-Board oder eine Karte angelegt wird.
 version: 0.1.0
-author: Hermes Agent
+author: Hermes
 license: MIT
 category: brainfiles
 platforms: [windows]
@@ -38,6 +38,28 @@ Ausfuehrung ist ein eigener Betriebssystemprozess mit dem Profil als Identitaet.
 - **Faustregel: hoechstens vier Boards.** Jedes weitere Board kostet Kontext -
   eine Aufgabe verteilt sich dann auf zwei Orte, und niemand weiss mehr, wo er
   nachsehen muss. Ein Board je ARBEITSART, nicht je Ordner.
+
+## Sammel-Triage: eine offene Liste in wenige Karten ueberfuehren
+
+Wenn eine ganze offene Liste (viele `- [ ]`-Punkte aus TASKS.md) als Kanban-
+Karten abgearbeitet werden soll, je THEMA EINE Karte anlegen, nicht je Punkt.
+Das spart Kontext (58 Punkte -> 7 Karten) und verhindert, dass der Dispatcher
+viele Prozesse auf einmal startet.
+
+1. Liste vollstaendig lesen, offene Punkte extrahieren, aufsteigend sortieren
+   (T-Nummer).
+2. Nach ARBEITSART zu 5-8 Karten buendeln. Jede Karte nennt im Body WOERTLICH
+   alle ihre T-Nummern (und Zeilenbereiche aus TASKS.md), die Hausverbote und
+   den Schliess-Auftrag (`aufgabenliste-pflegen/scripts/erledigen.py`).
+3. Body je Karte als Datei nach `cache/scratch/` schreiben, `--body-file` mit
+   dem NATIVEN Pfad (`C:/...`) uebergeben - nie per `--body`.
+4. JEDE Karte mit `--triage` anlegen: das parkt sie, es startet KEIN Prozess.
+5. Nur priority-1-Karten auf Telegram abonnieren, nicht alle.
+6. Nach Freigabe in WELLEN von 3-5 Karten promoten, nicht alles auf einmal.
+
+Was nur eine ENTSCHEIDUNG von Max ist (Loeschen zustimmen, Bindeadresse,
+Modellliste), wird KEINE Karte - es bleibt in TASKS.md und wird im
+Abschlussbericht als offene Entscheidung benannt.
 
 ## Board-Satz des Hauses
 
@@ -183,6 +205,34 @@ Datenbankstand.
 - **Karten ersetzen TASKS.md nicht.** Was nur eine Entscheidung oder einen
   Belegsatz braucht, bleibt in der Liste; sonst stehen die offenen Punkte des
   Hauses an zwei Orten und die Liste luegt.
+- **Ein falscher Flag-Name verwirft `create` ohne etwas anzulegen.**
+  `hermes kanban create` parst alle Argumente vor dem Anlegen; ein einzelner
+  unbekannter Schalter (z. B. `-skill` statt `--skill`) bricht mit
+  `unrecognized arguments` ab. Vor dem ersten Aufruf `--help` gegenlesen.
+- **Viele Karten = viele Worker-Prozesse.** Der Dispatcher startet je ready-
+  Karte einen eigenen Python-Prozess. Darum buendeln und `--triage` nutzen,
+  bis Freigabe erfolgt.
+- **Auto-Decomposer kann `--triage` ignorieren.** Ein installierter
+  Auto-Decomposer zerlegt eine getriagte Karte sofort und aendert dabei
+  Assignee, Workspace und Parents. Nach jedem `create --triage` mit `show`
+  pruefen; `list` allein sagt nicht, ob ein Child-Plan existiert.
+- **Workspace `dir:` muss in `show` bestaetigt werden.** Wird nicht
+  zuverlaessig aus einem vorherigen CLI-Aufruf geerbt. Vor dem Promote
+  `kanban show <id>` auf `workspace_kind: dir` lesen.
+- **Root mit Children ist kein eigener Auftrag.** Sind nach einer
+  Decomposition Child-Tasks vorhanden, die Root nicht noch einmal als
+  eigene Aufgabe promoten. Die Children arbeiten, die Root wartet auf
+  ihre Ergebnisse.
+- **Telegram-Abo gilt je Karte, nicht fuer Children.** Ein Abo auf einer
+  Root-Karte meldet nur deren Events (Zusammenfuehrung), nicht den
+  Fortschritt der einzelnen Child-Tasks.
+- **`list` belegt nur den Datenbankstand.** `show` (Assignee, Events,
+  Workspace), `runs` (Laeufe, Ergebnis) und `log` (Worker-Ausgabe) sind
+  die Lauf-Nachweise. `list` allein beweist keinen laufenden Prozess.
+- **Body-Datei ist Entwurf.** Der vollstaendige Body muss in `show` oder
+  `context` geprueft werden, bevor die Scratch-Datei geloescht wird.
+  Eine falsche `--body-file`-Uebergabe (relativer Pfad, falscher Pfad)
+  zeigt sich nur dort.
 
 ## Einzelkarten-Werkzeuge
 

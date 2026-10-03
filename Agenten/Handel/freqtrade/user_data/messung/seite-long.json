@@ -1,0 +1,7 @@
+{
+  "_zweck": "T-198-Messaufsatz: nur die LANGE Seite, Frequenzbremse aus (sonst waeren die Futures-Zahlen nicht mit dem Spot-Vergleichslauf vergleichbar, der ohne Bremse lief).",
+  "moondev": {
+    "bremse": false,
+    "seite": "long"
+  }
+}

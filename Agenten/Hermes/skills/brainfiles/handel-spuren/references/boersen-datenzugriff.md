@@ -310,15 +310,44 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
 
 - **`okxf._roh` gibt die Liste DIREKT zurueck** (kein `["data"]`-Mantel). Ein
   `.get('data')` darauf ist ein Attributfehler, kein leeres Ergebnis.
+  **Diese drei Regeln gelten fuer BEIDE Module** — `okxf._roh` in `xperp/` und
+  `okx._roh` in `scanner/` haben dieselbe Signatur und dieselbe Antwortform.
+  Der Unterschied ist nur die Quelle: `okxf` liest FUTURES (`instType=FUTURES`,
+  `XPERP`-Namen), `okx` liest SPOT. Wer die Signatur am einen Modul gelesen hat,
+  traegt sie nicht ungeprueft auf das andere — dort kostet es drei Fehlversuche
+  (ein Dict an erster Stelle, fehlendes `signiert=True`, POST statt GET auf
+  einen Konto-Endpunkt), die alle drei wie „keine Daten" aussehen.
 - **Kaufkraft ist `availEq`, nicht `eq`.** `frozenBal` zerfaellt in `isoEq`
-  (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`
-  (OKX-eigene Reserve, Mechanik nicht dokumentiert). Gemessen: `eq` 864,
-  `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei „Live waere gesperrt
-  durch: nichts" melden, weil ihre eigenen Tore offen sind; die Order scheitert
-  dann erst am freien Betrag. Kaufkraft immer in der Waehrung nennen, in der
-  bezahlt wird (Spot-USDC-Kauf und Perp-Margin liegen im selben Konto,
-  `acctLv=2` rechnet je Waehrung).
-- **Bedingte Stops liegen NICHT in `orders-pending`,** sondern nur in
+  (Margin der isolierten Positionen **inklusive** `upl`) und `stgyEq`.
+  Gemessen: `eq` 864, `frozenBal` 856, `availEq` 8,13 — eine Spur kann dabei
+  „Live waere gesperrt durch: nichts" melden, weil ihre eigenen Tore offen sind;
+  die Order scheitert dann erst am freien Betrag. Kaufkraft immer in der
+  Waehrung nennen, in der bezahlt wird (Spot-USDC-Kauf und Perp-Margin liegen
+  im selben Konto, `acctLv=2` rechnet je Waehrung).
+- **`stgyEq` ist das GEWACHSTE Guthaben (Staking/Earn), nicht eine undokumentierte
+  Reserve** — und es ist damit der Grund, warum ein Konto „viel Geld, aber nichts
+  frei" zeigt. Gemessen: `eq` 406,87 USDC bei `stgyEq` 309,98 und `availEq`
+  0,0047; nach dem Unstaken `availEq` 377,03. Wer den Wert als „Reserve"
+  abtut, erklaert ein Guthaben-Tor zum Wunder. Die Staking-INSTANZEN selbst
+  liefert die API auf dem EEA-Host nicht (die `finance/staking-defi`-Positions-
+  und -Orderpfade geben 404) — **die Sperrfrist und der Zinsverlust sind damit
+  nicht abrufbar**, das bleibt eine Kontohandlung des Benutzers. Ein Freimachen
+  ist keine Zuweisung: die erste scharf geschaltete Spur nimmt es im selben
+  Zyklus.
+- **Der Aufruf: das erste Argument ist der PFAD, kein Body.** Signatur
+  `_roh(pfad, methode="GET", body=None, signiert=False)` — ein Dict an erster
+  Stelle bricht mit `TypeError: can only concatenate str (not "dict") to str` ab,
+  und ohne `signiert=True` antwortet die Boerse `50103: OK-ACCESS-KEY can not be
+  empty`.
+- **GET-Parameter gehoeren in den PFAD, nicht in den Body.** Ein
+  POST-Body auf einen Konto-Endpunkt liefert `50115: Invalid request type
+  (HTTP 405)` — die Frage ist dann nicht „keine Daten", sondern „falsche Methode".
+  Richtig: `'/api/v5/account/positions?instType=FUTURES'` mit `signiert=True`.
+- **Bedingte Stops liegen unter `/api/v5/trade/`, nicht unter `/api/v5/account/`.**
+  `/api/v5/account/orders-algo-pending` gibt **404** — und 404 auf diesem Pfad liest
+  sich wie „keine Schutzauftrage vorhanden". Vor dem Befund den Pfad pruefen:
+  `'/api/v5/trade/orders-algo-pending?ordType=conditional'`.
+- **Bedingende Stops liegen NICHT in `orders-pending`,** sondern nur in
   `orders-algo-pending?ordType=conditional`. „0 offene Auftraege" ist damit
   keine Aussage ueber den Schutz einer Position (siehe
   `references/wartende-auftraege-belegen-platz.md`).
@@ -327,6 +356,46 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
   ist keine Position an der Boerse: sie belegt nur einen Platz und laesst jeden
   Ausstieg in einen Boersenfehler laufen. Vor jeder Aussage „die Spur haelt N
   Positionen" die Boerse fragen und die Live-Zeilen im Journal zaehlen.
+
+### OKX WebSocket: die Kerzenkanäle liegen auf dem BUSINESS-Feed
+
+Livestream statt Polling (Event-Trigger, Fuehrpreis-Vergleich). Die Reihenfolge
+vor dem Bauen: erst eine 15-Sekunden-Sonde (connect + subscribe + erste Frames
+ausdrucken), dann Code — sie verifiziert URL, Kanalname und Instrument in einem
+Lauf.
+
+- **`candle<bar>`-Kanaele liegen auf `wss://ws.okx.com:8443/ws/v5/business`,
+  nicht auf `/public`.** Auf `/public` wirft JEDE Kerzen-Subscription
+  `"event":"error" ... doesn't exist` — auch fuer BTC-USDT, waehrend `tickers`
+  dort funktioniert. Wer auf `/public` baut, sieht nie Daten und wird nach
+  30 s still getrennt (code 4004).
+- **Die Marktdaten-Hosts sind GLOBAL.** Regions-Hosts wie `ws.eea.okx.com`
+  loesen im DNS NICHT auf; oeffentliche Kerzen sind nicht konto-gebunden —
+  EEA-Instrumente (BTC-USDC) subscriben sauber am globalen Business-Feed.
+  Der Region-Host kommt erst ins Spiel, wenn ein PRIVATER Kanal gebraucht wird.
+- **Business-Kerzen haben 9 Felder**, `[ts, o, h, l, c, vol, volCcy,
+  volCcyQuote, confirm]`; `confirm` ist das LETZTE Feld (Index 8), `"1"` =
+  abgeschlossene Kerze. Das REST-Format (6 Felder) ist es NICHT — ein
+  Laengen-Check auf das alte Format verwirft jede echte Kerze still, der
+  Konsument verhungert ohne Fehlerzeile.
+- **Lebendigkeit: alle <30 s den TEXT `ping` senden** (Antwort `pong`).
+  Kommt `4004 No data received in 30s` TROTZ versendeter Pings, ist der
+  echte Grund fast immer eine GESCHEITERTE Subscription (es kam nie `data`)
+  — dann nach `"event":"error"` in den Frames suchen, nicht den Ping-Loop
+  debuggen. Eine Subscription bestaetigt sich je Instrument mit
+  `"event":"subscribe"`; fehlen die Bestaetigungen nach Sekunden, war sie falsch.
+- `websocket-client`-Fallen: `run_forever(ping_interval=0)` verlangt trotzdem
+  `ping_timeout > 0`, sonst wirft es sofort `WebSocketException` (eigenen
+  Text-Ping-Thread nutzen und den Bibliotheks-Ping abschalten); ein `import sys`
+  INNERHALB eines Zweigs macht `sys` fuer die GANZE Funktion lokal — der erste
+  Zugriff davor bricht mit `UnboundLocalError`.
+- **Ein Ereignis-Trigger, der die Spur-Logik frueher ruft, ist ein ZUSATZ-Prozess,
+  kein Ersatz:** Sperrenkette unangetastet, der Zyklus bleibt Rueckfallebene,
+  jede Trigger-Buchung traegt ihre Herkunft im Journal (`herkunft=trigger` vs
+  `zyklus`), sonst ist der Fuehrpreis-Vergleich zwei Wochen spaeter unlesbar.
+  Ein Papier-Trigger neben einer LIVE-Spur ist sicher, weil
+  `pruefe_ausstiege(z, live=False)` echte Positionen stehen laesst und nur
+  meldet — vorher pruefen, nicht annehmen.
 
 ## Credentials: Stufe-0-Weg (nie Werte durch die Konversation)
 

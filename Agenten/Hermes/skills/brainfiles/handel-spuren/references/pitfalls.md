@@ -567,7 +567,26 @@ Kurzfassung ersetzt die Begruendung nicht.
   `<venv>/python -m unittest discover -s tests -t . -p "test_*.py"` (orbk: 54
   Tests), bei den Indikator-Spuren `cd <spur>/tests && python -m unittest
   test_<spur>`, bei nautilus `test_grid.py` mit dem nautilus-eigenen venv. Vor
-  jeder Meldung "Tests rot" den Aufruf aus dem Testkopf der Datei nehmen.
+  Vor jeder Meldung "Tests rot" den Aufruf aus dem Testkopf der Datei nehmen.
+- **Ein FAILED auf einen Namen, den es nicht gibt, ist kein Befund.**
+  `python -m unittest test_auswertung_alle` endet bei einem falsch getippten
+  Modulnamen mit `FAILED (errors=1)` - derselben Zeile wie ein echter Fehlschlag,
+  denn beides ist ein ImportError bzw. ein Fehler im Aufbau. Also `errors=1` IMMER
+  erst mit `ls tests/test_*.py` gegenpruefen, bevor daraus eine Zahl im Bericht
+  wird. Drei Fehlalarme an einem Tag (02.10.2026) kamen alle aus dieser
+  Verwechslung; die echten Nachbarmodule (test_auswertung_fenster,
+  test_auswertung_offene_positionen, test_auswertung_trading, test_buchauswertung,
+  test_backtest_in_auswertung, test_indikator_auswertung) laufen alle gruen.
+- **Eine Meldung ueber einen Schreibvorgang nennt den ABSOLUTEN Pfad - sonst
+  traegt sie nichts.** Ein Werkzeugtest, der `spur/wachen.json` in einem
+  Tempordner anlegt, meldet `spur/wachen.json gebuehr_taker: 0.001 -> 0.002` und
+  liest sich damit wie ein Zugriff auf eine echte Wache (gemessen 02.10.2026 bei
+  `gebuehren_setzen --anwenden`). Drei Gegenproben, bevor daraus eine
+  Fehlersache wird: existiert der genannte Pfad im Repo? Ist `git diff --numstat`
+  auf ihn leer? Hat die Datei eine mtime von weniger als zehn Minuten? Alles
+  dreimal NEIN = Testartefakt. Umgekehrt ist ein Pfad OHNE Wurzelanker nicht
+  einmal auffindbar (`FileNotFoundError` auf ein Verzeichnis, das es nur im
+  Tempordner gibt) - das ist die zweite Form desselben Fehlers.
 - **Vier Indikator-Spuren liegen gebaut, aber unangeschlossen** (15.09.2026,
   Commit `a3932f1`): `macd_mtf`, `squeeze`, `supertrend`, `wavetrend` - je
   `handeln.py` + `wachen.json` (BTC/ETH/SOL-USDT, `handel_erlaubt: false`), Tests
@@ -1128,4 +1147,139 @@ Kurzfassung ersetzt die Begruendung nicht.
   Wer eine gemeldete Zahl nachpruefen soll, zaehlt sie mit einer EIGENEN Paarung
   nach (`references/buchergebnis-pruefen.md`, Abschnitt 7) - ein zweiter Aufruf
   desselben Werkzeugs widerlegt nichts.
+- **Ein zu kleines Fenster ist keine fehlende Historie.** Meldet ein
+  `replay.py`-Lauf „keine Historie fuer <spur> - erst auffuellen", waehrend in
+  `Agenten/Handel/daten/historie/` Kerzen liegen, dann ist nicht die Historie
+  das Problem, sondern die REIHENFOLGE im Code: `kerzen_fuer()` schnitt die
+  Reihe erst auf `--max-kerzen` und pruefte danach gegen `mindest_kerzen + 20`
+  (gemessen 01.10.2026: supertrend, 12.559 4H-Kerzen auf der Platte,
+  `--max-kerzen 200` gegen einen Bedarf von 320 -> alle drei Reihen fielen
+  heraus, und der Text nannte das falsche Uebel). Seitdem: erst messen, was DA
+  ist, dann schneiden, und die zwei Gruende getrennt benennen (Historie fehlt ->
+  nachfuellen; Fenster zu klein -> `replay.bedarf(w)` = mindest_kerzen + 20,
+  `--max-kerzen 320` oder mehr, 0 = alle). Dieselbe Form hatten `lauf_b`
+  (Schnitt vor `range(mindest_kerzen, laenge)`: leere Schleife, gemeldet wurde
+  „0 Runden" - eine Zahl, die wie ein Messergebnis aussieht) und `--fenster`
+  auf der Kommandozeile. Der Leitstand-Reiter prueft die Grenze VOR dem Start
+  (`pruefe_replay` -> `replay.bedarf_fuer(spur)`, liest die wachen.json, ohne
+  das Spurenmodul zu laden); auf der Kommandozeile eine Zeile auf stderr statt
+  eines Tracebacks, Exit 2. `gegenprobe()` laeuft damit nicht mehr mit leerem
+  Kerzen-Dict durch und meldet nicht mehr zweimal null Runden als „gleich".
+- **Eine Vorgabe, die fuer eine Spur richtig ist, ist fuer die naechste geraten.**
+  `replay.py --gebuehr` stand fest auf 0.1 %/Seite - richtig fuer die vier
+  Indikator-Spuren (OKX-Spot), fuer `mosaic` (Kraken, 0,60 %) rechnete jeder
+  Backtest damit SECHSMAL zu guenstig (gefunden 01.10.2026). Wo die Zahl eine
+  Eigenschaft der Sache ist (der Markt der Spur), wird sie aus der Sache gelesen
+  (`gebuehr_taker` x 100 aus der wachen.json) und ihre Herkunft mitgeschrieben -
+  ein ausdruecklicher Wert auf der Kommandozeile schlaegt die Vorgabe.
+- **Eine angebotene Spur ist nicht automatisch fahrbar.** `orb` und `orbk` standen in
+  `replay.SPUREN_TEIL_A` - und damit in der Spurliste des Leitstand-Reiters -, aber
+  JEDER Replay-Lauf endete in einer Verweigerung: ihr `handeln.py` hat kein
+  `lade_wachen()`, ihre `wachen.json` nennt die Instrumente als DICT mit
+  BOERSENnamen (`BTC_USDT` -> `BTC-USDT-SWAP`) statt als Liste von Spur-Namen, dazu
+  ohne `kerzen_takt`/`mindest_kerzen` (gefunden 01.10.2026). Sie stehen jetzt in
+  `replay.NICHT_NACHRECHENBAR` mit Grund (`orbk` hat einen eigenen Backtest:
+  `orbk/backtest.py`). Eine Taste, die nur scheitern kann, ist schlechter als eine
+  fehlende - vor dem Anbieten einer Spur pruefen: gibt es `lade_wachen()`, ist
+  `instrumente` eine LISTE von Spur-Namen, gibt es eine Historie fuer Takt und
+  Instrumente?
+  Dieselbe Pruefung kam am 01.10.2026 fuer `mosaic` (sein `pruefe_einstieg` braucht
+  DREI Kerzenreihen 4H/30M/5M) und `gitter` (sein `handeln.py` hat kein
+  `pruefe_ausstiege`, die Rechnung liegt in grid.py) heraus - beide mit einem ECHTEN
+  Lauf belegt. Der Reiter bietet seither vier Spuren an: squeeze, wavetrend,
+  macd_mtf, supertrend.
+- **Ein Backtest-Ergebnis traegt nur mit der Ausstiegsregel, mit der es gemessen
+  wurde.** Wird die Ausstiegsregel geaendert, sind ALLE alten Zahlen ungueltig und
+  werden NEU gemessen - nicht weiterzitiert. Belegt am 01.10.2026: die vier
+  Indikator-Spuren ueber die volle Historie, Ausstieg an der beruehrten Marke
+  (sind beide Marken in einer Kerze, gilt der STOP), Gebuehr aus der Wachen
+  (0,20 % je Runde):
 
+      Spur         Runden   Treffer   f_max/Runde   Abstand zur Rundengebuehr
+      supertrend     854     35,8 %     0,380 %       1,90x
+      squeeze       1088     34,9 %     0,239 %       1,20x
+      macd_mtf      1209     34,7 %     0,200 %       1,00x (genau null)
+      wavetrend     1506     33,2 %    -0,020 %      -0,10x (tot)
+
+  Die im Wiki notierten 51-54 % Treffer stammten von VOR dieser Regel: ein
+  Ausstieg am Kerzenschluss zaehlte auch dann als Gewinn, wenn der Stop im Docht
+  gerissen wurde. Die Regel senkte die Quoten um 15-20 Punkte und rueckte `f_max`
+  an die Rundengebuehr heran - `macd_mtf` liegt exakt auf der Nulllinie,
+  `wavetrend` ist bei 0 % Gebuehr schon negativ. Auf Kraken (1,2 %/Runde) waere
+  keine der vier tragfaehig. **Merksatz: eine Trefferquote ohne die Ausstiegsregel
+  daneben ist keine Kennzahl** - wer die alten Zahlen im Kopf hat, haelt diese
+  Spuren fuer deutlich robuster als sie sind.
+  Die Gegenprobe je Lauf ist `replay.auf_der_marke(journal)` (alle Austritte an
+  einer Marke) - und der Vergleich der Trefferquote GEGEN den notierten Stand,
+  nicht gegen das Gedaechtnis.
+- **Ein Transportfehler MIT Zaehler ist eine Warnung, kein Ausfall.**
+  „OKX-Transportfehler 1/6: <urlopen error [WinError 10054] …>" heisst: der
+  erste von bis zu sechs Versuchen ist an einer zurueckgesetzten TCP-Verbindung
+  gescheitert, der naechste gelingt (`_mit_wiederholung`, `MAX_FEHLER` 6, Pause
+  1,5 s x Nummer). Erst wenn ALLE sechs scheitern, wird eine Ausnahme daraus.
+  GEMESSEN am 01.10.2026 (nichts war kaputt): OKX antwortete signiert in 0,2 s,
+  `dauerlauf.log` hatte NULL Fehler und NULL Timeouts, der Zyklus um 13:40 lief
+  mit allen Spuren „ok" durch; die Meldung stand 7x in zwei Tagen in den
+  RAND-Logs (`Routinen/logs/dauerlauf-kind.err.log`, `handelszentrale-fehler.log`)
+  - und traf OKX UND Kraken gleichzeitig, also ein lokaler Netz-/Verbindungs-
+  moment, keine Boersensperre. Vor jedem Befund aus einer Log-Zeile den Zaehler
+  und den Rest des Zyklus lesen. Die vier Wiederholer sagen es inzwischen selbst
+  („- wird wiederholt, kein Ausfall" in `scanner/okx.py`, `xperp/okxf.py`,
+  `mosaic/okx_spot.py`, `kraken/kraken.py`; Wache:
+  `tests/test_transport_wiederholung.py`). Eine im Reset verlorene LIVE-Antwort
+  faengt der naechste Zyklus auf - `boersenstops` (Buch gegen Boerse) bzw.
+  `wartende_auftraege`.
+
+### 103. Der Einstieg kommt aus dem Markt, den die Spur JETZT sieht - nicht aus
+einem aelteren Bericht
+
+Ein Tagesbericht ist ein Snapshot: sein `preis` ist `schluss[-1]` der 1D-Kerze von
+gestern. Nimmt der Einstieg daraus, ist er automatisch veraltet, und bei steigendem
+Markt liegt er UNTER dem Kurs - das Ziel (`Einstieg + 2 x Stop`) ist dann schon
+beim Kauf erfuellt.
+
+**Gemessen (Scanner, T-322, 03.10.2026):** Der Bericht vom 17.09. trug AVAX-USDT mit
+7,531; der Markt am 19.09. 02:50 lag bei 8,535-8,747. Der Einstieg lag 12 % unter
+Markt, das Ziel war beim Kauf erfuellt, der naechste Zyklus verkaufte 15 min spaeter
+im Ziel mit ~15 %. Folge: 82 Runden an einem einzigen Tag (+1866 % an diesem Tag),
+97 von 105 Ziel-Ausstiegen nach 0,25 h, 81 von 123 Runden auf EIN Instrument. Die
+Spur galt daraufhin als die beste des Hauses: +17,49 % auf den Einsatz, 85 %
+Trefferquote, Median +18,60 %, t = 15,3 - und `strategie_kennzahlen.py` hat diese
+Zahl woertlich gemeldet. Die ehrlichen Runden (Haltedauer >= 6 h, n = 16) brachten
++1,99 % Mean bei 38 % Treffer, also das Niveau von xperp (t = 1,3). Der Scanner war
+nie die beste Spur; er war die Spur mit dem groessten Rechenfehler.
+
+**Drei Muster, an denen sich das in JEDER Auswertung zeigt, ohne den Code zu lesen:**
+
+1. **Die Haltedauer liegt im Takt des Aufrufers.** 0,25 h = der Zyklusabstand des
+   Dauerlaufs, nicht eine Marktbewegung. Ein echter Ausstieg braucht Tage; die
+   Median-Haltedauer der Runden ist der schnellste Alarm.
+2. **Ein Instrument traegt die Mehrheit aller Runden.** 81 von 123 auf AVAX-USDT
+   ist kein Streuportfolio, sondern ein Kandidat, der im Viertelstundentakt
+   gekauft und verkauft wurde, weil das Ziel sofort wieder erfuellt war.
+3. **Hoeherer Score ergibt schlechteres Ergebnis.** Score 60-69 brachte +18,78 %,
+   Score 80+ brachte -0,46 %. Ein Signal, das mit hoeherer Ueberzeugung schlechter
+   wird, ist kein Signal - es ist der Preisfehler, der die schwachen Kandidaten
+   staerker trifft.
+
+**Vor jeder Aussage "diese Spur ist die beste":**
+
+- Einstiegspreis aus dem Journal gegen den Markt zum Kaufzeitpunkt stellen
+  (Kerzen des Instruments zu dem Zeitpunkt abrufen, nicht den heutigen Kurs).
+- Runden mit unrealistisch kurzer Haltedauer herausrechnen und BEIDE Kennzahlen
+  nennen - eine Auswertung, die nur die bereinigte Zahl zeigt, ist ein Befund ohne
+  Gegenprobe.
+- Ergebnis je Score-Band und je Instrument. Ein Ergebnis, das an einem Instrument
+  haengt, ist ein Ergebnis dieses Instruments.
+
+**Regel im Code:** `marktkurs()` (scanner/handeln.py) ist die EINE Funktion, die den
+Kurs holt, und es gibt KEINEN Rueckfall auf den Berichtspreis - ein alter Preis als
+Einstieg IST der Fehler, ihn wieder zuzulassen hiesse ihn nur unsichtbar machen. Ein
+nicht abrufbarer Kurs ist eine Ablehnung (`"Kurs nicht abrufbar"`), keine Ausnahme:
+ein toter Markt darf den Zyklus nicht abbrechen, die uebrigen Kandidanten bleiben
+kaufbar. Tests: `scanner/tests/test_einstieg_ist_marktkurs.py` (4) und
+`test_ablehnungen.BilligeToreTest` (3) - die Tore MUESSEN billig bleiben, ein am
+Score gescheiterter Kandidat darf keinen Kurs holen, sonst waere der ganze Markt
+(500+ Paare) teuer.
+
+**Befund mit allen Zahlen:** `Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md`.

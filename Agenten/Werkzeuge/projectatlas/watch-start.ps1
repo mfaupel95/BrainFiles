@@ -44,14 +44,23 @@ if (-not (Test-Path (Join-Path $Repo '.projectatlas'))) {
     exit 2
 }
 
-# Laeuft schon einer? Der Eintrag in der PID-Datei zaehlt, wenn der Prozess lebt.
+# Laeuft schon einer? Der Eintrag in der PID-Datei zaehlt, wenn der Prozess
+# MIT DEM RICHTIGEN NAMEN lebt. Die Namenspruefung ist keine Feinheit:
+# Windows vergibt PIDs neu, und eine besetzte PID sieht genau so aus wie
+# ein gesunder Watcher (03.10.2026 gemessen: PID 69928 war ein toter
+# Watcher, die PID war inzwischen an svchost.exe vergeben). Der Waechter hat
+# daraufhin bei jedem Lauf neu gestartet - 18 haengende Prozesse.
 if (Test-Path $PidDatei) {
     $alt = (Get-Content $PidDatei -ErrorAction SilentlyContinue | Select-Object -First 1)
-    if ($alt -and (Get-Process -Id $alt -ErrorAction SilentlyContinue)) {
-        Write-Output "laeuft schon: PID $alt auf $Repo"
-        exit 0
+    if ($alt) {
+        $p = Get-Process -Id $alt -ErrorAction SilentlyContinue
+        if ($p -and $p.ProcessName -eq 'projectatlas') {
+            Write-Output "laeuft schon: PID $alt auf $Repo"
+            exit 0
+        }
+        $wer = if ($p) { " - inzwischen " + $p.ProcessName } else { "" }
+        Write-Output ("PID-Datei war verwaist (" + $alt + $wer + ") - starte neu")
     }
-    Write-Output "PID-Datei war verwaist ($alt) - starte neu"
 }
 
 $vorher = @(Get-Process projectatlas -ErrorAction SilentlyContinue |

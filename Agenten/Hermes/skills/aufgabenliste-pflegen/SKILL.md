@@ -181,7 +181,13 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   sie jemand sieht, und es braucht einen Folge-Commit. Also: Gate fahren, `$?`
   lesen, und erst im NAECHSTEN Aufruf stagen und committen. Zaun-bewusst: Zeilen innerhalb
   eines Code-Zauns (die Format-Vorlage) zaehlen nicht als Eintrag.
-  `python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
+  `cd "$HERMES_HOME/../.." && python Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py --ruhig`
+  **Der Pfad ist ein SCHALTER, kein positionales Argument:** `--pfad
+  MaxHirn/Archiv/TASKS.md`. Die Form `doppelte_nummern.py
+  MaxHirn/Archiv/TASKS.md` bricht mit `unrecognized arguments` ab — die Meldung
+  liest sich wie ein fehlendes Argument, nicht wie eine falsche Schreibweise, und
+  wer die Zeile als Ergebnis deutet, haelt das Gate fuer kaputt. Ohne `--pfad`
+  nimmt das Skript die Vorgabe (die Datei des Hauses).
 - `scripts/erledigen.py`: zieht EINEN Eintrag byte-genau nach `## Erledigt`,
   hakt ihn ab, haengt den Belegsatz an, legt `TASKS.md.bak-JJJJMMTT` an.
   Es prueft vor dem Schreiben (Nummer genau einmal, steht in `## Offen`, noch
@@ -198,6 +204,10 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   Wartestatus `- [?]` („Wartet auf: Max") - wird ueber den Byte-Weg nach Schritt 2
   bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
   schon abgehakt" und meint „nicht `- [ ]`", nicht „bereits erledigt".
+
+Die Nummer gehoert MIT Praefix: `erledigen.py 206` meldet „206 kommt 0x vor“ —
+das liest sich wie ein fehlender Eintrag, ist aber die falsche Argumentform
+(`T-206`).
 
 Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals eine echte Nummer, sonst zaehlt sie als zweiter Eintrag.
 
@@ -239,8 +249,27 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 - **Die Liste waechst zwischen zwei Blicken.** Vor dem Eintragen erneut lesen -
   eine parallele Sitzung haengt zwanzig Eintraege an, und die gewaehlte Nummer ist
   dann doppelt vergeben.
+- **Das generische `patch`-Werkzeug ist fuer diese Datei der falsche Weg.** Es
+  passt Aenderungen fuzzy an, verschiebt dabei die EINRUECKUNG des Ersatzblocks
+  und frisst in einer Liste die Nachbarzeile (beobachtet: zweimal am selben
+  Block, das zweite Mal schlimmer - erst verrutscht, dann eine Zeile weg und
+  `Angelegt/Zuletzt` mitten im Absatz). Nach dem ERSTEN verrutschten Ergebnis
+  nicht weiterflicken: den Block per Zeilenindex in Python ersetzen
+  (Zeilen lesen, `i`/`j` ueber das Blockmerkmal finden, `zeilen[i:j+1] = neu`),
+  mit CRLF-Zaehler und `git diff --numstat` nachpruefen und den Block danach
+  ausdrucken.
 - **`write_file` verweigert die Datei** (kein vollstaendiger Lesevorgang dieser
   Sitzung) - ueber den Byte-Weg schreiben, nicht die Datei komplett neu setzen.
+- **Python wertet `open(p, "wb")` aus, BEVOR der Schreibausdruck gebaut ist.**
+  `open(p,'wb').write(b.replace(anker, anker + block))` kuerzt die Datei auf null
+  Bytes, wenn der Ausdruck danach scheitert (typisch: bytes + str, Groessen-
+  assert). Payload ZUERST in eine Variable bauen, `assert neu != b` plus
+  Groessen-Delta pruefen, `open(...,'wb')` erst in der allerletzten Zeile.
+  War die Datei vor dem Fehlversuch sauber gegen HEAD (`git status --porcelain
+  <pfad>` leer), heelt `git checkout HEAD -- <pfad>`; der Pruefer
+  (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT, ist der
+  Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht heimlich
+  ersetzt.
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe
   steht weiter unten: erst `grep -n "T-0NN"` suchen, dann Vorgaenger- und
   Nachfolgerblock lesen, bevor ersetzt wird.
@@ -277,16 +306,31 @@ assert d.count(b"\r\r") == 0, "Zeilenenden verdoppelt - sofort reparieren"
   harmlos aus (79 Insertions), ein Werkzeug, das die Mehrheit zaehlt, arbeitet ab
   da aber auf der falschen Sorte. Regel: JEDE eingefuegte Zeile mit `nl` bauen
   (`block.replace("\n", nl)`), nicht nur die Trennzeilen zwischen den Bloecken.
-  Gegenprobe nicht nur auf `\r\r`:
+  Gegenprobe nicht nur auf `\r\r` - und **nicht** `assert lf == 0`: eine
+  parallele Sitzung hat in dieser Datei schon LF-Zeilen hinterlassen, die
+  bleiben duerfen. Richtig ist, dass der eigene Vorgang **keine neuen**
+  einfuegt:
 
 ```python
-d = open(PFAD, "rb").read()
-crlf = d.count(b"\r\n"); lf = d.count(b"\n") - crlf
-assert lf == 0, "gemischte Zeilenenden: %d LF-only" % lf
+vor = open(PFAD, "rb").read()
+lf_vor = vor.count(b"\n") - vor.count(b"\r\n")
+# ... Text bauen, Bytes kodieren ...
+assert nb.count(b"\n") - nb.count(b"\r\n") == lf_vor, "eigene LF-Zeilen eingeschlichen"
+assert nb.count(b"\r\r") == 0
 ```
 
   Reparatur ohne Inhaltsverlust, beide Schritte in dieser Reihenfolge:
   `d.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")`.
+  **Und der EINFUEGEORT ist keine Zeilengrenze.** Wer ihn per
+  `j = text.find("\n## Offen")` bzw. `text.find("\n- [ ] **T-")` sucht, hat den Index
+  des `\n` - das Zeichen DAVOR ist in einer CRLF-Datei das `\r`. Ein
+  `text[:j] + nl + block` setzt damit ein ZWEITES `\r` und erzeugt `\r\r\n` plus eine
+  LF-only-Zeile; die Gegenprobe meldet `CRCR 1 | LF-only 1`, obwohl der Block richtig
+  dasteht und der Diff harmlos aussieht. Richtig ist, HINTER dem `\n` einzusetzen und
+  die Zeilenschuld selbst zu tragen:
+  `neu = text[:j+1] + block.replace("\n", nl) + nl + text[j+1:]` - und die drei Zahlen
+  vor dem Schreiben asserten (`\r\r` == 0, LF-only == 0, Kaesten `- [ ] ` genau +1 je
+  neuem Eintrag), nicht erst danach nachsehen.
 - **Die Altersregel ist unbrauchbar, solange eine parallele Sitzung laeuft.**
   Die Datei wird zeitweise alle 2-3 Minuten angefasst; ein Zehn-Minuten-Fenster
   kann nach einigen Minuten Warten eintreten (beobachtet: 10,5 min Ruhe nach
@@ -370,7 +414,31 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   `--amend` oder force-push trifft in diesem Baum fremde Arbeit im selben Index.
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
-  formuliert, und nicht einfach der eigene Text vor den Rest gesetzt.
+  formulieren, und nicht einfach der eigene Text vor den Rest gesetzt.
+
+## Block verschieben (Offen -> Erledigt)
+
+Der fehleranfaelligste Vorgang an der Datei. Vier Fehler treten gehaeuft
+miteinander auf, weil der Schnitt ueber ein MERKMAL laeuft, das an mehreren
+Stellen steht:
+
+1. `find("## Erledigt")` trifft die ERWAHNUNG im Vorabentext der `## Regeln`-
+   Liste, nicht die Ueberschrift - Ueberschriften ueber `(?m)^## .*$` suchen.
+2. `rfind("- [ ] **", 0, i)` trifft den FREMDEN Nachbarn - am Zeilenanfang der
+   gesuchten Nummer ansetzen (`t.rfind("\n", 0, i) + 1`).
+3. `-- [x]` statt `- [x]` nimmt den Block aus jedem Zaehlmuster - den
+   eingefuegten Block mit dem Zaehlmuster gegenpruefen, nicht ansehen.
+4. Eine Absatzgrenze auf `- [ ] ` greift nicht, wenn ein ERLEDIGTER Block
+   folgt - am naechsten beliebigen Kasten-Marker schneiden.
+
+**Gemeinsame Regel: nach jedem Verschieben den Block anhand seines
+Kastenmarkers suchen, nicht anhand der Absatzgrenzen, mit denen er
+herausgeschnitten wurde.** Der Schnitt darf eine falsche Grenze liefern, die
+Gegenprobe nicht.
+
+Die Gegenproben-Kette (Abschnitt, Kastenstellung, Fundstelle, Vorabentext,
+Nummernmenge) und der Ablauf bei bereits zerlegtem Vorabentext stehen in
+`references/block-verschieben.md`.
 
 ## Nachweis
 

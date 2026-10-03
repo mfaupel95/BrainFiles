@@ -341,6 +341,25 @@ Faelle ueber diese Instanz die Attrappe statt den Code — die eigenen Faelle br
 ein FRISCH geladenes Modul. Und die Namen sind nicht uebertragbar (Modulvariable,
 Hilfsfunktion, Pfadkonstante): geraten (`W`, `HIER`, `JETZT`) reisst die ganze
 Suite mit `NameError` um, obwohl der Testcode fachlich stimmt.
+6. **Der Zugriff geht ueber die Haus-Funktion, nicht ueber die Rohform daneben.**
+   Eine Wache, die den Abruf selbst nachbaut, prueft ihren Nachbau statt der
+   Sache. Gemessen an einem Kontozustand: der Kontostandsabruf liefert die Namen
+   des Handelsplatzes (`ZEUR`, `XXBT`), nicht die lesbaren (`EUR`, `XBT`) - wer
+   `staende["EUR"]` liest, bekommt 0.00 und meldet ein geschlossenes Tor, das
+   weit offen ist; und die Orderlisten-Funktion gab bereits FERTIG
+   `{id: {seite, menge, …}}` zurueck, waehrend die Wache noch eine Huelle
+   darueber (`["open"]`) und andere Feldnamen (`type`/`vol`) erwartete - zusammen
+   meldete die erste Fassung ALLE Schutzauftraege als fehlend. Beide Befunde
+   waren falsch, und ein Fehlalarm ist hier teurer als eine spaete Meldung: er
+   schickt den Nutzer nachts zu Positionen, die die ganze Zeit geschuetzt waren.
+   Also die vorhandene Funktion der Komponente aufrufen (Guthabenlage,
+   Orderliste) und nur die Felder lesen, die sie wirklich liefert - die
+   Feldnamen EINMAL ausgeben und gegen den Aufruf halten, statt sie aus dem
+   Kopf zu schreiben. **Und den Merker der ersten Fassung danach LOESCHEN,
+   nicht erben:** er traegt die Fehlurteile als „schon gemeldet“ und wuerde die
+   korrigierten Befunde verschlucken. Nach der Korrektur den ersten Lauf gegen
+   einen zweiten pruefen - der zweite muss LEER sein, sonst ist die Wache noch
+   falsch (oder es steht wirklich etwas an).
 
 **Der Job-Status `ok` sagt nur, dass der Auftrag gelaufen ist.** Eine Wache, die
 einen Messfehler oder eine echte Fundmenge meldet, ist genauso `ok` wie eine
@@ -423,6 +442,17 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    die der Dienst SELBST schreibt (`pid` + Zustand = laeuft, Prozess existiert,
    Programmname passt), (b) nur wenn die fehlt, die Prozessliste - und dann mit
    einem Muster, das ALLE bekannten Startformen per `|` abdeckt.
+   **Jede Alternative eines solchen `|`-Musters muss den UNTERBEFEHL fordern.**
+   Ein Muster, das nur den Modulnamen nennt, trifft jeden Start desselben
+   Programms: gemessen traf `run_module('hermes_cli.main'` auch den
+   DASHBOARD-Prozess (`sys.argv = ['…main.py', 'dashboard', …]`) - und solange
+   der lief, hielt die Wache ihn fuer den Dienst und startete nichts (2,5 h
+   Ausfall ohne eine einzige Neustart-Zeile). Also den Unterbefehl im Muster
+   verlangen (`'gateway'`) und die Geschwister ausdruecklich ausschliessen
+   (`-notmatch "'dashboard'"`). Vor dem Urteil "kein Prozess" den EIGENEN
+   Filter einmal ueber die volle Prozessliste laufen lassen und die Treffer
+   ausgeben: ein zu weites Muster liest sich wie ein echter Ausfall und bleibt
+   deshalb lange unbemerkt, ein zu enges wie ein gesunder Dienst.
    **Eine Neustart-Schleife verraet nur die ZAHL, nie die einzelne Zeile:**
    "kein Prozess - Neustart ausgeloest" liest sich richtig, der Dienst war danach
    kurz weg, es gibt kein Widerspruchssignal. Beim Pruefen einer Prozesswache
@@ -480,6 +510,86 @@ pruefe die Regel, nicht den Zustand. Drei Regeln, ohne die es nicht geht:
    damit ohne weiteres Nachsehen sagbar. Eine Wache, die den Ausloeser mitnennt,
    macht sich beim naechsten Mal selbst ueberfluessig - eine, die nur zaehlt,
    lässt denselben Kreis wiederkehren.
+
+7. **Ein Objekt, das LEBT und trotzdem nichts tut, ist nur ueber seine Ausgabe
+   zu erkennen - nicht ueber den Prozess.** Ein blockierender Netzaufruf ohne
+   Zeitablauf laesst den Prozess gesund aussehen: er laeuft, verbraucht RAM,
+   steht in der Prozessliste. Gemessen schrieb ein Agent 31 Stunden keine Zeile,
+   sein Log endete mitten in einer normalen Runde ohne Traceback - und weil die
+   Prozesswache nur zaehlte, war das unsichtbar. Wer das prueft, muss das ALTER
+   der letzten Logzeile messen (`os.path.getmtime(<log>)`), nicht den
+   Prozesszustand. Vier Regeln, sonst wird daraus ein Wecker:
+   - **Ein FEHLENDES Log ist kein Befund.** Nicht jedes Kind schreibt eines;
+     nur eine vorhandene und alte Datei ist ein Hang. Wer hier meldet, alarmiert
+     bei jedem Agenten ohne Logdatei.
+   - **Die Schwelle ist grosszuegig** (Stunde, nicht Minuten): ein Agent, der
+     eine lange Runde rechnet, schreibt legitim lange nichts.
+   - **Dedupe ueber einen Merker je Objekt** in `cache/`; dieselbe Feststellung
+     hoechstens alle paar Stunden. Ein Hang heilt nicht durch Wiederholung.
+   - **Der Merker wird bei Erholung GELOESCHET**, sonst ist die naechste
+     Stoerung desselben Objekts fuer Stunden stumm.
+
+### Blockierende Zyklus-Schleife im Code selbst absichern (Watchdog-Thread)
+
+Eine Wache, die `os.path.getmtime()` der letzten Logzeile misst, erkennt einen
+hanging Zyklus erst, wenn der Zeitstempel aelter wird — und dann ist der
+Zyklus schon hunderte Sekunden lang blockiert. Fuer Dauerlaufe, die eigene
+Netz-/LLM-Runden druchfuehren und auf keine externe Bedingung warten, ist ein
+**Watchdog-Thread im Zyklus** die erste Verteidigung, nicht nur die Wache:
+
+1. **Timer-Klasse**, die nach `timeout_s` Sekunden eine `TimeoutError` wirft
+   und den Prozess beendet (nicht nur den aktuellen Durchlauf unterbricht,
+   sonst bleibt der Waisenputzer hängen):
+
+   ```python
+   import threading, os, signal
+
+   _watchdog_timer = None
+
+   def _zyklus_watchdog(timeout_s=900.0):
+       def _feuern():
+           raise TimeoutError(f"Zyklus ueberschreitet {timeout_s}s — Prozess beendet")
+       global _watchdog_timer
+       _watchdog_timer = threading.Timer(timeout_s, _feuern)
+       _watchdog_timer.daemon = True
+       _watchdog_timer.start()
+
+   def _watchdog_zuruecksetzen():
+       if _watchdog_timer and _watchdog_timer.is_alive():
+           _watchdog_timer.cancel()
+           _watchdog_timer.join(timeout=1.0)
+       _zyklus_watchdog(900.0)
+   ```
+
+2. **Aufruf**: `_zyklus_watchdog(timeout_s=900.0)` einmal am Zyklus-Anfang,
+   `_watchdog_zuruecksetzen()` in jedem Punkt, an dem ein Zyklus sauber
+   endet (nach Spurenlauf, nach Spiegelung, nach Zustandsschreiben).
+3. **Der Timer muss vor dem Prozessende geloescht werden** — sonst wirft er
+   nach einem sauberen `sys.exit()` noch eine Exception in einem anderem
+   Thread. Deswegen: `_watchdog_timer.cancel()` vor jedem `return`, `break`
+   oder `sys.exit()`.
+
+**Der Timer ist nur die Sicherung, nicht die Diagnose.** Ein Alarm des
+Watchdogs ist Symptom, nicht Ursache: Warum blockiert der Zyklus? Die Frage
+bleibt offen und wird wie bei jedem Absturz anhand des Logs beantwortet.
+
+**Achtung: der Timer schlaegt falsch an, wenn die Zeit begrenzt wird.** Wer
+den Dauerlauf zum Diagnostizieren unter einem eigenen `timeout N` laufen laesst,
+kriegt den 143er (SIGTERM) aus dem eigenen Kommando — nicht den
+Watchdog-Auslöser. Die Test-Messung ohne eigenes Zeitlimit fahren, oder den
+Lauf abgekoppelt starten (`Start-Process -WindowStyle Hidden` + Log lesen).
+Beide Fallen in derselben Sitzung beobachtet; die Regel gilt fuer jede
+Warteschleife, nicht nur Netzaufrufe.
+   Das laesst sich in die BESTEHENDE Prozesswache einbauen (die Liste der
+   laufenden Objekte liegt dort schon vor) - ein zweites Wachenskript braucht es
+   nicht. Der Name des Objekts muss dabei zu seinem LOG passen, und der ist oft
+   nicht der Dateiname des Prozesses: der Treiber kuerzt `_agent` weg
+   (`src/agents/new_or_top_agent.py` schreibt `moondev_new_or_top.log`). Wer den
+   vollen Dateinamen nimmt, sucht ein Log, das es nie gibt, findet nichts und
+   meldet nie. Gegenprobe im Test: eigenes Temp-Log frisch (still) und alt
+   (Befund), fehlendes Log (still), zweiter Lauf (still), Erholung loescht den
+   Merker, und ein Fremdprozess mit dem Suchtext in der Kommandozeile zaehlt
+   nicht mit.
 
 **`powershell` immer mit absolutem Pfad aufrufen**
 (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`): unter der
@@ -610,6 +720,11 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   der Aufrufer wartet auf das Ende des Kindes, also nie. Symptom: der Startbefehl
   laeuft in den Timeout, obwohl der Prozess danach laeuft. Die Umleitung gehoert in
   die `.cmd`, der Starter kehrt sofort zurueck.
+  **Und der Starter setzt das ARBEITSVERZEICHNIS des Kindes** (`-WorkingDirectory`
+  bzw. `cd` in der `.cmd`): laedt das Kind beim Start eine `.env` aus seinem cwd,
+  erbt seine gesamte Prozessumgebung sie — ein Schluessel darin ueberstimmt dann
+  die Anmeldung des Kindes, waehrend derselbe Befehl aus der eigenen Shell
+  trotzdem durchlaeuft (die Shell laedt keine `.env`).
 - **Den Dauerprozess nie ueber eine Pipe des Aufrufers starten**
   (`& powershell -File <starter> *>&1 | Add-Content $protokoll`). Das Kind haelt die
   Pipe offen, der Starter kehrt also nie zurueck — mit drei Folgen, die zusammen wie
@@ -650,6 +765,37 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   das auseinander (Prozess wenige Minuten alt, letzter echter Erfolg Stunden
   zurueck), ist es ein Crash-Loop und kein gesunder Dauerbetrieb, auch wenn
   gerade ein Prozess laeuft.
+  **Die Gegenrichtung ist genauso haeufig: `RestartCount`/`RestartInterval`
+  ERZEUGEN den Neustart-Takt selbst.** Ein Launcher, der den Dienst abgekoppelt
+  startet und sofort zurueckkehrt (VBS `WScript.Shell.Run "<zeile>", 0, False`,
+  `Start-Process` ohne `-Wait`), laesst den Task-Manager einen BEENDETEN Task
+  sehen - er startet ihn nach `RestartInterval` erneut, ohne dass irgendetwas
+  kaputt ist. Gemessen: `RestartCount 999` / `RestartInterval PT1M` auf dem
+  Dienst-Task, dazu ein Waechter, der im selben Rhythmus nachstartete; jeder
+  Start riss die offenen Verbindungen mit (die Client-Sockets brechen ab und
+  verbinden im Sekundentakt neu - das fuellt das Fehlerlog mit
+  Verbindungsabbruechen, die nach einem Netzproblem aussehen). Fix:
+  `RestartCount 0` und kein Intervall (die Wiederbelebung gehoert dem Waechter),
+  `Set-ScheduledTask` dafuer in einer Admin-Sitzung. Beleg ist die ZAHL der
+  Starts im Dienstlog gegen die Takte im selben Zeitraum.
+  **Und die Bremse gehoert in JEDEN Neustartpfad.** Hat der Zweig "kein Prozess
+  gefunden" keine Sperre, waehrend der Zweig "Prozess antwortet nicht" eine hat
+  (30 Minuten), dann startet die Wache im Takt ihrer eigenen Laufzeit neu,
+  sobald ihr Muster den Dienst nicht erkennt - der haeufigere Fall ist der
+  ungebremste.
+- **Ein haeufig neustartender Dienst und nachgeholte Cron-Laeufe schaukeln sich
+  gegenseitig hoch.** Holt der Scheduler verpasste wiederkehrende Laeufe nach
+  (`cron.catch_up_missed`, Zaehler in `cron/catch_up_occurrences`), laeuft nach
+  JEDEM Neustart der ganze Rueckstand auf einmal: gemessen 32 `no_agent`-Jobs in
+  zehn Sekunden (`cron/executions.db`, Spalte `started_at`), waehrend der Zaehler
+  bei 328 stand. Die Lastspitze kann den Dienst erneut mitreissen - und der
+  naechste Start holt wieder alles nach. Bei einer Neustart-Schleife deshalb die
+  Ausfuehrungen im Todesfenster aus der executions-DB ziehen (Job-IDs gegen
+  `cron/jobs.json` aufloesen) und die GLEICHZEITIGKEIT messen, bevor die Ursache
+  im Dienst gesucht wird. `cron.catch_up_missed: false` ueberspringt verpasste
+  Laeufe (der Job laeuft zum naechsten regulaeren Termin weiter) - das ist eine
+  Lastbremse, KEIN Nachweis der Ursache: im gemessenen Fall blieb der Zaehler
+  danach stehen, die Neustarts nicht.
 - **Ein aus der Agentensitzung gestarteter Hintergrundprozess stirbt mit ihr.**
   Symptom: Stunden spaeter endet er mit Exit 127, waehrend der per `.cmd`
   gestartete weiterlaeuft — das ist kein Fehler der Komponente und kein Grund zur
@@ -734,6 +880,22 @@ Rezept (XML-Vorlage, Trigger/Settings, Ablauf des Selbstheilers):
   jemand die Datei ueberschreibt — der Zustand ist eine Behauptung, die den
   Prozess ueberlebt. Eine Wache liest deshalb den PID AUS der Datei und prueft
   den Prozess, statt dem Wort zu glauben, und meldet das Alter der Datei mit.
+  **Und "die PID lebt" ist allein KEIN Beweis — der Programmname gehoert dazu.**
+  Windows vergibt PIDs neu: gemessen trug eine Statusdatei `state: running` mit
+  PID 2024, die inzwischen `csrss.exe` gehoerte; der ueberwachte Lauf war seit
+  4,5 Stunden tot, und das Startwerkzeug meldete "laeuft schon" — es pruefte nur
+  die Existenz der PID und startete deshalb nie neu. Die Prozessabfrage muss den
+  erwarteten Programmnamen mitverlangen (Name aus der `tasklist`-Ausgabe,
+  `pid_lebt(pid, name="<programm>.exe")`), und der Name muss in der Ausgabe
+  stehen: eine Zahl allein trifft auch den Nachfolger eines fremden Programms.
+  Gegenprobe im Test: die eigene PID mit einem FALSCHEN Programmnamen muss
+  `False` ergeben — ohne diesen Fall bleibt die Namenspruefung ungeprueft.
+  **Eine unendliche Altersgrenze schaltet den anderen Zeugen ab.** Ein
+  Start-/Wachwerkzeug, das `beurteile(lage, veraltet_s=float("inf"))` aufruft,
+  prueft nur noch Zustand und PID: eine tagealte Statusdatei gilt dann als
+  laufender Lauf, und der tote Prozess wird nie ersetzt. Die Grenze aus dem
+  Schreibrhythmus der Datei rechnen und NICHT auf `inf` setzen; wer sie aufheben
+  will, nennt den Grund im Code.
   Und der Lauf selbst gehoert gebaut, dass er sein Ende schreibt (`state`
   + Grund), damit der Zustand nach einem Fehler nicht auf dem letzten guten
   Stand stehen bleibt.
@@ -993,6 +1155,18 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   (`.bak`-Kopie behalten), DANN neu starten; der Nachweis ist die erste
   Buchzeile nach dem Neustart (kein `herzschlag`-Ausstieg) und der frische
   Zykluszeitpunkt je Objekt im Log.
+  **Und das Wiederanschalten ist ein Schreibvorgang auf die Buecher, nicht nur
+  ein Listenwechsel.** Schon der frische Zeitstempel verhindert nur den
+  Notausstieg: der erste Zyklus bewertet die alten Posten trotzdem gegen den
+  aktuellen Kurs, schliesst alles, was Stop oder Ziel erreicht hat, und eroeffnet
+  neue. Gemessen wurden aus 60 offenen Posten nach einem Zyklus 6 (daneben 3 und
+  3 in zwei Armen) samt zweistelliger Zahl neuer Journalzeilen - die Buecher
+  waren umgeschlagen, ohne dass ein einziger echter Handel stattfand. Wer ein
+  ruhendes Objekt nur „mal kurz“ aufnimmt, veraendert damit seine Daten: vorher
+  entscheiden, ob das Buch weiterlaufen soll, und dem Nutzer die Folge nennen
+  (Altzahlen sind danach nicht mehr mit den neuen vergleichbar). Soll es nur
+  wieder laufen, ist das gewollt; soll nur geprueft werden, laeuft der lesende
+  Modus (`--vorschau`), nicht der Zyklus.
 - **Ein Neustartskript muss einen bereits toten Prozess vertragen.** Stirbt die
   Wurzel mit ihrem Kind (Windows: venv-Startprogramm + Interpreter), wirft
   `Stop-Process -Id <wurzel>` „kein Prozess mit dieser ID“ — mit

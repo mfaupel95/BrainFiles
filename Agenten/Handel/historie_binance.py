@@ -25,7 +25,7 @@ import urllib.request
 HIER = os.path.dirname(os.path.abspath(__file__))
 ORDNER = os.path.join(HIER, "daten", "historie")
 
-TAKTE = {"1H": "1h", "4H": "4h", "1D": "1d"}
+TAKTE = {"5M": "5m", "15M": "15m", "30M": "30m", "1H": "1h", "4H": "4h", "1D": "1d"}
 
 # OKX- und Kraken-Namen der Spuren -> Binance-Symbol. EIN Ort, damit nicht
 # jede Spur ihr eigenes Mapping erfindet. Gemessen 2026-09-24: 19 von 20
@@ -197,6 +197,11 @@ def _schreibe_stand():
             with open(os.path.join(ORDNER, name), encoding="utf-8") as f:
                 d = json.load(f)
         except (OSError, ValueError):
+            continue
+        # Nur echte Kerzenreihen: in diesem Ordner liegen auch Berichte
+        # (okx_probe.json, coingecko_probe.json) - ein Dict ist keine Reihe,
+        # und `d[0][0]` brach daran mit KeyError ab (gefunden 01.10.2026).
+        if not isinstance(d, list) or not d or not isinstance(d[0], list):
             continue
         reihen[name[:-5]] = {"kerzen": len(d),
                              "von": d[0][0] if d else None,

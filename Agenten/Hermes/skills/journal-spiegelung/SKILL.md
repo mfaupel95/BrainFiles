@@ -49,10 +49,12 @@ Für Projekte ohne wachen.json: eigene Unterverzier anlegen, z.B.
 ### 5. Verifikation (byte-genau, nicht „Datei ist da")
 
 ```
-Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Handel/spiegelstand.py
+cd "$HERMES_HOME/../.." && Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Handel/spiegelstand.py
 ```
 
-Durch das `terminal`-Tool aufrufen. Das Modul geht alle `*/wachen.json` unter
+Durch das `terminal`-Tool aufrufen. **Hermes startet in `Agenten/Hermes`, alle Pfade hier sind
+relativ zur BrainFiles-Wurzel** — deshalb der `cd` davor (`$HERMES_HOME` ist in jeder Sitzung
+gesetzt). Das Modul geht alle `*/wachen.json` unter
 `Agenten/Handel` durch und zeigt je Spur: Ziel, Kopiestand (byte-genau, wie
 `cmp`), Journalzeilen, Alter des Herzschlags und den Vermerk
 `journal_zweitziel_ok`. Rueckgabecode 0 = jede Spur im Dauerlauf byte-gleich,
