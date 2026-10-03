@@ -111,5 +111,7 @@
   "_sperre_zu_ausgeloest": {
     "zeit": "2026-10-01T11:16:09+00:00",
     "grund": "Bedingung 5 (Wochenlauf): rollierender EV -0.028 EUR < 0"
-  }
+  },
+  "trigger_modus": "signal",
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt."
 }

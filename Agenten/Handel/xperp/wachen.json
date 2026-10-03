@@ -87,5 +87,7 @@
     "zeit": "2026-09-29T12:28:35+00:00",
     "grund": "kill_switch: Ruecklauf 279.90 USD"
   },
-  "_handel_erlaubt_notiz": "true am 25.09.2026 (Auftrag Max: 'SPUREN auto freigabe live' + 'Kill-Deckel erhoehen'). Vorher stand es NUR wegen des erreichten Kill-Switches auf false; der rollierende EV ist positiv (+10,0 USD)."
+  "_handel_erlaubt_notiz": "true am 25.09.2026 (Auftrag Max: 'SPUREN auto freigabe live' + 'Kill-Deckel erhoehen'). Vorher stand es NUR wegen des erreichten Kill-Switches auf false; der rollierende EV ist positiv (+10,0 USD).",
+  "trigger_modus": "signal",
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt."
 }

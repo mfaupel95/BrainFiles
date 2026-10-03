@@ -79,6 +79,11 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
 import pos_kennung
+# signal_wechsel liegt ebenfalls im Handel-Ordner - darum NACH dem
+# sys.path-Eintrag, nicht bei den uebrigen Standardimporten oben. Dort
+# wuerde der Import mit ModuleNotFoundError abbrechen, weil der eigene
+# Spurenordner beim Start sys.path[0] ist (dieselbe Falle wie pos_kennung).
+from signal_wechsel import ERLAEUT, GESPERRT, zugelassen  # noqa: E402
 import wachen_pruefung as wp
 import boersenstops
 
@@ -878,6 +883,12 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
             protokolliere("Buch voll")
             protokolliere("nicht mehr erreicht", len(vs) - i)
             break
+        # Signal-Wechsel-Gatter (03.10.2026, Auftrag Max "Erweitern"). Es
+        # steht VOR `okx.markt_kauf` - ein Gatter hinter dem Kauf waere bei
+        # Live genau einen Zyklus zu spaet, die Order waere schon draussen.
+        if zugelassen(z, w, v["inst"], "long") is not ERLAEUT:
+            protokolliere_kandidat(v["inst"], GESPERRT, score=v.get("score"))
+            continue
         bewertet += 1
         usd = round(v["usd"] * faktor, 2)
         if eingesetzt + usd > w["max_gesamt_usd"]:

@@ -126,7 +126,8 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
     os.path.dirname(os.path.abspath(__file__)))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
-import pos_kennung                                        # noqa: E402
+import pos_kennung
+from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402                                        # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
 # Sekunden ohne Bedienung, nach denen das Freigabefenster von selbst ablehnt.
@@ -771,6 +772,10 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
                     stop_fehlt = True
 
         kosten = eur * w["gebuehr_taker"]
+        # Signal-Wechsel-Gatter (03.10.2026, Auftrag Max "Erweitern"):
+        # ein Einstieg nur bei Richtungswechsel fuer dieses Paar.
+        if zugelassen(z, w, v["inst"], "long") is not ERLAEUT:
+            continue
         _pos = {
             "paar": v["inst"], "einstieg": v["einstieg"], "eur": eur,
             "waehrung": waehrung, "basis": v.get("basis"),

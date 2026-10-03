@@ -51,7 +51,8 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
     os.path.dirname(os.path.abspath(__file__)))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
-import pos_kennung  # noqa: E402
+import pos_kennung
+from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402  # noqa: E402
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
 import okx_spot  # noqa: E402
@@ -607,6 +608,10 @@ def pruefe_einstieg(inst, k4, k30, k5, z, w, faktor):
         "nominal": nominel, "eroeffnet_zeit": _jetzt(),
         "pos_id": pos_kennung.neu(_jetzt()),
     }
+    # Signal-Wechsel-Gatter (03.10.2026, Auftrag Max "Erweitern"):
+    # ein Einstieg nur bei Richtungswechsel fuer dieses Instrument.
+    if zugelassen(z, w, inst, sig) is not ERLAEUT:
+        return
     z["positionen"].append(_p)
 
     print("EINSTIEG %s %.6f Stop %.2f%% Ziel R=%.1f (%.6f) Nominal %.2f USD" % (
@@ -1204,6 +1209,11 @@ def live_einstiege(z, w, s):
             "eroeffnet_zeit": _jetzt(),
             "pos_id": pos_kennung.neu(_jetzt()),
         }
+        # Signal-Wechsel-Gatter, Livezweig: dieselbe Regel wie im
+        # Papierzweig. Es steht VOR dem Buchen, damit die Anzeige
+        # "EINSTIEG" nicht von einer gebliebenen Position spricht.
+        if zugelassen(z, w, inst, "long") is not ERLAEUT:
+            return
         z["positionen"].append(_p)
         gebunden += betrag
         print("  AUF %-9s @ %.6g Stop %.6g (-%.1f%%) Ziel %.6g  %.2f USDC%s"

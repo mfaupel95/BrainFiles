@@ -65,6 +65,11 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
     os.path.dirname(os.path.abspath(__file__)))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
+# signal_wechsel liegt ebenfalls im Handel-Ordner - darum NACH dem
+# sys.path-Eintrag, nicht bei den uebrigen Standardimporten oben. Dort
+# wuerde der Import mit ModuleNotFoundError abbrechen, weil der eigene
+# Spurenordner beim Start sys.path[0] ist.
+from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402
 import mae
 import pos_kennung                                          # noqa: E402
 
@@ -1179,6 +1184,18 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     for kandidat in kand:
         if len(belegt) >= w["max_offene_anlaeufe"]:
             return
+        # Signal-Wechsel-Gatter (03.10.2026, Auftrag Max "Erweitern"): ein
+        # Einstieg nur, wenn sich die Richtung fuer diese Basis seit dem
+        # letzten Einstieg geaendert hat. Es steht VOR `anlauf()`, also vor
+        # jedem Orderaufruf - ein Gatter hinter der Order waere bei Live
+        # genau ein Zyklus zu spaet.
+        #
+        # Der Schluessel ist die BASIS, nicht das Instrument: derselbe
+        # Markt erscheint als XBT-USD und als BTC-USD-um_XPERP. Am
+        # Instrument-Schluessel wuerde jeder Richtungswechsel als Wechsel
+        # zaehlen und die Regel waere wirkungslos.
+        if zugelassen(z, w, kandidat["basis"], kandidat["seite"]) is not ERLAEUT:
+            continue
         if kandidat["basis"] in offen or in_abklingzeit(kandidat["basis"], z, w):
             continue
 
