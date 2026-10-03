@@ -742,6 +742,13 @@ def bueche_fremde_positionen_uebernehmen(z, w, still=False, schutz=True):
             "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
             "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
             "herkunft": "boerse_handgriff",
+            # Die Kennung gehoert in JEDE Buchposition (T-095). Der
+            # Uebernahmepfad vergab sie nicht - gemessen am 03.10.2026:
+            # STRK und TRX standen als LIVE-Positionen ohne pos_id im Buch.
+            # Ohne sie kann die Paarung ihren Ausstieg nicht eindeutig
+            # zuordnen, sobald zwei Positionen auf demselben XPERP-Markt
+            # liegen.
+            "pos_id": pos_kennung.neu(_jetzt()),
         }
         geschuetzt = _stop_vorhanden(inst, roh_pos)
         # Auch in der Vorschau sichtbar: die Uebernahme selbst (Journal, Stop,

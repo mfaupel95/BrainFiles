@@ -144,6 +144,16 @@ class SkalierverdrahtungTest(unittest.TestCase):
         w = wachen_von(spur)
         k = kerzen(max(400, int(w.get("mindest_kerzen") or 300) + 100))
         z = {"positionen": []}
+
+        # DER TEST SCHREIBT NICHT. `pruefe_einstieg` journalisiert in das ECHTE
+        # Journal der Spur - so hat dieser Test am 03.10.2026 192 Zeilen in vier
+        # echte Buecher geschrieben (supertrend 57, macd_mtf 45, wavetrend 45,
+        # squeeze 45), alle am synthetischen Kurs erkennbar. Der Sammel-Modus
+        # ist hier Pflicht, nicht Kosmetik; `test_der_test_schreibt_nicht`
+        # belegt es.
+        geschrieben = []
+        mod.journal = lambda **kw: geschrieben.append(kw)
+
         # supertrend entpackt das Ergebnis (`seite, _linie = sig`), die
         # anderen drei vergleichen es als Text. Gemessen, nicht geraten.
         stub = (lambda *a, **kw: ("long", 0.0)) if spur == "supertrend" \
@@ -151,7 +161,27 @@ class SkalierverdrahtungTest(unittest.TestCase):
         mod.signal = stub
         for _ in range(anzahl_signale):
             mod.pruefe_einstieg("BTC-USDT", k, z, w, 1.0)
+        self.geschrieben = geschrieben
         return z
+
+    def test_der_test_schreibt_nicht(self):
+        """Gegenprobe auf mich selbst: kein Test darf eine echte Datei
+        anfasst. Die vier Buecher bekamen am 03.10. 192 Zeilen, weil dieser
+        Test `pruefe_einstieg` mit dem echten Journal aufrief."""
+        for spur in SPUREN:
+            with self.subTest(spur=spur):
+                pfad = os.path.join(HANDEL, spur, "handelsjournal.csv")
+                vorher = os.path.getsize(pfad) if os.path.isfile(pfad) else -1
+                self.lauf(spur, 2)
+                nachher = os.path.getsize(pfad) if os.path.isfile(pfad) else -1
+                self.assertEqual(
+                    vorher, nachher,
+                    "%s: die Groesse des echten Journals hat sich geaendert" % spur)
+                # und es wurde tatsaechlich protokolliert - sonst prueft
+                # der Test oben gar nichts und waere gruen aus Faulheit
+                self.assertTrue(self.geschrieben,
+                                "%s: es wurde nichts protokolliert - der "
+                                "Test prueft dann nichts" % spur)
 
     def test_zwei_signale_ergeben_eine_position(self):
         for spur in SPUREN:
