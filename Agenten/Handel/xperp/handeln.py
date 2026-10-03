@@ -65,6 +65,7 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
     os.path.dirname(os.path.abspath(__file__)))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
+import mae
 import pos_kennung                                          # noqa: E402
 
 import auswahl
@@ -94,7 +95,10 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
            "kontrakte", "nominal_usd", "margin_usd", "hebel", "stop", "ziel",
            "liq", "liq_abstand", "funding_pct", "gebuehr_pct",
            "quote_noetig", "quote_beob", "grund",
-           "pos_id"]
+           "pos_id",
+           # MFE/MAE seit 03.10.2026 (T-119) - xperp ist die einzige Spur
+           # mit echten Positionsgroessen an der Boerse.
+           "mfe_pct", "mae_pct", "haltetage"]
 
 # Wie oft der Kandidatenscan die Rangliste neu rechnet. Ein voller Lauf ueber
 # 164 Kontrakte dauert rund zwei Minuten - bei einem 15-Minuten-Takt waere
@@ -324,6 +328,7 @@ def bueche_papier_altlasten_aus(z, w, still=False):
                 kontrakte=p.get("kontrakte", ""),
                 nominal_usd="%.2f" % p.get("nominal", 0.0),
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
+                **mae.felder(p),
                 grund="buchbereinigung")
     z["positionen"] = behalten
     return len(alt)
@@ -979,6 +984,10 @@ def pruefe_ausstiege(z, live, w):
             print("  Kurs %s nicht abrufbar (%s) - Position bleibt" % (p["inst"], e))
             behalten.append(p)
             continue
+
+        # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim Ausstieg -
+        # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
+        mae.merke_extrem(p, kurs)
 
         vz = 1 if p["seite"] == "long" else -1
         grund = None

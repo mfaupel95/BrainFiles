@@ -47,6 +47,7 @@ import freigabefenster  # noqa: E402
 _handel_ordner = os.path.dirname(os.path.abspath(__file__))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
+import mae
 import pos_kennung  # noqa: E402
 
 
@@ -62,7 +63,10 @@ risikovorfilter = _lade_modul("risikovorfilter")
 risikostufe = _lade_modul("risikostufe")
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id",
+           # MFE/MAE seit 03.10.2026 - hier wirkt die Zeile auf alle 27
+           # Spuren, die dieses Buch benutzen (T-119).
+           "mfe_pct", "mae_pct", "haltetage"]
 
 SCHREIBEN = True
 
@@ -498,6 +502,10 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
             behalten.append(p)
             continue
         kurs = kurse.get(p["inst"])
+        if kurs:
+            # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim
+            # Ausstieg - sonst waere die Zahl der Ausstiegskurs selbst.
+            mae.merke_extrem(p, kurs)
         if not kurs:
             # Kein Kurs heisst NICHT "nichts passiert": die Position wird
             # uebersprungen und kann so beliebig lange stehen bleiben. Bis zum
@@ -599,7 +607,8 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                 pos_id=p.get("pos_id", ""),
                 einsatz_usd="%.2f" % (p["nominal"] + gv),
                 stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
-                stop_pct="%.2f" % p["stop_pct"], grund=grund)
+                stop_pct="%.2f" % p["stop_pct"], grund=grund,
+                **mae.felder(p))
 
     z["positionen"] = behalten
 
