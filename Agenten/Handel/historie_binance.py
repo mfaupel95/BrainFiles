@@ -30,6 +30,23 @@ TAKTE = {"5M": "5m", "15M": "15m", "30M": "30m", "1H": "1h", "4H": "4h", "1D": "
 # OKX- und Kraken-Namen der Spuren -> Binance-Symbol. EIN Ort, damit nicht
 # jede Spur ihr eigenes Mapping erfindet. Gemessen 2026-09-24: 19 von 20
 # geprueften Instrumenten haben ein Binance-USDT-Paar; MATIC fehlt (heute POL).
+#
+# 03.10.2026 (T-322/spur_audit): die Tabelle kannte nur 30 NAMES und damit
+# nur drei BISWERTEN - BTC, ETH, SOL. Deshalb war eine ehrliche Edge-Messung
+# fuer jede andere Spur nicht moeglich: die Basislinie fehlte schlicht. Der
+# Befund, der das aufdeckte, war nicht die Messung, sondern ihre Abwesenheit.
+# `basisform()` in spur_audit.py leitet den Basiswert aus jedem
+# OKX-Kontraktnamen ab, deshalb genuegt hier der Basiswert je Name.
+# Nachgetragen (Binance-klines gegen jeden Kandidaten geprueft, 42 von 58 mit
+# USDT-Paar): AAVE ADA AERO AI ALGO APT ARB AVAX BONK CRV DRV ETC GRT
+# HYPE ICP INJ IOST LIT MAGIC MARSCOIN NIGHT ONDO QNT RENDER STX TRX UNI
+# WLFI XLM ZRO FF 2Z
+#
+# Was hier FEHLT und auch fehlen bleibt, ist Absicht: CL, BZ, CRCL, XAU, XAG,
+# QQQ, META, MSTR, UNITREE, VVV, CARDS, CASHCAT, FARTCOIN, BTW, BP, GRASS,
+# OKB, XDC, DRV-Marktplaetze sind Aktien-ETPs oder Pump-Token ohne
+# belastbare USDT-Historie. Sie bekommen KEIN Ersatzinstrument - eine
+# Basislinie aus einem aehnlichen Markt waere eine erfundene.
 PAARE = {
     "BTC-USDC": "BTCUSDT", "BTC-USDT": "BTCUSDT", "BTC-USDT-SWAP": "BTCUSDT",
     "XBT/USD": "BTCUSDT", "BTC/USD": "BTCUSDT", "BTC_USDT": "BTCUSDT",
@@ -44,6 +61,15 @@ PAARE = {
     "NEAR": "NEARUSDT", "AVAX": "AVAXUSDT", "BNB": "BNBUSDT",
     "LINK": "LINKUSDT", "ADA": "ADAUSDT", "SUI": "SUIUSDT",
     "LTC": "LTCUSDT", "ATOM": "ATOMUSDT", "OP": "OPUSDT",
+    "AAVE": "AAVEUSDT", "AERO": "AEROUSDT", "AI": "AIUSDT",
+    "ALGO": "ALGOUSDT", "BONK": "BONKUSDT", "CRV": "CRVUSDT",
+    "ETC": "ETCUSDT", "GRT": "GRTUSDT", "ICP": "ICPUSDT",
+    "INJ": "INJUSDT", "IOST": "IOSTUSDT", "LIT": "LITUSDT",
+    "MAGIC": "MAGICUSDT", "MARSCOIN": "MARSCOINUSDT",
+    "NIGHT": "NIGHTUSDT", "ONDO": "ONDOUSDT", "QNT": "QNTUSDT",
+    "RENDER": "RENDERUSDT", "STX": "STXUSDT", "TRX": "TRXUSDT",
+    "WLFI": "WLFIUSDT", "XLM": "XLMUSDT", "ZRO": "ZROUSDT",
+    "FF": "FFUSDT", "2Z": "2ZUSDT",
 }
 
 _BASIS = "https://api.binance.com"

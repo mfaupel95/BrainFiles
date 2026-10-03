@@ -1283,3 +1283,80 @@ Score gescheiterter Kandidat darf keinen Kurs holen, sonst waere der ganze Markt
 (500+ Paare) teuer.
 
 **Befund mit allen Zahlen:** `Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md`.
+
+### 104. Eine Trefferquote ist kein Edge, und eine Basislinie, die man
+nicht hat, ist keine Entschuldigung
+
+Zwei Zahlen sagen dasselbe und meinen nicht dasselbe, und beide sehen
+gleich aus:
+
+- **Trefferquote** - der Anteil der Runden mit Gewinn. Sie kann 90 % sein
+  und trotzdem bedeuten, dass die Verlierer laenger gehalten werden als
+  die Gewinner. Am Scanner (T-322): 93 % Treffer, +19 % Mean - aber nur
+  weil die Scheinrunden mitschleppten; ehrlich 38 % bei +1,99 %.
+- **Excess-Rendite** - Rundenergebnis MINUS der Marktbewegung desselben
+  Instruments ueber dieselbe Zeit (BUY & HOLD aus den gespeicherten
+  Kerzen). Nur diese Zahl beantwortet die Frage, ob die Spur etwas
+  zusaetzlich zum Markt verdient. Nahe 0 heisst: die Spur IST die
+  Marktbewegung. Negativ heisst: die Runden weglassen.
+
+**Wer eine Trefferquote nennt, ohne die Excess danebenzustellen, hat eine
+Auswertung ohne Gegenprobe** - und die hat in diesem Haus schon einmal die
+falsche Spur zur besten des Hauses gemacht.
+
+
+**DIE STILLE LUECKE (03.10.2026, T-322/T-323)**
+
+Bei der Suche nach einer Basislinie kam etwas heraus, das nicht die Messung
+betraf, sondern ihre Abwesenheit: `historie_binance.PAARE` kannte 30
+JOURNAL-NAMEN, aber nur drei BISWERTE - BTC, ETH, SOL. Damit war fuer jede
+andere Spur keine Basislinie moeglich, und wer sie nicht hatte, hat sie
+nicht gemessen. Die Spuren haben dabei 110 verschiedene Namen fuer 66
+Basiswerte geschrieben (`HBAR-USDT`, `HBAR-USD_UM_XPERP-310815`,
+`HBAR` - ein Wert, drei Schreibweisen).
+
+**Drei Regeln daraus:**
+
+1. **Ein Mapping muss Basiswerte kennen, nicht Schreibweisen.** Eine
+   Tabelle, die nur die Namen enthaelt, die man einmal getippt hat, ist eine
+   Liste von Beobachtungen. `spur_audit.basisform()` reduziert jeden
+   Journalnamen auf den Basiswert (`OKX-Kontrakt`, `-SWAP`, `/EUR`,
+   Kraken-`X`-Praefix); erst danach wird ueberhaupt nach einem Paar
+   gefragt. 03.10.2026: nachgetragen auf 42 Basiswerte mit Binance-
+   USDT-Paar (gegen jeden Kandidaten mit `klines` geprueft).
+2. **Ein Instrument ohne Historie ist eine LUECKE, kein Befund** - und
+   vor allem kein Anlass fuer einen Ersatz. Aktien-ETPs (CL, XAU, QQQ,
+   MSTR) und Pump-Token bekommen KEIN aehnliches Instrument untergeschoben:
+   das waere eine erfundene Basislinie. `spur_audit` weist sie als
+   `ohne_basislinie` aus und nimmt die Runden aus der Kennzahl.
+3. **Der Wert muss die EINE Funktion sein, die den Kurs holt.** Siehe
+   Punkt 103: derselbe Fehler faellt in jeder Spur, sobald eine zweite
+   Stelle den Preis holt.
+
+
+**Das Werkzeug:** `Agenten/Handel/spur_audit.py` beantwortet fuer ALLE
+Spuren in EINEM Durchgang zwei Fragen: (a) Ist die Statistik echt? (Drei
+Alarme: Haltedauer im Aufrufertakt, ein Instrument traegt die Mehrheit,
+Einstiegspreis je (Instrument, Tag) identisch.) (b) Hat die Spur Edge?
+(Excess gegen BUY & HOLD, Plus die Basislinie selbst.) Es liest die
+Spurliste aus `dauerlauf.SPUREN`, die Zuordnung aus `journalpaarung`
+(die EINE des Hauses) und den Aufrufertakt aus `dauerlauf.TAKT_MAX_MINUTEN`.
+`--historie` laedt die fehlenden Kerzen nach. Tests: `tests/test_spur_audit.py`
+(24, mit Gegenprobe an jedem Alarm).
+
+**Zwei Fehler, die die Tests beim Bauen des Werkzeugs selbst gefunden
+haben** - beide waeren stillschweigend in jede Messung eingegangen:
+
+1. Die Basislinie las fuer Ein- und Ausstieg dieselbe Kerze, wenn das
+   Fenster zwischen zwei Kerzen lag: Ergebnis 0,0 %, und jede Spur schaet
+   besser aus als sie ist. Der Einstieg braucht die Kerze VOR t0, der
+   Ausstieg die LETZTE im Fenster.
+2. Der Score steht in der Grund-Spalte als `score 64.7` - der Wert im
+   Token DANACH. Ein Test, der nur auf `=` oder `:` prueft, liest nie einen
+   Score, und die Umkehrung des Scores (60-69 besser als 80+) bleibt dann
+   ungeprueft.
+
+
+**Merksatz:** eine Basislinie, die fehlt, ist kein Freifahrtschein. Sie
+faellt als Befund auf, wenn man sie verlangt.
+
