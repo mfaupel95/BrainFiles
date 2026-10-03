@@ -53,7 +53,21 @@ HIER = Path(__file__).resolve().parent
 WURZEL = HIER.parents[2]                       # scripts -> Hermes -> Agenten -> BrainFiles
 
 RUHE_STUNDEN = 6.0        # dieselbe Feststellung hoechstens alle 6 h
-AUSLASSEN = {'__pycache__'}                   # Bytecode ist kein Soll-Zustand
+# Bytecode ist kein Soll-Zustand. Die uebrigen Namen sind fuer den zweiten
+# Waechter (dateischwund-wache-handel.py) da: ohne sie muesste der Handel
+# Ordner samt .venv und Datenbestand gehasht werden, und der Lauf waere so
+# teuer, dass die Wache abgeschaltet wird - der Ausfall, den sie verhindern
+# soll. Eine Ausnahme kann nur die Sicht verengen, nie eine Datei ausblenden,
+# die vorher gemeldet wurde.
+AUSLASSEN = {'__pycache__', '.venv', 'venv', 'node_modules', 'target',
+             'logs', 'daten', 'cache', 'state', 'docs', '.git'}
+# Endungen, die der zweite Waechter gar nicht erst zu sehen bekommt. Der
+# erste Grund ist der Laufaufwand: ohne diese Grenze brauchte ein Lauf ueber
+# Agenten/Handel viereinhalb MINUTEN, alle fuenfzehn - das ist kein Waechter
+# mehr, das ist Last. Der zweite Grund ist die Meldeklasse: Tagessaetze und
+# Protokolle werden laufend umgeschrieben und wuerden jeden Lauf als
+# "geaendert" fuehren, auch wenn nichts verloren ging.
+AUSLASSEN_ENDE = frozenset()
 MERK_VORGABE = HIER.parent / 'cache' / 'dateischwund-wache.json'
 
 
@@ -84,6 +98,8 @@ def git_soll(wurzel: Path, ordner: Path) -> set:
 
 
 def ist_ausgelassen(pfad: Path, ordner: Path) -> bool:
+    if AUSLASSEN_ENDE and pfad.suffix.lower() in AUSLASSEN_ENDE:
+        return True
     return any(t in AUSLASSEN for t in pfad.relative_to(ordner).parts)
 
 
