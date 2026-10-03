@@ -37,11 +37,28 @@ def main():
         print("A ohne Caption-Lesen     :", lauf())
 
         b = roh.decode("utf-8").replace(
-            "bearbeite(_mit_bildern(text, bilder), chat)",
-            "bearbeite(text, chat)")
+            "                    antwort, _ = bearbeite("
+            "_mit_bildern(text, bilder),\r\n"
+            "                                           chat)",
+            "                    antwort, _ = bearbeite(text, chat)")
         assert b != roh.decode("utf-8"), "Gegenprobe B passt nicht"
         open(QUELLE, "wb").write(b.encode("utf-8"))
         print("B ohne Bilddurchreichung :", lauf())
+
+        d = roh.decode("utf-8").replace(
+            "                bilder = _fenster_bilder(cache_key)",
+            "                bilder = []")
+        assert d != roh.decode("utf-8"), "Gegenprobe D passt nicht"
+        open(QUELLE, "wb").write(d.encode("utf-8"))
+        print("D ohne das ganze Fenster:", lauf())
+
+        c = roh.decode("utf-8").replace(
+            '                    _log(chat, text[:40], 0, "bildfehler", 0,'
+            "\r\n"
+            "                         fehler=bild_fehler)", "                    pass")
+        assert c != roh.decode("utf-8"), "Gegenprobe C passt nicht"
+        open(QUELLE, "wb").write(c.encode("utf-8"))
+        print("C ohne Bildfehler-Log   :", lauf())
     finally:
         open(QUELLE, "wb").write(roh)
         if os.path.exists(SICHERUNG):

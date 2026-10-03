@@ -72,6 +72,13 @@ ENV_HERMES = os.path.join(WURZEL, "Agenten", "Hermes", ".env")
 CONFIG_HERMES = os.path.join(WURZEL, "Agenten", "Hermes", "config.yaml")
 LOG_PFAD = os.path.join(HIER, "skillsbot.log")
 OFFSET_PFAD = os.path.join(HIER, "skillsbot.offset")
+# Welcher Bot gerade "aktiv" ist (Auftrag Max 03.10.2026: /bot NAME
+# ohne Auftrag war nur eine Syntaxhilfe, danach ging der Auftrag an den
+# HAUPTAGENT - der Bot bekam ihn nie). ZIEL_PFAD ist ein Laufzeitstand
+# wie der Offset, kein versionierter Zustand.
+ZIEL_PFAD = os.path.join(HIER, "skillsbot.ziel.json")
+ZIEL_FRIST_S = 1800      # ein Bot bleibt 30 min "aktiv"; danach gehoert
+                         # der naechste Freitext wieder dem Hauptagenten
 KONTEXT_PFAD = os.path.join(HIER, "skillsbot.kontext.json")
 PID_PFAD = os.path.join(HIER, "skillsbot.pid")
 
@@ -103,7 +110,7 @@ BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arb
 # fuer Max der normale Fall ("hier, guck mal"). Der Bot braucht die Dateien
 # auf der Platte, sonst kann er sie nicht sehen.
 BILDER_PFAD = os.path.join(HIER, "bilder")
-BILD_GRUPPE_MAX = 6      # mehr Bilder sind selten ein Auftrag, sondern ein Chat
+BILD_FENSTER = 6        # so viele Bilder bleiben je Chat liegen
 
 
 def _bild_text(nachricht):
@@ -112,66 +119,116 @@ def _bild_text(nachricht):
 
 
 def _bilder(nachricht):
-    """Die groesste Fassung je Bild - Telegram liefert up to 4 Stufen."""
-    aus = []
-    for p in sorted(nachricht.get("photo") or [], key=lambda x: -x.get("file_size", 0)):
-        aus.append(p["file_id"])
+    """GENAU EIN Bild aus dieser Nachricht - die groesste Fassung.
+
+    Telegram liefert pro Foto bis zu vier Stufen in EINER `photo`-Liste
+    (thumb/klein/mittel/gross). Sie sind Fassungen DESSELBEN Bildes; wer alle
+    nimmt, laedt fuenfmal dieselbe Datei und nennt sie fuenf Bilder. Max hat
+    zudem zwei Fotos als zwei Nachrichten geschickt (Bild 1, Bild 2) - eine
+    Nachricht ist ein Bild, die Gruppe ergibt sich aus der Reihenfolge.
+    """
+    fotos = nachricht.get("photo") or []
+    if fotos:
+        return [max(fotos, key=lambda x: x.get("file_size", 0))["file_id"]]
     for gruppe in ("document", "video", "audio", "voice"):
         d = nachricht.get(gruppe)
         if isinstance(d, dict) and d.get("file_id"):
-            aus.append(d["file_id"])
-            break
-    return aus[:BILD_GRUPPE_MAX]
+            return [d["file_id"]]
+    return []
 
 
 def _bilder_holen(nachricht, cache_key):
-    """Laden und als Datei ablegen. Liste der Pfade (leer = nichts)."""
+    """Das Bild als Datei ablegen. (Pfad, Grund bei Fehler).
+
+    Die Ablage ist ein ROLLIERENDES FENSTER je Chat: Max schickt Bild 1 und
+    Bild 2 als zwei Nachrichten ("das Muster im 2. Bild, der Boden im 1.").
+    Ein Fenster je Nachricht wuerde Bild 1 sofort wieder loeschen - dann sieht
+    der Agent nur ein Bild und kann den Auftrag nicht ausfuehren.
+
+    Ein Fehler wird NICHT verschluckt: gemeldet wurde "Betrachte das Bild"
+    und dann lief ein Auftrag ohne Bild. Der Grund wandert ins Protokoll.
+    """
     ids = _bilder(nachricht)
     if not ids:
-        return []
+        return "", ""
     ziel = os.path.join(BILDER_PFAD, cache_key)
+    pfad = ""
     try:
         os.makedirs(ziel, exist_ok=True)
-        pfade = []
-        for i, fid in enumerate(ids, 1):
-            info = _ruf("getFile", {"file_id": fid}).get("result") or {}
-            pfad_rel = info.get("file_path")
-            if not pfad_rel:
-                continue
-            endung = os.path.splitext(pfad_rel)[1] or ".jpg"
-            ziel_datei = os.path.join(ziel, "bild%d%s" % (i, endung))
-            if not os.path.exists(ziel_datei):
-                # Datei-Download laeuft ueber /file/bot<token>/<pfad>, nicht
-                # ueber /bot<token>/ - die erste Form ist ein 404.
-                url = ("https://api.telegram.org/file/bot%s/%s"
-                       % (token(), pfad_rel))
-                with urllib.request.urlopen(url, timeout=60) as q:
-                    inhalt = q.read()
-                with open(ziel_datei, "wb") as f:
-                    f.write(inhalt)
-            pfade.append(ziel_datei)
-        # Alte Gruppen raeumen: die Ablage ist ein Cache, kein Archiv.
-        for alt in os.listdir(BILDER_PFAD):
-            if alt != cache_key:
-                try:
-                    for datei in os.listdir(os.path.join(BILDER_PFAD, alt)):
-                        os.remove(os.path.join(BILDER_PFAD, alt, datei))
-                    os.rmdir(os.path.join(BILDER_PFAD, alt))
-                except OSError:
-                    pass
-        return pfade
-    except Exception:                                    # noqa: BLE001
+        # _ruf() gibt das "result" bereits entpackt zurueck - ein
+        # .get("result") darueber ergaebe {} und der Auftrag laeuft ohne Bild.
+        info = _ruf("getFile", {"file_id": ids[0]}) or {}
+        pfad_rel = info.get("file_path")
+        if not pfad_rel:
+            return "", "Telegram gab keinen Pfad"
+        endung = os.path.splitext(pfad_rel)[1] or ".jpg"
+        nummer = 1
+        while True:
+            pfad = os.path.join(ziel, "bild%d%s" % (nummer, endung))
+            if not os.path.exists(pfad):
+                break
+            nummer += 1
+        url = ("https://api.telegram.org/file/bot%s/%s"
+               % (token(), pfad_rel))
+        with urllib.request.urlopen(url, timeout=60) as q:
+            inhalt = q.read()
+        with open(pfad, "wb") as f:
+            f.write(inhalt)
+    except Exception as e:                                # noqa: BLE001
+        # Kein Pfad zurueck: eine halb geschriebene Datei als Bild zu
+        # melden waere schlimmer als gar keins - der Agent liest dann
+        # ins Leere und raeiselt am falschen Grund.
+        if pfad and os.path.exists(pfad):
+            try:
+                os.remove(pfad)
+            except OSError:
+                pass
+        return "", str(e)[:120]
+    # Fenster schliessen: die letzten BILD_FENSTER bleiben, der Rest weg.
+    try:
+        for datei in sorted(os.listdir(ziel)):
+            alt = os.path.join(ziel, datei)
+            num = _bild_nummer(alt)
+            if num > BILD_FENSTER:
+                os.remove(alt)
+    except OSError:
+        pass
+    return pfad, ""
+
+
+def _bild_nummer(pfad):
+    """Die laufende Nummer aus 'bild3.jpg' - 0 bei allem anderen."""
+    name = os.path.basename(pfad)
+    if not name.startswith("bild") or "." not in name:
+        return 0
+    try:
+        return int(name[4:name.index(".")])
+    except ValueError:
+        return 0
+
+
+def _fenster_bilder(cache_key):
+    """Alle Bilder im Fenster dieses Chats, in Reihenfolge der Sendung."""
+    ziel = os.path.join(BILDER_PFAD, cache_key)
+    try:
+        dateien = [os.path.join(ziel, d) for d in os.listdir(ziel)]
+    except OSError:
         return []
+    return sorted(dateien, key=_bild_nummer)
 
 
 def _mit_bildern(frage, pfade):
     """Die Bildpfade an den Auftrag haengen - der Agent soll sie SEHEN."""
     if not pfade:
         return frage
-    return (frage + "\n\nLies diese Bilddateien (mit vision/image-Tool, "
-            "nicht nur den Dateinamen):\n"
+    beschriftung = ", ".join(
+        "Bild %d = %s" % (_bild_nummer(p), os.path.basename(p))
+        for p in pfade)
+    return (frage + "\n\nBilder aus diesem Chat (in dieser Reihenfolge):\n"
+            + beschriftung
+            + "\nLies jede Datei mit dem vision/image-Tool - nur den "
+              "Dateinamen zu lesen reicht nicht.\n"
             + "\n".join("- %s" % p for p in pfade))
-
 
 
 HERMES_EXE = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
@@ -506,6 +563,39 @@ def _handelsantwort(wort):
     raise SkillsBotFehler("kein Handelsbefehl: %s" % wort)
 
 
+def _ziel_lesen(chat):
+    """Der gerade aktive Bot je Chat; abgelaufen oder unbekannt -> None."""
+    ziel = _lade_json(ZIEL_PFAD, {}).get(str(chat))
+    if not isinstance(ziel, dict):
+        return None
+    name = ziel.get("name") or ""
+    if name not in bot_namen():
+        return None
+    if time.time() - float(ziel.get("zeit") or 0) > ZIEL_FRIST_S:
+        return None
+    return name
+
+
+def _ziel_setzen(chat, name):
+    """Bot merken (Dauerbetrieb); leere Name loescht."""
+    ziele = _lade_json(ZIEL_PFAD, {})
+    if not name:
+        ziele.pop(str(chat), None)
+    else:
+        ziele[str(chat)] = {"name": name, "zeit": time.time()}
+    _speichere_json(ZIEL_PFAD, ziele)
+    return name or None
+
+
+def _ziel_meldung(name):
+    """Was nach /bot NAME ohne Auftrag gesagt wird - EINE Stelle."""
+    if not name:
+        return ("Bot abgeschaltet - der naechste Freitext geht wieder an "            "den Hauptagenten. /bots zeigt die Bot-Namen.")
+    return ("Bot %s ist jetzt der Adressat. Sende den Auftrag als naechste "
+            "Nachricht - Text ODER Bild. Er geht an %s, nicht an den "            "Hauptagenten. Antwort in 30 bis 60 s plus Arbeitszeit (bis %d "
+            "min).\n\nAbschalten: /bot aus" % (name, name, BOT_FRIST_S // 60))
+
+
 def _bot_profil_ordner():
     """Agenten/Hermes/profiles/ - die Wahrheit fuer Bot-Namen (kein Raten)."""
     return os.path.join(WURZEL, "Agenten", "Hermes", "profiles")
@@ -612,16 +702,20 @@ def _bot_befehl(rest, chat):
     bleibt unveraendert - der Bot spricht mit seinem eigenen Verlauf.
     """
     if not rest:
-        return ("Syntax: /bot NAME NACHRICHT\n"
-                "Beispiel: /bot openterminal Was ist in der README?\n"
-                "Die Namen stehen in /bots."), None
+        alt = _ziel_setzen(chat, None)
+        return _ziel_meldung(alt), None
     name = rest[0].lstrip("/")
     texte = " ".join(rest[1:]).strip()
+    if name in ("aus", "off", "stop"):
+        _ziel_setzen(chat, None)
+        return _ziel_meldung(None), None
     if name not in bot_namen():
         return ("Kein Profil %r. /bots zeigt die Namen." % name), None
     if not texte:
-        return ("Was soll ich Bot %s fragen? Syntax: /bot %s NACHRICHT"
-                % (name, name)), None
+        # Bot einschalten, NICHT fragen: am Handy kommt der Auftrag als
+        # naechste Nachricht (oft ein Bild) - dafuer ist dieser Weg da.
+        _ziel_setzen(chat, name)
+        return _ziel_meldung(name), None
     # Erst sagen, dann tun: ein frischer Agent braucht 30-60 s Kaltstart.
     sende(chat, "Bot %s uebernimmt: 30-60 s Kaltstart, eine echte Aufgabe "
               "darf bis %d min dauern. Ergebnis kommt, sobald er fertig "
@@ -762,10 +856,13 @@ def hilfe_text():
             "/run NAME [Auftrag] - einen Skill AUSFUEHREN (bis 5 min)\n"
             "/bots - alle Hermes-Profile (Repo-Bots)\n"
             "/bot NAME NACHRICHT - Frage an einen Repo-Bot (bis 5 min)\n"
+            "/bot NAME - schaltet den Bot EIN; der naechste Auftrag\n"
+            "  (Text ODER Bild, ohne Schraegstrich) geht an IHN, nicht\n"
+            "  an den Hauptagenten. /bot aus schaltet wieder ab.\n"
             "/hilfe - diese Liste\n"
             "\nFreigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
             "/nein_xperp, /stop_xperp.\n"
-            "SWAP-Live bleibt gesperrt. Freitext geht weiterhin an Hermes.")
+            "SWAP-Live bleibt gesperrt. Freitext ohne aktiven Bot geht an Hermes.")
 
 
 DENKEN = "\U0001f4ad **Reasoning:**"
@@ -943,10 +1040,35 @@ def bearbeite(text, chat):
         except Exception as e:  # noqa: BLE001
             return "Skill nicht lesbar: %s" % str(e)[:120], kontext
     if t.startswith("/"):
+        ziel = _ziel_lesen(chat)
+        if ziel:
+            # Max hat vermutlich eine Bot-Nachricht mit Schraegstrich
+            # geschickt, waehrend der Bot aktiv war: /lage gehoert zum
+            # Hauptagenten, /bot NAME zum Bot.
+            return ("%r ist kein Befehl. Aktiv ist gerade Bot %s - ein "
+                    "Auftrag ohne Schraegstrich geht an ihn; /bot %s "
+                    "NACHRICHT schaltet direkt auf ihn.\n\nKein Auftrag "
+                    "an den Agenten gesendet." % (wort, ziel, ziel)), kontext
         return ("Kein SkillsBot-Befehl. /hilfe zeigt die Liste.\n"
                 "Freigaben nur im Handelsbot: /freigabe_xperp, /ja_xperp STUNDEN, "
                 "/nein_xperp, /stop_xperp.\n"
+                "Einen Bot rufst du mit /bot NAME (schaltet ihn ein), danach "                "kommt der Auftrag ohne Schraegstrich - Text oder Bild.\n"
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
+    # Aktiver Bot? Dann geht der Auftrag an ihn, nicht an den Hauptagenten
+    # (Auftrag Max 03.10.2026). Nach EINEM Auftrag ist er abgeschaltet,
+    # damit der naechste Freitext nicht im falschen Bot landet.
+    ziel = _ziel_lesen(chat)
+    if ziel:
+        _ziel_setzen(chat, None)
+        sende(chat, "Bot %s uebernimmt: 30-60 s Kaltstart, eine echte "
+                   "Aufgabe darf bis %d min dauern. Ergebnis kommt, sobald "
+                   "er fertig ist." % (ziel, BOT_FRIST_S // 60))
+        try:
+            antwort = _bot_fragen(ziel, t)
+        except Exception as fehler:                     # noqa: BLE001
+            return ("Bot %s gescheitert: %s"
+                    % (ziel, str(fehler)[:150])), kontext
+        return ohne_denken(antwort), kontext
     # Erst sagen, dann tun (Muster von /run): der Hauptagent braucht fuer echte
     # Arbeit Minuten. Ohne diese Zeile sieht es aus, als haenge der Bot.
     sende(chat, "Angenommen - der Hauptagent arbeitet daran (oft 7 bis 25 "
@@ -1000,11 +1122,19 @@ def schleife():
                     _log(chat, "(fremd)", 0, "abgewiesen", len(text))
                     offset = uid + 1
                     continue
-                bilder = _bilder_holen(nachricht, "chat%s" % chat)
+                cache_key = "chat%s" % chat
+                _neu, bild_fehler = _bilder_holen(nachricht, cache_key)
+                if bild_fehler:
+                    _log(chat, text[:40], 0, "bildfehler", 0,
+                         fehler=bild_fehler)
+                # Das GANZE Fenster mitgeben, nicht nur das neue Bild: der
+                # Auftrag lautet "Muster im 2. Bild, Boden im 1. Bild" -
+                # beide liegen in der Ablage, nicht in dieser Nachricht.
+                bilder = _fenster_bilder(cache_key)
                 start = time.time()
                 try:
-                    antwort, _ = bearbeite(_mit_bildern(text, bilder), chat)
-                    sende(chat, antwort)
+                    antwort, _ = bearbeite(_mit_bildern(text, bilder),
+                                           chat)
                     _log(chat, text[:40], round(time.time() - start, 1),
                          "ok", len(antwort))
                     versuche.pop(uid, None)
