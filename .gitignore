@@ -638,6 +638,14 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Werkzeuge/repos-zentrale/tests/
 !Agenten/Werkzeuge/repos-zentrale/tests/*.py
 !Agenten/Werkzeuge/lotse-route.py
+# CODEX REMOTE CONTROL (03.10.2026): `codex remote-control` ist auf Windows
+# unbrauchbar (Daemon-Lifecycle ist Unix-only). Der tragende Weg ist der
+# app-server-Prozess mit --remote-control und lokalem WebSocket-Transport;
+# dieses Skript startet ihn bei der Anmeldung und ist im Skript selbst
+# lokalisierend. Es liegt bewusst unter Werkzeuge/ und NICHT unter Routinen/ -
+# dort gilt jede .ps1 als Bus-Routine, was sie nicht ist (gleiche Ueberlegung
+# wie bei repos-launcher.ps1 oben). logs/ bleiben gesperrt.
+!Agenten/Werkzeuge/codex-remote-control.ps1
 # FOMO-RADAR AUF LOKALEM MODELL (23.09.2026): Das Fremd-Repo
 # Werkstatt/Repos/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
 # Guthaben faellt das Urteil lokal (Ollama) - ueber die Export/Import-Naht, die
