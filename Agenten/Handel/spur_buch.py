@@ -47,6 +47,7 @@ import freigabefenster  # noqa: E402
 _handel_ordner = os.path.dirname(os.path.abspath(__file__))
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
+import basis_deckel_tor
 import mae
 import pos_kennung  # noqa: E402
 
@@ -308,6 +309,25 @@ def sperren_live(w, s, spur):
             g.append("kein offenes Freigabefenster (Handelsregeln Punkt 3)")
     except Exception:                                          # noqa: BLE001
         g.append("freigabefenster.py nicht erreichbar")
+    wegsperren = orderweg(w)
+    # BASIS-DECKEL (03.10.2026, Auftrag Max "Basis deckel 20%"): ist eine
+    # Basis ueber 20 % des Kapitals, bekommt sie keinen neuen Einstieg.
+    # Bestehende Positionen laufen weiter - sie zu schliessen waere eine
+    # Order und gehoert in die Freigabekette wie jede andere.
+    #
+    # Der Deckel wird an dieser Stelle und nicht in der Signalberechnung
+    # geprueft: eine Spur, die ein Signal sieht und es nicht handelt, sieht
+    # fuer tot aus - der stille-spuren-wache wuerde sie als tot melden,
+    # ohne zu wissen warum. Hier wird der Einstieg abgelehnt und
+    # protokolliert, die Spur laeuft weiter und sieht gesund aus.
+    if wegsperren is not None:
+        try:
+            for _inst in sorted(s.get("instrumente") or s.get("watchlist") or []):
+                _gesperrt, _grund = basis_deckel_tor.ueber_dem_deckel(_inst)
+                if _gesperrt:
+                    g.append(_grund)
+        except Exception as e:                              # noqa: BLE001
+            g.append("Basis-Deckel nicht pruefbar (%s)" % str(e)[:80])
     noetig = float(w.get("mindest_guthaben", 0) or 0)
     if noetig and weg is not None and weg.schluessel_vorhanden():
         try:

@@ -193,6 +193,22 @@ def ausfuehren(spur, eintrag):
     except Exception as e:                                      # noqa: BLE001
         return False, ("%s: Gebuehren-Tor unlesbar (%s) - im Zweifel KEINE "
                        "Order" % (spur, e))
+    # BASIS-DECKEL (03.10.2026): die Basis darf nicht ueber 20 % des
+    # Kapitals liegen. Bestehende Positionen bleiben - nur NEUE Einstiege
+    # werden abgelehnt.
+    try:
+        if HANDEL not in sys.path:
+            sys.path.insert(0, HANDEL)
+        import basis_deckel_tor
+        gesperrt, grund = basis_deckel_tor.ueber_dem_deckel(inst)
+        if gesperrt:
+            return False, "%s: %s - Auftrag bleibt in der Queue" % (spur, grund)
+    except ImportError:
+        return False, ("%s: basis_deckel_tor.py nicht erreichbar - im Zweifel "
+                       "KEINE Order" % spur)
+    except Exception as e:                                      # noqa: BLE001
+        return False, ("%s: Basis-Deckel unlesbar (%s) - im Zweifel KEINE "
+                       "Order" % (spur, e))
     # Freies Guthaben und Mindestdeckel
     try:
         gu = weg.guthaben_waehrung()

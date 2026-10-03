@@ -142,6 +142,12 @@ def basisform(inst):
         s = s.split(trenner)[0]
     if "_" in s:
         s = s.split("_")[0]
+    # XBT ist BTC. Kraken fuehrt Bitcoin unter dem Kuerzel XBT; ohne diese
+    # Zuordnung gehoeren xperp-Positionen zur Basis "XBT" und der Deckel
+    # sperrt BTC-USDT-SWAP, laesst XBT-USD aber durch - ein Deckel, den man
+    # mit einem anderen Namen umgeht.
+    if s in ("XBT", "XBTUSD"):
+        s = "BTC"
     return s or "?"
 
 
