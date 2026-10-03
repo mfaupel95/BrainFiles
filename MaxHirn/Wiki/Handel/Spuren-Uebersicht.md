@@ -156,3 +156,35 @@ verweigert mit Grund.
 **Nachtrag 22.09.2026:** `pruefe_ratschen.py` fuehrte `trendwende_btc`, `liq_wand` und
 `robinhood_radar` nicht — die Liste war seit dem 21.09. hinter den Spuren her. Jetzt alle drei
 drin, alle „1.0x? ja".
+
+**Nachtrag 03.10.2026 — drei Spuren liefen, ohne dass das Haus ihre Zahlen kannte.**
+`liq_wand`, `trendwende_btc` und `nautilus_emacross` standen in `dauerlauf.SPUREN`,
+hatten `wachen.json`, einen funktionierenden Zyklus — und fehlten in
+`auswertung_alle.SPUREN`. Gemessen: `liq_wand` hatte **32 geschlossene Runden im Journal
+und 0 in jeder Auswertung**. Kein Tagesbericht, keine Strategiekennzahl, kein
+Kosten-Wendepunkt, keine Freigabe-Aussage. Alle drei tragen `kauf`/`verkauf` mit
+`einsatz_usd` — dieselbe Form wie `squeeze`/`wavetrend`, also derselbe Rechenweg
+(`runden_indikator`). Nachgetragen, Ergebnis liq_wand: 32 Runden, 66 % Treffer,
+−10,83 USD brutto / −14,07 USD netto; Kosten-Wendepunkt −0,30 % je Runde.
+
+**Und dieselbe Luecke bei den Ratschen:** `squeeze`, `wavetrend`, `macd_mtf`,
+`supertrend` (alle 20,00 = 1,0 × Buchrisiko 5 USD × 4 Plätze) und
+`nautilus_emacross` (100,00) führten eine Drawdown-Ratsche, die
+`pruefe_ratschen.py` nie nachfragte. Nachgetragen; `nautilus_emacross` meldet jetzt
+„n/a“ — die Wache setzt 100,00 **ohne Risiko-Feld**, der Betrag ist damit nicht
+herleitbar (als Lücke benannt, nicht stillschweigend übergangen).
+
+**Warum das so lange unbemerkt blieb:** die beiden Listen (`auswertung_alle.SPUREN`,
+`pruefe_ratschen.SPUREN`) wurden von Hand nachgezogen, und kein Test verglich sie mit
+`dauerlauf.SPUREN`. Es gibt jetzt `Agenten/Handel/tests/test_verdrahtung.py` — es
+prüft die **Regel** (jede Spur mit Journal hat einen Rechenweg; jede gesetzte Ratsche
+wird geprüft; jeder geprüfte Betrag trifft 1,0 × Buchrisiko), nicht eine feste
+Zahl, und hat zwei Gegenproben: nimmt man `liq_wand` aus der Auswertungsliste oder
+`squeeze` aus der Prüfliste, wird derselbe Test rot.
+
+**Bewusst NICHT verdrahtet:** `kopier`, `kopier1zu1`, `spiegel`, `omniquant`, `gitter`
+haben eine eigene `auswertung.py` und erscheinen im Tagesbericht mit voller Bilanz
+(kopier: 111 Ausstiege, −793,81 USD). Ihr Journal trägt `token`/`symbol` statt `inst`;
+ein Weg in `auswertung_alle` ergab **107 Runden mit falscher Paarung** (Einsteig PATE,
+Ausstieg leeres Symbol) — gemessen, nicht vermutet. `gitter` führt `max_verlust_usd`
+(Kill) statt einer Drawdown-Ratsche und hat keine `lage()`.

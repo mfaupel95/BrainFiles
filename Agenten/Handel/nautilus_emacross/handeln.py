@@ -233,7 +233,7 @@ def spur_main(argv=None):
               "(Papier, die Originalregel ohne Orderweg).")
         return 0
     return spur_buch.zyklus(str(HIER), quelle, signal, modus,
-                            ereignis_name="handel/" + NAME,
+                            ereignis_name="handel/nautilus_emacross",
                             zusatz_ausstieg=kreuzwechsel)
 
 

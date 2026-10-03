@@ -89,6 +89,18 @@ SPUREN = [
     ("klassik_sr_breaks", "klassik_sr_breaks", "scanner", "wachen_pruefung"),
     ("klassik_pmax", "klassik_pmax", "scanner", "wachen_pruefung"),
     ("klassik_supertrend", "klassik_supertrend", "scanner", "wachen_pruefung"),
+    # Die vier PROGNOSE-SPUREN (30.09.2026) tragen denselben Kern wie die
+    # Bot-Spuren und haben je 20.00 gesetzt = 1.0 x Buchrisiko (5 USD
+    # Risiko x 4 Plaetze). Sie standen nie in dieser Liste, ihre Ratsche
+    # wurde also nie geprueft - gemessen 03.10.2026.
+    ("squeeze", "squeeze", "scanner", "wachen_pruefung"),
+    ("wavetrend", "wavetrend", "scanner", "wachen_pruefung"),
+    ("macd_mtf", "macd_mtf", "scanner", "wachen_pruefung"),
+    ("supertrend", "supertrend", "scanner", "wachen_pruefung"),
+    # NAUTILUS_EMACROSS (03.10.2026): Schwelle 100.0 gesetzt, aber die
+    # Wache fuehrt KEIN Risiko-Feld - der Eintrag meldet "nicht
+    # herleitbar" und macht die Luecke sichtbar, statt sie zu uebergehen.
+    ("nautilus_emacross", "nautilus_emacross", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.

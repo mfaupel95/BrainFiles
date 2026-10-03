@@ -141,7 +141,17 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",
               "klassik_donchian", "klassik_rsi", "klassik_rsi2",
               "klassik_donchian_trend", "klassik_sr_breaks", "klassik_pmax",
-              "klassik_supertrend")
+              "klassik_supertrend",
+              # LIQ_WAND (21.09.2026): Liquidationswand als Beschleuniger,
+              # Spur ueber spur_buch.py, Journalform kauf/verkauf mit
+              # einsatz_usd - derselbe Weg. TRENDWENDE_BTC (21.09.2026):
+              # SuperTrend-Wende auf BTC, dieselbe Form.
+              # NAUTILUS_EMACROSS (03.10.2026): EMA10/20 mit
+              # Close-and-Reverse, dieselbe Form.
+              # Die drei fehlten hier und ihre Runden tauchten in KEINER
+              # Auswertung auf - liq_wand hatte 32 geschlossene Runden im
+              # Journal und 0 in der Zahl (gemessen 03.10.2026).
+              "liq_wand", "trendwende_btc", "nautilus_emacross")
 SPUREN = SPUREN + INDIKATOR_SPUREN + BOT_SPUREN
 
 
@@ -1092,8 +1102,12 @@ def main():
                       % (spur, seit.isoformat() if seit else "nie"))
             print("  Erst den Betrieb pruefen (Dauerlauf-Log, Herzschlag), dann "
                   "das Buch - eine stehende Spur schreibt keine Zeilen.")
-    print("\n  spiegel, omniquant und gitter haben eigene Auswertungen "
-          "(auswertung.py im jeweiligen Ordner).")
+    print("\n  kopier, kopier1zu1, spiegel, omniquant und gitter haben "
+          "eigene Auswertungen (auswertung.py im jeweiligen Ordner). "
+          "kopier und kopier1zu1 kommen hier NICHT vor: ihr Journal "
+          "traegt token/symbol statt inst, eine Paarung ueber "
+          "runden_nautilus ergab 107 Runden mit falscher Zuordnung "
+          "(gemessen 03.10.2026).")
     if STUFE:
         print("  Gezaehlt wurde die Risikostufe %s - der Basislauf laeuft "
               "daneben unveraendert weiter." % STUFE)
