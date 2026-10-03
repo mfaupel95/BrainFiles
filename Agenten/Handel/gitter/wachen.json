@@ -33,5 +33,7 @@
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\gitter",
   "_gebuehr_quelle": "OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker 0,10 %/Seite + echte Fuellung HYPE-USDC 0,1000 %). Die Spur handelt SPOT: ihre wachen.json bzw. ihr Code nennt <SYM>-USDC bzw. BTC-USDT.",
-  "gebuehr_taker": 0.001
+  "gebuehr_taker": 0.001,
+  "notaus_unter_gitterunterkante": true,
+  "_notaus_vermerk": "03.10.2026, Auftrag Max \"Gitter stop\". Notaus fuer die offene BTC-USDT-Position der Stufe 8. WARUM SO TIEF: das Gitter kauft bei Stufe 7 (81101,90) nach - ein Stop ueber dieser Stufe wuerde feuern, bevor das Gitter selbst kaufen kann, und waere damit kein Schutz, sondern eine Behauptung. Der Notaus liegt EINE Stufe unter der untersten Leiterstufe 0 (62657,50), also bei 60304,80: dort ist die Leiter zu Ende und die Voraussetzung des Gitters stirbt. RISIKO: 91,04 USD Einsatz, -28,33 % bis zum Notaus = -25,80 USD, das sind 13 % des Kill-Schalters (max_verlust_usd 200). BEFUND, DER DAZU FUEHRTE: der Kill-Schalter von gitter sagt woertlich \"keine neuen Kauforders, belegte Stufen verkaufen weiter\" - er blockiert Kaeufe, er FLACHT NICHT ab. Eine Position ohne Stop war damit vollstaendig ungesichert. Vermerk im Zustand, KEINE Journalzeile: es ist kein Handel, sondern eine Schranke."
 }
