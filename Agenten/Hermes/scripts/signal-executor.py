@@ -92,7 +92,25 @@ def ausfuehren(spur, eintrag):
         return False, "%s: kein Orderweg fuer boerse=%s" % (spur, w.get("boerse"))
     # Instument an der Boerse
     vi = venue_inst(inst, w)
-    # Guthaben prüfen
+    # Handelsregeln Punkt 3: KEIN Freigabefenster, KEINE Order.
+    # spuerren_live() in spur_buch prueft das beim normalen Weg - dieser
+    # Executor laeuft ausserhalb und muss es selbst tun. Ohne diese Zeile
+    # wuerde eine Queue aus einem live-faehigen Track eine echte Order OHNE
+    # Fenster setzen: genau die Luecke, die Handelsregel Punkt 3 schliesst.
+    try:
+        if HANDEL not in sys.path:
+            sys.path.insert(0, HANDEL)
+        import freigabefenster
+        if not freigabefenster.lade(spur).offen():
+            return False, ("%s: kein offenes Freigabefenster (Handelsregeln "
+                           "Punkt 3) - Auftrag bleibt in der Queue" % spur)
+    except ImportError:
+        return False, ("%s: freigabefenster.py nicht erreichbar - im Zweifel "
+                       "KEINE Order" % spur)
+    except Exception as e:                                      # noqa: BLE001
+        return False, ("%s: Freigabefenster unlesbar (%s) - im Zweifel KEINE "
+                       "Order" % (spur, e))
+    # Freies Guthaben und Mindestdeckel
     try:
         gu = weg.guthaben_waehrung()
         mindest = float(w.get("mindest_guthaben") or w.get("mindest_guthaben_usd") or 0)

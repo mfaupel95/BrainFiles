@@ -54,5 +54,7 @@
   "live_max_gesamt_usd": 150.0,
   "_orderweg_vermerk": "Orderweg seit 21.09.2026: der gemeinsame Live-Weg in spur_buch (boerse okx, Spot gegen USDC). Live-Grenzen bewusst KLEIN angesetzt (20 USD je Trade, 100 USD gesamt) - der Papierlauf rechnet mit risiko_je_position_usd 5 und max_pro_trade_usd 100; wer live groesser fahren will, nennt die Zahl und hebt live_max_pro_trade_usd.",
   "_gebuehr_quelle": "OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker 0,10 %/Seite + echte Fuellung HYPE-USDC 0,1000 %). Die Spur handelt SPOT: ihre wachen.json bzw. ihr Code nennt <SYM>-USDC bzw. BTC-USDT.",
-  "gebuehr_taker": 0.001
+  "gebuehr_taker": 0.001,
+  "trigger_modus": "signal",
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle."
 }
