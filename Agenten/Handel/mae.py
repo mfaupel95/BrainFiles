@@ -35,8 +35,15 @@ FELDER = ("mfe_pct", "mae_pct", "haltetage")
 
 
 def richtung_faktor(p):
-    """+1 long, -1 short. Fehlt das Feld, gilt long."""
-    return -1.0 if str(p.get("seite") or "long").lower().startswith("short") else 1.0
+    """+1 long, -1 short. Fehlt das Feld, gilt long.
+
+    ZWEI Schreibweisen im Haus: die Indikatorspuren fuehren `seite`, die
+    orb-Spuren fuehren `richtung`. Beide zu lesen ist billiger als zwei
+    Formeln zu pflegen - und eine Position ohne erkannte Richtung
+    bekam sonst stillschweigend das Vorzeichen von long.
+    """
+    feld = p.get("seite") or p.get("richtung") or "long"
+    return -1.0 if str(feld).lower().startswith("short") else 1.0
 
 
 def merke_extrem(p, kurs):
@@ -64,7 +71,9 @@ def merke_extrem(p, kurs):
 def haltetage(p, heute=None):
     """Kalendertage seit dem Einstieg. Leerer String, wenn unbekannt -
     Altbestand wird nicht geraten."""
-    eroeffnet = p.get("eroeffnet_zeit") or p.get("eroeffnet") or ""
+    # orb fuehrt den Einstiegstag als `tag` (ein ISO-Datum).
+    eroeffnet = (p.get("eroeffnet_zeit") or p.get("eroeffnet")
+                or p.get("tag") or "")
     if isinstance(eroeffnet, str):
         eroeffnet = eroeffnet[:10]
     if not eroeffnet or len(str(eroeffnet)) != 10:

@@ -28,6 +28,8 @@ from pathlib import Path
 HIER = Path(__file__).resolve().parent
 BUS = HIER.parent.parent / "Bus"
 sys.path.insert(0, str(HIER))
+sys.path.insert(0, str(HIER.parent))      # mae
+import mae
 sys.path.insert(0, str(HIER.parent / "kraken"))
 sys.path.insert(0, str(BUS))
 
@@ -106,7 +108,8 @@ def journal(*felder):
         w = csv.writer(f)
         if neu:
             w.writerow(["zeit", "inst", "richtung", "einstieg", "stop",
-                        "ziel", "ausgang", "ausstieg", "gv_punkte", "gv_usd"])
+                        "ziel", "ausgang", "ausstieg", "gv_punkte", "gv_usd",
+                        "mfe_pct", "mae_pct", "haltetage"])
         w.writerow(felder)
 
 
@@ -136,6 +139,11 @@ def pruefe_ausstiege(z, w, jetzt=None):
     key = p["inst"]
     konf = w["instrumente"][key]
     tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
+    # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim Ausstieg -
+    # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
+    if p.get("letzter_kurs"):
+        mae.merke_extrem(p, p["letzter_kurs"])
+
     if p["richtung"] == "long":
         stop_verletzt = p["letzter_kurs"] <= p["stop"]
         ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
@@ -165,7 +173,10 @@ def _schliesse(p, kurs, grund):
     gv = (kurs - p["einstieg"]) if p["richtung"] == "long" else (p["einstieg"] - kurs)
     gv_usd = _punkte_zu_usd(gv, {})
     journal(tag.isoformat(), p["inst"], p["richtung"], p["einstieg"],
-            p["stop"], p["ziel"], grund, kurs, round(gv, 4), round(gv_usd, 2))
+            p["stop"], p["ziel"], grund, kurs, round(gv, 4), round(gv_usd, 2),
+            "%.4f" % float(p.get("mfe_pct") or 0.0),
+            "%.4f" % float(p.get("mae_pct") or 0.0),
+            mae.haltetage(p, heute=tag))
     p["ausgang"] = grund
     p["ausstieg"] = kurs
     p["gv_punkte"] = gv
