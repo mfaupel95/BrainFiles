@@ -26,7 +26,11 @@ WURZEL = os.path.abspath(os.path.join(HIER, "..", "..", ".."))
 HANDEL = os.path.join(WURZEL, "Agenten", "Handel")
 AUDIT = os.path.join(HANDEL, "spur_audit.py")
 VENV = os.path.join(HANDEL, "scanner", ".venv", "Scripts", "python.exe")
-MERK = os.path.join(HIER, "cache", "spur-audit-wache.json")
+# Die Merksdatei gehoert nach Agenten/Hermes/cache, nicht in einen 'cache'
+# UNTER scripts. Dort liegen 59 Merksdateien der uebrigen Wachen; ein zweiter
+# Cache-Ordner im Skriptordner verteilt den Stand des Hauses auf zwei Orte -
+# und wird beim Aufraeumen mitgenommen, ohne dass jemand ihn erwartet.
+MERK = os.path.join(os.path.dirname(HIER), "cache", "spur-audit-wache.json")
 STUNDE_S = 6 * 3600
 
 
