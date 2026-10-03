@@ -205,7 +205,12 @@ def orderweg(w):
     # _lade_modul haengt ".py" selbst an und sucht unter HANDEL - deshalb der
     # relative Name mit Unterordner, kein absoluter Pfad.
     pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot",
-            "kraken_futures": "omnitrade_futures/weg"}.get(name)
+            "kraken_futures": "omnitrade_futures/weg",
+            # signalwelle waehlt ihre Instrumente laufend aus den
+            # CoinGecko-Top-Movern; 7 von 16 haben keinen OKX-Markt, und
+            # dieser Weg verweigert statt auf ein anderes Paar
+            # auszuweichen (siehe moondev_signalwelle/weg.py).
+            "signalwelle": "moondev_signalwelle/weg"}.get(name)
     if not pfad or not (Path(HANDEL) / (pfad + ".py")).is_file():
         return None
     _ORDER_MODULE[name] = _lade_modul(pfad)

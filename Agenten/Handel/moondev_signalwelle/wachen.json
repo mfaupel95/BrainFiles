@@ -39,5 +39,7 @@
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 * buch_risiko.",
   "drawdown_halbierung_usd": 15.0,
   "_grund": "Der Grund, der im Journal steht.",
-  "grund": "moondev_signalwelle"
+  "grund": "moondev_signalwelle",
+  "boerse": "signalwelle",
+  "_orderweg_vermerk": "03.10.2026, Auftrag Max \"Signalwelle bauen\": der OKX-Weg ist gebaut und verdrahtet (moondev_signalwelle/weg.py). Er verweigert hart, wenn ein Instrument an der OKX keinen Markt hat - 7 von 16 Journal-Instanzen haben keinen. DER WEG SCHALTET NICHT FREI: handel_erlaubt und freigabe.erfuellt bleiben false, die Spur laeuft weiter Papier. Begruendung: der Gebuehren-Excess der Spur liegt bei +1,15 % nach Abzug der Gebuehr, aber auf nur 16 Runden - das ist zu duenn fuer echtes Geld. Der Weg macht die Zahl kuenftig messbar, indem er echte statt 15-Minuten-Runden sammelt; die Freigabe ist eine spaetere, getrennte Entscheidung."
 }
