@@ -327,3 +327,54 @@ Das ist billiger als Raten und im Bericht belegbar. Zwei Mittel, beide brauchbar
 
 Merksatz: „die Suite war schon rot" ist eine **Behauptung, keine Messung**, bis die
 Fehlernamen beider Laeufe nebeneinander liegen.
+
+## Den Vertrag der Funktion MESSEN, bevor du zusagst
+
+Ein Test, der eine Annahme ueber die gepruefte Funktion trifft, liefert bei
+falscher Annahme ein GRUENES Ergebnis ueber eine falsche Behauptung. Drei
+Annahmen fielen in einem einzigen Testsatz, alle drei aus dem Kopf statt aus
+dem Aufruf:
+
+- **Der Rueckgabewert ist nicht der, den der Name verspricht.** Eine
+  Richtungsfunktion liefert `1 / -1`, nicht `"long" / "short"` - der Name der
+  Variablen im Aufrufer (`sig`, `seite`) sagt nichts ueber den Typ.
+- **Eine Reihenfunktion liefert eine REIHE, keine Zahl.** `sma`/`ema` geben
+  eine Liste mit `None` am Anfang zurueck; `reihe[-1]` ist der Wert, die
+  Funktion selbst ist keiner.
+- **Die Prämisse kann mathematisch falsch sein.** Auf einer linearen Reihe
+  laeuft die EMA in die SMA (beide liefern denselben Wert); die Behauptung
+  „EMA liegt ueber der SMA" ist dort falsch. Eine faelschliche Praemisse faellt
+  nicht als Fehlschlag auf, sie wird zur Behauptung des Tests.
+
+Faustregel: **bevor die erste Erwartung geschrieben wird, die Funktion einmal
+mit Beispieldaten aufrufen und Rueckgabetyp und Werte ansehen.** Was der Name
+und die Benutzung nahelegen, ist kein Beleg - und im Testkommentar festhalten,
+was gemessen wurde (`GEMESSEN: liefert 1 / -1`), damit der naechste Leser die
+Annahme nicht erneut macht.
+
+Zwei Faelle derselben Klasse: ein Signalkanal, den die eine Spur als Tupel
+entpackt (`seite, _linie = sig`) und die andere als String vergleicht - die
+Attrappe muss den gemessenen Vertrag je Spur tragen; und eine **Schwelle aus
+der Wachen lesen statt eine feste Zahl setzen** (`mindest_kerzen` unterscheidet
+sich je Spur um das Doppelte), weil eine feste Zahl bei der einen Spur den
+Weg gar nicht durchlaeuft und der Test dort nichts prueft.
+
+## Ein Pruefskript, das EIN Buchschema annimmt, erzeugt Fehlbefunde
+
+Ein Werkzeug, das ueber alle Spuren laeuft, kann nicht annehmen, dass sie
+dasselbe Format fuehren. Zwei gemessene Fehlbefunde:
+
+- **Positionsfelder:** eine Bestandspruefung las `inst`/`einstieg` und meldete
+  fuer sieben Positionen „kein Einstieg" - die Spur fuehrt `symbol`/`token`
+  und `einsatz_usd`. Der Befund sah aus wie ein Datenverlust und war einer.
+  Also: eine Spufe, deren Felder `None` liefert, ist **zuerst ein
+  Schemafehler**, bis der Quelltext gelesen ist.
+- **Namenslisten sind nicht Spur-Namen:** `lage.HOLER` ist ein Tupel von
+  FUNKTIONsnamen (`spur_macd_mtf`), nicht von Spurennamen. Eine Mitgliedschaft
+  mit dem Spurennamen meldet fuer jede Spur „FEHLT" und sieht wie ein
+  Verdrahtungsloch aus. Vor jeder „fehlt"-Aussage den Container ansehen:
+  Tuple, Funktion oder Liste von Funktionsnamen, und die Form der Elemente.
+
+Merksatz: **ein Befund, der ALLE Spuren oder eine ganze Gruppe gleich
+verdächtigt, ist fast immer der Befund des Werkzeugs, nicht der Spuren.** Ein
+Befund, der eine Spur nennt, pruefen; ein Befund, der alle nennt, das Skript.
