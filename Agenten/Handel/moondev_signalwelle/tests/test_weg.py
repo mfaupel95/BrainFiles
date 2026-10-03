@@ -46,14 +46,17 @@ class WegTest(unittest.TestCase):
 
     # 2 -------------------------------------------------------------
     def test_leere_marktliste_ist_ein_ausfall_kein_befund(self):
-        self.m._MAERKTE[0] = set()
-        self.m.maerkte.cache_clear() if hasattr(self.m.maerkte, "cache_clear") else None
-        self.m._MAERKTE[0] = set()
-        # boersenpaar darf bei leerer Liste nicht still "kein Markt" sagen
-        self.assertIsNone(self.m.boersenpaar("XDC"))
+        self.m._MAERKTE[0] = set()          # der Abruf ist gescheitert
+        # KEIN "XDC hat keinen Markt" - das waere eine erfundene Tatsache
+        # aus einem Ausfall, und ein Token mit Markt wuerde dauerhaft
+        # gesperrt, nur weil der Abruf einmal gehetzt hat.
         with self.assertRaises(self.m.Meldend) as f:
-            self.m.markt("XDC", "XDC-USDC")
+            self.m.boersenpaar("XDC")
         self.assertIn("nicht lesbar", str(f.exception))
+        with self.assertRaises(self.m.Meldend):
+            self.m.markt_verkauf("XDC", 1.0)
+        with self.assertRaises(self.m.Meldend):
+            self.m.markt_kauf("XDC", 1.0)
 
     # 3 -------------------------------------------------------------
     def test_die_schnittstelle_ist_vollstaendig(self):

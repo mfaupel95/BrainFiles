@@ -63,13 +63,36 @@ def maerkte():
     """Die Instrumentliste der Boerse, einmal je Prozess."""
     if _MAERKTE[0] is None:
         try:
-            daten = okx._roh("GET", "/api/v5/public/instruments?instType=SPOT")
+            # `_roh(pfad, methode=...)` - der PFAD kommt zuerst. Eine erste
+            # Fassung rief `_roh("GET", "/api/v5/...")` und bekam deshalb
+            # eine leere Liste zurueck; die Folge war die schlimmste denkbarte
+            # (siehe unten), weil ein leeres Ergebnis als "kein Markt"
+            # gelesen wurde.
+            daten = okx._roh("/api/v5/public/instruments?instType=SPOT")
         except Exception:
             daten = []
         if isinstance(daten, dict):
             daten = daten.get("data") or []
         _MAERKTE[0] = {d.get("instId") for d in (daten or []) if d.get("instId")}
     return _MAERKTE[0]
+
+
+def _markt_geprueft():
+    """Die Liste, oder ein Meldend - eine LEERE Liste ist ein Ausfall.
+
+    Das ist der wichtigste Satz in diesem Adapter. `boersenpaar()` gibt bei
+    leerer Liste `None` zurueck, und der Aufrufer las daraus "diesen Markt
+    gibt es nicht". Das ist eine erfundene Tatsache: bei einem Ausfall des
+    Abrufs wird jedes Instrument als unhandelbar gemeldet - und ein Token,
+    das einen Markt HAT, wird dauerhaft gesperrt, weil der Abruf einmal
+    gehetzt hat. Ein Ausfall darf nie wie eine Messung aussehen.
+    """
+    ma = maerkte()
+    if not ma:
+        raise Meldend("OKX-Instrumentliste nicht lesbar (0 Eintraege) - es wird "
+                      "nicht behauptet, ein Instrument habe keinen Markt; der "
+                      "Ein- und Ausstieg ruht, bis der Abruf wieder gelingt")
+    return ma
 
 
 def markt(inst, boerse_inst):
@@ -91,9 +114,10 @@ def boersenpaar(inst):
     Reihenfolge USDC vor USDT vor EUR: USDC ist die Quote, in der das
     Konto liegt (0,00 USDT auf dem EEA-Konto, gemessen 02.10.2026).
     """
+    ma = _markt_geprueft()
     for q in _QUOTEN:
         kandidat = "%s-%s" % (inst, q)
-        if maerkte() and kandidat in _MAERKTE[0]:
+        if kandidat in ma:
             return kandidat
     return None
 
@@ -109,7 +133,12 @@ def demo_modus():
 
 
 def guthaben_waehrung(waehrung="USDC"):
-    return okx.guthaben(waehrung)
+    # `okx_spot` heisst die Funktion `guthaben_waehrung(ccy)`; es gibt KEIN
+    # `guthaben(ccy)`. Eine erste Fassung rief `okx.guthaben(...)` auf und
+    # bekam AttributeError - die Anbindungs-Pruefung hat das am 03.10.2026
+    # gemeldet, als "Guthaben nicht lesbar" neben einer Zeile, die sonst
+    # vollstaendig gesund aussah.
+    return okx.guthaben_waehrung(waehrung)
 
 
 def letzter_kurs(inst):
@@ -121,15 +150,16 @@ def menge_fuer(inst, betrag, kurs):
 
 
 def markt_kauf(inst, menge):
-    paar = boersenpaar(inst)
+    paar = boersenpaar(inst)          # ruft _markt_geprueft -> Meldend
     if paar is None:
-        raise Meldend("%s hat an der OKX keinen Spotmarkt - die Spur wird "
-                      "nicht auf ein anderes Paar umgeschrieben" % inst)
+        raise Meldend("%s hat an der OKX keinen Spotmarkt (Marktliste "
+                      "vollstaendig gelesen) - die Spur wird nicht auf ein "
+                      "anderes Paar umgeschrieben" % inst)
     return okx.markt_kauf(paar, menge)
 
 
 def markt_verkauf(inst, menge):
-    paar = boersenpaar(inst)
+    paar = boersenpaar(inst)          # ruft _markt_geprueft -> Meldend
     if paar is None:
         raise Meldend("%s hat an der OKX keinen Spotmarkt - VERKAUF "
                       "verweigert; das ist genau der Fall, in dem eine "
