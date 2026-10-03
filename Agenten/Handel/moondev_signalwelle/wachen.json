@@ -6,8 +6,8 @@
   "_regel": "Long bei 1h-Aenderung zwischen mindest_plus_1h_pct und hoechst_plus_1h_pct UND Tagesvolumen ueber mindest_volumen_usd. Kein Hebel (kein Perpetual, kein Future) - Spot-Papier wie alle Haus-Spuren.",
   "_kein_live": "Kein Live-Zweig, kein Hebel: die Spur bucht Papier mit Hausrisiko. Ein --live verweigert.",
   "waehrung": "USD",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "03.10.2026 scharf auf Auftrag Max (\"Signalwelle scharf\", dann \"Andere Spuren weiter untersuchen und freigeben und Anbindung verifizieren\"). Belege, auf die sich das stuetzt: (1) Gebuehren-Tor offen - Excess +1,25 % minus 0,10 % Gebuehr je Runde = +1,15 %, bei 16 Runden mit Basislinie, Audit ohne Befund; (2) Anbindung an der Boerse belegt - OKX-Spot, Schluessel vorhanden, Demo aus, 152,55 USDC frei, Kurs abrufbar; (3) Orderweg vorhanden und geprueft (weg.py mit 5 Tests). EINSCHRAENKUNG, die nicht weglaeuft: die 16 Runden stammen aus der Zeit VOR dem Signal-Gatter. Die Freigabe stuetzt sich damit auf Zahlen, die unter den Bedingungen entstanden sind, die ich heute abgeschafft habe. Das ist Max's Entscheidung und steht hier datiert.",
   "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
   "risiko_je_position_usd": 5.0,
@@ -43,5 +43,10 @@
   "boerse": "signalwelle",
   "_orderweg_vermerk": "03.10.2026, Auftrag Max \"Signalwelle bauen\": der OKX-Weg ist gebaut und verdrahtet (moondev_signalwelle/weg.py). Er verweigert hart, wenn ein Instrument an der OKX keinen Markt hat - 7 von 16 Journal-Instanzen haben keinen. DER WEG SCHALTET NICHT FREI: handel_erlaubt und freigabe.erfuellt bleiben false, die Spur laeuft weiter Papier. Begruendung: der Gebuehren-Excess der Spur liegt bei +1,15 % nach Abzug der Gebuehr, aber auf nur 16 Runden - das ist zu duenn fuer echtes Geld. Der Weg macht die Zahl kuenftig messbar, indem er echte statt 15-Minuten-Runden sammelt; die Freigabe ist eine spaetere, getrennte Entscheidung.",
   "trigger_modus": "signal",
-  "_trigger_vermerk": "03.10.2026: Signal-Modus (Auftrag Max \"weniger handeln\"). Einstiege nur bei Aenderung der Signalrichtung, nicht alle 15 Minuten. Ausstiege weiter bei Stop/Ziel/Rueckdreh."
+  "_trigger_vermerk": "03.10.2026: Signal-Modus (Auftrag Max \"weniger handeln\"). Einstiege nur bei Aenderung der Signalrichtung, nicht alle 15 Minuten. Ausstiege weiter bei Stop/Ziel/Rueckdreh.",
+  "freigabe": {
+    "erfuellt": true,
+    "_erfuellt_vermerk": "03.10.2026 scharf auf Auftrag Max (\"Signalwelle scharf\", dann \"Andere Spuren weiter untersuchen und freigeben und Anbindung verifizieren\"). Belege, auf die sich das stuetzt: (1) Gebuehren-Tor offen - Excess +1,25 % minus 0,10 % Gebuehr je Runde = +1,15 %, bei 16 Runden mit Basislinie, Audit ohne Befund; (2) Anbindung an der Boerse belegt - OKX-Spot, Schluessel vorhanden, Demo aus, 152,55 USDC frei, Kurs abrufbar; (3) Orderweg vorhanden und geprueft (weg.py mit 5 Tests). EINSCHRAENKUNG, die nicht weglaeuft: die 16 Runden stammen aus der Zeit VOR dem Signal-Gatter. Die Freigabe stuetzt sich damit auf Zahlen, die unter den Bedingungen entstanden sind, die ich heute abgeschafft habe. Das ist Max's Entscheidung und steht hier datiert.",
+    "gesetzt_am": "20261004-000140"
+  }
 }
