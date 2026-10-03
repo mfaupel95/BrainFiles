@@ -35,10 +35,14 @@ Der Aufbau der Bruecke selbst (Token, A2A-Wiring, Task-Registrierung) steht in
 
 JSONL je Nachricht: `zeit, chat, kommando, dauer_s, status, zeichen`.
 
-- **`status: ok` heisst: gesendet.** `sende()` ruft Telegrams `sendMessage`
-  DIREKT auf (nicht ueber den Bus). Ein Sendefehler steht als `status: fehler`
-  mit `fehler`-Feld. "Nichts angekommen" bei `status: ok` ist ein
-  Empfangsproblem auf dem Geraet - das sagen, statt den Bot neu zu starten.
+- **`status: ok` heisst: VERARBEITET, nicht zugestellt.** Der Eintrag entsteht
+  nach `bearbeite()`, vor bzw. unabhaengig von `sende()`. Ein echter
+  Telegram-Fehler steht als `status: fehler` mit `fehler`-Feld - aber ein
+  fehlender `sende()`-Aufruf ist in diesem Log **unsichtbar**: nichts wird
+  protokolliert, nichts gesendet, der Nutzer sieht nichts. "Nichts
+  angekommen" bei `status: ok` ist deshalb entweder ein fehlender
+  `sende()`-Aufruf oder ein Empfaengerproblem - das Log kann das nicht
+  unterscheiden, nur der End-to-End-Beweis unten.
 - **`dauer_s` verraet den Weg:** <5 s = Kurzbefehl (`handel_befehle` ->
   `Handel/befehle.py`), ~300 s = Freitext ueber A2A (`A2A_TIMEOUT_S`).
 - **`zeichen` ist die LAENGE der Antwort** - damit laesst sich die Antwort
@@ -55,14 +59,96 @@ JSONL je Nachricht: `zeit, chat, kommando, dauer_s, status, zeichen`.
 | Weg | Frist | wofuer |
 |---|---|---|
 | `/befehl` (Slash) | Sekunden | lesende Auskuenfte: `/lage /live /strategien /bericht /spuren /spur /markt` |
-| `/run NAME [Auftrag]` | `BOT_FRIST_S` 1800 s | einen Skill AUSFUEHREN |
-| Freitext (kein Slash) | `A2A_TIMEOUT_S` 300 s | endet bei echter Arbeit als `(Aufgabe FAILED)` |
+| `/run NAME [Auftrag]` | `A2A_FRIST_S` 1800 s | einen Skill AUSFUEHREN |
+| Freitext (kein Slash) | `A2A_FRIST_S` 1800 s | freier Auftrag; gleiche Frist wie `/run`, gleiche Arbeit |
+| Freitext mit aktiver Bot-Zuweisung | `BOT_FRIST_S` 1800 s | geht an den Bot (siehe unten), nicht an den Hauptagenten |
+| `/bot NAME NACHRICHT` | `BOT_FRIST_S` 1800 s | Frage an einen Repo-Bot |
+
+Die Fristen stehen als `A2A_FRIST_S`/`BOT_FRIST_S` in `skillsbot.py` - beim
+Aendern dort den Wert lesen, nicht diese Tabelle.
 
 **Regel: nie einem Nutzer einen SATZ zum Abschicken nennen, wenn Arbeit gemeint
 ist.** Genau das schickt ihn in das kurze Limit, und er sieht nach fuenf Minuten
 eine 16-Zeichen-Antwort - das liest sich wie ein kaputter Bot. Statt dessen den
 Slash-Befehl mit der tragenden Frist nennen ODER die Arbeit selbst machen. Die
 Grenze des Weges VORHER nachsehen, nicht nach dem Ausfall.
+
+## Nachricht kam nicht an: Bilduntertitel, Medien, verlorene Updates
+
+**Der wahrscheinlichste Ausfall mit dem saubersten Log: die Nachricht wurde
+nie verarbeitet.** Ein `continue` vor dem `_log`-Aufruf ist unsichtbar — der
+Poller laeuft, `/bots` antwortet, das Protokoll wirkt ruhig. Bevor „der
+Agent hat nicht geantwortet" gesagt wird, ist die Frage **„ist die Nachricht
+ueberhaupt angekommen"** — und das steht nur an EINER Stelle feststellbar.
+
+**Telegram schickt den Text von Medien in `message.caption`, nicht in
+`message.text`.** Ein Foto mit Unterschrift hat `text = None` und
+`caption = "/bot openmontage ..."`. Eine Schleife, die nur `.get("text")`
+liest, verwirft genau diese Nachrichten. Das ist bei diesem Nutzer der
+Normalfall, nicht die Ausnahme: am Handy wird ein Auftrag mit einem Bild
+geschickt. Regel fuer jede Nachrichtenverarbeitung:
+`text = msg.get("text") or msg.get("caption") or ""`.
+
+### Den verlorenen Auftrag wiederfinden (Diagnose, kein Umbau)
+
+Der gespeicherte Offset in `skillsbot.offset` ist die Telegram-`update_id`
+des letzten VERARBEITETEN Updates. Alles davor ist fuer Telegram
+weggerollt — der Bot kann es nicht mehr sehen, der Nutzer aber durchaus
+noch. Die Nachrichten selbst sind mit dem Bot-Token abrufbar, solange
+niemand den Offset darueber gesetzt hat:
+
+```python
+off = json.load(open("Agenten/Bus/skillsbot.offset"))
+# Update-Ids >= off kommen zurueck, mit timeout:0 (kein Warten)
+post("getUpdates", {"offset": off, "timeout": 0})
+```
+
+Je Update `message.caption` **und** `message.photo` ausgeben — ein
+verworfener Auftrag ist an der nichtleeren `caption` erkennbar, ein Bild
+an mehreren `photo`-Eintraegen. **Das ist ein Diagnosewerkzeug: den
+gefundenen Auftrag dem Nutzer bestaetigen und den Weg selbst fahren, nicht
+den Offset zuruecksetzen und den Bot alte Nachrichten nachholen lassen**
+(nur das ist sinnvoll, wenn der Bot nach dem Fix genau einmal live geprueft
+werden soll: `skillsbot.offset` auf die `update_id` zuruecksetzen, Bot
+neu starten, Log und Ablage lesen).
+
+### Medien: was Telegram wirklich liefert
+
+- **Eine `photo`-Liste enthaelt 4-5 Stufen DESSELBEN Bildes** (thumb,
+  klein, mittel, gross), nicht mehrere Bilder. Die Auswahl lautet
+  `max(photo, key=file_size)`. Wer alle nimmt, laedt dieselbe Datei
+  fuenfmal und meldet sie als fuenf Bilder — beim Auftrag „Muster im 2.
+  Bild" ist Bild 2 dann eine winzige Vorschau.
+- **Ein Auftrag mit Bildverweis kommt als mehrere Nachrichten** („Muster im
+  2. Bild, Boden im 1. Bild"). Die Ablage ist darum ein rollierendes
+  FENSTER je Chat (`bild1`, `bild2`, …), kein Ordner je Nachricht — sonst
+  loescht das Eintreffen von Bild 2 genau Bild 1. Beim Antworten die Bilder
+  in Sendereihenfolge nummerieren.
+- **Der Agent muss den PFAD sehen, nicht die Bytezahl.** Die Pfade an den
+  Auftrag haengen und ausdruecklich auffordern, die Datei mit dem
+  vision/image-Werkzeug zu lesen.
+- **Ein Ladefehler darf nie eine leere Liste ergeben**, sondern
+  `(pfad, grund)`: halb geschriebene Datei loeschen, Grund mit eigenem
+  Log-Status protokollieren. Sonst gilt ein fehlgeschlagener Abruf als
+  „Bot kann keine Bilder" und der Auftrag laeuft still ohne Bild.
+
+### Zwei Fallen, die als „Bild kam nicht" aussehen
+
+1. **Der HTTP-Wrapper gibt das API-`result` bereits entpackt zurueck.**
+   Ein darueber gesetztes `.get("result")` ergibt `{}` — kein Netzproblem,
+   sondern ein leeres Dict, das als fehlender Pfad durchlaeuft. Der
+   Datei-Download geht ueber `https://api.telegram.org/file/bot<token>/<pfad>`,
+   nicht ueber `/bot<token>/` (404).
+2. **Die Testattrappe muss die Form liefern, die der Wrapper wirklich
+   zurueckgibt.** Eine Attrappe mit `{"result": {...}` gegen einen Wrapper,
+   der schon entpackt, bestaetigt den falschen Vertrag gruen — genau so
+   bleibt der echte Fehler unentdeckt. **Netzpfade laufen im Test immer
+   gegen Attrappen, nie gegen Telegram**; der Live-Beweis ist eine echte
+   Datei in der Ablage nach einem Prozessneustart.
+
+**Nach jeder Codeaenderung am Bot: Prozess neu starten, dann den
+LOGENDZEITPUNKT lesen.** Ein alter Prozess verarbeitet die Regel nicht, und
+der Befund „wirkt nicht" ist dann eine Falschmeldung ueber den alten Code.
 
 ## 207 Zeichen: erst die SCHREIBWEISE pruefen, dann den Bot
 
@@ -105,54 +191,64 @@ Beleg ist die neue PID mit frischer Startzeit. **Und die Antwortlaenge messen:**
 - Der Fehler kann auf der EIGENEN Seite liegen: ein genannter Weg, der die
   Arbeit nicht tragen kann. Das zuerst ausschliessen, dann den Bot verdaechtigen.
 
-## Zwei Fehler, die am 03.10.2026 zusammen "der Bot antwortet nicht" ergaben
+## Zwei Fehler, die zusammen wie "der Bot antwortet nicht" aussehen
 
-Beide ueber `status: ok` im Log unsichtbar - der Bot SANDTE, nur nicht das
-Richtige. Vor "der Bot ist kaputt" immer beide pruefen:
+Beide bleiben im Log unter `status: ok` unsichtbar. Vor "der Bot ist
+kaputt" immer beide pruefen:
 
-1. **`/bot NAME` ohne Auftrag kam beim Hauptagenten an.** `/bot NAME` ohne
-   Text ergab eine Syntaxhilfe (71 Zeichen, `zeichen` im Log). Der danach
-   gesendete Auftrag - am Handy meist ein **Bild als eigene Nachricht** -
-   ging an den Hauptagenten. Der Bot war gesund (Port 9900 offen, A2A in
-   10 s, `_bot_fragen` in 43 s PONG). **Abhilfe (Commit 92f2cd52):** `/bot
-   NAME` schaltet den Bot als Adressaten ein (`ZIEL_PFAD`, 30 min), der
-   naechste Freitext nimmt ihn und wird danach abgeschaltet, `/bot aus`
-   schaltet ab. Der Zustand liegt in EINER Datei je Chat.
+1. **Eine Syntaxhilfe verlegt den Auftrag auf den falschen Adressaten.**
+   `/bot NAME` ohne Text antwortete mit "Was soll ich Bot X fragen? Syntax:
+   /bot NAME NACHRICHT" (71 Zeichen im Log). Der danach gesendete Auftrag -
+   am Handy meist ein **Bild als eigene Nachricht** - ging an den
+   Hauptagenten, der Bot bekam ihn nie.
 
-   **Merksatz: eine Syntaxhilfe ist kein Defekt, aber sie sieht aus wie
-   einer.** Ein Weg, der eine Frage stellt statt sie anzunehmen, verlegt
-   den Auftrag still auf den anderen Adressaten. Immer pruefen, wohin die
-   *naechste* Nachricht geht, nicht nur, ob die aktuelle eine Antwort
-   bekam.
+   **Regel: immer pruefen, wohin die *naechste* Nachricht geht, nicht nur,
+   ob die aktuelle eine Antwort bekam.** Ein Weg, der eine Frage stellt
+   statt den Auftrag anzunehmen, ist kein Defekt, aber er sieht aus wie
+   einer. Der Nutzer sendet daraufhin an den anderen Adressaten.
 
-2. **`sende()` fehlte in `schleife()`.** Die Antwort wurde `bearbeite()`-t,
-   protokolliert und der Offset gespeichert - aber nie an Telegram
-   geschickt. Das Log meldet `status: ok`, weil die Verarbeitung erfolgreich
-   war. **Gefunden hat es der Test
-   `test_netzfehler_nachricht_geht_nicht_verloren`:** er erwartete eine
-   gesendete Antwort (`gesendet == [(7, "die antwort")]`) und bekam `[]`.
+   **Abhilfe: `/bot NAME` ohne Auftrag schaltet den Bot als Adressaten
+   ein** (Zustand in `ZIEL_PFAD`, eine Datei je Chat, `ZIEL_FRIST_S`
+   Minuten). Der naechste Freitext - mit oder ohne Bild - nimmt ihn und wird
+   danach abgeschaltet, damit nichts im falschen Bot landet. `/bot aus`
+   schaltet ab, ein abgelaufenes Ziel gilt als keins, ein geloeschtes Profil
+   ebenfalls.
 
-   **Merksatz: `status: ok` heisst "verarbeitet", nicht "zugestellt".** Ein
-   Test, der die SCHLEIFE end-to-end fahren und die *gesendeten* Nachrichten
-   zaehlen muss, findet einen fehlenden `sende()`; ein Test auf Protokoll
-   und Offset findet ihn nicht.
+2. **Ein fehlender `sende()`-Aufruf in der Poll-Schleife.** Die Antwort
+   wurde verarbeitet, protokolliert und der Offset gespeichert - aber nie
+   an Telegram geschickt. Das Log meldet `status: ok`, weil die
+   Verarbeitung erfolgreich war.
+
+   **Regel: ein Test, der die Schleife end-to-end fahren und die
+   *gesendeten* Nachrichten zaehlen muss, findet einen fehlenden
+   `sende()`.** Ein Test auf Protokoll und Offset findet ihn nicht. Form:
+   die Attrappe sammelt `sende(chat, text)` in eine Liste, nach dem Lauf
+   wird die Liste verglichen - nicht der Log.
 
 ## Test gegen den echten Subprozess: `run` ist nicht `Popen`
 
-`_bot_fragen` nutzt `subprocess.Popen` + `communicate` (seit 21.09.2026,
-damit der Frist-Abbruch den Bot nicht mitten in der Arbeit toetet). Tests,
-die `subprocess.run` mocken, treffen damit **nichts** und starteten einen
-ECHTEN Bot (Kaltstart 30-60 s je Test). Symptom: die Suite braucht
-minuten und die Assertion schlaegt mit der echten Bot-Antwort fehl. Die
-Attrappe ersetzt `Popen` und liefert ein Objekt mit `communicate()`,
-`returncode` und `kill()`.
+`_bot_fragen` nutzt `subprocess.Popen` + `communicate`, damit der
+Frist-Abbruch den Bot nicht mitten in der Arbeit toetet (`run(timeout=)`
+wuerde genau das). Tests, die `subprocess.run` mocken, treffen damit
+**nichts** und starteten einen ECHTEN Bot.
 
-## Nach jeder Aenderung: Der Prozess haelt den alten Code
+**Regel: der Test mockt die Aufrufform, die im Code steht.** Ein
+Run-Mock auf einem Popen-Code sieht aus wie ein Test und ist keiner - die
+Assertion schlaegt mit der echten Bot-Antwort fehl, die Suite braucht
+Minuten. Die Popen-Attrappe liefert ein Objekt mit `communicate()`,
+`returncode` und `kill()`; fuer den Abbruchpfad wirft `communicate`
+`TimeoutExpired`.
 
-Der SkillsBot laeuft als `pythonw`-Dienst; ohne Neustart des Tasks ist die
-Aenderung unsichtbar. Aber Vorsicht: `Stop-ScheduledTask` + `Start` ist der
-belegte Weg, und die NEUE PID mit frischer Startzeit ist der Nachweis
-(Anweisung aus `a2a-telegram-skills`). Beim End-to-End-Beweis danach die
-echten Wege fahren: `_ziel_setzen(chat, "openmontage")`, dann
-`bearbeite("Antworte nur mit PONG", chat)` - die Antwort muss vom Bot
-kommen, nicht vom Hauptagenten.
+## End-to-End-Beweis, bevor "repariert" gemeldet wird
+
+Nach der Aenderung den WEG fahren, den der Nutzer am Handy nimmt - nicht
+nur die Funktion, die man geaendert hat:
+
+1. Ziel setzen: `_ziel_setzen(chat, "openmontage")`
+2. Freitext: `bearbeite("Antworte nur mit PONG", chat)`
+3. Die Antwort muss **vom Bot** kommen, nicht vom Hauptagenten, und das
+   Ziel muss danach `None` sein (ein Auftrag je Bot).
+
+**Merksatz: ein Beweis an der geaenderten Funktion ist kein Beweis fuer den
+Weg.** "Die Funktion tut es" und "der Nutzer sieht es" sind zwei Aussagen;
+nur der zweite Weg belegt die zweite.

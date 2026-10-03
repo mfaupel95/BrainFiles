@@ -199,7 +199,22 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    (taeglich 20:40, Aufgabe `MaxHirn-Fremdarbeit-Einziehen`) in EINEM Commit mit dem
    Autor `Andere Sitzung <fremd@local>` nach `master` - siehe den Abschnitt
    „Fremde Arbeit aus beendeten Sitzungen einsammeln".
-5. **Ein Commit kann einen fremden, schon vorhandenen Commit vor sich haben.** Nach
+5. **Ein NEUER Ablage-Ordner, den ein Dienst ab sofort beschreibt, gehoert in
+   dieselbe Commit-Runde wie der Code, der ihn erzeugt.** Der Ausloeser ist
+   das Schreiben, nicht das Anlegen: sobald ein Bot oder Skript in einen neuen
+   Ordner legt, steht ohne `.gitignore`-Zeile in JEDEM `git status` eine
+   Phantom-Aenderung, die jede Status-Sicht verfaelscht und beim naechsten
+   fremden Commit mitgeht. Reihenfolge: Ordner vom Dienst beschreiben
+   lassen, eine Sperrzeile **mit Grund** in die zustaendige Gruppen-Sektion
+   haengen (die `.gitignore` ist hier LF — Zeilenende aus der Datei ableiten),
+   dann `.gitignore` und Code in EINEN Commit. Beispiel aus der Praxis:
+   `Agenten/Bus/bilder/` (Bildpuffer des Telegram-Bots) steht neben
+   `stand.json` und `skillsbot.kontext.json` — alle drei Puffer aus demselben
+   Grund: ein Dienst, der bei jedem Poll neu schreibt, darf keine
+   Phantom-Aenderung erzeugen. Beleg ist `git status --porcelain` ohne den
+   Ordnernamen, nicht die Absichtserklaerung.
+6. **Ein Commit kann einen fremden, schon vorhandenen Commit vor sich haben.**
+   Nach
    dem Push `git log --oneline -4` lesen und im Bericht nennen, was mitging, das nicht
    aus dieser Sitzung stammt. **Und der eigene, schon GESTAGTE Eintrag kann in einem
    fremden Commit landen:** ein `git commit` der anderen Sitzung ohne Pfadangabe
@@ -625,6 +640,42 @@ ungetrackten Dateien. Reihenfolge:
   **Den Anker aus der AUSGABE bauen, nicht aus dem Gedaechtnis:** die Region vorher
   mit `repr()` ausgeben; ein selbst getippter Anker mit Escape-Sequenzen (`\"\\n\"`
   im Quelltext) trifft nicht, und die Meldung sagt nur "nicht gefunden".
+- **Ein Gegenbeleg, der aus `git show HEAD:<pfad>` baut, ist beim
+  Mehrsitzungsbetrieb nicht haltbar.** Test-Gegenproben lesen gern die
+  „alte“ Dateifassung aus dem Commit, um zu beweisen, dass der Test ohne
+  die Aenderung fehlschlaegt (Regressionstest). Sobald eine parallele
+  Sitzung committet, ist HEAD bereits die REPARIERTE Fassung, der Anker
+  findet 0 Treffer, und die Gegenprobe meldet „passt nicht mehr zu“
+  statt ihren Zweck zu erfuellen — oder sie wird durch blosses Anpassen der
+  Referenz still zu einem Test, der nichts mehr beweist. **Die Vor-Fassung
+  aus dem aktuellen Stand BAUEN**: die geaenderte Datei laden, genau die
+  eigenen Hunks wieder entfernen (`i = t.index(start)`, `j = t.index(ende, i)
+  + len(ende)`, dazwischen `assert t.count(anker) == 1`), das Ergebnis
+  unter einem eigenen Modulnamen im Temp-Ordner laden und den Test damit
+  fahren. Dann trifft die Gegenprobe unabhaengig davon, was zwischenzeitlich
+  committet wurde. Gegenprobe der Gegenprobe: `assert not hasattr(mod,
+  "<die neue Funktion>")` — sonst ist die gebaute „Vor-Fassung“ gar nicht
+  die alte.
+- **Ein Test, der die Aufrufform mockt statt sie nachzubauen, sieht gruen
+  aus und tut nichts.** Geaendert der Code von `subprocess.run` auf
+  `Popen` + `communicate`, trifft ein `patch.object(subprocess, "run")`
+  nichts mehr: der Test startet das echte Programm (Kaltstart, Netz,
+  Modellaufruf), die Assertion schlaegt mit der echten Ausgabe fehl, und die
+  Suite braucht Minuten statt Sekunden. **Vor dem Mock fragen, welche
+  Funktion der Code wirklich aufruft** (`grep -n 'subprocess\.' <datei>`),
+  und als Testregel festhalten, welche Form gilt — sonst wandert die
+  Attrappe beim naechsten Umbau wieder auf die alte Form. Faustregel: mockt
+  ein Test eine Aufrufform, die im Code nicht vorkommt, ist er ein blinder
+  Lauf mit Assertion, kein Test.
+- **`write_file` weigert sich auch bei einer DATEI, die man selbst angelegt
+  hat, wenn sie in einer FRUEHEREN Aufgabe dieser Sitzung schon lag.** Der
+  Grund ist nicht die eigene Leseschuld: eine gleichnamige Ablage aus einer
+  frueheren Runde gilt als „fremd veraendert“, und ein erneutes Lesen hebt
+  die Sperre nicht auf. **Zwei identische Fehlschlaege hintereinander sind
+  das Signal fuer den Namenswechsel** (bzw. `rm` der alten Ablage), nicht
+  fuer einen dritten Versuch mit demselben Pfad. Beim Namenswechsel gilt
+  weiter: Inhalt an einen FRISCHEN Pfad unter `cache/scratch/` schreiben und
+  mit `cp` ueber das Ziel legen, dann `.bak-JJJJMMTT` daneben.
 - **Ein Ganzdatei-Diff kommt nicht immer von den Zeilenenden — der INDEX kann stale sein.**
   `git diff` vergleicht Arbeitsbaum gegen INDEX, nicht gegen HEAD. Liegt im Index noch eine
   frueher gestagte Fassung (typisch nach einem abgebrochenen oder verweigerten Commit),
