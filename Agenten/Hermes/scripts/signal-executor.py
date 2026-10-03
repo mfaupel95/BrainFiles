@@ -114,6 +114,25 @@ def ausfuehren(spur, eintrag):
     except Exception as e:                                      # noqa: BLE001
         return False, ("%s: Freigabefenster unlesbar (%s) - im Zweifel KEINE "
                        "Order" % (spur, e))
+    # Gebuehren-Tor (03.10.2026): die Spur muss die Zahl tragen, nicht nur
+    # den Haken. 0,09 % Excess gegen 0,10 % Gebuehr ist ein Verlust, und
+    # eine Spur mit einem BEFUND im Audit ist beanstandet, nicht gemessen.
+    try:
+        if HANDEL not in sys.path:
+            sys.path.insert(0, HANDEL)
+        import freigabe_tor
+        ok_tor, g_tor = freigabe_tor.pruefe(spur, w)
+        if not ok_tor:
+            return False, ("%s: Gebuehren-Tor zu - %s"
+                           % (spur, "; ".join(g_tor)))
+    except ImportError:
+        # Das Tor fehlt: im Zweifel KEINE Order. Ein Torschutz, der bei
+        # seinem eigenen Ausfall durchlaesst, ist kein Torschutz.
+        return False, ("%s: freigabe_tor.py nicht erreichbar - im Zweifel "
+                       "KEINE Order" % spur)
+    except Exception as e:                                      # noqa: BLE001
+        return False, ("%s: Gebuehren-Tor unlesbar (%s) - im Zweifel KEINE "
+                       "Order" % (spur, e))
     # Freies Guthaben und Mindestdeckel
     try:
         gu = weg.guthaben_waehrung()
