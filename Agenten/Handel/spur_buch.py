@@ -783,9 +783,18 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
     with ereignis.lauf(ereignis_name):
         return _lauf()
 def _signal_queue(ordner, inst, seite, kurs):
-    """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt)."""
+    """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt).
+
+    STUENENFaeHIG - und das war ein Fehler in der ersten Fassung: die Datei
+    hiess fest `signal_queue.json`, waehrend `pfade()` Zustand und Journal
+    je Risikostufe ablegt. Die drei Stufen (Basis, mittel, hoch) fahren
+    dieselbe Spur mit eigener `vor_signal` und schrieben deshalb alle in
+    EINE Queue: gemessen am 03.10.2026 drei Eintraege innerhalb von acht
+    Minuten, alle "long", alle vom selben Instrument. Ohne Stufen-Suffix
+    ist die Queue kein Signal, sondern ein Dreifach-Echo.
+    """
     import datetime, json
-    pfad = os.path.join(ordner, "signal_queue.json")
+    pfad = risikostufe.datei(os.path.join(ordner, "signal_queue.json"))
     preis = float(kurs) if kurs else 0.0
     eintrag = [inst, seite, preis, datetime.datetime.now().isoformat()]
     try:
