@@ -723,9 +723,28 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             print("Vorschau: keine Dateien geschrieben.")
             return 0
 
+        # TRIGGER_MODUS (seit 03.10.2026, Auftrag Max "weniger handeln"):
+        # Im Signal-Modus wird nur dann gehandelt, wenn sich die Richtung des
+        # Indikators GEAENDERT hat. Das verhindert, dass ein erfuelltes Signal
+        # alle 15 Minuten den selben Einstieg ausloest. Ohne diesen Check
+        # waere jede Spur latent ueberhandelnd, ohne dass die Signale selbst
+        # falsch waeren.
+        if w.get("trigger_modus") == "signal":
+            if "vor_signal" not in z:
+                z["vor_signal"] = {}
         for inst in sorted(daten):
             seite = signal(daten[inst], w)
             if not seite:
+                continue
+            # TRIGGER_MODUS-Signal-Wechsel (siehe Doku oben)
+            if w.get("trigger_modus") == "signal":
+                letzte = z["vor_signal"].get(inst)
+                if letzte == seite:
+                    continue  # Signal unveraendert -> kein neuer Einstieg
+                z["vor_signal"][inst] = seite
+                # Signal-Wechsel in die Queue schreiben, damit der
+                # signal-executor (Hermes-Cron) unabhaengig vom Dauerlauf ausfuehrt.
+                _signal_queue(ordner, inst, seite, kurse.get(inst))
                 continue
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          w.get("grund", "moondev_bot"),
@@ -763,3 +782,20 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
 
     with ereignis.lauf(ereignis_name):
         return _lauf()
+def _signal_queue(ordner, inst, seite, kurs):
+    """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt)."""
+    import datetime, json
+    pfad = os.path.join(ordner, "signal_queue.json")
+    preis = float(kurs) if kurs else 0.0
+    eintrag = [inst, seite, preis, datetime.datetime.now().isoformat()]
+    try:
+        with open(pfad, encoding="utf-8") as fh:
+            q = json.load(fh)
+    except (OSError, ValueError):
+        q = []
+    if not isinstance(q, list):
+        q = []
+    q.append(eintrag)
+    with open(pfad, "w", encoding="utf-8") as fh:
+        json.dump(q, fh, ensure_ascii=False, indent=1)
+    print("  Signal %s %s -> Queue (%d Eintraege)" % (seite.upper(), inst, len(q)))
