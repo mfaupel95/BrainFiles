@@ -29,12 +29,72 @@ import json
 import os
 import shutil
 import sys
+import time
 from datetime import datetime
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 WURZEL = os.path.abspath(os.path.join(HIER, "..", "..", ".."))
 HANDEL = os.path.join(WURZEL, "Agenten", "Handel")
+CACHE = os.path.join(WURZEL, "Agenten", "Hermes", "cache")
+MERK = os.path.join(CACHE, "signal-executor.json")
 MAX_ALTER = 1800  # 30 min
+
+# WIEDERHOLUNG_S: ein Wartezustand wird auch dann nur alle sechs Stunden
+# wiederholt. Die Meldung selbst ist nuetzlich ("diese Spur wartet auf
+# Freigabe"), taeglich - nicht minuetlich.
+WIEDERHOLUNG_S = 6 * 3600
+
+
+def _merk_laden():
+    try:
+        with open(MERK, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def _merk_schreiben(d):
+    os.makedirs(CACHE, exist_ok=True)
+    with open(MERK, "w", encoding="utf-8") as fh:
+        json.dump(d, fh, ensure_ascii=False, indent=1)
+
+
+def melde_neu(zeilen, jetzt):
+    """Nur melden, was sich GEGEN DEN LETZTEN LAUF aendert.
+
+    `zeilen` ist {spur: meldung}. Zurueck kommt die Liste der Zeilen, die
+    Max jetzt sehen soll - leer heisst: der Cron schweigt.
+
+    WARUM (gemessen 03.10.2026 22:38-22:48): der Executor laeuft jede Minute
+    und meldete den UNVERAENDERTEN Wartezustand jedes Mal erneut, dazu
+    dreifach, weil drei Risikostufen je eine Queue-Datei haben (Basis,
+    mittel, hoch). Drei identische Zeilen alle zwei Minuten sind keine
+    Information, sie sind Lärm - und sie verdecken den einen Fall, der
+    zaehlt: eine Spur, deren Zustand sich AENDERT.
+
+    Zwei Ausnahmen gehen immer raus: eine ausgefuehrte Order und ein echter
+    Fehler. Der Aufrufer uebergibt dafuer `immer` die Kennungen.
+    """
+    alt = _merk_laden()
+    raus = []
+    neu = {}
+    for spur, m in zeilen.items():
+        eintrag = alt.get(spur) or {}
+        immer = spur in IMMER_MELDEN or "Order" in m or "scheitert" in m
+        alt_genug = jetzt - float(eintrag.get("zeit") or 0) > WIEDERHOLUNG_S
+        if eintrag.get("meldung") != m or immer or alt_genug:
+            raus.append(m)
+            neu[spur] = {"meldung": m, "zeit": jetzt}
+        else:
+            neu[spur] = eintrag
+    # Spuren, die aus der Warteliste verschwunden sind, loescht die Merkung -
+    # sonst waere die naechste Meldung dieser Spur nie wieder "neu".
+    _merk_schreiben(neu)
+    return raus
+
+
+# Spuren, deren Meldung IMMER rausgeht, egal ob sie sich aendert.
+IMMER_MELDEN = ()
 
 
 def spurqueue(pfad):
@@ -183,8 +243,27 @@ def alle_queues():
     return gefunden
 
 
+def zeilen_je_spur(je_spur):
+    """Je SPUR eine Meldungszeile.
+
+    Drei Risikostufen (Basis, mittel, hoch) haben je eine signal_queue*.json.
+    Ohne diese Zusammenfassung stand dieselbe Spur dreifach in jeder
+    Meldung (gemessen 03.10.2026, 22:38-22:48).
+    """
+    zeilen = {}
+    for spur, d in je_spur.items():
+        m = d["meldung"]
+        if d["stufen"] > 1 and not d["ok"]:
+            m += "  (%d Risikostufen)" % d["stufen"]
+        zeilen[spur] = m
+    return zeilen
+
+
 def main():
-    berichte = []
+    # Je SPUR eine Zeile, nicht je Queue-Datei: drei Risikostufen (Basis,
+    # mittel, hoch) haben je eine signal_queue*.json, und dieselbe Spur
+    # stand dadurch dreifach in jeder Meldung (gemessen 03.10.2026).
+    je_spur = {}
     for spur, pfad in alle_queues():
         eintraege = spurqueue(pfad)
         if not eintraege:
@@ -195,7 +274,9 @@ def main():
             continue
         ok, meldung = ausfuehren(spur, eintraege[0])
         if not ok and "bleibt" in meldung:
-            berichte.append(meldung)      # Spur wartet auf Freigabe
+            if spur not in je_spur:
+                je_spur[spur] = {"stufen": 0, "meldung": meldung, "ok": False}
+            je_spur[spur]["stufen"] += 1
             # Die Datei wird TROTZDEM neu geschrieben, sonst bleiben die
             # abgelaufenen Eintraege fuer immer stehen: `spurqueue` filtert
             # sie nur aus der RUECKGABE, nicht aus der Datei. Genau daran
@@ -213,9 +294,20 @@ def main():
         shutil.copy2(pfad, pfad + ".bak-" + datetime.now().strftime("%Y%m%d%H%M%S"))
         with open(pfad, "w", encoding="utf-8") as fh:
             json.dump(rest, fh, ensure_ascii=False, indent=1)
-        berichte.append(meldung if ok else "Signal nicht ausgefuehrt: %s" % meldung)
-    for b in berichte:
-        print(b)
+        zeile = meldung if ok else "Signal nicht ausgefuehrt: %s" % meldung
+        if spur not in je_spur:
+            je_spur[spur] = {"stufen": 1, "meldung": zeile, "ok": ok}
+        elif je_spur[spur]["ok"] and ok:
+            # Zwei Orders in EINEM Lauf (zwei Stufen): beide melden, das ist
+            # je eine echte Order und damit je eine eigene Nachricht wert.
+            je_spur[spur]["meldung"] += " || " + zeile
+    if not je_spur:
+        return 0
+    zeilen = zeilen_je_spur(je_spur)
+    # Nur melden, was sich gegen den letzten Lauf aendert - sonst schweigt
+    # der Cron, statt minuetlich denselben Wartezustand zu wiederholen.
+    for zeile in melde_neu(zeilen, time.time()):
+        print(zeile)
     return 0
 
 
