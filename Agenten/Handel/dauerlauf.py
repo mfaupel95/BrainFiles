@@ -277,6 +277,15 @@ SPUREN = {
                         "skript": "handeln_futures.py",
                         "python": os.path.join(HIER, "nautilus", ".venv",
                                                "Scripts", "python.exe")},
+    # EMACROSS (angelegt 03.10.2026, Auftrag Max "EMA-Spur bauen"): die
+        # Originalstrategie aus nautilus_trader (develop, docs/tutorials/
+    # ema_cross.py, EMA 10/20, long und short mit Umkehr beim Kreuz). Sie
+    # steht als EIGENE Spur neben den drei Armen, die Kopier-Signale als
+    # BTC-Proxy buchen - sie ist der Vergleich, nicht deren Umbau.
+    # Rechnet auf abgeschlossenen 1H-Kerzen ueber scanner/okx, braucht
+    # darum KEIN nautilus-venv: nur die Regel stammt von dort.
+    "nautilus_emacross": {"ordner": "nautilus_emacross", "waehrung": "USDT",
+                          "skript": "handeln.py"},
     # Die Gitter-Spur braucht kein eigenes venv: sie liest OKX-Kerzen ueber
     # scanner/okx und rechnet die Stufen mit Handel/grid.py - beides liegt im
     # gemeinsamen venv.

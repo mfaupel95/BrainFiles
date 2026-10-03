@@ -1070,6 +1070,16 @@ def spur_nautilus_kraken_futures():
     return _spur_nautilus_kraken_arm(".futures", "Kraken-Futures (USD)", "USD")
 
 
+def spur_nautilus_emacross():
+    """EMA-Cross aus nautilus_trader, 1H-Kerzen, USDT, Papier.
+
+    Standardbuch ueber spur_buch - dieselbe Form wie die uebrigen
+    Buch-Spuren. Die Spur steht als VERGLEICH neben den drei
+    Nautilus-Armen, die Kopier-Signale als BTC-Proxy buchen.
+    """
+    return _spur_indikator("nautilus_emacross", "EMA-Cross 10/20 (1H, USDT)")
+
+
 def spur_xperp_positionen():
     """Spur 2 - offene Anlaeufe gegen den aktuellen Kurs.
 
@@ -1377,6 +1387,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
     spur_omnitrade, spur_omnitrade_futures,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
+    spur_nautilus_emacross,
     spur_mosaic, spur_moondev_funding, spur_moondev_listingarb,
     spur_moondev_topmovers, spur_moondev_signalwelle, spur_moondev_marktlage, spur_iv_wand,
     spur_iv_waelle,

@@ -875,6 +875,17 @@ Agenten/Handel/nautilus/
 !Agenten/Handel/nautilus_kraken/wachen.json
 !Agenten/Handel/nautilus_kraken/wachen.futures.json
 !Agenten/Handel/nautilus_kraken/tests/*.py
+# nautilus_emacross (03.10.2026): der EMA-Cross aus nautilus_trader als
+# eigene Papierspur. Vier Freigaben je Spur, sonst ist der Ordner still
+# unsichtbar - und eine Spur, die nicht im Git liegt, ist beim naechsten
+# Ausfall einfach weg.
+!Agenten/Handel/nautilus_emacross/*.py
+!Agenten/Handel/nautilus_emacross/*.md
+!Agenten/Handel/nautilus_emacross/wachen.json
+!Agenten/Handel/nautilus_emacross/tests/*.py
+Agenten/Handel/nautilus_emacross/zustand.json
+Agenten/Handel/nautilus_emacross/handelsjournal.csv
+Agenten/Handel/nautilus_emacross/signal_queue.json
 Agenten/Handel/nautilus_kraken/zustand.json
 Agenten/Handel/nautilus_kraken/zustand.futures.json
 Agenten/Handel/nautilus_kraken/handelsjournal.csv
