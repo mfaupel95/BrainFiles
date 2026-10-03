@@ -11,6 +11,56 @@ metadata:
 
 # Handelsspuren
 
+## Die Verdrahtungsregel: eine Spur, die das Haus fuehrt, muss das Haus rechnen koennen
+
+`dauerlauf.SPUREN` (47), `auswertung_alle.SPUREN` (44), `pruefe_ratschen.SPUREN`
+(40), `lage.HOLER` (47), `befehle.FAMILIE` (51) sind fuenf **Hand-listen ohne
+Maschine**. Eine Spur in nur einer davon sieht vollstaendig aus.
+
+Gemessen 03.10.2026 (Auftrag "nicht erkannte Arbeit in Handel"):
+`liq_wand`, `trendwende_btc` und `nautilus_emacross` liefen seit dem 21.09. im
+Dauerlauf und fehlten in `auswertung_alle.SPUREN` - **liq_wand hatte 32
+geschlossene Runden im Journal und 0 in jeder Auswertung**. Ebenso fuehren
+fuenf Spuren (squeeze, wavetrend, macd_mtf, supertrend, nautilus_emacross)
+eine Drawdown-Ratsche, die `pruefe_ratschen.py` nie nachfragte, und
+`nautilus_emacross` uebergab den Bus-Namen als `"handel/" + NAME` - fuer
+`test_anbindung_handel` (T-255) unsichtbar, der Test rot.
+
+Faustregeln, wenn eine neue Spur entsteht:
+
+1. **Das Journal entscheidet ueber den Rechenweg, nicht der Ordnername.**
+   `kauf`/`verkauf` mit `einsatz_usd` = `runden_indikator`
+   (INDIKATOR_ oder BOT_SPUREN). `eroeffnen`/`schliessen` mit Betrag =
+   `runden_nautilus`. `inst`-Feld vorhanden = nautilus-Weg; `token`/`symbol`
+   statt `inst` = **kein** Weg in auswertung_alle (belegt: `runden_nautilus`
+   an kopier ergab 107 Runden mit falscher Paarung, Einsteig PATE /
+   Ausstieg leeres Symbol). Dann gehoert eine eigene `auswertung.py` in den
+   Ordner, und die Spur wandert NICHT in `auswertung_alle.SPUREN`.
+2. **Jede gesetzte Ratsche wird geprueft.** `pruefe_ratschen.SPUREN`
+   fragt `lage()` der Spur - die vier Indikator-Spuren haben keine eigene
+   `lage()`, sie laufen ueber `("spur", "spur", "scanner", "wachen_pruefung")`.
+3. **Der Bus-Name steht WOERTLICH in der Datei.** `"handel/" + NAME` ist fuer
+   die Suite unsichtbar, egal wie korrekt die Konstante ist.
+4. **Gegenprobe statt Annahme.** `tests/test_verdrahtung.py` (6 Tests) prueft
+   die Regel mit zwei Gegenproben - nimmt man `liq_wand` aus der
+   Auswertungsliste oder `squeeze` aus der Pruefliste, wird derselbe Test rot.
+
+Audit in einem Lauf (etwa 30 Sekunden):
+
+```python
+import sys; sys.path.insert(0, 'Agenten/Handel')
+import dauerlauf, auswertung_alle, pruefe_ratschen, befehle
+ausw = set(auswertung_alle.SPUREN)
+rats = set(x[0] for x in pruefe_ratschen.SPUREN) | set(pruefe_ratschen.RUHT)
+print('ohne Auswertung:', sorted(set(dauerlauf.SPUREN) - ausw))
+print('ohne Ratschenpruefung:', sorted(set(dauerlauf.SPUREN) - rats))
+```
+
+`lage.HOLER` ist ein **Tupel von Funktionen** (`spur_<name>`, `spur_kopier_familie`
+fasst fuenf Spuren zusammen), `befehle.FAMILIE` ein `dict` Spur->Beschreibung -
+beide naehern sich nicht so, wie man sie sich vorstellt. Ein Holer darf praeziser
+heissen als die Spur (`spur_xperp_positionen` fuer xperp).
+
 ## Wann
 Jede Änderung unter `Agenten/Handel/**`: Sperre ergänzen, Freigabe verdrahten,
 Analysemodul bauen, Wachenwerte anfassen, Tests schreiben, Spur an fremden Feed
