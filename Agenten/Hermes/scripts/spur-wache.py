@@ -344,12 +344,63 @@ def _zurueck_nautilus_emacross(w):
         % (jetzige.upper(), zusatz))
 
 
+def _zurueck_queue(spur):
+    """(kennung, text) fuer jede Spur, die ueber die Queue Einstiege erzeugt.
+
+    Diese Form braucht keine eigene Regel je Spur: sie liest das, was die
+    Spur selbst geschrieben hat. Gemeldet wird der Wechsel - also die Seite
+    gegenueber dem letzten gemeldeten Stand - und der Zaehler der wartenden
+    Auftraege. Eine Spur ohne Warteschlange meldet nichts; eine Spur mit
+    Warteschlange und WITHOUT Freigabe meldet genau das, denn das ist der
+    Zustand, den man sonst woertlich nicht sieht: die Spur arbeitet, der
+    Auftrag wartet, und niemand hat es gemerkt.
+
+    Angewendet auf moondev_signalwelle und moondev_topmovers - beide legen
+    ueber spur_buch eine Queue an, beide hatten keine Wache. Das fiel am
+    03.10.2026 nicht durch einen Fehler auf, sondern durch einen Test, der
+    eine feste Zahl Spuren eingefroren hatte und deshalb bei der neuen
+    EMA-Spur kippte.
+    """
+    ordner = HANDEL / spur
+    z = _lies(ordner / "zustand.json")
+    wartend, aktueller = [], None
+    for name in ("signal_queue.json", "signal_queue.mittel.json",
+                 "signal_queue.hoch.json"):
+        pfad = ordner / name
+        if not pfad.is_file():
+            continue
+        try:
+            q = json.loads(pfad.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        wartend.extend(q if isinstance(q, list) else [])
+    vor = z.get("vor_signal") or {}
+    if vor:
+        aktueller = "%s %s" % (list(vor)[0], list(vor.values())[0])
+    if not aktueller and not wartend:
+        return None, ("%s: noch keine EMA-/Signalrichtung und keine Warteschlange "
+                      "- die Spur hat seit dem Neustart nicht gerechnet" % spur)
+    teile = []
+    if aktueller:
+        teile.append("Signal %s" % aktueller)
+    if wartend:
+        teile.append("%d Auftrag/Auftraege warten (Ausfuehrung nur mit Freigabe)"
+                     % len(wartend))
+    else:
+        teile.append("keine wartenden Auftraege")
+    kennung = "%s|%d|%s" % (aktueller or "-", len(wartend),
+                            (z.get("letzter_lauf") or "")[:16])
+    return kennung, "%s: %s" % (spur, " | ".join(teile))
+
+
 SPUREN = {
     "trendwende_btc": _zurueck_trendwende,
     "liq_wand": _zurueck_liqwand,
     "supertrend": _zurueck_supertrend,
     "iv_waelle": _zurueck_ivwaelle,
     "nautilus_emacross": _zurueck_nautilus_emacross,
+    "moondev_signalwelle": lambda w: _zurueck_queue("moondev_signalwelle"),
+    "moondev_topmovers": lambda w: _zurueck_queue("moondev_topmovers"),
 }
 
 

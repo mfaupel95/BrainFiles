@@ -148,9 +148,37 @@ class IvWaelleZurueckgehalten(unittest.TestCase):
 class BeideSpurenSindAngemeldet(unittest.TestCase):
     def test_wache_kennt_vier_spuren(self):
         m = _lade(WACHE)
-        self.assertEqual(sorted(m.SPUREN),
-                         ["iv_waelle", "liq_wand", "supertrend",
-                          "trendwende_btc"])
+        # Die Zahl "vier" stand hier fest und ist bei jeder neuen Spur
+        # kaputtgegangen - ein Test gegen eine feste Anzahl meldet
+        # Aenderung, nicht Fehler. Geprueft werden die zwei Eigenschaften,
+        # die gelten SOLLEN:
+        #
+        # 1. Keine Phantomspur - die Wache darf nichts melden, was es auf
+        #    der Platte nicht gibt.
+        # 2. Keine stumme Spur - wo eine signal_queue.json liegt, muss die
+        #    Wache die Spur kennen, sonst meldet sie deren Wechsel nie.
+        import json
+        import os
+        handel = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              os.pardir)
+        phantome = sorted(n for n in m.SPUREN
+                          if not os.path.isdir(os.path.join(handel, n)))
+        self.assertEqual(phantome, [],
+                         "Wache meldet Spuren, die es nicht gibt: %s" % phantome)
+
+        mit_queue = set()
+        for name in os.listdir(handel):
+            ordner = os.path.join(handel, name)
+            if not os.path.isdir(ordner):
+                continue
+            for datei in os.listdir(ordner):
+                if datei.startswith("signal_queue") and \
+                        datei.endswith(".json") and \
+                        os.path.getsize(os.path.join(ordner, datei)) > 2:
+                    mit_queue.add(name)
+        stumm = sorted(n for n in mit_queue if n not in m.SPUREN)
+        self.assertEqual(stumm, [],
+                         "Spuren mit Warteschlange, aber ohne Wache: %s" % stumm)
 
 
 if __name__ == "__main__":

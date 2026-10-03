@@ -37,13 +37,17 @@ HANDEL = os.path.join(WURZEL, "Agenten", "Handel")
 MAX_ALTER = 1800  # 30 min
 
 
-def spurqueue(spur):
-    """Die Queue einer Spur: [(inst, richtung, preis, zeit_iso)]. Leer = keine."""
-    qpfad = os.path.join(HANDEL, spur, "signal_queue.json")
-    if not os.path.isfile(qpfad):
+def spurqueue(pfad):
+    """Die Queue EINER Spur: [(inst, richtung, preis, zeit_iso)]. Leer = keine.
+
+    Nimmt den PFAD, nicht den Spur-Namen: der Executor laeuft ueber alle
+    Warteschlangen des Hauses, und je Risikostufe liegt eine eigene Datei
+    mit eigenem Suffix.
+    """
+    if not os.path.isfile(pfad):
         return []
     try:
-        with open(qpfad, encoding="utf-8") as fh:
+        with open(pfad, encoding="utf-8") as fh:
             q = json.load(fh)
     except (OSError, ValueError):
         return []
@@ -51,8 +55,8 @@ def spurqueue(spur):
         return []
     jetzt = datetime.now()
     q = [e for e in q if isinstance(e, (list, tuple)) and len(e) >= 3]
-    # Segel: zu alte Einträge verfallen — sonst bleibt ein voller Stop
-    # ewig liegen, auch wenn der Markt laengst weiter ist
+    # Zu alte Eintraege verfallen: der Markt ist laengst weiter, und ein
+    # 30-Minuten-alter Auftrag ist kein Auftrag mehr, sondern Ballast.
     q = [e for e in q if not _verfallen(e, jetzt)]
     return q
 
@@ -139,27 +143,60 @@ def ausfuehren(spur, eintrag):
     return True, "%s: %s %s @ %.6f" % (spur, richtung.upper(), inst, preis)
 
 
+def alle_queues():
+    """Jede Spur des Hauses mit einer Warteschlange - nicht eine feste.
+
+    Die erste Fassung hatte `spur = "moondev_signalwelle"` fest im Code.
+    Das raeumte genau EINE von dreizehn Queues ab; die uebrigen wuchsen
+    unbegrenzt (gemessen 03.10.2026: moondev_topmovers mit 59 Eintraegen
+    in 88 Minuten, davon je Instrument dreimal dieselbe Richtung - ein
+    Wechsel je Risikostufe). Eine Warteschlange ist ein Briefkasten, kein
+    Protokoll: sie gehoert geleert zu werden oder begrenzt zu wachsen.
+    """
+    gefunden = []
+    for name in sorted(os.listdir(HANDEL)):
+        ordner = os.path.join(HANDEL, name)
+        if not os.path.isdir(ordner):
+            continue
+        for datei in os.listdir(ordner):
+            if datei.startswith("signal_queue") and datei.endswith(".json"):
+                gefunden.append((name, os.path.join(ordner, datei)))
+    return gefunden
+
+
 def main():
-    spur = "moondev_signalwelle"
-    q = spurqueue(spur)
-    if not q:
-        return 0
-    ok, meldung = ausfuehren(spur, q[0])
-    if not ok and "bleibt" in meldung:
-        # Spur nicht bereit — Eintrag bleibt liegen, kein Fehler
-        return 0
-    # Eintrag aus Queue loeschen (egal ob Treffer oder nicht)
-    qpfad = os.path.join(HANDEL, spur, "signal_queue.json")
-    if os.path.isfile(qpfad):
-        shutil.copy2(qpfad, qpfad + ".bak-" + datetime.now().strftime("%Y%m%d%H%M%S"))
-    rest = q[1:] if ok else q
-    with open(qpfad, "w", encoding="utf-8") as fh:
-        json.dump(rest, fh, ensure_ascii=False, indent=1)
-    if ok:
-        print(meldung)
-        print("(Signal-Modus: der Dauerlauf monitoriert, dieser Cron fuehrt aus)")
-    else:
-        print("Signal nicht ausgefuehrt: %s" % meldung)
+    berichte = []
+    for spur, pfad in alle_queues():
+        eintraege = spurqueue(pfad)
+        if not eintraege:
+            # Alles verfallen: leeren, damit die Datei nicht weiterwaechst.
+            if os.path.getsize(pfad) > 2:
+                with open(pfad, "w", encoding="utf-8") as fh:
+                    json.dump([], fh)
+            continue
+        ok, meldung = ausfuehren(spur, eintraege[0])
+        if not ok and "bleibt" in meldung:
+            berichte.append(meldung)      # Spur wartet auf Freigabe
+            # Die Datei wird TROTZDEM neu geschrieben, sonst bleiben die
+            # abgelaufenen Eintraege fuer immer stehen: `spurqueue` filtert
+            # sie nur aus der RUECKGABE, nicht aus der Datei. Genau daran
+            # blieb moondev_topmovers bei 4441 B stehen, nachdem der
+            # Executor schon einmal gelaufen war.
+            rest = eintraege[-20:]
+            if os.path.getsize(pfad) != len(json.dumps(rest)):
+                shutil.copy2(pfad, pfad + ".bak-" +
+                             datetime.now().strftime("%Y%m%d%H%M%S"))
+                with open(pfad, "w", encoding="utf-8") as fh:
+                    json.dump(rest, fh, ensure_ascii=False, indent=1)
+            continue
+        rest = eintraege[1:] if ok else eintraege
+        rest = rest[-20:]                  # Deckel: 20 sind 20 echte Wechsel
+        shutil.copy2(pfad, pfad + ".bak-" + datetime.now().strftime("%Y%m%d%H%M%S"))
+        with open(pfad, "w", encoding="utf-8") as fh:
+            json.dump(rest, fh, ensure_ascii=False, indent=1)
+        berichte.append(meldung if ok else "Signal nicht ausgefuehrt: %s" % meldung)
+    for b in berichte:
+        print(b)
     return 0
 
 
