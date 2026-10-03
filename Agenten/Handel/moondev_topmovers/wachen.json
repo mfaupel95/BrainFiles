@@ -6,12 +6,13 @@
   "waehrung": "USD",
   "handel_erlaubt": true,
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "_erfuellt_vermerk": "true auf Auftrag Max 21.09.2026 ('moondev_topmovers scharf'). Zahlenlage: 7 geschlossene Runden, 71 % Treffer, Gebuehren-Wendepunkt +6,29 % je Runde. Live-Grenzen bewusst klein (20 USD je Trade, 100 USD gesamt), Boerse okx/Spot gegen USDC, Tor 30 USDC frei. Der Erlags-Haken ist die von Hand gesetzte Endabnahme - hier datiert.",
     "_papierlauf_min_wochen_entfaellt": "21.09.2026 Max: die Wartezeit ist mit dem Auftrag abgenommen, nicht berechnet.",
-    "netto_positiv_nach_gebuehren_und_funding": false
+    "netto_positiv_nach_gebuehren_und_funding": false,
+    "_abgeschaltet_am": "20261003-184535",
+    "_abschaltung_grund": "03.10.2026 abgeschaltet (Auftrag Max: \"Drei aus\"): spur_audit weist nach Abzug der Gebuehr der eigenen Boerse einen negativen Excess aus - mosaic -1,19 % bei 1,20 % Gebuehr je Runde, kraken -0,97 %, moondev_topmovers -0,19 %. Die Spur verdient also weniger als das blosse Halten ihres Instruments. OFFENE POSITIONEN BLEIBEN: eine bestehende Position zu schliessen ist eine Order und gehoert in die Freigabekette wie jede andere; abgeschaltet ist nur die ZULASSUNG, damit keine neuen dazukommen. Wiedereinschalten nur, wenn der Gebuehren-Excess positiv ist und mit genug Runden belegt ist."
   },
-
   "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
   "herzschlag_max_minuten": 180,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
