@@ -95,6 +95,83 @@ A2A_FRIST_S = 1800
 
 BOT_FRIST_S = 1800      # so lange darf ein /bot-Auftrag laufen (Kaltstart + Arbeit)
 
+# Bilder einer Nachricht (03.10.2026, Auftrag Max): "/bot openmontage mit dem
+# Muster im 2. Bild den Boden im 1. Bild bedecken" kam als BILDUNTERSCHRIFT
+# und wurde ersatzlos verworfen - die Schleife las nur message.text,|caption
+# blieb None, `continue` verschluckte die Nachricht OHNE Log-Eintrag. Telegram
+# verlangt fuer Medien zwingend eine caption, deshalb ist ein Bild ohne Text
+# fuer Max der normale Fall ("hier, guck mal"). Der Bot braucht die Dateien
+# auf der Platte, sonst kann er sie nicht sehen.
+BILDER_PFAD = os.path.join(HIER, "bilder")
+BILD_GRUPPE_MAX = 6      # mehr Bilder sind selten ein Auftrag, sondern ein Chat
+
+
+def _bild_text(nachricht):
+    """Der Text einer Nachricht: caption zaehlt genauso wie text."""
+    return (nachricht.get("text") or nachricht.get("caption") or "").strip()
+
+
+def _bilder(nachricht):
+    """Die groesste Fassung je Bild - Telegram liefert up to 4 Stufen."""
+    aus = []
+    for p in sorted(nachricht.get("photo") or [], key=lambda x: -x.get("file_size", 0)):
+        aus.append(p["file_id"])
+    for gruppe in ("document", "video", "audio", "voice"):
+        d = nachricht.get(gruppe)
+        if isinstance(d, dict) and d.get("file_id"):
+            aus.append(d["file_id"])
+            break
+    return aus[:BILD_GRUPPE_MAX]
+
+
+def _bilder_holen(nachricht, cache_key):
+    """Laden und als Datei ablegen. Liste der Pfade (leer = nichts)."""
+    ids = _bilder(nachricht)
+    if not ids:
+        return []
+    ziel = os.path.join(BILDER_PFAD, cache_key)
+    try:
+        os.makedirs(ziel, exist_ok=True)
+        pfade = []
+        for i, fid in enumerate(ids, 1):
+            info = _ruf("getFile", {"file_id": fid}).get("result") or {}
+            pfad_rel = info.get("file_path")
+            if not pfad_rel:
+                continue
+            endung = os.path.splitext(pfad_rel)[1] or ".jpg"
+            ziel_datei = os.path.join(ziel, "bild%d%s" % (i, endung))
+            if not os.path.exists(ziel_datei):
+                # Datei-Download laeuft ueber /file/bot<token>/<pfad>, nicht
+                # ueber /bot<token>/ - die erste Form ist ein 404.
+                url = ("https://api.telegram.org/file/bot%s/%s"
+                       % (token(), pfad_rel))
+                with urllib.request.urlopen(url, timeout=60) as q:
+                    inhalt = q.read()
+                with open(ziel_datei, "wb") as f:
+                    f.write(inhalt)
+            pfade.append(ziel_datei)
+        # Alte Gruppen raeumen: die Ablage ist ein Cache, kein Archiv.
+        for alt in os.listdir(BILDER_PFAD):
+            if alt != cache_key:
+                try:
+                    for datei in os.listdir(os.path.join(BILDER_PFAD, alt)):
+                        os.remove(os.path.join(BILDER_PFAD, alt, datei))
+                    os.rmdir(os.path.join(BILDER_PFAD, alt))
+                except OSError:
+                    pass
+        return pfade
+    except Exception:                                    # noqa: BLE001
+        return []
+
+
+def _mit_bildern(frage, pfade):
+    """Die Bildpfade an den Auftrag haengen - der Agent soll sie SEHEN."""
+    if not pfade:
+        return frage
+    return (frage + "\n\nLies diese Bilddateien (mit vision/image-Tool, "
+            "nicht nur den Dateinamen):\n"
+            + "\n".join("- %s" % p for p in pfade))
+
 
 
 HERMES_EXE = os.path.join(WURZEL, "Agenten", "Hermes", "bin", "hermes.exe")
@@ -907,17 +984,26 @@ def schleife():
             netzfehler = False
             for n in nachrichten:
                 uid = n["update_id"]
-                chat = (n.get("message") or {}).get("chat", {}).get("id")
-                text = (n.get("message") or {}).get("text")
-                if chat is None or text is None:
+                nachricht = n.get("message") or {}
+                chat = nachricht.get("chat", {}).get("id")
+                text = _bild_text(nachricht)
+                if chat is None:
                     continue
+                if not text:
+                    # Bild OHNE Bildunterschrift: kein Auftrag, aber sichtbar.
+                    # Nur melden, wenn die Ablage etwas gibt - sonst ist es ein
+                    # Stickerspam und der Log laeuft voll.
+                    if not _bilder(nachricht):
+                        continue
+                    text = "(Bild ohne Unterschrift)"
                 if chat != chat_id():
                     _log(chat, "(fremd)", 0, "abgewiesen", len(text))
                     offset = uid + 1
                     continue
+                bilder = _bilder_holen(nachricht, "chat%s" % chat)
                 start = time.time()
                 try:
-                    antwort, _ = bearbeite(text, chat)
+                    antwort, _ = bearbeite(_mit_bildern(text, bilder), chat)
                     sende(chat, antwort)
                     _log(chat, text[:40], round(time.time() - start, 1),
                          "ok", len(antwort))
