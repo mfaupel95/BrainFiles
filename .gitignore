@@ -364,6 +364,12 @@ Agenten/Handel/kopier1zu1/ablehnungen.csv
 # frei, und die Sperrliste nannte die neuen Ordner noch nicht.
 Agenten/Handel/macd_mtf/zustand.json
 Agenten/Handel/squeeze/zustand.json
+# Schattenarm squeeze_eth (03.10.2026): Wachen sind versioniert, die
+# Buchdateien des Arms NICHT - sonst wuerde der Arm beim Start seine eigene
+# Historie als Zustand laden.
+Agenten/Handel/squeeze/zustand.eth*.json
+Agenten/Handel/squeeze/handelsjournal.eth*.csv
+Agenten/Handel/squeeze/signal_queue.eth*.json
 Agenten/Handel/supertrend/zustand.json
 Agenten/Handel/wavetrend/zustand.json
 Agenten/Handel/mosaic/zustand.json

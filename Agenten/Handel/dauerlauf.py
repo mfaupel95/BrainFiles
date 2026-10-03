@@ -298,6 +298,10 @@ SPUREN = {
                "skript": "handeln.py"},
     "squeeze": {"ordner": "squeeze", "waehrung": "USD",
                "skript": "handeln.py"},
+    # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm"):
+    # dieselbe Regel fest auf ETH, Hauptarm unveraendert als Vergleich.
+    "squeeze_eth": {"ordner": "squeeze", "waehrung": "USD",
+                    "skript": "squeeze_eth.py"},
     "supertrend": {"ordner": "supertrend", "waehrung": "USD",
                   "skript": "handeln.py"},
     "wavetrend": {"ordner": "wavetrend", "waehrung": "USD",

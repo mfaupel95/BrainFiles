@@ -69,9 +69,31 @@ _rs_spec_obj = _rs_spec("risikostufe", _rs_datei)
 risikostufe = _rs_mod(_rs_spec_obj)
 _rs_spec_obj.loader.exec_module(risikostufe)
 
-WACHEN = os.path.join(HIER, "wachen.json")
-ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
-JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
+# SCHATTENARM (03.10.2026, Auftrag Max "Schattenarm"): HANDEL_BUCH=eth
+# haengt an JEDE Buchdatei das Suffix. Wachen (wachen.eth.json),
+# Zustand und Journal tragen es danach, und die Spiegelung zeigt auf
+# Q:\Handel_Journal\squeeze_eth. Das Hauptbuch bleibt unveraendert und
+# ist die Vergleichsgrundlage - es laeuft weiter auf BTC/ETH/SOL, der
+# Arm dagegen fest auf ETH.
+#
+# Warum gerade squeeze: von den drei BTC-Haupttraegern (supertrend
+# 400, squeeze 350, wavetrend 300 USD) hat squeeze den besten
+# gemessenen Excess (+0,16 % nach der Basislinie). ETH und BTC sind
+# hoch korreliert - das ist KEINE Streuung, sondern dieselbe Wette
+# anders notiert. Genau deshalb ist es der ehrliche Vergleich.
+ARM = (os.environ.get("HANDEL_BUCH") or "").strip()
+
+
+def _arm(pfad):
+    if not ARM:
+        return pfad
+    stamm, endung = os.path.splitext(pfad)
+    return "%s.%s%s" % (stamm, ARM, endung)
+
+
+WACHEN = _arm(os.path.join(HIER, "wachen.json"))
+ZUSTAND = risikostufe.datei(_arm(os.path.join(HIER, "zustand.json")))
+JOURNAL = risikostufe.datei(_arm(os.path.join(HIER, "handelsjournal.csv")))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
            # MFE/MAE seit 03.10.2026 - Grundlage jedes
