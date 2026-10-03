@@ -74,6 +74,9 @@ ZUSTAND = risikostufe.datei(os.path.join(HIER, "zustand.json"))
 JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
+           # MFE/MAE seit 03.10.2026 - Grundlage jedes
+           # datengetriebenen Stop-Vorschlags (T-119).
+           "mfe_pct", "mae_pct", "haltetage",
            "einsatz_usd", "stop", "ziel", "stop_pct", "grund",
            "pos_id"]
 
@@ -326,6 +329,12 @@ def pruefe_ausstiege(z, k, w, nur=None):
             behalten.append(p)
             continue
 
+        # MAE/MFE ueber die LEBENSDAUER messen, nicht erst beim Ausstieg -
+        # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
+        sys.path.insert(0, HANDEL)
+        import mae
+        mae.merke_extrem(p, kurs)
+
         grund = None
         vz = 1 if p["seite"] == "long" else -1
         if p["seite"] == "long":
@@ -355,7 +364,8 @@ def pruefe_ausstiege(z, k, w, nur=None):
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"],
-                stop_pct="%.2f" % p["stop_pct"], grund=grund)
+                stop_pct="%.2f" % p["stop_pct"], grund=grund,
+                **mae.felder(p))
 
     z["positionen"] = behalten
 
