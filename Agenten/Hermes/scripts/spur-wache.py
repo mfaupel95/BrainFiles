@@ -300,11 +300,56 @@ def _zurueck_ivwaelle(w):
     return None, None
 
 
+def _zurueck_nautilus_emacross(w):
+    """(kennung, text) fuer den EMA-Wechsel - die SIGNALEITE dieser Spur.
+
+    Der Rueckgabewert ist die EMA-Richtung als Kennung, damit die Wache
+    einmal je Wechsel meldet und nicht bei jedem Zyklus. Gemeldet wird,
+    was man sonst nicht sieht:
+
+    * die Seite, in der die schnelle EMA gerade liegt (long/short) - die
+      Spur schweigt bei stabiler Lage, und Stille ist von einem kaputten
+      Kerzenabruf nicht zu unterscheiden,
+    * ein fehlender oder leerer Queue-Eintrag - der Dauerlauf meldet einen
+      Wechsel nur in die Queue, und eine fehlende Datei heisst, es gab
+      noch keinen.
+
+    Die Kennung traegt Zeit UND Seite: sonst wuerde ein Wechsel long->short
+    ->long innerhalb einer Nacht als derselbe Zustand gelten.
+    """
+    z = _lies(HANDEL / "nautilus_emacross" / "zustand.json")
+    seite = (z.get("vor_signal") or {})
+    jetzige = list(seite.values())[0] if seite else None
+    if not jetzige:
+        return None, ("nautilus_emacross: noch keine EMA-Richtung im Zustand "
+                      "- die Spur hat seit dem Neustart nicht gerechnet oder "
+                      "hat noch keine 40 abgeschlossenen 1H-Kerzen")
+    wartend = []
+    for name in ("signal_queue.json", "signal_queue.mittel.json",
+                 "signal_queue.hoch.json"):
+        pfad = HANDEL / "nautilus_emacross" / name
+        if pfad.is_file():
+            try:
+                wartend.extend(json.loads(pfad.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                pass
+    zusatz = ""
+    if wartend:
+        letzte = wartend[-1]
+        zusatz = (" | %d Auftrag/Auftraege in der Queue, letzter %s %s %s"
+                  % (len(wartend), letzte[0], letzte[1],
+                     (letzte[3] or "")[11:16] if len(letzte) > 3 else ""))
+    return "%s@%s" % (jetzige, (z.get("letzter_lauf") or "")[:16]), (
+        "nautilus_emacross: EMA(10/20) zeigt %s%s"
+        % (jetzige.upper(), zusatz))
+
+
 SPUREN = {
     "trendwende_btc": _zurueck_trendwende,
     "liq_wand": _zurueck_liqwand,
     "supertrend": _zurueck_supertrend,
     "iv_waelle": _zurueck_ivwaelle,
+    "nautilus_emacross": _zurueck_nautilus_emacross,
 }
 
 
