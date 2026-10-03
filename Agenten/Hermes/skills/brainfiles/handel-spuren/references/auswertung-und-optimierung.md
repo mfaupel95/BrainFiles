@@ -324,6 +324,26 @@ Werkzeug im Haus: `Agenten/Handel/strategie_kennzahlen.py` (venv `Handel/.venv`)
 rechnet je Spur t-Statistik und Stop-Vorschlag aus der MAE; die Runden kommen
 ueber `auswertung_alle.runden_fuer(spur)`.
 
+6. **Die Trefferquote ist in der Indikator-Auswahl das FALSCHE Mass — sie kann
+   dem PnL entgegengesetzt laufen.** Gemessen an einem Takt, einem Fenster und
+   einer Gebuehr (BTC 15m, 60 Tage, 0,05 % je Seite, acht Skripte nebeneinander):
+   die Mean-Reversion-Varianten hatten die HOECHSTE Trefferquote des Feldes
+   (67,7 % und 58,8 %) und das SCHLECHTESTE Ergebnis (−638,99 und −693,51);
+   die Trendvarianten hatten 24,8 bis 30,2 % Treffer und die besten Ergebnisse
+   (+816,55 und +942,40). Die Logik: ein Trendfilter laesst die wenigen Gewinner
+   laufen und nimmt viele kleine Verluste; eine Mean-Reversion-Regel holt kleine
+   Gewinne haeufig und gibt sie in einem Ausreisser zurueck. Also:
+   * Bei der Frage „welcher Indikator?“ ist die Trefferquote **nicht** die
+     Entscheidungsgrundlage; gerechnet wird t-Statistik und Ergebnis je Runde.
+   * Ein Indikator, der nur eine Bewegung des Trends abbildet, bringt neben
+     einer vorhandenen Trendbedingung **keine** Information (RSI neben
+     `ema20 > ema50` misst dieselbe Bewegung) und wird nicht eingebaut.
+   * Ein Oszillator als EINSTIEG ist meist zu langsam (gemessen: zwei Signale in
+     60 Tagen) — als Filter taugt er, als Taktgeber nicht.
+   * Die Belegausgabe ist die Tabelle selbst: Takt, Fenster, Gebuehr und
+     Ergebnis JE Skript nebeneinander, sonst laesst sich die Aussage nicht
+     nachvollziehen.
+
 ## Die Auswertung selbst lesen, bevor man ihr glaubt
 
 Vier Dinge, die eine Summe kleiner machen, als sie aussieht:

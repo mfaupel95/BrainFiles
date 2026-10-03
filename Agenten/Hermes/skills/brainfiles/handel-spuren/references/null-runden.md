@@ -22,6 +22,18 @@ die Begruendung mit ("4 Position(en) ohne Ausstieg - je Position pruefen, ob
 sie einen Kurs bekommt"). `--alle` zeigt jede Spur, `--nur <n>` verengt auf
 weniger geschlossene Runden.
 
+**Eine Bestandsaufnahme ueber die GANZE Flotte, die man ohnehin schon laufen
+laesst, ist der Befund-Lauf — wenn man die richtigen Spalten liest.** Zwei
+Zahlen genuegen, um jede Null zu sortieren: **Journal-Zeilen** (0 = nie
+geschrieben = wartet) und **offene Positionen** (0 = leeres Buch, >0 = die Spur
+arbeitet). Wer nach einer solchen Bestandsaufnahme aus der Spalte
+„Runden: 0" eine Stilllegungsliste baut, hat die Auswertung gemacht und den
+Befund nicht - und der Fehler ist teuer, weil die Liste plausibel aussieht und
+Max sie bestaetigt. Geprueft an einem Tag, an dem 13 von 14 zur Stilllegung
+vorgeschlagenen Spuren am selben Tag Positionen eroeffnet hatten: die Rundenzahl
+war richtig, die Schlussfolgerung genau umgekehrt. Faustregel: **eine Stilllege-
+liste entsteht nie aus einer Spalte, sondern aus zwei.**
+
 **Die Reihenfolge der Antworten ist fest:**
 
 1. **BUCH VOLL** - es gibt Positionen. Sie sind der Grund fuer alles Weitere;

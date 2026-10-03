@@ -267,7 +267,9 @@ origin <fork> && git fetch origin`.
   nur nichts, sondern zerstoert das Vorhandene, und danach liefert der laufende
   Server eine leere Oberflaeche, waehrend der alte Beleg weiter „ok“ sagt.
   Ein Bau-Befehl, der erst leert und dann baut, ist kein harmloser Fehlversuch.
-- **Ein Projekt, das NICHT unter `Werkstatt/Repos` liegt, wird per Junction
+- **Bricht ein CLI-Unterbefehl mit einer Plattform-Einschraenkung ab, suche den Prozess-Schalter darunter.** Die Meldung nennt die Einschraenkung selbst (`... lifecycle is only supported on Unix platforms`) — das ist kein Defekt, sondern eine gebaute Luecke des Unterbefehls. Der direkt darunterliegende Prozess hat oft einen **versteckten** Schalter fuer genau diese Faehigkeit (in der Rust-CLI als `hide = true` am Argument). Weg: `<cli> <unterbefehl> --help` und `strings`/Quelltext nach dem Subsystem, dann den Prozess mit dem versteckten Schalter von Hand starten und pruefen, ob der Zustand `connected` lautet. **Die Einschraenkung nicht zum Anlass nehmen, den Befehl fuer unbrauchbar zu erklaeren** — sie gilt fuer den Unterbefehl, nicht fuer die Faehigkeit. Umgekehrt: ein belegter Statuswert (`status/read` statt Health-Check) ist das, was am Ende zaehlt; ein exit-0 des gestarteten Prozesses nicht.
+- **Wenn JEDER Aufruf desselben Werkzeugs mit demselben Konfigurationsfehler stirbt, ist es die Konfigurationsdatei — nicht der Aufruf.** Ein Syntaxfehler in der TOML/YAML/JSON-Datei des Werkzeugs (fehlender Trenner, Tippfehler in Zeile 1) bricht auch die Diagnosebefehle ab; die Meldung zeigt Datei und Zeile. Erst die Konfigurationsdatei byteweise lesen und reparieren (Sicherung daneben), dann die Diagnose erneut fahren — jede Beurteilung des Werkzeugs vor dem Fix ist wertlos.
+- **Ein Projekt, das NICHT unter `Werkstatt/Repos` liegt, wird per Junction erreichbar gemacht**
   erreichbar gemacht** - nicht verschoben (im venv steht der Pfad absolut,
   `Scripts/python.exe` bricht danach) und nicht kopiert (verdoppelt ein venv von
   mehreren hundert MB). Beleg in zwei Zeilen: `os.path.samefile(original, klon)`

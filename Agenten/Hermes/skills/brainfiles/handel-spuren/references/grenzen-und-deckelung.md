@@ -152,7 +152,41 @@ Seiten zeigen (`vorher` und `nachher` des Nominals) — ein Werkzeug, das nach d
 Zusammenfassen ueber die schon veraenderte Liste summiert, meldet eine kleinere
 Zahl und sieht damit harmlos aus.
 
-## 5. Nachweis fuer eine Grenzaenderung
+## 4c. Eine Spur mit belegtem Vorteil vergroessern: PLAETZE hoch, Groesse nicht
+
+Steigt fuer eine Spur die Erlaubnis, mehr Kapital zu fahren, ist die erste
+Entscheidung nicht „wie viel mehr", sondern **welchen Hebel**:
+`max_offene_positionen` hoch ODER `max_pro_trade_usd` hoch.
+
+**Die Positionsgroesse bleibt.** Sie ist die Groesse, ueber die die Stichprobe
+gemessen ist: der Vorteil einer Spur ist an einem bestimmten Einsatz je Trade
+nachgewiesen, nicht am Prinzip „mehr ist auch besser". Wird stattdessen der
+Einsatz je Trade gehoben, gilt die Messung fuer eine Groesse, die nie gelaufen
+ist - und die Ausschlaege je Position wachsen um denselben Faktor wie das
+Risiko, waehrend der Vorteil je Position gleich bleibt. Der Platzzaehler
+hingegen vergroessert die Zahl unabhaengiger Beobachtungen: dieselbe Regel,
+mehr Stichproben.
+
+Die Rechnung, die es zu nennen gilt, ist der freie Bestand, nicht die
+Wunschzahl: gebundenes Kapital + freies Guthaben ergibt die Obergrenze, und
+der Zielwert wird als „so viel, wie heute gedeckt ist" notiert, nicht als
+Rundzahl. Gemessen: 469 USD gebunden, 377 USD frei — die Obergrenze war die
+Kante dessen, was trug, nicht eine aufgerundete Zahl. Steht die Grenze hoeher
+als das gedeckte Guthaben, entscheidet nicht die Konfiguration, sondern der
+Guthaben-Tor, und die hoehere Zahl sieht in der Vorschau wie eine wirksame
+Anderung aus, ohne eine zu sein.
+
+**Wessen Kapital das ist, entscheidet die Messung, nicht die bestehende
+Wuchengrenzen.** Ein Deckel-Feld verteilt die Erlaubnis historisch, nicht nach
+Verdienst: gemessen eine Spur mit 124 Runden und deutlich von null
+unterscheidbarem Vorteil bei einem kleineren Deckel als eine mit weniger
+Runden und einem Vorteil nahe null. Wer eine bewiesene Spur hochfaehrt und
+eine unbewiesene unangetastet laesst, hat das Kapital nur nach der Reihenfolge
+des Baus verteilt, nicht nach seinem Wert.
+
+Merksatz: **Skalieren heisst „mehr unabhaengige Versuche", nicht „hoehere
+Wette"** — und eine vergroesserte Spur gehoert an das freie Guthaben, nicht
+an die Rundzahl.
 
 1. **Vorher/nachher am echten Objekt zeigen:**
    `<spur>/handeln.py --vorschau` mit `MAXHIRN_ROUTINE=1` (so ruft der Dauerlauf sie

@@ -52,9 +52,30 @@ Ausloeser → Referenz:
   **Vor jeder Stilllege-Empfehlung erst der Befund-Lauf**
   (`scripts/null_runden_befund.py`, liest nur, nennt die Lage mit) und im
   Bericht die LAGE nennen statt der Rundenzahl: `references/null-runden.md`
-- „Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
+- „Code optimieren“, „Suche nach Luecken“, „mach das sichtbar“ — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
+- **„welche Spur ist die beste?", „hat die Trefferquote einen Sinn?", „eine Spur
+  sieht super aus und ist falsch"** — Werkzeug `Agenten/Handel/spur_audit.py`
+  (liest nur, `--historie` laedt fehlende Kerzen nach), beantwortet fuer ALLE
+  Spuren in EINEM Durchgang die Reihenfolge „Erst Echtheit, dann Edge“: drei
+  Alarme aus dem Journal allein (Haltedauer im Aufrufertakt, ein Instrument traegt
+  die Mehrheit, identische Einstiegspreise je (Instrument, Tag) = Preis
+  UEBERNOMMEN statt geholt), dann die Excess-Rendite gegen BUY & HOLD statt der
+  Trefferquote. **Die Trefferquote allein ist kein Edge** — 93 % koennen schlechter
+  sein als 50 %, wenn die Verlierer laenger gehalten werden.
+  `references/edge-und-statistik-audit.md` — dort auch die vier Fallen, die sich
+  beim Bauen solcher Messungen zeigen: die Auswahl-Verzerrung (eine Kennzahl, die
+  nur fuer eine TeilMENGE berechenbar ist, meldet den Teil als das Ganze — eine
+  Runde von 15 Minuten hat keine volle Kerze im Fenster und damit keine Basislinie,
+  und genau diese Runden sind die Scheinrunden), die stille Basislinien-Luecke
+  (ein Mapping muss Basiswerte kennen, nicht Schreibweisen: dieselbe Position
+  erscheint als Spot-, Kontrakt-, Swap- und Krakenname; ohne Reduktion auf den
+  Basiswert faellt jede andere Spur durch), die leere Spalte als Befund aus dem
+  Nichts (nicht jede Spur fuehrt das Instrument in `inst`) und die Regel, die
+  auf einen Fall passt und die anderen zerschneidet (`[:-3]` macht aus `CASHCAT`
+  -> `CASH`). **Ein Instrument ohne Historie bleibt eine LUECKE und bekommt kein
+  Ersatzinstrument.**
 - **Buch und Boerse passen nicht zusammen** („die Spur zeigt Positionen, live ist
   aber nur X da", „Order ging nicht durch", „Limit wartet", Position ohne
   boersenseitigen Stop, Kill-Switch entsperren, Q: laeuft hinterher):
@@ -396,8 +417,18 @@ Ausloeser → Referenz:
 
 ## Prozedur
 1. **Lage lesen, nicht erinnern.** `handeln.py --vorschau` mit
-   `MAXHIRN_ROUTINE=1` läuft ohne Fenster und nennt jede geschlossene Sperre.
+   `MAXHIRN_ROUTINE=1` laeuft ohne Fenster und nennt jede geschlossenen Sperre.
    Sperrliste im Code lesen (`sperren_live`), nicht aus dem Gedächtnis.
+   **Das gilt auch fuer eine weitergereichte Analyse: ihr Satz ueber das Haus
+   („da fehlt uns ein Werkzeug", „dafuer haben wir nichts", „das kann die
+   Spur nicht") ist eine BEHAUPTUNG und wird an der Hausquelle gegengemessen,
+   bevor darauf hin gebaut, eingeschaltet oder abgeschaltet wird.** Der
+   Gegencheck ist billig und hat eine begleitende Marktanalyse an einem
+   Handelstag widerlegt: das Instrument war an beiden Hausboersen gelistet,
+   die Kursbewegung lag im Fenster der bestehenden Kandidatenspur, und es
+   fehlte nur die Beobachtung an einem Tag. Wer die Behauptung uebernimmt,
+   baut ein Werkzeug fuer etwas, das es schon gibt — oder laesst eine
+   vorhandene Faehigkeit ungenutzt liegen.
    **Ein genanntes Flag, das das Werkzeug gar nicht kennt** („`tagesbericht.py
    --alle`"), ist eine ABSICHT und kein Fehler: erst die echten Argumente des
    Werkzeugs lesen (`--help`, `grep add_argument`), dann die gemeinte Wirkung
@@ -543,6 +574,16 @@ Ausloeser → Referenz:
      `git commit` ohne Pfadangabe setzt den ALTEN Stand wieder ein. Eine Datei, die
      die andere Sitzung nach dem eigenen Commit WEITERbearbeitet hat, nicht
      nachziehen (`git reset -q HEAD -- <pfad>`).
+   - **Der Push scheitert, weil eine ANDERE Sitzung den Baum offen haelt** — und
+     die fremden Dateien fasst man nicht an. `git pull` und `git pull --rebase`
+     verweigern beide mit "You have unstaged changes". Der Weg, der die fremde
+     Arbeit unveraendert laesst: `git pull --rebase --autostash origin master`.
+     Git legt die fremden Aenderungen vor dem Rebase in einen Autostash und
+     legt sie danach unveraendert zurueck ("Applied autostash"). Gegenprobe
+     danach Pflicht: `git status --porcelain` muss dieselbe Zeilenzahl und
+     dieselben Pfade zeigen wie vorher — so wird belegt, dass nichts von der
+     fremden Sitzung mitgenommen oder zurueckgesetzt wurde. Wer stattdessen
+     selbst committet, nimmt deren Arbeit in die eigene Meldung.
    - **Eine 0-Byte-`.git/index.lock` ist ein Wrack, kein laufender Commit:** Alter
      messen und echte `git`-Prozesse zaehlen (`Get-CimInstance Win32_Process`;
      `fsmonitor`-Daemons laufen immer und beweisen nichts), dann UMBENENNEN
@@ -920,7 +961,13 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   ein Ziel-Ausstieg hat das Signal verbraucht** (Sperrfrist in Stunden nach
   `ziel`, laengere Abklingzeit in Tagen nach `stop`, Zeitstempel statt Datum,
   Test mit Gegenprobe). Ausloeser: „kauft sofort wieder", „Sperrfrist",
-  „Gebuehren fuer dieselbe Bewegung".
+  „Gebuehren fuer dieselbe Bewegung". **Dort auch MFE/MAE** — die Spalte, ohne
+  die kein Stop begruendbar ist: ueber die LEBENSDAUER messen (beim Ausstieg
+  gemessen ist die Zahl der Ausstiegskurs selbst), Richtungsfaktor sobald die
+  Spur auch short handelt (die long-only Formel ist bei short spiegelverkehrt),
+  und die Falle, dass eine NEUE Journal-Spalte auf einer bestehenden Spur erst
+  nach einer Kopfzeilen-Migration ankommt — der Schreiber nimmt die Spalten aus
+  der Datei und verwirft die neue sonst kommentarlos.
 - `references/santiment.md` — Santiment SanAPI (GraphQL, anonym in der freien
   Stufe nutzbar): wo das Repo liegt, welche Metriken live geprueft sind, dass
   JEDE Metrik ihr eigenes Zeitfenster hat und `erlaubtes_fenster()` die Grenze

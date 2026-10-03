@@ -120,6 +120,68 @@ Gilt fuer jede Spur unter `Agenten/Handel/<spur>/`: die Ausstiegsrechnung in
   nach Ablauf der Frist wird wieder gekauft. Der Zweite ist der wichtigste — er
   haelt die beiden Mechanismen auseinander.
 
+## MFE/MAE: die Spalte, ohne die kein Stop begruendbar ist
+
+Der datengetriebene Stop (90-%-Quantil der MAE der GEWINNER) beantwortet die
+Frage, die keine Trefferquote beantwortet: Lief die Position erst ins Plus und
+drehte dann um (Stop zu eng), oder lief sie sofort gegen den Einstieg (Signal
+falsch)? Ein Haus mit 40 % Treffer und ~0 % MAE hat einen zu engen Stop, eines
+mit 40 % und −6 % MAE hat ein falsches Signal. Die Regel steht an EINER Stelle
+(`Handel/mae.py`), nicht je Spur.
+
+- **Ueber die LEBENSDAUER messen, nicht erst beim Ausstieg.** Der Aufruf gehoert
+  an die Stelle, an der der Ausstieg geprueft wird — VOR der Stop-/Zielentscheidung.
+  Erst beim Ausstieg gemessen ist die Zahl der Ausstiegskurs selbst und damit
+  wertlos: bei einem Stop exakt der Stop, bei einem Ziel exakt das Ziel.
+- **Der Richtungsfaktor gehoert dazu, sobald eine Spur auch short handelt.**
+  Die Formel einer long-only Referenzspur (`(kurs - einstieg) / einstieg * 100`)
+  ist fuer short spiegelverkehrt: eine Short-Position, deren Kurs um 6 % STEIGT,
+  meldet dort den HOECHSTWert +6 % — das ist der groesste Verlust. Die
+  Gegenprobe laeuft mit DENSELBEN Kursen ueber beide Richtungen und muss
+  identische MFE/MAE liefern.
+- **Eine neue Journal-Spalte wirkt auf einer bestehenden Spur erst nach einer
+  Migration.** Der Schreiber nimmt die Spaltenliste aus der KOPFZEILE der Datei,
+  nicht aus dem Code (das haelt Altzeilen lesbar) und schreibt mit
+  `extrasaction="ignore"` — eine neu berechnete Spalte wird dann kommentarlos
+  VERWORFEN. Die Kennzahl laeuft, es steht nichts im Journal, und der Fehler
+  faellt erst auf, wenn die Auswertung dauerhaft „nicht gefuehrt" meldet.
+  Also: Kopfzeile einmalig um die Spalten erweitern, alle Zeilen erhalten, die
+  neuen Felder leer, Sicherung je Spur, danach `spiegelstand.py`.
+- **Die Zahl ist eine UNTERGRENZE** (gemessen an den Zykluspunkten, die echten
+  Extreme dazwischen liegen weiter aussen). Das gehoert an die Fundstelle, damit
+  niemand sie fuer eine Schluesselung haelt. Altbestand ohne die Felder faellt
+  ueber `.get()` auf 0 zurueck und wird ab dem naechsten Zyklus mitgemessen —
+  rueckwirkend wird nichts rekonstruiert.
+- **Vor dem Stop aus der MAE zuerst pruefen, ob die Spalte ueberhaupt gefuehrt
+  wird** (`strategie_kennzahlen.py` meldet „MAE ungefuehrt"): ein Platzhalter
+  `0.0000` macht den Vorschlag zu 0 % Stop. Dann ist „nicht gefuehrt" die
+  Antwort, nicht eine Null als Messwert.
+- **Die Buchform divergiert — der DREIKLANG ist nur die haeufigste Form.**
+  Drei Spurenlagen, alle drei am Haus belegt: die Indikatorspuren fuehren eine
+  LISTE plus `seite`, ein DICT-Journal und `eroeffnet_zeit`; `spur_buch`-Spuren
+  fuehren Liste plus `seite` und ein DICT-Journal, aber das Journal nimmt die
+  Spalten aus der Datei; `orb`/`orbk` fuehren EINE Position (`z["position"]`),
+  das Richtungsfeld heisst `richtung` statt `seite`, das Journal ist
+  POSITIONAL (`journal(tag, inst, richtung, …)` mit fester Kopfzeile, kein
+  Dict) und der Einstiegstag heisst `tag`. Zwei Folgen: der Richtungsfaktor
+  liest BEIDE Feldnamen (sonst bekommt eine Short-Position stillschweigend das
+  Vorzeichen von long und ihre MAE ist verkehrt gemessen), und die Messstelle
+  ist nicht immer „in der Schleife" — wo eine Einzelposition gefuehrt wird,
+  gehoert der Aufruf vor den Vergleich von `letzter_kurs` gegen Stop und Ziel.
+  Besser als eine zweite Formel: beide Namen in der EINEN Regel lesen und sie
+  je Buchform aufrufen.
+- **Ein geteiltes Buch deckt viele Spuren mit EINER Aenderung ab.** Wer die
+  Regel ueberall einfuehrt, prueft zuerst, wie viele Spuren ueber ein
+  gemeinsames Modul laufen (`grep spur_buch */handeln.py`) — das kann mehr als
+  die halbe Flotte sein und spart den Einzelumbau samt Einzeltest.
+- **Ein Test, der gar nicht startet, meldet keinen Fehler, sondern schweigt.**
+  Lief eine Suite schon vorher rot und war der Grund ein `ModuleNotFoundError`
+  beim Import des Testmoduls (der venv uebernimmt `PYTHONPATH` nicht, der
+  Spurenordner landet nicht im Suchpfad), beweist ein rueckgebautes
+  `.bak`-Modul mit IDENTISCHEN Fehlerzahlen, dass der Befund vorbesteht — und
+  der eigene Eingriff wurde ueberhaupt nicht geprueft. Diese Suites sind damit
+  kein Beleg fuer oder gegen die Aenderung; sie gehoeren zuerst repariert.
+
 ## Spurtests aufrufen
 
 - Aus `<spur>/tests` heraus: `<Handel>/scanner/.venv/Scripts/python.exe -m unittest test_<spur>`

@@ -11,6 +11,20 @@ Die Sammlung laeuft aus dem SPURENORDNER heraus, nicht aus `tests/`:
 dann ist `-s tests -t tests` (mit `PYTHONPATH=.`) der richtige Aufruf — die
 Meldung sieht wie ein Code-Fehler aus, ist aber die Aufruf-form.
 
+**„Ran 0 tests / NO TESTS RAN" ist das gefaehrlichste Testergebnis.** Es liest
+sich wie ein gruener Lauf und ist keiner: unittest sammelt `TestCase`-Klassen
+und `unittest.TestCase`-Erben, NICHT blosse Funktionen. Eine pytest-Stil-Datei
+mitten im Baum (`def test_…` auf Modulebene, kein `import pytest` noetig) wird
+vom unittest-Lauf uebersehen — und meldet das mit Exit-Code 0. Gemessen an
+`Bus/tests/test_anbindung_handel.py`: `discover -s tests`, `discover -s tests
+-t tests` und `discover -t tests` fanden alle null, es waren aber vier echte
+Pruefungen, deren Bestehen eine ganze Verdrahtungsklasse traegt. Zwei Wege
+zurueck: die Datei mit pytest fahren (im venv fehlt es haeufig, dann
+`No module named pytest` sagt der Aufruf deutlich) oder die Funktionen direkt
+aufrufen — Modul laden, je `name.startswith("test_")` `getattr(m,n)()`.
+Merksatz: **eine Zahl „0 Tests" wird nie als Bestand gelesen.** Erst die Anzahl
+mit der Zahl Testfunktionen im File vergleichen, dann ueberhaupt von gruen reden.
+
 Aufrufe, die scheitern und dabei nach einem Code-Fehler aussehen:
 
 - **Einzelne Testdatei** (`cd <spur>/tests && … -m unittest test_<name>`):
