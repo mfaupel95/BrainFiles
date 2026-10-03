@@ -168,7 +168,49 @@ ist nicht automatisch die gueltige:** die Ausgabe waehlt den Ordner mit den
 meisten Zeilen, ein abgeloester Lauf gewinnt also weiter. Eine Zeile ohne
 Zeitraum ist keine Messung — den Neulauf veranlassen, statt sie zu zitieren.
 
+## Die Kennzahl pruefen, BEVOR man sie empfiehlt
+
+Der Normalfall ist nicht, dass die Zahl falsch gerechnet ist — sondern dass sie
+richtig gerechnet wurde aus einer falschen Eingabe. Belegt: eine Spur fuehrte als
+beste des Hauses mit rund +17 % Rundenergebnis, 85 % Trefferquote und t um 15;
+das Audit zeigte, dass der Einstiegspreis je (Instrument, Tag) **identisch
+uebernommen statt geholt** war, 87 von 161 Runden auf **einem** Instrument lagen
+und die Haltedauer dem Aufrufertakt folgte (Median 0,25 h bei 0,25 h Takt). Der
+Excess der Runden unter einer Stunde wich um 15 Prozentpunkte vom Rest ab.
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel && ./scanner/.venv/Scripts/python.exe spur_audit.py --spur <name>
+```
+
+Drei Merkmale, an denen eine Kennzahl zu schoen aussieht, BEVOR sie in eine
+Empfehlung geht:
+1. **Konzentration** — eine „diversifizierte" Bilanz, deren Runden zur Haelfte auf
+   einem Instrument liegen, ist keine Streuung.
+2. **Haltedauer gegen den Aufrufertakt** — eine Haltedauer auf der Scheduler-
+   Periode misst den Scheduler, nicht die Strategie.
+3. **Excess gespalten nach Haltedaauer** — weichen die Spalten stark ab, traegt der
+   Gesamt-Excess die Auswahl, nicht die Spur.
+
+**Und die Folge ziehen.** Wer eine Grenze, ein Budget oder eine Empfehlung auf
+eine solche Zahl gestellt hat, nimmt sie zurueck — mit datiertem Vermerk in der
+Wache. Eine niedrigere Obergrenze schliesst keine offene Position, sie verhindert
+nur neue Einstiege.
+
 ## Fallen
+
+- **Ein Altjournal verliert neue Spalten still.** `pos_kennung.spalten` haelt bei
+  einer vorhandenen Journaldatei die **bestehende** Kopfzeile, und der Schreibpfad
+  mit `extrasaction="ignore"` verwirft dann jedes zusaetzliche Feld: die Messung
+  laeuft, rechnet und erreicht nie eine Zeile. Beim Erweitern eines Journals um
+  Spalten (MAE/MFE, Haltetage) die Altbestande einmalig mitziehen — Kopfzeile
+  ergaenzen, alle Zeilen erhalten, Sicherung `.bak-<datum>` — und danach die Zahl
+  der Zeilen gegen die Quelle halten.
+- **Ein gemeinsames Buch deckt viele Spuren mit EINER Aenderung.** Wer eine
+  Buchform teilt (`spur_buch.py`), wirkt damit auf alle Spuren, die es nutzen —
+  das ist der Hebel, es ist aber auch der Grund, warum dort kein Test fehlen
+  darf. Spuren mit eigener Buchform (eigene Journalzeile, `richtung` statt
+  `seite`, Positionsliste statt Einzelposition) sind eigene Eingriffe; sie
+  grundsaetzlich als eigene benennen statt sie still zu ueberspringen.
 
 - **Die Stichprobe waechst waehrend der Arbeit** (Dauerlauf schreibt weiter):
   Zahlen aus zwei Laeufen zu verschiedenen Minuten sind nicht vergleichbar,

@@ -1104,6 +1104,17 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   Eintrag kann gleichnamige Module verdecken) und deren `main()` aufruft; beide
   Dateien versionieren. Der Wrapper haelt dieselbe Melde-Regel ein: leere Ausgabe,
   wenn es nichts zu melden gibt.
+  **Das `script`-Feld nimmt NUR den Dateinamen, keine Argumente.** `script=<wache>.py --voll`
+  wird als Dateiname `wache.py --voll` gelesen und abgewiesen. Also EIN WRAPPER
+  JE MODUS (`wache-voll.py`, `wache-top.py`), der seinen Modus selbst setzt — sonst
+  muss der Aufrufer ein Argument mitschleppen, das der Scheduler nicht kennt.
+  **Ein Bindestrich im Skriptnamen macht es als Modul unimportierbar** (`import tasks_wache`
+  gegen `tasks-wache.py` scheitert immer) — im Wrapper `spec_from_file_location`
+  nehmen, nie `import`.
+  Und beim Erzeugen solcher Wrapper per Shell: `printf '…%s…%s' "$f"` ersetzt nur
+  den **ersten** `%s` — das zweite bleibt leer und der Wrapper liefert still die
+  falsche Ausgabe. Wert je `%s` erneut uebergeben und im Ergebnis `grep` nach der
+  gesetzten Zeile.
 - **Eine Wache laeuft unter dem Interpreter von Hermes, nicht in der venv der
   Komponente.** Ein Skript, das `requests`, `pandas` oder ein Spur-venv braucht,
   stirbt im Cron — und zwar lautlos, weil niemand die Ausgabe liest, wenn der
