@@ -1115,6 +1115,34 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   den **ersten** `%s` — das zweite bleibt leer und der Wrapper liefert still die
   falsche Ausgabe. Wert je `%s` erneut uebergeben und im Ergebnis `grep` nach der
   gesetzten Zeile.
+- **Der Umfang einer Wache wird am Default festgelegt, nicht am Aufruf.** Ein
+  Aufruf im Cron kann kein Argument mitgeben, also sieht eine bestehende Wache
+  immer nur den Ordner, den ihr `argparse`-Default nennt — auch wenn der Schaden
+  woanders entsteht. Symptom ist eine Wache, die alle 15 Minuten fleissig „nichts
+  meldet“, waehrend genau ihre Zielstelle ungeschuetzt ist: **sie kann die Stelle
+  nicht sehen, an der der Schaden passiert.** Vor dem Erweitern also pruefen,
+  welche Ordner ihre Vorgabe ueberhaupt einbezieht. Wird ein zweiter Ordner
+  noetig, gehoert er in eine **eigene Wache mit eigener Merkdatei** — ein
+  gemeinsames Schluesselformat meldet beim ersten Lauf den ganzen alten Bestand
+  als verschwunden, und eine Wache, die beim Start alles meldet, wird
+  abgeschaltet.
+- **Eine Wache, die teurer ist als ihr Takt, wird abgeschaltet und damit blind.**
+  Der Aufwand entscheidet ueber die Existenz der Wache, nicht ueber ihre
+  Richtigkeit. Ein Lauf ueber einen Baum mit venv-Paketen brauchte **vierzehn
+  Minuten vierzig** je 15-Minuten-Takt — das ist Last, kein Waechter. Zwei
+  gescheiterte Engpass-Verschiebungen, bevor der richtige Weg gefunden war:
+  eine Endungsliste im Kern (`AUSLASSEN_ENDE`) brachte **nichts**, weil der
+  Aufwand nicht an den Endungen hing. Der Weg ist stattdessen, **beim Laufen zu
+  schneiden**: mit `os.walk` in jedem Verzeichnis testen, ob ein Ordnername in
+  der Ausnahmeliste steht, und dann `dirs[:] = []` — **absteigend nicht weitergehen**.
+  So wird der venv-Baum betreten und sofort wieder verlassen. Gemessen: gleiche
+  Aufgabe, 1048 Dateien in 156 Ordnern, **0,79 s** statt 4:40 — 350-mal
+  schneller, und damit endlich ein Waechter statt einer Last. Wer die Zeit
+  misst, bevor er die Regel prueft, findet den Engpass; wer die Endungen
+  optimiert, optimiert die falsche Stelle.
+  **Merksatz fuer die Melde-Regel dazu:** eine neue Datei ist **kein** Befund
+  (die entsteht dauernd), verschwunden ist nur, was im vorigen Lauf **da**
+  war — und dieselbe Feststellung hoechstens alle paar Stunden.
 - **Eine Wache laeuft unter dem Interpreter von Hermes, nicht in der venv der
   Komponente.** Ein Skript, das `requests`, `pandas` oder ein Spur-venv braucht,
   stirbt im Cron — und zwar lautlos, weil niemand die Ausgabe liest, wenn der
