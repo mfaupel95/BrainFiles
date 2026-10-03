@@ -256,6 +256,11 @@ Agenten/Handel/stand/
 !Agenten/Bus/*.md
 !Agenten/Bus/tests/*.py
 # Laufzeitstaende: jede Bus-Nachricht aendert sie - nie versionieren (spaetere Regel gewinnt)
+# Bilder aus Telegram-Chats: Laufzeitpuffer des SkillsBot, kein Quelltext.
+# Der Ordner wird bei jedem Poll neu geschrieben - im Repo wuerde er
+# jeden Commit verraeuschen. Der Cache bleibt auf der Platte.
+Agenten/Bus/bilder/
+
 Agenten/Bus/stand.json
 Agenten/Bus/skillsbot.kontext.json
 # SkillsBot: aktiver Bot (Laufzeitstand wie der Offset)
