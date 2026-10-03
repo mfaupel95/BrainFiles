@@ -140,6 +140,17 @@ Beweis fuer eine Rotation — eine Rotation hat einen Verlierer. Erst wenn ein T
 des Markts unter seinem langfristigen Durchschnitt liegt, gibt es Nachzuegler, in
 die rotiert werden koennte.
 
+## Nicht die Breite: wer bewegt sich (Topmover)
+
+Die Breite zaehlt, WER ueber der EMA200 steht. Sie sieht nicht, dass die Kaeufer
+weggehen - an einem Tag mit 89,7 % Breite kann die Mehrheit der Paare ueber der
+Linie liegen und unter dem Medianvolumen handeln. Die zweite Frage - **was
+bewegt sich, und traegt das Volumen die Bewegung** - beantwortet
+`references/mover-und-lagen.md` mit dem Werkzeug
+`Agenten/Werkzeuge/topmover.py` (oeffentliche OKX-Kerzen, kein Schluessel,
+fuenf Lagen, ATR je Zeile). Merksatz dort: der **Traeger kommt vor dem Kurs**,
+und `1,0x Median` heisst "wie immer", nicht "Traeger da".
+
 ## Die Zahl lesen
 
 - **Sehr hohe Breite (alle oder fast alle ueber dem Durchschnitt):** kein Laggard

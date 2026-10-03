@@ -292,7 +292,12 @@ Ausloeser → Referenz:
   passiert aber nichts; „Herzschlag alt" obwohl sie laeuft; die Auto-Freigabe
   oeffnet Fenster ohne Ergebnis; **die Vorschau nennt gar keinen Sperrstand, dann
   findet `nur_fenster_fehlt` nichts und die Auto-Freigabe ist fuer ALLE Spuren
-  eines gemeinsamen Kerns tot**; die Sperre nennt ein Guthaben ohne BOERSE und
+  eines gemeinsamen Kerns tot** — drei getrennte Ursachen, alle gemessen: die
+   Zeile steht unter `if g:` (fehlt genau dann, wenn die Spur STARTKLAR ist); der
+   Vorschau-Zweig kehrt zurueck, BEVOR irgendwo Sperren genannt werden; oder das
+   Werkzeug startet die Spur mit dem FALSCHEN Interpreter, sie stuerzt ab, und ein
+   abgestuerzter Lauf liefert keine Zeile (dann je Spur den eigenen venv waehlen);
+   die Sperre nennt ein Guthaben ohne BOERSE und
   Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht werden**
   („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
@@ -426,9 +431,36 @@ Ausloeser → Referenz:
    Interpreter **absolut** angeben (z. B.
    `C:/…/Handel/scanner/.venv/Scripts/python.exe`): ein relativer Pfad bricht nach
    dem `cd`, und die leere Ausgabe sieht wie „keine Tests“ aus statt wie ein
-   Fehler. Für den Live-Pfad `pruefe_einstiege`/`pruefe_ausstiege` per Lambda
-   stilllegen, Fenster regulär öffnen, Lauf starten, Zustandsdateien
-   vorher/nachher per Hash vergleichen. Ein Test darf `markt_kauf` nie erreichen.
+   Fuer den Live-Pfad `pruefe_einstiege`/`pruefe_ausstiege` per Lambda
+      stilllegen, Fenster regulaer oeffnen, Lauf starten, Zustandsdateien
+      vorher/nachher per Hash vergleichen. Ein Test darf `markt_kauf` nie erreichen.
+
+      **JEDER Test, der eine Spurenfunktion mit Journalaufruf ruft, schreibt
+      zuerst `journal` im geladenen Modul um.** Das ist die teuerste Falle der
+      ganzen Hausregelkette und sie ist zweimal eingetreten, weil sie als
+      „Papierlauf braucht kein SCHREIBEN=False" im Kopf lag: getestet wird
+      `pruefe_einstieg`/`pruefe_ausstiege`, und DAS journalisiert in die echte
+      Datei der Spur - nicht in eine Tempdatei. Gemessener Schaden: 192 Zeilen
+      in vier echten Journalen, alle am synthetischen Kurs erkennbar (zwei
+      Spuren 57 und 45 Zeilen auf 239,65, eine auf 344,65), weil der Test
+      dieselbe Spurenfunktion fuer vier Spuren in einer Schleife aufrief.
+      Das Muster, das gilt:
+
+      ```python
+      mod = lade(spur)                      # handeln.py als Modul, nicht importieren
+      geschrieben = []
+      mod.journal = lambda **kw: geschrieben.append(kw)   # VOR dem ersten Aufruf
+      mod.pruefe_einstieg("BTC-USDT", kerzen, z, w, 1.0)
+      ```
+
+      Zwei Dinge gehoeren dazu, sonst ist der Test gruen aus Faulheit:
+      **Dateigroesse des echten Journals vorher/nachher vergleichen** (bricht die
+      Regel, ist das der Fehler), und **beleegen, dass ueberhaupt protokolliert
+      wurde** (`assertTrue(geschrieben)`) - ohne diesen zweiten Teil prueft der
+      Test nichts und meldet Erfolg. Beim Aufraeumen gilt: die Zeilen sind am
+      synthetischen Kurs erkennbar (Zeitstempel UND Preis), das Zustandsfile
+      bleibt unberuehrt, Sicherung je Spur, danach `spiegelstand.py` (die
+      Bedingung-4-Pruefung zeigt die Abweichung sonst als Befund).
    Eine geänderte Ausgabezeile **rendern statt lesen**: die `print`-Anweisung per
    `ast.get_source_segment` holen, mit `ast.parse`/`compile` übersetzen, mit
    Beispieldaten ausführen. Eine Formatprüfung im Kopf ist kein Nachweis, und
@@ -441,7 +473,15 @@ Ausloeser → Referenz:
    Aenderungen wieder da sind: die Stash-Liste ist kein Beleg (mehrere
    Push-Aufrufe koennen in EINEM Eintrag landen, der zweite `pop` meldet dann
    "No stash entries found", obwohl alles zurueck ist).
-   **Ein Test, der die Nicht-Existenz einer Spuren-Datei behauptet
+   **Bleibt die Gegenprobe GRUEN, ist der eigene Code nicht auf dem Weg — er ist
+   toter Code.** Nach jeder Aenderung an einem Rechenweg die Regel stilllegen und
+   denselben Test erneut fahren: faellt er nicht, hat die Baustelle nie etwas
+   getan. Gemessen an einer Verdichtung in einer Auswertung: der Test blieb gruen,
+   weil die Paarung die Mehrfachzeile ohnehin richtig aufloest — der Code wurde
+   entfernt, weil toter Code in einem Rechenweg eine Last ist und kein Beleg. Und
+   **eine Regel, die man selbst gebaut hat, belegt man nicht durch das gruene
+   Ergebnis ihrer eigenen Tests**, sondern durch die stillegelegte Fassung.
+   - **Ein Test, der die Nicht-Existenz einer Spuren-Datei behauptet
    (`assertFalse(pfad.exists())`), faellt, sobald die Spur einmal echt gelaufen
    ist** — er friert den Zustand vor dem ersten Zyklus ein. Statt der Abwesenheit
    pruefen, dass der Live-/Vorschau-Pfad NICHTS schreibt: Dateigroessen vor und
@@ -770,6 +810,43 @@ lesen; die Datei ist nicht bei jeder Spur-Runde Pflicht.
   (`alt.replace(chr(10), nl)`), sonst findet der Anker in einer CRLF-Datei nichts;
   in einem per Heredoc erzeugten `.py` `chr(10)` statt `"\n"` schreiben, sonst
   steht ein echter Zeilenumbruch im String (unterminated string literal).
+  **Ein Anker, der in N Schablonen-Spuren sitzt, beweist nicht, dass die
+  ERSETZUNG dort gueltig ist** — dieselbe Zeile, verschiedene Bezeichner. Ein
+  Regel-Block in vier Spuren eingefuegt und drei liessen sich mit
+  `NameError` laufen, weil eine Spur die Seite `seite` nannte und die anderen
+  `sig`; der Anker (`z["positionen"].append(_p)`) war in allen vier identisch.
+  Nach dem Einsetzen **je Datei den EINSATZ-BEZUG pruefen, nicht den Anker**:
+     die Bezeichner, die der neue Block benutzt, in jeder Zieldatei greppen und bei
+     Abweichung den Block mit dem lokalen Namen wiederholen. Ein Test faellt nur
+     dort, wo die Suite laeuft — die Spur-Suite wird oft einzeln gefahren, also
+     jeden der N Kopien einzeln fahren, nicht die Gesamtsuite am Ende.
+
+  - **Den Vertrag einer Funktion MESSEN, bevor man auf ihn testet.** Drei
+    angenommene Vertraege ergaben drei gruene Tests ueber falsche Behauptungen:
+    eine Richtungsfunktion liefert `1`/`-1` und nicht `"long"`/`"short"`; eine
+    Glaettungsfunktion liefert eine REIHE mit `None` am Anfang und keine Zahl -
+    und auf einer linearen Reihe laeuft die EMA in die SMA, die Praemisse „EMA
+    steht ueber der SMA" war mathematisch falsch, der Test pruefte eine Behauptung
+    ueber den Code und nicht den Code; und eine Signalfunktion wird von der einen
+    Spur entpackt (`seite, _linie = sig`), von der anderen als Text verglichen.
+    Dazu eine Zahl aus der Konfiguration statt eines festen Werts: die
+    `mindest_kerzen` unterscheiden sich je Spur stark, eine feste Kerzenzahl im
+    Test prueft bei der einen Spur gar nichts (statt dessen kommt die Zahl aus der
+    `wachen.json`). Der billige Weg ist ein Aufruf in einer interaktiven Zeile und
+    das Ergebnis ansehen - `repr()` der Rueckgabe, nicht der Name.
+
+  - **Wer eine Buchposition schreibt, vergibt ihre Identitaet - auch auf dem Weg,
+    der nicht der Einstieg ist.** `pos_id` ist kein Feld des Einstiegs, sondern
+    eine Bedingung fuer JEDEN Pfad, der eine Position in `z["positionen"]`
+    anlegt. Der Einstieg pflegte sie, der Uebernahmepfad fuer von Hand eroeffnete
+    Positionen nicht - und genau dort lagen danach zwei echte LIVE-Positionen ohne
+    Kennung. Ohne sie kann die Paarung den Ausstieg nicht eindeutig zuordnen,
+    sobald zwei Positionen auf demselben Markt liegen. Beim Lesen auffaellig:
+    **nach der Position den ZUSTAND pruefen, nicht den Einstiegscode** - die
+    gefehlt hat, sah am Einstieg vollstaendig aus. Und Altbestand ohne Kennung
+    wird NICHT nachtraeglich erfunden (die Journalzeilen tragen sie ebenfalls
+    nicht, eine erfundene paart nichts) - der Weg aus Altbestand ist, die
+    Positionen zu schliessen.
 
 ## Bestehende Positionen nachtraeglich absichern (Spot wie Margin)
 
@@ -904,8 +981,10 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   Deckel, Groessenfaktor) und die Werkzeuge, mit denen man prueft, dass sie
   greifen koennen: absoluter Betrag statt Quote von fremder Groesse, warum
   "greift erst im Minus" nicht "abgeschaltet" heisst, der Vorrang des
-  ausdruecklichen Werts, und "keine Negativ-Aussage aus einer abgeschnittenen
-  Suche" (Import-Kette!).
+  ausdruecklichen Werts, **warum eine Prozentangabe („Stop 60“) in einer
+  Spur mit absolutem `stop_usd` nicht treu umsetzbar ist (Einsatz schwankt) —
+  Prozentfeld mit Vorrang, groesster und kleinster Einsatz gegenrechnen**, und
+  "keine Negativ-Aussage aus einer abgeschnittenen Suche" (Import-Kette!).
 - `references/anbindungs-audit.md` — Bestandsaufnahme „was laeuft, was ist
   angebunden, was ist Altlast“: Verdrahtungsstellen gegeneinander halten,
   Aufrufer greppen, Befund richtig deuten.
@@ -928,6 +1007,12 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
   `tools/list`), damit eine Fremdsitzung nicht am Skript vorbei ordert.
 - `references/freigabe-kette.md` — Punkt 3 der Handelsregeln in beiden Fassungen:
   Bildschirm- und Zeitfenster, wer wann öffnet, was eine Freigabe nicht kann.
+- `references/grenzen-und-deckelung.md` — Grenzen und Kappungen: welcher von
+  Betrag/Gesamt/Plaetzen/Guthaben bindet, den Einsatz auf das freie Guthaben
+  deckeln, und **ein wiederholtes Signal: die Position vergroessern statt zu
+  verdoppeln** (gewichteter Einstieg, Stop/Ziel neu aus dem gemittelten Einstieg,
+  kumulative Journalzeile statt Inkrement). Ausloeser: „Stackel", „vier Positionen
+  auf einem Instrument", „nicht doppeln".
 - `references/tor-kalibrierung.md` — Schwellen und Kostenannahmen kalibrieren,
   ohne dass sie entweder nichts filtern, nie aufgehen oder eine Wunschrechnung
   sind (Tore, Filter, Slippage/Gebühr).
