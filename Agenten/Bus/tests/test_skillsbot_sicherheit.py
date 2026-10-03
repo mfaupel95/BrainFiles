@@ -158,11 +158,20 @@ class BotBefehle(unittest.TestCase):
             text, _ = s.bearbeite("/bots", 1)
         self.assertIn("Keine Profile", text)
 
-    def test_bot_ohne_name_gibt_syntax(self):
-        with patch.object(s, "_bot_fragen") as frage:
+    def test_bot_ohne_name_schaltet_ab_und_zeigt_die_syntax(self):
+        """/bot allein ist jetzt "Bot aus" (Auftrag Max 03.10.2026).
+
+        Vorher stand hier die Syntaxhilfe. Beides gehoert in EINEN Text:
+        abschalten UND die Form zeigen, damit /bot nicht stumm wird.
+        """
+        with patch.object(s, "_bot_fragen") as frage, \
+                patch.object(s, "_ziel_setzen", return_value=None) as ziel:
             text, _ = s.bearbeite("/bot", 1)
             frage.assert_not_called()
+            ziel.assert_called_once_with(1, None)
+        self.assertIn("abgeschaltet", text)
         self.assertIn("Syntax: /bot NAME", text)
+        self.assertIn("/bots", text)
 
     def test_bot_unbekannter_name_startet_nichts(self):
         with patch.object(s, "_bot_fragen") as frage:
@@ -170,11 +179,21 @@ class BotBefehle(unittest.TestCase):
             frage.assert_not_called()
         self.assertIn("Kein Profil", text)
 
-    def test_bot_ohne_nachricht_startet_nichts(self):
-        with patch.object(s, "_bot_fragen") as frage:
+    def test_bot_ohne_nachricht_schaltet_ein_startet_nichts(self):
+        """/bot NAME ohne Auftrag: Bot wird Adressat, es startet NOCH nichts.
+
+        Genau hier lag der Befund vom 03.10.2026: /bot NAME fragte nach dem
+        Auftrag (Syntaxhilfe), der danach gesendete Auftrag - am Handy ein
+        Bild - ging an den Hauptagenten. Jetzt wird der Bot eingeschaltet
+        und der naechste Freitext nimmt ihn (test_skillsbot_zielmodus).
+        """
+        with patch.object(s, "_bot_fragen") as frage, \
+                patch.object(s, "_ziel_setzen") as ziel:
             text, _ = s.bearbeite("/bot openterminal", 1)
             frage.assert_not_called()
-        self.assertIn("NACHRICHT", text)
+            ziel.assert_called_once_with(1, "openterminal")
+        self.assertIn("Adressat", text)
+        self.assertIn("/bot aus", text)
 
     def test_bot_gueltig_ruft_das_profil(self):
         with patch.object(s, "_bot_fragen", return_value="die Antwort") as frage:
@@ -221,33 +240,77 @@ class BotFragenProzess(unittest.TestCase):
         self.assertTrue(env["HERMES_HOME"].endswith(
             os.path.join("Agenten", "Hermes")))
 
+    def _popen(self, stdout="PONG\n", stderr="", code=0):
+        """Ein Attrappen-Prozess fuer _bot_fragen.
+
+        Die Tests hier mocken `subprocess.run`, der Code benutzt aber
+        `subprocess.Popen` + `communicate` (seit dem Frist-Umbau vom
+        21.09.2026: `run(timeout=)` wuerde den Bot mitten in der Arbeit
+        toeten). Ein Run-Mock trifft darum nichts - der Test startete einen
+        ECHTEN openmontinal-Bot (43 s Kaltstart pro Aufruf) und wertete
+        dessen Antwort gegen 'PONG'. Deshalb wird Popen ersetzt.
+        """
+        ziel = {}
+
+        def fake(argv, **kw):
+            ziel["argv"] = argv
+
+            class R:
+                returncode = code
+
+                def communicate(self, timeout=None):
+                    return stdout, stderr
+
+                def kill(self):
+                    ziel["gekillt"] = True
+
+            return R()
+
+        return patch.object(s.subprocess, "Popen", side_effect=fake), ziel
+
     def test_subprozessform(self):
-        with patch.object(s.subprocess, "run",
-                          return_value=type("R", (), {"returncode": 0,
-                                                      "stdout": "PONG\n",
-                                                      "stderr": ""})()) as run:
+        mock, ziel = self._popen()
+        with mock:
             antwort = s._bot_fragen("openterminal", "frage")
-        args = run.call_args.args[0]
-        self.assertIn("-p", args)
-        self.assertEqual(args[args.index("-p") + 1], "openterminal")
-        self.assertEqual(args[args.index("-q") + 1], "frage")
+        argv = ziel["argv"]
+        self.assertIn("-p", argv)
+        self.assertEqual(argv[argv.index("-p") + 1], "openterminal")
+        self.assertEqual(argv[argv.index("-q") + 1], "frage")
         self.assertEqual(antwort, "PONG")
 
     def test_session_id_zeile_wird_entfernt(self):
-        with patch.object(s.subprocess, "run",
-                          return_value=type("R", (), {"returncode": 0,
-                                                      "stdout": "session_id: 123\nPONG\n",
-                                                      "stderr": ""})()):
+        mock, _ = self._popen(stdout="session_id: 123" + chr(10) + "PONG" + chr(10))
+        with mock:
             self.assertEqual(s._bot_fragen("openterminal", "x"), "PONG")
 
     def test_fehlercode_nennt_grund(self):
-        with patch.object(s.subprocess, "run",
-                          return_value=type("R", (), {"returncode": 1,
-                                                      "stdout": "",
-                                                      "stderr": "kaputt"})()):
+        mock, _ = self._popen(stdout="", stderr="kaputt", code=1)
+        with mock:
             with self.assertRaises(s.SkillsBotFehler) as k:
                 s._bot_fragen("openterminal", "x")
         self.assertIn("kaputt", str(k.exception))
+
+    def test_zeitlimit_bricht_ab_und_sagt_es(self):
+        """Nach der Frist wird abgebrochen - und die Meldung sagt, dass der
+        Auftrag NICHT gescheitert ist, sondern dort weiterlaeuft."""
+        class R:
+            returncode = None
+
+            def communicate(self, timeout=None):
+                if timeout is not None:
+                    raise s.subprocess.TimeoutExpired("hermes", timeout)
+                return "", ""
+
+            def kill(self):
+                pass
+
+        with patch.object(s.subprocess, "Popen", return_value=R()), \
+                patch.object(s, "BOT_FRIST_S", 5):
+            with self.assertRaises(s.SkillsBotFehler) as k:
+                s._bot_fragen("openterminal", "x")
+        text = str(k.exception)
+        self.assertIn("nicht geantwortet", text)
+
 
 class OhneDenken(unittest.TestCase):
     """Die Telegram-Antwort darf nicht halb aus Denkblock bestehen."""

@@ -588,12 +588,15 @@ def _ziel_setzen(chat, name):
 
 
 def _ziel_meldung(name):
-    """Was nach /bot NAME ohne Auftrag gesagt wird - EINE Stelle."""
+    """Was nach /bot NAME ohne Auftrag gesagt wird - EINE Stelle.
+
+    Beide Richtungen nennen die Syntax: /bot NAME schaltet ein, /bot NAME
+    NACHRICHT fragt sofort, /bot (allein) schaltet ab. Wer die Form nicht
+    sieht, tippt sie am Handy nicht.
+    """
     if not name:
-        return ("Bot abgeschaltet - der naechste Freitext geht wieder an "            "den Hauptagenten. /bots zeigt die Bot-Namen.")
-    return ("Bot %s ist jetzt der Adressat. Sende den Auftrag als naechste "
-            "Nachricht - Text ODER Bild. Er geht an %s, nicht an den "            "Hauptagenten. Antwort in 30 bis 60 s plus Arbeitszeit (bis %d "
-            "min).\n\nAbschalten: /bot aus" % (name, name, BOT_FRIST_S // 60))
+        return ("Bot abgeschaltet - der naechste Freitext geht wieder an "            "den Hauptagenten.\n\n"            "Syntax: /bot NAME NACHRICHT (Beispiel: /bot openterminal Was steht in der README?)\n"            "/bot NAME schaltet den Bot ein, /bots zeigt die Namen.")
+    return ("Bot %s ist jetzt der Adressat. Sende den Auftrag als naechste "            "Nachricht - Text ODER Bild. Er geht an %s, nicht an den "            "Hauptagenten. Antwort in 30 bis 60 s plus Arbeitszeit (bis %d "            "min).\n\nAbschalten: /bot aus" % (name, name, BOT_FRIST_S // 60))
 
 
 def _bot_profil_ordner():
@@ -1135,6 +1138,15 @@ def schleife():
                 try:
                     antwort, _ = bearbeite(_mit_bildern(text, bilder),
                                            chat)
+                    # ZUERST senden, dann loggen und den Offset
+                    # vorruecken. Ohne diese Zeile wurde die Antwort
+                    # verarbeitet, protokolliert und der Offset
+                    # gespeichert - aber NIE an Telegram geschickt:
+                    # die Nachricht war fuer den Bot erledigt und bei
+                    # Max kam nichts an. Gefunden am 03.10.2026 durch
+                    # den Test test_netzfehler_nachricht_geht_nicht_verloren
+                    # (erwartet eine gesendete Antwort, bekam keine).
+                    sende(chat, antwort)
                     _log(chat, text[:40], round(time.time() - start, 1),
                          "ok", len(antwort))
                     versuche.pop(uid, None)

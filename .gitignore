@@ -258,6 +258,8 @@ Agenten/Handel/stand/
 # Laufzeitstaende: jede Bus-Nachricht aendert sie - nie versionieren (spaetere Regel gewinnt)
 Agenten/Bus/stand.json
 Agenten/Bus/skillsbot.kontext.json
+# SkillsBot: aktiver Bot (Laufzeitstand wie der Offset)
+Agenten/Bus/skillsbot.ziel.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
