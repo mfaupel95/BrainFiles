@@ -169,7 +169,22 @@ def buch_ordner(spur, lauf, setzen=None):
     """
     ziel = os.path.join(wurzel(), spur, lauf)
     os.makedirs(ziel, exist_ok=True)
+    # Schattenarme teilen den Ordner mit dem Hauptbuch und tragen Suffix
+    # (squeeze_eth -> wachen.eth.json). 04.10.2026: hier stand fest
+    # `<spur>/wachen.json`; fuer einen Arm gibt es die Datei nicht, es wurde
+    # das HAUPTbuch gerechnet und der Arm still mit des Haupts Zahlen
+    # gemessen. Gesucht wird wie in spiegelstand/pruefe_ratschen: von rechts
+    # kuerzen, bis eine Datei da ist.
+    ordner = spur
     quelle = os.path.join(HIER, spur, "wachen.json")
+    if not os.path.isfile(quelle) and "_" in spur:
+        teile = spur.split("_")
+        for i in range(len(teile) - 1, 0, -1):
+            kandidat = os.path.join(HIER, ordner,
+                                    "wachen.%s.json" % "_".join(teile[i:]))
+            if os.path.isfile(kandidat):
+                quelle = kandidat
+                break
     if os.path.isfile(quelle):
         with open(quelle, encoding="utf-8") as f:
             w = json.load(f)
@@ -1140,6 +1155,34 @@ def lauf_feed(spur, gebuehr_pct, lauf, takt="1D", mindest_symbole=30,
         if _b:
             basis_zu_sym.setdefault(_b, _sym)
     quelle_adapter = moondev_historie.QUELLEN[spur]
+    # 04.10.2026 - Befund, kein Wunsch: `trigger_modus: "signal"` (eingefuehrt
+    # am 03.10.2026, Auftrag Max "weniger handeln") stellt in `spur_buch.zyklus`
+    # JEDES Signal in eine Queue und bucht dann `continue` - es entsteht
+    # bewusst keine Position. Im Betrieb ist das richtig: der signal-executor
+    # (Hermes-Cron) setzt den Einstieg. Ein Backtest hat keinen Executor.
+    # `lauf_feed` las die Wachen unveraendert, also konnte jede Feed-Spur
+    # strukturell nie buchen und jede daraus gezogene Runden-Zahl war 0.
+    #
+    # Die Regel, die hier gilt: EIN Signal-Wechsel ist ein EREIGNIS der Serie,
+    # kein Zustand des Momentan. In der Serie wird beim ersten Auftreten einer
+    # Richtung eingestiegen (das ist genau der Wechsel, den das Gatter im
+    # Betrieb ausloest) - nicht bei jedem Zyklus erneut. Deshalb wird das
+    # Feld aus der BACKTEST-Wachen-Datei entfernt, nicht nur aus einer lokalen
+    # Kopie: `spur_buch.zyklus` laedt die Wachen selbst aus der Datei
+    # (`lade_wachen(wachen_pfad)`), ein `w.pop` auf eine fluechtige Variable
+    # waere wirkungslos. Wer die Queue-Logik im Backtest will, braucht eine
+    # eigene Kennzahl; die Rundenzahl ist eine andere Frage.
+    _bt_wachen = os.path.join(ordner, "wachen.json")
+    with open(_bt_wachen, encoding="utf-8") as f:
+        w = json.load(f)
+    if w.pop("trigger_modus", None):
+        w["_backtest_trigger_entfernt"] = (
+            "trigger_modus 'signal' im Backtest entfernt: im Betrieb stellt das "
+            "Gatter jedes Signal in die Queue und bucht nie, ein Backtest hat "
+            "keinen signal-executor (04.10.2026)")
+        with open(_bt_wachen, "w", encoding="utf-8") as f:
+            json.dump(w, f, indent=2, ensure_ascii=False)
+            f.write("\n")
     alt_schreiben, alt_zeit = spur_buch.SCHREIBEN, spur_buch.zeit_quelle
     alt_spiegeln, alt_lauf = spur_buch.spiegeln, ereignis.lauf
     alt_journal = spur_buch.journal

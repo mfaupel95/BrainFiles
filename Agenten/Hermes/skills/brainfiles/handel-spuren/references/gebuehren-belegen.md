@@ -114,6 +114,52 @@ Messung.
    **Gegenprobe:** bei jeder Gebuehr-Aenderung den Kursweg und die Orderboerse
    getrennt benennen. Folgen beide aus einem Feld, ist es geraten.
 
+## Ein Boersenwechsel muss den Satz mitnehmen (gemessen 04.10.2026)
+
+Der Satz gehoert zur **aktuellen** Orderboerse. Wechselt eine Spur die Boerse,
+wandert das Feld von allein nicht mit — der Satz bleibt auf dem alten Wert
+stehen und jede Auswertung rechnet weiter mit ihm.
+
+Gemessen: nach einem Auftrag, der einer Spur eine Boerse entzog (ihre
+Boersenliste verlor den Eintrag, es blieb eine andere), trug die Wache weiter
+den Satz der **entfernten** Boerse — 1,2 % je Runde statt der gemessenen 0,2 %
+(6-fach). Der Satz war seit Wochen falsch, ohne dass ein Test rot wurde: die
+bestehende Pruefung verglich **Wert gegen Einheit**, nicht **Wert gegen
+Boesenfeld**.
+
+Zwei Regeln daraus:
+
+1. **Der Satz wird aus dem Zustand abgeleitet, nicht aus der Historie.** Die
+   aktive Boerse steht in der Vorragliste (`boersen[0]`), sonst im Einzel-Feld —
+   nie in einem Vermerk und nie im gemessenen Wert von gestern.
+2. **Die Ableitung liest Felder, nie das serialisierte Objekt.** Eine Regel der
+   Form „ist das ein Perp?" wird aus den Feldern beantwortet, die den **Markt**
+   bezeichnen (Instrument-Listen, Markttyp-Feld). Sie darf **nicht** das ganze
+   Objekt nach einem Schluesselwort durchsuchen: die Notizfelder erwaehnen
+   haeufig genau das falsche Wort („als PERP gefuehrt"), und dann verlangt der
+   Abgleich von jeder Spot-Spur den Perp-Satz. Ausserdem: eine Einheit fuehrt
+   ihr Instrument je nach Alter in einer **Einzelfeld**-Variante — beide
+   Feldnamen pruefen, sonst gilt eine echte Perp-Spur als Spot.
+
+**Gegenprobe des Werkzeugs:** eine Wache mit einem NOTIZ-Feld, das den
+Gegensatz nennt, muss trotzdem den Satz des Markt-Felds bekommen. Und: die
+Zuordnung **Spur -&gt; Markt** in Tests und Auswertungen wandert mit der
+Boerse — ein Test, der eine Spur noch der alten Boerse zurechnet, ist eine
+**kaputte Pruefung**, kein Befund (siehe `references/test-friert-stand-ein.md`).
+
+## Der Satz der Boerse wird aus EINEM Ort gepflegt
+
+Geaendert wird der Satz nie direkt in der Wache, sondern ueber die Regeltabelle
+des Setzwerkzeugs — sonst zieht der naechste Lauf den Wert zurueck. Das
+Setzwerkzeug traegt darum je Zeile eine Quelle mit Messweg und Datum; eine
+Zeile ohne Boerse-Feld ist eine Modellannahme und wird nicht beurteilt.
+
+Wer eine neue Boerse oder einen neuen Markt in einer Wache eintragt, muss sie
+in der Satztabelle **mit** ihrem Satz aufnehmen. Ein Test, der die Liste der
+bekannten Boersennamen im TestModul festhaelt, schlaegt dann an - richtig, aber
+als Befund zu behandeln: der neue Name gehoert in die Liste, nicht in eine
+Sonderbehandlung.
+
 ## Werkzeug-Fallen beim Setzen
 
 - **Notiz da, Wert fehlt** ist ein eigener Fall: wer nur die Notiz auffrischt, setzt den

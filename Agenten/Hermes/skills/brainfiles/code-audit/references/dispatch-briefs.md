@@ -33,14 +33,16 @@ Anfuehrungszeichen und verschachtelte Schemata im Context, und ein Kind mit
 > Unbelegtes kommt nicht in die Liste. Findest du nichts in einem
 > Teilbereich, sage das ausdruecklich statt zu raten.
 
-Fehlerklassen je Bereich (die Auswahl ist der eigentliche Auftrag):
+Fehlerklassen je Bereich (die Auswahl ist der eigentliche Auftrag). Die
+Klassen, die sich als reine Verdrahtungspattern wiederholen, stehen mit
+Beispielen in `references/fehlerklassen-verdrahtung.md`:
 
 | Bereich | Typische Klassen |
 |---|---|
-| Orchestrierungskern | Logikfehler, tote Verzweigung, falsch verdrahteter Aufrufer, stille Ausnahme, Zeit-/Zonenfehler, Fehler bei leerem Input |
+| Orchestrierungskern | Logikfehler, tote Verzweigung, falsch verdrahteter Aufrufer, stille Ausnahme, Zeit-/Zonenfehler, Fehler bei leerem Input, **Betriebsmerkmal, das im Messweg nie ausloest** |
 | Betrieb und Dienste | Nachrichtenverlust, haengender Thread, veralteter Zustand meldet gesund, PID-Pruefung ohne Programmnamen, Merkdatei verdeckt den Stand, unbalancierte Formatmarken, Laengengrenze, Test schreibt in Betriebsdaten |
-| Viele gleichartige Einheiten | Rundenergebnis falsch (Gebuehr je Seite, Short-Vorzeichen, Prozent gegen Punkte, Einstiegskurs uebernommen statt geholt), toter `sys.path`-Import, Feld wird gelesen und nie geschrieben, Widerspruch zwischen zwei Listen im selben Baum |
-| Werkzeuge und Config | toter Defaultpfad, lesend aber nie schreibend (oder umgekehrt), falsche Rueckgabe, Race auf Statusdatei, ungepruefte Formatannahme, Widerspruch zwischen Manifest und Wirklichkeit |
+| Viele gleichartige Einheiten | Rundenergebnis falsch (Gebuehr je Seite, Short-Vorzeichen, Prozent gegen Punkte, Einstiegskurs uebernommen statt geholt), toter `sys.path`-Import, Feld wird gelesen und nie geschrieben, Widerspruch zwischen zwei Listen im selben Baum, **Pfad eine Ebene daneben**, **hart gefuehrte Namensliste**, **Satz folgt der Historie statt dem Zustand** |
+| Werkzeuge und Config | toter Defaultpfad, lesend aber nie schreibend (oder umgekehrt), falsche Rueckgabe, Race auf Statusdatei, ungepruefte Formatannahme, Widerspruch zwischen Manifest und Wirklichkeit, **Sonde meldet systematisch leer** (Pruefer-Fehler), **Cache beantwortet die Frage**, **Notiz entscheidet ueber eine Zahl** |
 
 ## 3. Die vier Schnellpruefungen (Eigenleistung, neben dem Dispatch)
 
@@ -108,5 +110,17 @@ Schwere | Datei:Zeile | was falsch laeuft | ausgefuehrter Beleg | minimaler Fix 
 - **Beleg** ist ein ausgefuehrter Lauf, kein Zitat. Ein Codezitat ohne
   Gegenprobe geht als Befund nicht durch.
 - **Fix in Prosa**, kein Diff: der Aufrufer entscheidet, nicht das Kind.
+- **Rote Tests sind Befunde mit zwei Klassen.** Ein Test, der einen *gelegentlichen*
+  Wert festhaelt (Boersensatz, Schalterstand, Zuordnung), ist eine **kaputte
+  Pruefung** und wird auf die *Eigenschaft* umgebaut. Ein Test, der nach dem
+  Fix rot wurde und die eigene Aenderung sichtbar macht, ist fast immer
+  dasselbe. Nachweis in beiden Faellen: eigene Aenderung auf `HEAD`
+  zuruecknehmen, Suite erneut fahren, Ergebnis festhalten. „Auf HEAD genauso
+  rot" heisst vorbestehend und gehoert als eigene Zeile in den Bericht — nie
+  als stille Korrektur.
+- **Ein abgebrochener Laufliefert kein Ergebnis.** Eine Logdatei mit viel
+  Ausgabe und ohne Zusammenfassungszeile ist kein Testresultat; immer auf die
+  Zusammenfassung und den Exitcode pruefen, sonst gilt „unbekannt", nicht
+  „gruen". Die Suite dann in Bloecke teilen und je Block fahren.
 - Was **nicht** geprueft wurde, steht am Ende als eigener Abschnitt, nicht
   versteckt im Text.

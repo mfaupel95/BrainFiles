@@ -339,6 +339,48 @@ Der Markt ist die Eigenschaft, die zaehlt: wechselt eine Spur die Boerse, MUSS
 der Test das zeigen (der Fehlertext nennt den Markt), waehrend ein neuer Messwert
 allein die Ableitung nicht kippt.
 
+## Achte Familie: der Test verlangt ein Feld in der FALSCHEN Datei
+
+Gemessen: ein Test verlangte ein Konfigurationsfeld in der **Wachen des
+Schattenarms**, obwohl das Feld im **Hauptbuch** gesetzt wird und dort
+entscheidet — der Code liest es aus der geladenen Wache und faellt sonst auf
+seine dokumentierte Voreinstellung zurueck. Zwei Symptome, beide harmlos
+ausssehend: der Test wurde nach der Sichtbarkeit eines Auftrags rot, und der
+Arm lief still auf der falschen Datenlage.
+
+**Regel:** ein Test, der ein Feld verlangt, muss sich fragen, **welche Datei**
+das im Betrieb liest — nicht, welche Datei thematisch dazugehoert. Ein
+Feld, das der Betrieb aus dem Hauptbuch liest, wird dort geprueft, und im Arm
+wird die **Eigenschaft** geprueft (der Arm handelt nicht, das Hauptbuch traegt
+die Fassung).
+
+## Neunte Familie: der Test bekommt Daten aus dem VORHERIGEN Lauf
+
+Das ist die haeufigste Ursache dafuer, dass eine Testdatei **allein** gruen und
+im Gesamtlauf rot ist — und sie sieht aus wie ein Fehler in der gepruefften
+Logik. Zwei Caches, beide gemessen:
+
+- Ein **Modul-Cache** auf Basis einer Liste, der nur bei **leerem** Inhalt neu
+  geladen wird. Ein Test, der das echte Universum einmal geladen hat,
+  hinterlaesst diese Liste fuer den ganzen Prozess. Jeder folgende Test legt
+  seine Attrappen in einen Temp-Ordner, bekommt die alte Liste, findet sein
+  Symbol nicht, leert die Menge und meldet „0 Buchungen" — ohne Fehler.
+- Ein **Werten-Cache im Aufrufer**: der Messweg aendert eine fluechtige Kopie,
+  waehrend die aufgerufene Funktion ihre Konfiguration selbst aus der Datei
+  laedt. Der Fix wirkt dann nicht, obwohl er richtig aussieht.
+
+**Regel:** ein Test, der seinen Zielpfad umbiegt, muss auch **jeden Cache**
+mitnehmen, den die geprueffte Kette liest — und der Cache gehoert so
+umgebogen, dass er den **aktuellen** Pfad befragt, statt einen
+stehengebliebenen Zustand zu uebernehmen. Der Nachweis: derselbe Test muss
+allein und in der Suite identisch laufen; ein Unterschied ist ein Cache.
+
+Zusaetzlich: die Doppelsperre aus zwei Familien ist bei Tests mit Zielpfad
+Pflicht — Schreibmodus aus **und** Pfad umbiegen (siehe oben). Und im `tearDown`
+erst loeschen, dann zuruecksetzen: die umgekehrte Reihenfolge laescht die echte
+Datei, weil der Pfad dann schon auf den Tempordner zeigt, auf dem die
+Originaldatei nachgebildet wurde.
+
 ## Wann ein eingefrorener Stand DOCH richtig ist
 
 Wenn die Unveraenderlichkeit selbst der Vertrag ist und es keine formulierbare

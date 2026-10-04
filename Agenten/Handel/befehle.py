@@ -94,7 +94,9 @@ FAMILIE = {
     "macd_mtf": "Indikator",
     "squeeze": "Indikator",
     # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm").
-    "squeeze_eth": "Indikator (Schattenarm)",
+    # Die Familie heisst genau "Indikator" wie sein Hauptbuch - der Zusatz
+    # waere hier eine zweite Familie (test_befehle prueft die Eigenschaft).
+    "squeeze_eth": "Indikator",
     "supertrend": "Indikator",
     "trendwende_btc": "Indikator",
     # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet, ein Signal

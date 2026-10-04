@@ -291,6 +291,31 @@ class TabelleTest(MitTk):
         self.assertEqual(t.kopieren(), "Spur\tWert\ngitter\t100")
         self.assertEqual(self.root.clipboard_get(), "Spur\tWert\ngitter\t100")
 
+    def test_senkrechte_und_waagerechte_leiste_und_mausrad(self):
+        """T-301: dieselbe Ausstattung wie die Tabellen der Handelszentrale."""
+        t = self._tabelle()
+        self.assertTrue(str(t.baum.cget("yscrollcommand")),
+                        "keine vertikale Scrollbar")
+        self.assertTrue(str(t.baum.cget("xscrollcommand")),
+                        "keine waagerechte Scrollbar")
+        self.assertTrue(str(t.baum.bind("<MouseWheel>")),
+                        "keine Mausrad-Bindung")
+
+
+class TabelleBaueinheitTest(unittest.TestCase):
+    """`rad_selbst` kommt aus handelszentrale - die EINE Quelle beider
+    Fenster (T-301). Bewusst NUR die Herkunft, nicht die Rechnung selbst
+    (die prueft test_handelszentrale_struktur.RadRichtungTest)."""
+
+    def test_rad_selbst_kommt_aus_der_zentrale(self):
+        import re
+        quelle = Path(lb.__file__).read_text(encoding="utf-8")
+        # Der Leitstand definiert selbst kein rad_selbst - er nimmt das der
+        # Zentrale. Eine zweite Fassung waere die zweite Quelle, die T-301
+        # gerade verhindern will.
+        self.assertNotIn("def rad_selbst", quelle)
+        self.assertIn("hz.rad_selbst", quelle)
+
 
 if __name__ == "__main__":
     unittest.main()

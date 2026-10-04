@@ -85,6 +85,9 @@ Refactoring, das niemand bestellt hat.
 | Parst der ganze eigene PowerShell? | `[System.Management.Automation.Language.Parser]::ParseFile` | Klassenfehler gefunden, die erst zur Laufzeit schlagen |
 | Gibt es stille Ausnahmen? | AST: `except:` bzw. Handler mit leerem Rumpf | ein verschluckter Fehler |
 | Ist eine Verdrahtungsliste vollstaendig? | Liste aus **beiden Modulen importieren**, dann Differenz | Kandidat, kein Befund |
+| Ist eine Messzahl **verdaechtig glatt** (0 Runden, 0 %, exakt runde Zahl)? | Das Betriebsmerkmal der Konfiguration pruefen: loest es im Messweg ueberhaupt aus? | Befund — ein Gatter, das nur im Betrieb zuegt |
+| Meldet eine Sonde **alles leer/gesperrt/fehlend**? | Erst ihren eigenen Pfad und ihre Config-Aufloesung pruefen | Der Befund liegt an der Sonde, nicht am Bestand |
+| Bewegt sich die Zahl eines Pruefers nach einer bekannten Aenderung **nicht**? | Der Pruefer liest nicht alles, was er zu lesen glaubt | Pruefer-Fehler, nicht Datenfehler |
 | Stimmt ein Kandidat? | Aufrufer + Prosa im Modul | Befund oder Fehlalarm |
 | Wirkt ein Fix ueberhaupt? | zwei Laeufe, ein Wert verschieden | siehe `messwerkzeug-gegenprobe` |
 
@@ -151,6 +154,33 @@ Drei Filter, in dieser Reihenfolge:
 Widerlegte Kandidaten werden **benannt und zurueckgenommen**, nicht
 weggelassen: sie zeigen dem Nutzer, dass die Suche geprueft hat.
 
+#### Der vierte Filter: eine Sonde, die alles leer meldet, ist selbst der Befund
+
+Wenn eine Sonde **systematisch** „nichts vorhanden", „alles gesperrt",
+„kein Ziel" oder „0" meldet, ist das Ergebnis verdächtiger als ein
+G mixed-Resultat: ein Fehler in der **Pfad- oder Config-Aufloesung der Sonde**
+erzeugt genau diese Form, weil `open()` fehlende Dateien als leeres Dict
+liefert und ein falscher Basispfad **keinen** Fehler ausloest. Ein Beispiel aus
+dem Haus: ein Werkzeug bildete seine Basis mit einem festen `dirname` zwei
+Ebenen zu hoch, bekam fuer jede Einheit `{}` und meldete daraufhin
+„alle 12 gesperrt" — was plausibel klingt und die Umkehrung der Wahrheit war
+(10 waren scharf). **Die Form des Ergebnisses ist das Warnsignal:** je
+einheitlicher das Ergebnis, desto eher ist es die Sonde.
+
+#### Ein Gatter, das im Messweg nie ausloest
+
+Der teuerste Befund dieser Klasse: ein **Betriebsmerkmal**, das im Betrieb
+arbeitet (ueber einen getrennten Ausfuehrer, eine Queue, ein Zeitfenster) und
+im Messweg **strukturell nie** greift — also 0 Buchungen, 0 Signale, 0
+Eintraege erzeugt, ohne Fehlermeldung. Geprueft wird das so: wenn eine Zahl
+**auffaellig glatt** ist (0 Runden ueber Jahre, exakt 0 %, eine Quote, die
+sich nie bewegt), das Konfigurationsfeld dieser Spur lesen und fragen, was es
+im Betrieb tut. Ein Merkmal, das Signale umleitet statt zu buchen, macht die
+gesamte Historie dieser Kennzahl unbrauchbar — auch wenn die Zahl nie
+auffaellig war, sondern einfach aus einem Lauf mit dem Feld stammt. Das ist ein
+Befund **ueber der Zeile**, keine Zahl, und gehoert an den Nutzer, bevor er
+irgendeine Zahl aus dieser Quelle zitiert.
+
 ### 6. Konstanten vergleichen: importieren, nicht extrahieren
 
 Ein AST-Walker, der „alle grossgeschriebenen Zuweisungen" sammelt, greift
@@ -168,7 +198,76 @@ print(len(dauerlauf.SPUREN), len(set(auswertung_alle.SPUREN)))"
 Geht der Import nicht (fehlendes Paket, Fremdbau), ist der Kandidat ein
 Hinweis auf einen toten Import — nicht auf einen Zahlendreher.
 
-### 7. Erwartete Fehlalarmklassen
+### 7. Ein neuer Pruefer prueft sich selbst zuerst
+
+Ein Pruefer, Register-Check oder Verdrahtungs-Differenz, den man selbst gebaut
+hat, ist am Anfang die fehleranfaelligste Stelle des ganzen Audits — seine
+Annahmen sind ungeprueft, und eine falsche Annahme produziert Befunde gegen
+korrekte Daten. **Die Annahmen gegen die ECHTEN Daten stellen, nicht gegen eine
+Fixture, die ihnen zustimmt.** Drei Formen, alle im Haus gemessen:
+
+- **Annahme „das ist ein Ordner".** Ein Besitzregister darf Ordner *und*
+  Einzeldateien fuehren (`TASKS.md`, ein Manifest). `os.path.isdir` meldete
+  beide als „toten Bereich" — der Pruefer war der Fehler, das Register korrekt.
+  Der Fix ist `os.path.exists`, und die Regel lautet: **eine Typannahme ueber
+  den Bestand muss die Vielfalt des Bestands kennen**, sonst sucht sie einen
+  Fehler, den sie selbst gebaut hat.
+- **Annahme „ein Abschnitt ist eine Section-Marke".** `count("## Erledigt")`
+  zaehlte die Erklaerung am Dateianfang mit (dieselben Woerter in einem
+  Aufzaehlungspunkt) und brach mit „Abschnittsmarken veraendert" ab. **Nur die
+  MARKE am Zeilenanfang zaehlen**, nie das Wort.
+- **Annahme „ein Block ist eine Zeile".** `git worktree list --porcelain`
+  liefert je Baum einen Block aus drei Zeilen, getrennt durch LEERZEILEN.
+  Zeilenweise gelesen hat der Pfad des naechsten Blocks den vorigen
+  ueberschrieben: es kam EIN Eintrag heraus statt zwei, ohne Fehlermeldung.
+  **Blockstrukturen als Bloecke lesen.**
+
+Dazu zwei Regeln, die beim Bau von Werkzeugen mit Handlungsfolgen gelten und
+die ein Audit als **Befund an der Bremse** pruefen soll, nicht an der
+Funktion: ein Pflichtfall muss **unveraendert ueberleben** (ein Objekt mit
+echtem Inhalt wird nie entfernt), und ein Befund braucht einen **Exitcode**,
+nur eine Zeile im Text meldet ein Cron als „alles ok". Beides ist im
+Aufraeumen-Werkzeug `Agenten/Werkzeuge/zweige.py` so gebaut und getestet.
+
+### 9. Ein eingefrorener Testwert ist kein Befund, sondern eine Alarmstufe
+
+Rote Tests beim Audit sind **zwei** Klassen, und die Unterscheidung gehoert in
+den Befund:
+
+- **Kaputte Pruefung.** Ein Test haelt einen Wert fest, der einer **gelegentlichen
+  Aenderung** folgen darf — ein Boersensatz, ein Schalterstand, eine Zuordnung
+  zu einem Ziel, ein Format-Checker, der auch eine Datei oder Ordner akzeptiert.
+  Der Test meldet nicht mehr, was die Regel soll, sondern einen alten Stand.
+  Behandelt wird die **Eigenschaft**, nicht der Wert: „der Satz dieser Boerse",
+  „der Arm handelt nicht", „die Zahl stimmt mit der Quelle ueberein".
+- **Falscher Test durch Uebergeneralisierung.** Eigener Zusatz an einem Feld,
+  dessen Wert einer **feste Menge** unterliegt (eine Familie, ein Dateiformat).
+  Auch das ist eine kaputte Pruefung, keine Codeaenderung.
+
+Der Nachweis ist immer derselbe: **auf `HEAD` zuruecknehmen** (nur die
+Aenderungen dieses Audits, mit Sicherung daneben), die Suite erneut fahren, und
+das Ergebnis festhalten. Ein Test, der auf `HEAD` genauso rot ist, ist
+vorbestehend — das gehoert als eigene Zeile in den Bericht, nicht als
+stillschweigende Korrektur. Ein Test, der erst durch die eigene Aenderung rot
+wurde, ist fast immer eine kaputte Pruefung, die die Aenderung sichtbar macht.
+
+### 10. Ein gruener Pruefer, der nicht alles liest
+
+Ein Pruefer, der gruen meldet, beweist nur, **was er liest**. Zwei Formen, beide
+gemessen:
+
+- Ein Muster erkennt nicht alle Schreibweisen des Bestands (Statuszeichen,
+  Leerraum, Endung) und zaehlt deshalb nur einen Teil der Eintraege — er
+  meldete die hoechste Nummer einer Liste, die 26 Eintraege weiter war.
+- Ein Cache auf Modulebene wird nur bei **leerem** Inhalt neu geladen und
+  ueberlebt damit jeden Test, der danach in einem Temp-Ordner arbeitet: das
+  Ergebnis ist eine Zahl aus fremden Daten, ohne Fehlermeldung.
+
+Gegenprobe beider Formen ist dieselbe: **eine Aenderung ausloesen, von der man
+weiss, dass der Pruefer sie sehen muss**, und die Zahl sich bewegen sehen. Ein
+Pruefer, dessen Zahl sich nicht bewegt, ist kaputt, egal was er sagt.
+
+### 11. Erwartete Fehlalarmklassen
 
 Diese vier treten bei dieser Pruefung regelmaessig auf und gehoeren
 ausdruecklich zur Arbeit:
@@ -203,9 +302,20 @@ ausdruecklich zur Arbeit:
   gelesen. Seine Liste ist eine Leseliste; beim Umgang den Faktor einkalkulieren.
 - **Ein Fix ohne Messung ist eine Vermutung mit Schreibzugriff.** Erst die
   Zahl, dann der Eingriff (`messwerkzeug-gegenprobe`).
-- **Ein Befund, der die Grenze eines anderen Fachgebiets beruehrt, wird dort
-  eingetragen und nicht hier erfunden** — die offene Liste des Hauses ist der
-  Ort fuer das, was eine Entscheidung braucht.
+- **Ein abgebrochener Laufliefert kein Ergebnis.** Ein langer Testlauf, der ohne
+  Zusammenfassung stirbt (Zeitlimit, killed, abgebrochene Kette), hinterlaesst
+  eine Logdatei mit viel Ausgabe und **ohne** Ergebniszeile. Diese Logdatei ist
+  kein Testresultat und wird nicht als eines berichtet — immer auf die
+  Zusammenfassung und den Exitcode pruefen, sonst gilt „unbekannt", nicht
+  „gruen". Fuer die Restlaeufe die Suite in Bloecke teilen und je Block fahren.
+- **Ein Wert darf nicht aus den Notizen abgeleitet werden.** Konfigurationswerte
+  stehen in Feldern; die Prosa daneben (`_vermerk`, `_quelle`, Kommentare)
+  erwaehnt haeufig die falschen Begriffe und ist kein Feld. Ein Pruefer, der
+  das ganze Objekt nach einem Schluesselwort durchsucht, liest Kommentare.
+- **Eine Liste von Namen, die einer anderen Liste folgen muss, wird abgeleitet,
+  nicht abgeschrieben.** Fest verdrahtete Namen fallen bei der naechsten neuen
+  Einheit still aus — und eine neue Einheit, die in keiner Liste steht, sieht
+  vollstaendig aus.
 
 ## Verification
 
@@ -223,3 +333,16 @@ Ein Audit gilt als abgeschlossen, wenn **alle vier** true sind:
 Nach der Entscheidung fuer Umsetzung: jeder Befund mit Schwere und Fundstelle
 als offener Punkt, und **erst dann** die Umsetzung — jede Aenderung einzeln
 mit Test und Beleg, fremde Arbeit liegen gelassen und benannt.
+
+Jede Reparatur bekommt eine **fallende Gegenprobe**: den Fix zuruecknehmen und
+den neuen Test laufen lassen. Ein Test, der auch ohne den Fix gruen ist, prueft
+nichts — das ist die Regel, mit der ein Audit sich selbst kontrolliert, bevor
+es Fehler als behoben meldet. Zwei Fallen dabei, beide gemessen: der Anker
+einer Ersetzung kann den **Kommentar** statt der Codezeile treffen (die
+Gegenprobe bleibt dann faelschlich gruen), und ein Test, der eine
+Handlungsdatei des Betriebs anfasst, braucht **zwei** Schranken (Schreibmodus
+aus und Pfad umbiegen) — im `tearDown` erst loeschen, dann zuruecksetzen, sonst
+loescht der Waechter die echte Datei.
+
+Die Fehlerklassen dieser Pruefung als Muster zum Wiederverwenden:
+`references/fehlerklassen-verdrahtung.md`.

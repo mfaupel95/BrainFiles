@@ -44,6 +44,40 @@ Regel ist wirkungslos, ohne dass irgendwo eine Fehlermeldung steht. xperp
 hatte den Gatter zunaechst auf `a["inst"]` und wurde auf `kandidat["basis"]`
 umgestellt.
 
+## Der teuerste Folgefehler: das Gatter loest im Backtest NIE aus
+
+Architektur A stellt jedes Signal in die Queue und macht dann `continue` — im
+Betrieb richtig, weil der `signal-executor` den Einstieg setzt. **Ein Backtest
+hat keinen Executor.** `replay.lauf_feed` las die Wachen unveraendert, also
+konnte eine Feed-Spur im Replay strukturell nie buchen: 0 Runden, ohne
+Fehlermeldung, ueber Jahre hinweg. Die Kennzahlen, die aus diesem Lauf
+stammen, sind kein Messwert, sondern eine Aussage ueber das Gatter.
+
+Zwei Formen desselben Fehlers, beide gemessen:
+
+1. **Das Feld an einer fluechtigen Kopie entfernt.** `w.pop("trigger_modus")`
+   auf einem Dict, das nur im Messweg existiert, ist wirkungslos — der
+   aufrufende Zyklus laedt die Konfiguration **selbst aus der Datei**
+   (`lade_wachen(wachen_pfad)`). Der Fix gehoert in die **geschriebene
+   Backtest-Wachen-Datei**, mit Vermerk, warum das Feld dort fehlt
+   (`_backtest_trigger_entfernt`).
+2. **Der Messweg liest eine Wachen, die es nicht gibt.** Ein Aufbau, der die
+   Wachen fest ueber den Spur-Namen laedt, rechnet bei einem Schattenarm das
+   **Hauptbuch** — und nennt dessen Zahlen die des Arms. Wie in
+   `references/schattenbuch-spur.md`: von rechts kuerzen, bis eine Datei da ist.
+
+**Regel:** ein Betriebsmerkmal, das Signale **umleitet** statt auszufuehren,
+muss im Messpfad ausdruecklich abgeschaltet werden — sonst ist jede Zahl aus
+dieser Quelle unbrauchbar, und niemand merkt es, weil sie nicht kaputt
+aussieht. Ausschlaggebend ist die Form des Ergebnisses: eine Kennzahl, die
+**auffaellig glatt** ist (0 Runden, eine Quote, die sich nie bewegt), ist ein
+Befund ueber der Zeile. Geprueft wird das durch Lesen des Konfigurationsfelds
+der Spur, nicht durch Umrechnen der Zahl.
+
+Nach dem Fix sind alte Zahlen aus dieser Quelle **nicht zitierfaehig**, bis sie
+neu gerechnet sind — das gehoert als offener Punkt in die Aufgabenliste, mit
+der Liste der betroffenen Spuren.
+
 ## Der Fehler, den die Tests am Tag der Einfuehrung meldeten
 
 **Ein Gatter muss auf BEIDEN Wegen denselben Wert zurueckgeben.** Die erste

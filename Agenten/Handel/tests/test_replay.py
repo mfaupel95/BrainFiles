@@ -395,7 +395,12 @@ class GebuehrVorgabeTest(unittest.TestCase):
     """
 
     def test_vorgabe_kommt_aus_der_wachen_der_spur(self):
-        for spur, soll in (("mosaic", 0.6), ("supertrend", 0.1),
+        # 04.10.2026: mosaic stand hier mit 0,6 (Kraken). Die Spur handelt seit
+        # dem 30.09.2026 (Commit e6f2715c, Auftrag Max "nur noch omnitrade auf
+        # kraken") auf OKX-Spot, gemessen 0,10 %/Seite (01.10.2026). Die Zahl
+        # kommt aus wachen.json - sie wandert mit der Börse und darf hier nicht
+        # festgeschrieben stehen, sonst prueft der Test den alten Stand.
+        for spur, soll in (("mosaic", 0.1), ("supertrend", 0.1),
                            ("orbk", 0.6), ("liq_wand", 0.05)):
             satz, quelle = replay.gebuehr_aufloesen(None, spur)
             self.assertEqual(soll, satz, spur)

@@ -70,6 +70,72 @@ Kompressionslauf ist der haertere Beleg und bleibt ein eigener Schritt. Eine LAU
 Sitzung kann ihren bereits aufgeloesten Aux-Client behalten - die Aenderung greift in
 neuen Sitzungen, nicht mitten in der alten.
 
+## Eine .env-Variable setzen: wirkt erst nach dem Neustart
+
+Anders als `config.yaml` wird `.env` **einmal beim Prozessstart** gelesen
+(`load_hermes_dotenv()` auf Modulebene in `cli.py` bzw. im Gateway-Bootstrap).
+Ein laufendes Gateway, ein Cron-Job und eine offene Sitzung tragen den alten
+Stand im `os.environ` - die Datei kann richtig sein und die Wirkung fehlt
+trotzdem. "Steht drin" ist deshalb kein Beleg.
+
+1. **Erst suchen, WO der Wert gelesen wird.** `search_files` nach dem
+   Variablennamen im Checkout: Modul plus die Doku-Tabelle
+   `website/docs/reference/environment-variables.md`. Ein Eigenbau ohne
+   dokumentierte Stelle gehoert nach config.yaml oder in einen Code-Schalter,
+   nicht in die `.env`.
+2. Zeile anhaengen (Muster unten), Zeilenenden und Sicherung mitpruefen.
+3. **Zweiseitiger Gegentest im Haus-Interpreter**, nicht "Zeile vorhanden":
+   dieselbe Funktion ohne und mit der Variable aufrufen.
+
+   ```python
+   import os, sys; sys.path.insert(0, "hermes-agent")
+   os.environ.pop("HERMES_DISABLE_FILE_STATE_GUARD", None)
+   from tools import file_state
+   print(file_state.guard_disabled())          # False
+   os.environ["HERMES_DISABLE_FILE_STATE_GUARD"] = "1"
+   print(file_state.guard_disabled())          # True
+   ```
+   Beide Werte nennen. Ein einzelnes `True` belegt nur, dass die Variable
+   gelesen wird - nicht, dass das Haus sie auswertet.
+4. **Wirkung ehrlich eingrenzen.** Ein `export` in der eigenen Shell gilt fuer
+   `terminal`, nicht fuer den Agentenprozess. Gateway: Neustart ueber die
+   Aufgabensteuerung; Cron und Subagenten: der aufrufende Prozess. Fehlt der
+   Satz "wirkt ab dem naechsten Neustart, nicht in dieser Sitzung" im Bericht,
+   ist die Meldung irrefuehrend.
+
+**Muster: eine Zeile anhaengen, ohne die Datei zu kippen**
+
+```python
+roh = open(p, "rb").read()
+nl = b"\r\n" if roh.count(b"\r\n") == roh.count(b"\n") else b"\n"
+neu = roh + (b"" if roh.endswith(nl) else nl) + b"NAME=1" + nl
+assert neu != roh and len(neu) > len(roh)
+shutil.copy2(p, p + ".bak-" + stamp)          # VOR dem Schreiben anlegen
+open(p, "wb").write(neu)                      # Inhalt VORHER fertig bauen
+```
+
+Die Haus-.env ist CRLF; ein Anhaengen mit `\n` macht eine gemischte Datei.
+Hermes liest beides, jedes Skript, das auf Zeilenenden prueft, nicht.
+
+**Einen Schutzschalter abzuschalten heisst: die Kosten benennen — und erst messen, ob er das ueberhaupt loest.** Die Abschaltung wirkt still. `HERMES_DISABLE_FILE_STATE_GUARD=1` schaltet die Pruefung "Datei seit dem Lesen geaendert" auf `write_file` ab (`tools/file_tools_write_guards.py::_stale_overwrite_blocker()` liefert dann `None`) - und trifft damit genau die Schreibvorgaenge, gegen die sie gerichtet war: parallele Sitzungen und Subagenten. `patch` ist gar nicht betroffen. Beim Setzen benennen: `patch` und `read_file` bevorzugen, und TASKS.md, config.yaml und die wachen.json sind die riskanten Pfade.
+
+**Der Reichweiten-Test kommt VOR dem Setzen, nicht danach.** Der naheliegende Wunsch ist „die anderen Sitzungen sollen meine Datei nicht ueberschreiben" — und genau den loest das Abschalten NICHT. `FileStateRegistry` ist laut eigenem Docstring **prozessweit**, nicht sitzungsweit: alle Telegram-Sitzungen, Background-Delegationen und Cron in EINEM Gateway teilen sie. Was sie nicht sieht, sind ANDERE PROZESSE — Bot-Profile, Kanban-Worker, eine zweite Hermes-CLI, eine parallele Claude-Sitzung. Also die Frage stellen: **welcher Konflikt stoert mich, und liegt sein Schreibvorgang im selben Prozess?** Trifft die Stoerung eine andere Maschine, loest Abschalten sie nicht, kostet aber den Schutz genau dort, wo er im Haus wirkt. Die Antwort auf „anderes loesen" ist dann Besitz pro Bereich, nicht Guard aus — nicht aufheben, was man behalten will.
+
+**Ein Schutzschalter wird NICHT spekulativ gesetzt.** Reihenfolge: (1) den Mechanismus messen (welche Datei liest die Variable, was liefert die Aufrufstelle damit), (2) dem Nutzer die Kosten und den Reichweiten-Test nennen, (3) auf die Freigabe warten. Wer statt dessen zuerst in die `.env` schreibt und danach fragt, hat dem laufenden System eine Aenderung untergeschoben — und muss sie zuruecknehmen. Max sagt dann regelmaessig „warte damit" und verlangt den Beleg, dass die Schutzlage unveraendert ist.
+
+**Das Zuruecknehmen ist byteweise zu belegen, nicht zu behaupten.** Aus der eigenen Zeile die Sicherung zurueckspielen und HASHEN vergleichen, nicht Zeilenenden zaehlen:
+
+```python
+roh = open(p, "rb").read(); neu = open(p + ".bak-" + stamp, "rb").read()
+assert b"NAME" in roh and b"NAME" not in neu          # die Zeile ist wirklich drin
+neu_alt = roh[:-(len(b"NAME=1") + len(nl))]           # Zeile + Zeilenende ab
+assert neu_alt == neu, "Restweichen - nicht zurueckspielen"
+open(p, "wb").write(neu)                             # Inhalt VORHER geprueft
+assert hashlib.sha256(open(p,"rb").read()).hexdigest() == hashlib.sha256(neu).hexdigest()
+```
+
+`open(p,"wb").write(alt)` schreibt die Datei SOFORT leer und der Vergleich danach laeuft gegen 0 Byte — der Inhalt muss vor der Datei geprueft sein. Zusaetzlich im Bericht: dass die Abschaltung am laufenden Gateway ohnehin nichts geaendert hat (die Datei wird erst beim Start gelesen), damit niemand einen Neustart als noetig missversteht.
+
 ## Byte-sicheres Muster (Konfigdatei)
 
 ```python

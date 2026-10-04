@@ -210,6 +210,7 @@ plugins:
     - drain
     - email-platform
     - everything-claude-code
+    - homeassistant
     - meta-ai-image-gen
     - nous
     - okx-a2a
@@ -556,4 +557,6 @@ platforms:
   photon:
     enabled: false
 _left_core_scoped:
+  - homeassistant
+_left_core_installed:
   - homeassistant

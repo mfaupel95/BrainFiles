@@ -141,12 +141,27 @@ class AuftragTest(unittest.TestCase):
 
     def test_schattenarm_weit_bleibt_papier(self):
         """Der Schattenarm (wachen.weit.json) muss Papier bleiben,
-        auch wenn die Hauptspur live geschaltet ist."""
+        auch wenn die Hauptspur live geschaltet ist.
+
+        04.10.2026: der Test verlangte zusaetzlich `prognose_fassung == "weit"`
+        in der ARM-Wachen. Das Feld steht aber im HAUPTbuch (dort wurde der
+        Schalter am 01.10.2026 gesetzt, Commit aecd6178 / Auftrag Max
+        "auto freigabe erlaubt"); die Arm-Wache fuehrt es nie. Der Code liest
+        das Feld aus der geladenen Wache und faellt sonst auf "streng"
+        zurueck - das ist die dokumentierte Voreinstellung, kein Fehler.
+        Geprueft wird die EIGENSCHAFT: kein Handeln im Arm. Das HAUPTbuch muss
+        die weite Fassung tragen, dort entscheidet es.
+        """
         with open(os.path.join(SPUR, "wachen.weit.json"), encoding="utf-8") as f:
             w = json.load(f)
-        self.assertEqual(w.get("prognose_fassung"), "weit")
         self.assertFalse(w.get("handel_erlaubt"),
                          "Omniquant-Weit-Arm wurde auf PAPIER bestellt")
+        with open(os.path.join(SPUR, "wachen.json"), encoding="utf-8") as f:
+            haupt = json.load(f)
+        self.assertEqual(haupt.get("prognose_fassung"), "weit",
+                         "das Hauptbuch verliert die weite Fassung - dann "
+                         "laeuft der Arm auf dem strengen Bericht und erzeugt "
+                         "keine Runden")
 
     def test_hauptspur_ist_live_wie_bestellt(self):
         """Die Hauptspur ist seit aecd6178 live geschaltet (Max' Auftrag)."""

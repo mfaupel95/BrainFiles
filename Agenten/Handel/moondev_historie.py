@@ -137,11 +137,24 @@ def basis_von(sym):
     Regel: Binance notiert dieselbe Muenze mal als "SHIB", mal als "1000SHIB";
     exchangeInfo kennt nur die zweite Schreibweise, das Abschneiden erfindet
     "1000SHIB" als eigenen Basiswert.
+
+    04.10.2026: `if not _basis` liest den Cache nur, solange er LEER ist. Ein
+    frueherer Abruf (echtes Universum, 300 Eintraege) blieb fuer den ganzen
+    Prozess stehen, und jeder folgende Lauf - auch einer mit umgebogenem
+    `ORDNER` und eigenen Attrappen - bekam die alte Liste. `basis_von` entdeckt
+    sein Symbol darin nicht, `rng` lieferte nichts, die Spur buchte 0 Positionen
+    und der Test meldete "Journal ohne eine Buchung". Der Cache wird darum
+    nicht mehr als Vorbedingung, sondern als Frage behandelt: das Symbol wird
+    IMMER zuerst in der Datei gesucht, die zum aktuellen ORDNER gehoert.
     """
-    if not _basis:
-        _lade_universum()
+    geladen = _lade_universum()
     if sym in _basis:
         return _basis[sym]
+    if sym not in geladen and os.path.isdir(ORDNER):
+        # Der Ordner hat sich geaendert (Test, neue Daten): neu einlesen.
+        _lade_universum()
+        if sym in _basis:
+            return _basis[sym]
     s = str(sym or "").upper()
     for q in QUOTEN:
         if s.endswith(q) and len(s) > len(q):
@@ -274,6 +287,23 @@ def _schreibe_universum(zeilen):
 
 
 def _lade_universum():
+    """Universum UND Basis-Mapping aus `_universum.json` - immer frisch.
+
+    04.10.2026 (Befund, nicht Vermutung): `_basis` war ein reiner
+    Modul-Cache. Ein Test, der einmal das echte Universum geladen hatte,
+    hinterliess 300 Eintraege fuer ALLE folgenden Tests desselben Prozesses.
+    Der naechste Test legte seine Attrappen in einen Temp-Ordner, `basis_von`
+    fand seine Symbole aber im alten Cache nicht, `rng` leerte und die Spur
+    erzeugte 0 Buchungen - der Test meldete "Journal ohne eine einzige
+    Buchung", ohne dass irgendwo ein Fehler stand. Der Test allein war nicht
+    schuld; er war das Opfer eines Caches, der keine Zuruecksetzung kennt.
+
+    Deshalb wird der Cache nicht mehr als Wahrheit behandelt, sondern nur
+    noch innerhalb EINES Aufrufs: `universum()` fuellt ihn nach einem echten
+    Abruf, und jeder Lesezugriff auf `_universum.json` baut ihn neu auf. Ein
+    umgebogener `ORDNER` sieht damit sofort die Attrappen - die Regel ist
+    "die Platte ist die Wahrheit, der Cache ist ein Komfort".
+    """
     try:
         with open(os.path.join(ORDNER, "_universum.json"), encoding="utf-8") as f:
             daten = json.load(f)

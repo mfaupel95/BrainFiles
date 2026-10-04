@@ -85,7 +85,12 @@ class FelderTest(unittest.TestCase):
         "xperp": "okx_perp",
         "swap": "okx_perp",
         "kraken": "kraken_spot",
-        "mosaic": "kraken_spot",
+        # 04.10.2026: mosaic wurde am 30.09.2026 (Commit e6f2715c, Auftrag Max
+        # "nur noch omnitrade auf kraken handel erlaubt") von Kraken auf OKX
+        # umgestellt - `boersen: ["okx"]`, Instrumente BTC/ETH/SOL-USDC, also
+        # OKX SPOT (0,10 %/Seite, gemessen 01.10.2026). Die Zuordnung hier stand
+        # noch auf kraken_spot und verlangte 0,6 % von einer OKX-Runde.
+        "mosaic": "okx_spot",
     }
     SAETZE = {"okx_spot": 0.001, "okx_perp": 0.0005, "kraken_spot": 0.006}
 

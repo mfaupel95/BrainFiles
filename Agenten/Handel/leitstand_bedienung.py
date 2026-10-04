@@ -18,6 +18,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, font as tkfont, messagebox, ttk
 
+import handelszentrale as hz                                # noqa: E402
 import leitstand_stil as stil
 
 HIER = Path(__file__).resolve().parent
@@ -302,10 +303,18 @@ class Tabelle(ttk.Frame):
             self.baum.heading(sp, text=sp,
                               command=lambda sp=sp: self.sortiere_nach(sp))
             self.baum.column(sp, width=110, anchor="w")
-        leiste = ttk.Scrollbar(self, orient="vertical", command=self.baum.yview)
-        self.baum.configure(yscrollcommand=leiste.set)
+        # Leiste senkrecht UND waagerecht plus Mausrad (T-301): eine Tabelle
+        # ohne waagerechte Leiste schneidet lange Zeilen ab (Pfadspalten,
+        # Grund-Texte), und ohne `rad_selbst` reagiert sie nicht auf das Rad.
+        # `rad_selbst` kommt aus `handelszentrale` - DIESE eine Quelle teilen
+        # sich beide Fenster (fenster_design.py bleibt bewusst tkinter-frei).
+        laenger = ttk.Scrollbar(self, orient="vertical", command=self.baum.yview)
+        breiter = ttk.Scrollbar(self, orient="horizontal", command=self.baum.xview)
+        self.baum.configure(yscrollcommand=laenger.set, xscrollcommand=breiter.set)
+        breiter.pack(side="bottom", fill="x")
         self.baum.pack(side="left", fill="both", expand=True)
-        leiste.pack(side="right", fill="y")
+        laenger.pack(side="right", fill="y")
+        hz.rad_selbst(self.baum)
         stil.tags(self.baum)
         self._pfeile()
 

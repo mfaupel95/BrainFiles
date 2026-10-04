@@ -270,6 +270,8 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
   (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT, ist der
   Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht heimlich
   ersetzt.
+- **Eine gemischte Datei ist der NORMALZUSTAND, kein Abbruchgrund.** Beim Byte-Schreiben zuerst `roh.count(b"\r\n")` gegen `roh.count(b"\n")` stellen und daraus das **dominante** Ende ableiten (`crlf > lf_gesamt - crlf`); ein Skript, das bei Mischung abbricht, verhindert genau den Fall, den man kennt — und der haeufigste ist. Voraussetzung ist nur, dass der Schnitt **nichts normalisiert**: der neue Block bekommt das dominante Ende, alle bestehenden Zeilen bleiben unangetastet. Die Vorpruefung „Datei ist gemischt, also riskant" ist damit eine Pruefung ohne Aussage — der Beweis ist `git diff --numstat` (reine Einfuegungen, 0 Loeschungen), nicht die Vorpruefung. Ein Skript, das misst und dann **trotzdem abbricht**, traegt eine Regel in sich, die es nie pruefen wollte: lieber messen und den Diff sprechen lassen.
+
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe
   steht weiter unten: erst `grep -n "T-0NN"` suchen, dann Vorgaenger- und
   Nachfolgerblock lesen, bevor ersetzt wird.

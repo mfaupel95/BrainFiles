@@ -385,6 +385,31 @@ war (gemessen 04.10.2026: Zeile 43 unterschied sich seit dem 01.10. durch eine
 fremde Aenderung). Fremde Zeilen bleiben unangetastet und gehoeren in einen
 eigenen Commit - nicht in den, der die neue Regel bringt.
 
+## Der Datei-Schreibschutz sieht nur EINEN Prozess
+
+Hauswahrheit, gemessen am 04.10.2026: der „Datei seit dem Lesen geaendert"-Schutz
+von `write_file`/`patch` ist **prozessweit, nicht sitzungsweit** — seine
+Registry haengt an einem Registry-Objekt des laufenden Prozesses. Das heisst:
+
+- Alle Telegram-Sitzungen, Background-Delegationen und Cron-Jobs **in diesem
+  Gateway** teilen ihn; eine andere Sitzung im selben Prozess meldet die
+  Ueberschreibung also zu Recht.
+- **Alles ausserhalb** — die Bot-Profile, die Kanban-Worker, eine zweite
+  CLI/TUI, Max' Claude-Sitzung, jeder Fremdprozess, der schreibt — ist fuer ihn
+  **unsichtbar**. Genau dort entstehen die Aerger, die er nicht sieht.
+
+Der Schalter `HERMES_DISABLE_FILE_STATE_GUARD=1` schaltet diesen Schutz **nur im
+Gateway-Prozess** ab; er loest das Problem nicht, er nimmt die eine Schranke
+weg, die zwischen zwei Sitzungen im selben Prozess stand. Also **nicht** setzen,
+solange die eigentliche Loesung (Besitz pro Bereich) greift. Setzt man ihn
+doch: die Datei ist das Einzige, was beim Start gelesen wird — eine laufende
+Sitzung merkt es nicht, und `.env` aendern heisst Gateway neu starten, also
+Turn abbrechen.
+
+Merksatz fuer jede Schranke: **frage, welchen Prozess sie sieht.** Eine
+prozessweite Schranke wirkt im Mehrbetrieb nur zwischen Tasken desselben
+Prozesses und erzeugt sonst das Gefuehl, es sei geschuetzt.
+
 ## Fremde Arbeit aus beendeten Sitzungen einsammeln
 
 **Zuerst nachsehen, was schon geholt wurde, statt es ein zweites Mal zu bauen:**
