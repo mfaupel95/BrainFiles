@@ -77,6 +77,86 @@ Freigabekette — eine Schranke bauen heisst nie, eine Position aufzurueumen.
    abgeschaltet und damit blind. Verglichen wird gegen den letzten Lauf, nicht
    gegen gestern.
 
+## Offene Börsenpositionen: das Hausbuch ist nicht die Wahrheit
+
+Bricht der Positionsschutz an einer Live-Spur, ist die erste Frage **woher die
+Position stammt** — nicht welcher Stop fehlt. Eine Position, die du selbst per
+Order eröffnet hast, steht im Hausbuch; eine von Hand, von einem Bot oder von
+einer Parallelsitzung geöffnete steht nur an der Börse. Das Buch kann dabei
+laut und falsch sein.
+
+**Die drei Fälle, alle drei gemessen:**
+
+1. **Das Buch behauptet einen Schutz, den die Börse nicht hat.** Eine
+   `fremdposition_uebernommen`-Buchzeile trägt Stop *und* Ziel, weil die
+   Spurenlogik sie so befüllt — geprüft an der Börse war dort nichts. Der
+   Buch-Stop ist eine Absichtserklärung, kein Auftrag.
+2. **Die Börse hat einen Schutz, den das Buch nicht kennt.** Zwischen zwei
+   Messungen (Minuten) lag ein vollständiger OCO auf der vollen Menge. Die
+   Grundlage ist eine Live-Spur oder ein Bot; das Buch führt die Position erst
+   danach.
+3. **Die Menge passt nicht.** Nachkauf- oder Teilausstiegsleiter hinterlassen
+   Stops, deren `sz` nicht zur Position passt: 67 % geschützt, ein Posten mit
+   `sz=0`, oder 107 % (zwei Stops auf getrennten Teilmengen plus Rest).
+
+**Die Messung ist eine Tabelle aus zwei Abfragen, nicht eine Zahl:**
+
+- `GET /api/v5/account/positions?instType=FUTURES` → Position, Seite, Menge,
+  `avgPx`, `markPx`, `liqPx`, `mgnMode`, `lever`
+- `GET /api/v5/trade/orders-algo-pending?ordType=<typ>` → die Schutzaufträge
+
+**Alle drei ordTypes lesen**: `conditional`, `oco` und `trigger`. Ein OCO trägt
+Stop *und* Ziel in einem Auftrag, ein `conditional` nur einen — wer nur einen
+Typ liest, meldet eine vollgeschützte Position als halb geschützt oder
+umgekehrt. Der Endpunkt liefert **nur lebende** Aufträge; ein erfüllter oder
+stornierter Posten taucht nicht mehr auf, sein Fehlen ist also kein Beweis,
+dass nie einer da war.
+
+**Die Kennzahl ist die SUMME der Mengen auf der Schutzseite**, nicht der
+größte Einzelwert: zwei halbe Stops schützen nicht so viel wie ein ganzer.
+Für einen Long zählt `side=sell`, für einen Short `side=buy` — Posten der
+Gegenseite gar nicht. Überdeckung (>100 %) ist ein eigener Befund, keine
+Genauigkeit.
+
+**Vor jeder Aktion den Zustand neu lesen.** Zwischen Analyse und Handlung
+ändert sich das Konto: Mengen wachsen, Stops werden nachgesetzt. Wer eine
+Minute später auf einer alten Tabelle handelt, setzt eine zweite Schutzebene
+auf eine bereits gesicherte Position — das ist kein Fehler, den man bemerkt,
+sondern einer, der beim ersten Treffer doppelt verkauft.
+
+**Ist die Position bereits vollständig geschützt, ist die Handlung „nichts".**
+Der Auftrag „setz intelligen Take-Profit in Stufen" bedeutet nicht „setze
+zusätzlich Stufen": liegt ein OCO auf der vollen Menge, heisst die Antwort
+„das ist bereits gedeckt, hier ist die Lücke in einer anderen Position", nicht
+eine weitere Order.
+
+## Einen gestuften Take-Profit rechnen
+
+Take-Profit in Stufen ist eine **Mengenrechnung zuerst**: die Summe der
+Teilmengen muss exakt die Position ergeben. Ein Restbetrag ist entweder eine
+Order, die die Börse ablehnt, oder eine Teilmenge, die ungeschützt bleibt, weil
+der Stop auf den vollen Bestand zeigt.
+
+- **Rest auf die frühen Stufen**, nicht auf die letzte: ein Rest auf der letzten
+  Stufe bleibt bis zum letzten Treffer ungeschützt.
+- **Der Stop wird zuerst gesetzt**, dann die Stufen. Eine TP-Stufe ohne Stop
+  ist eine Position, die beim nächsten Neustart des Algo-Bestands nackt dasteht.
+- **Ein eigener Orderweg statt eines allgemeinen Helfers.** Ein Helfer, der für
+  Spot geschrieben wurde (`tdMode: cash`, `side: sell` fest verdrahtet), lehnt
+  auf einem Perpetual ab — und ein stillschweigend falsch gesetzter Schutz ist
+  schlimmer als keiner. `tdMode` folgt der Position (`cross`/`isolated`), die
+  Seite folgt der Seite der Position.
+- **Marktauslösung, nicht Limitpreis** (`slOrdPx: -1` / `tpOrdPx: -1`): bei
+  einem Momentum-Ausbruch verpasst ein Limitpreis genau den Move, der ihn
+  ausgelöst hat.
+- **Gleichverteilte Stufen zwischen Einstand und Ziel**, jede 1/n der Menge.
+  Eine risikogewichtete Staffelung (frühere Stufen näher am Einstand) löst bei
+  einem 0,03-USD-Instrument nichts — die Gebühr je Seite frisst den ersten
+  Abstand auf.
+- **Rechnung im Bericht, keine Formel im Skript:** Triggerpreis, Abstand in
+  Prozent, Menge, Erlös je Stufe und die Summe. Ein Nutzer, der eine Order
+  freigibt, will die fünf Zahlen sehen, nicht den Aufruf.
+
 ## Pitfalls
 
 - **Skripte direkt in `Agenten/Handel` brauchen `HANDEL = HIER`, nicht
@@ -104,8 +184,29 @@ Freigabekette — eine Schranke bauen heisst nie, eine Position aufzurueumen.
   fahren und die Zahlen vergleichen; sind sie gleich, ist nicht der Markt
   schuld, sondern die Verdrahtung.
 - **Ein Vergleichsschalter braucht einen Gegenbeweis.** „Der Arm legt seine
-  eigenen Dateien an" ist zuwenig — zusaetzlich pruefen, dass der Hauptarm
+  eigene Dateien an" ist zuwenig — zusaetzlich pruefen, dass der Hauptarm
   unangetastet blieb (Aenderungszeitstempel vorher/nachher).
+- **Eine Börse kennt zwei Kontostände, und beide sind richtig.** Auf der
+  Kontoebene steht die Gesamtsumme, aber die *freie* Position steht als leerer
+  String und der Staking-Anteil als `null`. Die belastbaren Werte je Währung
+  stehen in der Detailliste. Wer die Kontoebene liest, meldet für ein Konto mit
+  950 Einheiten „0.00" — und das sieht wie ein leeres Konto aus, nicht wie ein
+  Fehler.
+- **`frozenBal` heißt bei OKX nicht „eingefroren".** Es ist die an Margin,
+  offene Orders und Algo-Orders **gebundene** Summe. Als „eingefroren"
+  etikettiert liest sie sich wie gesperrtes Kapital, das man freischalten muss.
+- **`positions` kennt kein `instType=SPOT`** und lehnt es mit einem
+  Parameterfehler ab. Spot-Bestand kommt aus `account/balance`, keine
+  Position im Sinne einer Absicherung.
+- **Ein Kontrollwert, der zwei Nullen vergleicht, ist keine Kontrolle.** Summiere
+  die Detailzeilen und vergleiche sie mit der Gesamtsumme — bei Null und Null
+  ist das grün, ohne dass irgendetwas geprüft wurde. Das ist der Fall, in dem
+  eine Prüfung den Fehler *bestätigt* statt ihn zu finden.
+- **Ein Helfer darf eine Aufrufform haben, nicht zwei.** Ein Helfer mit
+  `zahl(wert)` und `zahl(container, feldname)` wird irgendwann verwechselt, und
+  die Verwechslung fällt still aus: der Wert landet als Feldname in einer
+  Suche und das Ergebnis ist 0,0 statt der echten Zahl. Beschreibe die Form
+  einmal und rufe sie überall gleich auf.
 
 ## Verification
 

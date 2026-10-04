@@ -53,6 +53,14 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    setzt keine Order.
    Buch gegen Boerse stellen (Fuellung, Geister, Wiederherstellung):
    `references/buch-gegen-boerse.md`.
+   **Was offen ist, abgesichert und wie viel Luft bleibt** (Kontostand je
+   Waehrung, offene Positionen, Stops mit ihrer Menge): 
+   `references/kontostand-und-positionen.md` — dort steht auch, warum die
+   Kontoebene von `/account/balance` nur die Summe traegt und ein Parser
+   dort ein Konto mit 949 USDC als leer meldet, und **was zu tun ist, wenn
+   die Messung sagt, dass eine Position bereits gedeckt ist**: eine bereits
+   gesicherte Position ist keine Aufgabe, sonst verkauft die zweite
+   Schutzebene beim ersten Treffer doppelt.
 4. **Folgen benennen**: was war echt (Konto), was nur Buch (Journal), was der Nutzer
    wissen muss. Leere Kontodetails + leere Orderhistorie = die Position hat es am
    Handelsplatz nie gegeben — dann ist der abgebrochene Verkauf RICHTIG gewesen.
@@ -220,6 +228,13 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
 - **Diagnose-Skripte nicht in den Spur-Ordner legen.** Nach
   `Agenten/Hermes/cache/` schreiben und danach loeschen; der Spur-Ordner ist
   versioniert und wird gespiegelt.
+- **Ein Sicherungsauftrag ist manchmal die Antwort „nichts“.** Geprueft lag ein
+  vollstaendiger OCO (Stop *und* Ziel auf der vollen Menge) — drei zusaetzliche
+  TP-Stufen haetten beim ersten Treffer doppelt verkauft, weil ihre Mengen sich
+  mit der Zielmenge des OCO ueberschneiden. Vor JEDER Schutz-Order den Zustand
+  neu lesen: zwischen Analyse und Order aendern sich Mengen und Stops, und wer
+  auf einer Tabelle von vor einer Minute handelt, baut die zweite Schutzebene.
+  Messung und Order gehoeren in **einen** Lauf.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau

@@ -1,0 +1,171 @@
+# Kontostand und Positionen lesen — Feldformen statt Feldnamen
+
+Fuer die Frage „was steht gerade offen“ (nicht „was hat der Bot bestellt“).
+Rein lesend, dieselbe Schiene wie die Beleg-Rezepte in
+`okx-fehler-und-nachweis.md`.
+
+Fertiges Werkzeug: `Agenten/Handel/okx_positionen_live.py` aus dem Handel-Ordner
+
+```bash
+MAXHIRN_ROUTINE=1 scanner/.venv/Scripts/python.exe okx_positionen_live.py
+MAXHIRN_ROUTINE=1 scanner/.venv/Scripts/python.exe okx_positionen_live.py --json
+```
+
+## Kontostand: die Summenzeile traegt nicht die Einzelwerte
+
+`GET /api/v5/account/balance` fuehrt auf Kontoebene **nur** `totalEq`. Die zwei
+Zahlen, die eine Frage beantworten, sind dort leer bzw. `null`:
+
+```
+totalEq   "1703.48"   <- Kontoebene, gefuellt
+availEq   ""          <- Kontoebene, LEER
+stgyEq    null        <- Kontoebene, NULL
+```
+
+Beide stehen je Waehrung in `details[]`:
+
+```python
+for d in konto["details"]:
+    eq        = float(d["eq"] or 0)        # gesamt
+    availEq   = float(d["availEq"] or 0)   # frei
+    stgyEq    = float(d["stgyEq"] or 0)    # in Staking gebunden
+    frozenBal = float(d["frozenBal"] or 0) # an Margin/Orders gebunden
+```
+
+Ein Parser auf der Kontoebene meldete **0.00 fuer ein Konto mit 949 USDC** —
+und „0.00“ sieht wie „leeres Konto“ aus, nicht wie ein Fehler. Das ist bei einer
+Boerse die gefaehrlichste Fehlform: sie beschreibt „nichts“ statt „falsch
+gelesen“. **Bei einer Antwort mit Listen- und Objektebene braucht man die
+LISTE, sobald man Einzelwerte will.** Das Summenfeld ist ein Kontrollwert.
+
+`frozenBal` heisst bei OKX NICHT „eingefroren“, sondern die an Margin, offene
+Orders und Algo-Orders gebundene Summe. Die Rechnung geht auf:
+
+```
+eq = availEq + stgyEq + gebunden
+```
+
+**`okx.guthaben(ccy)` liefert einen FLOAT (`availBal`), kein Dict.** Es
+beantwortet „wie viel ist frei“. Wer darauf einen Adapter fuer `eq`,
+`stgyEq` oder `details` setzt, baut still ein falsches Objekt. **Die
+Rueckgabeart einer Fremdbibliothek messen (`type()` + Auszug der Rohantwort),
+bevor ein Adapter darauf aufsetzt.**
+
+## Positionen: `instType` nimmt kein SPOT
+
+`GET /api/v5/account/positions` akzeptiert **nur** `FUTURES`, `SWAP`,
+`MARGIN`. `SPOT` gibt `OKX 51000: Parameter instType error` — Spot-Bestaende
+sind KEINE Positionen, sie stehen in `/account/balance`. Ein Aufruf mit SPOT
+wird gar nicht gestellt, statt den Fachfehler als Befund zu melden: **eine
+Antwort, die man selbst provoziert hat, gehoert nicht in den Befund.**
+
+Je Position (alles als STRING; `uplRatio`/`mgnRatio` als DECIMAL):
+
+| Feld | Bedeutung |
+|---|---|
+| `pos` | Richtung und Menge, **signed** (short = negativ) |
+| `avgPx` / `markPx` / `liqPx` | Einstieg / Marktkurs / Liquidationsmarke |
+| `lever`, `mgnMode` | Hebel, `isolated` oder `cross` |
+| `upl`, `uplRatio` | unbezahlter Gewinn absolut und in Prozent |
+| `margin`, `notionalUsd` | gebundene Margin, Nennwert |
+| `mgnRatio` | **Marginanteil am Positionskapital** — NICHT die Luft |
+
+## Zwei Rechnungen, die man nicht verwechselt
+
+**Luft bis zur Liquidation** muss auf BEIDEN Seiten positiv sein — Long hat
+`liqPx` unter `markPx`, Short darueber:
+
+```python
+luft = (liqPx / markPx - 1.0) * -richtung * 100.0   # richtung = +1 long / -1 short
+```
+
+**`mgnRatio` ist keine zweite Luft.** Als Gegenrechnung etikettiert liefert es
+82–93 % neben echten 8–17 % — das sieht wie ein Datenfehler aus und ist eine
+falsche Beschriftung. Wenn zwei Spalten derselben Zeile systematisch um eine
+feste Groesse abweichen, ist die Beschriftung der Verdächtige, nicht der Wert.
+
+## Schutz decken?
+
+`/api/v5/trade/orders-algo-pending` je `ordType` lesen — `conditional`, `oco`,
+`trigger`, `move_order_stop` — nicht nur `attachAlgoOrds`. Je Stop zaehlt
+`sz`, nicht die Existenz: ein Stop auf 22 Stueck bei einer Position von 34
+deckt zwei Drittel. Als Schutz zaehlt nur `reduceOnly` auf der **gegenlaufenden**
+Seite.
+
+## Zwei Messungen statt einer
+
+Positionen aendern sich waehrend des eigenen Laufs. **Zweimal lesen, wenn der
+Bericht eine Zahl traegt** — aendert sich Menge, Liquidationsmarke oder
+Notional zwischen den Laeufen, ist das ein eigener Befund (Bot, Nachkauf,
+fremde Sitzung) und gehoert in die Antwort, nicht still in die Tabelle.
+
+## Eine bereits gedeckte Position ist keine Aufgabe
+
+Der Auftrag „setz Take-Profit in Stufen“ heisst **nicht** „setz zusaetzlich
+Stufen“. Geprueft lag ein vollstaendiger OCO (Stop *und* Ziel auf der vollen
+Menge); drei zusaetzliche Stufen haetten beim ersten Treffer **doppelt
+verkauft**, weil ihre Mengen sich mit der Zielmenge des OCO ueberschneiden.
+
+Ist die Position vollstaendig gedeckt, ist die Handlung **„nichts“** — und die
+Antwort benennt die Luecke in einer *anderen* Position, statt eine zweite
+Schutzebene zu bauen.
+
+**Vor jeder Handlung neu lesen.** Zwischen Analyse und Order aendert sich das
+Konto: Mengen wachsen, Stops werden nachgesetzt, OCO-Auftraege wechseln. Wer auf
+einer Tabelle von vor einer Minute handelt, setzt auf eine bereits gesicherte
+Position. Messung und Order gehoeren in **einen** Lauf, nicht in zwei
+Werkzeugaufrufe.
+
+## Gestufter Take-Profit: Menge zuerst, Preis danach
+
+Die Summe der Teilmengen muss **exakt** die Position ergeben. Ein Restbetrag ist
+entweder eine Order, die die Boerse ablehnt, oder eine Teilmenge, die
+ungeschuetzt bleibt, weil der Stop auf den vollen Bestand zeigt.
+
+- **Rest auf die FRUEHEN Stufen**, nicht auf die letzte: ein Rest auf der letzten
+  Stufe bleibt bis zum letzten Treffer ohne Schutz.
+- **Stop ZUERST**, dann die Stufen. Eine TP-Stufe ohne Stop ist eine Position,
+  die beim naechsten Neustart des Algo-Bestands nackt dasteht.
+- **Eigener Orderweg statt eines allgemeinen Helfers.** Ein fuer Spot
+  geschriebener Helfer ist fest auf `tdMode: cash` und `side: sell`
+  verdrahtet und lehnt auf einem Perpetual ab. `tdMode` folgt der Position
+  (`cross`/`isolated`), die Seite folgt der Seite der Position.
+- **Marktausloesung, nicht Limitpreis** (`slOrdPx: -1` / `tpOrdPx: -1`): ein
+  Limitpreis verpasst genau den Momentum-Move, der ihn ausgeloest hat.
+- **Gleichverteilte Stufen** zwischen Einstand und Ziel, jede `1/n`. Eine
+  risikogewichtete Staffelung (fruehere Stufen naeher am Einstag) loest bei einem
+  0,03-USD-Instrument nichts — die Gebuehr je Seite frisst den ersten Abstand.
+- **Im Bericht die fuenf Zahlen**: Triggerpreis, Abstand in Prozent, Menge,
+  Erloes je Stufe, Summe. Wer eine Order freigibt, will den Rechenweg sehen.
+
+## Zwei Helferfallen, die beide still ausfallen
+
+**Eine Hilfsfunktion darf eine Aufrufform haben, nicht zwei.** Nach einem
+Signaturumbau (`zahl(wert)` → `zahl(container, feldname)`) trugen 17 Aufrufe
+noch die alte Form: der *Wert* landete als *Feldname* in einer Suche, das
+Ergebnis war `0.0` statt der echten Zahl. Das Gelbe: ein `TypeError` faellt auf,
+dieser Weg nicht.
+
+**Ein Kontrollwert, der zwei Nullen vergleicht, ist keine Kontrolle.** Summiere
+die `details[]` und vergleiche sie mit `totalEq`. Bei 0 gegen 0 ist das gruen,
+ohne dass irgendetwas geprueft wurde — die Pruefung **bestaetigt** den Fehler,
+statt ihn zu finden. Eine Kontrolle muss an einem **nicht-trivialen** Wert
+haengen.
+
+**Ein Block-Ersetzungsskript kann die alte Definition stehen lassen.** In
+Python gewinnt die *spaetere*. Der Bericht zeigte exakt den toten Code, dessen
+Lesefehler verschluckt als „keine Positionen“ erschienen — ein Befund ueber
+nichts, erzeugt von einem Programm. Nach jedem Austausch
+`count("def <name>(") == 1` pruefen und `compile()` **vor** dem Schreiben
+laufen lassen.
+
+## Merksatz
+
+> Ein Befund ueber null ist nie ein Befund ueber „nichts“. Er ist fast immer
+> „an der falschen Stelle gelesen“ — und das sieht aus wie eine Tatsache ueber
+> die Welt, nicht wie ein Fehler im Programm.
+>
+> Und die Gegenhistorie gilt genauso: ein Auftrag, eine Position zu sichern,
+> ist manchmal die richtige Antwort **„sie ist bereits gesichert, hier ist die
+> Luecke woanders“**. Ein Werkzeug, das ansetzt, weil ein Auftrag das sagte,
+> baut die zweite Schutzebene — und die verkauft doppelt.

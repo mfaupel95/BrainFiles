@@ -104,13 +104,23 @@ gleichnamige in `Handel/` verdecken.
 ## Pruefen: messen, nicht schauen
 
 Den Fensteraufbau in einen Test nehmen, der das Fenster wirklich baut und
-unsichtbar laesst (`root.withdraw()` + `update()`): so faellt ein Tippfehler in
-einem Widgetnamen auf, den reine Funktionstests nicht sehen.
+unsichtbar laesst (`root.withdraw()` + `geometry()` + `update()`): so faellt ein
+Tippfehler in einem Widgetnamen auf, den reine Funktionstests nicht sehen.
 
 Das Layout wird **gemessen**, nicht angesehen: Spaltenbreite gegen
-`tkfont.measure(text)` je Spaltentext stellen und die zu schmalen zaehlen.
-Muster: `Agenten/Werkzeuge/repos-zentrale/messprobe.py` - baut das Fenster,
-druckt jede Breite und nennt die Zahl der zu schmalen Texte.
+`tkfont.measure(text)` je Spaltentext stellen und die zu schmalen zaehlen. Der
+Befund lautet "N Texte zu schmal", nicht "die Tabelle ist zu breit" - die
+Ueberhaenge liegen pro Zelle, nicht pro Spalte.
+
+`scripts/tabellen-messprobe.py` ist die Fassung fuer **jedes** Fenster des
+Hauses: `python tabellen-messprobe.py --fenster handelszentrale:Handelszentrale`
+baut das echte Fenster, sammelt alle Treeviews unterhalb der Wurzel ein und
+misst ohne einen Eingriff in den Fenstercode. Das Muster `modul:Klasse` macht
+den Aufrufer zum Parameter, also braucht die Probe keine Kopie je Fenster.
+Sonderfaelle der Probe: `root.withdraw()` erzeugt keine Geometrie, die Breite
+kommt aus `geometry()`; eine Tabelle, die im aktuellen Reiter NICHT sichtbar
+ist, hat `winfo_width() == 1` und ihre Spaltensumme wird deshalb ausdruecklich
+nicht als 'ZU BREIT' gewertet - sie ist eine Vorgabe, kein Messwert.
 
 > Eine Bildbeschreibung ist kein Zeuge. Sie nennt fremde Programme und meldet
 > Abschneiden, das die Messung widerlegt (gemessen: "Hinweis abgeschnitten" bei
@@ -190,8 +200,48 @@ und danach auslesen und **pruefen, dass das Ziel existiert**
   die erwartete Zeile halten. Er nennt oft die Zahl der Objekte (`… - 39 Spuren …`)
   und ist damit zugleich die Gegenprobe fuer jede Zahl in der Doku.
 
+## Reihenfolge bei einem Fensterumbau
+
+0. **Breite erst bestimmen.** Mehrere Fenster nebeneinander (Handelszentrale,
+   Leitstand, Fremd-Repo-GUI) sind eine Aufgabe, kein Fenster: pro Familie ein
+   **nur-lesender** Audit als Subagent, alle parallel, jeder mit dem Auftrag
+   'Zeilennummer, Fehlverhalten, Gegenbeispiel, Schadensrichtung,
+   Ein-Zeilen-Fix - und widerlege deine eigenen Ersterkennungen'. Kein
+   Schreibzugriff, kein `git`: eine parallele Sitzung kann im selben Baum
+   arbeiten. Der Umbau bleibt beim Hauptagenten, sonst gibt es drei
+   auseinanderlaufende Aenderungen an derselben Datei.
+1. **Erst messen, dann lesen.** Die Messprobe laufen lassen, BEVOR ueber die
+   Datei gelesen wird. Wer von oben an liest, findet die breitesten Spalten
+   zuerst und haelt sie fuer die Ursache; die Messung nennt in Sekunden die
+   Zahl der Ueberhaenge und die eine Spalte, die zu breit ist.
+2. **Reine Logik von der Klasse trennen, bevor man sie testet.** Fehlt die
+   Trennung, ist jeder neue Test ein Fenster-Test - langsam und von der
+   Maschinenlast abhaengig (228 Tests in 38 s bei gebautem Fenster, ein
+   einzelnes Fenster 4 s).
+3. **Layout in den BREITEN-Funktionen aendern, nicht in `_bauen()`.** Die
+   Breiten sind eine Rechnung ueber Text und Platz, also eine reine Funktion.
+4. **Breite auf Text, nicht auf Vorgabe.** Ein Spaltenname, der in keiner
+   Zeile vorkommt, verbraucht Breite fuer nichts; eine Spalte mit 5-Summen-
+   Text braucht mehr, als ihr Name erfordert.
+5. **Nicht `height=len(...)`** (siehe Scrollen) und nicht auf den Reiter warten:
+   ein Umbau, der nur im sichtbaren Reiter geprueft wurde, ist in den anderen
+   ungeprueft - die Messprobe mit `--breite`/`--hoehe` deckt alle ab, wenn sie
+   einmal je Reiter laeuft.
+6. **Gegenprobe messen, nicht behaupten.** Nach dem Umbau dieselbe Probe mit
+   der Zahl "ZU SCHMAL GESAMT: 0" belegen, und zwar bei ZWEI Fenstergroessen
+   (1280 und 1000) - sonst ist der Umbau nur auf dem einen Monitor belegt.
+
 ## Pitfalls
 
+- **Ein Fremd-Repo-Fenster gehoert nicht in diese Bibliothek.** Liegt die
+  Oberflaeche in einem geklonten Fremd-Repo (eigenes `upstream`, Fremdarbeit
+  im Arbeitsbaum), wird sie dort geaendert und hier nur der Weg dorthin
+  beschrieben - ein fremder SKILL wird nicht importiert und eine fremde Datei
+  nicht ueber den Haus-Index committed.
+- Ein Messwerkzeug, das sich an die Fensterklasse bindet (Attribute des
+  Fensters voraussetzt), muss beim Schreiben auf einen GEBAUTEN Bildschirm
+  getestet werden. Platzhalter-Aufrufe, die nie liefen, sind Messwerkzeuge,
+  die nichts messen.
 - Farben oder Schrift daneben setzen, statt `fenster_design` zu benutzen.
 - Zustand nur ueber Farbe zeigen (rot/gruen) - ein Farbenblinder oder ein
   Ausdruck sieht nichts.

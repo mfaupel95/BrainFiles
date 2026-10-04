@@ -23,6 +23,13 @@ Position ohne Stop ist der ganze Einsatz, der Basis-Deckel ist eine TABELLE
 und bindet nur neue Einstiege, Aliase muessen vorbereinheitlicht sein, sonst
 umgeht man den Deckel mit einem anderen Namen.
 
+**Botsenseitig lesen, wenn die Frage "was ist offen" lautet:**
+`Agenten/Handel/okx_positionen_live.py` (rein lesend, ohne Bot-Blick) zeigt
+Kontostand je Waehrung, offene Positionen mit Einstieg/Liquidation und die
+Stops mit ihrer Menge. Die BOTS (Leiter, Munition) sind davon getrennt
+(`okx-bots-bewachen`) - beide Fragen gleichzeitig beantwortet ein Aufruf
+sonst nie.
+
 ## Die Verdrahtungsregel: eine Spur, die das Haus fuehrt, muss das Haus rechnen koennen
 
 `dauerlauf.SPUREN` (47), `auswertung_alle.SPUREN` (44), `pruefe_ratschen.SPUREN`
@@ -963,7 +970,35 @@ lesen; die Datei ist nicht bei jeder Spur-Runde Pflicht.
   **Dieselbe Drift trifft LISTENBLOECKE, und dort verliert sie still eine
   Zeile:** ein Patch am Kopf eines Eintrags hat die Einrueckung verschoben UND
   die Anschlusszeile entfernt - ohne Fehlermeldung, sichtbar erst beim Lesen des
-  Blocks. Ein zweiter Patch am selben Block verschlimmert es, weil der Anker
+  Blocks. Ein zwe
+- **Ein Block-Ersetzungsskript kann EINFUEGEN statt ERSETZEN.** Wenn der
+  Schnittmarker am Anfang des neuen Blocks sitzt statt am Anfang des alten,
+  stehen am Ende **zwei Definitionen** derselben Funktion in der Datei, und in
+  Python gewinnt die **SPAETERE**. Der neue Code laeuft nie, ohne dass irgendwo
+  ein Fehler steht - der Lauf zeigt den alten Weg, und man pflegt am Code zu
+  arbeiten, der gar nicht benutzt wird. Dagegen zwei billige Pruefungen: vor dem
+  Schreiben `text.count("def <name>(") == 1` im **Speicher** erzwingen, und
+  `ast.parse(neu)` VOR dem Schreiben laufen lassen. Beides hat hier mehrfach
+  eine bereits kaputte Datei verhindert.
+- **Eine Kontrollzeile, die zwei Nullen vergleichen kann, ist keine Kontrolle.**
+  `abs(summe - kontrollwert) < 0.01` ist gruen, wenn beide Null sind - und
+  beide waren Null, weil der Parser die falsche Ebene las. Ein echter
+  Kontrollwert kann nicht Null sein (die Kontostand-Zahl selbst, die
+  Zeilenzahl, der nichtleere Text). Sonst **bestaetigt** die Kontrolle den
+  Fehler, statt ihn zu finden, und genau so wurde ein Konto mit ueber 900
+  Waehrung als "0.00, stimmt" gemeldet.
+- **Eine Bedingung ohne Wirkung liest sich wie eine Entscheidung.**
+  `if bedingung: pass / elif ...` im Block, der eigentlich greifen sollte,
+  sieht beim Review aus wie eine gepruefte Verzweigung und laesst danach die
+  nächste Rechnung auf `None` laufen. Nach jeder Blockumschreibung lesen, was
+  der Zweig jetzt tut, und die Leervariable pruefen: greift der neue Pfad,
+  oder ist die Bedingung unerreichbar?
+- **Skript fuer den Geraetezustand zuerst lesen, dann anrufen.** Wenn ein
+  Helfer anders aufgebaut ist als angenommen (liefert ein Float statt eines
+  Dict, nimmt keine SPOT-Instanz, verdoppelt ein Prozentfeld), faellt das im
+  eigenen Lauf als leeres Ergebnis auf und wird leicht als "das Konto ist
+  leer" gelesen. Ein Aufruf, der die ROHANTWORT zeigt, trennt "der Weg liefert
+  nichts" von "mein Adapter liest falsch" in einer Minute.iter Patch am selben Block verschlimmert es, weil der Anker
   danach nicht mehr existiert. Gegenmittel: nach JEDEM Patch an einer Liste den
   BLOCK lesen (nicht den Diff) und die Zeilen gegen den eigenen Entwurf halten;
   beim ersten Anzeichen den Block ueber ZEILENINDIZES per Python ersetzen und
@@ -1037,7 +1072,12 @@ lesen; die Datei ist nicht bei jeder Spur-Runde Pflicht.
 Auftrag "Kraken positionen mit stop loss 7,5% ausstatten" / "Sui Zec und near
 ebenfalls absichern". Geht es um Positionen, die SCHON offen sind, ist das ein
 Handgriff am Konto - nicht der Stop, den die Spur beim Einstieg selbst setzt.
-Die exakten Aufrufe und Felder stehen in `references/boersen-aufrufe.md`.
+Die exakten Aufrufe und Felder stehen in `references/boersen-aufrufe.md`;
+**OKX-Futures (XPERP, Hebel, isoliert/cross, OCO) in
+`references/okx-futures-positionen.md`** - dort auch die Fallgriffe, an denen
+ein Bestandsbericht ein leeres Konto meldet (die Kontostand-Zahlen stehen je
+Waehrung in `details`, nicht auf Kontoebene) und wie man die Liquidationsluft
+richtig rechnet.
 
 1. **Ort klaeren, nicht raten.** Drei Stellen: Spot (`BalanceEx`),
    MARGIN-Positionen (`OpenPositions`), Futures-Brieftasche. Wer nur das
@@ -1066,6 +1106,18 @@ Die exakten Aufrufe und Felder stehen in `references/boersen-aufrufe.md`.
 10. **Loecher melden:** uebersprungene Positionen (Staub, Stop nicht unter dem
     Markt) und Bestaende ohne Stop gehoeren in die Antwort - sonst sieht
     "8 Stops gesetzt" nach "alles geschuetzt" aus.
+11. **Der Auftrag kann buchstabengetreu falsch sein - und das ist der
+    Auftrag.** „MON zuerst absichern" traegt, wenn MON zwischen Auftrag und
+    Ausfuehrung schon einen OCO bekommen hat; „Luecke schliessen" traegt nicht,
+    wenn der Stop am Einstands-Niveau haengt und der Markt 9 % darueber steht.
+    **Deshalb vor dem Setzen den Ist-Zustand frisch lesen** und beide Wege
+    benennen: der beauftragte und der, der die Absicht wirklich trifft, mit den
+    Zahlen, die dafuer sprechen. Dann ist die Entscheidung beim Menschen -
+    ein Werkzeug darf sie nicht selbst treffen, und ein Live-Handgriff wird
+    nicht "vorsorglich" ausgefuehrt, weil er plausibel klingt. Der Auftrag
+    deckt auch nicht, was daneben liegt: fehlende TP-Deckung, Waisenposten
+    mit Nullmenge, Stop auf halber Position gehoeren in den Bericht, nicht in
+    die stille Erledigung.
 
 Werkzeuge: `kraken/margin_stops.py` (Margin; Vorschau Standard, `--anwenden`),
 `kraken/spot_stops.py` (ALLE SPOT-Bestaende ab einem Mindestwert, Bezug ist der
@@ -1088,6 +1140,16 @@ NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 `--nur-buch`.
 
 ## References
+- `references/okx-futures-positionen.md` — offene **OKX-Futures**-Positionen
+  lesen und absichern (XPERP, Hebel, `isolated`/`cross`, OCO): welche Abfrage
+  welche Frage beantwortet (`SPOT` nimmt `/positions` nicht), die
+  Kontostand-Falle (Zahlen stehen je Waehrung in `details`, nicht auf
+  Kontoebene), die Liquidationsluft mit Vorzeichen, „geschuetzt“ als **Summe**
+  der Stueckzahlen (Luecke/Ueberdeckung/Nullmenge), der OCO-Koerper samt
+  `tdMode`/`side` und warum `okx.stop_setzen` dort nicht passt, und die Regel
+  vor dem Aufstocken: vorhandene Preise gegen den **aktuellen Kurs** rechnen,
+  nicht gegen den Einstand. Ausloeser: „Positionen analysieren", „Stop
+  setzen", „aufstocken", „intelligenter Take-Profit", „Luft bis Liquidation".
 - `references/boersen-aufrufe.md` — Stops an BESTEHENDE Positionen: die exakten
   Kraken-Aufrufe (`AddOrder` mit `close[...]`, `OpenPositions`-Felder,
   `QueryOrders`-Antwort, Paarregeln), OKX-Stops und die Fehlermeldungen
