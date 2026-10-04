@@ -11,6 +11,18 @@ metadata:
 
 # Handelsspuren
 
+**Tore, Freigaben, Deckel und die Trennung von Monitor und Ausfuehrung:**
+`references/gates-und-freigabekette.md` - wo eine Sperre gehoert, was ein
+Deckel bindet, warum ein Ausfall nie wie eine Messung aussehen darf und
+warum ein Warteschlangen-Eintrag pro Risikostufe eine eigene Datei braucht.
+
+**Risiko-Werkzeuge, Basis-Deckel, Schattenarme, Stop im Gitter:**
+`references/risiko-und-schattenarme.md` - `HANDEL` ist eine oder zwei Ebenen
+(sonst meldet ein Werkzeug "keine Positionen" statt zu scheitern), eine
+Position ohne Stop ist der ganze Einsatz, der Basis-Deckel ist eine TABELLE
+und bindet nur neue Einstiege, Aliase muessen vorbereinheitlicht sein, sonst
+umgeht man den Deckel mit einem anderen Namen.
+
 ## Die Verdrahtungsregel: eine Spur, die das Haus fuehrt, muss das Haus rechnen koennen
 
 `dauerlauf.SPUREN` (47), `auswertung_alle.SPUREN` (44), `pruefe_ratschen.SPUREN`
