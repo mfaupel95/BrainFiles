@@ -2592,7 +2592,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/nautilus_kraken
 
 
-- [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt
+- [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt**
       Kontext: `nautilus_kraken` und `nautilus_kraken_futures` laufen Papier
       (`handel_erlaubt=false`, `freigabe.erfuellt=false`). Der gemeldete Fehler "OKX
       51001" war ERZEUGT und steht in keiner Datei (Suche ueber den Handelsbaum: nur
