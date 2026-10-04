@@ -47,7 +47,11 @@ impl BinanceSigner {
         secret: &str,
         timestamp: i64,
     ) -> Result<String, ExchangeError> {
-        let timestamped = format!("{}&timestamp={}", query_string, timestamp);
+        let timestamped = if query_string.is_empty() {
+            format!("timestamp={}", timestamp)
+        } else {
+            format!("{}&timestamp={}", query_string, timestamp)
+        };
         let signature = Self::sign(&timestamped, secret)?;
         Ok(Self::build_signed_query(&timestamped, &signature))
     }
@@ -117,6 +121,13 @@ mod tests {
         assert!(signed.contains("symbol=ETHUSDT"));
         assert!(signed.contains(&timestamp.to_string()));
         assert!(signed.contains("signature="));
+    }
+
+    #[test]
+    fn test_sign_request_empty_query_has_no_leading_ampersand() {
+        let signed = BinanceSigner::sign_request("", "secret123", 1694527382000i64)
+            .expect("sign failed");
+        assert!(signed.starts_with("timestamp=1694527382000&signature="));
     }
 
     #[test]

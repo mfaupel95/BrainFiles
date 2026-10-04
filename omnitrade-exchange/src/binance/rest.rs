@@ -9,6 +9,26 @@ use omnitrade_core::{Order, OrderStatus, OrderType, Side, TimeInForce};
 use reqwest::{Client, Method};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::Duration;
+
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Binance liefert Zahlen als JSON-Strings ("0.00100000"); akzeptiert beides.
+fn de_f64<'de, D>(d: D) -> Result<f64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum NumOrStr {
+        Num(f64),
+        Str(String),
+    }
+    match NumOrStr::deserialize(d)? {
+        NumOrStr::Num(n) => Ok(n),
+        NumOrStr::Str(s) => s.parse::<f64>().map_err(serde::de::Error::custom),
+    }
+}
 
 /// Binance REST API base URLs.
 const TESTNET_REST_URL: &str = "https://testnet.binance.vision";
@@ -34,8 +54,14 @@ impl BinanceRestClient {
             MAINNET_REST_URL.to_string()
         };
 
+        let http_client = Client::builder()
+            .timeout(REQUEST_TIMEOUT)
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .map_err(|e| ExchangeError::InvalidRequest(format!("HTTP client: {}", e)))?;
+
         Ok(Self {
-            http_client: Client::new(),
+            http_client,
             base_url,
             credentials,
         })
@@ -65,18 +91,15 @@ impl BinanceRestClient {
         let signed_query =
             BinanceSigner::sign_request(&query, &self.credentials.secret, timestamp)?;
         let url = format!("{}/api/v3{}", self.base_url, endpoint);
+        let full_url = format!("{}?{}", url, signed_query);
 
-        let request = self
-            .http_client
-            .request(method.clone(), &url)
-            .query(&[("signature_query", signed_query)])
-            .header("X-MBX-APIKEY", &self.credentials.key);
-
-        request
+        self.http_client
+            .request(method, &full_url)
+            .header("X-MBX-APIKEY", &self.credentials.key)
             .send()
             .await
             .map_err(|e| ExchangeError::ConnectionFailed {
-                url: url.clone(),
+                url,
                 reason: e.to_string(),
             })
     }
@@ -110,7 +133,11 @@ impl BinanceRestClient {
             quantity: resp.orig_qty,
             filled_quantity: resp.executed_qty,
             created_at_ms: resp.time as u64,
-            updated_at_ms: resp.update_time as u64,
+            updated_at_ms: if resp.update_time > 0 {
+                resp.update_time as u64
+            } else {
+                resp.time as u64
+            },
             trailing_highest_price: None,
         }
     }
@@ -150,6 +177,9 @@ impl ExchangeTrading for BinanceRestClient {
 
         if let Some(price) = req.price {
             params.insert("price".to_string(), price.to_string());
+        }
+        if req.order_type == OrderType::Limit {
+            params.insert("timeInForce".to_string(), "GTC".to_string());
         }
 
         let response = self
@@ -263,17 +293,24 @@ impl ExchangeTrading for BinanceRestClient {
 struct BinanceOrderResponse {
     symbol: String,
     order_id: i64,
+    #[serde(default)]
     client_order_id: String,
+    #[serde(deserialize_with = "de_f64")]
     price: f64,
+    #[serde(deserialize_with = "de_f64")]
     orig_qty: f64,
+    #[serde(deserialize_with = "de_f64")]
     executed_qty: f64,
-    cum_quote_asset_transacted_qty: f64,
     status: String,
+    #[serde(default)]
     time_in_force: String,
     #[serde(rename = "type")]
     order_type: String,
     side: String,
+    /// Fehlt in der Antwort auf POST /order (dort `transactTime`).
+    #[serde(default, alias = "transactTime")]
     time: i64,
+    #[serde(default)]
     update_time: i64,
 }
 
@@ -294,7 +331,9 @@ struct BinanceAccountResponse {
 #[derive(Debug, Serialize, Deserialize)]
 struct BinanceBalance {
     asset: String,
+    #[serde(deserialize_with = "de_f64")]
     free: f64,
+    #[serde(deserialize_with = "de_f64")]
     locked: f64,
 }
 
@@ -322,6 +361,23 @@ mod tests {
         );
         let client = BinanceRestClient::new(creds).expect("Failed to create client");
         assert_eq!(client.base_url, MAINNET_REST_URL);
+    }
+
+    #[test]
+    fn test_parse_order_response_with_string_numbers() {
+        let json = r#"{"symbol":"BTCUSDT","orderId":28,"transactTime":1507725176595,
+            "price":"0.00000000","origQty":"10.00000000","executedQty":"10.00000000",
+            "status":"FILLED","timeInForce":"GTC","type":"MARKET","side":"SELL"}"#;
+        let resp: BinanceOrderResponse = serde_json::from_str(json).expect("parse");
+        assert_eq!(resp.orig_qty, 10.0);
+        assert_eq!(resp.time, 1507725176595);
+    }
+
+    #[test]
+    fn test_parse_balances_with_string_numbers() {
+        let json = r#"{"balances":[{"asset":"BTC","free":"0.5","locked":"0.1"}]}"#;
+        let resp: BinanceAccountResponse = serde_json::from_str(json).expect("parse");
+        assert_eq!(resp.balances[0].free, 0.5);
     }
 
     #[test]
