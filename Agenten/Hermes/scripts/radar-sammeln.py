@@ -48,7 +48,18 @@ def _umgebung() -> dict:
     return env
 
 
-def _ruf(args: list[str], frist: int = 300) -> tuple[int, str]:
+# 04.10.2026: 300 -> 900 s. Die drei Aufrufe brauchen zusammen ~39 s
+# (track 5-31 s, enrich-tokens 7 s, discover 1 s). Die gemessenen 349 s
+# waren KEINE langsame Arbeit, sondern 95 haengende Runs in der Radar-DB
+# - jeder Abbruch hinterliess einen Run ohne `finished_at`, der naechste
+# Lauf sah offen Arbeit und wurde langsamer, bis er selbst abbrach.
+# Nach dem Schliessen: track 5 s. 900 s laesst Luft fuer einen echten
+# Haenger (Netz, RPC), ohne einen endlosen Zweig zu erlauben.
+FRIST_S = 900
+
+
+def _ruf(args: list[str], frist: int = None) -> tuple[int, str]:
+    frist = FRIST_S if frist is None else frist
     a = [PYTHON, "-m", "fomo_agent.cli"] + args
     try:
         p = subprocess.run(a, cwd=REPO, env=_umgebung(), capture_output=True,

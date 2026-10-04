@@ -92,7 +92,15 @@ def main():
         geprueft += 1
         if vorsprung > 0:
             _, lokal, _ = git(repo, "log", "-1", "--format=%ci", "HEAD")
-            _, fern, _ = git(repo, "log", "-1", "--format=%ci", zweig)
+            # ACHTUNG: `zweig` ist der Name des UPSTREAM-Standardzweigs
+            # ("main"). `git log ... main` liest aber den LOKALEN Zweig
+            # gleichen Namens - beide Zeilen der Meldung zeigten damit
+            # denselben Zeitstempel, und der Rueckstand sah wie "aktuell"
+            # aus (gemessen 04.10.2026 an jevgrep: lokal 29.09., upstream
+            # 02.10., gemeldet zweimal der 29.09.). Der volle Ref ist
+            # refs/remotes/upstream/<zweig>.
+            _, fern, _ = git(repo, "log", "-1", "--format=%ci",
+                              "refs/remotes/upstream/" + zweig)
             meldungen.append("%s: %d Commit(s) hinter upstream\n"
                              "    lokal %s | upstream %s"
                              % (repo.name, vorsprung,
