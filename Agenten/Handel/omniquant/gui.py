@@ -16,6 +16,7 @@ Fuss (Einsatz/Verluste/Kill-Switch).
 """
 
 import csv
+import importlib.util
 import json
 import os
 import queue
@@ -41,13 +42,33 @@ REFRESH_MS = 15_000
 BERICHTS_GRENZE_H = 26.0
 CHART_KERZEN = 90
 
-# Farben — dunkles Terminal, lesbar auch bei schlechtem Licht
-FARBEN = {
-    "bg": "#1e1e2e", "blatt": "#181825", "gitter": "#313244",
-    "text": "#cdd6f4", "matt": "#a6adc8", "gruen": "#a6e3a1",
-    "rot": "#f38ba8", "gelb": "#f9e2af", "akzent": "#89b4fa",
-    "blau": "#89b4fa", "zellgruen": "#1b4d3e", "zellrot": "#5c1f2b",
-}
+# Farben, Schrift, Abstaende und ttk-Stile kommen aus EINER Quelle:
+# `Werkzeuge/fenster_design.py`. Bis 04.10.2026 stand hier eine vollstaendige
+# Kopie der Palette (12 Schluessel) - heute wertgleich, aber ungebunden: eine
+# Aenderung in der Quelle erreicht dieses Fenster nicht mehr, und `auswahl`
+# fehlte bereits. Genau das ist der Wartungsfehler, den die Quelle in ihrem
+# eigenen Kopf als Grund fuer ihre Existenz nennt.
+#
+# Geladen per Dateipfad, nicht ueber sys.path: ein Eintrag auf `Werkzeuge/`
+# wuerde dort liegende Module einblenden und gleichnamige in `Handel/`
+# verdecken (dort liegt `marktdaten.py`).
+_spec = importlib.util.spec_from_file_location(
+    "fenster_design",
+    os.path.join(os.path.dirname(HIER), "..", "Werkzeuge",
+                 "fenster_design.py"))
+design = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(design)
+
+FARBEN = design.FARBEN
+SCHRIFT_ART = design.SCHRIFT_ART
+SCHRIFT_GROESSE = design.SCHRIFT_GROESSE
+KLEIN = design.KLEIN       # Fusszeile, Nebeninfo
+TINY = design.TINY         # Chart-Beschriftung
+
+
+def schrift(rel=0, fett=False):
+    """Schriftart dieser Ansicht: (veraenderliche) Basis + relative Groesse."""
+    return design.schrift(SCHRIFT_GROESSE, rel, fett)
 
 
 def g_uhrzeit(z):
@@ -134,34 +155,47 @@ class OmniquantGui:
 
     # ---------- Aufbau ----------
     def _baue(self):
+        # Der Anzeigefaktor gehoert HIER und nicht in `main()`: als Reiter im
+        # Leitstand (OmniquantReiter, Zeile 28/79) kommt `main()` nie vorbei,
+        # und dasselbe Fenster zeigte dann im Alleinstart und im Reiter
+        # verschiedene Schriftgroessen und Zeilenhoehen fuer dieselben Daten.
+        try:
+            self.root.tk.call("tk", "scaling", 1.1)
+        except Exception:                                        # noqa: BLE001
+            pass
         st = ttk.Style()
         try:
             st.theme_use("clam")
         except Exception:
             pass
         st.configure(".", background=FARBEN["bg"], foreground=FARBEN["text"],
-                     fieldbackground=FARBEN["blatt"], font=("Consolas", 10))
+                     fieldbackground=FARBEN["blatt"], font=schrift(KLEIN))
         st.configure("Treeview", background=FARBEN["blatt"],
                      fieldbackground=FARBEN["blatt"], foreground=FARBEN["text"],
-                     rowheight=22, borderwidth=0)
-        st.configure("Treeview.Heading", background="#313244",
-                     foreground=FARBEN["akzent"], font=("Consolas", 10, "bold"))
-        st.map("Treeview", background=[("selected", "#45475a")])
+                     rowheight=design.zeilenhoehe(SCHRIFT_GROESSE),
+                     borderwidth=0)
+        # Die beiden Literale `#313244` und `#45475a` waren wertgleich zu
+        # FARBEN["gitter"] und FARBEN["auswahl"] - in derselben Datei, drei
+        # Zeilen unter der eigenen Palette. Sie jetzt aus der Quelle zu
+        # holen ist der ganze Sinn der Quelle.
+        st.configure("Treeview.Heading", background=FARBEN["gitter"],
+                     foreground=FARBEN["akzent"], font=schrift(KLEIN, fett=True))
+        st.map("Treeview", background=[("selected", FARBEN["auswahl"])])
 
         # Kopf: Modus + Bericht
         kopf = tk.Frame(self.root, bg=FARBEN["bg"])
         kopf.pack(fill="x", padx=10, pady=(8, 2))
         self.l_modus = tk.Label(kopf, bg=FARBEN["bg"],
-                                font=("Consolas", 12, "bold"))
+                                font=schrift(1, fett=True))
         self.l_modus.pack(side="left")
         self.l_bericht = tk.Label(kopf, bg=FARBEN["bg"],
-                                  font=("Consolas", 10))
+                                  font=schrift(KLEIN))
         self.l_bericht.pack(side="right")
         z2 = tk.Frame(self.root, bg=FARBEN["bg"])
         z2.pack(fill="x", padx=10, pady=(0, 4))
-        self.l_lauf = tk.Label(z2, bg=FARBEN["bg"], font=("Consolas", 10))
+        self.l_lauf = tk.Label(z2, bg=FARBEN["bg"], font=schrift(KLEIN))
         self.l_lauf.pack(side="left")
-        self.l_takt = tk.Label(z2, bg=FARBEN["bg"], font=("Consolas", 10),
+        self.l_takt = tk.Label(z2, bg=FARBEN["bg"], font=schrift(KLEIN),
                                fg=FARBEN["matt"])
         self.l_takt.pack(side="right")
 
@@ -190,25 +224,25 @@ class OmniquantGui:
 
         # Zeile: letzte Schliessungen
         self.l_schluesse = tk.Label(self.root, bg=FARBEN["bg"],
-                                    font=("Consolas", 9), fg=FARBEN["matt"],
+                                    font=schrift(TINY), fg=FARBEN["matt"],
                                     anchor="w", justify="left", wraplength=980)
         self.l_schluesse.pack(fill="x", padx=10, pady=(4, 2))
 
         # Auswertung: die Bilanz aus dem Journal, aus derselben Quelle wie
         # der Tagesbericht (auswertung.kernzeilen). Rein lesend.
         self.l_ausw_titel = tk.Label(self.root, bg=FARBEN["bg"],
-                                     font=("Consolas", 10, "bold"),
+                                     font=schrift(KLEIN, fett=True),
                                      fg=FARBEN["akzent"], anchor="w",
                                      text="Auswertung (Journal)")
         self.l_ausw_titel.pack(fill="x", padx=10, pady=(2, 0))
         self.l_auswertung = tk.Label(self.root, bg=FARBEN["bg"],
-                                     font=("Consolas", 9), fg=FARBEN["matt"],
+                                     font=schrift(TINY), fg=FARBEN["matt"],
                                      anchor="w", justify="left", wraplength=980)
         self.l_auswertung.pack(fill="x", padx=10, pady=(0, 2))
 
         # Chart
         self.l_chart_titel = tk.Label(self.root, bg=FARBEN["bg"],
-                                      font=("Consolas", 10, "bold"),
+                                      font=schrift(KLEIN, fett=True),
                                       fg=FARBEN["akzent"], anchor="w")
         self.l_chart_titel.pack(fill="x", padx=10, pady=(0, 0))
         self.canvas = tk.Canvas(self.root, bg=FARBEN["blatt"], height=200,
@@ -219,16 +253,16 @@ class OmniquantGui:
         fuss = tk.Frame(self.root, bg=FARBEN["bg"])
         fuss.pack(fill="x", padx=10, pady=(4, 6))
         self.l_einsatz = tk.Label(fuss, bg=FARBEN["bg"],
-                                  font=("Consolas", 10, "bold"))
+                                  font=schrift(KLEIN, fett=True))
         self.l_einsatz.pack(side="left")
         self.l_verluste = tk.Label(fuss, bg=FARBEN["bg"],
-                                   font=("Consolas", 10, "bold"))
+                                   font=schrift(KLEIN, fett=True))
         self.l_verluste.pack(side="left", padx=(18, 0))
         self.l_kill = tk.Label(fuss, bg=FARBEN["bg"],
-                               font=("Consolas", 10, "bold"))
+                               font=schrift(KLEIN, fett=True))
         self.l_kill.pack(side="left", padx=(18, 0))
         self.l_status = tk.Label(fuss, bg=FARBEN["bg"],
-                                 font=("Consolas", 10), fg=FARBEN["matt"])
+                                 font=schrift(KLEIN), fg=FARBEN["matt"])
         self.l_status.pack(side="right")
 
     # ---------- Daten ----------
@@ -385,7 +419,7 @@ class OmniquantGui:
             c.create_text(breite // 2, hoehe // 2,
                           text="Keine Kerzen verfuegbar%s"
                           % (": " + fehler if fehler else ""),
-                          fill=FARBEN["matt"], font=("Consolas", 10))
+                          fill=FARBEN["matt"], font=schrift(KLEIN))
             return
 
         pos = {p.get("inst"): p for p in self.zustand.get("positionen", [])}
@@ -394,7 +428,7 @@ class OmniquantGui:
             # Instrument aus Tabelle, aber nicht mehr offen -> Position weg
             c.create_text(breite // 2, hoehe // 2,
                           text="%s: Position nicht mehr offen" % inst,
-                          fill=FARBEN["matt"], font=("Consolas", 10))
+                          fill=FARBEN["matt"], font=schrift(KLEIN))
             return
 
         einstieg = float(p.get("einstieg") or 0)
@@ -425,7 +459,7 @@ class OmniquantGui:
                           fill=FARBEN["gitter"], width=1)
             preis = hoch - (hoch - tief) * s / 4
             c.create_text(rand_l - 4, ys, text=kurs_fmt(preis),
-                          anchor="e", fill=FARBEN["matt"], font=("Consolas", 8))
+                          anchor="e", fill=FARBEN["matt"], font=schrift(-3))
 
         # Kerzen
         n = len(kerzen)
@@ -456,14 +490,14 @@ class OmniquantGui:
                           width=1, dash=(4, 3))
             c.create_text(breite - rand_r + 1, ys,
                           text=name, anchor="w", fill=farbe,
-                          font=("Consolas", 8, "bold"))
+                          font=schrift(-3, fett=True))
 
         # Datumsachse (Anfang/Ende)
         if n:
             c.create_text(rand_l, hoehe - 4, text="%s" % kerzen[0][0],
-                          anchor="w", fill=FARBEN["matt"], font=("Consolas", 8))
+                          anchor="w", fill=FARBEN["matt"], font=schrift(-3))
             c.create_text(breite - rand_r, hoehe - 4, text="%s" % kerzen[-1][0],
-                          anchor="e", fill=FARBEN["matt"], font=("Consolas", 8))
+                          anchor="e", fill=FARBEN["matt"], font=schrift(-3))
 
         self.l_chart_titel.config(
             text="%s  %s   —  %d Tageskerzen, Einstieg %s (Stop %s, Ziel %s)"
@@ -640,11 +674,7 @@ class OmniquantReiter(ttk.Frame):
 
 def main():
     root = tk.Tk()
-    try:
-        root.tk.call("tk", "scaling", 1.1)
-    except Exception:
-        pass
-    OmniquantGui(root)
+    OmniquantGui(root)     # das Scaling setzt `_baue()` - fuer beide Wege
     root.mainloop()
 
 
