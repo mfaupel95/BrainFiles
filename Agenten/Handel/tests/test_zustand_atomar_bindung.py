@@ -26,7 +26,7 @@ SPUREN = [
     "moondev_marktlage/live_kraken.py", "omniquant/handeln.py",
     "nautilus_kraken/handeln.py", "kraken/handeln.py", "scanner/handeln.py",
     "orb/handeln.py", "orbk/handeln.py", "spiegel/spiegel.py",
-    "kopier/kopier.py", "kopier1zu1/handeln.py", "spur_buch.py",
+    "kopier/kopier.py", "spur_buch.py",
 ]
 
 

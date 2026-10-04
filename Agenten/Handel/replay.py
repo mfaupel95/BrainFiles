@@ -96,7 +96,6 @@ NICHT_NACHRECHENBAR = {
     "iv_waelle": "Strike-OI-Historie (Deribit) nicht abrufbar",
     "robinhood_radar": "fremde SQLite haelt nur den Sammelzeitraum",
     "kopier": "Solana-Onchain-Historie nur wenige Tage",
-    "kopier1zu1": "Solana-Onchain-Historie nur wenige Tage",
     "nautilus": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
     "nautilus_kraken": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
     "nautilus_kraken_futures": "Einstiege haengen an Quote-Ticks",

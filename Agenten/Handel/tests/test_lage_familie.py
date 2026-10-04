@@ -1,6 +1,6 @@
 """Tests fuer die Berichts-Schlankung der Kopie-Familie.
 
-Die Familie (spiegel, spiegel_knapp, spiegel_weit, kopier, kopier1zu1)
+Die Familie (spiegel, spiegel_knapp, spiegel_weit, kopier)
 erscheint im HOLER als EIN Holer und im Tagesbericht als EIN Block mit je
 einer schlanken Zeile pro Buch - die Einzelpositionen bleiben fuer
 Schnappschuss und Summe in `positionen`, werden aber nicht aufgezogen.
@@ -15,7 +15,7 @@ sys.path.insert(0, HIER)
 import lage                                              # noqa: E402
 
 FAMILIE = ("spur_spiegel", "spur_spiegel_knapp", "spur_spiegel_weit",
-           "spur_kopier", "spur_kopier1zu1")
+           "spur_kopier")
 
 
 class FamilienHolerTest(unittest.TestCase):

@@ -14,7 +14,7 @@ from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
 HANDEL = HIER.parent
-SPUREN = ("spiegel", "kopier", "kopier1zu1")
+SPUREN = ("spiegel", "kopier")
 if str(HANDEL) not in sys.path:
     sys.path.insert(0, str(HANDEL))
 

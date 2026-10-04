@@ -45,7 +45,7 @@ class EinstiegeTest(unittest.TestCase):
         self.alt = zm.HIER
         zm.HIER = self.tmp
         self.addCleanup(setattr, zm, "HIER", self.alt)
-        self.pfad = self.tmp / "kopier1zu1"
+        self.pfad = self.tmp / "kopier"
         self.pfad.mkdir()
         self.datei = self.pfad / "handelsjournal.csv"
         with self.datei.open("w", newline="", encoding="utf-8") as f:
@@ -65,7 +65,7 @@ class EinstiegeTest(unittest.TestCase):
             w.writerow([_iso(4), "eroeffnen", "solana", "DDD", "D", "", "x", "kopie"])
 
     def test_nur_frische_einstiege_mit_preis(self):
-        e = zm.einstiege("kopier1zu1", "kopier1zu1/handelsjournal.csv",
+        e = zm.einstiege("kopier", "kopier/handelsjournal.csv",
                          "preis_vorbild")
         self.assertEqual([x["token"] for x in e], ["AAA"])
         self.assertEqual(e[0]["kette"], "solana")

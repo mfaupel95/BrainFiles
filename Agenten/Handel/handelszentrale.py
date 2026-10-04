@@ -121,7 +121,7 @@ QUELLE = {"kraken": "kraken", "orbk": "kraken", "spiegel": "feed",
           # spiegel: ihr Instrument ist ein Token (kette+token), kein
           # OKX-Paar. Ohne den Eintrag stand dort "Quelle okx" mit der
           # Token-Adresse als Instrument - der Chart lief ins Leere.
-          "kopier": "feed", "kopier1zu1": "feed",
+          "kopier": "feed",
           # moondev_sniper fuehrt seine Solana-Mints als `inst` (ohne
           # kette/token-Feld) - dieselbe Klasse: "Quelle okx" mit einer
           # Contract-Adresse, kein Kurs, seit dem 19.09. Gemessen am 01.10.2026

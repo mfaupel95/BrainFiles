@@ -49,6 +49,49 @@ von oben → knapp UEBER. Ohne diese Unterscheidung liegt das Short-Ziel hinter
 dem Einstieg und `spur_buch.einstieg` lehnt es als Rechenfehler ab — die Spur
 handelt dann gar nichts, ohne dass jemand den Grund sieht.
 
+## 1a. Eine Quelle, die BEIDSEITS des Kurses liegen kann, ist kein Zielpunkt
+
+Die Regel oben gilt fuer Zonen mit fester Seite. Sie laeuft ins Leere, sobald
+die Quelle selbst **auf beiden Seiten** des Kurses liegen kann — eine
+Liquidationswand, ein Liquidity-Pool, ein Niveauband. Dann gibt es keine
+Konstante "die richtige Seite", sondern eine **Bedingung**: das Ziel muss in
+Handelsrichtung liegen, und wenn der Rohwert das nicht erfuellt, wird er durch
+ein Distanzziel (R) ersetzt — nie durch einen anderen Markt.
+
+**Das Symptom ist eine vertauschte Bilanz, keine schlechte Trefferquote.** Bei
+einer Liquidationswand: Ziel-Ausstiege im Mittel leicht negativ, Stop-Ausstiege
+positiv, Gesamtsumme negativ bei ueber 50 % Treffern. Wer nur die Quote liest,
+haelt die Geometrie fuer in Ordnung; wer auf die Zeile `ziel` schaut, sieht das
+Ziel auf der falschen Seite des Einstiegs.
+
+**Regel.** Beim Bau eines Zielpunkts aus einem Rohwert zuerst fragen: *kann
+dieser Rohwert unter UND ueber dem Kurs liegen?* Wenn ja, wird er gegen die
+Handelsrichtung geprueft, nicht ungeprueft uebernommen:
+
+```python
+wandpreis, menge, seite = treffer          # seite = liquidierter Bestand
+long_ = (seite == "short")                 # liquidierte Shorts = Kaufdruck
+if long_:
+    return wandpreis if wandpreis > spot else spot * (1 + r / 100.0)
+return wandpreis if wandpreis < spot else spot * (1 - r / 100.0)
+```
+
+Der Test dazu kreuzt **jede Kombination** aus Rohwert ueber/unter dem Kurs und
+long/short — siehe `references/test-friert-stand-ein.md`, „Gegenprobe beim
+Umbau“. Der Wandpreis wird weiterhin genommen, wenn er passt; nur die Haelfte
+der Faelde, in denen er nicht passt, bekommt statt eines unerreichbaren Ziels
+ein erreichbares.
+
+## 1b. Ein Buendelpreis ist ein Rasterpunkt, nicht der Rohpreis
+
+Wenn die Quelle in Preisb Buendel einsortiert, ist der zurueckgegebene Preis
+die **Bandmitte**, nicht der beobachtete Einzelwert: aus einer Liquidation bei
+86000 wird bei einem Raster von 0,25 % und Spot 85000 ein Ziel von 86062,50.
+Das ist Absicht — die Buendelung braucht ein Raster — und es heisst: ein Test,
+der auf den Rohwert pruft, meldet einen Fehler, den es nicht gibt. Der Test holt
+den Preis ueber dieselbe Funktion, die der Lauf benutzt, und vergleicht das
+Ergebnis damit.
+
 ## 2. Ein Marktpunkt ist ein Streifen, keine Linie
 
 Gemessen an iv_wand: Ziel 86000, tatsaechliche Verkaeufe bei 86777, 86043,

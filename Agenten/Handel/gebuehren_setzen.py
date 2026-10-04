@@ -25,7 +25,7 @@ Nachmessen (`--messen`, rein lesend, kein Schluessel wird ausgegeben):
     python gebuehren_setzen.py --messen
 
 Ungefragte Saetze, absichtlich NICHT angefasst (keine Messung moeglich, der
-Wert ist eine Modellannahme): kopier/kopier1zu1 1,0 % (Solana-Onchain),
+Wert ist eine Modellannahme): kopier 1,0 % (Solana-Onchain),
 robinhood_radar 1,0 % (Robinhood Chain). Sie brauchen eine Entscheidung, nicht
 eine Zahl aus einem anderen Markt.
 
@@ -230,7 +230,6 @@ AENDERUNGEN = [
     ("omniquant/wachen.weit.json", "gebuehr_pct", 0.05, QUELLE_OMNIQUANT),
     ("omniquant/wachen.weit.json", "gebuehr_taker", 0.0005, QUELLE_OMNIQUANT),
     ("kopier/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
-    ("kopier1zu1/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("robinhood_radar/wachen.json", "gebuehr_taker", 0.01, QUELLE_ANNAHME_ONCHAIN),
     ("spiegel/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("spiegel/wachen.knapp.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
@@ -261,7 +260,7 @@ def _notiz_ist_besser(alt_notiz, neu_notiz):
     Der Grund für diese Frage: `_gebuehr_quelle` wird mit dem Wert MITEINANDER
     gesetzt (eine alte Notiz über einem neuen Wert wäre ein Widerspruch in der
     Datei selbst). Nur trifft das einen Sonderfall, der am 02.10.2026 real
-    Schaden anrichtete: bei kopier, kopier1zu1 und robinhood_radar stand der
+    Schaden anrichtete: bei kopier und robinhood_radar stand der
     WERTE richtig, aber die Notiz war zwischenzeitlich von Hand verbessert
     worden - aus „NICHT gemessen" in „der Nachlauf dazu ist GEMESSEN
     (01.10.2026)". `--anwenden` setzte sie trotzdem zurück, weil der
@@ -423,7 +422,7 @@ def anwenden():
         #   1. stimmt der WERT?           -> sonst schreiben, egal was die Notiz sagt
         #   2. ist die Notiz schlechter?  -> nur dann ersetzen
         # Sonst setzte ein Aufruf eine zwischenzeitlich von Hand gemessene
-        # Notiz zurueck (kopier, kopier1zu1, robinhood_radar).
+        # Notiz zurueck (kopier, robinhood_radar).
         wert_ok = alt is not None and float(alt) == float(wert)
         behalten = _notiz_ist_besser(notiz_alt, quelle)
         if wert_ok and notiz_alt == quelle:

@@ -454,101 +454,6 @@ def spur_kopier():
     }
 
 
-def _stop_preis_1zu1(p, w, buch):
-    """Der Kurs, bei dem kopier1zu1 die Kopie schliesst.
-
-    stop_usd ist ein VERLUSTBETRAG in USD, kein Preis: handeln.py schliesst,
-    wenn einsatz_usd - erloes >= stop_usd. zeile_position() rechnet aber einen
-    Stop-ABSTAND am Kurs - mit dem USD-Betrag als "Stop" kaeme bei einem
-    Token-Kurs von 0,000136 ein Abstand von -100 % heraus und der Bericht
-    meldete "Stop gerissen" fuer jede gesunde Position.
-
-    Deshalb wird der Preis aus derselben Bedingung zurueckgerechnet, die der
-    Schreiber prueft, statt eine zweite Grenze zu erfinden:
-        erloes            = menge * kurs * (1-slippage) * (1-gebuehr)
-        Schliessen, wenn    einsatz_usd - erloes >= stop_usd
-        also                kurs <= (einsatz_usd - stop_usd) / (menge * faktor)
-    Der Faktor kommt aus buch._verkaeuflich (Probe mit Kurs 1), damit die
-    Kostenformel nicht ein zweites Mal hier steht. Ohne Buch oder ohne die
-    noetigen Felder: None - dann zeigt der Bericht die Zeile ohne Stop-Marke
-    statt mit einer geratenen.
-    """
-    if buch is None or p.get("stop_usd") is None:
-        return None
-    try:
-        faktor = buch._verkaeuflich(p["menge"], 1.0, w)
-        if not faktor:
-            return None
-        return (p["einsatz_usd"] - p["stop_usd"]) / faktor
-    except Exception:                                      # noqa: BLE001
-        return None
-
-
-def spur_kopier1zu1():
-    """Kopier1zu1-Spur - 1:1-Papierbuch auf denselben Pump.fun-Feed, USD.
-
-    Schwester von kopier/, aber ohne Rangliste: sie kopiert jeden Kauf des
-    Vorbilds einzeln statt einer Auswahl. Deshalb liest sie ihr Buch aus
-    kopier1zu1/handeln.py (dort liegen _verkaeuflich und der Verweis auf
-    kopier/lesen.py), nicht aus einem eigenen Modul.
-
-    Zwei Feldnamen weichen von kopier ab und werden hier gelesen, nicht
-    geraten: der Ausstieg haengt an stop_usd (nicht stop_preis), und der
-    Einstiegspreis heisst preis_einstieg. Ein falscher Name saehe nicht wie
-    ein Fehler aus, sondern wie "0 Positionen".
-    """
-    ordner = os.path.join(HIER, "kopier1zu1")
-    w = _lies(os.path.join(ordner, "wachen.json"), {})
-    z = _lies(os.path.join(ordner, "zustand.json"), {}) or {}
-    pos = z.get("positionen", [])
-
-    kurse, buch = {}, None
-    if pos:
-        alt = sys.dont_write_bytecode
-        sys.dont_write_bytecode = True
-        try:
-            import importlib.util                          # noqa: PLC0415
-            sys.path.insert(0, os.path.join(HIER, "kopier"))
-            spec = importlib.util.spec_from_file_location(
-                "kopier1zu1_handeln", os.path.join(ordner, "handeln.py"))
-            buch = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(buch)
-            kurse = buch.lesen.preise([(p["kette"], p["token"]) for p in pos])
-        except Exception:                                  # noqa: BLE001
-            kurse, buch = {}, None
-        finally:
-            sys.dont_write_bytecode = alt
-
-    zeilen = []
-    for p in pos:
-        kurs = kurse.get((p["kette"], p["token"]))
-        wert = None
-        if kurs and buch:
-            try:
-                wert = buch._verkaeuflich(p["menge"], kurs, w)
-            except Exception:                              # noqa: BLE001
-                wert = None
-        zeilen.append({
-            "name": "%s %s" % (p.get("symbol", "?"), p.get("kette", "")),
-            "einstieg": p.get("preis_einstieg"), "kurs": kurs,
-            "wert": p.get("einsatz_usd", 0),
-            "vh": ((wert / p["einsatz_usd"] - 1) * 100
-                   if wert and p.get("einsatz_usd") else None),
-            "stop": _stop_preis_1zu1(p, w, buch),
-            "seit": p.get("eroeffnet"),
-            "familie": None,
-        })
-    return {
-        "name": "Kopier1zu1 (Papier, Pump.fun 1:1)", "waehrung": "USD",
-        "w": w, "z": z,
-        "positionen": zeilen, "ordner": ordner,
-        "pruefmodul": None,
-        "papierfest": True,
-        "journal": _buch(os.path.join(ordner, "handelsjournal.csv")),
-        "bilanz": _bilanz("kopier1zu1"),
-    }
-
-
 def _bilanz(spur, ordner=None, journal=None):
     """Die Bilanzzeile einer Buch-Spur - rein lesend, aus EINER Quelle.
 
@@ -1331,7 +1236,7 @@ def spur_kopier_familie():
     Namen).
     """
     quellen = (spur_spiegel, spur_spiegel_knapp, spur_spiegel_weit,
-               spur_kopier, spur_kopier1zu1)
+               spur_kopier)
     glieder, positionen = [], []
     for hole in quellen:
         try:

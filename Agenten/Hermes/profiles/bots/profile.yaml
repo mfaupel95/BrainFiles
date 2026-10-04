@@ -1,0 +1,2 @@
+name: bots
+description: "Bot-Interpool: nimmt /bot NAME NACHRICHT entgegen und startet den passenden Repo-Bot als eigenen Prozess. Hier laeuft kein Handel."

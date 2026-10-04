@@ -32,7 +32,7 @@ class FormTest(unittest.TestCase):
         import dauerlauf
         namen = {f.__name__.replace("spur_", "") for f in lage.HOLER}
         familie = {"spiegel", "spiegel_knapp", "spiegel_weit", "kopier",
-                   "kopier1zu1"}
+                   }
         # Ein Holer darf praeziser heissen als die Spur (spur_xperp_positionen
         # fuer xperp) - gesucht ist, ob die Spur ueberhaupt gelesen wird.
         fehlen = {s for s in dauerlauf.SPUREN

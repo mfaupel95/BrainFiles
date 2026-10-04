@@ -31,7 +31,7 @@ import zeitfenster                                             # noqa: E402
 
 # Die fuenf Spuren mit eigener Auswertung. Sie liefern kennzahlen_kurz();
 # die Rechnung bleibt ihre eigene.
-EIGENE = ("spiegel", "omniquant", "kopier", "kopier1zu1", "gitter")
+EIGENE = ("spiegel", "omniquant", "kopier", "gitter")
 
 
 def _lade_eigene(spur):

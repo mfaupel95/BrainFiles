@@ -391,6 +391,44 @@ eine Zeile, die sagt WARUM eingefroren wird, und wer ihn erneuern darf.
 ## Gegenprobe beim Umbau
 
 Nach dem Umbau muss der Test den urspruenglichen Fehler noch fangen. Also:
-Regel verletzen (z. B. `import ereignis` testweise in `melder.py` schreiben),
+Regel verletzen (z. e. B. `import ereignis` testweise in `melder.py` schreiben),
 Test laufen lassen, rot sehen, zuruecknehmen. Ein umgebauter Test, der nichts
 mehr faengt, ist ein geloeschter Test mit Zeremonie.
+
+**Die Gegenprobe kann gruen bleiben, obwohl der Test richtig ist — dann prueft
+er die Faelle, in denen der alte Code richtig lag.** Das ist der subtilste
+Fehler der ganzen Reihe, weil er erst nach der Probe auffaellt und die
+Erfolgsmeldung klingt. Gemessen an einer Zielrichtung: der erste Test pruefte
+die beiden „normalen“ Faellen einer Liquidationswand, und in beiden lag der
+blind uebernommene Rohwert zufaellig richtig — die Gegenprobe blieb gruen. Als
+Beleg galt nur, dass der Test existiert; in Wahrheit war er blind gegen genau
+den Fall, den der Fix repariert.
+
+**Regel: bei jeder „liegt richtig herum“-Regel die Falle waehlen, in der der
+Vorher-Zustand FALSCH war.** Das ist die Richtung, die der Fix repariert, und
+damit die einzige, die nur mit ihm ausfaellt. Also **jede Kombination**
+kreuzen, nicht die beiden plausibel aussehenden:
+
+```python
+# blind - deckt nur ab, was der alte Code schon richtig machte
+for d in (wand_ueber_spot, wand_unter_spot): ...
+
+# sichtend - kreuzt Rohwert-Lage x Handelsrichtung
+for wandpreis in (unter_spot, ueber_spot):
+    for seite in ("long", "short"): ...
+```
+
+Ergaenzend, weil beide Nachbarfehler dieselbe Ursache haben: (a) ein Test, der
+die Ausgabe REIZT statt die Regel zu pruefen, bleibt gruen, wenn die Funktion
+nie aufgerufen wird; (b) ein Test, der nur den neuen Pfad kennt, bleibt gruen,
+wenn der alte Pfad daneben bestehen bleibt. Auch diese beiden fallen nur unter
+derselben Probe.
+
+**Und eine Medianregel braucht mehrere Ausreifer, um ueberhaupt sichtbar zu
+werden.** „Der Median schliesst den heutigen Tag aus“ ist im Einzelfall nicht
+unterscheidbar: bei 30 Werten mit EINEM Ausreiser liegen die beiden mittleren
+weiterhin auf dem Normalwert. Der Test setzt deshalb **mehr als einen**
+abweichenden Tag an und rechnet die Erwartung aus den tatsaechlich gesetzten
+Werten — sonst stellt der Test die eigene Annahme in Frage („alle Tage
+gleich“) statt den Code zu pruefen, und bleibt gruen, weil die Annahme nach
+dem Setzen nicht mehr stimmt.

@@ -218,3 +218,68 @@ Faelle, alle aus einem Lauf ueber 45 Spuren:
   pytest, also die Funktionen ueber `importlib.util.spec_from_file_location`
   laden und direkt aufrufen, jede Ausnahme als Fehler zaehlen. „0 Tests" ist
   nie ein Beleg.
+
+## EINE SPUR RAUSNEHMEN — die Umkehrung, mit derselben Pflicht
+
+„Spur X komplett raus" ist nicht `rm -rf` und nicht der Eintrag in
+`dauerlauf.SPUREN`. Die Spur haengt an denselben Listen wie beim Anschliessen —
+plus an zwei Stellen, die dort nicht vorkommen — und **ein an ihr
+vorbeigesetztes Werkzeug crasht beim naechsten Lauf**, nicht beim Loeschen.
+
+### Reihenfolge
+
+1. **Sichern, dann loeschen.** Der Ordner gehoert nach
+   `Werkstatt/Ausgemustert/<bereich>/<spur>-JJJJMMTT-HHMM/`; alle drei
+   Risikostufen mitnehmen (`zustand.json`, `zustand.mittel.json`,
+   `zustand.hoch.json` sind drei Staende derselben Spur). Ein geloeschtes
+   Journal ist die Historie.
+2. **Inventar ZIEHEN, nicht die Liste von oben uebernehmen.** `grep -rl` ueber
+   den echten Baum mit Ausschlussliste, dann je Treffer die ZEILE lesen — nicht
+   nur den Dateinamen. Fuenf Hand-listen: `dauerlauf.SPUREN`, `lage.HOLER`,
+   `befehle.FAMILIE`, `auswertung_alle.SPUREN`, `pruefe_ratschen.SPUREN` —
+   `RUHT` ausdruecklich mitnehmen, eine dort noch als ruhend gefuehrte Spur wird
+   nie geprueft, ohne dass irgendwo etwas fehlt.
+3. **Werkzeuge mit HARTKODIERTER Spurliste sind die Falle.** Ein
+   Gebuehren-Werkzeug mit einer Tabelle `("<spur>/wachen.json", "feld", wert)`
+   laeuft nach dem Loeschen in `FileNotFoundError` — mitten im Betrieb, nicht im
+   Aufruf. Solche Werkzeuge gehoeren auf `dauerlauf.SPUREN` umgestellt, nicht
+   auf eine zweite Liste, die man beim Loeschen von Hand pflegt. **Nach dem
+   Loeschen JEDES Werkzeug starten, das eine Spur nennt** — im gemessenen Fall
+   war der Testlauf dieser Suite der Finder, nicht das Absuchen.
+4. **Tests mit festem Namen mitziehen.** Ein `SPUREN = ("spiegel", "kopier",
+   …)`-Tupel und ein `assertEqual(len(HOLER), N)` sind dieselben Hand-Listen
+   wie im Code. Gemessen waren neun Testdateien betroffen, davon vier mit
+   Zaehl-/Namenslisten.
+5. **`.gitignore`: nicht nur die Freigabe, auch die Sperre.** Die Spur hat
+   sieben Zeilen (4 × `!…/*.py|md|json`, 3 × Sperre auf `zustand.json`,
+   `handelsjournal.csv`, `ablehnungen.csv`). Die Freigabezeilen zeigen ins Leere,
+   die Sperrezeilen bleiben als toter Text stehen — sonst greifen sie bei der
+   naechsten Spur mit gleichem Namen wieder.
+6. **Index leeren, dann Ordner loeschen:** `git rm -r --cached --quiet <pfad>`
+   vor dem `rmtree`, sonst zeigt `git status` die Dateien als unversioniert
+   statt als geloescht.
+
+### Der Suchbefund, der den Auftrag gekostet hat
+
+Ein Python-`os.walk` ueber `Agenten/` **ueberschreitet die 300-s-Werkzeuggrenze**
+zweimal — der Ordner traegt Fremdbaeume. `grep -rl` mit Ausschlussliste
+(`-E '\.venv|__pycache__|OpenAlice|Hermes/cache|Hermes/skills|hermes-agent|
+node_modules|\.worktrees|\.claude|bak-…|Ausgemustert'`) laeuft durch und zeigt
+zugleich, was man selbst erzeugt hat.
+
+Der Grund sind **verwaiste `.worktrees/`-Ordner**: sie liegen im Baum, enthalten
+je eine vollstaendige Kopie aller Handelsdateien (gemessen 25 Ordner x 48
+Dateien) und gehoeren zu fremden, beendeten Sitzungen. Sie stoeren keine
+`master`-Lektuere, vergiften aber jede repo-weite Suche und jeden Platzmesslauf.
+Sie sind die erste Frage, wenn eine Suche eine Seite findet, die es gar nicht
+gibt — und eine Entscheidung fuer Max, keine automatische Loeschung.
+
+### Nachweis
+
+`dauerlauf.SPUREN` importieren und die Spur gegen `False` pruefen, ALLE Module
+laden, die die Spur ueber eine Liste nannten (`lage`, `tagesbericht`,
+`befehle`, `auswertung_alle`, `gesamtbilanz`, `handelszentrale`, `replay`,
+`Bus/handel_befehle`) — ein Import-Fehler ist hier ein Befund, kein
+Testrauschen — und die betroffenen Tests einzeln mit dem **Exit-Code** fahren.
+Eine Kette `cmd | tail -1` zeigt die letzte Zeile, nicht den Erfolg: ein
+`FAILED` steht in derselben Zeile, die ein laufender Test als letztes schreibt.

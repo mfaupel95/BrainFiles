@@ -138,13 +138,54 @@ ungeschuetzt bleibt, weil der Stop auf den vollen Bestand zeigt.
 - **Im Bericht die fuenf Zahlen**: Triggerpreis, Abstand in Prozent, Menge,
   Erloes je Stufe, Summe. Wer eine Order freigibt, will den Rechenweg sehen.
 
+## Die Schutzhoehe zaehlt, nicht die Deckung
+
+Eine Luecke von 3.805 von 11.388 Stuecken (67 % geschuetzt) sah nach der einen
+Aufgabe aus. Gemessen an der **Schutzhoehe** war sie eine Falle:
+
+| | |
+|---|---|
+| Stop 0,053 gegen **Einstand** 0,054448 | −2,66 % |
+| Stop 0,053 gegen **Kurs** 0,05915 | **−10,40 %** |
+| Ziel 0,06 gegen **Kurs** 0,05915 | **+1,44 %** |
+
+Der Markt war 8,6 % ueber den Einstand gestiegen, der Stop nicht mitgezogen. Er
+schuetzte den Rücksetzer, nicht mehr den Einstieg — und das Ziel war nur noch
+1,4 % entfernt. Die Luecke mit den Altpreisen zu fuellen haette die Position
+**formal** gedeckt und sie beim naechsten Ausbruch restlos verkauft.
+
+**Regel: eine Schutzhoehe wird gegen den aktuellen Kurs gemessen, nicht gegen
+den Einstand.** Vor jeder Nachsicherung am bestehenden Order drei Zahlen
+drucken: Hoehe gegen Einstand, Hoehe gegen Kurs, Ziel gegen Kurs. Ist das Ziel
+naeher als der Abstand zum Stop, ist das nicht eine Aufgabe, sondern zwei —
+und die Reihenfolge ist: Stop hoeher ziehen, dann Luecke fuellen.
+
+**Die Preise des bestehenden Orders uebernehmen, nicht neu rechnen.** Sie sind
+der Beleg, dass die Position so gestellt wurde; ein neu gerechneter Preis waere
+eine zweite Wahrheit neben der ersten.
+
+**Die Luecke mit EINEM OCO fuellen, nicht mit einem Stop plus getrennten
+Ziel-Orders.** Zwei bedingte Orders koennen sich in der Menge ueberschneiden,
+wenn zuerst das Ziel feuert. `POST /api/v5/trade/order-algo` mit
+`ordType: oco` und **beiden** Preisen in einem Koerper garantiert, dass je
+Stueck hoechstens einmal ausgeloest wird.
+
 ## Zwei Helferfallen, die beide still ausfallen
 
 **Eine Hilfsfunktion darf eine Aufrufform haben, nicht zwei.** Nach einem
 Signaturumbau (`zahl(wert)` → `zahl(container, feldname)`) trugen 17 Aufrufe
 noch die alte Form: der *Wert* landete als *Feldname* in einer Suche, das
 Ergebnis war `0.0` statt der echten Zahl. Das Gelbe: ein `TypeError` faellt auf,
-dieser Weg nicht.
+dieser Weg nicht. Verwandte Form: eine Funktion, die einen formatierten String
+zurueckgibt (`"%.10g"`), liefert im naechsten Aufruf ein `str` — die
+Formatierung gehoert in die Ausgabe, nicht in die Rechnung.
+
+**Eine Bedingung, die nichts bewirkt, liest sich wie eine Entscheidung.** Ein
+`if a and b: pass / elif b:` im Block, der eigentlich verzweigen sollte, fuehrt
+zu einem `None`, das zwei Aufrufe spaeter als `TypeError: 'NoneType' object is
+not iterable` auffaellt — die Ursache liegt aber im toten Zweig. Jeder Block,
+der eine Tabelle nur unter einer Bedingung zeigt, braucht **eine** `if` mit
+beiden Zweigen; ein `pass`-Zweig ist eine Behauptung ohne Wirkung.
 
 **Ein Kontrollwert, der zwei Nullen vergleicht, ist keine Kontrolle.** Summiere
 die `details[]` und vergleiche sie mit `totalEq`. Bei 0 gegen 0 ist das gruen,

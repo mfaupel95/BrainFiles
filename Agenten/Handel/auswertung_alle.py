@@ -1113,12 +1113,11 @@ def main():
                       % (spur, seit.isoformat() if seit else "nie"))
             print("  Erst den Betrieb pruefen (Dauerlauf-Log, Herzschlag), dann "
                   "das Buch - eine stehende Spur schreibt keine Zeilen.")
-    print("\n  kopier, kopier1zu1, spiegel, omniquant und gitter haben "
-          "eigene Auswertungen (auswertung.py im jeweiligen Ordner). "
-          "kopier und kopier1zu1 kommen hier NICHT vor: ihr Journal "
-          "traegt token/symbol statt inst, eine Paarung ueber "
-          "runden_nautilus ergab 107 Runden mit falscher Zuordnung "
-          "(gemessen 03.10.2026).")
+    print("\n  kopier, spiegel, omniquant und gitter haben eigene "
+          "Auswertungen (auswertung.py im jeweiligen Ordner). kopier kommt "
+          "hier NICHT vor: ihr Journal traegt token/symbol statt inst, eine "
+          "Paarung ueber runden_nautilus ergab 107 Runden mit falscher "
+          "Zuordnung (gemessen 03.10.2026).")
     if STUFE:
         print("  Gezaehlt wurde die Risikostufe %s - der Basislauf laeuft "
               "daneben unveraendert weiter." % STUFE)

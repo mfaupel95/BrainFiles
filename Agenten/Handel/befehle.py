@@ -79,7 +79,6 @@ FAMILIE = {
     "spiegel_knapp": "Feed-Spiegel",
     "spiegel_weit": "Feed-Spiegel",
     "kopier": "Feed-Kopie",
-    "kopier1zu1": "Feed-Kopie 1:1",
     # Robinhood-Radar (22.09.2026): Buch auf einem fremden Feed -
     # dieselbe Familie wie die Kopier-Spuren.
     "robinhood_radar": "Feed-Kopie",
@@ -675,7 +674,7 @@ def spur(name):
 
 # Spuren mit einem eigenen `auswertung.py` im Spurordner. Ihre Auswertung ist
 # die zustaendige Quelle - hier wird sie nur zitiert, nicht nachgebaut.
-EIGENE_AUSWERTUNG = ("spiegel", "omniquant", "gitter", "kopier", "kopier1zu1")
+EIGENE_AUSWERTUNG = ("spiegel", "omniquant", "gitter", "kopier")
 
 EINSTIEGE = ("kauf", "eroeffnen", "einstieg")
 AUSSTIEGE = ("verkauf", "schliessen", "ausstieg", "notaus")

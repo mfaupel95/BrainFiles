@@ -177,11 +177,39 @@ def signal(d, w):
 
 
 def ziel(d, w):
-    """Die Wand selbst als Zielpunkt (spur_buch nimmt sie statt des R-Ziels)."""
+    """Die Wand selbst als Zielpunkt - aber in die RICHTUNG des Einstiegs.
+
+    GEMESSEN 04.10.2026 (43 Runden, -1,16 % Summe): 29 Ziel-Ausstiege
+    brachten -0,16 % im Mittel, die 14 Stop-Ausstiege +0,24 %. Vertauscht.
+
+    Ursache: `wand()` liefert den Preis des groessten Bandes, und das liegt
+    je nach Marktlage OBER oder UNTER dem Spot. Der Einstieg folgt der Wand
+    (bei Liquidierter-Seite 'short' geht die Spur long - die Wand liegt dann
+    ueber dem Einstieg, das Ziel war korrekt; liegt die Wand unter dem Spot,
+    ist es umgekehrt). Der alte Code nahm den Wandpreis blind als Ziel - bei
+    der unteren Wand lag das Ziel dann UNTER dem Einstieg, und die Runde
+    schloss mit minus.
+
+    Regel: das Ziel muss in Handelsrichtung liegen. Liegt der Wandpreis
+    falsch herum, wird das Ziel aus Abstand zum Einstieg gerechnet
+    (ziel_r_vielfaches R), nicht aus dem Wandpreis - sonst bleibt es bei
+    einem Ziel, das nie erreicht werden kann.
+    """
     spot = float(d.get("spot") or 0)
     treffer = wand(d.get("liqs") or [], spot,
                    float(w.get("bandbreite_prozent", 0.25)))
-    return treffer[0] if treffer else None
+    if not treffer:
+        return None
+    wandpreis = float(treffer[0])
+    seite = (treffer[2] or "").lower()       # 'short' -> long, 'long' -> short
+    # Zielrichtung: long heisst Ziel UEBER dem Einstieg
+    long_ = (seite == "short")
+    r = float(w.get("ziel_r_vielfaches", 2.0))
+    if long_:
+        # Die Wand ueber dem Spot: Einstieg darunter, Ziel = Wand.
+        return wandpreis if wandpreis > spot else spot * (1 + r / 100.0)
+    # Die Wand unter dem Spot: Einstieg darueber, Ziel = Wand.
+    return wandpreis if wandpreis < spot else spot * (1 - r / 100.0)
 
 
 def _live_erlaubt() -> bool:

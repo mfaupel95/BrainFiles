@@ -90,6 +90,12 @@ Datenfehler, wenn es sich systematisch um eine feste Groesse handelt.
 
 ## Reihenfolge der Reparatur
 
+**Die Runde endet mit Fixes, nicht mit einer Frage.** „geh die Cronjobs durch
+und repariere sie“ heisst reparieren. Wenn eine Ursache nicht auffindbar ist,
+wird sie benannt — und **der Rest wird trotzdem behoben**, statt alles liegen
+zu lassen. Eine Triagerunde, die mit drei Befunden und „soll ich fixen?“ endet,
+hat die Haelfte geliefert, die man bestellt und fuer die man bezahlt.
+
 - Offene Zustandszeilen schliessen **vor** der Frist-Erhöhung.
 - Frist anheben **nach** der Einzelmessung, nicht nach dem Cron-Symptom.
 - Eine inhaltlich falsche Ausgabe (Zeitstempel, Beschriftung) wird behoben,

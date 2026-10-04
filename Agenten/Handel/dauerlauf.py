@@ -233,8 +233,6 @@ SPUREN = {
     # jeder Verkauf schliesst sie sofort. Kein Live-Zweig - teilt lesen.py
     # mit kopier/ und liest verfolgte.json aus kopier/ (kein zweiter
     # Rangliste-Abruf).
-    "kopier1zu1": {"ordner": "kopier1zu1", "waehrung": "USD",
-                   "skript": "handeln.py"},
     "orbk":    {"ordner": "orbk",    "waehrung": "USD",
                 "skript": "handeln.py"},
     # ORB AUF OKX-PERPETUALS (angeschlossen 21.09.2026, Auftrag Max: "orb

@@ -45,8 +45,8 @@ from lage import (                                       # noqa: E402
     # unter kopier1zu1/tests und spiegel/tests greifen bisher auf diese
     # Namen ueber tagesbericht.* zu. Der Umzug nach lage.py aendert nur den
     # Ort der Erhebung, nicht ihre bisherige Schnittstelle nach aussen.
-    spur_xperp_positionen, spur_xperp, spur_spiegel, spur_kopier1zu1,
-    _stop_preis_1zu1, bilanz, _lies,
+    spur_xperp_positionen, spur_xperp, spur_spiegel,
+    bilanz, _lies,
 )
 
 

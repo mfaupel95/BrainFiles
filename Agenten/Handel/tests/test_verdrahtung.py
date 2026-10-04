@@ -34,7 +34,7 @@ import pruefe_ratschen      # noqa: E402
 # Bei kopier/kopier1zu1 belegt: runden_nautilus lieferte 107 Runden mit
 # falscher Paarung (Einsteig PATE, Ausstieg leeres Symbol).
 EIGENE_AUSWERTUNG = ("spiegel", "spiegel_knapp", "spiegel_weit", "kopier",
-                     "kopier1zu1", "omniquant", "omniquant_weit", "gitter")
+                     "omniquant", "omniquant_weit", "gitter")
 
 RUHT = tuple(pruefe_ratschen.RUHT)
 

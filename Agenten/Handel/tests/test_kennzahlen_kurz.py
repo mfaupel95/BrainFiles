@@ -22,7 +22,7 @@ sys.path.insert(0, str(WURZEL))
 # sind keine Pakete (kein __init__.py), und jede legt beim Import ihren
 # eigenen Ordner in sys.path - ein "import spiegel.auswertung" haengt damit
 # davon ab, was vorher lief. Der Dateipfad haengt von nichts ab.
-SPUREN = ("spiegel", "omniquant", "kopier", "kopier1zu1", "gitter")
+SPUREN = ("spiegel", "omniquant", "kopier", "gitter")
 
 
 def lade(spur):

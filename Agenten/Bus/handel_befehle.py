@@ -83,7 +83,7 @@ def _spurliste():
 # einen Live-Pfad, ein "ist Papier" waere die zweite Wahrheit, die als erste
 # alt wird.
 SPUREN = ('xperp', 'scanner', 'swap', 'spiegel', 'orbk', 'omniquant',
-    'nautilus', 'gitter', 'kopier', 'kopier1zu1', 'kraken',
+    'nautilus', 'gitter', 'kopier', 'kraken',
     'macd_mtf', 'squeeze', 'supertrend', 'wavetrend', 'mosaic')
 
 
