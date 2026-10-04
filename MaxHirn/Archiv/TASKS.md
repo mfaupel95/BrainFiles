@@ -3488,6 +3488,30 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
 
 
+- [x] **T-334 — Sieben Kanban-Karten waren durch eine Config gescheitert, nicht durch die Planung**
+      Kontext: Am 01./02.10.2026 landeten sieben Karten nach zwei Fehlversuchen in `blocked`:
+      handel t_29c89f80, t_4f96661d, t_c3909e3e, t_ca6a7d6a, repos t_feba05cc,
+      wartung t_97489ca0, t_e158a9a6. Der Worker-Log zeigte fuer alle denselben Abbruch:
+      'Auxiliary compression model gemma-e4b-8k:cpu has a context window of 8,192 tokens,
+      which is below the minimum 64,000 required by Hermes Agent'.
+      Ursache: `auxiliary.compression` war in KEINER der 24 Profil-Configs gesetzt.
+      Hermes faellt dann auf die erste Zeile von `fallback_providers` zurueck - im Haus
+      ueberall `ollama-launch / gemma-e4b-8k:cpu`. Die Modelle selbst waren nie das Problem:
+      `get_model_context_length` gemessen - deepseek-v4-flash-0731 = 1.048.576,
+      stealth/space-bunny-alpha = 1.000.000, poolside/laguna-xs-2.1:free = 262.144,
+      gemma-e4b-8k:cpu = 8.192.
+      Naechster Schritt: erledigt - alle 24 Configs tragen jetzt
+      `auxiliary.compression = nous / deepseek/deepseek-v4-flash-0731` (timeout 180),
+      alle 24 parsen als YAML, Zeilenenden unveraendert CRLF (git diff --numstat 4/0 bzw. 6/0
+      je Datei, genau die eingefuegten Zeilen). Werkzeug:
+      `skills/brainfiles/hermes-config-ops/scripts/kompression-provider-setzen.py`
+      (Trockenlauf / --anwenden / --anwenden --zuruecknehmen). Commit 4dfebfb3.
+      Merksatz: eine Karte im Status `blocked` mit `gave_up` und Exit 1 ist zuerst eine
+      Frage an die ARBEITSUMGEBUNG des Workers, nicht an den Auftrag - die Abbruchmeldung
+      im Log nennt den Grund im Klartext, der Dispatcher gibt sie nur nicht weiter.
+      Angelegt 2026-10-04 · Zuletzt 2026-10-04
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
+
 ## Erledigt
 - [x] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
       Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
