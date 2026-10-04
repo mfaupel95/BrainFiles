@@ -1024,6 +1024,12 @@ Agenten/Handel/prophet_signal/handelsjournal.csv
 # Die Tests dazu liegen unter Agenten/Werkzeuge/tests und
 # Agenten/Werkzeuge/repos-zentrale/tests (dort schon freigegeben).
 !Agenten/FREMD-Liste.json
+# BEREICHS-BESITZ (04.10.2026): drei Bereiche mit je einem Besitzer, damit drei
+# Sitzungen nicht mehr still uebereinander schreiben. Das Register, sein Leser
+# und die Tests sind EINE Sache - ohne die Zeilen liegt das Register nur auf der
+# Platte und die Regel im AGENTS.md verweist ins Leere.
+!Agenten/BEREICHE.json
+!Agenten/Werkzeuge/bereiche.py
 !Agenten/FREMD.md
 !Agenten/Werkzeuge/fremd.py
 !Agenten/Werkzeuge/bestand.py

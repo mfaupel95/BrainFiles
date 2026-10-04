@@ -1,0 +1,46 @@
+{
+  "_hinweis": "Besitz-Register der drei Arbeitsbereiche. EIN Register, das beim Schreiben sagt, WER einen Bereich bedienen darf - nicht beim Aufraeumen. Grund: der geteilte Git-Index und die stillen Ueberschreibungen sind kein Git-Problem, sondern ein Zuordnungsproblem; die Hausloesung ist Regelwerk, nicht Isolation. Stand 04.10.2026, drei Bereiche von Max bestaetigt.",
+  "_regeln": [
+    "Ein Bereich traegt genau einen Besitzer. Zwei Eintraege mit demselben Bereich sind ein Fehler, kein Ueberlappungsfall.",
+    "Widerspricht sich der Besitz, GEWINNT der Aufrufer dieser Regel - die anderen Sitzungen duerfen den Bereich nicht anfassen. Das ist eine Sperre, keine Absprache.",
+    "Ein Registereintrag ohne Ordner im Repo ist ein Fehler (Tippfehler oder toter Bereich), kein stiller Durchlass.",
+    "Ein Ordner ohne Eintrag ist FREI - sonst waere die halbe Repo gesperrt und der Nutzen nil. Der Roster misst nur, was ausdruecklich zugewiesen ist.",
+    "Freigaben aus dieser Liste werden NICHT automatisch angewendet. Die Frage lautet immer: darf dieser Aufrufer hier schreiben, ja oder nein."
+  ],
+  "_bereiche": [
+    {
+      "id": "handel",
+      "ordner": ["Agenten/Handel/"],
+      "besitzer": "handel",
+      "was": "Handelsspuren, Wachen, Werkzeuge, Tests, Spiegelung",
+      "regel": "Nur die Handels-Sitzung schreibt hier. Bot-Profile und Web-Bereich legen die Hand an, wenn eine SPUR entsteht oder ein Kennzahl-Werkzeug gebaut wird - nie bei einer laufenden Wache."
+    },
+    {
+      "id": "bot",
+      "ordner": ["Agenten/Bus/", "Agenten/Hermes/skills/", "Agenten/MCP-Manifest.json", "Agenten/Hermes/profiles/"],
+      "besitzer": "bot",
+      "was": "Telegram-Bus, SkillsBot, Bot-Profile, MCP-Manifest, Skill-Bibliothek",
+      "regel": "Nur die Bot-Sitzung schreibt hier. Eine neue Spur wird dort beschrieben (README/.gitignore), die Spur selbst gehoert dem Handel."
+    },
+    {
+      "id": "wissen",
+      "ordner": ["MaxHirn/Wissen/", "MaxHirn/Archiv/TASKS.md"],
+      "besitzer": "wissen",
+      "was": "Dauerhaftes Wissen, Aufgabenliste",
+      "regel": "Nur die Wissens-Sitzung schreibt hier. TASKS.md ist eine gemeinsame Registerdatei: dort traegt jede Sitzung ihren Block ein, aber mit eigenem Commit und ohne Anassung fremder Bloecke."
+    }
+  ],
+  "_ausserhalb": {
+    "regel": "Pfade unterhalb dieser Ordner, die nicht zugewiesen sind, bleiben FREI. Kein Bereich sperrt seinen Elternordner.",
+    "beispiele": [
+      "Werkstatt/ - Durchgangsware, nicht versioniert (Junction auf O:).",
+      "Agenten/Routinen/ - eigene Pflegeskripte, die jeder Bereich benutzt, aber keiner besitzt.",
+      "Agenten/Werkzeuge/ - Hauswerkzeuge. Der Handel besitzt die Handelswerkzeuge inhaltlich, das Dateiverzeichnis gehoert aber keinem Bereich zu."
+    ]
+  },
+  "_befund_fuer_was": [
+    "Ein Pfad wird als Konflikt gemeldet, wenn die Kette Aufrufer -> Bereich nicht eindeutig auflösbar ist (z.B. ein Aufrufer im Bot-Bereich schreibt Agenten/Handel/xperp/wachen.json).",
+    "Ein Pfad wird als Konflikt gemeldet, wenn die ZIELDATEI einem anderen Bereich gehoert als die Quelldatei.",
+    "Ein geschriebener Pfad, der gar keinem Bereich gehoert, wird NICHT gemeldet - Freiheit ist der Normalfall."
+  ]
+}
