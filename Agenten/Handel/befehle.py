@@ -229,6 +229,25 @@ def _log_alter():
     return None
 
 
+def _zeit_ortszeit(z):
+    """Journalzeit fuer die Anzeige: '2026-09-30T08:15:00+00:00' -> '2026-09-30 10:15'.
+
+    Die Journale tragen UTC (+00:00); alle anderen Zeiten dieser Nachricht
+    (Kopfzeile, Zyklusalter) sind Ortszeit. Ohne Umrechnung stand hier die
+    UTC-Uhrzeit ohne Hinweis, 1 bis 2 Stunden neben der Kopfzeile. Kein
+    str.replace/datetime.replace: der ReinLesendTest verbietet jeden Aufruf
+    namens replace. Nicht lesbar oder ohne Uhrzeit -> wie bisher geschnitten.
+    """
+    import datetime as dt                                     # noqa: PLC0415
+    if len(z) < 16:                # nur Datum (orbk): keine Uhrzeit erfinden
+        return z
+    try:
+        return dt.datetime.fromisoformat(z).astimezone().strftime(
+            "%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return ("%s %s" % (z[:10], z[11:16])) if len(z) >= 16 else z
+
+
 def _spur_stand(hole):
     """Eine Spur lesen, wie tagesbericht sie liest - Fehler als Text."""
     try:
@@ -495,8 +514,7 @@ def live():
                 # Kein str.replace: der ReinLesendTest verbietet jeden Aufruf
                 # namens replace (Path.replace benennt Dateien um) - er kann
                 # str.replace nicht davon unterscheiden. Deshalb Slicing.
-                z = lv[0]
-                kurz = ("%s %s" % (z[:10], z[11:16])) if len(z) >= 16 else z
+                kurz = _zeit_ortszeit(lv[0])
                 zeilen.append("                 letzter Live-Vorgang: %s %s %s"
                               % (kurz, lv[1], lv[2]))
             else:
