@@ -265,3 +265,23 @@ auffiel** — **Beleg**.
   bekommt durch `AUTO_FREIGABE` aber eine offene FREIGABE.
 - Merksatz: A/B mit `dauerlauf.py` aus `HEAD` fahren, bevor eine Aenderung als
   Ursache gemeldet wird (`git stash`-Vergleich).
+
+### 28. FileNotFoundError auf einer `mkdtemp`-Datei (04.10.2026)
+- Gemeldet: `Ergebniscode 1 - FileNotFoundError: ...Temp\spurbuch-gatter-_ijomk0j\wachen.json`
+- Auffallen: der Test legt die Wachen in `setUp` selbst an. Also suchte die
+  Fehlermeldung nicht den Fehler, sondern eine alte Fassung der Datei - der
+  Fund lag im Sitzungsprotokoll (`state.db`, `messages`), nicht im Baum.
+- Gemessen: die alte `setUp` legte `zustand.json`, `handelsjournal.csv` und
+  `signal_queue.json` an, **nicht** `wachen.json` - und `spur_buch.zyklus`
+  liest genau die in `lade_wachen`. Die Meldung war damit korrekt.
+- Gegenprobe: eine Attrappe OHNE `wachen.json` bricht mit derselben Meldung
+  ab, dieselbe Attrappe MIT der Datei bucht. Damit ist die Ursache belegt und
+  nicht geraten.
+- Merksatz: eine `FileNotFoundError` auf einer `mkdtemp`-Adresse ist fast immer
+  die FASSUNG, nicht der Ort. `state.db` (`messages`, `role='tool'`, letzte 20
+  Nachrichten vor dem Fehler) beantwortet "welche Fassung lief" in Sekunden.
+- Zweite Falle desselben Tages: die erste Diagnose lief mit dem
+  Hermes-tools-Python (3.14, ohne `psutil`) statt `scanner/.venv` - 75 der
+  Fehler waren `ModuleNotFoundError: psutil`, nicht Defekte. **Handel-Tests
+  laufen ueber `Agenten/Routinen/handel-tests.ps1` bzw. das scanner-venv**, nie
+  ueber `python -m unittest` mit einem anderen Interpreter.
