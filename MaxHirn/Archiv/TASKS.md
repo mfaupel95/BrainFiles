@@ -63,6 +63,45 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
+      Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
+      OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
+      Order-Client-Haken. Der ist aber nur eine Checkbox im eigenen Fenster
+      und nicht der Weg, den die Spuren gehen. Die Hausspuren ordnen ueber
+      `scanner/okx`, `xperp/okxf`, `mosaic/okx_spot` und
+      `nautilus_kraken/kraken_futures` - vier eigene, gemessene Wege. Wer
+      den Nautilus-Haken anhaekt, bekommt einen fuenften Weg ohne Sperren,
+      ohne Freigabefenster und ohne Spiegelung.
+      Naechster Schritt: entweder den Haken im Reiter beschriften ('nur
+      Beobachtung, kein Weg der Spuren') oder ihn entfernen. Vorher
+      messen, welche der vier Wege der DEMO-Node überhaupt ersetzen kann.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand_nautilus.py,
+      Agenten/Handel/nautilus/nautilus_gui.py
+- [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
+      Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
+      Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
+      deshalb auch ins Handel-.venv installiert (Import 1,8 s). Damit steht
+      dieselbe Version 1.231.0 an zwei Stellen, und `pip`-Aktualisierungen
+      laufen an einer Stelle vorbei.
+      Naechster Schritt: eine Datei `Agenten/Handel/nautilus/README-live-node.md`
+      (Abschnitt 'Zwei venv, ein Rad') verweist darauf; eine
+      Versionspruefung ergaenzen, die beim Start des Reiters beide Orte
+      vergleicht und bei Abweichung sagt, welcher nachgezogen werden muss.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/.venv,
+      Agenten/Handel/nautilus/.venv
+- [ ] **T-345 — Leitstand-Reiter ohne Takt: F5 wirkt, die Statusleiste altert nicht**
+      Kontext: Der Leitstand taktet alle 5 s (`TAKT_MS`). Der Omniquant-
+      Reiter liest jetzt bei F5 neu und meldet Treffer und Berichtsalter -
+      aber nur, wenn jemand F5 drueckt. Ohne F5 bleibt der Text stehen,
+      waehrend die Zahl daneben (Dauerlauf-Status) weiterlaeuft. Der
+      Nautilus-Reiter hat denselben Effekt: sein Text richtet sich nach
+      `_running`, das nur die Queue des Nodes aendert.
+      Naechster Schritt: beide Reiter in `leitstand.TAKT_SICHTBAR` aufnehmen
+      (nur der sichtbare Reiter wird takten - kein Netz beim Hintergrund).
+      Vorher messen, ob der 15-s-Timer von OmniquantGui dadurch doppelt
+      laeuft; zwei Timer auf dieselbe Datei sind eine stille Last.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand.py,
+      Agenten/Handel/omniquant/gui.py
 - [x] **T-340 — Bus-Anbindungen gefixt: squeeze_eth.py und plattenplatz-pruefen**
       **Erledigt 04.10.2026, Commit adac9bc9.** Zwei verschiedene Ursachen,
       zwei verschiedene Loesungen - beide mit Gegenprobe.
