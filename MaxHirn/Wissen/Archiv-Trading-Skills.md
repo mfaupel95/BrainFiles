@@ -1,8 +1,11 @@
 ---
-titel: Archiv-Trading-Skills und Fremdstrategien im Lauf
-stand: 2026-09-21
-zweck: Was von den ausgemusterten Handels-Skills lauffaehig ist, was nicht, und was eine gefahrene Fremdstrategie gemessen liefert.
-verwandt: "[[Handelsregeln]], [[Handelsbots]], [[Marktscanner]], [[Fundus-Index]]"
+id: 20260921-archiv-trading-skills
+title: 'Archiv-Trading-Skills und Fremdstrategien im Lauf'
+tags: [handel]
+created: 2026-09-21
+updated: 2026-09-21
+related: [20260902-handelsregeln, 20260830-handelsbots, 20260831-marktscanner]
+summary: 'Was von den ausgemusterten Handels-Skills lauffaehig ist, was nicht, und was eine gefahrene Fremdstrategie gemessen liefert.'
 ---
 
 # Archiv-Trading-Skills und Fremdstrategien im Lauf
