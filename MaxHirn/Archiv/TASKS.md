@@ -148,20 +148,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
       Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
       Agenten/Handel/tests/test_replay.py
-- [ ] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
-      Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
-      OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
-      Order-Client-Haken. Der ist aber nur eine Checkbox im eigenen Fenster
-      und nicht der Weg, den die Spuren gehen. Die Hausspuren ordnen ueber
-      `scanner/okx`, `xperp/okxf`, `mosaic/okx_spot` und
-      `nautilus_kraken/kraken_futures` - vier eigene, gemessene Wege. Wer
-      den Nautilus-Haken anhaekt, bekommt einen fuenften Weg ohne Sperren,
-      ohne Freigabefenster und ohne Spiegelung.
-      Naechster Schritt: entweder den Haken im Reiter beschriften ('nur
-      Beobachtung, kein Weg der Spuren') oder ihn entfernen. Vorher
-      messen, welche der vier Wege der DEMO-Node überhaupt ersetzen kann.
-      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand_nautilus.py,
-      Agenten/Handel/nautilus/nautilus_gui.py
 - [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
       Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
       Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
@@ -3273,6 +3259,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
+      Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
+      OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
+      Order-Client-Haken. Der ist aber nur eine Checkbox im eigenen Fenster
+      und nicht der Weg, den die Spuren gehen. Die Hausspuren ordnen ueber
+      `scanner/okx`, `xperp/okxf`, `mosaic/okx_spot` und
+      `nautilus_kraken/kraken_futures` - vier eigene, gemessene Wege. Wer
+      den Nautilus-Haken anhaekt, bekommt einen fuenften Weg ohne Sperren,
+      ohne Freigabefenster und ohne Spiegelung.
+      Naechster Schritt: entweder den Haken im Reiter beschriften ('nur
+      Beobachtung, kein Weg der Spuren') oder ihn entfernen. Vorher
+      messen, welche der vier Wege der DEMO-Node überhaupt ersetzen kann.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand_nautilus.py,
+      Agenten/Handel/nautilus/nautilus_gui.py
+      Beschluss Max 'beschriften': drei sichtbare Stellen (Hinweis beim Anhaeken, Warnzeile ueber dem Log, Logzeile bei jedem Start mit Haken). 18/18 in test_leitstand_nautilus, davon 4 neu in OrderClientBeschriftet. Commits d630108 (nautilus) und 4a4517a2 (Leitstand).
 - [x] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
       Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
       (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu
