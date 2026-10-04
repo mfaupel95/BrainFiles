@@ -65,7 +65,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/docker-sandbox.md — laden, wenn Tools im Docker-Backend Variablen nicht sehen (${env:NAME} leer)
 - references/mcp-server-anbinden.md — laden, wenn ein fremder MCP-Server (HTTP/OAuth) angebunden werden soll
 - references/config-gegenprobe.md — laden, wenn "optimier meine Config" / "warum greift die Einstellung nicht" / nach Update
-- references/einstellung-umstellen.md — laden, wenn eine einzelne Einstellung umgestellt wird (Wert setzen mit Beleg)
+- references/einstellung-umstellen.md — laden, wenn eine einzelne Einstellung umgestellt wird (Wert setzen mit Beleg); darin auch der .env-Sonderfall (wirkt erst nach dem Neustart, zweiseitiger Gegentest, Schutzschalter-Kosten)
 - references/fallback-kette.md — laden, wenn die Fallback-Kette aufgebaut, geprueft oder repariert wird
 - references/hauptmodell-provider.md — laden, wenn das Hauptmodell auf einen anderen Provider umgestellt wird
 - references/config-zusammenfuehren.md — laden, wenn config.yaml fremde Aenderungen traegt und zusammengefuehrt werden muss
@@ -78,6 +78,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/desktop-multiplex.md — laden, wenn die Desktop-App nur das default-Profil zeigt oder multiplex-Probleme hat
 - references/fallen.md — laden, wenn eine Aenderung an config.yaml/.env unerwartete Nebenwirkungen zeigt
 - references/auswahllisten-erweitern.md — laden, wenn eine Modell-/Auswahlliste unvollstaendig ist oder gekuerzt werden soll
+- references/auxiliary-kompression.md — laden, wenn eine Karte/Sitzung mit "context window ... below the minimum 64,000" abbricht oder `auxiliary.compression` gesetzt werden soll
 
 ## Nachweis (Abschluss)
 
