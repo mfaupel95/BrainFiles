@@ -16,7 +16,7 @@
   "_stop": "ATR-basiert. pflicht_stop_prozent_min/max setzen den Rahmen, der tatsaechliche Wert faellt aus ATR / Kurs. pflicht_stop_prozent_min am 04.10.2026 von 5,0 auf 3,0 % gesenkt (Auftrag Max \"squeeze 3/1,5\") - gemessen ueber den Backtest, siehe MaxHirn/Wiki/Handel/Spur-Optimierung-Setzer-Befund.md: 3,0/1,5R kostet 0.074 USD je Runde gegen 0.803 bei 5,0/2,0R, bei 1,11x so vielen Runden.",
   "pflicht_stop_prozent_min": 3.0,
   "pflicht_stop_prozent_max": 12.0,
-  "_ziel": "ziel_r_vielfaches = 1.5 heisst: Ziel = 1.5 * Stop-Abstand. Risiko-Ertrag 1:1,5 (am 04.10.2026 von 2.0 auf 1.5, gleiche Messung wie pflicht_stop_prozent_min). Ein engeres Ziel passt zu dem kleineren Stop: der Abstand zum Ziel ist jetzt 4,5 % statt 10,0 %, das ist die halbe Strecke und damit eine Ausstiegschance, die die Gebuehr noch tragen kann.",
+  "_ziel": "ziel_r_vielfaches = 1.5 heisst: Ziel = 1.5 * Stop-Abstand. Risiko-Ertrag 1:1,5 (am 04.10.2026 von 2.0 auf 1.5, gleiche Messung wie pflicht_stop_prozent_min). Ein engeres Ziel passt zu dem kleineren Stop: der Abstand zum Ziel ist jetzt 4,5 % statt 10,0 %, das ist die halbe Strecke und damit eine Ausstiegschance, die die Gebuehr noch tragen kann. ACHTUNG Skalierung: skaliere() rechnet Stop und Ziel bei jeder Vergroesserung NEU aus stop_pct und r - offene Positionen werden bei ihrer naechsten Skalierung mitgezogen (BTC-USDC belegt: 04.10. 10:04 UTC, stop_pct 5,00 -> 3,00). Nur Positionen ohne weitere Skalierung behalten den alten Stand.",
   "ziel_r_vielfaches": 1.5,
   "mindest_kerzen": 300,
   "kerzen_takt": "1H",

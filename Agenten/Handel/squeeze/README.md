@@ -70,9 +70,13 @@ Risiko je Position still: bei 5,0 USD Risiko und 3 % Stop sind das 166,67 USD,
 der Deckel steht auf 170. Mit dem alten Deckel 150 waeren es 4,50 statt 5,00
 USD geworden — der Test `deckel_traegt_das_risiko` faellt genau darauf.
 
-**Geaenderte Geometrie wirkt nur auf NEUE Positionen.** Offene Positionen
-laufen unter ihren gebuchten Stops und Zielen aus; die naechste Auswertung ist
-deshalb gemischt und kein Beweis der Wirkung.
+**Geaenderte Geometrie wirkt auch auf OFFENE Positionen.** `skalieren.skaliere()`
+rechnet bei jeder Vergroesserung Stop und Ziel neu aus dem aktuellen `stop_pct`
+und `r` — ein neues Squeeze-Signal auf demselben Instrument zieht die offene
+Position also auf die neue Geometrie nach (belegt: BTC-USDC, 04.10. 10:04 UTC,
+`stop_pct` 5,00 -> 3,00). Offene Positionen **ohne** weitere Skalierung laufen
+unter ihrem alten Stand weiter. Die naechste Auswertung ist gemischt und
+deshalb kein Beweis der Wirkung.
 
 Die Drawdown-Ratsche kommt aus `../ratschen.py`, ueber den Pfad geladen -
 nicht ueber `sys.path`, damit nicht entscheidet, wer vorher was eingefuegt hat.

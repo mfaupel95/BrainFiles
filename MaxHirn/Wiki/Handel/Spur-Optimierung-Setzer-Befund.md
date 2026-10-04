@@ -173,7 +173,38 @@ Setzer-Fix von heute fast unsichtbar gemacht hat.
 
 Auch 3,0/1,5R ist **vor Gebuehr leicht negativ** (−0,074 USD je Runde).
 Belegt ist nicht „die Geometrie traegt", sondern „die alte war rund zehnmal
-schlechter". Und: die Aenderung wirkt nur auf **neue** Positionen — die drei
-offenen Positionen im Zustand (BTC/ETH/SOL, Stand 03./04.10.) laufen unter
-ihren gebuchten 5-%-Stops und 2R-Zielen aus. Die naechste Auswertung ist
-gemischt und kein Beweis der Wirkung.
+schlechter".
+
+### KORREKTUR: die Aenderung wirkt auch auf bestehende Positionen
+
+Ich hatte hier zuerst geschrieben, der Wechsel gelte nur fuer neue Einstiege
+und offene Positionen laufen unter ihren gebuchten Stops aus. **Das ist
+falsch**, und der Dauerlauf hat es elf Minuten nach dem Commit widerlegt.
+
+Die Skalierungsregel (`Handel/skalieren.py`, `skaliere()`) rechnet Stop und
+Ziel bei jeder Vergroesserung **neu** aus dem aktuellen `stop_pct` und `r`.
+Ein neues Squeeze-Signal auf demselben Instrument mit derselben Seite
+vergroessert die offene Position — und zieht dabei Stop und Ziel auf die
+aktuelle Geometrie nach.
+
+Beleg, Journalzeile 04.10.2026 10:04:13 UTC (`handelsjournal.csv`, letzte Zeile):
+
+| | eroeffnet 03.10. | nach der Skalierung |
+|---|---|---|
+| `stop_pct` | 5.00 | **3.00** |
+| Stop | 80 720,09 | **82 462,00** |
+| Ziel | 93 465,36 | **88 837,93** |
+| Nominal | 400,00 | 475,00 |
+
+Nachgerechnet: 85012,373684 x 0,97 = 82462,002473 und x 1,045 = 88837,9305 —
+beide stehen auf der Zeile. Die offene BTC-Position laeuft also ab sofort unter
+dem 3-%-Stop und dem 1,5R-Ziel, nicht mehr unter ihrem alten.
+
+**Damit gilt fuer jede Spur mit Skalierung** (das ist nach `SCALIEREN` die
+Regel im ganzen Haus): „wirkt erst auf neue Positionen" ist hier **falsch**.
+Fuer die ETH- und SOL-Position dieser Spur steht der Wechsel noch aus — sie
+werden bei ihrer naechsten Skalierung nachgezogen. Fuer Positionen **ohne**
+weitere Skalierung gilt der alte Stand weiter.
+
+Die naechste Auswertung ist damit gemischt und **kein** Beweis der Wirkung —
+aber auch nicht der Grund, den man fuer die alte Geometrie angeben kann.
