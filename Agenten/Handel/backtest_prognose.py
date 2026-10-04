@@ -159,6 +159,26 @@ def lauf(spur, kerzen_je_inst, w, gebuehr_pct, modul=None):
             kerzen_schritt[inst] = k[-1]
             vorher = {id(p): p for p in z["positionen"]}
             h.pruefe_ausstiege(z, k, w, nur=inst)
+            # T-202/T-177 (04.10.2026): der Ausloeser der Spuren ist der
+            # KERZENschluss. Eine Kerze, die Stop oder Ziel nur mit dem Docht
+            # streift und darueber schliesst, loest dort nichts aus - der
+            # Replay bildet diesen Ausstieg aber ab, sonst entstuende im
+            # Backtest eine Position, die es im Betrieb nie gaebe.
+            #
+            # DIESER Aufruf fehlte hier und ist die ganze Ursache der
+            # Gegenprobe-Abweichung: replay.lauf_a rief die Regel seit dem
+            # 01.10.2026, dieser Weg nie. Ab Runde 2 schieden die Wege: der
+            # alte schloss eine Docht-Position, der neue behielt sie, danach
+            # unterschieden sich auch die naechsten Einstiege (gemessen an
+            # squeeze, Fenster 700 Kerzen).
+            #
+            # Die Reihenfolge ist dieselbe wie in lauf_a: erst pruefen, dann
+            # die Docht-Positionen schliessen, dann die Ausstiege buchen.
+            replay.docht_ausstiege_anwenden(
+                z, k[-1], inst, journal_huelle,
+                dt.datetime.fromtimestamp(k[-1][0] / 1000.0,
+                                         dt.timezone.utc)
+                .isoformat(timespec="seconds"))
             nachher = {id(p) for p in z["positionen"]}
             for pid, p in vorher.items():
                 if pid not in nachher and pid in offen:
