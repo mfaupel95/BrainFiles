@@ -25,7 +25,7 @@ $fehler = 0
 # Zugaenge.md hat bewusst kein Frontmatter (Stufe 0, nicht in Git, so auch in
 # INDEX.md vermerkt) - sie hier zu melden hiesse, jeden Lauf mit einem Fehler zu
 # beenden, der keiner ist. Ihre Registrierung prueft Schritt 8 weiter unten.
-$ohneFrontmatter = @('Zugaenge.md')
+$ohneFrontmatter = @('Zugaenge.md', 'Fundus-Index.md', 'Fundus-Index-Werkstatt.md')   # Fundus-*: von fundus-suche.ps1 -Index erzeugt, nicht von Hand pflegen
 Get-ChildItem $wissen -Filter *.md | Where-Object { $_.Name -notlike '*.bak*' -and $ohneFrontmatter -notcontains $_.Name } | ForEach-Object {
     $n = $_.Name
     $t = Get-Content $_.FullName -Raw
