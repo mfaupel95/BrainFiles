@@ -113,6 +113,12 @@ def main() -> int:
     ap.add_argument("--reiter", action="store_true",
                     help="jeden Reiter einmal waehlen und messen "
                          "(sonst misst Tk die inaktiven mit 1 px)")
+    ap.add_argument("--schrift", type=int, default=0,
+                    help="Schriftgroesse in der Messung (Vorgabe: die "
+                         "der Handelszentrale, 11). Der Nutzer kann im "
+                         "Leitstand bis 16 waehlen - 13 ist sein "
+                         "gespeicherter Wert, siehe "
+                         "leitstand_zustand.json.")
     ap.add_argument("--dpi", action="store_true",
                     help="mit dpi_bewusst() - Standard ist der Weg der "
                          "Handelszentrale selbst: ohne, mit tk scaling 1.1")
@@ -132,12 +138,17 @@ def main() -> int:
             root.tk.call("tk", "scaling", 1.1)   # wie handelszentrale.main()
         except Exception:                                    # noqa: BLE001
             pass
-    hz.Handelszentrale(root)
+    zentrale = hz.Handelszentrale(root)
     root.geometry("%dx%d" % (args.breite, args.hoehe))
     root.update()
     root.update_idletasks()
 
-    schrift = tkfont.Font(family=hz.SCHRIFT_ART, size=hz.SCHRIFT_GROESSE)
+    # Die Schriftgroesse aus der Messung, nicht die aus dem Modul: der
+    # Nutzer waehlt sie im Fenster (Leitstand: 8..16, sein gespeicherter
+    # Wert ist 13), und `zeichen_breite` liest genau dieses Attribut.
+    groesse = args.schrift or hz.SCHRIFT_GROESSE
+    hz.SCHRIFT_GROESSE = groesse
+    schrift = tkfont.Font(family=hz.SCHRIFT_ART, size=groesse)
     print("Fenster %dx%d | DPI-Faktor %.3f | Schrift %s %d"
           % (root.winfo_width(), root.winfo_height(),
              design.skalierung(root), hz.SCHRIFT_ART, hz.SCHRIFT_GROESSE))
@@ -147,6 +158,18 @@ def main() -> int:
     baeume = []
     for kind in root.winfo_children():
         _sammle(kind, baeume)
+
+    # Die Nachrechnung braucht mehrere Takte: sie rechnet weiter, solange
+    # sich die Zeilenzahl aendert (hoechstens fuenf Durchgaenge). Nach EINEM
+    # `update()` hat sie einmal gerechnet, aber der zweite Durchgang fehlt -
+    # und genau der schaltet die Nachrechnung frei. Drei Takte sind einer mehr
+    # als noetig; danach wird gemessen, nicht geraten.
+    for _ in range(3):
+        zentrale.refresh()
+        root.update()
+        root.update_idletasks()
+    print("Nachrechnung: %d Durchgaenge, fertig=%s"
+          % (zentrale._breiten_durchgang, zentrale._breiten_gesetzt))
 
     gesamt, gemessen = 0, 0
     if args.reiter:

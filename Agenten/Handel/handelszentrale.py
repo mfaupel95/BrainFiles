@@ -491,6 +491,7 @@ ROLLENDE = 40             # zwei Rollbalken (2 x 16) + Innenrand
 ZEICHEN_BREITE_TK = 8     # ohne dpi_bewusst(), tk scaling 1.1 (gemessen)
 ZEICHEN_BREITE_DPI = 10   # mit dpi_bewusst(), Faktor 1.25 (gemessen)
 SPALTEN_VORGABE = 120     # Wunschbreite ohne Rangfolge (Text entscheidet)
+BREITEN_MAX_DURCHGAENGE = 5   # danach gehoeren die Breiten dem Nutzer
 
 
 def spaltenbreiten(spalten, kopf, wunsch, texte=None, zeichen_breite=None,
@@ -1279,6 +1280,18 @@ def seite_mausrad(c, innen):
             pass          # Widget nimmt keine Bindungen ( selten, z. B. im Aufbau)
 
 
+def _as_liste_wunsch(baum):
+    """Die Wunschbreiten einer gebauten Tabelle, aus ihrer aktuellen Breite.
+
+    Die Tabellen ohne eigene Rangfolge (FreqTrade, omnitrade) bekommen ihre
+    Soll-Breite beim Bauen aus ihrem Wunsch-Dict. Ohne diese Liste hier
+    wuerde die Nachrechnung auf SPALTEN_VORGabe zurueckfallen und die
+    haertzuschuechende Spalte verlieren, die der Nutzer mit einem Dict
+    bekommen hat. Also: das Dict beim Bauen merken, nicht erraten.
+    """
+    return list(getattr(baum, "_wunsch", None) or [])
+
+
 def kopf_von(baum):
     """Die Ueberschriften eines Treeviews als Dict - die Rechnung
     `spaltenbreiten` braucht sie, und sie stehen nur im Widget."""
@@ -1337,6 +1350,10 @@ def tabelle_mit_leiste(rahmen, spalten, kopf, wunsch=None, hoehe=8,
     breiten = dict(spaltenbreiten(spalten, kopf, _als_liste(spalten, wunsch),
                                   texte, zeichen_breite=zb,
                                   verfuegbar=platz))
+    # Die Wunschliste am Baum merken: `_breiten_nachrechnen` rechnet ohne
+    # Fenster und braucht dieselbe Rangfolge, sonst faellt sie auf
+    # SPALTEN_VORGABE zurueck und verliert die Absicht des Aufrufers.
+    baum._wunsch = list(_als_liste(spalten, wunsch))
     for sp in spalten:
         baum.heading(sp, text=kopf.get(sp, sp))
         baum.column(sp, width=breiten.get(sp, 110),
@@ -1379,6 +1396,8 @@ class Handelszentrale:
         # Breiten werden nach dem ERSTEN Befuellen nachgerechnet - beim Bauen
         # steht in den Tabellen noch nichts (siehe _breiten_nachrechnen).
         self._breiten_gesetzt = False
+        self._breiten_durchgang = 0     # wie oft nachgerechnet wurde
+        self._breiten_stand_alt = ()    # Zeilenzahl des vorigen Durchgangs
         self._wunsch_spuren = []        # von _baue gesetzt
         self._wunsch_pos = []
         if isinstance(root, tk.Tk):
@@ -2181,21 +2200,39 @@ class Handelszentrale:
         Breite mit neuem Namen. Nach dem ersten `insert` sind die Texte
         da, und erst dann laesst sich die vraechtig lange Spalte finden.
 
-        Nur einmal nach dem ersten Befuellen: danach waeren die Spalten
-        bei jedem Takt neu vermessen und der Nutzer koennte eine Breite,
-        die er mit der Maus gezogen hat, nicht mehr festhalten.
+        Nachrechnen erst, wenn die Tabellen GEFUELLT sind - und dann
+        einmal mehr, wenn der Kurs-Takt neue Zeilen bringt. Ein einmaliges
+        Rechnen nach dem ersten `insert` reicht nicht: gemessen bei Schrift
+        13 waren danach noch 96 Texte zu schmal, weil zu diesem Zeitpunkt
+        erst 8 von 96 Positionen und 3 von 47 Spuren gelesen waren.
+
+        Die Regel: nachrechnen, solange die Zeilenzahl sich noch aendert -
+        hoechstens FUENF Mal. Danach gehoeren die Breiten dem Nutzer (er kann
+        eine Spalte mit der Maus ziehen); eine Aenderung an der Schrift
+        setzt die Grenze ohnehin zurueck (`setze_schrift`).
         """
+        # ALLE Tabellen, nicht nur drei: die FreqTrade-Uebersicht stand bei
+        # Schrift 13 mit 113 px gegen 128 px Bedarf ("G/V geschlossen"),
+        # weil sie nicht nachgerechnet wurde.
+        nachrechnen = tuple(b for b in
+                            (self.t_spuren, self.t_pos, self.t_laeufe,
+                             self.t_ft_bots, self.t_ft_offen, self.t_ft_zu,
+                             self.t_omni_pos, self.t_omni_journal, self.t_omni)
+                            if b is not None)
+        zaehler = tuple(len(b.get_children()) for b in nachrechnen)
         if self._breiten_gesetzt:
             return
-        for baum, wunsch in ((self.t_spuren, self._wunsch_spuren),
-                             (self.t_pos, self._wunsch_pos),
-                             (self.t_laeufe, None)):
-            if baum is None:
-                continue
-            if wunsch is None:
-                wunsch = _als_liste(list(baum["columns"]), None)
-            if not baum.get_children():
-                continue           # noch keine Zeile: nichts zu messen
+        self._breiten_durchgang += 1
+        wuensche = {id(self.t_spuren): self._wunsch_spuren,
+                    id(self.t_pos): self._wunsch_pos}
+        for baum in nachrechnen:
+            wunsch = wuensche.get(id(baum)) or _as_liste_wunsch(baum)
+            # Eine LEERE Tabelle wird trotzdem gerechnet - nach den
+            # Ueberschriften. Vorher wurden leere Tabellen uebersprungen und
+            # behielten ihre Bau-Breite; bei Schrift 16 blieben so drei
+            # Ueberschriften abgeschnitten ("G/V geschlossen" 158 px gegen
+            # 158 px Bedarf, "offen/max", "Geschlossen"). Eine Tabelle ohne
+            # Zeilen zeigt genau die Ueberschriften, und die muessen passen.
             texte = {}
             for iid in baum.get_children():
                 for sp, wert in zip(baum["columns"], baum.item(iid, "values")):
@@ -2207,7 +2244,16 @@ class Handelszentrale:
                 verfuegbar=platz))
             for sp, b in breiten.items():
                 baum.column(sp, width=b)
-        self._breiten_gesetzt = True
+        # Fertig nach dem zweiten Durchgang, in dem sich die Zeilenzahlen
+        # nicht mehr geaendert haben. Eine Tabelle darf leer bleiben (ein Bot
+        # ohne Trades, eine Positionstabelle ohne Positionen) - mit der
+        # Bedingung "alle Tabellen gefuellt" blieb die Nachrechnung bei
+        # Schrift 13 nach EINEM Durchgang stehen und sechs Tabellen blieben
+        # auf ihrer Bau-Breite (gemessen: "G/V geschlossen" 113 px statt
+        # 128 px Bedarf).
+        if self._breiten_durchgang >= 2 and self._breiten_stand_alt == zaehler:
+            self._breiten_gesetzt = True
+        self._breiten_stand_alt = zaehler
 
     def _zeige(self, jetzt):
         # Spurtabelle
