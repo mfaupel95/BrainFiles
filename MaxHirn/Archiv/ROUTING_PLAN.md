@@ -1,3 +1,8 @@
+> **Überholt.** Dieser Stand ist vom 04.10.2026, 22:15 und deckt 119 offene
+> Punkte ab. TASKS.md änderte sich danach (T-319 geschlossen, T-343..T-347
+> neu), gültig ist [`ROUTING_PLAN_2026-10-04.md`](ROUTING_PLAN_2026-10-04.md) mit 123
+> Punkten und grünem Prüferstand.
+
 # Routing-Plan: offene Punkte in TASKS.md
 
 Erzeugt am 2026-10-04 · Quelle: `MaxHirn/Archiv/TASKS.md` · Werkzeug: `routing_plan_bauen.py`

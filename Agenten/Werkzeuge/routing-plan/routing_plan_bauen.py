@@ -12,6 +12,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import date
 
 KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+—\s*(.+?)\*\*\s*$')
 FELD = re.compile(r'^\s{2,}([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß /().\-]{1,45}?):\s*(.*)$')
@@ -243,10 +244,16 @@ def ziel_waehlen(quelle, ziel):
     """
     if not os.path.exists(ziel):
         return ziel, False
-    from datetime import date
     stamp = date.today().isoformat()
     basis, ext = os.path.splitext(ziel)
-    return '%s_%s%s' % (basis, stamp, ext), True
+    # Ein zweiter Lauf am selben Tag darf den Tagesplan nicht ueberschreiben:
+    # -2, -3 ... dahinter, sonst ist der erste Plan des Tages spurlos weg.
+    kandidat = '%s_%s%s' % (basis, stamp, ext)
+    n = 2
+    while os.path.exists(kandidat):
+        kandidat = '%s_%s-%d%s' % (basis, stamp, n, ext)
+        n += 1
+    return kandidat, True
 
 
 def main():
@@ -259,8 +266,8 @@ def main():
     zeilen = []
     zeilen.append('# Routing-Plan: offene Punkte in %s' % os.path.basename(quelle))
     zeilen.append('')
-    zeilen.append('Erzeugt am 2026-10-04 · Quelle: `%s` · Werkzeug: `%s`' % (
-        quelle, os.path.basename(__file__)))
+    zeilen.append('Erzeugt am %s · Quelle: `%s` · Werkzeug: `%s`' % (
+        date.today().isoformat(), quelle, os.path.basename(__file__)))
     zeilen.append('')
 
     # (a) gewaehlte Datei

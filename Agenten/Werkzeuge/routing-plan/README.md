@@ -31,6 +31,32 @@ Liegt am Ziel schon ein Plan, wird ein NEUER mit Datum im Namen geschrieben
 (`ROUTING_PLAN_YYYY-MM-DD.md`). Ein Plan, der seinen Vorgänger ohne Spur
 ersetzt, ist bei 119 offenen Punkten nicht mehr von einem neuen zu unterscheiden.
 
+Ein zweiter Lauf am selben Tag schreibt `_YYYY-MM-DD-2`, `-3` … dahinter; ohne
+diese Kette überschriebe der zweite Lauf den ersten des Tages. Der Plan ohne
+Datum im Namen (`ROUTING_PLAN.md`) bleibt als erster Stand im Repo liegen — **gültig
+ist die datierte Fassung mit dem grünen Prüferstand**, nie die undatierte. Der
+Plan nennt seinen eigenen Erzeugungstag (`Erzeugt am …`), nicht die Schreibzeit.
+
+## Wohin damit: nicht basic-memory
+
+**basic-memory ist keine Hauskonvention für Plan-Dokumente** (gemessen 04.10.2026):
+
+- Das basic-memory-Projekt zeigt auf `C:\Users\faupe\basic-memory`, nicht ins
+  BrainFiles; dort liegen vier Automatik-Notizen (`automatik/laeufe/`,
+  `automatik/proben/`), kein Hausdokument.
+- Es ist kein Git-Repo und steht in keinem Sicherungslauf (`sichern.ps1` hat
+  keinen Eintrag dafür) — eine Kopie wäre die einzige Fassung ohne Historie.
+- Die Hausregel in `MaxHirn/AGENTS.md` schreibt stattdessen vor: *eine Zahl, ein
+  Befund, ein Zustand* → Notiz unter `Wissen/`, *ein offener Punkt* →
+  `Archiv/TASKS.md`. Beides ist erfüllt: die Quelle ist `TASKS.md`, der Plan
+  steht daneben.
+
+Die Karte, die diesen Schritt beauftragt hat, nannte basic-memory nur als
+Möglichkeit („if it is the house convention"). Die Antwort ist damit belegt und
+nein — es wird keine Kopie geschrieben. Ein Grund, an basic-memory zu denken,
+wäre ein Abruf über die Profil-Grenze hinweg (Bot `basic-memory`), nicht der
+Notizenspeicher.
+
 ## Die sechs Bestandteile
 
 | Abschnitt | Inhalt |
