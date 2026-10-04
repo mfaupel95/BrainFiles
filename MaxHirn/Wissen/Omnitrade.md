@@ -3,7 +3,7 @@ id: 20260929-omnitrade
 title: 'omnitrade — Live-Lauf auf OKX-Demo mit Anzeige'
 tags: [handel, betrieb]
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-04
 related: [20260902-handelsregeln]
 summary: 'Anleitung: omnitrade (Rust) im OKX-Demo laufen lassen und in der Handelszentrale verfolgen; Schlüssel, EEA-Region, Ordergröße, Fallen.'
 ---
@@ -75,6 +75,11 @@ cargo run -q -p omnitrade-ui
 
 Anderer Pfad: als erstes Argument oder über `OMNITRADE_STATUS`. Das Fenster
 zeigt nur, was der Lauf schreibt; ohne Lauf steht dort „feed: no status file“.
+
+**Konfig für Hermes:** `Agenten/Handel/hermes-omnitrade-config.json` (Stand
+04.10.2026) fasst Pfade, Modus (OKX-Testnet, kein Echtgeld), Schlüssel-Namen
+und die Erlaubt-/Verboten-Liste für Hermes zusammen. Sie dokumentiert nur;
+kein Programm liest sie.
 
 ## Beenden
 
