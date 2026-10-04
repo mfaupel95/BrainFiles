@@ -1,3 +1,13 @@
+---
+id: 20260908-onchainos-backup
+title: 'OnChainOS Backup'
+tags: [sicherheit, archiv]
+created: 2026-09-08
+updated: 2026-09-08
+related: [20260830-schutzregeln]
+summary: 'Archivierte OnChainOS-Konfiguration (Identität, Wallet-Konfiguration, Session) vom 08.09.2026: Herkunft, Inhalt und Aufbewahrungsort.'
+---
+
 # OnChainOS Backup
 
 ## Status

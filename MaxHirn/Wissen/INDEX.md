@@ -61,6 +61,12 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-ordnerstruktur` — **Ordnerstruktur** — `Wissen/Ordnerstruktur.md` — Die vier Ordner unter `BrainFiles/`, warum sie geteilt sind und welche fünf Fallen beim Verschieben still brechen.
 - `20260830-fristen` — **Fristen** — `Wissen/Fristen.md` — Alle laufenden Termine mit Konsequenz, ISO-datiert, gepflegt vom Skill `frist`.
 - `20260916-optimierungen-finden` — **Optimierungen finden** — `Wissen/Optimierungen-2026-09-16.md` — Wöchentliche Prüfung der Routinen selbst (montags 09:45, `MaxHirn-Optimierungen-Finden`): Läufe ohne Ende-Zeile, Leichen in der Aufgabenplanung, Prozess-Drift. Warum ein abgebrochener Lauf niemandem auffällt und wie er belegt wird.
+- `20260910-optimierungen-umgesetzt` — **Optimierungen — Umgesetzt (2026-09-10)** — `Wissen/Optimierungen-2026-09-10.md` — Drei umgesetzte Verbesserungen für Datensicherheit und Wartbarkeit, allen voran die monatliche Off-Site-Kopie auf USB-SSD.
+- `20260911-off-site-backup` — **Off-Site Backup Setup — Monatliche Sicherung auf USB** — `Wissen/Off-Site-Backup.md` — Anleitung für die kalte Monatskopie auf eine externe USB-SSD gegen gleichzeitigen Ausfall von C:, G: und O:.
+- `20260910-brainfiles-bus` — **BrainFiles Bus** — `Wissen/BrainFiles-Bus.md` — Zentraler Meldedienst für alle geplanten Aufgaben: Start, Prüfung, Betrieb; ein toter Bus bricht nie einen Lauf ab.
+- `20260916-repo-bots` — **Repo-Bots: Flottenstand und Telegram-Zugang** — `Wissen/Repo-Bots.md` — Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram über /bots und /bot NAME.
+- `20260916-agent-reach` — **Agent Reach: Internet-Zugang für Agenten** — `Wissen/Agent-Reach.md` — Lesender Internet-Zugang (Twitter/X, Reddit, YouTube, GitHub, RSS, Web) ohne API-Schlüssel: Ablageort, Aufruf, Hermes-Profil.
+- `20260917-openmontage` — **OpenMontage: Agentisches Videoproduktions-Framework** — `Wissen/OpenMontage.md` — Fork von calesthio/OpenMontage: 12 Produktionspipelines für KI-Videos, 41 von 121 Werkzeugen laufen ohne API-Schlüssel.
 
 ### System und Hardware
 
@@ -78,6 +84,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260830-schutzregeln` — **Schutzregeln** — `Wissen/Schutzregeln.md` — Welche Dateien in `MaxHirn/` ein Agent nicht anfassen darf und warum.
 - `20260830-zugaenge` — **Zugänge** — `Wissen/Zugaenge.md` — Zentrale und einzige Ablage aller API-Schlüssel und Tokens. **Geschützt: nur auf ausdrückliche Anweisung ändern, kein Frontmatter.**
 - `20260830-passwoerter-quarantaene` — **Passwörter-Quarantäne** — `Wissen/Passwoerter-Quarantaene.md` — Arbeitsliste der Dienste aus dem Firefox-Export, deren Passwörter noch zu ändern sind.
+- `20260908-onchainos-backup` — **OnChainOS Backup** — `Wissen/OnChainOS_Backup.md` — Archivierte OnChainOS-Konfiguration (Identität, Wallet-Konfiguration, Session) vom 08.09.2026: Herkunft, Inhalt, Aufbewahrungsort.
 
 ### Steuern und Geld
 
@@ -103,6 +110,10 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260919-moon-dev-code-studien` — **Moon-Dev-Code: die drei Strategie-PDFs** — `Wissen/Moon-Dev-Code-Studien.md` — Gelesene Zusammenfassung der drei Paper in `Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/`: Psychologie des Krypto-Handels (Delfabbro 2021, Risikofaktoren FOMO/Kontroll-Illusion), Deep Reinforcement Learning für Handelspunkte (Appl. Sci. 2020, Backtest-Renditen ohne Kostenmodell), EMH-Survey über 38 Studien (JRFM 2019, Langzeit-Gedächtnis verblasst mit Marktreife). Kein Code/Parameter übernommen.
 - `20260921-archiv-trading-skills` — **Archiv-Trading-Skills und Fremdstrategien im Lauf** — `Wissen/Archiv-Trading-Skills.md` — Was von den ausgemusterten Handels-Skills lauffähig ist (nur `geld`; `marktbriefing` hängt am fehlenden `traderhub`, `financial-services` bleibt bewusst im Archiv) und was eine gefahrene Fremdstrategie messbar liefert: TTM-Squeeze+ADX auf neun Jahren BTC-Stundenkerzen ergibt einen Kosten-Wendepunkt von ≈ 0,10 % je Runde — rund 100-mal schlechter als der Haus-Scanner. Dazu der eigentliche Fund: neun Jahre lokale Kursdaten und vier Backtest-Umgebungen mit venv unter `Werkstatt/`.
 - `20260921-prognose-backtest` — **Prognose-Spuren-Backtest** — `Wissen/Prognose-Spuren-Backtest.md` — Erster langer Backtest der vier Prognose-Spuren (7000 Stundenkerzen, 0,10 % Gebuehr je Seite): tragen tut nur die LONG-Seite von macd_mtf (+2,28 % je Runde, 48 % Treffer) und squeeze (+1,57 %); short ist bei allen vier negativ, wavetrend und supertrend sind auf beiden Seiten negativ. Das Kurzfenster war ein Aufwaertsmarkt und ist die freundlichere Zahl — der Langlauf ist der Massstab. Werkzeug: `Agenten/Handel/backtest_prognose.py` + `bt_lang.py`.
+- `20260918-handel-stack-repo` — **Handel-Stack als eigenes Repo** — `Wissen/Handel-Stack-Repo.md` — Agenten/Handel als privates GitHub-Repo mfaupel95/handel-stack gespiegelt: Umfang, Ausschlüsse, fehlende CI-Workflows, Schnappschuss-Charakter.
+- `20260916-moon-dev-agenten` — **Moon-Dev-Agenten** — `Wissen/Moon-Dev-Agenten.md` — Stand der installierten Moon-Dev-Repos (46 Agenten, TradingView-MCP), die vier Haus-Spuren daraus und was vorgemerkt ist.
+- `20260917-awesome-systematic-trading` — **awesome-systematic-trading** — `Wissen/Awesome-Systematic-Trading.md` — Fork einer reinen Markdown-Referenzliste: 136 Backtesting-/Live-Trading-Bibliotheken, Kennzahlen aus 4.843 replizierten Papers; nichts zu installieren.
+- `20260919-nautilus-candle-rust` — **NautilusTrader + candle: Rust-KI-Stack** — `Wissen/Nautilus-Candle-Rust-Stack.md` — Zwei-Ebenen-Architektur in einem Cargo-Workspace: Research-Ebene fittet das Modell, Execution-Ebene entscheidet, der Linker erzwingt die Trennung.
 
 ### Handel — Sonderregeln
 

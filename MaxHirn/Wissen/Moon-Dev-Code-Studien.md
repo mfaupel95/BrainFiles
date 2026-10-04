@@ -1,3 +1,13 @@
+---
+id: 20260919-moon-dev-code-studien
+title: 'Moon-Dev-Code: die drei Strategie-PDFs'
+tags: [handel]
+created: 2026-09-19
+updated: 2026-09-19
+related: [20260916-moon-dev-agenten, 20260921-prognose-backtest]
+summary: 'Gelesene Zusammenfassung der drei Paper in Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/ (Psychologie, Deep RL, EMH-Survey); kein Code oder Parameter übernommen.'
+---
+
 # Moon-Dev-Code: die drei Strategie-PDFs (gelesen 19.09.2026)
 
 Stand 19.09.2026. `Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/` haelt drei

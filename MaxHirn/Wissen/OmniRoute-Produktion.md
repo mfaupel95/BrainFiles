@@ -1,7 +1,7 @@
 ---
 id: 20260907-omniroute-produktion
 title: 'OmniRoute-Produktion'
-tags: [betrieb, werkzeuge, omniroute]
+tags: [betrieb, ki-agenten]
 created: 2026-09-07
 updated: 2026-09-15
 related: [20260831-python-versionen, 20260830-verbindungen, 20260907-omniroute-produktion]

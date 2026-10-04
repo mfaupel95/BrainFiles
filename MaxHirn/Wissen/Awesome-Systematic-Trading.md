@@ -1,7 +1,10 @@
 ---
 id: 20260917-awesome-systematic-trading
 title: "awesome-systematic-trading: kuratierte Referenzliste fuer systematisches Trading"
-tags: [Fremd-Repo, Handel, Referenz, Repo-Bots]
+tags: [handel, struktur, ki-agenten]
+created: 2026-09-17
+updated: 2026-09-17
+related: [20260916-repo-bots, 20260921-prognose-backtest]
 summary: "Fork von paperswithbacktest/awesome-systematic-trading - reine Markdown-Sammlung (kein Code): 136 Backtesting-/Live-Trading-Bibliotheken, echte Sharpe/t-Stat-Kennzahlen zu Strategien aus 4.843 replizierten Papers, 55 Buecher. Referenz fuer eigene Handelsspuren, nichts zu installieren."
 ---
 

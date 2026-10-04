@@ -1,7 +1,7 @@
 ---
 id: prognose-spuren-backtest
 title: Backtest der vier Prognose-Spuren (21.09.2026)
-tags: [Handel, Backtest, Prognose, Indikatoren]
+tags: [handel]
 created: 2026-09-21
 updated: 2026-09-21
 related: [[Handelsregeln]], [[Archiv-Trading-Skills]], [[Routinen]]

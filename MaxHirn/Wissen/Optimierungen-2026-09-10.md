@@ -1,3 +1,13 @@
+---
+id: 20260910-optimierungen-umgesetzt
+title: 'Optimierungen — Umgesetzt (2026-09-10)'
+tags: [betrieb, system]
+created: 2026-09-10
+updated: 2026-09-11
+related: [20260911-off-site-backup, 20260830-routinen]
+summary: 'Drei umgesetzte Verbesserungen für Datensicherheit und Wartbarkeit, allen voran die monatliche Off-Site-Kopie auf USB-SSD.'
+---
+
 # Optimierungen — Umgesetzt (2026-09-10)
 
 Drei kritische Verbesserungen für Datensicherheit und Wartbarkeit:

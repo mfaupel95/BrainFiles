@@ -1,7 +1,9 @@
 ---
 id: 20260917-openmontage
 title: 'OpenMontage: Agentisches Videoproduktions-Framework'
-tags: [Fremd-Repo, Video, Automatisierung, Repo-Bots]
+tags: [ki-agenten, betrieb]
+created: 2026-09-17
+related: [20260916-repo-bots]
 summary: 'Fork von calesthio/OpenMontage - 12 Produktionspipelines fuer KI-generierte
   Videos (Explainer, Dokumentar, Avatar, Screen-Demo), gesteuert von einem
   Coding-Agenten. Am 17.09.2026 lokal eingerichtet: 41 von 121 Werkzeugen laufen

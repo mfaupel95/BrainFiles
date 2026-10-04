@@ -1,7 +1,7 @@
 ---
 id: 20260910-brainfiles-bus
 title: 'BrainFiles Bus'
-tags: [bus, betrieb, infrastruktur]
+tags: [system, betrieb]
 created: 2026-09-10
 updated: 2026-09-10
 related: [20260830-routinen]

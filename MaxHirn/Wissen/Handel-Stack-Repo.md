@@ -1,3 +1,13 @@
+---
+id: 20260918-handel-stack-repo
+title: 'Handel-Stack als eigenes Repo'
+tags: [handel, betrieb]
+created: 2026-09-18
+updated: 2026-09-18
+related: [20260830-routinen, 20260830-verbindungen, 20260916-repo-bots]
+summary: 'Agenten/Handel als privates GitHub-Repo mfaupel95/handel-stack gespiegelt: Umfang, Ausschlüsse, fehlende CI-Workflows und Schnappschuss-Charakter.'
+---
+
 # Handel-Stack als eigenes Repo
 
 Stand 18.09.2026. Der Handelsstack liegt als **privates** GitHub-Repo

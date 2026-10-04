@@ -1,7 +1,9 @@
 ---
 id: 20260919-nautilus-candle-rust
 title: 'NautilusTrader + candle: Rust-KI-Stack (Zwei-Ebenen-Architektur)'
-tags: [Nautilus, Rust, candle, ML, Trading, Architektur]
+tags: [handel, system, ki-agenten]
+created: 2026-09-19
+related: [20260921-prognose-backtest, 20260921-archiv-trading-skills]
 summary: 'Wie NautilusTrader (Rust-Crates) und Hugging Face candle (Rust-ML-Framework) in EINEM Cargo-Workspace zusammenarbeiten: Research-Ebene fitet das Modell, Execution-Ebene entscheidet, die Trennung erzwingt der Linker (Dependency-Graph), nicht eine Konvention. Referenz-Build: 4 Crates, 388 Tests, Modell verlor gegen Momentum-Faktor.'
 updated: 2026-09-19
 ---

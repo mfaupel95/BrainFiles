@@ -1,9 +1,10 @@
 ---
 id: 20260916-repo-bots
 title: 'Repo-Bots: Flottenstand und Telegram-Zugang'
-tags: [bots, telegram, repos]
+tags: [ki-agenten, betrieb]
 created: 2026-09-16
 updated: 2026-09-21
+related: [20260830-hermes, 20260830-routinen]
 summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
 ---
 

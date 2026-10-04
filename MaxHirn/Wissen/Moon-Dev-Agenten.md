@@ -1,3 +1,13 @@
+---
+id: 20260916-moon-dev-agenten
+title: 'Moon-Dev-Agenten: was liegt vor, was läuft, was ist vorgemerkt'
+tags: [handel, ki-agenten]
+created: 2026-09-16
+updated: 2026-09-16
+related: [20260919-moon-dev-code-studien, 20260916-repo-bots]
+summary: 'Stand der installierten Moon-Dev-Repos (46 Agenten, TradingView-MCP, Research-Material), die vier Haus-Spuren daraus und was vorgemerkt ist.'
+---
+
 # Moon-Dev-Agenten: was liegt vor, was laeuft, was ist vorgemerkt
 
 Stand 16.09.2026. Anlass: Max hat die Moon-Dev-Repos installieren lassen und

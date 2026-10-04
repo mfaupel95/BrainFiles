@@ -1,3 +1,13 @@
+---
+id: 20260916-agent-reach
+title: 'Agent Reach: Internet-Zugang für Agenten'
+tags: [ki-agenten, betrieb]
+created: 2026-09-16
+updated: 2026-09-16
+related: [20260916-repo-bots]
+summary: 'Fork von Panniantong/Agent-Reach als lesender Internet-Zugang (Twitter/X, Reddit, YouTube, GitHub, RSS, Web) ohne API-Schlüssel: Ablageort, Aufruf, Hermes-Profil.'
+---
+
 # Agent Reach: Internet-Zugang für Agenten (16.09.2026)
 
 Geholt auf Max' Auftrag ("Github: Agent reach hinzufügen"). Es ist **kein**

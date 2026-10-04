@@ -1,3 +1,13 @@
+---
+id: 20260911-off-site-backup
+title: 'Off-Site Backup Setup — Monatliche Sicherung auf USB'
+tags: [betrieb, hardware]
+created: 2026-09-11
+updated: 2026-09-11
+related: [20260910-optimierungen-umgesetzt, 20260830-hardware]
+summary: 'Anleitung für die monatliche kalte Kopie auf eine externe USB-SSD gegen gleichzeitigen Ausfall von C:, G: und O:: Hardware, Laufwerksbuchstabe, Ablauf.'
+---
+
 # Off-Site Backup Setup — Monatliche Sicherung auf USB
 
 Schützt gegen simultane Ausfälle aller drei lokalen Platten (C:, G:, O:).
