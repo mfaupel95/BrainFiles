@@ -20,7 +20,11 @@ import re
 import sys
 from collections import Counter
 
-KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+—\s*(.+?)\*\*\s*$')
+# Tolerant wie der Builder: Gevrierstrich ODER Bindestrich, ein Titel darf
+# ohne schliessendes '**' umbrechen (T-064). Die alte enge Form uebersah
+# 47 offene Eintraege und meldete den unvollstaendigen Plan GRUEN
+# (gemessen 04.10.2026 an TASKS.md, 170 offene Punkte).
+KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+(\S)\s*(.*)$')
 ROSTER = ('hermes-wartung', 'basic-memory', 'agent-trade-kit',
           'markt-recherche', 'nerd', 'lotse', 'default')
 ABSCHNITTE = ('## (a) ', '## (b) ', '## (c) ', '## (d) ', '## (e) ')

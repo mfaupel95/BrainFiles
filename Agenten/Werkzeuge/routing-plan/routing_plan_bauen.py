@@ -14,7 +14,14 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date
 
-KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+—\s*(.+?)\*\*\s*$')
+# TOLERANT, nicht streng: das Haus schreibt den Titel nicht einheitlich.
+# Gemessen 04.10.2026 an TASKS.md: 146 Eintraege trennen mit Gevrierstrich
+# ('—'), 46 mit Bindestrich ('-'), und T-064 bricht den Titel ohne
+# schliessendes '**' um. Die alte enge Regex uebersah diese 47 offenen
+# Punkte - und der Pruefer teilte sie, meldete also GRUEN auf einem
+# unvollstaendigen Plan. Titel = Rest nach dem Trennzeichen, fuehrendes
+# Sternchenpaar abgeschnitten.
+KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+(\S)\s*(.*)$')
 FELD = re.compile(r'^\s{2,}([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß /().\-]{1,45}?):\s*(.*)$')
 ALLE_IDS = re.compile(r'\bT-(\d{3,})\b')
 
@@ -67,6 +74,21 @@ MAX_HINWEIS = re.compile(r'wartet auf|entscheidung max|nur max|freigabe|pflicht.
                          r'portalanmeldung|zugangsdat|haushand|kontostand|guthaben|\[.\]', re.I)
 
 
+def titel_aus(rest):
+    """Rest nach dem Trennzeichen -> Titel.
+
+    Schneidet ein fuehrendes und ein schliessendes Sternchenpaar ab und
+    laesst einen erledigt-Vermerk am Zeilenende (' - erledigt 2026-09-19')
+    weg, damit 'Titel' und 'erledigt am' nicht verschmelzen.
+    """
+    t = rest.strip().lstrip('*').strip()
+    if t.endswith('**'):
+        t = t[:-2].strip()
+    else:
+        t = re.sub(r'\s*[-–—]\s*erledigt\b.*$', '', t, flags=re.I).strip()
+    return t
+
+
 def bloecke_lesen(pfad):
     raw = open(pfad, 'rb').read()
     nl = '\r\n' if b'\r\n' in raw else '\n'
@@ -76,10 +98,10 @@ def bloecke_lesen(pfad):
     idx = [(i,) + KOPF.match(zeilen[i]).groups()
            for i in range(offen, erledigt) if KOPF.match(zeilen[i])]
     out = []
-    for k, (i, status, tid, nummer, titel) in enumerate(idx):
+    for k, (i, status, tid, nummer, trenner, rest) in enumerate(idx):
         end = idx[k + 1][0] if k + 1 < len(idx) else erledigt
         out.append({'zeile': i + 1, 'status': status.strip(), 'id': tid.strip(),
-                    'nummer': nummer.strip(), 'titel': titel.strip(),
+                    'nummer': nummer.strip(), 'titel': titel_aus(rest),
                     'text': zeilen[i:end]})
     return out, nl, offen + 1, erledigt + 1
 

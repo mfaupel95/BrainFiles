@@ -9,6 +9,7 @@ zugewiesenem Profil und einer Wellen-Reihenfolge.
 ```
 python Agenten/Werkzeuge/routing-plan/routing_plan_bauen.py <tasks.md> <ziel.md>
 python Agenten/Werkzeuge/routing-plan/routing_plan_pruefen.py <tasks.md> <plan.md>
+python Agenten/Werkzeuge/routing-plan/routing_plan_unabhaengig.py <tasks.md> <plan.md>
 python Agenten/Werkzeuge/routing-plan/gegenprobe.py <tasks.md> <plan.md>
 ```
 
@@ -24,6 +25,29 @@ python Agenten/Werkzeuge/routing-plan/routing_plan_bauen.py ^
 Alle Eintraege im Abschnitt `## Offen`, die NICHT `[x]` tragen — also auch
 `[ ]`, `[~]`, `[?]` und `[!]`. Ein `[x]` unter `Offen` wird gezählt, aber
 nicht als offen geführt: im Haus wandert er erst später nach `## Erledigt`.
+
+## Der Titel-Trenner ist uneinheitlich — beide Werkzeuge sind tolerant
+
+Gemessen am 04.10.2026 an 192 Einträgen in `TASKS.md`:
+
+| Form | Anzahl |
+|---|---|
+| `- [ ] **T-NNN — Titel**` (Gevrierstrich, schließendes `**`) | 146 |
+| `- [ ] **T-NNN - Titel**` (Bindestrich, schließendes `**`) | 46 |
+| `- [ ] **T-NNN — Titel` (Gevrierstrich, Titel bricht ohne `**` um) | 1 (T-064) |
+
+`routing_plan_bauen.py` und `routing_plan_pruefen.py` erkannten anfangs nur
+die erste Form. Folge: **47 offene Punkte fehlten im Plan, und beide meldeten
+GRÜN** — der Prüfer teilte die Enge des Builders, also prüfte er die
+Lücke nicht, sondern übernahm sie. Korrigiert in beiden Werkzeugen
+(`titel_aus()` schneidet das Sternchenpaar bzw. einen ` - erledigt`-Vermerk
+ab). Gegenbeweis: mit der alten Regex meldet der Prüfer den neuen Plan rot
+und führt 44 echte offene Punkte als „erfunden".
+
+**Regel: Builder und Prüfer dürfen nie dieselbe Enge teilen, wenn der Prüfer
+die Vollständigkeit behaupten soll.** `routing_plan_unabhaengig.py` ist der
+Gegenweg: eigener Zählweg, eigene Markdown-Prüfung, kein Import des
+Hausprüfers.
 
 ## Dateiwahl
 
