@@ -226,11 +226,28 @@ class FensterOderHistorieTest(ReplayTest):
             replay.lauf_a("supertrend", 0.1, "test", max_kerzen=200)
 
     def test_fehlende_historie_behaelt_die_auffuell_anweisung(self):
-        """Der ANDERE Grund - hier ist Nachfuellen wirklich die Tat."""
+        """Der ANDERE Grund - hier ist Nachfuellen wirklich die Tat.
+
+        GEMESSEN 04.10.2026: dieser Test las die ECHTE Historie und brauchte
+        ein Instrument, von dem es KEINE gibt. Nach dem Nachladen der Daten
+        (BNB 1H hat inzwischen 50.422 Kerzen) faellt die Annahme, und der
+        Test wurde rot - ohne dass sich am Code etwas geaendert hatte. Ein
+        Test, der einen Datenstand einfriert, meldet den Datenbestand, nicht
+        die Regel.
+
+        Jetzt traegt der Attrappen-Leser den Fall: `_nur()` behauptet
+        12 Kerzen fuer jedes Instrument, die 3x weniger als `bedarf`. Damit
+        entscheidet allein die Regel, welcher der beiden Gruende gemeldet wird.
+        """
         w = dict(self._wachen("supertrend"), instrumente=["BNB"],
                  kerzen_takt="1H")
-        with self.assertRaises(replay.HistorieFehlt) as ctx:
-            self._kerzen_fuer("supertrend", w, None)
+        alt = replay.historie_binance.lade
+        replay.historie_binance.lade = lambda inst, takt: [[0, 1.0] * 1] * 12
+        try:
+            with self.assertRaises(replay.HistorieFehlt) as ctx:
+                self._kerzen_fuer("supertrend", w, None)
+        finally:
+            replay.historie_binance.lade = alt
         text = str(ctx.exception)
         self.assertIn("auffuellen", text)
         self.assertNotIn("Fenster zu klein", text)
