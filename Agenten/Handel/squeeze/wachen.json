@@ -14,10 +14,10 @@
   "_kill_switch": "kill_switch_gesamt_usd = 2 * buch_risiko = 2 * 20 = 40. Papier: doppelt so hoch wie noetig, weil die Ratsche vorher greift.",
   "kill_switch_gesamt_usd": 120.0,
   "_stop": "ATR-basiert. pflicht_stop_prozent_min/max setzen den Rahmen, der tatsaechliche Wert faellt aus ATR / Kurs.",
-  "pflicht_stop_prozent_min": 5.0,
+  "pflicht_stop_prozent_min": 3.0,
   "pflicht_stop_prozent_max": 12.0,
   "_ziel": "ziel_r_vielfaches = 2.0 heisst: Ziel = 2 * Stop-Abstand. Risiko-Ertrag 1:2.",
-  "ziel_r_vielfaches": 2.0,
+  "ziel_r_vielfaches": 1.5,
   "mindest_kerzen": 300,
   "kerzen_takt": "1H",
   "instrumente": [
@@ -31,5 +31,6 @@
   "drawdown_halbierung_usd": 20.0,
   "_instrumente_waehrung": "USDC statt USDT seit 21.09.2026 (Auftrag Max: 'alle okx spuren mit usdc/eurc bedienen'). Grund: auf dem OKX-Konto liegen die Mittel in USDC (frei) - USDT ist gar nicht vorhanden. Die Spur ist Papier, der Unterschied im Kurs ist minimal; entscheidend ist, dass Buch und Kontowaehrung dieselbe sind.",
   "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 taker 0,10 %/Seite und echte Fuellung (HYPE-USDC 0,032 @ 86,642 = 2,77254 USDC Nettowert, Gebuehr 0,002772544 = 0,1000 %). NICHT 0,05 % - das ist der Futures-Satz.",
-  "gebuehr_taker": 0.001
+  "gebuehr_taker": 0.001,
+  "_geometrie_vermerk_20261004": "04.10.2026, Auftrag Max \"Handel-spur-Optimierung\" -> Umstellung auf 3,0 % / 1,5R. GEMESSEN ueber den Backtest-Replay (replay.py --spur squeeze, Gebuehr 0,10 %/Runde, Hausfunktion kosten_wendepunkt.kennzahlen()):   3,0 % / 1,5R   1007 Runden  39,0 % Treffer  -75,74 USD  = -0,074 je Runde   5,0 % / 2,0R    579 Runden  28,0 % Treffer -464,18 USD  = -0,803 je Runde   7,0 % / 1,5R    428 Runden  31,8 % Treffer -616,00 USD  = -1,439 je Runde   3,0 % / 3,0R    779 Runden  21,8 % Treffer -312,16 USD  = -0,384 je Runde Die bisherige Einstellung ist damit VERWORFEN: sie kostet 0,803 USD je Runde statt 0,074 - rund zehnmal mehr. GRENZE DIESER AUSSAGE: die beste gefundene Geometrie bleibt leicht negativ und TRAEGT NOCH NICHT. Das ist eine Fehlstellung abgestellt, kein Vorteil gewonnen. Spur bleibt Papier (handel_erlaubt=false). VORHER/NACHHER: bestehende offene Positionen laufen unter Stop und Ziel der ALTEN Geometrie aus; der Wechsel wirkt erst auf neue Einstiege, die naechste Auswertung ist gemischt und KEIN Beweis der Wirkung. VORAUSSETZUNG: diese Zahlen sind nur gueltig, seit replay.py --setzen tatsaechlich wirkt (drei Aufrufstellen bis dahin nicht verdrahtet, Commit 11825204) und backtest_prognose die Docht-Regel T-202 mitfaehrt (35a8ee9a). Vorher waere jede Optimierung derselbe Lauf neunmal gewesen."
 }
