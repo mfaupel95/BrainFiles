@@ -110,16 +110,28 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Layout-Messung")
     ap.add_argument("--breite", type=int, default=1280)
     ap.add_argument("--hoehe", type=int, default=860)
+    ap.add_argument("--reiter", action="store_true",
+                    help="jeden Reiter einmal waehlen und messen "
+                         "(sonst misst Tk die inaktiven mit 1 px)")
+    ap.add_argument("--dpi", action="store_true",
+                    help="mit dpi_bewusst() - Standard ist der Weg der "
+                         "Handelszentrale selbst: ohne, mit tk scaling 1.1")
     args = ap.parse_args()
 
     design = design_laden()
-    design.dpi_bewusst()
+    if args.dpi:
+        design.dpi_bewusst()          # erst VOR dem ersten Tk()
     if HIER not in sys.path:
         sys.path.insert(0, HIER)
     import handelszentrale as hz
 
     root = tk.Tk()
     root.withdraw()
+    if not args.dpi:
+        try:
+            root.tk.call("tk", "scaling", 1.1)   # wie handelszentrale.main()
+        except Exception:                                    # noqa: BLE001
+            pass
     hz.Handelszentrale(root)
     root.geometry("%dx%d" % (args.breite, args.hoehe))
     root.update()
@@ -136,14 +148,120 @@ def main() -> int:
     for kind in root.winfo_children():
         _sammle(kind, baeume)
 
-    gesamt = 0
-    for baum in baeume:
-        gesamt += bericht(baum.winfo_class() + " (%d Zeilen)"
-                          % len(baum.get_children()), baum, schrift)
+    gesamt, gemessen = 0, 0
+    if args.reiter:
+        nb = notebook_von(root)
+        if nb is not None:
+            gesamt, gemessen = _reiter_messen(root, baeume, schrift, nb)
+    else:
+        for baum in baeume:
+            # Nur een aktiver Reiter ist von Tk wirklich vermessen. Die
+            # uebrigen bekommen 1 px und wuerden als "ZU BREIT (+1229 px)"
+            # daselbe melden - das ist eine Messluecke, kein Layoutfehler.
+            if baum.winfo_ismapped() and baum.winfo_width() > 2:
+                gesamt += bericht("%s / %s" % (_titel(baum),
+                                                _tabellenname(baum)),
+                                  baum, schrift)
+                gemessen += 1
+        if gemessen < len(baeume):
+            print("NICHT GEMESSEN: %d von %d Tabellen (Reiter nicht aktiv) - "
+                  "mit --reiter messen" % (len(baeume) - gemessen, len(baeume)))
     print("=" * 78)
-    print("Tabellen %d | ZU SCHMAL GESAMT: %d" % (len(baeume), gesamt))
+    print("Tabellen %d | ZU SCHMAL GESAMT: %d" % (gemessen, gesamt))
     root.destroy()
     return 1 if gesamt else 0
+
+
+def _titel(baum):
+    """Der Reitername, in dem die Tabelle liegt - sonst sagt die Meldung
+    nur 'Treeview' und man weiss nicht, welche Tabelle gemeint war."""
+    try:
+        nb = baum.master
+        while nb is not None and nb.winfo_class() != "TNotebook":
+            nb = nb.master
+        if nb is not None:
+            return nb.tab(nb.select(), "text")
+    except Exception:                                        # noqa: BLE001
+        pass
+    return baum.winfo_name()
+
+
+def notebook_von(root):
+    """Das erste Notebook des Fensters (es hat nur eins)."""
+    gefunden = []
+
+    def lauf(w):
+        if w.winfo_class() == "TNotebook":
+            gefunden.append(w)
+            return
+        for kind in w.winfo_children():
+            lauf(kind)
+
+    lauf(root)
+    return gefunden[0] if gefunden else None
+
+
+def _reiter_messen(root, baeume, schrift, nb):
+    """Jeden Reiter einmal waehlen, updaten, messen - sonst misst Tk 1 px.
+
+    Zwei Fallen, beide beim Bauen gemessen:
+
+    1. Zuordnung Tabelle -> Reiter aus dem WIDGET-Pfad, nicht aus
+       `nb.select()`: das steht beim Messen schon auf dem naechsten Reiter,
+       waehrend noch der alte Aufbau sichtbar ist.
+    2. `winfo_ismapped()` bleibt bei einer einmal gezeigten Notebook-Seite
+       TRUE, auch wenn sie nicht mehr vorne liegt. Ohne eigene Pruefung
+       wurde dieselbe Tabelle unter jedem Reiternamen gezaehlt und die
+       Summe war das Zwei- bis Vierfache der echten Zahl. Der Weg zur
+       Auswahl ist `nb.select()`; der eines Baums ist
+       `str(nb.select())` gefolgt vom Pfad des Baums.
+    """
+    gesamt, gemessen = 0, 0
+    namen = {}
+    for pfad in nb.tabs():
+        try:
+            namen[pfad] = nb.tab(pfad, "text")
+        except Exception:                                    # noqa: BLE001
+            pass
+
+    def pfad_von(w):
+        teile = []
+        while w is not None and w is not root:
+            teile.append(str(w))
+            w = w.master
+        return ".".join(reversed(teile))
+
+    for pfad, titel in namen.items():
+        nb.select(pfad)
+        root.update()
+        root.update_idletasks()
+        vorne = pfad_von(root.nametowidget(nb.select()))
+        for baum in baeume:
+            if baum.winfo_width() <= 2:
+                continue
+            if not pfad_von(baum).startswith(vorne):
+                continue          # gehoert zu einem anderen Reiter
+            gesamt += bericht("%s / %s" % (titel, _tabellenname(baum)),
+                              baum, schrift)
+            gemessen += 1
+    return gesamt, gemessen
+
+
+def _tabellenname(baum):
+    """Ein kurzer Eigenname der Tabelle aus ihren Spalten - 'Treeview' sagt
+    nichts, wenn ein Fenster fuenf davon hat."""
+    spalten = list(baum["columns"])
+    if not spalten:
+        return "Treeview"
+    if {"spur", "modus", "fenster"} <= set(spalten):
+        return "Spurtabelle"
+    if {"instrument", "kurs", "stop", "ziel"} <= set(spalten):
+        return "Positionstabelle"
+    if {"name", "port", "strategie"} <= set(spalten):
+        return "FreqTrade-Bots"
+    if {"paar", "gv"} <= set(spalten):
+        return "FreqTrade-Positionen"
+    return "+".join(spalten[:3])
 
 
 def _sammle(widget, gefunden):

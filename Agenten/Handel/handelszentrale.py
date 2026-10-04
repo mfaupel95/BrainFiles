@@ -474,6 +474,138 @@ def _log_zeit(text, basis):
 LOG_SCHWANZ_BYTES = 65536
 
 
+# ---------------------------------------------------------------- Spaltenbreite
+# Die Tabellen bekommen ihre Breiten aus `spaltenbreiten` statt aus festen
+# Pixelzahlen. Grund ist gemessen, nicht vermutet (04.10.2026, `messprobe.py`,
+# Aufruf OHNE --dpi, weil die Zentrale selbst ohne dpi_bewusst() startet):
+#   57 Texte passten nicht in ihre Spalte, die Positionstabelle war 36 px
+#   breiter als ihr Baum.
+# Ursache war nicht die Schrift, sondern dass feste Pixelzahlen nur fuer die
+# Skalierung gelten, bei der sie gesetzt wurden. Die Zentrale startet mit
+# `tk scaling 1.1`; kommt dpi_bewusst() dazu (Faktor 1.25), ist ein Zeichen
+# 10 px breit statt 8 (gemessen mit zeichenbreite_dpi.py: 23 Zeichen gehen
+# von 184 px auf 230 px).
+SPALTEN_RAND = 8          # Luft in der Zelle, damit der Text nicht ansteht
+SPALTEN_MINIMUM = 60      # darunter ist eine Spalte unlesbar
+ROLLENDE = 40             # zwei Rollbalken (2 x 16) + Innenrand
+ZEICHEN_BREITE_TK = 8     # ohne dpi_bewusst(), tk scaling 1.1 (gemessen)
+ZEICHEN_BREITE_DPI = 10   # mit dpi_bewusst(), Faktor 1.25 (gemessen)
+SPALTEN_VORGABE = 120     # Wunschbreite ohne Rangfolge (Text entscheidet)
+
+
+def spaltenbreiten(spalten, kopf, wunsch, texte=None, zeichen_breite=None,
+                   verfuegbar=0, rand=SPALTEN_RAND, minimum=SPALTEN_MINIMUM):
+    """Breite je Spalte: was der Text braucht, gedeckelt durch den Platz.
+
+    Reihenfolge der Entscheidung - und das ist eine Entscheidung, keine
+    Reihenfolge des Zufalls:
+
+      1. Jede Spalte braucht mindestens so viel, wie ihre UEBERSCHRIFT und
+         ihre Texte brauchen. Das ist eine Untergrenze, keine Wunschzahl:
+         ein Text, der nicht passt, wird still abgeschnitten.
+      2. Wo Wunsch und Text sich widersprechen, gewinnt der Text bis zum
+         Wunsch; darueber gewinnt der Wunsch - sonst wuerde ein langer
+         Ausreisser das ganze Fenster verschieben.
+      3. Passt die Summe nicht in den Baum, wird gekuerzt: von der letzten
+         Spalte zuerst (sie ist meist der Restplatz), dann von hinten nach
+         vorn. Keine Spalte faellt unter ihre Untergrenze aus Schritt 1.
+
+    Reicht der Platz auch dafuer nicht, kommt eine waagerechte Leiste - die
+    hat jede Tabelle (`tabelle_mit_leiste`). Ein sichtbares Scrollen ist
+    besser als ein stiller Verlust.
+
+    `zeichen_breite` kommt aus `zeichen_breite()` und nicht aus einer
+    Konstante: dieselbe Schrift misst ohne dpi_bewusst() 8 px je Zeichen
+    und mit 11 px, und die Rechnung gilt nur fuer den Fall, in dem sie
+    laeuft.
+
+    Rueckgabe: Liste (spalte, breite) in der Reihenfolge von `spalten`.
+    """
+    n = len(spalten)
+    if not n:
+        return []
+    texte = texte or {}
+    zb = zeichen_breite or ZEICHEN_BREITE_TK
+    # Eine leere Wunschliste ist ein Aufruf ohne Rangfolge, kein Fehler: dann
+    # gilt fuer jede Spalte ders Vorgabewunsch. Vorher lief hier ein
+    # IndexError, das `refresh()` fing und in die Konsole schrieb - die
+    # Nachrechnung fand also nie statt und die Breiten blieben die vom Bauen.
+    if not wunsch:
+        wunsch = [SPALTEN_VORGABE]
+
+    def braucht(text):
+        if text is None or text == "":
+            return 0
+        return len(str(text)) * zb + rand
+
+    # 1. Untergrenze: Ueberschrift und Texte. Sie ist der groessere der
+    #    beiden Werte - der Textbedarf gewinnt gegen SPALTEN_MINIMUM. Ein
+    #    Fehler hier war beim Bauen messbar: die Spalte 'kurs' stand auf
+    #    60 px, obwohl ihre Ueberschrift und ihr Text 80 px brauchen.
+    #    'minimum' ist die Lesebarkeitsgrenze fuer eine Spalte OHNE Text,
+    #    nicht ein Deckel fuer eine Spalte MIT Text.
+    unten = []
+    for sp in spalten:
+        b = braucht(kopf.get(sp, sp))
+        for zeile in texte.get(sp, ()):
+            b = max(b, braucht(zeile))
+        unten.append(max(minimum, b) if b else minimum)
+    # 2. Wunsch, aber nie unter der Untergrenze.
+    oben = [max(u, int(wunsch[min(i, len(wunsch) - 1)]))
+            for i, u in enumerate(unten)]
+    # 3. Kuerzen bis in den Platz. Zwei Fehler waren hier beim Bauen
+    #    messbar und sind jetzt festgehalten:
+    #   * Ein einziger Durchlauf rueckwaerts reichte nicht: kam am Ende
+    #     noch Ueberhang, war er an den vorderen Spalten abgeschnitten und
+    #     unter ihre Untergrenze gekommen (gemessen: Spalte 'kurs' 60 px
+    #     bei 98 px Bedarf).
+    #   * Die Hauptspalte wurde vor der letzten gekuerzt, weil die
+    #     Rueckwaertsliste bei jedem Durchlauf neu anhaengt. Der Spurname
+    #     stand dadurch auf 100 statt 220 px, waehrend die Kurspalte noch
+    #     Luft hatte.
+    # Also: Runden, bis nichts mehr geht, und in jeder Runde die hinteren
+    # Spalten zuerst. Die Reihenfolge "letzte zuerst" ist eine Entscheidung:
+    # die letzte Spalte traegt bei mehreren Tabellen den Grund.
+    if verfuegbar <= 0:
+        return list(zip(spalten, oben))
+    platz = verfuegbar - ROLLENDE
+    for _ in range(n):                      # hoechstens n Runden noetig
+        ueber = sum(oben) - platz
+        if ueber <= 0:
+            break
+        bewegt = False
+        for i in list(range(n))[::-1]:
+            if ueber <= 0:
+                break
+            nimm = min(oben[i] - unten[i], ueber)
+            if nimm <= 0:
+                continue                    # steht schon auf ihrem Minimum
+            oben[i] -= nimm
+            ueber -= nimm
+            bewegt = True
+        if not bewegt:
+            break                           # nichts mehr zu geben: Leiste
+    return list(zip(spalten, oben))
+
+
+def zeichen_breite(root=None):
+    """Wie breit ist ein Zeichen in der FENSTERSchrift: gemessen, nicht
+    geraten. Ohne Fenster die gemessene Grundzahl des Nicht-DPI-Falls.
+
+    Consolas ist festbreit, also genuegt die Zeichenlange - aber nur, wenn
+    Schriftgroesse und DPI-Fall zum Fenster passen. Beides kommt aus dem
+    Fenster, das wirklich laeuft.
+    """
+    try:
+        import tkinter.font as tkfont
+        if root is not None:
+            f = tkfont.Font(root=root, family=SCHRIFT_ART, size=SCHRIFT_GROESSE)
+            return int(f.measure("M" * 20) / 20 + 0.999)
+    except Exception:                                        # noqa: BLE001
+        pass
+    return ZEICHEN_BREITE_TK
+
+
 def log_ende(pfad, zeilen=12, grenze=LOG_SCHWANZ_BYTES):
     """Die letzten Zeilen einer Logdatei, ohne sie ganz zu lesen.
 
@@ -1147,22 +1279,68 @@ def seite_mausrad(c, innen):
             pass          # Widget nimmt keine Bindungen ( selten, z. B. im Aufbau)
 
 
-def tabelle_mit_leiste(rahmen, spalten, kopf, breiten=None, hoehe=8,
-                       anker_w=(), dehnen="", wahl=None):
-    """Eine Treeview MIT vertikaler und horizontaler Leiste und Mausrad.
+def kopf_von(baum):
+    """Die Ueberschriften eines Treeviews als Dict - die Rechnung
+    `spaltenbreiten` braucht sie, und sie stehen nur im Widget."""
+    return {sp: (baum.heading(sp, "text") or sp) for sp in baum["columns"]}
+
+
+def _als_liste(spalten, wunsch):
+    """Wunschbreiten als Liste in Spaltenreihenfolge.
+
+    Zwei Formen sind zulaessig, weil beide im Baum vorkommen:
+      * eine Liste, der Reihenfolge von `spalten` folgend - die neue Form,
+        sie nennt die RANGfolge ausdruecklich;
+      * ein Dict je Spalte - die alte Form, die noch in sechs Aufrufen
+        steht. Beide werden ueber `spaltenbreiten` gefuehrt, aber die
+        Ausgabe ist immer dieselbe Liste; ein Aufrufer kann also nicht
+        versehentlich wieder eine feste Pixelzahl setzen.
+
+    Fehlt ein Eintrag, gilt der Wunsch der vorigen Spalte.
+    """
+    if isinstance(wunsch, dict):
+        aus = []
+        for sp in spalten:
+            aus.append(int(wunsch.get(sp, aus[-1] if aus else 110)))
+        return aus
+    if wunsch is None:
+        return []
+    return [int(w) for w in wunsch]
+
+
+def tabelle_mit_leiste(rahmen, spalten, kopf, wunsch=None, hoehe=8,
+                       anker_w=(), dehnen="", wahl=None, texte=None):
+    """Eine Treeview MIT senkrechter und waagerechter Leiste und Mausrad.
 
     Vorher gab es die Leiste nur bei zwei der sieben Tabellen der Zentrale;
     eine Tabelle ohne Leiste ist bei mehr Zeilen als Platz ein Abschnitt, den
     man nicht lesen kann. Die Hoehe ist bewusst eine Vorgabe (keine Formel aus
     der Zeilenzahl): die Seite scrollt, die Tabelle bleibt ein Feld.
     `wahl` ist die Treeview-Auswahlform ("browse" fuer anklickbare Tabellen).
+
+    Die Breiten kommen aus `spaltenbreiten`, nicht aus festen Pixelzahlen
+    (Begründung und Messung dort). `wunsch` ist eine Liste von Breiten bei
+    Skalierung 1, nach RANGfolge aufgebaut; fehlt sie, wird nach Textbedarf
+    gerechnet. `texte` ist optional - ohne die Zeilen, die gerade drin
+    stehen, rechnet die Funktion nur mit Ueberschriften und spaeter nach.
+
+    `dehnen` bleibt erhalten, verliert aber seine Wirkung: Tk verteilt bei
+    `stretch=True` die Restbreite selbst und verfaelscht damit jede hier
+    gerechnete Breite (gemessen 191 statt 125 px, Skill desktop-fenster).
+    Alle Spalten stehen auf stretch=False; wer mehr Platz hat, bekommt ihn
+    ueber die waagerechte Leiste.
     """
     baum = ttk.Treeview(rahmen, columns=spalten, show="headings", height=hoehe,
                         **({"selectmode": wahl} if wahl else {}))
+    zb = zeichen_breite(rahmen.winfo_toplevel())
+    platz = rahmen.winfo_width() if rahmen.winfo_width() > 2 else 0
+    breiten = dict(spaltenbreiten(spalten, kopf, _als_liste(spalten, wunsch),
+                                  texte, zeichen_breite=zb,
+                                  verfuegbar=platz))
     for sp in spalten:
         baum.heading(sp, text=kopf.get(sp, sp))
-        baum.column(sp, width=(breiten or {}).get(sp, 110),
-                    stretch=(sp == dehnen),
+        baum.column(sp, width=breiten.get(sp, 110),
+                    stretch=False,
                     anchor="w" if sp in anker_w else "e")
     laenger = ttk.Scrollbar(rahmen, orient="vertical", command=baum.yview)
     breiter = ttk.Scrollbar(rahmen, orient="horizontal", command=baum.xview)
@@ -1198,6 +1376,11 @@ class Handelszentrale:
         self.ft_lage = None        # letzte freqtrade_bridge.lage(), None = noch nie
         self.ft_bot = None         # Name des Bots, dessen Details gezeigt werden
         self._ft_laeuft = False
+        # Breiten werden nach dem ERSTEN Befuellen nachgerechnet - beim Bauen
+        # steht in den Tabellen noch nichts (siehe _breiten_nachrechnen).
+        self._breiten_gesetzt = False
+        self._wunsch_spuren = []        # von _baue gesetzt
+        self._wunsch_pos = []
         if isinstance(root, tk.Tk):
             # Allein gestartet gehoert das Fenster der Zentrale; als Reiter
             # im Leitstand gehoeren Titel, Groesse und Lage dem Leitstand.
@@ -1332,13 +1515,15 @@ class Handelszentrale:
         kopf_s = {"spur": "Spur", "modus": "Modus", "fenster": "Fenster",
                   "stand": "Stand", "pos": "Pos", "herzschlag": "Herzschlag",
                   "handel": "handel_erlaubt"}
-        breit_s = {"spur": 110, "modus": 80, "fenster": 190, "stand": 90,
-                   "pos": 50, "herzschlag": 130, "handel": 120}
+        # Wunschbreiten in RANGfolge, nicht je Spalte: der Name zuerst
+        # (dort stand "nautilus_kraken_futures" abgeschnitten), die
+        # Freigabe-Uhr als Hauptspalte dahinter.
+        wunsch_s = [200, 90, 150, 90, 60, 110, 130]
         # Zeilenweise Vorgabe statt `height=len(SPUREN)`: die Tabelle hatte
         # 42 Zeilen und damit eine angeforderte Hoehe ueber jedem Fenster -
         # die letzten Spuren waren unerreichbar. Zwolf Zeilen plus Leiste:
         # alles bleibt lesbar, die Seite scrolliert.
-        self.t_spuren = tabelle_mit_leiste(r1, sp_spur, kopf_s, breit_s,
+        self.t_spuren = tabelle_mit_leiste(r1, sp_spur, kopf_s, wunsch_s,
                                            hoehe=min(len(SPUREN), 12),
                                            anker_w=("spur", "modus", "fenster",
                                                     "herzschlag", "handel"))
@@ -1357,12 +1542,11 @@ class Handelszentrale:
                   "einstieg": "Einstieg", "kurs": "Kurs", "stop": "Stop",
                   "ziel": "Ziel", "abstand": "Abstand", "wert": "Wert",
                   "gv": "G/V %"}
-        breit_p = {"spur": 90, "instrument": 210, "seite": 60, "einstieg": 90,
-                   "kurs": 90, "stop": 90, "ziel": 90, "abstand": 80,
-                   "wert": 110, "gv": 80}
-        self.t_pos = tabelle_mit_leiste(r2, sp_pos, kopf_p, breit_p, hoehe=7,
+        # Reihenfolge nach Wichtigkeit: Instrument, dann die Zahlenspalten.
+        wunsch_p = [90, 210, 60, 90, 90, 90, 90, 80, 110, 80]
+        self.t_pos = tabelle_mit_leiste(r2, sp_pos, kopf_p, wunsch_p, hoehe=7,
                                         anker_w=("spur", "instrument", "seite"),
-                                        dehnen="instrument", wahl="browse")
+                                        wahl="browse")
         self.t_pos.bind("<<TreeviewSelect>>", self._gewaehlt)
 
         # --- Chart
@@ -1736,6 +1920,20 @@ class Handelszentrale:
         self._starte_kurs_worker()
         self._starte_freqtrade_worker()
         self._zeige_omnitrade(omnitrade_bridge.lage())   # kleine lokale Datei, kein Thread noetig
+        # Nachrechnen erst HIER: `_zeige_omnitrade` befuellt die Lauf-Tabelle
+        # und liefert ihre Zeilen erst nach `_zeige`. Vorher gerechnet
+        # enthaelt diese Tabelle nur ihre Ueberschriften - gemessen blieben
+        # danach 6 Texte zu schmal (Gewinn-Spalte, "+506.83 (+101.37 %)").
+        try:
+            self._breiten_nachrechnen()
+        except Exception as e:                       # noqa: BLE001
+            # Breite ist Kosmetik, kein Grund den Takt zu stoppen - aber der
+            # Fehler gehoert in die Konsole, sonst ist ein stiller Ausfall
+            # nicht von einem Fenster zu unterscheiden, das nichts anzeigt.
+            try:
+                self.konsole.insert("end", "Breiten-Nachrechnung: %s\n" % e)
+            except Exception:                        # noqa: BLE001
+                pass
 
     def _pfad(self, spur, name):
         return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur),
@@ -1975,6 +2173,42 @@ class Handelszentrale:
             "   G/V %+.1f %%" % gv if gv is not None else ""))
 
     # ---------- Anzeige ----------
+    def _breiten_nachrechnen(self):
+        """Nach dem Befuellen: Breiten gegen die ECHTEN Texte rechnen.
+
+        Beim Bauen ist die Tabelle leer, es stehen nur die Ueberschriften
+        drin - eine Breite, die nur danach rechnet, ist die alte feste
+        Breite mit neuem Namen. Nach dem ersten `insert` sind die Texte
+        da, und erst dann laesst sich die vraechtig lange Spalte finden.
+
+        Nur einmal nach dem ersten Befuellen: danach waeren die Spalten
+        bei jedem Takt neu vermessen und der Nutzer koennte eine Breite,
+        die er mit der Maus gezogen hat, nicht mehr festhalten.
+        """
+        if self._breiten_gesetzt:
+            return
+        for baum, wunsch in ((self.t_spuren, self._wunsch_spuren),
+                             (self.t_pos, self._wunsch_pos),
+                             (self.t_laeufe, None)):
+            if baum is None:
+                continue
+            if wunsch is None:
+                wunsch = _als_liste(list(baum["columns"]), None)
+            if not baum.get_children():
+                continue           # noch keine Zeile: nichts zu messen
+            texte = {}
+            for iid in baum.get_children():
+                for sp, wert in zip(baum["columns"], baum.item(iid, "values")):
+                    texte.setdefault(sp, []).append(wert)
+            platz = baum.winfo_width() or baum.master.winfo_width()
+            breiten = dict(spaltenbreiten(
+                list(baum["columns"]), kopf_von(baum), wunsch, texte,
+                zeichen_breite=zeichen_breite(baum.winfo_toplevel()),
+                verfuegbar=platz))
+            for sp, b in breiten.items():
+                baum.column(sp, width=b)
+        self._breiten_gesetzt = True
+
     def _zeige(self, jetzt):
         # Spurtabelle
         for i in self.t_spuren.get_children():
